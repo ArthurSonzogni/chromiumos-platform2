@@ -23,6 +23,7 @@
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_hsm_cbor_serialization.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_impl.h"
+#include "cryptohome/error/cryptohome_crypto_error.h"
 #include "cryptohome/error/location_utils.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 
@@ -224,18 +225,17 @@ CryptoStatus CryptohomeRecoveryAuthBlock::Derive(const AuthInput& auth_input,
         CryptoError::CE_OTHER_CRYPTO);
   }
   HsmResponsePlainText response_plain_text;
-  if (!recovery->DecryptResponsePayload(
-          cryptorecovery::DecryptResponsePayloadRequest(
-              {.encrypted_channel_priv_key =
-                   auth_state->encrypted_channel_priv_key,
-               .epoch_response = epoch_response,
-               .recovery_response_proto = response_proto,
-               .obfuscated_username = obfuscated_username}),
-          &response_plain_text)) {
+  CryptoStatus decrypt_result = recovery->DecryptResponsePayload(
+      cryptorecovery::DecryptResponsePayloadRequest(
+          {.encrypted_channel_priv_key = auth_state->encrypted_channel_priv_key,
+           .epoch_response = epoch_response,
+           .recovery_response_proto = response_proto,
+           .obfuscated_username = obfuscated_username}),
+      &response_plain_text);
+  if (!decrypt_result.ok()) {
     return MakeStatus<CryptohomeCryptoError>(
-        CRYPTOHOME_ERR_LOC(kLocRecoveryAuthBlockDecryptFailedInDerive),
-        ErrorActionSet({ErrorAction::kRetry, ErrorAction::kAuth}),
-        CryptoError::CE_OTHER_CRYPTO);
+               CRYPTOHOME_ERR_LOC(kLocRecoveryAuthBlockDecryptFailedInDerive))
+        .Wrap(std::move(decrypt_result));
   }
 
   brillo::SecureBlob recovery_key;

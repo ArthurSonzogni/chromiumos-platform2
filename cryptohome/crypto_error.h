@@ -33,6 +33,11 @@ enum class CryptoError {
   // The LE credential had been locked, and this error will take priority over
   // the |CE_LE_INVALID_SECRET|.
   CE_CREDENTIAL_LOCKED = 13,
+  // Cryptohome recovery failed with a transient error (retrying the flow may
+  // fix the issue).
+  CE_RECOVERY_TRANSIENT = 14,
+  // Cryptohome recovery failed with a fatal error.
+  CE_RECOVERY_FATAL = 15,
   // Add any new values above this one.
   CE_MAX_VALUE,
 };

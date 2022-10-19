@@ -92,6 +92,8 @@ enum CryptohomeErrorCode {
   CRYPTOHOME_ERROR_UNUSABLE_VAULT = 53;
   CRYPTOHOME_REMOVE_CREDENTIALS_FAILED = 54;
   CRYPTOHOME_UPDATE_CREDENTIALS_FAILED = 55;
+  CRYPTOHOME_ERROR_RECOVERY_TRANSIENT = 56;
+  CRYPTOHOME_ERROR_RECOVERY_FATAL = 57;
   // Note: After adding new fields to this enum, the new enum should be added
   // to ash/components/login/auth/auth_session_authenticator.cc's
   // AuthSessionAuthenticator::ProcessCryptohomeError() so that Chromium

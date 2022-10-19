@@ -28,12 +28,19 @@
 #include <libhwsec-foundation/crypto/rsa.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
 #include <libhwsec-foundation/crypto/sha.h>
+#include <libhwsec-foundation/status/status_chain.h>
 #include <openssl/ec.h>
 
+#include "cryptohome/crypto_error.h"
 #include "cryptohome/cryptohome_common.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_hsm_cbor_serialization.h"
+#include "cryptohome/error/cryptohome_crypto_error.h"
+#include "cryptohome/error/location_utils.h"
 #include "cryptohome/filesystem_layout.h"
 
+using cryptohome::error::CryptohomeCryptoError;
+using cryptohome::error::ErrorAction;
+using cryptohome::error::ErrorActionSet;
 using ::hwsec_foundation::AesGcmDecrypt;
 using ::hwsec_foundation::AesGcmEncrypt;
 using ::hwsec_foundation::BigNumToSecureBlob;
@@ -46,6 +53,8 @@ using ::hwsec_foundation::HkdfHash;
 using ::hwsec_foundation::kAesGcm256KeySize;
 using ::hwsec_foundation::ScopedBN_CTX;
 using ::hwsec_foundation::SecureBlobToBigNum;
+using ::hwsec_foundation::status::MakeStatus;
+using ::hwsec_foundation::status::OkStatus;
 
 namespace cryptohome {
 namespace cryptorecovery {
@@ -148,6 +157,35 @@ std::string GetRlzCode() {
     return kDeviceUnknown;
   }
   return data;
+}
+
+CryptoError CryptoErrorFromRecoveryResponseError(RecoveryError response_error) {
+  switch (response_error) {
+    case RecoveryError::RECOVERY_ERROR_UNSPECIFIED:
+      return CryptoError::CE_NONE;
+    case RecoveryError::RECOVERY_ERROR_FATAL:
+    case RecoveryError::RECOVERY_ERROR_AUTH:
+      return CryptoError::CE_RECOVERY_FATAL;
+    case RecoveryError::RECOVERY_ERROR_TRANSIENT:
+    case RecoveryError::RECOVERY_ERROR_EPOCH:
+    case RecoveryError::RECOVERY_ERROR_AUTH_EXPIRED:
+      return CryptoError::CE_RECOVERY_TRANSIENT;
+  }
+}
+
+ErrorActionSet ErrorActionSetFromRecoveryResponseError(
+    RecoveryError response_error) {
+  switch (response_error) {
+    case RecoveryError::RECOVERY_ERROR_UNSPECIFIED:
+      return {};
+    case RecoveryError::RECOVERY_ERROR_FATAL:
+    case RecoveryError::RECOVERY_ERROR_AUTH:
+      return ErrorActionSet({ErrorAction::kFatal});
+    case RecoveryError::RECOVERY_ERROR_TRANSIENT:
+    case RecoveryError::RECOVERY_ERROR_EPOCH:
+    case RecoveryError::RECOVERY_ERROR_AUTH_EXPIRED:
+      return ErrorActionSet({ErrorAction::kRetry});
+  }
 }
 
 }  // namespace
@@ -767,47 +805,68 @@ bool RecoveryCryptoImpl::RecoverDestination(
   return true;
 }
 
-bool RecoveryCryptoImpl::DecryptResponsePayload(
+CryptoStatus RecoveryCryptoImpl::DecryptResponsePayload(
     const DecryptResponsePayloadRequest& request,
     HsmResponsePlainText* response_plain_text) const {
   ScopedBN_CTX context = CreateBigNumContext();
   if (!context.get()) {
     LOG(ERROR) << "Failed to allocate BN_CTX structure";
-    return false;
+    return MakeStatus<CryptohomeCryptoError>(
+        CRYPTOHOME_ERR_LOC(kLocRecoveryCryptoNoContextInDecryptResponse),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        CryptoError::CE_OTHER_CRYPTO);
   }
 
-  if (request.recovery_response_proto.error_code() !=
-      RecoveryError::RECOVERY_ERROR_UNSPECIFIED) {
+  RecoveryError resp_error_code = request.recovery_response_proto.error_code();
+  if (resp_error_code != RecoveryError::RECOVERY_ERROR_UNSPECIFIED) {
     LOG(ERROR) << "Recovery response returned an error: "
-               << static_cast<int>(
-                      request.recovery_response_proto.error_code());
-    return false;
+               << static_cast<int>(resp_error_code);
+    return MakeStatus<CryptohomeCryptoError>(
+        CRYPTOHOME_ERR_LOC(kLocRecoveryCryptoResponseErrInDecryptResponse),
+        ErrorActionSetFromRecoveryResponseError(resp_error_code),
+        CryptoErrorFromRecoveryResponseError(resp_error_code));
   }
 
   ResponsePayload recovery_response;
   if (!GetResponsePayloadFromProto(request.recovery_response_proto,
                                    &recovery_response)) {
-    LOG(ERROR) << "Unable to deserialize Recovery Response from CBOR";
-    return false;
+    LOG(ERROR) << "Unable to deserialize Recovery Response from proto";
+    return MakeStatus<CryptohomeCryptoError>(
+        CRYPTOHOME_ERR_LOC(kLocRecoveryCryptoBadPayloadInDecryptResponse),
+        ErrorActionSet(
+            {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kFatal}),
+        CryptoError::CE_RECOVERY_FATAL);
   }
 
   HsmResponseAssociatedData response_ad;
   if (!DeserializeHsmResponseAssociatedDataFromCbor(
           recovery_response.associated_data, &response_ad)) {
     LOG(ERROR) << "Unable to deserialize Response payload associated data";
-    return false;
+    return MakeStatus<CryptohomeCryptoError>(
+        CRYPTOHOME_ERR_LOC(kLocRecoveryCryptoBadADInDecryptResponse),
+        ErrorActionSet(
+            {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kFatal}),
+        CryptoError::CE_RECOVERY_FATAL);
   }
 
   if (!request.epoch_response.has_epoch_pub_key()) {
     LOG(ERROR) << "Epoch response doesn't have epoch public key";
-    return false;
+    return MakeStatus<CryptohomeCryptoError>(
+        CRYPTOHOME_ERR_LOC(kLocRecoveryCryptoNoEpochKeyInDecryptResponse),
+        ErrorActionSet(
+            {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kFatal}),
+        CryptoError::CE_RECOVERY_FATAL);
   }
   brillo::SecureBlob epoch_pub_key(request.epoch_response.epoch_pub_key());
   crypto::ScopedEC_POINT epoch_pub_point =
       ec_.DecodeFromSpkiDer(epoch_pub_key, context.get());
   if (!epoch_pub_point) {
     LOG(ERROR) << "Failed to convert epoch_pub_key SecureBlob to EC_POINT";
-    return false;
+    return MakeStatus<CryptohomeCryptoError>(
+        CRYPTOHOME_ERR_LOC(kLocRecoveryCryptoBadEpochKeyInDecryptResponse),
+        ErrorActionSet(
+            {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kFatal}),
+        CryptoError::CE_OTHER_CRYPTO);
   }
   // Performs scalar multiplication of epoch_pub_point and channel_priv_key.
   // Here we don't use key_auth_value generated from GenerateKeyAuthValue()
@@ -830,7 +889,11 @@ bool RecoveryCryptoImpl::DecryptResponsePayload(
     LOG(ERROR) << "Failed to compute shared point from epoch_pub_point and "
                   "channel_priv_key: "
                << shared_secret_point.status();
-    return false;
+    return MakeStatus<CryptohomeCryptoError>(
+        CRYPTOHOME_ERR_LOC(kLocRecoveryCryptoDHFailedInDecryptResponse),
+        ErrorActionSet(
+            {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kFatal}),
+        CryptoError::CE_OTHER_CRYPTO);
   }
   brillo::SecureBlob shared_secret_point_blob;
   crypto::ScopedEC_KEY shared_secret_key =
@@ -839,7 +902,12 @@ bool RecoveryCryptoImpl::DecryptResponsePayload(
                            context.get())) {
     LOG(ERROR)
         << "Failed to convert shared_secret_point to SubjectPublicKeyInfo";
-    return false;
+    return MakeStatus<CryptohomeCryptoError>(
+        CRYPTOHOME_ERR_LOC(
+            kLocRecoveryCryptoEncodePointFailedInDecryptResponse),
+        ErrorActionSet(
+            {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kFatal}),
+        CryptoError::CE_OTHER_CRYPTO);
   }
   brillo::SecureBlob aes_gcm_key;
   if (!GenerateEcdhHkdfSymmetricKey(
@@ -849,10 +917,14 @@ bool RecoveryCryptoImpl::DecryptResponsePayload(
           kAesGcm256KeySize, &aes_gcm_key)) {
     LOG(ERROR) << "Failed to generate ECDH+HKDF recipient key for response "
                   "plain text decryption";
-    return false;
+    return MakeStatus<CryptohomeCryptoError>(
+        CRYPTOHOME_ERR_LOC(kLocRecoveryCryptoECDHFailedInDecryptResponse),
+        ErrorActionSet(
+            {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kFatal}),
+        CryptoError::CE_OTHER_CRYPTO);
   }
 
-  // Dispose shared_secret_point after used
+  // Dispose shared_secret_point after used.
   shared_secret_point.value().reset();
   shared_secret_point_blob.clear();
 
@@ -862,14 +934,22 @@ bool RecoveryCryptoImpl::DecryptResponsePayload(
                      aes_gcm_key, recovery_response.iv,
                      &response_plain_text_cbor)) {
     LOG(ERROR) << "Failed to perform AES-GCM decryption of response plain text";
-    return false;
+    return MakeStatus<CryptohomeCryptoError>(
+        CRYPTOHOME_ERR_LOC(kLocRecoveryCryptoAESFailedInDecryptResponse),
+        ErrorActionSet(
+            {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kFatal}),
+        CryptoError::CE_OTHER_CRYPTO);
   }
   if (!DeserializeHsmResponsePlainTextFromCbor(response_plain_text_cbor,
                                                response_plain_text)) {
     LOG(ERROR) << "Failed to deserialize Response plain text";
-    return false;
+    return MakeStatus<CryptohomeCryptoError>(
+        CRYPTOHOME_ERR_LOC(kLocRecoveryCryptoBadPlainTextInDecryptResponse),
+        ErrorActionSet(
+            {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kFatal}),
+        CryptoError::CE_RECOVERY_FATAL);
   }
-  return true;
+  return OkStatus<CryptohomeCryptoError>();
 }
 
 bool RecoveryCryptoImpl::GenerateHsmAssociatedData(

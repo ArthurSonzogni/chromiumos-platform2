@@ -19,6 +19,7 @@
 
 #include "cryptohome/cryptorecovery/cryptorecovery.pb.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_util.h"
+#include "cryptohome/error/cryptohome_crypto_error.h"
 
 namespace cryptohome {
 namespace cryptorecovery {
@@ -177,7 +178,7 @@ class RecoveryCrypto {
   // 3. Decrypt cipher text of response payload, deserialize it from CBOR
   // and store the result in `response_plain_text`. The key for decryption is
   // HKDF(ECDH(channel_priv_key, epoch_response.epoch_pub_key)).
-  virtual bool DecryptResponsePayload(
+  virtual CryptoStatus DecryptResponsePayload(
       const DecryptResponsePayloadRequest& request,
       HsmResponsePlainText* response_plain_text) const = 0;
 };

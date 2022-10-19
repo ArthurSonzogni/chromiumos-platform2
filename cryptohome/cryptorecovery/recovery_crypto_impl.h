@@ -41,7 +41,7 @@ class RecoveryCryptoImpl : public RecoveryCrypto {
                           GenerateHsmPayloadResponse* response) const override;
   bool RecoverDestination(const RecoverDestinationRequest& request,
                           brillo::SecureBlob* destination_dh) const override;
-  bool DecryptResponsePayload(
+  CryptoStatus DecryptResponsePayload(
       const DecryptResponsePayloadRequest& request,
       HsmResponsePlainText* response_plain_text) const override;
 

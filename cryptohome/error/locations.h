@@ -1275,6 +1275,28 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   //// This is a separator block at value 1900
   //// See location_db.py for more info.
   //////////////////////////////////////////////////
+  /* ./cryptorecovery/recovery_crypto_impl.cc */
+  kLocRecoveryCryptoNoContextInDecryptResponse = 1900,
+  /* ./cryptorecovery/recovery_crypto_impl.cc */
+  kLocRecoveryCryptoResponseErrInDecryptResponse = 1901,
+  /* ./cryptorecovery/recovery_crypto_impl.cc */
+  kLocRecoveryCryptoBadPayloadInDecryptResponse = 1902,
+  /* ./cryptorecovery/recovery_crypto_impl.cc */
+  kLocRecoveryCryptoBadADInDecryptResponse = 1903,
+  /* ./cryptorecovery/recovery_crypto_impl.cc */
+  kLocRecoveryCryptoNoEpochKeyInDecryptResponse = 1904,
+  /* ./cryptorecovery/recovery_crypto_impl.cc */
+  kLocRecoveryCryptoBadEpochKeyInDecryptResponse = 1905,
+  /* ./cryptorecovery/recovery_crypto_impl.cc */
+  kLocRecoveryCryptoDHFailedInDecryptResponse = 1906,
+  /* ./cryptorecovery/recovery_crypto_impl.cc */
+  kLocRecoveryCryptoEncodePointFailedInDecryptResponse = 1907,
+  /* ./cryptorecovery/recovery_crypto_impl.cc */
+  kLocRecoveryCryptoECDHFailedInDecryptResponse = 1908,
+  /* ./cryptorecovery/recovery_crypto_impl.cc */
+  kLocRecoveryCryptoAESFailedInDecryptResponse = 1909,
+  /* ./cryptorecovery/recovery_crypto_impl.cc */
+  kLocRecoveryCryptoBadPlainTextInDecryptResponse = 1910,
   //////////////////////////////////////////////////
   //// This is a separator block at value 2100
   //// See location_db.py for more info.

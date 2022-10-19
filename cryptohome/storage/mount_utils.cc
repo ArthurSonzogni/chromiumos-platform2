@@ -120,6 +120,12 @@ MountError CryptoErrorToMountError(CryptoError crypto_error) {
     case CryptoError::CE_TPM_REBOOT:
       local_error = MOUNT_ERROR_TPM_NEEDS_REBOOT;
       break;
+    case CryptoError::CE_RECOVERY_TRANSIENT:
+      local_error = MOUNT_ERROR_RECOVERY_TRANSIENT;
+      break;
+    case CryptoError::CE_RECOVERY_FATAL:
+      local_error = MOUNT_ERROR_RECOVERY_FATAL;
+      break;
     default:
       local_error = MOUNT_ERROR_KEY_FAILURE;
       break;
@@ -157,7 +163,11 @@ user_data_auth::CryptohomeErrorCode MountErrorToCryptohomeError(
                CRYPTOHOME_ERROR_MOUNT_PREVIOUS_MIGRATION_INCOMPLETE},
           {MOUNT_ERROR_RECREATED, user_data_auth::CRYPTOHOME_ERROR_NOT_SET},
           {MOUNT_ERROR_VAULT_UNRECOVERABLE,
-           user_data_auth::CRYPTOHOME_ERROR_VAULT_UNRECOVERABLE}};
+           user_data_auth::CRYPTOHOME_ERROR_VAULT_UNRECOVERABLE},
+          {MOUNT_ERROR_RECOVERY_TRANSIENT,
+           user_data_auth::CRYPTOHOME_ERROR_RECOVERY_TRANSIENT},
+          {MOUNT_ERROR_RECOVERY_FATAL,
+           user_data_auth::CRYPTOHOME_ERROR_RECOVERY_FATAL}};
 
   if (error_code_lut.count(code) != 0) {
     return error_code_lut.at(code);

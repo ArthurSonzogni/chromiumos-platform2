@@ -25,6 +25,7 @@
 #include "cryptohome/cryptorecovery/recovery_crypto_hsm_cbor_serialization.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_impl.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_util.h"
+#include "cryptohome/error/cryptohome_crypto_error.h"
 #include "cryptohome/platform.h"
 
 using base::FilePath;
@@ -365,13 +366,17 @@ bool DoRecoveryCryptoDecryptAction(
   }
 
   HsmResponsePlainText response_plain_text;
-  if (!recovery_crypto->DecryptResponsePayload(
+  cryptohome::CryptoStatus decrypt_result =
+      recovery_crypto->DecryptResponsePayload(
           DecryptResponsePayloadRequest(
               {.encrypted_channel_priv_key = channel_priv_key,
                .epoch_response = epoch_response,
                .recovery_response_proto = recovery_response_proto,
                .obfuscated_username = kObfuscatedUsername}),
-          &response_plain_text)) {
+          &response_plain_text);
+  if (!decrypt_result.ok()) {
+    LOG(ERROR) << "Failed to decrypt response payload "
+               << decrypt_result.ToFullString();
     return false;
   }
   brillo::SecureBlob mediated_recovery_key;

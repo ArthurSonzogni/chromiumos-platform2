@@ -22,6 +22,7 @@ executable("cryptohome-test-tool") {
   deps = [
     "//cryptohome/libs:libcrosplatform",
     "//cryptohome/libs:libcrostpm",
+    "//cryptohome/libs:libcryptohome",
   ]
 }
 

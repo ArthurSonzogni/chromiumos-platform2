@@ -11,6 +11,7 @@
 #include <libhwsec-foundation/crypto/big_num_util.h>
 #include <libhwsec-foundation/crypto/elliptic_curve.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
+#include <libhwsec-foundation/error/testing_helper.h>
 
 #include "cryptohome/cryptorecovery/cryptorecovery.pb.h"
 #include "cryptohome/cryptorecovery/fake_recovery_mediator_crypto.h"
@@ -21,10 +22,15 @@
 #include "cryptohome/filesystem_layout.h"
 
 using brillo::SecureBlob;
+using cryptohome::error::CryptohomeError;
+using cryptohome::error::ErrorAction;
+using cryptohome::error::ErrorActionSet;
 using hwsec_foundation::BigNumToSecureBlob;
 using hwsec_foundation::CreateBigNumContext;
 using hwsec_foundation::EllipticCurve;
 using hwsec_foundation::ScopedBN_CTX;
+using hwsec_foundation::error::testing::IsOk;
+using hwsec_foundation::error::testing::NotOk;
 
 namespace cryptohome {
 namespace cryptorecovery {
@@ -233,8 +239,9 @@ TEST_F(RecoveryCryptoTest, RecoveryTestSuccess) {
        .recovery_response_proto = response_proto,
        .obfuscated_username = ""});
   HsmResponsePlainText response_plain_text;
-  EXPECT_TRUE(recovery_->DecryptResponsePayload(
-      decrypt_response_payload_request, &response_plain_text));
+  EXPECT_THAT(recovery_->DecryptResponsePayload(
+                  decrypt_response_payload_request, &response_plain_text),
+              IsOk());
 
   RecoverDestinationRequest recover_destination_request(
       {.dealer_pub_key = response_plain_text.dealer_pub_key,
@@ -309,8 +316,10 @@ TEST_F(RecoveryCryptoTest, MediateWithInvalidEpochPublicKey) {
        .recovery_response_proto = response_proto,
        .obfuscated_username = ""});
   HsmResponsePlainText response_plain_text;
-  EXPECT_FALSE(recovery_->DecryptResponsePayload(
-      decrypt_response_payload_request, &response_plain_text));
+  auto status = recovery_->DecryptResponsePayload(
+      decrypt_response_payload_request, &response_plain_text);
+  ASSERT_THAT(status, NotOk());
+  EXPECT_EQ(status->local_crypto_error(), CryptoError::CE_OTHER_CRYPTO);
 }
 
 TEST_F(RecoveryCryptoTest, RecoverDestinationInvalidDealerPublicKey) {
@@ -327,8 +336,9 @@ TEST_F(RecoveryCryptoTest, RecoverDestinationInvalidDealerPublicKey) {
        .recovery_response_proto = response_proto,
        .obfuscated_username = ""});
   HsmResponsePlainText response_plain_text;
-  EXPECT_TRUE(recovery_->DecryptResponsePayload(
-      decrypt_response_payload_request, &response_plain_text));
+  ASSERT_THAT(recovery_->DecryptResponsePayload(
+                  decrypt_response_payload_request, &response_plain_text),
+              IsOk());
 
   SecureBlob random_key = GeneratePublicKey();
 
@@ -363,8 +373,9 @@ TEST_F(RecoveryCryptoTest, RecoverDestinationInvalidDestinationShare) {
        .recovery_response_proto = response_proto,
        .obfuscated_username = ""});
   HsmResponsePlainText response_plain_text;
-  EXPECT_TRUE(recovery_->DecryptResponsePayload(
-      decrypt_response_payload_request, &response_plain_text));
+  EXPECT_THAT(recovery_->DecryptResponsePayload(
+                  decrypt_response_payload_request, &response_plain_text),
+              IsOk());
 
   SecureBlob random_scalar = GenerateScalar();
 
@@ -397,8 +408,9 @@ TEST_F(RecoveryCryptoTest, RecoverDestinationInvalidEphemeralKey) {
        .recovery_response_proto = response_proto,
        .obfuscated_username = ""});
   HsmResponsePlainText response_plain_text;
-  EXPECT_TRUE(recovery_->DecryptResponsePayload(
-      decrypt_response_payload_request, &response_plain_text));
+  EXPECT_THAT(recovery_->DecryptResponsePayload(
+                  decrypt_response_payload_request, &response_plain_text),
+              IsOk());
 
   SecureBlob random_key = GeneratePublicKey();
 
@@ -431,8 +443,9 @@ TEST_F(RecoveryCryptoTest, RecoverDestinationInvalidMediatedPointValue) {
        .recovery_response_proto = response_proto,
        .obfuscated_username = ""});
   HsmResponsePlainText response_plain_text;
-  EXPECT_TRUE(recovery_->DecryptResponsePayload(
-      decrypt_response_payload_request, &response_plain_text));
+  EXPECT_THAT(recovery_->DecryptResponsePayload(
+                  decrypt_response_payload_request, &response_plain_text),
+              IsOk());
 
   SecureBlob random_key = GeneratePublicKey();
 
@@ -467,8 +480,9 @@ TEST_F(RecoveryCryptoTest, RecoverDestinationInvalidMediatedPoint) {
        .recovery_response_proto = response_proto,
        .obfuscated_username = ""});
   HsmResponsePlainText response_plain_text;
-  EXPECT_TRUE(recovery_->DecryptResponsePayload(
-      decrypt_response_payload_request, &response_plain_text));
+  EXPECT_THAT(recovery_->DecryptResponsePayload(
+                  decrypt_response_payload_request, &response_plain_text),
+              IsOk());
 
   // `RecoverDestination` fails when `mediated_point` is not a point.
   RecoverDestinationRequest recover_destination_request(
@@ -545,8 +559,10 @@ TEST_F(RecoveryCryptoTest, DecryptResponsePayloadServerError) {
        .recovery_response_proto = response_proto,
        .obfuscated_username = ""});
   HsmResponsePlainText response_plain_text;
-  EXPECT_FALSE(recovery_->DecryptResponsePayload(
-      decrypt_response_payload_request, &response_plain_text));
+  auto status = recovery_->DecryptResponsePayload(
+      decrypt_response_payload_request, &response_plain_text);
+  ASSERT_THAT(status, NotOk());
+  EXPECT_EQ(status->local_crypto_error(), CryptoError::CE_RECOVERY_FATAL);
 }
 
 }  // namespace cryptorecovery
