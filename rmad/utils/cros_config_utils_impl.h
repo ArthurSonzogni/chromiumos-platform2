@@ -25,6 +25,7 @@ class CrosConfigUtilsImpl : public CrosConfigUtils {
       std::unique_ptr<brillo::CrosConfigInterface> cros_config);
   ~CrosConfigUtilsImpl() override = default;
 
+  bool GetRmadEnabled(bool* enabled) const override;
   bool GetModelName(std::string* model_name) const override;
   bool GetCurrentSkuId(int* sku) const override;
   bool GetCurrentCustomLabelTag(std::string* custom_label_tag) const override;

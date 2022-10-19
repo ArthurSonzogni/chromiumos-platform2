@@ -35,6 +35,10 @@ constexpr char kCrosModelNameKey[] = "name";
 constexpr char kCrosIdentityKey[] = "identity";
 constexpr char kCrosIdentitySkuKey[] = "sku-id";
 constexpr char kCrosIdentityCustomLabelTagKey[] = "custom-label-tag";
+constexpr char kCrosRmadKey[] = "rmad";
+constexpr char kCrosRmadEnabledKey[] = "enabled";
+
+constexpr char kTrueStr[] = "true";
 
 }  // namespace
 
@@ -48,6 +52,20 @@ CrosConfigUtilsImpl::CrosConfigUtilsImpl(
     std::unique_ptr<brillo::CrosConfigInterface> cros_config)
     : config_file_path_(config_file_path),
       cros_config_(std::move(cros_config)) {}
+
+bool CrosConfigUtilsImpl::GetRmadEnabled(bool* enabled) const {
+  DCHECK(enabled);
+
+  std::string enabled_str;
+  if (!cros_config_->GetString(
+          std::string(kCrosRootKey) + std::string(kCrosRmadKey),
+          kCrosRmadEnabledKey, &enabled_str)) {
+    return false;
+  }
+
+  *enabled = (enabled_str == kTrueStr);
+  return true;
+}
 
 bool CrosConfigUtilsImpl::GetModelName(std::string* model_name) const {
   DCHECK(model_name);

@@ -15,6 +15,7 @@ class CrosConfigUtils {
   CrosConfigUtils() = default;
   virtual ~CrosConfigUtils() = default;
 
+  virtual bool GetRmadEnabled(bool* enabled) const = 0;
   virtual bool GetModelName(std::string* model_name) const = 0;
   virtual bool GetCurrentCustomLabelTag(
       std::string* custom_label_tag) const = 0;
