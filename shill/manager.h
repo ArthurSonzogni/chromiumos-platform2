@@ -581,6 +581,7 @@ class Manager {
   FRIEND_TEST(ManagerTest, SortServicesWithConnection);
   FRIEND_TEST(ManagerTest, StartupPortalList);
   FRIEND_TEST(ManagerTest, SetDNSProxyAddresses);
+  FRIEND_TEST(ManagerTest, TetheringLoadAndUnloadConfiguration);
   FRIEND_TEST(ServiceTest, IsAutoConnectable);
   FRIEND_TEST(ThirdPartyVpnDriverTest, SetParameters);
   FRIEND_TEST(VPNProviderTest, SetDefaultRoutingPolicy);

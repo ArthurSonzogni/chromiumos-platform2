@@ -5,6 +5,8 @@
 #ifndef SHILL_TETHERING_MANAGER_H_
 #define SHILL_TETHERING_MANAGER_H_
 
+#include <string>
+
 #include "shill/store/property_store.h"
 #include "shill/technology.h"
 #include "shill/wifi/wifi_security.h"
@@ -13,6 +15,7 @@
 namespace shill {
 
 class Manager;
+class StoreInterface;
 
 // TetheringManager handles tethering related logics. It is created by the
 // Manager class.
@@ -37,11 +40,14 @@ class TetheringManager {
     kInvalidBand,
   };
 
+  // Storage group for tethering configs.
+  static constexpr char kStorageId[] = "tethering";
+
   explicit TetheringManager(Manager* manager);
   TetheringManager(const TetheringManager&) = delete;
   TetheringManager& operator=(const TetheringManager&) = delete;
 
-  ~TetheringManager();
+  virtual ~TetheringManager();
 
   // Initialize DBus properties related to tethering.
   void InitPropertyStore(PropertyStore* store);
@@ -55,18 +61,19 @@ class TetheringManager {
   std::string CheckReadiness(Error* error);
   // Load the tethering config available in |profile| if there was any tethering
   // config saved for this |profile|.
-  void LoadConfigFromProfile(const ProfileRefPtr& profile);
-  // Unload the tethering config related to |profile|.
-  void UnloadConfigFromProfile(const ProfileRefPtr& profile);
+  virtual void LoadConfigFromProfile(const ProfileRefPtr& profile);
+  // Unload the tethering config related to |profile| and reset the tethering
+  // config with default values.
+  virtual void UnloadConfigFromProfile();
 
  private:
   friend class TetheringManagerTest;
+  FRIEND_TEST(TetheringManagerTest, GetConfig);
   FRIEND_TEST(TetheringManagerTest, GetTetheringCapabilities);
-  FRIEND_TEST(TetheringManagerTest, TetheringConfig);
+  FRIEND_TEST(TetheringManagerTest, SaveConfig);
+  FRIEND_TEST(TetheringManagerTest, SetEnabled);
   FRIEND_TEST(TetheringManagerTest, SetTetheringEnabled);
-
-  // Storage group for tethering configs.
-  static constexpr char kStorageId[] = "tethering";
+  FRIEND_TEST(TetheringManagerTest, TetheringConfig);
 
   enum class TetheringState {
     kTetheringIdle,
@@ -90,7 +97,9 @@ class TetheringManager {
   // a random passphrase.
   void ResetConfiguration();
   // Save the current tethering config to user's profile.
-  bool Save();
+  bool Save(StoreInterface* storage);
+  // Load the current tethering config from user's profile.
+  bool Load(const StoreInterface* storage);
 
   // TetheringManager is created and owned by Manager.
   Manager* manager_;

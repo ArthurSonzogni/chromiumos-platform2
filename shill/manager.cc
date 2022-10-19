@@ -515,8 +515,13 @@ void Manager::PushProfileInternal(const Profile::Identifier& ident,
   }
 
   profiles_.push_back(profile);
+  // TODO(b/172224298): skip loading PasspointCredential for the default
+  // profile.
   wifi_provider_->LoadCredentialsFromProfile(profile);
-  tethering_manager_->LoadConfigFromProfile(profile);
+  // TODO(b/172224298): prefer using Profile::IsDefault.
+  if (!profile->GetUser().empty()) {
+    tethering_manager_->LoadConfigFromProfile(profile);
+  }
 
   for (ServiceRefPtr& service : services_) {
     service->ClearExplicitlyDisconnected();
@@ -621,8 +626,13 @@ void Manager::PopProfileInternal() {
     // Service was totally unloaded. No advance of iterator in this
     // case, as UnloadService has updated the iterator for us.
   }
-  tethering_manager_->UnloadConfigFromProfile(active_profile);
+  // TODO(b/172224298): prefer using Profile::IsDefault.
+  if (!active_profile->GetUser().empty()) {
+    tethering_manager_->UnloadConfigFromProfile();
+  }
   // Remove Passpoint credentials attached to this profile.
+  // TODO(b/172224298): skip unloading PasspointCredential for the default
+  // profile.
   wifi_provider_->UnloadCredentialsFromProfile(active_profile);
 
   SortServices();

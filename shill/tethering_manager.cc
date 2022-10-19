@@ -2,13 +2,15 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "shill/tethering_manager.h"
+
 #include <stdint.h>
 
 #include <math.h>
 #include <set>
+#include <string>
+#include <unordered_map>
 #include <vector>
-
-#include "shill/tethering_manager.h"
 
 #include <base/rand_util.h>
 #include <base/strings/string_number_conversions.h>
@@ -251,7 +253,9 @@ bool TetheringManager::SetAndPersistConfig(const KeyValueStore& config,
     return false;
   }
 
-  if (manager_->ActiveProfile()->GetUser().empty()) {
+  const auto profile = manager_->ActiveProfile();
+  // TODO(b/172224298): prefer using Profile::IsDefault.
+  if (profile->GetUser().empty()) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kIllegalOperation,
                           "Tethering is not allowed without user profile");
     return false;
@@ -263,7 +267,7 @@ bool TetheringManager::SetAndPersistConfig(const KeyValueStore& config,
     return false;
   }
 
-  if (!Save()) {
+  if (!Save(profile->GetStorage())) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
                           "Failed to save config to user profile");
     return false;
@@ -337,8 +341,7 @@ const char* TetheringManager::TetheringStateToString(
   }
 }
 
-void TetheringManager::Start() {
-}
+void TetheringManager::Start() {}
 
 void TetheringManager::Stop() {}
 
@@ -349,13 +352,15 @@ bool TetheringManager::SetEnabled(bool enabled, Error* error) {
     return false;
   }
 
-  if (manager_->ActiveProfile()->GetUser().empty()) {
+  const auto profile = manager_->ActiveProfile();
+  // TODO(b/172224298): prefer using Profile::IsDefault.
+  if (profile->GetUser().empty()) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kIllegalOperation,
                           "Tethering is not allowed without user profile");
     return false;
   }
 
-  if (!Save()) {
+  if (!Save(profile->GetStorage())) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
                           "Failed to save config to user profile");
     return false;
@@ -378,10 +383,6 @@ std::string TetheringManager::TetheringManager::CheckReadiness(Error* error) {
 }
 
 void TetheringManager::LoadConfigFromProfile(const ProfileRefPtr& profile) {
-  if (profile->GetUser().empty()) {
-    return;
-  }
-
   const StoreInterface* storage = profile->GetConstStorage();
   if (!storage->ContainsGroup(kStorageId)) {
     LOG(INFO) << "Tethering config is not available in the persistent "
@@ -389,6 +390,36 @@ void TetheringManager::LoadConfigFromProfile(const ProfileRefPtr& profile) {
     return;
   }
 
+  if (!Load(storage)) {
+    LOG(ERROR) << "Tethering config is corrupted in the persistent store, use "
+                  "default config";
+    // overwrite the corrupted config in profile with the default one.
+    if (!Save(profile->GetStorage())) {
+      LOG(ERROR) << "Failed to save config to user profile";
+    }
+  }
+}
+
+void TetheringManager::UnloadConfigFromProfile() {
+  ResetConfiguration();
+}
+
+bool TetheringManager::Save(StoreInterface* storage) {
+  storage->SetBool(kStorageId, kTetheringConfAutoDisableProperty,
+                   auto_disable_);
+  storage->SetBool(kStorageId, kTetheringConfMARProperty, mar_);
+  storage->SetString(kStorageId, kTetheringConfSSIDProperty, hex_ssid_);
+  storage->SetString(kStorageId, kTetheringConfPassphraseProperty, passphrase_);
+  storage->SetString(kStorageId, kTetheringConfSecurityProperty,
+                     security_.ToString());
+  storage->SetString(kStorageId, kTetheringConfBandProperty,
+                     BandToString(band_));
+  storage->SetString(kStorageId, kTetheringConfUpstreamTechProperty,
+                     TechnologyName(upstream_technology_));
+  return storage->Flush();
+}
+
+bool TetheringManager::Load(const StoreInterface* storage) {
   KeyValueStore config;
   bool valid;
   valid = StoreToConfigBool(storage, kStorageId, &config,
@@ -405,43 +436,10 @@ void TetheringManager::LoadConfigFromProfile(const ProfileRefPtr& profile) {
                                        kTetheringConfBandProperty);
   valid = valid && StoreToConfigString(storage, kStorageId, &config,
                                        kTetheringConfUpstreamTechProperty);
-
   if (valid && !FromProperties(config)) {
     valid = false;
   }
-
-  if (!valid) {
-    LOG(ERROR) << "Tethering config is corrupted in the persistent store, use "
-                  "default config";
-    // overwrite the corrupted config in profile with the default one.
-    if (!Save()) {
-      LOG(ERROR) << "Failed to save config to user profile";
-    }
-  }
-}
-
-void TetheringManager::UnloadConfigFromProfile(const ProfileRefPtr& profile) {
-  if (profile->GetUser().empty()) {
-    return;
-  }
-
-  ResetConfiguration();
-}
-
-bool TetheringManager::Save() {
-  StoreInterface* storage = manager_->ActiveProfile()->GetStorage();
-  storage->SetBool(kStorageId, kTetheringConfAutoDisableProperty,
-                   auto_disable_);
-  storage->SetBool(kStorageId, kTetheringConfMARProperty, mar_);
-  storage->SetString(kStorageId, kTetheringConfSSIDProperty, hex_ssid_);
-  storage->SetString(kStorageId, kTetheringConfPassphraseProperty, passphrase_);
-  storage->SetString(kStorageId, kTetheringConfSecurityProperty,
-                     security_.ToString());
-  storage->SetString(kStorageId, kTetheringConfBandProperty,
-                     BandToString(band_));
-  storage->SetString(kStorageId, kTetheringConfUpstreamTechProperty,
-                     TechnologyName(upstream_technology_));
-  return storage->Flush();
+  return valid;
 }
 
 }  // namespace shill

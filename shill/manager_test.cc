@@ -54,6 +54,7 @@
 #include "shill/store/key_value_store.h"
 #include "shill/store/property_store_test.h"
 #include "shill/testing.h"
+#include "shill/tethering_manager.h"
 #include "shill/upstart/mock_upstart.h"
 #include "shill/vpn/mock_vpn_service.h"
 #include "shill/wifi/mock_wifi_provider.h"
@@ -92,6 +93,16 @@ class MockPatchpanelClient : public patchpanel::FakeClient {
   ~MockPatchpanelClient() = default;
 
   MOCK_METHOD(bool, SetVpnLockdown, (bool enable), (override));
+};
+
+class MockTetheringManager : public shill::TetheringManager {
+ public:
+  explicit MockTetheringManager(shill::Manager* manager)
+      : shill::TetheringManager(manager) {}
+  ~MockTetheringManager() = default;
+
+  MOCK_METHOD(void, LoadConfigFromProfile, (const ProfileRefPtr&), (override));
+  MOCK_METHOD(void, UnloadConfigFromProfile, (), (override));
 };
 }  // namespace
 
@@ -4401,6 +4412,36 @@ TEST_F(ManagerTest, AddPasspointCredentials) {
   EXPECT_CALL(*wifi_provider_, AddCredentials(_));
   manager()->AddPasspointCredentials(profile_rpcid.value(), properties, &err);
   EXPECT_TRUE(err.IsSuccess());
+}
+
+TEST_F(ManagerTest, TetheringLoadAndUnloadConfiguration) {
+  base::ScopedTempDir temp_dir;
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+  Manager manager(control_interface(), dispatcher(), metrics(), run_path(),
+                  storage_path(), temp_dir.GetPath().value());
+  MockTetheringManager* tethering = new MockTetheringManager(&manager);
+  manager.tethering_manager_.reset(tethering);
+  const char kDefaultProfile0[] = "default";
+  const char kProfile0[] = "~user/profile0";
+  ASSERT_TRUE(base::CreateDirectory(temp_dir.GetPath().Append("user")));
+  TestCreateProfile(&manager, kProfile0);
+
+  EXPECT_CALL(*tethering, LoadConfigFromProfile(_)).Times(0);
+  EXPECT_EQ(Error::kSuccess, TestPushProfile(&manager, kDefaultProfile0));
+  Mock::VerifyAndClearExpectations(tethering);
+
+  EXPECT_CALL(*tethering, LoadConfigFromProfile(_)).Times(1);
+  EXPECT_EQ(Error::kSuccess,
+            TestInsertUserProfile(&manager, kProfile0, "userhash0"));
+  Mock::VerifyAndClearExpectations(tethering);
+
+  EXPECT_CALL(*tethering, UnloadConfigFromProfile()).Times(1);
+  EXPECT_EQ(Error::kSuccess, TestPopProfile(&manager, kProfile0));
+  Mock::VerifyAndClearExpectations(tethering);
+
+  EXPECT_CALL(*tethering, UnloadConfigFromProfile()).Times(0);
+  EXPECT_EQ(Error::kSuccess, TestPopProfile(&manager, kDefaultProfile0));
+  Mock::VerifyAndClearExpectations(tethering);
 }
 
 }  // namespace shill
