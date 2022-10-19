@@ -22,6 +22,7 @@ source_set("camera") {
   sources = [
     "camera_client.cc",
     "cros_camera_service.cc",
+    "fake_camera_client.cc",
     "fake_camera_service.cc",
     "frame_utils.cc",
     "test_utils.cc",
@@ -30,6 +31,7 @@ source_set("camera") {
     "camera_client.h",
     "camera_service.h",
     "cros_camera_service.h",
+    "fake_camera_client.h",
     "fake_camera_service.h",
     "frame_utils.h",
     "test_utils.h",
@@ -43,7 +45,10 @@ if (use.test) {
   }
 
   executable("camera_unittests") {
-    sources = [ "camera_client_test.cc" ]
+    sources = [
+      "camera_client_test.cc",
+      "fake_camera_client_test.cc",
+    ]
     configs += [
       "//common-mk:test",
       ":target_defaults",

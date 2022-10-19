@@ -63,9 +63,11 @@ class FrameProcessor : public base::RefCountedThreadSafe<FrameProcessor> {
   friend class base::RefCountedThreadSafe<FrameProcessor>;
 };
 
-// CameraClient communicates with cros-camera-service to extract camera frames
+// A CameraClient provides a high-level interface to the device camera.
 class CameraClient {
  public:
+  virtual ~CameraClient() = default;
+
   // Config struct for setting parameters for capture
   struct CaptureFramesConfig {
     // Camera id for capture
@@ -76,16 +78,6 @@ class CameraClient {
     cros_cam_format_info_t format;
   };
 
-  // Construct CameraClient using the given camera service.
-  //
-  // CameraClient has ownership of `camera_service`
-  static absl::StatusOr<std::unique_ptr<CameraClient>> Create(
-      std::unique_ptr<CameraService> camera_service);
-
-  // CameraClient is not copyable
-  CameraClient(const CameraClient&) = delete;
-  CameraClient& operator=(const CameraClient&) = delete;
-
   // Start capturing and processing frames from the camera.
   //
   // This function calls frame_processor->ProcessFrame each time a new frame
@@ -94,12 +86,13 @@ class CameraClient {
   // The frame_processor `ProcessFrame` implementation should return quickly,
   // performing any long-running actions asynchronously
   using StopCaptureCallback = base::OnceCallback<void(absl::Status)>;
-  void CaptureFrames(const CaptureFramesConfig& config,
-                     const scoped_refptr<FrameProcessor>& frame_processor,
-                     StopCaptureCallback capture_complete);
+  virtual void CaptureFrames(
+      const CaptureFramesConfig& config,
+      const scoped_refptr<FrameProcessor>& frame_processor,
+      StopCaptureCallback capture_complete) = 0;
 
   // Return devices, capture formats, and resolutions supported by this
-  // CameraClient.
+  // CrosCameraClient.
   struct DeviceInfo {
     // Camera ID
     int id;
@@ -110,14 +103,35 @@ class CameraClient {
     // Supported formats and resolutions.
     std::vector<cros_cam_format_info_t> formats;
   };
-  absl::StatusOr<std::vector<DeviceInfo>> GetDevices();
+  virtual absl::StatusOr<std::vector<DeviceInfo>> GetDevices() = 0;
 
   // Return information about the given device.
-  absl::StatusOr<DeviceInfo> GetDevice(int id);
+  virtual absl::StatusOr<DeviceInfo> GetDevice(int id) = 0;
+};
+
+// CameraClient communicates with cros-camera-service to extract camera frames
+class CrosCameraClient : public CameraClient {
+ public:
+  // Construct CameraClient using the given camera service.
+  //
+  // CrosCameraClient has ownership of `camera_service`
+  static absl::StatusOr<std::unique_ptr<CrosCameraClient>> Create(
+      std::unique_ptr<CameraService> camera_service);
+
+  // CrosCameraClient is not copyable
+  CrosCameraClient(const CrosCameraClient&) = delete;
+  CrosCameraClient& operator=(const CrosCameraClient&) = delete;
+
+  // `CameraClient` implementation.
+  void CaptureFrames(const CaptureFramesConfig& config,
+                     const scoped_refptr<FrameProcessor>& frame_processor,
+                     StopCaptureCallback capture_complete) override;
+  absl::StatusOr<std::vector<DeviceInfo>> GetDevices() override;
+  absl::StatusOr<DeviceInfo> GetDevice(int id) override;
 
  private:
-  // CameraClient can only be constructed via CameraClient::Create()
-  explicit CameraClient(std::unique_ptr<CameraService> camera_service)
+  // CrosCameraClient can only be constructed via CrosCameraClient::Create()
+  explicit CrosCameraClient(std::unique_ptr<CameraService> camera_service)
       : task_runner_(base::SequencedTaskRunnerHandle::Get()),
         camera_service_(std::move(camera_service)) {}
 

@@ -48,7 +48,7 @@ TEST(IsFormatEqualTest, IsFormatEqual) {
       IsFormatEqual(testing::kYuvHighDefCamera, testing::kYuvStdDefCamera));
 }
 
-// Tests CameraClient::Create()
+// Tests CrosCameraClient::Create()
 //
 // Tests that the camera client is able to probe info for a single fake camera
 // info.
@@ -61,7 +61,7 @@ TEST_F(CameraClientTest, Create) {
   // Create a camera client.
   FACE_ASSERT_OK_AND_ASSIGN(
       std::unique_ptr<CameraClient> camera_client,
-      CameraClient::Create(std::make_unique<testing::FakeCameraService>(
+      CrosCameraClient::Create(std::make_unique<testing::FakeCameraService>(
           fake_camera_service_connector)));
 
   // Check that the expected formats are reported.
@@ -124,7 +124,7 @@ TEST_F(CameraClientTest, CaptureFrames) {
   // Create a camera client.
   FACE_ASSERT_OK_AND_ASSIGN(
       std::unique_ptr<CameraClient> camera_client,
-      CameraClient::Create(std::make_unique<testing::FakeCameraService>(
+      CrosCameraClient::Create(std::make_unique<testing::FakeCameraService>(
           fake_camera_service_connector)));
 
   BlockingFuture<absl::Status> status;

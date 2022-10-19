@@ -64,7 +64,7 @@ bool IsFormatEqual(const cros_cam_format_info_t& fmt1,
          fmt1.height == fmt2.height && fmt1.fps == fmt2.fps;
 }
 
-absl::StatusOr<std::unique_ptr<CameraClient>> CameraClient::Create(
+absl::StatusOr<std::unique_ptr<CrosCameraClient>> CrosCameraClient::Create(
     std::unique_ptr<CameraService> camera_service) {
   // Establishes a connection with the cros camera service
   if (camera_service->Init() != 0) {
@@ -72,11 +72,11 @@ absl::StatusOr<std::unique_ptr<CameraClient>> CameraClient::Create(
   }
 
   // Create the camera.
-  return base::WrapUnique(new CameraClient(std::move(camera_service)));
+  return base::WrapUnique(new CrosCameraClient(std::move(camera_service)));
 }
 
 absl::StatusOr<std::vector<CameraClient::DeviceInfo>>
-CameraClient::GetDevices() {
+CrosCameraClient::GetDevices() {
   std::vector<CameraClient::DeviceInfo> result;
 
   // Enumerate all the cameras, and record them in `result`.
@@ -121,7 +121,7 @@ CameraClient::GetDevices() {
   return {std::move(result)};
 }
 
-absl::StatusOr<CameraClient::DeviceInfo> CameraClient::GetDevice(int id) {
+absl::StatusOr<CameraClient::DeviceInfo> CrosCameraClient::GetDevice(int id) {
   // Search through the devices to find the requested device.
   //
   // The underlying API doesn't give us a way to access a particular device,
@@ -138,7 +138,7 @@ absl::StatusOr<CameraClient::DeviceInfo> CameraClient::GetDevice(int id) {
       base::StringPrintf("Camera device with id %d not found.", id));
 }
 
-void CameraClient::CaptureFrames(
+void CrosCameraClient::CaptureFrames(
     const CaptureFramesConfig& config,
     const scoped_refptr<FrameProcessor>& frame_processor,
     StopCaptureCallback capture_complete) {
@@ -167,7 +167,7 @@ void CameraClient::CaptureFrames(
   };
 
   int ret = camera_service_->StartCapture(
-      &request, &CameraClient::OnCaptureResultAvailable, this);
+      &request, &CrosCameraClient::OnCaptureResultAvailable, this);
   if (ret != 0) {
     task_runner_->PostTask(
         FROM_HERE,
@@ -177,9 +177,9 @@ void CameraClient::CaptureFrames(
   }
 }
 
-int CameraClient::OnCaptureResultAvailable(
+int CrosCameraClient::OnCaptureResultAvailable(
     void* context, const cros_cam_capture_result_t* result) {
-  auto* client = reinterpret_cast<CameraClient*>(context);
+  auto* client = reinterpret_cast<CrosCameraClient*>(context);
 
   if (result->status != 0) {
     LOG(ERROR) << "Received an error notification: "
@@ -210,12 +210,12 @@ int CameraClient::OnCaptureResultAvailable(
   client->task_runner_->PostTask(
       FROM_HERE,
       base::BindOnce(callback, FrameFromCrosFrame(*frame),
-                     base::BindOnce(&CameraClient::CompletedProcessFrame,
+                     base::BindOnce(&CrosCameraClient::CompletedProcessFrame,
                                     base::Unretained(client))));
   return 0;
 }
 
-void CameraClient::CompletedProcessFrame(
+void CrosCameraClient::CompletedProcessFrame(
     std::optional<absl::Status> opt_status) {
   if (opt_status.has_value()) {
     LOG(INFO) << "Stopping capture on camera: " << camera_id_;
@@ -233,9 +233,9 @@ void CameraClient::CompletedProcessFrame(
 }
 
 std::optional<CameraClient::CaptureFramesConfig> GetHighestResolutionFormat(
-    const CameraClient::DeviceInfo& device,
+    const CrosCameraClient::DeviceInfo& device,
     std::function<bool(const cros_cam_format_info_t&)> predicate) {
-  std::optional<CameraClient::CaptureFramesConfig> result;
+  std::optional<CrosCameraClient::CaptureFramesConfig> result;
   std::optional<int> best_resolution = 0;
 
   // Enumerate all devices and resolutions.
