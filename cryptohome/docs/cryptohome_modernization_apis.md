@@ -186,7 +186,10 @@ for a given user as well as the supported types of auth factors.
         then a Kiosk factor will not be reported as a supported option.
 6. **PrepareAuthFactor** - This call is required for specific types of
 non-knowledge-based auth factors before AuthenticateAuthFactor or AddAuthFactor
-is called with those auth factors.
+is called with those auth factors. It usually stats a sensor session for the
+specified auth factor type. It also initiates a signal sender broadcasting
+a AuthScanResult signal, which contains the scan result for the specified auth
+factor type.
     - *Input*:
       - auth_session_id - AuthSession used to identify users.
       - auth_factor_type - The type of AuthFactor that is being prepared.
@@ -201,6 +204,17 @@ is called with those auth factors.
       - Set the purpose to PURPOSE_AUTHENTICATE_AUTH_FACTOR, when we intend
       to have a follow up AuthenticateAuthFactor. The auth session may not be
       already authenticated.
+
+7. **TerminateAuthFactor** - This call is required after PrepareAuthFactor is
+called with an auth factor type. It will shut down any underlying sensor sessions.
+It will also shut down the signal sender associated with the auth factor type.
+    - *Input*:
+      - auth_session_id - AuthSession used to identify users.
+      - auth_factor_type - The type of AuthFactor that is being prepared.
+    - *Reply*
+      - CryptohomeErrorCode - Returns if there is any error.
+    - *Usage*:
+      - Properly terminate the underlying sensor session.
 
 ## Order of Operations
 
@@ -284,15 +298,36 @@ any persistent users present.
 1.  `StartAuthSession` - Chrome initiates an AuthSession with AuthIntent
     Verify.
 2.  `PrepareAuthFactor`
+    - PrepareAuthFactorRequest expects to contain an auth factor type of
+    LegacyFingerprint.
     - An fingerprint sensor session is started to collect a fingerprint press.
-    - The fingerprint session is ended after a fingerprint image is captured.
-3.  `AuthenticateAuthFactor`
-    - It is a success, the fingerprint is matched.
-    - It is a failure and indicating another auth retry is possible, Chrome
-    should repeat from Step 2 PrepareAuthFactor for another attempt.
-    - It is a failure and indicating fingerprint retry limit has been reached,
-    Chrome should not further attempt fingerprint auth in the same AuthSession.
-4.  `InvalidateAuthSession`
+    - A success response indicates an fingerprint session has started.
+    - A failure response means the session start has failed.
+    - Upon a successful invocation, a signal sender that broadcasts signal
+    AuthScanResult for legacy fingerprint is initialized.
+3.  Listen on crypthome signal AuthScanResult.
+    - It is a success. Chrome should proceed to call AuthenticationAuthFactor
+      to find out the authentication result.
+    - It is a failure and indicating fingerprint auth has been locked out.
+    Chrome should tell the user the fingerprint auth has failed for the current
+    AuthSession. No fingerprint attempt will be accepted in the current
+    fingerprint sensor session.
+4.  `AuthenticateAuthFactor`
+    - It is a auth success, the fingerprint is matched.
+    - It is a auth failure. Chrome should continue listen for another
+    fingerprint scan attempt.
+    - Chrome should ask the user to make another fingerprint attempt.
+    - It is a auth failure and indicating fingerprint retry limit has been
+    reached, Chrome should tell the user the fingerprint auth has failed for
+    the current AuthSession. No further fingerprint attempt will be accepted
+    in the current fingerprint sensor session.
+5.  `TerminateAuthFactor`
+    - End the active fingerprint sensor session.
+    - The sender that broadcasts AuthScanResult for legacy fingerprint is
+    terminated.
+6.  `InvalidateAuthSession`
+    - If there are any outstanding snesor sessions, they will  be ended
+    automatically, similar to what `TerminateAuthFactor` has done.
 
 ### Chrome wants to do fingerprint WebAuthn
 
