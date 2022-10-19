@@ -2485,8 +2485,7 @@ void AuthSession::LoadUSSMainKeyAndFsKeyset(
     LOG(ERROR) << "KeyBlob derivation failed before loading USS";
     std::move(on_done).Run(
         MakeStatus<CryptohomeError>(
-            CRYPTOHOME_ERR_LOC(kLocAuthSessionDeriveFailedInLoadUSS),
-            user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED)
+            CRYPTOHOME_ERR_LOC(kLocAuthSessionDeriveFailedInLoadUSS))
             .Wrap(std::move(callback_error)));
     return;
   }
