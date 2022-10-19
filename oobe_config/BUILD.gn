@@ -13,7 +13,7 @@ group("all") {
     ":librollback_helper",
     ":oobe_config_restore",
     ":oobe_config_save",
-    ":rollback_finish_restore",
+    ":rollback_cleanup",
     ":rollback_prepare_save",
   ]
   if (use.test) {
@@ -99,7 +99,7 @@ generate_mojom_bindings("librollback_helper_mojom") {
 }
 
 # rollback_helper library.
-# Used by rollback_prepare_save and rollback_finish_restore.
+# Used by rollback_prepare_save and rollback_cleanup.
 static_library("librollback_helper") {
   sources = [ "rollback_helper.cc" ]
   configs += [ ":target_defaults" ]
@@ -116,8 +116,8 @@ executable("rollback_prepare_save") {
 }
 
 # Helper running as root after oobe_config_restore.
-executable("rollback_finish_restore") {
-  sources = [ "rollback_finish_restore_main.cc" ]
+executable("rollback_cleanup") {
+  sources = [ "rollback_cleanup_main.cc" ]
   configs += [ ":target_defaults" ]
   deps = [
     ":liboobeconfig",

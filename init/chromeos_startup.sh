@@ -576,18 +576,5 @@ fi
 dev_mount_packages "${DEV_IMAGE}"
 dev_pop_paths_to_preserve
 
-# Skip rollback restore check if not supported on this device.
-if [ -x "$(command -v rollback_finish_restore)" ]; then
-  # If a rollback is in progress, restores preserved data. If restoring fails,
-  # the TPM is reset.
-  # If a rollback is not in progress, rollback_finish_restore cleans up restore
-  # data and exits.
-  if ! rollback_finish_restore; then
-    rm /mnt/stateful_partition/unencrypted/preserve/rollback_data
-    crossystem clear_tpm_owner_request=1
-    reboot
-  fi
-fi
-
 # Always return success to avoid killing init
 exit 0

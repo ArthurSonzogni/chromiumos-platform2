@@ -21,19 +21,15 @@ void InitLog() {
 
 }  // namespace
 
-// The caller of this function, |chromeos_startup| script, will reset the TPM on
-// non-zero return value.
+// Cleans up after a rollback happened by deleting any remaining files.
+// Should be called once the device is owned.
 int main(int argc, char* argv[]) {
   InitLog();
 
-  if (base::PathExists(base::FilePath(oobe_config::kOobeCompletedFile))) {
-    // OOBE has already been completed so cleanup all restore files.
-    LOG(INFO) << "OOBE is already complete. Cleaning up restore files.";
-    oobe_config::CleanupRestoreFiles(
-        base::FilePath() /* root_path */,
-        std::set<std::string>() /* excluded_files */);
-    return 0;
-  }
-
+  LOG(INFO)
+      << "OOBE is already complete. Cleaning up restore files if they exist.";
+  oobe_config::CleanupRestoreFiles(
+      base::FilePath() /* root_path */,
+      std::set<std::string>() /* excluded_files */);
   return 0;
 }
