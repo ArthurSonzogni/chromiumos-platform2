@@ -1382,6 +1382,7 @@ properties:
                         - num-detect-zone
                         - max-error-reset-pixels
                         - max-reset-pixel-dev
+                      additionalProperties: false
                     nvme-wear-level:
                       type: object
                       properties:
