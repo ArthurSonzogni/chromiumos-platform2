@@ -1303,6 +1303,14 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   //// This is a separator block at value 2100
   //// See location_db.py for more info.
   //////////////////////////////////////////////////
+  /* ./scrypt_verifier.cc */
+  kLocScryptVerifierVerifyNoUserInput = 2100,
+  /* ./scrypt_verifier.cc */
+  kLocScryptVerifierVerifyScryptFailed = 2101,
+  /* ./scrypt_verifier.cc */
+  kLocScryptVerifierVerifyWrongScryptOutputSize = 2102,
+  /* ./scrypt_verifier.cc */
+  kLocScryptVerifierVerifySecretMismatch = 2103,
   //////////////////////////////////////////////////
   //// This is a separator block at value 2300
   //// See location_db.py for more info.

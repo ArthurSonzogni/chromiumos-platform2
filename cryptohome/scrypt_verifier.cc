@@ -11,18 +11,28 @@
 #include <base/logging.h>
 #include <base/memory/ptr_util.h>
 #include <brillo/secure_blob.h>
+#include <brillo/secure_string.h>
+#include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <libhwsec-foundation/crypto/scrypt.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
 
 #include "cryptohome/auth_factor/auth_factor_metadata.h"
 #include "cryptohome/auth_factor/auth_factor_type.h"
+#include "cryptohome/error/cryptohome_error.h"
+#include "cryptohome/error/location_utils.h"
+#include "cryptohome/error/locations.h"
 #include "cryptohome/key_objects.h"
-
-using ::hwsec_foundation::CreateSecureRandomBlob;
-using ::hwsec_foundation::Scrypt;
 
 namespace cryptohome {
 namespace {
+
+using ::cryptohome::error::CryptohomeError;
+using ::cryptohome::error::ErrorAction;
+using ::cryptohome::error::ErrorActionSet;
+using ::hwsec_foundation::CreateSecureRandomBlob;
+using ::hwsec_foundation::Scrypt;
+using ::hwsec_foundation::status::MakeStatus;
+using ::hwsec_foundation::status::OkStatus;
 
 constexpr int kScryptNFactor = 1 << 12;  // 2^12
 constexpr int kScryptRFactor = 8;
@@ -47,33 +57,49 @@ std::unique_ptr<ScryptVerifier> ScryptVerifier::Create(
   return nullptr;
 }
 
-bool ScryptVerifier::Verify(const AuthInput& input) const {
+ScryptVerifier::ScryptVerifier(std::string auth_factor_label,
+                               brillo::SecureBlob scrypt_salt,
+                               brillo::SecureBlob verifier)
+    : SyncCredentialVerifier(AuthFactorType::kPassword,
+                             std::move(auth_factor_label),
+                             {.metadata = PasswordAuthFactorMetadata()}),
+      scrypt_salt_(std::move(scrypt_salt)),
+      verifier_(std::move(verifier)) {}
+
+CryptohomeStatus ScryptVerifier::VerifySync(const AuthInput& input) const {
   // The input must contain user input, otherwise there's nothing to verify.
   if (!input.user_input) {
-    return false;
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocScryptVerifierVerifyNoUserInput),
+        ErrorActionSet({ErrorAction::kIncorrectAuth}),
+        user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
   }
   // Scrypt the input using the verifier salt.
   brillo::SecureBlob hashed_secret(kScryptOutputSize, 0);
   if (!Scrypt(*input.user_input, scrypt_salt_, kScryptNFactor, kScryptRFactor,
               kScryptPFactor, &hashed_secret)) {
     LOG(ERROR) << "Scrypt failed.";
-    return false;
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocScryptVerifierVerifyScryptFailed),
+        ErrorActionSet({ErrorAction::kIncorrectAuth}),
+        user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED);
   }
   // Compare the encrypted input against the hashed secret.
   if (verifier_.size() != hashed_secret.size()) {
-    return false;
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocScryptVerifierVerifyWrongScryptOutputSize),
+        ErrorActionSet({ErrorAction::kIncorrectAuth}),
+        user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED);
   }
-  return (brillo::SecureMemcmp(hashed_secret.data(), verifier_.data(),
-                               verifier_.size()) == 0);
+  if (brillo::SecureMemcmp(hashed_secret.data(), verifier_.data(),
+                           verifier_.size()) == 0) {
+    return OkStatus<CryptohomeError>();
+  } else {
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocScryptVerifierVerifySecretMismatch),
+        ErrorActionSet({ErrorAction::kIncorrectAuth}),
+        user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED);
+  }
 }
-
-ScryptVerifier::ScryptVerifier(std::string auth_factor_label,
-                               brillo::SecureBlob scrypt_salt,
-                               brillo::SecureBlob verifier)
-    : CredentialVerifier(AuthFactorType::kPassword,
-                         std::move(auth_factor_label),
-                         {.metadata = PasswordAuthFactorMetadata()}),
-      scrypt_salt_(std::move(scrypt_salt)),
-      verifier_(std::move(verifier)) {}
 
 }  // namespace cryptohome

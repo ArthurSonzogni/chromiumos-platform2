@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <cryptohome/credential_verifier.h>
+#include "cryptohome/credential_verifier.h"
 
 #include <memory>
 #include <variant>
@@ -16,18 +16,25 @@
 namespace cryptohome {
 namespace {
 
+using ::cryptohome::error::CryptohomeError;
+using ::hwsec_foundation::status::MakeStatus;
+using ::hwsec_foundation::status::OkStatus;
+
 // Minimal concrete implementation of CredentialVerifier, so that we can test
 // the abstract base class functions.
-class TestVerifier : public CredentialVerifier {
+class TestVerifier : public SyncCredentialVerifier {
  public:
   TestVerifier(AuthFactorType auth_factor_type,
                std::string auth_factor_label,
                AuthFactorMetadata auth_factor_metadata)
-      : CredentialVerifier(auth_factor_type,
-                           std::move(auth_factor_label),
-                           std::move(auth_factor_metadata)) {}
+      : SyncCredentialVerifier(auth_factor_type,
+                               std::move(auth_factor_label),
+                               std::move(auth_factor_metadata)) {}
 
-  bool Verify(const AuthInput&) const override { return false; }
+  // Just work. Doesn't matter because we don't use this in the test.
+  CryptohomeStatus VerifySync(const AuthInput&) const override {
+    return OkStatus<CryptohomeError>();
+  }
 };
 
 class CredentialVerifierTest : public ::testing::Test {

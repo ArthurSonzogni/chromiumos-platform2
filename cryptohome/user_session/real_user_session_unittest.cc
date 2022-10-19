@@ -14,6 +14,7 @@
 #include <base/test/task_environment.h>
 #include <brillo/cryptohome.h>
 #include <brillo/secure_blob.h>
+#include <gmock/gmock-matchers.h>
 #include <gtest/gtest.h>
 #include <libhwsec/frontend/cryptohome/mock_frontend.h>
 #include <libhwsec/frontend/pinweaver/mock_frontend.h>
@@ -27,15 +28,18 @@
 #include "cryptohome/crypto.h"
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/keyset_management.h"
+#include "cryptohome/mock_credential_verifier.h"
 #include "cryptohome/mock_cryptohome_keys_manager.h"
-#include "cryptohome/mock_keyset_management.h"
 #include "cryptohome/mock_platform.h"
 #include "cryptohome/pkcs11/fake_pkcs11_token.h"
 #include "cryptohome/pkcs11/mock_pkcs11_token_factory.h"
-#include "cryptohome/scrypt_verifier.h"
 #include "cryptohome/storage/file_system_keyset.h"
 #include "cryptohome/storage/homedirs.h"
 #include "cryptohome/storage/mock_mount.h"
+
+namespace cryptohome {
+
+namespace {
 
 using brillo::SecureBlob;
 using brillo::cryptohome::home::SanitizeUserName;
@@ -48,18 +52,33 @@ using ::testing::ByRef;
 using ::testing::DoAll;
 using ::testing::Eq;
 using ::testing::Invoke;
+using ::testing::IsEmpty;
+using ::testing::IsFalse;
+using ::testing::IsNull;
+using ::testing::IsTrue;
 using ::testing::NiceMock;
 using ::testing::Return;
 using ::testing::SetArgPointee;
-
-namespace cryptohome {
-
-namespace {
+using ::testing::UnorderedElementsAre;
 
 constexpr char kUser0[] = "First User";
 constexpr char kUserPassword0[] = "user0_pass";
 constexpr char kWebAuthnSecretHmacMessage[] = "AuthTimeWebAuthnSecret";
 constexpr char kHibernateSecretHmacMessage[] = "AuthTimeHibernateSecret";
+
+// Helper utility for making a stub verifier with a given label. Returns a
+// "unique_ptr, ptr" pair so that tests that need to hand over ownership but
+// hold on to a pointer can easily do so. Usually used as:
+//
+//   auto [verifier, ptr] = MakeTestVerifier("label")
+std::pair<std::unique_ptr<CredentialVerifier>, CredentialVerifier*>
+MakeTestVerifier(std::string label) {
+  auto owned_ptr = std::make_unique<MockCredentialVerifier>(
+      AuthFactorType::kPassword, std::move(label),
+      AuthFactorMetadata{.metadata = PasswordAuthFactorMetadata()});
+  auto* unowned_ptr = owned_ptr.get();
+  return {std::move(owned_ptr), unowned_ptr};
+}
 
 }  // namespace
 
@@ -441,17 +460,7 @@ TEST_F(RealUserSessionTest, SecretsTimeout) {
 
 class RealUserSessionReAuthTest : public ::testing::Test {
  public:
-  RealUserSessionReAuthTest() {}
-  virtual ~RealUserSessionReAuthTest() {}
-
-  // Not copyable or movable
-  RealUserSessionReAuthTest(const RealUserSessionReAuthTest&) = delete;
-  RealUserSessionReAuthTest& operator=(const RealUserSessionReAuthTest&) =
-      delete;
-  RealUserSessionReAuthTest(RealUserSessionReAuthTest&&) = delete;
-  RealUserSessionReAuthTest& operator=(RealUserSessionReAuthTest&&) = delete;
-
-  // MockPlatform will provide encironment with system salt.
+  // MockPlatform will provide environment with system salt.
   MockPlatform platform_;
 };
 
@@ -498,87 +507,6 @@ TEST_F(RealUserSessionReAuthTest, VerifyCredentials) {
   }
 }
 
-TEST_F(RealUserSessionReAuthTest, VerifyInputFromCredentials) {
-  Credentials credentials_1("username", SecureBlob("password"));
-  Credentials credentials_2("username", SecureBlob("password2"));
-  Credentials credentials_3("username2", SecureBlob("password2"));
-
-  // Helper function to convert credentials to input.
-  auto creds_to_input = [](const Credentials& creds) {
-    return AuthInput{.user_input = creds.passkey(),
-                     .obfuscated_username = creds.GetObfuscatedUsername()};
-  };
-  AuthInput input_1 = creds_to_input(credentials_1);
-  AuthInput input_2 = creds_to_input(credentials_2);
-  AuthInput input_3 = creds_to_input(credentials_3);
-
-  {
-    RealUserSession session(credentials_1.username(), nullptr, nullptr, nullptr,
-                            nullptr, nullptr);
-    session.AddCredentials(credentials_1);
-    EXPECT_TRUE(session.VerifyInput("", input_1));
-    EXPECT_FALSE(session.VerifyInput("", input_2));
-    EXPECT_FALSE(session.VerifyInput("", input_3));
-  }
-
-  {
-    RealUserSession session(credentials_2.username(), nullptr, nullptr, nullptr,
-                            nullptr, nullptr);
-    session.AddCredentials(credentials_2);
-    EXPECT_FALSE(session.VerifyInput("", input_1));
-    EXPECT_TRUE(session.VerifyInput("", input_2));
-    EXPECT_FALSE(session.VerifyInput("", input_3));
-  }
-
-  {
-    RealUserSession session(credentials_3.username(), nullptr, nullptr, nullptr,
-                            nullptr, nullptr);
-    session.AddCredentials(credentials_3);
-    EXPECT_FALSE(session.VerifyInput("", input_1));
-    EXPECT_FALSE(session.VerifyInput("", input_2));
-    EXPECT_TRUE(session.VerifyInput("", input_3));
-  }
-}
-
-TEST_F(RealUserSessionReAuthTest, VerifyInputFromVerifiers) {
-  AuthInput input_1 = {.user_input = SecureBlob("password"),
-                       .obfuscated_username = SanitizeUserName("username")};
-  AuthInput input_2 = {.user_input = SecureBlob("password2"),
-                       .obfuscated_username = SanitizeUserName("username")};
-  AuthInput input_3 = {.user_input = SecureBlob("password2"),
-                       .obfuscated_username = SanitizeUserName("username2")};
-
-  {
-    RealUserSession session("username", nullptr, nullptr, nullptr, nullptr,
-                            nullptr);
-    session.AddCredentialVerifier(
-        ScryptVerifier::Create("label1", SecureBlob(*input_1.user_input)));
-    EXPECT_TRUE(session.VerifyInput("label1", input_1));
-    EXPECT_FALSE(session.VerifyInput("label1", input_2));
-    EXPECT_FALSE(session.VerifyInput("label1", input_3));
-  }
-
-  {
-    RealUserSession session("username", nullptr, nullptr, nullptr, nullptr,
-                            nullptr);
-    session.AddCredentialVerifier(
-        ScryptVerifier::Create("label2", SecureBlob(*input_2.user_input)));
-    EXPECT_FALSE(session.VerifyInput("label2", input_1));
-    EXPECT_TRUE(session.VerifyInput("label2", input_2));
-    EXPECT_FALSE(session.VerifyInput("label2", input_3));
-  }
-
-  {
-    RealUserSession session("username2", nullptr, nullptr, nullptr, nullptr,
-                            nullptr);
-    session.AddCredentialVerifier(
-        ScryptVerifier::Create("label3", SecureBlob(*input_3.user_input)));
-    EXPECT_FALSE(session.VerifyInput("label3", input_1));
-    EXPECT_FALSE(session.VerifyInput("label3", input_2));
-    EXPECT_TRUE(session.VerifyInput("label3", input_3));
-  }
-}
-
 TEST_F(RealUserSessionReAuthTest, RemoveCredentials) {
   Credentials credentials_1("username", SecureBlob("password"));
   KeyData key_data1;
@@ -610,6 +538,37 @@ TEST_F(RealUserSessionReAuthTest, RemoveCredentials) {
     // Verification should not work.
     EXPECT_FALSE(session.VerifyCredentials(credentials_1));
   }
+}
+
+TEST_F(RealUserSessionReAuthTest, AddAndRemoveCredentialVerifiers) {
+  auto [verifier1, ptr1] = MakeTestVerifier("a1");
+  auto [verifier2, ptr2] = MakeTestVerifier("b2");
+  auto [verifier3, ptr3] = MakeTestVerifier("c3");
+
+  RealUserSession session("username", nullptr, nullptr, nullptr, nullptr,
+                          nullptr);
+
+  // The session should start without verifiers.
+  EXPECT_THAT(session.GetCredentialVerifiers(), IsEmpty());
+  EXPECT_THAT(session.HasCredentialVerifier("a1"), IsFalse());
+  EXPECT_THAT(session.FindCredentialVerifier("a1"), IsNull());
+
+  // If we add a verifier it should show up.
+  session.AddCredentialVerifier(std::move(verifier1));
+  EXPECT_THAT(session.GetCredentialVerifiers(), UnorderedElementsAre(ptr1));
+  EXPECT_THAT(session.HasCredentialVerifier("a1"), IsTrue());
+  EXPECT_THAT(session.FindCredentialVerifier("a1"), Eq(ptr1));
+  session.AddCredentialVerifier(std::move(verifier2));
+  session.AddCredentialVerifier(std::move(verifier3));
+  EXPECT_THAT(session.GetCredentialVerifiers(),
+              UnorderedElementsAre(ptr1, ptr2, ptr3));
+
+  // If we remove a verifier it should disappear.
+  session.RemoveCredentialVerifierForKeyLabel("a1");
+  EXPECT_THAT(session.GetCredentialVerifiers(),
+              UnorderedElementsAre(ptr2, ptr3));
+  EXPECT_THAT(session.HasCredentialVerifier("a1"), IsFalse());
+  EXPECT_THAT(session.FindCredentialVerifier("a1"), IsNull());
 }
 
 }  // namespace cryptohome

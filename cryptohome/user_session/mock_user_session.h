@@ -64,10 +64,6 @@ class MockUserSession : public UserSession {
   MOCK_METHOD(void, AddCredentials, (const Credentials&), (override));
   MOCK_METHOD(bool, VerifyUser, (const std::string&), (const, override));
   MOCK_METHOD(bool, VerifyCredentials, (const Credentials&), (const, override));
-  MOCK_METHOD(bool,
-              VerifyInput,
-              (const std::string&, const AuthInput&),
-              (const, override));
   MOCK_METHOD(void,
               RemoveCredentialVerifierForKeyLabel,
               (const std::string&),
@@ -103,6 +99,14 @@ class MockUserSession : public UserSession {
   bool HasCredentialVerifier(const std::string& label) const override {
     return label_to_credential_verifier_.find(label) !=
            label_to_credential_verifier_.end();
+  }
+  const CredentialVerifier* FindCredentialVerifier(
+      const std::string& label) const override {
+    auto iter = label_to_credential_verifier_.find(label);
+    if (iter != label_to_credential_verifier_.end()) {
+      return iter->second.get();
+    }
+    return nullptr;
   }
   std::vector<const CredentialVerifier*> GetCredentialVerifiers()
       const override {

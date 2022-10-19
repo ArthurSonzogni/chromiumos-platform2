@@ -16,7 +16,6 @@
 #include "cryptohome/credentials.h"
 #include "cryptohome/dircrypto_data_migrator/migration_helper.h"
 #include "cryptohome/error/cryptohome_mount_error.h"
-#include "cryptohome/key_objects.h"
 #include "cryptohome/migration_type.h"
 #include "cryptohome/pkcs11/pkcs11_token.h"
 #include "cryptohome/storage/cryptohome_vault.h"
@@ -96,6 +95,11 @@ class UserSession {
   virtual bool HasCredentialVerifier() const = 0;
   virtual bool HasCredentialVerifier(const std::string& label) const = 0;
 
+  // Returns the credential verifier for the given label, if one exists.
+  // Otherwise returns null.
+  virtual const CredentialVerifier* FindCredentialVerifier(
+      const std::string& label) const = 0;
+
   // Returns all the credential verifiers for this session.
   virtual std::vector<const CredentialVerifier*> GetCredentialVerifiers()
       const = 0;
@@ -107,12 +111,6 @@ class UserSession {
   // credentials were successfully re-authenticated against the saved re-auth
   // state.
   virtual bool VerifyCredentials(const Credentials& credentials) const = 0;
-
-  // Verifies input against stored re-auth state for the given label. Returns
-  // true if the credentials were successfully re-authenticated against the
-  // saved state.
-  virtual bool VerifyInput(const std::string& label,
-                           const AuthInput& input) const = 0;
 
   // Returns or sets key_data of the current session credentials.
   virtual const KeyData& key_data() const = 0;

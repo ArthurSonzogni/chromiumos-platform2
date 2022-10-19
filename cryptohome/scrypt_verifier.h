@@ -15,7 +15,7 @@
 
 namespace cryptohome {
 
-class ScryptVerifier final : public CredentialVerifier {
+class ScryptVerifier final : public SyncCredentialVerifier {
  public:
   // Attempt to construct a credential verifier with the given passkey. Will
   // return null on failure.
@@ -25,12 +25,12 @@ class ScryptVerifier final : public CredentialVerifier {
   ScryptVerifier(const ScryptVerifier&) = delete;
   ScryptVerifier& operator=(const ScryptVerifier&) = delete;
 
-  bool Verify(const AuthInput& secret) const override;
-
  private:
   ScryptVerifier(std::string auth_factor_label,
                  brillo::SecureBlob scrypt_salt,
                  brillo::SecureBlob verifier);
+
+  CryptohomeStatus VerifySync(const AuthInput& secret) const override;
 
   const brillo::SecureBlob scrypt_salt_;
   const brillo::SecureBlob verifier_;

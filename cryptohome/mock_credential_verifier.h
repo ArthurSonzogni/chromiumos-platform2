@@ -13,18 +13,22 @@
 #include "cryptohome/auth_factor/auth_factor_metadata.h"
 #include "cryptohome/auth_factor/auth_factor_type.h"
 #include "cryptohome/credential_verifier.h"
+#include "cryptohome/error/cryptohome_error.h"
 #include "cryptohome/key_objects.h"
 
 namespace cryptohome {
 
-class MockCredentialVerifier : public CredentialVerifier {
+class MockCredentialVerifier : public SyncCredentialVerifier {
  public:
-  using CredentialVerifier::CredentialVerifier;
+  using SyncCredentialVerifier::SyncCredentialVerifier;
 
   MockCredentialVerifier(const MockCredentialVerifier&) = delete;
   MockCredentialVerifier& operator=(const MockCredentialVerifier&) = delete;
 
-  MOCK_METHOD(bool, Verify, (const AuthInput&), (const, override));
+  MOCK_METHOD(CryptohomeStatus,
+              VerifySync,
+              (const AuthInput&),
+              (const, override));
 };
 
 }  // namespace cryptohome

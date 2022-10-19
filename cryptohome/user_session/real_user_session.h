@@ -18,7 +18,6 @@
 #include "cryptohome/credential_verifier.h"
 #include "cryptohome/credentials.h"
 #include "cryptohome/error/cryptohome_mount_error.h"
-#include "cryptohome/key_objects.h"
 #include "cryptohome/keyset_management.h"
 #include "cryptohome/pkcs11/pkcs11_token.h"
 #include "cryptohome/pkcs11/pkcs11_token_factory.h"
@@ -89,6 +88,9 @@ class RealUserSession : public UserSession {
   bool HasCredentialVerifier() const override;
   bool HasCredentialVerifier(const std::string& label) const override;
 
+  const CredentialVerifier* FindCredentialVerifier(
+      const std::string& label) const override;
+
   std::vector<const CredentialVerifier*> GetCredentialVerifiers()
       const override;
 
@@ -98,8 +100,6 @@ class RealUserSession : public UserSession {
   bool VerifyUser(const std::string& obfuscated_username) const override;
 
   bool VerifyCredentials(const Credentials& credentials) const override;
-  bool VerifyInput(const std::string& label,
-                   const AuthInput& input) const override;
 
   const KeyData& key_data() const override { return key_data_; }
   void set_key_data(KeyData key_data) override {

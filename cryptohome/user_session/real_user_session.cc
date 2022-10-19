@@ -14,7 +14,6 @@
 #include <base/notreached.h>
 #include <base/values.h>
 #include <brillo/cryptohome.h>
-#include <cryptohome/scrypt_verifier.h>
 #include <libhwsec-foundation/crypto/hmac.h>
 #include <libhwsec-foundation/crypto/sha.h>
 
@@ -27,6 +26,7 @@
 #include "cryptohome/keyset_management.h"
 #include "cryptohome/pkcs11/pkcs11_token.h"
 #include "cryptohome/pkcs11/pkcs11_token_factory.h"
+#include "cryptohome/scrypt_verifier.h"
 #include "cryptohome/storage/cryptohome_vault.h"
 #include "cryptohome/storage/error.h"
 #include "cryptohome/storage/mount.h"
@@ -290,6 +290,15 @@ bool RealUserSession::HasCredentialVerifier(const std::string& label) const {
          label_to_credential_verifier_.end();
 }
 
+const CredentialVerifier* RealUserSession::FindCredentialVerifier(
+    const std::string& label) const {
+  auto iter = label_to_credential_verifier_.find(label);
+  if (iter != label_to_credential_verifier_.end()) {
+    return iter->second.get();
+  }
+  return nullptr;
+}
+
 std::vector<const CredentialVerifier*> RealUserSession::GetCredentialVerifiers()
     const {
   std::vector<const CredentialVerifier*> verifiers;
@@ -330,27 +339,6 @@ bool RealUserSession::VerifyCredentials(const Credentials& credentials) const {
 
   ReportTimerStop(kSessionUnlockTimer);
 
-  return status;
-}
-
-bool RealUserSession::VerifyInput(const std::string& label,
-                                  const AuthInput& input) const {
-  ReportTimerStart(kSessionUnlockTimer);
-
-  // Fail if this user does not match the input user.
-  if (!input.obfuscated_username || !VerifyUser(*input.obfuscated_username)) {
-    return false;
-  }
-
-  // Fail if there is no verifier available.
-  auto verifier_iter = label_to_credential_verifier_.find(label);
-  if (verifier_iter == label_to_credential_verifier_.end()) {
-    return false;
-  }
-
-  // Try the verify and report the result.
-  bool status = verifier_iter->second->Verify(input);
-  ReportTimerStop(kSessionUnlockTimer);
   return status;
 }
 

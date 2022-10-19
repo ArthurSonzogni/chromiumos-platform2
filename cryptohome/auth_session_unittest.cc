@@ -43,6 +43,7 @@
 #include "cryptohome/cryptohome_common.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/key_objects.h"
+#include "cryptohome/mock_credential_verifier.h"
 #include "cryptohome/mock_cryptohome_keys_manager.h"
 #include "cryptohome/mock_keyset_management.h"
 #include "cryptohome/mock_platform.h"
@@ -66,6 +67,7 @@ using cryptohome::error::CryptohomeMountError;
 using hwsec_foundation::error::testing::IsOk;
 using hwsec_foundation::error::testing::NotOk;
 using hwsec_foundation::error::testing::ReturnError;
+using hwsec_foundation::error::testing::ReturnOk;
 using hwsec_foundation::error::testing::ReturnValue;
 using hwsec_foundation::status::MakeStatus;
 using hwsec_foundation::status::OkStatus;
@@ -3225,9 +3227,15 @@ TEST_F(AuthSessionWithUssExperimentTest,
 TEST_F(AuthSessionWithUssExperimentTest, LightweightPasswordAuthentication) {
   // Setup.
   EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(true));
-  // Add the user session. Configure the credential verifier mock to succeed.
+  // Add the user session along with a verifier that's configured to pass.
   auto user_session = std::make_unique<MockUserSession>();
-  EXPECT_CALL(*user_session, VerifyInput(kFakeLabel, _)).WillOnce(Return(true));
+  EXPECT_CALL(*user_session, VerifyUser(SanitizeUserName(kFakeUsername)))
+      .WillOnce(Return(true));
+  auto verifier = std::make_unique<MockCredentialVerifier>(
+      AuthFactorType::kPassword, kFakeLabel,
+      AuthFactorMetadata{.metadata = PasswordAuthFactorMetadata()});
+  EXPECT_CALL(*verifier, VerifySync(_)).WillOnce(ReturnOk<CryptohomeError>());
+  user_session->AddCredentialVerifier(std::move(verifier));
   EXPECT_TRUE(user_session_map_.Add(kFakeUsername, std::move(user_session)));
   // Create an AuthSession with a fake factor. No authentication mocks are set
   // up, because the lightweight authentication should be used in the test.
@@ -3381,9 +3389,8 @@ TEST_F(AuthSessionWithUssExperimentTest, PreparePasswordSuccess) {
 TEST_F(AuthSessionWithUssExperimentTest, NoLightweightAuthForDecryption) {
   // Setup.
   EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(true));
-  // Add the user session. Expect that no verification calls are made.
+  // Add the user session. It will have no verifiers.
   auto user_session = std::make_unique<MockUserSession>();
-  EXPECT_CALL(*user_session, VerifyInput(_, _)).Times(0);
   EXPECT_TRUE(user_session_map_.Add(kFakeUsername, std::move(user_session)));
   // Create an AuthSession with a fake factor.
   AuthSession auth_session(

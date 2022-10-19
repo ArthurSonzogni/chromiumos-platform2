@@ -32,6 +32,7 @@
 #include "cryptohome/crypto_error.h"
 #include "cryptohome/error/cryptohome_crypto_error.h"
 #include "cryptohome/error/cryptohome_error.h"
+#include "cryptohome/mock_credential_verifier.h"
 #include "cryptohome/mock_cryptohome_keys_manager.h"
 #include "cryptohome/mock_install_attributes.h"
 #include "cryptohome/mock_keyset_management.h"
@@ -1426,8 +1427,13 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorLightweight) {
                            keyset_management_);
   // Set up a user session with a mocked credential verifier.
   auto user_session = std::make_unique<MockUserSession>();
-  EXPECT_CALL(*user_session, VerifyInput(kPasswordLabel, _))
+  EXPECT_CALL(*user_session, VerifyUser(SanitizeUserName(kUsername)))
       .WillOnce(Return(true));
+  auto verifier = std::make_unique<MockCredentialVerifier>(
+      AuthFactorType::kPassword, kPasswordLabel,
+      AuthFactorMetadata{.metadata = PasswordAuthFactorMetadata()});
+  EXPECT_CALL(*verifier, VerifySync(_)).WillOnce(ReturnOk<CryptohomeError>());
+  user_session->AddCredentialVerifier(std::move(verifier));
   EXPECT_TRUE(user_session_map_.Add(kUsername, std::move(user_session)));
   // Create an AuthSession.
   AuthSession* auth_session = auth_session_manager_->CreateAuthSession(
@@ -1819,9 +1825,9 @@ TEST_F(AuthSessionInterfaceMockAuthTest,
       AuthenticatePasswordAuthFactor(*second_auth_session, kPasswordLabel,
                                      kPassword2);
 
-  // Assert. The error code is such because AuthSession falls back to checking
-  // persistent auth factors.
-  EXPECT_EQ(reply.error(), user_data_auth::CRYPTOHOME_ERROR_KEY_NOT_FOUND);
+  // Assert.
+  EXPECT_EQ(reply.error(),
+            user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED);
   EXPECT_THAT(second_auth_session->authorized_intents(), IsEmpty());
 }
 
