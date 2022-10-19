@@ -73,8 +73,8 @@ class Platform {
 
   virtual void RemoveInBackground(const std::vector<base::FilePath>& paths);
 
-  // Runs crash_reporter with the given dev as the mount device.
-  void AddClobberCrashReport(const std::string& dev);
+  // Runs crash_reporter with the given args.
+  void AddClobberCrashReport(const std::vector<std::string> args);
 
   // Runs e2fsck for the given device.
   void ReplayExt4Journal(const base::FilePath& dev);

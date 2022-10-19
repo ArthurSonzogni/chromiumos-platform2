@@ -6,6 +6,7 @@
 #include <sys/sysmacros.h>
 #include <sys/types.h>
 
+#include <deque>
 #include <string>
 #include <utility>
 #include <vector>
@@ -22,6 +23,7 @@
 #include "init/crossystem_fake.h"
 #include "init/startup/chromeos_startup.h"
 #include "init/startup/fake_platform_impl.h"
+#include "init/startup/mount_helper.h"
 #include "init/startup/platform_impl.h"
 
 namespace startup {
@@ -56,8 +58,10 @@ class EarlySetupTest : public ::testing::Test {
     platform_ = new startup::FakePlatform();
     startup_ = std::make_unique<startup::ChromeosStartup>(
         std::unique_ptr<CrosSystem>(cros_system_), flags_, base_dir_, base_dir_,
-        base_dir_, base_dir_,
-        std::unique_ptr<startup::FakePlatform>(platform_));
+        base_dir_, base_dir_, std::unique_ptr<startup::FakePlatform>(platform_),
+        std::make_unique<startup::MountHelper>(
+            std::make_unique<startup::FakePlatform>(), flags_, base_dir_,
+            base_dir_));
   }
 
   CrosSystemFake* cros_system_;
@@ -100,7 +104,10 @@ class DevCheckBlockTest : public ::testing::Test {
     platform_ = new startup::FakePlatform();
     startup_ = std::make_unique<startup::ChromeosStartup>(
         std::unique_ptr<CrosSystem>(cros_system_), flags_, base_dir, base_dir,
-        base_dir, base_dir, std::unique_ptr<startup::FakePlatform>(platform_));
+        base_dir, base_dir, std::unique_ptr<startup::FakePlatform>(platform_),
+        std::make_unique<startup::MountHelper>(
+            std::make_unique<startup::FakePlatform>(), flags_, base_dir,
+            base_dir));
     ASSERT_TRUE(cros_system_->SetInt("cros_debug", 1));
     base::CreateDirectory(dev_mode_file.DirName());
     startup_->SetDevMode(true);
@@ -194,7 +201,10 @@ class TPMTest : public ::testing::Test {
     platform_ = new startup::FakePlatform();
     startup_ = std::make_unique<startup::ChromeosStartup>(
         std::unique_ptr<CrosSystem>(cros_system_), flags_, base_dir, base_dir,
-        base_dir, base_dir, std::unique_ptr<startup::FakePlatform>(platform_));
+        base_dir, base_dir, std::unique_ptr<startup::FakePlatform>(platform_),
+        std::make_unique<startup::MountHelper>(
+            std::make_unique<startup::FakePlatform>(), flags_, base_dir,
+            base_dir));
   }
 
   CrosSystemFake* cros_system_;
@@ -252,6 +262,41 @@ TEST_F(TPMTest, NeedsClobberInstallFile) {
   st.st_uid = getuid();
   platform_->SetStatResultForPath(install_file, st);
   EXPECT_EQ(startup_->NeedsClobberWithoutDevModeFile(), true);
+}
+
+class MountStackTest : public ::testing::Test {
+ protected:
+  MountStackTest()
+      : base_dir_(base::FilePath("")),
+        platform_(new startup::FakePlatform()),
+        mount_helper_(std::unique_ptr<startup::FakePlatform>(platform_),
+                      flags_,
+                      base_dir_,
+                      base_dir_) {}
+
+  void SetUp() override {
+    ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
+    base_dir_ = temp_dir_.GetPath();
+  }
+
+  startup::Flags flags_;
+  base::FilePath base_dir_;
+  base::ScopedTempDir temp_dir_;
+  startup::FakePlatform* platform_;
+  startup::MountHelper mount_helper_;
+};
+
+TEST_F(MountStackTest, CleanupMountsNoEncrypt) {
+  std::stack<base::FilePath> end_stack = {};
+  std::deque<base::FilePath> mount = {base::FilePath("/home"),
+                                      base::FilePath("/root")};
+  std::stack<base::FilePath> mount_stack(mount);
+
+  mount_helper_.SetMountStackForTest(mount_stack);
+  std::vector<base::FilePath> mounts;
+  mount_helper_.CleanupMountsStack(&mounts);
+  std::stack<base::FilePath> res_stack = mount_helper_.GetMountStackForTest();
+  EXPECT_EQ(res_stack, end_stack);
 }
 
 }  // namespace startup

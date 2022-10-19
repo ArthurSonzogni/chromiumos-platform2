@@ -24,6 +24,7 @@
 #include "init/startup/chromeos_startup.h"
 #include "init/startup/constants.h"
 #include "init/startup/flags.h"
+#include "init/startup/mount_helper.h"
 #include "init/startup/platform_impl.h"
 #include "init/startup/security_manager.h"
 #include "init/startup/stateful_mount.h"
@@ -184,14 +185,16 @@ ChromeosStartup::ChromeosStartup(std::unique_ptr<CrosSystem> cros_system,
                                  const base::FilePath& stateful,
                                  const base::FilePath& lsb_file,
                                  const base::FilePath& proc_file,
-                                 std::unique_ptr<Platform> platform)
+                                 std::unique_ptr<Platform> platform,
+                                 std::unique_ptr<MountHelper> mount_helper)
     : cros_system_(std::move(cros_system)),
       flags_(flags),
       lsb_file_(lsb_file),
       proc_(proc_file),
       root_(root),
       stateful_(stateful),
-      platform_(std::move(platform)) {}
+      platform_(std::move(platform)),
+      mount_helper_(std::move(mount_helper)) {}
 
 void ChromeosStartup::EarlySetup() {
   gid_t debugfs_grp;
@@ -283,6 +286,21 @@ void ChromeosStartup::EarlySetup() {
   if (!enable_stateful_security_hardening_ &&
       !ConfigureProcessMgmtSecurity(root_)) {
     PLOG(WARNING) << "Failed to configure process management security.";
+  }
+}
+
+// Apply /mnt/stateful_partition specific tmpfiles.d configurations
+void ChromeosStartup::TmpfilesConfiguration() {
+  brillo::ProcessImpl tmpfiles;
+  tmpfiles.AddArg("/bin/systemd-tmpfiles");
+  tmpfiles.AddArg("--create");
+  tmpfiles.AddArg("--remove");
+  tmpfiles.AddArg("--boot");
+  tmpfiles.AddArg("--prefix");
+  tmpfiles.AddArg("/mnt/stateful_partition");
+  if (tmpfiles.Run() != 0) {
+    mount_helper_->CleanupMounts(
+        "tmpfiles.d for /mnt/stateful_partition failed");
   }
 }
 
@@ -420,10 +438,13 @@ int ChromeosStartup::Run() {
   base::FilePath unencrypted = stateful_.Append(kUnencrypted);
   ForceCleanFileAttrs(unencrypted);
 
+  TmpfilesConfiguration();
+
   int ret = RunChromeosStartupScript();
   if (ret) {
     // TODO(b/232901639): Improve failure reporting.
     PLOG(WARNING) << "chromeos_startup.sh returned with code " << ret;
+    mount_helper_->CleanupMounts("cleanup triggered in bash");
   }
 
   // Unmount securityfs so that further modifications to inode security

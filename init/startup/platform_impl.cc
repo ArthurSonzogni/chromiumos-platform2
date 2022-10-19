@@ -149,13 +149,14 @@ bool Platform::RunHiberman(const base::FilePath& output_file) {
   return true;
 }
 
-void Platform::AddClobberCrashReport(const std::string& dev) {
+void Platform::AddClobberCrashReport(const std::vector<std::string> args) {
   brillo::ProcessImpl crash;
   crash.AddArg("crash_reporter");
   crash.AddArg("--early");
   crash.AddArg("--log_to_stderr");
-  crash.AddArg("--mount_failure");
-  crash.AddArg("--mount_device=" + dev);
+  for (auto arg : args) {
+    crash.AddArg(arg);
+  }
   int ret = crash.Run();
   if (ret != 0) {
     PLOG(WARNING) << "crash_reporter failed with code " << ret;

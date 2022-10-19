@@ -45,13 +45,7 @@ cleanup_mounts() {
       umount -n "${mount_point}"
     fi
   done
-  # Leave /mnt/stateful_partition mounted for clobber-state to handle.
-  chromeos-boot-alert self_repair
-  clobber-log -- \
-    "Self-repair incoherent stateful partition: $*. History: ${UNDO_MOUNTS}"
-  clobber-log --append_logfile "${TMPFILES_LOG}"
-  crash_reporter --early --log_to_stderr --clobber_state
-  exec clobber-state "fast keepimg"
+  exit 1
 }
 
 # Adds mounts to UNDO_MOUNT.
@@ -274,11 +268,6 @@ force_clean_file_attrs() {
     exec clobber-state "keepimg"
   fi
 }
-
-# Apply /mnt/stateful_partition specific tmpfiles.d configurations.
-/bin/systemd-tmpfiles --create --remove --boot \
-  --prefix /mnt/stateful_partition 2>>"${TMPFILES_LOG}" ||
-    cleanup_mounts "tmpfiles.d for /mnt/stateful_partition failed"
 
 # Mount /home.  This mount inherits nodev,noexec,nosuid from
 # /mnt/stateful_partition above.

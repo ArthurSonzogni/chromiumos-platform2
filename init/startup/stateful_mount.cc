@@ -412,7 +412,9 @@ void StatefulMount::MountStateful() {
                     << kDumpe2fsStatefulLog;
       }
 
-      platform_->AddClobberCrashReport("stateful");
+      std::vector<std::string> crash_args{"--mount_failure",
+                                          "--mount_device=stateful"};
+      platform_->AddClobberCrashReport(crash_args);
       std::vector<std::string> argv{"keepimg"};
       platform_->Clobber(argv);
     }

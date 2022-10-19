@@ -16,6 +16,7 @@
 
 #include "init/crossystem.h"
 #include "init/startup/flags.h"
+#include "init/startup/mount_helper.h"
 #include "init/startup/platform_impl.h"
 #include "init/startup/stateful_mount.h"
 
@@ -38,7 +39,8 @@ class ChromeosStartup {
                   const base::FilePath& stateful,
                   const base::FilePath& lsb_file,
                   const base::FilePath& proc_file,
-                  std::unique_ptr<Platform> platform);
+                  std::unique_ptr<Platform> platform,
+                  std::unique_ptr<MountHelper> mount_helper);
 
   virtual ~ChromeosStartup() = default;
 
@@ -59,6 +61,8 @@ class ChromeosStartup {
   // EarlySetup contains the early mount calls of chromeos_startup. This
   // function exists to help break up the Run function into smaller functions.
   void EarlySetup();
+
+  void TmpfilesConfiguration();
 
   // Run the chromeos startup routine.
   int Run();
@@ -99,6 +103,7 @@ class ChromeosStartup {
   const base::FilePath stateful_;
   bootstat::BootStat bootstat_;
   std::unique_ptr<Platform> platform_;
+  std::unique_ptr<MountHelper> mount_helper_;
   bool enable_stateful_security_hardening_;
   std::unique_ptr<StatefulMount> stateful_mount_;
   bool dev_mode_;

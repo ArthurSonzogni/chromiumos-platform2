@@ -71,6 +71,7 @@ static_library("utils") {
 static_library("libcrosstartup") {
   sources = [
     "startup/chromeos_startup.cc",
+    "startup/mount_helper.cc",
     "startup/platform_impl.cc",
     "startup/security_manager.cc",
     "startup/stateful_mount.cc",
