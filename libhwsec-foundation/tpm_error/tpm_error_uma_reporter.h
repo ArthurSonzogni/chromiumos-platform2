@@ -36,8 +36,9 @@ class HWSEC_FOUNDATION_EXPORT TpmErrorUmaReporter {
   // Reports the UMAs according to the error indicated in `data`, if necessary.
   virtual void Report(const TpmErrorData& data) = 0;
 
-  // Report the TPM2 command and response. The |data|.command should be less
+  // Report the TPM command and response. The |data|.command should be less
   // then 2^12 and the |data|.response should be less then 2^16.
+  virtual bool ReportTpm1CommandAndResponse(const TpmErrorData& data) = 0;
   virtual bool ReportTpm2CommandAndResponse(const TpmErrorData& data) = 0;
 };
 

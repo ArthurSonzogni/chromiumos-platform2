@@ -74,6 +74,11 @@ bool TpmErrorUmaReporterImpl::ReportCommandAndResponse(
   return true;
 }
 
+bool TpmErrorUmaReporterImpl::ReportTpm1CommandAndResponse(
+    const TpmErrorData& data) {
+  return ReportCommandAndResponse(kTpm1CommandAndResponsePrefix, data);
+}
+
 bool TpmErrorUmaReporterImpl::ReportTpm2CommandAndResponse(
     const TpmErrorData& data) {
   return ReportCommandAndResponse(kTpm2CommandAndResponsePrefix, data);

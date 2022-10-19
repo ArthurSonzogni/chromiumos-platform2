@@ -31,6 +31,7 @@ class HWSEC_FOUNDATION_EXPORT TpmErrorUmaReporterImpl
   TpmErrorUmaReporterImpl& operator=(TpmErrorUmaReporterImpl&&) = delete;
 
   void Report(const TpmErrorData& data) override;
+  bool ReportTpm1CommandAndResponse(const TpmErrorData& data) override;
   bool ReportTpm2CommandAndResponse(const TpmErrorData& data) override;
 
  private:

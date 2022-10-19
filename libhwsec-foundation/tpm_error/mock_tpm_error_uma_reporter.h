@@ -24,6 +24,10 @@ class HWSEC_FOUNDATION_EXPORT MockTpmErrorUmaReporter
               ReportTpm2CommandAndResponse,
               (const TpmErrorData&),
               (override));
+  MOCK_METHOD(bool,
+              ReportTpm1CommandAndResponse,
+              (const TpmErrorData&),
+              (override));
 };
 
 }  // namespace hwsec_foundation

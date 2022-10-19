@@ -57,6 +57,43 @@ TEST_F(TpmErrorUmaReporterTest, ReportNoFailure) {
   reporter_.Report(data);
 }
 
+TEST_F(TpmErrorUmaReporterTest, ReportTpm1CommandAndResponse) {
+  TpmErrorData data;
+  SetTpmMetricsClientID(TpmMetricsClientID::kCryptohome);
+
+  data.command = kFakeCommand;
+  data.response = 0;
+  std::string metrics_name =
+      std::string(kTpm1CommandAndResponsePrefix) + ".Cryptohome";
+  uint32_t metrics_value = (data.command << 16) + (data.response & 0xFFFF);
+  EXPECT_CALL(mock_metrics_library_,
+              SendSparseToUMA(metrics_name, metrics_value));
+  EXPECT_EQ(reporter_.ReportTpm1CommandAndResponse(data), true);
+}
+
+TEST_F(TpmErrorUmaReporterTest, ReportTpm1CommandAndResponseUnknownClient) {
+  TpmErrorData data;
+  SetTpmMetricsClientID(TpmMetricsClientID::kUnknown);
+
+  // Unknown client should not be reported and directly return true.
+  data.command = kFakeCommand;
+  data.response = 0;
+  EXPECT_EQ(reporter_.ReportTpm1CommandAndResponse(data), true);
+}
+
+TEST_F(TpmErrorUmaReporterTest, ReportTpm1CommandAndResponseInvalidValue) {
+  TpmErrorData data;
+  SetTpmMetricsClientID(TpmMetricsClientID::kCryptohome);
+  // Invalid command should not be reported.
+  data.command = 0x1000;
+  data.response = 0;
+  EXPECT_EQ(reporter_.ReportTpm1CommandAndResponse(data), false);
+  // Invalid response should not be reported.
+  data.command = 0;
+  data.response = 0x10000;
+  EXPECT_EQ(reporter_.ReportTpm1CommandAndResponse(data), false);
+}
+
 TEST_F(TpmErrorUmaReporterTest, ReportTpm2CommandAndResponse) {
   TpmErrorData data;
   SetTpmMetricsClientID(TpmMetricsClientID::kCryptohome);
