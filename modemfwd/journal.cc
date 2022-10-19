@@ -14,6 +14,7 @@
 #include <base/stl_util.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
+#include <base/types/optional_util.h>
 #include <brillo/proto_file_io.h>
 #include <chromeos/switches/modemfwd_switches.h>
 
@@ -83,13 +84,13 @@ bool RestartOperation(const JournalEntry& entry,
 
     switch (entry_type) {
       case JournalEntryType::MAIN:
-        info = base::OptionalOrNullptr<FirmwareFileInfo>(res.main_firmware);
+        info = base::OptionalToPtr<FirmwareFileInfo>(res.main_firmware);
         break;
       case JournalEntryType::CARRIER:
-        info = base::OptionalOrNullptr<FirmwareFileInfo>(res.carrier_firmware);
+        info = base::OptionalToPtr<FirmwareFileInfo>(res.carrier_firmware);
         break;
       case JournalEntryType::OEM:
-        info = base::OptionalOrNullptr<FirmwareFileInfo>(res.oem_firmware);
+        info = base::OptionalToPtr<FirmwareFileInfo>(res.oem_firmware);
         break;
     }
 
