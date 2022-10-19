@@ -49,8 +49,6 @@ class ModemMbim : public Modem<MbimCmd> {
   void OpenConnection(
       const std::vector<uint8_t>& aid,
       base::OnceCallback<void(std::vector<uint8_t>)> cb) override;
-  void TransmitApdu(const std::vector<uint8_t>& apduCommand,
-                    base::OnceCallback<void(std::vector<uint8_t>)> cb) override;
   static bool ParseEidApduResponseForTesting(
       const MbimMessage* response,
       std::string* eid,

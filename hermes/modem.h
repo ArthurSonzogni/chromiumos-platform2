@@ -95,6 +95,10 @@ class Modem : public EuiccInterface {
         0};  // Last two bytes are fixed to zero by SGP.22
   };
 
+  // Used by third party code to send APDU's
+  void TransmitApdu(const std::vector<uint8_t>& apduCommand,
+                    base::OnceCallback<void(std::vector<uint8_t>)> cb) override;
+
  protected:
   // Base class for the tx info specific to a certain type of message to the
   // modem.
@@ -108,7 +112,13 @@ class Modem : public EuiccInterface {
 
   struct ApduTxInfo : public TxInfo {
     explicit ApduTxInfo(CommandApdu apdu) : apdu_(std::move(apdu)) {}
+    ApduTxInfo(CommandApdu apdu, bool is_source_external)
+        : apdu_(std::move(apdu)), is_source_external_(is_source_external) {}
     CommandApdu apdu_;
+    // External apps may use TransmitApdu to send APDU's. Such
+    // APDU's may need to be treated differently since the header
+    // and apdu content are prepopulated by the external app
+    bool is_source_external_ = false;
   };
 
   struct OpenChannelTxInfo : public TxInfo {
@@ -175,6 +185,7 @@ class Modem : public EuiccInterface {
   base::WeakPtrFactory<Modem<T>> weak_factory_;
 };
 
+// Used by google-lpa to queue APDU's
 template <typename T>
 void Modem<T>::SendApdus(std::vector<lpa::card::Apdu> apdus,
                          ResponseCallback cb) {
@@ -193,6 +204,27 @@ void Modem<T>::SendApdus(std::vector<lpa::card::Apdu> apdus,
                              ? std::move(callback)
                              : base::BindOnce(&PrintMsgProcessingResult)});
   }
+  TransmitFromQueue();
+}
+
+// Used by external apps like gemalto eOS updater.
+template <typename T>
+void Modem<T>::TransmitApdu(const std::vector<uint8_t>& apduCommand,
+                            base::OnceCallback<void(std::vector<uint8_t>)> cb) {
+  DCHECK(tx_queue_.empty())
+      << __func__
+      << ": expected tx queue to be empty, size=" << tx_queue_.size();
+  LOG(INFO) << __func__ << ": APDU command="
+            << base::HexEncode(apduCommand.data(), apduCommand.size());
+  DCHECK(apduCommand.size() > 2) << "APDU does not have a header.";
+  CommandApdu apdu(apduCommand);
+  auto transmit_apdu_resp =
+      base::BindOnce(&Modem<T>::TransmitApduResponse,
+                     weak_factory_.GetWeakPtr(), std::move(cb));
+  tx_queue_.push_back({std::make_unique<ApduTxInfo>(
+                           std::move(apdu), true /*is_source_external_*/),
+                       AllocateId(), GetTagForSendApdu(),
+                       std::move(transmit_apdu_resp)});
   TransmitFromQueue();
 }
 

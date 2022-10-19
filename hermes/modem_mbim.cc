@@ -543,8 +543,11 @@ void ModemMbim::TransmitMbimSendApdu(TxElement* tx_element) {
   VLOG(2) << "Fragment size:" << fragment_size;
   apdu_len = fragment_size;
   std::copy(fragment, fragment + fragment_size, apduCmd);
-  apduCmd[apdu_len++] =
-      0x00;  // append extra byte for 4G Mbim Modem required for apdu handling
+  // APDU's from external sources (For e.g. eOS updates) do not require padding.
+  if (!apdu->is_source_external_) {
+    apduCmd[apdu_len++] = 0x00;  // append extra byte for 4G Mbim Modem required
+                                 // for google-lpa operations and EID reads
+  }
   LOG(INFO) << "Sending APDU fragment (" << apdu_len << " bytes): over channel "
             << channel_;
   VLOG(2) << "APDU:" << base::HexEncode(apduCmd, apdu_len);
@@ -1351,25 +1354,6 @@ void ModemMbim::OpenConnection(
   ReacquireChannel(EuiccEventStep::CLOSE_CHANNEL, aid,
                    base::BindOnce(&ModemMbim::OpenConnectionResponse,
                                   weak_factory_.GetWeakPtr(), std::move(cb)));
-}
-
-void ModemMbim::TransmitApdu(
-    const std::vector<uint8_t>& apduCommand,
-    base::OnceCallback<void(std::vector<uint8_t>)> cb) {
-  DCHECK(tx_queue_.empty())
-      << __func__
-      << ": expected tx queue to be empty, size=" << tx_queue_.size();
-  LOG(INFO) << __func__ << ": APDU command="
-            << base::HexEncode(apduCommand.data(), apduCommand.size());
-  DCHECK(apduCommand.size() > 2) << "APDU does not have a header.";
-  CommandApdu apdu(apduCommand);
-  auto transmit_apdu_resp =
-      base::BindOnce(&ModemMbim::TransmitApduResponse,
-                     weak_factory_.GetWeakPtr(), std::move(cb));
-  tx_queue_.push_back({std::make_unique<ApduTxInfo>(std::move(apdu)),
-                       AllocateId(), GetTagForSendApdu(),
-                       std::move(transmit_apdu_resp)});
-  TransmitFromQueue();
 }
 
 /* static */

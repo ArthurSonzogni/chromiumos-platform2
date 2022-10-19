@@ -51,8 +51,6 @@ class ModemQrtr : public Modem<QmiCmdInterface> {
   void OpenConnection(
       const std::vector<uint8_t>& aid,
       base::OnceCallback<void(std::vector<uint8_t>)> cb) override;
-  void TransmitApdu(const std::vector<uint8_t>& apduCommand,
-                    base::OnceCallback<void(std::vector<uint8_t>)> cb) override;
 
  private:
   struct SwitchSlotTxInfo : public TxInfo {

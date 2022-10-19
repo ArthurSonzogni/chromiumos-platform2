@@ -161,23 +161,6 @@ void ModemQrtr::RestoreActiveSlot(ResultCallback cb) {
   TransmitFromQueue();
 }
 
-void ModemQrtr::TransmitApdu(
-    const std::vector<uint8_t>& apduCommand,
-    base::OnceCallback<void(std::vector<uint8_t>)> cb) {
-  LOG(INFO) << __func__ << ": APDU command="
-            << base::HexEncode(apduCommand.data(), apduCommand.size());
-  DCHECK(apduCommand.size() > 2) << "APDU does not have a header.";
-  CommandApdu apdu(apduCommand);
-  auto transmit_apdu_resp =
-      base::BindOnce(&ModemQrtr::TransmitApduResponse,
-                     weak_factory_.GetWeakPtr(), std::move(cb));
-  tx_queue_.push_back({std::make_unique<ApduTxInfo>(std::move(apdu)),
-                       AllocateId(),
-                       std::make_unique<UimCmd>(UimCmd::QmiType::kSendApdu),
-                       std::move(transmit_apdu_resp)});
-  TransmitFromQueue();
-}
-
 void ModemQrtr::Initialize(EuiccManagerInterface* euicc_manager,
                            ResultCallback cb) {
   LOG(INFO) << __func__;
