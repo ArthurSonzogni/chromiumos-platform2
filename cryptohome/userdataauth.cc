@@ -328,7 +328,7 @@ void ReplyWithAuthenticationResult(
 }
 
 // Control switch value for enabling backup VaultKeyset creation with USS.
-constexpr bool kEnableCreateBackupVK = false;
+constexpr bool kEnableCreateBackupVK = true;
 
 }  // namespace
 

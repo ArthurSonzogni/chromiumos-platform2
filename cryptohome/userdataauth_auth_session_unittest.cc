@@ -491,7 +491,7 @@ TEST_F(AuthSessionInterfaceTest, PrepareGuestVault) {
 
   AuthSession* auth_session = auth_session_manager_->CreateAuthSession(
       kUsername, AUTH_SESSION_FLAGS_EPHEMERAL_USER, AuthIntent::kDecrypt,
-      /*enable_create_backup_vk_with_uss =*/false);
+      /*enable_create_backup_vk_with_uss =*/true);
   TestFuture<CryptohomeStatus> authenticate_future;
   auth_session->Authenticate(CreateAuthorization(kPassword),
                              authenticate_future.GetCallback());
@@ -505,7 +505,7 @@ TEST_F(AuthSessionInterfaceTest, PrepareGuestVault) {
 
   auth_session = auth_session_manager_->CreateAuthSession(
       kUsername2, 0, AuthIntent::kDecrypt,
-      /*enable_create_backup_vk_with_uss =*/false);
+      /*enable_create_backup_vk_with_uss =*/true);
   TestFuture<CryptohomeStatus> authenticate_regular_future;
   auth_session->Authenticate(CreateAuthorization(kPassword2),
                              authenticate_regular_future.GetCallback());
@@ -528,7 +528,7 @@ TEST_F(AuthSessionInterfaceTest, PrepareEphemeralVault) {
   // Auth session is initially not authenticated for ephemeral users.
   AuthSession* auth_session = auth_session_manager_->CreateAuthSession(
       kUsername, AUTH_SESSION_FLAGS_EPHEMERAL_USER, AuthIntent::kDecrypt,
-      /*enable_create_backup_vk_with_uss =*/false);
+      /*enable_create_backup_vk_with_uss =*/true);
   EXPECT_THAT(auth_session->GetStatus(),
               AuthStatus::kAuthStatusFurtherFactorRequired);
 
@@ -578,7 +578,7 @@ TEST_F(AuthSessionInterfaceTest, PrepareEphemeralVault) {
   // And so does ephemeral
   AuthSession* auth_session2 = auth_session_manager_->CreateAuthSession(
       kUsername2, AUTH_SESSION_FLAGS_EPHEMERAL_USER, AuthIntent::kDecrypt,
-      /*enable_create_backup_vk_with_uss =*/false);
+      /*enable_create_backup_vk_with_uss =*/true);
   status = PrepareEphemeralVaultImpl(auth_session2->serialized_token());
   ASSERT_FALSE(status.ok());
   ASSERT_EQ(status->local_legacy_error(),
@@ -599,7 +599,7 @@ TEST_F(AuthSessionInterfaceTest, PrepareEphemeralVault) {
 
   AuthSession* auth_session3 = auth_session_manager_->CreateAuthSession(
       kUsername3, 0, AuthIntent::kDecrypt,
-      /*enable_create_backup_vk_with_uss =*/false);
+      /*enable_create_backup_vk_with_uss =*/true);
   ExpectVaultKeyset(/*num_of_keysets=*/1);
 
   TestFuture<CryptohomeStatus> authenticate_third_future;
@@ -627,7 +627,7 @@ TEST_F(AuthSessionInterfaceTest,
        PreparePersistentVaultWithUnAuthenticatedAuthSession) {
   AuthSession* auth_session = auth_session_manager_->CreateAuthSession(
       kUsername, 0, AuthIntent::kDecrypt,
-      /*enable_create_backup_vk_with_uss =*/false);
+      /*enable_create_backup_vk_with_uss =*/true);
   CryptohomeStatus status =
       PreparePersistentVaultImpl(auth_session->serialized_token(), {});
   ASSERT_FALSE(status.ok());
@@ -640,7 +640,7 @@ TEST_F(AuthSessionInterfaceTest,
 TEST_F(AuthSessionInterfaceTest, PreparePersistentVaultNoShadowDir) {
   AuthSession* auth_session = auth_session_manager_->CreateAuthSession(
       kUsername, 0, AuthIntent::kDecrypt,
-      /*enable_create_backup_vk_with_uss =*/false);
+      /*enable_create_backup_vk_with_uss =*/true);
   SetAuthSessionAsAuthenticated(auth_session, kAuthorizedIntentsForFullAuth);
 
   // If no shadow homedir - we do not have a user.
@@ -662,7 +662,7 @@ TEST_F(AuthSessionInterfaceTest, PreparePersistentVaultRegularCase) {
 
   AuthSession* auth_session = auth_session_manager_->CreateAuthSession(
       kUsername, 0, AuthIntent::kDecrypt,
-      /*enable_create_backup_vk_with_uss =*/false);
+      /*enable_create_backup_vk_with_uss =*/true);
   // Auth and prepare.
   auto user_session = std::make_unique<MockUserSession>();
   EXPECT_CALL(*user_session, IsActive())
@@ -703,7 +703,7 @@ TEST_F(AuthSessionInterfaceTest, PreparePersistentVaultSecondMountPointBusy) {
 
   AuthSession* auth_session = auth_session_manager_->CreateAuthSession(
       kUsername, 0, AuthIntent::kDecrypt,
-      /*enable_create_backup_vk_with_uss =*/false);
+      /*enable_create_backup_vk_with_uss =*/true);
 
   // Auth and prepare.
   auto user_session = std::make_unique<MockUserSession>();
@@ -751,7 +751,7 @@ TEST_F(AuthSessionInterfaceTest, PreparePersistentVaultAndThenGuestFail) {
   MockOwnerUser("whoever", homedirs_);
   AuthSession* auth_session = auth_session_manager_->CreateAuthSession(
       kUsername, 0, AuthIntent::kDecrypt,
-      /*enable_create_backup_vk_with_uss =*/false);
+      /*enable_create_backup_vk_with_uss =*/true);
 
   // Auth and prepare.
   auto user_session = std::make_unique<MockUserSession>();
@@ -796,7 +796,7 @@ TEST_F(AuthSessionInterfaceTest, PreparePersistentVaultAndEphemeral) {
   // Setup regular user.
   AuthSession* auth_session = auth_session_manager_->CreateAuthSession(
       kUsername, 0, AuthIntent::kDecrypt,
-      /*enable_create_backup_vk_with_uss =*/false);
+      /*enable_create_backup_vk_with_uss =*/true);
 
   // Auth and prepare.
   auto user_session = std::make_unique<MockUserSession>();
@@ -833,7 +833,7 @@ TEST_F(AuthSessionInterfaceTest, PreparePersistentVaultAndEphemeral) {
   // Setup ephemeral user. This should fail.
   AuthSession* auth_session2 = auth_session_manager_->CreateAuthSession(
       kUsername2, AUTH_SESSION_FLAGS_EPHEMERAL_USER, AuthIntent::kDecrypt,
-      /*enable_create_backup_vk_with_uss =*/false);
+      /*enable_create_backup_vk_with_uss =*/true);
   CryptohomeStatus status =
       PrepareEphemeralVaultImpl(auth_session2->serialized_token());
   ASSERT_FALSE(status.ok());
@@ -847,7 +847,7 @@ TEST_F(AuthSessionInterfaceTest, PreparePersistentVaultAndEphemeral) {
 TEST_F(AuthSessionInterfaceTest, PreparePersistentVaultMultiMount) {
   AuthSession* auth_session = auth_session_manager_->CreateAuthSession(
       kUsername, 0, AuthIntent::kDecrypt,
-      /*enable_create_backup_vk_with_uss =*/false);
+      /*enable_create_backup_vk_with_uss =*/true);
 
   // Auth and prepare.
   auto user_session = std::make_unique<MockUserSession>();
@@ -884,7 +884,7 @@ TEST_F(AuthSessionInterfaceTest, PreparePersistentVaultMultiMount) {
   // Second mount should also succeed.
   AuthSession* auth_session2 = auth_session_manager_->CreateAuthSession(
       kUsername2, 0, AuthIntent::kDecrypt,
-      /*enable_create_backup_vk_with_uss =*/false);
+      /*enable_create_backup_vk_with_uss =*/true);
   auto user_session2 = std::make_unique<MockUserSession>();
   EXPECT_CALL(*user_session2, IsActive())
       .WillOnce(Return(false))
@@ -930,7 +930,7 @@ TEST_F(AuthSessionInterfaceTest, CreatePersistentUserFailedCreate) {
       .WillOnce(ReturnValue(false));
   AuthSession* auth_session = auth_session_manager_->CreateAuthSession(
       kUsername, 0, AuthIntent::kDecrypt,
-      /*enable_create_backup_vk_with_uss =*/false);
+      /*enable_create_backup_vk_with_uss =*/true);
   EXPECT_CALL(homedirs_, Exists(SanitizeUserName(kUsername)))
       .WillOnce(Return(false));
   EXPECT_CALL(homedirs_, Create(kUsername)).WillOnce(Return(false));
@@ -944,7 +944,7 @@ TEST_F(AuthSessionInterfaceTest, CreatePersistentUserFailedCreate) {
 TEST_F(AuthSessionInterfaceTest, CreatePersistentUserVaultExists) {
   AuthSession* auth_session = auth_session_manager_->CreateAuthSession(
       kUsername, 0, AuthIntent::kDecrypt,
-      /*enable_create_backup_vk_with_uss =*/false);
+      /*enable_create_backup_vk_with_uss =*/true);
   EXPECT_CALL(homedirs_, CryptohomeExists(SanitizeUserName(kUsername)))
       .WillOnce(ReturnValue(true));
   ASSERT_THAT(CreatePersistentUserImpl(auth_session->serialized_token())
@@ -959,7 +959,7 @@ TEST_F(AuthSessionInterfaceTest, CreatePersistentUserRegular) {
       .WillOnce(ReturnValue(false));
   AuthSession* auth_session = auth_session_manager_->CreateAuthSession(
       kUsername, 0, AuthIntent::kDecrypt,
-      /*enable_create_backup_vk_with_uss =*/false);
+      /*enable_create_backup_vk_with_uss =*/true);
   EXPECT_FALSE(auth_session->user_exists());
   // User doesn't exist and created.
   EXPECT_CALL(homedirs_, CryptohomeExists(SanitizeUserName(kUsername)))
@@ -1015,7 +1015,7 @@ TEST_F(AuthSessionInterfaceTest, CreatePersistentUserRepeatCall) {
       .WillOnce(ReturnValue(false));
   AuthSession* auth_session = auth_session_manager_->CreateAuthSession(
       kUsername, 0, AuthIntent::kDecrypt,
-      /*enable_create_backup_vk_with_uss =*/false);
+      /*enable_create_backup_vk_with_uss =*/true);
 
   EXPECT_CALL(homedirs_, CryptohomeExists(SanitizeUserName(kUsername)))
       .WillOnce(ReturnValue(false));
@@ -1039,7 +1039,7 @@ TEST_F(AuthSessionInterfaceTest, AuthenticateAuthSessionNoLabel) {
   // Auth session not authed.
   AuthSession* auth_session = auth_session_manager_->CreateAuthSession(
       kUsername, 0, AuthIntent::kDecrypt,
-      /*enable_create_backup_vk_with_uss =*/false);
+      /*enable_create_backup_vk_with_uss =*/true);
 
   // Pass no label in the request.
   AuthorizationRequest auth_req;
@@ -1058,7 +1058,7 @@ TEST_F(AuthSessionInterfaceTest, GetAuthSessionStatus) {
   user_data_auth::GetAuthSessionStatusReply reply;
   AuthSession* auth_session = auth_session_manager_->CreateAuthSession(
       kUsername, 0, AuthIntent::kDecrypt,
-      /*enable_create_backup_vk_with_uss =*/false);
+      /*enable_create_backup_vk_with_uss =*/true);
 
   // Test 1.
   auth_session->SetStatus(AuthStatus::kAuthStatusFurtherFactorRequired);
@@ -1076,7 +1076,7 @@ TEST_F(AuthSessionInterfaceTest, GetAuthSessionStatus) {
 TEST_F(AuthSessionInterfaceTest, GetHibernateSecretUnauthenticatedTest) {
   AuthSession* auth_session = auth_session_manager_->CreateAuthSession(
       kUsername, 0, AuthIntent::kDecrypt,
-      /*enable_create_backup_vk_with_uss =*/false);
+      /*enable_create_backup_vk_with_uss =*/true);
 
   // Verify an unauthenticated session fails in producing a hibernate secret.
   user_data_auth::GetHibernateSecretRequest request;
@@ -1090,7 +1090,7 @@ TEST_F(AuthSessionInterfaceTest, GetHibernateSecretUnauthenticatedTest) {
 TEST_F(AuthSessionInterfaceTest, GetHibernateSecretTest) {
   AuthSession* auth_session = auth_session_manager_->CreateAuthSession(
       kUsername, 0, AuthIntent::kDecrypt,
-      /*enable_create_backup_vk_with_uss =*/false);
+      /*enable_create_backup_vk_with_uss =*/true);
   ExpectAuth(kUsername, brillo::SecureBlob(kPassword));
   ExpectVaultKeyset(/*num_of_keysets=*/1);
   TestFuture<CryptohomeStatus> authenticate_future;
@@ -1174,7 +1174,7 @@ class AuthSessionInterfaceMockAuthTest : public AuthSessionInterfaceTestBase {
 
     AuthSession* auth_session = auth_session_manager_->CreateAuthSession(
         kUsername, /*flags=*/0, AuthIntent::kDecrypt,
-        /*enable_create_backup_vk_with_uss =*/false);
+        /*enable_create_backup_vk_with_uss =*/true);
     if (!auth_session)
       return nullptr;
 
@@ -1208,7 +1208,7 @@ class AuthSessionInterfaceMockAuthTest : public AuthSessionInterfaceTestBase {
   AuthSession* PrepareEphemeralUser() {
     AuthSession* auth_session = auth_session_manager_->CreateAuthSession(
         kUsername, AUTH_SESSION_FLAGS_EPHEMERAL_USER, AuthIntent::kDecrypt,
-        /*enable_create_backup_vk_with_uss =*/false);
+        /*enable_create_backup_vk_with_uss =*/true);
     if (!auth_session)
       return nullptr;
 
@@ -1349,7 +1349,7 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorVkSuccess) {
                             keyset_management_);
   AuthSession* auth_session = auth_session_manager_->CreateAuthSession(
       kUsername, /*flags=*/0, AuthIntent::kDecrypt,
-      /*enable_create_backup_vk_with_uss =*/false);
+      /*enable_create_backup_vk_with_uss =*/true);
   ASSERT_TRUE(auth_session);
 
   // Act.
@@ -1391,7 +1391,7 @@ TEST_F(AuthSessionInterfaceMockAuthTest,
                        CryptoError::CE_OTHER_CRYPTO, mock_auth_block_utility_);
   AuthSession* auth_session = auth_session_manager_->CreateAuthSession(
       kUsername, /*flags=*/0, AuthIntent::kDecrypt,
-      /*enable_create_backup_vk_with_uss =*/false);
+      /*enable_create_backup_vk_with_uss =*/true);
   ASSERT_TRUE(auth_session);
 
   // Act.
@@ -1438,7 +1438,7 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorLightweight) {
   // Create an AuthSession.
   AuthSession* auth_session = auth_session_manager_->CreateAuthSession(
       kUsername, /*flags=*/0, AuthIntent::kVerifyOnly,
-      /*enable_create_backup_vk_with_uss =*/false);
+      /*enable_create_backup_vk_with_uss =*/true);
   ASSERT_TRUE(auth_session);
 
   // Act.
@@ -1515,7 +1515,7 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorExpiredSession) {
       .WillRepeatedly(ReturnValue(false));
   AuthSession* auth_session = auth_session_manager_->CreateAuthSession(
       kUsername, /*flags=*/0, AuthIntent::kDecrypt,
-      /*enable_create_backup_vk_with_uss =*/false);
+      /*enable_create_backup_vk_with_uss =*/true);
   ASSERT_TRUE(auth_session);
   const auto auth_session_id = auth_session->serialized_token();
   EXPECT_TRUE(auth_session_manager_->RemoveAuthSession(auth_session_id));
@@ -1546,7 +1546,7 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorNoUser) {
       .WillRepeatedly(ReturnValue(false));
   AuthSession* auth_session = auth_session_manager_->CreateAuthSession(
       kUsername, /*flags=*/0, AuthIntent::kDecrypt,
-      /*enable_create_backup_vk_with_uss =*/false);
+      /*enable_create_backup_vk_with_uss =*/true);
   ASSERT_TRUE(auth_session);
 
   // Act.
@@ -1575,7 +1575,7 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorNoKeys) {
       .WillRepeatedly(ReturnValue(false));
   AuthSession* auth_session = auth_session_manager_->CreateAuthSession(
       kUsername, /*flags=*/0, AuthIntent::kDecrypt,
-      /*enable_create_backup_vk_with_uss =*/false);
+      /*enable_create_backup_vk_with_uss =*/true);
   ASSERT_TRUE(auth_session);
   EXPECT_THAT(auth_session->OnUserCreated(), IsOk());
   EXPECT_EQ(auth_session->GetStatus(), AuthStatus::kAuthStatusAuthenticated);
@@ -1621,7 +1621,7 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorWrongVkLabel) {
                            keyset_management_);
   AuthSession* auth_session = auth_session_manager_->CreateAuthSession(
       kUsername, /*flags=*/0, AuthIntent::kDecrypt,
-      /*enable_create_backup_vk_with_uss =*/false);
+      /*enable_create_backup_vk_with_uss =*/true);
   ASSERT_TRUE(auth_session);
 
   // Act.
@@ -1656,7 +1656,7 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorNoInput) {
                            keyset_management_);
   AuthSession* auth_session = auth_session_manager_->CreateAuthSession(
       kUsername, /*flags=*/0, AuthIntent::kDecrypt,
-      /*enable_create_backup_vk_with_uss =*/false);
+      /*enable_create_backup_vk_with_uss =*/true);
   ASSERT_TRUE(auth_session);
 
   // Act. Omit setting `auth_input` in `request`.
@@ -1696,7 +1696,7 @@ TEST_F(AuthSessionInterfaceMockAuthTest, PrepareVaultAfterFactorAuthVk) {
   // Prepare an AuthSession.
   AuthSession* auth_session = auth_session_manager_->CreateAuthSession(
       kUsername, /*flags=*/0, AuthIntent::kDecrypt,
-      /*enable_create_backup_vk_with_uss =*/false);
+      /*enable_create_backup_vk_with_uss =*/true);
   ASSERT_TRUE(auth_session);
   // Authenticate the AuthSession.
   user_data_auth::AuthenticateAuthFactorRequest request;
@@ -1787,7 +1787,7 @@ TEST_F(AuthSessionInterfaceMockAuthTest,
   AuthSession* const second_auth_session =
       auth_session_manager_->CreateAuthSession(
           kUsername, AUTH_SESSION_FLAGS_EPHEMERAL_USER, AuthIntent::kVerifyOnly,
-          /*enable_create_backup_vk_with_uss =*/false);
+          /*enable_create_backup_vk_with_uss =*/true);
   ASSERT_TRUE(second_auth_session);
   user_data_auth::AuthenticateAuthFactorReply reply =
       AuthenticatePasswordAuthFactor(*second_auth_session, kPasswordLabel,
@@ -1819,7 +1819,7 @@ TEST_F(AuthSessionInterfaceMockAuthTest,
   AuthSession* const second_auth_session =
       auth_session_manager_->CreateAuthSession(
           kUsername, AUTH_SESSION_FLAGS_EPHEMERAL_USER, AuthIntent::kVerifyOnly,
-          /*enable_create_backup_vk_with_uss =*/false);
+          /*enable_create_backup_vk_with_uss =*/true);
   ASSERT_TRUE(second_auth_session);
   user_data_auth::AuthenticateAuthFactorReply reply =
       AuthenticatePasswordAuthFactor(*second_auth_session, kPasswordLabel,
@@ -1845,7 +1845,7 @@ TEST_F(AuthSessionInterfaceMockAuthTest,
   // Act.
   AuthSession* const auth_session = auth_session_manager_->CreateAuthSession(
       kUsername, AUTH_SESSION_FLAGS_EPHEMERAL_USER, AuthIntent::kVerifyOnly,
-      /*enable_create_backup_vk_with_uss =*/false);
+      /*enable_create_backup_vk_with_uss =*/true);
   ASSERT_TRUE(auth_session);
   user_data_auth::AuthenticateAuthFactorReply reply =
       AuthenticatePasswordAuthFactor(*auth_session, kPasswordLabel, kPassword);
@@ -1885,7 +1885,7 @@ TEST_F(AuthSessionInterfaceMockAuthTest, RemoveAuthFactorVkSuccess) {
                             keyset_management_);
   AuthSession* auth_session = auth_session_manager_->CreateAuthSession(
       kUsername, /*flags=*/0, AuthIntent::kDecrypt,
-      /*enable_create_backup_vk_with_uss =*/false);
+      /*enable_create_backup_vk_with_uss =*/true);
   ASSERT_TRUE(auth_session);
 
   user_data_auth::AuthenticateAuthFactorRequest auth_request;
@@ -1936,7 +1936,7 @@ TEST_F(AuthSessionInterfaceMockAuthTest, RemoveAuthFactorVkFailsLastKeyset) {
                             keyset_management_);
   AuthSession* auth_session = auth_session_manager_->CreateAuthSession(
       kUsername, /*flags=*/0, AuthIntent::kDecrypt,
-      /*enable_create_backup_vk_with_uss =*/false);
+      /*enable_create_backup_vk_with_uss =*/true);
   ASSERT_TRUE(auth_session);
 
   user_data_auth::AuthenticateAuthFactorRequest auth_request;
@@ -1987,7 +1987,7 @@ TEST_F(AuthSessionInterfaceMockAuthTest,
                             keyset_management_);
   AuthSession* auth_session = auth_session_manager_->CreateAuthSession(
       kUsername, /*flags=*/0, AuthIntent::kDecrypt,
-      /*enable_create_backup_vk_with_uss =*/false);
+      /*enable_create_backup_vk_with_uss =*/true);
   ASSERT_TRUE(auth_session);
 
   user_data_auth::AuthenticateAuthFactorRequest auth_request;
@@ -2045,7 +2045,7 @@ TEST_F(AuthSessionInterfaceMockAuthTest,
                             keyset_management_);
   AuthSession* auth_session = auth_session_manager_->CreateAuthSession(
       kUsername, /*flags=*/0, AuthIntent::kDecrypt,
-      /*enable_create_backup_vk_with_uss =*/false);
+      /*enable_create_backup_vk_with_uss =*/true);
   ASSERT_TRUE(auth_session);
 
   user_data_auth::AuthenticateAuthFactorRequest auth_request;
@@ -2099,7 +2099,7 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorWebAuthnIntent) {
   EXPECT_TRUE(user_session_map_.Add(kUsername, std::move(user_session)));
   AuthSession* auth_session = auth_session_manager_->CreateAuthSession(
       kUsername, /*flags=*/0, AuthIntent::kWebAuthn,
-      /*enable_create_backup_vk_with_uss =*/false);
+      /*enable_create_backup_vk_with_uss =*/true);
   ASSERT_TRUE(auth_session);
 
   // Act.
