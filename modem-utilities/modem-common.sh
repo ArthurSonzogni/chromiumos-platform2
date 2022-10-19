@@ -10,40 +10,9 @@
 MM1=org.freedesktop.ModemManager1
 MM1_OBJECT=/org/freedesktop/ModemManager1
 MM1_IMANAGER=org.freedesktop.ModemManager1
-MM1_IMODEM=${MM1_IMANAGER}.Modem
-MM1_IMODEM_SIMPLE=${MM1_IMODEM}.Simple
-MM1_IMODEM_3GPP=${MM1_IMODEM}.Modem3gpp
-MM1_IMODEM_CDMA=${MM1_IMODEM}.ModemCdma
-MM1_ISIM=${MM1_IMANAGER}.Sim
-
-mm1_modem_sim() {
-  dbus_property "${MM1}" "${modem}" "${MM1_IMODEM}" Sim
-}
 
 mm1_modem_properties() {
-  local modem="$1"
-  local sim=$(mm1_modem_sim "${modem}")
-
-  echo
-  echo "Modem ${modem}:"
-  echo "  GetStatus:"
-  dbus_call "${MM1}" "${modem}" "${MM1_IMODEM_SIMPLE}.GetStatus" \
-    | format_dbus_dict | indent 2
-  echo "  Properties:"
-  dbus_properties "${MM1}" "${modem}" "${MM1_IMODEM}" \
-    | format_dbus_dict | indent 2
-  echo "  3GPP:"
-  dbus_properties "${MM1}" "${modem}" "${MM1_IMODEM_3GPP}" \
-    | format_dbus_dict | indent 2
-  echo "  CDMA:"
-  dbus_properties "${MM1}" "${modem}" "${MM1_IMODEM_CDMA}" \
-    | format_dbus_dict | indent 2
-
-  if [ "${#sim}" -gt 1 ]; then
-    echo "  SIM ${sim}:"
-    dbus_properties "${MM1}" "${sim}" "${MM1_ISIM}" \
-      | format_dbus_dict | indent 2
-  fi
+  gdbus_introspect "${MM1}" "${MM1_OBJECT}"
 }
 
 mm1_modems() {
@@ -56,9 +25,16 @@ mm1_modems() {
 #
 MASKED_PROPERTIES="DeviceIdentifier|EquipmentIdentifier|OwnNumbers|\
 ESN|MEID|IMEI|IMSI|SimIdentifier|MDN|MIN|payment_url_postdata|Eid|Iccid"
+MASKED_SUBPROPERTIES="user|password|${MASKED_PROPERTIES}"
+
+mask_esim_properties() {
+  sed -E "s/\<(${MASKED_PROPERTIES}): (.+)/\1: *** MASKED ***/i"
+}
 
 mask_modem_properties() {
-  sed -E "s/\<(${MASKED_PROPERTIES}): (.+)/\1: *** MASKED ***/i"
+  sed -E "s/\<(${MASKED_PROPERTIES}) = (.+)/\1 = *** MASKED ***/i" |
+  sed -E "s/('(${MASKED_SUBPROPERTIES})'): (<[^>]+>)/\1: *** MASKED ***/gi" |
+  sed -E "s/readonly //g"
 }
 
 mask_profiles() {
@@ -66,9 +42,7 @@ mask_profiles() {
 }
 
 all_modem_status() {
-  for modem in $(mm1_modems); do
-    mm1_modem_properties "${modem}"
-  done
+  mm1_modem_properties
 }
 
 default_modem() {
@@ -274,7 +248,7 @@ esim_status() {
 }
 
 esim_status_feedback() {
-  esim_status | mask_modem_properties | mask_profiles
+  esim_status | mask_esim_properties | mask_profiles
 }
 
 esim_refresh_profiles() {

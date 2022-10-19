@@ -134,6 +134,16 @@ dbus_property() {
     "string:${interface}" "string:${property}"
 }
 
+# Invokes a DBus introspect on a DBus object using gdbus.
+gdbus_introspect() {
+  local dest="$1"
+  local object="$2"
+  shift 2
+
+  gdbus introspect --system --dest="${dest}" -o "${object}"  --recurse \
+    --only-properties "$@"
+}
+
 # Gets all DBus properties of an interface of a DBus object.
 dbus_properties() {
   local dest="$1"
