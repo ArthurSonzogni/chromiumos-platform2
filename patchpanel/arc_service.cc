@@ -383,10 +383,12 @@ bool ArcService::Start(uint32_t id) {
   for (const auto& [ifname, type] : shill_devices_)
     AddDevice(ifname, type);
 
-  // Enable conntrack helpers (b/172214190).
+  // Enable conntrack helpers needed for processing through SNAT the IPv4 GRE
+  // packets sent by Android PPTP client (b/172214190).
+  // TODO(b/252749921) Find alternative for chromeos-6.1+ kernels.
   if (!datapath_->SetConntrackHelpers(true)) {
+    // Do not consider this error fatal for ARC datapath setup (b/252749921).
     LOG(ERROR) << "Failed to enable conntrack helpers";
-    return false;
   }
 
   RecordEvent(metrics_, ArcServiceUmaEvent::kStartSuccess);
