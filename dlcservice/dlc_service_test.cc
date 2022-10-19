@@ -142,6 +142,22 @@ TEST_F(DlcServiceTest, GetDlcsToUpdateTest) {
   EXPECT_THAT(dlcs, ElementsAre(kFirstDlc, kSecondDlc));
 }
 
+#if USE_LVM_STATEFUL_PARTITION
+TEST_F(DlcServiceTest, GetDlcsToUpdateLogicalVolumeTest) {
+  Install(kFirstDlc);
+
+  // Make fourth DLC marked as verified so we can get it in the list of DLCs
+  // needed to be updated.
+  EXPECT_TRUE(dlc_service_->InstallCompleted({kFourthDlc}, &err_));
+
+  EXPECT_CALL(*mock_lvmd_proxy_wrapper_ptr_, ActivateLogicalVolume(_))
+      .WillOnce(Return(true));
+  const auto& dlcs = dlc_service_->GetDlcsToUpdate();
+
+  EXPECT_THAT(dlcs, ElementsAre(kFirstDlc, kFourthDlc));
+}
+#endif  // USE_LVM_STATEFUL_PARTITION
+
 TEST_F(DlcServiceTest, GetInstalledMimicDlcserviceRebootWithoutVerifiedStamp) {
   Install(kFirstDlc);
   const auto& dlcs_before = dlc_service_->GetInstalled();

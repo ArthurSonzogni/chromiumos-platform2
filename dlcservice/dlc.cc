@@ -272,6 +272,10 @@ bool DlcBase::MakeReadyForUpdate() const {
     return false;
   }
 
+  return MakeReadyForUpdateInternal();
+}
+
+bool DlcBase::MakeReadyForUpdateInternal() const {
   const FilePath& inactive_image_path =
       GetImagePath(SystemState::Get()->inactive_boot_slot());
   if (!CreateFile(inactive_image_path, manifest_->size())) {

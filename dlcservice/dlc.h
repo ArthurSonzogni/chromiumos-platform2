@@ -111,6 +111,10 @@ class DlcBase {
   // image). Returns false if anything goes wrong.
   bool MakeReadyForUpdate() const;
 
+ protected:
+  virtual bool MakeReadyForUpdateInternal() const;
+
+ public:
   // Changes the install progress on this DLC. Only changes if the |progress| is
   // greater than the current progress value.
   void ChangeProgress(double progress);

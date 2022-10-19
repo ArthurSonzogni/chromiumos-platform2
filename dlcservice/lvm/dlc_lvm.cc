@@ -114,6 +114,23 @@ bool DlcLvm::MountInternal(std::string* mount_point, brillo::ErrorPtr* err) {
   return true;
 }
 
+bool DlcLvm::MakeReadyForUpdateInternal() const {
+  if (!manifest_->use_logical_volume()) {
+    LOG(INFO) << "Skipping update ready marking of logical volume for DLC="
+              << id_;
+    return DlcBase::MakeReadyForUpdateInternal();
+  }
+
+  auto inactive_lv_name =
+      LogicalVolumeName(id_, SystemState::Get()->inactive_boot_slot());
+  if (!SystemState::Get()->lvmd_wrapper()->ActivateLogicalVolume(
+          inactive_lv_name)) {
+    LOG(ERROR) << "Failed to activate inactive logical volumes for DLC=" << id_;
+    return false;
+  }
+  return true;
+}
+
 base::FilePath DlcLvm::GetVirtualImagePath(BootSlot::Slot slot) const {
   if (!manifest_->use_logical_volume()) {
     return DlcBase::GetVirtualImagePath(slot);

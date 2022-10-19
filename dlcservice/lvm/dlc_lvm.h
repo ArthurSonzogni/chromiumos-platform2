@@ -29,7 +29,7 @@ class DlcLvm : public DlcBase {
   bool CreateDlc(brillo::ErrorPtr* err) override;
   bool DeleteInternal(brillo::ErrorPtr* err) override;
   bool MountInternal(std::string* mount_point, brillo::ErrorPtr* err) override;
-
+  bool MakeReadyForUpdateInternal() const override;
   base::FilePath GetVirtualImagePath(BootSlot::Slot slot) const override;
 
  private:
