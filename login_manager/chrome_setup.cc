@@ -662,7 +662,23 @@ void AddSerializedAshSwitches(ChromiumCommandBuilder* builder,
   for (const auto& flag :
        base::SplitString(serialized_ash_switches, "\0"s, base::KEEP_WHITESPACE,
                          base::SPLIT_WANT_NONEMPTY)) {
-    builder->AddArg(flag);
+    if (base::StartsWith(flag,
+                         "--enable-features=", base::CompareCase::SENSITIVE) ||
+        base::StartsWith(flag,
+                         "--disable-features=", base::CompareCase::SENSITIVE)) {
+      std::vector<std::string> pieces = base::SplitString(
+          flag, "=,", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
+      CHECK_GE(pieces.size(), 2u);
+      const bool is_enable_features = pieces[0] == "--enable-features";
+      for (size_t i = 1; i < pieces.size(); i++) {
+        if (is_enable_features)
+          builder->AddFeatureEnableOverride(pieces[i]);
+        else
+          builder->AddFeatureDisableOverride(pieces[i]);
+      }
+    } else {
+      builder->AddArg(flag);
+    }
   }
 }
 
