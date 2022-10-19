@@ -179,12 +179,14 @@ bool DBusService::CheckRmaCriteria() const {
       mainfw_type != "normal") {
     return false;
   }
-  // Only allow Shimless RMA on some models.
-  if (std::string model; !cros_config_utils_->GetModelName(&model) ||
-                         std::find(kAllowedModels.begin(), kAllowedModels.end(),
-                                   model) == kAllowedModels.end()) {
+  // Only allow Shimless RMA if it's enabled in cros_config.
+  if (bool enabled; !cros_config_utils_->GetRmadEnabled(&enabled) || !enabled) {
     return false;
   }
+  // Shimless RMA is allowed. Trigger it when either condition is satisfied:
+  // - Shimless RMA state file exists: Shimless RMA is triggered before and not
+  //   completed yet.
+  // - RO verification triggered: Shimless RMA is manually triggered at boot.
   if (base::PathExists(state_file_path_)) {
     return true;
   }

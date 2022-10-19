@@ -72,8 +72,8 @@ class DBusServiceTest : public testing::Test {
             DoAll(SetArgPointee<0>(ro_verification_status), Return(true)));
     auto mock_cros_config_utils =
         std::make_unique<NiceMock<MockCrosConfigUtils>>();
-    ON_CALL(*mock_cros_config_utils, GetModelName(_))
-        .WillByDefault(DoAll(SetArgPointee<0>("fleex"), Return(true)));
+    ON_CALL(*mock_cros_config_utils, GetRmadEnabled(_))
+        .WillByDefault(DoAll(SetArgPointee<0>(true), Return(true)));
     auto mock_crossystem_utils =
         std::make_unique<NiceMock<MockCrosSystemUtils>>();
     ON_CALL(*mock_crossystem_utils,
