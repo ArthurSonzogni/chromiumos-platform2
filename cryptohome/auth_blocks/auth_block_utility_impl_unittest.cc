@@ -261,7 +261,7 @@ TEST_F(AuthBlockUtilityImplTest, IsVerifyWithAuthFactorSupported) {
       AuthIntent::kVerifyOnly, AuthFactorType::kCryptohomeRecovery));
   EXPECT_FALSE(auth_block_utility_impl_->IsVerifyWithAuthFactorSupported(
       AuthIntent::kVerifyOnly, AuthFactorType::kKiosk));
-  EXPECT_FALSE(auth_block_utility_impl_->IsVerifyWithAuthFactorSupported(
+  EXPECT_TRUE(auth_block_utility_impl_->IsVerifyWithAuthFactorSupported(
       AuthIntent::kVerifyOnly, AuthFactorType::kSmartCard));
   EXPECT_TRUE(auth_block_utility_impl_->IsVerifyWithAuthFactorSupported(
       AuthIntent::kVerifyOnly, AuthFactorType::kLegacyFingerprint));

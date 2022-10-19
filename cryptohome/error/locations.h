@@ -1241,7 +1241,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocFpServiceCheckResultFailedYesRetry = 707,
   /* ./auth_blocks/fp_service.cc */
   kLocFpServiceCheckResultFailedNoRetry = 708,
-  /* ./auth_blocks/auth_block_utility_impl.cc */
+  /* =Obsolete= */
   kLocAuthBlockUtilUnknownUnsupportedInVerifyWithAuthFactor = 709,
   /* ./auth_session.cc */
   kLocAuthSessionPrepareWebAuthnSecretNoFileSystemKeyset = 710,
@@ -1321,6 +1321,16 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocAuthSessionManagerTokenCollision = 2301,
   /* ./auth_session.cc */
   kLocAuthSessionCreateInitializedFail = 2302,
+  /* ./smart_card_verifier.cc */
+  kLocSmartCardVerifierNoKeyService = 2303,
+  /* ./smart_card_verifier.cc */
+  kLocSmartCardVerifierNoInputUser = 2304,
+  /* ./smart_card_verifier.cc */
+  kLocSmartCardVerifierNoInputAuth = 2305,
+  /* ./smart_card_verifier.cc */
+  kLocSmartCardVerifierNoInputAlg = 2306,
+  /* ./smart_card_verifier.cc */
+  kLocSmartCardVerifierCannotVerify = 2307,
   //////////////////////////////////////////////////
   //// This is a separator block at value 2500
   //// See location_db.py for more info.

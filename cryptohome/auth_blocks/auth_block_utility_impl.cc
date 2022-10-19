@@ -47,6 +47,7 @@
 #include "cryptohome/key_objects.h"
 #include "cryptohome/keyset_management.h"
 #include "cryptohome/scrypt_verifier.h"
+#include "cryptohome/smart_card_verifier.h"
 #include "cryptohome/vault_keyset.h"
 
 using cryptohome::error::CryptohomeCryptoError;
@@ -149,11 +150,11 @@ bool AuthBlockUtilityImpl::IsVerifyWithAuthFactorSupported(
   switch (auth_factor_type) {
     case AuthFactorType::kPassword:
     case AuthFactorType::kLegacyFingerprint:
+    case AuthFactorType::kSmartCard:
       return true;
     case AuthFactorType::kPin:
     case AuthFactorType::kCryptohomeRecovery:
     case AuthFactorType::kKiosk:
-    case AuthFactorType::kSmartCard:
     case AuthFactorType::kUnspecified:
       return false;
   }
@@ -191,10 +192,25 @@ AuthBlockUtilityImpl::CreateCredentialVerifier(
       }
       verifier = std::make_unique<FingerprintVerifier>(fp_service_.get());
       break;
+    case AuthFactorType::kSmartCard: {
+      if (!IsChallengeCredentialReady(auth_input)) {
+        return nullptr;
+      }
+      auto key_challenge_service = key_challenge_service_factory_->New(
+          auth_input.challenge_credential_auth_input->dbus_service_name);
+      verifier = SmartCardVerifier::Create(
+          auth_factor_label,
+          auth_input.challenge_credential_auth_input->public_key_spki_der,
+          challenge_credentials_helper_, key_challenge_service_factory_);
+      if (!verifier) {
+        LOG(ERROR) << "Credential verifier initialization failed.";
+        return nullptr;
+      }
+      break;
+    }
     case AuthFactorType::kPin:
     case AuthFactorType::kCryptohomeRecovery:
     case AuthFactorType::kKiosk:
-    case AuthFactorType::kSmartCard:
     case AuthFactorType::kUnspecified: {
       return nullptr;
     }
