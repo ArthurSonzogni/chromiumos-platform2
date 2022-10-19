@@ -1248,7 +1248,7 @@ properties:
                           minimum: 0
                           maximum: 100
                       additionalProperties: false
-                    fingerprint-health:
+                    fingerprint-diag:
                       type: object
                       properties:
                         routine-enable:
@@ -1282,34 +1282,50 @@ properties:
                               type: integer
                               description: |
                                 Checkerboard type1 lower bound.
+                              minimum: 0
+                              maximum: 255
                             cb-type1-upper:
                               type: integer
                               description: |
                                 Checkerboard type1 upper bound.
+                              minimum: 0
+                              maximum: 255
                             cb-type2-lower:
                               type: integer
                               description: |
                                 Checkerboard type2 lower bound.
+                              minimum: 0
+                              maximum: 255
                             cb-type2-upper:
                               type: integer
                               description: |
                                 Checkerboard type2 upper bound.
+                              minimum: 0
+                              maximum: 255
                             icb-type1-lower:
                               type: integer
                               description: |
                                 Inverted checkerboard type1 lower bound.
+                              minimum: 0
+                              maximum: 255
                             icb-type1-upper:
                               type: integer
                               description: |
                                 Inverted checkerboard type1 upper bound.
+                              minimum: 0
+                              maximum: 255
                             icb-type2-lower:
                               type: integer
                               description: |
                                 Inverted checkerboard type2 lower bound.
+                              minimum: 0
+                              maximum: 255
                             icb-type2-upper:
                               type: integer
                               description: |
                                 Inverted checkerboard type2 upper bound.
+                              minimum: 0
+                              maximum: 255
                           required:
                             - cb-type1-lower
                             - cb-type1-upper

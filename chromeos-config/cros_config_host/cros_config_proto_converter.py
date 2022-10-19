@@ -1098,11 +1098,59 @@ def _build_health_battery(health_config):
     return result
 
 
-def _build_health_routines(health_config):
+def _build_health_routines_fingerprint_diag(config):
+    """Builds the health service routines fingerprint health configuration.
+
+    Args:
+        config: Fingerprint diag config namedtuple.
+
+    Returns:
+        fingerprint health routines configuration.
+    """
+
+    def _build_pixel_median(pixel_median):
+        return {
+            "cb-type1-lower": pixel_median.cb_type1_lower,
+            "cb-type1-upper": pixel_median.cb_type1_upper,
+            "cb-type2-lower": pixel_median.cb_type2_lower,
+            "cb-type2-upper": pixel_median.cb_type2_upper,
+            "icb-type1-lower": pixel_median.icb_type1_lower,
+            "icb-type1-upper": pixel_median.icb_type1_upper,
+            "icb-type2-lower": pixel_median.icb_type2_lower,
+            "icb-type2-upper": pixel_median.icb_type2_upper,
+        }
+
+    def _build_detect_zones(detect_zones):
+        result = []
+        for detect_zone in detect_zones:
+            zone = {
+                "x1": detect_zone.x1,
+                "y1": detect_zone.y1,
+                "x2": detect_zone.x2,
+                "y2": detect_zone.y2,
+            }
+            result.append(zone)
+        return result
+
+    return {
+        "routine-enable": config.routine_enable,
+        "max-pixel-dev": config.max_pixel_dev,
+        "max-dead-pixels": config.max_dead_pixels,
+        "pixel-median": _build_pixel_median(config.pixel_median),
+        "num-detect-zone": config.num_detect_zone,
+        "detect-zones": _build_detect_zones(config.detect_zones),
+        "max-dead-pixels-in-detect-zone": config.max_dead_pixels_in_detect_zone,
+        "max-reset-pixel-dev": config.max_reset_pixel_dev,
+        "max-error-reset-pixels": config.max_error_reset_pixels,
+    }
+
+
+def _build_health_routines(health_config, hw_topo):
     """Builds the health service routines configuration.
 
     Args:
         health_config: Health Config namedtuple.
+        hw_topo: Hardware topology.
 
     Returns:
         health routines configuration.
@@ -1130,6 +1178,16 @@ def _build_health_routines(health_config):
         )
         _upsert(nvme_wear_level_result, result, "nvme-wear-level")
 
+    fingerprint = hw_topo.fingerprint.hardware_feature.fingerprint
+    if fingerprint.HasField("fingerprint_diag"):
+        _upsert(
+            _build_health_routines_fingerprint_diag(
+                fingerprint.fingerprint_diag
+            ),
+            result,
+            "fingerprint-diag",
+        )
+
     return result
 
 
@@ -1146,10 +1204,11 @@ def _build_health(config: Config):
         return None
 
     health_config = config.sw_config.health_config
+    hw_topo = config.hw_design_config.hardware_topology
     result = {}
     _upsert(_build_health_cached_vpd(health_config), result, "cached-vpd")
     _upsert(_build_health_battery(health_config), result, "battery")
-    _upsert(_build_health_routines(health_config), result, "routines")
+    _upsert(_build_health_routines(health_config, hw_topo), result, "routines")
     return result
 
 

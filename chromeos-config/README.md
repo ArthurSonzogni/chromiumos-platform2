@@ -573,7 +573,7 @@ In the tables below,
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 | battery-health | [battery-health](#battery_health) |  | False |  | False |  |
-| fingerprint-health | [fingerprint-health](#fingerprint_health) |  | False |  | False |  |
+| fingerprint-diag | [fingerprint-diag](#fingerprint_diag) |  | False |  | False |  |
 | nvme-wear-level | [nvme-wear-level](#nvme_wear_level) |  | False |  | False |  |
 
 ### battery-health
@@ -581,7 +581,7 @@ In the tables below,
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 | percent-battery-wear-allowed | integer |  | False |  | False | Upper bound for the battery's wear percentage. Battery health routine in cros_healthd uses this field as a threshold to determine whether the battery is in good condition.  Minimum value: 0x0. Maximum value: 0x64. |
 
-### fingerprint-health
+### fingerprint-diag
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 | detect-zones | array - [detect-zones](#detect_zones) |  | False |  | False | Rectangles [x1, y1, x2, y2].  |
@@ -605,14 +605,14 @@ In the tables below,
 ### pixel-median
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
-| cb-type1-lower | integer |  | True |  | False | Checkerboard type1 lower bound.  |
-| cb-type1-upper | integer |  | True |  | False | Checkerboard type1 upper bound.  |
-| cb-type2-lower | integer |  | True |  | False | Checkerboard type2 lower bound.  |
-| cb-type2-upper | integer |  | True |  | False | Checkerboard type2 upper bound.  |
-| icb-type1-lower | integer |  | True |  | False | Inverted checkerboard type1 lower bound.  |
-| icb-type1-upper | integer |  | True |  | False | Inverted checkerboard type1 upper bound.  |
-| icb-type2-lower | integer |  | True |  | False | Inverted checkerboard type2 lower bound.  |
-| icb-type2-upper | integer |  | True |  | False | Inverted checkerboard type2 upper bound.  |
+| cb-type1-lower | integer |  | True |  | False | Checkerboard type1 lower bound.  Minimum value: 0x0. Maximum value: 0xff. |
+| cb-type1-upper | integer |  | True |  | False | Checkerboard type1 upper bound.  Minimum value: 0x0. Maximum value: 0xff. |
+| cb-type2-lower | integer |  | True |  | False | Checkerboard type2 lower bound.  Minimum value: 0x0. Maximum value: 0xff. |
+| cb-type2-upper | integer |  | True |  | False | Checkerboard type2 upper bound.  Minimum value: 0x0. Maximum value: 0xff. |
+| icb-type1-lower | integer |  | True |  | False | Inverted checkerboard type1 lower bound.  Minimum value: 0x0. Maximum value: 0xff. |
+| icb-type1-upper | integer |  | True |  | False | Inverted checkerboard type1 upper bound.  Minimum value: 0x0. Maximum value: 0xff. |
+| icb-type2-lower | integer |  | True |  | False | Inverted checkerboard type2 lower bound.  Minimum value: 0x0. Maximum value: 0xff. |
+| icb-type2-upper | integer |  | True |  | False | Inverted checkerboard type2 upper bound.  Minimum value: 0x0. Maximum value: 0xff. |
 
 ### nvme-wear-level
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |

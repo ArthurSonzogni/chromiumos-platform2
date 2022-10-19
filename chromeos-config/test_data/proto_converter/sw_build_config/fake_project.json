@@ -102,6 +102,39 @@
             "battery-health": {
               "percent-battery-wear-allowed": 50
             },
+            "fingerprint-diag": {
+              "detect-zones": [
+                {
+                  "x1": 10,
+                  "x2": 30,
+                  "y1": 20,
+                  "y2": 40
+                },
+                {
+                  "x1": 50,
+                  "x2": 70,
+                  "y1": 60,
+                  "y2": 80
+                }
+              ],
+              "max-dead-pixels": 5,
+              "max-dead-pixels-in-detect-zone": 0,
+              "max-error-reset-pixels": 5,
+              "max-pixel-dev": 5,
+              "max-reset-pixel-dev": 5,
+              "num-detect-zone": 2,
+              "pixel-median": {
+                "cb-type1-lower": 1,
+                "cb-type1-upper": 2,
+                "cb-type2-lower": 3,
+                "cb-type2-upper": 4,
+                "icb-type1-lower": 5,
+                "icb-type1-upper": 6,
+                "icb-type2-lower": 7,
+                "icb-type2-upper": 8
+              },
+              "routine-enable": true
+            },
             "nvme-wear-level": {
               "wear-level-threshold": 50
             }
