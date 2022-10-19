@@ -9,6 +9,7 @@ BINDMOUNTS="${HOME}"
 OS="debian"
 NAME="${OS}-${DIST}-${ARCH}"
 
+APTCACHE="/var/cache/pbuilder/aptcache/${NAME}"
 BASETGZ="/var/cache/pbuilder/base-${ARCH}.tgz"
 BUILDPLACE="/var/cache/pbuilder/build"
 BUILDRESULT="/var/cache/pbuilder/${NAME}/result/"

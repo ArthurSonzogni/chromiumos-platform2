@@ -101,6 +101,7 @@ main() {
   local arch
   for dist in ${RELEASES}; do
     for arch in ${arches_to_build}; do
+      mkdir -p "/var/cache/pbuilder/aptcache/debian-${dist}-${arch}"
 
       basetgz="/var/cache/pbuilder/base-${arch}.tgz"
       if [ ! -f "${basetgz}" ]; then
