@@ -358,6 +358,7 @@ TEST_F(PortManagerNotificationTest, ECModeEntryNoCableNotification) {
   // Configure |port_manager| and run mode entry.
   port_manager_->SetUserActive(true);
   port_manager_->SetNotificationManager(notification_manager_.get());
+  port_manager_->SetECUtil(ec_util_.get());
   port_manager_->ports_.insert(
       std::pair<int, std::unique_ptr<Port>>(0, std::move(port_)));
   port_manager_->RunModeEntry(0);
@@ -387,6 +388,7 @@ TEST_F(PortManagerNotificationTest, ECModeEntryNotifyInvalidDpCable) {
   // Configure |port_manager| and run mode entry.
   port_manager_->SetUserActive(true);
   port_manager_->SetNotificationManager(notification_manager_.get());
+  port_manager_->SetECUtil(ec_util_.get());
   port_manager_->ports_.insert(
       std::pair<int, std::unique_ptr<Port>>(0, std::move(port_)));
   port_manager_->RunModeEntry(0);
