@@ -161,6 +161,23 @@
                   value="lvmd::LogicalVolume"/>
     </arg>
   </method>
-
+  <method name="ToggleLogicalVolumeActivation">
+    <tp:docstring>
+      Toggles activation of the specified logical volume.
+    </tp:docstring>
+    <arg name="logical_volume" type="ay" direction="in">
+      <tp:docstring>
+        A serialized protobuf (LogicalVolume,
+        platform2/system_api/dbus/lvmd/lvmd.proto).
+      </tp:docstring>
+      <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                  value="lvmd::LogicalVolume"/>
+    </arg>
+    <arg name="activate" type="b" direction="in">
+      <tp:docstring>
+        True to activate, false to deactivate.
+      </tp:docstring>
+    </arg>
+  </method>
 </interface>
 </node>

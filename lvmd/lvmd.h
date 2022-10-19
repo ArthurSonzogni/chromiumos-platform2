@@ -71,6 +71,14 @@ class Lvmd : public brillo::DBusServiceDaemon,
       brillo::ErrorPtr* error,
       const lvmd::LogicalVolume& in_logical_volume) override;
 
+  // Toggles the logical volume activation, if it exists.
+  // Activating/deactivating already active/inactive logical volume has no
+  // effect.
+  bool ToggleLogicalVolumeActivation(
+      brillo::ErrorPtr* error,
+      const lvmd::LogicalVolume& in_logical_volume,
+      bool activate) override;
+
  protected:
   int OnInit() override;
   void RegisterDBusObjectsAsync(

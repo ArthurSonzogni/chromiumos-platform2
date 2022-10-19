@@ -204,6 +204,44 @@ bool Lvmd::RemoveLogicalVolume(brillo::ErrorPtr* error,
   return true;
 }
 
+bool Lvmd::ToggleLogicalVolumeActivation(
+    brillo::ErrorPtr* error,
+    const lvmd::LogicalVolume& in_logical_volume,
+    bool activate) {
+  auto vg_name = in_logical_volume.volume_group().name();
+  auto vg = brillo::VolumeGroup(vg_name, {});
+
+  std::string lv_name = in_logical_volume.name();
+  auto opt_lv = lvm_->GetLogicalVolume(vg, lv_name);
+
+  if (!opt_lv) {
+    *error = CreateError(
+        FROM_HERE, kErrorInternal,
+        base::StringPrintf("Failed to GetLogicalVolume for lv (%s) in vg (%s)",
+                           lv_name.c_str(), vg_name.c_str()));
+    return false;
+  }
+
+  if (activate) {
+    if (!opt_lv->Activate()) {
+      *error =
+          CreateError(FROM_HERE, kErrorInternal,
+                      base::StringPrintf("Failed to activate for lv "
+                                         "name (%s) in vg (%s)",
+                                         lv_name.c_str(), vg_name.c_str()));
+      return false;
+    }
+  } else if (!opt_lv->Deactivate()) {
+    *error = CreateError(FROM_HERE, kErrorInternal,
+                         base::StringPrintf("Failed to deactivate for lv "
+                                            "name (%s) in vg (%s)",
+                                            lv_name.c_str(), vg_name.c_str()));
+    return false;
+  }
+
+  return true;
+}
+
 int Lvmd::OnInit() {
   int return_code = brillo::DBusServiceDaemon::OnInit();
   if (return_code != EX_OK)

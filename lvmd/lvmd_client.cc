@@ -147,6 +147,12 @@ class LvmdClient : public brillo::Daemon {
   int RemoveLogicalVolume(const std::string& vg_name,
                           const std::string& lv_name);
 
+  // `--activate` helpers:
+  // `--deactivate` helpers:
+  int ToggleLogicalVolumeActivation(const std::string& vg_name,
+                                    const std::string& lv_name,
+                                    bool activate);
+
   // argc and argv passed to main().
   int argc_;
   const char** argv_;
@@ -178,6 +184,8 @@ int LvmdClient::ProcessFlags() {
   DEFINE_bool(show, false, "Show action.");
   DEFINE_bool(create, false, "Create action.");
   DEFINE_bool(remove, false, "Remove action.");
+  DEFINE_bool(activate, false, "Activate action.");
+  DEFINE_bool(deactivate, false, "Deactivation action.");
 
   // Exclusive top level lvm devices.
   DEFINE_bool(pv, false, "Get PhysicalVolume.");
@@ -198,6 +206,10 @@ int LvmdClient::ProcessFlags() {
   //   `--lv`
   // Used in `--remove`:
   //   `--lv`
+  // Used in `--activate`:
+  //   `--lv`
+  // Used in `--deactivate`:
+  //   `--lv`
   DEFINE_string(vg_name, "", "Volume Group name.");
   // Used in `--show`:
   //   `--thinpool`
@@ -210,6 +222,10 @@ int LvmdClient::ProcessFlags() {
   //   `--lv`
   // Used in `--remove`:
   //   `--lv`
+  // Used in `--activate`:
+  //   `--lv`
+  // Used in `--deactivate`:
+  //   `--lv`
   DEFINE_string(lv_name, "", "Logical Volume name.");
   // Used in `--create`:
   //   `--lv`
@@ -221,6 +237,8 @@ int LvmdClient::ProcessFlags() {
           FLAGS_show,
           FLAGS_create,
           FLAGS_remove,
+          FLAGS_activate,
+          FLAGS_deactivate,
       })) {
     LOG(ERROR) << "Please provide only one of "
                   "`--show`"
@@ -228,6 +246,10 @@ int LvmdClient::ProcessFlags() {
                   "`--create`"
                   ", "
                   "`--remove`"
+                  ", "
+                  "`--activate`"
+                  ", "
+                  "`--deactivate`"
                   ".";
     return EX_USAGE;
   }
@@ -283,6 +305,24 @@ int LvmdClient::ProcessFlags() {
       return RemoveLogicalVolume(FLAGS_vg_name, FLAGS_lv_name);
 
     LOG(ERROR) << "`--remove` is not support for this LVM device.";
+    return EX_USAGE;
+  }
+
+  if (FLAGS_activate) {
+    if (FLAGS_lv)
+      return ToggleLogicalVolumeActivation(FLAGS_vg_name, FLAGS_lv_name,
+                                           /*activate=*/true);
+
+    LOG(ERROR) << "`--activate` is not support for this LVM device.";
+    return EX_USAGE;
+  }
+
+  if (FLAGS_deactivate) {
+    if (FLAGS_lv)
+      return ToggleLogicalVolumeActivation(FLAGS_vg_name, FLAGS_lv_name,
+                                           /*activate=*/false);
+
+    LOG(ERROR) << "`--deactivate` is not support for this LVM device.";
     return EX_USAGE;
   }
 
@@ -462,6 +502,36 @@ int LvmdClient::RemoveLogicalVolume(const std::string& vg_name,
   brillo::ErrorPtr err;
   if (!lvmd_proxy_->RemoveLogicalVolume(lv, &err)) {
     LOG(ERROR) << "Failed to remove logical volume, " << ErrorPtrToStr(err);
+    return EX_SOFTWARE;
+  }
+
+  return EX_OK;
+}
+
+int LvmdClient::ToggleLogicalVolumeActivation(const std::string& vg_name,
+                                              const std::string& lv_name,
+                                              bool activate) {
+  if (vg_name.empty()) {
+    LOG(ERROR) << "`--vg_name` must be provided.";
+    return EX_USAGE;
+  }
+
+  if (lv_name.empty()) {
+    LOG(ERROR) << "`--lv_name` must be provided.";
+    return EX_USAGE;
+  }
+
+  lvmd::VolumeGroup vg;
+  vg.set_name(vg_name);
+
+  lvmd::LogicalVolume lv;
+  *lv.mutable_volume_group() = vg;
+  lv.set_name(lv_name);
+
+  brillo::ErrorPtr err;
+  if (!lvmd_proxy_->ToggleLogicalVolumeActivation(lv, activate, &err)) {
+    LOG(ERROR) << "Failed to toggle activation for logical volume, "
+               << ErrorPtrToStr(err);
     return EX_SOFTWARE;
   }
 
