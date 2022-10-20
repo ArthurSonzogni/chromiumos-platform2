@@ -71,11 +71,17 @@ StatusOr<brillo::Blob> EncryptionTpm2::Encrypt(
   base::ScopedClosureRunner cleanup_data(base::BindOnce(
       brillo::SecureClearContainer<std::string>, std::ref(data)));
 
+  ASSIGN_OR_RETURN(
+      ConfigTpm2::TrunksSession session,
+      backend_.GetConfigTpm2().GetTrunksSession(
+          key_data.cache.policy, SessionSecuritySetting::kNoEncrypted),
+      _.WithStatus<TPMError>("Failed to get session for policy"));
+
   std::string tpm_ciphertext;
 
   RETURN_IF_ERROR(MakeStatus<TPM2Error>(context.tpm_utility->AsymmetricEncrypt(
                       key_data.key_handle, schema.schema, schema.hash_alg, data,
-                      nullptr, &tpm_ciphertext)))
+                      session.delegate, &tpm_ciphertext)))
       .WithStatus<TPMError>("Failed to encrypt plaintext");
 
   return BlobFromString(tpm_ciphertext);
@@ -90,15 +96,18 @@ StatusOr<brillo::SecureBlob> EncryptionTpm2::Decrypt(
 
   BackendTpm2::TrunksClientContext& context = backend_.GetTrunksContext();
 
-  std::unique_ptr<trunks::AuthorizationDelegate> delegate =
-      context.factory.GetPasswordAuthorization("");
+  ASSIGN_OR_RETURN(
+      ConfigTpm2::TrunksSession session,
+      backend_.GetConfigTpm2().GetTrunksSession(
+          key_data.cache.policy, SessionSecuritySetting::kNoEncrypted),
+      _.WithStatus<TPMError>("Failed to get session for policy"));
 
   std::string tpm_plaintext;
 
   RETURN_IF_ERROR(
       MakeStatus<TPM2Error>(context.tpm_utility->AsymmetricDecrypt(
           key_data.key_handle, schema.schema, schema.hash_alg,
-          BlobToString(ciphertext), delegate.get(), &tpm_plaintext)))
+          BlobToString(ciphertext), session.delegate, &tpm_plaintext)))
       .WithStatus<TPMError>("Failed to decrypt ciphertext");
 
   brillo::SecureBlob result(tpm_plaintext.begin(), tpm_plaintext.end());
