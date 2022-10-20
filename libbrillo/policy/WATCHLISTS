@@ -13,6 +13,6 @@
     },
   },
   'WATCHLISTS': {
-    'all': ['pastarmovj@chromium.org', 'vsavu@google.com']
+    'all': ['vsavu@google.com']
   },
 }
