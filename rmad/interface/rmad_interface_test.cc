@@ -21,6 +21,7 @@
 #include <gtest/gtest.h>
 
 #include "rmad/daemon/daemon_callback.h"
+#include "rmad/logs/logs_constants.h"
 #include "rmad/metrics/mock_metrics_utils.h"
 #include "rmad/state_handler/mock_state_handler.h"
 #include "rmad/state_handler/state_handler_manager.h"
@@ -805,6 +806,24 @@ TEST_F(RmadInterfaceImplTest, TransitionNextState) {
                    kTestTransitionInterval.InSecondsF());
   EXPECT_EQ(RmadState::kDeviceDestination,
             rmad_interface.GetCurrentStateCase());
+
+  // Verify that state transitions were recorded to logs.
+  base::Value logs(base::Value::Type::DICT);
+  json_store->GetValue(kLogs, &logs);
+  const base::Value::List* events = logs.GetDict().FindList(kEvents);
+  EXPECT_EQ(2, events->size());
+
+  const base::Value::Dict& event1 = (*events)[0].GetDict();
+  EXPECT_EQ(static_cast<int>(RmadState::kWelcome),
+            event1.FindDict(kDetails)->FindInt(kFromStateId));
+  EXPECT_EQ(static_cast<int>(RmadState::kComponentsRepair),
+            event1.FindDict(kDetails)->FindInt(kToStateId));
+
+  const base::Value::Dict& event2 = (*events)[1].GetDict();
+  EXPECT_EQ(static_cast<int>(RmadState::kComponentsRepair),
+            event2.FindDict(kDetails)->FindInt(kFromStateId));
+  EXPECT_EQ(static_cast<int>(RmadState::kDeviceDestination),
+            event2.FindDict(kDetails)->FindInt(kToStateId));
 }
 
 TEST_F(RmadInterfaceImplTest, TryTransitionNextState) {
@@ -957,6 +976,18 @@ TEST_F(RmadInterfaceImplTest, TransitionPreviousState) {
                        .overall_time,
                    kTestTransitionInterval.InSecondsF());
   EXPECT_EQ(RmadState::kWelcome, rmad_interface.GetCurrentStateCase());
+
+  // Verify that state transitions were recorded to logs.
+  base::Value logs(base::Value::Type::DICT);
+  json_store->GetValue(kLogs, &logs);
+  const base::Value::List* events = logs.GetDict().FindList(kEvents);
+  EXPECT_EQ(1, events->size());
+
+  const base::Value::Dict& event1 = (*events)[0].GetDict();
+  EXPECT_EQ(static_cast<int>(RmadState::kComponentsRepair),
+            event1.FindDict(kDetails)->FindInt(kFromStateId));
+  EXPECT_EQ(static_cast<int>(RmadState::kWelcome),
+            event1.FindDict(kDetails)->FindInt(kToStateId));
 }
 
 TEST_F(RmadInterfaceImplTest, TransitionPreviousState_NoHistory) {

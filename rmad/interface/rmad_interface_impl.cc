@@ -21,6 +21,7 @@
 #include <re2/re2.h>
 
 #include "rmad/constants.h"
+#include "rmad/logs/logs_utils.h"
 #include "rmad/metrics/metrics_utils_impl.h"
 #include "rmad/proto_bindings/rmad.pb.h"
 #include "rmad/system/power_manager_client_impl.h"
@@ -378,6 +379,12 @@ GetStateReply RmadInterfaceImpl::TransitionNextStateInternal(
     LOG(ERROR) << "Could not update state metrics.";
   }
 
+  // Append to logs.
+  if (!RecordStateTransitionToLogs(json_store_, current_state_case_,
+                                   next_state_case)) {
+    LOG(ERROR) << "Could not add state transition to logs.";
+  }
+
   // Update state and run it.
   current_state_case_ = next_state_case;
   next_state_handler->RunState();
@@ -454,6 +461,12 @@ GetStateReply RmadInterfaceImpl::TransitionPreviousStateInternal() {
     // TODO(genechang): Add error replies when failed to update state metrics
     //                  in |json_store| -> |metrics| -> |state_metrics|.
     LOG(ERROR) << "Could not update state metrics.";
+  }
+
+  // Append to logs.
+  if (!RecordStateTransitionToLogs(json_store_, current_state_case_,
+                                   prev_state_case)) {
+    LOG(ERROR) << "Could not add state transition to logs.";
   }
 
   // Update state and run it.
