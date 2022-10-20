@@ -268,7 +268,7 @@ TEST_F(HibernateResumeBootTest, NoHibermanFile) {
 
 TEST_F(HibernateResumeBootTest, HibermanFail) {
   stateful_mount_->SetStateDevForTest(state_dev_);
-  base::FilePath hiberman = base_dir_.Append("sbin/hiberman");
+  base::FilePath hiberman = base_dir_.Append("usr/sbin/hiberman");
   ASSERT_TRUE(CreateDirAndWriteFile(hiberman, "1"));
 
   EXPECT_CALL(*mock_platform_, RunHiberman(hiber_init_log_))
@@ -279,7 +279,7 @@ TEST_F(HibernateResumeBootTest, HibermanFail) {
 
 TEST_F(HibernateResumeBootTest, HibermanSuccess) {
   stateful_mount_->SetStateDevForTest(state_dev_);
-  base::FilePath hiberman = base_dir_.Append("sbin/hiberman");
+  base::FilePath hiberman = base_dir_.Append("usr/sbin/hiberman");
   ASSERT_TRUE(CreateDirAndWriteFile(hiberman, "1"));
 
   EXPECT_CALL(*mock_platform_, RunHiberman(hiber_init_log_))

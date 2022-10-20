@@ -47,7 +47,7 @@ constexpr char kQuotaOpt[] = "quota";
 constexpr char kQuotaProjectOpt[] = "project";
 constexpr char kDumpe2fsStatefulLog[] = "run/dumpe2fs_stateful.log";
 
-constexpr char kHiberman[] = "sbin/hiberman";
+constexpr char kHiberman[] = "usr/sbin/hiberman";
 constexpr char kHiberResumeInitLog[] = "run/hibernate/hiber-resume-init.log";
 constexpr char kDevMapper[] = "dev/mapper";
 constexpr char kUnencryptedRW[] = "unencrypted-rw";

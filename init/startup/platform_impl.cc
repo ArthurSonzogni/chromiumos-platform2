@@ -81,7 +81,7 @@ void Platform::BootAlert(const std::string& arg) {
 
 bool Platform::RunHiberman(const base::FilePath& output_file) {
   brillo::ProcessImpl hiberman;
-  hiberman.AddArg("/sbin/hiberman");
+  hiberman.AddArg("/usr/sbin/hiberman");
   hiberman.AddArg("resume-init");
   hiberman.AddArg("-v");
   hiberman.RedirectOutput(output_file.value());
