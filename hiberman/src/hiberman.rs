@@ -29,6 +29,7 @@ mod snapwatch;
 mod splitter;
 mod suspend;
 mod sysfs;
+mod update_engine;
 mod volume;
 
 use crate::dbus::send_abort;

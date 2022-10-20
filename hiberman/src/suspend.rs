@@ -69,6 +69,7 @@ use crate::snapdev::SnapshotMode;
 use crate::snapdev::UswsuspUserKey;
 use crate::splitter::ImageSplitter;
 use crate::sysfs::Swappiness;
+use crate::update_engine::is_update_engine_idle;
 use crate::volume::VolumeManager;
 
 /// Define the swappiness value we'll set during hibernation.
@@ -138,6 +139,16 @@ impl SuspendConductor {
             .metrics_send_duration_sample("SetupLVMFiles", duration, 30);
 
         self.options = options;
+
+        // Don't hibernate if the update engine is up to something, as we would
+        // not want to hibernate if upon reboot the other slot gets booted.
+        // While an update is "pending reboot", the update engine might do
+        // further checks for updates it can apply. So no state except idle is
+        // safe.
+        if !is_update_engine_idle()? {
+            return Err(HibernateError::UpdateEngineBusyError()).context("Update engine is active");
+        }
+
         // Don't allow the logfile to log as it creates a deadlock.
         log_file.set_logging(false);
         let fs_stats = Self::get_fs_stats()?;

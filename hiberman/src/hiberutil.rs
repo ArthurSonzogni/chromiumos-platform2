@@ -121,6 +121,9 @@ pub enum HibernateError {
     /// Merge timeout error
     #[error("Merge timeout error")]
     MergeTimeoutError(),
+    /// Update engine busy error
+    #[error("Update engine busy")]
+    UpdateEngineBusyError(),
 }
 
 /// Options taken from the command line affecting hibernate.
