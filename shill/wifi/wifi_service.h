@@ -503,6 +503,10 @@ class WiFiService : public Service {
   base::Time disconnect_time_;
   uint16_t frequency_;
   std::vector<uint16_t> frequency_list_;
+  // Physical mode (802.11n/ac/ax) advertised by the AP we're connecting to,
+  // regardless of the actual mode used by the device (e.g. |physical_mode_|
+  // would be 802.11ax is the AP advertises it, even if the WiFi adapter
+  // only supports 802.11ac).
   uint16_t physical_mode_;
   // The raw dBm signal strength from the associated endpoint.
   int16_t raw_signal_strength_;
