@@ -359,12 +359,11 @@ StatusOr<ScopedKey> KeyManagementTpm2::LoadKey(const OperationPolicy& policy,
   if (auto_reload == AutoReload::kTrue) {
     key_type = KeyTpm2::Type::kReloadableTransientKey;
     reload_data = KeyReloadDataTpm2{
-        .policy = policy,
         .key_blob = key_blob,
     };
   }
 
-  return LoadKeyInternal(key_type, key_handle, reload_data);
+  return LoadKeyInternal(policy, key_type, key_handle, reload_data);
 }
 
 StatusOr<ScopedKey> KeyManagementTpm2::GetPersistentKey(
@@ -388,7 +387,8 @@ StatusOr<ScopedKey> KeyManagementTpm2::GetPersistentKey(
 
   ASSIGN_OR_RETURN(
       ScopedKey key,
-      LoadKeyInternal(KeyTpm2::Type::kPersistentKey, key_handle,
+      LoadKeyInternal(OperationPolicy{}, KeyTpm2::Type::kPersistentKey,
+                      key_handle,
                       /*reload_data=*/std::nullopt),
       _.WithStatus<TPMError>("Failed to side load persistent key"));
 
@@ -416,7 +416,8 @@ StatusOr<brillo::Blob> KeyManagementTpm2::GetPubkeyHash(Key key) {
 }
 
 StatusOr<ScopedKey> KeyManagementTpm2::SideLoadKey(uint32_t key_handle) {
-  return LoadKeyInternal(KeyTpm2::Type::kPersistentKey, key_handle,
+  return LoadKeyInternal(OperationPolicy{}, KeyTpm2::Type::kPersistentKey,
+                         key_handle,
                          /*reload_data=*/std::nullopt);
 }
 
@@ -427,6 +428,7 @@ StatusOr<uint32_t> KeyManagementTpm2::GetKeyHandle(Key key) {
 }
 
 StatusOr<ScopedKey> KeyManagementTpm2::LoadKeyInternal(
+    const OperationPolicy& policy,
     KeyTpm2::Type key_type,
     uint32_t key_handle,
     std::optional<KeyReloadDataTpm2> reload_data) {
@@ -443,6 +445,7 @@ StatusOr<ScopedKey> KeyManagementTpm2::LoadKeyInternal(
                               .key_handle = key_handle,
                               .cache =
                                   KeyTpm2::Cache{
+                                      .policy = policy,
                                       .public_area = std::move(public_area),
                                   },
                               .reload_data = std::move(reload_data),
@@ -532,7 +535,8 @@ StatusOr<ScopedKey> KeyManagementTpm2::LoadPublicKeyFromSpki(
                       public_key.key_exponent, nullptr, &key_handle)))
       .WithStatus<TPMError>("Failed to load RSA public key");
 
-  return LoadKeyInternal(KeyTpm2::Type::kTransientKey, key_handle,
+  return LoadKeyInternal(OperationPolicy{}, KeyTpm2::Type::kTransientKey,
+                         key_handle,
                          /*reload_data=*/std::nullopt);
 }
 

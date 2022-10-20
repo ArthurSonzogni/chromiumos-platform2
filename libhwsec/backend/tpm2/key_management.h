@@ -27,7 +27,6 @@ namespace hwsec {
 class BackendTpm2;
 
 struct KeyReloadDataTpm2 {
-  OperationPolicy policy;
   brillo::Blob key_blob;
 };
 
@@ -39,6 +38,7 @@ struct KeyTpm2 {
   };
 
   struct Cache {
+    OperationPolicy policy;
     NoDefault<trunks::TPMT_PUBLIC> public_area;
   };
 
@@ -95,6 +95,7 @@ class KeyManagementTpm2 : public Backend::KeyManagement,
                                          const CreateKeyOptions& options,
                                          AutoReload auto_reload);
   StatusOr<ScopedKey> LoadKeyInternal(
+      const OperationPolicy& policy,
       KeyTpm2::Type key_type,
       uint32_t key_handle,
       std::optional<KeyReloadDataTpm2> reload_data);
