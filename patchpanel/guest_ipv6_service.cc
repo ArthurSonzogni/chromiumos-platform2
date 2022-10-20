@@ -91,6 +91,11 @@ void GuestIPv6Service::StartForwarding(const std::string& ifname_uplink,
   if (it != forward_record_.end()) {
     forward_method = it->method;
     it->downstream_ifnames.insert(ifname_downlink);
+  } else if (forward_method_override_.find(ifname_uplink) !=
+             forward_method_override_.end()) {
+    forward_method = forward_method_override_[ifname_uplink];
+    forward_record_.push_back(ForwardEntry{
+        forward_method, ifname_uplink, std::set<std::string>{ifname_downlink}});
   } else {
     ShillClient::Device upstream_shill_device;
     shill_client_->GetDeviceProperties(ifname_uplink, &upstream_shill_device);
@@ -301,7 +306,21 @@ void GuestIPv6Service::StopLocalHotspot(
 
 void GuestIPv6Service::SetForwardMethod(const std::string& ifname_uplink,
                                         ForwardMethod method) {
-  NOTIMPLEMENTED();
+  forward_method_override_[ifname_uplink] = method;
+
+  std::vector<ForwardEntry>::iterator it;
+  for (it = forward_record_.begin(); it != forward_record_.end(); it++) {
+    if (it->upstream_ifname == ifname_uplink)
+      break;
+  }
+  if (it != forward_record_.end()) {
+    // Need a copy here since StopUplink() will modify the record
+    auto downlinks = it->downstream_ifnames;
+    StopUplink(ifname_uplink);
+    for (const auto& downlink : downlinks) {
+      StartForwarding(ifname_uplink, downlink);
+    }
+  }
 }
 
 void GuestIPv6Service::SendNDProxyControl(

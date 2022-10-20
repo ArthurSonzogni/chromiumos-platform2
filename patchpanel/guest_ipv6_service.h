@@ -99,6 +99,7 @@ class GuestIPv6Service {
   System* system_;
 
   std::vector<ForwardEntry> forward_record_;
+  std::map<std::string, ForwardMethod> forward_method_override_;
 
   // We cache the if_ids of netdevices when start forwarding to ensure that the
   // same ones are used when stop forwarding. Note that it is possible that the
