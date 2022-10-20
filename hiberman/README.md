@@ -1,7 +1,7 @@
 # Hiberman - The Hibernate Manager
 
 This package implements the Hibernate Manager, a userspace system utility that
-orchestrates hibernate and resume on Chrome OS.
+orchestrates hibernate and resume on ChromeOS.
 
 ## What is hibernate
 
@@ -58,7 +58,7 @@ hibernation looks like. Hiberman gets a little more directly involved with this
 process by utilizing a kernel feature called userland-swsusp. This feature
 exposes a snapshot device at /dev/snapshot, and enables a usermode process to
 individually orchestrate many of the steps listed above. This has a number of
-key advantages for Chrome OS:
+key advantages for ChromeOS:
 
  * The hibernate image can be encrypted with a key derived from user
    authentication (eg the user's password and the TPM)
@@ -252,7 +252,7 @@ and metadata itself?
 In an old traditional disk partitioning scheme, the partition layout is fixed at
 build time and very challenging to change once set up. The Logical Volume
 Manager (LVM) allows straightforward dynamic creation and destruction of logical
-volumes that effectively work like partitions. Chrome OS uses a "thinpool" to
+volumes that effectively work like partitions. ChromeOS uses a "thinpool" to
 support logical volumes, meaning that storage space from the underlying disk
 isn't reserved until a process tries to write to a previously unused region of a
 logical volume.
@@ -334,7 +334,7 @@ helpers:
  * diskfile.rs - Provides a Read, Write, and Seek abstraction for "disk files",
    which operate directly on the partition areas underneath a particular file
    system file.
- * fiemap.rs - Provides a friendier interface to the fiemap ioctl, returning the
+ * fiemap.rs - Provides a friendlier interface to the fiemap ioctl, returning the
    set of extents on disk which comprise a file system file. This is used by the
    DiskFile object to get disk information for a file.
  * files.rs - A loose collection of functions that create or open the stateful
@@ -350,14 +350,14 @@ helpers:
  * imagemover.rs - The "pump" of the hibernate image pipeline, this is the
    component calling read() and write() to move data between two file
    descriptors.
- * keyman.rs - Encapsluates creation and management of the asymmetric key pair
+ * keyman.rs - Encapsulates creation and management of the asymmetric key pair
    used to protect the private hibernate metadata.
  * lvm.rs - Helper functions for dealing with LVM.
  * metrics.rs - Handles saving and replaying metrics throughout the hibernate
    and resume process.
  * mmapbuf.rs - A helper object to create large aligned buffers (which are a
    requirement for files opened with O_DIRECT).
- * powerd.rs - Handles interactions with the Chrome OS power daemon.
+ * powerd.rs - Handles interactions with the ChromeOS power daemon.
  * preloader.rs - An object that can be inserted in the image pipeline that will
    load contents from disk early and store it in memory for a spell.
  * snapdev.rs - Encapsulates ioctl interactions with /dev/snapshot.
