@@ -14,12 +14,14 @@
 #include "secagentd/daemon.h"
 #include "secagentd/message_sender.h"
 #include "secagentd/plugins.h"
+#include "secagentd/process_cache.h"
 
 namespace secagentd {
 
 Daemon::Daemon(struct Inject injected) {
   bpf_plugin_factory_ = std::move(injected.bpf_plugin_factory_);
   message_sender_ = std::move(injected.message_sender_);
+  process_cache_ = std::move(injected.process_cache_);
 }
 
 int Daemon::OnInit() {
@@ -47,12 +49,16 @@ int Daemon::OnInit() {
     }
   }
 
+  if (process_cache_ == nullptr) {
+    process_cache_ = base::MakeRefCounted<ProcessCache>();
+  }
+
   return EX_OK;
 }
 
 int Daemon::CreateAndRunBpfPlugins() {
-  auto plugin =
-      bpf_plugin_factory_->Create(Types::Plugin::kProcess, message_sender_);
+  auto plugin = bpf_plugin_factory_->Create(Types::Plugin::kProcess,
+                                            message_sender_, process_cache_);
 
   if (!plugin) {
     return EX_SOFTWARE;

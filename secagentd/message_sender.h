@@ -10,10 +10,10 @@
 
 #include "absl/status/status.h"
 #include "base/task/sequenced_task_runner.h"
+#include "google/protobuf/message_lite.h"
 #include "missive/client/report_queue.h"
 #include "missive/proto/record_constants.pb.h"
 #include "missive/proto/security_xdr_events.pb.h"
-#include "secagentd/bpf/process.h"
 
 namespace secagentd {
 
@@ -21,7 +21,10 @@ class MessageSenderInterface
     : public base::RefCountedThreadSafe<MessageSenderInterface> {
  public:
   virtual absl::Status InitializeQueues() = 0;
-  virtual absl::Status SendMessage(const bpf::cros_event& event) = 0;
+  virtual absl::Status SendMessage(
+      reporting::Destination destination,
+      cros_xdr::reporting::CommonEventDataFields* mutable_common,
+      std::unique_ptr<google::protobuf::MessageLite> message) = 0;
   virtual ~MessageSenderInterface() = default;
 };
 
@@ -30,8 +33,13 @@ class MessageSender : public MessageSenderInterface {
   // Initializes a queue for each destination and stores result into queue_map.
   absl::Status InitializeQueues() override;
 
-  // Creates and enqueues a proto message with given bpf event.
-  absl::Status SendMessage(const bpf::cros_event& event) override;
+  // Creates and enqueues a given proto message to the given destination.
+  // Populates mutable_common with common fields if not nullptr. mutable_common
+  // must be owned within message.
+  absl::Status SendMessage(
+      reporting::Destination destination,
+      cros_xdr::reporting::CommonEventDataFields* mutable_common,
+      std::unique_ptr<google::protobuf::MessageLite> message) override;
 
  private:
   // Map linking each destination to its corresponding Report_Queue.

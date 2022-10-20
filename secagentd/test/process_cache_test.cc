@@ -11,6 +11,7 @@
 #include "base/files/file_path.h"
 #include "base/files/file_util.h"
 #include "base/files/scoped_temp_dir.h"
+#include "base/memory/scoped_refptr.h"
 #include "gmock/gmock.h"  // IWYU pragma: keep
 #include "gtest/gtest.h"
 #include "missive/proto/security_xdr_events.pb.h"
@@ -39,9 +40,9 @@ void ExpectPartialMatch(pb::Process& expected, pb::Process& actual) {
 }
 }  // namespace
 
-namespace secagentd {
+namespace secagentd::testing {
 
-class ProcessCacheTest : public ::testing::Test {
+class ProcessCacheTestFixture : public ::testing::Test {
  protected:
   struct MockProcFsFile {
     std::string procstat;
@@ -221,13 +222,13 @@ class ProcessCacheTest : public ::testing::Test {
         0100755);
   }
 
-  std::unique_ptr<ProcessCache> process_cache_;
+  scoped_refptr<ProcessCache> process_cache_;
   base::ScopedTempDir fake_root_;
   std::map<uint64_t, MockProcFsFile> mock_procfs_;
   std::map<uint64_t, MockBpfSpawnEvent> mock_spawns_;
 };
 
-TEST_F(ProcessCacheTest, TestStableUuid) {
+TEST_F(ProcessCacheTestFixture, TestStableUuid) {
   const bpf::cros_process_start& process_start =
       mock_spawns_[kPidChildOfChild].process_start;
   process_cache_->PutFromBpfExec(mock_spawns_[kPidChildOfChild].process_start);
@@ -243,7 +244,7 @@ TEST_F(ProcessCacheTest, TestStableUuid) {
   EXPECT_NE(before[0]->process_uuid(), before[1]->process_uuid());
 }
 
-TEST_F(ProcessCacheTest, ProcfsCacheHit) {
+TEST_F(ProcessCacheTestFixture, ProcfsCacheHit) {
   const bpf::cros_process_start& process_start =
       mock_spawns_[kPidChildOfChild].process_start;
   process_cache_->PutFromBpfExec(process_start);
@@ -266,7 +267,7 @@ TEST_F(ProcessCacheTest, ProcfsCacheHit) {
   ExpectPartialMatch(mock_procfs_[kPidInit].expected_proto, *before[2]);
 }
 
-TEST_F(ProcessCacheTest, BpfCacheHit) {
+TEST_F(ProcessCacheTestFixture, BpfCacheHit) {
   const bpf::cros_process_start bpf_child = {
       .pid = 9999,
       .ppid = kPidChildOfChild,
@@ -288,7 +289,7 @@ TEST_F(ProcessCacheTest, BpfCacheHit) {
   ExpectPartialMatch(mock_procfs_[kPidInit].expected_proto, *actual[3]);
 }
 
-TEST_F(ProcessCacheTest, TruncateAtInit) {
+TEST_F(ProcessCacheTestFixture, TruncateAtInit) {
   const bpf::cros_process_start& process_start =
       mock_spawns_[kPidChildOfChild].process_start;
   process_cache_->PutFromBpfExec(process_start);
@@ -298,7 +299,7 @@ TEST_F(ProcessCacheTest, TruncateAtInit) {
   EXPECT_EQ(3, actual.size());
 }
 
-TEST_F(ProcessCacheTest, TruncateOnBpfParentPidReuse) {
+TEST_F(ProcessCacheTestFixture, TruncateOnBpfParentPidReuse) {
   bpf::cros_process_start& process_start =
       mock_spawns_[kPidChildOfChild].process_start;
   process_start.parent_start_time -= 10;
@@ -309,7 +310,7 @@ TEST_F(ProcessCacheTest, TruncateOnBpfParentPidReuse) {
   EXPECT_EQ(1, actual.size());
 }
 
-TEST_F(ProcessCacheTest, TruncateOnBpfParentNotFound) {
+TEST_F(ProcessCacheTestFixture, TruncateOnBpfParentNotFound) {
   bpf::cros_process_start& process_start =
       mock_spawns_[kPidChildOfChild].process_start;
   process_start.ppid -= 10;
@@ -320,7 +321,7 @@ TEST_F(ProcessCacheTest, TruncateOnBpfParentNotFound) {
   EXPECT_EQ(1, actual.size());
 }
 
-TEST_F(ProcessCacheTest, DontFailProcfsIfParentLinkageNotFound) {
+TEST_F(ProcessCacheTestFixture, DontFailProcfsIfParentLinkageNotFound) {
   bpf::cros_process_start& process_start =
       mock_spawns_[kPidChildOfChild].process_start;
   // "Kill" init
@@ -334,7 +335,7 @@ TEST_F(ProcessCacheTest, DontFailProcfsIfParentLinkageNotFound) {
   EXPECT_EQ(2, actual.size());
 }
 
-TEST_F(ProcessCacheTest, ParseTrickyComm) {
+TEST_F(ProcessCacheTestFixture, ParseTrickyComm) {
   bpf::cros_process_start& process_start =
       mock_spawns_[kPidChildOfChild].process_start;
   process_start.ppid = kPidTrickyComm;
@@ -347,4 +348,4 @@ TEST_F(ProcessCacheTest, ParseTrickyComm) {
   EXPECT_EQ(3, actual.size());
 }
 
-}  // namespace secagentd
+}  // namespace secagentd::testing

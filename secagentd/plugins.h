@@ -11,8 +11,10 @@
 #include "absl/status/status.h"
 #include "absl/strings/str_format.h"
 #include "base/memory/scoped_refptr.h"
+#include "missive/proto/security_xdr_events.pb.h"
 #include "secagentd/bpf_skeleton_wrappers.h"
 #include "secagentd/message_sender.h"
+#include "secagentd/process_cache.h"
 
 namespace secagentd {
 
@@ -29,20 +31,24 @@ class PluginInterface {
 class ProcessPlugin : public PluginInterface {
  public:
   ProcessPlugin(scoped_refptr<BpfSkeletonFactoryInterface> bpf_skeleton_factory,
-                scoped_refptr<MessageSenderInterface> message_sender);
+                scoped_refptr<MessageSenderInterface> message_sender,
+                scoped_refptr<ProcessCacheInterface> process_cache);
   bool PolicyIsEnabled() const override;
   // Load, verify and attach the process BPF applications.
   absl::Status Activate() override;
   std::string GetName() const override;
 
-  void HandleRingBufferEvent(const bpf::cros_event& bpf_event) const;
+  void HandleRingBufferEvent(const bpf::cros_event& bpf_event);
   void HandleBpfRingBufferReadReady() const;
 
  private:
+  std::unique_ptr<cros_xdr::reporting::XdrProcessEvent> MakeExecEvent(
+      const secagentd::bpf::cros_process_start& process_start);
   // This is static because it must be accessible to a C style function.
   static struct BpfCallbacks callbacks_;
   base::WeakPtrFactory<ProcessPlugin> weak_ptr_factory_;
   scoped_refptr<MessageSenderInterface> message_sender_;
+  scoped_refptr<ProcessCacheInterface> process_cache_;
   scoped_refptr<BpfSkeletonFactoryInterface> factory_;
   std::unique_ptr<BpfSkeletonInterface> skeleton_wrapper_;
 };
@@ -53,7 +59,8 @@ class PluginFactoryInterface {
 
   virtual std::unique_ptr<PluginInterface> Create(
       PluginType type,
-      scoped_refptr<MessageSenderInterface> message_sender) = 0;
+      scoped_refptr<MessageSenderInterface> message_sender,
+      scoped_refptr<ProcessCacheInterface> process_cache) = 0;
   virtual ~PluginFactoryInterface() = default;
 };
 
@@ -79,7 +86,8 @@ class PluginFactory : public PluginFactoryInterface {
       : bpf_skeleton_factory_(bpf_skeleton_factory) {}
   std::unique_ptr<PluginInterface> Create(
       PluginType type,
-      scoped_refptr<MessageSenderInterface> message_sender) override;
+      scoped_refptr<MessageSenderInterface> message_sender,
+      scoped_refptr<ProcessCacheInterface> process_cache) override;
 
  private:
   scoped_refptr<BpfSkeletonFactoryInterface> bpf_skeleton_factory_;

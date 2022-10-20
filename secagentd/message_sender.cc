@@ -2,13 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "secagentd/message_sender.h"
+
 #include <map>
 #include <memory>
 #include <string>
 #include <utility>
 
 #include "absl/status/status.h"
-#include "base/strings/stringprintf.h"
 #include "base/task/sequenced_task_runner.h"
 #include "missive/client/report_queue.h"
 #include "missive/client/report_queue_configuration.h"
@@ -16,84 +17,21 @@
 #include "missive/proto/record_constants.pb.h"
 #include "missive/proto/security_xdr_events.pb.h"
 #include "missive/util/status.h"
-#include "secagentd/bpf/process.h"
-#include "secagentd/message_sender.h"
 
 namespace {
 
-// Fills a FileImage proto with contents from bpf image_info.
-void FillImage(const secagentd::bpf::cros_image_info& image,
-               cros_xdr::reporting::FileImage* proto) {
-  proto->set_pathname(std::string(image.pathname));
-  proto->set_mnt_ns(image.mnt_ns);
-  proto->set_inode_device_id(image.inode_device_id);
-  proto->set_inode(image.inode);
-  proto->set_canonical_uid(image.uid);
-  proto->set_canonical_gid(image.gid);
-  proto->set_mode(image.mode);
-}
-
-// Fills a Namespaces proto with contents from bpf namespace_info.
-void FillNamespaces(const secagentd::bpf::cros_namespace_info& namespaces,
-                    cros_xdr::reporting::Namespaces* proto) {
-  proto->set_cgroup_ns(namespaces.cgroup_ns);
-  proto->set_pid_ns(namespaces.pid_ns);
-  proto->set_user_ns(namespaces.user_ns);
-  proto->set_uts_ns(namespaces.uts_ns);
-  proto->set_mnt_ns(namespaces.mnt_ns);
-  proto->set_net_ns(namespaces.net_ns);
-  proto->set_ipc_ns(namespaces.ipc_ns);
-}
-
-// Creates a ProcessExec proto from the contents of a bpf event.
-std::unique_ptr<cros_xdr::reporting::XdrProcessEvent> FillProcessExecEvent(
-    const secagentd::bpf::cros_process_start& event) {
-  auto process_event = std::make_unique<cros_xdr::reporting::XdrProcessEvent>();
-  auto process_start = process_event->mutable_process_exec();
-
-  // Fill process fields.
-  auto process = process_start->mutable_process();
-  process->set_canonical_pid(event.pid);
-  process->set_canonical_uid(event.uid);
-  process->set_commandline(event.commandline);
-
-  // Fill parent_process fields.
-  auto parent_process = process_start->mutable_parent_process();
-  parent_process->set_canonical_pid(event.ppid);
-
-  // Fill image fields.
-  FillImage(event.image_info, process->mutable_image());
-
-  // Fill namespace fields.
-  FillNamespaces(event.spawn_namespace,
-                 process_start->mutable_spawn_namespaces());
-
-  return process_event;
-}
-
-// Creates a ProcessExit proto from the contents of a bpf event.
-std::unique_ptr<cros_xdr::reporting::XdrProcessEvent> FillProcessExitEvent(
-    const secagentd::bpf::cros_process_exit& event) {
-  auto process_event = std::make_unique<cros_xdr::reporting::XdrProcessEvent>();
-  auto process_exit = process_event->mutable_process_terminate();
-
-  // Fill process fields.
-  auto process = process_exit->mutable_process();
-  process->set_canonical_pid(event.ppid);
-
-  return process_event;
-}
-
-void EnqueueCallback(secagentd::bpf::cros_process_event_type type,
+void EnqueueCallback(reporting::Destination destination,
                      ::reporting::Status status) {
   if (!status.ok()) {
-    LOG(ERROR) << type << ", status=" << status;
+    LOG(ERROR) << destination << ", status=" << status;
   }
 }
 
 }  // namespace
 
 namespace secagentd {
+
+namespace pb = cros_xdr::reporting;
 
 absl::Status MessageSender::InitializeQueues() {
   // Array of possible destinations.
@@ -116,43 +54,15 @@ absl::Status MessageSender::InitializeQueues() {
   return absl::OkStatus();
 }
 
-absl::Status MessageSender::SendMessage(const bpf::cros_event& event) {
-  switch (event.type) {
-    case bpf::process_type: {
-      auto it = queue_map_.find(reporting::CROS_SECURITY_PROCESS);
-      CHECK(it != queue_map_.end());
+absl::Status MessageSender::SendMessage(
+    reporting::Destination destination,
+    pb::CommonEventDataFields* mutable_common,
+    std::unique_ptr<google::protobuf::MessageLite> message) {
+  auto it = queue_map_.find(destination);
+  CHECK(it != queue_map_.end());
 
-      std::unique_ptr<const google::protobuf::MessageLite> proto;
-
-      switch (event.data.process_event.type) {
-        case bpf::process_start_type: {
-          proto =
-              FillProcessExecEvent(event.data.process_event.data.process_start);
-          break;
-        }
-        case bpf::process_exit_type: {
-          proto =
-              FillProcessExitEvent(event.data.process_event.data.process_exit);
-          break;
-        }
-        default: {
-          return absl::InvalidArgumentError(base::StringPrintf(
-              "SendMessage: unknown BPF process event type: %d",
-              event.data.process_event.type));
-        }
-      }
-
-      it->second.get()->Enqueue(
-          std::move(proto), ::reporting::SECURITY,
-          base::BindOnce(&EnqueueCallback, event.data.process_event.type));
-      break;
-    }
-    default: {
-      return absl::InvalidArgumentError(base::StringPrintf(
-          "SendMessage: unknown BPF event type: %d", event.type));
-    }
-  }
-
+  it->second.get()->Enqueue(std::move(message), ::reporting::SECURITY,
+                            base::BindOnce(&EnqueueCallback, destination));
   return absl::OkStatus();
 }
 

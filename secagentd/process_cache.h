@@ -12,13 +12,20 @@
 #include "absl/status/statusor.h"
 #include "base/containers/lru_cache.h"
 #include "base/files/file_path.h"
+#include "base/memory/ref_counted.h"
+#include "base/memory/scoped_refptr.h"
 #include "base/synchronization/lock.h"
 #include "missive/proto/security_xdr_events.pb.h"
 #include "secagentd/bpf/process.h"
 
 namespace secagentd {
 
-class ProcessCacheInterface {
+namespace testing {
+class ProcessCacheTestFixture;
+}
+
+class ProcessCacheInterface
+    : public base::RefCountedThreadSafe<ProcessCacheInterface> {
  public:
   virtual ~ProcessCacheInterface() = default;
   // Internalizes a process exec event from the BPF.
@@ -54,10 +61,10 @@ class ProcessCache : public ProcessCacheInterface {
                       bpf::time_ns_t start_time_ns,
                       int num_generations) override;
   // Allow calling the private test-only constructor without befriending
-  // unique_ptr.
+  // scoped_refptr.
   template <typename... Args>
-  static std::unique_ptr<ProcessCache> CreateForTesting(Args&&... args) {
-    return absl::WrapUnique(new ProcessCache(std::forward<Args>(args)...));
+  static scoped_refptr<ProcessCache> CreateForTesting(Args&&... args) {
+    return base::WrapRefCounted(new ProcessCache(std::forward<Args>(args)...));
   }
 
   ProcessCache(const ProcessCache&) = delete;
@@ -66,7 +73,7 @@ class ProcessCache : public ProcessCacheInterface {
   ProcessCache& operator=(ProcessCache&&) = delete;
 
  private:
-  friend class ProcessCacheTest;
+  friend class testing::ProcessCacheTestFixture;
   // Internal constructor used for testing.
   ProcessCache(const base::FilePath& root_path, uint64_t sc_clock_tck);
   // Like LRUCache::Get, returns an internal iterator to the given key. Unlike

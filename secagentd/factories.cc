@@ -7,6 +7,7 @@
 #include <utility>
 
 #include "absl/strings/str_format.h"
+#include "base/memory/scoped_refptr.h"
 #include "secagentd/bpf_skeleton_wrappers.h"
 #include "secagentd/message_sender.h"
 #include "secagentd/plugins.h"
@@ -79,16 +80,18 @@ PluginFactory::PluginFactory() {
 }
 
 std::unique_ptr<PluginInterface> PluginFactory::Create(
-    PluginType type, scoped_refptr<MessageSenderInterface> message_sender) {
+    PluginType type,
+    scoped_refptr<MessageSenderInterface> message_sender,
+    scoped_refptr<ProcessCacheInterface> process_cache) {
   std::unique_ptr<PluginInterface> rv{nullptr};
   switch (type) {
     case PluginType::kProcess:
       rv = std::make_unique<ProcessPlugin>(bpf_skeleton_factory_,
-                                           message_sender);
+                                           message_sender, process_cache);
       break;
 
-    case PluginType::kAgent:
-      break;
+    default:
+      CHECK(false) << "Unsupported plugin type";
   }
   return rv;
 }

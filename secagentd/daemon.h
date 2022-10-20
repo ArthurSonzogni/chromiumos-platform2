@@ -13,6 +13,7 @@
 #include "brillo/daemons/dbus_daemon.h"
 #include "secagentd/message_sender.h"
 #include "secagentd/plugins.h"
+#include "secagentd/process_cache.h"
 
 namespace secagentd {
 
@@ -27,6 +28,7 @@ class Daemon : public brillo::DBusDaemon {
   struct Inject {
     std::unique_ptr<PluginFactoryInterface> bpf_plugin_factory_;
     scoped_refptr<MessageSender> message_sender_;
+    scoped_refptr<ProcessCacheInterface> process_cache_;
   };
 
  public:
@@ -49,6 +51,7 @@ class Daemon : public brillo::DBusDaemon {
   base::RepeatingTimer heart_beat_;
   base::RepeatingTimer send_report_;
   scoped_refptr<MessageSender> message_sender_;
+  scoped_refptr<ProcessCacheInterface> process_cache_;
   std::unique_ptr<PluginFactoryInterface> bpf_plugin_factory_;
   std::vector<std::unique_ptr<PluginInterface>> bpf_plugins_;
 };
