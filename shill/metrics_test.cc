@@ -237,7 +237,7 @@ TEST_F(MetricsTest, WiFiServicePostReady) {
               SendEnumToUMA("Network.Shill.Wifi.EapInnerProtocol", _, _))
       .Times(0);
   wep_wifi_service_->frequency_ = 2412;
-  wep_wifi_service_->physical_mode_ = Metrics::kWiFiNetworkPhyMode11a;
+  wep_wifi_service_->ap_physical_mode_ = Metrics::kWiFiNetworkPhyMode11a;
   wep_wifi_service_->raw_signal_strength_ = kStrength;
   metrics_.NotifyServiceStateChanged(*wep_wifi_service_,
                                      Service::kStateConnected);
@@ -276,7 +276,7 @@ TEST_F(MetricsTest, WiFiServicePostReadyEAP) {
                         Metrics::kWiFiNetworkPhyMode11a,
                         Metrics::kWirelessSecurityWpa2Enterprise, -kStrength);
   eap_wifi_service_->frequency_ = 2412;
-  eap_wifi_service_->physical_mode_ = Metrics::kWiFiNetworkPhyMode11a;
+  eap_wifi_service_->ap_physical_mode_ = Metrics::kWiFiNetworkPhyMode11a;
   eap_wifi_service_->raw_signal_strength_ = kStrength;
   EXPECT_CALL(
       *eap_, OutputConnectionMetrics(&metrics_, Technology(Technology::kWiFi)));

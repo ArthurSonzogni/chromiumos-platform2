@@ -131,7 +131,7 @@ class WiFiService : public Service {
   const std::vector<uint16_t>& frequency_list() const {
     return frequency_list_;
   }
-  uint16_t physical_mode() const { return physical_mode_; }
+  uint16_t ap_physical_mode() const { return ap_physical_mode_; }
   uint16_t frequency() const { return frequency_; }
   const WiFiSecurity& security() const { return security_; }
   const std::string& security_class() const { return security_class_; }
@@ -504,10 +504,10 @@ class WiFiService : public Service {
   uint16_t frequency_;
   std::vector<uint16_t> frequency_list_;
   // Physical mode (802.11n/ac/ax) advertised by the AP we're connecting to,
-  // regardless of the actual mode used by the device (e.g. |physical_mode_|
+  // regardless of the actual mode used by the device (e.g. |ap_physical_mode_|
   // would be 802.11ax is the AP advertises it, even if the WiFi adapter
   // only supports 802.11ac).
-  uint16_t physical_mode_;
+  uint16_t ap_physical_mode_;
   // The raw dBm signal strength from the associated endpoint.
   int16_t raw_signal_strength_;
   std::string hex_ssid_;

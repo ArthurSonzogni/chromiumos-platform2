@@ -636,7 +636,7 @@ void WiFi::ConnectTo(WiFiService* service, Error* error) {
     LOG(INFO) << "Connecting to: " << service->log_name() << ", "
               << "mode: " << service->mode() << ", "
               << "key management: " << service->key_management() << ", "
-              << "physical mode: " << service->physical_mode() << ", "
+              << "AP physical mode: " << service->ap_physical_mode() << ", "
               << "frequency: " << service->frequency();
     // This is a signal to SetPendingService(nullptr) to not modify the scan
     // state since the overall story arc isn't reflected by the disconnect.

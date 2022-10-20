@@ -1523,30 +1523,30 @@ TEST_F(WiFiServiceUpdateFromEndpointsTest, PhysicalMode) {
   EXPECT_CALL(adaptor, EmitBoolChanged(_, _)).Times(AnyNumber());
 
   // No endpoints -> undef.
-  EXPECT_EQ(Metrics::kWiFiNetworkPhyModeUndef, service->physical_mode());
+  EXPECT_EQ(Metrics::kWiFiNetworkPhyModeUndef, service->ap_physical_mode());
 
   // Endpoint has unknown physical mode -> undef.
   ok_endpoint->physical_mode_ = Metrics::kWiFiNetworkPhyModeUndef;
   service->AddEndpoint(ok_endpoint);
-  EXPECT_EQ(Metrics::kWiFiNetworkPhyModeUndef, service->physical_mode());
+  EXPECT_EQ(Metrics::kWiFiNetworkPhyModeUndef, service->ap_physical_mode());
 
   // New endpoint with 802.11a -> 802.11a.
   good_endpoint->physical_mode_ = Metrics::kWiFiNetworkPhyMode11a;
   service->AddEndpoint(good_endpoint);
-  EXPECT_EQ(Metrics::kWiFiNetworkPhyMode11a, service->physical_mode());
+  EXPECT_EQ(Metrics::kWiFiNetworkPhyMode11a, service->ap_physical_mode());
 
   // Remove 802.11a endpoint -> undef.
   service->RemoveEndpoint(good_endpoint);
-  EXPECT_EQ(Metrics::kWiFiNetworkPhyModeUndef, service->physical_mode());
+  EXPECT_EQ(Metrics::kWiFiNetworkPhyModeUndef, service->ap_physical_mode());
 
   // Change endpoint -> take endpoint's new value.
   ok_endpoint->physical_mode_ = Metrics::kWiFiNetworkPhyMode11n;
   service->NotifyEndpointUpdated(ok_endpoint);
-  EXPECT_EQ(Metrics::kWiFiNetworkPhyMode11n, service->physical_mode());
+  EXPECT_EQ(Metrics::kWiFiNetworkPhyMode11n, service->ap_physical_mode());
 
   // No endpoints -> undef.
   service->RemoveEndpoint(ok_endpoint);
-  EXPECT_EQ(Metrics::kWiFiNetworkPhyModeUndef, service->physical_mode());
+  EXPECT_EQ(Metrics::kWiFiNetworkPhyModeUndef, service->ap_physical_mode());
 }
 
 TEST_F(WiFiServiceUpdateFromEndpointsTest, WarningOnDisconnect) {

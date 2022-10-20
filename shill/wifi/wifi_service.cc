@@ -134,7 +134,7 @@ WiFiService::WiFiService(Manager* manager,
       mode_(mode),
       hidden_ssid_(hidden_ssid),
       frequency_(0),
-      physical_mode_(Metrics::kWiFiNetworkPhyModeUndef),
+      ap_physical_mode_(Metrics::kWiFiNetworkPhyModeUndef),
       raw_signal_strength_(0),
       cipher_8021x_(kCryptoNone),
       suspected_credential_failures_(0),
@@ -173,7 +173,7 @@ WiFiService::WiFiService(Manager* manager,
   store->RegisterBool(kWifiHiddenSsid, &hidden_ssid_);
   store->RegisterConstUint16(kWifiFrequency, &frequency_);
   store->RegisterConstUint16s(kWifiFrequencyListProperty, &frequency_list_);
-  store->RegisterConstUint16(kWifiPhyMode, &physical_mode_);
+  store->RegisterConstUint16(kWifiPhyMode, &ap_physical_mode_);
   store->RegisterConstString(kWifiBSsid, &bssid_);
   store->RegisterConstString(kCountryProperty, &country_code_);
   store->RegisterConstStringmap(kWifiVendorInformationProperty,
@@ -801,11 +801,11 @@ void WiFiService::SendPostReadyStateMetrics(
       Metrics::WiFiFrequencyToChannel(frequency_),
       Metrics::kMetricNetworkChannelMax);
 
-  DCHECK(physical_mode_ < Metrics::kWiFiNetworkPhyModeMax);
+  DCHECK(ap_physical_mode_ < Metrics::kWiFiNetworkPhyModeMax);
   metrics()->SendEnumToUMA(
       metrics()->GetFullMetricName(Metrics::kMetricNetworkPhyModeSuffix,
                                    technology()),
-      static_cast<Metrics::WiFiNetworkPhyMode>(physical_mode_),
+      static_cast<Metrics::WiFiNetworkPhyMode>(ap_physical_mode_),
       Metrics::kWiFiNetworkPhyModeMax);
 
   Metrics::WirelessSecurity security_uma;
@@ -954,7 +954,7 @@ Metrics::WiFiConnectionAttemptInfo WiFiService::ConnectionAttemptInfo() const {
 
   Metrics::WiFiConnectionAttemptInfo info;
   info.type = Metrics::kAttemptTypeUnknown;  // TODO(b/203692510)
-  info.mode = static_cast<Metrics::WiFiNetworkPhyMode>(physical_mode());
+  info.mode = static_cast<Metrics::WiFiNetworkPhyMode>(ap_physical_mode());
   info.security = Metrics::WiFiSecurityToEnum(security());
   info.eap_inner = Metrics::EapInnerProtocolStringToEnum(eap()->inner_method());
   info.eap_outer = Metrics::EapOuterProtocolStringToEnum(eap()->method());
@@ -1348,7 +1348,7 @@ void WiFiService::UpdateFromEndpoints() {
   std::string bssid;
   std::string country_code;
   Stringmap vendor_information;
-  uint16_t physical_mode = Metrics::kWiFiNetworkPhyModeUndef;
+  uint16_t ap_physical_mode = Metrics::kWiFiNetworkPhyModeUndef;
   int16_t prev_raw_signal_strength = raw_signal_strength_;
   // Represent "unknown raw signal strength" as 0.
   raw_signal_strength_ = 0;
@@ -1359,7 +1359,7 @@ void WiFiService::UpdateFromEndpoints() {
     bssid = representative_endpoint->bssid_string();
     country_code = representative_endpoint->country_code();
     vendor_information = representative_endpoint->GetVendorInformation();
-    physical_mode = representative_endpoint->physical_mode();
+    ap_physical_mode = representative_endpoint->physical_mode();
   }
 
   if (frequency_ != frequency) {
@@ -1379,9 +1379,9 @@ void WiFiService::UpdateFromEndpoints() {
     adaptor()->EmitStringmapChanged(kWifiVendorInformationProperty,
                                     vendor_information_);
   }
-  if (physical_mode_ != physical_mode) {
-    physical_mode_ = physical_mode;
-    adaptor()->EmitUint16Changed(kWifiPhyMode, physical_mode_);
+  if (ap_physical_mode_ != ap_physical_mode) {
+    ap_physical_mode_ = ap_physical_mode;
+    adaptor()->EmitUint16Changed(kWifiPhyMode, ap_physical_mode_);
   }
   adaptor()->EmitUint16sChanged(kWifiFrequencyListProperty, frequency_list_);
   if (prev_raw_signal_strength != raw_signal_strength_) {
