@@ -57,6 +57,7 @@ static_library("libsecagent") {
     "factories.cc",
     "message_sender.cc",
     "process_bpf_skeleton.cc",
+    "process_cache.cc",
     "process_plugin.cc",
   ]
   configs += [ ":target_defaults" ]
@@ -78,6 +79,7 @@ if (use.test) {
     sources = [
       "test/bpf_skeleton_factory_tests.cc",
       "test/plugin_tests.cc",
+      "test/process_cache_test.cc",
     ]
     configs += [
       "//common-mk:test",
