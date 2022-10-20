@@ -4,6 +4,7 @@
 
 import("//common-mk/generate-dbus-adaptors.gni")
 import("//common-mk/pkg_config.gni")
+import("//common-mk/proto_library.gni")
 
 group("all") {
   deps = [
@@ -149,4 +150,10 @@ if (use.fuzzer) {
     ]
     deps = [ ":libfeatured" ]
   }
+}
+
+proto_library("featured_proto") {
+  proto_in_dir = "./proto"
+  proto_out_dir = "include/featured"
+  sources = [ "${proto_in_dir}/featured.proto" ]
 }
