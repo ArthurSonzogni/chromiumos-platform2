@@ -37,6 +37,7 @@ class MockFactory : public Factory {
               GetClientFrontend,
               (),
               (override));
+  MOCK_METHOD(std::unique_ptr<ChapsFrontend>, GetChapsFrontend, (), (override));
 };
 
 }  // namespace hwsec

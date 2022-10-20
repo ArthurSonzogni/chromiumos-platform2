@@ -103,6 +103,8 @@ class Middleware {
   explicit Middleware(MiddlewareDerivative middleware_derivative)
       : middleware_derivative_(middleware_derivative) {}
 
+  MiddlewareDerivative Derive() { return middleware_derivative_; }
+
   template <auto Func, typename... Args>
   auto CallSync(Args&&... args) {
     auto task = base::BindOnce(

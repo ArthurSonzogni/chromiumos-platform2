@@ -211,6 +211,7 @@ source_set("hardware_abstraction_external_library") {
   sources = [
     "${root_gen_dir}/include/libhwsec/structures/signature_sealed_data.cc",
     "factory/factory_impl.cc",
+    "frontend/chaps/frontend_impl.cc",
     "frontend/client/frontend_impl.cc",
     "frontend/cryptohome/frontend_impl.cc",
     "frontend/pinweaver/frontend_impl.cc",
