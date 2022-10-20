@@ -55,11 +55,13 @@ class ArchiveMounterTest : public ::testing::Test {
   }
 
  protected:
+  static constexpr char kFileSystemType[] = "archivefs";
+
   std::unique_ptr<ArchiveMounter> CreateMounter(
       std::vector<int> password_needed_codes) {
     return std::make_unique<ArchiveMounter>(
-        &platform_, &process_reaper_, kArchiveType, &metrics_, "ArchiveMetrics",
-        std::move(password_needed_codes),
+        &platform_, &process_reaper_, kFileSystemType, kArchiveType, &metrics_,
+        "ArchiveMetrics", std::move(password_needed_codes),
         std::make_unique<FakeSandboxedProcessFactory>());
   }
 
@@ -78,6 +80,11 @@ class ArchiveMounterTest : public ::testing::Test {
   brillo::ProcessReaper process_reaper_;
   Metrics metrics_;
 };
+
+TEST_F(ArchiveMounterTest, FileSystemType) {
+  const auto mounter = CreateMounter({});
+  EXPECT_EQ(mounter->filesystem_type(), kFileSystemType);
+}
 
 TEST_F(ArchiveMounterTest, CanMount) {
   auto mounter = CreateMounter({});

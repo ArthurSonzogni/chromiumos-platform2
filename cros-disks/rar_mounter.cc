@@ -32,6 +32,7 @@ RarMounter::RarMounter(const Platform* platform,
     : ArchiveMounter(platform,
                      process_reaper,
                      "rar",
+                     "rar",
                      metrics,
                      "Rar2fs",
                      {12,   // ERAR_BAD_DATA

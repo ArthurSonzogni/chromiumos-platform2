@@ -108,6 +108,7 @@ class FUSEMounter : public Mounter {
 
   const Platform* platform() const { return platform_; }
   brillo::ProcessReaper* process_reaper() const { return process_reaper_; }
+  std::string filesystem_type() const { return filesystem_type_; }
 
   // Mounter overrides:
   std::unique_ptr<MountPoint> Mount(const std::string& source,

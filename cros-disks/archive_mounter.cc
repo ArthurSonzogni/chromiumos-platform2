@@ -19,6 +19,7 @@ namespace cros_disks {
 ArchiveMounter::ArchiveMounter(
     const Platform* platform,
     brillo::ProcessReaper* process_reaper,
+    std::string filesystem_type,
     std::string archive_type,
     Metrics* metrics,
     std::string metrics_name,
@@ -28,7 +29,7 @@ ArchiveMounter::ArchiveMounter(
     : FUSEMounter(
           platform,
           process_reaper,
-          archive_type + "fs",
+          std::move(filesystem_type),
           {.metrics = metrics,
            .metrics_name = std::move(metrics_name),
            .password_needed_exit_codes = std::move(password_needed_exit_codes),

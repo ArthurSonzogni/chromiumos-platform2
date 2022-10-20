@@ -55,7 +55,7 @@ bool ArchiveManager::Initialize() {
     }
 
     mounters_.push_back(std::make_unique<ArchiveMounter>(
-        platform(), process_reaper(), "zip", metrics(), "FuseZip",
+        platform(), process_reaper(), "zip", "zip", metrics(), "FuseZip",
         std::move(password_needed_exit_codes), std::move(sandbox_factory),
         std::move(opts)));
   }
@@ -130,7 +130,7 @@ bool ArchiveManager::Initialize() {
       opts.push_back("--redact");
 
     mounters_.push_back(std::make_unique<ArchiveMounter>(
-        platform(), process_reaper(), ext, metrics(), "FuseArchive",
+        platform(), process_reaper(), "archive", ext, metrics(), "FuseArchive",
         std::move(password_needed_exit_codes), std::move(sandbox_factory),
         std::move(opts)));
   }

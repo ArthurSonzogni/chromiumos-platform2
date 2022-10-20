@@ -22,6 +22,7 @@ class ArchiveMounter : public FUSEMounter {
 
   ArchiveMounter(const Platform* platform,
                  brillo::ProcessReaper* process_reaper,
+                 std::string filesystem_type,
                  std::string archive_type,
                  Metrics* metrics,
                  std::string metrics_name,

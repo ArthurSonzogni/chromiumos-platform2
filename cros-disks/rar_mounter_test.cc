@@ -42,6 +42,10 @@ class RarMounterTest : public testing::Test {
                             std::make_unique<FakeSandboxedProcessFactory>()};
 };
 
+TEST_F(RarMounterTest, FileSystemType) {
+  EXPECT_EQ(mounter_.filesystem_type(), "rar");
+}
+
 TEST_F(RarMounterTest, Increment) {
   std::string s;
   const auto inc = [&s] { return RarMounter::Increment(s.begin(), s.end()); };
