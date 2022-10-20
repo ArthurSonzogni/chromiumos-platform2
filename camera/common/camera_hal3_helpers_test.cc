@@ -435,6 +435,45 @@ TEST(Camera3CaptureDescriptor, ToJsonStringTest) {
             dict_view.FindInt(kCameraTraceKeyPartialResult));
 }
 
+TEST(Camera3CaptureDescriptor, AddListItemToMetadataTag) {
+  android::CameraMetadata metadata;
+  const android::CameraMetadata& const_metadata = metadata;
+  // Update to null tag.
+  EXPECT_TRUE(AddListItemToMetadataTag(&metadata,
+                                       ANDROID_REQUEST_AVAILABLE_REQUEST_KEYS,
+                                       ANDROID_CONTROL_AE_MODE));
+  {
+    camera_metadata_ro_entry entry =
+        const_metadata.find(ANDROID_REQUEST_AVAILABLE_REQUEST_KEYS);
+    EXPECT_EQ(entry.count, 1);
+    EXPECT_EQ(entry.data.i32[0], ANDROID_CONTROL_AE_MODE);
+  }
+  // Update more items.
+  EXPECT_TRUE(AddListItemToMetadataTag(&metadata,
+                                       ANDROID_REQUEST_AVAILABLE_REQUEST_KEYS,
+                                       ANDROID_CONTROL_AF_MODE));
+  EXPECT_TRUE(AddListItemToMetadataTag(&metadata,
+                                       ANDROID_REQUEST_AVAILABLE_REQUEST_KEYS,
+                                       ANDROID_CONTROL_AWB_MODE));
+  {
+    camera_metadata_ro_entry entry =
+        const_metadata.find(ANDROID_REQUEST_AVAILABLE_REQUEST_KEYS);
+    EXPECT_EQ(entry.count, 3);
+    EXPECT_EQ(entry.data.i32[0], ANDROID_CONTROL_AE_MODE);
+    EXPECT_EQ(entry.data.i32[1], ANDROID_CONTROL_AF_MODE);
+    EXPECT_EQ(entry.data.i32[2], ANDROID_CONTROL_AWB_MODE);
+  }
+  // Update with an existing item.
+  EXPECT_TRUE(AddListItemToMetadataTag(&metadata,
+                                       ANDROID_REQUEST_AVAILABLE_REQUEST_KEYS,
+                                       ANDROID_CONTROL_AF_MODE));
+  {
+    camera_metadata_ro_entry entry =
+        const_metadata.find(ANDROID_REQUEST_AVAILABLE_REQUEST_KEYS);
+    EXPECT_EQ(entry.count, 3);
+  }
+}
+
 }  // namespace cros
 
 int main(int argc, char** argv) {

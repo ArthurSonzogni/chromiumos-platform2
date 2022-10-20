@@ -66,6 +66,24 @@ Rect<uint32_t> GetCenteringFullCrop(Size size,
   return Rect<uint32_t>(dx, dy, crop_width, crop_height);
 }
 
+bool AddListItemToMetadataTag(android::CameraMetadata* metadata,
+                              uint32_t tag,
+                              int32_t item) {
+  camera_metadata_entry_t entry = metadata->find(tag);
+  if (entry.count == 0) {
+    const int32_t data[] = {item};
+    return metadata->update(tag, data, 1) == 0;
+  }
+  const int32_t* begin = entry.data.i32;
+  const int32_t* end = entry.data.i32 + entry.count;
+  if (std::find(begin, end, item) != end) {
+    return true;
+  }
+  std::vector<int32_t> data(begin, end);
+  data.push_back(item);
+  return metadata->update(tag, data.data(), data.size()) == 0;
+}
+
 //
 // Camera3StreamConfiguration implementations.
 //

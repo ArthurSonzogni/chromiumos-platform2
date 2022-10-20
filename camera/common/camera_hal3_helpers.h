@@ -62,6 +62,10 @@ CROS_CAMERA_EXPORT Rect<uint32_t> GetCenteringFullCrop(Size size,
                                                        uint32_t aspect_ratio_x,
                                                        uint32_t aspect_ratio_y);
 
+bool AddListItemToMetadataTag(android::CameraMetadata* metadata,
+                              uint32_t tag,
+                              int32_t item);
+
 // A container for passing metadata across different StreamManipulator instances
 // to allow different feature implementations to communicate with one another.
 struct FeatureMetadata {
