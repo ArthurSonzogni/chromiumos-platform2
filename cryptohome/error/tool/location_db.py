@@ -1009,10 +1009,6 @@ class LocationDB:
         # Line number starts from 1.
         self._end_line = None
 
-        # '_next_value' is the next available enum value in locations.h.
-        # It is None if we are not loaded yet.
-        self._next_value = None
-
         # '_author_manager' is an instance of AuthorManager, for managing the
         # start location and separator comment blocks in locations.h
         self._author_manager = AuthorManager()
@@ -1138,7 +1134,6 @@ class LocationDB:
         self._lines = None
         self._start_line = None
         self._end_line = None
-        self._next_value = None
         self.value_to_symbol = None
         # Format the result
         subprocess.call(["clang-format", "-i", self.path])
@@ -1153,23 +1148,32 @@ class LocationDB:
             result: A dict of symbols found in source tree.
         """
 
+        taken = set()
+
         # Clear relevant fields in the current symbols.
-        self._next_value = self._author_manager.get_start()
         for sym in self.symbols.values():
             sym.line_num = []
             sym.path = []
             sym.index_in_file = []
             sym.allow_dup = sym.symbol in self._dup_allowlist
             if sym.value:
-                self._next_value = max(self._next_value, sym.value + 1)
+                taken.add(sym.value)
+
+        next_value = self._author_manager.get_start()
+
+        def _get_next_value(next_value_param):
+            while next_value_param in taken:
+                next_value_param += 1
+            taken.add(next_value_param)
+            return next_value_param
 
         for sym in result.values():
             if sym.symbol in self.symbols:
                 self.symbols[sym.symbol].merge(sym)
             else:
                 self.symbols[sym.symbol] = sym
-                self.symbols[sym.symbol].value = self._next_value
-                self._next_value += 1
+                next_value = _get_next_value(next_value)
+                self.symbols[sym.symbol].value = next_value
 
         self._build_reverse_map()
 
