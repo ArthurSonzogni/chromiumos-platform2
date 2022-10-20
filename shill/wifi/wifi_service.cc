@@ -5,6 +5,7 @@
 #include "shill/wifi/wifi_service.h"
 
 #include <algorithm>
+#include <cstdint>
 #include <limits>
 #include <map>
 #include <string>
@@ -801,11 +802,15 @@ void WiFiService::SendPostReadyStateMetrics(
       Metrics::WiFiFrequencyToChannel(frequency_),
       Metrics::kMetricNetworkChannelMax);
 
-  DCHECK(ap_physical_mode_ < Metrics::kWiFiNetworkPhyModeMax);
+  uint16_t ap_phy = ap_physical_mode_;
+  if (ap_phy >= Metrics::kWiFiNetworkPhyModeMax) {
+    LOG(WARNING) << "Invalid AP PHY mode " << ap_phy;
+    ap_phy = Metrics::kWiFiNetworkPhyModeUndef;
+  }
   metrics()->SendEnumToUMA(
       metrics()->GetFullMetricName(Metrics::kMetricNetworkPhyModeSuffix,
                                    technology()),
-      static_cast<Metrics::WiFiNetworkPhyMode>(ap_physical_mode_),
+      static_cast<Metrics::WiFiNetworkPhyMode>(ap_phy),
       Metrics::kWiFiNetworkPhyModeMax);
 
   Metrics::WirelessSecurity security_uma;
@@ -815,7 +820,9 @@ void WiFiService::SendPostReadyStateMetrics(
     LOG(WARNING) << "Invalid Security property in ready state.";
     security_uma = Metrics::WiFiSecurityClassToEnum(security_class_);
   }
-  DCHECK(security_uma != Metrics::kWirelessSecurityUnknown);
+  if (security_uma == Metrics::kWirelessSecurityUnknown) {
+    LOG(WARNING) << "Unknown Security property in ready state.";
+  }
   // Special case for Dynamic WEP, let's report it separately for the initial
   // phase of FGSec deployment. TODO(b/226138492): Remove this afterwards.
   if (security_ == WiFiSecurity::kWep && Is8021x()) {
