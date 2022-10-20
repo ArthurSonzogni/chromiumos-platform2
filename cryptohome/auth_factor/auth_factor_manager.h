@@ -47,6 +47,11 @@ class AuthFactorManager final {
       AuthFactorType auth_factor_type,
       const std::string& auth_factor_label);
 
+  // Loads all configured auth factors for the given user from the disk.
+  // Malformed factors are logged and skipped.
+  std::map<std::string, std::unique_ptr<AuthFactor>> LoadAllAuthFactors(
+      const std::string& obfuscated_username);
+
   // Loads the list of configured auth factors from the user's data vault.
   LabelToTypeMap ListAuthFactors(const std::string& obfuscated_username);
 

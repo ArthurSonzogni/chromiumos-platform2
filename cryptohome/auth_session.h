@@ -73,9 +73,9 @@ class AuthSession final {
  public:
   using StatusCallback = base::OnceCallback<void(CryptohomeStatus)>;
 
-  // Caller needs to ensure that the passed raw pointers outlive the instance of
-  // AuthSession.
-  AuthSession(
+  // Creates new auth session for account_id. This method returns a unique_ptr
+  // to the created AuthSession for the auth_session_manager to hold.
+  static CryptohomeStatusOr<std::unique_ptr<AuthSession>> Create(
       std::string username,
       unsigned int flags,
       AuthIntent intent,
@@ -88,6 +88,7 @@ class AuthSession final {
       AuthFactorManager* auth_factor_manager,
       UserSecretStashStorage* user_secret_stash_storage,
       bool enable_create_backup_vk_with_uss);
+
   ~AuthSession();
 
   // Returns the full unhashed user name.
@@ -273,13 +274,34 @@ class AuthSession final {
   std::unique_ptr<brillo::SecureBlob> GetHibernateSecret();
 
  private:
+  // Caller needs to ensure that the passed raw pointers outlive the instance of
+  // AuthSession.
+  AuthSession(
+      std::string username,
+      unsigned int flags,
+      AuthIntent intent,
+      base::OnceCallback<void(const base::UnguessableToken&)> on_timeout,
+      Crypto* crypto,
+      Platform* platform,
+      UserSessionMap* user_session_map,
+      KeysetManagement* keyset_management,
+      AuthBlockUtility* auth_block_utility,
+      AuthFactorManager* auth_factor_manager,
+      UserSecretStashStorage* user_secret_stash_storage,
+      bool enable_create_backup_vk_with_uss);
+
   AuthSession() = delete;
+
+  // Initialize boolean variables and AuthFactor maps such as
+  // |label_to_auth_factor_|.
+  CryptohomeStatus Initialize();
+
   // AuthSessionTimedOut is called when the session times out and cleans up
   // credentials that may be in memory. |on_timeout_| is also called to remove
   // this |AuthSession| reference from |UserDataAuth|.
   void AuthSessionTimedOut();
 
-  // Emits a debug log message with the session's initial state.
+  // Emits a debug log message with this Auth Session's initial state.
   void RecordAuthSessionStart() const;
 
   // Switches the state to authorize the specified intents. Starts or restarts
@@ -624,6 +646,7 @@ class AuthSession final {
   friend class AuthSessionTest;
   friend class AuthSessionInterfaceTest;
   friend class AuthSessionManagerTest;
+  friend class AuthSessionTestWithKeysetManagement;
   FRIEND_TEST(AuthSessionManagerTest, CreateExpire);
   FRIEND_TEST(AuthSessionTest, AddCredentialNewUser);
   FRIEND_TEST(AuthSessionTest, AddCredentialNewUserTwice);
@@ -632,12 +655,21 @@ class AuthSession final {
   FRIEND_TEST(AuthSessionTest, AuthenticateWithPIN);
   FRIEND_TEST(AuthSessionTest, AuthenticateExistingUserFailure);
   FRIEND_TEST(AuthSessionTest, ExtensionTest);
+  FRIEND_TEST(AuthSessionTest, InitiallyNotAuthenticated);
+  FRIEND_TEST(AuthSessionTest, InitiallyNotAuthenticatedForExistingUser);
+  FRIEND_TEST(AuthSessionTest, Username);
+  FRIEND_TEST(AuthSessionTest, Intent);
   FRIEND_TEST(AuthSessionTest, TimeoutTest);
   FRIEND_TEST(AuthSessionTest, GetCredentialRegularUser);
   FRIEND_TEST(AuthSessionTest, GetCredentialKioskUser);
+  FRIEND_TEST(AuthSessionTestWithKeysetManagement, USSEnabledRemovesBackupVKs);
+  FRIEND_TEST(AuthSessionTestWithKeysetManagement, USSEnabledUpdateBackupVKs);
+  FRIEND_TEST(AuthSessionTestWithKeysetManagement,
+              USSRollbackAuthWithBackupVKSuccess);
   FRIEND_TEST(AuthSessionWithUssExperimentTest, AddPasswordAuthFactorViaUss);
   FRIEND_TEST(AuthSessionWithUssExperimentTest,
               AddPasswordAuthFactorViaAsyncUss);
+  FRIEND_TEST(AuthSessionWithUssExperimentTest, PrepareLegacyFingerprintAuth);
   FRIEND_TEST(AuthSessionWithUssExperimentTest, RemoveAuthFactor);
   FRIEND_TEST(UserDataAuthExTest, MountUnauthenticatedAuthSession);
   FRIEND_TEST(UserDataAuthExTest, StartAuthSession);

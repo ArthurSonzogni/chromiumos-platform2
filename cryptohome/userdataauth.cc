@@ -4046,19 +4046,21 @@ void UserDataAuth::StartAuthSession(
     return;
   }
 
-  AuthSession* auth_session = auth_session_manager_->CreateAuthSession(
-      request.account_id().account_id(), request.flags(), auth_intent.value(),
-      kEnableCreateBackupVK);
-  if (!auth_session) {
+  CryptohomeStatusOr<AuthSession*> auth_session_status =
+      auth_session_manager_->CreateAuthSession(
+          request.account_id().account_id(), request.flags(),
+          auth_intent.value(), kEnableCreateBackupVK);
+  if (!auth_session_status.ok()) {
     ReplyWithError(
         std::move(on_done), reply,
         MakeStatus<CryptohomeError>(
             CRYPTOHOME_ERR_LOC(kLocUserDataAuthCreateFailedInStartAuthSession),
             ErrorActionSet(
-                {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kReboot}),
-            user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_MOUNT_FATAL));
+                {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kReboot}))
+            .Wrap(std::move(auth_session_status).status()));
     return;
   }
+  AuthSession* auth_session = auth_session_status.value();
 
   reply.set_auth_session_id(auth_session->serialized_token());
   reply.set_user_exists(auth_session->user_exists());

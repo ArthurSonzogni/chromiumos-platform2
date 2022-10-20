@@ -13,6 +13,7 @@
 #include <base/check.h>
 #include <base/notreached.h>
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
+#include <libhwsec/status.h>
 
 #include "cryptohome/auth_blocks/auth_block_utility.h"
 #include "cryptohome/auth_factor/auth_factor_manager.h"
@@ -20,6 +21,11 @@
 #include "cryptohome/platform.h"
 #include "cryptohome/user_secret_stash_storage.h"
 #include "cryptohome/user_session/user_session_map.h"
+
+using cryptohome::error::CryptohomeError;
+using cryptohome::error::ErrorAction;
+using cryptohome::error::ErrorActionSet;
+using hwsec_foundation::status::MakeStatus;
 
 namespace cryptohome {
 
@@ -48,7 +54,7 @@ AuthSessionManager::AuthSessionManager(
   DCHECK(user_secret_stash_storage_);
 }
 
-AuthSession* AuthSessionManager::CreateAuthSession(
+CryptohomeStatusOr<AuthSession*> AuthSessionManager::CreateAuthSession(
     const std::string& account_id,
     uint32_t flags,
     AuthIntent auth_intent,
@@ -58,19 +64,31 @@ AuthSession* AuthSessionManager::CreateAuthSession(
   auto on_timeout = base::BindOnce(&AuthSessionManager::ExpireAuthSession,
                                    base::Unretained(this));
   // Assumption here is that keyset_management_ will outlive this AuthSession.
-  std::unique_ptr<AuthSession> auth_session = std::make_unique<AuthSession>(
-      account_id, flags, auth_intent, std::move(on_timeout), crypto_, platform_,
-      user_session_map_, keyset_management_, auth_block_utility_,
-      auth_factor_manager_, user_secret_stash_storage_,
-      enable_create_backup_vk_with_uss);
+  CryptohomeStatusOr<std::unique_ptr<AuthSession>> auth_session =
+      AuthSession::Create(account_id, flags, auth_intent, std::move(on_timeout),
+                          crypto_, platform_, user_session_map_,
+                          keyset_management_, auth_block_utility_,
+                          auth_factor_manager_, user_secret_stash_storage_,
+                          enable_create_backup_vk_with_uss);
 
-  auto token = auth_session->token();
-  if (auth_sessions_.count(token) > 0) {
-    LOG(ERROR) << "AuthSession token collision";
-    return nullptr;
+  if (!auth_session.ok()) {
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocAuthSessionManagerCreateFailed),
+        ErrorActionSet(
+            {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kReboot}),
+        user_data_auth::CRYPTOHOME_ERROR_UNUSABLE_VAULT);
   }
 
-  auth_sessions_.emplace(token, std::move(auth_session));
+  auto token = auth_session.value()->token();
+  if (auth_sessions_.count(token) > 0) {
+    LOG(ERROR) << "AuthSession token collision";
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocAuthSessionManagerTokenCollision),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        user_data_auth::CRYPTOHOME_ERROR_UNUSABLE_VAULT);
+  }
+
+  auth_sessions_.emplace(token, std::move(auth_session.value()));
   return auth_sessions_[token].get();
 }
 

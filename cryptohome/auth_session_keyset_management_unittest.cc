@@ -334,21 +334,22 @@ TEST_F(AuthSessionTestWithKeysetManagement, USSEnabledCreatesBackupVKs) {
 
   int flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE;
 
-  AuthSession auth_session(
-      kUsername, flags, AuthIntent::kDecrypt, /*on_timeout=*/base::DoNothing(),
-      &crypto_, &platform_, &user_session_map_, keyset_management_.get(),
-      auth_block_utility_.get(), &auth_factor_manager_,
-      &user_secret_stash_storage_, /*enable_create_backup_vk_with_uss =*/true);
+  CryptohomeStatusOr<AuthSession*> auth_session_status =
+      auth_session_manager_->CreateAuthSession(
+          kUsername, flags, AuthIntent::kDecrypt,
+          /*enable_create_backup_vk_with_uss =*/true);
+  EXPECT_TRUE(auth_session_status.ok());
+  AuthSession* auth_session = auth_session_status.value();
 
   // Test.
   EXPECT_THAT(AuthStatus::kAuthStatusFurtherFactorRequired,
-              auth_session.GetStatus());
-  EXPECT_TRUE(auth_session.OnUserCreated().ok());
-  EXPECT_EQ(auth_session.GetStatus(), AuthStatus::kAuthStatusAuthenticated);
+              auth_session->GetStatus());
+  EXPECT_TRUE(auth_session->OnUserCreated().ok());
+  EXPECT_EQ(auth_session->GetStatus(), AuthStatus::kAuthStatusAuthenticated);
 
   // Add an initial and an additional factor
-  AddFactor(auth_session, kPasswordLabel, kPassword);
-  AddFactor(auth_session, kPasswordLabel2, kPassword2);
+  AddFactor(*auth_session, kPasswordLabel, kPassword);
+  AddFactor(*auth_session, kPasswordLabel2, kPassword2);
 
   // Verify
   std::unique_ptr<VaultKeyset> vk1 =
@@ -360,8 +361,8 @@ TEST_F(AuthSessionTestWithKeysetManagement, USSEnabledCreatesBackupVKs) {
   EXPECT_NE(vk2, nullptr);
   EXPECT_TRUE(vk2->IsForBackup());
 
-  EXPECT_TRUE(auth_session.user_has_configured_auth_factor());
-  EXPECT_FALSE(auth_session.user_has_configured_credential());
+  EXPECT_TRUE(auth_session->user_has_configured_auth_factor());
+  EXPECT_FALSE(auth_session->user_has_configured_credential());
 
   SetUserSecretStashExperimentForTesting(/*enabled=*/false);
 }
@@ -374,21 +375,22 @@ TEST_F(AuthSessionTestWithKeysetManagement, USSDisabledNotCreatesBackupVKs) {
 
   int flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE;
 
-  AuthSession auth_session(
-      kUsername, flags, AuthIntent::kDecrypt, /*on_timeout=*/base::DoNothing(),
-      &crypto_, &platform_, &user_session_map_, keyset_management_.get(),
-      auth_block_utility_.get(), &auth_factor_manager_,
-      &user_secret_stash_storage_, /*enable_create_backup_vk_with_uss =*/true);
+  CryptohomeStatusOr<AuthSession*> auth_session_status =
+      auth_session_manager_->CreateAuthSession(
+          kUsername, flags, AuthIntent::kDecrypt,
+          /*enable_create_backup_vk_with_uss =*/true);
+  EXPECT_TRUE(auth_session_status.ok());
+  AuthSession* auth_session = auth_session_status.value();
 
   // Test.
   EXPECT_THAT(AuthStatus::kAuthStatusFurtherFactorRequired,
-              auth_session.GetStatus());
-  EXPECT_TRUE(auth_session.OnUserCreated().ok());
-  EXPECT_EQ(auth_session.GetStatus(), AuthStatus::kAuthStatusAuthenticated);
+              auth_session->GetStatus());
+  EXPECT_TRUE(auth_session->OnUserCreated().ok());
+  EXPECT_EQ(auth_session->GetStatus(), AuthStatus::kAuthStatusAuthenticated);
 
   // Add an initial and an additional factor
-  AddFactor(auth_session, kPasswordLabel, kPassword);
-  AddFactor(auth_session, kPasswordLabel2, kPassword2);
+  AddFactor(*auth_session, kPasswordLabel, kPassword);
+  AddFactor(*auth_session, kPasswordLabel2, kPassword2);
 
   // Verify
   std::unique_ptr<VaultKeyset> vk1 =
@@ -399,7 +401,7 @@ TEST_F(AuthSessionTestWithKeysetManagement, USSDisabledNotCreatesBackupVKs) {
       keyset_management_->GetVaultKeyset(users_[0].obfuscated, kPasswordLabel2);
   EXPECT_NE(vk2, nullptr);
   EXPECT_FALSE(vk2->IsForBackup());
-  EXPECT_TRUE(auth_session.user_has_configured_credential());
+  EXPECT_TRUE(auth_session->user_has_configured_credential());
 }
 
 // Test that backup VaultKeysets are removed together with the AuthFactor.
@@ -501,16 +503,23 @@ TEST_F(AuthSessionTestWithKeysetManagement,
 
   int flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE;
 
-  AuthSession auth_session(
-      kUsername, flags, AuthIntent::kDecrypt, /*on_timeout=*/base::DoNothing(),
+  // Attach the mock_auth_block_utility to our AuthSessionManager and created
+  // AuthSession.
+  auto auth_session_manager_impl_ = std::make_unique<AuthSessionManager>(
       &crypto_, &platform_, &user_session_map_, keyset_management_.get(),
       &mock_auth_block_utility_, &auth_factor_manager_,
-      &user_secret_stash_storage_, /*enable_create_backup_vk_with_uss =*/true);
+      &user_secret_stash_storage_);
+  CryptohomeStatusOr<AuthSession*> auth_session_status =
+      auth_session_manager_impl_->CreateAuthSession(
+          kUsername, flags, AuthIntent::kDecrypt,
+          /*enable_create_backup_vk_with_uss =*/true);
+  EXPECT_TRUE(auth_session_status.ok());
+  AuthSession* auth_session = auth_session_status.value();
 
   EXPECT_THAT(AuthStatus::kAuthStatusFurtherFactorRequired,
-              auth_session.GetStatus());
-  EXPECT_TRUE(auth_session.OnUserCreated().ok());
-  EXPECT_EQ(auth_session.GetStatus(), AuthStatus::kAuthStatusAuthenticated);
+              auth_session->GetStatus());
+  EXPECT_TRUE(auth_session->OnUserCreated().ok());
+  EXPECT_EQ(auth_session->GetStatus(), AuthStatus::kAuthStatusAuthenticated);
 
   EXPECT_CALL(mock_auth_block_utility_, GetAuthBlockTypeForCreation(_, _, _))
       .WillRepeatedly(Return(AuthBlockType::kTpmEcc));
@@ -542,7 +551,7 @@ TEST_F(AuthSessionTestWithKeysetManagement,
                  std::move(auth_block_state));
         return true;
       });
-  AddFactor(auth_session, kPasswordLabel, kPassword);
+  AddFactor(*auth_session, kPasswordLabel, kPassword);
 
   // KeyBlobs associated with second password.
   auto key_blobs2 = std::make_unique<KeyBlobs>();
@@ -571,27 +580,27 @@ TEST_F(AuthSessionTestWithKeysetManagement,
                  std::move(auth_block_state2));
         return true;
       });
-  UpdateFactor(auth_session, kPasswordLabel, kPassword2);
+  UpdateFactor(*auth_session, kPasswordLabel, kPassword2);
 
   std::unique_ptr<VaultKeyset> vk1 =
       keyset_management_->GetVaultKeyset(users_[0].obfuscated, kPasswordLabel);
   EXPECT_NE(vk1, nullptr);
   EXPECT_TRUE(vk1->IsForBackup());
-  EXPECT_TRUE(auth_session.user_has_configured_auth_factor());
-  EXPECT_FALSE(auth_session.user_has_configured_credential());
+  EXPECT_TRUE(auth_session->user_has_configured_auth_factor());
+  EXPECT_FALSE(auth_session->user_has_configured_credential());
 
   // Test
   // See that authentication with the backup password succeeds
   // if USS is disabled after the update.
   SetUserSecretStashExperimentForTesting(/*enabled=*/false);
-  AuthSession auth_session2(kUsername, flags, AuthIntent::kDecrypt,
-                            /*on_timeout=*/base::DoNothing(), &crypto_,
-                            &platform_, &user_session_map_,
-                            keyset_management_.get(), &mock_auth_block_utility_,
-                            &auth_factor_manager_, &user_secret_stash_storage_,
-                            /*enable_create_backup_vk_with_uss =*/true);
-  EXPECT_TRUE(auth_session2.user_has_configured_credential());
-  EXPECT_FALSE(auth_session2.user_has_configured_auth_factor());
+  CryptohomeStatusOr<AuthSession*> auth_session2_status =
+      auth_session_manager_impl_->CreateAuthSession(
+          kUsername, flags, AuthIntent::kDecrypt,
+          /*enable_create_backup_vk_with_uss =*/true);
+  EXPECT_TRUE(auth_session2_status.ok());
+  AuthSession* auth_session2 = auth_session2_status.value();
+  EXPECT_TRUE(auth_session2->user_has_configured_credential());
+  EXPECT_FALSE(auth_session2->user_has_configured_auth_factor());
 
   EXPECT_CALL(mock_auth_block_utility_,
               GetAuthBlockStateFromVaultKeyset(_, _, _))
@@ -615,10 +624,10 @@ TEST_F(AuthSessionTestWithKeysetManagement,
         return true;
       });
 
-  AuthenticateFactor(auth_session2, kPasswordLabel, kPassword2);
+  AuthenticateFactor(*auth_session2, kPasswordLabel, kPassword2);
 
   // Verify
-  EXPECT_EQ(auth_session2.GetStatus(), AuthStatus::kAuthStatusAuthenticated);
+  EXPECT_EQ(auth_session2->GetStatus(), AuthStatus::kAuthStatusAuthenticated);
 }
 
 // Test that authentication with backup VK succeeds when USS is rolled back.
@@ -685,14 +694,20 @@ TEST_F(AuthSessionTestWithKeysetManagement,
   // See that authentication with the backup password succeeds if USS is
   // disabled.
   SetUserSecretStashExperimentForTesting(/*enabled=*/false);
-  AuthSession auth_session2(kUsername, flags, AuthIntent::kDecrypt,
-                            /*on_timeout=*/base::DoNothing(), &crypto_,
-                            &platform_, &user_session_map_,
-                            keyset_management_.get(), &mock_auth_block_utility_,
-                            &auth_factor_manager_, &user_secret_stash_storage_,
-                            /*enable_create_backup_vk_with_uss =*/true);
-  EXPECT_TRUE(auth_session2.user_has_configured_credential());
-  EXPECT_FALSE(auth_session2.user_has_configured_auth_factor());
+  // Attach the mock_auth_block_utility to our AuthSessionManager and created
+  // AuthSession.
+  auto auth_session_manager_impl_ = std::make_unique<AuthSessionManager>(
+      &crypto_, &platform_, &user_session_map_, keyset_management_.get(),
+      &mock_auth_block_utility_, &auth_factor_manager_,
+      &user_secret_stash_storage_);
+  CryptohomeStatusOr<AuthSession*> auth_session2_status =
+      auth_session_manager_impl_->CreateAuthSession(
+          kUsername, flags, AuthIntent::kDecrypt,
+          /*enable_create_backup_vk_with_uss =*/true);
+  EXPECT_TRUE(auth_session2_status.ok());
+  AuthSession* auth_session2 = auth_session2_status.value();
+  EXPECT_TRUE(auth_session2->user_has_configured_credential());
+  EXPECT_FALSE(auth_session2->user_has_configured_auth_factor());
 
   EXPECT_CALL(mock_auth_block_utility_,
               GetAuthBlockStateFromVaultKeyset(_, _, _))
@@ -715,10 +730,10 @@ TEST_F(AuthSessionTestWithKeysetManagement,
         return true;
       });
 
-  AuthenticateFactor(auth_session2, kPasswordLabel, kPassword);
+  AuthenticateFactor(*auth_session2, kPasswordLabel, kPassword);
 
   // Verify
-  EXPECT_EQ(auth_session2.GetStatus(), AuthStatus::kAuthStatusAuthenticated);
+  EXPECT_EQ(auth_session2->GetStatus(), AuthStatus::kAuthStatusAuthenticated);
 }
 
 // Test that AuthSession list the non-backup VKs on session start
@@ -727,18 +742,19 @@ TEST_F(AuthSessionTestWithKeysetManagement, USSDisableddNotListBackupVKs) {
   SetUserSecretStashExperimentForTesting(/*enabled=*/false);
 
   int flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE;
-  AuthSession auth_session(
-      kUsername, flags, AuthIntent::kDecrypt, /*on_timeout=*/base::DoNothing(),
-      &crypto_, &platform_, &user_session_map_, keyset_management_.get(),
-      auth_block_utility_.get(), &auth_factor_manager_,
-      &user_secret_stash_storage_, /*enable_create_backup_vk_with_uss =*/true);
+  CryptohomeStatusOr<AuthSession*> auth_session_status =
+      auth_session_manager_->CreateAuthSession(
+          kUsername, flags, AuthIntent::kDecrypt,
+          /*enable_create_backup_vk_with_uss =*/true);
+  EXPECT_TRUE(auth_session_status.ok());
+  AuthSession* auth_session = auth_session_status.value();
   EXPECT_THAT(AuthStatus::kAuthStatusFurtherFactorRequired,
-              auth_session.GetStatus());
-  EXPECT_TRUE(auth_session.OnUserCreated().ok());
-  EXPECT_EQ(auth_session.GetStatus(), AuthStatus::kAuthStatusAuthenticated);
+              auth_session->GetStatus());
+  EXPECT_TRUE(auth_session->OnUserCreated().ok());
+  EXPECT_EQ(auth_session->GetStatus(), AuthStatus::kAuthStatusAuthenticated);
   // Add factors
-  AddFactor(auth_session, kPasswordLabel, kPassword);
-  AddFactor(auth_session, kPasswordLabel2, kPassword2);
+  AddFactor(*auth_session, kPasswordLabel, kPassword);
+  AddFactor(*auth_session, kPasswordLabel2, kPassword2);
   std::unique_ptr<VaultKeyset> vk1 =
       keyset_management_->GetVaultKeyset(users_[0].obfuscated, kPasswordLabel);
   EXPECT_NE(vk1, nullptr);
@@ -747,22 +763,23 @@ TEST_F(AuthSessionTestWithKeysetManagement, USSDisableddNotListBackupVKs) {
   EXPECT_NE(vk2, nullptr);
 
   // Test
-  AuthSession auth_session2(
-      kUsername, flags, AuthIntent::kDecrypt, /*on_timeout=*/base::DoNothing(),
-      &crypto_, &platform_, &user_session_map_, keyset_management_.get(),
-      auth_block_utility_.get(), &auth_factor_manager_,
-      &user_secret_stash_storage_, /*enable_create_backup_vk_with_uss =*/true);
+  CryptohomeStatusOr<AuthSession*> auth_session2_status =
+      auth_session_manager_->CreateAuthSession(
+          kUsername, flags, AuthIntent::kDecrypt,
+          /*enable_create_backup_vk_with_uss =*/true);
+  EXPECT_TRUE(auth_session2_status.ok());
+  AuthSession* auth_session2 = auth_session2_status.value();
 
   // Verify
   EXPECT_FALSE(vk1->IsForBackup());
   EXPECT_FALSE(vk2->IsForBackup());
-  EXPECT_TRUE(auth_session2.user_has_configured_credential());
+  EXPECT_TRUE(auth_session2->user_has_configured_credential());
   // Map contains the password, but when user_has_configured_credential is
   // false, this means factor are not backed by a non-backup VK
-  EXPECT_NE(auth_session2.label_to_auth_factor().find(kPasswordLabel),
-            auth_session2.label_to_auth_factor().end());
-  EXPECT_NE(auth_session2.label_to_auth_factor().find(kPasswordLabel2),
-            auth_session2.label_to_auth_factor().end());
+  EXPECT_NE(auth_session2->label_to_auth_factor().find(kPasswordLabel),
+            auth_session2->label_to_auth_factor().end());
+  EXPECT_NE(auth_session2->label_to_auth_factor().find(kPasswordLabel2),
+            auth_session2->label_to_auth_factor().end());
 }
 
 // Test that AuthSession list the backup VKs on session start if USS is disabled
@@ -772,44 +789,46 @@ TEST_F(AuthSessionTestWithKeysetManagement, USSRollbackListBackupVKs) {
   SetUserSecretStashExperimentForTesting(/*enabled=*/true);
 
   int flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE;
-  AuthSession auth_session(
-      kUsername, flags, AuthIntent::kDecrypt, /*on_timeout=*/base::DoNothing(),
-      &crypto_, &platform_, &user_session_map_, keyset_management_.get(),
-      auth_block_utility_.get(), &auth_factor_manager_,
-      &user_secret_stash_storage_, /*enable_create_backup_vk_with_uss =*/true);
+  CryptohomeStatusOr<AuthSession*> auth_session_status =
+      auth_session_manager_->CreateAuthSession(
+          kUsername, flags, AuthIntent::kDecrypt,
+          /*enable_create_backup_vk_with_uss =*/true);
+  EXPECT_TRUE(auth_session_status.ok());
+  AuthSession* auth_session = auth_session_status.value();
   EXPECT_THAT(AuthStatus::kAuthStatusFurtherFactorRequired,
-              auth_session.GetStatus());
-  EXPECT_TRUE(auth_session.OnUserCreated().ok());
-  EXPECT_EQ(auth_session.GetStatus(), AuthStatus::kAuthStatusAuthenticated);
+              auth_session->GetStatus());
+  EXPECT_TRUE(auth_session->OnUserCreated().ok());
+  EXPECT_EQ(auth_session->GetStatus(), AuthStatus::kAuthStatusAuthenticated);
   // Add factors
-  AddFactor(auth_session, kPasswordLabel, kPassword);
-  AddFactor(auth_session, kPasswordLabel2, kPassword2);
+  AddFactor(*auth_session, kPasswordLabel, kPassword);
+  AddFactor(*auth_session, kPasswordLabel2, kPassword2);
   std::unique_ptr<VaultKeyset> vk1 =
       keyset_management_->GetVaultKeyset(users_[0].obfuscated, kPasswordLabel);
   EXPECT_NE(vk1, nullptr);
   std::unique_ptr<VaultKeyset> vk2 =
       keyset_management_->GetVaultKeyset(users_[0].obfuscated, kPasswordLabel2);
   EXPECT_NE(vk2, nullptr);
-  EXPECT_TRUE(auth_session.user_has_configured_auth_factor());
-  EXPECT_FALSE(auth_session.user_has_configured_credential());
+  EXPECT_TRUE(auth_session->user_has_configured_auth_factor());
+  EXPECT_FALSE(auth_session->user_has_configured_credential());
 
   // Test
   SetUserSecretStashExperimentForTesting(/*enabled=*/false);
-  AuthSession auth_session2(
-      kUsername, flags, AuthIntent::kDecrypt, /*on_timeout=*/base::DoNothing(),
-      &crypto_, &platform_, &user_session_map_, keyset_management_.get(),
-      auth_block_utility_.get(), &auth_factor_manager_,
-      &user_secret_stash_storage_, /*enable_create_backup_vk_with_uss =*/true);
+  CryptohomeStatusOr<AuthSession*> auth_session2_status =
+      auth_session_manager_->CreateAuthSession(
+          kUsername, flags, AuthIntent::kDecrypt,
+          /*enable_create_backup_vk_with_uss =*/true);
+  EXPECT_TRUE(auth_session2_status.ok());
+  AuthSession* auth_session2 = auth_session2_status.value();
 
   // Verify
   EXPECT_TRUE(vk1->IsForBackup());
   EXPECT_TRUE(vk2->IsForBackup());
-  EXPECT_TRUE(auth_session2.user_has_configured_credential());
+  EXPECT_TRUE(auth_session2->user_has_configured_credential());
 
-  EXPECT_NE(auth_session2.label_to_auth_factor().find(kPasswordLabel),
-            auth_session2.label_to_auth_factor().end());
-  EXPECT_NE(auth_session2.label_to_auth_factor().find(kPasswordLabel2),
-            auth_session2.label_to_auth_factor().end());
+  EXPECT_NE(auth_session2->label_to_auth_factor().find(kPasswordLabel),
+            auth_session2->label_to_auth_factor().end());
+  EXPECT_NE(auth_session2->label_to_auth_factor().find(kPasswordLabel2),
+            auth_session2->label_to_auth_factor().end());
 }
 
 }  // namespace cryptohome

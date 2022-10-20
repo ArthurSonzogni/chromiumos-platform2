@@ -422,6 +422,22 @@ AuthFactorManager::LoadAuthFactor(const std::string& obfuscated_username,
                                       auth_factor_metadata, auth_block_state);
 }
 
+std::map<std::string, std::unique_ptr<AuthFactor>>
+AuthFactorManager::LoadAllAuthFactors(const std::string& obfuscated_username) {
+  std::map<std::string, std::unique_ptr<AuthFactor>> label_to_auth_factor;
+  for (const auto& [label, auth_factor_type] :
+       ListAuthFactors(obfuscated_username)) {
+    CryptohomeStatusOr<std::unique_ptr<AuthFactor>> auth_factor =
+        LoadAuthFactor(obfuscated_username, auth_factor_type, label);
+    if (!auth_factor.ok()) {
+      LOG(WARNING) << "Skipping malformed auth factor " << label;
+      continue;
+    }
+    label_to_auth_factor.emplace(label, std::move(auth_factor).value());
+  }
+  return label_to_auth_factor;
+}
+
 AuthFactorManager::LabelToTypeMap AuthFactorManager::ListAuthFactors(
     const std::string& obfuscated_username) {
   LabelToTypeMap label_to_type_map;

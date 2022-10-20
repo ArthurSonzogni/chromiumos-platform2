@@ -16,6 +16,7 @@
 #include <base/containers/flat_set.h>
 #include <base/containers/span.h>
 #include <base/logging.h>
+#include <base/memory/ptr_util.h>
 #include <base/strings/string_piece.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
@@ -103,26 +104,6 @@ std::string IntentSetToDebugString(const base::flat_set<AuthIntent>& intents) {
   return base::JoinString(strings, ",");
 }
 
-// Loads all configured auth factors for the given user from the disk. Malformed
-// factors are logged and skipped.
-std::map<std::string, std::unique_ptr<AuthFactor>> LoadAllAuthFactors(
-    const std::string& obfuscated_username,
-    AuthFactorManager* auth_factor_manager) {
-  std::map<std::string, std::unique_ptr<AuthFactor>> label_to_auth_factor;
-  for (const auto& [label, auth_factor_type] :
-       auth_factor_manager->ListAuthFactors(obfuscated_username)) {
-    CryptohomeStatusOr<std::unique_ptr<AuthFactor>> auth_factor =
-        auth_factor_manager->LoadAuthFactor(obfuscated_username,
-                                            auth_factor_type, label);
-    if (!auth_factor.ok()) {
-      LOG(WARNING) << "Skipping malformed auth factor " << label;
-      continue;
-    }
-    label_to_auth_factor.emplace(label, std::move(auth_factor).value());
-  }
-  return label_to_auth_factor;
-}
-
 cryptorecovery::RequestMetadata RequestMetadataFromProto(
     const user_data_auth::GetRecoveryRequestRequest& request) {
   cryptorecovery::RequestMetadata result;
@@ -176,6 +157,37 @@ CryptohomeStatus RemoveKeysetByLabel(KeysetManagement& keyset_management,
 }
 }  // namespace
 
+CryptohomeStatusOr<std::unique_ptr<AuthSession>> AuthSession::Create(
+    std::string account_id,
+    unsigned int flags,
+    AuthIntent intent,
+    base::OnceCallback<void(const base::UnguessableToken&)> on_timeout,
+    Crypto* crypto,
+    Platform* platform,
+    UserSessionMap* user_session_map,
+    KeysetManagement* keyset_management,
+    AuthBlockUtility* auth_block_utility,
+    AuthFactorManager* auth_factor_manager,
+    UserSecretStashStorage* user_secret_stash_storage,
+    bool enable_create_backup_vk_with_uss) {
+  // Assumption here is that keyset_management_ will outlive this AuthSession.
+  auto auth_session = base::WrapUnique(new AuthSession(
+      account_id, flags, intent, std::move(on_timeout), crypto, platform,
+      user_session_map, keyset_management, auth_block_utility,
+      auth_factor_manager, user_secret_stash_storage,
+      enable_create_backup_vk_with_uss));
+
+  if (!auth_session->Initialize().ok()) {
+    LOG(ERROR) << "AuthSession could not be initialized.";
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocAuthSessionCreateInitializedFail),
+        ErrorActionSet(
+            {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kReboot}),
+        user_data_auth::CRYPTOHOME_ERROR_UNUSABLE_VAULT);
+  }
+  return auth_session;
+}
+
 AuthSession::AuthSession(
     std::string username,
     unsigned int flags,
@@ -215,13 +227,28 @@ AuthSession::AuthSession(
   DCHECK(auth_block_utility_);
   DCHECK(auth_factor_manager_);
   DCHECK(user_secret_stash_storage_);
+}
 
-  // TODO(hardikgoyal): make a factory function for AuthSession so the
-  // constructor doesn't need to do work
+AuthSession::~AuthSession() {
+  std::string append_string = is_ephemeral_user_ ? ".Ephemeral" : ".Persistent";
+  ReportTimerDuration(kAuthSessionTotalLifetimeTimer,
+                      auth_session_creation_time_, append_string);
+  ReportTimerDuration(kAuthSessionAuthenticatedLifetimeTimer,
+                      authenticated_time_, append_string);
+  for (auto auth_factor_type : active_auth_factor_types) {
+    auto status = auth_block_utility_->TerminateAuthFactor(auth_factor_type);
+    if (!status.ok()) {
+      LOG(ERROR) << "Stopping auth factor "
+                 << AuthFactorTypeToString(auth_factor_type)
+                 << " failed: " << status;
+    }
+  }
+}
+
+CryptohomeStatus AuthSession::Initialize() {
   auth_session_creation_time_ = base::TimeTicks::Now();
-
   converter_ =
-      std::make_unique<AuthFactorVaultKeysetConverter>(keyset_management);
+      std::make_unique<AuthFactorVaultKeysetConverter>(keyset_management_);
 
   // Try to determine if a user exists in two ways: they have a persistent
   // homedir, or they have an active mount. The latter can happen if the user is
@@ -236,7 +263,6 @@ AuthSession::AuthSession(
   // Decide on USS vs VaultKeyset based on what is on the disk for the user.
   // If at least one non-backup VK exists, don't take USS path even if the
   // experiment is enabled.
-  //
   // After USS is enabled there will be backup VKs in disk. They are used for
   // authentication only if USS is disabled after once being enabled.
   std::map<std::string, std::unique_ptr<AuthFactor>>
@@ -268,27 +294,12 @@ AuthSession::AuthSession(
 
   if (!user_has_configured_credential_) {
     label_to_auth_factor_ =
-        LoadAllAuthFactors(obfuscated_username_, auth_factor_manager_);
+        auth_factor_manager_->LoadAllAuthFactors(obfuscated_username_);
     user_has_configured_auth_factor_ = !label_to_auth_factor_.empty();
   }
 
   RecordAuthSessionStart();
-}
-
-AuthSession::~AuthSession() {
-  std::string append_string = is_ephemeral_user_ ? ".Ephemeral" : ".Persistent";
-  ReportTimerDuration(kAuthSessionTotalLifetimeTimer,
-                      auth_session_creation_time_, append_string);
-  ReportTimerDuration(kAuthSessionAuthenticatedLifetimeTimer,
-                      authenticated_time_, append_string);
-  for (auto auth_factor_type : active_auth_factor_types) {
-    auto status = auth_block_utility_->TerminateAuthFactor(auth_factor_type);
-    if (!status.ok()) {
-      LOG(ERROR) << "Stopping auth factor "
-                 << AuthFactorTypeToString(auth_factor_type)
-                 << " failed: " << status;
-    }
-  }
+  return OkStatus<CryptohomeCryptoError>();
 }
 
 void AuthSession::AuthSessionTimedOut() {
