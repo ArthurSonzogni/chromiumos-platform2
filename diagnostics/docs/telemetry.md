@@ -862,6 +862,7 @@ event --help`.
 | kGyro | Angular velocity sensor, also known as Gyro sensor. |
 | kAngle | Angle sensor. |
 | kGravity | Gravity sensor. |
+| kMagn | Magnetometer. |
 
 ##### Location
 | Enum | Description |
