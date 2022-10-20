@@ -388,13 +388,16 @@ class AttestationService : public AttestationInterface {
   // Creates a |certificate_request| compatible with the Google Attestation CA
   // for the given |key|, according to the given |profile|, |username| and
   // |origin|.
-  bool CreateCertificateRequestInternal(ACAType aca_type,
-                                        const std::string& username,
-                                        const CertifiedKey& key,
-                                        CertificateProfile profile,
-                                        const std::string& origin,
-                                        std::string* certificate_request,
-                                        std::string* message_id);
+  bool CreateCertificateRequestInternal(
+      ACAType aca_type,
+      const std::string& username,
+      const CertifiedKey& key,
+      CertificateProfile profile,
+      const std::string& origin,
+      std::string* certificate_request,
+      std::string* message_id,
+      std::optional<DeviceSetupCertificateRequestMetadata>
+          device_setup_certificate_request_metadata);
 
   // Recover the |certificate_chain| from |response_pb| and store it in
   // association with the |key| identified by |username| and |key_label|.

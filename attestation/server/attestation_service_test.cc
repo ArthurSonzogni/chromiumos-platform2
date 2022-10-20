@@ -2446,6 +2446,53 @@ TEST_P(AttestationServiceTest, CreateCertificateRequestSuccess) {
   Run();
 }
 
+TEST_P(AttestationServiceTest, CreateDeviceSetupCertificateRequestSuccess) {
+  SetUpIdentity(identity_);
+  SetUpIdentityCertificate(identity_, aca_type_);
+
+  auto callback = [](const std::string& id, const std::string& content_binding,
+                     const std::string& cert_name,
+                     base::OnceClosure quit_closure,
+                     const CreateCertificateRequestReply& reply) {
+    EXPECT_EQ(STATUS_SUCCESS, reply.status());
+
+    EXPECT_TRUE(reply.has_pca_request());
+    AttestationCertificateRequest pca_request;
+    EXPECT_TRUE(pca_request.ParseFromString(reply.pca_request()));
+
+    EXPECT_EQ(GetTpmVersionUnderTest(), pca_request.tpm_version());
+    EXPECT_TRUE(pca_request.nvram_quotes().empty());
+
+    EXPECT_EQ(cert_name, pca_request.identity_credential());
+    EXPECT_EQ(DEVICE_SETUP_CERTIFICATE, pca_request.profile());
+    EXPECT_FALSE(pca_request.has_origin());
+    EXPECT_EQ(AttestationCertificateRequest::MetadataCase::
+                  kDeviceSetupCertificateMetadata,
+              pca_request.metadata_case());
+    EXPECT_EQ(id, pca_request.device_setup_certificate_metadata().id());
+    EXPECT_TRUE(pca_request.device_setup_certificate_metadata()
+                    .has_timestamp_seconds());
+    EXPECT_EQ(
+        content_binding,
+        pca_request.device_setup_certificate_metadata().content_binding());
+    std::move(quit_closure).Run();
+  };
+
+  CreateCertificateRequestRequest request;
+  request.set_certificate_profile(DEVICE_SETUP_CERTIFICATE);
+  request.set_aca_type(aca_type_);
+  const std::string kId = "random_id";
+  const std::string kContentBinding = "content_binding";
+  request.mutable_device_setup_certificate_request_metadata()->set_id(kId);
+  request.mutable_device_setup_certificate_request_metadata()
+      ->set_content_binding(kContentBinding);
+  service_->CreateCertificateRequest(
+      request,
+      base::BindOnce(callback, kId, kContentBinding,
+                     GetCertificateName(identity_, aca_type_), QuitClosure()));
+  Run();
+}
+
 TEST_P(AttestationServiceTest, CreateEnrollmentCertificateRequestSuccess) {
   TPM_SELECT_BEGIN;
   TPM2_SECTION({
@@ -3119,6 +3166,33 @@ TEST_P(AttestationServiceTest, GetCertificateSuccess) {
   request.set_key_label("label");
   EXPECT_CALL(mock_key_store_, Read("user", "label", _))
       .WillOnce(Return(false));
+
+  EXPECT_CALL(fake_pca_agent_proxy_, GetCertificateAsync(_, _, _, _)).Times(1);
+
+  service_->GetCertificate(request, base::BindOnce(callback, QuitClosure()));
+  Run();
+}
+
+TEST_P(AttestationServiceTest, GetDeviceSetupCertificateRequestSuccess) {
+  SetUpIdentity(identity_);
+  SetUpIdentityCertificate(identity_, aca_type_);
+
+  auto callback = [](const base::RepeatingClosure& quit_closure,
+                     const GetCertificateReply& reply) {
+    EXPECT_EQ(reply.status(), STATUS_SUCCESS);
+    EXPECT_TRUE(reply.has_public_key());
+    EXPECT_TRUE(reply.has_certificate());
+    EXPECT_TRUE(reply.has_key_blob());
+    quit_closure.Run();
+  };
+  GetCertificateRequest request;
+  request.set_aca_type(aca_type_);
+  request.set_key_label("label");
+  request.set_certificate_profile(DEVICE_SETUP_CERTIFICATE);
+  request.mutable_device_setup_certificate_request_metadata()->set_id(
+      "random_id");
+  request.mutable_device_setup_certificate_request_metadata()
+      ->set_content_binding("content_binding");
 
   EXPECT_CALL(fake_pca_agent_proxy_, GetCertificateAsync(_, _, _, _)).Times(1);
 

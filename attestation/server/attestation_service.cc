@@ -24,6 +24,7 @@
 #include <base/notreached.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
+#include <base/time/time.h>
 #include <brillo/cryptohome.h>
 #include <brillo/data_encoding.h>
 #include <crypto/sha2.h>
@@ -382,6 +383,17 @@ void LogErrorFromCA(const std::string& func,
     }
   }
   LOG(ERROR) << stream.str() << ".";
+}
+
+template <typename RequestType>
+std::optional<attestation::DeviceSetupCertificateRequestMetadata>
+GetDeviceSetupCertificateRequestMetadataIfPresent(const RequestType& request) {
+  if (request.metadata_case() !=
+      RequestType::MetadataCase::kDeviceSetupCertificateRequestMetadata) {
+    return std::nullopt;
+  }
+
+  return std::optional(request.device_setup_certificate_request_metadata());
 }
 
 }  // namespace
@@ -1296,7 +1308,9 @@ bool AttestationService::CreateCertificateRequestInternal(
     CertificateProfile profile,
     const std::string& origin,
     std::string* certificate_request,
-    std::string* message_id) {
+    std::string* message_id,
+    std::optional<DeviceSetupCertificateRequestMetadata>
+        device_setup_certificate_request_metadata) {
   if (!tpm_utility_->IsTpmReady()) {
     return false;
   }
@@ -1405,6 +1419,37 @@ bool AttestationService::CreateCertificateRequestInternal(
                  << " quote in VTPM EK cert request.";
       return false;
     }
+  }
+
+  if (profile == DEVICE_SETUP_CERTIFICATE) {
+    if (!device_setup_certificate_request_metadata) {
+      LOG(ERROR) << __func__
+                 << ": Empty DEVICE_SETUP_CERTIFICATE request metadata";
+      return false;
+    }
+
+    if (!device_setup_certificate_request_metadata->has_id() ||
+        device_setup_certificate_request_metadata->id().empty()) {
+      LOG(ERROR) << __func__
+                 << ": DEVICE_SETUP_CERTIFICATE requires an id to be passed";
+      return false;
+    }
+
+    if (!device_setup_certificate_request_metadata->has_content_binding() ||
+        device_setup_certificate_request_metadata->content_binding().empty()) {
+      LOG(ERROR)
+          << __func__
+          << ": DEVICE_SETUP_CERTIFICATE requires content_binding to be passed";
+      return false;
+    }
+
+    request_pb.mutable_device_setup_certificate_metadata()->set_id(
+        device_setup_certificate_request_metadata->id());
+    request_pb.mutable_device_setup_certificate_metadata()
+        ->set_timestamp_seconds(
+            (base::Time::Now() - base::Time::UnixEpoch()).InSeconds());
+    request_pb.mutable_device_setup_certificate_metadata()->set_content_binding(
+        device_setup_certificate_request_metadata->content_binding());
   }
 
   if (!origin.empty() &&
@@ -2946,7 +2991,8 @@ void AttestationService::CreateCertificateRequestTask(
   if (!CreateCertificateRequestInternal(
           request.aca_type(), request.username(), key,
           request.certificate_profile(), request.request_origin(),
-          result->mutable_pca_request(), &message_id)) {
+          result->mutable_pca_request(), &message_id,
+          GetDeviceSetupCertificateRequestMetadataIfPresent(request))) {
     result->clear_pca_request();
     result->set_status(STATUS_UNEXPECTED_DEVICE_ERROR);
     return;
