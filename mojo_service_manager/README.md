@@ -91,7 +91,7 @@ Now, each process can have a different security context, and each mojo interface
 can be registered / requested separately.
 This means we can have a processes level and mojo interfaces level ACL.
 
-### Decoupling with Ash-Chrome Lifecycle
+### Decoupling from Ash-Chrome Lifecycle
 
 ![Mojo Service Manager Lifecycle](doc/lifecycle.png)
 
