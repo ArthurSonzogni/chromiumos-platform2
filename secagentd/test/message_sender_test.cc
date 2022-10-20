@@ -4,18 +4,31 @@
 
 #include "secagentd/message_sender.h"
 
+#include <memory>
+#include <string>
+
 #include "base/files/file_path.h"
-#include "base/files/file_path_watcher.h"
 #include "base/files/file_util.h"
 #include "base/files/scoped_temp_dir.h"
 #include "base/memory/scoped_refptr.h"
 #include "base/test/task_environment.h"
 #include "gtest/gtest.h"
+#include "missive/client/mock_report_queue.h"
+#include "missive/client/mock_report_queue_provider.h"
+#include "missive/client/report_queue.h"
+#include "missive/client/report_queue_provider_test_helper.h"
+#include "missive/proto/record_constants.pb.h"
 #include "missive/proto/security_xdr_events.pb.h"
+#include "missive/util/status.h"
+#include "missive/util/statusor.h"
 
 namespace secagentd::testing {
 
 namespace pb = cros_xdr::reporting;
+using ::testing::_;
+using ::testing::Invoke;
+using ::testing::NiceMock;
+using ::testing::WithArgs;
 
 class MessageSenderTestFixture : public ::testing::Test {
  protected:
@@ -31,6 +44,20 @@ class MessageSenderTestFixture : public ::testing::Test {
     ASSERT_TRUE(base::CreateDirectory(zoneinfo_dir_));
 
     message_sender_ = MessageSender::CreateForTesting(fake_root_.GetPath());
+
+    provider_ =
+        std::make_unique<NiceMock<reporting::MockReportQueueProvider>>();
+    reporting::report_queue_provider_test_helper::SetForTesting(
+        provider_.get());
+    provider_->ExpectCreateNewSpeculativeQueueAndReturnNewMockQueue(2);
+    EXPECT_EQ(message_sender_->InitializeQueues(), absl::OkStatus());
+    for (auto destination : kDestinations) {
+      auto it = message_sender_->queue_map_.find(destination);
+      EXPECT_NE(it, message_sender_->queue_map_.end());
+      mock_queue_map_.insert(std::make_pair(
+          destination, google::protobuf::down_cast<reporting::MockReportQueue*>(
+                           it->second.get())));
+    }
   }
 
   pb::CommonEventDataFields* GetCommon() { return &message_sender_->common_; }
@@ -44,6 +71,12 @@ class MessageSenderTestFixture : public ::testing::Test {
   scoped_refptr<MessageSender> message_sender_;
   base::FilePath timezone_symlink_;
   base::FilePath zoneinfo_dir_;
+  std::unique_ptr<NiceMock<reporting::MockReportQueueProvider>> provider_;
+  std::unordered_map<reporting::Destination, reporting::MockReportQueue*>
+      mock_queue_map_;
+  static const reporting::Priority priority_ = reporting::SECURITY;
+  constexpr static const reporting::Destination kDestinations[2] = {
+      reporting::CROS_SECURITY_PROCESS, reporting::CROS_SECURITY_AGENT};
 };
 
 TEST_F(MessageSenderTestFixture, TestInitializeBtime) {
@@ -105,4 +138,78 @@ TEST_F(MessageSenderTestFixture, TestTzUpdateNotInZoneInfo) {
   // Timezone isn't updated.
   EXPECT_EQ("", GetCommon()->local_timezone());
 }
+
+TEST_F(MessageSenderTestFixture, TestSendMessageValidDestination) {
+  auto common = GetCommon();
+  common->set_device_boot_time(100);
+  common->set_local_timezone("US/Pacific");
+  std::string proto_string;
+
+  // Process Event.
+  EXPECT_CALL(*(mock_queue_map_.find(reporting::CROS_SECURITY_PROCESS)->second),
+              AddProducedRecord(_, priority_, _))
+      .WillOnce(WithArgs<0, 2>(Invoke(
+          [&proto_string](
+              base::OnceCallback<reporting::StatusOr<std::string>()> record_cb,
+              base::OnceCallback<void(reporting::Status)> status_cb) {
+            auto serialized = std::move(record_cb).Run();
+            proto_string = serialized.ValueOrDie();
+
+            std::move(status_cb).Run(reporting::Status::StatusOK());
+          })));
+  auto process_message =
+      std::make_unique<cros_xdr::reporting::XdrProcessEvent>();
+  auto mutable_common = process_message->mutable_common();
+  reporting::Destination destination =
+      reporting::Destination::CROS_SECURITY_PROCESS;
+
+  EXPECT_OK(message_sender_->SendMessage(destination, mutable_common,
+                                         std::move(process_message)));
+  auto process_deserialized =
+      std::make_unique<cros_xdr::reporting::XdrProcessEvent>();
+  process_deserialized->ParseFromString(proto_string);
+  EXPECT_EQ(common->device_boot_time(),
+            process_deserialized->common().device_boot_time());
+  EXPECT_EQ(common->local_timezone(),
+            process_deserialized->common().local_timezone());
+
+  // Agent Event.
+  EXPECT_CALL(*(mock_queue_map_.find(reporting::CROS_SECURITY_AGENT)->second),
+              AddProducedRecord(_, priority_, _))
+      .WillOnce(WithArgs<0, 2>(Invoke(
+          [&proto_string](
+              base::OnceCallback<reporting::StatusOr<std::string>()> record_cb,
+              base::OnceCallback<void(reporting::Status)> status_cb) {
+            auto serialized = std::move(record_cb).Run();
+            proto_string = serialized.ValueOrDie();
+
+            std::move(status_cb).Run(reporting::Status::StatusOK());
+          })));
+  auto agent_message = std::make_unique<cros_xdr::reporting::XdrAgentEvent>();
+  mutable_common = agent_message->mutable_common();
+  destination = reporting::Destination::CROS_SECURITY_AGENT;
+  EXPECT_OK(message_sender_->SendMessage(destination, mutable_common,
+                                         std::move(agent_message)));
+  auto agent_deserialized =
+      std::make_unique<cros_xdr::reporting::XdrAgentEvent>();
+  agent_deserialized->ParseFromString(proto_string);
+  EXPECT_EQ(common->device_boot_time(),
+            agent_deserialized->common().device_boot_time());
+  EXPECT_EQ(common->local_timezone(),
+            agent_deserialized->common().local_timezone());
+}
+
+TEST_F(MessageSenderTestFixture, TestSendMessageInvalidDestination) {
+  auto message = std::make_unique<cros_xdr::reporting::XdrProcessEvent>();
+  auto mutable_common = message->mutable_common();
+  const reporting::Destination destination = reporting::Destination(-1);
+
+  EXPECT_DEATH(
+      {
+        static_cast<void>(message_sender_->SendMessage(
+            destination, mutable_common, std::move(message)));
+      },
+      ".*FATAL secagentd_testrunner:.*Check failed: it != queue_map_\\.end.*");
+}
+
 }  // namespace secagentd::testing
