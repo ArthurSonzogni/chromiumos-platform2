@@ -1705,7 +1705,7 @@ struct Sensor {
     kAngle = 4,
     // Gravity sensor.
     kGravity = 5,
-    // Magnitude sensor.
+    // Magnetometer.
     [MinVersion=1] kMagn = 6,
   };
   Type type@2;

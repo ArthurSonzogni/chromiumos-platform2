@@ -488,7 +488,7 @@ interface CrosHealthdDiagnosticsService {
   // platform. This routine checks that the device's sensors are working
   // correctly by monitoring the sensor sample data without user interaction.
   // This routine only support sensitive sensors including accelerometers,
-  // gyro sensors, gravity sensors and magnitude sensors. This routine is only
+  // gyro sensors, gravity sensors and magnetometers. This routine is only
   // available if GetAvailableRoutines returned kSensitiveSensor.
   //
   // The response:
