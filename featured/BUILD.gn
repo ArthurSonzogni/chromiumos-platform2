@@ -14,6 +14,7 @@ group("all") {
     ":libfake_platform_features",
     ":libfeatures",
     ":libfeatures_c",
+    ":libstore_impl",
   ]
   if (use.test) {
     deps += [
@@ -23,6 +24,7 @@ group("all") {
       ":feature_library_test",
       ":hmac_test",
       ":service_test",
+      ":store_impl_test",
     ]
   }
   if (use.fuzzer) {
@@ -31,12 +33,20 @@ group("all") {
 }
 
 pkg_config("target_defaults") {
+  # NOSORT
   pkg_deps = [
     "dbus-1",
+    "libbootlockbox-client",
     "libbrillo",
     "libchrome",
     "libsession_manager-client",
     "openssl",
+
+    # system_api depends on protobuf (or protobuf-lite). It must appear
+    # before protobuf here or the linker flags won't be in the right
+    # order.
+    "system_api",
+    "protobuf",
   ]
 }
 
@@ -88,6 +98,21 @@ shared_library("libc_fake_feature_library") {
   deps = [ ":libfake_platform_features" ]
 }
 
+proto_library("featured_proto") {
+  proto_in_dir = "./proto"
+  proto_out_dir = "include/featured"
+  sources = [ "${proto_in_dir}/featured.proto" ]
+}
+
+static_library("libstore_impl") {
+  sources = [ "store_impl.cc" ]
+  configs += [ ":target_defaults" ]
+  deps = [
+    ":featured_proto",
+    ":hmac",
+  ]
+}
+
 static_library("hmac") {
   visibility = [ ":*" ]  # Only targets in this BUILD file
   sources = [ "hmac.cc" ]
@@ -96,11 +121,19 @@ static_library("hmac") {
 
 if (use.test) {
   pkg_config("test_helper_config") {
+    # NOSORT
     pkg_deps = [
+      "libbootlockbox-client",
       "libbrillo",
       "libbrillo-test",
       "libchrome",
       "libchrome-test",
+
+      # system_api depends on protobuf (or protobuf-lite). It must appear
+      # before protobuf here or the linker flags won't be in the right
+      # order.
+      "system_api",
+      "protobuf",
     ]
   }
 
@@ -143,6 +176,21 @@ if (use.test) {
     ]
   }
 
+  executable("store_impl_test") {
+    sources = [ "store_impl_test.cc" ]
+    configs += [
+      "//common-mk:test",
+      ":test_helper_config",
+      ":target_defaults",
+    ]
+    deps = [
+      ":featured_proto",
+      ":hmac",
+      ":libstore_impl",
+      "//common-mk/testrunner:testrunner",
+    ]
+  }
+
   executable("c_feature_check_example") {
     sources = [ "c_feature_check_example.c" ]
     deps = [ ":libfeatures_c" ]
@@ -172,10 +220,4 @@ if (use.fuzzer) {
     ]
     deps = [ ":libfeatured" ]
   }
-}
-
-proto_library("featured_proto") {
-  proto_in_dir = "./proto"
-  proto_out_dir = "include/featured"
-  sources = [ "${proto_in_dir}/featured.proto" ]
 }
