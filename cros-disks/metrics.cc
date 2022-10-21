@@ -4,6 +4,8 @@
 
 #include "cros-disks/metrics.h"
 
+#include <algorithm>
+
 #include <base/containers/fixed_flat_map.h>
 #include <base/logging.h>
 #include <base/strings/strcat.h>
@@ -112,6 +114,15 @@ void Metrics::RecordUnmountError(const base::StringPiece fs_type,
           base::StrCat({"CrosDisks.UnmountError.", StripPrefix(fs_type)}),
           error))
     LOG(ERROR) << "Cannot send unmount error to UMA";
+}
+
+void Metrics::RecordDaemonError(const base::StringPiece program_name,
+                                const int error) {
+  std::string name(program_name);
+  std::replace(name.begin(), name.end(), '.', '-');
+  if (!metrics_library_.SendSparseToUMA(
+          base::StrCat({"CrosDisks.PrematureTermination.", name}), error))
+    LOG(ERROR) << "Cannot send FUSE daemon error to UMA";
 }
 
 void Metrics::RecordReadOnlyFileSystem(const base::StringPiece fs_type) {

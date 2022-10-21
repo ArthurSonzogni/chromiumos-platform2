@@ -325,6 +325,9 @@ void MountManager::OnSandboxedProcessExit(
                << filesystem_type << " " << redact(mount_path)
                << " finished unexpectedly with "
                << Process::ExitCode(info.si_status);
+
+    if (metrics_)
+      metrics_->RecordDaemonError(program_name, info.si_status);
   } else if (info.si_status) {
     LOG(ERROR) << "FUSE program " << quote(program_name) << " for "
                << filesystem_type << " " << redact(mount_path)

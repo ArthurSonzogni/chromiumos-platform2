@@ -34,6 +34,10 @@ class Metrics {
   // unmount a file system.
   void RecordUnmountError(base::StringPiece fs_type, error_t error);
 
+  // Records the error returned by a FUSE daemon when it unexpectedly
+  // terminates.
+  void RecordDaemonError(base::StringPiece program_name, int error);
+
   // Records a filesystem type that cros-disks had to mount in read-only mode
   // because of an error when trying to mount it in read-write mode.
   void RecordReadOnlyFileSystem(base::StringPiece fs_type);
