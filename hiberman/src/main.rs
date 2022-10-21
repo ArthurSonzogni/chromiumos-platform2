@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-//! Coordinates suspend-to-disk activities
+//! Coordinates suspend-to-disk activities.
 
 use getopts::{self, Options};
 use hiberman::cookie::HibernateCookieValue;
@@ -422,14 +422,14 @@ Valid subcommands are:
 fn hiberman_main() -> std::result::Result<(), ()> {
     let mut args = std::env::args();
     if args.next().is_none() {
-        eprintln!("expected executable name.");
+        eprintln!("Expected executable name");
         return Err(());
     }
 
     let subcommand = match args.next() {
         Some(subcommand) => subcommand,
         None => {
-            eprintln!("expected a subcommand");
+            eprintln!("Expected a subcommand");
             return Err(());
         }
     };
@@ -446,7 +446,7 @@ fn hiberman_main() -> std::result::Result<(), ()> {
         "resume-init" => hiberman_resume_init(&mut args),
         "resume" => hiberman_resume(&mut args),
         _ => {
-            eprintln!("unknown subcommand: {}", subcommand);
+            eprintln!("Unknown subcommand: {}", subcommand);
             Err(())
         }
     }

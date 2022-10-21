@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-//! Implement fiemap support, which can tell you the underlying disk extents
+//! Implements fiemap support, which can tell you the underlying disk extents
 //! backing a file.
 
 use std::fs::File;

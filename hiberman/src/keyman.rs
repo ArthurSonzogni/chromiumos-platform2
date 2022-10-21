@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-//! Implement key management of the top level asymmetric key pair, used to
+//! Implements key management of the top level asymmetric key pair, used to
 //! protect the hibernate metadata encryption key.
 
 use std::convert::TryInto;
@@ -126,7 +126,7 @@ impl HibernateKeyManager {
     }
 
     /// Returns true if the key manager has the public key loaded (or has the
-    /// private key loaded and can therefore derive the public key)
+    /// private key loaded and can therefore derive the public key).
     pub fn has_public_key(&self) -> bool {
         self.private_key.is_some() || self.public_key.is_some()
     }

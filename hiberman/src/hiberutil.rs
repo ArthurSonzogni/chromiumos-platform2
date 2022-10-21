@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-//! Implement common functions and definitions used throughout the app and library.
+//! Implements common functions and definitions used throughout the app and library.
 
 use std::convert::TryInto;
 use std::fs;
@@ -140,7 +140,7 @@ pub struct ResumeOptions {
     pub no_preloader: bool,
 }
 
-/// Options taken from the command line affecting abort-resume
+/// Options taken from the command line affecting abort-resume.
 pub struct AbortResumeOptions {
     pub reason: String,
 }

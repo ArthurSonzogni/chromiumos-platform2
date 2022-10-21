@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-//! Implement support for allocating large page aligned buffers via the mmap()
+//! Implements support for allocating large page aligned buffers via the mmap()
 //! system call. Loosely adapted from https://github.com/rbranson/rust-mmap, who
 //! got it from the rust standard library before it was removed.
 

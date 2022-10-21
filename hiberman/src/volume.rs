@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-//! Implement volume and disk management.
+//! Implements volume and disk management.
 // TODO(b/241434344): Things farming out to external processes should be
 // implemented in a common helper library instead.
 
@@ -424,7 +424,7 @@ impl VolumeManager {
         set_hibernate_cookie::<PathBuf>(None, HibernateCookieValue::NoResume)
             .context("Failed to clear the hibernate cookie")?;
 
-        // Now delete the all snapshots
+        // Now delete the all snapshots.
         let mut delete_result = Ok(());
         for snapshot in snapshots {
             if let Err(e) = delete_snapshot(&snapshot.name) {
@@ -738,7 +738,7 @@ impl DmSnapshotMerge {
         result
     }
 
-    /// Inner routine to check the merge
+    /// Inner routine to check the merge.
     fn check_and_complete_merge(&mut self) -> Result<i64> {
         let data_sectors = get_snapshot_data_sectors(&self.snapshot_name)?;
         if data_sectors == 0 {
@@ -759,7 +759,7 @@ impl DmSnapshotMerge {
         //
         // For those wondering what happens to writes that occur after the "wait
         // for merge" is complete but before the device is suspended below:
-        // future writes to to the merging snapshot go straight down to the disk
+        // future writes to the merging snapshot go straight down to the disk
         // if they were clean in the merging snapshot. So the amount of data in
         // the snapshot only ever shrinks, it doesn't continue to grow once it's
         // begun merging. Since the disk now sees every write passing through,
@@ -854,7 +854,7 @@ pub fn get_snapshot_size(name: &str) -> Result<(i64, i64)> {
     Ok((allocated, total))
 }
 
-/// Delete a snapshot
+/// Delete a snapshot.
 fn delete_snapshot(name: &str) -> Result<()> {
     let snapshot_file_path = snapshot_file_path(name);
     info!("Deleting {}", snapshot_file_path.display());
@@ -883,7 +883,7 @@ fn reload_dm_table(target: &str, table: &str) -> Result<()> {
     )
 }
 
-/// Rename a dm target
+/// Rename a dm target.
 fn rename_dm_target(target: &str, new_name: &str) -> Result<()> {
     checked_command(Command::new(DMSETUP_PATH).args(["rename", target, new_name])).context(format!(
         "Failed to run dmsetup rename {} {}",
@@ -891,7 +891,7 @@ fn rename_dm_target(target: &str, new_name: &str) -> Result<()> {
     ))
 }
 
-/// Remove a dm target
+/// Remove a dm target.
 fn remove_dm_target(target: &str) -> Result<()> {
     checked_command(Command::new(DMSETUP_PATH).args(["remove", target]))
         .context(format!("Failed to run dmsetup remove {}", target))
@@ -912,7 +912,7 @@ fn dmsetup_checked_output(command: &mut Command) -> Result<String> {
 }
 
 /// Get a loop device path like /dev/loop4 out of a major:minor string like
-/// 7:4
+/// 7:4.
 fn majmin_to_loop_path(majmin: &str) -> Option<String> {
     if !majmin.starts_with("7:") {
         return None;
@@ -935,7 +935,7 @@ fn snapshot_dir() -> PathBuf {
     Path::new(HIBERNATE_DIR).join("snapshots")
 }
 
-/// Separate a string by whitespace, and return the nth element, or an error
+/// Separate a string by whitespace, and return the n-th element, or an error
 /// if the string doesn't contain that many elements.
 fn get_nth_element(s: &str, n: usize) -> Result<&str> {
     let elements: Vec<&str> = s.split_whitespace().collect();

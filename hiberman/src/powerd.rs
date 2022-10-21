@@ -16,6 +16,11 @@ use system_api::client::OrgChromiumPowerManager;
 use crate::hiberutil::log_duration;
 use crate::metrics::MetricsLogger;
 
+/// Define the name used on powerd dbus.
+const POWERD_DBUS_NAME: &str = "org.chromium.PowerManager";
+/// Define the path used within powerd dbus.
+const POWERD_DBUS_PATH: &str = "/org/chromium/PowerManager";
+
 /// Define the default maximum duration the powerd proxy will wait for method
 /// call responses.
 const POWERD_DBUS_PROXY_TIMEOUT: Duration = Duration::from_secs(60);
@@ -70,7 +75,7 @@ impl dbus::arg::ReadAll for HibernateResumeReady {
 
 impl dbus::message::SignalArgs for HibernateResumeReady {
     const NAME: &'static str = "HibernateResumeReady";
-    const INTERFACE: &'static str = "org.chromium.PowerManager";
+    const INTERFACE: &'static str = POWERD_DBUS_NAME;
 }
 
 /// Helper function to wait for a HibernateResumeReady signal to come in from powerd.
@@ -81,8 +86,8 @@ fn wait_for_hibernate_resume_ready(metrics_logger: &mut MetricsLogger) -> Result
     // Second, create a wrapper struct around the connection that makes it easy
     // to send method calls to a specific destination and path.
     let proxy = conn.with_proxy(
-        "org.chromium.PowerManager",
-        "/org/chromium/PowerManager",
+        POWERD_DBUS_NAME,
+        POWERD_DBUS_PATH,
         POWERD_DBUS_PROXY_TIMEOUT,
     );
 
@@ -125,8 +130,8 @@ fn powerd_request_suspend(flavor: PowerdSuspendFlavor) -> Result<()> {
     // Second, create a wrapper struct around the connection that makes it easy
     // to send method calls to a specific destination and path.
     let proxy = conn.with_proxy(
-        "org.chromium.PowerManager",
-        "/org/chromium/PowerManager",
+        POWERD_DBUS_NAME,
+        POWERD_DBUS_PATH,
         POWERD_DBUS_PROXY_TIMEOUT,
     );
 

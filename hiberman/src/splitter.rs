@@ -30,8 +30,8 @@ use crate::hibermeta::{HibernateMetadata, META_FLAG_KERNEL_ENCRYPTED, META_HASH_
 use crate::hiberutil::{get_page_size, HibernateError};
 use crate::mmapbuf::MmapBuffer;
 
-/// A machine with 32GB RAM has 8M PFNs. Half of that times 8 bytes per PFN is
-/// 32MB.
+/// A machine with 32GB RAM has 8M of Page Frame Numbers (PFNs).
+/// Half of that times 8 bytes per PFN is 32MB.
 pub const HIBER_HEADER_MAX_SIZE: i64 = (1024 * 1024 * 32) + 4096;
 
 /// Define the swsusp_info header created by the kernel at the start of each

@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-//! Implement support for managing hibernate metadata.
+//! Implements support for managing hibernate metadata.
 
 use std::convert::TryFrom;
 use std::io::{Read, Write};

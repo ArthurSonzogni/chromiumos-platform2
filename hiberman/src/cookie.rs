@@ -23,10 +23,10 @@ use crate::mmapbuf::MmapBuffer;
 /// file systems.
 ///
 /// This implementation currently stores the flag as a well-known string inside
-/// the leftover space at the end of the sector containing the GPT header. This
-/// space is ideal because its location is fixed, it's not manipulated in normal
-/// circumstances, and the GPT header format is unlikely to change and start
-/// using this space.
+/// the leftover space at the end of the sector containing the GUID Partition
+/// Table (GPT) header. This space is ideal because its location is fixed, it's
+/// not manipulated in normal circumstances, and the GPT header format is
+/// unlikely to change and start using this space.
 struct HibernateCookie {
     blockdev: File,
     buffer: MmapBuffer,
@@ -126,7 +126,7 @@ impl HibernateCookie {
         // Verify there's a GPT header magic where there should be one.
         // This would catch cases like writing to the wrong place or the
         // GPT layout/location changing. This might need enlightenment for a
-        // disk with 4kb blocks, this check will let us know that too.
+        // disk with 4kB blocks, this check will let us know that too.
         let gpt_sig_offset = GPT_MAGIC_OFFSET;
         let gpt_sig_offset_end = gpt_sig_offset + 8;
         let mut gpt_sig = [0u8; 8];

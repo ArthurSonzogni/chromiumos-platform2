@@ -79,7 +79,7 @@ impl<'a> ImagePreloader<'a> {
             // Load a chunk, or stop if all chunks are loaded.
             if self.load_next_chunk()? {
                 debug!(
-                    "Preloaded entire image, still {} pages available.",
+                    "Preloaded entire image, still {} pages available",
                     get_available_pages()
                 );
                 break;

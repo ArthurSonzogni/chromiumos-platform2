@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-//! Implement support for accessing file contents directly via the underlying block device.
+//! Implements support for accessing file contents directly via the underlying block device.
 
 use std::fs::{File, OpenOptions};
 use std::io::{Error as IoError, ErrorKind, IoSlice, IoSliceMut, Read, Seek, SeekFrom, Write};
@@ -226,7 +226,7 @@ impl Read for DiskFile {
             // There is no extending the file size.
             if self.current_position >= self.fiemap.file_size {
                 warn!(
-                    "DiskFile hit read EOF current_position {:x} file_size {:x}",
+                    "DiskFile hit read EOF current_position {:x} file_size {:x} B",
                     self.current_position, self.fiemap.file_size
                 );
                 break;
@@ -265,7 +265,7 @@ impl Write for DiskFile {
             // There is no extending the file size.
             if self.current_position >= self.fiemap.file_size {
                 error!(
-                    "DiskFile EOF: {}/{} written, file size {}",
+                    "DiskFile EOF: {}/{} written, file size {} B",
                     offset, length, self.fiemap.file_size
                 );
                 break;

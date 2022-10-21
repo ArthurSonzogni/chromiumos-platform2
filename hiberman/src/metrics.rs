@@ -29,7 +29,7 @@ pub const METRICS_BUFFER_SIZE: usize = 4096;
 
 /// A MetricSample represents a sample point for a Hibernate histogram in UMA.
 /// It requires the histogram name, the sample value, the minimum value,
-/// the maximum value, and the number of buckets
+/// the maximum value, and the number of buckets.
 #[derive(Serialize, Deserialize)]
 pub struct MetricsSample<'a> {
     pub name: &'a str,

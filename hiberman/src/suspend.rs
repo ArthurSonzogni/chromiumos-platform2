@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-//! Implement hibernate suspend functionality
+//! Implements hibernate suspend functionality.
 
 use std::ffi::CString;
 use std::io::Write;

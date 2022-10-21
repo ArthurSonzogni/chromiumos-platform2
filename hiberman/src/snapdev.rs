@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-//! Implement snapshot device functionality.
+//! Implements snapshot device functionality.
 
 use std::convert::TryInto;
 use std::fs::{metadata, File, OpenOptions};
@@ -297,11 +297,11 @@ impl SnapshotDevice {
         self.evaluate_ioctl_return(name, rc)
     }
 
-    /// Helper function to send an ioctl and return a Result
+    /// Helper function to send an ioctl and return a Result.
     /// # Safety
     ///
     /// The caller must ensure that the actions the ioctl performs uphold
-    /// Rust's memory safety guarantees. Specifically
+    /// Rust's memory safety guarantees.
     unsafe fn ioctl_with_ptr(
         &mut self,
         ioctl: c_ulong,
@@ -316,7 +316,7 @@ impl SnapshotDevice {
     /// # Safety
     ///
     /// The caller must ensure that the actions the ioctl performs uphold
-    /// Rust's memory safety guarantees. Specifically
+    /// Rust's memory safety guarantees.
     unsafe fn ioctl_with_mut_ptr(
         &mut self,
         ioctl: c_ulong,

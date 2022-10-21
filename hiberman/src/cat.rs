@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-//! Implement the cat debug command
+//! Implements the cat debug command.
 
 use std::io::{copy, BufRead, BufReader, Write};
 use std::path::Path;
