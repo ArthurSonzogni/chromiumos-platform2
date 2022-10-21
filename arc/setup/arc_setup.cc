@@ -153,6 +153,7 @@ constexpr char kSysfsTracing[] = "/sys/kernel/tracing";
 constexpr char kSystemLibArmDirectoryRelative[] = "system/lib/arm";
 constexpr char kSystemLibArm64DirectoryRelative[] = "system/lib64/arm64";
 constexpr char kSystemImage[] = "/opt/google/containers/android/system.raw.img";
+constexpr char kTestharnessDirectory[] = "/run/arc/testharness";
 constexpr char kUsbDevicesDirectory[] = "/dev/bus/usb";
 constexpr char kZygotePreloadDoneFile[] = ".preload_done";
 
@@ -379,11 +380,21 @@ struct EsdfsMount {
   gid_t gid;
 };
 
-constexpr std::array<EsdfsMount, 3> kEsdfsMounts{{
-    {"default/emulated", 0006, kSdcardRwGid},
-    {"read/emulated", 0027, kEverybodyGid},
-    {"write/emulated", 0007, kEverybodyGid},
-}};
+const std::vector<EsdfsMount> GetEsdfsMounts(AndroidSdkVersion version) {
+  constexpr std::array<EsdfsMount, 3> kEsdfsMounts{{
+      {"default/emulated", 0006, kSdcardRwGid},
+      {"read/emulated", 0027, kEverybodyGid},
+      {"write/emulated", 0007, kEverybodyGid},
+  }};
+  std::vector<EsdfsMount> mounts;
+  for (const auto& mount : kEsdfsMounts)
+    mounts.push_back(mount);
+  if (version > AndroidSdkVersion::ANDROID_P) {
+    // For container R.
+    mounts.push_back({"full/emulated", 0007, kEverybodyGid});
+  }
+  return mounts;
+}
 
 // Esdfs mount options:
 // --------------------
@@ -426,11 +437,17 @@ std::string CreateEsdfsMountOpts(uid_t fsuid,
 
 // Wait upto kInstalldTimeout for the sdcard source directory to be setup.
 // On failure, exit.
-bool WaitForSdcardSource(const base::FilePath& android_root) {
+bool WaitForSdcardSource(const base::FilePath& android_root,
+                         AndroidSdkVersion sdk_version) {
   bool ret;
   base::TimeDelta elapsed;
   // <android_root>/data path to synchronize with installd
-  const base::FilePath fs_version = android_root.Append("data/.layout_version");
+  const base::FilePath fs_version =
+      sdk_version > AndroidSdkVersion::ANDROID_P
+          ?
+          // For container R.
+          android_root.Append("data/misc/installd/layout_version")
+          : android_root.Append("data/.layout_version");
 
   LOG(INFO) << "Waiting upto " << kInstalldTimeout
             << " for installd to complete setting up /data.";
@@ -632,6 +649,7 @@ struct ArcPaths {
       kSystemLibArmDirectoryRelative};
   const base::FilePath system_lib64_arm64_directory_relative{
       kSystemLibArm64DirectoryRelative};
+  const base::FilePath testharness_directory{kTestharnessDirectory};
   const base::FilePath usb_devices_directory{kUsbDevicesDirectory};
 
   const base::FilePath restorecon_allowlist_sync{kRestoreconAllowlistSync};
@@ -852,7 +870,7 @@ void ArcSetup::UnmountSdcard() {
   // We unmount here in both the ESDFS and the FUSE cases in order to
   // clean up after Android's /system/bin/sdcard. However, the paths
   // must be the same in both cases.
-  for (const auto& mount : kEsdfsMounts) {
+  for (const auto& mount : GetEsdfsMounts(GetSdkVersion())) {
     base::FilePath kDestDirectory =
         arc_paths_->sdcard_mount_directory.Append(mount.relative_path);
     IGNORE_ERRORS(arc_mounter_->Umount(kDestDirectory));
@@ -987,14 +1005,16 @@ void ArcSetup::SetUpSdcard() {
       open(base::StringPrintf("/proc/%d/ns/user", container_pid).c_str(),
            O_RDONLY)));
 
+  const AndroidSdkVersion sdk_version = GetSdkVersion();
   // Installd setups up the user data directory skeleton on first-time boot.
   // Wait for setup
-  EXIT_IF(!WaitForSdcardSource(arc_paths_->android_mutable_source));
+  EXIT_IF(
+      !WaitForSdcardSource(arc_paths_->android_mutable_source, sdk_version));
 
   // Ensure the Downloads directory exists.
   EXIT_IF(!base::DirectoryExists(host_downloads_directory));
 
-  for (const auto& mount : kEsdfsMounts) {
+  for (const auto& mount : GetEsdfsMounts(sdk_version)) {
     base::FilePath dest_directory =
         arc_paths_->sdcard_mount_directory.Append(mount.relative_path);
 
@@ -1030,6 +1050,13 @@ void ArcSetup::SetUpSharedTmpfsForExternalStorage() {
       !InstallDirectory(0755, kRootUid, kRootGid,
                         arc_paths_->sdcard_mount_directory.Append("write")));
 
+  if (GetSdkVersion() > AndroidSdkVersion::ANDROID_P) {
+    // For container R.
+    EXIT_IF(
+        !InstallDirectory(0755, kRootUid, kRootGid,
+                          arc_paths_->sdcard_mount_directory.Append("full")));
+  }
+
   // Create the mount directories. In original Android, these are created in
   // EmulatedVolume.cpp just before /system/bin/sdcard is fork()/exec()'ed.
   // Following code just emulates it. The directories are owned by Android's
@@ -1045,6 +1072,13 @@ void ArcSetup::SetUpSharedTmpfsForExternalStorage() {
   EXIT_IF(!InstallDirectory(
       0755, kRootUid, kRootGid,
       arc_paths_->sdcard_mount_directory.Append("write/emulated")));
+
+  if (GetSdkVersion() > AndroidSdkVersion::ANDROID_P) {
+    // For container R.
+    EXIT_IF(!InstallDirectory(
+        0755, kRootUid, kRootGid,
+        arc_paths_->sdcard_mount_directory.Append("full/emulated")));
+  }
 }
 
 void ArcSetup::SetUpFilesystemForObbMounter() {
@@ -1205,8 +1239,10 @@ void ArcSetup::CreateAndroidCmdlineFile(bool is_dev_mode) {
   // will see these files, but other than that, the /data and /cache
   // directories are empty and read-only which is the best for security.
 
-  // Unconditionally generate host-side code here.
-  {
+  // Unconditionally generate host-side code here for P.
+  // TODO(b/254712128): Support ANDROID_R if we REALLY want to do a full-fledged
+  // mini-R-container.
+  if (GetSdkVersion() == AndroidSdkVersion::ANDROID_P) {
     base::ElapsedTimer timer;
     EXIT_IF(!GenerateHostSideCode(arc_paths_->art_dalvik_cache_directory));
     EXIT_IF(!Chown(kRootUid, kRootGid, arc_paths_->art_dalvik_cache_directory));
@@ -2052,6 +2088,27 @@ void ArcSetup::EnsureContainerDirectories() {
                             base::FilePath("/run/arc/host_generated")));
 }
 
+void ArcSetup::SetUpTestharness(bool is_dev_mode) {
+  if (base::DirectoryExists(arc_paths_->testharness_directory))
+    return;
+
+  if (is_dev_mode) {
+    EXIT_IF(!InstallDirectory(07770, kSystemUid, kSystemGid,
+                              arc_paths_->testharness_directory));
+    const base::FilePath key_file =
+        arc_paths_->testharness_directory.Append("keys");
+    EXIT_IF(!WriteToFile(key_file, 0777, ""));
+    EXIT_IF(!Chown(kSystemUid, kSystemGid, key_file));
+  } else {
+    // Even in non-Developer mode, we still need the directory so
+    // config.json bind-mounting can happen correctly.
+    // We will just restrict access to it and make sure no key file
+    // is generated.
+    EXIT_IF(!InstallDirectory(0000, kHostRootUid, kHostRootGid,
+                              arc_paths_->testharness_directory));
+  }
+}
+
 void ArcSetup::StartNetworking() {
   if (!patchpanel::Client::New()->NotifyArcStartup(
           config_.GetIntOrDie("CONTAINER_PID"))) {
@@ -2327,6 +2384,10 @@ void ArcSetup::OnSetup() {
   CleanUpStaleMountPoints();
   RestoreContext();
   SetUpGraphicsSysfsContext();
+  if (GetSdkVersion() > AndroidSdkVersion::ANDROID_P) {
+    // For container R.
+    SetUpTestharness(is_dev_mode);
+  }
   SetUpPowerSysfsContext();
   MakeMountPointsReadOnly();
   SetUpCameraProperty(base::FilePath(kBuildPropFile));
@@ -2369,12 +2430,17 @@ void ArcSetup::OnBootContinue() {
   // don't exist, this has to be done before calling ShareAndroidData().
   SetUpAndroidData(arc_paths_->android_mutable_source);
 
-  if (!InstallLinksToHostSideCode()) {
-    arc_setup_metrics_->SendBootContinueCodeInstallationResult(
-        ArcBootContinueCodeInstallationResult::ERROR_CANNOT_INSTALL_HOST_CODE);
-  } else {
-    arc_setup_metrics_->SendBootContinueCodeInstallationResult(
-        ArcBootContinueCodeInstallationResult::SUCCESS);
+  // TODO(b/254712128): Support ANDROID_R if we REALLY want to do a full-fledged
+  // mini-R-container.
+  if (GetSdkVersion() == AndroidSdkVersion::ANDROID_P) {
+    if (!InstallLinksToHostSideCode()) {
+      arc_setup_metrics_->SendBootContinueCodeInstallationResult(
+          ArcBootContinueCodeInstallationResult::
+              ERROR_CANNOT_INSTALL_HOST_CODE);
+    } else {
+      arc_setup_metrics_->SendBootContinueCodeInstallationResult(
+          ArcBootContinueCodeInstallationResult::SUCCESS);
+    }
   }
 
   // Set up /run/arc/shared_mounts/{cache,data,demo_apps} to expose the user's
