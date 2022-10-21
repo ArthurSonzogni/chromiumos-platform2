@@ -564,7 +564,7 @@ UserSecretStash::FromEncryptedContainer(const brillo::Blob& flatbuffer,
     return MakeStatus<CryptohomeError>(
                CRYPTOHOME_ERR_LOC(
                    kLocUSSGetUserMetadataFailedInFromEncContainer))
-        .Wrap(std::move(user_metadata).status());
+        .Wrap(std::move(user_metadata).err_status());
   }
 
   CryptohomeStatusOr<std::unique_ptr<UserSecretStash>> result =
@@ -574,7 +574,7 @@ UserSecretStash::FromEncryptedContainer(const brillo::Blob& flatbuffer,
   if (!result.ok()) {
     return MakeStatus<CryptohomeError>(
                CRYPTOHOME_ERR_LOC(kLocUSSFromPayloadFailedInFromEncContainer))
-        .Wrap(std::move(result).status());
+        .Wrap(std::move(result).err_status());
   }
   return result;
 }
@@ -617,7 +617,7 @@ UserSecretStash::FromEncryptedPayload(
         << "UserSecretStashPayload has invalid file system keyset information";
     return MakeStatus<CryptohomeError>(
                CRYPTOHOME_ERR_LOC(kLocUSSGetFSKeyFailedInFromEncPayload))
-        .Wrap(std::move(file_system_keyset_status).status());
+        .Wrap(std::move(file_system_keyset_status).err_status());
   }
 
   std::map<std::string, brillo::SecureBlob> reset_secrets;
@@ -692,7 +692,7 @@ UserSecretStash::FromEncryptedContainerWithWrappingKey(
     return MakeStatus<CryptohomeError>(
                CRYPTOHOME_ERR_LOC(
                    kLocUSSGetUserMetadataFailedInFromEncContainerWrappingKey))
-        .Wrap(std::move(user_metadata).status());
+        .Wrap(std::move(user_metadata).err_status());
   }
 
   CryptohomeStatusOr<brillo::SecureBlob> main_key_optional =
@@ -702,7 +702,7 @@ UserSecretStash::FromEncryptedContainerWithWrappingKey(
     return MakeStatus<CryptohomeError>(
                CRYPTOHOME_ERR_LOC(
                    kLocUSSUnwrapMKFailedInFromEncContainerWithWK))
-        .Wrap(std::move(main_key_optional).status());
+        .Wrap(std::move(main_key_optional).err_status());
   }
 
   CryptohomeStatusOr<std::unique_ptr<UserSecretStash>> stash =
@@ -714,7 +714,7 @@ UserSecretStash::FromEncryptedContainerWithWrappingKey(
     return MakeStatus<CryptohomeError>(
                CRYPTOHOME_ERR_LOC(
                    kLocUSSFromPayloadFailedInFromEncContainerWithWK))
-        .Wrap(std::move(stash).status());
+        .Wrap(std::move(stash).err_status());
   }
 
   *main_key = main_key_optional.value();
@@ -801,7 +801,7 @@ CryptohomeStatusOr<brillo::SecureBlob> UserSecretStash::UnwrapMainKey(
   if (!result.ok()) {
     return MakeStatus<CryptohomeError>(
                CRYPTOHOME_ERR_LOC(kLocUSSUnwrapMKFailedInUnwrapMK))
-        .Wrap(std::move(result).status());
+        .Wrap(std::move(result).err_status());
   }
   return result.value();
 }

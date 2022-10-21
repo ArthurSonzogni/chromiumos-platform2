@@ -46,7 +46,7 @@ CryptoStatus AsyncChallengeCredentialAuthBlock::IsSupported(Crypto& crypto) {
                    kLocAsyncChalCredAuthBlockHwsecReadyErrorInIsSupported),
                ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}))
         .Wrap(TpmAuthBlockUtils::TPMErrorToCryptohomeCryptoError(
-            std::move(is_ready).status()));
+            std::move(is_ready).err_status()));
   }
   if (!is_ready.value()) {
     return MakeStatus<CryptohomeCryptoError>(
@@ -149,7 +149,7 @@ void AsyncChallengeCredentialAuthBlock::CreateContinue(
         MakeStatus<CryptohomeCryptoError>(
             CRYPTOHOME_ERR_LOC(
                 kLocAsyncChalCredAuthBlockServiceGenerateFailedInCreate))
-            .Wrap(std::move(result).status()),
+            .Wrap(std::move(result).err_status()),
         nullptr, nullptr);
     return;
   }
@@ -308,7 +308,7 @@ void AsyncChallengeCredentialAuthBlock::DeriveContinue(
         MakeStatus<CryptohomeCryptoError>(
             CRYPTOHOME_ERR_LOC(
                 kLocAsyncChalCredAuthBlockServiceDeriveFailedInDerive))
-            .Wrap(std::move(result).status()),
+            .Wrap(std::move(result).err_status()),
         nullptr);
     return;
   }

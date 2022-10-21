@@ -52,6 +52,12 @@ group("all") {
 
 config("target_defaults") {
   configs = [ "libs:target_defaults" ]
+
+  # Currently we don't have a good conclusion for the testing code.
+  # Only check the consumable attributes on non-test build.
+  if (!use.test) {
+    cflags = [ "-Wconsumed" ]
+  }
 }
 
 config("local_print_proto_include") {

@@ -47,6 +47,9 @@ config("target_defaults") {
     "USE_USS_MIGRATION=${use.uss_migration}",
     "USE_SLOW_MOUNT=${use.slow_mount}",
   ]
+  if (!use.test) {
+    cflags = [ "-Wconsumed" ]
+  }
 }
 
 config("cryptohome-proto_config") {

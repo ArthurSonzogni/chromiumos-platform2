@@ -48,7 +48,7 @@ hwsec::StatusOr<hwsec::ScopedKey> CryptohomeKeyLoader::LoadCryptohomeKey() {
   hwsec::StatusOr<hwsec::ScopedKey> key = hwsec_->LoadKey(raw_key);
   if (!key.ok()) {
     return MakeStatus<TPMError>("Failed to load wrapped key")
-        .Wrap(std::move(key).status());
+        .Wrap(std::move(key).err_status());
   }
 
   return key;
@@ -60,7 +60,7 @@ CryptohomeKeyLoader::LoadOrCreateCryptohomeKey() {
 
   if (!is_ready.ok()) {
     return MakeStatus<TPMError>("Failed to get hwsec state")
-        .Wrap(std::move(is_ready).status());
+        .Wrap(std::move(is_ready).err_status());
   }
 
   if (!*is_ready) {
@@ -72,14 +72,14 @@ CryptohomeKeyLoader::LoadOrCreateCryptohomeKey() {
   // Try to load the cryptohome key.
   hwsec::StatusOr<hwsec::ScopedKey> key = LoadCryptohomeKey();
   if (!key.ok()) {
-    if (key.status()->ToTPMRetryAction() == TPMRetryAction::kNoRetry) {
+    if (key.err_status()->ToTPMRetryAction() == TPMRetryAction::kNoRetry) {
       // The key couldn't be loaded, and it wasn't due to a transient error,
       // so we must create the key.
       hwsec::StatusOr<hwsec::CryptohomeFrontend::CreateKeyResult> result =
           CreateCryptohomeKey();
       if (!result.ok()) {
         return MakeStatus<TPMError>("Failed to create cryptohome key")
-            .Wrap(std::move(result).status());
+            .Wrap(std::move(result).err_status());
       }
 
       if (hwsec::Status err = SaveCryptohomeKey(result->key_blob); !err.ok()) {
@@ -91,7 +91,7 @@ CryptohomeKeyLoader::LoadOrCreateCryptohomeKey() {
     }
 
     return MakeStatus<TPMError>("Failed to load cryptohome key")
-        .Wrap(std::move(key).status());
+        .Wrap(std::move(key).err_status());
   }
 
   return key;

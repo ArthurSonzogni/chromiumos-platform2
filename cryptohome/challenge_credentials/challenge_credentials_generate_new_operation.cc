@@ -106,7 +106,8 @@ void ChallengeCredentialsGenerateNewOperation::Start() {
   }
 }
 
-void ChallengeCredentialsGenerateNewOperation::Abort(TPMStatus status) {
+void ChallengeCredentialsGenerateNewOperation::Abort(
+    TPMStatus status [[clang::param_typestate(unconsumed)]]) {
   DCHECK(thread_checker_.CalledOnValidThread());
   TPMStatus return_status =
       MakeStatus<CryptohomeTPMError>(CRYPTOHOME_ERR_LOC(kLocChalCredNewAborted))
@@ -121,7 +122,7 @@ void ChallengeCredentialsGenerateNewOperation::Abort(TPMStatus status) {
   // cancellation is not supported by the challenges IPC API currently, neither
   // it is supported by the API for smart card drivers in Chrome OS.
   weak_ptr_factory_.InvalidateWeakPtrs();
-  Complete(&completion_callback_, std::move(return_status));
+  CompleteWithError(&completion_callback_, std::move(return_status));
   // |this| can be already destroyed at this point.
 }
 
@@ -171,7 +172,7 @@ TPMStatus ChallengeCredentialsGenerateNewOperation::GenerateSalt() {
                                ErrorAction::kReboot}),
                TPMRetryAction::kReboot)
         .Wrap(MakeStatus<CryptohomeTPMError>(
-            std::move(salt_random_bytes).status()));
+            std::move(salt_random_bytes).err_status()));
   }
   DCHECK_EQ(kChallengeCredentialsSaltRandomByteCount,
             salt_random_bytes->size());
@@ -212,7 +213,7 @@ TPMStatus ChallengeCredentialsGenerateNewOperation::CreateTpmProtectedSecret() {
     LOG(ERROR) << "Failed to generated random secure blob: "
                << tpm_protected_secret_value.status();
     TPMStatus status = MakeStatus<CryptohomeTPMError>(
-        std::move(tpm_protected_secret_value).status());
+        std::move(tpm_protected_secret_value).err_status());
     return MakeStatus<CryptohomeTPMError>(
                CRYPTOHOME_ERR_LOC(kLocChalCredGenRandFailed))
         .Wrap(std::move(status));
@@ -231,7 +232,7 @@ TPMStatus ChallengeCredentialsGenerateNewOperation::CreateTpmProtectedSecret() {
     LOG(ERROR) << "Failed to create hardware-protected secret: "
                << sealed_data.status();
     TPMStatus status =
-        MakeStatus<CryptohomeTPMError>(std::move(sealed_data).status());
+        MakeStatus<CryptohomeTPMError>(std::move(sealed_data).err_status());
     return MakeStatus<CryptohomeTPMError>(
                CRYPTOHOME_ERR_LOC(kLocChalCredNewSealFailed))
         .Wrap(std::move(status));
@@ -249,7 +250,7 @@ void ChallengeCredentialsGenerateNewOperation::OnSaltChallengeResponse(
   DCHECK(thread_checker_.CalledOnValidThread());
   if (!salt_signature.ok()) {
     LOG(ERROR) << "Salt signature challenge failed";
-    Abort(std::move(salt_signature).status());
+    Abort(std::move(salt_signature).err_status());
     // |this| can be already destroyed at this point.
     return;
   }

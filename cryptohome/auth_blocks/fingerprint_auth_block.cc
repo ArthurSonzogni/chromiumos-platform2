@@ -110,7 +110,7 @@ CryptoStatus FingerprintAuthBlock::IsSupported(
                    kLocFingerprintAuthBlockHwsecReadyErrorInIsSupported),
                ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}))
         .Wrap(TpmAuthBlockUtils::TPMErrorToCryptohomeCryptoError(
-            std::move(is_ready).status()));
+            std::move(is_ready).err_status()));
   }
   if (!is_ready.value()) {
     return MakeStatus<CryptohomeCryptoError>(
@@ -126,7 +126,7 @@ CryptoStatus FingerprintAuthBlock::IsSupported(
                CRYPTOHOME_ERR_LOC(
                    kLocFingerprintAuthBlockPinWeaverCheckFailInIsSupported))
         .Wrap(TpmAuthBlockUtils::TPMErrorToCryptohomeCryptoError(
-            std::move(enabled).status()));
+            std::move(enabled).err_status()));
   }
   if (!enabled.value()) {
     return MakeStatus<CryptohomeCryptoError>(

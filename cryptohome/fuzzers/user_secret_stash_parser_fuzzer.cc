@@ -189,9 +189,9 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
     // must be equal to the original USS.
     cryptohome::CryptohomeStatusOr<std::unique_ptr<UserSecretStash>>
         stash2_status = UserSecretStash::FromEncryptedContainer(
-            reencrypted.value(), mutated_uss_main_key);
+            reencrypted.HintOk().value(), mutated_uss_main_key);
     CHECK(stash2_status.ok());
-    AssertStashesEqual(*stash_status.value(), *stash2_status.value());
+    AssertStashesEqual(*stash_status.value(), *stash2_status.HintOk().value());
   }
 
   return 0;

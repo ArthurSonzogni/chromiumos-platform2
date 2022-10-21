@@ -174,7 +174,11 @@ int main(int argc, char** argv) {
     cryptohome::StorageStatus status = mounter.PerformEphemeralMount(
         cryptohome::Username(request.username()),
         base::FilePath(request.ephemeral_loop_device()));
-    error = status.ok() ? cryptohome::MOUNT_ERROR_NONE : status->error();
+    if (status.ok()) {
+      error = cryptohome::MOUNT_ERROR_NONE;
+    } else {
+      error = status->error();
+    }
 
     cryptohome::ReportTimerStop(cryptohome::kPerformEphemeralMountTimer);
   } else {
@@ -185,7 +189,11 @@ int main(int argc, char** argv) {
     cryptohome::StorageStatus status = mounter.PerformMount(
         mount_type, cryptohome::Username(request.username()),
         request.fek_signature(), request.fnek_signature());
-    error = status.ok() ? cryptohome::MOUNT_ERROR_NONE : status->error();
+    if (status.ok()) {
+      error = cryptohome::MOUNT_ERROR_NONE;
+    } else {
+      error = status->error();
+    }
 
     cryptohome::ReportTimerStop(cryptohome::kPerformMountTimer);
   }

@@ -43,7 +43,7 @@ void OnKeySignatureChallengeResponse(
         .Run(MakeStatus<CryptohomeTPMError>(
                  CRYPTOHOME_ERR_LOC(
                      kLocChalCredOperationNoResponseInOnSigResponse))
-                 .Wrap(std::move(response_status).status()));
+                 .Wrap(std::move(response_status).err_status()));
     return;
   }
   std::unique_ptr<KeyChallengeResponse> response =

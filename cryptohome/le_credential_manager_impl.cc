@@ -221,7 +221,7 @@ LECredStatus LECredentialManagerImpl::CheckSecret(
                CRYPTOHOME_ERR_LOC(kLocLECredManPinWeaverFailedInCheckSecret),
                ErrorActionSet({ErrorAction::kReboot, ErrorAction::kAuth}),
                LECredError::LE_CRED_ERROR_HASH_TREE)
-        .Wrap(MakeStatus<CryptohomeTPMError>(std::move(result).status()));
+        .Wrap(MakeStatus<CryptohomeTPMError>(std::move(result).err_status()));
   }
   root_hash_ = result->new_root;
 
@@ -341,7 +341,7 @@ LECredStatusOr<uint32_t> LECredentialManagerImpl::GetDelayInSeconds(
                    kLocLECredManPinWeaverFailedInGetDelayInSeconds),
                ErrorActionSet({ErrorAction::kReboot, ErrorAction::kAuth}),
                LECredError::LE_CRED_ERROR_HASH_TREE)
-        .Wrap(MakeStatus<CryptohomeTPMError>(std::move(result).status()));
+        .Wrap(MakeStatus<CryptohomeTPMError>(std::move(result).err_status()));
   }
 
   return result.value();
@@ -394,7 +394,7 @@ LECredentialManagerImpl::GetExpirationInSeconds(uint64_t label) {
                    kLocLECredManPinWeaverFailedInGetExpirationInSeconds),
                ErrorActionSet({ErrorAction::kReboot, ErrorAction::kAuth}),
                LECredError::LE_CRED_ERROR_HASH_TREE)
-        .Wrap(MakeStatus<CryptohomeTPMError>(std::move(result).status()));
+        .Wrap(MakeStatus<CryptohomeTPMError>(std::move(result).err_status()));
   }
 
   return result.value();
@@ -462,7 +462,7 @@ LECredentialManagerImpl::StartBiometricsAuth(
                    kLocLECredManPinWeaverFailedInStartBiometricsAuth),
                ErrorActionSet({ErrorAction::kReboot, ErrorAction::kAuth}),
                LECredError::LE_CRED_ERROR_HASH_TREE)
-        .Wrap(MakeStatus<CryptohomeTPMError>(std::move(result).status()));
+        .Wrap(MakeStatus<CryptohomeTPMError>(std::move(result).err_status()));
   }
   root_hash_ = result->new_root;
 
@@ -587,7 +587,7 @@ LECredStatus LECredentialManagerImpl::InsertLeaf(
                CRYPTOHOME_ERR_LOC(kLocLECredManTpmFailedInInsertCred),
                ErrorActionSet({ErrorAction::kReboot, ErrorAction::kAuth}),
                LECredError::LE_CRED_ERROR_HASH_TREE)
-        .Wrap(MakeStatus<CryptohomeTPMError>(std::move(result).status()));
+        .Wrap(MakeStatus<CryptohomeTPMError>(std::move(result).err_status()));
   }
   root_hash_ = result->new_root;
 
@@ -610,7 +610,7 @@ LECredStatus LECredentialManagerImpl::InsertLeaf(
                      LE_CRED_ERROR_HASH_TREE);
       LOG(ERROR)
           << " Failed to rewind aborted InsertCredential in PinWeaver, label: "
-          << label.value() << ": " << std::move(remove_result.status());
+          << label.value() << ": " << std::move(remove_result).status();
       // The attempt to undo the PinWeaver side operation has also failed, Can't
       // do much else now. We block further LE operations until at least the
       // next boot.

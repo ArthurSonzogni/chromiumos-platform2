@@ -103,7 +103,8 @@ void ChallengeCredentialsDecryptOperation::Start() {
   }
 }
 
-void ChallengeCredentialsDecryptOperation::Abort(TPMStatus status) {
+void ChallengeCredentialsDecryptOperation::Abort(
+    TPMStatus status [[clang::param_typestate(unconsumed)]]) {
   DCHECK(thread_checker_.CalledOnValidThread());
   Resolve(MakeStatus<CryptohomeTPMError>(
               CRYPTOHOME_ERR_LOC(kLocChalCredDecryptOperationAborted))
@@ -212,7 +213,7 @@ ChallengeCredentialsDecryptOperation::StartProcessingSealedSecret() {
           public_key_info_.public_key_spki_der, key_sealing_algorithms);
   if (!challenge.ok()) {
     TPMStatus status =
-        MakeStatus<CryptohomeTPMError>(std::move(challenge).status());
+        MakeStatus<CryptohomeTPMError>(std::move(challenge).err_status());
     return MakeStatus<CryptohomeTPMError>(
                CRYPTOHOME_ERR_LOC(
                    kLocChalCredDecryptCreateUnsealingSessionFailed),
@@ -238,7 +239,7 @@ void ChallengeCredentialsDecryptOperation::OnSaltChallengeResponse(
   if (!salt_signature.ok()) {
     Resolve(MakeStatus<CryptohomeTPMError>(
                 CRYPTOHOME_ERR_LOC(kLocChalCredDecryptSaltResponseNoSignature))
-                .Wrap(std::move(salt_signature).status()));
+                .Wrap(std::move(salt_signature).err_status()));
     // |this| can be already destroyed at this point.
     return;
   }
@@ -253,7 +254,7 @@ void ChallengeCredentialsDecryptOperation::OnUnsealingChallengeResponse(
     Resolve(
         MakeStatus<CryptohomeTPMError>(
             CRYPTOHOME_ERR_LOC(kLocChalCredDecryptUnsealingResponseNoSignature))
-            .Wrap(std::move(challenge_signature_status).status()));
+            .Wrap(std::move(challenge_signature_status).err_status()));
     // |this| can be already destroyed at this point.
     return;
   }
@@ -274,7 +275,7 @@ void ChallengeCredentialsDecryptOperation::OnUnsealingChallengeResponse(
 
   if (!unsealed_secret.ok()) {
     TPMStatus status =
-        MakeStatus<CryptohomeTPMError>(std::move(unsealed_secret).status());
+        MakeStatus<CryptohomeTPMError>(std::move(unsealed_secret).err_status());
     Resolve(MakeStatus<CryptohomeTPMError>(
                 CRYPTOHOME_ERR_LOC(kLocChalCredDecryptUnsealFailed),
                 NoErrorAction())

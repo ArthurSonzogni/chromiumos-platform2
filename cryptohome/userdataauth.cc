@@ -2082,7 +2082,7 @@ void UserDataAuth::StartAuthSession(
             CRYPTOHOME_ERR_LOC(kLocUserDataAuthCreateFailedInStartAuthSession),
             ErrorActionSet(
                 {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kReboot}))
-            .Wrap(std::move(auth_session_status).status()));
+            .Wrap(std::move(auth_session_status).err_status()));
     return;
   }
   AuthSession* auth_session = auth_session_status.value().Get();
@@ -2191,7 +2191,7 @@ void UserDataAuth::ExtendAuthSession(
                    MakeStatus<CryptohomeError>(
                        CRYPTOHOME_ERR_LOC(
                            kLocUserDataAuthSessionNotFoundInExtendAuthSession))
-                       .Wrap(std::move(auth_session_status).status()));
+                       .Wrap(std::move(auth_session_status).err_status()));
     return;
   }
   AuthSession* auth_session = auth_session_status.value().Get();
@@ -2228,7 +2228,7 @@ CryptohomeStatusOr<InUseAuthSession> UserDataAuth::GetAuthenticatedAuthSession(
                ErrorActionSet({ErrorAction::kDevCheckUnexpectedState,
                                ErrorAction::kReboot}),
                user_data_auth::CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN)
-        .Wrap(std::move(auth_session_status).status());
+        .Wrap(std::move(auth_session_status));
   }
 
   // Check if the AuthSession is properly authenticated.
@@ -2513,7 +2513,7 @@ CryptohomeStatus UserDataAuth::PrepareEphemeralVaultImpl(
     return MakeStatus<CryptohomeError>(
                CRYPTOHOME_ERR_LOC(
                    kLocUserDataAuthGetSessionFailedInPrepareEphemeralVault))
-        .Wrap(std::move(session_status).status());
+        .Wrap(std::move(session_status).err_status());
   }
 
   PreMountHook(auth_session->obfuscated_username());
@@ -2527,7 +2527,7 @@ CryptohomeStatus UserDataAuth::PrepareEphemeralVaultImpl(
     return MakeStatus<CryptohomeError>(
                CRYPTOHOME_ERR_LOC(
                    kLocUserDataAuthMountFailedInPrepareEphemeralVault))
-        .Wrap(std::move(mount_status).status());
+        .Wrap(std::move(mount_status).err_status());
   }
 
   // Let the auth session perform any finalization operations for a newly
@@ -2559,7 +2559,7 @@ CryptohomeStatus UserDataAuth::PreparePersistentVaultImpl(
     return MakeStatus<CryptohomeError>(
                CRYPTOHOME_ERR_LOC(
                    kLocUserDataAuthNoAuthSessionInPreparePersistentVault))
-        .Wrap(std::move(auth_session_status).status());
+        .Wrap(std::move(auth_session_status).err_status());
   }
 
   if (auth_session_status.value()->ephemeral_user()) {
@@ -2590,7 +2590,7 @@ CryptohomeStatus UserDataAuth::PreparePersistentVaultImpl(
     return MakeStatus<CryptohomeError>(
                CRYPTOHOME_ERR_LOC(
                    kLocUserDataAuthGetSessionFailedInPreparePersistentVault))
-        .Wrap(std::move(session_status).status());
+        .Wrap(std::move(session_status).err_status());
   }
 
   PreMountHook(obfuscated_username);
@@ -2609,7 +2609,7 @@ CryptohomeStatus UserDataAuth::PreparePersistentVaultImpl(
     return MakeStatus<CryptohomeError>(
                CRYPTOHOME_ERR_LOC(
                    kLocUserDataAuthMountFailedInPreparePersistentVault))
-        .Wrap(std::move(mount_status).status());
+        .Wrap(std::move(mount_status).err_status());
   }
   return OkStatus<CryptohomeError>();
 }
@@ -2630,7 +2630,7 @@ CryptohomeStatus UserDataAuth::CreatePersistentUserImpl(
                                ErrorAction::kReboot}),
                user_data_auth::CryptohomeErrorCode::
                    CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN)
-        .Wrap(std::move(auth_session_status).status());
+        .Wrap(std::move(auth_session_status));
   }
 
   if (auth_session->ephemeral_user()) {
@@ -2660,7 +2660,7 @@ CryptohomeStatus UserDataAuth::CreatePersistentUserImpl(
   }
 
   if (!exists_or.ok()) {
-    MountError mount_error = exists_or.status()->error();
+    MountError mount_error = exists_or.err_status()->error();
     LOG(ERROR) << "Failed to query vault existance for: " << obfuscated_username
                << ", code: " << mount_error;
     return MakeStatus<CryptohomeMountError>(
@@ -2730,7 +2730,7 @@ void UserDataAuth::AddAuthFactor(
         std::move(on_done), reply,
         MakeStatus<CryptohomeError>(
             CRYPTOHOME_ERR_LOC(kLocUserDataAuthNoAuthSessionInAddAuthFactor))
-            .Wrap(std::move(auth_session_status).status()));
+            .Wrap(std::move(auth_session_status).err_status()));
     return;
   }
 
@@ -2763,7 +2763,7 @@ void UserDataAuth::AuthenticateAuthFactor(
                 {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kReboot}),
             user_data_auth::CryptohomeErrorCode::
                 CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN)
-            .Wrap(std::move(auth_session_status).status()));
+            .Wrap(std::move(auth_session_status).err_status()));
     return;
   }
 
@@ -2813,7 +2813,7 @@ void UserDataAuth::UpdateAuthFactor(
         std::move(on_done), reply,
         MakeStatus<CryptohomeError>(
             CRYPTOHOME_ERR_LOC(kLocUserDataAuthNoAuthSessionInUpdateAuthFactor))
-            .Wrap(std::move(auth_session_status).status()));
+            .Wrap(std::move(auth_session_status).err_status()));
     return;
   }
 
@@ -2839,7 +2839,7 @@ void UserDataAuth::RemoveAuthFactor(
                    MakeStatus<CryptohomeError>(
                        CRYPTOHOME_ERR_LOC(
                            kLocUserDataAuthSessionNotFoundInRemoveAuthFactor))
-                       .Wrap(std::move(auth_session_status).status()));
+                       .Wrap(std::move(auth_session_status).err_status()));
     return;
   }
 
@@ -3090,7 +3090,7 @@ void UserDataAuth::PrepareAuthFactor(
             ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
             user_data_auth::CryptohomeErrorCode::
                 CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN)
-            .Wrap(std::move(auth_session_status).status()));
+            .Wrap(std::move(auth_session_status).err_status()));
     return;
   }
   auth_session->PrepareAuthFactor(
@@ -3117,7 +3117,7 @@ void UserDataAuth::TerminateAuthFactor(
             ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
             user_data_auth::CryptohomeErrorCode::
                 CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN)
-            .Wrap(std::move(auth_session_status).status()));
+            .Wrap(std::move(auth_session_status).err_status()));
     return;
   }
   auth_session->TerminateAuthFactor(
@@ -3180,7 +3180,7 @@ void UserDataAuth::GetRecoveryRequest(
                                        ErrorAction::kReboot}),
                        user_data_auth::CryptohomeErrorCode::
                            CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN)
-                       .Wrap(std::move(auth_session_status).status()));
+                       .Wrap(std::move(auth_session_status).err_status()));
     return;
   }
   auth_session->GetRecoveryRequest(request, std::move(on_done));

@@ -40,8 +40,8 @@ namespace cryptohome {
 
 namespace {
 
-bool IsOperationFailureTransient(
-    const StatusChain<CryptohomeTPMError>& status) {
+bool IsOperationFailureTransient(const StatusChain<CryptohomeTPMError>& status
+                                 [[clang::param_typestate(unconsumed)]]) {
   TPMRetryAction action = status->ToTPMRetryAction();
   return action == TPMRetryAction::kCommunication ||
          action == TPMRetryAction::kLater;
@@ -304,7 +304,7 @@ void ChallengeCredentialsHelperImpl::OnDecryptCompleted(
         result) {
   DCHECK(thread_checker_.CalledOnValidThread());
   CancelRunningOperation();
-  if (!result.ok() && IsOperationFailureTransient(result.status()) &&
+  if (!result.ok() && IsOperationFailureTransient(result.err_status()) &&
       attempt_number < kRetryAttemptCount) {
     LOG(WARNING) << "Retrying the decryption operation after transient error: "
                  << result.status();

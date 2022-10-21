@@ -68,7 +68,7 @@ CryptoStatus CryptohomeRecoveryAuthBlock::IsSupported(Crypto& crypto) {
                    kLocRecoveryAuthBlockHwsecReadyErrorInIsSupported),
                ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}))
         .Wrap(TpmAuthBlockUtils::TPMErrorToCryptohomeCryptoError(
-            std::move(is_ready).status()));
+            std::move(is_ready).err_status()));
   }
   if (!is_ready.value()) {
     return MakeStatus<CryptohomeCryptoError>(

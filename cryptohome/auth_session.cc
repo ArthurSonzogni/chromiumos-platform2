@@ -583,7 +583,7 @@ CryptohomeStatus AuthSession::AddVaultKeyset(
     if (!status.ok()) {
       return MakeStatus<CryptohomeError>(
                  CRYPTOHOME_ERR_LOC(kLocAuthSessionAddFailedInAddKeyset))
-          .Wrap(std::move(status).status());
+          .Wrap(std::move(status));
     }
     LOG(INFO) << "AuthSession: added additional keyset " << key_label << ".";
   }
@@ -624,7 +624,7 @@ void AuthSession::UpdateVaultKeyset(
         MakeStatus<CryptohomeError>(
             CRYPTOHOME_ERR_LOC(
                 kLocAuthSessionUpdateWithBlobFailedInUpdateKeyset))
-            .Wrap(std::move(status).status()));
+            .Wrap(std::move(status)));
   }
 
   // Add the new secret to the AuthSession's credential verifier. On successful
@@ -745,7 +745,7 @@ void AuthSession::LoadVaultKeysetAndFsKeys(
         MakeStatus<CryptohomeMountError>(
             CRYPTOHOME_ERR_LOC(
                 kLocAuthSessionGetValidKeysetFailedInLoadVaultKeyset))
-            .Wrap(std::move(vk_status).status()));
+            .Wrap(std::move(vk_status).err_status()));
     return;
   }
   vault_keyset_ = std::move(vk_status).value();
@@ -918,7 +918,7 @@ void AuthSession::AuthenticateAuthFactor(
             MakeStatus<CryptohomeError>(
                 CRYPTOHOME_ERR_LOC(
                     kLocAuthSessionAuthInputParseFailedInAuthAuthFactor))
-                .Wrap(std::move(auth_input).status()));
+                .Wrap(std::move(auth_input).err_status()));
         return;
       }
       auto verify_callback =
@@ -961,7 +961,7 @@ void AuthSession::AuthenticateAuthFactor(
               MakeStatus<CryptohomeError>(
                   CRYPTOHOME_ERR_LOC(
                       kLocAuthSessionAuthInputParseFailed2InAuthAuthFactor))
-                  .Wrap(std::move(auth_input).status()));
+                  .Wrap(std::move(auth_input).err_status()));
           return;
         }
         auto verify_callback =
@@ -1031,7 +1031,7 @@ void AuthSession::AuthenticateAuthFactor(
             MakeStatus<CryptohomeError>(
                 CRYPTOHOME_ERR_LOC(
                     kLocAuthSessionAuthInputParseFailed3InAuthAuthFactor))
-                .Wrap(std::move(auth_input).status()));
+                .Wrap(std::move(auth_input).err_status()));
         return;
       }
       AuthenticateViaSingleFactor(*request_auth_factor_type,
@@ -1207,7 +1207,7 @@ CryptohomeStatus AuthSession::RemoveAuthFactorViaUserSecretStash(
                CRYPTOHOME_ERR_LOC(
                    kLocAuthSessionEncryptFailedInRemoveAuthFactor),
                user_data_auth::CRYPTOHOME_REMOVE_CREDENTIALS_FAILED)
-        .Wrap(std::move(encrypted_uss_container).status());
+        .Wrap(std::move(encrypted_uss_container).err_status());
   }
   status = user_secret_stash_storage_->Persist(encrypted_uss_container.value(),
                                                obfuscated_username_);
@@ -1328,7 +1328,7 @@ void AuthSession::UpdateAuthFactor(
     std::move(on_done).Run(
         MakeStatus<CryptohomeError>(
             CRYPTOHOME_ERR_LOC(kLocAuthSessionNoInputInUpdateAuthFactor))
-            .Wrap(std::move(auth_input_status).status()));
+            .Wrap(std::move(auth_input_status).err_status()));
     return;
   }
 
@@ -1466,7 +1466,7 @@ void AuthSession::UpdateAuthFactorViaUserSecretStash(
         MakeStatus<CryptohomeError>(
             CRYPTOHOME_ERR_LOC(kLocAuthSessionEncryptFailedInUpdateViaUSS),
             user_data_auth::CRYPTOHOME_UPDATE_CREDENTIALS_FAILED)
-            .Wrap(std::move(encrypted_uss_container).status()));
+            .Wrap(std::move(encrypted_uss_container).err_status()));
     return;
   }
 
@@ -1482,7 +1482,7 @@ void AuthSession::UpdateAuthFactorViaUserSecretStash(
           MakeStatus<CryptohomeError>(
               CRYPTOHOME_ERR_LOC(
                   kLocAuthSessionUpdateKeysetFailedInUpdateWithUSS))
-              .Wrap(std::move(status).status()));
+              .Wrap(std::move(status)));
     }
   }
   // If we cannot maintain the backup VaultKeyset (per above), we must delete
@@ -2157,7 +2157,7 @@ CryptohomeStatus AuthSession::PersistAuthFactorToUserSecretStashImpl(
     return MakeStatus<CryptohomeError>(
                CRYPTOHOME_ERR_LOC(kLocAuthSessionEncryptFailedInPersistToUSS),
                user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED)
-        .Wrap(std::move(encrypted_uss_container).status());
+        .Wrap(std::move(encrypted_uss_container).err_status());
   }
 
   // Persist the factor.
@@ -2206,7 +2206,7 @@ CryptohomeStatus AuthSession::PersistAuthFactorToUserSecretStashImpl(
                   CRYPTOHOME_ERR_LOC(
                       kLocAuthSessionCleanupBackupFailedInAddauthFactor),
                   user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED)
-                  .Wrap(std::move(cleanup_status).status()));
+                  .Wrap(std::move(cleanup_status).err_status()));
     }
   }
   // Generate and persist the backup (or migrated) VaultKeyset. This is
@@ -2385,7 +2385,7 @@ void AuthSession::AddAuthFactor(
     std::move(on_done).Run(
         MakeStatus<CryptohomeError>(
             CRYPTOHOME_ERR_LOC(kLocAuthSessionNoInputInAddAuthFactor))
-            .Wrap(std::move(auth_input_status).status()));
+            .Wrap(std::move(auth_input_status).err_status()));
     return;
   }
 
@@ -2675,7 +2675,7 @@ void AuthSession::LoadUSSMainKeyAndFsKeyset(
         MakeStatus<CryptohomeError>(
             CRYPTOHOME_ERR_LOC(kLocAuthSessionLoadUSSFailedInLoadUSS),
             user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED)
-            .Wrap(std::move(encrypted_uss).status()));
+            .Wrap(std::move(encrypted_uss).err_status()));
     return;
   }
 
@@ -2696,7 +2696,7 @@ void AuthSession::LoadUSSMainKeyAndFsKeyset(
         MakeStatus<CryptohomeError>(
             CRYPTOHOME_ERR_LOC(kLocAuthSessionDecryptUSSFailedInLoadUSS),
             user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED)
-            .Wrap(std::move(user_secret_stash_status).status()));
+            .Wrap(std::move(user_secret_stash_status).err_status()));
     return;
   }
   user_secret_stash_ = std::move(user_secret_stash_status).value();

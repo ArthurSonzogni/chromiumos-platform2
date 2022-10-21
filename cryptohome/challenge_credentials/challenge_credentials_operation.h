@@ -79,6 +79,20 @@ class ChallengeCredentialsOperation {
     std::move(callback_copy).Run(std::forward<Args>(args)...);
   }
 
+  template <typename CompletionCallback>
+  static void CompleteWithError(CompletionCallback* completion_callback,
+                                TPMStatus status
+                                [[clang::param_typestate(unconsumed)]]) {
+    if (completion_callback->is_null())
+      return;
+    // Move the callback into a temporary variable *before* running it, as the
+    // value passed via |completion_callback| may become destroyed during the
+    // callback execution.
+    CompletionCallback callback_copy;
+    std::swap(*completion_callback, callback_copy);
+    std::move(callback_copy).Run(std::move(status));
+  }
+
   // Starts a signature challenge request. In real use cases, this will make an
   // IPC request to the service that talks to the cryptographic token with the
   // challenged key.

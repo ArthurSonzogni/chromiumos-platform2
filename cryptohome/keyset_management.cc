@@ -81,7 +81,13 @@ KeysetManagement::GetValidKeysetWithKeyBlobs(
   }
 
   bool any_keyset_exists = false;
+
   CryptoStatus last_crypto_error;
+
+  // Disable the consumable checks, because the check wants the state of
+  // variable 'last_crypto_error' match at the entry and exit of loop.
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wconsumed"
   for (int index : key_indices) {
     std::unique_ptr<VaultKeyset> vk = LoadVaultKeysetForUser(obfuscated, index);
     if (!vk) {
@@ -106,6 +112,7 @@ KeysetManagement::GetValidKeysetWithKeyBlobs(
       return vk;
     }
   }
+#pragma clang diagnostic pop
 
   if (!any_keyset_exists) {
     LOG(ERROR) << "No parsable keysets found for " << obfuscated;
@@ -281,7 +288,7 @@ KeysetManagement::AddInitialKeysetWithKeyBlobs(
     return MakeStatus<CryptohomeError>(
                CRYPTOHOME_ERR_LOC(
                    kLocKeysetManagementEncryptAndSaveFailedInAddInitialKeyset))
-        .Wrap(std::move(result).status());
+        .Wrap(std::move(result).err_status());
   }
 
   return vk;
@@ -400,7 +407,7 @@ CryptohomeStatus KeysetManagement::ReSaveKeysetWithKeyBlobs(
     return MakeStatus<CryptohomeError>(
                CRYPTOHOME_ERR_LOC(
                    kLocKeysetManagementEncryptAndSaveFailedInReSaveKeyset))
-        .Wrap(std::move(result).status());
+        .Wrap(std::move(result).err_status());
   }
 
   if ((vault_keyset.GetFlags() & SerializedVaultKeyset::LE_CREDENTIAL) != 0 &&
@@ -489,7 +496,7 @@ CryptohomeStatus KeysetManagement::AddKeysetWithKeyBlobs(
     return MakeStatus<CryptohomeError>(
                CRYPTOHOME_ERR_LOC(
                    kLocKeysetManagementFailedEncryptAndSaveKeysetWithKeyBlobs))
-        .Wrap(std::move(result).status());
+        .Wrap(std::move(result).err_status());
   }
 
   return CryptohomeStatus();
@@ -826,7 +833,7 @@ CryptohomeStatus KeysetManagement::EncryptAndSaveKeyset(
     return MakeStatus<CryptohomeError>(
                CRYPTOHOME_ERR_LOC(
                    kLocKeysetManagementEncryptFailedInEncryptAndSaveKeyset))
-        .Wrap(std::move(result).status());
+        .Wrap(std::move(result).err_status());
   }
 
   if (!vault_keyset.Save(save_path)) {

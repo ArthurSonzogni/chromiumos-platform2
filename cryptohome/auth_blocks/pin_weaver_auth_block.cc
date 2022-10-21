@@ -97,7 +97,7 @@ CryptoStatus PinWeaverAuthBlock::IsSupported(Crypto& crypto) {
                    kLocPinWeaverAuthBlockHwsecReadyErrorInIsSupported),
                ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}))
         .Wrap(TpmAuthBlockUtils::TPMErrorToCryptohomeCryptoError(
-            std::move(is_ready).status()));
+            std::move(is_ready).err_status()));
   }
   if (!is_ready.value()) {
     return MakeStatus<CryptohomeCryptoError>(
@@ -112,7 +112,7 @@ CryptoStatus PinWeaverAuthBlock::IsSupported(Crypto& crypto) {
                CRYPTOHOME_ERR_LOC(
                    kLocPinWeaverAuthBlockPinWeaverCheckFailInIsSupported))
         .Wrap(TpmAuthBlockUtils::TPMErrorToCryptohomeCryptoError(
-            std::move(has_pinweaver).status()));
+            std::move(has_pinweaver).err_status()));
   }
   if (!has_pinweaver.value()) {
     return MakeStatus<CryptohomeCryptoError>(

@@ -60,7 +60,7 @@ CryptoStatus TpmNotBoundToPcrAuthBlock::IsSupported(Crypto& crypto) {
                    kLocTpmNotBoundToPcrAuthBlockHwsecReadyErrorInIsSupported),
                ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}))
         .Wrap(TpmAuthBlockUtils::TPMErrorToCryptohomeCryptoError(
-            std::move(is_ready).status()));
+            std::move(is_ready).err_status()));
   }
   if (!is_ready.value()) {
     return MakeStatus<CryptohomeCryptoError>(
@@ -243,7 +243,7 @@ CryptoStatus TpmNotBoundToPcrAuthBlock::Create(const AuthInput& user_input,
                ErrorActionSet({ErrorAction::kReboot,
                                ErrorAction::kDevCheckUnexpectedState}))
         .Wrap(TpmAuthBlockUtils::TPMErrorToCryptohomeCryptoError(
-            std::move(result).status()));
+            std::move(result).err_status()));
   }
   if (!ObscureRsaMessage(brillo::SecureBlob(result->begin(), result->end()),
                          aes_skey, &tpm_key)) {
@@ -342,7 +342,7 @@ CryptoStatus TpmNotBoundToPcrAuthBlock::DecryptTpmNotBoundToPcr(
                                ErrorAction::kDevCheckUnexpectedState,
                                ErrorAction::kAuth}))
         .Wrap(TpmAuthBlockUtils::TPMErrorToCryptohomeCryptoError(
-            std::move(result).status()));
+            std::move(result).err_status()));
   }
   local_vault_key = std::move(*result);
 

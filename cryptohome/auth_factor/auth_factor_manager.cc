@@ -621,7 +621,7 @@ CryptohomeStatus AuthFactorManager::UpdateAuthFactor(
     return MakeStatus<CryptohomeError>(
                CRYPTOHOME_ERR_LOC(kLocAuthFactorManagerLoadFailedInUpdate),
                user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE)
-        .Wrap(std::move(existing_auth_factor).status());
+        .Wrap(std::move(existing_auth_factor).err_status());
   }
 
   // 2. Save auth factor to disk - the old auth factor state will be overridden

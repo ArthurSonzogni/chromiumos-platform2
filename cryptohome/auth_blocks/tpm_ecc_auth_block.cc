@@ -116,7 +116,7 @@ CryptoStatus TpmEccAuthBlock::IsSupported(Crypto& crypto) {
                ErrorActionSet(
                    {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kAuth}))
         .Wrap(TpmAuthBlockUtils::TPMErrorToCryptohomeCryptoError(
-            std::move(is_ready).status()));
+            std::move(is_ready).err_status()));
   }
   if (!is_ready.value()) {
     return MakeStatus<CryptohomeCryptoError>(
@@ -224,7 +224,7 @@ CryptoStatus TpmEccAuthBlock::TryCreate(const AuthInput& auth_input,
     hwsec::StatusOr<brillo::SecureBlob> tmp_value =
         hwsec_->GetAuthValue(cryptohome_key, auth_value);
     if (!tmp_value.ok()) {
-      if (tmp_value.status()->ToTPMRetryAction() ==
+      if (tmp_value.err_status()->ToTPMRetryAction() ==
           TPMRetryAction::kEllipticCurveScalarOutOfRange) {
         // The scalar for EC_POINT multiplication is out of range.
         // We should retry the process again.
@@ -238,7 +238,7 @@ CryptoStatus TpmEccAuthBlock::TryCreate(const AuthInput& auth_input,
                  ErrorActionSet({ErrorAction::kReboot,
                                  ErrorAction::kDevCheckUnexpectedState}))
           .Wrap(TpmAuthBlockUtils::TPMErrorToCryptohomeCryptoError(
-              std::move(tmp_value).status()));
+              std::move(tmp_value).err_status()));
     }
     auth_value = std::move(*tmp_value);
   }
@@ -282,7 +282,7 @@ CryptoStatus TpmEccAuthBlock::TryCreate(const AuthInput& auth_input,
                ErrorActionSet({ErrorAction::kReboot,
                                ErrorAction::kDevCheckUnexpectedState}))
         .Wrap(TpmAuthBlockUtils::TPMErrorToCryptohomeCryptoError(
-            std::move(sealed_hvkkm).status()));
+            std::move(sealed_hvkkm).err_status()));
   }
 
   hwsec::StatusOr<brillo::Blob> extended_sealed_hvkkm =
@@ -294,7 +294,7 @@ CryptoStatus TpmEccAuthBlock::TryCreate(const AuthInput& auth_input,
                ErrorActionSet({ErrorAction::kReboot,
                                ErrorAction::kDevCheckUnexpectedState}))
         .Wrap(TpmAuthBlockUtils::TPMErrorToCryptohomeCryptoError(
-            std::move(extended_sealed_hvkkm).status()));
+            std::move(extended_sealed_hvkkm).err_status()));
   }
 
   auth_state.sealed_hvkkm =
@@ -311,7 +311,7 @@ CryptoStatus TpmEccAuthBlock::TryCreate(const AuthInput& auth_input,
                ErrorActionSet({ErrorAction::kReboot,
                                ErrorAction::kDevCheckUnexpectedState}))
         .Wrap(TpmAuthBlockUtils::TPMErrorToCryptohomeCryptoError(
-            std::move(pub_key_hash).status()));
+            std::move(pub_key_hash).err_status()));
   } else {
     auth_state.tpm_public_key_hash =
         brillo::SecureBlob(pub_key_hash->begin(), pub_key_hash->end());
@@ -465,7 +465,7 @@ CryptoStatus TpmEccAuthBlock::DeriveVkk(bool locked_to_single_user,
                  ErrorActionSet({ErrorAction::kReboot,
                                  ErrorAction::kDevCheckUnexpectedState}))
           .Wrap(TpmAuthBlockUtils::TPMErrorToCryptohomeCryptoError(
-              std::move(preload_data).status()));
+              std::move(preload_data).err_status()));
     }
 
     preload_key = std::move(*preload_data);
@@ -551,7 +551,7 @@ CryptoStatus TpmEccAuthBlock::DeriveHvkkm(
                                  ErrorAction::kDevCheckUnexpectedState,
                                  ErrorAction::kAuth}))
           .Wrap(TpmAuthBlockUtils::TPMErrorToCryptohomeCryptoError(
-              std::move(tmp_value).status()));
+              std::move(tmp_value).err_status()));
     }
     auth_value = std::move(*tmp_value);
   }
@@ -567,7 +567,7 @@ CryptoStatus TpmEccAuthBlock::DeriveHvkkm(
                CRYPTOHOME_ERR_LOC(kLocTpmEccAuthBlockUnsealFailedInDeriveHVKKM),
                ErrorActionSet({ErrorAction::kIncorrectAuth}))
         .Wrap(TpmAuthBlockUtils::TPMErrorToCryptohomeCryptoError(
-            std::move(unsealed_data).status()));
+            std::move(unsealed_data).err_status()));
   }
 
   *hvkkm = std::move(*unsealed_data);

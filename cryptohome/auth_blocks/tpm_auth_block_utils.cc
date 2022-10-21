@@ -72,8 +72,8 @@ CryptoStatus TpmAuthBlockUtils::IsTPMPubkeyHash(
                    kLocTpmAuthBlockUtilsGetPubkeyFailedInPubkeyHash),
                ErrorActionSet({ErrorAction::kDevCheckUnexpectedState,
                                ErrorAction::kReboot, ErrorAction::kPowerwash}))
-        .Wrap(
-            TPMErrorToCryptohomeCryptoError(std::move(pub_key_hash).status()));
+        .Wrap(TPMErrorToCryptohomeCryptoError(
+            std::move(pub_key_hash).err_status()));
   }
 
   if ((hash.size() != pub_key_hash->size()) ||

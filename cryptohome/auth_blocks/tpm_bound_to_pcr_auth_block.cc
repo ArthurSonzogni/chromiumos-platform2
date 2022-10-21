@@ -63,7 +63,7 @@ CryptoStatus TpmBoundToPcrAuthBlock::IsSupported(Crypto& crypto) {
                    kLocTpmBoundToPcrAuthBlockHwsecReadyErrorInIsSupported),
                ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}))
         .Wrap(TpmAuthBlockUtils::TPMErrorToCryptohomeCryptoError(
-            std::move(is_ready).status()));
+            std::move(is_ready).err_status()));
   }
   if (!is_ready.value()) {
     return MakeStatus<CryptohomeCryptoError>(
@@ -172,7 +172,7 @@ CryptoStatus TpmBoundToPcrAuthBlock::Create(const AuthInput& user_input,
                ErrorActionSet({ErrorAction::kReboot,
                                ErrorAction::kDevCheckUnexpectedState}))
         .Wrap(TpmAuthBlockUtils::TPMErrorToCryptohomeCryptoError(
-            std::move(auth_value).status()));
+            std::move(auth_value).err_status()));
   }
 
   hwsec::StatusOr<brillo::Blob> tpm_key = hwsec_->SealWithCurrentUser(
@@ -185,7 +185,7 @@ CryptoStatus TpmBoundToPcrAuthBlock::Create(const AuthInput& user_input,
                                ErrorAction::kDevCheckUnexpectedState,
                                ErrorAction::kPowerwash}))
         .Wrap(TpmAuthBlockUtils::TPMErrorToCryptohomeCryptoError(
-            std::move(tpm_key).status()));
+            std::move(tpm_key).err_status()));
   }
 
   hwsec::StatusOr<brillo::Blob> extended_tpm_key =
@@ -198,7 +198,7 @@ CryptoStatus TpmBoundToPcrAuthBlock::Create(const AuthInput& user_input,
                                ErrorAction::kDevCheckUnexpectedState,
                                ErrorAction::kPowerwash}))
         .Wrap(TpmAuthBlockUtils::TPMErrorToCryptohomeCryptoError(
-            std::move(extended_tpm_key).status()));
+            std::move(extended_tpm_key).err_status()));
   }
 
   TpmBoundToPcrAuthBlockState tpm_state;
@@ -389,7 +389,7 @@ CryptoStatus TpmBoundToPcrAuthBlock::DecryptTpmBoundToPcr(
                  ErrorActionSet({ErrorAction::kReboot,
                                  ErrorAction::kDevCheckUnexpectedState}))
           .Wrap(TpmAuthBlockUtils::TPMErrorToCryptohomeCryptoError(
-              std::move(preload_data).status()));
+              std::move(preload_data).err_status()));
     }
 
     preload_scoped_key = std::move(*preload_data);
@@ -422,7 +422,7 @@ CryptoStatus TpmBoundToPcrAuthBlock::DecryptTpmBoundToPcr(
                CRYPTOHOME_ERR_LOC(
                    kLocTpmBoundToPcrAuthBlockGetAuthValueFailedInDecrypt))
         .Wrap(TpmAuthBlockUtils::TPMErrorToCryptohomeCryptoError(
-            std::move(auth_value).status()));
+            std::move(auth_value).err_status()));
   }
 
   hwsec::StatusOr<brillo::SecureBlob> unsealed_data =
@@ -433,7 +433,7 @@ CryptoStatus TpmBoundToPcrAuthBlock::DecryptTpmBoundToPcr(
                CRYPTOHOME_ERR_LOC(
                    kLocTpmBoundToPcrAuthBlockUnsealFailedInDecrypt))
         .Wrap(TpmAuthBlockUtils::TPMErrorToCryptohomeCryptoError(
-            std::move(unsealed_data).status()));
+            std::move(unsealed_data).err_status()));
   }
 
   *vkk_key = std::move(*unsealed_data);

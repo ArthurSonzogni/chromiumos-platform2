@@ -378,7 +378,7 @@ void AuthBlockUtilityImpl::CreateKeyBlobsWithAuthBlockAsync(
         .Run(MakeStatus<CryptohomeCryptoError>(
                  CRYPTOHOME_ERR_LOC(
                      kLocAuthBlockUtilNoAuthBlockInCreateKeyBlobsAsync))
-                 .Wrap(std::move(auth_block).status()),
+                 .Wrap(std::move(auth_block).err_status()),
              nullptr, nullptr);
     return;
   }
@@ -415,7 +415,7 @@ CryptoStatus AuthBlockUtilityImpl::DeriveKeyBlobsWithAuthBlock(
     LOG(ERROR) << "Keyset wrapped with unknown method.";
     return MakeStatus<CryptohomeCryptoError>(
                CRYPTOHOME_ERR_LOC(kLocAuthBlockUtilNoAuthBlockInDeriveKeyBlobs))
-        .Wrap(std::move(auth_block).status());
+        .Wrap(std::move(auth_block).err_status());
   }
   ReportDeriveAuthBlock(auth_block_type);
 
@@ -469,7 +469,7 @@ void AuthBlockUtilityImpl::DeriveKeyBlobsWithAuthBlockAsync(
         .Run(MakeStatus<CryptohomeCryptoError>(
                  CRYPTOHOME_ERR_LOC(
                      kLocAuthBlockUtilNoAuthBlockInDeriveKeyBlobsAsync))
-                 .Wrap(std::move(auth_block).status()),
+                 .Wrap(std::move(auth_block).err_status()),
              nullptr);
     return;
   }
@@ -820,7 +820,7 @@ CryptohomeStatus AuthBlockUtilityImpl::PrepareAuthBlockForRemoval(
     return MakeStatus<CryptohomeCryptoError>(
                CRYPTOHOME_ERR_LOC(
                    kLocAuthBlockUtilNoAsyncAuthBlockInPrepareForRemoval))
-        .Wrap(std::move(auth_block).status());
+        .Wrap(std::move(auth_block).err_status());
   }
 
   return auth_block.value()->PrepareForRemoval(auth_block_state);

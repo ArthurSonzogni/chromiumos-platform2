@@ -169,7 +169,7 @@ void ChallengeCredentialsVerifyKeyOperation::Start() {
              MakeStatus<CryptohomeTPMError>(
                  CRYPTOHOME_ERR_LOC(kLocChalCredVerifyGetRandomFailed))
                  .Wrap(MakeStatus<CryptohomeTPMError>(
-                     std::move(challenge).status())));
+                     std::move(challenge).err_status())));
     return;
   }
   MakeKeySignatureChallenge(
@@ -181,7 +181,8 @@ void ChallengeCredentialsVerifyKeyOperation::Start() {
           *chosen_challenge_algorithm, challenge.value()));
 }
 
-void ChallengeCredentialsVerifyKeyOperation::Abort(TPMStatus status) {
+void ChallengeCredentialsVerifyKeyOperation::Abort(
+    TPMStatus status [[clang::param_typestate(unconsumed)]]) {
   DCHECK(thread_checker_.CalledOnValidThread());
   Complete(&completion_callback_,
            MakeStatus<CryptohomeTPMError>(
@@ -201,7 +202,7 @@ void ChallengeCredentialsVerifyKeyOperation::OnChallengeResponse(
     Complete(&completion_callback_,
              MakeStatus<CryptohomeTPMError>(
                  CRYPTOHOME_ERR_LOC(kLocChalCredVerifyChallengeFailed))
-                 .Wrap(std::move(challenge_response_status).status()));
+                 .Wrap(std::move(challenge_response_status).err_status()));
     return;
   }
   std::unique_ptr<Blob> challenge_response =

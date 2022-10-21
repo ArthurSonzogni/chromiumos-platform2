@@ -25,7 +25,7 @@ MATCHER_P(IsError,
   if (arg.ok()) {
     return false;
   }
-  return val == arg.status()->error();
+  return val == arg.err_status()->error();
 }
 
 inline void PrintTo(const StorageStatus& status, std::ostream* os) {
