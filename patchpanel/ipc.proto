@@ -69,9 +69,11 @@ message GuestMessage {
 // Message sent from main process (GuestIPv6Service) to NDProxy daemon process.
 // For START_NS_NA_RS_RA and START_NS_NA_RS_RA_MODIFYING_ROUTER_ADDRESS,
 // |if_id_primary| contains the upstream interface id and |if_id_secondary|
-// contains the downstream. For other commands, |if_id_primary| and
+// contains the downstream. For START_NS_NA and STOP_PROXY, |if_id_primary| and
 // |if_id_secondary| are exchangeable and contain the ids of the forwarding
-// interface pair.
+// interface pair. For START_NEIGHBOR_MONITOR and STOP_NEIGHBOR_MONITOR,
+// |if_id_primary| contains the downstream interface that neighbor IP is
+// monitored and |if_id_secondary| is left empty.
 message NDProxyControlMessage {
   enum NDProxyRequestType {
     UNKNOWN = 0;
@@ -79,6 +81,8 @@ message NDProxyControlMessage {
     START_NS_NA_RS_RA = 2;
     START_NS_NA_RS_RA_MODIFYING_ROUTER_ADDRESS = 3;
     STOP_PROXY = 4;
+    START_NEIGHBOR_MONITOR = 5;
+    STOP_NEIGHBOR_MONITOR = 6;
   }
   required NDProxyRequestType type = 1;
   required int32 if_id_primary = 2;

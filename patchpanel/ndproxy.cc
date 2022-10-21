@@ -520,7 +520,9 @@ void NDProxy::NotifyPacketCallbacks(int recv_ifindex,
 
   // GuestDiscovery event is triggered whenever an NA advertising global
   // address or an NS with a global source address is received on a downlink.
-  if (IsGuestInterface(recv_ifindex) && !guest_discovery_handler_.is_null()) {
+  if ((IsGuestInterface(recv_ifindex) ||
+       neighbor_monitor_links_.count(recv_ifindex) > 0) &&
+      !guest_discovery_handler_.is_null()) {
     const in6_addr* guest_address = nullptr;
     if (icmp6->icmp6_type == ND_NEIGHBOR_ADVERT) {
       const nd_neighbor_advert* na =
@@ -804,6 +806,14 @@ void NDProxy::StopProxy(int if_id1, int if_id2) {
   downlink_link_local_.erase(if_id2);
 }
 
+void NDProxy::StartNeighborMonitor(int if_id) {
+  neighbor_monitor_links_.insert(if_id);
+}
+
+void NDProxy::StopNeighborMonitor(int if_id) {
+  neighbor_monitor_links_.erase(if_id);
+}
+
 bool NDProxy::IsGuestInterface(int ifindex) {
   return if_map_rs_.find(ifindex) != if_map_rs_.end();
 }
@@ -905,6 +915,14 @@ void NDProxyDaemon::OnControlMessage(const SubprocessMessage& root_msg) {
     }
     case NDProxyControlMessage::STOP_PROXY: {
       proxy_.StopProxy(msg.if_id_primary(), msg.if_id_secondary());
+      break;
+    }
+    case NDProxyControlMessage::START_NEIGHBOR_MONITOR: {
+      proxy_.StartNeighborMonitor(msg.if_id_primary());
+      break;
+    }
+    case NDProxyControlMessage::STOP_NEIGHBOR_MONITOR: {
+      proxy_.StopNeighborMonitor(msg.if_id_primary());
       break;
     }
     case NDProxyControlMessage::UNKNOWN:

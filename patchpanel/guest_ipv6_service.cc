@@ -142,6 +142,8 @@ void GuestIPv6Service::StartForwarding(const std::string& ifname_uplink,
       break;
     case ForwardMethod::kMethodRAServer:
       // No need of proxying between downlink and uplink for RA server.
+      SendNDProxyControl(NDProxyControlMessage::START_NEIGHBOR_MONITOR,
+                         if_id_downlink, 0);
       break;
     case ForwardMethod::kMethodUnknown:
       NOTREACHED();
@@ -223,9 +225,12 @@ void GuestIPv6Service::StopForwarding(const std::string& ifname_uplink,
   }
   downstream_neighbors_[ifname_downlink].clear();
 
-  if (it->method == ForwardMethod::kMethodRAServer &&
-      uplink_ips_[ifname_uplink] != "") {
-    StopRAServer(ifname_downlink);
+  if (it->method == ForwardMethod::kMethodRAServer) {
+    SendNDProxyControl(NDProxyControlMessage::STOP_NEIGHBOR_MONITOR,
+                       if_cache_[ifname_downlink], 0);
+    if (uplink_ips_[ifname_uplink] != "") {
+      StopRAServer(ifname_downlink);
+    }
   }
 
   it->downstream_ifnames.erase(ifname_downlink);
@@ -275,10 +280,13 @@ void GuestIPv6Service::StopUplink(const std::string& ifname_uplink) {
     downstream_neighbors_[ifname_downlink].clear();
   }
 
-  if (it->method == ForwardMethod::kMethodRAServer &&
-      uplink_ips_[ifname_uplink] != "") {
+  if (it->method == ForwardMethod::kMethodRAServer) {
     for (const auto& ifname_downlink : it->downstream_ifnames) {
-      StopRAServer(ifname_downlink);
+      SendNDProxyControl(NDProxyControlMessage::STOP_NEIGHBOR_MONITOR,
+                         if_cache_[ifname_downlink], 0);
+      if (uplink_ips_[ifname_uplink] != "") {
+        StopRAServer(ifname_downlink);
+      }
     }
   }
 

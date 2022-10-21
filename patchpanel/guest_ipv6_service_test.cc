@@ -265,6 +265,9 @@ TEST_F(GuestIPv6ServiceTest, RAServer) {
   EXPECT_CALL(target, SendNDProxyControl(
                           NDProxyControlMessage::START_NS_NA_RS_RA, _, _))
       .Times(0);
+  EXPECT_CALL(target,
+              SendNDProxyControl(NDProxyControlMessage::START_NEIGHBOR_MONITOR,
+                                 101, _));
   target.StartForwarding("up1", "down1");
 
   EXPECT_CALL(target, StartRAServer("down1", "2001:db8:0:200::"))
@@ -276,12 +279,21 @@ TEST_F(GuestIPv6ServiceTest, RAServer) {
   EXPECT_CALL(target,
               SendNDProxyControl(NDProxyControlMessage::START_NS_NA, _, _))
       .With(Args<1, 2>(AreTheseTwo(101, 102)));
+  EXPECT_CALL(target,
+              SendNDProxyControl(NDProxyControlMessage::START_NEIGHBOR_MONITOR,
+                                 102, _));
   target.StartForwarding("up1", "down2");
 
   EXPECT_CALL(target,
               SendNDProxyControl(NDProxyControlMessage::STOP_PROXY, _, _))
       .With(Args<1, 2>(AreTheseTwo(101, 102)));
+  EXPECT_CALL(
+      target,
+      SendNDProxyControl(NDProxyControlMessage::STOP_NEIGHBOR_MONITOR, 101, _));
   EXPECT_CALL(target, StopRAServer("down1")).WillOnce(Return(true));
+  EXPECT_CALL(
+      target,
+      SendNDProxyControl(NDProxyControlMessage::STOP_NEIGHBOR_MONITOR, 102, _));
   EXPECT_CALL(target, StopRAServer("down2")).WillOnce(Return(true));
   target.StopUplink("up1");
 }
@@ -329,10 +341,16 @@ TEST_F(GuestIPv6ServiceTest, SetMethodOnTheFly) {
               SendNDProxyControl(NDProxyControlMessage::STOP_PROXY, 1, 101));
   EXPECT_CALL(target, StartRAServer("down1", "2001:db8:0:200::"))
       .WillOnce(Return(true));
+  EXPECT_CALL(target,
+              SendNDProxyControl(NDProxyControlMessage::START_NEIGHBOR_MONITOR,
+                                 101, _));
   target.SetForwardMethod("up1",
                           GuestIPv6Service::ForwardMethod::kMethodRAServer);
 
   EXPECT_CALL(target, StopRAServer("down1")).WillOnce(Return(true));
+  EXPECT_CALL(
+      target,
+      SendNDProxyControl(NDProxyControlMessage::STOP_NEIGHBOR_MONITOR, 101, _));
   target.StopForwarding("up1", "down1");
 }
 

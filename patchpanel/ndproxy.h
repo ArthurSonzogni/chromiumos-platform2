@@ -92,6 +92,10 @@ class NDProxy {
   void StartNSNAProxy(int if_id_na_side, int if_id_ns_side);
   // Stop all proxying between |if_id1| and |if_id2|.
   void StopProxy(int if_id1, int if_id2);
+  // Add and remove interfaces that neighbor IP are monitored besides the
+  // proxied ones, specified by |if_id|.
+  void StartNeighborMonitor(int if_id);
+  void StopNeighborMonitor(int if_id);
 
  protected:
   // RFC 4389: Read the input ICMPv6 packet in |in_packet| and determine whether
@@ -182,6 +186,11 @@ class NDProxy {
   // The set of uplink interfaces from which the RA should be injected so that
   // the downstream guests treat the host as the next hop router.
   std::set<int> modify_ra_uplinks_;
+
+  // Set of links for which the neighbor IPs are monitored and NeighborDetected
+  // events are fired. Any downlinks that are part of a forwarding group are
+  // always monitored and do not need to be added to this.
+  std::set<int> neighbor_monitor_links_;
 
   // Map from downlink interface id to the link local address on it
   std::map<int, in6_addr> downlink_link_local_;
