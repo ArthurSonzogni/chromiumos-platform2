@@ -68,12 +68,12 @@ class TetheringManager {
 
  private:
   friend class TetheringManagerTest;
+  FRIEND_TEST(TetheringManagerTest, FromProperties);
+  FRIEND_TEST(TetheringManagerTest, GetCapabilities);
   FRIEND_TEST(TetheringManagerTest, GetConfig);
   FRIEND_TEST(TetheringManagerTest, GetTetheringCapabilities);
   FRIEND_TEST(TetheringManagerTest, SaveConfig);
   FRIEND_TEST(TetheringManagerTest, SetEnabled);
-  FRIEND_TEST(TetheringManagerTest, SetTetheringEnabled);
-  FRIEND_TEST(TetheringManagerTest, TetheringConfig);
 
   enum class TetheringState {
     kTetheringIdle,
