@@ -516,6 +516,9 @@ void AppendX86SocProperties(const base::FilePath& cpuinfo_path,
       // Alderlake-N series.
       re2::RE2::PartialMatch(model_field, R"(Intel\(R\) (N[0-9]+)$)", &model)) {
     manufacturer = "Intel";
+  } else if (base::EndsWith(model_field, "Genuine Intel(R) 0000")) {
+    model = "0000-FixMe";
+    manufacturer = "Intel";
   } else if (
       // Some Ryzen CPU models have a watt value, some do not.
       // The "Ryzen # " portion is part of the ro.soc.model value.

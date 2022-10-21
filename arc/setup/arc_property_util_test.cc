@@ -689,7 +689,12 @@ TEST_F(ArcPropertyUtilTest, AppendX86SocProperties) {
 
         // For an Octopus board.
         {"model name: Intel(R) Celeron(R) N4000 CPU @ 1.10GHz\n",
-         "ro.soc.manufacturer=Intel\nro.soc.model=N4000\n"}}) {
+         "ro.soc.manufacturer=Intel\nro.soc.model=N4000\n"},
+
+        // For pre-release Intel CPUs. See b/248974069. This is so we don't get
+        // Tast failures that are not actionable.
+        {"model name: Genuine Intel(R) 0000\n",
+         "ro.soc.manufacturer=Intel\nro.soc.model=0000-FixMe\n"}}) {
     base::StringPiece cpuinfo = std::get<0>(testcase);
     base::StringPiece expected = std::get<1>(testcase);
     auto cpuinfo_path =
