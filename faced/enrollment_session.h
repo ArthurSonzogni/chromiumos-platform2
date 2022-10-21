@@ -90,8 +90,24 @@ class EnrollmentSession
       grpc::Status status,
       std::unique_ptr<faceauth::eora::StartEnrollmentResponse> response);
 
+  using ProcessFrameCallback = base::OnceCallback<void(
+      grpc::Status status,
+      std::unique_ptr<faceauth::eora::ProcessFrameForEnrollmentResponse>)>;
   // Callback to process frame provided by StreamReader.
-  void ProcessAvailableFrame(StreamValue<InputFrame> frame);
+  void ProcessAvailableFrame(ProcessFrameCallback callback,
+                             StreamValue<InputFrame> frame);
+  void CompleteProcessFrame(
+      grpc::Status status,
+      std::unique_ptr<faceauth::eora::ProcessFrameForEnrollmentResponse>
+          response);
+
+  using CompleteCallback = base::OnceCallback<void(
+      grpc::Status status,
+      std::unique_ptr<faceauth::eora::CompleteEnrollmentResponse> response)>;
+  void CompleteEnrollment(CompleteCallback callback);
+  void CompleteCompleteEnrollment(
+      grpc::Status status,
+      std::unique_ptr<faceauth::eora::CompleteEnrollmentResponse> response);
 
   using AbortCallback = base::OnceCallback<void(
       grpc::Status status,

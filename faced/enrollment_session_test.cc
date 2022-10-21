@@ -55,6 +55,56 @@ absl::BitGen bitgen;
 
 }  // namespace
 
+TEST(TestEnrollmentSession, TestSessionComplete) {
+  // Create a mock session delegate, that expects a completion event to be
+  // triggered.
+  StrictMock<MockFaceEnrollmentSessionDelegate> mock_delegate;
+  EXPECT_CALL(mock_delegate, OnEnrollmentComplete(_)).Times(1);
+
+  FACE_ASSERT_OK_AND_ASSIGN(std::unique_ptr<FakeFaceServiceManager> service_mgr,
+                            FakeFaceServiceManager::Create());
+  EXPECT_CALL(*(service_mgr->mock_service()), StartEnrollment)
+      .WillOnce(GrpcReplyOk(StartEnrollmentSuccessResponse()));
+  EXPECT_CALL(*(service_mgr->mock_service()), ProcessFrameForEnrollment)
+      .WillOnce(GrpcReplyOk(EnrollmentCompleteResponse()));
+  EXPECT_CALL(*(service_mgr->mock_service()), CompleteEnrollment)
+      .WillOnce(GrpcReplyOk(CompleteEnrollmentSuccessResponse(TestUserData())));
+
+  FACE_ASSERT_OK_AND_ASSIGN(
+      Lease<brillo::AsyncGrpcClient<faceauth::eora::FaceService>> client,
+      service_mgr->LeaseClient());
+
+  // Create an enrollment session.
+  mojo::Receiver<FaceEnrollmentSessionDelegate> delegate(&mock_delegate);
+  mojo::Remote<FaceEnrollmentSession> session_remote;
+  QueueingStream<EnrollmentSession::InputFrame> stream(/*max_queue_size=*/3);
+  FACE_ASSERT_OK_AND_ASSIGN(
+      std::unique_ptr<EnrollmentSession> session,
+      EnrollmentSession::Create(
+          bitgen, session_remote.BindNewPipeAndPassReceiver(),
+          delegate.BindNewPipeAndPassRemote(),
+          EnrollmentSessionConfig::New(SampleUserHash(),
+                                       /*accessibility=*/false),
+          std::move(client), stream.GetReader()));
+
+  // Set up a loop to run until the client disconnects.
+  base::RunLoop run_loop;
+
+  // Add a frame to the input stream.
+  stream.Write(std::make_unique<Frame>());
+
+  // Start the session and run the loop until the service is disconnected.
+  session->Start(base::BindLambdaForTesting([]() {}),
+                 base::BindLambdaForTesting([&](absl::Status status) {
+                   EXPECT_TRUE(status.ok());
+                   run_loop.Quit();
+                 }));
+  run_loop.Run();
+
+  // On destruction, `mock_delegate` will ensure OnEnrollmentComplete
+  // was called.
+}
+
 TEST(TestEnrollmentSession, TestStartSessionError) {
   // Create a mock session delegate, that expects no events to be triggered.
   StrictMock<MockFaceEnrollmentSessionDelegate> mock_delegate;
@@ -99,7 +149,7 @@ TEST(TestEnrollmentSession, TestStartSessionError) {
   // was called.
 }
 
-TEST(TestEnrollmentSession, TestSessionError) {
+TEST(TestEnrollmentSession, TestSessionStreamError) {
   // Create a mock session delegate, that expects an error event to be
   // triggered.
   StrictMock<MockFaceEnrollmentSessionDelegate> mock_delegate;
@@ -137,6 +187,59 @@ TEST(TestEnrollmentSession, TestSessionError) {
 
   // Add an error to the input stream.
   stream.Write(absl::InternalError("test frame capture failure"));
+
+  // Start the session, and run the loop until the service is disconnected.
+  session->Start(base::BindLambdaForTesting([]() {}),
+                 base::BindLambdaForTesting([&](absl::Status status) {
+                   EXPECT_FALSE(status.ok());
+                   run_loop.Quit();
+                 }));
+  run_loop.Run();
+
+  // On destruction, `mock_delegate` will ensure OnEnrollmentError
+  // was called.
+}
+
+TEST(TestEnrollmentSession, TestSessionProcessingError) {
+  // Create a mock session delegate, that expects an error event to be
+  // triggered.
+  StrictMock<MockFaceEnrollmentSessionDelegate> mock_delegate;
+  EXPECT_CALL(mock_delegate, OnEnrollmentError(_))
+      .WillOnce(Invoke([&](SessionError error) {
+        EXPECT_EQ(error, SessionError::UNKNOWN);
+      }));
+
+  FACE_ASSERT_OK_AND_ASSIGN(std::unique_ptr<FakeFaceServiceManager> service_mgr,
+                            FakeFaceServiceManager::Create());
+  EXPECT_CALL(*(service_mgr->mock_service()), StartEnrollment)
+      .WillOnce(GrpcReplyOk(StartEnrollmentSuccessResponse()));
+  EXPECT_CALL(*(service_mgr->mock_service()), ProcessFrameForEnrollment)
+      .WillOnce(GrpcReplyOk(EnrollmentProcessingErrorResponse()));
+  EXPECT_CALL(*(service_mgr->mock_service()), AbortEnrollment)
+      .WillOnce(GrpcReplyOk(AbortEnrollmentSuccessResponse()));
+
+  FACE_ASSERT_OK_AND_ASSIGN(
+      Lease<brillo::AsyncGrpcClient<faceauth::eora::FaceService>> client,
+      service_mgr->LeaseClient());
+
+  // Create an enrollment session.
+  mojo::Receiver<FaceEnrollmentSessionDelegate> delegate(&mock_delegate);
+  mojo::Remote<FaceEnrollmentSession> session_remote;
+  QueueingStream<EnrollmentSession::InputFrame> stream(/*max_queue_size=*/3);
+  FACE_ASSERT_OK_AND_ASSIGN(
+      std::unique_ptr<EnrollmentSession> session,
+      EnrollmentSession::Create(bitgen,
+                                session_remote.BindNewPipeAndPassReceiver(),
+                                delegate.BindNewPipeAndPassRemote(),
+                                EnrollmentSessionConfig::New(
+                                    SampleUserHash(), /*accessibility=*/false),
+                                std::move(client), stream.GetReader()));
+
+  // Set up a loop to run until the client disconnects.
+  base::RunLoop run_loop;
+
+  // Add an empty frame to the input stream.
+  stream.Write(std::make_unique<Frame>());
 
   // Start the session, and run the loop until the service is disconnected.
   session->Start(base::BindLambdaForTesting([]() {}),

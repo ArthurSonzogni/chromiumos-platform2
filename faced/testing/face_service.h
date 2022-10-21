@@ -80,6 +80,8 @@ faceauth::eora::CompleteEnrollmentResponse CompleteEnrollmentSuccessResponse(
 // Return a ProcessFrameForEnrollmentResponse proto indicating
 // that more data / no more data is needed, respectively.
 faceauth::eora::ProcessFrameForEnrollmentResponse
+EnrollmentProcessingErrorResponse();
+faceauth::eora::ProcessFrameForEnrollmentResponse
 EnrollmentIncompleteResponse();
 faceauth::eora::ProcessFrameForEnrollmentResponse EnrollmentCompleteResponse();
 

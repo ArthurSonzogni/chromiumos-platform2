@@ -30,8 +30,36 @@ using ::chromeos::faceauth::mojom::SessionError;
 
 using ::faceauth::eora::AbortEnrollmentRequest;
 using ::faceauth::eora::AbortEnrollmentResponse;
+using ::faceauth::eora::CompleteEnrollmentRequest;
+using ::faceauth::eora::CompleteEnrollmentResponse;
+using ::faceauth::eora::ProcessFrameForEnrollmentRequest;
+using ::faceauth::eora::ProcessFrameForEnrollmentResponse;
 using ::faceauth::eora::StartEnrollmentRequest;
 using ::faceauth::eora::StartEnrollmentResponse;
+
+namespace {
+
+faceauth::eora::FrameType FormatToFrameType(Frame::Format format) {
+  switch (format) {
+    case Frame::Format::kMjpeg:
+      return faceauth::eora::FrameType::MJPG;
+    case Frame::Format::kYuvNv12:
+      return faceauth::eora::FrameType::YUV_NV12;
+    default:
+      return faceauth::eora::FrameType::UNKNOWN;
+  }
+}
+
+faceauth::eora::CameraFrame FrameToCameraFrame(std::unique_ptr<Frame> frame) {
+  faceauth::eora::CameraFrame result;
+  result.set_width(frame->width);
+  result.set_height(frame->height);
+  result.set_type(FormatToFrameType(frame->format));
+  *result.mutable_payload() = std::move(frame->data);
+  return result;
+}
+
+}  // namespace
 
 absl::StatusOr<std::unique_ptr<EnrollmentSession>> EnrollmentSession::Create(
     absl::BitGen& bitgen,
@@ -125,11 +153,14 @@ void EnrollmentSession::CompleteStartEnrollment(
   PostToCurrentSequence(std::move(callback));
 
   // Begin processing frames.
-  stream_reader_->Read(base::BindOnce(&EnrollmentSession::ProcessAvailableFrame,
-                                      base::Unretained(this)));
+  stream_reader_->Read(base::BindOnce(
+      &EnrollmentSession::ProcessAvailableFrame, base::Unretained(this),
+      base::BindOnce(&EnrollmentSession::CompleteProcessFrame,
+                     base::Unretained(this))));
 }
 
-void EnrollmentSession::ProcessAvailableFrame(StreamValue<InputFrame> frame) {
+void EnrollmentSession::ProcessAvailableFrame(ProcessFrameCallback callback,
+                                              StreamValue<InputFrame> frame) {
   if (abort_requested_) {
     AbortEnrollment(base::BindOnce(&EnrollmentSession::CompleteCancelEnrollment,
                                    base::Unretained(this)));
@@ -145,9 +176,72 @@ void EnrollmentSession::ProcessAvailableFrame(StreamValue<InputFrame> frame) {
     return;
   }
 
-  // Continue processing frames
-  stream_reader_->Read(base::BindOnce(&EnrollmentSession::ProcessAvailableFrame,
-                                      base::Unretained(this)));
+  // Convert input frame to CameraFrame for request.
+  ProcessFrameForEnrollmentRequest request;
+  std::unique_ptr<Frame> frame_ptr = std::move(*frame.value.value());
+  *request.mutable_frame() = FrameToCameraFrame(std::move(frame_ptr));
+
+  (*rpc_client_)
+      ->CallRpc(
+          &faceauth::eora::FaceService::Stub::AsyncProcessFrameForEnrollment,
+          request, std::move(callback));
+}
+
+void EnrollmentSession::CompleteProcessFrame(
+    grpc::Status status,
+    std::unique_ptr<ProcessFrameForEnrollmentResponse> response) {
+  if (!status.ok()) {
+    NotifyError(absl::UnavailableError(status.error_message()));
+    return;
+  }
+
+  absl::Status rpc_status = ToAbslStatus(response->status());
+  if (!rpc_status.ok()) {
+    AbortEnrollment(base::BindOnce(&EnrollmentSession::CompleteAbortEnrollment,
+                                   base::Unretained(this), rpc_status));
+    return;
+  }
+
+  if (abort_requested_) {
+    AbortEnrollment(base::BindOnce(&EnrollmentSession::CompleteCancelEnrollment,
+                                   base::Unretained(this)));
+    return;
+  }
+
+  if (response->enrollment_completed()) {
+    CompleteEnrollment(
+        base::BindOnce(&EnrollmentSession::CompleteCompleteEnrollment,
+                       base::Unretained(this)));
+    return;
+  }
+
+  // Proceed to process the next frame.
+  stream_reader_->Read(base::BindOnce(
+      &EnrollmentSession::ProcessAvailableFrame, base::Unretained(this),
+      base::BindOnce(&EnrollmentSession::CompleteProcessFrame,
+                     base::Unretained(this))));
+}
+
+void EnrollmentSession::CompleteEnrollment(CompleteCallback callback) {
+  (*rpc_client_)
+      ->CallRpc(&faceauth::eora::FaceService::Stub::AsyncCompleteEnrollment,
+                CompleteEnrollmentRequest(), std::move(callback));
+}
+
+void EnrollmentSession::CompleteCompleteEnrollment(
+    grpc::Status status, std::unique_ptr<CompleteEnrollmentResponse> response) {
+  if (!status.ok()) {
+    NotifyError(absl::UnavailableError(status.error_message()));
+    return;
+  }
+
+  absl::Status rpc_status = ToAbslStatus(response->status());
+  if (!rpc_status.ok()) {
+    NotifyError(rpc_status);
+    return;
+  }
+
+  NotifyComplete();
 }
 
 void EnrollmentSession::TryCancel() {

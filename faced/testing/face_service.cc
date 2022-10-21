@@ -117,6 +117,13 @@ faceauth::eora::CompleteEnrollmentResponse CompleteEnrollmentSuccessResponse(
 }
 
 faceauth::eora::ProcessFrameForEnrollmentResponse
+EnrollmentProcessingErrorResponse() {
+  faceauth::eora::ProcessFrameForEnrollmentResponse response;
+  *response.mutable_status() = FaceStatusInvalid();
+  return response;
+}
+
+faceauth::eora::ProcessFrameForEnrollmentResponse
 EnrollmentIncompleteResponse() {
   faceauth::eora::ProcessFrameForEnrollmentResponse response;
   *response.mutable_status() = FaceStatusOk();
