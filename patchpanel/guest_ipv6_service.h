@@ -74,10 +74,8 @@ class GuestIPv6Service {
       int32_t if_id_secondary);
 
   virtual bool StartRAServer(const std::string& ifname,
-                             const std::string& prefix) {
-    return false;
-  }
-  virtual bool StopRAServer(const std::string& ifname) { return false; }
+                             const std::string& prefix);
+  virtual bool StopRAServer(const std::string& ifname);
 
   // Callback from NDProxy telling us to add a new IPv6 route to guest or IPv6
   // address to guest-facing interface.
@@ -103,6 +101,8 @@ class GuestIPv6Service {
   ShillClient* shill_client_;
   // Owned by Manager
   System* system_;
+
+  bool StartRadvd(const std::string& ifname);
 
   std::vector<ForwardEntry> forward_record_;
   std::map<std::string, ForwardMethod> forward_method_override_;

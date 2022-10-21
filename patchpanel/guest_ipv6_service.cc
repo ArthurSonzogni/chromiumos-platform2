@@ -7,15 +7,22 @@
 #include <net/ethernet.h>
 #include <netinet/in.h>
 #include <string.h>
+#include <sys/prctl.h>
+#include <sys/signal.h>
 
 #include <optional>
 #include <set>
 #include <string>
 #include <vector>
 
+#include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/notreached.h>
+#include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
+#include <base/time/time.h>
+
+#include <brillo/process/process.h>
 
 #include "patchpanel/ipc.h"
 #include "patchpanel/net_util.h"
@@ -24,6 +31,13 @@
 namespace patchpanel {
 
 namespace {
+
+constexpr char kRadvdRunDir[] = "/run/radvd";
+constexpr char kRadvdPath[] = "/usr/sbin/radvd";
+constexpr char kRadvdConfigFilePrefix[] = "radvd.conf.";
+constexpr char kRadvdPidFilePrefix[] = "radvd.pid.";
+constexpr base::TimeDelta kTimeoutForSIGTERM = base::Seconds(2);
+constexpr base::TimeDelta kTimeoutForSIGKILL = base::Seconds(1);
 
 GuestIPv6Service::ForwardMethod GetForwardMethodByDeviceType(
     ShillClient::Device::Type type) {
@@ -54,6 +68,64 @@ std::string IPAddressTo64BitPrefix(const std::string addr_str) {
   in6_addr addr = StringToIPv6Address(addr_str);
   memset(&addr.s6_addr[8], 0, 8);
   return IPv6AddressToString(addr);
+}
+
+bool PrepareRunPath() {
+  base::FilePath run_path(kRadvdRunDir);
+  if (!base::DirectoryExists(run_path) && !base::CreateDirectory(run_path)) {
+    PLOG(ERROR) << "Unable to create configuration directory  " << kRadvdRunDir;
+    return false;
+  }
+
+  if (chown(kRadvdRunDir, kPatchpaneldUid, kPatchpaneldGid) != 0) {
+    PLOG(ERROR) << "Failed to change owner group of configuration directory "
+                << kRadvdRunDir;
+    base::DeletePathRecursively(run_path);
+    return false;
+  }
+
+  if (chmod(kRadvdRunDir, S_IRWXU | S_IRGRP | S_IXGRP)) {
+    PLOG(ERROR) << "Failed to set permissions on " << kRadvdRunDir;
+    base::DeletePathRecursively(run_path);
+    return false;
+  }
+  return true;
+}
+
+bool CreateConfigFile(const std::string& ifname, const std::string& prefix) {
+  std::vector<std::string> lines;
+  lines.push_back(base::StringPrintf("interface %s {", ifname.c_str()));
+  lines.push_back("  AdvSendAdvert on;");
+  lines.push_back(base::StringPrintf("  prefix %s/64 {", prefix.c_str()));
+  lines.push_back("    AdvOnLink off;");
+  lines.push_back("    AdvAutonomous on;");
+  lines.push_back("  };");
+  lines.push_back("};");
+  lines.push_back("");
+  std::string contents = base::JoinString(lines, "\n");
+
+  const base::FilePath& conf_file_path =
+      base::FilePath(kRadvdRunDir)
+          .Append(std::string(kRadvdConfigFilePrefix) + ifname);
+  if (!base::WriteFile(conf_file_path, contents)) {
+    PLOG(ERROR) << "Failed to write config file";
+    return false;
+  }
+
+  if (chmod(conf_file_path.value().c_str(), S_IRUSR | S_IRGRP)) {
+    PLOG(ERROR) << "Failed to set permissions on " << conf_file_path;
+    base::DeletePathRecursively(conf_file_path);
+    return false;
+  }
+
+  if (chown(conf_file_path.value().c_str(), kPatchpaneldUid, kPatchpaneldGid) !=
+      0) {
+    PLOG(ERROR) << "Failed to change owner group of configuration file "
+                << conf_file_path;
+    base::DeletePathRecursively(conf_file_path);
+    return false;
+  }
+  return true;
 }
 
 }  // namespace
@@ -469,6 +541,80 @@ const std::set<std::string>& GuestIPv6Service::UplinkToDownlinks(
       return it->downstream_ifnames;
   }
   return empty_set;
+}
+
+bool GuestIPv6Service::StartRAServer(const std::string& ifname,
+                                     const std::string& prefix) {
+  return PrepareRunPath() && CreateConfigFile(ifname, prefix) &&
+         StartRadvd(ifname);
+}
+
+bool GuestIPv6Service::StopRAServer(const std::string& ifname) {
+  const base::FilePath& pid_file_path =
+      base::FilePath(kRadvdRunDir)
+          .Append(std::string(kRadvdPidFilePrefix) + ifname);
+
+  std::string pid_str;
+  pid_t pid;
+  if (!base::ReadFileToString(pid_file_path, &pid_str) ||
+      !base::TrimString(pid_str, "\n", &pid_str) ||
+      !base::StringToInt(pid_str, &pid)) {
+    LOG(WARNING) << "Invalid radvd pid file " << pid_file_path;
+    return false;
+  }
+
+  if (!brillo::Process::ProcessExists(pid)) {
+    LOG(WARNING) << "radvd[" << pid << "] already stopped for interface "
+                 << ifname;
+    return true;
+  }
+  brillo::ProcessImpl process;
+  process.Reset(pid);
+  if (process.Kill(SIGTERM, kTimeoutForSIGTERM.InSeconds())) {
+    base::DeleteFile(pid_file_path);
+    return true;
+  }
+  LOG(WARNING) << "Not able to gracefully stop radvd[" << pid
+               << "] for interface " << ifname << ", trying to force stop";
+  if (process.Kill(SIGKILL, kTimeoutForSIGKILL.InSeconds())) {
+    base::DeleteFile(pid_file_path);
+    return true;
+  }
+  LOG(ERROR) << "Cannot stop radvd[" << pid << "] for interface " << ifname;
+  return false;
+}
+
+bool GuestIPv6Service::StartRadvd(const std::string& ifname) {
+  const base::FilePath& conf_file_path =
+      base::FilePath(kRadvdRunDir)
+          .Append(std::string(kRadvdConfigFilePrefix) + ifname);
+  const base::FilePath& pid_file_path =
+      base::FilePath(kRadvdRunDir)
+          .Append(std::string(kRadvdPidFilePrefix) + ifname);
+
+  std::vector<std::string> argv = {
+      kRadvdPath, "-n",
+      "-C",       conf_file_path.value(),
+      "-p",       pid_file_path.value(),
+      "-m",       "syslog",
+  };
+
+  auto mj = brillo::Minijail::GetInstance();
+  minijail* jail = mj->New();
+  mj->DropRoot(jail, kPatchpaneldUid, kPatchpaneldGid);
+  constexpr uint64_t kNetRawCapMask = CAP_TO_MASK(CAP_NET_RAW);
+  mj->UseCapabilities(jail, kNetRawCapMask);
+
+  std::vector<char*> args;
+  for (const auto& arg : argv) {
+    args.push_back(const_cast<char*>(arg.c_str()));
+  }
+  args.push_back(nullptr);
+
+  pid_t pid;
+  bool ran = mj->RunAndDestroy(jail, args, &pid);
+
+  return ran;
 }
 
 }  // namespace patchpanel

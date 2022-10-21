@@ -19,6 +19,9 @@ namespace patchpanel {
 // it's 32 bits on 32-bit platform and 64 bits on 64-bit one.
 using ioctl_req_t = unsigned long;  // NOLINT(runtime/int)
 
+constexpr uid_t kPatchpaneldUid = 284;
+constexpr gid_t kPatchpaneldGid = 284;
+
 // Class used for:
 //  - holding all utility functions with side effects on the environment.
 //  - wrapping commonly used system calls.
