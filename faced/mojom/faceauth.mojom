@@ -84,7 +84,7 @@ struct SessionInfo {
 // Errors indicating why a session could not be created.
 [Extensible]
 enum SessionCreationError {
-  UNKNOWN = 0,
+  [Default] UNKNOWN = 0,
   ALREADY_EXISTS,  // An active session already exists.
 };
 
@@ -106,14 +106,14 @@ struct AuthenticationSessionConfig {
 // Status of an enrollment/authentication session update or completion event.
 [Extensible]
 enum FaceOperationStatus {
-  OK = 0,
+  [Default] OK = 0,
   NO_FACE,
 };
 
 // Unrecoverable enrollment/authentication session errors.
 [Extensible]
 enum SessionError {
-  UNKNOWN = 0,
+  [Default] UNKNOWN = 0,
   NO_ENROLLMENT,
 };
 
