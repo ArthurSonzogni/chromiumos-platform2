@@ -527,8 +527,8 @@ void AppendX86SocProperties(const base::FilePath& cpuinfo_path,
           R"(AMD (?:Athlon Gold )?([0-9A-Za-z]+) with Radeon Graphics)",
           &model) ||
 
-      re2::RE2::PartialMatch(model_field, R"(AMD ([-0-9A-Za-z]+) RADEON R4,)",
-                             &model)) {
+      re2::RE2::PartialMatch(model_field,
+                             R"(AMD ([-0-9A-Za-z]+) RADEON R[45],)", &model)) {
     manufacturer = "AMD";
   } else {
     LOG(ERROR) << "Unknown CPU in '" << model_field << "'; won't set ro.soc.*";

@@ -667,6 +667,11 @@ TEST_F(ArcPropertyUtilTest, AppendX86SocProperties) {
          "ro.soc.manufacturer=AMD\n"
          "ro.soc.model=A4-9120C\n"},
 
+        // For a Grunt board (careena).
+        {"model name\t: AMD A6-9220C RADEON R5, 5 COMPUTE CORES 2C+3G\n",
+         "ro.soc.manufacturer=AMD\n"
+         "ro.soc.model=A6-9220C\n"},
+
         // For a Guybrush board (nipperkin).
         {"model name\t: AMD Ryzen 5 5625C with Radeon Graphics\n",
          "ro.soc.manufacturer=AMD\n"
