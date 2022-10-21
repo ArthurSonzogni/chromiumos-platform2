@@ -59,34 +59,14 @@ fn upper_snake_case(input: &str) -> String {
 /// bindings for.
 struct SystemApiDbus {
     path: &'static str,
-    proto: Option<&'static str>,
 }
 
 impl SystemApiDbus {
-    /// Declare a full D-Bus api with .proto and dbus-constants.h file.
-    const fn new(path: &'static str, proto: &'static str) -> SystemApiDbus {
-        SystemApiDbus {
-            path,
-            proto: Some(proto),
-        }
-    }
-
     /// Declare a full D-Bus api with only dbus-constants.h file under the given path. A path may
     /// also contain the relative file name if dbus-constants.h isn't the appropriate constants
     /// file.
     const fn constants(path: &'static str) -> SystemApiDbus {
-        SystemApiDbus { path, proto: None }
-    }
-
-    /// Gets the include path in order to parse the .proto file for this API.
-    fn get_include_path(&self, proto_root: &Path) -> impl AsRef<Path> {
-        proto_root.join(self.path)
-    }
-
-    /// Gets the path to the .proto file for this API, if there is one.
-    fn get_input_path(&self, proto_root: &Path) -> Option<PathBuf> {
-        let proto = self.proto?;
-        Some(proto_root.join(self.path).join(proto))
+        SystemApiDbus { path }
     }
 
     /// Parses the string constants in dbus-constants.h or the appropriate alternative header if
@@ -131,17 +111,14 @@ const APIS: &[SystemApiDbus] = &[
     SystemApiDbus::constants("dbus/primary_io_manager"),
     // service_constants.h is the only header file needed that isn't called dbus_constants.h.
     SystemApiDbus::constants("dbus/service_constants.h"),
-    SystemApiDbus::new("dbus/vm_applications", "apps.proto"),
-    SystemApiDbus::new("dbus/vm_concierge", "concierge_service.proto"),
-    SystemApiDbus::new("dbus/vm_cicerone", "cicerone_service.proto"),
-    SystemApiDbus::new("dbus/dlcservice", "dlcservice.proto"),
-    SystemApiDbus::new("dbus/seneschal", "seneschal_service.proto"),
-    SystemApiDbus::new("dbus/vm_plugin_dispatcher", "vm_plugin_dispatcher.proto"),
-    SystemApiDbus::new("dbus/vm_launch", "launch.proto"),
+    SystemApiDbus::constants("dbus/vm_applications"),
+    SystemApiDbus::constants("dbus/vm_concierge"),
+    SystemApiDbus::constants("dbus/vm_cicerone"),
+    SystemApiDbus::constants("dbus/dlcservice"),
+    SystemApiDbus::constants("dbus/seneschal"),
+    SystemApiDbus::constants("dbus/vm_plugin_dispatcher"),
+    SystemApiDbus::constants("dbus/vm_launch"),
 ];
-
-/// A list of proto files to generate Rust bindings for without dbus_constants.h.
-const PROTOS: &[SystemApiDbus] = &[SystemApiDbus::new("dbus", "arc/arc.proto")];
 
 fn main() {
     println!("cargo:rerun-if-changed=build.rs");
@@ -164,48 +141,15 @@ fn main() {
         system_api_dbus_source_root.display()
     );
 
-    let mut input_paths = Vec::new();
-    let mut generator = protobuf_codegen::Codegen::new();
     let mut constants = Default::default();
     for api in APIS {
-        // Some APIs have no .proto file that needs parsing.
-        if let Some(input_path) = api.get_input_path(&system_api_root) {
-            generator.input(&input_path);
-            // dbus/vm_applications/apps.proto needs to be an input,
-            // but its parent directory can't be in the include paths.
-            if api.path != "dbus/vm_applications" {
-                generator.include(api.get_include_path(&system_api_root));
-            }
-            input_paths.push(input_path);
-        }
         api.parse_constants(&system_api_root, &mut constants);
-    }
-    for proto in PROTOS {
-        if let Some(input_path) = proto.get_input_path(&system_api_root) {
-            generator.input(&input_path);
-            generator.include(proto.get_include_path(&system_api_root));
-            input_paths.push(input_path);
-        }
     }
 
     let out_path = PathBuf::from(env::var("OUT_DIR").unwrap());
-    generator.out_dir(&out_path);
-    generator.run().expect("protoc");
 
     // Build up a string of code which gets included as the proto.rs module.
     let mut proto_include_code = String::new();
-    // Collects all the Rust source files outputted by protoc as a series of modules.
-    for input_file in input_paths.iter() {
-        let stem = input_file.file_stem().unwrap().to_str().unwrap();
-        let mod_path = out_path.join(format!("{}.rs", stem));
-        writeln!(
-            &mut proto_include_code,
-            "#[path = \"{}\"]",
-            mod_path.display()
-        )
-        .unwrap();
-        writeln!(&mut proto_include_code, "pub mod {};", stem).unwrap();
-    }
 
     // Also put all the collected string constants from `parse_constants` into the included module.
     for (name, value) in constants {

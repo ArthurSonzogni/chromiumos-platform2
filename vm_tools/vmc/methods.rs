@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use std::convert::{TryFrom, TryInto};
 use std::error::Error;
 use std::fmt;
-use std::fs::{File, OpenOptions};
+use std::fs::File;
 use std::iter::FromIterator;
 use std::os::fd::OwnedFd;
 use std::os::unix::io::AsRawFd;
@@ -27,7 +27,6 @@ use libchromeos::chromeos::is_dev_mode;
 use libchromeos::OpenSafelyOptions;
 use protobuf::EnumOrUnknown;
 use protobuf::Message as ProtoMessage;
-
 use system_api::cicerone_service::*;
 use system_api::client::OrgChromiumDebugd;
 use system_api::client::OrgChromiumDlcServiceInterface;
@@ -37,13 +36,15 @@ use system_api::client::OrgChromiumVmCicerone;
 use system_api::client::OrgChromiumVmConcierge;
 use system_api::concierge_service::vm_info::VmType;
 use system_api::concierge_service::*;
-use system_api::dlcservice::*;
+use system_api::dlcservice;
+use system_api::dlcservice::dlc_state;
+use system_api::dlcservice::DlcState;
+use system_api::launch::*;
+use system_api::seneschal_service::*;
+use system_api::vm_plugin_dispatcher;
+use system_api::vm_plugin_dispatcher::VmErrorCode;
 
 use crate::disk::{DiskInfo, DiskOpType, VmDiskImageType, VmState};
-use crate::proto::system_api::launch::*;
-use crate::proto::system_api::seneschal_service::*;
-use crate::proto::system_api::vm_plugin_dispatcher;
-use crate::proto::system_api::vm_plugin_dispatcher::VmErrorCode;
 use crate::proto::system_api::*;
 
 const REMOVABLE_MEDIA_ROOT: &str = "/media/removable";
