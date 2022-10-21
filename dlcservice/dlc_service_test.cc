@@ -707,7 +707,7 @@ TEST_F(DlcServiceTest, ReportingFailureSignalTest) {
   CheckDlcState(kSecondDlc, DlcState::NOT_INSTALLED, kErrorInternal);
 }
 
-TEST_F(DlcServiceTest, ProbableUpdateEngineRestartCleanupTest) {
+TEST_F(DlcServiceTest, SignalToleranceCapTest) {
   EXPECT_CALL(*mock_update_engine_proxy_ptr_, AttemptInstall(_, _, _, _))
       .WillOnce(Return(true));
   EXPECT_CALL(mock_state_change_reporter_, DlcStateChanged(_)).Times(2);
@@ -722,8 +722,55 @@ TEST_F(DlcServiceTest, ProbableUpdateEngineRestartCleanupTest) {
   StatusResult status_result;
   status_result.set_current_operation(Operation::IDLE);
   status_result.set_is_install(false);
-  dlc_service_->OnStatusUpdateAdvancedSignal(status_result);
+  for (int i = 0; i < 30; ++i) {
+    dlc_service_->OnStatusUpdateAdvancedSignal(status_result);
+    EXPECT_TRUE(base::PathExists(JoinPaths(content_path_, kSecondDlc)));
+    CheckDlcState(kSecondDlc, DlcState::INSTALLING);
+  }
 
+  dlc_service_->OnStatusUpdateAdvancedSignal(status_result);
+  EXPECT_FALSE(base::PathExists(JoinPaths(content_path_, kSecondDlc)));
+  CheckDlcState(kSecondDlc, DlcState::NOT_INSTALLED, kErrorInternal);
+}
+
+TEST_F(DlcServiceTest, SignalToleranceCapResetTest) {
+  EXPECT_CALL(*mock_update_engine_proxy_ptr_, AttemptInstall(_, _, _, _))
+      .WillOnce(Return(true));
+  EXPECT_CALL(mock_state_change_reporter_, DlcStateChanged(_)).Times(2);
+  EXPECT_CALL(*mock_metrics_,
+              SendInstallResult(InstallResult::kFailedInstallInUpdateEngine));
+
+  EXPECT_TRUE(dlc_service_->Install(CreateInstallRequest(kSecondDlc), &err_));
+
+  EXPECT_TRUE(base::PathExists(JoinPaths(content_path_, kSecondDlc)));
+  CheckDlcState(kSecondDlc, DlcState::INSTALLING);
+
+  StatusResult status_result;
+  status_result.set_current_operation(Operation::IDLE);
+  status_result.set_is_install(false);
+  for (int i = 0; i < 30; ++i) {
+    dlc_service_->OnStatusUpdateAdvancedSignal(status_result);
+    EXPECT_TRUE(base::PathExists(JoinPaths(content_path_, kSecondDlc)));
+    CheckDlcState(kSecondDlc, DlcState::INSTALLING);
+  }
+
+  {
+    StatusResult status_result;
+    status_result.set_current_operation(Operation::VERIFYING);
+    status_result.set_is_install(true);
+    dlc_service_->OnStatusUpdateAdvancedSignal(status_result);
+    EXPECT_TRUE(base::PathExists(JoinPaths(content_path_, kSecondDlc)));
+    CheckDlcState(kSecondDlc, DlcState::INSTALLING);
+  }
+
+  // A good status handle should reset the tolerance count.
+  for (int i = 0; i < 30; ++i) {
+    dlc_service_->OnStatusUpdateAdvancedSignal(status_result);
+    EXPECT_TRUE(base::PathExists(JoinPaths(content_path_, kSecondDlc)));
+    CheckDlcState(kSecondDlc, DlcState::INSTALLING);
+  }
+
+  dlc_service_->OnStatusUpdateAdvancedSignal(status_result);
   EXPECT_FALSE(base::PathExists(JoinPaths(content_path_, kSecondDlc)));
   CheckDlcState(kSecondDlc, DlcState::NOT_INSTALLED, kErrorInternal);
 }

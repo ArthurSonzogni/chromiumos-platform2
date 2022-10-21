@@ -80,7 +80,8 @@ class DlcService : public DlcServiceInterface {
   FRIEND_TEST(DlcServiceTest, OnStatusUpdateSignalNoRemountTest);
   FRIEND_TEST(DlcServiceTest, ReportingFailureCleanupTest);
   FRIEND_TEST(DlcServiceTest, ReportingFailureSignalTest);
-  FRIEND_TEST(DlcServiceTest, ProbableUpdateEngineRestartCleanupTest);
+  FRIEND_TEST(DlcServiceTest, SignalToleranceCapTest);
+  FRIEND_TEST(DlcServiceTest, SignalToleranceCapResetTest);
   FRIEND_TEST(DlcServiceTest, OnStatusUpdateSignalDownloadProgressTest);
   FRIEND_TEST(
       DlcServiceTest,
@@ -137,6 +138,9 @@ class DlcService : public DlcServiceInterface {
 
   // Holds the DLC that is being installed by update_engine.
   std::optional<DlcId> installing_dlc_id_;
+
+  // Holds the tolerance signal count during an installation.
+  size_t tolerance_count_ = 0;
 
   std::unique_ptr<DlcManagerInterface> dlc_manager_;
 

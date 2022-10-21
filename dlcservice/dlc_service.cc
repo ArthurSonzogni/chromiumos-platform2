@@ -32,6 +32,18 @@ using update_engine::StatusResult;
 
 namespace dlcservice {
 
+namespace {
+// This value represents the delay in seconds between each idle installation
+// status task.
+constexpr size_t kPeriodicInstallCheckSecondsDelay = 10;
+
+// This value here is the tolerance cap (allowance) of non-install signals
+// broadcasted by `update_engine`. Keep in mind when changing of it's relation
+// with the periodic install check delay as that will also determine the max
+// idle period before an installation of a DLC is halted.
+constexpr size_t kToleranceCap = 30;
+}  // namespace
+
 DlcService::DlcService()
     : periodic_install_check_id_(MessageLoop::kTaskIdNull),
       weak_ptr_factory_(this) {}
@@ -238,7 +250,8 @@ void DlcService::PeriodicInstallCheck() {
   if (!installing_dlc_id_)
     return;
 
-  constexpr base::TimeDelta kNotSeenStatusDelay = base::Seconds(10);
+  constexpr base::TimeDelta kNotSeenStatusDelay =
+      base::Seconds(kPeriodicInstallCheckSecondsDelay);
   auto* system_state = SystemState::Get();
   if ((system_state->clock()->Now() -
        system_state->update_engine_status_timestamp()) > kNotSeenStatusDelay) {
@@ -268,11 +281,20 @@ void DlcService::SchedulePeriodicInstallCheck() {
 
 bool DlcService::HandleStatusResult(brillo::ErrorPtr* err) {
   // If we are not installing any DLC(s), no need to even handle status result.
-  if (!installing_dlc_id_)
+  if (!installing_dlc_id_) {
+    tolerance_count_ = 0;
     return true;
+  }
 
   const StatusResult& status = SystemState::Get()->update_engine_status();
   if (!status.is_install()) {
+    if (++tolerance_count_ <= kToleranceCap) {
+      LOG(WARNING)
+          << "Signal from update_engine indicates that it's not for an "
+             "install, but dlcservice was waiting for an install.";
+      return true;
+    }
+    tolerance_count_ = 0;
     *err = Error::CreateInternal(
         FROM_HERE, error::kFailedInstallInUpdateEngine,
         "Signal from update_engine indicates that it's not for an install, but "
@@ -281,6 +303,9 @@ bool DlcService::HandleStatusResult(brillo::ErrorPtr* err) {
     SystemState::Get()->metrics()->SendInstallResultFailure(err);
     return false;
   }
+
+  // Reset the tolerance if a valid status is handled.
+  tolerance_count_ = 0;
 
   switch (status.current_operation()) {
     case update_engine::UPDATED_NEED_REBOOT:
