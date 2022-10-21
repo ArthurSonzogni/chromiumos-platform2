@@ -16,10 +16,12 @@
 
 #include "shill/error.h"
 #include "shill/manager.h"
+#include "shill/mock_control.h"
+#include "shill/mock_metrics.h"
 #include "shill/mock_profile.h"
 #include "shill/store/fake_store.h"
 #include "shill/store/property_store.h"
-#include "shill/store/property_store_test.h"
+#include "shill/test_event_dispatcher.h"
 #include "shill/wifi/mock_wake_on_wifi.h"
 #include "shill/wifi/mock_wifi.h"
 
@@ -29,6 +31,11 @@ using testing::Test;
 
 namespace shill {
 namespace {
+
+// Fake profile identities
+constexpr char kDefaultProfile[] = "default";
+constexpr char kUserProfile[] = "~user/profile";
+
 bool GetConfigMAR(const KeyValueStore& caps) {
   return caps.Get<bool>(kTetheringConfMARProperty);
 }
@@ -71,17 +78,29 @@ void SetConfigBand(KeyValueStore& caps, const std::string& value) {
 void SetConfigUpstream(KeyValueStore& caps, const std::string& value) {
   caps.Set<std::string>(kTetheringConfUpstreamTechProperty, value);
 }
+
+base::ScopedTempDir MakeTempDir() {
+  base::ScopedTempDir temp_dir;
+  EXPECT_TRUE(temp_dir.CreateUniqueTempDir());
+  return temp_dir;
+}
 }  // namespace
 
-// Fake MAC address.
-constexpr char kDeviceAddress[] = "aabbccddeeff";
-
-class TetheringManagerTest : public PropertyStoreTest {
+class TetheringManagerTest : public testing::Test {
  public:
   TetheringManagerTest()
-      : device_(new NiceMock<MockWiFi>(
-            manager(), "wifi", kDeviceAddress, 0, 0, new MockWakeOnWiFi())) {}
+      : temp_dir_(MakeTempDir()),
+        path_(temp_dir_.GetPath().value()),
+        manager_(
+            &control_interface_, &dispatcher_, &metrics_, path_, path_, path_),
+        tethering_manager_(manager_.tethering_manager()) {}
   ~TetheringManagerTest() override = default;
+
+  scoped_refptr<MockWiFi> MakeWiFi(const std::string& ifname,
+                                   const std::string& mac) {
+    return new NiceMock<MockWiFi>(&manager_, ifname, mac, 1, 1,
+                                  new MockWakeOnWiFi());
+  }
 
   Error::Type TestCreateProfile(Manager* manager, const std::string& name) {
     Error error;
@@ -182,15 +201,23 @@ class TetheringManagerTest : public PropertyStoreTest {
   }
 
  protected:
-  scoped_refptr<MockWiFi> device_;
+  MockControl control_interface_;
+  EventDispatcherForTest dispatcher_;
+  NiceMock<MockMetrics> metrics_;
+  base::ScopedTempDir temp_dir_;
+  std::string path_;
+  Manager manager_;
+  TetheringManager* tethering_manager_;
 };
 
 TEST_F(TetheringManagerTest, GetTetheringCapabilities) {
-  ON_CALL(*device_, SupportAP()).WillByDefault(Return(true));
-  manager()->RegisterDevice(device_);
-  SetAllowed(manager()->tethering_manager(), true);
+  scoped_refptr<MockWiFi> wifi = MakeWiFi("wlan0", "0a:0b:0c:0d:0e:0f");
+  ON_CALL(*wifi, SupportAP()).WillByDefault(Return(true));
+  std::vector<DeviceRefPtr> wifi_devices = {wifi};
+  manager_.RegisterDevice(wifi);
+  SetAllowed(tethering_manager_, true);
 
-  KeyValueStore caps = GetCapabilities(manager()->tethering_manager());
+  KeyValueStore caps = GetCapabilities(tethering_manager_);
   std::vector<std::string> tech_v;
   tech_v = caps.Get<std::vector<std::string>>(kTetheringCapUpstreamProperty);
   EXPECT_FALSE(tech_v.empty());
@@ -207,23 +234,13 @@ TEST_F(TetheringManagerTest, GetTetheringCapabilities) {
 }
 
 TEST_F(TetheringManagerTest, TetheringConfig) {
-  const char kDefaultProfile[] = "default";
-  const char kUserProfile[] = "~user/profile";
+  SetAllowed(tethering_manager_, true);
 
-  base::ScopedTempDir temp_dir;
-  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-  Manager manager(control_interface(), dispatcher(), metrics(), run_path(),
-                  storage_path(), temp_dir.GetPath().value());
-
-  ON_CALL(*device_, SupportAP()).WillByDefault(Return(true));
-  manager.RegisterDevice(device_);
-  SetAllowed(manager.tethering_manager(), true);
-
-  ASSERT_EQ(Error::kSuccess, TestCreateProfile(&manager, kDefaultProfile));
-  EXPECT_EQ(Error::kSuccess, TestPushProfile(&manager, kDefaultProfile));
+  ASSERT_EQ(Error::kSuccess, TestCreateProfile(&manager_, kDefaultProfile));
+  EXPECT_EQ(Error::kSuccess, TestPushProfile(&manager_, kDefaultProfile));
 
   // Check default TetheringConfig.
-  VerifyDefaultTetheringConfig(manager.tethering_manager());
+  VerifyDefaultTetheringConfig(tethering_manager_);
 
   // Fake Tethering configuration.
   std::string ssid = "757365725F73736964";  // "user_ssid" in hex
@@ -231,16 +248,16 @@ TEST_F(TetheringManagerTest, TetheringConfig) {
   KeyValueStore args = GenerateFakeConfig(ssid, passphrase);
 
   // Block SetAndPersistConfig when no user has logged in.
-  EXPECT_FALSE(SetAndPersistConfig(manager.tethering_manager(), args));
+  EXPECT_FALSE(SetAndPersistConfig(tethering_manager_, args));
 
   // SetAndPersistConfig succeeds when a user is logged in.
-  ASSERT_TRUE(base::CreateDirectory(temp_dir.GetPath().Append("user")));
-  ASSERT_EQ(Error::kSuccess, TestCreateProfile(&manager, kUserProfile));
-  EXPECT_EQ(Error::kSuccess, TestPushProfile(&manager, kUserProfile));
-  EXPECT_TRUE(SetAndPersistConfig(manager.tethering_manager(), args));
+  ASSERT_TRUE(base::CreateDirectory(temp_dir_.GetPath().Append("user")));
+  ASSERT_EQ(Error::kSuccess, TestCreateProfile(&manager_, kUserProfile));
+  EXPECT_EQ(Error::kSuccess, TestPushProfile(&manager_, kUserProfile));
+  EXPECT_TRUE(SetAndPersistConfig(tethering_manager_, args));
 
   // Read the configuration and check if it matches.
-  KeyValueStore config = GetConfig(manager.tethering_manager());
+  KeyValueStore config = GetConfig(tethering_manager_);
   EXPECT_FALSE(GetConfigMAR(config));
   EXPECT_FALSE(GetConfigAutoDisable(config));
   EXPECT_EQ(GetConfigSSID(config), ssid);
@@ -250,14 +267,14 @@ TEST_F(TetheringManagerTest, TetheringConfig) {
   EXPECT_EQ(GetConfigUpstream(config), kTypeCellular);
 
   // Log out user and check user's tethering config is not present.
-  EXPECT_EQ(Error::kSuccess, TestPopProfile(&manager, kUserProfile));
-  KeyValueStore default_config = GetConfig(manager.tethering_manager());
+  EXPECT_EQ(Error::kSuccess, TestPopProfile(&manager_, kUserProfile));
+  KeyValueStore default_config = GetConfig(tethering_manager_);
   EXPECT_NE(GetConfigSSID(default_config), ssid);
   EXPECT_NE(GetConfigPassphrase(default_config), passphrase);
 
   // Log in user and check tethering config again.
-  EXPECT_EQ(Error::kSuccess, TestPushProfile(&manager, kUserProfile));
-  config = GetConfig(manager.tethering_manager());
+  EXPECT_EQ(Error::kSuccess, TestPushProfile(&manager_, kUserProfile));
+  config = GetConfig(tethering_manager_);
   EXPECT_FALSE(GetConfigMAR(config));
   EXPECT_FALSE(GetConfigAutoDisable(config));
   EXPECT_EQ(GetConfigSSID(config), ssid);
@@ -268,39 +285,29 @@ TEST_F(TetheringManagerTest, TetheringConfig) {
 }
 
 TEST_F(TetheringManagerTest, SetTetheringEnabled) {
-  const char kDefaultProfile[] = "default";
-  const char kUserProfile[] = "~user/profile";
-
-  base::ScopedTempDir temp_dir;
-  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-  Manager manager(control_interface(), dispatcher(), metrics(), run_path(),
-                  storage_path(), temp_dir.GetPath().value());
-
-  ON_CALL(*device_, SupportAP()).WillByDefault(Return(true));
-  manager.RegisterDevice(device_);
-  SetAllowed(manager.tethering_manager(), true);
+  SetAllowed(tethering_manager_, true);
 
   // SetEnabled fails for the default profile.
-  ASSERT_EQ(Error::kSuccess, TestCreateProfile(&manager, kDefaultProfile));
-  EXPECT_EQ(Error::kSuccess, TestPushProfile(&manager, kDefaultProfile));
-  EXPECT_FALSE(SetEnabled(manager.tethering_manager(), true));
+  ASSERT_EQ(Error::kSuccess, TestCreateProfile(&manager_, kDefaultProfile));
+  EXPECT_EQ(Error::kSuccess, TestPushProfile(&manager_, kDefaultProfile));
+  EXPECT_FALSE(SetEnabled(tethering_manager_, true));
 
   // SetEnabled succeeds for a user profile.
-  ASSERT_TRUE(base::CreateDirectory(temp_dir.GetPath().Append("user")));
-  ASSERT_EQ(Error::kSuccess, TestCreateProfile(&manager, kUserProfile));
-  EXPECT_EQ(Error::kSuccess, TestPushProfile(&manager, kUserProfile));
-  KeyValueStore config = GetConfig(manager.tethering_manager());
-  EXPECT_TRUE(SetEnabled(manager.tethering_manager(), true));
+  ASSERT_TRUE(base::CreateDirectory(temp_dir_.GetPath().Append("user")));
+  ASSERT_EQ(Error::kSuccess, TestCreateProfile(&manager_, kUserProfile));
+  EXPECT_EQ(Error::kSuccess, TestPushProfile(&manager_, kUserProfile));
+  KeyValueStore config = GetConfig(tethering_manager_);
+  EXPECT_TRUE(SetEnabled(tethering_manager_, true));
 
   // Log out user and check a new SSID and passphrase is generated.
-  EXPECT_EQ(Error::kSuccess, TestPopProfile(&manager, kUserProfile));
-  KeyValueStore default_config = GetConfig(manager.tethering_manager());
+  EXPECT_EQ(Error::kSuccess, TestPopProfile(&manager_, kUserProfile));
+  KeyValueStore default_config = GetConfig(tethering_manager_);
   EXPECT_NE(GetConfigSSID(config), GetConfigSSID(default_config));
   EXPECT_NE(GetConfigPassphrase(config), GetConfigPassphrase(default_config));
 
   // Log in user and check the tethering config matches.
-  EXPECT_EQ(Error::kSuccess, TestPushProfile(&manager, kUserProfile));
-  KeyValueStore new_config = GetConfig(manager.tethering_manager());
+  EXPECT_EQ(Error::kSuccess, TestPushProfile(&manager_, kUserProfile));
+  KeyValueStore new_config = GetConfig(tethering_manager_);
   EXPECT_EQ(GetConfigMAR(config), GetConfigMAR(new_config));
   EXPECT_EQ(GetConfigAutoDisable(config), GetConfigAutoDisable(new_config));
   EXPECT_EQ(GetConfigSSID(config), GetConfigSSID(new_config));
@@ -315,7 +322,7 @@ TEST_F(TetheringManagerTest, TetheringConfigLoadAndUnload) {
   std::string passphrase = "user_password";
 
   // Check properties of the default tethering configuration.
-  VerifyDefaultTetheringConfig(manager()->tethering_manager());
+  VerifyDefaultTetheringConfig(tethering_manager_);
 
   // Prepare faked tethering configuration stored for a fake user profile.
   FakeStore store;
@@ -333,12 +340,12 @@ TEST_F(TetheringManagerTest, TetheringConfigLoadAndUnload) {
   store.SetString(TetheringManager::kStorageId,
                   kTetheringConfUpstreamTechProperty, kTypeCellular);
   scoped_refptr<MockProfile> profile =
-      new MockProfile(manager(), "~user/profile0");
+      new MockProfile(&manager_, "~user/profile0");
   EXPECT_CALL(*profile, GetConstStorage()).WillRepeatedly(Return(&store));
 
   // Check faked properties are loaded.
-  manager()->tethering_manager()->LoadConfigFromProfile(profile);
-  KeyValueStore caps = GetConfig(manager()->tethering_manager());
+  tethering_manager_->LoadConfigFromProfile(profile);
+  KeyValueStore caps = GetConfig(tethering_manager_);
   EXPECT_TRUE(GetConfigMAR(caps));
   EXPECT_TRUE(GetConfigAutoDisable(caps));
   EXPECT_EQ(ssid, GetConfigSSID(caps));
@@ -349,8 +356,8 @@ TEST_F(TetheringManagerTest, TetheringConfigLoadAndUnload) {
 
   // Check the tethering config is reset to default properties when unloading
   // the profile.
-  manager()->tethering_manager()->UnloadConfigFromProfile();
-  caps = VerifyDefaultTetheringConfig(manager()->tethering_manager());
+  tethering_manager_->UnloadConfigFromProfile();
+  caps = VerifyDefaultTetheringConfig(tethering_manager_);
   EXPECT_NE(ssid, caps.Get<std::string>(kTetheringConfSSIDProperty));
   EXPECT_NE(passphrase,
             caps.Get<std::string>(kTetheringConfPassphraseProperty));
@@ -360,23 +367,23 @@ TEST_F(TetheringManagerTest, TetheringConfigSaveAndLoad) {
   // Load a fake tethering configuration.
   KeyValueStore config1 =
       GenerateFakeConfig("757365725F73736964", "user_password");
-  FromProperties(manager()->tethering_manager(), config1);
+  FromProperties(tethering_manager_, config1);
 
   // Save the fake tethering configuration
   FakeStore store;
-  SaveConfig(manager()->tethering_manager(), &store);
+  SaveConfig(tethering_manager_, &store);
 
   // Force the default configuration to change by unloading the profile.
-  manager()->tethering_manager()->UnloadConfigFromProfile();
+  tethering_manager_->UnloadConfigFromProfile();
 
   // Reload the configuration
   scoped_refptr<MockProfile> profile =
-      new MockProfile(manager(), "~user/profile0");
+      new MockProfile(&manager_, "~user/profile0");
   EXPECT_CALL(*profile, GetConstStorage()).WillRepeatedly(Return(&store));
-  manager()->tethering_manager()->LoadConfigFromProfile(profile);
+  tethering_manager_->LoadConfigFromProfile(profile);
 
   // Check that the configurations are identical
-  KeyValueStore config2 = GetConfig(manager()->tethering_manager());
+  KeyValueStore config2 = GetConfig(tethering_manager_);
   EXPECT_EQ(GetConfigMAR(config1), GetConfigMAR(config2));
   EXPECT_EQ(GetConfigAutoDisable(config1), GetConfigAutoDisable(config2));
   EXPECT_EQ(GetConfigSSID(config1), GetConfigSSID(config2));
@@ -386,33 +393,24 @@ TEST_F(TetheringManagerTest, TetheringConfigSaveAndLoad) {
 }
 
 TEST_F(TetheringManagerTest, TetheringIsNotAllowed) {
-  const char kUserProfile[] = "~user/profile";
-  base::ScopedTempDir temp_dir;
-  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-  Manager manager(control_interface(), dispatcher(), metrics(), run_path(),
-                  storage_path(), temp_dir.GetPath().value());
-
-  ON_CALL(*device_, SupportAP()).WillByDefault(Return(true));
-  manager.RegisterDevice(device_);
-
   // Fake Tethering configuration.
   KeyValueStore config =
       GenerateFakeConfig("757365725F73736964", "user_password");
 
   // Push a user profile
-  ASSERT_TRUE(base::CreateDirectory(temp_dir.GetPath().Append("user")));
-  ASSERT_EQ(Error::kSuccess, TestCreateProfile(&manager, kUserProfile));
-  EXPECT_EQ(Error::kSuccess, TestPushProfile(&manager, kUserProfile));
+  ASSERT_TRUE(base::CreateDirectory(temp_dir_.GetPath().Append("user")));
+  ASSERT_EQ(Error::kSuccess, TestCreateProfile(&manager_, kUserProfile));
+  EXPECT_EQ(Error::kSuccess, TestPushProfile(&manager_, kUserProfile));
 
   // Tethering is not allowed. SetAndPersistConfig and SetEnabled should fail.
-  SetAllowed(manager.tethering_manager(), false);
-  EXPECT_FALSE(SetAndPersistConfig(manager.tethering_manager(), config));
-  EXPECT_FALSE(SetEnabled(manager.tethering_manager(), true));
+  SetAllowed(tethering_manager_, false);
+  EXPECT_FALSE(SetAndPersistConfig(tethering_manager_, config));
+  EXPECT_FALSE(SetEnabled(tethering_manager_, true));
 
   // Tethering is allowed. SetAndPersistConfig and SetEnabled should succeed.
-  SetAllowed(manager.tethering_manager(), true);
-  EXPECT_TRUE(SetAndPersistConfig(manager.tethering_manager(), config));
-  EXPECT_TRUE(SetEnabled(manager.tethering_manager(), true));
+  SetAllowed(tethering_manager_, true);
+  EXPECT_TRUE(SetAndPersistConfig(tethering_manager_, config));
+  EXPECT_TRUE(SetEnabled(tethering_manager_, true));
 }
 
 }  // namespace shill
