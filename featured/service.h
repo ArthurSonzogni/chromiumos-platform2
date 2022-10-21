@@ -11,8 +11,8 @@
 
 #include <base/command_line.h>
 #include <base/files/file_util.h>
+#include <base/memory/weak_ptr.h>
 #include <base/values.h>
-
 #include <brillo/dbus/exported_object_manager.h>
 #include <brillo/dbus/exported_property_set.h>
 #include <brillo/dbus/dbus_method_response.h>
@@ -20,6 +20,7 @@
 #include <brillo/syslog_logging.h>
 #include <brillo/variant_dictionary.h>
 #include <featured/feature_library.h>
+#include <session_manager/dbus-proxies.h>
 
 #include <memory>
 #include <string>
@@ -175,8 +176,15 @@ class DbusFeaturedService {
 
   bool IsPlatformFeatureEnabled(const std::string& name);
 
+  void OnSessionStateChanged(const std::string& state);
+
   std::unique_ptr<FeatureParserBase> parser_;
   std::unique_ptr<feature::PlatformFeatures> library_;
+  std::unique_ptr<org::chromium::SessionManagerInterfaceProxyInterface>
+      session_manager_ = nullptr;
+  bool evaluated_platform_features_json_ = false;
+
+  base::WeakPtrFactory<DbusFeaturedService> weak_ptr_factory_{this};
 };
 
 }  // namespace featured

@@ -32,6 +32,7 @@ pkg_config("target_defaults") {
     "dbus-1",
     "libbrillo",
     "libchrome",
+    "libsession_manager-client",
   ]
 }
 
@@ -111,6 +112,7 @@ if (use.test) {
     configs += [
       "//common-mk:test",
       ":test_helper_config",
+      ":target_defaults",
     ]
     deps = [
       ":libfeatured",

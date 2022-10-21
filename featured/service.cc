@@ -27,6 +27,7 @@ namespace featured {
 
 namespace {
 constexpr char kPlatformFeaturesPath[] = "/etc/featured/platform-features.json";
+constexpr char kSessionStartedState[] = "started";
 
 // Allow featured do write operations to path with these prefixes only.
 std::vector<std::string> allowedPrefixes = {"/proc", "/sys"};
@@ -363,6 +364,25 @@ void DbusFeaturedService::IsPlatformFeatureEnabledWrap(
   std::move(sender).Run(std::move(response));
 }
 
+void DbusFeaturedService::OnSessionStateChanged(const std::string& state) {
+  if (state == kSessionStartedState && !evaluated_platform_features_json_) {
+    if (!EnableFeatures()) {
+      LOG(ERROR) << "failed to enable features";
+      return;
+    }
+    evaluated_platform_features_json_ = true;
+  }
+}
+
+void OnSignalConnected(const std::string& interface,
+                       const std::string& signal,
+                       bool success) {
+  if (!success) {
+    LOG(ERROR) << "Could not connect to signal " << signal << " on interface "
+               << interface;
+  }
+}
+
 bool DbusFeaturedService::Start(dbus::Bus* bus,
                                 std::shared_ptr<DbusFeaturedService> ptr) {
   if (!bus || !bus->Connect()) {
@@ -379,10 +399,13 @@ bool DbusFeaturedService::Start(dbus::Bus* bus,
     return false;
   }
 
-  if (!EnableFeatures()) {
-    LOG(ERROR) << "Failed to enable features";
-    return false;
-  }
+  // Late boot features do not expect to start until after login, so delay them
+  // until then.
+  session_manager_.reset(new org::chromium::SessionManagerInterfaceProxy(bus));
+  session_manager_->RegisterSessionStateChangedSignalHandler(
+      base::BindRepeating(&DbusFeaturedService::OnSessionStateChanged,
+                          weak_ptr_factory_.GetWeakPtr()),
+      base::BindOnce(&OnSignalConnected));
 
   if (!object->ExportMethodAndBlock(
           featured::kFeaturedServiceName, featured::kIsPlatformFeatureEnabled,
