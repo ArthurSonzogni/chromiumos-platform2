@@ -134,6 +134,22 @@ class [[clang::consumable(unknown)]]   //
     return std::move(*std::get_if<value_type>(&value_));
   }
 
+  template <typename U>
+  value_type value_or(U && default_value) const& noexcept {
+    if (ok()) {
+      return *std::get_if<value_type>(&value_);
+    }
+    return std::forward<U>(default_value);
+  }
+
+  template <typename U>
+  value_type value_or(U && default_value)&& noexcept {
+    if (ok()) {
+      return std::move(*std::get_if<value_type>(&value_));
+    }
+    return std::forward<U>(default_value);
+  }
+
   [[clang::test_typestate(consumed)]] bool ok() const noexcept {
     return std::holds_alternative<value_type>(value_);
   }

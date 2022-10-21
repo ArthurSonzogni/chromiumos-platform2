@@ -481,11 +481,13 @@ TEST_F(StatusChainTest, StatusChainOrAssignAndRead) {
   EXPECT_EQ(*status_or1, "data");
   EXPECT_TRUE(status_or2->empty());
   EXPECT_EQ(status_or3.status().ToFullString(), "Fake1: fake1");
+  EXPECT_EQ(status_or3.value_or("fake"), "fake");
 
   // StatusChainOr should be moveable.
   StatusChainOr<std::string, Fake1Error> status_or4 = std::move(status_or1);
   EXPECT_TRUE(status_or4.ok());
   EXPECT_EQ(*status_or4, "data");
+  EXPECT_EQ(status_or4.value_or("fake"), "data");
 }
 
 TEST_F(StatusChainTest, StatusChainOrLambda) {
