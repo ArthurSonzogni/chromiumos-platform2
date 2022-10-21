@@ -221,7 +221,8 @@ base::ScopedFD SubprocessPipe::Open(const Direction direction,
     DCHECK(ctrl_fd_.is_valid());
     const ssize_t written =
         HANDLE_EINTR(write(ctrl_fd_.get(), &exit_code, sizeof(exit_code)));
-    PLOG_IF(ERROR, written != sizeof(exit_code))
+    PLOG_IF(ERROR,
+            written != sizeof(exit_code) && (LOG_IS_ON(INFO) || errno != EPIPE))
         << "Cannot write " << exit_code
         << " returned by the 'launcher' process " << launcher_pid << " to pipe "
         << ctrl_fd_.get();

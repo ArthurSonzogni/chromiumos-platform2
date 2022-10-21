@@ -332,7 +332,7 @@ void MountManager::OnSandboxedProcessExit(
   } else {
     LOG(INFO) << "FUSE program " << quote(program_name) << " for "
               << filesystem_type << " " << redact(mount_path)
-              << " finished with " << Process::ExitCode(info.si_status);
+              << " finished normally";
   }
 
   if (!mount_point) {

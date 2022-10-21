@@ -6,11 +6,12 @@
 
 #include <utility>
 
+#include <base/bind.h>
 #include <base/check.h>
 #include <base/logging.h>
+#include <base/strings/strcat.h>
 #include <chromeos/dbus/service_constants.h>
 
-#include "base/bind.h"
 #include "cros-disks/device_event.h"
 #include "cros-disks/disk.h"
 #include "cros-disks/disk_monitor.h"
@@ -251,11 +252,10 @@ bool CrosDisksServer::GetDeviceProperties(
     brillo::VariantDictionary* properties) {
   Disk disk;
   if (!disk_monitor_->GetDiskByDevicePath(base::FilePath(device_path), &disk)) {
-    std::string message =
-        "Could not get the properties of device " + device_path;
-    LOG(ERROR) << message;
-    brillo::Error::AddTo(error, FROM_HERE, brillo::errors::dbus::kDomain,
-                         kCrosDisksServiceError, message);
+    LOG(ERROR) << "Cannot get properties of " << quote(device_path);
+    brillo::Error::AddTo(
+        error, FROM_HERE, brillo::errors::dbus::kDomain, kCrosDisksServiceError,
+        base::StrCat({"Cannot get properties of '", device_path, "'"}));
     return false;
   }
 

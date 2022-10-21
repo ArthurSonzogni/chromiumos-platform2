@@ -112,8 +112,7 @@ void PartitionManager::StartSinglePartitionFormat(
 
   Disk disk;
   if (!disk_monitor_->GetDiskByDevicePath(device_path, &disk)) {
-    LOG(ERROR) << "Could not get the properties of device " +
-                      device_path.value();
+    LOG(ERROR) << "Cannot get properties of " << quote(device_path);
     std::move(callback).Run(device_path, PARTITION_ERROR_UNKNOWN);
     return;
   }
