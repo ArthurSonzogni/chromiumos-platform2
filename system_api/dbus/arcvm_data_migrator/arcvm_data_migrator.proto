@@ -8,8 +8,21 @@ option optimize_for = LITE_RUNTIME;
 // This file defines messages used by arc::data_migrator.
 package arc.data_migrator;
 
+// The type of the migration destination.
+enum DataMigrationDestinationType {
+  // A disk image created by concierge (/home/root/<hash>/crosvm/YXJjdm0=.img).
+  CROSVM_DISK = 0;
+  // An LVM block device (/dev/mapper/vm/dmcrypt-<hash>-arcvm).
+  LVM_DEVICE = 1;
+}
+
 // The message that is sent from Chrome with StartMigration call.
-message StartMigrationRequest {}
+message StartMigrationRequest {
+  // Username of the login user.
+  string username = 1;
+
+  DataMigrationDestinationType destination_type = 2;
+}
 
 // Status code for the message DataMigrationProgress below.
 enum DataMigrationStatus {
