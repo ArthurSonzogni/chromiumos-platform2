@@ -1,3 +1,4 @@
+// NOLINT(build/header_guard)
 /*
  * Copyright (C) 2012 The Android Open Source Project
  * Copyright (C) 2021 Intel Corporation
