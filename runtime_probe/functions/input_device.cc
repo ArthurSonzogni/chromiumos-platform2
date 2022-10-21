@@ -20,13 +20,14 @@
 #include <base/strings/stringprintf.h>
 
 #include "runtime_probe/proto_bindings/runtime_probe.pb.h"
+#include "runtime_probe/system/context.h"
 #include "runtime_probe/utils/file_utils.h"
 #include "runtime_probe/utils/input_device.h"
 
 namespace runtime_probe {
 
 namespace {
-constexpr auto kInputDevicesPath = "/proc/bus/input/devices";
+constexpr auto kInputDevicesPath = "proc/bus/input/devices";
 
 using FieldType = std::pair<std::string, std::string>;
 
@@ -94,6 +95,10 @@ void AppendInputDevice(InputDeviceFunction::DataType* list_value,
   const auto device_type = DeviceTypeEnumToString(input_device->type());
   if (!device_type_filter.empty() && device_type_filter != device_type)
     return;
+
+  auto path = Context::Get()->root_dir().Append(
+      base::StringPrintf("sys%s", input_device->sysfs.c_str()));
+
   base::Value value(base::Value::Type::DICTIONARY);
   value.SetStringKey("bus", input_device->bus);
   value.SetStringKey("event", input_device->event);
@@ -101,8 +106,7 @@ void AppendInputDevice(InputDeviceFunction::DataType* list_value,
   value.SetStringKey("product", input_device->product);
   value.SetStringKey("vendor", input_device->vendor);
   value.SetStringKey("version", input_device->version);
-  value.SetStringKey("path",
-                     base::StringPrintf("/sys%s", input_device->sysfs.c_str()));
+  value.SetStringKey("path", path.value());
   value.SetStringKey("device_type",
                      InputDevice::Type_Name(input_device->type()));
   FixTouchscreenI2cDevice(&value);
@@ -114,9 +118,12 @@ void AppendInputDevice(InputDeviceFunction::DataType* list_value,
 InputDeviceFunction::DataType InputDeviceFunction::EvalImpl() const {
   InputDeviceFunction::DataType results{};
   std::string input_devices_str;
-  if (!base::ReadFileToString(base::FilePath(kInputDevicesPath),
-                              &input_devices_str)) {
-    LOG(ERROR) << "Failed to read " << kInputDevicesPath << ".";
+
+  const base::FilePath procfs_path(
+      Context::Get()->root_dir().Append(kInputDevicesPath));
+
+  if (!base::ReadFileToString(procfs_path, &input_devices_str)) {
+    LOG(ERROR) << "Failed to read " << procfs_path.value() << ".";
     return {};
   }
 
