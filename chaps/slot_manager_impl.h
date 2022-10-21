@@ -13,9 +13,12 @@
 
 #include <map>
 #include <memory>
+#include <optional>
 #include <set>
 #include <string>
 #include <vector>
+
+#include <libhwsec/frontend/chaps/frontend.h>
 
 #include "chaps/chaps_factory.h"
 #include "chaps/chaps_metrics.h"
@@ -24,21 +27,20 @@
 namespace chaps {
 
 class SessionFactory;
-class AsyncTPMUtility;
 
 // Maintains a list of PKCS #11 slots and modifies the list according to login
 // events received. Sample usage:
-//    SlotManagerImpl slot_manager(&my_factory, &my_tpm);
+//    SlotManagerImpl slot_manager(...);
 //    if (!slot_manager.Init()) {
 //      ...
 //    }
-//    // Ready for use by SlotManager and LoginEventListener clients.
+//    // Ready for use by SlotManager clients.
 class SlotManagerImpl : public SlotManager,
                         public TokenManagerInterface,
                         public HandleGenerator {
  public:
   SlotManagerImpl(ChapsFactory* factory,
-                  AsyncTPMUtility* tpm_utility,
+                  hwsec::ChapsFrontend* hwsec,
                   bool auto_load_system_token,
                   SystemShutdownBlocker* system_shutdown_blocker,
                   ChapsMetrics* chaps_metrics);
@@ -113,6 +115,12 @@ class SlotManagerImpl : public SlotManager,
     std::map<int, std::shared_ptr<Session>> sessions;
   };
 
+  // The HWSec object is enabled or not.
+  bool HwsecIsEnabled();
+
+  // The HWSec object is ready to use or not.
+  bool HwsecIsReady();
+
   // Internal token presence check without isolate_credential check.
   bool IsTokenPresent(int slot_id) const;
 
@@ -152,12 +160,12 @@ class SlotManagerImpl : public SlotManager,
   // Get the path of the token loaded in the given slot.
   bool PathFromSlotId(int slot_id, base::FilePath* path) const;
 
-  // Performs initialization tasks that depend on the TPM SRK.  If the TPM is
-  // not owned this cannot succeed.  These tasks include seeding the software
-  // prng and loading the system token.
+  // Performs initialization tasks that depend on the HWSec status.
+  // If the HWSec is not ready this cannot succeed.
+  // These tasks include seeding the software prng and loading the system token.
   bool InitStage2();
 
-  // Migrates software token to TPM token if needed. Returns true when the
+  // Migrates software token to HWSec token if needed. Returns true when the
   // migration is needed. Return false in the other case.
   bool MigrateTokenIfNeeded(const base::FilePath& path,
                             const brillo::SecureBlob& auth_data,
@@ -170,59 +178,57 @@ class SlotManagerImpl : public SlotManager,
                          const std::string& label,
                          int* slot_id);
 
-  // Loads the root key for a TPM token.
-  void LoadTPMToken(base::OnceCallback<void(bool)> callback,
-                    int slot_id,
-                    const base::FilePath& path,
-                    const brillo::SecureBlob& auth_data,
-                    std::shared_ptr<ObjectPool> object_pool);
+  // Loads the root key for a HWSec token.
+  void LoadHwsecToken(base::OnceCallback<void(bool)> callback,
+                      int slot_id,
+                      const base::FilePath& path,
+                      const brillo::SecureBlob& auth_data,
+                      std::shared_ptr<ObjectPool> object_pool);
 
-  // Loads the root key for a TPM token after the TPM unseals data.
-  void LoadTPMTokenAfterUnseal(base::OnceCallback<void(bool)> callback,
-                               const base::FilePath& path,
-                               const brillo::SecureBlob& auth_data,
-                               std::shared_ptr<ObjectPool> object_pool,
-                               bool success,
-                               brillo::SecureBlob unsealed_data);
-
-  // The final operation of loading the root key for a TPM token.
-  void LoadTPMTokenFinal(base::OnceCallback<void(bool)> callback,
-                         const base::FilePath& path,
-                         const brillo::SecureBlob& auth_data,
-                         std::shared_ptr<ObjectPool> object_pool,
-                         brillo::SecureBlob root_key);
-
-  // Initializes a new TPM token.
-  void InitializeTPMToken(base::OnceCallback<void(bool)> callback,
-                          const base::FilePath& path,
-                          const brillo::SecureBlob& auth_data,
-                          std::shared_ptr<ObjectPool> object_pool);
-
-  // Initializes a new TPM token after the TPM generates random.
-  void InitializeTPMTokenAfterGenerateRandom(
+  // Loads the root key for a HWSec token after the HWSec unseals data.
+  void LoadHwsecTokenAfterUnseal(
       base::OnceCallback<void(bool)> callback,
       const base::FilePath& path,
       const brillo::SecureBlob& auth_data,
       std::shared_ptr<ObjectPool> object_pool,
-      bool success,
-      std::string random_data);
+      hwsec::StatusOr<brillo::SecureBlob> unsealed_data);
 
-  // Initializes a new TPM token with the specific root key.
-  void InitializeTPMTokenWithRootKey(base::OnceCallback<void(bool)> callback,
-                                     const base::FilePath& path,
-                                     const brillo::SecureBlob& auth_data,
-                                     std::shared_ptr<ObjectPool> object_pool,
-                                     brillo::SecureBlob root_key);
+  // The final operation of loading the root key for a HWSec token.
+  void LoadHwsecTokenFinal(base::OnceCallback<void(bool)> callback,
+                           const base::FilePath& path,
+                           const brillo::SecureBlob& auth_data,
+                           std::shared_ptr<ObjectPool> object_pool,
+                           brillo::SecureBlob root_key);
 
-  // Initializes a new TPM token after the TPM seals data.
-  void InitializeTPMTokenAfterSealData(base::OnceCallback<void(bool)> callback,
+  // Initializes a new HWSec token.
+  void InitializeHwsecToken(base::OnceCallback<void(bool)> callback,
+                            const base::FilePath& path,
+                            const brillo::SecureBlob& auth_data,
+                            std::shared_ptr<ObjectPool> object_pool);
+
+  // Initializes a new HWSec token after the secure element generated random.
+  void InitializeHwsecTokenAfterGenerateRandom(
+      base::OnceCallback<void(bool)> callback,
+      const base::FilePath& path,
+      const brillo::SecureBlob& auth_data,
+      std::shared_ptr<ObjectPool> object_pool,
+      hwsec::StatusOr<brillo::SecureBlob> random_data);
+
+  // Initializes a new HWSec token with the specific root key.
+  void InitializeHwsecTokenWithRootKey(base::OnceCallback<void(bool)> callback,
                                        const base::FilePath& path,
                                        const brillo::SecureBlob& auth_data,
                                        std::shared_ptr<ObjectPool> object_pool,
-                                       brillo::SecureBlob root_key,
-                                       bool success,
-                                       std::string key_blob,
-                                       std::string encrypted_data);
+                                       brillo::SecureBlob root_key);
+
+  // Initializes a new HWSec token after the secure element sealed the data.
+  void InitializeHwsecTokenAfterSealData(
+      base::OnceCallback<void(bool)> callback,
+      const base::FilePath& path,
+      const brillo::SecureBlob& auth_data,
+      std::shared_ptr<ObjectPool> object_pool,
+      brillo::SecureBlob root_key,
+      hwsec::StatusOr<hwsec::ChapsSealedData> sealed_data);
 
   // Loads the root key for a software-only token.
   bool LoadSoftwareToken(const brillo::SecureBlob& auth_data,
@@ -245,9 +251,11 @@ class SlotManagerImpl : public SlotManager,
   // Value: The identifier of the associated slot.
   std::map<int, int> session_slot_map_;
   std::map<brillo::SecureBlob, Isolate> isolate_map_;
-  AsyncTPMUtility* tpm_utility_;
+  hwsec::ChapsFrontend* hwsec_;
   bool auto_load_system_token_;
   bool is_initialized_;
+  std::optional<bool> hwsec_enabled_;
+  bool hwsec_ready_;
   SystemShutdownBlocker* system_shutdown_blocker_;
   ChapsMetrics* chaps_metrics_;
 };

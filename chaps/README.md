@@ -1,8 +1,8 @@
 # Chaps
 
 Chaps is a PKCS #11 implementation for Chromium OS.  This document clarifies
-how the PKCS #11 standard is supported for TPM-backed tokens and what a calling
-application can expect from Chaps.
+how the PKCS #11 standard is supported for HWSec-backed tokens and what a
+calling application can expect from Chaps.
 
 ## Token Initialization
 

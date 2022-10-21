@@ -313,8 +313,9 @@ EXPORT_SPEC CK_RV C_GetTokenInfo(CK_SLOT_ID slotID, CK_TOKEN_INFO_PTR pInfo) {
 
 // PKCS #11 v2.20 section 11.5 page 110.
 // Currently, slot events via D-Bus are not supported because no slot events
-// occur with TPM-based tokens.  We want this call to behave properly so we'll
-// block the calling thread (if not CKF_DONT_BLOCK) until C_Finalize is called.
+// occur with HWSec-based tokens. We want this call to behave properly so
+// we'll block the calling thread (if not CKF_DONT_BLOCK) until C_Finalize is
+// called.
 EXPORT_SPEC CK_RV C_WaitForSlotEvent(CK_FLAGS flags,
                                      CK_SLOT_ID_PTR pSlot,
                                      CK_VOID_PTR pReserved) {

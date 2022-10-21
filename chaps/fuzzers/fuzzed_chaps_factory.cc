@@ -17,7 +17,7 @@ FuzzedChapsFactory::FuzzedChapsFactory(FuzzedDataProvider* data_provider)
 
 Session* FuzzedChapsFactory::CreateSession(int slot_id,
                                            ObjectPool* token_object_pool,
-                                           TPMUtility* tpm_utility,
+                                           hwsec::ChapsFrontend* hwsec,
                                            HandleGenerator* handle_generator,
                                            bool is_read_only) {
   return new SessionMock();

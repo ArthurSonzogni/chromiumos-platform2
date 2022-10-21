@@ -8,6 +8,7 @@
 #include <string>
 
 #include <base/files/file_path.h>
+#include <libhwsec/frontend/chaps/frontend.h>
 
 #include "pkcs11/cryptoki.h"
 
@@ -20,7 +21,6 @@ class ObjectPool;
 class ObjectStore;
 class SlotPolicy;
 class Session;
-class TPMUtility;
 
 // ChapsFactory is a factory for a number of interfaces in the Chaps
 // environment. Having this factory allows object implementations to be
@@ -30,7 +30,7 @@ class ChapsFactory {
   virtual ~ChapsFactory() {}
   virtual Session* CreateSession(int slot_id,
                                  ObjectPool* token_object_pool,
-                                 TPMUtility* tpm_utility,
+                                 hwsec::ChapsFrontend* hwsec,
                                  HandleGenerator* handle_generator,
                                  bool is_read_only) = 0;
   virtual ObjectPool* CreateObjectPool(HandleGenerator* handle_generator,

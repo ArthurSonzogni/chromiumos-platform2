@@ -15,7 +15,10 @@
 #include <base/test/task_environment.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <libhwsec/frontend/chaps/mock_frontend.h>
+#include <libhwsec-foundation/error/testing_helper.h>
 #include <metrics/metrics_library_mock.h>
+#include <openssl/rand.h>
 #include <openssl/sha.h>
 
 #include "chaps/chaps_factory_mock.h"
@@ -25,11 +28,17 @@
 #include "chaps/object_store_mock.h"
 #include "chaps/session_mock.h"
 #include "chaps/slot_policy_mock.h"
-#include "chaps/tpm_thread_utility_impl.h"
-#include "chaps/tpm_utility_mock.h"
 
 using base::FilePath;
 using brillo::SecureBlob;
+using hwsec::TPMError;
+using hwsec_foundation::error::testing::IsOk;
+using hwsec_foundation::error::testing::ReturnError;
+using hwsec_foundation::error::testing::ReturnOk;
+using hwsec_foundation::error::testing::ReturnValue;
+using hwsec_foundation::status::MakeStatus;
+using hwsec_foundation::status::OkStatus;
+using hwsec_foundation::status::StatusChain;
 using std::string;
 using ::testing::_;
 using ::testing::AnyNumber;
@@ -38,14 +47,13 @@ using ::testing::InvokeWithoutArgs;
 using ::testing::Return;
 using ::testing::SetArgPointee;
 using ::testing::StrictMock;
+using TPMRetryAction = ::hwsec::TPMRetryAction;
 
 namespace chaps {
 
 namespace {
 
 const char kAuthData[] = "000000";
-const char kDefaultPubExp[] = {1, 0, 1};
-const int kDefaultPubExpSize = 3;
 const char kTokenLabel[] = "test_label";
 
 const char kChapsTokenManagerLoadToken[] =
@@ -89,25 +97,29 @@ ObjectPool* CreateObjectPoolMock() {
   return object_pool;
 }
 
-// Sets default expectations on a TPMUtilityMock.
-void ConfigureTPMUtility(TPMUtilityMock* tpm) {
-  EXPECT_CALL(*tpm, Init()).WillRepeatedly(Return(true));
-  EXPECT_CALL(*tpm, UnloadKeysForSlot(_)).Times(AnyNumber());
-  EXPECT_CALL(*tpm,
-              UnsealData(string("auth_key_blob"), string("encrypted_root_key"),
-                         Sha1(MakeBlob(kAuthData)), _))
-      .WillRepeatedly(
-          DoAll(SetArgPointee<3>(MakeBlob("root_key")), Return(true)));
-  EXPECT_CALL(*tpm, GenerateRandom(_, _))
-      .WillRepeatedly(
-          DoAll(SetArgPointee<1>(string("root_key")), Return(true)));
-  string exponent(kDefaultPubExp, kDefaultPubExpSize);
-  EXPECT_CALL(*tpm, SealData(string("root_key"), MakeBlob(kAuthData), _, _))
-      .WillRepeatedly(DoAll(SetArgPointee<2>(string("auth_key_blob")),
-                            SetArgPointee<3>(string("encrypted_root_key")),
-                            Return(true)));
-  EXPECT_CALL(*tpm, IsSRKReady()).WillRepeatedly(Return(true));
-  EXPECT_CALL(*tpm, IsTPMAvailable()).WillRepeatedly(Return(true));
+// Sets default expectations on a hwsec::MockChapsFrontend.
+void ConfigureHwsec(hwsec::MockChapsFrontend* hwsec) {
+  EXPECT_CALL(*hwsec, GetRandomBlob(_)).WillRepeatedly([](size_t size) {
+    brillo::Blob blob(size);
+    RAND_bytes(blob.data(), size);
+    return blob;
+  });
+  EXPECT_CALL(*hwsec, GetRandomSecureBlob(_)).WillRepeatedly([](size_t size) {
+    brillo::SecureBlob blob(size);
+    RAND_bytes(blob.data(), size);
+    return blob;
+  });
+  EXPECT_CALL(*hwsec, IsEnabled()).WillRepeatedly(ReturnValue(true));
+  EXPECT_CALL(*hwsec, IsReady()).WillRepeatedly(ReturnValue(true));
+  EXPECT_CALL(*hwsec, GetFamily()).WillRepeatedly(ReturnValue(0x322E3000));
+  EXPECT_CALL(*hwsec, UnsealDataAsync(_, Sha1(MakeBlob(kAuthData)), _))
+      .WillRepeatedly([](auto&&, auto&&, auto&& callback) {
+        std::move(callback).Run(brillo::SecureBlob());
+      });
+  EXPECT_CALL(*hwsec, SealDataAsync(_, Sha1(MakeBlob(kAuthData)), _))
+      .WillRepeatedly([](auto&&, auto&&, auto&& callback) {
+        std::move(callback).Run(hwsec::ChapsSealedData{});
+      });
 }
 
 // Creates and returns a mock Session instance.
@@ -123,7 +135,7 @@ class TestSlotManager : public ::testing::Test {
   TestSlotManager() {
     EXPECT_CALL(factory_, CreateSession(_, _, _, _, _))
         .WillRepeatedly(InvokeWithoutArgs(CreateNewSession));
-    ObjectStore* null_store = NULL;
+    ObjectStore* null_store = nullptr;
     EXPECT_CALL(factory_, CreateObjectStore(_))
         .WillRepeatedly(Return(null_store));
     ic_ = IsolateCredentialManager::GetDefaultIsolateCredential();
@@ -134,11 +146,7 @@ class TestSlotManager : public ::testing::Test {
 
     EXPECT_CALL(factory_, CreateObjectPool(_, _, _))
         .WillRepeatedly(InvokeWithoutArgs(CreateObjectPoolMock));
-    auto tpm_mock = std::make_unique<TPMUtilityMock>();
-    tpm_ = tpm_mock.get();
-    ConfigureTPMUtility(tpm_);
-    tpm_thread_utility_ =
-        std::make_unique<TPMThreadUtilityImpl>(std::move(tpm_mock));
+    ConfigureHwsec(&hwsec_);
     chaps_metrics_.set_metrics_library_for_testing(&mock_metrics_library_);
     EXPECT_CALL(
         mock_metrics_library_,
@@ -146,28 +154,26 @@ class TestSlotManager : public ::testing::Test {
                       static_cast<int>(TPMAvailabilityStatus::kTPMAvailable),
                       static_cast<int>(TPMAvailabilityStatus::kMaxValue)))
         .WillOnce(Return(true));
-    slot_manager_.reset(new SlotManagerImpl(
-        &factory_, tpm_thread_utility_.get(), false, nullptr, &chaps_metrics_));
+    slot_manager_.reset(new SlotManagerImpl(&factory_, &hwsec_, false, nullptr,
+                                            &chaps_metrics_));
     ASSERT_TRUE(slot_manager_->Init());
   }
   void TearDown() {
     // Destroy the slot manager before its dependencies.
     slot_manager_.reset();
   }
-#if GTEST_IS_THREADSAFE
+
   int InsertToken() {
     int slot_id = 0;
     slot_manager_->LoadToken(ic_, FilePath("/var/lib/chaps"),
                              MakeBlob(kAuthData), kTokenLabel, &slot_id);
     return slot_id;
   }
-#endif
 
  protected:
   base::test::TaskEnvironment task_environment_;
   ChapsFactoryMock factory_;
-  TPMUtilityMock* tpm_;
-  std::unique_ptr<TPMThreadUtilityImpl> tpm_thread_utility_;
+  hwsec::MockChapsFrontend hwsec_;
   std::unique_ptr<SlotManagerImpl> slot_manager_;
   SecureBlob ic_;
   StrictMock<MetricsLibraryMock> mock_metrics_library_;
@@ -179,30 +185,29 @@ TEST(DeathTest, InvalidInit) {
   // The default style "fast" does not support multi-threaded death tests.
   testing::FLAGS_gtest_death_test_style = "threadsafe";
 
+  hwsec::MockChapsFrontend hwsec;
+  ConfigureHwsec(&hwsec);
   ChapsFactoryMock factory;
   StrictMock<MetricsLibraryMock> mock_metrics_library;
   ChapsMetrics chaps_metrics;
   chaps_metrics.set_metrics_library_for_testing(&mock_metrics_library);
   EXPECT_DEATH_IF_SUPPORTED(
-      new SlotManagerImpl(&factory, NULL, false, nullptr, &chaps_metrics),
+      new SlotManagerImpl(&factory, nullptr, false, nullptr, &chaps_metrics),
       "Check failed");
-  auto tpm_mock = std::make_unique<TPMUtilityMock>();
-  auto tpm_thread_utility =
-      std::make_unique<TPMThreadUtilityImpl>(std::move(tpm_mock));
-  EXPECT_DEATH_IF_SUPPORTED(new SlotManagerImpl(NULL, tpm_thread_utility.get(),
-                                                false, nullptr, &chaps_metrics),
-                            "Check failed");
+  EXPECT_DEATH_IF_SUPPORTED(
+      new SlotManagerImpl(nullptr, &hwsec, false, nullptr, &chaps_metrics),
+      "Check failed");
 }
 
 TEST_F(TestSlotManager_DeathTest, InvalidArgs) {
   EXPECT_DEATH_IF_SUPPORTED(slot_manager_->IsTokenPresent(ic_, 3),
                             "Check failed");
-  EXPECT_DEATH_IF_SUPPORTED(slot_manager_->GetSlotInfo(ic_, 0, NULL),
+  EXPECT_DEATH_IF_SUPPORTED(slot_manager_->GetSlotInfo(ic_, 0, nullptr),
                             "Check failed");
   CK_SLOT_INFO slot_info;
   EXPECT_DEATH_IF_SUPPORTED(slot_manager_->GetSlotInfo(ic_, 3, &slot_info),
                             "Check failed");
-  EXPECT_DEATH_IF_SUPPORTED(slot_manager_->GetTokenInfo(ic_, 0, NULL),
+  EXPECT_DEATH_IF_SUPPORTED(slot_manager_->GetTokenInfo(ic_, 0, nullptr),
                             "Check failed");
   CK_TOKEN_INFO token_info;
   EXPECT_DEATH_IF_SUPPORTED(slot_manager_->GetTokenInfo(ic_, 3, &token_info),
@@ -213,12 +218,12 @@ TEST_F(TestSlotManager_DeathTest, InvalidArgs) {
                             "Check failed");
   EXPECT_DEATH_IF_SUPPORTED(slot_manager_->CloseAllSessions(ic_, 3),
                             "Check failed");
-  EXPECT_DEATH_IF_SUPPORTED(slot_manager_->GetSession(ic_, 0, NULL),
+  EXPECT_DEATH_IF_SUPPORTED(slot_manager_->GetSession(ic_, 0, nullptr),
                             "Check failed");
 }
 
 TEST_F(TestSlotManager_DeathTest, OutOfMemorySession) {
-  Session* null_session = NULL;
+  Session* null_session = nullptr;
   EXPECT_CALL(factory_, CreateSession(_, _, _, _, _))
       .WillRepeatedly(Return(null_session));
   EXPECT_DEATH_IF_SUPPORTED(slot_manager_->OpenSession(ic_, 0, false),
@@ -241,27 +246,22 @@ TEST_F(TestSlotManager, DefaultSlotSetup) {
   EXPECT_FALSE(slot_manager_->IsTokenAccessible(ic_, 1));
 }
 
-#if GTEST_IS_THREADSAFE
-
 TEST(DeathTest, OutOfMemoryInit) {
   // The default style "fast" does not support multi-threaded death tests.
   testing::FLAGS_gtest_death_test_style = "threadsafe";
 
-  auto tpm_mock = std::make_unique<TPMUtilityMock>();
-  ConfigureTPMUtility(tpm_mock.get());
-  auto tpm_thread_utility =
-      std::make_unique<TPMThreadUtilityImpl>(std::move(tpm_mock));
+  hwsec::MockChapsFrontend hwsec;
+  ConfigureHwsec(&hwsec);
   ChapsFactoryMock factory;
-  ObjectPool* null_pool = NULL;
+  ObjectPool* null_pool = nullptr;
   StrictMock<MetricsLibraryMock> mock_metrics_library;
   ChapsMetrics chaps_metrics;
   chaps_metrics.set_metrics_library_for_testing(&mock_metrics_library);
   EXPECT_CALL(factory, CreateObjectPool(_, _, _))
       .WillRepeatedly(Return(null_pool));
-  ObjectStore* null_store = NULL;
+  ObjectStore* null_store = nullptr;
   EXPECT_CALL(factory, CreateObjectStore(_)).WillRepeatedly(Return(null_store));
-  SlotManagerImpl sm(&factory, tpm_thread_utility.get(), false, nullptr,
-                     &chaps_metrics);
+  SlotManagerImpl sm(&factory, &hwsec, false, nullptr, &chaps_metrics);
   EXPECT_CALL(
       mock_metrics_library,
       SendEnumToUMA(kTPMAvailability,
@@ -284,18 +284,18 @@ TEST_F(TestSlotManager, QueryInfo) {
   memset(&slot_info, 0xEE, sizeof(slot_info));
   slot_manager_->GetSlotInfo(ic_, 0, &slot_info);
   // Check if all bytes have been set by the call.
-  EXPECT_EQ(NULL, memchr(&slot_info, 0xEE, sizeof(slot_info)));
+  EXPECT_EQ(nullptr, memchr(&slot_info, 0xEE, sizeof(slot_info)));
   CK_TOKEN_INFO token_info;
   memset(&token_info, 0xEE, sizeof(token_info));
   slot_manager_->GetTokenInfo(ic_, 0, &token_info);
-  EXPECT_EQ(NULL, memchr(&token_info, 0xEE, sizeof(token_info)));
+  EXPECT_EQ(nullptr, memchr(&token_info, 0xEE, sizeof(token_info)));
   string expected_label(kTokenLabel);
   expected_label.resize(std::size(token_info.label), ' ');
   string actual_label(reinterpret_cast<char*>(token_info.label),
                       std::size(token_info.label));
   EXPECT_EQ(expected_label, actual_label);
   const MechanismMap* mechanisms = slot_manager_->GetMechanismInfo(ic_, 0);
-  ASSERT_TRUE(mechanisms != NULL);
+  ASSERT_TRUE(mechanisms != nullptr);
   // Sanity check - we don't want to be strict on the mechanism list.
   EXPECT_TRUE(mechanisms->end() != mechanisms->find(CKM_RSA_PKCS));
   EXPECT_TRUE(mechanisms->end() != mechanisms->find(CKM_AES_CBC));
@@ -306,12 +306,12 @@ TEST_F(TestSlotManager, TestSessions) {
   int id1 = slot_manager_->OpenSession(ic_, 0, false);
   int id2 = slot_manager_->OpenSession(ic_, 0, true);
   EXPECT_NE(id1, id2);
-  Session* s1 = NULL;
+  Session* s1 = nullptr;
   EXPECT_TRUE(slot_manager_->GetSession(ic_, id1, &s1));
-  EXPECT_TRUE(s1 != NULL);
-  Session* s2 = NULL;
+  EXPECT_TRUE(s1 != nullptr);
+  Session* s2 = nullptr;
   EXPECT_TRUE(slot_manager_->GetSession(ic_, id2, &s2));
-  EXPECT_TRUE(s2 != NULL);
+  EXPECT_TRUE(s2 != nullptr);
   EXPECT_NE(s1, s2);
   EXPECT_TRUE(slot_manager_->CloseSession(ic_, id1));
   EXPECT_FALSE(slot_manager_->CloseSession(ic_, id1));
@@ -384,41 +384,41 @@ TEST_F(TestSlotManager, TestDefaultIsolate) {
 }
 
 TEST_F(TestSlotManager, TestOpenIsolate) {
-  EXPECT_CALL(*tpm_, GenerateRandom(_, _))
-      .WillOnce(DoAll(SetArgPointee<1>(string("567890")), Return(true)));
+  EXPECT_CALL(hwsec_, GetRandomSecureBlob(_))
+      .WillOnce(ReturnValue(brillo::SecureBlob(kIsolateCredentialBytes, 'A')));
 
   // Check that trying to open an invalid isolate creates new isolate.
   SecureBlob isolate("invalid");
   bool new_isolate_created = false;
   EXPECT_TRUE(slot_manager_->OpenIsolate(&isolate, &new_isolate_created));
   EXPECT_TRUE(new_isolate_created);
-  EXPECT_EQ(SecureBlob(string("567890")), isolate);
+  EXPECT_EQ(brillo::SecureBlob(kIsolateCredentialBytes, 'A'), isolate);
 
   // Check opening an existing isolate.
   EXPECT_TRUE(slot_manager_->OpenIsolate(&isolate, &new_isolate_created));
   EXPECT_FALSE(new_isolate_created);
-  EXPECT_EQ(SecureBlob(string("567890")), isolate);
+  EXPECT_EQ(brillo::SecureBlob(kIsolateCredentialBytes, 'A'), isolate);
 }
 
 TEST_F(TestSlotManager, TestCloseIsolate) {
-  EXPECT_CALL(*tpm_, GenerateRandom(_, _))
-      .WillOnce(DoAll(SetArgPointee<1>(string("abcdef")), Return(true)))
-      .WillOnce(DoAll(SetArgPointee<1>(string("ghijkl")), Return(true)));
+  EXPECT_CALL(hwsec_, GetRandomSecureBlob(_))
+      .WillOnce(ReturnValue(brillo::SecureBlob(kIsolateCredentialBytes, 'A')))
+      .WillOnce(ReturnValue(brillo::SecureBlob(kIsolateCredentialBytes, 'B')));
 
   SecureBlob isolate;
   bool new_isolate_created;
   EXPECT_TRUE(slot_manager_->OpenIsolate(&isolate, &new_isolate_created));
   EXPECT_TRUE(new_isolate_created);
-  EXPECT_EQ(SecureBlob(string("abcdef")), isolate);
+  EXPECT_EQ(brillo::SecureBlob(kIsolateCredentialBytes, 'A'), isolate);
   EXPECT_TRUE(slot_manager_->OpenIsolate(&isolate, &new_isolate_created));
   EXPECT_FALSE(new_isolate_created);
-  EXPECT_EQ(SecureBlob(string("abcdef")), isolate);
+  EXPECT_EQ(brillo::SecureBlob(kIsolateCredentialBytes, 'A'), isolate);
   slot_manager_->CloseIsolate(isolate);
   slot_manager_->CloseIsolate(isolate);
   // Final logout, isolate should now be destroyed.
   EXPECT_TRUE(slot_manager_->OpenIsolate(&isolate, &new_isolate_created));
   EXPECT_TRUE(new_isolate_created);
-  EXPECT_EQ(SecureBlob(string("ghijkl")), isolate);
+  EXPECT_EQ(brillo::SecureBlob(kIsolateCredentialBytes, 'B'), isolate);
 }
 
 TEST_F(TestSlotManager, TestCloseIsolateUnloadToken) {
@@ -446,9 +446,9 @@ TEST_F(TestSlotManager_DeathTest, TestIsolateTokens) {
       IsolateCredentialManager::GetDefaultIsolateCredential();
 
   // Ensure different credentials are created for each isolate.
-  EXPECT_CALL(*tpm_, GenerateRandom(_, _))
-      .WillOnce(DoAll(SetArgPointee<1>(string("123456")), Return(true)))
-      .WillOnce(DoAll(SetArgPointee<1>(string("567890")), Return(true)));
+  EXPECT_CALL(hwsec_, GetRandomSecureBlob(_))
+      .WillOnce(ReturnValue(brillo::SecureBlob(kIsolateCredentialBytes, 'A')))
+      .WillOnce(ReturnValue(brillo::SecureBlob(kIsolateCredentialBytes, 'B')));
 
   bool new_isolate_created;
   int slot_id;
@@ -493,19 +493,19 @@ TEST_F(TestSlotManager_DeathTest, TestIsolateTokens) {
                             "Check failed");
 }
 
-TEST_F(TestSlotManager, SRKNotReady) {
+TEST_F(TestSlotManager, HWSecNotReady) {
   StrictMock<MetricsLibraryMock> mock_metrics_library;
   ChapsMetrics chaps_metrics;
   chaps_metrics.set_metrics_library_for_testing(&mock_metrics_library);
+  EXPECT_CALL(hwsec_, IsReady()).WillRepeatedly(ReturnValue(false));
   EXPECT_CALL(
       mock_metrics_library,
       SendEnumToUMA(kTPMAvailability,
                     static_cast<int>(TPMAvailabilityStatus::kTPMAvailable),
                     static_cast<int>(TPMAvailabilityStatus::kMaxValue)))
       .WillOnce(Return(true));
-  EXPECT_CALL(*tpm_, IsSRKReady()).WillRepeatedly(Return(false));
-  slot_manager_.reset(new SlotManagerImpl(&factory_, tpm_thread_utility_.get(),
-                                          false, nullptr, &chaps_metrics));
+  slot_manager_.reset(
+      new SlotManagerImpl(&factory_, &hwsec_, false, nullptr, &chaps_metrics));
   ASSERT_TRUE(slot_manager_->Init());
 
   EXPECT_FALSE(slot_manager_->IsTokenAccessible(ic_, 0));
@@ -524,27 +524,27 @@ TEST_F(TestSlotManager, SRKNotReady) {
   EXPECT_FALSE(slot_manager_->IsTokenAccessible(ic_, 1));
 }
 
-TEST_F(TestSlotManager, DelayedSRKInit) {
+TEST_F(TestSlotManager, DelayedHWSecReady) {
   StrictMock<MetricsLibraryMock> mock_metrics_library;
   ChapsMetrics chaps_metrics;
   chaps_metrics.set_metrics_library_for_testing(&mock_metrics_library);
-  EXPECT_CALL(*tpm_, IsSRKReady()).WillRepeatedly(Return(false));
+  EXPECT_CALL(hwsec_, IsEnabled()).WillRepeatedly(ReturnValue(true));
+  EXPECT_CALL(hwsec_, IsReady()).WillRepeatedly(ReturnValue(false));
   EXPECT_CALL(
       mock_metrics_library,
       SendEnumToUMA(kTPMAvailability,
                     static_cast<int>(TPMAvailabilityStatus::kTPMAvailable),
                     static_cast<int>(TPMAvailabilityStatus::kMaxValue)))
       .WillOnce(Return(true));
-  slot_manager_.reset(new SlotManagerImpl(&factory_, tpm_thread_utility_.get(),
-                                          false, nullptr, &chaps_metrics));
+  slot_manager_.reset(
+      new SlotManagerImpl(&factory_, &hwsec_, false, nullptr, &chaps_metrics));
   ASSERT_TRUE(slot_manager_->Init());
 
-  EXPECT_CALL(*tpm_, IsSRKReady()).WillRepeatedly(Return(true));
+  EXPECT_CALL(hwsec_, IsReady()).WillRepeatedly(ReturnValue(true));
   int slot_id = 0;
   EXPECT_TRUE(slot_manager_->LoadToken(
       ic_, FilePath("test_token"), MakeBlob(kAuthData), kTokenLabel, &slot_id));
 }
-#endif
 
 class SoftwareOnlyTest : public TestSlotManager {
  public:
@@ -566,22 +566,20 @@ class SoftwareOnlyTest : public TestSlotManager {
     EXPECT_CALL(factory_, CreateObjectPool(_, _, _))
         .WillRepeatedly(
             InvokeWithoutArgs(this, &SoftwareOnlyTest::ObjectPoolFactory));
-    auto tpm_mock = std::make_unique<StrictMock<TPMUtilityMock>>();
-    no_tpm_ = tpm_mock.get();
-    tpm_thread_utility_ =
-        std::make_unique<TPMThreadUtilityImpl>(std::move(tpm_mock));
-    EXPECT_CALL(*no_tpm_, IsTPMAvailable()).WillRepeatedly(Return(false));
-    EXPECT_CALL(*no_tpm_, GetTPMVersion())
-        .WillRepeatedly(Return(TPMVersion::TPM1_2));
     chaps_metrics_.set_metrics_library_for_testing(&mock_metrics_library_);
+    EXPECT_CALL(hwsec_, IsEnabled()).WillRepeatedly(ReturnValue(false));
+    EXPECT_CALL(hwsec_, IsReady()).WillRepeatedly(ReturnValue(false));
+    EXPECT_CALL(hwsec_, GetFamily())
+        .WillRepeatedly(
+            ReturnError<TPMError>("Not supported", TPMRetryAction::kNoRetry));
     EXPECT_CALL(
         mock_metrics_library_,
         SendEnumToUMA(kTPMAvailability,
                       static_cast<int>(TPMAvailabilityStatus::kTPMUnavailable),
                       static_cast<int>(TPMAvailabilityStatus::kMaxValue)))
         .WillOnce(Return(true));
-    slot_manager_.reset(new SlotManagerImpl(
-        &factory_, tpm_thread_utility_.get(), false, nullptr, &chaps_metrics_));
+    slot_manager_.reset(new SlotManagerImpl(&factory_, &hwsec_, false, nullptr,
+                                            &chaps_metrics_));
     ASSERT_TRUE(slot_manager_->Init());
   }
 
@@ -655,8 +653,7 @@ class SoftwareOnlyTest : public TestSlotManager {
  protected:
   const FilePath kTestTokenPath;
   // Strict so that we get an error if this gets called.
-  StrictMock<TPMUtilityMock>* no_tpm_;
-  std::unique_ptr<TPMThreadUtilityImpl> tpm_thread_utility_;
+  hwsec::MockChapsFrontend hwsec_;
   std::map<int, string> pool_blobs_;
   int set_encryption_key_num_calls_;
   int delete_all_num_calls_;

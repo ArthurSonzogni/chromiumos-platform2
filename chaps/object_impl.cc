@@ -73,7 +73,7 @@ CK_RV ObjectImpl::FinalizeNewObject() {
 
   if (GetObjectClass() == CKO_PRIVATE_KEY) {
     // Set the kKeyInSoftware attribute to let the user know if it's stored in
-    // software or TPM.
+    // software or secure elements such as TPM.
     SetAttributeBool(kKeyInSoftware, !IsAttributePresent(kKeyBlobAttribute));
   }
 
@@ -84,7 +84,7 @@ CK_RV ObjectImpl::FinalizeNewObject() {
 CK_RV ObjectImpl::FinalizeCopyObject() {
   if (GetObjectClass() == CKO_PRIVATE_KEY) {
     // Set the kKeyInSoftware attribute to let the user know if it's stored in
-    // software or TPM.
+    // software or secure elements such as TPM.
     SetAttributeBool(kKeyInSoftware, !IsAttributePresent(kKeyBlobAttribute));
   }
   stage_ = kModify;

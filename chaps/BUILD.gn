@@ -28,11 +28,7 @@ group("all") {
       ":session_test",
       ":slot_manager_test",
       ":slot_policy_test",
-      ":tpm_utility_test",
     ]
-    if (use.tpm2) {
-      deps += [ ":tpm2_utility_test" ]
-    }
   }
   if (use.fuzzer) {
     deps += [
@@ -50,9 +46,6 @@ group("all") {
 
 pkg_config("target_defaults") {
   defines = [
-    "USE_TPM1=${use.tpm}",
-    "USE_TPM2=${use.tpm2}",
-    "USE_TPM_DYNAMIC=${use.tpm_dynamic}",
     "USE_TPM_INSECURE_FALLBACK=${use.tpm_insecure_fallback}",
     "USE_FUZZER=${use.fuzzer}",
   ]
@@ -77,16 +70,11 @@ pkg_config("target_defaults") {
   }
 
   libs = [
+    "hwsec",
     "hwsec-foundation",
-    "tpm_manager",
   ]
 
-  if (use.tpm2) {
-    libs += [ "trunks" ]
-  }
-  if (use.tpm) {
-    libs += [ "tspi" ]
-  }
+  cflags = [ "-Wconsumed" ]
 }
 
 proto_library("chaps-protos") {
@@ -153,16 +141,7 @@ source_set("chaps_common") {
     "slot_policy_default.cc",
     "slot_policy_shared_slot.cc",
     "system_shutdown_blocker.cc",
-    "tpm_thread_utility_impl.cc",
   ]
-
-  if (use.tpm2) {
-    sources += [ "tpm2_utility_impl.cc" ]
-  }
-
-  if (use.tpm) {
-    sources += [ "tpm_utility_impl.cc" ]
-  }
 
   libs = [
     "dl",
@@ -229,13 +208,11 @@ executable("p11_replay") {
   deps = [ ":libchaps" ]
 }
 
-if (use.test || use.fuzzer) {
+if (use.test) {
   pkg_config("libchaps_test_dependent_config") {
     pkg_deps = [ "libchrome-test" ]
 
-    if (use.tpm2) {
-      libs = [ "trunks_test" ]
-    }
+    libs = [ "hwsec_test" ]
   }
 
   source_set("libchaps_test") {
@@ -248,7 +225,6 @@ if (use.test || use.fuzzer) {
       "session_mock.cc",
       "slot_manager_mock.cc",
       "slot_policy_mock.cc",
-      "tpm_utility_mock.cc",
     ]
     configs += [ ":target_defaults" ]
     all_dependent_configs = [
@@ -373,32 +349,6 @@ if (use.test) {
       "//common-mk/testrunner",
     ]
   }
-
-  executable("tpm_utility_test") {
-    sources = [ "tpm_utility_test.cc" ]
-    install_path = "sbin"
-    configs += [ ":target_defaults" ]
-    deps = [
-      ":libchaps_test",
-      "//common-mk/testrunner",
-    ]
-  }
-
-  # Conditional Unit Tests
-  # Unit tests here are gated by conditionals. Since we cannot add
-  # conditionals in the middle of a target list, we added it at the end.
-  if (use.tpm2) {
-    executable("tpm2_utility_test") {
-      run_test = true
-      sources = [ "tpm2_utility_test.cc" ]
-      install_path = "sbin"
-      configs += [ ":target_defaults" ]
-      deps = [
-        ":libchaps_test",
-        "//common-mk/testrunner",
-      ]
-    }
-  }
 }
 
 if (use.fuzzer) {
@@ -417,7 +367,10 @@ if (use.fuzzer) {
       ":fuzzer_common_config",
       "//common-mk/common_fuzzer:common_fuzzer",
     ]
-    deps = [ ":libchaps_test" ]
+    deps = [
+      ":chaps_common",
+      ":libchaps",
+    ]
   }
 
   executable("chaps_object_store_fuzzer") {
@@ -427,7 +380,10 @@ if (use.fuzzer) {
       ":fuzzer_common_config",
       "//common-mk/common_fuzzer:common_fuzzer",
     ]
-    deps = [ ":libchaps_test" ]
+    deps = [
+      ":chaps_common",
+      ":libchaps",
+    ]
   }
 
   executable("chaps_utility_fuzzer") {
@@ -437,37 +393,47 @@ if (use.fuzzer) {
       ":target_defaults",
       "//common-mk/common_fuzzer:common_fuzzer",
     ]
-    deps = [ ":libchaps_test" ]
+    deps = [
+      ":chaps_common",
+      ":libchaps",
+    ]
   }
 
-  if (use.tpm2) {
-    executable("chaps_slot_manager_fuzzer") {
-      sources = [
-        "fuzzers/fuzzed_chaps_factory.cc",
-        "fuzzers/fuzzed_object_pool.cc",
-        "fuzzers/fuzzed_tpm_manager_utility.cc",
-        "fuzzers/slot_manager_fuzzer.cc",
-      ]
-      configs += [
-        ":fuzzer_common_config",
-        ":target_defaults",
-        "//common-mk/common_fuzzer:common_fuzzer",
-      ]
-      deps = [ ":libchaps_test" ]
-    }
+  executable("chaps_slot_manager_fuzzer") {
+    sources = [
+      "fuzzers/fuzzed_chaps_factory.cc",
+      "fuzzers/fuzzed_hwsec.cc",
+      "fuzzers/fuzzed_object_pool.cc",
+      "fuzzers/slot_manager_fuzzer.cc",
+      "session_mock.cc",
+    ]
+    configs += [
+      ":fuzzer_common_config",
+      ":target_defaults",
+      "//common-mk:test",
+      "//common-mk/common_fuzzer:common_fuzzer",
+    ]
+    deps = [
+      ":chaps_common",
+      ":libchaps",
+    ]
+  }
 
-    executable("chaps_chaps_service_fuzzer") {
-      sources = [
-        "fuzzers/chaps_service_fuzzer.cc",
-        "fuzzers/fuzzed_tpm_manager_utility.cc",
-      ]
-      configs += [
-        ":fuzzer_common_config",
-        ":target_defaults",
-        "//common-mk/common_fuzzer:common_fuzzer",
-      ]
-      deps = [ ":libchaps_test" ]
-    }
+  executable("chaps_chaps_service_fuzzer") {
+    sources = [
+      "fuzzers/chaps_service_fuzzer.cc",
+      "fuzzers/fuzzed_hwsec.cc",
+    ]
+    configs += [
+      ":fuzzer_common_config",
+      ":target_defaults",
+      "//common-mk:test",
+      "//common-mk/common_fuzzer:common_fuzzer",
+    ]
+    deps = [
+      ":chaps_common",
+      ":libchaps",
+    ]
   }
 }
 

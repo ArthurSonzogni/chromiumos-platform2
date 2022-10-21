@@ -27,11 +27,12 @@ inline constexpr size_t kTokenLabelSize = 32;
 inline constexpr CK_ATTRIBUTE_TYPE kKeyBlobAttribute = CKA_VENDOR_DEFINED + 1;
 inline constexpr CK_ATTRIBUTE_TYPE kAuthDataAttribute = CKA_VENDOR_DEFINED + 2;
 // If this attribute is set to true at creation or generation time, then the
-// object will not be stored/wrapped in TPM, and will remain purely in software.
+// object will not be stored/wrapped in hardware-backed security element, and
+// will remain purely in software.
 inline constexpr CK_ATTRIBUTE_TYPE kForceSoftwareAttribute =
     CKA_VENDOR_DEFINED + 4;
-// This attribute is set to false if the key is stored in TPM, and true
-// otherwise.
+// This attribute is set to false if the key is stored in hardware-backed
+// security element, and true otherwise.
 inline constexpr CK_ATTRIBUTE_TYPE kKeyInSoftware = CKA_VENDOR_DEFINED + 5;
 
 }  // namespace chaps

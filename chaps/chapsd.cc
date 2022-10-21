@@ -31,8 +31,8 @@
 #include <base/threading/thread_task_runner_handle.h>
 #include <brillo/daemons/dbus_daemon.h>
 #include <brillo/syslog_logging.h>
+#include <libhwsec/factory/factory_impl.h>
 #include <libhwsec-foundation/profiling/profiling.h>
-#include <libhwsec-foundation/tpm/tpm_version.h>
 #include <libhwsec-foundation/tpm_error/tpm_error_uma_reporter.h>
 #include <libminijail.h>
 #include <scoped_minijail.h>
@@ -44,17 +44,6 @@
 #include "chaps/dbus_bindings/constants.h"
 #include "chaps/platform_globals.h"
 #include "chaps/slot_manager_impl.h"
-#include "chaps/tpm_thread_utility_impl.h"
-#include "chaps/tpm_utility.h"
-#include "chaps/tpm_utility_stub.h"
-
-#if USE_TPM2
-#include "chaps/tpm2_utility_impl.h"
-#endif
-
-#if USE_TPM1
-#include "chaps/tpm_utility_impl.h"
-#endif
 
 using base::AutoLock;
 using base::FilePath;
@@ -66,8 +55,6 @@ using chaps::kPersistentLogLevelPath;
 using std::string;
 
 namespace {
-
-const char kTpmThreadName[] = "tpm_background_thread";
 
 void MaskSignals() {
   sigset_t signal_mask;
@@ -99,8 +86,7 @@ class Daemon : public brillo::DBusServiceDaemon {
   Daemon(const std::string& srk_auth_data, bool auto_load_system_token)
       : DBusServiceDaemon(kChapsServiceName),
         srk_auth_data_(srk_auth_data),
-        auto_load_system_token_(auto_load_system_token),
-        tpm_background_thread_(kTpmThreadName) {}
+        auto_load_system_token_(auto_load_system_token) {}
   Daemon(const Daemon&) = delete;
   Daemon& operator=(const Daemon&) = delete;
 
@@ -111,62 +97,31 @@ class Daemon : public brillo::DBusServiceDaemon {
     // service_ contains a pointer to slot_manager_
     service_.reset();
 
-    // Destructor of slot_manager_ will use tpm_
+    // Destructor of slot_manager_ will use hwsec_
     slot_manager_.reset();
+
+    hwsec_.reset();
+
+    hwsec_factory_.reset();
 
     factory_.reset();
     // Both slot_manager_ and factory_ contains a pointer to chaps_metrics_
     chaps_metrics_.reset();
-
-    TPM_SELECT_BEGIN;
-    TPM2_SECTION({
-      // tpm_ will need tpm_background_thread_ to function
-      tpm_.reset();
-      tpm_background_thread_.Stop();
-    });
-    OTHER_TPM_SECTION();
-    TPM_SELECT_END;
   }
 
  protected:
   int OnInit() override {
-    TPM_SELECT_BEGIN;
-    TPM2_SECTION({
-      CHECK(tpm_background_thread_.StartWithOptions(base::Thread::Options(
-          base::MessagePumpType::IO, 0 /* use default stack size */)));
-      auto tpm2_impl = std::make_unique<TPM2UtilityImpl>(
-          tpm_background_thread_.task_runner());
-      tpm_ = std::make_unique<TPMThreadUtilityImpl>(std::move(tpm2_impl));
-    });
-    TPM1_SECTION({
-      // Instantiate a TPM1.2 Utility.
-      auto tpm1_impl = std::make_unique<TPMUtilityImpl>(srk_auth_data_);
-      tpm_ = std::make_unique<TPMThreadUtilityImpl>(std::move(tpm1_impl));
-    });
-    OTHER_TPM_SECTION({
-      auto tpm_stub = std::make_unique<TPMUtilityStub>();
-      tpm_ = std::make_unique<TPMThreadUtilityImpl>(std::move(tpm_stub));
-    });
-    TPM_SELECT_END;
+    hwsec_factory_ = std::make_unique<hwsec::FactoryImpl>();
+    hwsec_ = hwsec_factory_->GetChapsFrontend();
 
     chaps_metrics_.reset(new ChapsMetrics);
     factory_.reset(new ChapsFactoryImpl(chaps_metrics_.get()));
     system_shutdown_blocker_.reset(
         new SystemShutdownBlocker(base::ThreadTaskRunnerHandle::Get()));
     slot_manager_.reset(new SlotManagerImpl(
-        factory_.get(), tpm_.get(), auto_load_system_token_,
+        factory_.get(), hwsec_.get(), auto_load_system_token_,
         system_shutdown_blocker_.get(), chaps_metrics_.get()));
     service_.reset(new ChapsServiceImpl(slot_manager_.get()));
-
-    // Initialize the TPM.
-    if (!tpm_->Init()) {
-      // Just warn and continue in this case.  The effect will be a functional
-      // daemon which handles dbus requests but any attempt to load a token will
-      // fail.  To a PKCS #11 client this will look like a library with a few
-      // empty slots.
-      LOG(WARNING) << "TPM initialization failed (this is expected if no TPM is"
-                   << " available).  PKCS #11 tokens will not be available.";
-    }
 
     // Initialize the slot manager.
     if (!slot_manager_->Init()) {
@@ -211,9 +166,12 @@ class Daemon : public brillo::DBusServiceDaemon {
 
   std::string srk_auth_data_;
   bool auto_load_system_token_;
-  base::Thread tpm_background_thread_;
 
-  std::unique_ptr<TPMThreadUtilityImpl> tpm_;
+  // The object to generate the other frontends.
+  std::unique_ptr<hwsec::Factory> hwsec_factory_;
+  // The object for accessing the HWSec related functions.
+  std::unique_ptr<hwsec::ChapsFrontend> hwsec_;
+
   std::unique_ptr<ChapsMetrics> chaps_metrics_;
   std::unique_ptr<ChapsFactory> factory_;
   std::unique_ptr<SystemShutdownBlocker> system_shutdown_blocker_;

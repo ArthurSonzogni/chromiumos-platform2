@@ -20,7 +20,11 @@ class ChapsFactoryMock : public ChapsFactory {
   ~ChapsFactoryMock() override;
 
   MOCK_METHOD5(CreateSession,
-               Session*(int, ObjectPool*, TPMUtility*, HandleGenerator*, bool));
+               Session*(int,
+                        ObjectPool*,
+                        hwsec::ChapsFrontend*,
+                        HandleGenerator*,
+                        bool));
   MOCK_METHOD3(CreateObjectPool,
                ObjectPool*(HandleGenerator*, SlotPolicy*, ObjectStore*));
   MOCK_METHOD1(CreateObjectStore, ObjectStore*(const base::FilePath&));

@@ -7,6 +7,8 @@
 
 #include "chaps/chaps_factory.h"
 
+#include <libhwsec/frontend/chaps/frontend.h>
+
 #include "chaps/chaps_metrics.h"
 
 namespace chaps {
@@ -20,7 +22,7 @@ class ChapsFactoryImpl : public ChapsFactory {
 
   Session* CreateSession(int slot_id,
                          ObjectPool* token_object_pool,
-                         TPMUtility* tpm_utility,
+                         hwsec::ChapsFrontend* chaps,
                          HandleGenerator* handle_generator,
                          bool is_read_only) override;
   ObjectPool* CreateObjectPool(HandleGenerator* handle_generator,

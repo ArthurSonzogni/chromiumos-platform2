@@ -17,6 +17,10 @@
 #include <crypto/scoped_openssl_types.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <libhwsec/frontend/chaps/mock_frontend.h>
+#include <libhwsec-foundation/crypto/big_num_util.h>
+#include <libhwsec-foundation/crypto/elliptic_curve.h>
+#include <libhwsec-foundation/error/testing_helper.h>
 #include <metrics/metrics_library_mock.h>
 #include <openssl/bn.h>
 #include <openssl/err.h>
@@ -30,10 +34,17 @@
 #include "chaps/object_impl.h"
 #include "chaps/object_mock.h"
 #include "chaps/object_pool_mock.h"
-#include "chaps/tpm_utility_mock.h"
 
-using std::string;
-using std::vector;
+using ::hwsec::TPMError;
+using ::hwsec_foundation::error::testing::IsOk;
+using ::hwsec_foundation::error::testing::ReturnError;
+using ::hwsec_foundation::error::testing::ReturnOk;
+using ::hwsec_foundation::error::testing::ReturnValue;
+using ::hwsec_foundation::status::MakeStatus;
+using ::hwsec_foundation::status::OkStatus;
+using ::hwsec_foundation::status::StatusChain;
+using ::std::string;
+using ::std::vector;
 using ::testing::_;
 using ::testing::AnyNumber;
 using ::testing::Invoke;
@@ -42,8 +53,41 @@ using ::testing::Return;
 using ::testing::SetArgPointee;
 using ::testing::StrictMock;
 using Result = chaps::ObjectPool::Result;
+using TPMRetryAction = ::hwsec::TPMRetryAction;
 
 namespace {
+
+hwsec::ECCPublicInfo GenerateECCPublicInfo() {
+  hwsec_foundation::ScopedBN_CTX context =
+      hwsec_foundation::CreateBigNumContext();
+
+  std::optional<hwsec_foundation::EllipticCurve> ec_256 =
+      hwsec_foundation::EllipticCurve::Create(
+          hwsec_foundation::EllipticCurve::CurveType::kPrime256, context.get());
+
+  CHECK(ec_256.has_value());
+
+  crypto::ScopedEC_KEY key = ec_256->GenerateKey(context.get());
+
+  crypto::ScopedBIGNUM x(BN_new()), y(BN_new());
+  CHECK_NE(x, nullptr);
+  CHECK_NE(y, nullptr);
+
+  const EC_POINT* ec_point = EC_KEY_get0_public_key(key.get());
+  CHECK_NE(ec_point, nullptr);
+  CHECK(EC_POINT_get_affine_coordinates_GFp(ec_256->GetGroup(), ec_point,
+                                            x.get(), y.get(), nullptr));
+
+  brillo::Blob x_point =
+      brillo::BlobFromString(chaps::ConvertFromBIGNUM(x.get()));
+  brillo::Blob y_point =
+      brillo::BlobFromString(chaps::ConvertFromBIGNUM(y.get()));
+  return hwsec::ECCPublicInfo{
+      .nid = NID_X9_62_prime256v1,
+      .x_point = x_point,
+      .y_point = y_point,
+  };
+}
 
 void ConfigureObjectPool(chaps::ObjectPoolMock* op, int handle_base) {
   op->SetupFake(handle_base);
@@ -83,14 +127,13 @@ chaps::Object* CreateObjectMock() {
   return o;
 }
 
-bool FakeRandom(int num_bytes, string* random) {
-  *random = string(num_bytes, 0);
-  return true;
-}
-
-void ConfigureTPMUtility(chaps::TPMUtilityMock* tpm) {
-  EXPECT_CALL(*tpm, IsTPMAvailable()).WillRepeatedly(Return(true));
-  EXPECT_CALL(*tpm, GenerateRandom(_, _)).WillRepeatedly(Invoke(FakeRandom));
+void ConfigureHwsec(hwsec::MockChapsFrontend* hwsec) {
+  EXPECT_CALL(*hwsec, GetRandomBlob(_)).WillRepeatedly([](size_t size) {
+    return brillo::Blob(size);
+  });
+  EXPECT_CALL(*hwsec, GetRandomSecureBlob(_)).WillRepeatedly([](size_t size) {
+    return brillo::SecureBlob(size);
+  });
 }
 
 string bn2bin(const BIGNUM* bn) {
@@ -131,11 +174,11 @@ class TestSession : public ::testing::Test {
         .WillRepeatedly(InvokeWithoutArgs(CreateObjectPoolMock));
     EXPECT_CALL(handle_generator_, CreateHandle()).WillRepeatedly(Return(1));
     ConfigureObjectPool(&token_pool_, 0);
-    ConfigureTPMUtility(&tpm_);
+    ConfigureHwsec(&hwsec_);
   }
   void SetUp() {
     chaps_metrics_.set_metrics_library_for_testing(&mock_metrics_library_);
-    session_.reset(new SessionImpl(1, &token_pool_, &tpm_, &factory_,
+    session_.reset(new SessionImpl(1, &token_pool_, &hwsec_, &factory_,
                                    &handle_generator_, false, &chaps_metrics_));
   }
   void GenerateSecretKey(CK_MECHANISM_TYPE mechanism,
@@ -250,7 +293,7 @@ class TestSession : public ::testing::Test {
     EXPECT_EQ(CKR_OK, session_->OperationSinglePart(kSign, in, &len, &sig));
     EXPECT_EQ(CKR_OK,
               session_->OperationInit(kVerify, mech, mechanism_parameter, pub));
-    EXPECT_EQ(CKR_OK, session_->OperationUpdate(kVerify, in, NULL, NULL));
+    EXPECT_EQ(CKR_OK, session_->OperationUpdate(kVerify, in, nullptr, nullptr));
     EXPECT_EQ(CKR_OK, session_->VerifyFinal(sig));
 
     // Same stuff with OperationUpdate().
@@ -262,11 +305,11 @@ class TestSession : public ::testing::Test {
     EXPECT_EQ(CKR_OK,
               session_->OperationInit(kSign, mech, mechanism_parameter, priv));
     EXPECT_EQ(CKR_OK, session_->OperationUpdate(
-                          kSign, in.substr(0, first_divide), NULL, NULL));
+                          kSign, in.substr(0, first_divide), nullptr, nullptr));
     EXPECT_EQ(CKR_OK,
               session_->OperationUpdate(
                   kSign, in.substr(first_divide, input_size - first_divide),
-                  NULL, NULL));
+                  nullptr, nullptr));
     EXPECT_EQ(CKR_BUFFER_TOO_SMALL,
               session_->OperationFinal(kSign, &len, &sig2));
     EXPECT_EQ(CKR_OK, session_->OperationFinal(kSign, &len, &sig2));
@@ -274,19 +317,25 @@ class TestSession : public ::testing::Test {
     // Test verification with OperationUpdate().
     EXPECT_EQ(CKR_OK,
               session_->OperationInit(kVerify, mech, mechanism_parameter, pub));
-    EXPECT_EQ(CKR_OK, session_->OperationUpdate(
-                          kVerify, in.substr(0, second_divide), NULL, NULL));
+    EXPECT_EQ(CKR_OK,
+              session_->OperationUpdate(kVerify, in.substr(0, second_divide),
+                                        nullptr, nullptr));
     EXPECT_EQ(CKR_OK,
               session_->OperationUpdate(
                   kVerify, in.substr(second_divide, input_size - second_divide),
-                  NULL, NULL));
+                  nullptr, nullptr));
     EXPECT_EQ(CKR_OK, session_->VerifyFinal(sig2));
+  }
+
+  hwsec::ScopedKey GetTestScopedKey() {
+    return hwsec::ScopedKey(hwsec::Key{.token = 42},
+                            hwsec_.GetFakeMiddlewareDerivative());
   }
 
  protected:
   ObjectPoolMock token_pool_;
   ChapsFactoryMock factory_;
-  StrictMock<TPMUtilityMock> tpm_;
+  StrictMock<hwsec::MockChapsFrontend> hwsec_;
   HandleGeneratorMock handle_generator_;
   std::unique_ptr<SessionImpl> session_;
   StrictMock<MetricsLibraryMock> mock_metrics_library_;
@@ -307,7 +356,7 @@ class TestSessionWithRealObject : public TestSession {
         .WillRepeatedly(Invoke(ChapsFactoryImpl::GetObjectPolicyForType));
     EXPECT_CALL(handle_generator_, CreateHandle()).WillRepeatedly(Return(1));
     ConfigureObjectPool(&token_pool_, 0);
-    ConfigureTPMUtility(&tpm_);
+    ConfigureHwsec(&hwsec_);
   }
 };
 
@@ -317,26 +366,26 @@ typedef TestSession TestSession_DeathTest;
 TEST(DeathTest, InvalidInit) {
   ObjectPoolMock pool;
   ChapsFactoryMock factory;
-  TPMUtilityMock tpm;
+  hwsec::MockChapsFrontend hwsec;
   HandleGeneratorMock handle_generator;
   SessionImpl* session;
   ChapsMetrics chaps_metrics;
   EXPECT_CALL(factory, CreateObjectPool(_, _, _)).Times(AnyNumber());
   EXPECT_DEATH_IF_SUPPORTED(
-      session = new SessionImpl(1, NULL, &tpm, &factory, &handle_generator,
+      session = new SessionImpl(1, nullptr, &hwsec, &factory, &handle_generator,
                                 false, &chaps_metrics),
       "Check failed");
   EXPECT_DEATH_IF_SUPPORTED(
-      session = new SessionImpl(1, &pool, NULL, &factory, &handle_generator,
+      session = new SessionImpl(1, &pool, &hwsec, nullptr, &handle_generator,
                                 false, &chaps_metrics),
       "Check failed");
   EXPECT_DEATH_IF_SUPPORTED(
-      session = new SessionImpl(1, &pool, &tpm, NULL, &handle_generator, false,
+      session = new SessionImpl(1, &pool, &hwsec, &factory, nullptr, false,
                                 &chaps_metrics),
       "Check failed");
   EXPECT_DEATH_IF_SUPPORTED(
-      session = new SessionImpl(1, &pool, &tpm, &factory, NULL, false,
-                                &chaps_metrics),
+      session = new SessionImpl(1, &pool, &hwsec, &factory, &handle_generator,
+                                false, nullptr),
       "Check failed");
   (void)session;
 }
@@ -346,23 +395,24 @@ TEST_F(TestSession_DeathTest, InvalidArgs) {
   OperationType invalid_op = kNumOperationTypes;
   EXPECT_DEATH_IF_SUPPORTED(session_->IsOperationActive(invalid_op),
                             "Check failed");
-  EXPECT_DEATH_IF_SUPPORTED(session_->CreateObject(NULL, 0, NULL),
+  EXPECT_DEATH_IF_SUPPORTED(session_->CreateObject(nullptr, 0, nullptr),
                             "Check failed");
   int i;
-  EXPECT_DEATH_IF_SUPPORTED(session_->CreateObject(NULL, 1, &i),
+  EXPECT_DEATH_IF_SUPPORTED(session_->CreateObject(nullptr, 1, &i),
                             "Check failed");
   i = CreateObject();
-  EXPECT_DEATH_IF_SUPPORTED(session_->CopyObject(NULL, 0, i, NULL),
+  EXPECT_DEATH_IF_SUPPORTED(session_->CopyObject(nullptr, 0, i, nullptr),
                             "Check failed");
-  EXPECT_DEATH_IF_SUPPORTED(session_->CopyObject(NULL, 1, i, &i),
+  EXPECT_DEATH_IF_SUPPORTED(session_->CopyObject(nullptr, 1, i, &i),
                             "Check failed");
-  EXPECT_DEATH_IF_SUPPORTED(session_->FindObjects(invalid_op, NULL),
+  EXPECT_DEATH_IF_SUPPORTED(session_->FindObjects(invalid_op, nullptr),
                             "Check failed");
-  EXPECT_DEATH_IF_SUPPORTED(session_->GetObject(1, NULL), "Check failed");
-  EXPECT_DEATH_IF_SUPPORTED(session_->OperationInit(invalid_op, 0, "", NULL),
+  EXPECT_DEATH_IF_SUPPORTED(session_->GetObject(1, nullptr), "Check failed");
+  EXPECT_DEATH_IF_SUPPORTED(session_->OperationInit(invalid_op, 0, "", nullptr),
                             "Check failed");
   EXPECT_DEATH_IF_SUPPORTED(
-      session_->OperationInit(kEncrypt, CKM_AES_CBC, "", NULL), "Check failed");
+      session_->OperationInit(kEncrypt, CKM_AES_CBC, "", nullptr),
+      "Check failed");
   string s;
   const Object* o;
   GenerateSecretKey(CKM_AES_KEY_GEN, 32, &o);
@@ -372,15 +422,15 @@ TEST_F(TestSession_DeathTest, InvalidArgs) {
   ASSERT_EQ(CKR_OK, session_->OperationInit(kEncrypt, CKM_AES_ECB, "", o));
   EXPECT_DEATH_IF_SUPPORTED(session_->OperationUpdate(invalid_op, "", &i, &s),
                             "Check failed");
-  EXPECT_DEATH_IF_SUPPORTED(session_->OperationUpdate(kEncrypt, "", NULL, &s),
-                            "Check failed");
-  EXPECT_DEATH_IF_SUPPORTED(session_->OperationUpdate(kEncrypt, "", &i, NULL),
-                            "Check failed");
+  EXPECT_DEATH_IF_SUPPORTED(
+      session_->OperationUpdate(kEncrypt, "", nullptr, &s), "Check failed");
+  EXPECT_DEATH_IF_SUPPORTED(
+      session_->OperationUpdate(kEncrypt, "", &i, nullptr), "Check failed");
   EXPECT_DEATH_IF_SUPPORTED(session_->OperationFinal(invalid_op, &i, &s),
                             "Check failed");
-  EXPECT_DEATH_IF_SUPPORTED(session_->OperationFinal(kEncrypt, NULL, &s),
+  EXPECT_DEATH_IF_SUPPORTED(session_->OperationFinal(kEncrypt, nullptr, &s),
                             "Check failed");
-  EXPECT_DEATH_IF_SUPPORTED(session_->OperationFinal(kEncrypt, &i, NULL),
+  EXPECT_DEATH_IF_SUPPORTED(session_->OperationFinal(kEncrypt, &i, nullptr),
                             "Check failed");
   EXPECT_DEATH_IF_SUPPORTED(
       session_->OperationSinglePart(invalid_op, "", &i, &s), "Check failed");
@@ -389,16 +439,16 @@ TEST_F(TestSession_DeathTest, InvalidArgs) {
 // Test that SessionImpl asserts when out-of-memory during initialization.
 TEST(DeathTest, OutOfMemoryInit) {
   ObjectPoolMock pool;
-  TPMUtilityMock tpm;
+  hwsec::MockChapsFrontend hwsec;
   ChapsFactoryMock factory;
   HandleGeneratorMock handle_generator;
-  ObjectPool* null_pool = NULL;
+  ObjectPool* null_pool = nullptr;
   ChapsMetrics chaps_metrics;
   EXPECT_CALL(factory, CreateObjectPool(_, _, _))
       .WillRepeatedly(Return(null_pool));
   Session* session;
   EXPECT_DEATH_IF_SUPPORTED(
-      session = new SessionImpl(1, &pool, &tpm, &factory, &handle_generator,
+      session = new SessionImpl(1, &pool, &hwsec, &factory, &handle_generator,
                                 false, &chaps_metrics),
       "Check failed");
   (void)session;
@@ -406,12 +456,13 @@ TEST(DeathTest, OutOfMemoryInit) {
 
 // Test that SessionImpl asserts when out-of-memory during object creation.
 TEST_F(TestSession_DeathTest, OutOfMemoryObject) {
-  Object* null_object = NULL;
+  Object* null_object = nullptr;
   EXPECT_CALL(factory_, CreateObject()).WillRepeatedly(Return(null_object));
   int tmp;
-  EXPECT_DEATH_IF_SUPPORTED(session_->CreateObject(NULL, 0, &tmp),
+  EXPECT_DEATH_IF_SUPPORTED(session_->CreateObject(nullptr, 0, &tmp),
                             "Check failed");
-  EXPECT_DEATH_IF_SUPPORTED(session_->FindObjectsInit(NULL, 0), "Check failed");
+  EXPECT_DEATH_IF_SUPPORTED(session_->FindObjectsInit(nullptr, 0),
+                            "Check failed");
 }
 
 // Test that default session properties are correctly reported.
@@ -476,7 +527,7 @@ TEST_F(TestSession, Objects) {
 
 // Test multi-part and single-part cipher operations.
 TEST_F(TestSession, Cipher) {
-  const Object* key_object = NULL;
+  const Object* key_object = nullptr;
   GenerateSecretKey(CKM_AES_KEY_GEN, 32, &key_object);
   EXPECT_CALL(mock_metrics_library_,
               SendSparseToUMA(kChapsSessionEncrypt, static_cast<int>(CKR_OK)))
@@ -530,13 +581,13 @@ TEST_F(TestSession, Digest) {
   EXPECT_CALL(mock_metrics_library_,
               SendSparseToUMA(kChapsSessionDigest, static_cast<int>(CKR_OK)))
       .Times(7);
-  EXPECT_EQ(CKR_OK, session_->OperationInit(kDigest, CKM_SHA_1, "", NULL));
-  EXPECT_EQ(CKR_OK,
-            session_->OperationUpdate(kDigest, in.substr(0, 10), NULL, NULL));
-  EXPECT_EQ(CKR_OK,
-            session_->OperationUpdate(kDigest, in.substr(10, 10), NULL, NULL));
-  EXPECT_EQ(CKR_OK,
-            session_->OperationUpdate(kDigest, in.substr(20, 10), NULL, NULL));
+  EXPECT_EQ(CKR_OK, session_->OperationInit(kDigest, CKM_SHA_1, "", nullptr));
+  EXPECT_EQ(CKR_OK, session_->OperationUpdate(kDigest, in.substr(0, 10),
+                                              nullptr, nullptr));
+  EXPECT_EQ(CKR_OK, session_->OperationUpdate(kDigest, in.substr(10, 10),
+                                              nullptr, nullptr));
+  EXPECT_EQ(CKR_OK, session_->OperationUpdate(kDigest, in.substr(20, 10),
+                                              nullptr, nullptr));
   int len = 0;
   string out;
   EXPECT_CALL(mock_metrics_library_,
@@ -547,7 +598,7 @@ TEST_F(TestSession, Digest) {
             session_->OperationFinal(kDigest, &len, &out));
   EXPECT_EQ(20, len);
   EXPECT_EQ(CKR_OK, session_->OperationFinal(kDigest, &len, &out));
-  EXPECT_EQ(CKR_OK, session_->OperationInit(kDigest, CKM_SHA_1, "", NULL));
+  EXPECT_EQ(CKR_OK, session_->OperationInit(kDigest, CKM_SHA_1, "", nullptr));
   string out2;
   len = 0;
   EXPECT_EQ(CKR_BUFFER_TOO_SMALL,
@@ -560,7 +611,7 @@ TEST_F(TestSession, Digest) {
 
 // Test HMAC sign and verify operations.
 TEST_F(TestSession, HMAC) {
-  const Object* key_object = NULL;
+  const Object* key_object = nullptr;
   GenerateSecretKey(CKM_GENERIC_SECRET_KEY_GEN, 32, &key_object);
   string in(30, 'A');
   EXPECT_CALL(mock_metrics_library_,
@@ -568,12 +619,12 @@ TEST_F(TestSession, HMAC) {
       .Times(5);
   EXPECT_EQ(CKR_OK,
             session_->OperationInit(kSign, CKM_SHA256_HMAC, "", key_object));
-  EXPECT_EQ(CKR_OK,
-            session_->OperationUpdate(kSign, in.substr(0, 10), NULL, NULL));
-  EXPECT_EQ(CKR_OK,
-            session_->OperationUpdate(kSign, in.substr(10, 10), NULL, NULL));
-  EXPECT_EQ(CKR_OK,
-            session_->OperationUpdate(kSign, in.substr(20, 10), NULL, NULL));
+  EXPECT_EQ(CKR_OK, session_->OperationUpdate(kSign, in.substr(0, 10), nullptr,
+                                              nullptr));
+  EXPECT_EQ(CKR_OK, session_->OperationUpdate(kSign, in.substr(10, 10), nullptr,
+                                              nullptr));
+  EXPECT_EQ(CKR_OK, session_->OperationUpdate(kSign, in.substr(20, 10), nullptr,
+                                              nullptr));
   int len = 0;
   string out;
   EXPECT_CALL(mock_metrics_library_,
@@ -587,7 +638,7 @@ TEST_F(TestSession, HMAC) {
       .Times(3);
   EXPECT_EQ(CKR_OK,
             session_->OperationInit(kVerify, CKM_SHA256_HMAC, "", key_object));
-  EXPECT_EQ(CKR_OK, session_->OperationUpdate(kVerify, in, NULL, NULL));
+  EXPECT_EQ(CKR_OK, session_->OperationUpdate(kVerify, in, nullptr, nullptr));
   // A successful verify implies both operations computed the same MAC.
   EXPECT_EQ(CKR_OK, session_->VerifyFinal(out));
 }
@@ -597,7 +648,7 @@ TEST_F(TestSession, FinalWithNoUpdate) {
   EXPECT_CALL(mock_metrics_library_,
               SendSparseToUMA(kChapsSessionDigest, static_cast<int>(CKR_OK)))
       .Times(2);
-  EXPECT_EQ(CKR_OK, session_->OperationInit(kDigest, CKM_SHA_1, "", NULL));
+  EXPECT_EQ(CKR_OK, session_->OperationInit(kDigest, CKM_SHA_1, "", nullptr));
   int len = 20;
   string out;
   EXPECT_EQ(CKR_OK, session_->OperationFinal(kDigest, &len, &out));
@@ -610,9 +661,9 @@ TEST_F(TestSession, UpdateOperationPreventsSinglePart) {
   EXPECT_CALL(mock_metrics_library_,
               SendSparseToUMA(kChapsSessionDigest, static_cast<int>(CKR_OK)))
       .Times(2);
-  EXPECT_EQ(CKR_OK, session_->OperationInit(kDigest, CKM_SHA_1, "", NULL));
-  EXPECT_EQ(CKR_OK,
-            session_->OperationUpdate(kDigest, in.substr(0, 10), NULL, NULL));
+  EXPECT_EQ(CKR_OK, session_->OperationInit(kDigest, CKM_SHA_1, "", nullptr));
+  EXPECT_EQ(CKR_OK, session_->OperationUpdate(kDigest, in.substr(0, 10),
+                                              nullptr, nullptr));
   int len = 0;
   string out;
   EXPECT_CALL(mock_metrics_library_,
@@ -637,7 +688,7 @@ TEST_F(TestSession, SinglePartOperationPreventsUpdate) {
   EXPECT_CALL(mock_metrics_library_,
               SendSparseToUMA(kChapsSessionDigest, static_cast<int>(CKR_OK)))
       .WillOnce(Return(true));
-  EXPECT_EQ(CKR_OK, session_->OperationInit(kDigest, CKM_SHA_1, "", NULL));
+  EXPECT_EQ(CKR_OK, session_->OperationInit(kDigest, CKM_SHA_1, "", nullptr));
   string out;
   int len = 0;
   // Perform a single part operation but leave the output to be collected.
@@ -651,8 +702,9 @@ TEST_F(TestSession, SinglePartOperationPreventsUpdate) {
               SendSparseToUMA(kChapsSessionDigest,
                               static_cast<int>(CKR_OPERATION_ACTIVE)))
       .WillOnce(Return(true));
-  EXPECT_EQ(CKR_OPERATION_ACTIVE,
-            session_->OperationUpdate(kDigest, in.substr(10, 10), NULL, NULL));
+  EXPECT_EQ(
+      CKR_OPERATION_ACTIVE,
+      session_->OperationUpdate(kDigest, in.substr(10, 10), nullptr, nullptr));
   EXPECT_CALL(mock_metrics_library_,
               SendSparseToUMA(kChapsSessionDigest,
                               static_cast<int>(CKR_OPERATION_NOT_INITIALIZED)))
@@ -667,7 +719,7 @@ TEST_F(TestSession, SinglePartOperationPreventsFinal) {
   EXPECT_CALL(mock_metrics_library_,
               SendSparseToUMA(kChapsSessionDigest, static_cast<int>(CKR_OK)))
       .WillOnce(Return(true));
-  EXPECT_EQ(CKR_OK, session_->OperationInit(kDigest, CKM_SHA_1, "", NULL));
+  EXPECT_EQ(CKR_OK, session_->OperationInit(kDigest, CKM_SHA_1, "", nullptr));
   string out;
   int len = 0;
   // Perform a single part operation but leave the output to be collected.
@@ -696,8 +748,10 @@ TEST_F(TestSession, SinglePartOperationPreventsFinal) {
 
 // Test RSA PKCS #1 encryption.
 TEST_F(TestSession, RSAEncrypt) {
-  const Object* pub = NULL;
-  const Object* priv = NULL;
+  EXPECT_CALL(hwsec_, IsRSAModulusSupported(_))
+      .WillRepeatedly(ReturnOk<TPMError>());
+  const Object* pub = nullptr;
+  const Object* priv = nullptr;
   GenerateRSAKeyPair(false, 1024, &pub, &priv);
   EXPECT_CALL(mock_metrics_library_,
               SendSparseToUMA(kChapsSessionEncrypt, static_cast<int>(CKR_OK)))
@@ -735,8 +789,10 @@ TEST_F(TestSession, RSAEncrypt) {
 
 // Test RSA PKCS #1 sign / verify.
 TEST_F(TestSession, RsaSign) {
-  const Object* pub = NULL;
-  const Object* priv = NULL;
+  EXPECT_CALL(hwsec_, IsRSAModulusSupported(_))
+      .WillRepeatedly(ReturnOk<TPMError>());
+  const Object* pub = nullptr;
+  const Object* priv = nullptr;
   GenerateRSAKeyPair(true, 1024, &pub, &priv);
   EXPECT_CALL(mock_metrics_library_,
               SendSparseToUMA(kChapsSessionSign,
@@ -757,8 +813,10 @@ TEST_F(TestSession, RsaSign) {
 
 // Test RSA PSS sign / verify.
 TEST_F(TestSession, RsaPSSSign) {
-  const Object* pub = NULL;
-  const Object* priv = NULL;
+  EXPECT_CALL(hwsec_, IsRSAModulusSupported(_))
+      .WillRepeatedly(ReturnOk<TPMError>());
+  const Object* pub = nullptr;
+  const Object* priv = nullptr;
   GenerateRSAKeyPair(true, 1024, &pub, &priv);
   EXPECT_CALL(mock_metrics_library_,
               SendSparseToUMA(kChapsSessionSign,
@@ -781,8 +839,10 @@ TEST_F(TestSession, RsaPSSSign) {
 
 // Test ECC ECDSA sign / verify.
 TEST_F(TestSession, EcdsaSign) {
-  const Object* pub = NULL;
-  const Object* priv = NULL;
+  EXPECT_CALL(hwsec_, IsECCurveSupported(_))
+      .WillRepeatedly(ReturnOk<TPMError>());
+  const Object* pub = nullptr;
+  const Object* priv = nullptr;
   GenerateECCKeyPair(false, false, &pub, &priv);
   EXPECT_CALL(mock_metrics_library_,
               SendSparseToUMA(kChapsSessionSign,
@@ -803,7 +863,7 @@ TEST_F(TestSession, EcdsaSign) {
 
 // Test that requests for unsupported mechanisms are handled correctly.
 TEST_F(TestSession, MechanismInvalid) {
-  const Object* key = NULL;
+  const Object* key = nullptr;
   // Use a valid key so that key errors don't mask mechanism errors.
   GenerateSecretKey(CKM_AES_KEY_GEN, 16, &key);
   // We don't support IDEA.
@@ -826,14 +886,14 @@ TEST_F(TestSession, MechanismInvalid) {
                               static_cast<int>(CKR_MECHANISM_INVALID)))
       .WillOnce(Return(true));
   EXPECT_EQ(CKR_MECHANISM_INVALID,
-            session_->OperationInit(kDigest, CKM_MD2, "", NULL));
+            session_->OperationInit(kDigest, CKM_MD2, "", nullptr));
 }
 
 // Test that operation / mechanism mismatches are handled correctly.
 TEST_F(TestSession, MechanismMismatch) {
-  const Object* hmac = NULL;
+  const Object* hmac = nullptr;
   GenerateSecretKey(CKM_GENERIC_SECRET_KEY_GEN, 16, &hmac);
-  const Object* aes = NULL;
+  const Object* aes = nullptr;
   GenerateSecretKey(CKM_AES_KEY_GEN, 16, &aes);
   // Encrypt with a sign/verify mechanism.
   EXPECT_CALL(mock_metrics_library_,
@@ -858,15 +918,17 @@ TEST_F(TestSession, MechanismMismatch) {
                               static_cast<int>(CKR_MECHANISM_INVALID)))
       .WillOnce(Return(true));
   EXPECT_EQ(CKR_MECHANISM_INVALID,
-            session_->OperationInit(kDigest, CKM_SHA1_RSA_PKCS, "", NULL));
+            session_->OperationInit(kDigest, CKM_SHA1_RSA_PKCS, "", nullptr));
 }
 
 // Test that mechanism / key type mismatches are handled correctly.
 TEST_F(TestSession, KeyTypeMismatch) {
-  const Object* aes = NULL;
+  EXPECT_CALL(hwsec_, IsRSAModulusSupported(_))
+      .WillRepeatedly(ReturnOk<TPMError>());
+  const Object* aes = nullptr;
   GenerateSecretKey(CKM_AES_KEY_GEN, 16, &aes);
-  const Object* rsapub = NULL;
-  const Object* rsapriv = NULL;
+  const Object* rsapub = nullptr;
+  const Object* rsapriv = nullptr;
   GenerateRSAKeyPair(true, 512, &rsapub, &rsapriv);
   EXPECT_CALL(mock_metrics_library_,
               SendSparseToUMA(kChapsSessionEncrypt,
@@ -892,11 +954,13 @@ TEST_F(TestSession, KeyTypeMismatch) {
 
 // Test that key function permissions are correctly enforced.
 TEST_F(TestSession, KeyFunctionPermission) {
-  const Object* encpub = NULL;
-  const Object* encpriv = NULL;
+  EXPECT_CALL(hwsec_, IsRSAModulusSupported(_))
+      .WillRepeatedly(ReturnOk<TPMError>());
+  const Object* encpub = nullptr;
+  const Object* encpriv = nullptr;
   GenerateRSAKeyPair(false, 512, &encpub, &encpriv);
-  const Object* sigpub = NULL;
-  const Object* sigpriv = NULL;
+  const Object* sigpub = nullptr;
+  const Object* sigpriv = nullptr;
   GenerateRSAKeyPair(true, 512, &sigpub, &sigpriv);
   // Try decrypting with a sign-only key.
   EXPECT_CALL(mock_metrics_library_,
@@ -916,11 +980,11 @@ TEST_F(TestSession, KeyFunctionPermission) {
 
 // Test that invalid mechanism parameters for ciphers are handled correctly.
 TEST_F(TestSession, BadIV) {
-  const Object* aes = NULL;
+  const Object* aes = nullptr;
   GenerateSecretKey(CKM_AES_KEY_GEN, 16, &aes);
-  const Object* des = NULL;
+  const Object* des = nullptr;
   GenerateSecretKey(CKM_DES_KEY_GEN, 16, &des);
-  const Object* des3 = NULL;
+  const Object* des3 = nullptr;
   GenerateSecretKey(CKM_DES3_KEY_GEN, 16, &des3);
   // AES expects 16 bytes and DES/DES3 expects 8 bytes.
   string bad_iv(7, 0);
@@ -938,7 +1002,7 @@ TEST_F(TestSession, BadIV) {
 
 // Test that invalid key size ranges are handled correctly.
 TEST_F(TestSession, BadKeySize) {
-  const Object* key = NULL;
+  const Object* key = nullptr;
   GenerateSecretKey(CKM_AES_KEY_GEN, 16, &key);
   // AES keys can be 16, 24, or 32 bytes in length.
   const_cast<Object*>(key)->SetAttributeString(CKA_VALUE, string(33, 0));
@@ -948,8 +1012,8 @@ TEST_F(TestSession, BadKeySize) {
       .WillOnce(Return(true));
   EXPECT_EQ(CKR_KEY_SIZE_RANGE,
             session_->OperationInit(kEncrypt, CKM_AES_ECB, "", key));
-  const Object* pub = NULL;
-  const Object* priv = NULL;
+  const Object* pub = nullptr;
+  const Object* priv = nullptr;
   GenerateRSAKeyPair(true, 512, &pub, &priv);
   // RSA keys can have a modulus size no smaller than 512.
   const_cast<Object*>(priv)->SetAttributeString(CKA_MODULUS, string(32, 0));
@@ -1024,22 +1088,26 @@ TEST_F(TestSession, BadSignature) {
   // HMAC with bad signature length.
   EXPECT_EQ(CKR_OK,
             session_->OperationInit(kVerify, CKM_SHA256_HMAC, "", hmac));
-  EXPECT_EQ(CKR_OK, session_->OperationUpdate(kVerify, input, NULL, NULL));
+  EXPECT_EQ(CKR_OK,
+            session_->OperationUpdate(kVerify, input, nullptr, nullptr));
   EXPECT_EQ(CKR_SIGNATURE_LEN_RANGE, session_->VerifyFinal(signature));
   // HMAC with bad signature.
   signature.resize(32);
   EXPECT_EQ(CKR_OK,
             session_->OperationInit(kVerify, CKM_SHA256_HMAC, "", hmac));
-  EXPECT_EQ(CKR_OK, session_->OperationUpdate(kVerify, input, NULL, NULL));
+  EXPECT_EQ(CKR_OK,
+            session_->OperationUpdate(kVerify, input, nullptr, nullptr));
   EXPECT_EQ(CKR_SIGNATURE_INVALID, session_->VerifyFinal(signature));
   // RSA with bad signature length.
   EXPECT_EQ(CKR_OK, session_->OperationInit(kVerify, CKM_RSA_PKCS, "", rsapub));
-  EXPECT_EQ(CKR_OK, session_->OperationUpdate(kVerify, input, NULL, NULL));
+  EXPECT_EQ(CKR_OK,
+            session_->OperationUpdate(kVerify, input, nullptr, nullptr));
   EXPECT_EQ(CKR_SIGNATURE_LEN_RANGE, session_->VerifyFinal(signature));
   // RSA with bad signature.
   signature.resize(128, 1);
   EXPECT_EQ(CKR_OK, session_->OperationInit(kVerify, CKM_RSA_PKCS, "", rsapub));
-  EXPECT_EQ(CKR_OK, session_->OperationUpdate(kVerify, input, NULL, NULL));
+  EXPECT_EQ(CKR_OK,
+            session_->OperationUpdate(kVerify, input, nullptr, nullptr));
   EXPECT_EQ(CKR_SIGNATURE_INVALID, session_->VerifyFinal(signature));
 }
 
@@ -1056,12 +1124,18 @@ TEST_F(TestSession, Flush) {
   EXPECT_EQ(session_->FlushModifiableObject(&session_object), CKR_OK);
 }
 
-TEST_F(TestSessionWithRealObject, GenerateRSAWithTPM) {
-  EXPECT_CALL(tpm_, MinRSAKeyBits()).WillRepeatedly(Return(1024));
-  EXPECT_CALL(tpm_, MaxRSAKeyBits()).WillRepeatedly(Return(2048));
-  EXPECT_CALL(tpm_, IsTPMAvailable()).WillRepeatedly(Return(true));
-  EXPECT_CALL(tpm_, GenerateRSAKey(_, _, _, _, _, _)).WillOnce(Return(true));
-  EXPECT_CALL(tpm_, GetRSAPublicKey(_, _, _)).WillRepeatedly(Return(true));
+TEST_F(TestSessionWithRealObject, GenerateRSAWithHWSec) {
+  EXPECT_CALL(hwsec_, IsRSAModulusSupported(_))
+      .WillRepeatedly(ReturnOk<TPMError>());
+  EXPECT_CALL(hwsec_, IsReady()).WillRepeatedly(ReturnValue(true));
+  EXPECT_CALL(hwsec_, GenerateRSAKey(_, _, _))
+      .WillOnce([&](auto&&, auto&&, auto&&) {
+        return hwsec::ChapsFrontend::CreateKeyResult{
+            .key = GetTestScopedKey(),
+        };
+      });
+  EXPECT_CALL(hwsec_, GetRSAPublicKey(_))
+      .WillRepeatedly(ReturnValue(hwsec::RSAPublicInfo{}));
 
   CK_BBOOL no = CK_FALSE;
   CK_BBOOL yes = CK_TRUE;
@@ -1081,7 +1155,7 @@ TEST_F(TestSessionWithRealObject, GenerateRSAWithTPM) {
                                       std::size(pub_attr), priv_attr,
                                       std::size(priv_attr), &pubh, &privh));
   // There are a few sensitive attributes that MUST not exist.
-  const Object* object = NULL;
+  const Object* object = nullptr;
   ASSERT_TRUE(session_->GetObject(privh, &object));
   EXPECT_FALSE(object->IsAttributePresent(CKA_PRIVATE_EXPONENT));
   EXPECT_FALSE(object->IsAttributePresent(CKA_PRIME_1));
@@ -1090,7 +1164,7 @@ TEST_F(TestSessionWithRealObject, GenerateRSAWithTPM) {
   EXPECT_FALSE(object->IsAttributePresent(CKA_EXPONENT_2));
   EXPECT_FALSE(object->IsAttributePresent(CKA_COEFFICIENT));
 
-  // Check attributes that store TPM wrapped blob exists.
+  // Check attributes that store security element wrapped blob exists.
   EXPECT_TRUE(object->IsAttributePresent(kAuthDataAttribute));
   EXPECT_TRUE(object->IsAttributePresent(kKeyBlobAttribute));
 
@@ -1099,11 +1173,18 @@ TEST_F(TestSessionWithRealObject, GenerateRSAWithTPM) {
   EXPECT_FALSE(object->GetAttributeBool(kKeyInSoftware, true));
 }
 
-TEST_F(TestSessionWithRealObject, GenerateRSAWithTPMInconsistentToken) {
-  EXPECT_CALL(tpm_, MinRSAKeyBits()).WillRepeatedly(Return(1024));
-  EXPECT_CALL(tpm_, MaxRSAKeyBits()).WillRepeatedly(Return(2048));
-  EXPECT_CALL(tpm_, GenerateRSAKey(_, _, _, _, _, _)).WillOnce(Return(true));
-  EXPECT_CALL(tpm_, GetRSAPublicKey(_, _, _)).WillRepeatedly(Return(true));
+TEST_F(TestSessionWithRealObject, GenerateRSAWithHWsecInconsistentToken) {
+  EXPECT_CALL(hwsec_, IsRSAModulusSupported(_))
+      .WillRepeatedly(ReturnOk<TPMError>());
+  EXPECT_CALL(hwsec_, IsReady()).WillRepeatedly(ReturnValue(true));
+  EXPECT_CALL(hwsec_, GenerateRSAKey(_, _, _))
+      .WillOnce([&](auto&&, auto&&, auto&&) {
+        return hwsec::ChapsFrontend::CreateKeyResult{
+            .key = GetTestScopedKey(),
+        };
+      });
+  EXPECT_CALL(hwsec_, GetRSAPublicKey(_))
+      .WillRepeatedly(ReturnValue(hwsec::RSAPublicInfo{}));
 
   CK_BBOOL no = CK_FALSE;
   CK_BBOOL yes = CK_TRUE;
@@ -1124,8 +1205,8 @@ TEST_F(TestSessionWithRealObject, GenerateRSAWithTPMInconsistentToken) {
             session_->GenerateKeyPair(CKM_RSA_PKCS_KEY_PAIR_GEN, "", pub_attr,
                                       std::size(pub_attr), priv_attr,
                                       std::size(priv_attr), &pubh, &privh));
-  const Object* public_object = NULL;
-  const Object* private_object = NULL;
+  const Object* public_object = nullptr;
+  const Object* private_object = nullptr;
   ASSERT_TRUE(session_->GetObject(pubh, &public_object));
   ASSERT_TRUE(session_->GetObject(privh, &private_object));
   EXPECT_FALSE(public_object->IsTokenObject());
@@ -1136,11 +1217,12 @@ TEST_F(TestSessionWithRealObject, GenerateRSAWithTPMInconsistentToken) {
   EXPECT_EQ(CKR_OK, session_->DestroyObject(privh));
 }
 
-TEST_F(TestSessionWithRealObject, GenerateRSAWithNoTPM) {
-  EXPECT_CALL(tpm_, MinRSAKeyBits()).WillRepeatedly(Return(1024));
-  EXPECT_CALL(tpm_, MaxRSAKeyBits()).WillRepeatedly(Return(2048));
-  EXPECT_CALL(tpm_, IsTPMAvailable()).WillRepeatedly(Return(false));
-  EXPECT_CALL(tpm_, GenerateRSAKey(_, _, _, _, _, _)).Times(0);
+TEST_F(TestSessionWithRealObject, GenerateRSAWithNoHWSec) {
+  EXPECT_CALL(hwsec_, IsRSAModulusSupported(_))
+      .WillRepeatedly(
+          ReturnError<TPMError>("Not supported", TPMRetryAction::kNoRetry));
+  EXPECT_CALL(hwsec_, IsReady()).WillRepeatedly(ReturnValue(false));
+  EXPECT_CALL(hwsec_, GenerateRSAKey(_, _, _)).Times(0);
 
   CK_BBOOL no = CK_FALSE;
   CK_BBOOL yes = CK_TRUE;
@@ -1160,7 +1242,7 @@ TEST_F(TestSessionWithRealObject, GenerateRSAWithNoTPM) {
                                       std::size(pub_attr), priv_attr,
                                       std::size(priv_attr), &pubh, &privh));
   // For a software key, the sensitive attributes should exist.
-  const Object* object = NULL;
+  const Object* object = nullptr;
   ASSERT_TRUE(session_->GetObject(privh, &object));
   EXPECT_TRUE(object->IsAttributePresent(CKA_PRIVATE_EXPONENT));
   EXPECT_TRUE(object->IsAttributePresent(CKA_PRIME_1));
@@ -1173,16 +1255,16 @@ TEST_F(TestSessionWithRealObject, GenerateRSAWithNoTPM) {
   EXPECT_TRUE(object->IsAttributePresent(kKeyInSoftware));
   EXPECT_TRUE(object->GetAttributeBool(kKeyInSoftware, false));
 
-  // Check attributes that store TPM wrapped blob doesn't exists.
+  // Check attributes that store security element wrapped blob doesn't exists.
   EXPECT_FALSE(object->IsAttributePresent(kAuthDataAttribute));
   EXPECT_FALSE(object->IsAttributePresent(kKeyBlobAttribute));
 }
 
 TEST_F(TestSessionWithRealObject, GenerateRSAWithForceSoftware) {
-  EXPECT_CALL(tpm_, MinRSAKeyBits()).WillRepeatedly(Return(1024));
-  EXPECT_CALL(tpm_, MaxRSAKeyBits()).WillRepeatedly(Return(2048));
-  EXPECT_CALL(tpm_, IsTPMAvailable()).WillRepeatedly(Return(true));
-  EXPECT_CALL(tpm_, GenerateRSAKey(_, _, _, _, _, _)).Times(0);
+  EXPECT_CALL(hwsec_, IsRSAModulusSupported(_))
+      .WillRepeatedly(ReturnOk<TPMError>());
+  EXPECT_CALL(hwsec_, IsReady()).WillRepeatedly(ReturnValue(true));
+  EXPECT_CALL(hwsec_, GenerateRSAKey(_, _, _)).Times(0);
 
   CK_BBOOL no = CK_FALSE;
   CK_BBOOL yes = CK_TRUE;
@@ -1203,7 +1285,7 @@ TEST_F(TestSessionWithRealObject, GenerateRSAWithForceSoftware) {
                                       std::size(pub_attr), priv_attr,
                                       std::size(priv_attr), &pubh, &privh));
   // For a software key, the sensitive attributes should exist.
-  const Object* object = NULL;
+  const Object* object = nullptr;
   ASSERT_TRUE(session_->GetObject(privh, &object));
   EXPECT_TRUE(object->IsAttributePresent(CKA_PRIVATE_EXPONENT));
   EXPECT_TRUE(object->IsAttributePresent(CKA_PRIME_1));
@@ -1216,24 +1298,32 @@ TEST_F(TestSessionWithRealObject, GenerateRSAWithForceSoftware) {
   EXPECT_TRUE(object->IsAttributePresent(kKeyInSoftware));
   EXPECT_TRUE(object->GetAttributeBool(kKeyInSoftware, false));
 
-  // Check attributes that store TPM wrapped blob doesn't exists.
+  // Check attributes that store security element wrapped blob doesn't exists.
   EXPECT_FALSE(object->IsAttributePresent(kAuthDataAttribute));
   EXPECT_FALSE(object->IsAttributePresent(kKeyBlobAttribute));
 }
 
-TEST_F(TestSessionWithRealObject, GenerateECCWithTPM) {
-  EXPECT_CALL(tpm_, IsECCurveSupported(_)).WillRepeatedly(Return(true));
-  EXPECT_CALL(tpm_, GenerateECCKey(_, _, _, _, _)).WillOnce(Return(true));
-  EXPECT_CALL(tpm_, GetECCPublicKey(_, _)).WillRepeatedly(Return(true));
+TEST_F(TestSessionWithRealObject, GenerateECCWithHWSec) {
+  EXPECT_CALL(hwsec_, IsECCurveSupported(_))
+      .WillRepeatedly(ReturnOk<TPMError>());
+  EXPECT_CALL(hwsec_, IsReady()).WillRepeatedly(ReturnValue(true));
+  EXPECT_CALL(hwsec_, GenerateECCKey(_, _)).WillOnce([&](auto&&, auto&&) {
+    return hwsec::ChapsFrontend::CreateKeyResult{
+        .key = GetTestScopedKey(),
+    };
+  });
+  EXPECT_CALL(hwsec_, GetECCPublicKey(_))
+      .WillRepeatedly(ReturnValue(GenerateECCPublicInfo()));
 
-  const Object* pub = NULL;
-  const Object* priv = NULL;
+  const Object* pub = nullptr;
+  const Object* priv = nullptr;
   GenerateECCKeyPair(true, true, &pub, &priv);
 
-  // TPM backed key object doesn't have CKA_VALUE which stored ECC private key.
+  // Security element backed key object doesn't have CKA_VALUE which stored ECC
+  // private key.
   EXPECT_FALSE(priv->IsAttributePresent(CKA_VALUE));
 
-  // Check attributes that store TPM wrapped blob exists.
+  // Check attributes that store security element wrapped blob exists.
   EXPECT_TRUE(priv->IsAttributePresent(kAuthDataAttribute));
   EXPECT_TRUE(priv->IsAttributePresent(kKeyBlobAttribute));
 
@@ -1242,24 +1332,34 @@ TEST_F(TestSessionWithRealObject, GenerateECCWithTPM) {
   EXPECT_FALSE(priv->GetAttributeBool(kKeyInSoftware, true));
 }
 
-TEST_F(TestSessionWithRealObject, GenerateECCWithTPMInconsistentToken) {
-  EXPECT_CALL(tpm_, IsECCurveSupported(_)).WillRepeatedly(Return(true));
-  EXPECT_CALL(tpm_, GenerateECCKey(_, _, _, _, _)).WillOnce(Return(true));
-  EXPECT_CALL(tpm_, GetECCPublicKey(_, _)).WillRepeatedly(Return(true));
+TEST_F(TestSessionWithRealObject, GenerateECCWithHWSecInconsistentToken) {
+  EXPECT_CALL(hwsec_, IsECCurveSupported(_))
+      .WillRepeatedly(ReturnOk<TPMError>());
+  EXPECT_CALL(hwsec_, IsReady()).WillRepeatedly(ReturnValue(true));
+  EXPECT_CALL(hwsec_, GenerateECCKey(_, _)).WillOnce([&](auto&&, auto&&) {
+    return hwsec::ChapsFrontend::CreateKeyResult{
+        .key = GetTestScopedKey(),
+    };
+  });
+  EXPECT_CALL(hwsec_, GetECCPublicKey(_))
+      .WillRepeatedly(ReturnValue(GenerateECCPublicInfo()));
 
-  const Object* pub = NULL;
-  const Object* priv = NULL;
+  const Object* pub = nullptr;
+  const Object* priv = nullptr;
   GenerateECCKeyPair(false, true, &pub, &priv);
 
   EXPECT_FALSE(pub->IsTokenObject());
   EXPECT_TRUE(priv->IsTokenObject());
 }
 
-TEST_F(TestSessionWithRealObject, GenerateECCWithNoTPM) {
-  EXPECT_CALL(tpm_, IsTPMAvailable()).WillRepeatedly(Return(false));
+TEST_F(TestSessionWithRealObject, GenerateECCWithNoHWSec) {
+  EXPECT_CALL(hwsec_, IsECCurveSupported(_))
+      .WillRepeatedly(
+          ReturnError<TPMError>("Not supported", TPMRetryAction::kNoRetry));
+  EXPECT_CALL(hwsec_, IsReady()).WillRepeatedly(ReturnValue(false));
 
-  const Object* pub = NULL;
-  const Object* priv = NULL;
+  const Object* pub = nullptr;
+  const Object* priv = nullptr;
   GenerateECCKeyPair(true, true, &pub, &priv);
 
   // For a software key, the sensitive attributes should exist.
@@ -1269,16 +1369,17 @@ TEST_F(TestSessionWithRealObject, GenerateECCWithNoTPM) {
   EXPECT_TRUE(priv->IsAttributePresent(kKeyInSoftware));
   EXPECT_TRUE(priv->GetAttributeBool(kKeyInSoftware, false));
 
-  // Check attributes that store TPM wrapped blob doesn't exists.
+  // Check attributes that store security element wrapped blob doesn't exists.
   EXPECT_FALSE(priv->IsAttributePresent(kAuthDataAttribute));
   EXPECT_FALSE(priv->IsAttributePresent(kKeyBlobAttribute));
 }
 
 TEST_F(TestSessionWithRealObject, GenerateECCWithForceSoftware) {
-  EXPECT_CALL(tpm_, IsTPMAvailable()).WillRepeatedly(Return(true));
-  EXPECT_CALL(tpm_, IsECCurveSupported(_)).WillRepeatedly(Return(true));
+  EXPECT_CALL(hwsec_, IsECCurveSupported(_))
+      .WillRepeatedly(ReturnOk<TPMError>());
+  EXPECT_CALL(hwsec_, IsReady()).WillRepeatedly(ReturnValue(true));
 
-  const Object* priv = NULL;
+  const Object* priv = nullptr;
 
   // Create DER encoded OID of P-256 for CKA_EC_PARAMS (prime256v1 or
   // secp256r1)
@@ -1309,21 +1410,30 @@ TEST_F(TestSessionWithRealObject, GenerateECCWithForceSoftware) {
   EXPECT_TRUE(priv->IsAttributePresent(kKeyInSoftware));
   EXPECT_TRUE(priv->GetAttributeBool(kKeyInSoftware, false));
 
-  // Check attributes that store TPM wrapped blob doesn't exists.
+  // Check attributes that store security element wrapped blob doesn't exists.
   EXPECT_FALSE(priv->IsAttributePresent(kAuthDataAttribute));
   EXPECT_FALSE(priv->IsAttributePresent(kKeyBlobAttribute));
 }
 
-TEST_F(TestSession, EcdsaSignWithTPM) {
-  EXPECT_CALL(tpm_, IsECCurveSupported(_)).WillRepeatedly(Return(true));
-  EXPECT_CALL(tpm_, GenerateECCKey(_, _, _, _, _)).WillOnce(Return(true));
-  EXPECT_CALL(tpm_, GetECCPublicKey(_, _)).WillRepeatedly(Return(true));
-  EXPECT_CALL(tpm_, LoadKey(_, _, _, _)).WillRepeatedly(Return(true));
+TEST_F(TestSession, EcdsaSignWithHWSec) {
+  EXPECT_CALL(hwsec_, IsECCurveSupported(_))
+      .WillRepeatedly(ReturnOk<TPMError>());
+  EXPECT_CALL(hwsec_, IsReady()).WillRepeatedly(ReturnValue(true));
+  EXPECT_CALL(hwsec_, GenerateECCKey(_, _)).WillOnce([&](auto&&, auto&&) {
+    return hwsec::ChapsFrontend::CreateKeyResult{
+        .key = GetTestScopedKey(),
+    };
+  });
+  EXPECT_CALL(hwsec_, GetECCPublicKey(_))
+      .WillRepeatedly(ReturnValue(GenerateECCPublicInfo()));
+  EXPECT_CALL(hwsec_, LoadKey(_, _)).WillRepeatedly([&](auto&&, auto&&) {
+    return GetTestScopedKey();
+  });
+  EXPECT_CALL(hwsec_, Sign(_, _, _))
+      .WillRepeatedly(ReturnValue(brillo::Blob()));
 
-  EXPECT_CALL(tpm_, Sign(_, _, _, _, _)).WillOnce(Return(true));
-
-  const Object* pub = NULL;
-  const Object* priv = NULL;
+  const Object* pub = nullptr;
+  const Object* priv = nullptr;
   GenerateECCKeyPair(true, true, &pub, &priv);
 
   EXPECT_CALL(mock_metrics_library_,
@@ -1336,10 +1446,16 @@ TEST_F(TestSession, EcdsaSignWithTPM) {
   EXPECT_EQ(CKR_OK, session_->OperationSinglePart(kSign, in, &len, &sig));
 }
 
-TEST_F(TestSessionWithRealObject, ImportRSAWithTPM) {
-  EXPECT_CALL(tpm_, MinRSAKeyBits()).WillRepeatedly(Return(1024));
-  EXPECT_CALL(tpm_, MaxRSAKeyBits()).WillRepeatedly(Return(2048));
-  EXPECT_CALL(tpm_, WrapRSAKey(_, _, _, _, _, _, _)).WillOnce(Return(true));
+TEST_F(TestSessionWithRealObject, ImportRSAWithHWSec) {
+  EXPECT_CALL(hwsec_, IsRSAModulusSupported(_))
+      .WillRepeatedly(ReturnOk<TPMError>());
+  EXPECT_CALL(hwsec_, IsReady()).WillRepeatedly(ReturnValue(true));
+  EXPECT_CALL(hwsec_, WrapRSAKey(_, _, _, _))
+      .WillOnce([&](auto&&, auto&&, auto&&, auto&&) {
+        return hwsec::ChapsFrontend::CreateKeyResult{
+            .key = GetTestScopedKey(),
+        };
+      });
 
   crypto::ScopedBIGNUM exponent(BN_new());
   CHECK(exponent);
@@ -1399,7 +1515,7 @@ TEST_F(TestSessionWithRealObject, ImportRSAWithTPM) {
             session_->CreateObject(private_attributes,
                                    std::size(private_attributes), &handle));
   // There are a few sensitive attributes that MUST be removed.
-  const Object* object = NULL;
+  const Object* object = nullptr;
   ASSERT_TRUE(session_->GetObject(handle, &object));
   EXPECT_FALSE(object->IsAttributePresent(CKA_PRIVATE_EXPONENT));
   EXPECT_FALSE(object->IsAttributePresent(CKA_PRIME_1));
@@ -1408,7 +1524,7 @@ TEST_F(TestSessionWithRealObject, ImportRSAWithTPM) {
   EXPECT_FALSE(object->IsAttributePresent(CKA_EXPONENT_2));
   EXPECT_FALSE(object->IsAttributePresent(CKA_COEFFICIENT));
 
-  // Check attributes that store TPM wrapped blob exists.
+  // Check attributes that store security element wrapped blob exists.
   EXPECT_TRUE(object->IsAttributePresent(kAuthDataAttribute));
   EXPECT_TRUE(object->IsAttributePresent(kKeyBlobAttribute));
 
@@ -1417,8 +1533,11 @@ TEST_F(TestSessionWithRealObject, ImportRSAWithTPM) {
   EXPECT_FALSE(object->GetAttributeBool(kKeyInSoftware, true));
 }
 
-TEST_F(TestSessionWithRealObject, ImportRSAWithNoTPM) {
-  EXPECT_CALL(tpm_, IsTPMAvailable()).WillRepeatedly(Return(false));
+TEST_F(TestSessionWithRealObject, ImportRSAWithNoHWSec) {
+  EXPECT_CALL(hwsec_, IsRSAModulusSupported(_))
+      .WillRepeatedly(
+          ReturnError<TPMError>("Not supported", TPMRetryAction::kNoRetry));
+  EXPECT_CALL(hwsec_, IsReady()).WillRepeatedly(ReturnValue(false));
 
   crypto::ScopedBIGNUM exponent(BN_new());
   CHECK(exponent);
@@ -1478,7 +1597,7 @@ TEST_F(TestSessionWithRealObject, ImportRSAWithNoTPM) {
             session_->CreateObject(private_attributes,
                                    std::size(private_attributes), &handle));
   // For a software key, the sensitive attributes should still exist.
-  const Object* object = NULL;
+  const Object* object = nullptr;
   ASSERT_TRUE(session_->GetObject(handle, &object));
   EXPECT_TRUE(object->IsAttributePresent(CKA_PRIVATE_EXPONENT));
   EXPECT_TRUE(object->IsAttributePresent(CKA_PRIME_1));
@@ -1487,7 +1606,7 @@ TEST_F(TestSessionWithRealObject, ImportRSAWithNoTPM) {
   EXPECT_TRUE(object->IsAttributePresent(CKA_EXPONENT_2));
   EXPECT_TRUE(object->IsAttributePresent(CKA_COEFFICIENT));
 
-  // Software key should not have TPM attributes.
+  // Software key should not have security element related attributes.
   EXPECT_FALSE(object->IsAttributePresent(kAuthDataAttribute));
   EXPECT_FALSE(object->IsAttributePresent(kKeyBlobAttribute));
 
@@ -1497,10 +1616,10 @@ TEST_F(TestSessionWithRealObject, ImportRSAWithNoTPM) {
 }
 
 TEST_F(TestSessionWithRealObject, ImportRSAWithForceSoftware) {
-  EXPECT_CALL(tpm_, IsTPMAvailable()).WillRepeatedly(Return(true));
-  EXPECT_CALL(tpm_, MinRSAKeyBits()).WillRepeatedly(Return(1024));
-  EXPECT_CALL(tpm_, MaxRSAKeyBits()).WillRepeatedly(Return(2048));
-  EXPECT_CALL(tpm_, WrapRSAKey(_, _, _, _, _, _, _)).Times(0);
+  EXPECT_CALL(hwsec_, IsRSAModulusSupported(_))
+      .WillRepeatedly(ReturnOk<TPMError>());
+  EXPECT_CALL(hwsec_, IsReady()).WillRepeatedly(ReturnValue(true));
+  EXPECT_CALL(hwsec_, WrapRSAKey(_, _, _, _)).Times(0);
 
   crypto::ScopedBIGNUM exponent(BN_new());
   CHECK(exponent);
@@ -1561,7 +1680,7 @@ TEST_F(TestSessionWithRealObject, ImportRSAWithForceSoftware) {
             session_->CreateObject(private_attributes,
                                    std::size(private_attributes), &handle));
   // For a software key, the sensitive attributes should still exist.
-  const Object* object = NULL;
+  const Object* object = nullptr;
   ASSERT_TRUE(session_->GetObject(handle, &object));
   EXPECT_TRUE(object->IsAttributePresent(CKA_PRIVATE_EXPONENT));
   EXPECT_TRUE(object->IsAttributePresent(CKA_PRIME_1));
@@ -1570,7 +1689,7 @@ TEST_F(TestSessionWithRealObject, ImportRSAWithForceSoftware) {
   EXPECT_TRUE(object->IsAttributePresent(CKA_EXPONENT_2));
   EXPECT_TRUE(object->IsAttributePresent(CKA_COEFFICIENT));
 
-  // Software key should not have TPM attributes.
+  // Software key should not have security element related attributes.
   EXPECT_FALSE(object->IsAttributePresent(kAuthDataAttribute));
   EXPECT_FALSE(object->IsAttributePresent(kKeyBlobAttribute));
 
@@ -1579,10 +1698,16 @@ TEST_F(TestSessionWithRealObject, ImportRSAWithForceSoftware) {
   EXPECT_TRUE(object->GetAttributeBool(kKeyInSoftware, false));
 }
 
-TEST_F(TestSessionWithRealObject, ImportECCWithTPM) {
-  EXPECT_CALL(tpm_, IsECCurveSupported(NID_X9_62_prime256v1))
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(tpm_, WrapECCKey(_, _, _, _, _, _, _, _)).WillOnce(Return(true));
+TEST_F(TestSessionWithRealObject, ImportECCWithHWSec) {
+  EXPECT_CALL(hwsec_, IsECCurveSupported(NID_X9_62_prime256v1))
+      .WillRepeatedly(ReturnOk<TPMError>());
+  EXPECT_CALL(hwsec_, IsReady()).WillRepeatedly(ReturnValue(true));
+  EXPECT_CALL(hwsec_, WrapECCKey(_, _, _, _, _))
+      .WillOnce([&](auto&&, auto&&, auto&&, auto&&, auto&&) {
+        return hwsec::ChapsFrontend::CreateKeyResult{
+            .key = GetTestScopedKey(),
+        };
+      });
 
   crypto::ScopedEC_KEY key(EC_KEY_new_by_curve_name(NID_X9_62_prime256v1));
   ASSERT_NE(key, nullptr);
@@ -1620,11 +1745,11 @@ TEST_F(TestSessionWithRealObject, ImportECCWithTPM) {
                                    std::size(private_attributes), &handle));
 
   // There are a few sensitive attributes that MUST be removed.
-  const Object* object = NULL;
+  const Object* object = nullptr;
   ASSERT_TRUE(session_->GetObject(handle, &object));
   EXPECT_FALSE(object->IsAttributePresent(CKA_VALUE));
 
-  // Check attributes that store TPM wrapped blob exists.
+  // Check attributes that store security element wrapped blob exists.
   EXPECT_TRUE(object->IsAttributePresent(kAuthDataAttribute));
   EXPECT_TRUE(object->IsAttributePresent(kKeyBlobAttribute));
 
@@ -1633,8 +1758,11 @@ TEST_F(TestSessionWithRealObject, ImportECCWithTPM) {
   EXPECT_FALSE(object->GetAttributeBool(kKeyInSoftware, true));
 }
 
-TEST_F(TestSessionWithRealObject, ImportECCWithNoTPM) {
-  EXPECT_CALL(tpm_, IsTPMAvailable()).WillRepeatedly(Return(false));
+TEST_F(TestSessionWithRealObject, ImportECCWithNoHWSec) {
+  EXPECT_CALL(hwsec_, IsECCurveSupported(_))
+      .WillRepeatedly(
+          ReturnError<TPMError>("Not supported", TPMRetryAction::kNoRetry));
+  EXPECT_CALL(hwsec_, IsReady()).WillRepeatedly(ReturnValue(false));
 
   crypto::ScopedEC_KEY key(EC_KEY_new_by_curve_name(NID_X9_62_prime256v1));
   ASSERT_NE(key, nullptr);
@@ -1670,11 +1798,11 @@ TEST_F(TestSessionWithRealObject, ImportECCWithNoTPM) {
                                    std::size(private_attributes), &handle));
 
   // For a software key, the sensitive attributes should still exist.
-  const Object* object = NULL;
+  const Object* object = nullptr;
   ASSERT_TRUE(session_->GetObject(handle, &object));
   EXPECT_TRUE(object->IsAttributePresent(CKA_VALUE));
 
-  // Software key should not have TPM attributes.
+  // Software key should not have security element related attributes.
   EXPECT_FALSE(object->IsAttributePresent(kAuthDataAttribute));
   EXPECT_FALSE(object->IsAttributePresent(kKeyBlobAttribute));
 
@@ -1684,8 +1812,10 @@ TEST_F(TestSessionWithRealObject, ImportECCWithNoTPM) {
 }
 
 TEST_F(TestSessionWithRealObject, ImportECCWithForceSoftware) {
-  EXPECT_CALL(tpm_, IsTPMAvailable()).WillRepeatedly(Return(true));
-  EXPECT_CALL(tpm_, WrapECCKey(_, _, _, _, _, _, _, _)).Times(0);
+  EXPECT_CALL(hwsec_, IsECCurveSupported(NID_X9_62_prime256v1))
+      .WillRepeatedly(ReturnOk<TPMError>());
+  EXPECT_CALL(hwsec_, IsReady()).WillRepeatedly(ReturnValue(true));
+  EXPECT_CALL(hwsec_, WrapECCKey(_, _, _, _, _)).Times(0);
 
   crypto::ScopedEC_KEY key(EC_KEY_new_by_curve_name(NID_X9_62_prime256v1));
   ASSERT_NE(key, nullptr);
@@ -1722,11 +1852,11 @@ TEST_F(TestSessionWithRealObject, ImportECCWithForceSoftware) {
                                    std::size(private_attributes), &handle));
 
   // For a software key, the sensitive attributes should still exist.
-  const Object* object = NULL;
+  const Object* object = nullptr;
   ASSERT_TRUE(session_->GetObject(handle, &object));
   EXPECT_TRUE(object->IsAttributePresent(CKA_VALUE));
 
-  // Software key should not have TPM attributes.
+  // Software key should not have security element related attributes.
   EXPECT_FALSE(object->IsAttributePresent(kAuthDataAttribute));
   EXPECT_FALSE(object->IsAttributePresent(kKeyBlobAttribute));
 

@@ -849,6 +849,12 @@ bool ConvertToBIGNUM(const string& big_integer, BIGNUM* b) {
                    big_integer.length(), b);
 }
 
+bool ConvertBlobToBIGNUM(const brillo::Blob& big_integer, BIGNUM* b) {
+  if (big_integer.empty() || !b)
+    return false;
+  return BN_bin2bn(big_integer.data(), big_integer.size(), b);
+}
+
 crypto::ScopedRSA NumberToScopedRsa(const std::string& modulus,
                                     const std::string& exponent) {
   crypto::ScopedRSA rsa(RSA_new());

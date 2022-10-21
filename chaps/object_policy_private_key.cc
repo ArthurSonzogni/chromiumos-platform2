@@ -37,7 +37,7 @@ static const AttributePolicy kPrivateKeyPolicies[] = {
     // ECC-specific attributes.
     {CKA_EC_PARAMS, false, {false, false, true}, false},
     {CKA_VALUE, true, {false, false, true}, false},
-    // TPM backed key attributes.
+    // Security element backed key attributes.
     {kKeyBlobAttribute, true, {false, true, true}, false},
     {kAuthDataAttribute, true, {false, true, true}, false},
     {kForceSoftwareAttribute, false, {false, true, true}, false},
@@ -59,10 +59,11 @@ bool ObjectPolicyPrivateKey::IsObjectComplete() {
     if (!object_->IsAttributePresent(CKA_MODULUS) ||
         !object_->IsAttributePresent(CKA_PUBLIC_EXPONENT)) {
       LOG(ERROR) << "RSA Private key attributes are required. (Missing public "
-                    "infomation)";
+                    "information)";
       return false;
     }
-    // Either a private exponent or a TPM key blob must exist.
+    // Either a private exponent or a key blob loadable into a secure element
+    // must exist.
     if (!object_->IsAttributePresent(CKA_PRIVATE_EXPONENT) &&
         !object_->IsAttributePresent(kKeyBlobAttribute)) {
       LOG(ERROR) << "RSA Private key attributes are required. (Missing private "
@@ -75,7 +76,8 @@ bool ObjectPolicyPrivateKey::IsObjectComplete() {
                     "information)";
       return false;
     }
-    // Either a private exponent or a TPM key blob must exist.
+    // Either a private exponent or a key blob loadable into a secure element
+    // must exist.
     if (!object_->IsAttributePresent(CKA_VALUE) &&
         !object_->IsAttributePresent(kKeyBlobAttribute)) {
       LOG(ERROR) << "ECC Private key attributes are required. (Missing private "

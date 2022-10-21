@@ -7,8 +7,6 @@
 #include <base/logging.h>
 #include <base/test/task_environment.h>
 #include <chaps/proto_bindings/ck_structs.pb.h>
-#include <trunks/fuzzed_command_transceiver.h>
-#include <trunks/trunks_factory_impl.h>
 #include <vector>
 #include <base/command_line.h>
 #include <base/test/test_timeouts.h>
@@ -17,12 +15,10 @@
 #include "chaps/chaps_factory_impl.h"
 #include "chaps/chaps_interface.h"
 #include "chaps/chaps_service.h"
-#include "chaps/fuzzers/fuzzed_tpm_manager_utility.h"
+#include "chaps/fuzzers/fuzzed_hwsec.h"
 #include "chaps/isolate.h"
 #include "chaps/session.h"
 #include "chaps/slot_manager_impl.h"
-#include "chaps/tpm2_utility_impl.h"
-#include "chaps/tpm_thread_utility_impl.h"
 
 namespace {
 enum class ChapsServiceRequest {
@@ -104,7 +100,6 @@ enum class TokenManagerInterfaceRequest {
 };
 
 // An arbitrary choice that provides satisfactory coverage
-constexpr size_t kMaxTpmMessageLength = 2048;
 constexpr int kSuccessProbability = 90;
 constexpr int kChapsServiceProbability = 90;
 // Provide max iterations for a single fuzz run, otherwise it might timeout.
@@ -135,30 +130,16 @@ bool SerializeAttributes(CK_ATTRIBUTE_PTR attributes,
 
 class ChapsServiceFuzzer {
  public:
-  explicit ChapsServiceFuzzer(FuzzedDataProvider* tpm_data_provider,
+  explicit ChapsServiceFuzzer(FuzzedDataProvider* hwsec_data_provider,
                               FuzzedDataProvider* data_provider)
       : data_provider_(data_provider) {
     chaps_metrics_ = std::make_unique<chaps::ChapsMetrics>();
     factory_ = std::make_unique<chaps::ChapsFactoryImpl>(chaps_metrics_.get());
-    command_transceiver_ = std::make_unique<trunks::FuzzedCommandTransceiver>(
-        tpm_data_provider, kMaxTpmMessageLength);
-    trunks_factory_ =
-        std::make_unique<trunks::TrunksFactoryImpl>(command_transceiver_.get());
-    if (!trunks_factory_->Initialize()) {
-      LOG(ERROR) << "Failed to initialize TrunksFactory.";
-    }
-    tpm_manager_utility_ =
-        std::make_unique<chaps::FuzzedTpmManagerUtility>(tpm_data_provider);
-    auto tpm_utility =
-        std::make_unique<chaps::TPM2UtilityImpl>(trunks_factory_.get());
-    tpm_utility->set_tpm_manager_utility_for_testing(
-        tpm_manager_utility_.get());
-    tpm_utility_ =
-        std::make_unique<chaps::TPMThreadUtilityImpl>(std::move(tpm_utility));
+    hwsec_ = std::make_unique<hwsec::FuzzedChapsFrontend>(hwsec_data_provider);
 
     bool auto_load_system_token = data_provider_->ConsumeBool();
     slot_manager_ = std::make_unique<chaps::SlotManagerImpl>(
-        factory_.get(), tpm_utility_.get(), auto_load_system_token, nullptr,
+        factory_.get(), hwsec_.get(), auto_load_system_token, nullptr,
         chaps_metrics_.get());
     chaps_service_ =
         std::make_unique<chaps::ChapsServiceImpl>(slot_manager_.get());
@@ -178,9 +159,7 @@ class ChapsServiceFuzzer {
   ~ChapsServiceFuzzer() {
     chaps_service_.reset();
     slot_manager_.reset();
-    tpm_utility_.reset();
-    tpm_manager_utility_.reset();
-    trunks_factory_.reset();
+    hwsec_.reset();
     factory_.reset();
     chaps_metrics_.reset();
   }
@@ -905,10 +884,7 @@ class ChapsServiceFuzzer {
   FuzzedDataProvider* data_provider_;
   std::unique_ptr<chaps::ChapsMetrics> chaps_metrics_;
   std::unique_ptr<chaps::ChapsFactoryImpl> factory_;
-  std::unique_ptr<trunks::FuzzedCommandTransceiver> command_transceiver_;
-  std::unique_ptr<trunks::TrunksFactoryImpl> trunks_factory_;
-  std::unique_ptr<chaps::FuzzedTpmManagerUtility> tpm_manager_utility_;
-  std::unique_ptr<chaps::TPMThreadUtilityImpl> tpm_utility_;
+  std::unique_ptr<hwsec::FuzzedChapsFrontend> hwsec_;
   std::unique_ptr<chaps::SlotManagerImpl> slot_manager_;
   std::unique_ptr<chaps::ChapsServiceImpl> chaps_service_;
   base::test::TaskEnvironment task_environment_{
@@ -936,11 +912,11 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   if (size <= 1) {
     return 0;
   }
-  size_t tpm_data_size = size / 2;
-  FuzzedDataProvider tpm_data_provider(data, tpm_data_size),
-      data_provider(data + tpm_data_size, size - tpm_data_size);
+  size_t hwsec_data_size = size / 2;
+  FuzzedDataProvider hwsec_data_provider(data, hwsec_data_size),
+      data_provider(data + hwsec_data_size, size - hwsec_data_size);
 
-  ChapsServiceFuzzer fuzzer(&tpm_data_provider, &data_provider);
+  ChapsServiceFuzzer fuzzer(&hwsec_data_provider, &data_provider);
   fuzzer.Run();
   return 0;
 }

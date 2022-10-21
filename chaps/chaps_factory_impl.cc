@@ -9,6 +9,7 @@
 
 #include <base/check.h>
 #include <base/logging.h>
+#include <libhwsec/frontend/chaps/frontend.h>
 
 #include "chaps/object_impl.h"
 #include "chaps/object_policy_cert.h"
@@ -36,10 +37,10 @@ ChapsFactoryImpl::ChapsFactoryImpl(ChapsMetrics* chaps_metrics)
 
 Session* ChapsFactoryImpl::CreateSession(int slot_id,
                                          ObjectPool* token_object_pool,
-                                         TPMUtility* tpm_utility,
+                                         hwsec::ChapsFrontend* hwsec,
                                          HandleGenerator* handle_generator,
                                          bool is_read_only) {
-  return new SessionImpl(slot_id, token_object_pool, tpm_utility, this,
+  return new SessionImpl(slot_id, token_object_pool, hwsec, this,
                          handle_generator, is_read_only, chaps_metrics_);
 }
 

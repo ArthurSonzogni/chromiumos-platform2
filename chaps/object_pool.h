@@ -18,7 +18,7 @@ class SlotPolicy;
 // Enumerates internal blobs. These are used as 'blob_id' values when reading
 // or writing internal blobs.
 enum InternalBlobId {
-  // The token authorization key, encrypted by the TPM.
+  // The token authorization key, encrypted by the security element.
   kEncryptedAuthKey,
   // The token root key, encrypted by the authorization key.
   kEncryptedRootKey,

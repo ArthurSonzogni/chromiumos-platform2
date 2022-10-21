@@ -318,6 +318,11 @@ EXPORT_SPEC std::string ConvertFromBIGNUM(const BIGNUM* bignum,
 // Returns false if big_integer is empty, b is nullptr, or conversion fails.
 EXPORT_SPEC bool ConvertToBIGNUM(const std::string& big_integer, BIGNUM* b);
 
+// Convert string |big_integer| into pre-allocated OpenSSL BIGNUM.
+// Returns false if big_integer is empty, b is nullptr, or conversion fails.
+EXPORT_SPEC bool ConvertBlobToBIGNUM(const brillo::Blob& big_integer,
+                                     BIGNUM* b);
+
 // Convert the public key consisting of |modulus| and |exponent| to an RSA
 // object and return it on success, otherwise, return nullptr.
 EXPORT_SPEC crypto::ScopedRSA NumberToScopedRsa(const std::string& modulus,

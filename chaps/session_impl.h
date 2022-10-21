@@ -13,6 +13,7 @@
 #include <vector>
 
 #include <crypto/scoped_openssl_types.h>
+#include <libhwsec/frontend/chaps/frontend.h>
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
 
@@ -20,14 +21,12 @@
 #include "chaps/chaps_metrics.h"
 #include "chaps/object.h"
 #include "chaps/object_pool.h"
-#include "chaps/tpm_utility.h"
 #include "pkcs11/cryptoki.h"
 
 namespace chaps {
 
 class ChapsFactory;
 class ObjectPool;
-class TPMUtility;
 
 // SessionImpl is the interface for a PKCS #11 session.  This component is
 // responsible for maintaining session state including the state of any multi-
@@ -61,11 +60,11 @@ class SessionImpl : public Session {
   // The ownership and management of the pointers provided here are outside the
   // scope of this class. Typically, the object pool will be managed by the slot
   // manager and will be shared by all sessions associated with the same slot.
-  // The tpm and factory objects are typically singletons and shared across all
-  // sessions and slots.
+  // The hwsec and factory objects are typically singletons and shared across
+  // all sessions and slots.
   SessionImpl(int slot_id,
               ObjectPool* token_object_pool,
-              TPMUtility* tpm_utility,
+              hwsec::ChapsFrontend* hwsec,
               ChapsFactory* factory,
               HandleGenerator* handle_generator,
               bool is_read_only,
@@ -184,21 +183,20 @@ class SessionImpl : public Session {
                                   const std::string& public_exponent,
                                   Object* public_object,
                                   Object* private_object);
-  bool GenerateRSAKeyPairTPM(int modulus_bits,
-                             const std::string& public_exponent,
-                             Object* public_object,
-                             Object* private_object);
+  bool GenerateRSAKeyPairHwsec(int modulus_bits,
+                               const std::string& public_exponent,
+                               Object* public_object,
+                               Object* private_object);
 
   CK_RV GenerateECCKeyPair(Object* public_object, Object* private_object);
   bool GenerateECCKeyPairSoftware(const crypto::ScopedEC_KEY& key,
                                   Object* public_object,
                                   Object* private_object);
-  bool GenerateECCKeyPairTPM(const crypto::ScopedEC_KEY& key,
-                             int curve_nid,
-                             Object* public_object,
-                             Object* private_object);
+  bool GenerateECCKeyPairHwsec(const crypto::ScopedEC_KEY& key,
+                               int curve_nid,
+                               Object* public_object,
+                               Object* private_object);
 
-  std::string GenerateRandomSoftware(int num_bytes);
   // Provides operation output and handles the buffer-too-small case.
   // The output data must be in context->data_.
   // required_out_length - In: The maximum number of bytes that can be received.
@@ -210,7 +208,7 @@ class SessionImpl : public Session {
   // Returns the key usage flag that must be set in order to perform the given
   // operation (e.g. kEncrypt requires CKA_ENCRYPT to be TRUE).
   CK_ATTRIBUTE_TYPE GetRequiredKeyUsage(OperationType operation);
-  bool GetTPMKeyHandle(const Object* key, int* key_handle);
+  hwsec::StatusOr<hwsec::Key> GetHwsecKey(const Object* key);
 
   // RSA operations
   bool RSAEncrypt(OperationContext* context);
@@ -222,10 +220,10 @@ class SessionImpl : public Session {
 
   // ECC operations
   bool ECCSign(OperationContext* context);
-  bool ECCSignTPM(const std::string& input,
-                  CK_MECHANISM_TYPE signing_mechanism,
-                  const Object* key_object,
-                  std::string* signature);
+  bool ECCSignHwsec(const std::string& input,
+                    CK_MECHANISM_TYPE signing_mechanism,
+                    const Object* key_object,
+                    std::string* signature);
   bool ECCSignSoftware(const std::string& input,
                        const Object* key_object,
                        std::string* signature);
@@ -233,9 +231,9 @@ class SessionImpl : public Session {
                   const std::string& signed_data,
                   const std::string& signature);
 
-  // Wraps the given private key using the TPM and deletes all sensitive
+  // Wraps the given private key using the HWSec and deletes all sensitive
   // attributes. This is called when a private key is imported. On success,
-  // the private key can only be accessed by the TPM.
+  // the private key can only be accessed by the HWSec.
   CK_RV WrapPrivateKey(Object* object);
   CK_RV WrapRSAPrivateKey(Object* object);
   CK_RV WrapECCPrivateKey(Object* object);
@@ -245,12 +243,12 @@ class SessionImpl : public Session {
   size_t find_results_offset_;
   bool find_results_valid_;
   bool is_read_only_;
-  std::map<const Object*, int> object_tpm_handle_map_;
+  std::map<const Object*, hwsec::ScopedKey> object_key_map_;
   OperationContext operation_context_[kNumOperationTypes];
   int slot_id_;
   std::unique_ptr<ObjectPool> session_object_pool_;
   ObjectPool* token_object_pool_;
-  TPMUtility* tpm_utility_;
+  hwsec::ChapsFrontend* hwsec_;
   ChapsMetrics* chaps_metrics_;
 };
 

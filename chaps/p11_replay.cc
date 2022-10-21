@@ -1057,7 +1057,7 @@ void PrintHelp() {
       " : Generates a key pair suitable for replay tests.\n");
   printf(
       "  --generate_delete : Generates a key pair and deletes it. This is "
-      "useful for comparing key generation on different TPM models.\n");
+      "useful for comparing key generation on different HWSec backend.\n");
   printf(
       "  --import --path=<path to file> --type=<cert, privkey, pubkey>"
       " --id=<token id str>"

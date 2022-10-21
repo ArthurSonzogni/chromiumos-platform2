@@ -23,10 +23,11 @@
 #include <base/logging.h>
 #include <brillo/message_loops/base_message_loop.h>
 #include <brillo/secure_blob.h>
+#include <libhwsec/frontend/chaps/frontend.h>
+#include <libhwsec-foundation/status/status_chain_macros.h>
 #include <openssl/rand.h>
 #include <openssl/sha.h>
 
-#include "chaps/async_tpm_utility.h"
 #include "chaps/chaps_metrics.h"
 #include "chaps/chaps_utility.h"
 #include "chaps/isolate.h"
@@ -37,6 +38,7 @@
 
 using base::FilePath;
 using brillo::SecureBlob;
+using hwsec::TPMError;
 using std::map;
 using std::shared_ptr;
 using std::string;
@@ -137,6 +139,10 @@ constexpr MechanismInfoPair kTPM2OnlyMechanismInfo[] = {
      {256, 256, CKF_HW | CKF_SIGN | CKF_VERIFY | kCommonECParameters}},
 };
 
+// The TPM_SPEC_FAMILY of TPM2.0.
+// ASCII "2.0" with null terminator.
+constexpr uint32_t kTpm2Family = 0x322E3000;
+
 // Computes an authorization data hash as it is stored in the database.
 string HashAuthData(const SecureBlob& auth_data) {
   string version(1, kAuthDataHashVersion);
@@ -203,31 +209,41 @@ void LogTokenReinitializedFromFlagFile() {
                << " indicated that token " << reinitialized_token_path
                << " has been reinitialized.";
 }
+
 }  // namespace
 
 SlotManagerImpl::SlotManagerImpl(ChapsFactory* factory,
-                                 AsyncTPMUtility* tpm_utility,
+                                 hwsec::ChapsFrontend* hwsec,
                                  bool auto_load_system_token,
                                  SystemShutdownBlocker* system_shutdown_blocker,
                                  ChapsMetrics* chaps_metrics)
     : factory_(factory),
       last_handle_(0),
-      tpm_utility_(tpm_utility),
+      hwsec_(hwsec),
       auto_load_system_token_(auto_load_system_token),
       is_initialized_(false),
+      hwsec_enabled_(std::nullopt),
+      hwsec_ready_(false),
       system_shutdown_blocker_(system_shutdown_blocker),
       chaps_metrics_(chaps_metrics) {
   CHECK(factory_);
-  CHECK(tpm_utility_);
+  CHECK(hwsec_);
   CHECK(chaps_metrics_);
 
-  // Populate mechanism info for mechanisms supported by all TPM versions.
+  // Populate mechanism info for mechanisms supported by all possible HWSec chip
+  // family.
   mechanism_info_.insert(std::begin(kDefaultMechanismInfo),
                          std::end(kDefaultMechanismInfo));
-  if (tpm_utility_->GetTPMVersion() == TPMVersion::TPM2_0) {
-    // Populate mechanism info for mechanisms supported by TPM2.0 only.
-    mechanism_info_.insert(std::begin(kTPM2OnlyMechanismInfo),
-                           std::end(kTPM2OnlyMechanismInfo));
+
+  hwsec::StatusOr<uint32_t> family = hwsec_->GetFamily();
+  if (family.ok()) {
+    if (family.value() == kTpm2Family) {
+      // Populate mechanism info for mechanisms supported by TPM2.0 only.
+      mechanism_info_.insert(std::begin(kTPM2OnlyMechanismInfo),
+                             std::end(kTPM2OnlyMechanismInfo));
+    }
+  } else {
+    LOG(WARNING) << "Failed to get the hwsec chip family: " << family.status();
   }
 
   // Add default isolate.
@@ -239,33 +255,48 @@ SlotManagerImpl::SlotManagerImpl(ChapsFactory* factory,
   AddSlots(2);
 }
 
-SlotManagerImpl::~SlotManagerImpl() {
-  LOG(INFO) << "SlotManagerImpl is shutting down.";
-  for (size_t i = 0; i < slot_list_.size(); ++i) {
-    if (tpm_utility_->IsTPMAvailable()) {
-      // Unload any keys that have been loaded in the TPM.
-      LOG(INFO) << "Unloading keys for slot " << i << ".";
-      tpm_utility_->UnloadKeysForSlot(i);
-    }
+SlotManagerImpl::~SlotManagerImpl() {}
+
+bool SlotManagerImpl::HwsecIsEnabled() {
+  if (hwsec_enabled_.has_value()) {
+    return hwsec_enabled_.value();
   }
-  LOG(INFO) << "SlotManagerImpl destructor done.";
+
+  ASSIGN_OR_RETURN(hwsec_enabled_, hwsec_->IsEnabled(),
+                   _.WithStatus<TPMError>("Failed to get hwsec enabled status")
+                       .LogError()
+                       .As(false));
+
+  return hwsec_enabled_.value();
+}
+
+bool SlotManagerImpl::HwsecIsReady() {
+  if (hwsec_ready_) {
+    return true;
+  }
+
+  ASSIGN_OR_RETURN(hwsec_ready_, hwsec_->IsReady(),
+                   _.WithStatus<TPMError>("Failed to get hwsec ready status")
+                       .LogError()
+                       .As(false));
+
+  return hwsec_ready_;
 }
 
 bool SlotManagerImpl::Init() {
   LogTokenReinitializedFromFlagFile();
+
   // If the SRK is ready we expect the rest of the init work to succeed.
-  bool tpm_available = tpm_utility_->IsTPMAvailable();
-  bool expect_success = tpm_available && tpm_utility_->IsSRKReady();
+  bool tpm_available = HwsecIsEnabled();
+  bool expect_success = tpm_available && HwsecIsReady();
 
-  if (tpm_available)
-    chaps_metrics_->ReportTPMAvailabilityStatus(
-        TPMAvailabilityStatus::kTPMAvailable);
-  else
-    chaps_metrics_->ReportTPMAvailabilityStatus(
-        TPMAvailabilityStatus::kTPMUnavailable);
+  chaps_metrics_->ReportTPMAvailabilityStatus(
+      tpm_available ? TPMAvailabilityStatus::kTPMAvailable
+                    : TPMAvailabilityStatus::kTPMUnavailable);
 
-  if (!InitStage2() && expect_success)
+  if (!InitStage2() && expect_success) {
     return false;
+  }
 
   return true;
 }
@@ -273,19 +304,18 @@ bool SlotManagerImpl::Init() {
 bool SlotManagerImpl::InitStage2() {
   if (is_initialized_)
     return true;
-  if (tpm_utility_->IsTPMAvailable()) {
-    if (!tpm_utility_->IsSRKReady()) {
-      LOG(ERROR) << "InitStage2 failed because SRK is not ready";
+
+  if (HwsecIsEnabled()) {
+    if (!HwsecIsReady()) {
+      LOG(ERROR) << "InitStage2 failed because HWSec is not ready";
       return false;
     }
-    // Mix in some random bytes from the TPM to the openssl prng.
-    string random;
-    if (!tpm_utility_->GenerateRandom(128, &random)) {
-      LOG(ERROR) << "TPM failed to generate random data.";
-      return false;
-    }
-    RAND_seed(ConvertStringToByteBuffer(random.data()), random.length());
+    // Mix in some random bytes from the secure element to the openssl prng.
+    ASSIGN_OR_RETURN(brillo::Blob data, hwsec_->GetRandomBlob(128),
+                     _.LogError().As(false));
+    RAND_seed(data.data(), data.size());
   }
+
   if (auto_load_system_token_) {
     if (base::DirectoryExists(FilePath(kSystemTokenPath))) {
       // Setup the system token.
@@ -366,8 +396,8 @@ int SlotManagerImpl::OpenSession(const SecureBlob& isolate_credential,
   CHECK(IsTokenPresent(slot_id));
 
   shared_ptr<Session> session(factory_->CreateSession(
-      slot_id, slot_list_[slot_id].token_object_pool.get(), tpm_utility_, this,
-      is_read_only));
+      slot_id, slot_list_[slot_id].token_object_pool.get(),
+      HwsecIsEnabled() ? hwsec_ : nullptr, this, is_read_only));
   CHECK(session.get());
   int session_id = CreateHandle();
   slot_list_[slot_id].sessions[session_id] = session;
@@ -439,20 +469,15 @@ bool SlotManagerImpl::OpenIsolate(SecureBlob* isolate_credential,
     *new_isolate_created = false;
   } else {
     VLOG(1) << "Creating new isolate.";
-    std::string credential_string;
-    if (tpm_utility_->IsTPMAvailable()) {
-      if (!tpm_utility_->GenerateRandom(kIsolateCredentialBytes,
-                                        &credential_string)) {
-        LOG(ERROR) << "Error generating random bytes for isolate credential";
-        return false;
-      }
+    SecureBlob new_isolate_credential;
+    if (HwsecIsEnabled()) {
+      ASSIGN_OR_RETURN(new_isolate_credential,
+                       hwsec_->GetRandomSecureBlob(kIsolateCredentialBytes),
+                       _.LogError().As(false));
     } else {
-      credential_string.resize(kIsolateCredentialBytes);
-      RAND_bytes(ConvertStringToByteBuffer(credential_string.data()),
-                 kIsolateCredentialBytes);
+      new_isolate_credential.resize(kIsolateCredentialBytes);
+      RAND_bytes(new_isolate_credential.data(), kIsolateCredentialBytes);
     }
-    SecureBlob new_isolate_credential(credential_string);
-    brillo::SecureClearContainer(credential_string);
 
     if (isolate_map_.find(new_isolate_credential) != isolate_map_.end()) {
 // TODO(b/211950732, b/211951349): Remove the compilation flag and FATAL once we
@@ -537,17 +562,17 @@ bool SlotManagerImpl::LoadTokenInternal(const SecureBlob& isolate_credential,
       this, slot_policy.get(), factory_->CreateObjectStore(path)));
   CHECK(object_pool.get());
 
-  if (tpm_utility_->IsTPMAvailable()) {
+  if (HwsecIsEnabled()) {
     if (!MigrateTokenIfNeeded(path, auth_data, object_pool)) {
       // Asynchronously Decrypting (or creating) the root key.
       // This has the effect that queries for public objects are responsive but
       // queries for private objects will be waiting for the root key to be
       // ready.
-      LoadTPMToken(base::DoNothing(), *slot_id, path, auth_data, object_pool);
+      LoadHwsecToken(base::DoNothing(), *slot_id, path, auth_data, object_pool);
     }
   } else {
     // Load a software-only token.
-    LOG(WARNING) << "No TPM is available. Loading a software-only token.";
+    LOG(WARNING) << "No HWSec is available. Loading a software-only token.";
     if (!LoadSoftwareToken(auth_data, object_pool.get())) {
       chaps_metrics_->ReportChapsTokenManagerStatus(
           "LoadToken", TokenManagerStatus::kFailedToLoadSoftwareToken);
@@ -604,23 +629,23 @@ bool SlotManagerImpl::MigrateTokenIfNeeded(const base::FilePath& path,
     SecureBlob root_key(root_key_str);
     brillo::SecureClearContainer(root_key_str);
 
-    // Asynchronously migrate the root key to TPM.
+    // Asynchronously migrate the root key to be backed by secure element.
     // This has the effect that queries for public objects are responsive but
     // queries for private objects will be waiting for the root key to be
     // ready.
-    InitializeTPMTokenWithRootKey(base::DoNothing(), path, auth_data,
-                                  object_pool, root_key);
+    InitializeHwsecTokenWithRootKey(base::DoNothing(), path, auth_data,
+                                    object_pool, root_key);
     return true;
   }
 
   return false;
 }
 
-void SlotManagerImpl::LoadTPMToken(base::OnceCallback<void(bool)> callback,
-                                   int slot_id,
-                                   const base::FilePath& path,
-                                   const brillo::SecureBlob& auth_data,
-                                   std::shared_ptr<ObjectPool> object_pool) {
+void SlotManagerImpl::LoadHwsecToken(base::OnceCallback<void(bool)> callback,
+                                     int slot_id,
+                                     const base::FilePath& path,
+                                     const brillo::SecureBlob& auth_data,
+                                     std::shared_ptr<ObjectPool> object_pool) {
   if (system_shutdown_blocker_) {
     base::OnceClosure unblock_closure =
         base::BindOnce(&SystemShutdownBlocker::Unblock,
@@ -648,12 +673,12 @@ void SlotManagerImpl::LoadTPMToken(base::OnceCallback<void(bool)> callback,
   if (!object_pool->GetInternalBlob(kEncryptedAuthKey, &auth_key_blob) ||
       !object_pool->GetInternalBlob(kEncryptedRootKey, &encrypted_root_key)) {
     LOG(INFO) << "Initializing key hierarchy for token at " << path.value();
-    InitializeTPMToken(std::move(callback), path, auth_data, object_pool);
+    InitializeHwsecToken(std::move(callback), path, auth_data, object_pool);
     return;
   }
 
-  // Don't send the auth data to the TPM if it fails to verify against the
-  // saved hash.
+  // Don't send the auth data to the secure element if it fails to verify
+  // against the saved hash.
   object_pool->GetInternalBlob(kAuthDataHash, &saved_auth_data_hash);
   if (!CheckAuthDataValid(auth_data_hash, saved_auth_data_hash)) {
     LOG(ERROR) << "Failed to check the auth data is valid for token at "
@@ -664,46 +689,52 @@ void SlotManagerImpl::LoadTPMToken(base::OnceCallback<void(bool)> callback,
     if (object_pool->DeleteAll() != ObjectPool::Result::Success)
       LOG(WARNING) << "Failed to delete all existing objects.";
 
-    InitializeTPMToken(std::move(callback), path, auth_data, object_pool);
+    InitializeHwsecToken(std::move(callback), path, auth_data, object_pool);
     return;
   }
 
-  AsyncTPMUtility::UnsealDataCallback unseal_callback = base::BindOnce(
-      &SlotManagerImpl::LoadTPMTokenAfterUnseal, base::Unretained(this),
+  hwsec::ChapsFrontend::UnsealDataCallback unseal_callback = base::BindOnce(
+      &SlotManagerImpl::LoadHwsecTokenAfterUnseal, base::Unretained(this),
       std::move(callback), path, auth_data, object_pool);
-  tpm_utility_->UnsealDataAsync(auth_key_blob, encrypted_root_key,
-                                Sha1(auth_data), std::move(unseal_callback));
+
+  hwsec_->UnsealDataAsync(
+      hwsec::ChapsSealedData{
+          .key_blob = brillo::BlobFromString(auth_key_blob),
+          .encrypted_data = brillo::BlobFromString(encrypted_root_key),
+      },
+      Sha1(auth_data), std::move(unseal_callback));
+
   return;
 }
 
-void SlotManagerImpl::LoadTPMTokenAfterUnseal(
+void SlotManagerImpl::LoadHwsecTokenAfterUnseal(
     base::OnceCallback<void(bool)> callback,
     const base::FilePath& path,
     const brillo::SecureBlob& auth_data,
     std::shared_ptr<ObjectPool> object_pool,
-    bool success,
-    brillo::SecureBlob unsealed_data) {
-  if (!success) {
-    LOG(ERROR) << "Failed to unseal for token at " << path.value()
-               << ", reinitializing token.";
+    hwsec::StatusOr<brillo::SecureBlob> unsealed_data) {
+  if (!unsealed_data.ok()) {
+    LOG(ERROR) << "Failed to unseal for token at " << path.value() << ": "
+               << unsealed_data.status() << ", reinitializing token.";
     chaps_metrics_->ReportReinitializingTokenStatus(
         ReinitializingTokenStatus::kFailedToUnseal);
     CreateTokenReinitializedFlagFile(path);
     if (object_pool->DeleteAll() != ObjectPool::Result::Success)
       LOG(WARNING) << "Failed to delete all existing objects.";
 
-    InitializeTPMToken(std::move(callback), path, auth_data, object_pool);
+    InitializeHwsecToken(std::move(callback), path, auth_data, object_pool);
     return;
   }
-  LoadTPMTokenFinal(std::move(callback), path, auth_data, object_pool,
-                    unsealed_data);
+  LoadHwsecTokenFinal(std::move(callback), path, auth_data, object_pool,
+                      unsealed_data.value());
 }
 
-void SlotManagerImpl::LoadTPMTokenFinal(base::OnceCallback<void(bool)> callback,
-                                        const base::FilePath& path,
-                                        const brillo::SecureBlob& auth_data,
-                                        std::shared_ptr<ObjectPool> object_pool,
-                                        brillo::SecureBlob root_key) {
+void SlotManagerImpl::LoadHwsecTokenFinal(
+    base::OnceCallback<void(bool)> callback,
+    const base::FilePath& path,
+    const brillo::SecureBlob& auth_data,
+    std::shared_ptr<ObjectPool> object_pool,
+    brillo::SecureBlob root_key) {
   if (!object_pool->SetEncryptionKey(root_key)) {
     LOG(ERROR) << "SetEncryptionKey failed for token at " << path.value();
     std::move(callback).Run(false);
@@ -723,76 +754,75 @@ void SlotManagerImpl::LoadTPMTokenFinal(base::OnceCallback<void(bool)> callback,
   std::move(callback).Run(false);
 }
 
-void SlotManagerImpl::InitializeTPMToken(
+void SlotManagerImpl::InitializeHwsecToken(
     base::OnceCallback<void(bool)> callback,
     const base::FilePath& path,
     const brillo::SecureBlob& auth_data,
     std::shared_ptr<ObjectPool> object_pool) {
-  AsyncTPMUtility::GenerateRandomCallback gen_rand_callback =
-      base::BindOnce(&SlotManagerImpl::InitializeTPMTokenAfterGenerateRandom,
+  hwsec::ChapsFrontend::GetRandomSecureBlobCallback gen_rand_callback =
+      base::BindOnce(&SlotManagerImpl::InitializeHwsecTokenAfterGenerateRandom,
                      base::Unretained(this), std::move(callback), path,
                      auth_data, object_pool);
-  tpm_utility_->GenerateRandomAsync(kUserKeySize, std::move(gen_rand_callback));
+  hwsec_->GetRandomSecureBlobAsync(kUserKeySize, std::move(gen_rand_callback));
 }
 
-void SlotManagerImpl::InitializeTPMTokenAfterGenerateRandom(
+void SlotManagerImpl::InitializeHwsecTokenAfterGenerateRandom(
     base::OnceCallback<void(bool)> callback,
     const base::FilePath& path,
     const brillo::SecureBlob& auth_data,
     std::shared_ptr<ObjectPool> object_pool,
-    bool success,
-    std::string random_data) {
-  if (!success) {
-    LOG(ERROR) << "Failed to generate user encryption key.";
+    hwsec::StatusOr<brillo::SecureBlob> random_data) {
+  if (!random_data.ok()) {
+    LOG(ERROR) << "Failed to generate user encryption key: "
+               << random_data.status();
     std::move(callback).Run(false);
     return;
   }
 
-  SecureBlob root_key(random_data.begin(), random_data.end());
-
-  InitializeTPMTokenWithRootKey(std::move(callback), path, auth_data,
-                                object_pool, root_key);
-
-  brillo::SecureClearContainer(random_data);
+  InitializeHwsecTokenWithRootKey(std::move(callback), path, auth_data,
+                                  object_pool, random_data.value());
 }
 
-void SlotManagerImpl::InitializeTPMTokenWithRootKey(
+void SlotManagerImpl::InitializeHwsecTokenWithRootKey(
     base::OnceCallback<void(bool)> callback,
     const base::FilePath& path,
     const brillo::SecureBlob& auth_data,
     std::shared_ptr<ObjectPool> object_pool,
     brillo::SecureBlob root_key) {
-  AsyncTPMUtility::SealDataCallback seal_callback = base::BindOnce(
-      &SlotManagerImpl::InitializeTPMTokenAfterSealData, base::Unretained(this),
-      std::move(callback), path, auth_data, object_pool, root_key);
-  tpm_utility_->SealDataAsync(root_key.to_string(), Sha1(auth_data),
-                              std::move(seal_callback));
+  hwsec::ChapsFrontend::SealDataCallback seal_callback =
+      base::BindOnce(&SlotManagerImpl::InitializeHwsecTokenAfterSealData,
+                     base::Unretained(this), std::move(callback), path,
+                     auth_data, object_pool, root_key);
+
+  hwsec_->SealDataAsync(root_key, Sha1(auth_data), std::move(seal_callback));
 }
 
-void SlotManagerImpl::InitializeTPMTokenAfterSealData(
+void SlotManagerImpl::InitializeHwsecTokenAfterSealData(
     base::OnceCallback<void(bool)> callback,
     const base::FilePath& path,
     const brillo::SecureBlob& auth_data,
     std::shared_ptr<ObjectPool> object_pool,
     brillo::SecureBlob root_key,
-    bool success,
-    std::string key_blob,
-    std::string encrypted_data) {
-  if (!success) {
-    LOG(ERROR) << "Failed to seal user encryption key.";
+    hwsec::StatusOr<hwsec::ChapsSealedData> sealed_data) {
+  if (!sealed_data.ok()) {
+    LOG(ERROR) << "Failed to seal user encryption key: "
+               << sealed_data.status();
     std::move(callback).Run(false);
     return;
   }
 
-  if (!object_pool->SetInternalBlob(kEncryptedAuthKey, key_blob) ||
-      !object_pool->SetInternalBlob(kEncryptedRootKey, encrypted_data)) {
+  if (!object_pool->SetInternalBlob(
+          kEncryptedAuthKey, brillo::BlobToString(sealed_data->key_blob)) ||
+      !object_pool->SetInternalBlob(
+          kEncryptedRootKey,
+          brillo::BlobToString(sealed_data->encrypted_data))) {
     LOG(ERROR) << "Failed to write key hierarchy blobs.";
     std::move(callback).Run(false);
     return;
   }
 
-  LoadTPMTokenFinal(std::move(callback), path, auth_data, object_pool,
-                    root_key);
+  LoadHwsecTokenFinal(std::move(callback), path, auth_data, object_pool,
+                      root_key);
 }
 
 bool SlotManagerImpl::LoadSoftwareToken(const SecureBlob& auth_data,
@@ -907,10 +937,6 @@ bool SlotManagerImpl::UnloadToken(const SecureBlob& isolate_credential,
     chaps_metrics_->ReportChapsTokenManagerStatus(
         "UnloadToken", TokenManagerStatus::kInvalidIsolateCredential);
     return false;
-  }
-
-  if (tpm_utility_->IsTPMAvailable()) {
-    tpm_utility_->UnloadKeysForSlotAsync(slot_id, base::DoNothing());
   }
 
   CloseAllSessions(isolate_credential, slot_id);
