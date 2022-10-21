@@ -11,6 +11,7 @@
 #include <base/files/file_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
+#include <metrics/bootstat.h>
 #include <re2/re2.h>
 
 #include "diagnostics/cros_healthd/fetchers/boot_performance_fetcher.h"
@@ -23,7 +24,6 @@ namespace diagnostics {
 namespace mojo_ipc = ::ash::cros_healthd::mojom;
 
 constexpr char kRelativeBiosTimesPath[] = "var/log/bios_times.txt";
-constexpr char kRelativeUptimeLoginPath[] = "tmp/uptime-login-prompt-visible";
 constexpr char kRelativeShutdownMetricsPath[] = "var/log/metrics";
 constexpr char kRelativePreviousPowerdLogPath[] =
     "var/log/power_manager/powerd.PREVIOUS";
@@ -123,22 +123,15 @@ BootPerformanceFetcher::ParseBootFirmwareTime(double* firmware_time) {
 
 std::optional<mojo_ipc::ProbeErrorPtr>
 BootPerformanceFetcher::ParseBootKernelTime(double* kernel_time) {
-  const auto& data_path = context_->root_dir().Append(kRelativeUptimeLoginPath);
-  std::string content;
-  if (!ReadAndTrimString(data_path, &content)) {
+  auto events = bootstat::BootStat(context_->root_dir())
+                    .GetEventTimings("login-prompt-visible");
+  if (!events || events->empty()) {
     return CreateAndLogProbeError(mojo_ipc::ErrorType::kFileReadError,
-                                  "Failed to read file: " + data_path.value());
+                                  "Failed to get login-prompt stats");
   }
 
-  // There might by multiple lines in the content, here is an example:
-  // 6.535802230\n37.258371903\n129.271920462
-  // We only care about the first occurrence.
-  auto value = content.substr(0, content.find_first_of("\n"));
-  if (!base::StringToDouble(value, kernel_time)) {
-    return CreateAndLogProbeError(mojo_ipc::ErrorType::kParseError,
-                                  "Failed to parse uptime log value: " + value);
-  }
-
+  // There may be multiple events; we only care about the first occurrence.
+  *kernel_time = (*events)[0].uptime.InSecondsF();
   return std::nullopt;
 }
 

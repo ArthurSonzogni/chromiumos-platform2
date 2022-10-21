@@ -33,10 +33,9 @@
 namespace bootstat {
 
 namespace {
-//
-// Default path to directory where output statistics will be stored.
-//
-static const char kDefaultOutputDirectoryName[] = "/tmp";
+// Default root-relative path to directory where output statistics will be
+// stored.
+static const char kDefaultOutputDirectoryName[] = "tmp";
 
 // Parse a line of text containing one or more space-separated columns of
 // decimal numbers. For example (without the quotes):
@@ -150,8 +149,10 @@ std::optional<struct rtc_time> BootStatSystem::GetRtcTime(
   return {rtc_time};
 }
 
-BootStat::BootStat()
-    : BootStat(base::FilePath(kDefaultOutputDirectoryName),
+BootStat::BootStat() : BootStat(base::FilePath("/")) {}
+
+BootStat::BootStat(const base::FilePath& root_path)
+    : BootStat(root_path.Append(base::FilePath(kDefaultOutputDirectoryName)),
                std::make_unique<BootStatSystem>()) {}
 
 BootStat::BootStat(const base::FilePath& output_directory_path,

@@ -21,7 +21,10 @@ using ::ash::cros_healthd::mojom::ErrorType;
 using ::testing::Return;
 
 const char kFakeBiosTimes[] = "texts\n...\n\nTotal Time: 10,111,111";
+
+const char kRelativeUptimeLoginPath[] = "tmp/uptime-login-prompt-visible";
 const char kFakeUptimeLog[] = "7.666666666\n17.000000000";
+
 const char kFakeProcUptime[] = "100.33 126.43";
 const char kFakePowerdShutdownLog[] =
     "texts\n"
@@ -194,7 +197,7 @@ TEST_F(BootPerformanceFetcherTest, TestWrongUptimeLogInfo) {
 
   auto result = FetchBootPerformanceInfo();
   ASSERT_TRUE(result->is_error());
-  EXPECT_EQ(result->get_error()->type, ErrorType::kParseError);
+  EXPECT_EQ(result->get_error()->type, ErrorType::kFileReadError);
 }
 
 TEST_F(BootPerformanceFetcherTest, TestWrongProcUptimeInfo) {

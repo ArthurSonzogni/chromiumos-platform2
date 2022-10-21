@@ -52,6 +52,8 @@ class BootStatSystem {
 class BRILLO_EXPORT BootStat {
  public:
   BootStat();
+  // Constructor for external tests, that may want to modify the root path.
+  explicit BootStat(const base::FilePath& root_path);
   // Constructor for testing purpose: changes the default output directory and
   // allows replacing BootStatSystem implementation with a fake one.
   BootStat(const base::FilePath& output_directory_path,

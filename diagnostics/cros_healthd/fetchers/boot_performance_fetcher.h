@@ -17,7 +17,6 @@ namespace diagnostics {
 
 // Relative path to boot up information.
 extern const char kRelativeBiosTimesPath[];
-extern const char kRelativeUptimeLoginPath[];
 
 // Relative path to shutdown information.
 extern const char kRelativeShutdownMetricsPath[];

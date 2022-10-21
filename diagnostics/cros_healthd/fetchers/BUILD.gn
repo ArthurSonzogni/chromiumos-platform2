@@ -29,6 +29,7 @@ pkg_config("libcros_healthd_fetchers_pkg_deps") {
 
 source_set("libcros_healthd_fetchers") {
   configs += [ ":libcros_healthd_fetchers_pkg_deps" ]
+  libs = [ "bootstat" ]
   deps = [
     "//diagnostics/common:libcommon",
     "//diagnostics/cros_healthd/fetchers/storage:storage_data_source",
