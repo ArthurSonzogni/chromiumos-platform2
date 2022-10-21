@@ -10,33 +10,89 @@
 #include <base/files/scoped_temp_dir.h>
 #include <gtest/gtest.h>
 
+#include "base/files/file_path.h"
+#include "base/files/file_util.h"
 #include "oobe_config/oobe_config.h"
+#include "oobe_config/oobe_config_test.h"
 #include "oobe_config/rollback_constants.h"
-
-using base::ScopedTempDir;
-using std::string;
-using std::unique_ptr;
 
 namespace oobe_config {
 
-class LoadOobeConfigRollbackTest : public ::testing::Test {
+class LoadOobeConfigRollbackTest : public OobeConfigTest {
  protected:
   void SetUp() override {
-    oobe_config_ = std::make_unique<OobeConfig>();
-    ASSERT_TRUE(fake_root_dir_.CreateUniqueTempDir());
-    oobe_config_->set_prefix_path_for_testing(fake_root_dir_.GetPath());
+    OobeConfigTest::SetUp();
+
     load_config_ = std::make_unique<LoadOobeConfigRollback>(oobe_config_.get());
+
+    base::CreateDirectory(fake_root_dir_.GetPath().Append(
+        base::FilePath(std::string(kRestoreTempPath).substr(1))));
+    oobe_config_->WriteFile(
+        base::FilePath(kSaveTempPath).Append(kOobeCompletedFileName), "");
   }
 
-  base::ScopedTempDir fake_root_dir_;
+  void FakePreceedingRollback() {
+    // First create rollback data and pstore data.
+    ASSERT_TRUE(oobe_config_->EncryptedRollbackSave());
+    std::string rollback_data;
+    ASSERT_TRUE(oobe_config_->ReadFile(
+        base::FilePath(kUnencryptedStatefulRollbackDataFile), &rollback_data));
+    std::string pstore_data;
+    ASSERT_TRUE(oobe_config_->ReadFile(base::FilePath(kRollbackDataForPmsgFile),
+                                       &pstore_data));
 
-  unique_ptr<LoadOobeConfigRollback> load_config_;
-  unique_ptr<OobeConfig> oobe_config_;
+    // Move data around to fake preceding rollback.
+    ASSERT_TRUE(oobe_config_->WriteFile(
+        base::FilePath(kUnencryptedStatefulRollbackDataFile), rollback_data));
+    ASSERT_TRUE(oobe_config_->WriteFile(
+        base::FilePath(kPstorePath).Append("pmsg-ramoops-0"), pstore_data));
+  }
+
+  void DeletePstoreData() {
+    ASSERT_TRUE(oobe_config_->WriteFile(
+        base::FilePath(kPstorePath).Append("pmsg-ramoops-0"), ""));
+  }
+
+  std::unique_ptr<LoadOobeConfigRollback> load_config_;
 };
 
-TEST_F(LoadOobeConfigRollbackTest, SimpleTest) {
-  string config, enrollment_domain;
-  EXPECT_FALSE(load_config_->GetOobeConfigJson(&config, &enrollment_domain));
+TEST_F(LoadOobeConfigRollbackTest, NoRollbackNoJson) {
+  std::string config, enrollment_domain;
+  ASSERT_FALSE(load_config_->GetOobeConfigJson(&config, &enrollment_domain));
+}
+
+TEST_F(LoadOobeConfigRollbackTest, DecryptAndParse) {
+  FakePreceedingRollback();
+
+  std::string config, enrollment_domain;
+  ASSERT_TRUE(load_config_->GetOobeConfigJson(&config, &enrollment_domain));
+}
+
+TEST_F(LoadOobeConfigRollbackTest, SecondRequestDoesNotNeedPstore) {
+  FakePreceedingRollback();
+
+  std::string config, enrollment_domain;
+  ASSERT_TRUE(load_config_->GetOobeConfigJson(&config, &enrollment_domain));
+
+  // Delete pstore data to make decryption impossible. This fakes the scenario
+  // where a reboot happens during rollback OOBE.
+  DeletePstoreData();
+
+  // Requesting config should still work because it re-uses previous data.
+  std::string config_saved;
+  ASSERT_TRUE(
+      load_config_->GetOobeConfigJson(&config_saved, &enrollment_domain));
+  ASSERT_EQ(config_saved, config);
+}
+
+TEST_F(LoadOobeConfigRollbackTest, DecryptionFailsGracefully) {
+  FakePreceedingRollback();
+  // Delete pstore data to fake the scenario where the device crashed or shut
+  // down during rollback. Pstore data is gone, so decryption will fail.
+  DeletePstoreData();
+
+  std::string config, enrollment_domain;
+  ASSERT_FALSE(load_config_->GetOobeConfigJson(&config, &enrollment_domain));
 }
 
 }  // namespace oobe_config

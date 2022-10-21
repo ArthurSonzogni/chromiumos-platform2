@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "oobe_config/oobe_config.h"
+#include "oobe_config/oobe_config_test.h"
 
 #include <string>
 #include <utility>
@@ -14,6 +14,7 @@
 #include <base/logging.h>
 #include <gtest/gtest.h>
 
+#include "oobe_config/oobe_config.h"
 #include "oobe_config/rollback_constants.h"
 #include "oobe_config/rollback_data.pb.h"
 
@@ -30,18 +31,12 @@ const char kNetworkConfig[] = R"({"NetworkConfigurations":[{
 
 namespace oobe_config {
 
-class OobeConfigTest : public ::testing::Test {
- protected:
-  void SetUp() override {
-    oobe_config_ = std::make_unique<OobeConfig>();
-    ASSERT_TRUE(fake_root_dir_.CreateUniqueTempDir());
-    oobe_config_->set_prefix_path_for_testing(fake_root_dir_.GetPath());
-    oobe_config_->set_network_config_for_testing(kNetworkConfig);
-  }
-
-  base::ScopedTempDir fake_root_dir_;
-  std::unique_ptr<OobeConfig> oobe_config_;
-};
+void OobeConfigTest::SetUp() {
+  oobe_config_ = std::make_unique<OobeConfig>();
+  ASSERT_TRUE(fake_root_dir_.CreateUniqueTempDir());
+  oobe_config_->set_prefix_path_for_testing(fake_root_dir_.GetPath());
+  oobe_config_->set_network_config_for_testing(kNetworkConfig);
+}
 
 TEST_F(OobeConfigTest, EncryptedSaveAndRestoreTest) {
   oobe_config_->WriteFile(
@@ -144,15 +139,15 @@ TEST_F(OobeConfigTest, FileExistsNo) {
   EXPECT_FALSE(oobe_config_->FileExists(file_path));
 }
 
-TEST_F(OobeConfigTest, NoRestorePending) {
-  EXPECT_FALSE(oobe_config_->ShouldRestoreRollbackData());
+TEST_F(OobeConfigTest, NoEncryptedData) {
+  EXPECT_FALSE(oobe_config_->HasEncryptedRollbackData());
 }
 
-TEST_F(OobeConfigTest, ShouldRestoreRollbackData) {
+TEST_F(OobeConfigTest, HasEncryptedData) {
   std::string content;
   EXPECT_TRUE(oobe_config_->WriteFile(
       base::FilePath(kUnencryptedStatefulRollbackDataFile), content));
-  EXPECT_TRUE(oobe_config_->ShouldRestoreRollbackData());
+  EXPECT_TRUE(oobe_config_->HasEncryptedRollbackData());
 }
 
 TEST_F(OobeConfigTest, ShouldSaveRollbackData) {

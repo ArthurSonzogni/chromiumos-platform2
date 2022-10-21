@@ -14,6 +14,7 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 
+#include "base/files/file_path.h"
 #include "oobe_config/network_exporter.h"
 #include "oobe_config/pstore_storage.h"
 #include "oobe_config/rollback_constants.h"
@@ -193,18 +194,11 @@ bool OobeConfig::EncryptedRollbackRestore() const {
   return true;
 }
 
-void OobeConfig::CleanupEncryptedStatefulDirectory() const {
-  base::FileEnumerator iter(
-      GetPrefixedFilePath(base::FilePath(kEncryptedStatefulRollbackDataFile)),
-      false, base::FileEnumerator::FILES);
-  for (auto file = iter.Next(); !file.empty(); file = iter.Next()) {
-    if (!base::DeleteFile(file)) {
-      LOG(ERROR) << "Couldn't delete " << file.value();
-    }
-  }
+bool OobeConfig::HasDecryptedRollbackData() const {
+  return FileExists(base::FilePath(kEncryptedStatefulRollbackDataFile));
 }
 
-bool OobeConfig::ShouldRestoreRollbackData() const {
+bool OobeConfig::HasEncryptedRollbackData() const {
   return FileExists(base::FilePath(kUnencryptedStatefulRollbackDataFile));
 }
 

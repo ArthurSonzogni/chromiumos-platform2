@@ -30,29 +30,33 @@ bool LoadOobeConfigRollback::GetOobeConfigJson(string* config,
   *config = "";
   *enrollment_domain = "";
 
-  // Precondition for running rollback.
-  if (!oobe_config_->FileExists(base::FilePath(kRestoreTempPath))) {
-    LOG(ERROR) << "Restore destination path doesn't exist.";
-    return false;
-  }
+  // We use `kRestoreTempPath` to store decrypted rollback data. It should be
+  // created by tmpfiles config before starting oobe_config_restore daemon.
+  // Crash if it doesn't exist.
+  CHECK(oobe_config_->FileExists(base::FilePath(kRestoreTempPath)));
 
-  if (oobe_config_->ShouldRestoreRollbackData()) {
-    LOG(INFO) << "Starting rollback restore.";
+  if (oobe_config_->HasEncryptedRollbackData() &&
+      !oobe_config_->HasDecryptedRollbackData()) {
+    LOG(INFO) << "Decrypting rollback data.";
 
     // Decrypt the proto from kUnencryptedRollbackDataPath.
     bool restore_result = oobe_config_->EncryptedRollbackRestore();
 
     if (!restore_result) {
-      LOG(ERROR) << "Failed to restore rollback data";
+      LOG(ERROR)
+          << "Failed to decrypt rollback data. This is expected in rare cases, "
+             "e.g. when the TPM was cleared again during rollback OOBE.";
       metrics_.RecordRestoreResult(Metrics::OobeRestoreResult::kStage1Failure);
       return false;
     }
+  }
 
-    // We load the proto from kEncryptedStatefulRollbackDataPath.
+  if (oobe_config_->HasDecryptedRollbackData()) {
     string rollback_data_str;
     if (!oobe_config_->ReadFile(
             base::FilePath(kEncryptedStatefulRollbackDataFile),
             &rollback_data_str)) {
+      LOG(ERROR) << "Could not read decrypted rollback data file.";
       metrics_.RecordRestoreResult(Metrics::OobeRestoreResult::kStage3Failure);
       return false;
     }
@@ -68,11 +72,6 @@ bool LoadOobeConfigRollback::GetOobeConfigJson(string* config,
       metrics_.RecordRestoreResult(Metrics::OobeRestoreResult::kStage3Failure);
       return false;
     }
-
-    // If it succeeded, we remove all files from
-    // kEncryptedStatefulRollbackDataPath.
-    LOG(INFO) << "Cleaning up rollback data.";
-    oobe_config_->CleanupEncryptedStatefulDirectory();
 
     LOG(INFO) << "Rollback restore completed successfully.";
     metrics_.RecordRestoreResult(Metrics::OobeRestoreResult::kSuccess);

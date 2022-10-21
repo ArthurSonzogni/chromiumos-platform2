@@ -63,7 +63,8 @@ class OobeConfig {
   bool WriteFile(const base::FilePath& file_path,
                  const std::string& data) const;
 
-  bool ShouldRestoreRollbackData() const;
+  bool HasDecryptedRollbackData() const;
+  bool HasEncryptedRollbackData() const;
 
   bool ShouldSaveRollbackData() const;
   bool DeleteRollbackSaveFlagFile() const;

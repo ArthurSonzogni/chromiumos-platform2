@@ -7,7 +7,6 @@
 #include <base/logging.h>
 #include <brillo/syslog_logging.h>
 
-#include "oobe_config/rollback_constants.h"
 #include "oobe_config/rollback_helper.h"
 
 namespace {
