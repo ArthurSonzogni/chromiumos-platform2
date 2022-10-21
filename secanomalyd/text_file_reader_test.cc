@@ -17,20 +17,10 @@ namespace secanomalyd {
 
 using FileReaderRun = std::vector<std::string>;
 
-base::FilePath GetTestDataPath(const std::string& name, bool use_testdata) {
-  base::FilePath src = base::FilePath(getenv("SRC"));
-  if (use_testdata) {
-    src = src.Append("testdata");
-  }
-  return src.Append(name);
-}
-
 std::unique_ptr<TextFileReader> InitializeFileReaderForTest(
     const std::string& input_file_name) {
-  base::FilePath input_file_path =
-      GetTestDataPath(input_file_name, /*use_testdata=*/true);
-
-  return std::make_unique<TextFileReader>(input_file_path);
+  base::FilePath base_path = base::FilePath(getenv("SRC")).Append("testdata");
+  return std::make_unique<TextFileReader>(base_path.Append(input_file_name));
 }
 
 void ReaderTest(const std::unique_ptr<TextFileReader>& r,
