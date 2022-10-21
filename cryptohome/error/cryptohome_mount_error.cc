@@ -28,7 +28,9 @@ CryptohomeMountError::MakeStatusTrait::MountErrorUnset::MountErrorUnset(
 
 StatusChain<CryptohomeMountError>
 CryptohomeMountError::MakeStatusTrait::MountErrorUnset::Wrap(
-    hwsec_foundation::status::StatusChain<CryptohomeMountError> status) && {
+    hwsec_foundation::status::StatusChain<CryptohomeMountError> status
+    [[clang::param_typestate(unconsumed)]]  //
+    [[clang::return_typestate(consumed)]]) && {
   return NewStatus<CryptohomeMountError>(loc_, std::move(actions_),
                                          status->mount_error(), ec_)
       .Wrap(std::move(status));
@@ -68,7 +70,9 @@ CryptohomeMountError::MakeStatusTrait::operator()(
 
 StatusChain<CryptohomeMountError>
 CryptohomeMountError::MakeStatusTrait::ActionsUnset::Wrap(
-    hwsec_foundation::status::StatusChain<CryptohomeError> status) && {
+    hwsec_foundation::status::StatusChain<CryptohomeError> status
+    [[clang::param_typestate(unconsumed)]]  //
+    [[clang::return_typestate(consumed)]]) && {
   return NewStatus<CryptohomeMountError>(loc_, NoErrorAction(), mount_error_,
                                          ec_)
       .Wrap(std::move(status));

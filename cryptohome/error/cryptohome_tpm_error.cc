@@ -139,7 +139,9 @@ CryptohomeTPMError::MakeStatusTrait::Unactioned::Unactioned(
 
 StatusChain<CryptohomeTPMError>
 CryptohomeTPMError::MakeStatusTrait::Unactioned::Wrap(
-    StatusChain<CryptohomeTPMError> status) && {
+    StatusChain<CryptohomeTPMError> status  //
+    [[clang::param_typestate(unconsumed)]]  //
+    [[clang::return_typestate(consumed)]]) && {
   DCHECK(!status.ok());
   return NewStatus<CryptohomeTPMError>(unified_loc_, std::move(actions_),
                                        status->ToTPMRetryAction(), std::nullopt)

@@ -24,7 +24,7 @@ namespace error {
 // still be compatible with CryptohomeError.
 class CryptohomeMountError : public CryptohomeError {
  public:
-  struct MakeStatusTrait {
+  struct MakeStatusTrait : public hwsec_foundation::status::AlwaysNotOk {
     // |MountErrorUnset| represents an intermediate state, when we create an
     // error without fully specifying that error. That allows to require Wrap to
     // be called, or otherwise a type mismatch error will be raised.
@@ -35,9 +35,11 @@ class CryptohomeMountError : public CryptohomeError {
           const std::set<CryptohomeError::Action>& actions,
           const std::optional<user_data_auth::CryptohomeErrorCode> ec);
 
-      hwsec_foundation::status::StatusChain<CryptohomeMountError> Wrap(
-          hwsec_foundation::status::StatusChain<CryptohomeMountError>
-              status) &&;
+      [[clang::return_typestate(unconsumed)]]  //
+      hwsec_foundation::status::StatusChain<CryptohomeMountError>
+      Wrap(hwsec_foundation::status::StatusChain<CryptohomeMountError> status
+           [[clang::param_typestate(unconsumed)]]  //
+           [[clang::return_typestate(consumed)]]) &&;
 
      private:
       const ErrorLocationPair loc_;
@@ -55,8 +57,11 @@ class CryptohomeMountError : public CryptohomeError {
                    const MountError mount_error,
                    const std::optional<user_data_auth::CryptohomeErrorCode> ec);
 
-      hwsec_foundation::status::StatusChain<CryptohomeMountError> Wrap(
-          hwsec_foundation::status::StatusChain<CryptohomeError> status) &&;
+      [[clang::return_typestate(unconsumed)]]  //
+      hwsec_foundation::status::StatusChain<CryptohomeMountError>
+      Wrap(hwsec_foundation::status::StatusChain<CryptohomeError> status
+           [[clang::param_typestate(unconsumed)]]  //
+           [[clang::return_typestate(consumed)]]) &&;
 
      private:
       const ErrorLocationPair loc_;

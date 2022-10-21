@@ -27,16 +27,12 @@ class TpmAuthBlockUtils {
   // A static method that converts a TPMRetryAction into CryptoError.
   static CryptoError TPMRetryActionToCrypto(const hwsec::TPMRetryAction retry);
 
-  // A static method that converts an error object.
-  // |err| shouldn't be a nullptr.
-  static CryptoError TPMErrorToCrypto(const hwsec::Status& err);
-
   // A static method that converts a TPM error into CryptohomeCryptoError.
-  static CryptoStatus TPMErrorToCryptohomeCryptoError(hwsec::Status err);
-
-  // A static method to report which errors can be recovered from with a retry.
-  // |err| shouldn't be a nullptr.
-  static bool TPMErrorIsRetriable(const hwsec::Status& err);
+  [[clang::return_typestate(unconsumed)]]  //
+  static CryptoStatus
+  TPMErrorToCryptohomeCryptoError(hwsec::Status err                       //
+                                  [[clang::param_typestate(unconsumed)]]  //
+                                  [[clang::return_typestate(consumed)]]);
 
   // Checks if the specified |hash| is the same as the hash for the |tpm_| used
   // by the class.

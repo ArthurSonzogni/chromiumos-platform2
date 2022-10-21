@@ -27,7 +27,7 @@ namespace error {
 // in the chain.
 class CryptohomeTPMError : public CryptohomeCryptoError {
  public:
-  struct MakeStatusTrait {
+  struct MakeStatusTrait : public hwsec_foundation::status::AlwaysNotOk {
     // |Unactioned| represents an intermediate state, when we create an error
     // without fully specifying that error. That allows to require Wrap to be
     // called, or otherwise a type mismatch error will be raised.
@@ -36,8 +36,11 @@ class CryptohomeTPMError : public CryptohomeCryptoError {
       Unactioned(const ErrorLocationPair& loc,
                  const std::set<CryptohomeError::Action>& actions);
 
-      hwsec_foundation::status::StatusChain<CryptohomeTPMError> Wrap(
-          hwsec_foundation::status::StatusChain<CryptohomeTPMError> status) &&;
+      [[clang::return_typestate(unconsumed)]]  //
+      hwsec_foundation::status::StatusChain<CryptohomeTPMError>
+      Wrap(hwsec_foundation::status::StatusChain<CryptohomeTPMError> status
+           [[clang::param_typestate(unconsumed)]]  //
+           [[clang::return_typestate(consumed)]]) &&;
 
      private:
       const ErrorLocationPair unified_loc_;

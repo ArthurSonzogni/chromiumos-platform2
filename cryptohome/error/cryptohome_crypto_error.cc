@@ -28,7 +28,9 @@ CryptohomeCryptoError::MakeStatusTrait::Unactioned::Unactioned(
 
 StatusChain<CryptohomeCryptoError>
 CryptohomeCryptoError::MakeStatusTrait::Unactioned::Wrap(
-    hwsec_foundation::status::StatusChain<CryptohomeCryptoError> status) && {
+    hwsec_foundation::status::StatusChain<CryptohomeCryptoError> status
+    [[clang::param_typestate(unconsumed)]]  //
+    [[clang::return_typestate(consumed)]]) && {
   return NewStatus<CryptohomeCryptoError>(loc_, std::move(actions_),
                                           status->local_crypto_error(), ec_)
       .Wrap(std::move(status));

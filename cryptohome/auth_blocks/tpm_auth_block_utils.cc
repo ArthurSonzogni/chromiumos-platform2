@@ -33,11 +33,6 @@ TpmAuthBlockUtils::TpmAuthBlockUtils(hwsec::CryptohomeFrontend* hwsec,
                                      CryptohomeKeyLoader* cryptohome_key_loader)
     : hwsec_(hwsec), cryptohome_key_loader_(cryptohome_key_loader) {}
 
-CryptoError TpmAuthBlockUtils::TPMErrorToCrypto(const hwsec::Status& err) {
-  hwsec::TPMRetryAction action = err->ToTPMRetryAction();
-  return TPMRetryActionToCrypto(action);
-}
-
 CryptoError TpmAuthBlockUtils::TPMRetryActionToCrypto(
     const hwsec::TPMRetryAction action) {
   switch (action) {
@@ -55,15 +50,13 @@ CryptoError TpmAuthBlockUtils::TPMRetryActionToCrypto(
   }
 }
 
-CryptoStatus TpmAuthBlockUtils::TPMErrorToCryptohomeCryptoError(
-    hwsec::Status err) {
+[[clang::return_typestate(unconsumed)]]  //
+CryptoStatus
+TpmAuthBlockUtils::TPMErrorToCryptohomeCryptoError(
+    hwsec::Status err                       //
+    [[clang::param_typestate(unconsumed)]]  //
+    [[clang::return_typestate(consumed)]]) {
   return MakeStatus<CryptohomeTPMError>(std::move(err));
-}
-
-bool TpmAuthBlockUtils::TPMErrorIsRetriable(const hwsec::Status& err) {
-  hwsec::TPMRetryAction action = err->ToTPMRetryAction();
-  return action == hwsec::TPMRetryAction::kLater ||
-         action == hwsec::TPMRetryAction::kCommunication;
 }
 
 CryptoStatus TpmAuthBlockUtils::IsTPMPubkeyHash(

@@ -33,7 +33,9 @@ CryptohomeError::MakeStatusTrait::operator()(
 }
 
 StatusChain<CryptohomeError> CryptohomeError::MakeStatusTrait::Unactioned::Wrap(
-    hwsec_foundation::status::StatusChain<CryptohomeError> status) && {
+    hwsec_foundation::status::StatusChain<CryptohomeError> status
+    [[clang::param_typestate(unconsumed)]]  //
+    [[clang::return_typestate(consumed)]]) && {
   return NewStatus<CryptohomeError>(
              loc_, NoErrorAction(),
              ec_.has_value() ? ec_ : status->local_legacy_error())

@@ -28,7 +28,9 @@ CryptohomeLECredError::MakeStatusTrait::Unactioned::Unactioned(
 
 StatusChain<CryptohomeLECredError>
 CryptohomeLECredError::MakeStatusTrait::Unactioned::Wrap(
-    hwsec_foundation::status::StatusChain<CryptohomeLECredError> status) && {
+    hwsec_foundation::status::StatusChain<CryptohomeLECredError> status
+    [[clang::param_typestate(unconsumed)]]  //
+    [[clang::return_typestate(consumed)]]) && {
   return NewStatus<CryptohomeLECredError>(loc_, std::move(actions_),
                                           status->local_lecred_error(), ec_)
       .Wrap(std::move(status));
