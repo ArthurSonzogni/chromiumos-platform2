@@ -5,7 +5,7 @@
 #include "shill/net/rtnl_message.h"
 
 #include <net/if.h>  // NB: order matters; this conflicts with <linux/if.h>
-#include <arpa/inet.h>
+#include <arpa/inet.h>  // NOLINT(build/include_alpha)
 #include <linux/fib_rules.h>
 #include <linux/if_addr.h>
 #include <linux/if_arp.h>
