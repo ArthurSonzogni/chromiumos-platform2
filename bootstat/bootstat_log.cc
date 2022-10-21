@@ -6,6 +6,7 @@
 // facility.
 
 #include <fcntl.h>
+#include <inttypes.h>
 #include <limits.h>
 #include <linux/rtc.h>
 #include <stdint.h>
@@ -16,20 +17,76 @@
 
 #include <optional>
 #include <string>
+#include <vector>
 
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
 #include <base/logging.h>
+#include <base/strings/string_number_conversions.h>
+#include <base/strings/string_split.h>
 #include <base/strings/stringprintf.h>
+#include <base/time/time.h>
 #include <rootdev/rootdev.h>
 
 #include "bootstat/bootstat.h"
 
 namespace bootstat {
+
+namespace {
 //
 // Default path to directory where output statistics will be stored.
 //
 static const char kDefaultOutputDirectoryName[] = "/tmp";
+
+// Parse a line of text containing one or more space-separated columns of
+// decimal numbers. For example (without the quotes):
+//   "12.76543 0.89"
+//   "10.3333"
+static std::optional<std::vector<base::TimeDelta>> ParseDecimalColumns(
+    const base::StringPiece& line) {
+  auto numbers = base::SplitStringPiece(line, " ", base::TRIM_WHITESPACE,
+                                        base::SPLIT_WANT_NONEMPTY);
+  if (numbers.empty()) {
+    LOG(ERROR) << "Malformed line: " << line;
+    return std::nullopt;
+  }
+
+  std::vector<base::TimeDelta> results;
+  for (auto& number : numbers) {
+    auto pieces = base::SplitStringPiece(number, ".", base::TRIM_WHITESPACE,
+                                         base::SPLIT_WANT_NONEMPTY);
+    if (pieces.size() != 2) {
+      LOG(ERROR) << "Malformed number: " << line;
+      return std::nullopt;
+    }
+
+    uint64_t secs;
+    if (!base::StringToUint64(pieces[0], &secs)) {
+      LOG(ERROR) << "Malformed seconds: " << line;
+      return std::nullopt;
+    }
+
+    // We're looking for nanoseconds.
+    if (pieces[1].size() > 9) {
+      LOG(ERROR) << "Malformed decimal places: " << line;
+      return std::nullopt;
+    }
+    // Pad to 9, with trailing zeroes.
+    unsigned int nsecs;
+    if (!base::StringToUint(pieces[1], &nsecs)) {
+      LOG(ERROR) << "Malformed decimal: " << line;
+      return std::nullopt;
+    }
+    for (int i = 0; i < 9 - pieces[1].size(); i++)
+      nsecs *= 10;
+
+    results.push_back(base::Seconds(secs) + base::Nanoseconds(nsecs));
+  }
+
+  return {results};
+}
+
+}  // namespace
 
 // TODO(drinkcat): Cache function output (we only need to evaluate it once)
 base::FilePath BootStatSystem::GetDiskStatisticsFilePath() const {
@@ -104,6 +161,20 @@ BootStat::BootStat(const base::FilePath& output_directory_path,
 
 BootStat::~BootStat() = default;
 
+base::FilePath BootStat::GetEventPath(const std::string& prefix,
+                                      const std::string& event_name) const {
+  //
+  // For those not up on the more esoteric features of printf
+  // formats:  the "%.*s" format is used to truncate the event name
+  // to the proper number of characters..
+  //
+  std::string output_file =
+      base::StringPrintf("%s-%.*s", prefix.c_str(), BOOTSTAT_MAX_EVENT_LEN - 1,
+                         event_name.c_str());
+
+  return output_directory_path_.Append(output_file);
+}
+
 std::optional<struct BootStat::RtcTick> BootStat::GetRtcTick() const {
   base::ScopedFD rtc_fd = boot_stat_system_->OpenRtc();
   if (!rtc_fd.is_valid())
@@ -155,16 +226,7 @@ base::ScopedFD BootStat::OpenEventFile(const std::string& output_name_prefix,
   const mode_t kFileCreationMode =
       S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH;
 
-  //
-  // For those not up on the more esoteric features of printf
-  // formats:  the "%.*s" format is used to truncate the event name
-  // to the proper number of characters..
-  //
-  std::string output_file =
-      base::StringPrintf("%s-%.*s", output_name_prefix.c_str(),
-                         BOOTSTAT_MAX_EVENT_LEN - 1, event_name.c_str());
-
-  base::FilePath output_path = output_directory_path_.Append(output_file);
+  base::FilePath output_path = GetEventPath(output_name_prefix, event_name);
 
   int output_fd =
       HANDLE_EINTR(open(output_path.value().c_str(),
@@ -217,6 +279,30 @@ bool BootStat::LogUptimeEvent(const std::string& event_name) const {
   return ret;
 }
 
+std::optional<std::vector<BootStat::BootstatTiming>> BootStat::ParseUptimeEvent(
+    const std::string& contents) const {
+  auto lines = base::SplitStringPiece(contents, "\n", base::TRIM_WHITESPACE,
+                                      base::SPLIT_WANT_NONEMPTY);
+
+  std::vector<BootStat::BootstatTiming> events;
+  for (auto& line : lines) {
+    auto result = ParseDecimalColumns(line);
+    if (!result)
+      return std::nullopt;
+    if (result->size() != 1) {
+      LOG(ERROR) << "Unexpected uptime line: " << line;
+      return std::nullopt;
+    }
+
+    BootStat::BootstatTiming event = {
+        .uptime = (*result)[0],
+    };
+    events.push_back(std::move(event));
+  }
+
+  return {events};
+}
+
 // API functions.
 bool BootStat::LogEvent(const std::string& event_name) const {
   bool ret = true;
@@ -247,6 +333,23 @@ bool BootStat::LogRtcSync(const char* event_name) {
   bool ret = base::WriteFileDescriptor(output_fd.get(), data);
   LOG_IF(ERROR, !ret) << "Cannot write rtc sync.";
   return ret;
+}
+
+std::optional<std::vector<BootStat::BootstatTiming>> BootStat::GetEventTimings(
+    const std::string& event_name) const {
+  base::FilePath event_path = GetEventPath("uptime", event_name);
+
+  std::string data;
+  if (!base::ReadFileToString(event_path, &data)) {
+    PLOG(ERROR) << "Could not read event file: " << event_path;
+    return std::nullopt;
+  }
+
+  auto result = ParseUptimeEvent(data);
+  if (!result)
+    LOG(ERROR) << "Failed to parse bootstat file for event: " << event_name;
+
+  return result;
 }
 
 };  // namespace bootstat

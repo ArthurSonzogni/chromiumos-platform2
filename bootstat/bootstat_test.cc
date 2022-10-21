@@ -5,6 +5,7 @@
 #include "bootstat/bootstat.h"
 
 #include <fcntl.h>
+#include <inttypes.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <time.h>
@@ -18,6 +19,8 @@
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/memory/ptr_util.h>
+#include <base/strings/stringprintf.h>
+#include <base/time/time.h>
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -199,7 +202,7 @@ TEST_F(BootstatTest, ContentGeneration) {
         .WillOnce(Return(std::make_optional(kTestData[i].uptime)));
     ASSERT_TRUE(WriteMockDiskStats(kTestData[i].mock_disk_content));
 
-    boot_stat_->LogEvent(kEventName);
+    ASSERT_TRUE(boot_stat_->LogEvent(kEventName));
 
     Mock::VerifyAndClear(boot_stat_system_);
 
@@ -252,7 +255,7 @@ TEST_F(BootstatTest, EventNameTruncation) {
         .WillOnce(Return(std::make_optional(kDefaultTestData.uptime)));
     ASSERT_TRUE(WriteMockDiskStats(kDefaultTestData.mock_disk_content));
 
-    boot_stat_->LogEvent(kTestData[i].event_name);
+    ASSERT_TRUE(boot_stat_->LogEvent(kTestData[i].event_name));
 
     Mock::VerifyAndClear(boot_stat_system_);
 
@@ -297,7 +300,7 @@ TEST_F(BootstatTest, SymlinkFollowTarget) {
   ASSERT_TRUE(base::WriteFile(uptime_file_path, kDefaultContent));
   ASSERT_TRUE(base::WriteFile(diskstats_file_path, kDefaultContent));
 
-  boot_stat_->LogEvent(kEventName);
+  EXPECT_FALSE(boot_stat_->LogEvent(kEventName));
 
   // Expect no additional content in the files.
   std::string data;
@@ -328,7 +331,7 @@ TEST_F(BootstatTest, SymlinkFollowNoTarget) {
   ASSERT_TRUE(
       base::CreateSymbolicLink(diskstats_link_path, diskstats_file_path));
 
-  boot_stat_->LogEvent(kEventName);
+  EXPECT_FALSE(boot_stat_->LogEvent(kEventName));
 
   // Expect to be unable to read content
   std::string data;
@@ -425,6 +428,51 @@ TEST_F(BootstatTest, RtcGenerationTimeout) {
       .WillRepeatedly(Return(std::make_optional(kRtcTestData)));
 
   boot_stat_->LogRtcSync(kEventName);
+}
+
+TEST_F(BootstatTest, GetEventTimings) {
+  constexpr struct LogEventTestData kTestData[] = {
+      {
+          .uptime =
+              {
+                  .tv_sec = 1234,
+                  .tv_nsec = 56789,
+              },
+          .mock_disk_content =
+              " 1417116    14896 55561564 10935990  4267850 78379879"
+              " 661568738 1635920520      158 17856450 1649520570\n",
+      },
+      {
+          .uptime =
+              {
+                  .tv_sec = 20000,
+                  .tv_nsec = 0,
+              },
+          .mock_disk_content =
+              " 1420714    14918 55689988 11006390  4287385 78594261"
+              " 663441564 1651579200      152 17974280 1665255160\n",
+      },
+  };
+
+  for (int i = 0; i < std::size(kTestData); i++) {
+    EXPECT_CALL(*boot_stat_system_, GetUpTime())
+        .WillOnce(Return(std::make_optional(kTestData[i].uptime)));
+    ASSERT_TRUE(WriteMockDiskStats(kTestData[i].mock_disk_content));
+
+    ASSERT_TRUE(boot_stat_->LogEvent("ev"));
+
+    Mock::VerifyAndClear(boot_stat_system_);
+  }
+
+  auto events = boot_stat_->GetEventTimings("ev");
+  ASSERT_TRUE(events);
+
+  ASSERT_EQ(events->size(), std::size(kTestData));
+  for (int i = 0; i < std::size(kTestData); i++) {
+    auto& event = (*events)[i];
+    EXPECT_EQ(event.uptime, base::Seconds(kTestData[i].uptime.tv_sec) +
+                                base::Nanoseconds(kTestData[i].uptime.tv_nsec));
+  }
 }
 
 }  // namespace bootstat

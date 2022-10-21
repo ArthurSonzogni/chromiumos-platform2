@@ -16,9 +16,11 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <vector>
 
 #include <base/files/file_path.h>
 #include <base/files/scoped_file.h>
+#include <base/time/time.h>
 #include <brillo/brillo_export.h>
 
 namespace bootstat {
@@ -71,10 +73,24 @@ class BRILLO_EXPORT BootStat {
   // RTC timezone is normally UTC (as reported by the device).
   bool LogRtcSync(const char* event_name);
 
+  struct BootstatTiming {
+    // Time since boot.
+    base::TimeDelta uptime;
+  };
+
+  // Retrieves the event timings for a given event type (|event_name|). There
+  // may be more than one such event in a given boot. Returns std::nullopt if
+  // there is an error.
+  std::optional<std::vector<BootstatTiming>> GetEventTimings(
+      const std::string& event_name) const;
+
  private:
   base::FilePath output_directory_path_;
 
   std::unique_ptr<BootStatSystem> boot_stat_system_;
+
+  base::FilePath GetEventPath(const std::string& prefix,
+                              const std::string& event_name) const;
 
   // Figures out the event output file name, and open it.
   // Returns a scoped fd (negative on error).
@@ -84,6 +100,9 @@ class BRILLO_EXPORT BootStat {
   bool LogDiskEvent(const std::string& event_name) const;
   // Logs a uptime event indicating time since boot.
   bool LogUptimeEvent(const std::string& event_name) const;
+
+  std::optional<std::vector<BootstatTiming>> ParseUptimeEvent(
+      const std::string& contents) const;
 
   // Return data for GetRtcTick
   struct RtcTick {
