@@ -511,7 +511,10 @@ void AppendX86SocProperties(const base::FilePath& cpuinfo_path,
       // 12th Gen doesn't have trailing clock freq in field.
       // For i5-1245U, the "C" in Core is missing.
       re2::RE2::PartialMatch(
-          model_field, R"(12th Gen Intel\(R\) C?ore\(TM\) ([^ ]+)$)", &model)) {
+          model_field, R"(12th Gen Intel\(R\) C?ore\(TM\) ([^ ]+)$)", &model) ||
+
+      // Alderlake-N series.
+      re2::RE2::PartialMatch(model_field, R"(Intel\(R\) (N[0-9]+)$)", &model)) {
     manufacturer = "Intel";
   } else if (
       // Some Ryzen CPU models have a watt value, some do not.
