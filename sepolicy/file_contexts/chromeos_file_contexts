@@ -307,6 +307,7 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /var/db/pkg                     u:object_r:cros_var_db_pkg:s0
 /var/empty                      u:object_r:cros_var_empty:s0
 /var/lib                        u:object_r:cros_var_lib:s0
+/var/lib/biod(/.*)?             u:object_r:cros_var_lib_biod:s0
 /var/lib/bluetooth(/.*)?        u:object_r:cros_var_lib_bluetooth:s0
 /var/lib/boot-update-firmware(/.*)? u:object_r:cros_var_lib_boot-update-firmware:s0
 /var/lib/bootlockbox(/.*)?      u:object_r:cros_var_lib_bootlockbox:s0

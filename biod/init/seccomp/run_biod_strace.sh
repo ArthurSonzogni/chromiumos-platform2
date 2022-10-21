@@ -34,6 +34,7 @@ if [ "$1" == "--minijail" ]; then
     -k 'tmpfs,/var,tmpfs,MS_NODEV|MS_NOEXEC|MS_NOSUID,mode=755,size=10M'       \
     -b /var/log/biod,,1                                                        \
     -b /var/lib/metrics,,1                                                     \
+    -b /var/lib/biod,,1                                                        \
     -b /dev/cros_fp                                                            \
     -b /dev/uinput                                                             \
     -b /sys                                                                    \
