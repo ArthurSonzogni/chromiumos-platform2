@@ -30,6 +30,9 @@ class GuestIPv6ServiceUnderTest : public GuestIPv6Service {
                void(NDProxyControlMessage::NDProxyRequestType type,
                     int32_t if_id_primary,
                     int32_t if_id_secondary));
+  MOCK_METHOD2(StartRAServer,
+               bool(const std::string& ifname, const std::string& prefix));
+  MOCK_METHOD1(StopRAServer, bool(const std::string& ifname));
 
   void FakeNDProxyNeighborDetectionSignal(int if_id, const in6_addr& ip6addr) {
     NeighborDetectedSignal msg;
@@ -241,6 +244,96 @@ TEST_F(GuestIPv6ServiceTest, AdditionalDatapathSetup) {
   EXPECT_CALL(*datapath_,
               RemoveIPv6NeighborProxy("down1", "2001:db8:0:200::1234"));
   target.StopUplink("up1");
+}
+
+TEST_F(GuestIPv6ServiceTest, RAServer) {
+  GuestIPv6ServiceUnderTest target(datapath_.get(), shill_client_.get(),
+                                   system_.get());
+  ON_CALL(*system_, IfNametoindex("up1")).WillByDefault(Return(1));
+  ON_CALL(*system_, IfNametoindex("down1")).WillByDefault(Return(101));
+  ON_CALL(*system_, IfNametoindex("down2")).WillByDefault(Return(102));
+
+  target.SetForwardMethod("up1",
+                          GuestIPv6Service::ForwardMethod::kMethodRAServer);
+
+  EXPECT_CALL(
+      target,
+      SendNDProxyControl(
+          NDProxyControlMessage::START_NS_NA_RS_RA_MODIFYING_ROUTER_ADDRESS, _,
+          _))
+      .Times(0);
+  EXPECT_CALL(target, SendNDProxyControl(
+                          NDProxyControlMessage::START_NS_NA_RS_RA, _, _))
+      .Times(0);
+  target.StartForwarding("up1", "down1");
+
+  EXPECT_CALL(target, StartRAServer("down1", "2001:db8:0:200::"))
+      .WillOnce(Return(true));
+  target.OnUplinkIPv6Changed("up1", "2001:db8:0:200::1234");
+
+  EXPECT_CALL(target, StartRAServer("down2", "2001:db8:0:200::"))
+      .WillOnce(Return(true));
+  EXPECT_CALL(target,
+              SendNDProxyControl(NDProxyControlMessage::START_NS_NA, _, _))
+      .With(Args<1, 2>(AreTheseTwo(101, 102)));
+  target.StartForwarding("up1", "down2");
+
+  EXPECT_CALL(target,
+              SendNDProxyControl(NDProxyControlMessage::STOP_PROXY, _, _))
+      .With(Args<1, 2>(AreTheseTwo(101, 102)));
+  EXPECT_CALL(target, StopRAServer("down1")).WillOnce(Return(true));
+  EXPECT_CALL(target, StopRAServer("down2")).WillOnce(Return(true));
+  target.StopUplink("up1");
+}
+
+TEST_F(GuestIPv6ServiceTest, RAServerUplinkIPChange) {
+  GuestIPv6ServiceUnderTest target(datapath_.get(), shill_client_.get(),
+                                   system_.get());
+  ON_CALL(*system_, IfNametoindex("up1")).WillByDefault(Return(1));
+  ON_CALL(*system_, IfNametoindex("down1")).WillByDefault(Return(101));
+
+  target.SetForwardMethod("up1",
+                          GuestIPv6Service::ForwardMethod::kMethodRAServer);
+
+  target.StartForwarding("up1", "down1");
+
+  EXPECT_CALL(target, StartRAServer("down1", "2001:db8:0:200::"))
+      .WillOnce(Return(true));
+  target.OnUplinkIPv6Changed("up1", "2001:db8:0:200::1234");
+
+  EXPECT_CALL(target, StopRAServer("down1")).WillOnce(Return(true));
+  EXPECT_CALL(target, StartRAServer("down1", "2001:db8:0:100::"))
+      .WillOnce(Return(true));
+  target.OnUplinkIPv6Changed("up1", "2001:db8:0:100::abcd");
+
+  EXPECT_CALL(target, StopRAServer("down1")).WillOnce(Return(true));
+  target.StopUplink("up1");
+}
+
+TEST_F(GuestIPv6ServiceTest, SetMethodOnTheFly) {
+  GuestIPv6ServiceUnderTest target(datapath_.get(), shill_client_.get(),
+                                   system_.get());
+  ON_CALL(*system_, IfNametoindex("up1")).WillByDefault(Return(1));
+  ON_CALL(*system_, IfNametoindex("down1")).WillByDefault(Return(101));
+
+  target.OnUplinkIPv6Changed("up1", "2001:db8:0:200::1234");
+
+  EXPECT_CALL(
+      target,
+      SendNDProxyControl(
+          NDProxyControlMessage::START_NS_NA_RS_RA_MODIFYING_ROUTER_ADDRESS, 1,
+          101));
+  target.StartForwarding("up1", "down1");
+
+  EXPECT_CALL(target,
+              SendNDProxyControl(NDProxyControlMessage::STOP_PROXY, 1, 101));
+  EXPECT_CALL(target, StartRAServer("down1", "2001:db8:0:200::"))
+      .WillOnce(Return(true));
+  target.SetForwardMethod("up1",
+                          GuestIPv6Service::ForwardMethod::kMethodRAServer);
+
+  EXPECT_CALL(target, StopRAServer("down1")).WillOnce(Return(true));
+  target.StopForwarding("up1", "down1");
 }
 
 }  // namespace patchpanel

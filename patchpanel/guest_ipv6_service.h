@@ -73,6 +73,12 @@ class GuestIPv6Service {
       int32_t if_id_primary,
       int32_t if_id_secondary);
 
+  virtual bool StartRAServer(const std::string& ifname,
+                             const std::string& prefix) {
+    return false;
+  }
+  virtual bool StopRAServer(const std::string& ifname) { return false; }
+
   // Callback from NDProxy telling us to add a new IPv6 route to guest or IPv6
   // address to guest-facing interface.
   void OnNDProxyMessage(const FeedbackMessage& msg);

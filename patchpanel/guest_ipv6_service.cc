@@ -6,6 +6,7 @@
 
 #include <net/ethernet.h>
 #include <netinet/in.h>
+#include <string.h>
 
 #include <optional>
 #include <set>
@@ -43,6 +44,16 @@ GuestIPv6Service::ForwardMethod GetForwardMethodByDeviceType(
     default:
       return GuestIPv6Service::ForwardMethod::kMethodUnknown;
   }
+}
+
+// TODO(b/228585272): Support prefix larger than /64
+std::string IPAddressTo64BitPrefix(const std::string addr_str) {
+  if (addr_str.empty()) {
+    return "";
+  }
+  in6_addr addr = StringToIPv6Address(addr_str);
+  memset(&addr.s6_addr[8], 0, 8);
+  return IPv6AddressToString(addr);
 }
 
 }  // namespace
@@ -150,13 +161,20 @@ void GuestIPv6Service::StartForwarding(const std::string& ifname_uplink,
     }
   }
 
-  // Allow IPv6 address on uplink to be resolvable on the downlink
-  if (uplink_ips_[ifname_uplink] != "") {
-    if (!datapath_->AddIPv6NeighborProxy(ifname_downlink,
-                                         uplink_ips_[ifname_uplink])) {
-      LOG(WARNING) << "Failed to setup the IPv6 neighbor: "
-                   << uplink_ips_[ifname_uplink] << " proxy on dev "
-                   << ifname_downlink;
+  const std::string& uplink_ip = uplink_ips_[ifname_uplink];
+  if (!uplink_ip.empty()) {
+    // Allow IPv6 address on uplink to be resolvable on the downlink
+    if (!datapath_->AddIPv6NeighborProxy(ifname_downlink, uplink_ip)) {
+      LOG(WARNING) << "Failed to setup the IPv6 neighbor: " << uplink_ip
+                   << " proxy on dev " << ifname_downlink;
+    }
+
+    if (forward_method == ForwardMethod::kMethodRAServer) {
+      if (!StartRAServer(ifname_downlink, IPAddressTo64BitPrefix(uplink_ip))) {
+        LOG(WARNING) << "Failed to start RA server on downlink "
+                     << ifname_downlink << " with uplink " << ifname_uplink
+                     << " ip " << uplink_ip;
+      }
     }
   }
 }
@@ -179,8 +197,10 @@ void GuestIPv6Service::StopForwarding(const std::string& ifname_uplink,
     return;
   }
 
-  SendNDProxyControl(NDProxyControlMessage::STOP_PROXY,
-                     if_cache_[ifname_uplink], if_cache_[ifname_downlink]);
+  if (it->method != ForwardMethod::kMethodRAServer) {
+    SendNDProxyControl(NDProxyControlMessage::STOP_PROXY,
+                       if_cache_[ifname_uplink], if_cache_[ifname_downlink]);
+  }
 
   // Remove proxying between specified downlink and all other downlinks in the
   // same group.
@@ -203,6 +223,11 @@ void GuestIPv6Service::StopForwarding(const std::string& ifname_uplink,
   }
   downstream_neighbors_[ifname_downlink].clear();
 
+  if (it->method == ForwardMethod::kMethodRAServer &&
+      uplink_ips_[ifname_uplink] != "") {
+    StopRAServer(ifname_downlink);
+  }
+
   it->downstream_ifnames.erase(ifname_downlink);
   if (it->downstream_ifnames.empty()) {
     forward_record_.erase(it);
@@ -221,9 +246,11 @@ void GuestIPv6Service::StopUplink(const std::string& ifname_uplink) {
     return;
 
   // Remove proxying between specified uplink and all downlinks.
-  for (const auto& ifname_downlink : it->downstream_ifnames) {
-    SendNDProxyControl(NDProxyControlMessage::STOP_PROXY,
-                       if_cache_[ifname_uplink], if_cache_[ifname_downlink]);
+  if (it->method != ForwardMethod::kMethodRAServer) {
+    for (const auto& ifname_downlink : it->downstream_ifnames) {
+      SendNDProxyControl(NDProxyControlMessage::STOP_PROXY,
+                         if_cache_[ifname_uplink], if_cache_[ifname_downlink]);
+    }
   }
 
   // Remove proxying between all downlink pairs in the forward group.
@@ -248,6 +275,13 @@ void GuestIPv6Service::StopUplink(const std::string& ifname_uplink) {
     downstream_neighbors_[ifname_downlink].clear();
   }
 
+  if (it->method == ForwardMethod::kMethodRAServer &&
+      uplink_ips_[ifname_uplink] != "") {
+    for (const auto& ifname_downlink : it->downstream_ifnames) {
+      StopRAServer(ifname_downlink);
+    }
+  }
+
   forward_record_.erase(it);
 }
 
@@ -259,31 +293,58 @@ void GuestIPv6Service::OnUplinkIPv6Changed(const std::string& ifname,
     return;
   }
 
-  // Note that the order of StartForwarding() and OnUplinkIPv6Changed() is not
-  // certain so the `ip neigh proxy` and /128 route changes need to be handled
-  // in both code paths. When an uplink is newly connected to, StartForwarding()
-  // get called first and then we received OnUplinkIPv6Changed() when uplink get
-  // an IPv6 address. When default network switches to an existing uplink,
-  // StartForwarding() is after OnUplinkIPv6Changed() (which was already called
-  // when it was not default yet).
-  for (const auto& ifname_downlink : UplinkToDownlinks(ifname)) {
-    // Update ip neigh proxy entries
-    if (uplink_ips_[ifname] != "") {
-      datapath_->RemoveIPv6NeighborProxy(ifname_downlink, uplink_ips_[ifname]);
-    }
-    if (uplink_ip != "") {
-      if (!datapath_->AddIPv6NeighborProxy(ifname_downlink, uplink_ip)) {
-        LOG(WARNING) << "Failed to setup the IPv6 neighbor: " << uplink_ip
-                     << " proxy on dev " << ifname_downlink;
+  std::vector<ForwardEntry>::iterator it;
+  for (it = forward_record_.begin(); it != forward_record_.end(); it++) {
+    if (it->upstream_ifname == ifname)
+      break;
+  }
+  if (it != forward_record_.end()) {
+    // Note that the order of StartForwarding() and OnUplinkIPv6Changed() is not
+    // certain so the `ip neigh proxy` and /128 route changes need to be handled
+    // in both code paths. When an uplink is newly connected to,
+    // StartForwarding() get called first and then we received
+    // OnUplinkIPv6Changed() when uplink get an IPv6 address. When default
+    // network switches to an existing uplink, StartForwarding() is after
+    // OnUplinkIPv6Changed() (which was already called when it was not default
+    // yet).
+    for (const auto& ifname_downlink : it->downstream_ifnames) {
+      // Update ip neigh proxy entries
+      if (uplink_ips_[ifname] != "") {
+        datapath_->RemoveIPv6NeighborProxy(ifname_downlink,
+                                           uplink_ips_[ifname]);
       }
-    }
+      if (uplink_ip != "") {
+        if (!datapath_->AddIPv6NeighborProxy(ifname_downlink, uplink_ip)) {
+          LOG(WARNING) << "Failed to setup the IPv6 neighbor: " << uplink_ip
+                       << " proxy on dev " << ifname_downlink;
+        }
+      }
 
-    // Update downlink /128 routes source IP. Note AddIPv6HostRoute uses `ip
-    // route replace` so we don't need to remove the old one first.
-    for (const auto& neighbor_ip : downstream_neighbors_[ifname_downlink]) {
-      if (!datapath_->AddIPv6HostRoute(ifname, neighbor_ip, 128, uplink_ip)) {
-        LOG(WARNING) << "Failed to setup the IPv6 route: " << neighbor_ip
-                     << " dev " << ifname << " src " << uplink_ip;
+      // Update downlink /128 routes source IP. Note AddIPv6HostRoute uses `ip
+      // route replace` so we don't need to remove the old one first.
+      for (const auto& neighbor_ip : downstream_neighbors_[ifname_downlink]) {
+        if (!datapath_->AddIPv6HostRoute(ifname, neighbor_ip, 128, uplink_ip)) {
+          LOG(WARNING) << "Failed to setup the IPv6 route: " << neighbor_ip
+                       << " dev " << ifname << " src " << uplink_ip;
+        }
+      }
+
+      if (it->method == ForwardMethod::kMethodRAServer) {
+        auto old_prefix = IPAddressTo64BitPrefix(uplink_ips_[ifname]);
+        auto new_prefix = IPAddressTo64BitPrefix(uplink_ip);
+        if (old_prefix == new_prefix) {
+          continue;
+        }
+        if (!old_prefix.empty()) {
+          StopRAServer(ifname_downlink);
+        }
+        if (!new_prefix.empty()) {
+          if (!StartRAServer(ifname_downlink, new_prefix)) {
+            LOG(WARNING) << "Failed to start RA server on downlink "
+                         << ifname_downlink << " with uplink " << ifname
+                         << " ip " << uplink_ip;
+          }
+        }
       }
     }
   }
