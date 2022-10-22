@@ -27,11 +27,7 @@ Tpm2SimulatorFactoryForTest::Tpm2SimulatorFactoryForTest() {
   backend_ = std::move(backend);
 
   middleware_ = std::make_unique<MiddlewareOwner>(
-      std::move(backend_),
-      base::SequencedTaskRunnerHandle::IsSet()
-          ? base::SequencedTaskRunnerHandle::Get()
-          : nullptr,
-      base::PlatformThread::CurrentId());
+      std::move(backend_), MiddlewareOwner::OnCurrentTaskRunner{});
 
   backend_ptr->set_middleware_derivative_for_test(middleware_->Derive());
 }

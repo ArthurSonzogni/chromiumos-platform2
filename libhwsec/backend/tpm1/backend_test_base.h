@@ -50,11 +50,7 @@ class BackendTpm1TestBase : public ::testing::Test {
     backend_ = backend.get();
 
     middleware_owner_ = std::make_unique<MiddlewareOwner>(
-        std::move(backend),
-        base::SequencedTaskRunnerHandle::IsSet()
-            ? base::SequencedTaskRunnerHandle::Get()
-            : nullptr,
-        base::PlatformThread::CurrentId());
+        std::move(backend), MiddlewareOwner::OnCurrentTaskRunner{});
 
     backend_->set_middleware_derivative_for_test(middleware_owner_->Derive());
 
