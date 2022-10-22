@@ -21,6 +21,7 @@
 #include <base/strings/stringprintf.h>
 #include <base/time/time.h>
 #include <brillo/cryptohome.h>
+#include <libhwsec-foundation/crypto/aes.h>
 #include <libhwsec-foundation/crypto/hmac.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
 
@@ -58,6 +59,7 @@ using cryptohome::error::ErrorAction;
 using cryptohome::error::ErrorActionSet;
 using hwsec_foundation::CreateSecureRandomBlob;
 using hwsec_foundation::HmacSha256;
+using hwsec_foundation::kAesBlockSize;
 using hwsec_foundation::status::MakeStatus;
 using hwsec_foundation::status::OkStatus;
 using hwsec_foundation::status::StatusChain;
@@ -1971,13 +1973,6 @@ CryptohomeStatusOr<AuthInput> AuthSession::CreateAuthInputForAdding(
     return std::move(auth_input.value());
   }
 
-  if (user_secret_stash_) {
-    // When using USS, every resettable factor gets a unique reset secret.
-    auth_input->reset_secret =
-        CreateSecureRandomBlob(CRYPTOHOME_RESET_SECRET_LENGTH);
-    return std::move(auth_input.value());
-  }
-
   // When using VaultKeyset, reset is implemented via a seed that's shared
   // among all of the user's VKs. Hence copy it from the previously loaded VK.
   if (!vault_keyset_) {
@@ -1999,6 +1994,9 @@ CryptohomeStatusOr<AuthInput> AuthSession::CreateAuthInputForAdding(
         user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
   }
   auth_input->reset_seed = vault_keyset_->GetResetSeed();
+  auth_input->reset_salt = CreateSecureRandomBlob(kAesBlockSize);
+  auth_input->reset_secret = HmacSha256(auth_input->reset_salt.value(),
+                                        auth_input->reset_seed.value());
   return std::move(auth_input.value());
 }
 

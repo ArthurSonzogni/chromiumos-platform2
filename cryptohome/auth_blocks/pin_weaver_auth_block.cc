@@ -122,9 +122,10 @@ CryptoStatus PinWeaverAuthBlock::Create(const AuthInput& auth_input,
   }
 
   PinWeaverAuthBlockState pin_auth_state;
+  pin_auth_state.reset_salt = auth_input.reset_salt.has_value()
+                                  ? auth_input.reset_salt.value()
+                                  : CreateSecureRandomBlob(kAesBlockSize);
   brillo::SecureBlob reset_secret;
-  brillo::SecureBlob salt =
-      CreateSecureRandomBlob(CRYPTOHOME_DEFAULT_KEY_SALT_SIZE);
   if (auth_input.reset_secret.has_value()) {
     // This case be used for USS as we do not have the concept of reset seed and
     // salt there.
@@ -133,7 +134,6 @@ CryptoStatus PinWeaverAuthBlock::Create(const AuthInput& auth_input,
     // At this point we know auth_input reset_seed is set. The expectation is
     // that this branch of code would be deprecated once we move fully to USS
     // world.
-    pin_auth_state.reset_salt = CreateSecureRandomBlob(kAesBlockSize);
     reset_secret = HmacSha256(pin_auth_state.reset_salt.value(),
                               auth_input.reset_seed.value());
   }
@@ -144,6 +144,8 @@ CryptoStatus PinWeaverAuthBlock::Create(const AuthInput& auth_input,
 
   brillo::SecureBlob le_secret(kDefaultSecretSize);
   brillo::SecureBlob kdf_skey(kDefaultSecretSize);
+  brillo::SecureBlob salt =
+      CreateSecureRandomBlob(CRYPTOHOME_DEFAULT_KEY_SALT_SIZE);
   if (!DeriveSecretsScrypt(auth_input.user_input.value(), salt,
                            {&le_secret, &kdf_skey})) {
     return MakeStatus<CryptohomeCryptoError>(

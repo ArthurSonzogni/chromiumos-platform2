@@ -130,6 +130,16 @@ SerializedVaultKeyset CreateFakePasswordVk(const std::string& label) {
   return serialized_vk;
 }
 
+std::unique_ptr<VaultKeyset> CreateBackupVaultKeyset(const std::string& label) {
+  auto backup_vk = std::make_unique<VaultKeyset>();
+  auto serialized = CreateFakePasswordVk(label);
+  backup_vk->InitializeFromSerialized(serialized);
+  backup_vk->set_backup_vk_for_testing(true);
+  backup_vk->SetResetSeed(brillo::SecureBlob(32, 'A'));
+  backup_vk->SetWrappedResetSeed(brillo::SecureBlob(32, 'B'));
+  return backup_vk;
+}
+
 }  // namespace
 
 class AuthSessionTest : public ::testing::Test {
@@ -2597,6 +2607,8 @@ TEST_F(AuthSessionWithUssExperimentTest, AddPasswordAndPinAuthFactorViaUss) {
   // Test and Verify.
   TestFuture<CryptohomeStatus> add_future;
   auth_session.AddAuthFactor(request, add_future.GetCallback());
+  std::unique_ptr<VaultKeyset> backup_vk = CreateBackupVaultKeyset(kFakeLabel);
+  auth_session.set_vault_keyset_for_testing(std::move(backup_vk));
 
   // Verify.
   EXPECT_THAT(add_future.Get(), IsOk());
@@ -3570,6 +3582,8 @@ TEST_F(AuthSessionWithUssExperimentTest, RemoveAuthFactor) {
 
   error = AddPasswordAuthFactor(kFakePass, auth_session);
   EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+  std::unique_ptr<VaultKeyset> backup_vk = CreateBackupVaultKeyset(kFakeLabel);
+  auth_session.set_vault_keyset_for_testing(std::move(backup_vk));
   error = AddPinAuthFactor(kFakePin, auth_session);
   EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
 
@@ -3653,6 +3667,8 @@ TEST_F(AuthSessionWithUssExperimentTest, RemoveAndReAddAuthFactor) {
 
   error = AddPasswordAuthFactor(kFakePass, auth_session);
   EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+  std::unique_ptr<VaultKeyset> backup_vk = CreateBackupVaultKeyset(kFakeLabel);
+  auth_session.set_vault_keyset_for_testing(std::move(backup_vk));
   error = AddPinAuthFactor(kFakePin, auth_session);
   EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
 

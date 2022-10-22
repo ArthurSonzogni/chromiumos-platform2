@@ -64,9 +64,11 @@ struct AuthInput {
   // used for USS.
   std::optional<brillo::SecureBlob> reset_secret;
   // reset_seed used to generate a reset secret.
-  // If reset_secret is set along with this field, the reset_secret would be
-  // ignored. This will be used for legacy VK.
+  // This will be removed after full migration to USS.
   std::optional<brillo::SecureBlob> reset_seed;
+  // reset_salt used to generate a reset secret.
+  // This will be removed after full migration to USS.
+  std::optional<brillo::SecureBlob> reset_salt;
   // Data required for Cryptohome Recovery flow.
   std::optional<CryptohomeRecoveryAuthInput> cryptohome_recovery_auth_input;
   // Data required for Challenge Credential flow.
