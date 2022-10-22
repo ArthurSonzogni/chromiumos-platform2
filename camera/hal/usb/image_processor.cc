@@ -58,11 +58,7 @@ namespace cros {
  *                                 -> NM12 / YV12 (video encoder)
  */
 
-size_t ImageProcessor::GetConvertedSize(FrameBuffer& frame) {
-  if (frame.Map()) {
-    LOGF(ERROR) << "Failed to map frame";
-    return 0;
-  }
+size_t ImageProcessor::GetConvertedSize(const FrameBuffer& frame) {
   if ((frame.GetWidth() % 2) || (frame.GetHeight() % 2)) {
     LOGF(ERROR) << "Width or height is not even (" << frame.GetWidth() << " x "
                 << frame.GetHeight() << ")";
@@ -104,12 +100,8 @@ size_t ImageProcessor::GetConvertedSize(FrameBuffer& frame) {
   }
 }
 
-int ImageProcessor::ConvertFormat(FrameBuffer& in_frame,
-                                  FrameBuffer& out_frame) {
-  if (in_frame.Map() || out_frame.Map()) {
-    LOGF(ERROR) << "Failed to map frame";
-    return -EINVAL;
-  }
+int ImageProcessor::ConvertFormat(const FrameBuffer& in_frame,
+                                  FrameBuffer* out_frame) {
   if ((in_frame.GetWidth() % 2) || (in_frame.GetHeight() % 2)) {
     LOGF(ERROR) << "Width or height is not even (" << in_frame.GetWidth()
                 << " x " << in_frame.GetHeight() << ")";
@@ -117,23 +109,23 @@ int ImageProcessor::ConvertFormat(FrameBuffer& in_frame,
   }
 
   VLOGF(1) << "Convert format from " << FormatToString(in_frame.GetFourcc())
-           << " to " << FormatToString(out_frame.GetFourcc());
+           << " to " << FormatToString(out_frame->GetFourcc());
 
   if (in_frame.GetFourcc() == V4L2_PIX_FMT_YUYV) {
-    switch (out_frame.GetFourcc()) {
+    switch (out_frame->GetFourcc()) {
       case V4L2_PIX_FMT_YUV420:     // YU12
       case V4L2_PIX_FMT_YUV420M:    // YM12, multiple planes YU12
       case V4L2_PIX_FMT_YVU420:     // YV12
       case V4L2_PIX_FMT_YVU420M: {  // YM21, multiple planes YV12
         int res =
             libyuv::YUY2ToI420(in_frame.GetData(), in_frame.GetStride(),
-                               out_frame.GetData(FrameBuffer::YPLANE),
-                               out_frame.GetStride(FrameBuffer::YPLANE),
-                               out_frame.GetData(FrameBuffer::UPLANE),
-                               out_frame.GetStride(FrameBuffer::UPLANE),
-                               out_frame.GetData(FrameBuffer::VPLANE),
-                               out_frame.GetStride(FrameBuffer::VPLANE),
-                               out_frame.GetWidth(), out_frame.GetHeight());
+                               out_frame->GetData(FrameBuffer::YPLANE),
+                               out_frame->GetStride(FrameBuffer::YPLANE),
+                               out_frame->GetData(FrameBuffer::UPLANE),
+                               out_frame->GetStride(FrameBuffer::UPLANE),
+                               out_frame->GetData(FrameBuffer::VPLANE),
+                               out_frame->GetStride(FrameBuffer::VPLANE),
+                               out_frame->GetWidth(), out_frame->GetHeight());
         LOGF_IF(ERROR, res) << "YUY2ToI420() returns " << res;
         return res ? -EINVAL : 0;
       }
@@ -141,17 +133,17 @@ int ImageProcessor::ConvertFormat(FrameBuffer& in_frame,
       case V4L2_PIX_FMT_NV12M: {  // NM12
         int res =
             libyuv::YUY2ToNV12(in_frame.GetData(), in_frame.GetStride(),
-                               out_frame.GetData(FrameBuffer::YPLANE),
-                               out_frame.GetStride(FrameBuffer::YPLANE),
-                               out_frame.GetData(FrameBuffer::UPLANE),
-                               out_frame.GetStride(FrameBuffer::UPLANE),
-                               out_frame.GetWidth(), out_frame.GetHeight());
+                               out_frame->GetData(FrameBuffer::YPLANE),
+                               out_frame->GetStride(FrameBuffer::YPLANE),
+                               out_frame->GetData(FrameBuffer::UPLANE),
+                               out_frame->GetStride(FrameBuffer::UPLANE),
+                               out_frame->GetWidth(), out_frame->GetHeight());
         LOGF_IF(ERROR, res) << "YUY2ToNV12() returns " << res;
         return res ? -EINVAL : 0;
       }
       default:
         LOGF(ERROR) << "Destination pixel format "
-                    << FormatToString(out_frame.GetFourcc())
+                    << FormatToString(out_frame->GetFourcc())
                     << " is unsupported for YUYV source format.";
         return -EINVAL;
     }
@@ -160,24 +152,25 @@ int ImageProcessor::ConvertFormat(FrameBuffer& in_frame,
     // V4L2_PIX_FMT_YVU420 is YV12. I420 is usually referred to YU12
     // (V4L2_PIX_FMT_YUV420), and YV12 is similar to YU12 except that U/V
     // planes are swapped.
-    switch (out_frame.GetFourcc()) {
+    switch (out_frame->GetFourcc()) {
       case V4L2_PIX_FMT_YUV420:     // YU12
       case V4L2_PIX_FMT_YUV420M:    // YM12, multiple planes YU12
       case V4L2_PIX_FMT_YVU420:     // YV12
       case V4L2_PIX_FMT_YVU420M: {  // YM21, multiple planes YV12
-        int res = libyuv::I420Copy(in_frame.GetData(FrameBuffer::YPLANE),
-                                   in_frame.GetStride(FrameBuffer::YPLANE),
-                                   in_frame.GetData(FrameBuffer::UPLANE),
-                                   in_frame.GetStride(FrameBuffer::UPLANE),
-                                   in_frame.GetData(FrameBuffer::VPLANE),
-                                   in_frame.GetStride(FrameBuffer::VPLANE),
-                                   out_frame.GetData(FrameBuffer::YPLANE),
-                                   out_frame.GetStride(FrameBuffer::YPLANE),
-                                   out_frame.GetData(FrameBuffer::UPLANE),
-                                   out_frame.GetStride(FrameBuffer::UPLANE),
-                                   out_frame.GetData(FrameBuffer::VPLANE),
-                                   out_frame.GetStride(FrameBuffer::VPLANE),
-                                   out_frame.GetWidth(), out_frame.GetHeight());
+        int res =
+            libyuv::I420Copy(in_frame.GetData(FrameBuffer::YPLANE),
+                             in_frame.GetStride(FrameBuffer::YPLANE),
+                             in_frame.GetData(FrameBuffer::UPLANE),
+                             in_frame.GetStride(FrameBuffer::UPLANE),
+                             in_frame.GetData(FrameBuffer::VPLANE),
+                             in_frame.GetStride(FrameBuffer::VPLANE),
+                             out_frame->GetData(FrameBuffer::YPLANE),
+                             out_frame->GetStride(FrameBuffer::YPLANE),
+                             out_frame->GetData(FrameBuffer::UPLANE),
+                             out_frame->GetStride(FrameBuffer::UPLANE),
+                             out_frame->GetData(FrameBuffer::VPLANE),
+                             out_frame->GetStride(FrameBuffer::VPLANE),
+                             out_frame->GetWidth(), out_frame->GetHeight());
         LOGF_IF(ERROR, res) << "I420Copy() returns " << res;
         return res ? -EINVAL : 0;
       }
@@ -190,35 +183,36 @@ int ImageProcessor::ConvertFormat(FrameBuffer& in_frame,
                                in_frame.GetStride(FrameBuffer::UPLANE),
                                in_frame.GetData(FrameBuffer::VPLANE),
                                in_frame.GetStride(FrameBuffer::VPLANE),
-                               out_frame.GetData(FrameBuffer::YPLANE),
-                               out_frame.GetStride(FrameBuffer::YPLANE),
-                               out_frame.GetData(FrameBuffer::UPLANE),
-                               out_frame.GetStride(FrameBuffer::UPLANE),
-                               out_frame.GetWidth(), out_frame.GetHeight());
+                               out_frame->GetData(FrameBuffer::YPLANE),
+                               out_frame->GetStride(FrameBuffer::YPLANE),
+                               out_frame->GetData(FrameBuffer::UPLANE),
+                               out_frame->GetStride(FrameBuffer::UPLANE),
+                               out_frame->GetWidth(), out_frame->GetHeight());
         LOGF_IF(ERROR, res) << "I420ToNV12() returns " << res;
         return res ? -EINVAL : 0;
       }
       case V4L2_PIX_FMT_RGBX32: {
-        int res = libyuv::I420ToABGR(
-            in_frame.GetData(FrameBuffer::YPLANE),
-            in_frame.GetStride(FrameBuffer::YPLANE),
-            in_frame.GetData(FrameBuffer::UPLANE),
-            in_frame.GetStride(FrameBuffer::UPLANE),
-            in_frame.GetData(FrameBuffer::VPLANE),
-            in_frame.GetStride(FrameBuffer::VPLANE), out_frame.GetData(),
-            out_frame.GetStride(), out_frame.GetWidth(), out_frame.GetHeight());
+        int res =
+            libyuv::I420ToABGR(in_frame.GetData(FrameBuffer::YPLANE),
+                               in_frame.GetStride(FrameBuffer::YPLANE),
+                               in_frame.GetData(FrameBuffer::UPLANE),
+                               in_frame.GetStride(FrameBuffer::UPLANE),
+                               in_frame.GetData(FrameBuffer::VPLANE),
+                               in_frame.GetStride(FrameBuffer::VPLANE),
+                               out_frame->GetData(), out_frame->GetStride(),
+                               out_frame->GetWidth(), out_frame->GetHeight());
         LOGF_IF(ERROR, res) << "I420ToABGR() returns " << res;
         return res ? -EINVAL : 0;
       }
       default:
         LOGF(ERROR) << "Destination pixel format "
-                    << FormatToString(out_frame.GetFourcc())
+                    << FormatToString(out_frame->GetFourcc())
                     << " is unsupported for YU12 source format.";
         return -EINVAL;
     }
   } else if (in_frame.GetFourcc() == V4L2_PIX_FMT_NV12 ||
              in_frame.GetFourcc() == V4L2_PIX_FMT_NV12M) {
-    switch (out_frame.GetFourcc()) {
+    switch (out_frame->GetFourcc()) {
       case V4L2_PIX_FMT_YUV420:     // YU12
       case V4L2_PIX_FMT_YUV420M:    // YM12, multiple planes YU12
       case V4L2_PIX_FMT_YVU420:     // YV12
@@ -228,84 +222,87 @@ int ImageProcessor::ConvertFormat(FrameBuffer& in_frame,
                                in_frame.GetStride(FrameBuffer::YPLANE),
                                in_frame.GetData(FrameBuffer::UPLANE),
                                in_frame.GetStride(FrameBuffer::UPLANE),
-                               out_frame.GetData(FrameBuffer::YPLANE),
-                               out_frame.GetStride(FrameBuffer::YPLANE),
-                               out_frame.GetData(FrameBuffer::UPLANE),
-                               out_frame.GetStride(FrameBuffer::UPLANE),
-                               out_frame.GetData(FrameBuffer::VPLANE),
-                               out_frame.GetStride(FrameBuffer::VPLANE),
-                               out_frame.GetWidth(), out_frame.GetHeight());
+                               out_frame->GetData(FrameBuffer::YPLANE),
+                               out_frame->GetStride(FrameBuffer::YPLANE),
+                               out_frame->GetData(FrameBuffer::UPLANE),
+                               out_frame->GetStride(FrameBuffer::UPLANE),
+                               out_frame->GetData(FrameBuffer::VPLANE),
+                               out_frame->GetStride(FrameBuffer::VPLANE),
+                               out_frame->GetWidth(), out_frame->GetHeight());
         LOGF_IF(ERROR, res) << "NV12ToI420() returns " << res;
         return res ? -EINVAL : 0;
       }
       case V4L2_PIX_FMT_NV12:     // NV12
       case V4L2_PIX_FMT_NV12M: {  // NM12
-        int res = libyuv::NV12Copy(in_frame.GetData(FrameBuffer::YPLANE),
-                                   in_frame.GetStride(FrameBuffer::YPLANE),
-                                   in_frame.GetData(FrameBuffer::UPLANE),
-                                   in_frame.GetStride(FrameBuffer::UPLANE),
-                                   out_frame.GetData(FrameBuffer::YPLANE),
-                                   out_frame.GetStride(FrameBuffer::YPLANE),
-                                   out_frame.GetData(FrameBuffer::UPLANE),
-                                   out_frame.GetStride(FrameBuffer::UPLANE),
-                                   out_frame.GetWidth(), out_frame.GetHeight());
+        int res =
+            libyuv::NV12Copy(in_frame.GetData(FrameBuffer::YPLANE),
+                             in_frame.GetStride(FrameBuffer::YPLANE),
+                             in_frame.GetData(FrameBuffer::UPLANE),
+                             in_frame.GetStride(FrameBuffer::UPLANE),
+                             out_frame->GetData(FrameBuffer::YPLANE),
+                             out_frame->GetStride(FrameBuffer::YPLANE),
+                             out_frame->GetData(FrameBuffer::UPLANE),
+                             out_frame->GetStride(FrameBuffer::UPLANE),
+                             out_frame->GetWidth(), out_frame->GetHeight());
         LOGF_IF(ERROR, res) << "NV12Copy() returns " << res;
         return res ? -EINVAL : 0;
       }
       case V4L2_PIX_FMT_RGBX32: {
-        int res = libyuv::NV12ToABGR(
-            in_frame.GetData(FrameBuffer::YPLANE),
-            in_frame.GetStride(FrameBuffer::YPLANE),
-            in_frame.GetData(FrameBuffer::UPLANE),
-            in_frame.GetStride(FrameBuffer::UPLANE), out_frame.GetData(),
-            out_frame.GetStride(), out_frame.GetWidth(), out_frame.GetHeight());
+        int res =
+            libyuv::NV12ToABGR(in_frame.GetData(FrameBuffer::YPLANE),
+                               in_frame.GetStride(FrameBuffer::YPLANE),
+                               in_frame.GetData(FrameBuffer::UPLANE),
+                               in_frame.GetStride(FrameBuffer::UPLANE),
+                               out_frame->GetData(), out_frame->GetStride(),
+                               out_frame->GetWidth(), out_frame->GetHeight());
         LOGF_IF(ERROR, res) << "NV12ToABGR() returns " << res;
         return res ? -EINVAL : 0;
       }
       default:
         LOGF(ERROR) << "Destination pixel format "
-                    << FormatToString(out_frame.GetFourcc())
+                    << FormatToString(out_frame->GetFourcc())
                     << " is unsupported for NV12 source format.";
         return -EINVAL;
     }
   } else if (in_frame.GetFourcc() == V4L2_PIX_FMT_JPEG ||
              in_frame.GetFourcc() == V4L2_PIX_FMT_MJPEG) {
-    switch (out_frame.GetFourcc()) {
+    switch (out_frame->GetFourcc()) {
       case V4L2_PIX_FMT_YUV420:     // YU12
       case V4L2_PIX_FMT_YUV420M: {  // YM12, multiple planes YU12
-        int res = libyuv::MJPGToI420(
-            in_frame.GetData(), in_frame.GetDataSize(),
-            out_frame.GetData(FrameBuffer::YPLANE),
-            out_frame.GetStride(FrameBuffer::YPLANE),
-            out_frame.GetData(FrameBuffer::UPLANE),
-            out_frame.GetStride(FrameBuffer::UPLANE),
-            out_frame.GetData(FrameBuffer::VPLANE),
-            out_frame.GetStride(FrameBuffer::VPLANE), in_frame.GetWidth(),
-            in_frame.GetHeight(), out_frame.GetWidth(), out_frame.GetHeight());
+        int res =
+            libyuv::MJPGToI420(in_frame.GetData(), in_frame.GetDataSize(),
+                               out_frame->GetData(FrameBuffer::YPLANE),
+                               out_frame->GetStride(FrameBuffer::YPLANE),
+                               out_frame->GetData(FrameBuffer::UPLANE),
+                               out_frame->GetStride(FrameBuffer::UPLANE),
+                               out_frame->GetData(FrameBuffer::VPLANE),
+                               out_frame->GetStride(FrameBuffer::VPLANE),
+                               in_frame.GetWidth(), in_frame.GetHeight(),
+                               out_frame->GetWidth(), out_frame->GetHeight());
         LOGF_IF(ERROR, res) << "libyuv::MJPEGToI420() returns " << res;
         return res ? -EINVAL : 0;
       }
       default:
         LOGF(ERROR) << "Destination pixel format "
-                    << FormatToString(out_frame.GetFourcc())
+                    << FormatToString(out_frame->GetFourcc())
                     << " is unsupported for MJPEG source format.";
         return -EINVAL;
     }
   } else if (in_frame.GetFourcc() == V4L2_PIX_FMT_RGB24) {
-    switch (out_frame.GetFourcc()) {
+    switch (out_frame->GetFourcc()) {
       case V4L2_PIX_FMT_YUV420:     // YU12
       case V4L2_PIX_FMT_YUV420M:    // YM12, multiple planes YU12
       case V4L2_PIX_FMT_YVU420:     // YV12
       case V4L2_PIX_FMT_YVU420M: {  // YM21, multiple planes YV12
         int res =
             libyuv::RGB24ToI420(in_frame.GetData(), in_frame.GetStride(),
-                                out_frame.GetData(FrameBuffer::YPLANE),
-                                out_frame.GetStride(FrameBuffer::YPLANE),
-                                out_frame.GetData(FrameBuffer::UPLANE),
-                                out_frame.GetStride(FrameBuffer::UPLANE),
-                                out_frame.GetData(FrameBuffer::VPLANE),
-                                out_frame.GetStride(FrameBuffer::VPLANE),
-                                out_frame.GetWidth(), out_frame.GetHeight());
+                                out_frame->GetData(FrameBuffer::YPLANE),
+                                out_frame->GetStride(FrameBuffer::YPLANE),
+                                out_frame->GetData(FrameBuffer::UPLANE),
+                                out_frame->GetStride(FrameBuffer::UPLANE),
+                                out_frame->GetData(FrameBuffer::VPLANE),
+                                out_frame->GetStride(FrameBuffer::VPLANE),
+                                out_frame->GetWidth(), out_frame->GetHeight());
         LOGF_IF(ERROR, res) << "RGB24ToI420() returns " << res;
         return res ? -EINVAL : 0;
       }
@@ -339,16 +336,16 @@ int ImageProcessor::ConvertFormat(FrameBuffer& in_frame,
             temp_i420_buffer_->GetStride(FrameBuffer::UPLANE),
             temp_i420_buffer_->GetData(FrameBuffer::VPLANE),
             temp_i420_buffer_->GetStride(FrameBuffer::VPLANE),
-            out_frame.GetData(FrameBuffer::YPLANE),
-            out_frame.GetStride(FrameBuffer::YPLANE),
-            out_frame.GetData(FrameBuffer::UPLANE),
-            out_frame.GetStride(FrameBuffer::UPLANE), out_frame.GetWidth(),
-            out_frame.GetHeight());
+            out_frame->GetData(FrameBuffer::YPLANE),
+            out_frame->GetStride(FrameBuffer::YPLANE),
+            out_frame->GetData(FrameBuffer::UPLANE),
+            out_frame->GetStride(FrameBuffer::UPLANE), out_frame->GetWidth(),
+            out_frame->GetHeight());
         LOGF_IF(ERROR, res) << "RGB24ToNV12() returns " << res;
         return res ? -EINVAL : 0;
       }
       default: {
-        LOGF(ERROR) << "Not implemented: RGB24 -> " << out_frame.GetFourcc();
+        LOGF(ERROR) << "Not implemented: RGB24 -> " << out_frame->GetFourcc();
         return -EINVAL;
       }
     }
@@ -373,31 +370,31 @@ int ImageProcessor::ConvertFormat(FrameBuffer& in_frame,
                  in_frame.GetHeight() / 2);
     }
 
-    switch (out_frame.GetFourcc()) {
+    switch (out_frame->GetFourcc()) {
       case V4L2_PIX_FMT_YUV420:     // YU12
       case V4L2_PIX_FMT_YUV420M:    // YM12, multiple planes YU12
       case V4L2_PIX_FMT_YVU420:     // YV12
       case V4L2_PIX_FMT_YVU420M: {  // YM21, multiple planes YV12
         libyuv::Convert16To8Plane(
             reinterpret_cast<const uint16_t*>(in_frame.GetData()),
-            in_frame.GetStride(), out_frame.GetData(FrameBuffer::YPLANE),
-            out_frame.GetStride(FrameBuffer::YPLANE),
+            in_frame.GetStride(), out_frame->GetData(FrameBuffer::YPLANE),
+            out_frame->GetStride(FrameBuffer::YPLANE),
             256,  // scale
             in_frame.GetWidth(), in_frame.GetHeight());
         libyuv::CopyPlane(
             temp_i420_buffer_gray_->GetData(FrameBuffer::UPLANE),
             temp_i420_buffer_gray_->GetStride(FrameBuffer::UPLANE),
-            out_frame.GetData(FrameBuffer::UPLANE),
-            out_frame.GetStride(FrameBuffer::UPLANE),
-            out_frame.GetStride(FrameBuffer::UPLANE),
-            out_frame.GetHeight() / 2);
+            out_frame->GetData(FrameBuffer::UPLANE),
+            out_frame->GetStride(FrameBuffer::UPLANE),
+            out_frame->GetStride(FrameBuffer::UPLANE),
+            out_frame->GetHeight() / 2);
         libyuv::CopyPlane(
             temp_i420_buffer_gray_->GetData(FrameBuffer::VPLANE),
             temp_i420_buffer_gray_->GetStride(FrameBuffer::VPLANE),
-            out_frame.GetData(FrameBuffer::VPLANE),
-            out_frame.GetStride(FrameBuffer::VPLANE),
-            out_frame.GetStride(FrameBuffer::VPLANE),
-            out_frame.GetHeight() / 2);
+            out_frame->GetData(FrameBuffer::VPLANE),
+            out_frame->GetStride(FrameBuffer::VPLANE),
+            out_frame->GetStride(FrameBuffer::VPLANE),
+            out_frame->GetHeight() / 2);
         return 0;
       }
       case V4L2_PIX_FMT_NV12:     // NV12
@@ -417,16 +414,16 @@ int ImageProcessor::ConvertFormat(FrameBuffer& in_frame,
             temp_i420_buffer_gray_->GetStride(FrameBuffer::UPLANE),
             temp_i420_buffer_gray_->GetData(FrameBuffer::VPLANE),
             temp_i420_buffer_gray_->GetStride(FrameBuffer::VPLANE),
-            out_frame.GetData(FrameBuffer::YPLANE),
-            out_frame.GetStride(FrameBuffer::YPLANE),
-            out_frame.GetData(FrameBuffer::UPLANE),
-            out_frame.GetStride(FrameBuffer::UPLANE), out_frame.GetWidth(),
-            out_frame.GetHeight());
+            out_frame->GetData(FrameBuffer::YPLANE),
+            out_frame->GetStride(FrameBuffer::YPLANE),
+            out_frame->GetData(FrameBuffer::UPLANE),
+            out_frame->GetStride(FrameBuffer::UPLANE), out_frame->GetWidth(),
+            out_frame->GetHeight());
         LOGF_IF(ERROR, res) << "I420ToNV12() returns " << res;
         return res ? -EINVAL : 0;
       }
       default: {
-        LOGF(ERROR) << "Not implemented: Y16/Z16 -> " << out_frame.GetFourcc();
+        LOGF(ERROR) << "Not implemented: Y16/Z16 -> " << out_frame->GetFourcc();
         return -EINVAL;
       }
     }
@@ -437,11 +434,7 @@ int ImageProcessor::ConvertFormat(FrameBuffer& in_frame,
   }
 }
 
-int ImageProcessor::Scale(FrameBuffer& in_frame, FrameBuffer& out_frame) {
-  if (in_frame.Map() || out_frame.Map()) {
-    LOGF(ERROR) << "Failed to map frame";
-    return -EINVAL;
-  }
+int ImageProcessor::Scale(const FrameBuffer& in_frame, FrameBuffer* out_frame) {
   if (in_frame.GetFourcc() != V4L2_PIX_FMT_YUV420 &&
       in_frame.GetFourcc() != V4L2_PIX_FMT_YUV420M) {
     LOGF(ERROR) << "Pixel format " << FormatToString(in_frame.GetFourcc())
@@ -450,8 +443,8 @@ int ImageProcessor::Scale(FrameBuffer& in_frame, FrameBuffer& out_frame) {
   }
 
   VLOGF(1) << "Scale image from " << in_frame.GetWidth() << "x"
-           << in_frame.GetHeight() << " to " << out_frame.GetWidth() << "x"
-           << out_frame.GetHeight();
+           << in_frame.GetHeight() << " to " << out_frame->GetWidth() << "x"
+           << out_frame->GetHeight();
 
   int ret = libyuv::I420Scale(
       in_frame.GetData(FrameBuffer::YPLANE),
@@ -460,25 +453,20 @@ int ImageProcessor::Scale(FrameBuffer& in_frame, FrameBuffer& out_frame) {
       in_frame.GetStride(FrameBuffer::UPLANE),
       in_frame.GetData(FrameBuffer::VPLANE),
       in_frame.GetStride(FrameBuffer::VPLANE), in_frame.GetWidth(),
-      in_frame.GetHeight(), out_frame.GetData(FrameBuffer::YPLANE),
-      out_frame.GetStride(FrameBuffer::YPLANE),
-      out_frame.GetData(FrameBuffer::UPLANE),
-      out_frame.GetStride(FrameBuffer::UPLANE),
-      out_frame.GetData(FrameBuffer::VPLANE),
-      out_frame.GetStride(FrameBuffer::VPLANE), out_frame.GetWidth(),
-      out_frame.GetHeight(), libyuv::FilterMode::kFilterNone);
+      in_frame.GetHeight(), out_frame->GetData(FrameBuffer::YPLANE),
+      out_frame->GetStride(FrameBuffer::YPLANE),
+      out_frame->GetData(FrameBuffer::UPLANE),
+      out_frame->GetStride(FrameBuffer::UPLANE),
+      out_frame->GetData(FrameBuffer::VPLANE),
+      out_frame->GetStride(FrameBuffer::VPLANE), out_frame->GetWidth(),
+      out_frame->GetHeight(), libyuv::FilterMode::kFilterNone);
   LOGF_IF(ERROR, ret) << "I420Scale failed: " << ret;
   return ret;
 }
 
-int ImageProcessor::ProcessForInsetPortraitMode(FrameBuffer& in_frame,
-                                                FrameBuffer& out_frame,
+int ImageProcessor::ProcessForInsetPortraitMode(const FrameBuffer& in_frame,
+                                                FrameBuffer* out_frame,
                                                 int rotate_degree) {
-  if (in_frame.Map() || out_frame.Map()) {
-    LOGF(ERROR) << "Failed to map frame";
-    return -EINVAL;
-  }
-
   libyuv::RotationMode rotation_mode = libyuv::RotationMode::kRotate90;
   switch (rotate_degree) {
     case 90:
@@ -494,7 +482,7 @@ int ImageProcessor::ProcessForInsetPortraitMode(FrameBuffer& in_frame,
 
   VLOGF(1) << "Crop and rotate image, rotate degree: " << rotate_degree;
 
-  int margin = (in_frame.GetWidth() - out_frame.GetHeight()) / 2;
+  int margin = (in_frame.GetWidth() - out_frame->GetHeight()) / 2;
   // Crop from even pixels.
   margin &= ~1;
 
@@ -507,13 +495,13 @@ int ImageProcessor::ProcessForInsetPortraitMode(FrameBuffer& in_frame,
                    in_frame.GetStride(FrameBuffer::UPLANE),
                    in_frame.GetData(FrameBuffer::VPLANE) + margin / 2,
                    in_frame.GetStride(FrameBuffer::VPLANE),
-                   out_frame.GetData(FrameBuffer::YPLANE),
-                   out_frame.GetStride(FrameBuffer::YPLANE),
-                   out_frame.GetData(FrameBuffer::UPLANE),
-                   out_frame.GetStride(FrameBuffer::UPLANE),
-                   out_frame.GetData(FrameBuffer::VPLANE),
-                   out_frame.GetStride(FrameBuffer::VPLANE),
-                   out_frame.GetHeight(), in_frame.GetHeight(), rotation_mode);
+                   out_frame->GetData(FrameBuffer::YPLANE),
+                   out_frame->GetStride(FrameBuffer::YPLANE),
+                   out_frame->GetData(FrameBuffer::UPLANE),
+                   out_frame->GetStride(FrameBuffer::UPLANE),
+                   out_frame->GetData(FrameBuffer::VPLANE),
+                   out_frame->GetStride(FrameBuffer::VPLANE),
+                   out_frame->GetHeight(), in_frame.GetHeight(), rotation_mode);
     if (ret) {
       LOGF(ERROR) << "I420Rotate failed: " << ret;
       return ret;
@@ -524,13 +512,13 @@ int ImageProcessor::ProcessForInsetPortraitMode(FrameBuffer& in_frame,
                                in_frame.GetStride(FrameBuffer::YPLANE),
                                in_frame.GetData(FrameBuffer::UPLANE) + margin,
                                in_frame.GetStride(FrameBuffer::UPLANE),
-                               out_frame.GetData(FrameBuffer::YPLANE),
-                               out_frame.GetStride(FrameBuffer::YPLANE),
-                               out_frame.GetData(FrameBuffer::UPLANE),
-                               out_frame.GetStride(FrameBuffer::UPLANE),
-                               out_frame.GetData(FrameBuffer::VPLANE),
-                               out_frame.GetStride(FrameBuffer::VPLANE),
-                               out_frame.GetHeight(), in_frame.GetHeight(),
+                               out_frame->GetData(FrameBuffer::YPLANE),
+                               out_frame->GetStride(FrameBuffer::YPLANE),
+                               out_frame->GetData(FrameBuffer::UPLANE),
+                               out_frame->GetStride(FrameBuffer::UPLANE),
+                               out_frame->GetData(FrameBuffer::VPLANE),
+                               out_frame->GetStride(FrameBuffer::VPLANE),
+                               out_frame->GetHeight(), in_frame.GetHeight(),
                                rotation_mode);
     if (ret) {
       LOGF(ERROR) << "NV12ToI420Rotate failed: " << ret;
@@ -544,23 +532,19 @@ int ImageProcessor::ProcessForInsetPortraitMode(FrameBuffer& in_frame,
   return 0;
 }
 
-int ImageProcessor::Crop(FrameBuffer& in_frame, FrameBuffer& out_frame) {
+int ImageProcessor::Crop(const FrameBuffer& in_frame, FrameBuffer* out_frame) {
   VLOGF(1) << "Crop from " << in_frame.GetWidth() << "x" << in_frame.GetHeight()
            << "," << FormatToString(in_frame.GetFourcc()) << " to "
-           << out_frame.GetWidth() << "x" << out_frame.GetHeight() << ","
-           << FormatToString(out_frame.GetFourcc());
-  if (in_frame.Map() || out_frame.Map()) {
-    LOGF(ERROR) << "Failed to map frame";
-    return -EINVAL;
-  }
-  if (out_frame.GetWidth() > in_frame.GetWidth() ||
-      out_frame.GetHeight() > in_frame.GetHeight()) {
+           << out_frame->GetWidth() << "x" << out_frame->GetHeight() << ","
+           << FormatToString(out_frame->GetFourcc());
+  if (out_frame->GetWidth() > in_frame.GetWidth() ||
+      out_frame->GetHeight() > in_frame.GetHeight()) {
     LOGF(ERROR) << "Crop to larger size";
     return -EINVAL;
   }
 
-  int crop_x = (in_frame.GetWidth() - out_frame.GetWidth()) / 2;
-  int crop_y = (in_frame.GetHeight() - out_frame.GetHeight()) / 2;
+  int crop_x = (in_frame.GetWidth() - out_frame->GetWidth()) / 2;
+  int crop_y = (in_frame.GetHeight() - out_frame->GetHeight()) / 2;
   // Crop from even pixels for correct YUV image.
   crop_x &= ~1;
   crop_y &= ~1;
@@ -577,13 +561,13 @@ int ImageProcessor::Crop(FrameBuffer& in_frame, FrameBuffer& out_frame) {
         in_frame.GetData(FrameBuffer::VPLANE) +
             in_frame.GetStride(FrameBuffer::VPLANE) * crop_y / 2 + crop_x / 2,
         in_frame.GetStride(FrameBuffer::VPLANE),
-        out_frame.GetData(FrameBuffer::YPLANE),
-        out_frame.GetStride(FrameBuffer::YPLANE),
-        out_frame.GetData(FrameBuffer::UPLANE),
-        out_frame.GetStride(FrameBuffer::UPLANE),
-        out_frame.GetData(FrameBuffer::VPLANE),
-        out_frame.GetStride(FrameBuffer::VPLANE), out_frame.GetWidth(),
-        out_frame.GetHeight());
+        out_frame->GetData(FrameBuffer::YPLANE),
+        out_frame->GetStride(FrameBuffer::YPLANE),
+        out_frame->GetData(FrameBuffer::UPLANE),
+        out_frame->GetStride(FrameBuffer::UPLANE),
+        out_frame->GetData(FrameBuffer::VPLANE),
+        out_frame->GetStride(FrameBuffer::VPLANE), out_frame->GetWidth(),
+        out_frame->GetHeight());
     if (ret) {
       LOGF(ERROR) << "I420Copy failed: " << ret;
       return ret;
@@ -597,13 +581,13 @@ int ImageProcessor::Crop(FrameBuffer& in_frame, FrameBuffer& out_frame) {
         in_frame.GetData(FrameBuffer::UPLANE) +
             in_frame.GetStride(FrameBuffer::UPLANE) * crop_y / 2 + crop_x,
         in_frame.GetStride(FrameBuffer::UPLANE),
-        out_frame.GetData(FrameBuffer::YPLANE),
-        out_frame.GetStride(FrameBuffer::YPLANE),
-        out_frame.GetData(FrameBuffer::UPLANE),
-        out_frame.GetStride(FrameBuffer::UPLANE),
-        out_frame.GetData(FrameBuffer::VPLANE),
-        out_frame.GetStride(FrameBuffer::VPLANE), out_frame.GetWidth(),
-        out_frame.GetHeight());
+        out_frame->GetData(FrameBuffer::YPLANE),
+        out_frame->GetStride(FrameBuffer::YPLANE),
+        out_frame->GetData(FrameBuffer::UPLANE),
+        out_frame->GetStride(FrameBuffer::UPLANE),
+        out_frame->GetData(FrameBuffer::VPLANE),
+        out_frame->GetStride(FrameBuffer::VPLANE), out_frame->GetWidth(),
+        out_frame->GetHeight());
     if (ret) {
       LOGF(ERROR) << "NV12ToI420 failed: " << ret;
       return ret;

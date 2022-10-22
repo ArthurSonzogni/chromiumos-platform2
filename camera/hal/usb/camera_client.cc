@@ -977,7 +977,7 @@ int CameraClient::RequestHandler::WriteStreamBuffers(
         *buffer->buffer, buffer->stream->width, buffer->stream->height));
   }
 
-  FrameBuffer* input_frame =
+  const FrameBuffer* input_frame =
       test_pattern_->IsTestPatternEnabled()
           ? test_pattern_->GetTestPattern()
           : input_buffers_[current_v4l2_buffer_id_].get();
@@ -987,7 +987,7 @@ int CameraClient::RequestHandler::WriteStreamBuffers(
       device_info_.enable_face_detection ? &detected_faces_ : nullptr;
   int ret = cached_frame_.Convert(
       static_metadata_, request_metadata, crop_rotate_scale_degrees_,
-      *input_frame, output_frames, output_frame_status, faces_ptr);
+      *input_frame, output_frames, &output_frame_status, faces_ptr);
 
   if (ret) {
     EnqueueV4L2Buffer();
