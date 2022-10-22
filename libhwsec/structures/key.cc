@@ -27,12 +27,27 @@ void ScopedKey::Invalidate() {
   if (key_.has_value()) {
     Key key = GetKey();
     key_ = std::nullopt;
-    RETURN_IF_ERROR(Middleware(middleware_derivative_)
-                        .CallSync<&hwsec::Backend::KeyManagement::Flush>(key))
-        .With([](auto linker) {
-          return linker.LogError() << "Failed to flush scoped key";
-        })
-        .ReturnVoid();
+
+    // Using async flush if we have task runner on the current thread to improve
+    // the performance.
+    if (base::SequencedTaskRunnerHandle::IsSet()) {
+      base::OnceCallback<void(hwsec::Status)> callback =
+          base::BindOnce([](hwsec::Status result) {
+            if (!result.ok()) {
+              LOG(ERROR) << "Failed to flush scoped key: " << result;
+            }
+          });
+      Middleware(middleware_derivative_)
+          .CallAsync<&hwsec::Backend::KeyManagement::Flush>(std::move(callback),
+                                                            key);
+    } else {
+      RETURN_IF_ERROR(Middleware(middleware_derivative_)
+                          .CallSync<&hwsec::Backend::KeyManagement::Flush>(key))
+          .With([](auto linker) {
+            return linker.LogError() << "Failed to flush scoped key";
+          })
+          .ReturnVoid();
+    }
   }
 }
 
