@@ -62,6 +62,9 @@ MiddlewareOwner::~MiddlewareOwner() {
   if (thread_id_ != base::kInvalidThreadId) {
     base::OnceClosure task = base::BindOnce(&MiddlewareOwner::FiniBackend,
                                             weak_factory_.GetWeakPtr());
+    task = std::move(task).Then(base::BindOnce(
+        &base::WeakPtrFactory<MiddlewareOwner>::InvalidateWeakPtrs,
+        base::Unretained(&weak_factory_)));
     Middleware(Derive()).RunBlockingTask(std::move(task));
   }
 }
