@@ -10,6 +10,7 @@ import os
 import re
 import sys
 
+
 TOP_DIR = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 
 # Find chromite!
@@ -19,6 +20,7 @@ sys.path.insert(0, os.path.join(TOP_DIR, "..", ".."))
 from chromite.lib import commandline
 from chromite.lib import git
 from chromite.lib import osutils
+
 
 # pylint: enable=wrong-import-position
 

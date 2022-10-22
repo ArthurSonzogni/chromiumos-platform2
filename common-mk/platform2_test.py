@@ -97,7 +97,8 @@ ENV_PASSTHRU_REGEX_LIST = list(
         r"QEMU_",
         # Used to select profiling output location for gcov.
         r"GCOV_",
-        # Used to select profiling output location for llvm instrumented binaries.
+        # Used to select profiling output location for llvm instrumented
+        # binaries.
         r"^LLVM_PROFILE_FILE$",
         # Used by unit tests to access test binaries.
         r"^OUT$",
@@ -176,10 +177,10 @@ class Platform2Test(object):
         """Split a gtest_filter down into positive and negative filters.
 
         Args:
-          gtest_filter: A filter string as normally passed to --gtest_filter.
+            gtest_filter: A filter string as normally passed to --gtest_filter.
 
         Returns:
-          A tuple of format (positive_filters, negative_filters).
+            A tuple of format (positive_filters, negative_filters).
         """
 
         filters = gtest_filter.split("-", 1)
@@ -196,7 +197,7 @@ class Platform2Test(object):
         """Merge internal gtest filters and user-supplied gtest filters.
 
         Returns:
-          A string that can be passed to --gtest_filter.
+            A string that can be passed to --gtest_filter.
         """
 
         gtest_filter = cls.generateGtestSubfilter(filters)
@@ -221,10 +222,10 @@ class Platform2Test(object):
         """Return details about the non-root account we want to use.
 
         Args:
-          user: User to lookup.  If None, try the active user, then 'nobody'.
+            user: User to lookup.  If None, try the active user, then 'nobody'.
 
         Returns:
-          A tuple of (username, uid, gid, home).
+            A tuple of (username, uid, gid, home).
         """
         if user is not None:
             # Assume the account is a UID first.
@@ -327,8 +328,8 @@ class Platform2Test(object):
                     # check that elsewhere ...
                     return True
 
-        # Fast path: see if the user exists already w/out grabbing a global lock.
-        # This should be the most common flow.
+        # Fast path: see if the user exists already w/out grabbing a global
+        # lock. This should be the most common flow.
         if _user_exists():
             return
 
@@ -375,7 +376,10 @@ class Platform2Test(object):
             self.qemu.RegisterBinfmt()
 
     def post_test(self):
-        """Runs post-test teardown, removes mounts/files copied during pre-test."""
+        """Runs post-test teardown.
+
+        Removes mounts/files copied during pre-test.
+        """
 
     def run(self):
         """Runs the test in a proper environment (e.g. qemu)."""
