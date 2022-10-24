@@ -39,19 +39,9 @@ void ReaderTest(const std::unique_ptr<AuditLogReader>& r,
   }
 }
 
-// Tests if initialization of AuditLogReader moves the current position of
-// log_file_ member to the end of the file avoiding re-reading of old logs.
-TEST(AuditLogReaderTest, NoRereadingTest) {
-  auto ar =
-      InitializeAuditLogReaderForTest("TEST_AUDIT_LOG", kAVCRecordPattern);
-  ReaderTest(ar, {});
-}
-
 TEST(AuditLogReaderTest, AuditLogReaderTest) {
   auto ar =
       InitializeAuditLogReaderForTest("TEST_AUDIT_LOG", kAVCRecordPattern);
-  // Make the AuditLogReader read file from the beginning.
-  ar->SeekToBegin();
 
   LogRecord e1{.tag = kAVCRecordTag,
                .message =
@@ -65,13 +55,61 @@ TEST(AuditLogReaderTest, AuditLogReaderTest) {
                    R"(cmd="/usr/bin/memfd_test /usr/sbin/trunks_client", )"
                    R"(pid=666)",
                .timestamp = base::Time::FromTimeT(1589342085)};
-  LogRecord e3 = {.tag = kAVCRecordTag,
+  LogRecord e3{.tag = kSyscallRecordTag,
+               .message =
+                   R"(arch=c000003e syscall=319 success=no exit=-22 )"
+                   R"(a0=57fb1e724f06 a1=ffffffff a2=0 a3=1999999999999999 )"
+                   R"(items=0 ppid=1086 pid=19091 auid=4294967295 uid=1000 )"
+                   R"(gid=1000 euid=1000 suid=1000 fsuid=1000 egid=1000 )"
+                   R"(sgid=1000 fsgid=1000 tty=(none) )"
+                   R"(ses=4294967295 comm="Chrome_ChildIOT" )"
+                   R"(exe="/opt/google/chrome/chrome" )"
+                   R"(subj=u:r:cros_browser:s0 key=(null)^]ARCH=x86_64 )"
+                   R"(SYSCALL=memfd_create AUID="unset" UID="chronos" )"
+                   R"(GID="chronos" EUID="chronos" SUID="chronos" )"
+                   R"(FSUID="chronos" EGID="chronos" SGID="chronos" )"
+                   R"(FSGID="chronos")",
+               .timestamp = base::Time::FromTimeT(1629139955)};
+  LogRecord e4 = {.tag = kAVCRecordTag,
                   .message = R"(ChromeOS LSM: memfd execution attempt, )"
                              R"(cmd=(null), pid=777)",
                   .timestamp = base::Time::FromTimeT(1629139959)};
 
-  ReaderRun want{std::move(e1), std::move(e2), std::move(e3)};
+  ReaderRun want{std::move(e1), std::move(e2), std::move(e3), std::move(e4)};
   ReaderTest(ar, want);
+}
+
+TEST(AuditLogReaderTest, IsMemfdCreateTest) {
+  EXPECT_TRUE(secanomalyd::IsMemfdCreate(
+      R"(arch=c000003e syscall=319 success=yes exit=0 a0=57fb1e724f06 )"
+      R"(a1=ffffffff a2=0 a3=1999999999999999 items=0 ppid=1086 pid=19091 )"
+      R"(egid=1000 sgid=1000 fsgid=1000 tty=(none) ses=4294967295 )"
+      R"(SYSCALL=memfd_create AUID="unset" UID="chronos" GID="chronos")"));
+  EXPECT_FALSE(secanomalyd::IsMemfdCreate(
+      R"(arch=c000003e syscall=319 success= exit=0 a0=57fb1e724f06 )"
+      R"(a1=ffffffff a2=0 a3=1999999999999999 items=0 ppid=1086 pid=19091 )"
+      R"(egid=1000 sgid=1000 fsgid=1000 tty=(none) ses=4294967295 )"
+      R"(SYSCALL=memfd_create AUID="unset" UID="chronos" GID="chronos")"));
+  EXPECT_FALSE(secanomalyd::IsMemfdCreate(
+      R"(arch=c000003e syscall=319 success=yes exit=0 a0=57fb1e724f06 )"
+      R"(a1=ffffffff a2=0 a3=1999999999999999 items=0 ppid=1086 pid=19091 )"
+      R"(egid=1000 sgid=1000 fsgid=1000 tty=(none) ses=4294967295 )"
+      R"(SYSCALL= AUID="unset" UID="chronos" GID="chronos")"));
+  EXPECT_FALSE(secanomalyd::IsMemfdCreate(
+      R"(arch=c000003e syscall=319 success=no exit=-22 a0=57fb1e724f06 )"
+      R"(a1=ffffffff a2=0 a3=1999999999999999 items=0 ppid=1086 pid=19091 )"
+      R"(egid=1000 sgid=1000 fsgid=1000 tty=(none) ses=4294967295 )"
+      R"(SYSCALL=memfd_create AUID="unset" UID="chronos" GID="chronos")"));
+  EXPECT_FALSE(secanomalyd::IsMemfdCreate(
+      R"(arch=40000003 syscall=295 per=8 success=yes exit=0 a0=ffffff9c)"
+      R"(a1=ef0d0240 a2=88000 a3=0 items=1 ppid=6404 pid=11226 auid=429496 )"
+      R"(SYSCALL=openat AUID="unset" UID="unknown(656360)"));
+  EXPECT_FALSE(secanomalyd::IsMemfdCreate(
+      R"(arch=40000003 syscall=295 per=8 success=no exit=-13 a0=ffffff9c)"
+      R"(a1=ef0d0240 a2=88000 a3=0 items=1 ppid=6404 pid=11226 auid=429496 )"
+      R"(SYSCALL=openat AUID="unset" UID="unknown(656360)"));
+  EXPECT_FALSE(secanomalyd::IsMemfdCreate(R"(======== Some Gibberish ======)"));
+  EXPECT_FALSE(secanomalyd::IsMemfdCreate(""));
 }
 
 TEST(AuditLogReaderTest, IsMemfdExecutionTest) {

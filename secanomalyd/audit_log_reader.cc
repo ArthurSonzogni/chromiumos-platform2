@@ -14,6 +14,22 @@
 
 namespace secanomalyd {
 
+static constexpr LazyRE2 kSuccessFieldPattern = {R"(success=([a-z]+)\s)"};
+static constexpr LazyRE2 kSyscallFieldPattern = {R"(SYSCALL=([\w]+)\s)"};
+
+bool IsMemfdCreate(const std::string& log_message) {
+  std::string syscall;
+  std::string success;
+
+  if (!RE2::PartialMatch(log_message, *kSuccessFieldPattern, &success) ||
+      !RE2::PartialMatch(log_message, *kSyscallFieldPattern, &syscall))
+    return false;
+
+  if (syscall == "memfd_create" && success == "yes")
+    return true;
+  return false;
+}
+
 bool IsMemfdExecutionAttempt(const std::string& log_message) {
   // Looks for the text snippet appended to log messages coming from the kernel
   // LSM code where the execution attempt is blocked.
@@ -34,10 +50,6 @@ bool Parser::IsValid(const std::string& line, LogRecord& log_record) {
   log_record.message = log_message;
   log_record.timestamp = base::Time::FromDoubleT(log_time_in_seconds);
   return true;
-}
-
-void AuditLogReader::SeekToBegin() {
-  log_file_.SeekToBegin();
 }
 
 bool AuditLogReader::GetNextEntry(LogRecord* log_record) {

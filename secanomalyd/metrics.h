@@ -13,7 +13,9 @@ enum class SecurityAnomaly {
   kMountInitNsWx = 0,  // deprecated
   kMount_InitNs_WxInUsrLocal = 1,
   kMount_InitNs_WxNotInUsrLocal = 2,
-  kMaxValue = kMount_InitNs_WxNotInUsrLocal,
+  kSuccessfulMemfdCreateSyscall = 3,
+  kBlockedMemoryFileExecAttempt = 4,
+  kMaxValue = kBlockedMemoryFileExecAttempt,
 };
 
 bool SendSecurityAnomalyToUMA(SecurityAnomaly secanomaly);

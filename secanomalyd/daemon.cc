@@ -208,10 +208,24 @@ void Daemon::DoAuditLogScan() {
 
   LogRecord log_record;
   while (audit_log_reader_->GetNextEntry(&log_record)) {
+    // This detects all successful memfd_create syscalls and reports them to UMA
+    // to be used as the baseline for memfd execution attempts.
+    if (log_record.tag == kSyscallRecordTag &&
+        secanomalyd::IsMemfdCreate(log_record.message)) {
+      if (ShouldReport(dev_)) {
+        if (!SendSecurityAnomalyToUMA(
+                SecurityAnomaly::kSuccessfulMemfdCreateSyscall))
+          LOG(WARNING) << "Could not upload metrics";
+      }
+    }
     if (log_record.tag == kAVCRecordTag &&
-        IsMemfdExecutionAttempt(log_record.message)) {
+        secanomalyd::IsMemfdExecutionAttempt(log_record.message)) {
       VLOG(1) << log_record.message;
-      // TODO(b/255420492) Upload Memfd Execution UMA metric here.
+      if (ShouldReport(dev_)) {
+        if (!SendSecurityAnomalyToUMA(
+                SecurityAnomaly::kBlockedMemoryFileExecAttempt))
+          LOG(WARNING) << "Could not upload metrics";
+      }
     }
   }
 }
