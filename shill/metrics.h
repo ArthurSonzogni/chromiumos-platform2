@@ -1478,23 +1478,27 @@ class Metrics : public DefaultServiceObserver {
   // Notifies this object of the resulting status of a cellular connection
   void NotifyCellularConnectionResult(Error::Type error);
 
+  struct DetailedCellularConnectionResult {
+    Error::Type error;
+    std::string detailed_error;
+    std::string uuid;
+    shill::Stringmap apn_info;
+    CellularBearer::IPConfigMethod ipv4_config_method;
+    CellularBearer::IPConfigMethod ipv6_config_method;
+    std::string home_mccmnc;
+    std::string serving_mccmnc;
+    std::string roaming_state;
+    bool use_attach_apn;
+    uint32_t tech_used;
+    uint32_t iccid_length;
+    uint32_t sim_type;
+    uint32_t modem_state;
+    int interface_index;
+  };
+
   // Notifies this object of the resulting status of a cellular connection
   virtual void NotifyDetailedCellularConnectionResult(
-      Error::Type error,
-      const std::string& detailed_error,
-      const std::string& uuid,
-      const shill::Stringmap& apn_info,
-      CellularBearer::IPConfigMethod ipv4_config_method,
-      CellularBearer::IPConfigMethod ipv6_config_method,
-      const std::string& home_mccmnc,
-      const std::string& serving_mccmnc,
-      const std::string& roaming_state,
-      bool use_attach_apn,
-      uint32_t tech_used,
-      uint32_t iccid_len,
-      uint32_t sim_type,
-      uint32_t modem_state,
-      int interface_index);
+      const DetailedCellularConnectionResult& result);
 
   // Notifies this object about the reason of failed user-initiated connection
   // attempt.

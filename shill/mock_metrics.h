@@ -41,21 +41,7 @@ class MockMetrics : public Metrics {
   MOCK_METHOD(void, ResetConnectTimer, (int), (override));
   MOCK_METHOD(void,
               NotifyDetailedCellularConnectionResult,
-              (Error::Type,
-               const std::string&,
-               const std::string&,
-               const shill::Stringmap&,
-               CellularBearer::IPConfigMethod,
-               CellularBearer::IPConfigMethod,
-               const std::string&,
-               const std::string&,
-               const std::string&,
-               bool use_attach_apn,
-               uint32_t tech_used,
-               uint32_t iccid_len,
-               uint32_t sim_type,
-               uint32_t modem_state,
-               int interface_index),
+              (const Metrics::DetailedCellularConnectionResult& result),
               (override));
 
   MOCK_METHOD(void,

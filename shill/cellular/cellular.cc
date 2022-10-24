@@ -1094,11 +1094,23 @@ void Cellular::NotifyDetailedCellularConnectionResult(
 
   SLOG(this, 3) << "Cellular Error:" << cellular_error;
 
-  metrics()->NotifyDetailedCellularConnectionResult(
-      error.type(), cellular_error, home_provider_info_->uuid(), apn_info, ipv4,
-      ipv6, home_provider_info_->mccmnc(), serving_operator_info_->mccmnc(),
-      roaming_state, use_attach_apn_, tech_used, iccid_len, sim_type,
-      modem_state_, interface_index());
+  Metrics::DetailedCellularConnectionResult result;
+  result.error = error.type();
+  result.detailed_error = cellular_error;
+  result.uuid = home_provider_info_->uuid();
+  result.apn_info = apn_info;
+  result.ipv4_config_method = ipv4;
+  result.ipv6_config_method = ipv6;
+  result.home_mccmnc = home_provider_info_->mccmnc();
+  result.serving_mccmnc = serving_operator_info_->mccmnc();
+  result.roaming_state = roaming_state;
+  result.use_attach_apn = use_attach_apn_;
+  result.tech_used = tech_used;
+  result.iccid_length = iccid_len;
+  result.sim_type = sim_type;
+  result.modem_state = modem_state_;
+  result.interface_index = interface_index();
+  metrics()->NotifyDetailedCellularConnectionResult(result);
 }
 
 void Cellular::Connect(CellularService* service, Error* error) {

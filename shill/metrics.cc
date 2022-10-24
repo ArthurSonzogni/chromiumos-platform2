@@ -926,21 +926,7 @@ int64_t Metrics::HashApn(const std::string& uuid,
 }
 
 void Metrics::NotifyDetailedCellularConnectionResult(
-    Error::Type error,
-    const std::string& detailed_error,
-    const std::string& uuid,
-    const shill::Stringmap& apn_info,
-    CellularBearer::IPConfigMethod ipv4_config_method,
-    CellularBearer::IPConfigMethod ipv6_config_method,
-    const std::string& home_mccmnc,
-    const std::string& serving_mccmnc,
-    const std::string& roaming_state,
-    bool use_attach_apn,
-    uint32_t tech_used,
-    uint32_t iccid_length,
-    uint32_t sim_type,
-    uint32_t modem_state,
-    int interface_index) {
+    const DetailedCellularConnectionResult& result) {
   int64_t home, serving, detailed_error_hash;
   CellularApnSource apn_source = kCellularApnSourceUi;
   std::string apn_name;
@@ -949,37 +935,38 @@ void Metrics::NotifyDetailedCellularConnectionResult(
   CellularRoamingState roaming =
       CellularRoamingState::kCellularRoamingStateUnknown;
   CellularConnectResult connect_result =
-      ConvertErrorToCellularConnectResult(error);
+      ConvertErrorToCellularConnectResult(result.error);
   uint32_t connect_time = 0;
   uint32_t scan_connect_time = 0;
-  DeviceMetrics* device_metrics = GetDeviceMetrics(interface_index);
+  DeviceMetrics* device_metrics = GetDeviceMetrics(result.interface_index);
 
-  base::StringToInt64(home_mccmnc, &home);
-  base::StringToInt64(serving_mccmnc, &serving);
-  crypto::SHA256HashString(detailed_error, &detailed_error_hash, 8);
+  base::StringToInt64(result.home_mccmnc, &home);
+  base::StringToInt64(result.serving_mccmnc, &serving);
+  crypto::SHA256HashString(result.detailed_error, &detailed_error_hash, 8);
 
-  if (roaming_state == kRoamingStateHome)
+  if (result.roaming_state == kRoamingStateHome)
     roaming = kCellularRoamingStateHome;
-  else if (roaming_state == kRoamingStateRoaming)
+  else if (result.roaming_state == kRoamingStateRoaming)
     roaming = kCellularRoamingStateRoaming;
 
-  DCHECK(base::Contains(apn_info, cellular::kApnSource));
-  if (base::Contains(apn_info, cellular::kApnSource)) {
-    if (apn_info.at(cellular::kApnSource) == cellular::kApnSourceMoDb)
+  DCHECK(base::Contains(result.apn_info, cellular::kApnSource));
+  if (base::Contains(result.apn_info, cellular::kApnSource)) {
+    if (result.apn_info.at(cellular::kApnSource) == cellular::kApnSourceMoDb)
       apn_source = kCellularApnSourceMoDb;
-    else if (apn_info.at(cellular::kApnSource) == cellular::kApnSourceUi)
+    else if (result.apn_info.at(cellular::kApnSource) == cellular::kApnSourceUi)
       apn_source = kCellularApnSourceUi;
-    else if (apn_info.at(cellular::kApnSource) == cellular::kApnSourceModem)
+    else if (result.apn_info.at(cellular::kApnSource) ==
+             cellular::kApnSourceModem)
       apn_source = kCellularApnSourceModem;
 
-    if (apn_info.at(cellular::kApnSource) == cellular::kApnSourceMoDb ||
-        apn_info.at(cellular::kApnSource) == cellular::kApnSourceModem) {
-      if (base::Contains(apn_info, kApnProperty))
-        apn_name = apn_info.at(kApnProperty);
-      if (base::Contains(apn_info, kApnUsernameProperty))
-        username = apn_info.at(kApnUsernameProperty);
-      if (base::Contains(apn_info, kApnPasswordProperty))
-        password = apn_info.at(kApnPasswordProperty);
+    if (result.apn_info.at(cellular::kApnSource) == cellular::kApnSourceMoDb ||
+        result.apn_info.at(cellular::kApnSource) == cellular::kApnSourceModem) {
+      if (base::Contains(result.apn_info, kApnProperty))
+        apn_name = result.apn_info.at(kApnProperty);
+      if (base::Contains(result.apn_info, kApnUsernameProperty))
+        username = result.apn_info.at(kApnUsernameProperty);
+      if (base::Contains(result.apn_info, kApnPasswordProperty))
+        password = result.apn_info.at(kApnPasswordProperty);
     }
   }
 
@@ -991,32 +978,35 @@ void Metrics::NotifyDetailedCellularConnectionResult(
     scan_connect_time = elapsed_time.InMilliseconds();
   }
 
-  SLOG(3) << __func__ << ": error:" << error << " uuid:" << uuid
+  SLOG(3) << __func__ << ": error:" << result.error << " uuid:" << result.uuid
           << " apn:" << apn_name << " apn_source:" << apn_source
-          << " ipv4:" << static_cast<int>(ipv4_config_method)
-          << " ipv6:" << static_cast<int>(ipv6_config_method)
-          << " home_mccmnc:" << home_mccmnc
-          << " serving_mccmnc:" << serving_mccmnc
-          << " roaming_state:" << roaming_state << " tech_used:" << tech_used
-          << " iccid_length:" << iccid_length << " sim_type:" << sim_type
-          << " modem_state:" << modem_state << " connect_time:" << connect_time
+          << " ipv4:" << static_cast<int>(result.ipv4_config_method)
+          << " ipv6:" << static_cast<int>(result.ipv6_config_method)
+          << " home_mccmnc:" << result.home_mccmnc
+          << " serving_mccmnc:" << result.serving_mccmnc
+          << " roaming_state:" << result.roaming_state
+          << " tech_used:" << result.tech_used
+          << " iccid_length:" << result.iccid_length
+          << " sim_type:" << result.sim_type
+          << " modem_state:" << result.modem_state
+          << " connect_time:" << connect_time
           << " scan_connect_time:" << scan_connect_time
-          << " detailed_error:" << detailed_error;
+          << " detailed_error:" << result.detailed_error;
 
   metrics::structured::events::cellular::CellularConnectionAttempt()
       .Setconnect_result(static_cast<int64_t>(connect_result))
-      .Setapn_id(HashApn(uuid, apn_name, username, password))
-      .Setipv4_config_method(static_cast<int>(ipv4_config_method))
-      .Setipv6_config_method(static_cast<int>(ipv6_config_method))
+      .Setapn_id(HashApn(result.uuid, apn_name, username, password))
+      .Setipv4_config_method(static_cast<int>(result.ipv4_config_method))
+      .Setipv6_config_method(static_cast<int>(result.ipv6_config_method))
       .Sethome_mccmnc(home)
       .Setserving_mccmnc(serving)
       .Setroaming_state(roaming)
-      .Setuse_attach_apn(use_attach_apn)
+      .Setuse_attach_apn(result.use_attach_apn)
       .Setapn_source(static_cast<int64_t>(apn_source))
-      .Settech_used(tech_used)
-      .Seticcid_length(iccid_length)
-      .Setsim_type(sim_type)
-      .Setmodem_state(modem_state)
+      .Settech_used(result.tech_used)
+      .Seticcid_length(result.iccid_length)
+      .Setsim_type(result.sim_type)
+      .Setmodem_state(result.modem_state)
       .Setconnect_time(connect_time)
       .Setscan_connect_time(scan_connect_time)
       .Setdetailed_error(detailed_error_hash)
