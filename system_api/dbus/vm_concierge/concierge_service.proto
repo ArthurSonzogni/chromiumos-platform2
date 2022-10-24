@@ -468,6 +468,11 @@ message StartArcVmRequest {
   // Implementation and a more detailed description can be found in
   // src/third_party/kernel/v5.10-arcvm/mm/vmscan.c
   int32 mglru_reclaim_swappiness = 36;
+
+  // Whether updating O4C (Optimized for Chromebook applications) list via A2C2
+  // (ARC Application Compatibility Configuration Delivery) is enabled (See
+  // go/a2c2 for project details.)
+  bool update_o4c_list_via_a2c2 = 37;
 }
 
 enum VmStatus {
