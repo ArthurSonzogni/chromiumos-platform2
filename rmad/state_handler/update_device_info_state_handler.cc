@@ -79,11 +79,17 @@ RmadErrorCode UpdateDeviceInfoStateHandler::InitializeState() {
     return RMAD_ERROR_WP_ENABLED;
   }
 
+  // Get rmad config first.
+  if (!cros_config_utils_->GetRmadConfig(&rmad_config_)) {
+    LOG(ERROR) << "Failed to get RMA config from cros_config";
+    return RMAD_ERROR_STATE_HANDLER_INITIALIZATION_FAILED;
+  }
+
   auto update_dev_info = std::make_unique<UpdateDeviceInfoState>();
 
   std::string serial_number;
   std::string region;
-  uint64_t sku_id;
+  int sku_id;
   bool is_custom_label_exist;
   std::string custom_label_tag;
   std::string dram_part_number;
@@ -99,21 +105,28 @@ RmadErrorCode UpdateDeviceInfoStateHandler::InitializeState() {
 
   bool mlb_repair;
 
-  // We can allow incorrect device info in vpd and cbi before writing.
+  // We can allow incorrect device info in VPD and CBI before writing.
   if (!vpd_utils_->GetSerialNumber(&serial_number)) {
     LOG(WARNING) << "Failed to get original serial number from vpd.";
   }
   if (!vpd_utils_->GetRegion(&region)) {
     LOG(WARNING) << "Failed to get original region from vpd.";
   }
-  if (!cbi_utils_->GetSkuId(&sku_id)) {
-    LOG(WARNING) << "Failed to get original sku from cbi.";
+  if (!cros_config_utils_->GetSkuId(&sku_id)) {
+    // If the device uses CBI, SKU might not be set on the board. If the device
+    // uses strapping pins, SKU should not be empty.
+    if (rmad_config_.has_cbi) {
+      LOG(WARNING) << "Failed to get original sku from cros_config.";
+    } else {
+      LOG(ERROR) << "Failed to get original sku from cros_config.";
+      return RMAD_ERROR_STATE_HANDLER_INITIALIZATION_FAILED;
+    }
   }
   // For backward compatibility, we should use cros_config to get the
   // custom-label, which already handles it.
   is_custom_label_exist =
       cros_config_utils_->GetCustomLabelTag(&custom_label_tag);
-  if (!cbi_utils_->GetDramPartNum(&dram_part_number)) {
+  if (rmad_config_.has_cbi && !cbi_utils_->GetDramPartNum(&dram_part_number)) {
     LOG(WARNING) << "Failed to get original dram part number from cbi.";
   }
 
@@ -127,10 +140,16 @@ RmadErrorCode UpdateDeviceInfoStateHandler::InitializeState() {
     region_index = std::distance(region_list.begin(), it);
   }
 
-  if (!cros_config_utils_->GetSkuIdList(&sku_id_list)) {
-    LOG(ERROR) << "Failed to get the list of possible sku-ids "
-                  "to initialize the handler.";
-    return RMAD_ERROR_STATE_HANDLER_INITIALIZATION_FAILED;
+  if (rmad_config_.has_cbi) {
+    if (!cros_config_utils_->GetSkuIdList(&sku_id_list)) {
+      LOG(ERROR) << "Failed to get the list of possible sku-ids "
+                    "to initialize the handler.";
+      return RMAD_ERROR_STATE_HANDLER_INITIALIZATION_FAILED;
+    }
+  } else {
+    // If the device doesn't have CBI, make the current SKU ID the only option
+    // so the user cannot change it.
+    sku_id_list.push_back(sku_id);
   }
   if (auto it = std::find(sku_id_list.begin(), sku_id_list.end(), sku_id);
       it != sku_id_list.end()) {
@@ -310,7 +329,8 @@ bool UpdateDeviceInfoStateHandler::WriteDeviceInfo(
     return false;
   }
 
-  if (!cbi_utils_->SetSkuId(device_info.sku_list(device_info.sku_index()))) {
+  if (rmad_config_.has_cbi &&
+      !cbi_utils_->SetSkuId(device_info.sku_list(device_info.sku_index()))) {
     LOG(ERROR) << "Failed to write sku to cbi.";
     return false;
   }
@@ -334,7 +354,8 @@ bool UpdateDeviceInfoStateHandler::WriteDeviceInfo(
     return false;
   }
 
-  if (!cbi_utils_->SetDramPartNum(device_info.dram_part_number())) {
+  if (rmad_config_.has_cbi &&
+      !cbi_utils_->SetDramPartNum(device_info.dram_part_number())) {
     LOG(ERROR) << "Failed to write dram part number to cbi.";
     return false;
   }

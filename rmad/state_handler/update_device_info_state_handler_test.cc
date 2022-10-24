@@ -143,6 +143,9 @@ class UpdateDeviceInfoStateHandlerTest : public StateHandlerTest {
       ON_CALL(*regions_utils, GetRegionList(_)).WillByDefault(Return(false));
     }
 
+    ON_CALL(*cros_config_utils, GetRmadConfig(_))
+        .WillByDefault(
+            DoAll(SetArgPointee<0>(RmadConfig{.has_cbi = true}), Return(true)));
     if (sku_list) {
       ON_CALL(*cros_config_utils, GetSkuIdList(_))
           .WillByDefault(DoAll(SetArgPointee<0>(kSkuList), Return(true)));

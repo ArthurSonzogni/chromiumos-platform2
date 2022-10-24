@@ -46,6 +46,8 @@ class UpdateDeviceInfoStateHandler : public BaseStateHandler {
   bool VerifyReadOnly(const UpdateDeviceInfoState& device_info);
   bool WriteDeviceInfo(const UpdateDeviceInfoState& device_info);
 
+  RmadConfig rmad_config_;
+
   std::unique_ptr<CbiUtils> cbi_utils_;
   std::unique_ptr<CrosConfigUtils> cros_config_utils_;
   std::unique_ptr<CrosSystemUtils> crossystem_utils_;
