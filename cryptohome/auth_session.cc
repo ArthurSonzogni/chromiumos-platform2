@@ -1466,7 +1466,7 @@ void AuthSession::UpdateAuthFactor(
   // which is not going to be used.
   user_data_auth::CryptohomeErrorCode error = converter_->AuthFactorToKeyData(
       auth_factor_label, auth_factor_type, auth_factor_metadata, key_data);
-  if (error != user_data_auth::CRYPTOHOME_ERROR_NOT_SET) {
+  if (error != user_data_auth::CRYPTOHOME_ERROR_NOT_SET && !is_recovery) {
     std::move(on_done).Run(MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocAuthSessionConverterFailsInUpdateFactorViaVK),
         ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}), error));
