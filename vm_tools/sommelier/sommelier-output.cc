@@ -483,7 +483,6 @@ static void sl_bind_host_output(struct wl_client* client,
   host->proxy = static_cast<wl_output*>(wl_registry_bind(
       wl_display_get_registry(ctx->display), output->id, &wl_output_interface,
       wl_resource_get_version(host->resource)));
-  wl_output_set_user_data(host->proxy, host);
   wl_output_add_listener(host->proxy, &sl_output_listener, host);
   host->aura_output = NULL;
   // We assume that first output is internal by default.
@@ -516,7 +515,6 @@ static void sl_bind_host_output(struct wl_client* client,
     host->internal = 0;
     host->aura_output =
         zaura_shell_get_aura_output(ctx->aura_shell->internal, host->proxy);
-    zaura_output_set_user_data(host->aura_output, host);
     zaura_output_add_listener(host->aura_output, &sl_aura_output_listener,
                               host);
   }
@@ -525,7 +523,6 @@ static void sl_bind_host_output(struct wl_client* client,
     host->expecting_logical_size = true;
     host->zxdg_output = zxdg_output_manager_v1_get_xdg_output(
         ctx->xdg_output_manager->internal, host->proxy);
-    zxdg_output_v1_set_user_data(host->zxdg_output, host);
     zxdg_output_v1_add_listener(host->zxdg_output, &sl_xdg_output_listener,
                                 host);
   }

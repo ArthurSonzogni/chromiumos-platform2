@@ -270,12 +270,10 @@ static void sl_bind_host_drm(struct wl_client* client,
   host->linux_dmabuf_proxy = static_cast<zwp_linux_dmabuf_v1*>(wl_registry_bind(
       wl_display_get_registry(ctx->display), ctx->linux_dmabuf->id,
       &zwp_linux_dmabuf_v1_interface, ctx->linux_dmabuf->version));
-  zwp_linux_dmabuf_v1_set_user_data(host->linux_dmabuf_proxy, host);
   zwp_linux_dmabuf_v1_add_listener(host->linux_dmabuf_proxy,
                                    &sl_linux_dmabuf_listener, host);
 
   host->callback = wl_display_sync(ctx->display);
-  wl_callback_set_user_data(host->callback, host);
   wl_callback_add_listener(host->callback, &sl_drm_callback_listener, host);
 }
 

@@ -316,8 +316,6 @@ static void sl_host_surface_attach(struct wl_client* client,
       assert(host->current_buffer->internal);
       assert(host->current_buffer->mmap);
 
-      wl_buffer_set_user_data(host->current_buffer->internal,
-                              host->current_buffer);
       wl_buffer_add_listener(host->current_buffer->internal,
                              &sl_output_buffer_listener, host->current_buffer);
     }
@@ -540,7 +538,6 @@ static void sl_host_surface_frame(struct wl_client* client,
   wl_resource_set_implementation(host_callback->resource, NULL, host_callback,
                                  sl_host_callback_destroy);
   host_callback->proxy = wl_surface_frame(host->proxy);
-  wl_callback_set_user_data(host_callback->proxy, host_callback);
   wl_callback_add_listener(host_callback->proxy, &sl_frame_callback_listener,
                            host_callback);
 }
@@ -1010,7 +1007,6 @@ static void sl_compositor_create_host_surface(struct wl_client* client,
                                  &sl_surface_implementation, host_surface,
                                  sl_destroy_host_surface);
   host_surface->proxy = wl_compositor_create_surface(host->proxy);
-  wl_surface_set_user_data(host_surface->proxy, host_surface);
   wl_surface_add_listener(host_surface->proxy, &sl_surface_listener,
                           host_surface);
   if (host_surface->ctx->linux_explicit_synchronization &&

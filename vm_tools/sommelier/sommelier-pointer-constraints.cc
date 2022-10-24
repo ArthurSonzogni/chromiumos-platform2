@@ -131,8 +131,6 @@ static void sl_pointer_constraints_lock_pointer(struct wl_client* client,
   wl_resource_set_implementation(
       locked_pointer_resource, &sl_locked_pointer_implementation,
       locked_pointer_host, sl_destroy_host_locked_pointer);
-  zwp_locked_pointer_v1_set_user_data(locked_pointer_host->proxy,
-                                      locked_pointer_host);
   zwp_locked_pointer_v1_add_listener(locked_pointer_host->proxy,
                                      &sl_locked_pointer_listener,
                                      locked_pointer_host);
@@ -169,8 +167,6 @@ static void sl_pointer_constraints_confine_pointer(struct wl_client* client,
   wl_resource_set_implementation(
       confined_pointer_resource, &sl_confined_pointer_implementation,
       confined_pointer_host, sl_destroy_host_confined_pointer);
-  zwp_confined_pointer_v1_set_user_data(confined_pointer_host->proxy,
-                                        confined_pointer_host);
   zwp_confined_pointer_v1_add_listener(confined_pointer_host->proxy,
                                        &sl_confined_pointer_listener,
                                        confined_pointer_host);

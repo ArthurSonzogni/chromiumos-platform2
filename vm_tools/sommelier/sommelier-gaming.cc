@@ -237,7 +237,6 @@ static void sl_internal_gaming_seat_gamepad_added_with_device_info(
   struct sl_context* ctx = (struct sl_context*)data;
   struct sl_host_gamepad* host_gamepad = new sl_host_gamepad();
   wl_list_insert(&ctx->gamepads, &host_gamepad->link);
-  zcr_gamepad_v2_set_user_data(gamepad, host_gamepad);
   zcr_gamepad_v2_add_listener(gamepad, &sl_internal_gamepad_listener,
                               host_gamepad);
 

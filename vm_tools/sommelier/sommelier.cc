@@ -315,7 +315,6 @@ struct sl_host_buffer* sl_create_host_buffer(struct sl_context* ctx,
   host_buffer->shm_format = 0;
   host_buffer->proxy = proxy;
   if (host_buffer->proxy) {
-    wl_buffer_set_user_data(host_buffer->proxy, host_buffer);
     wl_buffer_add_listener(host_buffer->proxy, &sl_buffer_listener,
                            host_buffer);
   }

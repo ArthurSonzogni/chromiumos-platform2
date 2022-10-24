@@ -668,7 +668,6 @@ static void sl_host_seat_get_host_pointer(struct wl_client* client,
                                  &sl_pointer_implementation, host_pointer,
                                  sl_destroy_host_pointer);
   host_pointer->proxy = wl_seat_get_pointer(host->proxy);
-  wl_pointer_set_user_data(host_pointer->proxy, host_pointer);
   wl_pointer_add_listener(host_pointer->proxy, &sl_pointer_listener,
                           host_pointer);
   wl_list_init(&host_pointer->focus_resource_listener.link);
@@ -733,7 +732,6 @@ static void sl_host_seat_get_host_keyboard(struct wl_client* client,
                                  &sl_keyboard_implementation, host_keyboard,
                                  sl_destroy_host_keyboard);
   host_keyboard->proxy = wl_seat_get_keyboard(host->proxy);
-  wl_keyboard_set_user_data(host_keyboard->proxy, host_keyboard);
   wl_keyboard_add_listener(host_keyboard->proxy, &sl_keyboard_listener,
                            host_keyboard);
   wl_list_init(&host_keyboard->focus_resource_listener.link);
@@ -796,7 +794,6 @@ static void sl_host_seat_get_host_touch(struct wl_client* client,
   wl_resource_set_implementation(host_touch->resource, &sl_touch_implementation,
                                  host_touch, sl_destroy_host_touch);
   host_touch->proxy = wl_seat_get_touch(host->proxy);
-  wl_touch_set_user_data(host_touch->proxy, host_touch);
   wl_touch_add_listener(host_touch->proxy, &sl_touch_listener, host_touch);
   wl_list_init(&host_touch->focus_resource_listener.link);
   host_touch->focus_resource_listener.notify =
@@ -857,7 +854,6 @@ static void sl_bind_host_seat(struct wl_client* client,
   host->proxy = static_cast<wl_seat*>(wl_registry_bind(
       wl_display_get_registry(seat->ctx->display), seat->id, &wl_seat_interface,
       wl_resource_get_version(host->resource)));
-  wl_seat_set_user_data(host->proxy, host);
   wl_seat_add_listener(host->proxy, &sl_seat_listener, host);
 
   sl_host_seat_added(host);

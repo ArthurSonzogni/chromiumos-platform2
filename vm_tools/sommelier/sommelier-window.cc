@@ -475,7 +475,6 @@ void sl_window_update(struct sl_window* window) {
   if (!window->xdg_surface) {
     window->xdg_surface = xdg_wm_base_get_xdg_surface(ctx->xdg_shell->internal,
                                                       host_surface->proxy);
-    xdg_surface_set_user_data(window->xdg_surface, window);
     xdg_surface_add_listener(window->xdg_surface,
                              &sl_internal_xdg_surface_listener, window);
   }
@@ -513,7 +512,6 @@ void sl_window_update(struct sl_window* window) {
   if (ctx->xwayland || !parent) {
     if (!window->xdg_toplevel) {
       window->xdg_toplevel = xdg_surface_get_toplevel(window->xdg_surface);
-      xdg_toplevel_set_user_data(window->xdg_toplevel, window);
       xdg_toplevel_add_listener(window->xdg_toplevel,
                                 &sl_internal_xdg_toplevel_listener, window);
     }
@@ -559,7 +557,6 @@ void sl_window_update(struct sl_window* window) {
 
     window->xdg_popup = xdg_surface_get_popup(window->xdg_surface,
                                               parent->xdg_surface, positioner);
-    xdg_popup_set_user_data(window->xdg_popup, window);
     xdg_popup_add_listener(window->xdg_popup, &sl_internal_xdg_popup_listener,
                            window);
 

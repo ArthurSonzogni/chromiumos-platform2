@@ -124,8 +124,6 @@ static void sl_relative_pointer_manager_get_relative_pointer(
   wl_resource_set_implementation(
       relative_pointer_resource, &sl_relative_pointer_implementation,
       relative_pointer_host, sl_destroy_host_relative_pointer);
-  zwp_relative_pointer_v1_set_user_data(relative_pointer_host->proxy,
-                                        relative_pointer_host);
   zwp_relative_pointer_v1_add_listener(relative_pointer_host->proxy,
                                        &sl_relative_pointer_listener,
                                        relative_pointer_host);

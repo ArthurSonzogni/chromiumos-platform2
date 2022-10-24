@@ -153,7 +153,6 @@ static void sl_bind_host_gtk_shell(struct wl_client* client,
   zaura_shell_set_user_data(host->proxy, host);
 
   host->callback = wl_display_sync(ctx->aura_shell->ctx->display);
-  wl_callback_set_user_data(host->callback, host);
   wl_callback_add_listener(host->callback, &sl_gtk_shell_callback_listener,
                            host);
 }

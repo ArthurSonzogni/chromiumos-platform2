@@ -298,14 +298,12 @@ static void sl_bind_host_shm(struct wl_client* client,
         wl_registry_bind(wl_display_get_registry(ctx->display),
                          ctx->linux_dmabuf->id, &zwp_linux_dmabuf_v1_interface,
                          wl_resource_get_version(host->resource)));
-    zwp_linux_dmabuf_v1_set_user_data(host->linux_dmabuf_proxy, host);
     zwp_linux_dmabuf_v1_add_listener(host->linux_dmabuf_proxy,
                                      &sl_linux_dmabuf_listener, host);
   } else {
     host->shm_proxy = static_cast<wl_shm*>(wl_registry_bind(
         wl_display_get_registry(ctx->display), ctx->shm->id, &wl_shm_interface,
         wl_resource_get_version(host->resource)));
-    wl_shm_set_user_data(host->shm_proxy, host);
     wl_shm_add_listener(host->shm_proxy, &sl_shm_listener, host);
   }
 }

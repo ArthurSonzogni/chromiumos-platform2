@@ -371,7 +371,6 @@ static void sl_data_device_data_offer(void* data,
                                  &sl_data_offer_implementation, host_data_offer,
                                  sl_destroy_host_data_offer);
   host_data_offer->proxy = data_offer;
-  wl_data_offer_set_user_data(host_data_offer->proxy, host_data_offer);
   wl_data_offer_add_listener(host_data_offer->proxy, &sl_data_offer_listener,
                              host_data_offer);
 
@@ -479,7 +478,6 @@ static void sl_data_device_manager_create_data_source(
                                  host_data_source, sl_destroy_host_data_source);
   host_data_source->proxy =
       wl_data_device_manager_create_data_source(host->proxy);
-  wl_data_source_set_user_data(host_data_source->proxy, host_data_source);
   wl_data_source_add_listener(host_data_source->proxy, &sl_data_source_listener,
                               host_data_source);
 }
@@ -505,7 +503,6 @@ static void sl_data_device_manager_get_data_device(
                                  host_data_device, sl_destroy_host_data_device);
   host_data_device->proxy =
       wl_data_device_manager_get_data_device(host->proxy, host_seat->proxy);
-  wl_data_device_set_user_data(host_data_device->proxy, host_data_device);
   wl_data_device_add_listener(host_data_device->proxy, &sl_data_device_listener,
                               host_data_device);
 }  // NOLINT(whitespace/indent)

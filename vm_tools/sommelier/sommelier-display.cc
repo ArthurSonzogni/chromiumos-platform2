@@ -72,7 +72,6 @@ static void sl_display_sync(struct wl_client* client,
   wl_resource_set_implementation(host_callback->resource, NULL, host_callback,
                                  sl_host_callback_destroy);
   host_callback->proxy = wl_display_sync(ctx->display);
-  wl_callback_set_user_data(host_callback->proxy, host_callback);
   wl_callback_add_listener(host_callback->proxy, &sl_sync_callback_listener,
                            host_callback);
 }
