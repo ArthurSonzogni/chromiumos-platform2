@@ -67,6 +67,10 @@ bool VendorTagManager::Add(vendor_tag_ops_t* ops) {
   DCHECK_NE(ops, nullptr);
   DCHECK_NE(ops->get_tag_count, nullptr);
   int n = ops->get_tag_count(ops);
+  // get_tag_count may return error: negative int (camera_vendor_tags.h).
+  if (n < 0) {
+    return false;
+  }
   std::vector<uint32_t> all_tags(n);
   ops->get_all_tags(ops, all_tags.data());
   for (uint32_t tag : all_tags) {

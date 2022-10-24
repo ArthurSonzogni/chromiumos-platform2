@@ -652,7 +652,8 @@ void CameraHalAdapter::StartOnThread(base::OnceCallback<void(bool)> callback) {
       }
       if (!vendor_tag_manager_.Add(&ops)) {
         LOGF(ERROR) << "Failed to add the vendor tags of camera module "
-                    << std::quoted(m->common.name);
+                    << (m->common.name ? std::quoted(m->common.name)
+                                       : std::quoted("unknown"));
         std::move(callback).Run(false);
         return;
       }
