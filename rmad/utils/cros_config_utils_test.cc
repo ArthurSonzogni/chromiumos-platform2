@@ -27,6 +27,7 @@ constexpr char kCrosIdentitySkuKey[] = "sku-id";
 constexpr char kCrosIdentityCustomLabelTagKey[] = "custom-label-tag";
 constexpr char kCrosRmadKey[] = "rmad";
 constexpr char kCrosRmadEnabledKey[] = "enabled";
+constexpr char kCrosRmadHasCbiKey[] = "has-cbi";
 
 constexpr char kModelName[] = "TestModelName";
 
@@ -141,6 +142,9 @@ class CrosConfigUtilsImplTest : public testing::Test {
       fake_cros_config->SetString(
           std::string(kCrosRootKey) + std::string(kCrosRmadKey),
           kCrosRmadEnabledKey, kTrueStr);
+      fake_cros_config->SetString(
+          std::string(kCrosRootKey) + std::string(kCrosRmadKey),
+          kCrosRmadHasCbiKey, kTrueStr);
     }
 
     return std::make_unique<CrosConfigUtilsImpl>(
@@ -160,6 +164,9 @@ class CrosConfigUtilsImplTest : public testing::Test {
       fake_cros_config->SetString(
           std::string(kCrosRootKey) + std::string(kCrosRmadKey),
           kCrosRmadEnabledKey, kTrueStr);
+      fake_cros_config->SetString(
+          std::string(kCrosRootKey) + std::string(kCrosRmadKey),
+          kCrosRmadHasCbiKey, kTrueStr);
     }
 
     return std::make_unique<CrosConfigUtilsImpl>(
@@ -172,19 +179,22 @@ class CrosConfigUtilsImplTest : public testing::Test {
   base::ScopedTempDir temp_dir_;
 };
 
-TEST_F(CrosConfigUtilsImplTest, GetRmadEnabled_Success) {
+TEST_F(CrosConfigUtilsImplTest, GetRmadConfig_Enabled) {
   auto cros_config_utils = CreateCrosConfigUtils();
 
-  bool enabled;
-  EXPECT_TRUE(cros_config_utils->GetRmadEnabled(&enabled));
-  EXPECT_TRUE(enabled);
+  RmadConfig config;
+  EXPECT_TRUE(cros_config_utils->GetRmadConfig(&config));
+  EXPECT_TRUE(config.enabled);
+  EXPECT_TRUE(config.has_cbi);
 }
 
-TEST_F(CrosConfigUtilsImplTest, GetRmadEnabled_Fail) {
+TEST_F(CrosConfigUtilsImplTest, GetRmadConfig_Disabled) {
   auto cros_config_utils = CreateCrosConfigUtils(false);
 
-  bool enabled;
-  EXPECT_FALSE(cros_config_utils->GetRmadEnabled(&enabled));
+  RmadConfig config;
+  EXPECT_TRUE(cros_config_utils->GetRmadConfig(&config));
+  EXPECT_FALSE(config.enabled);
+  EXPECT_FALSE(config.has_cbi);
 }
 
 TEST_F(CrosConfigUtilsImplTest, GetModelName_Success) {

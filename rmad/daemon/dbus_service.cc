@@ -180,7 +180,8 @@ bool DBusService::CheckRmaCriteria() const {
     return false;
   }
   // Only allow Shimless RMA if it's enabled in cros_config.
-  if (bool enabled; !cros_config_utils_->GetRmadEnabled(&enabled) || !enabled) {
+  if (RmadConfig config;
+      !cros_config_utils_->GetRmadConfig(&config) || !config.enabled) {
     return false;
   }
   // Shimless RMA is allowed. Trigger it when either condition is satisfied:

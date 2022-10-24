@@ -35,8 +35,11 @@ constexpr char kCrosModelNameKey[] = "name";
 constexpr char kCrosIdentityKey[] = "identity";
 constexpr char kCrosIdentitySkuKey[] = "sku-id";
 constexpr char kCrosIdentityCustomLabelTagKey[] = "custom-label-tag";
+
+// RmadConfig keys.
 constexpr char kCrosRmadKey[] = "rmad";
 constexpr char kCrosRmadEnabledKey[] = "enabled";
+constexpr char kCrosRmadHasCbiKey[] = "has-cbi";
 
 constexpr char kTrueStr[] = "true";
 
@@ -53,17 +56,16 @@ CrosConfigUtilsImpl::CrosConfigUtilsImpl(
     : config_file_path_(config_file_path),
       cros_config_(std::move(cros_config)) {}
 
-bool CrosConfigUtilsImpl::GetRmadEnabled(bool* enabled) const {
-  DCHECK(enabled);
+bool CrosConfigUtilsImpl::GetRmadConfig(RmadConfig* config) const {
+  DCHECK(config);
 
-  std::string enabled_str;
-  if (!cros_config_->GetString(
-          std::string(kCrosRootKey) + std::string(kCrosRmadKey),
-          kCrosRmadEnabledKey, &enabled_str)) {
-    return false;
-  }
+  config->enabled = GetBooleanWithDefault(
+      std::string(kCrosRootKey) + std::string(kCrosRmadKey),
+      kCrosRmadEnabledKey, false);
+  config->has_cbi = GetBooleanWithDefault(
+      std::string(kCrosRootKey) + std::string(kCrosRmadKey), kCrosRmadHasCbiKey,
+      false);
 
-  *enabled = (enabled_str == kTrueStr);
   return true;
 }
 
@@ -189,6 +191,16 @@ bool CrosConfigUtilsImpl::GetMatchedItemsFromIdentity(
     list->push_back(item.Clone());
   }
   return true;
+}
+
+bool CrosConfigUtilsImpl::GetBooleanWithDefault(const std::string& path,
+                                                const std::string& key,
+                                                bool default_value) const {
+  bool ret = default_value;
+  if (std::string value_str; cros_config_->GetString(path, key, &value_str)) {
+    ret = (value_str == kTrueStr);
+  }
+  return ret;
 }
 
 }  // namespace rmad

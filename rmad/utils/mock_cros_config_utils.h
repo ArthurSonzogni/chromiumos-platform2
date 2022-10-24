@@ -19,7 +19,7 @@ class MockCrosConfigUtils : public CrosConfigUtils {
   MockCrosConfigUtils() = default;
   ~MockCrosConfigUtils() override = default;
 
-  MOCK_METHOD(bool, GetRmadEnabled, (bool*), (const, override));
+  MOCK_METHOD(bool, GetRmadConfig, (RmadConfig*), (const, override));
   MOCK_METHOD(bool, GetModelName, (std::string*), (const, override));
   MOCK_METHOD(bool, GetCurrentSkuId, (int*), (const, override));
   MOCK_METHOD(bool,
