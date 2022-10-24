@@ -662,6 +662,11 @@ TEST_F(ArcPropertyUtilTest, AppendX86SocProperties) {
          "ro.soc.manufacturer=AMD\n"
          "ro.soc.model=3150C\n"},
 
+        // For a Zork board (morphius).
+        {"model name\t: AMD Ryzen 5 3500C with Radeon Vega Mobile Gfx\n",
+         "ro.soc.manufacturer=AMD\n"
+         "ro.soc.model=Ryzen 5 3500C\n"},
+
         // For a Grunt board.
         {"model name\t: AMD A4-9120C RADEON R4, 5 COMPUTE CORES 2C+3G\n",
          "ro.soc.manufacturer=AMD\n"
