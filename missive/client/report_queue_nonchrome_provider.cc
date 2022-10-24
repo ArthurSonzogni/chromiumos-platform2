@@ -12,6 +12,7 @@
 #include <base/strings/strcat.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/task/bind_post_task.h>
+#include <base/threading/thread_task_runner_handle.h>
 
 #include "missive/client/empty_dm_token_retriever.h"
 #include "missive/client/missive_client.h"
@@ -31,12 +32,14 @@ namespace reporting {
 class NonChromeReportQueueProvider : public ReportQueueProvider {
  public:
   NonChromeReportQueueProvider()
-      : ReportQueueProvider(base::BindRepeating(
-            [](base::OnceCallback<void(
-                   StatusOr<scoped_refptr<StorageModuleInterface>>)>
-                   storage_created_cb) {
-              CreateMissiveStorageModule(std::move(storage_created_cb));
-            })) {}
+      : ReportQueueProvider(
+            base::BindRepeating(
+                [](base::OnceCallback<void(
+                       StatusOr<scoped_refptr<StorageModuleInterface>>)>
+                       storage_created_cb) {
+                  CreateMissiveStorageModule(std::move(storage_created_cb));
+                }),
+            base::ThreadTaskRunnerHandle::Get()) {}
 
   void ConfigureReportQueue(
       std::unique_ptr<ReportQueueConfiguration> configuration,
