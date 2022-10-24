@@ -1448,6 +1448,7 @@ In the tables below,
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 | enabled | boolean |  | False |  | False | Whether enable Shimless RMA. |
+| has-cbi | boolean |  | False |  | False | Whether the device has CBI. |
 
 ### scheduler-tune
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |

@@ -1420,6 +1420,9 @@ properties:
                 enabled:
                   type: boolean
                   description: Whether enable Shimless RMA.
+                has-cbi:
+                  type: boolean
+                  description: Whether the device has CBI.
             scheduler-tune:
               type: object
               description: ChromeOS scheduler's tunable values.
