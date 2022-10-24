@@ -14,6 +14,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/callback_helpers.h>
 #include <base/check.h>
 #include <base/check_op.h>
 #include <base/logging.h>
@@ -32,6 +33,8 @@
 #include <openssl/rsa.h>
 #include <openssl/ec.h>
 
+#include "base/functional/bind.h"
+#include "base/functional/callback_helpers.h"
 #include "chaps/chaps.h"
 #include "chaps/chaps_factory.h"
 #include "chaps/chaps_utility.h"
@@ -770,7 +773,20 @@ SessionImpl::SessionImpl(int slot_id,
   CHECK(session_object_pool_.get());
 }
 
-SessionImpl::~SessionImpl() {}
+SessionImpl::~SessionImpl() {
+  for (OperationContext& context : operation_context_) {
+    if (context.is_valid_) {
+      LOG(WARNING) << "Valid context exists when session is closing.";
+      if (context.cleanup_) {
+        context.cleanup_.RunAndReset();
+      }
+    }
+  }
+
+  if (!object_count_map_.empty()) {
+    LOG(WARNING) << "Remaining object exists.";
+  }
+}
 
 int SessionImpl::GetSlot() const {
   return slot_id_;
@@ -995,6 +1011,9 @@ CK_RV SessionImpl::OperationInitRaw(OperationType operation,
     NOTREACHED();
     return CKR_FUNCTION_FAILED;
   }
+
+  UpdateObjectCount(context);
+
   return CKR_OK;
 }
 
@@ -1080,7 +1099,8 @@ CK_RV SessionImpl::OperationFinal(OperationType operation,
 
 CK_RV SessionImpl::OperationFinalRaw(OperationType operation,
                                      int* required_out_length,
-                                     string* data_out) {
+                                     string* data_out,
+                                     bool clear_context) {
   CHECK(required_out_length);
   CHECK(data_out);
   CHECK(operation < kNumOperationTypes);
@@ -1095,16 +1115,23 @@ CK_RV SessionImpl::OperationFinalRaw(OperationType operation,
     return CKR_OPERATION_ACTIVE;
   }
   context->is_incremental_ = true;
-  return OperationFinalInternal(operation, required_out_length, data_out);
+  return OperationFinalInternal(operation, required_out_length, data_out,
+                                clear_context);
 }
 
 CK_RV SessionImpl::OperationFinalInternal(OperationType operation,
                                           int* required_out_length,
-                                          string* data_out) {
+                                          string* data_out,
+                                          bool clear_context) {
   CHECK(operation < kNumOperationTypes);
 
   OperationContext* context = &operation_context_[operation];
-  context->is_valid_ = false;
+
+  base::ScopedClosureRunner context_clear_runner(base::DoNothing());
+  if (clear_context) {
+    context_clear_runner.ReplaceClosure(
+        base::BindOnce(&OperationContext::Clear, base::Unretained(context)));
+  }
 
   // Complete the operation if it has not already been done.
   if (!context->is_finished_) {
@@ -1149,6 +1176,7 @@ CK_RV SessionImpl::OperationFinalInternal(OperationType operation,
   if (result == CKR_BUFFER_TOO_SMALL) {
     // We'll keep the context valid so a subsequent call can pick up the data.
     context->is_valid_ = true;
+    context_clear_runner.ReplaceClosure(base::DoNothing());
   }
   return result;
 }
@@ -1159,9 +1187,15 @@ CK_RV SessionImpl::VerifyFinal(const string& signature) {
   // finalized.
   int max_out_length = std::numeric_limits<int>::max();
   string data_out;
-  CK_RV result = OperationFinal(kVerify, &max_out_length, &data_out);
+  CK_RV result = OperationFinalRaw(kVerify, &max_out_length, &data_out,
+                                   /*clear_context=*/false);
+  chaps_metrics_->ReportChapsSessionStatus(OperationToString(kVerify),
+                                           static_cast<int>(result));
   if (result != CKR_OK)
     return result;
+
+  base::ScopedClosureRunner context_clear_runner(
+      base::BindOnce(&OperationContext::Clear, base::Unretained(context)));
 
   // We only support 3 Verify mechanisms, HMAC, RSA and ECC.
   if (context->is_hmac_) {
@@ -1230,11 +1264,13 @@ CK_RV SessionImpl::OperationSinglePartRaw(OperationType operation,
     context->data_ = update + final;
     context->is_finished_ = true;
   }
-  context->is_valid_ = false;
+  base::ScopedClosureRunner context_clear_runner(
+      base::BindOnce(&OperationContext::Clear, base::Unretained(context)));
   result = GetOperationOutput(context, required_out_length, data_out);
   if (result == CKR_BUFFER_TOO_SMALL) {
     // We'll keep the context valid so a subsequent call can pick up the data.
     context->is_valid_ = true;
+    context_clear_runner.ReplaceClosure(base::DoNothing());
   }
   return result;
 }
@@ -1482,7 +1518,7 @@ CK_RV SessionImpl::CipherUpdate(OperationContext* context,
             context->cipher_context_.get(),
             ConvertStringToByteBuffer(context->data_.c_str()), &out_length,
             ConvertStringToByteBuffer(data_in.c_str()), in_length)) {
-      context->is_valid_ = false;
+      context->Clear();
       LOG(ERROR) << "EVP_CipherUpdate failed: " << GetOpenSSLError();
       return CKR_FUNCTION_FAILED;
     }
@@ -1892,6 +1928,37 @@ hwsec::StatusOr<hwsec::Key> SessionImpl::GetHwsecKey(const Object* key) {
   return key_handle;
 }
 
+void SessionImpl::UpdateObjectCount(OperationContext* context) {
+  if (context->key_ != nullptr) {
+    IncreaseObjectCount(context->key_);
+    // We stored the context inside the session, and there is no way to transfer
+    // the ownership of context outside of session. So base::Unretained(this) is
+    // safe here.
+    context->cleanup_ = base::ScopedClosureRunner(
+        base::BindOnce(&SessionImpl::DecreaseObjectCount,
+                       base::Unretained(this), context->key_));
+  }
+}
+
+void SessionImpl::IncreaseObjectCount(const Object* key) {
+  if (key == nullptr) {
+    return;
+  }
+
+  object_count_map_[key]++;
+}
+
+void SessionImpl::DecreaseObjectCount(const Object* key) {
+  if (key == nullptr) {
+    return;
+  }
+
+  if ((--object_count_map_[key]) == 0) {
+    object_count_map_.erase(key);
+    object_key_map_.erase(key);
+  }
+}
+
 bool SessionImpl::RSADecrypt(OperationContext* context) {
   if (context->key_->IsTokenObject() &&
       context->key_->IsAttributePresent(kKeyBlobAttribute)) {
@@ -2289,6 +2356,7 @@ void SessionImpl::OperationContext::Clear() {
   key_ = nullptr;
   data_.clear();
   parameter_.clear();
+  cleanup_.RunAndReset();
 }
 
 }  // namespace chaps

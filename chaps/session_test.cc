@@ -1934,6 +1934,44 @@ TEST_F(TestSession, FlushObjectsNoPrivate) {
             session_->FlushModifiableObject(&token_object));
 }
 
+TEST_F(TestSession, MultipleSignWithHWSec) {
+  EXPECT_CALL(hwsec_, IsECCurveSupported(_))
+      .WillRepeatedly(ReturnOk<TPMError>());
+  EXPECT_CALL(hwsec_, IsReady()).WillRepeatedly(ReturnValue(true));
+  EXPECT_CALL(hwsec_, GetECCPublicKey(_))
+      .WillRepeatedly(ReturnValue(GenerateECCPublicInfo()));
+
+  EXPECT_CALL(hwsec_, GenerateECCKey(_, _)).WillOnce([&](auto&&, auto&&) {
+    return hwsec::ChapsFrontend::CreateKeyResult{
+        .key = GetTestScopedKey(),
+    };
+  });
+
+  const Object* pub = nullptr;
+  const Object* priv = nullptr;
+  GenerateECCKeyPair(true, true, &pub, &priv);
+
+  EXPECT_CALL(hwsec_, LoadKey(_, _)).WillRepeatedly([&](auto&&, auto&&) {
+    return GetTestScopedKey();
+  });
+  EXPECT_CALL(hwsec_, Sign(_, _, _))
+      .WillRepeatedly(ReturnValue(brillo::Blob()));
+
+  EXPECT_CALL(mock_metrics_library_,
+              SendSparseToUMA(kChapsSessionSign, static_cast<int>(CKR_OK)))
+      .WillRepeatedly(Return(true));
+
+  for (int i = 0; i < 100; i++) {
+    EXPECT_EQ(CKR_OK, session_->OperationInit(kSign, CKM_ECDSA_SHA1, "", priv));
+    string in(100, 'A');
+    int len = 0;
+    string sig;
+    EXPECT_EQ(CKR_OK, session_->OperationSinglePart(kSign, in, &len, &sig));
+  }
+
+  EXPECT_EQ(session_->get_object_key_map_size_for_testing(), 0);
+}
+
 }  // namespace chaps
 
 int main(int argc, char** argv) {

@@ -12,6 +12,7 @@
 #include <string>
 #include <vector>
 
+#include <base/callback_helpers.h>
 #include <crypto/scoped_openssl_types.h>
 #include <libhwsec/frontend/chaps/frontend.h>
 #include <openssl/evp.h>
@@ -50,6 +51,7 @@ class SessionImpl : public Session {
     const Object* key_;
     CK_MECHANISM_TYPE mechanism_;
     std::string parameter_;  // The mechanism parameter (if any).
+    base::ScopedClosureRunner cleanup_;  // The extra closure for cleanup.
 
     OperationContext();
     ~OperationContext();
@@ -137,6 +139,10 @@ class SessionImpl : public Session {
   CK_RV GenerateRandom(int num_bytes, std::string* random_data) override;
   bool IsPrivateLoaded() override;
 
+  size_t get_object_key_map_size_for_testing() {
+    return object_key_map_.size();
+  }
+
  private:
   CK_RV OperationUpdateInternal(OperationType operation,
                                 const std::string& data_in,
@@ -144,7 +150,8 @@ class SessionImpl : public Session {
                                 std::string* data_out);
   CK_RV OperationFinalInternal(OperationType operation,
                                int* required_out_length,
-                               std::string* data_out);
+                               std::string* data_out,
+                               bool clear_context = true);
   // An extra layer of raw functions are added to simplify the  UMA report code.
   // These raw functions should not call ReportChapsSessionStatus(), otherwise
   // the status will be double counted.
@@ -158,7 +165,8 @@ class SessionImpl : public Session {
                            std::string* data_out);
   CK_RV OperationFinalRaw(OperationType operation,
                           int* required_out_length,
-                          std::string* data_out);
+                          std::string* data_out,
+                          bool clear_context = true);
   CK_RV OperationSinglePartRaw(OperationType operation,
                                const std::string& data_in,
                                int* required_out_length,
@@ -209,6 +217,9 @@ class SessionImpl : public Session {
   // operation (e.g. kEncrypt requires CKA_ENCRYPT to be TRUE).
   CK_ATTRIBUTE_TYPE GetRequiredKeyUsage(OperationType operation);
   hwsec::StatusOr<hwsec::Key> GetHwsecKey(const Object* key);
+  void UpdateObjectCount(OperationContext* context);
+  void IncreaseObjectCount(const Object* key);
+  void DecreaseObjectCount(const Object* key);
 
   // RSA operations
   bool RSAEncrypt(OperationContext* context);
@@ -244,6 +255,9 @@ class SessionImpl : public Session {
   bool find_results_valid_;
   bool is_read_only_;
   std::map<const Object*, hwsec::ScopedKey> object_key_map_;
+  std::map<const Object*, uint32_t> object_count_map_;
+
+  // The context operations should be destruct before the object maps.
   OperationContext operation_context_[kNumOperationTypes];
   int slot_id_;
   std::unique_ptr<ObjectPool> session_object_pool_;
