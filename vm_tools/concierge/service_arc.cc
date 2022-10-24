@@ -45,6 +45,15 @@ constexpr char kArcVmName[] = "arcvm";
 constexpr char kCryptohomeRoot[] = "/run/daemon-store/crosvm";
 constexpr char kPstoreExtension[] = ".pstore";
 
+// A feature name for enabling jemalloc multi-arena settings
+// in low memory devices.
+constexpr char kArcVmLowMemJemallocArenasFeatureName[] =
+    "CrOSLateBootArcVmLowMemJemallocArenas";
+
+// Needs to be const as libfeatures does pointers checking.
+const VariationsFeature kArcVmLowMemJemallocArenasFeature{
+    kArcVmLowMemJemallocArenasFeatureName, FEATURE_DISABLED_BY_DEFAULT};
+
 // Returns |image_path| on production. Returns a canonicalized path of the image
 // file when in dev mode.
 base::FilePath GetImagePath(const base::FilePath& image_path,
@@ -363,6 +372,8 @@ StartVmResponse Service::StartArcVm(StartArcVmRequest request,
   ArcVmFeatures features;
   features.rootfs_writable = request.rootfs_writable();
   features.use_dev_conf = !request.ignore_dev_conf();
+  features.low_mem_jemalloc_arenas_enabled =
+      platform_features_->IsEnabledBlocking(kArcVmLowMemJemallocArenasFeature);
 
   if (request.has_balloon_policy()) {
     const auto& policy_params = request.balloon_policy();

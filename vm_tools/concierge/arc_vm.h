@@ -55,6 +55,9 @@ struct ArcVmFeatures {
 
   // Use the LimitCacheBalloonPolicy.
   std::optional<LimitCacheBalloonPolicy::Params> balloon_policy_params;
+
+  // Apply the multi-arena config for jemalloc to low-RAM devices.
+  bool low_mem_jemalloc_arenas_enabled;
 };
 
 // Represents a single instance of a running termina VM.
