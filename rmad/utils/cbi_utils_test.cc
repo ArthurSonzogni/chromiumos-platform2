@@ -41,41 +41,41 @@ class CbiUtilsTest : public testing::Test {
   ~CbiUtilsTest() override = default;
 };
 
-TEST_F(CbiUtilsTest, GetSku_Success) {
+TEST_F(CbiUtilsTest, GetSkuId_Success) {
   auto mock_cmd_utils = std::make_unique<StrictMock<MockCmdUtils>>();
   EXPECT_CALL(*mock_cmd_utils, GetOutput(_, _))
       .WillOnce(DoAll(SetArgPointee<1>(kGetIntSuccessOutput), Return(true)));
   auto cbi_utils = std::make_unique<CbiUtilsImpl>(std::move(mock_cmd_utils));
 
-  uint64_t sku;
-  EXPECT_TRUE(cbi_utils->GetSku(&sku));
-  EXPECT_EQ(sku, 1234);
+  uint64_t sku_id;
+  EXPECT_TRUE(cbi_utils->GetSkuId(&sku_id));
+  EXPECT_EQ(sku_id, 1234);
 }
 
-TEST_F(CbiUtilsTest, GetSku_Success_ParseFail) {
+TEST_F(CbiUtilsTest, GetSkuId_Success_ParseFail) {
   auto mock_cmd_utils = std::make_unique<StrictMock<MockCmdUtils>>();
   EXPECT_CALL(*mock_cmd_utils, GetOutput(_, _))
       .WillOnce(DoAll(SetArgPointee<1>(kRandomOutput), Return(true)));
   auto cbi_utils = std::make_unique<CbiUtilsImpl>(std::move(mock_cmd_utils));
 
-  uint64_t sku;
-  EXPECT_FALSE(cbi_utils->GetSku(&sku));
+  uint64_t sku_id;
+  EXPECT_FALSE(cbi_utils->GetSkuId(&sku_id));
 }
 
-TEST_F(CbiUtilsTest, GetSku_Fail) {
+TEST_F(CbiUtilsTest, GetSkuId_Fail) {
   auto mock_cmd_utils = std::make_unique<StrictMock<MockCmdUtils>>();
   EXPECT_CALL(*mock_cmd_utils, GetOutput(_, _)).WillOnce(Return(false));
   auto cbi_utils = std::make_unique<CbiUtilsImpl>(std::move(mock_cmd_utils));
 
-  uint64_t sku;
-  EXPECT_FALSE(cbi_utils->GetSku(&sku));
+  uint64_t sku_id;
+  EXPECT_FALSE(cbi_utils->GetSkuId(&sku_id));
 }
 
-TEST_F(CbiUtilsTest, GetSku_Nullptr) {
+TEST_F(CbiUtilsTest, GetSkuId_Nullptr) {
   auto mock_cmd_utils = std::make_unique<StrictMock<MockCmdUtils>>();
   auto cbi_utils = std::make_unique<CbiUtilsImpl>(std::move(mock_cmd_utils));
 
-  EXPECT_DEATH(cbi_utils->GetSku(nullptr), "");
+  EXPECT_DEATH(cbi_utils->GetSkuId(nullptr), "");
 }
 
 TEST_F(CbiUtilsTest, GetDramPartNum_Success) {
@@ -105,20 +105,20 @@ TEST_F(CbiUtilsTest, GetDramPartNum_Nullptr) {
   EXPECT_DEATH(cbi_utils->GetDramPartNum(nullptr), "");
 }
 
-TEST_F(CbiUtilsTest, SetSku_Success) {
+TEST_F(CbiUtilsTest, SetSkuId_Success) {
   auto mock_cmd_utils = std::make_unique<StrictMock<MockCmdUtils>>();
   EXPECT_CALL(*mock_cmd_utils, GetOutput(_, _)).WillOnce(Return(true));
   auto cbi_utils = std::make_unique<CbiUtilsImpl>(std::move(mock_cmd_utils));
 
-  EXPECT_TRUE(cbi_utils->SetSku(1));
+  EXPECT_TRUE(cbi_utils->SetSkuId(1));
 }
 
-TEST_F(CbiUtilsTest, SetSku_Fail) {
+TEST_F(CbiUtilsTest, SetSkuId_Fail) {
   auto mock_cmd_utils = std::make_unique<StrictMock<MockCmdUtils>>();
   EXPECT_CALL(*mock_cmd_utils, GetOutput(_, _)).WillOnce(Return(false));
   auto cbi_utils = std::make_unique<CbiUtilsImpl>(std::move(mock_cmd_utils));
 
-  EXPECT_FALSE(cbi_utils->SetSku(123));
+  EXPECT_FALSE(cbi_utils->SetSkuId(123));
 }
 
 TEST_F(CbiUtilsTest, SetDramPartNum_Success) {

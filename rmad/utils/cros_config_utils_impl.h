@@ -27,8 +27,8 @@ class CrosConfigUtilsImpl : public CrosConfigUtils {
 
   bool GetRmadConfig(RmadConfig* config) const override;
   bool GetModelName(std::string* model_name) const override;
-  bool GetCurrentSkuId(int* sku) const override;
-  bool GetCurrentCustomLabelTag(std::string* custom_label_tag) const override;
+  bool GetSkuId(int* sku) const override;
+  bool GetCustomLabelTag(std::string* custom_label_tag) const override;
   bool GetSkuIdList(std::vector<int>* sku_list) const override;
   bool GetCustomLabelTagList(
       std::vector<std::string>* custom_label_tag_list) const override;

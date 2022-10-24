@@ -215,7 +215,7 @@ TEST_F(CrosConfigUtilsImplTest, GetCustomLabelTag_Success) {
   auto cros_config_utils = CreateCrosConfigUtils();
 
   std::string custom_label_tag;
-  EXPECT_TRUE(cros_config_utils->GetCurrentCustomLabelTag(&custom_label_tag));
+  EXPECT_TRUE(cros_config_utils->GetCustomLabelTag(&custom_label_tag));
   EXPECT_EQ(custom_label_tag, kCustomLabelTag);
 }
 
@@ -223,7 +223,7 @@ TEST_F(CrosConfigUtilsImplTest, GetSkuId_Success) {
   auto cros_config_utils = CreateCrosConfigUtils();
 
   int sku_id;
-  EXPECT_TRUE(cros_config_utils->GetCurrentSkuId(&sku_id));
+  EXPECT_TRUE(cros_config_utils->GetSkuId(&sku_id));
   EXPECT_EQ(sku_id, kSkuId);
 }
 

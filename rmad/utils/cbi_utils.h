@@ -14,8 +14,8 @@ class CbiUtils {
   CbiUtils() = default;
   virtual ~CbiUtils() = default;
 
-  // Get the sku number of the device from cbi.
-  virtual bool GetSku(uint64_t* sku) const = 0;
+  // Get the sku id of the device from cbi.
+  virtual bool GetSkuId(uint64_t* sku_id) const = 0;
 
   // Get the dram part number of the device from cbi.
   virtual bool GetDramPartNum(std::string* dram_part_num) const = 0;
@@ -23,8 +23,8 @@ class CbiUtils {
   // Get the second source factory cache of the device from cbi.
   virtual bool GetSSFC(uint32_t* ssfc) const = 0;
 
-  // Set the sku number of the device to cbi.
-  virtual bool SetSku(uint64_t sku) = 0;
+  // Set the sku id of the device to cbi.
+  virtual bool SetSkuId(uint64_t sku_id) = 0;
 
   // Set the dram part number of the device to cbi.
   virtual bool SetDramPartNum(const std::string& dram_part_num) = 0;

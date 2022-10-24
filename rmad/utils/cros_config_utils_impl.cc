@@ -78,7 +78,7 @@ bool CrosConfigUtilsImpl::GetModelName(std::string* model_name) const {
   return cros_config_->GetString(kCrosRootPath, kCrosModelNameKey, model_name);
 }
 
-bool CrosConfigUtilsImpl::GetCurrentSkuId(int* sku_id) const {
+bool CrosConfigUtilsImpl::GetSkuId(int* sku_id) const {
   DCHECK(sku_id);
 
   std::string sku_id_str;
@@ -91,7 +91,7 @@ bool CrosConfigUtilsImpl::GetCurrentSkuId(int* sku_id) const {
   return base::StringToInt(sku_id_str, sku_id);
 }
 
-bool CrosConfigUtilsImpl::GetCurrentCustomLabelTag(
+bool CrosConfigUtilsImpl::GetCustomLabelTag(
     std::string* custom_label_tag) const {
   DCHECK(custom_label_tag);
 

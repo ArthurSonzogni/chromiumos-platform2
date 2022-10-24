@@ -37,10 +37,10 @@ CbiUtilsImpl::CbiUtilsImpl() {
 CbiUtilsImpl::CbiUtilsImpl(std::unique_ptr<CmdUtils> cmd_utils)
     : cmd_utils_(std::move(cmd_utils)) {}
 
-bool CbiUtilsImpl::GetSku(uint64_t* sku) const {
-  CHECK(sku);
+bool CbiUtilsImpl::GetSkuId(uint64_t* sku_id) const {
+  CHECK(sku_id);
 
-  return GetCbi(kCbiTagSkuId, sku);
+  return GetCbi(kCbiTagSkuId, sku_id);
 }
 
 bool CbiUtilsImpl::GetDramPartNum(std::string* dram_part_num) const {
@@ -65,17 +65,17 @@ bool CbiUtilsImpl::GetSSFC(uint32_t* ssfc) const {
   return true;
 }
 
-bool CbiUtilsImpl::SetSku(uint64_t sku) {
+bool CbiUtilsImpl::SetSkuId(uint64_t sku_id) {
   int byte_size = 0;
-  uint64_t tmp = sku;
+  uint64_t tmp = sku_id;
 
-  // To tackle |sku| = 0, we use do-while to ensure that |byte_size| >= 1.
+  // To tackle |sku_id| = 0, we use do-while to ensure that |byte_size| >= 1.
   do {
     tmp >>= 8;
     byte_size++;
   } while (tmp);
 
-  return SetCbi(kCbiTagSkuId, sku, byte_size);
+  return SetCbi(kCbiTagSkuId, sku_id, byte_size);
 }
 
 bool CbiUtilsImpl::SetDramPartNum(const std::string& dram_part_num) {

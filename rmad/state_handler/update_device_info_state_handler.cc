@@ -106,13 +106,13 @@ RmadErrorCode UpdateDeviceInfoStateHandler::InitializeState() {
   if (!vpd_utils_->GetRegion(&region)) {
     LOG(WARNING) << "Failed to get original region from vpd.";
   }
-  if (!cbi_utils_->GetSku(&sku_id)) {
+  if (!cbi_utils_->GetSkuId(&sku_id)) {
     LOG(WARNING) << "Failed to get original sku from cbi.";
   }
   // For backward compatibility, we should use cros_config to get the
   // custom-label, which already handles it.
   is_custom_label_exist =
-      cros_config_utils_->GetCurrentCustomLabelTag(&custom_label_tag);
+      cros_config_utils_->GetCustomLabelTag(&custom_label_tag);
   if (!cbi_utils_->GetDramPartNum(&dram_part_number)) {
     LOG(WARNING) << "Failed to get original dram part number from cbi.";
   }
@@ -310,7 +310,7 @@ bool UpdateDeviceInfoStateHandler::WriteDeviceInfo(
     return false;
   }
 
-  if (!cbi_utils_->SetSku(device_info.sku_list(device_info.sku_index()))) {
+  if (!cbi_utils_->SetSkuId(device_info.sku_list(device_info.sku_index()))) {
     LOG(ERROR) << "Failed to write sku to cbi.";
     return false;
   }

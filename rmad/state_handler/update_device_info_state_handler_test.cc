@@ -113,13 +113,13 @@ class UpdateDeviceInfoStateHandlerTest : public StateHandlerTest {
     }
 
     if (sku && !sku_overflow) {
-      ON_CALL(*cbi_utils, GetSku(_))
+      ON_CALL(*cbi_utils, GetSkuId(_))
           .WillByDefault(DoAll(SetArgPointee<0>(kSkuId), Return(true)));
     } else if (sku_overflow) {
-      ON_CALL(*cbi_utils, GetSku(_))
+      ON_CALL(*cbi_utils, GetSkuId(_))
           .WillByDefault(DoAll(SetArgPointee<0>(kSkuIdOverflow), Return(true)));
     } else {
-      ON_CALL(*cbi_utils, GetSku(_)).WillByDefault(Return(false));
+      ON_CALL(*cbi_utils, GetSkuId(_)).WillByDefault(Return(false));
     }
 
     if (!custom_label.empty()) {
@@ -174,10 +174,10 @@ class UpdateDeviceInfoStateHandlerTest : public StateHandlerTest {
     }
 
     if (set_sku) {
-      ON_CALL(*cbi_utils, SetSku(_))
+      ON_CALL(*cbi_utils, SetSkuId(_))
           .WillByDefault(DoAll(SaveArg<0>(&sku_set_), Return(true)));
     } else {
-      ON_CALL(*cbi_utils, SetSku(_)).WillByDefault(Return(false));
+      ON_CALL(*cbi_utils, SetSkuId(_)).WillByDefault(Return(false));
     }
 
     if (set_custom_label) {
