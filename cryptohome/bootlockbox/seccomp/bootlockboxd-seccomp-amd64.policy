@@ -52,6 +52,7 @@ rt_sigreturn: 1
 rename: 1
 lseek: 1
 getresuid: 1
+uname: 1
 prctl: arg0 == PR_SET_NAME
 clock_getres: 1
 getresgid: 1
