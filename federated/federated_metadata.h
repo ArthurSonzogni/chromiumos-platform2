@@ -18,7 +18,6 @@ namespace federated {
 // converted to a proto to be used in the real federated tasks.
 struct ClientConfigMetadata {
   std::string name;
-  std::string base_dir;
   std::string retry_token;
 };
 

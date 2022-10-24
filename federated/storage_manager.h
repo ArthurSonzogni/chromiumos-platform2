@@ -43,6 +43,13 @@ class StorageManager : public SessionManagerObserverInterface {
       const std::string& client_name,
       const fcp::client::CrosExampleSelectorCriteria& criteria) const;
 
+  // Returns current logged-in user hash to generate the current accessible
+  // sub_path in the daemon store (powered by cryptohome).
+  // StorageManager uses this sub_path for example database, other parties (e.g.
+  // the fcp library) uses it to store data that needs to outlive user sessions,
+  // e.g. the opstats db.
+  std::string sanitized_username() const { return sanitized_username_; }
+
  protected:
   // NoDestructor needs access to constructor.
   friend class base::NoDestructor<StorageManager>;

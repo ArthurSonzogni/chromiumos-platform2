@@ -15,6 +15,7 @@
 #include "federated/federated_metadata.h"
 #include "federated/protos/cros_events.pb.h"
 #include "federated/protos/cros_example_selector_criteria.pb.h"
+#include "federated/utils.h"
 
 namespace federated {
 
@@ -210,16 +211,22 @@ FederatedClient::FederatedClient(
 FederatedClient::~FederatedClient() = default;
 
 void FederatedClient::RunPlan(const StorageManager* const storage_manager) {
+  DCHECK(!storage_manager->sanitized_username().empty())
+      << "storage_manager->sanitized_username() is unexpectedly empty!";
+
   FederatedClient::Context context(client_config_.name, device_status_monitor_,
                                    storage_manager);
 
+  const std::string base_dir_in_cryptohome =
+      GetBaseDir(storage_manager->sanitized_username(), client_config_.name)
+          .value();
   const FlTaskEnvironment env = {
       &FederatedClient::Context::PrepareExamples,
       &FederatedClient::Context::GetNextExample,
       &FederatedClient::Context::FreeExample,
       &FederatedClient::Context::TrainingConditionsSatisfied,
       &FederatedClient::Context::PublishEvent,
-      client_config_.base_dir.c_str(),
+      base_dir_in_cryptohome.c_str(),
       &context};
 
   FlRunPlanResult result =

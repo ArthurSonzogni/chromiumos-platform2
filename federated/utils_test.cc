@@ -61,5 +61,14 @@ TEST(UtilsTest, ConvertToTensorFlowExampleProto) {
               ElementsAre("abc", "123", "xyz"));
 }
 
+TEST(UtilsTest, FilePaths) {
+  const std::string sanitized_username = "foo";
+  const std::string client_name = "bar";
+  EXPECT_EQ(GetDatabasePath(sanitized_username).value(),
+            "/run/daemon-store/federated/foo/examples.db");
+  EXPECT_EQ(GetBaseDir(sanitized_username, client_name).value(),
+            "/run/daemon-store/federated/foo/bar");
+}
+
 }  // namespace
 }  // namespace federated

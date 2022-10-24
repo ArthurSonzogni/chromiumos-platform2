@@ -151,6 +151,7 @@ void StorageManager::ConnectToDatabaseIfNecessary() {
   if (new_sanitized_username.empty()) {
     VLOG(1) << "Sanitized_username is empty, disconnect the database";
     example_database_.reset();
+    sanitized_username_ = "";
     return;
   }
 

@@ -11,11 +11,13 @@
 namespace federated {
 namespace {
 
-// TODO(alanlxl): just for testing.
-constexpr std::array<const char* [3], 1> kClientMetadata = {{
+constexpr std::array<const char* [3], 2> kClientMetadata = {{
     {
-        "analytics_test_population",
-        "/tmp/",
+        /*name=*/"analytics_test_population",
+        /*retry_token=*/"",
+    },
+    {
+        "timezone_code_population",
         "",
     },
 }};
@@ -28,7 +30,7 @@ std::unordered_map<std::string, ClientConfigMetadata> GetClientConfig() {
       client_config_map([] {
         std::unordered_map<std::string, ClientConfigMetadata> map;
         for (const auto& data : kClientMetadata) {
-          const ClientConfigMetadata meta{data[0], data[1], data[2]};
+          const ClientConfigMetadata meta{data[0], data[1]};
           map[meta.name] = meta;
         }
         return map;

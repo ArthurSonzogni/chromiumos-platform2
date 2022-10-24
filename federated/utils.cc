@@ -29,9 +29,16 @@ constexpr char kDatabaseFileName[] = "examples.db";
 
 // Get the database file path with the given sanitized_username.
 base::FilePath GetDatabasePath(const std::string& sanitized_username) {
-  return base::FilePath(base::StringPrintf("%s/%s/%s", kUserDatabasePath,
-                                           sanitized_username.c_str(),
-                                           kDatabaseFileName));
+  return base::FilePath(kUserDatabasePath)
+      .Append(sanitized_username)
+      .Append(kDatabaseFileName);
+}
+
+base::FilePath GetBaseDir(const std::string& sanitized_username,
+                          const std::string& client_name) {
+  return base::FilePath(kUserDatabasePath)
+      .Append(sanitized_username)
+      .Append(client_name);
 }
 
 tensorflow::Example ConvertToTensorFlowExampleProto(const ExamplePtr& example) {

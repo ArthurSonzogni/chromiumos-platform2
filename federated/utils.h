@@ -29,6 +29,14 @@ extern const char kDatabaseFileName[];
 // Gets the database file path with the given sanitized_username.
 base::FilePath GetDatabasePath(const std::string& sanitized_username);
 
+// Gets the base_dir inside the cryptohome.
+// `base_dir` is used for opstats db which is created by brella library and
+// serves as an on-device record of brella execution history and logs. Because
+// the CrOS example storage is on cryptohome hence per-sanitized_username, the
+// opstats db should also be like this.
+base::FilePath GetBaseDir(const std::string& sanitized_username,
+                          const std::string& client_name);
+
 // Converts the mojom Example struct to a TensorFlow Example proto.
 tensorflow::Example ConvertToTensorFlowExampleProto(
     const chromeos::federated::mojom::ExamplePtr& example);
