@@ -492,6 +492,38 @@
 			]
 		},
 		{
+			"destination": "/system/product/build.prop",
+			"type": "bind",
+			"source": "/run/arc/host_generated/product_build.prop",
+			"options": [
+				"bind"
+			]
+		},
+		{
+			"destination": "/system/system_ext/build.prop",
+			"type": "bind",
+			"source": "/run/arc/host_generated/system_ext_build.prop",
+			"options": [
+				"bind"
+			]
+		},
+		{
+			"destination": "/vendor/build.prop",
+			"type": "bind",
+			"source": "/run/arc/host_generated/vendor_build.prop",
+			"options": [
+				"bind"
+			]
+		},
+		{
+			"destination": "/vendor/odm/etc/build.prop",
+			"type": "bind",
+			"source": "/run/arc/host_generated/odm_build.prop",
+			"options": [
+				"bind"
+			]
+		},
+		{
 			"destination": "/mnt",
 			"type": "tmpfs",
 			"source": "tmpfs",
