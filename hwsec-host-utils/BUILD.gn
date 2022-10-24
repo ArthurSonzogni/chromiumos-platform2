@@ -2,5 +2,26 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import("//common-mk/pkg_config.gni")
+
 group("all") {
+  deps = [ ":tpm_command_response_decoder" ]
+}
+
+pkg_config("target_default_pkg_deps") {
+  pkg_deps = [
+    "libbrillo",
+    "libchrome",
+  ]
+}
+
+config("target_defaults") {
+  configs = [ ":target_default_pkg_deps" ]
+  libs = [ "trunks" ]
+}
+
+executable("tpm_command_response_decoder") {
+  sources = [ "tpm_command_response_decoder.cc" ]
+  install_path = "bin"
+  configs += [ ":target_defaults" ]
 }
