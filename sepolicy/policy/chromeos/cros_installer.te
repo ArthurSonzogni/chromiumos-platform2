@@ -3,6 +3,8 @@ type cros_installer, domain, chromeos_domain;
 domain_auto_trans_nnp(cros_chromeos_install, cros_installer_exec, cros_installer);
 domain_auto_trans_nnp(cros_chromeos_postinst, cros_installer_exec, cros_installer);
 
+uma_writer(cros_installer);
+
 allow cros_installer self:capability sys_admin;
 
 allow cros_installer {
