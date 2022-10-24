@@ -77,6 +77,7 @@ issues:
    std::strings.
 4. base::DoNothing() comes from <base/bind_helpers.h> rather than
    "base/callback_helpers.h"
+5. Files that end with `_unittest.cc` should be renamed to end with `_test.cc`.
 
 ### Specific Files
 
