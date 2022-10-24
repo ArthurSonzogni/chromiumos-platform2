@@ -1,6 +1,6 @@
-# Chrome OS Power Management
+# ChromeOS Power Management
 
-The Chrome OS power manager consists of several components:
+The ChromeOS power manager consists of several components:
 
 -   `powerd`: C++ system daemon running as the `power` user that initiates
     dimming the screen, suspending the system, etc.
@@ -21,6 +21,8 @@ is available:
     delayed for maintaining battery health.
 -   [Battery Notifications](docs/battery_notifications.md) describes when
     low-battery notifications are shown by the UI.
+-   [Hibernation](docs/hibernation.md) describes how powerd handles the
+    hibernation process.
 -   [Inactivity Delays](docs/inactivity_delays.md) describes powerd's logic for
     taking action (e.g. dimming the backlight or suspending) when the user is
     inactive.
@@ -34,7 +36,7 @@ is available:
     determining the state of power supplies (e.g. batteries or line power).
 -   [Screen Brightness](docs/screen_brightness.md) describes powerd's logic for
     controlling the display backlight.
--   [Shutdown and Reboot](docs/shutdown.md) describes why and how Chrome OS
+-   [Shutdown and Reboot](docs/shutdown.md) describes why and how ChromeOS
     systems shut down and reboot.
 -   [Suspend and Resume](docs/suspend_resume.md) describes powerd's process for
     suspending and resuming the system.

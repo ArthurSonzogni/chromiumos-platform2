@@ -34,7 +34,7 @@ down for and comes up from hibernation.
 
 Resume from hibernation works by first doing a cold boot, then loading the
 hibernation image from disk and jumping back into it. That means there is a
-point at which Chrome OS is running, but then the current execution environment
+point at which ChromeOS is running, but then the current execution environment
 abruptly ends as control is returned to the hibernated system. This event is
 known as a resume from hibernation.
 
