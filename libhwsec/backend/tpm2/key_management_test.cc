@@ -2,10 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <cstdint>
 #include <memory>
 #include <utility>
 
-#include <cstdint>
+#include <base/test/task_environment.h>
+#include <brillo/secure_blob.h>
 #include <crypto/scoped_openssl_types.h>
 #include <gtest/gtest.h>
 #include <libhwsec-foundation/crypto/sha.h>
@@ -13,7 +15,10 @@
 #include <openssl/rsa.h>
 #include <openssl/x509.h>
 
+#include "base/time/time.h"
 #include "libhwsec/backend/tpm2/backend_test_base.h"
+#include "libhwsec/structures/key.h"
+#include "libhwsec/structures/permission.h"
 
 // Prevent the conflict definition from tss.h
 #undef TPM_ALG_RSA
@@ -65,7 +70,12 @@ bool GenerateRsaKey(int key_size_bits,
 
 }  // namespace
 
-class BackendKeyManagementTpm2Test : public BackendTpm2TestBase {};
+class BackendKeyManagementTpm2Test : public BackendTpm2TestBase {
+ protected:
+  base::test::TaskEnvironment task_environment_{
+      base::test::TaskEnvironment::ThreadingMode::MAIN_THREAD_ONLY,
+      base::test::TaskEnvironment::TimeSource::MOCK_TIME};
+};
 
 TEST_F(BackendKeyManagementTpm2Test, GetSupportedAlgo) {
   auto result =
@@ -1187,6 +1197,226 @@ TEST_F(BackendKeyManagementTpm2Test, IsSupported) {
                       .ecc_nid = NID_X9_62_prime239v3,
                   }),
               NotOkWith("Unsupported curve"));
+}
+
+TEST_F(BackendKeyManagementTpm2Test, LoadRefCountReloadKey) {
+  const OperationPolicy kFakePolicy{
+      .permission = Permission{.auth_value = brillo::SecureBlob("auth_value")}};
+  const std::string kFakeKeyBlob = "fake_key_blob";
+  const uint32_t kFakeKeyHandle = 0x1337;
+  const uint32_t kFakeKeyHandle2 = 0x7331;
+
+  EXPECT_CALL(proxy_->GetMock().tpm_utility, LoadKey(kFakeKeyBlob, _, _))
+      .WillOnce(DoAll(SetArgPointee<2>(kFakeKeyHandle),
+                      Return(trunks::TPM_RC_SUCCESS)));
+
+  EXPECT_CALL(proxy_->GetMock().tpm_utility,
+              GetKeyPublicArea(kFakeKeyHandle, _))
+      .WillOnce(Return(trunks::TPM_RC_SUCCESS));
+
+  auto result1 = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
+      kFakePolicy, brillo::BlobFromString(kFakeKeyBlob),
+      Backend::KeyManagement::LoadKeyOptions{.auto_reload = true});
+
+  ASSERT_OK(result1);
+
+  auto result2 = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
+      kFakePolicy, brillo::BlobFromString(kFakeKeyBlob),
+      Backend::KeyManagement::LoadKeyOptions{.auto_reload = true});
+
+  ASSERT_OK(result2);
+
+  auto result3 = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
+      kFakePolicy, brillo::BlobFromString(kFakeKeyBlob),
+      Backend::KeyManagement::LoadKeyOptions{.auto_reload = true});
+
+  ASSERT_OK(result3);
+
+  EXPECT_EQ(result1->GetKey().token, result2->GetKey().token);
+  EXPECT_EQ(result1->GetKey().token, result3->GetKey().token);
+
+  {
+    // Move out the key and drop it.
+    ScopedKey drop_key = std::move(result1).value();
+  }
+
+  EXPECT_CALL(proxy_->GetMock().tpm, FlushContextSync(kFakeKeyHandle, _))
+      .WillOnce(Return(trunks::TPM_RC_SUCCESS));
+
+  EXPECT_CALL(proxy_->GetMock().tpm_utility, LoadKey(kFakeKeyBlob, _, _))
+      .WillOnce(DoAll(SetArgPointee<2>(kFakeKeyHandle2),
+                      Return(trunks::TPM_RC_SUCCESS)));
+
+  EXPECT_THAT(middleware_->CallSync<&Backend::KeyManagement::ReloadIfPossible>(
+                  result2->GetKey()),
+              IsOk());
+
+  EXPECT_CALL(proxy_->GetMock().tpm, FlushContextSync(kFakeKeyHandle2, _))
+      .WillOnce(Return(trunks::TPM_RC_SUCCESS));
+}
+
+TEST_F(BackendKeyManagementTpm2Test, LoadAndLazyFlushKey) {
+  const OperationPolicy kFakePolicy{
+      .permission = Permission{.auth_value = brillo::SecureBlob("auth_value")}};
+  const std::string kFakeKeyBlob = "fake_key_blob";
+  const uint32_t kFakeKeyHandle = 0x1337;
+  const uint32_t kFakeKeyHandle2 = 0x7331;
+  const uint32_t kFakeKeyHandle3 = 0x7133;
+
+  EXPECT_CALL(proxy_->GetMock().tpm_utility, LoadKey(kFakeKeyBlob, _, _))
+      .WillOnce(DoAll(SetArgPointee<2>(kFakeKeyHandle),
+                      Return(trunks::TPM_RC_SUCCESS)));
+
+  EXPECT_CALL(proxy_->GetMock().tpm_utility,
+              GetKeyPublicArea(kFakeKeyHandle, _))
+      .WillOnce(Return(trunks::TPM_RC_SUCCESS));
+
+  auto result1 = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
+      kFakePolicy, brillo::BlobFromString(kFakeKeyBlob),
+      Backend::KeyManagement::LoadKeyOptions{
+          .auto_reload = true,
+          .lazy_expiration_time = base::Seconds(17),
+      });
+
+  ASSERT_OK(result1);
+
+  auto result2 = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
+      kFakePolicy, brillo::BlobFromString(kFakeKeyBlob),
+      Backend::KeyManagement::LoadKeyOptions{
+          .auto_reload = true,
+          .lazy_expiration_time = base::Seconds(23),
+      });
+
+  ASSERT_OK(result2);
+
+  // Nothing should happen if the we are still holding the keys.
+  task_environment_.FastForwardBy(base::Seconds(100));
+
+  {
+    // Move out the key and drop it.
+    ScopedKey drop_key1 = std::move(result1).value();
+  }
+
+  // Nothing should happen if the we are still holding the key.
+  task_environment_.FastForwardBy(base::Seconds(100));
+
+  {
+    // Move out the key and drop it.
+    ScopedKey drop_key2 = std::move(result2).value();
+  }
+
+  // Nothing should happen because the minimum lazy expiration time is 17 secs.
+  task_environment_.FastForwardBy(base::Seconds(15));
+
+  auto result3 = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
+      kFakePolicy, brillo::BlobFromString(kFakeKeyBlob),
+      Backend::KeyManagement::LoadKeyOptions{
+          .auto_reload = true,
+          .lazy_expiration_time = base::Seconds(7),
+      });
+
+  ASSERT_OK(result3);
+
+  EXPECT_CALL(proxy_->GetMock().tpm, FlushContextSync(kFakeKeyHandle, _))
+      .WillOnce(Return(trunks::TPM_RC_SUCCESS));
+
+  EXPECT_CALL(proxy_->GetMock().tpm_utility, LoadKey(kFakeKeyBlob, _, _))
+      .WillOnce(DoAll(SetArgPointee<2>(kFakeKeyHandle2),
+                      Return(trunks::TPM_RC_SUCCESS)));
+
+  EXPECT_THAT(middleware_->CallSync<&Backend::KeyManagement::ReloadIfPossible>(
+                  result3->GetKey()),
+              IsOk());
+
+  auto result4 = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
+      kFakePolicy, brillo::BlobFromString(kFakeKeyBlob),
+      Backend::KeyManagement::LoadKeyOptions{
+          .auto_reload = true,
+          .lazy_expiration_time = base::Seconds(37),
+      });
+
+  ASSERT_OK(result4);
+
+  EXPECT_EQ(result3->GetKey().token, result4->GetKey().token);
+
+  // Nothing should happen if the we are still holding the keys.
+  task_environment_.FastForwardBy(base::Seconds(100));
+
+  {
+    // Move out the key and drop it.
+    ScopedKey drop_key3 = std::move(result3).value();
+  }
+
+  // Nothing should happen if the we are still holding the key.
+  task_environment_.FastForwardBy(base::Seconds(100));
+
+  {
+    // Move out the key and drop it.
+    ScopedKey drop_key4 = std::move(result4).value();
+  }
+
+  // The key should be dropped after the minimum lazy expiration time (7secs).
+  EXPECT_CALL(proxy_->GetMock().tpm, FlushContextSync(kFakeKeyHandle2, _))
+      .WillOnce(Return(trunks::TPM_RC_SUCCESS));
+  task_environment_.FastForwardBy(base::Seconds(7));
+
+  // The LoadKey should load another new key.
+  EXPECT_CALL(proxy_->GetMock().tpm_utility, LoadKey(kFakeKeyBlob, _, _))
+      .WillOnce(DoAll(SetArgPointee<2>(kFakeKeyHandle3),
+                      Return(trunks::TPM_RC_SUCCESS)));
+
+  EXPECT_CALL(proxy_->GetMock().tpm_utility,
+              GetKeyPublicArea(kFakeKeyHandle3, _))
+      .WillOnce(Return(trunks::TPM_RC_SUCCESS));
+
+  auto result5 = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
+      kFakePolicy, brillo::BlobFromString(kFakeKeyBlob),
+      Backend::KeyManagement::LoadKeyOptions{
+          .auto_reload = true,
+          .lazy_expiration_time = base::Seconds(17),
+      });
+
+  ASSERT_OK(result5);
+
+  EXPECT_CALL(proxy_->GetMock().tpm, FlushContextSync(kFakeKeyHandle3, _))
+      .WillOnce(Return(trunks::TPM_RC_SUCCESS));
+}
+
+TEST_F(BackendKeyManagementTpm2Test, LoadReloadKeyWithWrongAuth) {
+  const OperationPolicy kFakePolicy{
+      .permission = Permission{.auth_value = brillo::SecureBlob("auth_value")}};
+  const OperationPolicy kWrongPolicy{
+      .permission =
+          Permission{.auth_value = brillo::SecureBlob("wrong_auth_value")}};
+  const std::string kFakeKeyBlob = "fake_key_blob";
+  const uint32_t kFakeKeyHandle = 0x1337;
+
+  EXPECT_CALL(proxy_->GetMock().tpm_utility, LoadKey(kFakeKeyBlob, _, _))
+      .WillOnce(DoAll(SetArgPointee<2>(kFakeKeyHandle),
+                      Return(trunks::TPM_RC_SUCCESS)))
+      .WillOnce(Return(trunks::TPM_RC_BAD_AUTH));
+
+  EXPECT_CALL(proxy_->GetMock().tpm_utility,
+              GetKeyPublicArea(kFakeKeyHandle, _))
+      .WillOnce(Return(trunks::TPM_RC_SUCCESS));
+
+  auto result1 = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
+      kFakePolicy, brillo::BlobFromString(kFakeKeyBlob),
+      Backend::KeyManagement::LoadKeyOptions{
+          .auto_reload = true,
+          .lazy_expiration_time = base::Seconds(17),
+      });
+
+  ASSERT_OK(result1);
+
+  auto result2 = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
+      kWrongPolicy, brillo::BlobFromString(kFakeKeyBlob),
+      Backend::KeyManagement::LoadKeyOptions{
+          .auto_reload = true,
+          .lazy_expiration_time = base::Seconds(23),
+      });
+
+  EXPECT_THAT(result2, NotOk());
 }
 
 }  // namespace hwsec

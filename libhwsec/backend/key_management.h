@@ -8,6 +8,7 @@
 #include <cstdint>
 
 #include <absl/container/flat_hash_set.h>
+#include <base/time/time.h>
 #include <brillo/secure_blob.h>
 
 #include "libhwsec/status.h"
@@ -43,6 +44,7 @@ class KeyManagement {
   };
   struct LoadKeyOptions {
     bool auto_reload = false;
+    base::TimeDelta lazy_expiration_time = base::Seconds(0);
   };
   struct CreateKeyResult {
     ScopedKey key;

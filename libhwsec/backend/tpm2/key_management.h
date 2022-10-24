@@ -13,6 +13,7 @@
 
 #include <absl/container/flat_hash_map.h>
 #include <absl/container/flat_hash_set.h>
+#include <base/timer/timer.h>
 #include <brillo/secure_blob.h>
 #include <trunks/tpm_generated.h>
 
@@ -28,6 +29,9 @@ class BackendTpm2;
 
 struct KeyReloadDataTpm2 {
   brillo::Blob key_blob;
+  uint32_t client_count;
+  base::TimeDelta lazy_expiration_time;
+  std::unique_ptr<base::OneShotTimer> flush_timer;
 };
 
 struct KeyTpm2 {
@@ -119,10 +123,13 @@ class KeyManagementTpm2 : public Backend::KeyManagement,
       KeyTpm2::Type key_type,
       uint32_t key_handle,
       std::optional<KeyReloadDataTpm2> reload_data);
+  Status FlushTransientKey(Key key, KeyTpm2& key_data);
+  Status FlushKeyTokenAndHandle(KeyToken token, trunks::TPM_HANDLE handle);
 
   KeyToken current_token_ = 0;
   absl::flat_hash_map<KeyToken, KeyTpm2> key_map_;
   absl::flat_hash_map<PersistentKeyType, KeyToken> persistent_key_map_;
+  bool shall_flush_immediately_ = false;
 };
 
 }  // namespace hwsec
