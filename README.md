@@ -76,6 +76,7 @@ copies.
 | [hermes](./hermes/) | ChromeOS LPA implementation for eSIM hardware support |
 | [hiberman](./hiberman/) | ChromeOS Hibernation Manager |
 | [hps](./hps/) | ChromeOS HPS daemon and utilities |
+| [hwsec-host-utils](./hwsec-host-utils/) | Hwsec-related host-only utilities |
 | [hwsec-test-utils](./hwsec-test-utils/) | Hwsec-related test-only features |
 | [hwsec-utils](./hwsec-utils/) | Hwsec-related features |
 | [iioservice](./iioservice/) | Daemon and libraries that provide sensor data to all processes |
