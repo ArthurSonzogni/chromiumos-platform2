@@ -9,6 +9,7 @@
 #include <absl/status/statusor.h>
 #include <base/strings/string_piece.h>
 #include <brillo/dbus/dbus_connection.h>
+#include <mojo/public/cpp/bindings/receiver.h>
 #include <mojo/public/cpp/bindings/remote.h>
 #include <mojo/public/cpp/system/message_pipe.h>
 
