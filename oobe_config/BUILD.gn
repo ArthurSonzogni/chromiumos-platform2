@@ -19,6 +19,12 @@ group("all") {
   if (use.test) {
     deps += [ ":oobe_config_test" ]
   }
+  if (use.fuzzer) {
+    deps += [
+      ":load_oobe_config_rollback_fuzzer",
+      ":rollback_openssl_encryption_fuzzer",
+    ]
+  }
 }
 
 pkg_config("target_defaults") {
@@ -153,5 +159,29 @@ if (use.test) {
       ":librollback_helper",
       "//common-mk/testrunner",
     ]
+  }
+}
+
+if (use.fuzzer) {
+  executable("load_oobe_config_rollback_fuzzer") {
+    sources = [ "load_oobe_config_rollback_fuzzer.cc" ]
+    configs += [
+      "//common-mk/common_fuzzer:common_fuzzer",
+      ":target_defaults",
+    ]
+    deps = [
+      ":liboobeconfig",
+      ":oobe_config_proto",
+    ]
+    pkg_deps = [ "libprotobuf-mutator" ]
+  }
+
+  executable("rollback_openssl_encryption_fuzzer") {
+    sources = [ "rollback_openssl_encryption_fuzzer.cc" ]
+    configs += [
+      "//common-mk/common_fuzzer:common_fuzzer",
+      ":target_defaults",
+    ]
+    deps = [ ":liboobeconfig" ]
   }
 }
