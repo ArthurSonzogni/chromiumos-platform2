@@ -23,6 +23,7 @@ pkg_config("target_defaults") {
 source_set("functions") {
   sources = [
     "all_functions.cc",
+    "ap_i2c.cc",
     "ata_storage.cc",
     "audio_codec.cc",
     "cellular_network.cc",

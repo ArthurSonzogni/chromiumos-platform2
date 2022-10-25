@@ -28,6 +28,7 @@ install_seccomp_policy("install_sandbox_seccomp") {
   ]
   if (_arch == "amd64") {
     sources += [
+      "${_arch}/ap_i2c-seccomp.policy",
       "${_arch}/ec_i2c-seccomp.policy",
       "${_arch}/gpu-seccomp.policy",
       "${_arch}/memory-seccomp.policy",

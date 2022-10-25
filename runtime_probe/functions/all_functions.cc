@@ -8,6 +8,7 @@
 
 #include "runtime_probe/probe_function.h"
 
+#include "runtime_probe/functions/ap_i2c.h"
 #include "runtime_probe/functions/ata_storage.h"
 #include "runtime_probe/functions/audio_codec.h"
 #include "runtime_probe/functions/cellular_network.h"
@@ -57,7 +58,8 @@ auto ConstructRegisteredFunctionTable() {
 }  // namespace
 
 auto ProbeFunction::registered_functions_ =
-    ConstructRegisteredFunctionTable<AtaStorageFunction,
+    ConstructRegisteredFunctionTable<ApI2cFunction,
+                                     AtaStorageFunction,
                                      AudioCodecFunction,
                                      CellularNetworkFunction,
                                      EcI2cFunction,
