@@ -78,6 +78,9 @@ class TpmManagerServiceTestBase : public testing::Test {
     if (shall_setup_service) {
       SetupService();
     }
+    // We remove the pinweaver provision from `TpmManagerService`. None should
+    // be all at any time.
+    EXPECT_CALL(*mock_pinweaver_provision_, Provision()).Times(0);
   }
 
   // This should be a protected method, but it was moved to public to avoid
@@ -144,9 +147,7 @@ TEST_F(TpmManagerServiceTest_Preinit, AutoInitialize) {
           DoAll(SetArgPointee<0>(TpmStatus::kTpmUnowned), Return(true)));
 
   // Make sure InitializeTpm doesn't get multiple calls.
-  Expectation pw_provision =
-      EXPECT_CALL(*mock_pinweaver_provision_, Provision()).Times(1);
-  EXPECT_CALL(mock_tpm_initializer_, InitializeTpm(_)).After(pw_provision);
+  EXPECT_CALL(mock_tpm_initializer_, InitializeTpm(_));
   EXPECT_CALL(mock_tpm_initializer_, PreInitializeTpm()).Times(0);
   EXPECT_CALL(mock_tpm_manager_metrics_, ReportTimeToTakeOwnership(_)).Times(1);
   SetupService();
@@ -244,7 +245,6 @@ TEST_F(TpmManagerServiceTest_Preinit, TpmAlreadyOwned) {
       .Times(1)
       .WillRepeatedly(
           DoAll(SetArgPointee<0>(TpmStatus::kTpmOwned), Return(true)));
-  EXPECT_CALL(*mock_pinweaver_provision_, Provision()).Times(1);
   EXPECT_CALL(mock_tpm_initializer_, InitializeTpm(_)).Times(0);
   EXPECT_CALL(mock_tpm_initializer_, PreInitializeTpm()).Times(0);
   EXPECT_CALL(mock_tpm_status_, IsDictionaryAttackMitigationEnabled(_))
@@ -325,7 +325,6 @@ TEST_F(TpmManagerServiceTest_Preinit, PruneLocalData) {
 }
 
 TEST_F(TpmManagerServiceTest_NoPreinit, NoPreInitialize) {
-  EXPECT_CALL(*mock_pinweaver_provision_, Provision()).Times(0);
   EXPECT_CALL(mock_tpm_initializer_, InitializeTpm(_)).Times(0);
   EXPECT_CALL(mock_tpm_initializer_, PreInitializeTpm()).Times(0);
   SetupService();

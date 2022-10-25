@@ -376,20 +376,6 @@ std::unique_ptr<GetTpmStatusReply> TpmManagerService::InitializeTask() {
           &TpmManagerService::PeriodicResetDictionaryAttackCounterTask,
           base::Unretained(this)));
 
-  // Only attempts to provision pinweaver-csme when `perform_preinit_` is
-  // `true`, for we only want it to take place with release images but not
-  // factory images.
-  if (perform_preinit_) {
-    // Supposedly pinweaver-csme should be provisioned during manufacturing;
-    // this is meant for devices that have their FW updraged to the first
-    // version that pinweaver-csme is supported.
-    if (!pinweaver_provision_->Provision()) {
-      LOG(WARNING) << __func__
-                   << ": Failed to provision pinweaver after TPM is owned. "
-                      "(Expected on devices w/o pinervaer-csme support.)";
-    }
-  }
-
   reply->set_owned(TpmStatus::kTpmOwned == ownership_status);
   if (ownership_status == TpmStatus::kTpmOwned) {
     VLOG(1) << "Tpm is already owned.";
