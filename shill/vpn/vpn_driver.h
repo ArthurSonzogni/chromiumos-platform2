@@ -91,6 +91,9 @@ class VPNDriver {
   virtual base::TimeDelta ConnectAsync(EventHandler* handler) = 0;
   virtual void Disconnect() = 0;
   virtual std::unique_ptr<IPConfig::Properties> GetIPv4Properties() const = 0;
+  virtual std::unique_ptr<IPConfig::Properties> GetIPv6Properties() const {
+    return nullptr;
+  }
   virtual std::string GetProviderType() const = 0;
 
   // Makes the VPN driver fail because of the connection timeout. The driver

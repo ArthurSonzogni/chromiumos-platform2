@@ -80,8 +80,20 @@ PersistentKeepalive=10
 [Peer]
 PublicKey=public-key-2
 Endpoint=10.0.1.2:12345
-AllowedIPs=192.168.1.2/32,192.168.3.0/24
+AllowedIPs=192.168.1.2/32,fd00:0:0:0:1::/128
+
+[Peer]
+PublicKey=public-key-3
+Endpoint=10.0.1.3:12345
+AllowedIPs=fd00:0:0:0:1::/128,fd00:0:0:2::/64
 )";
+
+static constexpr char kIPv4Address[] = "10.12.14.2";
+static constexpr char kIPv6Address1[] = "fd00:0:0:0:1::";
+static constexpr char kIPv6Address2[] = "fd00:0:0:2::";
+static constexpr char kWrongIPAddress[] = "10.12.14..2";
+
+constexpr char kWireGuardIPAddress[] = "WireGuard.IPAddress";
 
 class WireGuardDriverTest : public testing::Test {
  public:
@@ -105,6 +117,9 @@ class WireGuardDriverTest : public testing::Test {
     Error err;
     property_store_->SetStringProperty(kWireGuardPrivateKey, kPrivateKey1,
                                        &err);
+    property_store_->SetStringsProperty(
+        kWireGuardIPAddress,
+        std::vector<std::string>{kIPv4Address, kIPv6Address1}, &err);
     property_store_->SetStringmapsProperty(
         kWireGuardPeers,
         {
@@ -115,7 +130,10 @@ class WireGuardDriverTest : public testing::Test {
              {kWireGuardPeerAllowedIPs, "192.168.1.2/32,192.168.2.0/24"}},
             {{kWireGuardPeerPublicKey, "public-key-2"},
              {kWireGuardPeerEndpoint, "10.0.1.2:12345"},
-             {kWireGuardPeerAllowedIPs, "192.168.1.2/32,192.168.3.0/24"}},
+             {kWireGuardPeerAllowedIPs, "192.168.1.2/32,fd00:0:0:0:1::/128"}},
+            {{kWireGuardPeerPublicKey, "public-key-3"},
+             {kWireGuardPeerEndpoint, "10.0.1.3:12345"},
+             {kWireGuardPeerAllowedIPs, "fd00:0:0:0:1::/128,fd00:0:0:2::/64"}},
         },
         &err);
   }
@@ -277,13 +295,26 @@ TEST_F(WireGuardDriverTest, ConnectFlowKernel) {
   EXPECT_FALSE(driver_test_peer_->config_fd().is_valid());
 
   // Checks IPProperties.
-  const auto ip_properties = driver_->GetIPv4Properties();
-  ASSERT_NE(ip_properties, nullptr);
-  EXPECT_THAT(ip_properties->inclusion_list,
+  const auto ipv4_properties = driver_->GetIPv4Properties();
+  ASSERT_NE(ipv4_properties, nullptr);
+  EXPECT_EQ(ipv4_properties->address_family, IPAddress::kFamilyIPv4);
+  EXPECT_EQ(ipv4_properties->address, kIPv4Address);
+  EXPECT_EQ(ipv4_properties->subnet_prefix, 32);
+  EXPECT_THAT(ipv4_properties->inclusion_list,
               testing::UnorderedElementsAre(
                   // We do not dedup so this entry appears twice.
-                  "192.168.1.2/32", "192.168.1.2/32", "192.168.2.0/24",
-                  "192.168.3.0/24"));
+                  "192.168.1.2/32", "192.168.1.2/32", "192.168.2.0/24"));
+
+  const auto ipv6_properties = driver_->GetIPv6Properties();
+  ASSERT_NE(ipv6_properties, nullptr);
+  EXPECT_EQ(ipv6_properties->address_family, IPAddress::kFamilyIPv6);
+  EXPECT_EQ(ipv6_properties->subnet_prefix, 128);
+  EXPECT_EQ(ipv6_properties->address, kIPv6Address1);
+  EXPECT_THAT(
+      ipv6_properties->inclusion_list,
+      testing::UnorderedElementsAre(
+          // We do not dedup so this entry appears twice.
+          "fd00:0:0:0:1::/128", "fd00:0:0:0:1::/128", "fd00:0:0:2::/64"));
 
   // Disconnect.
   EXPECT_CALL(device_info_, DeleteInterface(kIfIndex));
@@ -341,7 +372,7 @@ TEST_F(WireGuardDriverTest, PropertyStoreAndConfigFile) {
   InvokeLinkReady();
   CHECK(base::ReadFileToString(config_file_path_, &contents));
   EXPECT_EQ(contents, kExpectedConfigFileContents);
-  ExpectCallMetrics(Metrics::kVpnWireGuardKeyPairSourceUserInput, 2,
+  ExpectCallMetrics(Metrics::kVpnWireGuardKeyPairSourceUserInput, 3,
                     Metrics::kVpnWireGuardAllowedIPsTypeNoDefaultRoute);
   std::move(wireguard_tools_exit_callback_).Run(0);
   Mock::VerifyAndClearExpectations(&metrics_);
@@ -354,17 +385,24 @@ TEST_F(WireGuardDriverTest, PropertyStoreAndConfigFile) {
                                                         &provider, &err));
   EXPECT_FALSE(provider.Contains<std::string>(kWireGuardPrivateKey));
   EXPECT_TRUE(provider.Contains<std::string>(kWireGuardPublicKey));
-  EXPECT_EQ(provider.Get<Stringmaps>(kWireGuardPeers),
-            (Stringmaps{
-                {{kWireGuardPeerPublicKey, "public-key-1"},
-                 {kWireGuardPeerPersistentKeepalive, "10"},
-                 {kWireGuardPeerEndpoint, "10.0.1.1:12345"},
-                 {kWireGuardPeerAllowedIPs, "192.168.1.2/32,192.168.2.0/24"}},
-                {{kWireGuardPeerPublicKey, "public-key-2"},
-                 {kWireGuardPeerPersistentKeepalive, ""},
-                 {kWireGuardPeerEndpoint, "10.0.1.2:12345"},
-                 {kWireGuardPeerAllowedIPs, "192.168.1.2/32,192.168.3.0/24"}},
-            }));
+  EXPECT_EQ(provider.Get<Strings>(kWireGuardIPAddress),
+            (std::vector<std::string>{kIPv4Address, kIPv6Address1}));
+  EXPECT_EQ(
+      provider.Get<Stringmaps>(kWireGuardPeers),
+      (Stringmaps{
+          {{kWireGuardPeerPublicKey, "public-key-1"},
+           {kWireGuardPeerPersistentKeepalive, "10"},
+           {kWireGuardPeerEndpoint, "10.0.1.1:12345"},
+           {kWireGuardPeerAllowedIPs, "192.168.1.2/32,192.168.2.0/24"}},
+          {{kWireGuardPeerPublicKey, "public-key-2"},
+           {kWireGuardPeerPersistentKeepalive, ""},
+           {kWireGuardPeerEndpoint, "10.0.1.2:12345"},
+           {kWireGuardPeerAllowedIPs, "192.168.1.2/32,fd00:0:0:0:1::/128"}},
+          {{kWireGuardPeerPublicKey, "public-key-3"},
+           {kWireGuardPeerPersistentKeepalive, ""},
+           {kWireGuardPeerEndpoint, "10.0.1.3:12345"},
+           {kWireGuardPeerAllowedIPs, "fd00:0:0:0:1::/128,fd00:0:0:2::/64"}},
+      }));
 
   // Setting peers without touching PresharedKey property should leave it
   // unchanged.
@@ -377,7 +415,10 @@ TEST_F(WireGuardDriverTest, PropertyStoreAndConfigFile) {
            {kWireGuardPeerAllowedIPs, "192.168.1.2/32,192.168.2.0/24"}},
           {{kWireGuardPeerPublicKey, "public-key-2"},
            {kWireGuardPeerEndpoint, "10.0.1.2:12345"},
-           {kWireGuardPeerAllowedIPs, "192.168.1.2/32,192.168.3.0/24"}},
+           {kWireGuardPeerAllowedIPs, "192.168.1.2/32,fd00:0:0:0:1::/128"}},
+          {{kWireGuardPeerPublicKey, "public-key-3"},
+           {kWireGuardPeerEndpoint, "10.0.1.3:12345"},
+           {kWireGuardPeerAllowedIPs, "fd00:0:0:0:1::/128,fd00:0:0:2::/64"}},
       },
       &err);
   InvokeConnectAsyncKernel();
@@ -397,7 +438,7 @@ TEST_F(WireGuardDriverTest, PropertyStoreAndConfigFile) {
            {kWireGuardPeerAllowedIPs, "192.168.1.2/32,192.168.2.0/24"}},
           {{kWireGuardPeerPublicKey, ""},
            {kWireGuardPeerEndpoint, "10.0.1.2:12345"},
-           {kWireGuardPeerAllowedIPs, "192.168.1.2/32,192.168.3.0/24"}},
+           {kWireGuardPeerAllowedIPs, "192.168.1.2/32,fd00:0:0:0:1::/128"}},
       },
       &err);
   EXPECT_TRUE(err.IsFailure());
@@ -418,7 +459,7 @@ TEST_F(WireGuardDriverTest, PropertyStoreAndConfigFile) {
            {kWireGuardPeerAllowedIPs, "192.168.1.2/32,192.168.2.0/24"}},
           {{kWireGuardPeerPublicKey, "public-key-1"},
            {kWireGuardPeerEndpoint, "10.0.1.2:12345"},
-           {kWireGuardPeerAllowedIPs, "192.168.1.2/32,192.168.3.0/24"}},
+           {kWireGuardPeerAllowedIPs, "192.168.1.2/32,fd00:0:0:0:1::/128"}},
       },
       &err);
   EXPECT_TRUE(err.IsFailure());
@@ -440,7 +481,7 @@ TEST_F(WireGuardDriverTest, PropertyStoreAndConfigFile) {
            {kWireGuardPeerAllowedIPs, "192.168.1.2/32,192.168.2.0/24"}},
           {{kWireGuardPeerPublicKey, "public-key-2"},
            {kWireGuardPeerEndpoint, "10.0.1.2:12345"},
-           {kWireGuardPeerAllowedIPs, "192.168.1.2/32,192.168.3.0/24"}},
+           {kWireGuardPeerAllowedIPs, "192.168.1.2/32,fd00:0:0:0:1::/128"}},
       },
       &err);
   InvokeConnectAsyncKernel();
@@ -475,18 +516,23 @@ TEST_F(WireGuardDriverTest, UnloadCredentials) {
   driver_->UnloadCredentials();
   const auto args = driver_->const_args();
   EXPECT_FALSE(args->Contains<std::string>(kWireGuardPrivateKey));
-  EXPECT_EQ(driver_test_peer_->peers(),
-            (Stringmaps{
-                {{kWireGuardPeerPublicKey, "public-key-1"},
-                 {kWireGuardPeerPresharedKey, ""},
-                 {kWireGuardPeerPersistentKeepalive, "10"},
-                 {kWireGuardPeerEndpoint, "10.0.1.1:12345"},
-                 {kWireGuardPeerAllowedIPs, "192.168.1.2/32,192.168.2.0/24"}},
-                {{kWireGuardPeerPublicKey, "public-key-2"},
-                 {kWireGuardPeerPresharedKey, ""},
-                 {kWireGuardPeerEndpoint, "10.0.1.2:12345"},
-                 {kWireGuardPeerAllowedIPs, "192.168.1.2/32,192.168.3.0/24"}},
-            }));
+  EXPECT_EQ(
+      driver_test_peer_->peers(),
+      (Stringmaps{
+          {{kWireGuardPeerPublicKey, "public-key-1"},
+           {kWireGuardPeerPresharedKey, ""},
+           {kWireGuardPeerPersistentKeepalive, "10"},
+           {kWireGuardPeerEndpoint, "10.0.1.1:12345"},
+           {kWireGuardPeerAllowedIPs, "192.168.1.2/32,192.168.2.0/24"}},
+          {{kWireGuardPeerPublicKey, "public-key-2"},
+           {kWireGuardPeerPresharedKey, ""},
+           {kWireGuardPeerEndpoint, "10.0.1.2:12345"},
+           {kWireGuardPeerAllowedIPs, "192.168.1.2/32,fd00:0:0:0:1::/128"}},
+          {{kWireGuardPeerPublicKey, "public-key-3"},
+           {kWireGuardPeerPresharedKey, ""},
+           {kWireGuardPeerEndpoint, "10.0.1.3:12345"},
+           {kWireGuardPeerAllowedIPs, "fd00:0:0:0:1::/128,fd00:0:0:2::/64"}},
+      }));
 }
 
 TEST_F(WireGuardDriverTest, KeyPairGeneration) {
@@ -557,13 +603,6 @@ TEST_F(WireGuardDriverTest, OnConnectTimeout) {
   EXPECT_CALL(driver_event_handler_, OnDriverFailure(_, _));
   EXPECT_CALL(device_info_, DeleteInterface(kIfIndex));
   driver_->OnConnectTimeout();
-
-  // Link is created by userspace process.
-  InvokeConnectAsyncUserspace();
-  InvokeLinkReady();
-  EXPECT_CALL(driver_event_handler_, OnDriverFailure(_, _));
-  EXPECT_CALL(process_manager_, StopProcess(kWireGuardPid));
-  driver_->OnConnectTimeout();
 }
 
 // Checks interface cleanup on disconnect before connected. Different with
@@ -580,13 +619,107 @@ TEST_F(WireGuardDriverTest, DisconnectBeforeConnected) {
   InvokeLinkReady();
   EXPECT_CALL(device_info_, DeleteInterface(kIfIndex));
   driver_->Disconnect();
-
-  // Link is created by userspace process.
-  InvokeConnectAsyncUserspace();
-  InvokeLinkReady();
-  EXPECT_CALL(process_manager_, StopProcess(kWireGuardPid));
-  driver_->OnConnectTimeout();
 }
 
+TEST_F(WireGuardDriverTest, GetIPProperties) {
+  Error err;
+  auto create_kernel_link = [&]() {
+    InvokeConnectAsyncKernel();
+    InvokeLinkReady();
+    std::move(wireguard_tools_exit_callback_).Run(0);
+  };
+  auto assert_ip_address_is = [&](const Strings& value) {
+    KeyValueStore provider;
+    ASSERT_TRUE(property_store_->GetKeyValueStoreProperty(kProviderProperty,
+                                                          &provider, &err));
+    ASSERT_EQ(provider.Get<Strings>(kWireGuardIPAddress), value);
+  };
+
+  // The case that the user configures only one IPv4 address.
+  InitializePropertyStore();
+  property_store_->SetStringsProperty(
+      kWireGuardIPAddress, std::vector<std::string>{kIPv4Address}, &err);
+  create_kernel_link();
+  assert_ip_address_is(std::vector<std::string>{kIPv4Address});
+  auto ipv4_properties = driver_->GetIPv4Properties();
+  ASSERT_NE(ipv4_properties, nullptr);
+  EXPECT_EQ(ipv4_properties->address_family, IPAddress::kFamilyIPv4);
+  EXPECT_EQ(ipv4_properties->address, kIPv4Address);
+  EXPECT_EQ(ipv4_properties->subnet_prefix, 32);
+  auto ipv6_properties = driver_->GetIPv6Properties();
+  ASSERT_EQ(ipv6_properties, nullptr);
+  driver_->Disconnect();
+
+  // The case that the user configures only one IPv6 address.
+  InitializePropertyStore();
+  property_store_->SetStringsProperty(
+      kWireGuardIPAddress, std::vector<std::string>{kIPv6Address1}, &err);
+  create_kernel_link();
+  assert_ip_address_is(std::vector<std::string>{kIPv6Address1});
+  ipv4_properties = driver_->GetIPv4Properties();
+  ASSERT_NE(ipv4_properties, nullptr);
+  EXPECT_EQ(ipv4_properties->address_family, IPAddress::kFamilyUnknown);
+  EXPECT_EQ(ipv4_properties->address, "");
+  EXPECT_EQ(ipv4_properties->subnet_prefix, 0);
+  ipv6_properties = driver_->GetIPv6Properties();
+  ASSERT_NE(ipv6_properties, nullptr);
+  EXPECT_EQ(ipv6_properties->address_family, IPAddress::kFamilyIPv6);
+  EXPECT_EQ(ipv6_properties->address, kIPv6Address1);
+  EXPECT_EQ(ipv6_properties->subnet_prefix, 128);
+  driver_->Disconnect();
+
+  // The case that the user configures one IPv4 address and one IPv6 address.
+  InitializePropertyStore();
+  // kWireguardIPAddress that contains one IPv4 address and one IPv6 address
+  // is set by default.
+  create_kernel_link();
+  assert_ip_address_is(std::vector<std::string>{kIPv4Address, kIPv6Address1});
+  ipv4_properties = driver_->GetIPv4Properties();
+  ASSERT_NE(ipv4_properties, nullptr);
+  EXPECT_EQ(ipv4_properties->address_family, IPAddress::kFamilyIPv4);
+  EXPECT_EQ(ipv4_properties->subnet_prefix, 32);
+  EXPECT_EQ(ipv4_properties->address, kIPv4Address);
+  ipv6_properties = driver_->GetIPv6Properties();
+  ASSERT_NE(ipv6_properties, nullptr);
+  EXPECT_EQ(ipv6_properties->address_family, IPAddress::kFamilyIPv6);
+  EXPECT_EQ(ipv6_properties->subnet_prefix, 128);
+  EXPECT_EQ(ipv6_properties->address, kIPv6Address1);
+  driver_->Disconnect();
+
+  // The case that the user configures two IPv6 addresses.
+  InitializePropertyStore();
+  property_store_->SetStringsProperty(
+      kWireGuardIPAddress,
+      std::vector<std::string>{kIPv6Address1, kIPv6Address2}, &err);
+  create_kernel_link();
+  assert_ip_address_is(std::vector<std::string>{kIPv6Address1, kIPv6Address2});
+  ipv4_properties = driver_->GetIPv4Properties();
+  ASSERT_NE(ipv4_properties, nullptr);
+  EXPECT_EQ(ipv4_properties->address_family, IPAddress::kFamilyUnknown);
+  EXPECT_EQ(ipv4_properties->address, "");
+  EXPECT_EQ(ipv4_properties->subnet_prefix, 0);
+  ipv6_properties = driver_->GetIPv6Properties();
+  ASSERT_NE(ipv6_properties, nullptr);
+  EXPECT_EQ(ipv6_properties->address_family, IPAddress::kFamilyIPv6);
+  EXPECT_EQ(ipv6_properties->subnet_prefix, 128);
+  EXPECT_EQ(ipv6_properties->address, kIPv6Address1);
+  driver_->Disconnect();
+
+  // The case that the user configures one wrong format address.
+  InitializePropertyStore();
+  property_store_->SetStringsProperty(
+      kWireGuardIPAddress, std::vector<std::string>{kWrongIPAddress}, &err);
+  EXPECT_CALL(driver_event_handler_, OnDriverFailure(_, _));
+  create_kernel_link();
+  assert_ip_address_is(std::vector<std::string>{kWrongIPAddress});
+  ipv4_properties = driver_->GetIPv4Properties();
+  ASSERT_NE(ipv4_properties, nullptr);
+  EXPECT_EQ(ipv4_properties->address_family, IPAddress::kFamilyUnknown);
+  EXPECT_EQ(ipv4_properties->address, "");
+  EXPECT_EQ(ipv4_properties->subnet_prefix, 0);
+  ipv6_properties = driver_->GetIPv6Properties();
+  ASSERT_EQ(ipv6_properties, nullptr);
+  driver_->Disconnect();
+}
 }  // namespace
 }  // namespace shill

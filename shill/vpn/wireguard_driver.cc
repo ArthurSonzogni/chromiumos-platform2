@@ -48,6 +48,7 @@ constexpr char kWireGuardPath[] = "/usr/sbin/wireguard";
 constexpr char kWireGuardToolsPath[] = "/usr/bin/wg";
 constexpr char kDefaultInterfaceName[] = "wg0";
 
+constexpr char kWireGuardIPAddress[] = "WireGuard.IPAddress";
 // The name of the property which indicates where the key pair comes from. This
 // property only appears in storage but not in D-Bus API.
 constexpr char kWireGuardKeyPairSource[] = "WireGuard.KeyPairSource";
@@ -196,6 +197,9 @@ const VPNDriver::Property WireGuardDriver::kProperties[] = {
     // TODO(b/177877860): This field is for software-backed keys only. May need
     // to change this logic when hardware-backed keys come.
     {kWireGuardPublicKey, Property::kReadOnly},
+    // Property for the list that contains one IPv4 address and multiple IPv6
+    // addresses which will be used as the client-side overlay addresses.
+    {kWireGuardIPAddress, Property::kArray},
 };
 
 WireGuardDriver::WireGuardDriver(Manager* manager,
@@ -226,7 +230,15 @@ void WireGuardDriver::Disconnect() {
 
 std::unique_ptr<IPConfig::Properties> WireGuardDriver::GetIPv4Properties()
     const {
-  return std::make_unique<IPConfig::Properties>(ip_properties_);
+  return std::make_unique<IPConfig::Properties>(ipv4_properties_);
+}
+
+std::unique_ptr<IPConfig::Properties> WireGuardDriver::GetIPv6Properties()
+    const {
+  if (ipv6_properties_.subnet_prefix == 0) {
+    return nullptr;
+  }
+  return std::make_unique<IPConfig::Properties>(ipv6_properties_);
 }
 
 std::string WireGuardDriver::GetProviderType() const {
@@ -580,7 +592,48 @@ void WireGuardDriver::OnConfigurationDone(int exit_code) {
 }
 
 bool WireGuardDriver::PopulateIPProperties() {
-  ip_properties_.default_route = false;
+  ipv4_properties_.default_route = false;
+  const auto ip_address_list =
+      args()->Lookup<std::vector<std::string>>(kWireGuardIPAddress, {});
+
+  std::vector<std::string> ipv4_address_list;
+  std::vector<std::string> ipv6_address_list;
+
+  for (const auto& ip_address : ip_address_list) {
+    switch (IPAddress(ip_address).family()) {
+      case IPAddress::kFamilyIPv4:
+        ipv4_address_list.push_back(ip_address);
+        break;
+      case IPAddress::kFamilyIPv6:
+        ipv6_address_list.push_back(ip_address);
+        break;
+      default:
+        LOG(ERROR) << "Address format is wrong: the input string is "
+                   << ip_address;
+        return false;
+    }
+  }
+  if (ipv4_address_list.size() > 1) {
+    LOG(ERROR) << "Multiple IPv4 addresses are set.";
+    return false;
+  }
+  if (ipv4_address_list.size() > 0) {
+    ipv4_properties_.address = ipv4_address_list[0];
+    ipv4_properties_.address_family = IPAddress::kFamilyIPv4;
+    ipv4_properties_.subnet_prefix = 32;
+  }
+  if (ipv6_address_list.size() > 1) {
+    LOG(WARNING) << "Multiple IPv6 addresses are set. Only apply the first one";
+  }
+  if (ipv6_address_list.size() > 0) {
+    ipv6_properties_.address = ipv6_address_list[0];
+    ipv6_properties_.address_family = IPAddress::kFamilyIPv6;
+    ipv6_properties_.subnet_prefix = 128;
+  }
+  if ((ipv4_address_list.size() == 0) && (ipv6_address_list.size() == 0)) {
+    LOG(ERROR) << "IP address for wireguard is not set.";
+    return false;
+  }
 
   // When we arrive here, the value of AllowedIPs has already been validated
   // by wireguard-tools. AllowedIPs is comma-separated list of CIDR-notation
@@ -589,11 +642,23 @@ bool WireGuardDriver::PopulateIPProperties() {
     std::string allowed_ips_str = peer[kWireGuardPeerAllowedIPs];
     std::vector<std::string> allowed_ip_list = base::SplitString(
         allowed_ips_str, ",", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
-    ip_properties_.inclusion_list.insert(ip_properties_.inclusion_list.end(),
-                                         allowed_ip_list.begin(),
-                                         allowed_ip_list.end());
+    for (const auto& allowed_ip : allowed_ip_list) {
+      switch ((IPAddress::CreateFromPrefixString(allowed_ip)).family()) {
+        case IPAddress::kFamilyIPv4:
+          ipv4_properties_.inclusion_list.push_back(allowed_ip);
+          break;
+        case IPAddress::kFamilyIPv6:
+          ipv6_properties_.inclusion_list.push_back(allowed_ip);
+          break;
+        default:
+          LOG(ERROR) << "Failed to parse AllowedIP: the input string is "
+                     << allowed_ip;
+          return false;
+      }
+    }
   }
-  ip_properties_.method = kTypeVPN;
+  ipv4_properties_.method = kTypeVPN;
+  ipv6_properties_.method = kTypeVPN;
   return true;
 }
 
@@ -617,7 +682,8 @@ void WireGuardDriver::Cleanup() {
     kernel_interface_open_ = false;
   }
   interface_index_ = -1;
-  ip_properties_ = {};
+  ipv4_properties_ = {};
+  ipv6_properties_ = {};
   config_fd_.reset();
 }
 

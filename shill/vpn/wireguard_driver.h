@@ -34,6 +34,7 @@ class WireGuardDriver : public VPNDriver {
   void Disconnect() override;
   void OnConnectTimeout() override;
   std::unique_ptr<IPConfig::Properties> GetIPv4Properties() const override;
+  std::unique_ptr<IPConfig::Properties> GetIPv6Properties() const override;
   std::string GetProviderType() const override;
 
   // These functions (including GetProvider() below) are overridden for
@@ -91,7 +92,7 @@ class WireGuardDriver : public VPNDriver {
                           int interface_index);
   void OnConfigurationDone(int exit_code);
 
-  // Fills in |ip_properties_| (especially, the address and routes fields)
+  // Fills in |ipv4_properties_| (especially, the address and routes fields)
   // according to the properties in the profile.
   bool PopulateIPProperties();
 
@@ -112,7 +113,8 @@ class WireGuardDriver : public VPNDriver {
   EventHandler* event_handler_;
   pid_t wireguard_pid_ = -1;
   int interface_index_ = -1;
-  IPConfig::Properties ip_properties_;
+  IPConfig::Properties ipv4_properties_;
+  IPConfig::Properties ipv6_properties_;
   base::ScopedFD config_fd_;
 
   // Indicates that whether we have an open wg interface in the kernel which is
