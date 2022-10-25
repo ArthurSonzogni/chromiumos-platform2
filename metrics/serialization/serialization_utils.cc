@@ -209,7 +209,7 @@ bool SerializationUtils::ReadAndTruncateMetricsFromFile(
     // Also nothing to collect.
     return true;
   }
-  base::ScopedFD fd(open(filename.c_str(), O_RDWR));
+  base::ScopedFD fd(open(filename.c_str(), O_RDWR | O_CLOEXEC));
   if (fd.get() < 0) {
     PLOG(ERROR) << filename << ": cannot open";
     return true;
@@ -284,7 +284,7 @@ bool SerializationUtils::WriteMetricsToFile(
   }
 
   base::ScopedFD file_descriptor(open(filename.c_str(),
-                                      O_WRONLY | O_APPEND | O_CREAT,
+                                      O_WRONLY | O_APPEND | O_CREAT | O_CLOEXEC,
                                       READ_WRITE_ALL_FILE_FLAGS));
 
   if (file_descriptor.get() < 0) {
@@ -294,7 +294,10 @@ bool SerializationUtils::WriteMetricsToFile(
 
   // Grab a lock to avoid chrome truncating the file underneath us. Keep the
   // file locked as briefly as possible. Freeing file_descriptor will close the
-  // file and remove the lock.
+  // file and remove the lock IFF the process was not forked in the meantime,
+  // which will leave the flock hanging and deadlock the reporting until the
+  // forked process is killed otherwise. Thus we have to explicitly unlock the
+  // file below.
   if (HANDLE_EINTR(flock(file_descriptor.get(), LOCK_EX)) < 0) {
     PLOG(ERROR) << filename << ": cannot lock";
     return false;
@@ -302,8 +305,11 @@ bool SerializationUtils::WriteMetricsToFile(
 
   if (!base::WriteFileDescriptor(file_descriptor.get(), output)) {
     PLOG(ERROR) << "error writing output";
+    std::ignore = flock(file_descriptor.get(), LOCK_UN);
     return false;
   }
+
+  std::ignore = flock(file_descriptor.get(), LOCK_UN);
 
   return true;
 }

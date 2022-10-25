@@ -45,25 +45,31 @@ bool WriteFile(const std::string& filepath, const T* proto) {
     return false;
 
   base::ScopedFD file_descriptor(open(filepath.c_str(),
-                                      O_WRONLY | O_APPEND | O_CREAT,
+                                      O_WRONLY | O_APPEND | O_CREAT | O_CLOEXEC,
                                       READ_WRITE_ALL_FILE_FLAGS));
   if (file_descriptor.get() < 0) {
     PLOG(ERROR) << filepath << " cannot open";
     return false;
   }
 
-  // Grab a lock to avoid chrome deleting the file while we're writing. Keep the
+  // Grab a lock to avoid chrome truncating the file underneath us. Keep the
   // file locked as briefly as possible. Freeing file_descriptor will close the
-  // file and remove the lock.
+  // file and remove the lock IFF the process was not forked in the meantime,
+  // which will leave the flock hanging and deadlock the reporting until the
+  // forked process is killed otherwise. Thus we have to explicitly unlock the
+  // file below.
   if (HANDLE_EINTR(flock(file_descriptor.get(), LOCK_EX)) < 0) {
-    PLOG(ERROR) << filepath << " cannot lock";
+    PLOG(ERROR) << filepath << ": cannot lock";
     return false;
   }
 
   if (!base::WriteFileDescriptor(file_descriptor.get(), proto_str)) {
-    PLOG(ERROR) << filepath << " write error";
+    PLOG(ERROR) << "error writing output";
+    std::ignore = flock(file_descriptor.get(), LOCK_UN);
     return false;
   }
+
+  std::ignore = flock(file_descriptor.get(), LOCK_UN);
 
   return true;
 }
