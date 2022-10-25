@@ -430,10 +430,19 @@ TEST(AnomalyDetectorTest, KernelWarningWifiMac80211) {
   ParserTest("TEST_WIFI_WARNING", {wifi_warning}, &parser);
 }
 
-TEST(AnomalyDetectorTest, KernelWarningSuspend) {
+TEST(AnomalyDetectorTest, KernelWarningSuspend_v4_14) {
   ParserRun suspend_warning = {
       .find_this = "gpu/drm/ttm",
       .replace_with = "idle",
+      .expected_flags = {{"--kernel_suspend_warning", "--weight=10"}}};
+  KernelParser parser(true);
+  ParserTest("TEST_WARNING", {suspend_warning}, &parser);
+}
+
+TEST(AnomalyDetectorTest, KernelWarningSuspend_EC) {
+  ParserRun suspend_warning = {
+      .find_this = "gpu/drm/ttm/ttm_bo_vm.c",
+      .replace_with = "platform/chrome/cros_ec.c",
       .expected_flags = {{"--kernel_suspend_warning", "--weight=10"}}};
   KernelParser parser(true);
   ParserTest("TEST_WARNING", {suspend_warning}, &parser);

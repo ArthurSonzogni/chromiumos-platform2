@@ -4,8 +4,8 @@
 
 #include "crash-reporter/anomaly_detector.h"
 
-#include <optional>
 #include <memory>
+#include <optional>
 #include <unordered_set>
 #include <utility>
 
@@ -212,6 +212,12 @@ MaybeCrashReport SELinuxParser::ParseLogEntry(const std::string& line) {
        base::StringPrintf("--weight=%d", util::GetSelinuxWeightForCrash())});
 }
 
+static constexpr LazyRE2 kernel_suspend_warning = {
+    // Intel - PMT - failure to transition to S0ix detected on resume
+    "drivers/idle|"  // <= v4.14
+    // Intel - EC - detected failure to transition to S0ix
+    "drivers/platform/chrome/cros_ec"};
+
 std::string DetermineFlag(const std::string& info) {
   // Paths like:
   //   drivers/net/wireless/...
@@ -220,7 +226,7 @@ std::string DetermineFlag(const std::string& info) {
   if (info.find("net/wireless") != std::string::npos ||
       info.find("net/mac80211") != std::string::npos)
     return "--kernel_wifi_warning";
-  if (info.find("drivers/idle") != std::string::npos)
+  if (RE2::PartialMatch(info, *kernel_suspend_warning))
     return "--kernel_suspend_warning";
 
   return "--kernel_warning";
