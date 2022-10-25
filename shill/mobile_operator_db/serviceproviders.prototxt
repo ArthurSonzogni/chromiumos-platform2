@@ -12241,7 +12241,7 @@ mno {
     mobile_apn {
       apn : "broadband"
       localized_name {
-        name : "LaptopConnect (data cards)"
+        name : "ATT Broadband"
       }
       ip_type: IPV4V6
       is_attach_apn : true
