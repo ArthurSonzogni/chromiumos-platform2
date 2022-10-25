@@ -1,5 +1,5 @@
 diff --git a/camera/android/libcamera_metadata/src/camera_metadata.c b/camera/android/libcamera_metadata/src/camera_metadata.c
-index f9d524b455..93588824c9 100644
+index f9d524b455..304842113e 100644
 --- a/camera/android/libcamera_metadata/src/camera_metadata.c
 +++ b/camera/android/libcamera_metadata/src/camera_metadata.c
 @@ -16,17 +16,23 @@
@@ -37,7 +37,26 @@ index f9d524b455..93588824c9 100644
          return NULL;
      }
  
-@@ -379,7 +385,7 @@ static int validate_and_calculate_camera_metadata_entry_data_size(size_t *data_s
+@@ -307,7 +313,7 @@ size_t calculate_camera_metadata_size(size_t entry_count,
+     memory_needed += sizeof(camera_metadata_buffer_entry_t[entry_count]);
+     // Start buffer list at aligned boundary
+     memory_needed = ALIGN_TO(memory_needed, DATA_ALIGNMENT);
+-    memory_needed += sizeof(uint8_t[data_count]);
++    memory_needed += data_count; // uint8_t data
+     // Make sure camera metadata can be stacked in continuous memory
+     memory_needed = ALIGN_TO(memory_needed, METADATA_PACKET_ALIGNMENT);
+     return memory_needed;
+@@ -363,8 +369,7 @@ camera_metadata_t* copy_camera_metadata(void *dst, size_t dst_size,
+ 
+     memcpy(get_entries(metadata), get_entries(src),
+             sizeof(camera_metadata_buffer_entry_t[metadata->entry_count]));
+-    memcpy(get_data(metadata), get_data(src),
+-            sizeof(uint8_t[metadata->data_count]));
++    memcpy(get_data(metadata), get_data(src), metadata->data_count);
+ 
+     assert(validate_camera_metadata_structure(metadata, NULL) == OK);
+     return metadata;
+@@ -379,7 +384,7 @@ static int validate_and_calculate_camera_metadata_entry_data_size(size_t *data_s
      // Check for overflow
      if (data_count != 0 &&
              camera_metadata_type_size[type] > (SIZE_MAX - DATA_ALIGNMENT + 1) / data_count) {
@@ -46,7 +65,7 @@ index f9d524b455..93588824c9 100644
          return ERROR;
      }
  
-@@ -483,7 +489,7 @@ int validate_camera_metadata_structure(const camera_metadata_t *metadata,
+@@ -483,7 +488,7 @@ int validate_camera_metadata_structure(const camera_metadata_t *metadata,
          ALOGE("%s: Data count (%" PRIu32 ") should be <= data capacity "
                "(%" PRIu32 ")",
                __FUNCTION__, header->data_count, header->data_capacity);
@@ -55,3 +74,13 @@ index f9d524b455..93588824c9 100644
          return CAMERA_METADATA_VALIDATION_ERROR;
      }
  
+@@ -621,8 +626,7 @@ int append_camera_metadata(camera_metadata_t *dst,
+ 
+     memcpy(get_entries(dst) + dst->entry_count, get_entries(src),
+             sizeof(camera_metadata_buffer_entry_t[src->entry_count]));
+-    memcpy(get_data(dst) + dst->data_count, get_data(src),
+-            sizeof(uint8_t[src->data_count]));
++    memcpy(get_data(dst) + dst->data_count, get_data(src), src->data_count);
+     if (dst->data_count != 0) {
+         camera_metadata_buffer_entry_t *entry = get_entries(dst) + dst->entry_count;
+         for (size_t i = 0; i < src->entry_count; i++, entry++) {
