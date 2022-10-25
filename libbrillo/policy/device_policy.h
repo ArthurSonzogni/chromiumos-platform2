@@ -304,6 +304,10 @@ class DevicePolicy {
   // error or if the policy is not set, returns an empty value.
   virtual std::optional<bool> GetReportDeviceSecurityStatus() const = 0;
 
+  // Returns the value of the DeviceReportXDREvents policy. On
+  // error or if the policy is not set, return an empty value.
+  virtual std::optional<bool> GetDeviceReportXDREvents() const = 0;
+
  private:
   // Verifies that the policy signature is correct.
   virtual bool VerifyPolicySignature() = 0;

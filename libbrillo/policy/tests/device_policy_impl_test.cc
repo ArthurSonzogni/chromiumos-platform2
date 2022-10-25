@@ -584,4 +584,25 @@ TEST_F(DevicePolicyImplTest, GetReportDeviceSecurityStatus_Set) {
               testing::Eq(std::optional(true)));
 }
 
+TEST_F(DevicePolicyImplTest, GetDeviceReportXDREvents_NotSet) {
+  em::ChromeDeviceSettingsProto device_policy_proto;
+  InitializePolicy(InstallAttributesReader::kDeviceModeEnterprise,
+                   device_policy_proto);
+
+  ASSERT_THAT(device_policy_.GetDeviceReportXDREvents(),
+              testing::Eq(std::nullopt));
+}
+
+TEST_F(DevicePolicyImplTest, GetDeviceReportXDREvents_Set) {
+  em::ChromeDeviceSettingsProto device_policy_proto;
+  em::DeviceReportXDREventsProto* xdr_reporting =
+      device_policy_proto.mutable_device_report_xdr_events();
+  xdr_reporting->set_enabled(true);
+  InitializePolicy(InstallAttributesReader::kDeviceModeEnterprise,
+                   device_policy_proto);
+
+  ASSERT_THAT(device_policy_.GetDeviceReportXDREvents(),
+              testing::Eq(std::optional(true)));
+}
+
 }  // namespace policy

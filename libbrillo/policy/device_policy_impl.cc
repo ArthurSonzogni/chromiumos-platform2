@@ -918,6 +918,19 @@ std::optional<bool> DevicePolicyImpl::GetReportDeviceSecurityStatus() const {
   return proto.report_security_status();
 }
 
+std::optional<bool> DevicePolicyImpl::GetDeviceReportXDREvents() const {
+  if (!device_policy_.has_device_report_xdr_events())
+    return {};
+
+  const em::DeviceReportXDREventsProto& proto =
+      device_policy_.device_report_xdr_events();
+
+  if (!proto.has_enabled()) {
+    return {};
+  }
+  return proto.enabled();
+}
+
 bool DevicePolicyImpl::VerifyPolicyFile(const base::FilePath& policy_path) {
   if (!verify_root_ownership_) {
     return true;

@@ -147,6 +147,10 @@ class MockDevicePolicy : public DevicePolicy {
               GetReportDeviceSecurityStatus,
               (),
               (const, override));
+  MOCK_METHOD(std::optional<bool>,
+              GetDeviceReportXDREvents,
+              (),
+              (const, override));
 };
 }  // namespace policy
 
