@@ -5,13 +5,14 @@
 #ifndef SHILL_STORE_PKCS11_UTIL_H_
 #define SHILL_STORE_PKCS11_UTIL_H_
 
-#include <chaps/pkcs11/cryptoki.h>
-
 #include <string>
 
-namespace shill {
+#include <chaps/pkcs11/cryptoki.h>
 
-namespace pkcs11 {
+namespace shill::pkcs11 {
+
+constexpr CK_SLOT_ID kInvalidSlot = ULONG_MAX;
+
 // A helper class to scope a PKCS #11 session.
 class ScopedSession {
  public:
@@ -28,13 +29,25 @@ class ScopedSession {
   CK_SESSION_HANDLE handle_ = CK_INVALID_HANDLE;
 };
 
-// Set the content of |slot| with the slot id for the given |user_hash| or the
-// system slot if |user_hash| is empty. Return false if no appropriate slot is
-// found.
-bool GetUserSlot(const std::string& user_hash, CK_SLOT_ID_PTR slot);
+// The Slot enum indicates the type of PKCS#11 slot used.
+enum Slot : int {
+  kUnknown,
+  kSystem,  // Slot associated to the device
+  kUser,    // Slot associated to a certain user
+};
 
-}  // namespace pkcs11
+struct Pkcs11Id {
+  CK_SLOT_ID slot_id;
+  std::string cka_id;
 
-}  // namespace shill
+  // Parses a Pkcs11Id from a colon-separated "slot_id:cka_id" representation.
+  static std::optional<Pkcs11Id> ParseFromColonSeparated(
+      const std::string& pkcs11_id);
+
+  // Emits a colon-separated "slot_id:cka_id" representation.
+  std::string ToColonSeparated();
+};
+
+}  // namespace shill::pkcs11
 
 #endif  // SHILL_STORE_PKCS11_UTIL_H_

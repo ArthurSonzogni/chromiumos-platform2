@@ -194,6 +194,9 @@ class StoreInterface {
   // The following functions behave similarly with their counterparts, but
   // store the string in PKCS11 store as hardware-wrapped CKO_DATA object
   // instead of in a key file.
+  // The PKCS#11 slot used depends on whether the profile of the store is
+  // tied to an active user session. If so, it will use the user slot,
+  // otherwise system slot is used.
   virtual bool PKCS11SetString(const std::string& group,
                                const std::string& key,
                                const std::string& value) = 0;

@@ -20,6 +20,7 @@
 #include "shill/profile.h"
 #include "shill/refptr_types.h"
 #include "shill/store/key_value_store.h"
+#include "shill/store/pkcs11_slot_getter.h"
 #include "shill/store/store_interface.h"
 #include "shill/supplicant/wpa_supplicant.h"
 
@@ -170,6 +171,10 @@ bool PasspointCredentials::Save(StoreInterface* storage) {
   eap_.Save(storage, id_, /*save_credentials=*/true);
 
   return true;
+}
+
+void PasspointCredentials::SetEapSlotGetter(Pkcs11SlotGetter* slot_getter) {
+  eap_.SetEapSlotGetter(slot_getter);
 }
 
 std::string PasspointCredentials::GenerateIdentifier() {

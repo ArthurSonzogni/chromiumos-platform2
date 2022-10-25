@@ -33,6 +33,7 @@
 #include "shill/profile.h"
 #include "shill/store/key_value_store.h"
 #include "shill/store/pkcs11_cert_store.h"
+#include "shill/store/pkcs11_slot_getter.h"
 #include "shill/store/store_interface.h"
 #include "shill/technology.h"
 #include "shill/wifi/hotspot_device.h"
@@ -720,11 +721,13 @@ std::vector<ByteString> WiFiProvider::GetSsidsConfiguredForAutoConnect() {
 
 void WiFiProvider::LoadCredentialsFromProfile(const ProfileRefPtr& profile) {
   const StoreInterface* storage = profile->GetConstStorage();
+  Pkcs11SlotGetter* slot_getter = profile->GetSlotGetter();
   KeyValueStore args;
   args.Set<std::string>(PasspointCredentials::kStorageType,
                         PasspointCredentials::kTypePasspoint);
   for (const auto& group : storage->GetGroupsWithProperties(args)) {
     PasspointCredentialsRefPtr creds = new PasspointCredentials(group);
+    creds->SetEapSlotGetter(slot_getter);
     creds->Load(storage);
     creds->SetProfile(profile);
     AddCredentials(creds);

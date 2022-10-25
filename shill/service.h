@@ -30,6 +30,7 @@
 #include "shill/network/network.h"
 #include "shill/refptr_types.h"
 #include "shill/static_ip_parameters.h"
+#include "shill/store/pkcs11_slot_getter.h"
 #include "shill/store/property_store.h"
 #include "shill/technology.h"
 
@@ -415,6 +416,9 @@ class Service : public base::RefCounted<Service> {
   mockable bool AddEAPCertification(const std::string& name, size_t depth);
   // Clear all EAP certification elements.
   mockable void ClearEAPCertification();
+
+  // Set PKCS#11 slot getter for |eap_|.
+  void SetEapSlotGetter(Pkcs11SlotGetter* slot_getter);
 
   // The inherited class that needs to send metrics after the service has
   // transitioned to the ready state should override this method.

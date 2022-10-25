@@ -22,6 +22,7 @@
 #include <inttypes.h>
 
 #include "shill/store/key_value_store.h"
+#include "shill/store/pkcs11_slot_getter.h"
 
 using testing::Test;
 
@@ -34,7 +35,8 @@ class KeyFileStoreTest : public Test {
   void SetUp() override {
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
     test_file_ = temp_dir_.GetPath().Append("test-key-file-store");
-    store_.reset(new KeyFileStore(test_file_));
+    slot_getter_ = std::make_unique<Pkcs11SlotGetter>(/*user_hash=*/"");
+    store_ = std::make_unique<KeyFileStore>(test_file_, slot_getter_.get());
   }
 
   void TearDown() override { ASSERT_TRUE(temp_dir_.Delete()); }
@@ -45,6 +47,7 @@ class KeyFileStoreTest : public Test {
 
   base::ScopedTempDir temp_dir_;
   base::FilePath test_file_;
+  std::unique_ptr<Pkcs11SlotGetter> slot_getter_;
   std::unique_ptr<KeyFileStore> store_;
 };
 

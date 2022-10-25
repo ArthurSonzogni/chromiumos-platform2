@@ -8,9 +8,11 @@
 #include "shill/eap_credentials.h"
 
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/stl_util.h>
+#include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest.h>
 #include <libpasswordprovider/fake_password_provider.h>
@@ -23,6 +25,8 @@
 #include "shill/mock_metrics.h"
 #include "shill/store/fake_store.h"
 #include "shill/store/key_value_store.h"
+#include "shill/store/mock_pkcs11_slot_getter.h"
+#include "shill/store/pkcs11_util.h"
 #include "shill/supplicant/wpa_supplicant.h"
 #include "shill/technology.h"
 
@@ -32,6 +36,7 @@ using testing::DoAll;
 using testing::Mock;
 using testing::Return;
 using testing::SetArgPointee;
+using testing::WithArg;
 
 namespace shill {
 
@@ -114,6 +119,7 @@ class EapCredentialsTest : public testing::Test {
 
   EapCredentials eap_;
   MockCertificateFile certificate_file_;
+  MockPkcs11SlotGetter slot_getter_;
   KeyValueStore params_;
 };
 
@@ -335,6 +341,83 @@ TEST_F(EapCredentialsTest, Load) {
   EXPECT_EQ(eap_.use_system_cas(), eap2.use_system_cas());
   EXPECT_EQ(eap_.use_proactive_key_caching_, eap2.use_proactive_key_caching_);
   EXPECT_EQ(eap_.use_login_password_, eap2.use_login_password_);
+}
+
+TEST_F(EapCredentialsTest, Load_UserSlot) {
+  FakeStore store;
+  const std::string kId("storage-id");
+  const std::string kCertId("1:AAAAAAAA");
+  const std::string kOutdatedCertId("2:AAAAAAAA");
+
+  // CertID and KeyID are expected to be equal.
+  store.SetString(kId, EapCredentials::kStorageEapCertID, kOutdatedCertId);
+  store.SetString(kId, EapCredentials::kStorageEapKeyID, kOutdatedCertId);
+  store.SetInt(kId, EapCredentials::kStorageEapSlot, pkcs11::kUser);
+
+  // Expect invalid certificate and key ID to be corrected.
+  eap_.SetEapSlotGetter(&slot_getter_);
+  EXPECT_CALL(slot_getter_,
+              GetPkcs11SlotIdWithRetries(pkcs11::Slot::kUser, _, _))
+      .WillOnce(WithArg<1>([](base::OnceCallback<void(CK_SLOT_ID)> callback) {
+        std::move(callback).Run(1);
+      }));
+  eap_.Load(&store, kId);
+
+  EXPECT_EQ(eap_.cert_id_, kCertId);
+  EXPECT_EQ(eap_.key_id_, kCertId);
+}
+
+TEST_F(EapCredentialsTest, Load_SystemSlot) {
+  FakeStore store;
+  const std::string kId("storage-id");
+  const std::string kCertId("0:AAAAAAAA");
+  const std::string kOutdatedCertId("2:AAAAAAAA");
+
+  // CertID and KeyID are expected to be equal.
+  store.SetString(kId, EapCredentials::kStorageEapCertID, kOutdatedCertId);
+  store.SetString(kId, EapCredentials::kStorageEapKeyID, kOutdatedCertId);
+  store.SetInt(kId, EapCredentials::kStorageEapSlot, pkcs11::kSystem);
+
+  // Expect invalid certificate and key ID to be corrected.
+  eap_.SetEapSlotGetter(&slot_getter_);
+  EXPECT_CALL(slot_getter_,
+              GetPkcs11SlotIdWithRetries(pkcs11::Slot::kSystem, _, _))
+      .WillOnce(WithArg<1>([](base::OnceCallback<void(CK_SLOT_ID)> callback) {
+        std::move(callback).Run(0);
+      }));
+  eap_.Load(&store, kId);
+
+  EXPECT_EQ(eap_.cert_id_, kCertId);
+  EXPECT_EQ(eap_.key_id_, kCertId);
+}
+
+TEST_F(EapCredentialsTest, SaveAndLoad_Pkcs11Id) {
+  FakeStore store;
+  const std::string kCertId("1:AAAAAAAA");
+  eap_.cert_id_ = kCertId;
+  const std::string kKeyId("1:AAAAAAAA");
+  eap_.key_id_ = kKeyId;
+  const std::string kId("storage-id");
+
+  eap_.SetEapSlotGetter(&slot_getter_);
+  EXPECT_CALL(slot_getter_, GetPkcs11SlotId(pkcs11::Slot::kUser))
+      .WillOnce(Return(1));
+  eap_.Save(&store, kId, /*save_credentials=*/true);
+
+  // Clear the values.
+  eap_.cert_id_ = "";
+  eap_.key_id_ = "";
+
+  eap_.SetEapSlotGetter(&slot_getter_);
+  EXPECT_CALL(slot_getter_,
+              GetPkcs11SlotIdWithRetries(pkcs11::Slot::kUser, _, _))
+      .WillOnce(WithArg<1>([](base::OnceCallback<void(CK_SLOT_ID)> callback) {
+        std::move(callback).Run(1);
+      }));
+  eap_.Load(&store, kId);
+
+  EXPECT_EQ(eap_.cert_id_, kCertId);
+  EXPECT_EQ(eap_.key_id_, kKeyId);
 }
 
 TEST_F(EapCredentialsTest, OutputConnectionMetrics) {

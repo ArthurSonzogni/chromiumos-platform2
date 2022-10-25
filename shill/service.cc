@@ -35,6 +35,7 @@
 #include "shill/net/event_history.h"
 #include "shill/profile.h"
 #include "shill/refptr_types.h"
+#include "shill/store/pkcs11_slot_getter.h"
 #include "shill/store/property_accessor.h"
 #include "shill/store/store_interface.h"
 
@@ -1153,6 +1154,12 @@ bool Service::AddEAPCertification(const std::string& name, size_t depth) {
 
 void Service::ClearEAPCertification() {
   remote_certification_.clear();
+}
+
+void Service::SetEapSlotGetter(Pkcs11SlotGetter* slot_getter) {
+  if (mutable_eap()) {
+    mutable_eap()->SetEapSlotGetter(slot_getter);
+  }
 }
 
 void Service::SetEapCredentials(EapCredentials* eap) {

@@ -1393,6 +1393,7 @@ void Manager::DeregisterService(const ServiceRefPtr& to_forget) {
     if (to_forget->serial_number() == (*it)->serial_number()) {
       (*it)->Unload();
       (*it)->SetProfile(nullptr);
+      (*it)->SetEapSlotGetter(nullptr);
       // We expect the service being deregistered to be destroyed here as well,
       // so need to remove any remaining reference to it.
       if (*it == last_default_physical_service_) {
@@ -1418,6 +1419,7 @@ bool Manager::UnloadService(
   }
 
   (**service_iterator)->SetProfile(nullptr);
+  (**service_iterator)->SetEapSlotGetter(nullptr);
   *service_iterator = services_.erase(*service_iterator);
 
   return true;
@@ -2598,6 +2600,7 @@ void Manager::SetupServiceInProfile(ServiceRefPtr service,
                                     ProfileRefPtr profile,
                                     const KeyValueStore& args,
                                     Error* error) {
+  service->SetEapSlotGetter(profile->GetSlotGetter());
   service->SetProfile(profile);
   service->Configure(args, error);
   profile->UpdateService(service);

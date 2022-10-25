@@ -11,10 +11,10 @@
 #include <vector>
 
 #include <base/files/file_path.h>
+#include <chaps/pkcs11/cryptoki.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
-#include "shill/store/crypto.h"
-#include "shill/store/pkcs11_data_store.h"
+#include "shill/store/pkcs11_slot_getter.h"
 #include "shill/store/store_interface.h"
 
 namespace shill {
@@ -28,10 +28,10 @@ namespace shill {
 // strings and never have.
 class KeyFileStore : public StoreInterface {
  public:
-  static constexpr CK_SLOT_ID kInvalidSlot = ULONG_MAX;
-
+  // |slot_getter| is owned by the creator of the store and must outlives this
+  // class.
   explicit KeyFileStore(const base::FilePath& path,
-                        const std::string& user_hash = "");
+                        Pkcs11SlotGetter* slot_getter = nullptr);
   KeyFileStore(const KeyFileStore&) = delete;
   KeyFileStore& operator=(const KeyFileStore&) = delete;
 
@@ -120,18 +120,14 @@ class KeyFileStore : public StoreInterface {
   bool DoesGroupMatchProperties(const std::string& group,
                                 const KeyValueStore& properties) const;
 
-  bool TryGetPKCS11SlotID() const;
-
   std::unique_ptr<KeyFile> key_file_;
   const base::FilePath path_;
-  const std::string user_hash_;
-  mutable CK_SLOT_ID slot_id_;
+  Pkcs11SlotGetter* slot_getter_;
 };
 
 // Creates a store, implementing StoreInterface, at the specified |path|.
-// A |user_hash| can be provided to enable PKCS#11 access to the user token.
-std::unique_ptr<StoreInterface> CreateStore(const base::FilePath& path,
-                                            const std::string& user_hash = "");
+std::unique_ptr<StoreInterface> CreateStore(
+    const base::FilePath& path, Pkcs11SlotGetter* slot_getter = nullptr);
 
 }  // namespace shill
 

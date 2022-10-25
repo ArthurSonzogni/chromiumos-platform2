@@ -13,6 +13,7 @@
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/refptr_types.h"
+#include "shill/store/pkcs11_slot_getter.h"
 #include "shill/store/property_store.h"
 #include "shill/store/store_interface.h"
 
@@ -188,6 +189,8 @@ class Profile : public base::RefCounted<Profile> {
 
   virtual StoreInterface* GetStorage() { return storage_.get(); }
 
+  Pkcs11SlotGetter* GetSlotGetter() { return slot_getter_.get(); }
+
   // Returns a read-only copy of the backing storage of the profile.
   virtual const StoreInterface* GetConstStorage() const {
     return storage_.get();
@@ -262,6 +265,9 @@ class Profile : public base::RefCounted<Profile> {
 
   // Properties to be gotten via PropertyStore calls.
   Identifier name_;
+
+  // Allows to get PKCS#11 slot ID related to the profile.
+  std::unique_ptr<Pkcs11SlotGetter> slot_getter_;
 
   // Allows this profile to be backed with on-disk storage.
   std::unique_ptr<StoreInterface> storage_;

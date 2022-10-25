@@ -31,7 +31,10 @@
 #include <unistd.h>
 
 #include "shill/logging.h"
+#include "shill/store/crypto.h"
 #include "shill/store/key_value_store.h"
+#include "shill/store/pkcs11_data_store.h"
+#include "shill/store/pkcs11_slot_getter.h"
 #include "shill/store/pkcs11_util.h"
 
 namespace shill {
@@ -402,11 +405,8 @@ class KeyFileStore::KeyFile {
 const char KeyFileStore::kCorruptSuffix[] = ".corrupted";
 
 KeyFileStore::KeyFileStore(const base::FilePath& path,
-                           const std::string& user_hash)
-    : key_file_(nullptr),
-      path_(path),
-      user_hash_(user_hash),
-      slot_id_(KeyFileStore::kInvalidSlot) {
+                           Pkcs11SlotGetter* slot_getter)
+    : key_file_(nullptr), path_(path), slot_getter_(slot_getter) {
   CHECK(!path_.empty());
 }
 
@@ -808,7 +808,14 @@ bool KeyFileStore::SetUint64List(const std::string& group,
 bool KeyFileStore::PKCS11SetString(const std::string& group,
                                    const std::string& key,
                                    const std::string& value) {
-  if (!TryGetPKCS11SlotID()) {
+  if (slot_getter_ == nullptr) {
+    LOG(WARNING) << __func__
+                 << ": store does not have a PKCS#11 slot getter associated.";
+    return false;
+  }
+
+  CK_SLOT_ID slot_id = slot_getter_->GetPkcs11DefaultSlotId();
+  if (slot_id == pkcs11::kInvalidSlot) {
     LOG(WARNING) << __func__
                  << ": store does not have a PKCS#11 slot associated.";
     return false;
@@ -816,13 +823,20 @@ bool KeyFileStore::PKCS11SetString(const std::string& group,
   Pkcs11DataStore pkcs11_store;
   std::string object_key =
       base::JoinString({kPKCS11ObjectIDPrefix, group, key}, "-");
-  return pkcs11_store.Write(slot_id_, object_key, value);
+  return pkcs11_store.Write(slot_id, object_key, value);
 }
 
 bool KeyFileStore::PKCS11GetString(const std::string& group,
                                    const std::string& key,
                                    std::string* value) const {
-  if (!TryGetPKCS11SlotID()) {
+  if (slot_getter_ == nullptr) {
+    LOG(WARNING) << __func__
+                 << ": store does not have a PKCS#11 slot getter associated.";
+    return false;
+  }
+
+  CK_SLOT_ID slot_id = slot_getter_->GetPkcs11DefaultSlotId();
+  if (slot_id == pkcs11::kInvalidSlot) {
     LOG(WARNING) << __func__
                  << ": store does not have a PKCS#11 slot associated.";
     return false;
@@ -830,11 +844,18 @@ bool KeyFileStore::PKCS11GetString(const std::string& group,
   Pkcs11DataStore pkcs11_store;
   std::string object_key =
       base::JoinString({kPKCS11ObjectIDPrefix, group, key}, "-");
-  return pkcs11_store.Read(slot_id_, object_key, value);
+  return pkcs11_store.Read(slot_id, object_key, value);
 }
 
 bool KeyFileStore::PKCS11DeleteGroup(const std::string& group) {
-  if (!TryGetPKCS11SlotID()) {
+  if (slot_getter_ == nullptr) {
+    LOG(WARNING) << __func__
+                 << ": store does not have a PKCS#11 slot getter associated.";
+    return false;
+  }
+
+  CK_SLOT_ID slot_id = slot_getter_->GetPkcs11DefaultSlotId();
+  if (slot_id == pkcs11::kInvalidSlot) {
     LOG(WARNING) << __func__
                  << ": store does not have a PKCS#11 slot associated.";
     return false;
@@ -842,22 +863,12 @@ bool KeyFileStore::PKCS11DeleteGroup(const std::string& group) {
   Pkcs11DataStore pkcs11_store;
   std::string group_prefix =
       base::JoinString({kPKCS11ObjectIDPrefix, group, ""}, "-");
-  return pkcs11_store.DeleteByPrefix(slot_id_, group_prefix);
-}
-
-bool KeyFileStore::TryGetPKCS11SlotID() const {
-  if (slot_id_ != kInvalidSlot) {
-    return true;
-  }
-  if (!pkcs11::GetUserSlot(user_hash_, &slot_id_)) {
-    return false;
-  }
-  return true;
+  return pkcs11_store.DeleteByPrefix(slot_id, group_prefix);
 }
 
 std::unique_ptr<StoreInterface> CreateStore(const base::FilePath& path,
-                                            const std::string& user_hash) {
-  return std::make_unique<KeyFileStore>(path, user_hash);
+                                            Pkcs11SlotGetter* slot_getter) {
+  return std::make_unique<KeyFileStore>(path, slot_getter);
 }
 
 }  // namespace shill

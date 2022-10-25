@@ -10,10 +10,11 @@
 #include <string>
 #include <vector>
 
+#include <base/memory/weak_ptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 #include <libpasswordprovider/password_provider.h>
 
-#include "shill/data_types.h"
+#include "shill/store/pkcs11_slot_getter.h"
 #include "shill/technology.h"
 
 namespace shill {
@@ -59,6 +60,10 @@ class EapCredentials {
 
   void MigrateDeprecatedStorage(StoreInterface* storage,
                                 const std::string& id) const;
+
+  // Set PKCS#11 slot type by comparing slot ID value from |cert_id_| with the
+  // slot ID value taken from chaps through |slot_getter|.
+  void SetEapSlotGetter(Pkcs11SlotGetter* slot_getter);
 
   // Output metrics about this EAP connection to |metrics| with technology
   // |technology|.
@@ -149,6 +154,9 @@ class EapCredentials {
   friend class EapCredentialsTest;
   FRIEND_TEST(EapCredentialsTest, LoadAndSave);
   FRIEND_TEST(EapCredentialsTest, Load);
+  FRIEND_TEST(EapCredentialsTest, Load_UserSlot);
+  FRIEND_TEST(EapCredentialsTest, Load_SystemSlot);
+  FRIEND_TEST(EapCredentialsTest, SaveAndLoad_Pkcs11Id);
   FRIEND_TEST(ServiceTest, LoadEap);
   FRIEND_TEST(ServiceTest, SaveEap);
 
@@ -165,10 +173,16 @@ class EapCredentials {
   static const char kStorageEapKeyID[];
   static const char kStorageEapKeyManagement[];
   static const char kStorageEapPin[];
+  static const char kStorageEapSlot[];
   static const char kStorageEapSubjectMatch[];
   static const char kStorageEapUseProactiveKeyCaching[];
   static const char kStorageEapUseSystemCAs[];
   static const char kStorageEapUseLoginPassword[];
+
+  // Replace the slot ID part of |cert_id_| and |key_id_| with slot ID value of
+  // |slot_id|. Do nothing if |slot_id| is invalid. This method assumes that
+  // |cert_id_| and |key_id_| are equal.
+  void ReplacePkcs11SlotIds(CK_SLOT_ID slot_id);
 
   // Returns true if the current EAP authentication type requires certificate
   // authentication and any of the client credentials are provided via
@@ -251,8 +265,14 @@ class EapCredentials {
   // If true, use the user's stored login password as the password.
   bool use_login_password_;
 
+  // PKCS#11 slot getter to replace possible unstable slot ID of |cert_id_| and
+  // |key_id_|.
+  Pkcs11SlotGetter* slot_getter_;
+
   std::unique_ptr<password_provider::PasswordProviderInterface>
       password_provider_;
+
+  base::WeakPtrFactory<EapCredentials> weak_factory_{this};
 };
 
 }  // namespace shill

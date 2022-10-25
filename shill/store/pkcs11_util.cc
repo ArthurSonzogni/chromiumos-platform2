@@ -4,19 +4,16 @@
 
 #include "shill/store/pkcs11_util.h"
 
-#include <base/files/file_path.h>
-#include <base/logging.h>
-#include <chaps/isolate.h>
-#include <chaps/pkcs11/cryptoki.h>
-#include <chaps/token_manager_client.h>
-
 #include <memory>
-#include <string>
 #include <vector>
 
-namespace shill {
+#include <base/logging.h>
+#include <base/strings/string_number_conversions.h>
+#include <base/strings/string_split.h>
+#include <base/strings/stringprintf.h>
+#include <chaps/pkcs11/cryptoki.h>
 
-namespace pkcs11 {
+namespace shill::pkcs11 {
 
 ScopedSession::ScopedSession(CK_SLOT_ID slot) {
   CK_RV rv = C_Initialize(nullptr);
@@ -39,47 +36,25 @@ ScopedSession::~ScopedSession() {
   handle_ = CK_INVALID_HANDLE;
 }
 
-bool GetUserSlot(const std::string& user_hash, CK_SLOT_ID_PTR slot) {
-  const char kChapsSystemToken[] = "/var/lib/chaps";
-  const char kChapsDaemonStore[] = "/run/daemon-store/chaps";
-  base::FilePath token_path =
-      user_hash.empty() ? base::FilePath(kChapsSystemToken)
-                        : base::FilePath(kChapsDaemonStore).Append(user_hash);
-  CK_RV rv;
-  rv = C_Initialize(nullptr);
-  if (rv != CKR_OK && rv != CKR_CRYPTOKI_ALREADY_INITIALIZED) {
-    LOG(WARNING) << "C_Initialize failed. rv: " << rv;
-    return false;
+std::optional<Pkcs11Id> Pkcs11Id::ParseFromColonSeparated(
+    const std::string& pkcs11_id) {
+  const std::vector<std::string> data = base::SplitString(
+      pkcs11_id, ":", base::WhitespaceHandling::TRIM_WHITESPACE,
+      base::SplitResult::SPLIT_WANT_NONEMPTY);
+  if (data.size() != 2) {
+    LOG(ERROR) << "Invalid PKCS#11 ID " << pkcs11_id;
+    return {};
   }
-  CK_ULONG num_slots = 0;
-  rv = C_GetSlotList(CK_TRUE, nullptr, &num_slots);
-  if (rv != CKR_OK) {
-    LOG(WARNING) << "C_GetSlotList(nullptr) failed. rv: " << rv;
-    return false;
+  uint32_t slot_id;
+  if (!base::StringToUint(data[0], &slot_id)) {
+    LOG(ERROR) << "Invalid slot ID " << data[0];
+    return {};
   }
-  std::vector<CK_SLOT_ID> slots;
-  slots.resize(num_slots);
-  rv = C_GetSlotList(CK_TRUE, slots.data(), &num_slots);
-  if (rv != CKR_OK) {
-    LOG(WARNING) << "C_GetSlotList failed. rv: " << rv;
-    return false;
-  }
-  chaps::TokenManagerClient token_manager;
-  // Look through all slots for |token_path|.
-  for (CK_SLOT_ID curr_slot : slots) {
-    base::FilePath slot_path;
-    if (token_manager.GetTokenPath(
-            chaps::IsolateCredentialManager::GetDefaultIsolateCredential(),
-            curr_slot, &slot_path) &&
-        (token_path == slot_path)) {
-      *slot = curr_slot;
-      return true;
-    }
-  }
-  LOG(WARNING) << "Path not found.";
-  return false;
+  return std::optional<Pkcs11Id>({slot_id, data[1]});
 }
 
-}  // namespace pkcs11
+std::string Pkcs11Id::ToColonSeparated() {
+  return base::StringPrintf("%lu:%s", slot_id, cka_id.c_str());
+}
 
-}  // namespace shill
+}  // namespace shill::pkcs11

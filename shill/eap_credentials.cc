@@ -10,8 +10,11 @@
 #include <utility>
 #include <vector>
 
+#include <base/bind.h>
 #include <base/json/json_reader.h>
 #include <base/logging.h>
+#include <base/strings/stringprintf.h>
+#include <base/strings/string_number_conversions.h>
 #include <base/strings/string_piece.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_tokenizer.h>
@@ -28,6 +31,8 @@
 #include "shill/metrics.h"
 #include "shill/service.h"
 #include "shill/store/key_value_store.h"
+#include "shill/store/pkcs11_slot_getter.h"
+#include "shill/store/pkcs11_util.h"
 #include "shill/store/property_accessor.h"
 #include "shill/store/property_store.h"
 #include "shill/store/store_interface.h"
@@ -62,6 +67,20 @@ std::string AddAdditionalInnerEapParams(const std::string& inner_eap) {
   return inner_eap + " " + WPASupplicant::kFlagInnerEapNoMSCHAPV2Retry;
 }
 
+// Gets the PKCS#11 slot type of |pkcs11_id|. This is done by comparing the
+// slot ID part of |pkcs11_id| with the slot IDs taken from chaps through
+// |slot_getter|.
+pkcs11::Slot GetPkcs11Slot(const std::string& pkcs11_id,
+                           Pkcs11SlotGetter* slot_getter) {
+  std::optional<pkcs11::Pkcs11Id> parsed =
+      pkcs11::Pkcs11Id::ParseFromColonSeparated(pkcs11_id);
+  if (!parsed) {
+    LOG(ERROR) << "Invalid PKCS#11 ID " << pkcs11_id;
+    return pkcs11::Slot::kUnknown;
+  }
+  return slot_getter->GetSlotType(parsed->slot_id);
+}
+
 // Deprecated to migrate from ROT47 to plaintext.
 // TODO(crbug.com/1084279) Remove after migration is complete.
 const char kStorageDeprecatedEapAnonymousIdentity[] = "EAP.AnonymousIdentity";
@@ -90,6 +109,7 @@ const char EapCredentials::kStorageEapTLSVersionMax[] = "EAP.TLSVersionMax";
 const char EapCredentials::kStorageEapKeyID[] = "EAP.KeyID";
 const char EapCredentials::kStorageEapKeyManagement[] = "EAP.KeyMgmt";
 const char EapCredentials::kStorageEapPin[] = "EAP.PIN";
+const char EapCredentials::kStorageEapSlot[] = "EAP.Slot";
 const char EapCredentials::kStorageEapSubjectMatch[] = "EAP.SubjectMatch";
 const char EapCredentials::kStorageEapUseProactiveKeyCaching[] =
     "EAP.UseProactiveKeyCaching";
@@ -104,6 +124,7 @@ EapCredentials::EapCredentials()
     : use_system_cas_(true),
       use_proactive_key_caching_(false),
       use_login_password_(false),
+      slot_getter_(nullptr),
       password_provider_(
           std::make_unique<password_provider::PasswordProvider>()) {}
 
@@ -350,6 +371,17 @@ void EapCredentials::Load(const StoreInterface* storage,
   storage->GetBool(id, kStorageEapUseProactiveKeyCaching,
                    &use_proactive_key_caching_);
   storage->GetBool(id, kStorageEapUseSystemCAs, &use_system_cas_);
+
+  // Fix possible slot ID instability. If the slot type is unknown, no need to
+  // replace the slot ID.
+  pkcs11::Slot slot;
+  storage->GetInt(id, kStorageEapSlot, reinterpret_cast<int*>(&slot));
+  if (slot == pkcs11::kUnknown || slot_getter_ == nullptr) {
+    return;
+  }
+  slot_getter_->GetPkcs11SlotIdWithRetries(
+      slot, base::BindOnce(&EapCredentials::ReplacePkcs11SlotIds,
+                           weak_factory_.GetWeakPtr()));
 }
 
 void EapCredentials::Load(const KeyValueStore& store) {
@@ -402,6 +434,27 @@ void EapCredentials::Load(const EapCredentials& eap) {
   pin_ = eap.pin_;
 }
 
+void EapCredentials::ReplacePkcs11SlotIds(CK_SLOT_ID slot_id) {
+  if (slot_id == pkcs11::kInvalidSlot) {
+    return;
+  }
+  if (cert_id_ != key_id_) {
+    LOG(ERROR) << "PKCS#11 IDs of the certificate and key are not equal";
+    return;
+  }
+
+  std::optional<pkcs11::Pkcs11Id> pkcs11_id =
+      pkcs11::Pkcs11Id::ParseFromColonSeparated(cert_id_);
+  if (!pkcs11_id) {
+    LOG(ERROR) << "Invalid PKCS#11 ID " << cert_id_;
+    return;
+  }
+  pkcs11_id->slot_id = slot_id;
+
+  cert_id_ = pkcs11_id->ToColonSeparated();
+  key_id_ = cert_id_;
+}
+
 void EapCredentials::MigrateDeprecatedStorage(StoreInterface* storage,
                                               const std::string& id) const {
   // Note that if we found any of these keys, then we already know that
@@ -421,6 +474,10 @@ void EapCredentials::MigrateDeprecatedStorage(StoreInterface* storage,
   }
 }
 
+void EapCredentials::SetEapSlotGetter(Pkcs11SlotGetter* slot_getter) {
+  slot_getter_ = slot_getter;
+}
+
 void EapCredentials::OutputConnectionMetrics(Metrics* metrics,
                                              Technology technology) const {
   Metrics::EapOuterProtocol outer_protocol =
@@ -437,6 +494,14 @@ void EapCredentials::OutputConnectionMetrics(Metrics* metrics,
 void EapCredentials::Save(StoreInterface* storage,
                           const std::string& id,
                           bool save_credentials) const {
+  // Fix possible slot ID instability. Only try to get the PKCS#11 slot ID
+  // synchronously as the profile might be removed soon after this call.
+  if (!cert_id_.empty() && slot_getter_ != nullptr && save_credentials) {
+    storage->SetInt(id, kStorageEapSlot, GetPkcs11Slot(cert_id_, slot_getter_));
+  } else {
+    storage->DeleteKey(id, kStorageEapSlot);
+  }
+
   // Authentication properties.
   Service::SaveStringOrClear(storage, id,
                              kStorageCredentialEapAnonymousIdentity,
@@ -498,6 +563,8 @@ void EapCredentials::Reset() {
   subject_alternative_name_match_list_.clear();
   use_system_cas_ = true;
   use_proactive_key_caching_ = false;
+
+  slot_getter_ = nullptr;
 }
 
 bool EapCredentials::SetEapPassword(const std::string& password,

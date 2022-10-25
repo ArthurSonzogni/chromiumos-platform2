@@ -16,6 +16,7 @@
 #include "shill/error.h"
 #include "shill/refptr_types.h"
 #include "shill/store/key_value_store.h"
+#include "shill/store/pkcs11_slot_getter.h"
 
 namespace shill {
 
@@ -55,6 +56,9 @@ class PasspointCredentials : public base::RefCounted<PasspointCredentials> {
 
   // Saves the set of credentials to |storage|. Returns true on success.
   bool Save(StoreInterface* storage);
+
+  // Set PKCS#11 slot getter for |eap_|.
+  void SetEapSlotGetter(Pkcs11SlotGetter* slot_getter);
 
   // Create a set of Passpoint credentials from a dictionary. The content of
   // the dictionary is validated (including EAP credentials) according to

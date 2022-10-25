@@ -26,6 +26,7 @@
 #include "shill/metrics.h"
 #include "shill/service.h"
 #include "shill/store/key_file_store.h"
+#include "shill/store/pkcs11_slot_getter.h"
 #include "shill/store/property_accessor.h"
 #include "shill/store/stub_storage.h"
 #include "shill/wifi/passpoint_credentials.h"
@@ -43,7 +44,8 @@ Profile::Profile(Manager* manager,
       properties_(kAlwaysOnVpnModeOff, kDefaultAlwaysOnVpnService),
       store_(base::BindRepeating(&Profile::OnPropertyChanged,
                                  base::Unretained(this))),
-      name_(name) {
+      name_(name),
+      slot_getter_(new Pkcs11SlotGetter(name_.user_hash)) {
   if (connect_to_rpc)
     adaptor_ = manager->control_interface()->CreateProfileAdaptor(this);
 
@@ -94,7 +96,7 @@ void Profile::OnPropertyChanged(const std::string& /*name*/) {
 bool Profile::InitStorage(InitStorageOption storage_option, Error* error) {
   CHECK(!persistent_profile_path_.empty());
   std::unique_ptr<StoreInterface> storage =
-      CreateStore(persistent_profile_path_, name_.user_hash);
+      CreateStore(persistent_profile_path_, slot_getter_.get());
   bool already_exists = !storage->IsEmpty();
   if (!already_exists && storage_option != kCreateNew &&
       storage_option != kCreateOrOpenExisting) {
@@ -178,13 +180,16 @@ bool Profile::AdoptService(const ServiceRefPtr& service) {
   if (service->profile() == this) {
     return false;
   }
+  service->SetEapSlotGetter(slot_getter_.get());
   service->SetProfile(this);
   return service->Save(storage_.get()) && storage_->Flush();
 }
 
 bool Profile::AbandonService(const ServiceRefPtr& service) {
-  if (service->profile() == this)
+  if (service->profile() == this) {
     service->SetProfile(nullptr);
+    service->SetEapSlotGetter(nullptr);
+  }
   storage_->DeleteGroup(service->GetStorageIdentifier());
   storage_->PKCS11DeleteGroup(service->GetStorageIdentifier());
   return storage_->Flush();
@@ -197,6 +202,7 @@ bool Profile::UpdateService(const ServiceRefPtr& service) {
 bool Profile::LoadService(const ServiceRefPtr& service) {
   if (!ContainsService(service))
     return false;
+  service->SetEapSlotGetter(slot_getter_.get());
   bool ret = service->Load(storage_.get());
   service->MigrateDeprecatedStorage(storage_.get());
   return ret;
@@ -459,6 +465,7 @@ bool Profile::AdoptCredentials(const PasspointCredentialsRefPtr& credentials) {
   if (credentials->profile() == this) {
     return false;
   }
+  credentials->SetEapSlotGetter(slot_getter_.get());
   credentials->SetProfile(this);
   return credentials->Save(storage_.get()) && storage_->Flush();
 }
