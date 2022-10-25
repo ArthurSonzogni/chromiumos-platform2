@@ -31,16 +31,6 @@ std::map<BuiltinModelId, BuiltinModelMetadata> GetBuiltinModelMetadata() {
           },
       },
       {
-          BuiltinModelId::SEARCH_RANKER_20190923,
-          {
-              BuiltinModelId::SEARCH_RANKER_20190923,
-              "mlservice-model-search_ranker-20190923.tflite",
-              {{"input", 7}},
-              {{"output", 8}},
-              "SearchRankerModel",
-          },
-      },
-      {
           BuiltinModelId::ADAPTIVE_CHARGING_20211105,
           {
               BuiltinModelId::ADAPTIVE_CHARGING_20211105,

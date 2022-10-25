@@ -46,19 +46,6 @@
 namespace ml {
 namespace {
 
-constexpr double kSearchRanker20190923TestInput[] = {
-    0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0,
-    0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1,
-};
-
 constexpr double kSmartDim20190521TestInput[] = {
     0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0, 0,
     1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -645,42 +632,6 @@ TEST(BuiltinModelInferenceTest, SmartDim20190521) {
   graph_executor->Execute(std::move(inputs), std::move(outputs),
                           base::BindOnce(&CheckOutputTensor, expected_shape,
                                          0.66962254, &infer_callback_done));
-  base::RunLoop().RunUntilIdle();
-  ASSERT_TRUE(infer_callback_done);
-}
-
-// Tests that the Search Ranker (20190923) model file loads correctly and
-// produces the expected inference result.
-TEST(BuiltinModelInferenceTest, SearchRanker20190923) {
-  mojo::Remote<MachineLearningService> ml_service;
-  const MachineLearningServiceImplForTesting ml_service_impl(
-      ml_service.BindNewPipeAndPassReceiver());
-
-  // Load model and create graph executor.
-  mojo::Remote<Model> model;
-  ASSERT_TRUE(LoadBuiltinModelForTesting(
-      ml_service, BuiltinModelId::SEARCH_RANKER_20190923, &model));
-  ASSERT_TRUE(model.is_bound());
-
-  mojo::Remote<GraphExecutor> graph_executor;
-  ASSERT_TRUE(CreateGraphExecutorForTesting(model, &graph_executor));
-  ASSERT_TRUE(graph_executor.is_bound());
-
-  // Construct input.
-  base::flat_map<std::string, TensorPtr> inputs;
-  inputs.emplace("input", NewTensor<double>(
-                              {1, std::size(kSearchRanker20190923TestInput)},
-                              std::vector<double>(
-                                  std::begin(kSearchRanker20190923TestInput),
-                                  std::end(kSearchRanker20190923TestInput))));
-  std::vector<std::string> outputs({"output"});
-  std::vector<int64_t> expected_shape{1L};
-
-  // Perform inference.
-  bool infer_callback_done = false;
-  graph_executor->Execute(std::move(inputs), std::move(outputs),
-                          base::BindOnce(&CheckOutputTensor, expected_shape,
-                                         0.658488, &infer_callback_done));
   base::RunLoop().RunUntilIdle();
   ASSERT_TRUE(infer_callback_done);
 }
