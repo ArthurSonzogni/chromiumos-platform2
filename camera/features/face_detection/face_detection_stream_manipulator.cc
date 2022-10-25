@@ -134,8 +134,6 @@ bool FaceDetectionStreamManipulator::ProcessCaptureResult(
     return true;
   }
 
-  base::AutoLock lock(lock_);
-
   if (result->frame_number() % options_.fd_frame_interval == 0 &&
       result->num_output_buffers() > 0) {
     std::optional<camera3_stream_buffer_t> buffer =
@@ -147,6 +145,8 @@ bool FaceDetectionStreamManipulator::ProcessCaptureResult(
                          base::Unretained(this), result->frame_number()));
     }
   }
+
+  base::AutoLock lock(lock_);
 
   if (options_.log_frame_metadata) {
     std::vector<float> flattened_faces(latest_faces_.size() * 4);

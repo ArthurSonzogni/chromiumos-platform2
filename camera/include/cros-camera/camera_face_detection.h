@@ -88,12 +88,18 @@ class CROS_CAMERA_EXPORT FaceDetector {
 
   // Same as the synchronous version but returning status and faces in
   // |result_callback|.  |buffer| is only used during the function call.
+  // This method will block until it's done with converting |buffer| to the
+  // input format for the face detector.  Caller of this method must make sure
+  // |result_callback| won't inter-lock with the calling sequence/thread.
   void DetectAsync(buffer_handle_t buffer,
                    std::optional<Size> active_sensor_array_size,
                    ResultCallback result_callback);
 
   // Same as the synchronous version but returning status and faces in
   // |result_callback|.  |buffer_addr| is only used during the function call.
+  // This method will block until it's done with converting |buffer| to the
+  // input format for the face detector.  Caller of this method must make sure
+  // |result_callback| won't inter-lock with the calling sequence/thread.
   void DetectAsync(const uint8_t* buffer_addr,
                    int input_stride,
                    Size input_size,
