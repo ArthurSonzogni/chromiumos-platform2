@@ -129,6 +129,23 @@ GetTpmStatusRequest ToGetTpmStatusRequest(
   return to;
 }
 
+const char* TpmOwnershipStatusToString(TpmStatus::TpmOwnershipStatus status) {
+  switch (status) {
+    case TpmStatus::kTpmUnowned:
+      return "Unowned";
+    case TpmStatus::kTpmPreOwned:
+      return "PreOwned";
+    case TpmStatus::kTpmOwned:
+      return "Owned";
+    case TpmStatus::kTpmSrkNoAuth:
+      return "SrkNoAuth";
+    case TpmStatus::kTpmDisabled:
+      return "Disabled";
+    default:
+      return "Unknown";
+  }
+}
+
 }  // namespace
 
 TpmManagerService::TpmManagerService(bool perform_preinit,
@@ -1285,17 +1302,41 @@ void TpmManagerService::CheckPowerWashResult(
     if (base::WriteFile(report_file, "", 0) < 0) {
       LOG(WARNING) << __func__ << ": Unable to create " << report_file.value();
     }
-    if (TpmStatus::kTpmUnowned == status) {
-      LOG(INFO) << __func__
-                << ": Power wash success. TPM is in not owned state.";
-      tpm_manager_metrics_->ReportPowerWashResult(
-          TPMPowerWashResult::kTPMClearSuccess);
-    } else {
-      LOG(ERROR) << __func__
-                 << ": Power wash failed. TPM is not in not owned state.";
-      tpm_manager_metrics_->ReportPowerWashResult(
-          TPMPowerWashResult::kTPMClearFailed);
-    }
+    TPM_SELECT_BEGIN;
+    TPM2_SECTION({
+      if (TpmStatus::kTpmUnowned == status) {
+        LOG(INFO) << __func__
+                  << ": Power wash success. TPM is in not owned state.";
+        tpm_manager_metrics_->ReportPowerWashResult(
+            TPMPowerWashResult::kTPMClearSuccess);
+      } else {
+        // Pre M103 (TPM ownership not automatically taken by tpm_manager)
+        // upgrade to a version execute following code can trigger this error
+        // report. We expect the number should gradually decrease.
+        LOG(ERROR) << __func__ << ": Power wash failed. TPM state is "
+                   << TpmOwnershipStatusToString(status);
+        tpm_manager_metrics_->ReportPowerWashResult(
+            TPMPowerWashResult::kTPMClearFailed);
+      }
+    });
+    TPM1_SECTION({
+      if (TpmStatus::kTpmPreOwned == status) {
+        LOG(INFO) << __func__
+                  << ": Power wash success. TPM is in pre owned state.";
+        tpm_manager_metrics_->ReportPowerWashResult(
+            TPMPowerWashResult::kTPMClearSuccess);
+      } else {
+        LOG(ERROR) << __func__ << ": Power wash failed. TPM state is "
+                   << TpmOwnershipStatusToString(status);
+        tpm_manager_metrics_->ReportPowerWashResult(
+            TPMPowerWashResult::kTPMClearFailed);
+      }
+    });
+    OTHER_TPM_SECTION({
+      LOG(INFO) << __func__ << ": TPM state is "
+                << TpmOwnershipStatusToString(status) << " after power wash";
+    });
+    TPM_SELECT_END;
   } else if (!complete_file_exist && report_file_exist) {
     if (!base::DeleteFile(report_file)) {
       LOG(WARNING) << __func__ << ": Unable to delete " << report_file.value();
