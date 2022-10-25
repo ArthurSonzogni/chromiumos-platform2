@@ -491,6 +491,7 @@ static_library("libcryptohome") {
     ":namespace-mounter-ipc-proto",
     ":userdataauth_adaptors",
   ]
+  pkg_deps = [ "dbus-1" ]
 }
 
 # cryptohome <-> cryptohome-namespace-mounter IPC proto.

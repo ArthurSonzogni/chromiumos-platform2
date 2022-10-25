@@ -248,9 +248,12 @@ if (use.test) {
       "fake_platform/test_file_path.cc",
       "mock_platform.cc",
     ]
+    configs += [ "//common-mk:test" ]
+    libs = [ "hwsec-foundation" ]
     deps = [ "libs:libcrosplatform" ]
     pkg_deps = [
       "libbrillo",
+      "libbrillo-test",
       "libchrome",
     ]
   }
