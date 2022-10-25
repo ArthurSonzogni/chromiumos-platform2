@@ -58,7 +58,7 @@ bool GetUserSlot(const std::string& user_hash, CK_SLOT_ID_PTR slot) {
     return false;
   }
   std::vector<CK_SLOT_ID> slots;
-  slots.reserve(num_slots);
+  slots.resize(num_slots);
   rv = C_GetSlotList(CK_TRUE, slots.data(), &num_slots);
   if (rv != CKR_OK) {
     LOG(WARNING) << "C_GetSlotList failed. rv: " << rv;
