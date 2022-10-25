@@ -188,6 +188,7 @@ debugd::ProcessWithId*
 PacketCaptureTool::CreateCaptureProcessForFrequencyBasedCapture(
     const brillo::VariantDictionary& options,
     int output_fd,
+    int status_fd,
     brillo::ErrorPtr* error) {
   std::string exec_path;
   if (!GetHelperPath("capture_utility.sh", &exec_path)) {
@@ -206,8 +207,6 @@ PacketCaptureTool::CreateCaptureProcessForFrequencyBasedCapture(
   p->AddArg(exec_path);
   if (!AddValidatedStringOption(p, options, "device", "--device", error))
     return nullptr;
-  if (!AddIntOption(p, options, "max_size", "--max-size", error))
-    return nullptr;
   if (!AddIntOption(p, options, "frequency", "--frequency", error))
     return nullptr;
   if (!AddValidatedStringOption(p, options, "ht_location", "--ht-location",
@@ -218,9 +217,13 @@ PacketCaptureTool::CreateCaptureProcessForFrequencyBasedCapture(
   if (!AddValidatedStringOption(p, options, "monitor_connection_on",
                                 "--monitor-connection-on", error))
     return nullptr;
+  int max_size = 0;
+  debugd::GetOption(options, "max_size", &max_size, error);
+  p->AddIntOption("--max-size", max_size);
   // Pass the output fd of the pcap as a command line option to the child
   // process.
   p->AddIntOption("--output-file", output_fd);
+  p->AddIntOption("--status-pipe", status_fd);
 
   return p;
 }
@@ -231,6 +234,7 @@ debugd::ProcessWithId*
 PacketCaptureTool::CreateCaptureProcessForDeviceBasedCapture(
     const brillo::VariantDictionary& options,
     int output_fd,
+    int status_fd,
     brillo::ErrorPtr* error) {
   std::string exec_path;
   if (!GetHelperPath("capture_packets", &exec_path)) {
@@ -247,8 +251,8 @@ PacketCaptureTool::CreateCaptureProcessForDeviceBasedCapture(
     return nullptr;
   }
   p->AddArg(exec_path);
-  // capture_packets executable takes three arguments as <device> <output_file>
-  // <max_size>
+  // capture_packets executable takes four arguments as <device> <output_file>
+  // <max_size> <status_pipe>
   std::string device;
   // device option must be present and successfully parsed in order to create
   // process.
@@ -264,6 +268,7 @@ PacketCaptureTool::CreateCaptureProcessForDeviceBasedCapture(
   int max_size = 0;
   debugd::GetOption(options, "max_size", &max_size, error);
   p->AddArg(std::to_string(max_size));
+  p->AddArg(std::to_string(status_fd));
 
   return p;
 }
@@ -302,16 +307,25 @@ bool PacketCaptureTool::Start(bool is_dev_mode,
   // The fd in the child that we bind output_fd to. Since all other fd's are
   // cleared automatically, picking a hardcoded value should be safe.
   int child_output_fd = STDERR_FILENO + 1;
+
+  // Create a pipe to check the child process state and send the write end of
+  // the pipe to the child process.
+  base::ScopedFD write_fd, read_fd;
+  if (!CreateStatusPipe(&read_fd, &write_fd)) {
+    DEBUGD_ADD_ERROR(error, kPacketCaptureToolErrorString,
+                     "Cannot create a pipe");
+    return false;
+  }
   // Check if the capture will be device-based or frequency-based and create
   // helper process accordingly using different executables.
   // TODO(b/188391723): Merge capture_utility.sh and capture_packets executables
   // into one.
   if (CheckDeviceBasedCaptureMode(options, error)) {
     p = CreateCaptureProcessForDeviceBasedCapture(options, child_output_fd,
-                                                  error);
+                                                  write_fd.get(), error);
   } else if (is_dev_mode) {
     p = CreateCaptureProcessForFrequencyBasedCapture(options, child_output_fd,
-                                                     error);
+                                                     write_fd.get(), error);
   } else {
     DEBUGD_ADD_ERROR(
         error, kPacketCaptureToolErrorString,
@@ -324,15 +338,6 @@ bool PacketCaptureTool::Start(bool is_dev_mode,
                      "Failed to create helper process.");
     return false;
   }
-  // Create a pipe to check the child process state and send the write end of
-  // the pipe to the child process.
-  base::ScopedFD write_fd, read_fd;
-  if (!CreateStatusPipe(&read_fd, &write_fd)) {
-    DEBUGD_ADD_ERROR(error, kPacketCaptureToolErrorString,
-                     "Cannot create a pipe");
-    return false;
-  }
-  p->AddArg(std::to_string(write_fd.get()));
 
   p->BindFd(output_fd.get(), child_output_fd);
   p->BindFd(status_fd.get(), STDOUT_FILENO);

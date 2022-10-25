@@ -75,10 +75,12 @@ class PacketCaptureTool : public SubprocessTool {
   debugd::ProcessWithId* CreateCaptureProcessForFrequencyBasedCapture(
       const brillo::VariantDictionary& options,
       int output_fd,
+      int status_fd,
       brillo::ErrorPtr* error);
   debugd::ProcessWithId* CreateCaptureProcessForDeviceBasedCapture(
       const brillo::VariantDictionary& options,
       int output_fd,
+      int status_fd,
       brillo::ErrorPtr* error);
 
   // Is called when a packet capture helper process has terminated. Checks the

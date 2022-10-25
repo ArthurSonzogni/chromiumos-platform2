@@ -448,10 +448,11 @@ start_capture ()
   local device="${1}"
   local output_file="${2}"
   local max_size="${3}"
+  local status_pipe="${4}"
   echo "Capturing from ${device}.  Press Ctrl-C to stop."
   ip link set "${device}" up
   exec /usr/libexec/debugd/helpers/capture_packets \
-    "${device}" "${output_file}" "${max_size}"
+    "${device}" "${output_file}" "${max_size}" "${status_pipe}"
 }
 
 
