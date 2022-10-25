@@ -138,10 +138,11 @@ bool FaceDetectionStreamManipulator::ProcessCaptureResult(
 
   if (result->frame_number() % options_.fd_frame_interval == 0 &&
       result->num_output_buffers() > 0) {
-    const camera3_stream_buffer_t* buffer = SelectFaceDetectionBuffer(result);
+    std::optional<camera3_stream_buffer_t> buffer =
+        SelectFaceDetectionBuffer(result);
     if (buffer) {
       face_detector_->DetectAsync(
-          *buffer->buffer, active_array_dimension_,
+          *(buffer->buffer), active_array_dimension_,
           base::BindOnce(&FaceDetectionStreamManipulator::OnFaceDetected,
                          base::Unretained(this), result->frame_number()));
     }
@@ -195,7 +196,7 @@ bool FaceDetectionStreamManipulator::Flush() {
   return true;
 }
 
-const camera3_stream_buffer_t*
+std::optional<camera3_stream_buffer_t>
 FaceDetectionStreamManipulator::SelectFaceDetectionBuffer(
     Camera3CaptureDescriptor* result) {
   auto is_larger_or_closer_to_native_aspect_ratio =
@@ -217,7 +218,7 @@ FaceDetectionStreamManipulator::SelectFaceDetectionBuffer(
            std::abs(rhs_aspect_ratio - active_aspect_ratio);
   };
 
-  camera3_stream_buffer_t* ret = nullptr;
+  std::optional<camera3_stream_buffer_t> ret;
 
   for (auto b : result->GetOutputBuffers()) {
     const auto* s = b.stream;
@@ -240,7 +241,7 @@ FaceDetectionStreamManipulator::SelectFaceDetectionBuffer(
       // matter for the majority of the time, as for most cases the requested
       // streams would have the same aspect ratio.
       if (!ret || is_larger_or_closer_to_native_aspect_ratio(s, ret->stream)) {
-        ret = &b;
+        ret = b;
       }
     }
   }

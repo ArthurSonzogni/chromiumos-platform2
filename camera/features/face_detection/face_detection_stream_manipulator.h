@@ -67,7 +67,7 @@ class FaceDetectionStreamManipulator : public StreamManipulator {
     uint8_t face_detect_mode;
   };
 
-  const camera3_stream_buffer_t* SelectFaceDetectionBuffer(
+  std::optional<camera3_stream_buffer_t> SelectFaceDetectionBuffer(
       Camera3CaptureDescriptor* result);
   void RecordClientRequestSettings(Camera3CaptureDescriptor* request);
   void RestoreClientRequestSettings(Camera3CaptureDescriptor* result);
