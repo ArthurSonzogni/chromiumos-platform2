@@ -69,7 +69,7 @@ static void sl_destroy_host_relative_pointer(struct wl_resource* resource) {
 
   zwp_relative_pointer_v1_destroy(host->proxy);
   wl_resource_set_user_data(resource, NULL);
-  free(host);
+  delete host;
 }
 
 static void sl_relative_pointer_destroy(struct wl_client* client,
@@ -94,7 +94,7 @@ static void sl_destroy_host_relative_pointer_manager(
 
   zwp_relative_pointer_manager_v1_destroy(host->proxy);
   wl_resource_set_user_data(resource, NULL);
-  free(host);
+  delete host;
 }
 
 static void sl_relative_pointer_manager_destroy(struct wl_client* client,
@@ -115,9 +115,7 @@ static void sl_relative_pointer_manager_get_relative_pointer(
   struct wl_resource* relative_pointer_resource =
       wl_resource_create(client, &zwp_relative_pointer_v1_interface, 1, id);
   struct sl_host_relative_pointer* relative_pointer_host =
-      static_cast<sl_host_relative_pointer*>(
-          malloc(sizeof(*relative_pointer_host)));
-  assert(relative_pointer_host);
+      new sl_host_relative_pointer();
   relative_pointer_host->resource = relative_pointer_resource;
   relative_pointer_host->ctx = host->ctx;
   relative_pointer_host->proxy =
@@ -147,8 +145,7 @@ static void sl_bind_host_relative_pointer_manager(struct wl_client* client,
   struct sl_relative_pointer_manager* relative_pointer_manager =
       ctx->relative_pointer_manager;
   struct sl_host_relative_pointer_manager* host =
-      static_cast<sl_host_relative_pointer_manager*>(malloc(sizeof(*host)));
-  assert(host);
+      new sl_host_relative_pointer_manager();
   host->ctx = ctx;
   host->resource = wl_resource_create(
       client, &zwp_relative_pointer_manager_v1_interface, 1, id);

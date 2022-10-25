@@ -239,7 +239,7 @@ static void sl_destroy_host_data_offer(struct wl_resource* resource) {
 
   wl_data_offer_destroy(host->proxy);
   wl_resource_set_user_data(resource, NULL);
-  free(host);
+  delete host;
 }
 
 static void sl_data_source_destroy(struct wl_client* client,
@@ -315,7 +315,7 @@ static void sl_destroy_host_data_source(struct wl_resource* resource) {
 
   wl_data_source_destroy(host->proxy);
   wl_resource_set_user_data(resource, NULL);
-  free(host);
+  delete host;
 }
 
 static void sl_data_device_start_drag(struct wl_client* client,
@@ -361,9 +361,7 @@ static void sl_data_device_data_offer(void* data,
                                       struct wl_data_offer* data_offer) {
   struct sl_host_data_device* host = static_cast<sl_host_data_device*>(
       wl_data_device_get_user_data(data_device));
-  struct sl_host_data_offer* host_data_offer =
-      static_cast<sl_host_data_offer*>(malloc(sizeof(*host_data_offer)));
-  assert(host_data_offer);
+  struct sl_host_data_offer* host_data_offer = new sl_host_data_offer();
 
   host_data_offer->ctx = host->ctx;
   host_data_offer->resource = wl_resource_create(
@@ -464,7 +462,7 @@ static void sl_destroy_host_data_device(struct wl_resource* resource) {
     wl_data_device_destroy(host->proxy);
   }
   wl_resource_set_user_data(resource, NULL);
-  free(host);
+  delete host;
 }
 
 static void sl_data_device_manager_create_data_source(
@@ -472,9 +470,7 @@ static void sl_data_device_manager_create_data_source(
   struct sl_host_data_device_manager* host =
       static_cast<sl_host_data_device_manager*>(
           wl_resource_get_user_data(resource));
-  struct sl_host_data_source* host_data_source =
-      static_cast<sl_host_data_source*>(malloc(sizeof(*host_data_source)));
-  assert(host_data_source);
+  struct sl_host_data_source* host_data_source = new sl_host_data_source();
 
   host_data_source->resource = wl_resource_create(
       client, &wl_data_source_interface, wl_resource_get_version(resource), id);
@@ -498,9 +494,7 @@ static void sl_data_device_manager_get_data_device(
           wl_resource_get_user_data(resource));
   struct sl_host_seat* host_seat =
       static_cast<sl_host_seat*>(wl_resource_get_user_data(seat_resource));
-  struct sl_host_data_device* host_data_device =
-      static_cast<sl_host_data_device*>(malloc(sizeof(*host_data_device)));
-  assert(host_data_device);
+  struct sl_host_data_device* host_data_device = new sl_host_data_device();
 
   host_data_device->ctx = host->ctx;
   host_data_device->focus_surface = NULL;
@@ -528,7 +522,7 @@ static void sl_destroy_host_data_device_manager(struct wl_resource* resource) {
 
   wl_data_device_manager_destroy(host->proxy);
   wl_resource_set_user_data(resource, NULL);
-  free(host);
+  delete host;
 }
 
 static void sl_bind_host_data_device_manager(struct wl_client* client,
@@ -536,9 +530,7 @@ static void sl_bind_host_data_device_manager(struct wl_client* client,
                                              uint32_t version,
                                              uint32_t id) {
   struct sl_context* ctx = (struct sl_context*)data;
-  struct sl_host_data_device_manager* host =
-      static_cast<sl_host_data_device_manager*>(malloc(sizeof(*host)));
-  assert(host);
+  struct sl_host_data_device_manager* host = new sl_host_data_device_manager();
   host->ctx = ctx;
   host->resource =
       wl_resource_create(client, &wl_data_device_manager_interface,

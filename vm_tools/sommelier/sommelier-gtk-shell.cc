@@ -64,7 +64,7 @@ static void sl_destroy_host_gtk_surface(struct wl_resource* resource) {
   zaura_surface_destroy(host->proxy);
   wl_list_remove(&host->link);
   wl_resource_set_user_data(resource, NULL);
-  free(host);
+  delete host;
 }
 
 static void sl_gtk_shell_get_gtk_surface(struct wl_client* client,
@@ -75,9 +75,7 @@ static void sl_gtk_shell_get_gtk_surface(struct wl_client* client,
       static_cast<sl_host_gtk_shell*>(wl_resource_get_user_data(resource));
   struct sl_host_surface* host_surface = static_cast<sl_host_surface*>(
       wl_resource_get_user_data(surface_resource));
-  struct sl_host_gtk_surface* host_gtk_surface =
-      static_cast<sl_host_gtk_surface*>(malloc(sizeof(*host_gtk_surface)));
-  assert(host_gtk_surface);
+  struct sl_host_gtk_surface* host_gtk_surface = new sl_host_gtk_surface();
 
   wl_list_insert(&host->surfaces, &host_gtk_surface->link);
   host_gtk_surface->aura_shell = host->aura_shell;
@@ -121,7 +119,7 @@ static void sl_destroy_host_gtk_shell(struct wl_resource* resource) {
   wl_callback_destroy(host->callback);
   zaura_shell_destroy(host->proxy);
   wl_resource_set_user_data(resource, NULL);
-  free(host);
+  delete host;
 }
 
 static void sl_gtk_shell_callback_done(void* data,
@@ -142,9 +140,7 @@ static void sl_bind_host_gtk_shell(struct wl_client* client,
                                    uint32_t version,
                                    uint32_t id) {
   struct sl_context* ctx = (struct sl_context*)data;
-  struct sl_host_gtk_shell* host =
-      static_cast<sl_host_gtk_shell*>(malloc(sizeof(*host)));
-  assert(host);
+  struct sl_host_gtk_shell* host = new sl_host_gtk_shell();
   host->aura_shell = ctx->aura_shell;
   host->startup_id = NULL;
   wl_list_init(&host->surfaces);

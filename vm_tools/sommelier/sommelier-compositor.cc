@@ -87,7 +87,7 @@ static void sl_output_buffer_destroy(struct sl_output_buffer* buffer) {
   if (buffer->shape_image)
     pixman_image_unref(buffer->shape_image);
 
-  free(buffer);
+  delete buffer;
 }
 
 static uint32_t try_wl_resource_get_id(wl_resource* resource) {
@@ -216,9 +216,7 @@ static void sl_host_surface_attach(struct wl_client* client,
       size_t bpp = sl_shm_bpp_for_shm_format(shm_format);
       size_t num_planes = sl_shm_num_planes_for_shm_format(shm_format);
 
-      host->current_buffer = static_cast<sl_output_buffer*>(
-          malloc(sizeof(struct sl_output_buffer)));
-      assert(host->current_buffer);
+      host->current_buffer = new sl_output_buffer();
       wl_list_insert(&host->released_buffers, &host->current_buffer->link);
       host->current_buffer->width = width;
       host->current_buffer->height = height;
@@ -525,7 +523,7 @@ static void sl_host_callback_destroy(struct wl_resource* resource) {
 
   wl_callback_destroy(host->proxy);
   wl_resource_set_user_data(resource, NULL);
-  free(host);
+  delete host;
 }
 
 static void sl_host_surface_frame(struct wl_client* client,
@@ -535,9 +533,7 @@ static void sl_host_surface_frame(struct wl_client* client,
               try_wl_resource_get_id(resource));
   struct sl_host_surface* host =
       static_cast<sl_host_surface*>(wl_resource_get_user_data(resource));
-  struct sl_host_callback* host_callback =
-      static_cast<sl_host_callback*>(malloc(sizeof(*host_callback)));
-  assert(host_callback);
+  struct sl_host_callback* host_callback = new sl_host_callback();
 
   host_callback->resource =
       wl_resource_create(client, &wl_callback_interface, 1, callback);
@@ -882,7 +878,7 @@ static void sl_destroy_host_surface(struct wl_resource* resource) {
   }
 
   pixman_region32_fini(&host->contents_shape);
-  free(host);
+  delete host;
 }
 
 static void sl_surface_enter(void* data,
@@ -973,7 +969,7 @@ static void sl_destroy_host_region(struct wl_resource* resource) {
 
   wl_region_destroy(host->proxy);
   wl_resource_set_user_data(resource, NULL);
-  free(host);
+  delete host;
 }
 
 static void sl_compositor_create_host_surface(struct wl_client* client,
@@ -983,9 +979,7 @@ static void sl_compositor_create_host_surface(struct wl_client* client,
   struct sl_host_compositor* host =
       static_cast<sl_host_compositor*>(wl_resource_get_user_data(resource));
   struct sl_window *window, *unpaired_window = NULL;
-  struct sl_host_surface* host_surface =
-      static_cast<sl_host_surface*>(malloc(sizeof(*host_surface)));
-  assert(host_surface);
+  struct sl_host_surface* host_surface = new sl_host_surface();
 
   host_surface->ctx = host->compositor->ctx;
   host_surface->contents_width = 0;
@@ -1050,9 +1044,7 @@ static void sl_compositor_create_host_region(struct wl_client* client,
                                              uint32_t id) {
   struct sl_host_compositor* host =
       static_cast<sl_host_compositor*>(wl_resource_get_user_data(resource));
-  struct sl_host_region* host_region =
-      static_cast<sl_host_region*>(malloc(sizeof(*host_region)));
-  assert(host_region);
+  struct sl_host_region* host_region = new sl_host_region();
 
   host_region->ctx = host->compositor->ctx;
   host_region->resource = wl_resource_create(
@@ -1073,7 +1065,7 @@ static void sl_destroy_host_compositor(struct wl_resource* resource) {
 
   wl_compositor_destroy(host->proxy);
   wl_resource_set_user_data(resource, NULL);
-  free(host);
+  delete host;
 }
 
 // Called when a Wayland client binds to our wl_compositor global.
@@ -1083,9 +1075,7 @@ static void sl_bind_host_compositor(struct wl_client* client,
                                     uint32_t version,
                                     uint32_t id) {
   struct sl_context* ctx = (struct sl_context*)data;
-  struct sl_host_compositor* host =
-      static_cast<sl_host_compositor*>(malloc(sizeof(*host)));
-  assert(host);
+  struct sl_host_compositor* host = new sl_host_compositor();
   host->compositor = ctx->compositor;
 
   // Create the client-facing wl_compositor resource using the requested

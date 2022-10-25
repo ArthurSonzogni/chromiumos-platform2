@@ -145,9 +145,7 @@ const char* net_wm_state_to_string(int i) {
 
 struct sl_sync_point* sl_sync_point_create(int fd) {
   TRACE_EVENT("sync", "sl_sync_point_create");
-  struct sl_sync_point* sync_point =
-      static_cast<sl_sync_point*>(malloc(sizeof(*sync_point)));
-  assert(sync_point);
+  struct sl_sync_point* sync_point = new sl_sync_point();
   sync_point->fd = fd;
   sync_point->sync = NULL;
 
@@ -157,7 +155,7 @@ struct sl_sync_point* sl_sync_point_create(int fd) {
 void sl_sync_point_destroy(struct sl_sync_point* sync_point) {
   TRACE_EVENT("sync", "sl_sync_point_destroy");
   close(sync_point->fd);
-  free(sync_point);
+  delete sync_point;
 }
 
 static void sl_internal_xdg_shell_ping(void* data,
@@ -292,7 +290,7 @@ static void sl_destroy_host_buffer(struct wl_resource* resource) {
     sl_sync_point_destroy(host->sync_point);
   }
   wl_resource_set_user_data(resource, NULL);
-  free(host);
+  delete host;
 }
 
 struct sl_host_buffer* sl_create_host_buffer(struct sl_context* ctx,
@@ -303,9 +301,7 @@ struct sl_host_buffer* sl_create_host_buffer(struct sl_context* ctx,
                                              int32_t height,
                                              bool is_drm) {
   TRACE_EVENT("surface", "sl_create_host_buffer", "id", id);
-  struct sl_host_buffer* host_buffer =
-      static_cast<sl_host_buffer*>(malloc(sizeof(*host_buffer)));
-  assert(host_buffer);
+  struct sl_host_buffer* host_buffer = new sl_host_buffer();
 
   host_buffer->ctx = ctx;
   host_buffer->width = width;
@@ -334,7 +330,7 @@ static void sl_internal_data_offer_destroy(struct sl_data_offer* host) {
   wl_data_offer_destroy(host->internal);
   wl_array_release(&host->atoms);
   wl_array_release(&host->cookies);
-  free(host);
+  delete host;
 }
 
 static void sl_set_selection(struct sl_context* ctx,
@@ -410,9 +406,7 @@ static void sl_internal_data_device_data_offer(
     struct wl_data_device* data_device,
     struct wl_data_offer* data_offer) {
   struct sl_context* ctx = (struct sl_context*)data;
-  struct sl_data_offer* host_data_offer =
-      static_cast<sl_data_offer*>(malloc(sizeof(*host_data_offer)));
-  assert(host_data_offer);
+  struct sl_data_offer* host_data_offer = new sl_data_offer();
 
   host_data_offer->ctx = ctx;
   host_data_offer->internal = data_offer;

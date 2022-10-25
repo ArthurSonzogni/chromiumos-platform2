@@ -57,7 +57,7 @@ static void sl_host_callback_destroy(struct wl_resource* resource) {
 
   wl_callback_destroy(host->proxy);
   wl_resource_set_user_data(resource, NULL);
-  free(host);
+  delete host;
 }
 
 static void sl_display_sync(struct wl_client* client,
@@ -65,9 +65,7 @@ static void sl_display_sync(struct wl_client* client,
                             uint32_t id) {
   struct sl_context* ctx =
       static_cast<sl_context*>(wl_resource_get_user_data(resource));
-  struct sl_host_callback* host_callback =
-      static_cast<sl_host_callback*>(malloc(sizeof(*host_callback)));
-  assert(host_callback);
+  struct sl_host_callback* host_callback = new sl_host_callback();
 
   host_callback->resource =
       wl_resource_create(client, &wl_callback_interface, 1, id);
@@ -84,7 +82,7 @@ static void sl_destroy_host_registry(struct wl_resource* resource) {
       static_cast<sl_host_registry*>(wl_resource_get_user_data(resource));
 
   wl_list_remove(&host->link);
-  free(host);
+  delete host;
 }
 
 static void sl_display_get_registry(struct wl_client* client,
@@ -94,9 +92,7 @@ static void sl_display_get_registry(struct wl_client* client,
       static_cast<sl_context*>(wl_resource_get_user_data(resource));
   struct sl_global* global;
 
-  struct sl_host_registry* host_registry =
-      static_cast<sl_host_registry*>(malloc(sizeof(*host_registry)));
-  assert(host_registry);
+  struct sl_host_registry* host_registry = new sl_host_registry();
 
   host_registry->ctx = ctx;
   host_registry->resource =

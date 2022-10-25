@@ -643,7 +643,7 @@ static void sl_destroy_host_pointer(struct wl_resource* resource) {
   }
   wl_list_remove(&host->focus_resource_listener.link);
   wl_resource_set_user_data(resource, NULL);
-  free(host);
+  delete host;
 }
 
 static void sl_pointer_focus_resource_destroyed(struct wl_listener* listener,
@@ -659,9 +659,7 @@ static void sl_host_seat_get_host_pointer(struct wl_client* client,
                                           uint32_t id) {
   struct sl_host_seat* host =
       static_cast<sl_host_seat*>(wl_resource_get_user_data(resource));
-  struct sl_host_pointer* host_pointer =
-      static_cast<sl_host_pointer*>(malloc(sizeof(*host_pointer)));
-  assert(host_pointer);
+  struct sl_host_pointer* host_pointer = new sl_host_pointer();
 
   host_pointer->seat = host->seat;
   host_pointer->resource = wl_resource_create(
@@ -708,7 +706,7 @@ static void sl_destroy_host_keyboard(struct wl_resource* resource) {
 
   wl_list_remove(&host->focus_resource_listener.link);
   wl_resource_set_user_data(resource, NULL);
-  free(host);
+  delete host;
 }
 
 static void sl_keyboard_focus_resource_destroyed(struct wl_listener* listener,
@@ -726,9 +724,7 @@ static void sl_host_seat_get_host_keyboard(struct wl_client* client,
                                            uint32_t id) {
   struct sl_host_seat* host =
       static_cast<sl_host_seat*>(wl_resource_get_user_data(resource));
-  struct sl_host_keyboard* host_keyboard =
-      static_cast<sl_host_keyboard*>(malloc(sizeof(*host_keyboard)));
-  assert(host_keyboard);
+  struct sl_host_keyboard* host_keyboard = new sl_host_keyboard();
 
   host_keyboard->seat = host->seat;
   host_keyboard->resource = wl_resource_create(
@@ -773,7 +769,7 @@ static void sl_destroy_host_touch(struct wl_resource* resource) {
     wl_touch_destroy(host->proxy);
   }
   wl_resource_set_user_data(resource, NULL);
-  free(host);
+  delete host;
 }
 
 static void sl_touch_focus_resource_destroyed(struct wl_listener* listener,
@@ -792,9 +788,7 @@ static void sl_host_seat_get_host_touch(struct wl_client* client,
                                         uint32_t id) {
   struct sl_host_seat* host =
       static_cast<sl_host_seat*>(wl_resource_get_user_data(resource));
-  struct sl_host_touch* host_touch =
-      static_cast<sl_host_touch*>(malloc(sizeof(*host_touch)));
-  assert(host_touch);
+  struct sl_host_touch* host_touch = new sl_host_touch();
 
   host_touch->seat = host->seat;
   host_touch->resource = wl_resource_create(
@@ -846,7 +840,7 @@ static void sl_destroy_host_seat(struct wl_resource* resource) {
   else
     wl_seat_destroy(host->proxy);
   wl_resource_set_user_data(resource, NULL);
-  free(host);
+  delete host;
 }
 
 static void sl_bind_host_seat(struct wl_client* client,
@@ -854,8 +848,7 @@ static void sl_bind_host_seat(struct wl_client* client,
                               uint32_t version,
                               uint32_t id) {
   struct sl_seat* seat = (struct sl_seat*)data;
-  struct sl_host_seat* host = static_cast<sl_host_seat*>(malloc(sizeof(*host)));
-  assert(host);
+  struct sl_host_seat* host = new sl_host_seat();
   host->seat = seat;
   host->resource = wl_resource_create(client, &wl_seat_interface,
                                       MIN(version, seat->version), id);

@@ -75,7 +75,7 @@ static void sl_destroy_host_shell_surface(struct wl_resource* resource) {
 
   wl_shell_surface_destroy(host->proxy);
   wl_resource_set_user_data(resource, NULL);
-  free(host);
+  delete host;
 }
 
 static void sl_host_shell_get_shell_surface(
@@ -88,8 +88,7 @@ static void sl_host_shell_get_shell_surface(
   struct sl_host_surface* host_surface = static_cast<sl_host_surface*>(
       wl_resource_get_user_data(surface_resource));
   struct sl_host_shell_surface* host_shell_surface =
-      static_cast<sl_host_shell_surface*>(malloc(sizeof(*host_shell_surface)));
-  assert(host_shell_surface);
+      new sl_host_shell_surface();
   host_shell_surface->resource =
       wl_resource_create(client, &wl_shell_surface_interface, 1, id);
   wl_resource_set_implementation(
@@ -112,7 +111,7 @@ static void sl_destroy_host_shell(struct wl_resource* resource) {
 
   wl_shell_destroy(host->proxy);
   wl_resource_set_user_data(resource, NULL);
-  free(host);
+  delete host;
 }
 
 static void sl_bind_host_shell(struct wl_client* client,
@@ -120,8 +119,7 @@ static void sl_bind_host_shell(struct wl_client* client,
                                uint32_t version,
                                uint32_t id) {
   struct sl_context* ctx = (struct sl_context*)data;
-  struct sl_host_shell* host =
-      static_cast<sl_host_shell*>(malloc(sizeof(*host)));
+  struct sl_host_shell* host = new sl_host_shell();
   assert(host);
   host->shell = ctx->shell;
   host->resource = wl_resource_create(client, &wl_shell_interface, 1, id);

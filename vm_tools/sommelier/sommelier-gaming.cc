@@ -85,7 +85,7 @@ static void sl_internal_gamepad_removed(void* data,
   zcr_gamepad_v2_destroy(gamepad);
 
   wl_list_remove(&host_gamepad->link);
-  free(host_gamepad);
+  delete host_gamepad;
 }
 
 static uint32_t remap_axis(struct sl_host_gamepad* host_gamepad,
@@ -235,9 +235,7 @@ static void sl_internal_gaming_seat_gamepad_added_with_device_info(
   TRACE_EVENT("gaming",
               "sl_internal_gaming_seat_gamepad_added_with_device_info");
   struct sl_context* ctx = (struct sl_context*)data;
-  struct sl_host_gamepad* host_gamepad =
-      static_cast<sl_host_gamepad*>(malloc(sizeof(struct sl_host_gamepad)));
-  assert(host_gamepad);
+  struct sl_host_gamepad* host_gamepad = new sl_host_gamepad();
   wl_list_insert(&ctx->gamepads, &host_gamepad->link);
   zcr_gamepad_v2_set_user_data(gamepad, host_gamepad);
   zcr_gamepad_v2_add_listener(gamepad, &sl_internal_gamepad_listener,

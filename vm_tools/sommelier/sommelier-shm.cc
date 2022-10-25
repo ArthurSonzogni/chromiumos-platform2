@@ -182,7 +182,7 @@ static void sl_destroy_host_shm_pool(struct wl_resource* resource) {
   if (host->proxy)
     wl_shm_pool_destroy(host->proxy);
   wl_resource_set_user_data(resource, NULL);
-  free(host);
+  delete host;
 }
 
 static void sl_shm_create_host_pool(struct wl_client* client,
@@ -192,9 +192,7 @@ static void sl_shm_create_host_pool(struct wl_client* client,
                                     int32_t size) {
   struct sl_host_shm* host =
       static_cast<sl_host_shm*>(wl_resource_get_user_data(resource));
-  struct sl_host_shm_pool* host_shm_pool =
-      static_cast<sl_host_shm_pool*>(malloc(sizeof(*host_shm_pool)));
-  assert(host_shm_pool);
+  struct sl_host_shm_pool* host_shm_pool = new sl_host_shm_pool();
 
   host_shm_pool->shm = host->shm;
   host_shm_pool->fd = -1;
@@ -278,7 +276,7 @@ static void sl_destroy_host_shm(struct wl_resource* resource) {
   if (host->linux_dmabuf_proxy)
     zwp_linux_dmabuf_v1_destroy(host->linux_dmabuf_proxy);
   wl_resource_set_user_data(resource, NULL);
-  free(host);
+  delete host;
 }
 
 static void sl_bind_host_shm(struct wl_client* client,
@@ -286,8 +284,7 @@ static void sl_bind_host_shm(struct wl_client* client,
                              uint32_t version,
                              uint32_t id) {
   struct sl_context* ctx = (struct sl_context*)data;
-  struct sl_host_shm* host = static_cast<sl_host_shm*>(malloc(sizeof(*host)));
-  assert(host);
+  struct sl_host_shm* host = new sl_host_shm();
   host->shm = ctx->shm;
   host->shm_proxy = NULL;
   host->linux_dmabuf_proxy = NULL;

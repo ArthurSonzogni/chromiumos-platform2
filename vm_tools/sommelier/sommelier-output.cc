@@ -429,7 +429,7 @@ static void sl_destroy_host_output(struct wl_resource* resource) {
   wl_list_remove(&host->link);
   free(host->make);
   free(host->model);
-  free(host);
+  delete host;
 }
 
 static void sl_xdg_output_logical_position(
@@ -474,9 +474,7 @@ static void sl_bind_host_output(struct wl_client* client,
                                 uint32_t id) {
   struct sl_output* output = (struct sl_output*)data;
   struct sl_context* ctx = output->ctx;
-  struct sl_host_output* host =
-      static_cast<sl_host_output*>(malloc(sizeof(*host)));
-  assert(host);
+  struct sl_host_output* host = new sl_host_output();
   host->ctx = ctx;
   host->resource = wl_resource_create(client, &wl_output_interface,
                                       MIN(version, output->version), id);

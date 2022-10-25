@@ -208,7 +208,7 @@ static void sl_destroy_host_drm(struct wl_resource* resource) {
   zwp_linux_dmabuf_v1_destroy(host->linux_dmabuf_proxy);
   wl_callback_destroy(host->callback);
   wl_resource_set_user_data(resource, NULL);
-  free(host);
+  delete host;
 }
 
 static void sl_drm_format(void* data,
@@ -259,8 +259,7 @@ static void sl_bind_host_drm(struct wl_client* client,
                              uint32_t version,
                              uint32_t id) {
   struct sl_context* ctx = (struct sl_context*)data;
-  struct sl_host_drm* host = static_cast<sl_host_drm*>(malloc(sizeof(*host)));
-  assert(host);
+  struct sl_host_drm* host = new sl_host_drm();
   host->ctx = ctx;
   host->version = MIN(version, 2);
   host->resource =

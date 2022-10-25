@@ -55,7 +55,7 @@ static void sl_destroy_host_subsurface(struct wl_resource* resource) {
 
   wl_subsurface_destroy(host->proxy);
   wl_resource_set_user_data(resource, NULL);
-  free(host);
+  delete host;
 }
 
 static void sl_subcompositor_destroy(struct wl_client* client,
@@ -75,9 +75,7 @@ static void sl_subcompositor_get_subsurface(
       wl_resource_get_user_data(surface_resource));
   struct sl_host_surface* host_parent =
       static_cast<sl_host_surface*>(wl_resource_get_user_data(parent_resource));
-  struct sl_host_subsurface* host_subsurface =
-      static_cast<sl_host_subsurface*>(malloc(sizeof(*host_subsurface)));
-  assert(host_subsurface);
+  struct sl_host_subsurface* host_subsurface = new sl_host_subsurface();
 
   host_subsurface->ctx = host->ctx;
   host_subsurface->resource =
@@ -100,7 +98,7 @@ static void sl_destroy_host_subcompositor(struct wl_resource* resource) {
 
   wl_subcompositor_destroy(host->proxy);
   wl_resource_set_user_data(resource, NULL);
-  free(host);
+  delete host;
 }
 
 static void sl_bind_host_subcompositor(struct wl_client* client,
@@ -108,9 +106,7 @@ static void sl_bind_host_subcompositor(struct wl_client* client,
                                        uint32_t version,
                                        uint32_t id) {
   struct sl_context* ctx = (struct sl_context*)data;
-  struct sl_host_subcompositor* host =
-      static_cast<sl_host_subcompositor*>(malloc(sizeof(*host)));
-  assert(host);
+  struct sl_host_subcompositor* host = new sl_host_subcompositor();
   host->ctx = ctx;
   host->resource =
       wl_resource_create(client, &wl_subcompositor_interface, 1, id);

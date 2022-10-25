@@ -28,7 +28,7 @@
         static_cast<sl_host_##NAME*>(wl_resource_get_user_data(resource)); \
     INTERFACE##_destroy(host->proxy);                                      \
     wl_resource_set_user_data(resource, NULL);                             \
-    free(host);                                                            \
+    delete host;                                                           \
   }                                                                        \
   static void sl_##NAME##_destroy(struct wl_client* client,                \
                                   struct wl_resource* resource) {          \
@@ -122,9 +122,7 @@ static void sl_pointer_constraints_lock_pointer(struct wl_client* client,
              : NULL;
 
   struct sl_host_locked_pointer* locked_pointer_host =
-      static_cast<sl_host_locked_pointer*>(
-          malloc(sizeof(struct sl_host_locked_pointer)));
-  assert(locked_pointer_host);
+      new sl_host_locked_pointer();
   locked_pointer_host->resource = locked_pointer_resource;
   locked_pointer_host->ctx = host->ctx;
   locked_pointer_host->proxy = zwp_pointer_constraints_v1_lock_pointer(
@@ -162,9 +160,7 @@ static void sl_pointer_constraints_confine_pointer(struct wl_client* client,
              : NULL;
 
   struct sl_host_confined_pointer* confined_pointer_host =
-      static_cast<sl_host_confined_pointer*>(
-          malloc(sizeof(struct sl_host_confined_pointer)));
-  assert(confined_pointer_host);
+      new sl_host_confined_pointer();
   confined_pointer_host->resource = confined_pointer_resource;
   confined_pointer_host->ctx = host->ctx;
   confined_pointer_host->proxy = zwp_pointer_constraints_v1_confine_pointer(
@@ -193,11 +189,8 @@ static void sl_bind_host_pointer_constraints(struct wl_client* client,
                                              uint32_t id) {
   struct sl_context* ctx = (struct sl_context*)data;
   struct sl_pointer_constraints* pointer_constraints = ctx->pointer_constraints;
-  struct sl_host_pointer_constraints* host =
-      static_cast<sl_host_pointer_constraints*>(
-          malloc(sizeof(struct sl_host_pointer_constraints)));
+  struct sl_host_pointer_constraints* host = new sl_host_pointer_constraints();
 
-  assert(host);
   host->ctx = ctx;
   host->resource =
       wl_resource_create(client, &zwp_pointer_constraints_v1_interface, 1, id);

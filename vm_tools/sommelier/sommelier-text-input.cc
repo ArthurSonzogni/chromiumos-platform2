@@ -290,7 +290,7 @@ static void sl_destroy_host_text_input(struct wl_resource* resource) {
 
   zwp_text_input_v1_destroy(host->proxy);
   wl_resource_set_user_data(resource, NULL);
-  free(host);
+  delete host;
 }
 
 static void sl_text_input_manager_create_text_input(
@@ -301,8 +301,7 @@ static void sl_text_input_manager_create_text_input(
   struct wl_resource* text_input_resource =
       wl_resource_create(client, &zwp_text_input_v1_interface,
                          wl_resource_get_version(resource), id);
-  struct sl_host_text_input* text_input_host = static_cast<sl_host_text_input*>(
-      malloc(sizeof(struct sl_host_text_input)));
+  struct sl_host_text_input* text_input_host = new sl_host_text_input();
 
   text_input_host->resource = text_input_resource;
   text_input_host->ctx = host->ctx;
@@ -327,7 +326,7 @@ static void sl_destroy_host_text_input_manager(struct wl_resource* resource) {
 
   zwp_text_input_manager_v1_destroy(host->proxy);
   wl_resource_set_user_data(resource, NULL);
-  free(host);
+  delete host;
 }
 
 static struct zwp_text_input_manager_v1_interface
@@ -341,9 +340,7 @@ static void sl_bind_host_text_input_manager(struct wl_client* client,
                                             uint32_t id) {
   struct sl_context* ctx = (struct sl_context*)data;
   struct sl_text_input_manager* text_input_manager = ctx->text_input_manager;
-  struct sl_host_text_input_manager* host =
-      static_cast<sl_host_text_input_manager*>(malloc(sizeof(*host)));
-  assert(host);
+  struct sl_host_text_input_manager* host = new sl_host_text_input_manager();
   host->ctx = ctx;
   host->resource =
       wl_resource_create(client, &zwp_text_input_manager_v1_interface,
@@ -446,7 +443,7 @@ static void sl_destroy_host_extended_text_input(struct wl_resource* resource) {
 
   zcr_extended_text_input_v1_destroy(host->proxy);
   wl_resource_set_user_data(resource, NULL);
-  free(host);
+  delete host;
 }
 
 static void sl_text_input_extension_get_extended_text_input(
@@ -463,8 +460,7 @@ static void sl_text_input_extension_get_extended_text_input(
       wl_resource_create(client, &zcr_extended_text_input_v1_interface,
                          wl_resource_get_version(resource), id);
   struct sl_host_extended_text_input* extended_text_input_host =
-      static_cast<sl_host_extended_text_input*>(
-          malloc(sizeof(struct sl_host_extended_text_input)));
+      new sl_host_extended_text_input();
 
   extended_text_input_host->resource = extended_text_input_resource;
   extended_text_input_host->ctx = host->ctx;
@@ -488,7 +484,7 @@ static void sl_destroy_host_text_input_extension(struct wl_resource* resource) {
 
   zcr_text_input_extension_v1_destroy(host->proxy);
   wl_resource_set_user_data(resource, NULL);
-  free(host);
+  delete host;
 }
 
 static struct zcr_text_input_extension_v1_interface
@@ -504,8 +500,7 @@ static void sl_bind_host_text_input_extension(struct wl_client* client,
   struct sl_text_input_extension* text_input_extension =
       ctx->text_input_extension;
   struct sl_host_text_input_extension* host =
-      static_cast<sl_host_text_input_extension*>(malloc(sizeof(*host)));
-  assert(host);
+      new sl_host_text_input_extension();
   host->ctx = ctx;
   host->resource =
       wl_resource_create(client, &zcr_text_input_extension_v1_interface,

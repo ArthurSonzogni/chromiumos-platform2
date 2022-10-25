@@ -114,7 +114,7 @@ static void sl_destroy_host_xdg_positioner(struct wl_resource* resource) {
 
   xdg_positioner_destroy(host->proxy);
   wl_resource_set_user_data(resource, NULL);
-  free(host);
+  delete host;
 }
 
 static void sl_xdg_popup_destroy(struct wl_client* client,
@@ -173,7 +173,7 @@ static void sl_destroy_host_xdg_popup(struct wl_resource* resource) {
 
   xdg_popup_destroy(host->proxy);
   wl_resource_set_user_data(resource, NULL);
-  free(host);
+  delete host;
 }
 
 static void sl_xdg_toplevel_destroy(struct wl_client* client,
@@ -251,7 +251,7 @@ static void sl_destroy_host_xdg_toplevel(struct wl_resource* resource) {
 
   xdg_toplevel_destroy(host->proxy);
   wl_resource_set_user_data(resource, NULL);
-  free(host);
+  delete host;
 }
 
 static void sl_xdg_surface_destroy(struct wl_client* client,
@@ -264,9 +264,7 @@ static void sl_xdg_surface_get_toplevel(struct wl_client* client,
                                         uint32_t id) {
   struct sl_host_xdg_surface* host =
       static_cast<sl_host_xdg_surface*>(wl_resource_get_user_data(resource));
-  struct sl_host_xdg_toplevel* host_xdg_toplevel =
-      static_cast<sl_host_xdg_toplevel*>(malloc(sizeof(*host_xdg_toplevel)));
-  assert(host_xdg_toplevel);
+  struct sl_host_xdg_toplevel* host_xdg_toplevel = new sl_host_xdg_toplevel();
 
   host_xdg_toplevel->ctx = host->ctx;
   host_xdg_toplevel->resource =
@@ -296,9 +294,7 @@ static void sl_xdg_surface_get_popup(struct wl_client* client,
   struct sl_host_xdg_positioner* host_positioner =
       static_cast<sl_host_xdg_positioner*>(
           wl_resource_get_user_data(positioner_resource));
-  struct sl_host_xdg_popup* host_xdg_popup =
-      static_cast<sl_host_xdg_popup*>(malloc(sizeof(*host_xdg_popup)));
-  assert(host_xdg_popup);
+  struct sl_host_xdg_popup* host_xdg_popup = new sl_host_xdg_popup();
 
   host_xdg_popup->ctx = host->ctx;
   host_xdg_popup->resource =
@@ -358,7 +354,7 @@ static void sl_destroy_host_xdg_surface(struct wl_resource* resource) {
 
   xdg_surface_destroy(host->proxy);
   wl_resource_set_user_data(resource, NULL);
-  free(host);
+  delete host;
 }
 
 static void sl_xdg_shell_destroy(struct wl_client* client,
@@ -372,9 +368,7 @@ static void sl_xdg_shell_create_positioner(struct wl_client* client,
   struct sl_host_xdg_shell* host =
       static_cast<sl_host_xdg_shell*>(wl_resource_get_user_data(resource));
   struct sl_host_xdg_positioner* host_xdg_positioner =
-      static_cast<sl_host_xdg_positioner*>(
-          malloc(sizeof(*host_xdg_positioner)));
-  assert(host_xdg_positioner);
+      new sl_host_xdg_positioner();
 
   host_xdg_positioner->ctx = host->ctx;
   host_xdg_positioner->resource =
@@ -394,9 +388,7 @@ static void sl_xdg_shell_get_xdg_surface(struct wl_client* client,
       static_cast<sl_host_xdg_shell*>(wl_resource_get_user_data(resource));
   struct sl_host_surface* host_surface = static_cast<sl_host_surface*>(
       wl_resource_get_user_data(surface_resource));
-  struct sl_host_xdg_surface* host_xdg_surface =
-      static_cast<sl_host_xdg_surface*>(malloc(sizeof(*host_xdg_surface)));
-  assert(host_xdg_surface);
+  struct sl_host_xdg_surface* host_xdg_surface = new sl_host_xdg_surface();
 
   host_xdg_surface->ctx = host->ctx;
   host_xdg_surface->resource =
@@ -436,7 +428,7 @@ static void sl_destroy_host_xdg_shell(struct wl_resource* resource) {
 
   xdg_wm_base_destroy(host->proxy);
   wl_resource_set_user_data(resource, NULL);
-  free(host);
+  delete host;
 }
 
 static void sl_bind_host_xdg_shell(struct wl_client* client,
@@ -444,9 +436,7 @@ static void sl_bind_host_xdg_shell(struct wl_client* client,
                                    uint32_t version,
                                    uint32_t id) {
   struct sl_context* ctx = (struct sl_context*)data;
-  struct sl_host_xdg_shell* host =
-      static_cast<sl_host_xdg_shell*>(malloc(sizeof(*host)));
-  assert(host);
+  struct sl_host_xdg_shell* host = new sl_host_xdg_shell();
   host->ctx = ctx;
   host->resource = wl_resource_create(client, &xdg_wm_base_interface, 1, id);
   wl_resource_set_implementation(host->resource, &sl_xdg_shell_implementation,

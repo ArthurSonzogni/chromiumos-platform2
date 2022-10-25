@@ -21,8 +21,7 @@ struct sl_mmap* sl_mmap_create(int fd,
                                size_t y_ss0,
                                size_t y_ss1) {
   TRACE_EVENT("shm", "sl_mmap_create");
-  struct sl_mmap* map = static_cast<sl_mmap*>(malloc(sizeof(*map)));
-  assert(map);
+  struct sl_mmap* map = new sl_mmap();
   map->refcount = 1;
   map->fd = fd;
   map->size = size;
@@ -56,8 +55,7 @@ struct sl_mmap* sl_drm_prime_mmap_create(gbm_device* device,
                                          int32_t height,
                                          uint32_t drm_format) {
   TRACE_EVENT("drm", "sl_drm_mmap_create");
-  struct sl_mmap* map = static_cast<sl_mmap*>(malloc(sizeof(*map)));
-  assert(map);
+  struct sl_mmap* map = new sl_mmap();
   assert(num_planes == 1);
 
   map->refcount = 1;
@@ -157,7 +155,7 @@ void sl_mmap_unref(struct sl_mmap* map) {
         munmap(map->addr, map->size + map->offset[0]);
         if (map->fd != -1)
           close(map->fd);
-        free(map);
+        delete map;
         break;
 
       case SL_MMAP_DRM_PRIME:
@@ -165,7 +163,7 @@ void sl_mmap_unref(struct sl_mmap* map) {
         sl_mmap_end_access(map);
         if (map->fd != -1)
           close(map->fd);
-        free(map);
+        delete map;
         break;
 
       default:
