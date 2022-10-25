@@ -277,8 +277,9 @@ TEST_F(WireGuardDriverTest, ConnectFlowKernel) {
   EXPECT_FALSE(driver_test_peer_->config_fd().is_valid());
 
   // Checks IPProperties.
-  const auto& ip_properties = driver_->GetIPProperties();
-  EXPECT_THAT(ip_properties.inclusion_list,
+  const auto ip_properties = driver_->GetIPv4Properties();
+  ASSERT_NE(ip_properties, nullptr);
+  EXPECT_THAT(ip_properties->inclusion_list,
               testing::UnorderedElementsAre(
                   // We do not dedup so this entry appears twice.
                   "192.168.1.2/32", "192.168.1.2/32", "192.168.2.0/24",

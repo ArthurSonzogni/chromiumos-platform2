@@ -185,7 +185,7 @@ TEST_F(IPAddressTest, CreateFromPrefixString) {
   const std::string kIPv4String(kV4String1);
 
   // Checks if CreateFromPrefixString() returns true by valid strings for IPv4.
-  const ByteString kIPv4Address(kV4Address1, sizeof(kV4Address1));
+  ByteString kIPv4Address(kV4Address1, sizeof(kV4Address1));
   for (int prefix = 0; prefix < 33; prefix++) {
     const std::string address = kIPv4String + "/" + std::to_string(prefix);
     IPAddress ipv4_address = IPAddress::CreateFromPrefixString(address);
@@ -215,7 +215,7 @@ TEST_F(IPAddressTest, CreateFromPrefixString) {
   const std::string kIPv6String(kV6String1);
 
   // Checks if CreateFromPrefixString() returns true by valid strings for IPv6.
-  const ByteString kIPv6Address(kV6Address1, sizeof(kV6Address1));
+  ByteString kIPv6Address(kV6Address1, sizeof(kV6Address1));
   for (int prefix = 0; prefix < 129; prefix++) {
     const std::string address = kIPv6String + "/" + std::to_string(prefix);
     IPAddress ipv6_address = IPAddress::CreateFromPrefixString(address);

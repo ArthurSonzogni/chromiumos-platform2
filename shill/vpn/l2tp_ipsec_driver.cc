@@ -269,8 +269,9 @@ void L2TPIPsecDriver::Disconnect() {
   ipsec_connection_->Disconnect();
 }
 
-IPConfig::Properties L2TPIPsecDriver::GetIPProperties() const {
-  return ip_properties_;
+std::unique_ptr<IPConfig::Properties> L2TPIPsecDriver::GetIPv4Properties()
+    const {
+  return std::make_unique<IPConfig::Properties>(ip_properties_);
 }
 
 std::string L2TPIPsecDriver::GetProviderType() const {

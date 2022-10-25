@@ -370,8 +370,8 @@ TEST_F(VPNServiceTest, ConfigureDeviceAndCleanupDevice) {
   service_->device_ = device;
 
   EXPECT_CALL(*device, SetEnabled(true));
-  EXPECT_CALL(*driver_, GetIPProperties())
-      .WillOnce(Return(IPConfig::Properties()));
+  EXPECT_CALL(*driver_, GetIPv4Properties())
+      .WillOnce(Return(ByMove(std::make_unique<IPConfig::Properties>())));
   EXPECT_CALL(*device, UpdateIPConfig(_, _));
   service_->ConfigureDevice();
 
@@ -393,8 +393,8 @@ TEST_F(VPNServiceTest, ConnectFlow) {
   EXPECT_TRUE(error.IsSuccess());
   EXPECT_EQ(Service::kStateAssociating, service_->state());
 
-  EXPECT_CALL(*driver_, GetIPProperties())
-      .WillOnce(Return(IPConfig::Properties()));
+  EXPECT_CALL(*driver_, GetIPv4Properties())
+      .WillOnce(Return(ByMove(std::make_unique<IPConfig::Properties>())));
   driver_event_handler->OnDriverConnected(kInterfaceName, kInterfaceIndex);
   EXPECT_TRUE(service_->device_);
   EXPECT_EQ(Service::kStateConfiguring, service_->state());
@@ -463,6 +463,8 @@ TEST_F(VPNServiceTest, ConnectTimeout) {
   Error error;
   VPNDriver::EventHandler* driver_event_handler;
   constexpr base::TimeDelta kTestTimeout = base::Seconds(10);
+  ON_CALL(*driver_, GetIPv4Properties())
+      .WillByDefault(Return(ByMove(std::make_unique<IPConfig::Properties>())));
 
   // Timeout triggered.
   EXPECT_CALL(*driver_, ConnectAsync(_))
@@ -501,6 +503,8 @@ TEST_F(VPNServiceTest, ReconnectTimeout) {
   Error error;
   VPNDriver::EventHandler* driver_event_handler;
   constexpr base::TimeDelta kTestTimeout = base::Seconds(10);
+  ON_CALL(*driver_, GetIPv4Properties())
+      .WillByDefault(Return(ByMove(std::make_unique<IPConfig::Properties>())));
   EXPECT_CALL(*driver_, ConnectAsync(_))
       .WillRepeatedly(DoAll(SaveArg<0>(&driver_event_handler),
                             Return(VPNDriver::kTimeoutNone)));

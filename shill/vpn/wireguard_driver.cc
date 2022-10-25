@@ -224,8 +224,9 @@ void WireGuardDriver::Disconnect() {
   event_handler_ = nullptr;
 }
 
-IPConfig::Properties WireGuardDriver::GetIPProperties() const {
-  return ip_properties_;
+std::unique_ptr<IPConfig::Properties> WireGuardDriver::GetIPv4Properties()
+    const {
+  return std::make_unique<IPConfig::Properties>(ip_properties_);
 }
 
 std::string WireGuardDriver::GetProviderType() const {

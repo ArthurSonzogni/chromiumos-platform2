@@ -323,8 +323,8 @@ void OpenVPNDriver::Notify(const std::string& reason,
   }
 }
 
-IPConfig::Properties OpenVPNDriver::GetIPProperties() const {
-  return ip_properties_;
+std::unique_ptr<IPConfig::Properties> OpenVPNDriver::GetIPv4Properties() const {
+  return std::make_unique<IPConfig::Properties>(ip_properties_);
 }
 
 void OpenVPNDriver::ParseIPConfiguration(

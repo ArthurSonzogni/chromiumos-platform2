@@ -516,8 +516,9 @@ void ThirdPartyVpnDriver::OnLinkReady(const std::string& link_name,
       static_cast<uint32_t>(PlatformMessage::kConnected));
 }
 
-IPConfig::Properties ThirdPartyVpnDriver::GetIPProperties() const {
-  return ip_properties_;
+std::unique_ptr<IPConfig::Properties> ThirdPartyVpnDriver::GetIPv4Properties()
+    const {
+  return std::make_unique<IPConfig::Properties>(ip_properties_);
 }
 
 void ThirdPartyVpnDriver::FailService(Service::ConnectFailure failure,

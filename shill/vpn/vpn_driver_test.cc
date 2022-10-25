@@ -56,7 +56,10 @@ class VPNDriverUnderTest : public VPNDriver {
   MOCK_METHOD(base::TimeDelta, ConnectAsync, (EventHandler*), (override));
   MOCK_METHOD(void, Disconnect, (), (override));
   MOCK_METHOD(void, OnConnectTimeout, (), (override));
-  MOCK_METHOD(IPConfig::Properties, GetIPProperties, (), (const, override));
+  MOCK_METHOD(std::unique_ptr<IPConfig::Properties>,
+              GetIPv4Properties,
+              (),
+              (const, override));
   MOCK_METHOD(std::string, GetProviderType, (), (const, override));
 
  private:

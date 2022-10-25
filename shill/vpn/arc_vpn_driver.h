@@ -5,6 +5,7 @@
 #ifndef SHILL_VPN_ARC_VPN_DRIVER_H_
 #define SHILL_VPN_ARC_VPN_DRIVER_H_
 
+#include <memory>
 #include <string>
 
 #include <gtest/gtest_prod.h>
@@ -28,7 +29,7 @@ class ArcVpnDriver : public VPNDriver {
   base::TimeDelta ConnectAsync(EventHandler* handler) override;
   void Disconnect() override;
   void OnConnectTimeout() override;
-  IPConfig::Properties GetIPProperties() const override;
+  std::unique_ptr<IPConfig::Properties> GetIPv4Properties() const override;
 
  private:
   static const Property kProperties[];

@@ -179,8 +179,8 @@ void IKEv2Driver::Disconnect() {
   ipsec_connection_->Disconnect();
 }
 
-IPConfig::Properties IKEv2Driver::GetIPProperties() const {
-  return ip_properties_;
+std::unique_ptr<IPConfig::Properties> IKEv2Driver::GetIPv4Properties() const {
+  return std::make_unique<IPConfig::Properties>(ip_properties_);
 }
 
 std::string IKEv2Driver::GetProviderType() const {

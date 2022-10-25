@@ -300,16 +300,18 @@ TEST_F(OpenVPNDriverTest, Notify) {
   EXPECT_CALL(event_handler_,
               OnDriverConnected(kInterfaceName, kInterfaceIndex));
   driver_->Notify("up", config);
-  IPConfig::Properties ip_properties = driver_->GetIPProperties();
-  EXPECT_EQ(ip_properties.address, "");
+  auto ip_properties = driver_->GetIPv4Properties();
+  ASSERT_NE(ip_properties, nullptr);
+  EXPECT_EQ(ip_properties->address, "");
 
   // Tests that existing properties are reused if no new ones provided.
   EXPECT_CALL(event_handler_,
               OnDriverConnected(kInterfaceName, kInterfaceIndex));
   driver_->ip_properties_.address = "1.2.3.4";
   driver_->Notify("up", config);
-  ip_properties = driver_->GetIPProperties();
-  EXPECT_EQ(ip_properties.address, "1.2.3.4");
+  ip_properties = driver_->GetIPv4Properties();
+  ASSERT_NE(ip_properties, nullptr);
+  EXPECT_EQ(ip_properties->address, "1.2.3.4");
 }
 
 TEST_P(OpenVPNDriverTest, NotifyUMA) {

@@ -153,9 +153,7 @@ void VPNService::ConfigureDevice() {
 
   device_->SetEnabled(true);
   device_->SelectService(this);
-  device_->UpdateIPConfig(
-      std::make_unique<IPConfig::Properties>(driver_->GetIPProperties()),
-      nullptr);
+  device_->UpdateIPConfig(driver_->GetIPv4Properties(), nullptr);
 }
 
 std::string VPNService::GetStorageIdentifier() const {

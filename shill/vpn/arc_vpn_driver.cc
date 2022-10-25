@@ -67,7 +67,7 @@ void ArcVpnDriver::OnConnectTimeout() {
   NOTREACHED();
 }
 
-IPConfig::Properties ArcVpnDriver::GetIPProperties() const {
+std::unique_ptr<IPConfig::Properties> ArcVpnDriver::GetIPv4Properties() const {
   SLOG(2) << __func__;
   // Currently L3 settings for ARC VPN are set from Chrome as
   // StaticIPProperty before connecting, so this will be mostly empty.
@@ -78,7 +78,7 @@ IPConfig::Properties ArcVpnDriver::GetIPProperties() const {
   // IPv6 traffic so there is no "leak" past the VPN.
   ip_properties.blackhole_ipv6 = true;
   ip_properties.method = kTypeVPN;
-  return ip_properties;
+  return std::make_unique<IPConfig::Properties>(ip_properties);
 }
 
 std::string ArcVpnDriver::GetProviderType() const {

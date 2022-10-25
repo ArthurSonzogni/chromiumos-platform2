@@ -65,7 +65,7 @@ class ThirdPartyVpnDriver : public VPNDriver {
   // Implementation of VPNDriver
   void InitPropertyStore(PropertyStore* store) override;
   base::TimeDelta ConnectAsync(EventHandler* handler) override;
-  IPConfig::Properties GetIPProperties() const override;
+  std::unique_ptr<IPConfig::Properties> GetIPv4Properties() const override;
   std::string GetProviderType() const override;
   void Disconnect() override;
   void OnConnectTimeout() override;

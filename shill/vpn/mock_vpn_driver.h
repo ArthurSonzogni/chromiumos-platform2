@@ -5,6 +5,7 @@
 #ifndef SHILL_VPN_MOCK_VPN_DRIVER_H_
 #define SHILL_VPN_MOCK_VPN_DRIVER_H_
 
+#include <memory>
 #include <string>
 
 #include <gmock/gmock.h>
@@ -24,7 +25,10 @@ class MockVPNDriver : public VPNDriver {
   MOCK_METHOD(base::TimeDelta, ConnectAsync, (EventHandler*), (override));
   MOCK_METHOD(void, Disconnect, (), (override));
   MOCK_METHOD(void, OnConnectTimeout, (), (override));
-  MOCK_METHOD(IPConfig::Properties, GetIPProperties, (), (const, override));
+  MOCK_METHOD(std::unique_ptr<IPConfig::Properties>,
+              GetIPv4Properties,
+              (),
+              (const, override));
   MOCK_METHOD(bool,
               Load,
               (const StoreInterface*, const std::string&),

@@ -33,7 +33,7 @@ class WireGuardDriver : public VPNDriver {
   base::TimeDelta ConnectAsync(EventHandler* event_handler) override;
   void Disconnect() override;
   void OnConnectTimeout() override;
-  IPConfig::Properties GetIPProperties() const override;
+  std::unique_ptr<IPConfig::Properties> GetIPv4Properties() const override;
   std::string GetProviderType() const override;
 
   // These functions (including GetProvider() below) are overridden for

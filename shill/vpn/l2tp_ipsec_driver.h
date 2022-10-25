@@ -29,7 +29,7 @@ class L2TPIPsecDriver : public VPNDriver {
   // Inherited from VPNDriver.
   base::TimeDelta ConnectAsync(EventHandler* handler) override;
   void Disconnect() override;
-  IPConfig::Properties GetIPProperties() const override;
+  std::unique_ptr<IPConfig::Properties> GetIPv4Properties() const override;
   std::string GetProviderType() const override;
   void OnConnectTimeout() override;
 
