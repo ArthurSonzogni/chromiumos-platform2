@@ -13,6 +13,8 @@
 #include <gtest/gtest.h>
 
 #include "rmad/constants.h"
+#include "rmad/logs/logs_constants.h"
+#include "rmad/logs/logs_utils.h"
 #include "rmad/metrics/metrics_utils.h"
 #include "rmad/state_handler/components_repair_state_handler.h"
 #include "rmad/state_handler/state_handler_test_common.h"
@@ -117,6 +119,22 @@ TEST_F(ComponentsRepairStateHandlerTest,
   EXPECT_EQ(
       replaced_components,
       std::vector<std::string>{RmadComponent_Name(RMAD_COMPONENT_BATTERY)});
+
+  // Verify the replaced component was recorded to logs.
+  base::Value logs(base::Value::Type::DICT);
+  json_store_->GetValue(kLogs, &logs);
+
+  const base::Value::List* events = logs.GetDict().FindList(kEvents);
+  EXPECT_EQ(1, events->size());
+  const base::Value::Dict& event = (*events)[0].GetDict();
+  EXPECT_EQ(static_cast<int>(LogEventType::kData), event.FindInt(kType));
+
+  const base::Value::List* components =
+      event.FindDict(kDetails)->FindList(kLogReplacedComponents);
+  EXPECT_EQ(1, components->size());
+  EXPECT_EQ(RmadComponent_Name(RMAD_COMPONENT_BATTERY),
+            (*components)[0].GetString());
+  EXPECT_FALSE(event.FindDict(kDetails)->FindBool(kLogReworkSelected).value());
 }
 
 TEST_F(ComponentsRepairStateHandlerTest,
@@ -165,6 +183,15 @@ TEST_F(ComponentsRepairStateHandlerTest,
   bool wipe_device;
   EXPECT_TRUE(json_store_->GetValue(kWipeDevice, &wipe_device));
   EXPECT_TRUE(wipe_device);
+
+  // Verify the mainboard rework selection was recorded to logs.
+  base::Value logs(base::Value::Type::DICT);
+  json_store_->GetValue(kLogs, &logs);
+
+  const base::Value::List* events = logs.GetDict().FindList(kEvents);
+  EXPECT_EQ(1, events->size());
+  const base::Value::Dict& event = (*events)[0].GetDict();
+  EXPECT_TRUE(event.FindDict(kDetails)->FindBool(kLogReworkSelected).value());
 }
 
 TEST_F(ComponentsRepairStateHandlerTest,

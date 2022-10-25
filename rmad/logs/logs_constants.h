@@ -22,6 +22,10 @@ inline constexpr char kDetails[] = "details";
 inline constexpr char kFromStateId[] = "from_state_id";
 inline constexpr char kToStateId[] = "to_state_id";
 
+// State specific attributes.
+inline constexpr char kLogReplacedComponents[] = "replaced_components";
+inline constexpr char kLogReworkSelected[] = "rework_selected";
+
 enum class LogEventType {
   kTransition = 0,
   kData = 1,

@@ -4,6 +4,11 @@
 
 #include "rmad/logs/logs_utils.h"
 
+#include <string>
+#include <utility>
+#include <vector>
+
+#include <base/containers/contains.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/memory/scoped_refptr.h>
@@ -86,6 +91,34 @@ TEST_F(LogsUtilsTest, RecordStateTransition) {
             event2.FindDict(kDetails)->FindInt(kFromStateId));
   EXPECT_EQ(static_cast<int>(state3),
             event2.FindDict(kDetails)->FindInt(kToStateId));
+}
+
+// Simulates adding replaced components to an empty `logs` json.
+TEST_F(LogsUtilsTest, RecordSelectedComponents) {
+  EXPECT_TRUE(CreateInputFile(kDefaultJson, std::size(kDefaultJson) - 1));
+
+  const bool rework_selected_expected_value = true;
+  const std::string audio_codec =
+      RmadComponent_Name(RMAD_COMPONENT_AUDIO_CODEC);
+  const std::string battery = RmadComponent_Name(RMAD_COMPONENT_BATTERY);
+
+  EXPECT_TRUE(RecordSelectedComponentsToLogs(
+      json_store_, std::vector<std::string>({audio_codec, battery}),
+      rework_selected_expected_value));
+  base::Value logs(base::Value::Type::DICT);
+  json_store_->GetValue(kLogs, &logs);
+
+  const base::Value::List* events = logs.GetDict().FindList(kEvents);
+  EXPECT_EQ(1, events->size());
+  const base::Value::Dict& event = (*events)[0].GetDict();
+  EXPECT_EQ(static_cast<int>(LogEventType::kData), event.FindInt(kType));
+
+  const base::Value::List* components =
+      event.FindDict(kDetails)->FindList(kLogReplacedComponents);
+  EXPECT_EQ(2, components->size());
+  EXPECT_EQ(audio_codec, (*components)[0].GetString());
+  EXPECT_EQ(battery, (*components)[1].GetString());
+  EXPECT_TRUE(event.FindDict(kDetails)->FindBool(kLogReworkSelected));
 }
 
 }  // namespace rmad

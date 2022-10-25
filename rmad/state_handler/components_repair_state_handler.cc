@@ -15,6 +15,7 @@
 #include <base/logging.h>
 
 #include "rmad/constants.h"
+#include "rmad/logs/logs_utils.h"
 #include "rmad/metrics/metrics_utils.h"
 #include "rmad/proto_bindings/rmad.pb.h"
 #include "rmad/system/cryptohome_client_impl.h"
@@ -341,6 +342,8 @@ bool ComponentsRepairStateHandler::StoreVars() const {
   return json_store_->SetValue(kReplacedComponentNames, replaced_components) &&
          MetricsUtils::SetMetricsValue(json_store_, kMetricsReplacedComponents,
                                        replaced_components) &&
+         RecordSelectedComponentsToLogs(json_store_, replaced_components,
+                                        mlb_repair) &&
          json_store_->SetValue(kMlbRepair, mlb_repair) &&
          MetricsUtils::SetMetricsValue(
              json_store_, kMetricsMlbReplacement,

@@ -5,7 +5,9 @@
 #include "rmad/logs/logs_utils.h"
 
 #include <map>
+#include <string>
 #include <utility>
+#include <vector>
 
 #include <base/json/json_string_value_serializer.h>
 #include <base/memory/scoped_refptr.h>
@@ -16,18 +18,18 @@
 #include "rmad/logs/logs_constants.h"
 #include "rmad/proto_bindings/rmad.pb.h"
 #include "rmad/utils/json_store.h"
+#include "rmad/utils/type_conversions.h"
 
 namespace rmad {
 
 namespace {
 
 bool AddEventToJson(scoped_refptr<JsonStore> json_store,
-                    double timestamp,
                     LogEventType event_type,
                     base::Value&& details) {
   base::Value event(base::Value::Type::DICT);
-  event.SetKey(kTimestamp, base::Value(timestamp));
-  event.SetKey(kType, base::Value(static_cast<int>(event_type)));
+  event.SetKey(kTimestamp, ConvertToValue(base::Time::Now().ToDoubleT()));
+  event.SetKey(kType, ConvertToValue(static_cast<int>(event_type)));
   event.SetKey(kDetails, std::move(details));
 
   base::Value logs(base::Value::Type::DICT);
@@ -49,11 +51,22 @@ bool RecordStateTransitionToLogs(scoped_refptr<JsonStore> json_store,
                                  RmadState::StateCase from_state,
                                  RmadState::StateCase to_state) {
   base::Value details(base::Value::Type::DICT);
-  details.SetKey(kFromStateId, base::Value(static_cast<int>(from_state)));
-  details.SetKey(kToStateId, base::Value(static_cast<int>(to_state)));
+  details.SetKey(kFromStateId, ConvertToValue(static_cast<int>(from_state)));
+  details.SetKey(kToStateId, ConvertToValue(static_cast<int>(to_state)));
 
-  return AddEventToJson(json_store, /*timestamp=*/base::Time::Now().ToDoubleT(),
-                        LogEventType::kTransition, std::move(details));
+  return AddEventToJson(json_store, LogEventType::kTransition,
+                        std::move(details));
+}
+
+bool RecordSelectedComponentsToLogs(
+    scoped_refptr<JsonStore> json_store,
+    const std::vector<std::string>& replaced_components,
+    bool is_mlb_repair) {
+  base::Value details(base::Value::Type::DICT);
+  details.SetKey(kLogReplacedComponents, ConvertToValue(replaced_components));
+  details.SetKey(kLogReworkSelected, ConvertToValue(is_mlb_repair));
+
+  return AddEventToJson(json_store, LogEventType::kData, std::move(details));
 }
 
 }  // namespace rmad
