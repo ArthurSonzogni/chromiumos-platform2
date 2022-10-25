@@ -13,6 +13,7 @@
 
 #include <base/memory/weak_ptr.h>
 #include <base/timer/timer.h>
+#include <libhwsec/frontend/pinweaver/frontend.h>
 
 #include "biod/cros_fp_device.h"
 #include "biod/cros_fp_session_manager.h"
@@ -62,13 +63,16 @@ class CrosFpAuthStackManager : public AuthStackManager {
       std::unique_ptr<ec::CrosFpDeviceInterface> cros_fp_device,
       BiodMetricsInterface* biod_metrics,
       std::unique_ptr<CrosFpSessionManager> session_manager,
-      std::unique_ptr<PairingKeyStorage> pk_storage);
+      std::unique_ptr<PairingKeyStorage> pk_storage,
+      std::unique_ptr<const hwsec::PinWeaverFrontend> pinweaver);
   CrosFpAuthStackManager(const CrosFpAuthStackManager&) = delete;
   CrosFpAuthStackManager& operator=(const CrosFpAuthStackManager&) = delete;
 
   // Initializes the AuthStack. Without calling Initialize, many functions might
   // not work.
   bool Initialize();
+  // Establishes Pk with GSC.
+  virtual bool EstablishPairingKey();
 
   // AuthStackManager overrides:
   ~CrosFpAuthStackManager() override = default;
@@ -164,6 +168,8 @@ class CrosFpAuthStackManager : public AuthStackManager {
   std::unique_ptr<CrosFpSessionManager> session_manager_;
 
   std::unique_ptr<PairingKeyStorage> pk_storage_;
+
+  std::unique_ptr<const hwsec::PinWeaverFrontend> pinweaver_;
 
   base::WeakPtrFactory<CrosFpAuthStackManager> session_weak_factory_;
 };

@@ -94,6 +94,7 @@ static_library("libbiod") {
     "utils.cc",
   ]
   configs += [ ":target_defaults" ]
+  libs = [ "hwsec" ]
   pkg_deps = [ "vboot_host" ]
 }
 
@@ -204,6 +205,7 @@ if (use.test) {
       ":target_defaults",
     ]
     run_test = true
+    libs = [ "hwsec_test" ]
     deps = [
       ":fake_libbiod",
       ":libbiod",

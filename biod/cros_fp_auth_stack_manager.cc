@@ -4,6 +4,7 @@
 
 #include "biod/cros_fp_auth_stack_manager.h"
 
+#include <algorithm>
 #include <memory>
 #include <optional>
 #include <string>
@@ -13,6 +14,8 @@
 #include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/notreached.h>
+#include <libhwsec/frontend/pinweaver/frontend.h>
+#include <libhwsec/status.h>
 
 #include "biod/cros_fp_device.h"
 #include "biod/cros_fp_record_manager.h"
@@ -28,34 +31,94 @@ namespace biod {
 using BioSession = CrosFpAuthStackManager::Session;
 using State = CrosFpAuthStackManager::State;
 using Mode = ec::FpMode::Mode;
+using PinWeaverEccPoint = hwsec::PinWeaverFrontend::PinWeaverEccPoint;
+using hwsec::PinWeaverEccPointSize;
+
+namespace {
+constexpr uint8_t kCrosFpAuthChannel = 0;
+}
 
 CrosFpAuthStackManager::CrosFpAuthStackManager(
     std::unique_ptr<PowerButtonFilterInterface> power_button_filter,
     std::unique_ptr<ec::CrosFpDeviceInterface> cros_fp_device,
     BiodMetricsInterface* biod_metrics,
     std::unique_ptr<CrosFpSessionManager> session_manager,
-    std::unique_ptr<PairingKeyStorage> pk_storage)
+    std::unique_ptr<PairingKeyStorage> pk_storage,
+    std::unique_ptr<const hwsec::PinWeaverFrontend> pinweaver)
     : biod_metrics_(biod_metrics),
       cros_dev_(std::move(cros_fp_device)),
       power_button_filter_(std::move(power_button_filter)),
       session_manager_(std::move(session_manager)),
       pk_storage_(std::move(pk_storage)),
+      pinweaver_(std::move(pinweaver)),
       session_weak_factory_(this) {
   CHECK(power_button_filter_);
   CHECK(cros_dev_);
   CHECK(biod_metrics_);
   CHECK(session_manager_);
   CHECK(pk_storage_);
+  CHECK(pinweaver_);
 
   cros_dev_->SetMkbpEventCallback(base::BindRepeating(
       &CrosFpAuthStackManager::OnMkbpEvent, base::Unretained(this)));
 }
 
 bool CrosFpAuthStackManager::Initialize() {
-  if (pk_storage_->PairingKeyExists()) {
-    return LoadPairingKey();
+  if (!pk_storage_->PairingKeyExists() && !EstablishPairingKey()) {
+    return false;
   }
-  // TODO(b/251738584): Establish Pk with GSC.
+  return LoadPairingKey();
+}
+
+bool CrosFpAuthStackManager::EstablishPairingKey() {
+  if (!pinweaver_->IsEnabled().value_or(false)) {
+    LOG(ERROR) << __func__ << "PinWeaver is not enabled.";
+    return false;
+  }
+
+  // Pk related mechanisms are only added in PW version 2.
+  if (pinweaver_->GetVersion().value_or(0) <= 1) {
+    LOG(ERROR) << __func__ << "PinWeaver version isn't new enough.";
+    return false;
+  }
+
+  // Step 1: Keygen in FPMCU.
+  std::optional<ec::CrosFpDeviceInterface::PairingKeyKeygenReply> reply =
+      cros_dev_->PairingKeyKeygen();
+  if (!reply.has_value()) {
+    return false;
+  }
+  if (reply->pub_x.size() != PinWeaverEccPointSize ||
+      reply->pub_y.size() != PinWeaverEccPointSize) {
+    LOG(ERROR) << __func__
+               << "Point size in PairingKeyKeygenReply is incorrect.";
+    return false;
+  }
+
+  // Step 2: Keygen in GSC.
+  PinWeaverEccPoint pub_in;
+  std::copy(reply->pub_x.begin(), reply->pub_x.end(), pub_in.x);
+  std::copy(reply->pub_y.begin(), reply->pub_y.end(), pub_in.y);
+  hwsec::StatusOr<PinWeaverEccPoint> pub_out =
+      pinweaver_->GeneratePk(kCrosFpAuthChannel, pub_in);
+  if (!pub_out.ok()) {
+    LOG(ERROR) << __func__ << "GeneratePk for GSC failed.";
+    return false;
+  }
+
+  // Step 3: Finish Pk establishment and retrieve it from FPMCU.
+  std::optional<brillo::Blob> encrypted_pairing_key = cros_dev_->PairingKeyWrap(
+      brillo::Blob(pub_out->x, pub_out->x + PinWeaverEccPointSize),
+      brillo::Blob(pub_out->y, pub_out->y + PinWeaverEccPointSize),
+      reply->encrypted_private_key);
+  if (!encrypted_pairing_key.has_value()) {
+    return false;
+  }
+  if (!pk_storage_->WriteWrappedPairingKey(*encrypted_pairing_key)) {
+    LOG(ERROR) << "Failed to persist Pk.";
+    return false;
+  }
+
   return true;
 }
 

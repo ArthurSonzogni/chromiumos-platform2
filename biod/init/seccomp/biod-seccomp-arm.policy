@@ -96,3 +96,4 @@ tgkill: 1
 futex: 1
 fstatfs64: 1
 fstatfs: 1
+sysinfo: 1

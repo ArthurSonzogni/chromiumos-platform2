@@ -10,7 +10,11 @@
 #include <base/test/task_environment.h>
 #include <dbus/mock_bus.h>
 #include <dbus/mock_object_proxy.h>
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <libhwsec/factory/mock_factory.h>
+#include <libhwsec/frontend/pinweaver/mock_frontend.h>
+#include <libhwsec-foundation/error/testing_helper.h>
 
 #include "biod/cros_fp_device.h"
 #include "biod/mock_biod_metrics.h"
@@ -29,6 +33,14 @@ using KeygenReply = ec::CrosFpDeviceInterface::PairingKeyKeygenReply;
 
 using brillo::BlobToString;
 
+using PinWeaverEccPoint = hwsec::PinWeaverFrontend::PinWeaverEccPoint;
+
+using hwsec::TPMError;
+using hwsec::TPMRetryAction;
+
+using hwsec_foundation::error::testing::ReturnError;
+using hwsec_foundation::error::testing::ReturnValue;
+
 using testing::_;
 using testing::ByMove;
 using testing::DoAll;
@@ -42,6 +54,8 @@ using testing::SetArgPointee;
 namespace {
 
 constexpr base::TimeDelta kMatchTimeout = base::Seconds(2);
+
+constexpr uint8_t kCrosFpAuthChannel = 0;
 
 CreateCredentialRequest MakeCreateCredentialRequest(
     const std::string& user_id,
@@ -134,10 +148,13 @@ class CrosFpAuthStackManagerTest : public ::testing::Test {
     ON_CALL(*mock_cros_dev_, SetMkbpEventCallback)
         .WillByDefault(SaveArg<0>(&on_mkbp_event_));
 
+    auto mock_pinweaver = std::make_unique<hwsec::MockPinWeaverFrontend>();
+    mock_pinweaver_ = mock_pinweaver.get();
+
     auto cros_fp_auth_stack_manager = std::make_unique<CrosFpAuthStackManager>(
         PowerButtonFilter::Create(mock_bus), std::move(mock_cros_dev),
         &mock_metrics_, std::move(mock_session_manager),
-        std::move(mock_pk_storage));
+        std::move(mock_pk_storage), std::move(mock_pinweaver));
 
     cros_fp_auth_stack_manager->SetEnrollScanDoneHandler(
         base::BindRepeating(&CrosFpAuthStackManagerTest::EnrollScanDoneHandler,
@@ -166,6 +183,7 @@ class CrosFpAuthStackManagerTest : public ::testing::Test {
   MockPairingKeyStorage* mock_pk_storage_;
   MockCrosFpSessionManager* mock_session_manager_;
   MockCrosFpDevice* mock_cros_dev_;
+  hwsec::MockPinWeaverFrontend* mock_pinweaver_;
   CrosFpDevice::MkbpCallback on_mkbp_event_;
 };
 
@@ -321,11 +339,63 @@ TEST_F(CrosFpAuthStackManagerTest, TestInitializeLoadPairingKeyLoadFailed) {
 }
 
 TEST_F(CrosFpAuthStackManagerTest, TestInitializeNoPk) {
-  // TODO(b/251738584): Test more behavior here after biod starts to establish
-  // Pk automatically on boot.
+  const brillo::Blob kPubX(32, 1);
+  const brillo::Blob kPubY(32, 2);
+  const brillo::Blob kEncryptedPriv(32, 3);
+  const brillo::Blob kEncryptedPk(32, 4);
+
   EXPECT_CALL(*mock_pk_storage_, PairingKeyExists).WillOnce(Return(false));
 
+  EXPECT_CALL(*mock_pinweaver_, IsEnabled).WillOnce(ReturnValue(true));
+  EXPECT_CALL(*mock_pinweaver_, GetVersion).WillOnce(ReturnValue(2));
+  EXPECT_CALL(*mock_cros_dev_, PairingKeyKeygen)
+      .WillOnce(ReturnValue(KeygenReply{
+          .pub_x = kPubX,
+          .pub_y = kPubY,
+          .encrypted_private_key = kEncryptedPriv,
+      }));
+  EXPECT_CALL(*mock_pinweaver_, GeneratePk(kCrosFpAuthChannel, _))
+      .WillOnce(ReturnValue(PinWeaverEccPoint()));
+  EXPECT_CALL(*mock_cros_dev_, PairingKeyWrap(_, _, kEncryptedPriv))
+      .WillOnce(ReturnValue(kEncryptedPk));
+  EXPECT_CALL(*mock_pk_storage_, WriteWrappedPairingKey(kEncryptedPk))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*mock_pk_storage_, ReadWrappedPairingKey)
+      .WillOnce(Return(kEncryptedPk));
+  EXPECT_CALL(*mock_cros_dev_, LoadPairingKey(kEncryptedPk))
+      .WillOnce(Return(true));
+
   EXPECT_TRUE(cros_fp_auth_stack_manager_->Initialize());
+}
+
+TEST_F(CrosFpAuthStackManagerTest, TestInitializeIncorrectPinWeaverVersion) {
+  EXPECT_CALL(*mock_pk_storage_, PairingKeyExists).WillOnce(Return(false));
+
+  EXPECT_CALL(*mock_pinweaver_, IsEnabled).WillOnce(ReturnValue(true));
+  EXPECT_CALL(*mock_pinweaver_, GetVersion).WillOnce(ReturnValue(1));
+
+  EXPECT_FALSE(cros_fp_auth_stack_manager_->Initialize());
+}
+
+TEST_F(CrosFpAuthStackManagerTest, TestInitializeNoPkPinWeaverFailed) {
+  const brillo::Blob kPubX(32, 1);
+  const brillo::Blob kPubY(32, 2);
+  const brillo::Blob kEncryptedPriv(32, 3);
+
+  EXPECT_CALL(*mock_pk_storage_, PairingKeyExists).WillOnce(Return(false));
+
+  EXPECT_CALL(*mock_pinweaver_, IsEnabled).WillOnce(ReturnValue(true));
+  EXPECT_CALL(*mock_pinweaver_, GetVersion).WillOnce(ReturnValue(2));
+  EXPECT_CALL(*mock_cros_dev_, PairingKeyKeygen)
+      .WillOnce(ReturnValue(KeygenReply{
+          .pub_x = kPubX,
+          .pub_y = kPubY,
+          .encrypted_private_key = kEncryptedPriv,
+      }));
+  EXPECT_CALL(*mock_pinweaver_, GeneratePk(kCrosFpAuthChannel, _))
+      .WillOnce(ReturnError<TPMError>("fake", TPMRetryAction::kNoRetry));
+
+  EXPECT_FALSE(cros_fp_auth_stack_manager_->Initialize());
 }
 
 TEST_F(CrosFpAuthStackManagerTest, TestCreateCredentialSuccess) {

@@ -9,6 +9,7 @@
 #include <base/check.h>
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
+#include <libhwsec/factory/factory_impl.h>
 
 #include "biod/auth_stack_manager_wrapper.h"
 #include "biod/biometrics_manager_wrapper.h"
@@ -79,7 +80,8 @@ BiometricsDaemon::BiometricsDaemon() {
 
     auto cros_fp_manager = std::make_unique<CrosFpAuthStackManager>(
         std::move(power_button_filter), std::move(cros_fp_device),
-        biod_metrics_.get(), std::move(session_manager), std::move(pk_storage));
+        biod_metrics_.get(), std::move(session_manager), std::move(pk_storage),
+        hwsec_factory_.GetPinWeaverFrontend());
     if (cros_fp_manager && cros_fp_manager->Initialize()) {
       auth_stack_managers_.emplace_back(
           std::make_unique<AuthStackManagerWrapper>(

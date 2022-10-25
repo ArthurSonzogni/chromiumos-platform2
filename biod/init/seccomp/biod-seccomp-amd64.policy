@@ -87,3 +87,4 @@ tgkill: 1
 # futex: Used by CHECK()/LOG(FATAL).
 futex: 1
 fstatfs: 1
+sysinfo: 1
