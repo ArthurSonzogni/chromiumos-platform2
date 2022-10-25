@@ -950,6 +950,13 @@ class StorageTest
     ASSERT_OK(c_result) << c_result;
   }
 
+  void FlushOrDie(Priority priority) {
+    test::TestEvent<Status> c;
+    storage_->Flush(priority, c.cb());
+    const Status c_result = c.result();
+    ASSERT_OK(c_result) << c_result;
+  }
+
   SignedEncryptionInfo GenerateAndSignKey() {
     DCHECK(decryptor_) << "Decryptor not created";
     // Generate new pair of private key and public value.
@@ -1127,7 +1134,7 @@ TEST_P(StorageTest, WriteIntoNewStorageAndUploadWithKeyUpdate) {
         .RetiresOnSaturation();
 
     // Trigger upload with no key update.
-    EXPECT_OK(storage_->Flush(MANUAL_BATCH));
+    FlushOrDie(MANUAL_BATCH);
   }
 
   // Confirm written data to prevent upload retry.
@@ -1157,7 +1164,7 @@ TEST_P(StorageTest, WriteIntoNewStorageAndUploadWithKeyUpdate) {
       .RetiresOnSaturation();
 
   // Trigger upload to make sure data is present.
-  EXPECT_OK(storage_->Flush(MANUAL_BATCH));
+  FlushOrDie(MANUAL_BATCH);
 }
 
 TEST_P(StorageTest, WriteIntoNewStorageReopenWriteMoreAndUpload) {
@@ -1213,7 +1220,7 @@ TEST_P(StorageTest, WriteIntoNewStorageAndFlush) {
       .RetiresOnSaturation();
 
   // Trigger upload.
-  EXPECT_OK(storage_->Flush(MANUAL_BATCH));
+  FlushOrDie(MANUAL_BATCH);
 }
 
 TEST_P(StorageTest, WriteIntoNewStorageReopenWriteMoreAndFlush) {
@@ -1246,7 +1253,7 @@ TEST_P(StorageTest, WriteIntoNewStorageReopenWriteMoreAndFlush) {
       .RetiresOnSaturation();
 
   // Trigger upload.
-  EXPECT_OK(storage_->Flush(MANUAL_BATCH));
+  FlushOrDie(MANUAL_BATCH);
 }
 
 TEST_P(StorageTest, WriteAndRepeatedlyUploadWithConfirmations) {
@@ -1926,7 +1933,7 @@ TEST_P(StorageTest, KeyDeliveryFailureOnNewStorage) {
         .RetiresOnSaturation();
 
     // Trigger upload.
-    EXPECT_OK(storage_->Flush(MANUAL_BATCH));
+    FlushOrDie(MANUAL_BATCH);
   }
 
   ResetTestStorage();
@@ -1956,7 +1963,7 @@ TEST_P(StorageTest, KeyDeliveryFailureOnNewStorage) {
         .RetiresOnSaturation();
 
     // Trigger upload.
-    EXPECT_OK(storage_->Flush(MANUAL_BATCH));
+    FlushOrDie(MANUAL_BATCH);
   }
 }
 

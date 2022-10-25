@@ -117,7 +117,7 @@ class StorageQueue : public base::RefCountedDeleteOnSequence<StorageQueue> {
   // |uploader| implementation should be offset to another thread to avoid
   // locking StorageQueue. Helper methods: SwitchLastFileIfNotEmpty,
   // CollectFilesForUpload.
-  void Flush();
+  void Flush(base::OnceCallback<void(Status)> completion_cb);
 
   // Performs a full "reset" of the queue:
   // - Deletes all unused files

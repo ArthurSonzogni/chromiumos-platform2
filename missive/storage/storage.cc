@@ -885,12 +885,13 @@ void Storage::Confirm(SequenceInformation sequence_information,
                  std::move(completion_cb));
 }
 
-Status Storage::Flush(Priority priority) {
+void Storage::Flush(Priority priority,
+                    base::OnceCallback<void(Status)> completion_cb) {
   // Note: queues_ never change after initialization is finished, so there is
   // no need to protect or serialize access to it.
-  ASSIGN_OR_RETURN(scoped_refptr<StorageQueue> queue, GetQueue(priority));
-  queue->Flush();
-  return Status::StatusOK();
+  ASSIGN_OR_ONCE_CALLBACK_AND_RETURN(scoped_refptr<StorageQueue> queue,
+                                     completion_cb, GetQueue(priority));
+  queue->Flush(std::move(completion_cb));
 }
 
 void Storage::UpdateEncryptionKey(SignedEncryptionInfo signed_encryption_key) {
@@ -954,5 +955,4 @@ base::StringPiece Storage::GetPipelineId() const {
   DCHECK(pipeline_id_result.ok()) << pipeline_id_result.status();
   return pipeline_id_result.ValueOrDie();
 }
-
 }  // namespace reporting
