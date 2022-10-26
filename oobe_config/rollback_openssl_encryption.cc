@@ -17,13 +17,9 @@ namespace oobe_config {
 
 namespace {
 
-constexpr int kIvSize = 12;
-constexpr int kKeySize = 32;
-constexpr int kTagSize = 16;
-
 std::optional<brillo::SecureBlob> GenerateRandomKey() {
-  brillo::SecureBlob key(kKeySize);
-  if (!RAND_bytes(key.data(), kKeySize)) {
+  brillo::SecureBlob key(kOpenSslEncryptionKeySize);
+  if (!RAND_bytes(key.data(), kOpenSslEncryptionKeySize)) {
     return std::nullopt;
   }
   return key;
@@ -31,8 +27,8 @@ std::optional<brillo::SecureBlob> GenerateRandomKey() {
 
 // Generates a random initialization vector.
 std::optional<brillo::Blob> GenerateRandomIV() {
-  brillo::Blob iv(kIvSize);
-  if (!RAND_bytes(iv.data(), kIvSize)) {
+  brillo::Blob iv(kOpenSslEncryptionIvSize);
+  if (!RAND_bytes(iv.data(), kOpenSslEncryptionIvSize)) {
     return std::nullopt;
   }
   return iv;
@@ -48,8 +44,8 @@ std::optional<EncryptedData> Encrypt(const brillo::SecureBlob& data) {
     return std::nullopt;
   }
 
-  DCHECK_EQ(iv->size(), kIvSize);
-  DCHECK_EQ(key->size(), kKeySize);
+  DCHECK_EQ(iv->size(), kOpenSslEncryptionIvSize);
+  DCHECK_EQ(key->size(), kOpenSslEncryptionKeySize);
 
   crypto::ScopedEVP_CIPHER_CTX context(EVP_CIPHER_CTX_new());
   if (!EVP_EncryptInit_ex(context.get(), EVP_aes_256_gcm(), nullptr,
@@ -72,9 +68,9 @@ std::optional<EncryptedData> Encrypt(const brillo::SecureBlob& data) {
 
   DCHECK_EQ(encrypted_length, 0);
 
-  brillo::Blob tag(kTagSize);
-  if (!EVP_CIPHER_CTX_ctrl(context.get(), EVP_CTRL_GCM_GET_TAG, kTagSize,
-                           tag.data())) {
+  brillo::Blob tag(kOpenSslEncryptionTagSize);
+  if (!EVP_CIPHER_CTX_ctrl(context.get(), EVP_CTRL_GCM_GET_TAG,
+                           kOpenSslEncryptionTagSize, tag.data())) {
     return std::nullopt;
   }
 
@@ -86,12 +82,16 @@ std::optional<EncryptedData> Encrypt(const brillo::SecureBlob& data) {
 std::optional<brillo::SecureBlob> Decrypt(const EncryptedData& encrypted_data) {
   const brillo::Blob& input = encrypted_data.data;
 
-  CHECK_GE(input.size(), kTagSize + kIvSize);
-  CHECK_EQ(encrypted_data.key.size(), kKeySize);
+  CHECK_GE(input.size(), kOpenSslEncryptionTagSize + kOpenSslEncryptionIvSize);
+  CHECK_EQ(encrypted_data.key.size(), kOpenSslEncryptionKeySize);
 
-  brillo::Blob encrypted(input.begin(), input.end() - kTagSize - kIvSize);
-  brillo::Blob tag(input.begin() + encrypted.size(), input.end() - kIvSize);
-  brillo::Blob iv(input.begin() + encrypted.size() + kTagSize, input.end());
+  brillo::Blob encrypted(
+      input.begin(),
+      input.end() - kOpenSslEncryptionTagSize - kOpenSslEncryptionIvSize);
+  brillo::Blob tag(input.begin() + encrypted.size(),
+                   input.end() - kOpenSslEncryptionIvSize);
+  brillo::Blob iv(input.begin() + encrypted.size() + kOpenSslEncryptionTagSize,
+                  input.end());
 
   crypto::ScopedEVP_CIPHER_CTX context(EVP_CIPHER_CTX_new());
 

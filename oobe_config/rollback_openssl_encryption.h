@@ -11,6 +11,10 @@
 
 namespace oobe_config {
 
+inline constexpr int kOpenSslEncryptionIvSize = 12;
+inline constexpr int kOpenSslEncryptionKeySize = 32;
+inline constexpr int kOpenSslEncryptionTagSize = 16;
+
 struct EncryptedData {
   brillo::Blob data;
   brillo::SecureBlob key;

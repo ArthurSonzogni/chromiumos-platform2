@@ -9,19 +9,15 @@
 #include <brillo/secure_blob.h>
 #include <gtest/gtest.h>
 
+namespace oobe_config {
+
 namespace {
 
-constexpr int kIvSize = 12;
-constexpr int kKeySize = 32;
-constexpr int kTagSize = 16;
-
-const brillo::SecureBlob kKey(kKeySize, 60);
+const brillo::SecureBlob kKey(kOpenSslEncryptionKeySize, 60);
 const brillo::SecureBlob kSensitiveData(859, 61);
 const brillo::Blob kData(857, 63);
 
 }  // namespace
-
-namespace oobe_config {
 
 TEST(RollbackOpenSslEncryptionTest, EncryptDecrypt) {
   std::optional<EncryptedData> encrypted_data = Encrypt(kSensitiveData);
@@ -74,9 +70,10 @@ TEST(RollbackOpenSslEncryptionTest, EncryptedDataSize) {
   std::optional<EncryptedData> encrypted_data = Encrypt(kSensitiveData);
   ASSERT_TRUE(encrypted_data.has_value());
 
-  EXPECT_GE(encrypted_data->data.size(),
-            kSensitiveData.size() + kTagSize + kIvSize);
-  EXPECT_EQ(encrypted_data->key.size(), kKeySize);
+  EXPECT_GE(encrypted_data->data.size(), kSensitiveData.size() +
+                                             kOpenSslEncryptionTagSize +
+                                             kOpenSslEncryptionIvSize);
+  EXPECT_EQ(encrypted_data->key.size(), kOpenSslEncryptionKeySize);
 }
 
 }  // namespace oobe_config
