@@ -384,6 +384,7 @@ static_library("libcrostpm") {
     "chaps",
     "hwsec",
     "hwsec-foundation",
+    "installattributes",
     "tpm_manager",
     "system_api",
   ]
@@ -393,7 +394,6 @@ static_library("libcrostpm") {
     ":cryptohome-flatbuffers-binding",
     ":cryptohome-proto",
     ":libcrosplatform",
-    "//common-mk/external_dependencies:install_attributes-proto",
   ]
 }
 
