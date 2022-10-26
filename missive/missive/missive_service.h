@@ -31,10 +31,6 @@ class MissiveService {
   virtual Status ShutDown() = 0;
   virtual void OnReady() const {}
 
-  virtual void AsyncStartUpload(
-      UploaderInterface::UploadReason reason,
-      UploaderInterface::UploaderInterfaceResultCb uploader_result_cb) = 0;
-
   virtual void EnqueueRecord(
       const EnqueueRecordRequest& in_request,
       std::unique_ptr<

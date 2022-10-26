@@ -81,6 +81,7 @@ void DBusAdaptor::Shutdown() {
     LOG(FATAL) << "Failed to shutdown Missive daemon, status: " << status;
   }
   daemon_is_ready_ = false;
+  missive_.reset();
 }
 
 void DBusAdaptor::EnqueueRecord(

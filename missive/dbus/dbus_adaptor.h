@@ -63,7 +63,8 @@ class DBusAdaptor : public org::chromium::MissivedAdaptor,
   static void OnFailure(Status status);
 
   brillo::dbus_utils::DBusObject dbus_object_;
-  const std::unique_ptr<MissiveService> missive_;
+  std::unique_ptr<MissiveService> missive_
+      GUARDED_BY_CONTEXT(sequence_checker_);
   base::OnceCallback<void(Status)> failure_cb_;
   bool daemon_is_ready_ GUARDED_BY_CONTEXT(sequence_checker_) = false;
 

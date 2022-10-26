@@ -91,17 +91,31 @@ class MissiveImplTest : public ::testing::Test {
 };
 
 TEST_F(MissiveImplTest, GetPipelineId) {
-  EXPECT_TRUE(IsValidGUID(this->storage_module_->GetPipelineId()));
+  ASSERT_TRUE(storage_module_);
+  EXPECT_TRUE(IsValidGUID(storage_module_->GetPipelineId()));
 }
 
 TEST_F(MissiveImplTest, AsyncStartUploadTest) {
   test::TestEvent<StatusOr<std::unique_ptr<UploaderInterface>>> uploader_event;
-  missive_->AsyncStartUpload(UploaderInterface::UploadReason::IMMEDIATE_FLUSH,
-                             uploader_event.cb());
+  MissiveImpl::AsyncStartUpload(
+      missive_->GetWeakPtr(), UploaderInterface::UploadReason::IMMEDIATE_FLUSH,
+      uploader_event.cb());
   auto response_result = uploader_event.result();
   EXPECT_OK(response_result) << response_result.status();
   response_result.ValueOrDie()->Completed(
       Status(error::INTERNAL, "Failing for tests"));
+}
+
+TEST_F(MissiveImplTest, AsyncNoStartUploadTest) {
+  test::TestEvent<StatusOr<std::unique_ptr<UploaderInterface>>> uploader_event;
+  auto weak_ptr = missive_->GetWeakPtr();
+  missive_.reset();
+  MissiveImpl::AsyncStartUpload(
+      weak_ptr, UploaderInterface::UploadReason::IMMEDIATE_FLUSH,
+      uploader_event.cb());
+  auto response_result = uploader_event.result();
+  EXPECT_THAT(response_result.status().code(), Eq(error::UNAVAILABLE))
+      << response_result.status();
 }
 
 TEST_F(MissiveImplTest, EnqueueRecordTest) {

@@ -8,6 +8,8 @@
 #include <memory>
 #include <string>
 
+#include <base/memory/weak_ptr.h>
+#include <base/task/bind_post_task.h>
 #include <base/threading/thread.h>
 #include <dbus/bus.h>
 
@@ -53,9 +55,10 @@ class MissiveImpl : public MissiveService {
 
   Status ShutDown() override;
 
-  void AsyncStartUpload(
+  static void AsyncStartUpload(
+      base::WeakPtr<MissiveImpl> missive,
       UploaderInterface::UploadReason reason,
-      UploaderInterface::UploaderInterfaceResultCb uploader_result_cb) override;
+      UploaderInterface::UploaderInterfaceResultCb uploader_result_cb);
 
   void EnqueueRecord(const EnqueueRecordRequest& in_request,
                      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
@@ -77,6 +80,8 @@ class MissiveImpl : public MissiveService {
           brillo::dbus_utils::DBusMethodResponse<UpdateEncryptionKeyResponse>>
           out_response) override;
 
+  base::WeakPtr<MissiveImpl> GetWeakPtr();
+
  private:
   void CreateStorage(
       StorageOptions storage_options,
@@ -91,10 +96,9 @@ class MissiveImpl : public MissiveService {
       base::OnceCallback<void(Status)> cb,
       StatusOr<scoped_refptr<StorageModuleInterface>> storage_module_result);
 
-  void HandleFlushResponse(
-      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-          FlushPriorityResponse>> out_response,
-      Status status) const;
+  void AsyncStartUploadInternal(
+      UploaderInterface::UploadReason reason,
+      UploaderInterface::UploaderInterfaceResultCb uploader_result_cb);
 
   const std::unique_ptr<MissiveArgs> args_;
   base::OnceCallback<void(
@@ -108,12 +112,23 @@ class MissiveImpl : public MissiveService {
           callback)>
       create_storage_factory_;
 
-  scoped_refptr<UploadClient> upload_client_;
-  scoped_refptr<StorageModuleInterface> storage_module_;
-  scoped_refptr<const ResourceInterface> disk_space_resource_;
-  std::unique_ptr<EnqueuingRecordTallier> enqueuing_record_tallier_;
+  scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner_;
+  SEQUENCE_CHECKER(sequence_checker_);
+
+  scoped_refptr<UploadClient> upload_client_
+      GUARDED_BY_CONTEXT(sequence_checker_);
+  scoped_refptr<StorageModuleInterface> storage_module_
+      GUARDED_BY_CONTEXT(sequence_checker_);
+  scoped_refptr<const ResourceInterface> disk_space_resource_
+      GUARDED_BY_CONTEXT(sequence_checker_);
+  std::unique_ptr<EnqueuingRecordTallier> enqueuing_record_tallier_
+      GUARDED_BY_CONTEXT(sequence_checker_);
+
   Scheduler scheduler_;
-  analytics::Registry analytics_registry_{};
+  analytics::Registry analytics_registry_
+      GUARDED_BY_CONTEXT(sequence_checker_){};
+
+  base::WeakPtrFactory<MissiveImpl> weak_ptr_factory_{this};
 };
 
 }  // namespace reporting

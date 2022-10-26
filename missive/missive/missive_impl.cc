@@ -41,6 +41,13 @@ constexpr CompressionInformation::CompressionAlgorithm kCompressionType =
     CompressionInformation::COMPRESSION_SNAPPY;
 constexpr size_t kCompressionThreshold = 512U;
 
+void HandleFlushResponse(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+                             FlushPriorityResponse>> out_response,
+                         Status status) {
+  FlushPriorityResponse response_body;
+  status.SaveTo(response_body.mutable_status());
+  out_response->Return(response_body);
+}
 }  // namespace
 
 MissiveImpl::MissiveImpl(
@@ -57,22 +64,33 @@ MissiveImpl::MissiveImpl(
         create_storage_factory)
     : args_(std::move(args)),
       upload_client_factory_(std::move(upload_client_factory)),
-      create_storage_factory_(std::move(create_storage_factory)) {}
+      create_storage_factory_(std::move(create_storage_factory)) {
+  // Constructor may even be called not on any seq task runner.
+  DETACH_FROM_SEQUENCE(sequence_checker_);
+}
 
-MissiveImpl::~MissiveImpl() = default;
+MissiveImpl::~MissiveImpl() {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+}
 
 void MissiveImpl::StartUp(scoped_refptr<dbus::Bus> bus,
                           base::OnceCallback<void(Status)> cb) {
+  DCHECK(!sequenced_task_runner_) << "Can be set only once";
+  sequenced_task_runner_ = base::SequencedTaskRunnerHandle::Get();
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   DCHECK(upload_client_factory_) << "May be called only once";
   DCHECK(create_storage_factory_) << "May be called only once";
   std::move(upload_client_factory_)
-      .Run(bus, base::BindOnce(&MissiveImpl::OnUploadClientCreated,
-                               base::Unretained(this), std::move(cb)));
+      .Run(bus, base::BindPostTask(
+                    sequenced_task_runner_,
+                    base::BindOnce(&MissiveImpl::OnUploadClientCreated,
+                                   GetWeakPtr(), std::move(cb))));
 }
 
 void MissiveImpl::OnUploadClientCreated(
     base::OnceCallback<void(Status)> cb,
     StatusOr<scoped_refptr<UploadClient>> upload_client_result) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   if (!upload_client_result.ok()) {
     std::move(cb).Run(upload_client_result.status());
     return;
@@ -99,11 +117,14 @@ void MissiveImpl::OnUploadClientCreated(
           args_->memory_collector_interval(), std::move(memory_resource)));
   std::move(create_storage_factory_)
       .Run(this, std::move(storage_options),
-           base::BindOnce(&MissiveImpl::OnStorageModuleConfigured,
-                          base::Unretained(this), std::move(cb)));
+           base::BindPostTask(
+               sequenced_task_runner_,
+               base::BindOnce(&MissiveImpl::OnStorageModuleConfigured,
+                              GetWeakPtr(), std::move(cb))));
 }
 
 Status MissiveImpl::ShutDown() {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   return Status::StatusOK();
 }
 
@@ -113,8 +134,9 @@ void MissiveImpl::CreateStorage(
         callback) {
   StorageModule::Create(
       std::move(storage_options),
-      base::BindRepeating(&MissiveImpl::AsyncStartUpload,
-                          base::Unretained(this)),
+      base::BindPostTask(
+          sequenced_task_runner_,
+          base::BindRepeating(&MissiveImpl::AsyncStartUpload, GetWeakPtr())),
       EncryptionModule::Create(),
       CompressionModule::Create(kCompressionThreshold, kCompressionType),
       std::move(callback));
@@ -123,6 +145,7 @@ void MissiveImpl::CreateStorage(
 void MissiveImpl::OnStorageModuleConfigured(
     base::OnceCallback<void(Status)> cb,
     StatusOr<scoped_refptr<StorageModuleInterface>> storage_module_result) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   if (!storage_module_result.ok()) {
     std::move(cb).Run(storage_module_result.status());
     return;
@@ -131,11 +154,32 @@ void MissiveImpl::OnStorageModuleConfigured(
   std::move(cb).Run(Status::StatusOK());
 }
 
+// static
 void MissiveImpl::AsyncStartUpload(
+    base::WeakPtr<MissiveImpl> missive,
     UploaderInterface::UploadReason reason,
     UploaderInterface::UploaderInterfaceResultCb uploader_result_cb) {
+  if (!missive) {
+    std::move(uploader_result_cb)
+        .Run(Status(error::UNAVAILABLE, "Missive service has been shut down"));
+    return;
+  }
+  missive->AsyncStartUploadInternal(reason, std::move(uploader_result_cb));
+}
+
+void MissiveImpl::AsyncStartUploadInternal(
+    UploaderInterface::UploadReason reason,
+    UploaderInterface::UploaderInterfaceResultCb uploader_result_cb) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   DCHECK(uploader_result_cb);
-  DCHECK(storage_module_);
+  if (!storage_module_) {
+    // This is a precaution for a rare case - usually `storage_module_` is
+    // already set by the time `AsyncStartUpload`.
+    std::move(uploader_result_cb)
+        .Run(Status(error::FAILED_PRECONDITION,
+                    "Missive service not yet ready"));
+    return;
+  }
   auto upload_job_result = UploadJob::Create(
       upload_client_,
       /*need_encryption_key=*/
@@ -161,8 +205,7 @@ void MissiveImpl::EnqueueRecord(
     std::unique_ptr<
         brillo::dbus_utils::DBusMethodResponse<EnqueueRecordResponse>>
         out_response) {
-  scoped_refptr<base::SequencedTaskRunner> task_runner =
-      base::SequencedTaskRunnerHandle::Get();
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   if (!in_request.has_record()) {
     EnqueueRecordResponse response_body;
     auto* status = response_body.mutable_status();
@@ -196,19 +239,10 @@ void MissiveImpl::FlushPriority(
     std::unique_ptr<
         brillo::dbus_utils::DBusMethodResponse<FlushPriorityResponse>>
         out_response) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   storage_module_->Flush(
       in_request.priority(),
-      base::BindOnce(&MissiveImpl::HandleFlushResponse, base::Unretained(this),
-                     std::move(out_response)));
-}
-
-void MissiveImpl::HandleFlushResponse(
-    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-        FlushPriorityResponse>> out_response,
-    Status status) const {
-  FlushPriorityResponse response_body;
-  status.SaveTo(response_body.mutable_status());
-  out_response->Return(response_body);
+      base::BindOnce(&HandleFlushResponse, std::move(out_response)));
 }
 
 void MissiveImpl::ConfirmRecordUpload(
@@ -216,6 +250,7 @@ void MissiveImpl::ConfirmRecordUpload(
     std::unique_ptr<
         brillo::dbus_utils::DBusMethodResponse<ConfirmRecordUploadResponse>>
         out_response) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   ConfirmRecordUploadResponse response_body;
   if (!in_request.has_sequence_information()) {
     auto* status = response_body.mutable_status();
@@ -238,6 +273,7 @@ void MissiveImpl::UpdateEncryptionKey(
     std::unique_ptr<
         brillo::dbus_utils::DBusMethodResponse<UpdateEncryptionKeyResponse>>
         out_response) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   UpdateEncryptionKeyResponse response_body;
   if (!in_request.has_signed_encryption_info()) {
     auto status = response_body.mutable_status();
@@ -254,4 +290,7 @@ void MissiveImpl::UpdateEncryptionKey(
   out_response->Return(response_body);
 }
 
+base::WeakPtr<MissiveImpl> MissiveImpl::GetWeakPtr() {
+  return weak_ptr_factory_.GetWeakPtr();
+}
 }  // namespace reporting

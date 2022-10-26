@@ -57,11 +57,6 @@ class MockMissive : public MissiveService {
   MOCK_METHOD(void, OnReady, (), (const override));
 
   MOCK_METHOD(void,
-              AsyncStartUpload,
-              (UploaderInterface::UploadReason reason,
-               UploaderInterface::UploaderInterfaceResultCb uploader_result_cb),
-              (override));
-  MOCK_METHOD(void,
               EnqueueRecord,
               (const EnqueueRecordRequest& in_request,
                std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
@@ -95,6 +90,7 @@ class MissiveDaemonTest : public ::testing::Test {
     if (missive_daemon_) {
       if (mock_missive_) {
         EXPECT_CALL(*mock_missive_, ShutDown()).Times(1);
+        mock_missive_ = nullptr;
       }
       missive_daemon_->Shutdown();
       missive_daemon_.reset();
