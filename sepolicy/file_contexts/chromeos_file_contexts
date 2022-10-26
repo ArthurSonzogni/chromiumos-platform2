@@ -187,12 +187,6 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /usr/sbin/hpsd                  u:object_r:cros_hpsd_exec:s0
 /usr/sbin/huddly-monitor        u:object_r:cros_huddly_monitor_exec:s0
 /usr/sbin/iioservice            u:object_r:cros_iioservice_exec:s0
-/usr/sbin/iioservice_event      u:object_r:cros_iioservice_test_exec:s0
-/usr/sbin/iioservice_query      u:object_r:cros_iioservice_test_exec:s0
-/usr/sbin/iioservice_simpleclient u:object_r:cros_iioservice_test_exec:s0
-/usr/local/sbin/iioservice_event u:object_r:cros_iioservice_test_exec:s0
-/usr/local/sbin/iioservice_query u:object_r:cros_iioservice_test_exec:s0
-/usr/local/sbin/iioservice_simpleclient u:object_r:cros_iioservice_test_exec:s0
 /usr/sbin/imageloader           u:object_r:cros_imageloader_exec:s0
 /usr/sbin/is_running_from_installer u:object_r:cros_is_running_from_installer_exec:s0
 /usr/sbin/jetstream-update-stats u:object_r:cros_jetstream_update_stats_exec:s0
@@ -234,6 +228,11 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /usr/local/bin/[^/]+            u:object_r:cros_dev_image_exec:s0
 
 /usr/local/bin/recover_duts     u:object_r:cros_recover_duts_script:s0
+
+# To allow test tools to access Mojo Service Manager.
+/usr/local/sbin/iioservice_event u:object_r:cros_iioservice_test_exec:s0
+/usr/local/sbin/iioservice_query u:object_r:cros_iioservice_test_exec:s0
+/usr/local/sbin/iioservice_simpleclient u:object_r:cros_iioservice_test_exec:s0
 
 /usr/local/share/tast(/.*)?     u:object_r:cros_dev_tast_test:s0
 

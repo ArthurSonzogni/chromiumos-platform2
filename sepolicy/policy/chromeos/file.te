@@ -108,7 +108,6 @@ type cros_hpsd_exec, exec_type, file_type, cros_file_type, cros_system_file_type
 type cros_huddly_monitor_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_hwclock_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_iioservice_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
-type cros_iioservice_test_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_imageloader_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_initctl_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_installer_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
@@ -536,6 +535,8 @@ type cros_power_override_lock_file, file_type, cros_file_type, cros_tmpfile_type
 type cros_passwd_file, file_type, cros_file_type, cros_uncategorized_file_type;
 type cros_shadow_file, file_type, cros_file_type, cros_uncategorized_file_type;
 type cros_tz_data_file, file_type, cros_file_type, cros_var_file_type; # It's cros_var_file_type because it can modified by user settings.
+
+type cros_iioservice_test_exec, exec_type, file_type, cros_file_type, cros_uncategorized_file_type;
 
 r_dir_file(chromeos_domain, cros_tz_data_file)
 
