@@ -2129,7 +2129,8 @@ void AuthSession::PersistAuthFactorToUserSecretStash(
   if (enable_create_backup_vk_with_uss_ &&
       (auth_factor_type == AuthFactorType::kPassword ||
        auth_factor_type == AuthFactorType::kPin ||
-       auth_factor_type == AuthFactorType::kSmartCard)) {
+       auth_factor_type == AuthFactorType::kSmartCard ||
+       auth_factor_type == AuthFactorType::kKiosk)) {
     // Clobbering is on by default, in case of failure the VaultKeyset with the
     // existing label is overridden. We assume label is unique identifier across
     // all type of VaultKeysets, i.e backup, migrated, regular. So override is

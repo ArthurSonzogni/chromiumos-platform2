@@ -3,8 +3,8 @@
 // found in the LICENSE file.
 #include "cryptohome/auth_factor/auth_factor_type.h"
 
-#include <string>
 #include <optional>
+#include <string>
 #include <utility>
 
 namespace cryptohome {
@@ -15,7 +15,8 @@ constexpr std::pair<AuthFactorType, const char*> kAuthFactorTypeStrings[] = {
     {AuthFactorType::kPin, "pin"},
     {AuthFactorType::kSmartCard, "smart_card"},
     {AuthFactorType::kCryptohomeRecovery, "cryptohome_recovery"},
-    {AuthFactorType::kLegacyFingerprint, "legacy_fingerprint"}};
+    {AuthFactorType::kLegacyFingerprint, "legacy_fingerprint"},
+    {AuthFactorType::kKiosk, "kiosk"}};
 
 // Converts the auth factor type enum into a string.
 std::string AuthFactorTypeToString(AuthFactorType type) {

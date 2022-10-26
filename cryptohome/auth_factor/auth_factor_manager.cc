@@ -7,8 +7,8 @@
 #include <sys/stat.h>
 
 #include <memory>
-#include <string>
 #include <optional>
+#include <string>
 #include <utility>
 #include <variant>
 
@@ -112,7 +112,7 @@ flatbuffers::Offset<SerializedPasswordMetadata> SerializeMetadataToOffset(
 }
 
 flatbuffers::Offset<SerializedPinMetadata> SerializeMetadataToOffset(
-    const PinAuthFactorMetadata& password_metadata,
+    const PinAuthFactorMetadata& pin_metadata,
     flatbuffers::FlatBufferBuilder* builder) {
   SerializedPinMetadataBuilder metadata_builder(*builder);
   return metadata_builder.Finish();
@@ -120,9 +120,16 @@ flatbuffers::Offset<SerializedPinMetadata> SerializeMetadataToOffset(
 
 flatbuffers::Offset<SerializedCryptohomeRecoveryMetadata>
 SerializeMetadataToOffset(
-    const CryptohomeRecoveryAuthFactorMetadata& password_metadata,
+    const CryptohomeRecoveryAuthFactorMetadata& recovery_metadata,
     flatbuffers::FlatBufferBuilder* builder) {
   SerializedCryptohomeRecoveryMetadataBuilder metadata_builder(*builder);
+  return metadata_builder.Finish();
+}
+
+flatbuffers::Offset<SerializedKioskMetadata> SerializeMetadataToOffset(
+    const KioskAuthFactorMetadata& kiosk_metadata,
+    flatbuffers::FlatBufferBuilder* builder) {
+  SerializedKioskMetadataBuilder metadata_builder(*builder);
   return metadata_builder.Finish();
 }
 
@@ -163,6 +170,10 @@ flatbuffers::Offset<void> SerializeMetadataToOffset(
     *metadata_type =
         SerializedAuthFactorMetadata::SerializedCryptohomeRecoveryMetadata;
     return SerializeMetadataToOffset(*recovery_metadata, builder).Union();
+  } else if (const auto* kiosk_metadata =
+                 std::get_if<KioskAuthFactorMetadata>(&metadata.metadata)) {
+    *metadata_type = SerializedAuthFactorMetadata::SerializedKioskMetadata;
+    return SerializeMetadataToOffset(*kiosk_metadata, builder).Union();
   }
   LOG(ERROR) << "Missing or unexpected auth factor metadata: "
              << metadata.metadata.index();
