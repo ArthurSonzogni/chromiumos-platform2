@@ -407,10 +407,6 @@ class SessionManagerImplTest : public ::testing::Test,
     ON_CALL(*user_policy_service_factory_, Create(_))
         .WillByDefault(
             Invoke(this, &SessionManagerImplTest::CreateUserPolicyService));
-    ON_CALL(*user_policy_service_factory_, CreateForHiddenUserHome(_))
-        .WillByDefault(Invoke(
-            this,
-            &SessionManagerImplTest::ReturnUserPolicyServiceForHiddenUserHome));
 
     device_local_accounts_dir_ =
         tmpdir_.GetPath().Append(kDeviceLocalAccountsDir);
@@ -873,12 +869,6 @@ class SessionManagerImplTest : public ::testing::Test,
     return policy_service;
   }
 
-  std::unique_ptr<PolicyService> ReturnUserPolicyServiceForHiddenUserHome(
-      const string& username) {
-    EXPECT_EQ(username, hidden_user_home_expected_username_);
-    return std::move(hidden_user_home_policy_service_);
-  }
-
   void SetDevicePolicy(const em::ChromeDeviceSettingsProto& settings) {
     em::PolicyData policy_data;
     CHECK(settings.SerializeToString(policy_data.mutable_policy_value()));
@@ -984,12 +974,6 @@ class SessionManagerImplTest : public ::testing::Test,
   MockArcSideloadStatus* arc_sideload_status_ = nullptr;
   base::SimpleTestTickClock* tick_clock_ = nullptr;
   map<string, MockPolicyService*> user_policy_services_;
-  // The username which is expected to be passed to
-  // MockUserPolicyServiceFactory::CreateForHiddenUserHome.
-  std::string hidden_user_home_expected_username_;
-  // The policy service which shall be returned from
-  // MockUserPolicyServiceFactory::CreateForHiddenUserHome.
-  std::unique_ptr<MockPolicyService> hidden_user_home_policy_service_;
   em::PolicyFetchResponse device_policy_;
 
   scoped_refptr<FakeBus> bus_;
