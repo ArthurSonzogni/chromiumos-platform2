@@ -20,9 +20,13 @@ struct EncryptedData {
   brillo::SecureBlob key;
 };
 
-// Encrypts data with AES_256_GCM and a randomly generated key. Returns key and
-// encrypted data on success and `std::nullopt` on failure.
-std::optional<EncryptedData> Encrypt(const brillo::SecureBlob& plain_data);
+// Encrypts data with AES_256_GCM and the provided key and iv. If the key or
+// iv are not provided, uses a randomly generated values. Returns the key used
+// and the encrypted data on success and `std::nullopt` on failure.
+std::optional<EncryptedData> Encrypt(
+    const brillo::SecureBlob& plain_dataconst,
+    std::optional<brillo::SecureBlob> key = std::nullopt,
+    std::optional<brillo::Blob> iv = std::nullopt);
 
 // Decrypts data with AES_256_GCM with the given key. Returns `std::nullopt`
 // on failure and the decrypted data on success.

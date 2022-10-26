@@ -42,9 +42,21 @@ void TestDecryptRandom(const uint8_t* data, size_t size) {
 }
 
 void TestDecryptEncryptedData(const uint8_t* data, size_t size) {
-  auto input_blob = brillo::SecureBlob(std::string{data, data + size});
+  FuzzedDataProvider provider(data, size);
 
-  auto encrypted = oobe_config::Encrypt(input_blob);
+  if (provider.remaining_bytes() < oobe_config::kOpenSslEncryptionKeySize +
+                                       oobe_config::kOpenSslEncryptionIvSize)
+    return;
+
+  auto key = brillo::SecureBlob(
+      provider.ConsumeBytesAsString(oobe_config::kOpenSslEncryptionKeySize));
+  auto iv = brillo::BlobFromString(
+      provider.ConsumeBytesAsString(oobe_config::kOpenSslEncryptionIvSize));
+  auto input_blob =
+      brillo::SecureBlob(provider.ConsumeRemainingBytesAsString());
+
+  auto encrypted = oobe_config::Encrypt(input_blob, key, iv);
+  CHECK(encrypted.has_value());
 
   auto decrypted = oobe_config::Decrypt(encrypted.value());
 
@@ -60,10 +72,18 @@ void TestDecryptEncryptedDataWrongKey(const uint8_t* data, size_t size) {
   auto wrong_key = brillo::SecureBlob(
       provider.ConsumeBytesAsString(oobe_config::kOpenSslEncryptionKeySize));
 
+  if (provider.remaining_bytes() < oobe_config::kOpenSslEncryptionKeySize +
+                                       oobe_config::kOpenSslEncryptionIvSize)
+    return;
+
+  auto key = brillo::SecureBlob(
+      provider.ConsumeBytesAsString(oobe_config::kOpenSslEncryptionKeySize));
+  auto iv = brillo::BlobFromString(
+      provider.ConsumeBytesAsString(oobe_config::kOpenSslEncryptionIvSize));
   auto input_blob =
       brillo::SecureBlob(provider.ConsumeRemainingBytesAsString());
 
-  auto encrypted = oobe_config::Encrypt(input_blob);
+  auto encrypted = oobe_config::Encrypt(input_blob, key, iv);
 
   if (encrypted->key == wrong_key)
     return;  // Just testing decrypting with the wrong key.

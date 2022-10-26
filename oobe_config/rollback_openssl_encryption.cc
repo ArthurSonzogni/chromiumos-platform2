@@ -36,9 +36,15 @@ std::optional<brillo::Blob> GenerateRandomIV() {
 
 }  // namespace
 
-std::optional<EncryptedData> Encrypt(const brillo::SecureBlob& data) {
-  std::optional<brillo::SecureBlob> key = GenerateRandomKey();
-  std::optional<brillo::Blob> iv = GenerateRandomIV();
+std::optional<EncryptedData> Encrypt(const brillo::SecureBlob& data,
+                                     std::optional<brillo::SecureBlob> key,
+                                     std::optional<brillo::Blob> iv) {
+  if (!key.has_value()) {
+    key = GenerateRandomKey();
+  }
+  if (!iv.has_value()) {
+    iv = GenerateRandomIV();
+  }
 
   if (!iv.has_value() || !key.has_value()) {
     return std::nullopt;
