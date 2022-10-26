@@ -1122,8 +1122,11 @@ CryptohomeStatus VaultKeyset::EncryptVaultKeyset(
         CryptoError::CE_OTHER_CRYPTO);
   }
 
-  AuthInput user_input = {vault_key, /*locked_to_single_user*=*/std::nullopt,
-                          obfuscated_username, /*reset_secret=*/std::nullopt,
+  AuthInput user_input = {vault_key,
+                          /*locked_to_single_user*=*/std::nullopt,
+                          /*username=*/std::string(),
+                          obfuscated_username,
+                          /*reset_secret=*/std::nullopt,
                           /*reset_seed=*/std::nullopt};
   if (!reset_seed_.empty()) {
     user_input.reset_seed = reset_seed_;

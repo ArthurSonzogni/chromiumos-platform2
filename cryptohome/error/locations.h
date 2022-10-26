@@ -897,7 +897,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocWrongAuthFactorInGetRecoveryRequest = 535,
   /* ./auth_session.cc */
   kLocAuthSessionEmptyKeyLabelInAuth = 536,
-  /* ./userdataauth.cc */
+  /* =Obsolete= */
   kLocUserDataAuthAuthBlockUtilityNotValidForChallenge = 537,
   /* =Obsolete= */
   kLocAuthSessionAddCredentialInvalidAuthInput = 538,
@@ -943,15 +943,15 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocUserDataAuthNoDBusInInitChalRespAuth = 558,
   /* =Obsolete= */
   kLocUserDataAuthNoDelegateInInitChalRespAuth = 559,
-  /* ./userdataauth.cc */
+  /* =Obsolete= */
   kLocUserDataAuthInitFailedInInitAuthBlockUtilChalResp = 560,
-  /* ./userdataauth.cc */
+  /* =Obsolete= */
   kLocUserDataAuthNoDelegateInInitAuthBlockUtilChalResp = 561,
-  /* ./userdataauth.cc */
+  /* =Obsolete= */
   kLocUserDataAuthNokeyInfoInInitAuthBlockUtilChalResp = 562,
-  /* ./userdataauth.cc */
+  /* =Obsolete= */
   kLocUserDataAuthMultipleKeysInInitAuthBlockUtilChalResp = 563,
-  /* ./userdataauth.cc */
+  /* =Obsolete= */
   kLocUserDataAuthCreateFailedInInitAuthBlockUtilChalResp = 564,
   /* ./userdataauth.cc */
   kLocUserDataAuthInitChalRespAuthFailedInDoChalRespMount = 565,
@@ -983,7 +983,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocUserDataAuthCredVerifyFailedInContinueMountWithCred = 578,
   /* ./userdataauth.cc */
   kLocUserDataAuthMountFailedInContinueMountWithCred = 579,
-  /* ./userdataauth.cc */
+  /* =Obsolete= */
   kLocUserDataAuthInitChalRespFailedInAddCredentials = 580,
   /* ./userdataauth.cc */
   kLocUserDataAuthRemoveAllMountsFailedInUnmount = 581,
@@ -1133,9 +1133,9 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocUserDataAuthOtherSessionActiveInPrepareEphemeralVault = 653,
   /* ./userdataauth.cc */
   kLocUserDataAuthNoIntentInStartAuthSession = 654,
-  /* ./userdataauth.cc */
+  /* =Obsolete= */
   kLocUserDataAuthNoKeyChallengeServiceInAddAuthFactor = 655,
-  /* ./userdataauth.cc */
+  /* =Obsolete= */
   kLocUserDataAuthNoKeyChallengeServiceInAuthAuthFactor = 656,
   /* ./auth_session.cc */
   kLocNoWrappedSeedInAuthInputForAdd = 657,

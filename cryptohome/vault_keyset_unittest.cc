@@ -1205,8 +1205,11 @@ TEST_F(LeCredentialsManagerTest, EncryptWithKeyBlobs) {
   auto auth_block = std::make_unique<PinWeaverAuthBlock>(
       crypto_.le_manager(), crypto_.cryptohome_keys_manager());
 
-  AuthInput auth_input = {brillo::SecureBlob(HexDecode(kHexVaultKey)), false,
-                          "unused", /*reset_secret*/ std::nullopt,
+  AuthInput auth_input = {brillo::SecureBlob(HexDecode(kHexVaultKey)),
+                          false,
+                          "unused",
+                          "unused",
+                          /*reset_secret*/ std::nullopt,
                           pin_vault_keyset_.reset_seed_};
   KeyBlobs key_blobs;
   AuthBlockState auth_state;
@@ -1235,7 +1238,10 @@ TEST_F(LeCredentialsManagerTest, EncryptWithKeyBlobsFailWithBadAuthState) {
   auto auth_block = std::make_unique<PinWeaverAuthBlock>(
       crypto_.le_manager(), crypto_.cryptohome_keys_manager());
 
-  AuthInput auth_input = {brillo::SecureBlob(44, 'A'), false, "unused",
+  AuthInput auth_input = {brillo::SecureBlob(44, 'A'),
+                          false,
+                          "unused",
+                          "unused",
                           /*reset_secret*/ std::nullopt,
                           pin_vault_keyset_.GetResetSeed()};
   KeyBlobs key_blobs;
@@ -1258,9 +1264,10 @@ TEST_F(LeCredentialsManagerTest, EncryptWithKeyBlobsFailWithNoResetSeed) {
   auto auth_block = std::make_unique<PinWeaverAuthBlock>(
       crypto_.le_manager(), crypto_.cryptohome_keys_manager());
 
-  AuthInput auth_input = {brillo::SecureBlob(44, 'A'), false, "unused",
-                          /*reset_secret*/ std::nullopt,
-                          /*reset_seed*/ std::nullopt};
+  AuthInput auth_input = {
+      brillo::SecureBlob(44, 'A'),   false, "unused", "unused",
+      /*reset_secret*/ std::nullopt,
+      /*reset_seed*/ std::nullopt};
   KeyBlobs key_blobs;
   AuthBlockState auth_state;
   CryptoStatus status = auth_block->Create(auth_input, &auth_state, &key_blobs);

@@ -110,7 +110,7 @@ TEST(TpmBoundToPcrTest, CreateTest) {
 
   AuthInput user_input = {vault_key,
                           /*locked_to_single_user=*/std::nullopt,
-                          kObfuscatedUsername,
+                          /*username=*/std::string(""), kObfuscatedUsername,
                           /*reset_secret=*/std::nullopt};
   KeyBlobs vkk_data;
 
@@ -155,7 +155,7 @@ TEST(TpmBoundToPcrTest, CreateFailTpm) {
 
   AuthInput user_input = {vault_key,
                           /*locked_to_single_user=*/std::nullopt,
-                          kObfuscatedUsername,
+                          /*username=*/std::string(""), kObfuscatedUsername,
                           /*reset_secret=*/std::nullopt};
   KeyBlobs vkk_data;
   TpmBoundToPcrAuthBlock auth_block(&hwsec, &cryptohome_keys_manager);
@@ -215,7 +215,7 @@ TEST(TpmNotBoundToPcrTest, Success) {
 
   AuthInput user_input = {vault_key,
                           /*locked_to_single_user=*/std::nullopt,
-                          kObfuscatedUsername,
+                          /*username=*/std::string(""), kObfuscatedUsername,
                           /*reset_secret=*/std::nullopt};
   KeyBlobs vkk_data;
   TpmNotBoundToPcrAuthBlock auth_block(&hwsec, &cryptohome_keys_manager);
@@ -269,7 +269,7 @@ TEST(TpmNotBoundToPcrTest, CreateFailTpm) {
 
   AuthInput user_input = {vault_key,
                           /*locked_to_single_user=*/std::nullopt,
-                          kObfuscatedUsername,
+                          /*username=*/std::string(""), kObfuscatedUsername,
                           /*reset_secret=*/std::nullopt};
   KeyBlobs vkk_data;
   TpmNotBoundToPcrAuthBlock auth_block(&hwsec, &cryptohome_keys_manager);
@@ -405,7 +405,8 @@ TEST(PinWeaverAuthBlockTest, CreateTest) {
   // Call the Create() method.
   AuthInput user_input = {vault_key,
                           /*locked_to_single_user=*/std::nullopt,
-                          kObfuscatedUsername, reset_secret};
+                          /*username=*/std::string(""), kObfuscatedUsername,
+                          reset_secret};
   KeyBlobs vkk_data;
 
   PinWeaverAuthBlock auth_block(&le_cred_manager, &cryptohome_keys_manager);
@@ -445,7 +446,8 @@ TEST(PinWeaverAuthBlockTest, CreateFailureLeManager) {
   // Call the Create() method.
   AuthInput user_input = {vault_key,
                           /*locked_to_single_user=*/std::nullopt,
-                          kObfuscatedUsername, reset_secret};
+                          /*username=*/std::string(""), kObfuscatedUsername,
+                          reset_secret};
   KeyBlobs vkk_data;
   AuthBlockState auth_state;
   EXPECT_EQ(CryptoError::CE_OTHER_CRYPTO,
@@ -1549,7 +1551,7 @@ TEST(TpmEccAuthBlockTest, CreateTest) {
 
   AuthInput user_input = {vault_key,
                           /*locked_to_single_user=*/std::nullopt,
-                          kObfuscatedUsername,
+                          /*username=*/std::string(""), kObfuscatedUsername,
                           /*reset_secret=*/std::nullopt};
   KeyBlobs vkk_data;
 
@@ -1604,7 +1606,7 @@ TEST(TpmEccAuthBlockTest, CreateRetryTest) {
 
   AuthInput user_input = {vault_key,
                           /*locked_to_single_user=*/std::nullopt,
-                          kObfuscatedUsername,
+                          /*username=*/std::string(""), kObfuscatedUsername,
                           /*reset_secret=*/std::nullopt};
   KeyBlobs vkk_data;
 
@@ -1646,7 +1648,7 @@ TEST(TpmEccAuthBlockTest, CreateRetryFailTest) {
 
   AuthInput user_input = {vault_key,
                           /*locked_to_single_user=*/std::nullopt,
-                          kObfuscatedUsername,
+                          /*username=*/std::string(""), kObfuscatedUsername,
                           /*reset_secret=*/std::nullopt};
   KeyBlobs vkk_data;
   TpmEccAuthBlock auth_block(&hwsec, &cryptohome_keys_manager);
@@ -1709,7 +1711,7 @@ TEST(TpmEccAuthBlockTest, CreateSealToPcrFailTest) {
 
   AuthInput user_input = {vault_key,
                           /*locked_to_single_user=*/std::nullopt,
-                          kObfuscatedUsername,
+                          /*username=*/std::string(""), kObfuscatedUsername,
                           /*reset_secret=*/std::nullopt};
   KeyBlobs vkk_data;
   TpmEccAuthBlock auth_block(&hwsec, &cryptohome_keys_manager);
@@ -1741,6 +1743,7 @@ TEST(TpmEccAuthBlockTest, CreateSecondSealToPcrFailTest) {
   AuthInput user_input = {vault_key,
                           /*locked_to_single_user=*/std::nullopt,
                           kObfuscatedUsername,
+                          /*username=*/std::string(""),
                           /*reset_secret=*/std::nullopt};
   KeyBlobs vkk_data;
   TpmEccAuthBlock auth_block(&hwsec, &cryptohome_keys_manager);
@@ -1768,7 +1771,7 @@ TEST(TpmEccAuthBlockTest, CreateEccAuthValueFailTest) {
 
   AuthInput user_input = {vault_key,
                           /*locked_to_single_user=*/std::nullopt,
-                          kObfuscatedUsername,
+                          /*username=*/std::string(""), kObfuscatedUsername,
                           /*reset_secret=*/std::nullopt};
   KeyBlobs vkk_data;
   TpmEccAuthBlock auth_block(&hwsec, &cryptohome_keys_manager);

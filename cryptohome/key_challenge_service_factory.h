@@ -23,8 +23,9 @@ class KeyChallengeServiceFactory {
       delete;
   virtual ~KeyChallengeServiceFactory() = default;
 
+  virtual void SetMountThreadBus(scoped_refptr<::dbus::Bus> bus) = 0;
+
   virtual std::unique_ptr<KeyChallengeService> New(
-      scoped_refptr<::dbus::Bus> bus,
       const std::string& key_delegate_dbus_service_name) = 0;
 };
 

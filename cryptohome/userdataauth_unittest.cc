@@ -5596,8 +5596,7 @@ class ChallengeResponseUserDataAuthExTest : public UserDataAuthExTest {
         ->mutable_key_delegate()
         ->set_dbus_service_name(kKeyDelegateDBusService);
 
-    ON_CALL(key_challenge_service_factory_,
-            New(/*bus=*/_, kKeyDelegateDBusService))
+    ON_CALL(key_challenge_service_factory_, New(kKeyDelegateDBusService))
         .WillByDefault(InvokeWithoutArgs(
             []() { return std::make_unique<MockKeyChallengeService>(); }));
   }

@@ -51,6 +51,9 @@ struct ChallengeCredentialAuthInput {
   // denotes that the key cannot be used for signing.
   std::vector<structure::ChallengeSignatureAlgorithm>
       challenge_signature_algorithms;
+  // Dbus service name used when generating a KeyChallengeService,
+  // also used to create the ChallengeCredential AuthBlock.
+  std::string dbus_service_name;
 };
 
 struct AuthInput {
@@ -58,6 +61,8 @@ struct AuthInput {
   std::optional<brillo::SecureBlob> user_input;
   // Whether or not the PCR is extended, this is usually false.
   std::optional<bool> locked_to_single_user;
+  // The username accosiated with the running AuthSession.
+  std::string username;
   // The obfuscated username.
   std::optional<std::string> obfuscated_username;
   // A generated reset secret to unlock a rate limited credential. This will be

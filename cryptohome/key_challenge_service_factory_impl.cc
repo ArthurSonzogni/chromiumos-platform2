@@ -19,16 +19,24 @@ KeyChallengeServiceFactoryImpl::KeyChallengeServiceFactoryImpl() = default;
 
 KeyChallengeServiceFactoryImpl::~KeyChallengeServiceFactoryImpl() = default;
 
+void KeyChallengeServiceFactoryImpl::SetMountThreadBus(
+    scoped_refptr<::dbus::Bus> bus) {
+  if (mount_thread_bus_) {
+    LOG(WARNING)
+        << "MountThreadBus already initialized in KeyChallengeServiceFactory.";
+  }
+  mount_thread_bus_ = bus;
+}
+
 std::unique_ptr<KeyChallengeService> KeyChallengeServiceFactoryImpl::New(
-    scoped_refptr<::dbus::Bus> bus,
     const std::string& key_delegate_dbus_service_name) {
-  if (!bus) {
+  if (!mount_thread_bus_) {
     LOG(ERROR) << "Cannot do challenge-response authentication without system "
                   "D-Bus bus";
     return nullptr;
   }
   return std::make_unique<KeyChallengeServiceImpl>(
-      bus, key_delegate_dbus_service_name);
+      mount_thread_bus_, key_delegate_dbus_service_name);
 }
 
 }  // namespace cryptohome

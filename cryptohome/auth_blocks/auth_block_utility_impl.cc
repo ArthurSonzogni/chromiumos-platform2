@@ -66,9 +66,7 @@ AuthBlockUtilityImpl::AuthBlockUtilityImpl(
     : keyset_management_(keyset_management),
       crypto_(crypto),
       platform_(platform),
-      fp_service_(std::move(fp_service)),
-      challenge_credentials_helper_(nullptr),
-      key_challenge_service_(nullptr) {
+      fp_service_(std::move(fp_service)) {
   DCHECK(keyset_management);
   DCHECK(crypto_);
   DCHECK(platform_);
@@ -279,6 +277,7 @@ CryptoStatus AuthBlockUtilityImpl::CreateKeyBlobsWithAuthBlock(
   AuthInput user_input = {
       credentials.passkey(),
       /*locked_to_single_user*=*/std::nullopt,
+      /*username=*/credentials.username(),
       brillo::cryptohome::home::SanitizeUserName(credentials.username()),
       reset_secret};
 
@@ -300,7 +299,7 @@ bool AuthBlockUtilityImpl::CreateKeyBlobsWithAuthBlockAsync(
     const AuthInput& auth_input,
     AuthBlock::CreateCallback create_callback) {
   CryptoStatusOr<std::unique_ptr<AuthBlock>> auth_block =
-      GetAsyncAuthBlockWithType(auth_block_type);
+      GetAsyncAuthBlockWithType(auth_block_type, auth_input);
   if (!auth_block.ok()) {
     LOG(ERROR) << "Failed to retrieve auth block.";
     std::move(create_callback)
@@ -396,7 +395,7 @@ bool AuthBlockUtilityImpl::DeriveKeyBlobsWithAuthBlockAsync(
   DCHECK_NE(auth_block_type, AuthBlockType::kMaxValue);
 
   CryptoStatusOr<std::unique_ptr<AuthBlock>> auth_block =
-      GetAsyncAuthBlockWithType(auth_block_type);
+      GetAsyncAuthBlockWithType(auth_block_type, auth_input);
   if (!auth_block.ok()) {
     LOG(ERROR) << "Failed to retrieve auth block.";
     std::move(derive_callback)
@@ -531,7 +530,7 @@ AuthBlockUtilityImpl::GetAuthBlockWithType(
 
 CryptoStatusOr<std::unique_ptr<AuthBlock>>
 AuthBlockUtilityImpl::GetAsyncAuthBlockWithType(
-    const AuthBlockType& auth_block_type) {
+    const AuthBlockType& auth_block_type, const AuthInput& auth_input) {
   switch (auth_block_type) {
     case AuthBlockType::kPinWeaver:
       return std::make_unique<SyncToAsyncAuthBlockAdapter>(
@@ -539,10 +538,12 @@ AuthBlockUtilityImpl::GetAsyncAuthBlockWithType(
               crypto_->le_manager(), crypto_->cryptohome_keys_manager()));
 
     case AuthBlockType::kChallengeCredential:
-      if (IsChallengeCredentialReady()) {
+      if (IsChallengeCredentialReady(auth_input)) {
+        auto key_challenge_service = key_challenge_service_factory_->New(
+            auth_input.challenge_credential_auth_input->dbus_service_name);
         return std::make_unique<AsyncChallengeCredentialAuthBlock>(
-            challenge_credentials_helper_, std::move(key_challenge_service_),
-            username_.value());
+            challenge_credentials_helper_, std::move(key_challenge_service),
+            auth_input.username);
       }
       LOG(ERROR) << "No valid ChallengeCredentialsHelper, "
                     "KeyChallengeService, or account id in AuthBlockUtility";
@@ -600,26 +601,30 @@ AuthBlockUtilityImpl::GetAsyncAuthBlockWithType(
       CryptoError::CE_OTHER_CRYPTO);
 }
 
-void AuthBlockUtilityImpl::SetSingleUseKeyChallengeService(
-    std::unique_ptr<KeyChallengeService> key_challenge_service,
-    const std::string& username) {
-  key_challenge_service_ = std::move(key_challenge_service);
-  username_ = username;
-}
-
-void AuthBlockUtilityImpl::InitializeForChallengeCredentials(
-    ChallengeCredentialsHelper* challenge_credentials_helper) {
+void AuthBlockUtilityImpl::InitializeChallengeCredentialsHelper(
+    ChallengeCredentialsHelper* challenge_credentials_helper,
+    KeyChallengeServiceFactory* key_challenge_service_factory) {
   if (!challenge_credentials_helper_) {
     challenge_credentials_helper_ = challenge_credentials_helper;
   } else {
-    LOG(WARNING) << "challenge_credentials_helper already initialized in "
+    LOG(WARNING) << "ChallengeCredentialsHelper already initialized in "
+                    "AuthBlockUtility.";
+  }
+  if (!key_challenge_service_factory_) {
+    key_challenge_service_factory_ = key_challenge_service_factory;
+  } else {
+    LOG(WARNING) << "KeyChallengeServiceFactory already initialized in "
                     "AuthBlockUtility.";
   }
 }
 
-bool AuthBlockUtilityImpl::IsChallengeCredentialReady() const {
-  return (key_challenge_service_ && challenge_credentials_helper_ &&
-          username_.has_value());
+bool AuthBlockUtilityImpl::IsChallengeCredentialReady(
+    const AuthInput& auth_input) const {
+  return (
+      challenge_credentials_helper_ != nullptr &&
+      key_challenge_service_factory_ != nullptr &&
+      auth_input.challenge_credential_auth_input &&
+      !auth_input.challenge_credential_auth_input->dbus_service_name.empty());
 }
 
 bool AuthBlockUtilityImpl::GetAuthBlockStateFromVaultKeyset(
@@ -754,8 +759,16 @@ CryptoStatus AuthBlockUtilityImpl::PrepareAuthBlockForRemoval(
         CryptoError::CE_OTHER_CRYPTO);
   }
 
+  // Should not create ChallengeCredential AuthBlock, no underlying
+  // removal of the AuthBlock needed. Because of this, auth_input
+  // can be an empty input.
+  if (auth_block_type == AuthBlockType::kChallengeCredential) {
+    return OkStatus<CryptohomeCryptoError>();
+  }
+
+  AuthInput auth_input;
   CryptoStatusOr<std::unique_ptr<AuthBlock>> auth_block =
-      GetAsyncAuthBlockWithType(auth_block_type);
+      GetAsyncAuthBlockWithType(auth_block_type, auth_input);
   if (!auth_block.ok()) {
     LOG(ERROR) << "Failed to retrieve auth block.";
     return MakeStatus<CryptohomeCryptoError>(

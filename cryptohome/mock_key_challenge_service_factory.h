@@ -22,9 +22,8 @@ class MockKeyChallengeServiceFactory : public KeyChallengeServiceFactory {
   MockKeyChallengeServiceFactory() = default;
   ~MockKeyChallengeServiceFactory() override = default;
 
-  MOCK_METHOD(std::unique_ptr<KeyChallengeService>,
-              New,
-              (scoped_refptr<::dbus::Bus> bus, const std::string&));
+  MOCK_METHOD(void, SetMountThreadBus, (scoped_refptr<::dbus::Bus> bus));
+  MOCK_METHOD(std::unique_ptr<KeyChallengeService>, New, (const std::string&));
 };
 
 }  // namespace cryptohome

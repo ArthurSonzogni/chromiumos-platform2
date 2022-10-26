@@ -646,6 +646,7 @@ void AuthSession::AddCredentials(
   AuthInput auth_input = {
       .user_input = credentials->passkey(),
       .locked_to_single_user = std::nullopt,
+      .username = username_,
       .obfuscated_username = obfuscated_username_,
       .reset_secret = std::nullopt,
       .reset_seed = std::nullopt,
@@ -740,6 +741,7 @@ void AuthSession::CreateKeyBlobsToUpdateKeyset(const Credentials& credentials,
   // Create and initialize fields for auth_input.
   AuthInput auth_input = {.user_input = credentials.passkey(),
                           .locked_to_single_user = std::nullopt,
+                          .username = username_,
                           .obfuscated_username = obfuscated_username_,
                           .reset_secret = std::nullopt,
                           .reset_seed = std::nullopt,
@@ -1044,6 +1046,7 @@ void AuthSession::Authenticate(
   AuthInput auth_input = {
       .user_input = credentials->passkey(),
       .locked_to_single_user = auth_block_utility_->GetLockedToSingleUser(),
+      .username = username_,
       .obfuscated_username = std::nullopt,
       .reset_secret = std::nullopt,
       .reset_seed = std::nullopt,
@@ -1925,6 +1928,7 @@ void AuthSession::ResaveVaultKeysetIfNeeded(
   // Create and initialize fields for AuthInput.
   AuthInput auth_input = {.user_input = user_input,
                           .locked_to_single_user = std::nullopt,
+                          .username = username_,
                           .obfuscated_username = obfuscated_username_,
                           .reset_secret = std::nullopt,
                           .reset_seed = std::nullopt,
@@ -2101,6 +2105,13 @@ AuthSession::CreateChallengeCredentialAuthInput(
   if (authorization.key().data().challenge_response_key_size() != 1) {
     return std::nullopt;
   }
+  if (!authorization.has_key_delegate() ||
+      !authorization.key_delegate().has_dbus_service_name()) {
+    LOG(ERROR) << "Cannot do challenge-response operation without key "
+                  "delegate information";
+    return std::nullopt;
+  }
+
   const ChallengePublicKeyInfo& public_key_info =
       authorization.key().data().challenge_response_key(0);
   auto struct_public_key_info = cryptohome::proto::FromProto(public_key_info);
@@ -2108,6 +2119,7 @@ AuthSession::CreateChallengeCredentialAuthInput(
       .public_key_spki_der = struct_public_key_info.public_key_spki_der,
       .challenge_signature_algorithms =
           struct_public_key_info.signature_algorithm,
+      .dbus_service_name = authorization.key_delegate().dbus_service_name(),
   };
 }
 

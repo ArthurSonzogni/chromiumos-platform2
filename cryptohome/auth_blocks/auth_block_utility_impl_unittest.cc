@@ -59,6 +59,7 @@
 #include "cryptohome/mock_cryptohome_keys_manager.h"
 #include "cryptohome/mock_fingerprint_manager.h"
 #include "cryptohome/mock_key_challenge_service.h"
+#include "cryptohome/mock_key_challenge_service_factory.h"
 #include "cryptohome/mock_keyset_management.h"
 #include "cryptohome/mock_le_credential_manager.h"
 #include "cryptohome/mock_platform.h"
@@ -89,6 +90,7 @@ namespace cryptohome {
 
 namespace {
 constexpr char kUser[] = "Test User";
+constexpr const char* kKeyDelegateDBusService = "key-delegate-service";
 constexpr int kWorkFactor = 16384;
 constexpr int kBlockSize = 8;
 constexpr int kParallelFactor = 1;
@@ -160,9 +162,10 @@ class AuthBlockUtilityImplTest : public ::testing::Test {
   std::unique_ptr<hwsec::RecoveryCryptoFrontend> recovery_crypto_fake_backend_;
   Crypto crypto_;
   std::unique_ptr<KeysetManagement> keyset_management_;
-  std::unique_ptr<AuthBlockUtilityImpl> auth_block_utility_impl_;
+  NiceMock<MockKeyChallengeServiceFactory> key_challenge_service_factory_;
   NiceMock<MockChallengeCredentialsHelper> challenge_credentials_helper_;
   user_data_auth::FingerprintScanResult result_;
+  std::unique_ptr<AuthBlockUtilityImpl> auth_block_utility_impl_;
 };
 
 TEST_F(AuthBlockUtilityImplTest, GetSupportedAuthFactors) {
@@ -1127,7 +1130,8 @@ TEST_F(AuthBlockUtilityImplTest, SyncToAsyncAdapterCreate) {
       });
 
   AuthInput auth_input = {
-      credentials.passkey(), std::nullopt, /*locked_to_single_user*=*/
+      credentials.passkey(),
+      /*locked_to_single_user*=*/std::nullopt, credentials.username(),
       credentials.GetObfuscatedUsername(), /*reset_secret*/ std::nullopt};
 
   // Test.
@@ -1198,16 +1202,13 @@ TEST_F(AuthBlockUtilityImplTest, AsyncChallengeCredentialCreate) {
             ChallengeCredentialsHelper::GenerateNewOrDecryptResult(
                 std::move(info), std::move(passkey)));
       });
-
-  auto mock_key_challenge_service =
-      std::make_unique<NiceMock<MockKeyChallengeService>>();
-
+  EXPECT_CALL(key_challenge_service_factory_, New(kKeyDelegateDBusService))
+      .WillOnce([](const std::string& bus_name) {
+        return std::make_unique<MockKeyChallengeService>();
+      });
   MakeAuthBlockUtilityImpl();
-
-  auth_block_utility_impl_->InitializeForChallengeCredentials(
-      &challenge_credentials_helper_);
-  auth_block_utility_impl_->SetSingleUseKeyChallengeService(
-      std::move(mock_key_challenge_service), credentials.username());
+  auth_block_utility_impl_->InitializeChallengeCredentialsHelper(
+      &challenge_credentials_helper_, &key_challenge_service_factory_);
 
   AuthBlock::CreateCallback create_callback = base::BindLambdaForTesting(
       [&](CryptoStatus error, std::unique_ptr<KeyBlobs> blobs,
@@ -1256,12 +1257,12 @@ TEST_F(AuthBlockUtilityImplTest, AsyncChallengeCredentialCreate) {
       });
   AuthInput auth_input;
   auth_input.obfuscated_username = credentials.GetObfuscatedUsername();
-  auth_input.locked_to_single_user = false;
+  auth_input.username = kUser, auth_input.locked_to_single_user = false;
   auth_input.challenge_credential_auth_input = ChallengeCredentialAuthInput{
       .public_key_spki_der = brillo::BlobFromString("public_key_spki_der"),
       .challenge_signature_algorithms =
           {structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha256},
-  };
+      .dbus_service_name = kKeyDelegateDBusService};
 
   // Test.
   EXPECT_EQ(true, auth_block_utility_impl_->CreateKeyBlobsWithAuthBlockAsync(
@@ -1326,16 +1327,11 @@ TEST_F(AuthBlockUtilityImplTest, AsyncChallengeCredentialDerive) {
       0x2c, 0x1e, 0x41, 0x1c, 0xd2, 0x07, 0x48, 0x39, 0x2a, 0xfd, 0x6c,
       0xd6, 0x6f, 0x1c, 0x8e, 0xca, 0x00, 0x79, 0x91, 0x52};
 
-  auto mock_key_challenge_service =
-      std::make_unique<NiceMock<MockKeyChallengeService>>();
-
   MakeAuthBlockUtilityImpl();
-
-  auth_block_utility_impl_->InitializeForChallengeCredentials(
-      &challenge_credentials_helper_);
-  auth_block_utility_impl_->SetSingleUseKeyChallengeService(
-      std::move(mock_key_challenge_service), credentials.username());
-
+  EXPECT_CALL(key_challenge_service_factory_, New(kKeyDelegateDBusService))
+      .WillOnce([](const std::string& bus_name) {
+        return std::make_unique<MockKeyChallengeService>();
+      });
   EXPECT_CALL(challenge_credentials_helper_, Decrypt(kUser, _, _, _, _))
       .WillOnce([&](auto&&, auto&&, auto&&, auto&&, auto&& callback) {
         auto passkey = std::make_unique<brillo::SecureBlob>(scrypt_passkey);
@@ -1343,6 +1339,8 @@ TEST_F(AuthBlockUtilityImplTest, AsyncChallengeCredentialDerive) {
             ChallengeCredentialsHelper::GenerateNewOrDecryptResult(
                 nullptr, std::move(passkey)));
       });
+  auth_block_utility_impl_->InitializeChallengeCredentialsHelper(
+      &challenge_credentials_helper_, &key_challenge_service_factory_);
   // Test.
   AuthBlock::DeriveCallback derive_callback = base::BindLambdaForTesting(
       [&](CryptoStatus error, std::unique_ptr<KeyBlobs> blobs) {
@@ -1354,12 +1352,12 @@ TEST_F(AuthBlockUtilityImplTest, AsyncChallengeCredentialDerive) {
 
   AuthInput auth_input = {
       credentials.passkey(),
-      /*locked_to_single_user=*/std::nullopt,
+      /*locked_to_single_user=*/std::nullopt, .username = kUser,
       .challenge_credential_auth_input = ChallengeCredentialAuthInput{
           .public_key_spki_der = brillo::BlobFromString("public_key_spki_der"),
           .challenge_signature_algorithms =
               {structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha256},
-      }};
+          .dbus_service_name = kKeyDelegateDBusService}};
   auth_block_utility_impl_->DeriveKeyBlobsWithAuthBlockAsync(
       AuthBlockType::kChallengeCredential, auth_input, auth_state,
       std::move(derive_callback));
@@ -1441,10 +1439,10 @@ TEST_F(AuthBlockUtilityImplTest, DeriveAuthBlockStateFromVaultKeysetTest) {
   EXPECT_EQ(SerializedVaultKeyset::LE_CREDENTIAL, vk->GetFlags());
 
   KeyBlobs out_key_blobs;
+  // Insert MockKeysetManagement into AuthBlockUtility
   auth_block_utility_impl_ = std::make_unique<AuthBlockUtilityImpl>(
       &keyset_management, &crypto_, &platform_,
       MakeFingerprintAuthBlockService());
-
   // Test
   AuthBlockState out_state;
   EXPECT_CALL(keyset_management, GetVaultKeyset(_, _))
@@ -1735,20 +1733,30 @@ TEST_F(AuthBlockUtilityImplTest, GetAsyncAuthBlockWithType) {
   brillo::SecureBlob passkey("passkey");
   Credentials credentials(kUser, passkey);
   crypto_.Init();
-  auto mock_key_challenge_service =
-      std::make_unique<NiceMock<MockKeyChallengeService>>();
 
   MakeAuthBlockUtilityImpl();
+  auth_block_utility_impl_->InitializeChallengeCredentialsHelper(
+      &challenge_credentials_helper_, &key_challenge_service_factory_);
+  EXPECT_CALL(key_challenge_service_factory_, New(kKeyDelegateDBusService))
+      .WillOnce([](const std::string& bus_name) {
+        return std::make_unique<MockKeyChallengeService>();
+      });
 
-  auth_block_utility_impl_->InitializeForChallengeCredentials(
-      &challenge_credentials_helper_);
-  auth_block_utility_impl_->SetSingleUseKeyChallengeService(
-      std::move(mock_key_challenge_service), credentials.username());
-
+  AuthInput auth_input{
+      .username = kUser,
+      .challenge_credential_auth_input =
+          ChallengeCredentialAuthInput{
+              .public_key_spki_der =
+                  brillo::BlobFromString("public_key_spki_der"),
+              .challenge_signature_algorithms =
+                  {structure::ChallengeSignatureAlgorithm::
+                       kRsassaPkcs1V15Sha256},
+              .dbus_service_name = kKeyDelegateDBusService},
+  };
   // Test. All fields are valid to get an AsyncChallengeCredentialAuthBlock.
   CryptoStatusOr<std::unique_ptr<AuthBlock>> auth_block =
       auth_block_utility_impl_->GetAsyncAuthBlockWithType(
-          AuthBlockType::kChallengeCredential);
+          AuthBlockType::kChallengeCredential, auth_input);
   EXPECT_TRUE(auth_block.ok());
   EXPECT_NE(auth_block.value(), nullptr);
 }
@@ -1757,13 +1765,13 @@ TEST_F(AuthBlockUtilityImplTest, GetAsyncAuthBlockWithTypeFail) {
   brillo::SecureBlob passkey("passkey");
   Credentials credentials(kUser, passkey);
   crypto_.Init();
-  // Test. No valid challenge_credentials, no valid key_challenge_service or
-  // account_id.
+  // Test. No valid dbus_service_name or username.
   MakeAuthBlockUtilityImpl();
 
+  AuthInput auth_input;
   CryptoStatusOr<std::unique_ptr<AuthBlock>> auth_block =
       auth_block_utility_impl_->GetAsyncAuthBlockWithType(
-          AuthBlockType::kChallengeCredential);
+          AuthBlockType::kChallengeCredential, auth_input);
   EXPECT_FALSE(auth_block.ok());
 }
 

@@ -23,6 +23,7 @@
 #include "cryptohome/auth_blocks/scrypt_auth_block.h"
 #include "cryptohome/auth_factor/auth_factor_manager.h"
 #include "cryptohome/auth_session_manager.h"
+#include "cryptohome/challenge_credentials/mock_challenge_credentials_helper.h"
 #include "cryptohome/cleanup/mock_user_oldest_activity_timestamp_manager.h"
 #include "cryptohome/credentials.h"
 #include "cryptohome/credentials_test_util.h"
@@ -30,6 +31,7 @@
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/mock_cryptohome_keys_manager.h"
 #include "cryptohome/mock_install_attributes.h"
+#include "cryptohome/mock_key_challenge_service_factory.h"
 #include "cryptohome/mock_keyset_management.h"
 #include "cryptohome/mock_le_credential_manager.h"
 #include "cryptohome/mock_pkcs11_init.h"
@@ -132,6 +134,8 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
     auth_block_utility_ = std::make_unique<AuthBlockUtilityImpl>(
         keyset_management_.get(), &crypto_, &platform_,
         FingerprintAuthBlockService::MakeNullService());
+    auth_block_utility_->InitializeChallengeCredentialsHelper(
+        &challenge_credentials_helper_, &key_challenge_service_factory_);
     auth_session_manager_ = std::make_unique<AuthSessionManager>(
         &crypto_, &platform_, &user_session_map_, keyset_management_.get(),
         auth_block_utility_.get(), &auth_factor_manager_,
@@ -274,6 +278,8 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
   std::unique_ptr<KeysetManagement> keyset_management_;
   NiceMock<MockHomeDirs> homedirs_;
   NiceMock<MockUserSessionFactory> user_session_factory_;
+  NiceMock<MockChallengeCredentialsHelper> challenge_credentials_helper_;
+  NiceMock<MockKeyChallengeServiceFactory> key_challenge_service_factory_;
   std::unique_ptr<AuthBlockUtilityImpl> auth_block_utility_;
   NiceMock<MockAuthBlockUtility> mock_auth_block_utility_;
   AuthFactorManager auth_factor_manager_{&platform_};

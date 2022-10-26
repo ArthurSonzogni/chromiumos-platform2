@@ -903,18 +903,6 @@ class UserDataAuth {
   // succeeded.
   CryptohomeStatus InitForChallengeResponseAuth();
 
-  // After lazy initialization through InitForChallengeResponseAuth,
-  // it updates the existing auth_block_utility_ to have a valid
-  // challenge_credentials_helper and refreshes the key_challenge_service
-  // for adding, updating and authenticating with ChallengeCredentials.
-  CryptohomeStatus InitAuthBlockUtilityForChallengeResponse(
-      const AuthorizationRequest& authorization, const std::string& username);
-
-  // Helper function for InitAuthBlockUtilityForChallengeResponse initializes
-  // KeyChallengeService.
-  CryptohomeStatus InitKeyChallengeServiceForAuthBlockUtility(
-      const std::string& dbus_service_name, const std::string& username);
-
   // This is a utility function used by DoMount(). It is called if the request
   // mounting operation requires challenge response authentication. i.e. The key
   // for the storage is sealed.
@@ -967,6 +955,11 @@ class UserDataAuth {
       base::OnceCallback<void(user_data_auth::CryptohomeErrorCode)> on_done,
       TPMStatusOr<ChallengeCredentialsHelper::GenerateNewOrDecryptResult>
           result);
+
+  // Called on Mount Thread, initializes the challenge_credentials_helper_
+  // and the key_challenge_service_factory_, and forwards these
+  // arguments to AuthBlockUtility.
+  void InitializeChallengeCredentialsHelper();
 
   void GetAuthSessionStatusImpl(
       AuthSession* auth_session,

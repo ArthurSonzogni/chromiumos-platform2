@@ -27,9 +27,13 @@ class KeyChallengeServiceFactoryImpl final : public KeyChallengeServiceFactory {
       const KeyChallengeServiceFactoryImpl&) = delete;
   ~KeyChallengeServiceFactoryImpl() override;
 
+  void SetMountThreadBus(scoped_refptr<::dbus::Bus> bus) override;
+
   std::unique_ptr<KeyChallengeService> New(
-      scoped_refptr<::dbus::Bus> bus,
       const std::string& key_delegate_dbus_service_name) override;
+
+ private:
+  scoped_refptr<::dbus::Bus> mount_thread_bus_;
 };
 
 }  // namespace cryptohome

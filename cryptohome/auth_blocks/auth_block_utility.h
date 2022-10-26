@@ -24,6 +24,7 @@
 #include "cryptohome/error/cryptohome_error.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/key_challenge_service.h"
+#include "cryptohome/key_challenge_service_factory_impl.h"
 #include "cryptohome/key_objects.h"
 
 namespace cryptohome {
@@ -180,21 +181,16 @@ class AuthBlockUtility {
       brillo::SecureBlob* out_recovery_request,
       brillo::SecureBlob* out_ephemeral_pub_key) const = 0;
 
-  // Provides a KeyChallengeService for ChallengeCredentials to
-  // either create or derive KeyBlobs.
-  virtual void SetSingleUseKeyChallengeService(
-      std::unique_ptr<KeyChallengeService> key_challenge_service,
-      const std::string& account_id) = 0;
+  // Sets challenge_credentials_helper_ and key_challenge_factory_callback_
+  // in AuthBlockUtility.
+  virtual void InitializeChallengeCredentialsHelper(
+      ChallengeCredentialsHelper* challenge_credentials_helper,
+      KeyChallengeServiceFactory* key_challenge_service_factory) = 0;
 
-  // Initializes ChallengeCredentialsHelper for
-  // AuthBlockType::kChallengeCredential
-  virtual void InitializeForChallengeCredentials(
-      ChallengeCredentialsHelper* challenge_credentials_helper) = 0;
-
-  // Returns if the AuthBlockUtility has called
-  // InitializeForChallengeCredentials and has a valid
-  // challenge_credentials_helper_.
-  virtual bool IsChallengeCredentialReady() const = 0;
+  // Returns if the auth_input has valid fields to generate a
+  // KeyChallengeService.
+  virtual bool IsChallengeCredentialReady(
+      const AuthInput& auth_input) const = 0;
 };
 
 }  // namespace cryptohome

@@ -170,6 +170,9 @@ class AuthSessionTest : public ::testing::Test {
     homedirs_ = std::make_unique<HomeDirs>(
         &platform_, std::make_unique<policy::PolicyProvider>(nullptr),
         HomeDirs::RemoveCallback());
+    auth_block_utility_impl_ = std::make_unique<AuthBlockUtilityImpl>(
+        &keyset_management_, &crypto_, &platform_,
+        FingerprintAuthBlockService::MakeNullService());
   }
 
  protected:
@@ -261,6 +264,7 @@ class AuthSessionTest : public ::testing::Test {
   Crypto crypto_{&hwsec_, &pinweaver_, &cryptohome_keys_manager_, nullptr};
   NiceMock<MockKeysetManagement> keyset_management_;
   NiceMock<MockAuthBlockUtility> auth_block_utility_;
+  std::unique_ptr<AuthBlockUtility> auth_block_utility_impl_;
   AuthFactorManager auth_factor_manager_{&platform_};
   UserSecretStashStorage user_secret_stash_storage_{&platform_};
   UserSessionMap user_session_map_;
@@ -496,10 +500,6 @@ TEST_F(AuthSessionTest, AddCredentialNewUser) {
   EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(false));
   // For AuthSession::AddInitialKeyset/AddKeyset callback to properly
   // execute auth_block_utility_ cannot be a mock
-  std::unique_ptr<AuthBlockUtilityImpl> auth_block_utility_impl_ =
-      std::make_unique<AuthBlockUtilityImpl>(
-          &keyset_management_, &crypto_, &platform_,
-          FingerprintAuthBlockService::MakeNullService());
   // Use this new auth_session_manager to make the AuthSession, need a to use
   // |auth_block_utility_impl_|.
   AuthSessionManager auth_session_manager_impl_{&crypto_,
@@ -576,10 +576,6 @@ TEST_F(AuthSessionTest, AddCredentialNewUserTwice) {
   int flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE;
   // For AuthSession::AddInitialKeyset/AddKeyset callback to properly
   // execute auth_block_utility_ cannot be a mock
-  std::unique_ptr<AuthBlockUtilityImpl> auth_block_utility_impl_ =
-      std::make_unique<AuthBlockUtilityImpl>(
-          &keyset_management_, &crypto_, &platform_,
-          FingerprintAuthBlockService::MakeNullService());
   // Use this new auth_session_manager to make the AuthSession, need a to use
   // |auth_block_utility_impl_|.
   AuthSessionManager auth_session_manager_impl_{&crypto_,
@@ -1163,10 +1159,6 @@ TEST_F(AuthSessionTest, UpdateCredentialSuccess) {
   int flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE;
   // For AuthSession::UpdateKeyset callback to properly
   // execute auth_block_utility_ cannot be a mock
-  std::unique_ptr<AuthBlockUtilityImpl> auth_block_utility_impl_ =
-      std::make_unique<AuthBlockUtilityImpl>(
-          &keyset_management_, &crypto_, &platform_,
-          FingerprintAuthBlockService::MakeNullService());
   // Use this new auth_session_manager to make the AuthSession, need a to use
   // |auth_block_utility_impl_|.
   AuthSessionManager auth_session_manager_impl_{&crypto_,
@@ -1667,10 +1659,6 @@ TEST_F(AuthSessionTest, AddAuthFactorNewUser) {
   // Setting the expectation that the user does not exist.
   EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(false));
 
-  std::unique_ptr<AuthBlockUtilityImpl> auth_block_utility_impl_ =
-      std::make_unique<AuthBlockUtilityImpl>(
-          &keyset_management_, &crypto_, &platform_,
-          FingerprintAuthBlockService::MakeNullService());
   // Use this new auth_session_manager to make the AuthSession, need a to use
   // |auth_block_utility_impl_|.
   AuthSessionManager auth_session_manager_impl_{&crypto_,

@@ -138,14 +138,11 @@ class AuthBlockUtilityImpl final : public AuthBlockUtility {
       brillo::SecureBlob* out_recovery_request,
       brillo::SecureBlob* out_ephemeral_pub_key) const override;
 
-  void SetSingleUseKeyChallengeService(
-      std::unique_ptr<KeyChallengeService> key_challenge_service,
-      const std::string& username) override;
+  void InitializeChallengeCredentialsHelper(
+      ChallengeCredentialsHelper* challenge_credentials_helper,
+      KeyChallengeServiceFactory* key_challenge_service_factory) override;
 
-  void InitializeForChallengeCredentials(
-      ChallengeCredentialsHelper* challenge_credentials_helper) override;
-
-  bool IsChallengeCredentialReady() const override;
+  bool IsChallengeCredentialReady(const AuthInput& auth_input) const override;
 
  private:
   // This helper function serves as a factory method to return the authblock
@@ -156,7 +153,7 @@ class AuthBlockUtilityImpl final : public AuthBlockUtility {
   // This helper function returns an authblock with asynchronous create and
   // derive.
   CryptoStatusOr<std::unique_ptr<AuthBlock>> GetAsyncAuthBlockWithType(
-      const AuthBlockType& auth_block_type);
+      const AuthBlockType& auth_block_type, const AuthInput& auth_input);
 
   // Non-owned object used for the keyset management operations. Must be alive
   // for the entire lifecycle of the class.
@@ -170,24 +167,19 @@ class AuthBlockUtilityImpl final : public AuthBlockUtility {
   // lifecycle of the class.
   Platform* const platform_;
 
+  // Challenge credential helper utility object. This object is required
+  // for using a challenge response authblock.
+  ChallengeCredentialsHelper* challenge_credentials_helper_ = nullptr;
+
+  // Factory of key challenge service used to generate a key_challenge_service
+  // for Challenge Credentials. KeyChallengeService is tasked with contacting
+  // the challenge response D-Bus service that'll provide the response once
+  // we send the challenge.
+  KeyChallengeServiceFactory* key_challenge_service_factory_ = nullptr;
+
   // Fingerprint service, used by operations that need to interact with
   // fingerprint sensors.
   std::unique_ptr<FingerprintAuthBlockService> fp_service_;
-
-  // Challenge credential helper utility object. This object is required
-  // for using a challenge response authblock.
-  ChallengeCredentialsHelper* challenge_credentials_helper_;
-
-  // KeyChallengeService is tasked with contacting the challenge response D-Bus
-  // service that'll provide the response once we send the challenge.
-  // This unique_ptr is validated through SetSingleUseKeyChallengeService(),
-  // and is invalidated through Create/DeriveKeyBlobsWithAsyncAuthBlock().
-  // This means |key_challenge_service_| must be validated through a call to
-  // SetSingleUseKeyChallengeSerive() before deriving key_blobs.
-  std::unique_ptr<KeyChallengeService> key_challenge_service_;
-
-  // Username for AsyncChallengeCredentialAuthBlock.
-  std::optional<std::string> username_;
 
   friend class AuthBlockUtilityImplTest;
   FRIEND_TEST(AuthBlockUtilityImplTest, GetAsyncAuthBlockWithType);

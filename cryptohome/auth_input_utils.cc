@@ -79,6 +79,11 @@ AuthInput FromSmartCardAuthInput(
     chall_cred_auth_input.public_key_spki_der = public_key_spki_der.value();
   }
 
+  if (!proto.key_delegate_dbus_service_name().empty()) {
+    chall_cred_auth_input.dbus_service_name =
+        proto.key_delegate_dbus_service_name();
+  }
+
   return AuthInput{
       .challenge_credential_auth_input = chall_cred_auth_input,
   };
@@ -163,6 +168,7 @@ std::optional<AuthInput> CreateAuthInput(
   }
 
   // Fill out common fields.
+  auth_input.value().username = username;
   auth_input.value().obfuscated_username = obfuscated_username;
   auth_input.value().locked_to_single_user = locked_to_single_user;
 
