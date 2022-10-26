@@ -117,32 +117,50 @@ class UserSession {
   const KeyData& key_data() const { return key_data_; }
   void set_key_data(KeyData key_data) { key_data_ = std::move(key_data); }
 
-  // Adds a new credential verifier to this session. Note that verifiers are
-  // stored by label with new verifiers replacing old ones with the same label.
+  // Credential Verifiers (labeled vs labelless)
+  // UserSessions can have any number of verifiers associated with them.
+  // Normally, most verifiers are identified by a label and in those cases they
+  // will be stored in label->verifier map. However, there are some special
+  // types of verifiers which do not support labels, and in those cases the
+  // labels will instead be stored by type, in a separate type->verifier map.
+  //
+  // To support this, most of the lookup functions provide both label and type
+  // overloads, the former for looking up labelled verifiers and the latter for
+  // looking up labelless ones. Note that the lookup-by-type functions will
+  // never returned labelled verifiers.
+
+  // Adds a new credential verifier to this session. Verifiers with a label are
+  // stored by label, and verifiers without a label are stored by type. New
+  // verifiers will replace old ones if they have a matching identifier.
   void AddCredentialVerifier(std::unique_ptr<CredentialVerifier> verifier);
 
   // Returns a bool indicating if this session has any credential verifiers
-  // (0-arg) or if it has a verifier with a specific label (1-arg).
+  // (0-arg) or if it has a verifier with a specific label or type (1-arg).
   bool HasCredentialVerifier() const;
   bool HasCredentialVerifier(const std::string& label) const;
+  bool HasCredentialVerifier(AuthFactorType type) const;
 
-  // Returns the credential verifier for the given label, if one exists.
-  // Otherwise returns null.
+  // Returns the credential verifier for the given label, or the labelless
+  // verifier for the given type if one exists. Otherwise returns null.
   const CredentialVerifier* FindCredentialVerifier(
       const std::string& label) const;
+  const CredentialVerifier* FindCredentialVerifier(AuthFactorType type) const;
 
   // Returns all the credential verifiers for this session.
   std::vector<const CredentialVerifier*> GetCredentialVerifiers() const;
 
-  // Removes the credential_verifier with the given label, and possibly the key
-  // data as well if it has the same label.
-  void RemoveCredentialVerifierForKeyLabel(const std::string& key_label);
+  // Removes the credential_verifier with the given label or type, and possibly
+  // the key data as well if it has the same label.
+  void RemoveCredentialVerifier(const std::string& key_label);
+  void RemoveCredentialVerifier(AuthFactorType type);
 
  private:
   // Storage for KeyData and CredentialVerifiers associated with the session.
   KeyData key_data_;
   std::map<std::string, std::unique_ptr<CredentialVerifier>>
       label_to_credential_verifier_;
+  std::map<AuthFactorType, std::unique_ptr<CredentialVerifier>>
+      type_to_credential_verifier_;
 };
 
 }  // namespace cryptohome

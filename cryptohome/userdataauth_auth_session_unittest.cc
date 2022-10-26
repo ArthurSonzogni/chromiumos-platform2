@@ -39,6 +39,7 @@
 #include "cryptohome/mock_le_credential_manager.h"
 #include "cryptohome/mock_platform.h"
 #include "cryptohome/pkcs11/mock_pkcs11_token_factory.h"
+#include "cryptohome/scrypt_verifier.h"
 #include "cryptohome/storage/error.h"
 #include "cryptohome/storage/mock_homedirs.h"
 #include "cryptohome/storage/mock_mount.h"
@@ -1185,6 +1186,17 @@ TEST_F(AuthSessionInterfaceTest, GetHibernateSecretTest) {
 class AuthSessionInterfaceMockAuthTest : public AuthSessionInterfaceTestBase {
  protected:
   AuthSessionInterfaceMockAuthTest() {
+    EXPECT_CALL(mock_auth_block_utility_, CreateCredentialVerifier(_, _, _))
+        .WillRepeatedly(
+            [](AuthFactorType type, const std::string& label,
+               const AuthInput& input) -> std::unique_ptr<CredentialVerifier> {
+              if (type == AuthFactorType::kPassword) {
+                return ScryptVerifier::Create(
+                    label, brillo::SecureBlob(*input.user_input));
+              }
+              return nullptr;
+            });
+
     userdataauth_.set_auth_block_utility(&mock_auth_block_utility_);
     CreateAuthSessionManager(&mock_auth_block_utility_);
   }
@@ -1521,6 +1533,11 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorLightweight) {
   EXPECT_CALL(*verifier, VerifySync(_)).WillOnce(ReturnOk<CryptohomeError>());
   user_session->AddCredentialVerifier(std::move(verifier));
   EXPECT_TRUE(user_session_map_.Add(kUsername, std::move(user_session)));
+  EXPECT_CALL(mock_auth_block_utility_,
+              IsVerifyWithAuthFactorSupported(AuthIntent::kVerifyOnly,
+                                              AuthFactorType::kPassword))
+      .WillRepeatedly(Return(true));
+
   // Create an AuthSession.
   CryptohomeStatusOr<AuthSession*> auth_session_status =
       auth_session_manager_->CreateAuthSession(
@@ -1896,6 +1913,10 @@ TEST_F(AuthSessionInterfaceMockAuthTest,
       AddPasswordAuthFactor(*first_auth_session, kPasswordLabel, kPassword)
           .error(),
       user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+  EXPECT_CALL(mock_auth_block_utility_,
+              IsVerifyWithAuthFactorSupported(AuthIntent::kVerifyOnly,
+                                              AuthFactorType::kPassword))
+      .WillRepeatedly(Return(true));
 
   // Act.
   CryptohomeStatusOr<AuthSession*> auth_session_status =
@@ -1930,6 +1951,10 @@ TEST_F(AuthSessionInterfaceMockAuthTest,
       AddPasswordAuthFactor(*first_auth_session, kPasswordLabel, kPassword)
           .error(),
       user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+  EXPECT_CALL(mock_auth_block_utility_,
+              IsVerifyWithAuthFactorSupported(AuthIntent::kVerifyOnly,
+                                              AuthFactorType::kPassword))
+      .WillRepeatedly(Return(true));
 
   // Act.
   CryptohomeStatusOr<AuthSession*> auth_session_status =
@@ -1959,6 +1984,10 @@ TEST_F(AuthSessionInterfaceMockAuthTest,
   MockOwnerUser("whoever", homedirs_);
   // Prepare the ephemeral user without any factor configured.
   EXPECT_TRUE(PrepareEphemeralUser());
+  EXPECT_CALL(mock_auth_block_utility_,
+              IsVerifyWithAuthFactorSupported(AuthIntent::kVerifyOnly,
+                                              AuthFactorType::kPassword))
+      .WillRepeatedly(Return(true));
 
   // Act.
   CryptohomeStatusOr<AuthSession*> auth_session_status =

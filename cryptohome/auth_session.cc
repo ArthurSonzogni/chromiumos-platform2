@@ -37,7 +37,6 @@
 #include "cryptohome/auth_factor_vault_keyset_converter.h"
 #include "cryptohome/auth_input_utils.h"
 #include "cryptohome/credential_verifier.h"
-#include "cryptohome/credential_verifier_factory.h"
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_util.h"
 #include "cryptohome/error/converter.h"
@@ -1067,7 +1066,10 @@ bool AuthSession::AuthenticateAuthFactor(
     const user_data_auth::AuthenticateAuthFactorRequest& request,
     StatusCallback on_done) {
   LOG(INFO) << "AuthSession: " << IntentToDebugString(auth_intent_)
-            << " authentication attempt via " << request.auth_factor_label()
+            << " authentication attempt via "
+            << (request.auth_factor_label().empty()
+                    ? "(unlabelled)"
+                    : request.auth_factor_label())
             << " factor.";
   // Determine the factor type from the request.
   std::optional<AuthFactorType> request_auth_factor_type =
@@ -1091,8 +1093,13 @@ bool AuthSession::AuthenticateAuthFactor(
     // Search for a verifier from the User Session, if available.
     const UserSession* user_session = user_session_map_->Find(username_);
     if (user_session && user_session->VerifyUser(obfuscated_username_)) {
-      verifier =
-          user_session->FindCredentialVerifier(request.auth_factor_label());
+      if (request.auth_factor_label().empty()) {
+        verifier =
+            user_session->FindCredentialVerifier(*request_auth_factor_type);
+      } else {
+        verifier =
+            user_session->FindCredentialVerifier(request.auth_factor_label());
+      }
     }
   }
   {
@@ -1133,7 +1140,7 @@ bool AuthSession::AuthenticateAuthFactor(
   // fingerprint check for verification intent.
   // TODO(b/243808147): Don't special-case kiosk, after the factor loading code
   // is fixed to not backfill missing types.
-  if (auth_factor && request_auth_factor_type != auth_factor->type() &&
+  if (auth_factor && *request_auth_factor_type != auth_factor->type() &&
       request_auth_factor_type != AuthFactorType::kKiosk) {
     LOG(ERROR) << "Unexpected mismatch in type from label and auth_input.";
     std::move(on_done).Run(MakeStatus<CryptohomeError>(
@@ -1143,24 +1150,14 @@ bool AuthSession::AuthenticateAuthFactor(
             CRYPTOHOME_ERROR_INVALID_ARGUMENT));
     return false;
   }
+
   // If suitable, attempt lightweight authentication via a credential verifier.
-  if (auth_intent_ == AuthIntent::kVerifyOnly &&
-      IsCredentialVerifierSupported(*request_auth_factor_type) && verifier) {
+  if (verifier && auth_block_utility_->IsVerifyWithAuthFactorSupported(
+                      auth_intent_, *request_auth_factor_type)) {
     auto verify_callback =
         base::BindOnce(&AuthSession::CompleteVerifyOnlyAuthentication,
                        weak_factory_.GetWeakPtr(), std::move(on_done));
     verifier->Verify(auth_input, std::move(verify_callback));
-    return true;
-  }
-  // We can also attempt lightweight authenticate via the auth block utility.
-  // TODO(b/247812443): Unify this with the credential verifier path.
-  if (auth_block_utility_->IsVerifyWithAuthFactorSupported(
-          auth_intent_, *request_auth_factor_type)) {
-    auto verify_callback =
-        base::BindOnce(&AuthSession::CompleteVerifyOnlyAuthentication,
-                       weak_factory_.GetWeakPtr(), std::move(on_done));
-    auth_block_utility_->VerifyWithAuthFactorAsync(
-        *request_auth_factor_type, auth_input, std::move(verify_callback));
     return true;
   }
 
@@ -1743,6 +1740,12 @@ void AuthSession::PrepareAuthFactor(
       }
     }
 
+    // If this type of factor supports label-less verifiers, then create one.
+    if (auto verifier = auth_block_utility_->CreateCredentialVerifier(
+            *auth_factor_type, {}, {})) {
+      verifier_forwarder_.AddVerifier(std::move(verifier));
+    }
+
     // Record the auth factor type so we can stop it later.
     active_auth_factor_types.emplace(*auth_factor_type);
   } else {
@@ -1793,11 +1796,13 @@ void AuthSession::TerminateAuthFactor(
     return;
   }
 
-  // The auth factor should be in the active list, terminate it.
+  // The auth factor should be in the active list, terminate it. Also remove the
+  // label-less verifier associated with it, if one exists.
   CryptohomeStatus status =
       auth_block_utility_->TerminateAuthFactor(*auth_factor_type);
   if (status.ok()) {
     active_auth_factor_types.erase(iter);
+    verifier_forwarder_.RemoveVerifier(*auth_factor_type);
   }
   std::move(on_done).Run(std::move(status));
 }
@@ -2024,7 +2029,7 @@ CredentialVerifier* AuthSession::AddCredentialVerifier(
     AuthFactorType auth_factor_type,
     const std::string& auth_factor_label,
     const AuthInput& auth_input) {
-  if (auto new_verifier = CreateCredentialVerifier(
+  if (auto new_verifier = auth_block_utility_->CreateCredentialVerifier(
           auth_factor_type, auth_factor_label, auth_input)) {
     auto* return_ptr = new_verifier.get();
     verifier_forwarder_.AddVerifier(std::move(new_verifier));

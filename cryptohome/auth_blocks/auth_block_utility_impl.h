@@ -60,6 +60,11 @@ class AuthBlockUtilityImpl final : public AuthBlockUtility {
   bool IsVerifyWithAuthFactorSupported(
       AuthIntent auth_intent, AuthFactorType auth_factor_type) const override;
 
+  std::unique_ptr<CredentialVerifier> CreateCredentialVerifier(
+      AuthFactorType auth_factor_type,
+      const std::string& auth_factor_label,
+      const AuthInput& auth_input) const override;
+
   void PrepareAuthFactorForAuth(AuthFactorType auth_factor_type,
                                 const std::string& username,
                                 CryptohomeStatusCallback callback) override;
@@ -67,10 +72,6 @@ class AuthBlockUtilityImpl final : public AuthBlockUtility {
   void PrepareAuthFactorForAdd(AuthFactorType auth_factor_type,
                                const std::string& username,
                                CryptohomeStatusCallback callback) override;
-
-  void VerifyWithAuthFactorAsync(AuthFactorType auth_factor_type,
-                                 const AuthInput& auth_input,
-                                 CryptohomeStatusCallback callback) override;
 
   CryptohomeStatus TerminateAuthFactor(
       AuthFactorType auth_factor_type) override;

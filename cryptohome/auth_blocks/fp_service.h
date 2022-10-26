@@ -10,6 +10,7 @@
 
 #include <base/callback.h>
 
+#include "cryptohome/credential_verifier.h"
 #include "cryptohome/error/cryptohome_error.h"
 #include "cryptohome/fingerprint_manager.h"
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
@@ -76,6 +77,19 @@ class FingerprintAuthBlockService {
   // A callback to send cryptohome ScanResult signal.
   base::RepeatingCallback<void(user_data_auth::FingerprintScanResult)>
       signal_sender_;
+};
+
+// Implementation of the credential verifier API. Acts as a simple wrapper
+// around the verify provided by the fingerprint service.
+class FingerprintVerifier final : public AsyncCredentialVerifier {
+ public:
+  explicit FingerprintVerifier(FingerprintAuthBlockService* service);
+
+ private:
+  void VerifyAsync(const AuthInput& input,
+                   StatusCallback callback) const override;
+
+  FingerprintAuthBlockService* service_;
 };
 
 }  // namespace cryptohome

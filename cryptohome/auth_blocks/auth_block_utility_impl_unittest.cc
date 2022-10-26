@@ -66,6 +66,9 @@
 #include "cryptohome/mock_vault_keyset.h"
 #include "cryptohome/vault_keyset.h"
 
+namespace cryptohome {
+namespace {
+
 using ::base::test::TestFuture;
 using ::cryptohome::error::CryptohomeCryptoError;
 using ::cryptohome::error::CryptohomeLECredError;
@@ -80,20 +83,20 @@ using ::testing::ByMove;
 using ::testing::DoAll;
 using ::testing::Eq;
 using ::testing::Exactly;
+using ::testing::IsNull;
 using ::testing::Mock;
 using ::testing::NiceMock;
+using ::testing::NotNull;
 using ::testing::Return;
 using ::testing::SaveArg;
 using ::testing::SetArgPointee;
 
-namespace cryptohome {
-
-namespace {
 constexpr char kUser[] = "Test User";
 constexpr const char* kKeyDelegateDBusService = "key-delegate-service";
 constexpr int kWorkFactor = 16384;
 constexpr int kBlockSize = 8;
 constexpr int kParallelFactor = 1;
+
 }  // namespace
 
 class AuthBlockUtilityImplTest : public ::testing::Test {
@@ -250,7 +253,7 @@ TEST_F(AuthBlockUtilityImplTest, GetSupportedAuthFactors) {
 TEST_F(AuthBlockUtilityImplTest, IsVerifyWithAuthFactorSupported) {
   MakeAuthBlockUtilityImpl();
 
-  EXPECT_FALSE(auth_block_utility_impl_->IsVerifyWithAuthFactorSupported(
+  EXPECT_TRUE(auth_block_utility_impl_->IsVerifyWithAuthFactorSupported(
       AuthIntent::kVerifyOnly, AuthFactorType::kPassword));
   EXPECT_FALSE(auth_block_utility_impl_->IsVerifyWithAuthFactorSupported(
       AuthIntent::kVerifyOnly, AuthFactorType::kPin));
@@ -364,19 +367,36 @@ TEST_F(AuthBlockUtilityImplTest, CheckSignalSuccess) {
   ASSERT_EQ(result_, user_data_auth::FINGERPRINT_SCAN_RESULT_SUCCESS);
 }
 
-TEST_F(AuthBlockUtilityImplTest, VerifyPasswordFailure) {
+TEST_F(AuthBlockUtilityImplTest, CreatePasswordCredentialVerifier) {
   MakeAuthBlockUtilityImpl();
 
-  // Run the Verify, it should fail because there's no password implementation.
-  TestFuture<CryptohomeStatus> on_done_result;
-  auth_block_utility_impl_->VerifyWithAuthFactorAsync(
-      AuthFactorType::kPassword, {}, on_done_result.GetCallback());
-  EXPECT_THAT(on_done_result.Get()->local_legacy_error(),
-              Eq(user_data_auth::CRYPTOHOME_ERROR_NOT_IMPLEMENTED));
+  AuthInput auth_input = {.user_input = brillo::SecureBlob("fake-passkey")};
+  auto verifier = auth_block_utility_impl_->CreateCredentialVerifier(
+      AuthFactorType::kPassword, "password", auth_input);
+  ASSERT_THAT(verifier, NotNull());
+  EXPECT_THAT(verifier->auth_factor_type(), Eq(AuthFactorType::kPassword));
+
+  TestFuture<CryptohomeStatus> status_result;
+  verifier->Verify(auth_input, status_result.GetCallback());
+  EXPECT_THAT(status_result.Get(), IsOk());
+}
+
+TEST_F(AuthBlockUtilityImplTest, CreateFingerprintVerifierWithLabelFails) {
+  MakeAuthBlockUtilityImpl();
+
+  auto verifier = auth_block_utility_impl_->CreateCredentialVerifier(
+      AuthFactorType::kLegacyFingerprint, "legacy-fp", {});
+  EXPECT_THAT(verifier, IsNull());
 }
 
 TEST_F(AuthBlockUtilityImplTest, VerifyFingerprintSuccess) {
   MakeAuthBlockUtilityImpl();
+
+  auto verifier = auth_block_utility_impl_->CreateCredentialVerifier(
+      AuthFactorType::kLegacyFingerprint, "", {});
+  ASSERT_THAT(verifier, NotNull());
+  EXPECT_THAT(verifier->auth_factor_type(),
+              Eq(AuthFactorType::kLegacyFingerprint));
 
   // Signal a successful auth scan.
   EXPECT_CALL(fp_manager_, StartAuthSessionAsyncForUser(kUser, _))
@@ -389,17 +409,16 @@ TEST_F(AuthBlockUtilityImplTest, VerifyFingerprintSuccess) {
         std::move(callback).Run(FingerprintScanStatus::SUCCESS);
       });
 
-  // legacy fingerprint auth factor needs to kicks off the prepare.
+  // Legacy fingerprint auth factor needs to kicks off the prepare.
   TestFuture<CryptohomeStatus> prepare_result;
   auth_block_utility_impl_->PrepareAuthFactorForAuth(
       AuthFactorType::kLegacyFingerprint, kUser, prepare_result.GetCallback());
   ASSERT_THAT(prepare_result.Get(), IsOk());
 
   // Run the Verify and check the result.
-  TestFuture<CryptohomeStatus> on_done_result;
-  auth_block_utility_impl_->VerifyWithAuthFactorAsync(
-      AuthFactorType::kLegacyFingerprint, {}, on_done_result.GetCallback());
-  EXPECT_THAT(on_done_result.Get(), IsOk());
+  TestFuture<CryptohomeStatus> verify_result;
+  verifier->Verify({}, verify_result.GetCallback());
+  EXPECT_THAT(verify_result.Get(), IsOk());
 
   EXPECT_CALL(fp_manager_, EndAuthSession());
   CryptohomeStatus status = auth_block_utility_impl_->TerminateAuthFactor(
@@ -409,6 +428,12 @@ TEST_F(AuthBlockUtilityImplTest, VerifyFingerprintSuccess) {
 
 TEST_F(AuthBlockUtilityImplTest, VerifyFingerprintFailure) {
   MakeAuthBlockUtilityImpl();
+
+  auto verifier = auth_block_utility_impl_->CreateCredentialVerifier(
+      AuthFactorType::kLegacyFingerprint, "", {});
+  ASSERT_THAT(verifier, NotNull());
+  EXPECT_THAT(verifier->auth_factor_type(),
+              Eq(AuthFactorType::kLegacyFingerprint));
 
   // Signal a failed and not retry-able auth scan.
   EXPECT_CALL(fp_manager_, StartAuthSessionAsyncForUser(kUser, _))
@@ -429,10 +454,9 @@ TEST_F(AuthBlockUtilityImplTest, VerifyFingerprintFailure) {
   ASSERT_THAT(prepare_result.Get(), IsOk());
 
   // Run the Verify and check the result.
-  TestFuture<CryptohomeStatus> on_done_result;
-  auth_block_utility_impl_->VerifyWithAuthFactorAsync(
-      AuthFactorType::kLegacyFingerprint, {}, on_done_result.GetCallback());
-  EXPECT_THAT(on_done_result.Get()->local_legacy_error(),
+  TestFuture<CryptohomeStatus> verify_result;
+  verifier->Verify({}, verify_result.GetCallback());
+  EXPECT_THAT(verify_result.Get()->local_legacy_error(),
               Eq(user_data_auth::CRYPTOHOME_ERROR_FINGERPRINT_DENIED));
 
   EXPECT_CALL(fp_manager_, EndAuthSession());

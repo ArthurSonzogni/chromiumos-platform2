@@ -24,14 +24,13 @@ template <class... Ts>
 overloaded(Ts...) -> overloaded<Ts...>;
 
 // Helper function to initialize the verifier forwarder internal variant.
-std::variant<UserSession*,
-             std::map<std::string, std::unique_ptr<CredentialVerifier>>>
+std::variant<UserSession*, UserSessionMap::VerifierForwarder::VerifierStorage>
 MakeForwarderVariant(const std::string& account_id,
                      UserSessionMap* user_session_map) {
   if (UserSession* user_session = user_session_map->Find(account_id)) {
     return user_session;
   } else {
-    return std::map<std::string, std::unique_ptr<CredentialVerifier>>();
+    return UserSessionMap::VerifierForwarder::VerifierStorage();
   }
 }
 
@@ -54,39 +53,60 @@ bool UserSessionMap::VerifierForwarder::HasVerifier(const std::string& label) {
   return std::visit(overloaded{[&](UserSession* session) {
                                  return session->HasCredentialVerifier(label);
                                },
-                               [&](VerifierMap& verifier_map) {
-                                 return verifier_map.find(label) !=
-                                        verifier_map.end();
+                               [&](VerifierStorage& storage) {
+                                 return storage.by_label.find(label) !=
+                                        storage.by_label.end();
                                }},
                     forwarding_destination_);
 }
 
 void UserSessionMap::VerifierForwarder::AddVerifier(
     std::unique_ptr<CredentialVerifier> verifier) {
-  const std::string& label = verifier->auth_factor_label();
+  std::string label = verifier->auth_factor_label();
+  AuthFactorType type = verifier->auth_factor_type();
   std::visit(overloaded{[&](UserSession* session) {
                           session->AddCredentialVerifier(std::move(verifier));
                         },
-                        [&](VerifierMap& verifier_map) {
-                          verifier_map[label] = std::move(verifier);
+                        [&](VerifierStorage& storage) {
+                          if (label.empty()) {
+                            storage.by_type[type] = std::move(verifier);
+                          } else {
+                            storage.by_label[std::move(label)] =
+                                std::move(verifier);
+                          }
                         }},
              forwarding_destination_);
 }
 
 void UserSessionMap::VerifierForwarder::RemoveVerifier(
     const std::string& label) {
-  std::visit(
-      overloaded{[&](UserSession* session) {
-                   session->RemoveCredentialVerifierForKeyLabel(label);
-                 },
-                 [&](VerifierMap& verifier_map) { verifier_map.erase(label); }},
-      forwarding_destination_);
+  std::visit(overloaded{[&](UserSession* session) {
+                          session->RemoveCredentialVerifier(label);
+                        },
+                        [&](VerifierStorage& storage) {
+                          storage.by_label.erase(label);
+                        }},
+             forwarding_destination_);
+}
+
+void UserSessionMap::VerifierForwarder::RemoveVerifier(AuthFactorType type) {
+  std::visit(overloaded{[&](UserSession* session) {
+                          session->RemoveCredentialVerifier(type);
+                        },
+                        [&](VerifierStorage& storage) {
+                          storage.by_type.erase(type);
+                        }},
+             forwarding_destination_);
 }
 
 void UserSessionMap::VerifierForwarder::Resolve(UserSession* session) {
   // Move any existing verifiers into the session.
-  if (VerifierMap* vmap = std::get_if<VerifierMap>(&forwarding_destination_)) {
-    for (auto& [label, verifier] : *vmap) {
+  if (VerifierStorage* storage =
+          std::get_if<VerifierStorage>(&forwarding_destination_)) {
+    for (auto& [label, verifier] : storage->by_label) {
+      session->AddCredentialVerifier(std::move(verifier));
+    }
+    for (auto& [label, verifier] : storage->by_type) {
       session->AddCredentialVerifier(std::move(verifier));
     }
   }
@@ -96,7 +116,7 @@ void UserSessionMap::VerifierForwarder::Resolve(UserSession* session) {
 
 void UserSessionMap::VerifierForwarder::Detach() {
   // Change the forwarding destination to a new map for capturing verifiers.
-  forwarding_destination_ = VerifierMap();
+  forwarding_destination_ = VerifierStorage();
 }
 
 bool UserSessionMap::Add(const std::string& account_id,

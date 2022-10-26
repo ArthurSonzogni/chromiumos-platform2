@@ -1164,10 +1164,9 @@ class UserDataAuth {
                                   StatusCallback on_done,
                                   CryptohomeStatus status);
 
-  // SetCredentialVerifierForUserSession sets credential_verifier derived from
-  // AuthSession.
-  void SetCredentialVerifierForUserSession(
-      AuthSession* auth_session, bool override_existing_credential_verifier);
+  // Populates the user session key data from the auth session key data.
+  void SetKeyDataForUserSession(AuthSession* auth_session,
+                                bool override_existing_data);
 
   // =============== WebAuthn Related Helpers ===============
 

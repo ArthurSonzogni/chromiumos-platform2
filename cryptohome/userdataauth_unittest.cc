@@ -36,6 +36,7 @@
 #include <tpm_manager-client-test/tpm_manager/dbus-proxy-mocks.h>
 
 #include "cryptohome/auth_blocks/mock_auth_block_utility.h"
+#include "cryptohome/auth_intent.h"
 #include "cryptohome/challenge_credentials/challenge_credentials_helper.h"
 #include "cryptohome/challenge_credentials/mock_challenge_credentials_helper.h"
 #include "cryptohome/cleanup/mock_disk_cleanup.h"
@@ -59,6 +60,7 @@
 #include "cryptohome/pkcs11/fake_pkcs11_token.h"
 #include "cryptohome/pkcs11/mock_pkcs11_token_factory.h"
 #include "cryptohome/protobuf_test_utils.h"
+#include "cryptohome/scrypt_verifier.h"
 #include "cryptohome/storage/file_system_keyset.h"
 #include "cryptohome/storage/homedirs.h"
 #include "cryptohome/storage/mock_arc_disk_quota.h"
@@ -214,6 +216,21 @@ class UserDataAuthTestBase : public ::testing::Test {
 
     // Make sure FreeDiskSpaceDuringLogin is not called unexpectedly.
     EXPECT_CALL(disk_cleanup_, FreeDiskSpaceDuringLogin(_)).Times(0);
+
+    EXPECT_CALL(auth_block_utility_, IsVerifyWithAuthFactorSupported(_, _))
+        .WillRepeatedly([](AuthIntent, AuthFactorType type) {
+          return type == AuthFactorType::kPassword;
+        });
+    EXPECT_CALL(auth_block_utility_, CreateCredentialVerifier(_, _, _))
+        .WillRepeatedly(
+            [](AuthFactorType type, const std::string& label,
+               const AuthInput& input) -> std::unique_ptr<CredentialVerifier> {
+              if (type == AuthFactorType::kPassword) {
+                return ScryptVerifier::Create(
+                    label, brillo::SecureBlob(*input.user_input));
+              }
+              return nullptr;
+            });
   }
 
   // Create a new session and store an unowned pointer to it in |session_|.

@@ -48,7 +48,6 @@
 #include "cryptohome/cleanup/disk_cleanup.h"
 #include "cryptohome/cleanup/low_disk_space_handler.h"
 #include "cryptohome/cleanup/user_oldest_activity_timestamp_manager.h"
-#include "cryptohome/credential_verifier_factory.h"
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/error/converter.h"
 #include "cryptohome/error/cryptohome_crypto_error.h"
@@ -3054,8 +3053,7 @@ user_data_auth::CryptohomeErrorCode UserDataAuth::RemoveKey(
   if (result.ok()) {
     UserSession* const session = sessions_->Find(account_id);
     if (session) {
-      session->RemoveCredentialVerifierForKeyLabel(
-          request.key().data().label());
+      session->RemoveCredentialVerifier(request.key().data().label());
     }
     return user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET;
   }
@@ -4153,8 +4151,8 @@ void UserDataAuth::AddCredentials(
   auth_session->AddCredentials(request, std::move(on_add_credential_finished));
 }
 
-void UserDataAuth::SetCredentialVerifierForUserSession(
-    AuthSession* auth_session, bool override_existing_credential_verifier) {
+void UserDataAuth::SetKeyDataForUserSession(AuthSession* auth_session,
+                                            bool override_existing_data) {
   DCHECK(auth_session);
 
   UserSession* const session = sessions_->Find(auth_session->username());
@@ -4186,8 +4184,7 @@ void UserDataAuth::SetCredentialVerifierForUserSession(
     return;
   }
 
-  if (!session->HasCredentialVerifier() ||
-      override_existing_credential_verifier) {
+  if (!session->HasCredentialVerifier() || override_existing_data) {
     session->set_key_data(auth_session->current_key_data());
   }
 }
@@ -4196,8 +4193,8 @@ void UserDataAuth::OnAddCredentialFinished(AuthSession* auth_session,
                                            StatusCallback on_done,
                                            CryptohomeStatus status) {
   if (status.ok()) {
-    SetCredentialVerifierForUserSession(
-        auth_session, /*override_existing_credential_verifier=*/false);
+    SetKeyDataForUserSession(auth_session,
+                             /*override_existing_data=*/false);
   }
   std::move(on_done).Run(std::move(status));
 }
@@ -4206,8 +4203,8 @@ void UserDataAuth::OnUpdateCredentialFinished(AuthSession* auth_session,
                                               StatusCallback on_done,
                                               CryptohomeStatus status) {
   if (status.ok()) {
-    SetCredentialVerifierForUserSession(
-        auth_session, /*override_existing_credential_verifier=*/true);
+    SetKeyDataForUserSession(auth_session,
+                             /*override_existing_data=*/true);
   }
   std::move(on_done).Run(std::move(status));
 }
@@ -4695,9 +4692,8 @@ CryptohomeStatus UserDataAuth::PreparePersistentVaultImpl(
         .Wrap(std::move(mount_status).status());
   }
 
-  SetCredentialVerifierForUserSession(
-      auth_session_status.value(),
-      /*override_existing_credential_verifier=*/false);
+  SetKeyDataForUserSession(auth_session_status.value(),
+                           /*override_existing_data=*/false);
   return OkStatus<CryptohomeError>();
 }
 
@@ -5036,7 +5032,8 @@ void UserDataAuth::ListAuthFactors(
       if (!type) {
         continue;
       }
-      if (IsCredentialVerifierSupported(*type)) {
+      if (auth_block_utility_->IsVerifyWithAuthFactorSupported(
+              AuthIntent::kVerifyOnly, *type)) {
         reply.add_supported_auth_factors(proto_type);
       }
     }

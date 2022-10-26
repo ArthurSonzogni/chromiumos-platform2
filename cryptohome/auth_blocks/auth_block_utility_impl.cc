@@ -46,6 +46,7 @@
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/key_objects.h"
 #include "cryptohome/keyset_management.h"
+#include "cryptohome/scrypt_verifier.h"
 #include "cryptohome/vault_keyset.h"
 
 using cryptohome::error::CryptohomeCryptoError;
@@ -117,32 +118,6 @@ bool AuthBlockUtilityImpl::IsAuthFactorSupported(
   }
 }
 
-bool AuthBlockUtilityImpl::IsVerifyWithAuthFactorSupported(
-    AuthIntent auth_intent, AuthFactorType auth_factor_type) const {
-  // Legacy Fingerprint + WebAuthn is a special case that supports a lightweight
-  // verify.
-  if (auth_intent == AuthIntent::kWebAuthn &&
-      auth_factor_type == AuthFactorType::kLegacyFingerprint) {
-    return true;
-  }
-  // Verify can only be used with verify-only intents, other than the above
-  // special cases.
-  if (auth_intent != AuthIntent::kVerifyOnly) {
-    return false;
-  }
-  switch (auth_factor_type) {
-    case AuthFactorType::kLegacyFingerprint:
-      return true;
-    case AuthFactorType::kPassword:
-    case AuthFactorType::kPin:
-    case AuthFactorType::kCryptohomeRecovery:
-    case AuthFactorType::kKiosk:
-    case AuthFactorType::kSmartCard:
-    case AuthFactorType::kUnspecified:
-      return false;
-  }
-}
-
 bool AuthBlockUtilityImpl::IsPrepareAuthFactorRequired(
     AuthFactorType auth_factor_type) const {
   switch (auth_factor_type) {
@@ -158,36 +133,76 @@ bool AuthBlockUtilityImpl::IsPrepareAuthFactorRequired(
   }
 }
 
-void AuthBlockUtilityImpl::VerifyWithAuthFactorAsync(
-    AuthFactorType auth_factor_type,
-    const AuthInput& auth_input,
-    CryptohomeStatusCallback callback) {
+bool AuthBlockUtilityImpl::IsVerifyWithAuthFactorSupported(
+    AuthIntent auth_intent, AuthFactorType auth_factor_type) const {
+  // Legacy Fingerprint + WebAuthn is a special case that supports a lightweight
+  // verify.
+  if (auth_intent == AuthIntent::kWebAuthn &&
+      auth_factor_type == AuthFactorType::kLegacyFingerprint) {
+    return true;
+  }
+  // Verify can only be used with verify-only intents, other than the above
+  // special cases.
+  if (auth_intent != AuthIntent::kVerifyOnly) {
+    return false;
+  }
   switch (auth_factor_type) {
-    case AuthFactorType::kLegacyFingerprint: {
-      // The auth input does not matter for legacy fingerprint verification.
-      // Just forward the request to the FP auth block service.
-      fp_service_->Verify(std::move(callback));
-      return;
-    }
     case AuthFactorType::kPassword:
+    case AuthFactorType::kLegacyFingerprint:
+      return true;
+    case AuthFactorType::kPin:
+    case AuthFactorType::kCryptohomeRecovery:
+    case AuthFactorType::kKiosk:
+    case AuthFactorType::kSmartCard:
+    case AuthFactorType::kUnspecified:
+      return false;
+  }
+}
+
+std::unique_ptr<CredentialVerifier>
+AuthBlockUtilityImpl::CreateCredentialVerifier(
+    AuthFactorType auth_factor_type,
+    const std::string& auth_factor_label,
+    const AuthInput& auth_input) const {
+  std::unique_ptr<CredentialVerifier> verifier;
+  switch (auth_factor_type) {
+    case AuthFactorType::kPassword: {
+      if (!auth_input.user_input.has_value()) {
+        LOG(ERROR) << "Cannot construct a password verifier without a password";
+        return nullptr;
+      }
+      verifier =
+          ScryptVerifier::Create(auth_factor_label, *auth_input.user_input);
+      if (!verifier) {
+        LOG(ERROR) << "Credential verifier initialization failed.";
+        return nullptr;
+      }
+      break;
+    }
+    case AuthFactorType::kLegacyFingerprint:
+      if (!auth_factor_label.empty()) {
+        LOG(ERROR) << "Legacy fingerprint verifiers cannot use labels";
+        return nullptr;
+      }
+      if (!fp_service_) {
+        LOG(ERROR) << "Cannot construct a legacy fingerprint verifier, "
+                      "FP service not available";
+        return nullptr;
+      }
+      verifier = std::make_unique<FingerprintVerifier>(fp_service_.get());
+      break;
     case AuthFactorType::kPin:
     case AuthFactorType::kCryptohomeRecovery:
     case AuthFactorType::kKiosk:
     case AuthFactorType::kSmartCard:
     case AuthFactorType::kUnspecified: {
-      // These factors are not supported for verify. Trigger the callback
-      // immediately with an error.
-      CryptohomeStatus status = MakeStatus<CryptohomeError>(
-          CRYPTOHOME_ERR_LOC(
-              kLocAuthBlockUtilUnknownUnsupportedInVerifyWithAuthFactor),
-          ErrorActionSet(
-              {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kAuth}),
-          user_data_auth::CryptohomeErrorCode::
-              CRYPTOHOME_ERROR_NOT_IMPLEMENTED);
-      std::move(callback).Run(std::move(status));
-      return;
+      return nullptr;
     }
   }
+
+  DCHECK_EQ(verifier->auth_factor_label(), auth_factor_label);
+  DCHECK_EQ(verifier->auth_factor_type(), auth_factor_type);
+  return verifier;
 }
 
 void AuthBlockUtilityImpl::PrepareAuthFactorForAuth(

@@ -13,6 +13,7 @@
 #include <string>
 #include <utility>
 
+#include "cryptohome/credential_verifier.h"
 #include "cryptohome/user_session/user_session.h"
 
 namespace cryptohome {
@@ -77,6 +78,14 @@ class UserSessionMap final {
   // exist to hold on to them until such a session is added.
   class VerifierForwarder {
    public:
+    // The stored verifiers, when they are captured within the forwarder.
+    // Verifiers are stored by both label and type, with the latter being used
+    // for label-less verifiers.
+    struct VerifierStorage {
+      std::map<std::string, std::unique_ptr<CredentialVerifier>> by_label;
+      std::map<AuthFactorType, std::unique_ptr<CredentialVerifier>> by_type;
+    };
+
     VerifierForwarder(std::string account_id, UserSessionMap* user_session_map);
     VerifierForwarder(const VerifierForwarder&) = delete;
     VerifierForwarder& operator=(const VerifierForwarder&) = delete;
@@ -88,8 +97,9 @@ class UserSessionMap final {
     // Add a new credential verifier using the verifier's label.
     void AddVerifier(std::unique_ptr<CredentialVerifier> verifier);
 
-    // Remove the credential verifier with the given label.
+    // Remove the credential verifier with the given label or type.
     void RemoveVerifier(const std::string& label);
+    void RemoveVerifier(AuthFactorType type);
 
     // Point the forwarder at a UserSession, resolving all outstanding verifier
     // registrations to it.
@@ -109,13 +119,11 @@ class UserSessionMap final {
     // The user session map this forwarder is associated with. This is used to
     // remove the forwarder from the map's internal tracking on destruction.
     UserSessionMap* user_session_map_;
-    // A variant containing either the underlying user session, or a map of
+    // A variant containing either the underlying user session, the stored
     // verifiers to be added to the session upon creation. These are stored in a
     // variant because either the verifiers should be directly forwarded to the
     // session, or stored here in the forwarder, but never both.
-    using VerifierMap =
-        std::map<std::string, std::unique_ptr<CredentialVerifier>>;
-    std::variant<UserSession*, VerifierMap> forwarding_destination_;
+    std::variant<UserSession*, VerifierStorage> forwarding_destination_;
   };
 
   UserSessionMap() = default;

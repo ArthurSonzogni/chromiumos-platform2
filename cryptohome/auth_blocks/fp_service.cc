@@ -180,4 +180,13 @@ void FingerprintAuthBlockService::EndAuthSession() {
   }
 }
 
+FingerprintVerifier::FingerprintVerifier(FingerprintAuthBlockService* service)
+    : AsyncCredentialVerifier(AuthFactorType::kLegacyFingerprint, "", {}),
+      service_(service) {}
+
+void FingerprintVerifier::VerifyAsync(const AuthInput& unused,
+                                      StatusCallback callback) const {
+  return service_->Verify(std::move(callback));
+}
+
 }  // namespace cryptohome

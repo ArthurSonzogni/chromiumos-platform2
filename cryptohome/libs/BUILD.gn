@@ -425,7 +425,6 @@ static_library("libcryptohome") {
     "../cleanup/low_disk_space_handler.cc",
     "../cleanup/user_oldest_activity_timestamp_manager.cc",
     "../credential_verifier.cc",
-    "../credential_verifier_factory.cc",
     "../credentials.cc",
     "../cryptorecovery/inclusion_proof.cc",
     "../cryptorecovery/recovery_crypto.cc",

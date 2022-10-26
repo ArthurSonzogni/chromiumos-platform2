@@ -27,7 +27,6 @@ namespace cryptohome {
 class MockAuthBlockUtility : public AuthBlockUtility {
  public:
   MockAuthBlockUtility() = default;
-  ~MockAuthBlockUtility() = default;
 
   MOCK_METHOD(bool, GetLockedToSingleUser, (), (const, override));
   MOCK_METHOD(bool,
@@ -37,34 +36,28 @@ class MockAuthBlockUtility : public AuthBlockUtility {
                const std::set<AuthFactorType>&),
               (const, override));
   MOCK_METHOD(bool,
-              IsVerifyWithAuthFactorSupported,
-              (AuthIntent, AuthFactorType),
-              (const, override));
-  MOCK_METHOD(bool,
               IsPrepareAuthFactorRequired,
               (AuthFactorType),
               (const, override));
-  MOCK_METHOD(void,
-              VerifyWithAuthFactorAsync,
-              (AuthFactorType auth_factor_type,
-               const AuthInput& auth_input,
-               CryptohomeStatusCallback callback),
-              (override));
+  MOCK_METHOD(bool,
+              IsVerifyWithAuthFactorSupported,
+              (AuthIntent, AuthFactorType),
+              (const, override));
+  MOCK_METHOD(std::unique_ptr<CredentialVerifier>,
+              CreateCredentialVerifier,
+              (AuthFactorType, const std::string&, const AuthInput&),
+              (const, override));
   MOCK_METHOD(void,
               PrepareAuthFactorForAuth,
-              (AuthFactorType auth_factor_type,
-               const std::string& username,
-               CryptohomeStatusCallback callback),
+              (AuthFactorType, const std::string&, CryptohomeStatusCallback),
               (override));
   MOCK_METHOD(void,
               PrepareAuthFactorForAdd,
-              (AuthFactorType auth_factor_type,
-               const std::string& username,
-               CryptohomeStatusCallback callback),
+              (AuthFactorType, const std::string&, CryptohomeStatusCallback),
               (override));
   MOCK_METHOD(CryptohomeStatus,
               TerminateAuthFactor,
-              (AuthFactorType auth_factor_type),
+              (AuthFactorType),
               (override));
   MOCK_METHOD(CryptoStatus,
               CreateKeyBlobsWithAuthBlock,

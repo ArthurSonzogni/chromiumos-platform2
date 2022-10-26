@@ -475,9 +475,15 @@ TEST_F(RealUserSessionReAuthTest, VerifyUser) {
 }
 
 TEST_F(RealUserSessionReAuthTest, VerifyCredentials) {
+  KeyData key_data;
+  key_data.set_label("password");
+
   Credentials credentials_1("username", SecureBlob("password"));
+  credentials_1.set_key_data(key_data);
   Credentials credentials_2("username", SecureBlob("password2"));
+  credentials_2.set_key_data(key_data);
   Credentials credentials_3("username2", SecureBlob("password2"));
+  credentials_3.set_key_data(key_data);
 
   {
     RealUserSession session(credentials_1.username(), nullptr, nullptr, nullptr,
@@ -527,14 +533,12 @@ TEST_F(RealUserSessionReAuthTest, RemoveCredentials) {
 
     // Removing another label that is not the same as this session was set
     // with.
-    session.RemoveCredentialVerifierForKeyLabel(
-        credentials_2.key_data().label());
+    session.RemoveCredentialVerifier(credentials_2.key_data().label());
     // Verification should still work.
     EXPECT_TRUE(session.VerifyCredentials(credentials_1));
 
     // Removing the credential label set in this user session.
-    session.RemoveCredentialVerifierForKeyLabel(
-        credentials_1.key_data().label());
+    session.RemoveCredentialVerifier(credentials_1.key_data().label());
     // Verification should not work.
     EXPECT_FALSE(session.VerifyCredentials(credentials_1));
   }
@@ -563,12 +567,70 @@ TEST_F(RealUserSessionReAuthTest, AddAndRemoveCredentialVerifiers) {
   EXPECT_THAT(session.GetCredentialVerifiers(),
               UnorderedElementsAre(ptr1, ptr2, ptr3));
 
+  // Finding the verifier by type should NOT work, since that should only find
+  // label-less verifiers.
+  EXPECT_THAT(session.HasCredentialVerifier(AuthFactorType::kPassword),
+              IsFalse());
+  EXPECT_THAT(session.FindCredentialVerifier(AuthFactorType::kPassword),
+              IsNull());
+
   // If we remove a verifier it should disappear.
-  session.RemoveCredentialVerifierForKeyLabel("a1");
+  session.RemoveCredentialVerifier("a1");
   EXPECT_THAT(session.GetCredentialVerifiers(),
               UnorderedElementsAre(ptr2, ptr3));
   EXPECT_THAT(session.HasCredentialVerifier("a1"), IsFalse());
   EXPECT_THAT(session.FindCredentialVerifier("a1"), IsNull());
+}
+
+TEST_F(RealUserSessionReAuthTest, AddAndRemoveLabellessCredentialVerifiers) {
+  auto [verifier1, ptr1] = MakeTestVerifier("a1");
+  auto [verifier2, ptr2] = MakeTestVerifier("b2");
+  auto [verifier3, ptr3] = MakeTestVerifier("");  // label-less
+
+  RealUserSession session("username", nullptr, nullptr, nullptr, nullptr,
+                          nullptr);
+
+  // The session should start without verifiers.
+  EXPECT_THAT(session.GetCredentialVerifiers(), IsEmpty());
+  EXPECT_THAT(session.HasCredentialVerifier(AuthFactorType::kPassword),
+              IsFalse());
+  EXPECT_THAT(session.FindCredentialVerifier(AuthFactorType::kPassword),
+              IsNull());
+
+  // If we add a label-less verifier it should show up. Note that it should NOT
+  // show up if we search for a verifier with a blank label.
+  session.AddCredentialVerifier(std::move(verifier3));
+  EXPECT_THAT(session.GetCredentialVerifiers(), UnorderedElementsAre(ptr3));
+  EXPECT_THAT(session.HasCredentialVerifier(AuthFactorType::kPassword),
+              IsTrue());
+  EXPECT_THAT(session.FindCredentialVerifier(AuthFactorType::kPassword),
+              Eq(ptr3));
+  EXPECT_THAT(session.HasCredentialVerifier(""), IsFalse());
+  EXPECT_THAT(session.FindCredentialVerifier(""), IsNull());
+
+  // Add the rest of the verifiers.
+  session.AddCredentialVerifier(std::move(verifier1));
+  session.AddCredentialVerifier(std::move(verifier2));
+  EXPECT_THAT(session.GetCredentialVerifiers(),
+              UnorderedElementsAre(ptr1, ptr2, ptr3));
+
+  // Trying to remove the verifier by removing a blank label should do nothing.
+  session.RemoveCredentialVerifier("");
+  EXPECT_THAT(session.HasCredentialVerifier(AuthFactorType::kPassword),
+              IsTrue());
+  EXPECT_THAT(session.FindCredentialVerifier(AuthFactorType::kPassword),
+              Eq(ptr3));
+  EXPECT_THAT(session.GetCredentialVerifiers(),
+              UnorderedElementsAre(ptr1, ptr2, ptr3));
+
+  // But if we remove the verifier by type it should disappear.
+  session.RemoveCredentialVerifier(AuthFactorType::kPassword);
+  EXPECT_THAT(session.GetCredentialVerifiers(),
+              UnorderedElementsAre(ptr1, ptr2));
+  EXPECT_THAT(session.HasCredentialVerifier(AuthFactorType::kPassword),
+              IsFalse());
+  EXPECT_THAT(session.FindCredentialVerifier(AuthFactorType::kPassword),
+              IsNull());
 }
 
 }  // namespace cryptohome

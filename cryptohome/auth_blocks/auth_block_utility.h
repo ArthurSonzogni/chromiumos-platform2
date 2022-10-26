@@ -19,6 +19,7 @@
 #include "cryptohome/auth_factor/auth_factor_type.h"
 #include "cryptohome/auth_intent.h"
 #include "cryptohome/challenge_credentials/challenge_credentials_helper.h"
+#include "cryptohome/credential_verifier.h"
 #include "cryptohome/credentials.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_util.h"
 #include "cryptohome/error/cryptohome_error.h"
@@ -65,11 +66,17 @@ class AuthBlockUtility {
       AuthFactorType auth_factor_type) const = 0;
 
   // Given AuthIntent and AuthFactorType, returns a boolean indicating if this
-  // factor supports Verify via VerifyWithAuthFactorAsync and satisfies the auth
-  // intent. Note that (unlike IsAuthFactorSupported) this is purely an
-  // indicator of software support being present for a particular factor.
+  // factor supports Verify via CreateCredentialVerifier. Note that (unlike
+  // IsAuthFactorSupported) this is purely an indicator of software support
+  // being present for a particular factor.
   virtual bool IsVerifyWithAuthFactorSupported(
       AuthIntent auth_intent, AuthFactorType auth_factor_type) const = 0;
+
+  // Creates a credential verifier for the specified type and input.
+  virtual std::unique_ptr<CredentialVerifier> CreateCredentialVerifier(
+      AuthFactorType auth_factor_type,
+      const std::string& auth_factor_label,
+      const AuthInput& auth_input) const = 0;
 
   // If the verify/prepare succeeds, |error| will be ok. Otherwise it will
   // contain an error describing the nature of the failure.
@@ -87,12 +94,6 @@ class AuthBlockUtility {
   virtual void PrepareAuthFactorForAdd(AuthFactorType auth_factor_type,
                                        const std::string& username,
                                        CryptohomeStatusCallback callback) = 0;
-
-  // Given an AuthFactorType, attempt to verify the given input against it.
-  // Returns through the asynchronous |callback|.
-  virtual void VerifyWithAuthFactorAsync(AuthFactorType auth_factor_type,
-                                         const AuthInput& auth_input,
-                                         CryptohomeStatusCallback callback) = 0;
 
   // Given an AuthFactorType, stop an auth factor's pending async Prepare or
   // Verify.
