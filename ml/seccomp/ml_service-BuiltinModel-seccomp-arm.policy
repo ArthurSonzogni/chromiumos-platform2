@@ -37,6 +37,7 @@ openat: 1
 read: 1
 recvmsg: 1
 rt_sigaction: 1
+rt_sigprocmask: 1
 rt_sigtimedwait: 1
 rt_sigtimedwait_time64: 1
 sched_getaffinity: 1
