@@ -32,7 +32,7 @@ std::unique_ptr<MountPoint> MountPoint::Mount(MountPointData data,
   *error = platform->Mount(data.source, data.mount_path.value(),
                            data.filesystem_type, data.flags, data.data);
 
-  if (*error != MOUNT_ERROR_NONE) {
+  if (*error != MountError::kSuccess) {
     return nullptr;
   }
 
@@ -45,11 +45,11 @@ MountPoint::MountPoint(MountPointData data, const Platform* platform)
 }
 
 MountError MountPoint::Unmount() {
-  MountError error = MOUNT_ERROR_PATH_NOT_MOUNTED;
+  MountError error = MountError::kPathNotMounted;
 
   if (is_mounted_) {
     error = platform_->Unmount(data_.mount_path, data_.filesystem_type);
-    if (error == MOUNT_ERROR_NONE || error == MOUNT_ERROR_PATH_NOT_MOUNTED) {
+    if (error == MountError::kSuccess || error == MountError::kPathNotMounted) {
       is_mounted_ = false;
 
       if (eject_)
@@ -60,9 +60,9 @@ MountError MountPoint::Unmount() {
   process_.reset();
 
   if (launcher_exit_callback_) {
-    DCHECK_EQ(MOUNT_ERROR_IN_PROGRESS, data_.error);
-    data_.error = MOUNT_ERROR_CANCELLED;
-    std::move(launcher_exit_callback_).Run(MOUNT_ERROR_CANCELLED);
+    DCHECK_EQ(MountError::kInProgress, data_.error);
+    data_.error = MountError::kCancelled;
+    std::move(launcher_exit_callback_).Run(MountError::kCancelled);
   }
 
   if (!is_mounted_ && must_remove_dir_ &&
@@ -76,7 +76,7 @@ MountError MountPoint::Unmount() {
 
 MountError MountPoint::Remount(bool read_only) {
   if (!is_mounted_)
-    return MOUNT_ERROR_PATH_NOT_MOUNTED;
+    return MountError::kPathNotMounted;
 
   uint64_t flags = data_.flags;
   if (read_only) {
@@ -97,12 +97,12 @@ MountError MountPoint::Remount(bool read_only) {
 MountError MountPoint::ConvertLauncherExitCodeToMountError(
     const int exit_code) const {
   if (exit_code == 0)
-    return MOUNT_ERROR_NONE;
+    return MountError::kSuccess;
 
   if (base::Contains(password_needed_exit_codes_, exit_code))
-    return MOUNT_ERROR_NEED_PASSWORD;
+    return MountError::kNeedPassword;
 
-  return MOUNT_ERROR_MOUNT_PROGRAM_FAILED;
+  return MountError::kMountProgramFailed;
 }
 
 void MountPoint::OnLauncherExit(const int exit_code) {
@@ -110,9 +110,9 @@ void MountPoint::OnLauncherExit(const int exit_code) {
   if (metrics_ && !metrics_name_.empty())
     metrics_->RecordFuseMounterErrorCode(metrics_name_, exit_code);
 
-  DCHECK_EQ(MOUNT_ERROR_IN_PROGRESS, data_.error);
+  DCHECK_EQ(MountError::kInProgress, data_.error);
   data_.error = ConvertLauncherExitCodeToMountError(exit_code);
-  DCHECK_NE(MOUNT_ERROR_IN_PROGRESS, data_.error);
+  DCHECK_NE(MountError::kInProgress, data_.error);
 
   if (exit_code != 0 && process_ && !LOG_IS_ON(INFO)) {
     for (const auto& s : process_->GetCapturedOutput()) {
@@ -169,8 +169,8 @@ void MountPoint::SetProcess(std::unique_ptr<Process> process,
 
   password_needed_exit_codes_ = std::move(password_needed_exit_codes);
 
-  DCHECK_EQ(MOUNT_ERROR_NONE, data_.error);
-  data_.error = MOUNT_ERROR_IN_PROGRESS;
+  DCHECK_EQ(MountError::kSuccess, data_.error);
+  data_.error = MountError::kInProgress;
 
   process_->SetLauncherExitCallback(
       base::BindOnce(&MountPoint::OnLauncherExit, GetWeakPtr()));

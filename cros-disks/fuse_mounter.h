@@ -91,7 +91,7 @@ class FUSEMounter : public Mounter {
     std::string metrics_name;
 
     // Set of FUSE launcher exit codes that are interpreted as
-    // MOUNT_ERROR_NEED_PASSWORD.
+    // MountError::kNeedPassword.
     std::vector<int> password_needed_exit_codes;
 
     bool nosymfollow = true;

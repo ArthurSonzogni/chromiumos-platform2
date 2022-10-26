@@ -52,13 +52,13 @@ std::unique_ptr<MountPoint> SystemMounter::Mount(
 
   std::vector<std::string> options = options_;
   *error = ParseParams(std::move(params), &options);
-  if (*error != MOUNT_ERROR_NONE) {
+  if (*error != MountError::kSuccess) {
     return nullptr;
   }
 
   std::string option_string;
   if (!JoinParamsIntoOptions(options, &option_string)) {
-    *error = MOUNT_ERROR_INVALID_MOUNT_OPTIONS;
+    *error = MountError::kInvalidMountOptions;
     return nullptr;
   }
 
@@ -84,7 +84,7 @@ bool SystemMounter::CanMount(const std::string& source,
 MountError SystemMounter::ParseParams(
     std::vector<std::string> /*params*/,
     std::vector<std::string>* /*mount_options*/) const {
-  return MOUNT_ERROR_NONE;
+  return MountError::kSuccess;
 }
 
 }  // namespace cros_disks

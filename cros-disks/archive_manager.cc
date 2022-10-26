@@ -217,7 +217,7 @@ std::unique_ptr<MountPoint> ArchiveManager::DoMount(
   // the base class.
   if (!IsInAllowedFolder(source_path)) {
     LOG(ERROR) << "Source path " << redact(source_path) << " is not allowed";
-    *error = MOUNT_ERROR_INVALID_DEVICE_PATH;
+    *error = MountError::kInvalidDevicePath;
     return nullptr;
   }
   base::FilePath name;
@@ -228,7 +228,7 @@ std::unique_ptr<MountPoint> ArchiveManager::DoMount(
   }
   LOG(ERROR) << "Cannot find mounter for archive " << redact(source_path)
              << " of type " << quote(filesystem_type);
-  *error = MOUNT_ERROR_UNKNOWN_FILESYSTEM;
+  *error = MountError::kUnknownFilesystem;
   return nullptr;
 }
 

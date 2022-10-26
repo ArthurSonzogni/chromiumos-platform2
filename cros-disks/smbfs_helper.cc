@@ -77,14 +77,14 @@ MountError SmbfsHelper::ConfigureSandbox(const std::string& source,
   const Uri uri = Uri::Parse(source);
   if (!uri.valid() || uri.scheme() != kType || uri.path().empty()) {
     LOG(ERROR) << "Invalid source " << quote(source);
-    return MOUNT_ERROR_INVALID_DEVICE_PATH;
+    return MountError::kInvalidDevicePath;
   }
 
   // Bind DBus communication socket and daemon-store into the sandbox.
   if (!sandbox->BindMount(kDbusSocketPath, kDbusSocketPath,
                           /* writable= */ true, /* recursive= */ false)) {
     LOG(ERROR) << "Cannot bind " << quote(kDbusSocketPath);
-    return MOUNT_ERROR_INTERNAL;
+    return MountError::kInternalError;
   }
   // Need to use recursive binding because the daemon-store directory in
   // their cryptohome is bind mounted inside |kDaemonStorePath|.
@@ -93,14 +93,14 @@ MountError SmbfsHelper::ConfigureSandbox(const std::string& source,
   if (!sandbox->BindMount(kDaemonStorePath, kDaemonStorePath,
                           /* writable= */ true, /* recursive= */ true)) {
     LOG(ERROR) << "Cannot bind " << quote(kDaemonStorePath);
-    return MOUNT_ERROR_INTERNAL;
+    return MountError::kInternalError;
   }
 
   std::string options;
   if (!JoinParamsIntoOptions(
           {"uid=1000", "gid=1001", kMojoIdOptionPrefix + uri.path()},
           &options)) {
-    return MOUNT_ERROR_INVALID_MOUNT_OPTIONS;
+    return MountError::kInvalidMountOptions;
   }
   sandbox->AddArgument("-o");
   sandbox->AddArgument(options);
@@ -110,7 +110,7 @@ MountError SmbfsHelper::ConfigureSandbox(const std::string& source,
     sandbox->AddArgument(base::StrCat({"--log-level=", level}));
   }
 
-  return MOUNT_ERROR_NONE;
+  return MountError::kSuccess;
 }
 
 }  // namespace cros_disks

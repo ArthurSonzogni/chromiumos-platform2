@@ -86,13 +86,13 @@ std::unique_ptr<MountPoint> FUSEMountManager::DoMount(
   if (!selected_helper) {
     LOG(ERROR) << "Cannot find FUSE module for " << redact(source)
                << " of type " << quote(fuse_type);
-    *error = MOUNT_ERROR_UNKNOWN_FILESYSTEM;
+    *error = MountError::kUnknownFilesystem;
     return nullptr;
   }
 
   std::unique_ptr<MountPoint> mountpoint =
       selected_helper->Mount(source, mount_path, options, error);
-  LOG_IF(ERROR, *error != MOUNT_ERROR_NONE)
+  LOG_IF(ERROR, *error != MountError::kSuccess)
       << "Cannot mount " << redact(source) << " of type " << quote(fuse_type)
       << ": " << *error;
 

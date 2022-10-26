@@ -62,7 +62,7 @@ std::unique_ptr<SandboxedProcess> ArchiveMounter::PrepareSandbox(
 
   if (!path.IsAbsolute() || path.ReferencesParent()) {
     LOG(ERROR) << "Invalid archive path " << redact(path);
-    *error = MOUNT_ERROR_INVALID_ARGUMENT;
+    *error = MountError::kInvalidArgument;
     return nullptr;
   }
 
@@ -78,13 +78,13 @@ std::unique_ptr<SandboxedProcess> ArchiveMounter::PrepareSandbox(
         base::FilePath(kChromeNamespace));
     if (!mount_ns) {
       PLOG(ERROR) << "Cannot enter mount namespace " << quote(kChromeNamespace);
-      *error = MOUNT_ERROR_INVALID_PATH;
+      *error = MountError::kInvalidPath;
       return nullptr;
     }
 
     if (!platform()->PathExists(path.value())) {
       PLOG(ERROR) << "Cannot find archive " << redact(path);
-      *error = MOUNT_ERROR_INVALID_PATH;
+      *error = MountError::kInvalidPath;
       return nullptr;
     }
   }
@@ -99,7 +99,7 @@ std::unique_ptr<SandboxedProcess> ArchiveMounter::PrepareSandbox(
   for (const char* const dir : {"/home", "/media"}) {
     if (!sandbox->Mount("tmpfs", dir, "tmpfs", "mode=0755,size=1M")) {
       LOG(ERROR) << "Cannot mount " << quote(dir);
-      *error = MOUNT_ERROR_INTERNAL;
+      *error = MountError::kInternalError;
       return nullptr;
     }
   }
@@ -116,7 +116,7 @@ std::unique_ptr<SandboxedProcess> ArchiveMounter::PrepareSandbox(
     if (!sandbox->BindMount(part, part, /* writeable= */ false,
                             /* recursive= */ false)) {
       PLOG(ERROR) << "Cannot bind-mount archive " << redact(part);
-      *error = MOUNT_ERROR_INTERNAL;
+      *error = MountError::kInternalError;
       return nullptr;
     }
   }
@@ -142,7 +142,7 @@ std::unique_ptr<SandboxedProcess> ArchiveMounter::PrepareSandbox(
     sandbox->EnterExistingMountNamespace(kChromeNamespace);
   }
 
-  *error = MOUNT_ERROR_NONE;
+  *error = MountError::kSuccess;
   return sandbox;
 }
 

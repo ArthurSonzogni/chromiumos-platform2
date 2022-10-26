@@ -42,16 +42,16 @@ TEST_F(MountPointTest, Unmount) {
   auto mount_point = std::make_unique<MountPoint>(data_, &platform_);
 
   EXPECT_CALL(platform_, Unmount(base::FilePath(kMountPath), kFSType))
-      .WillOnce(Return(MOUNT_ERROR_BUSY));
-  EXPECT_EQ(MOUNT_ERROR_BUSY, mount_point->Unmount());
+      .WillOnce(Return(MountError::kBusy));
+  EXPECT_EQ(MountError::kBusy, mount_point->Unmount());
 
   EXPECT_CALL(platform_, Unmount(base::FilePath(kMountPath), kFSType))
-      .WillOnce(Return(MOUNT_ERROR_NONE));
+      .WillOnce(Return(MountError::kSuccess));
   EXPECT_CALL(platform_, RemoveEmptyDirectory(kMountPath))
       .WillOnce(Return(true));
-  EXPECT_EQ(MOUNT_ERROR_NONE, mount_point->Unmount());
+  EXPECT_EQ(MountError::kSuccess, mount_point->Unmount());
 
-  EXPECT_EQ(MOUNT_ERROR_PATH_NOT_MOUNTED, mount_point->Unmount());
+  EXPECT_EQ(MountError::kPathNotMounted, mount_point->Unmount());
 }
 
 TEST_F(MountPointTest, UnmountOnDestroy) {
@@ -60,7 +60,7 @@ TEST_F(MountPointTest, UnmountOnDestroy) {
   EXPECT_TRUE(mount_point->is_mounted());
 
   EXPECT_CALL(platform_, Unmount(base::FilePath(kMountPath), kFSType))
-      .WillOnce(Return(MOUNT_ERROR_NONE));
+      .WillOnce(Return(MountError::kSuccess));
   EXPECT_CALL(platform_, RemoveEmptyDirectory(kMountPath))
       .WillOnce(Return(false));
 }
@@ -71,10 +71,10 @@ TEST_F(MountPointTest, UnmountError) {
   EXPECT_TRUE(mount_point->is_mounted());
 
   EXPECT_CALL(platform_, Unmount(base::FilePath(kMountPath), kFSType))
-      .WillOnce(Return(MOUNT_ERROR_PATH_NOT_MOUNTED));
+      .WillOnce(Return(MountError::kPathNotMounted));
   EXPECT_CALL(platform_, RemoveEmptyDirectory(kMountPath))
       .WillOnce(Return(true));
-  EXPECT_EQ(MOUNT_ERROR_PATH_NOT_MOUNTED, mount_point->Unmount());
+  EXPECT_EQ(MountError::kPathNotMounted, mount_point->Unmount());
 
   EXPECT_FALSE(mount_point->is_mounted());
 }
@@ -88,18 +88,18 @@ TEST_F(MountPointTest, Remount) {
   EXPECT_CALL(platform_,
               Mount(kSource, kMountPath, kFSType,
                     MS_DIRSYNC | MS_NODEV | MS_RDONLY | MS_REMOUNT, kOptions))
-      .WillOnce(Return(MOUNT_ERROR_NONE));
-  EXPECT_EQ(MOUNT_ERROR_NONE, mount_point->Remount(true));
+      .WillOnce(Return(MountError::kSuccess));
+  EXPECT_EQ(MountError::kSuccess, mount_point->Remount(true));
   EXPECT_TRUE(mount_point->is_read_only());
 
   EXPECT_CALL(platform_, Mount(kSource, kMountPath, kFSType,
                                MS_DIRSYNC | MS_NODEV | MS_REMOUNT, kOptions))
-      .WillOnce(Return(MOUNT_ERROR_INTERNAL));
-  EXPECT_EQ(MOUNT_ERROR_INTERNAL, mount_point->Remount(false));
+      .WillOnce(Return(MountError::kInternalError));
+  EXPECT_EQ(MountError::kInternalError, mount_point->Remount(false));
   EXPECT_TRUE(mount_point->is_read_only());
 
   EXPECT_CALL(platform_, Unmount(base::FilePath(kMountPath), kFSType))
-      .WillOnce(Return(MOUNT_ERROR_NONE));
+      .WillOnce(Return(MountError::kSuccess));
   EXPECT_CALL(platform_, RemoveEmptyDirectory(kMountPath))
       .WillOnce(Return(true));
 }
@@ -110,31 +110,31 @@ TEST_F(MountPointTest, RemountUnmounted) {
   EXPECT_FALSE(mount_point->is_mounted());
   EXPECT_FALSE(mount_point->is_read_only());
 
-  EXPECT_EQ(MOUNT_ERROR_PATH_NOT_MOUNTED, mount_point->Remount(true));
+  EXPECT_EQ(MountError::kPathNotMounted, mount_point->Remount(true));
   EXPECT_FALSE(mount_point->is_read_only());
 }
 
 TEST_F(MountPointTest, MountError) {
   EXPECT_CALL(platform_, Mount(kSource, kMountPath, kFSType,
                                MS_DIRSYNC | MS_NODEV, kOptions))
-      .WillOnce(Return(MOUNT_ERROR_INVALID_ARGUMENT));
+      .WillOnce(Return(MountError::kInvalidArgument));
 
-  MountError error = MOUNT_ERROR_UNKNOWN;
+  MountError error = MountError::kUnknownError;
   const std::unique_ptr<MountPoint> mount_point =
       MountPoint::Mount(data_, &platform_, &error);
   EXPECT_FALSE(mount_point);
-  EXPECT_EQ(MOUNT_ERROR_INVALID_ARGUMENT, error);
+  EXPECT_EQ(MountError::kInvalidArgument, error);
 }
 
 TEST_F(MountPointTest, MountSucceeds) {
-  MountError error = MOUNT_ERROR_UNKNOWN;
+  MountError error = MountError::kUnknownError;
   EXPECT_CALL(platform_, Mount(kSource, kMountPath, kFSType,
                                MS_DIRSYNC | MS_NODEV, kOptions))
-      .WillOnce(Return(MOUNT_ERROR_NONE));
+      .WillOnce(Return(MountError::kSuccess));
 
   const std::unique_ptr<MountPoint> mount_point =
       MountPoint::Mount(data_, &platform_, &error);
-  EXPECT_EQ(MOUNT_ERROR_NONE, error);
+  EXPECT_EQ(MountError::kSuccess, error);
   EXPECT_TRUE(mount_point);
   EXPECT_TRUE(mount_point->is_mounted());
   EXPECT_EQ(data_.mount_path, mount_point->path());
@@ -143,7 +143,7 @@ TEST_F(MountPointTest, MountSucceeds) {
   EXPECT_EQ(data_.flags, mount_point->flags());
 
   EXPECT_CALL(platform_, Unmount(base::FilePath(kMountPath), kFSType))
-      .WillOnce(Return(MOUNT_ERROR_NONE));
+      .WillOnce(Return(MountError::kSuccess));
   EXPECT_CALL(platform_, RemoveEmptyDirectory(kMountPath))
       .WillOnce(Return(true));
 }

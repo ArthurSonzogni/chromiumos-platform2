@@ -229,57 +229,57 @@ MountError DrivefsHelper::ConfigureSandbox(const std::string& source,
   const Uri uri = Uri::Parse(source);
   if (!uri.valid() || uri.scheme() != kType) {
     LOG(ERROR) << "Invalid source format " << quote(source);
-    return MOUNT_ERROR_INVALID_DEVICE_PATH;
+    return MountError::kInvalidDevicePath;
   }
   if (uri.path().empty()) {
     LOG(ERROR) << "Invalid source " << quote(source);
-    return MOUNT_ERROR_INVALID_DEVICE_PATH;
+    return MountError::kInvalidDevicePath;
   }
 
   base::FilePath data_dir;
   if (!FindPathOption(params, kDataDirOptionPrefix, &data_dir)) {
     LOG(ERROR) << "No data directory provided";
-    return MOUNT_ERROR_INVALID_MOUNT_OPTIONS;
+    return MountError::kInvalidMountOptions;
   }
   if (!ValidateDirectory(platform(), &data_dir, true)) {
-    return MOUNT_ERROR_INSUFFICIENT_PERMISSIONS;
+    return MountError::kInsufficientPermissions;
   }
 
   const base::FilePath homedir(kHomeBaseDir);
   if (!homedir.IsParent(data_dir)) {
     LOG(ERROR) << "Unexpected location of " << quote(data_dir);
-    return MOUNT_ERROR_INSUFFICIENT_PERMISSIONS;
+    return MountError::kInsufficientPermissions;
   }
 
   base::FilePath my_files;
   if (FindPathOption(params, kMyFilesOptionPrefix, &my_files)) {
     if (!ValidateDirectory(platform(), &my_files, false)) {
       LOG(ERROR) << "User files inaccessible";
-      return MOUNT_ERROR_INSUFFICIENT_PERMISSIONS;
+      return MountError::kInsufficientPermissions;
     }
     if (!homedir.IsParent(my_files)) {
       LOG(ERROR) << "Unexpected location of " << quote(my_files);
-      return MOUNT_ERROR_INSUFFICIENT_PERMISSIONS;
+      return MountError::kInsufficientPermissions;
     }
   }
 
   // Bind datadir, user files and DBus communication socket into the sandbox.
   if (!sandbox->Mount("tmpfs", "/home", "tmpfs", "mode=0755,size=1M")) {
     LOG(ERROR) << "Cannot mount /home";
-    return MOUNT_ERROR_INTERNAL;
+    return MountError::kInternalError;
   }
   if (!sandbox->BindMount(data_dir.value(), data_dir.value(), true, false)) {
     LOG(ERROR) << "Cannot bind " << quote(data_dir);
-    return MOUNT_ERROR_INTERNAL;
+    return MountError::kInternalError;
   }
   if (!sandbox->BindMount(kDbusSocketPath, kDbusSocketPath, true, false)) {
     LOG(ERROR) << "Cannot bind " << quote(kDbusSocketPath);
-    return MOUNT_ERROR_INTERNAL;
+    return MountError::kInternalError;
   }
   if (!my_files.empty()) {
     if (!sandbox->BindMount(my_files.value(), my_files.value(), true, true)) {
       LOG(ERROR) << "Cannot bind " << quote(my_files);
-      return MOUNT_ERROR_INTERNAL;
+      return MountError::kInternalError;
     }
   }
 
@@ -299,12 +299,12 @@ MountError DrivefsHelper::ConfigureSandbox(const std::string& source,
   }
   std::string options;
   if (!JoinParamsIntoOptions(args, &options)) {
-    return MOUNT_ERROR_INVALID_MOUNT_OPTIONS;
+    return MountError::kInvalidMountOptions;
   }
   sandbox->AddArgument("-o");
   sandbox->AddArgument(options);
 
-  return MOUNT_ERROR_NONE;
+  return MountError::kSuccess;
 }
 
 }  // namespace cros_disks

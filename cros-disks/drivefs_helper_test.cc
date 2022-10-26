@@ -99,8 +99,7 @@ class TestDrivefsHelper : public DrivefsHelper {
  public:
   TestDrivefsHelper(const Platform* platform,
                     brillo::ProcessReaper* process_reaper)
-      : DrivefsHelper(platform, process_reaper) {
-  }
+      : DrivefsHelper(platform, process_reaper) {}
   using DrivefsHelper::ConfigureSandbox;
 };
 
@@ -120,7 +119,7 @@ TEST_F(DrivefsHelperTest, ConfigureSandbox) {
       kSource, base::FilePath(kMountPath),
       {"datadir=/home/chronos//user/GCache//foo/./"}, &sandbox);
 
-  EXPECT_EQ(MOUNT_ERROR_NONE, error);
+  EXPECT_EQ(MountError::kSuccess, error);
   auto options = ParseOptions(sandbox);
   EXPECT_THAT(options,
               UnorderedElementsAre(kDataDirParam, "identity=id", "uid=1000",
@@ -133,7 +132,7 @@ TEST_F(DrivefsHelperTest, ConfigureSandboxWithMyFiles) {
       kSource, base::FilePath(kMountPath),
       {kDataDirParam, "myfiles=/home/chronos//user/.//MyFiles"}, &sandbox);
 
-  EXPECT_EQ(MOUNT_ERROR_NONE, error);
+  EXPECT_EQ(MountError::kSuccess, error);
   auto options = ParseOptions(sandbox);
   EXPECT_THAT(options, IsSupersetOf({StrEq(kMyFilesParam)}));
 }
@@ -142,35 +141,35 @@ TEST_F(DrivefsHelperTest, ConfigureSandboxFailsIfInvalidSource) {
   FakeSandboxedProcess sandbox;
   auto error = helper_.ConfigureSandbox(
       "drive://id", base::FilePath(kMountPath), {kDataDirParam}, &sandbox);
-  EXPECT_NE(MOUNT_ERROR_NONE, error);
+  EXPECT_NE(MountError::kSuccess, error);
 
   error = helper_.ConfigureSandbox("/dev/block", base::FilePath(kMountPath),
                                    {kDataDirParam}, &sandbox);
-  EXPECT_NE(MOUNT_ERROR_NONE, error);
+  EXPECT_NE(MountError::kSuccess, error);
 
   error = helper_.ConfigureSandbox("drivefs:/foo", base::FilePath(kMountPath),
                                    {kDataDirParam}, &sandbox);
-  EXPECT_NE(MOUNT_ERROR_NONE, error);
+  EXPECT_NE(MountError::kSuccess, error);
 }
 
 TEST_F(DrivefsHelperTest, ConfigureSandboxFailsIfDataDirInvalid) {
   FakeSandboxedProcess sandbox;
   auto error = helper_.ConfigureSandbox(kSource, base::FilePath(kMountPath), {},
                                         &sandbox);
-  EXPECT_NE(MOUNT_ERROR_NONE, error);
+  EXPECT_NE(MountError::kSuccess, error);
 
   error = helper_.ConfigureSandbox(kSource, base::FilePath(kMountPath),
                                    {"datadir=dodgy/path"}, &sandbox);
-  EXPECT_NE(MOUNT_ERROR_NONE, error);
+  EXPECT_NE(MountError::kSuccess, error);
 
   error = helper_.ConfigureSandbox(kSource, base::FilePath(kMountPath),
                                    {"datadir=/nonhome/dir"}, &sandbox);
-  EXPECT_NE(MOUNT_ERROR_NONE, error);
+  EXPECT_NE(MountError::kSuccess, error);
 
   error = helper_.ConfigureSandbox(kSource, base::FilePath(kMountPath),
                                    {"datadir=/home/chronos/../../etc/passwd"},
                                    &sandbox);
-  EXPECT_NE(MOUNT_ERROR_NONE, error);
+  EXPECT_NE(MountError::kSuccess, error);
 }
 
 TEST_F(DrivefsHelperTest, ConfigureSandboxFailsIfDataDirDoesntExist) {
@@ -178,7 +177,7 @@ TEST_F(DrivefsHelperTest, ConfigureSandboxFailsIfDataDirDoesntExist) {
   FakeSandboxedProcess sandbox;
   auto error = helper_.ConfigureSandbox(kSource, base::FilePath(kMountPath),
                                         {kDataDirParam}, &sandbox);
-  EXPECT_NE(MOUNT_ERROR_NONE, error);
+  EXPECT_NE(MountError::kSuccess, error);
 }
 
 TEST_F(DrivefsHelperTest, ConfigureSandboxFailsWhenCantStat) {
@@ -186,7 +185,7 @@ TEST_F(DrivefsHelperTest, ConfigureSandboxFailsWhenCantStat) {
   FakeSandboxedProcess sandbox;
   auto error = helper_.ConfigureSandbox(kSource, base::FilePath(kMountPath),
                                         {kDataDirParam}, &sandbox);
-  EXPECT_NE(MOUNT_ERROR_NONE, error);
+  EXPECT_NE(MountError::kSuccess, error);
 }
 
 TEST_F(DrivefsHelperTest, ConfigureSandboxFailsWhenWrongOwner) {
@@ -195,7 +194,7 @@ TEST_F(DrivefsHelperTest, ConfigureSandboxFailsWhenWrongOwner) {
   FakeSandboxedProcess sandbox;
   auto error = helper_.ConfigureSandbox(kSource, base::FilePath(kMountPath),
                                         {kDataDirParam}, &sandbox);
-  EXPECT_NE(MOUNT_ERROR_NONE, error);
+  EXPECT_NE(MountError::kSuccess, error);
 }
 
 }  // namespace

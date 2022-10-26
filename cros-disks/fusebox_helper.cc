@@ -74,17 +74,17 @@ MountError FuseBoxHelper::ConfigureSandbox(const std::string& source,
 
   if (!uri.valid() || uri.scheme() != kType) {
     LOG(ERROR) << "Invalid source format " << quote(source);
-    return MOUNT_ERROR_INVALID_DEVICE_PATH;
+    return MountError::kInvalidDevicePath;
   }
 
   if (uri.path().empty()) {
     LOG(ERROR) << "Invalid source " << quote(source);
-    return MOUNT_ERROR_INVALID_DEVICE_PATH;
+    return MountError::kInvalidDevicePath;
   }
 
   if (!sandbox->BindMount(kDbusSocketPath, kDbusSocketPath, true, false)) {
     LOG(ERROR) << "Cannot bind " << quote(kDbusSocketPath);
-    return MOUNT_ERROR_INTERNAL;
+    return MountError::kInternalError;
   }
 
   for (const auto& parameter : params) {
@@ -105,13 +105,13 @@ MountError FuseBoxHelper::ConfigureSandbox(const std::string& source,
   std::string lib_fuse_options;
   if (!JoinParamsIntoOptions(options, &lib_fuse_options)) {
     LOG(ERROR) << "Invalid fusebox libFUSE options";
-    return MOUNT_ERROR_INVALID_MOUNT_OPTIONS;
+    return MountError::kInvalidMountOptions;
   }
 
   sandbox->AddArgument("-o");
   sandbox->AddArgument(lib_fuse_options);
 
-  return MOUNT_ERROR_NONE;
+  return MountError::kSuccess;
 }
 
 }  // namespace cros_disks

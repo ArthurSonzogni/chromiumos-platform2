@@ -299,7 +299,7 @@ MountError Platform::Unmount(const base::FilePath& mount_path,
     if (metrics_)
       metrics_->RecordUnmountError(filesystem_type, 0);
 
-    return MOUNT_ERROR_NONE;
+    return MountError::kSuccess;
   }
 
   if (errno == EBUSY) {
@@ -326,7 +326,7 @@ MountError Platform::Unmount(const base::FilePath& mount_path,
       if (metrics_)
         metrics_->RecordUnmountError(filesystem_type, EBUSY);
 
-      return MOUNT_ERROR_NONE;
+      return MountError::kSuccess;
     }
   }
 
@@ -342,13 +342,13 @@ MountError Platform::Unmount(const base::FilePath& mount_path,
   switch (error) {
     case EINVAL:  // |mount_path| is not a mount point
     case ENOENT:  // |mount_path| has a nonexistent component
-      return MOUNT_ERROR_PATH_NOT_MOUNTED;
+      return MountError::kPathNotMounted;
     case EPERM:
-      return MOUNT_ERROR_INSUFFICIENT_PERMISSIONS;
+      return MountError::kInsufficientPermissions;
     case EBUSY:  // This should not happen since we force-unmount
-      return MOUNT_ERROR_BUSY;
+      return MountError::kBusy;
     default:
-      return MOUNT_ERROR_UNKNOWN;
+      return MountError::kUnknownError;
   }
 }
 
@@ -367,7 +367,7 @@ MountError Platform::Mount(const std::string& source_path,
     if (metrics_)
       metrics_->RecordMountError(filesystem_type, 0);
 
-    return MOUNT_ERROR_NONE;
+    return MountError::kSuccess;
   }
 
   const error_t error = errno;
@@ -381,17 +381,17 @@ MountError Platform::Mount(const std::string& source_path,
 
   switch (error) {
     case ENODEV:
-      return MOUNT_ERROR_UNSUPPORTED_FILESYSTEM;
+      return MountError::kUnsupportedFilesystem;
     case ENOENT:
     case ENOTBLK:
     case ENOTDIR:
-      return MOUNT_ERROR_INVALID_PATH;
+      return MountError::kInvalidPath;
     case EPERM:
-      return MOUNT_ERROR_INSUFFICIENT_PERMISSIONS;
+      return MountError::kInsufficientPermissions;
     case EBUSY:
-      return MOUNT_ERROR_BUSY;
+      return MountError::kBusy;
     default:
-      return MOUNT_ERROR_UNKNOWN;
+      return MountError::kUnknownError;
   }
 }
 
@@ -422,7 +422,7 @@ bool Platform::CleanUpStaleMountPoints(const std::string& dir) const {
     const base::FilePath subdir = base::FilePath(dir).Append(name);
     LOG(WARNING) << "Found stale mount point " << redact(subdir);
 
-    if (Platform::Unmount(subdir, "stale") == MOUNT_ERROR_NONE)
+    if (Platform::Unmount(subdir, "stale") == MountError::kSuccess)
       LOG(WARNING) << "Unmounted stale mount point " << redact(subdir);
 
     if (Platform::RemoveEmptyDirectory(subdir.value()))

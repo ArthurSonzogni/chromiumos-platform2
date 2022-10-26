@@ -33,30 +33,30 @@ std::ostream& operator<<(std::ostream& out, const FormatError error) {
 
 std::ostream& operator<<(std::ostream& out, const MountError error) {
   switch (error) {
-    CROS_DISKS_PRINT(MOUNT_ERROR_NONE)
-    CROS_DISKS_PRINT(MOUNT_ERROR_UNKNOWN)
-    CROS_DISKS_PRINT(MOUNT_ERROR_INTERNAL)
-    CROS_DISKS_PRINT(MOUNT_ERROR_INVALID_ARGUMENT)
-    CROS_DISKS_PRINT(MOUNT_ERROR_INVALID_PATH)
-    CROS_DISKS_PRINT(MOUNT_ERROR_PATH_ALREADY_MOUNTED)
-    CROS_DISKS_PRINT(MOUNT_ERROR_PATH_NOT_MOUNTED)
-    CROS_DISKS_PRINT(MOUNT_ERROR_DIRECTORY_CREATION_FAILED)
-    CROS_DISKS_PRINT(MOUNT_ERROR_INVALID_MOUNT_OPTIONS)
-    CROS_DISKS_PRINT(MOUNT_ERROR_INVALID_UNMOUNT_OPTIONS)
-    CROS_DISKS_PRINT(MOUNT_ERROR_INSUFFICIENT_PERMISSIONS)
-    CROS_DISKS_PRINT(MOUNT_ERROR_MOUNT_PROGRAM_NOT_FOUND)
-    CROS_DISKS_PRINT(MOUNT_ERROR_MOUNT_PROGRAM_FAILED)
-    CROS_DISKS_PRINT(MOUNT_ERROR_NEED_PASSWORD)
-    CROS_DISKS_PRINT(MOUNT_ERROR_IN_PROGRESS)
-    CROS_DISKS_PRINT(MOUNT_ERROR_CANCELLED)
-    CROS_DISKS_PRINT(MOUNT_ERROR_BUSY)
-    CROS_DISKS_PRINT(MOUNT_ERROR_INVALID_DEVICE_PATH)
-    CROS_DISKS_PRINT(MOUNT_ERROR_UNKNOWN_FILESYSTEM)
-    CROS_DISKS_PRINT(MOUNT_ERROR_UNSUPPORTED_FILESYSTEM)
-    CROS_DISKS_PRINT(MOUNT_ERROR_INVALID_ARCHIVE)
+    CROS_DISKS_PRINT(MountError::kSuccess)
+    CROS_DISKS_PRINT(MountError::kUnknownError)
+    CROS_DISKS_PRINT(MountError::kInternalError)
+    CROS_DISKS_PRINT(MountError::kInvalidArgument)
+    CROS_DISKS_PRINT(MountError::kInvalidPath)
+    CROS_DISKS_PRINT(MountError::kPathAlreadyMounted)
+    CROS_DISKS_PRINT(MountError::kPathNotMounted)
+    CROS_DISKS_PRINT(MountError::kDirectoryCreationFailed)
+    CROS_DISKS_PRINT(MountError::kInvalidMountOptions)
+    CROS_DISKS_PRINT(MountError::kInvalidUnmountOptions)
+    CROS_DISKS_PRINT(MountError::kInsufficientPermissions)
+    CROS_DISKS_PRINT(MountError::kMountProgramNotFound)
+    CROS_DISKS_PRINT(MountError::kMountProgramFailed)
+    CROS_DISKS_PRINT(MountError::kNeedPassword)
+    CROS_DISKS_PRINT(MountError::kInProgress)
+    CROS_DISKS_PRINT(MountError::kCancelled)
+    CROS_DISKS_PRINT(MountError::kBusy)
+    CROS_DISKS_PRINT(MountError::kInvalidDevicePath)
+    CROS_DISKS_PRINT(MountError::kUnknownFilesystem)
+    CROS_DISKS_PRINT(MountError::kUnsupportedFilesystem)
+    CROS_DISKS_PRINT(MountError::kInvalidArchive)
   }
-  return out << "MOUNT_ERROR_"
-             << static_cast<std::underlying_type_t<MountError>>(error);
+  return out << "MountError("
+             << static_cast<std::underlying_type_t<MountError>>(error) << ")";
 }
 
 std::ostream& operator<<(std::ostream& out, const PartitionError error) {

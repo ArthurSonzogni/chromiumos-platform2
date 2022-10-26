@@ -142,8 +142,8 @@ class MountManager {
   // Implemented by a derived class to mount |source| to |mount_path| as
   // |filesystem_type| with |options|. An implementation may append their own
   // mount options to |options|. On success, an implementation MUST set |error|
-  // to MOUNT_ERROR_NONE and return a non-null MountPoint. On failure, |error|
-  // must be set to an appropriate error code and nullptr is returned.
+  // to MountError::kSuccess and return a non-null MountPoint. On failure,
+  // |error| must be set to an appropriate error code and nullptr is returned.
   virtual std::unique_ptr<MountPoint> DoMount(
       const std::string& source,
       const std::string& filesystem_type,

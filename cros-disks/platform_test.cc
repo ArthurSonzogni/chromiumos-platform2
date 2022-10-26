@@ -434,7 +434,7 @@ TEST_F(PlatformTest, RunAsRootUnmount) {
   // Create and mount a temporary file system.
   const base::FilePath mount_path = temp_dir.GetPath();
   EXPECT_EQ(platform_.Mount("source", mount_path.value(), "tmpfs", 0, ""),
-            MOUNT_ERROR_NONE);
+            MountError::kSuccess);
 
   // Should not be able to remove a mounted directory.
   EXPECT_FALSE(platform_.RemoveEmptyDirectory(mount_path.value()));
@@ -446,7 +446,7 @@ TEST_F(PlatformTest, RunAsRootUnmount) {
   EXPECT_TRUE(base::PathExists(file_path));
 
   // Unmount the temporary file system.
-  EXPECT_EQ(platform_.Unmount(mount_path, "tmpfs"), MOUNT_ERROR_NONE);
+  EXPECT_EQ(platform_.Unmount(mount_path, "tmpfs"), MountError::kSuccess);
 
   // The file in the temporary file system shouldn't be visible anymore.
   EXPECT_FALSE(base::PathExists(file_path));
@@ -454,7 +454,7 @@ TEST_F(PlatformTest, RunAsRootUnmount) {
   // Trying to unmount an existing but not mounted directory should fail.
   EXPECT_TRUE(base::DirectoryExists(mount_path));
   EXPECT_EQ(platform_.Unmount(mount_path, "tmpfs"),
-            MOUNT_ERROR_PATH_NOT_MOUNTED);
+            MountError::kPathNotMounted);
 
   // Should be able to remove the directory now that it is unmounted.
   EXPECT_TRUE(base::DirectoryExists(mount_path));
@@ -463,7 +463,7 @@ TEST_F(PlatformTest, RunAsRootUnmount) {
 
   // Trying to unmount an absent directory should fail.
   EXPECT_EQ(platform_.Unmount(mount_path, "tmpfs"),
-            MOUNT_ERROR_PATH_NOT_MOUNTED);
+            MountError::kPathNotMounted);
 }
 
 TEST_F(PlatformTest, RunAsRootUnmountForce) {
@@ -473,7 +473,7 @@ TEST_F(PlatformTest, RunAsRootUnmountForce) {
   // Create and mount a temporary file system.
   const base::FilePath mount_path = temp_dir.GetPath();
   EXPECT_EQ(platform_.Mount("source", mount_path.value(), "tmpfs", 0, ""),
-            MOUNT_ERROR_NONE);
+            MountError::kSuccess);
 
   // Should not be able to remove a mounted directory.
   EXPECT_FALSE(platform_.RemoveEmptyDirectory(mount_path.value()));
@@ -487,7 +487,7 @@ TEST_F(PlatformTest, RunAsRootUnmountForce) {
   // Keep the file open.
 
   // Force-unmount the temporary file system.
-  EXPECT_EQ(platform_.Unmount(mount_path, "tmpfs"), MOUNT_ERROR_NONE);
+  EXPECT_EQ(platform_.Unmount(mount_path, "tmpfs"), MountError::kSuccess);
 
   // The file in the temporary file system shouldn't be visible anymore.
   EXPECT_FALSE(base::PathExists(file_path));
@@ -525,7 +525,7 @@ TEST_F(PlatformTest, RunAsRootCleanUpStaleMountPoints) {
     EXPECT_TRUE(platform_.CreateDirectory(dir2.value()));
     EXPECT_TRUE(base::PathExists(dir2));
     EXPECT_EQ(platform_.Mount("source", dir2.value(), "tmpfs", 0, ""),
-              MOUNT_ERROR_NONE);
+              MountError::kSuccess);
 
     // Add a file to this temporary file system.
     const base::FilePath file_path2 = dir2.Append("file");

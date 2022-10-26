@@ -72,7 +72,7 @@ class SmbfsHelperTest : public ::testing::Test {
     FakeSandboxedProcess sandbox;
     MountError error =
         helper_.ConfigureSandbox(source, kMountDir, {}, &sandbox);
-    if (error == MOUNT_ERROR_NONE) {
+    if (error == MountError::kSuccess) {
       *args = ParseOptions(sandbox);
     }
     return error;
@@ -85,7 +85,7 @@ class SmbfsHelperTest : public ::testing::Test {
 
 TEST_F(SmbfsHelperTest, CreateMounter) {
   std::vector<std::string> args;
-  EXPECT_EQ(MOUNT_ERROR_NONE, ConfigureSandbox(kSomeSource.value(), &args));
+  EXPECT_EQ(MountError::kSuccess, ConfigureSandbox(kSomeSource.value(), &args));
   EXPECT_THAT(
       args, UnorderedElementsAre("uid=1000", "gid=1001", "mojo_id=foobarbaz"));
 }

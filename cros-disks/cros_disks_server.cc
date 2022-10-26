@@ -161,7 +161,7 @@ void CrosDisksServer::Mount(const std::string& source,
   if (!mounter) {
     LOG(ERROR) << "Cannot find mounter for " << redact(source) << " of type "
                << quote(filesystem_type);
-    SendMountCompletedSignal(MOUNT_ERROR_INVALID_PATH, source,
+    SendMountCompletedSignal(MountError::kInvalidPath, source,
                              MOUNT_SOURCE_INVALID, "", false);
     return;
   }
@@ -185,7 +185,7 @@ uint32_t CrosDisksServer::Unmount(const std::string& path,
                                   const std::vector<std::string>& options) {
   if (path.empty()) {
     LOG(ERROR) << "Cannot unmount an empty path";
-    return MOUNT_ERROR_INVALID_ARGUMENT;
+    return MountError::kInvalidArgument;
   }
 
   LOG(INFO) << "Unmounting " << redact(path) << "...";
@@ -193,10 +193,10 @@ uint32_t CrosDisksServer::Unmount(const std::string& path,
       << "Ignored unmount options " << quote(options) << " for "
       << redact(path);
 
-  MountError error = MOUNT_ERROR_PATH_NOT_MOUNTED;
+  MountError error = MountError::kPathNotMounted;
   for (const auto& manager : mount_managers_) {
     error = manager->Unmount(path);
-    if (error != MOUNT_ERROR_PATH_NOT_MOUNTED)
+    if (error != MountError::kPathNotMounted)
       break;
   }
 
@@ -233,7 +233,7 @@ CrosDisksServer::MountEntries CrosDisksServer::EnumerateMountEntries() {
       DCHECK(mount_point);
 
       // Skip the in-progress mount points.
-      if (mount_point->error() == MOUNT_ERROR_IN_PROGRESS)
+      if (mount_point->error() == MountError::kInProgress)
         continue;
 
       entries.emplace_back(mount_point->error(), mount_point->source(),

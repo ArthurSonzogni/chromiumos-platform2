@@ -54,22 +54,22 @@ MountError WriteConfigurationFile(const Platform* platform,
   std::string data;
   if (!base::Base64Decode(b64_data, &data)) {
     LOG(ERROR) << "Invalid base64 value for " << quote(path);
-    return MOUNT_ERROR_INVALID_MOUNT_OPTIONS;
+    return MountError::kInvalidMountOptions;
   }
 
   if (platform->WriteFile(path.value(), data.c_str(), data.size()) !=
       static_cast<int>(data.size())) {
     PLOG(ERROR) << "Cannot write file " << quote(path);
-    return MOUNT_ERROR_INSUFFICIENT_PERMISSIONS;
+    return MountError::kInsufficientPermissions;
   }
 
   if (!platform->SetPermissions(path.value(), 0600) ||
       !platform->SetOwnership(path.value(), owner.uid, owner.gid)) {
     PLOG(ERROR) << "Cannot change owner of file " << quote(path);
-    return MOUNT_ERROR_INSUFFICIENT_PERMISSIONS;
+    return MountError::kInsufficientPermissions;
   }
 
-  return MOUNT_ERROR_NONE;
+  return MountError::kSuccess;
 }
 
 bool IsSupportedScheme(const std::string& scheme) {
@@ -119,7 +119,7 @@ MountError SshfsHelper::ConfigureSandbox(const std::string& source,
   const Uri uri = Uri::Parse(source);
   if (!uri.valid() || uri.path().empty()) {
     LOG(ERROR) << "Invalid source " << quote(source);
-    return MOUNT_ERROR_INVALID_DEVICE_PATH;
+    return MountError::kInvalidDevicePath;
   }
   if (uri.scheme() == "sshfs") {
     return ConfigureSandboxSshfs(uri, params, sandbox);
@@ -127,7 +127,7 @@ MountError SshfsHelper::ConfigureSandbox(const std::string& source,
     return ConfigureSandboxSftpVsock(uri, sandbox);
   } else {
     LOG(ERROR) << "Invalid source " << quote(source);
-    return MOUNT_ERROR_INVALID_DEVICE_PATH;
+    return MountError::kInvalidDevicePath;
   }
 }
 
@@ -138,13 +138,13 @@ MountError SshfsHelper::ConfigureSandboxSshfs(const Uri& uri,
   if (!GetParamValue(params, kOptionIdentityBase64, &b64_identity) ||
       b64_identity.empty()) {
     LOG(ERROR) << "Missing required parameter " << kOptionIdentityBase64;
-    return MOUNT_ERROR_INVALID_MOUNT_OPTIONS;
+    return MountError::kInvalidMountOptions;
   }
   std::string b64_known_hosts;
   if (!GetParamValue(params, kOptionUserKnownHostsBase64, &b64_known_hosts) ||
       b64_known_hosts.empty()) {
     LOG(ERROR) << "Missing required parameter " << kOptionUserKnownHostsBase64;
-    return MOUNT_ERROR_INVALID_MOUNT_OPTIONS;
+    return MountError::kInvalidMountOptions;
   }
 
   std::string path;
@@ -155,7 +155,7 @@ MountError SshfsHelper::ConfigureSandboxSshfs(const Uri& uri,
                                            &path)) {
     PLOG(ERROR) << "Cannot create temporary directory inside "
                 << quote(working_dir_);
-    return MOUNT_ERROR_INSUFFICIENT_PERMISSIONS;
+    return MountError::kInsufficientPermissions;
   }
   base::FilePath working_dir(path);
   base::FilePath identity_file = working_dir.Append(kIdentityFile);
@@ -163,12 +163,12 @@ MountError SshfsHelper::ConfigureSandboxSshfs(const Uri& uri,
 
   MountError error = WriteConfigurationFile(
       platform(), sandbox_factory_.run_as(), identity_file, b64_identity);
-  if (error != MOUNT_ERROR_NONE) {
+  if (error != MountError::kSuccess) {
     return error;
   }
   error = WriteConfigurationFile(platform(), sandbox_factory_.run_as(),
                                  known_hosts_file, b64_known_hosts);
-  if (error != MOUNT_ERROR_NONE) {
+  if (error != MountError::kSuccess) {
     return error;
   }
 
@@ -179,13 +179,13 @@ MountError SshfsHelper::ConfigureSandboxSshfs(const Uri& uri,
                                 sandbox_factory_.run_as().uid, getgid())) {
     LOG(ERROR) << "Cannot set proper ownership of working directory "
                << quote(working_dir);
-    return MOUNT_ERROR_INSUFFICIENT_PERMISSIONS;
+    return MountError::kInsufficientPermissions;
   }
 
   if (!sandbox->BindMount(working_dir.value(), working_dir.value(), false,
                           false)) {
     LOG(ERROR) << "Cannot bind working directory " << quote(working_dir);
-    return MOUNT_ERROR_INTERNAL;
+    return MountError::kInternalError;
   }
 
   std::vector<std::string> options = {
@@ -213,11 +213,11 @@ MountError SshfsHelper::ConfigureSandboxSshfs(const Uri& uri,
 
   std::string option_string;
   if (!JoinParamsIntoOptions(options, &option_string)) {
-    return MOUNT_ERROR_INVALID_MOUNT_OPTIONS;
+    return MountError::kInvalidMountOptions;
   }
   sandbox->AddArgument("-o");
   sandbox->AddArgument(option_string);
-  return MOUNT_ERROR_NONE;
+  return MountError::kSuccess;
 }
 
 MountError SshfsHelper::ConfigureSandboxSftpVsock(
@@ -232,11 +232,11 @@ MountError SshfsHelper::ConfigureSandboxSftpVsock(
   SetParamValue(&options, "gid", base::NumberToString(kChronosAccessGID));
   std::string option_string;
   if (!JoinParamsIntoOptions(options, &option_string)) {
-    return MOUNT_ERROR_INVALID_MOUNT_OPTIONS;
+    return MountError::kInvalidMountOptions;
   }
   sandbox->AddArgument("-o");
   sandbox->AddArgument(option_string);
-  return MOUNT_ERROR_NONE;
+  return MountError::kSuccess;
 }
 
 }  // namespace cros_disks

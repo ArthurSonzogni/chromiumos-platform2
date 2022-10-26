@@ -81,7 +81,7 @@ class FUSEMountManagerTest : public ::testing::Test {
         bar_(new MockMounter()),
         baz_(new MockMounter()) {
     ON_CALL(platform_, Unmount(_, _))
-        .WillByDefault(Return(MOUNT_ERROR_INVALID_ARGUMENT));
+        .WillByDefault(Return(MountError::kInvalidArgument));
     ON_CALL(platform_, DirectoryExists(_)).WillByDefault(Return(true));
   }
 
@@ -95,7 +95,7 @@ class FUSEMountManagerTest : public ::testing::Test {
                                       MountError* error) {
     std::unique_ptr<MountPoint> mount_point =
         manager_.DoMount(src, type, {}, base::FilePath(kSomeMountpoint), error);
-    if (*error == MOUNT_ERROR_NONE) {
+    if (*error == MountError::kSuccess) {
       EXPECT_TRUE(mount_point);
     } else {
       EXPECT_FALSE(mount_point);
@@ -158,7 +158,7 @@ TEST_F(FUSEMountManagerTest, DoMount_NoHandlers) {
   MountError mount_error;
   std::unique_ptr<MountPoint> mount_point =
       DoMount(kNoType, kSomeSource.value(), &mount_error);
-  EXPECT_EQ(MOUNT_ERROR_UNKNOWN_FILESYSTEM, mount_error);
+  EXPECT_EQ(MountError::kUnknownFilesystem, mount_error);
 }
 
 // Verify that DoMount fails when helpers don't handle this source.
@@ -172,7 +172,7 @@ TEST_F(FUSEMountManagerTest, DoMount_NotHandled) {
   MountError mount_error;
   std::unique_ptr<MountPoint> mount_point =
       DoMount(kNoType, kSomeSource.value(), &mount_error);
-  EXPECT_EQ(MOUNT_ERROR_UNKNOWN_FILESYSTEM, mount_error);
+  EXPECT_EQ(MountError::kUnknownFilesystem, mount_error);
 }
 
 // Verify that DoMount delegates mounting to the correct helpers when
@@ -188,7 +188,7 @@ TEST_F(FUSEMountManagerTest, DoMount_BySource) {
   EXPECT_CALL(*baz_, Mount).Times(0);
 
   EXPECT_CALL(*bar_, Mount(kSomeSource.value(), _, _, _))
-      .WillOnce(DoAll(SetArgPointee<3>(MOUNT_ERROR_NONE),
+      .WillOnce(DoAll(SetArgPointee<3>(MountError::kSuccess),
                       Return(ByMove(MountPoint::CreateUnmounted(
                           {.mount_path = base::FilePath(kSomeMountpoint),
                            .source = kSomeSource.value()})))));
@@ -199,7 +199,7 @@ TEST_F(FUSEMountManagerTest, DoMount_BySource) {
   MountError mount_error;
   std::unique_ptr<MountPoint> mount_point =
       DoMount(kNoType, kSomeSource.value(), &mount_error);
-  EXPECT_EQ(MOUNT_ERROR_NONE, mount_error);
+  EXPECT_EQ(MountError::kSuccess, mount_error);
   EXPECT_EQ(base::FilePath(kSomeMountpoint), mount_point->path());
 }
 

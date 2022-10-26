@@ -13,7 +13,7 @@ namespace cros_disks {
 namespace {
 
 static_assert(!FORMAT_ERROR_NONE);
-static_assert(!MOUNT_ERROR_NONE);
+static_assert(!MountError::kSuccess);
 static_assert(!PARTITION_ERROR_NONE);
 static_assert(!RENAME_ERROR_NONE);
 
@@ -49,41 +49,41 @@ TEST(ErrorLogger, FormatErrorType) {
 }
 
 TEST(ErrorLogger, MountErrorType) {
-  EXPECT_EQ(ToString(MOUNT_ERROR_NONE), "MOUNT_ERROR_NONE");
-  EXPECT_EQ(ToString(MOUNT_ERROR_UNKNOWN), "MOUNT_ERROR_UNKNOWN");
-  EXPECT_EQ(ToString(MOUNT_ERROR_INTERNAL), "MOUNT_ERROR_INTERNAL");
-  EXPECT_EQ(ToString(MOUNT_ERROR_INVALID_ARGUMENT),
-            "MOUNT_ERROR_INVALID_ARGUMENT");
-  EXPECT_EQ(ToString(MOUNT_ERROR_INVALID_PATH), "MOUNT_ERROR_INVALID_PATH");
-  EXPECT_EQ(ToString(MOUNT_ERROR_PATH_ALREADY_MOUNTED),
-            "MOUNT_ERROR_PATH_ALREADY_MOUNTED");
-  EXPECT_EQ(ToString(MOUNT_ERROR_PATH_NOT_MOUNTED),
-            "MOUNT_ERROR_PATH_NOT_MOUNTED");
-  EXPECT_EQ(ToString(MOUNT_ERROR_DIRECTORY_CREATION_FAILED),
-            "MOUNT_ERROR_DIRECTORY_CREATION_FAILED");
-  EXPECT_EQ(ToString(MOUNT_ERROR_INVALID_MOUNT_OPTIONS),
-            "MOUNT_ERROR_INVALID_MOUNT_OPTIONS");
-  EXPECT_EQ(ToString(MOUNT_ERROR_INVALID_UNMOUNT_OPTIONS),
-            "MOUNT_ERROR_INVALID_UNMOUNT_OPTIONS");
-  EXPECT_EQ(ToString(MOUNT_ERROR_INSUFFICIENT_PERMISSIONS),
-            "MOUNT_ERROR_INSUFFICIENT_PERMISSIONS");
-  EXPECT_EQ(ToString(MOUNT_ERROR_MOUNT_PROGRAM_NOT_FOUND),
-            "MOUNT_ERROR_MOUNT_PROGRAM_NOT_FOUND");
-  EXPECT_EQ(ToString(MOUNT_ERROR_MOUNT_PROGRAM_FAILED),
-            "MOUNT_ERROR_MOUNT_PROGRAM_FAILED");
-  EXPECT_EQ(ToString(MOUNT_ERROR_NEED_PASSWORD), "MOUNT_ERROR_NEED_PASSWORD");
-  EXPECT_EQ(ToString(MOUNT_ERROR_IN_PROGRESS), "MOUNT_ERROR_IN_PROGRESS");
-  EXPECT_EQ(ToString(MOUNT_ERROR_CANCELLED), "MOUNT_ERROR_CANCELLED");
-  EXPECT_EQ(ToString(MOUNT_ERROR_BUSY), "MOUNT_ERROR_BUSY");
-  EXPECT_EQ(ToString(MOUNT_ERROR_INVALID_DEVICE_PATH),
-            "MOUNT_ERROR_INVALID_DEVICE_PATH");
-  EXPECT_EQ(ToString(MOUNT_ERROR_UNKNOWN_FILESYSTEM),
-            "MOUNT_ERROR_UNKNOWN_FILESYSTEM");
-  EXPECT_EQ(ToString(MOUNT_ERROR_UNSUPPORTED_FILESYSTEM),
-            "MOUNT_ERROR_UNSUPPORTED_FILESYSTEM");
-  EXPECT_EQ(ToString(MOUNT_ERROR_INVALID_ARCHIVE),
-            "MOUNT_ERROR_INVALID_ARCHIVE");
-  EXPECT_EQ(ToString(MountError(987654)), "MOUNT_ERROR_987654");
+  EXPECT_EQ(ToString(MountError::kSuccess), "MountError::kSuccess");
+  EXPECT_EQ(ToString(MountError::kUnknownError), "MountError::kUnknownError");
+  EXPECT_EQ(ToString(MountError::kInternalError), "MountError::kInternalError");
+  EXPECT_EQ(ToString(MountError::kInvalidArgument),
+            "MountError::kInvalidArgument");
+  EXPECT_EQ(ToString(MountError::kInvalidPath), "MountError::kInvalidPath");
+  EXPECT_EQ(ToString(MountError::kPathAlreadyMounted),
+            "MountError::kPathAlreadyMounted");
+  EXPECT_EQ(ToString(MountError::kPathNotMounted),
+            "MountError::kPathNotMounted");
+  EXPECT_EQ(ToString(MountError::kDirectoryCreationFailed),
+            "MountError::kDirectoryCreationFailed");
+  EXPECT_EQ(ToString(MountError::kInvalidMountOptions),
+            "MountError::kInvalidMountOptions");
+  EXPECT_EQ(ToString(MountError::kInvalidUnmountOptions),
+            "MountError::kInvalidUnmountOptions");
+  EXPECT_EQ(ToString(MountError::kInsufficientPermissions),
+            "MountError::kInsufficientPermissions");
+  EXPECT_EQ(ToString(MountError::kMountProgramNotFound),
+            "MountError::kMountProgramNotFound");
+  EXPECT_EQ(ToString(MountError::kMountProgramFailed),
+            "MountError::kMountProgramFailed");
+  EXPECT_EQ(ToString(MountError::kNeedPassword), "MountError::kNeedPassword");
+  EXPECT_EQ(ToString(MountError::kInProgress), "MountError::kInProgress");
+  EXPECT_EQ(ToString(MountError::kCancelled), "MountError::kCancelled");
+  EXPECT_EQ(ToString(MountError::kBusy), "MountError::kBusy");
+  EXPECT_EQ(ToString(MountError::kInvalidDevicePath),
+            "MountError::kInvalidDevicePath");
+  EXPECT_EQ(ToString(MountError::kUnknownFilesystem),
+            "MountError::kUnknownFilesystem");
+  EXPECT_EQ(ToString(MountError::kUnsupportedFilesystem),
+            "MountError::kUnsupportedFilesystem");
+  EXPECT_EQ(ToString(MountError::kInvalidArchive),
+            "MountError::kInvalidArchive");
+  EXPECT_EQ(ToString(MountError(987654)), "MountError(987654)");
 }
 
 TEST(ErrorLogger, PartitionErrorType) {

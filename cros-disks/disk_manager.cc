@@ -90,13 +90,13 @@ class DiskFUSEMounter : public FUSEMounter {
         !base::StartsWith(device.value(), "/dev/",
                           base::CompareCase::SENSITIVE)) {
       LOG(ERROR) << "Device path " << quote(device) << " is invalid";
-      *error = MOUNT_ERROR_INVALID_ARGUMENT;
+      *error = MountError::kInvalidArgument;
       return nullptr;
     }
 
     if (!platform()->PathExists(device.value())) {
       PLOG(ERROR) << "Cannot access device " << quote(device);
-      *error = MOUNT_ERROR_INVALID_DEVICE_PATH;
+      *error = MountError::kInvalidDevicePath;
       return nullptr;
     }
 
@@ -106,7 +106,7 @@ class DiskFUSEMounter : public FUSEMounter {
         !platform()->SetPermissions(source,
                                     S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP)) {
       PLOG(ERROR) << "Cannot set up permissions on device " << quote(source);
-      *error = MOUNT_ERROR_INSUFFICIENT_PERMISSIONS;
+      *error = MountError::kInsufficientPermissions;
       return nullptr;
     }
 
@@ -123,14 +123,14 @@ class DiskFUSEMounter : public FUSEMounter {
     if (!sandbox->BindMount(device.value(), device.value(), true, false)) {
       PLOG(ERROR) << "Cannot bind-mount device " << quote(device)
                   << " into the sandbox";
-      *error = MOUNT_ERROR_INTERNAL;
+      *error = MountError::kInternalError;
       return nullptr;
     }
 
     if (!options_.empty()) {
       std::string options;
       if (!JoinParamsIntoOptions(options_, &options)) {
-        *error = MOUNT_ERROR_INVALID_MOUNT_OPTIONS;
+        *error = MountError::kInvalidMountOptions;
         return nullptr;
       }
       sandbox->AddArgument("-o");
@@ -139,7 +139,7 @@ class DiskFUSEMounter : public FUSEMounter {
 
     sandbox->AddArgument(device.value());
 
-    *error = MOUNT_ERROR_NONE;
+    *error = MountError::kSuccess;
     return sandbox;
   }
 
@@ -297,27 +297,27 @@ std::unique_ptr<MountPoint> DiskManager::DoMount(
   Disk disk;
   if (!disk_monitor_->GetDiskByDevicePath(base::FilePath(source_path), &disk)) {
     LOG(ERROR) << quote(source_path) << " is not a valid device";
-    *error = MOUNT_ERROR_INVALID_DEVICE_PATH;
+    *error = MountError::kInvalidDevicePath;
     return nullptr;
   }
 
   if (disk.is_on_boot_device) {
     LOG(ERROR) << quote(source_path)
                << " is on boot device and not allowed to mount";
-    *error = MOUNT_ERROR_INVALID_DEVICE_PATH;
+    *error = MountError::kInvalidDevicePath;
     return nullptr;
   }
 
   if (disk.device_file.empty()) {
     LOG(ERROR) << quote(source_path) << " does not have a device file";
-    *error = MOUNT_ERROR_INVALID_DEVICE_PATH;
+    *error = MountError::kInvalidDevicePath;
     return nullptr;
   }
 
   if (!platform()->PathExists(disk.device_file)) {
     PLOG(ERROR) << quote(source_path) << " has device file "
                 << quote(disk.device_file) << " which is missing";
-    *error = MOUNT_ERROR_INVALID_DEVICE_PATH;
+    *error = MountError::kInvalidDevicePath;
     return nullptr;
   }
 
@@ -328,7 +328,7 @@ std::unique_ptr<MountPoint> DiskManager::DoMount(
   if (fstype.empty()) {
     LOG(ERROR) << "Cannot determine filesystem type of device "
                << quote(source_path);
-    *error = MOUNT_ERROR_UNKNOWN_FILESYSTEM;
+    *error = MountError::kUnknownFilesystem;
     return nullptr;
   }
 
@@ -336,7 +336,7 @@ std::unique_ptr<MountPoint> DiskManager::DoMount(
   if (it == mounters_.end()) {
     LOG(ERROR) << "Cannot handle filesystem type " << quote(fstype)
                << " of device " << quote(source_path);
-    *error = MOUNT_ERROR_UNSUPPORTED_FILESYSTEM;
+    *error = MountError::kUnsupportedFilesystem;
     return nullptr;
   }
 
@@ -351,7 +351,7 @@ std::unique_ptr<MountPoint> DiskManager::DoMount(
 
   std::unique_ptr<MountPoint> mount_point =
       mounter->Mount(disk.device_file, mount_path, applied_options, error);
-  if (*error != MOUNT_ERROR_NONE) {
+  if (*error != MountError::kSuccess) {
     DCHECK(!mount_point);
     // Try to mount the filesystem read-only if mounting it read-write failed.
     if (!IsReadOnlyMount(applied_options)) {
@@ -360,7 +360,7 @@ std::unique_ptr<MountPoint> DiskManager::DoMount(
       applied_options.push_back("ro");
       mount_point =
           mounter->Mount(disk.device_file, mount_path, applied_options, error);
-      if (*error == MOUNT_ERROR_NONE) {
+      if (*error == MountError::kSuccess) {
         // crbug.com/1366204: Managed to mount the external media in read-only
         // mode after failing to mount it in read-write mode.
         DCHECK(mount_point);
@@ -375,7 +375,7 @@ std::unique_ptr<MountPoint> DiskManager::DoMount(
     }
   }
 
-  if (*error != MOUNT_ERROR_NONE) {
+  if (*error != MountError::kSuccess) {
     DCHECK(!mount_point);
     return nullptr;
   }
@@ -393,8 +393,8 @@ std::string DiskManager::SuggestMountPath(
 }
 
 bool DiskManager::ShouldReserveMountPathOnError(MountError error_type) const {
-  return error_type == MOUNT_ERROR_UNKNOWN_FILESYSTEM ||
-         error_type == MOUNT_ERROR_UNSUPPORTED_FILESYSTEM;
+  return error_type == MountError::kUnknownFilesystem ||
+         error_type == MountError::kUnsupportedFilesystem;
 }
 
 bool DiskManager::EjectDevice(const std::string& device_file) {

@@ -92,7 +92,7 @@ void MountManager::Mount(const std::string& source,
 
   if (real_path.empty()) {
     LOG(ERROR) << "Cannot mount an invalid path: " << redact(source);
-    std::move(mount_callback).Run("", MOUNT_ERROR_INVALID_ARGUMENT, false);
+    std::move(mount_callback).Run("", MountError::kInvalidArgument, false);
     return;
   }
 
@@ -119,7 +119,7 @@ MountError MountManager::Remount(const std::string& source,
   MountPoint* const mount_point = FindMountBySource(source);
   if (!mount_point) {
     LOG(WARNING) << "Not currently mounted: " << quote(source);
-    return MOUNT_ERROR_PATH_NOT_MOUNTED;
+    return MountError::kPathNotMounted;
   }
 
   // Perform the underlying mount operation.
@@ -134,7 +134,7 @@ MountError MountManager::Remount(const std::string& source,
   *read_only = mount_point->is_read_only();
 
   LOG(INFO) << "Remounted " << quote(source) << " on " << quote(*mount_path);
-  return MOUNT_ERROR_NONE;
+  return MountError::kSuccess;
 }
 
 void MountManager::MountNewSource(const std::string& source,
@@ -169,7 +169,7 @@ void MountManager::MountNewSource(const std::string& source,
   // Perform the underlying mount operation. If an error occurs,
   // ShouldReserveMountPathOnError() is called to check if the mount path
   // should be reserved.
-  MountError error = MOUNT_ERROR_UNKNOWN;
+  MountError error = MountError::kUnknownError;
   std::unique_ptr<MountPoint> mount_point =
       DoMount(source, filesystem_type, std::move(options), mount_path, &error);
 
@@ -181,7 +181,7 @@ void MountManager::MountNewSource(const std::string& source,
       LOG(ERROR) << "Mounter for " << redact(source) << " of type "
                  << quote(filesystem_type)
                  << " returned no MountPoint and no error";
-      error = MOUNT_ERROR_UNKNOWN;
+      error = MountError::kUnknownError;
     } else if (mount_point) {
       LOG(ERROR) << "Mounter for " << redact(source) << " of type "
                  << quote(filesystem_type)
@@ -248,7 +248,7 @@ void MountManager::OnLauncherExit(
 
   DCHECK_EQ(mount_path, mount_point->path());
   DCHECK_EQ(error, mount_point->error());
-  DCHECK_NE(MOUNT_ERROR_IN_PROGRESS, error);
+  DCHECK_NE(MountError::kInProgress, error);
 
   if (error)
     RemoveMount(mount_point.get());
@@ -259,14 +259,14 @@ MountError MountManager::Unmount(const std::string& path) {
   MountPoint* const mount_point =
       FindMountBySource(path) ?: FindMountByMountPath(base::FilePath(path));
   if (!mount_point)
-    return MOUNT_ERROR_PATH_NOT_MOUNTED;
+    return MountError::kPathNotMounted;
 
   if (const MountError error = mount_point->Unmount();
       mount_point->is_mounted())
     return error;
 
   RemoveMount(mount_point);
-  return MOUNT_ERROR_NONE;
+  return MountError::kSuccess;
 }
 
 void MountManager::UnmountAll() {
@@ -361,7 +361,7 @@ MountError MountManager::CreateMountPathForSource(const std::string& source,
 
   if (!IsValidMountPath(*mount_path)) {
     LOG(ERROR) << "Mount path " << quote(*mount_path) << " is invalid";
-    return MOUNT_ERROR_INVALID_PATH;
+    return MountError::kInvalidPath;
   }
 
   std::unordered_set<std::string> reserved_paths;
@@ -375,11 +375,11 @@ MountError MountManager::CreateMountPathForSource(const std::string& source,
           &path, kMaxNumMountTrials, reserved_paths)) {
     LOG(ERROR) << "Cannot create directory " << quote(*mount_path)
                << " to mount " << quote(source);
-    return MOUNT_ERROR_DIRECTORY_CREATION_FAILED;
+    return MountError::kDirectoryCreationFailed;
   }
 
   *mount_path = base::FilePath(path);
-  return MOUNT_ERROR_NONE;
+  return MountError::kSuccess;
 }
 
 std::vector<const MountPoint*> MountManager::GetMountPoints() const {

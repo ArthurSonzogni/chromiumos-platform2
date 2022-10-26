@@ -38,7 +38,7 @@ struct MountPointData {
   // Additional data passed during mount.
   std::string data;
   // Error state associated to this mount point.
-  MountError error = MOUNT_ERROR_NONE;
+  MountError error = MountError::kSuccess;
 };
 
 class Platform;
@@ -158,7 +158,7 @@ class MountPoint final {
   std::string metrics_name_;
 
   // Set of FUSE launcher exit codes that are interpreted as
-  // MOUNT_ERROR_NEED_PASSWORD.
+  // MountError::kNeedPassword.
   std::vector<int> password_needed_exit_codes_;
 
   // Callback called when the FUSE 'launcher' process finished.

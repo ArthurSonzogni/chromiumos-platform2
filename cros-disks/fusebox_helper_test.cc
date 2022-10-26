@@ -44,7 +44,7 @@ class FuseBoxHelperTest : public ::testing::Test {
     FakeSandboxedProcess sandbox;
     MountError error = helper_.ConfigureSandbox(source, kMountDir,
                                                 std::move(options), &sandbox);
-    if (error == MOUNT_ERROR_NONE)
+    if (error == MountError::kSuccess)
       *arguments = JoinArguments(sandbox);
     return error;
   }
@@ -82,7 +82,7 @@ TEST_F(FuseBoxHelperTest, SourceUri) {
 TEST_F(FuseBoxHelperTest, CreateMounter) {
   std::string arguments;
   auto source = kFuseBoxSource.value();
-  EXPECT_EQ(MOUNT_ERROR_NONE, ConfigureSandbox(source, {}, &arguments));
+  EXPECT_EQ(MountError::kSuccess, ConfigureSandbox(source, {}, &arguments));
   EXPECT_EQ("-o uid=1000,gid=1001", arguments);
 }
 
@@ -92,7 +92,8 @@ TEST_F(FuseBoxHelperTest, CreateMounterWithOptions) {
 
   std::string arguments;
   auto source = kFuseBoxSource.value();
-  EXPECT_EQ(MOUNT_ERROR_NONE, ConfigureSandbox(source, options, &arguments));
+  EXPECT_EQ(MountError::kSuccess,
+            ConfigureSandbox(source, options, &arguments));
   auto expected = options[0].append(" -o uid=1000,gid=1001");
   EXPECT_EQ(expected, arguments);
 }
@@ -102,7 +103,8 @@ TEST_F(FuseBoxHelperTest, CreateMounterWithReadOnlyMountOption) {
 
   std::string arguments;
   auto source = kFuseBoxSource.value();
-  EXPECT_EQ(MOUNT_ERROR_NONE, ConfigureSandbox(source, options, &arguments));
+  EXPECT_EQ(MountError::kSuccess,
+            ConfigureSandbox(source, options, &arguments));
   auto expected = options[0].append(" -o ro -o uid=1000,gid=1001");
   EXPECT_EQ(expected, arguments);
 }
@@ -112,7 +114,8 @@ TEST_F(FuseBoxHelperTest, CreateMounterWithReadWriteMountOption) {
 
   std::string arguments;
   auto source = kFuseBoxSource.value();
-  EXPECT_EQ(MOUNT_ERROR_NONE, ConfigureSandbox(source, options, &arguments));
+  EXPECT_EQ(MountError::kSuccess,
+            ConfigureSandbox(source, options, &arguments));
   auto expected = options[0].append(" -o rw -o uid=1000,gid=1001");
   EXPECT_EQ(expected, arguments);
 }

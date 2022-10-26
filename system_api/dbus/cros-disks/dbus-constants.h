@@ -101,68 +101,71 @@ enum FormatError {
 // numeric values should never be reused.
 enum MountError {
   // Success.
-  MOUNT_ERROR_NONE = 0,
+  kSuccess = 0,
 
   // Generic error code.
-  MOUNT_ERROR_UNKNOWN = 1,
+  kUnknownError = 1,
 
   // Internal error.
-  MOUNT_ERROR_INTERNAL = 2,
+  kInternalError = 2,
 
   // Invalid argument.
-  MOUNT_ERROR_INVALID_ARGUMENT = 3,
+  kInvalidArgument = 3,
 
   // Invalid path.
-  MOUNT_ERROR_INVALID_PATH = 4,
+  kInvalidPath = 4,
 
   // Not used.
-  MOUNT_ERROR_PATH_ALREADY_MOUNTED = 5,
+  kPathAlreadyMounted = 5,
 
   // Tried to unmount a path that is not currently mounted.
-  MOUNT_ERROR_PATH_NOT_MOUNTED = 6,
+  kPathNotMounted = 6,
 
   // Cannot create directory.
-  MOUNT_ERROR_DIRECTORY_CREATION_FAILED = 7,
+  kDirectoryCreationFailed = 7,
 
   // Invalid mount options.
-  MOUNT_ERROR_INVALID_MOUNT_OPTIONS = 8,
+  kInvalidMountOptions = 8,
 
   // Not used.
-  MOUNT_ERROR_INVALID_UNMOUNT_OPTIONS = 9,
+  kInvalidUnmountOptions = 9,
 
   // Insufficient permissions.
-  MOUNT_ERROR_INSUFFICIENT_PERMISSIONS = 10,
+  kInsufficientPermissions = 10,
 
   // The FUSE mounter cannot be found.
-  MOUNT_ERROR_MOUNT_PROGRAM_NOT_FOUND = 11,
+  kMountProgramNotFound = 11,
 
   // The FUSE mounter finished with an error.
-  MOUNT_ERROR_MOUNT_PROGRAM_FAILED = 12,
+  kMountProgramFailed = 12,
 
   // The provided path to mount is invalid.
-  MOUNT_ERROR_INVALID_DEVICE_PATH = 13,
+  kInvalidDevicePath = 13,
 
   // Cannot determine file system of the device.
-  MOUNT_ERROR_UNKNOWN_FILESYSTEM = 14,
+  kUnknownFilesystem = 14,
 
   // The file system of the device is recognized but not supported.
-  MOUNT_ERROR_UNSUPPORTED_FILESYSTEM = 15,
+  kUnsupportedFilesystem = 15,
 
   // Not used.
-  MOUNT_ERROR_INVALID_ARCHIVE = 16,
+  kInvalidArchive = 16,
 
   // Either the FUSE mounter needs a password, or the provided password is
   // incorrect.
-  MOUNT_ERROR_NEED_PASSWORD = 17,
+  kNeedPassword = 17,
 
   // The FUSE mounter is currently launching, and it hasn't daemonized yet.
-  MOUNT_ERROR_IN_PROGRESS = 18,
+  kInProgress = 18,
 
   // The FUSE mounter was cancelled (killed) while it was launching.
-  MOUNT_ERROR_CANCELLED = 19,
+  kCancelled = 19,
 
   // The device is busy.
-  MOUNT_ERROR_BUSY = 20,
+  kBusy = 20,
+
+  // Modify when adding enum values.
+  kMaxValue = 20,
 };
 
 // MountSourceType enum values are solely used by Chrome/CrosDisks in

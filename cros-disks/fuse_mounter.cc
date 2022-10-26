@@ -226,7 +226,7 @@ std::unique_ptr<MountPoint> FUSEMounter::Mount(
   if (!fuse_file.IsValid()) {
     LOG(ERROR) << "Cannot open FUSE device " << quote(fuse_device_path) << ": "
                << base::File::ErrorToString(fuse_file.error_details());
-    *error = MOUNT_ERROR_INTERNAL;
+    *error = MountError::kInternalError;
     return nullptr;
   }
 
@@ -283,7 +283,7 @@ std::unique_ptr<MountPoint> FUSEMounter::Mount(
                         platform_, error);
 
   if (!mount_point) {
-    DCHECK_NE(*error, MOUNT_ERROR_NONE);
+    DCHECK_NE(*error, MountError::kSuccess);
     return nullptr;
   }
 
@@ -302,7 +302,7 @@ std::unique_ptr<MountPoint> FUSEMounter::Mount(
                           config_.metrics_name,
                           config_.password_needed_exit_codes);
 
-  *error = MOUNT_ERROR_NONE;
+  *error = MountError::kSuccess;
   return mount_point;
 }
 
@@ -329,7 +329,7 @@ std::unique_ptr<SandboxedProcess> FUSEMounter::StartDaemon(
   process->SetOutputCallback(base::DoNothing());
 
   if (!process->Start()) {
-    *error = MOUNT_ERROR_MOUNT_PROGRAM_NOT_FOUND;
+    *error = MountError::kMountProgramNotFound;
     return nullptr;
   }
 
@@ -360,7 +360,7 @@ std::unique_ptr<SandboxedProcess> FUSEMounterHelper::PrepareSandbox(
   std::unique_ptr<SandboxedProcess> sandbox =
       sandbox_factory_->CreateSandboxedProcess();
   if (!sandbox) {
-    *error = MOUNT_ERROR_INTERNAL;
+    *error = MountError::kInternalError;
     return nullptr;
   }
 
