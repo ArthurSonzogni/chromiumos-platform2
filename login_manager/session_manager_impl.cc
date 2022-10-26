@@ -913,8 +913,7 @@ bool SessionManagerImpl::RetrievePolicyEx(
     return false;
   }
 
-  std::unique_ptr<PolicyService> storage;
-  PolicyService* policy_service = GetPolicyService(descriptor, &storage, error);
+  PolicyService* policy_service = GetPolicyService(descriptor, error);
   if (!policy_service) {
     LOG(ERROR) << kGetPolicyServiceFailMessage;
     *error =
@@ -943,8 +942,7 @@ bool SessionManagerImpl::ListStoredComponentPolicies(
     return false;
   }
 
-  std::unique_ptr<PolicyService> storage;
-  PolicyService* policy_service = GetPolicyService(descriptor, &storage, error);
+  PolicyService* policy_service = GetPolicyService(descriptor, error);
   if (!policy_service)
     return false;
 
@@ -1905,9 +1903,7 @@ brillo::ErrorPtr SessionManagerImpl::VerifyUnsignedPolicyStore() {
 
 PolicyService* SessionManagerImpl::GetPolicyService(
     const PolicyDescriptor& descriptor,
-    std::unique_ptr<PolicyService>* storage,
     brillo::ErrorPtr* error) {
-  DCHECK(storage);
   DCHECK(error);
   PolicyService* policy_service = nullptr;
   switch (descriptor.account_type()) {
@@ -1921,15 +1917,6 @@ PolicyService* SessionManagerImpl::GetPolicyService(
       policy_service = it != user_sessions_.end()
                            ? it->second->policy_service.get()
                            : nullptr;
-      break;
-    }
-    case ACCOUNT_TYPE_SESSIONLESS_USER: {
-      // Special case, different lifetime management than all other cases
-      // (unique_ptr vs plain ptr). TODO(crbug.com/771638): Clean this up when
-      // the bug is fixed and sessionless users are handled differently.
-      *storage = user_policy_factory_->CreateForHiddenUserHome(
-          descriptor.account_id());
-      policy_service = storage->get();
       break;
     }
     case ACCOUNT_TYPE_DEVICE_LOCAL_ACCOUNT: {
@@ -1960,11 +1947,6 @@ int SessionManagerImpl::GetKeyInstallFlags(const PolicyDescriptor& descriptor) {
     }
     case ACCOUNT_TYPE_USER:
       return PolicyService::KEY_INSTALL_NEW | PolicyService::KEY_ROTATE;
-    case ACCOUNT_TYPE_SESSIONLESS_USER: {
-      // Only supports retrieval, not storage.
-      NOTREACHED();
-      return PolicyService::KEY_NONE;
-    }
     case ACCOUNT_TYPE_DEVICE_LOCAL_ACCOUNT:
       return PolicyService::KEY_NONE;
   }
@@ -1984,9 +1966,7 @@ void SessionManagerImpl::StorePolicyInternalEx(
     return;
   }
 
-  std::unique_ptr<PolicyService> storage;
-  PolicyService* policy_service =
-      GetPolicyService(descriptor, &storage, &error);
+  PolicyService* policy_service = GetPolicyService(descriptor, &error);
   if (!policy_service) {
     response->ReplyWithError(error.get());
     return;

@@ -1870,36 +1870,6 @@ TEST_F(SessionManagerImplTest, RetrieveUserPolicyEx_SecondSession) {
   }
 }
 
-TEST_F(SessionManagerImplTest, RetrieveUserPolicyExWithoutSession) {
-  ASSERT_FALSE(user_policy_services_.count(kSaneEmail));
-
-  const std::vector<uint8_t> policy_blob = StringToBlob("fake policy");
-
-  // Set up what MockUserPolicyServiceFactory will return.
-  hidden_user_home_expected_username_ = kSaneEmail;
-  hidden_user_home_policy_service_ = std::make_unique<MockPolicyService>();
-  MockPolicyService* policy_service = hidden_user_home_policy_service_.get();
-
-  EXPECT_CALL(*policy_service, Retrieve(MakeChromePolicyNamespace(), _))
-      .WillOnce(DoAll(SetArgPointee<1>(policy_blob), Return(true)));
-
-  // Retrieve policy for a user who does not have a session.
-  std::vector<uint8_t> out_blob;
-  brillo::ErrorPtr error;
-  EXPECT_TRUE(impl_->RetrievePolicyEx(
-      &error, MakePolicyDescriptor(ACCOUNT_TYPE_SESSIONLESS_USER, kSaneEmail),
-      &out_blob));
-  Mock::VerifyAndClearExpectations(policy_service);
-  EXPECT_FALSE(error.get());
-  EXPECT_EQ(policy_blob, out_blob);
-  // Retrieval of policy without user session should not create a persistent
-  // PolicyService.
-  ASSERT_FALSE(user_policy_services_.count(kSaneEmail));
-
-  // Make sure the policy service is deleted.
-  base::RunLoop().RunUntilIdle();
-}
-
 TEST_F(SessionManagerImplTest, StoreDeviceLocalAccountPolicyNoAccount) {
   const std::vector<uint8_t> policy_blob = CreatePolicyFetchResponseBlob();
   base::FilePath policy_path = GetDeviceLocalAccountPolicyPath(kSaneEmail);

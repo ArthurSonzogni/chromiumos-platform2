@@ -117,11 +117,6 @@ bool ValidatePolicyDescriptor(const PolicyDescriptor& descriptor,
         return false;
       break;
 
-    case ACCOUNT_TYPE_SESSIONLESS_USER:
-      // Can only retrieve policy for sessionless users, i.e. from login screen.
-      if (usage != PolicyDescriptorUsage::kRetrieve)
-        return false;
-      [[fallthrough]];
     case ACCOUNT_TYPE_USER:
       if (!ValidateAccountId(descriptor.account_id(), nullptr))
         return false;

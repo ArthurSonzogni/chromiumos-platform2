@@ -427,12 +427,9 @@ class SessionManagerImpl
   // reply to the D-Bus method call is returned.
   brillo::ErrorPtr VerifyUnsignedPolicyStore();
 
-  // Returns the appropriate PolicyService for the given |descriptor|. |storage|
-  // is only set for some |descriptor|s. If set, it controls the lifetime of the
-  // returned pointer. Returns nullptr and sets |error| if no PolicyService
-  // could be found.
+  // Returns the appropriate PolicyService for the given |descriptor|.
+  // Returns nullptr and sets |error| if no PolicyService could be found.
   PolicyService* GetPolicyService(const PolicyDescriptor& descriptor,
-                                  std::unique_ptr<PolicyService>* storage,
                                   brillo::ErrorPtr* error);
 
   // Returns the appropriate PolicyService::KeyInstallFlags for the given

@@ -118,14 +118,6 @@ TEST(ValidatorUtilsTest, PolicyDescriptorUserAccountInvalidAccountId) {
       ValidatePolicyDescriptor(desc, PolicyDescriptorUsage::kRetrieve));
 }
 
-TEST(ValidatorUtilsTest, PolicyDescriptorSessionlessUserAccountRetrieveOnly) {
-  PolicyDescriptor desc;
-  desc.set_account_type(ACCOUNT_TYPE_SESSIONLESS_USER);
-  desc.set_account_id(kValidAccountId);
-  EXPECT_FALSE(ValidatePolicyDescriptor(desc, PolicyDescriptorUsage::kStore));
-  EXPECT_TRUE(ValidatePolicyDescriptor(desc, PolicyDescriptorUsage::kRetrieve));
-}
-
 TEST(ValidatorUtilsTest, PolicyDescriptorDeviceLocalAccountValid) {
   PolicyDescriptor desc;
   desc.set_account_type(ACCOUNT_TYPE_DEVICE_LOCAL_ACCOUNT);
