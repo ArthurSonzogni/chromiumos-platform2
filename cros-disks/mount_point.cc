@@ -88,7 +88,7 @@ MountError MountPoint::Remount(bool read_only) {
   const MountError error =
       platform_->Mount(data_.source, data_.mount_path.value(),
                        data_.filesystem_type, flags | MS_REMOUNT, data_.data);
-  if (!error)
+  if (error == MountError::kSuccess)
     data_.flags = flags;
 
   return error;

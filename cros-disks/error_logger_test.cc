@@ -13,7 +13,6 @@ namespace cros_disks {
 namespace {
 
 static_assert(!FORMAT_ERROR_NONE);
-static_assert(!MountError::kSuccess);
 static_assert(!PARTITION_ERROR_NONE);
 static_assert(!RENAME_ERROR_NONE);
 

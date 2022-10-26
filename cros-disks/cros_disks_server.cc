@@ -143,7 +143,7 @@ void CrosDisksServer::OnMountCompleted(const std::string& source,
                                        const std::string& mount_path,
                                        MountError error,
                                        bool read_only) {
-  if (error) {
+  if (error != MountError::kSuccess) {
     LOG(ERROR) << "Cannot mount " << redact(source) << " of type "
                << quote(filesystem_type) << ": " << error;
   } else {
@@ -151,7 +151,8 @@ void CrosDisksServer::OnMountCompleted(const std::string& source,
               << quote(filesystem_type) << " on " << redact(mount_path);
   }
 
-  SendMountCompletedSignal(error, source, source_type, mount_path, read_only);
+  SendMountCompletedSignal(static_cast<uint32_t>(error), source, source_type,
+                           mount_path, read_only);
 }
 
 void CrosDisksServer::Mount(const std::string& source,
@@ -161,8 +162,8 @@ void CrosDisksServer::Mount(const std::string& source,
   if (!mounter) {
     LOG(ERROR) << "Cannot find mounter for " << redact(source) << " of type "
                << quote(filesystem_type);
-    SendMountCompletedSignal(MountError::kInvalidPath, source,
-                             MOUNT_SOURCE_INVALID, "", false);
+    SendMountCompletedSignal(static_cast<uint32_t>(MountError::kInvalidPath),
+                             source, MOUNT_SOURCE_INVALID, "", false);
     return;
   }
 
@@ -185,7 +186,7 @@ uint32_t CrosDisksServer::Unmount(const std::string& path,
                                   const std::vector<std::string>& options) {
   if (path.empty()) {
     LOG(ERROR) << "Cannot unmount an empty path";
-    return MountError::kInvalidArgument;
+    return static_cast<uint32_t>(MountError::kInvalidArgument);
   }
 
   LOG(INFO) << "Unmounting " << redact(path) << "...";
@@ -200,13 +201,13 @@ uint32_t CrosDisksServer::Unmount(const std::string& path,
       break;
   }
 
-  if (error) {
+  if (error != MountError::kSuccess) {
     LOG(ERROR) << "Cannot unmount " << redact(path) << ": " << error;
   } else {
     LOG(INFO) << "Unmounted " << redact(path);
   }
 
-  return error;
+  return static_cast<uint32_t>(error);
 }
 
 void CrosDisksServer::UnmountAll() {
@@ -236,8 +237,8 @@ CrosDisksServer::MountEntries CrosDisksServer::EnumerateMountEntries() {
       if (mount_point->error() == MountError::kInProgress)
         continue;
 
-      entries.emplace_back(mount_point->error(), mount_point->source(),
-                           mount_point->source_type(),
+      entries.emplace_back(static_cast<uint32_t>(mount_point->error()),
+                           mount_point->source(), mount_point->source_type(),
                            mount_point->path().value(),
                            mount_point->is_read_only());
     }

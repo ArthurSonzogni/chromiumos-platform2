@@ -292,7 +292,7 @@ std::unique_ptr<MountPoint> FUSEMounter::Mount(
       StartDaemon(fuse_file, source, target_path, std::move(params), error);
 
   if (!process) {
-    DCHECK(*error);
+    DCHECK_NE(*error, MountError::kSuccess);
     LOG(ERROR) << "Cannot start FUSE daemon for " << redact(source) << ": "
                << *error;
     return nullptr;
@@ -318,7 +318,7 @@ std::unique_ptr<SandboxedProcess> FUSEMounter::StartDaemon(
       PrepareSandbox(source, target_path, std::move(params), error);
 
   if (!process) {
-    DCHECK(*error);
+    DCHECK_NE(*error, MountError::kSuccess);
     return nullptr;
   }
 
@@ -366,7 +366,7 @@ std::unique_ptr<SandboxedProcess> FUSEMounterHelper::PrepareSandbox(
 
   *error =
       ConfigureSandbox(source, target_path, std::move(params), sandbox.get());
-  if (*error)
+  if (*error != MountError::kSuccess)
     return nullptr;
 
   return sandbox;

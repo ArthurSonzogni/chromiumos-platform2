@@ -123,7 +123,8 @@ MountError MountManager::Remount(const std::string& source,
   }
 
   // Perform the underlying mount operation.
-  if (const MountError error = mount_point->Remount(IsReadOnlyMount(options))) {
+  if (const MountError error = mount_point->Remount(IsReadOnlyMount(options));
+      error != MountError::kSuccess) {
     LOG(ERROR) << "Cannot remount " << quote(source) << ": " << error;
     return error;
   }
@@ -163,7 +164,8 @@ void MountManager::MountNewSource(const std::string& source,
   // requires a proper mount directory.
   base::FilePath mount_path;
   if (const MountError error =
-          CreateMountPathForSource(source, label, &mount_path))
+          CreateMountPathForSource(source, label, &mount_path);
+      error != MountError::kSuccess)
     return std::move(mount_callback).Run("", error, false);
 
   // Perform the underlying mount operation. If an error occurs,
@@ -176,8 +178,8 @@ void MountManager::MountNewSource(const std::string& source,
   // Check for both mount_point and error here, since there might be (incorrect)
   // mounters that return no MountPoint and no error (crbug.com/1317877 and
   // crbug.com/1317878).
-  if (!mount_point || error) {
-    if (!error) {
+  if (!mount_point || error != MountError::kSuccess) {
+    if (error == MountError::kSuccess) {
       LOG(ERROR) << "Mounter for " << redact(source) << " of type "
                  << quote(filesystem_type)
                  << " returned no MountPoint and no error";
@@ -250,7 +252,7 @@ void MountManager::OnLauncherExit(
   DCHECK_EQ(error, mount_point->error());
   DCHECK_NE(MountError::kInProgress, error);
 
-  if (error)
+  if (error != MountError::kSuccess)
     RemoveMount(mount_point.get());
 }
 
