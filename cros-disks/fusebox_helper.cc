@@ -66,11 +66,10 @@ bool FuseBoxHelper::CanMount(const std::string& source,
   return true;
 }
 
-MountErrorType FuseBoxHelper::ConfigureSandbox(
-    const std::string& source,
-    const base::FilePath& target_path,
-    std::vector<std::string> params,
-    SandboxedProcess* sandbox) const {
+MountError FuseBoxHelper::ConfigureSandbox(const std::string& source,
+                                           const base::FilePath& target_path,
+                                           std::vector<std::string> params,
+                                           SandboxedProcess* sandbox) const {
   const Uri uri = Uri::Parse(source);
 
   if (!uri.valid() || uri.scheme() != kType) {

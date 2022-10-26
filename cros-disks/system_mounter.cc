@@ -42,7 +42,7 @@ std::unique_ptr<MountPoint> SystemMounter::Mount(
     const std::string& source,
     const base::FilePath& target_path,
     std::vector<std::string> params,
-    MountErrorType* error) const {
+    MountError* error) const {
   uint64_t flags = flags_;
 
   // We only care about "ro" here.
@@ -81,7 +81,7 @@ bool SystemMounter::CanMount(const std::string& source,
   return true;
 }
 
-MountErrorType SystemMounter::ParseParams(
+MountError SystemMounter::ParseParams(
     std::vector<std::string> /*params*/,
     std::vector<std::string>* /*mount_options*/) const {
   return MOUNT_ERROR_NONE;

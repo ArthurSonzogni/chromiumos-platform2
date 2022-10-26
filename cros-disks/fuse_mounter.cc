@@ -215,7 +215,7 @@ std::unique_ptr<MountPoint> FUSEMounter::Mount(
     const std::string& source,
     const base::FilePath& target_path,
     std::vector<std::string> params,
-    MountErrorType* const error) const {
+    MountError* const error) const {
   // Read-only is the only parameter that has any effect at this layer.
   const bool read_only = config_.read_only || IsReadOnlyMount(params);
 
@@ -311,7 +311,7 @@ std::unique_ptr<SandboxedProcess> FUSEMounter::StartDaemon(
     const std::string& source,
     const base::FilePath& target_path,
     std::vector<std::string> params,
-    MountErrorType* const error) const {
+    MountError* const error) const {
   DCHECK(error);
 
   std::unique_ptr<SandboxedProcess> process =
@@ -354,7 +354,7 @@ std::unique_ptr<SandboxedProcess> FUSEMounterHelper::PrepareSandbox(
     const std::string& source,
     const base::FilePath& target_path,
     std::vector<std::string> params,
-    MountErrorType* const error) const {
+    MountError* const error) const {
   DCHECK(error);
 
   std::unique_ptr<SandboxedProcess> sandbox =

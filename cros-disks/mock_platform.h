@@ -14,7 +14,7 @@ namespace cros_disks {
 
 class MockPlatform : public Platform {
  public:
-  MOCK_METHOD(MountErrorType,
+  MOCK_METHOD(MountError,
               Mount,
               (const std::string& source,
                const std::string& target,
@@ -22,7 +22,7 @@ class MockPlatform : public Platform {
                uint64_t flags,
                const std::string& options),
               (const, override));
-  MOCK_METHOD(MountErrorType,
+  MOCK_METHOD(MountError,
               Unmount,
               (const base::FilePath& mount_path,
                const std::string& filesystem_type),

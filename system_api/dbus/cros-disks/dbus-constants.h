@@ -80,7 +80,7 @@ enum DeviceMediaType {
   DEVICE_MEDIA_NUM_VALUES,
 };
 
-enum FormatErrorType {
+enum FormatError {
   FORMAT_ERROR_NONE = 0,
   FORMAT_ERROR_UNKNOWN = 1,
   FORMAT_ERROR_INTERNAL = 2,
@@ -99,7 +99,7 @@ enum FormatErrorType {
 //
 // These values are persisted to logs. Entries should not be renumbered and
 // numeric values should never be reused.
-enum MountErrorType {
+enum MountError {
   // Success.
   MOUNT_ERROR_NONE = 0,
 
@@ -174,7 +174,7 @@ enum MountSourceType {
   MOUNT_SOURCE_NETWORK_STORAGE = 3,
 };
 
-enum PartitionErrorType {
+enum PartitionError {
   PARTITION_ERROR_NONE = 0,
   PARTITION_ERROR_UNKNOWN = 1,
   PARTITION_ERROR_INTERNAL = 2,
@@ -185,7 +185,7 @@ enum PartitionErrorType {
   PARTITION_ERROR_DEVICE_NOT_ALLOWED = 7,
 };
 
-enum RenameErrorType {
+enum RenameError {
   RENAME_ERROR_NONE = 0,
   RENAME_ERROR_UNKNOWN = 1,
   RENAME_ERROR_INTERNAL = 2,

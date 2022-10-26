@@ -46,7 +46,7 @@ class ArchiveMounter : public FUSEMounter {
       const std::string& source,
       const base::FilePath& target_path,
       std::vector<std::string> params,
-      MountErrorType* error) const final;
+      MountError* error) const final;
 
   virtual std::vector<std::string> GetBindPaths(
       base::StringPiece original_path) const {

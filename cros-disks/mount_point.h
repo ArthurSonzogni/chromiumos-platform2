@@ -38,7 +38,7 @@ struct MountPointData {
   // Additional data passed during mount.
   std::string data;
   // Error state associated to this mount point.
-  MountErrorType error = MOUNT_ERROR_NONE;
+  MountError error = MOUNT_ERROR_NONE;
 };
 
 class Platform;
@@ -54,7 +54,7 @@ class MountPoint final {
   // error.
   static std::unique_ptr<MountPoint> Mount(MountPointData data,
                                            const Platform* platform,
-                                           MountErrorType* error);
+                                           MountError* error);
 
   explicit MountPoint(MountPointData data, const Platform* platform = nullptr);
 
@@ -68,10 +68,10 @@ class MountPoint final {
   base::WeakPtr<MountPoint> GetWeakPtr() { return weak_factory_.GetWeakPtr(); }
 
   // Unmounts right now.
-  MountErrorType Unmount();
+  MountError Unmount();
 
   // Remount with specified ro/rw.
-  MountErrorType Remount(bool read_only);
+  MountError Remount(bool read_only);
 
   // Associates a Process object to this MountPoint.
   void SetProcess(std::unique_ptr<Process> process,
@@ -88,7 +88,7 @@ class MountPoint final {
   }
 
   // Callback called when the FUSE 'launcher' process finished.
-  using LauncherExitCallback = base::OnceCallback<void(MountErrorType)>;
+  using LauncherExitCallback = base::OnceCallback<void(MountError)>;
   void SetLauncherExitCallback(LauncherExitCallback callback) {
     DCHECK(!launcher_exit_callback_);
     launcher_exit_callback_ = std::move(callback);
@@ -115,7 +115,7 @@ class MountPoint final {
   const std::string& fstype() const { return data_.filesystem_type; }
   uint64_t flags() const { return data_.flags; }
   const std::string& data() const { return data_.data; }
-  MountErrorType error() const { return data_.error; }
+  MountError error() const { return data_.error; }
   bool is_read_only() const { return (data_.flags & MS_RDONLY) != 0; }
   bool is_mounted() const { return is_mounted_; }
   Process* process() const { return process_.get(); }
@@ -123,7 +123,7 @@ class MountPoint final {
 
  private:
   // Converts the FUSE launcher's exit code into a MountErrorType.
-  MountErrorType ConvertLauncherExitCodeToMountError(int exit_code) const;
+  MountError ConvertLauncherExitCodeToMountError(int exit_code) const;
 
   // Called when the 'launcher' process finished.
   void OnLauncherExit(int exit_code);

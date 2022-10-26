@@ -49,7 +49,7 @@ class MockMounter : public Mounter {
               (const std::string& source,
                const base::FilePath& target_path,
                std::vector<std::string> params,
-               MountErrorType* error),
+               MountError* error),
               (const, override));
   MOCK_METHOD(bool,
               CanMount,
@@ -92,7 +92,7 @@ class FUSEMountManagerTest : public ::testing::Test {
 
   std::unique_ptr<MountPoint> DoMount(const std::string& type,
                                       const std::string& src,
-                                      MountErrorType* error) {
+                                      MountError* error) {
     std::unique_ptr<MountPoint> mount_point =
         manager_.DoMount(src, type, {}, base::FilePath(kSomeMountpoint), error);
     if (*error == MOUNT_ERROR_NONE) {
@@ -155,7 +155,7 @@ TEST_F(FUSEMountManagerTest, SuggestMountPath) {
 
 // Verify that DoMount fails when there are no helpers.
 TEST_F(FUSEMountManagerTest, DoMount_NoHandlers) {
-  MountErrorType mount_error;
+  MountError mount_error;
   std::unique_ptr<MountPoint> mount_point =
       DoMount(kNoType, kSomeSource.value(), &mount_error);
   EXPECT_EQ(MOUNT_ERROR_UNKNOWN_FILESYSTEM, mount_error);
@@ -169,7 +169,7 @@ TEST_F(FUSEMountManagerTest, DoMount_NotHandled) {
   RegisterHelper(std::move(foo_));
   RegisterHelper(std::move(bar_));
   RegisterHelper(std::move(baz_));
-  MountErrorType mount_error;
+  MountError mount_error;
   std::unique_ptr<MountPoint> mount_point =
       DoMount(kNoType, kSomeSource.value(), &mount_error);
   EXPECT_EQ(MOUNT_ERROR_UNKNOWN_FILESYSTEM, mount_error);
@@ -196,7 +196,7 @@ TEST_F(FUSEMountManagerTest, DoMount_BySource) {
   RegisterHelper(std::move(foo_));
   RegisterHelper(std::move(bar_));
   RegisterHelper(std::move(baz_));
-  MountErrorType mount_error;
+  MountError mount_error;
   std::unique_ptr<MountPoint> mount_point =
       DoMount(kNoType, kSomeSource.value(), &mount_error);
   EXPECT_EQ(MOUNT_ERROR_NONE, mount_error);

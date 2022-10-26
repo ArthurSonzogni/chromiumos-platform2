@@ -48,7 +48,7 @@ const RenameParameters* FindRenameParameters(
   return nullptr;
 }
 
-RenameErrorType LabelErrorToRenameError(LabelErrorType error_code) {
+RenameError LabelErrorToRenameError(LabelErrorType error_code) {
   switch (error_code) {
     case LabelErrorType::kLabelErrorNone:
       return RENAME_ERROR_NONE;
@@ -71,11 +71,10 @@ RenameManager::RenameManager(Platform* platform,
 
 RenameManager::~RenameManager() = default;
 
-RenameErrorType RenameManager::StartRenaming(
-    const std::string& device_path,
-    const std::string& device_file,
-    const std::string& volume_name,
-    const std::string& filesystem_type) {
+RenameError RenameManager::StartRenaming(const std::string& device_path,
+                                         const std::string& device_file,
+                                         const std::string& volume_name,
+                                         const std::string& filesystem_type) {
   std::string source_path;
   if (!platform_->GetRealPath(device_path, &source_path) ||
       !CanRename(source_path)) {
@@ -154,7 +153,7 @@ RenameErrorType RenameManager::StartRenaming(
 void RenameManager::OnRenameProcessTerminated(const std::string& device_path,
                                               const siginfo_t& info) {
   rename_process_.erase(device_path);
-  RenameErrorType error_type = RENAME_ERROR_UNKNOWN;
+  RenameError error_type = RENAME_ERROR_UNKNOWN;
   switch (info.si_code) {
     case CLD_EXITED:
       if (info.si_status == 0) {

@@ -65,14 +65,14 @@ class DiskManager : public MountManager {
                                       const std::string& filesystem_type,
                                       const std::vector<std::string>& options,
                                       const base::FilePath& mount_path,
-                                      MountErrorType* error) override;
+                                      MountError* error) override;
 
   // Returns a suggested mount path for a source path.
   std::string SuggestMountPath(const std::string& source_path) const override;
 
   // Returns true to reserve a mount path on errors due to unknown or
   // unsupported filesystems.
-  bool ShouldReserveMountPathOnError(MountErrorType error_type) const override;
+  bool ShouldReserveMountPathOnError(MountError error_type) const override;
 
  private:
   // Ejects media for the device |device_file|. Return true if the eject process

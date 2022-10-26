@@ -116,7 +116,7 @@ class CrosDisksServer : public org::chromium::CrosDisksAdaptor,
   // Implements the FormatManagerObserverInterface interface to handle
   // the event when a formatting operation has completed.
   void OnFormatCompleted(const std::string& device_path,
-                         FormatErrorType error_type) override;
+                         FormatError error_type) override;
 
   void OnMountProgress(const MountPoint* mount_point);
 
@@ -124,7 +124,7 @@ class CrosDisksServer : public org::chromium::CrosDisksAdaptor,
                         MountSourceType source_type,
                         const std::string& filesystem_type,
                         const std::string& mount_path,
-                        MountErrorType error,
+                        MountError error,
                         bool read_only);
 
   // The callback called when a partitioning operation has completed.
@@ -132,12 +132,12 @@ class CrosDisksServer : public org::chromium::CrosDisksAdaptor,
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<uint32_t>>
           response,
       const base::FilePath& device_path,
-      PartitionErrorType error_type);
+      PartitionError error_type);
 
   // Implements the RenameManagerObserverInterface interface to handle
   // the event when a renaming operation has completed.
   void OnRenameCompleted(const std::string& device_path,
-                         RenameErrorType error_type) override;
+                         RenameError error_type) override;
 
   // Implements the SessionManagerObserverInterface interface to handle
   // the event when the screen is locked.

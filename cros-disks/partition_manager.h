@@ -21,7 +21,7 @@
 namespace cros_disks {
 
 using PartitionCompleteCallback =
-    base::OnceCallback<void(const base::FilePath&, PartitionErrorType)>;
+    base::OnceCallback<void(const base::FilePath&, PartitionError)>;
 
 class PartitionManager {
  public:

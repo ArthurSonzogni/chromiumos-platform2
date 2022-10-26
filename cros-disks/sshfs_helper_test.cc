@@ -102,12 +102,12 @@ class SshfsHelperTest : public ::testing::Test {
   }
 
  protected:
-  MountErrorType ConfigureSandbox(const std::string& source,
-                                  std::vector<std::string> params,
-                                  std::vector<std::string>* args) {
+  MountError ConfigureSandbox(const std::string& source,
+                              std::vector<std::string> params,
+                              std::vector<std::string>* args) {
     FakeSandboxedProcess sandbox;
-    MountErrorType error = helper_->ConfigureSandbox(
-        source, kMountDir, std::move(params), &sandbox);
+    MountError error = helper_->ConfigureSandbox(source, kMountDir,
+                                                 std::move(params), &sandbox);
     if (error == MOUNT_ERROR_NONE) {
       *args = ParseOptions(sandbox, source.substr(0, 5) == "sshfs");
     }

@@ -87,12 +87,12 @@ class MockPlatform : public Platform {
  public:
   MockPlatform() = default;
 
-  MOCK_METHOD(MountErrorType,
+  MOCK_METHOD(MountError,
               Unmount,
               (const base::FilePath&, const std::string& filesystem_type),
               (const, override));
 
-  MOCK_METHOD(MountErrorType,
+  MOCK_METHOD(MountError,
               Mount,
               (const std::string& source,
                const std::string& target,
@@ -182,7 +182,7 @@ class DiskManagerTest : public ::testing::Test, public SandboxedProcessFactory {
   }
 
   void OnMountCompleted(const std::string& path,
-                        const MountErrorType error,
+                        const MountError error,
                         const bool read_only) {
     EXPECT_FALSE(mount_completed_);
     mount_path_ = path;
@@ -213,7 +213,7 @@ class DiskManagerTest : public ::testing::Test, public SandboxedProcessFactory {
   mutable MockSandboxedProcess* process_ = nullptr;
   mutable std::vector<std::string> fuse_args_;
   std::string mount_path_;
-  MountErrorType mount_error_;
+  MountError mount_error_;
   bool mount_completed_;
   bool read_only_;
 };
@@ -274,7 +274,7 @@ TEST_F(DiskManagerTest, MountUsesLabel) {
 
   EXPECT_CALL(platform_, Unmount(base::FilePath(mount_path_), "vfat"))
       .WillOnce(Return(MOUNT_ERROR_NONE));
-  MountErrorType err = manager_->Unmount("/dev/sda1");
+  MountError err = manager_->Unmount("/dev/sda1");
   EXPECT_EQ(MOUNT_ERROR_NONE, err);
 }
 
@@ -307,7 +307,7 @@ TEST_F(DiskManagerTest, MountFAT) {
 
   EXPECT_CALL(platform_, Unmount(base::FilePath(mount_path_), "vfat"))
       .WillOnce(Return(MOUNT_ERROR_NONE));
-  MountErrorType err = manager_->Unmount("/dev/sda1");
+  MountError err = manager_->Unmount("/dev/sda1");
   EXPECT_EQ(MOUNT_ERROR_NONE, err);
 }
 
@@ -343,7 +343,7 @@ TEST_F(DiskManagerTest, MountExFAT) {
 
   EXPECT_CALL(platform_, Unmount(base::FilePath(mount_path_), "fuseblk.exfat"))
       .WillOnce(Return(MOUNT_ERROR_NONE));
-  MountErrorType err = manager_->Unmount("/dev/sda1");
+  MountError err = manager_->Unmount("/dev/sda1");
   EXPECT_EQ(MOUNT_ERROR_NONE, err);
 }
 
@@ -379,7 +379,7 @@ TEST_F(DiskManagerTest, MountNTFS) {
 
   EXPECT_CALL(platform_, Unmount(base::FilePath(mount_path_), "fuseblk.ntfs"))
       .WillOnce(Return(MOUNT_ERROR_NONE));
-  MountErrorType err = manager_->Unmount("/dev/sda1");
+  MountError err = manager_->Unmount("/dev/sda1");
   EXPECT_EQ(MOUNT_ERROR_NONE, err);
 }
 
@@ -405,7 +405,7 @@ TEST_F(DiskManagerTest, MountCD) {
 
   EXPECT_CALL(platform_, Unmount(base::FilePath(mount_path_), "iso9660"))
       .WillOnce(Return(MOUNT_ERROR_NONE));
-  MountErrorType err = manager_->Unmount("/dev/sda1");
+  MountError err = manager_->Unmount("/dev/sda1");
   EXPECT_EQ(MOUNT_ERROR_NONE, err);
 }
 
@@ -431,7 +431,7 @@ TEST_F(DiskManagerTest, MountDVD) {
 
   EXPECT_CALL(platform_, Unmount(base::FilePath(mount_path_), "udf"))
       .WillOnce(Return(MOUNT_ERROR_NONE));
-  MountErrorType err = manager_->Unmount("/dev/sda1");
+  MountError err = manager_->Unmount("/dev/sda1");
   EXPECT_EQ(MOUNT_ERROR_NONE, err);
 }
 
@@ -457,7 +457,7 @@ TEST_F(DiskManagerTest, MountHFS) {
 
   EXPECT_CALL(platform_, Unmount(base::FilePath(mount_path_), "hfsplus"))
       .WillOnce(Return(MOUNT_ERROR_NONE));
-  MountErrorType err = manager_->Unmount("/dev/sda1");
+  MountError err = manager_->Unmount("/dev/sda1");
   EXPECT_EQ(MOUNT_ERROR_NONE, err);
 }
 
@@ -481,7 +481,7 @@ TEST_F(DiskManagerTest, MountReadOnlyMedia) {
 
   EXPECT_CALL(platform_, Unmount(base::FilePath(mount_path_), "vfat"))
       .WillOnce(Return(MOUNT_ERROR_NONE));
-  MountErrorType err = manager_->Unmount("/dev/sda1");
+  MountError err = manager_->Unmount("/dev/sda1");
   EXPECT_EQ(MOUNT_ERROR_NONE, err);
 }
 
@@ -504,7 +504,7 @@ TEST_F(DiskManagerTest, MountForcedReadOnly) {
 
   EXPECT_CALL(platform_, Unmount(base::FilePath(mount_path_), "vfat"))
       .WillOnce(Return(MOUNT_ERROR_NONE));
-  MountErrorType err = manager_->Unmount("/dev/sda1");
+  MountError err = manager_->Unmount("/dev/sda1");
   EXPECT_EQ(MOUNT_ERROR_NONE, err);
 }
 
@@ -531,7 +531,7 @@ TEST_F(DiskManagerTest, MountRetryReadOnlyIfFailed) {
 
   EXPECT_CALL(platform_, Unmount(base::FilePath(mount_path_), "vfat"))
       .WillOnce(Return(MOUNT_ERROR_NONE));
-  MountErrorType err = manager_->Unmount("/dev/sda1");
+  MountError err = manager_->Unmount("/dev/sda1");
   EXPECT_EQ(MOUNT_ERROR_NONE, err);
 }
 

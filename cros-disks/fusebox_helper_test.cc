@@ -38,12 +38,12 @@ class FuseBoxHelperTest : public ::testing::Test {
   FuseBoxHelperTest() : helper_(&platform_, &process_reaper_) {}
 
  protected:
-  MountErrorType ConfigureSandbox(const std::string& source,
-                                  std::vector<std::string> options,
-                                  std::string* arguments) {
+  MountError ConfigureSandbox(const std::string& source,
+                              std::vector<std::string> options,
+                              std::string* arguments) {
     FakeSandboxedProcess sandbox;
-    MountErrorType error = helper_.ConfigureSandbox(
-        source, kMountDir, std::move(options), &sandbox);
+    MountError error = helper_.ConfigureSandbox(source, kMountDir,
+                                                std::move(options), &sandbox);
     if (error == MOUNT_ERROR_NONE)
       *arguments = JoinArguments(sandbox);
     return error;

@@ -47,10 +47,10 @@ OwnerUser ResolveSshfsUser(const Platform* platform) {
   return user;
 }
 
-MountErrorType WriteConfigurationFile(const Platform* platform,
-                                      const OwnerUser& owner,
-                                      const base::FilePath& path,
-                                      const std::string& b64_data) {
+MountError WriteConfigurationFile(const Platform* platform,
+                                  const OwnerUser& owner,
+                                  const base::FilePath& path,
+                                  const std::string& b64_data) {
   std::string data;
   if (!base::Base64Decode(b64_data, &data)) {
     LOG(ERROR) << "Invalid base64 value for " << quote(path);
@@ -112,10 +112,10 @@ bool SshfsHelper::CanMount(const std::string& source,
   return true;
 }
 
-MountErrorType SshfsHelper::ConfigureSandbox(const std::string& source,
-                                             const base::FilePath& target_path,
-                                             std::vector<std::string> params,
-                                             SandboxedProcess* sandbox) const {
+MountError SshfsHelper::ConfigureSandbox(const std::string& source,
+                                         const base::FilePath& target_path,
+                                         std::vector<std::string> params,
+                                         SandboxedProcess* sandbox) const {
   const Uri uri = Uri::Parse(source);
   if (!uri.valid() || uri.path().empty()) {
     LOG(ERROR) << "Invalid source " << quote(source);
@@ -131,10 +131,9 @@ MountErrorType SshfsHelper::ConfigureSandbox(const std::string& source,
   }
 }
 
-MountErrorType SshfsHelper::ConfigureSandboxSshfs(
-    const Uri& uri,
-    std::vector<std::string> params,
-    SandboxedProcess* sandbox) const {
+MountError SshfsHelper::ConfigureSandboxSshfs(const Uri& uri,
+                                              std::vector<std::string> params,
+                                              SandboxedProcess* sandbox) const {
   std::string b64_identity;
   if (!GetParamValue(params, kOptionIdentityBase64, &b64_identity) ||
       b64_identity.empty()) {
@@ -162,7 +161,7 @@ MountErrorType SshfsHelper::ConfigureSandboxSshfs(
   base::FilePath identity_file = working_dir.Append(kIdentityFile);
   base::FilePath known_hosts_file = working_dir.Append(kUserKnownHostsFile);
 
-  MountErrorType error = WriteConfigurationFile(
+  MountError error = WriteConfigurationFile(
       platform(), sandbox_factory_.run_as(), identity_file, b64_identity);
   if (error != MOUNT_ERROR_NONE) {
     return error;
@@ -221,7 +220,7 @@ MountErrorType SshfsHelper::ConfigureSandboxSshfs(
   return MOUNT_ERROR_NONE;
 }
 
-MountErrorType SshfsHelper::ConfigureSandboxSftpVsock(
+MountError SshfsHelper::ConfigureSandboxSftpVsock(
     const Uri& uri, SandboxedProcess* sandbox) const {
   // sftp doesn't use the hostname but there has to be one otherwise sshfs
   // complains. And the path is always empty because we run sftp-server where

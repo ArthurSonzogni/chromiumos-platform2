@@ -83,7 +83,7 @@ class DiskFUSEMounter : public FUSEMounter {
       const std::string& source,
       const base::FilePath&,
       std::vector<std::string>,
-      MountErrorType* error) const override {
+      MountError* error) const override {
     auto device = base::FilePath(source);
 
     if (!device.IsAbsolute() || device.ReferencesParent() ||
@@ -159,7 +159,7 @@ class FATMounter : public SystemMounter {
             platform, "vfat", /* read_only= */ false, std::move(options)) {}
 
  private:
-  MountErrorType ParseParams(
+  MountError ParseParams(
       std::vector<std::string> params,
       std::vector<std::string>* mount_options) const override {
     // FAT32 stores times as local time instead of UTC. By default, the vfat
@@ -290,7 +290,7 @@ std::unique_ptr<MountPoint> DiskManager::DoMount(
     const std::string& filesystem_type,
     const std::vector<std::string>& options,
     const base::FilePath& mount_path,
-    MountErrorType* error) {
+    MountError* error) {
   CHECK(!source_path.empty()) << "Invalid source path argument";
   CHECK(!mount_path.empty()) << "Invalid mount path argument";
 
@@ -392,8 +392,7 @@ std::string DiskManager::SuggestMountPath(
   return mount_root().Append(disk.GetPresentationName()).value();
 }
 
-bool DiskManager::ShouldReserveMountPathOnError(
-    MountErrorType error_type) const {
+bool DiskManager::ShouldReserveMountPathOnError(MountError error_type) const {
   return error_type == MOUNT_ERROR_UNKNOWN_FILESYSTEM ||
          error_type == MOUNT_ERROR_UNSUPPORTED_FILESYSTEM;
 }

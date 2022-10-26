@@ -86,7 +86,7 @@ class MountManager {
 
   // Callback called when the mount operation succeeds or fails.
   using MountCallback = base::OnceCallback<void(
-      const std::string& mount_path, MountErrorType error, bool read_only)>;
+      const std::string& mount_path, MountError error, bool read_only)>;
 
   // Callback called when the FUSE 'launcher' process is signaling progress.
   using ProgressCallback = MountPoint::ProgressCallback;
@@ -108,7 +108,7 @@ class MountManager {
   // Unmounts |path|, which can be a source path or a mount path. If the mount
   // path is reserved during Mount(), this method releases the reserved mount
   // path.
-  MountErrorType Unmount(const std::string& path);
+  MountError Unmount(const std::string& path);
 
   // Unmounts all mounted paths.
   virtual void UnmountAll();
@@ -133,11 +133,11 @@ class MountManager {
                       ProgressCallback progress_callback);
 
   // Remounts |source| on |mount_path| as |filesystem_type| with |options|.
-  MountErrorType Remount(const std::string& source,
-                         const std::string& filesystem_type,
-                         const std::vector<std::string>& options,
-                         std::string* mount_path,
-                         bool* read_only);
+  MountError Remount(const std::string& source,
+                     const std::string& filesystem_type,
+                     const std::vector<std::string>& options,
+                     std::string* mount_path,
+                     bool* read_only);
 
   // Implemented by a derived class to mount |source| to |mount_path| as
   // |filesystem_type| with |options|. An implementation may append their own
@@ -149,7 +149,7 @@ class MountManager {
       const std::string& filesystem_type,
       const std::vector<std::string>& options,
       const base::FilePath& mount_path,
-      MountErrorType* error) = 0;
+      MountError* error) = 0;
 
   // Returns a suggested mount path for |source|.
   virtual std::string SuggestMountPath(const std::string& source) const = 0;
@@ -158,7 +158,7 @@ class MountManager {
   // operation returns a particular type of error. The default implementation
   // returns false on any error. A derived class should override this method
   // if it needs to reserve mount paths on certain types of error.
-  virtual bool ShouldReserveMountPathOnError(MountErrorType error_type) const;
+  virtual bool ShouldReserveMountPathOnError(MountError error_type) const;
 
   // Returns true if |path| is an immediate child of |parent|, i.e.
   // |path| is an immediate file or directory under |parent|.
@@ -189,15 +189,15 @@ class MountManager {
   // Prepares empty directory to mount into. If |mount_path| contains a path
   // it may be used, but not necessarily. Returns the status of the operation
   // and if successful - fills |mount_path|.
-  MountErrorType CreateMountPathForSource(const std::string& source,
-                                          const std::string& label,
-                                          base::FilePath* mount_path);
+  MountError CreateMountPathForSource(const std::string& source,
+                                      const std::string& label,
+                                      base::FilePath* mount_path);
 
   // Called when the FUSE launcher process finishes.
   void OnLauncherExit(MountCallback mount_callback,
                       const base::FilePath& mount_path,
                       base::WeakPtr<const MountPoint> mount_point,
-                      MountErrorType error);
+                      MountError error);
 
   // Called when the sandbox holding a FUSE process finishes.
   void OnSandboxedProcessExit(const std::string& program_name,

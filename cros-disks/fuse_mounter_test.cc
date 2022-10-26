@@ -105,7 +105,7 @@ class FUSEMounterForTesting : public FUSEMounter {
               (const std::string& source,
                const base::FilePath& target_path,
                std::vector<std::string> params,
-               MountErrorType* error),
+               MountError* error),
               (const override));
 
   bool CanMount(const std::string& source,
@@ -234,7 +234,7 @@ TEST_F(FUSEMounterTest, MountingSucceeds) {
                                        ElementsAre("arg1", "arg2", "arg3"), _))
       .WillOnce(Return(ByMove(std::move(process_ptr))));
 
-  MountErrorType error = MOUNT_ERROR_UNKNOWN;
+  MountError error = MOUNT_ERROR_UNKNOWN;
   auto mount_point = mounter_.Mount("source", base::FilePath(kMountDir),
                                     {"arg1", "arg2", "arg3"}, &error);
   EXPECT_EQ(MOUNT_ERROR_NONE, error);
@@ -266,7 +266,7 @@ TEST_F(FUSEMounterTest, MountingReadOnly) {
                                        ElementsAre("arg1", "arg2", "ro"), _))
       .WillOnce(Return(ByMove(std::move(process_ptr))));
 
-  MountErrorType error = MOUNT_ERROR_UNKNOWN;
+  MountError error = MOUNT_ERROR_UNKNOWN;
   auto mount_point = mounter_.Mount(kSomeSource, base::FilePath(kMountDir),
                                     {"arg1", "arg2", "ro"}, &error);
   EXPECT_EQ(MOUNT_ERROR_NONE, error);
@@ -299,7 +299,7 @@ TEST_F(FUSEMounterTest, MountingBlockDevice) {
               PrepareSandbox("/dev/foobar", base::FilePath(kMountDir), _, _))
       .WillOnce(Return(ByMove(std::move(process_ptr))));
 
-  MountErrorType error = MOUNT_ERROR_UNKNOWN;
+  MountError error = MOUNT_ERROR_UNKNOWN;
   auto mount_point =
       mounter_.Mount("/dev/foobar", base::FilePath(kMountDir), {}, &error);
   EXPECT_EQ(MOUNT_ERROR_NONE, error);
@@ -325,7 +325,7 @@ TEST_F(FUSEMounterTest, MountFailed) {
   EXPECT_CALL(platform_, Unmount(base::FilePath(kMountDir), "fuseblk.fusefs"))
       .Times(0);
 
-  MountErrorType error = MOUNT_ERROR_UNKNOWN;
+  MountError error = MOUNT_ERROR_UNKNOWN;
   auto mount_point =
       mounter_.Mount(kSomeSource, base::FilePath(kMountDir), {}, &error);
   EXPECT_FALSE(mount_point);
@@ -343,7 +343,7 @@ TEST_F(FUSEMounterTest, SandboxFailed) {
   EXPECT_CALL(platform_, RemoveEmptyDirectory(kMountDir))
       .WillOnce(Return(true));
 
-  MountErrorType error = MOUNT_ERROR_UNKNOWN;
+  MountError error = MOUNT_ERROR_UNKNOWN;
   auto mount_point =
       mounter_.Mount(kSomeSource, base::FilePath(kMountDir), {}, &error);
   EXPECT_FALSE(mount_point);
@@ -359,7 +359,7 @@ TEST_F(FUSEMounterTest, AppFailed) {
       .WillOnce(Return(ByMove(std::move(process_ptr))));
   EXPECT_CALL(process, StartImpl).WillOnce(Return(123));
 
-  MountErrorType error = MOUNT_ERROR_UNKNOWN;
+  MountError error = MOUNT_ERROR_UNKNOWN;
   auto mount_point =
       mounter_.Mount(kSomeSource, base::FilePath(kMountDir), {}, &error);
   EXPECT_EQ(MOUNT_ERROR_NONE, error);
@@ -386,7 +386,7 @@ TEST_F(FUSEMounterTest, UnmountTwice) {
   EXPECT_CALL(mounter_, PrepareSandbox(_, base::FilePath(kMountDir), _, _))
       .WillOnce(Return(ByMove(std::move(process_ptr))));
 
-  MountErrorType error = MOUNT_ERROR_UNKNOWN;
+  MountError error = MOUNT_ERROR_UNKNOWN;
   auto mount_point =
       mounter_.Mount(kSomeSource, base::FilePath(kMountDir), {}, &error);
   EXPECT_TRUE(mount_point);
@@ -410,7 +410,7 @@ TEST_F(FUSEMounterTest, UnmountFailure) {
   EXPECT_CALL(mounter_, PrepareSandbox(_, base::FilePath(kMountDir), _, _))
       .WillOnce(Return(ByMove(std::move(process_ptr))));
 
-  MountErrorType error = MOUNT_ERROR_UNKNOWN;
+  MountError error = MOUNT_ERROR_UNKNOWN;
   auto mount_point =
       mounter_.Mount(kSomeSource, base::FilePath(kMountDir), {}, &error);
   EXPECT_TRUE(mount_point);

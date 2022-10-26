@@ -68,7 +68,7 @@ std::unique_ptr<MountPoint> FUSEMountManager::DoMount(
     const std::string& fuse_type,
     const std::vector<std::string>& options,
     const base::FilePath& mount_path,
-    MountErrorType* error) {
+    MountError* error) {
   CHECK(!mount_path.empty()) << "Invalid mount path argument";
 
   Uri uri = Uri::Parse(source);

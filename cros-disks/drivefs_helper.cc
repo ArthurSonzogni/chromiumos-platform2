@@ -222,11 +222,10 @@ bool DrivefsHelper::CanMount(const std::string& source,
   return true;
 }
 
-MountErrorType DrivefsHelper::ConfigureSandbox(
-    const std::string& source,
-    const base::FilePath& target_path,
-    std::vector<std::string> params,
-    SandboxedProcess* sandbox) const {
+MountError DrivefsHelper::ConfigureSandbox(const std::string& source,
+                                           const base::FilePath& target_path,
+                                           std::vector<std::string> params,
+                                           SandboxedProcess* sandbox) const {
   const Uri uri = Uri::Parse(source);
   if (!uri.valid() || uri.scheme() != kType) {
     LOG(ERROR) << "Invalid source format " << quote(source);

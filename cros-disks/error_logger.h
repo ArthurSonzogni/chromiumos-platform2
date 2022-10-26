@@ -12,10 +12,10 @@
 namespace cros_disks {
 
 // Output operators for logging.
-std::ostream& operator<<(std::ostream& out, FormatErrorType error);
-std::ostream& operator<<(std::ostream& out, MountErrorType error);
-std::ostream& operator<<(std::ostream& out, PartitionErrorType error);
-std::ostream& operator<<(std::ostream& out, RenameErrorType error);
+std::ostream& operator<<(std::ostream& out, FormatError error);
+std::ostream& operator<<(std::ostream& out, MountError error);
+std::ostream& operator<<(std::ostream& out, PartitionError error);
+std::ostream& operator<<(std::ostream& out, RenameError error);
 
 }  // namespace cros_disks
 

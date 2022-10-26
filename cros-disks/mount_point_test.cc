@@ -119,7 +119,7 @@ TEST_F(MountPointTest, MountError) {
                                MS_DIRSYNC | MS_NODEV, kOptions))
       .WillOnce(Return(MOUNT_ERROR_INVALID_ARGUMENT));
 
-  MountErrorType error = MOUNT_ERROR_UNKNOWN;
+  MountError error = MOUNT_ERROR_UNKNOWN;
   const std::unique_ptr<MountPoint> mount_point =
       MountPoint::Mount(data_, &platform_, &error);
   EXPECT_FALSE(mount_point);
@@ -127,7 +127,7 @@ TEST_F(MountPointTest, MountError) {
 }
 
 TEST_F(MountPointTest, MountSucceeds) {
-  MountErrorType error = MOUNT_ERROR_UNKNOWN;
+  MountError error = MOUNT_ERROR_UNKNOWN;
   EXPECT_CALL(platform_, Mount(kSource, kMountPath, kFSType,
                                MS_DIRSYNC | MS_NODEV, kOptions))
       .WillOnce(Return(MOUNT_ERROR_NONE));

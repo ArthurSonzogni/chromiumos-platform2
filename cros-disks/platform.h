@@ -130,16 +130,16 @@ class Platform {
 
   // Forcefully unmounts |mount_path|. The given |filesystem_type| is only used
   // in logs.
-  virtual MountErrorType Unmount(const base::FilePath& mount_path,
-                                 const std::string& filesystem_type) const;
+  virtual MountError Unmount(const base::FilePath& mount_path,
+                             const std::string& filesystem_type) const;
 
   // Mounts the |source| filesystem of type |filesystem_type| at mount point
   // |target| with |flags| and |options|.
-  virtual MountErrorType Mount(const std::string& source,
-                               const std::string& target,
-                               const std::string& filesystem_type,
-                               uint64_t flags,
-                               const std::string& options) const;
+  virtual MountError Mount(const std::string& source,
+                           const std::string& target,
+                           const std::string& filesystem_type,
+                           uint64_t flags,
+                           const std::string& options) const;
 
   // Unmounts and removes all the subdirectories of |dir|.
   virtual bool CleanUpStaleMountPoints(const std::string& dir) const;

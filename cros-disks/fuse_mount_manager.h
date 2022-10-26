@@ -55,7 +55,7 @@ class FUSEMountManager : public MountManager {
                                       const std::string& fuse_type,
                                       const std::vector<std::string>& options,
                                       const base::FilePath& mount_path,
-                                      MountErrorType* error) override;
+                                      MountError* error) override;
 
   // Returns a suggested mount path for a source.
   std::string SuggestMountPath(const std::string& source) const override;

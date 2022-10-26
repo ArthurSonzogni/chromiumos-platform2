@@ -114,7 +114,7 @@ class FUSEMounter : public Mounter {
   std::unique_ptr<MountPoint> Mount(const std::string& source,
                                     const base::FilePath& target_path,
                                     std::vector<std::string> params,
-                                    MountErrorType* error) const final;
+                                    MountError* error) const final;
 
  protected:
   // Is this FUSE mounter password-aware?
@@ -131,7 +131,7 @@ class FUSEMounter : public Mounter {
       const std::string& source,
       const base::FilePath& target_path,
       std::vector<std::string> params,
-      MountErrorType* error) const = 0;
+      MountError* error) const = 0;
 
  private:
   // Performs necessary set up and launches FUSE daemon that communicates to
@@ -142,7 +142,7 @@ class FUSEMounter : public Mounter {
       const std::string& source,
       const base::FilePath& target_path,
       std::vector<std::string> params,
-      MountErrorType* error) const;
+      MountError* error) const;
 
  private:
   const Platform* const platform_;
@@ -173,12 +173,12 @@ class FUSEMounterHelper : public FUSEMounter {
       const std::string& source,
       const base::FilePath& target_path,
       std::vector<std::string> params,
-      MountErrorType* error) const final;
+      MountError* error) const final;
 
-  virtual MountErrorType ConfigureSandbox(const std::string& source,
-                                          const base::FilePath& target_path,
-                                          std::vector<std::string> params,
-                                          SandboxedProcess* sandbox) const = 0;
+  virtual MountError ConfigureSandbox(const std::string& source,
+                                      const base::FilePath& target_path,
+                                      std::vector<std::string> params,
+                                      SandboxedProcess* sandbox) const = 0;
 
  private:
   const SandboxedProcessFactory* const sandbox_factory_;

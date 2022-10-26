@@ -40,7 +40,7 @@ class ArchiveManagerUnderTest : public ArchiveManager {
                const std::string&,
                const std::vector<std::string>&,
                const base::FilePath&,
-               MountErrorType*),
+               MountError*),
               (override));
 
   using ArchiveManager::CreateSandboxFactory;

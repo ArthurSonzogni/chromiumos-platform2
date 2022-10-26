@@ -35,17 +35,17 @@ class SshfsHelper : public FUSEMounterHelper {
                 base::FilePath* suggested_name) const override;
 
  protected:
-  MountErrorType ConfigureSandbox(const std::string& source,
-                                  const base::FilePath& target_path,
-                                  std::vector<std::string> params,
-                                  SandboxedProcess* sandbox) const override;
+  MountError ConfigureSandbox(const std::string& source,
+                              const base::FilePath& target_path,
+                              std::vector<std::string> params,
+                              SandboxedProcess* sandbox) const override;
 
  private:
-  MountErrorType ConfigureSandboxSshfs(const Uri& source,
-                                       std::vector<std::string> params,
+  MountError ConfigureSandboxSshfs(const Uri& source,
+                                   std::vector<std::string> params,
+                                   SandboxedProcess* sandbox) const;
+  MountError ConfigureSandboxSftpVsock(const Uri& source,
                                        SandboxedProcess* sandbox) const;
-  MountErrorType ConfigureSandboxSftpVsock(const Uri& source,
-                                           SandboxedProcess* sandbox) const;
   const FUSESandboxedProcessFactory sandbox_factory_;
   const base::FilePath working_dir_;
 

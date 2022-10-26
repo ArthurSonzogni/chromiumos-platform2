@@ -212,7 +212,7 @@ std::unique_ptr<MountPoint> ArchiveManager::DoMount(
     const std::string& filesystem_type,
     const std::vector<std::string>& options,
     const base::FilePath& mount_path,
-    MountErrorType* error) {
+    MountError* error) {
   // Here source_path is already resolved and free from symlinks and '..' by
   // the base class.
   if (!IsInAllowedFolder(source_path)) {

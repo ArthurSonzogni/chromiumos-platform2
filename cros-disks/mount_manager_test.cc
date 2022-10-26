@@ -65,11 +65,11 @@ class MountManagerUnderTest : public MountManager {
                const std::string&,
                const std::vector<std::string>&,
                const base::FilePath&,
-               MountErrorType*),
+               MountError*),
               (override));
   MOCK_METHOD(bool,
               ShouldReserveMountPathOnError,
-              (MountErrorType),
+              (MountError),
               (const, override));
   MOCK_METHOD(std::string,
               SuggestMountPath,
@@ -115,7 +115,7 @@ class MountManagerTest : public ::testing::Test {
   }
 
   void OnMountCompleted(const std::string& path,
-                        const MountErrorType error,
+                        const MountError error,
                         const bool read_only) {
     EXPECT_FALSE(mount_completed_);
     mount_path_ = path;
@@ -141,7 +141,7 @@ class MountManagerTest : public ::testing::Test {
   StrictMock<MountManagerUnderTest> manager_;
   std::string filesystem_type_;
   std::string mount_path_;
-  MountErrorType mount_error_;
+  MountError mount_error_;
   bool mount_completed_;
   bool read_only_;
   std::vector<std::string> options_;

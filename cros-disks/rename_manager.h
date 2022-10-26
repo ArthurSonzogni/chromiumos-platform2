@@ -29,10 +29,10 @@ class RenameManager {
   ~RenameManager();
 
   // Starts a renaming process of a given device.
-  RenameErrorType StartRenaming(const std::string& device_path,
-                                const std::string& device_file,
-                                const std::string& volume_name,
-                                const std::string& filesystem_type);
+  RenameError StartRenaming(const std::string& device_path,
+                            const std::string& device_file,
+                            const std::string& volume_name,
+                            const std::string& filesystem_type);
 
   void set_observer(RenameManagerObserverInterface* observer) {
     observer_ = observer;

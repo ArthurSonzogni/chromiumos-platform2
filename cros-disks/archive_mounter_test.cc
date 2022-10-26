@@ -69,7 +69,7 @@ class ArchiveMounterTest : public ::testing::Test {
       const ArchiveMounter& mounter,
       const std::string& source,
       std::vector<std::string> params,
-      MountErrorType* error) const {
+      MountError* error) const {
     auto sandbox = mounter.PrepareSandbox(source, base::FilePath(kMountDir),
                                           std::move(params), error);
     return std::unique_ptr<FakeSandboxedProcess>(
@@ -100,14 +100,14 @@ TEST_F(ArchiveMounterTest, CanMount) {
 TEST_F(ArchiveMounterTest, InvalidPathsRejected) {
   auto mounter = CreateMounter({});
   {
-    MountErrorType error = MOUNT_ERROR_UNKNOWN;
+    MountError error = MOUNT_ERROR_UNKNOWN;
     const std::unique_ptr<FakeSandboxedProcess> sandbox =
         PrepareSandbox(*mounter, "foo.archive", {}, &error);
     EXPECT_NE(MOUNT_ERROR_NONE, error);
     EXPECT_FALSE(sandbox);
   }
   {
-    MountErrorType error = MOUNT_ERROR_UNKNOWN;
+    MountError error = MOUNT_ERROR_UNKNOWN;
     const std::unique_ptr<FakeSandboxedProcess> sandbox =
         PrepareSandbox(*mounter, "/foo/../etc/foo.archive", {}, &error);
     EXPECT_NE(MOUNT_ERROR_NONE, error);
@@ -117,7 +117,7 @@ TEST_F(ArchiveMounterTest, InvalidPathsRejected) {
 
 TEST_F(ArchiveMounterTest, AppArgs) {
   auto mounter = CreateMounter({});
-  MountErrorType error = MOUNT_ERROR_UNKNOWN;
+  MountError error = MOUNT_ERROR_UNKNOWN;
   const std::unique_ptr<FakeSandboxedProcess> sandbox =
       PrepareSandbox(*mounter, kSomeSource, {}, &error);
   EXPECT_EQ(MOUNT_ERROR_NONE, error);
@@ -133,7 +133,7 @@ TEST_F(ArchiveMounterTest, AppArgs) {
 TEST_F(ArchiveMounterTest, SimulateProgressForTesting) {
   auto mounter = CreateMounter({});
   {
-    MountErrorType error = MOUNT_ERROR_UNKNOWN;
+    MountError error = MOUNT_ERROR_UNKNOWN;
     const std::unique_ptr<FakeSandboxedProcess> sandbox =
         PrepareSandbox(*mounter, kSomeSource, {}, &error);
     EXPECT_EQ(MOUNT_ERROR_NONE, error);
@@ -141,7 +141,7 @@ TEST_F(ArchiveMounterTest, SimulateProgressForTesting) {
     EXPECT_FALSE(sandbox->GetSimulateProgressForTesting());
   }
   {
-    MountErrorType error = MOUNT_ERROR_UNKNOWN;
+    MountError error = MOUNT_ERROR_UNKNOWN;
     const std::unique_ptr<FakeSandboxedProcess> sandbox =
         PrepareSandbox(*mounter, "/home/user/b1238564_.zip", {}, &error);
     EXPECT_EQ(MOUNT_ERROR_NONE, error);
@@ -149,7 +149,7 @@ TEST_F(ArchiveMounterTest, SimulateProgressForTesting) {
     EXPECT_FALSE(sandbox->GetSimulateProgressForTesting());
   }
   {
-    MountErrorType error = MOUNT_ERROR_UNKNOWN;
+    MountError error = MOUNT_ERROR_UNKNOWN;
     const std::unique_ptr<FakeSandboxedProcess> sandbox =
         PrepareSandbox(*mounter, "/home/user/b1238564", {}, &error);
     EXPECT_EQ(MOUNT_ERROR_NONE, error);
@@ -157,7 +157,7 @@ TEST_F(ArchiveMounterTest, SimulateProgressForTesting) {
     EXPECT_FALSE(sandbox->GetSimulateProgressForTesting());
   }
   {
-    MountErrorType error = MOUNT_ERROR_UNKNOWN;
+    MountError error = MOUNT_ERROR_UNKNOWN;
     const std::unique_ptr<FakeSandboxedProcess> sandbox =
         PrepareSandbox(*mounter, "/home/user/b1238564.zip", {}, &error);
     EXPECT_EQ(MOUNT_ERROR_NONE, error);
@@ -165,7 +165,7 @@ TEST_F(ArchiveMounterTest, SimulateProgressForTesting) {
     EXPECT_TRUE(sandbox->GetSimulateProgressForTesting());
   }
   {
-    MountErrorType error = MOUNT_ERROR_UNKNOWN;
+    MountError error = MOUNT_ERROR_UNKNOWN;
     const std::unique_ptr<FakeSandboxedProcess> sandbox = PrepareSandbox(
         *mounter, "/home/user/b1238564.something.zip", {}, &error);
     EXPECT_EQ(MOUNT_ERROR_NONE, error);
@@ -177,7 +177,7 @@ TEST_F(ArchiveMounterTest, SimulateProgressForTesting) {
 TEST_F(ArchiveMounterTest, FileNotFound) {
   EXPECT_CALL(platform_, PathExists(kSomeSource)).WillRepeatedly(Return(false));
   auto mounter = CreateMounter({});
-  MountErrorType error = MOUNT_ERROR_UNKNOWN;
+  MountError error = MOUNT_ERROR_UNKNOWN;
   const std::unique_ptr<FakeSandboxedProcess> sandbox =
       PrepareSandbox(*mounter, kSomeSource, {}, &error);
   EXPECT_NE(MOUNT_ERROR_NONE, error);
@@ -188,7 +188,7 @@ TEST_F(ArchiveMounterTest, WithPassword) {
   const std::string password = "My Password";
 
   auto mounter = CreateMounter({kPasswordNeededCode});
-  MountErrorType error = MOUNT_ERROR_UNKNOWN;
+  MountError error = MOUNT_ERROR_UNKNOWN;
   const std::unique_ptr<FakeSandboxedProcess> sandbox =
       PrepareSandbox(*mounter, kSomeSource, {"password=" + password}, &error);
   EXPECT_EQ(MOUNT_ERROR_NONE, error);
@@ -204,7 +204,7 @@ TEST_F(ArchiveMounterTest, WithPassword) {
 
 TEST_F(ArchiveMounterTest, NoPassword) {
   auto mounter = CreateMounter({kPasswordNeededCode});
-  MountErrorType error = MOUNT_ERROR_UNKNOWN;
+  MountError error = MOUNT_ERROR_UNKNOWN;
   const std::unique_ptr<FakeSandboxedProcess> sandbox =
       PrepareSandbox(*mounter, kSomeSource,
                      {
@@ -227,7 +227,7 @@ TEST_F(ArchiveMounterTest, CopiesPassword) {
            R"( !@#$%^&*()_-+={[}]|\:;"'<,>.?/ )",
        }) {
     auto mounter = CreateMounter({kPasswordNeededCode});
-    MountErrorType error = MOUNT_ERROR_UNKNOWN;
+    MountError error = MOUNT_ERROR_UNKNOWN;
     const std::unique_ptr<FakeSandboxedProcess> sandbox =
         PrepareSandbox(*mounter, kSomeSource, {"password=" + password}, &error);
     ASSERT_TRUE(sandbox);
@@ -237,7 +237,7 @@ TEST_F(ArchiveMounterTest, CopiesPassword) {
 
 TEST_F(ArchiveMounterTest, IgnoredIfNotNeeded) {
   auto mounter = CreateMounter({});
-  MountErrorType error = MOUNT_ERROR_UNKNOWN;
+  MountError error = MOUNT_ERROR_UNKNOWN;
   auto sandbox =
       PrepareSandbox(*mounter, kSomeSource, {"password=foo"}, &error);
   EXPECT_EQ(MOUNT_ERROR_NONE, error);
@@ -250,7 +250,7 @@ TEST_F(ArchiveMounterTest, EncodingOption) {
   const std::string encoding = "MyEncoding";
 
   auto mounter = CreateMounter({});
-  MountErrorType error = MOUNT_ERROR_UNKNOWN;
+  MountError error = MOUNT_ERROR_UNKNOWN;
   const std::unique_ptr<FakeSandboxedProcess> sandbox = PrepareSandbox(
       *mounter, kSomeSource,
       {"option1=dummy", "encoding=" + encoding, "option2=dummy2"}, &error);

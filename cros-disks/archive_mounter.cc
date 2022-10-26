@@ -57,7 +57,7 @@ std::unique_ptr<SandboxedProcess> ArchiveMounter::PrepareSandbox(
     const std::string& source,
     const base::FilePath& /*target_path*/,
     std::vector<std::string> params,
-    MountErrorType* error) const {
+    MountError* error) const {
   base::FilePath path(source);
 
   if (!path.IsAbsolute() || path.ReferencesParent()) {

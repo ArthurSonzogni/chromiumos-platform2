@@ -53,7 +53,7 @@ const char* const kSupportedFilesystems[] = {
 
 const char kDefaultLabel[] = "UNTITLED";
 
-FormatErrorType LabelErrorToFormatError(LabelErrorType error_code) {
+FormatError LabelErrorToFormatError(LabelErrorType error_code) {
   switch (error_code) {
     case LabelErrorType::kLabelErrorNone:
       return FORMAT_ERROR_NONE;
@@ -117,11 +117,11 @@ std::vector<std::string> CreateFormatArguments(const std::string& filesystem,
 }
 
 // Initialises the process for formatting and starts it.
-FormatErrorType StartFormatProcess(const std::string& device_file,
-                                   const std::string& format_program,
-                                   const std::vector<std::string>& arguments,
-                                   const Platform* platform_,
-                                   SandboxedProcess* process) {
+FormatError StartFormatProcess(const std::string& device_file,
+                               const std::string& format_program,
+                               const std::vector<std::string>& arguments,
+                               const Platform* platform_,
+                               SandboxedProcess* process) {
   process->SetNoNewPrivileges();
   process->NewMountNamespace();
   process->NewIpcNamespace();
@@ -197,7 +197,7 @@ FormatManager::FormatManager(Platform* platform,
 
 FormatManager::~FormatManager() = default;
 
-FormatErrorType FormatManager::StartFormatting(
+FormatError FormatManager::StartFormatting(
     const std::string& device_path,
     const std::string& device_file,
     const std::string& filesystem,
@@ -237,7 +237,7 @@ FormatErrorType FormatManager::StartFormatting(
     return FORMAT_ERROR_DEVICE_BEING_FORMATTED;
   }
 
-  if (const FormatErrorType error =
+  if (const FormatError error =
           StartFormatProcess(device_file, format_program,
                              CreateFormatArguments(filesystem, format_options),
                              platform_, &process)) {
@@ -263,7 +263,7 @@ void FormatManager::OnFormatProcessTerminated(const std::string& device_path,
   DCHECK_EQ(node.key(), device_path);
   const SandboxedProcess& process = node.mapped();
 
-  FormatErrorType error = FORMAT_ERROR_UNKNOWN;
+  FormatError error = FORMAT_ERROR_UNKNOWN;
   switch (info.si_code) {
     case CLD_EXITED:
       if (info.si_status == 0) {

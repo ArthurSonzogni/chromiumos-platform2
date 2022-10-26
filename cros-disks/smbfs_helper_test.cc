@@ -64,14 +64,13 @@ class PlatformForTest : public MockPlatform {
 
 class SmbfsHelperTest : public ::testing::Test {
  public:
-  SmbfsHelperTest() : helper_(&platform_, &process_reaper_) {
-  }
+  SmbfsHelperTest() : helper_(&platform_, &process_reaper_) {}
 
  protected:
-  MountErrorType ConfigureSandbox(const std::string& source,
-                                  std::vector<std::string>* args) {
+  MountError ConfigureSandbox(const std::string& source,
+                              std::vector<std::string>* args) {
     FakeSandboxedProcess sandbox;
-    MountErrorType error =
+    MountError error =
         helper_.ConfigureSandbox(source, kMountDir, {}, &sandbox);
     if (error == MOUNT_ERROR_NONE) {
       *args = ParseOptions(sandbox);

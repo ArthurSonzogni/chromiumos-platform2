@@ -27,7 +27,7 @@ std::unique_ptr<MountPoint> MountPoint::CreateUnmounted(
 
 std::unique_ptr<MountPoint> MountPoint::Mount(MountPointData data,
                                               const Platform* const platform,
-                                              MountErrorType* const error) {
+                                              MountError* const error) {
   DCHECK(error);
   *error = platform->Mount(data.source, data.mount_path.value(),
                            data.filesystem_type, data.flags, data.data);
@@ -44,8 +44,8 @@ MountPoint::MountPoint(MountPointData data, const Platform* platform)
   DCHECK(!path().empty());
 }
 
-MountErrorType MountPoint::Unmount() {
-  MountErrorType error = MOUNT_ERROR_PATH_NOT_MOUNTED;
+MountError MountPoint::Unmount() {
+  MountError error = MOUNT_ERROR_PATH_NOT_MOUNTED;
 
   if (is_mounted_) {
     error = platform_->Unmount(data_.mount_path, data_.filesystem_type);
@@ -74,7 +74,7 @@ MountErrorType MountPoint::Unmount() {
   return error;
 }
 
-MountErrorType MountPoint::Remount(bool read_only) {
+MountError MountPoint::Remount(bool read_only) {
   if (!is_mounted_)
     return MOUNT_ERROR_PATH_NOT_MOUNTED;
 
@@ -85,7 +85,7 @@ MountErrorType MountPoint::Remount(bool read_only) {
     flags &= ~MS_RDONLY;
   }
 
-  const MountErrorType error =
+  const MountError error =
       platform_->Mount(data_.source, data_.mount_path.value(),
                        data_.filesystem_type, flags | MS_REMOUNT, data_.data);
   if (!error)
@@ -94,7 +94,7 @@ MountErrorType MountPoint::Remount(bool read_only) {
   return error;
 }
 
-MountErrorType MountPoint::ConvertLauncherExitCodeToMountError(
+MountError MountPoint::ConvertLauncherExitCodeToMountError(
     const int exit_code) const {
   if (exit_code == 0)
     return MOUNT_ERROR_NONE;

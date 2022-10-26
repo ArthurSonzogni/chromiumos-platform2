@@ -12,7 +12,7 @@ namespace cros_disks {
   case X:                   \
     return out << #X;
 
-std::ostream& operator<<(std::ostream& out, const FormatErrorType error) {
+std::ostream& operator<<(std::ostream& out, const FormatError error) {
   switch (error) {
     CROS_DISKS_PRINT(FORMAT_ERROR_NONE)
     CROS_DISKS_PRINT(FORMAT_ERROR_UNKNOWN)
@@ -28,10 +28,10 @@ std::ostream& operator<<(std::ostream& out, const FormatErrorType error) {
     CROS_DISKS_PRINT(FORMAT_ERROR_INVALID_CHARACTER)
   }
   return out << "FORMAT_ERROR_"
-             << static_cast<std::underlying_type_t<FormatErrorType>>(error);
+             << static_cast<std::underlying_type_t<FormatError>>(error);
 }
 
-std::ostream& operator<<(std::ostream& out, const MountErrorType error) {
+std::ostream& operator<<(std::ostream& out, const MountError error) {
   switch (error) {
     CROS_DISKS_PRINT(MOUNT_ERROR_NONE)
     CROS_DISKS_PRINT(MOUNT_ERROR_UNKNOWN)
@@ -56,10 +56,10 @@ std::ostream& operator<<(std::ostream& out, const MountErrorType error) {
     CROS_DISKS_PRINT(MOUNT_ERROR_INVALID_ARCHIVE)
   }
   return out << "MOUNT_ERROR_"
-             << static_cast<std::underlying_type_t<MountErrorType>>(error);
+             << static_cast<std::underlying_type_t<MountError>>(error);
 }
 
-std::ostream& operator<<(std::ostream& out, const PartitionErrorType error) {
+std::ostream& operator<<(std::ostream& out, const PartitionError error) {
   switch (error) {
     CROS_DISKS_PRINT(PARTITION_ERROR_NONE)
     CROS_DISKS_PRINT(PARTITION_ERROR_UNKNOWN)
@@ -71,10 +71,10 @@ std::ostream& operator<<(std::ostream& out, const PartitionErrorType error) {
     CROS_DISKS_PRINT(PARTITION_ERROR_DEVICE_NOT_ALLOWED)
   }
   return out << "PARTITION_ERROR_"
-             << static_cast<std::underlying_type_t<PartitionErrorType>>(error);
+             << static_cast<std::underlying_type_t<PartitionError>>(error);
 }
 
-std::ostream& operator<<(std::ostream& out, const RenameErrorType error) {
+std::ostream& operator<<(std::ostream& out, const RenameError error) {
   switch (error) {
     CROS_DISKS_PRINT(RENAME_ERROR_NONE)
     CROS_DISKS_PRINT(RENAME_ERROR_UNKNOWN)
@@ -89,7 +89,7 @@ std::ostream& operator<<(std::ostream& out, const RenameErrorType error) {
     CROS_DISKS_PRINT(RENAME_ERROR_INVALID_CHARACTER)
   }
   return out << "RENAME_ERROR_"
-             << static_cast<std::underlying_type_t<RenameErrorType>>(error);
+             << static_cast<std::underlying_type_t<RenameError>>(error);
 }
 
 }  // namespace cros_disks

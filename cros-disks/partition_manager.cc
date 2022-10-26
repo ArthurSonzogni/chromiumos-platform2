@@ -29,11 +29,11 @@ const char kPartitionProgramPath[] = "/sbin/sfdisk";
 const uint64_t kMBRMaxSize = 2199023255040ULL;
 
 // Initialises the process for partitionting and starts it.
-PartitionErrorType StartPartitionProcess(const base::FilePath& device_file,
-                                         const std::string& partition_program,
-                                         const std::string& label_type,
-                                         const std::string& partition_input,
-                                         SandboxedProcess* process) {
+PartitionError StartPartitionProcess(const base::FilePath& device_file,
+                                     const std::string& partition_program,
+                                     const std::string& label_type,
+                                     const std::string& partition_input,
+                                     SandboxedProcess* process) {
   process->SetNoNewPrivileges();
   process->NewMountNamespace();
   process->NewIpcNamespace();
@@ -133,7 +133,7 @@ void PartitionManager::StartSinglePartitionFormat(
   std::unique_ptr<SandboxedProcess> process = CreateSandboxedProcess();
   partition_process_.insert(device_path);
 
-  PartitionErrorType error =
+  PartitionError error =
       StartPartitionProcess(device_path, kPartitionProgramPath, label_type,
                             partition_type, process.get());
   if (error != PARTITION_ERROR_NONE) {
@@ -154,7 +154,7 @@ void PartitionManager::OnPartitionProcessTerminated(
     cros_disks::PartitionCompleteCallback callback,
     const siginfo_t& info) {
   partition_process_.erase(device_path);
-  PartitionErrorType error_type = PARTITION_ERROR_UNKNOWN;
+  PartitionError error_type = PARTITION_ERROR_UNKNOWN;
   switch (info.si_code) {
     case CLD_EXITED:
       if (info.si_status == 0) {

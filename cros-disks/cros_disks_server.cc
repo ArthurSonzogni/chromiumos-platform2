@@ -62,7 +62,7 @@ void CrosDisksServer::RegisterMountManager(MountManager* mount_manager) {
 void CrosDisksServer::Format(const std::string& path,
                              const std::string& filesystem_type,
                              const std::vector<std::string>& options) {
-  FormatErrorType error = FORMAT_ERROR_NONE;
+  FormatError error = FORMAT_ERROR_NONE;
   Disk disk;
   if (!disk_monitor_->GetDiskByDevicePath(base::FilePath(path), &disk)) {
     error = FORMAT_ERROR_INVALID_DEVICE_PATH;
@@ -101,7 +101,7 @@ void CrosDisksServer::SinglePartitionFormat(
 
 void CrosDisksServer::Rename(const std::string& path,
                              const std::string& volume_name) {
-  RenameErrorType error = RENAME_ERROR_NONE;
+  RenameError error = RENAME_ERROR_NONE;
   Disk disk;
   if (!disk_monitor_->GetDiskByDevicePath(base::FilePath(path), &disk)) {
     error = RENAME_ERROR_INVALID_DEVICE_PATH;
@@ -141,7 +141,7 @@ void CrosDisksServer::OnMountCompleted(const std::string& source,
                                        MountSourceType source_type,
                                        const std::string& filesystem_type,
                                        const std::string& mount_path,
-                                       MountErrorType error,
+                                       MountError error,
                                        bool read_only) {
   if (error) {
     LOG(ERROR) << "Cannot mount " << redact(source) << " of type "
@@ -193,7 +193,7 @@ uint32_t CrosDisksServer::Unmount(const std::string& path,
       << "Ignored unmount options " << quote(options) << " for "
       << redact(path);
 
-  MountErrorType error = MOUNT_ERROR_PATH_NOT_MOUNTED;
+  MountError error = MOUNT_ERROR_PATH_NOT_MOUNTED;
   for (const auto& manager : mount_managers_) {
     error = manager->Unmount(path);
     if (error != MOUNT_ERROR_PATH_NOT_MOUNTED)
@@ -298,14 +298,14 @@ void CrosDisksServer::RemoveDeviceFromAllowlist(
 }
 
 void CrosDisksServer::OnFormatCompleted(const std::string& device_path,
-                                        FormatErrorType error) {
+                                        FormatError error) {
   SendFormatCompletedSignal(error, device_path);
 }
 
 void CrosDisksServer::OnPartitionCompleted(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<uint32_t>> response,
     const base::FilePath& device_path,
-    PartitionErrorType error) {
+    PartitionError error) {
   if (error) {
     LOG(INFO) << "Partitioned device " << quote(device_path);
   } else {
@@ -316,7 +316,7 @@ void CrosDisksServer::OnPartitionCompleted(
 }
 
 void CrosDisksServer::OnRenameCompleted(const std::string& device_path,
-                                        RenameErrorType error) {
+                                        RenameError error) {
   SendRenameCompletedSignal(error, device_path);
 }
 

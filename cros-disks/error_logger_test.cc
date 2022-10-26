@@ -45,7 +45,7 @@ TEST(ErrorLogger, FormatErrorType) {
   EXPECT_EQ(ToString(FORMAT_ERROR_LONG_NAME), "FORMAT_ERROR_LONG_NAME");
   EXPECT_EQ(ToString(FORMAT_ERROR_INVALID_CHARACTER),
             "FORMAT_ERROR_INVALID_CHARACTER");
-  EXPECT_EQ(ToString(FormatErrorType(987654)), "FORMAT_ERROR_987654");
+  EXPECT_EQ(ToString(FormatError(987654)), "FORMAT_ERROR_987654");
 }
 
 TEST(ErrorLogger, MountErrorType) {
@@ -83,7 +83,7 @@ TEST(ErrorLogger, MountErrorType) {
             "MOUNT_ERROR_UNSUPPORTED_FILESYSTEM");
   EXPECT_EQ(ToString(MOUNT_ERROR_INVALID_ARCHIVE),
             "MOUNT_ERROR_INVALID_ARCHIVE");
-  EXPECT_EQ(ToString(MountErrorType(987654)), "MOUNT_ERROR_987654");
+  EXPECT_EQ(ToString(MountError(987654)), "MOUNT_ERROR_987654");
 }
 
 TEST(ErrorLogger, PartitionErrorType) {
@@ -100,7 +100,7 @@ TEST(ErrorLogger, PartitionErrorType) {
             "PARTITION_ERROR_PROGRAM_FAILED");
   EXPECT_EQ(ToString(PARTITION_ERROR_DEVICE_NOT_ALLOWED),
             "PARTITION_ERROR_DEVICE_NOT_ALLOWED");
-  EXPECT_EQ(ToString(PartitionErrorType(987654)), "PARTITION_ERROR_987654");
+  EXPECT_EQ(ToString(PartitionError(987654)), "PARTITION_ERROR_987654");
 }
 
 TEST(ErrorLogger, RenameErrorType) {
@@ -122,7 +122,7 @@ TEST(ErrorLogger, RenameErrorType) {
   EXPECT_EQ(ToString(RENAME_ERROR_LONG_NAME), "RENAME_ERROR_LONG_NAME");
   EXPECT_EQ(ToString(RENAME_ERROR_INVALID_CHARACTER),
             "RENAME_ERROR_INVALID_CHARACTER");
-  EXPECT_EQ(ToString(RenameErrorType(987654)), "RENAME_ERROR_987654");
+  EXPECT_EQ(ToString(RenameError(987654)), "RENAME_ERROR_987654");
 }
 
 }  // namespace

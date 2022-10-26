@@ -66,7 +66,7 @@ class ArchiveManager : public MountManager {
                                       const std::string& filesystem_type,
                                       const std::vector<std::string>& options,
                                       const base::FilePath& mount_path,
-                                      MountErrorType* error) override;
+                                      MountError* error) override;
 
  private:
   friend class ArchiveManagerUnderTest;

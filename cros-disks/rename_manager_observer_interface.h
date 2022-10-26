@@ -22,7 +22,7 @@ class RenameManagerObserverInterface {
   // completed. |error_type| indicates whether the operation succeeded
   // or failed with a particular error.
   virtual void OnRenameCompleted(const std::string& device_path,
-                                 RenameErrorType error_type) = 0;
+                                 RenameError error_type) = 0;
 };
 
 }  // namespace cros_disks

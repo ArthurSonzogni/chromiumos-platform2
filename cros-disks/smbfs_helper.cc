@@ -70,11 +70,10 @@ bool SmbfsHelper::CanMount(const std::string& source,
   return true;
 }
 
-MountErrorType SmbfsHelper::ConfigureSandbox(
-    const std::string& source,
-    const base::FilePath& /*target_path*/,
-    std::vector<std::string> params,
-    SandboxedProcess* sandbox) const {
+MountError SmbfsHelper::ConfigureSandbox(const std::string& source,
+                                         const base::FilePath& /*target_path*/,
+                                         std::vector<std::string> params,
+                                         SandboxedProcess* sandbox) const {
   const Uri uri = Uri::Parse(source);
   if (!uri.valid() || uri.scheme() != kType || uri.path().empty()) {
     LOG(ERROR) << "Invalid source " << quote(source);

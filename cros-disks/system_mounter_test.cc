@@ -27,11 +27,11 @@ constexpr uint64_t kDefaultMountFlags =
 class PlatformForTest : public Platform {
  public:
   // Tests are being run on devices that don't support nosymfollow. Strip it.
-  MountErrorType Mount(const std::string& source,
-                       const std::string& target,
-                       const std::string& filesystem_type,
-                       uint64_t flags,
-                       const std::string& options) const override {
+  MountError Mount(const std::string& source,
+                   const std::string& target,
+                   const std::string& filesystem_type,
+                   uint64_t flags,
+                   const std::string& options) const override {
     EXPECT_TRUE((flags & MS_NOSYMFOLLOW) == MS_NOSYMFOLLOW);
     return Platform::Mount(source, target, filesystem_type,
                            flags & ~MS_NOSYMFOLLOW, options);
@@ -46,7 +46,7 @@ TEST(SystemMounterTest, RunAsRootMount) {
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
 
-  MountErrorType error = MOUNT_ERROR_NONE;
+  MountError error = MOUNT_ERROR_NONE;
   auto mountpoint = mounter.Mount("/dev/null", temp_dir.GetPath(), {}, &error);
   EXPECT_TRUE(mountpoint);
   EXPECT_EQ(MOUNT_ERROR_NONE, error);
@@ -64,7 +64,7 @@ TEST(SystemMounterTest, RunAsRootMountWithNonexistentSourcePath) {
   // To test mounting a nonexistent source path, use ext2 as the
   // filesystem type instead of tmpfs since tmpfs does not care
   // about source path.
-  MountErrorType error = MOUNT_ERROR_NONE;
+  MountError error = MOUNT_ERROR_NONE;
   auto mountpoint =
       mounter.Mount("/nonexistent", temp_dir.GetPath(), {}, &error);
   EXPECT_FALSE(mountpoint);
@@ -75,7 +75,7 @@ TEST(SystemMounterTest, RunAsRootMountWithNonexistentTargetPath) {
   PlatformForTest platform;
   SystemMounter mounter(&platform, "tmpfs", /* read_only= */ false, {});
 
-  MountErrorType error = MOUNT_ERROR_NONE;
+  MountError error = MOUNT_ERROR_NONE;
   auto mountpoint =
       mounter.Mount("/dev/null", base::FilePath("/nonexistent"), {}, &error);
   EXPECT_FALSE(mountpoint);
@@ -88,7 +88,7 @@ TEST(SystemMounterTest, RunAsRootMountWithNonexistentFilesystemType) {
 
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-  MountErrorType error = MOUNT_ERROR_NONE;
+  MountError error = MOUNT_ERROR_NONE;
   auto mountpoint = mounter.Mount("/dev/null", temp_dir.GetPath(), {}, &error);
   EXPECT_FALSE(mountpoint);
   EXPECT_EQ(MOUNT_ERROR_UNSUPPORTED_FILESYSTEM, error);
@@ -100,7 +100,7 @@ TEST(SystemMounterTest, MountFilesystem) {
 
   EXPECT_CALL(platform, Mount("/dev/block", "/mnt/dir", "fstype", _, _))
       .WillOnce(Return(MOUNT_ERROR_NONE));
-  MountErrorType error = MOUNT_ERROR_UNKNOWN;
+  MountError error = MOUNT_ERROR_UNKNOWN;
   auto mountpoint =
       mounter.Mount("/dev/block", base::FilePath("/mnt/dir"), {}, &error);
   ASSERT_TRUE(mountpoint);
@@ -119,7 +119,7 @@ TEST(SystemMounterTest, MountFailed) {
       .WillOnce(Return(MOUNT_ERROR_PATH_NOT_MOUNTED));
   EXPECT_CALL(platform, Unmount).Times(0);
 
-  MountErrorType error = MOUNT_ERROR_UNKNOWN;
+  MountError error = MOUNT_ERROR_UNKNOWN;
   auto mountpoint =
       mounter.Mount("/dev/block", base::FilePath("/mnt/dir"), {}, &error);
   ASSERT_FALSE(mountpoint);
@@ -132,7 +132,7 @@ TEST(SystemMounterTest, UnmountFailedNoRetry) {
 
   EXPECT_CALL(platform, Mount(_, "/mnt/dir", "fstype", _, _))
       .WillOnce(Return(MOUNT_ERROR_NONE));
-  MountErrorType error = MOUNT_ERROR_UNKNOWN;
+  MountError error = MOUNT_ERROR_UNKNOWN;
   auto mountpoint =
       mounter.Mount("/dev/block", base::FilePath("/mnt/dir"), {}, &error);
 
@@ -149,7 +149,7 @@ TEST(SystemMounterTest, MountFlags) {
 
   EXPECT_CALL(platform, Mount(_, "/mnt/dir", "fstype", kDefaultMountFlags, _))
       .WillOnce(Return(MOUNT_ERROR_NONE));
-  MountErrorType error = MOUNT_ERROR_UNKNOWN;
+  MountError error = MOUNT_ERROR_UNKNOWN;
   auto mountpoint =
       mounter.Mount("/dev/block", base::FilePath("/mnt/dir"), {}, &error);
 }
@@ -161,7 +161,7 @@ TEST(SystemMounterTest, ReadOnlyForced) {
   EXPECT_CALL(platform,
               Mount(_, "/mnt/dir", "fstype", kDefaultMountFlags | MS_RDONLY, _))
       .WillOnce(Return(MOUNT_ERROR_NONE));
-  MountErrorType error = MOUNT_ERROR_UNKNOWN;
+  MountError error = MOUNT_ERROR_UNKNOWN;
   auto mountpoint =
       mounter.Mount("/dev/block", base::FilePath("/mnt/dir"), {}, &error);
 }
@@ -173,7 +173,7 @@ TEST(SystemMounterTest, ReadOnlyRequested) {
   EXPECT_CALL(platform,
               Mount(_, "/mnt/dir", "fstype", kDefaultMountFlags | MS_RDONLY, _))
       .WillOnce(Return(MOUNT_ERROR_NONE));
-  MountErrorType error = MOUNT_ERROR_UNKNOWN;
+  MountError error = MOUNT_ERROR_UNKNOWN;
   auto mountpoint =
       mounter.Mount("/dev/block", base::FilePath("/mnt/dir"), {"ro"}, &error);
 }
@@ -185,7 +185,7 @@ TEST(SystemMounterTest, MountOptionsPassedButParamsIgnored) {
 
   EXPECT_CALL(platform, Mount(_, "/mnt/dir", "fstype", _, "foo,bar=baz"))
       .WillOnce(Return(MOUNT_ERROR_NONE));
-  MountErrorType error = MOUNT_ERROR_UNKNOWN;
+  MountError error = MOUNT_ERROR_UNKNOWN;
   auto mountpoint = mounter.Mount("/dev/block", base::FilePath("/mnt/dir"),
                                   {"abc=def", "xyz"}, &error);
 }

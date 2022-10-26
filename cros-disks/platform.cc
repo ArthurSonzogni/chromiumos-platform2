@@ -284,8 +284,8 @@ bool Platform::SetPermissions(const std::string& path, mode_t mode) const {
   return true;
 }
 
-MountErrorType Platform::Unmount(const base::FilePath& mount_path,
-                                 const std::string& filesystem_type) const {
+MountError Platform::Unmount(const base::FilePath& mount_path,
+                             const std::string& filesystem_type) const {
   // We take a 2-step approach to unmounting FUSE filesystems. First, we try a
   // normal unmount. This lets the VFS flush any pending data and lets the
   // filesystem shut down cleanly.
@@ -352,11 +352,11 @@ MountErrorType Platform::Unmount(const base::FilePath& mount_path,
   }
 }
 
-MountErrorType Platform::Mount(const std::string& source_path,
-                               const std::string& target_path,
-                               const std::string& filesystem_type,
-                               const uint64_t flags,
-                               const std::string& options) const {
+MountError Platform::Mount(const std::string& source_path,
+                           const std::string& target_path,
+                           const std::string& filesystem_type,
+                           const uint64_t flags,
+                           const std::string& options) const {
   if (mount(source_path.c_str(), target_path.c_str(), filesystem_type.c_str(),
             flags, options.c_str()) == 0) {
     VLOG(1) << "Created mount point " << filesystem_type << " "
