@@ -27,6 +27,7 @@ inline constexpr char kDefaultAltModelFile[] = "device/name";
 
 // Constants for fetching eMMC device info.
 inline constexpr char kEmmcOemIdFile[] = "device/oemid";
+inline constexpr char kEmmcManfIdFile[] = "device/manfid";
 inline constexpr char kEmmcRevisionFile[] = "device/rev";
 // The alternative file for reading revision, for backward compatibility.
 inline constexpr char kEmmcAltRevisionFile[] = "device/hwrev";

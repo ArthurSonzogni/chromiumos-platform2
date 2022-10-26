@@ -24,7 +24,6 @@
 #include "diagnostics/common/status_macros.h"
 #include "diagnostics/common/statusor.h"
 #include "diagnostics/cros_healthd/fetchers/storage/device_info_constants.h"
-#include "diagnostics/cros_healthd/utils/error_utils.h"
 #include "diagnostics/cros_healthd/utils/file_utils.h"
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
 
@@ -84,8 +83,11 @@ mojo_ipc::NonRemovableBlockDeviceInfoPtr FetchEmmcImmutableBlockDeviceInfo(
     const base::FilePath& dev_sys_path) {
   std::string model;
   uint32_t oem_id;
+  uint32_t manfid;
   uint64_t fwrev;
   if (!ReadAndTrimString(dev_sys_path, kEmmcNameFile, &model) ||
+      !ReadIntegerAndLogError(dev_sys_path, kEmmcManfIdFile,
+                              &base::HexStringToUInt, &manfid) ||
       !ReadIntegerAndLogError(dev_sys_path, kEmmcOemIdFile,
                               &base::HexStringToUInt, &oem_id) ||
       !ReadIntegerAndLogError(dev_sys_path, kEmmcFirmwareVersionFile,
@@ -120,6 +122,8 @@ mojo_ipc::NonRemovableBlockDeviceInfoPtr FetchEmmcImmutableBlockDeviceInfo(
   block_device_info->revision = mojo_ipc::BlockDeviceRevision::NewEmmcPrv(prv);
   block_device_info->firmware_version =
       mojo_ipc::BlockDeviceFirmware::NewEmmcFwrev(fwrev);
+  block_device_info->device_info = mojo_ipc::BlockDeviceInfo::NewEmmcDeviceInfo(
+      mojo_ipc::EmmcDeviceInfo::New(manfid, pnm, prv, fwrev));
   return block_device_info;
 }
 
@@ -187,6 +191,9 @@ mojo_ipc::NonRemovableBlockDeviceInfoPtr FetchNvmeImmutableBlockDeviceInfo(
       mojo_ipc::BlockDeviceRevision::NewNvmePcieRev(pcie_rev);
   block_device_info->firmware_version =
       mojo_ipc::BlockDeviceFirmware::NewNvmeFirmwareRev(firmware_rev);
+  block_device_info->device_info = mojo_ipc::BlockDeviceInfo::NewNvmeDeviceInfo(
+      mojo_ipc::NvmeDeviceInfo::New(subsystem_vendor, subsystem_device,
+                                    pcie_rev, firmware_rev));
   return block_device_info;
 }
 
@@ -234,6 +241,8 @@ mojo_ipc::NonRemovableBlockDeviceInfoPtr FetchUfsImmutableBlockDeviceInfo(
   block_device_info->revision = mojo_ipc::BlockDeviceRevision::NewOther(0);
   block_device_info->firmware_version =
       mojo_ipc::BlockDeviceFirmware::NewUfsFwrev(fwrev);
+  block_device_info->device_info = mojo_ipc::BlockDeviceInfo::NewUfsDeviceInfo(
+      mojo_ipc::UfsDeviceInfo::New(/*jedec_manfid=*/manfid, fwrev));
   return block_device_info;
 }
 
