@@ -25,19 +25,8 @@ namespace home {
 
 const char kGuestUserName[] = "$guest";
 
-// Path to user homes mounted with the mount_hidden option. The user home mount
-// will be located at:
-// kHiddenUserHomeBaseDir/<sanitized_user_name>/kHiddenUserHomeMountSubdir
-const char kHiddenUserHomeBaseDir[] = "/home/.shadow";
-const char kHiddenUserHomeMountSubdir[] = "mount";
-
 // Daemon store main directory.
 constexpr char kDaemonStorePath[] = "/run/daemon-store";
-
-// Subdirectory of a user home mount where daemon-specific data is stored.
-// This is used to assemble daemon data storage paths for hidden user home
-// mounts.
-const char kHiddenUserHomeRootSubdir[] = "root";
 
 static char g_user_home_prefix[PATH_MAX] = "/home/user/";
 static char g_root_home_prefix[PATH_MAX] = "/home/root/";
@@ -130,18 +119,6 @@ FilePath GetDaemonStorePath(const std::string& username,
   return FilePath(kDaemonStorePath)
       .Append(daemon)
       .Append(SanitizeUserName(username));
-}
-
-FilePath GetDaemonPathForHiddenUserHome(const std::string& username,
-                                        const std::string& daemon) {
-  if (!EnsureSystemSaltIsLoaded())
-    return FilePath();
-
-  return FilePath(kHiddenUserHomeBaseDir)
-      .Append(SanitizeUserName(username))
-      .Append(kHiddenUserHomeMountSubdir)
-      .Append(kHiddenUserHomeRootSubdir)
-      .Append(daemon);
 }
 
 bool IsSanitizedUserName(const std::string& sanitized) {
