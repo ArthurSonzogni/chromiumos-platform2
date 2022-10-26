@@ -71,11 +71,6 @@ bool FakeStream::Initialize(const android::CameraMetadata& static_metadata,
 
     uint32_t out_data_size;
 
-    if (!input_buffer->Map()) {
-      LOGF(WARNING) << "failed to map the buffer";
-      return false;
-    }
-
     std::vector<uint8_t> app1;
     // TODO(pihsun): Fill thumbnail in app1.
     // TODO(pihsun): Should use android.jpeg.quality in request metadata for
@@ -89,12 +84,13 @@ bool FakeStream::Initialize(const android::CameraMetadata& static_metadata,
       return false;
     }
 
-    if (!buffer_->Map()) {
-      LOGF(WARNING) << "failed to map the buffer";
+    auto mapped_buffer = buffer_->Map();
+    if (!mapped_buffer.ok()) {
+      LOGF(WARNING) << "failed to map the buffer: " << mapped_buffer.status();
       return false;
     }
 
-    auto data = buffer_->GetData();
+    auto data = mapped_buffer->plane(0).addr;
 
     camera3_jpeg_blob_t blob = {
         .jpeg_blob_id = CAMERA3_JPEG_BLOB_ID,
@@ -103,10 +99,6 @@ bool FakeStream::Initialize(const android::CameraMetadata& static_metadata,
 
     CHECK(base::ClampAdd(out_data_size, sizeof(blob)) <= jpeg_max_size_);
     memcpy(data + jpeg_max_size_ - sizeof(blob), &blob, sizeof(blob));
-
-    if (!buffer_->Unmap()) {
-      return false;
-    }
   } else if (format == HAL_PIXEL_FORMAT_YCBCR_420_888) {
     // TODO(pihsun): Fill buffer data for test pattern / image from spec.
     buffer_ = std::move(input_buffer);
@@ -135,30 +127,31 @@ bool FakeStream::FillBuffer(buffer_handle_t buffer, Size size) {
     NOTREACHED() << "unknown format " << format_;
   }
 
-  if (!buffer_->Map()) {
-    LOGF(WARNING) << "failed to map the fake stream buffer";
-    return false;
-  }
-  if (!frame_buffer->Map()) {
-    LOGF(WARNING) << "failed to map the input buffer";
-    buffer_->Unmap();
+  auto mapped_buffer = buffer_->Map();
+  if (!mapped_buffer.ok()) {
+    LOGF(WARNING) << "failed to map the fake stream buffer: "
+                  << mapped_buffer.status();
     return false;
   }
 
-  DCHECK_EQ(buffer_->GetNumPlanes(), frame_buffer->GetNumPlanes());
-  for (size_t i = 0; i < buffer_->GetNumPlanes(); i++) {
+  auto mapped_frame_buffer = frame_buffer->Map();
+  if (!mapped_frame_buffer.ok()) {
+    LOGF(WARNING) << "failed to map the input buffer: "
+                  << mapped_frame_buffer.status();
+    return false;
+  }
+
+  CHECK_EQ(mapped_buffer->num_planes(), mapped_frame_buffer->num_planes());
+  for (size_t i = 0; i < mapped_buffer->num_planes(); i++) {
     // Since the camera3_jpeg_blob_t "header" is located at the end of the
     // buffer, we requires the output to be the same size as the cached buffer.
     // They should both be the size of jpeg_max_size_.
     // TODO(pihsun): Only copy the JPEG part and append the camera3_jpeg_blob_t
     // per frame?
-    DCHECK_EQ(buffer_->GetPlaneSize(i), frame_buffer->GetPlaneSize(i));
-    memcpy(frame_buffer->GetData(i), buffer_->GetData(i),
-           frame_buffer->GetPlaneSize(i));
-  }
-
-  if (!buffer_->Unmap()) {
-    LOGF(WARNING) << "failed to unmap the fake stream buffer";
+    auto src_plane = mapped_buffer->plane(i);
+    auto dst_plane = mapped_frame_buffer->plane(i);
+    CHECK_EQ(src_plane.size, dst_plane.size);
+    memcpy(dst_plane.addr, src_plane.addr, dst_plane.size);
   }
 
   return true;

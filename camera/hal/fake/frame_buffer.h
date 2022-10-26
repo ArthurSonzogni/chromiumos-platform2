@@ -11,6 +11,7 @@
 #include <memory>
 #include <vector>
 
+#include <absl/status/statusor.h>
 #include <base/sequence_checker.h>
 
 #include "cros-camera/camera_buffer_manager.h"
@@ -28,31 +29,12 @@ class FrameBuffer {
     kVPlane = 2,
   };
 
-  // Returns true if buffer is already mapped. Otherwise, if mapped
-  // successfully, the address will be assigned to |data_| and return true.
-  // Otherwise, returns false.
-  bool Map();
-
-  // Unmaps the mapped address if it's mapped. Returns true if buffer is not
-  // mapped or unmapping succeed.
-  bool Unmap();
-
-  // Gets the data pointer to the plane. Returns nullptr if the buffer is not
-  // mapped or the given plane index is out of range.
-  uint8_t* GetData(size_t plane = 0) const;
-
-  // Gets the stride to the plane. Returns 0 if the buffer is not mapped or the
-  // given plane index is out of range.
-  size_t GetStride(size_t plane = 0) const;
-
-  // Gets the plane size to the plane. Returns 0 if the buffer is not mapped or
-  // the given plane index is out of range.
-  size_t GetPlaneSize(size_t plane = 0) const;
+  // Returns the mapped buffer. The return value should not outlive |this|.
+  absl::StatusOr<ScopedMapping> Map();
 
   uint32_t GetWidth() const { return width_; }
   uint32_t GetHeight() const { return height_; }
   uint32_t GetFourcc() const { return fourcc_; }
-  size_t GetNumPlanes() const { return data_.size(); }
 
   ~FrameBuffer();
 
@@ -81,14 +63,6 @@ class FrameBuffer {
                   uint32_t height,
                   android_pixel_format_t fourcc);
 
-  // Data pointer to each plane. Always have the size of number of planes, but
-  // contains all nullptr when the buffer is not mapped.
-  std::vector<uint8_t*> data_;
-
-  // Stride of each plane. Always have the size of number of planes, but
-  // contains all 0 when buffer is not mapped.
-  std::vector<size_t> stride_;
-
   // Frame resolution.
   uint32_t width_;
   uint32_t height_;
@@ -104,8 +78,6 @@ class FrameBuffer {
 
   // Whether the |buffer_| is allocated by this class.
   bool is_buffer_owned_ = false;
-
-  bool is_mapped_ = false;
 
   // Use to check all methods are called on the same thread.
   SEQUENCE_CHECKER(sequence_checker_);
