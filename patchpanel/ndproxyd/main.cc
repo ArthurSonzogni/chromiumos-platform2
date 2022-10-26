@@ -88,6 +88,7 @@ int main(int argc, char* argv[]) {
 
   proxy.StartRSRAProxy(ifid_host, ifid_guest);
   proxy.StartNSNAProxy(ifid_host, ifid_guest);
+  proxy.StartNSNAProxy(ifid_guest, ifid_host);
   proxy.RegisterOnGuestIpDiscoveryHandler(
       base::BindRepeating(&OnGuestIpDiscovery));
 
