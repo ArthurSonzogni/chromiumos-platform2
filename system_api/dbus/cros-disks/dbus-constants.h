@@ -190,7 +190,7 @@ enum PartitionError {
 };
 
 // Rename error reported by cros-disks.
-enum RenameError {
+enum class RenameError {
   kSuccess = 0,
   kUnknownError = 1,
   kInternalError = 2,

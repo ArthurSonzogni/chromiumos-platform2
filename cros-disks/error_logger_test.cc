@@ -14,7 +14,6 @@ namespace {
 
 static_assert(!FORMAT_ERROR_NONE);
 static_assert(!PARTITION_ERROR_NONE);
-static_assert(!RenameError::kSuccess);
 
 template <typename T>
 std::string ToString(T error) {

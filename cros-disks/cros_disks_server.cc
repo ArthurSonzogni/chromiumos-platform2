@@ -110,10 +110,10 @@ void CrosDisksServer::Rename(const std::string& path,
                                            disk.filesystem_type);
   }
 
-  if (error) {
+  if (error != RenameError::kSuccess) {
     LOG(ERROR) << "Cannot rename device " << quote(path) << " as "
                << redact(volume_name) << ": " << error;
-    SendRenameCompletedSignal(error, path);
+    SendRenameCompletedSignal(static_cast<uint32_t>(error), path);
   }
 }
 
@@ -318,7 +318,7 @@ void CrosDisksServer::OnPartitionCompleted(
 
 void CrosDisksServer::OnRenameCompleted(const std::string& device_path,
                                         RenameError error) {
-  SendRenameCompletedSignal(error, device_path);
+  SendRenameCompletedSignal(static_cast<uint32_t>(error), device_path);
 }
 
 void CrosDisksServer::OnScreenIsLocked() {}
