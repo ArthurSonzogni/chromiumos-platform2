@@ -272,6 +272,12 @@ bool DlcBase::MakeReadyForUpdate() const {
     return false;
   }
 
+  // Scaled DLCs will not A/B update with the OS until deltas are supported.
+  if (manifest_->scaled()) {
+    LOG(WARNING) << "Scaled DLC=" << id_ << " will not update with the OS.";
+    return false;
+  }
+
   return MakeReadyForUpdateInternal();
 }
 

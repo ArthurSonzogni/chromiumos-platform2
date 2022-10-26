@@ -348,6 +348,17 @@ TEST_F(DlcBaseTest, MakeReadyForUpdateNotVerfied) {
   EXPECT_FALSE(prefs.Exists(kDlcPrefVerified));
 }
 
+TEST_F(DlcBaseTest, MakeReadyForUpdateSkipScaledDlc) {
+  DlcBase dlc(kScaledDlc);
+  dlc.Initialize();
+
+  Prefs prefs(dlc, SystemState::Get()->inactive_boot_slot());
+  EXPECT_TRUE(prefs.Create(kDlcPrefVerified));
+  // Since DLC is scaled, it should return false.
+  EXPECT_FALSE(dlc.MakeReadyForUpdate());
+  EXPECT_FALSE(prefs.Exists(kDlcPrefVerified));
+}
+
 TEST_F(DlcBaseTest, OfficialBuildsDoNotPreloadDLCs) {
   DlcBase dlc(kThirdDlc);
   dlc.Initialize();
