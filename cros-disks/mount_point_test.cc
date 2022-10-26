@@ -42,8 +42,8 @@ TEST_F(MountPointTest, Unmount) {
   auto mount_point = std::make_unique<MountPoint>(data_, &platform_);
 
   EXPECT_CALL(platform_, Unmount(base::FilePath(kMountPath), kFSType))
-      .WillOnce(Return(MOUNT_ERROR_INVALID_ARCHIVE));
-  EXPECT_EQ(MOUNT_ERROR_INVALID_ARCHIVE, mount_point->Unmount());
+      .WillOnce(Return(MOUNT_ERROR_BUSY));
+  EXPECT_EQ(MOUNT_ERROR_BUSY, mount_point->Unmount());
 
   EXPECT_CALL(platform_, Unmount(base::FilePath(kMountPath), kFSType))
       .WillOnce(Return(MOUNT_ERROR_NONE));
