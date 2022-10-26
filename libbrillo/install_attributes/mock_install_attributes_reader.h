@@ -7,9 +7,8 @@
 
 #include <string>
 
+#include "brillo/proto_bindings/install_attributes.pb.h"
 #include "install_attributes/libinstallattributes.h"
-
-#include "bindings/install_attributes.pb.h"
 
 class MockInstallAttributesReader : public InstallAttributesReader {
  public:

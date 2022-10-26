@@ -7,7 +7,7 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 
-#include "bindings/install_attributes.pb.h"  // NOLINT(build/include_directory)
+#include "brillo/proto_bindings/install_attributes.pb.h"  // NOLINT(build/include_directory)
 
 namespace {
 

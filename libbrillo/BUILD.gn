@@ -391,14 +391,28 @@ static_library("libbrillo-test") {
   }
 }
 
+proto_library("install_attributes_proto") {
+  proto_in_dir = "${sysroot}/usr/include/proto"
+  proto_out_dir = "include/brillo/proto_bindings"
+  sources = [ "${proto_in_dir}/install_attributes.proto" ]
+
+  # the library is used by a shared_libary, hence PIC is needed.
+  configs = [ "//common-mk:pic" ]
+  standalone = true
+}
+
 shared_library("libinstallattributes") {
   sources = [ "install_attributes/libinstallattributes.cc" ]
   configs += [ ":target_defaults" ]
   deps = [
+    ":install_attributes_proto",
     ":libinstallattributes-includes",
-    "../common-mk/external_dependencies:install_attributes-proto",
   ]
-  all_dependent_pkg_deps = [ "protobuf-lite" ]
+  if (use.fuzzer) {
+    all_dependent_pkg_deps = [ "protobuf" ]
+  } else {
+    all_dependent_pkg_deps = [ "protobuf-lite" ]
+  }
 }
 
 shared_library("libpolicy") {
@@ -565,7 +579,6 @@ if (use.test) {
     ]
     deps = [
       ":libinstallattributes",
-      "../common-mk/external_dependencies:install_attributes-proto",
       "../common-mk/testrunner:testrunner",
     ]
   }
@@ -585,7 +598,6 @@ if (use.test) {
     deps = [
       ":libinstallattributes",
       ":libpolicy",
-      "../common-mk/external_dependencies:install_attributes-proto",
       "../common-mk/external_dependencies:policy-protos",
       "../common-mk/testrunner:testrunner",
     ]
