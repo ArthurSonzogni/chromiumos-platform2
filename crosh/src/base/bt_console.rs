@@ -17,6 +17,7 @@ const BLUEZ_EXECUTABLE: &str = "/usr/bin/bluetoothctl";
 const BLUEZ_DEFAULT_ARG: &str = "--restricted";
 
 const FLOSS_EXECUTABLE: &str = "/usr/bin/btclient";
+const FLOSS_DEFAULT_ARG: &str = "--restricted";
 
 const HELP: &str = r#"
   Enters a Bluetooth debugging console.
@@ -74,6 +75,12 @@ fn btclient_help(_cmd: &Command, w: &mut dyn Write, _level: usize) {
 }
 
 fn execute_btclient(_cmd: &Command, args: &Arguments) -> Result<(), dispatcher::Error> {
+    if !args.get_args().is_empty() {
+        return Err(dispatcher::Error::CommandInvalidArguments(String::from(
+            "No argument is allowed",
+        )));
+    }
+
     if !is_floss_enabled().unwrap_or(false) {
         return wait_for_result(
             process::Command::new(BLUEZ_EXECUTABLE)
@@ -85,7 +92,7 @@ fn execute_btclient(_cmd: &Command, args: &Arguments) -> Result<(), dispatcher::
 
     wait_for_result(
         process::Command::new(FLOSS_EXECUTABLE)
-            .args(args.get_args())
+            .args(vec![FLOSS_DEFAULT_ARG])
             .spawn()
             .or(Err(dispatcher::Error::CommandReturnedError))?,
     )
