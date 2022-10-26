@@ -44,21 +44,6 @@ bool ReadTypeFile(const base::FilePath& path,
   return true;
 }
 
-// Wrapper of string to number conversion function to absorb the libchrome
-// update signature change.
-// TODO(crbug.com/909719): Remove them after the uprev.
-bool StringToInt64(base::StringPiece s, int64_t* out) {
-  return base::StringToInt64(s, out);
-}
-
-bool StringToUint64(base::StringPiece s, uint64_t* out) {
-  return base::StringToUint64(s, out);
-}
-
-bool HexStringToUInt(base::StringPiece s, uint32_t* out) {
-  return base::HexStringToUInt(s, out);
-}
-
 }  // namespace
 
 double ClampPercent(double percent) {
@@ -120,15 +105,15 @@ bool MaybeReadStringFile(const base::FilePath& path, std::string* value_out) {
 }
 
 bool ReadInt64File(const base::FilePath& path, int64_t* value_out) {
-  return ReadTypeFile(path, StringToInt64, value_out);
+  return ReadTypeFile(path, base::StringToInt64, value_out);
 }
 
 bool ReadUint64File(const base::FilePath& path, uint64_t* value_out) {
-  return ReadTypeFile(path, StringToUint64, value_out);
+  return ReadTypeFile(path, base::StringToUint64, value_out);
 }
 
 bool ReadHexUint32File(const base::FilePath& path, uint32_t* value_out) {
-  return ReadTypeFile(path, HexStringToUInt, value_out);
+  return ReadTypeFile(path, base::HexStringToUInt, value_out);
 }
 
 bool DeleteFile(const base::FilePath& path) {
