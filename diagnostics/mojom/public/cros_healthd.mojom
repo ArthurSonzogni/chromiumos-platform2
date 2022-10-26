@@ -494,6 +494,18 @@ interface CrosHealthdDiagnosticsService {
   // The response:
   // * |response| - contains a unique identifier and status for the created
   //                routine.
+  //
+  // The |output| in RoutineUpdate is a json dictionary, which format is:
+  // {
+  //   "passed_sensors":  list<Sensor>,
+  //   "failed_sensors":  list<Sensor>
+  // }
+  // And the <Sensor> is also a json dictionary, which format is:
+  // {
+  //   "id":        int32,
+  //   "types":     list<string>,
+  //   "channels":  list<string>
+  // }
   [MinVersion=2] RunSensitiveSensorRoutine@33()
       => (RunRoutineResponse response);
 };
