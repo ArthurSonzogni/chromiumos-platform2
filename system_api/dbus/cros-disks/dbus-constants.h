@@ -100,16 +100,37 @@ enum FormatErrorType {
 // These values are persisted to logs. Entries should not be renumbered and
 // numeric values should never be reused.
 enum MountErrorType {
+  // Success.
   MOUNT_ERROR_NONE = 0,
+
+  // Generic error code.
   MOUNT_ERROR_UNKNOWN = 1,
+
+  // Internal error.
   MOUNT_ERROR_INTERNAL = 2,
+
+  // Invalid argument.
   MOUNT_ERROR_INVALID_ARGUMENT = 3,
+
+  // Invalid path.
   MOUNT_ERROR_INVALID_PATH = 4,
+
+  // Not used.
   MOUNT_ERROR_PATH_ALREADY_MOUNTED = 5,
+
+  // Tried to unmount a path that is not currently mounted.
   MOUNT_ERROR_PATH_NOT_MOUNTED = 6,
+
+  // Cannot create directory.
   MOUNT_ERROR_DIRECTORY_CREATION_FAILED = 7,
+
+  // Invalid mount options.
   MOUNT_ERROR_INVALID_MOUNT_OPTIONS = 8,
+
+  // Not used.
   MOUNT_ERROR_INVALID_UNMOUNT_OPTIONS = 9,
+
+  // Insufficient permissions.
   MOUNT_ERROR_INSUFFICIENT_PERMISSIONS = 10,
 
   // The FUSE mounter cannot be found.
@@ -118,33 +139,30 @@ enum MountErrorType {
   // The FUSE mounter finished with an error.
   MOUNT_ERROR_MOUNT_PROGRAM_FAILED = 12,
 
+  // The provided path to mount is invalid.
+  MOUNT_ERROR_INVALID_DEVICE_PATH = 13,
+
+  // Cannot determine file system of the device.
+  MOUNT_ERROR_UNKNOWN_FILESYSTEM = 14,
+
+  // The file system of the device is recognized but not supported.
+  MOUNT_ERROR_UNSUPPORTED_FILESYSTEM = 15,
+
+  // Not used.
+  MOUNT_ERROR_INVALID_ARCHIVE = 16,
+
   // Either the FUSE mounter needs a password, or the provided password is
   // incorrect.
   MOUNT_ERROR_NEED_PASSWORD = 17,
-  MOUNT_ERROR_NEED_PASSWORD_EX = 117,
 
   // The FUSE mounter is currently launching, and it hasn't daemonized yet.
   MOUNT_ERROR_IN_PROGRESS = 18,
-  MOUNT_ERROR_IN_PROGRESS_EX = 118,
 
   // The FUSE mounter was cancelled (killed) while it was launching.
   MOUNT_ERROR_CANCELLED = 19,
-  MOUNT_ERROR_CANCELLED_EX = 119,
 
   // The device is busy.
   MOUNT_ERROR_BUSY = 20,
-
-  MOUNT_ERROR_INVALID_DEVICE_PATH = 13,
-  MOUNT_ERROR_INVALID_DEVICE_PATH_EX = 100,
-
-  MOUNT_ERROR_UNKNOWN_FILESYSTEM = 14,
-  MOUNT_ERROR_UNKNOWN_FILESYSTEM_EX = 101,
-
-  MOUNT_ERROR_UNSUPPORTED_FILESYSTEM = 15,
-  MOUNT_ERROR_UNSUPPORTED_FILESYSTEM_EX = 102,
-
-  MOUNT_ERROR_INVALID_ARCHIVE = 16,
-  MOUNT_ERROR_INVALID_ARCHIVE_EX = 201,
 };
 
 // MountSourceType enum values are solely used by Chrome/CrosDisks in
