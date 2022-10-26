@@ -14,7 +14,7 @@ namespace {
 
 static_assert(!FORMAT_ERROR_NONE);
 static_assert(!PARTITION_ERROR_NONE);
-static_assert(!RENAME_ERROR_NONE);
+static_assert(!RenameError::kSuccess);
 
 template <typename T>
 std::string ToString(T error) {
@@ -103,25 +103,26 @@ TEST(ErrorLogger, PartitionErrorType) {
 }
 
 TEST(ErrorLogger, RenameErrorType) {
-  EXPECT_EQ(ToString(RENAME_ERROR_NONE), "RENAME_ERROR_NONE");
-  EXPECT_EQ(ToString(RENAME_ERROR_UNKNOWN), "RENAME_ERROR_UNKNOWN");
-  EXPECT_EQ(ToString(RENAME_ERROR_INTERNAL), "RENAME_ERROR_INTERNAL");
-  EXPECT_EQ(ToString(RENAME_ERROR_INVALID_DEVICE_PATH),
-            "RENAME_ERROR_INVALID_DEVICE_PATH");
-  EXPECT_EQ(ToString(RENAME_ERROR_DEVICE_BEING_RENAMED),
-            "RENAME_ERROR_DEVICE_BEING_RENAMED");
-  EXPECT_EQ(ToString(RENAME_ERROR_UNSUPPORTED_FILESYSTEM),
-            "RENAME_ERROR_UNSUPPORTED_FILESYSTEM");
-  EXPECT_EQ(ToString(RENAME_ERROR_RENAME_PROGRAM_NOT_FOUND),
-            "RENAME_ERROR_RENAME_PROGRAM_NOT_FOUND");
-  EXPECT_EQ(ToString(RENAME_ERROR_RENAME_PROGRAM_FAILED),
-            "RENAME_ERROR_RENAME_PROGRAM_FAILED");
-  EXPECT_EQ(ToString(RENAME_ERROR_DEVICE_NOT_ALLOWED),
-            "RENAME_ERROR_DEVICE_NOT_ALLOWED");
-  EXPECT_EQ(ToString(RENAME_ERROR_LONG_NAME), "RENAME_ERROR_LONG_NAME");
-  EXPECT_EQ(ToString(RENAME_ERROR_INVALID_CHARACTER),
-            "RENAME_ERROR_INVALID_CHARACTER");
-  EXPECT_EQ(ToString(RenameError(987654)), "RENAME_ERROR_987654");
+  EXPECT_EQ(ToString(RenameError::kSuccess), "RenameError::kSuccess");
+  EXPECT_EQ(ToString(RenameError::kUnknownError), "RenameError::kUnknownError");
+  EXPECT_EQ(ToString(RenameError::kInternalError),
+            "RenameError::kInternalError");
+  EXPECT_EQ(ToString(RenameError::kInvalidDevicePath),
+            "RenameError::kInvalidDevicePath");
+  EXPECT_EQ(ToString(RenameError::kDeviceBeingRenamed),
+            "RenameError::kDeviceBeingRenamed");
+  EXPECT_EQ(ToString(RenameError::kUnsupportedFilesystem),
+            "RenameError::kUnsupportedFilesystem");
+  EXPECT_EQ(ToString(RenameError::kRenameProgramNotFound),
+            "RenameError::kRenameProgramNotFound");
+  EXPECT_EQ(ToString(RenameError::kRenameProgramFailed),
+            "RenameError::kRenameProgramFailed");
+  EXPECT_EQ(ToString(RenameError::kDeviceNotAllowed),
+            "RenameError::kDeviceNotAllowed");
+  EXPECT_EQ(ToString(RenameError::kLongName), "RenameError::kLongName");
+  EXPECT_EQ(ToString(RenameError::kInvalidCharacter),
+            "RenameError::kInvalidCharacter");
+  EXPECT_EQ(ToString(RenameError(987654)), "RenameError(987654)");
 }
 
 }  // namespace

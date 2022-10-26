@@ -6,6 +6,7 @@
 #define SYSTEM_API_DBUS_CROS_DISKS_DBUS_CONSTANTS_H_
 
 namespace cros_disks {
+
 const char kCrosDisksInterface[] = "org.chromium.CrosDisks";
 const char kCrosDisksServicePath[] = "/org/chromium/CrosDisks";
 const char kCrosDisksServiceName[] = "org.chromium.CrosDisks";
@@ -188,19 +189,21 @@ enum PartitionError {
   PARTITION_ERROR_DEVICE_NOT_ALLOWED = 7,
 };
 
+// Rename error reported by cros-disks.
 enum RenameError {
-  RENAME_ERROR_NONE = 0,
-  RENAME_ERROR_UNKNOWN = 1,
-  RENAME_ERROR_INTERNAL = 2,
-  RENAME_ERROR_INVALID_DEVICE_PATH = 3,
-  RENAME_ERROR_DEVICE_BEING_RENAMED = 4,
-  RENAME_ERROR_UNSUPPORTED_FILESYSTEM = 5,
-  RENAME_ERROR_RENAME_PROGRAM_NOT_FOUND = 6,
-  RENAME_ERROR_RENAME_PROGRAM_FAILED = 7,
-  RENAME_ERROR_DEVICE_NOT_ALLOWED = 8,
-  RENAME_ERROR_LONG_NAME = 9,
-  RENAME_ERROR_INVALID_CHARACTER = 10,
+  kSuccess = 0,
+  kUnknownError = 1,
+  kInternalError = 2,
+  kInvalidDevicePath = 3,
+  kDeviceBeingRenamed = 4,
+  kUnsupportedFilesystem = 5,
+  kRenameProgramNotFound = 6,
+  kRenameProgramFailed = 7,
+  kDeviceNotAllowed = 8,
+  kLongName = 9,
+  kInvalidCharacter = 10,
 };
+
 }  // namespace cros_disks
 
 #endif  // SYSTEM_API_DBUS_CROS_DISKS_DBUS_CONSTANTS_H_

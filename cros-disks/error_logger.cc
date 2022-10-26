@@ -76,20 +76,20 @@ std::ostream& operator<<(std::ostream& out, const PartitionError error) {
 
 std::ostream& operator<<(std::ostream& out, const RenameError error) {
   switch (error) {
-    CROS_DISKS_PRINT(RENAME_ERROR_NONE)
-    CROS_DISKS_PRINT(RENAME_ERROR_UNKNOWN)
-    CROS_DISKS_PRINT(RENAME_ERROR_INTERNAL)
-    CROS_DISKS_PRINT(RENAME_ERROR_INVALID_DEVICE_PATH)
-    CROS_DISKS_PRINT(RENAME_ERROR_DEVICE_BEING_RENAMED)
-    CROS_DISKS_PRINT(RENAME_ERROR_UNSUPPORTED_FILESYSTEM)
-    CROS_DISKS_PRINT(RENAME_ERROR_RENAME_PROGRAM_NOT_FOUND)
-    CROS_DISKS_PRINT(RENAME_ERROR_RENAME_PROGRAM_FAILED)
-    CROS_DISKS_PRINT(RENAME_ERROR_DEVICE_NOT_ALLOWED)
-    CROS_DISKS_PRINT(RENAME_ERROR_LONG_NAME)
-    CROS_DISKS_PRINT(RENAME_ERROR_INVALID_CHARACTER)
+    CROS_DISKS_PRINT(RenameError::kSuccess)
+    CROS_DISKS_PRINT(RenameError::kUnknownError)
+    CROS_DISKS_PRINT(RenameError::kInternalError)
+    CROS_DISKS_PRINT(RenameError::kInvalidDevicePath)
+    CROS_DISKS_PRINT(RenameError::kDeviceBeingRenamed)
+    CROS_DISKS_PRINT(RenameError::kUnsupportedFilesystem)
+    CROS_DISKS_PRINT(RenameError::kRenameProgramNotFound)
+    CROS_DISKS_PRINT(RenameError::kRenameProgramFailed)
+    CROS_DISKS_PRINT(RenameError::kDeviceNotAllowed)
+    CROS_DISKS_PRINT(RenameError::kLongName)
+    CROS_DISKS_PRINT(RenameError::kInvalidCharacter)
   }
-  return out << "RENAME_ERROR_"
-             << static_cast<std::underlying_type_t<RenameError>>(error);
+  return out << "RenameError("
+             << static_cast<std::underlying_type_t<RenameError>>(error) << ")";
 }
 
 }  // namespace cros_disks

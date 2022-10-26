@@ -101,10 +101,10 @@ void CrosDisksServer::SinglePartitionFormat(
 
 void CrosDisksServer::Rename(const std::string& path,
                              const std::string& volume_name) {
-  RenameError error = RENAME_ERROR_NONE;
+  RenameError error = RenameError::kSuccess;
   Disk disk;
   if (!disk_monitor_->GetDiskByDevicePath(base::FilePath(path), &disk)) {
-    error = RENAME_ERROR_INVALID_DEVICE_PATH;
+    error = RenameError::kInvalidDevicePath;
   } else {
     error = rename_manager_->StartRenaming(path, disk.device_file, volume_name,
                                            disk.filesystem_type);
