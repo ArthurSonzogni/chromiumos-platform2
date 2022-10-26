@@ -9,6 +9,7 @@
 #include <vector>
 
 #include <base/callback.h>
+#include <base/time/time.h>
 #include <brillo/secure_blob.h>
 #include <libhwsec-foundation/status/status_chain_macros.h>
 
@@ -17,6 +18,10 @@
 #include "libhwsec/status.h"
 
 using hwsec_foundation::status::MakeStatus;
+
+namespace {
+constexpr base::TimeDelta kDefaultLazyExpirationTime = base::Seconds(10);
+}  // namespace
 
 namespace hwsec {
 
@@ -72,7 +77,11 @@ StatusOr<ChapsFrontend::CreateKeyResult> ChapsFrontendImpl::GenerateRSAKey(
                   .auth_value = auth_value,
               },
       },
-      KeyAlgoType::kRsa, KeyManagement::LoadKeyOptions{.auto_reload = true},
+      KeyAlgoType::kRsa,
+      KeyManagement::LoadKeyOptions{
+          .auto_reload = true,
+          .lazy_expiration_time = kDefaultLazyExpirationTime,
+      },
       Backend::KeyManagement::CreateKeyOptions{
           .allow_software_gen = false,
           .allow_decrypt = true,
@@ -95,8 +104,12 @@ StatusOr<ChapsFrontend::CreateKeyResult> ChapsFrontendImpl::GenerateECCKey(
                   .auth_value = auth_value,
               },
       },
-      KeyAlgoType::kEcc, KeyManagement::LoadKeyOptions{.auto_reload = true},
-      Backend::KeyManagement::CreateKeyOptions{
+      KeyAlgoType::kEcc,
+      KeyManagement::LoadKeyOptions{
+          .auto_reload = true,
+          .lazy_expiration_time = kDefaultLazyExpirationTime,
+      },
+      KeyManagement::CreateKeyOptions{
           .allow_software_gen = false,
           .allow_decrypt = true,
           .allow_sign = true,
@@ -120,8 +133,12 @@ StatusOr<ChapsFrontend::CreateKeyResult> ChapsFrontendImpl::WrapRSAKey(
                   .auth_value = auth_value,
               },
       },
-      modulus, prime_factor, KeyManagement::LoadKeyOptions{.auto_reload = true},
-      Backend::KeyManagement::CreateKeyOptions{
+      modulus, prime_factor,
+      KeyManagement::LoadKeyOptions{
+          .auto_reload = true,
+          .lazy_expiration_time = kDefaultLazyExpirationTime,
+      },
+      KeyManagement::CreateKeyOptions{
           .allow_software_gen = false,
           .allow_decrypt = true,
           .allow_sign = true,
@@ -144,8 +161,11 @@ StatusOr<ChapsFrontend::CreateKeyResult> ChapsFrontendImpl::WrapECCKey(
               },
       },
       public_point_x, public_point_y, private_value,
-      KeyManagement::LoadKeyOptions{.auto_reload = true},
-      Backend::KeyManagement::CreateKeyOptions{
+      KeyManagement::LoadKeyOptions{
+          .auto_reload = true,
+          .lazy_expiration_time = kDefaultLazyExpirationTime,
+      },
+      KeyManagement::CreateKeyOptions{
           .allow_software_gen = false,
           .allow_decrypt = true,
           .allow_sign = true,
@@ -162,7 +182,11 @@ StatusOr<ScopedKey> ChapsFrontendImpl::LoadKey(
                   .auth_value = auth_value,
               },
       },
-      key_blob, KeyManagement::LoadKeyOptions{.auto_reload = true});
+      key_blob,
+      KeyManagement::LoadKeyOptions{
+          .auto_reload = true,
+          .lazy_expiration_time = kDefaultLazyExpirationTime,
+      });
 }
 
 StatusOr<brillo::SecureBlob> ChapsFrontendImpl::Unbind(
@@ -211,7 +235,10 @@ StatusOr<brillo::SecureBlob> ChapsFrontendImpl::UnsealData(
                                  },
                          },
                          sealed_data.key_blob,
-                         KeyManagement::LoadKeyOptions{.auto_reload = true}));
+                         KeyManagement::LoadKeyOptions{
+                             .auto_reload = true,
+                             .lazy_expiration_time = kDefaultLazyExpirationTime,
+                         }));
 
     return middleware_.CallSync<&Backend::Encryption::Decrypt>(
         key.GetKey(), sealed_data.encrypted_data,
@@ -294,7 +321,10 @@ void ChapsFrontendImpl::UnsealDataAsync(const ChapsSealedData& sealed_data,
                 },
         },
         sealed_data.key_blob,
-        KeyManagement::LoadKeyOptions{.auto_reload = true});
+        KeyManagement::LoadKeyOptions{
+            .auto_reload = true,
+            .lazy_expiration_time = kDefaultLazyExpirationTime,
+        });
     return;
   }
 
