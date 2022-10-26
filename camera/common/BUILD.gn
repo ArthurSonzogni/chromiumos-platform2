@@ -97,7 +97,6 @@ source_set("base") {
     ":pkg_config_base",
     ":target_defaults",
   ]
-  deps = [ "//camera/gpu:gpu_resources" ]
 
   # -fPIC needed by the libcros_camera.so shared library.
   configs += [ "//common-mk:pic" ]
@@ -231,7 +230,10 @@ source_set("stream_manipulator") {
     ":mojo_base",
   ]
 
-  deps = [ ":jpeg" ]
+  deps = [
+    ":jpeg",
+    "//camera/gpu:gpu_resources",
+  ]
   if (use.camera_feature_face_detection) {
     deps += [ "//camera/features/face_detection" ]
   }
