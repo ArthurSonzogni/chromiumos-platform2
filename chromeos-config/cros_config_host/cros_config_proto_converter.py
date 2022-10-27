@@ -1920,12 +1920,6 @@ def _build_identity(config):
     identity = {}
     ap_fw_suffix = _calculate_image_name_suffix(config.hw_design_config).title()
     _upsert(hw_scan_config.frid, identity, "frid", suffix=ap_fw_suffix)
-    _upsert(
-        hw_scan_config.device_tree_compatible_match,
-        identity,
-        "device-tree-compatible-match",
-    )
-    _upsert(hw_scan_config.smbios_name_match, identity, "smbios-name-match")
     _upsert(hw_scan_config.firmware_sku, identity, "sku-id")
     # 'platform-name' is needed to support 'mosys platform name'.
     # Clients should no longer require platform name, but set it here for

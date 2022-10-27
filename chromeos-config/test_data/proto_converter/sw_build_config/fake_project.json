@@ -179,9 +179,9 @@
           "has-hps": true
         },
         "identity": {
+          "frid": "Google_FAKE_REF_DESIGN",
           "platform-name": "fake",
-          "sku-id": 2147483647,
-          "smbios-name-match": "FAKE_REF_DESIGN"
+          "sku-id": 2147483647
         },
         "modem": {
           "firmware-variant": "fake_ref_design"
@@ -575,9 +575,9 @@
           "recovery-input": "KEYBOARD"
         },
         "identity": {
+          "frid": "Google_PROJECT_A",
           "platform-name": "fake",
-          "sku-id": 32,
-          "smbios-name-match": "PROJECT_A"
+          "sku-id": 32
         },
         "modem": {
           "firmware-variant": "project_a"
@@ -826,9 +826,9 @@
           "recovery-input": "POWER_BUTTON"
         },
         "identity": {
+          "frid": "Google_PROJECT_B",
           "platform-name": "fake",
-          "sku-id": 33,
-          "smbios-name-match": "PROJECT_B"
+          "sku-id": 33
         },
         "modem": {
           "firmware-variant": "fakemodem"
@@ -1010,9 +1010,9 @@
           "recovery-input": "POWER_BUTTON"
         },
         "identity": {
+          "frid": "Google_PROJECT_B",
           "platform-name": "fake",
-          "sku-id": 34,
-          "smbios-name-match": "PROJECT_B"
+          "sku-id": 34
         },
         "modem": {
           "firmware-variant": "fakemodem"
@@ -1218,9 +1218,9 @@
           "recovery-input": "POWER_BUTTON"
         },
         "identity": {
+          "frid": "Google_PROJECT_B",
           "platform-name": "fake",
-          "sku-id": 35,
-          "smbios-name-match": "PROJECT_B"
+          "sku-id": 35
         },
         "modem": {
           "firmware-variant": "fakemodem"
@@ -1412,9 +1412,9 @@
           "recovery-input": "POWER_BUTTON"
         },
         "identity": {
+          "frid": "Google_PROJECT_C",
           "platform-name": "fake",
-          "sku-id": 34,
-          "smbios-name-match": "PROJECT_C"
+          "sku-id": 34
         },
         "name": "project_c",
         "power": {
@@ -1583,9 +1583,9 @@
           "recovery-input": "KEYBOARD"
         },
         "identity": {
+          "frid": "Google_PROJECT_WL",
           "platform-name": "fake",
-          "sku-id": 64,
-          "smbios-name-match": "PROJECT_WL"
+          "sku-id": 64
         },
         "modem": {
           "firmware-variant": "project_wl"
@@ -1743,9 +1743,9 @@
           "recovery-input": "KEYBOARD"
         },
         "identity": {
+          "frid": "Google_PROJECT_WL",
           "platform-name": "fake",
           "sku-id": 64,
-          "smbios-name-match": "PROJECT_WL",
           "whitelabel-tag": "loema"
         },
         "modem": {
@@ -1904,9 +1904,9 @@
           "recovery-input": "KEYBOARD"
         },
         "identity": {
+          "frid": "Google_PROJECT_WL",
           "platform-name": "fake",
           "sku-id": 64,
-          "smbios-name-match": "PROJECT_WL",
           "whitelabel-tag": "loemb"
         },
         "modem": {
@@ -2065,9 +2065,9 @@
           "recovery-input": "KEYBOARD"
         },
         "identity": {
+          "frid": "Google_PROJECT_WL",
           "platform-name": "fake",
           "sku-id": 64,
-          "smbios-name-match": "PROJECT_WL",
           "whitelabel-tag": "loemc"
         },
         "modem": {
@@ -2239,9 +2239,9 @@
           "recovery-input": "KEYBOARD"
         },
         "identity": {
+          "frid": "Google_PROJECT_REBRAND",
           "platform-name": "fake",
           "sku-id": 65,
-          "smbios-name-match": "PROJECT_REBRAND",
           "whitelabel-tag": "branda"
         },
         "modem": {
@@ -2393,9 +2393,9 @@
           "recovery-input": "RECOVERY_BUTTON"
         },
         "identity": {
+          "frid": "Google_PROJECT_BOX",
           "platform-name": "fake",
-          "sku-id": 128,
-          "smbios-name-match": "PROJECT_BOX"
+          "sku-id": 128
         },
         "modem": {
           "firmware-variant": "fakemodem"
@@ -2456,19 +2456,23 @@
         },
         "audio": {
           "main": {
-            "cras-config-dir": "project_box",
+            "cras-config-dir": "project_box.max98373.alc5682i.0pos.0uf0wf0total",
             "files": [
               {
-                "destination": "/usr/share/alsa/ucm/fakeaudiocard.alc5682i.project_box/HiFi.conf",
-                "source": "project_box/audio/ucm-config/fakeaudiocard.alc5682i.project_box/HiFi.conf"
+                "destination": "/usr/share/alsa/ucm/fakeaudiocard.card_suffix.max98373.alc5682i.0pos.0uf0wf0total/HiFi.conf",
+                "source": "common/audio/ucm-config/fakeaudiocard.card_suffix.max98373.alc5682i.0pos.0uf0wf0total/HiFi.conf"
               },
               {
-                "destination": "/usr/share/alsa/ucm/fakeaudiocard.alc5682i.project_box/fakeaudiocard.alc5682i.project_box.conf",
-                "source": "project_box/audio/ucm-config/fakeaudiocard.alc5682i.project_box/fakeaudiocard.alc5682i.project_box.conf"
+                "destination": "/usr/share/alsa/ucm/fakeaudiocard.card_suffix.max98373.alc5682i.0pos.0uf0wf0total/fakeaudiocard.card_suffix.max98373.alc5682i.0pos.0uf0wf0total.conf",
+                "source": "common/audio/ucm-config/fakeaudiocard.card_suffix.max98373.alc5682i.0pos.0uf0wf0total/fakeaudiocard.card_suffix.max98373.alc5682i.0pos.0uf0wf0total.conf"
               },
               {
-                "destination": "/etc/cras/project_box/fakeaudiocard.card_settings",
-                "source": "project_box/audio/cras-config/fakeaudiocard.card_settings"
+                "destination": "/etc/cras/project_box.max98373.alc5682i.0pos.0uf0wf0total/fakeaudiocard.card_settings",
+                "source": "common/audio/cras-config.max98373.alc5682i.0pos.0uf0wf0total/fakeaudiocard.card_settings"
+              },
+              {
+                "destination": "/etc/sound_card_init/project_box.MAX98373.yaml",
+                "source": "project_box/audio/sound-card-init-config/project_box.MAX98373.yaml"
               },
               {
                 "destination": "/usr/share/alsa/ucm/HDA ATI HDMI/HiFi.conf",
@@ -2479,23 +2483,25 @@
                 "source": "common/audio/ucm-config/HDA ATI HDMI/HDA ATI HDMI.conf"
               },
               {
-                "destination": "/etc/cras/project_box/dsp.ini",
-                "source": "project_box/audio/cras-config/dsp.ini"
+                "destination": "/etc/cras/project_box.max98373.alc5682i.0pos.0uf0wf0total/dsp.ini",
+                "source": "common/audio/cras-config.max98373.alc5682i.0pos.0uf0wf0total/dsp.ini"
               },
               {
-                "destination": "/etc/cras/project_box/board.ini",
-                "source": "project_box/audio/cras-config/board.ini"
+                "destination": "/etc/cras/project_box.max98373.alc5682i.0pos.0uf0wf0total/board.ini",
+                "source": "common/audio/cras-config.max98373.alc5682i.0pos.0uf0wf0total/board.ini"
               },
               {
-                "destination": "/etc/cras/project_box/apm.ini",
-                "source": "project_box/audio/cras-config/apm.ini"
+                "destination": "/etc/cras/project_box.max98373.alc5682i.0pos.0uf0wf0total/apm.ini",
+                "source": "common/audio/cras-config.max98373.alc5682i.0pos.0uf0wf0total/apm.ini"
               },
               {
                 "destination": "/etc/modprobe.d/alsa-fake_program.conf",
                 "source": "common/audio/alsa-module-config/alsa-fake_program.conf"
               }
             ],
-            "ucm-suffix": "alc5682i.project_box"
+            "sound-card-init-conf": "project_box.MAX98373.yaml",
+            "speaker-amp": "MAX98373",
+            "ucm-suffix": "card_suffix.max98373.alc5682i.0pos.0uf0wf0total"
           }
         },
         "brand-code": "FDBX",
@@ -2540,9 +2546,9 @@
           "recovery-input": "RECOVERY_BUTTON"
         },
         "identity": {
+          "frid": "Google_PROJECT_BOX",
           "platform-name": "fake",
-          "sku-id": 129,
-          "smbios-name-match": "PROJECT_BOX"
+          "sku-id": 129
         },
         "name": "project_box",
         "power": {
@@ -2689,9 +2695,9 @@
           "recovery-input": "RECOVERY_BUTTON"
         },
         "identity": {
+          "frid": "Google_PROJECT_BOX",
           "platform-name": "fake",
-          "sku-id": 130,
-          "smbios-name-match": "PROJECT_BOX"
+          "sku-id": 130
         },
         "name": "project_box",
         "power": {
