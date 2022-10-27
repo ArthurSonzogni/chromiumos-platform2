@@ -52,6 +52,10 @@ constexpr base::TimeDelta kScanInterval = base::Seconds(30);
 // users run the reporting.
 constexpr base::TimeDelta kReportInterval = base::Hours(2);
 
+// Used to cap the number of successful reports for the memfd execution anomaly
+// baseline condition (successful memfd_create syscall).
+constexpr int kMemfdBaselineUmaCap = 10;
+
 }  // namespace
 
 int Daemon::OnInit() {
@@ -201,26 +205,32 @@ void Daemon::InitAuditLogReader() {
 }
 
 void Daemon::DoAuditLogScan() {
-  std::string log_message;
-
   if (!audit_log_reader_)
     return;
 
+  std::string log_message;
   LogRecord log_record;
+
   while (audit_log_reader_->GetNextEntry(&log_record)) {
     // This detects all successful memfd_create syscalls and reports them to UMA
     // to be used as the baseline for memfd execution attempts.
     if (log_record.tag == kSyscallRecordTag &&
         secanomalyd::IsMemfdCreate(log_record.message)) {
-      if (ShouldReport(dev_)) {
+      // Report baseline condition to UMA if not in dev mode and the cap has
+      // not been reached.
+      if (ShouldReport(dev_) &&
+          memfd_baseline_uma_invocations_ < kMemfdBaselineUmaCap) {
         if (!SendSecurityAnomalyToUMA(
                 SecurityAnomaly::kSuccessfulMemfdCreateSyscall))
           LOG(WARNING) << "Could not upload metrics";
+        else
+          memfd_baseline_uma_invocations_++;
       }
     }
     if (log_record.tag == kAVCRecordTag &&
         secanomalyd::IsMemfdExecutionAttempt(log_record.message)) {
       VLOG(1) << log_record.message;
+      // Report anomaly condition to UMA for memfd execution if not in dev mode.
       if (ShouldReport(dev_)) {
         if (!SendSecurityAnomalyToUMA(
                 SecurityAnomaly::kBlockedMemoryFileExecAttempt))
