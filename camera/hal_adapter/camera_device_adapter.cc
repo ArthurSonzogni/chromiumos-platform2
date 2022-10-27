@@ -203,7 +203,9 @@ CameraDeviceAdapter::~CameraDeviceAdapter() {
   VLOGF_ENTER() << ":" << camera_device_;
 
   // Make sure that the camera is closed when the device adapter is destructed.
-  Close();
+  camera_device_ops_thread_.task_runner()->PostTask(
+      FROM_HERE, base::BindOnce(base::IgnoreResult(&CameraDeviceAdapter::Close),
+                                base::Unretained(this)));
 
   camera_device_ops_thread_.task_runner()->PostTask(
       FROM_HERE,
