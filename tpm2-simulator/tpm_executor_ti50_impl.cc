@@ -34,6 +34,9 @@ namespace tpm2_simulator {
 namespace {
 
 constexpr base::TimeDelta kPollingInterval = base::Milliseconds(100);
+constexpr base::TimeDelta kRetryInterval = base::Milliseconds(500);
+
+constexpr uint32_t TPM_RC_RETRY = 0x922;
 
 constexpr char kGpioPltRstFile[] = "gpioPltRst";
 constexpr char kTpmFifoFile[] = "direct_tpm_fifo";
@@ -207,6 +210,13 @@ std::string TpmExecutorTi50Impl::RunCommand(const std::string& command) {
     }
   }
 
+  CommandHeader header;
+  if (ExtractCommandHeader(result, &header) && header.code == TPM_RC_RETRY) {
+    pair.second.reset();
+    // Retry the command.
+    base::PlatformThread::Sleep(kRetryInterval);
+    return RunCommand(command);
+  }
   return result;
 }
 
