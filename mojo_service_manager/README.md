@@ -119,8 +119,9 @@ service manager mojo interface.
     * Add the package dependency to the ebuild of your package. Example:
     https://crrev.com/c/3865050
     * Add `mojo_service_manager` to the pkg_config in BUILD.gn. Example:
-    [source]((https://source.chromium.org/chromium/chromiumos/platform2/+/main:diagnostics/cros_healthd/system/BUILD.gn;l=22;drc=b9054995112cb35f69c569dd28bc59609cab691c)).
-    * Call [ConnectToMojoServiceManager()](https://source.chromium.org/chromium/chromiumos/platform2/+/main:mojo_service_manager/lib/connect.h;l=20;drc=b9054995112cb35f69c569dd28bc59609cab691c)
+    [source](https://source.chromium.org/chromium/chromiumos/platform2/+/main:diagnostics/cros_healthd/system/BUILD.gn;l=21;drc=4c6bc681d5d45e959fe423d6f356d454e8681447).
+    * If Mojo Service Manager will be used in a sandbox environment, mount the socket file into sandbox. Example: [source](https://source.chromium.org/chromium/chromiumos/platform2/+/main:diagnostics/cros_healthd/minijail/minijail_configuration.cc;l=66-67;drc=c3d030a92b1a1bb22d9cbde288a5e59b892bfa64)
+    * Call [ConnectToMojoServiceManager()](https://source.chromium.org/chromium/chromiumos/platform2/+/main:mojo_service_manager/lib/connect.h;l=20;drc=962798b4d424cd312e6350ec58c635fc73eb3a6b)
     to bootstrap the mojo connection and obtain the mojo interface of the
     service manager.
 
