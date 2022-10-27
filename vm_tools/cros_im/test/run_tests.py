@@ -16,12 +16,57 @@ This script should be invoked from the build directory, e.g.
 """
 
 import argparse
+import functools
 import os
+import signal
 import subprocess
-from typing import List, Optional
+import sys
+import time
+from typing import Callable, Dict, List, Optional
 
 
 TEST_BINARY = "./cros_im_tests"
+
+
+def run_tests_with_wayland_server(test_func: Callable) -> bool:
+    TEST_WAYLAND_SOCKET = "wl-cros-im-test"
+    TEST_XDG_RUNTIME_DIR = os.getcwd()
+
+    env_override = {
+        "XDG_RUNTIME_DIR": f"{TEST_XDG_RUNTIME_DIR}",
+        "WAYLAND_DISPLAY": f"{TEST_WAYLAND_SOCKET}",
+    }
+    env = os.environ.copy()
+    env.update(env_override)
+
+    with subprocess.Popen(
+        [
+            "xvfb-run",
+            "-a",
+            "weston",
+            f"-S{TEST_WAYLAND_SOCKET}",
+            "-Bx11-backend.so",
+        ],
+        env=env,
+        start_new_session=True,
+    ) as proc:
+        try:
+            for i in range(10):
+                print(f"Waiting up to 10s for Weston to start... ({i+1}/10s)")
+                time.sleep(1)
+                if os.path.exists(
+                    os.path.join(TEST_XDG_RUNTIME_DIR, TEST_WAYLAND_SOCKET)
+                ):
+                    break
+            else:
+                print("Failed to start Weston.")
+                return False
+
+            print("Weston started, running tests...")
+            return test_func(xvfb_env_override=env_override)
+        finally:
+            wl_server_pgid = os.getpgid(proc.pid)
+            os.killpg(wl_server_pgid, signal.SIGTERM)
 
 
 def verify_in_build_directory() -> bool:
@@ -34,15 +79,28 @@ def verify_in_build_directory() -> bool:
     return True
 
 
-def set_up_immodules_cache() -> None:
+def set_up_immodules_cache() -> bool:
     with open("test_immodules.cache", "w") as f:
-        subprocess.call(
-            [
-                "/usr/lib/x86_64-linux-gnu/libgtk-3-0/gtk-query-immodules-3.0",
-                "libim_test_cros_gtk.so",
-            ],
-            stdout=f,
-        )
+        try:
+            get_gnu_process = subprocess.run(
+                ["dpkg-architecture", "-q", "DEB_BUILD_MULTIARCH"],
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            gnu_type = get_gnu_process.stdout.strip()
+            subprocess.call(
+                [
+                    f"/usr/lib/{gnu_type}/libgtk-3-0/gtk-query-immodules-3.0",
+                    "libim_test_cros_gtk.so",
+                ],
+                stdout=f,
+            )
+            return True
+        except subprocess.CalledProcessError as e:
+            print(e.output.decode())
+            print(e)
+            return False
 
 
 def get_test_names(test_filter: Optional[str]) -> List[str]:
@@ -67,18 +125,25 @@ def get_test_names(test_filter: Optional[str]) -> List[str]:
     return result
 
 
-def run_gtk3_wayland_tests(test_filter: Optional[str]) -> None:
+def run_gtk3_wayland_tests(
+    test_filter: Optional[str],
+    xvfb_env_override: Optional[Dict[str, str]] = None,
+) -> bool:
     env_override = {
         "CROS_IM_VIRTUAL_KEYBOARD": "1",
         "GTK_IM_MODULE_FILE": "test_immodules.cache",
         "GTK_IM_MODULE": "test-cros",
         "GDK_BACKEND": "wayland",
     }
+
+    if xvfb_env_override:
+        env_override.update(xvfb_env_override)
+
     env_override_str = " ".join(f"{k}={v}" for k, v in env_override.items())
     env = os.environ.copy()
     env.update(env_override)
 
-    timeout_s = 2
+    timeout_s = 10
 
     successes = []
     failures = []
@@ -117,6 +182,9 @@ def run_gtk3_wayland_tests(test_filter: Optional[str]) -> None:
         print("Failed:")
         for test in failures:
             print(f"- {test}")
+        return False
+
+    return True
 
 
 def main() -> None:
@@ -125,10 +193,29 @@ def main() -> None:
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--gtest_filter", help="Restrict test cases run")
+    parser.add_argument(
+        "--with_xvfb", action="store_true", help="Run tests on xvfb"
+    )
     args = parser.parse_args()
 
-    set_up_immodules_cache()
-    run_gtk3_wayland_tests(args.gtest_filter)
+    if not set_up_immodules_cache():
+        sys.exit("Failed to set up immodules cache.")
+
+    tests_passed = True
+
+    gtk3_wayland_runner = functools.partial(
+        run_gtk3_wayland_tests, args.gtest_filter
+    )
+
+    if args.with_xvfb:
+        tests_passed = tests_passed and run_tests_with_wayland_server(
+            gtk3_wayland_runner
+        )
+    else:
+        tests_passed = tests_passed and gtk3_wayland_runner()
+
+    if not tests_passed:
+        sys.exit("At least one test did not pass.")
 
 
 if __name__ == "__main__":

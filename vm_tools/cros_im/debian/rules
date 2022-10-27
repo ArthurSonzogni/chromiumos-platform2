@@ -4,9 +4,18 @@
 # found in the LICENSE file.
 
 export DH_VERBOSE=1
+DEB_BUILD_ARCH ?= $(shell dpkg-architecture -qDEB_BUILD_ARCH)
 
 %:
 	dh $@
 
 override_dh_auto_configure:
 	dh_auto_configure -- -Dwl_protocol_dir=protocols
+
+override_dh_auto_test:
+ifeq (,$(filter armhf,$(DEB_BUILD_ARCH)))
+	dh_auto_test
+else
+# TODO(b/257867792): Resolve errors and run tests on armhf.
+	echo "Skipping tests due to Weston errors on armhf."
+endif

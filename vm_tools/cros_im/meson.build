@@ -108,11 +108,20 @@ test_sources = [
   'test/gtk_windowing_test.cc',
 ]
 
-executable('cros_im_tests',
+cros_im_tests = executable('cros_im_tests',
   sources: test_sources,
   dependencies: [
     meson.get_compiler('cpp').find_library('m'),
     dependency('gtkmm-3.0'),
     dependency('gtest', main: true),
   ],
+)
+
+python3 = find_program('python3')
+test('run_all_tests',
+  python3,
+  args: ['../test/run_tests.py', '--with_xvfb'],
+  depends: [libim_test_cros_gtk, cros_im_tests],
+  timeout: 120,
+  verbose : true,
 )
