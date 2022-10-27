@@ -358,4 +358,8 @@ void EffectsStreamManipulator::SetEffect(EffectsConfig new_config) {
   }
 }
 
+bool EffectsStreamManipulator::UpdateStaticMetadata(android::CameraMetadata*) {
+  return true;
+}
+
 }  // namespace cros

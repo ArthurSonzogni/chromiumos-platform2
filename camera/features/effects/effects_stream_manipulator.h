@@ -59,6 +59,7 @@ class EffectsStreamManipulator : public StreamManipulator {
   void OnFrameProcessed(int64_t timestamp,
                         const uint8_t* data,
                         uint32_t data_len);
+  bool UpdateStaticMetadata(android::CameraMetadata* static_info) override;
 
  private:
   void OnOptionsUpdated(const base::Value& json_values);
