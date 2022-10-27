@@ -14,6 +14,7 @@
 #include <trunks/command_parser.h>
 #include <trunks/error_codes.h>
 #include <trunks/response_serializer.h>
+#include <trunks/tpm_generated.h>
 
 #include "vtpm/backends/tpm_handle_manager.h"
 
@@ -191,18 +192,26 @@ trunks::TPM_RC GetCapabilityCommand::GetCapabilityTpmProperties(
     trunks::UINT32 property_count,
     trunks::TPMI_YES_NO& has_more,
     trunks::TPML_TAGGED_TPM_PROPERTY& tpm_properties) {
-  has_more = 0;
-  tpm_properties.count = 0;
-  if (property == trunks::TPM_PT_TOTAL_COMMANDS) {
-    has_more = (property_count < 1 ? YES : NO);
-    tpm_properties.count = (has_more == NO ? 1 : 0);
-    // Set the value regardless; it will be discarded by serialization.
-    tpm_properties.tpm_property[0].property = trunks::TPM_PT_TOTAL_COMMANDS;
-    tpm_properties.tpm_property[0].value =
-        tpm_property_manager_->GetCommandList().size();
-  } else {
-    LOG(ERROR) << ": Unsupported TPM property: " << property;
-    return trunks::TPM_RC_VALUE;
+  const std::vector<trunks::TPMS_TAGGED_PROPERTY>& capability_properties_list =
+      tpm_property_manager_->GetCapabilityPropertyList();
+
+  // The spec asks us to provide the first property on or after the provided
+  // "property" handle.
+  auto iter =
+      std::lower_bound(capability_properties_list.cbegin(),
+                       capability_properties_list.cend(), property,
+                       [](const trunks::TPMS_TAGGED_PROPERTY& tagged_prop,
+                          const trunks::UINT32& property) {
+                         return tagged_prop.property < property;
+                       });
+  const size_t capability_properties_count =
+      std::distance(iter, capability_properties_list.cend());
+  tpm_properties.count = std::min({static_cast<size_t>(property_count),
+                                   capability_properties_count,
+                                   std::size(tpm_properties.tpm_property)});
+  has_more = (tpm_properties.count < capability_properties_count ? YES : NO);
+  for (int i = 0; i < tpm_properties.count; i++, ++iter) {
+    tpm_properties.tpm_property[i] = *iter;
   }
   return trunks::TPM_RC_SUCCESS;
 }

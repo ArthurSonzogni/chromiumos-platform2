@@ -16,10 +16,16 @@ class RealTpmPropertyManager : public TpmPropertyManager {
   ~RealTpmPropertyManager() override = default;
   void AddCommand(trunks::TPM_CC cc) override;
   const std::vector<trunks::TPM_CC>& GetCommandList() override;
+  void AddCapabilityProperty(trunks::TPM_PT property,
+                             trunks::UINT32 value) override;
+  const std::vector<trunks::TPMS_TAGGED_PROPERTY>& GetCapabilityPropertyList()
+      override;
 
  private:
   std::vector<trunks::TPM_CC> commands_;
-  bool is_sorted_ = true;
+  bool commands_is_sorted_ = true;
+  std::vector<trunks::TPMS_TAGGED_PROPERTY> capability_properties_;
+  bool capability_properties_is_sorted_ = true;
 };
 
 }  // namespace vtpm

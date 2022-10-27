@@ -16,6 +16,10 @@ class TpmPropertyManager {
   virtual ~TpmPropertyManager() = default;
   virtual void AddCommand(trunks::TPM_CC cc) = 0;
   virtual const std::vector<trunks::TPM_CC>& GetCommandList() = 0;
+  virtual void AddCapabilityProperty(trunks::TPM_PT property,
+                                     trunks::UINT32 value) = 0;
+  virtual const std::vector<trunks::TPMS_TAGGED_PROPERTY>&
+  GetCapabilityPropertyList() = 0;
 };
 
 }  // namespace vtpm

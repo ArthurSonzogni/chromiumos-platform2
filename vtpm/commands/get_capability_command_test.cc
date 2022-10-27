@@ -92,6 +92,8 @@ class GetCapabilityCommandTest : public testing::Test {
     for (int i = 0; i < count; ++i) {
       real_property_manager_.AddCommand(kFakeFirstTpmCommandCode + i);
     }
+    real_property_manager_.AddCapabilityProperty(trunks::TPM_PT_TOTAL_COMMANDS,
+                                                 count);
   }
   StrictMock<trunks::MockCommandParser> mock_cmd_parser_;
   StrictMock<trunks::MockResponseSerializer> mock_resp_serializer_;
@@ -495,8 +497,8 @@ TEST_F(GetCapabilityCommandTest,
                       SetArgPointee<3>(1), Return(trunks::TPM_RC_SUCCESS)));
 
   EXPECT_CALL(mock_resp_serializer_,
-              SerializeHeaderOnlyResponse(trunks::TPM_RC_VALUE, _))
-      .WillOnce(SetArgPointee<1>(kTestResponse));
+              SerializeResponseGetCapability(NO, IsEmptyPropertyList(), _))
+      .WillOnce(SetArgPointee<2>(kTestResponse));
 
   command_.Run(kFakeRequest, std::move(callback));
   EXPECT_EQ(response, kTestResponse);
