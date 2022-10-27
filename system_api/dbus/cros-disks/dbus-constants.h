@@ -184,15 +184,16 @@ enum MountSourceType {
   MOUNT_SOURCE_NETWORK_STORAGE = 3,
 };
 
+// Partition error reported by cros-disks.
 enum PartitionError {
-  PARTITION_ERROR_NONE = 0,
-  PARTITION_ERROR_UNKNOWN = 1,
-  PARTITION_ERROR_INTERNAL = 2,
-  PARTITION_ERROR_INVALID_DEVICE_PATH = 3,
-  PARTITION_ERROR_DEVICE_BEING_PARTITIONED = 4,
-  PARTITION_ERROR_PROGRAM_NOT_FOUND = 5,
-  PARTITION_ERROR_PROGRAM_FAILED = 6,
-  PARTITION_ERROR_DEVICE_NOT_ALLOWED = 7,
+  kSuccess = 0,
+  kUnknownError = 1,
+  kInternalError = 2,
+  kInvalidDevicePath = 3,
+  kDeviceBeingPartitioned = 4,
+  kProgramNotFound = 5,
+  kProgramFailed = 6,
+  kDeviceNotAllowed = 7,
 };
 
 // Rename error reported by cros-disks.

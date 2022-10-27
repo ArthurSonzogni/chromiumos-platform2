@@ -61,17 +61,18 @@ std::ostream& operator<<(std::ostream& out, const MountError error) {
 
 std::ostream& operator<<(std::ostream& out, const PartitionError error) {
   switch (error) {
-    CROS_DISKS_PRINT(PARTITION_ERROR_NONE)
-    CROS_DISKS_PRINT(PARTITION_ERROR_UNKNOWN)
-    CROS_DISKS_PRINT(PARTITION_ERROR_INTERNAL)
-    CROS_DISKS_PRINT(PARTITION_ERROR_INVALID_DEVICE_PATH)
-    CROS_DISKS_PRINT(PARTITION_ERROR_DEVICE_BEING_PARTITIONED)
-    CROS_DISKS_PRINT(PARTITION_ERROR_PROGRAM_NOT_FOUND)
-    CROS_DISKS_PRINT(PARTITION_ERROR_PROGRAM_FAILED)
-    CROS_DISKS_PRINT(PARTITION_ERROR_DEVICE_NOT_ALLOWED)
+    CROS_DISKS_PRINT(PartitionError::kSuccess)
+    CROS_DISKS_PRINT(PartitionError::kUnknownError)
+    CROS_DISKS_PRINT(PartitionError::kInternalError)
+    CROS_DISKS_PRINT(PartitionError::kInvalidDevicePath)
+    CROS_DISKS_PRINT(PartitionError::kDeviceBeingPartitioned)
+    CROS_DISKS_PRINT(PartitionError::kProgramNotFound)
+    CROS_DISKS_PRINT(PartitionError::kProgramFailed)
+    CROS_DISKS_PRINT(PartitionError::kDeviceNotAllowed)
   }
-  return out << "PARTITION_ERROR_"
-             << static_cast<std::underlying_type_t<PartitionError>>(error);
+  return out << "PartitionError("
+             << static_cast<std::underlying_type_t<PartitionError>>(error)
+             << ")";
 }
 
 std::ostream& operator<<(std::ostream& out, const RenameError error) {

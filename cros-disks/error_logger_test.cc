@@ -12,7 +12,7 @@
 namespace cros_disks {
 namespace {
 
-static_assert(!PARTITION_ERROR_NONE);
+static_assert(!PartitionError::kSuccess);
 
 template <typename T>
 std::string ToString(T error) {
@@ -85,20 +85,22 @@ TEST(ErrorLogger, MountErrorType) {
 }
 
 TEST(ErrorLogger, PartitionErrorType) {
-  EXPECT_EQ(ToString(PARTITION_ERROR_NONE), "PARTITION_ERROR_NONE");
-  EXPECT_EQ(ToString(PARTITION_ERROR_UNKNOWN), "PARTITION_ERROR_UNKNOWN");
-  EXPECT_EQ(ToString(PARTITION_ERROR_INTERNAL), "PARTITION_ERROR_INTERNAL");
-  EXPECT_EQ(ToString(PARTITION_ERROR_INVALID_DEVICE_PATH),
-            "PARTITION_ERROR_INVALID_DEVICE_PATH");
-  EXPECT_EQ(ToString(PARTITION_ERROR_DEVICE_BEING_PARTITIONED),
-            "PARTITION_ERROR_DEVICE_BEING_PARTITIONED");
-  EXPECT_EQ(ToString(PARTITION_ERROR_PROGRAM_NOT_FOUND),
-            "PARTITION_ERROR_PROGRAM_NOT_FOUND");
-  EXPECT_EQ(ToString(PARTITION_ERROR_PROGRAM_FAILED),
-            "PARTITION_ERROR_PROGRAM_FAILED");
-  EXPECT_EQ(ToString(PARTITION_ERROR_DEVICE_NOT_ALLOWED),
-            "PARTITION_ERROR_DEVICE_NOT_ALLOWED");
-  EXPECT_EQ(ToString(PartitionError(987654)), "PARTITION_ERROR_987654");
+  EXPECT_EQ(ToString(PartitionError::kSuccess), "PartitionError::kSuccess");
+  EXPECT_EQ(ToString(PartitionError::kUnknownError),
+            "PartitionError::kUnknownError");
+  EXPECT_EQ(ToString(PartitionError::kInternalError),
+            "PartitionError::kInternalError");
+  EXPECT_EQ(ToString(PartitionError::kInvalidDevicePath),
+            "PartitionError::kInvalidDevicePath");
+  EXPECT_EQ(ToString(PartitionError::kDeviceBeingPartitioned),
+            "PartitionError::kDeviceBeingPartitioned");
+  EXPECT_EQ(ToString(PartitionError::kProgramNotFound),
+            "PartitionError::kProgramNotFound");
+  EXPECT_EQ(ToString(PartitionError::kProgramFailed),
+            "PartitionError::kProgramFailed");
+  EXPECT_EQ(ToString(PartitionError::kDeviceNotAllowed),
+            "PartitionError::kDeviceNotAllowed");
+  EXPECT_EQ(ToString(PartitionError(987654)), "PartitionError(987654)");
 }
 
 TEST(ErrorLogger, RenameErrorType) {

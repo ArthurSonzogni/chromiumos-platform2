@@ -85,12 +85,12 @@ void CrosDisksServer::SinglePartitionFormat(
 
   if (!disk_monitor_->GetDiskByDevicePath(base::FilePath(path), &disk)) {
     LOG(ERROR) << "Invalid device path " << quote(path) << ": "
-               << PARTITION_ERROR_INVALID_DEVICE_PATH;
-    response->Return(PARTITION_ERROR_INVALID_DEVICE_PATH);
+               << PartitionError::kInvalidDevicePath;
+    response->Return(PartitionError::kInvalidDevicePath);
   } else if (disk.is_on_boot_device || !disk.is_drive || disk.is_read_only) {
     LOG(ERROR) << "Device not allowed " << quote(path) << ": "
-               << PARTITION_ERROR_DEVICE_NOT_ALLOWED;
-    response->Return(PARTITION_ERROR_DEVICE_NOT_ALLOWED);
+               << PartitionError::kDeviceNotAllowed;
+    response->Return(PartitionError::kDeviceNotAllowed);
   } else {
     partition_manager_->StartSinglePartitionFormat(
         base::FilePath(disk.device_file),
