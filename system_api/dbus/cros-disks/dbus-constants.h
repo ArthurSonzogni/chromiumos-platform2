@@ -81,19 +81,25 @@ enum DeviceMediaType {
   DEVICE_MEDIA_NUM_VALUES,
 };
 
+// Format error reported by cros-disks.
+// These values are persisted to logs. Entries should not be renumbered and
+// numeric values should never be reused.
+// See enum CrosDisksClientFormatError in tools/metrics/histograms/enums.xml.
 enum FormatError {
-  FORMAT_ERROR_NONE = 0,
-  FORMAT_ERROR_UNKNOWN = 1,
-  FORMAT_ERROR_INTERNAL = 2,
-  FORMAT_ERROR_INVALID_DEVICE_PATH = 3,
-  FORMAT_ERROR_DEVICE_BEING_FORMATTED = 4,
-  FORMAT_ERROR_UNSUPPORTED_FILESYSTEM = 5,
-  FORMAT_ERROR_FORMAT_PROGRAM_NOT_FOUND = 6,
-  FORMAT_ERROR_FORMAT_PROGRAM_FAILED = 7,
-  FORMAT_ERROR_DEVICE_NOT_ALLOWED = 8,
-  FORMAT_ERROR_INVALID_OPTIONS = 9,
-  FORMAT_ERROR_LONG_NAME = 10,
-  FORMAT_ERROR_INVALID_CHARACTER = 11,
+  kSuccess = 0,
+  kUnknownError = 1,
+  kInternalError = 2,
+  kInvalidDevicePath = 3,
+  kDeviceBeingFormatted = 4,
+  kUnsupportedFilesystem = 5,
+  kFormatProgramNotFound = 6,
+  kFormatProgramFailed = 7,
+  kDeviceNotAllowed = 8,
+  kInvalidOptions = 9,
+  kLongName = 10,
+  kInvalidCharacter = 11,
+
+  kMaxValue = 11,
 };
 
 // Mount or unmount error code.

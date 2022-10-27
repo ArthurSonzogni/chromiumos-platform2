@@ -14,21 +14,21 @@ namespace cros_disks {
 
 std::ostream& operator<<(std::ostream& out, const FormatError error) {
   switch (error) {
-    CROS_DISKS_PRINT(FORMAT_ERROR_NONE)
-    CROS_DISKS_PRINT(FORMAT_ERROR_UNKNOWN)
-    CROS_DISKS_PRINT(FORMAT_ERROR_INTERNAL)
-    CROS_DISKS_PRINT(FORMAT_ERROR_INVALID_DEVICE_PATH)
-    CROS_DISKS_PRINT(FORMAT_ERROR_DEVICE_BEING_FORMATTED)
-    CROS_DISKS_PRINT(FORMAT_ERROR_UNSUPPORTED_FILESYSTEM)
-    CROS_DISKS_PRINT(FORMAT_ERROR_FORMAT_PROGRAM_NOT_FOUND)
-    CROS_DISKS_PRINT(FORMAT_ERROR_FORMAT_PROGRAM_FAILED)
-    CROS_DISKS_PRINT(FORMAT_ERROR_DEVICE_NOT_ALLOWED)
-    CROS_DISKS_PRINT(FORMAT_ERROR_INVALID_OPTIONS)
-    CROS_DISKS_PRINT(FORMAT_ERROR_LONG_NAME)
-    CROS_DISKS_PRINT(FORMAT_ERROR_INVALID_CHARACTER)
+    CROS_DISKS_PRINT(FormatError::kSuccess)
+    CROS_DISKS_PRINT(FormatError::kUnknownError)
+    CROS_DISKS_PRINT(FormatError::kInternalError)
+    CROS_DISKS_PRINT(FormatError::kInvalidDevicePath)
+    CROS_DISKS_PRINT(FormatError::kDeviceBeingFormatted)
+    CROS_DISKS_PRINT(FormatError::kUnsupportedFilesystem)
+    CROS_DISKS_PRINT(FormatError::kFormatProgramNotFound)
+    CROS_DISKS_PRINT(FormatError::kFormatProgramFailed)
+    CROS_DISKS_PRINT(FormatError::kDeviceNotAllowed)
+    CROS_DISKS_PRINT(FormatError::kInvalidOptions)
+    CROS_DISKS_PRINT(FormatError::kLongName)
+    CROS_DISKS_PRINT(FormatError::kInvalidCharacter)
   }
-  return out << "FORMAT_ERROR_"
-             << static_cast<std::underlying_type_t<FormatError>>(error);
+  return out << "FormatError("
+             << static_cast<std::underlying_type_t<FormatError>>(error) << ")";
 }
 
 std::ostream& operator<<(std::ostream& out, const MountError error) {

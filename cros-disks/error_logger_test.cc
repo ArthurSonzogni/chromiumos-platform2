@@ -12,7 +12,7 @@
 namespace cros_disks {
 namespace {
 
-static_assert(!FORMAT_ERROR_NONE);
+static_assert(!FormatError::kSuccess);
 static_assert(!PARTITION_ERROR_NONE);
 
 template <typename T>
@@ -23,27 +23,28 @@ std::string ToString(T error) {
 }
 
 TEST(ErrorLogger, FormatErrorType) {
-  EXPECT_EQ(ToString(FORMAT_ERROR_NONE), "FORMAT_ERROR_NONE");
-  EXPECT_EQ(ToString(FORMAT_ERROR_UNKNOWN), "FORMAT_ERROR_UNKNOWN");
-  EXPECT_EQ(ToString(FORMAT_ERROR_INTERNAL), "FORMAT_ERROR_INTERNAL");
-  EXPECT_EQ(ToString(FORMAT_ERROR_INVALID_DEVICE_PATH),
-            "FORMAT_ERROR_INVALID_DEVICE_PATH");
-  EXPECT_EQ(ToString(FORMAT_ERROR_DEVICE_BEING_FORMATTED),
-            "FORMAT_ERROR_DEVICE_BEING_FORMATTED");
-  EXPECT_EQ(ToString(FORMAT_ERROR_UNSUPPORTED_FILESYSTEM),
-            "FORMAT_ERROR_UNSUPPORTED_FILESYSTEM");
-  EXPECT_EQ(ToString(FORMAT_ERROR_FORMAT_PROGRAM_NOT_FOUND),
-            "FORMAT_ERROR_FORMAT_PROGRAM_NOT_FOUND");
-  EXPECT_EQ(ToString(FORMAT_ERROR_FORMAT_PROGRAM_FAILED),
-            "FORMAT_ERROR_FORMAT_PROGRAM_FAILED");
-  EXPECT_EQ(ToString(FORMAT_ERROR_DEVICE_NOT_ALLOWED),
-            "FORMAT_ERROR_DEVICE_NOT_ALLOWED");
-  EXPECT_EQ(ToString(FORMAT_ERROR_INVALID_OPTIONS),
-            "FORMAT_ERROR_INVALID_OPTIONS");
-  EXPECT_EQ(ToString(FORMAT_ERROR_LONG_NAME), "FORMAT_ERROR_LONG_NAME");
-  EXPECT_EQ(ToString(FORMAT_ERROR_INVALID_CHARACTER),
-            "FORMAT_ERROR_INVALID_CHARACTER");
-  EXPECT_EQ(ToString(FormatError(987654)), "FORMAT_ERROR_987654");
+  EXPECT_EQ(ToString(FormatError::kSuccess), "FormatError::kSuccess");
+  EXPECT_EQ(ToString(FormatError::kUnknownError), "FormatError::kUnknownError");
+  EXPECT_EQ(ToString(FormatError::kInternalError),
+            "FormatError::kInternalError");
+  EXPECT_EQ(ToString(FormatError::kInvalidDevicePath),
+            "FormatError::kInvalidDevicePath");
+  EXPECT_EQ(ToString(FormatError::kDeviceBeingFormatted),
+            "FormatError::kDeviceBeingFormatted");
+  EXPECT_EQ(ToString(FormatError::kUnsupportedFilesystem),
+            "FormatError::kUnsupportedFilesystem");
+  EXPECT_EQ(ToString(FormatError::kFormatProgramNotFound),
+            "FormatError::kFormatProgramNotFound");
+  EXPECT_EQ(ToString(FormatError::kFormatProgramFailed),
+            "FormatError::kFormatProgramFailed");
+  EXPECT_EQ(ToString(FormatError::kDeviceNotAllowed),
+            "FormatError::kDeviceNotAllowed");
+  EXPECT_EQ(ToString(FormatError::kInvalidOptions),
+            "FormatError::kInvalidOptions");
+  EXPECT_EQ(ToString(FormatError::kLongName), "FormatError::kLongName");
+  EXPECT_EQ(ToString(FormatError::kInvalidCharacter),
+            "FormatError::kInvalidCharacter");
+  EXPECT_EQ(ToString(FormatError(987654)), "FormatError(987654)");
 }
 
 TEST(ErrorLogger, MountErrorType) {

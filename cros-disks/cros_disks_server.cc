@@ -62,10 +62,10 @@ void CrosDisksServer::RegisterMountManager(MountManager* mount_manager) {
 void CrosDisksServer::Format(const std::string& path,
                              const std::string& filesystem_type,
                              const std::vector<std::string>& options) {
-  FormatError error = FORMAT_ERROR_NONE;
+  FormatError error = FormatError::kSuccess;
   Disk disk;
   if (!disk_monitor_->GetDiskByDevicePath(base::FilePath(path), &disk)) {
-    error = FORMAT_ERROR_INVALID_DEVICE_PATH;
+    error = FormatError::kInvalidDevicePath;
   } else {
     error = format_manager_->StartFormatting(path, disk.device_file,
                                              filesystem_type, options);

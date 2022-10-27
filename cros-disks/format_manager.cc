@@ -56,13 +56,13 @@ const char kDefaultLabel[] = "UNTITLED";
 FormatError LabelErrorToFormatError(LabelErrorType error_code) {
   switch (error_code) {
     case LabelErrorType::kLabelErrorNone:
-      return FORMAT_ERROR_NONE;
+      return FormatError::kSuccess;
     case LabelErrorType::kLabelErrorUnsupportedFilesystem:
-      return FORMAT_ERROR_UNSUPPORTED_FILESYSTEM;
+      return FormatError::kUnsupportedFilesystem;
     case LabelErrorType::kLabelErrorLongName:
-      return FORMAT_ERROR_LONG_NAME;
+      return FormatError::kLongName;
     case LabelErrorType::kLabelErrorInvalidCharacter:
-      return FORMAT_ERROR_INVALID_CHARACTER;
+      return FormatError::kInvalidCharacter;
   }
 }
 
@@ -130,12 +130,12 @@ FormatError StartFormatProcess(const std::string& device_file,
 
   if (!process->EnterPivotRoot()) {
     LOG(ERROR) << "Cannot enter pivot root";
-    return FORMAT_ERROR_FORMAT_PROGRAM_FAILED;
+    return FormatError::kFormatProgramFailed;
   }
 
   if (!process->SetUpMinimalMounts()) {
     LOG(ERROR) << "Cannot set up minimal mounts for jail";
-    return FORMAT_ERROR_FORMAT_PROGRAM_FAILED;
+    return FormatError::kFormatProgramFailed;
   }
 
   // Open device_file so we can pass only the fd path to the format program.
@@ -145,7 +145,7 @@ FormatError StartFormatProcess(const std::string& device_file,
   if (!dev_file.IsValid()) {
     PLOG(ERROR) << "Cannot open " << quote(device_file) << " for formatting: "
                 << base::File::ErrorToString(dev_file.error_details());
-    return FORMAT_ERROR_FORMAT_PROGRAM_FAILED;
+    return FormatError::kFormatProgramFailed;
   }
 
   process->LoadSeccompFilterPolicy(kFormatSeccompPolicy);
@@ -156,7 +156,7 @@ FormatError StartFormatProcess(const std::string& device_file,
                                     &group_id)) {
     LOG(ERROR) << "Cannot find user ID and group ID of "
                << quote(kFormatUserAndGroupName);
-    return FORMAT_ERROR_INTERNAL;
+    return FormatError::kInternalError;
   }
 
   process->SetUserId(user_id);
@@ -179,12 +179,12 @@ FormatError StartFormatProcess(const std::string& device_file,
   if (!process->Start()) {
     LOG(ERROR) << "Cannot start " << quote(format_program) << " to format "
                << quote(device_file);
-    return FORMAT_ERROR_FORMAT_PROGRAM_FAILED;
+    return FormatError::kFormatProgramFailed;
   }
 
   LOG(INFO) << "Running " << quote(format_program) << " to format "
             << quote(device_file);
-  return FORMAT_ERROR_NONE;
+  return FormatError::kSuccess;
 }
 
 }  // namespace
@@ -205,7 +205,7 @@ FormatError FormatManager::StartFormatting(
   // Check if the file system is supported for formatting
   if (!IsFilesystemSupported(filesystem)) {
     LOG(WARNING) << filesystem << " filesystem is not supported for formatting";
-    return FORMAT_ERROR_UNSUPPORTED_FILESYSTEM;
+    return FormatError::kUnsupportedFilesystem;
   }
 
   // Localize mkfs on disk
@@ -213,12 +213,12 @@ FormatError FormatManager::StartFormatting(
   if (format_program.empty()) {
     LOG(WARNING) << "Cannot find a format program for filesystem "
                  << quote(filesystem);
-    return FORMAT_ERROR_FORMAT_PROGRAM_NOT_FOUND;
+    return FormatError::kFormatProgramNotFound;
   }
 
   FormatOptions format_options;
   if (!ExtractFormatOptions(options, &format_options)) {
-    return FORMAT_ERROR_INVALID_OPTIONS;
+    return FormatError::kInvalidOptions;
   }
 
   LabelErrorType label_error =
@@ -234,7 +234,7 @@ FormatError FormatManager::StartFormatting(
     LOG(WARNING) << "Device " << quote(device_path)
                  << " is already being formatted by "
                  << process.GetProgramName() << "[" << process.pid() << "]";
-    return FORMAT_ERROR_DEVICE_BEING_FORMATTED;
+    return FormatError::kDeviceBeingFormatted;
   }
 
   if (const FormatError error =
@@ -249,7 +249,7 @@ FormatError FormatManager::StartFormatting(
       FROM_HERE, process.pid(),
       base::BindOnce(&FormatManager::OnFormatProcessTerminated,
                      weak_ptr_factory_.GetWeakPtr(), device_path));
-  return FORMAT_ERROR_NONE;
+  return FormatError::kSuccess;
 }
 
 void FormatManager::OnFormatProcessTerminated(const std::string& device_path,
@@ -263,16 +263,16 @@ void FormatManager::OnFormatProcessTerminated(const std::string& device_path,
   DCHECK_EQ(node.key(), device_path);
   const SandboxedProcess& process = node.mapped();
 
-  FormatError error = FORMAT_ERROR_UNKNOWN;
+  FormatError error = FormatError::kUnknownError;
   switch (info.si_code) {
     case CLD_EXITED:
       if (info.si_status == 0) {
-        error = FORMAT_ERROR_NONE;
+        error = FormatError::kSuccess;
         LOG(INFO) << "Program " << quote(process.GetProgramName())
                   << " formatting " << quote(device_path) << " finished with "
                   << Process::ExitCode(info.si_status);
       } else {
-        error = FORMAT_ERROR_FORMAT_PROGRAM_FAILED;
+        error = FormatError::kFormatProgramFailed;
         LOG(ERROR) << "Program " << quote(process.GetProgramName())
                    << " formatting " << quote(device_path) << " finished with "
                    << Process::ExitCode(info.si_status);
@@ -281,7 +281,7 @@ void FormatManager::OnFormatProcessTerminated(const std::string& device_path,
 
     case CLD_DUMPED:
     case CLD_KILLED:
-      error = FORMAT_ERROR_FORMAT_PROGRAM_FAILED;
+      error = FormatError::kFormatProgramFailed;
       LOG(ERROR) << "Program " << quote(process.GetProgramName())
                  << " formatting " << quote(device_path) << " was killed by "
                  << Process::ExitCode(MINIJAIL_ERR_SIG_BASE + info.si_status);
