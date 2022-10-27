@@ -53,15 +53,15 @@ const char* const kSupportedFilesystems[] = {
 
 const char kDefaultLabel[] = "UNTITLED";
 
-FormatError LabelErrorToFormatError(LabelErrorType error_code) {
+FormatError LabelErrorToFormatError(LabelError error_code) {
   switch (error_code) {
-    case LabelErrorType::kLabelErrorNone:
+    case LabelError::kSuccess:
       return FormatError::kSuccess;
-    case LabelErrorType::kLabelErrorUnsupportedFilesystem:
+    case LabelError::kUnsupportedFilesystem:
       return FormatError::kUnsupportedFilesystem;
-    case LabelErrorType::kLabelErrorLongName:
+    case LabelError::kLongName:
       return FormatError::kLongName;
-    case LabelErrorType::kLabelErrorInvalidCharacter:
+    case LabelError::kInvalidCharacter:
       return FormatError::kInvalidCharacter;
   }
 }
@@ -221,10 +221,10 @@ FormatError FormatManager::StartFormatting(
     return FormatError::kInvalidOptions;
   }
 
-  LabelErrorType label_error =
-      ValidateVolumeLabel(format_options.label, filesystem);
-  if (label_error != LabelErrorType::kLabelErrorNone) {
-    return LabelErrorToFormatError(label_error);
+  if (const LabelError error =
+          ValidateVolumeLabel(format_options.label, filesystem);
+      error != LabelError::kSuccess) {
+    return LabelErrorToFormatError(error);
   }
 
   const auto [it, ok] = format_process_.try_emplace(device_path);

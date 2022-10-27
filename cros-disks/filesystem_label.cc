@@ -43,14 +43,14 @@ const LabelParameters* FindLabelParameters(const std::string& filesystem_type) {
 
 }  // namespace
 
-LabelErrorType ValidateVolumeLabel(const std::string& volume_label,
-                                   const std::string& filesystem_type) {
+LabelError ValidateVolumeLabel(const std::string& volume_label,
+                               const std::string& filesystem_type) {
   // Check if the file system is supported for renaming
   const LabelParameters* parameters = FindLabelParameters(filesystem_type);
   if (!parameters) {
     LOG(WARNING) << filesystem_type
                  << " filesystem is not supported for labelling";
-    return LabelErrorType::kLabelErrorUnsupportedFilesystem;
+    return LabelError::kUnsupportedFilesystem;
   }
 
   // Check if new volume label satisfies file system volume label conditions
@@ -60,7 +60,7 @@ LabelErrorType ValidateVolumeLabel(const std::string& volume_label,
                  << " exceeds the limit of " << parameters->max_label_length
                  << " characters for the filesystem "
                  << quote(parameters->filesystem_type);
-    return LabelErrorType::kLabelErrorLongName;
+    return LabelError::kLongName;
   }
 
   // Check if the new volume label contains only alphanumeric ASCII characters
@@ -70,11 +70,11 @@ LabelErrorType ValidateVolumeLabel(const std::string& volume_label,
         !std::memchr(kAllowedCharacters, value, sizeof(kAllowedCharacters))) {
       LOG(WARNING) << "New volume label " << quote(volume_label)
                    << " contains forbidden character '" << value << "'";
-      return LabelErrorType::kLabelErrorInvalidCharacter;
+      return LabelError::kInvalidCharacter;
     }
   }
 
-  return LabelErrorType::kLabelErrorNone;
+  return LabelError::kSuccess;
 }
 
 }  // namespace cros_disks

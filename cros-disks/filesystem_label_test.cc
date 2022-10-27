@@ -22,23 +22,21 @@ const char kForbiddenTestCharacters[] = {
 
 TEST(FilesystemLabelTest, ValidateVolumeLabel) {
   // Test long volume names
-  EXPECT_EQ(LabelErrorType::kLabelErrorLongName,
-            ValidateVolumeLabel("ABCDEFGHIJKL", "vfat"));
-  EXPECT_EQ(LabelErrorType::kLabelErrorLongName,
+  EXPECT_EQ(LabelError::kLongName, ValidateVolumeLabel("ABCDEFGHIJKL", "vfat"));
+  EXPECT_EQ(LabelError::kLongName,
             ValidateVolumeLabel("ABCDEFGHIJKLMNOP", "exfat"));
-  EXPECT_EQ(LabelErrorType::kLabelErrorLongName,
+  EXPECT_EQ(LabelError::kLongName,
             ValidateVolumeLabel("ABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFG", "ntfs"));
 
   // Test volume name length limits
-  EXPECT_EQ(LabelErrorType::kLabelErrorNone,
-            ValidateVolumeLabel("ABCDEFGHIJK", "vfat"));
-  EXPECT_EQ(LabelErrorType::kLabelErrorNone,
+  EXPECT_EQ(LabelError::kSuccess, ValidateVolumeLabel("ABCDEFGHIJK", "vfat"));
+  EXPECT_EQ(LabelError::kSuccess,
             ValidateVolumeLabel("ABCDEFGHIJKLMNO", "exfat"));
-  EXPECT_EQ(LabelErrorType::kLabelErrorNone,
+  EXPECT_EQ(LabelError::kSuccess,
             ValidateVolumeLabel("ABCDEFGHIJKLMNOPQRSTUVWXYZABCDEF", "ntfs"));
 
   // Test unsupported file system type
-  EXPECT_EQ(LabelErrorType::kLabelErrorUnsupportedFilesystem,
+  EXPECT_EQ(LabelError::kUnsupportedFilesystem,
             ValidateVolumeLabel("ABC", "nonexistent-fs"));
 }
 
@@ -53,16 +51,13 @@ TEST_P(FilesystemLabelCharacterTest, ValidateVolumeLabelCharacters) {
   const char* filesystem = GetParam();
 
   // Test allowed characters in volume name
-  EXPECT_EQ(LabelErrorType::kLabelErrorNone,
-            ValidateVolumeLabel("AZaz09", filesystem));
-  EXPECT_EQ(LabelErrorType::kLabelErrorNone,
-            ValidateVolumeLabel(" !#$%&()", filesystem));
-  EXPECT_EQ(LabelErrorType::kLabelErrorNone,
-            ValidateVolumeLabel("-@^_`{}~", filesystem));
+  EXPECT_EQ(LabelError::kSuccess, ValidateVolumeLabel("AZaz09", filesystem));
+  EXPECT_EQ(LabelError::kSuccess, ValidateVolumeLabel(" !#$%&()", filesystem));
+  EXPECT_EQ(LabelError::kSuccess, ValidateVolumeLabel("-@^_`{}~", filesystem));
 
   for (char c : kForbiddenTestCharacters) {
     // Test forbidden characters in volume name
-    EXPECT_EQ(LabelErrorType::kLabelErrorInvalidCharacter,
+    EXPECT_EQ(LabelError::kInvalidCharacter,
               ValidateVolumeLabel(std::string("ABC") + c, filesystem));
   }
 }

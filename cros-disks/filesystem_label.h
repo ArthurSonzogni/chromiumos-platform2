@@ -9,18 +9,18 @@
 
 namespace cros_disks {
 
-enum class LabelErrorType {
-  kLabelErrorNone = 0,
-  kLabelErrorUnsupportedFilesystem = 1,
-  kLabelErrorLongName = 2,
-  kLabelErrorInvalidCharacter = 3,
+enum class LabelError {
+  kSuccess = 0,
+  kUnsupportedFilesystem = 1,
+  kLongName = 2,
+  kInvalidCharacter = 3,
 };
 
 // Returns true if the file system type is supported, and |volume_label|
 // contains only allowed characters and length is not greater than the file
 // system's limit.
-LabelErrorType ValidateVolumeLabel(const std::string& volume_label,
-                                   const std::string& filesystem_type);
+LabelError ValidateVolumeLabel(const std::string& volume_label,
+                               const std::string& filesystem_type);
 
 }  // namespace cros_disks
 

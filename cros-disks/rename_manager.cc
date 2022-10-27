@@ -48,15 +48,15 @@ const RenameParameters* FindRenameParameters(
   return nullptr;
 }
 
-RenameError LabelErrorToRenameError(LabelErrorType error_code) {
+RenameError LabelErrorToRenameError(LabelError error_code) {
   switch (error_code) {
-    case LabelErrorType::kLabelErrorNone:
+    case LabelError::kSuccess:
       return RenameError::kSuccess;
-    case LabelErrorType::kLabelErrorUnsupportedFilesystem:
+    case LabelError::kUnsupportedFilesystem:
       return RenameError::kUnsupportedFilesystem;
-    case LabelErrorType::kLabelErrorLongName:
+    case LabelError::kLongName:
       return RenameError::kLongName;
-    case LabelErrorType::kLabelErrorInvalidCharacter:
+    case LabelError::kInvalidCharacter:
       return RenameError::kInvalidCharacter;
   }
 }
@@ -83,9 +83,8 @@ RenameError RenameManager::StartRenaming(const std::string& device_path,
     return RenameError::kDeviceNotAllowed;
   }
 
-  LabelErrorType label_error =
-      ValidateVolumeLabel(volume_name, filesystem_type);
-  if (label_error != LabelErrorType::kLabelErrorNone) {
+  LabelError label_error = ValidateVolumeLabel(volume_name, filesystem_type);
+  if (label_error != LabelError::kSuccess) {
     return LabelErrorToRenameError(label_error);
   }
 
