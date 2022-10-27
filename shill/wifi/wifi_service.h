@@ -166,8 +166,6 @@ class WiFiService : public Service {
 
   void SetIsRekeyInProgress(bool is_rekey_in_progress);
   bool is_rekey_in_progress() const { return is_rekey_in_progress_; }
-  base::Time last_rekey_time() const { return last_rekey_time_; }
-
   mockable bool HasEndpoints() const { return !endpoints_.empty(); }
   bool HasConnectableEndpoints() const;
   bool IsVisible() const override;
@@ -595,8 +593,6 @@ class WiFiService : public Service {
   // assume that this succeeds and don't perform any state transitions to avoid
   // disrupting connectivity.
   bool is_rekey_in_progress_;
-  // Timestamp of the last attempted rising edge of the "re-key".
-  base::Time last_rekey_time_;
   // Set of Passpoint credentials present when the service was populated by a
   // previous Passpoint match.
   PasspointCredentialsRefPtr parent_credentials_;

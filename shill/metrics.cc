@@ -99,6 +99,8 @@ Metrics::Metrics()
       time_to_drop_timer_(new chromeos_metrics::Timer),
       time_resume_to_ready_timer_(new chromeos_metrics::Timer),
       time_suspend_actions_timer(new chromeos_metrics::Timer),
+      time_between_rekey_and_connection_failure_timer_(
+          new chromeos_metrics::Timer),
       time_(Time::GetInstance()) {
   chromeos_metrics::TimerReporter::set_metrics_lib(library_);
 
@@ -1231,8 +1233,42 @@ void Metrics::NotifyAlternateEDCASupport(bool alternate_edca_supported) {
   SendBoolToUMA(kMetricApAlternateEDCASupport, alternate_edca_supported);
 }
 
-void Metrics::NotifyWiFiServiceFailureAfterRekey(int seconds) {
-  SendToUMA(kMetricTimeFromRekeyToFailureSeconds, seconds);
+void Metrics::NotifyWiFiConnectionUnreliable() {
+  // Report the results of the metric associated with tracking the
+  // time between rekey and unreliable connection,
+  // TimeFromRekeyToFailureSeconds.
+  auto& rekey_timer = time_between_rekey_and_connection_failure_timer_;
+  base::TimeDelta elapsed;
+  int seconds;
+  if (!rekey_timer->HasStarted()) {
+    return;
+  }
+  rekey_timer->GetElapsedTime(&elapsed);
+  seconds = elapsed.InSeconds();
+  if (seconds < kMetricTimeFromRekeyToFailureSeconds.max) {
+    // We only send the metric if the unreliable connection happens shortly
+    // after the rekey started on the same BSSID.
+    LOG(INFO) << "Connection became unreliable shortly after rekey, "
+              << "seconds between rekey and connection failure: " << seconds;
+    SendToUMA(kMetricTimeFromRekeyToFailureSeconds, seconds);
+  }
+  rekey_timer->Reset();
+}
+
+void Metrics::NotifyBSSIDChanged() {
+  // Rekey cancelled/BSSID changed, so we reset the timer
+  // associated with the metric for TimeFromRekeyToFailureSeconds.
+  time_between_rekey_and_connection_failure_timer_->Reset();
+}
+
+void Metrics::NotifyRekeyStart() {
+  // Start the timer associated with the metric tracking time
+  // between rekey and unreliable connection,
+  // TimeFromRekeyToFailureSeconds.
+  auto& rekey_timer = time_between_rekey_and_connection_failure_timer_;
+  if (!rekey_timer->HasStarted()) {
+    rekey_timer->Start();
+  }
 }
 
 void Metrics::NotifyWiFiAdapterStateChanged(bool enabled,

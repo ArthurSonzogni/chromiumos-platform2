@@ -1129,6 +1129,9 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
     wifi_->OnSupplicantPresence(false);
     EXPECT_FALSE(wifi_->supplicant_present_);
   }
+  void OnLinkMonitorFailure(IPAddress::Family family) {
+    wifi_->OnLinkMonitorFailure(family);
+  }
   bool GetSupplicantPresent() { return wifi_->supplicant_present_; }
   bool GetIsRoamingInProgress() { return wifi_->is_roaming_in_progress_; }
   void SetIsRoamingInProgress(bool is_roaming_in_progress) {
@@ -3163,6 +3166,54 @@ TEST_F(WiFiMainTest, CurrentBSSChangeConnectedToDisconnected) {
   EXPECT_EQ(nullptr, GetCurrentService());
   EXPECT_EQ(nullptr, GetPendingService());
   EXPECT_FALSE(GetIsRoamingInProgress());
+}
+
+TEST_F(WiFiMainTest, BSSIDChangeInvokesNotifyBSSIDChange) {
+  StartWiFi();
+  MockWiFiServiceRefPtr service0 =
+      SetupConnectedService(RpcIdentifier(""), nullptr, nullptr);
+  MockWiFiServiceRefPtr service1;
+  RpcIdentifier bss_path1(MakeNewEndpointAndService(0, 0, nullptr, &service1));
+  EXPECT_EQ(service0, GetCurrentService());
+
+  // Ensure call to NotifyBSSIDChanged is called on BSSIDChanged.
+  EXPECT_CALL(*metrics(), NotifyBSSIDChanged());
+  ReportCurrentBSSChanged(bss_path1);
+  Mock::VerifyAndClearExpectations(service0.get());
+  Mock::VerifyAndClearExpectations(service1.get());
+}
+
+TEST_F(WiFiMainTest, RekeyInvokesNotifyRekeyStart) {
+  StartWiFi();
+  MockWiFiServiceRefPtr service0 =
+      SetupConnectedService(RpcIdentifier(""), nullptr, nullptr);
+  EXPECT_EQ(service0, GetCurrentService());
+  EXPECT_CALL(*metrics(), NotifyRekeyStart());
+  ReportStateChanged(WPASupplicant::kInterfaceState4WayHandshake);
+  Mock::VerifyAndClearExpectations(service0.get());
+}
+
+TEST_F(WiFiMainTest,
+       UnreliableConnectionInvokesNotifyWiFiConnectionUnreliable) {
+  StartWiFi();
+
+  const std::string kGatewayIPAddressString = "192.168.1.1";
+  SetupConnectionAndIPConfig(kGatewayIPAddressString);
+  const IPAddress kGatewayIPAddress(kGatewayIPAddressString);
+
+  // Sets up Service.
+  MockWiFiServiceRefPtr service = MakeMockService(WiFiSecurity::kNone);
+  SetCurrentService(service);
+
+  // Gateway has been found.
+  ON_CALL(*network(), ipv4_gateway_found()).WillByDefault(Return(true));
+  // Service is unreliable.
+  service->set_unreliable(true);
+  // If gateway is found, service is unreliable, and supplicant is active,
+  // OnLinkMonitorFailure should invoke NotifyWiFiConnectionUnreliable.
+  EXPECT_CALL(*metrics(), NotifyWiFiConnectionUnreliable());
+  OnLinkMonitorFailure(kGatewayIPAddress.family());
+  Mock::VerifyAndClearExpectations(GetSupplicantInterfaceProxy());
 }
 
 TEST_F(WiFiMainTest, CurrentBSSChangeConnectedToConnectedNewService) {

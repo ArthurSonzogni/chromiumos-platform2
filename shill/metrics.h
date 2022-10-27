@@ -1829,9 +1829,14 @@ class Metrics : public DefaultServiceObserver {
   // Converts GID1 from hex string to int64_t
   static std::optional<int64_t> IntGid1(const std::string& gid1);
 
-  // Notifies this object of the time elapsed between a WiFi service failure
-  // after the latest rekey event.
-  void NotifyWiFiServiceFailureAfterRekey(int seconds);
+  // Notifies the object that the wifi connection became unreliable.
+  virtual void NotifyWiFiConnectionUnreliable();
+
+  // Notifies the object that the BSSID has changed.
+  virtual void NotifyBSSIDChanged();
+
+  // Notifies the object that a rekey event has started.
+  virtual void NotifyRekeyStart();
 
   // Sends linear histogram data to UMA for a metric with a fixed name.
   virtual void SendEnumToUMA(const EnumMetric<FixedName>& metric, int sample);
@@ -1858,6 +1863,9 @@ class Metrics : public DefaultServiceObserver {
   FRIEND_TEST(MetricsTest, FrequencyToChannel);
   FRIEND_TEST(MetricsTest, ResetConnectTimer);
   FRIEND_TEST(MetricsTest, ServiceFailure);
+  FRIEND_TEST(MetricsTest, TimeFromRekeyToFailureBSSIDChange);
+  FRIEND_TEST(MetricsTest, TimeFromRekeyToFailureExceedMaxDuration);
+  FRIEND_TEST(MetricsTest, TimeFromRekeyToFailureValidDuration);
   FRIEND_TEST(MetricsTest, TimeOnlineTimeToDrop);
   FRIEND_TEST(MetricsTest, TimeToConfig);
   FRIEND_TEST(MetricsTest, TimeToOnline);
@@ -1950,6 +1958,11 @@ class Metrics : public DefaultServiceObserver {
     DeviceMetrics* device_metrics = GetDeviceMetrics(interface_index);
     device_metrics->scan_connect_timer.reset(timer);  // Passes ownership
   }
+  void set_time_between_rekey_and_connection_failure_timer(
+      chromeos_metrics::Timer* timer) {
+    time_between_rekey_and_connection_failure_timer_.reset(
+        timer);  // Passes ownership
+  }
 
   // Return a pseudonymized string (salted+hashed) version of the session tag.
   std::string PseudonymizeTag(uint64_t tag);
@@ -1968,6 +1981,8 @@ class Metrics : public DefaultServiceObserver {
   std::unique_ptr<chromeos_metrics::Timer> time_to_drop_timer_;
   std::unique_ptr<chromeos_metrics::Timer> time_resume_to_ready_timer_;
   std::unique_ptr<chromeos_metrics::Timer> time_suspend_actions_timer;
+  std::unique_ptr<chromeos_metrics::Timer>
+      time_between_rekey_and_connection_failure_timer_;
   DeviceMetricsLookupMap devices_metrics_;
   Time* time_;
 };

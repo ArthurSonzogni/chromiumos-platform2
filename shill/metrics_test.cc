@@ -579,6 +579,71 @@ TEST_F(MetricsTest, TimeToScanNoStart) {
   metrics_.NotifyDeviceScanFinished(kInterfaceIndex);
 }
 
+TEST_F(MetricsTest, TimeFromRekeyToFailureExceedMaxDuration) {
+  chromeos_metrics::TimerReporterMock* mock_rekey_timer =
+      new chromeos_metrics::TimerReporterMock;
+  base::TimeDelta large_time_delta =
+      base::Seconds(Metrics::kMetricTimeFromRekeyToFailureSeconds.max + 1);
+  EXPECT_CALL(*mock_rekey_timer, HasStarted())
+      .Times(2)
+      .WillOnce(Return(false))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*mock_rekey_timer, Start());
+  EXPECT_CALL(*mock_rekey_timer, GetElapsedTime(_))
+      .WillOnce(DoAll(SetArgPointee<0>(large_time_delta), Return(true)));
+  EXPECT_CALL(library_, SendToUMA(_, _, _, _, _)).Times(0);
+  EXPECT_CALL(*mock_rekey_timer, Reset());
+  metrics_.set_time_between_rekey_and_connection_failure_timer(
+      mock_rekey_timer);
+  metrics_.NotifyRekeyStart();
+  metrics_.NotifyWiFiConnectionUnreliable();
+}
+
+TEST_F(MetricsTest, TimeFromRekeyToFailureValidDuration) {
+  chromeos_metrics::TimerReporterMock* mock_rekey_timer =
+      new chromeos_metrics::TimerReporterMock;
+  base::TimeDelta good_time_delta =
+      base::Seconds(Metrics::kMetricTimeFromRekeyToFailureSeconds.min + 1);
+  EXPECT_CALL(*mock_rekey_timer, HasStarted())
+      .Times(2)
+      .WillOnce(Return(false))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*mock_rekey_timer, Start());
+  EXPECT_CALL(*mock_rekey_timer, GetElapsedTime(_))
+      .WillOnce(DoAll(SetArgPointee<0>(good_time_delta), Return(true)));
+  EXPECT_CALL(
+      library_,
+      SendToUMA("Network.Shill.WiFi.TimeFromRekeyToFailureSeconds", _, _, _, _))
+      .Times(1);
+  EXPECT_CALL(*mock_rekey_timer, Reset());
+  metrics_.set_time_between_rekey_and_connection_failure_timer(
+      mock_rekey_timer);
+  metrics_.NotifyRekeyStart();
+  metrics_.NotifyWiFiConnectionUnreliable();
+}
+
+TEST_F(MetricsTest, TimeFromRekeyToFailureBSSIDChange) {
+  chromeos_metrics::TimerReporterMock* mock_rekey_timer =
+      new chromeos_metrics::TimerReporterMock;
+
+  EXPECT_CALL(*mock_rekey_timer, HasStarted())
+      .Times(2)
+      .WillOnce(Return(false))
+      .WillOnce(Return(false));
+  EXPECT_CALL(*mock_rekey_timer, Start());
+  EXPECT_CALL(*mock_rekey_timer, Reset());
+  EXPECT_CALL(*mock_rekey_timer, GetElapsedTime(_)).Times(0);
+  EXPECT_CALL(
+      library_,
+      SendToUMA("Network.Shill.WiFi.TimeFromRekeyToFailureSeconds", _, _, _, _))
+      .Times(0);
+  metrics_.set_time_between_rekey_and_connection_failure_timer(
+      mock_rekey_timer);
+  metrics_.NotifyRekeyStart();
+  metrics_.NotifyBSSIDChanged();
+  metrics_.NotifyWiFiConnectionUnreliable();
+}
+
 TEST_F(MetricsTest, TimeToScanIgnore) {
   // Make sure TimeToScan is not sent if the elapsed time exceeds the max
   // value.  This simulates the case where the device is in an area with no

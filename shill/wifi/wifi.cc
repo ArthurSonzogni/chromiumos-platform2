@@ -1091,6 +1091,7 @@ void WiFi::CurrentBSSChanged(const RpcIdentifier& new_bss) {
   if (current_service_) {
     current_service_->SetIsRekeyInProgress(false);
   }
+  metrics()->NotifyBSSIDChanged();
 
   // Any change in CurrentBSS means supplicant is actively changing our
   // connectivity.  We no longer need to track any previously pending
@@ -2512,6 +2513,7 @@ void WiFi::StateChanged(const std::string& new_state) {
         // progress, we assume supplicant state transitions from completed to an
         // auth/assoc state are a result of a re-key.
         affected_service->SetIsRekeyInProgress(true);
+        metrics()->NotifyRekeyStart();
       } else {
         affected_service->SetState(Service::kStateAssociating);
       }
@@ -2645,17 +2647,7 @@ void WiFi::OnLinkMonitorFailure(IPAddress::Family family) {
   // failures in short period of time.
   if (current_service_->unreliable()) {
     LOG(INFO) << "Current service is unreliable, skipping reassociate attempt.";
-
-    // We only want to capture the scenario where we see the network become
-    // unreliable soon after a rekey.
-    int seconds =
-        (base::Time::Now() - current_service_->last_rekey_time()).InSeconds();
-    if (seconds < Metrics::kMetricTimeFromRekeyToFailureSeconds.max) {
-      LOG(INFO) << "Connection became unreliable shortly after rekey, "
-                << "seconds between rekey and connection failure: " << seconds;
-      metrics()->SendToUMA(Metrics::kMetricTimeFromRekeyToFailureSeconds,
-                           seconds);
-    }
+    metrics()->NotifyWiFiConnectionUnreliable();
     return;
   }
 

@@ -76,6 +76,13 @@ class MockMetrics : public Metrics {
               NotifyWiFiAdapterStateChanged,
               (bool, const WiFiAdapterInfo&),
               (override));
+
+  MOCK_METHOD(void, NotifyWiFiConnectionUnreliable, (), (override));
+
+  MOCK_METHOD(void, NotifyBSSIDChanged, (), (override));
+
+  MOCK_METHOD(void, NotifyRekeyStart, (), (override));
+
   MOCK_METHOD(bool, SendEnumToUMA, (const std::string&, int, int), (override));
   MOCK_METHOD(void,
               SendEnumToUMA,

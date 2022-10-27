@@ -326,6 +326,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   friend class WiFiMainTest;    // ScanState, ScanMethod
   FRIEND_TEST(WiFiMainTest, AppendBgscan);
   FRIEND_TEST(WiFiMainTest, BackgroundScan);  // ScanMethod, ScanState
+  FRIEND_TEST(WiFiMainTest, BSSIDChangeInvokesNotifyBSSIDChange);
   FRIEND_TEST(WiFiMainTest, ConnectToServiceNotPending);  // ScanState
   FRIEND_TEST(WiFiMainTest, ConnectToServiceWithoutRecentIssues);
   // is_debugging_connection_
@@ -362,6 +363,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   FRIEND_TEST(WiFiMainTest,
               QueuedEnsuredScanInterruptedByUnexpectedIdleState);  // ScanState,
                                                                    // ScanMethod
+  FRIEND_TEST(WiFiMainTest, RekeyInvokesNotifyRekeyStart);
   FRIEND_TEST(WiFiMainTest, ScanRejected);                         // ScanState
   FRIEND_TEST(WiFiMainTest, ScanResults);                // EndpointMap
   FRIEND_TEST(WiFiMainTest, ScanStateHandleDisconnect);  // ScanState
@@ -369,6 +371,8 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   FRIEND_TEST(WiFiMainTest, ScanStateUma);  // ScanState, ScanMethod
   FRIEND_TEST(WiFiMainTest, Stop);          // weak_ptr_factory_while_started_
   FRIEND_TEST(WiFiMainTest, TimeoutPendingServiceWithEndpoints);
+  FRIEND_TEST(WiFiMainTest,
+              UnreliableConnectionInvokesNotifyWiFiConnectionUnreliable);
   FRIEND_TEST(WiFiPropertyTest, BgscanMethodProperty);  // bgscan_method_
   // interworking_select_enabled_ and need_interworking_select_
   FRIEND_TEST(WiFiPropertyTest, PasspointInterworkingProperty);
