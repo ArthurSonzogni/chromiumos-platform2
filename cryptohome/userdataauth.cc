@@ -479,8 +479,11 @@ bool UserDataAuth::Initialize() {
   if (!auth_block_utility_) {
     default_auth_block_utility_ = std::make_unique<AuthBlockUtilityImpl>(
         keyset_management_, crypto_, platform_,
-        std::make_unique<FingerprintAuthBlockService>(base::BindRepeating(
-            &UserDataAuth::GetFingerprintManager, base::Unretained(this))));
+        std::make_unique<FingerprintAuthBlockService>(
+            base::BindRepeating(&UserDataAuth::GetFingerprintManager,
+                                base::Unretained(this)),
+            base::BindRepeating(&UserDataAuth::OnFingerprintScanResult,
+                                base::Unretained(this))));
     auth_block_utility_ = default_auth_block_utility_.get();
   }
 
@@ -709,6 +712,14 @@ void UserDataAuth::CreateFingerprintManager() {
 FingerprintManager* UserDataAuth::GetFingerprintManager() const {
   AssertOnMountThread();
   return fingerprint_manager_;
+}
+
+void UserDataAuth::OnFingerprintScanResult(
+    user_data_auth::FingerprintScanResult result) {
+  AssertOnMountThread();
+  if (fingerprint_scan_result_callback_) {
+    fingerprint_scan_result_callback_.Run(result);
+  }
 }
 
 void UserDataAuth::OnOwnershipTakenSignal() {
@@ -1205,6 +1216,12 @@ void UserDataAuth::set_target_free_space(uint64_t target_free_space) {
 void UserDataAuth::SetLowDiskSpaceCallback(
     const base::RepeatingCallback<void(uint64_t)>& callback) {
   low_disk_space_handler_->SetLowDiskSpaceCallback(callback);
+}
+
+void UserDataAuth::SetFingerprintScanResultCallback(
+    const base::RepeatingCallback<void(user_data_auth::FingerprintScanResult)>&
+        callback) {
+  fingerprint_scan_result_callback_ = callback;
 }
 
 void UserDataAuth::OwnershipCallback(bool status, bool took_ownership) {

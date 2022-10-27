@@ -18,8 +18,10 @@ namespace cryptohome {
 
 class FingerprintAuthBlockService {
  public:
-  explicit FingerprintAuthBlockService(
-      base::RepeatingCallback<FingerprintManager*()> fp_manager_getter);
+  FingerprintAuthBlockService(
+      base::RepeatingCallback<FingerprintManager*()> fp_manager_getter,
+      base::RepeatingCallback<void(user_data_auth::FingerprintScanResult)>
+          signal_sender);
 
   FingerprintAuthBlockService(const FingerprintAuthBlockService&) = delete;
   FingerprintAuthBlockService& operator=(const FingerprintAuthBlockService&) =
@@ -38,12 +40,6 @@ class FingerprintAuthBlockService {
   // sensor session.
   void Start(std::string obfuscated_username,
              base::OnceCallback<void(CryptohomeStatus)> on_done);
-
-  using ScanResultSignalCallback = base::RepeatingCallback<void(
-      user_data_auth::FingerprintScanResult result)>;
-
-  // SetScanResultSignalCallback sets |scan_result_signal_callback_|.
-  void SetScanResultSignalCallback(ScanResultSignalCallback callback);
 
   // Verify if the fingerprint sensor is currently in a "successfully
   // authorized" state or not. The success or failure of this check will be
@@ -78,7 +74,8 @@ class FingerprintAuthBlockService {
   // The obfuscated username tied to the current auth session.
   std::string user_;
   // A callback to send cryptohome ScanResult signal.
-  ScanResultSignalCallback scan_result_signal_callback_;
+  base::RepeatingCallback<void(user_data_auth::FingerprintScanResult)>
+      signal_sender_;
 };
 
 }  // namespace cryptohome

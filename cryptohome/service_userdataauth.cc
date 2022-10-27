@@ -1038,6 +1038,13 @@ void UserDataAuthAdaptor::LowDiskSpaceCallback(uint64_t free_disk_space) {
   SendLowDiskSpaceSignal(signal_payload);
 }
 
+void UserDataAuthAdaptor::FingerprintScanResultCallback(
+    user_data_auth::FingerprintScanResult result) {
+  user_data_auth::AuthScanResult signal_payload;
+  signal_payload.set_fingerprint_result(result);
+  SendAuthScanResultSignal(signal_payload);
+}
+
 void ArcQuotaAdaptor::GetArcDiskFeatures(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
         user_data_auth::GetArcDiskFeaturesReply>> response,

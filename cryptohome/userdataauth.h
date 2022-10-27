@@ -207,6 +207,12 @@ class UserDataAuth {
   void SetLowDiskSpaceCallback(
       const base::RepeatingCallback<void(uint64_t)>& callback);
 
+  // Set the FingerprintScanResult callback. This is usually called by the
+  // DBus adaptor.
+  void SetFingerprintScanResultCallback(
+      const base::RepeatingCallback<
+          void(user_data_auth::FingerprintScanResult)>& callback);
+
   // =============== Key Related Public Utilities ===============
   // Add the key specified in the request, and return a CryptohomeErrorCode to
   // indicate the status of adding the key. If CryptohomeErrorCode is
@@ -1012,6 +1018,11 @@ class UserDataAuth {
           on_done,
       FingerprintScanStatus status);
 
+  // OnFingerprintScanResult will be called on every received fingerprint
+  // scan result. It will forward results to
+  // |fingerprint_scan_result_callback_|.
+  void OnFingerprintScanResult(user_data_auth::FingerprintScanResult result);
+
   // =============== Periodic Maintenance Related Methods ===============
 
   // Called periodically on Mount thread to detect low disk space and emit a
@@ -1372,6 +1383,10 @@ class UserDataAuth {
   // Usually set to |default_challenge_credentials_helper_|, but can be
   // overridden for testing.
   ChallengeCredentialsHelper* challenge_credentials_helper_ = nullptr;
+
+  // The repeating callback to send FingerprintScanResult signal.
+  base::RepeatingCallback<void(user_data_auth::FingerprintScanResult)>
+      fingerprint_scan_result_callback_;
 
   // The object used to instantiate AuthBlocks.
   std::unique_ptr<AuthBlockUtility> default_auth_block_utility_;

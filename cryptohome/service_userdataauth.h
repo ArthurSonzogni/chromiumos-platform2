@@ -28,6 +28,9 @@ class UserDataAuthAdaptor
         service_(service) {
     service_->SetLowDiskSpaceCallback(base::BindRepeating(
         &UserDataAuthAdaptor::LowDiskSpaceCallback, base::Unretained(this)));
+    service_->SetFingerprintScanResultCallback(
+        base::BindRepeating(&UserDataAuthAdaptor::FingerprintScanResultCallback,
+                            base::Unretained(this)));
   }
   UserDataAuthAdaptor(const UserDataAuthAdaptor&) = delete;
   UserDataAuthAdaptor& operator=(const UserDataAuthAdaptor&) = delete;
@@ -415,6 +418,11 @@ class UserDataAuthAdaptor
   // This is called by UserDataAuth when it detects that it's running low on
   // disk space. All we do here is send the signal.
   void LowDiskSpaceCallback(uint64_t free_disk_space);
+
+  // This is called by UserDataAuth for processing biod's fingerprint scan
+  // signal AuthScanDone. All it does is to construct and send a signal.
+  void FingerprintScanResultCallback(
+      user_data_auth::FingerprintScanResult result);
 
  private:
   brillo::dbus_utils::DBusObject* dbus_object_;

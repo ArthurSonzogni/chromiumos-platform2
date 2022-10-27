@@ -126,6 +126,8 @@ class AuthBlockUtilityImplTest : public ::testing::Test {
   MakeFingerprintAuthBlockService() {
     return std::make_unique<FingerprintAuthBlockService>(
         base::BindRepeating(&AuthBlockUtilityImplTest::GetFingerprintManager,
+                            base::Unretained(this)),
+        base::BindRepeating(&AuthBlockUtilityImplTest::OnFingerprintScanResult,
                             base::Unretained(this)));
   }
 
@@ -139,6 +141,9 @@ class AuthBlockUtilityImplTest : public ::testing::Test {
 
  protected:
   FingerprintManager* GetFingerprintManager() { return &fp_manager_; }
+  void OnFingerprintScanResult(user_data_auth::FingerprintScanResult result) {
+    result_ = result;
+  }
 
   base::test::SingleThreadTaskEnvironment task_environment_ = {
       base::test::TaskEnvironment::TimeSource::MOCK_TIME};
@@ -157,6 +162,7 @@ class AuthBlockUtilityImplTest : public ::testing::Test {
   std::unique_ptr<KeysetManagement> keyset_management_;
   std::unique_ptr<AuthBlockUtilityImpl> auth_block_utility_impl_;
   NiceMock<MockChallengeCredentialsHelper> challenge_credentials_helper_;
+  user_data_auth::FingerprintScanResult result_;
 };
 
 TEST_F(AuthBlockUtilityImplTest, GetSupportedAuthFactors) {
@@ -295,16 +301,12 @@ TEST_F(AuthBlockUtilityImplTest, PrepareLegacyFingerprintSuccess) {
   MakeAuthBlockUtilityImpl();
 
   // Setup.
-  // Signal a successful auth scan.
   EXPECT_CALL(fp_manager_, StartAuthSessionAsyncForUser(kUser, _))
       .WillOnce([](std::string username,
                    FingerprintManager::StartSessionCallback callback) {
         std::move(callback).Run(true);
       });
-  EXPECT_CALL(fp_manager_, SetSignalCallback(_))
-      .WillOnce([](FingerprintManager::SignalCallback callback) {
-        std::move(callback).Run(FingerprintScanStatus::SUCCESS);
-      });
+  EXPECT_CALL(fp_manager_, SetSignalCallback(_));
 
   // Test.
   TestFuture<CryptohomeStatus> prepare_result;
@@ -334,6 +336,29 @@ TEST_F(AuthBlockUtilityImplTest, PrepareLegacyFingerprintFailure) {
   // Verify.
   EXPECT_THAT(prepare_result.Get()->local_legacy_error(),
               Eq(user_data_auth::CRYPTOHOME_ERROR_FINGERPRINT_ERROR_INTERNAL));
+}
+
+TEST_F(AuthBlockUtilityImplTest, CheckSignalSuccess) {
+  MakeAuthBlockUtilityImpl();
+
+  // Setup.
+  // Signal a successful auth scan.
+  EXPECT_CALL(fp_manager_, StartAuthSessionAsyncForUser(kUser, _))
+      .WillOnce([](std::string username,
+                   FingerprintManager::StartSessionCallback callback) {
+        std::move(callback).Run(true);
+      });
+  EXPECT_CALL(fp_manager_, SetSignalCallback(_))
+      .WillOnce([](FingerprintManager::SignalCallback callback) {
+        std::move(callback).Run(FingerprintScanStatus::SUCCESS);
+      });
+  TestFuture<CryptohomeStatus> prepare_result;
+  auth_block_utility_impl_->PrepareAuthFactorForAuth(
+      AuthFactorType::kLegacyFingerprint, kUser, prepare_result.GetCallback());
+  ASSERT_THAT(prepare_result.Get(), IsOk());
+
+  // Verify.
+  ASSERT_EQ(result_, user_data_auth::FINGERPRINT_SCAN_RESULT_SUCCESS);
 }
 
 TEST_F(AuthBlockUtilityImplTest, VerifyPasswordFailure) {

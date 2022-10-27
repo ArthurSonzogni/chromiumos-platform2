@@ -95,8 +95,11 @@ class FingerprintAuthBlockServiceTest : public BaseTestFixture {
  public:
   FingerprintAuthBlockServiceTest()
       : service_(base::BindRepeating(
-            &FingerprintAuthBlockServiceTest::GetFingerprintManager,
-            base::Unretained(this))) {}
+                     &FingerprintAuthBlockServiceTest::GetFingerprintManager,
+                     base::Unretained(this)),
+                 base::BindRepeating(
+                     &FingerprintAuthBlockServiceTest::OnFingerprintScanResult,
+                     base::Unretained(this))) {}
 
   void TearDown() override {
     EXPECT_CALL(fp_manager_, EndAuthSession());
@@ -105,10 +108,14 @@ class FingerprintAuthBlockServiceTest : public BaseTestFixture {
 
  protected:
   FingerprintManager* GetFingerprintManager() { return &fp_manager_; }
+  void OnFingerprintScanResult(user_data_auth::FingerprintScanResult result) {
+    result_ = result;
+  }
 
   StrictMock<MockFingerprintManager> fp_manager_;
   FingerprintAuthBlockService service_;
   std::string user_ = "dummy_user";
+  user_data_auth::FingerprintScanResult result_;
 };
 
 TEST_F(FingerprintAuthBlockServiceTest, StartSuccess) {
@@ -191,6 +198,10 @@ TEST_F(FingerprintAuthBlockServiceTest, VerifySimpleSuccess) {
   service_.Verify(verify_result.GetCallback());
   ASSERT_THAT(verify_result.IsReady(), IsTrue());
   ASSERT_THAT(verify_result.Get(), IsOk());
+  // Check the signal sender has been called.
+  ASSERT_EQ(
+      result_,
+      user_data_auth::FingerprintScanResult::FINGERPRINT_SCAN_RESULT_SUCCESS);
 }
 
 TEST_F(FingerprintAuthBlockServiceTest, VerifySimpleFailure) {
@@ -329,10 +340,7 @@ TEST_F(FingerprintAuthBlockServiceTest, ScanResultSignalCallbackSuccess) {
   FingerprintManager::StartSessionCallback start_session_callback;
   EXPECT_CALL(fp_manager_, StartAuthSessionAsyncForUser(_, _))
       .WillOnce(SaveStartSessionCallback{&start_session_callback});
-  // Equip fp_service with ScanResultSignalCallback.
-  RepeatingTestFuture<user_data_auth::FingerprintScanResult>
-      outgoing_signal_result;
-  service_.SetScanResultSignalCallback(outgoing_signal_result.GetCallback());
+  result_ = user_data_auth::FINGERPRINT_SCAN_RESULT_LOCKOUT;
 
   // Kick off the start.
   TestFuture<CryptohomeStatus> start_result;
@@ -343,22 +351,15 @@ TEST_F(FingerprintAuthBlockServiceTest, ScanResultSignalCallbackSuccess) {
   std::move(start_session_callback).Run(true);
   ASSERT_THAT(start_result.IsReady(), IsTrue());
   ASSERT_THAT(start_result.Get(), IsOk());
-  ASSERT_THAT(outgoing_signal_result.IsEmpty(), IsTrue());
 
-  // Simulate multiple scan results.
-  signal_callback.Run(FingerprintScanStatus::FAILED_RETRY_ALLOWED);
-  signal_callback.Run(FingerprintScanStatus::SUCCESS);
-  signal_callback.Run(FingerprintScanStatus::FAILED_RETRY_NOT_ALLOWED);
-
-  // Check the outgoing signal. The callback
+  // Simulate multiple scan results. And Check the outgoing signal. The callback
   // shall return corresponding outgoing signal values.
-  ASSERT_THAT(outgoing_signal_result.IsEmpty(), IsFalse());
-  ASSERT_EQ(outgoing_signal_result.Take(),
-            user_data_auth::FINGERPRINT_SCAN_RESULT_RETRY);
-  ASSERT_EQ(outgoing_signal_result.Take(),
-            user_data_auth::FINGERPRINT_SCAN_RESULT_SUCCESS);
-  ASSERT_EQ(outgoing_signal_result.Take(),
-            user_data_auth::FINGERPRINT_SCAN_RESULT_LOCKOUT);
+  signal_callback.Run(FingerprintScanStatus::FAILED_RETRY_ALLOWED);
+  ASSERT_EQ(result_, user_data_auth::FINGERPRINT_SCAN_RESULT_RETRY);
+  signal_callback.Run(FingerprintScanStatus::SUCCESS);
+  ASSERT_EQ(result_, user_data_auth::FINGERPRINT_SCAN_RESULT_SUCCESS);
+  signal_callback.Run(FingerprintScanStatus::FAILED_RETRY_NOT_ALLOWED);
+  ASSERT_EQ(result_, user_data_auth::FINGERPRINT_SCAN_RESULT_LOCKOUT);
 }
 
 }  // namespace

@@ -50,15 +50,18 @@ void FingerprintAuthBlockService::CheckSessionStartResult(
 }
 
 FingerprintAuthBlockService::FingerprintAuthBlockService(
-    base::RepeatingCallback<FingerprintManager*()> fp_manager_getter)
-    : fp_manager_getter_(fp_manager_getter) {}
+    base::RepeatingCallback<FingerprintManager*()> fp_manager_getter,
+    base::RepeatingCallback<void(user_data_auth::FingerprintScanResult)>
+        signal_sender)
+    : fp_manager_getter_(fp_manager_getter), signal_sender_(signal_sender) {}
 
 std::unique_ptr<FingerprintAuthBlockService>
 FingerprintAuthBlockService::MakeNullService() {
   // Construct an instance of the service with a getter callbacks that always
-  // return null.
+  // return null and a signal sender that does nothing.
   return std::make_unique<FingerprintAuthBlockService>(
-      base::BindRepeating([]() -> FingerprintManager* { return nullptr; }));
+      base::BindRepeating([]() -> FingerprintManager* { return nullptr; }),
+      base::BindRepeating([](user_data_auth::FingerprintScanResult) {}));
 }
 
 void FingerprintAuthBlockService::Verify(
@@ -141,11 +144,6 @@ void FingerprintAuthBlockService::Start(
                      base::Unretained(this), std::move(on_done)));
 }
 
-void FingerprintAuthBlockService::SetScanResultSignalCallback(
-    ScanResultSignalCallback callback) {
-  scan_result_signal_callback_ = std::move(callback);
-}
-
 void FingerprintAuthBlockService::Terminate() {
   user_.clear();
   scan_result_ = FingerprintScanStatus::FAILED_RETRY_NOT_ALLOWED;
@@ -153,6 +151,11 @@ void FingerprintAuthBlockService::Terminate() {
 }
 
 void FingerprintAuthBlockService::Capture(FingerprintScanStatus status) {
+  // If the session has been terminated, the registered user is cleared.
+  // In this case, no-op when the callback is triggered.
+  if (user_.empty()) {
+    return;
+  }
   scan_result_ = status;
   user_data_auth::FingerprintScanResult outgoing_signal;
   switch (status) {
@@ -165,8 +168,8 @@ void FingerprintAuthBlockService::Capture(FingerprintScanStatus status) {
     case FingerprintScanStatus::FAILED_RETRY_NOT_ALLOWED:
       outgoing_signal = user_data_auth::FINGERPRINT_SCAN_RESULT_LOCKOUT;
   }
-  if (scan_result_signal_callback_) {
-    scan_result_signal_callback_.Run(outgoing_signal);
+  if (signal_sender_) {
+    signal_sender_.Run(outgoing_signal);
   }
 }
 
