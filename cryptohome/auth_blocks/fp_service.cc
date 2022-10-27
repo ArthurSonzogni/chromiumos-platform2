@@ -12,6 +12,7 @@
 #include "cryptohome/error/location_utils.h"
 #include "cryptohome/error/locations.h"
 #include "cryptohome/fingerprint_manager.h"
+#include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 
 namespace cryptohome {
 
@@ -20,35 +21,6 @@ using cryptohome::error::ErrorAction;
 using cryptohome::error::ErrorActionSet;
 using hwsec_foundation::status::MakeStatus;
 using hwsec_foundation::status::OkStatus;
-
-void FingerprintAuthBlockService::CheckFingerprintResult(
-    base::OnceCallback<void(CryptohomeStatus)> on_done,
-    FingerprintScanStatus status) {
-  scan_result_ = status;
-
-  // Update the attempt counter, which will be checked when initiating a
-  // fingerprint scan the next time.
-  switch (status) {
-    case FingerprintScanStatus::SUCCESS:
-      break;
-    case FingerprintScanStatus::FAILED_RETRY_ALLOWED:
-      if (attempts_left_ > 0) {
-        attempts_left_--;
-      }
-      if (attempts_left_ <= 0) {
-        scan_result_ = FingerprintScanStatus::FAILED_RETRY_NOT_ALLOWED;
-      }
-      break;
-    case FingerprintScanStatus::FAILED_RETRY_NOT_ALLOWED:
-      attempts_left_ = 0;
-  }
-
-  EndAuthSession();
-
-  // Return success status regardless the scan result, it simply means a
-  // fingerprint scan has completed.
-  std::move(on_done).Run(OkStatus<CryptohomeError>());
-}
 
 void FingerprintAuthBlockService::CheckSessionStartResult(
     base::OnceCallback<void(CryptohomeStatus)> on_done, bool success) {
@@ -59,9 +31,22 @@ void FingerprintAuthBlockService::CheckSessionStartResult(
         user_data_auth::CryptohomeErrorCode::
             CRYPTOHOME_ERROR_FINGERPRINT_ERROR_INTERNAL);
     std::move(on_done).Run(std::move(cryptohome_status));
-  } else {
-    Capture(std::move(on_done));
+    return;
   }
+
+  FingerprintManager* fp_manager = fp_manager_getter_.Run();
+  if (!fp_manager) {
+    CryptohomeStatus status = MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocFpServiceCheckSessionStartCouldNotGetFpManager),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        user_data_auth::CryptohomeErrorCode::
+            CRYPTOHOME_ERROR_FINGERPRINT_ERROR_INTERNAL);
+    std::move(on_done).Run(std::move(status));
+    return;
+  }
+  fp_manager->SetSignalCallback(base::BindRepeating(
+      &FingerprintAuthBlockService::Capture, base::Unretained(this)));
+  std::move(on_done).Run(OkStatus<CryptohomeError>());
 }
 
 FingerprintAuthBlockService::FingerprintAuthBlockService(
@@ -124,7 +109,8 @@ void FingerprintAuthBlockService::Verify(
   std::move(on_done).Run(std::move(cryptohome_status));
 }
 
-void FingerprintAuthBlockService::Scan(
+void FingerprintAuthBlockService::Start(
+    std::string obfuscated_username,
     base::OnceCallback<void(CryptohomeStatus)> on_done) {
   FingerprintManager* fp_manager = fp_manager_getter_.Run();
   if (!fp_manager) {
@@ -137,26 +123,16 @@ void FingerprintAuthBlockService::Scan(
     return;
   }
 
-  // empty user_ means Start was not called.
-  if (user_.empty()) {
+  if (!user_.empty()) {
     CryptohomeStatus status = MakeStatus<CryptohomeError>(
-        CRYPTOHOME_ERR_LOC(kLocFpServiceStartScanNoStart),
+        CRYPTOHOME_ERR_LOC(kLocFpServiceStartConcurrentSession),
         ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
         user_data_auth::CryptohomeErrorCode::
             CRYPTOHOME_ERROR_FINGERPRINT_DENIED);
     std::move(on_done).Run(std::move(status));
     return;
   }
-
-  if (attempts_left_ <= 0) {
-    CryptohomeStatus status = MakeStatus<CryptohomeError>(
-        CRYPTOHOME_ERR_LOC(kLocFpServiceStartScanLockedOut),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
-        user_data_auth::CryptohomeErrorCode::
-            CRYPTOHOME_ERROR_FINGERPRINT_DENIED);
-    std::move(on_done).Run(std::move(status));
-    return;
-  }
+  user_ = obfuscated_username;
 
   // Set up a callback with the manager to check the start session result.
   fp_manager->StartAuthSessionAsyncForUser(
@@ -165,45 +141,33 @@ void FingerprintAuthBlockService::Scan(
                      base::Unretained(this), std::move(on_done)));
 }
 
-CryptohomeStatus FingerprintAuthBlockService::Start(
-    std::string obfuscated_username) {
-  if (!user_.empty() && user_ != obfuscated_username) {
-    return MakeStatus<CryptohomeError>(
-        CRYPTOHOME_ERR_LOC(kLocFpServiceStartConcurrentSession),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
-        user_data_auth::CryptohomeErrorCode::
-            CRYPTOHOME_ERROR_FINGERPRINT_DENIED);
-  }
-
-  if (user_.empty()) {
-    user_ = obfuscated_username;
-    attempts_left_ = kMaxFingerprintRetries;
-  }
-
-  return OkStatus<CryptohomeError>();
+void FingerprintAuthBlockService::SetScanResultSignalCallback(
+    ScanResultSignalCallback callback) {
+  scan_result_signal_callback_ = std::move(callback);
 }
 
 void FingerprintAuthBlockService::Terminate() {
   user_.clear();
+  scan_result_ = FingerprintScanStatus::FAILED_RETRY_NOT_ALLOWED;
   EndAuthSession();
 }
 
-void FingerprintAuthBlockService::Capture(
-    base::OnceCallback<void(CryptohomeStatus)> on_done) {
-  FingerprintManager* fp_manager = fp_manager_getter_.Run();
-  if (!fp_manager) {
-    CryptohomeStatus status = MakeStatus<CryptohomeError>(
-        CRYPTOHOME_ERR_LOC(kLocFpServiceScanCouldNotGetFpManager),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
-        user_data_auth::CryptohomeErrorCode::
-            CRYPTOHOME_ERROR_FINGERPRINT_ERROR_INTERNAL);
-    std::move(on_done).Run(std::move(status));
-    return;
+void FingerprintAuthBlockService::Capture(FingerprintScanStatus status) {
+  scan_result_ = status;
+  user_data_auth::FingerprintScanResult outgoing_signal;
+  switch (status) {
+    case FingerprintScanStatus::SUCCESS:
+      outgoing_signal = user_data_auth::FINGERPRINT_SCAN_RESULT_SUCCESS;
+      break;
+    case FingerprintScanStatus::FAILED_RETRY_ALLOWED:
+      outgoing_signal = user_data_auth::FINGERPRINT_SCAN_RESULT_RETRY;
+      break;
+    case FingerprintScanStatus::FAILED_RETRY_NOT_ALLOWED:
+      outgoing_signal = user_data_auth::FINGERPRINT_SCAN_RESULT_LOCKOUT;
   }
-
-  fp_manager->SetAuthScanDoneCallback(
-      base::BindOnce(&FingerprintAuthBlockService::CheckFingerprintResult,
-                     base::Unretained(this), std::move(on_done)));
+  if (scan_result_signal_callback_) {
+    scan_result_signal_callback_.Run(outgoing_signal);
+  }
 }
 
 void FingerprintAuthBlockService::EndAuthSession() {

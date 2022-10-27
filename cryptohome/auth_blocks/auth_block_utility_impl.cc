@@ -198,12 +198,7 @@ void AuthBlockUtilityImpl::PrepareAuthFactorForAuth(
     CryptohomeStatusCallback callback) {
   switch (auth_factor_type) {
     case AuthFactorType::kLegacyFingerprint: {
-      CryptohomeStatus status = fp_service_->Start(username);
-      if (!status.ok()) {
-        std::move(callback).Run(std::move(status));
-        return;
-      }
-      fp_service_->Scan(std::move(callback));
+      fp_service_->Start(username, std::move(callback));
       return;
     }
     case AuthFactorType::kPassword:
@@ -251,8 +246,13 @@ CryptohomeStatus AuthBlockUtilityImpl::TerminateAuthFactor(
     case AuthFactorType::kKiosk:
     case AuthFactorType::kSmartCard:
     case AuthFactorType::kUnspecified: {
-      // These factors are not supported for Stop. No-op.
-      return OkStatus<CryptohomeError>();
+      // These factors do not support Terminate.
+      return MakeStatus<CryptohomeError>(
+          CRYPTOHOME_ERR_LOC(kLocAuthBlockUtilTerminateInvalidAuthFactorType),
+          ErrorActionSet(
+              {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kAuth}),
+          user_data_auth::CryptohomeErrorCode::
+              CRYPTOHOME_ERROR_INVALID_ARGUMENT);
     }
   }
 }

@@ -85,6 +85,7 @@ class FingerprintManagerTest : public testing::Test {
   NiceMock<biod::MockBiometricsManagerProxyBase> mock_biod_proxy_;
   bool status_;
   FingerprintScanStatus scan_status_;
+  FingerprintScanStatus signal_status_;
 };
 
 TEST_F(FingerprintManagerTest, StartAuthSessionFail) {
@@ -160,8 +161,14 @@ TEST_F(FingerprintManagerTest, AuthScanDoneNoScanResult) {
   fingerprint_manager_->SetAuthScanDoneCallback(base::BindLambdaForTesting(
       [this](FingerprintScanStatus status) { scan_status_ = status; }));
   scan_status_ = FingerprintScanStatus::SUCCESS;
+  fingerprint_manager_->SetSignalCallback(base::BindLambdaForTesting(
+      [this](FingerprintScanStatus status) { signal_status_ = status; }));
+  signal_status_ = FingerprintScanStatus::SUCCESS;
+
   fingerprint_manager_peer_->SignalAuthScanDone(&signal);
+
   EXPECT_EQ(scan_status_, FingerprintScanStatus::FAILED_RETRY_NOT_ALLOWED);
+  EXPECT_EQ(signal_status_, FingerprintScanStatus::FAILED_RETRY_NOT_ALLOWED);
   // Unrecoverable error should lock the auth session.
   EXPECT_TRUE(fingerprint_manager_peer_->AuthSessionIsLocked());
 }
@@ -187,8 +194,12 @@ TEST_F(FingerprintManagerTest, AuthScanDoneNoResultCodeInMessage) {
   fingerprint_manager_->SetAuthScanDoneCallback(base::BindLambdaForTesting(
       [this](FingerprintScanStatus status) { scan_status_ = status; }));
   scan_status_ = FingerprintScanStatus::SUCCESS;
+  fingerprint_manager_->SetSignalCallback(base::BindLambdaForTesting(
+      [this](FingerprintScanStatus status) { signal_status_ = status; }));
+  signal_status_ = FingerprintScanStatus::SUCCESS;
   fingerprint_manager_peer_->SignalAuthScanDone(&signal);
   EXPECT_EQ(scan_status_, FingerprintScanStatus::FAILED_RETRY_NOT_ALLOWED);
+  EXPECT_EQ(signal_status_, FingerprintScanStatus::FAILED_RETRY_NOT_ALLOWED);
   // Unrecoverable error should lock the auth session.
   EXPECT_TRUE(fingerprint_manager_peer_->AuthSessionIsLocked());
 }
@@ -214,8 +225,12 @@ TEST_F(FingerprintManagerTest, AuthScanDoneScanResultFailed) {
   fingerprint_manager_->SetAuthScanDoneCallback(base::BindLambdaForTesting(
       [this](FingerprintScanStatus status) { scan_status_ = status; }));
   scan_status_ = FingerprintScanStatus::SUCCESS;
+  fingerprint_manager_->SetSignalCallback(base::BindLambdaForTesting(
+      [this](FingerprintScanStatus status) { signal_status_ = status; }));
+  signal_status_ = FingerprintScanStatus::SUCCESS;
   fingerprint_manager_peer_->SignalAuthScanDone(&signal);
   EXPECT_EQ(scan_status_, FingerprintScanStatus::FAILED_RETRY_ALLOWED);
+  EXPECT_EQ(signal_status_, FingerprintScanStatus::FAILED_RETRY_ALLOWED);
   // Auth session should still be open since retry is allowed.
   EXPECT_TRUE(fingerprint_manager_peer_->AuthSessionIsOpen());
 }
@@ -241,8 +256,12 @@ TEST_F(FingerprintManagerTest, AuthScanDoneError) {
   fingerprint_manager_->SetAuthScanDoneCallback(base::BindLambdaForTesting(
       [this](FingerprintScanStatus status) { scan_status_ = status; }));
   scan_status_ = FingerprintScanStatus::SUCCESS;
+  fingerprint_manager_->SetSignalCallback(base::BindLambdaForTesting(
+      [this](FingerprintScanStatus status) { signal_status_ = status; }));
+  signal_status_ = FingerprintScanStatus::SUCCESS;
   fingerprint_manager_peer_->SignalAuthScanDone(&signal);
   EXPECT_EQ(scan_status_, FingerprintScanStatus::FAILED_RETRY_NOT_ALLOWED);
+  EXPECT_EQ(signal_status_, FingerprintScanStatus::FAILED_RETRY_NOT_ALLOWED);
   // Unrecoverable error should lock the auth session.
   EXPECT_TRUE(fingerprint_manager_peer_->AuthSessionIsLocked());
 }
@@ -273,8 +292,12 @@ TEST_F(FingerprintManagerTest, AuthScanDoneNoMatch) {
   fingerprint_manager_->SetAuthScanDoneCallback(base::BindLambdaForTesting(
       [this](FingerprintScanStatus status) { scan_status_ = status; }));
   scan_status_ = FingerprintScanStatus::SUCCESS;
+  fingerprint_manager_->SetSignalCallback(base::BindLambdaForTesting(
+      [this](FingerprintScanStatus status) { signal_status_ = status; }));
+  signal_status_ = FingerprintScanStatus::SUCCESS;
   fingerprint_manager_peer_->SignalAuthScanDone(&signal);
   EXPECT_EQ(scan_status_, FingerprintScanStatus::FAILED_RETRY_ALLOWED);
+  EXPECT_EQ(signal_status_, FingerprintScanStatus::FAILED_RETRY_ALLOWED);
   // Auth session should still be open since retry is allowed.
   EXPECT_TRUE(fingerprint_manager_peer_->AuthSessionIsOpen());
 }
@@ -305,8 +328,12 @@ TEST_F(FingerprintManagerTest, AuthScanDoneSuccess) {
   fingerprint_manager_->SetAuthScanDoneCallback(base::BindLambdaForTesting(
       [this](FingerprintScanStatus status) { scan_status_ = status; }));
   scan_status_ = FingerprintScanStatus::FAILED_RETRY_NOT_ALLOWED;
+  fingerprint_manager_->SetSignalCallback(base::BindLambdaForTesting(
+      [this](FingerprintScanStatus status) { signal_status_ = status; }));
+  signal_status_ = FingerprintScanStatus::FAILED_RETRY_ALLOWED;
   fingerprint_manager_peer_->SignalAuthScanDone(&signal);
   EXPECT_EQ(scan_status_, FingerprintScanStatus::SUCCESS);
+  EXPECT_EQ(signal_status_, FingerprintScanStatus::SUCCESS);
   // A successful scan should cause further scans in the same session to be
   // ignored.
   EXPECT_TRUE(fingerprint_manager_peer_->AuthSessionIsLocked());
@@ -335,12 +362,16 @@ TEST_F(FingerprintManagerTest, AuthScanDoneTooManyRetries) {
   // No matches.
   writer.CloseContainer(&matches_writer);
 
+  fingerprint_manager_->SetSignalCallback(base::BindLambdaForTesting(
+      [this](FingerprintScanStatus status) { signal_status_ = status; }));
+  signal_status_ = FingerprintScanStatus::SUCCESS;
   for (int i = 0; i < kMaxFingerprintRetries - 1; i++) {
     fingerprint_manager_->SetAuthScanDoneCallback(base::BindLambdaForTesting(
         [this](FingerprintScanStatus status) { scan_status_ = status; }));
     scan_status_ = FingerprintScanStatus::SUCCESS;
     fingerprint_manager_peer_->SignalAuthScanDone(&signal);
     EXPECT_EQ(scan_status_, FingerprintScanStatus::FAILED_RETRY_ALLOWED);
+    EXPECT_EQ(signal_status_, FingerprintScanStatus::FAILED_RETRY_ALLOWED);
   }
   // The last invalid retry should lock the auth session.
   fingerprint_manager_->SetAuthScanDoneCallback(base::BindLambdaForTesting(
@@ -348,6 +379,7 @@ TEST_F(FingerprintManagerTest, AuthScanDoneTooManyRetries) {
   scan_status_ = FingerprintScanStatus::SUCCESS;
   fingerprint_manager_peer_->SignalAuthScanDone(&signal);
   EXPECT_EQ(scan_status_, FingerprintScanStatus::FAILED_RETRY_NOT_ALLOWED);
+  EXPECT_EQ(signal_status_, FingerprintScanStatus::FAILED_RETRY_NOT_ALLOWED);
   EXPECT_TRUE(fingerprint_manager_peer_->AuthSessionIsLocked());
 
   // Any further operation is denied in the auth session, regardless of the

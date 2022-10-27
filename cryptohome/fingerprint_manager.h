@@ -31,6 +31,8 @@ class FingerprintManager {
  public:
   using StartSessionCallback = base::OnceCallback<void(bool success)>;
   using ResultCallback = base::OnceCallback<void(FingerprintScanStatus status)>;
+  using SignalCallback =
+      base::RepeatingCallback<void(FingerprintScanStatus result)>;
 
   // Factory method. Returns nullptr if Biometrics Daemon is not in a good
   // state or if the device does not have fingerprint support.
@@ -73,6 +75,11 @@ class FingerprintManager {
   // StartAuthSessionAsyncForUser. |auth_scan_done_callback| will be
   // called with the status of a fingerprint match, once biod sends it.
   virtual void SetAuthScanDoneCallback(ResultCallback auth_scan_done_callback);
+
+  // Sets the repeating callback for fingerprint scan results. The callback will
+  // be called when converting incoming biod fingerprint scan signals to
+  // outgoing cryptohome signals.
+  virtual void SetSignalCallback(SignalCallback signal_callback);
 
   // For testing.
   void SetProxy(biod::BiometricsManagerProxyBase* proxy);
@@ -147,6 +154,7 @@ class FingerprintManager {
   biod::BiometricsManagerProxyBase* proxy_;
   bool connected_to_auth_scan_done_signal_;
   ResultCallback auth_scan_done_callback_;
+  SignalCallback signal_callback_;
   State state_ = State::NO_AUTH_SESSION;
   // The obfuscated username tied to the current auth session.
   std::string current_user_;

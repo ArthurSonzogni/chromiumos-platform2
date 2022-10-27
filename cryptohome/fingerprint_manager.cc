@@ -117,6 +117,7 @@ void FingerprintManager::Reset() {
   state_ = State::NO_AUTH_SESSION;
   current_user_.clear();
   auth_scan_done_callback_.Reset();
+  signal_callback_.Reset();
 }
 
 const std::string& FingerprintManager::GetCurrentUser() {
@@ -173,6 +174,9 @@ void FingerprintManager::OnAuthScanDone(dbus::Signal* signal) {
   VLOG(1) << "Authentication succeeded.";
   if (auth_scan_done_callback_)
     std::move(auth_scan_done_callback_).Run(FingerprintScanStatus::SUCCESS);
+  if (signal_callback_)
+    signal_callback_.Run(FingerprintScanStatus::SUCCESS);
+
   state_ = State::AUTH_SESSION_LOCKED;
 }
 
@@ -188,12 +192,17 @@ void FingerprintManager::ProcessRetry() {
   }
   if (auth_scan_done_callback_)
     std::move(auth_scan_done_callback_).Run(error);
+  if (signal_callback_)
+    signal_callback_.Run(error);
 }
 
 void FingerprintManager::ProcessFailed() {
   if (auth_scan_done_callback_) {
     std::move(auth_scan_done_callback_)
         .Run(FingerprintScanStatus::FAILED_RETRY_NOT_ALLOWED);
+  }
+  if (signal_callback_) {
+    signal_callback_.Run(FingerprintScanStatus::FAILED_RETRY_NOT_ALLOWED);
   }
   state_ = State::AUTH_SESSION_LOCKED;
 }
@@ -228,6 +237,11 @@ void FingerprintManager::SetUserAndRunClientCallback(
     Reset();
   }
   std::move(auth_session_start_client_callback).Run(success);
+}
+
+void FingerprintManager::SetSignalCallback(SignalCallback callback) {
+  DCHECK(base::PlatformThread::CurrentId() == mount_thread_id_);
+  signal_callback_ = std::move(callback);
 }
 
 void FingerprintManager::StartAuthSessionAsyncForUser(

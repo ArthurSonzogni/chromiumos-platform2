@@ -1253,13 +1253,13 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocFpServiceCheckResultNoAuthSession = 713,
   /* ./auth_blocks/fp_service.cc */
   kLocFpServiceStartScanCouldNotGetFpManager = 714,
-  /* ./auth_blocks/fp_service.cc */
+  /* =Obsolete= */
   kLocFpServiceStartScanNoStart = 715,
-  /* ./auth_blocks/fp_service.cc */
+  /* =Obsolete= */
   kLocFpServiceStartScanLockedOut = 716,
   /* ./auth_blocks/fp_service.cc */
   kLocFpServiceStartConcurrentSession = 717,
-  /* ./auth_blocks/fp_service.cc */
+  /* =Obsolete= */
   kLocFpServiceScanCouldNotGetFpManager = 718,
   /* ./auth_blocks/auth_block_utility_impl.cc */
   kLocAuthBlockUtilUnimplementedPrepareForAdd = 719,
@@ -1369,6 +1369,10 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocAuthSessionTerminateBadAuthFactorType = 3512,
   /* ./auth_session.cc */
   kLocAuthSessionTerminateInactiveAuthFactor = 3513,
+  /* ./auth_blocks/fp_service.cc */
+  kLocFpServiceCheckSessionStartCouldNotGetFpManager = 3514,
+  /* ./auth_blocks/auth_block_utility_impl.cc */
+  kLocAuthBlockUtilTerminateInvalidAuthFactorType = 3515,
   // End of generated content.
 };
 // The enum value should not exceed 65535, otherwise we need to adjust the way
