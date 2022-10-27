@@ -15,6 +15,7 @@
 #include <base/sequence_checker.h>
 
 #include "cros-camera/camera_buffer_manager.h"
+#include "cros-camera/common_types.h"
 
 namespace cros {
 
@@ -32,40 +33,33 @@ class FrameBuffer {
   // Returns the mapped buffer. The return value should not outlive |this|.
   absl::StatusOr<ScopedMapping> Map();
 
-  uint32_t GetWidth() const { return width_; }
-  uint32_t GetHeight() const { return height_; }
+  Size GetSize() const { return size_; }
   uint32_t GetFourcc() const { return fourcc_; }
 
   ~FrameBuffer();
 
   buffer_handle_t GetBufferHandle() const { return buffer_; }
 
-  // Wraps external buffer from upper framework. Fill |width_| and |height_|
-  // according to the parameters. Returns nullptr when there's error.
-  static std::unique_ptr<FrameBuffer> Wrap(buffer_handle_t buffer,
-                                           uint32_t width,
-                                           uint32_t height);
+  // Wraps external buffer from upper framework. Fill |size_| according to the
+  // parameters. Returns nullptr when there's error.
+  static std::unique_ptr<FrameBuffer> Wrap(buffer_handle_t buffer, Size size);
 
   // Allocates the buffer internally. Returns nullptr when there's error.
-  static std::unique_ptr<FrameBuffer> Create(uint32_t width,
-                                             uint32_t height,
+  static std::unique_ptr<FrameBuffer> Create(Size size,
                                              android_pixel_format_t fourcc);
 
  private:
   FrameBuffer();
 
-  // Wraps external buffer from upper framework. Fill |width_| and |height_|
-  // according to the parameters.
-  bool Initialize(buffer_handle_t buffer, uint32_t width, uint32_t height);
+  // Wraps external buffer from upper framework. Fill |size_| according to the
+  // parameters.
+  bool Initialize(buffer_handle_t buffer, Size size);
 
   // Allocate the buffer internally.
-  bool Initialize(uint32_t width,
-                  uint32_t height,
-                  android_pixel_format_t fourcc);
+  bool Initialize(Size size, android_pixel_format_t fourcc);
 
   // Frame resolution.
-  uint32_t width_;
-  uint32_t height_;
+  Size size_;
 
   // This is V4L2_PIX_FMT_* in linux/videodev2.h.
   uint32_t fourcc_;

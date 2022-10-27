@@ -19,10 +19,9 @@ namespace cros {
 
 // static
 std::unique_ptr<FrameBuffer> FrameBuffer::Wrap(buffer_handle_t buffer,
-                                               uint32_t width,
-                                               uint32_t height) {
+                                               Size size) {
   auto frame_buffer = base::WrapUnique(new FrameBuffer());
-  if (!frame_buffer->Initialize(buffer, width, height)) {
+  if (!frame_buffer->Initialize(buffer, size)) {
     return nullptr;
   }
   return frame_buffer;
@@ -30,9 +29,9 @@ std::unique_ptr<FrameBuffer> FrameBuffer::Wrap(buffer_handle_t buffer,
 
 // static
 std::unique_ptr<FrameBuffer> FrameBuffer::Create(
-    uint32_t width, uint32_t height, android_pixel_format_t hal_format) {
+    Size size, android_pixel_format_t hal_format) {
   auto frame_buffer = base::WrapUnique(new FrameBuffer());
-  if (!frame_buffer->Initialize(width, height, hal_format)) {
+  if (!frame_buffer->Initialize(size, hal_format)) {
     return nullptr;
   }
   return frame_buffer;
@@ -41,9 +40,7 @@ std::unique_ptr<FrameBuffer> FrameBuffer::Create(
 FrameBuffer::FrameBuffer()
     : buffer_manager_(CameraBufferManager::GetInstance()) {}
 
-bool FrameBuffer::Initialize(buffer_handle_t buffer,
-                             uint32_t width,
-                             uint32_t height) {
+bool FrameBuffer::Initialize(buffer_handle_t buffer, Size size) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
   int ret = buffer_manager_->Register(buffer);
@@ -53,8 +50,7 @@ bool FrameBuffer::Initialize(buffer_handle_t buffer,
   }
 
   buffer_ = buffer;
-  width_ = width;
-  height_ = height;
+  size_ = size;
   fourcc_ = buffer_manager_->GetV4L2PixelFormat(buffer_);
   if (fourcc_ == 0) {
     LOGF(ERROR) << "Failed to get V4L2 pixel format";
@@ -69,24 +65,21 @@ bool FrameBuffer::Initialize(buffer_handle_t buffer,
   return true;
 }
 
-bool FrameBuffer::Initialize(uint32_t width,
-                             uint32_t height,
-                             android_pixel_format_t hal_format) {
+bool FrameBuffer::Initialize(Size size, android_pixel_format_t hal_format) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   uint32_t hal_usage =
       GRALLOC_USAGE_SW_READ_OFTEN | GRALLOC_USAGE_SW_WRITE_OFTEN;
 
   uint32_t stride;
-  int ret = buffer_manager_->Allocate(width, height, hal_format, hal_usage,
-                                      &buffer_, &stride);
+  int ret = buffer_manager_->Allocate(size.width, size.height, hal_format,
+                                      hal_usage, &buffer_, &stride);
   if (ret) {
     LOGF(ERROR) << "Failed to allocate buffer";
     return false;
   }
 
   is_buffer_owned_ = true;
-  width_ = width;
-  height_ = height;
+  size_ = size;
   fourcc_ = buffer_manager_->GetV4L2PixelFormat(buffer_);
   if (fourcc_ == 0) {
     LOGF(ERROR) << "Failed to get V4L2 pixel format";

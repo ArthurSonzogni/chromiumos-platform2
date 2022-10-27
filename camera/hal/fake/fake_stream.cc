@@ -55,8 +55,7 @@ bool FakeStream::Initialize(const android::CameraMetadata& static_metadata,
   size_ = size;
   format_ = format;
 
-  auto input_buffer = FrameBuffer::Create(size.width, size.height,
-                                          HAL_PIXEL_FORMAT_YCbCr_420_888);
+  auto input_buffer = FrameBuffer::Create(size, HAL_PIXEL_FORMAT_YCbCr_420_888);
   if (!input_buffer) {
     LOGF(WARNING) << "Failed to allocate a temporary buffer";
     return false;
@@ -64,7 +63,7 @@ bool FakeStream::Initialize(const android::CameraMetadata& static_metadata,
   // TODO(pihsun): Fill test pattern.
 
   if (format == HAL_PIXEL_FORMAT_BLOB) {
-    buffer_ = FrameBuffer::Create(jpeg_max_size_, 1, format);
+    buffer_ = FrameBuffer::Create(Size(jpeg_max_size_, 1), format);
     if (!buffer_) {
       return false;
     }
@@ -111,7 +110,7 @@ bool FakeStream::Initialize(const android::CameraMetadata& static_metadata,
 }
 
 bool FakeStream::FillBuffer(buffer_handle_t buffer, Size size) {
-  auto frame_buffer = FrameBuffer::Wrap(buffer, size.width, size.height);
+  auto frame_buffer = FrameBuffer::Wrap(buffer, size);
   if (!frame_buffer) {
     LOGF(WARNING) << "failed to register the input buffer";
     return false;
