@@ -118,7 +118,62 @@ TEST_F(LogsUtilsTest, RecordSelectedComponents) {
   EXPECT_EQ(2, components->size());
   EXPECT_EQ(audio_codec, (*components)[0].GetString());
   EXPECT_EQ(battery, (*components)[1].GetString());
-  EXPECT_TRUE(event.FindDict(kDetails)->FindBool(kLogReworkSelected));
+  EXPECT_TRUE(event.FindDict(kDetails)->FindBool(kLogReworkSelected).value());
+}
+
+// Simulates adding the device destination to an empty `logs` json.
+TEST_F(LogsUtilsTest, RecordDeviceDestination) {
+  EXPECT_TRUE(CreateInputFile(kDefaultJson, std::size(kDefaultJson) - 1));
+
+  const std::string device_destination =
+      ReturningOwner_Name(ReturningOwner::RMAD_RETURNING_OWNER_DIFFERENT_OWNER);
+
+  EXPECT_TRUE(RecordDeviceDestinationToLogs(json_store_, device_destination));
+  base::Value logs(base::Value::Type::DICT);
+  json_store_->GetValue(kLogs, &logs);
+
+  const base::Value::List* events = logs.GetDict().FindList(kEvents);
+  EXPECT_EQ(1, events->size());
+  const base::Value::Dict& event = (*events)[0].GetDict();
+  EXPECT_EQ(static_cast<int>(LogEventType::kData), event.FindInt(kType));
+  EXPECT_EQ(device_destination,
+            *event.FindDict(kDetails)->FindString(kLogDestination));
+}
+
+// Simulates adding the wipe device decision to an empty `logs` json.
+TEST_F(LogsUtilsTest, RecordWipeDevice) {
+  EXPECT_TRUE(CreateInputFile(kDefaultJson, std::size(kDefaultJson) - 1));
+
+  const bool wipe_device = true;
+
+  EXPECT_TRUE(RecordWipeDeviceToLogs(json_store_, wipe_device));
+  base::Value logs(base::Value::Type::DICT);
+  json_store_->GetValue(kLogs, &logs);
+
+  const base::Value::List* events = logs.GetDict().FindList(kEvents);
+  EXPECT_EQ(1, events->size());
+  const base::Value::Dict& event = (*events)[0].GetDict();
+  EXPECT_EQ(static_cast<int>(LogEventType::kData), event.FindInt(kType));
+  EXPECT_TRUE(event.FindDict(kDetails)->FindBool(kLogWipeDevice).value());
+}
+
+// Simulates adding the wp disable method to an empty `logs` json.
+TEST_F(LogsUtilsTest, RecordWpDisableMethod) {
+  EXPECT_TRUE(CreateInputFile(kDefaultJson, std::size(kDefaultJson) - 1));
+
+  const std::string wp_disable_method =
+      WpDisableMethod_Name(RMAD_WP_DISABLE_METHOD_RSU);
+
+  EXPECT_TRUE(RecordWpDisableMethodToLogs(json_store_, wp_disable_method));
+  base::Value logs(base::Value::Type::DICT);
+  json_store_->GetValue(kLogs, &logs);
+
+  const base::Value::List* events = logs.GetDict().FindList(kEvents);
+  EXPECT_EQ(1, events->size());
+  const base::Value::Dict& event = (*events)[0].GetDict();
+  EXPECT_EQ(static_cast<int>(LogEventType::kData), event.FindInt(kType));
+  EXPECT_EQ(wp_disable_method,
+            *event.FindDict(kDetails)->FindString(kLogWpDisableMethod));
 }
 
 }  // namespace rmad

@@ -69,4 +69,28 @@ bool RecordSelectedComponentsToLogs(
   return AddEventToJson(json_store, LogEventType::kData, std::move(details));
 }
 
+bool RecordDeviceDestinationToLogs(scoped_refptr<JsonStore> json_store,
+                                   const std::string& device_destination) {
+  base::Value details(base::Value::Type::DICT);
+  details.SetKey(kLogDestination, ConvertToValue(device_destination));
+
+  return AddEventToJson(json_store, LogEventType::kData, std::move(details));
+}
+
+bool RecordWipeDeviceToLogs(scoped_refptr<JsonStore> json_store,
+                            bool wipe_device) {
+  base::Value details(base::Value::Type::DICT);
+  details.SetKey(kLogWipeDevice, ConvertToValue(wipe_device));
+
+  return AddEventToJson(json_store, LogEventType::kData, std::move(details));
+}
+
+bool RecordWpDisableMethodToLogs(scoped_refptr<JsonStore> json_store,
+                                 const std::string& wp_disable_method) {
+  base::Value details(base::Value::Type::DICT);
+  details.SetKey(kLogWpDisableMethod, ConvertToValue(wp_disable_method));
+
+  return AddEventToJson(json_store, LogEventType::kData, std::move(details));
+}
+
 }  // namespace rmad

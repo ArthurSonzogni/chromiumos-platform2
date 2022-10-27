@@ -12,6 +12,7 @@
 #include <base/notreached.h>
 
 #include "rmad/constants.h"
+#include "rmad/logs/logs_utils.h"
 #include "rmad/utils/cr50_utils_impl.h"
 
 namespace rmad {
@@ -98,8 +99,15 @@ WriteProtectDisableMethodStateHandler::GetNextStateCase(
 
   state_ = state;
 
+  const WriteProtectDisableMethodState::DisableMethod disable_method =
+      state.wp_disable_method().disable_method();
+
+  RecordWpDisableMethodToLogs(
+      json_store_,
+      WriteProtectDisableMethodState::DisableMethod_Name(disable_method));
+
   // Go to the selected WP disabling method.
-  switch (state.wp_disable_method().disable_method()) {
+  switch (disable_method) {
     case WriteProtectDisableMethodState::RMAD_WP_DISABLE_UNKNOWN:
       return NextStateCaseWrapper(RMAD_ERROR_REQUEST_ARGS_MISSING);
     case WriteProtectDisableMethodState::RMAD_WP_DISABLE_RSU:

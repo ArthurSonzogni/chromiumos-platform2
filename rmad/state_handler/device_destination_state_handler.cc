@@ -14,6 +14,7 @@
 #include <base/logging.h>
 
 #include "rmad/constants.h"
+#include "rmad/logs/logs_utils.h"
 #include "rmad/metrics/metrics_utils.h"
 #include "rmad/proto_bindings/rmad.pb.h"
 #include "rmad/system/cryptohome_client_impl.h"
@@ -85,6 +86,9 @@ DeviceDestinationStateHandler::GetNextStateCase(const RmadState& state) {
     MetricsUtils::SetMetricsValue(
         json_store_, kMetricsReturningOwner,
         ReturningOwner_Name(ReturningOwner::RMAD_RETURNING_OWNER_SAME_OWNER));
+    RecordDeviceDestinationToLogs(
+        json_store_,
+        ReturningOwner_Name(ReturningOwner::RMAD_RETURNING_OWNER_SAME_OWNER));
     if (ReplacedComponentNeedHwwpDisabled()) {
       json_store_->SetValue(kWpDisableRequired, true);
       if (cryptohome_client_->IsCcdBlocked()) {
@@ -107,6 +111,9 @@ DeviceDestinationStateHandler::GetNextStateCase(const RmadState& state) {
         json_store_, kMetricsReturningOwner,
         ReturningOwner_Name(
             ReturningOwner::RMAD_RETURNING_OWNER_DIFFERENT_OWNER));
+    RecordDeviceDestinationToLogs(
+        json_store_, ReturningOwner_Name(
+                         ReturningOwner::RMAD_RETURNING_OWNER_DIFFERENT_OWNER));
     json_store_->SetValue(kWpDisableRequired, true);
     json_store_->SetValue(kWipeDevice, true);
     if (cryptohome_client_->IsCcdBlocked()) {

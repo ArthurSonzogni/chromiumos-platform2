@@ -11,6 +11,7 @@
 #include <base/logging.h>
 
 #include "rmad/constants.h"
+#include "rmad/logs/logs_utils.h"
 #include "rmad/utils/crossystem_utils_impl.h"
 
 namespace rmad {
@@ -95,6 +96,7 @@ WipeSelectionStateHandler::GetNextStateCase(const RmadState& state) {
   //    Go to kFinalize state.
   bool wipe_device = state_.wipe_selection().wipe_device();
   json_store_->SetValue(kWipeDevice, wipe_device);
+  RecordWipeDeviceToLogs(json_store_, wipe_device);
   RmadState::StateCase next_state = RmadState::StateCase::STATE_NOT_SET;
   if (wp_disable_required_) {
     if (ccd_blocked_) {

@@ -25,6 +25,9 @@ inline constexpr char kToStateId[] = "to_state_id";
 // State specific attributes.
 inline constexpr char kLogReplacedComponents[] = "replaced_components";
 inline constexpr char kLogReworkSelected[] = "rework_selected";
+inline constexpr char kLogDestination[] = "destination";
+inline constexpr char kLogWipeDevice[] = "wipe_device";
+inline constexpr char kLogWpDisableMethod[] = "wp_disable_method";
 
 enum class LogEventType {
   kTransition = 0,

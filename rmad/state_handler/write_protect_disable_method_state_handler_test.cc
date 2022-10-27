@@ -11,6 +11,7 @@
 #include <gtest/gtest.h>
 
 #include "rmad/constants.h"
+#include "rmad/logs/logs_constants.h"
 #include "rmad/state_handler/state_handler_test_common.h"
 #include "rmad/state_handler/write_protect_disable_method_state_handler.h"
 #include "rmad/utils/mock_cr50_utils.h"
@@ -150,6 +151,18 @@ TEST_F(WriteProtectDisableMethodStateHandlerTest,
   auto [error, state_case] = handler->GetNextStateCase(state);
   EXPECT_EQ(error, RMAD_ERROR_OK);
   EXPECT_EQ(state_case, RmadState::StateCase::kWpDisableRsu);
+
+  // Verify the wp disable method was recorded to logs.
+  base::Value logs(base::Value::Type::DICT);
+  json_store_->GetValue(kLogs, &logs);
+
+  const base::Value::List* events = logs.GetDict().FindList(kEvents);
+  EXPECT_EQ(1, events->size());
+  const base::Value::Dict& event = (*events)[0].GetDict();
+  EXPECT_EQ(static_cast<int>(LogEventType::kData), event.FindInt(kType));
+  EXPECT_EQ(WriteProtectDisableMethodState::DisableMethod_Name(
+                WriteProtectDisableMethodState::RMAD_WP_DISABLE_RSU),
+            *event.FindDict(kDetails)->FindString(kLogWpDisableMethod));
 }
 
 TEST_F(WriteProtectDisableMethodStateHandlerTest,

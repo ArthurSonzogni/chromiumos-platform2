@@ -28,6 +28,18 @@ bool RecordSelectedComponentsToLogs(
     const std::vector<std::string>& replaced_components,
     bool is_mlb_repair);
 
+// Adds the device destination to `json_store`. Returns true if successful.
+bool RecordDeviceDestinationToLogs(scoped_refptr<JsonStore> json_store,
+                                   const std::string& device_destination);
+
+// Adds the wipe device decision to `json_store`. Returns true if successful.
+bool RecordWipeDeviceToLogs(scoped_refptr<JsonStore> json_store,
+                            bool wipe_device);
+
+// Adds the wp disable method to `json_store`. Returns true if successful.
+bool RecordWpDisableMethodToLogs(scoped_refptr<JsonStore> json_store,
+                                 const std::string& wp_disable_method);
+
 }  // namespace rmad
 
 #endif  // RMAD_LOGS_LOGS_UTILS_H_
