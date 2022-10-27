@@ -12,8 +12,6 @@
 namespace cros_disks {
 namespace {
 
-static_assert(!PartitionError::kSuccess);
-
 template <typename T>
 std::string ToString(T error) {
   std::ostringstream out;

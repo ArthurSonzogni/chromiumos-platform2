@@ -185,7 +185,7 @@ enum MountSourceType {
 };
 
 // Partition error reported by cros-disks.
-enum PartitionError {
+enum class PartitionError {
   kSuccess = 0,
   kUnknownError = 1,
   kInternalError = 2,

@@ -86,11 +86,11 @@ void CrosDisksServer::SinglePartitionFormat(
   if (!disk_monitor_->GetDiskByDevicePath(base::FilePath(path), &disk)) {
     LOG(ERROR) << "Invalid device path " << quote(path) << ": "
                << PartitionError::kInvalidDevicePath;
-    response->Return(PartitionError::kInvalidDevicePath);
+    response->Return(static_cast<uint32_t>(PartitionError::kInvalidDevicePath));
   } else if (disk.is_on_boot_device || !disk.is_drive || disk.is_read_only) {
     LOG(ERROR) << "Device not allowed " << quote(path) << ": "
                << PartitionError::kDeviceNotAllowed;
-    response->Return(PartitionError::kDeviceNotAllowed);
+    response->Return(static_cast<uint32_t>(PartitionError::kDeviceNotAllowed));
   } else {
     partition_manager_->StartSinglePartitionFormat(
         base::FilePath(disk.device_file),
@@ -307,13 +307,13 @@ void CrosDisksServer::OnPartitionCompleted(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<uint32_t>> response,
     const base::FilePath& device_path,
     PartitionError error) {
-  if (error) {
+  if (error == PartitionError::kSuccess) {
     LOG(INFO) << "Partitioned device " << quote(device_path);
   } else {
     LOG(ERROR) << "Cannot partition device " << quote(device_path) << ": "
                << error;
   }
-  response->Return(error);
+  response->Return(static_cast<uint32_t>(error));
 }
 
 void CrosDisksServer::OnRenameCompleted(const std::string& device_path,
