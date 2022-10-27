@@ -91,8 +91,10 @@ int BPF_PROG(handle_sched_process_exec,
   fill_ns_info(&p->spawn_namespace, current);
   fill_image_info(&p->image_info, bprm, current);
   p->ppid = BPF_CORE_READ(current, real_parent, tgid);
-  p->start_time = BPF_CORE_READ(current, start_boottime);
-  p->parent_start_time = BPF_CORE_READ(current, real_parent, start_boottime);
+  // Use group_leader boot times to match procfs.
+  p->start_time = BPF_CORE_READ(current, group_leader, start_boottime);
+  p->parent_start_time =
+      BPF_CORE_READ(current, real_parent, group_leader, start_boottime);
 
   // In this case pid == tgid since this is process creation.
   p->pid = bpf_get_current_pid_tgid() >> 32;

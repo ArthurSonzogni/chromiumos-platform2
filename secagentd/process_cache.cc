@@ -297,9 +297,8 @@ absl::StatusOr<ProcessCache::InternalValueType> ProcessCache::MakeFromProcfs(
   }
 
   // TODO(b/254291026): Incoming ns is currently not derived using
-  // timens_add_boottime_ns. So instead of checking for equality, we only
-  // verify that the procfs start time is not later than what we want.
-  if (key.start_time_t < procfs_start_time_t) {
+  // timens_add_boottime_ns.
+  if (key.start_time_t != procfs_start_time_t) {
     return absl::AbortedError(
         base::StringPrintf("Detected PID reuse on %" PRIu64
                            " (want time %" PRIu64 ", got time %" PRIu64 ")",
