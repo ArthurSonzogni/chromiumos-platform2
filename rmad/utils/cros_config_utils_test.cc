@@ -20,12 +20,18 @@ using testing::Return;
 using testing::SetArgPointee;
 
 namespace rmad {
-constexpr char kCrosRootKey[] = "/";
+
+// cros_config root path.
+constexpr char kCrosRootPath[] = "/";
 constexpr char kCrosModelNameKey[] = "name";
-constexpr char kCrosIdentityKey[] = "identity";
+
+// cros_config identity path.
+constexpr char kCrosIdentityPath[] = "identity";
 constexpr char kCrosIdentitySkuKey[] = "sku-id";
 constexpr char kCrosIdentityCustomLabelTagKey[] = "custom-label-tag";
-constexpr char kCrosRmadKey[] = "rmad";
+
+// cros_config rmad path.
+constexpr char kCrosRmadPath[] = "rmad";
 constexpr char kCrosRmadEnabledKey[] = "enabled";
 constexpr char kCrosRmadHasCbiKey[] = "has-cbi";
 
@@ -131,19 +137,19 @@ class CrosConfigUtilsImplTest : public testing::Test {
     auto cros_config_path = CreateInputFile(kJsonStoreFileName, kCrosConfigJson,
                                             std::size(kCrosConfigJson) - 1);
     auto fake_cros_config = std::make_unique<brillo::FakeCrosConfig>();
-    fake_cros_config->SetString(kCrosRootKey, kCrosModelNameKey, kModelName);
+    fake_cros_config->SetString(kCrosRootPath, kCrosModelNameKey, kModelName);
     fake_cros_config->SetString(
-        std::string(kCrosRootKey) + std::string(kCrosIdentityKey),
+        std::string(kCrosRootPath) + std::string(kCrosIdentityPath),
         kCrosIdentitySkuKey, kSkuIdStr);
     fake_cros_config->SetString(
-        std::string(kCrosRootKey) + std::string(kCrosIdentityKey),
+        std::string(kCrosRootPath) + std::string(kCrosIdentityPath),
         kCrosIdentityCustomLabelTagKey, kCustomLabelTag);
     if (enable_rmad) {
       fake_cros_config->SetString(
-          std::string(kCrosRootKey) + std::string(kCrosRmadKey),
+          std::string(kCrosRootPath) + std::string(kCrosRmadPath),
           kCrosRmadEnabledKey, kTrueStr);
       fake_cros_config->SetString(
-          std::string(kCrosRootKey) + std::string(kCrosRmadKey),
+          std::string(kCrosRootPath) + std::string(kCrosRmadPath),
           kCrosRmadHasCbiKey, kTrueStr);
     }
 
@@ -156,16 +162,16 @@ class CrosConfigUtilsImplTest : public testing::Test {
     auto cros_config_path = CreateInputFile(
         kJsonStoreFileName, kCrosConfigJson2, std::size(kCrosConfigJson2) - 1);
     auto fake_cros_config = std::make_unique<brillo::FakeCrosConfig>();
-    fake_cros_config->SetString(kCrosRootKey, kCrosModelNameKey, kModelName);
+    fake_cros_config->SetString(kCrosRootPath, kCrosModelNameKey, kModelName);
     fake_cros_config->SetString(
-        std::string(kCrosRootKey) + std::string(kCrosIdentityKey),
+        std::string(kCrosRootPath) + std::string(kCrosIdentityPath),
         kCrosIdentitySkuKey, kSkuIdStr);
     if (enable_rmad) {
       fake_cros_config->SetString(
-          std::string(kCrosRootKey) + std::string(kCrosRmadKey),
+          std::string(kCrosRootPath) + std::string(kCrosRmadPath),
           kCrosRmadEnabledKey, kTrueStr);
       fake_cros_config->SetString(
-          std::string(kCrosRootKey) + std::string(kCrosRmadKey),
+          std::string(kCrosRootPath) + std::string(kCrosRmadPath),
           kCrosRmadHasCbiKey, kTrueStr);
     }
 

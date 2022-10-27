@@ -30,14 +30,17 @@ const std::string kChromeosConfigPath(
 constexpr char kChromeos[] = "chromeos";
 constexpr char kChromeosConfigs[] = "configs";
 
-constexpr char kCrosRootKey[] = "/";
+// cros_config root path.
+constexpr char kCrosRootPath[] = "/";
 constexpr char kCrosModelNameKey[] = "name";
-constexpr char kCrosIdentityKey[] = "identity";
+
+// cros_config identity path.
+constexpr char kCrosIdentityPath[] = "identity";
 constexpr char kCrosIdentitySkuKey[] = "sku-id";
 constexpr char kCrosIdentityCustomLabelTagKey[] = "custom-label-tag";
 
-// RmadConfig keys.
-constexpr char kCrosRmadKey[] = "rmad";
+// cros_config rmad path.
+constexpr char kCrosRmadPath[] = "rmad";
 constexpr char kCrosRmadEnabledKey[] = "enabled";
 constexpr char kCrosRmadHasCbiKey[] = "has-cbi";
 
@@ -60,11 +63,11 @@ bool CrosConfigUtilsImpl::GetRmadConfig(RmadConfig* config) const {
   DCHECK(config);
 
   config->enabled = GetBooleanWithDefault(
-      std::string(kCrosRootKey) + std::string(kCrosRmadKey),
+      std::string(kCrosRootPath) + std::string(kCrosRmadPath),
       kCrosRmadEnabledKey, false);
   config->has_cbi = GetBooleanWithDefault(
-      std::string(kCrosRootKey) + std::string(kCrosRmadKey), kCrosRmadHasCbiKey,
-      false);
+      std::string(kCrosRootPath) + std::string(kCrosRmadPath),
+      kCrosRmadHasCbiKey, false);
 
   return true;
 }
@@ -72,7 +75,7 @@ bool CrosConfigUtilsImpl::GetRmadConfig(RmadConfig* config) const {
 bool CrosConfigUtilsImpl::GetModelName(std::string* model_name) const {
   DCHECK(model_name);
 
-  return cros_config_->GetString(kCrosRootKey, kCrosModelNameKey, model_name);
+  return cros_config_->GetString(kCrosRootPath, kCrosModelNameKey, model_name);
 }
 
 bool CrosConfigUtilsImpl::GetCurrentSkuId(int* sku_id) const {
@@ -80,7 +83,7 @@ bool CrosConfigUtilsImpl::GetCurrentSkuId(int* sku_id) const {
 
   std::string sku_id_str;
   if (!cros_config_->GetString(
-          std::string(kCrosRootKey) + std::string(kCrosIdentityKey),
+          std::string(kCrosRootPath) + std::string(kCrosIdentityPath),
           kCrosIdentitySkuKey, &sku_id_str)) {
     return false;
   }
@@ -93,7 +96,7 @@ bool CrosConfigUtilsImpl::GetCurrentCustomLabelTag(
   DCHECK(custom_label_tag);
 
   return cros_config_->GetString(
-      std::string(kCrosRootKey) + std::string(kCrosIdentityKey),
+      std::string(kCrosRootPath) + std::string(kCrosIdentityPath),
       kCrosIdentityCustomLabelTagKey, custom_label_tag);
 }
 
@@ -179,7 +182,7 @@ bool CrosConfigUtilsImpl::GetMatchedItemsFromIdentity(
       continue;
     }
 
-    const base::Value* identity = config.FindKey(kCrosIdentityKey);
+    const base::Value* identity = config.FindKey(kCrosIdentityPath);
     DCHECK(identity->is_dict());
     const base::Value* item = identity->FindKey(key);
     if (item) {
