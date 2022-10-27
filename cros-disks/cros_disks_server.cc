@@ -71,10 +71,10 @@ void CrosDisksServer::Format(const std::string& path,
                                              filesystem_type, options);
   }
 
-  if (error) {
+  if (error != FormatError::kSuccess) {
     LOG(ERROR) << "Cannot format device " << quote(path) << " as filesystem "
                << quote(filesystem_type) << ": " << error;
-    SendFormatCompletedSignal(error, path);
+    SendFormatCompletedSignal(static_cast<uint32_t>(error), path);
   }
 }
 
@@ -300,7 +300,7 @@ void CrosDisksServer::RemoveDeviceFromAllowlist(
 
 void CrosDisksServer::OnFormatCompleted(const std::string& device_path,
                                         FormatError error) {
-  SendFormatCompletedSignal(error, device_path);
+  SendFormatCompletedSignal(static_cast<uint32_t>(error), device_path);
 }
 
 void CrosDisksServer::OnPartitionCompleted(

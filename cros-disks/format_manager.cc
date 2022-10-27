@@ -240,7 +240,8 @@ FormatError FormatManager::StartFormatting(
   if (const FormatError error =
           StartFormatProcess(device_file, format_program,
                              CreateFormatArguments(filesystem, format_options),
-                             platform_, &process)) {
+                             platform_, &process);
+      error != FormatError::kSuccess) {
     format_process_.erase(it);
     return error;
   }
@@ -292,7 +293,7 @@ void FormatManager::OnFormatProcessTerminated(const std::string& device_path,
       break;
   }
 
-  if (error && !LOG_IS_ON(INFO)) {
+  if (error != FormatError::kSuccess && !LOG_IS_ON(INFO)) {
     // The mkfs program finished with an error, and its capture messages have
     // not been logged yet. Log them now as errors.
     for (const base::StringPiece line : process.GetCapturedOutput()) {

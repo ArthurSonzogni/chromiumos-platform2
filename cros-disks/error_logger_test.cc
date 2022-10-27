@@ -12,7 +12,6 @@
 namespace cros_disks {
 namespace {
 
-static_assert(!FormatError::kSuccess);
 static_assert(!PARTITION_ERROR_NONE);
 
 template <typename T>

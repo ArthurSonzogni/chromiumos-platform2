@@ -85,7 +85,7 @@ enum DeviceMediaType {
 // These values are persisted to logs. Entries should not be renumbered and
 // numeric values should never be reused.
 // See enum CrosDisksClientFormatError in tools/metrics/histograms/enums.xml.
-enum FormatError {
+enum class FormatError {
   kSuccess = 0,
   kUnknownError = 1,
   kInternalError = 2,
