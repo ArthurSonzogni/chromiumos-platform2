@@ -20,8 +20,17 @@ namespace hwsec {
 
 class HWSEC_EXPORT FactoryImpl : public Factory {
  public:
+  // A tag to indicate the backend would be run on the current thread.
+  struct OnCurrentTaskRunner {};
+
+  // Constructor for an isolated thread.
   FactoryImpl();
+
+  // Constructor for no isolated thread.
+  explicit FactoryImpl(OnCurrentTaskRunner);
+
   ~FactoryImpl() override;
+
   std::unique_ptr<CryptohomeFrontend> GetCryptohomeFrontend() override;
   std::unique_ptr<PinWeaverFrontend> GetPinWeaverFrontend() override;
   std::unique_ptr<RecoveryCryptoFrontend> GetRecoveryCryptoFrontend() override;

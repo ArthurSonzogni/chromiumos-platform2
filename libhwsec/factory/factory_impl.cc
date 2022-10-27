@@ -19,6 +19,9 @@ namespace hwsec {
 
 FactoryImpl::FactoryImpl() {}
 
+FactoryImpl::FactoryImpl(FactoryImpl::OnCurrentTaskRunner)
+    : middleware_(MiddlewareOwner::OnCurrentTaskRunner()) {}
+
 FactoryImpl::~FactoryImpl() {}
 
 std::unique_ptr<CryptohomeFrontend> FactoryImpl::GetCryptohomeFrontend() {
