@@ -48,6 +48,8 @@
       </tp:docstring>
       <arg name="suspend_flavor" direction="in" type="u" />
     </method>
+
+    <!-- Screen brightness control -->
     <method name="SetScreenBrightness">
       <tp:docstring>
         The |serialized_proto| arg is a serialized
@@ -62,8 +64,42 @@
     <method name="GetScreenBrightnessPercent">
       <arg name="percent" direction="out" type="d" />
     </method>
+
+    <!-- Keyboard backlight control -->
     <method name="DecreaseKeyboardBrightness" />
     <method name="IncreaseKeyboardBrightness" />
+    <method name="SetKeyboardBacklightToggledOff">
+      <tp:docstring>
+        Enable or disable the keyboard backlight.
+
+        If the |toggled_off| arg is true, the keyboard backlight will be
+        turned off. If false, the backlight will be enabled.
+      </tp:docstring>
+      <arg name="toggled_off" direction="in" type="b" />
+    </method>
+    <method name="GetKeyboardBacklightToggledOff">
+      <tp:docstring>
+        Determine if the keyboard backlight is currently disabled.
+
+        If |toggled_off| returns true, the keyboard backlight is
+        currently disabled.
+      </tp:docstring>
+      <arg name="toggled_off" direction="out" type="b" />
+    </method>
+    <method name="GetKeyboardBrightnessPercent">
+      <tp:docstring>
+        Get the current brightness of the keyboard backlight as
+        a percentage.
+
+        If |success| is true, the returned value |percent| will be
+        a value between 0.0 and 100.0 inclusive, representing the
+        brightness. The value 0.0 represents "off", while 100.0
+        represents "full brightness".
+      </tp:docstring>
+      <arg name="percent" direction="out" type="d" />
+      <arg name="success" direction="out" type="b" />
+    </method>
+
     <method name="GetPowerSupplyProperties">
       <tp:docstring>
         The |serialized_proto| arg is a serialized
