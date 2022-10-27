@@ -100,6 +100,10 @@ btadapterd.
 
 ## bootstat_summary
 
+## borealis_crosvm.log
+
+Logs from the Borealis VM's output (kernel logs to serial, in-VM services).
+
 ## borealis_frames
 
 Frame timings from apps running in the Borealis VM. 16 KiB.
@@ -195,7 +199,9 @@ match one).
 
 ## crostini
 
-## crosvm.log
+## crostini_crosvm.log
+
+Logs from the Termina VM's output (kernel logs to serial, in-VM services).
 
 ## display-debug
 

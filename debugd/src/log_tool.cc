@@ -173,6 +173,10 @@ const std::array kCommandLogs {
     SandboxedProcess::kDefaultUser, SandboxedProcess::kDefaultGroup,
     Log::kDefaultMaxBytes, LogTool::Encoding::kAutodetect,
     true /* access_root_mount_ns */},
+  // Ym9yZWFsaXM= is base64 encoded "borealis", the hardcoded VM name.
+  Log{kCommand, "borealis_crosvm.log", "nsenter -t1 -m /bin/sh -c 'tail -n+1"
+    " /run/daemon-store/crosvm/*/log/Ym9yZWFsaXM=.log.1"
+    " /run/daemon-store/crosvm/*/log/Ym9yZWFsaXM=.log'", kRoot, kRoot},
   Log{kCommand, "bt_usb_disconnects",
     "/usr/libexec/debugd/helpers/bt_usb_disconnect_helper",
     SandboxedProcess::kDefaultUser, kDebugfsGroup},
@@ -205,11 +209,10 @@ const std::array kCommandLogs {
   Log{kFile, "cros_tp version", "/sys/class/chromeos/cros_tp/version"},
   Log{kCommand, "crosid", "/usr/bin/crosid -v"},
   Log{kCommand, "crostini", "/usr/bin/cicerone_client --get_info"},
-  // Only collect VM logs for dGVybWluYQ== which is the default Crostini VM
-  // (called "termina"), we don't want logs for random other VMs which might
-  // have non-CrOS kernels sending us PII we don't want. See b/245504047 for a
-  // few more details.
-  Log{kCommand, "crosvm.log", "nsenter -t1 -m /bin/sh -c 'tail -n+1"
+  // dGVybWluYQ== == "termina", the default Crostini VM name. There may be other
+  // Crostini VMs, but we don't know their names in debugd and don't want to
+  // collect logs for non-Crostini VMs. See also b/245504047.
+  Log{kCommand, "crostini_crosvm.log", "nsenter -t1 -m /bin/sh -c 'tail -n+1"
     " /run/daemon-store/crosvm/*/log/dGVybWluYQ==.log.1"
     " /run/daemon-store/crosvm/*/log/dGVybWluYQ==.log'", kRoot, kRoot},
   // dmesg: add full timestamps to dmesg to match other logs.
