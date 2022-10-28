@@ -66,19 +66,19 @@ const char kFileSystemType[] = "FileSystemType";
 // Format options.
 const char kFormatLabelOption[] = "Label";
 
-// Enum values.
-// DeviceMediaType enum values are reported through UMA.
-// All values but DEVICE_MEDIA_NUM_VALUES should not be changed or removed.
-// Additional values can be added but DEVICE_MEDIA_NUM_VALUES should always
-// be the last value in the enum.
-enum DeviceMediaType {
-  DEVICE_MEDIA_UNKNOWN = 0,
-  DEVICE_MEDIA_USB = 1,
-  DEVICE_MEDIA_SD = 2,
-  DEVICE_MEDIA_OPTICAL_DISC = 3,
-  DEVICE_MEDIA_MOBILE = 4,
-  DEVICE_MEDIA_DVD = 5,
-  DEVICE_MEDIA_NUM_VALUES,
+// Device media type.
+// These values are persisted to logs. Entries should not be renumbered and
+// numeric values should never be reused.
+// See enum CrosDisksDeviceMediaType in tools/metrics/histograms/enums.xml.
+enum class DeviceType {
+  kUnknown = 0,
+  kUSB = 1,          // USB stick.
+  kSD = 2,           // SD card.
+  kOpticalDisc = 3,  // Optical disc, excluding DVD.
+  kMobile = 4,       // Storage on a mobile device (e.g. Android).
+  kDVD = 5,          // DVD.
+
+  kMaxValue = 5,
 };
 
 // Format error reported by cros-disks.

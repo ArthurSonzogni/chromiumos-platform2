@@ -70,12 +70,12 @@ class USBDeviceInfoTest : public ::testing::Test {
 };
 
 TEST_F(USBDeviceInfoTest, GetDeviceMediaType) {
-  EXPECT_EQ(DEVICE_MEDIA_USB, info_.GetDeviceMediaType("0bda", "0138"));
+  EXPECT_EQ(DeviceType::kUSB, info_.GetDeviceMediaType("0bda", "0138"));
 
   EXPECT_TRUE(info_.RetrieveFromFile(info_file_));
-  EXPECT_EQ(DEVICE_MEDIA_MOBILE, info_.GetDeviceMediaType("18d1", "4e11"));
-  EXPECT_EQ(DEVICE_MEDIA_SD, info_.GetDeviceMediaType("0bda", "0138"));
-  EXPECT_EQ(DEVICE_MEDIA_USB, info_.GetDeviceMediaType("1234", "5678"));
+  EXPECT_EQ(DeviceType::kMobile, info_.GetDeviceMediaType("18d1", "4e11"));
+  EXPECT_EQ(DeviceType::kSD, info_.GetDeviceMediaType("0bda", "0138"));
+  EXPECT_EQ(DeviceType::kUSB, info_.GetDeviceMediaType("1234", "5678"));
 }
 
 TEST_F(USBDeviceInfoTest, RetrieveFromFile) {
@@ -112,11 +112,11 @@ TEST_F(USBDeviceInfoTest, GetVendorAndProductName) {
 }
 
 TEST_F(USBDeviceInfoTest, ConvertToDeviceMediaType) {
-  EXPECT_EQ(DEVICE_MEDIA_MOBILE, info_.ConvertToDeviceMediaType("mobile"));
-  EXPECT_EQ(DEVICE_MEDIA_SD, info_.ConvertToDeviceMediaType("sd"));
-  EXPECT_EQ(DEVICE_MEDIA_USB, info_.ConvertToDeviceMediaType("usb"));
-  EXPECT_EQ(DEVICE_MEDIA_USB, info_.ConvertToDeviceMediaType(""));
-  EXPECT_EQ(DEVICE_MEDIA_USB, info_.ConvertToDeviceMediaType("foo"));
+  EXPECT_EQ(DeviceType::kMobile, info_.ConvertToDeviceMediaType("mobile"));
+  EXPECT_EQ(DeviceType::kSD, info_.ConvertToDeviceMediaType("sd"));
+  EXPECT_EQ(DeviceType::kUSB, info_.ConvertToDeviceMediaType("usb"));
+  EXPECT_EQ(DeviceType::kUSB, info_.ConvertToDeviceMediaType(""));
+  EXPECT_EQ(DeviceType::kUSB, info_.ConvertToDeviceMediaType("foo"));
 }
 
 TEST_F(USBDeviceInfoTest, ExtractIdAndName) {

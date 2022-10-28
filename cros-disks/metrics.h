@@ -47,7 +47,7 @@ class Metrics {
   void RecordReadOnlyFileSystem(base::StringPiece fs_type);
 
   // Records the type of device media that cros-disks is trying to mount.
-  void RecordDeviceMediaType(DeviceMediaType device_media_type);
+  void RecordDeviceMediaType(DeviceType device_media_type);
 
   // Records the error code returned by a FUSE mounter program.
   void RecordFuseMounterErrorCode(base::StringPiece mounter_name,

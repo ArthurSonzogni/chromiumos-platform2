@@ -26,19 +26,19 @@ TEST_F(DiskTest, GetPresentationNameForDiskWithLabelWithSlashes) {
 TEST_F(DiskTest, GetPresentationNameForDiskWithoutLabel) {
   EXPECT_EQ("External Drive", disk_.GetPresentationName());
 
-  disk_.media_type = DEVICE_MEDIA_USB;
+  disk_.media_type = DeviceType::kUSB;
   EXPECT_EQ("USB Drive", disk_.GetPresentationName());
 
-  disk_.media_type = DEVICE_MEDIA_SD;
+  disk_.media_type = DeviceType::kSD;
   EXPECT_EQ("SD Card", disk_.GetPresentationName());
 
-  disk_.media_type = DEVICE_MEDIA_OPTICAL_DISC;
+  disk_.media_type = DeviceType::kOpticalDisc;
   EXPECT_EQ("Optical Disc", disk_.GetPresentationName());
 
-  disk_.media_type = DEVICE_MEDIA_MOBILE;
+  disk_.media_type = DeviceType::kMobile;
   EXPECT_EQ("Mobile Device", disk_.GetPresentationName());
 
-  disk_.media_type = DEVICE_MEDIA_DVD;
+  disk_.media_type = DeviceType::kDVD;
   EXPECT_EQ("DVD", disk_.GetPresentationName());
 }
 

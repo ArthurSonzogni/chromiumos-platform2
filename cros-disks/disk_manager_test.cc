@@ -578,7 +578,7 @@ TEST_F(DiskManagerTest, EjectDevice) {
   std::unique_ptr<MountPoint> mount_point =
       std::make_unique<MountPoint>(MountPointData{kMountPath}, &platform_);
   disk.device_file = "/dev/sda";
-  disk.media_type = DEVICE_MEDIA_USB;
+  disk.media_type = DeviceType::kUSB;
   EXPECT_CALL(ejector_, Eject("/dev/sda")).Times(0);
   std::unique_ptr<MountPoint> wrapped_mount_point =
       manager_->MaybeWrapMountPointForEject(std::move(mount_point), disk);
@@ -587,7 +587,7 @@ TEST_F(DiskManagerTest, EjectDevice) {
   mount_point =
       std::make_unique<MountPoint>(MountPointData{kMountPath}, &platform_);
   disk.device_file = "/dev/sr0";
-  disk.media_type = DEVICE_MEDIA_OPTICAL_DISC;
+  disk.media_type = DeviceType::kOpticalDisc;
   EXPECT_CALL(ejector_, Eject("/dev/sr0")).WillOnce(Return(true));
   wrapped_mount_point =
       manager_->MaybeWrapMountPointForEject(std::move(mount_point), disk);
@@ -596,7 +596,7 @@ TEST_F(DiskManagerTest, EjectDevice) {
   mount_point =
       std::make_unique<MountPoint>(MountPointData{kMountPath}, &platform_);
   disk.device_file = "/dev/sr1";
-  disk.media_type = DEVICE_MEDIA_DVD;
+  disk.media_type = DeviceType::kDVD;
   EXPECT_CALL(ejector_, Eject("/dev/sr1")).WillOnce(Return(true));
   wrapped_mount_point =
       manager_->MaybeWrapMountPointForEject(std::move(mount_point), disk);
@@ -607,7 +607,7 @@ TEST_F(DiskManagerTest, EjectDeviceWhenUnmountFailed) {
   const base::FilePath kMountPath("/media/removable/disk");
   Disk disk;
   disk.device_file = "/dev/sr0";
-  disk.media_type = DEVICE_MEDIA_OPTICAL_DISC;
+  disk.media_type = DeviceType::kOpticalDisc;
 
   EXPECT_CALL(platform_, Unmount)
       .WillRepeatedly(Return(MountError::kUnknownError));
@@ -624,7 +624,7 @@ TEST_F(DiskManagerTest, EjectDeviceWhenExplicitlyDisabled) {
   const base::FilePath kMountPath("/media/removable/disk");
   Disk disk;
   disk.device_file = "/dev/sr0";
-  disk.media_type = DEVICE_MEDIA_OPTICAL_DISC;
+  disk.media_type = DeviceType::kOpticalDisc;
 
   EXPECT_CALL(platform_, Unmount).WillOnce(Return(MountError::kSuccess));
 
@@ -641,7 +641,7 @@ TEST_F(DiskManagerTest, EjectDeviceWhenReleased) {
   const base::FilePath kMountPath("/media/removable/disk");
   Disk disk;
   disk.device_file = "/dev/sr0";
-  disk.media_type = DEVICE_MEDIA_OPTICAL_DISC;
+  disk.media_type = DeviceType::kOpticalDisc;
 
   EXPECT_CALL(platform_, Unmount).Times(0);
 

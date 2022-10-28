@@ -143,10 +143,9 @@ void Metrics::RecordReadOnlyFileSystem(const base::StringPiece fs_type) {
     LOG(ERROR) << "Cannot send filesystem type to UMA";
 }
 
-void Metrics::RecordDeviceMediaType(DeviceMediaType device_media_type) {
+void Metrics::RecordDeviceMediaType(DeviceType device_media_type) {
   if (!metrics_library_.SendEnumToUMA("CrosDisks.DeviceMediaType",
-                                      device_media_type,
-                                      DEVICE_MEDIA_NUM_VALUES))
+                                      device_media_type))
     LOG(ERROR) << "Cannot send device media type to UMA";
 }
 

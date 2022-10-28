@@ -26,8 +26,8 @@ class USBDeviceInfo {
 
   // Returns the device media type of a USB device with |vendor_id| and
   // |product_id|.
-  DeviceMediaType GetDeviceMediaType(const std::string& vendor_id,
-                                     const std::string& product_id) const;
+  DeviceType GetDeviceMediaType(const std::string& vendor_id,
+                                const std::string& product_id) const;
 
   // Retrieves the list of USB device info from a file at |path|.
   // Returns true on success.
@@ -43,7 +43,7 @@ class USBDeviceInfo {
 
  private:
   // Converts from string to enum of a device media type.
-  DeviceMediaType ConvertToDeviceMediaType(const std::string& str) const;
+  DeviceType ConvertToDeviceMediaType(const std::string& str) const;
 
   // Returns true if |line| contains a 4-digit hex identifier and a name
   // separated by two spaces, i.e. "<4-digit hex ID>  <descriptive name>".

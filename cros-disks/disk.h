@@ -36,8 +36,8 @@ struct Disk {
   bool IsMounted() const { return !mount_paths.empty(); }
 
   bool IsOpticalDisk() const {
-    return (media_type == DEVICE_MEDIA_OPTICAL_DISC ||
-            media_type == DEVICE_MEDIA_DVD);
+    return (media_type == DeviceType::kOpticalDisc ||
+            media_type == DeviceType::kDVD);
   }
 
   bool is_drive = false;
@@ -61,7 +61,7 @@ struct Disk {
   std::string product_id;
   std::string product_name;
   std::string drive_model;
-  DeviceMediaType media_type = DEVICE_MEDIA_UNKNOWN;
+  DeviceType media_type = DeviceType::kUnknown;
   int bus_number = -1;
   int device_number = -1;
   uint64_t device_capacity = 0;

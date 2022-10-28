@@ -61,7 +61,7 @@ class UdevDevice {
   size_t GetPartitionCount() const;
 
   // Gets the device media type used on the device.
-  DeviceMediaType GetDeviceMediaType() const;
+  DeviceType GetDeviceMediaType() const;
 
   // Gets the USB vendor and product ID of the device. Returns true if the
   // IDs are found.

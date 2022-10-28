@@ -205,15 +205,15 @@ size_t UdevDevice::GetPartitionCount() const {
   return partition_count;
 }
 
-DeviceMediaType UdevDevice::GetDeviceMediaType() const {
+DeviceType UdevDevice::GetDeviceMediaType() const {
   if (IsPropertyTrue(kPropertyCDROMDVD))
-    return DEVICE_MEDIA_DVD;
+    return DeviceType::kDVD;
 
   if (IsPropertyTrue(kPropertyCDROM))
-    return DEVICE_MEDIA_OPTICAL_DISC;
+    return DeviceType::kOpticalDisc;
 
   if (IsOnSdDevice())
-    return DEVICE_MEDIA_SD;
+    return DeviceType::kSD;
 
   std::string vendor_id, product_id;
   if (GetVendorAndProductId(&vendor_id, &product_id)) {
@@ -221,7 +221,7 @@ DeviceMediaType UdevDevice::GetDeviceMediaType() const {
     info.RetrieveFromFile(kUSBDeviceInfoFile);
     return info.GetDeviceMediaType(vendor_id, product_id);
   }
-  return DEVICE_MEDIA_UNKNOWN;
+  return DeviceType::kUnknown;
 }
 
 bool UdevDevice::EnumerateParentDevices(EnumerateCallback callback) const {
