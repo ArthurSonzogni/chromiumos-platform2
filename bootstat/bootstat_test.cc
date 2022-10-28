@@ -21,6 +21,7 @@
 #include <base/memory/ptr_util.h>
 #include <base/strings/stringprintf.h>
 #include <base/time/time.h>
+#include <brillo/scoped_umask.h>
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -543,6 +544,41 @@ TEST_F(BootstatTest, GetEventTimings) {
               base::Seconds(kTestData[i].idle.tv_sec) +
                   base::Nanoseconds(kTestData[i].idle.tv_nsec));
   }
+}
+
+TEST_F(BootstatTest, Umask) {
+  constexpr char kEventName[] = "umasking";
+
+  EXPECT_CALL(*boot_stat_system_, GetUpTime())
+      .WillRepeatedly(Return(std::make_optional(kDefaultTestData.uptime)));
+  ASSERT_TRUE(WriteUptime(kDefaultTestData.uptime, kDefaultTestData.idle));
+  ASSERT_TRUE(WriteMockDiskStats(kDefaultTestData.mock_disk_content));
+
+  // By default (umask), create files without group/other read/write
+  // permissions. Bootstat should still force group/other read permissions.
+  brillo::ScopedUmask scoped_mask(S_IWGRP | S_IWOTH | S_IRGRP | S_IROTH);
+
+  ASSERT_TRUE(boot_stat_->LogEvent(kEventName));
+
+  base::FilePath uptime_file_path =
+      stats_output_dir_.Append(std::string("uptime-") + kEventName);
+  base::FilePath diskstats_file_path =
+      stats_output_dir_.Append(std::string("disk-") + kEventName);
+
+  int mode;
+  ASSERT_TRUE(GetPosixFilePermissions(uptime_file_path, &mode));
+  // Honor write mask:
+  EXPECT_EQ(mode & (S_IWGRP | S_IWOTH), 0) << "Unexpected write permissions";
+  // But don't honor read mask:
+  EXPECT_EQ(mode & (S_IRGRP | S_IROTH), S_IRGRP | S_IROTH)
+      << "Unexpected read permissions";
+
+  ASSERT_TRUE(GetPosixFilePermissions(diskstats_file_path, &mode));
+  // Honor write mask:
+  EXPECT_EQ(mode & (S_IWGRP | S_IWOTH), 0) << "Unexpected write permissions";
+  // But don't honor read mask:
+  EXPECT_EQ(mode & (S_IRGRP | S_IROTH), S_IRGRP | S_IROTH)
+      << "Unexpected read permissions";
 }
 
 }  // namespace bootstat

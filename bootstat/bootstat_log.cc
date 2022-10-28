@@ -262,10 +262,31 @@ base::ScopedFD BootStat::OpenEventFile(const std::string& output_name_prefix,
       HANDLE_EINTR(open(output_path.value().c_str(),
                         O_WRONLY | O_APPEND | O_CREAT | O_NOFOLLOW | O_CLOEXEC,
                         kFileCreationMode));
+  if (output_fd < 0) {
+    PLOG(ERROR) << "Cannot open event file " << output_path.value() << ".";
+    return base::ScopedFD();
+  }
 
-  LOG_IF(ERROR, output_fd < 0)
-      << "Cannot open event file " << output_path.value() << ".";
+  base::stat_wrapper_t stat;
+  if (base::File::Fstat(output_fd, &stat) < 0) {
+    PLOG(ERROR) << "Failed to stat file " << output_path.value();
+    return base::ScopedFD();
+  }
 
+  // Double check the read permissions, because umask may override us during
+  // creation, and we need those. (We allow write permissions to be masked.)
+  mode_t new_mode = stat.st_mode | S_IRGRP | S_IROTH;
+  if (stat.st_mode == new_mode)
+    return base::ScopedFD(output_fd);
+
+  // We need to force the permissions again. There's a small race here, as the
+  // file may exist with a umask()'ed (incorrect) mode briefly, so consumers
+  // should still be prepared to handle EPERM errors.
+  if (HANDLE_EINTR(fchmod(output_fd, new_mode)) == -1) {
+    PLOG(ERROR) << "Failed to set permissions for event file "
+                << output_path.value();
+    return base::ScopedFD();
+  }
   return base::ScopedFD(output_fd);
 }
 
