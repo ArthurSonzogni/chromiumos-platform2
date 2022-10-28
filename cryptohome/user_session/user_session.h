@@ -5,8 +5,10 @@
 #ifndef CRYPTOHOME_USER_SESSION_USER_SESSION_H_
 #define CRYPTOHOME_USER_SESSION_USER_SESSION_H_
 
+#include <map>
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/timer/timer.h>
@@ -85,25 +87,6 @@ class UserSession {
   // Logs warning in case anything went wrong in setting up new re-auth state.
   virtual void AddCredentials(const Credentials& credentials) = 0;
 
-  // Adds a new credential verifier to this session. Note that verifiers are
-  // stored by label with new verifiers replacing old ones with the same label.
-  virtual void AddCredentialVerifier(
-      std::unique_ptr<CredentialVerifier> verifier) = 0;
-
-  // Returns a bool indicating if this session has any credential verifiers
-  // (0-arg) or if it has a verifier with a specific label (1-arg).
-  virtual bool HasCredentialVerifier() const = 0;
-  virtual bool HasCredentialVerifier(const std::string& label) const = 0;
-
-  // Returns the credential verifier for the given label, if one exists.
-  // Otherwise returns null.
-  virtual const CredentialVerifier* FindCredentialVerifier(
-      const std::string& label) const = 0;
-
-  // Returns all the credential verifiers for this session.
-  virtual std::vector<const CredentialVerifier*> GetCredentialVerifiers()
-      const = 0;
-
   // Checks that the session belongs to the obfuscated_user.
   virtual bool VerifyUser(const std::string& obfuscated_username) const = 0;
 
@@ -111,10 +94,6 @@ class UserSession {
   // credentials were successfully re-authenticated against the saved re-auth
   // state.
   virtual bool VerifyCredentials(const Credentials& credentials) const = 0;
-
-  // Returns or sets key_data of the current session credentials.
-  virtual const KeyData& key_data() const = 0;
-  virtual void set_key_data(KeyData key_data) = 0;
 
   // Returns PKCS11 token associated with the session.
   virtual Pkcs11Token* GetPkcs11Token() = 0;
@@ -126,13 +105,44 @@ class UserSession {
   virtual void PrepareWebAuthnSecret(const brillo::SecureBlob& fek,
                                      const brillo::SecureBlob& fnek) = 0;
 
-  // Removes the credential_verifier if key_label matches the current verifier
-  // label (stored in RealUserSession::key_data_).
-  virtual void RemoveCredentialVerifierForKeyLabel(
-      const std::string& key_label) = 0;
-
   // Resets the application container for a given session.
   virtual bool ResetApplicationContainer(const std::string& application) = 0;
+
+  // =============== Credential storage functions ===============
+  // These functions are used to read and write credential state stored in the
+  // user session. They are implemented directly as non-virtual functions
+  // because it doesn't make sense to implement them differently, even in tests.
+
+  // Returns or sets key_data of the current session credentials.
+  const KeyData& key_data() const { return key_data_; }
+  void set_key_data(KeyData key_data) { key_data_ = std::move(key_data); }
+
+  // Adds a new credential verifier to this session. Note that verifiers are
+  // stored by label with new verifiers replacing old ones with the same label.
+  void AddCredentialVerifier(std::unique_ptr<CredentialVerifier> verifier);
+
+  // Returns a bool indicating if this session has any credential verifiers
+  // (0-arg) or if it has a verifier with a specific label (1-arg).
+  bool HasCredentialVerifier() const;
+  bool HasCredentialVerifier(const std::string& label) const;
+
+  // Returns the credential verifier for the given label, if one exists.
+  // Otherwise returns null.
+  const CredentialVerifier* FindCredentialVerifier(
+      const std::string& label) const;
+
+  // Returns all the credential verifiers for this session.
+  std::vector<const CredentialVerifier*> GetCredentialVerifiers() const;
+
+  // Removes the credential_verifier with the given label, and possibly the key
+  // data as well if it has the same label.
+  void RemoveCredentialVerifierForKeyLabel(const std::string& key_label);
+
+ private:
+  // Storage for KeyData and CredentialVerifiers associated with the session.
+  KeyData key_data_;
+  std::map<std::string, std::unique_ptr<CredentialVerifier>>
+      label_to_credential_verifier_;
 };
 
 }  // namespace cryptohome

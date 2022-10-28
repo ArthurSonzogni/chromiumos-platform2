@@ -263,50 +263,16 @@ void RealUserSession::AddCredentials(const Credentials& credentials) {
     return;
   }
 
-  key_data_ = credentials.key_data();
+  set_key_data(credentials.key_data());
 
   // Create a matching passkey-based verifier for the key data.
   auto verifier =
-      ScryptVerifier::Create(key_data_.label(), credentials.passkey());
+      ScryptVerifier::Create(key_data().label(), credentials.passkey());
   if (verifier) {
-    label_to_credential_verifier_[key_data_.label()] = std::move(verifier);
+    AddCredentialVerifier(std::move(verifier));
   } else {
     LOG(WARNING) << "CredentialVerifier could not be set";
   }
-}
-
-void RealUserSession::AddCredentialVerifier(
-    std::unique_ptr<CredentialVerifier> verifier) {
-  const std::string& label = verifier->auth_factor_label();
-  label_to_credential_verifier_[label] = std::move(verifier);
-}
-
-bool RealUserSession::HasCredentialVerifier() const {
-  return !label_to_credential_verifier_.empty();
-}
-
-bool RealUserSession::HasCredentialVerifier(const std::string& label) const {
-  return label_to_credential_verifier_.find(label) !=
-         label_to_credential_verifier_.end();
-}
-
-const CredentialVerifier* RealUserSession::FindCredentialVerifier(
-    const std::string& label) const {
-  auto iter = label_to_credential_verifier_.find(label);
-  if (iter != label_to_credential_verifier_.end()) {
-    return iter->second.get();
-  }
-  return nullptr;
-}
-
-std::vector<const CredentialVerifier*> RealUserSession::GetCredentialVerifiers()
-    const {
-  std::vector<const CredentialVerifier*> verifiers;
-  verifiers.reserve(label_to_credential_verifier_.size());
-  for (const auto& [unused, verifier] : label_to_credential_verifier_) {
-    verifiers.push_back(verifier.get());
-  }
-  return verifiers;
 }
 
 bool RealUserSession::VerifyUser(const std::string& obfuscated_username) const {
@@ -324,33 +290,22 @@ bool RealUserSession::VerifyCredentials(const Credentials& credentials) const {
   // that's associated with key_data_ (found by using the key_data_ label).
   // Otherwise, use the one specified by the credentials.
   const std::string& label_to_use = credentials.key_data().label().empty()
-                                        ? key_data_.label()
+                                        ? key_data().label()
                                         : credentials.key_data().label();
-  auto verifier_iter = label_to_credential_verifier_.find(label_to_use);
-  if (verifier_iter == label_to_credential_verifier_.end()) {
+  const CredentialVerifier* verifier = FindCredentialVerifier(label_to_use);
+  if (!verifier) {
     LOG(ERROR) << "Attempt to verify credentials with no verifier set";
     return false;
   }
 
   // Try testing the secret now.
-  bool status = verifier_iter->second->Verify(
+  bool status = verifier->Verify(
       {.user_input = credentials.passkey(),
        .obfuscated_username = credentials.GetObfuscatedUsername()});
 
   ReportTimerStop(kSessionUnlockTimer);
 
   return status;
-}
-
-void RealUserSession::RemoveCredentialVerifierForKeyLabel(
-    const std::string& key_label) {
-  // Remove the matching credential verifier, if it exists.
-  label_to_credential_verifier_.erase(key_label);
-
-  // Also clear the KeyData, if it matches the given label.
-  if (key_data_.label() == key_label) {
-    key_data_.Clear();
-  }
 }
 
 bool RealUserSession::ResetApplicationContainer(

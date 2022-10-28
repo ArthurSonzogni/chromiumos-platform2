@@ -82,29 +82,9 @@ class RealUserSession : public UserSession {
 
   void AddCredentials(const Credentials& credentials) override;
 
-  void AddCredentialVerifier(
-      std::unique_ptr<CredentialVerifier> verifier) override;
-
-  bool HasCredentialVerifier() const override;
-  bool HasCredentialVerifier(const std::string& label) const override;
-
-  const CredentialVerifier* FindCredentialVerifier(
-      const std::string& label) const override;
-
-  std::vector<const CredentialVerifier*> GetCredentialVerifiers()
-      const override;
-
-  void RemoveCredentialVerifierForKeyLabel(
-      const std::string& key_label) override;
-
   bool VerifyUser(const std::string& obfuscated_username) const override;
 
   bool VerifyCredentials(const Credentials& credentials) const override;
-
-  const KeyData& key_data() const override { return key_data_; }
-  void set_key_data(KeyData key_data) override {
-    key_data_ = std::move(key_data);
-  }
 
   Pkcs11Token* GetPkcs11Token() override { return pkcs11_token_.get(); }
 
@@ -138,10 +118,6 @@ class RealUserSession : public UserSession {
   KeysetManagement* keyset_management_;
   UserOldestActivityTimestampManager* user_activity_timestamp_manager_;
   Pkcs11TokenFactory* pkcs11_token_factory_;
-
-  std::map<std::string, std::unique_ptr<CredentialVerifier>>
-      label_to_credential_verifier_;
-  KeyData key_data_;
 
   // Secret for WebAuthn credentials.
   std::unique_ptr<brillo::SecureBlob> webauthn_secret_;
