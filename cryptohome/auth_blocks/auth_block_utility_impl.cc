@@ -697,9 +697,10 @@ AuthBlockType AuthBlockUtilityImpl::GetAuthBlockTypeFromState(
 
 base::flat_set<AuthIntent> AuthBlockUtilityImpl::GetSupportedIntentsFromState(
     const AuthBlockState& auth_block_state) const {
-  // Read supported_intents only for AuthFactors with a PinWeaver backend.
-  base::flat_set<AuthIntent> supported_intents = {AuthIntent::kVerifyOnly,
-                                                  AuthIntent::kDecrypt};
+  // The supported intents. Defaults to all of them.
+  base::flat_set<AuthIntent> supported_intents = {
+      AuthIntent::kDecrypt, AuthIntent::kVerifyOnly, AuthIntent::kWebAuthn};
+
   AuthBlockType auth_block_type = GetAuthBlockTypeFromState(auth_block_state);
 
   // Non-Pinweaver based AuthFactors are assumed to support all AuthIntents by

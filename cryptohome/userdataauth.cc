@@ -4095,16 +4095,14 @@ void UserDataAuth::StartAuthSession(
         continue;
       }
 
+      // Only populate reply with AuthFactors that support the intended form of
+      // authentication.
       auto supported_intents =
           auth_block_utility_->GetSupportedIntentsFromState(
               auth_factor->auth_block_state());
-      // Only populate reply with AuthFactors that support the intended form of
-      // authentication.
-      if ((request.intent() == user_data_auth::AUTH_INTENT_DECRYPT &&
-           supported_intents.contains(AuthIntent::kDecrypt)) ||
-          (request.intent() == user_data_auth::AUTH_INTENT_VERIFY_ONLY &&
-           (supported_intents.contains(AuthIntent::kVerifyOnly) ||
-            supported_intents.contains(AuthIntent::kDecrypt)))) {
+      std::optional<AuthIntent> requested_intent =
+          AuthIntentFromProto(request.intent());
+      if (requested_intent && supported_intents.contains(*requested_intent)) {
         *reply.add_auth_factors() = std::move(proto_factor.value());
       }
     }
