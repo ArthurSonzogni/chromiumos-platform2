@@ -214,6 +214,11 @@ void KeyboardBacklightController::Init(
                       &automated_percent_);
     UpdateState(Transition::SLOW, BacklightBrightnessChange_Cause_OTHER);
   }
+
+  // Set manual control off, and the default brightness if the user toggles the
+  // backlight from off to on prior to making any other manual adjustment.
+  user_step_index_ = -1;
+  last_positive_user_step_index_ = DefaultUserStepIndex(current_percent_);
 }
 
 void KeyboardBacklightController::AddObserver(
@@ -401,14 +406,24 @@ void KeyboardBacklightController::SetBrightnessPercentForAmbientLight(
     AmbientLightHandler::BrightnessChangeCause cause) {
   automated_percent_ = brightness_percent;
 
+  // Determine the cause of the change. If it is an ambient light change,
+  // perform a slow transition to the new value. If it is change because power
+  // was connected/disconnected, we instead perform a fast transition to the new
+  // brightness.
   const bool ambient_light_changed =
       cause == AmbientLightHandler::BrightnessChangeCause::AMBIENT_LIGHT;
   const Transition transition =
       ambient_light_changed ? Transition::SLOW : Transition::FAST;
   const BacklightBrightnessChange_Cause backlight_cause =
       AmbientLightHandler::ToProtobufCause(cause);
-  if (UpdateState(transition, backlight_cause) && ambient_light_changed)
+
+  // Calculate and update to a new brightness if required.
+  bool update_made = UpdateState(transition, backlight_cause);
+
+  // Track number of ALS adjustments.
+  if (ambient_light_changed && update_made) {
     num_als_adjustments_++;
+  }
 }
 
 void KeyboardBacklightController::OnColorTemperatureChanged(
@@ -461,21 +476,51 @@ bool KeyboardBacklightController::RecentlyHoveringOrUserActive() const {
           (now - last_user_activity_time_ < delay));
 }
 
-void KeyboardBacklightController::InitUserStepIndex() {
-  if (user_step_index_ != -1)
-    return;
+ssize_t KeyboardBacklightController::PercentToUserStepIndex(
+    double percent) const {
+  CHECK(!user_steps_.empty());
 
-  // Find the step nearest to the current backlight percent.
+  // Find the step nearest to the given percent.
+  ssize_t result = -1;
   double percent_delta = std::numeric_limits<double>::max();
-  for (size_t i = 0; i < user_steps_.size(); i++) {
-    double temp_delta = fabs(current_percent_ - user_steps_[i]);
-    if (temp_delta < percent_delta) {
-      percent_delta = temp_delta;
-      user_step_index_ = i;
+  for (ssize_t i = 0; i < user_steps_.size(); i++) {
+    double current_delta = fabs(percent - user_steps_[i]);
+    if (current_delta < percent_delta) {
+      percent_delta = current_delta;
+      result = i;
     }
   }
-  CHECK_NE(user_step_index_, -1)
-      << "Failed to find brightness step for " << current_percent_ << "%";
+  CHECK_NE(result, -1) << "Failed to find brightness step for " << percent
+                       << "%";
+
+  return result;
+}
+
+ssize_t KeyboardBacklightController::DefaultUserStepIndex(
+    double startup_brightness_percent) const {
+  // Get a default brightness, as a percent.
+  //
+  // For systems without an ALS, we just use the default brightness setting.
+  //
+  // For systems with an ALS (which don't have a concept of a "default
+  // brightness"), we simply use the backlight's initial brightness. If it
+  // happens to be zero, it will be bumped up below.
+  double default_percent = startup_brightness_percent;
+  if (ambient_light_handler_.get() == nullptr) {
+    prefs_->GetDouble(kKeyboardBacklightNoAlsBrightnessPref, &default_percent);
+  }
+
+  // Convert to a user step index, ensuring we return a non-zero value.
+  ssize_t index = PercentToUserStepIndex(default_percent);
+  return index > 0 ? index : 1;
+}
+
+void KeyboardBacklightController::UpdateUserStep(ssize_t index) {
+  CHECK(index >= 0 && index < user_steps_.size());
+  user_step_index_ = index;
+  if (index > 0) {
+    last_positive_user_step_index_ = index;
+  }
 }
 
 void KeyboardBacklightController::UpdateTurnOffTimer() {
@@ -514,10 +559,16 @@ void KeyboardBacklightController::HandleIncreaseBrightnessRequest() {
   if (!backlight_->DeviceExists())
     return;
 
-  if (user_step_index_ == -1)
-    InitUserStepIndex();
-  if (user_step_index_ < static_cast<int>(user_steps_.size()) - 1)
-    user_step_index_++;
+  // If this is the first time the backlight was manually controlled, select the
+  // manual user step closest to the backlight's current brightness.
+  if (user_step_index_ == -1) {
+    UpdateUserStep(PercentToUserStepIndex(current_percent_));
+  }
+
+  // Increase the brightness by one step.
+  if (user_step_index_ < static_cast<int>(user_steps_.size()) - 1) {
+    UpdateUserStep(user_step_index_ + 1);
+  }
   num_user_adjustments_++;
 
   // If we don't actually change the brightness, still emit a signal so the UI
@@ -528,8 +579,6 @@ void KeyboardBacklightController::HandleIncreaseBrightnessRequest() {
                                 BacklightBrightnessChange_Cause_USER_REQUEST);
   }
 
-  // No longer toggled off if we're making a user-initiated adjustment.
-  toggled_off_ = false;
   UpdateState(Transition::FAST, BacklightBrightnessChange_Cause_USER_REQUEST);
 }
 
@@ -539,10 +588,16 @@ void KeyboardBacklightController::HandleDecreaseBrightnessRequest(
   if (!backlight_->DeviceExists())
     return;
 
-  if (user_step_index_ == -1)
-    InitUserStepIndex();
-  if (user_step_index_ > (allow_off ? 0 : 1))
-    user_step_index_--;
+  // If this is the first time the backlight was manually controlled, select the
+  // manual user step closest to the backlight's current brightness.
+  if (user_step_index_ == -1) {
+    UpdateUserStep(PercentToUserStepIndex(current_percent_));
+  }
+
+  // Decrease the brightness by one step.
+  if (user_step_index_ > (allow_off ? 0 : 1)) {
+    UpdateUserStep(user_step_index_ - 1);
+  }
   num_user_adjustments_++;
 
   // If we don't actually change the brightness, still emit a signal so the UI
@@ -552,9 +607,6 @@ void KeyboardBacklightController::HandleDecreaseBrightnessRequest(
                                 current_percent_,
                                 BacklightBrightnessChange_Cause_USER_REQUEST);
   }
-
-  // No longer toggled off if we're making a user-initiated adjustment.
-  toggled_off_ = false;
 
   UpdateState(Transition::FAST, BacklightBrightnessChange_Cause_USER_REQUEST);
 }
@@ -566,27 +618,53 @@ void KeyboardBacklightController::HandleGetBrightnessRequest(
 }
 
 void KeyboardBacklightController::HandleSetToggledOffRequest(bool toggled_off) {
-  // If going from toggled off to toggled on and user had brightness set to 0,
-  // toggle on via a brightness increase.
-  if (toggled_off_ && !toggled_off && user_step_index_ == 0)
-    return HandleIncreaseBrightnessRequest();
-
-  SetToggledOff(toggled_off);
+  // We ignore the `toggled_off` parameter, and just unconditionally toggle
+  // the backlight.
+  //
+  // TODO(b/212618906): Remove this API.
+  HandleToggleKeyboardBacklightRequest();
 }
 
 void KeyboardBacklightController::HandleGetToggledOffRequest(
     bool* toggled_off) {
-  *toggled_off = toggled_off_;
+  *toggled_off = (current_percent_ == 0);
 }
 
 void KeyboardBacklightController::HandleToggleKeyboardBacklightRequest() {
-  HandleSetToggledOffRequest(!toggled_off_);
+  LOG(INFO) << "Got user-triggered request to toggle keyboard backlight";
+
+  // Toggle the state of the backlight.
+  //
+  // The backlight might be on either because it has been automatically set to
+  // that value, or the user has explicitly set it. In both cases, we want to
+  // turn it off.
+  //
+  // The backlight might be off for several reasons too: the user might have
+  // toggled it off, explicitly decreased the brightness to 0, or turned
+  // off due to inactivity. In all these cases, we want to turn it on.
+  if (current_percent_ > 0) {
+    // Turn off the backlight.
+    UpdateUserStep(0);
+    UpdateState(Transition::INSTANT,
+                BacklightBrightnessChange_Cause_USER_TOGGLED_OFF);
+  } else {
+    // Turn on the backlight, restoring it either to its previous value, or
+    // moving it to a default value.
+    DCHECK_GT(last_positive_user_step_index_, 0)
+        << "Previous user-set backlight brightness value "
+        << last_positive_user_step_index_ << " not a valid index.";
+    UpdateUserStep(last_positive_user_step_index_);
+    UpdateState(Transition::INSTANT,
+                BacklightBrightnessChange_Cause_USER_TOGGLED_ON);
+  }
+
+  num_user_adjustments_++;
 }
 
 bool KeyboardBacklightController::UpdateState(
     Transition transition, BacklightBrightnessChange_Cause cause) {
   // Force the backlight off immediately in several special cases.
-  if (forced_off_ || toggled_off_ || shutting_down_ || suspended_ ||
+  if (forced_off_ || shutting_down_ || suspended_ ||
       lid_state_ == LidState::CLOSED || tablet_mode_ == TabletMode::ON)
     return ApplyBrightnessPercent(0.0, transition, cause);
 
@@ -759,15 +837,6 @@ double KeyboardBacklightController::PercentToRawPercent(double percent) const {
     return (percent - kMinPercent) / (kMinVisiblePercent - kMinPercent) *
                (min_visible_raw_percent - min_raw_percent_) +
            min_raw_percent_;
-}
-
-void KeyboardBacklightController::SetToggledOff(bool toggled_off) {
-  if (toggled_off_ == toggled_off)
-    return;
-  toggled_off_ = toggled_off;
-  UpdateState(Transition::INSTANT,
-              toggled_off ? BacklightBrightnessChange_Cause_USER_TOGGLED_OFF
-                          : BacklightBrightnessChange_Cause_USER_TOGGLED_ON);
 }
 
 }  // namespace power_manager::policy

@@ -131,9 +131,6 @@ class KeyboardBacklightController : public BacklightController,
   // observed recently enough that the backlight should be kept on.
   bool RecentlyHoveringOrUserActive() const;
 
-  // Initializes |user_step_index_| when transitioning from ALS to user control.
-  void InitUserStepIndex();
-
   // Stops or starts |turn_off_timer_| as needed based on the current values of
   // |hovering_|, |last_hover_time_|, and |last_user_activity_time_|.
   void UpdateTurnOffTimer();
@@ -179,8 +176,23 @@ class KeyboardBacklightController : public BacklightController,
   // Calculates scaled percentages in |user_steps_| to raw percentages.
   double PercentToRawPercent(double percent) const;
 
-  // Set whether the user has specifically toggled off just the KBL.
-  void SetToggledOff(bool toggled_off);
+  // Converts a percent brightness into an index of the closest value in
+  // `user_steps_`.
+  ssize_t PercentToUserStepIndex(double percent) const;
+
+  // A default backlight brightness, represented by an index in `user_steps_`.
+  //
+  // `startup_brightness_percent` is the brightness of the keyboard at the time
+  // powerd started.
+  //
+  // Guaranteed to be strictly positive (i.e., not off).
+  ssize_t DefaultUserStepIndex(double startup_brightness_percent) const;
+
+  // Set the backlight brightness to the given index in `user_steps_`.
+  //
+  // This function also tracks the previously set value, required if the
+  // user toggles the backlight from off to on.
+  void UpdateUserStep(ssize_t index);
 
   mutable std::unique_ptr<Clock> clock_;
 
@@ -217,9 +229,6 @@ class KeyboardBacklightController : public BacklightController,
   bool forced_off_ = false;
   bool hovering_ = false;
 
-  // Has the user toggled off the KBL specifically?
-  bool toggled_off_ = false;
-
   // Is a fullscreen video currently being played?
   bool fullscreen_video_playing_ = false;
 
@@ -227,13 +236,24 @@ class KeyboardBacklightController : public BacklightController,
   // of transitioning to), in the range [0.0, 100.0].
   double current_percent_ = 0.0;
 
+  // List of percentages that the user can select from for setting the
+  // brightness. Values are in the range [0.0, 100], and guaranteed to
+  // be in strictly increasing order. Index 0 is guaranteed to be
+  // 0 ("off"). Populated from a preference.
+  std::vector<double> user_steps_;
+
   // Current brightness step within |user_steps_| set by user, or -1 if
   // |automated_percent_| should be used.
+  //
+  // Update with |UpdateUserStep| to ensure |last_positive_user_step_index_|
+  // stays in sync.
   ssize_t user_step_index_ = -1;
 
-  // Set of percentages that the user can select from for setting the
-  // brightness. This is populated from a preference.
-  std::vector<double> user_steps_;
+  // The most recent non-zero user-set backlight brightness.
+  //
+  // Used when the backlight is toggled from off to on: we restore the
+  // user's previous brightness value.
+  ssize_t last_positive_user_step_index_ = -1;
 
   // Min, min visible and max percentages used to calculate scaled percentages
   // in |user_steps_| from raw percentages. This is populated from a preference.
