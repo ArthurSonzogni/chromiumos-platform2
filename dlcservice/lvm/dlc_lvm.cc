@@ -50,7 +50,7 @@ bool DlcLvm::CreateDlcLogicalVolumes() {
   // Convert to MiB from bytes.
   size /= 1024 * 1024;
   // Cannot pass in a value of 0, so set the lower bound to 1MiB.
-  size = std::max(1L, size);
+  size = std::max<int64_t>(1, size);
   lv_config_a.set_size(size);
   lv_config_b.set_size(size);
   if (!SystemState::Get()->lvmd_wrapper()->CreateLogicalVolumes({
