@@ -148,6 +148,16 @@ void CameraAlgorithmOpsImpl::UpdateReturn(uint32_t upd_id,
   VLOGF_EXIT();
 }
 
+void CameraAlgorithmOpsImpl::Deinitialize() {
+  DCHECK(cam_algo_);
+  DCHECK(ipc_task_runner_->BelongsToCurrentThread());
+  VLOGF_ENTER();
+  if (cam_algo_->deinitialize) {
+    cam_algo_->deinitialize();
+  }
+  VLOGF_EXIT();
+}
+
 // static
 void CameraAlgorithmOpsImpl::ReturnCallbackForwarder(
     const camera_algorithm_callback_ops_t* callback_ops,

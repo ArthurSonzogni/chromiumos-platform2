@@ -91,6 +91,14 @@ void CameraGPUAlgorithm::DeregisterBuffers(const int32_t buffer_handles[],
   }
 }
 
+void CameraGPUAlgorithm::Deinitialize() {
+  if (thread_.IsRunning()) {
+    thread_.Stop();
+  }
+  callback_ops_ = nullptr;
+  is_initialized_ = false;
+}
+
 CameraGPUAlgorithm::CameraGPUAlgorithm()
     : thread_("Camera Algorithm Thread"),
       callback_ops_(nullptr),
@@ -189,6 +197,10 @@ static void DeregisterBuffers(const int32_t buffer_handles[], uint32_t size) {
   CameraGPUAlgorithm::GetInstance()->DeregisterBuffers(buffer_handles, size);
 }
 
+static void Deinitialize() {
+  return CameraGPUAlgorithm::GetInstance()->Deinitialize();
+}
+
 }  // namespace cros
 
 extern "C" {
@@ -196,5 +208,6 @@ camera_algorithm_ops_t CAMERA_ALGORITHM_MODULE_INFO_SYM CROS_CAMERA_EXPORT = {
     .initialize = cros::Initialize,
     .register_buffer = cros::RegisterBuffer,
     .request = cros::Request,
-    .deregister_buffers = cros::DeregisterBuffers};
+    .deregister_buffers = cros::DeregisterBuffers,
+    .deinitialize = cros::Deinitialize};
 }

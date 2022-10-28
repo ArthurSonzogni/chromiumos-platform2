@@ -64,6 +64,9 @@ class CameraAlgorithmOpsImpl : public mojom::CameraAlgorithmOps,
                     uint32_t status,
                     mojo::ScopedHandle buffer_fd) override;
 
+  // Implementation of mojom::CameraAlgorithmOps::Deinitialize interface
+  void Deinitialize() override;
+
  private:
   ~CameraAlgorithmOpsImpl() override {}
 

@@ -37,6 +37,8 @@ class CameraGPUAlgorithm {
 
   void DeregisterBuffers(const int32_t buffer_handles[], uint32_t size);
 
+  void Deinitialize();
+
  private:
   CameraGPUAlgorithm();
 

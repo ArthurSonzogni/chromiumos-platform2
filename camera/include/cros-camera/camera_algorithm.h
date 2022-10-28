@@ -52,7 +52,7 @@ typedef struct camera_algorithm_callback_ops {
                  int buffer_fd) = nullptr;
 } camera_algorithm_callback_ops_t;
 
-typedef struct {
+typedef struct camera_algorithm_ops {
   // This method is one-time initialization that registers a callback function
   // for the camera algorithm library to return a buffer handle. It must be
   // called before any other functions.
@@ -121,6 +121,10 @@ typedef struct {
   // Returns:
   //    0 on success; corresponding error code on failure.
   void (*update_return)(uint32_t upd_id, uint32_t status, int buffer_fd);
+
+  // Deinitializes the implementation object. The provided object can be
+  // destroyed safely after this call.
+  void (*deinitialize)() = nullptr;
 } camera_algorithm_ops_t;
 }
 

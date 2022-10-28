@@ -116,6 +116,7 @@ void CameraAlgorithmAdapter::InitializeOnIpcThread(std::string pipe_name,
 void CameraAlgorithmAdapter::DestroyOnIpcThread() {
   DCHECK(ipc_thread_.task_runner()->BelongsToCurrentThread());
   VLOGF_ENTER();
+  algo_impl_->Deinitialize();
   if (is_algo_impl_bound_)
     algo_impl_->Unbind();
   ipc_support_ = nullptr;
