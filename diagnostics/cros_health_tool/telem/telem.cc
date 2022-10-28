@@ -809,6 +809,43 @@ void DisplayBlockDeviceInfo(
     // optional field
     SET_DICT(discard_time_seconds_since_last_boot, info, &data);
 
+    // DeviceInfo is only available on NVMe, eMMC and UFS.
+    const auto& device_info = info->device_info;
+    if (!device_info.is_null()) {
+      auto* device_info_out = data.SetKey(
+          "device_info", base::Value{base::Value::Type::DICTIONARY});
+      if (device_info->is_nvme_device_info()) {
+        auto* nvme_device_info_out = device_info_out->SetKey(
+            "nvme_device_info", base::Value{base::Value::Type::DICTIONARY});
+        SET_DICT(subsystem_vendor, device_info->get_nvme_device_info(),
+                 nvme_device_info_out);
+        SET_DICT(subsystem_device, device_info->get_nvme_device_info(),
+                 nvme_device_info_out);
+        SET_DICT(pcie_rev, device_info->get_nvme_device_info(),
+                 nvme_device_info_out);
+        SET_DICT(firmware_rev, device_info->get_nvme_device_info(),
+                 nvme_device_info_out);
+      } else if (device_info->is_emmc_device_info()) {
+        auto* emmc_device_info_out = device_info_out->SetKey(
+            "emmc_device_info", base::Value{base::Value::Type::DICTIONARY});
+        SET_DICT(manfid, device_info->get_emmc_device_info(),
+                 emmc_device_info_out);
+        SET_DICT(pnm, device_info->get_emmc_device_info(),
+                 emmc_device_info_out);
+        SET_DICT(prv, device_info->get_emmc_device_info(),
+                 emmc_device_info_out);
+        SET_DICT(fwrev, device_info->get_emmc_device_info(),
+                 emmc_device_info_out);
+      } else if (device_info->is_ufs_device_info()) {
+        auto* ufs_device_info_out = device_info_out->SetKey(
+            "ufs_device_info", base::Value{base::Value::Type::DICTIONARY});
+        SET_DICT(jedec_manfid, device_info->get_ufs_device_info(),
+                 ufs_device_info_out);
+        SET_DICT(fwrev, device_info->get_ufs_device_info(),
+                 ufs_device_info_out);
+      }
+    }
+
     block_devices->Append(std::move(data));
   }
 
