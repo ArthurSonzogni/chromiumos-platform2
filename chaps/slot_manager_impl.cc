@@ -592,6 +592,8 @@ bool SlotManagerImpl::LoadTokenInternal(const SecureBlob& isolate_credential,
   isolate.slot_ids.insert(*slot_id);
   LOG(INFO) << "Slot " << *slot_id << " ready for token at " << path.value();
   VLOG(1) << "SlotManagerImpl::LoadToken success";
+  chaps_metrics_->ReportChapsTokenManagerStatus(
+      "LoadToken", TokenManagerStatus::kCommandSuccess);
   return true;
 }
 
@@ -948,6 +950,8 @@ bool SlotManagerImpl::UnloadToken(const SecureBlob& isolate_credential,
   LOG(INFO) << "Token at " << path.value() << " has been removed from slot "
             << slot_id;
   VLOG(1) << "SlotManagerImpl::Unload token success";
+  chaps_metrics_->ReportChapsTokenManagerStatus(
+      "UnloadToken", TokenManagerStatus::kCommandSuccess);
   return true;
 }
 
