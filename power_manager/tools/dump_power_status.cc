@@ -72,6 +72,8 @@ int main(int argc, char** argv) {
     success = power_supply.RefreshImmediately();
     if (success)
       break;
+    // Backoff before retrying
+    base::PlatformThread::Sleep(base::Milliseconds(1 << i));
   }
 
   CHECK(success);
