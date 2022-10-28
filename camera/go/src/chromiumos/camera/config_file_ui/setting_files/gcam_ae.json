@@ -214,6 +214,18 @@
         "step": 0.01
       },
       "default": 0.1
+    },
+    {
+      "name": "Gain multiplier",
+      "key": "gain_multiplier",
+      "summary": "The multiplier applied on top of the gain calculated from the sensitivity metadata",
+      "type": "number",
+      "value_descriptor": {
+        "min": 1.0,
+        "max": 4.0,
+        "step": 0.1
+      },
+      "default": 1.0
     }
   ]
 }

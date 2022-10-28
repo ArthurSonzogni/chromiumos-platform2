@@ -78,6 +78,7 @@ class GcamAeControllerImpl : public GcamAeController {
 
   // Device static metadata.
   Range<int> sensitivity_range_;
+  int max_analog_sensitivity_;
   float max_analog_gain_;
   float max_total_gain_;
   float ae_compensation_step_;

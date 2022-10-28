@@ -58,6 +58,12 @@ class GcamAeController {
 
     // The exposure compensation in stops set to every capture request.
     float exposure_compensation = 0.0f;
+
+    // A multiplier applied to the gain calculated from the sensor sensitivity
+    // and the sensitivity range metadata. This should be kept at 1.0 and should
+    // not be changed unless the minimum sensitivity doesn't correspond to 1.0
+    // gain.
+    float gain_multiplier = 1.0f;
   };
 
   virtual ~GcamAeController() = default;

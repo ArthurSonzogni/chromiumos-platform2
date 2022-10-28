@@ -33,6 +33,7 @@ constexpr char kAeStatsInputModeKey[] = "ae_stats_input_mode";
 constexpr char kExposureCompensationKey[] = "exp_comp";
 constexpr char kGcamAeEnableKey[] = "gcam_ae_enable";
 constexpr char kMaxHdrRatioKey[] = "max_hdr_ratio";
+constexpr char kGainMultiplier[] = "gain_multiplier";
 
 // The AE compensation delta range in stops limiting the amount of AE
 // compensation step changes in each frame. This can be tuned to avoid large
@@ -132,10 +133,13 @@ GcamAeControllerImpl::GcamAeControllerImpl(
            << active_array_size[3] << ")";
 
   sensitivity_range_ = Range<int>(sensitivity_range[0], sensitivity_range[1]);
-  max_analog_gain_ =
-      static_cast<float>(*max_analog_sensitivity) / sensitivity_range[0];
-  max_total_gain_ = static_cast<float>(sensitivity_range_.upper()) /
-                    sensitivity_range_.lower();
+  max_analog_sensitivity_ = *max_analog_sensitivity;
+  max_analog_gain_ = options_.gain_multiplier *
+                     (static_cast<float>(max_analog_sensitivity_) /
+                      static_cast<float>(sensitivity_range_.lower()));
+  max_total_gain_ = options_.gain_multiplier *
+                    (static_cast<float>(sensitivity_range_.upper()) /
+                     static_cast<float>(sensitivity_range_.lower()));
   ae_compensation_step_ = (static_cast<float>(ae_compensation_step->numerator) /
                            ae_compensation_step->denominator);
   ae_compensation_range_ =
@@ -213,8 +217,9 @@ void GcamAeControllerImpl::RecordAeMetadata(Camera3CaptureDescriptor* result) {
     return;
   }
 
-  float total_gain =
-      base::checked_cast<float>(sensitivity[0]) / sensitivity_range_.lower();
+  float total_gain = options_.gain_multiplier *
+                     (base::checked_cast<float>(sensitivity[0]) /
+                      static_cast<float>(sensitivity_range_.lower()));
   float analog_gain = std::min(total_gain, max_analog_gain_);
   float digital_gain = std::max(total_gain / max_analog_gain_, 1.0f);
 
@@ -408,6 +413,15 @@ void GcamAeControllerImpl::OnOptionsUpdated(
   LoadIfExist(json_values, kExposureCompensationKey,
               &options_.exposure_compensation);
 
+  LoadIfExist(json_values, kGainMultiplier, &options_.gain_multiplier);
+  // We need to recompute the sensitivity range when the multiplier changes.
+  max_analog_gain_ = options_.gain_multiplier *
+                     (static_cast<float>(max_analog_sensitivity_) /
+                      static_cast<float>(sensitivity_range_.lower()));
+  max_total_gain_ = options_.gain_multiplier *
+                    (static_cast<float>(sensitivity_range_.upper()) /
+                     static_cast<float>(sensitivity_range_.lower()));
+
   if (metadata_logger) {
     metadata_logger_ = *metadata_logger;
   }
@@ -419,6 +433,9 @@ void GcamAeControllerImpl::OnOptionsUpdated(
              << " ae_stats_input_mode="
              << static_cast<int>(options_.ae_stats_input_mode)
              << " exposure_compensation=" << options_.exposure_compensation
+             << " gain_multiplier=" << options_.gain_multiplier
+             << " max_analog_gain=" << max_analog_gain_
+             << " max_total_gain=" << max_total_gain_
              << " log_frame_metadata=" << !!metadata_logger_;
     VLOGF(1) << "max_hdr_ratio:";
     for (auto [gain, ratio] : options_.max_hdr_ratio) {
