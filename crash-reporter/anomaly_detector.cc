@@ -262,6 +262,9 @@ constexpr LazyRE2 header = {
 
 constexpr LazyRE2 smmu_fault = {R"(Unhandled context fault: fsr=0x)"};
 
+static constexpr LazyRE2 kernel_lc_suspend_warning = {
+    R"((intel_pmc_core.+CPU did not enter SLP_S0!!!))"};
+
 KernelParser::KernelParser(bool testonly_send_all)
     : testonly_send_all_(testonly_send_all) {}
 
@@ -313,6 +316,28 @@ MaybeCrashReport KernelParser::ParseLogEntry(const std::string& line) {
           {std::move(flag_), base::StringPrintf("--weight=%d", kWeight)});
     }
     text_ += line + "\n";
+  }
+
+  // Intel kernels >= v4.19 generate suspend warnings using lower-case warning
+  // macros, e.g. `pr_warn()`. These do not generate a signature or stack dump,
+  // so they are not caught by the kernel warning matching code above. Look for
+  // them here, and make sure they are sampled identically to kernel_warning.
+  std::string sig;
+  if (RE2::PartialMatch(line, *kernel_lc_suspend_warning, &sig)) {
+    uint32_t hash = StringHash(sig.c_str());
+    if (WasAlreadySeen(hash)) {
+      return std::nullopt;
+    }
+    const std::string flag = "--kernel_suspend_warning";
+    // Sample kernel warnings since they are too noisy and overload the crash
+    // server. (See http://b/185156234.)
+    const int kWeight = util::GetKernelWarningWeight(flag);
+    if (!testonly_send_all_ && base::RandGenerator(kWeight) != 0) {
+      return std::nullopt;
+    }
+    return CrashReport(
+        sig + "\n",
+        {std::move(flag), base::StringPrintf("--weight=%d", kWeight)});
   }
 
   if (ath10k_last_line_ == Ath10kLineType::None) {

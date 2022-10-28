@@ -21,8 +21,8 @@
 #include <dbus/bus.h>
 #include <metrics/metrics_library.h>
 
-#include <optional>
 #include <memory>
+#include <optional>
 #include <ostream>
 #include <string>
 #include <vector>

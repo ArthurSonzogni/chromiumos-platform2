@@ -504,6 +504,20 @@ TEST(AnomalyDetectorTest, SELinuxViolationPermissive) {
   ParserTest("TEST_SELINUX", {selinux_violation}, &parser);
 }
 
+TEST(AnomalyDetectorTest, KernelWarningSuspend_v4_19_up) {
+  ParserRun suspend_warning = {
+      .expected_flags = {{"--kernel_suspend_warning", "--weight=10"}}};
+  KernelParser parser(true);
+  ParserTest("TEST_SUSPEND_WARNING_LOWERCASE", {suspend_warning}, &parser);
+}
+
+TEST(AnomalyDetectorTest, KernelWarningSuspendNoDuplicate_v4_19_up) {
+  ParserRun identical_warning{.expected_size = 0};
+  KernelParser parser(true);
+  ParserTest("TEST_SUSPEND_WARNING_LOWERCASE", {simple_run, identical_warning},
+             &parser);
+}
+
 // Verify that we skip non-CrOS selinux violations
 TEST(AnomalyDetectorTest, SELinuxViolationNonCros) {
   ParserRun selinux_violation = {
