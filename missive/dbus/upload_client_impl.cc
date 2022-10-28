@@ -46,6 +46,7 @@ UploadClientImpl::~UploadClientImpl() {
       base::BindOnce(
           [](scoped_refptr<dbus::Bus> bus) {
             // Remove proxy if it was set. Ignore result.
+            bus->AssertOnOriginThread();
             bus->RemoveObjectProxy(
                 chromeos::kChromeReportingServiceName,
                 dbus::ObjectPath(chromeos::kChromeReportingServicePath),
@@ -65,11 +66,12 @@ void UploadClient::Create(
           [](scoped_refptr<dbus::Bus> bus,
              base::OnceCallback<void(StatusOr<scoped_refptr<UploadClient>>)>
                  cb) {
+            bus->AssertOnOriginThread();
             dbus::ObjectProxy* chrome_proxy = bus->GetObjectProxy(
                 chromeos::kChromeReportingServiceName,
                 dbus::ObjectPath(chromeos::kChromeReportingServicePath));
             CHECK(chrome_proxy);
-            // Callback needs conversion of the result from UploadCLientImpl to
+            // Callback needs conversion of the result from UploadClientImpl to
             // UplocalClient.
             auto impl_cb = base::BindOnce(
                 [](base::OnceCallback<void(

@@ -10,6 +10,7 @@
 
 #include <base/logging.h>
 #include <base/memory/scoped_refptr.h>
+#include <base/threading/sequenced_task_runner_handle.h>
 #include <base/time/time.h>
 
 #include "missive/analytics/resource_collector_cpu.h"
@@ -242,7 +243,9 @@ void MissiveImpl::FlushPriority(
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   storage_module_->Flush(
       in_request.priority(),
-      base::BindOnce(&HandleFlushResponse, std::move(out_response)));
+      base::BindPostTask(
+          base::SequencedTaskRunnerHandle::Get(),
+          base::BindOnce(&HandleFlushResponse, std::move(out_response))));
 }
 
 void MissiveImpl::ConfirmRecordUpload(
