@@ -12,7 +12,6 @@
 #include "power_manager/common/clock.h"
 #include "power_manager/common/fake_prefs.h"
 #include "power_manager/common/power_constants.h"
-#include "power_manager/common/util.h"
 #include "power_manager/powerd/policy/backlight_controller.h"
 #include "power_manager/powerd/policy/backlight_controller_observer_stub.h"
 #include "power_manager/powerd/policy/backlight_controller_stub.h"
@@ -22,25 +21,12 @@
 #include "power_manager/powerd/system/dbus_wrapper_stub.h"
 #include "power_manager/proto_bindings/policy.pb.h"
 
-namespace power_manager {
-namespace policy {
+namespace power_manager::policy {
 
 class KeyboardBacklightControllerTest : public ::testing::Test {
  public:
   KeyboardBacklightControllerTest()
-      : max_backlight_level_(100),
-        initial_backlight_level_(50),
-        pass_light_sensor_(true),
-        initial_als_lux_(0),
-        initial_tablet_mode_(TabletMode::UNSUPPORTED),
-        als_steps_pref_("20.0 -1 50\n50.0 35 75\n75.0 60 -1"),
-        user_steps_pref_("0.0\n10.0\n40.0\n60.0\n100.0"),
-        no_als_brightness_pref_(40.0),
-        detect_hover_pref_(0),
-        turn_on_for_user_activity_pref_(0),
-        keep_on_ms_pref_(0),
-        keep_on_during_video_ms_pref_(0),
-        backlight_(max_backlight_level_,
+      : backlight_(max_backlight_level_,
                    initial_backlight_level_,
                    system::BacklightInterface::BrightnessScale::kUnknown),
         light_sensor_(initial_als_lux_),
@@ -82,8 +68,9 @@ class KeyboardBacklightControllerTest : public ::testing::Test {
   // Returns the hardware-specific brightness level that should be used when the
   // display is dimmed.
   int64_t GetDimmedLevel() {
-    return static_cast<int64_t>(lround(
-        KeyboardBacklightController::kDimPercent / 100 * max_backlight_level_));
+    return static_cast<int64_t>(
+        lround(KeyboardBacklightController::kDimPercent / 100 *
+               static_cast<double>(max_backlight_level_)));
   }
 
   // Advances |controller_|'s clock by |interval|.
@@ -151,28 +138,28 @@ class KeyboardBacklightControllerTest : public ::testing::Test {
   BacklightControllerStub display_backlight_controller_;
 
   // Max and initial brightness levels for |backlight_|.
-  int64_t max_backlight_level_;
-  int64_t initial_backlight_level_;
+  int64_t max_backlight_level_ = 100;
+  int64_t initial_backlight_level_ = 50;
 
   // Should |light_sensor_| be passed to |controller_|?
-  bool pass_light_sensor_;
+  bool pass_light_sensor_ = true;
 
   // Initial lux level reported by |light_sensor_|.
-  int initial_als_lux_;
+  int initial_als_lux_ = 0;
 
   // Initial  lid state and tablet mode passed to |controller_|.
   LidState initial_lid_state_ = LidState::NOT_PRESENT;
-  TabletMode initial_tablet_mode_;
+  TabletMode initial_tablet_mode_ = TabletMode::UNSUPPORTED;
 
   // Values for various preferences.  These can be changed by tests before
   // Init() is called.
-  std::string als_steps_pref_;
-  std::string user_steps_pref_;
-  double no_als_brightness_pref_;
-  int64_t detect_hover_pref_;
-  int64_t turn_on_for_user_activity_pref_;
-  int64_t keep_on_ms_pref_;
-  int64_t keep_on_during_video_ms_pref_;
+  std::string als_steps_pref_ = "20.0 -1 50\n50.0 35 75\n75.0 60 -1";
+  std::string user_steps_pref_ = "0.0\n10.0\n40.0\n60.0\n100.0";
+  double no_als_brightness_pref_ = 40.0;
+  int64_t detect_hover_pref_ = 0;
+  int64_t turn_on_for_user_activity_pref_ = 0;
+  int64_t keep_on_ms_pref_ = 0;
+  int64_t keep_on_during_video_ms_pref_ = 0;
 
   FakePrefs prefs_;
   system::BacklightStub backlight_;
@@ -894,5 +881,4 @@ TEST_F(KeyboardBacklightControllerTest, UserStepsNotStrictlyIncreasing) {
                "keyboard_backlight_user_steps is not strictly increasing");
 }
 
-}  // namespace policy
-}  // namespace power_manager
+}  // namespace power_manager::policy

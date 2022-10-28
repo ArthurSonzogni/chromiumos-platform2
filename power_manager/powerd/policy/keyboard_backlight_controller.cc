@@ -9,6 +9,7 @@
 #include <cstdlib>
 #include <functional>
 #include <limits>
+#include <memory>
 #include <string>
 #include <utility>
 #include <vector>
@@ -29,8 +30,7 @@
 #include "power_manager/common/util.h"
 #include "power_manager/powerd/system/backlight_interface.h"
 
-namespace power_manager {
-namespace policy {
+namespace power_manager::policy {
 
 namespace {
 
@@ -70,7 +70,7 @@ KeyboardBacklightController::TestApi::TestApi(
     KeyboardBacklightController* controller)
     : controller_(controller) {}
 
-KeyboardBacklightController::TestApi::~TestApi() {}
+KeyboardBacklightController::TestApi::~TestApi() = default;
 
 bool KeyboardBacklightController::TestApi::TriggerTurnOffTimeout() {
   if (!controller_->turn_off_timer_.IsRunning())
@@ -150,7 +150,8 @@ void KeyboardBacklightController::Init(
     display_backlight_controller_->AddObserver(this);
 
   if (sensor) {
-    ambient_light_handler_.reset(new AmbientLightHandler(sensor, this));
+    ambient_light_handler_ =
+        std::make_unique<AmbientLightHandler>(sensor, this);
     ambient_light_handler_->set_name("keyboard");
   }
 
@@ -170,12 +171,11 @@ void KeyboardBacklightController::Init(
     LOG(FATAL) << "Failed to read pref " << kKeyboardBacklightUserStepsPref;
   std::vector<std::string> lines = base::SplitString(
       input_str, "\n", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
-  for (std::vector<std::string>::iterator iter = lines.begin();
-       iter != lines.end(); ++iter) {
+  for (const std::string& line : lines) {
     double new_step = 0.0;
-    if (!base::StringToDouble(*iter, &new_step))
+    if (!base::StringToDouble(line, &new_step))
       LOG(FATAL) << "Invalid line in pref " << kKeyboardBacklightUserStepsPref
-                 << ": \"" << *iter << "\"";
+                 << ": \"" << line << "\"";
     user_steps_.push_back(new_step);
   }
 
@@ -380,7 +380,8 @@ double KeyboardBacklightController::LevelToPercent(int64_t level) const {
   if (max_level == 0)
     return -1.0;
   level = std::max(std::min(level, max_level), static_cast<int64_t>(0));
-  double raw_percent = level * 100.0 / max_level;
+  double raw_percent =
+      (static_cast<double>(level) * 100.0) / static_cast<double>(max_level);
   return RawPercentToPercent(raw_percent);
 }
 
@@ -389,7 +390,7 @@ int64_t KeyboardBacklightController::PercentToLevel(double percent) const {
   if (max_level == 0)
     return -1;
   double raw_percent = PercentToRawPercent(util::ClampPercent(percent));
-  return lround(max_level * raw_percent / 100.0);
+  return lround(static_cast<double>(max_level) * raw_percent / 100.0);
 }
 
 void KeyboardBacklightController::SetBrightnessPercentForAmbientLight(
@@ -762,5 +763,4 @@ void KeyboardBacklightController::SetToggledOff(bool toggled_off) {
                           : BacklightBrightnessChange_Cause_USER_TOGGLED_ON);
 }
 
-}  // namespace policy
-}  // namespace power_manager
+}  // namespace power_manager::policy
