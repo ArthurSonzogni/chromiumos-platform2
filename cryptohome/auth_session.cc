@@ -156,7 +156,7 @@ CryptohomeStatus RemoveKeysetByLabel(KeysetManagement& keyset_management,
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocAuthSessionVKNotFoundInRemoveKeysetByLabel),
         ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
-        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_KEY_NOT_FOUND);
+        user_data_auth::CRYPTOHOME_ERROR_KEY_NOT_FOUND);
   }
 
   CryptohomeStatus status = keyset_management.ForceRemoveKeyset(
@@ -167,8 +167,7 @@ CryptohomeStatus RemoveKeysetByLabel(KeysetManagement& keyset_management,
                CRYPTOHOME_ERR_LOC(
                    kLocAuthSessionRemoveFailedInRemoveKeysetByLabel),
                ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
-               user_data_auth::CryptohomeErrorCode::
-                   CRYPTOHOME_ERROR_BACKING_STORE_FAILURE)
+               user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE)
         .Wrap(std::move(status));
   }
   return OkStatus<CryptohomeError>();
@@ -1281,8 +1280,9 @@ void AuthSession::RemoveAuthFactor(
   // from disk regardless of its purpose, i.e backup, regular or migrated.
   CryptohomeStatus remove_status = RemoveKeysetByLabel(
       *keyset_management_, obfuscated_username_, auth_factor_label);
-  if (!remove_status.ok()) {
-    LOG(ERROR) << "AuthSession: Failed to remove the VaultKeyset.";
+  if (!remove_status.ok() && label_to_auth_factor_iter->second->type() !=
+                                 AuthFactorType::kCryptohomeRecovery) {
+    LOG(ERROR) << "AuthSession: Failed to remove the backup VaultKeyset.";
     std::move(on_done).Run(MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocAuthSessionRemoveVKFailedInRemoveAuthFactor),
         ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
