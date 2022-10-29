@@ -176,4 +176,24 @@ TEST_F(LogsUtilsTest, RecordWpDisableMethod) {
             *event.FindDict(kDetails)->FindString(kLogWpDisableMethod));
 }
 
+// Simulates adding the RSU challenge code to an empty `logs` json.
+TEST_F(LogsUtilsTest, RecordRsuChallengeCode) {
+  EXPECT_TRUE(CreateInputFile(kDefaultJson, std::size(kDefaultJson) - 1));
+
+  const std::string challenge_code = "H65SFQL111PBRSB6PDIRTMFO0KHG3QZW0YSF04PW";
+  const std::string hwid = "BOOK_C4B-A3F-B4U-E2U-B4E-A6T";
+
+  EXPECT_TRUE(RecordRsuChallengeCodeToLogs(json_store_, challenge_code, hwid));
+  base::Value logs(base::Value::Type::DICT);
+  json_store_->GetValue(kLogs, &logs);
+
+  const base::Value::List* events = logs.GetDict().FindList(kEvents);
+  EXPECT_EQ(1, events->size());
+  const base::Value::Dict& event = (*events)[0].GetDict();
+  EXPECT_EQ(static_cast<int>(LogEventType::kData), event.FindInt(kType));
+  EXPECT_EQ(challenge_code,
+            *event.FindDict(kDetails)->FindString(kLogRsuChallengeCode));
+  EXPECT_EQ(hwid, *event.FindDict(kDetails)->FindString(kLogRsuHwid));
+}
+
 }  // namespace rmad

@@ -93,4 +93,14 @@ bool RecordWpDisableMethodToLogs(scoped_refptr<JsonStore> json_store,
   return AddEventToJson(json_store, LogEventType::kData, std::move(details));
 }
 
+bool RecordRsuChallengeCodeToLogs(scoped_refptr<JsonStore> json_store,
+                                  const std::string& challenge_code,
+                                  const std::string& hwid) {
+  base::Value details(base::Value::Type::DICT);
+  details.SetKey(kLogRsuChallengeCode, ConvertToValue(challenge_code));
+  details.SetKey(kLogRsuHwid, ConvertToValue(hwid));
+
+  return AddEventToJson(json_store, LogEventType::kData, std::move(details));
+}
+
 }  // namespace rmad

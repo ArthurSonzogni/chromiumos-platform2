@@ -17,6 +17,7 @@
 #include <libec/reboot_command.h>
 
 #include "rmad/constants.h"
+#include "rmad/logs/logs_utils.h"
 #include "rmad/metrics/metrics_utils.h"
 #include "rmad/system/power_manager_client_impl.h"
 #include "rmad/utils/cr50_utils_impl.h"
@@ -90,6 +91,8 @@ RmadErrorCode WriteProtectDisableRsuStateHandler::InitializeState() {
 
     wp_disable_rsu->set_challenge_url(url_string);
     state_.set_allocated_wp_disable_rsu(wp_disable_rsu.release());
+
+    RecordRsuChallengeCodeToLogs(json_store_, challenge_code, hwid);
   }
   return RMAD_ERROR_OK;
 }

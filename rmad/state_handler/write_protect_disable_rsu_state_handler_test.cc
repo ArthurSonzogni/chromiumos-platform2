@@ -15,6 +15,7 @@
 #include <gtest/gtest.h>
 
 #include "rmad/constants.h"
+#include "rmad/logs/logs_constants.h"
 #include "rmad/metrics/metrics_utils.h"
 #include "rmad/state_handler/state_handler_test_common.h"
 #include "rmad/state_handler/write_protect_disable_rsu_state_handler.h"
@@ -121,6 +122,19 @@ TEST_F(WriteProtectDisableRsuStateHandlerTest,
             kTestChallengeCode);
   EXPECT_EQ(handler->GetState().wp_disable_rsu().hwid(), kTestHwid);
   EXPECT_EQ(handler->GetState().wp_disable_rsu().challenge_url(), kTestUrl);
+
+  // Verify the challenge code was recorded to logs.
+  base::Value logs(base::Value::Type::DICT);
+  json_store_->GetValue(kLogs, &logs);
+
+  const base::Value::List* events = logs.GetDict().FindList(kEvents);
+  EXPECT_EQ(1, events->size());
+  const base::Value::Dict& event = (*events)[0].GetDict();
+  EXPECT_EQ(static_cast<int>(LogEventType::kData), event.FindInt(kType));
+  EXPECT_EQ(handler->GetState().wp_disable_rsu().challenge_code(),
+            *event.FindDict(kDetails)->FindString(kLogRsuChallengeCode));
+  EXPECT_EQ(handler->GetState().wp_disable_rsu().hwid(),
+            *event.FindDict(kDetails)->FindString(kLogRsuHwid));
 }
 
 TEST_F(WriteProtectDisableRsuStateHandlerTest,
