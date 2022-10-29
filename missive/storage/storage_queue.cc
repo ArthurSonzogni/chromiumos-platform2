@@ -834,12 +834,12 @@ class StorageQueue::ReadContext : public TaskRunnerContext<Status> {
   ~ReadContext() override = default;
 
   void OnStart() override {
-    DCHECK_CALLED_ON_VALID_SEQUENCE(
-        storage_queue_->storage_queue_sequence_checker_);
     if (!storage_queue_) {
       Response(Status(error::UNAVAILABLE, "StorageQueue shut down"));
       return;
     }
+    DCHECK_CALLED_ON_VALID_SEQUENCE(
+        storage_queue_->storage_queue_sequence_checker_);
     if (!must_invoke_upload_) {
       PrepareDataFiles();
       return;
@@ -850,12 +850,12 @@ class StorageQueue::ReadContext : public TaskRunnerContext<Status> {
   }
 
   void PrepareDataFiles() {
-    DCHECK_CALLED_ON_VALID_SEQUENCE(
-        storage_queue_->storage_queue_sequence_checker_);
     if (!storage_queue_) {
       Response(Status(error::UNAVAILABLE, "StorageQueue shut down"));
       return;
     }
+    DCHECK_CALLED_ON_VALID_SEQUENCE(
+        storage_queue_->storage_queue_sequence_checker_);
 
     // Fill in initial sequencing information to track progress:
     // use minimum of first_sequencing_id_ and first_unconfirmed_sequencing_id_
@@ -917,12 +917,12 @@ class StorageQueue::ReadContext : public TaskRunnerContext<Status> {
   }
 
   void BeginUploading() {
-    DCHECK_CALLED_ON_VALID_SEQUENCE(
-        storage_queue_->storage_queue_sequence_checker_);
     if (!storage_queue_) {
       Response(Status(error::UNAVAILABLE, "StorageQueue shut down"));
       return;
     }
+    DCHECK_CALLED_ON_VALID_SEQUENCE(
+        storage_queue_->storage_queue_sequence_checker_);
 
     // The first <seq.file> pair is the current file now, and we are at its
     // start or ahead of it.
@@ -942,6 +942,10 @@ class StorageQueue::ReadContext : public TaskRunnerContext<Status> {
   }
 
   void StartUploading() {
+    if (!storage_queue_) {
+      Response(Status(error::UNAVAILABLE, "StorageQueue shut down"));
+      return;
+    }
     DCHECK_CALLED_ON_VALID_SEQUENCE(
         storage_queue_->storage_queue_sequence_checker_);
     // Read from it until the specified sequencing id is found.
@@ -979,6 +983,10 @@ class StorageQueue::ReadContext : public TaskRunnerContext<Status> {
   }
 
   void UploadingCompleted(Status status) {
+    if (!storage_queue_) {
+      Response(Status(error::UNAVAILABLE, "StorageQueue shut down"));
+      return;
+    }
     DCHECK_CALLED_ON_VALID_SEQUENCE(
         storage_queue_->storage_queue_sequence_checker_);
     // If uploader was created, notify it about completion.
@@ -988,8 +996,7 @@ class StorageQueue::ReadContext : public TaskRunnerContext<Status> {
     // If retry delay is specified, check back after the delay.
     // If the status was error, or if any events are still there,
     // retry the upload.
-    if (storage_queue_ &&
-        !storage_queue_->options_.upload_retry_delay().is_zero()) {
+    if (!storage_queue_->options_.upload_retry_delay().is_zero()) {
       ScheduleAfter(storage_queue_->options_.upload_retry_delay(),
                     base::BindOnce(
                         &StorageQueue::CheckBackUpload, storage_queue_, status,
@@ -998,14 +1005,17 @@ class StorageQueue::ReadContext : public TaskRunnerContext<Status> {
   }
 
   void OnCompletion(const Status& status) override {
+    if (!storage_queue_) {
+      std::move(completion_cb_)
+          .Run(Status(error::UNAVAILABLE, "StorageQueue shut down"));
+      return;
+    }
     DCHECK_CALLED_ON_VALID_SEQUENCE(
         storage_queue_->storage_queue_sequence_checker_);
     // Unregister with storage_queue.
     if (!files_.empty()) {
-      if (storage_queue_) {
-        const auto count = --(storage_queue_->active_read_operations_);
-        DCHECK_GE(count, 0);
-      }
+      const auto count = --(storage_queue_->active_read_operations_);
+      DCHECK_GE(count, 0);
     }
     // Respond with the result.
     std::move(completion_cb_).Run(status);
@@ -1013,6 +1023,10 @@ class StorageQueue::ReadContext : public TaskRunnerContext<Status> {
 
   // Prepares the |blob| for uploading.
   void CallCurrentRecord(base::StringPiece blob) {
+    if (!storage_queue_) {
+      Response(Status(error::UNAVAILABLE, "StorageQueue shut down"));
+      return;
+    }
     DCHECK_CALLED_ON_VALID_SEQUENCE(
         storage_queue_->storage_queue_sequence_checker_);
     google::protobuf::io::ArrayInputStream blob_stream(  // Zero-copy stream.
@@ -1044,6 +1058,10 @@ class StorageQueue::ReadContext : public TaskRunnerContext<Status> {
   // indicates a gap notification.
   void CallRecordUpload(EncryptedRecord encrypted_record,
                         ScopedReservation scoped_reservation) {
+    if (!storage_queue_) {
+      Response(Status(error::UNAVAILABLE, "StorageQueue shut down"));
+      return;
+    }
     DCHECK_CALLED_ON_VALID_SEQUENCE(
         storage_queue_->storage_queue_sequence_checker_);
     if (encrypted_record.has_sequence_information()) {
@@ -1065,6 +1083,10 @@ class StorageQueue::ReadContext : public TaskRunnerContext<Status> {
   }
 
   void CallGapUpload(uint64_t count) {
+    if (!storage_queue_) {
+      Response(Status(error::UNAVAILABLE, "StorageQueue shut down"));
+      return;
+    }
     DCHECK_CALLED_ON_VALID_SEQUENCE(
         storage_queue_->storage_queue_sequence_checker_);
     if (count == 0u) {
@@ -1088,14 +1110,14 @@ class StorageQueue::ReadContext : public TaskRunnerContext<Status> {
   // sends for processing, or calls Response with error status. Otherwise, call
   // Response(OK).
   void NextRecord(bool more_records) {
+    if (!storage_queue_) {
+      Response(Status(error::UNAVAILABLE, "StorageQueue shut down"));
+      return;
+    }
     DCHECK_CALLED_ON_VALID_SEQUENCE(
         storage_queue_->storage_queue_sequence_checker_);
     if (!more_records) {
       Response(Status::StatusOK());  // Requested to stop reading.
-      return;
-    }
-    if (!storage_queue_) {
-      Response(Status(error::UNAVAILABLE, "StorageQueue shut down"));
       return;
     }
     // If reached end of the last file, finish reading.
@@ -1116,11 +1138,11 @@ class StorageQueue::ReadContext : public TaskRunnerContext<Status> {
   // If anything goes wrong (file is shorter than expected, or record hash does
   // not match), returns error.
   StatusOr<base::StringPiece> EnsureBlob(int64_t sequencing_id) {
-    DCHECK_CALLED_ON_VALID_SEQUENCE(
-        storage_queue_->storage_queue_sequence_checker_);
     if (!storage_queue_) {
       return Status(error::UNAVAILABLE, "StorageQueue shut down");
     }
+    DCHECK_CALLED_ON_VALID_SEQUENCE(
+        storage_queue_->storage_queue_sequence_checker_);
 
     // Test only: simulate error, if requested.
     if (storage_queue_->test_injected_failures_.count(
@@ -1204,12 +1226,12 @@ class StorageQueue::ReadContext : public TaskRunnerContext<Status> {
   }
 
   void CallRecordOrGap(int64_t sequencing_id) {
-    DCHECK_CALLED_ON_VALID_SEQUENCE(
-        storage_queue_->storage_queue_sequence_checker_);
     if (!storage_queue_) {
       Response(Status(error::UNAVAILABLE, "StorageQueue shut down"));
       return;
     }
+    DCHECK_CALLED_ON_VALID_SEQUENCE(
+        storage_queue_->storage_queue_sequence_checker_);
     auto blob = EnsureBlob(sequence_info_.sequencing_id());
     if (blob.status().error_code() == error::OUT_OF_RANGE) {
       // Reached end of file, switch to the next one (if present).
@@ -1239,6 +1261,10 @@ class StorageQueue::ReadContext : public TaskRunnerContext<Status> {
   }
 
   void InstantiateUploader(base::OnceCallback<void()> continuation) {
+    if (!storage_queue_) {
+      Response(Status(error::UNAVAILABLE, "StorageQueue shut down"));
+      return;
+    }
     DCHECK_CALLED_ON_VALID_SEQUENCE(
         storage_queue_->storage_queue_sequence_checker_);
     base::ThreadPool::PostTask(
@@ -1265,6 +1291,10 @@ class StorageQueue::ReadContext : public TaskRunnerContext<Status> {
   void OnUploaderInstantiated(
       base::OnceCallback<void()> continuation,
       StatusOr<std::unique_ptr<UploaderInterface>> uploader_result) {
+    if (!storage_queue_) {
+      Response(Status(error::UNAVAILABLE, "StorageQueue shut down"));
+      return;
+    }
     DCHECK_CALLED_ON_VALID_SEQUENCE(
         storage_queue_->storage_queue_sequence_checker_);
     if (!uploader_result.ok()) {
