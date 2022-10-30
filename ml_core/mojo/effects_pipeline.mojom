@@ -17,6 +17,7 @@ enum CameraEffect {
   kBackgroundReplace = 2,
   kPortraitRelight = 3,
   kBackgroundBlurPortraitRelight = 4,
+  kCount = 5,
 };
 
 // Set of GPU APIs available.
