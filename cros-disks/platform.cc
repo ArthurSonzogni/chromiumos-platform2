@@ -13,6 +13,7 @@
 
 #include <iomanip>
 #include <memory>
+#include <utility>
 #include <vector>
 
 #include <base/check.h>
@@ -27,6 +28,51 @@
 #include "cros-disks/quote.h"
 
 namespace cros_disks {
+namespace {
+
+enum MountFlags : uint64_t;
+
+std::ostream& operator<<(std::ostream& out, MountFlags flags) {
+  out << "{";
+
+  const char* sep = "";
+
+#define PRINT(s) \
+  if (flags & s) \
+    out << std::exchange(sep, " ") << #s;
+
+  PRINT(MS_ACTIVE)
+  PRINT(MS_BIND)
+  PRINT(MS_DIRSYNC)
+  PRINT(MS_I_VERSION)
+  PRINT(MS_KERNMOUNT)
+  PRINT(MS_LAZYTIME)
+  PRINT(MS_MANDLOCK)
+  PRINT(MS_MOVE)
+  PRINT(MS_NOATIME)
+  PRINT(MS_NODEV)
+  PRINT(MS_NODIRATIME)
+  PRINT(MS_NOEXEC)
+  PRINT(MS_NOSUID)
+  PRINT(MS_NOSYMFOLLOW)
+  PRINT(MS_NOUSER)
+  PRINT(MS_POSIXACL)
+  PRINT(MS_PRIVATE)
+  PRINT(MS_RDONLY)
+  PRINT(MS_REC)
+  PRINT(MS_RELATIME)
+  PRINT(MS_REMOUNT)
+  PRINT(MS_SHARED)
+  PRINT(MS_SILENT)
+  PRINT(MS_SLAVE)
+  PRINT(MS_STRICTATIME)
+  PRINT(MS_SYNCHRONOUS)
+  PRINT(MS_UNBINDABLE)
+
+  return out << "}";
+}
+
+}  // namespace
 
 Platform::Platform(Metrics* const metrics) : metrics_(metrics) {}
 
@@ -313,18 +359,25 @@ MountErrorType Platform::Mount(const std::string& source_path,
                                const std::string& options) const {
   if (mount(source_path.c_str(), target_path.c_str(), filesystem_type.c_str(),
             flags, options.c_str()) == 0) {
-    VLOG(1) << "Created mount point " << quote(target_path) << " for "
-            << quote(source_path) << " as filesystem " << quote(filesystem_type)
-            << " with flags 0x" << std::hex << flags << " and options "
+    VLOG(1) << "Created mount point " << filesystem_type << " "
+            << quote(target_path) << " for " << quote(source_path)
+            << " with flags " << MountFlags(flags) << " and options "
             << quote(options);
+
+    if (metrics_)
+      metrics_->RecordMountError(filesystem_type, 0);
+
     return MOUNT_ERROR_NONE;
   }
 
   const error_t error = errno;
-  PLOG(ERROR) << "Cannot create mount point " << redact(target_path) << " for "
-              << redact(source_path) << " as filesystem "
-              << quote(filesystem_type) << " with flags 0x" << std::hex << flags
-              << " and options " << quote(options);
+  PLOG(ERROR) << "Cannot create mount point " << filesystem_type << " "
+              << redact(target_path) << " for " << redact(source_path)
+              << " with flags " << MountFlags(flags) << " and options "
+              << quote(options);
+
+  if (metrics_)
+    metrics_->RecordMountError(filesystem_type, error);
 
   switch (error) {
     case ENODEV:

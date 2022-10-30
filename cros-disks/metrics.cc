@@ -108,6 +108,17 @@ void Metrics::RecordFilesystemType(const base::StringPiece fs_type) {
     LOG(ERROR) << "Cannot send filesystem type to UMA";
 }
 
+void Metrics::RecordMountError(base::StringPiece fs_type, const error_t error) {
+  // Group all the FUSE-related filesystems under the name "fuse".
+  const base::StringPiece prefix = "fuse";
+  if (base::StartsWith(fs_type, prefix))
+    fs_type = prefix;
+
+  if (!metrics_library_.SendSparseToUMA(
+          base::StrCat({"CrosDisks.MountError.", fs_type}), error))
+    LOG(ERROR) << "Cannot send mount error to UMA";
+}
+
 void Metrics::RecordUnmountError(const base::StringPiece fs_type,
                                  const error_t error) {
   if (!metrics_library_.SendSparseToUMA(
