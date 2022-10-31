@@ -76,6 +76,7 @@ libim_test_cros_gtk = shared_library('im_test_cros_gtk',
     'backend/test/backend_test_utils.h',
     'backend/test/event.cc',
     'backend/test/event.h',
+    'backend/test/gtk_basic_test_backend.cc',
     'backend/test/gtk_commit_string_test_backend.cc',
     'backend/test/gtk_content_type_test_backend.cc',
     'backend/test/gtk_key_sym_test_backend.cc',
@@ -97,6 +98,7 @@ libim_test_cros_gtk = shared_library('im_test_cros_gtk',
 )
 
 test_sources = [
+  'test/gtk_basic_test.cc',
   'test/gtk_commit_string_test.cc',
   'test/gtk_content_type_test.cc',
   'test/gtk_key_sym_test.cc',
