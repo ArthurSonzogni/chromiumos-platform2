@@ -51,11 +51,6 @@ SWPrivacySwitchStreamManipulator::SWPrivacySwitchStreamManipulator(
       camera_buffer_manager_(CameraBufferManager::GetInstance()),
       jpeg_compressor_(JpegCompressor::GetInstance(mojo_manager_token)) {}
 
-bool SWPrivacySwitchStreamManipulator::UpdateStaticMetadata(
-    android::CameraMetadata* static_info) {
-  return true;
-}
-
 bool SWPrivacySwitchStreamManipulator::Initialize(
     const camera_metadata_t* static_info,
     CaptureResultCallback result_callback) {

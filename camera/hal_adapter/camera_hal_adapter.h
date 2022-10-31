@@ -51,8 +51,6 @@ class VendorTagOpsDelegate;
 
 class CameraHalAdapter;
 
-class StreamManipulator;
-
 struct CameraModuleCallbacksAux : camera_module_callbacks_t {
   int module_id;
   CameraHalAdapter* adapter;
@@ -190,11 +188,6 @@ class CameraHalAdapter {
   void ResetCallbacksDelegateOnThread(uint32_t callbacks_id);
   void ResetVendorTagOpsDelegateOnThread(uint32_t vendor_tag_ops_id);
 
-  const std::vector<std::unique_ptr<StreamManipulator>>& GetStreamManipulators(
-      int camera_id);
-  std::vector<std::unique_ptr<StreamManipulator>> TakeStreamManipulators(
-      int camera_id);
-
   // camera_module_t: The handles to the camera HALs dlopen()/dlsym()'d on
   //                  process start.
   // cros_camera_hals: Interfaces of Camera HALs.
@@ -236,10 +229,6 @@ class CameraHalAdapter {
   base::flat_map<std::pair<int, mojom::CameraClientType>,
                  std::unique_ptr<android::CameraMetadata>>
       static_metadata_map_;
-
-  // A cache of stream manipulators created before OpenDevice().
-  std::map<int, std::vector<std::unique_ptr<StreamManipulator>>>
-      stream_manipulators_;
 
   // We need to keep the status for each camera to send up-to-date information
   // for newly connected client so everyone is in sync.

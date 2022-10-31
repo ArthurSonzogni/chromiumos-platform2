@@ -42,7 +42,6 @@ class GcamAeStreamManipulator : public StreamManipulator {
   ~GcamAeStreamManipulator() override = default;
 
   // Implementations of StreamManipulator.
-  bool UpdateStaticMetadata(android::CameraMetadata* static_info) override;
   bool Initialize(const camera_metadata_t* static_info,
                   CaptureResultCallback result_callback) override;
   bool ConfigureStreams(Camera3StreamConfiguration* stream_config) override;

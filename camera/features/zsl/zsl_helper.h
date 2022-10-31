@@ -26,6 +26,7 @@
 
 #include "common/camera_hal3_helpers.h"
 #include "common/utils/common_types.h"
+#include "common/vendor_tag_manager.h"
 #include "cros-camera/camera_buffer_manager.h"
 
 namespace cros {
@@ -37,7 +38,14 @@ class ZslHelperTest;
 
 }  // namespace tests
 
-const int GRALLOC_USAGE_STILL_CAPTURE = GRALLOC_USAGE_PRIVATE_1;
+constexpr int GRALLOC_USAGE_STILL_CAPTURE = GRALLOC_USAGE_PRIVATE_1;
+
+// Vendor tag to indicate whether CrOS ZSL can be attempted. The tag is set in
+// each (camera_id, client_type) static camera metadata to communicate the ZSL
+// attemptable status to the corresponding ZslStreamManipulator instances
+constexpr char kCrosZslVendorTagSectionName[] = "com.google.cros_zsl";
+constexpr char kCrosZslVendorTagCanAttemptName[] = "crosZslCanAttempt";
+constexpr uint32_t kCrosZslVendorTagCanAttempt = kCrosZslVendorTagStart;
 
 struct ZslBuffer {
  public:
@@ -251,7 +259,7 @@ class ZslHelper {
   // Lock to protect |ring_buffer_|.
   base::Lock ring_buffer_lock_;
 
-  // A thread that asynchornously waits for release fences and releases buffers
+  // A thread that asynchronously waits for release fences and releases buffers
   // to ZSL Buffer Manager.
   base::Thread fence_sync_thread_;
 
@@ -267,6 +275,9 @@ class ZslHelper {
   // Overridden timestamp for testing.
   int64_t override_current_timestamp_for_testing_;
 };
+
+// Adds the CrOS ZSL vendor tags.
+bool AddVendorTags(VendorTagManager& vendor_tag_manager);
 
 // Updates the static metadata of the camera device if we can attempt to
 // enable our in-house ZSL solution for it.

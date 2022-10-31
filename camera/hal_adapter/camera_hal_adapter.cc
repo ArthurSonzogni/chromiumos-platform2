@@ -254,7 +254,12 @@ int32_t CameraHalAdapter::OpenDevice(
       camera_device, info.device_version, metadata,
       std::move(get_internal_camera_id_callback),
       std::move(get_public_camera_id_callback), std::move(close_callback),
-      TakeStreamManipulators(camera_id));
+      StreamManipulator::GetEnabledStreamManipulators(
+          StreamManipulator::Options{
+              .camera_module_name = camera_module->common.name,
+          },
+          &stream_manipulator_runtime_options_, gpu_resources_,
+          mojo_manager_token_));
 
   CameraDeviceAdapter::HasReprocessEffectVendorTagCallback
       has_reprocess_effect_vendor_tag_callback = base::BindRepeating(
@@ -491,9 +496,9 @@ const camera_metadata_t* CameraHalAdapter::GetUpdatedCameraMetadata(
 
   reprocess_effect_manager_.UpdateStaticMetadata(metadata.get());
 
-  const auto& stream_manipulators = GetStreamManipulators(camera_id);
-  for (size_t i = stream_manipulators.size(); i > 0; --i) {
-    stream_manipulators[i - 1]->UpdateStaticMetadata(metadata.get());
+  if (!StreamManipulator::UpdateStaticMetadata(metadata.get())) {
+    LOGF(ERROR)
+        << "Failed to update the static metadata from StreamManipulators";
   }
 
   if (metadata->exists(ANDROID_LOGICAL_MULTI_CAMERA_PHYSICAL_IDS)) {
@@ -621,6 +626,12 @@ void CameraHalAdapter::StartOnThread(base::OnceCallback<void(bool)> callback) {
 
   if (!vendor_tag_manager_.Add(&reprocess_effect_manager_)) {
     LOGF(ERROR) << "Failed to add the vendor tags of reprocess effect manager";
+    std::move(callback).Run(false);
+    return;
+  }
+
+  if (!StreamManipulator::UpdateVendorTags(vendor_tag_manager_)) {
+    LOGF(ERROR) << "Failed to add the vendor tags from StreamManipualtors";
     std::move(callback).Run(false);
     return;
   }
@@ -990,32 +1001,6 @@ int32_t CameraHalAdapter::SetCallbacks(
   callbacks_delegates_[callbacks_id] = std::move(callbacks_delegate);
 
   return 0;
-}
-
-const std::vector<std::unique_ptr<StreamManipulator>>&
-CameraHalAdapter::GetStreamManipulators(int camera_id) {
-  if (!base::Contains(stream_manipulators_, camera_id)) {
-    auto [camera_module, internal_camera_id] =
-        GetInternalModuleAndId(camera_id);
-    stream_manipulators_.insert(std::make_pair(
-        camera_id, StreamManipulator::GetEnabledStreamManipulators(
-                       StreamManipulator::Options{
-                           .camera_module_name = camera_module->common.name,
-                       },
-                       &stream_manipulator_runtime_options_, gpu_resources_,
-                       mojo_manager_token_)));
-  }
-  return stream_manipulators_.at(camera_id);
-}
-
-std::vector<std::unique_ptr<StreamManipulator>>
-CameraHalAdapter::TakeStreamManipulators(int camera_id) {
-  GetStreamManipulators(camera_id);
-  auto it = stream_manipulators_.find(camera_id);
-  DCHECK(it != stream_manipulators_.end());
-  std::vector<std::unique_ptr<StreamManipulator>> ret = std::move(it->second);
-  stream_manipulators_.erase(it);
-  return ret;
 }
 
 }  // namespace cros

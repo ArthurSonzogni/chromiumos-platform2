@@ -61,11 +61,6 @@ FrameAnnotatorLoaderStreamManipulator::
   stream_manipulator_ = nullptr;
 }
 
-bool FrameAnnotatorLoaderStreamManipulator::UpdateStaticMetadata(
-    android::CameraMetadata* static_info) {
-  return true;
-}
-
 bool FrameAnnotatorLoaderStreamManipulator::Initialize(
     const camera_metadata_t* static_info,
     CaptureResultCallback result_callback) {

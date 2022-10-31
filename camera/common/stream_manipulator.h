@@ -20,6 +20,7 @@
 
 #include "camera/mojo/cros_camera_service.mojom.h"
 #include "common/camera_hal3_helpers.h"
+#include "common/vendor_tag_manager.h"
 #include "cros-camera/camera_mojo_channel_manager_token.h"
 #include "cros-camera/export.h"
 #include "gpu/gpu_resources.h"
@@ -81,6 +82,15 @@ class CROS_CAMERA_EXPORT StreamManipulator {
   using CaptureResultCallback =
       base::RepeatingCallback<void(Camera3CaptureDescriptor result)>;
 
+  // A one-time initialization hook called by CameraHalAdapter for updating the
+  // vendor tag information from stream manipulators.
+  static bool UpdateVendorTags(VendorTagManager& vendor_tag_manager);
+
+  // A one-time initialization hook called by CameraHalAdapter for updating the
+  // static camera metadata from stream manipulators for each (camera_id,
+  // client_type) pair.
+  static bool UpdateStaticMetadata(android::CameraMetadata* static_info);
+
   // Gets the set of enabled StreamManipulator instances. The StreamManipulators
   // are enabled through platform or device specific settings. This factory
   // method is called by CameraDeviceAdapter.
@@ -103,11 +113,6 @@ class CROS_CAMERA_EXPORT StreamManipulator {
       CameraMojoChannelManagerToken* mojo_manager_token);
 
   virtual ~StreamManipulator() = default;
-
-  // A hook to camera_module::get_camera_info() that is called by
-  // CameraHalAdapter with the static metadata that will be returned by the
-  // camera HAL implementation.
-  virtual bool UpdateStaticMetadata(android::CameraMetadata* static_info) = 0;
 
   // The followings are hooks to the camera3_device_ops APIs and will be called
   // by CameraDeviceAdapter on the CameraDeviceOpsThread.

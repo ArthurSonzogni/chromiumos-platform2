@@ -174,6 +174,23 @@ StreamManipulator::RuntimeOptions::sw_privacy_switch_state() {
 }
 
 // static
+bool StreamManipulator::UpdateVendorTags(VendorTagManager& vendor_tag_manager) {
+  if (!ZslStreamManipulator::UpdateVendorTags(vendor_tag_manager)) {
+    return false;
+  }
+  return true;
+}
+
+// static
+bool StreamManipulator::UpdateStaticMetadata(
+    android::CameraMetadata* static_info) {
+  if (!ZslStreamManipulator::UpdateStaticMetadata(static_info)) {
+    return false;
+  }
+  return true;
+}
+
+// static
 std::vector<std::unique_ptr<StreamManipulator>>
 StreamManipulator::GetEnabledStreamManipulators(
     Options options,

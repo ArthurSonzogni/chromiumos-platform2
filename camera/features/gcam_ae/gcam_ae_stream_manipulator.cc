@@ -47,11 +47,6 @@ GcamAeStreamManipulator::GcamAeStreamManipulator(
   }
 }
 
-bool GcamAeStreamManipulator::UpdateStaticMetadata(
-    android::CameraMetadata* static_info) {
-  return true;
-}
-
 bool GcamAeStreamManipulator::Initialize(
     const camera_metadata_t* static_info,
     CaptureResultCallback result_callback) {

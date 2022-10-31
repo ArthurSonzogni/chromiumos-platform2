@@ -91,6 +91,7 @@ source_set("base") {
     "//camera/common/tracing.cc",
     "//camera/common/udev_watcher.cc",
     "//camera/common/utils/camera_config_impl.cc",
+    "//camera/common/vendor_tag_manager.cc",
   ]
   public_configs = [
     ":pkg_config_base",

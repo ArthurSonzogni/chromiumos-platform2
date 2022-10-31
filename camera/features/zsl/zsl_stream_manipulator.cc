@@ -10,26 +10,43 @@
 
 #include "cros-camera/camera_metadata_utils.h"
 #include "cros-camera/common.h"
+#include "features/zsl/zsl_helper.h"
 
 namespace cros {
 
-ZslStreamManipulator::ZslStreamManipulator() {}
+ZslStreamManipulator::ZslStreamManipulator() = default;
 
-ZslStreamManipulator::~ZslStreamManipulator() {}
+ZslStreamManipulator::~ZslStreamManipulator() = default;
 
+// static
+bool ZslStreamManipulator::UpdateVendorTags(
+    VendorTagManager& vendor_tag_manager) {
+  return AddVendorTags(vendor_tag_manager);
+}
+
+// static
 bool ZslStreamManipulator::UpdateStaticMetadata(
     android::CameraMetadata* static_info) {
-  can_attempt_zsl_ = TryAddEnableZslKey(static_info);
-  LOGF(INFO) << "Can attempt to enable ZSL by private reprocessing: "
-             << can_attempt_zsl_;
+  uint8_t can_attempt_zsl = !!TryAddEnableZslKey(static_info);
+  if (static_info->update(kCrosZslVendorTagCanAttempt, &can_attempt_zsl, 1) !=
+      0) {
+    LOGF(ERROR) << "Failed to update kCrosZslVendorTagCanAttempt";
+    return false;
+  }
   return true;
 }
 
 bool ZslStreamManipulator::Initialize(const camera_metadata_t* static_info,
                                       CaptureResultCallback result_callback) {
+  std::optional<uint8_t> vendor_tag =
+      GetRoMetadata<uint8_t>(static_info, kCrosZslVendorTagCanAttempt);
+  can_attempt_zsl_ = vendor_tag.has_value() && *vendor_tag == 1;
+  LOGF(INFO) << "Can attempt to enable ZSL by private reprocessing: "
+             << can_attempt_zsl_;
   if (!can_attempt_zsl_) {
     return true;
   }
+
   std::optional<int32_t> partial_result_count =
       GetRoMetadata<int32_t>(static_info, ANDROID_REQUEST_PARTIAL_RESULT_COUNT);
   partial_result_count_ = partial_result_count.value_or(1);

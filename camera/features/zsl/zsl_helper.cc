@@ -854,6 +854,17 @@ void ZslHelper::OverrideCurrentTimestampForTesting(int64_t timestamp) {
   override_current_timestamp_for_testing_ = timestamp;
 }
 
+bool AddVendorTags(VendorTagManager& vendor_tag_manager) {
+  if (!vendor_tag_manager.Add(kCrosZslVendorTagCanAttempt,
+                              kCrosZslVendorTagSectionName,
+                              kCrosZslVendorTagCanAttemptName, TYPE_BYTE)) {
+    LOGF(ERROR)
+        << "Failed to add the vendor tag for CrOS ZSL attemptable indicator";
+    return false;
+  }
+  return true;
+}
+
 bool TryAddEnableZslKey(android::CameraMetadata* metadata) {
   const camera_metadata_t* locked_metadata = metadata->getAndLock();
   if (!CanEnableZsl(locked_metadata)) {

@@ -98,11 +98,6 @@ FrameAnnotatorStreamManipulator::~FrameAnnotatorStreamManipulator() {
   gpu_thread_.Stop();
 }
 
-bool FrameAnnotatorStreamManipulator::UpdateStaticMetadata(
-    android::CameraMetadata* static_info) {
-  return true;
-}
-
 bool FrameAnnotatorStreamManipulator::Initialize(
     const camera_metadata_t* static_info,
     CaptureResultCallback result_callback) {

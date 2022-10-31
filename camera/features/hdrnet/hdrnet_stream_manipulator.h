@@ -45,7 +45,6 @@ class HdrNetStreamManipulator : public StreamManipulator {
   // Implementations of StreamManipulator.  These methods are trampolines and
   // all the actual tasks are carried out and sequenced on the |gpu_thread_|
   // with the internal implementations below.
-  bool UpdateStaticMetadata(android::CameraMetadata* static_info) override;
   bool Initialize(const camera_metadata_t* static_info,
                   CaptureResultCallback result_callback) override;
   bool ConfigureStreams(Camera3StreamConfiguration* stream_config) override;

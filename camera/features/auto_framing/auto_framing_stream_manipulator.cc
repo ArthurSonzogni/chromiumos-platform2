@@ -302,11 +302,6 @@ AutoFramingStreamManipulator::~AutoFramingStreamManipulator() {
                                 base::Unretained(this)));
 }
 
-bool AutoFramingStreamManipulator::UpdateStaticMetadata(
-    android::CameraMetadata* static_info) {
-  return true;
-}
-
 bool AutoFramingStreamManipulator::Initialize(
     const camera_metadata_t* static_info,
     CaptureResultCallback result_callback) {
