@@ -396,8 +396,10 @@ void CellularCapability3gpp::EnableModemCompleted(
   if (error.IsFailure() || error.type() == Error::kWrongState) {
     // TODO(b/172215298): Is it OK to return before the SetPowerState
     // D-Bus call completes?
-    modem_proxy_->SetPowerState(MM_MODEM_POWER_STATE_LOW, base::DoNothing(),
-                                kSetPowerStateTimeoutMilliseconds);
+    // TODO(b/256525852): Revert this once we land the proper fix in modem fw.
+    modem_proxy_->SetPowerState(
+        IsModemFM101() ? MM_MODEM_POWER_STATE_ON : MM_MODEM_POWER_STATE_LOW,
+        base::DoNothing(), kSetPowerStateTimeoutMilliseconds);
     callback.Run(error);
     return;
   }
@@ -773,6 +775,17 @@ bool CellularCapability3gpp::IsDualStackSupported() {
 
   return true;
 }
+
+bool CellularCapability3gpp::IsModemFM101() {
+  SLOG(this, 2) << __func__;
+  if (!cellular()->device_id())
+    return false;
+
+  SLOG(this, 2) << "device_id: " << cellular()->device_id()->AsString();
+  DeviceId fm101_device_id = {DeviceId::BusType::kUsb, 0x2cb7, 0x01a2};
+  return cellular()->device_id()->Match(fm101_device_id);
+}
+
 bool CellularCapability3gpp::SetApnProperties(const Stringmap& apn_info,
                                               KeyValueStore* properties) {
   if (!base::Contains(apn_info, kApnProperty)) {

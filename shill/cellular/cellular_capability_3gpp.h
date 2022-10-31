@@ -289,6 +289,7 @@ class CellularCapability3gpp : public CellularCapability {
   // TODO(b/228528516) Remove this hack once the fix for
   // b/228042798 lands.
   bool IsDualStackSupported();
+  bool IsModemFM101();
   void SetNextAttachApn();
   void FillInitialEpsBearerPropertyMap(KeyValueStore* properties);
 
