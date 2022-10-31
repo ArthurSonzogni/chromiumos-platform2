@@ -470,7 +470,6 @@ In the tables below,
 | arc | [arc](#arc) |  | False |  | False |  |
 | audio | [audio](#audio) |  | False |  | False |  |
 | auto-night-light | boolean |  | False |  | False | Whether the auto-night-light feature is enabled on the device, which sets the schedule for Night light automatically to sunset-to-sunrise. |
-| battery | [battery](#battery) |  | False |  | False |  |
 | bluetooth | [bluetooth](#bluetooth) |  | False |  | False |  |
 | brand-code | string |  | False |  | False | Brand code of the model (also called RLZ code). |
 | branding | [branding](#branding) |  | False |  | False | Contains branding characteristics for this model. |
@@ -559,11 +558,6 @@ In the tables below,
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 | destination | string |  | False |  | True | Installation path for the file on the system image. |
 | source | string |  | False |  | True | Source of the file relative to the build system. |
-
-### battery
-| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
-| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
-| no-battery-boot-supported | boolean |  | False |  | False | Device supports booting without a battery. |
 
 ### bluetooth
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
