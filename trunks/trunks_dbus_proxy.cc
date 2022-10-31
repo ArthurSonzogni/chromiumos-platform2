@@ -209,9 +209,9 @@ void TrunksDBusProxy::ReportMetrics(const std::string& command,
                  << GetErrorString(parse_rc);
     rc = TRUNKS_RC_PARSE_ERROR;
   }
-  // TODO(chingkang): convert the command codes to user-friendly strings.
   std::string message =
-      absl::StrFormat("command = 0x%x, response = %s", cc, GetErrorString(rc));
+      absl::StrFormat("command = 0x%04x (%s), response = 0x%04x (%s)", cc,
+                      GetCommandString(cc), rc, GetErrorString(rc));
   VLOG(1) << __func__ << ": " << message;
   TpmErrorData error_data{cc, GetFormatOneError(rc)};
   if (!uma_reporter_->ReportTpm2CommandAndResponse(error_data)) {
