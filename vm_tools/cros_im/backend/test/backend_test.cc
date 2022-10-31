@@ -34,6 +34,13 @@ std::ostream& operator<<(std::ostream& stream, const Action& action) {
   return stream;
 }
 
+BackendTest::~BackendTest() {
+  while (!actions_.empty()) {
+    FAILED() << "Exited without running action: " << actions_.front();
+    actions_.pop();
+  }
+}
+
 BackendTest* BackendTest::GetInstance() {
   static BackendTest instance;
 

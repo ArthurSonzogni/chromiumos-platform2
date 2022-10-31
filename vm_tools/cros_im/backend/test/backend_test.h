@@ -51,11 +51,10 @@ struct Action {
 
 std::ostream& operator<<(std::ostream& stream, const Action& action);
 
-// TODO(timloh): Check there are no remaining expectations on exit.
 class BackendTest {
  public:
   BackendTest() = default;
-  ~BackendTest() = default;
+  ~BackendTest();
 
   static BackendTest* GetInstance();
   void ProcessRequest(const Request& request);
