@@ -981,12 +981,17 @@ bool TpmLiveTest::RecoveryTpmBackendTest() {
           .auth_value = decrypt_request_destination_share.auth_value,
           .current_user = decrypt_request_destination_share.current_user,
       };
-  if (!EC_POINT_copy(
-          decrypt_request_destination_share_wrong_ec.others_pub_point.get(),
-          decrypt_request_destination_share.others_pub_point.get())) {
+
+  crypto::ScopedEC_POINT wrong_ec_others_pub_key(
+      EC_POINT_dup(decrypt_request_destination_share.others_pub_point.get(),
+                   ec_256->GetGroup()));
+  if (!wrong_ec_others_pub_key) {
     LOG(ERROR) << "Failed to copy the other's public point.";
     return false;
   }
+  decrypt_request_destination_share_wrong_ec.others_pub_point =
+      std::move(wrong_ec_others_pub_key);
+
   hwsec::StatusOr<crypto::ScopedEC_POINT> point_dh_wrong_ec =
       recovery_crypto_->GenerateDiffieHellmanSharedSecret(
           std::move(decrypt_request_destination_share_wrong_ec));
