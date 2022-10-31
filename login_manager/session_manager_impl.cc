@@ -698,6 +698,14 @@ void SessionManagerImpl::LoginScreenStorageDelete(const std::string& in_key) {
 bool SessionManagerImpl::StartSession(brillo::ErrorPtr* error,
                                       const std::string& in_account_id,
                                       const std::string& in_unique_identifier) {
+  return StartSessionEx(error, in_account_id, in_unique_identifier,
+                        /*chrome_owner_key=*/false);
+}
+
+bool SessionManagerImpl::StartSessionEx(brillo::ErrorPtr* error,
+                                        const std::string& in_account_id,
+                                        const std::string& in_unique_identifier,
+                                        bool chrome_owner_key) {
   std::string actual_account_id;
   if (!NormalizeAccountId(in_account_id, &actual_account_id, error)) {
     DCHECK(*error);
@@ -717,22 +725,25 @@ bool SessionManagerImpl::StartSession(brillo::ErrorPtr* error,
   // NSS is used to store the private key which is generated and used only by
   // consumer owner users. If no key is present, the current user might become
   // the owner and also needs the database.
-  const bool might_be_owner_user =
-      device_policy_->KeyMissing() || user_is_owner;
+  // TODO(b/244407123): If Chrome is handling the owner key, session manager
+  // doesn't need NSS.
+  const bool need_nss =
+      (device_policy_->KeyMissing() || user_is_owner) && !chrome_owner_key;
   const bool is_incognito = IsIncognitoAccountId(actual_account_id);
   const OptionalFilePath ns_mnt_path = is_incognito || IsolateUserSession()
                                            ? chrome_mount_ns_path_
                                            : std::nullopt;
-  auto user_session = CreateUserSession(
-      actual_account_id, ns_mnt_path, might_be_owner_user, is_incognito, error);
+  auto user_session = CreateUserSession(actual_account_id, ns_mnt_path,
+                                        need_nss, is_incognito, error);
   if (!user_session) {
     DCHECK(*error);
     return false;
   }
 
-  // Check whether the current user is the owner, and if so make sure they are
-  // allowlisted and have an owner key.
-  if (!device_policy_->CheckAndHandleOwnerLogin(
+  // Check whether the current user is the owner, and if so make sure they have
+  // an owner key.
+  if (!chrome_owner_key &&
+      !device_policy_->CheckAndHandleOwnerLogin(
           user_session->username, user_session->descriptor.get(), error)) {
     DCHECK(*error);
     return false;
@@ -782,12 +793,15 @@ bool SessionManagerImpl::StartSession(brillo::ErrorPtr* error,
 
   // Active Directory managed devices are not expected to have a policy key.
   // Don't create one for them.
+  // TODO(b/244407123): If `chrome_owner_key` is true, Chrome will generate the
+  // key instead.
   const bool is_active_directory =
       install_attributes_reader_->GetAttribute(
           InstallAttributesReader::kAttrMode) ==
       InstallAttributesReader::kDeviceModeEnterpriseAD;
   if (device_policy_->KeyMissing() && !is_active_directory &&
-      !device_policy_->Mitigating() && is_first_real_user) {
+      !device_policy_->Mitigating() && is_first_real_user &&
+      !chrome_owner_key) {
     // This is the first sign-in on this unmanaged device.  Take ownership.
     key_gen_->Start(actual_account_id, ns_mnt_path);
   }
@@ -1851,7 +1865,7 @@ bool SessionManagerImpl::AllSessionsAreIncognito() {
 std::unique_ptr<SessionManagerImpl::UserSession>
 SessionManagerImpl::CreateUserSession(const std::string& username,
                                       const OptionalFilePath& ns_mnt_path,
-                                      bool might_be_owner_user,
+                                      bool need_nss,
                                       bool is_incognito,
                                       brillo::ErrorPtr* error) {
   std::unique_ptr<PolicyService> user_policy =
@@ -1865,7 +1879,7 @@ SessionManagerImpl::CreateUserSession(const std::string& username,
   ScopedPK11SlotDescriptor nss_desc;
   // If the user could be the owner of the device, session_manager may need to
   // use its owner key.
-  if (might_be_owner_user) {
+  if (need_nss) {
     nss_desc = nss_->OpenUserDB(GetUserPath(username), ns_mnt_path);
   } else {
     // We're sure that the user is not the owner of the device so they don't
@@ -1937,12 +1951,34 @@ PolicyService* SessionManagerImpl::GetPolicyService(
   return nullptr;
 }
 
+bool SessionManagerImpl::OwnerIsSignedIn() {
+  CHECK(device_policy_);
+  for (auto& [account_id, session] : user_sessions_) {
+    if (device_policy_->UserIsOwner(account_id)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 int SessionManagerImpl::GetKeyInstallFlags(const PolicyDescriptor& descriptor) {
   switch (descriptor.account_type()) {
     case ACCOUNT_TYPE_DEVICE: {
+      // It's safe to always allow rotation because the new key is signed with
+      // the old one.
       int flags = PolicyService::KEY_ROTATE;
-      if (!session_started_)
-        flags |= PolicyService::KEY_INSTALL_NEW | PolicyService::KEY_CLOBBER;
+      // The first non-guest user is supposed to install a new key.
+      // Alternatively, cloud managed devices can receive policies before any
+      // sessions started and install the key from them.
+      if (!AllSessionsAreIncognito() || !session_started_) {
+        flags |= PolicyService::KEY_INSTALL_NEW;
+      }
+      // If the owner is signed in, then allow clobbering the key. Also allow
+      // clobbering on the login screen where ChromeOS is presumably in a more
+      // secure state (primarily for managed devices).
+      if (OwnerIsSignedIn() || !session_started_) {
+        flags |= PolicyService::KEY_CLOBBER;
+      }
       return flags;
     }
     case ACCOUNT_TYPE_USER:

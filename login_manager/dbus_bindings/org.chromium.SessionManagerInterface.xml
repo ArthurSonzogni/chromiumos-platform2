@@ -164,6 +164,30 @@
     </method>
 
     <!--
+        StartSessionEx:
+        @account_id: Account ID of the user to start a session for.
+        @unique_identifier: Unused.
+        @chrome_owner_key: If true, Chrome will handle owner key generation.
+            Otherwise, session_manager is responsible for that.
+
+        Updates bookkeeping to know about a session for @account_id. Also emits
+        "start-user-session" upstart signal (asynchronously) and
+        "SessionStateChanged:started" D-Bus signal.
+
+        TODO(b/244407123): This is a temporary method to implement the
+        experiment about generating the owner key in Chrome and gradually
+        migrate to it. During the migration calling StartSession is equivalent
+        to calling this method with |chrome_owner_key| == false. After the full
+        rollout this method should be removed and StartSession will expect
+        Chrome to handle the owner key.
+    -->
+    <method name="StartSessionEx">
+      <arg type="s" name="account_id" direction="in" />
+      <arg type="s" name="unique_identifier" direction="in" />
+      <arg type="b" name="chrome_owner_key" direction="in" />
+    </method>
+
+    <!--
         @deprecated Use StopSessionWithReason instead.
 
         StopSession:

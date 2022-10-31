@@ -113,7 +113,6 @@ bool DevicePolicyService::CheckAndHandleOwnerLogin(
     const std::string& current_user,
     PK11SlotDescriptor* desc,
     brillo::ErrorPtr* error) {
-  // Record metrics around consumer usage of user allowlisting.
   const em::PolicyFetchResponse& policy = GetChromeStore()->Get();
 
   // If the current user is the owner, and isn't allowlisted or set as the owner

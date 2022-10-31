@@ -1500,7 +1500,8 @@ TEST_F(SessionManagerImplTest, StorePolicyEx_SessionStarted) {
   ExpectAndRunStartSession(kSaneEmail);
   const std::vector<uint8_t> policy_blob = StringToBlob("fake policy");
   ExpectStorePolicy(device_policy_service_, policy_blob,
-                    PolicyService::KEY_ROTATE, SignatureCheck::kEnabled);
+                    PolicyService::KEY_ROTATE | PolicyService::KEY_INSTALL_NEW,
+                    SignatureCheck::kEnabled);
 
   ResponseCapturer capturer;
   impl_->StorePolicyEx(

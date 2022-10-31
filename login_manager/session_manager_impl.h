@@ -251,6 +251,10 @@ class SessionManagerImpl
   bool StartSession(brillo::ErrorPtr* error,
                     const std::string& in_account_id,
                     const std::string& in_unique_identifier) override;
+  bool StartSessionEx(brillo::ErrorPtr* error,
+                      const std::string& in_account_id,
+                      const std::string& in_unique_identifier,
+                      bool chrome_owner_key) override;
   void StopSession(const std::string& in_unique_identifier) override;
   void StopSessionWithReason(uint32_t reason) override;
   bool StartBrowserDataMigration(brillo::ErrorPtr* error,
@@ -431,6 +435,9 @@ class SessionManagerImpl
   // Returns nullptr and sets |error| if no PolicyService could be found.
   PolicyService* GetPolicyService(const PolicyDescriptor& descriptor,
                                   brillo::ErrorPtr* error);
+
+  // Returns true if the owner (accord to the device policies) is signed in.
+  bool OwnerIsSignedIn();
 
   // Returns the appropriate PolicyService::KeyInstallFlags for the given
   // |descriptor|.
