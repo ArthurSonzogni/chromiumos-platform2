@@ -7,10 +7,14 @@
 #include <utility>
 
 #include "absl/status/status.h"
+#include "base/bind.h"
 #include "base/memory/scoped_refptr.h"
 #include "base/task/thread_pool/thread_pool_instance.h"
+#include "base/time/time.h"
 #include "brillo/daemons/dbus_daemon.h"
 #include "missive/client/missive_client.h"
+#include "policy/device_policy.h"
+#include "policy/libpolicy.h"
 #include "secagentd/daemon.h"
 #include "secagentd/message_sender.h"
 #include "secagentd/plugins.h"
@@ -22,6 +26,7 @@ Daemon::Daemon(struct Inject injected) {
   bpf_plugin_factory_ = std::move(injected.bpf_plugin_factory_);
   message_sender_ = std::move(injected.message_sender_);
   process_cache_ = std::move(injected.process_cache_);
+  policy_provider_ = std::move(injected.policy_provider_);
 }
 
 int Daemon::OnInit() {
@@ -53,6 +58,10 @@ int Daemon::OnInit() {
     process_cache_ = base::MakeRefCounted<ProcessCache>();
   }
 
+  if (policy_provider_ == nullptr) {
+    policy_provider_ = std::make_unique<policy::PolicyProvider>();
+  }
+
   return EX_OK;
 }
 
@@ -64,9 +73,8 @@ int Daemon::CreateAndRunBpfPlugins() {
     return EX_SOFTWARE;
   }
 
-  if (plugin->PolicyIsEnabled()) {
-    bpf_plugins_.push_back(std::move(plugin));
-  }
+  bpf_plugins_.push_back(std::move(plugin));
+
   for (auto& plugin : bpf_plugins_) {
     // If BPFs fail loading this is a serious error and the daemon should exit.
     absl::Status result = plugin->Activate();
@@ -83,7 +91,7 @@ int Daemon::CreateAndRunAgentPlugins() {
   return EX_OK;
 }
 
-int Daemon::OnEventLoopStarted() {
+int Daemon::RunPlugins() {
   int rv;
 
   rv = CreateAndRunBpfPlugins();
@@ -96,6 +104,51 @@ int Daemon::OnEventLoopStarted() {
   }
 
   return EX_OK;
+}
+
+int Daemon::OnEventLoopStarted() {
+  check_xdr_reporting_timer_.Start(
+      FROM_HERE, base::Minutes(10),
+      base::BindRepeating(&Daemon::PollXdrReportingIsEnabled,
+                          base::Unretained(this)));
+
+  // Delay before first timer invocation so add check.
+  PollXdrReportingIsEnabled();
+
+  return EX_OK;
+}
+
+bool Daemon::XdrReportingIsEnabled() {
+  bool old_policy = xdr_reporting_policy_;
+
+  policy_provider_->Reload();
+  if (policy_provider_->device_policy_is_loaded()) {
+    xdr_reporting_policy_ =
+        policy_provider_->GetDevicePolicy().GetDeviceReportXDREvents().value_or(
+            false);
+  } else {
+    // Default value is do not report.
+    xdr_reporting_policy_ = false;
+  }
+
+  // Return true if xdr_reporting_policy_ has changed.
+  return old_policy != xdr_reporting_policy_;
+}
+
+void Daemon::PollXdrReportingIsEnabled() {
+  if (XdrReportingIsEnabled()) {
+    if (xdr_reporting_policy_) {
+      LOG(INFO) << "Starting event reporting";
+      int rv = RunPlugins();
+      if (rv != EX_OK) {
+        QuitWithExitCode(rv);
+      }
+    } else {
+      LOG(INFO) << "Stopping event reporting and quitting";
+      // Will exit and restart secagentd.
+      Quit();
+    }
+  }
 }
 
 void Daemon::OnShutdown(int* exit_code) {

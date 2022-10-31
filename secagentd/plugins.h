@@ -20,8 +20,6 @@ namespace secagentd {
 
 class PluginInterface {
  public:
-  // True if the device policy indicates that this Plugin should be loaded.
-  virtual bool PolicyIsEnabled() const = 0;
   // Activate the plugin.
   virtual absl::Status Activate() = 0;
   virtual std::string GetName() const = 0;
@@ -33,7 +31,6 @@ class ProcessPlugin : public PluginInterface {
   ProcessPlugin(scoped_refptr<BpfSkeletonFactoryInterface> bpf_skeleton_factory,
                 scoped_refptr<MessageSenderInterface> message_sender,
                 scoped_refptr<ProcessCacheInterface> process_cache);
-  bool PolicyIsEnabled() const override;
   // Load, verify and attach the process BPF applications.
   absl::Status Activate() override;
   std::string GetName() const override;

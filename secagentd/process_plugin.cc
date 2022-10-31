@@ -102,17 +102,7 @@ void ProcessPlugin::HandleBpfRingBufferReadReady() const {
   skeleton_wrapper_->ConsumeEvent();
 }
 
-bool ProcessPlugin::PolicyIsEnabled() const {
-  // TODO(b/241578773): Query the device policy to determine whether this BPF
-  // should be loaded.
-  return true;
-}
-
 absl::Status ProcessPlugin::Activate() {
-  if (!PolicyIsEnabled()) {
-    return absl::InternalError(
-        "Failed to load Process BPF: Device policy forbids it.");
-  }
   struct BpfCallbacks callbacks;
   callbacks.ring_buffer_event_callback = base::BindRepeating(
       &ProcessPlugin::HandleRingBufferEvent, weak_ptr_factory_.GetWeakPtr());

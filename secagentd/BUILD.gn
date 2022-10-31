@@ -66,6 +66,7 @@ static_library("libsecagent") {
 
 executable("secagentd") {
   sources = [ "main.cc" ]
+  libs = [ "policy" ]
   configs += [ ":target_defaults" ]
   deps = [ ":libsecagent" ]
 }
