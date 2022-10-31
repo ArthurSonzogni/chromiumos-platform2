@@ -413,6 +413,7 @@ type cros_var_lib_oobe_config_save, file_type, cros_file_type, cros_var_file_typ
 type cros_var_lib_portage, file_type, cros_file_type, cros_var_file_type;
 type cros_var_lib_power_manager, file_type, cros_file_type, cros_var_file_type;
 type cros_var_lib_preload_network_drivers, file_type, cros_file_type, cros_var_file_type;
+type cros_var_lib_private_computing, file_type, cros_file_type, cros_var_file_type;
 type cros_var_lib_rmad, file_type, cros_file_type, cros_var_file_type;
 type cros_var_lib_shill, file_type, cros_file_type, cros_var_file_type;
 type cros_var_lib_tpm, file_type, cros_file_type, cros_var_file_type;
