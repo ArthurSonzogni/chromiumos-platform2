@@ -172,11 +172,13 @@ void CameraHalServerImpl::IPCBridge::SetCameraEffect(
 
 void CameraHalServerImpl::IPCBridge::GetCameraSWPrivacySwitchState(
     mojom::CameraHalServer::GetCameraSWPrivacySwitchStateCallback callback) {
+  DCHECK(ipc_task_runner_->BelongsToCurrentThread());
   std::move(callback).Run(camera_hal_adapter_->GetCameraSWPrivacySwitchState());
 }
 
 void CameraHalServerImpl::IPCBridge::SetCameraSWPrivacySwitchState(
     mojom::CameraPrivacySwitchState state) {
+  DCHECK(ipc_task_runner_->BelongsToCurrentThread());
   if (camera_hal_adapter_->GetCameraSWPrivacySwitchState() == state) {
     return;
   }
@@ -225,6 +227,10 @@ void CameraHalServerImpl::IPCBridge::OnServerRegistered(
           &CameraHalServerImpl::IPCBridge::OnPrivacySwitchStatusChanged,
           base::Unretained(this)));
   std::move(set_privacy_switch_callback).Run(privacy_switch_callback);
+
+  DCHECK(camera_hal_adapter_);
+  callbacks_->CameraSWPrivacySwitchStateChange(
+      camera_hal_adapter_->GetCameraSWPrivacySwitchState());
 
   LOGF(INFO) << "Successfully registered camera server.";
 }
