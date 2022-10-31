@@ -131,10 +131,6 @@ class LoginMetrics {
   // failed.
   virtual void SendNamespaceCreationResult(bool status);
 
-  // Sends metric reporting whether the Owner of this non-enrolled device has
-  // chosen to allow arbitrary users to sign in or not.
-  virtual void SendConsumerAllowsNewUsers(bool allowed);
-
   // Sends the type of user that logs in (guest, owner or other) and the mode
   // (developer or normal) to UMA by using the metrics library.
   virtual void SendLoginUserType(bool dev_mode, bool guest, bool owner);

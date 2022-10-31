@@ -363,7 +363,6 @@ TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_SuccessEmptyPolicy) {
   ExpectGetPolicy(s, policy_proto_);
   EXPECT_CALL(*mitigator_.get(), Mitigate(_, _)).Times(0);
   ExpectKeyPopulated(true);
-  EXPECT_CALL(*metrics_.get(), SendConsumerAllowsNewUsers(_)).Times(1);
 
   brillo::ErrorPtr error;
   const bool is_owner = service_->UserIsOwner(owner_);
@@ -382,7 +381,6 @@ TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_NotOwner) {
   ExpectGetPolicy(s, policy_proto_);
   EXPECT_CALL(*mitigator_.get(), Mitigate(_, _)).Times(0);
   ExpectKeyPopulated(true);
-  EXPECT_CALL(*metrics_.get(), SendConsumerAllowsNewUsers(_)).Times(1);
 
   const std::string regular_user = "regular_user@somewhere";
 
@@ -403,7 +401,6 @@ TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_EnterpriseDevice) {
   ExpectGetPolicy(s, policy_proto_);
   EXPECT_CALL(*mitigator_.get(), Mitigate(_, _)).Times(0);
   ExpectKeyPopulated(true);
-  EXPECT_CALL(*metrics_.get(), SendConsumerAllowsNewUsers(_)).Times(0);
 
   brillo::ErrorPtr error;
   const bool is_owner = service_->UserIsOwner(owner_);
@@ -424,7 +421,6 @@ TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_MissingKey) {
       .InSequence(s)
       .WillOnce(Return(true));
   ExpectKeyPopulated(true);
-  EXPECT_CALL(*metrics_.get(), SendConsumerAllowsNewUsers(_)).Times(1);
 
   brillo::ErrorPtr error;
   const bool is_owner = service_->UserIsOwner(owner_);
@@ -446,7 +442,6 @@ TEST_F(DevicePolicyServiceTest,
       .InSequence(s)
       .WillOnce(Return(true));
   ExpectKeyPopulated(true);
-  EXPECT_CALL(*metrics_.get(), SendConsumerAllowsNewUsers(_)).Times(1);
 
   brillo::ErrorPtr error;
   const bool is_owner = service_->UserIsOwner(owner_);
@@ -466,7 +461,6 @@ TEST_F(DevicePolicyServiceTest,
   ExpectGetPolicy(s, policy_proto_);
   EXPECT_CALL(*mitigator_.get(), Mitigate(_, _)).Times(0);
   ExpectKeyPopulated(false);
-  EXPECT_CALL(*metrics_.get(), SendConsumerAllowsNewUsers(_)).Times(1);
 
   const std::string regular_user = "other@somwhere";
 
@@ -489,7 +483,6 @@ TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_MitigationFailure) {
       .InSequence(s)
       .WillOnce(Return(false));
   ExpectKeyPopulated(true);
-  EXPECT_CALL(*metrics_.get(), SendConsumerAllowsNewUsers(_)).Times(1);
 
   brillo::ErrorPtr error;
   const bool is_owner = service_->UserIsOwner(owner_);

@@ -38,8 +38,6 @@ const char kArcContinueBootImpulseTime3Metric[] =
 const char kArcContinueBootImpulseStatus[] =
     "Login.ArcContinueBootImpulseStatus";
 
-const char kLoginConsumerAllowsNewUsersMetric[] =
-    "Login.ConsumerNewUsersAllowed";
 const char kLoginPolicyFilesMetric[] = "Login.PolicyFilesStatePerBoot";
 const char kLoginUserTypeMetric[] = "Login.UserType";
 const char kLoginStateKeyGenerationStatus[] = "Login.StateKeyGenerationStatus";
@@ -90,11 +88,6 @@ LoginMetrics::~LoginMetrics() {}
 
 void LoginMetrics::SendNamespaceCreationResult(bool status) {
   metrics_lib_.SendBoolToUMA(kLoginMountNamespaceMetric, status);
-}
-
-void LoginMetrics::SendConsumerAllowsNewUsers(bool allowed) {
-  int uma_code = allowed ? ANY_USER_ALLOWED : ONLY_ALLOWLISTED;
-  metrics_lib_.SendEnumToUMA(kLoginConsumerAllowsNewUsersMetric, uma_code, 2);
 }
 
 void LoginMetrics::SendLoginUserType(bool dev_mode,

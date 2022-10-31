@@ -115,8 +115,6 @@ bool DevicePolicyService::CheckAndHandleOwnerLogin(
     brillo::ErrorPtr* error) {
   // Record metrics around consumer usage of user allowlisting.
   const em::PolicyFetchResponse& policy = GetChromeStore()->Get();
-  if (IsConsumerPolicy(policy))
-    metrics_->SendConsumerAllowsNewUsers(PolicyAllowsNewUsers(policy));
 
   // If the current user is the owner, and isn't allowlisted or set as the owner
   // in the settings blob, then do so.

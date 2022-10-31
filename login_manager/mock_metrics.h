@@ -20,7 +20,6 @@ class MockMetrics : public LoginMetrics {
 
   ~MockMetrics() override;
 
-  MOCK_METHOD(void, SendConsumerAllowsNewUsers, (bool), (override));
   MOCK_METHOD(void, SendLoginUserType, (bool, bool, bool), (override));
   MOCK_METHOD(bool,
               SendPolicyFilesStatus,
