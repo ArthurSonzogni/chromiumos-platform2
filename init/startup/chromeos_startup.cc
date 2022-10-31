@@ -310,42 +310,37 @@ void ChromeosStartup::CheckForStatefulWipe() {
   } else if (IsDevToVerifiedModeTransition(0)) {
     bool res = platform_->Stat(dev_mode_allowed_file_, &stbuf);
     if ((res && stbuf.st_uid == getuid()) || NeedsClobberWithoutDevModeFile()) {
-      // We're transitioning from dev mode to verified boot.
-      // When coming back from developer mode, we don't need to
-      // clobber as aggressively. Fast will do the trick.
-      boot_alert_msg = "leave_dev";
-      clobber_args.push_back("fast");
-      clobber_args.push_back("keepimg");
-      std::string msg;
-      if (res && stbuf.st_uid == getuid()) {
-        msg = "'Leave developer mode, dev_mode file present'";
+      if (!DevIsDebugBuild()) {
+        // We're transitioning from dev mode to verified boot.
+        // When coming back from developer mode, we don't need to
+        // clobber as aggressively. Fast will do the trick.
+        boot_alert_msg = "leave_dev";
+        clobber_args.push_back("fast");
+        clobber_args.push_back("keepimg");
+        std::string msg;
+        if (res && stbuf.st_uid == getuid()) {
+          msg = "'Leave developer mode, dev_mode file present'";
+        } else {
+          msg = "'Leave developer mode, no dev_mode file'";
+        }
+        clobber_log_msg = msg;
       } else {
-        msg = "'Leave developer mode, no dev_mode file'";
-      }
-      clobber_log_msg = msg;
-      if (!clobber_args.empty()) {
-        platform_->Clobber(boot_alert_msg, clobber_args, clobber_log_msg);
-      }
-
-      // Only fast clobber the non-protected paths in debug build to preserve
-      // the testing tools.
-      if (DevIsDebugBuild()) {
+        // Only fast clobber the non-protected paths in debug build to preserve
+        // the testing tools.
         DevUpdateStatefulPartition("clobber");
-        utils::Reboot();
-        exit(0);
       }
     }
   } else if (IsDevToVerifiedModeTransition(1)) {
     if (!platform_->Stat(dev_mode_allowed_file_, &stbuf) ||
         stbuf.st_uid != getuid()) {
-      // We're transitioning from verified boot to dev mode.
-      boot_alert_msg = "enter_dev";
-      clobber_args.push_back("keepimg");
-      clobber_log_msg = "Enter developer mode";
-
-      // Only fast clobber the non-protected paths in debug build to preserve
-      // the testing tools.
-      if (DevIsDebugBuild()) {
+      if (!DevIsDebugBuild()) {
+        // We're transitioning from verified boot to dev mode.
+        boot_alert_msg = "enter_dev";
+        clobber_args.push_back("keepimg");
+        clobber_log_msg = "Enter developer mode";
+      } else {
+        // Only fast clobber the non-protected paths in debug build to preserve
+        // the testing tools.
         DevUpdateStatefulPartition("clobber");
         if (!PathExists(dev_mode_allowed_file_)) {
           if (!base::WriteFile(dev_mode_allowed_file_, "")) {
@@ -353,8 +348,6 @@ void ChromeosStartup::CheckForStatefulWipe() {
                           << dev_mode_allowed_file_.value();
           }
         }
-        utils::Reboot();
-        exit(0);
       }
     }
   }
