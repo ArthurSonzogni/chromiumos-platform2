@@ -16,12 +16,10 @@ namespace rmad {
 
 class GyroscopeCalibrationUtilsImpl : public SensorCalibrationUtils {
  public:
-  explicit GyroscopeCalibrationUtilsImpl(
-      const std::string& location, const std::string& name = "cros-ec-gyro");
+  explicit GyroscopeCalibrationUtilsImpl(const std::string& location);
   // Used to inject iio_ec_sensor_utils for testing.
   explicit GyroscopeCalibrationUtilsImpl(
       const std::string& location,
-      const std::string& name,
       std::unique_ptr<IioEcSensorUtils> iio_ec_sensor_utils);
   ~GyroscopeCalibrationUtilsImpl() override = default;
 

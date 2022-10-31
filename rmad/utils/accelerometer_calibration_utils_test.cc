@@ -24,7 +24,7 @@ using testing::WithArgs;
 namespace {
 
 constexpr char kLocation[] = "TestLocation";
-constexpr char kName[] = "TestName";
+constexpr char kSensorName[] = "cros-ec-accel";
 
 constexpr double kGravity = 9.80665;
 // The calibbias data unit is G/1024, and the sensor reading unit is m/s^2.
@@ -79,7 +79,8 @@ class AccelerometerCalibrationUtilsImplTest : public testing::Test {
     };
 
     auto mock_iio_ec_sensor_utils =
-        std::make_unique<StrictMock<MockIioEcSensorUtils>>(kLocation, kName);
+        std::make_unique<StrictMock<MockIioEcSensorUtils>>(kLocation,
+                                                           kSensorName);
     EXPECT_CALL(*mock_iio_ec_sensor_utils,
                 GetAvgData(kAccelerometerChannels, _, _, _))
         .WillRepeatedly(
@@ -99,7 +100,7 @@ class AccelerometerCalibrationUtilsImplTest : public testing::Test {
             }));
 
     return std::make_unique<AccelerometerCalibrationUtilsImpl>(
-        kLocation, kName, std::move(mock_iio_ec_sensor_utils));
+        kLocation, std::move(mock_iio_ec_sensor_utils));
   }
 
   void QueueProgress(double progress) {

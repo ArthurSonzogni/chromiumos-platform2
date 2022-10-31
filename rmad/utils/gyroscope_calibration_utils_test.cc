@@ -23,7 +23,7 @@ using testing::WithArg;
 namespace {
 
 constexpr char kLocation[] = "TestLocation";
-constexpr char kName[] = "TestName";
+constexpr char kSensorName[] = "cros-ec-gyro";
 
 constexpr double kDegree2Radian = M_PI / 180.0;
 // The calibbias data unit is 1/1024 dps, and the sensor reading is rad/s.
@@ -64,7 +64,8 @@ class GyroscopeCalibrationUtilsImplTest : public testing::Test {
     };
 
     auto mock_iio_ec_sensor_utils =
-        std::make_unique<StrictMock<MockIioEcSensorUtils>>(kLocation, kName);
+        std::make_unique<StrictMock<MockIioEcSensorUtils>>(kLocation,
+                                                           kSensorName);
     EXPECT_CALL(*mock_iio_ec_sensor_utils,
                 GetAvgData(kGyroscopeChannels, _, _, _))
         .WillRepeatedly(WithArg<2>(
@@ -79,7 +80,7 @@ class GyroscopeCalibrationUtilsImplTest : public testing::Test {
             }));
 
     return std::make_unique<GyroscopeCalibrationUtilsImpl>(
-        kLocation, kName, std::move(mock_iio_ec_sensor_utils));
+        kLocation, std::move(mock_iio_ec_sensor_utils));
   }
 
   void QueueProgress(double progress) {

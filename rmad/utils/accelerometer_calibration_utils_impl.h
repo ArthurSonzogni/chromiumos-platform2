@@ -16,12 +16,9 @@ namespace rmad {
 
 class AccelerometerCalibrationUtilsImpl : public SensorCalibrationUtils {
  public:
+  explicit AccelerometerCalibrationUtilsImpl(const std::string& location);
   explicit AccelerometerCalibrationUtilsImpl(
       const std::string& location,
-      const std::string& name = "cros-ec-accel");
-  explicit AccelerometerCalibrationUtilsImpl(
-      const std::string& location,
-      const std::string& name,
       std::unique_ptr<IioEcSensorUtils> iio_ec_sensor_utils);
   ~AccelerometerCalibrationUtilsImpl() override = default;
 

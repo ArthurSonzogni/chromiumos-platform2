@@ -16,6 +16,8 @@
 
 namespace {
 
+constexpr char kSensorName[] = "cros-ec-gyro";
+
 constexpr int kSamples = 100;
 
 constexpr double kDegree2Radian = M_PI / 180.0;
@@ -46,16 +48,16 @@ const std::vector<double> kGyroscopIdealValues = {0, 0, 0};
 namespace rmad {
 
 GyroscopeCalibrationUtilsImpl::GyroscopeCalibrationUtilsImpl(
-    const std::string& location, const std::string& name)
-    : SensorCalibrationUtils(location, name) {
-  iio_ec_sensor_utils_ = std::make_unique<IioEcSensorUtilsImpl>(location, name);
+    const std::string& location)
+    : SensorCalibrationUtils(location, kSensorName) {
+  iio_ec_sensor_utils_ =
+      std::make_unique<IioEcSensorUtilsImpl>(location, kSensorName);
 }
 
 GyroscopeCalibrationUtilsImpl::GyroscopeCalibrationUtilsImpl(
     const std::string& location,
-    const std::string& name,
     std::unique_ptr<IioEcSensorUtils> iio_ec_sensor_utils)
-    : SensorCalibrationUtils(location, name),
+    : SensorCalibrationUtils(location, kSensorName),
       iio_ec_sensor_utils_(std::move(iio_ec_sensor_utils)) {}
 
 void GyroscopeCalibrationUtilsImpl::Calibrate(
