@@ -210,6 +210,13 @@ bool EffectsStreamManipulator::ProcessCaptureResult(
   return ret;
 }
 
+std::optional<int64_t> TryGetSensorTimestamp(Camera3CaptureDescriptor* desc) {
+  base::span<const int64_t> timestamp =
+      desc->GetMetadata<int64_t>(ANDROID_SENSOR_TIMESTAMP / 1000);
+  return timestamp.size() == 1 ? std::make_optional(timestamp[0])
+                               : std::nullopt;
+}
+
 bool EffectsStreamManipulator::ProcessCaptureResultOnThread(
     Camera3CaptureDescriptor* result) {
   if (!yuv_stream_)
@@ -277,7 +284,9 @@ bool EffectsStreamManipulator::ProcessCaptureResultOnThread(
     active_runtime_effects_config_ = new_config;
     SetEffect(&new_config, nullptr);
   }
-  pipeline_->ProcessFrame(result->frame_number(),
+  auto timestamp = TryGetSensorTimestamp(result);
+  timestamp_ = timestamp.has_value() ? *timestamp : timestamp_ + 1;
+  pipeline_->ProcessFrame(timestamp_,
                           reinterpret_cast<const uint8_t*>(buffer_ptr_),
                           scoped_mapping.width(), scoped_mapping.height(),
                           scoped_mapping.plane(0).stride);

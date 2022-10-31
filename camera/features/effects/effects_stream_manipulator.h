@@ -66,6 +66,7 @@ class EffectsStreamManipulator : public StreamManipulator {
   void SetEffect(EffectsConfig* new_config, void (*callback)(bool));
   void GpuSync();
   void CreatePipeline(const base::FilePath& dlc_root_path);
+  std::optional<int64_t> TryGetSensorTimestamp(Camera3CaptureDescriptor* desc);
 
   ReloadableConfigFile config_;
   Options options_;
@@ -86,6 +87,8 @@ class EffectsStreamManipulator : public StreamManipulator {
   std::unique_ptr<GpuImageProcessor> image_processor_;
 
   CameraThread thread_;
+
+  int64_t timestamp_ = 0;
 };
 
 }  // namespace cros
