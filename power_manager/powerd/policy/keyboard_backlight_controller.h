@@ -144,6 +144,7 @@ class KeyboardBacklightController : public BacklightController,
   void HandleGetBrightnessRequest(double* percent_out, bool* success_out);
   void HandleSetToggledOffRequest(bool toggled_off);
   void HandleGetToggledOffRequest(bool* toggled_off);
+  void HandleToggleKeyboardBacklightRequest();
 
   // Updates the current brightness after assessing the current state (based on
   // |dimmed_for_inactivity_|, |off_for_inactivity_|, etc.). Should be called

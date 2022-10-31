@@ -144,6 +144,11 @@ void KeyboardBacklightController::Init(
       base::BindRepeating(
           &KeyboardBacklightController::HandleGetToggledOffRequest,
           weak_ptr_factory_.GetWeakPtr()));
+  RegisterToggleKeyboardBacklightHandler(
+      dbus_wrapper_, kToggleKeyboardBacklightMethod,
+      base::BindRepeating(
+          &KeyboardBacklightController::HandleToggleKeyboardBacklightRequest,
+          weak_ptr_factory_.GetWeakPtr()));
 
   display_backlight_controller_ = display_backlight_controller;
   if (display_backlight_controller_)
@@ -574,6 +579,10 @@ void KeyboardBacklightController::HandleSetToggledOffRequest(bool toggled_off) {
 void KeyboardBacklightController::HandleGetToggledOffRequest(
     bool* toggled_off) {
   *toggled_off = toggled_off_;
+}
+
+void KeyboardBacklightController::HandleToggleKeyboardBacklightRequest() {
+  HandleSetToggledOffRequest(!toggled_off_);
 }
 
 bool KeyboardBacklightController::UpdateState(

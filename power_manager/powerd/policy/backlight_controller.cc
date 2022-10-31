@@ -122,6 +122,17 @@ void OnGetToggledOff(const std::string& method_name,
   std::move(response_sender).Run(std::move(response));
 }
 
+void OnToggleKeyboardBacklight(
+    const std::string& method_name,
+    const BacklightController::ToggleKeyboardBacklightCallback& callback,
+    dbus::MethodCall* method_call,
+    dbus::ExportedObject::ResponseSender response_sender) {
+  callback.Run();
+  std::unique_ptr<dbus::Response> response =
+      dbus::Response::FromMethodCall(method_call);
+  std::move(response_sender).Run(std::move(response));
+}
+
 }  // namespace
 
 // static
@@ -186,6 +197,17 @@ void BacklightController::RegisterGetToggledOffHandler(
   dbus_wrapper->ExportMethod(
       method_name,
       base::BindRepeating(&OnGetToggledOff, method_name, callback));
+}
+
+// static
+void BacklightController::RegisterToggleKeyboardBacklightHandler(
+    system::DBusWrapperInterface* dbus_wrapper,
+    const std::string& method_name,
+    const ToggleKeyboardBacklightCallback& callback) {
+  DCHECK(dbus_wrapper);
+  dbus_wrapper->ExportMethod(
+      method_name,
+      base::BindRepeating(&OnToggleKeyboardBacklight, method_name, callback));
 }
 
 // static

@@ -68,12 +68,23 @@
     <!-- Keyboard backlight control -->
     <method name="DecreaseKeyboardBrightness" />
     <method name="IncreaseKeyboardBrightness" />
+    <method name="ToggleKeyboardBacklight">
+      <tp:docstring>
+        Toggle the on/off state of the keyboard backlight.
+
+        If the keyboard's backlight is currently turned on, it will be
+        disabled, and vice versa.
+      </tp:docstring>
+    </method>
     <method name="SetKeyboardBacklightToggledOff">
       <tp:docstring>
         Enable or disable the keyboard backlight.
 
         If the |toggled_off| arg is true, the keyboard backlight will be
         turned off. If false, the backlight will be enabled.
+
+        TODO(b/212618906): This call is deprecated; callers should
+        use ToggleKeyboardBacklight instead.
       </tp:docstring>
       <arg name="toggled_off" direction="in" type="b" />
     </method>
@@ -83,6 +94,9 @@
 
         If |toggled_off| returns true, the keyboard backlight is
         currently disabled.
+
+        TODO(b/212618906): This call is deprecated; callers should
+        use GetKeyboardBrightnessPercent instead.
       </tp:docstring>
       <arg name="toggled_off" direction="out" type="b" />
     </method>

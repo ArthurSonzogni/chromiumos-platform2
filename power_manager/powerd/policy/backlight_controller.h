@@ -11,6 +11,7 @@
 #include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
 
+#include "base/callback_forward.h"
 #include "power_manager/common/power_constants.h"
 #include "power_manager/powerd/system/backlight_interface.h"
 #include "power_manager/proto_bindings/backlight.pb.h"
@@ -136,6 +137,7 @@ class BacklightController {
   using SetToggledOffCallback = base::RepeatingCallback<void(bool toggled_off)>;
   using GetToggledOffCallback =
       base::RepeatingCallback<void(bool* toggled_off)>;
+  using ToggleKeyboardBacklightCallback = base::RepeatingClosure;
 
   using AmbientLightOnResumeMetricsCallback =
       base::RepeatingCallback<void(int lux)>;
@@ -171,6 +173,10 @@ class BacklightController {
       system::DBusWrapperInterface* dbus_wrapper,
       const std::string& method_name,
       const GetToggledOffCallback& callback);
+  static void RegisterToggleKeyboardBacklightHandler(
+      system::DBusWrapperInterface* dbus_wrapper,
+      const std::string& method_name,
+      const ToggleKeyboardBacklightCallback& callback);
 
   // Emits a D-Bus signal announcing a brightness change.
   static void EmitBrightnessChangedSignal(
