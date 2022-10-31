@@ -27,6 +27,8 @@ class Request {
     kSetSurroundingText,
     kSetContentType,
     kSetCursorRectangle,
+    // Requests on a text_input_extension object
+    kExtensionDestroy,
   };
 
   Request(int text_input_id, RequestType type)

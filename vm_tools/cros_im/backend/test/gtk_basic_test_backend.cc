@@ -24,6 +24,7 @@ BACKEND_TEST(GtkBasicTest, TextViewShownImmediately) {
   ExpectSetSurroundingText("", 0, 0);
   Expect(Request::kHideInputPanel);
   Expect(Request::kDeactivate);
+  Expect(Request::kExtensionDestroy);
   Expect(Request::kDestroy);
 }
 
@@ -60,8 +61,10 @@ BACKEND_TEST(GtkBasicTest, SwitchFocus) {
 
   Expect<1>(Request::kHideInputPanel);
   Expect<1>(Request::kDeactivate);
+  Expect<1>(Request::kExtensionDestroy);
   Expect<1>(Request::kDestroy);
 
+  Expect<0>(Request::kExtensionDestroy);
   Expect<0>(Request::kDestroy);
 }
 

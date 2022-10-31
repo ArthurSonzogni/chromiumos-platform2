@@ -78,6 +78,8 @@ IMContextBackend::IMContextBackend(Observer* observer) : observer_(observer) {
 }
 
 IMContextBackend::~IMContextBackend() {
+  if (extended_text_input_)
+    zcr_extended_text_input_v1_destroy(extended_text_input_);
   if (text_input_)
     zwp_text_input_v1_destroy(text_input_);
 }

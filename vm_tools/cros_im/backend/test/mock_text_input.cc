@@ -39,6 +39,11 @@ void HandleRequest(zwp_text_input_v1* text_input, Request::RequestType type) {
   HandleRequest(Request(text_input->id, type));
 }
 
+void HandleRequest(zcr_extended_text_input_v1* extended_text_input,
+                   Request::RequestType type) {
+  HandleRequest(Request(extended_text_input->id, type));
+}
+
 }  // namespace
 
 zwp_text_input_v1* zwp_text_input_manager_v1_create_text_input(
@@ -62,7 +67,8 @@ void zwp_text_input_v1_add_listener(zwp_text_input_v1* text_input,
 }
 
 void zwp_text_input_v1_destroy(zwp_text_input_v1* text_input) {
-  // TODO(timloh): This probably should destroy the text_input object.
+  // As per b/254386833, text_input::destroy() is not a destructor so the
+  // actual object does not get destroyed by the server.
   HandleRequest(text_input, Request::kDestroy);
 }
 
@@ -134,6 +140,12 @@ void zcr_extended_text_input_v1_add_listener(
     void* listener_data) {
   extended_text_input->listener = listener;
   extended_text_input->listener_data = listener_data;
+}
+
+void zcr_extended_text_input_v1_destroy(
+    zcr_extended_text_input_v1* extended_text_input) {
+  HandleRequest(extended_text_input, Request::kExtensionDestroy);
+  GetExtendedTextInputs().at(extended_text_input->id).reset();
 }
 
 void zcr_text_input_x11_v1_activate(zcr_text_input_x11_v1* text_input_x11,

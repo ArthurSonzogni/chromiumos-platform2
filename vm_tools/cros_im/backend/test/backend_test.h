@@ -111,6 +111,7 @@ class BackendTest {
     Ignore<text_input_id>(Request::kSetContentType);
     Ignore<text_input_id>(Request::kShowInputPanel);
     Ignore<text_input_id>(Request::kHideInputPanel);
+    Ignore<text_input_id>(Request::kExtensionDestroy);
   }
 
   template <int text_input_id = 0>

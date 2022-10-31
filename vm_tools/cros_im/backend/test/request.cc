@@ -35,6 +35,8 @@ std::string RequestTypeToString(Request::RequestType type) {
       return "set_content_type()";
     case Request::kSetCursorRectangle:
       return "set_cursor_rectangle()";
+    case Request::kExtensionDestroy:
+      return "extension_destroy()";
   }
   return "[invalid request]";
 }

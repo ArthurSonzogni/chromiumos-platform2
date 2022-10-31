@@ -145,6 +145,8 @@ void zcr_extended_text_input_v1_add_listener(
     const zcr_extended_text_input_v1_listener*,
     void* listener_data);
 
+void zcr_extended_text_input_v1_destroy(zcr_extended_text_input_v1*);
+
 // Mocks for zcr_text_input_x11_v1
 
 struct zcr_text_input_x11_v1_listener;
