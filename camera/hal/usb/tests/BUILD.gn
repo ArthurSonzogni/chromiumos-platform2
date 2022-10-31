@@ -73,6 +73,7 @@ executable("media_v4l2_test") {
     "libbrillo",
     "libchrome",
     "libcros_camera",
+    "libcros_camera_device_config",
     "libyuv",
     "re2",
   ]

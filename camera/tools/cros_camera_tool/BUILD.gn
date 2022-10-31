@@ -11,6 +11,6 @@ executable("cros-camera-tool") {
   configs += [ "//camera/build:cros_camera_common" ]
   pkg_deps = [
     "libbrillo",
-    "libcros_camera",
+    "libcros_camera_device_config",
   ]
 }

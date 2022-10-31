@@ -10,6 +10,8 @@ group("all") {
   deps = [
     ":cros_camera_algo",
     ":libcros_camera",
+    ":libcros_camera_device_config",
+    ":libcros_camera_device_config_pkg_config",
     ":libcros_camera_pkg_config",
   ]
 
@@ -72,6 +74,24 @@ pkg_config("pkg_config_base") {
   ]
 }
 
+shared_library("libcros_camera_device_config") {
+  output_name = "libcros_camera_device_config"
+  sources = [ "//camera/common/device_config.cc" ]
+  configs += [
+    ":target_defaults",
+    ":pkg_config_base",
+  ]
+}
+
+generate_pkg_config("libcros_camera_device_config_pkg_config") {
+  name = "libcros_camera_device_config"
+  description = "cros-camera device config library"
+  version = getenv("PV")
+  requires_private = [ "libchrome" ]
+
+  libs = [ "-lcros_camera_device_config" ]
+}
+
 source_set("base") {
   sources = [
     "//camera/common/camera_buffer_manager_impl.cc",
@@ -80,7 +100,6 @@ source_set("base") {
     "//camera/common/camera_buffer_utils.cc",
     "//camera/common/camera_hal3_helpers.cc",
     "//camera/common/camera_metadata_string_utils.cc",
-    "//camera/common/device_config.cc",
     "//camera/common/embed_file_toc.cc",
     "//camera/common/exif_utils.cc",
     "//camera/common/future.cc",
@@ -260,6 +279,7 @@ shared_library("libcros_camera") {
     ":camera_connector",
     ":face_detection",
     ":jpeg",
+    ":libcros_camera_device_config",
     ":mojo_base",
     ":stream_manipulator",
     ":v4l2_device",
@@ -384,6 +404,7 @@ if (use.fuzzer) {
       ":target_defaults",
     ]
     deps = [
+      ":libcros_camera_device_config",
       ":stream_manipulator",
       "//camera/features",
       "//camera/features/zsl",
