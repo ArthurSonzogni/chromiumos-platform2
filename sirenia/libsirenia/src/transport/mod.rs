@@ -37,21 +37,21 @@ use std::path::PathBuf;
 use std::str::FromStr;
 use std::time::Duration;
 
-use crosvm_base::getpid;
-use crosvm_base::handle_eintr;
-use crosvm_base::net::InetVersion;
-use crosvm_base::net::TcpSocket;
-use crosvm_base::net::UnixSeqpacket;
-use crosvm_base::net::UnixSeqpacketListener;
-use crosvm_base::pipe;
-use crosvm_base::unix::vsock::AddrParseError;
-use crosvm_base::unix::vsock::SocketAddr as VSocketAddr;
-use crosvm_base::unix::vsock::ToSocketAddr;
-use crosvm_base::unix::vsock::VsockCid;
-use crosvm_base::unix::vsock::VsockListener;
-use crosvm_base::unix::vsock::VsockSocket;
-use crosvm_base::unix::vsock::VsockStream;
-use crosvm_base::unix::vsock::VMADDR_PORT_ANY;
+use libchromeos::sys::getpid;
+use libchromeos::sys::handle_eintr;
+use libchromeos::sys::net::InetVersion;
+use libchromeos::sys::net::TcpSocket;
+use libchromeos::sys::net::UnixSeqpacket;
+use libchromeos::sys::net::UnixSeqpacketListener;
+use libchromeos::sys::pipe;
+use libchromeos::sys::unix::vsock::AddrParseError;
+use libchromeos::sys::unix::vsock::SocketAddr as VSocketAddr;
+use libchromeos::sys::unix::vsock::ToSocketAddr;
+use libchromeos::sys::unix::vsock::VsockCid;
+use libchromeos::sys::unix::vsock::VsockListener;
+use libchromeos::sys::unix::vsock::VsockSocket;
+use libchromeos::sys::unix::vsock::VsockStream;
+use libchromeos::sys::unix::vsock::VMADDR_PORT_ANY;
 use thiserror::Error as ThisError;
 
 pub const CROS_CID: VsockCid = VsockCid::Cid(3);
@@ -91,7 +91,7 @@ pub enum Error {
     #[error("failed to get port: {0}")]
     LocalAddr(#[source] io::Error),
     #[error("failed to construct the pipe: {0}")]
-    Pipe(#[source] crosvm_base::Error),
+    Pipe(#[source] libchromeos::sys::Error),
     #[error("pipe transport was in the wrong state")]
     InvalidState,
 }
@@ -728,10 +728,10 @@ pub mod tests {
     use std::thread::spawn;
 
     use assert_matches::assert_matches;
-    use crosvm_base::unix::vsock::VsockCid;
-    use crosvm_base::unix::vsock::VMADDR_PORT_ANY;
     use libchromeos::scoped_path::get_temp_path;
     use libchromeos::scoped_path::ScopedPath;
+    use libchromeos::sys::unix::vsock::VsockCid;
+    use libchromeos::sys::unix::vsock::VMADDR_PORT_ANY;
 
     use super::*;
 

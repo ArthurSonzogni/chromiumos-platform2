@@ -28,7 +28,7 @@ use std::os::unix::io::AsRawFd;
 use std::os::unix::io::RawFd;
 use std::result::Result as StdResult;
 
-use crosvm_base::Error as SysError;
+use libchromeos::sys::Error as SysError;
 use log::error;
 use log::warn;
 use thiserror::Error as ThisError;
@@ -471,8 +471,8 @@ mod tests {
     use std::io::Write;
     use std::rc::Rc;
 
-    use crosvm_base::unix::pipe;
-    use crosvm_base::unix::EventFd;
+    use libchromeos::deprecated::EventFd;
+    use libchromeos::sys::unix::pipe;
 
     use super::*;
 

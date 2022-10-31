@@ -21,7 +21,7 @@ use std::str::FromStr;
 
 use anyhow::Result;
 use chrono::Local;
-use crosvm_base::handle_eintr;
+use libchromeos::sys::handle_eintr;
 
 use crate::linux::events::EventSource;
 use crate::linux::events::Mutator;

@@ -19,9 +19,6 @@ use std::slice;
 use std::thread;
 use std::time::Duration;
 
-use crosvm_base::handle_eintr_errno;
-use crosvm_base::unix::errno_result;
-use crosvm_base::Result;
 use libc::c_int;
 use libc::epoll_create1;
 use libc::epoll_ctl;
@@ -35,6 +32,9 @@ use libc::EPOLL_CLOEXEC;
 use libc::EPOLL_CTL_ADD;
 use libc::EPOLL_CTL_DEL;
 use libc::EPOLL_CTL_MOD;
+use libchromeos::sys::handle_eintr_errno;
+use libchromeos::sys::unix::errno_result;
+use libchromeos::sys::Result;
 use log::warn;
 
 const POLL_CONTEXT_MAX_EVENTS: usize = 16;
@@ -517,8 +517,8 @@ impl<T: PollToken> IntoRawFd for EpollContext<T> {
 /// ```
 /// # use libsirenia::linux::poll::PollContext;
 /// # use libsirenia::linux::poll::PollEvents;
-/// # use crosvm_base::Result;
-/// # use crosvm_base::unix::EventFd;
+/// # use libchromeos::sys::Result;
+/// # use libchromeos::deprecated::EventFd;
 /// # fn test() -> Result<()> {
 ///     let evt1 = EventFd::new()?;
 ///     let evt2 = EventFd::new()?;
@@ -713,7 +713,7 @@ mod tests {
     use std::os::unix::net::UnixStream;
     use std::time::Instant;
 
-    use crosvm_base::unix::EventFd;
+    use libchromeos::deprecated::EventFd;
 
     use super::*;
 

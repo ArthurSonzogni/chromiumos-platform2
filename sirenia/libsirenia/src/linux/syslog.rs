@@ -17,10 +17,10 @@ use std::path::Path;
 use std::path::PathBuf;
 use std::rc::Rc;
 
-use crosvm_base::getpid;
-use crosvm_base::gettid;
-use crosvm_base::handle_eintr;
 use libchromeos::scoped_path::get_temp_path;
+use libchromeos::sys::getpid;
+use libchromeos::sys::gettid;
+use libchromeos::sys::handle_eintr;
 
 use super::events::EventSource;
 use super::events::Mutator;

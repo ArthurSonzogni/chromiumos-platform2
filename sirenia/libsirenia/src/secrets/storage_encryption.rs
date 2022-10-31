@@ -60,7 +60,7 @@ enum Error {
     #[error("failed to hash identifier: {0:?}")]
     HashIdentifier(#[source] secrets::Error),
     #[error("failed to get random bytes: {0:?}")]
-    RandVec(crosvm_base::Error),
+    RandVec(libchromeos::sys::Error),
     #[error("failed to get storage secret version: {0:?}")]
     StorageSecretVersion(#[source] secrets::Error),
     #[error("failed to derive storage secret: {0:?}")]

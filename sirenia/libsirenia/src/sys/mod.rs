@@ -25,9 +25,6 @@ use anyhow::anyhow;
 use anyhow::bail;
 use anyhow::Context;
 use anyhow::Result;
-use crosvm_base::add_fd_flags;
-use crosvm_base::handle_eintr;
-use crosvm_base::Terminal;
 use libc::c_int;
 use libc::isatty;
 use libc::sigfillset;
@@ -37,6 +34,9 @@ use libc::wait;
 use libc::ECHILD;
 use libc::SIG_BLOCK;
 use libc::SIG_UNBLOCK;
+use libchromeos::sys::add_fd_flags;
+use libchromeos::sys::handle_eintr;
+use libchromeos::sys::Terminal;
 use log::error;
 
 use crate::linux::poll::PollContext;
@@ -47,7 +47,7 @@ const CBMEM_CMD: &str = "cbmem";
 pub struct ScopedRaw {}
 
 impl ScopedRaw {
-    pub fn new() -> Result<Self, crosvm_base::Error> {
+    pub fn new() -> Result<Self, libchromeos::sys::Error> {
         stdin().set_raw_mode().map(|_| ScopedRaw {})
     }
 }
@@ -211,7 +211,7 @@ pub fn reboot() -> Result<(), io::Error> {
     }
 }
 
-pub fn set_nonblocking(fd: RawFd) -> Result<(), crosvm_base::Error> {
+pub fn set_nonblocking(fd: RawFd) -> Result<(), libchromeos::sys::Error> {
     add_fd_flags(fd, libc::O_NONBLOCK)
 }
 

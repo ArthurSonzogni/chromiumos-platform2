@@ -49,7 +49,7 @@ pub enum Error {
     #[error("got the wrong response")]
     ResponseMismatch,
     #[error("failed to set non-blocking: {0}")]
-    SetNonBlocking(#[source] crosvm_base::Error),
+    SetNonBlocking(#[source] libchromeos::sys::Error),
     #[error("partial read.")]
     PartialRead,
     #[error("read failed: {0}")]
