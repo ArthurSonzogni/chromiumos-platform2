@@ -5,6 +5,7 @@
 #ifndef SECAGENTD_TEST_MOCK_PROCESS_CACHE_H_
 #define SECAGENTD_TEST_MOCK_PROCESS_CACHE_H_
 
+#include <cstdint>
 #include <memory>
 #include <vector>
 
@@ -25,6 +26,7 @@ class MockProcessCache : public ProcessCacheInterface {
               GetProcessHierarchy,
               (uint64_t, bpf::time_ns_t, int),
               (override));
+  MOCK_METHOD(void, Erase, (uint64_t, bpf::time_ns_t), (override));
 };
 
 }  // namespace secagentd::testing

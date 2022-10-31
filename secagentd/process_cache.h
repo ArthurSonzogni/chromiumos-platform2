@@ -30,6 +30,8 @@ class ProcessCacheInterface
   virtual ~ProcessCacheInterface() = default;
   // Internalizes a process exec event from the BPF.
   virtual void PutFromBpfExec(const bpf::cros_process_start& process_start) = 0;
+  // Evicts the given process from the cache if present.
+  virtual void Erase(uint64_t pid, bpf::time_ns_t start_time_ns) = 0;
   // Returns num_generations worth of processes in the process tree of the given
   // pid; including pid itself. start_time_ns is used as a safety check against
   // PID reuse.
@@ -54,8 +56,13 @@ class ProcessCache : public ProcessCacheInterface {
   };
   using InternalCacheType = base::LRUCache<InternalKeyType, InternalValueType>;
 
+  static void PartiallyFillProcessFromBpfTaskInfo(
+      const bpf::cros_process_task_info& task_info,
+      cros_xdr::reporting::Process* process_proto);
+
   ProcessCache();
   void PutFromBpfExec(const bpf::cros_process_start& process_start) override;
+  void Erase(uint64_t pid, bpf::time_ns_t start_time_ns) override;
   std::vector<std::unique_ptr<cros_xdr::reporting::Process>>
   GetProcessHierarchy(uint64_t pid,
                       bpf::time_ns_t start_time_ns,

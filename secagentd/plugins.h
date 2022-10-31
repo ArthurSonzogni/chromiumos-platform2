@@ -41,6 +41,8 @@ class ProcessPlugin : public PluginInterface {
  private:
   std::unique_ptr<cros_xdr::reporting::XdrProcessEvent> MakeExecEvent(
       const secagentd::bpf::cros_process_start& process_start);
+  std::unique_ptr<cros_xdr::reporting::XdrProcessEvent> MakeTerminateEvent(
+      const secagentd::bpf::cros_process_exit& process_exit);
   // This is static because it must be accessible to a C style function.
   static struct BpfCallbacks callbacks_;
   base::WeakPtrFactory<ProcessPlugin> weak_ptr_factory_;

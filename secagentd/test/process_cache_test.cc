@@ -165,37 +165,38 @@ class ProcessCacheTestFixture : public ::testing::Test {
 
     mock_spawns_ = {
         {kPidChildOfChild,
-         {.process_start = {.pid = kPidChildOfChild,
-                            .ppid = kPidChildOfInit,
-                            .start_time = 5029384029,
-                            .parent_start_time =
-                                mock_procfs_[kPidChildOfInit].starttime_ns,
-                            .commandline =
-                                "/usr/sbin/spaced_cli\0"
-                                "--get_free_disk_space=/home/.shadow",
-                            .commandline_len = 57,
-                            .uid = 0,
-                            .gid = 0,
-                            .image_info =
-                                {
-                                    .pathname = "/usr/sbin/spaced_cli",
-                                    .mnt_ns = 4026531840,
-                                    .inode_device_id = 2051,
-                                    .inode = 26801,
-                                    .uid = 0,
-                                    .gid = 0,
-                                    .mode = 0100755,
-                                },
-                            .spawn_namespace =
-                                {
-                                    .cgroup_ns = 4026531835,
-                                    .pid_ns = 4026531836,
-                                    .user_ns = 4026531837,
-                                    .uts_ns = 4026531838,
-                                    .mnt_ns = 4026531840,
-                                    .net_ns = 4026531999,
-                                    .ipc_ns = 4026531839,
-                                }},
+         {.process_start =
+              {.task_info = {.pid = kPidChildOfChild,
+                             .ppid = kPidChildOfInit,
+                             .start_time = 5029384029,
+                             .parent_start_time =
+                                 mock_procfs_[kPidChildOfInit].starttime_ns,
+                             .commandline =
+                                 "/usr/sbin/spaced_cli\0"
+                                 "--get_free_disk_space=/home/.shadow",
+                             .commandline_len = 57,
+                             .uid = 0,
+                             .gid = 0},
+               .image_info =
+                   {
+                       .pathname = "/usr/sbin/spaced_cli",
+                       .mnt_ns = 4026531840,
+                       .inode_device_id = 2051,
+                       .inode = 26801,
+                       .uid = 0,
+                       .gid = 0,
+                       .mode = 0100755,
+                   },
+               .spawn_namespace =
+                   {
+                       .cgroup_ns = 4026531835,
+                       .pid_ns = 4026531836,
+                       .user_ns = 4026531837,
+                       .uts_ns = 4026531838,
+                       .mnt_ns = 4026531840,
+                       .net_ns = 4026531999,
+                       .ipc_ns = 4026531839,
+                   }},
           .expected_proto = pb::Process()}}};
 
     mock_spawns_[kPidChildOfChild].expected_proto.set_canonical_pid(
@@ -233,11 +234,11 @@ TEST_F(ProcessCacheTestFixture, TestStableUuid) {
       mock_spawns_[kPidChildOfChild].process_start;
   process_cache_->PutFromBpfExec(mock_spawns_[kPidChildOfChild].process_start);
   auto before = process_cache_->GetProcessHierarchy(
-      process_start.pid, process_start.start_time, 2);
+      process_start.task_info.pid, process_start.task_info.start_time, 2);
   ClearInternalCache();
   process_cache_->PutFromBpfExec(process_start);
-  auto after = process_cache_->GetProcessHierarchy(process_start.pid,
-                                                   process_start.start_time, 2);
+  auto after = process_cache_->GetProcessHierarchy(
+      process_start.task_info.pid, process_start.task_info.start_time, 2);
   EXPECT_EQ(before[0]->process_uuid(), after[0]->process_uuid());
   EXPECT_EQ(before[1]->process_uuid(), after[1]->process_uuid());
   // Might as well check that the UUIDs are somewhat unique.
@@ -249,15 +250,17 @@ TEST_F(ProcessCacheTestFixture, ProcfsCacheHit) {
       mock_spawns_[kPidChildOfChild].process_start;
   process_cache_->PutFromBpfExec(process_start);
   auto before = process_cache_->GetProcessHierarchy(
-      process_start.pid, process_start.start_time, 3);
+      process_start.task_info.pid, process_start.task_info.start_time, 3);
   EXPECT_EQ(3, before.size());
   ASSERT_TRUE(fake_root_.Delete());
   bpf::cros_process_start process_start_sibling = process_start;
-  process_start_sibling.pid = process_start.pid + 1;
-  process_start_sibling.start_time = process_start.start_time + 1;
+  process_start_sibling.task_info.pid = process_start.task_info.pid + 1;
+  process_start_sibling.task_info.start_time =
+      process_start.task_info.start_time + 1;
   process_cache_->PutFromBpfExec(process_start_sibling);
   auto after = process_cache_->GetProcessHierarchy(
-      process_start_sibling.pid, process_start_sibling.start_time, 3);
+      process_start_sibling.task_info.pid,
+      process_start_sibling.task_info.start_time, 3);
   EXPECT_EQ(3, after.size());
 
   EXPECT_THAT(*before[1], EqualsProto(*after[1]));
@@ -269,16 +272,16 @@ TEST_F(ProcessCacheTestFixture, ProcfsCacheHit) {
 
 TEST_F(ProcessCacheTestFixture, BpfCacheHit) {
   const bpf::cros_process_start bpf_child = {
-      .pid = 9999,
-      .ppid = kPidChildOfChild,
-      .start_time = 999999999,
-      .parent_start_time =
-          mock_spawns_[kPidChildOfChild].process_start.start_time,
-  };
+      .task_info = {
+          .pid = 9999,
+          .ppid = kPidChildOfChild,
+          .start_time = 999999999,
+          .parent_start_time = mock_spawns_[kPidChildOfChild]
+                                   .process_start.task_info.start_time}};
   process_cache_->PutFromBpfExec(mock_spawns_[kPidChildOfChild].process_start);
   process_cache_->PutFromBpfExec(bpf_child);
-  auto actual = process_cache_->GetProcessHierarchy(bpf_child.pid,
-                                                    bpf_child.start_time, 4);
+  auto actual = process_cache_->GetProcessHierarchy(
+      bpf_child.task_info.pid, bpf_child.task_info.start_time, 4);
   EXPECT_EQ(4, actual.size());
   // Cheat and copy the UUID because we don't have a real Partial matcher.
   mock_spawns_[kPidChildOfChild].expected_proto.set_process_uuid(
@@ -294,7 +297,7 @@ TEST_F(ProcessCacheTestFixture, TruncateAtInit) {
       mock_spawns_[kPidChildOfChild].process_start;
   process_cache_->PutFromBpfExec(process_start);
   auto actual = process_cache_->GetProcessHierarchy(
-      process_start.pid, process_start.start_time, 5);
+      process_start.task_info.pid, process_start.task_info.start_time, 5);
   // Asked for 5, got 3 including init.
   EXPECT_EQ(3, actual.size());
 }
@@ -302,10 +305,10 @@ TEST_F(ProcessCacheTestFixture, TruncateAtInit) {
 TEST_F(ProcessCacheTestFixture, TruncateOnBpfParentPidReuse) {
   bpf::cros_process_start& process_start =
       mock_spawns_[kPidChildOfChild].process_start;
-  process_start.parent_start_time -= 10;
+  process_start.task_info.parent_start_time -= 10;
   process_cache_->PutFromBpfExec(process_start);
   auto actual = process_cache_->GetProcessHierarchy(
-      process_start.pid, process_start.start_time, 3);
+      process_start.task_info.pid, process_start.task_info.start_time, 3);
   // Asked for 3, got 1 because parent start time didn't match.
   EXPECT_EQ(1, actual.size());
 }
@@ -313,10 +316,10 @@ TEST_F(ProcessCacheTestFixture, TruncateOnBpfParentPidReuse) {
 TEST_F(ProcessCacheTestFixture, TruncateOnBpfParentNotFound) {
   bpf::cros_process_start& process_start =
       mock_spawns_[kPidChildOfChild].process_start;
-  process_start.ppid -= 10;
+  process_start.task_info.ppid -= 10;
   process_cache_->PutFromBpfExec(process_start);
   auto actual = process_cache_->GetProcessHierarchy(
-      process_start.pid, process_start.start_time, 3);
+      process_start.task_info.pid, process_start.task_info.start_time, 3);
   // Asked for 3, got 1 because parent pid doesn't exist in procfs.
   EXPECT_EQ(1, actual.size());
 }
@@ -329,7 +332,7 @@ TEST_F(ProcessCacheTestFixture, DontFailProcfsIfParentLinkageNotFound) {
       fake_root_.GetPath().Append("proc").Append(std::to_string(kPidInit)));
   process_cache_->PutFromBpfExec(process_start);
   auto actual = process_cache_->GetProcessHierarchy(
-      process_start.pid, process_start.start_time, 3);
+      process_start.task_info.pid, process_start.task_info.start_time, 3);
   // Asked for 3, got 2. Init doesn't exist but we at least got "child" even
   // though we failed to resolve its parent linkage.
   EXPECT_EQ(2, actual.size());
@@ -338,14 +341,38 @@ TEST_F(ProcessCacheTestFixture, DontFailProcfsIfParentLinkageNotFound) {
 TEST_F(ProcessCacheTestFixture, ParseTrickyComm) {
   bpf::cros_process_start& process_start =
       mock_spawns_[kPidChildOfChild].process_start;
-  process_start.ppid = kPidTrickyComm;
-  process_start.parent_start_time = mock_procfs_[kPidTrickyComm].starttime_ns;
+  process_start.task_info.ppid = kPidTrickyComm;
+  process_start.task_info.parent_start_time =
+      mock_procfs_[kPidTrickyComm].starttime_ns;
   process_cache_->PutFromBpfExec(process_start);
   auto actual = process_cache_->GetProcessHierarchy(
-      process_start.pid, process_start.start_time, 3);
+      process_start.task_info.pid, process_start.task_info.start_time, 3);
   // Asked for 3, got 3. I.e we were able to parse commspoofer's stat to find
   // its parent.
   EXPECT_EQ(3, actual.size());
+}
+
+TEST_F(ProcessCacheTestFixture, TestErase) {
+  const bpf::cros_process_start& process_start =
+      mock_spawns_[kPidChildOfChild].process_start;
+  process_cache_->PutFromBpfExec(process_start);
+  auto before = process_cache_->GetProcessHierarchy(
+      process_start.task_info.pid, process_start.task_info.start_time, 1);
+  EXPECT_EQ(1, before.size());
+
+  process_cache_->Erase(process_start.task_info.pid,
+                        process_start.task_info.start_time);
+  auto after = process_cache_->GetProcessHierarchy(
+      process_start.task_info.pid, process_start.task_info.start_time, 1);
+  EXPECT_EQ(0, after.size());
+}
+
+TEST_F(ProcessCacheTestFixture, TestEraseNotInCache) {
+  const bpf::cros_process_start& process_start =
+      mock_spawns_[kPidChildOfChild].process_start;
+  // Nothing explodes if we call erase on an uncached process.
+  process_cache_->Erase(process_start.task_info.pid,
+                        process_start.task_info.start_time);
 }
 
 }  // namespace secagentd::testing

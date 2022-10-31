@@ -59,27 +59,29 @@ struct cros_namespace_info {
   uint64_t ipc_ns;
 };
 
-// This is the process information collected when a process starts.
-struct cros_process_start {
+// This is the process information collected when a process starts or exits.
+struct cros_process_task_info {
   uint32_t pid;                 // The tgid.
   uint32_t ppid;                // The tgid of parent.
   time_ns_t start_time;         // Nanoseconds since boot.
   time_ns_t parent_start_time;  // Nanoseconds since boot.
   char commandline[CROS_MAX_REDUCED_ARG_SIZE];
-  unsigned int commandline_len;  // At most CROS_MAX_REDUCED_ARG_SIZE.
-  unsigned int uid;
-  unsigned int gid;
+  uint32_t commandline_len;  // At most CROS_MAX_REDUCED_ARG_SIZE.
+  uint32_t uid;
+  uint32_t gid;
+};
+
+// This is the process information collected when a process starts.
+struct cros_process_start {
+  struct cros_process_task_info task_info;
   struct cros_image_info image_info;
   struct cros_namespace_info spawn_namespace;
 };
 
 // This is the process information collected when a process exits.
 struct cros_process_exit {
-  // PID and start_time together will form a unique identifier for a process.
-  // This unique identifier can be used to retrieve the rest of the process
-  // information from a userspace process cache.
-  uint32_t ppid;         // The tgid of parent.
-  time_ns_t start_time;  // Nanoseconds since boot.
+  struct cros_process_task_info task_info;
+  bool is_leaf;  // True if process has no children.
 };
 
 struct cros_process_change_namespace {

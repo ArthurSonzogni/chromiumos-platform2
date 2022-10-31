@@ -12,10 +12,6 @@
 #undef __cplusplus
 #include "secagentd/bpf/process.h"
 
-#ifndef MIN
-#define MIN(x, y) (((x) < (y)) ? (x) : (y))
-#endif
-
 const char LICENSE[] SEC("license") = "Dual BSD/GPL";
 
 struct {
@@ -60,6 +56,36 @@ static inline __attribute__((always_inline)) void fill_image_info(
   image_info->mnt_ns = BPF_CORE_READ(t, real_parent, nsproxy, mnt_ns, ns.inum);
 }
 
+static inline __attribute__((always_inline)) void fill_task_info(
+    struct cros_process_task_info* task_info, const struct task_struct* t) {
+  task_info->ppid = BPF_CORE_READ(t, real_parent, tgid);
+  task_info->start_time = BPF_CORE_READ(t, group_leader, start_boottime);
+  task_info->parent_start_time =
+      BPF_CORE_READ(t, real_parent, group_leader, start_boottime);
+
+  task_info->pid = bpf_get_current_pid_tgid() >> 32;
+
+  // GID is stored in the upper 32-bits.
+  // UID is stored in the lower 32-bits.
+  u64 uid_gid = bpf_get_current_uid_gid();
+  task_info->gid = uid_gid >> 32;
+  task_info->uid = uid_gid & 0xFFFFFFFF;
+
+  // Read argv from user memory.
+  unsigned long arg_start = BPF_CORE_READ(t, mm, arg_start);
+  unsigned long arg_end = BPF_CORE_READ(t, mm, arg_end);
+  if ((arg_end - arg_start) > sizeof(task_info->commandline)) {
+    task_info->commandline_len = sizeof(task_info->commandline);
+  } else {
+    task_info->commandline_len = (uint32_t)(arg_end - arg_start);
+  }
+  bpf_probe_read_user(task_info->commandline, task_info->commandline_len,
+                      arg_start);
+  if (task_info->commandline_len == sizeof(task_info->commandline)) {
+    task_info->commandline[task_info->commandline_len - 1] = '\0';
+  }
+}
+
 // trace_sched_process_exec is called by exec_binprm shortly after exec. It has
 // the distinct advantage (over arguably more stable and security focused
 // interfaces like bprm_committed_creds) of running in the context of the newly
@@ -87,34 +113,43 @@ int BPF_PROG(handle_sched_process_exec,
   struct cros_process_start* p =
       &(event->data.process_event.data.process_start);
 
-  // Read various fields from the task_struct in a relocatable way.
+  fill_task_info(&p->task_info, current);
   fill_ns_info(&p->spawn_namespace, current);
   fill_image_info(&p->image_info, bprm, current);
-  p->ppid = BPF_CORE_READ(current, real_parent, tgid);
-  // Use group_leader boot times to match procfs.
-  p->start_time = BPF_CORE_READ(current, group_leader, start_boottime);
-  p->parent_start_time =
-      BPF_CORE_READ(current, real_parent, group_leader, start_boottime);
-
-  // In this case pid == tgid since this is process creation.
-  p->pid = bpf_get_current_pid_tgid() >> 32;
-
-  // GID is stored in the upper 32-bits.
-  // UID is stored in the lower 32-bits.
-  u64 uid_gid = bpf_get_current_uid_gid();
-  p->gid = uid_gid >> 32;
-  p->uid = uid_gid & 0xFFFFFFFF;
-
-  // Read argv from user memory.
-  uint64_t arg_start = BPF_CORE_READ(current, mm, arg_start);
-  uint64_t arg_end = BPF_CORE_READ(current, mm, arg_end);
-  p->commandline_len = MIN((arg_end - arg_start), sizeof(p->commandline));
-  bpf_probe_read_user(p->commandline, p->commandline_len, arg_start);
-  if (p->commandline_len == sizeof(p->commandline)) {
-    p->commandline[p->commandline_len - 1] = '\0';
-  }
 
   // Submit the event to the ring buffer for userspace processing.
+  bpf_ringbuf_submit(event, 0);
+  return 0;
+}
+
+#if defined(USE_MIN_CORE_BTF) && USE_MIN_CORE_BTF == 1
+SEC("raw_tracepoint/sched_process_exit")
+#else
+SEC("tp_btf/sched_process_exit")
+#endif  // USE_MIN_CORE_BTF
+int BPF_PROG(handle_sched_process_exit, struct task_struct* current) {
+  struct cros_event* event =
+      (struct cros_event*)(bpf_ringbuf_reserve(&rb, sizeof(*event), 0));
+  if (event == NULL) {
+    return 0;
+  }
+  event->type = process_type;
+  event->data.process_event.type = process_exit_type;
+  struct cros_process_exit* p = &(event->data.process_event.data.process_exit);
+
+  fill_task_info(&p->task_info, current);
+  // Similar to list_empty(&current->children). Though unsure how to get a
+  // reliable pointer to current->children. So instead of:
+  // (&current->children == current->children.next)
+  // we check if:
+  // (current->children.next == current->children.next->next).
+  // The only way current->children.next would link to itself is if
+  // current->children.next were list head. The list head linking to itself
+  // implies that the list is empty.
+  struct list_head* first_child = BPF_CORE_READ(current, children.next);
+  p->is_leaf =
+      (!first_child || (first_child == BPF_CORE_READ(first_child, next)));
+
   bpf_ringbuf_submit(event, 0);
   return 0;
 }

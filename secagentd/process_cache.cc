@@ -88,14 +88,8 @@ void FillImageFromBpf(const bpf::cros_image_info& image_info,
 
 void FillProcessFromBpf(const bpf::cros_process_start& process_start,
                         pb::Process* process_proto) {
-  ProcessCache::InternalKeyType key{process_start.start_time,
-                                    process_start.pid};
-  process_proto->set_process_uuid(StableUuid(key));
-  process_proto->set_canonical_pid(process_start.pid);
-  process_proto->set_canonical_uid(process_start.uid);
-  process_proto->set_commandline(SafeTransformArgvEnvp(
-      process_start.commandline, sizeof(process_start.commandline),
-      process_start.commandline_len));
+  ProcessCache::PartiallyFillProcessFromBpfTaskInfo(process_start.task_info,
+                                                    process_proto);
   FillImageFromBpf(process_start.image_info, process_proto->mutable_image());
 }
 
@@ -167,6 +161,17 @@ namespace secagentd {
 
 constexpr ProcessCache::InternalCacheType::size_type kProcessCacheMaxSize = 256;
 
+void ProcessCache::PartiallyFillProcessFromBpfTaskInfo(
+    const bpf::cros_process_task_info& task_info, pb::Process* process_proto) {
+  ProcessCache::InternalKeyType key{task_info.start_time, task_info.pid};
+  process_proto->set_process_uuid(StableUuid(key));
+  process_proto->set_canonical_pid(task_info.pid);
+  process_proto->set_canonical_uid(task_info.uid);
+  process_proto->set_commandline(SafeTransformArgvEnvp(
+      task_info.commandline, sizeof(task_info.commandline),
+      task_info.commandline_len));
+}
+
 ProcessCache::ProcessCache(const base::FilePath& root_path,
                            uint64_t sc_clock_tck)
     : cache_(std::make_unique<InternalCacheType>(kProcessCacheMaxSize)),
@@ -178,14 +183,24 @@ ProcessCache::ProcessCache()
 
 void ProcessCache::PutFromBpfExec(
     const bpf::cros_process_start& process_start) {
-  InternalKeyType key{LossyNsecToClockT(process_start.start_time),
-                      process_start.pid};
+  InternalKeyType key{LossyNsecToClockT(process_start.task_info.start_time),
+                      process_start.task_info.pid};
   auto process_proto = std::make_unique<pb::Process>();
   FillProcessFromBpf(process_start, process_proto.get());
-  InternalKeyType parent_key{LossyNsecToClockT(process_start.parent_start_time),
-                             process_start.ppid};
+  InternalKeyType parent_key{
+      LossyNsecToClockT(process_start.task_info.parent_start_time),
+      process_start.task_info.ppid};
   base::AutoLock lock(cache_lock_);
   cache_->Put(key, InternalValueType({std::move(process_proto), parent_key}));
+}
+
+void ProcessCache::Erase(uint64_t pid, bpf::time_ns_t start_time_ns) {
+  InternalKeyType key{LossyNsecToClockT(start_time_ns), pid};
+  base::AutoLock lock(cache_lock_);
+  auto it = cache_->Peek(key);
+  if (it != cache_->end()) {
+    cache_->Erase(it);
+  }
 }
 
 ProcessCache::InternalCacheType::const_iterator ProcessCache::InclusiveGet(

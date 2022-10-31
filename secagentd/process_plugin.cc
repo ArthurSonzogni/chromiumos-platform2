@@ -77,6 +77,15 @@ void ProcessPlugin::HandleRingBufferEvent(const bpf::cros_event& bpf_event) {
       // Save a pointer to the common field before downcasting.
       mutable_common = exec_event->mutable_common();
       message = std::move(exec_event);
+    } else if (pe.type == bpf::process_exit_type) {
+      const bpf::cros_process_exit& process_exit = pe.data.process_exit;
+      auto terminate_event = MakeTerminateEvent(process_exit);
+      if (process_exit.is_leaf) {
+        process_cache_->Erase(process_exit.task_info.pid,
+                              process_exit.task_info.start_time);
+      }
+      mutable_common = terminate_event->mutable_common();
+      message = std::move(terminate_event);
     } else if (pe.type == bpf::process_change_namespace_type) {
       const bpf::cros_process_change_namespace& p =
           pe.data.process_change_namespace;
@@ -126,7 +135,7 @@ std::unique_ptr<pb::XdrProcessEvent> ProcessPlugin::MakeExecEvent(
   // Fetch information on process that was just spawned, the parent process
   // that spawned that process, and its parent process. I.e a total of three.
   auto hierarchy = process_cache_->GetProcessHierarchy(
-      process_start.pid, process_start.start_time, 3);
+      process_start.task_info.pid, process_start.task_info.start_time, 3);
   if (hierarchy.size() > 0) {
     process_exec_event->set_allocated_spawn_process(hierarchy[0].release());
   }
@@ -136,6 +145,39 @@ std::unique_ptr<pb::XdrProcessEvent> ProcessPlugin::MakeExecEvent(
   if (hierarchy.size() > 2) {
     process_exec_event->set_allocated_parent_process(hierarchy[2].release());
   }
+  return process_event;
+}
+
+std::unique_ptr<pb::XdrProcessEvent> ProcessPlugin::MakeTerminateEvent(
+    const secagentd::bpf::cros_process_exit& process_exit) {
+  auto process_event = std::make_unique<pb::XdrProcessEvent>();
+  auto process_terminate_event = process_event->mutable_process_terminate();
+  // Try to fetch from the process cache if possible. The cache has more
+  // complete information.
+  auto hierarchy = process_cache_->GetProcessHierarchy(
+      process_exit.task_info.pid, process_exit.task_info.start_time, 2);
+  if (hierarchy.size() > 0) {
+    process_terminate_event->set_allocated_process(hierarchy[0].release());
+  }
+  if (hierarchy.size() > 1) {
+    process_terminate_event->set_allocated_parent_process(
+        hierarchy[1].release());
+  }
+
+  // If that fails, fill in the task info that we got from BPF.
+  if (hierarchy.size() == 0) {
+    ProcessCache::PartiallyFillProcessFromBpfTaskInfo(
+        process_exit.task_info, process_terminate_event->mutable_process());
+    // Maybe the parent is still alive and in procfs.
+    auto parent = process_cache_->GetProcessHierarchy(
+        process_exit.task_info.ppid, process_exit.task_info.parent_start_time,
+        1);
+    if (parent.size() != 0) {
+      process_terminate_event->set_allocated_parent_process(
+          parent[0].release());
+    }
+  }
+
   return process_event;
 }
 

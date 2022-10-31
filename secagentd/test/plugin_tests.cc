@@ -144,9 +144,12 @@ TEST_F(BPFPluginTestFixture, TestProcessPluginExecEvent) {
 
   const bpf::cros_event a = {
       .data.process_event = {.type = bpf::process_start_type,
-                             .data.process_start = {.pid = kPids[0],
-                                                    .start_time =
-                                                        kSpawnStartTime,
+                             .data.process_start = {.task_info =
+                                                        {
+                                                            .pid = kPids[0],
+                                                            .start_time =
+                                                                kSpawnStartTime,
+                                                        },
                                                     .spawn_namespace =
                                                         {
                                                             .cgroup_ns = 1,
@@ -227,7 +230,7 @@ TEST_F(BPFPluginTestFixture, TestProcessPluginExecEventPartialHierarchy) {
 
   const bpf::cros_event a = {
       .data.process_event = {.type = bpf::process_start_type,
-                             .data.process_start =
+                             .data.process_start.task_info =
                                  {
                                      .pid = kPids[0],
                                      .start_time = kSpawnStartTime,
@@ -262,6 +265,140 @@ TEST_F(BPFPluginTestFixture, TestProcessPluginExecEventPartialHierarchy) {
   EXPECT_EQ(kPids[1],
             actual_process_event->process_exec().process().canonical_pid());
   EXPECT_FALSE(actual_process_event->process_exec().has_parent_process());
+}
+
+TEST_F(BPFPluginTestFixture, TestProcessPluginExitEventCacheHit) {
+  CreateActivatedPlugin(Types::Plugin::kProcess);
+  EXPECT_NE(nullptr, plugin_);
+
+  constexpr bpf::time_ns_t kStartTime = 2222;
+  constexpr uint64_t kPids[] = {2, 1};
+  std::vector<std::unique_ptr<pb::Process>> hierarchy;
+  for (int i = 0; i < std::size(kPids); ++i) {
+    hierarchy.push_back(std::make_unique<pb::Process>());
+    hierarchy[i]->set_canonical_pid(kPids[i]);
+  }
+
+  const bpf::cros_event a = {
+      .data.process_event = {.type = bpf::process_exit_type,
+                             .data.process_exit =
+                                 {
+                                     .task_info =
+                                         {
+                                             .pid = kPids[0],
+                                             .start_time = kStartTime,
+                                         },
+                                     .is_leaf = true,
+                                 }},
+      .type = bpf::process_type,
+  };
+  EXPECT_CALL(*process_cache_, GetProcessHierarchy(kPids[0], kStartTime, 2))
+      .WillOnce(Return(ByMove(std::move(hierarchy))));
+
+  std::unique_ptr<google::protobuf::MessageLite> actual_sent_message;
+  pb::CommonEventDataFields* actual_mutable_common = nullptr;
+  EXPECT_CALL(
+      *message_sender_,
+      SendMessage(Eq(reporting::Destination::CROS_SECURITY_PROCESS), _, _))
+      .WillOnce([&actual_sent_message, &actual_mutable_common](
+                    auto d, pb::CommonEventDataFields* c,
+                    std::unique_ptr<google::protobuf::MessageLite> m) {
+        actual_sent_message = std::move(m);
+        actual_mutable_common = c;
+        return absl::OkStatus();
+      });
+
+  EXPECT_CALL(*process_cache_, Erase(kPids[0], kStartTime));
+
+  cbs_.ring_buffer_event_callback.Run(a);
+
+  pb::XdrProcessEvent* actual_process_event =
+      google::protobuf::down_cast<pb::XdrProcessEvent*>(
+          actual_sent_message.get());
+  EXPECT_EQ(actual_process_event->mutable_common(), actual_mutable_common);
+  EXPECT_EQ(
+      kPids[0],
+      actual_process_event->process_terminate().process().canonical_pid());
+  EXPECT_EQ(kPids[1], actual_process_event->process_terminate()
+                          .parent_process()
+                          .canonical_pid());
+}
+
+TEST_F(BPFPluginTestFixture, TestProcessPluginExitEventCacheMiss) {
+  CreateActivatedPlugin(Types::Plugin::kProcess);
+  EXPECT_NE(nullptr, plugin_);
+
+  constexpr bpf::time_ns_t kStartTimes[] = {2222, 1111};
+  constexpr uint64_t kPids[] = {2, 1};
+  constexpr char kParentImage[] = "/bin/bash";
+
+  // The exiting process wasn't found in the cache.
+  std::vector<std::unique_ptr<pb::Process>> hierarchy;
+
+  // The parent, however, was found in procfs.
+  std::vector<std::unique_ptr<pb::Process>> parent_hierarchy;
+  parent_hierarchy.push_back(std::make_unique<pb::Process>());
+  parent_hierarchy[0]->set_canonical_pid(kPids[1]);
+  parent_hierarchy[0]->mutable_image()->set_pathname(kParentImage);
+
+  const bpf::cros_event a = {
+      .data.process_event = {.type = bpf::process_exit_type,
+                             .data.process_exit =
+                                 {
+                                     .task_info =
+                                         {
+                                             .pid = kPids[0],
+                                             .ppid = kPids[1],
+                                             .start_time = kStartTimes[0],
+                                             .parent_start_time =
+                                                 kStartTimes[1],
+                                         },
+                                     .is_leaf = false,
+                                 }},
+      .type = bpf::process_type,
+  };
+  EXPECT_CALL(*process_cache_, GetProcessHierarchy(kPids[0], kStartTimes[0], 2))
+      .WillOnce(Return(ByMove(std::move(hierarchy))));
+  EXPECT_CALL(*process_cache_, GetProcessHierarchy(kPids[1], kStartTimes[1], 1))
+      .WillOnce(Return(ByMove(std::move(parent_hierarchy))));
+
+  std::unique_ptr<google::protobuf::MessageLite> actual_sent_message;
+  pb::CommonEventDataFields* actual_mutable_common = nullptr;
+  EXPECT_CALL(
+      *message_sender_,
+      SendMessage(Eq(reporting::Destination::CROS_SECURITY_PROCESS), _, _))
+      .WillOnce([&actual_sent_message, &actual_mutable_common](
+                    auto d, pb::CommonEventDataFields* c,
+                    std::unique_ptr<google::protobuf::MessageLite> m) {
+        actual_sent_message = std::move(m);
+        actual_mutable_common = c;
+        return absl::OkStatus();
+      });
+
+  EXPECT_CALL(*process_cache_, Erase(_, _)).Times(0);
+
+  cbs_.ring_buffer_event_callback.Run(a);
+
+  pb::XdrProcessEvent* actual_process_event =
+      google::protobuf::down_cast<pb::XdrProcessEvent*>(
+          actual_sent_message.get());
+  EXPECT_EQ(actual_process_event->mutable_common(), actual_mutable_common);
+  // Expect some process information to be filled in from the BPF event despite
+  // the cache miss.
+  EXPECT_TRUE(
+      actual_process_event->process_terminate().process().has_process_uuid());
+  EXPECT_EQ(
+      kPids[0],
+      actual_process_event->process_terminate().process().canonical_pid());
+  EXPECT_EQ(kPids[1], actual_process_event->process_terminate()
+                          .parent_process()
+                          .canonical_pid());
+  // Expect richer information about the parent due to the cache hit on the
+  // parent.
+  EXPECT_EQ(kParentImage, actual_process_event->process_terminate()
+                              .parent_process()
+                              .image()
+                              .pathname());
 }
 
 INSTANTIATE_TEST_SUITE_P(
