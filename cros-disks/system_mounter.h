@@ -50,7 +50,7 @@ class SystemMounter : public Mounter {
  private:
   const Platform* const platform_;
   const std::string filesystem_type_;
-  const int flags_;
+  const uint64_t flags_;
   const std::vector<std::string> options_;
 };
 

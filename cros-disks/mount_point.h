@@ -34,7 +34,7 @@ struct MountPointData {
   // Filesystem type of the mount.
   std::string filesystem_type;
   // Flags of the mount point.
-  int flags = 0;
+  uint64_t flags = 0;
   // Additional data passed during mount.
   std::string data;
   // Error state associated to this mount point.
@@ -113,7 +113,7 @@ class MountPoint final {
   const std::string& source() const { return data_.source; }
   MountSourceType source_type() const { return data_.source_type; }
   const std::string& fstype() const { return data_.filesystem_type; }
-  int flags() const { return data_.flags; }
+  uint64_t flags() const { return data_.flags; }
   const std::string& data() const { return data_.data; }
   MountErrorType error() const { return data_.error; }
   bool is_read_only() const { return (data_.flags & MS_RDONLY) != 0; }

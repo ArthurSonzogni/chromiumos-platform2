@@ -266,7 +266,7 @@ std::unique_ptr<MountPoint> FUSEMounter::Mount(
   }
 
   // Prepare mount flags.
-  int mount_flags = MS_NODEV | MS_NOSUID | MS_NOEXEC | MS_DIRSYNC;
+  uint64_t mount_flags = MS_NODEV | MS_NOSUID | MS_NOEXEC | MS_DIRSYNC;
 
   if (read_only)
     mount_flags |= MS_RDONLY;

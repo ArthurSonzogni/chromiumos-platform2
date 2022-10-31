@@ -346,7 +346,7 @@ TEST_F(MountManagerTest, MountFailsWithMountPointAndError) {
   const base::FilePath mount_path(kMountPath);
   auto ptr = std::make_unique<MountPoint>(
       MountPointData{.mount_path = mount_path,
-                     .flags = IsReadOnlyMount(options_) ? MS_RDONLY : 0},
+                     .flags = IsReadOnlyMount(options_) ? MS_RDONLY : 0u},
       &platform_);
   EXPECT_CALL(manager_,
               DoMount(kSourcePath, filesystem_type_, options_, mount_path, _))
@@ -381,7 +381,7 @@ TEST_F(MountManagerTest, MountSucceededWithGivenMountPath) {
   const base::FilePath mount_path(kMountPath);
   auto ptr = std::make_unique<MountPoint>(
       MountPointData{.mount_path = mount_path,
-                     .flags = IsReadOnlyMount(options_) ? MS_RDONLY : 0},
+                     .flags = IsReadOnlyMount(options_) ? MS_RDONLY : 0u},
       &platform_);
   EXPECT_CALL(manager_,
               DoMount(kSourcePath, filesystem_type_, options_, mount_path, _))
@@ -424,7 +424,7 @@ TEST_F(MountManagerTest, MountCachesStatusWithReadOnlyOption) {
   base::FilePath mount_path(kMountPath);
   auto ptr = std::make_unique<MountPoint>(
       MountPointData{.mount_path = mount_path,
-                     .flags = IsReadOnlyMount(options_) ? MS_RDONLY : 0},
+                     .flags = IsReadOnlyMount(options_) ? MS_RDONLY : 0u},
       &platform_);
   EXPECT_CALL(manager_,
               DoMount(kSourcePath, filesystem_type_, options_, mount_path, _))
@@ -500,7 +500,7 @@ TEST_F(MountManagerTest, MountSucceededWithEmptyMountPath) {
   const base::FilePath mount_path(kMountPath);
   auto ptr = std::make_unique<MountPoint>(
       MountPointData{.mount_path = mount_path,
-                     .flags = IsReadOnlyMount(options_) ? MS_RDONLY : 0},
+                     .flags = IsReadOnlyMount(options_) ? MS_RDONLY : 0u},
       &platform_);
   EXPECT_CALL(manager_,
               DoMount(kSourcePath, filesystem_type_, options_, mount_path, _))
@@ -538,7 +538,7 @@ TEST_F(MountManagerTest, MountSucceededWithGivenMountLabel) {
   const base::FilePath mount_path(final_mount_path);
   auto ptr = std::make_unique<MountPoint>(
       MountPointData{.mount_path = mount_path,
-                     .flags = IsReadOnlyMount(options_) ? MS_RDONLY : 0},
+                     .flags = IsReadOnlyMount(options_) ? MS_RDONLY : 0u},
       &platform_);
   EXPECT_CALL(manager_,
               DoMount(kSourcePath, filesystem_type_, _, mount_path, _))
@@ -571,7 +571,7 @@ TEST_F(MountManagerTest, MountWithAlreadyMountedSourcePath) {
   const base::FilePath mount_path(kMountPath);
   auto ptr = std::make_unique<MountPoint>(
       MountPointData{.mount_path = mount_path,
-                     .flags = IsReadOnlyMount(options_) ? MS_RDONLY : 0},
+                     .flags = IsReadOnlyMount(options_) ? MS_RDONLY : 0u},
       &platform_);
   EXPECT_CALL(manager_,
               DoMount(kSourcePath, filesystem_type_, options_, mount_path, _))
@@ -790,7 +790,7 @@ TEST_F(MountManagerTest, UnmountSucceededWithGivenSourcePath) {
   const base::FilePath mount_path(kMountPath);
   auto ptr = std::make_unique<MountPoint>(
       MountPointData{.mount_path = mount_path,
-                     .flags = IsReadOnlyMount(options_) ? MS_RDONLY : 0},
+                     .flags = IsReadOnlyMount(options_) ? MS_RDONLY : 0u},
       &platform_);
 
   EXPECT_CALL(manager_,
@@ -823,7 +823,7 @@ TEST_F(MountManagerTest, UnmountSucceededWithGivenMountPath) {
   const base::FilePath mount_path(kMountPath);
   auto ptr = std::make_unique<MountPoint>(
       MountPointData{.mount_path = mount_path,
-                     .flags = IsReadOnlyMount(options_) ? MS_RDONLY : 0},
+                     .flags = IsReadOnlyMount(options_) ? MS_RDONLY : 0u},
       &platform_);
 
   EXPECT_CALL(manager_,
@@ -856,7 +856,7 @@ TEST_F(MountManagerTest, UnmountRemovesFromCacheIfNotMounted) {
   const base::FilePath mount_path(kMountPath);
   auto ptr = std::make_unique<MountPoint>(
       MountPointData{.mount_path = mount_path,
-                     .flags = IsReadOnlyMount(options_) ? MS_RDONLY : 0},
+                     .flags = IsReadOnlyMount(options_) ? MS_RDONLY : 0u},
       &platform_);
 
   EXPECT_CALL(manager_,

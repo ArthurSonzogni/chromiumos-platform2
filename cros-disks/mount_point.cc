@@ -78,7 +78,7 @@ MountErrorType MountPoint::Remount(bool read_only) {
   if (!is_mounted_)
     return MOUNT_ERROR_PATH_NOT_MOUNTED;
 
-  int flags = data_.flags;
+  uint64_t flags = data_.flags;
   if (read_only) {
     flags |= MS_RDONLY;
   } else {

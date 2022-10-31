@@ -22,7 +22,7 @@ namespace cros_disks {
 
 namespace {
 
-constexpr int kExternalDiskMountFlags =
+constexpr uint64_t kExternalDiskMountFlags =
     MS_NODEV | MS_NOSUID | MS_NOEXEC | MS_NOSYMFOLLOW | MS_DIRSYNC;
 
 }  // namespace
@@ -43,7 +43,7 @@ std::unique_ptr<MountPoint> SystemMounter::Mount(
     const base::FilePath& target_path,
     std::vector<std::string> params,
     MountErrorType* error) const {
-  int flags = flags_;
+  uint64_t flags = flags_;
 
   // We only care about "ro" here.
   if (IsReadOnlyMount(params)) {
