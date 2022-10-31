@@ -63,7 +63,7 @@ bool SetImage(const InstallConfig& install_config) {
 
   string kernel_config = DumpKernelConfig(install_config.kernel.device());
 
-  LOG(INFO) << "KERNEL_CONFIG: " << kernel_config;
+  LOG(INFO) << "KERNEL_CONFIG: " << kernel_config.c_str();
 
   // An example value: <root_hexdigest and salt values shortened>
   //
