@@ -74,7 +74,7 @@ StatusOr<brillo::Blob> EncryptionTpm2::Encrypt(
   ASSIGN_OR_RETURN(
       ConfigTpm2::TrunksSession session,
       backend_.GetConfigTpm2().GetTrunksSession(
-          key_data.cache.policy, SessionSecuritySetting::kNoEncrypted),
+          key_data.cache.policy, SessionSecuritySetting::kSaltAndEncrypted),
       _.WithStatus<TPMError>("Failed to get session for policy"));
 
   std::string tpm_ciphertext;
