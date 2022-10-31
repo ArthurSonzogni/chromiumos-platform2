@@ -1312,11 +1312,12 @@ const DeviceInfo::Info* DeviceInfo::GetInfo(int interface_index) const {
 void DeviceInfo::DeregisterDevice(int interface_index) {
   auto iter = infos_.find(interface_index);
   if (iter == infos_.end()) {
-    SLOG(2) << __func__ << ": Unknown device index: " << interface_index;
+    LOG(WARNING) << __func__ << ": Unknown device index: " << interface_index;
     return;
   }
 
-  SLOG(1) << __func__ << " index: " << interface_index;
+  LOG(INFO) << __func__ << " index: " << interface_index
+            << "link_name: " << iter->second.device->link_name();
   // Deregister the device if not deregistered yet.
   if (iter->second.device.get()) {
     manager_->DeregisterDevice(iter->second.device);

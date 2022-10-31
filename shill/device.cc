@@ -797,9 +797,9 @@ bool Device::IsUnderlyingDeviceEnabled() const {
 // callback
 void Device::OnEnabledStateChanged(const ResultCallback& callback,
                                    const Error& error) {
-  SLOG(this, 1) << __func__ << " (target: " << enabled_pending_ << ","
-                << " success: " << error.IsSuccess() << ")"
-                << " on " << link_name_;
+  LOG(INFO) << __func__ << " (target: " << enabled_pending_ << ","
+            << " success: " << error.IsSuccess() << ")"
+            << " on " << link_name_;
 
   if (error.IsSuccess()) {
     UpdateEnabledState();
@@ -826,7 +826,7 @@ void Device::UpdateEnabledState() {
 }
 
 void Device::SetEnabled(bool enable) {
-  SLOG(this, 1) << __func__ << "(" << enable << ")";
+  LOG(INFO) << __func__ << "(" << enable << ")";
   // TODO(b/172215298): replace DoNothing() with something that logs the error
   // and replace PopulateAndLog in many places with just Populate
   SetEnabledChecked(enable, false, base::DoNothing());
@@ -846,8 +846,8 @@ void Device::SetEnabledPersistent(bool enable, const ResultCallback& callback) {
 void Device::SetEnabledChecked(bool enable,
                                bool persist,
                                const ResultCallback& callback) {
-  SLOG(this, 1) << __func__ << ": Device " << link_name_ << " "
-                << (enable ? "starting" : "stopping");
+  LOG(INFO) << __func__ << ": Device " << link_name_ << " "
+            << (enable ? "starting" : "stopping");
   if (enable && manager_->IsTechnologyProhibited(technology())) {
     callback.Run(
         Error(Error::kPermissionDenied,
@@ -867,7 +867,7 @@ void Device::SetEnabledChecked(bool enable,
       callback.Run(err);
       return;
     }
-    SLOG(this, 1) << "Already in desired enable state.";
+    LOG(INFO) << "Already in desired enable state.";
     // We can already be in the right state, but it may not be persisted.
     // Check and flush that too.
     if (persist && enabled_persistent_ != enable) {
@@ -898,8 +898,7 @@ void Device::SetEnabledChecked(bool enable,
 
 void Device::SetEnabledUnchecked(bool enable,
                                  const ResultCallback& on_enable_complete) {
-  SLOG(this, 1) << __func__ << ": link: " << link_name()
-                << " enable: " << enable;
+  LOG(INFO) << __func__ << ": link: " << link_name() << " enable: " << enable;
   enabled_pending_ = enable;
   EnabledStateChangedCallback chained_callback = base::Bind(
       &Device::OnEnabledStateChanged, AsWeakPtr(), on_enable_complete);

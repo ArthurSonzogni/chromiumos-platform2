@@ -1244,10 +1244,9 @@ void Manager::RegisterDevice(const DeviceRefPtr& to_manage) {
 }
 
 void Manager::DeregisterDevice(const DeviceRefPtr& to_forget) {
-  LOG(INFO) << __func__ << "(" << to_forget->link_name() << ")";
   for (auto it = devices_.begin(); it != devices_.end(); ++it) {
     if (to_forget.get() == it->get()) {
-      SLOG(2) << "Deregistered device: " << to_forget->link_name();
+      LOG(INFO) << "Deregistering device: " << to_forget->link_name();
       UpdateDevice(to_forget);
       to_forget->SetEnabled(false);
       device_geolocation_info_.erase(to_forget);
@@ -1256,7 +1255,7 @@ void Manager::DeregisterDevice(const DeviceRefPtr& to_forget) {
       return;
     }
   }
-  SLOG(2) << __func__ << " unknown device: " << to_forget->link_name();
+  LOG(WARNING) << __func__ << " unknown device: " << to_forget->link_name();
 }
 
 void Manager::DeregisterDeviceByLinkName(const std::string& link_name) {
