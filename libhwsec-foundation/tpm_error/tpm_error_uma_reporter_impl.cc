@@ -59,8 +59,12 @@ void TpmErrorUmaReporterImpl::Report(const TpmErrorData& data) {
 bool TpmErrorUmaReporterImpl::ReportCommandAndResponse(
     const std::string& metrics_prefix, const TpmErrorData& data) {
   TpmMetricsClientID client_id = GetTpmMetricsClientID();
-  if (data.command > 0x0FFF || data.response > 0xFFFF ||
-      client_id == TpmMetricsClientID::kUnknown) {
+  // If the client is unknown, there is no need to report.
+  if (client_id == TpmMetricsClientID::kUnknown) {
+    return true;
+  }
+  // Returns false since the command and response is invalid.
+  if (data.command > 0x0FFF || data.response > 0xFFFF) {
     return false;
   }
   std::string client_name = ClientIDToClientName(client_id);

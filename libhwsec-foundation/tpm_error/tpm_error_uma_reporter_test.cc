@@ -75,9 +75,10 @@ TEST_F(TpmErrorUmaReporterTest, ReportTpm2CommandAndResponseUnknownClient) {
   TpmErrorData data;
   SetTpmMetricsClientID(TpmMetricsClientID::kUnknown);
 
+  // Unknown client should not be reported and directly return true.
   data.command = kFakeCommand;
   data.response = 0;
-  EXPECT_EQ(reporter_.ReportTpm2CommandAndResponse(data), false);
+  EXPECT_EQ(reporter_.ReportTpm2CommandAndResponse(data), true);
 }
 
 TEST_F(TpmErrorUmaReporterTest, ReportTpm2CommandAndResponseInvalidValue) {
