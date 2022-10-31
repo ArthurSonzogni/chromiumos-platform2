@@ -91,7 +91,8 @@ void MountManager::Mount(const std::string& source,
 
   if (real_path.empty()) {
     LOG(ERROR) << "Cannot mount an invalid path: " << redact(source);
-    std::move(mount_callback).Run("", MountError::kInvalidArgument, false);
+    std::move(mount_callback)
+        .Run(filesystem_type, "", MountError::kInvalidArgument, false);
     return;
   }
 
@@ -102,7 +103,8 @@ void MountManager::Mount(const std::string& source,
     const MountError error =
         Remount(real_path, filesystem_type, std::move(options), &mount_path,
                 &read_only);
-    return std::move(mount_callback).Run(mount_path, error, read_only);
+    return std::move(mount_callback)
+        .Run(filesystem_type, mount_path, error, read_only);
   }
 
   // Mount a new drive.
@@ -145,10 +147,11 @@ void MountManager::MountNewSource(const std::string& source,
   DCHECK(mount_callback);
 
   if (const MountPoint* const mp = FindMountBySource(source)) {
-    LOG(ERROR) << redact(source) << " is already mounted on "
+    LOG(ERROR) << "Already mounted: " << redact(source)
+               << " is already mounted as " << mp->fstype() << " "
                << redact(mp->path());
     return std::move(mount_callback)
-        .Run(mp->path().value(), mp->error(), mp->is_read_only());
+        .Run(mp->fstype(), mp->path().value(), mp->error(), mp->is_read_only());
   }
 
   // Extract the mount label string from the passed options.
@@ -165,7 +168,7 @@ void MountManager::MountNewSource(const std::string& source,
   if (const MountError error =
           CreateMountPathForSource(source, label, &mount_path);
       error != MountError::kSuccess)
-    return std::move(mount_callback).Run("", error, false);
+    return std::move(mount_callback).Run(filesystem_type, "", error, false);
 
   // Perform the underlying mount operation. If an error occurs,
   // ShouldReserveMountPathOnError() is called to check if the mount path
@@ -179,20 +182,18 @@ void MountManager::MountNewSource(const std::string& source,
   // crbug.com/1317878).
   if (!mount_point || error != MountError::kSuccess) {
     if (error == MountError::kSuccess) {
-      LOG(ERROR) << "Mounter for " << redact(source) << " of type "
-                 << quote(filesystem_type)
+      LOG(ERROR) << "Mounter for " << filesystem_type << " " << redact(source)
                  << " returned no MountPoint and no error";
       error = MountError::kUnknownError;
     } else if (mount_point) {
-      LOG(ERROR) << "Mounter for " << redact(source) << " of type "
-                 << quote(filesystem_type)
+      LOG(ERROR) << "Mounter for " << filesystem_type << " " << redact(source)
                  << " returned both a mount point and " << error;
       mount_point.reset();
     }
 
     if (!ShouldReserveMountPathOnError(error)) {
       platform_->RemoveEmptyDirectory(mount_path.value());
-      return std::move(mount_callback).Run("", error, false);
+      return std::move(mount_callback).Run(filesystem_type, "", error, false);
     }
 
     DCHECK(!mount_point);
@@ -228,9 +229,12 @@ void MountManager::MountNewSource(const std::string& source,
   } else {
     // There is no FUSE process.
     std::move(mount_callback)
-        .Run(mount_path.value(), error, mount_point->is_read_only());
+        .Run(mount_point->fstype(), mount_path.value(), error,
+             mount_point->is_read_only());
   }
 
+  VLOG(1) << "Mounted " << redact(mount_point->source()) << " as "
+          << mount_point->fstype() << " " << redact(mount_point->path());
   mount_points_.push_back(std::move(mount_point));
 }
 
@@ -241,7 +245,7 @@ void MountManager::OnLauncherExit(
     const MountError error) {
   DCHECK(mount_callback);
   std::move(mount_callback)
-      .Run(mount_path.value(), error,
+      .Run(mount_point ? mount_point->fstype() : "", mount_path.value(), error,
            mount_point ? mount_point->is_read_only() : false);
 
   if (!mount_point)

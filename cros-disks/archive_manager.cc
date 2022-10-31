@@ -226,8 +226,8 @@ std::unique_ptr<MountPoint> ArchiveManager::DoMount(
       return m->Mount(source_path, mount_path, options, error);
     }
   }
-  LOG(ERROR) << "Cannot find mounter for archive " << redact(source_path)
-             << " of type " << quote(filesystem_type);
+  LOG(ERROR) << "Cannot find mounter for " << filesystem_type << " archive "
+             << redact(source_path);
   *error = MountError::kUnknownFilesystem;
   return nullptr;
 }

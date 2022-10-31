@@ -85,8 +85,10 @@ class MountManager {
   virtual MountSourceType GetMountSourceType() const = 0;
 
   // Callback called when the mount operation succeeds or fails.
-  using MountCallback = base::OnceCallback<void(
-      const std::string& mount_path, MountError error, bool read_only)>;
+  using MountCallback = base::OnceCallback<void(const std::string& fs_type,
+                                                const std::string& mount_path,
+                                                MountError error,
+                                                bool read_only)>;
 
   // Callback called when the FUSE 'launcher' process is signaling progress.
   using ProgressCallback = MountPoint::ProgressCallback;

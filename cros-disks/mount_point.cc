@@ -67,7 +67,6 @@ MountError MountPoint::Unmount() {
 
   if (!is_mounted_ && must_remove_dir_ &&
       platform_->RemoveEmptyDirectory(data_.mount_path.value())) {
-    LOG(INFO) << "Removed " << quote(data_.mount_path);
     must_remove_dir_ = false;
   }
 

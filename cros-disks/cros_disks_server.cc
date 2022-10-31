@@ -143,11 +143,11 @@ void CrosDisksServer::OnMountCompleted(const std::string& source,
                                        MountError error,
                                        bool read_only) {
   if (error != MountError::kSuccess) {
-    LOG(ERROR) << "Cannot mount " << redact(source) << " of type "
-               << quote(filesystem_type) << ": " << error;
+    LOG(ERROR) << "Cannot mount " << filesystem_type << " " << redact(source)
+               << ": " << error;
   } else {
-    LOG(INFO) << "Mounted " << redact(source) << " of type "
-              << quote(filesystem_type) << " on " << redact(mount_path);
+    LOG(INFO) << "Mounted " << redact(source) << " as " << filesystem_type
+              << " " << redact(mount_path);
   }
 
   SendMountCompletedSignal(static_cast<uint32_t>(error), source, source_type,
@@ -159,20 +159,20 @@ void CrosDisksServer::Mount(const std::string& source,
                             const std::vector<std::string>& options) {
   MountManager* const mounter = FindMounter(source);
   if (!mounter) {
-    LOG(ERROR) << "Cannot find mounter for " << redact(source) << " of type "
-               << quote(filesystem_type);
+    LOG(ERROR) << "Cannot find mounter for " << filesystem_type << " "
+               << redact(source);
     SendMountCompletedSignal(static_cast<uint32_t>(MountError::kInvalidPath),
                              source, MOUNT_SOURCE_INVALID, "", false);
     return;
   }
 
   const MountSourceType source_type = mounter->GetMountSourceType();
-  VLOG(1) << "Mounting " << redact(source) << " of type "
-          << quote(filesystem_type) << " using mounter " << source_type;
+  VLOG(1) << "Mounting " << filesystem_type << " " << redact(source)
+          << " using mounter " << source_type;
 
   MountManager::MountCallback mount_callback =
       base::BindOnce(&CrosDisksServer::OnMountCompleted, base::Unretained(this),
-                     source, source_type, filesystem_type);
+                     source, source_type);
 
   MountManager::ProgressCallback progress_callback = base::BindRepeating(
       &CrosDisksServer::OnMountProgress, base::Unretained(this));
@@ -200,11 +200,8 @@ uint32_t CrosDisksServer::Unmount(const std::string& path,
       break;
   }
 
-  if (error != MountError::kSuccess) {
-    LOG(ERROR) << "Cannot unmount " << redact(path) << ": " << error;
-  } else {
-    LOG(INFO) << "Unmounted " << redact(path);
-  }
+  LOG_IF(ERROR, error != MountError::kSuccess)
+      << "Cannot unmount " << redact(path) << ": " << error;
 
   return static_cast<uint32_t>(error);
 }

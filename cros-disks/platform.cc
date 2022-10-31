@@ -11,8 +11,10 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#include <cstdint>
 #include <iomanip>
 #include <memory>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -30,16 +32,24 @@
 namespace cros_disks {
 namespace {
 
-enum MountFlags : uint64_t;
+enum MountFlags : std::uint64_t;
 
 std::ostream& operator<<(std::ostream& out, MountFlags flags) {
   out << "{";
 
   const char* sep = "";
 
-#define PRINT(s) \
-  if (flags & s) \
-    out << std::exchange(sep, " ") << #s;
+// Check for the single bit mask |s| in |flags|, and reset this bit in |flags|.
+#define PRINT(s)                                       \
+  {                                                    \
+    constexpr std::uint32_t mask = s;                  \
+    static_assert((mask & (mask - 1)) == 0,            \
+                  "Should be a single bit mask: " #s); \
+    if (flags & mask) {                                \
+      out << std::exchange(sep, " ") << #s;            \
+      flags = static_cast<MountFlags>(flags & ~mask);  \
+    }                                                  \
+  }
 
   PRINT(MS_ACTIVE)
   PRINT(MS_BIND)
@@ -68,6 +78,10 @@ std::ostream& operator<<(std::ostream& out, MountFlags flags) {
   PRINT(MS_STRICTATIME)
   PRINT(MS_SYNCHRONOUS)
   PRINT(MS_UNBINDABLE)
+
+  // If there are any remaining bits set, just print them in numeric form.
+  if (flags)
+    out << sep << static_cast<std::uint64_t>(flags);
 
   return out << "}";
 }
@@ -245,7 +259,7 @@ bool Platform::SetMountUser(const std::string& user_name) {
 
 bool Platform::RemoveEmptyDirectory(const std::string& path) const {
   if (rmdir(path.c_str()) == 0) {
-    VLOG(1) << "Removed directory " << quote(path);
+    LOG(INFO) << "Removed " << quote(path);
     return true;
   }
 

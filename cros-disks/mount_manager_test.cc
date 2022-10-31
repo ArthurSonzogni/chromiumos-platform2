@@ -114,10 +114,12 @@ class MountManagerTest : public ::testing::Test {
         &platform_);
   }
 
-  void OnMountCompleted(const std::string& path,
+  void OnMountCompleted(const std::string& fs_type,
+                        const std::string& path,
                         const MountError error,
                         const bool read_only) {
     EXPECT_FALSE(mount_completed_);
+    fs_type_ = fs_type;
     mount_path_ = path;
     mount_error_ = error;
     mount_completed_ = true;
@@ -140,6 +142,7 @@ class MountManagerTest : public ::testing::Test {
   brillo::ProcessReaper process_reaper_;
   StrictMock<MountManagerUnderTest> manager_;
   std::string filesystem_type_;
+  std::string fs_type_;
   std::string mount_path_;
   MountError mount_error_;
   bool mount_completed_;

@@ -366,10 +366,9 @@ std::unique_ptr<MountPoint> DiskManager::DoMount(
         DCHECK(mount_point);
         DCHECK(mount_point->is_read_only());
         LOG(WARNING) << "Mounted " << quote(mount_point->source())
-                     << " as read-only " << quote(mount_point->fstype())
-                     << " filesystem at mount point "
+                     << " as read-only " << quote(mount_point->fstype()) << " "
                      << redact(mount_point->path())
-                     << " because it could not be mounted in read-write mode";
+                     << " because it could not be mounted in writable mode";
         metrics()->RecordReadOnlyFileSystem(fstype);
       }
     }
