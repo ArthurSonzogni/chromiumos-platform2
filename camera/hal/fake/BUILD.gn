@@ -13,6 +13,7 @@ pkg_config("target_defaults") {
     "absl",
     "libcros_camera",
     "libcros_camera_android_deps",
+    "libyuv",
   ]
   configs = [ "//camera/build:cros_camera_common" ]
 }
@@ -28,6 +29,7 @@ shared_library("libcamera_hal") {
     "hal_spec.cc",
     "metadata_handler.cc",
     "request_handler.cc",
+    "test_pattern.cc",
     "value_util.cc",
   ]
   configs += [ ":target_defaults" ]

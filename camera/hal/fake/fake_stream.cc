@@ -15,6 +15,7 @@
 #include <linux/videodev2.h>
 
 #include "hal/fake/camera_hal.h"
+#include "hal/fake/test_pattern.h"
 
 namespace cros {
 
@@ -55,12 +56,12 @@ bool FakeStream::Initialize(const android::CameraMetadata& static_metadata,
   size_ = size;
   format_ = format;
 
-  auto input_buffer = FrameBuffer::Create(size, HAL_PIXEL_FORMAT_YCbCr_420_888);
+  auto input_buffer = GenerateTestPattern(
+      size, ANDROID_SENSOR_TEST_PATTERN_MODE_COLOR_BARS_FADE_TO_GRAY);
   if (!input_buffer) {
     LOGF(WARNING) << "Failed to allocate a temporary buffer";
     return false;
   }
-  // TODO(pihsun): Fill test pattern.
 
   if (format == HAL_PIXEL_FORMAT_BLOB) {
     buffer_ = FrameBuffer::Create(Size(jpeg_max_size_, 1), format);
