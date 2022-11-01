@@ -40,7 +40,8 @@ constexpr base::TimeDelta kRetryInterval = base::Milliseconds(500);
 // that ti50's tpm2 app is not ready for a command.
 constexpr uint32_t TPM_RC_RETRY = 0x922;
 
-constexpr char kGpioPltRstFile[] = "gpioPltRst";
+constexpr char kGpioSocketPath[] = "/run/tpm2-simulator/sockets";
+constexpr char kGpioPltRstFile[] = "/run/tpm2-simulator/sockets/gpioPltRst";
 constexpr char kTpmFifoFile[] = "direct_tpm_fifo";
 constexpr char kOne[] = "1";
 
@@ -132,6 +133,10 @@ void TpmExecutorTi50Impl::InitializeVTPM() {
   // Use current dir.
   process_.AddArg("--path");
   process_.AddArg(".");
+
+  // Set GPIO socket path.
+  process_.AddArg("--gpio_path");
+  process_.AddArg(kGpioSocketPath);
 
   for (const char* app : kTi50EmulatorApps) {
     process_.AddArg("-a");
