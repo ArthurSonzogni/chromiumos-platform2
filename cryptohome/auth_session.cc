@@ -465,8 +465,9 @@ void AuthSession::CreateAndPersistVaultKeyset(
 
   // Flip the flag, so that our future invocations go through AddKeyset() and
   // not AddInitialKeyset(). Create a verifier if applicable.
-  if (!user_has_configured_credential_) {
-    AddCredentialVerifier(auth_factor_type, key_data.label(), auth_input);
+  if (!user_has_configured_credential_ && vault_keyset_) {
+    AddCredentialVerifier(auth_factor_type, vault_keyset_->GetLabel(),
+                          auth_input);
   }
   user_has_configured_credential_ = true;
 
@@ -807,7 +808,7 @@ void AuthSession::UpdateVaultKeyset(
   if (auth_factor_type) {
     verifier_type = *auth_factor_type;
   }
-  AddCredentialVerifier(verifier_type, key_data.label(), auth_input);
+  AddCredentialVerifier(verifier_type, vault_keyset_->GetLabel(), auth_input);
 
   ReportTimerDuration(auth_session_performance_timer.get());
   std::move(on_done).Run(OkStatus<CryptohomeError>());
@@ -964,7 +965,7 @@ void AuthSession::LoadVaultKeysetAndFsKeys(
     AuthInput auth_input = CreatePasswordAuthInputForLegacyCode(
         obfuscated_username_, auth_block_utility_->GetLockedToSingleUser(),
         *passkey);
-    AddCredentialVerifier(verifier_type, key_data_.label(), auth_input);
+    AddCredentialVerifier(verifier_type, vault_keyset_->GetLabel(), auth_input);
   }
 
   ReportTimerDuration(auth_session_performance_timer.get());
