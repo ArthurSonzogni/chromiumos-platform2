@@ -304,15 +304,15 @@ bool IsFormatOne(trunks::TPM_RC error) {
 namespace trunks {
 
 std::string GetErrorString(TPM_RC error) {
-  std::string error_string = GetErrorStringInternal(error);
-  if (!error_string.empty()) {
-    return error_string;
-  }
   std::stringstream ss;
   if ((error & kLayerMask) == kResourceManagerTpmErrorBase) {
     error &= ~kLayerMask;
-    error_string = GetErrorStringInternal(error);
     ss << "Resource Manager: ";
+  }
+  std::string error_string = GetErrorStringInternal(error);
+  if (!error_string.empty()) {
+    ss << error_string;
+    return ss.str();
   }
   // Check if we have a TPM 'Format-One' response code.
   if (IsFormatOne(error)) {
