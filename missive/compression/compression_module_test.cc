@@ -36,7 +36,8 @@ using ::testing::StrEq;
 namespace reporting {
 namespace {
 
-constexpr char kTestString[] = "AAAAA11111";
+constexpr char kTestString[] = "AAAAAAAAAAAAAA1111111111111";
+constexpr char kPoorlyCompressibleTestString[] = "AAAAA11111";
 
 class CompressionModuleTest : public ::testing::Test {
  protected:
@@ -103,6 +104,41 @@ TEST_F(CompressionModuleTest, CompressRecordSnappy) {
   // Expect that compression information contains COMPRESSION_SNAPPY
   EXPECT_THAT(compression_info.value().compression_algorithm(),
               Eq(CompressionInformation::COMPRESSION_SNAPPY));
+}
+
+TEST_F(CompressionModuleTest, CompressPoorlyCompressibleRecordSnappy) {
+  EnableCompression();
+  scoped_refptr<CompressionModule> test_compression_module =
+      CompressionModule::Create(0, CompressionInformation::COMPRESSION_SNAPPY);
+
+  // Compress string directly with snappy as benchmark
+  const std::string expected_output =
+      BenchmarkCompressRecordSnappy(kPoorlyCompressibleTestString);
+
+  test::TestMultiEvent<std::string, std::optional<CompressionInformation>>
+      compressed_record_event;
+  // Compress string with CompressionModule
+  test_compression_module->CompressRecord(kPoorlyCompressibleTestString,
+                                          memory_resource_,
+                                          compressed_record_event.cb());
+
+  const std::tuple<std::string, std::optional<CompressionInformation>>
+      compressed_record_tuple = compressed_record_event.result();
+
+  const base::StringPiece compressed_string_callback =
+      std::get<0>(compressed_record_tuple);
+
+  // Expect that benchmark compression is the same as compression module
+  EXPECT_THAT(compressed_string_callback, StrEq(kPoorlyCompressibleTestString));
+
+  const std::optional<CompressionInformation> compression_info =
+      std::get<1>(compressed_record_tuple);
+
+  EXPECT_TRUE(compression_info.has_value());
+
+  // Expect that compression information contains COMPRESSION_NONE
+  EXPECT_THAT(compression_info.value().compression_algorithm(),
+              Eq(CompressionInformation::COMPRESSION_NONE));
 }
 
 TEST_F(CompressionModuleTest, CompressRecordBelowThreshold) {
@@ -196,6 +232,5 @@ TEST_F(CompressionModuleTest, CompressRecordCompressionNone) {
   EXPECT_THAT(compression_info.value().compression_algorithm(),
               Eq(CompressionInformation::COMPRESSION_NONE));
 }
-
 }  // namespace
 }  // namespace reporting

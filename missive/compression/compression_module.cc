@@ -102,14 +102,21 @@ void CompressionModule::CompressRecordSnappy(
     std::string record,
     base::OnceCallback<void(std::string, std::optional<CompressionInformation>)>
         cb) const {
-  // Compression is enabled and crosses the threshold,
+  // Compression is enabled and crosses the threshold.
   std::string output;
   snappy::Compress(record.data(), record.size(), &output);
-
-  // Return compressed string
+  if (output.size() >= record.size()) {
+    // Compression increases size, discard it.
+    CompressionInformation compression_information;
+    compression_information.set_compression_algorithm(
+        CompressionInformation::COMPRESSION_NONE);
+    std::move(cb).Run(std::move(record), std::move(compression_information));
+    return;
+  }
+  // Return compressed string.
   CompressionInformation compression_information;
   compression_information.set_compression_algorithm(
       CompressionInformation::COMPRESSION_SNAPPY);
-  std::move(cb).Run(output, compression_information);
+  std::move(cb).Run(std::move(output), std::move(compression_information));
 }
 }  // namespace reporting
