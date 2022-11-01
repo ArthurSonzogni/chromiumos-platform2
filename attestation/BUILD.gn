@@ -300,6 +300,8 @@ executable("pca_agentd") {
     "system_api",
     "protobuf",
   ]
+  libs = [ "hwsec-profiling" ]
+
   deps = [
     ":pca-agent-adaptors",
     ":pca_agent_server_library",
