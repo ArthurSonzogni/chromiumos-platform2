@@ -36,6 +36,13 @@ void CheckBrightnessChangedSignal(system::DBusWrapperStub* wrapper,
                                   double brightness_percent,
                                   BacklightBrightnessChange_Cause cause);
 
+// Return the most recent BacklightBrightnessChange signal.
+//
+// Returns a default proto and logs a test failure if not such signal
+// has been sent.
+BacklightBrightnessChange GetLastBrightnessChangedSignal(
+    system::DBusWrapperStub* wrapper);
+
 }  // namespace policy::test
 }  // namespace power_manager
 

@@ -747,6 +747,50 @@ TEST_F(KeyboardBacklightControllerTest, EnableForUserActivity) {
   EXPECT_EQ(kSlowBacklightTransition, backlight_.current_interval());
 }
 
+TEST_F(KeyboardBacklightControllerTest, EnableForPowerSourceChange) {
+  initial_backlight_level_ = 50;
+  no_als_brightness_pref_ = 40.0;
+  user_steps_pref_ = "0.0\n100.0";
+  turn_on_for_user_activity_pref_ = 1;
+  keep_on_ms_pref_ = 30'000;
+  pass_light_sensor_ = false;
+  Init();
+
+  // The backlight should be off initially.
+  EXPECT_EQ(0, backlight_.current_level());
+  EXPECT_EQ(kSlowBacklightTransition, backlight_.current_interval());
+
+  // The first report of a power source is shouldn't turn the backlight on,
+  // but just be recorded as the initial power source state.
+  controller_.HandlePowerSourceChange(PowerSource::AC);
+  EXPECT_EQ(0, backlight_.current_level());
+
+  // When the device is unplugged from AC, the backlight should come on.
+  controller_.HandlePowerSourceChange(PowerSource::BATTERY);
+  EXPECT_EQ(40, backlight_.current_level());
+  EXPECT_EQ(kFastBacklightTransition, backlight_.current_interval());
+  EXPECT_EQ(test::GetLastBrightnessChangedSignal(&dbus_wrapper_).cause(),
+            BacklightBrightnessChange_Cause_EXTERNAL_POWER_DISCONNECTED);
+
+  // After a period of inactivity, the backlight should slowly turn off again.
+  AdvanceTime(base::Milliseconds(keep_on_ms_pref_));
+  EXPECT_EQ(0, backlight_.current_level());
+  EXPECT_EQ(kSlowBacklightTransition, backlight_.current_interval());
+
+  // A repeated notification that the device is connected to battery
+  // shouldn't update the brightness.
+  controller_.HandlePowerSourceChange(PowerSource::BATTERY);
+  EXPECT_EQ(0, backlight_.current_level());
+
+  // However, when the device is plugged back into AC, the backlight should
+  // turn on once more.
+  controller_.HandlePowerSourceChange(PowerSource::AC);
+  EXPECT_EQ(40, backlight_.current_level());
+  EXPECT_EQ(kFastBacklightTransition, backlight_.current_interval());
+  EXPECT_EQ(test::GetLastBrightnessChangedSignal(&dbus_wrapper_).cause(),
+            BacklightBrightnessChange_Cause_EXTERNAL_POWER_CONNECTED);
+}
+
 TEST_F(KeyboardBacklightControllerTest, PreemptTransitionForShutdown) {
   initial_backlight_level_ = 50;
   Init();

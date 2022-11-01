@@ -217,7 +217,26 @@ void KeyboardBacklightController::RemoveObserver(
   observers_.RemoveObserver(observer);
 }
 
-void KeyboardBacklightController::HandlePowerSourceChange(PowerSource source) {}
+void KeyboardBacklightController::HandlePowerSourceChange(PowerSource source) {
+  // The first time we are notified about a power source, simply record it.
+  if (!power_source_.has_value()) {
+    power_source_ = source;
+    return;
+  }
+
+  // We may receive notifications for a "change" to the same power source.
+  // Ignore such notifications.
+  if (power_source_ == source) {
+    return;
+  }
+  power_source_ = source;
+
+  // Treat a power source change similar to user activity.
+  HandleActivity(
+      source == PowerSource::AC
+          ? BacklightBrightnessChange_Cause_EXTERNAL_POWER_CONNECTED
+          : BacklightBrightnessChange_Cause_EXTERNAL_POWER_DISCONNECTED);
+}
 
 void KeyboardBacklightController::HandleDisplayModeChange(DisplayMode mode) {}
 
@@ -242,9 +261,7 @@ void KeyboardBacklightController::HandleLidStateChange(LidState state) {
 }
 
 void KeyboardBacklightController::HandleUserActivity(UserActivityType type) {
-  last_user_activity_time_ = clock_->GetCurrentTime();
-  UpdateTurnOffTimer();
-  UpdateState(Transition::FAST, BacklightBrightnessChange_Cause_USER_ACTIVITY);
+  HandleActivity(BacklightBrightnessChange_Cause_USER_ACTIVITY);
 }
 
 void KeyboardBacklightController::HandleVideoActivity(bool is_fullscreen) {
@@ -848,6 +865,13 @@ double KeyboardBacklightController::PercentToRawPercent(double percent) const {
     return (percent - kMinPercent) / (kMinVisiblePercent - kMinPercent) *
                (min_visible_raw_percent - min_raw_percent_) +
            min_raw_percent_;
+}
+
+void KeyboardBacklightController::HandleActivity(
+    BacklightBrightnessChange_Cause cause) {
+  last_user_activity_time_ = clock_->GetCurrentTime();
+  UpdateTurnOffTimer();
+  UpdateState(Transition::FAST, cause);
 }
 
 }  // namespace power_manager::policy

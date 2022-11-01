@@ -16,6 +16,7 @@
 #include <base/time/time.h>
 #include <base/timer/timer.h>
 
+#include "power_manager/common/power_constants.h"
 #include "power_manager/powerd/policy/ambient_light_handler.h"
 #include "power_manager/powerd/policy/backlight_controller.h"
 #include "power_manager/powerd/policy/backlight_controller_observer.h"
@@ -200,6 +201,10 @@ class KeyboardBacklightController : public BacklightController,
   // user toggles the backlight from off to on.
   void UpdateUserBrightnessPercent(double brightness);
 
+  // Handle activity (such as user activity, AC plug/unplug events, etc) that
+  // should cause the backlight to be turned on temporarily.
+  void HandleActivity(BacklightBrightnessChange_Cause cause);
+
   mutable std::unique_ptr<Clock> clock_;
 
   // Not owned by this class.
@@ -227,6 +232,7 @@ class KeyboardBacklightController : public BacklightController,
   SessionState session_state_ = SessionState::STOPPED;
   LidState lid_state_ = LidState::NOT_PRESENT;
   TabletMode tablet_mode_ = TabletMode::UNSUPPORTED;
+  std::optional<PowerSource> power_source_;  // nullopt for unknown
 
   bool dimmed_for_inactivity_ = false;
   bool off_for_inactivity_ = false;

@@ -33,9 +33,9 @@ Additionally, hovering forces the keyboard backlight on even while fullscreen
 video is detected.
 
 If the device is incapable of detecting hovering, the backlight is turned on
-only in response to user activity (e.g. keyboard or touchpad events) instead.
-This is controlled by the `keyboard_backlight_turn_on_for_user_activity`
-preference, enabled by default.
+only in response to user activity (including keyboard presses, touchpad events,
+or plugging/unplugging the device into AC) instead. This is controlled by the
+`keyboard_backlight_turn_on_for_user_activity` preference, enabled by default.
 
 The user is able to adjust the keyboard backlight brightness by holding Alt
 while pressing the Brightness Up or Brightness Down keys. The brightness moves
