@@ -6,6 +6,7 @@
 
 #include <sysexits.h>
 
+#include <cstdint>
 #include <memory>
 #include <utility>
 
@@ -98,18 +99,36 @@ void Daemon::AcceptProxyConnection(base::ScopedFD fd) {
       std::make_unique<CertStoreInstance>(keymaster_server->GetWeakPtr());
 
   {
-    mojo::ScopedMessagePipeHandle child_pipe =
-        invitation.ExtractMessagePipe("arc-keymaster-pipe");
+    mojo::ScopedMessagePipeHandle child_pipe;
+    if (mojo::core::IsMojoIpczEnabled()) {
+      constexpr uint64_t kKeymasterPipeAttachment = 0;
+      child_pipe = invitation.ExtractMessagePipe(kKeymasterPipeAttachment);
+    } else {
+      child_pipe = invitation.ExtractMessagePipe("arc-keymaster-pipe");
+    }
+    if (!child_pipe.is_valid()) {
+      LOG(ERROR) << "Could not extract KeymasterServer pipe.";
+      return;
+    }
     mojo::MakeSelfOwnedReceiver(
         std::move(keymaster_server),
         mojo::PendingReceiver<arc::mojom::KeymasterServer>(
             std::move(child_pipe)));
   }
   {
-    mojo::ScopedMessagePipeHandle child_pipe =
-        invitation.ExtractMessagePipe("arc-cert-store-pipe");
+    mojo::ScopedMessagePipeHandle child_pipe;
+    if (mojo::core::IsMojoIpczEnabled()) {
+      constexpr uint64_t kCertStorePipeAttachment = 1;
+      child_pipe = invitation.ExtractMessagePipe(kCertStorePipeAttachment);
+    } else {
+      child_pipe = invitation.ExtractMessagePipe("arc-cert-store-pipe");
+    }
 
     // TODO(b/147573396): remove strong binding to be able to use cert store.
+    if (!child_pipe.is_valid()) {
+      LOG(ERROR) << "Could not extract CertStoreInstance pipe.";
+      return;
+    }
     mojo::MakeSelfOwnedReceiver(
         std::move(cert_store_instance),
         mojo::PendingReceiver<arc::keymaster::mojom::CertStoreInstance>(
