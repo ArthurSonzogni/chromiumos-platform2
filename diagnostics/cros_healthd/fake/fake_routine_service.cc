@@ -215,4 +215,9 @@ void FakeRoutineService::RunFingerprintAliveRoutine(
   NOTIMPLEMENTED();
 }
 
+void FakeRoutineService::RunPrivacyScreenRoutine(
+    bool target_state, RunPrivacyScreenRoutineCallback callback) {
+  NOTIMPLEMENTED();
+}
+
 }  // namespace diagnostics

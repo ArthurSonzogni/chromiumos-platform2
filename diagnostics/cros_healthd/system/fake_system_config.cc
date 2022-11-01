@@ -32,6 +32,10 @@ bool FakeSystemConfig::HasSkuNumber() {
   return has_sku_number_property_;
 }
 
+bool FakeSystemConfig::HasPrivacyScreen() {
+  return has_privacy_screen_;
+}
+
 bool FakeSystemConfig::NvmeSupported() {
   return nvme_supported_;
 }
@@ -75,6 +79,10 @@ void FakeSystemConfig::SetHasBacklight(bool value) {
 
 void FakeSystemConfig::SetHasBattery(bool value) {
   has_battery_ = value;
+}
+
+void FakeSystemConfig::SetHasPrivacyScreen(bool value) {
+  has_privacy_screen_ = value;
 }
 
 void FakeSystemConfig::SetHasSmartBattery(bool value) {

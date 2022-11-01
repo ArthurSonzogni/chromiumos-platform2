@@ -116,7 +116,8 @@ class FakeDiagnosticsService final
   void RunSensitiveSensorRoutine(RunSensitiveSensorRoutineCallback) override;
   void RunFingerprintRoutine(RunFingerprintRoutineCallback) override;
   void RunFingerprintAliveRoutine(RunFingerprintAliveRoutineCallback) override;
-
+  void RunPrivacyScreenRoutine(bool target_state,
+                               RunPrivacyScreenRoutineCallback) override;
   // Overrides the default behavior of GetCrosHealthdDiagnosticsService to test
   // situations where mojo methods were called prior to wilco_dtc_supportd's
   // mojo service being established.

@@ -160,6 +160,22 @@ TEST_F(SystemConfigTest, TestSmartBatteryUnset) {
   EXPECT_FALSE(system_config()->HasSmartBattery());
 }
 
+TEST_F(SystemConfigTest, TestPrivacyScreenTrue) {
+  fake_cros_config()->SetString(kHardwarePropertiesPath,
+                                kHasPrivacyScreenProperty, "true");
+  EXPECT_TRUE(system_config()->HasPrivacyScreen());
+}
+
+TEST_F(SystemConfigTest, TestPrivacyScreenFalse) {
+  fake_cros_config()->SetString(kHardwarePropertiesPath,
+                                kHasPrivacyScreenProperty, "");
+  EXPECT_FALSE(system_config()->HasPrivacyScreen());
+}
+
+TEST_F(SystemConfigTest, TestPrivacyScreenUnset) {
+  EXPECT_FALSE(system_config()->HasPrivacyScreen());
+}
+
 TEST_F(SystemConfigTest, NvmeSupportedTrue) {
   WriteFileAndCreateParentDirs(GetTempPath().AppendASCII(kNvmeToolPath), "");
   WriteFileAndCreateParentDirs(
