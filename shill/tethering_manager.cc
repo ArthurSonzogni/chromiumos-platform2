@@ -96,16 +96,24 @@ TetheringManager::~TetheringManager() = default;
 void TetheringManager::ResetConfiguration() {
   auto_disable_ = true;
   upstream_technology_ = Technology::kUnknown;
+  std::string hex_ssid;
+  std::string passphrase;
 
-  uint64_t rand = base::RandInt(pow(10, kSSIDSuffixLength), INT_MAX);
-  std::string suffix = std::to_string(rand);
-  std::string ssid =
-      kSSIDPrefix + suffix.substr(suffix.size() - kSSIDSuffixLength);
-  hex_ssid_ = base::HexEncode(ssid.data(), ssid.size());
+  do {
+    uint64_t rand = base::RandInt(pow(10, kSSIDSuffixLength), INT_MAX);
+    std::string suffix = std::to_string(rand);
+    std::string ssid =
+        kSSIDPrefix + suffix.substr(suffix.size() - kSSIDSuffixLength);
+    hex_ssid = base::HexEncode(ssid.data(), ssid.size());
+  } while (hex_ssid == hex_ssid_);
+  hex_ssid_ = hex_ssid;
 
-  std::string passphrase =
-      base::RandBytesAsString(kMinWiFiPassphraseLength >> 1);
-  passphrase_ = base::HexEncode(passphrase.data(), passphrase.size());
+  do {
+    passphrase = base::RandBytesAsString(kMinWiFiPassphraseLength >> 1);
+    passphrase = base::HexEncode(passphrase.data(), passphrase.size());
+  } while (passphrase == passphrase_);
+  passphrase_ = passphrase;
+
   security_ = WiFiSecurity(WiFiSecurity::kWpa2);
   mar_ = true;
   band_ = WiFiBand::kAllBands;
