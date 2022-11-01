@@ -113,6 +113,7 @@ bool TrunksClientTest::SignTest() {
     LOG(ERROR) << "Error loading signing key: " << GetErrorString(result);
   }
   ScopedKeyHandle scoped_key(factory_, signing_key);
+  scoped_key.set_synchronized(true);
   session->SetEntityAuthorizationValue(key_authorization);
   std::string signature;
   result = utility->Sign(signing_key, TPM_ALG_RSASSA, TPM_ALG_SHA256,
@@ -155,6 +156,7 @@ bool TrunksClientTest::DecryptTest() {
     LOG(ERROR) << "Error loading decrypt key: " << GetErrorString(result);
   }
   ScopedKeyHandle scoped_key(factory_, decrypt_key);
+  scoped_key.set_synchronized(true);
   return PerformRSAEncryptAndDecrypt(scoped_key.get(), key_authorization,
                                      session.get());
 }
@@ -185,6 +187,7 @@ bool TrunksClientTest::ImportTest() {
     return false;
   }
   ScopedKeyHandle scoped_key(factory_, key_handle);
+  scoped_key.set_synchronized(true);
   return PerformRSAEncryptAndDecrypt(scoped_key.get(), key_authorization,
                                      session.get());
 }
@@ -212,6 +215,7 @@ bool TrunksClientTest::AuthChangeTest() {
     LOG(ERROR) << "Error loading change auth key: " << GetErrorString(result);
   }
   ScopedKeyHandle scoped_key(factory_, key_handle);
+  scoped_key.set_synchronized(true);
   session->SetEntityAuthorizationValue("old_pass");
   result = utility->ChangeKeyAuthorizationData(
       key_handle, key_authorization, session->GetDelegate(), &key_blob);
@@ -273,7 +277,9 @@ bool TrunksClientTest::VerifyKeyCreationTest() {
     return false;
   }
   ScopedKeyHandle certify_key(factory_, key_handle);
+  certify_key.set_synchronized(true);
   ScopedKeyHandle alternate_key(factory_, alternate_key_handle);
+  alternate_key.set_synchronized(true);
   result = utility->CertifyCreation(certify_key.get(), creation_blob);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << "Error certifying key: " << GetErrorString(result);
@@ -534,7 +540,7 @@ bool TrunksClientTest::PolicyAuthValueTest() {
     return false;
   }
   ScopedKeyHandle scoped_key(factory_, key_handle);
-
+  scoped_key.set_synchronized(true);
   // Now we can reset the hmac_session.
   hmac_session.reset();
 
@@ -666,7 +672,7 @@ bool TrunksClientTest::PolicyAndTest() {
     return false;
   }
   ScopedKeyHandle scoped_key(factory_, key_handle);
-
+  scoped_key.set_synchronized(true);
   // Now we can reset the hmac_session.
   hmac_session.reset();
 
@@ -853,7 +859,7 @@ bool TrunksClientTest::PolicyOrTest() {
     return false;
   }
   ScopedKeyHandle scoped_key(factory_, key_handle);
-
+  scoped_key.set_synchronized(true);
   // Now we can reset the hmac_session.
   hmac_session.reset();
 
@@ -1016,6 +1022,7 @@ bool TrunksClientTest::ManyKeysTest() {
   std::map<TPM_HANDLE, std::string> public_key_map;
   for (size_t i = 0; i < kNumKeys; ++i) {
     std::unique_ptr<ScopedKeyHandle> key_handle(new ScopedKeyHandle(factory_));
+    key_handle->set_synchronized(true);
     std::string public_key;
     if (!LoadSigningKey(key_handle.get(), &public_key)) {
       LOG(ERROR) << "Error loading key " << i << " into TPM.";
@@ -1065,6 +1072,7 @@ bool TrunksClientTest::ManySessionsTest() {
   }
   CHECK_EQ(sessions.size(), kNumSessions);
   ScopedKeyHandle key_handle(factory_);
+  key_handle.set_synchronized(true);
   std::string public_key;
   if (!LoadSigningKey(&key_handle, &public_key)) {
     return false;
