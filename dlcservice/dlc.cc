@@ -140,6 +140,10 @@ bool DlcBase::IsVerified() const {
   return state_.is_verified();
 }
 
+bool DlcBase::IsScaled() const {
+  return manifest_->scaled();
+}
+
 bool DlcBase::HasContent() const {
   for (const auto& path :
        {GetImagePath(BootSlot::Slot::A), GetImagePath(BootSlot::Slot::B)}) {

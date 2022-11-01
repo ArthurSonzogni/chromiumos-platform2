@@ -165,9 +165,16 @@ bool DlcService::InstallWithUpdateEngine(const InstallRequest& install_request,
 
   LOG(INFO) << "Sending request to update_engine to install DLC=" << id;
   // Invokes update_engine to install the DLC.
+  update_engine::InstallParams install_params;
+  install_params.set_id(id);
+  install_params.set_omaha_url(install_request.omaha_url());
+  auto* dlc = GetDlc(id, err);
+  if (dlc == nullptr) {
+    return false;
+  }
+  install_params.set_scaled(dlc->IsScaled());
   ErrorPtr tmp_err;
-  if (!SystemState::Get()->update_engine()->AttemptInstall(
-          install_request.omaha_url(), {id}, &tmp_err)) {
+  if (!SystemState::Get()->update_engine()->Install(install_params, &tmp_err)) {
     // TODO(kimjae): need update engine to propagate correct error message by
     // passing in |ErrorPtr| and being set within update engine, current default
     // is to indicate that update engine is updating because there is no way an

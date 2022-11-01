@@ -953,4 +953,16 @@ TEST_F(DlcBaseTest, ReserveValueClearsAfterUninstall) {
   EXPECT_FALSE(dlc.SetReserve(std::nullopt));
 }
 
+TEST_F(DlcBaseTest, ScaledOff) {
+  DlcBase dlc(kFirstDlc);
+  dlc.Initialize();
+  EXPECT_FALSE(dlc.IsScaled());
+}
+
+TEST_F(DlcBaseTest, ScaledOn) {
+  DlcBase dlc(kScaledDlc);
+  dlc.Initialize();
+  EXPECT_TRUE(dlc.IsScaled());
+}
+
 }  // namespace dlcservice

@@ -65,6 +65,9 @@ class DlcBase {
   // Returns true if the DLC is marked verified.
   bool IsVerified() const;
 
+  // Returns true if the DLC is scaled.
+  bool IsScaled() const;
+
   // Returns true if the DLC has any content on disk that is taking space. This
   // means mainly if it has images on disk.
   bool HasContent() const;
