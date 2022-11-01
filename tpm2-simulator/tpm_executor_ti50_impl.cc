@@ -36,6 +36,8 @@ namespace {
 constexpr base::TimeDelta kPollingInterval = base::Milliseconds(100);
 constexpr base::TimeDelta kRetryInterval = base::Milliseconds(500);
 
+// The TPM_RC_RETRY is never used by ti50 in normal case and only indicates
+// that ti50's tpm2 app is not ready for a command.
 constexpr uint32_t TPM_RC_RETRY = 0x922;
 
 constexpr char kGpioPltRstFile[] = "gpioPltRst";
