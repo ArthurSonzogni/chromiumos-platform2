@@ -196,6 +196,9 @@ int CrosCameraClient::OnCaptureResultAvailable(
   // If callback has been cancelled, then return -1 to inform the CameraHAL to
   // stop capturing.
   if (callback.is_null()) {
+    client->task_runner_->PostTask(
+        FROM_HERE, base::BindOnce(std::move(client->capture_complete_),
+                                  client->completion_status_));
     return -1;
   }
 
@@ -224,9 +227,7 @@ void CrosCameraClient::CompletedProcessFrame(
     // Note that we require one additional frame from the CameraHAL in order
     // to stop the CameraHAL capture and complete the CaptureFrames() call
     process_frame_callback_.Cancel();
-    task_runner_->PostTask(
-        FROM_HERE,
-        base::BindOnce(std::move(capture_complete_), opt_status.value()));
+    completion_status_ = opt_status.value();
   }
 
   pending_request_ = false;

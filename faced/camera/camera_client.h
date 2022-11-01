@@ -170,6 +170,9 @@ class CrosCameraClient : public CameraClient {
   StopCaptureCallback capture_complete_;
 
   std::unique_ptr<CameraService> camera_service_;
+
+  // Status to return upon completion of processing frames.
+  absl::Status completion_status_;
 };
 
 // Return the highest resolution format of the given device.
