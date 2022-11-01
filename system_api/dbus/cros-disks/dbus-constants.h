@@ -5,6 +5,8 @@
 #ifndef SYSTEM_API_DBUS_CROS_DISKS_DBUS_CONSTANTS_H_
 #define SYSTEM_API_DBUS_CROS_DISKS_DBUS_CONSTANTS_H_
 
+#include <ostream>
+
 namespace cros_disks {
 
 const char kCrosDisksInterface[] = "org.chromium.CrosDisks";
@@ -210,6 +212,136 @@ enum class RenameError {
   kLongName = 9,
   kInvalidCharacter = 10,
 };
+
+// Output operators for logging and debugging.
+
+template <typename C>
+std::basic_ostream<C>& operator<<(std::basic_ostream<C>& out,
+                                  const DeviceType type) {
+  switch (type) {
+#define PRINT(s)         \
+  case DeviceType::k##s: \
+    return out << #s;
+    PRINT(Unknown)
+    PRINT(USB)
+    PRINT(SD)
+    PRINT(OpticalDisc)
+    PRINT(Mobile)
+    PRINT(DVD)
+#undef PRINT
+  }
+
+  return out << "DeviceType(" << std::underlying_type_t<DeviceType>(type)
+             << ")";
+}
+
+template <typename C>
+std::basic_ostream<C>& operator<<(std::basic_ostream<C>& out,
+                                  const MountError error) {
+  switch (error) {
+#define PRINT(s)         \
+  case MountError::k##s: \
+    return out << #s;
+    PRINT(Success)
+    PRINT(UnknownError)
+    PRINT(InternalError)
+    PRINT(InvalidArgument)
+    PRINT(InvalidPath)
+    PRINT(PathAlreadyMounted)
+    PRINT(PathNotMounted)
+    PRINT(DirectoryCreationFailed)
+    PRINT(InvalidMountOptions)
+    PRINT(InvalidUnmountOptions)
+    PRINT(InsufficientPermissions)
+    PRINT(MountProgramNotFound)
+    PRINT(MountProgramFailed)
+    PRINT(InvalidDevicePath)
+    PRINT(UnknownFilesystem)
+    PRINT(UnsupportedFilesystem)
+    PRINT(InvalidArchive)
+    PRINT(NeedPassword)
+    PRINT(InProgress)
+    PRINT(Cancelled)
+    PRINT(Busy)
+#undef PRINT
+  }
+
+  return out << "MountError(" << std::underlying_type_t<MountError>(error)
+             << ")";
+}
+
+template <typename C>
+std::basic_ostream<C>& operator<<(std::basic_ostream<C>& out,
+                                  const RenameError error) {
+  switch (error) {
+#define PRINT(s)          \
+  case RenameError::k##s: \
+    return out << #s;
+    PRINT(Success)
+    PRINT(UnknownError)
+    PRINT(InternalError)
+    PRINT(InvalidDevicePath)
+    PRINT(DeviceBeingRenamed)
+    PRINT(UnsupportedFilesystem)
+    PRINT(RenameProgramNotFound)
+    PRINT(RenameProgramFailed)
+    PRINT(DeviceNotAllowed)
+    PRINT(LongName)
+    PRINT(InvalidCharacter)
+#undef PRINT
+  }
+
+  return out << "RenameError(" << std::underlying_type_t<RenameError>(error)
+             << ")";
+}
+
+template <typename C>
+std::basic_ostream<C>& operator<<(std::basic_ostream<C>& out,
+                                  const FormatError error) {
+  switch (error) {
+#define PRINT(s)          \
+  case FormatError::k##s: \
+    return out << #s;
+    PRINT(Success)
+    PRINT(UnknownError)
+    PRINT(InternalError)
+    PRINT(InvalidDevicePath)
+    PRINT(DeviceBeingFormatted)
+    PRINT(UnsupportedFilesystem)
+    PRINT(FormatProgramNotFound)
+    PRINT(FormatProgramFailed)
+    PRINT(DeviceNotAllowed)
+    PRINT(InvalidOptions)
+    PRINT(LongName)
+    PRINT(InvalidCharacter)
+#undef PRINT
+  }
+
+  return out << "FormatError(" << std::underlying_type_t<FormatError>(error)
+             << ")";
+}
+
+template <typename C>
+std::basic_ostream<C>& operator<<(std::basic_ostream<C>& out,
+                                  const PartitionError error) {
+  switch (error) {
+#define PRINT(s)             \
+  case PartitionError::k##s: \
+    return out << #s;
+    PRINT(Success)
+    PRINT(UnknownError)
+    PRINT(InternalError)
+    PRINT(InvalidDevicePath)
+    PRINT(DeviceBeingPartitioned)
+    PRINT(ProgramNotFound)
+    PRINT(ProgramFailed)
+    PRINT(DeviceNotAllowed)
+#undef PRINT
+  }
+
+  return out << "PartitionError("
+             << std::underlying_type_t<PartitionError>(error) << ")";
+}
 
 }  // namespace cros_disks
 

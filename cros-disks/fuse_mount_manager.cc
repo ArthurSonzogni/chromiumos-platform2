@@ -14,7 +14,6 @@
 #include <brillo/process/process_reaper.h>
 
 #include "cros-disks/drivefs_helper.h"
-#include "cros-disks/error_logger.h"
 #include "cros-disks/fusebox_helper.h"
 #include "cros-disks/platform.h"
 #include "cros-disks/quote.h"

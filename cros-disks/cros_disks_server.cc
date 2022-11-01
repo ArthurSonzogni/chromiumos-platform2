@@ -15,7 +15,6 @@
 #include "cros-disks/device_event.h"
 #include "cros-disks/disk.h"
 #include "cros-disks/disk_monitor.h"
-#include "cros-disks/error_logger.h"
 #include "cros-disks/format_manager.h"
 #include "cros-disks/mount_point.h"
 #include "cros-disks/partition_manager.h"

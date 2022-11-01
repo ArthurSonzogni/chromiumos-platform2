@@ -16,7 +16,6 @@
 #include <base/files/file_path.h>
 #include <chromeos/dbus/service_constants.h>
 
-#include "cros-disks/error_logger.h"
 #include "cros-disks/metrics.h"
 
 namespace cros_disks {

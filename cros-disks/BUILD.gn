@@ -55,7 +55,6 @@ static_library("libdisks") {
     "disk_monitor.cc",
     "drivefs_helper.cc",
     "drivefs_helper.h",
-    "error_logger.cc",
     "file_reader.cc",
     "filesystem_label.cc",
     "format_manager.cc",

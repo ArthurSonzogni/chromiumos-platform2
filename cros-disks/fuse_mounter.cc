@@ -35,7 +35,6 @@
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 
-#include "cros-disks/error_logger.h"
 #include "cros-disks/mount_point.h"
 #include "cros-disks/platform.h"
 #include "cros-disks/quote.h"

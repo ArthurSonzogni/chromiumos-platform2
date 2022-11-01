@@ -21,7 +21,6 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "cros-disks/error_logger.h"
 #include "cros-disks/mock_platform.h"
 #include "cros-disks/mount_options.h"
 #include "cros-disks/mount_point.h"
