@@ -387,6 +387,13 @@ void CrosHealthdRoutineService::RunFingerprintAliveRoutine(
              std::move(callback));
 }
 
+void CrosHealthdRoutineService::RunPrivacyScreenRoutine(
+    bool target_state, RunPrivacyScreenRoutineCallback callback) {
+  RunRoutine(routine_factory_->MakePrivacyScreenRoutine(target_state),
+             mojo_ipc::DiagnosticRoutineEnum::kPrivacyScreen,
+             std::move(callback));
+}
+
 void CrosHealthdRoutineService::RunRoutine(
     std::unique_ptr<DiagnosticRoutine> routine,
     mojo_ipc::DiagnosticRoutineEnum routine_enum,
@@ -503,6 +510,10 @@ void CrosHealthdRoutineService::PopulateAvailableRoutines(
     available_routines_.insert(mojo_ipc::DiagnosticRoutineEnum::kFingerprint);
     available_routines_.insert(
         mojo_ipc::DiagnosticRoutineEnum::kFingerprintAlive);
+  }
+
+  if (context_->system_config()->HasPrivacyScreen()) {
+    available_routines_.insert(mojo_ipc::DiagnosticRoutineEnum::kPrivacyScreen);
   }
 }
 

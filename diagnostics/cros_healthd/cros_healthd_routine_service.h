@@ -126,6 +126,8 @@ class CrosHealthdRoutineService final
   void RunFingerprintRoutine(RunFingerprintRoutineCallback callback) override;
   void RunFingerprintAliveRoutine(
       RunFingerprintAliveRoutineCallback callback) override;
+  void RunPrivacyScreenRoutine(
+      bool target_state, RunPrivacyScreenRoutineCallback callback) override;
 
  private:
   void RunRoutine(
