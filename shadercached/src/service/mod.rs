@@ -14,7 +14,6 @@ use dbus::MethodErr;
 use libchromeos::sys::{debug, info, warn};
 use std::path::Path;
 use std::sync::Arc;
-use std::time::Duration;
 use system_api::concierge_service::{GetVmGpuCachePathRequest, GetVmGpuCachePathResponse};
 use system_api::dlcservice::DlcState;
 use system_api::shadercached::{InstallRequest, UninstallRequest};
@@ -112,7 +111,7 @@ async fn uninstall_shader_cache_dlc(
     let dlcservice_proxy = dbus::nonblock::Proxy::new(
         dlc_service::SERVICE_NAME,
         dlc_service::PATH_NAME,
-        Duration::from_millis(5000),
+        DEFAULT_DBUS_TIMEOUT,
         conn,
     );
 
@@ -136,7 +135,7 @@ async fn install_shader_cache_dlc(
     let dlcservice_proxy = dbus::nonblock::Proxy::new(
         dlc_service::SERVICE_NAME,
         dlc_service::PATH_NAME,
-        Duration::from_millis(5000),
+        DEFAULT_DBUS_TIMEOUT,
         conn,
     );
 
@@ -158,7 +157,7 @@ async fn get_vm_gpu_cache_path(vm_id: &VmId, conn: Arc<SyncConnection>) -> Resul
     let concierge_proxy = dbus::nonblock::Proxy::new(
         vm_concierge::SERVICE_NAME,
         vm_concierge::PATH_NAME,
-        Duration::from_millis(5000),
+        DEFAULT_DBUS_TIMEOUT,
         conn.clone(),
     );
     let mut request = GetVmGpuCachePathRequest::new();
@@ -214,7 +213,7 @@ pub async fn handle_purge(
     let dlcservice_proxy = dbus::nonblock::Proxy::new(
         dlc_service::SERVICE_NAME,
         dlc_service::PATH_NAME,
-        Duration::from_millis(5000),
+        DEFAULT_DBUS_TIMEOUT,
         conn.clone(),
     );
     let (installed_ids,): (Vec<String>,) = dlcservice_proxy

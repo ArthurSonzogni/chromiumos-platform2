@@ -4,8 +4,11 @@
 
 use anyhow::{anyhow, Result};
 use dbus::MethodErr;
+use std::time::Duration;
 
 pub type SteamAppId = u64;
+
+pub const DEFAULT_DBUS_TIMEOUT: Duration = Duration::from_secs(10);
 
 // TODO(b/247385169): get these from system_api c++ header instead
 pub const SERVICE_NAME: &str = "org.chromium.ShaderCache";

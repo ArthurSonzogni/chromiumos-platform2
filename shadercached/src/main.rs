@@ -19,6 +19,8 @@ use tokio::signal::unix::{signal, SignalKind};
 
 #[tokio::main]
 pub async fn main() -> Result<()> {
+    libchromeos::panic_handler::install_memfd_handler();
+
     if let Err(e) = syslog::init() {
         panic!("Failed to initialize syslog: {}", e);
     }
