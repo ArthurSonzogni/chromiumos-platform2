@@ -888,17 +888,91 @@ event --help`.
 | write_time_seconds_since_last_boot | uint64 | Time spent writing since last boot. |
 | io_time_seconds_since_last_boot | uint64 | Time spent doing I/O since last boot. Counts the time the disk and queue<br />were busy, so unlike the fields above, parallel requests are not counted<br />multiple times. |
 | discard_time_seconds_since_last_boot | uint64? | Time spent discarding since last boot. Discarding is writing to clear<br />blocks which are no longer in use. Supported on kernels 4.18+. |
-| vendor_id | BlockDeviceVendor | Device vendor identification. |
-| product_id | BlockDeviceProduct | Device product identification. |
-| revision | BlockDeviceRevision | Device revision. |
+| device_info | [BlockDeviceInfo](#BlockDeviceInfo)? | Device specific info. |
+| vendor_id | [BlockDeviceVendor](#BlockDeviceVendor) | Device vendor identification. |
+| product_id | [BlockDeviceProduct](#BlockDeviceProduct) | Device product identification. |
+| revision | [BlockDeviceRevision](#BlockDeviceRevision) | Device revision. |
 | name | string | Device model. |
 | size | uint64 | Device size in bytes. |
-| firmware_version | BlockDeviceFirmware | Firmware version. |
+| firmware_version | [BlockDeviceFirmware](#BlockDeviceFirmware) | Firmware version. |
 | type | string | Storage type, could be MMC / NVMe / ATA, based on udev subsystem. |
 | purpose | [StorageDevicePurpose](#StorageDevicePurpose) | Purpose of the device e.g. "boot", "swap". |
 | path | string | The path of this storage on the system. It is useful if caller needs to<br />correlate with other information. |
 | manufacturer_id | uint8 | Manufacturer ID, 8 bits. |
 | serial | uint32 | PSN: Product serial number, 32 bits |
+
+##### BlockDeviceInfo
+(Union/one-of type) The device-specific info.
+
+| Field | Type | Description |
+| ----- | ---- | ----------- |
+| nvme_device_info | [NvmeDeviceInfo](#NvmeDeviceInfo) | (NVMe only) |
+| emmc_device_info | [EmmcDeviceInfo](#EmmcDeviceInfo) | (eMMC only) |
+| ufs_device_info | [UfsDeviceInfo](#UfsDeviceInfo) | (UFS only) |
+
+##### NvmeDeviceInfo
+| Field | Type | Description |
+| ----- | ---- | ----------- |
+| subsystem_vendor | uint32 | The manufacturer ID. |
+| subsystem_device | uint32 | The product ID. |
+| pcie_rev | uint8 | The product revision. |
+| firmware_rev | uint64 | The firmware revision. |
+
+##### EmmcDeviceInfo
+| Field | Type | Description |
+| ----- | ---- | ----------- |
+| manfid | uint16 | The manufacturer ID. |
+| pnm | uint64 | The product name. |
+| prv | uint8 | The product revision. |
+| fwrev | uint64 | The firmware revision. |
+
+##### UfsDeviceInfo
+| Field | Type | Description |
+| ----- | ---- | ----------- |
+| jedec_manfid | uint16 | The JEDEC manufacturer ID. |
+| fwrev | uint64 | The firmware revision. |
+
+##### BlockDeviceVendor
+(Union/one-of type) The manufacturer of the block device.
+
+| Field | Type | Description |
+| ----- | ---- | ----------- |
+| nvme_subsystem_vendor | uint32 | (NVMe only) The manufacturer ID. |
+| emmc_oemid | uint16 | (eMMC only) The manufacturer ID. |
+| other | uint16 | Unsupported. |
+| unknown | uint64 | Unknown. |
+| jedec_manfid | uint16 | (UFS only) The JEDEC manufacturer ID. |
+
+##### BlockDeviceProduct
+(Union/one-of type) The manufacturer-specific product identifier.
+
+| Field | Type | Description |
+| ----- | ---- | ----------- |
+| nvme_subsystem_device | uint32 | (NVMe only) The product ID. |
+| emmc_pnm | uint64 | (eMMC only) The product name. |
+| other | uint16 | Unsupported. |
+| unknown | uint64 | Unknown. |
+
+##### BlockDeviceRevision
+(Union/one-of type) The revision of the device's hardware.
+
+| Field | Type | Description |
+| ----- | ---- | ----------- |
+| nvme_pcie_rev | uint8 | (NVMe only) The product revision. |
+| emmc_prv | uint8 | (eMMC only) The product revision. |
+| other | uint16 | Unsupported. |
+| unknown | uint64 | Unknown. |
+
+##### BlockDeviceFirmware
+(Union/one-of type) The revision of the device's firmware.
+
+| Field | Type | Description |
+| ----- | ---- | ----------- |
+| nvme_firmware_rev | uint64 | (NVMe only) The firmware revision. |
+| emmc_fwrev | uint64 | (eMMC only) The firmware revision. |
+| other | uint16 | Unsupported. |
+| unknown | uint64 | Unknown. |
+| ufs_fwrev | uint64 | (UFS only) The firmware revision. |
 
 ##### StorageDevicePurpose
 | Enum | Description |
