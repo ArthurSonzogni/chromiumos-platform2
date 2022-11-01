@@ -72,6 +72,7 @@ class MockContext final : public Context {
   FakePowerdAdapter* fake_powerd_adapter() const;
   FakeSystemConfig* fake_system_config() const;
   FakeSystemUtilities* fake_system_utils() const;
+  FakeLibdrmUtil* fake_libdrm_util();
   MockExecutor* mock_executor();
   base::SimpleTestTickClock* mock_tick_clock() const;
   org::chromium::TpmManagerProxyMock* mock_tpm_manager_proxy() const;

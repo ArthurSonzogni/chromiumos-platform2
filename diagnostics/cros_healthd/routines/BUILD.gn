@@ -156,6 +156,7 @@ if (use.test) {
       "nvme_wear_level/nvme_wear_level_test.cc",
       "prime_search/prime_number_search.cc",
       "prime_search/prime_number_search_test.cc",
+      "privacy_screen/privacy_screen_test.cc",
       "sensor/sensitive_sensor_test.cc",
       "signal_strength/signal_strength_test.cc",
       "simple_routine_test.cc",

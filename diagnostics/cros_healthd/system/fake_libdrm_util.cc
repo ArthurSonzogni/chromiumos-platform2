@@ -9,7 +9,7 @@
 namespace diagnostics {
 
 bool FakeLibdrmUtil::Initialize() {
-  return true;
+  return initialization_success_;
 }
 
 uint32_t FakeLibdrmUtil::GetEmbeddedDisplayConnectorID() {
@@ -23,8 +23,8 @@ std::vector<uint32_t> FakeLibdrmUtil::GetExternalDisplayConnectorID() {
 void FakeLibdrmUtil::FillPrivacyScreenInfo(const uint32_t connector_id,
                                            bool* privacy_screen_supported,
                                            bool* privacy_screen_enabled) {
-  *privacy_screen_supported = true;
-  *privacy_screen_enabled = false;
+  *privacy_screen_supported = privacy_screen_supported_;
+  *privacy_screen_enabled = privacy_screen_enabled_;
 }
 
 bool FakeLibdrmUtil::FillDisplaySize(const uint32_t connector_id,

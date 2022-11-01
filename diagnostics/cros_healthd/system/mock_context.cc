@@ -120,6 +120,10 @@ FakeSystemUtilities* MockContext::fake_system_utils() const {
   return static_cast<FakeSystemUtilities*>(system_utils_.get());
 }
 
+FakeLibdrmUtil* MockContext::fake_libdrm_util() {
+  return &fake_libdrm_util_;
+}
+
 MockExecutor* MockContext::mock_executor() {
   return &mock_executor_;
 }

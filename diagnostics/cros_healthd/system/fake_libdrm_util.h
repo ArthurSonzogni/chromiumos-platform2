@@ -33,6 +33,15 @@ class FakeLibdrmUtil : public LibdrmUtil {
   bool FillDisplayRefreshRate(const uint32_t connector_id,
                               double* refresh_rate) override;
   bool FillEdidInfo(const uint32_t connector_id, EdidInfo* info) override;
+
+  bool& initialization_success() { return initialization_success_; }
+  bool& privacy_screen_supported() { return privacy_screen_supported_; }
+  bool& privacy_screen_enabled() { return privacy_screen_enabled_; }
+
+ private:
+  bool initialization_success_ = true;
+  bool privacy_screen_supported_ = true;
+  bool privacy_screen_enabled_ = false;
 };
 
 }  // namespace diagnostics

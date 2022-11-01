@@ -5,7 +5,10 @@
 #ifndef DIAGNOSTICS_CROS_HEALTHD_FAKE_FAKE_CHROMIUM_DATA_COLLECTOR_H_
 #define DIAGNOSTICS_CROS_HEALTHD_FAKE_FAKE_CHROMIUM_DATA_COLLECTOR_H_
 
+#include <memory>
+#include <optional>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <mojo/public/cpp/bindings/pending_remote.h>
@@ -38,6 +41,13 @@ class FakeChromiumDataCollector
 
   std::string& touchpad_library_name() { return touchpad_library_name_; }
 
+  void SetPrivacyScreenRequestProcessedBehaviour(
+      base::OnceClosure on_receive_request,
+      std::optional<bool> response_value) {
+    on_receive_privacy_screen_set_request_ = std::move(on_receive_request);
+    privacy_screen_request_processed_ = response_value;
+  }
+
  private:
   // `ash::cros_healthd::internal::mojom::ChromiumDataCollector` overrides.
   void GetTouchscreenDevices(GetTouchscreenDevicesCallback callback) override;
@@ -53,6 +63,12 @@ class FakeChromiumDataCollector
       touchscreen_devices_;
   // Expected touchpad library name.
   std::string touchpad_library_name_;
+  // Runnable function when browser receive privacy screen request.
+  std::optional<base::OnceClosure> on_receive_privacy_screen_set_request_ =
+      std::nullopt;
+  // Expected result of processing privacy screen request. |std::nullopt|
+  // indicates browser does not response.
+  std::optional<bool> privacy_screen_request_processed_ = true;
 };
 
 }  // namespace diagnostics

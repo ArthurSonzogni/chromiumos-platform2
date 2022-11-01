@@ -30,9 +30,16 @@ void FakeChromiumDataCollector::GetTouchpadLibraryName(
 }
 
 void FakeChromiumDataCollector::SetPrivacyScreenState(
-    bool state, SetPrivacyScreenStateCallback callback) {
-  // Assumed browser accepts the request.
-  std::move(callback).Run(true);
+    bool target_state, SetPrivacyScreenStateCallback callback) {
+  if (!privacy_screen_request_processed_.has_value()) {
+    // Browser does not response.
+    return;
+  }
+
+  if (on_receive_privacy_screen_set_request_.has_value()) {
+    std::move(on_receive_privacy_screen_set_request_.value()).Run();
+  }
+  std::move(callback).Run(privacy_screen_request_processed_.value());
 }
 
 }  // namespace diagnostics
