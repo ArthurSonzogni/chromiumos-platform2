@@ -390,6 +390,7 @@ void NetworkMonitorService::Start() {
 void NetworkMonitorService::OnShillDevicesChanged(
     const std::vector<std::string>& added,
     const std::vector<std::string>& removed) {
+  System system;
   for (const auto& ifname : added) {
     ShillClient::Device device_props;
     if (!shill_client_->GetDeviceProperties(ifname, &device_props)) {
@@ -404,7 +405,7 @@ void NetworkMonitorService::OnShillDevicesChanged(
       continue;
     }
 
-    int ifindex = device_props.ifindex;
+    int ifindex = system.IfNametoindex(device_props.ifname);
     if (ifindex == 0) {
       PLOG(ERROR) << "Could not obtain interface index for "
                   << device_props.ifname;
