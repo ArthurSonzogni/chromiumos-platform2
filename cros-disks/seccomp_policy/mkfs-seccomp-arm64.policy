@@ -20,8 +20,11 @@ futex: 1
 getcwd: 1
 getdents64: 1
 getpid: 1
+getppid: 1
 getrandom: 1
+gettid: 1
 gettimeofday: 1
+getuid: 1
 ioctl: 1
 lseek: 1
 mmap: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
