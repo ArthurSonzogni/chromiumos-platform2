@@ -83,6 +83,11 @@ class Storage : public base::RefCountedThreadSafe<Storage> {
   // internally.
   base::StringPiece GetPipelineId() const;
 
+  // Registers completion notification callback. Thread-safe.
+  // All registered callbacks are called when all queues destructions come
+  // to their completion and the Storage is destructed as well.
+  void RegisterCompletionCallback(base::OnceClosure callback);
+
  protected:
   virtual ~Storage();
 

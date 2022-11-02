@@ -9,6 +9,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/barrier_closure.h>
 #include <base/bind.h>
 #include <base/callback.h>
 #include <base/callback_list.h>
@@ -68,12 +69,13 @@ class Storage::QueueUploaderInterface : public UploaderInterface {
   // Factory method.
   static void AsyncProvideUploader(
       Priority priority,
-      Storage* storage,
+      UploaderInterface::AsyncStartUploaderCb async_start_upload_cb,
+      scoped_refptr<EncryptionModuleInterface> encryption_module,
       UploaderInterface::UploadReason reason,
       UploaderInterfaceResultCb start_uploader_cb) {
-    storage->async_start_upload_cb_.Run(
+    async_start_upload_cb.Run(
         (/*need_encryption_key=*/EncryptionModuleInterface::is_enabled() &&
-         storage->encryption_module_->need_encryption_key())
+         encryption_module->need_encryption_key())
             ? UploaderInterface::UploadReason::KEY_DELIVERY
             : reason,
         base::BindOnce(&QueueUploaderInterface::WrapInstantiatedUploader,
@@ -721,10 +723,11 @@ void Storage::Create(
         StorageQueue::Create(
             /*options=*/queue_options.second,
             // Note: the callback below belongs to the Queue and does not
-            // outlive Storage.
+            // outlive Storage, so it cannot refer to `storage_` itself!
             base::BindRepeating(&QueueUploaderInterface::AsyncProvideUploader,
                                 /*priority=*/queue_options.first,
-                                base::Unretained(storage_.get())),
+                                storage_->async_start_upload_cb_,
+                                storage_->encryption_module_),
             storage_->encryption_module_, storage_->compression_module_,
             base::BindOnce(&StorageInitContext::ScheduleAddQueue,
                            base::Unretained(this),
@@ -999,5 +1002,26 @@ base::StringPiece Storage::GetPipelineId() const {
   // |Storage::Create()|
   DCHECK(pipeline_id_result.ok()) << pipeline_id_result.status();
   return pipeline_id_result.ValueOrDie();
+}
+
+void Storage::RegisterCompletionCallback(base::OnceClosure callback) {
+  // Although this is an asynchronous action, note that Storage cannot be
+  // destructed until the callback is registered - StorageQueue is held by added
+  // reference here. Thus, the callback being registered is guaranteed
+  // to be called when the Storage is being destructed.
+  DCHECK(callback);
+  sequenced_task_runner_->PostTask(
+      FROM_HERE,
+      base::BindOnce(
+          [](base::OnceClosure callback, scoped_refptr<Storage> self) {
+            DCHECK_CALLED_ON_VALID_SEQUENCE(self->sequence_checker_);
+            const base::RepeatingClosure queue_callback =
+                base::BarrierClosure(self->queues_.size(), std::move(callback));
+            for (auto& queue : self->queues_) {
+              // Copy the callback as base::OnceClosure.
+              queue.second->RegisterCompletionCallback(queue_callback);
+            }
+          },
+          std::move(callback), base::WrapRefCounted(this)));
 }
 }  // namespace reporting

@@ -14,10 +14,10 @@
 #include <optional>
 #include <string>
 #include <utility>
-#include <vector>
 
 #include <base/bind.h>
 #include <base/callback.h>
+#include <base/callback_list.h>
 #include <base/containers/adapters.h>
 #include <base/containers/flat_set.h>
 #include <base/files/file.h>
@@ -49,6 +49,7 @@
 #include "missive/storage/storage_configuration.h"
 #include "missive/storage/storage_uploader_interface.h"
 #include "missive/util/file.h"
+#include "missive/util/refcounted_closure_list.h"
 #include "missive/util/status.h"
 #include "missive/util/status_macros.h"
 #include "missive/util/statusor.h"
@@ -140,7 +141,9 @@ StorageQueue::StorageQueue(
     scoped_refptr<EncryptionModuleInterface> encryption_module,
     scoped_refptr<CompressionModule> compression_module)
     : base::RefCountedDeleteOnSequence<StorageQueue>(sequenced_task_runner),
-      sequenced_task_runner_(std::move(sequenced_task_runner)),
+      sequenced_task_runner_(sequenced_task_runner),
+      completion_closure_list_(
+          base::MakeRefCounted<RefCountedClosureList>(sequenced_task_runner)),
       low_priority_task_runner_(base::ThreadPool::CreateSequencedTaskRunner(
           {base::TaskPriority::BEST_EFFORT, base::MayBlock()})),
       options_(options),
@@ -329,9 +332,9 @@ StatusOr<int64_t> StorageQueue::AddDataFile(
                    GetFileSequenceIdFromPath(full_name));
   RETURN_IF_ERROR(SetGenerationId(full_name));
 
-  auto file_or_status = SingleFile::Create(full_name, file_info.GetSize(),
-                                           options_.memory_resource(),
-                                           options_.disk_space_resource());
+  auto file_or_status = SingleFile::Create(
+      full_name, file_info.GetSize(), options_.memory_resource(),
+      options_.disk_space_resource(), completion_closure_list_);
   if (!file_or_status.ok()) {
     return file_or_status.status();
   }
@@ -475,7 +478,7 @@ StatusOr<scoped_refptr<StorageQueue::SingleFile>> StorageQueue::AssignLastFile(
                 .AddExtensionASCII(base::NumberToString(generation_id_))
                 .AddExtensionASCII(base::NumberToString(next_sequencing_id_)),
             /*size=*/0, options_.memory_resource(),
-            options_.disk_space_resource()));
+            options_.disk_space_resource(), completion_closure_list_));
     next_sequencing_id_ = 0;
     auto insert_result = files_.emplace(next_sequencing_id_, file);
     DCHECK(insert_result.second);
@@ -506,7 +509,7 @@ StorageQueue::OpenNewWriteableFile() {
               .AddExtensionASCII(base::NumberToString(generation_id_))
               .AddExtensionASCII(base::NumberToString(next_sequencing_id_)),
           /*size=*/0, options_.memory_resource(),
-          options_.disk_space_resource()));
+          options_.disk_space_resource(), completion_closure_list_));
   RETURN_IF_ERROR(new_file->Open(/*read_only=*/false));
   auto insert_result = files_.emplace(next_sequencing_id_, new_file);
   if (!insert_result.second) {
@@ -609,7 +612,7 @@ Status StorageQueue::WriteMetadata(base::StringPiece current_record_digest) {
               .Append(METADATA_NAME)
               .AddExtensionASCII(base::NumberToString(next_sequencing_id_)),
           /*size=*/0, options_.memory_resource(),
-          options_.disk_space_resource()));
+          options_.disk_space_resource(), completion_closure_list_));
   RETURN_IF_ERROR(meta_file->Open(/*read_only=*/false));
   // Account for the metadata file size.
   if (!options_.disk_space_resource()->Reserve(sizeof(generation_id_) +
@@ -644,8 +647,6 @@ Status StorageQueue::WriteMetadata(base::StringPiece current_record_digest) {
                                                   meta_file->name()}));
   }
   meta_file->Close();
-  // Switch the latest metafile.
-  meta_file_ = std::move(meta_file);
   // Asynchronously delete all earlier metafiles. Do not wait for this to
   // happen.
   low_priority_task_runner_->PostTask(
@@ -662,7 +663,8 @@ Status StorageQueue::ReadMetadata(
   ASSIGN_OR_RETURN(
       scoped_refptr<SingleFile> meta_file,
       SingleFile::Create(meta_file_path, size, options_.memory_resource(),
-                         options_.disk_space_resource()));
+                         options_.disk_space_resource(),
+                         completion_closure_list_));
   RETURN_IF_ERROR(meta_file->Open(/*read_only=*/true));
   // Metadata file format is:
   // - generation id (8 bytes)
@@ -715,7 +717,7 @@ Status StorageQueue::ReadMetadata(
     // the latest sequencing id.
     last_record_digest_.emplace(read_result.ValueOrDie());
   }
-  meta_file_ = std::move(meta_file);
+  meta_file->Close();
   // Store used metadata file.
   used_files_set->emplace(meta_file_path);
   return Status::StatusOK();
@@ -1002,12 +1004,9 @@ class StorageQueue::ReadContext : public TaskRunnerContext<Status> {
   }
 
   void UploadingCompleted(Status status) {
-    if (!storage_queue_) {
-      Response(Status(error::UNAVAILABLE, "StorageQueue shut down"));
-      return;
-    }
-    DCHECK_CALLED_ON_VALID_SEQUENCE(
-        storage_queue_->storage_queue_sequence_checker_);
+    // Release all files.
+    files_.clear();
+    current_file_ = files_.end();
     // If uploader was created, notify it about completion.
     if (uploader_) {
       uploader_->Completed(status);
@@ -1015,7 +1014,8 @@ class StorageQueue::ReadContext : public TaskRunnerContext<Status> {
     // If retry delay is specified, check back after the delay.
     // If the status was error, or if any events are still there,
     // retry the upload.
-    if (!storage_queue_->options_.upload_retry_delay().is_zero()) {
+    if (storage_queue_ &&
+        !storage_queue_->options_.upload_retry_delay().is_zero()) {
       ScheduleAfter(storage_queue_->options_.upload_retry_delay(),
                     base::BindOnce(
                         &StorageQueue::CheckBackUpload, storage_queue_, status,
@@ -1027,6 +1027,8 @@ class StorageQueue::ReadContext : public TaskRunnerContext<Status> {
     if (!storage_queue_) {
       std::move(completion_cb_)
           .Run(Status(error::UNAVAILABLE, "StorageQueue shut down"));
+      files_.clear();
+      current_file_ = files_.end();
       return;
     }
     DCHECK_CALLED_ON_VALID_SEQUENCE(
@@ -1035,6 +1037,8 @@ class StorageQueue::ReadContext : public TaskRunnerContext<Status> {
     if (!files_.empty()) {
       const auto count = --(storage_queue_->active_read_operations_);
       DCHECK_GE(count, 0);
+      files_.clear();
+      current_file_ = files_.end();
     }
     // Respond with the result.
     std::move(completion_cb_).Run(status);
@@ -1596,7 +1600,7 @@ class StorageQueue::WriteContext : public TaskRunnerContext<Status> {
     Response(Status::StatusOK());
   }
 
-  scoped_refptr<StorageQueue> storage_queue_;
+  const scoped_refptr<StorageQueue> storage_queue_;
 
   Record record_;
 
@@ -1785,8 +1789,28 @@ void StorageQueue::Flush(base::OnceCallback<void(Status)> completion_cb) {
 }
 
 void StorageQueue::ReleaseAllFileInstances() {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(storage_queue_sequence_checker_);
+  // Close files explicitly, because they might be still referred by contexts.
+  for (auto& file : files_) {
+    file.second->Close();
+  }
   files_.clear();
-  meta_file_.reset();
+}
+
+void StorageQueue::RegisterCompletionCallback(base::OnceClosure callback) {
+  // Although this is an asynchronous action, note that `StorageQueue` cannot be
+  // destructed until the callback is registered - `StorageQueue` is held by
+  // the added reference here. Thus, the callback being registered is guaranteed
+  // to be called only when `StorageQueue` is being destructed.
+  DCHECK(callback);
+  sequenced_task_runner_->PostTask(
+      FROM_HERE,
+      base::BindOnce(
+          [](base::OnceClosure callback, scoped_refptr<StorageQueue> self) {
+            self->completion_closure_list_->RegisterCompletionCallback(
+                std::move(callback));
+          },
+          std::move(callback), base::WrapRefCounted(this)));
 }
 
 void StorageQueue::TestInjectErrorsForOperation(
@@ -1803,7 +1827,8 @@ StorageQueue::SingleFile::Create(
     const base::FilePath& filename,
     int64_t size,
     scoped_refptr<ResourceInterface> memory_resource,
-    scoped_refptr<ResourceInterface> disk_space_resource) {
+    scoped_refptr<ResourceInterface> disk_space_resource,
+    scoped_refptr<RefCountedClosureList> completion_closure_list) {
   if (!disk_space_resource->Reserve(size)) {
     LOG(WARNING) << "Disk space exceeded adding file "
                  << filename.MaybeAsASCII();
@@ -1814,25 +1839,32 @@ StorageQueue::SingleFile::Create(
   }
   // Cannot use base::MakeRefCounted, since the constructor is private.
   return scoped_refptr<StorageQueue::SingleFile>(
-      new SingleFile(filename, size, memory_resource, disk_space_resource));
+      new SingleFile(filename, size, memory_resource, disk_space_resource,
+                     completion_closure_list));
 }
 
 StorageQueue::SingleFile::SingleFile(
     const base::FilePath& filename,
     int64_t size,
     scoped_refptr<ResourceInterface> memory_resource,
-    scoped_refptr<ResourceInterface> disk_space_resource)
-    : filename_(filename),
+    scoped_refptr<ResourceInterface> disk_space_resource,
+    scoped_refptr<RefCountedClosureList> completion_closure_list)
+    : completion_closure_list_(completion_closure_list),
+      filename_(filename),
       size_(size),
       memory_resource_(memory_resource),
-      disk_space_resource_(disk_space_resource) {}
+      disk_space_resource_(disk_space_resource) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+}
 
 StorageQueue::SingleFile::~SingleFile() {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   disk_space_resource_->Discard(size_);
   Close();
 }
 
 Status StorageQueue::SingleFile::Open(bool read_only) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   if (handle_) {
     DCHECK_EQ(is_readonly(), read_only);
     // TODO(b/157943192): Restart auto-closing timer.
@@ -1861,19 +1893,24 @@ Status StorageQueue::SingleFile::Open(bool read_only) {
 }
 
 void StorageQueue::SingleFile::Close() {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  is_readonly_ = std::nullopt;
+  if (buffer_) {
+    buffer_.reset();
+  }
+  if (buffer_size_ > 0) {
+    memory_resource_->Discard(buffer_size_);
+    buffer_size_ = 0;
+  }
   if (!handle_) {
     // TODO(b/157943192): Restart auto-closing timer.
     return;
   }
   handle_.reset();
-  is_readonly_ = std::nullopt;
-  if (buffer_) {
-    buffer_.reset();
-    memory_resource_->Discard(buffer_size_);
-  }
 }
 
 void StorageQueue::SingleFile::DeleteWarnIfFailed() {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   DCHECK(!handle_);
   disk_space_resource_->Discard(size_);
   size_ = 0;
@@ -1882,6 +1919,7 @@ void StorageQueue::SingleFile::DeleteWarnIfFailed() {
 
 StatusOr<base::StringPiece> StorageQueue::SingleFile::Read(
     uint32_t pos, uint32_t size, size_t max_buffer_size, bool expect_readonly) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   if (!handle_) {
     return Status(error::UNAVAILABLE, base::StrCat({"File not open ", name()}));
   }
@@ -1898,16 +1936,19 @@ StatusOr<base::StringPiece> StorageQueue::SingleFile::Read(
     // Empty file, return EOF right away.
     return Status(error::OUT_OF_RANGE, "End of file");
   }
-  buffer_size_ = std::min(max_buffer_size, RoundUpToFrameSize(size_));
   // If no buffer yet, allocate.
   // TODO(b/157943192): Add buffer management - consider adding an UMA for
   // tracking the average + peak memory the Storage module is consuming.
   if (!buffer_) {
+    const auto buffer_size =
+        std::min(max_buffer_size, RoundUpToFrameSize(size_));
     // Register with resource management.
-    if (!memory_resource_->Reserve(buffer_size_)) {
+    if (!memory_resource_->Reserve(buffer_size)) {
       return Status(error::RESOURCE_EXHAUSTED,
                     "Not enough memory for the read buffer");
     }
+    // Commit memory reservation.
+    buffer_size_ = buffer_size;
     buffer_ = std::make_unique<char[]>(buffer_size_);
     data_start_ = data_end_ = 0;
     file_position_ = 0;
@@ -1967,6 +2008,7 @@ StatusOr<base::StringPiece> StorageQueue::SingleFile::Read(
 }
 
 StatusOr<uint32_t> StorageQueue::SingleFile::Append(base::StringPiece data) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   if (!handle_) {
     return Status(error::UNAVAILABLE, base::StrCat({"File not open ", name()}));
   }

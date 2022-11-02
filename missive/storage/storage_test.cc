@@ -829,20 +829,26 @@ class StorageTest
   }
 
   void ResetTestStorage() {
-    // Let asynchronous activity finish.
-    task_environment_.RunUntilIdle();
     if (storage_) {
+      // StorageQueue comprising Storage are destructed on threads, wait for
+      // them to finish.
+      test::TestCallbackAutoWaiter waiter;
+      storage_->RegisterCompletionCallback(base::BindOnce(
+          &test::TestCallbackAutoWaiter::Signal, base::Unretained(&waiter)));
       storage_.reset();
-      // StorageQueue is destructed on a thread,
-      // so we need to wait for all queues to destruct.
-      task_environment_.RunUntilIdle();
     }
+    // Key has already been loaded, no need to redo it next time
+    // (unless explicitly requested).
     expect_to_need_key_ = false;
+    // Let remaining asynchronous activity finish.
+    // TODO(b/254418902): The next line is not logically necessary, but for
+    // unknown reason the tests becomes flaky without it, keeping it for now.
+    task_environment_.RunUntilIdle();
     // Make sure all memory is deallocated.
-    ASSERT_THAT(options_.memory_resource()->GetUsed(), Eq(0u));
+    EXPECT_THAT(options_.memory_resource()->GetUsed(), Eq(0u));
     // Make sure all disk is not reserved (files remain, but Storage is not
     // responsible for them anymore).
-    ASSERT_THAT(options_.disk_space_resource()->GetUsed(), Eq(0u));
+    EXPECT_THAT(options_.disk_space_resource()->GetUsed(), Eq(0u));
     // Handle and reject INIT_RESUME (optionally), in case the storage is
     // recreated.
     EXPECT_CALL(set_mock_uploader_expectations_,
