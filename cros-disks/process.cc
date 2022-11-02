@@ -88,6 +88,7 @@ std::ostream& operator<<(std::ostream& out, const Process::ExitCode exit_code) {
     PRINT(SIGWINCH)
     PRINT(SIGIO)
     PRINT(SIGPWR)
+    PRINT(SIGSYS)
 #undef PRINT
 
 #define PRINT(s) \
