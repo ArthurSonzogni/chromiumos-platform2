@@ -18,7 +18,6 @@
 
 #include "cryptohome/auth_factor/auth_factor_type.h"
 #include "cryptohome/credentials.h"
-#include "cryptohome/crypto_error.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/key_objects.h"
 
@@ -49,15 +48,15 @@ class MockAuthBlockUtility : public AuthBlockUtility {
               (const, override));
   MOCK_METHOD(void,
               PrepareAuthFactorForAuth,
-              (AuthFactorType, const std::string&, CryptohomeStatusCallback),
+              (AuthFactorType,
+               const std::string&,
+               PreparedAuthFactorToken::Consumer),
               (override));
   MOCK_METHOD(void,
               PrepareAuthFactorForAdd,
-              (AuthFactorType, const std::string&, CryptohomeStatusCallback),
-              (override));
-  MOCK_METHOD(CryptohomeStatus,
-              TerminateAuthFactor,
-              (AuthFactorType),
+              (AuthFactorType,
+               const std::string&,
+               PreparedAuthFactorToken::Consumer),
               (override));
   MOCK_METHOD(CryptoStatus,
               CreateKeyBlobsWithAuthBlock,

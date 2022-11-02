@@ -81,11 +81,12 @@ TEST_F(NullFingerprintAuthBlockServiceTest, NullStartFails) {
   auto service = FingerprintAuthBlockService::MakeNullService();
   std::string dummy_username = "dummy";
 
-  TestFuture<CryptohomeStatus> on_done_result;
+  TestFuture<CryptohomeStatusOr<std::unique_ptr<PreparedAuthFactorToken>>>
+      on_done_result;
   service->Start(dummy_username, on_done_result.GetCallback());
 
   ASSERT_THAT(on_done_result.IsReady(), IsTrue());
-  EXPECT_THAT(on_done_result.Get()->local_legacy_error(),
+  EXPECT_THAT(on_done_result.Get().status()->local_legacy_error(),
               Eq(user_data_auth::CRYPTOHOME_ERROR_ATTESTATION_NOT_READY));
 }
 
@@ -100,11 +101,6 @@ class FingerprintAuthBlockServiceTest : public BaseTestFixture {
                  base::BindRepeating(
                      &FingerprintAuthBlockServiceTest::OnFingerprintScanResult,
                      base::Unretained(this))) {}
-
-  void TearDown() override {
-    EXPECT_CALL(fp_manager_, EndAuthSession());
-    service_.Terminate();
-  }
 
  protected:
   FingerprintManager* GetFingerprintManager() { return &fp_manager_; }
@@ -126,7 +122,8 @@ TEST_F(FingerprintAuthBlockServiceTest, StartSuccess) {
       .WillOnce(SaveStartSessionCallback{&start_session_callback});
 
   // Kick off the start.
-  TestFuture<CryptohomeStatus> on_done_result;
+  TestFuture<CryptohomeStatusOr<std::unique_ptr<PreparedAuthFactorToken>>>
+      on_done_result;
   service_.Start(user_, on_done_result.GetCallback());
 
   // The on_done should only be triggered after we execute the callback from the
@@ -135,22 +132,27 @@ TEST_F(FingerprintAuthBlockServiceTest, StartSuccess) {
   std::move(start_session_callback).Run(true);
   ASSERT_THAT(on_done_result.IsReady(), IsTrue());
   ASSERT_THAT(on_done_result.Get(), IsOk());
+
+  // The session will be terminated upon destruction.
+  EXPECT_CALL(fp_manager_, EndAuthSession());
 }
 
 TEST_F(FingerprintAuthBlockServiceTest, StartAgainWithDifferentUserFailure) {
   EXPECT_CALL(fp_manager_, StartAuthSessionAsyncForUser(_, _));
 
   // Kick off the 1st start.
-  TestFuture<CryptohomeStatus> on_done_result;
+  TestFuture<CryptohomeStatusOr<std::unique_ptr<PreparedAuthFactorToken>>>
+      on_done_result;
   service_.Start(user_, on_done_result.GetCallback());
   ASSERT_THAT(on_done_result.IsReady(), IsFalse());
 
   // Kick off the 2nd start.
-  TestFuture<CryptohomeStatus> second_on_done_result;
+  TestFuture<CryptohomeStatusOr<std::unique_ptr<PreparedAuthFactorToken>>>
+      second_on_done_result;
   std::string another_user = "another_name";
   service_.Start(another_user, second_on_done_result.GetCallback());
   ASSERT_THAT(second_on_done_result.IsReady(), IsTrue());
-  ASSERT_THAT(second_on_done_result.Get()->local_legacy_error(),
+  ASSERT_THAT(second_on_done_result.Get().status()->local_legacy_error(),
               Eq(user_data_auth::CRYPTOHOME_ERROR_FINGERPRINT_DENIED));
 }
 
@@ -158,16 +160,18 @@ TEST_F(FingerprintAuthBlockServiceTest, StartAgainWithSameUserFailure) {
   EXPECT_CALL(fp_manager_, StartAuthSessionAsyncForUser(_, _));
 
   // Kick off the 1st start.
-  TestFuture<CryptohomeStatus> on_done_result;
+  TestFuture<CryptohomeStatusOr<std::unique_ptr<PreparedAuthFactorToken>>>
+      on_done_result;
   service_.Start(user_, on_done_result.GetCallback());
   ASSERT_THAT(on_done_result.IsReady(), IsFalse());
 
   // Kick off the 2nd start.
-  TestFuture<CryptohomeStatus> second_on_done_result;
+  TestFuture<CryptohomeStatusOr<std::unique_ptr<PreparedAuthFactorToken>>>
+      second_on_done_result;
   std::string another_user = "another_name";
   service_.Start(user_, second_on_done_result.GetCallback());
   ASSERT_THAT(second_on_done_result.IsReady(), IsTrue());
-  ASSERT_THAT(second_on_done_result.Get()->local_legacy_error(),
+  ASSERT_THAT(second_on_done_result.Get().status()->local_legacy_error(),
               Eq(user_data_auth::CRYPTOHOME_ERROR_FINGERPRINT_DENIED));
 }
 
@@ -181,7 +185,8 @@ TEST_F(FingerprintAuthBlockServiceTest, VerifySimpleSuccess) {
       .WillOnce(SaveStartSessionCallback{&start_session_callback});
 
   // Kick off the start.
-  TestFuture<CryptohomeStatus> start_result;
+  TestFuture<CryptohomeStatusOr<std::unique_ptr<PreparedAuthFactorToken>>>
+      start_result;
   service_.Start(user_, start_result.GetCallback());
   // The |start_result| should only be triggered after we execute the
   // callbacks from the fingerprint manager.
@@ -202,6 +207,9 @@ TEST_F(FingerprintAuthBlockServiceTest, VerifySimpleSuccess) {
   ASSERT_EQ(
       result_,
       user_data_auth::FingerprintScanResult::FINGERPRINT_SCAN_RESULT_SUCCESS);
+
+  // The session will be terminated upon destruction.
+  EXPECT_CALL(fp_manager_, EndAuthSession());
 }
 
 TEST_F(FingerprintAuthBlockServiceTest, VerifySimpleFailure) {
@@ -224,7 +232,8 @@ TEST_F(FingerprintAuthBlockServiceTest, VerifyNoScanFailure) {
       .WillOnce(SaveStartSessionCallback{&start_session_callback});
 
   // Kick off the start.
-  TestFuture<CryptohomeStatus> start_result;
+  TestFuture<CryptohomeStatusOr<std::unique_ptr<PreparedAuthFactorToken>>>
+      start_result;
   service_.Start(user_, start_result.GetCallback());
   // The |start_result| should only be triggered after we execute the
   // callbacks from the fingerprint manager.
@@ -239,6 +248,9 @@ TEST_F(FingerprintAuthBlockServiceTest, VerifyNoScanFailure) {
   ASSERT_THAT(verify_result.IsReady(), IsTrue());
   EXPECT_THAT(verify_result.Get()->local_legacy_error(),
               Eq(user_data_auth::CRYPTOHOME_ERROR_FINGERPRINT_DENIED));
+
+  // The session will be terminated upon destruction.
+  EXPECT_CALL(fp_manager_, EndAuthSession());
 }
 
 TEST_F(FingerprintAuthBlockServiceTest, VerifyAfterTerminateFailure) {
@@ -251,7 +263,8 @@ TEST_F(FingerprintAuthBlockServiceTest, VerifyAfterTerminateFailure) {
       .WillOnce(SaveStartSessionCallback{&start_session_callback});
 
   // Kick off the start.
-  TestFuture<CryptohomeStatus> start_result;
+  TestFuture<CryptohomeStatusOr<std::unique_ptr<PreparedAuthFactorToken>>>
+      start_result;
   service_.Start(user_, start_result.GetCallback());
   // The |start_result| should only be triggered after we execute the
   // callbacks from the fingerprint manager.
@@ -262,7 +275,7 @@ TEST_F(FingerprintAuthBlockServiceTest, VerifyAfterTerminateFailure) {
 
   // Terminate the service session.
   EXPECT_CALL(fp_manager_, EndAuthSession());
-  service_.Terminate();
+  EXPECT_THAT((*start_result.Get())->Terminate(), IsOk());
 
   // Kick off the verify.
   TestFuture<CryptohomeStatus> verify_result;
@@ -282,7 +295,8 @@ TEST_F(FingerprintAuthBlockServiceTest, VerifyRetryFailure) {
       .WillOnce(SaveStartSessionCallback{&start_session_callback});
 
   // Kick off the start.
-  TestFuture<CryptohomeStatus> start_result;
+  TestFuture<CryptohomeStatusOr<std::unique_ptr<PreparedAuthFactorToken>>>
+      start_result;
   service_.Start(user_, start_result.GetCallback());
   // The |start_result| should only be triggered after we execute the
   // callbacks from the fingerprint manager.
@@ -300,6 +314,9 @@ TEST_F(FingerprintAuthBlockServiceTest, VerifyRetryFailure) {
   ASSERT_THAT(verify_result.IsReady(), IsTrue());
   EXPECT_THAT(verify_result.Get()->local_legacy_error(),
               Eq(user_data_auth::CRYPTOHOME_ERROR_FINGERPRINT_RETRY_REQUIRED));
+
+  // The session will be terminated upon destruction.
+  EXPECT_CALL(fp_manager_, EndAuthSession());
 }
 
 TEST_F(FingerprintAuthBlockServiceTest, VerifyRetryDeniedFailure) {
@@ -312,7 +329,8 @@ TEST_F(FingerprintAuthBlockServiceTest, VerifyRetryDeniedFailure) {
       .WillOnce(SaveStartSessionCallback{&start_session_callback});
 
   // Kick off the start.
-  TestFuture<CryptohomeStatus> start_result;
+  TestFuture<CryptohomeStatusOr<std::unique_ptr<PreparedAuthFactorToken>>>
+      start_result;
   service_.Start(user_, start_result.GetCallback());
   // The |start_result| should only be triggered after we execute the
   // callbacks from the fingerprint manager.
@@ -330,6 +348,9 @@ TEST_F(FingerprintAuthBlockServiceTest, VerifyRetryDeniedFailure) {
   ASSERT_THAT(verify_result.IsReady(), IsTrue());
   EXPECT_THAT(verify_result.Get()->local_legacy_error(),
               Eq(user_data_auth::CRYPTOHOME_ERROR_FINGERPRINT_DENIED));
+
+  // The session will be terminated upon destruction.
+  EXPECT_CALL(fp_manager_, EndAuthSession());
 }
 
 TEST_F(FingerprintAuthBlockServiceTest, ScanResultSignalCallbackSuccess) {
@@ -343,7 +364,8 @@ TEST_F(FingerprintAuthBlockServiceTest, ScanResultSignalCallbackSuccess) {
   result_ = user_data_auth::FINGERPRINT_SCAN_RESULT_LOCKOUT;
 
   // Kick off the start.
-  TestFuture<CryptohomeStatus> start_result;
+  TestFuture<CryptohomeStatusOr<std::unique_ptr<PreparedAuthFactorToken>>>
+      start_result;
   service_.Start(user_, start_result.GetCallback());
   // The |start_result| should only be triggered after we execute the
   // callbacks from the fingerprint manager.
@@ -360,6 +382,9 @@ TEST_F(FingerprintAuthBlockServiceTest, ScanResultSignalCallbackSuccess) {
   ASSERT_EQ(result_, user_data_auth::FINGERPRINT_SCAN_RESULT_SUCCESS);
   signal_callback.Run(FingerprintScanStatus::FAILED_RETRY_NOT_ALLOWED);
   ASSERT_EQ(result_, user_data_auth::FINGERPRINT_SCAN_RESULT_LOCKOUT);
+
+  // The session will be terminated upon destruction.
+  EXPECT_CALL(fp_manager_, EndAuthSession());
 }
 
 }  // namespace

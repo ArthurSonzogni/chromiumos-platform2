@@ -65,16 +65,15 @@ class AuthBlockUtilityImpl final : public AuthBlockUtility {
       const std::string& auth_factor_label,
       const AuthInput& auth_input) const override;
 
-  void PrepareAuthFactorForAuth(AuthFactorType auth_factor_type,
-                                const std::string& username,
-                                CryptohomeStatusCallback callback) override;
+  void PrepareAuthFactorForAuth(
+      AuthFactorType auth_factor_type,
+      const std::string& username,
+      PreparedAuthFactorToken::Consumer callback) override;
 
-  void PrepareAuthFactorForAdd(AuthFactorType auth_factor_type,
-                               const std::string& username,
-                               CryptohomeStatusCallback callback) override;
-
-  CryptohomeStatus TerminateAuthFactor(
-      AuthFactorType auth_factor_type) override;
+  void PrepareAuthFactorForAdd(
+      AuthFactorType auth_factor_type,
+      const std::string& username,
+      PreparedAuthFactorToken::Consumer callback) override;
 
   CryptoStatus CreateKeyBlobsWithAuthBlock(
       AuthBlockType auth_block_type,

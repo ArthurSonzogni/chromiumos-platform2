@@ -6,15 +6,17 @@
 #include <string>
 #include <utility>
 
-#include "base/bind.h"
+#include <base/bind.h>
+#include <cryptohome/proto_bindings/UserDataAuth.pb.h>
+
 #include "cryptohome/auth_blocks/fp_service.h"
 #include "cryptohome/error/cryptohome_error.h"
 #include "cryptohome/error/location_utils.h"
 #include "cryptohome/error/locations.h"
 #include "cryptohome/fingerprint_manager.h"
-#include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 
 namespace cryptohome {
+namespace {
 
 using cryptohome::error::CryptohomeError;
 using cryptohome::error::ErrorAction;
@@ -22,8 +24,28 @@ using cryptohome::error::ErrorActionSet;
 using hwsec_foundation::status::MakeStatus;
 using hwsec_foundation::status::OkStatus;
 
+}  // namespace
+
+FingerprintAuthBlockService::Token::Token()
+    : PreparedAuthFactorToken(AuthFactorType::kLegacyFingerprint),
+      terminate_(*this) {}
+
+void FingerprintAuthBlockService::Token::AttachToService(
+    FingerprintAuthBlockService* service) {
+  service_ = service;
+}
+
+CryptohomeStatus FingerprintAuthBlockService::Token::TerminateAuthFactor() {
+  if (service_) {
+    service_->Terminate();
+  }
+  return OkStatus<CryptohomeError>();
+}
+
 void FingerprintAuthBlockService::CheckSessionStartResult(
-    base::OnceCallback<void(CryptohomeStatus)> on_done, bool success) {
+    std::unique_ptr<Token> token,
+    PreparedAuthFactorToken::Consumer on_done,
+    bool success) {
   if (!success) {
     CryptohomeStatus cryptohome_status = MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocFpServiceStartSessionFailure),
@@ -31,6 +53,7 @@ void FingerprintAuthBlockService::CheckSessionStartResult(
         user_data_auth::CryptohomeErrorCode::
             CRYPTOHOME_ERROR_FINGERPRINT_ERROR_INTERNAL);
     std::move(on_done).Run(std::move(cryptohome_status));
+    active_token_ = nullptr;
     return;
   }
 
@@ -42,11 +65,13 @@ void FingerprintAuthBlockService::CheckSessionStartResult(
         user_data_auth::CryptohomeErrorCode::
             CRYPTOHOME_ERROR_FINGERPRINT_ERROR_INTERNAL);
     std::move(on_done).Run(std::move(status));
+    active_token_ = nullptr;
     return;
   }
   fp_manager->SetSignalCallback(base::BindRepeating(
       &FingerprintAuthBlockService::Capture, base::Unretained(this)));
-  std::move(on_done).Run(OkStatus<CryptohomeError>());
+  token->AttachToService(this);
+  std::move(on_done).Run(std::move(token));
 }
 
 FingerprintAuthBlockService::FingerprintAuthBlockService(
@@ -78,9 +103,9 @@ void FingerprintAuthBlockService::Verify(
     return;
   }
 
-  // |user_| is not set, the service is not set up properly and
-  // the verification should fail.
-  if (user_.empty()) {
+  // If there is no active token then the service has not been started and the
+  // verification should fail.
+  if (!active_token_) {
     cryptohome_status = MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocFpServiceCheckResultNoAuthSession),
         ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
@@ -114,7 +139,7 @@ void FingerprintAuthBlockService::Verify(
 
 void FingerprintAuthBlockService::Start(
     std::string obfuscated_username,
-    base::OnceCallback<void(CryptohomeStatus)> on_done) {
+    PreparedAuthFactorToken::Consumer on_done) {
   FingerprintManager* fp_manager = fp_manager_getter_.Run();
   if (!fp_manager) {
     CryptohomeStatus status = MakeStatus<CryptohomeError>(
@@ -126,7 +151,7 @@ void FingerprintAuthBlockService::Start(
     return;
   }
 
-  if (!user_.empty()) {
+  if (active_token_) {
     CryptohomeStatus status = MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocFpServiceStartConcurrentSession),
         ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
@@ -135,25 +160,27 @@ void FingerprintAuthBlockService::Start(
     std::move(on_done).Run(std::move(status));
     return;
   }
-  user_ = obfuscated_username;
 
   // Set up a callback with the manager to check the start session result.
+  auto token = std::make_unique<Token>();
+  active_token_ = token.get();
   fp_manager->StartAuthSessionAsyncForUser(
-      user_,
+      obfuscated_username,
       base::BindOnce(&FingerprintAuthBlockService::CheckSessionStartResult,
-                     base::Unretained(this), std::move(on_done)));
+                     base::Unretained(this), std::move(token),
+                     std::move(on_done)));
 }
 
 void FingerprintAuthBlockService::Terminate() {
-  user_.clear();
+  active_token_ = nullptr;
   scan_result_ = FingerprintScanStatus::FAILED_RETRY_NOT_ALLOWED;
   EndAuthSession();
 }
 
 void FingerprintAuthBlockService::Capture(FingerprintScanStatus status) {
-  // If the session has been terminated, the registered user is cleared.
-  // In this case, no-op when the callback is triggered.
-  if (user_.empty()) {
+  // If the session has been terminated, there will be no active token. In this
+  // case, no-op when the callback is triggered.
+  if (!active_token_) {
     return;
   }
   scan_result_ = status;

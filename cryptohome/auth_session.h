@@ -24,6 +24,7 @@
 #include <libhwsec-foundation/status/status_chain_or.h>
 
 #include "cryptohome/auth_blocks/auth_block_utility.h"
+#include "cryptohome/auth_blocks/prepare_token.h"
 #include "cryptohome/auth_factor/auth_factor.h"
 #include "cryptohome/auth_factor/auth_factor_manager.h"
 #include "cryptohome/auth_factor/auth_factor_type.h"
@@ -563,6 +564,12 @@ class AuthSession final {
       std::unique_ptr<KeyBlobs> key_blobs,
       std::unique_ptr<AuthBlockState> auth_block_state);
 
+  // Handles the completion of an async PrepareAuthFactor call. Captures the
+  // token and forwards the result to the given status callback.
+  void OnPrepareAuthFactorDone(
+      StatusCallback on_done,
+      CryptohomeStatusOr<std::unique_ptr<PreparedAuthFactorToken>> token);
+
   // Prepares the WebAuthn secret using file_system_keyset.
   CryptohomeStatus PrepareWebAuthnSecret();
 
@@ -635,11 +642,9 @@ class AuthSession final {
   std::optional<brillo::SecureBlob> cryptohome_recovery_ephemeral_pub_key_;
   // Switch to enable creation of the backup VaultKeysets together with the USS.
   bool enable_create_backup_vk_with_uss_;
-  // A container to keep all async auth factor types that needs to be stopped
-  // when the AuthSession lifetime ends.
-  // TODO(b/246826331): keep a token that is returned by PrepareAuthFactor
-  // instead of the type.
-  std::set<AuthFactorType> active_auth_factor_types;
+  // Tokens from active auth factors, keyed off of the token's auth factor type.
+  std::map<AuthFactorType, std::unique_ptr<PreparedAuthFactorToken>>
+      active_auth_factor_tokens_;
 
   // Should be the last member.
   base::WeakPtrFactory<AuthSession> weak_factory_{this};

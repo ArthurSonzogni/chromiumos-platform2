@@ -5163,15 +5163,19 @@ TEST_F(UserDataAuthExTest, PrepareAuthFactorLegacyFingerprintSuccess) {
       user_data_auth::AUTH_FACTOR_TYPE_LEGACY_FINGERPRINT);
   prepare_auth_factor_req.set_purpose(
       user_data_auth::PURPOSE_AUTHENTICATE_AUTH_FACTOR);
+  TrackedPreparedAuthFactorToken::WasCalled token_was_called;
+  auto token = std::make_unique<TrackedPreparedAuthFactorToken>(
+      AuthFactorType::kLegacyFingerprint, OkStatus<CryptohomeError>(),
+      &token_was_called);
   EXPECT_CALL(auth_block_utility_,
               IsPrepareAuthFactorRequired(AuthFactorType::kLegacyFingerprint))
-      .WillRepeatedly(Return(true));
+      .WillOnce(Return(true));
   EXPECT_CALL(
       auth_block_utility_,
       PrepareAuthFactorForAuth(AuthFactorType::kLegacyFingerprint, _, _))
-      .WillOnce([](AuthFactorType, const std::string&,
-                   AuthBlockUtility::CryptohomeStatusCallback callback) {
-        std::move(callback).Run(OkStatus<CryptohomeError>());
+      .WillOnce([&](AuthFactorType, const std::string&,
+                    PreparedAuthFactorToken::Consumer callback) {
+        std::move(callback).Run(std::move(token));
       });
 
   // Test.
@@ -5192,6 +5196,8 @@ TEST_F(UserDataAuthExTest, PrepareAuthFactorLegacyFingerprintSuccess) {
   // Verify.
   EXPECT_EQ(prepare_auth_factor_reply.error(),
             user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+  EXPECT_FALSE(token_was_called.terminate);
+  EXPECT_FALSE(token_was_called.destructor);
 }
 
 TEST_F(UserDataAuthExTest, PrepareAuthFactorLegacyFingerprintFailure) {
@@ -5232,8 +5238,8 @@ TEST_F(UserDataAuthExTest, PrepareAuthFactorLegacyFingerprintFailure) {
   EXPECT_CALL(
       auth_block_utility_,
       PrepareAuthFactorForAuth(AuthFactorType::kLegacyFingerprint, _, _))
-      .WillOnce([this](AuthFactorType, const std::string&,
-                       AuthBlockUtility::CryptohomeStatusCallback callback) {
+      .WillOnce([&](AuthFactorType, const std::string&,
+                    PreparedAuthFactorToken::Consumer callback) {
         std::move(callback).Run(MakeStatus<CryptohomeError>(
             kErrorLocationPlaceholder,
             ErrorActionSet({ErrorAction::kIncorrectAuth}),
@@ -5379,15 +5385,19 @@ TEST_F(UserDataAuthExTest, TerminateAuthFactorLegacyFingerprintSuccess) {
       user_data_auth::AUTH_FACTOR_TYPE_LEGACY_FINGERPRINT);
   prepare_auth_factor_req.set_purpose(
       user_data_auth::PURPOSE_AUTHENTICATE_AUTH_FACTOR);
+  TrackedPreparedAuthFactorToken::WasCalled token_was_called;
+  auto token = std::make_unique<TrackedPreparedAuthFactorToken>(
+      AuthFactorType::kLegacyFingerprint, OkStatus<CryptohomeError>(),
+      &token_was_called);
   EXPECT_CALL(auth_block_utility_,
               IsPrepareAuthFactorRequired(AuthFactorType::kLegacyFingerprint))
       .WillRepeatedly(Return(true));
   EXPECT_CALL(
       auth_block_utility_,
       PrepareAuthFactorForAuth(AuthFactorType::kLegacyFingerprint, _, _))
-      .WillOnce([](AuthFactorType, const std::string&,
-                   AuthBlockUtility::CryptohomeStatusCallback callback) {
-        std::move(callback).Run(OkStatus<CryptohomeError>());
+      .WillOnce([&](AuthFactorType, const std::string&,
+                    PreparedAuthFactorToken::Consumer callback) {
+        std::move(callback).Run(std::move(token));
       });
   user_data_auth::PrepareAuthFactorReply prepare_auth_factor_reply;
   {
@@ -5404,9 +5414,8 @@ TEST_F(UserDataAuthExTest, TerminateAuthFactorLegacyFingerprintSuccess) {
   }
   EXPECT_EQ(prepare_auth_factor_reply.error(),
             user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
-  EXPECT_CALL(auth_block_utility_,
-              TerminateAuthFactor(AuthFactorType::kLegacyFingerprint))
-      .WillOnce([](AuthFactorType) { return OkStatus<CryptohomeError>(); });
+  EXPECT_FALSE(token_was_called.terminate);
+  EXPECT_FALSE(token_was_called.destructor);
 
   // Test.
   user_data_auth::TerminateAuthFactorRequest terminate_auth_factor_req;
@@ -5431,6 +5440,8 @@ TEST_F(UserDataAuthExTest, TerminateAuthFactorLegacyFingerprintSuccess) {
   // Verify.
   EXPECT_EQ(terminate_auth_factor_reply.error(),
             user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+  EXPECT_TRUE(token_was_called.terminate);
+  EXPECT_TRUE(token_was_called.destructor);
 }
 
 TEST_F(UserDataAuthExTest, TerminateAuthFactorInactiveFactorFailure) {

@@ -9,11 +9,12 @@
 #include <string>
 
 #include <base/callback.h>
+#include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 
+#include "cryptohome/auth_blocks/prepare_token.h"
 #include "cryptohome/credential_verifier.h"
 #include "cryptohome/error/cryptohome_error.h"
 #include "cryptohome/fingerprint_manager.h"
-#include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 
 namespace cryptohome {
 
@@ -40,7 +41,7 @@ class FingerprintAuthBlockService {
   // Start registers a given user to the fp_service and initiates a fingerprint
   // sensor session.
   void Start(std::string obfuscated_username,
-             base::OnceCallback<void(CryptohomeStatus)> on_done);
+             PreparedAuthFactorToken::Consumer on_done);
 
   // Verify if the fingerprint sensor is currently in a "successfully
   // authorized" state or not. The success or failure of this check will be
@@ -52,11 +53,31 @@ class FingerprintAuthBlockService {
   void Terminate();
 
  private:
-  // CheckSessionStartResult forms a error status with |success|,
-  //  and pass it to the |on_done| callback. This function is designed to be
-  // used as a callback with FingerprintManager.
-  void CheckSessionStartResult(
-      base::OnceCallback<void(CryptohomeStatus)> on_done, bool success);
+  // Token implementation used by the fingerprint service.
+  class Token : public PreparedAuthFactorToken {
+   public:
+    Token();
+
+    // Attaches the token to the underlying service. Ideally we'd do this in the
+    // constructor but the token is constructed when we initiate the request to
+    // start the session, not after the session is (successfully) started. We
+    // don't want the token to be able to termination the session until it
+    // starts, so we wait until that point to attach it.
+    void AttachToService(FingerprintAuthBlockService* service);
+
+   private:
+    CryptohomeStatus TerminateAuthFactor() override;
+
+    FingerprintAuthBlockService* service_ = nullptr;
+    TerminateOnDestruction terminate_;
+  };
+
+  // Depending on the result of success, this will pass either the given auth
+  // factor token, or a not-OK status to the given callback. This function is
+  // designed to be used as a callback with FingerprintManager.
+  void CheckSessionStartResult(std::unique_ptr<Token> token,
+                               PreparedAuthFactorToken::Consumer on_done,
+                               bool success);
 
   // Capture processes a fingerprint scan result. It records the scan result
   // and converts the result into a cryptohome signal status through
@@ -72,8 +93,9 @@ class FingerprintAuthBlockService {
   // The most recent fingerprint scan result.
   FingerprintScanStatus scan_result_ =
       FingerprintScanStatus::FAILED_RETRY_NOT_ALLOWED;
-  // The obfuscated username tied to the current auth session.
-  std::string user_;
+  // The token for the currently active auth session, if there is one. This will
+  // be set to null otherwise.
+  PreparedAuthFactorToken* active_token_ = nullptr;
   // A callback to send cryptohome ScanResult signal.
   base::RepeatingCallback<void(user_data_auth::FingerprintScanResult)>
       signal_sender_;

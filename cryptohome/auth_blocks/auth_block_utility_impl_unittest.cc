@@ -295,11 +295,12 @@ TEST_F(AuthBlockUtilityImplTest, IsPrepareAuthFactorRequired) {
 TEST_F(AuthBlockUtilityImplTest, PreparePasswordFailure) {
   MakeAuthBlockUtilityImpl();
   // password auth factor always fails the prepare.
-  TestFuture<CryptohomeStatus> prepare_result;
+  TestFuture<CryptohomeStatusOr<std::unique_ptr<PreparedAuthFactorToken>>>
+      prepare_result;
   auth_block_utility_impl_->PrepareAuthFactorForAuth(
       AuthFactorType::kPassword, kUser, prepare_result.GetCallback());
 
-  EXPECT_THAT(prepare_result.Get()->local_legacy_error(),
+  EXPECT_THAT(prepare_result.Get().status()->local_legacy_error(),
               Eq(user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
 }
 
@@ -315,7 +316,8 @@ TEST_F(AuthBlockUtilityImplTest, PrepareLegacyFingerprintSuccess) {
   EXPECT_CALL(fp_manager_, SetSignalCallback(_));
 
   // Test.
-  TestFuture<CryptohomeStatus> prepare_result;
+  TestFuture<CryptohomeStatusOr<std::unique_ptr<PreparedAuthFactorToken>>>
+      prepare_result;
   auth_block_utility_impl_->PrepareAuthFactorForAuth(
       AuthFactorType::kLegacyFingerprint, kUser, prepare_result.GetCallback());
 
@@ -335,12 +337,13 @@ TEST_F(AuthBlockUtilityImplTest, PrepareLegacyFingerprintFailure) {
       });
 
   // Test.
-  TestFuture<CryptohomeStatus> prepare_result;
+  TestFuture<CryptohomeStatusOr<std::unique_ptr<PreparedAuthFactorToken>>>
+      prepare_result;
   auth_block_utility_impl_->PrepareAuthFactorForAuth(
       AuthFactorType::kLegacyFingerprint, kUser, prepare_result.GetCallback());
 
   // Verify.
-  EXPECT_THAT(prepare_result.Get()->local_legacy_error(),
+  EXPECT_THAT(prepare_result.Get().status()->local_legacy_error(),
               Eq(user_data_auth::CRYPTOHOME_ERROR_FINGERPRINT_ERROR_INTERNAL));
 }
 
@@ -358,7 +361,8 @@ TEST_F(AuthBlockUtilityImplTest, CheckSignalSuccess) {
       .WillOnce([](FingerprintManager::SignalCallback callback) {
         std::move(callback).Run(FingerprintScanStatus::SUCCESS);
       });
-  TestFuture<CryptohomeStatus> prepare_result;
+  TestFuture<CryptohomeStatusOr<std::unique_ptr<PreparedAuthFactorToken>>>
+      prepare_result;
   auth_block_utility_impl_->PrepareAuthFactorForAuth(
       AuthFactorType::kLegacyFingerprint, kUser, prepare_result.GetCallback());
   ASSERT_THAT(prepare_result.Get(), IsOk());
@@ -409,11 +413,13 @@ TEST_F(AuthBlockUtilityImplTest, VerifyFingerprintSuccess) {
         std::move(callback).Run(FingerprintScanStatus::SUCCESS);
       });
 
-  // Legacy fingerprint auth factor needs to kicks off the prepare.
-  TestFuture<CryptohomeStatus> prepare_result;
+  // legacy fingerprint auth factor needs to kicks off the prepare.
+  TestFuture<CryptohomeStatusOr<std::unique_ptr<PreparedAuthFactorToken>>>
+      prepare_result;
   auth_block_utility_impl_->PrepareAuthFactorForAuth(
       AuthFactorType::kLegacyFingerprint, kUser, prepare_result.GetCallback());
   ASSERT_THAT(prepare_result.Get(), IsOk());
+  auto token = std::move(*prepare_result.Take());
 
   // Run the Verify and check the result.
   TestFuture<CryptohomeStatus> verify_result;
@@ -421,8 +427,7 @@ TEST_F(AuthBlockUtilityImplTest, VerifyFingerprintSuccess) {
   EXPECT_THAT(verify_result.Get(), IsOk());
 
   EXPECT_CALL(fp_manager_, EndAuthSession());
-  CryptohomeStatus status = auth_block_utility_impl_->TerminateAuthFactor(
-      AuthFactorType::kLegacyFingerprint);
+  CryptohomeStatus status = token->Terminate();
   EXPECT_THAT(status, IsOk());
 }
 
@@ -448,10 +453,12 @@ TEST_F(AuthBlockUtilityImplTest, VerifyFingerprintFailure) {
       });
 
   // legacy fingerprint auth factor needs to kicks off the prepare.
-  TestFuture<CryptohomeStatus> prepare_result;
+  TestFuture<CryptohomeStatusOr<std::unique_ptr<PreparedAuthFactorToken>>>
+      prepare_result;
   auth_block_utility_impl_->PrepareAuthFactorForAuth(
       AuthFactorType::kLegacyFingerprint, kUser, prepare_result.GetCallback());
   ASSERT_THAT(prepare_result.Get(), IsOk());
+  auto token = std::move(*prepare_result.Take());
 
   // Run the Verify and check the result.
   TestFuture<CryptohomeStatus> verify_result;
@@ -460,28 +467,7 @@ TEST_F(AuthBlockUtilityImplTest, VerifyFingerprintFailure) {
               Eq(user_data_auth::CRYPTOHOME_ERROR_FINGERPRINT_DENIED));
 
   EXPECT_CALL(fp_manager_, EndAuthSession());
-  CryptohomeStatus status = auth_block_utility_impl_->TerminateAuthFactor(
-      AuthFactorType::kLegacyFingerprint);
-  EXPECT_THAT(status, IsOk());
-}
-
-TEST_F(AuthBlockUtilityImplTest, TerminatePasswordFailure) {
-  MakeAuthBlockUtilityImpl();
-  // password auth factor always fails the terminate.
-  CryptohomeStatus status =
-      auth_block_utility_impl_->TerminateAuthFactor(AuthFactorType::kPassword);
-
-  EXPECT_THAT(status->local_legacy_error(),
-              Eq(user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
-}
-
-TEST_F(AuthBlockUtilityImplTest, TerminateLegacyFingerprintSuccess) {
-  MakeAuthBlockUtilityImpl();
-  EXPECT_CALL(fp_manager_, EndAuthSession());
-
-  CryptohomeStatus status = auth_block_utility_impl_->TerminateAuthFactor(
-      AuthFactorType::kLegacyFingerprint);
-
+  CryptohomeStatus status = token->Terminate();
   EXPECT_THAT(status, IsOk());
 }
 

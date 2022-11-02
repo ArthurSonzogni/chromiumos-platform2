@@ -224,7 +224,7 @@ AuthBlockUtilityImpl::CreateCredentialVerifier(
 void AuthBlockUtilityImpl::PrepareAuthFactorForAuth(
     AuthFactorType auth_factor_type,
     const std::string& username,
-    CryptohomeStatusCallback callback) {
+    PreparedAuthFactorToken::Consumer callback) {
   switch (auth_factor_type) {
     case AuthFactorType::kLegacyFingerprint: {
       fp_service_->Start(username, std::move(callback));
@@ -252,7 +252,7 @@ void AuthBlockUtilityImpl::PrepareAuthFactorForAuth(
 void AuthBlockUtilityImpl::PrepareAuthFactorForAdd(
     AuthFactorType auth_factor_type,
     const std::string& username,
-    CryptohomeStatusCallback callback) {
+    PreparedAuthFactorToken::Consumer callback) {
   // Not implemented for now.
   CryptohomeStatus status = MakeStatus<CryptohomeError>(
       CRYPTOHOME_ERR_LOC(kLocAuthBlockUtilUnimplementedPrepareForAdd),
@@ -260,30 +260,6 @@ void AuthBlockUtilityImpl::PrepareAuthFactorForAdd(
           {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kAuth}),
       user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_IMPLEMENTED);
   std::move(callback).Run(std::move(status));
-}
-
-CryptohomeStatus AuthBlockUtilityImpl::TerminateAuthFactor(
-    AuthFactorType auth_factor_type) {
-  switch (auth_factor_type) {
-    case AuthFactorType::kLegacyFingerprint: {
-      fp_service_->Terminate();
-      return OkStatus<CryptohomeError>();
-    }
-    case AuthFactorType::kPassword:
-    case AuthFactorType::kPin:
-    case AuthFactorType::kCryptohomeRecovery:
-    case AuthFactorType::kKiosk:
-    case AuthFactorType::kSmartCard:
-    case AuthFactorType::kUnspecified: {
-      // These factors do not support Terminate.
-      return MakeStatus<CryptohomeError>(
-          CRYPTOHOME_ERR_LOC(kLocAuthBlockUtilTerminateInvalidAuthFactorType),
-          ErrorActionSet(
-              {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kAuth}),
-          user_data_auth::CryptohomeErrorCode::
-              CRYPTOHOME_ERROR_INVALID_ARGUMENT);
-    }
-  }
 }
 
 CryptoStatus AuthBlockUtilityImpl::CreateKeyBlobsWithAuthBlock(

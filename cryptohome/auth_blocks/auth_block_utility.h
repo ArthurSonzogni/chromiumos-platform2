@@ -16,6 +16,7 @@
 
 #include "cryptohome/auth_blocks/auth_block.h"
 #include "cryptohome/auth_blocks/auth_block_type.h"
+#include "cryptohome/auth_blocks/prepare_token.h"
 #include "cryptohome/auth_factor/auth_factor_type.h"
 #include "cryptohome/auth_intent.h"
 #include "cryptohome/challenge_credentials/challenge_credentials_helper.h"
@@ -85,20 +86,17 @@ class AuthBlockUtility {
 
   // Given an AuthFactorType, attempt to prepare an auth factor for
   // authentication. Returns through the asynchronous |callback|.
-  virtual void PrepareAuthFactorForAuth(AuthFactorType auth_factor_type,
-                                        const std::string& username,
-                                        CryptohomeStatusCallback callback) = 0;
+  virtual void PrepareAuthFactorForAuth(
+      AuthFactorType auth_factor_type,
+      const std::string& username,
+      PreparedAuthFactorToken::Consumer callback) = 0;
 
   // Given an AuthFactorType, attempt to prepare an auth factor for add.
   // Returns through the asynchronous |callback|.
-  virtual void PrepareAuthFactorForAdd(AuthFactorType auth_factor_type,
-                                       const std::string& username,
-                                       CryptohomeStatusCallback callback) = 0;
-
-  // Given an AuthFactorType, stop an auth factor's pending async Prepare or
-  // Verify.
-  virtual CryptohomeStatus TerminateAuthFactor(
-      AuthFactorType auth_factor_type) = 0;
+  virtual void PrepareAuthFactorForAdd(
+      AuthFactorType auth_factor_type,
+      const std::string& username,
+      PreparedAuthFactorToken::Consumer callback) = 0;
 
   // Creates KeyBlobs and AuthBlockState with the given type of AuthBlock for
   // the given credentials. Creating KeyBlobs means generating the KeyBlobs from

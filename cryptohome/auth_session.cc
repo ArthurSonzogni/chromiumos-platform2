@@ -234,14 +234,6 @@ AuthSession::~AuthSession() {
                       auth_session_creation_time_, append_string);
   ReportTimerDuration(kAuthSessionAuthenticatedLifetimeTimer,
                       authenticated_time_, append_string);
-  for (auto auth_factor_type : active_auth_factor_types) {
-    auto status = auth_block_utility_->TerminateAuthFactor(auth_factor_type);
-    if (!status.ok()) {
-      LOG(ERROR) << "Stopping auth factor "
-                 << AuthFactorTypeToString(auth_factor_type)
-                 << " failed: " << status;
-    }
-  }
 }
 
 CryptohomeStatus AuthSession::Initialize() {
@@ -1731,12 +1723,16 @@ void AuthSession::PrepareAuthFactor(
     switch (*purpose) {
       case AuthFactorPreparePurpose::kPrepareAuthenticateAuthFactor: {
         auth_block_utility_->PrepareAuthFactorForAuth(
-            *auth_factor_type, obfuscated_username_, std::move(on_done));
+            *auth_factor_type, obfuscated_username_,
+            base::BindOnce(&AuthSession::OnPrepareAuthFactorDone,
+                           weak_factory_.GetWeakPtr(), std::move(on_done)));
         break;
       }
       case AuthFactorPreparePurpose::kPrepareAddAuthFactor: {
         auth_block_utility_->PrepareAuthFactorForAdd(
-            *auth_factor_type, obfuscated_username_, std::move(on_done));
+            *auth_factor_type, obfuscated_username_,
+            base::BindOnce(&AuthSession::OnPrepareAuthFactorDone,
+                           weak_factory_.GetWeakPtr(), std::move(on_done)));
         break;
       }
     }
@@ -1746,9 +1742,6 @@ void AuthSession::PrepareAuthFactor(
             *auth_factor_type, {}, {})) {
       verifier_forwarder_.AddVerifier(std::move(verifier));
     }
-
-    // Record the auth factor type so we can stop it later.
-    active_auth_factor_types.emplace(*auth_factor_type);
   } else {
     // For auth factor types that do not require PrepareAuthFactor,
     // return an invalid argument error.
@@ -1757,6 +1750,18 @@ void AuthSession::PrepareAuthFactor(
         ErrorActionSet({ErrorAction::kRetry}),
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
     std::move(on_done).Run(std::move(status));
+  }
+}
+
+void AuthSession::OnPrepareAuthFactorDone(
+    StatusCallback on_done,
+    CryptohomeStatusOr<std::unique_ptr<PreparedAuthFactorToken>> token) {
+  if (token.ok()) {
+    AuthFactorType type = (*token)->auth_factor_type();
+    active_auth_factor_tokens_[type] = std::move(*token);
+    std::move(on_done).Run(OkStatus<CryptohomeError>());
+  } else {
+    std::move(on_done).Run(std::move(token).status());
   }
 }
 
@@ -1787,8 +1792,8 @@ void AuthSession::TerminateAuthFactor(
   }
 
   // Throw error if the auth factor is not in the active list.
-  const auto iter = active_auth_factor_types.find(*auth_factor_type);
-  if (iter == active_auth_factor_types.end()) {
+  auto iter = active_auth_factor_tokens_.find(*auth_factor_type);
+  if (iter == active_auth_factor_tokens_.end()) {
     CryptohomeStatus status = MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocAuthSessionTerminateInactiveAuthFactor),
         ErrorActionSet({ErrorAction::kRetry}),
@@ -1797,14 +1802,11 @@ void AuthSession::TerminateAuthFactor(
     return;
   }
 
-  // The auth factor should be in the active list, terminate it. Also remove the
-  // label-less verifier associated with it, if one exists.
-  CryptohomeStatus status =
-      auth_block_utility_->TerminateAuthFactor(*auth_factor_type);
-  if (status.ok()) {
-    active_auth_factor_types.erase(iter);
-    verifier_forwarder_.RemoveVerifier(*auth_factor_type);
-  }
+  // Terminate the auth factor and remove it from the active list. We do this
+  // removal even if termination fails.
+  CryptohomeStatus status = iter->second->Terminate();
+  active_auth_factor_tokens_.erase(iter);
+  verifier_forwarder_.RemoveVerifier(*auth_factor_type);
   std::move(on_done).Run(std::move(status));
 }
 

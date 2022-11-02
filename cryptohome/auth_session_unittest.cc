@@ -3488,19 +3488,20 @@ TEST_F(AuthSessionWithUssExperimentTest, PrepareLegacyFingerprintAuth) {
       &user_session_map_, &keyset_management_, &auth_block_utility_,
       &auth_factor_manager_, &user_secret_stash_storage_,
       /*enable_create_backup_vk_with_uss =*/false));
+  TrackedPreparedAuthFactorToken::WasCalled token_was_called;
+  auto token = std::make_unique<TrackedPreparedAuthFactorToken>(
+      AuthFactorType::kLegacyFingerprint, OkStatus<CryptohomeError>(),
+      &token_was_called);
   EXPECT_CALL(auth_block_utility_,
               IsPrepareAuthFactorRequired(AuthFactorType::kLegacyFingerprint))
       .WillOnce(Return(true));
   EXPECT_CALL(
       auth_block_utility_,
       PrepareAuthFactorForAuth(AuthFactorType::kLegacyFingerprint, _, _))
-      .WillOnce([](AuthFactorType, const std::string&,
-                   AuthBlockUtility::CryptohomeStatusCallback callback) {
-        std::move(callback).Run(OkStatus<CryptohomeError>());
+      .WillOnce([&](AuthFactorType, const std::string&,
+                    PreparedAuthFactorToken::Consumer callback) {
+        std::move(callback).Run(std::move(token));
       });
-  EXPECT_CALL(auth_block_utility_,
-              TerminateAuthFactor(AuthFactorType::kLegacyFingerprint))
-      .Times(1);
 
   // Test.
   TestFuture<CryptohomeStatus> prepare_future;
@@ -3514,6 +3515,8 @@ TEST_F(AuthSessionWithUssExperimentTest, PrepareLegacyFingerprintAuth) {
 
   // Verify.
   ASSERT_THAT(prepare_future.Get(), IsOk());
+  EXPECT_TRUE(token_was_called.terminate);
+  EXPECT_TRUE(token_was_called.destructor);
 }
 
 // Test that PrepareAuthFactor succeeded for password.
@@ -3621,19 +3624,20 @@ TEST_F(AuthSessionWithUssExperimentTest,
           /*enable_create_backup_vk_with_uss =*/false);
   EXPECT_TRUE(auth_session_status.ok());
   AuthSession* auth_session = auth_session_status.value();
+  TrackedPreparedAuthFactorToken::WasCalled token_was_called;
+  auto token = std::make_unique<TrackedPreparedAuthFactorToken>(
+      AuthFactorType::kLegacyFingerprint, OkStatus<CryptohomeError>(),
+      &token_was_called);
   EXPECT_CALL(auth_block_utility_,
               IsPrepareAuthFactorRequired(AuthFactorType::kLegacyFingerprint))
       .WillRepeatedly(Return(true));
   EXPECT_CALL(
       auth_block_utility_,
       PrepareAuthFactorForAuth(AuthFactorType::kLegacyFingerprint, _, _))
-      .WillOnce([](AuthFactorType, const std::string&,
-                   AuthBlockUtility::CryptohomeStatusCallback callback) {
-        std::move(callback).Run(OkStatus<CryptohomeError>());
+      .WillOnce([&](AuthFactorType, const std::string&,
+                    PreparedAuthFactorToken::Consumer callback) {
+        std::move(callback).Run(std::move(token));
       });
-  EXPECT_CALL(auth_block_utility_,
-              TerminateAuthFactor(AuthFactorType::kLegacyFingerprint))
-      .WillOnce([](AuthFactorType) { return OkStatus<CryptohomeError>(); });
   TestFuture<CryptohomeStatus> prepare_future;
   user_data_auth::PrepareAuthFactorRequest prepare_request;
   prepare_request.set_auth_session_id(auth_session->serialized_token());
@@ -3654,6 +3658,8 @@ TEST_F(AuthSessionWithUssExperimentTest,
 
   // Verify.
   ASSERT_THAT(terminate_future.Get(), IsOk());
+  EXPECT_TRUE(token_was_called.terminate);
+  EXPECT_TRUE(token_was_called.destructor);
 }
 
 // Test that AuthenticateAuthFactor succeeds and doesn't use the credential
