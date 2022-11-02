@@ -15,6 +15,7 @@
 #include "libhwsec/frontend/cryptohome/frontend.h"
 #include "libhwsec/frontend/pinweaver/frontend.h"
 #include "libhwsec/frontend/recovery_crypto/frontend.h"
+#include "libhwsec/frontend/u2fd/frontend.h"
 #include "libhwsec/hwsec_export.h"
 #include "libhwsec/middleware/middleware.h"
 
@@ -35,6 +36,7 @@ class HWSEC_EXPORT Tpm2SimulatorFactoryForTest : public Factory {
   std::unique_ptr<RecoveryCryptoFrontend> GetRecoveryCryptoFrontend() override;
   std::unique_ptr<ClientFrontend> GetClientFrontend() override;
   std::unique_ptr<ChapsFrontend> GetChapsFrontend() override;
+  std::unique_ptr<U2fFrontend> GetU2fFrontend() override;
 
  private:
   std::unique_ptr<Proxy> proxy_;
