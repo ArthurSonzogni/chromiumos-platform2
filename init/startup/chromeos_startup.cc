@@ -13,6 +13,7 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <base/strings/string_split.h>
 #include <brillo/blkdev_utils/lvm.h>
 #include <brillo/process/process.h>
 #include <brillo/userdb_utils.h>
@@ -281,11 +282,11 @@ void ChromeosStartup::CheckForStatefulWipe() {
   // units or booting Chromium OS on non-Chrome hardware. And because crossystem
   // is slow on some platforms, we want to do the additional checks only after
   // verified kDevModeFile existence.
-  std::vector<const char*> clobber_args;
+  std::vector<std::string> clobber_args;
   struct stat stbuf;
   std::string boot_alert_msg;
   std::string clobber_log_msg;
-  base::FilePath reset_file(kResetFile);
+  base::FilePath reset_file = stateful_.Append(kResetFile);
   if ((lstat(reset_file.value().c_str(), &stbuf) == 0 &&
        S_ISLNK(stbuf.st_mode)) ||
       base::PathExists(reset_file)) {
@@ -298,7 +299,11 @@ void ChromeosStartup::CheckForStatefulWipe() {
       if (!base::ReadFileToString(reset_file, &str)) {
         PLOG(WARNING) << "Failed to read reset file";
       } else {
-        clobber_args.push_back(str.c_str());
+        std::vector<std::string> split_args = base::SplitString(
+            str, " ", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
+        for (const std::string& arg : split_args) {
+          clobber_args.push_back(arg);
+        }
       }
     }
     if (clobber_args.empty()) {

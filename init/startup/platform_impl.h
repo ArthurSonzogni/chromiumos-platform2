@@ -68,7 +68,7 @@ class Platform {
   // Execute a clobber by first calling BootAlert and then
   // ClobberLog with the given messages, then exec clobber-state.
   virtual void Clobber(const std::string& boot_alert_msg,
-                       std::vector<const char*>& args,
+                       const std::vector<std::string>& args,
                        const std::string& clobber_log_msg);
 
   virtual void RemoveInBackground(const std::vector<base::FilePath>& paths);

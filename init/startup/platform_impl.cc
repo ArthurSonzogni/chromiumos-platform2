@@ -72,12 +72,20 @@ void Platform::BootAlert(const std::string& arg) {
 }
 
 [[noreturn]] void Platform::Clobber(const std::vector<std::string> args) {
-  std::vector<const char*> args_cstr;
-  for (const std::string& arg : args) {
-    args_cstr.push_back(arg.c_str());
+  brillo::ProcessImpl clobber;
+  clobber.AddArg("/sbin/clobber-state");
+
+  // Clobber should not be called with empty args, but to ensure that is
+  // the case, use "keepimg" if nothing is specified.
+  if (args.empty()) {
+    clobber.AddArg("keepimg");
+  } else {
+    for (const std::string& arg : args) {
+      clobber.AddArg(arg);
+    }
   }
-  int ret =
-      execve("/sbin/clobber-state", const_cast<char**>(&args_cstr[0]), nullptr);
+
+  int ret = clobber.Run();
   CHECK_NE(ret, 0);
   PLOG(ERROR) << "unable to run clobber-state; ret=" << ret;
   exit(1);
@@ -110,16 +118,11 @@ void Platform::ClobberLog(const std::string& msg) {
 }
 
 void Platform::Clobber(const std::string& boot_alert_msg,
-                       std::vector<const char*>& args,
+                       const std::vector<std::string>& args,
                        const std::string& clobber_log_msg) {
   BootAlert(boot_alert_msg);
   ClobberLog(clobber_log_msg);
-  std::vector<const char*> args_cstr;
-  for (const std::string arg : args) {
-    args_cstr.push_back(arg.c_str());
-  }
-  execve("/sbin/clobber-state", const_cast<char**>(&args_cstr[0]), nullptr);
-  exit(-1);
+  Clobber(args);
 }
 
 void Platform::RemoveInBackground(const std::vector<base::FilePath>& paths) {
