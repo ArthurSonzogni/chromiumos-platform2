@@ -90,3 +90,12 @@ source_set("disconnectable_client") {
 
   deps = [ ":status" ]
 }
+
+source_set("refcounted_closure_list") {
+  sources = [
+    "refcounted_closure_list.cc",
+    "refcounted_closure_list.h",
+  ]
+
+  configs += [ ":target_defaults" ]
+}

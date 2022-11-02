@@ -51,6 +51,7 @@ static_library("storage_queue") {
     "//missive/proto:libmissiveprotorecordconstants",
     "//missive/resources:resource_interface",
     "//missive/util:file",
+    "//missive/util:refcounted_closure_list",
     "//missive/util:status",
     "//missive/util:status_macros",
     "//missive/util:task_runner_context",
