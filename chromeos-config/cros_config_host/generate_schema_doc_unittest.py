@@ -12,7 +12,7 @@ import os
 import tempfile
 import unittest
 
-import generate_schema_doc
+import generate_schema_doc  # pylint: disable=import-error
 
 
 this_dir = os.path.dirname(__file__)

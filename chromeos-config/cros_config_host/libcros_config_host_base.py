@@ -15,8 +15,12 @@ import sys
 # pylint: disable=wrong-import-position
 this_dir = os.path.dirname(__file__)
 sys.path.insert(0, this_dir)
+# pylint: disable=import-error
 from cros_config_schema import GetValidSchemaProperties
 from cros_config_schema import ValidationError
+
+
+# pylint: enable=import-error
 
 
 sys.path.pop(0)

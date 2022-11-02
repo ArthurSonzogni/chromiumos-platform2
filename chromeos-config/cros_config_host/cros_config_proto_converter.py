@@ -20,6 +20,7 @@ import pprint
 import re
 import sys
 
+# pylint: disable=import-error
 from chromiumos.config.api import component_pb2
 from chromiumos.config.api import device_brand_pb2
 from chromiumos.config.api import topology_pb2
@@ -30,6 +31,9 @@ from chromiumos.config.test import fake_config as fake_config_mod
 from google.protobuf import json_format
 from google.protobuf import wrappers_pb2
 from lxml import etree
+
+
+# pylint: enable=import-error
 
 
 Config = namedtuple(
@@ -173,7 +177,8 @@ def _check_percentage_value(value: float, description: str):
 def _check_nits_value(value: float, maximum: float, description: str):
     if not 0 <= value <= maximum:
         raise Exception(
-            f"Value {value:.1f} out of range [0, {maximum:.1f}] for {description}"
+            f"Value {value:.1f} out of range [0, {maximum:.1f}] for "
+            f"{description}"
         )
 
 
@@ -1332,7 +1337,9 @@ def _build_hardware_properties(hw_topology):
     recovery_input_names = {
         topology_pb2.HardwareFeatures.FormFactor.KEYBOARD: "KEYBOARD",
         topology_pb2.HardwareFeatures.FormFactor.POWER_BUTTON: "POWER_BUTTON",
-        topology_pb2.HardwareFeatures.FormFactor.RECOVERY_BUTTON: "RECOVERY_BUTTON",
+        topology_pb2.HardwareFeatures.FormFactor.RECOVERY_BUTTON: (
+            "RECOVERY_BUTTON"
+        ),
     }
     recovery_input = (
         hw_topology.form_factor.hardware_feature.form_factor.recovery_input
@@ -3363,13 +3370,13 @@ def Main(
         project_name = re.match(
             r".*/([\w-]*)/(public_)?sw_build_config/.*", full_path
         ).groups(1)[0]
-        # Projects don't know about each other until they are integrated into the
-        # build system.  When this happens, the files need to be able to co-exist
-        # without any collisions.  This prefixes the project name (which is how
-        # portage maps in the project), so project files co-exist and can be
-        # installed together.
-        # This is necessary to allow projects to share files at the program level
-        # without having portage file installation collisions.
+        # Projects don't know about each other until they are integrated into
+        # the build system.  When this happens, the files need to be able to
+        # co-exist without any collisions.  This prefixes the project name
+        # (which is how portage maps in the project), so project files co-exist
+        # and can be installed together.
+        # This is necessary to allow projects to share files at the program
+        # level without having portage file installation collisions.
         build_root_dir = os.path.join(project_name, output_dir)
 
         camera_map = _camera_map(configs, project_name)

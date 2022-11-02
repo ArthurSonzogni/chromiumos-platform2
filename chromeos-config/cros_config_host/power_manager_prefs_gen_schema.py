@@ -50,7 +50,9 @@ def Main(output):
     """
     result_lines = [
         """powerd_prefs_default: &powerd_prefs_default
-  description: For details, see https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/power_manager/
+  description: >-
+    For details, see
+    https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/power_manager/
   type: string
 
 powerd_prefs: &powerd_prefs"""

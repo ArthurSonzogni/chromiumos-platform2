@@ -4,8 +4,11 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+"""Tests for cros_config_merge_backfilled_config module."""
+
 import unittest
 
+# pylint: disable=import-error
 from chromiumos.config.api import component_id_pb2
 from chromiumos.config.api import component_pb2
 from chromiumos.config.api import design_config_id_pb2
@@ -20,6 +23,9 @@ from chromiumos.config.api.software import brand_config_pb2
 from chromiumos.config.api.software import software_config_pb2
 from chromiumos.config.payload import config_bundle_pb2
 import cros_config_merge_backfilled_config
+
+
+# pylint: enable=import-error
 
 
 class CrosConfigMergeBackfilledConfigTest(unittest.TestCase):

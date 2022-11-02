@@ -6,20 +6,22 @@
 
 # pylint: disable=module-missing-docstring,class-missing-docstring
 
-from __future__ import print_function
-
 import io
 import json
 import os
 import re
 
+# pylint: disable=import-error
 import cros_config_schema
-import jsonschema  # pylint: disable=import-error
+import jsonschema
 import libcros_schema
-from packaging import version  # pylint: disable=import-error
+from packaging import version
 from six.moves import zip_longest
 
 from chromite.lib import cros_test_lib
+
+
+# pylint: enable=import-error
 
 
 this_dir = os.path.dirname(__file__)
@@ -742,11 +744,11 @@ class MainTests(cros_test_lib.TempDirTestCase):
                     line_actual,
                     (
                         f"Files differ at line {line_num}\n"
-                        "Expected: {line_expected}\n"
-                        "Actual  : {line_actual}\n"
-                        "Path of expected output file: {file_expected}\n"
-                        "Path of actual output file: {file_actual}\n"
-                        "{regen_message}"
+                        f"Expected: {line_expected}\n"
+                        f"Actual  : {line_actual}\n"
+                        f"Path of expected output file: {file_expected}\n"
+                        f"Path of actual output file: {file_actual}\n"
+                        f"{regen_message}"
                     ),
                 )
 
@@ -761,8 +763,8 @@ class MainTests(cros_test_lib.TempDirTestCase):
                 line_actual,
                 (
                     f"Strings differ at line {line_num}\n"
-                    "Expected: {repr(line_expected)}\n"
-                    "Actual  : {repr(line_actual)}\n"
+                    f"Expected: {line_expected!r}\n"
+                    f"Actual  : {line_actual!r}\n"
                 ),
             )
 

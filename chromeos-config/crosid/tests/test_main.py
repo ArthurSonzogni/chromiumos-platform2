@@ -2,6 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+"""Test the main function of crosid."""
+
 import subprocess
 
 import pytest
@@ -31,6 +33,7 @@ def test_help(executable_path):
     ),
 )
 def test_bad_args(executable_path, argv):
+    # pylint: disable=subprocess-run-check
     result = subprocess.run(
         [executable_path, *argv],
         stdin=subprocess.DEVNULL,

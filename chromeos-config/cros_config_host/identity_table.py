@@ -2,6 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+"""Functions for generating the identity table (identity.bin)."""
+
 import enum
 import struct
 

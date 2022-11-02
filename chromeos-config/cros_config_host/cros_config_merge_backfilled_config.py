@@ -4,9 +4,11 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-"""A command-line utility to merge from two ConfigBundle protos. One
-ConfigBundle is generated from Starlark source files, another is generated from
-external data sources such as HWID and model.yaml (i.e. "backfilled").
+"""A command-line utility to merge from two ConfigBundle protos.
+
+One ConfigBundle is generated from Starlark source files, another is
+generated from external data sources such as HWID and model.yaml
+(i.e. "backfilled").
 
 For each repeated field in ConfigBundle, all elements in
 the backfilled ConfigBundle that are not in the original ConfigBundle are added
@@ -21,8 +23,12 @@ import argparse
 import pathlib
 from typing import Callable, Sequence, TypeVar
 
+# pylint: disable=import-error
 from chromiumos.config.payload import config_bundle_pb2
 from google.protobuf import json_format
+
+
+# pylint: enable=import-error
 
 
 def _parse_config_bundle(path: pathlib.Path) -> config_bundle_pb2.ConfigBundle:

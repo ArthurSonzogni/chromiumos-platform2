@@ -15,7 +15,7 @@ import os
 import subprocess
 import tempfile
 
-import configfs
+import configfs  # pylint: disable=import-error
 
 from chromite.lib import cros_test_lib
 from chromite.lib import osutils

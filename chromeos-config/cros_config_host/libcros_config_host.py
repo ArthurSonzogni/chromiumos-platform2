@@ -18,7 +18,7 @@ import sys
 # pylint: disable=wrong-import-position
 this_dir = os.path.dirname(__file__)
 sys.path.insert(0, this_dir)
-import libcros_config_host_json
+import libcros_config_host_json  # pylint: disable=import-error
 
 
 sys.path.pop(0)

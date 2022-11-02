@@ -18,12 +18,16 @@ import os
 import sys
 import unittest
 
+# pylint: disable=import-error
 from libcros_config_host import CrosConfig
 from libcros_config_host_base import BaseFile
 from libcros_config_host_base import DeviceSignerInfo
 from libcros_config_host_base import FirmwareImage
 from libcros_config_host_base import FirmwareInfo
 from libcros_config_host_base import SymlinkedFile
+
+
+# pylint: enable=import-error
 
 
 YAML_FILE = "../test_data/test.yaml"

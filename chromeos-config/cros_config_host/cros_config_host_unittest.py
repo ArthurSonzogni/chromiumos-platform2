@@ -64,7 +64,7 @@ class CrosConfigHostTest(unittest.TestCase):
             encoding="utf-8",
             check=True,
             stdout=subprocess.PIPE,
-            **kwargs
+            **kwargs,
         ).stdout
 
     def testListModels(self):

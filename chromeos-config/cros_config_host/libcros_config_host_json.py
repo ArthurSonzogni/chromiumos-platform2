@@ -21,6 +21,7 @@ import sys
 # pylint: disable=wrong-import-position
 this_dir = os.path.dirname(__file__)
 sys.path.insert(0, this_dir)
+# pylint: disable=import-error
 from cros_config_schema import GetValidSchemaProperties
 from cros_config_schema import TransformConfig
 from libcros_config_host_base import BaseFile
@@ -30,6 +31,9 @@ from libcros_config_host_base import DeviceSignerInfo
 from libcros_config_host_base import FirmwareImage
 from libcros_config_host_base import FirmwareInfo
 from libcros_config_host_base import SymlinkedFile
+
+
+# pylint: enable=import-error
 
 
 sys.path.pop(0)

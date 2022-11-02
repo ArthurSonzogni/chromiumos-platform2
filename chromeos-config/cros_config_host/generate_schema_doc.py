@@ -14,7 +14,7 @@ import os.path
 import re
 import sys
 
-import libcros_schema
+import libcros_schema  # pylint: disable=import-error
 
 
 def ParseArgs(argv):

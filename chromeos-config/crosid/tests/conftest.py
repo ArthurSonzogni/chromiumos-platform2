@@ -2,6 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+"""Pytest configuration."""
+
 import os
 import pathlib
 import subprocess
@@ -31,15 +33,15 @@ def executable_path(request):
 def coverage_dir(request, tmp_path_factory):
     coverage_out = request.config.option.llvm_coverage_out
     if coverage_out:
-        coverage_dir = tmp_path_factory.mktemp("coverage")
-        yield coverage_dir
+        coverage_tmp_dir = tmp_path_factory.mktemp("coverage")
+        yield coverage_tmp_dir
 
         # Merge coverage after tests finish
         subprocess.run(
             [
                 "llvm-profdata",
                 "merge",
-                *coverage_dir.iterdir(),
+                *coverage_tmp_dir.iterdir(),
                 "-o",
                 coverage_out,
             ],
@@ -49,6 +51,7 @@ def coverage_dir(request, tmp_path_factory):
         yield
 
 
+# pylint: disable=redefined-outer-name
 @pytest.fixture(autouse=True)
 def llvm_coverage(coverage_dir):
     if coverage_dir:

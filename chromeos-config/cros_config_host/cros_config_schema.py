@@ -23,9 +23,13 @@ import six
 # pylint: disable=wrong-import-position
 this_dir = os.path.dirname(__file__)
 sys.path.insert(0, this_dir)
+# pylint: disable=import-error
 import configfs
 import identity_table
 import libcros_schema
+
+
+# pylint: enable=import-error
 
 
 sys.path.pop(0)
@@ -367,8 +371,8 @@ def TransformConfig(config, model_filter_regex=None):
             config for config in configs if matcher.match(config["name"])
         ]
 
-    for config in configs:
-        _TransformDeprecatedConfigs(config)
+    for device_config in configs:
+        _TransformDeprecatedConfigs(device_config)
 
     # Drop everything except for configs since they were just used as shared
     # config in the source yaml.
@@ -795,8 +799,8 @@ def _ValidateHardwarePropertiesAreValidType(json_config):
                 if not isinstance(value, (bool, six.string_types)):
                     raise ValidationError(
                         f"All configs under hardware-properties must be "
-                        "boolean or an enum\n"
-                        "However, key '{key}' has value '{value}'."
+                        f"boolean or an enum\n"
+                        f"However, key '{key}' has value '{value}'."
                     )
 
 

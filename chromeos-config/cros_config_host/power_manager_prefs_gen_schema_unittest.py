@@ -9,7 +9,7 @@
 import os
 import subprocess
 
-import power_manager_prefs_gen_schema
+import power_manager_prefs_gen_schema  # pylint: disable=import-error
 
 from chromite.lib import cros_test_lib
 

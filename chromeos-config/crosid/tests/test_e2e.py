@@ -2,12 +2,14 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+"""Test the crosid tool end-to-end."""
+
 import shlex
 import struct
 import subprocess
 
-import cros_config_host.identity_table
-import pytest
+import cros_config_host.identity_table  # pylint: disable=import-error
+import pytest  # pylint: disable=wrong-import-order
 
 
 def getvars(output):
@@ -61,20 +63,16 @@ def make_fake_sysroot(
     smbios_sysfs_path = path / "sys" / "class" / "dmi" / "id"
     if smbios_name is not None:
         smbios_sysfs_path.mkdir(exist_ok=True, parents=True)
-        (smbios_sysfs_path / "product_name").write_text(
-            "{}\n".format(smbios_name)
-        )
+        (smbios_sysfs_path / "product_name").write_text(f"{smbios_name}\n")
 
     if smbios_sku is not None:
         smbios_sysfs_path.mkdir(exist_ok=True, parents=True)
-        (smbios_sysfs_path / "product_sku").write_text(
-            "sku{}\n".format(smbios_sku)
-        )
+        (smbios_sysfs_path / "product_sku").write_text(f"sku{smbios_sku}\n")
 
     proc_fdt_path = path / "proc" / "device-tree"
     if fdt_compatible is not None:
         proc_fdt_path.mkdir(exist_ok=True, parents=True)
-        contents = "".join("{}\0".format(compat) for compat in fdt_compatible)
+        contents = "".join(f"{compat}\0" for compat in fdt_compatible)
         (proc_fdt_path / "compatible").write_text(contents)
 
     proc_fdt_coreboot_path = proc_fdt_path / "firmware" / "coreboot"
@@ -207,6 +205,7 @@ def test_no_match(tmp_path, executable_path):
         configs=REEF_CONFIGS,
     )
 
+    # pylint: disable=subprocess-run-check
     result = subprocess.run(
         [executable_path, "--sysroot", tmp_path, "-v"],
         stdin=subprocess.DEVNULL,
@@ -236,6 +235,7 @@ def test_both_customization_id_and_whitelabel(tmp_path, executable_path):
         configs=REEF_CONFIGS,
     )
 
+    # pylint: disable=subprocess-run-check
     result = subprocess.run(
         [executable_path, "--sysroot", tmp_path, "-v"],
         stdin=subprocess.DEVNULL,
@@ -260,8 +260,7 @@ VILBOZ14_CONFIGS = [
 ]
 
 
-@pytest.mark.parametrize("config_idx", list(range(len(VILBOZ14_CONFIGS))))
-def test_vilboz14(tmp_path, executable_path, config_idx):
+def test_vilboz14(tmp_path, executable_path):
     make_fake_sysroot(
         tmp_path,
         smbios_name="Vilboz",
@@ -270,6 +269,7 @@ def test_vilboz14(tmp_path, executable_path, config_idx):
         configs=VILBOZ14_CONFIGS,
     )
 
+    # pylint: disable=subprocess-run-check
     result = subprocess.run(
         [executable_path, "--sysroot", tmp_path, "-v"],
         check=True,
@@ -355,6 +355,7 @@ def test_fdt_compatible_missing(tmp_path, executable_path):
         configs=TROGDOR_CONFIGS,
     )
 
+    # pylint: disable=subprocess-run-check
     result = subprocess.run(
         [executable_path, "--sysroot", tmp_path, "-v"],
         stdin=subprocess.DEVNULL,
@@ -373,6 +374,8 @@ def test_fdt_compatible_missing(tmp_path, executable_path):
 
 def test_missing_identity_table(tmp_path, executable_path):
     # When identity.bin is missing, crosid should exit with an error.
+
+    # pylint: disable=subprocess-run-check
     result = subprocess.run(
         [executable_path, "--sysroot", tmp_path],
         stdin=subprocess.DEVNULL,
@@ -405,6 +408,7 @@ def test_corrupted_identity_table(tmp_path, executable_path, contents):
     identity_file.parent.mkdir(exist_ok=True, parents=True)
     identity_file.write_bytes(contents)
 
+    # pylint: disable=subprocess-run-check
     result = subprocess.run(
         [executable_path, "--sysroot", tmp_path],
         stdin=subprocess.DEVNULL,

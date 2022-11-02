@@ -4,6 +4,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+"""Test cros_config_proto_converter module."""
+
 # pylint: disable=missing-docstring,protected-access
 
 import filecmp
@@ -11,10 +13,14 @@ import pathlib
 import subprocess
 import unittest
 
+# pylint: disable=import-error
 from chromiumos.config.test import fake_config as fake_config_mod
 import cros_config_proto_converter
 
 from chromite.lib import cros_test_lib
+
+
+# pylint: enable=import-error
 
 
 THIS_DIR = pathlib.Path(__file__).parent
@@ -34,6 +40,8 @@ def fake_config():
 
 
 class ParseArgsTests(unittest.TestCase):
+    """Test CLI argument parsing."""
+
     def test_parse_args(self):
         argv = [
             "-c",
@@ -57,6 +65,8 @@ class ParseArgsTests(unittest.TestCase):
 
 
 class MainTest(cros_test_lib.TempDirTestCase):
+    """Test the main function and full transform diff."""
+
     def test_full_transform(self):
         output_dir = self.tempdir / "proto_converter"
         output_file = output_dir / "sw_build_config/fake_project.json"
@@ -103,6 +113,8 @@ class MainTest(cros_test_lib.TempDirTestCase):
 
 
 class TransformBuildConfigsTest(unittest.TestCase):
+    """Test _transform_build_configs function."""
+
     def test_missing_lookups(self):
         config = fake_config()
         config.ClearField("program_list")

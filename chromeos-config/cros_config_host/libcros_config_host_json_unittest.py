@@ -11,7 +11,7 @@ from __future__ import print_function
 import os
 import unittest
 
-import libcros_config_host_json
+import libcros_config_host_json  # pylint: disable=import-error
 
 
 this_dir = os.path.dirname(__file__)
