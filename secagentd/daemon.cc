@@ -47,7 +47,7 @@ int Daemon::OnInit() {
 
     message_sender_ = base::MakeRefCounted<MessageSender>();
 
-    absl::Status result = message_sender_->InitializeQueues();
+    absl::Status result = message_sender_->Initialize();
     if (result != absl::OkStatus()) {
       LOG(ERROR) << result.message();
       return EX_SOFTWARE;

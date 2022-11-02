@@ -17,7 +17,7 @@ namespace secagentd::testing {
 
 class MockMessageSender : public MessageSenderInterface {
  public:
-  MOCK_METHOD(absl::Status, InitializeQueues, (), (override));
+  MOCK_METHOD(absl::Status, Initialize, (), (override));
   MOCK_METHOD(absl::Status,
               SendMessage,
               (reporting::Destination,
