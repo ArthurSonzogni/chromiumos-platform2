@@ -459,7 +459,8 @@ void CreateDirectories(ChromiumCommandBuilder* builder) {
   // Disable Mesa's internal shader disk caching feature, since Chrome has its
   // own shader cache implementation and the GPU process sandbox does not
   // allow threads (Mesa uses threads for this feature).
-  builder->AddEnvVar("MESA_SHADER_CACHE_DISABLE", "true");
+  builder->AddEnvVar("MESA_GLSL_CACHE_DISABLE", "true");    // Mesa classic
+  builder->AddEnvVar("MESA_SHADER_CACHE_DISABLE", "true");  // Mesa iris
 }
 
 // Adds system-related flags to the command line.
