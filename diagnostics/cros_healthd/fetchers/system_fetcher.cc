@@ -312,8 +312,10 @@ void State::Fetch(Context* context, FetchSystemInfoCallback callback) {
   }
 
   // OEM name in cros-config is usually filled after (or right before) launch.
-  // Fallback to VPD (vpd.ro.oem-name) if it’s missing in cros-config.
-  if (!state_ptr->info_->os_info->oem_name.has_value())
+  // Fallback to VPD (vpd.ro.oem-name) if it’s missing in cros-config. Note that
+  // VPD info may be null, for example, on Flex devices & VM.
+  if (!state_ptr->info_->os_info->oem_name.has_value() &&
+      !state_ptr->info_->vpd_info.is_null())
     state_ptr->info_->os_info->oem_name = state_ptr->info_->vpd_info->oem_name;
 }
 

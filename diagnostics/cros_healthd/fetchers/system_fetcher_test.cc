@@ -288,6 +288,12 @@ TEST_F(SystemUtilsTest, TestNoVpdDir) {
 
   SetHasSkuNumber(false);
   ExpectFetchSystemInfo();
+
+  // Test if the fallback logic triggered by missing OEM name in cros-config
+  // works when there's no VPD.
+  expected_system_info_->os_info->oem_name = std::nullopt;
+  SetSystemInfo(expected_system_info_);
+  ExpectFetchSystemInfo();
 }
 
 TEST_F(SystemUtilsTest, TestNoSkuNumber) {
