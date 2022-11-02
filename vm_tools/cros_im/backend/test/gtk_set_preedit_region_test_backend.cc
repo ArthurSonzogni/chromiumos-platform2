@@ -35,7 +35,6 @@ BACKEND_TEST(GtkSetPreeditRegionTest, AsciiLeft) {
   SendSetPreeditRegion(-3, 3);
 
   Expect(Request::kDeactivate);
-  Expect(Request::kDestroy);
 }
 
 BACKEND_TEST(GtkSetPreeditRegionTest, AsciiRight) {
@@ -59,7 +58,6 @@ BACKEND_TEST(GtkSetPreeditRegionTest, AsciiRight) {
   SendCommitString("hat");
 
   Expect(Request::kDeactivate);
-  Expect(Request::kDestroy);
 }
 
 BACKEND_TEST(GtkSetPreeditRegionTest, AsciiContains) {
@@ -79,7 +77,6 @@ BACKEND_TEST(GtkSetPreeditRegionTest, AsciiContains) {
   SendCommitString("is");
 
   Expect(Request::kDeactivate);
-  Expect(Request::kDestroy);
 }
 
 BACKEND_TEST(GtkSetPreeditRegionTest, NonAscii) {
@@ -104,7 +101,6 @@ BACKEND_TEST(GtkSetPreeditRegionTest, NonAscii) {
   SendCommitString("!");
 
   Expect(Request::kDeactivate);
-  Expect(Request::kDestroy);
 }
 
 BACKEND_TEST(GtkSetPreeditRegionTest, Invalid) {
@@ -151,7 +147,6 @@ BACKEND_TEST(GtkSetPreeditRegionTest, Invalid) {
   SendCommitString("q");
 
   Expect(Request::kDeactivate);
-  Expect(Request::kDestroy);
 }
 
 }  // namespace test

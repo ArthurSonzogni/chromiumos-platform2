@@ -21,7 +21,6 @@ BACKEND_TEST(GtkContentTypeTest, ContentHints) {
   ExpectCreateTextInput<0>();
   Ignore<0>(Request::kActivate);
   Ignore<0>(Request::kDeactivate);
-  Ignore<0>(Request::kDestroy);
   Ignore<0>(Request::kReset);
   Unignore<0>(Request::kShowInputPanel);
   Unignore<0>(Request::kSetContentType);
@@ -36,7 +35,6 @@ BACKEND_TEST(GtkContentTypeTest, ContentHints) {
   ExpectCreateTextInput<1>();
   Ignore<1>(Request::kActivate);
   Ignore<1>(Request::kDeactivate);
-  Ignore<1>(Request::kDestroy);
   Ignore<1>(Request::kReset);
   Unignore<1>(Request::kShowInputPanel);
   Unignore<1>(Request::kSetContentType);
@@ -67,7 +65,6 @@ BACKEND_TEST(GtkContentTypeTest, ContentPurpose) {
   ExpectCreateTextInput<0>();
   Ignore<0>(Request::kActivate);
   Ignore<0>(Request::kDeactivate);
-  Ignore<0>(Request::kDestroy);
   Ignore<0>(Request::kReset);
   Unignore<0>(Request::kSetContentType);
 
@@ -78,7 +75,6 @@ BACKEND_TEST(GtkContentTypeTest, ContentPurpose) {
   ExpectCreateTextInput<1>();
   Ignore<1>(Request::kActivate);
   Ignore<1>(Request::kDeactivate);
-  Ignore<1>(Request::kDestroy);
   Ignore<1>(Request::kReset);
   Unignore<1>(Request::kSetContentType);
 

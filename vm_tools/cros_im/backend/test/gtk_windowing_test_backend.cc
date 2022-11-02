@@ -26,10 +26,8 @@ BACKEND_TEST(GtkPopoverWindowTest, CommitString) {
   SendCommitString<0>(":)");
 
   Expect<1>(Request::kReset);
-  Expect<1>(Request::kDestroy);
   Expect<0>(Request::kDeactivate);
   Expect<0>(Request::kReset);
-  Expect<0>(Request::kDestroy);
 }
 
 BACKEND_TEST(GtkPopoverWindowTest, KeySym) {
@@ -55,11 +53,9 @@ BACKEND_TEST(GtkPopoverWindowTest, KeySym) {
 
   Expect<1>(Request::kDeactivate);
   Expect<1>(Request::kReset);
-  Expect<1>(Request::kDestroy);
   Expect<0>(Request::kActivate);
   Expect<0>(Request::kDeactivate);
   Expect<0>(Request::kReset);
-  Expect<0>(Request::kDestroy);
 }
 
 }  // namespace test

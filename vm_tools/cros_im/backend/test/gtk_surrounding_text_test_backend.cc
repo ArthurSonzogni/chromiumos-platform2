@@ -30,7 +30,6 @@ BACKEND_TEST(GtkSetSurroundingTextTest, BasicTextInput) {
   ExpectSetSurroundingText("abcあz", 7, 7);
 
   Expect(Request::kDeactivate);
-  Expect(Request::kDestroy);
 }
 
 BACKEND_TEST(GtkSetSurroundingTextTest, CursorMovement) {
@@ -56,7 +55,6 @@ BACKEND_TEST(GtkSetSurroundingTextTest, CursorMovement) {
   ExpectSetSurroundingText("piñata", 6, 6);
 
   Expect(Request::kDeactivate);
-  Expect(Request::kDestroy);
 }
 
 BACKEND_TEST(GtkSetSurroundingTextTest, MultiLine) {
@@ -83,7 +81,6 @@ BACKEND_TEST(GtkSetSurroundingTextTest, MultiLine) {
   ExpectSetSurroundingText("line 3", 3, 3);
 
   Expect(Request::kDeactivate);
-  Expect(Request::kDestroy);
 }
 
 BACKEND_TEST(GtkSetSurroundingTextTest, DirectTextChanges) {
@@ -102,7 +99,6 @@ BACKEND_TEST(GtkSetSurroundingTextTest, DirectTextChanges) {
   ExpectSetSurroundingText("soufflé", 8, 8);
 
   Expect(Request::kDeactivate);
-  Expect(Request::kDestroy);
 }
 
 BACKEND_TEST(GtkDeleteSurroundingTextTest, Basic) {
@@ -130,7 +126,6 @@ BACKEND_TEST(GtkDeleteSurroundingTextTest, Basic) {
   ExpectSetSurroundingText("", 0, 0);
 
   Expect(Request::kDeactivate);
-  Expect(Request::kDestroy);
 }
 
 BACKEND_TEST(GtkDeleteSurroundingTextTest, NonAscii) {
@@ -157,7 +152,6 @@ BACKEND_TEST(GtkDeleteSurroundingTextTest, NonAscii) {
   ExpectSetSurroundingText("", 0, 0);
 
   Expect(Request::kDeactivate);
-  Expect(Request::kDestroy);
 }
 
 }  // namespace test

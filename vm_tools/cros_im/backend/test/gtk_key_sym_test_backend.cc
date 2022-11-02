@@ -19,7 +19,6 @@ BACKEND_TEST(GtkKeySymTextViewTest, TextInput) {
   SendKeySym(XKB_KEY_asciitilde);
 
   Expect(Request::kDeactivate);
-  Expect(Request::kDestroy);
 }
 
 BACKEND_TEST(GtkKeySymTextViewTest, NonAscii) {
@@ -36,7 +35,6 @@ BACKEND_TEST(GtkKeySymTextViewTest, NonAscii) {
   SendKeySym(XKB_KEY_Greek_omicron);
 
   Expect(Request::kDeactivate);
-  Expect(Request::kDestroy);
 }
 
 BACKEND_TEST(GtkKeySymTextViewTest, Whitespace) {
@@ -54,7 +52,6 @@ BACKEND_TEST(GtkKeySymTextViewTest, Whitespace) {
   SendKeySym(XKB_KEY_Tab);
 
   Expect(Request::kDeactivate);
-  Expect(Request::kDestroy);
 }
 
 BACKEND_TEST(GtkKeySymTextViewTest, Backspace) {
@@ -74,7 +71,6 @@ BACKEND_TEST(GtkKeySymTextViewTest, Backspace) {
   SendKeySym(XKB_KEY_BackSpace);
 
   Expect(Request::kDeactivate);
-  Expect(Request::kDestroy);
 }
 
 BACKEND_TEST(GtkKeySymEntryTest, Enter) {
@@ -89,7 +85,6 @@ BACKEND_TEST(GtkKeySymEntryTest, Enter) {
 
   Expect(Request::kDeactivate);
   Expect(Request::kReset);
-  Expect(Request::kDestroy);
 }
 
 BACKEND_TEST(GtkKeySymEntryTest, Tab) {
@@ -102,7 +97,6 @@ BACKEND_TEST(GtkKeySymEntryTest, Tab) {
 
   Expect(Request::kDeactivate);
   Expect(Request::kReset);
-  Expect(Request::kDestroy);
 }
 
 }  // namespace test

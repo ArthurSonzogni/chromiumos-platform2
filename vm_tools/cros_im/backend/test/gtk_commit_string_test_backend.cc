@@ -20,7 +20,6 @@ BACKEND_TEST(GtkCommitStringTest, SingleCharacters) {
   SendCommitString("\n");
 
   Expect(Request::kDeactivate);
-  Expect(Request::kDestroy);
 }
 
 BACKEND_TEST(GtkCommitStringTest, LongStrings) {
@@ -33,7 +32,6 @@ BACKEND_TEST(GtkCommitStringTest, LongStrings) {
   SendCommitString("string string string! :)\n");
 
   Expect(Request::kDeactivate);
-  Expect(Request::kDestroy);
 }
 
 }  // namespace test

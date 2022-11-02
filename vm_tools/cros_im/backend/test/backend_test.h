@@ -104,13 +104,14 @@ class BackendTest {
   // to be tested, Unignore() can be used.
   template <int text_input_id = 0>
   void ExpectCreateTextInput() {
-    actions_.emplace(
-        std::make_unique<Request>(text_input_id, Request::kCreateTextInput));
+    Expect<text_input_id>(Request::kCreateTextInput);
+
     Ignore<text_input_id>(Request::kSetCursorRectangle);
     Ignore<text_input_id>(Request::kSetSurroundingText);
     Ignore<text_input_id>(Request::kSetContentType);
     Ignore<text_input_id>(Request::kShowInputPanel);
     Ignore<text_input_id>(Request::kHideInputPanel);
+    Ignore<text_input_id>(Request::kDestroy);
     Ignore<text_input_id>(Request::kExtensionDestroy);
   }
 
