@@ -457,7 +457,7 @@ class Platform2Test(object):
             os.setpgid(0, 0)
 
             # Remove sysroot from path environment variables.
-            for var in ("OUT", "SRC", "T"):
+            for var in ("OUT", "SRC", "T", "LLVM_PROFILE_FILE"):
                 if var in os.environ:
                     os.environ[var] = self.removeSysrootPrefix(os.environ[var])
 
