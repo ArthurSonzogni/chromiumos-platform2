@@ -17,7 +17,9 @@ Build-Depends: clang,
                weston,
                xauth,
                xvfb,
-               dh-exec
+               dh-exec,
+               qtbase5-dev,
+               qtbase5-private-dev,
 Standards-Version: 4.5.0
 Homepage: https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/vm_tools/cros_im/
 
@@ -27,4 +29,4 @@ Multi-Arch: same
 Depends: ${shlibs:Depends}, ${misc:Depends}
 Description: ChromeOS IME support
  cros_im allows ChromeOS IMEs to be used within Crostini. Support is currently
- limited to GTK3 applications.
+ limited to GTK3 and QT5/6 applications.

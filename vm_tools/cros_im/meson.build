@@ -69,6 +69,36 @@ libim_cros_gtk = shared_library('im_cros_gtk',
   ],
 )
 
+qt_other_sources = [
+  'frontend/qt/cros_qt_im_context.cc',
+  'frontend/qt/im_cros.cc',
+  'frontend/qt/x11.cc',
+  'frontend/qt/x11.h',
+]
+
+moc_headers = [
+  'frontend/qt/cros_qt_im_context.h',
+  'frontend/qt/im_cros.h',
+]
+
+qt5 = import('qt5')
+
+qt5_deps = dependency('qt5', modules: ['Core', 'Gui', 'InputSupport', 'XkbCommonSupport', 'Concurrent'], private_headers: true)
+
+qt5_moc_output = qt5.preprocess(moc_headers: moc_headers, dependencies: qt5_deps)
+
+shared_library('crosplatforminputcontextplugin-qt5',
+  sources: backend_sources + qt_other_sources + qt5_moc_output + wl_outs,
+  dependencies: [
+    meson.get_compiler('cpp').find_library('m'),
+    qt5_deps,
+    dependency('wayland-client'),
+    dependency('xkbcommon'),
+    dependency('x11'),
+  ],
+)
+
+
 libim_test_cros_gtk = shared_library('im_test_cros_gtk',
   sources: [
     'backend/test/backend_test.cc',

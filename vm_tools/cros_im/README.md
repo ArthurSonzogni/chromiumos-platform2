@@ -53,7 +53,7 @@ cros\_im can be compiled as follows:
 ```bash
 git clone https://chromium.googlesource.com/chromiumos/platform2
 cd platform2/vm_tools/cros_im
-sudo apt install -y clang googletest libgtk-3-dev libgtkmm-3.0-dev libwayland-bin meson pkg-config xvfb weston dpkg-dev
+sudo apt install -y clang googletest libgtk-3-dev libgtkmm-3.0-dev libwayland-bin meson pkg-config xvfb weston dpkg-dev qtbase5-dev qtbase5-private-dev
 meson build && cd build && ninja
 ```
 
@@ -65,6 +65,14 @@ The GTK IM module can be manually tested by setting up a custom IM module cache:
 ```bash
 /usr/lib/*/libgtk-3-0/gtk-query-immodules-3.0 libim_cros_gtk.so > dev-immodules.cache
 export GTK_IM_MODULE_FILE=$(pwd)/dev-immodules.cache
+```
+
+The Qt IM module can be manually tested by setting `QT_IM_MODULE` environment variable:
+```bash
+DEB_TARGET_GNU_TYPE=$(dpkg-architecture -q DEB_TARGET_GNU_TYPE)
+sudo ln -s $(pwd)/libcrosplatforminputcontextplugin-qt5.so /usr/lib/${DEB_TARGET_GNU_TYPE}/qt5/plugins/platforminputcontexts/libcrosplatforminputcontextplugin.so
+mkdir -p ~/.config/environment.d
+echo "QT_IM_MODULE=cros" >> ~/.config/environment.d/ime.conf
 ```
 
 [go/crostini-ime]: https://goto.google.com/crostini-ime
