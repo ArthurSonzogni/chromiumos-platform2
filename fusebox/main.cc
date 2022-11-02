@@ -24,7 +24,6 @@
 #include <dbus/object_proxy.h>
 
 #include "fusebox/built_in.h"
-#include "fusebox/dbus_adaptors/org.chromium.FuseBoxReverseService.h"
 #include "fusebox/file_system.h"
 #include "fusebox/file_system_fake.h"
 #include "fusebox/file_system_type.h"
@@ -48,29 +47,17 @@ void HandleDBusSignalConnected(const std::string& interface,
 }
 }  // namespace
 
-#define kFuseBoxClientPath kFuseBoxReverseServicePath
-
-class FuseBoxClient : public org::chromium::FuseBoxReverseServiceInterface,
-                      public org::chromium::FuseBoxReverseServiceAdaptor,
-                      public FileSystem {
+class FuseBoxClient : public FileSystem {
  public:
   FuseBoxClient(scoped_refptr<dbus::Bus> bus, FuseMount* fuse)
-      : org::chromium::FuseBoxReverseServiceAdaptor(this),
-        dbus_object_(nullptr, bus, dbus::ObjectPath(kFuseBoxClientPath)),
-        bus_(bus),
-        fuse_(fuse),
-        weak_ptr_factory_(this) {}
+      : fuse_(fuse), weak_ptr_factory_(this) {}
   FuseBoxClient(const FuseBoxClient&) = delete;
   FuseBoxClient& operator=(const FuseBoxClient&) = delete;
   virtual ~FuseBoxClient() = default;
 
-  void RegisterDBusObjectsAsync(
-      brillo::dbus_utils::AsyncEventSequencer::CompletionAction cb) {
-    RegisterWithDBusObject(&dbus_object_);
-    dbus_object_.RegisterAsync(std::move(cb));
-
+  void OnDBusDaemonInit(scoped_refptr<dbus::Bus> bus) {
     const auto path = dbus::ObjectPath(kFuseBoxServicePath);
-    dbus_proxy_ = bus_->GetObjectProxy(kFuseBoxServiceName, path);
+    dbus_proxy_ = bus->GetObjectProxy(kFuseBoxServiceName, path);
 
     dbus_proxy_->ConnectToSignal(
         kFuseBoxServiceInterface, kStorageAttachedSignal,
@@ -122,10 +109,6 @@ class FuseBoxClient : public org::chromium::FuseBoxReverseServiceInterface,
       PLOG(ERROR) << "service owner changed";
       fuse_frontend_->StopFuseSession(errno);
     }
-  }
-
-  bool TestIsAlive() override {
-    return dbus_proxy_.get() && fuse_frontend_;  // setup and serving
   }
 
   static FileSystem* CreateFakeFileSystem() {
@@ -567,14 +550,6 @@ class FuseBoxClient : public org::chromium::FuseBoxReverseServiceInterface,
       CallReadDir2(parent_ino, std::move(parent_path), cookie, 0,
                    std::move(dir_entry_response));
     }
-  }
-
-  // Deprecated: ReadDir2 is favored over ReadDir / ReplyToReadDir.
-  void ReplyToReadDir(uint64_t handle,
-                      int32_t error,
-                      const std::vector<uint8_t>& list,
-                      bool has_more) override {
-    NOTREACHED();
   }
 
   void ReleaseDir(std::unique_ptr<OkRequest> request, ino_t ino) override {
@@ -1092,12 +1067,6 @@ class FuseBoxClient : public org::chromium::FuseBoxReverseServiceInterface,
     Open(std::move(request), ino);
   }
 
-  // Deprecated: the D-Bus signal is favored over this D-Bus method.
-  int32_t AttachStorage(const std::string& name) override { return 0; }
-
-  // Deprecated: the D-Bus signal is favored over this D-Bus method.
-  int32_t DetachStorage(const std::string& name) override { return 0; }
-
   void OnStorageAttached(dbus::Signal* signal) {
     dbus::MessageReader reader(signal);
     std::string subdir;
@@ -1142,14 +1111,8 @@ class FuseBoxClient : public org::chromium::FuseBoxReverseServiceInterface,
   }
 
  private:
-  // Client D-Bus object.
-  brillo::dbus_utils::DBusObject dbus_object_;
-
   // Server D-Bus proxy.
   scoped_refptr<dbus::ObjectProxy> dbus_proxy_;
-
-  // D-Bus.
-  scoped_refptr<dbus::Bus> bus_;
 
   // Map device name to device DirEntry.
   std::map<std::string, DirEntry> device_dir_entry_;
@@ -1163,32 +1126,33 @@ class FuseBoxClient : public org::chromium::FuseBoxReverseServiceInterface,
   base::WeakPtrFactory<FuseBoxClient> weak_ptr_factory_;
 };
 
-class FuseBoxDaemon : public brillo::DBusServiceDaemon {
+class FuseBoxDaemon : public brillo::DBusDaemon {
  public:
   explicit FuseBoxDaemon(FuseMount* fuse)
-      : DBusServiceDaemon(kFuseBoxReverseServiceName),
-        fuse_(fuse),
-        weak_ptr_factory_(this) {}
+      : fuse_(fuse), weak_ptr_factory_(this) {}
   FuseBoxDaemon(const FuseBoxDaemon&) = delete;
   FuseBoxDaemon& operator=(const FuseBoxDaemon&) = delete;
   ~FuseBoxDaemon() = default;
 
  protected:
-  // brillo::DBusServiceDaemon overrides.
+  // brillo::DBusDaemon overrides.
 
-  void RegisterDBusObjectsAsync(
-      brillo::dbus_utils::AsyncEventSequencer* sequencer) override {
+  int OnInit() override {
+    int ret = DBusDaemon::OnInit();
+    if (ret != EX_OK)
+      return ret;
+
     bus_->AssertOnDBusThread();
 
-    client_.reset(new FuseBoxClient(bus_, fuse_));
-    client_->RegisterDBusObjectsAsync(
-        sequencer->GetHandler("D-Bus register async failed", true));
+    client_ = std::make_unique<FuseBoxClient>(bus_, fuse_);
+    client_->OnDBusDaemonInit(bus_);
+    return EX_OK;
   }
 
   int OnEventLoopStarted() override {
     bus_->AssertOnDBusThread();
 
-    int ret = brillo::DBusServiceDaemon::OnEventLoopStarted();
+    int ret = brillo::DBusDaemon::OnEventLoopStarted();
     if (ret != EX_OK)
       return ret;
 
@@ -1199,7 +1163,7 @@ class FuseBoxDaemon : public brillo::DBusServiceDaemon {
   void OnShutdown(int* exit_code) override {
     bus_->AssertOnDBusThread();
 
-    DBusServiceDaemon::OnShutdown(exit_code);
+    DBusDaemon::OnShutdown(exit_code);
     client_.reset();
   }
 
