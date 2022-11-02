@@ -343,7 +343,7 @@ base::StringPairs VmBuilder::BuildVmArgs() const {
     args.emplace_back("--mem", memory_in_mib_);
 
   if (!balloon_bias_mib_.empty())
-    args.emplace_back("--balloon_bias_mib", balloon_bias_mib_);
+    args.emplace_back("--balloon-bias-mib", balloon_bias_mib_);
 
   for (const auto& tap_fd : tap_fds_)
     args.emplace_back("--tap-fd", std::to_string(tap_fd.get()));
