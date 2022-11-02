@@ -708,6 +708,10 @@ TEST_F(ArcPropertyUtilTest, AppendX86SocProperties) {
         {"model name: Intel(R) Celeron(R) N4000 CPU @ 1.10GHz\n",
          "ro.soc.manufacturer=Intel\nro.soc.model=N4000\n"},
 
+        // CPU for some VMs. See b/256650882.
+        {"model name: Intel(R) Xeon(R) CPU @ 2.80GHz\n",
+         "ro.soc.manufacturer=Intel\nro.soc.model=Unknown-Xeon\n"},
+
         // For pre-release Intel CPUs. See b/248974069. This is so we don't get
         // Tast failures that are not actionable.
         {"model name: Genuine Intel(R) 0000\n",

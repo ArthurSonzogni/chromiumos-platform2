@@ -524,6 +524,11 @@ void AppendX86SocProperties(const base::FilePath& cpuinfo_path,
   } else if (base::EndsWith(model_field, "Genuine Intel(R) 0000")) {
     model = "0000-FixMe";
     manufacturer = "Intel";
+  } else if (re2::RE2::PartialMatch(model_field, R"(Intel\(R\).*Xeon\(R\))")) {
+    // Xeon CPUs should only occur when ChromeOS is running in a VM, not on a
+    // physical device.
+    model = "Unknown-Xeon";
+    manufacturer = "Intel";
   } else if (
       // Some Ryzen CPU models have a watt value, some do not.
       // The "Ryzen # " portion is part of the ro.soc.model value.
