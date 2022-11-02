@@ -692,6 +692,11 @@ TEST_F(ArcPropertyUtilTest, AppendX86SocProperties) {
          "ro.soc.manufacturer=Intel\n"
          "ro.soc.model=N100\n"},
 
+        // For a Nissa board.
+        {"model name\t: Intel(R) Core(TM) i3-N305\n",
+         "ro.soc.manufacturer=Intel\n"
+         "ro.soc.model=i3-N305\n"},
+
         // For an Octopus board.
         {"model name: Intel(R) Celeron(R) N4000 CPU @ 1.10GHz\n",
          "ro.soc.manufacturer=Intel\nro.soc.model=N4000\n"},

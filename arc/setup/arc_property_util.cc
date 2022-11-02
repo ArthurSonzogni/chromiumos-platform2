@@ -514,7 +514,9 @@ void AppendX86SocProperties(const base::FilePath& cpuinfo_path,
           model_field, R"(12th Gen Intel\(R\) C?ore\(TM\) ([^ ]+)$)", &model) ||
 
       // Alderlake-N series.
-      re2::RE2::PartialMatch(model_field, R"(Intel\(R\) (N[0-9]+)$)", &model)) {
+      re2::RE2::PartialMatch(model_field, R"(Intel\(R\) (N[0-9]+)$)", &model) ||
+      re2::RE2::PartialMatch(
+          model_field, R"(Intel\(R\) Core\(TM\) (i3-N[0-9]+)$)", &model)) {
     manufacturer = "Intel";
   } else if (base::EndsWith(model_field, "Genuine Intel(R) 0000")) {
     model = "0000-FixMe";
