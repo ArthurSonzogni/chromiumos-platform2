@@ -12271,6 +12271,14 @@ mno {
         ip_type: IPV4V6
         is_attach_apn : true
       }
+      mobile_apn {
+        apn : "broadband"
+        localized_name {
+          name : "ATT Broadband"
+        }
+        ip_type: IPV4V6
+        is_attach_apn : true
+      }
       mtu : 1430
     }
   }
