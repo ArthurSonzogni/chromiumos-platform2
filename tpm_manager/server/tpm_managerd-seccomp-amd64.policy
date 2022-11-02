@@ -2,10 +2,10 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-# Tested on link
 # rseq should be first due to frequency and purpose to decrease nptl latency
 rseq: 1
 
+getpid: 1
 gettid: 1
 getuid: 1
 geteuid: 1
@@ -19,18 +19,24 @@ clock_gettime: 1
 gettimeofday: 1
 time: 1
 
-# Allow socket(domain==PF_LOCAL) or socket(domain==PF_NETLINK)
-socket: arg0 == 0x1 || arg0 == 0x10
+# This call should return EPERM when calling with wrong argument.
+socket: arg0 == AF_UNIX; return 1
+
 socketpair: 1
 connect: 1
 getsockname: 1
+getpeername: 1
 pipe: 1
+pipe2: 1
 sendmsg: 1
 sendto: 1
 recvmsg: 1
 recvfrom: 1
+setsockopt: 1
+getsockopt: 1
 
 epoll_create: 1
+epoll_create1: 1
 epoll_wait: 1
 epoll_ctl: 1
 poll: 1
@@ -40,21 +46,30 @@ openat: 1
 creat: 1
 read: 1
 write: 1
+unlink: 1
+unlinkat: 1
 close: 1
 access: 1
 faccessat: 1
 faccessat2: 1
-rename: 1
-pwrite64: 1
+# For device policy to walk through the directory of interest.
+getdents: 1
+getdents64: 1
 
-chmod: 1
-fsync: 1
-fdatasync: 1
+inotify_init: 1
+inotify_add_watch: 1
+inotify_rm_watch: 1
+select: 1
+pselect6: 1
+
 fstat: 1
 newfstatat: 1
 stat: 1
 lseek: 1
+lstat: 1
 fcntl: 1
+flock: 1
+fstatfs: 1
 
 futex: 1
 set_robust_list: 1
@@ -77,8 +92,26 @@ mlock: 1
 munlock: 1
 
 clone: 1
+setpriority: 1
+setitimer: 1
+pwrite64: 1
+fdatasync: 1
+fsync: 1
+rename: 1
+chmod: 1
+fchmodat: 1
+tgkill: 1
+nanosleep: 1
+clock_nanosleep: 1
+sched_yield: 1
+sysinfo: 1
+getrandom: 1
+uname: 1
+
 # These calls are attempted but apparently not necessary; return EPERM.
 prctl: return 1
 ioctl: return 1
-tgkill: return 1
-getpid: 1
+
+sched_getattr: 1
+sched_setattr: 1
+sched_getaffinity: 1
