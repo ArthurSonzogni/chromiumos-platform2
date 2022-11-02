@@ -194,6 +194,10 @@ bool EffectsStreamManipulator::ProcessCaptureRequest(
 
 bool EffectsStreamManipulator::ProcessCaptureResult(
     Camera3CaptureDescriptor* result) {
+  if (runtime_options_->sw_privacy_switch_state() ==
+      mojom::CameraPrivacySwitchState::ON) {
+    return true;
+  }
   bool ret;
   thread_.PostTaskSync(
       FROM_HERE,
