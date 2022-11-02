@@ -1102,6 +1102,12 @@ void DevicePolicyEncoder::EncodeGenericPolicies(
           EncodeBoolean(key::kDeviceKeylockerForStorageEncryptionEnabled))
     policy->mutable_keylocker_for_storage_encryption_enabled()->set_enabled(
         value.value());
+
+  if (std::optional<int> value =
+          EncodeInteger(key::kDeviceKeyboardBacklightColor))
+    policy->mutable_keyboard_backlight_color()->set_color(
+        static_cast<em::KeyboardBacklightColorProto::BacklightColor>(
+            value.value()));
 }
 
 std::optional<bool> DevicePolicyEncoder::EncodeBoolean(

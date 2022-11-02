@@ -777,6 +777,11 @@ TEST_F(DevicePolicyEncoderTest, TestEncoding) {
                 kBool);
   EXPECT_EQ(kBool, policy.keylocker_for_storage_encryption_enabled().enabled());
 
+  EncodeInteger(&policy, key::kDeviceKeyboardBacklightColor,
+                em::KeyboardBacklightColorProto_BacklightColor_BACKLIGHT_RED);
+  EXPECT_EQ(em::KeyboardBacklightColorProto_BacklightColor_BACKLIGHT_RED,
+            policy.keyboard_backlight_color().color());
+
   //
   // Check whether all device policies have been handled.
   //
