@@ -264,6 +264,14 @@ bool ConvertSmartCardMetadataFromFlatbuffer(
   return true;
 }
 
+bool ConvertKioskMetadataFromFlatbuffer(
+    const SerializedKioskMetadata& flatbuffer_table,
+    AuthFactorMetadata* metadata) {
+  // There's no metadata currently.
+  metadata->metadata = KioskAuthFactorMetadata();
+  return true;
+}
+
 bool ParseAuthFactorFlatbuffer(const Blob& flatbuffer,
                                AuthBlockState* auth_block_state,
                                AuthFactorMetadata* metadata) {
@@ -324,6 +332,12 @@ bool ParseAuthFactorFlatbuffer(const Blob& flatbuffer,
                                                 metadata)) {
       LOG(ERROR)
           << "Failed to convert SerializedAuthFactor smart card metadata";
+      return false;
+    }
+  } else if (const SerializedKioskMetadata* kiosk_metadata =
+                 auth_factor_table->metadata_as_SerializedKioskMetadata()) {
+    if (!ConvertKioskMetadataFromFlatbuffer(*kiosk_metadata, metadata)) {
+      LOG(ERROR) << "Failed to convert SerializedAuthFactor kiosk metadata";
       return false;
     }
   } else {
