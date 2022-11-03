@@ -707,20 +707,6 @@ install_stateful() {
   "
 
   if crossystem 'cros_debug?1'; then
-    # For a debug install, add a separate partition for developer-tools.
-    if [ "${FLAGS_lvm_stateful}" -eq "${FLAGS_TRUE}" ]; then
-      local lv_size="$(get_logical_volume_size "${dst_stateful_partition}")"
-      local stateful_fs_format="$(get_fs_format "${PARTITION_NUM_STATE}")"
-
-      lvcreate --thin -V "${lv_size}M" -n "dev-image" "${vg_name}/thinpool"
-      lvchange -ay "${vg_name}/dev-image"
-
-      mkfs "${stateful_fs_format}" ${NUM_STATEFUL_SECTORS} \
-        "/dev/${vg_name}/dev-image" "DEVTOOLS"
-      mkdir -p "${TMPMNT}/dev_image"
-      mount "/dev/${vg_name}/dev-image" "${TMPMNT}/dev_image"
-    fi
-
     dirlist="
       ${dirlist}
       var_overlay/db/pkg
@@ -777,10 +763,6 @@ install_stateful() {
     # separate volume), use the parent directory as destination for cp.
     cp -au "${ROOT}/mnt/stateful_partition/${dir}" "${TMPMNT}/${parent}"
   done
-
-  if mountpoint -q "${TMPMNT}/dev_image"; then
-    umount "${TMPMNT}/dev_image"
-  fi
 
   umount_from_loop_dev
   case ${STATEFUL_FORMAT} in
