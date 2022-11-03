@@ -34,13 +34,6 @@ cd -- "$(dirname -- "$0")"
         esac
     }
 
-    # Grep is only used to read DEVICETYPE from /etc/lsb-release
-    grep() {
-        [ "$1" == "DEVICETYPE" ] || return 1
-        [ "$2" == "/etc/lsb-release" ] || return 1
-        echo "DEVICETYPE=CHROMEBOX"
-    }
-
     MOUNTPOINT="$(mktemp -d)"
 
     mount() {
@@ -77,9 +70,9 @@ cd -- "$(dirname -- "$0")"
     assert_config_equals / brand-code ZZCR
     assert_config_equals /identity platform-name Some
     assert_config_equals /ui help-content-id SOMEOEM-SOMEMODEL
-    assert_config_equals /hardware-properties psu-type AC_only
-    assert_config_equals /hardware-properties has-backlight false
-    assert_config_equals /hardware-properties form-factor CHROMEBOX
+    assert_config_equals /hardware-properties psu-type battery
+    assert_config_equals /hardware-properties has-backlight true
+    assert_config_equals /hardware-properties form-factor CHROMEBOOK
     assert_config_equals /firmware image-name somemodel
     rm -rf "${MOUNTPOINT}"
 )

@@ -38,24 +38,13 @@ brand_code="$(mosys platform brand)"
 sku_id="$(mosys platform sku || true)"
 customization_id="$(mosys platform customization || true)"
 platform_name="$(mosys platform name)"
-eval "$(grep DEVICETYPE /etc/lsb-release)"
-
-case "${DEVICETYPE}" in
-    CHROMEBOOK )
-        has_backlight=true
-        psu_type=battery
-        ;;
-    * )
-        has_backlight=false
-        psu_type=AC_only
-esac
 
 setconfig / brand-code "${brand_code}"
 setconfig / name "${model}"
 setconfig /firmware image-name "${model}"
-setconfig /hardware-properties form-factor "${DEVICETYPE}"
-setconfig /hardware-properties has-backlight "${has_backlight}"
-setconfig /hardware-properties psu-type "${psu_type}"
+setconfig /hardware-properties form-factor CHROMEBOOK
+setconfig /hardware-properties has-backlight true
+setconfig /hardware-properties psu-type battery
 setconfig /identity platform-name "${platform_name}"
 setconfig /identity sku-id "${sku_id}"
 setconfig /ui help-content-id "${customization_id}"
