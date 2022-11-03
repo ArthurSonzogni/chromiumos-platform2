@@ -133,9 +133,6 @@ class BacklightController {
       double percent, Transition, SetBacklightBrightnessRequest_Cause)>;
   using GetBrightnessCallback =
       base::RepeatingCallback<void(double* percent_out, bool* success_out)>;
-  using SetToggledOffCallback = base::RepeatingCallback<void(bool toggled_off)>;
-  using GetToggledOffCallback =
-      base::RepeatingCallback<void(bool* toggled_off)>;
   using ToggleKeyboardBacklightCallback = base::RepeatingClosure;
 
   using AmbientLightOnResumeMetricsCallback =
@@ -164,14 +161,6 @@ class BacklightController {
       system::DBusWrapperInterface* dbus_wrapper,
       const std::string& method_name,
       const GetBrightnessCallback& callback);
-  static void RegisterSetToggledOffHandler(
-      system::DBusWrapperInterface* dbus_wrapper,
-      const std::string& method_name,
-      const SetToggledOffCallback& callback);
-  static void RegisterGetToggledOffHandler(
-      system::DBusWrapperInterface* dbus_wrapper,
-      const std::string& method_name,
-      const GetToggledOffCallback& callback);
   static void RegisterToggleKeyboardBacklightHandler(
       system::DBusWrapperInterface* dbus_wrapper,
       const std::string& method_name,

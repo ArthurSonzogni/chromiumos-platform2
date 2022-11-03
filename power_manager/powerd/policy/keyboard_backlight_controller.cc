@@ -132,16 +132,6 @@ void KeyboardBacklightController::Init(
       base::BindRepeating(
           &KeyboardBacklightController::HandleGetBrightnessRequest,
           weak_ptr_factory_.GetWeakPtr()));
-  RegisterSetToggledOffHandler(
-      dbus_wrapper_, kSetKeyboardBacklightToggledOffMethod,
-      base::BindRepeating(
-          &KeyboardBacklightController::HandleSetToggledOffRequest,
-          weak_ptr_factory_.GetWeakPtr()));
-  RegisterGetToggledOffHandler(
-      dbus_wrapper_, kGetKeyboardBacklightToggledOffMethod,
-      base::BindRepeating(
-          &KeyboardBacklightController::HandleGetToggledOffRequest,
-          weak_ptr_factory_.GetWeakPtr()));
   RegisterToggleKeyboardBacklightHandler(
       dbus_wrapper_, kToggleKeyboardBacklightMethod,
       base::BindRepeating(
@@ -615,19 +605,6 @@ void KeyboardBacklightController::HandleGetBrightnessRequest(
     double* percent_out, bool* success_out) {
   *percent_out = current_percent_;
   *success_out = true;
-}
-
-void KeyboardBacklightController::HandleSetToggledOffRequest(bool toggled_off) {
-  // We ignore the `toggled_off` parameter, and just unconditionally toggle
-  // the backlight.
-  //
-  // TODO(b/212618906): Remove this API.
-  HandleToggleKeyboardBacklightRequest();
-}
-
-void KeyboardBacklightController::HandleGetToggledOffRequest(
-    bool* toggled_off) {
-  *toggled_off = (current_percent_ == 0);
 }
 
 void KeyboardBacklightController::HandleToggleKeyboardBacklightRequest() {

@@ -92,35 +92,6 @@ void OnGetBrightness(const std::string& method_name,
   std::move(response_sender).Run(std::move(response));
 }
 
-void OnSetToggledOff(const std::string& method_name,
-                     const BacklightController::SetToggledOffCallback& callback,
-                     dbus::MethodCall* method_call,
-                     dbus::ExportedObject::ResponseSender response_sender) {
-  dbus::MessageReader reader(method_call);
-  bool toggled_off = false;
-  if (!reader.PopBool(&toggled_off)) {
-    LOG(ERROR) << "Invalid " << method_name << " args";
-    std::move(response_sender)
-        .Run(dbus::ErrorResponse::FromMethodCall(
-            method_call, DBUS_ERROR_INVALID_ARGS, "Expected bool forced_off"));
-    return;
-  }
-  callback.Run(toggled_off);
-  std::move(response_sender).Run(dbus::Response::FromMethodCall(method_call));
-}
-
-void OnGetToggledOff(const std::string& method_name,
-                     const BacklightController::GetToggledOffCallback& callback,
-                     dbus::MethodCall* method_call,
-                     dbus::ExportedObject::ResponseSender response_sender) {
-  bool toggled_off = false;
-  callback.Run(&toggled_off);
-  std::unique_ptr<dbus::Response> response =
-      dbus::Response::FromMethodCall(method_call);
-  dbus::MessageWriter(response.get()).AppendBool(toggled_off);
-  std::move(response_sender).Run(std::move(response));
-}
-
 void OnToggleKeyboardBacklight(
     const std::string& method_name,
     const BacklightController::ToggleKeyboardBacklightCallback& callback,
@@ -174,28 +145,6 @@ void BacklightController::RegisterGetBrightnessHandler(
   dbus_wrapper->ExportMethod(
       method_name,
       base::BindRepeating(&OnGetBrightness, method_name, callback));
-}
-
-// static
-void BacklightController::RegisterSetToggledOffHandler(
-    system::DBusWrapperInterface* dbus_wrapper,
-    const std::string& method_name,
-    const SetToggledOffCallback& callback) {
-  DCHECK(dbus_wrapper);
-  dbus_wrapper->ExportMethod(
-      method_name,
-      base::BindRepeating(&OnSetToggledOff, method_name, callback));
-}
-
-// static
-void BacklightController::RegisterGetToggledOffHandler(
-    system::DBusWrapperInterface* dbus_wrapper,
-    const std::string& method_name,
-    const GetToggledOffCallback& callback) {
-  DCHECK(dbus_wrapper);
-  dbus_wrapper->ExportMethod(
-      method_name,
-      base::BindRepeating(&OnGetToggledOff, method_name, callback));
 }
 
 // static
