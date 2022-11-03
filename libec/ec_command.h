@@ -53,9 +53,13 @@ inline constexpr static int kMaxPacketSize = 544;
 struct EmptyParam {};
 // empty struct is one byte in C++, get the size we want instead.
 template <typename T>
-constexpr size_t realsizeof() {
-  return std::is_empty<T>::value ? 0 : sizeof(T);
-}
+inline constexpr size_t realsizeof = std::is_empty_v<T> ? 0 : sizeof(T);
+// Variable length arrays in request or response for the EcCommand template
+// below. T refers to the type of array data and RemainingParams refers to the
+// type including remaining parameters in the struct.
+template <typename T, typename RemainingParams = EmptyParam>
+using ArrayData =
+    std::array<T, (kMaxPacketSize - realsizeof<RemainingParams>) / sizeof(T)>;
 
 inline constexpr uint32_t kVersionZero = 0;
 inline constexpr uint32_t kVersionOne = 1;
@@ -83,10 +87,10 @@ class EcCommand : public EcCommandInterface {
               .command = cmd,
               // "outsize" is the number of bytes of data going "out"
               // to the EC.
-              .outsize = realsizeof<Params>(),
+              .outsize = realsizeof<Params>,
               // "insize" is the number of bytes we can accept as the
               // "incoming" data from the EC.
-              .insize = realsizeof<Response>(),
+              .insize = realsizeof<Response>,
               .result = kEcCommandUninitializedResult}) {}
   EcCommand(const EcCommand&) = delete;
   EcCommand& operator=(const EcCommand&) = delete;

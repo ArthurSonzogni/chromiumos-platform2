@@ -21,11 +21,9 @@ struct Header {
   uint32_t size = 0;
 };
 
-using Data = std::array<uint8_t, kMaxPacketSize - sizeof(struct Header)>;
-
 struct Params {
   struct Header req;
-  Data data{};
+  ArrayData<uint8_t, struct Header> data{};
 };
 
 }  // namespace fp_template
