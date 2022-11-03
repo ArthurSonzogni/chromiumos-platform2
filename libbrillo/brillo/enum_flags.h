@@ -7,7 +7,7 @@
 
 #include <type_traits>
 
-#include <base/stl_util.h>
+#include <base/types/cxx23_to_underlying.h>
 
 // This is a helper for generating type-safe bitwise operators for flags that
 // are defined by an enumeration.  By default, when a bitwise operation is
