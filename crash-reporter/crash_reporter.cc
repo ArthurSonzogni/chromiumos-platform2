@@ -237,6 +237,8 @@ int main(int argc, char* argv[]) {
               "Report a run of clobber-state unrelated to a mount failure");
   DEFINE_bool(auth_failure, false, "Report auth failure");
   DEFINE_bool(mount_failure, false, "Report mount failure");
+  DEFINE_bool(cryptohome_recovery_failure, false,
+              "Report cryptohome recovery failure");
   DEFINE_bool(umount_failure, false, "Report umount failure");
   DEFINE_string(mount_device, "",
                 "Device that failed to mount. Used with --mount_failure and "
@@ -577,7 +579,8 @@ int main(int argc, char* argv[]) {
 
   collectors.push_back(GenericFailureCollector::GetHandlerInfo(
       FLAGS_suspend_failure, FLAGS_auth_failure, FLAGS_modem_failure,
-      FLAGS_arc_service_failure, FLAGS_service_failure));
+      FLAGS_cryptohome_recovery_failure, FLAGS_arc_service_failure,
+      FLAGS_service_failure));
 
   collectors.push_back(SELinuxViolationCollector::GetHandlerInfo(
       FLAGS_selinux_violation, FLAGS_weight));

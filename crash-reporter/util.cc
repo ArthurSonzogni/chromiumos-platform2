@@ -608,6 +608,10 @@ int GetUmountStatefulFailureWeight() {
   return 10;
 }
 
+int GetRecoveryFailureWeight() {
+  return 10;
+}
+
 bool ReadFdToStream(unsigned int fd, std::stringstream* stream) {
   base::File src(fd);
   char buffer[kBufferSize];

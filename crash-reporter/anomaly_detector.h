@@ -155,7 +155,11 @@ class TerminaParser {
 
 class CryptohomeParser : public Parser {
  public:
+  explicit CryptohomeParser(bool testonly_send_all);
   MaybeCrashReport ParseLogEntry(const std::string& line) override;
+
+ private:
+  bool testonly_send_all_;
 };
 
 class TcsdParser : public Parser {

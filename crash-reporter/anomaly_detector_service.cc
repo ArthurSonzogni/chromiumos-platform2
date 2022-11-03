@@ -83,7 +83,8 @@ Service::Service(base::OnceClosure shutdown_callback, bool testonly_send_all)
   parsers_["crash_reporter"] = std::make_unique<anomaly::CrashReporterParser>(
       std::make_unique<base::DefaultClock>(),
       std::make_unique<MetricsLibrary>(), testonly_send_all);
-  parsers_["cryptohomed"] = std::make_unique<anomaly::CryptohomeParser>();
+  parsers_["cryptohomed"] =
+      std::make_unique<anomaly::CryptohomeParser>(testonly_send_all);
   parsers_["tcsd"] = std::make_unique<anomaly::TcsdParser>();
   parsers_["shill"] = std::make_unique<anomaly::ShillParser>(testonly_send_all);
 

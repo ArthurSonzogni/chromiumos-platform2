@@ -23,6 +23,7 @@ using base::FilePath;
 using base::StringPrintf;
 
 const char* const GenericFailureCollector::kAuthFailure = "auth-failure";
+const char* const GenericFailureCollector::kCryptohome = "cryptohome";
 const char* const GenericFailureCollector::kSuspendFailure = "suspend-failure";
 const char* const GenericFailureCollector::kServiceFailure = "service-failure";
 const char* const GenericFailureCollector::kArcServiceFailure =
@@ -90,47 +91,56 @@ CollectorInfo GenericFailureCollector::GetHandlerInfo(
     bool suspend_failure,
     bool auth_failure,
     bool modem_failure,
+    bool recovery_failure,
     const std::string& arc_service_failure,
     const std::string& service_failure) {
   auto generic_failure_collector = std::make_shared<GenericFailureCollector>();
-  return {
-      .collector = generic_failure_collector,
-      .handlers = {{
-                       .should_handle = suspend_failure,
-                       .cb = base::BindRepeating(
-                           &GenericFailureCollector::CollectWithWeight,
-                           generic_failure_collector, kSuspendFailure,
-                           util::GetSuspendFailureWeight()),
-                   },
-                   {
-                       .should_handle = auth_failure,
-                       .cb = base::BindRepeating(
-                           &GenericFailureCollector::Collect,
-                           generic_failure_collector, kAuthFailure),
-                   },
-                   {
-                       .should_handle = modem_failure,
-                       .cb = base::BindRepeating(
-                           &GenericFailureCollector::CollectWithWeight,
-                           generic_failure_collector, kModemFailure,
-                           util::GetShillFailureWeight()),
-                   },
-                   {
-                       .should_handle = !arc_service_failure.empty(),
-                       .cb = base::BindRepeating(
-                           &GenericFailureCollector::CollectFull,
-                           generic_failure_collector,
-                           StringPrintf("%s-%s", kArcServiceFailure,
-                                        arc_service_failure.c_str()),
-                           kArcServiceFailure, util::GetServiceFailureWeight()),
-                   },
-                   {
-                       .should_handle = !service_failure.empty(),
-                       .cb = base::BindRepeating(
-                           &GenericFailureCollector::CollectFull,
-                           generic_failure_collector,
-                           StringPrintf("%s-%s", kServiceFailure,
-                                        service_failure.c_str()),
-                           kServiceFailure, util::GetServiceFailureWeight()),
-                   }}};
+  return {.collector = generic_failure_collector,
+          .handlers = {
+              {
+                  .should_handle = suspend_failure,
+                  .cb = base::BindRepeating(
+                      &GenericFailureCollector::CollectWithWeight,
+                      generic_failure_collector, kSuspendFailure,
+                      util::GetSuspendFailureWeight()),
+              },
+              {
+                  .should_handle = auth_failure,
+                  .cb = base::BindRepeating(&GenericFailureCollector::Collect,
+                                            generic_failure_collector,
+                                            kAuthFailure),
+              },
+              {
+                  .should_handle = modem_failure,
+                  .cb = base::BindRepeating(
+                      &GenericFailureCollector::CollectWithWeight,
+                      generic_failure_collector, kModemFailure,
+                      util::GetShillFailureWeight()),
+              },
+              {
+                  .should_handle = !arc_service_failure.empty(),
+                  .cb = base::BindRepeating(
+                      &GenericFailureCollector::CollectFull,
+                      generic_failure_collector,
+                      StringPrintf("%s-%s", kArcServiceFailure,
+                                   arc_service_failure.c_str()),
+                      kArcServiceFailure, util::GetServiceFailureWeight()),
+              },
+              {
+                  .should_handle = !service_failure.empty(),
+                  .cb = base::BindRepeating(
+                      &GenericFailureCollector::CollectFull,
+                      generic_failure_collector,
+                      StringPrintf("%s-%s", kServiceFailure,
+                                   service_failure.c_str()),
+                      kServiceFailure, util::GetServiceFailureWeight()),
+              },
+              {
+                  .should_handle = recovery_failure,
+                  .cb = base::BindRepeating(
+                      &GenericFailureCollector::CollectWithWeight,
+                      generic_failure_collector, kCryptohome,
+                      util::GetRecoveryFailureWeight()),
+              },
+          }};
 }

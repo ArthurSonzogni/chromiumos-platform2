@@ -362,6 +362,15 @@ information on why the suspend failure happened.
 
 TODO(dbasehore): Expand on this section
 
+### recovery failures
+
+When the cryptohome recovery process fails we generate a report with
+cryptohomed logs. This happens in these cases:
+*   Generation of the recovery request fails.
+*   Derivation of the recovery secret fails.
+
+The program name is `cryptohome`.
+
 ### auth failures
 
 When there are some auth failure on the previous life cycle of tcsd, we

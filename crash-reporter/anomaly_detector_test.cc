@@ -629,20 +629,47 @@ TEST(AnomalyDetectorTest, OomEvent) {
 TEST(AnomalyDetectorTest, CryptohomeMountFailure) {
   ParserRun cryptohome_mount_failure = {
       .expected_flags = {{"--mount_failure", "--mount_device=cryptohome"}}};
-  ParserTest<CryptohomeParser>("TEST_CRYPTOHOME_MOUNT_FAILURE",
-                               {cryptohome_mount_failure});
+  CryptohomeParser parser(/*testonly_send_all=*/true);
+  ParserTest("TEST_CRYPTOHOME_MOUNT_FAILURE", {cryptohome_mount_failure},
+             &parser);
 }
 
 TEST(AnomalyDetectorTest, CryptohomeIgnoreMountFailure) {
   ParserRun cryptohome_mount_failure = {.expected_size = 0};
-  ParserTest<CryptohomeParser>("TEST_CRYPTOHOME_MOUNT_FAILURE_IGNORE",
-                               {cryptohome_mount_failure});
+  CryptohomeParser parser(/*testonly_send_all=*/true);
+  ParserTest("TEST_CRYPTOHOME_MOUNT_FAILURE_IGNORE", {cryptohome_mount_failure},
+             &parser);
 }
 
 TEST(AnomalyDetectorTest, CryptohomeIgnoreFailedLogin) {
   ParserRun cryptohome_mount_failure = {.expected_size = 0};
-  ParserTest<CryptohomeParser>("TEST_CRYPTOHOME_FAILED_LOGIN_IGNORE",
-                               {cryptohome_mount_failure});
+  CryptohomeParser parser(/*testonly_send_all=*/true);
+  ParserTest("TEST_CRYPTOHOME_FAILED_LOGIN_IGNORE", {cryptohome_mount_failure},
+             &parser);
+}
+
+TEST(AnomalyDetectorTest, CryptohomeRecoveryRequestFailure) {
+  ParserRun cryptohome_recovery_failure = {
+      .expected_text = "GetRecoveryRequest-3-recovery-failure",
+      .expected_flags = {{"--cryptohome_recovery_failure"}}};
+  CryptohomeParser parser(/*testonly_send_all=*/true);
+  ParserTest("TEST_CRYPTOHOME_RECOVERY_REQUEST_FAILURE",
+             {cryptohome_recovery_failure}, &parser);
+}
+
+TEST(AnomalyDetectorTest, CryptohomeRecoveryDeriveFailure) {
+  ParserRun cryptohome_recovery_failure = {
+      .expected_text = "Derive-8-recovery-failure",
+      .expected_flags = {{"--cryptohome_recovery_failure"}}};
+  CryptohomeParser parser(/*testonly_send_all=*/true);
+  ParserTest("TEST_CRYPTOHOME_RECOVERY_DERIVE_FAILURE",
+             {cryptohome_recovery_failure}, &parser);
+}
+
+TEST(AnomalyDetectorTest, CryptohomeRecoveryIgnoreFailure) {
+  ParserRun no_failure = {.expected_size = 0};
+  CryptohomeParser parser(/*testonly_send_all=*/true);
+  ParserTest("TEST_CRYPTOHOME_RECOVERY_NO_FAILURE", {no_failure}, &parser);
 }
 
 TEST(AnomalyDetectorTest, TcsdAuthFailure) {

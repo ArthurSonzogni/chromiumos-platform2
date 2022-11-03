@@ -1861,6 +1861,12 @@ bool AuthSession::GetRecoveryRequest(
       brillo::BlobFromString(request.epoch_response()), *state,
       crypto_->GetRecoveryCrypto(), &recovery_request, &ephemeral_pub_key);
   if (!status.ok()) {
+    if (status->local_legacy_error().has_value()) {
+      // Note: the error format should match `cryptohome_recovery_failure` in
+      // crash-reporter/anomaly_detector.cc
+      LOG(ERROR) << "Cryptohome Recovery GetRecoveryRequest failure, error = "
+                 << status->local_legacy_error().value();
+    }
     ReplyWithError(
         std::move(on_done), reply,
         MakeStatus<CryptohomeError>(

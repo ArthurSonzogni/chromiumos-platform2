@@ -45,6 +45,16 @@ using hwsec_foundation::status::StatusChain;
 
 namespace cryptohome {
 
+namespace {
+
+void LogDeriveFailure(CryptoError error) {
+  // Note: the error format should match `cryptohome_recovery_failure` in
+  // crash-reporter/anomaly_detector.cc
+  LOG(ERROR) << "Cryptohome Recovery Derive failure, error = " << error;
+}
+
+}  // namespace
+
 CryptohomeRecoveryAuthBlock::CryptohomeRecoveryAuthBlock(
     hwsec::CryptohomeFrontend* hwsec,
     hwsec::RecoveryCryptoFrontend* recovery_hwsec,
@@ -277,6 +287,7 @@ CryptoStatus CryptohomeRecoveryAuthBlock::Derive(const AuthInput& auth_input,
                .mediated_publisher_pub_key = response_plain_text.mediated_point,
                .obfuscated_username = obfuscated_username}),
           &recovery_key)) {
+    LogDeriveFailure(CryptoError::CE_OTHER_CRYPTO);
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(kLocRecoveryAuthBlockRecoveryFailedInDerive),
         ErrorActionSet({ErrorAction::kIncorrectAuth, ErrorAction::kReboot,
@@ -293,6 +304,7 @@ CryptoStatus CryptohomeRecoveryAuthBlock::Derive(const AuthInput& auth_input,
     CryptoStatus result = revocation::Derive(
         le_manager_, state.revocation_state.value(), key_blobs);
     if (!result.ok()) {
+      LogDeriveFailure(result->local_crypto_error());
       return MakeStatus<CryptohomeCryptoError>(
                  CRYPTOHOME_ERR_LOC(
                      kLocRecoveryAuthBlockRevocationDeriveFailedInDerive))

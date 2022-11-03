@@ -50,6 +50,7 @@ class GenericFailureCollector : public CrashCollector {
   static CollectorInfo GetHandlerInfo(bool suspend_failure,
                                       bool auth_failure,
                                       bool modem_failure,
+                                      bool recovery_failure,
                                       const std::string& arc_service_failure,
                                       const std::string& service_failure);
 
@@ -68,6 +69,7 @@ class GenericFailureCollector : public CrashCollector {
 
   static const char* const kGenericFailure;
   static const char* const kAuthFailure;
+  static const char* const kCryptohome;
   static const char* const kSuspendFailure;
   static const char* const kServiceFailure;
   static const char* const kArcServiceFailure;

@@ -570,20 +570,40 @@ MaybeCrashReport TerminaParser::ParseLogEntryForOom(int cid,
 constexpr LazyRE2 cryptohome_mount_failure = {
     R"(Failed to mount cryptohome, error = (\d+))"};
 
+constexpr LazyRE2 cryptohome_recovery_failure = {
+    R"(Cryptohome Recovery (.+) failure, error = (.*))"};
+
+CryptohomeParser::CryptohomeParser(bool testonly_send_all)
+    : testonly_send_all_(testonly_send_all) {}
+
 MaybeCrashReport CryptohomeParser::ParseLogEntry(const std::string& line) {
   uint64_t error_code;
-  if (!RE2::PartialMatch(line, *cryptohome_mount_failure, &error_code)) {
-    return std::nullopt;
+  if (RE2::PartialMatch(line, *cryptohome_mount_failure, &error_code)) {
+    // Avoid creating crash reports if the user doesn't exist or if cryptohome
+    // can't authenticate the user's password.
+    if (error_code == cryptohome::MOUNT_ERROR_USER_DOES_NOT_EXIST ||
+        error_code == cryptohome::MOUNT_ERROR_KEY_FAILURE)
+      return std::nullopt;
+
+    return CrashReport("", {std::move("--mount_failure"),
+                            std::move("--mount_device=cryptohome")});
   }
 
-  // Avoid creating crash reports if the user doesn't exist or if cryptohome
-  // can't authenticate the user's password.
-  if (error_code == cryptohome::MOUNT_ERROR_USER_DOES_NOT_EXIST ||
-      error_code == cryptohome::MOUNT_ERROR_KEY_FAILURE)
-    return std::nullopt;
+  std::string recovery_error_source, recovery_error;
+  if (RE2::PartialMatch(line, *cryptohome_recovery_failure,
+                        &recovery_error_source, &recovery_error)) {
+    if (!testonly_send_all_ &&
+        base::RandGenerator(util::GetRecoveryFailureWeight()) != 0) {
+      return std::nullopt;
+    }
+    std::string signature = base::StringPrintf("%s-%s-recovery-failure\n",
+                                               recovery_error_source.c_str(),
+                                               recovery_error.c_str());
+    return CrashReport(signature, {std::move("--cryptohome_recovery_failure")});
+  }
 
-  return CrashReport("", {std::move("--mount_failure"),
-                          std::move("--mount_device=cryptohome")});
+  // The line didn't match anything.
+  return std::nullopt;
 }
 
 constexpr LazyRE2 auth_failure = {
