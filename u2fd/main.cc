@@ -6,6 +6,7 @@
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
 #include <brillo/vcsid.h>
+#include <libhwsec-foundation/profiling/profiling.h>
 #include <libhwsec-foundation/tpm_error/tpm_error_uma_reporter.h>
 #include <sysexits.h>
 
@@ -42,6 +43,10 @@ int main(int argc, char* argv[]) {
   u2f::U2fDaemon daemon(FLAGS_force_u2f, FLAGS_force_g2f,
                         FLAGS_force_corp_protocol, FLAGS_g2f_allowlist_data,
                         legacy_kh_fallback);
+
+  // Start profiling.
+  hwsec_foundation::SetUpProfiling();
+
   int rc = daemon.Run();
 
   return rc == EX_UNAVAILABLE ? EX_OK : rc;

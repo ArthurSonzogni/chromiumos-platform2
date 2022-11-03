@@ -95,6 +95,7 @@ executable("u2fd") {
   configs += [ ":target_defaults" ]
   libs = [
     "hwsec-foundation",
+    "hwsec-profiling",
     "policy",
   ]
   deps = [ ":libu2fd" ]
