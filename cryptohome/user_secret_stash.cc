@@ -439,7 +439,7 @@ bool IsUserSecretStashExperimentEnabled() {
     }
   }
   ReportUssExperimentFlag(result);
-  return false;
+  return result == UssExperimentFlag::kEnabled;
 }
 
 void SetUserSecretStashExperimentFlag(bool enabled) {
