@@ -13,11 +13,11 @@
 
 #include <brillo/dbus/dbus_method_response.h>
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
+#include <libhwsec/frontend/u2fd/frontend.h>
 #include <u2f/proto_bindings/u2f_interface.pb.h>
 #include <user_data_auth-client/user_data_auth/dbus-proxies.h>
 
 #include "u2fd/client/user_state.h"
-#include "u2fd/sign_manager/sign_manager.h"
 #include "u2fd/u2f_command_processor.h"
 #include "u2fd/webauthn_handler.h"
 
@@ -25,7 +25,11 @@ namespace u2f {
 
 class U2fCommandProcessorGeneric : public U2fCommandProcessor {
  public:
-  U2fCommandProcessorGeneric(UserState* user_state, dbus::Bus* bus);
+  U2fCommandProcessorGeneric(
+      UserState* user_state,
+      std::unique_ptr<org::chromium::UserDataAuthInterfaceProxyInterface>
+          cryptohome_proxy,
+      std::unique_ptr<hwsec::U2fFrontend> u2f_frontend);
 
   U2fCommandProcessorGeneric(const U2fCommandProcessorGeneric&) = delete;
   U2fCommandProcessorGeneric& operator=(const U2fCommandProcessorGeneric&) =
@@ -78,20 +82,12 @@ class U2fCommandProcessorGeneric : public U2fCommandProcessor {
   CoseAlgorithmIdentifier GetAlgorithm() override;
 
  private:
-  U2fCommandProcessorGeneric(
-      UserState* user_state,
-      std::unique_ptr<org::chromium::UserDataAuthInterfaceProxyInterface>
-          cryptohome_proxy,
-      std::unique_ptr<SignManager> sign_manager);
-
   std::optional<brillo::SecureBlob> GetWebAuthnSecret();
 
   UserState* user_state_;
   std::unique_ptr<org::chromium::UserDataAuthInterfaceProxyInterface>
       cryptohome_proxy_;
-  std::unique_ptr<SignManager> sign_manager_;
-
-  friend class U2fCommandProcessorGenericTest;
+  std::unique_ptr<hwsec::U2fFrontend> u2f_frontend_;
 };
 
 }  // namespace u2f

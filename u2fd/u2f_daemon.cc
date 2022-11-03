@@ -15,8 +15,10 @@
 #include <base/logging.h>
 #include <base/synchronization/waitable_event.h>
 #include <dbus/u2f/dbus-constants.h>
+#include <libhwsec/factory/factory_impl.h>
 #include <policy/device_policy.h>
 #include <policy/libpolicy.h>
+#include <user_data_auth-client/user_data_auth/dbus-proxies.h>
 
 #include "u2fd/u2f_command_processor.h"
 #if USE_GSC
@@ -108,7 +110,8 @@ U2fDaemon::U2fDaemon(bool force_u2f,
       enable_corp_protocol_(enable_corp_protocol),
       g2f_allowlist_data_(g2f_allowlist_data),
       legacy_kh_fallback_(legacy_kh_fallback),
-      service_started_(false) {
+      service_started_(false),
+      hwsec_factory_(hwsec::FactoryImpl::OnCurrentTaskRunner()) {
 #if USE_GSC
   u2fhid_service_ = std::make_unique<U2fHidServiceImpl>(legacy_kh_fallback);
 #endif  // USE_GSC
@@ -313,8 +316,13 @@ void U2fDaemon::InitializeWebAuthnHandler(U2fMode u2f_mode) {
   u2f_command_processor = std::make_unique<U2fCommandProcessorGsc>(
       u2fhid_service_->tpm_proxy(), request_presence);
 #elif USE_TPM1
-  u2f_command_processor = std::make_unique<U2fCommandProcessorGeneric>(
-      user_state_.get(), bus_.get());
+  auto u2f_frontend = hwsec_factory_.GetU2fFrontend();
+  if (u2f_frontend->IsEnabled().value_or(false)) {
+    u2f_command_processor = std::make_unique<U2fCommandProcessorGeneric>(
+        user_state_.get(),
+        std::make_unique<org::chromium::UserDataAuthInterfaceProxy>(bus_.get()),
+        std::move(u2f_frontend));
+  }
 #endif
 
   webauthn_handler_.Initialize(bus_.get(), user_state_.get(), u2f_mode,

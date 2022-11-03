@@ -15,25 +15,31 @@
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <libhwsec/frontend/u2fd/mock_frontend.h>
+#include <libhwsec-foundation/error/testing_helper.h>
 #include <user_data_auth-client-test/user_data_auth/dbus-proxy-mocks.h>
 #include <user_data_auth-client/user_data_auth/dbus-proxies.h>
 
 #include "u2fd/client/util.h"
 #include "u2fd/mock_user_state.h"
-#include "u2fd/sign_manager/mock_sign_manager.h"
-#include "u2fd/sign_manager/sign_manager.h"
 #include "u2fd/u2f_command_processor.h"
 
 namespace u2f {
 
 namespace {
 
+using hwsec::TPMError;
+using hwsec::TPMRetryAction;
+using hwsec_foundation::error::testing::ReturnError;
+using hwsec_foundation::error::testing::ReturnValue;
+
 using ::testing::_;
 using ::testing::DoAll;
-using ::testing::MatchesRegex;
 using ::testing::Return;
 using ::testing::SetArgPointee;
 using ::testing::StrictMock;
+
+using CreateKeyResult = hwsec::U2fFrontend::CreateKeyResult;
 
 constexpr char kCredentialSecretHex[65] = {[0 ... 63] = 'F', '\0'};
 constexpr char kUserAccount[5] = "user";
@@ -69,8 +75,8 @@ std::vector<uint8_t> GetWrongRpIdHash() {
   return util::Sha256(std::string(kWrongRpId));
 }
 
-std::string GetKeyBlobString() {
-  return std::string(256, '\x13');
+std::vector<uint8_t> GetKeyBlob() {
+  return std::vector<uint8_t>(256, '\x13');
 }
 
 std::vector<uint8_t> GetFakeKeyBlob() {
@@ -93,16 +99,20 @@ std::vector<uint8_t> GetFakeCredentialIdInvalidHash() {
                         std::string(32, 'S'));
 }
 
-std::vector<uint8_t> GetPubKey() {
-  return std::vector<uint8_t>(128, '\x31');
+std::vector<uint8_t> GetPubExponent() {
+  return std::vector<uint8_t>{'\x01', '\x00', '\x01'};
 }
 
-std::string GetHashToSign() {
-  return std::string(32, 'H');
+std::vector<uint8_t> GetModulus() {
+  return std::vector<uint8_t>(256, 'M');
 }
 
-std::string GetSignature() {
-  return std::string(128, 'S');
+std::vector<uint8_t> GetHashToSign() {
+  return std::vector<uint8_t>(32, 'H');
+}
+
+std::vector<uint8_t> GetSignature() {
+  return std::vector<uint8_t>(128, 'S');
 }
 
 }  // namespace
@@ -110,15 +120,14 @@ std::string GetSignature() {
 class U2fCommandProcessorGenericTest : public ::testing::Test {
  public:
   void SetUp() override {
-    auto mock_sign_manager = std::make_unique<MockSignManager>();
-    mock_sign_manager_ = mock_sign_manager.get();
+    auto mock_u2f_frontend = std::make_unique<hwsec::MockU2fFrontend>();
+    mock_u2f_frontend_ = mock_u2f_frontend.get();
     auto mock_cryptohome_proxy =
         std::make_unique<org::chromium::UserDataAuthInterfaceProxyMock>();
     mock_cryptohome_proxy_ = mock_cryptohome_proxy.get();
-    processor_ = std::unique_ptr<U2fCommandProcessorGeneric>(
-        new U2fCommandProcessorGeneric(&mock_user_state_,
-                                       std::move(mock_cryptohome_proxy),
-                                       std::move(mock_sign_manager)));
+    processor_ = std::make_unique<U2fCommandProcessorGeneric>(
+        &mock_user_state_, std::move(mock_cryptohome_proxy),
+        std::move(mock_u2f_frontend));
     ExpectNoGetWebAuthnSecret();
     ExpectGetUser();
   }
@@ -146,8 +155,9 @@ class U2fCommandProcessorGenericTest : public ::testing::Test {
         .WillRepeatedly(Return(kUserAccount));
   }
 
-  void ExpectSignManagerReady() {
-    EXPECT_CALL(*mock_sign_manager_, IsReady()).WillRepeatedly(Return(true));
+  void ExpectFrontendReady() {
+    EXPECT_CALL(*mock_u2f_frontend_, IsReady())
+        .WillRepeatedly(ReturnValue(true));
   }
 
   MakeCredentialResponse::MakeCredentialStatus U2fGenerate(
@@ -179,9 +189,14 @@ class U2fCommandProcessorGenericTest : public ::testing::Test {
         rp_id_hash, credential_id, GetCredentialSecret(), credential_key_blob);
   }
 
+  hwsec::ScopedKey GetTestScopedKey() {
+    return hwsec::ScopedKey(hwsec::Key{.token = 42},
+                            mock_u2f_frontend_->GetFakeMiddlewareDerivative());
+  }
+
   StrictMock<MockUserState> mock_user_state_;
   org::chromium::UserDataAuthInterfaceProxyMock* mock_cryptohome_proxy_;
-  MockSignManager* mock_sign_manager_;
+  hwsec::MockU2fFrontend* mock_u2f_frontend_;
 
  private:
   std::unique_ptr<U2fCommandProcessorGeneric> processor_;
@@ -197,42 +212,40 @@ TEST_F(U2fCommandProcessorGenericTest, U2fGenerateNoWebAuthnSecret) {
             MakeCredentialResponse::INTERNAL_ERROR);
 }
 
-TEST_F(U2fCommandProcessorGenericTest, U2fGenerateSignManagerNotReady) {
+TEST_F(U2fCommandProcessorGenericTest, U2fGenerateFrontendNotReady) {
   std::vector<uint8_t> cred_id, cred_key_blob;
   CredentialPublicKey cred_pubkey;
   ExpectGetWebAuthnSecret();
-  EXPECT_CALL(*mock_sign_manager_, IsReady()).WillOnce(Return(false));
+  EXPECT_CALL(*mock_u2f_frontend_, IsReady()).WillOnce(ReturnValue(false));
   EXPECT_EQ(U2fGenerate(&cred_id, &cred_pubkey, &cred_key_blob),
             MakeCredentialResponse::INTERNAL_ERROR);
 }
 
-TEST_F(U2fCommandProcessorGenericTest, U2fGenerateSignManagerCreateKeyFailed) {
+TEST_F(U2fCommandProcessorGenericTest, U2fGenerateFrontendCreateKeyFailed) {
   std::vector<uint8_t> cred_id, cred_key_blob;
   CredentialPublicKey cred_pubkey;
   ExpectGetWebAuthnSecret();
-  ExpectSignManagerReady();
-  EXPECT_CALL(*mock_sign_manager_, IsReady()).WillOnce(Return(true));
-  EXPECT_CALL(*mock_sign_manager_,
-              CreateKey(KeyType::kRsa, GetWebAuthnSecret(), _, _))
-      .WillOnce(Return(false));
+  ExpectFrontendReady();
+  EXPECT_CALL(*mock_u2f_frontend_, GenerateRSASigningKey(GetWebAuthnSecret()))
+      .WillOnce(ReturnError<TPMError>("fake", TPMRetryAction::kNoRetry));
   EXPECT_EQ(U2fGenerate(&cred_id, &cred_pubkey, &cred_key_blob),
             MakeCredentialResponse::INTERNAL_ERROR);
 }
 
 TEST_F(U2fCommandProcessorGenericTest, U2fSignNoCredentialKeyBlob) {
   std::vector<uint8_t> signature;
-  EXPECT_EQ(U2fSign(GetRpIdHash(), util::ToVector(GetHashToSign()),
-                    GetFakeCredentialIdValidHash(),
-                    /*credential_key_blob=*/nullptr, &signature),
-            GetAssertionResponse::INVALID_REQUEST);
+  EXPECT_EQ(
+      U2fSign(GetRpIdHash(), GetHashToSign(), GetFakeCredentialIdValidHash(),
+              /*credential_key_blob=*/nullptr, &signature),
+      GetAssertionResponse::INVALID_REQUEST);
 }
 
 TEST_F(U2fCommandProcessorGenericTest, U2fSignInvalidHash) {
   std::vector<uint8_t> signature;
   auto fake_key_blob = GetFakeKeyBlob();
   EXPECT_EQ(
-      U2fSign(GetRpIdHash(), util::ToVector(GetHashToSign()),
-              GetFakeCredentialIdInvalidHash(), &fake_key_blob, &signature),
+      U2fSign(GetRpIdHash(), GetHashToSign(), GetFakeCredentialIdInvalidHash(),
+              &fake_key_blob, &signature),
       GetAssertionResponse::INVALID_REQUEST);
 }
 
@@ -240,7 +253,7 @@ TEST_F(U2fCommandProcessorGenericTest, U2fSignInvalidHmac) {
   std::vector<uint8_t> signature;
   ExpectGetWebAuthnSecret();
   auto fake_key_blob = GetFakeKeyBlob();
-  EXPECT_EQ(U2fSign(GetRpIdHash(), util::ToVector(GetHashToSign()),
+  EXPECT_EQ(U2fSign(GetRpIdHash(), GetHashToSign(),
                     GetFakeCredentialIdValidHash(), &fake_key_blob, &signature),
             GetAssertionResponse::INTERNAL_ERROR);
 }
@@ -249,23 +262,28 @@ TEST_F(U2fCommandProcessorGenericTest, U2fSignWrongRpIdHash) {
   std::vector<uint8_t> cred_id, cred_key_blob;
   CredentialPublicKey cred_pubkey;
   ExpectGetWebAuthnSecret();
-  ExpectSignManagerReady();
-  EXPECT_CALL(*mock_sign_manager_,
-              CreateKey(KeyType::kRsa, GetWebAuthnSecret(), _, _))
-      .WillOnce(DoAll(SetArgPointee<2>(GetKeyBlobString()),
-                      SetArgPointee<3>(GetPubKey()), Return(true)));
+  ExpectFrontendReady();
+  EXPECT_CALL(*mock_u2f_frontend_, GenerateRSASigningKey(GetWebAuthnSecret()))
+      .WillOnce([&](auto&&) {
+        return CreateKeyResult{
+            .key = GetTestScopedKey(),
+            .key_blob = GetKeyBlob(),
+        };
+      });
+  EXPECT_CALL(*mock_u2f_frontend_, GetRSAPublicKey)
+      .WillOnce(ReturnValue(hwsec::RSAPublicInfo{
+          .exponent = GetPubExponent(),
+          .modulus = GetModulus(),
+      }));
   EXPECT_EQ(U2fGenerate(&cred_id, &cred_pubkey, &cred_key_blob),
             MakeCredentialResponse::SUCCESS);
-
-  std::string expected_cred_pubkey_regex = std::string("(31){128}");
-  EXPECT_THAT(base::HexEncode(cred_pubkey.cbor),
-              MatchesRegex(expected_cred_pubkey_regex));
+  EXPECT_FALSE(cred_pubkey.cbor.empty());
 
   // U2fSign with wrong rp id hash should fail.
   std::vector<uint8_t> signature;
   ExpectGetWebAuthnSecret();
-  EXPECT_EQ(U2fSign(GetWrongRpIdHash(), util::ToVector(GetHashToSign()),
-                    cred_id, &cred_key_blob, &signature),
+  EXPECT_EQ(U2fSign(GetWrongRpIdHash(), GetHashToSign(), cred_id,
+                    &cred_key_blob, &signature),
             GetAssertionResponse::INTERNAL_ERROR);
 }
 
@@ -288,17 +306,22 @@ TEST_F(U2fCommandProcessorGenericTest, U2fGenerateSignSuccess) {
   std::vector<uint8_t> cred_id, cred_key_blob;
   CredentialPublicKey cred_pubkey;
   ExpectGetWebAuthnSecret();
-  ExpectSignManagerReady();
-  EXPECT_CALL(*mock_sign_manager_,
-              CreateKey(KeyType::kRsa, GetWebAuthnSecret(), _, _))
-      .WillOnce(DoAll(SetArgPointee<2>(GetKeyBlobString()),
-                      SetArgPointee<3>(GetPubKey()), Return(true)));
+  ExpectFrontendReady();
+  EXPECT_CALL(*mock_u2f_frontend_, GenerateRSASigningKey(GetWebAuthnSecret()))
+      .WillOnce([&](auto&&) {
+        return CreateKeyResult{
+            .key = GetTestScopedKey(),
+            .key_blob = GetKeyBlob(),
+        };
+      });
+  EXPECT_CALL(*mock_u2f_frontend_, GetRSAPublicKey)
+      .WillOnce(ReturnValue(hwsec::RSAPublicInfo{
+          .exponent = GetPubExponent(),
+          .modulus = GetModulus(),
+      }));
   EXPECT_EQ(U2fGenerate(&cred_id, &cred_pubkey, &cred_key_blob),
             MakeCredentialResponse::SUCCESS);
-
-  std::string expected_cred_pubkey_regex = std::string("(31){128}");
-  EXPECT_THAT(base::HexEncode(cred_pubkey.cbor),
-              MatchesRegex(expected_cred_pubkey_regex));
+  EXPECT_FALSE(cred_pubkey.cbor.empty());
 
   // U2fSignCheckOnly should succeed.
   EXPECT_EQ(U2fSignCheckOnly(GetRpIdHash(), cred_id, &cred_key_blob),
@@ -307,13 +330,14 @@ TEST_F(U2fCommandProcessorGenericTest, U2fGenerateSignSuccess) {
   // U2fSign should succeed.
   std::vector<uint8_t> signature;
   ExpectGetWebAuthnSecret();
-  EXPECT_CALL(*mock_sign_manager_,
-              Sign(GetKeyBlobString(), GetHashToSign(), GetWebAuthnSecret(), _))
-      .WillOnce(DoAll(SetArgPointee<3>(GetSignature()), Return(true)));
-  EXPECT_EQ(U2fSign(GetRpIdHash(), util::ToVector(GetHashToSign()), cred_id,
-                    &cred_key_blob, &signature),
+  EXPECT_CALL(*mock_u2f_frontend_, LoadKey(GetKeyBlob(), GetWebAuthnSecret()))
+      .WillOnce([&](auto&&, auto&&) { return GetTestScopedKey(); });
+  EXPECT_CALL(*mock_u2f_frontend_, RSASign(_, GetHashToSign()))
+      .WillOnce(ReturnValue(GetSignature()));
+  EXPECT_EQ(U2fSign(GetRpIdHash(), GetHashToSign(), cred_id, &cred_key_blob,
+                    &signature),
             GetAssertionResponse::SUCCESS);
-  EXPECT_EQ(signature, util::ToVector(GetSignature()));
+  EXPECT_EQ(signature, GetSignature());
 }
 
 }  // namespace

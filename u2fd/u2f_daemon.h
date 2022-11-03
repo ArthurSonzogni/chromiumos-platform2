@@ -14,6 +14,7 @@
 #include <brillo/daemons/dbus_daemon.h>
 #include <brillo/dbus/dbus_object.h>
 #include <brillo/dbus/dbus_signal.h>
+#include <libhwsec/factory/factory_impl.h>
 #include <metrics/metrics_library.h>
 #include <power_manager-client/power_manager/dbus-proxies.h>
 #include <session_manager/dbus-proxies.h>
@@ -109,6 +110,8 @@ class U2fDaemon : public brillo::DBusServiceDaemon {
 
   // UMA, used by Virtual USB Device
   MetricsLibrary metrics_library_;
+
+  hwsec::FactoryImpl hwsec_factory_;
 };
 
 }  // namespace u2f

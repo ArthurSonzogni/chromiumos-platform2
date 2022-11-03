@@ -13,6 +13,8 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/time/time.h>
 #include <brillo/secure_blob.h>
+#include <chromeos/cbor/values.h>
+#include <chromeos/cbor/writer.h>
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <openssl/rand.h>
 #include <openssl/sha.h>
@@ -21,8 +23,6 @@
 
 #include "u2fd/client/user_state.h"
 #include "u2fd/client/util.h"
-#include "u2fd/sign_manager/sign_manager.h"
-#include "u2fd/sign_manager/sign_manager_tpm_v1.h"
 #include "u2fd/u2f_command_processor.h"
 #include "u2fd/webauthn_handler.h"
 #include "u2fd/webauthn_storage.h"
@@ -38,6 +38,18 @@ const int kHashToSignSize = 32;
 // Use a big timeout for cryptohome. See b/172945202.
 constexpr base::TimeDelta kCryptohomeTimeout = base::Minutes(2);
 
+// COSE key parameters.
+// https://tools.ietf.org/html/rfc8152#section-7.1
+const int kCoseKeyKtyLabel = 1;
+const int kCoseKeyKtyRsa = 3;
+const int kCoseKeyAlgLabel = 3;
+const int kCoseKeyAlgRs256 = -257;
+
+// COSE key type parameters.
+// https://tools.ietf.org/html/rfc8152#section-13.1.1
+const int kCoseRsaKeyNLabel = -1;
+const int kCoseRsaKeyELabel = -2;
+
 struct credential_id_v1 {
   int version;
   uint8_t auth_salt[kAuthSaltSize];
@@ -45,6 +57,16 @@ struct credential_id_v1 {
   // for integrity check against corrupted data, instead of malicious attacks.
   uint8_t hash[SHA256_DIGEST_LENGTH];
 };
+
+std::vector<uint8_t> EncodeCredentialPublicKeyInCBOR(
+    const brillo::Blob& public_exponent, const brillo::Blob& modulus) {
+  cbor::Value::MapValue cbor_map;
+  cbor_map[cbor::Value(kCoseKeyKtyLabel)] = cbor::Value(kCoseKeyKtyRsa);
+  cbor_map[cbor::Value(kCoseKeyAlgLabel)] = cbor::Value(kCoseKeyAlgRs256);
+  cbor_map[cbor::Value(kCoseRsaKeyNLabel)] = cbor::Value(modulus);
+  cbor_map[cbor::Value(kCoseRsaKeyELabel)] = cbor::Value(public_exponent);
+  return *cbor::Writer::Write(cbor::Value(std::move(cbor_map)));
+}
 
 bool IsCredentialIdValid(struct credential_id_v1 cred) {
   std::vector<uint8_t> data_to_hash;
@@ -60,21 +82,16 @@ bool IsCredentialIdValid(struct credential_id_v1 cred) {
 
 }  // namespace
 
-U2fCommandProcessorGeneric::U2fCommandProcessorGeneric(UserState* user_state,
-                                                       dbus::Bus* bus)
-    : user_state_(user_state),
-      cryptohome_proxy_(
-          std::make_unique<org::chromium::UserDataAuthInterfaceProxy>(bus)),
-      sign_manager_(std::make_unique<SignManagerTpmV1>()) {}
-
 U2fCommandProcessorGeneric::U2fCommandProcessorGeneric(
     UserState* user_state,
     std::unique_ptr<org::chromium::UserDataAuthInterfaceProxyInterface>
         cryptohome_proxy,
-    std::unique_ptr<SignManager> sign_manager)
+    std::unique_ptr<hwsec::U2fFrontend> u2f_frontend)
     : user_state_(user_state),
       cryptohome_proxy_(std::move(cryptohome_proxy)),
-      sign_manager_(std::move(sign_manager)) {}
+      u2f_frontend_(std::move(u2f_frontend)) {
+  CHECK(u2f_frontend_);
+}
 
 MakeCredentialResponse::MakeCredentialStatus
 U2fCommandProcessorGeneric::U2fGenerate(
@@ -110,14 +127,28 @@ U2fCommandProcessorGeneric::U2fGenerate(
     return MakeCredentialResponse::INTERNAL_ERROR;
   }
 
-  std::string key_blob;
-  std::vector<uint8_t> public_key;
-  if (!sign_manager_->IsReady() ||
-      !sign_manager_->CreateKey(KeyType::kRsa, *webauthn_secret, &key_blob,
-                                &public_key)) {
-    LOG(ERROR) << "Failed to generate signing key.";
+  if (!u2f_frontend_->IsReady().value_or(false)) {
+    LOG(WARNING) << "U2F frontend is not ready.";
     return MakeCredentialResponse::INTERNAL_ERROR;
   }
+
+  hwsec::StatusOr<hwsec::U2fFrontend::CreateKeyResult> result =
+      u2f_frontend_->GenerateRSASigningKey(*webauthn_secret);
+  if (!result.ok()) {
+    LOG(ERROR) << "Failed to generate signing key: " << result.status() << ".";
+    return MakeCredentialResponse::INTERNAL_ERROR;
+  }
+  hwsec::StatusOr<hwsec::RSAPublicInfo> pub_info =
+      u2f_frontend_->GetRSAPublicKey(result->key.GetKey());
+  if (!pub_info.ok()) {
+    LOG(ERROR) << "Failed to get RSA public key: " << pub_info.status() << ".";
+    return MakeCredentialResponse::INTERNAL_ERROR;
+  }
+  if (credential_key_blob) {
+    *credential_key_blob = result->key_blob;
+  }
+  credential_public_key->cbor =
+      EncodeCredentialPublicKeyInCBOR(pub_info->exponent, pub_info->modulus);
 
   std::vector<uint8_t> data;
 
@@ -125,7 +156,7 @@ U2fCommandProcessorGeneric::U2fGenerate(
   util::AppendToVector(auth_salt, &data);
   util::AppendToVector(rp_id_hash, &data);
   util::AppendToVector(credential_secret, &data);
-  util::AppendToVector(key_blob, &data);
+  util::AppendToVector(result->key_blob, &data);
 
   std::vector<uint8_t> hmac = util::HmacSha256(*webauthn_secret, data);
 
@@ -144,14 +175,6 @@ U2fCommandProcessorGeneric::U2fGenerate(
 
   credential_id->clear();
   util::AppendToVector(cred, credential_id);
-
-  credential_public_key->cbor.clear();
-  util::AppendToVector(public_key, &credential_public_key->cbor);
-
-  if (credential_key_blob) {
-    credential_key_blob->clear();
-    util::AppendToVector(key_blob, credential_key_blob);
-  }
 
   return MakeCredentialResponse::SUCCESS;
 }
@@ -213,17 +236,25 @@ GetAssertionResponse::GetAssertionStatus U2fCommandProcessorGeneric::U2fSign(
     return GetAssertionResponse::INTERNAL_ERROR;
   }
 
-  std::string sig;
-  if (!sign_manager_->IsReady() ||
-      !sign_manager_->Sign(
-          std::string(credential_key_blob->begin(), credential_key_blob->end()),
-          std::string(hash_to_sign.begin(), hash_to_sign.end()),
-          *webauthn_secret, &sig)) {
+  if (!u2f_frontend_->IsReady().value_or(false)) {
+    LOG(WARNING) << "U2F frontend is not ready.";
     return GetAssertionResponse::INTERNAL_ERROR;
   }
 
-  signature->clear();
-  util::AppendToVector(sig, signature);
+  hwsec::StatusOr<hwsec::ScopedKey> key =
+      u2f_frontend_->LoadKey(*credential_key_blob, *webauthn_secret);
+  if (!key.ok()) {
+    LOG(ERROR) << "Failed to load signing key: " << key.status() << ".";
+    return GetAssertionResponse::INTERNAL_ERROR;
+  }
+  hwsec::StatusOr<std::vector<uint8_t>> sig =
+      u2f_frontend_->RSASign(key->GetKey(), hash_to_sign);
+  if (!sig.ok()) {
+    LOG(ERROR) << "Failed to generate signature: " << sig.status() << ".";
+    return GetAssertionResponse::INTERNAL_ERROR;
+  }
+  *signature = std::move(*sig);
+
   return GetAssertionResponse::SUCCESS;
 }
 
