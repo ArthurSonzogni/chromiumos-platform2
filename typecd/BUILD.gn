@@ -6,7 +6,10 @@ import("//common-mk/generate-dbus-adaptors.gni")
 import("//common-mk/pkg_config.gni")
 
 group("all") {
-  deps = [ ":typecd" ]
+  deps = [
+    ":typecd",
+    ":typecd_tool",
+  ]
   if (use.test) {
     deps += [ ":typecd_testrunner" ]
   }
@@ -43,6 +46,12 @@ executable("typecd") {
     "daemon.cc",
     "main.cc",
   ]
+  configs += [ ":target_defaults" ]
+  deps = [ ":typecd_common" ]
+}
+
+executable("typecd_tool") {
+  sources = [ "typecd_tool.cc" ]
   configs += [ ":target_defaults" ]
   deps = [ ":typecd_common" ]
 }
