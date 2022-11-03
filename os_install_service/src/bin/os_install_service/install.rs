@@ -128,6 +128,12 @@ fn run_chromeos_install(dest: &Path, boot_mode: BootMode) -> Result {
     cmd.arg("--dst").arg(dest);
     // Don't ask questions.
     cmd.arg("--yes");
+    // Don't check if the destination drive is removable.
+    // `os_install_service` has already taken the
+    // "removableness" of devices into account when choosing the
+    // destination drive, and we don't want `chromeos-install` to
+    // contest that decision and fail with an error.
+    cmd.arg("--skip_dst_removable");
 
     if boot_mode == BootMode::Uefi {
         cmd.args(["--target_bios", "efi"]);
