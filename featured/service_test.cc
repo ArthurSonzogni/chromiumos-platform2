@@ -40,4 +40,22 @@ TEST(FeatureCommand, FileNotExistsTest) {
   ASSERT_FALSE(c2.Execute());
 }
 
+TEST(FeatureCommand, MkdirTest) {
+  if (base::PathExists(base::FilePath("/sys/kernel/tracing/instances/"))) {
+    const std::string sys_path = "/sys/kernel/tracing/instances/unittest";
+    EXPECT_FALSE(base::PathExists(base::FilePath(sys_path)));
+    EXPECT_TRUE(featured::MkdirCommand(sys_path).Execute());
+    EXPECT_TRUE(base::PathExists(base::FilePath(sys_path)));
+    EXPECT_TRUE(base::DeleteFile(base::FilePath(sys_path)));
+    EXPECT_FALSE(base::PathExists(base::FilePath(sys_path)));
+  }
+
+  if (base::PathExists(base::FilePath("/mnt"))) {
+    const std::string mnt_path = "/mnt/notallowed";
+    EXPECT_FALSE(base::PathExists(base::FilePath(mnt_path)));
+    EXPECT_FALSE(featured::MkdirCommand(mnt_path).Execute());
+    EXPECT_FALSE(base::PathExists(base::FilePath(mnt_path)));
+  }
+}
+
 }  // namespace featured
