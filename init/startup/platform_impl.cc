@@ -63,7 +63,7 @@ int Platform::Ioctl(int fd, unsigned long request, int* arg1) {
 
 void Platform::BootAlert(const std::string& arg) {
   brillo::ProcessImpl boot_alert;
-  boot_alert.AddArg("chromeos-boot-alert");
+  boot_alert.AddArg("/sbin/chromeos-boot-alert");
   boot_alert.AddArg(arg);
   int ret = boot_alert.Run();
   if (ret != 0) {
