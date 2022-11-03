@@ -373,6 +373,7 @@ class AuthSession final {
   // based on |initial_keyset|.
   CryptohomeStatus AddVaultKeyset(const KeyData& key_data,
                                   bool initial_keyset,
+                                  VaultKeysetIntent vk_backup_intent,
                                   std::unique_ptr<KeyBlobs> key_blobs,
                                   std::unique_ptr<AuthBlockState> auth_state);
 

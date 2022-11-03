@@ -439,7 +439,8 @@ void AuthSession::CreateAndPersistVaultKeyset(
 
   CryptohomeStatus status =
       AddVaultKeyset(key_data, !user_has_configured_credential_,
-                     std::move(key_blobs), std::move(auth_state));
+                     VaultKeysetIntent{.backup = false}, std::move(key_blobs),
+                     std::move(auth_state));
 
   if (!status.ok()) {
     std::move(on_done).Run(
@@ -479,14 +480,11 @@ void AuthSession::CreateAndPersistVaultKeyset(
 CryptohomeStatus AuthSession::AddVaultKeyset(
     const KeyData& key_data,
     bool initial_keyset,
+    VaultKeysetIntent vk_backup_intent,
     std::unique_ptr<KeyBlobs> key_blobs,
     std::unique_ptr<AuthBlockState> auth_state) {
   DCHECK(key_blobs);
   DCHECK(auth_state);
-  VaultKeysetIntent vk_backup_intent = {
-      .backup = enable_create_backup_vk_with_uss_ &&
-                IsUserSecretStashExperimentEnabled() &&
-                !user_has_configured_credential_};
   if (initial_keyset) {
     if (!file_system_keyset_.has_value()) {
       LOG(ERROR) << "AddInitialKeyset: file_system_keyset is invalid.";
@@ -2210,6 +2208,7 @@ void AuthSession::PersistAuthFactorToUserSecretStash(
     // all type of VaultKeysets, i.e backup, migrated, regular. So override is
     // only to guarantee power glitches don't cause any issue.
     status = AddVaultKeyset(key_data, !user_has_configured_auth_factor_,
+                            VaultKeysetIntent{.backup = true},
                             std::move(key_blobs), std::move(auth_block_state));
     if (!status.ok()) {
       // Abort the operation, on the next run VaultKeyset with the same label
