@@ -18,7 +18,7 @@ use crate::util::get_command_output;
 /// The return value is a string in /dev, for example "/dev/sda".
 fn get_root_disk_device_path() -> Result<PathBuf, Error> {
     let mut command = process::Command::new("rootdev");
-    command.args(&["-s", "-d"]);
+    command.args(["-s", "-d"]);
     let output = get_command_output(command)?;
     let output = String::from_utf8(output)?;
     let trimmed = output.trim();

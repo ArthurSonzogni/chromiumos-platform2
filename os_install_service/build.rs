@@ -1,3 +1,7 @@
+// Copyright 2022 The ChromiumOS Authors
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
 use serde::Deserialize;
 use std::path::PathBuf;
 use std::process::Command;
@@ -90,7 +94,7 @@ fn main() {
 
     // Use clang to get an AST in JSON.
     let output = Command::new(get_clang_name())
-        .args(&["-Xclang", "-ast-dump=json", "-fsyntax-only"])
+        .args(["-Xclang", "-ast-dump=json", "-fsyntax-only"])
         .arg(header_path)
         .output()
         .unwrap();

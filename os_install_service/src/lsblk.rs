@@ -102,7 +102,7 @@ impl LsBlkOutput {
 /// Returns the raw output of lsblk.
 fn get_lsblk_output(target_drive: Option<&Path>) -> Result<Vec<u8>, Error> {
     let mut command = process::Command::new("lsblk");
-    command.args(&[
+    command.args([
         // Print size in bytes
         "--bytes",
         // Select the fields to output

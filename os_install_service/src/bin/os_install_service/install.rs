@@ -88,7 +88,7 @@ fn choose_destination_device_path(mut disks: Vec<Disk>) -> Option<PathBuf> {
 /// Set up the disk with an empty GPT table.
 fn reformat(dest: &Path) {
     let mut cmd = Command::new("/usr/sbin/parted");
-    cmd.arg("--script").arg(dest).args(&["mklabel", "gpt"]);
+    cmd.arg("--script").arg(dest).args(["mklabel", "gpt"]);
 
     if let Err(err) = util::get_command_output(cmd) {
         // Log the error but otherwise ignore it.
@@ -130,7 +130,7 @@ fn run_chromeos_install(dest: &Path, boot_mode: BootMode) -> Result {
     cmd.arg("--yes");
 
     if boot_mode == BootMode::Uefi {
-        cmd.args(&["--target_bios", "efi"]);
+        cmd.args(["--target_bios", "efi"]);
     }
 
     util::run_command_log_output(cmd).map_err(Error::Process)?;
