@@ -19,6 +19,8 @@
 namespace power_manager {
 namespace system {
 
+constexpr char kCpuInfoPath[] = "/proc/cpuinfo";
+
 namespace {
 // Path to write to configure system suspend mode.
 static constexpr char kSuspendModePath[] = "/sys/power/mem_sleep";
@@ -134,15 +136,14 @@ void SuspendConfigurator::ConfigureConsoleForSuspend() {
   bool pref_val = true;
   bool enable_console = true;
 
-// Limit disabling console for S0iX to x86 (b/175428322).
-// TODO(b/219973337): Limit this work around to Intel only. Not needed for AMD.
-#if defined(__x86_64__)
-  if (IsSerialConsoleEnabled()) {
-    // If S0iX is enabled, default to disabling console (b/63737106).
-    if (prefs_->GetBool(kSuspendToIdlePref, &pref_val) && pref_val)
-      enable_console = false;
+  // Limit disabling console for S0iX to Intel CPUs (b/175428322).
+  if (HasIntelCpu()) {
+    if (IsSerialConsoleEnabled()) {
+      // If S0iX is enabled, default to disabling console (b/63737106).
+      if (prefs_->GetBool(kSuspendToIdlePref, &pref_val) && pref_val)
+        enable_console = false;
+    }
   }
-#endif
 
   // Overwrite the default if the pref is set.
   if (prefs_->GetBool(kEnableConsoleDuringSuspendPref, &pref_val))
@@ -208,6 +209,43 @@ bool SuspendConfigurator::IsSerialConsoleEnabled() {
   }
 
   return rc;
+}
+
+bool SuspendConfigurator::ReadCpuInfo(std::string& cpuInfo) {
+  base::FilePath cpuInfoPath =
+      GetPrefixedFilePath(base::FilePath(kCpuInfoPath));
+
+  if (!base::ReadFileToString(base::FilePath(cpuInfoPath), &cpuInfo)) {
+    LOG(WARNING) << "Failed to read from: " << cpuInfoPath;
+    return false;
+  }
+  return true;
+}
+
+bool SuspendConfigurator::HasIntelCpu() {
+  std::string contents;
+
+  if (!ReadCpuInfo(contents)) {
+    return false;
+  }
+
+  std::vector<std::string> lines = base::SplitString(
+      contents, "\n", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
+  for (const std::string& line : lines) {
+    if (base::StartsWith(line, "vendor_id", base::CompareCase::SENSITIVE)) {
+      std::vector<std::string> vendorIdInfo = base::SplitString(
+          line, ":", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
+      if (vendorIdInfo.size() != 2 || vendorIdInfo[0] != "vendor_id") {
+        LOG(WARNING) << "Unexpected vendor_id format detected";
+        continue;
+      }
+      // Found a vendor_id label. Assume other vendor_id labels have the same
+      // value.
+      return vendorIdInfo[1] == "GenuineIntel";
+    }
+  }
+  LOG(WARNING) << "No vendor_id found";
+  return false;
 }
 
 }  // namespace system

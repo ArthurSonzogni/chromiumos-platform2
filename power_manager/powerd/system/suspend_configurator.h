@@ -18,6 +18,8 @@ class PrefsInterface;
 
 namespace system {
 
+extern const char kCpuInfoPath[];
+
 // Interface to configure suspend-related kernel parameters on startup or
 // before suspend as needed.
 class SuspendConfiguratorInterface {
@@ -69,6 +71,13 @@ class SuspendConfigurator : public SuspendConfiguratorInterface {
 
   // Returns true if the serial console is enabled.
   bool IsSerialConsoleEnabled();
+
+  // Get cpu information of the system
+  // Reads from /proc/cpuinfo by default
+  bool ReadCpuInfo(std::string& cpuInfo);
+
+  // Returns true if running on an Intel CPU.
+  bool HasIntelCpu();
 
   // Reads preferences and sets |suspend_mode_|.
   void ReadSuspendMode();
