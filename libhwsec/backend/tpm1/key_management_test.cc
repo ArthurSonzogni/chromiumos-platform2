@@ -520,6 +520,63 @@ TEST_F(BackendKeyManagementTpm1Test, LoadKey) {
               IsOkAndHolds(kFakeKeyHandle));
 }
 
+TEST_F(BackendKeyManagementTpm1Test, LoadKeyWithAuth) {
+  const brillo::SecureBlob kFakeAuthValue("auth_value");
+  const OperationPolicy kFakePolicy{
+      .permission =
+          Permission{
+              .auth_value = kFakeAuthValue,
+          },
+  };
+  const brillo::Blob kFakeKeyBlob = brillo::BlobFromString("fake_key_blob");
+  const brillo::Blob kFakePubkey = brillo::BlobFromString("fake_pubkey");
+  const uint32_t kFakeKeyHandle = 0x1337;
+  const uint32_t kFakeAuthPolicyHandle = 0x1773;
+
+  SetupSrk();
+
+  EXPECT_CALL(
+      proxy_->GetMock().overalls,
+      Ospi_Context_LoadKeyByBlob(kDefaultContext, kDefaultSrkHandle, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<4>(kFakeKeyHandle), Return(TPM_SUCCESS)));
+
+  brillo::Blob fake_pubkey = kFakePubkey;
+  EXPECT_CALL(proxy_->GetMock().overalls,
+              Ospi_Key_GetPubKey(kFakeKeyHandle, _, _))
+      .WillOnce(DoAll(SetArgPointee<1>(kFakePubkey.size()),
+                      SetArgPointee<2>(fake_pubkey.data()),
+                      Return(TPM_SUCCESS)));
+
+  EXPECT_CALL(proxy_->GetMock().overalls,
+              Ospi_Context_CreateObject(kDefaultContext, TSS_OBJECT_TYPE_POLICY,
+                                        TSS_POLICY_USAGE, _))
+      .WillOnce(
+          DoAll(SetArgPointee<3>(kFakeAuthPolicyHandle), Return(TPM_SUCCESS)));
+
+  EXPECT_CALL(
+      proxy_->GetMock().overalls,
+      Ospi_Policy_SetSecret(kFakeAuthPolicyHandle, TSS_SECRET_MODE_SHA1, _, _))
+      .With(Args<3, 2>(ElementsAreArray(kFakeAuthValue)))
+      .WillOnce(Return(TPM_SUCCESS));
+
+  EXPECT_CALL(proxy_->GetMock().overalls,
+              Ospi_Policy_AssignToObject(kFakeAuthPolicyHandle, kFakeKeyHandle))
+      .WillOnce(Return(TPM_SUCCESS));
+
+  auto result = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
+      kFakePolicy, kFakeKeyBlob, Backend::KeyManagement::AutoReload::kFalse);
+
+  ASSERT_OK(result);
+
+  EXPECT_THAT(middleware_->CallSync<&Backend::KeyManagement::ReloadIfPossible>(
+                  result->GetKey()),
+              IsOk());
+
+  EXPECT_THAT(middleware_->CallSync<&Backend::KeyManagement::GetKeyHandle>(
+                  result->GetKey()),
+              IsOkAndHolds(kFakeKeyHandle));
+}
+
 TEST_F(BackendKeyManagementTpm1Test, LoadAutoReloadKey) {
   const OperationPolicy kFakePolicy{};
   const brillo::Blob kFakeKeyBlob = brillo::BlobFromString("fake_key_blob");
@@ -717,6 +774,7 @@ TEST_F(BackendKeyManagementTpm1Test, WrapRsaKeyWithAuth) {
   const uint32_t kFakeKeyHandle2 = 0x1338;
   const uint32_t kFakePolicyHandle = 0x7331;
   const uint32_t kFakeAuthPolicyHandle = 0x7131;
+  const uint32_t kFakeAuthPolicyHandle2 = 0x7132;
 
   SetupSrk();
 
@@ -767,7 +825,9 @@ TEST_F(BackendKeyManagementTpm1Test, WrapRsaKeyWithAuth) {
               Ospi_Context_CreateObject(kDefaultContext, TSS_OBJECT_TYPE_POLICY,
                                         TSS_POLICY_USAGE, _))
       .WillOnce(
-          DoAll(SetArgPointee<3>(kFakeAuthPolicyHandle), Return(TPM_SUCCESS)));
+          DoAll(SetArgPointee<3>(kFakeAuthPolicyHandle), Return(TPM_SUCCESS)))
+      .WillOnce(
+          DoAll(SetArgPointee<3>(kFakeAuthPolicyHandle2), Return(TPM_SUCCESS)));
 
   EXPECT_CALL(proxy_->GetMock().overalls,
               Ospi_Policy_SetSecret(kFakeAuthPolicyHandle, TSS_SECRET_MODE_NONE,
@@ -775,7 +835,17 @@ TEST_F(BackendKeyManagementTpm1Test, WrapRsaKeyWithAuth) {
       .WillOnce(Return(TPM_SUCCESS));
 
   EXPECT_CALL(proxy_->GetMock().overalls,
+              Ospi_Policy_SetSecret(kFakeAuthPolicyHandle2,
+                                    TSS_SECRET_MODE_NONE, 0, nullptr))
+      .WillOnce(Return(TPM_SUCCESS));
+
+  EXPECT_CALL(proxy_->GetMock().overalls,
               Ospi_Policy_AssignToObject(kFakeAuthPolicyHandle, kFakeKeyHandle))
+      .WillOnce(Return(TPM_SUCCESS));
+
+  EXPECT_CALL(
+      proxy_->GetMock().overalls,
+      Ospi_Policy_AssignToObject(kFakeAuthPolicyHandle2, kFakeKeyHandle2))
       .WillOnce(Return(TPM_SUCCESS));
 
   EXPECT_CALL(proxy_->GetMock().overalls,

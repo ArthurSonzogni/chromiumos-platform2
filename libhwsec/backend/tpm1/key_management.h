@@ -44,6 +44,7 @@ struct KeyTpm1 {
   NoDefault<TSS_HKEY> key_handle;
   NoDefault<Cache> cache;
   std::optional<ScopedTssKey> scoped_key;
+  std::optional<ScopedTssPolicy> scoped_policy;
   std::optional<KeyReloadDataTpm1> reload_data;
 };
 
@@ -111,6 +112,11 @@ class KeyManagementTpm1 : public Backend::KeyManagement,
       uint32_t encryption_scheme);
 
  private:
+  struct KeyPolicyPair {
+    ScopedTssKey tss_key;
+    ScopedTssPolicy tss_policy;
+  };
+
   StatusOr<CreateKeyResult> CreateRsaKey(const OperationPolicySetting& policy,
                                          const CreateKeyOptions& options,
                                          AutoReload auto_reload);
@@ -118,12 +124,12 @@ class KeyManagementTpm1 : public Backend::KeyManagement,
       const OperationPolicySetting& policy,
       const CreateKeyOptions& options,
       AutoReload auto_reload);
-  StatusOr<ScopedTssKey> LoadKeyBlob(const OperationPolicy& policy,
-                                     const brillo::Blob& key_blob);
+  StatusOr<KeyPolicyPair> LoadKeyBlob(const OperationPolicy& policy,
+                                      const brillo::Blob& key_blob);
   StatusOr<ScopedKey> LoadKeyInternal(
       KeyTpm1::Type key_type,
       uint32_t key_handle,
-      std::optional<ScopedTssKey> scoped_key,
+      std::optional<KeyPolicyPair> key_policy_pair,
       std::optional<KeyReloadDataTpm1> reload_data);
   StatusOr<brillo::Blob> GetPubkeyBlob(uint32_t key_handle);
   StatusOr<uint32_t> GetSrk();

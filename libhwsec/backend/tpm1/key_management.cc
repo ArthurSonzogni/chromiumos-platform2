@@ -243,6 +243,9 @@ StatusOr<KeyManagementTpm1::CreateKeyResult> KeyManagementTpm1::CreateRsaKey(
   TSS_FLAG init_flags = TSS_KEY_VOLATILE | TSS_KEY_NOT_MIGRATABLE |
                         GetKeySize(options.rsa_modulus_bits.value_or(
                             kDefaultTpmRsaKeyModulusBit));
+  if (policy.permission.auth_value.has_value()) {
+    init_flags |= TSS_KEY_AUTHORIZATION;
+  }
 
   // In this case, the key is not decrypt only. It can be used to sign the
   // data too. No easy way to make a decrypt only key here.
@@ -329,11 +332,14 @@ StatusOr<KeyManagementTpm1::CreateKeyResult> KeyManagementTpm1::CreateRsaKey(
     };
   }
 
-  ASSIGN_OR_RETURN(
-      ScopedKey key,
-      LoadKeyInternal(key_type, key_handle, std::move(pcr_bound_key),
-                      /*reload_data=*/std::nullopt),
-      _.WithStatus<TPMError>("Failed to load created RSA key"));
+  ASSIGN_OR_RETURN(ScopedKey key,
+                   LoadKeyInternal(key_type, key_handle,
+                                   KeyPolicyPair{
+                                       .tss_key = std::move(pcr_bound_key),
+                                       .tss_policy = std::move(auth_policy),
+                                   },
+                                   /*reload_data=*/std::nullopt),
+                   _.WithStatus<TPMError>("Failed to load created RSA key"));
 
   return CreateKeyResult{
       .key = std::move(key),
@@ -383,6 +389,9 @@ StatusOr<KeyManagementTpm1::CreateKeyResult> KeyManagementTpm1::WrapRSAKey(
   TSS_FLAG init_flags = TSS_KEY_VOLATILE | TSS_KEY_MIGRATABLE |
                         GetKeySize(options.rsa_modulus_bits.value_or(
                             kDefaultTpmRsaKeyModulusBit));
+  if (policy.permission.auth_value.has_value()) {
+    init_flags |= TSS_KEY_AUTHORIZATION;
+  }
 
   // In this case, the key is not decrypt only. It can be used to sign the
   // data too. No easy way to make a decrypt only key here.
@@ -484,6 +493,8 @@ StatusOr<KeyManagementTpm1::CreateKeyResult> KeyManagementTpm1::WrapRSAKey(
       backend_.GetConfigTpm1().ToOperationPolicy(policy),
       _.WithStatus<TPMError>("Failed to convert setting to policy"));
 
+  // TODO(b/257208272): We should reuse the auth_policy, so we don't need to
+  // load it again.
   ASSIGN_OR_RETURN(
       ScopedKey key, LoadKey(op_policy, key_blob, auto_reload),
       _.WithStatus<TPMError>("Failed to load created software RSA key"));
@@ -507,10 +518,10 @@ StatusOr<KeyManagementTpm1::CreateKeyResult> KeyManagementTpm1::WrapECCKey(
 StatusOr<ScopedKey> KeyManagementTpm1::LoadKey(const OperationPolicy& policy,
                                                const brillo::Blob& key_blob,
                                                AutoReload auto_reload) {
-  ASSIGN_OR_RETURN(ScopedTssKey key, LoadKeyBlob(policy, key_blob),
+  ASSIGN_OR_RETURN(KeyPolicyPair result, LoadKeyBlob(policy, key_blob),
                    _.WithStatus<TPMError>("Failed to load key blob"));
 
-  uint32_t key_handle = key.value();
+  uint32_t key_handle = result.tss_key.value();
 
   KeyTpm1::Type key_type = KeyTpm1::Type::kTransientKey;
   std::optional<KeyReloadDataTpm1> reload_data;
@@ -522,10 +533,10 @@ StatusOr<ScopedKey> KeyManagementTpm1::LoadKey(const OperationPolicy& policy,
     };
   }
 
-  return LoadKeyInternal(key_type, key_handle, std::move(key), reload_data);
+  return LoadKeyInternal(key_type, key_handle, std::move(result), reload_data);
 }
 
-StatusOr<ScopedTssKey> KeyManagementTpm1::LoadKeyBlob(
+StatusOr<KeyManagementTpm1::KeyPolicyPair> KeyManagementTpm1::LoadKeyBlob(
     const OperationPolicy& policy, const brillo::Blob& key_blob) {
   ASSIGN_OR_RETURN(ScopedKey srk,
                    GetPersistentKey(PersistentKeyType::kStorageRootKey));
@@ -543,7 +554,19 @@ StatusOr<ScopedTssKey> KeyManagementTpm1::LoadKeyBlob(
                       mutable_key_blob.data(), local_key_handle.ptr())))
       .WithStatus<TPMError>("Failed to call Ospi_Context_LoadKeyByBlob");
 
-  return local_key_handle;
+  ScopedTssPolicy auth_policy(overalls, context);
+  if (policy.permission.auth_value.has_value()) {
+    ASSIGN_OR_RETURN(
+        auth_policy,
+        AddAuthPolicy(overalls, context, local_key_handle,
+                      policy.permission.auth_value.value()),
+        _.WithStatus<TPMError>("Failed to add auth policy for load key"));
+  }
+
+  return KeyPolicyPair{
+      .tss_key = std::move(local_key_handle),
+      .tss_policy = std::move(auth_policy),
+  };
 }
 
 StatusOr<ScopedKey> KeyManagementTpm1::GetPersistentKey(
@@ -569,7 +592,7 @@ StatusOr<ScopedKey> KeyManagementTpm1::GetPersistentKey(
   ASSIGN_OR_RETURN(
       ScopedKey key,
       LoadKeyInternal(KeyTpm1::Type::kPersistentKey, key_handle,
-                      /*scoped_key=*/std::nullopt,
+                      /*key_policy_pair=*/std::nullopt,
                       /*reload_data=*/std::nullopt),
       _.WithStatus<TPMError>("Failed to side load persistent key"));
 
@@ -619,7 +642,7 @@ StatusOr<ECCPublicInfo> KeyManagementTpm1::GetECCPublicInfo(Key key) {
 
 StatusOr<ScopedKey> KeyManagementTpm1::SideLoadKey(uint32_t key_handle) {
   return LoadKeyInternal(KeyTpm1::Type::kPersistentKey, key_handle,
-                         /*scoped_key=*/std::nullopt,
+                         /*key_policy_pair=*/std::nullopt,
                          /*reload_data=*/std::nullopt);
 }
 
@@ -646,10 +669,17 @@ StatusOr<brillo::Blob> KeyManagementTpm1::GetPubkeyBlob(uint32_t key_handle) {
 StatusOr<ScopedKey> KeyManagementTpm1::LoadKeyInternal(
     KeyTpm1::Type key_type,
     uint32_t key_handle,
-    std::optional<ScopedTssKey> scoped_key,
+    std::optional<KeyPolicyPair> key_policy_pair,
     std::optional<KeyReloadDataTpm1> reload_data) {
   ASSIGN_OR_RETURN(brillo::Blob && pubkey_blob, GetPubkeyBlob(key_handle),
                    _.WithStatus<TPMError>("Failed to get pubkey blob"));
+
+  std::optional<ScopedTssKey> scoped_key;
+  std::optional<ScopedTssPolicy> scoped_policy;
+  if (key_policy_pair.has_value()) {
+    scoped_key = std::move(key_policy_pair->tss_key);
+    scoped_policy = std::move(key_policy_pair->tss_policy);
+  }
 
   KeyToken token = current_token_++;
   key_map_.emplace(token, KeyTpm1{
@@ -660,6 +690,7 @@ StatusOr<ScopedKey> KeyManagementTpm1::LoadKeyInternal(
                                       .pubkey_blob = std::move(pubkey_blob),
                                   },
                               .scoped_key = std::move(scoped_key),
+                              .scoped_policy = std::move(scoped_policy),
                               .reload_data = std::move(reload_data),
                           });
 
@@ -706,12 +737,13 @@ Status KeyManagementTpm1::ReloadIfPossible(Key key) {
   }
 
   ASSIGN_OR_RETURN(
-      ScopedTssKey scoped_key,
+      KeyPolicyPair result,
       LoadKeyBlob(key_data.reload_data->policy, key_data.reload_data->key_blob),
       _.WithStatus<TPMError>("Failed to load key blob"));
 
-  key_data.key_handle = scoped_key.value();
-  key_data.scoped_key = std::move(scoped_key);
+  key_data.key_handle = result.tss_key.value();
+  key_data.scoped_key = std::move(result.tss_key);
+  key_data.scoped_policy = std::move(result.tss_policy);
 
   return OkStatus();
 }
