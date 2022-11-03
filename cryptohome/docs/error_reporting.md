@@ -352,6 +352,15 @@ done;
 Note that this technique should not be applied when cherry-picking across
 branches. See the section on cherry-picking across branches.
 
+### Decoding TPM Error with location_db.py
+
+The location_db.py tool can also be used to decode numeric TPM error, for example:
+```
+(cros_sdk) /mnt/host/source/src/platform2 $ ./cryptohome/error/tool/location_db.py --decode-tpm 0x7004
+(cros_sdk) /mnt/host/source/src/platform2 $ ./cryptohome/error/tool/location_db.py --decode-tpm 5
+```
+Both hexadecimals and decimals are supported.
+
 ## Other considerations
 
 ### Cherry-picking across branches

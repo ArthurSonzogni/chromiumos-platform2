@@ -1539,6 +1539,25 @@ class DBTool:
                 symbol = self.db.symbols[self.db.value_to_symbol[val]]
                 print("%s" % (symbol,))
 
+    def decode_tpm(self, tpm_err: str) -> None:
+        """Print the TPM error's textual representation.
+
+        Args:
+            tpm_err: The TPM error, in decimal or hex.
+        """
+
+        try:
+            value = int(tpm_err, 0)
+        except ValueError:
+            print(
+                "Please specify the TPM value in decimal or hexidecimal, "
+                "for example: 0x84 or 132"
+            )
+            return
+
+        err_str = TPMErrorDecoder.decode(value)
+        print("TPM Error: %s" % (err_str,))
+
     def _read_stdin_ints(self) -> List[int]:
         """Reads a list of int line-by-line from stdin."""
 
@@ -1723,6 +1742,11 @@ class DBToolCommandLine:
             default=None,
         )
         self.parser.add_argument(
+            "--decode-tpm",
+            help="Decode a TPM error, could be decimal or hex.",
+            default=None,
+        )
+        self.parser.add_argument(
             "--update-enums-xml-with-error-loc",
             help=(
                 "Update the enums.xml, will need to supply chromium source "
@@ -1786,6 +1810,8 @@ class DBToolCommandLine:
             self.db_tool.lookup_symbol(int(self.args.lookup))
         elif self.args.decode is not None:
             self.db_tool.decode_stack(self.args.decode)
+        elif self.args.decode_tpm is not None:
+            self.db_tool.decode_tpm(self.args.decode_tpm)
         elif self.args.update_enums_xml_with_error_loc:
             self.db_tool.update_enums_xml_with_error_loc(self.args.chromium_src)
         elif self.args.update_enums_xml_with_leaf_and_tpm_loc:
