@@ -17,6 +17,7 @@
 	"  -h, --help         Show this help message and exit\n"                       \
 	"  -v, --verbose      Print debug messages to stderr that can help diagnose\n" \
 	"                     identity probe errors\n"                                 \
+	"  -f, --filter KEY   Print only the value matching KEY, no shell quoting\n"   \
 	"  --sysroot=SYSROOT  Specify an alternative root directory for testing\n"
 
 static void print_help(const char *prog_name)
@@ -43,21 +44,31 @@ int main(int argc, char *argv[])
 			.val = 'v',
 		},
 		{
+			.name = "filter",
+			.has_arg = required_argument,
+			.val = 'f',
+		},
+		{
 			.name = "sysroot",
 			.has_arg = required_argument,
 			.val = OPT_SYSROOT,
 		},
 	};
+	const char *filter = NULL;
 	struct crosid_probed_device_data device_data;
 	int matched_config_index;
 
-	while ((opt = getopt_long(argc, argv, ":hv", long_opts, NULL)) != -1) {
+	while ((opt = getopt_long(argc, argv, ":hvf:", long_opts, NULL)) !=
+	       -1) {
 		switch (opt) {
 		case 'h':
 			help_requested = true;
 			break;
 		case 'v':
 			log_level++;
+			break;
+		case 'f':
+			filter = optarg;
 			break;
 		case OPT_SYSROOT:
 			crosid_set_sysroot(optarg);
@@ -87,7 +98,7 @@ int main(int argc, char *argv[])
 		return 1;
 
 	matched_config_index = crosid_match(&device_data);
-	crosid_print_vars(stdout, &device_data, matched_config_index);
+	crosid_print_vars(stdout, filter, &device_data, matched_config_index);
 	crosid_probe_free(&device_data);
 	return matched_config_index < 0;
 }

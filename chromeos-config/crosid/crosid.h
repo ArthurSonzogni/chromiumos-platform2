@@ -156,11 +156,12 @@ int crosid_match(struct crosid_probed_device_data *data);
  * crosid_print_vars() - Print system info
  *
  * @out: Output file
+ * @filter: If non-NULL, print only this value.
  * @data: The data struct, created from the result of a crosid_probe.
  * @config_idx: The config index from crosid_match.
  */
-void crosid_print_vars(FILE *out, struct crosid_probed_device_data *data,
-		       int config_idx);
+void crosid_print_vars(FILE *out, const char *filter,
+		       struct crosid_probed_device_data *data, int config_idx);
 
 /**
  * crosid_probe_free() - Free memory allocated by a crosid_probe()

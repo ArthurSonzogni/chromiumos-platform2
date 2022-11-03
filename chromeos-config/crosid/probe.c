@@ -116,24 +116,40 @@ int crosid_probe(struct crosid_probed_device_data *out)
 	return 0;
 }
 
-void crosid_print_vars(FILE *out, struct crosid_probed_device_data *data,
-		       int config_idx)
+static void print_val(FILE *out, const char *key, const char *filter,
+		      const char *format, ...)
+{
+	if (filter && strcmp(filter, key))
+		return;
+
+	if (!filter)
+		fprintf(out, "%s='", key);
+
+	va_list args;
+	va_start(args, format);
+	vfprintf(out, format, args);
+	va_end(args);
+
+	if (!filter)
+		fprintf(out, "'\n");
+}
+
+void crosid_print_vars(FILE *out, const char *filter,
+		       struct crosid_probed_device_data *data, int config_idx)
 {
 	if (data->has_sku_id)
-		fprintf(out, "SKU=%u\n", data->sku_id);
+		print_val(out, "SKU", filter, "%u", data->sku_id);
 	else
-		fprintf(out, "SKU=none\n");
+		print_val(out, "SKU", filter, "none");
 
 	if (config_idx >= 0)
-		fprintf(out, "CONFIG_INDEX=%d\n", config_idx);
+		print_val(out, "CONFIG_INDEX", filter, "%d", config_idx);
 	else
-		fprintf(out, "CONFIG_INDEX=unknown\n");
+		print_val(out, "CONFIG_INDEX", filter, "unknown");
 
-	if (data->firmware_manifest_key)
-		fprintf(out, "FIRMWARE_MANIFEST_KEY='%s'\n",
-			data->firmware_manifest_key);
-	else
-		fprintf(out, "FIRMWARE_MANIFEST_KEY=\n");
+	print_val(out, "FIRMWARE_MANIFEST_KEY", filter, "%s",
+		  data->firmware_manifest_key ? data->firmware_manifest_key :
+						"");
 }
 
 void crosid_probe_free(struct crosid_probed_device_data *data)

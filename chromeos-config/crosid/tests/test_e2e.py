@@ -564,3 +564,32 @@ def test_frid_match_fdt(tmp_path, executable_path):
         "CONFIG_INDEX": "2",
         "FIRMWARE_MANIFEST_KEY": "limozeen",
     }
+
+
+@pytest.mark.parametrize(
+    ["key", "expected_result"],
+    [
+        ("CONFIG_INDEX", "4"),
+        ("SKU", "7"),
+        ("FIRMWARE_MANIFEST_KEY", "alan"),
+    ],
+)
+def test_filter_output(tmp_path, executable_path, key, expected_result):
+    make_fake_sysroot(
+        tmp_path,
+        smbios_name="Snappy",
+        smbios_sku=7,
+        vpd_values={"customization_id": "DOLPHIN-ALAN"},
+        configs=REEF_CONFIGS,
+    )
+
+    result = subprocess.run(
+        [executable_path, "--sysroot", tmp_path, "-f", key],
+        check=True,
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        encoding="utf-8",
+    )
+
+    assert result.stdout == expected_result
