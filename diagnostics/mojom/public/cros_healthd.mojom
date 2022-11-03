@@ -515,8 +515,9 @@ interface CrosHealthdDiagnosticsService {
   // platform. This routine checks that the device's sensors are working
   // correctly by monitoring the sensor sample data without user interaction.
   // This routine only support sensitive sensors including accelerometers,
-  // gyro sensors, gravity sensors and magnetometers. This routine is only
-  // available if GetAvailableRoutines returned kSensitiveSensor.
+  // gyro sensors, gravity sensors and magnetometers.
+  // The availability of this routine can be determined by checking that
+  // kSensitiveSensor is returned by GetAvailableRoutines.
   //
   // The response:
   // * |response| - contains a unique identifier and status for the created
@@ -538,8 +539,9 @@ interface CrosHealthdDiagnosticsService {
 
   // Requests that the Fingerprint routine is created and started on the
   // platform. This routine checks whether the fingerprint module is healthy or
-  // not. The routine is only available when GetAvailableRoutines returned
-  // kFingerprint.
+  // not.
+  // The availability of this routine can be determined by checking that
+  // kFingerprint is returned by GetAvailableRoutines.
   //
   // Note that this routine can be run ONLY when WP is off, so it'll only be
   // used in the RMA center or factory.
@@ -551,8 +553,9 @@ interface CrosHealthdDiagnosticsService {
 
   // Requests that the FingerprintAlive routine is created and started on the
   // platform. This routine checks whether the fingerprint module is alive or
-  // not. The routine is only available when GetAvailableRoutines returned
-  // kFingerprintAlive.
+  // not.
+  // The availability of this routine can be determined by checking that
+  // kFingerprintAlive is returned by GetAvailableRoutines.
   //
   // The response:
   // * |response| - contains a unique identifier and status for the created
