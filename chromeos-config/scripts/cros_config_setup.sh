@@ -12,7 +12,7 @@ set -e
 : "${SQUASHFS_IMAGE:=/usr/share/chromeos-config/configfs.img}"
 : "${MOUNTPOINT:=/run/chromeos-config}"
 
-eval "$(crosid)"
+CONFIG_INDEX="$(crosid -f CONFIG_INDEX)"
 if [ "${CONFIG_INDEX}" = "unknown" ]; then
     echo 'No device identity matched.  Run "crosid -v" for explanation.' >&2
     exit 1

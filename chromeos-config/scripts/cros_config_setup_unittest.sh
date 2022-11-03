@@ -16,8 +16,7 @@ die() {
 (
     # Mocked commands
     crosid() {
-        echo "SKU=none"
-        echo "CONFIG_INDEX=8"
+        echo -n 8
     }
 
     MOUNT_CALLS=()
@@ -41,9 +40,7 @@ die() {
 (
     # Mock crosid this time so we don't match a config
     crosid() {
-        echo "SKU=none"
-        echo "CONFIG_INDEX=unknown"
-        return 1
+        echo -n unknown
     }
 
     if ( source cros_config_setup.sh ) 2>/dev/null; then
