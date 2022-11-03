@@ -11,6 +11,11 @@ pub type SteamAppId = u64;
 pub const BINARY_IDENTITY: &str = "shadercached";
 
 pub const DEFAULT_DBUS_TIMEOUT: Duration = Duration::from_secs(10);
+pub const UNMOUNTER_INTERVAL: Duration = Duration::from_millis(1000);
+pub const MESA_SINGLE_FILE_DIR: &str = "mesa_shader_cache_sf";
+pub const FOZ_DB_LIST_FILE: &str = "foz_db_list.txt";
+pub const PRECOMPILED_CACHE_FILE_NAME: &str = "foz_cache";
+pub const FOZ_CACHE_FILE_NAME: &str = "foz_cache.foz";
 
 // TODO(b/247385169): get these from system_api c++ header instead
 pub const SERVICE_NAME: &str = "org.chromium.ShaderCache";
@@ -20,6 +25,7 @@ pub const MOUNT_SIGNAL_NAME: &str = "ShaderCacheMountStatusChanged";
 pub const INSTALL_METHOD: &str = "Install";
 pub const UNINSTALL_METHOD: &str = "Uninstall";
 pub const PURGE_METHOD: &str = "Purge";
+pub const UNMOUNT_METHOD: &str = "Unmount";
 
 // TODO(b/247385169): get these from system_api c++ header instead
 pub mod dlc_service {

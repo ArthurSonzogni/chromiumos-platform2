@@ -104,7 +104,7 @@ pub async fn main() -> Result<()> {
 
         let c_clone3 = c.clone();
         let mount_points_clone3 = mount_points.clone();
-        // Method Uninstall
+        // Method Purge
         builder.method_with_cr_async(PURGE_METHOD, (), (), move |mut ctx, _, ()| {
             info!("Received purge request");
             let handler = handle_purge(mount_points_clone3.clone(), c_clone3.clone());
@@ -115,8 +115,51 @@ pub async fn main() -> Result<()> {
                 }
             }
         });
+
+        let mount_points_clone4 = mount_points.clone();
+        // Method umount only
+        builder.method_with_cr_async(
+            UNMOUNT_METHOD,
+            ("unmount_request_proto",),
+            (),
+            move |mut ctx, _, (raw_bytes,): (Vec<u8>,)| {
+                info!("Received unmount request");
+                let handler = handle_unmount(raw_bytes, mount_points_clone4.clone());
+                async move {
+                    match handler.await {
+                        Ok(result) => ctx.reply(Ok(result)),
+                        Err(e) => ctx.reply(Err(e)),
+                    }
+                }
+            },
+        );
     });
     cr.insert(PATH_NAME, &[iface_token], ());
+
+    // Periodic unmounter
+    let c_clone_unmounter = c.clone();
+    let mount_points_clone_unmounter = mount_points.clone();
+    tokio::spawn(async move {
+        // Periodic unmount
+        info!(
+            "Periodic unmounter thread stated with interval {:?}",
+            UNMOUNTER_INTERVAL
+        );
+        loop {
+            tokio::time::sleep(UNMOUNTER_INTERVAL).await;
+            let mut mount_map = mount_points_clone_unmounter.write().await;
+            for (vm_id, shader_cache_mount) in mount_map.iter_mut() {
+                if let Err(e) =
+                    process_unmount_queue(vm_id, shader_cache_mount, c_clone_unmounter.clone())
+                {
+                    error!(
+                        "{:?} had unmount failures: {}, retrying after {:?}",
+                        vm_id, e, UNMOUNTER_INTERVAL
+                    )
+                }
+            }
+        }
+    });
 
     // Listen to DlcService DlcStateChanged
     let mr = MatchRule::new_signal(

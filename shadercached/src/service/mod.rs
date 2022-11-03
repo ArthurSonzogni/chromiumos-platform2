@@ -8,15 +8,15 @@ use crate::common::*;
 use crate::shader_cache_mount::*;
 use mount::*;
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use dbus::nonblock::SyncConnection;
 use dbus::MethodErr;
-use libchromeos::sys::{debug, info, warn};
+use libchromeos::sys::{debug, error, info, warn};
 use std::path::Path;
 use std::sync::Arc;
 use system_api::concierge_service::{GetVmGpuCachePathRequest, GetVmGpuCachePathResponse};
 use system_api::dlcservice::DlcState;
-use system_api::shadercached::{InstallRequest, UninstallRequest};
+use system_api::shadercached::{InstallRequest, UninstallRequest, UnmountRequest};
 
 // Path within gpu cache directory that is used for render server cache
 const GPU_RENDER_SERVER_PATH: &str = "render_server";
@@ -64,11 +64,6 @@ pub async fn handle_install(
             .get_mut(&vm_id)
             .ok_or_else(|| MethodErr::failed("Failed to get mount information"))?;
 
-        shader_cache_mount
-            .setup_mount_destination(&vm_id, conn.clone())
-            .await
-            .map_err(to_method_err)?;
-
         // Even if current application is mounted, re-install and re-mount
         shader_cache_mount.mounted = false;
         shader_cache_mount.target_steam_app_id = request.steam_app_id;
@@ -95,6 +90,9 @@ pub async fn handle_uninstall(
         .map_err(|e| dbus::MethodErr::invalid_arg(&e))?;
 
     info!("Uninstall called for app: {}", request.steam_app_id);
+    // Instead of queueing unmount, we attempt to unmount directly here.
+    // Uninstall should only succeed if umounting succeeds immediately
+    // (ie. nothing is using this game's shader cache DLC).
     unmount_dlc(request.steam_app_id, mount_map, conn.clone())
         .await
         .map_err(to_method_err)?;
@@ -199,7 +197,7 @@ pub async fn handle_dlc_state_changed(
         if let Ok(id) = dlc_to_steam_app_id(dlc_state.get_id()) {
             info!("ShaderCache DLC for {} installed, mounting if required", id);
             if let Err(e) = mount_dlc(id, mount_map, conn).await {
-                warn!("Mount failed: {}", e);
+                warn!("Mount failed, {}", e);
             }
         }
     }
@@ -231,6 +229,90 @@ pub async fn handle_purge(
         }
     }
     Ok(())
+}
+
+pub async fn handle_unmount(
+    raw_bytes: Vec<u8>,
+    mount_map: ShaderCacheMountMap,
+) -> Result<(), MethodErr> {
+    let request: UnmountRequest = protobuf::Message::parse_from_bytes(&raw_bytes)
+        .map_err(|e| dbus::MethodErr::invalid_arg(&e))?;
+    let vm_id = VmId {
+        vm_name: request.vm_name,
+        vm_owner_id: request.vm_owner_id,
+    };
+
+    let mut mount_map = mount_map.write().await;
+    if let Some(shader_cache_mount) = mount_map.get_mut(&vm_id) {
+        // If VM had mounted something before but nothing is currently mounted,
+        // unmount will be queued and unmount will succeed because there is
+        // nothing mounted.
+        // Shadercached will fire unmount signal in result, which can be
+        // picked up by `garcon <..> --unmount --wait` process and exit
+        // with success code.
+        // (note: --wait flag probably only needed for tasts and manual
+        // debugging).
+        shader_cache_mount
+            .remove_game_from_db_list(request.steam_app_id)
+            .map_err(to_method_err)?;
+        shader_cache_mount
+            .queue_unmount(request.steam_app_id)
+            .map_err(to_method_err)?;
+        debug!(
+            "Unmount queue for {:?}: {:?}",
+            vm_id, shader_cache_mount.unmount_queue
+        );
+    } else {
+        return Err(MethodErr::failed("VM had never mounted shader cache"));
+    }
+
+    Ok(())
+}
+
+pub fn process_unmount_queue(
+    vm_id: &VmId,
+    shader_cache_mount: &mut ShaderCacheMount,
+    conn: Arc<SyncConnection>,
+) -> Result<()> {
+    let mut errors: Vec<String> = vec![];
+    let mut to_remove: Vec<SteamAppId> = vec![];
+
+    for &steam_app_id in &shader_cache_mount.unmount_queue {
+        debug!("Attempting to unmount {} for {:?}", steam_app_id, vm_id);
+
+        let unmount_result = unmount(shader_cache_mount, steam_app_id);
+        let still_mounted = unmount_result.is_err();
+
+        if steam_app_id == shader_cache_mount.target_steam_app_id {
+            shader_cache_mount.mounted = still_mounted;
+        }
+
+        if let Err(e) =
+            signal_mount_status(still_mounted, vm_id, steam_app_id, &unmount_result, &conn)
+        {
+            error!("Failed to send unmount signal, {:?}\n", e)
+        }
+
+        if still_mounted {
+            errors.push(format!(
+                "Failed to unmount {}, {:?}\n",
+                steam_app_id,
+                unmount_result.unwrap_err()
+            ));
+        } else {
+            debug!("Successfully unmounted {}", steam_app_id);
+            to_remove.push(steam_app_id);
+        }
+    }
+
+    shader_cache_mount
+        .unmount_queue
+        .retain(|steam_app_id| !to_remove.contains(steam_app_id));
+
+    if errors.is_empty() {
+        return Ok(());
+    }
+    Err(anyhow!("{:?}", errors))
 }
 
 pub async fn clean_up(mount_map: ShaderCacheMountMap) {

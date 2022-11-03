@@ -6,8 +6,8 @@ use crate::common::*;
 
 use anyhow::{anyhow, Result};
 use dbus::nonblock::SyncConnection;
-use libchromeos::sys::{debug, info};
-use std::collections::HashMap;
+use libchromeos::sys::{debug, error, info};
+use std::collections::{HashMap, HashSet};
 use std::ffi::OsString;
 use std::fs;
 use std::os::unix::prelude::PermissionsExt;
@@ -18,8 +18,6 @@ use system_api::concierge_service::AddGroupPermissionMesaRequest;
 use tokio::sync::RwLock;
 
 pub type ShaderCacheMountMap = Arc<RwLock<HashMap<VmId, ShaderCacheMount>>>;
-
-const GPU_CACHE_FINAL_MOUNT_DIR: &str = "dlc";
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct VmId {
@@ -32,39 +30,126 @@ pub struct ShaderCacheMount {
     pub mounted: bool,
     // The Steam application that we want to mount to this directory.
     pub target_steam_app_id: SteamAppId,
+    // Steam app ids to unmount in periodic unmount loop
+    pub unmount_queue: HashSet<SteamAppId>,
     // Absolute path to bind-mount DLC contents into.
-    pub absolute_mount_destination_path: PathBuf,
+    absolute_mount_destination_path: PathBuf,
     // Within gpu cache directory, mesa creates a nested sub directory to store
     // shader cache. |relative_mesa_cache_path| is relative to the
     // render_server's base path within crosvm's gpu cache directory
     relative_mesa_cache_path: PathBuf,
+    // After mounting or before unmounting, we need to update foz db list file
+    // so that mesa uses or stops using the path.
+    foz_blob_db_list_path: PathBuf,
 }
 
 impl ShaderCacheMount {
     pub fn new(render_server_path: &Path, target_steam_app_id: u64) -> Result<ShaderCacheMount> {
         let relative_mesa_cache_path =
             get_mesa_cache_relative_path(render_server_path).map_err(to_method_err)?;
-        let absolute_mount_destination_path = render_server_path
-            .join(&relative_mesa_cache_path)
-            .join(GPU_CACHE_FINAL_MOUNT_DIR);
+        let absolute_mount_destination_path = render_server_path.join(&relative_mesa_cache_path);
         Ok(ShaderCacheMount {
             target_steam_app_id,
             mounted: false,
             relative_mesa_cache_path,
             absolute_mount_destination_path,
+            unmount_queue: HashSet::new(),
+            foz_blob_db_list_path: render_server_path.join(FOZ_DB_LIST_FILE),
         })
     }
 
-    pub fn get_str_absolute_mount_destination_path(&self) -> Result<&str> {
-        self.absolute_mount_destination_path
-            .as_os_str()
+    pub fn add_game_to_db_list(&self, steam_app_id: SteamAppId) -> Result<()> {
+        // Add game to foz_db_list so that mesa can start using the directory
+        // for precompiled cache. Adding game to list must happen after the
+        // directory has been created and mounted.
+        if !self.foz_blob_db_list_path.exists() {
+            return Err(anyhow!("Missing foz blob file"));
+        }
+
+        let read_result = fs::read_to_string(&self.foz_blob_db_list_path);
+        if let Err(e) = read_result {
+            return Err(anyhow!("Failed to read contents: {}", e));
+        }
+
+        info!("Adding {} to foz db list", steam_app_id);
+        let mut contents = read_result.unwrap();
+
+        let entry_to_add = format!("{}/{}", steam_app_id, PRECOMPILED_CACHE_FILE_NAME);
+        for line in contents.split('\n') {
+            if line == entry_to_add {
+                debug!("{} already in the entry", steam_app_id);
+                return Ok(());
+            }
+        }
+
+        contents += &entry_to_add;
+        contents += "\n";
+
+        fs::write(&self.foz_blob_db_list_path, contents)?;
+
+        Ok(())
+    }
+
+    pub fn remove_game_from_db_list(&self, steam_app_id: SteamAppId) -> Result<()> {
+        // Remove game from foz_db_list so that mesa stops using the precompiled
+        // cache in it. Removing the game from list must happen before
+        // unmounting and removing the directory.
+        if !self.foz_blob_db_list_path.exists() {
+            return Err(anyhow!("Missing foz blob file"));
+        }
+        let read_result = fs::read_to_string(&self.foz_blob_db_list_path);
+        if let Err(e) = read_result {
+            return Err(anyhow!("Failed to read contents: {}", e));
+        }
+
+        info!("Removing {} from foz db list if it exists", steam_app_id);
+        let contents = read_result.unwrap();
+        let mut write_contents = String::new();
+
+        let entry_to_remove = format!("{}/{}", steam_app_id, PRECOMPILED_CACHE_FILE_NAME);
+        for line in contents.split('\n') {
+            if line != entry_to_remove && !line.is_empty() {
+                write_contents += line;
+                write_contents += "\n";
+            }
+        }
+
+        fs::write(&self.foz_blob_db_list_path, write_contents)?;
+
+        Ok(())
+    }
+
+    pub fn clear_game_db_list(&self) -> Result<()> {
+        if !self.foz_blob_db_list_path.exists() {
+            return Ok(());
+        }
+        fs::write(&self.foz_blob_db_list_path, "")?;
+        Ok(())
+    }
+
+    pub fn queue_unmount(&mut self, steam_app_id: SteamAppId) -> Result<()> {
+        // |steam_app_id_to_unmount| is iterated by background unmounter thread
+        if !self.unmount_queue.insert(steam_app_id) {
+            return Err(anyhow!("Inserting to hash set failed"));
+        }
+        Ok(())
+    }
+
+    pub fn get_str_absolute_mount_destination_path(
+        &self,
+        steam_app_id: SteamAppId,
+    ) -> Result<String> {
+        match self
+            .absolute_mount_destination_path
+            .join(steam_app_id.to_string())
             .to_str()
-            .ok_or_else(|| {
-                anyhow!(
-                    "Failed to get string path for {:?}",
-                    self.absolute_mount_destination_path
-                )
-            })
+        {
+            Some(str) => Ok(String::from(str)),
+            None => Err(anyhow!(
+                "Failed to get string path for {:?}",
+                self.absolute_mount_destination_path
+            )),
+        }
     }
 
     pub fn dlc_content_path(&self) -> Result<String> {
@@ -91,12 +176,19 @@ impl ShaderCacheMount {
     pub async fn setup_mount_destination(
         &self,
         vm_id: &VmId,
+        steam_app_id: SteamAppId,
         conn: Arc<SyncConnection>,
     ) -> Result<()> {
-        if !self.absolute_mount_destination_path.exists() {
+        info!(
+            "Setting up mount destination for {:?}, game {}",
+            vm_id, steam_app_id
+        );
+        let dst_path_str = self.get_str_absolute_mount_destination_path(steam_app_id)?;
+        let dst_path = Path::new(&dst_path_str);
+        if !dst_path.exists() {
             // Attempt to only create the final directory, the parent directory
             // should already exist.
-            if let Err(e) = fs::create_dir(&self.absolute_mount_destination_path) {
+            if let Err(e) = fs::create_dir(&dst_path) {
                 debug!(
                     "Failed create mount directory: {:?}, retrying after getting permissions",
                     e
@@ -107,7 +199,11 @@ impl ShaderCacheMount {
                 debug!("Successfully created mount directory on retry");
             }
             let perm = fs::Permissions::from_mode(0o750);
-            fs::set_permissions(&self.absolute_mount_destination_path, perm)?;
+            if let Err(e) = fs::set_permissions(&dst_path, perm) {
+                error!("Failed to set permissions for {}: {}", dst_path_str, e);
+                fs::remove_dir(dst_path)?;
+                return Err(anyhow!("Failed to set permissions: {}", e));
+            }
         }
 
         Ok(())
@@ -126,21 +222,28 @@ fn get_mesa_cache_relative_path(render_server_path: &Path) -> Result<PathBuf> {
     // where mesa_cache_path is (usually):
     //   <mesa cache type>/<mesa_hash>/<gpu id from driver>
     // This mesa_cache_path has the actual binary cache blobs used by mesa,
-    // along with the 'index' file.
-    let mut absolute_path = Path::new(render_server_path).to_path_buf();
-    let mut relative_path = PathBuf::new();
+    // along with the 'foz_blob.foz' file.
+    let mut absolute_path = Path::new(render_server_path)
+        .to_path_buf()
+        .join(MESA_SINGLE_FILE_DIR);
+    let mut relative_path = Path::new(MESA_SINGLE_FILE_DIR).to_path_buf();
 
     while let Ok(path) = get_single_file(&absolute_path) {
         absolute_path = absolute_path.join(&path);
         relative_path = relative_path.join(&path);
     }
 
-    // Under normal scenarios, index file will always be found since mesa
-    // cache path is always created when Steam launches. However, on edge
-    // cases (ex. manual installation call before Steam launch), mesa index file
-    // may not exist.
-    if !has_index_file(&absolute_path)? {
-        return Err(anyhow!("Invalid mesa cache structure!"));
+    // Mesa initializes the cache directory if there was a need to store things
+    // into the cache: ex. any GUI app launch, like Steam.
+    // When this happens, foz_blob.foz file will always be found.
+    //
+    // However, on edge cases (ex. manual installation call before Steam
+    // launch), foz_blob.foz file may not exist.
+    if !has_file(&absolute_path, FOZ_CACHE_FILE_NAME)? {
+        return Err(anyhow!(
+            "Invalid mesa cache structure at {:?}",
+            absolute_path
+        ));
     }
 
     Ok(relative_path)
@@ -183,10 +286,10 @@ fn get_single_file(path: &Path) -> Result<OsString> {
     }
 }
 
-fn has_index_file(path: &Path) -> Result<bool> {
+fn has_file(path: &Path, file_name: &str) -> Result<bool> {
     let entries = fs::read_dir(path)?;
     for dir_entry in entries {
-        if dir_entry?.file_name() == "index" {
+        if dir_entry?.file_name() == file_name {
             return Ok(true);
         }
     }
