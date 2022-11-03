@@ -18,7 +18,6 @@
 #include <base/timer/timer.h>
 #include <dbus/exported_object.h>
 #if USE_IIOSERVICE
-#include <iioservice/libiioservice_ipc/sensor_client_dbus.h>
 #include <mojo_service_manager/lib/connect.h>
 #endif  // USE_IIOSERVICE
 #include <libec/ec_usb_endpoint.h>

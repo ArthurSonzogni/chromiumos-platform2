@@ -93,6 +93,7 @@ pkg_config("target_defaults") {
 
   # NOSORT
   pkg_deps = [
+    "iioservice_ipc",
     "libbrillo",
     "libchrome",
     "libcros_config",
@@ -210,13 +211,9 @@ static_library("libsystem") {
   ]
   configs += [ ":target_defaults" ]
   libs = [ "rt" ]
-  deps = [
-    "//iioservice/libiioservice_ipc:libiioservice_ipc",
-    "//iioservice/libiioservice_ipc:libiioservice_ipc_mojom",
-  ]
   if (use.cellular) {
     sources += [ "powerd/system/dbus_objectmanager_wrapper.cc" ]
-    deps += [ ":generate_modemmanager_proxies" ]
+    deps = [ ":generate_modemmanager_proxies" ]
   }
 }
 
@@ -252,7 +249,6 @@ static_library("libsystem_stub") {
   ]
   configs += [ ":target_defaults" ]
   all_dependent_configs = [ ":libsystem_stub_dependent_config" ]
-  deps = [ "//iioservice/libiioservice_ipc:libiioservice_ipc_mojom" ]
 }
 
 static_library("libpolicy") {
@@ -281,7 +277,7 @@ static_library("libpolicy") {
   ]
   configs += [ ":target_defaults" ]
   libs = [ "m" ]
-  deps = [ "//iioservice/libiioservice_ipc:libiioservice_ipc_mojom" ]
+  deps = []
   if (use.cellular) {
     deps += [ ":generate_modemmanager_proxies" ]
   }
