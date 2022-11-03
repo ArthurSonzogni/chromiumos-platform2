@@ -448,7 +448,107 @@ TEST_F(BackendKeyManagementTpm1Test, CreateRsaKeyWithAuth) {
 
   EXPECT_CALL(
       proxy_->GetMock().overalls,
-      Ospi_Policy_SetSecret(kFakeAuthPolicyHandle, TSS_SECRET_MODE_SHA1, _, _))
+      Ospi_Policy_SetSecret(kFakeAuthPolicyHandle, TSS_SECRET_MODE_PLAIN, _, _))
+      .With(Args<3, 2>(ElementsAreArray(kFakeAuthValue)))
+      .WillOnce(Return(TPM_SUCCESS));
+
+  EXPECT_CALL(proxy_->GetMock().overalls,
+              Ospi_Policy_AssignToObject(kFakeAuthPolicyHandle, kFakeKeyHandle))
+      .WillOnce(Return(TPM_SUCCESS));
+
+  EXPECT_CALL(proxy_->GetMock().overalls,
+              Ospi_Key_LoadKey(kFakeKeyHandle, kDefaultSrkHandle))
+      .WillOnce(Return(TPM_SUCCESS));
+
+  brillo::Blob key_blob = kFakeKeyBlob;
+  EXPECT_CALL(proxy_->GetMock().overalls,
+              Ospi_GetAttribData(kFakeKeyHandle, TSS_TSPATTRIB_KEY_BLOB,
+                                 TSS_TSPATTRIB_KEYBLOB_BLOB, _, _))
+      .WillOnce(DoAll(SetArgPointee<3>(key_blob.size()),
+                      SetArgPointee<4>(key_blob.data()), Return(TPM_SUCCESS)));
+
+  brillo::Blob fake_pubkey = kFakePubkey;
+  EXPECT_CALL(proxy_->GetMock().overalls,
+              Ospi_Key_GetPubKey(kFakeKeyHandle, _, _))
+      .WillOnce(DoAll(SetArgPointee<1>(kFakePubkey.size()),
+                      SetArgPointee<2>(fake_pubkey.data()),
+                      Return(TPM_SUCCESS)));
+
+  auto result = middleware_->CallSync<&Backend::KeyManagement::CreateKey>(
+      kFakePolicy, kFakeAlgo, Backend::KeyManagement::AutoReload::kTrue,
+      Backend::KeyManagement::CreateKeyOptions{
+          .allow_software_gen = true,
+          .allow_decrypt = true,
+          .allow_sign = true,
+      });
+
+  ASSERT_OK(result);
+  EXPECT_EQ(result->key_blob, kFakeKeyBlob);
+}
+
+TEST_F(BackendKeyManagementTpm1Test, CreateRsaKeyWithAuthSha1) {
+  const brillo::SecureBlob kFakeAuthValue(20, 1);
+  const OperationPolicySetting kFakePolicy{
+      .device_config_settings =
+          DeviceConfigSettings{
+              .boot_mode =
+                  DeviceConfigSettings::BootModeSetting{
+                      .mode = std::nullopt,
+                  },
+          },
+      .permission =
+          Permission{
+              .auth_value = kFakeAuthValue,
+          },
+  };
+
+  const KeyAlgoType kFakeAlgo = KeyAlgoType::kRsa;
+  const brillo::Blob kFakeKeyBlob = brillo::BlobFromString("fake_key_blob");
+  const brillo::Blob kFakePubkey = brillo::BlobFromString("fake_pubkey");
+  const uint32_t kFakeKeyHandle = 0x1337;
+  const uint32_t kFakePcrHandle = 0x7331;
+  const uint32_t kFakeAuthPolicyHandle = 0x1773;
+
+  SetupSrk();
+
+  EXPECT_CALL(proxy_->GetMock().overalls,
+              Ospi_Context_CreateObject(kDefaultContext, TSS_OBJECT_TYPE_PCRS,
+                                        TSS_PCRS_STRUCT_INFO, _))
+      .WillOnce(DoAll(SetArgPointee<3>(kFakePcrHandle), Return(TPM_SUCCESS)));
+
+  EXPECT_CALL(proxy_->GetMock().overalls,
+              Ospi_PcrComposite_SetPcrValue(kFakePcrHandle, 0, _, _))
+      .WillOnce(Return(TPM_SUCCESS));
+
+  EXPECT_CALL(
+      proxy_->GetMock().overalls,
+      Ospi_Context_CreateObject(kDefaultContext, TSS_OBJECT_TYPE_RSAKEY, _, _))
+      .WillOnce(DoAll(SetArgPointee<3>(kFakeKeyHandle), Return(TPM_SUCCESS)));
+
+  EXPECT_CALL(proxy_->GetMock().overalls,
+              Ospi_SetAttribUint32(kFakeKeyHandle, TSS_TSPATTRIB_KEY_INFO,
+                                   TSS_TSPATTRIB_KEYINFO_SIGSCHEME, _))
+      .WillOnce(Return(TPM_SUCCESS));
+
+  EXPECT_CALL(proxy_->GetMock().overalls,
+              Ospi_SetAttribUint32(kFakeKeyHandle, TSS_TSPATTRIB_KEY_INFO,
+                                   TSS_TSPATTRIB_KEYINFO_ENCSCHEME, _))
+      .WillOnce(Return(TPM_SUCCESS));
+
+  EXPECT_CALL(
+      proxy_->GetMock().overalls,
+      Ospi_Key_CreateKey(kFakeKeyHandle, kDefaultSrkHandle, kFakePcrHandle))
+      .WillOnce(Return(TPM_SUCCESS));
+
+  EXPECT_CALL(proxy_->GetMock().overalls,
+              Ospi_Context_CreateObject(kDefaultContext, TSS_OBJECT_TYPE_POLICY,
+                                        TSS_POLICY_USAGE, _))
+      .WillOnce(
+          DoAll(SetArgPointee<3>(kFakeAuthPolicyHandle), Return(TPM_SUCCESS)));
+
+  EXPECT_CALL(
+      proxy_->GetMock().overalls,
+      Ospi_Policy_SetSecret(kFakeAuthPolicyHandle, TSS_SECRET_MODE_SHA1, 20, _))
       .With(Args<3, 2>(ElementsAreArray(kFakeAuthValue)))
       .WillOnce(Return(TPM_SUCCESS));
 
@@ -555,7 +655,7 @@ TEST_F(BackendKeyManagementTpm1Test, LoadKeyWithAuth) {
 
   EXPECT_CALL(
       proxy_->GetMock().overalls,
-      Ospi_Policy_SetSecret(kFakeAuthPolicyHandle, TSS_SECRET_MODE_SHA1, _, _))
+      Ospi_Policy_SetSecret(kFakeAuthPolicyHandle, TSS_SECRET_MODE_PLAIN, _, _))
       .With(Args<3, 2>(ElementsAreArray(kFakeAuthValue)))
       .WillOnce(Return(TPM_SUCCESS));
 

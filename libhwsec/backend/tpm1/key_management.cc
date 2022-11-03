@@ -43,6 +43,7 @@ constexpr uint8_t kDefaultSrkAuth[] = {};
 constexpr uint32_t kDefaultDiscardableWrapPasswordLength = 32;
 constexpr uint32_t kDefaultTpmRsaKeyModulusBit = TSS_KEY_SIZEVAL_2048BIT;
 constexpr uint8_t kDefaultTpmPublicExponentArray[] = {0x01, 0x00, 0x01};
+constexpr uint32_t kSha1ModeAuthValueLength = 20;
 
 // Min and max supported RSA modulus sizes (in bytes).
 constexpr uint32_t kMinModulusSize = 64;
@@ -127,9 +128,14 @@ StatusOr<ScopedTssPolicy> AddAuthPolicy(overalls::Overalls& overalls,
     RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls.Ospi_Policy_SetSecret(
                         auth_policy, TSS_SECRET_MODE_NONE, 0, nullptr)))
         .WithStatus<TPMError>("Failed to call Ospi_Policy_SetSecret");
-  } else {
+  } else if (auth_value.size() == kSha1ModeAuthValueLength) {
     RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls.Ospi_Policy_SetSecret(
                         auth_policy, TSS_SECRET_MODE_SHA1, auth_value.size(),
+                        auth_value.data())))
+        .WithStatus<TPMError>("Failed to call Ospi_Policy_SetSecret");
+  } else {
+    RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls.Ospi_Policy_SetSecret(
+                        auth_policy, TSS_SECRET_MODE_PLAIN, auth_value.size(),
                         auth_value.data())))
         .WithStatus<TPMError>("Failed to call Ospi_Policy_SetSecret");
   }
