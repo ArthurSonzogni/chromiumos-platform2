@@ -317,53 +317,6 @@ bool DbusFeaturedService::EnableFeatures() {
   return true;
 }
 
-bool DbusFeaturedService::IsPlatformFeatureEnabled(const std::string& name) {
-  if (!ParseFeatureList()) {
-    return false;
-  }
-
-  auto feature = parser_->GetFeatureMap()->find(name);
-  if (feature == parser_->GetFeatureMap()->end()) {
-    LOG(ERROR) << "Feature not found in features config!";
-    return false;
-  }
-
-  const PlatformFeature& feature_obj = feature->second;
-  if (!feature_obj.IsSupported()) {
-    VLOG(1) << "device does not support feature " << name;
-    return false;
-  }
-
-  bool ret = library_->IsEnabledBlocking(*feature_obj.feature());
-
-  VLOG(1) << "featured: IsPlatformFeatureEnabled: Feature " << name
-          << " enabled? " << ret;
-  return ret;
-}
-
-void DbusFeaturedService::IsPlatformFeatureEnabledWrap(
-    dbus::MethodCall* method_call,
-    dbus::ExportedObject::ResponseSender sender) {
-  bool ret;
-
-  dbus::MessageReader reader(method_call);
-  std::string name;
-  if (!reader.PopString(&name)) {
-    LOG(ERROR) << "missing string argument to IsPlatformFeatureEnabled";
-    ret = false;
-  } else {
-    ret = IsPlatformFeatureEnabled(name);
-  }
-
-  std::unique_ptr<dbus::Response> response =
-      dbus::Response::FromMethodCall(method_call);
-  dbus::MessageWriter writer(response.get());
-
-  writer.AppendBool(ret);
-
-  std::move(sender).Run(std::move(response));
-}
-
 void DbusFeaturedService::OnSessionStateChanged(const std::string& state) {
   if (state == kSessionStartedState && !evaluated_platform_features_json_) {
     if (!EnableFeatures()) {
@@ -406,16 +359,6 @@ bool DbusFeaturedService::Start(dbus::Bus* bus,
       base::BindRepeating(&DbusFeaturedService::OnSessionStateChanged,
                           weak_ptr_factory_.GetWeakPtr()),
       base::BindOnce(&OnSignalConnected));
-
-  if (!object->ExportMethodAndBlock(
-          featured::kFeaturedServiceName, featured::kIsPlatformFeatureEnabled,
-          base::BindRepeating(
-              &DbusFeaturedService::IsPlatformFeatureEnabledWrap, ptr))) {
-    bus->UnregisterExportedObject(path);
-    LOG(ERROR) << "Failed to export method "
-               << featured::kIsPlatformFeatureEnabled;
-    return false;
-  }
 
   if (!bus->RequestOwnershipAndBlock(featured::kFeaturedServiceName,
                                      dbus::Bus::REQUIRE_PRIMARY)) {

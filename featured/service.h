@@ -169,13 +169,6 @@ class DbusFeaturedService {
   // enabled.
   bool EnableFeatures();
 
-  // Wraps IsPlatformFeatureEnabled, providing the interface that dbus expects
-  void IsPlatformFeatureEnabledWrap(
-      dbus::MethodCall* method_call,
-      dbus::ExportedObject::ResponseSender sender);
-
-  bool IsPlatformFeatureEnabled(const std::string& name);
-
   void OnSessionStateChanged(const std::string& state);
 
   std::unique_ptr<FeatureParserBase> parser_;
