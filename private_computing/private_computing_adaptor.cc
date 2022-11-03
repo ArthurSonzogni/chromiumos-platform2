@@ -10,8 +10,10 @@
 #include <vector>
 
 #include <base/check.h>
+#include <base/files/file_util.h>
 #include <base/location.h>
 #include <base/logging.h>
+#include <base/strings/strcat.h>
 #include <brillo/dbus/dbus_object.h>
 #include <brillo/dbus/file_descriptor.h>
 #include <brillo/errors/error.h>
@@ -23,6 +25,15 @@
 namespace private_computing {
 
 namespace {
+
+// Path to preserved file used to read the last ping dates after powerwash.
+const char kPrivateComputingLastActiveDatesReadPath[] =
+    "/mnt/stateful_partition/unencrypted/preserve/last_active_dates";
+
+// Path to file storing the UTC last ping dates as serialized object
+// private_computing_service::SaveStatusRequest.
+const char kPrivateComputingLastActiveDatesWritePath[] =
+    "/var/lib/private_computing/last_active_dates";
 
 // Serializes |proto| to a vector of bytes.
 std::vector<uint8_t> SerializeProto(
@@ -71,12 +82,76 @@ std::vector<uint8_t> PrivateComputingAdaptor::SaveLastPingDatesStatus(
     return SerializeProto(response);
   }
 
+  // Write serialized request to |kPrivateComputingLastActiveDatesWritePath|
+  base::File file(base::FilePath(kPrivateComputingLastActiveDatesWritePath),
+                  base::File::FLAG_CREATE_ALWAYS | base::File::FLAG_WRITE);
+
+  if (!file.IsValid()) {
+    response.set_error_message(
+        "Failed to retrieve last_ping_utc_dates file descriptor.");
+    return SerializeProto(response);
+  }
+
+  std::string request_str = request.SerializeAsString();
+  const int write_count =
+      file.Write(0, request_str.c_str(), request_str.size());
+  if (write_count < 0 ||
+      static_cast<size_t>(write_count) < request_str.size()) {
+    response.set_error_message(
+        base::StrCat({"Failed to write data file ",
+                      kPrivateComputingLastActiveDatesWritePath,
+                      " write count=", std::to_string(write_count)}));
+    return SerializeProto(response);
+  }
+
   return SerializeProto(response);
 }
 
 std::vector<uint8_t> PrivateComputingAdaptor::GetLastPingDatesStatus() {
   LOG(INFO) << "Get the last ping dates from preserved file.";
+
+  base::File file(base::FilePath(kPrivateComputingLastActiveDatesReadPath),
+                  base::File::FLAG_OPEN | base::File::FLAG_READ);
+
   GetStatusResponse response;
+
+  if (!file.IsValid()) {
+    response.set_error_message(base::StrCat(
+        {"Could not open file ", kPrivateComputingLastActiveDatesReadPath}));
+    return SerializeProto(response);
+  }
+
+  base::File::Info file_info;
+
+  if (!file.GetInfo(&file_info) || file_info.size < 0) {
+    response.set_error_message(
+        base::StrCat({"Failed to read data file info ",
+                      kPrivateComputingLastActiveDatesReadPath}));
+    return SerializeProto(response);
+  }
+
+  std::string result;
+  result.resize(file_info.size);
+  const int read_result =
+      file.Read(/* offset */ 0, result.data(), file_info.size);
+  if (read_result != file_info.size) {
+    response.set_error_message(
+        base::StrCat({"Failed to read data file ",
+                      kPrivateComputingLastActiveDatesReadPath}));
+    return SerializeProto(response);
+  }
+
+  // Successfully read file into |result|.
+  SaveStatusRequest request;
+
+  if (!request.ParseFromString(result)) {
+    response.set_error_message(
+        base::StrCat({"Failed to parse result string as a SaveStatusRequest ",
+                      kPrivateComputingLastActiveDatesReadPath}));
+    return SerializeProto(response);
+  }
+
+  *response.mutable_active_status() = request.active_status();
 
   return SerializeProto(response);
 }
