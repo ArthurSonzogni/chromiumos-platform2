@@ -49,6 +49,11 @@ std::unique_ptr<JpegCompressor> JpegCompressor::GetInstance(
   return std::make_unique<JpegCompressorImpl>(token);
 }
 
+// static
+bool JpegCompressor::IsSizeSupported(int width, int height) {
+  return width > 0 && height > 0 && width % 8 == 0 && height % 2 == 0;
+}
+
 JpegCompressorImpl::JpegCompressorImpl(CameraMojoChannelManagerToken* token)
     : camera_metrics_(CameraMetrics::New()),
       hw_encoder_(nullptr),
@@ -81,7 +86,7 @@ bool JpegCompressorImpl::CompressImage(const void* image,
                                        void* out_buffer,
                                        uint32_t* out_data_size,
                                        bool enable_hw_encode) {
-  if (width % 8 != 0 || height % 2 != 0) {
+  if (!IsSizeSupported(width, height)) {
     LOGF(ERROR) << "Image size can not be handled: " << width << "x" << height;
     return false;
   }
@@ -142,7 +147,7 @@ bool JpegCompressorImpl::CompressImageFromHandle(buffer_handle_t input,
                                                  uint32_t app1_size,
                                                  uint32_t* out_data_size,
                                                  bool enable_hw_encode) {
-  if (width % 8 != 0 || height % 2 != 0) {
+  if (!IsSizeSupported(width, height)) {
     LOGF(ERROR) << "Input image size can not be handled: " << width << "x"
                 << height;
     return false;
@@ -232,7 +237,7 @@ bool JpegCompressorImpl::CompressImageFromMemory(void* input,
                                                  const void* app1_ptr,
                                                  uint32_t app1_size,
                                                  uint32_t* out_data_size) {
-  if (width % 8 != 0 || height % 2 != 0) {
+  if (!IsSizeSupported(width, height)) {
     LOGF(ERROR) << "Input image size can not be handled: " << width << "x"
                 << height;
     return false;
@@ -278,12 +283,7 @@ bool JpegCompressorImpl::GenerateThumbnail(const void* image,
                                            uint32_t out_buffer_size,
                                            void* out_buffer,
                                            uint32_t* out_data_size) {
-  if (thumbnail_width == 0 || thumbnail_height == 0) {
-    LOGF(ERROR) << "Invalid thumbnail resolution " << thumbnail_width << "x"
-                << thumbnail_height;
-    return false;
-  }
-  if (thumbnail_width % 8 != 0 || thumbnail_height % 2 != 0) {
+  if (!IsSizeSupported(thumbnail_width, thumbnail_height)) {
     LOGF(ERROR) << "Image size can not be handled: " << thumbnail_width << "x"
                 << thumbnail_height;
     return false;

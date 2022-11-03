@@ -30,6 +30,7 @@
 #include <re2/re2.h>
 
 #include "cros-camera/common.h"
+#include "cros-camera/jpeg_compressor.h"
 #include "cros-camera/utils/camera_config.h"
 #include "hal/usb/camera_characteristics.h"
 #include "hal/usb/quirks.h"
@@ -1000,7 +1001,14 @@ const SupportedFormats V4L2CameraDevice::GetDeviceSupportedFormats(
 
     for (const Size& size : supported_frame_sizes) {
       if (base::Contains(filter_out_resolutions, size)) {
-        LOGF(INFO) << "Filter out " << size.ToString();
+        LOGF(INFO) << "Filter out " << size.ToString() << " by config";
+        continue;
+      }
+      if (!JpegCompressor::IsSizeSupported(
+              base::checked_cast<int>(size.width),
+              base::checked_cast<int>(size.height))) {
+        LOGF(INFO) << "Filter out " << size.ToString()
+                   << " by JPEG compression capability";
         continue;
       }
       formats.push_back(SupportedFormat{
