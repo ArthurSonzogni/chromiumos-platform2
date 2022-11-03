@@ -184,26 +184,21 @@ bool CrosFpDeviceUpdate::Flash(const CrosFpFirmware& fw,
 bool CrosFpBootUpdateCtrl::TriggerBootUpdateSplash() const {
   LOG(INFO) << "Launching update splash screen.";
 
-  int exit_code;
   base::CommandLine cmd{base::FilePath("chromeos-boot-alert")};
   cmd.AppendArg("update_firmware");
 
   DLOG(INFO) << "Launching '" << cmd.GetCommandLineString() << "'.";
 
-  // libchrome does not include a wrapper for capturing a process output
-  // and having an active timeout.
-  // Since boot splash screen can hang forever, it is more important
-  // to have a dedicated timeout in this process launch than to log
-  // the launch process's output.
-  // TODO(b/130026657): Capture stdout/stderr and forward to logger.
-  base::LaunchOptions opt;
-  auto p = base::LaunchProcess(cmd, opt);
-  if (!p.WaitForExitWithTimeout(kBootSplashScreenLaunchTimeout, &exit_code)) {
-    LOG(ERROR) << "Update splash screen launcher timeout met.";
-    return false;
+  std::string cmd_output;
+  bool status = GetAppOutputAndErrorWithTimeout(
+      cmd, kBootSplashScreenLaunchTimeout, &cmd_output);
+  const auto lines = base::SplitStringPiece(
+      cmd_output, "\n", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
+  for (const auto line : lines) {
+    LOG(INFO) << cmd.GetProgram().BaseName().value() << ": " << line;
   }
-  if (exit_code != EXIT_SUCCESS) {
-    LOG(ERROR) << "Update splash screen launcher exited with bad status.";
+  if (!status) {
+    LOG(ERROR) << "Update splash screen launcher failed.";
     return false;
   }
   return true;
