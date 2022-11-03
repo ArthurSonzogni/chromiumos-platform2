@@ -4,7 +4,7 @@
 
 #include "biod/biod_metrics.h"
 
-#include <base/stl_util.h>
+#include <base/types/cxx23_to_underlying.h>
 #include <libec/fingerprint/fp_sensor_errors.h>
 #include <metrics/metrics_library.h>
 

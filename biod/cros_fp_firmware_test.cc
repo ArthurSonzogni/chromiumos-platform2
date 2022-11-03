@@ -19,7 +19,7 @@
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/logging.h>
-#include <base/stl_util.h>
+#include <base/types/cxx23_to_underlying.h>
 #include <fmap.h>
 #include <gtest/gtest.h>
 
