@@ -62,17 +62,10 @@ constexpr char kHardwareDescriptionCpuinfoContents[] =
     "Hardware\t: Rockchip (Device Tree)\nRevision\t: 0000\nSerial\t: "
     "0000000000000000\n\n";
 constexpr char kNoModelNameCpuinfoContents[] = "processor\t: 0\nflags\t:\n\n";
-constexpr char kNoPhysicalIdCpuinfoContents[] =
-    "processor\t: 0\nmodel name\t: Dank CPU 1 @ 8.90GHz\nflags\t:\n\n"
-    "processor\t: 1\nmodel name\t: Dank CPU 1 @ 8.90GHzn\nflags\t:\n\n"
-    "processor\t: 12\nmodel name\t: Dank CPU 2 @ 2.80GHz\nflags\t:\n\n";
 constexpr char kFakeCpuinfoContents[] =
-    "processor\t: 0\nmodel name\t: Dank CPU 1 @ 8.90GHz\nphysical id\t: "
-    "0\nflags\t:\n\n"
-    "processor\t: 1\nmodel name\t: Dank CPU 1 @ 8.90GHz\nphysical id\t: "
-    "0\nflags\t:\n\n"
-    "processor\t: 12\nmodel name\t: Dank CPU 2 @ 2.80GHz\nphysical id\t: "
-    "1\nflags\t:\n\n";
+    "processor\t: 0\nmodel name\t: Dank CPU 1 @ 8.90GHz\nflags\t:\n\n"
+    "processor\t: 1\nmodel name\t: Dank CPU 1 @ 8.90GHz\nflags\t:\n\n"
+    "processor\t: 12\nmodel name\t: Dank CPU 2 @ 2.80GHz\nflags\t:\n\n";
 constexpr char kFirstFakeModelName[] = "Dank CPU 1 @ 8.90GHz";
 constexpr char kSecondFakeModelName[] = "Dank CPU 2 @ 2.80GHz";
 
@@ -269,6 +262,16 @@ class CpuFetcherTest : public testing::Test {
     WriteCStateData(kSecondCStates, kSecondLogicalId);
     // Write C-state data for the third logical CPU.
     WriteCStateData(kThirdCStates, kThirdLogicalId);
+
+    // Write physical ID data for the first logical CPU.
+    ASSERT_TRUE(WriteFileAndCreateParentDirs(
+        GetPhysicalPackageIdPath(root_dir(), kFirstLogicalId), "0"));
+    // Write physical ID data for the second logical CPU.
+    ASSERT_TRUE(WriteFileAndCreateParentDirs(
+        GetPhysicalPackageIdPath(root_dir(), kSecondLogicalId), "0"));
+    // Write physical ID data for the third logical CPU.
+    ASSERT_TRUE(WriteFileAndCreateParentDirs(
+        GetPhysicalPackageIdPath(root_dir(), kThirdLogicalId), "1"));
 
     // Write CPU temperature data.
     base::FilePath first_temp_dir =
@@ -482,44 +485,12 @@ TEST_F(CpuFetcherTest, TestFetchCpu) {
 }
 
 // Test that we handle a cpuinfo file for processors without physical_ids.
-TEST_F(CpuFetcherTest, NoPhysicalIdCpuinfoFile) {
-  ASSERT_TRUE(WriteFileAndCreateParentDirs(GetProcCpuInfoPath(root_dir()),
-                                           kNoPhysicalIdCpuinfoContents));
+TEST_F(CpuFetcherTest, NoPhysicalIdFile) {
+  ASSERT_TRUE(base::DeleteFile(GetPhysicalPackageIdPath(root_dir(), 0)));
 
   auto cpu_result = FetchCpuInfoSync();
-
-  ASSERT_TRUE(cpu_result->is_cpu_info());
-  const auto& cpu_info = cpu_result->get_cpu_info();
-  EXPECT_EQ(cpu_info->num_total_threads, kExpectedNumTotalThreads);
-  EXPECT_EQ(cpu_info->architecture, mojo_ipc::CpuArchitectureEnum::kX86_64);
-  const auto& physical_cpus = cpu_info->physical_cpus;
-  ASSERT_EQ(physical_cpus.size(), 3);
-  const auto& first_physical_cpu = physical_cpus[0];
-  ASSERT_FALSE(first_physical_cpu.is_null());
-  EXPECT_EQ(first_physical_cpu->model_name, kFirstFakeModelName);
-  const auto& first_logical_cpus = first_physical_cpu->logical_cpus;
-  ASSERT_EQ(first_logical_cpus.size(), 1);
-  VerifyLogicalCpu(kFirstFakeMaxClockSpeed, kFirstFakeScalingMaxFrequency,
-                   kFirstFakeScalingCurrentFrequency, kFirstFakeUserTime,
-                   kFirstFakeSystemTime, kFirstFakeIdleTime,
-                   GetCStateVector(kFirstLogicalId), first_logical_cpus[0]);
-  const auto& second_physical_cpu = physical_cpus[1];
-  ASSERT_FALSE(second_physical_cpu.is_null());
-  const auto& second_logical_cpu = second_physical_cpu->logical_cpus;
-  ASSERT_EQ(second_logical_cpu.size(), 1);
-  VerifyLogicalCpu(kSecondFakeMaxClockSpeed, kSecondFakeScalingMaxFrequency,
-                   kSecondFakeScalingCurrentFrequency, kSecondFakeUserTime,
-                   kSecondFakeSystemTime, kSecondFakeIdleTime,
-                   GetCStateVector(kSecondLogicalId), second_logical_cpu[0]);
-  const auto& third_physical_cpu = physical_cpus[2];
-  ASSERT_FALSE(third_physical_cpu.is_null());
-  const auto& third_logical_cpu = third_physical_cpu->logical_cpus;
-  ASSERT_EQ(third_logical_cpu.size(), 1);
-  VerifyLogicalCpu(kThirdFakeMaxClockSpeed, kThirdFakeScalingMaxFrequency,
-                   kThirdFakeScalingCurrentFrequency, kThirdFakeUserTime,
-                   kThirdFakeSystemTime, kThirdFakeIdleTime,
-                   GetCStateVector(kThirdLogicalId), third_logical_cpu[0]);
-  VerifyCpuTemps(cpu_info->temperature_channels);
+  ASSERT_TRUE(cpu_result->is_error());
+  EXPECT_EQ(cpu_result->get_error()->type, mojo_ipc::ErrorType::kParseError);
 }
 
 // Test that we handle a missing cpuinfo file.

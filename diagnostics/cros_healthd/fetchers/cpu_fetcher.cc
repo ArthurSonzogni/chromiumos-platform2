@@ -49,7 +49,6 @@ constexpr char kCStateDirectoryMatcher[] = "state*";
 
 // Keys used to parse information from /proc/cpuinfo.
 constexpr char kModelNameKey[] = "model name";
-constexpr char kPhysicalIdKey[] = "physical id";
 constexpr char kProcessorIdKey[] = "processor";
 constexpr char kX86CpuFlagsKey[] = "flags";
 constexpr char kArmCpuFlagsKey[] = "Features";
@@ -261,7 +260,6 @@ bool IsProcessorBlock(const std::string& block) {
 // depending on the CPU architecture, and it is considered as success.
 bool ParseProcessor(const std::string& processor,
                     int& processor_id,
-                    int& physical_id,
                     std::string& model_name,
                     std::vector<std::string>& cpu_flags) {
   base::StringPairs pairs;
@@ -276,8 +274,6 @@ bool ParseProcessor(const std::string& processor,
     base::TrimWhitespaceASCII(key_value.second, base::TRIM_ALL, &value);
     if (key == kProcessorIdKey) {
       processor_id_str = value;
-    } else if (key == kPhysicalIdKey) {
-      physical_id_str = value;
     } else if (key == kModelNameKey) {
       model_name = value;
     } else if (key == kX86CpuFlagsKey || key == kArmCpuFlagsKey) {
@@ -285,18 +281,6 @@ bool ParseProcessor(const std::string& processor,
                                     base::SPLIT_WANT_NONEMPTY);
       flags_found = true;
     }
-  }
-
-  // If the processor does not have a distinction between physical_id and
-  // processor_id, make them the same value.
-  if (!processor_id_str.empty() && physical_id_str.empty()) {
-    physical_id_str = processor_id_str;
-  }
-
-  if (!base::StringToInt(physical_id_str, &physical_id)) {
-    LOG(ERROR) << "physical id cannot be converted to integer: "
-               << physical_id_str;
-    return false;
   }
 
   if (!base::StringToInt(processor_id_str, &processor_id)) {
@@ -624,13 +608,20 @@ bool State::FetchPhysicalCpus() {
       continue;
 
     int processor_id;
-    int physical_id;
     std::string model_name;
     std::vector<std::string> cpu_flags;
-    if (!ParseProcessor(processor, processor_id, physical_id, model_name,
-                        cpu_flags)) {
+    if (!ParseProcessor(processor, processor_id, model_name, cpu_flags)) {
       LogAndSetError(mojo_ipc::ErrorType::kParseError,
                      "Unable to parse processor string: " + processor);
+      return false;
+    }
+
+    int physical_id;
+    if (!ReadInteger(GetPhysicalPackageIdPath(root_dir, processor_id),
+                     &base::StringToInt, &physical_id)) {
+      LogAndSetError(mojo_ipc::ErrorType::kParseError,
+                     "Unable to parse physical ID for cpu " +
+                         std::to_string(processor_id));
       return false;
     }
 
@@ -936,6 +927,15 @@ base::FilePath GetCpuFreqDirectoryPath(const base::FilePath& root_dir,
   return root_dir.Append(kRelativeCpuDir)
       .Append(logical_cpu_dir)
       .Append(cpufreq_dirname);
+}
+
+base::FilePath GetPhysicalPackageIdPath(const base::FilePath& root_dir,
+                                        int logical_id) {
+  std::string logical_cpu_dir = "cpu" + std::to_string(logical_id);
+  std::string physical_package_id_filename = "topology/physical_package_id";
+  return root_dir.Append(kRelativeCpuDir)
+      .Append(logical_cpu_dir)
+      .Append(physical_package_id_filename);
 }
 
 mojo_ipc::VulnerabilityInfo::Status GetVulnerabilityStatusFromMessage(
