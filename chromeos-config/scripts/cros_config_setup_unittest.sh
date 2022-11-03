@@ -24,6 +24,7 @@ die() {
         MOUNT_CALLS+=("$*")
     }
 
+    # shellcheck disable=SC2030
     MOUNTPOINT="$(mktemp -d)"
     source cros_config_setup.sh
     rm -rf "${MOUNTPOINT}"
