@@ -53,7 +53,13 @@ class EffectsPipelineImpl : public cros::EffectsPipeline {
  protected:
   EffectsPipelineImpl() {}
   bool Initialize(const base::FilePath& dlc_root_path) {
+#ifdef USE_LOCAL_ML_CORE_INTERNAL
+    // TODO(jmpollock) this should be /usr/local/lib on arm.
+    base::FilePath lib_path =
+        base::FilePath("/usr/local/lib64").Append(kLibraryName);
+#else
     base::FilePath lib_path = dlc_root_path.Append(kLibraryName);
+#endif
     base::NativeLibraryOptions native_library_options;
     base::NativeLibraryLoadError load_error;
     native_library_options.prefer_own_symbols = true;
