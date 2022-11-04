@@ -141,6 +141,16 @@ bool SystemConfig::HasSmartBattery() {
   return has_smart_battery_info == "true";
 }
 
+bool SystemConfig::HasPrivacyScreen() {
+  std::string has_privacy_screen;
+  if (!cros_config_->GetString(kHardwarePropertiesPath,
+                               kHasPrivacyScreenProperty,
+                               &has_privacy_screen)) {
+    return false;
+  }
+  return has_privacy_screen == "true";
+}
+
 bool SystemConfig::NvmeSupported() {
   return base::PathExists(root_dir_.AppendASCII(kNvmeToolPath)) &&
          !base::FileEnumerator(root_dir_.AppendASCII(kDevicePath), false,

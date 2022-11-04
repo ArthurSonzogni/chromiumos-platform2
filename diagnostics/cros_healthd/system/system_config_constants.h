@@ -14,6 +14,9 @@ namespace diagnostics {
 inline constexpr char kHardwarePropertiesPath[] = "/hardware-properties";
 // The master configuration property that specifies a device's PSU type.
 inline constexpr char kPsuTypeProperty[] = "psu-type";
+// The master configuration property that indicates whether a device has a
+// built-in privacy screen.
+inline constexpr char kHasPrivacyScreenProperty[] = "has-privacy-screen";
 // The path used to check a device's master configuration cros_healthd battery
 // properties.
 inline constexpr char kBatteryPropertiesPath[] = "/cros-healthd/battery";
