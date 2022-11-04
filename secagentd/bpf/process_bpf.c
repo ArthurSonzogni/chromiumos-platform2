@@ -63,13 +63,10 @@ static inline __attribute__((always_inline)) void fill_task_info(
   task_info->parent_start_time =
       BPF_CORE_READ(t, real_parent, group_leader, start_boottime);
 
-  task_info->pid = bpf_get_current_pid_tgid() >> 32;
+  task_info->pid = BPF_CORE_READ(t, tgid);
 
-  // GID is stored in the upper 32-bits.
-  // UID is stored in the lower 32-bits.
-  u64 uid_gid = bpf_get_current_uid_gid();
-  task_info->gid = uid_gid >> 32;
-  task_info->uid = uid_gid & 0xFFFFFFFF;
+  task_info->uid = BPF_CORE_READ(t, real_cred, uid.val);
+  task_info->gid = BPF_CORE_READ(t, real_cred, gid.val);
 
   // Read argv from user memory.
   unsigned long arg_start = BPF_CORE_READ(t, mm, arg_start);
