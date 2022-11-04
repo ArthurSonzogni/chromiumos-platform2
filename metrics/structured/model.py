@@ -65,7 +65,7 @@ class Model:
 
     OWNER_REGEX = r"^.+@(chromium\.org|google\.com)$"
     NAME_REGEX = r"^[A-Za-z0-9_.]+$"
-    TYPE_REGEX = r"^(hmac-string|raw-string|int)$"
+    TYPE_REGEX = r"^(hmac-string|raw-string|int|double)$"
     ID_REGEX = r"^(none|per-project|uma)$"
 
     def __init__(self, xml_string):

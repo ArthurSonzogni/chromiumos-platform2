@@ -47,5 +47,11 @@ void EventBase::AddRawStringMetric(uint64_t name_hash,
   metrics_.push_back(metric);
 }
 
+void EventBase::AddDoubleMetric(uint64_t name_hash, double value) {
+  Metric metric(name_hash, MetricType::kDouble);
+  metric.double_value = value;
+  metrics_.push_back(metric);
+}
+
 }  // namespace structured
 }  // namespace metrics

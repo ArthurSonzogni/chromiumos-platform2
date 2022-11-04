@@ -146,6 +146,9 @@ bool Recorder::Record(const EventBase& event) {
       case EventBase::MetricType::kRawString:
         metric_proto->set_value_string(metric.string_value);
         break;
+      case EventBase::MetricType::kDouble:
+        metric_proto->set_value_double(metric.double_value);
+        break;
     }
   }
 

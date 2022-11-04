@@ -122,6 +122,9 @@ class MetricInfo:
         elif metric.type == "raw-string":
             self.type = "std::string&"
             self.setter = "AddRawStringMetric"
+        elif metric.type == "double":
+            self.type = "double"
+            self.setter = "AddDoubleMetric"
         else:
             raise ValueError("Invalid metric type.")
 

@@ -1214,6 +1214,11 @@
         An unhashed value, recorded as-is.
       </summary>
     </metric>
+    <metric name="TestMetricThree" type="double">
+      <summary>
+        An unhashed double value, recorded as-is.
+      </summary>
+    </metric>
   </event>
   <event name="TestEventTwo">
     <summary>
