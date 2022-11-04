@@ -42,8 +42,6 @@ class DisplayPowerSetterInterface {
 
 // Real DisplayPowerSetterInterface implementation that makes D-Bus method
 // calls to DisplayService.
-// TODO(chromeos-power): Write unit tests for this class now that it's using
-// DBusWrapperInterface.
 class DisplayPowerSetter : public DisplayPowerSetterInterface {
  public:
   DisplayPowerSetter() = default;
@@ -59,6 +57,8 @@ class DisplayPowerSetter : public DisplayPowerSetterInterface {
   void SetDisplayPower(chromeos::DisplayPowerState state,
                        base::TimeDelta delay) override;
   void SetDisplaySoftwareDimming(bool dimmed) override;
+
+  void FireTimerForTesting();
 
  private:
   // Makes an asynchronous D-Bus method call to DisplayService to apply |state|.

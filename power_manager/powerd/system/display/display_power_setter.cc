@@ -82,4 +82,8 @@ void DisplayPowerSetter::SendStateToDisplayService(
                                 kDisplayServiceDBusTimeout);
 }
 
+void DisplayPowerSetter::FireTimerForTesting() {
+  timer_.FireNow();
+}
+
 }  // namespace power_manager::system
