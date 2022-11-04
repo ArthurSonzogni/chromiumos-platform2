@@ -85,7 +85,9 @@ def UpdateTimeZones():
     Valid time zones are values of the kTimeZones array in timezone_settings.cc
     <http://goo.gl/WSVUeE>.
     """
-    cpp_code = GetChromiumSource("ash/components/settings/timezone_settings.cc")
+    cpp_code = GetChromiumSource(
+        "chromeos/ash/components/settings/timezone_settings.cc"
+    )
     match = re.search(
         r"static[^\n]+kTimeZones\[\] = \{(.+?)^\}",
         cpp_code,

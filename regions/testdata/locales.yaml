@@ -2,6 +2,7 @@
 # by update_testdata.py. Do not edit manually.
 
 - af
+- ak
 - am
 - an
 - ar
@@ -27,12 +28,14 @@
 - de-CH
 - de-DE
 - de-LI
+- ee
 - el
 - en
 - en-AU
 - en-CA
 - en-GB
 - en-GB-oxendict
+- en-IE
 - en-IN
 - en-NZ
 - en-US
@@ -92,10 +95,12 @@
 - kn
 - ko
 - kok
+- kri
 - ku
 - ky
 - la
 - lb
+- lg
 - ln
 - lo
 - lt
@@ -115,6 +120,7 @@
 - nl
 - nn
 - 'no'
+- nso
 - ny
 - oc
 - om
