@@ -60,9 +60,8 @@ MissiveImpl::MissiveImpl(
     base::OnceCallback<
         void(MissiveImpl* self,
              StorageOptions storage_options,
-             base::OnceCallback<void(
-                 StatusOr<scoped_refptr<StorageModuleInterface>>)> callback)>
-        create_storage_factory)
+             base::OnceCallback<void(StatusOr<scoped_refptr<StorageModule>>)>
+                 callback)> create_storage_factory)
     : args_(std::move(args)),
       upload_client_factory_(std::move(upload_client_factory)),
       create_storage_factory_(std::move(create_storage_factory)) {
@@ -131,8 +130,7 @@ Status MissiveImpl::ShutDown() {
 
 void MissiveImpl::CreateStorage(
     StorageOptions storage_options,
-    base::OnceCallback<void(StatusOr<scoped_refptr<StorageModuleInterface>>)>
-        callback) {
+    base::OnceCallback<void(StatusOr<scoped_refptr<StorageModule>>)> callback) {
   StorageModule::Create(
       std::move(storage_options),
       base::BindPostTask(
@@ -145,7 +143,7 @@ void MissiveImpl::CreateStorage(
 
 void MissiveImpl::OnStorageModuleConfigured(
     base::OnceCallback<void(Status)> cb,
-    StatusOr<scoped_refptr<StorageModuleInterface>> storage_module_result) {
+    StatusOr<scoped_refptr<StorageModule>> storage_module_result) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   if (!storage_module_result.ok()) {
     std::move(cb).Run(storage_module_result.status());
@@ -263,11 +261,8 @@ void MissiveImpl::ConfirmRecordUpload(
     return;
   }
 
-  // Use StorageModuleInterface as StorageModule, because it was created by
-  // StorageModule::Create.
-  static_cast<StorageModule*>(storage_module_.get())
-      ->ReportSuccess(in_request.sequence_information(),
-                      in_request.force_confirm());
+  storage_module_->ReportSuccess(in_request.sequence_information(),
+                                 in_request.force_confirm());
   out_response->Return(response_body);
 }
 
@@ -286,10 +281,7 @@ void MissiveImpl::UpdateEncryptionKey(
     return;
   }
 
-  // Use StorageModuleInterface as StorageModule, because it was created by
-  // StorageModule::Create.
-  static_cast<StorageModule*>(storage_module_.get())
-      ->UpdateEncryptionKey(in_request.signed_encryption_info());
+  storage_module_->UpdateEncryptionKey(in_request.signed_encryption_info());
   out_response->Return(response_body);
 }
 

@@ -9,6 +9,7 @@ group("all") {
   deps = [
     ":libmissiveclient_pc",
     ":missiveclientlib",
+    ":missiveclienttestlib",
     ":missived",
   ]
   if (use.test) {
@@ -55,6 +56,7 @@ generate_pkg_config("libmissiveclient_pc") {
     "-lmissiveprotorecordconstants",
     "-lmissiveprotorecord",
     "-lmissiveprotointerface",
+    # TODO(b/256623647) "-lmissiveclienttestlib",  # Test-only
   ]
   cflags = [ "-I/usr/include/libmissiveclient" ]
 }
@@ -77,6 +79,7 @@ static_library("missiveclientlib") {
     "client/report_queue_impl.cc",
     "client/report_queue_impl.h",
     "client/report_queue_nonchrome_provider.cc",
+    "client/report_queue_nonchrome_provider.h",
     "client/report_queue_provider.cc",
     "client/report_queue_provider.h",
     "storage/missive_storage_module.cc",
@@ -116,6 +119,40 @@ executable("missived") {
     "//missive/missive:missive_args",
     "//missive/missive:missive_impl",
     "//missive/missive:missive_service",
+  ]
+}
+
+static_library("missiveclienttestlib") {
+  # testonly = true
+  sources = [
+    "client/mock_dm_token_retriever.cc",
+    "client/mock_dm_token_retriever.h",
+    "client/mock_report_queue.cc",
+    "client/mock_report_queue.h",
+    "client/mock_report_queue_provider.cc",
+    "client/mock_report_queue_provider.h",
+    "client/report_queue_provider_test_helper.cc",
+    "client/report_queue_provider_test_helper.h",
+    "storage/test_storage_module.cc",
+    "storage/test_storage_module.h",
+  ]
+  configs += [ ":target_defaults" ]
+
+  # Make the library into a standalone one.
+  configs -= [ "//common-mk:use_thin_archive" ]
+  configs += [ "//common-mk:nouse_thin_archive" ]
+
+  deps = [
+    "//missive/client:report_queue",
+    "//missive/client:report_queue_configuration",
+    "//missive/client:report_queue_factory",
+    "//missive/client:report_queue_provider",
+    "//missive/proto:libmissiveprotorecord",
+    "//missive/proto:libmissiveprotorecordconstants",
+    "//missive/proto:test_proto",
+    "//missive/storage:storage_test_support",
+    "//missive/util:status",
+    "//missive/util:status_macros",
   ]
 }
 

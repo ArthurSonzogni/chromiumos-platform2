@@ -1,5 +1,5 @@
 # Copyright 2021 The ChromiumOS Authors
-# Use of this source code is governed by a BSD - style license that can be
+# Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
 import("//common-mk/pkg_config.gni")
@@ -17,12 +17,6 @@ pkg_config("target_defaults") {
   } else {
     pkg_deps += [ "protobuf-lite" ]
   }
-}
-
-static_library("missive_clientlib") {
-  sources = [ "report_queue_nonchrome_provider.cc" ]
-  configs += [ ":target_defaults" ]
-  deps = [ ":report_queue_factory" ]
 }
 
 static_library("missive_client") {
@@ -119,6 +113,8 @@ static_library("client_test_support") {
     "mock_report_queue.h",
     "mock_report_queue_provider.cc",
     "mock_report_queue_provider.h",
+    "report_queue_nonchrome_provider.cc",
+    "report_queue_nonchrome_provider.h",
   ]
   configs += [ ":target_defaults" ]
   deps = [

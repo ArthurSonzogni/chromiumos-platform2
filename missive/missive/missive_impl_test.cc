@@ -23,9 +23,7 @@
 #include "missive/analytics/resource_collector_memory.h"
 #include "missive/analytics/resource_collector_storage.h"
 #include "missive/dbus/mock_upload_client.h"
-#include "missive/storage/storage_module_interface.h"
-#include "missive/storage/storage_uploader_interface.h"
-#include "missive/storage/test_storage_module.h"
+#include "missive/storage/storage_module.h"
 #include "missive/util/test_support_callbacks.h"
 #include "missive/util/test_util.h"
 
@@ -33,11 +31,41 @@ using ::testing::_;
 using ::testing::Eq;
 using ::testing::IsEmpty;
 using ::testing::NiceMock;
+using ::testing::Return;
 using ::testing::StrEq;
 using ::testing::WithArg;
 
 namespace reporting {
 namespace {
+
+class MockStorageModule : public StorageModule {
+ public:
+  // As opposed to the production |StorageModule|, test module does not need to
+  // call factory method - it is created directly by constructor.
+  MockStorageModule() = default;
+
+  MOCK_METHOD(void,
+              AddRecord,
+              (Priority priority, Record record, EnqueueCallback callback),
+              (override));
+
+  MOCK_METHOD(void,
+              Flush,
+              (Priority priority, FlushCallback callback),
+              (override));
+
+  MOCK_METHOD(void,
+              ReportSuccess,
+              (SequenceInformation sequence_information, bool force),
+              (override));
+
+  MOCK_METHOD(void,
+              UpdateEncryptionKey,
+              (SignedEncryptionInfo signed_encryption_key),
+              (override));
+
+  MOCK_METHOD(base::StringPiece, GetPipelineId, (), (const override));
+};
 
 class MissiveImplTest : public ::testing::Test {
  public:
@@ -59,10 +87,9 @@ class MissiveImplTest : public ::testing::Test {
         base::BindOnce(
             [](MissiveImplTest* self, MissiveImpl* missive,
                StorageOptions storage_options,
-               base::OnceCallback<void(
-                   StatusOr<scoped_refptr<StorageModuleInterface>>)> callback) {
-              self->storage_module_ =
-                  base::MakeRefCounted<test::TestStorageModule>();
+               base::OnceCallback<void(StatusOr<scoped_refptr<StorageModule>>)>
+                   callback) {
+              self->storage_module_ = base::MakeRefCounted<MockStorageModule>();
               std::move(callback).Run(self->storage_module_);
             },
             base::Unretained(this)));
@@ -86,13 +113,15 @@ class MissiveImplTest : public ::testing::Test {
   base::test::TaskEnvironment task_environment_;
 
   scoped_refptr<UploadClient> upload_client_;
-  scoped_refptr<test::TestStorageModule> storage_module_;
+  scoped_refptr<MockStorageModule> storage_module_;
   std::unique_ptr<MissiveImpl> missive_;
 };
 
 TEST_F(MissiveImplTest, GetPipelineId) {
   ASSERT_TRUE(storage_module_);
-  EXPECT_TRUE(IsValidGUID(storage_module_->GetPipelineId()));
+  EXPECT_CALL(*storage_module_, GetPipelineId())
+      .WillOnce(Return(base::GenerateGUID()));
+  EXPECT_TRUE(base::IsValidGUID(storage_module_->GetPipelineId()));
 }
 
 TEST_F(MissiveImplTest, AsyncStartUploadTest) {

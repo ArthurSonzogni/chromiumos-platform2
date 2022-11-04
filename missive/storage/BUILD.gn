@@ -116,7 +116,6 @@ static_library("storage_module_interface") {
   sources = [ "storage_module_interface.cc" ]
   configs += [ ":target_defaults" ]
   deps = [
-    "//missive/compression:compression_module",
     "//missive/proto:libmissiveprotorecord",
     "//missive/proto:libmissiveprotorecordconstants",
     "//missive/util:status",
@@ -127,10 +126,7 @@ static_library("storage_test_support") {
   sources = [ "test_storage_module.cc" ]
   configs += [ ":target_defaults" ]
   public_deps = [
-    ":storage",
-    ":storage_configuration",
-    ":storage_module",
-    ":storage_queue",
+    ":storage_module_interface",
     "//missive/proto:libmissiveprotorecord",
     "//missive/proto:libmissiveprotorecordconstants",
     "//missive/util:file",

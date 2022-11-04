@@ -7,13 +7,12 @@
 #include <utility>
 
 #include <base/callback.h>
-#include <base/guid.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include "missive/proto/record.pb.h"
 #include "missive/proto/record_constants.pb.h"
-#include "missive/storage/storage_module.h"
+#include "missive/storage/storage_module_interface.h"
 
 using ::testing::Invoke;
 using ::testing::WithArg;
@@ -30,8 +29,6 @@ TestStorageModuleStrict::TestStorageModuleStrict() {
           WithArg<1>(Invoke([](StorageModuleInterface::FlushCallback callback) {
             std::move(callback).Run(Status::StatusOK());
           })));
-  ON_CALL(*this, GetPipelineId)
-      .WillByDefault(testing::Return(base::GenerateGUID()));
 }
 
 TestStorageModuleStrict::~TestStorageModuleStrict() = default;

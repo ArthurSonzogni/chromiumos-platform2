@@ -21,7 +21,7 @@
 #include "missive/resources/enqueuing_record_tallier.h"
 #include "missive/resources/resource_interface.h"
 #include "missive/scheduler/scheduler.h"
-#include "missive/storage/storage_module_interface.h"
+#include "missive/storage/storage_module.h"
 #include "missive/storage/storage_uploader_interface.h"
 #include "missive/util/status.h"
 #include "missive/util/statusor.h"
@@ -43,9 +43,9 @@ class MissiveImpl : public MissiveService {
       base::OnceCallback<
           void(MissiveImpl* self,
                StorageOptions storage_options,
-               base::OnceCallback<void(
-                   StatusOr<scoped_refptr<StorageModuleInterface>>)> callback)>
-          create_storage_factory = base::BindOnce(&MissiveImpl::CreateStorage));
+               base::OnceCallback<void(StatusOr<scoped_refptr<StorageModule>>)>
+                   callback)> create_storage_factory =
+          base::BindOnce(&MissiveImpl::CreateStorage));
   MissiveImpl(const MissiveImpl&) = delete;
   MissiveImpl& operator=(const MissiveImpl&) = delete;
   ~MissiveImpl() override;
@@ -85,7 +85,7 @@ class MissiveImpl : public MissiveService {
  private:
   void CreateStorage(
       StorageOptions storage_options,
-      base::OnceCallback<void(StatusOr<scoped_refptr<StorageModuleInterface>>)>
+      base::OnceCallback<void(StatusOr<scoped_refptr<StorageModule>>)>
           callback);
 
   void OnUploadClientCreated(
@@ -94,7 +94,7 @@ class MissiveImpl : public MissiveService {
 
   void OnStorageModuleConfigured(
       base::OnceCallback<void(Status)> cb,
-      StatusOr<scoped_refptr<StorageModuleInterface>> storage_module_result);
+      StatusOr<scoped_refptr<StorageModule>> storage_module_result);
 
   void AsyncStartUploadInternal(
       UploaderInterface::UploadReason reason,
@@ -108,7 +108,7 @@ class MissiveImpl : public MissiveService {
   base::OnceCallback<void(
       MissiveImpl* self,
       StorageOptions storage_options,
-      base::OnceCallback<void(StatusOr<scoped_refptr<StorageModuleInterface>>)>
+      base::OnceCallback<void(StatusOr<scoped_refptr<StorageModule>>)>
           callback)>
       create_storage_factory_;
 
@@ -117,7 +117,7 @@ class MissiveImpl : public MissiveService {
 
   scoped_refptr<UploadClient> upload_client_
       GUARDED_BY_CONTEXT(sequence_checker_);
-  scoped_refptr<StorageModuleInterface> storage_module_
+  scoped_refptr<StorageModule> storage_module_
       GUARDED_BY_CONTEXT(sequence_checker_);
   scoped_refptr<const ResourceInterface> disk_space_resource_
       GUARDED_BY_CONTEXT(sequence_checker_);

@@ -55,13 +55,6 @@ void MockReportQueueProvider::
     ExpectCreateNewSpeculativeQueueAndReturnNewMockQueue(size_t times) {
   CheckOnThread();
 
-  // Mock internals so we do not unnecessarily create a new report queue.
-  EXPECT_CALL(*this, CreateNewQueueMock(_, _))
-      .Times(times)
-      .WillRepeatedly(WithArg<1>(Invoke([](CreateReportQueueCallback cb) {
-        std::move(cb).Run(std::unique_ptr<ReportQueue>(nullptr));
-      })));
-
   EXPECT_CALL(*this, CreateNewSpeculativeQueueMock())
       .Times(times)
       .WillRepeatedly([]() {

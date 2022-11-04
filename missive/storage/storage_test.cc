@@ -1060,7 +1060,7 @@ TEST_P(StorageTest, ReadPipelineId) {
 
   StatusOr<base::StringPiece> pipeline_id_result = storage_->GetPipelineId();
   EXPECT_THAT(pipeline_id_result.status(), Eq(Status::StatusOK()));
-  EXPECT_TRUE(IsValidGUID(pipeline_id_result.ValueOrDie()));
+  EXPECT_TRUE(base::IsValidGUID(pipeline_id_result.ValueOrDie()));
 }
 
 TEST_P(StorageTest, WriteIntoNewStorageAndReopen) {

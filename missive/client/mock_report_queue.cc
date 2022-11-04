@@ -4,6 +4,7 @@
 
 #include "missive/client/mock_report_queue.h"
 
+#include <memory>
 #include <utility>
 
 #include <gmock/gmock.h>
