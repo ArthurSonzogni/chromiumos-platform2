@@ -51,7 +51,7 @@ class ProcessManagerTest : public testing::Test {
   }
 
   void AddTerminateProcess(
-      pid_t pid, std::unique_ptr<base::CancelableClosure> timeout_handler) {
+      pid_t pid, std::unique_ptr<base::CancelableOnceClosure> timeout_handler) {
     process_manager_->pending_termination_processes_[pid] =
         std::move(timeout_handler);
   }
@@ -87,15 +87,15 @@ class ProcessManagerTest : public testing::Test {
         : exited_callback_(base::BindOnce(&CallbackObserver::OnProcessExited,
                                           base::Unretained(this))),
           termination_timeout_callback_(
-              base::BindRepeating(&CallbackObserver::OnTerminationTimeout,
-                                  base::Unretained(this))) {}
+              base::BindOnce(&CallbackObserver::OnTerminationTimeout,
+                             base::Unretained(this))) {}
     virtual ~CallbackObserver() = default;
 
     MOCK_METHOD(void, OnProcessExited, (int));
     MOCK_METHOD(void, OnTerminationTimeout, ());
 
     ProcessManager::ExitCallback exited_callback_;
-    base::Closure termination_timeout_callback_;
+    base::OnceClosure termination_timeout_callback_;
   };
 
   EventDispatcherForTest dispatcher_;
@@ -148,8 +148,8 @@ TEST_F(ProcessManagerTest, WatchedProcessExited) {
 TEST_F(ProcessManagerTest, TerminateProcessExited) {
   const pid_t kPid = 123;
   CallbackObserver observer;
-  auto timeout_handler = std::make_unique<base::CancelableClosure>(
-      observer.termination_timeout_callback_);
+  auto timeout_handler = std::make_unique<base::CancelableOnceClosure>(
+      std::move(observer.termination_timeout_callback_));
   AddTerminateProcess(kPid, std::move(timeout_handler));
 
   EXPECT_CALL(observer, OnTerminationTimeout()).Times(0);

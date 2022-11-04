@@ -169,7 +169,7 @@ class ProcessManager {
   friend class ProcessManagerTest;
   friend base::LazyInstanceTraitsBase<ProcessManager>;
 
-  using TerminationTimeoutCallback = base::CancelableClosure;
+  using TerminationTimeoutCallback = base::CancelableOnceClosure;
 
   struct WatchedProcess {
     // |exit_callback| is valid when the caller only expects the exit status.

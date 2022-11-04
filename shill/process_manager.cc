@@ -479,8 +479,8 @@ bool ProcessManager::TerminateProcess(pid_t pid, bool kill_signal) {
     return true;
   }
   auto termination_callback = std::make_unique<TerminationTimeoutCallback>(
-      base::Bind(&ProcessManager::ProcessTerminationTimeoutHandler,
-                 weak_factory_.GetWeakPtr(), pid, kill_signal));
+      base::BindOnce(&ProcessManager::ProcessTerminationTimeoutHandler,
+                     weak_factory_.GetWeakPtr(), pid, kill_signal));
   dispatcher_->PostDelayedTask(FROM_HERE, termination_callback->callback(),
                                kTerminationTimeout);
   pending_termination_processes_[pid] = std::move(termination_callback);
