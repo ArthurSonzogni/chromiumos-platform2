@@ -1646,7 +1646,7 @@ void UserDataAuth::DoMount(
   // request.has_create() is true), so check the USS experiment flag and report
   // the metrics here.
   if (request.has_create()) {
-    IsUserSecretStashExperimentEnabled();
+    IsUserSecretStashExperimentEnabled(platform_);
   }
 
   // MountArgs is a set of parameters that we'll be passing around to
@@ -4931,7 +4931,7 @@ void UserDataAuth::ListAuthFactors(
       user_data_auth::CRYPTOHOME_ERROR_NOT_SET) {
     LOG(WARNING) << "Failure in listing the available VaultKeyset factors.";
   }
-  if (kEnableCreateBackupVK && !IsUserSecretStashExperimentEnabled() &&
+  if (kEnableCreateBackupVK && !IsUserSecretStashExperimentEnabled(platform_) &&
       auth_factor_map.empty()) {
     // Before IsUserSecretStashExperimentEnabled() there are no backup VKs in
     // disk, hence label_to_auth_factor_for_backup_vks is empty. After
@@ -4967,7 +4967,7 @@ void UserDataAuth::ListAuthFactors(
     // We assume USS is available either if there are already auth factors in
     // USS, or if there are no auth factors but the experiment is enabled.
     if (!reply.configured_auth_factors_with_status().empty() ||
-        IsUserSecretStashExperimentEnabled()) {
+        IsUserSecretStashExperimentEnabled(platform_)) {
       storage_type = AuthFactorStorageType::kUserSecretStash;
     }
   }

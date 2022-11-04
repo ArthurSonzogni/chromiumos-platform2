@@ -20,6 +20,7 @@
 #include "cryptohome/cryptohome_common.h"
 #include "cryptohome/flatbuffer_schemas/user_secret_stash_container.h"
 #include "cryptohome/flatbuffer_schemas/user_secret_stash_payload.h"
+#include "cryptohome/mock_platform.h"
 #include "cryptohome/storage/encrypted_container/filesystem_key.h"
 #include "cryptohome/storage/file_system_keyset.h"
 #include "cryptohome/storage/file_system_keyset_test_utils.h"
@@ -302,11 +303,12 @@ TEST_F(UserSecretStashTest, EncryptAndDecryptUSSViaWrappedKey) {
 // Test the USS experiment state is off by default, but can be toggled in tests.
 TEST_F(UserSecretStashTest, ExperimentState) {
   // The experiment is off by default.
-  EXPECT_FALSE(IsUserSecretStashExperimentEnabled());
+  MockPlatform platform;
+  EXPECT_FALSE(IsUserSecretStashExperimentEnabled(&platform));
 
   // Verify the test can toggle the experiment state.
   SetUserSecretStashExperimentForTesting(/*enabled=*/true);
-  EXPECT_TRUE(IsUserSecretStashExperimentEnabled());
+  EXPECT_TRUE(IsUserSecretStashExperimentEnabled(&platform));
 
   // Unset the experiment override to avoid affecting other test cases.
   SetUserSecretStashExperimentForTesting(/*enabled=*/std::nullopt);

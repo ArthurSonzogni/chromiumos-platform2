@@ -53,10 +53,14 @@ namespace {
 // fixed and USS can be enabled again, this version needs to be incremented.
 constexpr int kCurrentUssVersion = 1;
 
-constexpr char kEnableUssExperimentFlagPath[] =
+constexpr char kEnableUssFeatureTestFlagPath[] =
     "/var/lib/cryptohome/uss_enabled";
-constexpr char kDisableUssExperimentFlagPath[] =
+constexpr char kDisableUssFeatureTestFlagPath[] =
     "/var/lib/cryptohome/uss_disabled";
+constexpr char kEnableUssFlagPath[] =
+    "/var/lib/cryptohome/uss_enabled_until_next_update";
+constexpr char kDisableUssFlagPath[] =
+    "/var/lib/cryptohome/uss_disabled_until_next_update";
 
 std::optional<bool>& GetUserSecretStashExperimentFlag() {
   // The static variable holding the overridden state. The default state is
@@ -72,12 +76,36 @@ std::optional<bool>& GetUserSecretStashExperimentOverride() {
   return uss_experiment_enabled;
 }
 
-bool EnableUserSecretStashExperimentFlagFileExists() {
-  return base::PathExists(base::FilePath(kEnableUssExperimentFlagPath));
+bool EnableUSSFeatureTestFlagFileExists() {
+  return base::PathExists(base::FilePath(kEnableUssFeatureTestFlagPath));
 }
 
-bool DisableUserSecretStashExperimentFlagFileExists() {
-  return base::PathExists(base::FilePath(kDisableUssExperimentFlagPath));
+bool DisableUSSFeatureTestFlagFileExists() {
+  return base::PathExists(base::FilePath(kDisableUssFeatureTestFlagPath));
+}
+
+bool EnableUSSFlagFileExists() {
+  return base::PathExists(base::FilePath(kEnableUssFlagPath));
+}
+
+bool DisableUSSFlagFileExists() {
+  return base::PathExists(base::FilePath(kDisableUssFlagPath));
+}
+
+void UpdateUSSStatusOnDisk(Platform* platform, UssExperimentFlag flag) {
+  switch (flag) {
+    case UssExperimentFlag::kDisabled:
+      platform->TouchFileDurable(base::FilePath(kDisableUssFlagPath));
+      platform->DeleteFileDurable(base::FilePath(kEnableUssFlagPath));
+      return;
+    case UssExperimentFlag::kEnabled:
+      platform->TouchFileDurable(base::FilePath(kEnableUssFlagPath));
+      platform->DeleteFileDurable(base::FilePath(kDisableUssFlagPath));
+      return;
+    case UssExperimentFlag::kNotFound:
+    case UssExperimentFlag::kMaxValue:
+      return;
+  }
 }
 
 // Loads the current OS version from the CHROMEOS_RELEASE_VERSION field in
@@ -414,30 +442,42 @@ int UserSecretStashExperimentVersion() {
   return kCurrentUssVersion;
 }
 
-bool IsUserSecretStashExperimentEnabled() {
-  // If the state is overridden by tests, return this value.
+bool IsUserSecretStashExperimentEnabled(Platform* platform) {
+  // 1. If the state is overridden by unit tests, return this value.
   if (GetUserSecretStashExperimentOverride().has_value())
     return GetUserSecretStashExperimentOverride().value();
-  // Otherwise, defer to checking the flag file existence. The disable file
-  // precedes the enable file.
-  if (DisableUserSecretStashExperimentFlagFileExists()) {
+  // 2. If no unittest override defer to checking the feature test file
+  // existence. The disable file precedes the enable file.
+  if (DisableUSSFeatureTestFlagFileExists()) {
     return false;
   }
-  if (EnableUserSecretStashExperimentFlagFileExists()) {
+  if (EnableUSSFeatureTestFlagFileExists()) {
     return true;
   }
-  // Otherwise, check the flag set by UssExperimentConfigFetcher.
-  // TODO(b/230069013): Before actual launching, only report metrics for the
-  // result of this flag, and don't actually use its value.
+  // 3. Check the flag set by UssExperimentConfigFetcher and persist the state
+  // until next update.
   UssExperimentFlag result = UssExperimentFlag::kNotFound;
   std::optional<bool> flag = GetUserSecretStashExperimentFlag();
   if (flag.has_value()) {
     if (flag.value()) {
       result = UssExperimentFlag::kEnabled;
+      UpdateUSSStatusOnDisk(platform, UssExperimentFlag::kEnabled);
     } else {
+      result = UssExperimentFlag::kDisabled;
+      UpdateUSSStatusOnDisk(platform, UssExperimentFlag::kDisabled);
+    }
+  } else {
+    // When flag doesn't have any value, restore the previous value.
+    // If both flag files exists, USS is disabled. If no flag file is found the
+    // result will stay unchanged.
+    if (EnableUSSFlagFileExists()) {
+      result = UssExperimentFlag::kEnabled;
+    }
+    if (DisableUSSFlagFileExists()) {
       result = UssExperimentFlag::kDisabled;
     }
   }
+
   ReportUssExperimentFlag(result);
   return result == UssExperimentFlag::kEnabled;
 }

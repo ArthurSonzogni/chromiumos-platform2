@@ -42,7 +42,7 @@ void SetUserSecretStashExperimentFlag(bool enabled);
 // enable) or the /var/lib/cryptohome/uss_disabled (to disable) file. Unit tests
 // can furthermore override this behavior using
 // `SetUserSecretStashExperimentForTesting()`.
-bool IsUserSecretStashExperimentEnabled();
+bool IsUserSecretStashExperimentEnabled(Platform* platform);
 // Allows to toggle the experiment state in tests. Passing nullopt reverts to
 // the default behavior.
 void SetUserSecretStashExperimentForTesting(std::optional<bool> enabled);

@@ -285,7 +285,8 @@ CryptohomeStatus AuthSession::Initialize() {
   // disk at the same time. This logic is going to change only after
   // USSMigration is enabled.
   if (enable_create_backup_vk_with_uss_ &&
-      !IsUserSecretStashExperimentEnabled() && label_to_auth_factor_.empty() &&
+      !IsUserSecretStashExperimentEnabled(platform_) &&
+      label_to_auth_factor_.empty() &&
       !label_to_auth_factor_for_backup_vks.empty()) {
     user_has_configured_credential_ = true;
     label_to_auth_factor_ = std::move(label_to_auth_factor_for_backup_vks);
@@ -382,7 +383,7 @@ CryptohomeStatus AuthSession::OnUserCreated() {
     if (!file_system_keyset_.has_value()) {
       file_system_keyset_ = FileSystemKeyset::CreateRandom();
     }
-    if (IsUserSecretStashExperimentEnabled()) {
+    if (IsUserSecretStashExperimentEnabled(platform_)) {
       // Check invariants.
       DCHECK(!user_secret_stash_);
       DCHECK(!user_secret_stash_main_key_.has_value());
