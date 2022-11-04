@@ -10,6 +10,7 @@
 #include <sys/stat.h>
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -20,13 +21,14 @@
 #include <base/strings/string_util.h>
 #include <base/values.h>
 
+#include "runtime_probe/system/context.h"
 #include "runtime_probe/utils/file_utils.h"
 
 namespace runtime_probe {
 
 namespace {
-constexpr char kDevVideoPath[] = "/dev/video*";
-constexpr char kSysVideoPath[] = "/sys/class/video4linux";
+constexpr char kDevVideoPath[] = "dev/video*";
+constexpr char kSysVideoPath[] = "sys/class/video4linux";
 
 using FieldsType = std::vector<std::pair<std::string, std::string>>;
 
@@ -37,35 +39,15 @@ const FieldsType kOptionalFields{{"usb_manufacturer", "manufacturer"},
                                  {"usb_bcd_device", "bcdDevice"},
                                  {"usb_removable", "removable"}};
 
-bool IsCaptureDevice(const base::FilePath& path) {
-  int32_t fd = open(path.value().c_str(), O_RDONLY);
-  if (fd == -1) {
-    LOG(ERROR) << "Failed to open " << path;
-    return false;
-  }
-
-  v4l2_capability cap;
-  if (ioctl(fd, VIDIOC_QUERYCAP, &cap, 1) == -1) {
-    LOG(ERROR) << "Failed to execute ioctl to query the V4L2 capability";
-    return false;
-  }
-  if (close(fd) == -1) {
-    LOG(ERROR) << "Failed to close " << path;
-  }
-
-  uint32_t mask = (cap.capabilities & V4L2_CAP_DEVICE_CAPS) ? cap.device_caps
-                                                            : cap.capabilities;
-  return (mask & (V4L2_CAP_VIDEO_CAPTURE | V4L2_CAP_VIDEO_CAPTURE_MPLANE)) &&
-         !(mask & (V4L2_CAP_VIDEO_OUTPUT | V4L2_CAP_VIDEO_OUTPUT_MPLANE)) &&
-         !(mask & (V4L2_CAP_VIDEO_M2M | V4L2_CAP_VIDEO_M2M_MPLANE));
-}
-
 bool ReadUsbSysfs(const base::FilePath& path, base::Value* res) {
   const auto device_name = path.BaseName();
   // The path "/sys/class/video4linux/*/device" is a symbolic link. Get the real
   // absolute path before |MapFilesToDict|.
-  const auto device_path =
-      base::FilePath(kSysVideoPath).Append(device_name).Append("device/..");
+  const auto device_path = Context::Get()
+                               ->root_dir()
+                               .Append(kSysVideoPath)
+                               .Append(device_name)
+                               .Append("device/..");
   const auto sysfs_dir_path = base::MakeAbsoluteFilePath(device_path);
   if (sysfs_dir_path.empty()) {
     LOG(ERROR) << "Failed to get absolute file path from: " << device_path;
@@ -86,16 +68,55 @@ bool ReadUsbSysfs(const base::FilePath& path, base::Value* res) {
   return true;
 }
 
-bool ExploreAsUsbCamera(const base::FilePath& path, base::Value* res) {
-  return IsCaptureDevice(path) && ReadUsbSysfs(path, res);
+}  // namespace
+
+std::optional<v4l2_capability> UsbCameraFunction::QueryV4l2Cap(
+    int32_t fd) const {
+  v4l2_capability cap;
+  if (ioctl(fd, VIDIOC_QUERYCAP, &cap, 1) == -1) {
+    LOG(ERROR) << "Failed to execute ioctl to query the V4L2 capability";
+    return std::nullopt;
+  }
+
+  return cap;
 }
 
-}  // namespace
+bool UsbCameraFunction::IsCaptureDevice(const base::FilePath& path) const {
+  int32_t fd = open(path.value().c_str(), O_RDONLY);
+  if (fd == -1) {
+    LOG(ERROR) << "Failed to open " << path;
+    return false;
+  }
+
+  auto cap = QueryV4l2Cap(fd);
+  if (!cap) {
+    LOG(ERROR) << "Failed to query the V4L2 capability for " << path;
+    return false;
+  }
+
+  if (close(fd) == -1) {
+    LOG(ERROR) << "Failed to close " << path;
+  }
+
+  uint32_t mask = (cap->capabilities & V4L2_CAP_DEVICE_CAPS)
+                      ? cap->device_caps
+                      : cap->capabilities;
+  return (mask & (V4L2_CAP_VIDEO_CAPTURE | V4L2_CAP_VIDEO_CAPTURE_MPLANE)) &&
+         !(mask & (V4L2_CAP_VIDEO_OUTPUT | V4L2_CAP_VIDEO_OUTPUT_MPLANE)) &&
+         !(mask & (V4L2_CAP_VIDEO_M2M | V4L2_CAP_VIDEO_M2M_MPLANE));
+}
+
+bool UsbCameraFunction::ExploreAsUsbCamera(const base::FilePath& path,
+                                           base::Value* res) const {
+  return IsCaptureDevice(path) && ReadUsbSysfs(path, res);
+}
 
 UsbCameraFunction::DataType UsbCameraFunction::EvalImpl() const {
   UsbCameraFunction::DataType result{};
 
-  for (const auto& video_path : Glob(kDevVideoPath)) {
+  const auto rooted_dev_video_pattern =
+      Context::Get()->root_dir().Append(kDevVideoPath);
+  for (const auto& video_path : Glob(rooted_dev_video_pattern)) {
     base::Value res(base::Value::Type::DICTIONARY);
     res.SetStringKey("path", video_path.value());
     if (ExploreAsUsbCamera(video_path, &res)) {

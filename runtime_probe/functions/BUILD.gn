@@ -57,6 +57,7 @@ if (use.test) {
       "sequence_test.cc",
       "sysfs_test.cc",
       "tcpc_test.cc",
+      "usb_camera_test.cc",
     ]
     configs += [
       ":target_defaults",
