@@ -9,6 +9,7 @@
 
 #include <base/files/scoped_temp_dir.h>
 #include <base/strings/string_number_conversions.h>
+#include <dbus/message.h>
 #include <gmock/gmock.h>
 #include <grpcpp/impl/call.h>
 #include <grpcpp/grpcpp.h>
@@ -36,6 +37,12 @@ using ::testing::UnorderedElementsAreArray;
 using ::testing::Unused;
 
 constexpr char kDefaultPluginVmContainerName[] = "penguin";
+
+class SysinfoProviderMock : public GuestMetrics::SysinfoProvider {
+ public:
+  MOCK_METHOD(int64_t, AmountOfTotalDiskSpace, (base::FilePath), ());
+  MOCK_METHOD(int64_t, AmountOfFreeDiskSpace, (base::FilePath), ());
+};
 
 // Helper for testing proto-based MethodCalls sent to the dbus. Extracts the
 // proto in from the MethodCall to |protobuf| so that it can be tested further.
@@ -891,6 +898,89 @@ TEST(ContainerListenerImplTest, ValidReportMetricsCallShouldAccumulateMetrics) {
   test_framework.GetGuestMetrics()->ReportMetricsImmediatelyForTesting();
 }
 
+TEST(ContainerListenerImplTest,
+     ReportingInodeCountShouldGenerateAndEmitSpaceMetrics) {
+  ServiceTestingHelper test_framework(ServiceTestingHelper::NORMAL_MOCKS);
+  test_framework.SetUpDefaultVmAndContainer();
+
+  // Setup a mock provider for sysinfo.
+  auto sysinfo_provider = std::make_unique<SysinfoProviderMock>();
+  SysinfoProviderMock* sysinfo_provider_reference = sysinfo_provider.get();
+  test_framework.GetGuestMetrics()->SetSysinfoProviderForTesting(
+      std::move(sysinfo_provider));
+
+  // Fake an RPC from the guest containing two metrics.
+  vm_tools::container::ReportMetricsRequest request;
+  vm_tools::container::ReportMetricsResponse response;
+
+  // Setup metrics request.
+  request.set_token(ServiceTestingHelper::kDefaultContainerToken);
+  vm_tools::container::Metric* m = request.add_metric();
+  m->set_name("borealis-inode-count");
+  m->set_value(100);
+
+  // Replace the concierge object proxy with our mock.
+  EXPECT_CALL(test_framework.get_mock_bus(),
+              GetObjectProxy(vm_tools::concierge::kVmConciergeServiceName, _))
+      .WillOnce(
+          testing::Return(&test_framework.get_mock_concierge_service_proxy()));
+
+  // Replace the ListVmDisks request to concierge.
+  EXPECT_CALL(
+      test_framework.get_mock_concierge_service_proxy(),
+      DoCallMethod(
+          AllOf(HasInterfaceName(vm_tools::concierge::kVmConciergeInterface),
+                HasMethodName(vm_tools::concierge::kListVmDisksMethod)),
+          _, _))
+      .WillOnce(Invoke([](dbus::MethodCall* method_call, int timeout,
+                          base::OnceCallback<void(dbus::Response*)>* callback) {
+        method_call->SetSerial(123);
+        std::unique_ptr<dbus::Response> dbus_response(
+            dbus::Response::FromMethodCall(method_call));
+        dbus::MessageWriter writer(dbus_response.get());
+        vm_tools::concierge::ListVmDisksResponse response;
+
+        // Set the response.
+        vm_tools::concierge::VmDiskInfo* image = response.add_images();
+        image->set_name("borealis");
+        image->set_size(1000000);
+        image->set_path("/mnt/stateful/borealis.img");
+
+        writer.AppendProtoAsArrayOfBytes(response);
+        std::move(*callback).Run(std::move(dbus_response.get()));
+      }));
+
+  // Set the response to AmountOfTotalDiskSpace.
+  EXPECT_CALL(*sysinfo_provider_reference,
+              AmountOfTotalDiskSpace(base::FilePath("/mnt/stateful")))
+      .WillOnce(testing::Return(2000000));
+  // Set the response to AmountOfFreeDiskSpace.
+  EXPECT_CALL(*sysinfo_provider_reference,
+              AmountOfFreeDiskSpace(base::FilePath("/mnt/stateful")))
+      .WillOnce(testing::Return(500000));
+
+  // InodeRatioAtStartup [KiB] =
+  // (1000000[image_size]/100[inode_count])/1024 = 9
+  EXPECT_CALL(*test_framework.GetMetricsLibraryMock(),
+              SendToUMA("Borealis.Disk.InodeRatioAtStartup", 9, 0, 10240, 50));
+  // VMUsageToTotalSpacePercentageAtStartup [%] =
+  // (1000000[image_size]/2000000[total_size])/100 = 50%
+  EXPECT_CALL(*test_framework.GetMetricsLibraryMock(),
+              SendPercentageToUMA(
+                  "Borealis.Disk.VMUsageToTotalSpacePercentageAtStartup", 50));
+  // VMUsageToTotalUsagePercentageAtStartup [%] =
+  // (1000000[image_size]/(2000000[total_size] - 500000[free_space]))/100 = 66%
+  EXPECT_CALL(*test_framework.GetMetricsLibraryMock(),
+              SendPercentageToUMA(
+                  "Borealis.Disk.VMUsageToTotalUsagePercentageAtStartup", 66));
+
+  grpc::ServerContext ctx;
+  grpc::Status status =
+      test_framework.get_service().GetContainerListenerImpl()->ReportMetrics(
+          &ctx, &request, &response);
+  ASSERT_TRUE(status.ok()) << status.error_message();
+}
+
 TEST(ContainerListenerImplTest, ReportMetricsCallWithTooManyMetricsShouldFail) {
   ServiceTestingHelper test_framework(ServiceTestingHelper::NORMAL_MOCKS);
   test_framework.SetUpDefaultVmAndContainer();
@@ -947,20 +1037,16 @@ TEST(ContainerListenerImplTest, ReportMetricsCallsShouldBeRateLimited) {
   m->set_value(123456);
 
   grpc::ServerContext ctx;
-  // First call should succeed...
+  // The first 6 calls should succeed.
+  for (int i = 0; i < 6; i++) {
+    grpc::Status status =
+        test_framework.get_service().GetContainerListenerImpl()->ReportMetrics(
+            &ctx, &request, &response);
+    EXPECT_TRUE(status.ok()) << status.error_message();
+    EXPECT_EQ(response.error(), 0);
+  }
+  // Seventh call should hit the rate limit and fail.
   grpc::Status status =
-      test_framework.get_service().GetContainerListenerImpl()->ReportMetrics(
-          &ctx, &request, &response);
-  EXPECT_TRUE(status.ok()) << status.error_message();
-  EXPECT_EQ(response.error(), 0);
-  // Second call should succeed...
-  status =
-      test_framework.get_service().GetContainerListenerImpl()->ReportMetrics(
-          &ctx, &request, &response);
-  EXPECT_TRUE(status.ok()) << status.error_message();
-  EXPECT_EQ(response.error(), 0);
-  // Third call should hit the rate limit and fail.
-  status =
       test_framework.get_service().GetContainerListenerImpl()->ReportMetrics(
           &ctx, &request, &response);
   EXPECT_TRUE(status.ok()) << status.error_message();

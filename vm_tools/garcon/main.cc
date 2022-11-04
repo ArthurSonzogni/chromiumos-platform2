@@ -394,7 +394,9 @@ int HandleMetricsArgs(std::vector<std::string> args) {
   if (!vm_tools::garcon::HostNotifier::ReportMetrics(std::move(request),
                                                      &response)) {
     LOG(ERROR) << "ReportMetrics RPC to host failed";
-    return -1;
+    // Distinguish this error from other errors as it's reasonable
+    // to retry the request if this error happens.
+    return 1;
   }
 
   if (response.error() != 0) {

@@ -470,7 +470,8 @@ void ServiceTestingHelper::CreateService(base::WaitableEvent* event) {
   // Set up guest metrics testing
   CHECK(metrics_temp_dir_.CreateUniqueTempDir());
   auto guest_metrics = std::make_unique<TestGuestMetrics>(
-      metrics_temp_dir_.GetPath(), "borealis", "penguin");
+      mock_bus_, metrics_temp_dir_.GetPath(),
+      ServiceTestingHelper::kDefaultOwnerId, "borealis", "penguin");
   guest_metrics->SetMetricsLibraryForTesting(
       std::make_unique<MetricsLibraryMock>());
   service_->SetGuestMetricsForTesting(std::move(guest_metrics));

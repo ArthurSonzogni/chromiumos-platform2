@@ -88,7 +88,7 @@ constexpr char kHostDomainSocket[] = "/run/vm_cicerone/client/host.sock";
 
 // These rate limits ensure metrics can't be reported too frequently.
 constexpr base::TimeDelta kMetricRateWindow = base::Seconds(60);
-constexpr uint32_t kMetricRateLimit = 2;
+constexpr uint32_t kMetricRateLimit = 6;
 
 // Passes |method_call| to |handler| and passes the response to
 // |response_sender|. If |handler| returns NULL, an empty response is created
@@ -1481,8 +1481,8 @@ void Service::ReportMetrics(
   }
 
   for (const auto& metric : request.metric()) {
-    if (!guest_metrics_->HandleMetric(vm_name, container_name, metric.name(),
-                                      metric.value())) {
+    if (!guest_metrics_->HandleMetric(owner_id, vm_name, container_name,
+                                      metric.name(), metric.value())) {
       LOG(ERROR) << "Error handling metric " << metric.name() << " for VM "
                  << vm_name << " container " << container_name;
       response->set_error(1);
@@ -1840,7 +1840,7 @@ bool Service::Init(
 
   if (create_guest_metrics_) {
     // Setup metric accumulator for Borealis swap and disk IO.
-    guest_metrics_ = std::make_unique<GuestMetrics>();
+    guest_metrics_ = std::make_unique<GuestMetrics>(bus_);
   }
 
   return true;

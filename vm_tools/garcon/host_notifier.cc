@@ -427,6 +427,7 @@ bool HostNotifier::UninhibitScreensaver(
   }
   return true;
 }
+
 HostNotifier::HostNotifier(base::OnceClosure shutdown_closure)
     : update_app_list_posted_(false),
       send_app_list_to_host_in_progress_(false),

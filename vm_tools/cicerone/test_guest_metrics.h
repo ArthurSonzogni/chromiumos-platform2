@@ -14,27 +14,33 @@ namespace cicerone {
 
 class TestGuestMetrics : public GuestMetrics {
  public:
-  explicit TestGuestMetrics(base::FilePath cumulative_metrics_path,
+  explicit TestGuestMetrics(scoped_refptr<dbus::Bus> bus,
+                            base::FilePath cumulative_metrics_path,
+                            const std::string& owner_id,
                             const std::string& vm_name,
                             const std::string& container_name)
-      : GuestMetrics(cumulative_metrics_path),
+      : GuestMetrics(bus, cumulative_metrics_path),
+        owner_id_(owner_id),
         vm_name_(vm_name),
         container_name_(container_name) {}
   TestGuestMetrics(const TestGuestMetrics&) = delete;
   TestGuestMetrics& operator=(const TestGuestMetrics&) = delete;
   ~TestGuestMetrics() override = default;
 
-  bool HandleMetric(const std::string& vm_name,
+  bool HandleMetric(const std::string& owner_id,
+                    const std::string& vm_name,
                     const std::string& container_name,
                     const std::string& name,
                     int value) override {
     // Replace vm_name and container_name, which will be the default values from
-    // ServiceTestingHelper::kDefaultVmName and kDefaultContainerName, with the
-    // values provided by the current test.
-    return GuestMetrics::HandleMetric(vm_name_, container_name_, name, value);
+    // ServiceTestingHelper::kDefaultOwnerId, kDefaultVmName and
+    // kDefaultContainerName, with the values provided by the current test.
+    return GuestMetrics::HandleMetric(owner_id_, vm_name_, container_name_,
+                                      name, value);
   }
 
  private:
+  std::string owner_id_;
   std::string vm_name_;
   std::string container_name_;
 };
