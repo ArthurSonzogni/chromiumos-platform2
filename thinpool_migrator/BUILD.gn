@@ -1,0 +1,58 @@
+# Copyright 2023 The ChromiumOS Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/pkg_config.gni")
+
+group("all") {
+  deps = [
+    ":install_headers",
+    ":libthinpool_migrator",
+    ":libthinpool_migrator_pc",
+  ]
+
+  if (use.test) {
+    deps += [ ":thinpool_migrator_tests" ]
+  }
+}
+
+pkg_config("target_defaults") {
+  pkg_deps = [
+    "libbrillo",
+    "libchrome",
+    "libcrypto",
+  ]
+}
+
+generate_pkg_config("libthinpool_migrator_pc") {
+  name = "libthinpool_migrator"
+  description = "Library for thinpool migration"
+  version = getenv("PV")
+  install = true
+}
+
+shared_library("libthinpool_migrator") {
+  sources = [ "lvm_metadata.cc" ]
+  configs += [ ":target_defaults" ]
+  install_path = "lib"
+}
+
+install_config("install_headers") {
+  sources = [ "lvm_metadata.h" ]
+  install_path = "/usr/include/thinpool_migrator"
+}
+
+if (use.test) {
+  executable("thinpool_migrator_tests") {
+    sources = [ "lvm_metadata_test.cc" ]
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+    ]
+    run_test = true
+    deps = [
+      ":libthinpool_migrator",
+      "//common-mk/testrunner",
+    ]
+  }
+}

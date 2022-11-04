@@ -166,6 +166,7 @@ copies.
 | [syslog-cat](./syslog-cat/) | Helper command to forward stdout/stderr from process to syslog |
 | [system-proxy](./system-proxy/) | Daemon for web proxy authentication support on ChromeOS |
 | [system_api](./system_api/) | Headers and .proto files etc. to be shared with chromium |
+| [thinpool_migrator](./thinpool_migrator/) | Tool for migrating the stateful filesystem to use LVM |
 | [timberslide](./timberslide/) | Tool for working with EC crashes for reporting purposes |
 | [touch_firmware_calibration](./touch_firmware_calibration/) ||
 | [tpm2-simulator](./tpm2-simulator/) | A software TPM 2.0 implementation (for testing/debugging) |
