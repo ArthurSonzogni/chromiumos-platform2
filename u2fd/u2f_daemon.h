@@ -65,7 +65,7 @@ class U2fDaemon : public brillo::DBusServiceDaemon {
   // Initializes DBus proxies for PowerManager, SessionManager, and Trunks.
   bool InitializeDBusProxies();
 
-  void InitializeWebAuthnHandler(U2fMode u2f_mode);
+  bool InitializeWebAuthnHandler(U2fMode u2f_mode);
 
   // Sends a DBus signal that indicates to Chrome a 'Press Power Button'
   // notification should be displayed.

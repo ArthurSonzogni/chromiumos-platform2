@@ -260,12 +260,7 @@ void Tpm2StatusImpl::MarkRandomOwnerPasswordSet() {
 }
 
 bool Tpm2StatusImpl::SupportU2f() {
-  // We support U2F on Cr50.
-  if (trunks_tpm_utility_->IsCr50()) {
-    return true;
-  }
-
-  return false;
+  return true;
 }
 
 bool Tpm2StatusImpl::SupportPinweaver() {

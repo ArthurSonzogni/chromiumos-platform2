@@ -35,10 +35,7 @@ pkg_config("target_defaults") {
     "libchrome",
     "libsession_manager-client",
   ]
-  defines = [
-    "USE_TPM1=${use.tpm}",
-    "USE_GSC=${use.cr50_onboard} || ${use.ti50_onboard}",
-  ]
+  defines = [ "USE_GSC=${use.cr50_onboard} || ${use.ti50_onboard}" ]
   cflags = [ "-Wconsumed" ]
 }
 
@@ -65,6 +62,7 @@ pkg_config("u2fd_config") {
 static_library("libu2fd") {
   sources = [
     "allowlisting_util.cc",
+    "u2f_command_processor_generic.cc",
     "u2f_daemon.cc",
     "webauthn_handler.cc",
     "webauthn_storage.cc",
@@ -79,9 +77,6 @@ static_library("libu2fd") {
     "cbor",
   ]
   deps = [ "//common-mk/external_dependencies:policy-protos" ]
-  if (use.tpm || use.test) {
-    sources += [ "u2f_command_processor_generic.cc" ]
-  }
   if (use.fuzzer || use.cr50_onboard || use.ti50_onboard) {
     sources += [
       "u2f_command_processor_gsc.cc",

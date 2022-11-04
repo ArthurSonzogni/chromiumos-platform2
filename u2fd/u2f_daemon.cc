@@ -24,7 +24,7 @@
 #if USE_GSC
 #include "u2fd/u2f_command_processor_gsc.h"
 #include "u2fd/u2fhid_service_impl.h"
-#elif USE_TPM1
+#else
 #include "u2fd/u2f_command_processor_generic.h"
 #endif
 
@@ -177,7 +177,13 @@ int U2fDaemon::StartService() {
 
   U2fMode u2f_mode = GetU2fMode(force_u2f_, force_g2f_);
   VLOG(1) << "Initializing WebAuthn handler.";
-  InitializeWebAuthnHandler(u2f_mode);
+  // If initialize WebAuthn handler failed, it means that the whole u2fd service
+  // is unavailable (it can't happen on devices we enable U2fHid service), and
+  // there's no point to keep running it.
+  if (!InitializeWebAuthnHandler(u2f_mode)) {
+    LOG(INFO) << "Initialize WebAuthn handler failed, quiting.";
+    return EX_UNAVAILABLE;
+  }
 
   return status;
 }
@@ -293,7 +299,7 @@ void U2fDaemon::RegisterDBusObjectsAsync(
       sequencer->GetHandler("Failed to register DBus Interface.", true));
 }
 
-void U2fDaemon::InitializeWebAuthnHandler(U2fMode u2f_mode) {
+bool U2fDaemon::InitializeWebAuthnHandler(U2fMode u2f_mode) {
   std::function<void()> request_presence = [this]() {
     IgnorePowerButtonPress();
     SendWinkSignal();
@@ -315,19 +321,21 @@ void U2fDaemon::InitializeWebAuthnHandler(U2fMode u2f_mode) {
 #if USE_GSC
   u2f_command_processor = std::make_unique<U2fCommandProcessorGsc>(
       u2fhid_service_->tpm_proxy(), request_presence);
-#elif USE_TPM1
+#else
   auto u2f_frontend = hwsec_factory_.GetU2fFrontend();
-  if (u2f_frontend->IsEnabled().value_or(false)) {
-    u2f_command_processor = std::make_unique<U2fCommandProcessorGeneric>(
-        user_state_.get(),
-        std::make_unique<org::chromium::UserDataAuthInterfaceProxy>(bus_.get()),
-        std::move(u2f_frontend));
+  if (!u2f_frontend->IsEnabled().value_or(false)) {
+    return false;
   }
+  u2f_command_processor = std::make_unique<U2fCommandProcessorGeneric>(
+      user_state_.get(),
+      std::make_unique<org::chromium::UserDataAuthInterfaceProxy>(bus_.get()),
+      std::move(u2f_frontend));
 #endif
 
   webauthn_handler_.Initialize(bus_.get(), user_state_.get(), u2f_mode,
                                std::move(u2f_command_processor),
                                std::move(allowlisting_util), &metrics_library_);
+  return true;
 }
 
 void U2fDaemon::SendWinkSignal() {

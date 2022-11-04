@@ -266,16 +266,16 @@ TEST_F(Tpm2StatusTest, IsDictionaryAttackMitigationEnabledSuccess) {
   EXPECT_FALSE(is_enabled);
 }
 
-TEST_F(Tpm2StatusTest, SupportU2f) {
+TEST_F(Tpm2StatusTest, Cr50SupportsU2f) {
   EXPECT_CALL(mock_tpm_utility_, IsCr50).WillRepeatedly(Return(true));
 
   EXPECT_TRUE(tpm_status_->SupportU2f());
 }
 
-TEST_F(Tpm2StatusTest, NotSupportU2f) {
+TEST_F(Tpm2StatusTest, NonCr50SupportsU2f) {
   EXPECT_CALL(mock_tpm_utility_, IsCr50).WillRepeatedly(Return(false));
 
-  EXPECT_FALSE(tpm_status_->SupportU2f());
+  EXPECT_TRUE(tpm_status_->SupportU2f());
 }
 
 TEST_F(Tpm2StatusTest, SupportPinweaver) {

@@ -456,12 +456,7 @@ void TpmStatusImpl::MarkRandomOwnerPasswordSet() {
 }
 
 bool TpmStatusImpl::SupportU2f() {
-// Disable u2f on flex before we support it more nicely.
-#if USE_TPM_DYNAMIC
-  return false;
-#else
   return true;
-#endif
 }
 
 bool TpmStatusImpl::SupportPinweaver() {
