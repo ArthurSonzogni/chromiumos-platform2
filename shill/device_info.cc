@@ -1316,8 +1316,7 @@ void DeviceInfo::DeregisterDevice(int interface_index) {
     return;
   }
 
-  LOG(INFO) << __func__ << " index: " << interface_index
-            << "link_name: " << iter->second.device->link_name();
+  LOG(INFO) << __func__ << " index: " << interface_index;
   // Deregister the device if not deregistered yet.
   if (iter->second.device.get()) {
     manager_->DeregisterDevice(iter->second.device);
