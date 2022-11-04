@@ -15,6 +15,7 @@ inline constexpr char kEvents[] = "events";
 
 // Event keys.
 inline constexpr char kTimestamp[] = "timestamp";
+inline constexpr char kStateId[] = "state_id";
 inline constexpr char kType[] = "type";
 inline constexpr char kDetails[] = "details";
 

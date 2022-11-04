@@ -111,6 +111,8 @@ TEST_F(LogsUtilsTest, RecordSelectedComponents) {
   const base::Value::List* events = logs.GetDict().FindList(kEvents);
   EXPECT_EQ(1, events->size());
   const base::Value::Dict& event = (*events)[0].GetDict();
+  EXPECT_EQ(static_cast<int>(RmadState::kComponentsRepair),
+            event.FindInt(kStateId));
   EXPECT_EQ(static_cast<int>(LogEventType::kData), event.FindInt(kType));
 
   const base::Value::List* components =
@@ -135,6 +137,8 @@ TEST_F(LogsUtilsTest, RecordDeviceDestination) {
   const base::Value::List* events = logs.GetDict().FindList(kEvents);
   EXPECT_EQ(1, events->size());
   const base::Value::Dict& event = (*events)[0].GetDict();
+  EXPECT_EQ(static_cast<int>(RmadState::kDeviceDestination),
+            event.FindInt(kStateId));
   EXPECT_EQ(static_cast<int>(LogEventType::kData), event.FindInt(kType));
   EXPECT_EQ(device_destination,
             *event.FindDict(kDetails)->FindString(kLogDestination));
@@ -153,6 +157,8 @@ TEST_F(LogsUtilsTest, RecordWipeDevice) {
   const base::Value::List* events = logs.GetDict().FindList(kEvents);
   EXPECT_EQ(1, events->size());
   const base::Value::Dict& event = (*events)[0].GetDict();
+  EXPECT_EQ(static_cast<int>(RmadState::kWipeSelection),
+            event.FindInt(kStateId));
   EXPECT_EQ(static_cast<int>(LogEventType::kData), event.FindInt(kType));
   EXPECT_TRUE(event.FindDict(kDetails)->FindBool(kLogWipeDevice).value());
 }
@@ -171,6 +177,8 @@ TEST_F(LogsUtilsTest, RecordWpDisableMethod) {
   const base::Value::List* events = logs.GetDict().FindList(kEvents);
   EXPECT_EQ(1, events->size());
   const base::Value::Dict& event = (*events)[0].GetDict();
+  EXPECT_EQ(static_cast<int>(RmadState::kWpDisableMethod),
+            event.FindInt(kStateId));
   EXPECT_EQ(static_cast<int>(LogEventType::kData), event.FindInt(kType));
   EXPECT_EQ(wp_disable_method,
             *event.FindDict(kDetails)->FindString(kLogWpDisableMethod));
@@ -190,6 +198,8 @@ TEST_F(LogsUtilsTest, RecordRsuChallengeCode) {
   const base::Value::List* events = logs.GetDict().FindList(kEvents);
   EXPECT_EQ(1, events->size());
   const base::Value::Dict& event = (*events)[0].GetDict();
+  EXPECT_EQ(static_cast<int>(RmadState::kWpDisableRsu),
+            event.FindInt(kStateId));
   EXPECT_EQ(static_cast<int>(LogEventType::kData), event.FindInt(kType));
   EXPECT_EQ(challenge_code,
             *event.FindDict(kDetails)->FindString(kLogRsuChallengeCode));

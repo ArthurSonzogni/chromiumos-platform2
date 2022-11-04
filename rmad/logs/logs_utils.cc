@@ -25,10 +25,12 @@ namespace rmad {
 namespace {
 
 bool AddEventToJson(scoped_refptr<JsonStore> json_store,
+                    RmadState::StateCase state,
                     LogEventType event_type,
                     base::Value&& details) {
   base::Value event(base::Value::Type::DICT);
   event.SetKey(kTimestamp, ConvertToValue(base::Time::Now().ToDoubleT()));
+  event.SetKey(kStateId, ConvertToValue(static_cast<int>(state)));
   event.SetKey(kType, ConvertToValue(static_cast<int>(event_type)));
   event.SetKey(kDetails, std::move(details));
 
@@ -54,7 +56,7 @@ bool RecordStateTransitionToLogs(scoped_refptr<JsonStore> json_store,
   details.SetKey(kFromStateId, ConvertToValue(static_cast<int>(from_state)));
   details.SetKey(kToStateId, ConvertToValue(static_cast<int>(to_state)));
 
-  return AddEventToJson(json_store, LogEventType::kTransition,
+  return AddEventToJson(json_store, from_state, LogEventType::kTransition,
                         std::move(details));
 }
 
@@ -66,7 +68,8 @@ bool RecordSelectedComponentsToLogs(
   details.SetKey(kLogReplacedComponents, ConvertToValue(replaced_components));
   details.SetKey(kLogReworkSelected, ConvertToValue(is_mlb_repair));
 
-  return AddEventToJson(json_store, LogEventType::kData, std::move(details));
+  return AddEventToJson(json_store, RmadState::kComponentsRepair,
+                        LogEventType::kData, std::move(details));
 }
 
 bool RecordDeviceDestinationToLogs(scoped_refptr<JsonStore> json_store,
@@ -74,7 +77,8 @@ bool RecordDeviceDestinationToLogs(scoped_refptr<JsonStore> json_store,
   base::Value details(base::Value::Type::DICT);
   details.SetKey(kLogDestination, ConvertToValue(device_destination));
 
-  return AddEventToJson(json_store, LogEventType::kData, std::move(details));
+  return AddEventToJson(json_store, RmadState::kDeviceDestination,
+                        LogEventType::kData, std::move(details));
 }
 
 bool RecordWipeDeviceToLogs(scoped_refptr<JsonStore> json_store,
@@ -82,7 +86,8 @@ bool RecordWipeDeviceToLogs(scoped_refptr<JsonStore> json_store,
   base::Value details(base::Value::Type::DICT);
   details.SetKey(kLogWipeDevice, ConvertToValue(wipe_device));
 
-  return AddEventToJson(json_store, LogEventType::kData, std::move(details));
+  return AddEventToJson(json_store, RmadState::kWipeSelection,
+                        LogEventType::kData, std::move(details));
 }
 
 bool RecordWpDisableMethodToLogs(scoped_refptr<JsonStore> json_store,
@@ -90,7 +95,8 @@ bool RecordWpDisableMethodToLogs(scoped_refptr<JsonStore> json_store,
   base::Value details(base::Value::Type::DICT);
   details.SetKey(kLogWpDisableMethod, ConvertToValue(wp_disable_method));
 
-  return AddEventToJson(json_store, LogEventType::kData, std::move(details));
+  return AddEventToJson(json_store, RmadState::kWpDisableMethod,
+                        LogEventType::kData, std::move(details));
 }
 
 bool RecordRsuChallengeCodeToLogs(scoped_refptr<JsonStore> json_store,
@@ -100,7 +106,8 @@ bool RecordRsuChallengeCodeToLogs(scoped_refptr<JsonStore> json_store,
   details.SetKey(kLogRsuChallengeCode, ConvertToValue(challenge_code));
   details.SetKey(kLogRsuHwid, ConvertToValue(hwid));
 
-  return AddEventToJson(json_store, LogEventType::kData, std::move(details));
+  return AddEventToJson(json_store, RmadState::kWpDisableRsu,
+                        LogEventType::kData, std::move(details));
 }
 
 }  // namespace rmad
