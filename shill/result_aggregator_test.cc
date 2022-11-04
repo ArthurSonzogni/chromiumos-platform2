@@ -28,7 +28,7 @@ constexpr base::TimeDelta kTimeout = base::TimeDelta();
 class ResultAggregatorTest : public ::testing::Test {
  public:
   ResultAggregatorTest()
-      : aggregator_(new ResultAggregator(base::Bind(
+      : aggregator_(new ResultAggregator(base::BindOnce(
             &ResultAggregatorTest::ReportResult, base::Unretained(this)))) {}
   ~ResultAggregatorTest() override = default;
 
@@ -48,9 +48,10 @@ class ResultAggregatorTestWithDispatcher : public ResultAggregatorTest {
   ~ResultAggregatorTestWithDispatcher() override = default;
 
   void InitializeResultAggregatorWithTimeout() {
-    aggregator_ = new ResultAggregator(
-        base::Bind(&ResultAggregatorTest::ReportResult, base::Unretained(this)),
-        &dispatcher_, kTimeout);
+    aggregator_ =
+        new ResultAggregator(base::BindOnce(&ResultAggregatorTest::ReportResult,
+                                            base::Unretained(this)),
+                             &dispatcher_, kTimeout);
   }
 
  protected:
@@ -123,7 +124,8 @@ TEST_F(ResultAggregatorTestWithMockDispatcher,
        TimeoutCallbackPostedOnConstruction) {
   EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, kTimeout));
   auto result_aggregator = base::MakeRefCounted<ResultAggregator>(
-      base::Bind(&ResultAggregatorTest::ReportResult, base::Unretained(this)),
+      base::BindOnce(&ResultAggregatorTest::ReportResult,
+                     base::Unretained(this)),
       &dispatcher_, kTimeout);
 }
 
@@ -150,7 +152,8 @@ TEST_F(ResultAggregatorTestWithDispatcher,
        TimeoutCallbackNotInvokedIfAllActionsComplete) {
   {
     auto result_aggregator = base::MakeRefCounted<ResultAggregator>(
-        base::Bind(&ResultAggregatorTest::ReportResult, base::Unretained(this)),
+        base::BindOnce(&ResultAggregatorTest::ReportResult,
+                       base::Unretained(this)),
         &dispatcher_, kTimeout);
     // The result aggregator receives the one callback it expects, and goes
     // out of scope. At this point, it should invoke the ReportResult callback

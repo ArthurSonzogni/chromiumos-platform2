@@ -1608,8 +1608,8 @@ void Manager::OnSuspendImminent() {
     return;
   }
   auto result_aggregator(base::MakeRefCounted<ResultAggregator>(
-      base::Bind(&Manager::OnSuspendActionsComplete,
-                 weak_factory_.GetWeakPtr()),
+      base::BindOnce(&Manager::OnSuspendActionsComplete,
+                     weak_factory_.GetWeakPtr()),
       dispatcher_, kTerminationActionsTimeout));
   for (const auto& service : services_) {
     ResultCallback aggregator_callback(
@@ -1645,8 +1645,8 @@ void Manager::OnDarkSuspendImminent() {
     return;
   }
   auto result_aggregator(base::MakeRefCounted<ResultAggregator>(
-      base::Bind(&Manager::OnDarkResumeActionsComplete,
-                 weak_factory_.GetWeakPtr()),
+      base::BindOnce(&Manager::OnDarkResumeActionsComplete,
+                     weak_factory_.GetWeakPtr()),
       dispatcher_, kTerminationActionsTimeout));
   for (const auto& device : devices_) {
     ResultCallback aggregator_callback(

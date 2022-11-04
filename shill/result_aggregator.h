@@ -81,8 +81,8 @@ class EventDispatcher;
 
 class ResultAggregator : public base::RefCounted<ResultAggregator> {
  public:
-  explicit ResultAggregator(const ResultCallback& callback);
-  ResultAggregator(const ResultCallback& callback,
+  explicit ResultAggregator(ResultOnceCallback callback);
+  ResultAggregator(ResultOnceCallback callback,
                    EventDispatcher* dispatcher,
                    base::TimeDelta timeout);
   ResultAggregator(const ResultAggregator&) = delete;
@@ -97,7 +97,7 @@ class ResultAggregator : public base::RefCounted<ResultAggregator> {
   void Timeout();
 
   base::WeakPtrFactory<ResultAggregator> weak_ptr_factory_;
-  const ResultCallback callback_;
+  ResultOnceCallback callback_;
   base::CancelableOnceClosure timeout_callback_;
   bool got_result_;
   bool timed_out_;
