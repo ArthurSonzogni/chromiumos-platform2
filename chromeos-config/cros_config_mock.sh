@@ -11,8 +11,7 @@ set -u -e
 CONFIGFS_IMAGE="/usr/share/chromeos-config/configfs.img"
 SQUASHFS_BASE="/run/chromeos-config/private"
 
-SMBIOS_NAME=""
-DT_COMPATIBLE_LIST=()
+FRID=""
 SKU_ID=""
 CUSTOM_LABEL_TAG=""
 
@@ -22,8 +21,7 @@ Usage: $0 [OPTIONS...] PATH PROPERTY
 
 Optional arguments:
   --configfs-image FILE     Path to configfs image.
-  --smbios-name NAME        Override the SMBIOS name from firmware.
-  --dt-compatible STRING    Add STRING to the device-tree compatible list.
+  --frid FRID               Override the FRID from firmware.
   --sku-id SKU              Override the SKU id from firmware.
   --custom-label-tag VALUE  Override the whitelabel tag from VPD.
   --help                    Show this help message and exit.
@@ -45,12 +43,8 @@ while [[ "${1:0:1}" != "/" ]]; do
       CONFIGFS_IMAGE="$2"
       shift
       ;;
-    --smbios-name )
-      SMBIOS_NAME="$2"
-      shift
-      ;;
-    --dt-compatible )
-      DT_COMPATIBLE_LIST+=("$2")
+    --frid )
+      FRID="$2"
       shift
       ;;
     --sku-id )
@@ -83,26 +77,18 @@ fi
 PATH_NAME="$1"
 PROPERTY_NAME="$2"
 
-array_contains () {
-  local -n array="$2"
-  for item in "${array[@]}"; do
-    if [[ "$1" == "${item}" ]]; then
-      return 0
-    fi
-  done
-  return 1
-}
-
 # Load default values from firmware.
-if [[ -f /sys/class/dmi/id/product_name && -z "${SMBIOS_NAME}" ]]; then
-  read -r SMBIOS_NAME </sys/class/dmi/id/product_name
-fi
+FRID_PATHS=(
+    /sys/devices/platform/chromeos_acpi/FRID
+    /proc/device-tree/firmware/chromeos/readonly-firmware-version
+)
 
-if [[ -f /proc/device-tree/compatible && \
-  "${#DT_COMPATIBLE_LIST[@]}" -eq 0 ]]; then
-  # readarray -d '' splits on null chars
-  readarray -d '' DT_COMPATIBLE_LIST </proc/device-tree/compatible
-fi
+for path in "${FRID_PATHS[@]}"; do
+    if [[ -f "${path}" && -z "${FRID}" ]]; then
+        read -r FRID <"${path}"
+    fi
+done
+FRID="${FRID//.*/}"
 
 if [[ -f /sys/class/dmi/id/product_sku && -z "${SKU_ID}" ]]; then
   # Trim off "sku" in front of the ID
@@ -145,13 +131,7 @@ file_mismatch () {
 }
 
 for base in "${SQUASHFS_BASE}"/v1/chromeos/configs/*; do
-  if file_mismatch "${base}/identity/smbios-name-match" "${SMBIOS_NAME}"; then
-    continue
-  fi
-
-  if [[ -f "${base}/identity/device-tree-compatible-match" ]] && \
-    ! array_contains "$(cat "${base}/identity/device-tree-compatible-match")" \
-    DT_COMPATIBLE_LIST; then
+  if file_mismatch "${base}/identity/frid" "${FRID}"; then
     continue
   fi
 
