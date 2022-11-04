@@ -207,9 +207,9 @@ Send the message with the handlers for the various cases.
 
   NetlinkManager::GetInstance()->SendNl80211Message(
       &trigger_scan,
-      Bind(&Foo::OnTriggerScanResponse,
+      BindRepeating(&Foo::OnTriggerScanResponse,
            weak_ptr_factory_.GetWeakPtr()),
-      Bind(&Foo::OnTriggerScanErrorResponse,
+      BindRepeating(&Foo::OnTriggerScanErrorResponse,
            weak_ptr_factory_.GetWeakPtr()));
 
 

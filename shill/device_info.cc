@@ -1529,10 +1529,10 @@ void DeviceInfo::GetWiFiInterfaceInfo(int interface_index) {
   }
   netlink_manager_->SendNl80211Message(
       &msg,
-      base::Bind(&DeviceInfo::OnWiFiInterfaceInfoReceived,
-                 weak_factory_.GetWeakPtr()),
-      base::Bind(&NetlinkManager::OnAckDoNothing),
-      base::Bind(&NetlinkManager::OnNetlinkMessageError));
+      base::BindRepeating(&DeviceInfo::OnWiFiInterfaceInfoReceived,
+                          weak_factory_.GetWeakPtr()),
+      base::BindRepeating(&NetlinkManager::OnAckDoNothing),
+      base::BindRepeating(&NetlinkManager::OnNetlinkMessageError));
 }
 
 void DeviceInfo::OnWiFiInterfaceInfoReceived(const Nl80211Message& msg) {

@@ -2881,10 +2881,10 @@ void WiFi::TriggerPassiveScan(const FreqSet& freqs) {
 
   netlink_manager_->SendNl80211Message(
       &trigger_scan,
-      base::Bind(&WiFi::OnTriggerPassiveScanResponse,
-                 weak_ptr_factory_while_started_.GetWeakPtr()),
-      base::Bind(&NetlinkManager::OnAckDoNothing),
-      base::Bind(&NetlinkManager::OnNetlinkMessageError));
+      base::BindRepeating(&WiFi::OnTriggerPassiveScanResponse,
+                          weak_ptr_factory_while_started_.GetWeakPtr()),
+      base::BindRepeating(&NetlinkManager::OnAckDoNothing),
+      base::BindRepeating(&NetlinkManager::OnNetlinkMessageError));
 }
 
 void WiFi::OnConnected() {
@@ -3338,10 +3338,10 @@ void WiFi::GetPhyInfo() {
                                                 true);
   netlink_manager_->SendNl80211Message(
       &get_wiphy,
-      base::Bind(&WiFi::OnNewWiphy,
-                 weak_ptr_factory_while_started_.GetWeakPtr()),
-      base::Bind(&NetlinkManager::OnAckDoNothing),
-      base::Bind(&NetlinkManager::OnNetlinkMessageError));
+      base::BindRepeating(&WiFi::OnNewWiphy,
+                          weak_ptr_factory_while_started_.GetWeakPtr()),
+      base::BindRepeating(&NetlinkManager::OnAckDoNothing),
+      base::BindRepeating(&NetlinkManager::OnNetlinkMessageError));
 }
 
 void WiFi::OnNewWiphy(const Nl80211Message& nl80211_message) {
@@ -3434,9 +3434,10 @@ void WiFi::GetRegulatory() {
   reg_msg.attributes()->SetU32AttributeValue(NL80211_ATTR_WIPHY, phy_index_);
   netlink_manager_->SendNl80211Message(
       &reg_msg,
-      base::Bind(&WiFi::OnGetReg, weak_ptr_factory_while_started_.GetWeakPtr()),
-      base::Bind(&NetlinkManager::OnAckDoNothing),
-      base::Bind(&NetlinkManager::OnNetlinkMessageError));
+      base::BindRepeating(&WiFi::OnGetReg,
+                          weak_ptr_factory_while_started_.GetWeakPtr()),
+      base::BindRepeating(&NetlinkManager::OnAckDoNothing),
+      base::BindRepeating(&NetlinkManager::OnNetlinkMessageError));
 }
 
 void WiFi::OnTriggerPassiveScanResponse(const Nl80211Message& netlink_message) {
@@ -3705,10 +3706,10 @@ void WiFi::RequestStationInfo() {
 
   netlink_manager_->SendNl80211Message(
       &get_station,
-      base::Bind(&WiFi::OnReceivedStationInfo,
-                 weak_ptr_factory_while_started_.GetWeakPtr()),
-      base::Bind(&NetlinkManager::OnAckDoNothing),
-      base::Bind(&NetlinkManager::OnNetlinkMessageError));
+      base::BindRepeating(&WiFi::OnReceivedStationInfo,
+                          weak_ptr_factory_while_started_.GetWeakPtr()),
+      base::BindRepeating(&NetlinkManager::OnAckDoNothing),
+      base::BindRepeating(&NetlinkManager::OnNetlinkMessageError));
 
   request_station_info_callback_.Reset(base::BindOnce(
       &WiFi::RequestStationInfo, weak_ptr_factory_while_started_.GetWeakPtr()));

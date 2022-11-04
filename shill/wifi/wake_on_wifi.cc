@@ -579,10 +579,10 @@ void WakeOnWiFi::RequestWakeOnWiFiSettings() {
   }
   netlink_manager_->SendNl80211Message(
       &get_wowlan_msg,
-      base::Bind(&WakeOnWiFi::VerifyWakeOnWiFiSettings,
-                 weak_ptr_factory_.GetWeakPtr()),
-      base::Bind(&NetlinkManager::OnAckDoNothing),
-      base::Bind(&NetlinkManager::OnNetlinkMessageError));
+      base::BindRepeating(&WakeOnWiFi::VerifyWakeOnWiFiSettings,
+                          weak_ptr_factory_.GetWeakPtr()),
+      base::BindRepeating(&NetlinkManager::OnAckDoNothing),
+      base::BindRepeating(&NetlinkManager::OnNetlinkMessageError));
 }
 
 void WakeOnWiFi::VerifyWakeOnWiFiSettings(
@@ -626,10 +626,10 @@ void WakeOnWiFi::ApplyWakeOnWiFiSettings() {
   }
   if (!netlink_manager_->SendNl80211Message(
           &set_wowlan_msg,
-          base::Bind(&WakeOnWiFi::OnSetWakeOnWiFiConnectionResponse),
-          base::Bind(&NetlinkManager::OnAckDoNothing),
-          base::Bind(&WakeOnWiFi::OnWakeOnWiFiSettingsErrorResponse,
-                     weak_ptr_factory_.GetWeakPtr()))) {
+          base::BindRepeating(&WakeOnWiFi::OnSetWakeOnWiFiConnectionResponse),
+          base::BindRepeating(&NetlinkManager::OnAckDoNothing),
+          base::BindRepeating(&WakeOnWiFi::OnWakeOnWiFiSettingsErrorResponse,
+                              weak_ptr_factory_.GetWeakPtr()))) {
     RunSuspendActionsDoneCallback(
         Error(Error::kOperationFailed, "SendNl80211Message failed"));
     return;
@@ -657,10 +657,10 @@ void WakeOnWiFi::DisableWakeOnWiFi() {
   wake_on_wifi_triggers_.clear();
   if (!netlink_manager_->SendNl80211Message(
           &disable_wowlan_msg,
-          base::Bind(&WakeOnWiFi::OnSetWakeOnWiFiConnectionResponse),
-          base::Bind(&NetlinkManager::OnAckDoNothing),
-          base::Bind(&WakeOnWiFi::OnWakeOnWiFiSettingsErrorResponse,
-                     weak_ptr_factory_.GetWeakPtr()))) {
+          base::BindRepeating(&WakeOnWiFi::OnSetWakeOnWiFiConnectionResponse),
+          base::BindRepeating(&NetlinkManager::OnAckDoNothing),
+          base::BindRepeating(&WakeOnWiFi::OnWakeOnWiFiSettingsErrorResponse,
+                              weak_ptr_factory_.GetWeakPtr()))) {
     RunSuspendActionsDoneCallback(
         Error(Error::kOperationFailed, "SendNl80211Message failed"));
     return;
