@@ -37,7 +37,7 @@ hiberman (hibernate service).
     * Insert the USB drive to the desktop.
     * Run the command:
       ```
-      (desktop/outside)# cros flash usb:// brya-hibernate-latest
+      (desktop/outside)# cros flash usb:// brya-hibernate-latest[/test]
       ```
     * Select the correct USB device and flash the drive.
     * Remove the USB drive from the desktop.
@@ -53,7 +53,7 @@ hiberman (hibernate service).
 
 1. Start the DUT and select *Boot from internal disk*.
 
-1. Remount filesystem as a read-write:
+1. (not required for test images) Remount filesystem as a read-write:
     * Bring up a console window pressing *Ctrl+Alt+Refresh*.
     * Login as a user *root*, password *test0000*.
     * Run the commands:
@@ -87,3 +87,19 @@ hiberman start/running, process XXXX
       ```
       (desktop/outside)# gsutil config
       ```
+1. Can't I just build the image myself?
+Yes you can, using:
+```setup_board \
+    --force \
+    --board=brya-hibernate \
+  && \
+  USE="pcserial kgdb vtconsole" build_packages \
+    --board=brya-hibernate \
+    --autosetgov \
+  && \
+  build_image \
+    --enable_serial=ttyS0 \
+    --board=brya-hibernate \
+    --noenable_rootfs_verification test \
+    --replace
+```
