@@ -9,7 +9,6 @@
 
 #include <set>
 #include <string>
-#include <unordered_map>
 #include <vector>
 #include <utility>
 
@@ -36,28 +35,6 @@ static constexpr size_t kMinWiFiPassphraseLength = 8;
 static constexpr size_t kMaxWiFiPassphraseLength = 63;
 // Auto disable tethering if no clients for |kAutoDisableMinute| minutes.
 // static constexpr uint8_t kAutoDisableMinute = 10;
-
-static const std::unordered_map<std::string, TetheringManager::WiFiBand>
-    bands_map = {
-        {kBand2GHz, TetheringManager::WiFiBand::kLowBand},
-        {kBand5GHz, TetheringManager::WiFiBand::kHighBand},
-        {kBand6GHz, TetheringManager::WiFiBand::kUltraHighBand},
-        {kBandAll, TetheringManager::WiFiBand::kAllBands},
-};
-std::string BandToString(const TetheringManager::WiFiBand band) {
-  auto it = std::find_if(std::begin(bands_map), std::end(bands_map),
-                         [&band](auto& p) { return p.second == band; });
-  return it == bands_map.end() ? std::string() : it->first;
-}
-TetheringManager::WiFiBand StringToBand(const std::string& band) {
-  return base::Contains(bands_map, band)
-             ? bands_map.at(band)
-             : TetheringManager::WiFiBand::kInvalidBand;
-}
-std::ostream& operator<<(std::ostream& stream,
-                         TetheringManager::WiFiBand band) {
-  return stream << BandToString(band);
-}
 
 bool StoreToConfigBool(const StoreInterface* storage,
                        const std::string& storage_id,
@@ -151,9 +128,9 @@ bool TetheringManager::ToProperties(KeyValueStore* properties) const {
   properties->Set<std::string>(kTetheringConfPassphraseProperty, passphrase_);
   properties->Set<std::string>(kTetheringConfSecurityProperty,
                                security_.ToString());
-  if (band_ != WiFiBand::kAllBands && band_ != WiFiBand::kInvalidBand) {
+  if (band_ != WiFiBand::kAllBands && band_ != WiFiBand::kUnknownBand) {
     properties->Set<std::string>(kTetheringConfBandProperty,
-                                 BandToString(band_));
+                                 WiFiBandName(band_));
   }
   if (upstream_technology_ != Technology::kUnknown) {
     properties->Set<std::string>(kTetheringConfUpstreamTechProperty,
@@ -199,11 +176,11 @@ bool TetheringManager::FromProperties(const KeyValueStore& properties) {
     }
   }
 
-  auto band = WiFiBand::kInvalidBand;
+  auto band = WiFiBand::kUnknownBand;
   if (properties.Contains<std::string>(kTetheringConfBandProperty)) {
-    band =
-        StringToBand(properties.Get<std::string>(kTetheringConfBandProperty));
-    if (band == WiFiBand::kInvalidBand) {
+    band = WiFiBandFromName(
+        properties.Get<std::string>(kTetheringConfBandProperty));
+    if (band == WiFiBand::kUnknownBand) {
       LOG(ERROR) << "Invalid WiFi band: " << band;
       return false;
     }
@@ -514,7 +491,7 @@ bool TetheringManager::Save(StoreInterface* storage) {
   storage->SetString(kStorageId, kTetheringConfSecurityProperty,
                      security_.ToString());
   storage->SetString(kStorageId, kTetheringConfBandProperty,
-                     BandToString(band_));
+                     WiFiBandName(band_));
   storage->SetString(kStorageId, kTetheringConfUpstreamTechProperty,
                      TechnologyName(upstream_technology_));
   return storage->Flush();

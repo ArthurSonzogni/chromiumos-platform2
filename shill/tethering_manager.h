@@ -9,6 +9,7 @@
 
 #include "shill/store/property_store.h"
 #include "shill/technology.h"
+#include "shill/wifi/wifi_rf.h"
 #include "shill/wifi/wifi_security.h"
 #include "shill/wifi/wifi_service.h"
 
@@ -44,14 +45,6 @@ class TetheringManager {
     kSuccess,
     kFailure,
     kUpstreamNetworkNotAvailable,
-  };
-
-  enum class WiFiBand : uint8_t {
-    kLowBand,
-    kHighBand,
-    kUltraHighBand,
-    kAllBands,
-    kInvalidBand,
   };
 
   // Storage group for tethering configs.
