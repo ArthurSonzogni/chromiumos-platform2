@@ -8,6 +8,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include <google-lpa/lpa/core/lpa.h>
@@ -59,11 +60,11 @@ class Euicc {
   void OnProfileInstalled(const lpa::proto::ProfileInfo& profile_info,
                           int error,
                           DbusResult<dbus::ObjectPath> dbus_result);
-  void OnProfileUninstalled(const dbus::ObjectPath& profile_path,
+  void OnProfileUninstalled(std::string iccid,
                             int error,
                             DbusResult<> dbus_result);
 
-  void UpdateInstalledProfilesProperty();
+  void UpdateProfilesProperty();
   void SendNotifications(EuiccOp euicc_op, DbusResult<> dbus_result);
 
   // Update |installed_profiles_| with all profiles installed on the eUICC.
@@ -73,8 +74,6 @@ class Euicc {
       bool should_not_switch_slot,
       DbusResult<> dbus_result);
 
-  // Update |pending_profiles_| with all profiles installed on the SMDS.
-  void UpdatePendingProfilesProperty();
   void OnPendingProfilesReceived(
       const std::vector<lpa::proto::ProfileInfo>& profile_infos,
       int error,
@@ -88,9 +87,7 @@ class Euicc {
   void DownloadProfile(std::string activation_code,
                        std::string confirmation_code,
                        DbusResult<dbus::ObjectPath> dbus_result);
-  void DeleteProfile(dbus::ObjectPath profile_path,
-                     std::string iccid,
-                     DbusResult<> dbus_result);
+  void DeleteProfile(std::string iccid, DbusResult<> dbus_result);
   void GetPendingProfilesFromSmds(std::string root_smds,
                                   DbusResult<> dbus_result);
   void SetTestMode(bool is_test_mode, DbusResult<> dbus_result);
@@ -136,8 +133,8 @@ class Euicc {
   Context* context_;
   std::unique_ptr<EuiccAdaptorInterface> dbus_adaptor_;
 
-  std::vector<std::unique_ptr<Profile>> installed_profiles_;
-  std::vector<std::unique_ptr<Profile>> pending_profiles_;
+  // map of iccid <-> DBus profile objects
+  std::unordered_map<std::string, std::unique_ptr<Profile>> profiles_;
 
   base::WeakPtrFactory<Euicc> weak_factory_;
 };

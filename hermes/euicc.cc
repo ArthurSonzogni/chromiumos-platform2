@@ -57,7 +57,6 @@ Euicc::Euicc(uint8_t physical_slot, EuiccSlotInfo slot_info)
       context_(Context::Get()),
       dbus_adaptor_(context_->adaptor_factory()->CreateEuiccAdaptor(this)),
       weak_factory_(this) {
-  dbus_adaptor_->SetPendingProfiles({});
   dbus_adaptor_->SetPhysicalSlot(physical_slot_);
   if (EuiccCache::CacheExists(physical_slot)) {
     CachedEuicc cached_euicc;
@@ -141,19 +140,21 @@ void Euicc::InstallPendingProfile(dbus::ObjectPath profile_path,
         kLpaRetryDelay);
     return;
   }
-  auto iter = find_if(pending_profiles_.begin(), pending_profiles_.end(),
-                      [&profile_path](const std::unique_ptr<Profile>& profile) {
-                        return profile->object_path() == profile_path;
-                      });
-
-  if (iter == pending_profiles_.end()) {
+  auto iter =
+      find_if(profiles_.begin(), profiles_.end(),
+              [&profile_path](
+                  const std::pair<const std::string, std::unique_ptr<Profile>>&
+                      iccid_profile_pair) {
+                return iccid_profile_pair.second->object_path() == profile_path;
+              });
+  if (iter == profiles_.end()) {
     dbus_result.Error(brillo::Error::Create(
         FROM_HERE, brillo::errors::dbus::kDomain, kErrorInvalidParameter,
         "Could not find Profile " + profile_path.value()));
     return;
   }
 
-  std::string activation_code = iter->get()->GetActivationCode();
+  std::string activation_code = iter->second.get()->GetActivationCode();
   InstallProfileFromActivationCode(std::move(activation_code),
                                    std::move(confirmation_code),
                                    std::move(dbus_result));
@@ -171,9 +172,9 @@ void Euicc::UninstallProfile(dbus::ObjectPath profile_path,
     return;
   }
   const Profile* matching_profile = nullptr;
-  for (auto& profile : installed_profiles_) {
-    if (profile->object_path() == profile_path) {
-      matching_profile = profile.get();
+  for (auto& profile : profiles_) {
+    if (profile.second->object_path() == profile_path) {
+      matching_profile = profile.second.get();
       break;
     }
   }
@@ -186,7 +187,7 @@ void Euicc::UninstallProfile(dbus::ObjectPath profile_path,
 
   auto delete_profile =
       base::BindOnce(&Euicc::DeleteProfile, weak_factory_.GetWeakPtr(),
-                     std::move(profile_path), matching_profile->GetIccid());
+                     matching_profile->GetIccid());
   context_->modem_control()->ProcessEuiccEvent(
       {physical_slot_, EuiccStep::START},
       base::BindOnce(&Euicc::RunOnSuccess<>, weak_factory_.GetWeakPtr(),
@@ -194,24 +195,22 @@ void Euicc::UninstallProfile(dbus::ObjectPath profile_path,
                      std::move(dbus_result)));
 }
 
-void Euicc::DeleteProfile(dbus::ObjectPath profile_path,
-                          std::string iccid,
-                          DbusResult<> dbus_result) {
-  context_->lpa()->DeleteProfile(std::move(iccid), context_->executor(),
-                                 [dbus_result{std::move(dbus_result)},
-                                  profile_path, this](int error) mutable {
-                                   OnProfileUninstalled(profile_path, error,
-                                                        std::move(dbus_result));
-                                 });
+void Euicc::DeleteProfile(std::string iccid, DbusResult<> dbus_result) {
+  context_->lpa()->DeleteProfile(
+      iccid, context_->executor(),
+      [dbus_result{std::move(dbus_result)}, iccid, this](int error) mutable {
+        OnProfileUninstalled(std::move(iccid), error, std::move(dbus_result));
+      });
 }
 
-void Euicc::UpdateInstalledProfilesProperty() {
+void Euicc::UpdateProfilesProperty() {
   std::vector<dbus::ObjectPath> profile_paths;
   LOG(INFO) << __func__;
-  for (auto& profile : installed_profiles_) {
-    profile_paths.push_back(profile->object_path());
+  for (auto& profile : profiles_) {
+    profile_paths.push_back(profile.second->object_path());
   }
   dbus_adaptor_->SetInstalledProfiles(profile_paths);
+  dbus_adaptor_->SetProfiles(profile_paths);
   if (EuiccCache::CacheExists(physical_slot_)) {
     CachedEuicc cached_euicc;
     EuiccCache::Read(physical_slot_, &cached_euicc);
@@ -221,15 +220,6 @@ void Euicc::UpdateInstalledProfilesProperty() {
     }
   }
   dbus_adaptor_->SetProfilesRefreshedAtLeastOnce(true);
-}
-
-void Euicc::UpdatePendingProfilesProperty() {
-  LOG(INFO) << __func__;
-  std::vector<dbus::ObjectPath> profile_paths;
-  for (auto& profile : pending_profiles_) {
-    profile_paths.push_back(profile->object_path());
-  }
-  dbus_adaptor_->SetPendingProfiles(profile_paths);
 }
 
 void Euicc::OnProfileInstalled(const lpa::proto::ProfileInfo& profile_info,
@@ -242,50 +232,34 @@ void Euicc::OnProfileInstalled(const lpa::proto::ProfileInfo& profile_info,
     return;
   }
 
-  auto iter = find_if(pending_profiles_.begin(), pending_profiles_.end(),
-                      [&profile_info](const std::unique_ptr<Profile>& profile) {
-                        return profile->GetIccid() == profile_info.iccid();
-                      });
-
   std::unique_ptr<Profile> profile;
-  // Call UpdatePendingProfilesProperty() after UpdateInstalledProfilesProperty,
-  // else Chrome assumes the pending profile was deleted forever.
-  bool update_pending_profiles_property = false;
-  if (iter != pending_profiles_.end()) {
-    // Remove the profile from pending_profiles_ so that it can become an
-    // installed profile
-    profile = std::move(*iter);
-    pending_profiles_.erase(iter);
-    update_pending_profiles_property = true;
+  if (profiles_.find(profile_info.iccid()) != profiles_.end()) {
+    DCHECK(profiles_[profile_info.iccid()]->GetState() == profile::kPending);
+    profiles_[profile_info.iccid()]->SetState(profile::kInactive);
   } else {
     profile = Profile::Create(profile_info, physical_slot_, slot_info_.eid_,
                               /*is_pending*/ false,
                               base::BindRepeating(&Euicc::OnProfileEnabled,
                                                   weak_factory_.GetWeakPtr()));
+    if (!profile) {
+      auto profile_error = brillo::Error::Create(
+          FROM_HERE, brillo::errors::dbus::kDomain, kErrorInternalLpaFailure,
+          "Failed to create Profile object");
+      EndEuiccOp(EuiccOp::INSTALL, dbus_result, std::move(profile_error),
+                 kDefaultError);
+      return;
+    }
+    profiles_[profile->GetIccid()] = (std::move(profile));
   }
 
-  if (!profile) {
-    auto profile_error = brillo::Error::Create(
-        FROM_HERE, brillo::errors::dbus::kDomain, kErrorInternalLpaFailure,
-        "Failed to create Profile object");
-    EndEuiccOp(EuiccOp::INSTALL, dbus_result, std::move(profile_error),
-               kDefaultError);
-    return;
-  }
-
-  installed_profiles_.push_back(std::move(profile));
-  UpdateInstalledProfilesProperty();
-  if (update_pending_profiles_property) {
-    UpdatePendingProfilesProperty();
-    installed_profiles_.back()->SetState(profile::kInactive);
-  }
-  // Refresh LPA profile cache
+  UpdateProfilesProperty();
   // Send notifications and refresh LPA profile cache. No errors will be raised
   // if these operations fail since the profile installation already succeeded.
   context_->lpa()->SendNotifications(
       context_->executor(),
       [this, dbus_result{std::move(dbus_result)},
-       profile_path{installed_profiles_.back()->object_path()}](int /*err*/) {
+       profile_path{profiles_[profile_info.iccid()]->object_path()}](
+          int /*err*/) {
         // Send notifications has completed, refresh the profile cache.
         context_->lpa()->GetInstalledProfiles(
             context_->executor(),
@@ -298,14 +272,16 @@ void Euicc::OnProfileInstalled(const lpa::proto::ProfileInfo& profile_info,
 }
 
 void Euicc::OnProfileEnabled(const std::string& iccid) {
-  for (auto& installed_profile : installed_profiles_) {
-    installed_profile->SetState(installed_profile->GetIccid() == iccid
-                                    ? profile::kActive
-                                    : profile::kInactive);
+  for (auto& installed_profile : profiles_) {
+    if (installed_profile.second->GetState() == profile::kPending)
+      continue;
+    installed_profile.second->SetState(installed_profile.first == iccid
+                                           ? profile::kActive
+                                           : profile::kInactive);
   }
 }
 
-void Euicc::OnProfileUninstalled(const dbus::ObjectPath& profile_path,
+void Euicc::OnProfileUninstalled(std::string iccid,
                                  int error,
                                  DbusResult<> dbus_result) {
   LOG(INFO) << __func__;
@@ -315,18 +291,12 @@ void Euicc::OnProfileUninstalled(const dbus::ObjectPath& profile_path,
                error);
     return;
   }
-
-  auto iter = installed_profiles_.begin();
-  for (; iter != installed_profiles_.end(); ++iter) {
-    if ((*iter)->object_path() == profile_path) {
-      break;
-    }
-  }
-  CHECK(iter != installed_profiles_.end());
-  installed_profiles_.erase(iter);
-  UpdateInstalledProfilesProperty();
+  CHECK(profiles_.find(iccid) != profiles_.end());
+  profiles_.erase(iccid);
+  UpdateProfilesProperty();
   SendNotifications(EuiccOp::UNINSTALL, std::move(dbus_result));
 }
+
 void Euicc::SendNotifications(
     EuiccOp euicc_op,
     DbusResult<> dbus_result) {  // Send notifications and refresh LPA profile
@@ -385,7 +355,13 @@ void Euicc::OnInstalledProfilesReceived(
                std::move(decoded_error), error);
     return;
   }
-  installed_profiles_.clear();
+  for (auto it = profiles_.cbegin(); it != profiles_.cend();) {
+    if (it->second->GetState() != profile::kPending) {
+      it = profiles_.erase(it);
+    } else {
+      ++it;
+    }
+  }
   for (const auto& info : profile_infos) {
     if (!is_test_mode_ &&
         info.profile_class() == lpa::proto::ProfileClass::TESTING)
@@ -396,10 +372,10 @@ void Euicc::OnInstalledProfilesReceived(
                         base::BindRepeating(&Euicc::OnProfileEnabled,
                                             weak_factory_.GetWeakPtr()));
     if (profile) {
-      installed_profiles_.push_back(std::move(profile));
+      profiles_[profile->GetIccid()] = std::move(profile);
     }
   }
-  UpdateInstalledProfilesProperty();
+  UpdateProfilesProperty();
   if (!restore_slot) {
     EndEuiccOp(EuiccOp::REFRESH_INSTALLED, dbus_result);
     return;
@@ -453,25 +429,30 @@ void Euicc::OnPendingProfilesReceived(
     DbusResult<> dbus_result) {
   LOG(INFO) << __func__;
   auto decoded_error = LpaErrorToBrillo(FROM_HERE, error);
-  if (decoded_error) {
-    LOG(ERROR) << "Failed to retrieve pending profiles";
-    EndEuiccOp(EuiccOp::REQUEST_PENDING, dbus_result, std::move(decoded_error),
-               error);
-    return;
-  }
 
-  pending_profiles_.clear();
+  std::vector<dbus::ObjectPath> profile_paths;
   for (const auto& info : profile_infos) {
+    // Do not create a profile if the profile has already been exposed on DBus.
+    if (profiles_.find(info.iccid()) != profiles_.end()) {
+      continue;
+    }
     auto profile =
         Profile::Create(info, physical_slot_, slot_info_.eid_,
                         /*is_pending*/ true,
                         base::BindRepeating(&Euicc::OnProfileEnabled,
                                             weak_factory_.GetWeakPtr()));
     if (profile) {
-      pending_profiles_.push_back(std::move(profile));
+      profile_paths.push_back(profile->object_path());
+      profiles_[profile->GetIccid()] = std::move(profile);
     }
   }
-  UpdatePendingProfilesProperty();
+  UpdateProfilesProperty();
+  if (decoded_error) {
+    LOG(ERROR) << "Failed to retrieve pending profiles";
+    EndEuiccOp(EuiccOp::REQUEST_PENDING, dbus_result, std::move(decoded_error),
+               error);
+    return;
+  }
   EndEuiccOp(EuiccOp::REQUEST_PENDING, dbus_result);
 }
 
@@ -554,8 +535,8 @@ void Euicc::ResetMemory(int reset_options, DbusResult<> dbus_result) {
                      std::move(decoded_error), error);
           return;
         }
-        installed_profiles_.clear();
-        UpdateInstalledProfilesProperty();
+        profiles_.clear();
+        UpdateProfilesProperty();
         SendNotifications(EuiccOp::RESET_MEMORY, std::move(dbus_result));
       });
 }
