@@ -23,6 +23,7 @@
 #include <QThread>
 
 #include "backend/wayland_manager.h"
+#include "util/logging.h"
 
 namespace {
 std::mutex init_lock;
@@ -57,7 +58,6 @@ void CrosQtIMContext::setFocusObject(QObject* object) {
 
 void CrosQtIMContext::Activate() {
   Q_ASSERT(inited_);
-  qDebug() << "Activate()";
   if (!qApp)
     return;
   QWindow* window = qApp->focusWindow();
@@ -69,7 +69,7 @@ void CrosQtIMContext::Activate() {
         QGuiApplication::platformNativeInterface()->nativeResourceForWindow(
             "surface", window));
     if (!surface) {
-      qWarning() << "wl_surface is nullptr";
+      LOG(WARNING) << "wl_surface is nullptr";
       return;
     }
     backend_->Activate(surface);
@@ -115,7 +115,6 @@ void CrosQtIMContext::commit() {
   if (!inited_)
     return;
 
-  qDebug() << "CrosQtIMContext::commit()";
   if (!qApp)
     return;
   QObject* input = qApp->focusObject();
@@ -217,20 +216,18 @@ void CrosQtIMContext::cursorRectangleChanged() {
 }
 
 bool CrosQtIMContext::init() {
-  qDebug() << "init()";
   if (failed_init_) {
-    qWarning() << "Failed init!";
+    LOG(WARNING) << "Failed init!";
     return false;
   }
 
   // Init sequence is a critical path, and need to be guarded
-  qDebug() << "Trying to hold init lock";
   if (!init_lock.try_lock())
     return false;
 
   std::lock_guard<std::mutex> lock(init_lock, std::adopt_lock);
   if (inited_) {
-    qWarning() << "Duplicate init() call!";
+    LOG(WARNING) << "Duplicate init() call!";
     return true;
   }
 
@@ -251,7 +248,7 @@ bool CrosQtIMContext::init() {
         qGuiApp->platformNativeInterface()->nativeResourceForWindow("display",
                                                                     nullptr));
     if (!display) {
-      qWarning()
+      LOG(WARNING)
           << "Detect wayland but failed to get display, continue to wait";
       return false;
     }
@@ -264,12 +261,12 @@ bool CrosQtIMContext::init() {
       Activate();
     return true;
   } else if (QGuiApplication::platformName() == "") {
-    qDebug()
+    LOG(INFO)
         << "platformName() is empty, wayland backend is not yet initialised";
     return false;
   } else {
-    qWarning() << "Unsupported QPA platform: "
-               << QGuiApplication::platformName();
+    LOG(WARNING) << "Unsupported QPA platform: "
+                 << QGuiApplication::platformName().toStdString();
     failed_init_ = true;
     return false;
   }
@@ -416,8 +413,6 @@ void CrosQtIMContext::BackendObserver::SetPreedit(
   context_->preedit_attributes_.append(QInputMethodEvent::Attribute(
       QInputMethodEvent::Cursor, QString::fromStdString(preedit).length(), 1));
   context_->preedit_ = preedit;
-  qDebug() << "backend cursor: " << cursor
-           << ", preedit size: " << preedit.size();
   QInputMethodEvent event(QString::fromStdString(preedit),
                           context_->preedit_attributes_);
   QCoreApplication::sendEvent(input, &event);
@@ -426,15 +421,14 @@ void CrosQtIMContext::BackendObserver::SetPreedit(
 void CrosQtIMContext::BackendObserver::SetPreeditRegion(
     int start_offset, int length, const std::vector<PreeditStyle>& styles) {
   // not needed for CJ
-  qWarning() << "BackendObserver::SetPreeditRegion() is not implemented";
+  LOG(WARNING) << "BackendObserver::SetPreeditRegion() is not implemented";
 }
 
 void CrosQtIMContext::BackendObserver::Commit(const std::string& commit) {
   // IME want plugin to commit this text
   // but why both qt and IME can tell plugin to commit?
-  qDebug() << "BackendObserver::Commit()";
   if (commit.empty()) {
-    qWarning() << "IME backend request to commit empty string";
+    LOG(WARNING) << "IME backend request to commit empty string";
     return;
   }
   if (!qApp)
@@ -453,7 +447,7 @@ void CrosQtIMContext::BackendObserver::DeleteSurroundingText(int start_offset,
   // not needed for CJ without autocorrect
   // possibly: "if you turn on autocorrect then it gets used instead of
   // backspace for some reason"
-  qWarning() << "BackendObserver::DeleteSurroundingText() is not implemented";
+  LOG(WARNING) << "BackendObserver::DeleteSurroundingText() is not implemented";
 }
 
 void CrosQtIMContext::BackendObserver::KeySym(uint32_t keysym,
@@ -463,7 +457,6 @@ void CrosQtIMContext::BackendObserver::KeySym(uint32_t keysym,
   // to IME when IME is active
 
   // Modifier is unsupported for now
-  qDebug() << "BackendObserver::KeySym()";
   if (!qApp)
     return;
 

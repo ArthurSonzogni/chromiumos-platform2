@@ -13,6 +13,7 @@
 
 #include "backend/text_input.h"
 #include "backend/wayland_client.h"
+#include "util/logging.h"
 
 namespace cros_im {
 
@@ -49,7 +50,7 @@ const int WaylandManager::kTextInputExtensionMaxVersion;
 
 void WaylandManager::CreateInstance(wl_display* display) {
   if (g_instance) {
-    printf("WaylandManager has already been instantiated.\n");
+    LOG(ERROR) << "WaylandManager has already been instantiated.";
     return;
   }
 
@@ -58,14 +59,15 @@ void WaylandManager::CreateInstance(wl_display* display) {
 
 bool WaylandManager::CreateX11Instance(const char* display_name) {
   if (g_instance) {
-    printf("WaylandManager has already been instantiated.\n");
+    LOG(ERROR) << "WaylandManager has already been instantiated.";
     return false;
   }
 
   std::string wl_id = std::string("DISPLAY-") + display_name + "-wl";
   struct wl_display* display = wl_display_connect(wl_id.c_str());
   if (!display) {
-    printf("Failed to connect to Wayland compositor \"%s\".\n", wl_id.c_str());
+    LOG(WARNING) << "Failed to connect to Wayland compositor \"" << wl_id
+                 << '"';
     return false;
   }
 
@@ -90,8 +92,8 @@ void WaylandManager::FlushRequests() {
   // couldn't write all data.
   int res = wl_display_flush(display_);
   if (res == -1) {
-    printf("Error flushing requests, error: %d (%s)\n", errno,
-           std::strerror(errno));
+    LOG(ERROR) << "Error flushing requests, error: " << errno << " ("
+               << std::strerror(errno) << ")";
   }
 }
 
@@ -99,8 +101,8 @@ void WaylandManager::DispatchEvents() {
   FlushRequests();
   int res = wl_display_dispatch(display_);
   if (res == -1) {
-    printf("Error dispatching events, error: %d (%s)\n", errno,
-           std::strerror(errno));
+    LOG(ERROR) << "Error dispatching events, error: " << errno << " ("
+               << std::strerror(errno) << ")";
   }
 }
 
@@ -167,19 +169,19 @@ void WaylandManager::OnGlobal(wl_registry* registry,
 
 void WaylandManager::OnGlobalRemove(wl_registry* registry, uint32_t name) {
   if (name == wl_seat_id_) {
-    printf("The global wl_seat was removed.\n");
+    LOG(WARNING) << "The global wl_seat was removed.";
     wl_seat_ = nullptr;
     wl_seat_id_ = 0;
   } else if (name == text_input_manager_id_) {
-    printf("The global zwp_text_input_manager_v1 was removed.\n");
+    LOG(WARNING) << "The global zwp_text_input_manager_v1 was removed.";
     text_input_manager_ = nullptr;
     text_input_manager_id_ = 0;
   } else if (name == text_input_extension_id_) {
-    printf("The global zcr_text_input_extension_v1 was removed.\n");
+    LOG(WARNING) << "The global zcr_text_input_extension_v1 was removed.";
     text_input_extension_ = nullptr;
     text_input_extension_id_ = 0;
   } else if (name == text_input_x11_id_) {
-    printf("The global zcr_text_input_x11_v1 was removed.\n");
+    LOG(WARNING) << "The global zcr_text_input_x11_v1 was removed.";
     text_input_x11_ = nullptr;
     text_input_x11_id_ = 0;
   }

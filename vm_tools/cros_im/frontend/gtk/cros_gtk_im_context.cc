@@ -14,6 +14,8 @@
 #include <iostream>
 #include <utility>
 
+#include "util/logging.h"
+
 namespace cros_im {
 namespace gtk {
 
@@ -118,7 +120,7 @@ IMContextBackend::ContentType ConvertContentType(GtkInputHints gtk_hints,
       learning_mode = ZCR_EXTENDED_TEXT_INPUT_V1_LEARNING_MODE_DISABLED;
       break;
     default:
-      g_warning("Unknown GtkInputPurpose %d", static_cast<int>(gtk_purpose));
+      LOG(WARNING) << "Unknown GtkInputPurpose: " << gtk_purpose;
       break;
   }
 
@@ -211,7 +213,7 @@ void CrosGtkIMContext::SetClientWindow(GdkWindow* window) {
     g_set_object(&gdk_window_, window);
     g_set_object(&top_level_gdk_window_, toplevel);
     if (!top_level_gdk_window_)
-      g_warning("Top-level GdkWindow was null");
+      LOG(WARNING) << "Top-level GdkWindow was null";
     if (pending_activation_)
       Activate();
   } else {
@@ -443,7 +445,7 @@ void CrosGtkIMContext::BackendObserver::KeySym(uint32_t keysym,
     // TODO(b/264834882): Currently our tests don't make fake keymaps so they
     // end up reaching here for non-ascii symbols, even though in practice we
     // would always (IIUC) be reaching the if branch.
-    g_warning("Failed to find keycode for keysym %u", keysym);
+    LOG(WARNING) << "Failed to find keycode for keysym: " << keysym;
     event->hardware_keycode = 0;
     event->group = 0;
   }
@@ -463,14 +465,14 @@ CrosGtkIMContext::BackendObserver::DeleteSurroundingTextImpl(
   if (!context_->preedit_.empty()) {
     // TODO(timloh): Work out the correct behaviour here. Should we commit the
     // existing pre-edit text first?
-    g_warning(
-        "DeleteSurroundingText() called when pre-edit was already present");
+    LOG(WARNING)
+        << "DeleteSurroundingText() called when pre-edit was already present.";
     return std::nullopt;
   }
 
   if (!context_->RetrieveSurrounding()) {
-    g_warning(
-        "Failed to retrieve surrounding text for DeleteSurroundingText().");
+    LOG(WARNING)
+        << "Failed to retrieve surrounding text for DeleteSurroundingText().";
     return std::nullopt;
   }
 
@@ -482,16 +484,17 @@ CrosGtkIMContext::BackendObserver::DeleteSurroundingTextImpl(
   const char* region_end = region_start + byte_length;
 
   if (region_start < surrounding_start || region_end > surrounding_end) {
-    g_warning(
-        "Not enough surrounding text to handle DeleteSurroundingText(%d, %d). "
-        "Surrounding text is %zu bytes with cursor at %d.",
-        byte_start_offset, byte_length, context_->surrounding_.size(),
-        context_->surrounding_cursor_pos_);
+    LOG(WARNING)
+        << "Not enough surrounding text to handle DeleteSurroundingText("
+        << byte_start_offset << ", " << byte_length << "). Surrounding text is "
+        << context_->surrounding_.size() << " bytes with cursor at "
+        << context_->surrounding_cursor_pos_ << ".";
     return std::nullopt;
   }
 
   if (!g_utf8_validate(region_start, byte_length, nullptr)) {
-    g_warning("DeleteSurroundingText() cannot delete invalid UTF-8 regions.");
+    LOG(WARNING)
+        << "DeleteSurroundingText() cannot delete invalid UTF-8 regions.";
     return std::nullopt;
   }
 
@@ -502,7 +505,8 @@ CrosGtkIMContext::BackendObserver::DeleteSurroundingTextImpl(
   g_signal_emit_by_name(context_, "delete-surrounding", char_offset,
                         char_length, &result);
   if (!result) {
-    g_warning("Failed to delete surrounding text for DeleteSurroundingText().");
+    LOG(WARNING)
+        << "Failed to delete surrounding text for DeleteSurroundingText().";
     return std::nullopt;
   }
 
@@ -511,7 +515,7 @@ CrosGtkIMContext::BackendObserver::DeleteSurroundingTextImpl(
 
 void CrosGtkIMContext::Activate() {
   if (!top_level_gdk_window_) {
-    g_warning("Tried to activate without an active window.");
+    LOG(WARNING) << "Tried to activate without an active window.";
     return;
   }
 
@@ -521,7 +525,7 @@ void CrosGtkIMContext::Activate() {
     wl_surface* surface =
         gdk_wayland_window_get_wl_surface(top_level_gdk_window_);
     if (!surface) {
-      g_warning("GdkWindow doesn't have an associated wl_surface.");
+      LOG(WARNING) << "GdkWindow doesn't have an associated wl_surface.";
       return;
     }
     backend_->Activate(surface);
@@ -563,8 +567,10 @@ bool CrosGtkIMContext::RetrieveSurrounding() {
   gboolean result = false;
   // SetSurrounding() gets called when this succeeds.
   g_signal_emit_by_name(this, "retrieve-surrounding", &result);
-  if (!result)
-    g_warning("Failed to retrieve surrounding text.");
+  if (!result) {
+    LOG(WARNING)
+        << "Failed to retrieve surrounding text for UpdateSurrounding().";
+  }
   return result;
 #endif
 }

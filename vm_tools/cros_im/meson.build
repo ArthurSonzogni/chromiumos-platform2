@@ -50,6 +50,8 @@ backend_sources = [
   'backend/wayland_client.h',
   'backend/wayland_manager.cc',
   'backend/wayland_manager.h',
+  'util/logging.cc',
+  'util/logging.h',
 ]
 
 gtk_sources = backend_sources + [

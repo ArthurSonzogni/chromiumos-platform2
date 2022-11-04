@@ -11,6 +11,7 @@
 #include "backend/text_input.h"
 #include "backend/wayland_client.h"
 #include "backend/wayland_manager.h"
+#include "util/logging.h"
 
 namespace cros_im {
 
@@ -89,7 +90,7 @@ void IMContextBackend::Activate(wl_surface* surface) {
   MaybeInitialize();
 
   if (!text_input_) {
-    printf("The text input manager is not ready yet or not available.\n");
+    LOG(INFO) << "The text input manager is not ready yet or not available.";
     return;
   }
 
@@ -102,7 +103,7 @@ void IMContextBackend::ActivateX11(uint32_t x11_id) {
   MaybeInitialize();
 
   if (!text_input_) {
-    printf("The text input manager is not ready yet or not available.\n");
+    LOG(INFO) << "The text input manager is not ready yet or not available.";
     return;
   }
 
@@ -117,7 +118,8 @@ void IMContextBackend::Deactivate() {
   if (!text_input_)
     return;
   if (!is_active_) {
-    printf("Attempted to deactivate text input which was not activated.\n");
+    LOG(WARNING)
+        << "Attempted to deactivate text input which was not activated.";
     return;
   }
 
@@ -264,8 +266,8 @@ void IMContextBackend::SetPreeditRegion(int32_t index,
                                         uint32_t length_unsigned) {
   int length = length_unsigned;
   if (index > 0 || index + length < 0 || length <= 0) {
-    printf("SetPreeditRegion(%d, %u) is for unsupported range.\n", index,
-           length);
+    LOG(WARNING) << "SetPreeditRegion(" << index << ", " << length
+                 << ") is for unsupported range.";
   } else {
     observer_->SetPreeditRegion(index, length, styles_);
   }

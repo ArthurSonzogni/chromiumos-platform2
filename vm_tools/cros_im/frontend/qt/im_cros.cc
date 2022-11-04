@@ -14,6 +14,7 @@
 
 #include "backend/wayland_manager.h"
 #include "frontend/qt/x11.h"
+#include "util/logging.h"
 
 namespace {
 bool application_quit = false;
@@ -45,8 +46,8 @@ cros_im::qt::CrosQtIMContext* QCrosPlatformInputContextPlugin::create(
     return nullptr;
 
   if (!qGuiApp) {
-    qWarning() << "qGuiApp is nullptr when trying to create cros IME plugin "
-                  "instance, quitting.";
+    LOG(WARNING) << "qGuiApp is nullptr when trying to create cros IME plugin "
+                    "instance, quitting.";
     return nullptr;
   }
   if (qGuiApp->platformName() == "" || qGuiApp->platformName() == "wayland") {
@@ -54,8 +55,8 @@ cros_im::qt::CrosQtIMContext* QCrosPlatformInputContextPlugin::create(
       // This probably means wayland, but the QtWayland plugin isn't initialized
       // yet, will need to wait before trying to instantiate anything relying on
       // native display pointers
-      qWarning() << "qGuiApp->platformName() is empty str, probably due to "
-                    "QtWayland is uninitialized, continue";
+      LOG(WARNING) << "qGuiApp->platformName() is empty str, probably due to "
+                      "QtWayland is uninitialized, continue";
     }
     context_ = new cros_im::qt::CrosQtIMContext(false);
     static_cast<void>(QtConcurrent::run(InitLoop, context_));
@@ -65,21 +66,20 @@ cros_im::qt::CrosQtIMContext* QCrosPlatformInputContextPlugin::create(
     qInfo() << "xcb detected, starting cros input plugin";
     auto screen = qGuiApp->primaryScreen();
     if (!screen) {
-      qWarning() << "qGuiApp->primaryScreen() returns nullptr, quitting";
+      LOG(WARNING) << "qGuiApp->primaryScreen() returns nullptr, quitting";
       return nullptr;
     }
     void* x11_display =
         qGuiApp->platformNativeInterface()->nativeResourceForScreen("display",
                                                                     screen);
     if (!x11_display) {
-      qWarning() << "nativeResourceForScreen() returns nullptr, quitting";
+      LOG(WARNING) << "nativeResourceForScreen() returns nullptr, quitting";
       return nullptr;
     }
     char* display_name = cros_im::qt::DisplayName(x11_display);
     if (!cros_im::WaylandManager::CreateX11Instance(display_name)) {
-      qWarning(
-          "cros_im::WaylandManager::CreateX11Instance returned false, "
-          "quitting");
+      LOG(WARNING) << "cros_im::WaylandManager::CreateX11Instance returned "
+                      "false, quitting";
       return nullptr;
     }
 
@@ -101,7 +101,8 @@ cros_im::qt::CrosQtIMContext* QCrosPlatformInputContextPlugin::create(
     context_->init();
     return context_;
   } else {
-    qWarning() << "Unsupported QPA platform: " << qGuiApp->platformName();
+    LOG(WARNING) << "Unsupported QPA platform: "
+                 << qGuiApp->platformName().toStdString();
     return nullptr;
   }
 }

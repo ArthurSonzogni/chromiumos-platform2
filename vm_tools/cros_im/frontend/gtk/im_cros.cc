@@ -12,6 +12,7 @@
 #include "backend/wayland_manager.h"
 #include "frontend/gtk/cros_gtk_im_context.h"
 #include "frontend/gtk/x11.h"
+#include "util/logging.h"
 
 // This file defines the functions required to wire up a GTK IM module.
 
@@ -50,7 +51,7 @@ void im_module_init(GTypeModule* module) {
 
   GdkDisplay* gdk_display = gdk_display_get_default();
   if (!gdk_display) {
-    g_warning("GdkDisplay wasn't found");
+    LOG(WARNING) << "GdkDisplay wasn't found";
     return;
   }
   if (GDK_IS_X11_DISPLAY(gdk_display)) {
@@ -60,7 +61,7 @@ void im_module_init(GTypeModule* module) {
     WaylandManager::CreateInstance(
         gdk_wayland_display_get_wl_display(gdk_display));
   } else {
-    g_warning("Unknown GdkDisplay type");
+    LOG(WARNING) << "Unknown GdkDisplay type";
     return;
   }
 
