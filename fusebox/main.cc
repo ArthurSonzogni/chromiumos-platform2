@@ -17,6 +17,7 @@
 #include <base/no_destructor.h>
 #include <base/numerics/safe_conversions.h>
 #include <base/posix/eintr_wrapper.h>
+#include <base/strings/strcat.h>
 #include <base/strings/string_piece.h>
 #include <brillo/daemons/dbus_daemon.h>
 #include <brillo/syslog_logging.h>
@@ -354,7 +355,7 @@ class FuseBoxClient : public FileSystem {
       PLOG(ERROR) << "setattr";
       return;
     } else if (node->ino < FIRST_UNRESERVED_INO) {
-      errno = request->ReplyError(errno ? errno : EPERM);
+      errno = request->ReplyError(errno ? errno : EACCES);
       PLOG(ERROR) << "setattr";
       return;
     }
@@ -578,24 +579,9 @@ class FuseBoxClient : public FileSystem {
       return;
 
     errno = 0;
-    if ((request->flags() & O_ACCMODE) != O_RDONLY) {
-      errno = request->ReplyError(EACCES);
-      PLOG(ERROR) << "mkdir";
-      return;
-    }
-
     Node* parent_node = GetInodeTable().Lookup(parent);
     if (!parent_node || (parent < FIRST_UNRESERVED_INO)) {
-      errno = request->ReplyError(errno ? errno : EPERM);
-      PLOG(ERROR) << "mkdir";
-      return;
-    }
-
-    Device device = GetInodeTable().GetDevice(parent_node);
-    bool read_only = device.mode == "ro";
-
-    if (read_only) {
-      errno = request->ReplyError(EROFS);
+      errno = request->ReplyError(errno ? errno : EACCES);
       PLOG(ERROR) << "mkdir";
       return;
     }
@@ -607,11 +593,12 @@ class FuseBoxClient : public FileSystem {
       return;
     }
 
+    MkDirRequestProto request_proto;
+    request_proto.set_file_system_url(GetInodeTable().GetDevicePath(node));
+
     dbus::MethodCall method(kFuseBoxServiceInterface, kMkDirMethod);
     dbus::MessageWriter writer(&method);
-
-    auto path = GetInodeTable().GetDevicePath(node);
-    writer.AppendString(path);
+    writer.AppendProtoAsArrayOfBytes(request_proto);
 
     auto mkdir_response = base::BindOnce(&FuseBoxClient::MkDirResponse,
                                          weak_ptr_factory_.GetWeakPtr(),
@@ -630,19 +617,92 @@ class FuseBoxClient : public FileSystem {
     }
 
     dbus::MessageReader reader(response);
-    if (int error = GetResponseErrno(&reader, response, "mkdir")) {
+    MkDirResponseProto response_proto;
+    if (!reader.PopArrayOfBytesAsProto(&response_proto)) {
       GetInodeTable().Forget(ino);
-      request->ReplyError(error);
+      request->ReplyError(EINVAL);
+      return;
+    }
+    int32_t posix_error_code = response_proto.has_posix_error_code()
+                                   ? response_proto.posix_error_code()
+                                   : 0;
+    if (posix_error_code != 0) {
+      GetInodeTable().Forget(ino);
+      request->ReplyError(posix_error_code);
       return;
     }
 
     fuse_entry_param entry = {0};
     entry.ino = static_cast<fuse_ino_t>(ino);
-    entry.attr = GetServerStat(ino, &reader);
+    if (response_proto.has_stat()) {
+      entry.attr = MakeStatFromProto(ino, response_proto.stat());
+    }
     entry.attr_timeout = kEntryTimeoutSeconds;
     entry.entry_timeout = kEntryTimeoutSeconds;
 
     request->ReplyEntry(entry);
+  }
+
+  void RmDir(std::unique_ptr<OkRequest> request,
+             ino_t parent,
+             const char* name) override {
+    VLOG(1) << "rmdir " << parent << "/" << name;
+
+    if (request->IsInterrupted())
+      return;
+
+    errno = 0;
+    Node* parent_node = GetInodeTable().Lookup(parent);
+    if (!parent_node || (parent < FIRST_UNRESERVED_INO)) {
+      errno = request->ReplyError(errno ? errno : EACCES);
+      PLOG(ERROR) << "rmdir";
+      return;
+    }
+
+    Node* node = GetInodeTable().Lookup(parent, name);
+    ino_t ino = node ? node->ino : 0;
+
+    RmDirRequestProto request_proto;
+    request_proto.set_file_system_url(
+        base::StrCat({GetInodeTable().GetDevicePath(parent_node), "/", name}));
+
+    dbus::MethodCall method(kFuseBoxServiceInterface, kRmDirMethod);
+    dbus::MessageWriter writer(&method);
+    writer.AppendProtoAsArrayOfBytes(request_proto);
+
+    auto rmdir_response =
+        base::BindOnce(&FuseBoxClient::RmDirResponse,
+                       weak_ptr_factory_.GetWeakPtr(), std::move(request), ino);
+    CallFuseBoxServerMethod(&method, std::move(rmdir_response));
+  }
+
+  void RmDirResponse(std::unique_ptr<OkRequest> request,
+                     ino_t ino,
+                     dbus::Response* response) {
+    VLOG(1) << "rmdir-resp " << ino;
+
+    if (request->IsInterrupted()) {
+      return;
+    }
+
+    dbus::MessageReader reader(response);
+    RmDirResponseProto response_proto;
+    if (!reader.PopArrayOfBytesAsProto(&response_proto)) {
+      request->ReplyError(EINVAL);
+      return;
+    }
+    int32_t posix_error_code = response_proto.has_posix_error_code()
+                                   ? response_proto.posix_error_code()
+                                   : 0;
+    if (posix_error_code != 0) {
+      request->ReplyError(posix_error_code);
+      return;
+    }
+
+    if (ino) {
+      GetInodeTable().Forget(ino);
+    }
+    request->ReplyOk();
   }
 
   void Open(std::unique_ptr<OpenRequest> request, ino_t ino) override {
@@ -657,7 +717,7 @@ class FuseBoxClient : public FileSystem {
       PLOG(ERROR) << "open";
       return;
     } else if (node->parent <= FUSE_ROOT_ID) {
-      errno = request->ReplyError(errno ? errno : EPERM);
+      errno = request->ReplyError(errno ? errno : EACCES);
       PLOG(ERROR) << "open";
       return;
     }
@@ -852,7 +912,7 @@ class FuseBoxClient : public FileSystem {
     }
 
     if (ino < FIRST_UNRESERVED_INO) {
-      errno = request->ReplyError(errno ? errno : EPERM);
+      errno = request->ReplyError(errno ? errno : EACCES);
       PLOG(ERROR) << "write";
       return;
     }
@@ -1007,7 +1067,7 @@ class FuseBoxClient : public FileSystem {
 
     Node* parent_node = GetInodeTable().Lookup(parent);
     if (!parent_node || parent < FIRST_UNRESERVED_INO) {
-      errno = request->ReplyError(errno ? errno : EPERM);
+      errno = request->ReplyError(errno ? errno : EACCES);
       PLOG(ERROR) << "create";
       return;
     }

@@ -67,6 +67,39 @@ struct stat MakeStat(ino_t ino, const struct stat& s, bool read_only) {
   return stat;
 }
 
+struct stat MakeStatFromProto(ino_t ino, const DirEntryProto& proto) {
+  struct stat stat = {0};
+  stat.st_ino = ino;
+  stat.st_mode = MakeStatModeBits(
+      proto.has_mode_bits() ? proto.mode_bits() : (S_IFREG | 0600), false);
+  stat.st_size = proto.has_size() ? proto.size() : 0;
+  stat.st_nlink = 1;
+  stat.st_uid = kChronosUID;
+  stat.st_gid = kChronosAccessGID;
+
+  if (proto.has_mtime()) {
+    struct timeval tv = base::Time::FromDeltaSinceWindowsEpoch(
+                            base::Microseconds(proto.mtime()))
+                            .ToTimeVal();
+    stat.st_mtime = base::saturated_cast<decltype(stat.st_mtime)>(tv.tv_sec);
+  }
+  if (proto.has_atime()) {
+    struct timeval tv = base::Time::FromDeltaSinceWindowsEpoch(
+                            base::Microseconds(proto.atime()))
+                            .ToTimeVal();
+    stat.st_atime = base::saturated_cast<decltype(stat.st_atime)>(tv.tv_sec);
+  }
+  if (proto.has_ctime()) {
+    struct timeval tv = base::Time::FromDeltaSinceWindowsEpoch(
+                            base::Microseconds(proto.ctime()))
+                            .ToTimeVal();
+    stat.st_ctime = base::saturated_cast<decltype(stat.st_ctime)>(tv.tv_sec);
+  }
+
+  DCHECK(IsAllowedStatMode(stat.st_mode));
+  return stat;
+}
+
 struct stat GetServerStat(ino_t ino,
                           dbus::MessageReader* reader,
                           bool read_only) {
