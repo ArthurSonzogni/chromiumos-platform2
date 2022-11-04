@@ -55,10 +55,6 @@ zwp_text_input_v1* zwp_text_input_manager_v1_create_text_input(
   return text_inputs.back().get();
 }
 
-void zwp_text_input_v1_set_user_data(zwp_text_input_v1*, void*) {
-  // Not needed currently.
-}
-
 void zwp_text_input_v1_add_listener(zwp_text_input_v1* text_input,
                                     const zwp_text_input_v1_listener* listener,
                                     void* listener_data) {
@@ -127,11 +123,6 @@ zcr_extended_text_input_v1* zcr_text_input_extension_v1_get_extended_text_input(
   extended_text_inputs.emplace_back(
       new zcr_extended_text_input_v1({nullptr, nullptr, id}));
   return extended_text_inputs.back().get();
-}
-
-void zcr_extended_text_input_v1_set_user_data(zcr_extended_text_input_v1*,
-                                              void*) {
-  // Not needed currently.
 }
 
 void zcr_extended_text_input_v1_add_listener(

@@ -107,7 +107,6 @@ zwp_text_input_v1* WaylandManager::CreateTextInput(
     return nullptr;
   auto* text_input =
       zwp_text_input_manager_v1_create_text_input(text_input_manager_);
-  zwp_text_input_v1_set_user_data(text_input, nullptr);
   zwp_text_input_v1_add_listener(text_input, listener, listener_data);
   return text_input;
 }
@@ -121,7 +120,6 @@ zcr_extended_text_input_v1* WaylandManager::CreateExtendedTextInput(
   auto* extended_text_input =
       zcr_text_input_extension_v1_get_extended_text_input(text_input_extension_,
                                                           text_input);
-  zcr_extended_text_input_v1_set_user_data(extended_text_input, nullptr);
   zcr_extended_text_input_v1_add_listener(extended_text_input, listener,
                                           listener_data);
   return extended_text_input;

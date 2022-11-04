@@ -79,7 +79,6 @@ struct zwp_text_input_v1_listener {
 zwp_text_input_v1* zwp_text_input_manager_v1_create_text_input(
     zwp_text_input_manager_v1* text_input_manager);
 
-void zwp_text_input_v1_set_user_data(zwp_text_input_v1*, void*);
 void zwp_text_input_v1_add_listener(zwp_text_input_v1*,
                                     const zwp_text_input_v1_listener*,
                                     void* listener_data);
@@ -138,8 +137,6 @@ struct zcr_extended_text_input_v1_listener {
                                 uint32_t end);
 };
 
-void zcr_extended_text_input_v1_set_user_data(zcr_extended_text_input_v1*,
-                                              void*);
 void zcr_extended_text_input_v1_add_listener(
     zcr_extended_text_input_v1*,
     const zcr_extended_text_input_v1_listener*,
