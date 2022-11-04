@@ -857,16 +857,21 @@ TEST_F(CrashCollectorTest, StripMacAddressesBasic) {
   // I'm not sure that the code does ideal on these two test cases (they don't
   // look like two MAC addresses to me), but since we don't see them I think
   // it's OK to behave as shown here.
+  //
+  // The 2 crammed MAC are redacted as mac first to become
+  // "00:00:00:00:00:01:00:00:00:00:00:01"; and then it is redacted as IPv6 to
+  // "<redacted ip address>:00:00:00:01"
   const std::string kCrammedMacs1Orig = "11:22:33:44:55:66:11:22:33:44:55:66";
-  const std::string kCrammedMacs1Stripped =
-      "00:00:00:00:00:01:00:00:00:00:00:01";
+  const std::string kCrammedMacs1Stripped = "<redacted ip address>:00:00:00:01";
   std::string crammed_macs_1(kCrammedMacs1Orig);
   collector_.StripSensitiveData(&crammed_macs_1);
   EXPECT_EQ(kCrammedMacs1Stripped, crammed_macs_1);
 
+  // The 2 crammed MAC are redacted as mac first to become
+  // "00:00:00:00:00:0100:00:00:00:00:01"; and then it is redacted as IPv6 to
+  // "<redacted ip address>:00:00:01"
   const std::string kCrammedMacs2Orig = "11:22:33:44:55:6611:22:33:44:55:66";
-  const std::string kCrammedMacs2Stripped =
-      "00:00:00:00:00:0100:00:00:00:00:01";
+  const std::string kCrammedMacs2Stripped = "<redacted ip address>:00:00:01";
   std::string crammed_macs_2(kCrammedMacs2Orig);
   collector_.StripSensitiveData(&crammed_macs_2);
   EXPECT_EQ(kCrammedMacs2Stripped, crammed_macs_2);
@@ -965,20 +970,6 @@ TEST_F(CrashCollectorTest, StripEmailAddresses) {
   EXPECT_EQ(std::string::npos, logs.find("dev.reallylong"));
 }
 
-TEST_F(CrashCollectorTest, StripIPv4Addresses) {
-  std::string logs =
-      "stay.1.2.3 remove.1.2.3.4."
-      "stay 255.255 255.255.255 255.255.259.255 remove 255.255.255.255 0.0.0.0 "
-      "stay 19.259.243.255 19.243.343.255 remove 19.143.29.255";
-  std::string redacted_log =
-      "stay.1.2.3 remove.<redacted ip address>."
-      "stay 255.255 255.255.255 255.255.259.255 remove <redacted ip address> "
-      "<redacted ip address> "
-      "stay 19.259.243.255 19.243.343.255 remove <redacted ip address>";
-  collector_.StripSensitiveData(&logs);
-  EXPECT_EQ(logs, redacted_log);
-}
-
 TEST_F(CrashCollectorTest, StripGaiaId) {
   std::string kCrashWithGaiaID =
       "remove gaia_id:\"970787480432\" sample"
@@ -1014,6 +1005,40 @@ TEST_F(CrashCollectorTest, StripLocationInformation) {
       "remove <redacted location information> sample";
   collector_.StripLocationInformation(&kCrashWithLocationInformation);
   EXPECT_EQ(kCrashWithLocationInformation, kCrashWithoutLocationInformation);
+}
+
+TEST_F(CrashCollectorTest, StripIPv4Addresses) {
+  std::string logs =
+      "stay.1.2.3 remove.1.2.3.4."
+      "stay 255.255 255.255.255 255.255.259.255 remove 255.255.255.255 0.0.0.0 "
+      "stay 19.259.243.255 19.243.343.255 remove 19.143.29.255";
+  std::string redacted_log =
+      "stay.1.2.3 remove.<redacted ip address>."
+      "stay 255.255 255.255.255 255.255.259.255 remove <redacted ip address> "
+      "<redacted ip address> "
+      "stay 19.259.243.255 19.243.343.255 remove <redacted ip address>";
+  collector_.StripSensitiveData(&logs);
+  EXPECT_EQ(logs, redacted_log);
+}
+
+TEST_F(CrashCollectorTest, StripIPv6Addresses) {
+  std::string logs =
+      "stay:2001:0db8:0000:0000:0000:ff00:0042: "
+      "stay:0:0:0:0:0:FFFF:322.1.41.90 "
+      "remove:2001:0db8:0000:0000:0000:ff00:0042:8329 "
+      "remove:2001:0dB8:0000:0000:0000:Ff00:0042:8329 "
+      "remove:2001:db8:0:0:0:ff00:42:8329 2001:db8::ff00:42:8329 ::1 1:: "
+      "remove:0:0:0:0:0:FFFF:222.1.41.90";
+  std::string redacted_log =
+      "stay:2001:0db8:0000:0000:0000:ff00:0042: "
+      "stay:0:0:0:0:0:FFFF:3<redacted ip address> "
+      "remove:<redacted ip address> "
+      "remove:<redacted ip address> "
+      "remove:<redacted ip address> <redacted ip address> "
+      "<redacted ip address> <redacted ip address> "
+      "remove:<redacted ip address>";
+  collector_.StripSensitiveData(&logs);
+  EXPECT_EQ(logs, redacted_log);
 }
 
 TEST_F(CrashCollectorTest, StripSerialNumbers) {

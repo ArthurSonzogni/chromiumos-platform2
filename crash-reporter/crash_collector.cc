@@ -123,10 +123,33 @@ constexpr size_t kMaxParentProcessLogs = 8;
 
 const char kCollectionErrorSignature[] = "crash_reporter-user-collection";
 
-#define NON_CAPTURING_GROUP(x) "(?:" x ")"
-#define DEC_OCTET \
-  NON_CAPTURING_GROUP("1[0-9][0-9]|2[0-4][0-9]|25[0-5]|[1-9][0-9]|[0-9]")
+#define NCG(x) "(?:" x ")"
+#define OPT_NCG(x) NCG(x) "?"
+#define DEC_OCTET NCG("1[0-9][0-9]|2[0-4][0-9]|25[0-5]|[1-9][0-9]|[0-9]")
 #define IPV4ADDRESS DEC_OCTET "\\." DEC_OCTET "\\." DEC_OCTET "\\." DEC_OCTET
+#define HEXDIG "[0-9a-f]"
+#define H16 NCG(HEXDIG) "{1,4}"
+#define LS32 NCG(H16 ":" H16 "|" IPV4ADDRESS)
+#define WB "\\b"
+// clang-format off
+#define IPV6ADDRESS "(?i)(" NCG( \
+                                          WB NCG(H16 ":") "{6}" LS32 WB "|" \
+                                        "::" NCG(H16 ":") "{5}" LS32 WB "|" \
+  /* NOLINTNEXTLINE(whitespace/parens) */ \
+  OPT_NCG( WB                      H16) "::" NCG(H16 ":") "{4}" LS32 WB "|" \
+  /* NOLINTNEXTLINE(whitespace/parens) */ \
+  OPT_NCG( WB NCG(H16 ":") "{0,1}" H16) "::" NCG(H16 ":") "{3}" LS32 WB "|" \
+  /* NOLINTNEXTLINE(whitespace/parens) */ \
+  OPT_NCG( WB NCG(H16 ":") "{0,2}" H16) "::" NCG(H16 ":") "{2}" LS32 WB "|" \
+  /* NOLINTNEXTLINE(whitespace/parens) */ \
+  OPT_NCG( WB NCG(H16 ":") "{0,3}" H16) "::" NCG(H16 ":")       LS32 WB "|" \
+  /* NOLINTNEXTLINE(whitespace/parens) */ \
+  OPT_NCG( WB NCG(H16 ":") "{0,4}" H16) "::"                    LS32 WB "|" \
+  /* NOLINTNEXTLINE(whitespace/parens) */ \
+  OPT_NCG( WB NCG(H16 ":") "{0,5}" H16) "::"                    H16  WB "|" \
+  /* NOLINTNEXTLINE(whitespace/parens) */ \
+  OPT_NCG( WB NCG(H16 ":") "{0,6}" H16) "::") ")"
+// clang-format on
 
 const char kGaiaIdRegEx[] =
     R"((\"?\bgaia_id\"?[=:]['\"])(\d+)(\b['\"])|(\{id: )(\d+)(, email:))";
@@ -773,6 +796,7 @@ void CrashCollector::StripSensitiveData(std::string* contents) {
   // At the moment, only specific data patterns are used for stripping.
   StripMacAddresses(contents);
   StripEmailAddresses(contents);
+  StripIPv6Addresses(contents);
   StripIPv4Addresses(contents);
   StripGaiaId(contents);
   StripLocationInformation(contents);
@@ -862,6 +886,13 @@ void CrashCollector::StripEmailAddresses(std::string* contents) {
   RE2::GlobalReplace(contents, email_re, "<redacted email address>");
 }
 
+void CrashCollector::StripGaiaId(std::string* contents) {
+  RE2 gaia_id_re(kGaiaIdRegEx);
+  // Ensure RegEx has no parsing errors and is valid.
+  CHECK_EQ("", gaia_id_re.error());
+  RE2::GlobalReplace(contents, gaia_id_re, "<redacted gaia ID>");
+}
+
 void CrashCollector::StripIPv4Addresses(std::string* contents) {
   RE2 ipv4_re(IPV4ADDRESS);
   // Ensure RegEx has no parsing errors and is valid.
@@ -869,11 +900,11 @@ void CrashCollector::StripIPv4Addresses(std::string* contents) {
   RE2::GlobalReplace(contents, ipv4_re, "<redacted ip address>");
 }
 
-void CrashCollector::StripGaiaId(std::string* contents) {
-  RE2 gaia_id_re(kGaiaIdRegEx);
+void CrashCollector::StripIPv6Addresses(std::string* contents) {
+  RE2 ipv6_re(IPV6ADDRESS);
   // Ensure RegEx has no parsing errors and is valid.
-  CHECK_EQ("", gaia_id_re.error());
-  RE2::GlobalReplace(contents, gaia_id_re, "<redacted gaia ID>");
+  CHECK_EQ("", ipv6_re.error());
+  RE2::GlobalReplace(contents, ipv6_re, "<redacted ip address>");
 }
 
 void CrashCollector::StripLocationInformation(std::string* contents) {

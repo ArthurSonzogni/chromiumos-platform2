@@ -246,6 +246,8 @@ class CrashCollector {
   FRIEND_TEST(CrashCollectorTest, StripIPv4Addresses);
   FRIEND_TEST(CrashCollectorTest, StripGaiaId);
   FRIEND_TEST(CrashCollectorTest, StripLocationInformation);
+  FRIEND_TEST(CrashCollectorTest, StripIPv4Addresses);
+  FRIEND_TEST(CrashCollectorTest, StripIPv6Addresses);
   FRIEND_TEST(CrashCollectorTest, StripSerialNumbers);
   FRIEND_TEST(CrashCollectorTest, StripRecoveryId);
   FRIEND_TEST(CrashCollectorTest, RemoveNewFileFailsOnNonExistantFiles);
@@ -348,9 +350,10 @@ class CrashCollector {
   void StripSensitiveData(std::string* contents);
   void StripMacAddresses(std::string* contents);
   void StripEmailAddresses(std::string* contents);
-  void StripIPv4Addresses(std::string* contents);
   void StripGaiaId(std::string* contents);
   void StripLocationInformation(std::string* contents);
+  void StripIPv4Addresses(std::string* contents);
+  void StripIPv6Addresses(std::string* contents);
   void StripSerialNumbers(std::string* contents);
   void StripRecoveryId(std::string* contents);
 
