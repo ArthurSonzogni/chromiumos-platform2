@@ -125,6 +125,11 @@ SEC("raw_tracepoint/sched_process_exit")
 SEC("tp_btf/sched_process_exit")
 #endif  // USE_MIN_CORE_BTF
 int BPF_PROG(handle_sched_process_exit, struct task_struct* current) {
+  if (BPF_CORE_READ(current, pid) != BPF_CORE_READ(current, tgid)) {
+    // We didn't report an exec event for this task since it's not a
+    // thread group leader. So avoid reporting a terminate event for it.
+    return 0;
+  }
   struct cros_event* event =
       (struct cros_event*)(bpf_ringbuf_reserve(&rb, sizeof(*event), 0));
   if (event == NULL) {
