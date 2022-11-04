@@ -74,8 +74,7 @@
         "identity": {
           "frid": "Some",
           "platform-name": "Some",
-          "sku-id": 2,
-          "smbios-name-match": "Some"
+          "sku-id": 2
         },
         "modem": {
           "attach-apn-required": true,
@@ -181,8 +180,7 @@
         "identity": {
           "frid": "Some",
           "platform-name": "Some",
-          "sku-id": 3,
-          "smbios-name-match": "Some"
+          "sku-id": 3
         },
         "modem": {
           "attach-apn-required": true,
@@ -290,8 +288,8 @@
           "recovery-input": "KEYBOARD"
         },
         "identity": {
-          "platform-name": "Some",
-          "smbios-name-match": "Another"
+          "frid": "Google_Another",
+          "platform-name": "Some"
         },
         "name": "another",
         "thermal": {

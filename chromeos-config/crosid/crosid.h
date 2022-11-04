@@ -113,8 +113,6 @@ struct crosid_optional_string {
 struct crosid_probed_device_data {
 	bool has_sku_id;
 	uint32_t sku_id;
-	struct crosid_optional_string smbios_name;
-	struct crosid_optional_string fdt_compatible;
 	struct crosid_optional_string frid;
 	struct crosid_optional_string custom_label_tag;
 	struct crosid_optional_string customization_id;
@@ -177,21 +175,17 @@ void crosid_probe_free(struct crosid_probed_device_data *data);
  * the struct format.  This must be kept in sync with the
  * cros_config_schema implementation.
  */
-#define CROSID_TABLE_VERSION 3
+#define CROSID_TABLE_VERSION 4
 
 enum crosid_table_flags {
 	MATCH_SKU_ID = (1 << 0),
 	MATCH_CUSTOM_LABEL_TAG = (1 << 1),
 	MATCH_CUSTOMIZATION_ID = (1 << 2),
-	MATCH_FDT_COMPATIBLE = (1 << 3),
-	MATCH_SMBIOS_NAME = (1 << 4),
-	MATCH_FRID = (1 << 5),
+	MATCH_FRID = (1 << 3),
 };
 
 struct crosid_table_entry {
 	uint32_t flags;
-	uint32_t smbios_name_match;
-	uint32_t fdt_compatible_match;
 	uint32_t frid_match;
 	uint32_t sku_id_match;
 	union {

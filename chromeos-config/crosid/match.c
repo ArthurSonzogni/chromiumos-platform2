@@ -73,30 +73,6 @@ check_optional_string_match(struct crosid_optional_string *device_str,
 	return true;
 }
 
-static bool fdt_compatible(struct crosid_optional_string *procfs_compat,
-			   const char *match)
-{
-	if (!procfs_compat->present) {
-		crosid_log(LOG_DBG,
-			   "    No compatible strings in procfs (no match)\n");
-		return false;
-	}
-
-	for (size_t i = 0; i < procfs_compat->len;
-	     i += strlen(procfs_compat->value + i) + 1) {
-		crosid_log(LOG_DBG, "    \"%s\" == \"%s\"? ", match,
-			   procfs_compat->value + i);
-		if (!strncmp(match, procfs_compat->value + i, strlen(match))) {
-			crosid_log(LOG_DBG, "true\n");
-			return true;
-		} else {
-			crosid_log(LOG_DBG, "false\n");
-		}
-	}
-
-	return false;
-}
-
 static bool table_entry_matches(struct crosid_table_header *table,
 				int entry_idx,
 				struct crosid_probed_device_data *data)
@@ -104,26 +80,6 @@ static bool table_entry_matches(struct crosid_table_header *table,
 	struct crosid_table_entry *entry = &table->entries[entry_idx];
 	const char *strings = (const char *)&table->entries[table->entry_count];
 	int mismatches = 0;
-
-	if (entry->flags & MATCH_SMBIOS_NAME) {
-		mismatches += !check_optional_string_match(
-			&data->smbios_name, strings + entry->smbios_name_match,
-			"SMBIOS name");
-	}
-
-	if (entry->flags & MATCH_FDT_COMPATIBLE) {
-		crosid_log(
-			LOG_DBG,
-			"  Requires one FDT compatible string matching \"%s\"\n",
-			strings + entry->fdt_compatible_match);
-		if (!fdt_compatible(&data->fdt_compatible,
-				    strings + entry->fdt_compatible_match)) {
-			mismatches++;
-			crosid_log(LOG_DBG, "    Does not match\n");
-		} else {
-			crosid_log(LOG_DBG, "    Match FDT compatible!\n");
-		}
-	}
 
 	if (entry->flags & MATCH_FRID) {
 		mismatches += !check_optional_string_match(

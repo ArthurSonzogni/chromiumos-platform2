@@ -861,33 +861,13 @@ properties:
               type: object
               description: Defines attributes that are used by cros_config to detect the identity
                 of the platform and which corresponding config should be used.
-                This tuple must either contain x86 properties only or ARM properties only.
-              anyOf:
-                - properties:
-                    smbios-name-match:
-                      description: "[x86] Firmware name built into the firmware and reflected back
-                        out in the SMBIOS tables. Leaving this value unset will cause the config
-                        to match any SMBIOS product name.  Setting this is deprecated in favor
-                        of FRID matching."
-                      type: string
-                    frid: *frid_match
-                    sku-id: *sku_id
-                    platform-name: *platform_name
-                    customization-id: *customization_id
-                    custom-label-tag: *custom_label_tag
-                  additionalProperties: false
-                - properties:
-                    device-tree-compatible-match:
-                      description: "[ARM] String pattern (partial) that is matched against the
-                        contents of /proc/device-tree/compatible on ARM devices.  Setting this
-                        is deprecated in favor of FRID matching."
-                      type: string
-                    frid: *frid_match
-                    sku-id: *sku_id
-                    platform-name: *platform_name
-                    customization-id: *customization_id
-                    custom-label-tag: *custom_label_tag
-                  additionalProperties: false
+              properties:
+                frid: *frid_match
+                sku-id: *sku_id
+                platform-name: *platform_name
+                customization-id: *customization_id
+                custom-label-tag: *custom_label_tag
+              additionalProperties: false
             keyboard:
               type: object
               description: Contains details about the model's keyboard.

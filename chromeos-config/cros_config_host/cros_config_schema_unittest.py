@@ -56,7 +56,7 @@ chromeos:
             brand-code: '{{$brand-code}}'
             identity:
               platform-name: "Reef"
-              smbios-name-match: "Reef"
+              frid: "Google_Reef"
               sku-id: "{{$sku-id}}"
             name: '{{$name}}'
             firmware: *reef-9042-fw
@@ -197,7 +197,7 @@ chromeos:
             brand-code: '{{$brand-code}}'
             identity:
               platform-name: "Some"
-              smbios-name-match: "Some"
+              frid: "Google_Some"
             name: '{{$name}}'
             firmware:
               no-firmware: True

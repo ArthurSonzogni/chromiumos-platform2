@@ -12,8 +12,8 @@
           "no-firmware": true
         },
         "identity": {
-          "platform-name": "Some",
-          "smbios-name-match": "Some"
+          "frid": "Google_Some",
+          "platform-name": "Some"
         },
         "name": "some",
         "wallpaper": "some-wallpaper"

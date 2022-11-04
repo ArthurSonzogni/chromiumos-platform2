@@ -6,7 +6,7 @@
           "image-name": "some_unsigned"
         },
         "identity": {
-          "device-tree-compatible-match": "google,some"
+          "frid": "Google_Some"
         },
         "name": "some",
         "ui": {
@@ -20,7 +20,7 @@
         },
         "identity": {
           "custom-label-tag": "whitelabel1",
-          "device-tree-compatible-match": "google,whitelabel",
+          "frid": "Google_Some",
           "whitelabel-tag": "whitelabel1"
         },
         "name": "whitelabel",
@@ -35,7 +35,7 @@
         },
         "identity": {
           "custom-label-tag": "whitelabel2",
-          "device-tree-compatible-match": "google,whitelabel",
+          "frid": "Google_Some",
           "whitelabel-tag": "whitelabel2"
         },
         "name": "whitelabel",
@@ -50,7 +50,7 @@
         },
         "identity": {
           "custom-label-tag": "",
-          "device-tree-compatible-match": "google,whitelabel"
+          "frid": "Google_Some"
         },
         "name": "whitelabel",
         "ui": {
@@ -63,7 +63,7 @@
           "image-name": "another1_firmware"
         },
         "identity": {
-          "device-tree-compatible-match": "google,another",
+          "frid": "Google_Another",
           "platform-name": "Another",
           "sku-id": 8
         },
@@ -77,7 +77,7 @@
           "image-name": "another2_firmware"
         },
         "identity": {
-          "device-tree-compatible-match": "google,another",
+          "frid": "Google_Another",
           "platform-name": "Another",
           "sku-id": 9
         },

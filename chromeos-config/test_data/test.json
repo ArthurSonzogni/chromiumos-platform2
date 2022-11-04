@@ -41,8 +41,7 @@
         "identity": {
           "frid": "Some",
           "platform-name": "Some",
-          "sku-id": 0,
-          "smbios-name-match": "Some"
+          "sku-id": 0
         },
         "modem": {
           "attach-apn-required": true,
@@ -124,8 +123,7 @@
         "identity": {
           "frid": "Some_Other",
           "platform-name": "Some",
-          "sku-id": 0,
-          "smbios-name-match": "Some"
+          "sku-id": 0
         },
         "modem": {
           "attach-apn-required": true,
@@ -208,8 +206,7 @@
         "identity": {
           "frid": "Some",
           "platform-name": "Some",
-          "sku-id": 1,
-          "smbios-name-match": "Some"
+          "sku-id": 1
         },
         "modem": {
           "attach-apn-required": true,
@@ -290,8 +287,7 @@
         "identity": {
           "frid": "Some_Other",
           "platform-name": "Some",
-          "sku-id": 1,
-          "smbios-name-match": "Some"
+          "sku-id": 1
         },
         "modem": {
           "attach-apn-required": true,
@@ -372,8 +368,7 @@
         "identity": {
           "frid": "Some",
           "platform-name": "Some",
-          "sku-id": 2,
-          "smbios-name-match": "Some"
+          "sku-id": 2
         },
         "modem": {
           "attach-apn-required": true,
@@ -447,8 +442,7 @@
         "identity": {
           "frid": "Some",
           "platform-name": "Some",
-          "sku-id": 3,
-          "smbios-name-match": "Some"
+          "sku-id": 3
         },
         "modem": {
           "attach-apn-required": true,
@@ -511,8 +505,8 @@
           "recovery-input": "KEYBOARD"
         },
         "identity": {
-          "platform-name": "Some",
-          "smbios-name-match": "Another"
+          "frid": "Google_Another",
+          "platform-name": "Some"
         },
         "name": "another",
         "thermal": {},
@@ -540,8 +534,8 @@
         "firmware": {},
         "identity": {
           "customization-id": "SomeCustomization",
-          "platform-name": "Some",
-          "smbios-name-match": "SomeCustomization"
+          "frid": "Google_SomeCustomization",
+          "platform-name": "Some"
         },
         "name": "some_customization",
         "ui": {
@@ -576,9 +570,9 @@
         },
         "identity": {
           "custom-label-tag": "whitelabel1",
+          "frid": "Google_Some",
           "platform-name": "Some",
           "sku-id": 8,
-          "smbios-name-match": "Some",
           "whitelabel-tag": "whitelabel1"
         },
         "name": "whitelabel",
@@ -636,9 +630,9 @@
         },
         "identity": {
           "custom-label-tag": "whitelabel1",
+          "frid": "Google_Some",
           "platform-name": "Some",
           "sku-id": 9,
-          "smbios-name-match": "Some",
           "whitelabel-tag": "whitelabel1"
         },
         "name": "whitelabel",
@@ -696,9 +690,9 @@
         },
         "identity": {
           "custom-label-tag": "whitelabel2",
+          "frid": "Google_Some",
           "platform-name": "Some",
           "sku-id": 8,
-          "smbios-name-match": "Some",
           "whitelabel-tag": "whitelabel2"
         },
         "name": "whitelabel",
@@ -756,9 +750,9 @@
         },
         "identity": {
           "custom-label-tag": "whitelabel2",
+          "frid": "Google_Some",
           "platform-name": "Some",
           "sku-id": 9,
-          "smbios-name-match": "Some",
           "whitelabel-tag": "whitelabel2"
         },
         "name": "whitelabel",

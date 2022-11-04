@@ -105,7 +105,6 @@ some_config: &some_config
     is-lid-convertible: true
   identity:
     platform-name: "Some"
-    smbios-name-match: "Some"
     frid: "{{$frid}}"
     sku-id: "{{$sku-id}}"
   modem:
@@ -121,7 +120,7 @@ some_whitelabel_config: &some_whitelabel_config
   brand-code: "{{$brand-code}}"
   identity:
     platform-name: "Some"
-    smbios-name-match: "Some"
+    frid: "Google_Some"
     sku-id: "{{$sku-id}}"
     whitelabel-tag: "{{$whitelabel-tag}}"
   firmware-signing:
@@ -236,7 +235,7 @@ chromeos:
               is-lid-convertible: true
             identity:
               platform-name: "Some"
-              smbios-name-match: "Another"
+              frid: "Google_Another"
             fingerprint:
               board: "dartmonkey"
               ro-version: "VERSION3"
@@ -295,7 +294,7 @@ chromeos:
             name: "some_customization"
             identity:
               platform-name: "Some"
-              smbios-name-match: "SomeCustomization"
+              frid: "Google_SomeCustomization"
               customization-id: "SomeCustomization"
             fingerprint:
               board: "bloonchipper"

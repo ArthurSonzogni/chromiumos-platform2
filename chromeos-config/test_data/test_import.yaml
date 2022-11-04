@@ -22,7 +22,7 @@ chromeos:
             name: "{{$name}}"
             identity:
               platform-name: "Some"
-              smbios-name-match: "Some"
+              frid: "Google_Some"
             firmware:
               no-firmware: true
             wallpaper: "some-wallpaper"

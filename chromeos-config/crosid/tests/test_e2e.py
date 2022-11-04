@@ -23,22 +23,16 @@ def getvars(output):
 
 def make_config(
     model_name,
-    smbios_name_match=None,
     frid_match=None,
     sku_id=None,
-    fdt_match=None,
     customization_id=None,
     custom_label_tag=None,
 ):
     identity = {}
-    if smbios_name_match is not None:
-        identity["smbios-name-match"] = smbios_name_match
     if frid_match is not None:
         identity["frid"] = frid_match
     if sku_id is not None:
         identity["sku-id"] = sku_id
-    if fdt_match is not None:
-        identity["device-tree-compatible-match"] = fdt_match
     if customization_id is not None:
         identity["customization-id"] = customization_id
     if custom_label_tag is not None:
@@ -51,9 +45,7 @@ def make_config(
 
 def make_fake_sysroot(
     path,
-    smbios_name=None,
     smbios_sku=None,
-    fdt_compatible=None,
     fdt_sku=None,
     acpi_frid=None,
     fdt_frid=None,
@@ -61,20 +53,11 @@ def make_fake_sysroot(
     configs=(),
 ):
     smbios_sysfs_path = path / "sys" / "class" / "dmi" / "id"
-    if smbios_name is not None:
-        smbios_sysfs_path.mkdir(exist_ok=True, parents=True)
-        (smbios_sysfs_path / "product_name").write_text(f"{smbios_name}\n")
-
     if smbios_sku is not None:
         smbios_sysfs_path.mkdir(exist_ok=True, parents=True)
         (smbios_sysfs_path / "product_sku").write_text(f"sku{smbios_sku}\n")
 
     proc_fdt_path = path / "proc" / "device-tree"
-    if fdt_compatible is not None:
-        proc_fdt_path.mkdir(exist_ok=True, parents=True)
-        contents = "".join(f"{compat}\0" for compat in fdt_compatible)
-        (proc_fdt_path / "compatible").write_text(contents)
-
     proc_fdt_coreboot_path = proc_fdt_path / "firmware" / "coreboot"
     if fdt_sku is not None:
         proc_fdt_coreboot_path.mkdir(exist_ok=True, parents=True)
@@ -111,53 +94,53 @@ def make_fake_sysroot(
 REEF_CONFIGS = [
     make_config(
         "electro",
-        smbios_name_match="Reef",
+        frid_match="Google_Reef",
         sku_id=8,
         customization_id="PARMA-ELECTRO",
     ),
     make_config(
         "basking",
-        smbios_name_match="Reef",
+        frid_match="Google_Reef",
         sku_id=0,
         customization_id="OEM2-BASKING",
     ),
     make_config(
         "pyro",
-        smbios_name_match="Pyro",
+        frid_match="Google_Pyro",
         customization_id="NEWTON2-PYRO",
     ),
     make_config(
         "sand",
-        smbios_name_match="Sand",
+        frid_match="Google_Sand",
         customization_id="ACER-SAND",
     ),
     make_config(
         "alan",
-        smbios_name_match="Snappy",
+        frid_match="Google_Snappy",
         sku_id=7,
         customization_id="DOLPHIN-ALAN",
     ),
     make_config(
         "bigdaddy",
-        smbios_name_match="Snappy",
+        frid_match="Google_Snappy",
         sku_id=2,
         customization_id="BENTLEY-BIGDADDY",
     ),
     make_config(
         "bigdaddy",
-        smbios_name_match="Snappy",
+        frid_match="Google_Snappy",
         sku_id=5,
         customization_id="BENTLEY-BIGDADDY",
     ),
     make_config(
         "snappy",
-        smbios_name_match="Snappy",
+        frid_match="Google_Snappy",
         sku_id=8,
         customization_id="MORGAN-SNAPPY",
     ),
     make_config(
         "snappy",
-        smbios_name_match="Snappy",
+        frid_match="Google_Snappy",
     ),
 ]
 
@@ -174,7 +157,7 @@ def test_reef(tmp_path, executable_path, config_idx):
 
     make_fake_sysroot(
         tmp_path,
-        smbios_name=identity["smbios-name-match"],
+        acpi_frid=f"{identity['frid']}.1234_5678_910.1234.B",
         smbios_sku=identity.get("sku-id"),
         vpd_values=vpd,
         configs=REEF_CONFIGS,
@@ -201,7 +184,7 @@ def test_no_match(tmp_path, executable_path):
     # on device)
     make_fake_sysroot(
         tmp_path,
-        smbios_name="Samus",
+        acpi_frid="Google_Samus.1234_567_890.ohea",
         configs=REEF_CONFIGS,
     )
 
@@ -227,7 +210,7 @@ def test_both_customization_id_and_whitelabel(tmp_path, executable_path):
     # RO VPD was tampered/corrupted, and should result in errors.
     make_fake_sysroot(
         tmp_path,
-        smbios_name="Sand",
+        acpi_frid="Google_Sand.1234_5678_90.AAAA.B",
         vpd_values={
             "customization_id": "ACER-SAND",
             "whitelabel_tag": "some_wl",
@@ -249,12 +232,12 @@ def test_both_customization_id_and_whitelabel(tmp_path, executable_path):
 
 
 VILBOZ14_CONFIGS = [
-    make_config("vilboz14", sku_id=0, smbios_name_match="Vilboz"),
-    make_config("vilboz14", sku_id=1, smbios_name_match="Vilboz"),
+    make_config("vilboz14", sku_id=0, frid_match="Google_Vilboz"),
+    make_config("vilboz14", sku_id=1, frid_match="Google_Vilboz"),
     make_config(
         "vilboz14",
         sku_id=1,
-        smbios_name_match="Vilboz",
+        frid_match="Google_Vilboz",
         custom_label_tag="vilboz14len",
     ),
 ]
@@ -263,7 +246,7 @@ VILBOZ14_CONFIGS = [
 def test_vilboz14(tmp_path, executable_path):
     make_fake_sysroot(
         tmp_path,
-        smbios_name="Vilboz",
+        acpi_frid="Google_Vilboz.123",
         smbios_sku=1,
         vpd_values={"custom_label_tag": "vilboz14len"},
         configs=VILBOZ14_CONFIGS,
@@ -287,24 +270,24 @@ def test_vilboz14(tmp_path, executable_path):
 
 
 TROGDOR_CONFIGS = [
-    make_config("trogdor", fdt_match="google,trogdor"),
-    make_config("lazor", fdt_match="google,lazor", sku_id=0),
-    make_config("lazor", fdt_match="google,lazor", sku_id=1),
-    make_config("lazor", fdt_match="google,lazor", sku_id=2),
-    make_config("lazor", fdt_match="google,lazor", sku_id=3),
+    make_config("trogdor", frid_match="Google_Trogdor"),
+    make_config("lazor", frid_match="Google_Lazor", sku_id=0),
+    make_config("lazor", frid_match="Google_Lazor", sku_id=1),
+    make_config("lazor", frid_match="Google_Lazor", sku_id=2),
+    make_config("lazor", frid_match="Google_Lazor", sku_id=3),
     make_config(
-        "limozeen", fdt_match="google,lazor", sku_id=5, custom_label_tag=""
+        "limozeen", frid_match="Google_Lazor", sku_id=5, custom_label_tag=""
     ),
     make_config(
         "limozeen",
-        fdt_match="google,lazor",
+        frid_match="Google_Lazor",
         sku_id=6,
         custom_label_tag="lazorwl",
     ),
     make_config(
-        "limozeen", fdt_match="google,lazor", sku_id=6, custom_label_tag=""
+        "limozeen", frid_match="Google_Lazor", sku_id=6, custom_label_tag=""
     ),
-    make_config("lazor", fdt_match="google,lazor"),
+    make_config("lazor", frid_match="Google_Lazor"),
 ]
 
 
@@ -320,12 +303,7 @@ def test_trogdor(tmp_path, executable_path, config_idx):
 
     make_fake_sysroot(
         tmp_path,
-        fdt_compatible=[
-            "google,snapdragon",
-            "google,sc7180",
-            identity["device-tree-compatible-match"],
-            "google,chromebook",
-        ],
+        fdt_frid=f"{identity['frid']}.123_456",
         fdt_sku=identity.get("sku-id"),
         vpd_values=vpd,
         configs=TROGDOR_CONFIGS,
@@ -347,9 +325,9 @@ def test_trogdor(tmp_path, executable_path, config_idx):
     }
 
 
-def test_fdt_compatible_missing(tmp_path, executable_path):
-    # When /proc/device-tree/compatible is not present on ARM, that
-    # should be an error.
+def test_frid_missing(tmp_path, executable_path):
+    # When FRID is not available via ACPI or FDT, but required by all
+    # configs, this should be an error.
     make_fake_sysroot(
         tmp_path,
         configs=TROGDOR_CONFIGS,
@@ -442,7 +420,8 @@ def test_corrupted_sku_x86(tmp_path, executable_path, contents):
     # SKU.
     make_fake_sysroot(
         tmp_path,
-        smbios_name="Snappy",
+        acpi_frid="Google_Snappy.123",
+        smbios_sku=0,
         vpd_values={
             "customization_id": "MORGAN-SNAPPY",
         },
@@ -481,7 +460,7 @@ def test_corrupted_sku_arm(tmp_path, executable_path, contents):
     # SKU.
     make_fake_sysroot(
         tmp_path,
-        fdt_compatible=["google,lazor"],
+        fdt_frid="Google_Lazor.123",
         fdt_sku=0,
         configs=TROGDOR_CONFIGS,
     )
@@ -507,65 +486,6 @@ def test_corrupted_sku_arm(tmp_path, executable_path, contents):
     }
 
 
-def test_frid_match_acpi(tmp_path, executable_path):
-    configs = [
-        make_config("brya", frid_match="Google_Brya"),
-        make_config("redrix", frid_match="Google_Redrix"),
-        make_config("vell", frid_match="Google_Vell"),
-    ]
-
-    make_fake_sysroot(
-        tmp_path,
-        configs=configs,
-        acpi_frid="Google_Redrix.1234_5678_910",
-    )
-
-    result = subprocess.run(
-        [executable_path, "--sysroot", tmp_path],
-        check=True,
-        stdin=subprocess.DEVNULL,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        encoding="utf-8",
-    )
-
-    assert getvars(result.stdout) == {
-        "SKU": "none",
-        "CONFIG_INDEX": "1",
-        "FIRMWARE_MANIFEST_KEY": "redrix",
-    }
-
-
-def test_frid_match_fdt(tmp_path, executable_path):
-    configs = [
-        make_config("trogdor", frid_match="Google_Trogdor"),
-        make_config("lazor", frid_match="Google_Lazor", sku_id=1),
-        make_config("limozeen", frid_match="Google_Lazor", sku_id=5),
-    ]
-
-    make_fake_sysroot(
-        tmp_path,
-        configs=configs,
-        fdt_frid="Google_Lazor.1234_5678_910",
-        fdt_sku=5,
-    )
-
-    result = subprocess.run(
-        [executable_path, "--sysroot", tmp_path],
-        check=True,
-        stdin=subprocess.DEVNULL,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        encoding="utf-8",
-    )
-
-    assert getvars(result.stdout) == {
-        "SKU": "5",
-        "CONFIG_INDEX": "2",
-        "FIRMWARE_MANIFEST_KEY": "limozeen",
-    }
-
-
 @pytest.mark.parametrize(
     ["key", "expected_result"],
     [
@@ -577,7 +497,7 @@ def test_frid_match_fdt(tmp_path, executable_path):
 def test_filter_output(tmp_path, executable_path, key, expected_result):
     make_fake_sysroot(
         tmp_path,
-        smbios_name="Snappy",
+        acpi_frid="Google_Snappy.123",
         smbios_sku=7,
         vpd_values={"customization_id": "DOLPHIN-ALAN"},
         configs=REEF_CONFIGS,

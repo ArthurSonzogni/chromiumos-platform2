@@ -69,17 +69,6 @@ int crosid_probe(struct crosid_probed_device_data *out)
 			   "models, especially older ones)\n");
 	}
 
-	if (read_optional_string(SYSFS_SMBIOS_ID_PATH, "product_name",
-				 &out->smbios_name) >= 0) {
-		crosid_log(LOG_DBG, "Read SMBIOS name \"%s\"\n",
-			   out->smbios_name.value);
-	}
-
-	if (read_optional_string(PROC_FDT_PATH, "compatible",
-				 &out->fdt_compatible) >= 0) {
-		crosid_log(LOG_DBG, "Read FDT compatible\n");
-	}
-
 	if (crosid_probe_frid(&out->frid) >= 0) {
 		crosid_log(LOG_DBG, "Read FRID \"%s\"\n", out->frid.value);
 	} else {
@@ -154,8 +143,6 @@ void crosid_print_vars(FILE *out, const char *filter,
 
 void crosid_probe_free(struct crosid_probed_device_data *data)
 {
-	free(data->smbios_name.value);
-	free(data->fdt_compatible.value);
 	free(data->frid.value);
 	free(data->custom_label_tag.value);
 	free(data->customization_id.value);

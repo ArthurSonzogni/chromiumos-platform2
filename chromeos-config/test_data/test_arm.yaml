@@ -8,7 +8,7 @@ another_config: &another_config
   name: "{{$name}}"
   identity:
     platform-name: "Another"
-    device-tree-compatible-match: "google,another"
+    frid: "Google_Another"
     sku-id: "{{$sku-id}}"
   firmware:
     image-name: "{{$name}}_firmware"
@@ -23,7 +23,7 @@ chromeos:
         - config:
             name: "{{$name}}"
             identity:
-              device-tree-compatible-match: "google,some"
+              frid: "Google_Some"
             firmware:
               image-name: "{{$name}}_unsigned"
               no-firmware: true
@@ -40,7 +40,7 @@ chromeos:
         - config:
             name: "{{$name}}"
             identity:
-              device-tree-compatible-match: "google,whitelabel"
+              frid: "Google_Some"
               whitelabel-tag: "{{$whitelabel-tag}}"
             firmware:
               image-name: "{{$name}}_signed"

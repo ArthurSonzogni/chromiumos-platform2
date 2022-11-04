@@ -8,12 +8,12 @@ import enum
 import struct
 
 
-STRUCT_VERSION = 3
+STRUCT_VERSION = 4
 # version, entry_count
 HEADER_FORMAT = "<LL"
-# flags, smbios name match, fdt compatible match, frid match,
+# flags, frid match,
 # sku match, custom label match, firmware manifest name
-ENTRY_FORMAT = "<LLLLLLL"
+ENTRY_FORMAT = "<LLLLL"
 
 
 class EntryFlags(enum.Enum):
@@ -27,15 +27,8 @@ class EntryFlags(enum.Enum):
     # it should only be set for old pre-unibuild migrations.
     HAS_CUSTOMIZATION_ID = 1 << 2
 
-    # This config requires at least one FDT compatible string to match
-    # the given string.
-    HAS_FDT_COMPATIBLE = 1 << 3
-
-    # For x86 only: this device has an SMBIOS name to match.
-    HAS_SMBIOS_NAME = 1 << 4
-
     # Config should match based on FRID.
-    HAS_FRID = 1 << 5
+    HAS_FRID = 1 << 3
 
 
 def WriteIdentityStruct(config, output_file):
@@ -87,16 +80,8 @@ def WriteIdentityStruct(config, output_file):
             flags |= EntryFlags.HAS_SKU_ID.value
             sku_id = identity_info["sku-id"]
 
-        smbios_name_match = None
-        fdt_compatible_match = None
         frid_match = None
         custom_label_match = None
-        if "smbios-name-match" in identity_info:
-            flags |= EntryFlags.HAS_SMBIOS_NAME.value
-            smbios_name_match = identity_info["smbios-name-match"]
-        if "device-tree-compatible-match" in identity_info:
-            flags |= EntryFlags.HAS_FDT_COMPATIBLE.value
-            fdt_compatible_match = identity_info["device-tree-compatible-match"]
         if "frid" in identity_info:
             flags |= EntryFlags.HAS_FRID.value
             frid_match = identity_info["frid"]
@@ -112,8 +97,6 @@ def WriteIdentityStruct(config, output_file):
             struct.pack(
                 ENTRY_FORMAT,
                 flags,
-                _StringTableIndex(smbios_name_match),
-                _StringTableIndex(fdt_compatible_match),
                 _StringTableIndex(frid_match),
                 sku_id,
                 _StringTableIndex(custom_label_match),

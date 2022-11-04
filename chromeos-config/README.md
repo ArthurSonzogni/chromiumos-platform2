@@ -205,7 +205,7 @@ common_config: &common_config
   brand-code: "{{$brand-code}}"
   identity:
     platform-name: "SomePlatform"
-    smbios-name-match: "SomePlatform"
+    frid: "Google_SomeFirmware"
     sku-id: "{{$sku-id}}"
   firmware-signing:
     key-id: "{{$key-id}}"
@@ -234,7 +234,7 @@ chromeos:
       brand-code: "YYYY"
       identity:
         platform-name: "SomePlatform"
-        smbios-name-match: "SomePlatform"
+        frid: "Google_SomeFirmware"
         sku-id: 0
       firmware-signing:
         key-id: "SOME-KEY-ID"
@@ -244,7 +244,7 @@ chromeos:
       brand-code: "YYYY"
       identity:
         platform-name: "SomePlatform"
-        smbios-name-match: "SomePlatform"
+        frid: "Google_SomeFirmware"
         sku-id: 1
       firmware-signing:
         key-id: "SOME-KEY-ID"
@@ -487,7 +487,7 @@ In the tables below,
 | hardware-properties | [hardware-properties](#hardware_properties) |  | False |  | False | Contains boolean flags or enums for hardware properties of this board, for example if it's convertible, has a touchscreen, has a camera, etc. This information is used to auto-generate C code that is consumed by the EC build process in order to do run-time configuration. If a value is defined within a config file, but not for a specific model, that value will be assumed to be false for that model. If a value is an enum and is not specified for a specific model, it will default to "none". All properties must be booleans or enums. If non-boolean properties are desired, the generation code in cros_config_schema.py must be updated to support them. |
 | hps | [hps](#hps) |  | False |  | False | Contains details about the model's hps (go/cros-hps) implementation. |
 | hwid-override | string | ```[A-Z0-9]+(-[A-Z]{4})?( [0-9A-F]+(-[0-9A-F]+)*)? ([A-Z2-7]{4}(-[A-Z2-7]{4})*\|[A-Z2-7][2-9][A-Z2-7](-[A-Z2-7][2-9][A-Z2-7])*)``` | False |  | False | Override the HWID reported by crossystem.  This property should only be used for devices supporting non-ChromeOS firmware, where we don't have the ability to set the HWID in GBB.  |
-| identity | [identity](#identity) |  | False |  | False | Defines attributes that are used by cros_config to detect the identity of the platform and which corresponding config should be used. This tuple must either contain x86 properties only or ARM properties only. |
+| identity | [identity](#identity) |  | False |  | False | Defines attributes that are used by cros_config to detect the identity of the platform and which corresponding config should be used. |
 | keyboard | [keyboard](#keyboard) |  | False |  | False | Contains details about the model's keyboard. |
 | modem | [modem](#modem) |  | False |  | False |  |
 | name | string | ```^[_a-zA-Z0-9]{3,}``` | True |  | False | Google code name for the given model. While it is OK to use this string for human-display purposes (such as in a debug log or help dialog), or for a searchable-key in metrics collection, it is not recommended to use this property for creating model-specific behaviors. In this case, add a property to the schema which describes your behavior and use that instead. |
@@ -811,18 +811,11 @@ In the tables below,
 ### identity
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
-| custom-label-tag | string |  | False | x86 | False | `custom_label_tag` value set in the VPD, to add branding over an unbranded base model.  Note that `whitelabel_tag` is the historical name for this VPD value, and is accepted as well.  |
-| customization-id | string |  | False | x86 | False | 'customization_id' value set in the VPD for non-unibuild Zergs and Whitelabels. Deprecated for use in new products since 2017/07/26. |
-| frid | string |  | False | x86 | False | String which must match the AP firmware FRID (first part before the period) in order for the config to match.  Leaving this value unset will cause the config to match any FRID.  |
-| platform-name | string |  | False | x86 | False | Defines the name of the mosys platform used. Mosys is the only software which is allowed to used this value. |
-| sku-id | integer |  | False | x86 | False | SKU/Board strapping pins [configured during board manufacturing](https://chromium.googlesource.com/chromiumos/docs/+/HEAD/design_docs/cros_board_info.md#SKU_ID). Leaving this value unset will cause the config to match any SKU ID. Minimum value: -0x1. Maximum value: 0x7fffffff. |
-| smbios-name-match | string |  | False | x86 | False | [x86] Firmware name built into the firmware and reflected back out in the SMBIOS tables. Leaving this value unset will cause the config to match any SMBIOS product name.  Setting this is deprecated in favor of FRID matching. |
-| custom-label-tag | string |  | False | ARM | False | `custom_label_tag` value set in the VPD, to add branding over an unbranded base model.  Note that `whitelabel_tag` is the historical name for this VPD value, and is accepted as well.  |
-| customization-id | string |  | False | ARM | False | 'customization_id' value set in the VPD for non-unibuild Zergs and Whitelabels. Deprecated for use in new products since 2017/07/26. |
-| device-tree-compatible-match | string |  | False | ARM | False | [ARM] String pattern (partial) that is matched against the contents of /proc/device-tree/compatible on ARM devices.  Setting this is deprecated in favor of FRID matching. |
-| frid | string |  | False | ARM | False | String which must match the AP firmware FRID (first part before the period) in order for the config to match.  Leaving this value unset will cause the config to match any FRID.  |
-| platform-name | string |  | False | ARM | False | Defines the name of the mosys platform used. Mosys is the only software which is allowed to used this value. |
-| sku-id | integer |  | False | ARM | False | SKU/Board strapping pins [configured during board manufacturing](https://chromium.googlesource.com/chromiumos/docs/+/HEAD/design_docs/cros_board_info.md#SKU_ID). Leaving this value unset will cause the config to match any SKU ID. Minimum value: -0x1. Maximum value: 0x7fffffff. |
+| custom-label-tag | string |  | False |  | False | `custom_label_tag` value set in the VPD, to add branding over an unbranded base model.  Note that `whitelabel_tag` is the historical name for this VPD value, and is accepted as well.  |
+| customization-id | string |  | False |  | False | 'customization_id' value set in the VPD for non-unibuild Zergs and Whitelabels. Deprecated for use in new products since 2017/07/26. |
+| frid | string |  | False |  | False | String which must match the AP firmware FRID (first part before the period) in order for the config to match.  Leaving this value unset will cause the config to match any FRID.  |
+| platform-name | string |  | False |  | False | Defines the name of the mosys platform used. Mosys is the only software which is allowed to used this value. |
+| sku-id | integer |  | False |  | False | SKU/Board strapping pins [configured during board manufacturing](https://chromium.googlesource.com/chromiumos/docs/+/HEAD/design_docs/cros_board_info.md#SKU_ID). Leaving this value unset will cause the config to match any SKU ID. Minimum value: -0x1. Maximum value: 0x7fffffff. |
 
 ### keyboard
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
@@ -1661,13 +1654,12 @@ The files in the table below, exposed from firmware by the kernel, are
 used to compare the values from firmware.  Strings are compared
 *case-insensitive*.
 
-| Property (from `/identity`)    | x86 file                                | ARM file                                     |
-|--------------------------------|-----------------------------------------|----------------------------------------------|
-| `smbios-name-match`            | `/sys/class/dmi/id/product_name`        | N/A                                          |
-| `device-tree-compatible-match` | N/A                                     | `/proc/device-tree/compatible`               |
-| `sku-id`                       | `/sys/class/dmi/id/product_sku`         | `/proc/device-tree/firmware/coreboot/sku-id` |
-| `customization-id`             | `/sys/firmware/vpd/ro/customization_id` | `/sys/firmware/vpd/ro/customization_id`      |
-| `custom-label-tag`             | `/sys/firmware/vpd/ro/custom_label_tag` | `/sys/firmware/vpd/ro/custom_label_tag`      |
+| Property (from `/identity`) | x86 file                                   | ARM file                                                        |
+|-----------------------------|--------------------------------------------|-----------------------------------------------------------------|
+| `frid`                      | `/sys/devices/platform/chromeos_acpi/FRID` | `/proc/device-tree/firmware/chromeos/readonly-firmware-version` |
+| `sku-id`                    | `/sys/class/dmi/id/product_sku`            | `/proc/device-tree/firmware/coreboot/sku-id`                    |
+| `customization-id`          | `/sys/firmware/vpd/ro/customization_id`    | `/sys/firmware/vpd/ro/customization_id`                         |
+| `custom-label-tag`          | `/sys/firmware/vpd/ro/custom_label_tag`    | `/sys/firmware/vpd/ro/custom_label_tag`                         |
 
 Note: Prior to 2022, the VPD key for `custom-label-tag` was called
 `whitelabel_tag`.  If `/sys/firmware/vpd/ro/custom_label_tag` does not
@@ -1677,9 +1669,7 @@ exist, `/sys/firmware/vpd/ro/whitelabel_tag` is checked instead.
 
 All files are parsed as strings, except where mentioned below:
 
-`/proc/device-tree/compatible`: This file contains a list of
-null-terminated strings.  If any of the strings in the list match
-`device-tree-compatible-match`, it is considered to be a match.
+FRID files: Everything up to the first period (`.`) in the file is used.
 
 `/sys/class/dmi/id/product_sku`: This file is parsed as
 `scanf("sku%u", &sku_id)`.

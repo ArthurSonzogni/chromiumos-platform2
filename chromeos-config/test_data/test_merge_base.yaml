@@ -8,7 +8,7 @@ shared_config: &shared_config
   name: "{{$name}}"
   identity:
     platform-name: "PlatformName"
-    smbios-name-match: "SMBiosNameMatch"
+    frid: "Google_SomeDevice"
     sku-id: "{{$sku-id}}"
   firmware:
     image-name: "{{$name}}_firmware"
