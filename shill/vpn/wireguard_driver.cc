@@ -631,8 +631,8 @@ bool WireGuardDriver::PopulateIPProperties() {
     ipv6_properties_.subnet_prefix = 128;
   }
   if ((ipv4_address_list.size() == 0) && (ipv6_address_list.size() == 0)) {
-    LOG(ERROR) << "IP address for wireguard is not set.";
-    return false;
+    LOG(INFO) << "IP address is not set in WireGuard properties. Might be set "
+                 "in StaticIPConfig.";
   }
 
   // When we arrive here, the value of AllowedIPs has already been validated
