@@ -128,6 +128,8 @@ const char kCollectionErrorSignature[] = "crash_reporter-user-collection";
   NON_CAPTURING_GROUP("1[0-9][0-9]|2[0-4][0-9]|25[0-5]|[1-9][0-9]|[0-9]")
 #define IPV4ADDRESS DEC_OCTET "\\." DEC_OCTET "\\." DEC_OCTET "\\." DEC_OCTET
 
+const char kGaiaIdRegEx[] =
+    R"((\"?\bgaia_id\"?[=:]['\"])(\d+)(\b['\"])|(\{id: )(\d+)(, email:))";
 }  // namespace
 
 const char* const CrashCollector::kUnknownValue = "unknown";
@@ -769,6 +771,7 @@ void CrashCollector::StripSensitiveData(std::string* contents) {
   StripMacAddresses(contents);
   StripEmailAddresses(contents);
   StripIPv4Addresses(contents);
+  StripGaiaId(contents);
   StripSerialNumbers(contents);
   StripRecoveryId(contents);
 }
@@ -860,6 +863,13 @@ void CrashCollector::StripIPv4Addresses(std::string* contents) {
   // Ensure RegEx has no parsing errors and is valid.
   CHECK_EQ("", ipv4_re.error());
   RE2::GlobalReplace(contents, ipv4_re, "<redacted ip address>");
+}
+
+void CrashCollector::StripGaiaId(std::string* contents) {
+  RE2 gaia_id_re(kGaiaIdRegEx);
+  // Ensure RegEx has no parsing errors and is valid.
+  CHECK_EQ("", gaia_id_re.error());
+  RE2::GlobalReplace(contents, gaia_id_re, "<redacted gaia ID>");
 }
 
 void CrashCollector::StripSerialNumbers(std::string* contents) {

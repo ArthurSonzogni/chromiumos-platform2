@@ -979,6 +979,23 @@ TEST_F(CrashCollectorTest, StripIPv4Addresses) {
   EXPECT_EQ(logs, redacted_log);
 }
 
+TEST_F(CrashCollectorTest, StripGaiaId) {
+  std::string kCrashWithGaiaID =
+      "remove gaia_id:\"970787480432\" sample"
+      "don't remove 970787480432 sample"
+      "remove {id: 123, email: test1234} sample"
+      "don't remove id: 1234 sample"
+      "don't remove email_id: 1234";
+  std::string kCrashWithoutGaiaID =
+      "remove <redacted gaia ID> sample"
+      "don't remove 970787480432 sample"
+      "remove <redacted gaia ID> test1234} sample"
+      "don't remove id: 1234 sample"
+      "don't remove email_id: 1234";
+  collector_.StripSensitiveData(&kCrashWithGaiaID);
+  EXPECT_EQ(kCrashWithGaiaID, kCrashWithoutGaiaID);
+}
+
 TEST_F(CrashCollectorTest, StripSerialNumbers) {
   // Test calling StripSensitiveData w/ some actual lines from a real crash;
   // included two serial numbers (though replaced them with some bogusness).
