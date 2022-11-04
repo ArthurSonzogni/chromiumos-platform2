@@ -219,13 +219,13 @@ class WakeOnWiFi : public WakeOnWiFiInterface {
   //  - |initate_scan_callback|: callback to invoke to initiate a scan.
   //  - |remove_supplicant_networks_callback|: callback to invoke
   //    to remove all networks from WPA supplicant.
-  void OnDarkResume(
-      bool is_connected,
-      const std::vector<ByteString>& allowed_ssids,
-      ResultOnceCallback done_callback,
-      base::OnceClosure renew_dhcp_lease_callback,
-      InitiateScanCallback initiate_scan_callback,
-      const base::Closure& remove_supplicant_networks_callback) override;
+  void OnDarkResume(bool is_connected,
+                    const std::vector<ByteString>& allowed_ssids,
+                    ResultOnceCallback done_callback,
+                    base::OnceClosure renew_dhcp_lease_callback,
+                    InitiateScanCallback initiate_scan_callback,
+                    const base::RepeatingClosure&
+                        remove_supplicant_networks_callback) override;
   // Called when we the current service is connected, and we have IP
   // reachability. Calls WakeOnWiFi::BeforeSuspendActions if we are in dark
   // resume to end the current dark resume. Otherwise, does nothing.

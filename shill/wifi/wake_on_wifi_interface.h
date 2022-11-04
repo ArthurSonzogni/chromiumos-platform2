@@ -63,7 +63,7 @@ class WakeOnWiFiInterface {
       ResultOnceCallback done_callback,
       base::OnceClosure renew_dhcp_lease_callback,
       InitiateScanCallback initiate_scan_callback,
-      const base::Closure& remove_supplicant_networks_callback) = 0;
+      const base::RepeatingClosure& remove_supplicant_networks_callback) = 0;
   virtual void OnConnectedAndReachable(
       std::optional<base::TimeDelta> time_to_next_lease_renewal) = 0;
   virtual void ReportConnectedToServiceAfterWake(bool is_connected,

@@ -853,7 +853,7 @@ void WakeOnWiFi::OnDarkResume(
     ResultOnceCallback done_callback,
     base::OnceClosure renew_dhcp_lease_callback,
     InitiateScanCallback initiate_scan_callback,
-    const base::Closure& remove_supplicant_networks_callback) {
+    const base::RepeatingClosure& remove_supplicant_networks_callback) {
   if (WakeOnWiFiDisabled()) {
     // Wake on WiFi not supported or not enabled, so immediately report success.
     std::move(done_callback).Run(Error(Error::kSuccess));

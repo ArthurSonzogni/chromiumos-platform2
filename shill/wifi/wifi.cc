@@ -2752,8 +2752,8 @@ void WiFi::OnDarkResume(const ResultCallback& callback) {
                      weak_ptr_factory_while_started_.GetWeakPtr()),
       base::BindOnce(&WiFi::InitiateScanInDarkResume,
                      weak_ptr_factory_while_started_.GetWeakPtr()),
-      base::Bind(&WiFi::RemoveSupplicantNetworks,
-                 weak_ptr_factory_while_started_.GetWeakPtr()));
+      base::BindRepeating(&WiFi::RemoveSupplicantNetworks,
+                          weak_ptr_factory_while_started_.GetWeakPtr()));
 }
 
 void WiFi::OnAfterResume() {

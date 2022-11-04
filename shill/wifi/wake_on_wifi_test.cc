@@ -622,9 +622,9 @@ class WakeOnWiFiTest : public ::testing::Test {
         &WakeOnWiFiTest::RenewDHCPLeaseCallback, base::Unretained(this)));
     WakeOnWiFi::InitiateScanCallback initiate_scan_callback(base::BindOnce(
         &WakeOnWiFiTest::InitiateScanCallback, base::Unretained(this)));
-    base::Closure remove_supplicant_networks_callback(
-        base::Bind(&WakeOnWiFiTest::RemoveSupplicantNetworksCallback,
-                   base::Unretained(this)));
+    base::RepeatingClosure remove_supplicant_networks_callback(
+        base::BindRepeating(&WakeOnWiFiTest::RemoveSupplicantNetworksCallback,
+                            base::Unretained(this)));
     wake_on_wifi_->OnDarkResume(
         is_connected, allowed_ssids, std::move(done_callback),
         std::move(renew_dhcp_lease_callback), std::move(initiate_scan_callback),

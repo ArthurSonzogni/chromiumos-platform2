@@ -50,7 +50,7 @@ class MockWakeOnWiFi : public WakeOnWiFiInterface {
                ResultOnceCallback,
                base::OnceClosure,
                InitiateScanCallback,
-               const base::Closure&),
+               const base::RepeatingClosure&),
               (override));
   MOCK_METHOD(void,
               OnConnectedAndReachable,
