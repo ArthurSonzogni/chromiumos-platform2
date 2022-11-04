@@ -577,7 +577,7 @@ int RunOci(const base::FilePath& bundle_dir,
 
   container_dir = base::FilePath(kRunContainersPath).Append(container_id);
   base::ScopedClosureRunner cleanup(
-      base::Bind(CleanUpContainer, container_dir));
+      base::BindOnce(CleanUpContainer, container_dir));
   // Not using base::CreateDirectory() since we want to error out when the
   // directory exists a priori.
   if (mkdir(container_dir.value().c_str(), 0755) != 0) {
@@ -744,7 +744,7 @@ int RunOci(const base::FilePath& bundle_dir,
   // container_pid() will populate the value, and RunHooks() will simply refuse
   // to run if |child_pid| is -1, so we will always do the right thing.
   // The callback is run in the same stack, so std::cref() is safe.
-  base::ScopedClosureRunner post_stop_hooks(base::Bind(
+  base::ScopedClosureRunner post_stop_hooks(base::BindOnce(
       base::IgnoreResult(&RunHooks), std::cref(oci_config->post_stop_hooks),
       base::Unretained(&child_pid), container_id, bundle_dir, container_dir,
       "poststop", "stopped"));
@@ -752,18 +752,18 @@ int RunOci(const base::FilePath& bundle_dir,
   if (!oci_config->pre_chroot_hooks.empty()) {
     config.AddHook(
         MINIJAIL_HOOK_EVENT_PRE_CHROOT,
-        base::Bind(&SaveChildPidAndRunHooks,
-                   std::cref(oci_config->pre_chroot_hooks),
-                   base::Unretained(&child_pid), container_id, bundle_dir,
-                   container_dir, "prechroot", "created"));
+        base::BindOnce(&SaveChildPidAndRunHooks,
+                       std::cref(oci_config->pre_chroot_hooks),
+                       base::Unretained(&child_pid), container_id, bundle_dir,
+                       container_dir, "prechroot", "created"));
   }
   if (!oci_config->pre_start_hooks.empty()) {
     config.AddHook(
         MINIJAIL_HOOK_EVENT_PRE_EXECVE,
-        base::Bind(&SaveChildPidAndRunHooks,
-                   std::cref(oci_config->pre_start_hooks),
-                   base::Unretained(&child_pid), container_id, bundle_dir,
-                   container_dir, "prestart", "created"));
+        base::BindOnce(&SaveChildPidAndRunHooks,
+                       std::cref(oci_config->pre_start_hooks),
+                       base::Unretained(&child_pid), container_id, bundle_dir,
+                       container_dir, "prestart", "created"));
   }
   // This needs to run in the context of the container process.
   container_config_set_pre_execve_hook(config.get(), &SetupProcessState,
