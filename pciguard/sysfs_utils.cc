@@ -28,6 +28,7 @@ const char* kAllowlist[] = {
     "ahci",      // AHCI driver
     "igb",       // Intel Gigabit Ethernet driver
     "igc",       // Intel I225-LM/I225-V Ethernet controller driver
+    "atlantic",  // Aquantia 10gbps Ethernet NIC driver
 };
 
 }  // namespace
