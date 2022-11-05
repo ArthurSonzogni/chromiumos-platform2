@@ -140,7 +140,7 @@ class Port {
 
   // Returns true if the port's partner supports a higher USB gen than the
   // cable.
-  virtual bool CableLimitingUSBSpeed();
+  virtual bool CableLimitingUSBSpeed(bool tbt3_alt_mode);
 
   // Enqueue metrics reporting task with a delay to give time for PD
   // negotiation.
@@ -181,6 +181,9 @@ class Port {
   FRIEND_TEST(PortTest, USB4LimitedByTBT4PassiveLRDCableFalse);
   FRIEND_TEST(PortTest, BillboardOnlyDisplayNotLimitedByCable);
   FRIEND_TEST(PortTest, CableLimitingSpeedTBT4DockAppleTBT3ProCable);
+  FRIEND_TEST(PortTest, TBTCableLimitingSpeedTBT3DockFalse);
+  FRIEND_TEST(PortTest, TBTCableLimitingSpeedTBT3DockTrue);
+  FRIEND_TEST(PortTest, TBTCableLimitingSpeedTBT3DockFalseTBT3Cable);
 
   // Helper functions from test_util for defining devices used in unit tests.
   friend void AddUnbrandedUSB2Cable(Port& port);

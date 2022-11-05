@@ -366,7 +366,7 @@ void PortManager::RunModeEntry(int port_num) {
     }
 
     // If the cable limits USB speed, warn the user.
-    if (port->CableLimitingUSBSpeed()) {
+    if (port->CableLimitingUSBSpeed(false)) {
       LOG(INFO) << "Cable limiting USB speed on port " << port_num;
       if (notify_mgr_)
         notify_mgr_->NotifyCableWarning(CableWarningType::kSpeedLimitingCable);
@@ -402,12 +402,17 @@ void PortManager::RunModeEntry(int port_num) {
                  << " failed for port " << port_num;
     }
 
-    // If TBT is entered due to a USB4 cable error, warn the user.
     if (can_enter_usb4 == ModeEntryResult::kCableError) {
+      // If TBT is entered due to a USB4 cable error, warn the user.
       LOG(WARNING) << "USB4 partner with TBT cable on port " << port_num;
       if (notify_mgr_)
         notify_mgr_->NotifyCableWarning(
             CableWarningType::kInvalidUSB4ValidTBTCable);
+    } else if (port->CableLimitingUSBSpeed(true)) {
+      // Cable limits the speed of TBT3 partner.
+      LOG(INFO) << "Cable limiting USB speed on port " << port_num;
+      if (notify_mgr_)
+        notify_mgr_->NotifyCableWarning(CableWarningType::kSpeedLimitingCable);
     }
 
     return;
@@ -435,7 +440,7 @@ void PortManager::RunModeEntry(int port_num) {
     cable_warning = CableWarningType::kInvalidDpCable;
     LOG(WARNING) << "DPAltMode partner with incompatible cable on port "
                  << port_num;
-  } else if (port->CableLimitingUSBSpeed()) {
+  } else if (port->CableLimitingUSBSpeed(false)) {
     cable_warning = CableWarningType::kSpeedLimitingCable;
     LOG(INFO) << "Cable limiting USB speed on port " << port_num;
   }

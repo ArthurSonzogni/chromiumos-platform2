@@ -80,6 +80,8 @@ class PortManager : public UdevMonitor::TypecObserver,
   FRIEND_TEST(PortManagerNotificationTest,
               ModeEntryUSB4NotifySpeedLimitingCable);
   FRIEND_TEST(PortManagerNotificationTest,
+              ModeEntryTBTNotifySpeedLimitingCable);
+  FRIEND_TEST(PortManagerNotificationTest,
               ModeEntryTBTNotifyInvalidUSB4ValidTBTCable);
   FRIEND_TEST(PortManagerNotificationTest,
               ModeEntryDpAltModeNotifyInvalidUSB4Cable);

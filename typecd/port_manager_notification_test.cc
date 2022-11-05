@@ -172,7 +172,49 @@ TEST_F(PortManagerNotificationTest, ModeEntryUSB4NotifySpeedLimitingCable) {
       .WillRepeatedly(testing::Return(ModeEntryResult::kSuccess));
   EXPECT_CALL(*ec_util_, EnterMode(0, TypeCMode::kUSB4))
       .WillRepeatedly(testing::Return(true));
-  EXPECT_CALL(*port_, CableLimitingUSBSpeed())
+  EXPECT_CALL(*port_, CableLimitingUSBSpeed(false))
+      .WillRepeatedly(testing::Return(true));
+
+  // Expect to send DeviceConnectedType::kThunderboltDp and
+  // CableWarningType::kSpeedLimitingCable.
+  EXPECT_CALL(*notification_manager_,
+              NotifyConnected(DeviceConnectedType::kThunderboltDp))
+      .Times(1);
+  EXPECT_CALL(*notification_manager_,
+              NotifyCableWarning(CableWarningType::kSpeedLimitingCable))
+      .Times(1);
+
+  // Configure |port_manager_| and run mode entry.
+  port_manager_->SetUserActive(true);
+  port_manager_->SetNotificationManager(notification_manager_.get());
+  port_manager_->SetECUtil(ec_util_.get());
+  port_manager_->ports_.insert(
+      std::pair<int, std::unique_ptr<Port>>(0, std::move(port_)));
+  port_manager_->RunModeEntry(0);
+}
+
+// Test case for notifications during AP mode entry.
+// Port enters TBT and sends DeviceConnectedType::kThunderboltDp and
+// CableWarningType::kSpeedLimitingCable.
+// - Thinkpad TBT3 dock and Anker USB 3.2 Gen2 passive cable.
+TEST_F(PortManagerNotificationTest, ModeEntryTBTNotifySpeedLimitingCable) {
+  // Add Thinkpad TBT3 Dock and Anker USB 3.2 Gen2 passive cable.
+  AddThinkpadTBT3Dock(*port_);
+  AddAnkerUSB3p2Gen2Cable(*port_);
+
+  // Set AP mode entry to true for test case covering AP driven mode entry.
+  port_manager_->SetModeEntrySupported(true);
+
+  // Set expectations for port to enter TBT.
+  EXPECT_CALL(*port_, CanEnterTBTCompatibilityMode())
+      .WillRepeatedly(testing::Return(ModeEntryResult::kSuccess));
+  EXPECT_CALL(*port_, CanEnterDPAltMode(_))
+      .WillRepeatedly(testing::Return(true));
+  EXPECT_CALL(*port_, CanEnterUSB4())
+      .WillRepeatedly(testing::Return(ModeEntryResult::kPartnerError));
+  EXPECT_CALL(*ec_util_, EnterMode(0, TypeCMode::kTBT))
+      .WillRepeatedly(testing::Return(true));
+  EXPECT_CALL(*port_, CableLimitingUSBSpeed(true))
       .WillRepeatedly(testing::Return(true));
 
   // Expect to send DeviceConnectedType::kThunderboltDp and

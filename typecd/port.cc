@@ -468,9 +468,13 @@ end:
   panel_ = panel;
 }
 
-bool Port::CableLimitingUSBSpeed() {
+bool Port::CableLimitingUSBSpeed(bool tbt3_alt_mode) {
   if (!partner_ || !cable_)
     return false;
+
+  // Initialize cable speeds from USB PD identity response.
+  auto cable_speed = cable_->GetProductTypeVDO1() & kUSBSpeedBitMask;
+  auto partner_speed = partner_->GetProductTypeVDO1() & kUSBSpeedBitMask;
 
   // Check for cable product type.
   auto cable_type =
@@ -487,40 +491,45 @@ bool Port::CableLimitingUSBSpeed() {
   if (cable_plug_type == kCableVDO1VDOPlugTypeCaptive)
     return false;
 
-  // Check for partner product type.
-  auto partner_type =
-      (partner_->GetIdHeaderVDO() >> kIDHeaderVDOProductTypeBitOffset) &
-      kIDHeaderVDOProductTypeMask;
-  if (partner_->GetPDRevision() == PDRevision::k20) {
-    // PD rev 2.0, v 1.3
-    // Table 6-24 Product Types (UFP)
-    // Only AMAs use a product type VDO.
-    if (partner_type != kIDHeaderVDOProductTypeUFPAMA)
-      return false;
-  } else if (partner_->GetPDRevision() == PDRevision::k30) {
-    // PD rev 3.0, v 2.0
-    // Table 6-30 Product Types (UFP)
-    // Only PDUSB hubs, PDUSB peripherals and AMAs use a product type VDO with
-    // USB speed.
-    if (partner_type != kIDHeaderVDOProductTypeUFPHub &&
-        partner_type != kIDHeaderVDOProductTypeUFPPeripheral &&
-        partner_type != kIDHeaderVDOProductTypeUFPAMA)
-      return false;
+  // In Thunderbolt 3 alternate mode, the partner will support 40 Gbps.
+  // Otherwise, check partner type to confirm product_type_vdo1 speed is
+  // accurate.
+  if (tbt3_alt_mode) {
+    partner_speed = kUSB40SuperSpeedGen3;
   } else {
-    // Return false on undetermined PD revision.
-    return false;
-  }
+    // Check for partner product type.
+    auto partner_type =
+        (partner_->GetIdHeaderVDO() >> kIDHeaderVDOProductTypeBitOffset) &
+        kIDHeaderVDOProductTypeMask;
+    if (partner_->GetPDRevision() == PDRevision::k20) {
+      // PD rev 2.0, v 1.3
+      // Table 6-24 Product Types (UFP)
+      // Only AMAs use a product type VDO.
+      if (partner_type != kIDHeaderVDOProductTypeUFPAMA)
+        return false;
+    } else if (partner_->GetPDRevision() == PDRevision::k30) {
+      // PD rev 3.0, v 2.0
+      // Table 6-30 Product Types (UFP)
+      // Only PDUSB hubs, PDUSB peripherals and AMAs use a product type VDO with
+      // USB speed.
+      if (partner_type != kIDHeaderVDOProductTypeUFPHub &&
+          partner_type != kIDHeaderVDOProductTypeUFPPeripheral &&
+          partner_type != kIDHeaderVDOProductTypeUFPAMA)
+        return false;
+    } else {
+      // Return false on undetermined PD revision.
+      return false;
+    }
 
-  auto cable_speed = cable_->GetProductTypeVDO1() & kUSBSpeedBitMask;
-  auto partner_speed = partner_->GetProductTypeVDO1() & kUSBSpeedBitMask;
-
-  // In USB PD Rev 2.0 and 3.0, 0x3 in the AMA VDO USB Highest speed field
-  // represents billboard only, and should not be compared against cable speed.
-  if ((partner_->GetPDRevision() == PDRevision::k20 ||
-       partner_->GetPDRevision() == PDRevision::k30) &&
-      partner_type == kIDHeaderVDOProductTypeUFPAMA &&
-      partner_speed == kAMAVDOUSBSpeedBillboard) {
-    return false;
+    // In USB PD Rev 2.0 and 3.0, 0x3 in the AMA VDO USB Highest speed field
+    // represents billboard only, and should not be compared against cable
+    // speed.
+    if ((partner_->GetPDRevision() == PDRevision::k20 ||
+         partner_->GetPDRevision() == PDRevision::k30) &&
+        partner_type == kIDHeaderVDOProductTypeUFPAMA &&
+        partner_speed == kAMAVDOUSBSpeedBillboard) {
+      return false;
+    }
   }
 
   // Check for TBT3 cables supporting USB4 speeds.
@@ -532,6 +541,10 @@ bool Port::CableLimitingUSBSpeed() {
 
     if (!alt_mode || alt_mode->GetSVID() != kTBTAltModeVID)
       continue;
+
+    // Return false after finding TBT3 cable in TBT3 mode.
+    if (tbt3_alt_mode)
+      return false;
 
     auto cable_tbt_mode =
         (alt_mode->GetVDO() >> kTBT3CableDiscModeVDOModeOffset) &
@@ -585,6 +598,9 @@ void Port::ReportPortMetrics(Metrics* metrics) {
   // Check cable for tracking DPAltMode cable metrics.
   bool invalid_dpalt_cable = false;
   bool can_enter_dpalt_mode = CanEnterDPAltMode(&invalid_dpalt_cable);
+  bool cable_limiting_speed_mode =
+      CanEnterUSB4() != ModeEntryResult::kSuccess &&
+      CanEnterTBTCompatibilityMode() == ModeEntryResult::kSuccess;
 
   if (CanEnterUSB4() == ModeEntryResult::kCableError)
     metrics->ReportWrongCableError(WrongConfigurationMetric::kUSB4WrongCable);
@@ -592,7 +608,7 @@ void Port::ReportPortMetrics(Metrics* metrics) {
     metrics->ReportWrongCableError(WrongConfigurationMetric::kTBTWrongCable);
   else if (can_enter_dpalt_mode && invalid_dpalt_cable)
     metrics->ReportWrongCableError(WrongConfigurationMetric::kDPAltWrongCable);
-  else if (CableLimitingUSBSpeed())
+  else if (CableLimitingUSBSpeed(cable_limiting_speed_mode))
     metrics->ReportWrongCableError(
         WrongConfigurationMetric::kSpeedLimitingCable);
 

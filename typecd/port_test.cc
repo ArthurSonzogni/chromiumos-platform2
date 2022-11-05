@@ -480,7 +480,7 @@ TEST_F(PortTest, USB4LimitedByCableFalse) {
   AddCalDigitTBT4Cable(*port);
 
   EXPECT_EQ(ModeEntryResult::kSuccess, port->CanEnterUSB4());
-  EXPECT_FALSE(port->CableLimitingUSBSpeed());
+  EXPECT_FALSE(port->CableLimitingUSBSpeed(false));
 }
 
 // Check that CableLimitingUSBSpeed works for "true" case.
@@ -492,7 +492,7 @@ TEST_F(PortTest, USB4LimitedByCableTrue) {
   AddCableMatters20GbpsCable(*port);
 
   EXPECT_EQ(ModeEntryResult::kSuccess, port->CanEnterUSB4());
-  EXPECT_TRUE(port->CableLimitingUSBSpeed());
+  EXPECT_TRUE(port->CableLimitingUSBSpeed(false));
 }
 
 // Check that CableLimitingUSBSpeed works for "false" case with passive TBT3
@@ -505,7 +505,7 @@ TEST_F(PortTest, USB4LimitedByTBT3PassiveCableFalse) {
   AddUnbrandedTBT3Cable(*port);
 
   EXPECT_EQ(ModeEntryResult::kSuccess, port->CanEnterUSB4());
-  EXPECT_FALSE(port->CableLimitingUSBSpeed());
+  EXPECT_FALSE(port->CableLimitingUSBSpeed(false));
 }
 
 // Check that CableLimitingUSBSpeed works for "false" case with passive TBT4
@@ -518,7 +518,7 @@ TEST_F(PortTest, USB4LimitedByTBT4PassiveLRDCableFalse) {
   AddCableMattersTBT4LRDCable(*port);
 
   EXPECT_EQ(ModeEntryResult::kSuccess, port->CanEnterUSB4());
-  EXPECT_FALSE(port->CableLimitingUSBSpeed());
+  EXPECT_FALSE(port->CableLimitingUSBSpeed(false));
 }
 
 // Check that CableLimitingUSBSpeed works for a case with AMA VDO.
@@ -532,7 +532,7 @@ TEST_F(PortTest, BillboardOnlyDisplayNotLimitedByCable) {
   bool invalid_dpalt_cable = false;
   EXPECT_TRUE(port->CanEnterDPAltMode(&invalid_dpalt_cable));
   EXPECT_FALSE(invalid_dpalt_cable);
-  EXPECT_FALSE(port->CableLimitingUSBSpeed());
+  EXPECT_FALSE(port->CableLimitingUSBSpeed(false));
 }
 
 // Check that CableLimitingUSBSpeed() returns false for cases using a TBT3
@@ -545,7 +545,49 @@ TEST_F(PortTest, CableLimitingSpeedOWCDockAppleTBT3ProCable) {
   AddAppleTBT3ProCable(*port);
 
   EXPECT_EQ(ModeEntryResult::kSuccess, port->CanEnterUSB4());
-  EXPECT_FALSE(port->CableLimitingUSBSpeed());
+  EXPECT_FALSE(port->CableLimitingUSBSpeed(false));
+}
+
+// Check that CableLimitingUSBSpeed() returns false after entering TBT3 mode
+// with TBT3 dock and passive USB4 Gen3 cable.
+// Case: Thinkpad Thunderbolt 3 Dock with Caldigit TBT4 Cable.
+TEST_F(PortTest, TBTCableLimitingSpeedTBT3DockFalse) {
+  auto port = std::make_unique<Port>(base::FilePath(kFakePort0SysPath), 0);
+
+  AddThinkpadTBT3Dock(*port);
+  AddCalDigitTBT4Cable(*port);
+
+  EXPECT_EQ(ModeEntryResult::kPartnerError, port->CanEnterUSB4());
+  EXPECT_EQ(ModeEntryResult::kSuccess, port->CanEnterTBTCompatibilityMode());
+  EXPECT_FALSE(port->CableLimitingUSBSpeed(true));
+}
+
+// Check that CableLimitingUSBSpeed() returns true after entering TBT3 mode
+// with TBT3 dock and passive USB 3.2 Gen2 cable.
+// Case: Thinkpad Thunderbolt 3 Dock with Anker USB 3.2 Gen2 Cable.
+TEST_F(PortTest, TBTCableLimitingSpeedTBT3DockTrue) {
+  auto port = std::make_unique<Port>(base::FilePath(kFakePort0SysPath), 0);
+
+  AddThinkpadTBT3Dock(*port);
+  AddAnkerUSB3p2Gen2Cable(*port);
+
+  EXPECT_EQ(ModeEntryResult::kPartnerError, port->CanEnterUSB4());
+  EXPECT_EQ(ModeEntryResult::kSuccess, port->CanEnterTBTCompatibilityMode());
+  EXPECT_TRUE(port->CableLimitingUSBSpeed(true));
+}
+
+// Check that CableLimitingUSBSpeed() returns false after entering TBT3 mode
+// with TBT3 dock and TBT3 cable.
+// Case: Thinkpad Thunderbolt 3 Dock with Belkin TBT3 Passive Cable.
+TEST_F(PortTest, TBTCableLimitingSpeedTBT3DockFalseTBT3Cable) {
+  auto port = std::make_unique<Port>(base::FilePath(kFakePort0SysPath), 0);
+
+  AddThinkpadTBT3Dock(*port);
+  AddBelkinTBT3PassiveCable(*port);
+
+  EXPECT_EQ(ModeEntryResult::kPartnerError, port->CanEnterUSB4());
+  EXPECT_EQ(ModeEntryResult::kSuccess, port->CanEnterTBTCompatibilityMode());
+  EXPECT_FALSE(port->CableLimitingUSBSpeed(true));
 }
 
 // Check GetPanel() for valid panel value.
