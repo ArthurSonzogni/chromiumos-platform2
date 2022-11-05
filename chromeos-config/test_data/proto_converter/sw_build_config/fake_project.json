@@ -64,9 +64,6 @@
             "ucm-suffix": "alc5682i.2uf.fake_ref_design"
           }
         },
-        "battery": {
-          "no-battery-boot-supported": true
-        },
         "bluetooth": {
           "flags": {
             "enable-suspend-management": true
@@ -86,6 +83,7 @@
                 "support-1080p": false,
                 "support-autofocus": false
               },
+              "has-privacy-switch": false,
               "ids": [
                 "0123:abcd"
               ],
@@ -314,9 +312,6 @@
             "ucm-suffix": "alc5682i.1uf2wf.fake_ref_design"
           }
         },
-        "battery": {
-          "no-battery-boot-supported": true
-        },
         "brand-code": "AAAA",
         "branding": {
           "marketing-name": "Fake ChromeOS Device Brandname",
@@ -538,6 +533,7 @@
                 "support-1080p": false,
                 "support-autofocus": false
               },
+              "has-privacy-switch": false,
               "ids": [
                 "0123:abcd"
               ],
@@ -790,6 +786,7 @@
                 "support-1080p": false,
                 "support-autofocus": false
               },
+              "has-privacy-switch": false,
               "ids": [
                 "0123:abcd"
               ],
@@ -975,6 +972,7 @@
                 "support-1080p": false,
                 "support-autofocus": false
               },
+              "has-privacy-switch": false,
               "ids": [
                 "0123:abcd"
               ],
@@ -1184,6 +1182,7 @@
                 "support-1080p": false,
                 "support-autofocus": false
               },
+              "has-privacy-switch": false,
               "ids": [
                 "0123:abcd"
               ],
@@ -1379,6 +1378,7 @@
                 "support-1080p": false,
                 "support-autofocus": false
               },
+              "has-privacy-switch": false,
               "ids": [
                 "0123:abcd"
               ],
@@ -1552,6 +1552,7 @@
                 "support-1080p": false,
                 "support-autofocus": false
               },
+              "has-privacy-switch": false,
               "ids": [
                 "0123:abcd"
               ],
@@ -1712,6 +1713,7 @@
                 "support-1080p": false,
                 "support-autofocus": false
               },
+              "has-privacy-switch": false,
               "ids": [
                 "0123:abcd"
               ],
@@ -1873,6 +1875,7 @@
                 "support-1080p": false,
                 "support-autofocus": false
               },
+              "has-privacy-switch": false,
               "ids": [
                 "0123:abcd"
               ],
@@ -2034,6 +2037,7 @@
                 "support-1080p": false,
                 "support-autofocus": false
               },
+              "has-privacy-switch": false,
               "ids": [
                 "0123:abcd"
               ],
@@ -2208,6 +2212,7 @@
                 "support-1080p": false,
                 "support-autofocus": false
               },
+              "has-privacy-switch": false,
               "ids": [
                 "0123:abcd"
               ],
