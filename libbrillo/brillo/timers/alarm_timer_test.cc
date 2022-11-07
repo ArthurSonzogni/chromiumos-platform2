@@ -371,5 +371,11 @@ TEST(AlarmTimerTest, DeleteTimerWhileCallbackIsRunningZeroDelay) {
   run_loop.Run();
 }
 
+TEST(AlarmTimerTest, IsSupportedClock) {
+  EXPECT_TRUE(SimpleAlarmTimer::IsSupportedClock(CLOCK_REALTIME_ALARM));
+  EXPECT_TRUE(SimpleAlarmTimer::IsSupportedClock(CLOCK_BOOTTIME_ALARM));
+  EXPECT_FALSE(SimpleAlarmTimer::IsSupportedClock(CLOCK_MONOTONIC));
+}
+
 }  // namespace timers
 }  // namespace brillo

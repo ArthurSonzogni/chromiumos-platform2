@@ -24,8 +24,17 @@ namespace brillo {
 namespace timers {
 
 // static
-std::unique_ptr<SimpleAlarmTimer> SimpleAlarmTimer::Create() {
-  return CreateInternal(CLOCK_REALTIME_ALARM);
+bool SimpleAlarmTimer::IsSupportedClock(clockid_t clock_id) {
+  // Only wake up alarms are supported.
+  return clock_id == CLOCK_BOOTTIME_ALARM || clock_id == CLOCK_REALTIME_ALARM;
+}
+
+// static
+std::unique_ptr<SimpleAlarmTimer> SimpleAlarmTimer::Create(clockid_t clock_id) {
+  if (!IsSupportedClock(clock_id)) {
+    return nullptr;
+  }
+  return CreateInternal(clock_id);
 }
 
 // static
@@ -37,8 +46,8 @@ std::unique_ptr<SimpleAlarmTimer> SimpleAlarmTimer::CreateForTesting() {
 
 // static
 std::unique_ptr<SimpleAlarmTimer> SimpleAlarmTimer::CreateInternal(
-    int clockid) {
-  base::ScopedFD alarm_fd(timerfd_create(clockid, TFD_CLOEXEC));
+    clockid_t clock_id) {
+  base::ScopedFD alarm_fd(timerfd_create(clock_id, TFD_CLOEXEC));
   if (!alarm_fd.is_valid()) {
     PLOG(ERROR) << "Failed to create timer fd";
     return nullptr;

@@ -63,15 +63,26 @@ class BRILLO_EXPORT SimpleAlarmTimer {
   // Creates the SimpleAlarmTimer instance, or returns null on failure, e.g.,
   // on a platform without timerfd_* system calls support, or missing
   // capability (CAP_WAKE_ALARM).
-  static std::unique_ptr<SimpleAlarmTimer> Create();
+  //
+  // By default returns a timer based on a clock of type CLOCK_REALTIME_ALARM,
+  // however, can be invoked with an optional argument specifying one of
+  // CLOCK_REALTIME_ALARM or CLOCK_BOOTTIME_ALARM.
+  //
+  // Returns a nullptr if the timer could not be created.
+  static std::unique_ptr<SimpleAlarmTimer> Create(
+      clockid_t clock_id = CLOCK_REALTIME_ALARM);
 
   // Similar to Create(), but for unittests without capability.
   // Specifically, uses CLOCK_REALTIME instead of CLOCK_REALTIME_ALARM.
   static std::unique_ptr<SimpleAlarmTimer> CreateForTesting();
 
+  // Checks if a particular clock_id is valid - presently either
+  // CLOCK_REALTIME_ALARM or CLOCK_BOOTTIME_ALARM.
+  static bool IsSupportedClock(clockid_t clock_id);
+
  private:
   // Shared implementation of Create and CreateForTesting.
-  static std::unique_ptr<SimpleAlarmTimer> CreateInternal(int clockid);
+  static std::unique_ptr<SimpleAlarmTimer> CreateInternal(clockid_t clock_id);
 
   explicit SimpleAlarmTimer(base::ScopedFD alarm_fd);
 

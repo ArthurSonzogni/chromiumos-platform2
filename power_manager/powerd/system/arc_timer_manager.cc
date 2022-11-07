@@ -37,11 +37,6 @@ std::unique_ptr<dbus::Response> CreateInvalidArgsError(
       method_call, DBUS_ERROR_INVALID_ARGS, message));
 }
 
-// Only wake up alarms are supported.
-bool IsSupportedClock(clockid_t clock_id) {
-  return clock_id == CLOCK_BOOTTIME_ALARM || clock_id == CLOCK_REALTIME_ALARM;
-}
-
 // Expiration callback for timer of type |timer_id|. |expiration_fd| is the fd
 // to write to to indicate timer expiration to the instance.
 void OnExpiration(ArcTimerManager::TimerId timer_id, int expiration_fd) {
@@ -96,9 +91,6 @@ struct ArcTimerManager::ArcTimerInfo {
   // The file descriptor which will be written to when |timer| expires.
   const base::ScopedFD expiration_fd;
 
-  // TODO(b/69759087): Make |SimpleAlarmTimer| take a clock id in its
-  // constructor to create timers of different clock types.
-  //
   // The timer that will be scheduled.
   const std::unique_ptr<brillo::timers::SimpleAlarmTimer> timer;
 };
@@ -219,17 +211,18 @@ std::unique_ptr<ArcTimerManager::ArcTimerInfo> ArcTimerManager::CreateArcTimer(
     return nullptr;
   }
 
-  int32_t clock_id;
+  clockid_t clock_id;
   if (!struct_reader.PopInt32(&clock_id)) {
     LOG(WARNING) << "Failed to pop clock id";
     return nullptr;
   }
 
-  // The instance opens clocks of type CLOCK_BOOTTIME_ALARM and
-  // CLOCK_REALTIME_ALARM. However, it uses only CLOCK_BOOTTIME_ALARM to set
-  // wake up alarms. At this point, it's okay to pretend the host supports
-  // CLOCK_REALTIME_ALARM instead of returning an error.
-  if (!IsSupportedClock(static_cast<clockid_t>(clock_id))) {
+  // Make sure we're only using a clock of a type we can support with wakeup
+  // alarms - either CLOCK_BOOTTIME_ALARM or CLOCK_REALTIME_ALARM.
+  //
+  // At present the instance uses only CLOCK_BOOTTIME_ALARM to set
+  // wake up alarms.
+  if (!brillo::timers::SimpleAlarmTimer::IsSupportedClock(clock_id)) {
     LOG(WARNING) << "Unsupported clock=" << clock_id;
     return nullptr;
   }
@@ -249,9 +242,15 @@ std::unique_ptr<ArcTimerManager::ArcTimerInfo> ArcTimerManager::CreateArcTimer(
         clock_id, std::move(expiration_fd),
         brillo::timers::SimpleAlarmTimer::CreateForTesting());
   }
-  return std::make_unique<ArcTimerInfo>(
-      clock_id, std::move(expiration_fd),
-      brillo::timers::SimpleAlarmTimer::Create());
+
+  std::unique_ptr<brillo::timers::SimpleAlarmTimer> simple_alarm_timer =
+      brillo::timers::SimpleAlarmTimer::Create(clock_id);
+  if (simple_alarm_timer == nullptr) {
+    LOG(WARNING) << "Failed to create SimpleAlarmTimer for clock=" << clock_id;
+    return nullptr;
+  }
+  return std::make_unique<ArcTimerInfo>(clock_id, std::move(expiration_fd),
+                                        std::move(simple_alarm_timer));
 }
 
 // static.
