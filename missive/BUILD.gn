@@ -56,7 +56,7 @@ generate_pkg_config("libmissiveclient_pc") {
     "-lmissiveprotorecordconstants",
     "-lmissiveprotorecord",
     "-lmissiveprotointerface",
-    # TODO(b/256623647) "-lmissiveclienttestlib",  # Test-only
+    "-lmissiveclienttestlib",  # Test-only
   ]
   cflags = [ "-I/usr/include/libmissiveclient" ]
 }
