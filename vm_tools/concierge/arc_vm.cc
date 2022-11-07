@@ -846,10 +846,9 @@ void ArcVm::HandleLmkdVsockRead() {
   uint64_t new_balloon_size = 0;
   uint64_t freed_space = 0;
 
-  bool can_deflate = balloon_policy_->DeflateBalloonToSaveProcess(
-      proc_size, oom_score_adj, new_balloon_size, freed_space);
-
-  if (can_deflate) {
+  if (balloon_policy_ &&
+      balloon_policy_->DeflateBalloonToSaveProcess(
+          proc_size, oom_score_adj, new_balloon_size, freed_space)) {
     SetBalloonSize(new_balloon_size);
   }
 
