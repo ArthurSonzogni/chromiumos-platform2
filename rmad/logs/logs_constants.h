@@ -31,6 +31,7 @@ inline constexpr char kLogWipeDevice[] = "wipe_device";
 inline constexpr char kLogWpDisableMethod[] = "wp_disable_method";
 inline constexpr char kLogRsuChallengeCode[] = "challenge_code";
 inline constexpr char kLogRsuHwid[] = "hwid";
+inline constexpr char kLogRestockOption[] = "restock_option";
 
 enum class LogEventType {
   kTransition = 0,

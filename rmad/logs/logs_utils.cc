@@ -110,4 +110,13 @@ bool RecordRsuChallengeCodeToLogs(scoped_refptr<JsonStore> json_store,
                         LogEventType::kData, std::move(details));
 }
 
+bool RecordRestockOptionToLogs(scoped_refptr<JsonStore> json_store,
+                               bool restock) {
+  base::Value details(base::Value::Type::DICT);
+  details.SetKey(kLogRestockOption, ConvertToValue(restock));
+
+  return AddEventToJson(json_store, RmadState::kRestock, LogEventType::kData,
+                        std::move(details));
+}
+
 }  // namespace rmad

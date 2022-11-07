@@ -10,6 +10,7 @@
 #include <base/logging.h>
 #include <base/notreached.h>
 
+#include "rmad/logs/logs_utils.h"
 #include "rmad/system/power_manager_client_impl.h"
 #include "rmad/utils/dbus_utils.h"
 
@@ -55,6 +56,7 @@ BaseStateHandler::GetNextStateCaseReply RestockStateHandler::GetNextStateCase(
     case RestockState::RMAD_RESTOCK_UNKNOWN:
       return NextStateCaseWrapper(RMAD_ERROR_REQUEST_ARGS_MISSING);
     case RestockState::RMAD_RESTOCK_SHUTDOWN_AND_RESTOCK:
+      RecordRestockOptionToLogs(json_store_, /*restock=*/true);
       // Wait for a while before shutting down.
       timer_.Start(FROM_HERE, kShutdownDelay, this,
                    &RestockStateHandler::Shutdown);
@@ -62,6 +64,7 @@ BaseStateHandler::GetNextStateCaseReply RestockStateHandler::GetNextStateCase(
       return NextStateCaseWrapper(GetStateCase(), RMAD_ERROR_EXPECT_SHUTDOWN,
                                   RMAD_ADDITIONAL_ACTIVITY_SHUTDOWN);
     case RestockState::RMAD_RESTOCK_CONTINUE_RMA:
+      RecordRestockOptionToLogs(json_store_, /*restock=*/false);
       return NextStateCaseWrapper(RmadState::StateCase::kUpdateDeviceInfo);
     default:
       break;

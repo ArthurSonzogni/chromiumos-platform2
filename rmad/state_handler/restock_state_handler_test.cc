@@ -10,6 +10,8 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "rmad/logs/logs_constants.h"
+#include "rmad/logs/logs_utils.h"
 #include "rmad/state_handler/restock_state_handler.h"
 #include "rmad/state_handler/state_handler_test_common.h"
 #include "rmad/system/mock_power_manager_client.h"
@@ -64,6 +66,17 @@ TEST_F(RestockStateHandlerTest, GetNextStateCase_Success_Shutdown) {
     EXPECT_EQ(error, RMAD_ERROR_EXPECT_SHUTDOWN);
     EXPECT_EQ(state_case, RmadState::StateCase::kRestock);
     EXPECT_FALSE(shutdown_called);
+
+    // Verify the option to restock was recorded to logs.
+    base::Value logs(base::Value::Type::DICT);
+    json_store_->GetValue(kLogs, &logs);
+
+    const base::Value::List* events = logs.GetDict().FindList(kEvents);
+    EXPECT_EQ(1, events->size());
+    const base::Value::Dict& event = (*events)[0].GetDict();
+    EXPECT_EQ(static_cast<int>(RmadState::kRestock), event.FindInt(kStateId));
+    EXPECT_EQ(static_cast<int>(LogEventType::kData), event.FindInt(kType));
+    EXPECT_TRUE(event.FindDict(kDetails)->FindBool(kLogRestockOption).value());
   }
 
   // A second call to |GetNextStateCase| before shutting down still gets
@@ -114,6 +127,17 @@ TEST_F(RestockStateHandlerTest, GetNextStateCase_Success_Continue) {
   // Nothing should happen.
   task_environment_.FastForwardBy(RestockStateHandler::kShutdownDelay);
   EXPECT_FALSE(shutdown_called);
+
+  // Verify the option to continue was recorded to logs.
+  base::Value logs(base::Value::Type::DICT);
+  json_store_->GetValue(kLogs, &logs);
+
+  const base::Value::List* events = logs.GetDict().FindList(kEvents);
+  EXPECT_EQ(1, events->size());
+  const base::Value::Dict& event = (*events)[0].GetDict();
+  EXPECT_EQ(static_cast<int>(RmadState::kRestock), event.FindInt(kStateId));
+  EXPECT_EQ(static_cast<int>(LogEventType::kData), event.FindInt(kType));
+  EXPECT_FALSE(event.FindDict(kDetails)->FindBool(kLogRestockOption).value());
 }
 
 TEST_F(RestockStateHandlerTest, GetNextStateCase_Success_Shutdown_Shutdown) {

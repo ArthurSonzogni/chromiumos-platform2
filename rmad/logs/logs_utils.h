@@ -45,6 +45,10 @@ bool RecordRsuChallengeCodeToLogs(scoped_refptr<JsonStore> json_store,
                                   const std::string& challenge_code,
                                   const std::string& hwid);
 
+// Adds the restock option to `json_store`. Returns true if successful.
+bool RecordRestockOptionToLogs(scoped_refptr<JsonStore> json_store,
+                               bool restock);
+
 }  // namespace rmad
 
 #endif  // RMAD_LOGS_LOGS_UTILS_H_
