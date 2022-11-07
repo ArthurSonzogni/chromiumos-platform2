@@ -23,7 +23,7 @@ extern const char kLowBatteryShutdownPercentPref[];
 
 // Integer default delays for dimming the screen, turning it off, and suspending
 // the system while on AC and battery power. Note that these values are
-// overriden by policy messages sent from Chrome.
+// overridden by policy messages sent from Chrome.
 extern const char kPluggedDimMsPref[];
 extern const char kPluggedQuickDimMsPref[];
 extern const char kPluggedQuickLockMsPref[];

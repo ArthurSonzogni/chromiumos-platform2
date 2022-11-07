@@ -40,7 +40,7 @@ class MetricsSenderInterface {
   // * |num_buckets| <= |max| - |min| + 2
   //
   // Violating these constraints may result in Chrome silently discarding the
-  // simple rather than reporting.
+  // sample rather than reporting.
   virtual bool SendMetric(const std::string& name,
                           int sample,
                           int min,
