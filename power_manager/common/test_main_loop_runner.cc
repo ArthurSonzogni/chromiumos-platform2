@@ -9,6 +9,8 @@
 #include <base/logging.h>
 #include <base/run_loop.h>
 
+#include <memory>
+
 namespace power_manager {
 
 TestMainLoopRunner::TestMainLoopRunner() : timed_out_(false) {}
@@ -20,7 +22,7 @@ bool TestMainLoopRunner::StartLoop(base::TimeDelta timeout_delay) {
   timed_out_ = false;
   timeout_timer_.Start(FROM_HERE, timeout_delay, this,
                        &TestMainLoopRunner::OnTimeout);
-  runner_.reset(new base::RunLoop);
+  runner_ = std::make_unique<base::RunLoop>();
   runner_->Run();
   runner_.reset();
   return !timed_out_;

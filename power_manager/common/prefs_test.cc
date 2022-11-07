@@ -85,11 +85,11 @@ class PrefsTest : public testing::Test {
   void SetUp() override {
     paths_.clear();
     // Create new temp directories.
-    for (int i = 0; i < kNumPrefDirectories; ++i) {
-      temp_dir_generators_[i].reset(new base::ScopedTempDir());
-      ASSERT_TRUE(temp_dir_generators_[i]->CreateUniqueTempDir());
-      EXPECT_TRUE(temp_dir_generators_[i]->IsValid());
-      paths_.push_back(temp_dir_generators_[i]->GetPath());
+    for (auto& temp_dir_generator : temp_dir_generators_) {
+      temp_dir_generator = std::make_unique<base::ScopedTempDir>();
+      ASSERT_TRUE(temp_dir_generator->CreateUniqueTempDir());
+      EXPECT_TRUE(temp_dir_generator->IsValid());
+      paths_.push_back(temp_dir_generator->GetPath());
     }
 
     // By default, don't defer writes.
