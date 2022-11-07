@@ -230,7 +230,7 @@ class AdaptiveChargingControllerTest : public ::testing::Test {
   void CreateChargeHistoryFile(const base::FilePath& dir,
                                const base::Time& start) {
     base::Value val = base::TimeToValue(FloorTime(start));
-    absl::optional<base::FilePath> opt_path = base::ValueToFilePath(val);
+    std::optional<base::FilePath> opt_path = base::ValueToFilePath(val);
     base::File file(dir.Append(opt_path.value()),
                     base::File::FLAG_CREATE_ALWAYS | base::File::FLAG_READ |
                         base::File::FLAG_WRITE);
@@ -251,7 +251,7 @@ class AdaptiveChargingControllerTest : public ::testing::Test {
                               const base::Time& start,
                               const base::TimeDelta& duration) {
     base::Value val = base::TimeToValue(FloorTime(start));
-    absl::optional<base::FilePath> opt_path = base::ValueToFilePath(val);
+    std::optional<base::FilePath> opt_path = base::ValueToFilePath(val);
     JSONFileValueSerializer serializer(dir.Append(opt_path.value()));
     EXPECT_TRUE(serializer.Serialize(base::TimeDeltaToValue(duration)));
   }
@@ -259,7 +259,7 @@ class AdaptiveChargingControllerTest : public ::testing::Test {
   bool ChargeHistoryFileExists(const base::FilePath& dir,
                                const base::Time& start) {
     base::Value val = base::TimeToValue(FloorTime(start));
-    absl::optional<base::FilePath> opt_path = base::ValueToFilePath(val);
+    std::optional<base::FilePath> opt_path = base::ValueToFilePath(val);
     return base::PathExists(dir.Append(opt_path.value()));
   }
 
@@ -274,7 +274,7 @@ class AdaptiveChargingControllerTest : public ::testing::Test {
   base::TimeDelta ReadChargeHistoryFile(const base::FilePath& dir,
                                         const base::Time& start) {
     base::Value val = base::TimeToValue(FloorTime(start));
-    absl::optional<base::FilePath> opt_path = base::ValueToFilePath(val);
+    std::optional<base::FilePath> opt_path = base::ValueToFilePath(val);
     return ReadTimeDeltaFromFile(dir.Append(opt_path.value()));
   }
 

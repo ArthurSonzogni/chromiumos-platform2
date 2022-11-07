@@ -728,7 +728,7 @@ bool ChargeHistory::WriteTimeDeltaToFile(const base::FilePath& path,
 bool ChargeHistory::JSONFileNameToTime(const base::FilePath& file,
                                        base::Time* time) {
   base::Value val = base::FilePathToValue(file.BaseName());
-  absl::optional<base::Time> opt_time = base::ValueToTime(val);
+  std::optional<base::Time> opt_time = base::ValueToTime(val);
   if (!opt_time.has_value()) {
     LOG(ERROR) << "Failed to parse timestamp from filename: " << file;
     return false;
@@ -741,7 +741,7 @@ bool ChargeHistory::JSONFileNameToTime(const base::FilePath& file,
 // static
 bool ChargeHistory::TimeToJSONFileName(base::Time time, base::FilePath* file) {
   base::Value val = base::TimeToValue(time);
-  absl::optional<base::FilePath> opt_file = base::ValueToFilePath(val);
+  std::optional<base::FilePath> opt_file = base::ValueToFilePath(val);
   if (!opt_file.has_value()) {
     LOG(ERROR) << "Failed to create filename from time: " << time;
     return false;
