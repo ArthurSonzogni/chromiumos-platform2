@@ -523,8 +523,7 @@ TEST_F(AdaptiveChargingControllerTest, TestGetChargeHistory) {
   // incomplete charge event, since we're plugged in.
   EXPECT_EQ(proto.charge_event().size(), 16);
   for (auto& event : proto.charge_event()) {
-    stored_charge_events.push_back(
-        std::make_pair(event.start_time(), event.duration()));
+    stored_charge_events.emplace_back(event.start_time(), event.duration());
   }
 
   // Reverse sort these values, so that we can verify the values in the

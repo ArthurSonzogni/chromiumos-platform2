@@ -802,8 +802,8 @@ Suspender::State Suspender::HandleDarkResume(Delegate::SuspendResult result) {
   if (result == Delegate::SuspendResult::SUCCESS) {
     // This is the start of a new dark resume wake.
     dark_resume_start_time_ = clock_->GetCurrentBootTime();
-    dark_resume_wake_durations_.push_back(
-        DarkResumeInfo(kDefaultWakeReason, base::TimeDelta()));
+    dark_resume_wake_durations_.emplace_back(kDefaultWakeReason,
+                                             base::TimeDelta());
     last_dark_resume_wake_reason_ = kDefaultWakeReason;
     current_num_attempts_ = 0;
   } else {

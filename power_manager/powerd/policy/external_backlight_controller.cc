@@ -458,7 +458,7 @@ ExternalBacklightController::
     GetAmbientLightSensorAndDisplayMatchesForTesting() {
   std::vector<std::pair<base::FilePath, system::DisplayInfo>> matches;
   for (const auto& [path, pair] : external_als_displays_) {
-    matches.push_back(std::make_pair(path, pair.first));
+    matches.emplace_back(path, pair.first);
   }
   return matches;
 }
