@@ -17,8 +17,6 @@ CrosConfigPrefsSource::CrosConfigPrefsSource(
     std::unique_ptr<brillo::CrosConfigInterface> config)
     : config_(std::move(config)) {}
 
-CrosConfigPrefsSource::~CrosConfigPrefsSource() {}
-
 std::string CrosConfigPrefsSource::GetDescription() const {
   return "<cros_config>";
 }

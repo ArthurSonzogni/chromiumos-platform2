@@ -23,10 +23,6 @@ std::string JoinActions(const char* action, ...) {
   return actions;
 }
 
-ActionRecorder::ActionRecorder() {}
-
-ActionRecorder::~ActionRecorder() {}
-
 std::string ActionRecorder::GetActions() {
   std::string actions = actions_;
   actions_.clear();

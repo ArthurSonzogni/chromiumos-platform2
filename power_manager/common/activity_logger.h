@@ -44,7 +44,7 @@ class BaseActivityLogger {
   BaseActivityLogger(const BaseActivityLogger&) = delete;
   BaseActivityLogger& operator=(const BaseActivityLogger&) = delete;
 
-  virtual ~BaseActivityLogger();
+  virtual ~BaseActivityLogger() = default;
 
   // Returns a string of the format "0.5 sec ago" describing how long ago
   // |timestamp| occurred (compared to |clock_|'s idea of "now").
@@ -108,7 +108,7 @@ class PeriodicActivityLogger : public BaseActivityLogger {
   PeriodicActivityLogger(const PeriodicActivityLogger&) = delete;
   PeriodicActivityLogger& operator=(const PeriodicActivityLogger&) = delete;
 
-  ~PeriodicActivityLogger() override;
+  ~PeriodicActivityLogger() override = default;
 
   // Should be called when a periodic report of activity is received.
   void OnActivityReported();
@@ -158,7 +158,7 @@ class StartStopActivityLogger : public BaseActivityLogger {
   StartStopActivityLogger(const StartStopActivityLogger&) = delete;
   StartStopActivityLogger& operator=(const StartStopActivityLogger&) = delete;
 
-  ~StartStopActivityLogger() override;
+  ~StartStopActivityLogger() override = default;
 
   // Should be called when activity starts or stops.
   void OnActivityStarted();
@@ -195,7 +195,7 @@ class OngoingStateActivityLogger : public BaseActivityLogger {
   OngoingStateActivityLogger& operator=(const OngoingStateActivityLogger&) =
       delete;
 
-  ~OngoingStateActivityLogger() override;
+  ~OngoingStateActivityLogger() override = default;
 
   // Should be called when the state to log has changed.
   // When |state| transitions from empty to non-empty, a message will be logged

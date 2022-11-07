@@ -14,7 +14,7 @@ namespace power_manager {
 // Interface for classes that want to be notified when preferences changed.
 class PrefsObserver : public base::CheckedObserver {
  public:
-  virtual ~PrefsObserver() {}
+  ~PrefsObserver() override = default;
 
   // Called when |pref_name|'s value has changed.
   virtual void OnPrefChanged(const std::string& pref_name) = 0;

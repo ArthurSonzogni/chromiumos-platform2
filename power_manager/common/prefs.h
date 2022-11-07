@@ -25,7 +25,7 @@ class PrefsObserver;
 // Interface for reading and writing preferences.
 class PrefsInterface {
  public:
-  virtual ~PrefsInterface() {}
+  virtual ~PrefsInterface() = default;
 
   // Adds or removes an observer.
   virtual void AddObserver(PrefsObserver* observer) = 0;
@@ -65,7 +65,7 @@ struct PrefReadResult {
 // Interface for readable sources of preferences.
 class PrefsSourceInterface {
  public:
-  virtual ~PrefsSourceInterface() {}
+  virtual ~PrefsSourceInterface() = default;
 
   // Gets a description of this source suitable for logging.
   virtual std::string GetDescription() const = 0;
@@ -115,7 +115,7 @@ class Prefs : public PrefsInterface {
     TestApi(const TestApi&) = delete;
     TestApi& operator=(const TestApi&) = delete;
 
-    ~TestApi();
+    ~TestApi() = default;
 
     void set_write_interval(base::TimeDelta interval) {
       prefs_->write_interval_ = interval;

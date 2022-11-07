@@ -16,8 +16,6 @@ MetricsSenderStub::Metric::Metric()
       max(0),  // NOLINT(build/include_what_you_use)
       num_buckets(0) {}
 
-MetricsSenderStub::Metric::~Metric() {}
-
 // static
 MetricsSenderStub::Metric MetricsSenderStub::Metric::CreateExp(
     const std::string& name, int sample, int min, int max, int num_buckets) {

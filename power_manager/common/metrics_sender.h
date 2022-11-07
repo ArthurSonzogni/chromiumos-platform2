@@ -25,7 +25,7 @@ class MetricsSenderInterface {
   // already be registered. Ownership of |instance| remains with the caller.
   static void SetInstance(MetricsSenderInterface* instance);
 
-  virtual ~MetricsSenderInterface() {}
+  virtual ~MetricsSenderInterface() = default;
 
   // See MetricsLibrary::SendToUMA in metrics/metrics_library.h for a
   // description of the arguments in the below methods.

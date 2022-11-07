@@ -18,7 +18,7 @@ class ActivityLoggerTest : public testing::Test {
   ActivityLoggerTest(const ActivityLoggerTest&) = delete;
   ActivityLoggerTest& operator=(const ActivityLoggerTest&) = delete;
 
-  ~ActivityLoggerTest() override {}
+  ~ActivityLoggerTest() override = default;
 
   // Initialize |logger| for testing. Ownership remains with the caller.
   void Init(BaseActivityLogger* logger) {

@@ -80,7 +80,7 @@ class TestPrefsObserver : public PrefsObserver {
 class PrefsTest : public testing::Test {
  public:
   PrefsTest() : test_api_(&prefs_) {}
-  ~PrefsTest() override {}
+  ~PrefsTest() override = default;
 
   void SetUp() override {
     paths_.clear();

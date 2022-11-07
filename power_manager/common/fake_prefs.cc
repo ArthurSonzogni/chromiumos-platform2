@@ -10,10 +10,6 @@
 
 namespace power_manager {
 
-FakePrefs::FakePrefs() {}
-
-FakePrefs::~FakePrefs() {}
-
 void FakePrefs::Unset(const std::string& name) {
   int64_prefs_.erase(name);
   double_prefs_.erase(name);

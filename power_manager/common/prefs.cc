@@ -46,8 +46,6 @@ constexpr base::TimeDelta kDefaultWriteInterval = base::Seconds(1);
 
 Prefs::TestApi::TestApi(Prefs* prefs) : prefs_(prefs) {}
 
-Prefs::TestApi::~TestApi() {}
-
 bool Prefs::TestApi::TriggerWriteTimeout() {
   if (!prefs_->write_prefs_timer_.IsRunning())
     return false;

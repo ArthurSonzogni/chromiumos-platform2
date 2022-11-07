@@ -21,11 +21,11 @@ namespace power_manager {
 // in-memory.
 class FakePrefs : public PrefsInterface {
  public:
-  FakePrefs();
+  FakePrefs() = default;
   FakePrefs(const FakePrefs&) = delete;
   FakePrefs& operator=(const FakePrefs&) = delete;
 
-  ~FakePrefs() override;
+  ~FakePrefs() override = default;
 
   // Deletes |name| from |*_prefs_|.
   void Unset(const std::string& name);

@@ -23,7 +23,7 @@ class CrosConfigPrefsSource : public PrefsSourceInterface {
   CrosConfigPrefsSource(const CrosConfigPrefsSource&) = delete;
   CrosConfigPrefsSource& operator=(const CrosConfigPrefsSource&) = delete;
 
-  ~CrosConfigPrefsSource() override;
+  ~CrosConfigPrefsSource() override = default;
 
   // PrefsSourceInterface:
   std::string GetDescription() const override;

@@ -23,7 +23,7 @@ class MetricsSenderStub : public MetricsSenderInterface {
     };
 
     Metric();
-    ~Metric();
+    ~Metric() = default;
 
     // Returns a new exponential metric initialized to the passed-in values.
     static Metric CreateExp(

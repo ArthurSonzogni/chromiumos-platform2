@@ -15,7 +15,7 @@ namespace power_manager {
 
 TestMainLoopRunner::TestMainLoopRunner() : timed_out_(false) {}
 
-TestMainLoopRunner::~TestMainLoopRunner() {}
+TestMainLoopRunner::~TestMainLoopRunner() = default;
 
 bool TestMainLoopRunner::StartLoop(base::TimeDelta timeout_delay) {
   CHECK(!runner_.get()) << "Loop is already running";
