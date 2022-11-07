@@ -60,7 +60,7 @@ class CameraHal {
   }
 
  private:
-  void CloseDeviceOnHalThread(int id, base::OnceCallback<void()> callback);
+  void CloseDeviceOnHalThread(int id);
 
   void OnSpecUpdated(const base::Value& json_values);
 

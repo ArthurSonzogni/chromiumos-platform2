@@ -310,25 +310,20 @@ void CameraHal::ApplySpec(const HalSpec& old_spec, const HalSpec& new_spec) {
 void CameraHal::CloseDevice(int id) {
   VLOGFID(1, id);
   DCHECK(task_runner_);
-  base::WaitableEvent closed;
   // The CameraHal is Singleton with NoDestructor so base::Unretained(this)
   // will always be valid.
-  // The `closed` WaitableEvent is waited before this function returns, which
-  // ensures that the base::Unretained(&closed) is valid when it's used.
-  task_runner_->PostTask(
-      FROM_HERE, base::BindOnce(&CameraHal::CloseDeviceOnHalThread,
-                                base::Unretained(this), id,
-                                base::BindOnce(&base::WaitableEvent::Signal,
-                                               base::Unretained(&closed))));
-  closed.Wait();
+  // Most of the work, like stopping the request handler thread, is done in
+  // CameraClient::CloseDevice, and this only removes the CameraClient from the
+  // CameraHal.
+  task_runner_->PostTask(FROM_HERE,
+                         base::BindOnce(&CameraHal::CloseDeviceOnHalThread,
+                                        base::Unretained(this), id));
 }
 
-void CameraHal::CloseDeviceOnHalThread(int id,
-                                       base::OnceCallback<void()> callback) {
+void CameraHal::CloseDeviceOnHalThread(int id) {
   VLOGFID(1, id);
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   cameras_.erase(id);
-  std::move(callback).Run();
 }
 
 int camera_device_close(struct hw_device_t* hw_device) {
