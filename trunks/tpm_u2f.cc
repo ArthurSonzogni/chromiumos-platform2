@@ -8,6 +8,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <utility>
 
 #include <brillo/secure_blob.h>
 
@@ -24,7 +25,43 @@ TPM_RC Serialize_u2f_generate_t(
     bool up_required,
     const std::optional<brillo::Blob>& auth_time_secret_hash,
     std::string* buffer) {
-  return TPM_RC_FAILURE;
+  buffer->clear();
+
+  if (app_id.size() != U2F_APPID_SIZE ||
+      user_secret.size() != U2F_USER_SECRET_SIZE) {
+    return SAPI_RC_BAD_PARAMETER;
+  }
+
+  u2f_generate_req req{};
+  std::copy(app_id.begin(), app_id.end(), req.appId);
+  std::copy(user_secret.begin(), user_secret.end(), req.userSecret);
+  if (consume) {
+    req.flags |= G2F_CONSUME;
+  }
+  if (up_required) {
+    req.flags |= U2F_AUTH_FLAG_TUP;
+  }
+
+  if (version == 0) {
+    if (auth_time_secret_hash.has_value()) {
+      return SAPI_RC_BAD_PARAMETER;
+    }
+  } else if (version == 1) {
+    if (!auth_time_secret_hash.has_value() ||
+        auth_time_secret_hash->size() != SHA256_DIGEST_SIZE) {
+      return SAPI_RC_BAD_PARAMETER;
+    }
+    req.flags |= U2F_UV_ENABLED_KH;
+    std::copy(auth_time_secret_hash->begin(), auth_time_secret_hash->end(),
+              req.authTimeSecretHash);
+  } else {
+    return SAPI_RC_BAD_PARAMETER;
+  }
+
+  buffer->resize(sizeof(req));
+  memcpy(buffer->data(), &req, sizeof(req));
+
+  return TPM_RC_SUCCESS;
 }
 
 TPM_RC
@@ -52,7 +89,37 @@ TPM_RC Parse_u2f_generate_t(const std::string& buffer,
                             uint8_t version,
                             brillo::Blob* public_key,
                             brillo::Blob* key_handle) {
-  return TPM_RC_FAILURE;
+  public_key->clear();
+  key_handle->clear();
+
+  if (version == 0) {
+    if (buffer.length() != sizeof(u2f_generate_resp)) {
+      return SAPI_RC_BAD_SIZE;
+    }
+    public_key->assign(buffer.cbegin() + offsetof(u2f_generate_resp, pubKey),
+                       buffer.cbegin() + offsetof(u2f_generate_resp, pubKey) +
+                           sizeof(u2f_generate_resp::pubKey));
+    key_handle->assign(buffer.cbegin() + offsetof(u2f_generate_resp, keyHandle),
+                       buffer.cbegin() +
+                           offsetof(u2f_generate_resp, keyHandle) +
+                           sizeof(u2f_generate_resp::keyHandle));
+  } else if (version == 1) {
+    if (buffer.length() != sizeof(u2f_generate_versioned_resp)) {
+      return SAPI_RC_BAD_SIZE;
+    }
+    public_key->assign(
+        buffer.cbegin() + offsetof(u2f_generate_versioned_resp, pubKey),
+        buffer.cbegin() + offsetof(u2f_generate_versioned_resp, pubKey) +
+            sizeof(u2f_generate_versioned_resp::pubKey));
+    key_handle->assign(
+        buffer.cbegin() + offsetof(u2f_generate_versioned_resp, keyHandle),
+        buffer.cbegin() + offsetof(u2f_generate_versioned_resp, keyHandle) +
+            sizeof(u2f_generate_versioned_resp::keyHandle));
+  } else {
+    return SAPI_RC_BAD_PARAMETER;
+  }
+
+  return TPM_RC_SUCCESS;
 }
 
 TPM_RC Parse_u2f_sign_t(const std::string& buffer,
