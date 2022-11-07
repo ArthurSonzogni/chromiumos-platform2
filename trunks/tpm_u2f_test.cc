@@ -57,6 +57,10 @@ brillo::Blob GetSignatureS() {
   return brillo::Blob(U2F_P256_SIZE, 9);
 }
 
+brillo::Blob GetAttestData() {
+  return brillo::Blob(100, 10);
+}
+
 std::string GetU2fGenerateResp() {
   return brillo::BlobToString(
       brillo::CombineBlobs({GetPublicKey(), GetKeyHandle()}));
@@ -338,6 +342,31 @@ TEST_F(TpmU2fTest, ParseU2fSign) {
   EXPECT_EQ(Parse_u2f_sign_t(GetU2fSignResp(), &sig_r, &sig_s), TPM_RC_SUCCESS);
   EXPECT_EQ(sig_r, GetSignatureR());
   EXPECT_EQ(sig_s, GetSignatureS());
+}
+
+TEST_F(TpmU2fTest, SerializeU2fAttest) {
+  constexpr uint8_t kFormat = 0;
+  const brillo::SecureBlob kInvalidUserSecret(31, 1);
+  std::string out;
+
+  // Incorrect user_secret size.
+  EXPECT_EQ(Serialize_u2f_attest_t(kInvalidUserSecret, kFormat, GetAttestData(),
+                                   &out),
+            SAPI_RC_BAD_PARAMETER);
+  EXPECT_TRUE(out.empty());
+
+  // Invalid data size.
+  EXPECT_EQ(
+      Serialize_u2f_attest_t(GetUserSecret(), kFormat,
+                             brillo::Blob(U2F_MAX_ATTEST_SIZE + 1, 1), &out),
+      SAPI_RC_BAD_PARAMETER);
+  EXPECT_TRUE(out.empty());
+
+  // Valid response.
+  brillo::Blob data = GetAttestData();
+  EXPECT_EQ(Serialize_u2f_attest_t(GetUserSecret(), kFormat, data, &out),
+            TPM_RC_SUCCESS);
+  EXPECT_EQ(out.size(), offsetof(u2f_attest_req, data) + data.size());
 }
 
 }  // namespace trunks

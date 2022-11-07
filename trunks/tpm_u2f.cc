@@ -155,7 +155,99 @@ TPM_RC Serialize_u2f_attest_t(const brillo::SecureBlob& user_secret,
                               uint8_t format,
                               const brillo::Blob& data,
                               std::string* buffer) {
-  return TPM_RC_FAILURE;
+  buffer->clear();
+
+  if (user_secret.size() != U2F_USER_SECRET_SIZE ||
+      data.size() > U2F_MAX_ATTEST_SIZE) {
+    return SAPI_RC_BAD_PARAMETER;
+  }
+
+  u2f_attest_req req{};
+  std::copy(user_secret.begin(), user_secret.end(), req.userSecret);
+  req.format = format;
+  req.dataLen = data.size();
+  std::copy(data.begin(), data.end(), req.data);
+
+  const size_t req_size = offsetof(u2f_attest_req, data) + data.size();
+  buffer->resize(req_size);
+  memcpy(buffer->data(), &req, req_size);
+
+  return TPM_RC_SUCCESS;
+}
+
+TPM_RC Serialize_u2f_g2f_attest_t(const brillo::Blob& app_id,
+                                  const brillo::SecureBlob& user_secret,
+                                  const brillo::Blob& challenge,
+                                  const brillo::Blob& key_handle,
+                                  const brillo::Blob& public_key,
+                                  std::string* buffer) {
+  buffer->clear();
+
+  if (app_id.size() != U2F_APPID_SIZE ||
+      user_secret.size() != U2F_USER_SECRET_SIZE ||
+      challenge.size() != U2F_CHAL_SIZE ||
+      key_handle.size() != U2F_V0_KH_SIZE ||
+      public_key.size() != U2F_EC_POINT_SIZE) {
+    return SAPI_RC_BAD_PARAMETER;
+  }
+
+  u2f_attest_req req{};
+  auto* msg = reinterpret_cast<g2f_register_msg_v0*>(req.data);
+
+  std::copy(user_secret.begin(), user_secret.end(), req.userSecret);
+  req.format = U2F_ATTEST_FORMAT_REG_RESP;
+  req.dataLen = sizeof(g2f_register_msg_v0);
+  msg->reserved = 0;
+  std::copy(app_id.begin(), app_id.end(), msg->app_id);
+  std::copy(challenge.begin(), challenge.end(), msg->challenge);
+  memcpy(&msg->key_handle, key_handle.data(), key_handle.size());
+  memcpy(&msg->public_key, public_key.data(), public_key.size());
+
+  const size_t req_size =
+      offsetof(u2f_attest_req, data) + sizeof(g2f_register_msg_v0);
+  buffer->resize(req_size);
+  memcpy(buffer->data(), &req, req_size);
+
+  return TPM_RC_SUCCESS;
+}
+
+TPM_RC
+Serialize_u2f_corp_attest_t(const brillo::Blob& app_id,
+                            const brillo::SecureBlob& user_secret,
+                            const brillo::Blob& challenge,
+                            const brillo::Blob& key_handle,
+                            const brillo::Blob& public_key,
+                            const brillo::Blob& salt,
+                            std::string* buffer) {
+  buffer->clear();
+
+  if (app_id.size() != U2F_APPID_SIZE ||
+      user_secret.size() != U2F_USER_SECRET_SIZE ||
+      challenge.size() != CORP_CHAL_SIZE ||
+      key_handle.size() != U2F_V0_KH_SIZE ||
+      public_key.size() != U2F_EC_POINT_SIZE || salt.size() != CORP_SALT_SIZE) {
+    return SAPI_RC_BAD_PARAMETER;
+  }
+
+  u2f_attest_req req{};
+  auto* msg = reinterpret_cast<corp_register_msg_v0*>(req.data);
+  auto* data = reinterpret_cast<corp_attest_data*>(&msg->data);
+
+  std::copy(user_secret.begin(), user_secret.end(), req.userSecret);
+  req.format = CORP_ATTEST_FORMAT_REG_RESP;
+  req.dataLen = sizeof(corp_register_msg_v0);
+  std::copy(challenge.begin(), challenge.end(), data->challenge);
+  memcpy(&data->public_key, public_key.data(), public_key.size());
+  std::copy(salt.begin(), salt.end(), data->salt);
+  std::copy(app_id.begin(), app_id.end(), msg->app_id);
+  memcpy(&msg->key_handle, key_handle.data(), key_handle.size());
+
+  const size_t req_size =
+      offsetof(u2f_attest_req, data) + sizeof(corp_register_msg_v0);
+  buffer->resize(req_size);
+  memcpy(buffer->data(), &req, req_size);
+
+  return TPM_RC_SUCCESS;
 }
 
 TPM_RC Parse_u2f_generate_t(const std::string& buffer,
