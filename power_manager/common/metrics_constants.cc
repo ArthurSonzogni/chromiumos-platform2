@@ -6,8 +6,7 @@
 
 #include <base/time/time.h>
 
-namespace power_manager {
-namespace metrics {
+namespace power_manager::metrics {
 
 const char kAcSuffix[] = "OnAC";
 const char kBatterySuffix[] = "OnBattery";
@@ -200,5 +199,4 @@ const char kAmbientLightOnResumeName[] = "Power.AmbientLightOnResume";
 const int kAmbientLightOnResumeMin = 0;
 const int kAmbientLightOnResumeMax = 100000;
 
-}  // namespace metrics
-}  // namespace power_manager
+}  // namespace power_manager::metrics

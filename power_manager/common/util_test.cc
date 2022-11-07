@@ -9,8 +9,7 @@
 #include <base/files/file_path.h>
 #include <gtest/gtest.h>
 
-namespace power_manager {
-namespace util {
+namespace power_manager::util {
 
 namespace {
 
@@ -41,5 +40,4 @@ TEST(UtilTest, JoinPaths) {
                                   ","));
 }
 
-}  // namespace util
-}  // namespace power_manager
+}  // namespace power_manager::util

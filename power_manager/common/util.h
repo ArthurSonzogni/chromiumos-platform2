@@ -11,8 +11,7 @@
 #include <base/files/file_path.h>
 #include <base/time/time.h>
 
-namespace power_manager {
-namespace util {
+namespace power_manager::util {
 
 // Clamps |percent| in the range [0.0, 100.0].
 double ClampPercent(double percent);
@@ -56,7 +55,6 @@ bool DeleteFile(const base::FilePath& path);
 std::string JoinPaths(const std::vector<base::FilePath>& paths,
                       const std::string& separator);
 
-}  // namespace util
-}  // namespace power_manager
+}  // namespace power_manager::util
 
 #endif  // POWER_MANAGER_COMMON_UTIL_H_

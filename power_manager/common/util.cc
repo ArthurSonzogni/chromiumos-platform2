@@ -21,8 +21,7 @@
 
 #include "power_manager/common/power_constants.h"
 
-namespace power_manager {
-namespace util {
+namespace power_manager::util {
 namespace {
 
 // Reads a string value from |path| and uses StringToType function to convert it
@@ -131,5 +130,4 @@ std::string JoinPaths(const std::vector<base::FilePath>& paths,
   return str;
 }
 
-}  // namespace util
-}  // namespace power_manager
+}  // namespace power_manager::util

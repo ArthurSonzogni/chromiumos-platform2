@@ -7,8 +7,7 @@
 
 #include <base/time/time.h>
 
-namespace power_manager {
-namespace metrics {
+namespace power_manager::metrics {
 
 // Suffixes added to certain metric names when on different power sources.
 extern const char kAcSuffix[];
@@ -228,7 +227,6 @@ enum class AdaptiveChargingState {
   MAX
 };
 
-}  // namespace metrics
-}  // namespace power_manager
+}  // namespace power_manager::metrics
 
 #endif  // POWER_MANAGER_COMMON_METRICS_CONSTANTS_H_
