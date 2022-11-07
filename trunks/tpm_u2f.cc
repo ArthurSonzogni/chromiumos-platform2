@@ -75,7 +75,80 @@ Serialize_u2f_sign_t(uint8_t version,
                      bool up_required,
                      const brillo::Blob& key_handle,
                      std::string* buffer) {
-  return TPM_RC_FAILURE;
+  buffer->clear();
+
+  if (app_id.size() != U2F_APPID_SIZE ||
+      user_secret.size() != U2F_USER_SECRET_SIZE) {
+    return SAPI_RC_BAD_PARAMETER;
+  }
+
+  uint16_t flags = 0;
+  if (check_only) {
+    if (auth_time_secret.has_value() || hash_to_sign.has_value() || consume ||
+        up_required) {
+      return SAPI_RC_BAD_PARAMETER;
+    }
+    flags |= U2F_AUTH_CHECK_ONLY;
+  } else {
+    if (!hash_to_sign.has_value() || hash_to_sign->size() != U2F_P256_SIZE) {
+      return SAPI_RC_BAD_PARAMETER;
+    }
+    if (version == 0 && auth_time_secret.has_value()) {
+      return SAPI_RC_BAD_PARAMETER;
+    }
+    if (auth_time_secret.has_value() &&
+        auth_time_secret->size() != U2F_AUTH_TIME_SECRET_SIZE) {
+      return SAPI_RC_BAD_PARAMETER;
+    }
+  }
+  if (consume) {
+    flags |= G2F_CONSUME;
+  }
+  if (up_required) {
+    flags |= U2F_AUTH_FLAG_TUP;
+  }
+
+  if (version == 0) {
+    u2f_sign_req req{};
+
+    if (key_handle.size() != U2F_V0_KH_SIZE) {
+      return SAPI_RC_BAD_PARAMETER;
+    }
+    std::copy(app_id.begin(), app_id.end(), req.appId);
+    std::copy(user_secret.begin(), user_secret.end(), req.userSecret);
+    memcpy(&req.keyHandle, key_handle.data(), key_handle.size());
+    if (hash_to_sign.has_value()) {
+      std::copy(hash_to_sign->begin(), hash_to_sign->end(), req.hash);
+    }
+    req.flags = flags;
+
+    buffer->resize(sizeof(req));
+    memcpy(buffer->data(), &req, sizeof(req));
+  } else if (version == 1) {
+    u2f_sign_versioned_req req{};
+
+    if (key_handle.size() != U2F_V1_KH_SIZE) {
+      return SAPI_RC_BAD_PARAMETER;
+    }
+    std::copy(app_id.begin(), app_id.end(), req.appId);
+    std::copy(user_secret.begin(), user_secret.end(), req.userSecret);
+    if (auth_time_secret.has_value()) {
+      std::copy(auth_time_secret->begin(), auth_time_secret->end(),
+                req.authTimeSecret);
+    }
+    if (hash_to_sign.has_value()) {
+      std::copy(hash_to_sign->begin(), hash_to_sign->end(), req.hash);
+    }
+    req.flags = flags;
+    memcpy(&req.keyHandle, key_handle.data(), key_handle.size());
+
+    buffer->resize(sizeof(req));
+    memcpy(buffer->data(), &req, sizeof(req));
+  } else {
+    return SAPI_RC_BAD_PARAMETER;
+  }
+
+  return TPM_RC_SUCCESS;
 }
 
 TPM_RC Serialize_u2f_attest_t(const brillo::SecureBlob& user_secret,
@@ -125,7 +198,19 @@ TPM_RC Parse_u2f_generate_t(const std::string& buffer,
 TPM_RC Parse_u2f_sign_t(const std::string& buffer,
                         brillo::Blob* sig_r,
                         brillo::Blob* sig_s) {
-  return TPM_RC_FAILURE;
+  sig_r->clear();
+  sig_s->clear();
+
+  if (buffer.length() != sizeof(u2f_sign_resp)) {
+    return SAPI_RC_BAD_SIZE;
+  }
+  sig_r->assign(buffer.cbegin() + offsetof(u2f_sign_resp, sig_r),
+                buffer.cbegin() + offsetof(u2f_sign_resp, sig_r) +
+                    sizeof(u2f_sign_resp::sig_r));
+  sig_s->assign(buffer.cbegin() + offsetof(u2f_sign_resp, sig_s),
+                buffer.cbegin() + offsetof(u2f_sign_resp, sig_s) +
+                    sizeof(u2f_sign_resp::sig_s));
+  return TPM_RC_SUCCESS;
 }
 
 }  // namespace trunks
