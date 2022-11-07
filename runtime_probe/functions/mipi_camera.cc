@@ -40,15 +40,18 @@ MipiCameraFunction::DataType MipiCameraFunction::EvalImpl() const {
   for (const auto& camera : *cameras) {
     base::Value::Dict node;
     if (camera.eeprom) {
-      node.Set("name", camera.sysfs_name);
-      node.Set("module_id", camera.module_id());
-      node.Set("sensor_id", camera.sensor_id());
+      node.Set("mipi_name", camera.sysfs_name);
+      node.Set("mipi_module_id", camera.module_id());
+      node.Set("mipi_sensor_id", camera.sensor_id());
+      node.Set("path", camera.eeprom->nvmem_path.value());
     } else if (camera.v4l2_sensor) {
-      node.Set("name", camera.v4l2_sensor->name);
-      node.Set("vendor", camera.v4l2_sensor->vendor_id);
+      node.Set("mipi_name", camera.v4l2_sensor->name);
+      node.Set("mipi_vendor", camera.v4l2_sensor->vendor_id);
+      node.Set("path", camera.v4l2_sensor->subdev_path.value());
     } else {
       NOTREACHED() << "Unknown source of camera info.";
     }
+    node.Set("bus_type", "mipi");
     results.Append(std::move(node));
   }
 
