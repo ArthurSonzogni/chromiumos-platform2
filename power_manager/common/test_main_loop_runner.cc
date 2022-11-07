@@ -9,8 +9,6 @@
 #include <base/logging.h>
 #include <base/run_loop.h>
 
-#include "power_manager/common/util.h"
-
 namespace power_manager {
 
 TestMainLoopRunner::TestMainLoopRunner() : timed_out_(false) {}

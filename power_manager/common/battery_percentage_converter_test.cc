@@ -8,8 +8,6 @@
 
 #include <gtest/gtest.h>
 
-#include "power_manager/common/power_constants.h"
-
 namespace power_manager {
 
 namespace {

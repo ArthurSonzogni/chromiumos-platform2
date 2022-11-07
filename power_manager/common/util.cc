@@ -19,8 +19,6 @@
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 
-#include "power_manager/common/power_constants.h"
-
 namespace power_manager::util {
 namespace {
 

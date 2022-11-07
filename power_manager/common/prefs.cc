@@ -23,7 +23,6 @@
 #include "power_manager/common/cros_ec_prefs_source.h"
 #include "power_manager/common/file_prefs_store.h"
 #include "power_manager/common/prefs_observer.h"
-#include "power_manager/common/util.h"
 
 namespace power_manager {
 
