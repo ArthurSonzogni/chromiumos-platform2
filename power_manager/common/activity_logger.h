@@ -20,6 +20,9 @@ class Clock;
 // testing code shared by all implementations.
 class BaseActivityLogger {
  public:
+  BaseActivityLogger(const BaseActivityLogger&) = delete;
+  BaseActivityLogger& operator=(const BaseActivityLogger&) = delete;
+
   // Logging callback that can be replaced for testing.
   using LogCallback = base::RepeatingCallback<void(const std::string&)>;
 
@@ -41,8 +44,6 @@ class BaseActivityLogger {
   BaseActivityLogger(const std::string& activity_name,
                      base::TimeDelta stopped_delay,
                      base::TimeDelta ongoing_interval);
-  BaseActivityLogger(const BaseActivityLogger&) = delete;
-  BaseActivityLogger& operator=(const BaseActivityLogger&) = delete;
 
   virtual ~BaseActivityLogger() = default;
 
