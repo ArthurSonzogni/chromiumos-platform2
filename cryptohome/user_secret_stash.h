@@ -47,6 +47,10 @@ bool IsUserSecretStashExperimentEnabled(Platform* platform);
 // the default behavior.
 void SetUserSecretStashExperimentForTesting(std::optional<bool> enabled);
 
+// This resets the static |uss_experiment_enabled| flag to simulate
+// restarting cryptohomed process in the unittests.
+void ResetUserSecretStashExperimentFlagForTesting();
+
 // This wraps the UserSecretStash flatbuffer message, and is the only way that
 // the UserSecretStash is accessed. Don't pass the raw flatbuffer around.
 class UserSecretStash {

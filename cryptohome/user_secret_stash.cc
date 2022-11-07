@@ -76,23 +76,23 @@ std::optional<bool>& GetUserSecretStashExperimentOverride() {
   return uss_experiment_enabled;
 }
 
-bool EnableUSSFeatureTestFlagFileExists() {
-  return base::PathExists(base::FilePath(kEnableUssFeatureTestFlagPath));
+bool EnableUssFeatureTestFlagFileExists(Platform* platform) {
+  return platform->FileExists(base::FilePath(kEnableUssFeatureTestFlagPath));
 }
 
-bool DisableUSSFeatureTestFlagFileExists() {
-  return base::PathExists(base::FilePath(kDisableUssFeatureTestFlagPath));
+bool DisableUssFeatureTestFlagFileExists(Platform* platform) {
+  return platform->FileExists(base::FilePath(kDisableUssFeatureTestFlagPath));
 }
 
-bool EnableUSSFlagFileExists() {
-  return base::PathExists(base::FilePath(kEnableUssFlagPath));
+bool EnableUssFlagFileExists(Platform* platform) {
+  return platform->FileExists(base::FilePath(kEnableUssFlagPath));
 }
 
-bool DisableUSSFlagFileExists() {
-  return base::PathExists(base::FilePath(kDisableUssFlagPath));
+bool DisableUssFlagFileExists(Platform* platform) {
+  return platform->FileExists(base::FilePath(kDisableUssFlagPath));
 }
 
-void UpdateUSSStatusOnDisk(Platform* platform, UssExperimentFlag flag) {
+void UpdateUssStatusOnDisk(Platform* platform, UssExperimentFlag flag) {
   switch (flag) {
     case UssExperimentFlag::kDisabled:
       platform->TouchFileDurable(base::FilePath(kDisableUssFlagPath));
@@ -444,14 +444,15 @@ int UserSecretStashExperimentVersion() {
 
 bool IsUserSecretStashExperimentEnabled(Platform* platform) {
   // 1. If the state is overridden by unit tests, return this value.
-  if (GetUserSecretStashExperimentOverride().has_value())
+  if (GetUserSecretStashExperimentOverride().has_value()) {
     return GetUserSecretStashExperimentOverride().value();
+  }
   // 2. If no unittest override defer to checking the feature test file
   // existence. The disable file precedes the enable file.
-  if (DisableUSSFeatureTestFlagFileExists()) {
+  if (DisableUssFeatureTestFlagFileExists(platform)) {
     return false;
   }
-  if (EnableUSSFeatureTestFlagFileExists()) {
+  if (EnableUssFeatureTestFlagFileExists(platform)) {
     return true;
   }
   // 3. Check the flag set by UssExperimentConfigFetcher and persist the state
@@ -461,19 +462,19 @@ bool IsUserSecretStashExperimentEnabled(Platform* platform) {
   if (flag.has_value()) {
     if (flag.value()) {
       result = UssExperimentFlag::kEnabled;
-      UpdateUSSStatusOnDisk(platform, UssExperimentFlag::kEnabled);
+      UpdateUssStatusOnDisk(platform, UssExperimentFlag::kEnabled);
     } else {
       result = UssExperimentFlag::kDisabled;
-      UpdateUSSStatusOnDisk(platform, UssExperimentFlag::kDisabled);
+      UpdateUssStatusOnDisk(platform, UssExperimentFlag::kDisabled);
     }
   } else {
     // When flag doesn't have any value, restore the previous value.
     // If both flag files exists, USS is disabled. If no flag file is found the
     // result will stay unchanged.
-    if (EnableUSSFlagFileExists()) {
+    if (EnableUssFlagFileExists(platform)) {
       result = UssExperimentFlag::kEnabled;
     }
-    if (DisableUSSFlagFileExists()) {
+    if (DisableUssFlagFileExists(platform)) {
       result = UssExperimentFlag::kDisabled;
     }
   }
@@ -484,6 +485,10 @@ bool IsUserSecretStashExperimentEnabled(Platform* platform) {
 
 void SetUserSecretStashExperimentFlag(bool enabled) {
   GetUserSecretStashExperimentFlag() = enabled;
+}
+
+void ResetUserSecretStashExperimentFlagForTesting() {
+  GetUserSecretStashExperimentFlag().reset();
 }
 
 void SetUserSecretStashExperimentForTesting(std::optional<bool> enabled) {

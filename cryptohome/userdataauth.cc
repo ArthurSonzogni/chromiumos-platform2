@@ -1641,17 +1641,6 @@ void UserDataAuth::DoMount(
   }
   is_ephemeral = should_mount_as_ephemeral_status.value();
 
-  // TODO(b/230069013): We want to collect metrics about USS experiment status
-  // before we launch USS. Metrics are reported when we checked the USS
-  // experiment flag, but it's currently only checked in AuthSession when new
-  // user is created, which is not called by Chrome yet. This place roughly
-  // represents the moment when crypthome creates a new user vault (if
-  // request.has_create() is true), so check the USS experiment flag and report
-  // the metrics here.
-  if (request.has_create()) {
-    IsUserSecretStashExperimentEnabled(platform_);
-  }
-
   // MountArgs is a set of parameters that we'll be passing around to
   // ContinueMountWithCredentials() and DoChallengeResponseMount().
   UserDataAuth::MountArgs mount_args;
