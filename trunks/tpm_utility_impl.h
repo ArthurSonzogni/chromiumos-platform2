@@ -36,6 +36,13 @@ class TRUNKS_EXPORT TpmUtilityImpl : public TpmUtility {
 
   ~TpmUtilityImpl() override;
 
+  // Helper function for U2f vendor specific commands.
+  template <typename S, typename P>
+  TPM_RC U2fCommand(const std::string& tag,
+                    uint16_t subcommand,
+                    S serialize,
+                    P parse);
+
   // TpmUtility methods.
   TPM_RC Startup() override;
   TPM_RC Clear() override;
@@ -339,6 +346,30 @@ class TRUNKS_EXPORT TpmUtilityImpl : public TpmUtility {
       uint8_t protocol_version,
       uint32_t* result_code,
       std::string* root_hash) override;
+  TPM_RC U2fGenerate(uint8_t version,
+                     const brillo::Blob& app_id,
+                     const brillo::SecureBlob& user_secret,
+                     bool consume,
+                     bool up_required,
+                     const std::optional<brillo::Blob>& auth_time_secret_hash,
+                     brillo::Blob* public_key,
+                     brillo::Blob* key_handle) override;
+  TPM_RC U2fSign(uint8_t version,
+                 const brillo::Blob& app_id,
+                 const brillo::SecureBlob& user_secret,
+                 const std::optional<brillo::SecureBlob>& auth_time_secret,
+                 const std::optional<brillo::Blob>& hash_to_sign,
+                 bool check_only,
+                 bool consume,
+                 bool up_required,
+                 const brillo::Blob& key_handle,
+                 brillo::Blob* sig_r,
+                 brillo::Blob* sig_s) override;
+  TPM_RC U2fAttest(const brillo::SecureBlob& user_secret,
+                   uint8_t format,
+                   const brillo::Blob& data,
+                   brillo::Blob* sig_r,
+                   brillo::Blob* sig_s) override;
   TPM_RC GetRsuDeviceId(std::string* device_id) override;
   TPM_RC GetRoVerificationStatus(ApRoStatus* status) override;
 

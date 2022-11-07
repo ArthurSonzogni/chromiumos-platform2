@@ -38,6 +38,7 @@
 #include "trunks/tpm_constants.h"
 #include "trunks/tpm_pinweaver.h"
 #include "trunks/tpm_state.h"
+#include "trunks/tpm_u2f.h"
 #include "trunks/trunks_factory.h"
 
 #include "trunks/csme/mei_client_factory.h"
@@ -69,6 +70,9 @@ const uint16_t kCr50GetRmaChallenge = 30;
 const uint16_t kCr50SubcmdManageCCDPwd = 33;
 const uint16_t kCr50SubcmdGetAlertsData = 35;
 const uint16_t kCr50SubcmdPinWeaver = 37;
+const uint16_t kCr50SubcmdU2fGenerate = 44;
+const uint16_t kCr50SubcmdU2fSign = 45;
+const uint16_t kCr50SubcmdU2fAttest = 46;
 const uint16_t kCr50SubcmdGetRoStatus = 57;
 
 // Salt used exclusively for the Remote Server Unlock process due to the privacy
@@ -125,6 +129,33 @@ TpmUtilityImpl::TpmUtilityImpl(const TrunksFactory& factory)
 }
 
 TpmUtilityImpl::~TpmUtilityImpl() {}
+
+template <typename S, typename P>
+TPM_RC TpmUtilityImpl::U2fCommand(const std::string& tag,
+                                  uint16_t subcommand,
+                                  S serialize,
+                                  P parse) {
+  if (!IsCr50()) {
+    LOG(WARNING) << "U2F not supported on non-Cr50 vendor variants.";
+    return TPM_RC_FAILURE;
+  }
+
+  std::string in;
+  TPM_RC rc = serialize(&in);
+  if (rc) {
+    LOG(ERROR) << tag << ": Serialize failed: 0x" << std::hex << rc << " "
+               << GetErrorString(rc);
+    return rc;
+  }
+
+  std::string out;
+  rc = Cr50VendorCommand(subcommand, in, &out);
+
+  if (rc == TPM_RC_SUCCESS) {
+    rc = parse(out);
+  }
+  return rc;
+}
 
 TPM_RC TpmUtilityImpl::Startup() {
   TPM_RC result = TPM_RC_SUCCESS;
@@ -3117,6 +3148,70 @@ TPM_RC TpmUtilityImpl::PinWeaverBlockGenerateBiometricsAuthPk(
       },
       [result_code, root_hash](const std::string& out) -> TPM_RC {
         return Parse_pw_short_message(out, result_code, root_hash);
+      });
+}
+
+TPM_RC TpmUtilityImpl::U2fGenerate(
+    uint8_t version,
+    const brillo::Blob& app_id,
+    const brillo::SecureBlob& user_secret,
+    bool consume,
+    bool up_required,
+    const std::optional<brillo::Blob>& auth_time_secret_hash,
+    brillo::Blob* public_key,
+    brillo::Blob* key_handle) {
+  return U2fCommand(
+      __func__, kCr50SubcmdU2fGenerate,
+      [version, app_id, user_secret, consume, up_required,
+       auth_time_secret_hash](std::string* in) -> TPM_RC {
+        return Serialize_u2f_generate_t(version, app_id, user_secret, consume,
+                                        up_required, auth_time_secret_hash, in);
+      },
+      [version, public_key, key_handle](const std::string& out) -> TPM_RC {
+        return Parse_u2f_generate_t(out, version, public_key, key_handle);
+      });
+}
+
+TPM_RC TpmUtilityImpl::U2fSign(
+    uint8_t version,
+    const brillo::Blob& app_id,
+    const brillo::SecureBlob& user_secret,
+    const std::optional<brillo::SecureBlob>& auth_time_secret,
+    const std::optional<brillo::Blob>& hash_to_sign,
+    bool check_only,
+    bool consume,
+    bool up_required,
+    const brillo::Blob& key_handle,
+    brillo::Blob* sig_r,
+    brillo::Blob* sig_s) {
+  return U2fCommand(
+      __func__, kCr50SubcmdU2fSign,
+      [version, app_id, user_secret, auth_time_secret, hash_to_sign, check_only,
+       consume, up_required, key_handle](std::string* in) -> TPM_RC {
+        return Serialize_u2f_sign_t(version, app_id, user_secret,
+                                    auth_time_secret, hash_to_sign, check_only,
+                                    consume, up_required, key_handle, in);
+      },
+      [check_only, sig_r, sig_s](const std::string& out) -> TPM_RC {
+        if (check_only) {
+          return TPM_RC_SUCCESS;
+        }
+        return Parse_u2f_sign_t(out, sig_r, sig_s);
+      });
+}
+
+TPM_RC TpmUtilityImpl::U2fAttest(const brillo::SecureBlob& user_secret,
+                                 uint8_t format,
+                                 const brillo::Blob& data,
+                                 brillo::Blob* sig_r,
+                                 brillo::Blob* sig_s) {
+  return U2fCommand(
+      __func__, kCr50SubcmdU2fAttest,
+      [user_secret, format, data](std::string* in) -> TPM_RC {
+        return Serialize_u2f_attest_t(user_secret, format, data, in);
+      },
+      [sig_r, sig_s](const std::string& out) -> TPM_RC {
+        return Parse_u2f_sign_t(out, sig_r, sig_s);
       });
 }
 

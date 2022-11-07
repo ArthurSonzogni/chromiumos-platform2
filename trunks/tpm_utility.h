@@ -960,6 +960,80 @@ class TRUNKS_EXPORT TpmUtility {
       uint32_t* result_code,
       std::string* root_hash) = 0;
 
+  // Generates a U2F credential, where:
+  //   |version| is the version of the generated |key_handle|.
+  //   |app_id| is the identifier of the relying party requesting the credential
+  //       generation, which is often the domain name or its hash.
+  //   |user_secret| is a secret provided from userland to the TPM, to separate
+  //       access to credentials of different users on the same device.
+  //   |consume| is whether user presence should be consumed (usually meaning
+  //       the power button touch state is reset) after processing this command.
+  //   |up_required| is whether user presence is required (usually meaning the
+  //       the power button is touched recently) to process this command.
+  //   |auth_time_secret_hash| is a hash used for checking user verification
+  //       during signing time, and should be non-null iff |version| > 0.
+  // On success:
+  //   returns VENDOR_RC_SUCCESS
+  //   |public_key| is set to the public key of the generated credential.
+  //   |key_handle| is set to the key handle of the generated credential. This
+  //       contains no sensitive data.
+  virtual TPM_RC U2fGenerate(
+      uint8_t version,
+      const brillo::Blob& app_id,
+      const brillo::SecureBlob& user_secret,
+      bool consume,
+      bool up_required,
+      const std::optional<brillo::Blob>& auth_time_secret_hash,
+      brillo::Blob* public_key,
+      brillo::Blob* key_handle) = 0;
+
+  // Signs a hash using a U2F credential, where:
+  //   |version| is the version of |key_handle|.
+  //   |app_id| is the identifier of the relying party requesting the signature,
+  //       which is often the domain name or its hash.
+  //   |user_secret| is a secret provided from userland to the TPM, to separate
+  //       access to credentials of different users on the same device.
+  //   |auth_time_secret| is a secret used for checking user verification, and
+  //       shouldn't be provided if |version| = 0.
+  //   |hash_to_sign| is the hash to sign, and should be provided iff
+  //       |check_only| is false.
+  //   |check_only| is whether the caller only wants to check for validity of
+  //       the key handle, instead of signing anything.
+  //   |consume| is whether user presence should be consumed (usually
+  //       meaning the power button touch state is reset) after processing this
+  //       command.
+  //   |up_required| is whether user presence is required (usually meaning the
+  //       the power button is touched recently) to process this command.
+  //   |key_handle| is the key handle of the credential to sign the hash with.
+  // On success:
+  //   returns VENDOR_RC_SUCCESS
+  //   |sig_r| and |sig_s| are set to the the r/s fields of the ECDSA signature.
+  virtual TPM_RC U2fSign(
+      uint8_t version,
+      const brillo::Blob& app_id,
+      const brillo::SecureBlob& user_secret,
+      const std::optional<brillo::SecureBlob>& auth_time_secret,
+      const std::optional<brillo::Blob>& hash_to_sign,
+      bool check_only,
+      bool consume,
+      bool up_required,
+      const brillo::Blob& key_handle,
+      brillo::Blob* sig_r,
+      brillo::Blob* sig_s) = 0;
+
+  // Attests a U2F credential using the TPM's G2F key, where:
+  //   |user_secret| is a secret provided from userland to the TPM, to separate
+  //       access to credentials of different users on the same device.
+  //   |format| is the format of |data|, the attestation message.
+  // On success:
+  //   returns VENDOR_RC_SUCCESS
+  //   |sig_r| and |sig_s| are set to the the r/s fields of the ECDSA signature.
+  virtual TPM_RC U2fAttest(const brillo::SecureBlob& user_secret,
+                           uint8_t format,
+                           const brillo::Blob& data,
+                           brillo::Blob* sig_r,
+                           brillo::Blob* sig_s) = 0;
+
   // Retrieves cached RSU device id.
   virtual TPM_RC GetRsuDeviceId(std::string* device_id) = 0;
 

@@ -122,6 +122,7 @@ shared_library("trunks") {
     "tpm_pinweaver.cc",
     "tpm_state_impl.cc",
     "tpm_structure_parser.cc",
+    "tpm_u2f.cc",
     "tpm_utility_impl.cc",
     "trunks_dbus_proxy.cc",
     "trunks_factory_impl.cc",

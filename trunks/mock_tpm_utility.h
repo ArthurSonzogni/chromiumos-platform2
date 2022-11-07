@@ -341,6 +341,35 @@ class MockTpmUtility : public TpmUtility {
               (override));
   MOCK_METHOD3(PinWeaverBlockGenerateBiometricsAuthPk,
                TPM_RC(uint8_t, uint32_t*, std::string*));
+  MOCK_METHOD8(U2fGenerate,
+               TPM_RC(uint8_t,
+                      const brillo::Blob&,
+                      const brillo::SecureBlob&,
+                      bool,
+                      bool,
+                      const std::optional<brillo::Blob>&,
+                      brillo::Blob*,
+                      brillo::Blob*));
+  MOCK_METHOD(TPM_RC,
+              U2fSign,
+              (uint8_t,
+               const brillo::Blob&,
+               const brillo::SecureBlob&,
+               const std::optional<brillo::SecureBlob>&,
+               const std::optional<brillo::Blob>&,
+               bool,
+               bool,
+               bool,
+               const brillo::Blob&,
+               brillo::Blob*,
+               brillo::Blob*),
+              (override));
+  MOCK_METHOD5(U2fAttest,
+               TPM_RC(const brillo::SecureBlob&,
+                      uint8_t,
+                      const brillo::Blob&,
+                      brillo::Blob*,
+                      brillo::Blob*));
   MOCK_METHOD1(GetRsuDeviceId, TPM_RC(std::string*));
   MOCK_METHOD1(GetRoVerificationStatus, TPM_RC(ApRoStatus*));
   MOCK_METHOD(bool, IsCr50, (), (override));

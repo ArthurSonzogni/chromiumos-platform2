@@ -688,6 +688,43 @@ class TpmUtilityForwarder : public TpmUtility {
         protocol_version, result_code, root_hash);
   }
 
+  TPM_RC U2fGenerate(const uint8_t version,
+                     const brillo::Blob& app_id,
+                     const brillo::SecureBlob& user_secret,
+                     const bool consume,
+                     const bool up_required,
+                     const std::optional<brillo::Blob>& auth_time_secret_hash,
+                     brillo::Blob* public_key,
+                     brillo::Blob* key_handle) override {
+    return target_->U2fGenerate(version, app_id, user_secret, consume,
+                                up_required, auth_time_secret_hash, public_key,
+                                key_handle);
+  }
+
+  TPM_RC U2fSign(const uint8_t version,
+                 const brillo::Blob& app_id,
+                 const brillo::SecureBlob& user_secret,
+                 const std::optional<brillo::SecureBlob>& auth_time_secret,
+                 const std::optional<brillo::Blob>& hash_to_sign,
+                 const bool check_only,
+                 const bool consume,
+                 const bool up_required,
+                 const brillo::Blob& key_handle,
+                 brillo::Blob* sig_r,
+                 brillo::Blob* sig_s) override {
+    return target_->U2fSign(version, app_id, user_secret, auth_time_secret,
+                            hash_to_sign, check_only, consume, up_required,
+                            key_handle, sig_r, sig_s);
+  }
+
+  TPM_RC U2fAttest(const brillo::SecureBlob& user_secret,
+                   uint8_t format,
+                   const brillo::Blob& data,
+                   brillo::Blob* sig_r,
+                   brillo::Blob* sig_s) override {
+    return target_->U2fAttest(user_secret, format, data, sig_r, sig_s);
+  }
+
   TPM_RC GetRsuDeviceId(std::string* device_id) override {
     return target_->GetRsuDeviceId(device_id);
   }
