@@ -7,7 +7,6 @@
 #include <utility>
 #include <vector>
 
-#include <base/guid.h>
 #include <base/run_loop.h>
 #include <base/memory/scoped_refptr.h>
 #include <base/task/task_traits.h>
@@ -124,8 +123,8 @@ TEST_F(UploadJobTest, UploadsRecords) {
 
   // Create a copy of the records to ensure they are passed correctly.
   const std::vector<EncryptedRecord> expected_records(records);
-  EXPECT_CALL(*upload_client_, SendEncryptedRecords(_, _, _, _, _, _))
-      .WillOnce(WithArgs<0, 5>(Invoke(
+  EXPECT_CALL(*upload_client_, SendEncryptedRecords(_, _, _, _, _))
+      .WillOnce(WithArgs<0, 4>(Invoke(
           [&expected_records](
               std::vector<EncryptedRecord> records,
               UploadClient::HandleUploadResponseCallback response_callback) {
@@ -140,13 +139,13 @@ TEST_F(UploadJobTest, UploadsRecords) {
 
   TestRecordUploader record_uploader(std::move(records), memory_resource_);
 
-  auto job_result = UploadJob::Create(
-      upload_client_,
-      /*need_encryption_keys=*/false,
-      /*remaining_storage_capacity=*/3000U,
-      /*new_events_rate=*/300U, /*pipeline_id=*/base::GenerateGUID(),
-      base::BindOnce(&TestRecordUploader::StartUpload,
-                     base::Unretained(&record_uploader)));
+  auto job_result =
+      UploadJob::Create(upload_client_,
+                        /*need_encryption_keys=*/false,
+                        /*remaining_storage_capacity=*/3000U,
+                        /*new_events_rate=*/300U,
+                        base::BindOnce(&TestRecordUploader::StartUpload,
+                                       base::Unretained(&record_uploader)));
   ASSERT_TRUE(job_result.ok()) << job_result.status();
   Scheduler::Job::SmartPtr<Scheduler::Job> job =
       std::move(job_result.ValueOrDie());

@@ -10,7 +10,6 @@
 #include <vector>
 
 #include <base/bind.h>
-#include <base/guid.h>
 #include <base/memory/scoped_refptr.h>
 #include <base/test/task_environment.h>
 #include <brillo/dbus/mock_dbus_method_response.h>
@@ -29,7 +28,6 @@
 
 using ::testing::_;
 using ::testing::Eq;
-using ::testing::IsEmpty;
 using ::testing::NiceMock;
 using ::testing::Return;
 using ::testing::StrEq;
@@ -116,13 +114,6 @@ class MissiveImplTest : public ::testing::Test {
   scoped_refptr<MockStorageModule> storage_module_;
   std::unique_ptr<MissiveImpl> missive_;
 };
-
-TEST_F(MissiveImplTest, GetPipelineId) {
-  ASSERT_TRUE(storage_module_);
-  EXPECT_CALL(*storage_module_, GetPipelineId())
-      .WillOnce(Return(base::GenerateGUID()));
-  EXPECT_TRUE(base::IsValidGUID(storage_module_->GetPipelineId()));
-}
 
 TEST_F(MissiveImplTest, AsyncStartUploadTest) {
   test::TestEvent<StatusOr<std::unique_ptr<UploaderInterface>>> uploader_event;

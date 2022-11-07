@@ -8,7 +8,6 @@
 #include <optional>
 
 #include <base/callback.h>
-#include <base/strings/string_piece.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 

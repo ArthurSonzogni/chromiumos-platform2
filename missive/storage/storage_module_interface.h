@@ -38,11 +38,6 @@ class StorageModuleInterface
   // Returns error if cannot start upload.
   virtual void Flush(Priority priority, FlushCallback callback) = 0;
 
-  virtual base::StringPiece GetPipelineId() const {
-    NOTREACHED();
-    return "Should never reach this line.";
-  }
-
  protected:
   // Constructor can only be called by |Create| factory method.
   StorageModuleInterface();

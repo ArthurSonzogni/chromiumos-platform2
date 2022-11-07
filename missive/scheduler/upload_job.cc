@@ -42,13 +42,11 @@ UploadJob::UploadDelegate::UploadDelegate(
     scoped_refptr<UploadClient> upload_client,
     bool need_encryption_key,
     uint64_t remaining_storage_capacity,
-    std::optional<uint64_t> new_events_rate,
-    base::StringPiece pipeline_id)
+    std::optional<uint64_t> new_events_rate)
     : upload_client_(upload_client),
       need_encryption_key_(need_encryption_key),
       remaining_storage_capacity_(remaining_storage_capacity),
-      new_events_rate_(new_events_rate),
-      pipeline_id_(std::string(pipeline_id)) {}
+      new_events_rate_(new_events_rate) {}
 
 UploadJob::UploadDelegate::~UploadDelegate() = default;
 UploadJob::SetRecordsCb UploadJob::UploadDelegate::GetSetRecordsCb() {
@@ -62,7 +60,7 @@ Status UploadJob::UploadDelegate::Complete() {
       // For now the response doesn't contain anything interesting, so we don't
       // handle it. In the future this could change. If it does, UploadClient
       // should be updated to use CallMethodAndBlock rather than CallMethod.
-      pipeline_id_, base::DoNothing());
+      base::DoNothing());
   return Status::StatusOK();
 }
 
@@ -136,7 +134,6 @@ StatusOr<Scheduler::Job::SmartPtr<UploadJob>> UploadJob::Create(
     bool need_encryption_key,
     uint64_t remaining_storage_capacity,
     std::optional<uint64_t> new_events_rate,
-    base::StringPiece pipeline_id,
     UploaderInterface::UploaderInterfaceResultCb start_cb) {
   if (upload_client == nullptr) {
     Status status(error::INVALID_ARGUMENT,
@@ -147,7 +144,7 @@ StatusOr<Scheduler::Job::SmartPtr<UploadJob>> UploadJob::Create(
 
   auto upload_delegate = std::make_unique<UploadDelegate>(
       upload_client, need_encryption_key, remaining_storage_capacity,
-      new_events_rate, pipeline_id);
+      new_events_rate);
   SetRecordsCb set_records_callback = upload_delegate->GetSetRecordsCb();
 
   scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner =

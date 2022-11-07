@@ -54,10 +54,6 @@ void StorageModule::UpdateEncryptionKey(
   storage_->UpdateEncryptionKey(std::move(signed_encryption_key));
 }
 
-base::StringPiece StorageModule::GetPipelineId() const {
-  return storage_->GetPipelineId();
-}
-
 // static
 void StorageModule::Create(
     const StorageOptions& options,

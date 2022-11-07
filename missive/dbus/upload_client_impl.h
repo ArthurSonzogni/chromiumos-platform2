@@ -16,7 +16,6 @@
 #include <base/callback.h>
 #include <base/memory/ref_counted_delete_on_sequence.h>
 #include <base/memory/scoped_refptr.h>
-#include <base/strings/string_piece.h>
 #include <base/task/sequenced_task_runner.h>
 #include <dbus/bus.h>
 #include <dbus/object_proxy.h>
@@ -44,7 +43,6 @@ class UploadClientImpl : public UploadClient {
       bool need_encryption_keys,
       uint64_t remaining_storage_capacity,
       std::optional<uint64_t> new_events_rate,
-      base::StringPiece pipeline_id,
       HandleUploadResponseCallback response_callback) override;
 
   // Sets availability for testing only.
@@ -67,7 +65,6 @@ class UploadClientImpl : public UploadClient {
                      const bool need_encryption_keys,
                      uint64_t remaining_storage_capacity,
                      std::optional<uint64_t> new_events_rate,
-                     base::StringPiece pipeline_id,
                      HandleUploadResponseCallback response_callback);
 
   // Returns disconnectable client, creating it if not created yet.

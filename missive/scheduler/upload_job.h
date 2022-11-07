@@ -7,13 +7,11 @@
 
 #include <memory>
 #include <optional>
-#include <string>
 #include <vector>
 
 #include <base/callback.h>
 #include <base/memory/scoped_refptr.h>
 #include <base/memory/weak_ptr.h>
-#include <base/strings/string_piece.h>
 #include <base/task/sequenced_task_runner.h>
 
 #include "missive/dbus/upload_client.h"
@@ -39,8 +37,7 @@ class UploadJob : public Scheduler::Job {
     UploadDelegate(scoped_refptr<UploadClient> upload_client,
                    bool need_encryption_key,
                    uint64_t remaining_storage_capacity,
-                   std::optional<uint64_t> new_events_rate,
-                   base::StringPiece pipeline_id);
+                   std::optional<uint64_t> new_events_rate);
     UploadDelegate(const UploadDelegate& other) = delete;
     UploadDelegate& operator=(const UploadDelegate& other) = delete;
     ~UploadDelegate() override;
@@ -60,7 +57,6 @@ class UploadJob : public Scheduler::Job {
 
     uint64_t remaining_storage_capacity_;
     std::optional<uint64_t> new_events_rate_;
-    const std::string pipeline_id_;
   };
 
   class RecordProcessor : public UploaderInterface {
@@ -99,7 +95,6 @@ class UploadJob : public Scheduler::Job {
       bool need_encryption_key,
       uint64_t remaining_storage_capacity,
       std::optional<uint64_t> new_events_rate,
-      base::StringPiece pipeline_id,
       UploaderInterface::UploaderInterfaceResultCb start_cb);
 
  protected:
