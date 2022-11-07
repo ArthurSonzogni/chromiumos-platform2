@@ -186,7 +186,8 @@ class StatusLinker {
 
  private:
   void LogIfNeeded() {
-    if (log_detail_.severity.has_value()) {
+    if (log_detail_.severity.has_value() &&
+        logging::ShouldCreateLogMessage(log_detail_.severity.value())) {
       logging::LogMessage logger(log_detail_.file, log_detail_.line,
                                  log_detail_.severity.value());
       std::string str = log_detail_.stream.str();
