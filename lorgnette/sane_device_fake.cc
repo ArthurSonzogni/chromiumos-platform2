@@ -181,7 +181,23 @@ bool SaneDeviceFake::CancelScan(brillo::ErrorPtr* error) {
 
 SANE_Status SaneDeviceFake::SetOption(brillo::ErrorPtr* error,
                                       const ScannerOption& option) {
-  return SANE_STATUS_UNSUPPORTED;
+  SANE_Status status;
+  auto s = set_option_status_.find(option.name());
+  if (s != set_option_status_.end()) {
+    status = s->second;
+  } else {
+    status = SANE_STATUS_UNSUPPORTED;
+  }
+  if (status != SANE_STATUS_GOOD) {
+    brillo::Error::AddTo(error, FROM_HERE, kDbusDomain, kManagerServiceError,
+                         "Failed to set option");
+  }
+  return status;
+}
+
+void SaneDeviceFake::SetOptionStatus(const std::string& option,
+                                     SANE_Status status) {
+  set_option_status_[option] = status;
 }
 
 void SaneDeviceFake::SetCancelScanResult(bool result) {
@@ -203,6 +219,10 @@ void SaneDeviceFake::SetCallStartJob(bool call) {
 
 std::optional<ScannerConfig> SaneDeviceFake::GetCurrentConfig(
     brillo::ErrorPtr* error) {
+  if (!config_.has_value()) {
+    brillo::Error::AddTo(error, FROM_HERE, kDbusDomain, kManagerServiceError,
+                         "Failed to get config");
+  }
   return config_;
 }
 

@@ -81,6 +81,10 @@ class MockDeviceTracker : public DeviceTracker {
               CloseScanner,
               (const CloseScannerRequest&),
               (override));
+  MOCK_METHOD(SetOptionsResponse,
+              SetOptions,
+              (const SetOptionsRequest&),
+              (override));
   MOCK_METHOD(StartPreparedScanResponse,
               StartPreparedScan,
               (const StartPreparedScanRequest&),
@@ -239,7 +243,7 @@ TEST_F(DBusServiceAdaptorTest, SetOptions) {
   auto dbus_service = DBusServiceAdaptor(std::unique_ptr<Manager>(manager_),
                                          tracker_.get(), {});
   SetOptionsRequest request;
-  // TODO(b/274860786): Implement check for real behavior once implemented.
+  EXPECT_CALL(*tracker_.get(), SetOptions(EqualsProto(request)));
   SetOptionsResponse response = dbus_service.SetOptions(request);
   EXPECT_THAT(response, EqualsProto(SetOptionsResponse()));
 }

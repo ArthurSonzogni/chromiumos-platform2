@@ -645,6 +645,114 @@ TEST(DeviceTrackerTest, CloseScannerFreesDevice) {
               Not(EqualsProto(response1.config().scanner())));
 }
 
+TEST(DeviceTrackerTest, SetOptionsMissingHandleFails) {
+  auto sane_client = std::make_unique<SaneClientFake>();
+  auto libusb = std::make_unique<LibusbWrapperFake>();
+  auto tracker =
+      std::make_unique<DeviceTracker>(sane_client.get(), libusb.get());
+
+  SetOptionsRequest request;
+  request.add_options()->set_name("option");
+  SetOptionsResponse response = tracker->SetOptions(request);
+  EXPECT_THAT(response.scanner(), EqualsProto(request.scanner()));
+  ASSERT_TRUE(response.results().contains("option"));
+  EXPECT_EQ(response.results().at("option"), OPERATION_RESULT_INVALID);
+  EXPECT_FALSE(response.has_config());
+}
+
+TEST(DeviceTrackerTest, SetOptionsEmptyHandleFails) {
+  auto sane_client = std::make_unique<SaneClientFake>();
+  auto libusb = std::make_unique<LibusbWrapperFake>();
+  auto tracker =
+      std::make_unique<DeviceTracker>(sane_client.get(), libusb.get());
+
+  SetOptionsRequest request;
+  request.mutable_scanner()->set_token("");
+  request.add_options()->set_name("option");
+  SetOptionsResponse response = tracker->SetOptions(request);
+  EXPECT_THAT(response.scanner(), EqualsProto(request.scanner()));
+  ASSERT_TRUE(response.results().contains("option"));
+  EXPECT_EQ(response.results().at("option"), OPERATION_RESULT_INVALID);
+  EXPECT_FALSE(response.has_config());
+}
+
+TEST(DeviceTrackerTest, SetOptionsInvalidHandleFails) {
+  auto sane_client = std::make_unique<SaneClientFake>();
+  auto libusb = std::make_unique<LibusbWrapperFake>();
+  auto tracker =
+      std::make_unique<DeviceTracker>(sane_client.get(), libusb.get());
+
+  SetOptionsRequest request;
+  request.mutable_scanner()->set_token("NoSuchScanner");
+  request.add_options()->set_name("option");
+  SetOptionsResponse response = tracker->SetOptions(request);
+  EXPECT_THAT(response.scanner(), EqualsProto(request.scanner()));
+  ASSERT_TRUE(response.results().contains("option"));
+  EXPECT_EQ(response.results().at("option"), OPERATION_RESULT_MISSING);
+  EXPECT_FALSE(response.has_config());
+}
+
+TEST(DeviceTrackerTest, SetOptionsScannerConfigFails) {
+  auto sane_client = std::make_unique<SaneClientFake>();
+  auto libusb = std::make_unique<LibusbWrapperFake>();
+  auto tracker =
+      std::make_unique<DeviceTracker>(sane_client.get(), libusb.get());
+
+  auto scanner = std::make_unique<SaneDeviceFake>();
+  SaneDeviceFake* raw_scanner = scanner.get();
+  sane_client->SetDeviceForName("Test", std::move(scanner));
+
+  OpenScannerRequest open_request;
+  open_request.mutable_scanner_id()->set_connection_string("Test");
+  open_request.set_client_id("DeviceTrackerTest");
+  OpenScannerResponse open_response = tracker->OpenScanner(open_request);
+  ASSERT_EQ(open_response.result(), OPERATION_RESULT_SUCCESS);
+
+  raw_scanner->SetScannerConfig(std::nullopt);
+
+  SetOptionsRequest set_request;
+  *set_request.mutable_scanner() = open_response.config().scanner();
+  set_request.add_options()->set_name("option");
+  SetOptionsResponse set_response = tracker->SetOptions(set_request);
+  EXPECT_THAT(set_response.scanner(), EqualsProto(set_request.scanner()));
+  ASSERT_TRUE(set_response.results().contains("option"));
+  EXPECT_EQ(set_response.results().at("option"),
+            OPERATION_RESULT_INTERNAL_ERROR);
+  EXPECT_FALSE(set_response.has_config());
+}
+
+TEST(DeviceTrackerTest, SetOptionsAllOptionsAttempted) {
+  auto sane_client = std::make_unique<SaneClientFake>();
+  auto libusb = std::make_unique<LibusbWrapperFake>();
+  auto tracker =
+      std::make_unique<DeviceTracker>(sane_client.get(), libusb.get());
+
+  auto scanner = std::make_unique<SaneDeviceFake>();
+  scanner->SetOptionStatus("option1", SANE_STATUS_INVAL);
+  scanner->SetOptionStatus("option2", SANE_STATUS_GOOD);
+  sane_client->SetDeviceForName("Test", std::move(scanner));
+
+  OpenScannerRequest open_request;
+  open_request.mutable_scanner_id()->set_connection_string("Test");
+  open_request.set_client_id("DeviceTrackerTest");
+  OpenScannerResponse open_response = tracker->OpenScanner(open_request);
+  ASSERT_EQ(open_response.result(), OPERATION_RESULT_SUCCESS);
+
+  SetOptionsRequest set_request;
+  *set_request.mutable_scanner() = open_response.config().scanner();
+  set_request.add_options()->set_name("option1");
+  set_request.add_options()->set_name("option2");
+  SetOptionsResponse set_response = tracker->SetOptions(set_request);
+  EXPECT_THAT(set_response.scanner(), EqualsProto(set_request.scanner()));
+  ASSERT_TRUE(set_response.results().contains("option1"));
+  EXPECT_EQ(set_response.results().at("option1"), OPERATION_RESULT_INVALID);
+  ASSERT_TRUE(set_response.results().contains("option2"));
+  EXPECT_EQ(set_response.results().at("option2"), OPERATION_RESULT_SUCCESS);
+  EXPECT_TRUE(set_response.has_config());
+  EXPECT_THAT(set_response.config().scanner(),
+              EqualsProto(set_request.scanner()));
+}
+
 TEST(DeviceTrackerTest, StartPreparedScanMissingHandleFails) {
   auto sane_client = std::make_unique<SaneClientFake>();
   auto libusb = std::make_unique<LibusbWrapperFake>();

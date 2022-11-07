@@ -102,6 +102,11 @@ class DeviceTracker {
   // Any in-progress jobs will be canceled and the handle is no longer valid.
   virtual CloseScannerResponse CloseScanner(const CloseScannerRequest& request);
 
+  // SetOptions updates the options for a scanner previously opened by
+  // OpenScanner.  It attempts to set all of the requested options in order,
+  // then returns the updated config.
+  virtual SetOptionsResponse SetOptions(const SetOptionsRequest& request);
+
   // StartPreparedScan initiates a scan using the current option values.  Any
   // previous in-progress jobs will be canceled.
   virtual StartPreparedScanResponse StartPreparedScan(

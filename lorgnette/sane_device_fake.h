@@ -9,6 +9,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include <sane/sane.h>
@@ -66,6 +67,7 @@ class SaneDeviceFake : public SaneDevice {
   void SetCancelScanResult(bool result);
   void ClearScanJob();
   void SetCallStartJob(bool call);
+  void SetOptionStatus(const std::string& option, SANE_Status status);
 
  private:
   int resolution_;
@@ -73,6 +75,7 @@ class SaneDeviceFake : public SaneDevice {
   ColorMode color_mode_;
   std::optional<ScannerConfig> config_;
   std::optional<ValidOptionValues> values_;
+  std::unordered_map<std::string, SANE_Status> set_option_status_;
   SANE_Status start_scan_result_;
   bool call_start_job_;
   SANE_Status read_scan_data_result_;

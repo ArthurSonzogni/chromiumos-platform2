@@ -168,8 +168,7 @@ SetOptionsResponse DBusServiceAdaptor::SetOptions(
     const SetOptionsRequest& request) {
   ScopeLogger scope("DBusServiceAdaptor::SetOptions");
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  // TODO(b/274860786): Implement SetOptions.
-  return {};
+  return device_tracker_->SetOptions(request);
 }
 
 StartPreparedScanResponse DBusServiceAdaptor::StartPreparedScan(

@@ -564,6 +564,71 @@ CloseScannerResponse DeviceTracker::CloseScanner(
   return response;
 }
 
+SetOptionsResponse DeviceTracker::SetOptions(const SetOptionsRequest& request) {
+  LOG(INFO) << __func__ << ": Setting " << request.options().size()
+            << " options for device: " << request.scanner().token();
+
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+
+  SetOptionsResponse response;
+  *response.mutable_scanner() = request.scanner();
+
+  if (!request.has_scanner() || request.scanner().token().empty()) {
+    LOG(ERROR) << __func__ << ": SetOptionsRequest is missing scanner handle";
+    for (const auto& option : request.options()) {
+      (*response.mutable_results())[option.name()] = OPERATION_RESULT_INVALID;
+    }
+    return response;
+  }
+  const std::string& handle = request.scanner().token();
+
+  if (!base::Contains(open_scanners_, handle)) {
+    LOG(ERROR) << __func__ << ": No open handle: " << handle;
+    for (const auto& option : request.options()) {
+      (*response.mutable_results())[option.name()] = OPERATION_RESULT_MISSING;
+    }
+    return response;
+  }
+  OpenScannerState& state = open_scanners_[handle];
+  state.last_activity = base::Time::Now();
+
+  size_t succeeded = 0;
+  size_t failed = 0;
+  for (const ScannerOption& option : request.options()) {
+    brillo::ErrorPtr error;
+    SANE_Status status = state.device->SetOption(&error, option);
+    (*response.mutable_results())[option.name()] = ToOperationResult(status);
+    if (status == SANE_STATUS_GOOD) {
+      ++succeeded;
+    } else {
+      LOG(WARNING) << __func__ << ": Failed to set option " << option.name()
+                   << ": " << error->GetMessage();
+      ++failed;
+      // continue with remaining options
+    }
+  }
+
+  brillo::ErrorPtr error;
+  std::optional<ScannerConfig> config = state.device->GetCurrentConfig(&error);
+  if (!config.has_value()) {
+    LOG(ERROR) << __func__
+               << ": Unable to get new scanner config: " << error->GetMessage();
+    for (const auto& option : request.options()) {
+      (*response.mutable_results())[option.name()] =
+          OPERATION_RESULT_INTERNAL_ERROR;
+    }
+    return response;
+  }
+
+  LOG(INFO) << __func__ << ": Done with succeeded=" << succeeded
+            << ", failed=" << failed << ". New config has "
+            << config->options().size() << " options";
+
+  *config->mutable_scanner() = request.scanner();
+  *response.mutable_config() = std::move(config.value());
+  return response;
+}
+
 StartPreparedScanResponse DeviceTracker::StartPreparedScan(
     const StartPreparedScanRequest& request) {
   LOG(INFO) << __func__
@@ -588,6 +653,7 @@ StartPreparedScanResponse DeviceTracker::StartPreparedScan(
     return response;
   }
   OpenScannerState& state = open_scanners_[handle];
+  state.last_activity = base::Time::Now();
 
   if (request.image_format().empty() ||
       !base::Contains(state.device->GetSupportedFormats(),
@@ -726,6 +792,7 @@ CancelScanResponse DeviceTracker::CancelScan(const CancelScanRequest& request) {
     return response;
   }
   OpenScannerState& state = open_scanners_[device_handle];
+  state.last_activity = base::Time::Now();
 
   if (state.device->GetCurrentJob() != job_handle) {
     LOG(ERROR) << __func__ << ": Job is not currently active: " << job_handle;
