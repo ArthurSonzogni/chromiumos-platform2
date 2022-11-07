@@ -17,8 +17,7 @@
 #include "power_manager/powerd/system/tagged_device.h"
 #include "power_manager/powerd/system/udev.h"
 
-namespace power_manager {
-namespace policy {
+namespace power_manager::policy {
 
 namespace {
 
@@ -298,5 +297,4 @@ void InputDeviceController::UpdatePolicy() {
   ConfigureEcWakeup();
 }
 
-}  // namespace policy
-}  // namespace power_manager
+}  // namespace power_manager::policy

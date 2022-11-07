@@ -27,8 +27,7 @@
 #include "power_manager/proto_bindings/input_event.pb.h"
 #include "power_manager/proto_bindings/switch_states.pb.h"
 
-namespace power_manager {
-namespace policy {
+namespace power_manager::policy {
 namespace {
 
 const char kNoActions[] = "";
@@ -450,5 +449,4 @@ TEST_F(InputEventHandlerTest, OnHoverStateChangeTest) {
   EXPECT_EQ(kHoverOff, delegate_.GetActions());
 }
 
-}  // namespace policy
-}  // namespace power_manager
+}  // namespace power_manager::policy

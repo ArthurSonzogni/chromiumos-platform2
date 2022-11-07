@@ -15,8 +15,7 @@
 
 #include "power_manager/powerd/system/dbus_wrapper.h"
 
-namespace power_manager {
-namespace policy {
+namespace power_manager::policy {
 
 namespace {
 
@@ -225,5 +224,4 @@ void BacklightController::EmitBrightnessChangedSignal(
   dbus_wrapper->EmitSignal(&signal);
 }
 
-}  // namespace policy
-}  // namespace power_manager
+}  // namespace power_manager::policy

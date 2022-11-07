@@ -15,8 +15,7 @@ namespace system {
 class DBusWrapperStub;
 }
 
-namespace policy {
-namespace test {
+namespace policy::test {
 
 // Helper methods used by unit tests to invoke various D-Bus methods exported by
 // BacklightController implementations.
@@ -37,8 +36,7 @@ void CheckBrightnessChangedSignal(system::DBusWrapperStub* wrapper,
                                   double brightness_percent,
                                   BacklightBrightnessChange_Cause cause);
 
-}  // namespace test
-}  // namespace policy
+}  // namespace policy::test
 }  // namespace power_manager
 
 #endif  // POWER_MANAGER_POWERD_POLICY_BACKLIGHT_CONTROLLER_TEST_UTIL_H_

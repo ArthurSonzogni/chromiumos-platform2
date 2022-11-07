@@ -21,8 +21,7 @@
 #include "power_manager/powerd/policy/state_controller.h"
 #include "power_manager/powerd/system/dbus_wrapper_stub.h"
 
-namespace power_manager {
-namespace policy {
+namespace power_manager::policy {
 
 using HpsResult = hps::HpsResult;
 
@@ -223,5 +222,4 @@ TEST_F(DimAdvisorTest, GetFirstHpsSenseResultOnInitialization) {
   EXPECT_EQ(num_of_method_calls_, 1);
 }
 
-}  // namespace policy
-}  // namespace power_manager
+}  // namespace power_manager::policy

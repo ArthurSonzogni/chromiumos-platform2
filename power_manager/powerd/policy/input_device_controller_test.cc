@@ -16,8 +16,7 @@
 #include "power_manager/powerd/system/udev_stub.h"
 #include "power_manager/proto_bindings/backlight.pb.h"
 
-namespace power_manager {
-namespace policy {
+namespace power_manager::policy {
 
 namespace {
 // An artificial syspath for tests.
@@ -341,5 +340,4 @@ TEST_F(InputDeviceControllerTest, InitWithoutBacklightController) {
       initial_tablet_mode_, initial_display_mode_, &prefs_);
 }
 
-}  // namespace policy
-}  // namespace power_manager
+}  // namespace power_manager::policy

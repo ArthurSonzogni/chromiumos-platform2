@@ -30,8 +30,7 @@
 #include "power_manager/proto_bindings/idle.pb.h"
 #include "power_manager/proto_bindings/policy.pb.h"
 
-namespace power_manager {
-namespace policy {
+namespace power_manager::policy {
 
 namespace {
 
@@ -2931,5 +2930,4 @@ TEST_F(StateControllerTest, NoDimDeferAfterkDeferDimmingTimeLimit) {
   EXPECT_EQ(kScreenDim, delegate_.GetActions());
 }
 
-}  // namespace policy
-}  // namespace power_manager
+}  // namespace power_manager::policy

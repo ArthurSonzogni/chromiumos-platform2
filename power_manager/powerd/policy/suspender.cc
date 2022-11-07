@@ -34,8 +34,7 @@ namespace {
 const char kDefaultWakeReason[] = "Other";
 }  // namespace
 
-namespace power_manager {
-namespace policy {
+namespace power_manager::policy {
 
 Suspender::TestApi::TestApi(Suspender* suspender) : suspender_(suspender) {}
 
@@ -885,5 +884,4 @@ void Suspender::EmitHibernateResumeReadySignal(int suspend_request_id) {
                                               proto);
 }
 
-}  // namespace policy
-}  // namespace power_manager
+}  // namespace power_manager::policy

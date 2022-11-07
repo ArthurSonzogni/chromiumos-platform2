@@ -20,8 +20,7 @@
 #include "power_manager/common/util.h"
 #include "power_manager/powerd/policy/adaptive_charging_controller.h"
 
-namespace power_manager {
-namespace policy {
+namespace power_manager::policy {
 
 namespace {
 const char kDefaultChargeHistoryDir[] =
@@ -1304,5 +1303,4 @@ void AdaptiveChargingController::OnRecheckAlarmFired() {
                          true /* async */);
 }
 
-}  // namespace policy
-}  // namespace power_manager
+}  // namespace power_manager::policy

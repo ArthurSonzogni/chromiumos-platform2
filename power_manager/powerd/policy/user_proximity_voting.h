@@ -9,8 +9,7 @@
 
 #include <unordered_map>
 
-namespace power_manager {
-namespace policy {
+namespace power_manager::policy {
 
 // Aggregates votes from one or more sensors about the user's physical
 // proximity to the device.
@@ -42,7 +41,6 @@ class UserProximityVoting {
   bool prefer_far_ = false;
 };
 
-}  // namespace policy
-}  // namespace power_manager
+}  // namespace power_manager::policy
 
 #endif  //  POWER_MANAGER_POWERD_POLICY_USER_PROXIMITY_VOTING_H_

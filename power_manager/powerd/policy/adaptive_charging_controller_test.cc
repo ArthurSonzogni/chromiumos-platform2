@@ -27,8 +27,7 @@
 #include <dbus/message.h>
 #include <gtest/gtest.h>
 
-namespace power_manager {
-namespace policy {
+namespace power_manager::policy {
 
 namespace {
 const int64_t kBatterySustainDisabled = -1;
@@ -1104,5 +1103,4 @@ TEST_F(AdaptiveChargingControllerTest, TestMaxDelayHeuristic) {
       adaptive_charging_controller_.get_target_full_charge_time_for_testing());
 }
 
-}  // namespace policy
-}  // namespace power_manager
+}  // namespace power_manager::policy

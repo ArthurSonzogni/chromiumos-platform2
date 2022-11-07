@@ -12,8 +12,7 @@
 #include "power_manager/powerd/system/power_supply_stub.h"
 #include "power_manager/powerd/system/suspend_configurator_stub.h"
 
-namespace power_manager {
-namespace policy {
+namespace power_manager::policy {
 
 namespace {
 constexpr auto kRunLoopDelay = base::Milliseconds(200);
@@ -174,5 +173,4 @@ TEST_F(ShutdownFromSuspendTest, TestFullResume) {
             ShutdownFromSuspend::Action::SUSPEND);
 }
 
-}  // namespace policy
-}  // namespace power_manager
+}  // namespace power_manager::policy

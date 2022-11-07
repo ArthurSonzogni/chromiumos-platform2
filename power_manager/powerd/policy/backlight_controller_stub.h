@@ -14,8 +14,7 @@
 #include "power_manager/proto_bindings/backlight.pb.h"
 #include "power_manager/proto_bindings/policy.pb.h"
 
-namespace power_manager {
-namespace policy {
+namespace power_manager::policy {
 
 // policy::BacklightController implementation that returns dummy values.
 class BacklightControllerStub : public policy::BacklightController {
@@ -138,7 +137,6 @@ class BacklightControllerStub : public policy::BacklightController {
   int num_user_adjustments_ = 0;
 };
 
-}  // namespace policy
-}  // namespace power_manager
+}  // namespace power_manager::policy
 
 #endif  // POWER_MANAGER_POWERD_POLICY_BACKLIGHT_CONTROLLER_STUB_H_

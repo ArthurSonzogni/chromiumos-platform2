@@ -25,8 +25,7 @@
 #include "power_manager/proto_bindings/backlight.pb.h"
 #include "power_manager/proto_bindings/policy.pb.h"
 
-namespace power_manager {
-namespace policy {
+namespace power_manager::policy {
 
 namespace {
 
@@ -1108,5 +1107,4 @@ TEST_F(InternalBacklightControllerTest, SetAndGetBrightness) {
   EXPECT_DOUBLE_EQ(round(kBrightnessPercent), round(percent));
 }
 
-}  // namespace policy
-}  // namespace power_manager
+}  // namespace power_manager::policy

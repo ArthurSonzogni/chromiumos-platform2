@@ -11,8 +11,7 @@
 #include "power_manager/common/power_constants.h"
 #include "power_manager/powerd/system/udev_stub.h"
 
-namespace power_manager {
-namespace policy {
+namespace power_manager::policy {
 namespace {
 
 // Stub implementation of WifiController::Delegate for use by tests.
@@ -306,5 +305,4 @@ TEST_F(WifiControllerTest, InvalidStaticDeviceModeConfiguration) {
   Init(TabletMode::UNSUPPORTED);
   EXPECT_EQ(0, delegate_.num_set_calls());
 }
-}  // namespace policy
-}  // namespace power_manager
+}  // namespace power_manager::policy

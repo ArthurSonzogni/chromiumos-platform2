@@ -14,8 +14,7 @@
 
 #include "power_manager/powerd/system/dbus_wrapper.h"
 
-namespace power_manager {
-namespace policy {
+namespace power_manager::policy {
 
 class StateController;
 
@@ -98,7 +97,6 @@ class DimAdvisor : public system::DBusWrapperInterface::Observer {
   base::WeakPtrFactory<DimAdvisor> weak_ptr_factory_;
 };
 
-}  // namespace policy
-}  // namespace power_manager
+}  // namespace power_manager::policy
 
 #endif  // POWER_MANAGER_POWERD_POLICY_DIM_ADVISOR_H_

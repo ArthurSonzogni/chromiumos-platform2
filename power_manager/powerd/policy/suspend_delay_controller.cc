@@ -18,8 +18,7 @@
 #include "power_manager/powerd/policy/suspend_delay_observer.h"
 #include "power_manager/proto_bindings/suspend.pb.h"
 
-namespace power_manager {
-namespace policy {
+namespace power_manager::policy {
 
 // static.
 constexpr base::TimeDelta
@@ -261,5 +260,4 @@ void SuspendDelayController::NotifyObservers(int suspend_id) {
     observer.OnReadyForSuspend(this, suspend_id);
 }
 
-}  // namespace policy
-}  // namespace power_manager
+}  // namespace power_manager::policy

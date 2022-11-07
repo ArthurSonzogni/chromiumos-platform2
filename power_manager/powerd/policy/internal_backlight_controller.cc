@@ -31,8 +31,7 @@
 #include "power_manager/powerd/system/display/display_power_setter.h"
 #include "power_manager/proto_bindings/policy.pb.h"
 
-namespace power_manager {
-namespace policy {
+namespace power_manager::policy {
 
 namespace {
 
@@ -785,5 +784,4 @@ void InternalBacklightController::UpdateState(
   already_set_initial_state_ = true;
 }
 
-}  // namespace policy
-}  // namespace power_manager
+}  // namespace power_manager::policy

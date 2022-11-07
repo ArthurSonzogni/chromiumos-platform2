@@ -79,8 +79,7 @@ power_manager::CellularRegulatoryDomain GetRegulatoryDomainFromString(
     return power_manager::CellularRegulatoryDomain::UNKNOWN;
 }
 }  // namespace
-namespace power_manager {
-namespace policy {
+namespace power_manager::policy {
 
 CellularController::CellularController() : weak_ptr_factory_(this) {}
 
@@ -679,5 +678,4 @@ bool CellularController::InitQrtrSocket() {
   return StartServiceLookup(TROGDOR_WDS_SERVICE_ID, 1, 0);
 }
 #endif  // USE_QRTR
-}  // namespace policy
-}  // namespace power_manager
+}  // namespace power_manager::policy

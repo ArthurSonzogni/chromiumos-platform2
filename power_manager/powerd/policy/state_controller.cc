@@ -34,8 +34,7 @@
 #include "power_manager/powerd/system/dbus_wrapper.h"
 #include "power_manager/proto_bindings/idle.pb.h"
 
-namespace power_manager {
-namespace policy {
+namespace power_manager::policy {
 
 namespace {
 
@@ -1703,5 +1702,4 @@ void StateController::HandleHpsResultChange(hps::HpsResult hps_result) {
   UpdateState();
 }
 
-}  // namespace policy
-}  // namespace power_manager
+}  // namespace power_manager::policy

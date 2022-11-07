@@ -9,17 +9,13 @@
 
 #include <string>
 
-namespace power_manager {
-namespace policy {
-namespace test {
+namespace power_manager::policy::test {
 
 // Helper method to generate valid ambient light pref string
 std::string GenerateAmbientLightPref(FuzzedDataProvider* data_provider,
                                      int max_step = 10,
                                      int lux_max = 20000);
 
-}  // namespace test
-}  // namespace policy
-}  // namespace power_manager
+}  // namespace power_manager::policy::test
 
 #endif  // POWER_MANAGER_POWERD_POLICY_AMBIENT_LIGHT_PREF_FUZZ_UTIL_H_

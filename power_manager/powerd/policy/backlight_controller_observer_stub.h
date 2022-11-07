@@ -13,8 +13,7 @@
 #include "power_manager/powerd/policy/backlight_controller.h"
 #include "power_manager/powerd/policy/backlight_controller_observer.h"
 
-namespace power_manager {
-namespace policy {
+namespace power_manager::policy {
 
 // Simple test class that records backlight brightness changes.
 class BacklightControllerObserverStub : public BacklightControllerObserver {
@@ -48,7 +47,6 @@ class BacklightControllerObserverStub : public BacklightControllerObserver {
   std::vector<ChangeTuple> changes_;
 };
 
-}  // namespace policy
-}  // namespace power_manager
+}  // namespace power_manager::policy
 
 #endif  // POWER_MANAGER_POWERD_POLICY_BACKLIGHT_CONTROLLER_OBSERVER_STUB_H_

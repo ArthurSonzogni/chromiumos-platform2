@@ -13,8 +13,7 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 
-namespace power_manager {
-namespace policy {
+namespace power_manager::policy {
 namespace {
 
 // Check if the `power/control` path exists at the wakeup path and return the
@@ -126,5 +125,4 @@ void BluetoothController::OnUdevEvent(const system::UdevEvent& event) {
   }
 }
 
-}  // namespace policy
-}  // namespace power_manager
+}  // namespace power_manager::policy

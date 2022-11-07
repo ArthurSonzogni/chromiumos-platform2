@@ -29,8 +29,7 @@ constexpr char kSecondSensor[] = "/sys/devices/usb2/mysensor";
 
 }  // namespace
 
-namespace power_manager {
-namespace policy {
+namespace power_manager::policy {
 
 class ExternalBacklightControllerTest : public ::testing::Test {
  public:
@@ -309,5 +308,4 @@ TEST_F(ExternalBacklightControllerTest,
       0, controller_.GetAmbientLightSensorAndDisplayMatchesForTesting().size());
 }
 
-}  // namespace policy
-}  // namespace power_manager
+}  // namespace power_manager::policy

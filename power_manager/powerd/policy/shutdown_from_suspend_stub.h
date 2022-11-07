@@ -7,8 +7,7 @@
 
 #include "power_manager/powerd/policy/shutdown_from_suspend_interface.h"
 
-namespace power_manager {
-namespace policy {
+namespace power_manager::policy {
 
 class ShutdownFromSuspendStub : public ShutdownFromSuspendInterface {
  public:
@@ -29,7 +28,6 @@ class ShutdownFromSuspendStub : public ShutdownFromSuspendInterface {
   Action action_ = Action::SUSPEND;
 };
 
-}  // namespace policy
-}  // namespace power_manager
+}  // namespace power_manager::policy
 
 #endif  // POWER_MANAGER_POWERD_POLICY_SHUTDOWN_FROM_SUSPEND_STUB_H_

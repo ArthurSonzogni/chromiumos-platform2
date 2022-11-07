@@ -11,9 +11,7 @@
 
 #include "power_manager/powerd/policy/adaptive_charging_controller.h"
 
-namespace power_manager {
-
-namespace policy {
+namespace power_manager::policy {
 
 class MockAdaptiveChargingController
     : public AdaptiveChargingControllerInterface {
@@ -46,7 +44,6 @@ class MockAdaptiveChargingController
   MOCK_METHOD(void, OnPowerStatusUpdate, (), (override));
 };
 
-}  // namespace policy
-}  // namespace power_manager
+}  // namespace power_manager::policy
 
 #endif  // POWER_MANAGER_POWERD_POLICY_MOCK_ADAPTIVE_CHARGING_CONTROLLER_H_

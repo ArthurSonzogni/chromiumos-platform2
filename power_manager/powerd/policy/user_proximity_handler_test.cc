@@ -16,8 +16,7 @@
 #include "power_manager/powerd/system/user_proximity_observer.h"
 #include "power_manager/powerd/system/user_proximity_watcher_stub.h"
 
-namespace power_manager {
-namespace policy {
+namespace power_manager::policy {
 
 namespace {
 
@@ -118,5 +117,4 @@ TEST_F(UserProximityHandlerTest, ProximityChange) {
   CHECK_EQ(JoinActions(nullptr), wifi_delegate_.GetActions());
 }
 
-}  // namespace policy
-}  // namespace power_manager
+}  // namespace power_manager::policy

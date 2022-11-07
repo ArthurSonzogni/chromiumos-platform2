@@ -22,8 +22,7 @@
 #include "power_manager/powerd/system/thermal/thermal_device_observer.h"
 #include "power_manager/proto_bindings/thermal.pb.h"
 
-namespace power_manager {
-namespace policy {
+namespace power_manager::policy {
 
 namespace {
 
@@ -121,5 +120,4 @@ void ThermalEventHandler::HandlePowerSourceChange(PowerSource source) {
   OnThermalChanged(nullptr);
 }
 
-}  // namespace policy
-}  // namespace power_manager
+}  // namespace power_manager::policy

@@ -12,8 +12,7 @@
 #include "power_manager/powerd/system/ambient_light_sensor_stub.h"
 #include "power_manager/proto_bindings/backlight.pb.h"
 
-namespace power_manager {
-namespace policy {
+namespace power_manager::policy {
 
 namespace {
 
@@ -288,5 +287,4 @@ TEST_F(AmbientLightHandlerTest, GetRecentReadingsString) {
             handler_.GetRecentReadingsString());
 }
 
-}  // namespace policy
-}  // namespace power_manager
+}  // namespace power_manager::policy

@@ -16,8 +16,7 @@
 #include "power_manager/powerd/system/power_supply.h"
 #include "power_manager/powerd/system/suspend_configurator.h"
 
-namespace power_manager {
-namespace policy {
+namespace power_manager::policy {
 
 ShutdownFromSuspend::ShutdownFromSuspend()
     : ShutdownFromSuspend(brillo::timers::SimpleAlarmTimer::Create()) {}
@@ -166,5 +165,4 @@ void ShutdownFromSuspend::OnTimerWake() {
   timer_fired_ = true;
 }
 
-}  // namespace policy
-}  // namespace power_manager
+}  // namespace power_manager::policy

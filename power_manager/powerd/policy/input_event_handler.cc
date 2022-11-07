@@ -20,8 +20,7 @@
 #include "power_manager/proto_bindings/input_event.pb.h"
 #include "power_manager/proto_bindings/switch_states.pb.h"
 
-namespace power_manager {
-namespace policy {
+namespace power_manager::policy {
 
 InputEventHandler::InputEventHandler()
     : clock_(std::make_unique<Clock>()), weak_ptr_factory_(this) {}
@@ -267,5 +266,4 @@ void InputEventHandler::OnGetSwitchStatesMethodCall(
   std::move(response_sender).Run(std::move(response));
 }
 
-}  // namespace policy
-}  // namespace power_manager
+}  // namespace power_manager::policy

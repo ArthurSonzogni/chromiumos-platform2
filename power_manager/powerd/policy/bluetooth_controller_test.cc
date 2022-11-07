@@ -15,8 +15,7 @@
 
 #include "power_manager/powerd/system/udev_stub.h"
 
-namespace power_manager {
-namespace policy {
+namespace power_manager::policy {
 
 class BluetoothControllerTest : public ::testing::Test {
  public:
@@ -161,5 +160,4 @@ TEST_F(BluetoothControllerTest, UseDeviceFromInit) {
             BluetoothController::kAutosuspendEnabled);
 }
 
-}  // namespace policy
-}  // namespace power_manager
+}  // namespace power_manager::policy

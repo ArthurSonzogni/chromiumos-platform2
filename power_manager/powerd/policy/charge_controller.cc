@@ -16,8 +16,7 @@
 #include "power_manager/common/battery_percentage_converter.h"
 #include "power_manager/powerd/system/charge_controller_helper_interface.h"
 
-namespace power_manager {
-namespace policy {
+namespace power_manager::policy {
 
 namespace {
 
@@ -423,5 +422,4 @@ bool ChargeController::IsPolicyEqualToCache(
   return true;
 }
 
-}  // namespace policy
-}  // namespace power_manager
+}  // namespace power_manager::policy

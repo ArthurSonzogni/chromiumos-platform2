@@ -7,8 +7,7 @@
 
 #include <base/observer_list_types.h>
 
-namespace power_manager {
-namespace policy {
+namespace power_manager::policy {
 
 class SuspendDelayController;
 
@@ -24,7 +23,6 @@ class SuspendDelayObserver : public base::CheckedObserver {
                                  int suspend_id) = 0;
 };
 
-}  // namespace policy
-}  // namespace power_manager
+}  // namespace power_manager::policy
 
 #endif  // POWER_MANAGER_POWERD_POLICY_SUSPEND_DELAY_OBSERVER_H_

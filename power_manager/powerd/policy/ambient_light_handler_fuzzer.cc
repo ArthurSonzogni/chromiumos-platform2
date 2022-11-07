@@ -24,8 +24,7 @@ class Environment {
   }
 };
 
-namespace power_manager {
-namespace policy {
+namespace power_manager::policy {
 
 // AmbientLightHandler::Delegate implementation that does nothing.
 class FuzzTestDelegate : public AmbientLightHandler::Delegate {
@@ -45,8 +44,7 @@ class FuzzTestDelegate : public AmbientLightHandler::Delegate {
   void OnColorTemperatureChanged(int color_temperature) override {}
 };
 
-}  // namespace policy
-}  // namespace power_manager
+}  // namespace power_manager::policy
 
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   static Environment env;

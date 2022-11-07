@@ -11,8 +11,7 @@
 #include "power_manager/powerd/system/udev.h"
 #include "power_manager/powerd/system/udev_subsystem_observer.h"
 
-namespace power_manager {
-namespace policy {
+namespace power_manager::policy {
 
 // BluetoothController initiates power-related changes to the Bluetooth chipset.
 class BluetoothController : public system::UdevSubsystemObserver {
@@ -53,7 +52,6 @@ class BluetoothController : public system::UdevSubsystemObserver {
   base::flat_map<base::FilePath, base::FilePath> bt_hosts_;
 };
 
-}  // namespace policy
-}  // namespace power_manager
+}  // namespace power_manager::policy
 
 #endif  // POWER_MANAGER_POWERD_POLICY_BLUETOOTH_CONTROLLER_H_

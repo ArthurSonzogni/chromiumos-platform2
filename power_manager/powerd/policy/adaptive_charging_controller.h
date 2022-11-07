@@ -31,9 +31,7 @@
 #include "power_manager/proto_bindings/policy.pb.h"
 #include "power_manager/proto_bindings/user_charging_event.pb.h"
 
-namespace power_manager {
-
-namespace policy {
+namespace power_manager::policy {
 
 class AdaptiveChargingControllerInterface : public system::PowerSupplyObserver {
  public:
@@ -673,7 +671,6 @@ class AdaptiveChargingController : public AdaptiveChargingControllerInterface {
   base::WeakPtrFactory<AdaptiveChargingController> weak_ptr_factory_;
 };
 
-}  // namespace policy
-}  // namespace power_manager
+}  // namespace power_manager::policy
 
 #endif  // POWER_MANAGER_POWERD_POLICY_ADAPTIVE_CHARGING_CONTROLLER_H_

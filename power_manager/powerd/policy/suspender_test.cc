@@ -25,8 +25,7 @@
 #include "power_manager/powerd/system/wakeup_source_identifier_stub.h"
 #include "power_manager/proto_bindings/suspend.pb.h"
 
-namespace power_manager {
-namespace policy {
+namespace power_manager::policy {
 
 namespace {
 
@@ -1560,5 +1559,4 @@ TEST_F(SuspenderTest, QuirksHandledCorrectly) {
   EXPECT_FALSE(delegate_.quirks_applied());
 }
 
-}  // namespace policy
-}  // namespace power_manager
+}  // namespace power_manager::policy

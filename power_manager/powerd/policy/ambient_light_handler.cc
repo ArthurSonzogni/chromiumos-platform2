@@ -17,8 +17,7 @@
 
 #include "power_manager/powerd/system/ambient_light_sensor_interface.h"
 
-namespace power_manager {
-namespace policy {
+namespace power_manager::policy {
 
 namespace {
 
@@ -309,5 +308,4 @@ void AmbientLightHandler::UpdateSmoothedLux(int raw_lux) {
   }
 }
 
-}  // namespace policy
-}  // namespace power_manager
+}  // namespace power_manager::policy

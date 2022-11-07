@@ -11,8 +11,7 @@
 #include "power_manager/common/power_constants.h"
 #include "power_manager/powerd/system/dbus_wrapper_stub.h"
 
-namespace power_manager {
-namespace policy {
+namespace power_manager::policy {
 namespace {
 
 constexpr int64_t kFakeDprGpioNumber = 123;
@@ -193,5 +192,4 @@ TEST_F(CellularControllerTest, ProximityAndTabletModeWithMultiLevel) {
   EXPECT_EQ(RadioTransmitPower::HIGH, delegate_.last_transmit_power());
 }
 
-}  // namespace policy
-}  // namespace power_manager
+}  // namespace power_manager::policy

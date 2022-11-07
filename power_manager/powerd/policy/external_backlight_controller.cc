@@ -31,8 +31,7 @@
 #include <base/notreached.h>
 #include <dbus/message.h>
 
-namespace power_manager {
-namespace policy {
+namespace power_manager::policy {
 
 namespace {
 
@@ -506,5 +505,4 @@ void ExternalBacklightController::HandleGetExternalDisplayALSBrightnessRequest(
   std::move(response_sender).Run(std::move(response));
 }
 
-}  // namespace policy
-}  // namespace power_manager
+}  // namespace power_manager::policy

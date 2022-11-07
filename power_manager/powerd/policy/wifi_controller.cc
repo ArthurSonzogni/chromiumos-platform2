@@ -11,8 +11,7 @@
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
 
-namespace power_manager {
-namespace policy {
+namespace power_manager::policy {
 
 const char WifiController::kUdevSubsystem[] = "net";
 const char WifiController::kUdevDevtype[] = "wlan";
@@ -178,5 +177,4 @@ void WifiController::UpdateTransmitPower(TriggerSource tr_source) {
     delegate_->SetWifiTransmitPower(wanted_power, wifi_reg_domain_, tr_source);
 }
 
-}  // namespace policy
-}  // namespace power_manager
+}  // namespace power_manager::policy

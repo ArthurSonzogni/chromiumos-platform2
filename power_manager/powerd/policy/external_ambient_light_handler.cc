@@ -10,8 +10,7 @@
 
 #include "power_manager/powerd/system/ambient_light_sensor_interface.h"
 
-namespace power_manager {
-namespace policy {
+namespace power_manager::policy {
 
 ExternalAmbientLightHandler::ExternalAmbientLightHandler(
     std::unique_ptr<system::AmbientLightSensorInterface> sensor,
@@ -51,5 +50,4 @@ void ExternalAmbientLightHandler::SetBrightnessPercentForAmbientLight(
 void ExternalAmbientLightHandler::OnColorTemperatureChanged(
     int color_temperature) {}
 
-}  // namespace policy
-}  // namespace power_manager
+}  // namespace power_manager::policy

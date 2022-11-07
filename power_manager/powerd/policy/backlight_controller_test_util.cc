@@ -14,9 +14,7 @@
 
 #include "power_manager/powerd/system/dbus_wrapper_stub.h"
 
-namespace power_manager {
-namespace policy {
-namespace test {
+namespace power_manager::policy::test {
 
 void CallIncreaseScreenBrightness(system::DBusWrapperStub* wrapper) {
   DCHECK(wrapper);
@@ -65,6 +63,4 @@ void CheckBrightnessChangedSignal(system::DBusWrapperStub* wrapper,
   EXPECT_EQ(cause, proto.cause());
 }
 
-}  // namespace test
-}  // namespace policy
-}  // namespace power_manager
+}  // namespace power_manager::policy::test

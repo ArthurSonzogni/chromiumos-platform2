@@ -13,8 +13,7 @@
 #include "hps/proto_bindings/hps_service.pb.h"
 #include "power_manager/powerd/policy/state_controller.h"
 
-namespace power_manager {
-namespace policy {
+namespace power_manager::policy {
 namespace {
 
 // Timeout for RequestSmartDimDecision.
@@ -230,5 +229,4 @@ void DimAdvisor::ReenableHps() {
   hps_temporarily_disabled_ = false;
 }
 
-}  // namespace policy
-}  // namespace power_manager
+}  // namespace power_manager::policy
