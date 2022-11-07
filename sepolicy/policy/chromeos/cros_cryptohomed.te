@@ -51,6 +51,7 @@ create_dir_file(cros_cryptohomed, {
   cros_run_dbus
   cros_run_arcvm
   cros_run_lockbox
+  cros_var_lib
 });
 
 r_dir_file(cros_cryptohomed, {
