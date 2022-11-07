@@ -129,7 +129,7 @@ std::vector<base::FilePath> GetDevices(
 
 void AddNegativeGtestFilter(const std::string& pattern) {
   if (GTEST_FLAG(filter).find(pattern) == std::string::npos) {
-    LOG(INFO) << "Disable test " << pattern;
+    LOGF(INFO) << "Disable test " << pattern;
     char has_dash = GTEST_FLAG(filter).find('-') != std::string::npos;
     GTEST_FLAG(filter).append(has_dash ? ":" : "-").append(pattern);
   }
@@ -160,7 +160,7 @@ bool CheckConstantFramerate(const std::vector<int64_t>& timestamps,
     float frame_duration_ms = (timestamps[i] - timestamps[i - 1]) / 1e6;
     if (frame_duration_ms > slop_max_frame_duration_ms ||
         frame_duration_ms < slop_min_frame_duration_ms) {
-      LOG(WARNING) << base::StringPrintf(
+      LOGF(WARNING) << base::StringPrintf(
           "Frame duration %f out of frame rate bounds [%f, %f]",
           frame_duration_ms, slop_min_frame_duration_ms,
           slop_max_frame_duration_ms);
@@ -265,10 +265,10 @@ class V4L2TestEnvironment : public ::testing::Environment {
   void SetUp() {
     ASSERT_THAT(usb_info_.vid_pid, MatchesRegex("[0-9a-f]{4}:[0-9a-f]{4}"));
 
-    LOG(INFO) << "Test list: " << test_list_;
-    LOG(INFO) << "Device path: " << device_path_;
-    LOG(INFO) << "USB id: " << usb_info_.vid_pid;
-    LOG(INFO) << "USB bcdDevice: " << usb_info_.bcd_device;
+    LOGF(INFO) << "Test list: " << test_list_;
+    LOGF(INFO) << "Device path: " << device_path_;
+    LOGF(INFO) << "USB id: " << usb_info_.vid_pid;
+    LOGF(INFO) << "USB bcdDevice: " << usb_info_.bcd_device;
 
     ASSERT_THAT(test_list_,
                 AnyOf(StrEq(kDefaultTestList), StrEq(kHalv3TestList),
@@ -286,10 +286,10 @@ class V4L2TestEnvironment : public ::testing::Environment {
           << usb_info_.vid_pid << " is not described in camera config file";
     } else {
       if (!characteristics.ConfigFileExists()) {
-        LOG(INFO) << "Camera config file doesn't exist";
+        LOGF(INFO) << "Camera config file doesn't exist";
       } else if (device_info == nullptr && !usb_info_.vid_pid.empty()) {
-        LOG(INFO) << usb_info_.vid_pid
-                  << " is not described in camera config file";
+        LOGF(INFO) << usb_info_.vid_pid
+                   << " is not described in camera config file";
       }
     }
 
@@ -337,19 +337,19 @@ class V4L2TestEnvironment : public ::testing::Environment {
         // Although it's infeasible to test every possible parameter
         // combinations, we might want to add tests for the failing cases above
         // in the future and qualify the existing devices.
-        LOG(WARNING) << "Ignore non-zero skip frames for v3 devices";
+        LOGF(WARNING) << "Ignore non-zero skip frames for v3 devices";
         skip_frames_ = 0;
       }
       ASSERT_TRUE(support_constant_framerate_)
           << "HALv3 devices should support constant framerate";
     }
 
-    LOG(INFO) << "Check 1280x960: " << std::boolalpha << check_1280x960_;
-    LOG(INFO) << "Check 1600x1200: " << std::boolalpha << check_1600x1200_;
-    LOG(INFO) << "Check 1920x1080: " << std::boolalpha << check_1920x1080_;
-    LOG(INFO) << "Check constant framerate: " << std::boolalpha
-              << check_constant_framerate_;
-    LOG(INFO) << "Number of skip frames after stream on: " << skip_frames_;
+    LOGF(INFO) << "Check 1280x960: " << std::boolalpha << check_1280x960_;
+    LOGF(INFO) << "Check 1600x1200: " << std::boolalpha << check_1600x1200_;
+    LOGF(INFO) << "Check 1920x1080: " << std::boolalpha << check_1920x1080_;
+    LOGF(INFO) << "Check constant framerate: " << std::boolalpha
+               << check_constant_framerate_;
+    LOGF(INFO) << "Number of skip frames after stream on: " << skip_frames_;
   }
 
   std::string test_list_;
@@ -488,17 +488,17 @@ class V4L2Test : public ::testing::Test {
   bool ExerciseControl(uint32_t id, const char* control) {
     v4l2_queryctrl query_ctrl;
     if (!dev_.QueryControl(id, &query_ctrl)) {
-      LOG(WARNING) << "Cannot query control name: " << control;
+      LOGF(WARNING) << "Cannot query control name: " << control;
       return false;
     }
     if (!dev_.SetControl(id, query_ctrl.maximum)) {
-      LOG(WARNING) << "Cannot set " << control << " to maximum value";
+      LOGF(WARNING) << "Cannot set " << control << " to maximum value";
     }
     if (!dev_.SetControl(id, query_ctrl.minimum)) {
-      LOG(WARNING) << "Cannot set " << control << " to minimum value";
+      LOGF(WARNING) << "Cannot set " << control << " to minimum value";
     }
     if (!dev_.SetControl(id, query_ctrl.default_value)) {
-      LOG(WARNING) << "Cannot set " << control << " to default value";
+      LOGF(WARNING) << "Cannot set " << control << " to default value";
     }
     return true;
   }
@@ -508,63 +508,63 @@ class V4L2Test : public ::testing::Test {
     v4l2_selection selection_min;
     v4l2_selection selection_max;
     if (!dev_.GetSelection(V4L2_SEL_TGT_ROI_BOUNDS_MIN, &selection_min)) {
-      LOG(ERROR) << "Cannot get select V4L2_SEL_TGT_ROI_BOUNDS_MIN";
+      LOGF(ERROR) << "Cannot get select V4L2_SEL_TGT_ROI_BOUNDS_MIN";
       return false;
     }
     if (selection_min.r.width > kMaxMinRoiWidth ||
         selection_min.r.height > kMaxMinRoiHeight) {
-      LOG(ERROR) << "V4L2_SEL_TGT_ROI_BOUNDS_MIN: " << selection_min.r.width
-                 << "x" << selection_min.r.height << " is too large.";
+      LOGF(ERROR) << "V4L2_SEL_TGT_ROI_BOUNDS_MIN: " << selection_min.r.width
+                  << "x" << selection_min.r.height << " is too large.";
       return false;
     }
     // The minimum bounds defines the ROI minimum rectangle size. Only the width
     // and height are meaningful. The left and top values are all 0s.
     if (selection_min.r.left != 0 || selection_min.r.top != 0) {
-      LOG(ERROR) << "V4L2_SEL_TGT_ROI_BOUNDS_MIN(left, top):("
-                 << selection_min.r.left << "," << selection_min.r.top
-                 << ") != (0,0).";
+      LOGF(ERROR) << "V4L2_SEL_TGT_ROI_BOUNDS_MIN(left, top):("
+                  << selection_min.r.left << "," << selection_min.r.top
+                  << ") != (0,0).";
       return false;
     }
     if (!dev_.GetSelection(V4L2_SEL_TGT_ROI_BOUNDS_MAX, &selection_max)) {
-      LOG(ERROR) << "Cannot get select V4L2_SEL_TGT_ROI_BOUNDS_MAX";
+      LOGF(ERROR) << "Cannot get select V4L2_SEL_TGT_ROI_BOUNDS_MAX";
       return false;
     }
     if (selection_max.r.width <= selection_min.r.width ||
         selection_max.r.height <= selection_min.r.height) {
-      LOG(ERROR) << "V4L2_SEL_TGT_ROI_BOUNDS_MAX: " << selection_max.r.width
-                 << "x" << selection_max.r.height << " is too small.";
+      LOGF(ERROR) << "V4L2_SEL_TGT_ROI_BOUNDS_MAX: " << selection_max.r.width
+                  << "x" << selection_max.r.height << " is too small.";
       return false;
     }
     SupportedFormat max_resolution = GetMaximumResolution();
     if (selection_max.r.width < max_resolution.width ||
         selection_max.r.height < max_resolution.height) {
-      LOG(ERROR) << "V4L2_SEL_TGT_ROI_BOUNDS_MAX: " << selection_max.r.width
-                 << "x" << selection_max.r.height
-                 << " is less than: " << max_resolution.width << "x"
-                 << max_resolution.height;
+      LOGF(ERROR) << "V4L2_SEL_TGT_ROI_BOUNDS_MAX: " << selection_max.r.width
+                  << "x" << selection_max.r.height
+                  << " is less than: " << max_resolution.width << "x"
+                  << max_resolution.height;
       return false;
     }
     if (!dev_.GetSelection(V4L2_SEL_TGT_ROI_DEFAULT, &selection)) {
-      LOG(ERROR) << "Cannot get select V4L2_SEL_TGT_ROI_DEFAULT";
+      LOGF(ERROR) << "Cannot get select V4L2_SEL_TGT_ROI_DEFAULT";
       return false;
     }
     if (selection.r.width < selection_min.r.width ||
         selection.r.height < selection_min.r.height) {
-      LOG(ERROR) << "V4L2_SEL_TGT_ROI_DEFAULT: " << selection.r.width << "x"
-                 << selection.r.height << " is too small.";
+      LOGF(ERROR) << "V4L2_SEL_TGT_ROI_DEFAULT: " << selection.r.width << "x"
+                  << selection.r.height << " is too small.";
       return false;
     }
     if (selection.r.width > selection_max.r.width ||
         selection.r.height > selection_max.r.height) {
-      LOG(ERROR) << "V4L2_SEL_TGT_ROI_DEFAULT: " << selection.r.width << "x"
-                 << selection.r.height << " is too large.";
+      LOGF(ERROR) << "V4L2_SEL_TGT_ROI_DEFAULT: " << selection.r.width << "x"
+                  << selection.r.height << " is too large.";
       return false;
     }
     if (selection.r.top < selection_max.r.top ||
         selection.r.left < selection_max.r.left) {
-      LOG(ERROR) << "V4L2_SEL_TGT_ROI_DEFAULT(left, top):(" << selection.r.left
-                 << "," << selection.r.top << ") is out of range ("
-                 << selection_max.r.left << "," << selection_max.r.top << ").";
+      LOGF(ERROR) << "V4L2_SEL_TGT_ROI_DEFAULT(left, top):(" << selection.r.left
+                  << "," << selection.r.top << ") is out of range ("
+                  << selection_max.r.left << "," << selection_max.r.top << ").";
       return false;
     }
 
@@ -575,15 +575,15 @@ class V4L2Test : public ::testing::Test {
         .height = (selection_min.r.height + selection_max.r.height) / 2,
     };
     if (!dev_.SetSelection(V4L2_SEL_TGT_ROI, rect)) {
-      LOG(ERROR) << "Cannot set select V4L2_SEL_TGT_ROI";
+      LOGF(ERROR) << "Cannot set select V4L2_SEL_TGT_ROI";
       return false;
     }
     if (!dev_.GetSelection(V4L2_SEL_TGT_ROI, &selection)) {
-      LOG(ERROR) << "Cannot get select V4L2_SEL_TGT_ROI";
+      LOGF(ERROR) << "Cannot get select V4L2_SEL_TGT_ROI";
       return false;
     }
     if (!IsSameRect(rect, selection.r)) {
-      LOG(ERROR) << "V4L2_SEL_TGT_ROI set and get mismatch";
+      LOGF(ERROR) << "V4L2_SEL_TGT_ROI set and get mismatch";
       return false;
     }
 
@@ -602,29 +602,29 @@ class V4L2Test : public ::testing::Test {
 
     v4l2_selection new_selection;
     if (!dev_.GetSelection(V4L2_SEL_TGT_ROI, &new_selection)) {
-      LOG(ERROR) << "Cannot get select V4L2_SEL_TGT_ROI";
+      LOGF(ERROR) << "Cannot get select V4L2_SEL_TGT_ROI";
       return false;
     }
     if (!IsSameRect(new_selection.r, selection.r)) {
-      LOG(ERROR) << "V4L2_SEL_TGT_ROI changed after format change";
+      LOGF(ERROR) << "V4L2_SEL_TGT_ROI changed after format change";
       return false;
     }
 
     if (!dev_.GetSelection(V4L2_SEL_TGT_ROI_BOUNDS_MAX, &new_selection)) {
-      LOG(ERROR) << "Cannot get select V4L2_SEL_TGT_ROI_BOUNDS_MAX";
+      LOGF(ERROR) << "Cannot get select V4L2_SEL_TGT_ROI_BOUNDS_MAX";
       return false;
     }
     if (!IsSameRect(new_selection.r, selection_max.r)) {
-      LOG(ERROR) << "V4L2_SEL_TGT_ROI_BOUNDS_MAX changed after format change";
+      LOGF(ERROR) << "V4L2_SEL_TGT_ROI_BOUNDS_MAX changed after format change";
       return false;
     }
 
     if (!dev_.GetSelection(V4L2_SEL_TGT_ROI_BOUNDS_MIN, &new_selection)) {
-      LOG(ERROR) << "Cannot get select V4L2_SEL_TGT_ROI_BOUNDS_MIN";
+      LOGF(ERROR) << "Cannot get select V4L2_SEL_TGT_ROI_BOUNDS_MIN";
       return false;
     }
     if (!IsSameRect(new_selection.r, selection_min.r)) {
-      LOG(ERROR) << "V4L2_SEL_TGT_ROI_BOUNDS_MIN changed after format change";
+      LOGF(ERROR) << "V4L2_SEL_TGT_ROI_BOUNDS_MIN changed after format change";
       return false;
     }
 
@@ -706,7 +706,7 @@ class V4L2Test : public ::testing::Test {
           // EX: 30 fps and capture 3 secs. We may get 89 frames or 91 frames.
           // The actual fps will be 29.66 or 30.33.
           if (abs(actual_fps - fps) > 1) {
-            LOG(WARNING) << base::StringPrintf(
+            LOGF(WARNING) << base::StringPrintf(
                 "Capture test %dx%d (%08X) failed with fps %.2f",
                 test_format->width, test_format->height, test_format->fourcc,
                 actual_fps);
@@ -716,7 +716,7 @@ class V4L2Test : public ::testing::Test {
           if (!CheckConstantFramerate(
                   dev_.GetFrameTimestamps(), fps,
                   g_env->test_list_ == kCertificationTestList)) {
-            LOG(WARNING) << base::StringPrintf(
+            LOGF(WARNING) << base::StringPrintf(
                 "Capture test %dx%d (%08X) failed and didn't meet "
                 "constant framerate",
                 test_format->width, test_format->height, test_format->fourcc);
@@ -880,7 +880,7 @@ TEST_F(V4L2Test, FrameRate) {
   if (param.parm.capture.capability & V4L2_CAP_TIMEPERFRAME) {
     ASSERT_TRUE(dev_.SetParam(&param));
   } else {
-    LOG(INFO) << "Does not support TIMEPERFRAME";
+    LOGF(INFO) << "Does not support TIMEPERFRAME";
   }
 }
 
@@ -970,7 +970,7 @@ TEST_F(V4L2Test, MaximumSupportedResolution) {
   EXPECT_GE(max_resolution.height, required_height);
 
   if (HasFailure()) {
-    LOG(ERROR) << base::StringPrintf(
+    LOGF(ERROR) << base::StringPrintf(
         "The maximum resolution %dx%d does not meet the requirement %dx%d for "
         "%s-facing camera",
         max_resolution.width, max_resolution.height, required_width,
@@ -1056,8 +1056,8 @@ int main(int argc, char** argv) {
   brillo::FlagHelper::Init(argc, argv, "\nTest V4L2 camera functionalities.");
 
   if (FLAGS_list_usbcam && FLAGS_list_capture_devices) {
-    std::cerr << "|list_usbcam| and |list_capture_devices| cannot be present "
-                 "at the same time";
+    LOGF(ERROR) << "|list_usbcam| and |list_capture_devices| cannot be present "
+                   "at the same time";
     return -1;
   }
 

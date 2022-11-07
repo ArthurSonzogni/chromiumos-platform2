@@ -12,10 +12,11 @@
 #include <string>
 #include <utility>
 
-#include "cros-camera/common.h"
-
 #include <base/check.h>
 #include <base/check_op.h>
+#include <base/strings/stringprintf.h>
+
+#include "cros-camera/common.h"
 
 #define MAJOR(dev) (((uint32_t)(dev)) >> 8)
 #define MINOR(dev) (((uint32_t)(dev)) & 0xff)
@@ -47,16 +48,16 @@ bool V4L2Device::OpenDevice(bool show_err) {
   struct stat st;
   if (-1 == stat(dev_name_, &st)) {
     if (show_err) {
-      printf("<<< Error: could not find v4l2 device %s: (%d) %s.>>>\n",
-             dev_name_, errno, strerror(errno));
+      PLOGF(ERROR) << base::StringPrintf("Could not find v4l2 device %s",
+                                         dev_name_);
     }
     return false;
   }
 
   if (!S_ISCHR(st.st_mode)) {
     if (show_err) {
-      printf("<<< Error: specified v4l2 device %s is not char device.>>>\n",
-             dev_name_);
+      LOGF(ERROR) << base::StringPrintf(
+          "Specified v4l2 device %s is not char device", dev_name_);
     }
     return false;
   }
@@ -64,8 +65,8 @@ bool V4L2Device::OpenDevice(bool show_err) {
   if (MAJOR(st.st_rdev) != V4L2_VIDEO_CAPTURE_MAJOR ||
       MINOR(st.st_rdev) >= V4L2_VIDEO_CAPTURE_MINOR_MAX) {
     if (show_err) {
-      printf("<<< Error: specified v4l2 device %s is not v4l2 device.>>>\n",
-             dev_name_);
+      LOGF(ERROR) << base::StringPrintf(
+          "Specified v4l2 device %s is not v4l2 device", dev_name_);
     }
     return false;
   }
@@ -73,8 +74,8 @@ bool V4L2Device::OpenDevice(bool show_err) {
   fd_ = open(dev_name_, O_RDWR | O_NONBLOCK, 0);
   if (-1 == fd_) {
     if (show_err) {
-      printf("<<< Error: specified v4l2 device %s could not be opened.>>>\n",
-             dev_name_);
+      LOGF(ERROR) << base::StringPrintf(
+          "Specified v4l2 device %s could not be opened", dev_name_);
     }
     return false;
   }
@@ -85,7 +86,8 @@ bool V4L2Device::OpenDevice(bool show_err) {
 
   if (!(cap.capabilities & V4L2_CAP_VIDEO_CAPTURE)) {
     if (show_err) {
-      printf("<<< Error: %s does not support video capture.>>>\n", dev_name_);
+      LOGF(ERROR) << base::StringPrintf("%s does not support video capture",
+                                        dev_name_);
     }
     return false;
   }
@@ -118,7 +120,7 @@ bool V4L2Device::InitDevice(IOMethod io,
   fmt.fmt.pix.field = V4L2_FIELD_NONE;
 
   if (-1 == DoIoctl(VIDIOC_S_FMT, &fmt)) {
-    printf("<<< Error: VIDIOC_S_FMT on %s.>>>\n", dev_name_);
+    LOGF(ERROR) << base::StringPrintf("VIDIOC_S_FMT on %s", dev_name_);
     return false;
   }
 
@@ -130,12 +132,13 @@ bool V4L2Device::InitDevice(IOMethod io,
     case IO_METHOD_MMAP:
     case IO_METHOD_USERPTR:
       if (!(cap.capabilities & V4L2_CAP_STREAMING)) {
-        printf("<<< Error: %s does not support streaming.>>>\n", dev_name_);
+        LOGF(ERROR) << base::StringPrintf("%s does not support streaming",
+                                          dev_name_);
         return false;
       }
       break;
     default:
-      printf("<<< Error: IO method should be defined.>>>\n");
+      LOGF(ERROR) << "IO method should be defined";
       return false;
   }
 
@@ -147,7 +150,8 @@ bool V4L2Device::InitDevice(IOMethod io,
     if (fps > 0) {
       SetFrameRate(fps);
     } else {
-      printf("<<< Error: fps %f should be a positive number.>>>\n", fps);
+      LOGF(ERROR) << base::StringPrintf("Fps %f should be a positive number",
+                                        fps);
       return false;
     }
   }
@@ -168,16 +172,17 @@ bool V4L2Device::InitDevice(IOMethod io,
       constant_framerate_msg = " without constant framerate";
       break;
     default:
-      printf("<<< Error: Invalid constant framerate setting: %d. >>>\n",
-             constant_framerate);
+      LOGF(ERROR) << base::StringPrintf(
+          "Invalid constant framerate setting: %d", constant_framerate);
       return false;
   }
   SetControl(V4L2_CID_EXPOSURE_AUTO_PRIORITY, constant_framerate_setting);
 
-  printf("actual format for capture %dx%d %c%c%c%c picture at %.2f fps%s\n",
-         fmt.fmt.pix.width, fmt.fmt.pix.height, (pixfmt >> 0) & 0xff,
-         (pixfmt >> 8) & 0xff, (pixfmt >> 16) & 0xff, (pixfmt >> 24) & 0xff,
-         actual_fps, constant_framerate_msg.c_str());
+  LOGF(INFO) << base::StringPrintf(
+      "Actual format for capture %dx%d %c%c%c%c picture at %.2f fps%s",
+      fmt.fmt.pix.width, fmt.fmt.pix.height, (pixfmt >> 0) & 0xff,
+      (pixfmt >> 8) & 0xff, (pixfmt >> 16) & 0xff, (pixfmt >> 24) & 0xff,
+      actual_fps, constant_framerate_msg.c_str());
   frame_timestamps_.clear();
   num_skip_frames_ = num_skip_frames;
 
@@ -190,7 +195,7 @@ bool V4L2Device::InitDevice(IOMethod io,
       ret = InitUserPtrIO(fmt.fmt.pix.sizeimage);
       break;
     default:
-      printf("<<< Error: IO method should be defined.>>>\n");
+      LOGF(ERROR) << "IO method should be defined";
       return false;
   }
   if (ret)
@@ -209,22 +214,23 @@ bool V4L2Device::UninitDevice() {
     case IO_METHOD_MMAP:
       for (uint32_t i = 0; i < num_buffers_; ++i)
         if (-1 == munmap(v4l2_buffers_[i].start, v4l2_buffers_[i].length)) {
-          printf("<<< Error: munmap() on %s failed.>>>\n", dev_name_);
+          PLOGF(ERROR) << base::StringPrintf("munmap() on %s failed",
+                                             dev_name_);
           return false;
         }
 
       req.memory = V4L2_MEMORY_MMAP;
       if (-1 == DoIoctl(VIDIOC_REQBUFS, &req)) {
-        printf("<<< Error: VIDIOC_REQBUFS for MMAP failed on %s: %s.>>>\n",
-               dev_name_, strerror(errno));
+        PLOGF(ERROR) << base::StringPrintf(
+            "VIDIOC_REQBUFS for MMAP failed on %s", dev_name_);
         return false;
       }
       break;
     case IO_METHOD_USERPTR:
       req.memory = V4L2_MEMORY_USERPTR;
       if (-1 == DoIoctl(VIDIOC_REQBUFS, &req)) {
-        printf("<<< Error: VIDIOC_REQBUFS for USERPTR failed on %s.: %s>>>\n",
-               dev_name_, strerror(errno));
+        PLOGF(ERROR) << base::StringPrintf(
+            "VIDIOC_REQBUFS for USERPTR failed on %s", dev_name_);
         return false;
       }
 
@@ -232,7 +238,7 @@ bool V4L2Device::UninitDevice() {
         free(v4l2_buffers_[i].start);
       break;
     default:
-      printf("<<< Error: IO method should be defined.>>>\n");
+      LOGF(ERROR) << "IO method should be defined";
       return false;
   }
   FreeBuffer();
@@ -247,7 +253,7 @@ bool V4L2Device::StartCapture() {
   }
   v4l2_buf_type type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
   if (-1 == DoIoctl(VIDIOC_STREAMON, &type)) {
-    printf("<<< Error: VIDIOC_STREAMON on %s.>>>\n", dev_name_);
+    LOGF(ERROR) << base::StringPrintf("VIDIOC_STREAMON on %s", dev_name_);
     return false;
   }
   stream_on_ = true;
@@ -277,21 +283,16 @@ bool V4L2Device::StopCapture() {
     case IO_METHOD_USERPTR:
       type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
       if (-1 == DoIoctl(VIDIOC_STREAMOFF, &type)) {
-        printf("<<< Error: VIDIOC_STREAMOFF on %s.>>>\n", dev_name_);
+        LOGF(ERROR) << base::StringPrintf("VIDIOC_STREAMOFF on %s", dev_name_);
         return false;
       }
       break;
     default:
-      printf("<<< Error: IO method should be defined.>>>\n");
+      LOGF(ERROR) << "IO method should be defined";
       return false;
   }
   stream_on_ = false;
   return true;
-}
-
-void V4L2Device::ProcessImage(const void* p) {
-  printf(".");
-  fflush(stdout);
 }
 
 // Do capture for duration of |time_in_sec|.
@@ -321,7 +322,8 @@ bool V4L2Device::Run(uint32_t time_in_sec) {
   }
   // All resolutions should have at least 1 fps.
   float actual_fps = static_cast<float>(GetNumFrames() - 1) / time_in_sec;
-  printf("\n<<< Info: Actual fps is %f on %s.>>>\n", actual_fps, dev_name_);
+  LOGF(INFO) << base::StringPrintf("Actual fps is %f on %s", actual_fps,
+                                   dev_name_);
   return true;
 }
 
@@ -348,8 +350,7 @@ int32_t V4L2Device::ReadOneFrame(uint32_t* buffer_index, uint32_t* data_size) {
   device_pfd.events = POLLIN;
   const int result = poll(&device_pfd, 1, kCaptureTimeoutMs);
   if (result < 0) {
-    printf("<<< Error: poll() failed on %s: %s.>>>\n", dev_name_,
-           strerror(errno));
+    PLOGF(ERROR) << base::StringPrintf("poll() failed on %s", dev_name_);
     return -1;
   }
   if (result == 0) {
@@ -371,7 +372,8 @@ int32_t V4L2Device::ReadOneFrame(uint32_t* buffer_index, uint32_t* data_size) {
             // Could ignore EIO, see spec.
             // Fall through.
           default:
-            printf("<<< Error: VIDIOC_DQBUF failed on %s.>>>\n", dev_name_);
+            LOGF(ERROR) << base::StringPrintf("VIDIOC_DQBUF failed on %s",
+                                              dev_name_);
             return -2;
         }
       }
@@ -398,7 +400,8 @@ int32_t V4L2Device::ReadOneFrame(uint32_t* buffer_index, uint32_t* data_size) {
             // Could ignore EIO, see spec.
             // Fall through.
           default:
-            printf("<<< Error: VIDIOC_DQBUF failed on %s.>>>\n", dev_name_);
+            LOGF(ERROR) << base::StringPrintf("VIDIOC_DQBUF failed on %s",
+                                              dev_name_);
             return -2;
         }
       }
@@ -407,7 +410,7 @@ int32_t V4L2Device::ReadOneFrame(uint32_t* buffer_index, uint32_t* data_size) {
       CHECK(buf.index < num_buffers_);
       break;
     default:
-      printf("<<< Error: IO method should be defined.>>>\n");
+      LOGF(ERROR) << "IO method should be defined";
       return -1;
   }
   if (buffer_index)
@@ -426,7 +429,8 @@ bool V4L2Device::EnqueueBuffer(uint32_t buffer_index) {
       buf.memory = V4L2_MEMORY_MMAP;
       buf.index = buffer_index;
       if (-1 == DoIoctl(VIDIOC_QBUF, &buf)) {
-        printf("<<< Error: VIDIOC_QBUF failed on %s.>>>\n", dev_name_);
+        LOGF(ERROR) << base::StringPrintf("VIDIOC_QBUF failed on %s",
+                                          dev_name_);
         return false;
       }
       break;
@@ -438,12 +442,13 @@ bool V4L2Device::EnqueueBuffer(uint32_t buffer_index) {
           reinterpret_cast<uintptr_t>(v4l2_buffers_[buffer_index].start);
       buf.length = v4l2_buffers_[buffer_index].length;
       if (-1 == DoIoctl(VIDIOC_QBUF, &buf)) {
-        printf("<<< Error: VIDIOC_QBUF failed on %s.>>>\n", dev_name_);
+        LOGF(ERROR) << base::StringPrintf("VIDIOC_QBUF failed on %s",
+                                          dev_name_);
         return false;
       }
       break;
     default:
-      printf("<<< Error: IO method should be defined.>>>\n");
+      LOGF(ERROR) << "IO method should be defined";
       return false;
   }
   return true;
@@ -452,7 +457,7 @@ bool V4L2Device::EnqueueBuffer(uint32_t buffer_index) {
 bool V4L2Device::AllocateBuffer(uint32_t buffer_count) {
   v4l2_buffers_ = new Buffer[buffer_count];
   if (!v4l2_buffers_) {
-    printf("<<< Error: Out of memory.>>>\n");
+    LOGF(ERROR) << "Out of memory";
     return false;
   }
   return true;
@@ -472,16 +477,17 @@ bool V4L2Device::InitMmapIO() {
   req.memory = V4L2_MEMORY_MMAP;
   if (-1 == DoIoctl(VIDIOC_REQBUFS, &req)) {
     if (EINVAL == errno)
-      printf("<<< Error: mmap() io is not supported on %s.>>>\n", dev_name_);
+      LOGF(ERROR) << base::StringPrintf("mmap() io is not supported on %s",
+                                        dev_name_);
     else
-      printf("<<< Error: VIDIOC_REQBUFS for MMAP(%d) failed on %s: %s.>>>\n",
-             min_buffers_, dev_name_, strerror(errno));
+      PLOGF(ERROR) << base::StringPrintf(
+          "VIDIOC_REQBUFS for MMAP(%d) failed on %s", min_buffers_, dev_name_);
     return false;
   }
 
   if (req.count < min_buffers_) {
-    printf("<<< Error: Insufficient buffer memory on %s >>>\n",
-           dev_name_);  // TODO(jiesun) :add flexibilities.
+    LOGF(ERROR) << base::StringPrintf("Insufficient buffer memory on %s",
+                                      dev_name_);
     return false;
   }
 
@@ -495,7 +501,8 @@ bool V4L2Device::InitMmapIO() {
     buf.memory = V4L2_MEMORY_MMAP;
     buf.index = num_buffers_;
     if (-1 == DoIoctl(VIDIOC_QUERYBUF, &buf)) {
-      printf("<<< Error: VIDIOC_QUERYBUF failed on %s.>>>\n", dev_name_);
+      LOGF(ERROR) << base::StringPrintf("VIDIOC_QUERYBUF failed on %s",
+                                        dev_name_);
       return false;
     }
     v4l2_buffers_[num_buffers_].length = buf.length;
@@ -503,7 +510,7 @@ bool V4L2Device::InitMmapIO() {
         mmap(NULL,  // Start anywhere.
              buf.length, PROT_READ | PROT_WRITE, MAP_SHARED, fd_, buf.m.offset);
     if (MAP_FAILED == v4l2_buffers_[num_buffers_].start) {
-      printf("<<< Error: mmap() failed on %s.>>>\n", dev_name_);
+      LOGF(ERROR) << base::StringPrintf("mmap() failed on %s", dev_name_);
       return false;
     }
   }
@@ -522,10 +529,12 @@ bool V4L2Device::InitUserPtrIO(uint32_t buffer_size) {
   buffer_size = (buffer_size + page_size - 1) & ~(page_size - 1);
   if (-1 == DoIoctl(VIDIOC_REQBUFS, &req)) {
     if (EINVAL == errno)
-      printf("<<< Error: user pointer is not supported on %s.>>>\n", dev_name_);
+      LOGF(ERROR) << base::StringPrintf("User pointer is not supported on %s",
+                                        dev_name_);
     else
-      printf("<<< Error: VIDIOC_REQBUFS for USERPTR(%d) failed on %s: %s.>>>\n",
-             min_buffers_, dev_name_, strerror(errno));
+      PLOGF(ERROR) << base::StringPrintf(
+          "VIDIOC_REQBUFS for USERPTR(%d) failed on %s", min_buffers_,
+          dev_name_);
     return false;
   }
 
@@ -537,7 +546,7 @@ bool V4L2Device::InitUserPtrIO(uint32_t buffer_size) {
     v4l2_buffers_[num_buffers_].start = memalign(page_size, buffer_size);
 
     if (!v4l2_buffers_[num_buffers_].start) {
-      printf("<<< Error: Out of memory.>>>\n");
+      LOGF(ERROR) << "Out of memory";
       return false;
     }
   }
@@ -548,7 +557,7 @@ bool V4L2Device::EnumInput() {
   v4l2_input input;
   int32_t index;
   if (-1 == DoIoctl(VIDIOC_G_INPUT, &index)) {
-    printf("<<< Info: VIDIOC_G_INPUT not supported.>>>\n");
+    LOGF(INFO) << "VIDIOC_G_INPUT not supported";
     return false;
   }
 
@@ -557,13 +566,14 @@ bool V4L2Device::EnumInput() {
     input.index = i;
     if (-1 == DoIoctl(VIDIOC_ENUMINPUT, &input)) {
       if (i == 0) {
-        printf("<<< Info: VIDIOC_ENUMINPUT not supported.>>>\n");
+        LOGF(INFO) << "VIDIOC_ENUMINPUT not supported";
         return false;
       } else {
         break;
       }
     }
-    printf("Current input: %s %s\n", input.name, i == index ? "*" : "");
+    LOGF(INFO) << base::StringPrintf("Current input: %s %s", input.name,
+                                     i == index ? "*" : "");
   }
   return true;
 }
@@ -573,27 +583,27 @@ bool V4L2Device::EnumStandard() {
   v4l2_standard standard;
   memset(&input, 0, sizeof(input));
   if (-1 == DoIoctl(VIDIOC_G_INPUT, &input.index)) {
-    printf("<<< Info: VIDIOC_G_INPUT not supported.>>>\n");
+    LOGF(INFO) << "VIDIOC_G_INPUT not supported";
     return false;
   }
 
   if (-1 == DoIoctl(VIDIOC_ENUMINPUT, &input)) {
-    printf("<<< Info: VIDIOC_ENUMINPUT not supported.>>>\n");
+    LOGF(INFO) << "VIDIOC_ENUMINPUT not supported";
     return false;
   }
 
-  printf("Current input %s supports:\n", input.name);
+  LOGF(INFO) << base::StringPrintf("Current input %s supports:", input.name);
   memset(&standard, 0, sizeof(standard));
   standard.index = 0;
   while (0 == DoIoctl(VIDIOC_ENUMSTD, &standard)) {
     if (standard.id & input.std)
-      printf("%s\n", standard.name);
+      LOGF(INFO) << base::StringPrintf("%s", standard.name);
     standard.index++;
   }
   // EINVAL indicates the end of the enumeration, which cannot be
   // empty unless this device falls under the USB exception.
   if (errno != EINVAL || standard.index == 0) {
-    printf("<<< Info: VIDIOC_ENUMSTD not supported.>>>\n");
+    LOGF(INFO) << "VIDIOC_ENUMSTD not supported";
     return false;
   }
   return true;
@@ -613,16 +623,17 @@ bool V4L2Device::EnumControl(bool show_menu) {
          query_ctrl.id < query_ctrl_sets[i].second; ++query_ctrl.id) {
       if (0 == DoIoctl(VIDIOC_QUERYCTRL, &query_ctrl)) {
         if (query_ctrl.flags & V4L2_CTRL_FLAG_DISABLED) {
-          printf("Control %s is disabled\n", query_ctrl.name);
+          LOGF(INFO) << base::StringPrintf("Control %s is disabled",
+                                           query_ctrl.name);
         } else {
-          printf("Control %s is enabled(%d-%d:%d)\n", query_ctrl.name,
-                 query_ctrl.minimum, query_ctrl.maximum,
-                 query_ctrl.default_value);
+          LOGF(INFO) << base::StringPrintf(
+              "Control %s is enabled(%d-%d:%d)", query_ctrl.name,
+              query_ctrl.minimum, query_ctrl.maximum, query_ctrl.default_value);
         }
         if (query_ctrl.type == V4L2_CTRL_TYPE_MENU && show_menu)
           EnumControlMenu(query_ctrl);
       } else if (errno != EINVAL) {
-        printf("<<< Info: VIDIOC_query_ctrl not supported.>>>\n");
+        LOGF(INFO) << "VIDIOC_query_ctrl not supported";
         return false;
       }
     }
@@ -631,16 +642,18 @@ bool V4L2Device::EnumControl(bool show_menu) {
   for (query_ctrl.id = V4L2_CID_PRIVATE_BASE;; query_ctrl.id++) {
     if (0 == DoIoctl(VIDIOC_QUERYCTRL, &query_ctrl)) {
       if (query_ctrl.flags & V4L2_CTRL_FLAG_DISABLED)
-        printf("Private Control %s is disabled\n", query_ctrl.name);
+        LOGF(INFO) << base::StringPrintf("Private Control %s is disabled",
+                                         query_ctrl.name);
       else
-        printf("Private Control %s is enabled\n", query_ctrl.name);
+        LOGF(INFO) << base::StringPrintf("Private Control %s is enabled",
+                                         query_ctrl.name);
       if (query_ctrl.type == V4L2_CTRL_TYPE_MENU && show_menu)
         EnumControlMenu(query_ctrl);
     } else {
       // Assume private control ids are contiguous.
       if (errno == EINVAL)
         break;
-      printf("<<< Info: VIDIOC_query_ctrl not supported.>>>\n");
+      LOGF(INFO) << "VIDIOC_query_ctrl not supported";
       return false;
     }
   }
@@ -650,14 +663,14 @@ bool V4L2Device::EnumControl(bool show_menu) {
 bool V4L2Device::EnumControlMenu(const v4l2_queryctrl& query_ctrl) {
   v4l2_querymenu query_menu;
   memset(&query_menu, 0, sizeof(query_menu));
-  printf("\t\tMenu items:\n");
+  LOGF(INFO) << "Menu items:";
   query_menu.id = query_ctrl.id;
   for (query_menu.index = query_ctrl.minimum;
        query_menu.index <= query_ctrl.maximum; ++query_menu.index) {
     if (0 == DoIoctl(VIDIOC_QUERYMENU, &query_menu)) {
-      printf("\t\t\t%s\n", query_menu.name);
+      LOGF(INFO) << base::StringPrintf("\t%s", query_menu.name);
     } else {
-      printf("<<< Info: VIDIOC_QUERYMENU not supported.>>>\n");
+      LOGF(INFO) << "VIDIOC_QUERYMENU not supported";
       return false;
     }
   }
@@ -673,18 +686,19 @@ bool V4L2Device::EnumFormat(uint32_t* num_formats, bool show_fmt) {
     format_desc.index = i;
     if (-1 == DoIoctl(VIDIOC_ENUM_FMT, &format_desc)) {
       if (i == 0) {
-        printf("<<< Info: VIDIOC_ENUM_FMT not supported.>>>\n");
+        LOGF(INFO) << "VIDIOC_ENUM_FMT not supported";
         return false;
       } else {
         break;
       }
     }
     if (show_fmt)
-      printf("<<< Info supported format #%d: %s (%c%c%c%c) >>>\n", i + 1,
-             format_desc.description, (format_desc.pixelformat >> 0) & 0xff,
-             (format_desc.pixelformat >> 8) & 0xff,
-             (format_desc.pixelformat >> 16) & 0xff,
-             (format_desc.pixelformat >> 24) & 0xff);
+      LOGF(INFO) << base::StringPrintf("Supported format #%d: %s (%c%c%c%c)",
+                                       i + 1, format_desc.description,
+                                       (format_desc.pixelformat >> 0) & 0xff,
+                                       (format_desc.pixelformat >> 8) & 0xff,
+                                       (format_desc.pixelformat >> 16) & 0xff,
+                                       (format_desc.pixelformat >> 24) & 0xff);
   }
 
   if (num_formats)
@@ -715,7 +729,7 @@ bool V4L2Device::EnumFrameSize(uint32_t pixfmt,
     frmsize_desc.index = i;
     if (-1 == DoIoctl(VIDIOC_ENUM_FRAMESIZES, &frmsize_desc)) {
       if (i == 0) {
-        printf("<<< Info: VIDIOC_ENUM_FRAMESIZES not supported.>>>\n");
+        LOGF(INFO) << "VIDIOC_ENUM_FRAMESIZES not supported";
         return false;
       } else {
         break;
@@ -724,18 +738,17 @@ bool V4L2Device::EnumFrameSize(uint32_t pixfmt,
     if (show_frmsize) {
       switch (frmsize_desc.type) {
         case V4L2_FRMSIZE_TYPE_DISCRETE:
-          printf(
-              "<<< Info supported discrete frame size #%d:"
-              " for pixel format(%c%c%c%c): %dx%d >>>\n",
+          LOGF(INFO) << base::StringPrintf(
+              "Supported discrete frame size #%d: for pixel format(%c%c%c%c): "
+              "%dx%d",
               i + 1, (pixfmt >> 0) & 0xff, (pixfmt >> 8) & 0xff,
               (pixfmt >> 16) & 0xff, (pixfmt >> 24) & 0xff,
               frmsize_desc.discrete.width, frmsize_desc.discrete.height);
           break;
         case V4L2_FRMSIZE_TYPE_CONTINUOUS:
-          printf(
-              "<<< Info supported discrete frame size #%d:"
-              " for pixel format(%c%c%c%c): "
-              " from %dx%d to %dx%d >>>\n",
+          LOGF(INFO) << base::StringPrintf(
+              "Supported discrete frame size #%d: for pixel format(%c%c%c%c): "
+              "from %dx%d to %dx%d",
               i + 1, (pixfmt >> 0) & 0xff, (pixfmt >> 8) & 0xff,
               (pixfmt >> 16) & 0xff, (pixfmt >> 24) & 0xff,
               frmsize_desc.stepwise.min_width, frmsize_desc.stepwise.min_height,
@@ -743,10 +756,9 @@ bool V4L2Device::EnumFrameSize(uint32_t pixfmt,
               frmsize_desc.stepwise.max_height);
           break;
         case V4L2_FRMSIZE_TYPE_STEPWISE:
-          printf(
-              "<<< Info supported discrete frame size #%d:"
-              " for pixel format(%c%c%c%c): "
-              " from %dx%d to %dx%d step(%d,%d) >>>\n",
+          LOGF(INFO) << base::StringPrintf(
+              "Supported discrete frame size #%d: for pixel format(%c%c%c%c): "
+              "from %dx%d to %dx%d step(%d,%d)",
               i + 1, (pixfmt >> 0) & 0xff, (pixfmt >> 8) & 0xff,
               (pixfmt >> 16) & 0xff, (pixfmt >> 24) & 0xff,
               frmsize_desc.stepwise.min_width, frmsize_desc.stepwise.min_height,
@@ -771,12 +783,12 @@ bool V4L2Device::GetFrameSize(uint32_t index,
   frmsize_desc.pixel_format = pixfmt;
   frmsize_desc.index = index;
   if (-1 == DoIoctl(VIDIOC_ENUM_FRAMESIZES, &frmsize_desc)) {
-    printf("<<< Error: VIDIOC_ENUM_FRAMESIZES not supported.>>>\n");
+    LOGF(ERROR) << "VIDIOC_ENUM_FRAMESIZES not supported";
     return false;
   }
   if (frmsize_desc.type != V4L2_FRMSIZE_TYPE_DISCRETE) {
-    printf("<<< Error: frame size type %d not supported.>>>\n",
-           frmsize_desc.type);
+    LOGF(ERROR) << base::StringPrintf("Frame size type %d not supported",
+                                      frmsize_desc.type);
     return false;
   }
 
@@ -802,7 +814,7 @@ bool V4L2Device::EnumFrameInterval(uint32_t pixfmt,
     frm_interval.index = i;
     if (-1 == DoIoctl(VIDIOC_ENUM_FRAMEINTERVALS, &frm_interval)) {
       if (i == 0) {
-        printf("<<< Error: VIDIOC_ENUM_FRAMEINTERVALS not supported.>>>\n");
+        LOGF(ERROR) << "VIDIOC_ENUM_FRAMEINTERVALS not supported";
         return false;
       } else {
         break;
@@ -811,19 +823,18 @@ bool V4L2Device::EnumFrameInterval(uint32_t pixfmt,
     if (show_intervals) {
       switch (frm_interval.type) {
         case V4L2_FRMIVAL_TYPE_DISCRETE:
-          printf(
-              "<<< Info supported discrete frame interval #%d:"
-              " for pixel format(%c%c%c%c): %dx%d: %d/%d >>>\n",
+          LOGF(INFO) << base::StringPrintf(
+              "Supported discrete frame interval #%d: for pixel "
+              "format(%c%c%c%c): %dx%d: %d/%d",
               i + 1, (pixfmt >> 0) & 0xff, (pixfmt >> 8) & 0xff,
               (pixfmt >> 16) & 0xff, (pixfmt >> 24) & 0xff, width, height,
               frm_interval.discrete.numerator,
               frm_interval.discrete.denominator);
           break;
         case V4L2_FRMIVAL_TYPE_CONTINUOUS:
-          printf(
-              "<<< Info supported continuous frame interval #%d:"
-              " for pixel format(%c%c%c%c): %dx%d:"
-              " from %d/%d to %d/%d >>>\n",
+          LOGF(INFO) << base::StringPrintf(
+              "Supported continuous frame interval #%d: for pixel "
+              "format(%c%c%c%c): %dx%d: from %d/%d to %d/%d",
               i + 1, (pixfmt >> 0) & 0xff, (pixfmt >> 8) & 0xff,
               (pixfmt >> 16) & 0xff, (pixfmt >> 24) & 0xff, width, height,
               frm_interval.stepwise.min.numerator,
@@ -832,10 +843,9 @@ bool V4L2Device::EnumFrameInterval(uint32_t pixfmt,
               frm_interval.stepwise.max.denominator);
           break;
         case V4L2_FRMIVAL_TYPE_STEPWISE:
-          printf(
-              "<<< Info supported stepwise frame interval #%d:"
-              " for pixel format(%c%c%c%c): %dx%d:"
-              " from %d/%d to %d/%d step(%d,%d) >>>\n",
+          LOGF(INFO) << base::StringPrintf(
+              "Supported stepwise frame interval #%d: for pixel "
+              "format(%c%c%c%c): %dx%d: from %d/%d to %d/%d step(%d,%d)",
               i + 1, (pixfmt >> 0) & 0xff, (pixfmt >> 8) & 0xff,
               (pixfmt >> 16) & 0xff, (pixfmt >> 24) & 0xff, width, height,
               frm_interval.stepwise.min.numerator,
@@ -846,9 +856,9 @@ bool V4L2Device::EnumFrameInterval(uint32_t pixfmt,
               frm_interval.stepwise.step.denominator);
           break;
         default:
-          printf(
-              "<<< Error: unsupported frame interval type %d: for index %d"
-              " pixel format(%c%c%c%c): %dx%d >>>\n",
+          LOGF(ERROR) << base::StringPrintf(
+              "Unsupported frame interval type %d: for index %d pixel "
+              "format(%c%c%c%c): %dx%d",
               frm_interval.type, i + 1, (pixfmt >> 0) & 0xff,
               (pixfmt >> 8) & 0xff, (pixfmt >> 16) & 0xff,
               (pixfmt >> 24) & 0xff, width, height);
@@ -873,12 +883,12 @@ bool V4L2Device::GetFrameInterval(uint32_t index,
   frm_interval.height = height;
   frm_interval.index = index;
   if (-1 == DoIoctl(VIDIOC_ENUM_FRAMEINTERVALS, &frm_interval)) {
-    printf("<<< Error: VIDIOC_ENUM_FRAMEINTERVALS not supported.>>>\n");
+    LOGF(ERROR) << "VIDIOC_ENUM_FRAMEINTERVALS not supported";
     return false;
   }
   if (frm_interval.type != V4L2_FRMIVAL_TYPE_DISCRETE) {
-    printf("<<< Error: frame interval type %d not supported.>>>\n",
-           frm_interval.type);
+    LOGF(ERROR) << base::StringPrintf("Frame interval type %d not supported",
+                                      frm_interval.type);
     return false;
   }
 
@@ -895,11 +905,11 @@ bool V4L2Device::QueryControl(uint32_t id, v4l2_queryctrl* ctrl) {
   if (-1 == DoIoctl(VIDIOC_QUERYCTRL, ctrl)) {
     if (errno != EINVAL)
       return false;
-    printf("%d is not supported\n", id);
+    LOGF(INFO) << base::StringPrintf("%d is not supported", id);
     return false;
   }
   if (ctrl->flags & V4L2_CTRL_FLAG_DISABLED) {
-    printf("%d is not supported\n", id);
+    LOGF(INFO) << base::StringPrintf("%d is not supported", id);
     return false;
   }
   return true;
@@ -910,7 +920,7 @@ bool V4L2Device::SetControl(uint32_t id, int32_t value) {
   control.id = id;
   control.value = value;
   if (-1 == DoIoctl(VIDIOC_S_CTRL, &control)) {
-    printf("<<< Error: VIDIOC_S_CTRL failed. %d>>>\n", errno);
+    PLOGF(ERROR) << base::StringPrintf("VIDIOC_S_CTRL failed");
     return false;
   }
   return true;
@@ -918,7 +928,7 @@ bool V4L2Device::SetControl(uint32_t id, int32_t value) {
 
 bool V4L2Device::GetCropCap(v4l2_cropcap* cropcap) {
   if (-1 == DoIoctl(VIDIOC_CROPCAP, cropcap)) {
-    printf("<<< Warning: VIDIOC_CROPCAP not supported.>>>\n");
+    LOGF(WARNING) << "VIDIOC_CROPCAP not supported";
     return false;
   }
   return true;
@@ -926,17 +936,17 @@ bool V4L2Device::GetCropCap(v4l2_cropcap* cropcap) {
 
 bool V4L2Device::GetCrop(v4l2_crop* crop) {
   if (-1 == DoIoctl(VIDIOC_G_CROP, crop)) {
-    printf("<<< Warning: VIDIOC_G_CROP not supported.>>>\n");
+    LOGF(WARNING) << "VIDIOC_G_CROP not supported";
     return false;
   }
-  printf("crop: %d, %d, %d, %d\n", crop->c.left, crop->c.top, crop->c.width,
-         crop->c.height);
+  LOGF(INFO) << base::StringPrintf("Crop: %d, %d, %d, %d", crop->c.left,
+                                   crop->c.top, crop->c.width, crop->c.height);
   return true;
 }
 
 bool V4L2Device::SetCrop(v4l2_crop* crop) {
   if (-1 == DoIoctl(VIDIOC_S_CROP, crop)) {
-    printf("<<< Warning: VIDIOC_S_CROP not supported.>>>\n");
+    LOGF(WARNING) << "VIDIOC_S_CROP not supported";
     return false;
   }
   return true;
@@ -944,28 +954,32 @@ bool V4L2Device::SetCrop(v4l2_crop* crop) {
 
 bool V4L2Device::ProbeCaps(v4l2_capability* cap, bool show_caps) {
   if (-1 == DoIoctl(VIDIOC_QUERYCAP, cap)) {
-    printf("<<< Error: VIDIOC_QUERYCAP on %s.>>>\n", dev_name_);
+    LOGF(ERROR) << base::StringPrintf("VIDIOC_QUERYCAP on %s", dev_name_);
     return false;
   }
 
   if (show_caps) {
     auto ShowCaps = [&](uint32_t caps) {
       if (caps & V4L2_CAP_VIDEO_CAPTURE)
-        printf("<<< Info: %s support video capture interface.>>>\n", dev_name_);
+        LOGF(INFO) << base::StringPrintf("%s support video capture interface",
+                                         dev_name_);
       if (caps & V4L2_CAP_VIDEO_OUTPUT)
-        printf("<<< Info: %s support video output interface.>>>\n", dev_name_);
+        LOGF(INFO) << base::StringPrintf("%s support video output interface",
+                                         dev_name_);
       if (caps & V4L2_CAP_VIDEO_OVERLAY)
-        printf("<<< Info: %s support video overlay interface.>>>\n", dev_name_);
+        LOGF(INFO) << base::StringPrintf("%s support video overlay interface",
+                                         dev_name_);
       if (caps & V4L2_CAP_AUDIO)
-        printf("<<< Info: %s support audio i/o interface.>>>\n", dev_name_);
+        LOGF(INFO) << base::StringPrintf("%s support audio i/o interface",
+                                         dev_name_);
       if (caps & V4L2_CAP_STREAMING)
-        printf("<<< Info: %s support streaming i/o interface.>>>\n", dev_name_);
+        LOGF(INFO) << base::StringPrintf("%s support streaming i/o interface",
+                                         dev_name_);
     };
     ShowCaps(cap->capabilities);
     if (cap->capabilities & V4L2_CAP_DEVICE_CAPS) {
-      printf(
-          "<<< Info: %s support per device capabilities. Dump it as well.>>>\n",
-          dev_name_);
+      LOGF(INFO) << base::StringPrintf(
+          "%s support per device capabilities. Dump it as well", dev_name_);
       ShowCaps(cap->device_caps);
     }
   }
@@ -980,7 +994,7 @@ uint32_t V4L2Device::MapFourCC(const char* fourcc) {
 bool V4L2Device::GetParam(v4l2_streamparm* param) {
   param->type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
   if (-1 == DoIoctl(VIDIOC_G_PARM, param)) {
-    printf("<<< Warning: VIDIOC_G_PARM not supported.>>>\n");
+    LOGF(WARNING) << "VIDIOC_G_PARM not supported";
     return false;
   }
 
@@ -989,7 +1003,7 @@ bool V4L2Device::GetParam(v4l2_streamparm* param) {
 
 bool V4L2Device::SetParam(v4l2_streamparm* param) {
   if (-1 == DoIoctl(VIDIOC_S_PARM, param)) {
-    printf("<<< Warning: VIDIOC_S_PARM not supported.>>>\n");
+    LOGF(WARNING) << "VIDIOC_S_PARM not supported";
     return false;
   }
   return true;
@@ -1019,7 +1033,7 @@ bool V4L2Device::GetV4L2Format(v4l2_format* format) {
   format->type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
 
   if (-1 == DoIoctl(VIDIOC_G_FMT, format)) {
-    printf("<<< Error: VIDIOC_G_FMT on %s.>>>\n", dev_name_);
+    LOGF(ERROR) << base::StringPrintf("VIDIOC_G_FMT on %s", dev_name_);
     return false;
   }
   return true;
@@ -1030,7 +1044,7 @@ bool V4L2Device::GetSelection(uint32_t target, v4l2_selection* selection) {
   selection->type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
   selection->target = target;
   if (-1 == DoIoctl(VIDIOC_G_SELECTION, selection)) {
-    printf("<<< Error: VIDIOC_G_SELECTION on %s.>>>\n", dev_name_);
+    LOGF(ERROR) << base::StringPrintf("VIDIOC_G_SELECTION on %s", dev_name_);
     return false;
   }
   return true;
@@ -1043,7 +1057,7 @@ bool V4L2Device::SetSelection(uint32_t target, const v4l2_rect& rect) {
       .r = rect,
   };
   if (-1 == DoIoctl(VIDIOC_S_SELECTION, &selection)) {
-    printf("<<< Error: VIDIOC_S_SELECTION on %s.>>>\n", dev_name_);
+    LOGF(ERROR) << base::StringPrintf("VIDIOC_S_SELECTION on %s", dev_name_);
     return false;
   }
   return true;

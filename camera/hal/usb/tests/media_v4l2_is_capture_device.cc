@@ -4,6 +4,10 @@
 
 #include "hal/usb/tests/media_v4l2_device.h"
 
+#include <iomanip>
+
+#include "cros-camera/common.h"
+
 static bool IsCaptureDevice(uint32_t caps) {
   const uint32_t kCaptureMask =
       V4L2_CAP_VIDEO_CAPTURE | V4L2_CAP_VIDEO_CAPTURE_MPLANE;
@@ -18,20 +22,20 @@ static bool IsCaptureDevice(uint32_t caps) {
 // it is a capture device. 1 otherwise.
 int main(int argc, char** argv) {
   if (argc < 2) {
-    printf("Usage: media_v4l2_is_capture_device /dev/videoX\n");
+    LOGF(INFO) << "Usage: media_v4l2_is_capture_device /dev/videoX";
     return 1;
   }
 
   V4L2Device v4l2_dev(argv[1], 4);
   if (!v4l2_dev.OpenDevice()) {
-    printf("[Error] Can not open device '%s'\n", argv[1]);
+    LOGF(ERROR) << "Can not open device " << std::quoted(argv[1]);
     return 1;
   }
 
   bool is_capture_device = false;
   v4l2_capability caps;
   if (!v4l2_dev.ProbeCaps(&caps, false)) {
-    printf("[Error] Can not probe caps on device '%s'\n", argv[1]);
+    LOGF(ERROR) << "Can not probe caps on device " << std::quoted(argv[1]);
   } else {
     // Prefer to use available capabilities of that specific device node instead
     // of the physical device as a whole, so we can properly ignore the metadata

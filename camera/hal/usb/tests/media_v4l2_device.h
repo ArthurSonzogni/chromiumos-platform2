@@ -10,7 +10,6 @@
 #include <linux/videodev2.h>
 #include <malloc.h>
 #include <stdint.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/ioctl.h>
@@ -112,7 +111,7 @@ class V4L2Device {
 
   static uint32_t MapFourCC(const char* fourcc);
 
-  virtual void ProcessImage(const void* p);
+  virtual void ProcessImage(const void* p) {}
 
  private:
   int32_t DoIoctl(int32_t request, void* arg);
