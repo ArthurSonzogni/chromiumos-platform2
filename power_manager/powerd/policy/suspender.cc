@@ -25,8 +25,7 @@
 #include "power_manager/powerd/system/dark_resume_interface.h"
 #include "power_manager/powerd/system/dbus_wrapper.h"
 #include "power_manager/powerd/system/display/display_watcher.h"
-#include "power_manager/powerd/system/input_watcher.h"
-#include "power_manager/powerd/system/wakeup_source_identifier.h"
+#include "power_manager/powerd/system/wakeup_source_identifier_interface.h"
 #include "power_manager/proto_bindings/suspend.pb.h"
 
 namespace {

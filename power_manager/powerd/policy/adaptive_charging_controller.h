@@ -21,7 +21,6 @@
 
 #include "power_manager/common/clock.h"
 #include "power_manager/common/metrics_constants.h"
-#include "power_manager/common/power_constants.h"
 #include "power_manager/common/prefs.h"
 #include "power_manager/powerd/policy/backlight_controller.h"
 #include "power_manager/powerd/system/dbus_wrapper.h"

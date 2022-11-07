@@ -12,8 +12,8 @@
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/prefs.h"
 #include "power_manager/powerd/policy/backlight_controller.h"
-#include "power_manager/powerd/system/acpi_wakeup_helper.h"
-#include "power_manager/powerd/system/cros_ec_helper.h"
+#include "power_manager/powerd/system/acpi_wakeup_helper_interface.h"
+#include "power_manager/powerd/system/cros_ec_helper_interface.h"
 #include "power_manager/powerd/system/tagged_device.h"
 #include "power_manager/powerd/system/udev.h"
 

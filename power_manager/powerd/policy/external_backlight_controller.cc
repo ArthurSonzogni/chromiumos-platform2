@@ -19,7 +19,6 @@
 
 #include "power_manager/common/prefs.h"
 #include "power_manager/powerd/policy/backlight_controller_observer.h"
-#include "power_manager/powerd/system/ambient_light_sensor_delegate_file.h"
 #include "power_manager/powerd/system/ambient_light_sensor_watcher_interface.h"
 #include "power_manager/powerd/system/dbus_wrapper.h"
 #include "power_manager/powerd/system/display/display_power_setter.h"

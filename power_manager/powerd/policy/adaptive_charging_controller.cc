@@ -16,7 +16,6 @@
 #include <dbus/bus.h>
 #include <dbus/message.h>
 
-#include "chromeos/dbus/service_constants.h"
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/util.h"
 #include "power_manager/powerd/policy/adaptive_charging_controller.h"

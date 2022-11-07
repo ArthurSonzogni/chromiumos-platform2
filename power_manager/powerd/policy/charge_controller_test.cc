@@ -18,7 +18,6 @@
 #include <gtest/gtest.h>
 
 #include "power_manager/common/battery_percentage_converter.h"
-#include "power_manager/common/power_constants.h"
 #include "power_manager/powerd/system/charge_controller_helper_stub.h"
 #include "power_manager/proto_bindings/policy.pb.h"
 

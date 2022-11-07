@@ -19,8 +19,6 @@
 #include "power_manager/powerd/system/dbus_objectmanager_wrapper.h"
 #endif
 #include "power_manager/powerd/system/dbus_wrapper.h"
-#include "power_manager/powerd/system/udev.h"
-#include "power_manager/powerd/system/udev_subsystem_observer.h"
 #if USE_CELLULAR
 #include <shill/dbus-proxies.h>
 #include "shill/dbus/client/client.h"

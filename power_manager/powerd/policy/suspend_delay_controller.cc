@@ -15,7 +15,6 @@
 #include <base/strings/string_number_conversions.h>
 #include <chromeos/dbus/service_constants.h>
 
-#include "power_manager/common/util.h"
 #include "power_manager/powerd/policy/suspend_delay_observer.h"
 #include "power_manager/proto_bindings/suspend.pb.h"
 

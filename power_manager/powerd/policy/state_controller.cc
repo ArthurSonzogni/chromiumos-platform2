@@ -24,6 +24,7 @@
 #include <chromeos/ec/ec_commands.h>
 #include <update_engine/proto_bindings/update_engine.pb.h>
 
+#include "base/time/time.h"
 #include "power_manager/common/clock.h"
 #include "power_manager/common/metrics_constants.h"
 #include "power_manager/common/power_constants.h"
