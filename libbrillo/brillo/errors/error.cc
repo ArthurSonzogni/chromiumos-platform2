@@ -17,6 +17,8 @@ inline void LogError(const base::Location& location,
                      const std::string& domain,
                      const std::string& code,
                      const std::string& message) {
+  if (!LOG_IS_ON(ERROR))
+    return;
   // Use logging::LogMessage() directly instead of LOG(ERROR) to substitute
   // the current error location with the location passed in to the Error object.
   // This way the log will contain the actual location of the error, and not
