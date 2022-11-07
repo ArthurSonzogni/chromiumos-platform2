@@ -45,6 +45,7 @@ constexpr char kGpioPltRstFile[] = "/run/tpm2-simulator/sockets/gpioPltRst";
 constexpr char kTpmFifoFile[] = "direct_tpm_fifo";
 constexpr char kOne[] = "1";
 
+constexpr char kMinijail[] = "/sbin/minijail0";
 constexpr char kTi50EmulatorKernel[] = "/usr/bin/ti50-emulator-kernel";
 constexpr char const* kTi50EmulatorApps[] = {
     "/usr/bin/ti50-emulator-fw_updater", "/usr/bin/ti50-emulator-tpm2",
@@ -127,6 +128,13 @@ void TpmExecutorTi50Impl::InitializeVTPM() {
       LOG(ERROR) << "Failed to initialize vendor command.";
     }
   }
+
+  process_.AddArg(kMinijail);
+
+  // Run the ti50-emulator with tpm2-simulator access.
+  process_.AddArg("-u");
+  process_.AddArg("tpm2-simulator");
+  process_.AddArg("-G");
 
   process_.AddArg(kTi50EmulatorKernel);
 
