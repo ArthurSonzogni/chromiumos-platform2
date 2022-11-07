@@ -35,7 +35,6 @@ setconfig() {
 
 model="$(mosys platform model)"
 brand_code="$(mosys platform brand)"
-sku_id="$(mosys platform sku || true)"
 customization_id="$(mosys platform customization || true)"
 platform_name="$(mosys platform name)"
 
@@ -46,7 +45,6 @@ setconfig /hardware-properties form-factor CHROMEBOOK
 setconfig /hardware-properties has-backlight true
 setconfig /hardware-properties psu-type battery
 setconfig /identity platform-name "${platform_name}"
-setconfig /identity sku-id "${sku_id}"
 setconfig /ui help-content-id "${customization_id}"
 
 mkdir -p "${MOUNTPOINT}/v1"
