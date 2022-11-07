@@ -172,6 +172,9 @@ mojom::UsbBusInfoPtr FetchUsbBusInfo(
       !ReadInteger(path, kFileUsbVendor, &HexToU16, &info->vendor_id) ||
       !ReadInteger(path, kFileUsbProduct, &HexToU16, &info->product_id))
     return nullptr;
+
+  info->spec_speed = GetUsbSpecSpeed(path);
+  info->version = DetermineUsbVersion(path);
   info->fwupd_firmware_version_info = GetUsbFirmwareVersion(
       path, fwupd_devices, info->vendor_id, info->product_id);
   for (const auto& if_path : ListDirectory(path)) {

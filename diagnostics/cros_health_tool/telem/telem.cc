@@ -437,6 +437,46 @@ std::string EnumToString(mojom::Sensor::Location type) {
   }
 }
 
+std::string EnumToString(mojom::UsbVersion version) {
+  switch (version) {
+    case mojom::UsbVersion::kUnmappedEnumField:
+      LOG(FATAL) << "Got UnmappedEnumField";
+      return "UnmappedEnumField";
+    case mojom::UsbVersion::kUnknown:
+      return "Unknown";
+    case mojom::UsbVersion::kUsb1:
+      return "Usb1";
+    case mojom::UsbVersion::kUsb2:
+      return "Usb2";
+    case mojom::UsbVersion::kUsb3:
+      return "Usb3";
+  }
+}
+
+std::string EnumToString(mojom::UsbSpecSpeed spec_speed) {
+  switch (spec_speed) {
+    case mojom::UsbSpecSpeed::kUnmappedEnumField:
+      LOG(FATAL) << "Got UnmappedEnumField";
+      return "UnmappedEnumField";
+    case mojom::UsbSpecSpeed::kUnknown:
+      return "Unknown";
+    case mojom::UsbSpecSpeed::kSpeed1_5:
+      return "1.5";
+    case mojom::UsbSpecSpeed::kSpeed12:
+      return "12";
+    case mojom::UsbSpecSpeed::kSpeed15:
+      return "15";
+    case mojom::UsbSpecSpeed::kSpeed480:
+      return "480";
+    case mojom::UsbSpecSpeed::kSpeed5000:
+      return "5000";
+    case mojom::UsbSpecSpeed::kSpeed10000:
+      return "10000";
+    case mojom::UsbSpecSpeed::kSpeed20000:
+      return "20000";
+  }
+}
+
 #define SET_DICT(key, info, output) SetJsonDictValue(#key, info->key, output);
 
 template <typename T>
@@ -1213,6 +1253,8 @@ base::Value GetBusDeviceJson(const mojom::BusDevicePtr& device) {
       SET_DICT(protocol_id, usb_info, out_usb_info);
       SET_DICT(vendor_id, usb_info, out_usb_info);
       SET_DICT(product_id, usb_info, out_usb_info);
+      SET_DICT(version, usb_info, out_usb_info);
+      SET_DICT(spec_speed, usb_info, out_usb_info);
       auto* out_usb_ifs = out_usb_info->SetKey(
           "interfaces", base::Value{base::Value::Type::LIST});
       for (const auto& usb_if_info : usb_info->interfaces) {

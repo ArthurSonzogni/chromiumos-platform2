@@ -22,6 +22,12 @@ inline constexpr char kFileUsbIFProtocol[] = "bInterfaceProtocol";
 inline constexpr char kFileUsbVendor[] = "idVendor";
 inline constexpr char kFileUsbProduct[] = "idProduct";
 inline constexpr char kFileUsbSerial[] = "serial";
+inline constexpr char kFileUsbSpeed[] = "speed";
+
+inline constexpr char kLinuxFoundationVendorId[] = "1d6b";
+inline constexpr uint16_t kLinuxFoundationUsb1ProductId = 1;
+inline constexpr uint16_t kLinuxFoundationUsb2ProductId = 2;
+inline constexpr uint16_t kLinuxFoundationUsb3ProductId = 3;
 
 }  // namespace diagnostics
 

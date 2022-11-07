@@ -7,6 +7,7 @@
 #include "diagnostics/cros_healthd/utils/usb_utils.h"
 
 #include <base/files/file_path.h>
+#include <base/files/file_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 
@@ -16,6 +17,9 @@
 
 namespace diagnostics {
 namespace {
+
+namespace mojom = ::ash::cros_healthd::mojom;
+
 base::FilePath GetSysPath(const std::unique_ptr<brillo::UdevDevice>& device) {
   const char* syspath = device->GetSysPath();
   DCHECK(syspath);
@@ -32,6 +36,19 @@ std::pair<std::string, std::string> GetUsbVidPidFromSys(
   ReadAndTrimString(sys_path, kFileUsbVendor, &vid);
   ReadAndTrimString(sys_path, kFileUsbProduct, &pid);
   return std::make_pair(vid, pid);
+}
+
+mojom::UsbVersion LinuxRootHubProductIdToUsbVersion(uint32_t product_id) {
+  switch (product_id) {
+    case kLinuxFoundationUsb1ProductId:
+      return mojom::UsbVersion::kUsb1;
+    case kLinuxFoundationUsb2ProductId:
+      return mojom::UsbVersion::kUsb2;
+    case kLinuxFoundationUsb3ProductId:
+      return mojom::UsbVersion::kUsb3;
+    default:
+      return mojom::UsbVersion::kUnknown;
+  }
 }
 }  // namespace
 
@@ -132,6 +149,57 @@ std::string LookUpUsbDeviceClass(const int class_code) {
     default:
       return "Unknown";
   }
+}
+
+mojom::UsbVersion DetermineUsbVersion(const base::FilePath& sysfs_path) {
+  base::FilePath sysfs_path_resolved = MakeAbsoluteFilePath(sysfs_path);
+  if (sysfs_path_resolved.empty() ||
+      sysfs_path_resolved == base::FilePath("/")) {
+    LOG(ERROR) << "Failed to resolve symbolic link or failed to find the linux"
+               << "usb root hub";
+    return mojom::UsbVersion::kUnknown;
+  }
+
+  // Check if it's a linux root hub first.
+  std::string vendor_id;
+  uint32_t product_id;
+  if (!ReadAndTrimString(sysfs_path_resolved.Append(kFileUsbVendor),
+                         &vendor_id) ||
+      !ReadInteger(sysfs_path_resolved, kFileUsbProduct, &base::HexStringToUInt,
+                   &product_id)) {
+    return mojom::UsbVersion::kUnknown;
+  }
+  if (vendor_id == kLinuxFoundationVendorId) {
+    return LinuxRootHubProductIdToUsbVersion(product_id);
+  }
+
+  // Not a linux root hub, recursively check its parent.
+  return DetermineUsbVersion(sysfs_path_resolved.DirName());
+}
+
+mojom::UsbSpecSpeed GetUsbSpecSpeed(const base::FilePath& sysfs_path) {
+  std::string speed;
+  if (!ReadAndTrimString(sysfs_path.Append(kFileUsbSpeed), &speed)) {
+    return mojom::UsbSpecSpeed::kUnknown;
+  }
+
+  if (speed == "1.5") {
+    return mojom::UsbSpecSpeed::kSpeed1_5;
+  } else if (speed == "12") {
+    return mojom::UsbSpecSpeed::kSpeed12;
+  } else if (speed == "15") {
+    return mojom::UsbSpecSpeed::kSpeed15;
+  } else if (speed == "480") {
+    return mojom::UsbSpecSpeed::kSpeed480;
+  } else if (speed == "5000") {
+    return mojom::UsbSpecSpeed::kSpeed5000;
+  } else if (speed == "10000") {
+    return mojom::UsbSpecSpeed::kSpeed10000;
+  } else if (speed == "20000") {
+    return mojom::UsbSpecSpeed::kSpeed20000;
+  }
+
+  return mojom::UsbSpecSpeed::kUnknown;
 }
 
 }  // namespace diagnostics

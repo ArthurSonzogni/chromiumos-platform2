@@ -172,6 +172,8 @@ class BusFetcherTest : public BaseFileTest {
     usb_info->protocol_id = kFakeProtocol;
     usb_info->vendor_id = kFakeVendor;
     usb_info->product_id = kFakeDevice;
+    usb_info->version = mojom::UsbVersion::kUnknown;
+    usb_info->spec_speed = mojom::UsbSpecSpeed::kSpeed5000;
 
     auto usb_fw_info = mojom::FwupdFirmwareVersionInfo::New();
     usb_fw_info->version = kFakeUsbFWVer;
@@ -269,6 +271,7 @@ class BusFetcherTest : public BaseFileTest {
             ToFixHexStr(usb_info->protocol_id));
     SetFile({dir, dev, kFileUsbVendor}, ToFixHexStr(usb_info->vendor_id));
     SetFile({dir, dev, kFileUsbProduct}, ToFixHexStr(usb_info->product_id));
+    SetFile({dir, dev, kFileUsbSpeed}, "5000");
 
     fwupd_device_list_.push_back(fwupd_utils::DeviceInfo{
         .name = kFakeUsbProductName,
