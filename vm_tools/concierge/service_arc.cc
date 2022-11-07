@@ -134,6 +134,7 @@ bool ValidateStartArcVmRequest(StartArcVmRequest* request) {
       "androidboot.arc.tts.caching=1",
       "androidboot.arc_enable_gmscore_lmk_protection=1",
       "androidboot.arc.broadcast_anr_prenotify=1",
+      "androidboot.arc.web_view_zygote.lazy_init=1",
       "rw",
   };
 
