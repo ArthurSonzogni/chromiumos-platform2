@@ -22,7 +22,7 @@ class BacklightControllerObserver : public base::CheckedObserver {
                                   BacklightController* source) {}
 
  protected:
-  virtual ~BacklightControllerObserver() = default;
+  ~BacklightControllerObserver() override = default;
 };
 
 }  // namespace power_manager::policy

@@ -68,7 +68,7 @@ class AmbientLightHandler : public system::AmbientLightObserver {
   AmbientLightHandler(const AmbientLightHandler&) = delete;
   AmbientLightHandler& operator=(const AmbientLightHandler&) = delete;
 
-  virtual ~AmbientLightHandler();
+  ~AmbientLightHandler() override;
 
   void set_name(const std::string& name) { name_ = name; }
 

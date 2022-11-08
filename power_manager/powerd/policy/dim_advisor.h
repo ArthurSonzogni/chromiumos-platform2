@@ -25,7 +25,7 @@ class StateController;
 class DimAdvisor : public system::DBusWrapperInterface::Observer {
  public:
   DimAdvisor();
-  ~DimAdvisor();
+  ~DimAdvisor() override;
 
   // Initializes with `dbus_wrapper` and `state_controller`.
   void Init(system::DBusWrapperInterface* dbus_wrapper,

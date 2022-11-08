@@ -76,7 +76,7 @@ class AdaptiveChargingControllerInterface : public system::PowerSupplyObserver {
   AdaptiveChargingControllerInterface& operator=(
       const AdaptiveChargingControllerInterface&) = delete;
 
-  virtual ~AdaptiveChargingControllerInterface() = default;
+  ~AdaptiveChargingControllerInterface() override = default;
 
   // For handling setting changes from the UI settings page or Enterprise
   // policy.
