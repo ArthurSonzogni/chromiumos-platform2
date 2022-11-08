@@ -36,6 +36,12 @@ typedef uint64_t time_ns_t;
 // certain architectures; so add static asserts to make sure we detect this
 // failure at compile time.
 
+// Fixed width version of timespec.
+struct cros_timespec {
+  int64_t tv_sec;
+  int64_t tv_nsec;
+};
+
 // The image_info struct contains the security metrics
 // of interest for an executable file.
 struct cros_image_info {
@@ -46,6 +52,8 @@ struct cros_image_info {
   uint32_t uid;
   uint32_t gid;
   uint16_t mode;
+  struct cros_timespec mtime;
+  struct cros_timespec ctime;
 };
 
 // The namespace_info struct contains the namespace information for a process.

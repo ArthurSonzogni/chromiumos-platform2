@@ -6,6 +6,7 @@
 #define SECAGENTD_PROCESS_CACHE_H_
 
 #include <memory>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -57,6 +58,24 @@ class ProcessCache : public ProcessCacheInterface {
   using InternalProcessCacheType =
       base::LRUCache<InternalProcessKeyType, InternalProcessValueType>;
 
+  struct InternalImageKeyType {
+    uint64_t inode_device_id;
+    uint64_t inode;
+    bpf::cros_timespec mtime;
+    bpf::cros_timespec ctime;
+    bool operator<(const InternalImageKeyType& rhs) const {
+      return std::tie(inode_device_id, inode, mtime.tv_sec, mtime.tv_nsec,
+                      ctime.tv_sec, ctime.tv_nsec) <
+             std::tie(rhs.inode_device_id, rhs.inode, rhs.mtime.tv_sec,
+                      rhs.mtime.tv_nsec, rhs.ctime.tv_sec, rhs.ctime.tv_nsec);
+    }
+  };
+  struct InternalImageValueType {
+    std::string sha256;
+  };
+  using InternalImageCacheType =
+      base::LRUCache<InternalImageKeyType, InternalImageValueType>;
+
   static void PartiallyFillProcessFromBpfTaskInfo(
       const bpf::cros_process_task_info& task_info,
       cros_xdr::reporting::Process* process_proto);
@@ -86,11 +105,17 @@ class ProcessCache : public ProcessCacheInterface {
   ProcessCache(const base::FilePath& root_path, uint64_t sc_clock_tck);
   // Like LRUCache::Get, returns an internal iterator to the given key. Unlike
   // LRUCache::Get, best-effort tries to fetch missing keys from procfs. Then
-  // inclusively Puts them in the cache if successful and returns an iterator.
+  // inclusively Puts them in process_cache_ if successful and returns an
+  // iterator.
   InternalProcessCacheType::const_iterator InclusiveGetProcess(
       const InternalProcessKeyType& key);
   absl::StatusOr<InternalProcessValueType> MakeFromProcfs(
-      const InternalProcessKeyType& key) const;
+      const InternalProcessKeyType& key);
+  // Similar to InclusiveGetProcess but operates on image_cache_.
+  // TODO(b/253661187): nsenter the process' mount namespace for correctness.
+  InternalImageCacheType::const_iterator InclusiveGetImage(
+      const InternalImageKeyType& image_key,
+      const base::FilePath& image_path_in_ns);
   // Converts ns (from BPF) to clock_t for use in InternalKeyType. It would be
   // ideal to do this conversion in the BPF but we lack the required kernel
   // constants there.
@@ -98,6 +123,8 @@ class ProcessCache : public ProcessCacheInterface {
 
   base::Lock process_cache_lock_;
   std::unique_ptr<InternalProcessCacheType> process_cache_;
+  base::Lock image_cache_lock_;
+  std::unique_ptr<InternalImageCacheType> image_cache_;
   const base::FilePath root_path_;
   const uint64_t sc_clock_tck_;
 };

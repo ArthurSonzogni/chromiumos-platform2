@@ -26,6 +26,7 @@
 #include "base/strings/stringprintf.h"
 #include "base/synchronization/lock.h"
 #include "missive/proto/security_xdr_events.pb.h"
+#include "openssl/sha.h"
 #include "re2/re2.h"
 #include "secagentd/bpf/process.h"
 
@@ -39,6 +40,7 @@ static const char kErrorFailedToStat[] = "Failed to stat ";
 static const char kErrorFailedToResolve[] = "Failed to resolve ";
 static const char kErrorFailedToRead[] = "Failed to read ";
 static const char kErrorFailedToParse[] = "Failed to parse ";
+static const char kErrorSslSha[] = "SSL SHA error";
 
 std::string StableUuid(ProcessCache::InternalProcessKeyType seed) {
   base::MD5Digest md5;
@@ -155,12 +157,61 @@ absl::Status GetStatFromProcfs(const base::FilePath& stat_path,
   return absl::OkStatus();
 }
 
+absl::StatusOr<ProcessCache::InternalImageValueType>
+VerifyStatAndGenerateImageHash(
+    const ProcessCache::InternalImageKeyType& image_key,
+    const base::FilePath& image_path_in_ns) {
+  LOG(INFO) << "Attempting to hash " << image_path_in_ns.value();
+  base::File image(image_path_in_ns,
+                   base::File::FLAG_OPEN | base::File::FLAG_READ);
+  if (!image.IsValid()) {
+    return absl::NotFoundError(
+        base::StrCat({kErrorFailedToRead, image_path_in_ns.value()}));
+  }
+  SHA256_CTX ctx;
+  if (!SHA256_Init(&ctx)) {
+    return absl::InternalError(kErrorSslSha);
+  }
+  std::array<char, 4096> buf;
+  int bytes_read = 0;
+  while ((bytes_read = image.ReadAtCurrentPos(buf.data(), buf.size())) > 0) {
+    if (!SHA256_Update(&ctx, buf.data(), bytes_read)) {
+      return absl::InternalError(kErrorSslSha);
+    }
+  }
+  if (bytes_read < 0) {
+    return absl::AbortedError(
+        base::StrCat({kErrorFailedToRead, image_path_in_ns.value()}));
+  }
+  static_assert(sizeof(buf) >= SHA256_DIGEST_LENGTH);
+  if (!SHA256_Final(reinterpret_cast<unsigned char*>(buf.data()), &ctx)) {
+    return absl::InternalError(kErrorSslSha);
+  }
+
+  base::stat_wrapper_t image_stat;
+  if (base::File::Stat(image_path_in_ns.value().c_str(), &image_stat) ||
+      (image_stat.st_dev != image_key.inode_device_id) ||
+      (image_stat.st_ino != image_key.inode) ||
+      (image_stat.st_mtim.tv_sec != image_key.mtime.tv_sec) ||
+      (image_stat.st_mtim.tv_nsec != image_key.mtime.tv_nsec) ||
+      (image_stat.st_ctim.tv_sec != image_key.ctime.tv_sec) ||
+      (image_stat.st_ctim.tv_nsec != image_key.ctime.tv_nsec)) {
+    return absl::NotFoundError(
+        base::StrCat({"Failed to match stat of image hashed at ",
+                      image_path_in_ns.value()}));
+  }
+  return ProcessCache::InternalImageValueType{
+      base::HexEncode(buf.data(), SHA256_DIGEST_LENGTH)};
+}
+
 }  // namespace
 
 namespace secagentd {
 
 constexpr ProcessCache::InternalProcessCacheType::size_type
     kProcessCacheMaxSize = 256;
+constexpr ProcessCache::InternalImageCacheType::size_type kImageCacheMaxSize =
+    256;
 
 void ProcessCache::PartiallyFillProcessFromBpfTaskInfo(
     const bpf::cros_process_task_info& task_info, pb::Process* process_proto) {
@@ -177,6 +228,8 @@ ProcessCache::ProcessCache(const base::FilePath& root_path,
                            uint64_t sc_clock_tck)
     : process_cache_(
           std::make_unique<InternalProcessCacheType>(kProcessCacheMaxSize)),
+      image_cache_(
+          std::make_unique<InternalImageCacheType>(kImageCacheMaxSize)),
       root_path_(root_path),
       sc_clock_tck_(sc_clock_tck) {}
 
@@ -193,6 +246,17 @@ void ProcessCache::PutFromBpfExec(
   InternalProcessKeyType parent_key{
       LossyNsecToClockT(process_start.task_info.parent_start_time),
       process_start.task_info.ppid};
+  InternalImageKeyType image_key{
+      process_start.image_info.inode_device_id, process_start.image_info.inode,
+      process_start.image_info.mtime, process_start.image_info.ctime};
+  {
+    base::AutoLock cache_lock(image_cache_lock_);
+    auto it = InclusiveGetImage(
+        image_key, base::FilePath(process_start.image_info.pathname));
+    if (it != image_cache_->end()) {
+      process_proto->mutable_image()->set_sha256(it->second.sha256);
+    }
+  }
   base::AutoLock lock(process_cache_lock_);
   process_cache_->Put(
       key, InternalProcessValueType({std::move(process_proto), parent_key}));
@@ -220,13 +284,48 @@ ProcessCache::InclusiveGetProcess(const InternalProcessKeyType& key) {
     return it;
   }
 
-  auto statusor = MakeFromProcfs(key);
-  if (!statusor.ok()) {
-    LOG(ERROR) << statusor.status();
-    return process_cache_->end();
+  absl::StatusOr<InternalProcessValueType> statusor;
+  {
+    base::AutoUnlock unlock(process_cache_lock_);
+    statusor = MakeFromProcfs(key);
+    if (!statusor.ok()) {
+      LOG(ERROR) << statusor.status();
+      return process_cache_->end();
+    }
   }
 
   it = process_cache_->Put(key, std::move(*statusor));
+  return it;
+}
+
+ProcessCache::InternalImageCacheType::const_iterator
+ProcessCache::InclusiveGetImage(const InternalImageKeyType& image_key,
+                                const base::FilePath& image_path_in_ns) {
+  image_cache_lock_.AssertAcquired();
+  auto it = image_cache_->Get(image_key);
+  if (it != image_cache_->end()) {
+    if (it->first.mtime.tv_sec == 0 || it->first.ctime.tv_sec == 0) {
+      // Invalidate entry and force checksum if its cached ctime or mtime seems
+      // missing.
+      image_cache_->Erase(it);
+      it = image_cache_->end();
+    } else {
+      return it;
+    }
+  }
+
+  absl::StatusOr<InternalImageValueType> statusor;
+  {
+    base::AutoUnlock unlock(image_cache_lock_);
+    // TODO(b/253661187): nsenter the process' mount namespace for correctness.
+    statusor = VerifyStatAndGenerateImageHash(image_key, image_path_in_ns);
+    if (!statusor.ok()) {
+      LOG(ERROR) << statusor.status();
+      return image_cache_->end();
+    }
+  }
+
+  it = image_cache_->Put(image_key, std::move(*statusor));
   return it;
 }
 
@@ -252,8 +351,7 @@ std::vector<std::unique_ptr<pb::Process>> ProcessCache::GetProcessHierarchy(
 }
 
 absl::StatusOr<ProcessCache::InternalProcessValueType>
-ProcessCache::MakeFromProcfs(
-    const ProcessCache::InternalProcessKeyType& key) const {
+ProcessCache::MakeFromProcfs(const ProcessCache::InternalProcessKeyType& key) {
   InternalProcessKeyType parent_key;
   auto process_proto = std::make_unique<pb::Process>();
   process_proto->set_canonical_pid(key.pid);
@@ -296,6 +394,19 @@ ProcessCache::MakeFromProcfs(
   image_proto->set_canonical_uid(exe_stat.st_uid);
   image_proto->set_canonical_gid(exe_stat.st_gid);
   image_proto->set_mode(exe_stat.st_mode);
+
+  InternalImageKeyType image_key{
+      exe_stat.st_dev,
+      exe_stat.st_ino,
+      {exe_stat.st_mtim.tv_sec, exe_stat.st_mtim.tv_nsec},
+      {exe_stat.st_ctim.tv_sec, exe_stat.st_ctim.tv_nsec}};
+  {
+    base::AutoLock lock(image_cache_lock_);
+    auto it = InclusiveGetImage(image_key, exe_path);
+    if (it != image_cache_->end()) {
+      process_proto->mutable_image()->set_sha256(it->second.sha256);
+    }
+  }
 
   const base::FilePath cmdline_path = proc_pid_dir.Append("cmdline");
   std::string cmdline_contents;

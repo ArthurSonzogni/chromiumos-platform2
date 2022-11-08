@@ -39,6 +39,12 @@ static inline __attribute__((always_inline)) void fill_image_info(
   image_info->uid = BPF_CORE_READ(bprm, file, f_inode, i_uid.val);
   image_info->gid = BPF_CORE_READ(bprm, file, f_inode, i_gid.val);
   image_info->mode = BPF_CORE_READ(bprm, file, f_inode, i_mode);
+  image_info->mtime.tv_sec = BPF_CORE_READ(bprm, file, f_inode, i_mtime.tv_sec);
+  image_info->mtime.tv_nsec =
+      BPF_CORE_READ(bprm, file, f_inode, i_mtime.tv_nsec);
+  image_info->ctime.tv_sec = BPF_CORE_READ(bprm, file, f_inode, i_ctime.tv_sec);
+  image_info->ctime.tv_nsec =
+      BPF_CORE_READ(bprm, file, f_inode, i_ctime.tv_nsec);
   // Mimic new_encode_dev() to get stat-like dev_id.
   dev_t dev = BPF_CORE_READ(bprm, file, f_inode, i_sb, s_dev);
   unsigned major = dev >> 20;

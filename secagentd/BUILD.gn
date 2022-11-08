@@ -45,6 +45,7 @@ pkg_config("target_defaults") {
     "libbrillo",
     "libchrome",
     "libmissiveclient",
+    "openssl",
     "protobuf",
   ]
   defines = global_use_defines
