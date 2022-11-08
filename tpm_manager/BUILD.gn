@@ -10,6 +10,7 @@ import("//common-mk/proto_library.gni")
 
 group("all") {
   deps = [
+    ":check_tpm_preinit_condition",
     ":install_tmpfiles_config",
     ":local_data_migration",
     ":tpm_managerd",
@@ -132,10 +133,7 @@ executable("tpm_managerd") {
     ":target_defaults",
     ":tpm_managerd_config",
   ]
-  libs = [
-    "rootdev",
-    "hwsec-profiling",
-  ]
+  libs = [ "hwsec-profiling" ]
   deps = [ ":server_library" ]
 
   # NOSORT
@@ -160,6 +158,14 @@ executable("local_data_migration") {
     ":target_defaults",
   ]
   deps = [ ":server_library" ]
+}
+
+# Determine whether to touch NoPreinitFlagFile.
+executable("check_tpm_preinit_condition") {
+  install_path = "/usr/sbin"
+  sources = [ "server/check_tpm_preinit_condition.cc" ]
+  configs += [ ":target_defaults" ]
+  libs = [ "rootdev" ]
 }
 
 # A library for externally useful tpm_manager_testtest code.
