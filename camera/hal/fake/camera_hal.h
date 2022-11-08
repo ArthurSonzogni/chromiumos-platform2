@@ -15,7 +15,6 @@
 
 #include "common/reloadable_config_file.h"
 #include "cros-camera/cros_camera_hal.h"
-#include "cros-camera/future.h"
 #include "hal/fake/camera_client.h"
 #include "hal/fake/hal_spec.h"
 

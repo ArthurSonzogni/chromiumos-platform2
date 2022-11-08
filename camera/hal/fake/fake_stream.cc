@@ -8,16 +8,95 @@
 #include <utility>
 #include <vector>
 
+#include <base/files/file_util.h>
 #include <base/memory/ptr_util.h>
 #include <base/notreached.h>
 #include <base/numerics/clamped_math.h>
 #include <base/timer/elapsed_timer.h>
+#include <libyuv.h>
 #include <linux/videodev2.h>
 
 #include "hal/fake/camera_hal.h"
 #include "hal/fake/test_pattern.h"
 
 namespace cros {
+
+namespace {
+std::unique_ptr<FrameBuffer> ReadMJPGFromFile(const base::FilePath& path,
+                                              Size size) {
+  auto bytes = base::ReadFileToBytes(path);
+  if (!bytes.has_value()) {
+    LOGF(WARNING) << "Failed to read file: " << path;
+    return nullptr;
+  }
+  int width, height;
+  if (libyuv::MJPGSize(bytes->data(), bytes->size(), &width, &height) != 0) {
+    LOGF(WARNING) << "Failed to get MJPG size: " << path;
+    return nullptr;
+  }
+  CHECK(width > 0 && height > 0);
+  if (width > 8192 || height > 8192) {
+    LOGF(WARNING) << "Image size too large: " << path;
+    return nullptr;
+  }
+
+  auto temp_buffer =
+      FrameBuffer::Create(Size(width, height), HAL_PIXEL_FORMAT_YCbCr_420_888);
+  if (temp_buffer == nullptr) {
+    LOGF(WARNING) << "Failed to create temporary buffer";
+    return nullptr;
+  }
+
+  auto mapped_temp_buffer = temp_buffer->Map();
+  if (!mapped_temp_buffer.ok()) {
+    LOGF(WARNING) << "Failed to map temporary buffer";
+    return nullptr;
+  }
+
+  auto temp_y_plane = mapped_temp_buffer->plane(0);
+  auto temp_uv_plane = mapped_temp_buffer->plane(1);
+  DCHECK(temp_y_plane.addr != nullptr);
+  DCHECK(temp_uv_plane.addr != nullptr);
+
+  int ret = libyuv::MJPGToNV12(
+      bytes->data(), bytes->size(), temp_y_plane.addr, temp_y_plane.stride,
+      temp_uv_plane.addr, temp_uv_plane.stride, width, height, width, height);
+  if (ret != 0) {
+    LOGF(WARNING) << "MJPGToNV12() failed with " << ret;
+    return nullptr;
+  }
+
+  auto buffer = FrameBuffer::Create(size, HAL_PIXEL_FORMAT_YCbCr_420_888);
+  if (buffer == nullptr) {
+    LOGF(WARNING) << "Failed to create buffer";
+    return nullptr;
+  }
+
+  auto mapped_buffer = buffer->Map();
+  if (!mapped_buffer.ok()) {
+    LOGF(WARNING) << "Failed to map buffer";
+    return nullptr;
+  }
+
+  auto y_plane = mapped_buffer->plane(0);
+  auto uv_plane = mapped_buffer->plane(1);
+  DCHECK(y_plane.addr != nullptr);
+  DCHECK(uv_plane.addr != nullptr);
+
+  // TODO(pihsun): Support "object-fit" for different scaling method.
+  ret = libyuv::NV12Scale(temp_y_plane.addr, temp_y_plane.stride,
+                          temp_uv_plane.addr, temp_uv_plane.stride, width,
+                          height, y_plane.addr, y_plane.stride, uv_plane.addr,
+                          uv_plane.stride, size.width, size.height,
+                          libyuv::kFilterBilinear);
+  if (ret != 0) {
+    LOGF(WARNING) << "NV12Scale() failed with " << ret;
+    return nullptr;
+  }
+
+  return buffer;
+}
+}  // namespace
 
 FakeStream::FakeStream()
     : buffer_manager_(CameraBufferManager::GetInstance()),
@@ -34,17 +113,26 @@ FakeStream::~FakeStream() = default;
 std::unique_ptr<FakeStream> FakeStream::Create(
     const android::CameraMetadata& static_metadata,
     Size size,
-    android_pixel_format_t format) {
+    android_pixel_format_t format,
+    const FramesSpec& spec) {
   auto fake_stream = base::WrapUnique(new FakeStream());
-  if (!fake_stream->Initialize(static_metadata, size, format)) {
+  if (!fake_stream->Initialize(static_metadata, size, format, spec)) {
     return nullptr;
   }
   return fake_stream;
 }
 
+template <class... Ts>
+struct Overloaded : Ts... {
+  using Ts::operator()...;
+};
+template <class... Ts>
+Overloaded(Ts...) -> Overloaded<Ts...>;
+
 bool FakeStream::Initialize(const android::CameraMetadata& static_metadata,
                             Size size,
-                            android_pixel_format_t format) {
+                            android_pixel_format_t format,
+                            const FramesSpec& spec) {
   camera_metadata_ro_entry_t entry =
       static_metadata.find(ANDROID_JPEG_MAX_SIZE);
   if (entry.count == 0) {
@@ -56,10 +144,23 @@ bool FakeStream::Initialize(const android::CameraMetadata& static_metadata,
   size_ = size;
   format_ = format;
 
-  auto input_buffer = GenerateTestPattern(
-      size, ANDROID_SENSOR_TEST_PATTERN_MODE_COLOR_BARS_FADE_TO_GRAY);
+  std::unique_ptr<FrameBuffer> input_buffer = std::visit(
+      Overloaded{
+          [&size](const FramesTestPatternSpec& spec) {
+            return GenerateTestPattern(
+                size, ANDROID_SENSOR_TEST_PATTERN_MODE_COLOR_BARS_FADE_TO_GRAY);
+          },
+          [&size](const FramesFileSpec& spec) {
+            // TODO(pihsun): Handle different file type based on file
+            // extension.
+            // TODO(pihsun): This only reads a single frame now, read and
+            // convert the whole stream on fly.
+            return ReadMJPGFromFile(spec.path, size);
+          },
+      },
+      spec);
   if (!input_buffer) {
-    LOGF(WARNING) << "Failed to allocate a temporary buffer";
+    LOGF(WARNING) << "Failed to generate input buffer";
     return false;
   }
 

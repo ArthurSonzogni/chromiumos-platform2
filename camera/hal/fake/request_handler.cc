@@ -31,11 +31,13 @@ RequestHandler::RequestHandler(
     const int id,
     const camera3_callback_ops_t* callback_ops,
     const android::CameraMetadata& static_metadata,
-    const scoped_refptr<base::SequencedTaskRunner>& task_runner)
+    const scoped_refptr<base::SequencedTaskRunner>& task_runner,
+    const CameraSpec& spec)
     : id_(id),
       callback_ops_(callback_ops),
       task_runner_(task_runner),
-      static_metadata_(static_metadata) {}
+      static_metadata_(static_metadata),
+      spec_(spec) {}
 
 RequestHandler::~RequestHandler() = default;
 
@@ -145,9 +147,9 @@ absl::Status RequestHandler::StreamOnImpl(
   for (auto stream : streams) {
     Size size(stream->width, stream->height);
 
-    auto fake_stream =
-        FakeStream::Create(static_metadata_, size,
-                           static_cast<android_pixel_format_t>(stream->format));
+    auto fake_stream = FakeStream::Create(
+        static_metadata_, size,
+        static_cast<android_pixel_format_t>(stream->format), spec_.frames);
     if (fake_stream == nullptr) {
       return absl::InternalError("error initializing fake stream");
     }

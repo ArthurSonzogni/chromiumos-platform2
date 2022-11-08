@@ -13,6 +13,7 @@
 #include <sync/sync.h>
 
 #include "cros-camera/common.h"
+#include "cros-camera/future.h"
 
 #include "hal/fake/camera_hal.h"
 #include "hal/fake/camera_hal_device_ops.h"
@@ -23,12 +24,14 @@ CameraClient::CameraClient(int id,
                            const android::CameraMetadata& static_metadata,
                            const android::CameraMetadata& request_template,
                            const hw_module_t* module,
-                           hw_device_t** hw_device)
+                           hw_device_t** hw_device,
+                           const CameraSpec& spec)
     : id_(id),
       // This clones the metadata.
       static_metadata_(static_metadata),
       request_template_(request_template),
-      request_thread_("FakeRequestThread") {
+      request_thread_("FakeRequestThread"),
+      spec_(spec) {
   camera3_device_ = {
       .common =
           {
@@ -128,7 +131,7 @@ absl::Status CameraClient::StreamOn(
     request_task_runner_ = request_thread_.task_runner();
 
     request_handler_ = std::make_unique<RequestHandler>(
-        id_, callback_ops_, static_metadata_, request_task_runner_);
+        id_, callback_ops_, static_metadata_, request_task_runner_, spec_);
   }
 
   auto future = cros::Future<absl::Status>::Create(nullptr);

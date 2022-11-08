@@ -160,8 +160,17 @@ int CameraHal::OpenDevice(int id,
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   VLOGFID(1, id);
 
+  if (!IsCameraIdValid(id)) {
+    LOGF(ERROR) << "Camera ID " << id << " is invalid";
+    return -ENODEV;
+  }
+
+  auto it = std::find_if(hal_spec_.cameras.begin(), hal_spec_.cameras.end(),
+                         [id](const auto& spec) { return spec.id == id; });
+  CHECK(it != hal_spec_.cameras.end());
+
   cameras_[id] = std::make_unique<CameraClient>(
-      id, static_metadata_[id], request_template_[id], module, hw_device);
+      id, static_metadata_[id], request_template_[id], module, hw_device, *it);
 
   int ret = cameras_[id]->OpenDevice();
   if (ret != 0) {
@@ -271,6 +280,13 @@ void CameraHal::ApplySpec(const HalSpec& old_spec, const HalSpec& new_spec) {
         VLOGF(1) << "Camera " << id << " connected state changed "
                  << old_camera_spec.connected << "->" << it->connected;
         NotifyCameraConnected(id, it->connected);
+      } else if (it->connected && it->frames != old_camera_spec.frames) {
+        // TODO(pihsun): For frames spec change it's possible to just start
+        // returning new frames in the CameraClient instead of simulating
+        // unplug / plug the camera.
+        VLOGF(1) << "Camera " << id << " frames spec changed";
+        NotifyCameraConnected(id, false);
+        NotifyCameraConnected(id, true);
       }
     }
   }

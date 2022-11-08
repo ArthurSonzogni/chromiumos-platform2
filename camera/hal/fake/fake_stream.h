@@ -15,6 +15,7 @@
 #include "cros-camera/common_types.h"
 #include "cros-camera/jpeg_compressor.h"
 #include "hal/fake/frame_buffer.h"
+#include "hal/fake/hal_spec.h"
 
 namespace cros {
 class FakeStream {
@@ -31,7 +32,8 @@ class FakeStream {
   static std::unique_ptr<FakeStream> Create(
       const android::CameraMetadata& static_metadata,
       Size size,
-      android_pixel_format_t format);
+      android_pixel_format_t format,
+      const FramesSpec& spec);
 
   // Fills the buffer with the next frame from the fake stream. The buffer
   // format should match the format specified in the constructor.
@@ -42,7 +44,8 @@ class FakeStream {
 
   bool Initialize(const android::CameraMetadata& static_metadata,
                   Size size,
-                  android_pixel_format_t format);
+                  android_pixel_format_t format,
+                  const FramesSpec& spec);
 
   CameraBufferManager* buffer_manager_;
 

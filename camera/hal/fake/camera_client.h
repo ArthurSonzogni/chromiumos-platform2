@@ -8,6 +8,7 @@
 
 #include <memory>
 #include <vector>
+
 #include "hal/fake/request_handler.h"
 
 #include <absl/status/status.h>
@@ -16,6 +17,8 @@
 #include <base/threading/thread.h>
 #include <camera/camera_metadata.h>
 #include <hardware/camera3.h>
+
+#include "hal/fake/hal_spec.h"
 
 namespace cros {
 
@@ -46,7 +49,8 @@ class CameraClient {
                const android::CameraMetadata& static_metadata,
                const android::CameraMetadata& request_template,
                const hw_module_t* module,
-               hw_device_t** hw_device);
+               hw_device_t** hw_device,
+               const CameraSpec& spec);
   CameraClient(const CameraClient&) = delete;
   CameraClient& operator=(const CameraClient&) = delete;
   ~CameraClient();
@@ -97,6 +101,9 @@ class CameraClient {
 
   // Task runner for request thread.
   scoped_refptr<base::SequencedTaskRunner> request_task_runner_;
+
+  // Spec for the camera client.
+  CameraSpec spec_;
 
   // Use to check the constructor and OpenDevice are called on the same thread.
   SEQUENCE_CHECKER(sequence_checker_);

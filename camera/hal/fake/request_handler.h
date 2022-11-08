@@ -15,20 +15,22 @@
 #include <camera/camera_metadata.h>
 #include <hardware/camera3.h>
 
-#include "cros-camera/camera_buffer_manager.h"
-#include "cros-camera/jpeg_compressor.h"
 #include "hal/fake/capture_request.h"
 #include "hal/fake/fake_stream.h"
+#include "hal/fake/hal_spec.h"
 
 namespace cros {
 // RequestHandler handles all capture request on a dedicated thread, and all
 // the methods run on the same thread.
 class RequestHandler {
  public:
+  // Does not take ownership of |spec|, and the passed in |spec| must outlive
+  // this object.
   RequestHandler(const int id,
                  const camera3_callback_ops_t* callback_ops,
                  const android::CameraMetadata& static_metadata,
-                 const scoped_refptr<base::SequencedTaskRunner>& task_runner);
+                 const scoped_refptr<base::SequencedTaskRunner>& task_runner,
+                 const CameraSpec& spec);
   ~RequestHandler();
 
   // Handle one request.
@@ -83,6 +85,9 @@ class RequestHandler {
 
   // Camera static characteristics.
   const android::CameraMetadata static_metadata_;
+
+  // Spec for the camera.
+  CameraSpec spec_;
 
   // Used to notify that flush is called from framework.
   bool flush_started_ GUARDED_BY(flush_lock_) = false;

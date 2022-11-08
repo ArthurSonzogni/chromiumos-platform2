@@ -21,6 +21,15 @@ namespace {
 constexpr char kCamerasKey[] = "cameras";
 constexpr char kIdKey[] = "id";
 constexpr char kConnectedKey[] = "connected";
+constexpr char kFramesKey[] = "frames";
+constexpr char kPathKey[] = "path";
+
+FramesSpec ParseFramesSpec(const DictWithPath& frames_value) {
+  if (auto path = GetValue<std::string>(frames_value, kPathKey)) {
+    return FramesFileSpec{base::FilePath(*path)};
+  }
+  return FramesTestPatternSpec();
+}
 
 std::vector<CameraSpec> ParseCameraSpecs(const ListWithPath& cameras_value) {
   std::vector<CameraSpec> camera_specs;
@@ -45,6 +54,10 @@ std::vector<CameraSpec> ParseCameraSpecs(const ListWithPath& cameras_value) {
       continue;
     }
     camera_spec.connected = GetValue(*spec_value, kConnectedKey, false);
+
+    if (auto frames = GetValue<DictWithPath>(*spec_value, kFramesKey)) {
+      camera_spec.frames = ParseFramesSpec(*frames);
+    }
 
     camera_specs.push_back(camera_spec);
   }
