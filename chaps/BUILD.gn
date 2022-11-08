@@ -89,6 +89,7 @@ proto_library("chaps-protos") {
   # libchaps-protos.a is used by a shared_libary
   # object, so we need to build it with '-fPIC' instead of '-fPIE'.
   use_pic = true
+  standalone = true
 }
 
 # This should only be used directly for internal binaries like unittests.
@@ -108,15 +109,14 @@ source_set("libchaps_source_set") {
   configs += [ "//common-mk:pic" ]
 
   configs += [ ":target_defaults" ]
+
+  deps = [ ":chaps-protos" ]
 }
 
 shared_library("libchaps") {
   configs += [ ":target_defaults" ]
   install_path = "lib"
-  deps = [
-    ":chaps-protos",
-    ":libchaps_source_set",
-  ]
+  deps = [ ":libchaps_source_set" ]
 }
 
 source_set("chaps_common") {
@@ -149,7 +149,6 @@ source_set("chaps_common") {
   ]
 
   configs += [ ":target_defaults" ]
-  deps = [ ":chaps-protos" ]
 }
 
 pkg_config("chapsd_config") {
@@ -402,7 +401,6 @@ if (use.fuzzer) {
   executable("chaps_slot_manager_fuzzer") {
     sources = [
       "fuzzers/fuzzed_chaps_factory.cc",
-      "fuzzers/fuzzed_hwsec.cc",
       "fuzzers/fuzzed_object_pool.cc",
       "fuzzers/slot_manager_fuzzer.cc",
       "session_mock.cc",
@@ -420,10 +418,7 @@ if (use.fuzzer) {
   }
 
   executable("chaps_chaps_service_fuzzer") {
-    sources = [
-      "fuzzers/chaps_service_fuzzer.cc",
-      "fuzzers/fuzzed_hwsec.cc",
-    ]
+    sources = [ "fuzzers/chaps_service_fuzzer.cc" ]
     configs += [
       ":fuzzer_common_config",
       ":target_defaults",

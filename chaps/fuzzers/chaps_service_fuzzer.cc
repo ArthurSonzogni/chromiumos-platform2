@@ -4,18 +4,19 @@
 
 #include <fuzzer/FuzzedDataProvider.h>
 
+#include <vector>
+
+#include <base/command_line.h>
 #include <base/logging.h>
 #include <base/test/task_environment.h>
-#include <chaps/proto_bindings/ck_structs.pb.h>
-#include <vector>
-#include <base/command_line.h>
 #include <base/test/test_timeouts.h>
+#include <chaps/proto_bindings/ck_structs.pb.h>
+#include <libhwsec/factory/fuzzed_factory.h>
 
 #include "chaps/attributes.h"
 #include "chaps/chaps_factory_impl.h"
 #include "chaps/chaps_interface.h"
 #include "chaps/chaps_service.h"
-#include "chaps/fuzzers/fuzzed_hwsec.h"
 #include "chaps/isolate.h"
 #include "chaps/session.h"
 #include "chaps/slot_manager_impl.h"
@@ -135,7 +136,9 @@ class ChapsServiceFuzzer {
       : data_provider_(data_provider) {
     chaps_metrics_ = std::make_unique<chaps::ChapsMetrics>();
     factory_ = std::make_unique<chaps::ChapsFactoryImpl>(chaps_metrics_.get());
-    hwsec_ = std::make_unique<hwsec::FuzzedChapsFrontend>(hwsec_data_provider);
+    hwsec_factory_ =
+        std::make_unique<hwsec::FuzzedFactory>(*hwsec_data_provider);
+    hwsec_ = hwsec_factory_->GetChapsFrontend();
 
     bool auto_load_system_token = data_provider_->ConsumeBool();
     slot_manager_ = std::make_unique<chaps::SlotManagerImpl>(
@@ -160,6 +163,7 @@ class ChapsServiceFuzzer {
     chaps_service_.reset();
     slot_manager_.reset();
     hwsec_.reset();
+    hwsec_factory_.reset();
     factory_.reset();
     chaps_metrics_.reset();
   }
@@ -884,7 +888,8 @@ class ChapsServiceFuzzer {
   FuzzedDataProvider* data_provider_;
   std::unique_ptr<chaps::ChapsMetrics> chaps_metrics_;
   std::unique_ptr<chaps::ChapsFactoryImpl> factory_;
-  std::unique_ptr<hwsec::FuzzedChapsFrontend> hwsec_;
+  std::unique_ptr<hwsec::FuzzedFactory> hwsec_factory_;
+  std::unique_ptr<hwsec::ChapsFrontend> hwsec_;
   std::unique_ptr<chaps::SlotManagerImpl> slot_manager_;
   std::unique_ptr<chaps::ChapsServiceImpl> chaps_service_;
   base::test::TaskEnvironment task_environment_{
