@@ -896,8 +896,8 @@ void IPsecConnection::OnSwanctlListSAsDone(const std::string& stdout_str) {
       stdout_str, "\n", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
 
   if (!l2tp_connection_) {
-    ParseLocalVirtualIP(lines);
-    if (local_virtual_ip_.empty()) {
+    ParseLocalVirtualIPs(lines);
+    if (local_virtual_ipv4_.empty() && local_virtual_ipv6_.empty()) {
       NotifyFailure(Service::kFailureInternal,
                     "Failed to get local virtual IP");
       return;
@@ -948,9 +948,9 @@ void IPsecConnection::SwanctlNextStep(ConnectStep step, const std::string&) {
   ScheduleConnectTask(step);
 }
 
-void IPsecConnection::ParseLocalVirtualIP(
+void IPsecConnection::ParseLocalVirtualIPs(
     const std::vector<std::string>& swanctl_output) {
-  local_virtual_ip_ = "";
+  ClearVirtualIPs();
 
   // The index of the line which contains the virtual IP information in
   // |swanctl_output|.
@@ -962,18 +962,58 @@ void IPsecConnection::ParseLocalVirtualIP(
   }
 
   // Example: local  '192.168.1.245' @ 192.168.1.245[4500] [10.10.10.2]
-  // We need to match the IP address in the last bracket ("[10.10.10.2]").
-  static constexpr LazyRE2 kVIPLine = {
-      R"(\s*local.*@.*\s+\[(\d*\.\d*\.\d*\.\d*)\]\s*$)"};
+  // We need to match the IP address(es) in the last bracket ("[10.10.10.2]").
+  static constexpr LazyRE2 kVIPLine = {R"(\s*local.*@.*\s+\[(.*)\]\s*$)"};
   const std::string& line = swanctl_output[kVIPLineNumber];
 
+  // Checks if the part for virtual IP addresses exists.
   std::string matched_part;
   if (!RE2::FullMatch(line, *kVIPLine, &matched_part)) {
     LOG(ERROR) << "Failed to parse the virtual IP, the line is: " << line;
     return;
   }
 
-  local_virtual_ip_ = matched_part;
+  // Parses the string for the virtual IP (list).
+  // Example output of `swanctl --list-sas`:
+  // - when configured with an IPv4 address:
+  // local  '192.168.1.245' @ 192.168.1.245[4500] [10.10.10.2]
+  // - when configured with an IPv6 address:
+  // local  '192.168.1.245' @ 192.168.1.245[4500] [fec1::1]
+  // - when configured with an IPv4 address and IPv6 one:
+  // local  '192.168.1.245' @ 192.168.1.245[4500] [10.10.10.2 fec1::1]
+  // Note: In the dual stack case, swanctl will always put IPv4 address
+  // at first.
+  for (const auto& part : base::SplitString(
+           matched_part, " ", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL)) {
+    IPAddress addr(part);
+    if (!addr.IsValid()) {
+      ClearVirtualIPs();
+      LOG(ERROR) << "Failed to parse the virtual IPs, the line is " << line;
+      return;
+    }
+    if (addr.family() == IPAddress::kFamilyIPv4) {
+      if (local_virtual_ipv4_ != "") {
+        ClearVirtualIPs();
+        LOG(ERROR)
+            << "At most one IPv4 address should be configured as the virtual "
+               "IP, the line is "
+            << line;
+        return;
+      }
+      local_virtual_ipv4_ = part;
+    }
+    if (addr.family() == IPAddress::kFamilyIPv6) {
+      if (local_virtual_ipv6_ != "") {
+        ClearVirtualIPs();
+        LOG(ERROR)
+            << "At most one IPv6 address should be configured as the virtual "
+               "IP, the line is "
+            << line;
+        return;
+      }
+      local_virtual_ipv6_ = part;
+    }
+  }
 }
 
 void IPsecConnection::ParseIKECipherSuite(
@@ -1163,7 +1203,7 @@ void IPsecConnection::OnXFRMInterfaceReady(const std::string& ifname,
 
   std::unique_ptr<IPConfig::Properties> ipv4_props =
       std::make_unique<IPConfig::Properties>();
-  ipv4_props->address = local_virtual_ip_;
+  ipv4_props->address = local_virtual_ipv4_;
   ipv4_props->subnet_prefix = 32;
   ipv4_props->dns_servers = dns_servers_;
   ipv4_props->blackhole_ipv6 = true;

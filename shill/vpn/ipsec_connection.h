@@ -204,9 +204,10 @@ class IPsecConnection : public VPNConnection {
   // executes |step|.
   void SwanctlNextStep(ConnectStep step, const std::string& stdout_str);
 
-  // Parses and sets the |local_virtual_ip| (the overlay IP) from the output of
-  // `swanctl --list-sas`.
-  void ParseLocalVirtualIP(const std::vector<std::string>& swanctl_output);
+  // Parses and sets the |local_virtual_ipv4_| and |local_virtual_ipv6_|
+  // (the overlay IPs) from the output of `swanctl --list-sas`.
+  void ParseLocalVirtualIPs(const std::vector<std::string>& swanctl_output);
+
   // Parses and sets the cipher suite for IKE and ESP from the output of
   // `swanctl --list-sas`.
   void ParseIKECipherSuite(const std::vector<std::string>& swanctl_output);
@@ -233,6 +234,11 @@ class IPsecConnection : public VPNConnection {
   // Path to the resolv.conf file written by charon.
   base::FilePath StrongSwanResolvConfPath() const;
 
+  void ClearVirtualIPs() {
+    local_virtual_ipv4_ = "";
+    local_virtual_ipv6_ = "";
+  }
+
   std::unique_ptr<Config> config_;
   std::unique_ptr<VPNConnection> l2tp_connection_;
 
@@ -250,7 +256,8 @@ class IPsecConnection : public VPNConnection {
   // Set when the XFRM interface is created.
   std::optional<int> xfrm_interface_index_;
   // Set when the IPsec layer is connected.
-  std::string local_virtual_ip_;
+  std::string local_virtual_ipv4_;
+  std::string local_virtual_ipv6_;
   std::vector<std::string> dns_servers_;
 
   // Cipher algorithms used by this connection. Set when IPsec is connected.
