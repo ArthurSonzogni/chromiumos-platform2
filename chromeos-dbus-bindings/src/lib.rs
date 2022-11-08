@@ -8,9 +8,9 @@
 
 use std::env;
 use std::ffi::OsStr;
-use std::fmt::{self, Debug, Display};
+use std::fmt::{self, Debug, Display, Write as _};
 use std::fs::{create_dir_all, remove_dir_all, File};
-use std::io::{self, Write};
+use std::io::{self, Write as _};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
@@ -136,10 +136,12 @@ pub mod client {{"#
             if let Err(err) =
                 generate_bindings(&codegen, &source_dir.join(source), &destination, opts)
             {
-                errors.push_str(&format!(
+                writeln!(
+                    errors,
                     "Failed to generate {:?} from {:?}: {}\n",
                     module, source, err
-                ));
+                )
+                .ok();
                 // Canonicalize will fail if the destination doesn't exist.
                 continue;
             }
@@ -169,10 +171,12 @@ pub mod server {{"#
             if let Err(err) =
                 generate_bindings(&codegen, &source_dir.join(source), &destination, opts)
             {
-                errors.push_str(&format!(
-                    "Failed to generate {:?} from {:?}: {}\n",
+                writeln!(
+                    errors,
+                    "Failed to generate {:?} from {:?}: {}",
                     module, source, err
-                ));
+                )
+                .ok();
                 // Canonicalize will fail if the destination doesn't exist.
                 continue;
             }
