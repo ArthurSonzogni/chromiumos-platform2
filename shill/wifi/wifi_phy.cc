@@ -19,6 +19,14 @@ void WiFiPhy::DeleteWiFiDevice(WiFiConstRefPtr device) {
   wifi_devices_.erase(device);
 }
 
+void WiFiPhy::AddWiFiLocalDevice(LocalDeviceConstRefPtr device) {
+  wifi_local_devices_.insert(device);
+}
+
+void WiFiPhy::DeleteWiFiLocalDevice(LocalDeviceConstRefPtr device) {
+  wifi_local_devices_.erase(device);
+}
+
 // TODO(b/248103586): Move NL80211_CMD_NEW_WIPHY parsing out of WiFiPhy and into
 // WiFiProvider.
 void WiFiPhy::OnNewWiphy(const Nl80211Message& nl80211_message) {

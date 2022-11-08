@@ -38,6 +38,12 @@ class WiFiPhy {
   // Add a WiFi device instance to wifi_devices_.
   void AddWiFiDevice(WiFiConstRefPtr device);
 
+  // Remove a WiFi local device instance from wifi_local_devices_.
+  void DeleteWiFiLocalDevice(LocalDeviceConstRefPtr device);
+
+  // Add a WiFi local device instance to wifi_local_devices_.
+  void AddWiFiLocalDevice(LocalDeviceConstRefPtr device);
+
   // Parse an NL80211_CMD_NEW_WIPHY netlink message.
   // TODO(b/248103586): Move NL80211_CMD_NEW_WIPHY parsing out of WiFiPhy and
   // into WiFiProvider.
@@ -50,6 +56,7 @@ class WiFiPhy {
   friend class WiFiPhyTest;
   uint32_t phy_index_;
   std::set<WiFiConstRefPtr> wifi_devices_;
+  std::set<LocalDeviceConstRefPtr> wifi_local_devices_;
   std::set<nl80211_iftype> supported_ifaces_;
   void ParseInterfaceTypes(const Nl80211Message& nl80211_message);
 };

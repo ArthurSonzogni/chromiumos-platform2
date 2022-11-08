@@ -14,7 +14,9 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
+#include <base/test/mock_callback.h>
 #include <chromeos/dbus/service_constants.h>
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include "shill/mock_control.h"
@@ -31,6 +33,8 @@
 #include "shill/supplicant/wpa_supplicant.h"
 #include "shill/technology.h"
 #include "shill/test_event_dispatcher.h"
+#include "shill/wifi/local_device.h"
+#include "shill/wifi/mock_local_device.h"
 #include "shill/wifi/mock_passpoint_credentials.h"
 #include "shill/wifi/mock_wake_on_wifi.h"
 #include "shill/wifi/mock_wifi.h"
@@ -657,6 +661,17 @@ class WiFiProviderTest : public testing::Test {
 
   const WiFiPhy* GetPhyAtIndex(uint32_t phy_index) {
     return provider_.GetPhyAtIndex(phy_index);
+  }
+
+  StrictMock<
+      base::MockRepeatingCallback<void(LocalDevice::DeviceEvent, LocalDevice*)>>
+      cb;
+
+  scoped_refptr<MockLocalDevice> CreateLocalDevice(
+      LocalDevice::IfaceType type, const std::string& link_name) {
+    scoped_refptr<MockLocalDevice> dev = new NiceMock<MockLocalDevice>(
+        &manager_, type, link_name, "00:00:00:00:00:00", 0, cb.Get());
+    return dev;
   }
 
   MockControl control_;
@@ -2248,6 +2263,61 @@ TEST_F(WiFiProviderTest, RemoveNetlinkHandler) {
   provider_.Start();
   EXPECT_CALL(netlink_manager_, RemoveBroadcastHandler(_));
   provider_.Stop();
+}
+
+TEST_F(WiFiProviderTest, RegisterWiFiLocalDevice) {
+  const uint32_t phy_index = 0;
+  std::string link_name = "testlocaldevice";
+
+  AddMockPhy(phy_index);
+  scoped_refptr<MockLocalDevice> device =
+      CreateLocalDevice(LocalDevice::IfaceType::kAP, link_name);
+  provider_.RegisterLocalDevice(device);
+  EXPECT_EQ(provider_.local_devices_[link_name], device);
+
+  // Register same device again should be a no-op.
+  provider_.RegisterLocalDevice(device);
+  EXPECT_EQ(provider_.local_devices_[link_name], device);
+  EXPECT_EQ(provider_.local_devices_.count(link_name), 1);
+}
+
+TEST_F(WiFiProviderTest, DeregisterWiFiLocalDevice) {
+  const uint32_t phy_index = 0;
+  std::string link_name = "testlocaldevice";
+  AddMockPhy(phy_index);
+  scoped_refptr<MockLocalDevice> device =
+      CreateLocalDevice(LocalDevice::IfaceType::kAP, link_name);
+  provider_.RegisterLocalDevice(device);
+
+  provider_.DeregisterLocalDevice(device);
+  EXPECT_EQ(provider_.local_devices_.count(link_name), 0);
+
+  // Deregister a non-existent  device should be a no-op.
+  provider_.DeregisterLocalDevice(device);
+  EXPECT_EQ(provider_.local_devices_.count(link_name), 0);
+}
+
+TEST_F(WiFiProviderTest, GetUniqueLocalDeviceName) {
+  const uint32_t phy_index = 0;
+  std::string iface_prefix = "testlocaldevice";
+  AddMockPhy(phy_index);
+
+  std::string link_name0 = provider_.GetUniqueLocalDeviceName(iface_prefix);
+  scoped_refptr<MockLocalDevice> device0 =
+      CreateLocalDevice(LocalDevice::IfaceType::kAP, link_name0);
+  provider_.RegisterLocalDevice(device0);
+
+  // Use a new interface name different from the registered one.
+  std::string link_name1 = provider_.GetUniqueLocalDeviceName(iface_prefix);
+  EXPECT_NE(link_name0, link_name1);
+  scoped_refptr<MockLocalDevice> device1 =
+      CreateLocalDevice(LocalDevice::IfaceType::kAP, link_name1);
+  provider_.RegisterLocalDevice(device1);
+
+  // Reuse the first available interface name after device is deregistered.
+  provider_.DeregisterLocalDevice(device0);
+  std::string link_name = provider_.GetUniqueLocalDeviceName(iface_prefix);
+  EXPECT_EQ(link_name0, link_name);
 }
 
 }  // namespace shill

@@ -35,6 +35,7 @@
 #include "shill/store/pkcs11_cert_store.h"
 #include "shill/store/store_interface.h"
 #include "shill/technology.h"
+#include "shill/wifi/hotspot_device.h"
 #include "shill/wifi/passpoint_credentials.h"
 #include "shill/wifi/wifi_endpoint.h"
 #include "shill/wifi/wifi_phy.h"
@@ -66,6 +67,9 @@ const char kManagerErrorInvalidServiceMode[] = "invalid service mode";
 // Special value that can be passed into GetPhyInfo() to request a dump of all
 // phys on the system.
 static constexpr uint32_t kAllPhys = UINT32_MAX;
+
+// Interface name prefix used in local connection interfaces
+const char kHotspotIfacePrefix[] = "ap";
 
 // Retrieve a WiFi service's identifying properties from passed-in |args|.
 // Returns true if |args| are valid and populates |ssid|, |mode|,
@@ -1065,5 +1069,97 @@ WiFiProvider::PasspointMatch::PasspointMatch(
     const WiFiEndpointRefPtr& endp_in,
     MatchPriority prio_in)
     : credentials(cred_in), endpoint(endp_in), priority(prio_in) {}
+
+std::string WiFiProvider::GetUniqueLocalDeviceName(
+    const std::string& iface_prefix) {
+  uint8_t link_name_idx = 0;
+  std::string link_name;
+  do {
+    link_name = iface_prefix + std::to_string(link_name_idx++);
+  } while (base::Contains(local_devices_, link_name));
+
+  return link_name;
+}
+
+void WiFiProvider::RegisterLocalDevice(LocalDeviceRefPtr device) {
+  CHECK(device);
+  uint32_t phy_index = device->phy_index();
+  std::string link_name = device->link_name();
+
+  if (base::Contains(local_devices_, device->link_name())) {
+    return;
+  }
+
+  CHECK(base::Contains(wifi_phys_, phy_index))
+      << "Tried to register WiFi local device " << link_name
+      << " to phy_index: " << phy_index << " but the phy does not exist";
+
+  SLOG(2) << "Registering WiFi local device " << link_name
+          << " to phy_index: " << phy_index;
+  wifi_phys_[phy_index]->AddWiFiLocalDevice(device);
+
+  local_devices_[link_name] = device;
+}
+
+void WiFiProvider::DeregisterLocalDevice(LocalDeviceConstRefPtr device) {
+  CHECK(device);
+  uint32_t phy_index = device->phy_index();
+  std::string link_name = device->link_name();
+
+  SLOG(2) << "Deregistering WiFi local device " << link_name
+          << " from phy_index: " << phy_index;
+  if (base::Contains(wifi_phys_, phy_index)) {
+    wifi_phys_[phy_index]->DeleteWiFiLocalDevice(device);
+  }
+  local_devices_.erase(link_name);
+}
+
+LocalDeviceRefPtr WiFiProvider::CreateLocalInterface(
+    LocalDevice::IfaceType type,
+    const std::string& mac_address,
+    WiFiBand band,
+    WiFiSecurity security,
+    LocalDevice::EventCallback callback) {
+  LocalDeviceRefPtr new_dev;
+  std::string link_name;
+  // TODO (b/257340615) Select capable WiFiPhy according to band and security
+  // requirement.
+  if (wifi_phys_.empty()) {
+    LOG(ERROR) << "No WiFiPhy available.";
+    return nullptr;
+  }
+  uint32_t phy_index = wifi_phys_.begin()->second->GetPhyIndex();
+
+  if (type == LocalDevice::IfaceType::kAP) {
+    link_name = GetUniqueLocalDeviceName(kHotspotIfacePrefix);
+    new_dev = new HotspotDevice(manager_, link_name, mac_address, phy_index,
+                                callback);
+  } else {
+    LOG(ERROR) << "Unsupported interface type: " << type;
+    return nullptr;
+  }
+
+  if (new_dev->SetEnabled(true)) {
+    RegisterLocalDevice(new_dev);
+    return new_dev;
+  } else {
+    return nullptr;
+  }
+}
+
+void WiFiProvider::DeleteLocalInterface(LocalDeviceRefPtr device) {
+  if (!base::Contains(local_devices_, device->link_name())) {
+    LOG(ERROR) << "Unmanaged interface: " << device->link_name();
+    return;
+  }
+
+  if (device->iface_type() != LocalDevice::IfaceType::kAP) {
+    LOG(ERROR) << "Unsupported interface type: " << device->iface_type();
+    return;
+  }
+
+  device->SetEnabled(false);
+  DeregisterLocalDevice(device);
+}
 
 }  // namespace shill

@@ -20,6 +20,8 @@
 #include "shill/net/nl80211_message.h"
 #include "shill/provider_interface.h"
 #include "shill/refptr_types.h"
+#include "shill/wifi/local_device.h"
+#include "shill/wifi/wifi_rf.h"
 
 namespace shill {
 
@@ -190,6 +192,38 @@ class WiFiProvider : public ProviderInterface {
   void set_disable_vht(bool disable_vht) { disable_vht_ = disable_vht; }
   bool has_passpoint_credentials() const { return !credentials_by_id_.empty(); }
 
+  // Create a WiFi local interface with interface type |type|, MAC address
+  // |mac_address|. |callback| is called when interface event happens. The
+  // interface type |type|, required WiFi band |band| and security |security|
+  // are used in the WiFiPhy search to find the first WiFiPhy which meets all
+  // the criteria.
+  LocalDeviceRefPtr CreateLocalInterface(LocalDevice::IfaceType type,
+                                         const std::string& mac_address,
+                                         WiFiBand band,
+                                         WiFiSecurity security,
+                                         LocalDevice::EventCallback callback);
+
+  // Delete a WiFi local interface managed by |device|.
+  void DeleteLocalInterface(LocalDeviceRefPtr device);
+
+ protected:
+  FRIEND_TEST(WiFiProviderTest, DeregisterWiFiLocalDevice);
+  FRIEND_TEST(WiFiProviderTest, GetUniqueLocalDeviceName);
+  FRIEND_TEST(WiFiProviderTest, RegisterWiFiLocalDevice);
+
+  // Register a WiFi local device object to WiFiProvider and a WiFiPhy object.
+  // This method asserts that there is a WiFiPhy object at the given phy_index,
+  // so it is expected that the caller checks this condition before calling.
+  void RegisterLocalDevice(LocalDeviceRefPtr device);
+
+  // Deregister a WiFi local device from WiFiProvider and it's associated
+  // WiFiPhy object. This function is a no-op if the WiFi device is not
+  // currently registered to the WiFiPhy at phy_index.
+  void DeregisterLocalDevice(LocalDeviceConstRefPtr device);
+
+  // Generate an interface name which is not in used with prefix |iface_prefix|.
+  std::string GetUniqueLocalDeviceName(const std::string& iface_prefix);
+
  private:
   friend class WiFiProviderTest;
 
@@ -255,6 +289,9 @@ class WiFiProvider : public ProviderInterface {
   base::WeakPtrFactory<WiFiProvider> weak_ptr_factory_while_started_;
   std::map<uint32_t, std::unique_ptr<WiFiPhy>> wifi_phys_;
   shill::NetlinkManager::NetlinkMessageHandler broadcast_handler_;
+  // Holds reference pointers to all WiFi Local devices with the link name as
+  // the map key.
+  std::map<std::string, LocalDeviceRefPtr> local_devices_;
 
   bool running_;
 

@@ -62,6 +62,10 @@ class Profile;
 using ProfileConstRefPtr = scoped_refptr<const Profile>;
 using ProfileRefPtr = scoped_refptr<Profile>;
 
+class LocalDevice;
+using LocalDeviceConstRefPtr = scoped_refptr<const LocalDevice>;
+using LocalDeviceRefPtr = scoped_refptr<LocalDevice>;
+
 }  // namespace shill
 
 #endif  // SHILL_REFPTR_TYPES_H_
