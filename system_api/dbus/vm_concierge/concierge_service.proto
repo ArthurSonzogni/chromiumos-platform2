@@ -473,6 +473,41 @@ message StartArcVmRequest {
   // (ARC Application Compatibility Configuration Delivery) is enabled (See
   // go/a2c2 for project details.)
   bool update_o4c_list_via_a2c2 = 37;
+
+  enum UsapProfileType {
+    // Default USAP profile suitable for all devices.
+    USAP_PROFILE_DEFAULT = 0;
+    // USAP profile suitable for 4G devices.
+    USAP_PROFILE_4G = 1;
+    // USAP profile suitable for 8G devices.
+    USAP_PROFILE_8G = 2;
+    // USAP profile suitable for 16G devices.
+    USAP_PROFILE_16G = 3;
+  }
+
+  // USAP Profile of the device
+  UsapProfileType usap_profile = 38;
+
+  enum BinaryTranslationType {
+    BINARY_TRANSLATION_TYPE_NONE = 0;
+    BINARY_TRANSLATION_TYPE_HOUDINI = 1;
+    BINARY_TRANSLATION_TYPE_NDK_TRANSLATION = 2;
+  }
+
+  // Type of binary translation used in natvie bridge experiment
+  BinaryTranslationType native_bridge_experiment = 39;
+
+  enum UreadaheadMode {
+    UREADAHEAD_MODE_READAHEAD = 0;
+    UREADAHEAD_MODE_GENERATE = 1;
+    UREADAHEAD_MODE_DISABLED = 2;
+  }
+
+  // Ureadahead mode used
+  UreadaheadMode ureadahead_mode = 40;
+
+  // Whether rw is enabled
+  bool enable_rw = 41;
 }
 
 enum VmStatus {
