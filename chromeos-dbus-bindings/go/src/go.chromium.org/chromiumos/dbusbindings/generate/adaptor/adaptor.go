@@ -32,6 +32,9 @@ var funcMap = template.FuncMap{
 	"makeVariableName":        genutil.MakeVariableName,
 	"makeSignalParams":        makeSignalParams,
 	"makeSignalArgNames":      makeSignalArgNames,
+	"makePropertyVariableName": func(p *introspect.Property) string {
+		return p.VariableName()
+	},
 	"makePropertyBaseTypeExtract": func(p *introspect.Property) (string, error) {
 		return p.BaseType(dbustype.DirectionExtract)
 	},
@@ -144,7 +147,7 @@ class {{$className}} {
 {{if .Properties}}{{"\n"}}{{end -}}
 {{range .Properties -}}
 {{$writeAccess := makePropertyWriteAccess . -}}
-{{$variableName := makeVariableName .Name -}}
+{{$variableName := makePropertyVariableName . | makeVariableName -}}
 {{if $writeAccess -}} {{/* Register exported properties. */ -}}
 {{"    "}}{{$variableName}}_.SetAccessMode(
         brillo::dbus_utils::ExportedPropertyBase::Access::{{$writeAccess}});
@@ -176,7 +179,7 @@ class {{$className}} {
 	propertyMethodImplementationTmpl = `{{define "propertyMethodImplementationTmpl" -}}
 {{range .Properties}}{{"\n" -}}
 {{$baseType := makePropertyBaseTypeExtract . -}}
-{{$variableName := makeVariableName .Name -}}
+{{$variableName := makePropertyVariableName . | makeVariableName -}}
 
 {{/* Property name accessor. */ -}}
 {{formatComment .DocString 2 -}}
@@ -242,7 +245,8 @@ class {{$className}} {
 
 	propertyDataMembersTmpl = `{{define "propertyDataMembersTmpl" -}}
 {{range .Properties -}}
-{{"  "}}brillo::dbus_utils::ExportedProperty<{{makePropertyBaseTypeExtract . }}> {{makeVariableName .Name}}_;
+{{$variableName := makePropertyVariableName . | makeVariableName -}}
+{{"  "}}brillo::dbus_utils::ExportedProperty<{{makePropertyBaseTypeExtract . }}> {{$variableName}}_;
 {{end -}}
 {{if .Properties}}{{"\n"}}{{end -}}
 {{end}}`

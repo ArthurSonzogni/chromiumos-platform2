@@ -75,6 +75,7 @@ class InterfaceAdaptor {
     signal_BSSRemoved_ = itf->RegisterSignalOfType<SignalBSSRemovedType>("BSSRemoved");
 
     itf->AddProperty(CapabilitiesName(), &capabilities_);
+    itf->AddProperty(ClassName(), &bluetooth_class_);
   }
 
   // signal doc
@@ -93,6 +94,15 @@ class InterfaceAdaptor {
   }
   void SetCapabilities(const brillo::VariantDictionary& capabilities) {
     capabilities_.SetValue(capabilities);
+  }
+
+  // property doc
+  static const char* ClassName() { return "Class"; }
+  uint32_t GetClass() const {
+    return bluetooth_class_.GetValue().Get<uint32_t>();
+  }
+  void SetClass(uint32_t bluetooth_class) {
+    bluetooth_class_.SetValue(bluetooth_class);
   }
 
   static dbus::ObjectPath GetObjectPath() {
@@ -122,6 +132,7 @@ class InterfaceAdaptor {
   std::weak_ptr<SignalBSSRemovedType> signal_BSSRemoved_;
 
   brillo::dbus_utils::ExportedProperty<brillo::VariantDictionary> capabilities_;
+  brillo::dbus_utils::ExportedProperty<uint32_t> bluetooth_class_;
 
   InterfaceInterface* interface_;  // Owned by container of this adapter.
 };
@@ -221,6 +232,15 @@ func TestGenerateAdaptors(t *testing.T) {
 				Type:      "a{sv}",
 				Access:    "read",
 				DocString: "\n        property doc\n      ",
+			}, {
+				Name:      "Class",
+				Type:      "u",
+				Access:    "read",
+				DocString: "\n        property doc\n      ",
+				Annotation: introspect.Annotation{
+					Name:  "org.chromium.DBus.Argument.VariableName",
+					Value: "bluetooth_class",
+				},
 			},
 		},
 		DocString: "\n      interface doc\n    ",

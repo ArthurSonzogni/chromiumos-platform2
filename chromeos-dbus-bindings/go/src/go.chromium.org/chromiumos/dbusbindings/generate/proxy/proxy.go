@@ -30,6 +30,9 @@ var funcMap = template.FuncMap{
 	"makeProxyInterfaceArgs":          makeProxyInterfaceArgs,
 	"makeProxyInterfaceName":          genutil.MakeProxyInterfaceName,
 	"makeProxyName":                   genutil.MakeProxyName,
+	"makePropertyVariableName": func(p *introspect.Property) string {
+		return p.VariableName()
+	},
 	"makePropertyBaseTypeExtract": func(p *introspect.Property) (string, error) {
 		return p.BaseType(dbustype.DirectionExtract)
 	},
@@ -106,13 +109,15 @@ class {{$proxyName}} final : public {{$itfName}} {
                             "{{.Name}}",
                             callback} {
 {{- range .Properties}}
-      RegisterProperty({{.Name}}Name(), &{{makeVariableName .Name}});
+{{- $name := makePropertyVariableName . | makeVariableName}}
+      RegisterProperty({{.Name}}Name(), &{{$name}});
 {{- end}}
     }
     PropertySet(const PropertySet&) = delete;
     PropertySet& operator=(const PropertySet&) = delete;
 {{range .Properties}}
-    brillo::dbus_utils::Property<{{makePropertyBaseTypeExtract .}}> {{makeVariableName .Name}};
+{{- $name := makePropertyVariableName . | makeVariableName}}
+    brillo::dbus_utils::Property<{{makePropertyBaseTypeExtract .}}> {{$name}};
 {{- end}}
 
   };
@@ -254,7 +259,7 @@ class {{$proxyName}} final : public {{$itfName}} {
 {{- end}}
 
 {{- range .Properties}}
-{{- $name := makeVariableName .Name -}}
+{{- $name := makePropertyVariableName . | makeVariableName -}}
 {{- $type := makeProxyInArgTypeProxy . }}
 
   {{$type}} {{$name}}() const override {

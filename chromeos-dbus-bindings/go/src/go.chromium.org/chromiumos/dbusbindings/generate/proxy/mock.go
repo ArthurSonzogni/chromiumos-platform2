@@ -116,7 +116,7 @@ brillo::ErrorPtr* /*error*/,
                     dbus::ObjectProxy::OnConnectedCallback* /*on_connected_callback*/));
 {{- end}}
 {{- range .Properties}}
-{{- $name := makeVariableName .Name -}}
+{{- $name := makePropertyVariableName . | makeVariableName -}}
 {{- $type := makeProxyInArgTypeProxy . }}
   MOCK_CONST_METHOD0({{$name}}, {{$type}}());
 {{- if eq .Access "readwrite"}}

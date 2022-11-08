@@ -4,9 +4,10 @@
 package introspect_test
 
 import (
+	"testing"
+
 	"go.chromium.org/chromiumos/dbusbindings/dbustype"
 	"go.chromium.org/chromiumos/dbusbindings/introspect"
-	"testing"
 
 	"github.com/google/go-cmp/cmp"
 )
@@ -339,6 +340,7 @@ func TestPropertyMethods(t *testing.T) {
 		InArgTypeProxy    string
 		OutArgTypeAdaptor string
 		OutArgTypeProxy   string
+		OutVariableName   string
 	}{
 		{
 			receiver: introspect.Property{
@@ -351,6 +353,23 @@ func TestPropertyMethods(t *testing.T) {
 			InArgTypeProxy:    "const brillo::dbus_utils::FileDescriptor&",
 			OutArgTypeAdaptor: "brillo::dbus_utils::FileDescriptor*",
 			OutArgTypeProxy:   "base::ScopedFD*",
+			OutVariableName:   "property1",
+		}, {
+			receiver: introspect.Property{
+				Name: "property1",
+				Type: "h",
+				Annotation: introspect.Annotation{
+					Name:  "org.chromium.DBus.Argument.VariableName",
+					Value: "property1_var",
+				},
+			},
+			BaseTypeExtract:   "base::ScopedFD",
+			BaseTypeAppend:    "brillo::dbus_utils::FileDescriptor",
+			InArgTypeAdaptor:  "const base::ScopedFD&",
+			InArgTypeProxy:    "const brillo::dbus_utils::FileDescriptor&",
+			OutArgTypeAdaptor: "brillo::dbus_utils::FileDescriptor*",
+			OutArgTypeProxy:   "base::ScopedFD*",
+			OutVariableName:   "property1_var",
 		},
 	}
 
@@ -396,6 +415,10 @@ func TestPropertyMethods(t *testing.T) {
 		}
 		if got != tc.OutArgTypeProxy {
 			t.Fatalf("getting the out arg type of %q failed; want %s, got %s", tc.receiver.Name, tc.OutArgTypeProxy, got)
+		}
+		got = tc.receiver.VariableName()
+		if got != tc.OutVariableName {
+			t.Fatalf("getting the variable name of %q failed; want %s, got %s", tc.receiver.Name, tc.OutVariableName, got)
 		}
 	}
 }

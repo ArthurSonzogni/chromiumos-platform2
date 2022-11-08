@@ -118,6 +118,9 @@ type Property struct {
 	Type      string    `xml:"type,attr"`
 	Access    string    `xml:"access,attr"`
 	DocString DocString `xml:"docstring"`
+	// For now, Property supports only VariableName annotation only,
+	// so it can have at most one annotation.
+	Annotation Annotation `xml:"annotation"`
 }
 
 // Interface represents interface provided by a object.
@@ -271,6 +274,15 @@ func (p *Property) InArgType(receiver dbustype.Receiver) (string, error) {
 // for an out argument.
 func (p *Property) OutArgType(receiver dbustype.Receiver) (string, error) {
 	return outArgTypeInternal(p.Type, receiver, nil)
+}
+
+// VariableName returns annotation value as variable name if the property has
+// annotation of VariableName. Otherwise returns property name.
+func (p *Property) VariableName() string {
+	if p.Annotation.Name == "org.chromium.DBus.Argument.VariableName" {
+		return p.Annotation.Value
+	}
+	return p.Name
 }
 
 func baseTypeInternal(s string, dir dbustype.Direction, a *Annotation) (string, error) {

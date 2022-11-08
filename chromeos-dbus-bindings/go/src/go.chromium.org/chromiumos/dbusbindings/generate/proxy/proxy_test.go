@@ -73,6 +73,15 @@ func TestGenerateProxies(t *testing.T) {
 				Type:      "a{sv}",
 				Access:    "read",
 				DocString: "\n        property doc\n      ",
+			}, {
+				Name:      "Class",
+				Type:      "u",
+				Access:    "read",
+				DocString: "\n        property doc\n      ",
+				Annotation: introspect.Annotation{
+					Name:  "org.chromium.DBus.Argument.VariableName",
+					Value: "bluetooth_class",
+				},
 			},
 		},
 		DocString: "\n      interface doc\n    ",
@@ -175,6 +184,8 @@ class InterfaceProxyInterface {
 
   static const char* CapabilitiesName() { return "Capabilities"; }
   virtual const brillo::VariantDictionary& capabilities() const = 0;
+  static const char* ClassName() { return "Class"; }
+  virtual uint32_t bluetooth_class() const = 0;
 
   virtual const dbus::ObjectPath& GetObjectPath() const = 0;
   virtual dbus::ObjectProxy* GetObjectProxy() const = 0;
@@ -203,11 +214,13 @@ class InterfaceProxy final : public InterfaceProxyInterface {
                             "fi.w1.wpa_supplicant1.Interface",
                             callback} {
       RegisterProperty(CapabilitiesName(), &capabilities);
+      RegisterProperty(ClassName(), &bluetooth_class);
     }
     PropertySet(const PropertySet&) = delete;
     PropertySet& operator=(const PropertySet&) = delete;
 
     brillo::dbus_utils::Property<brillo::VariantDictionary> capabilities;
+    brillo::dbus_utils::Property<uint32_t> bluetooth_class;
 
   };
 
@@ -324,6 +337,10 @@ class InterfaceProxy final : public InterfaceProxyInterface {
 
   const brillo::VariantDictionary& capabilities() const override {
     return property_set_->capabilities.value();
+  }
+
+  uint32_t bluetooth_class() const override {
+    return property_set_->bluetooth_class.value();
   }
 
  private:

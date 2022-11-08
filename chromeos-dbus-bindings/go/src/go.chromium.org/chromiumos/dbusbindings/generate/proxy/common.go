@@ -51,7 +51,7 @@ class {{$itfName}} {
 {{- end}}
 {{- if .Properties}}{{"\n"}}{{end}}
 {{- range .Properties}}
-{{- $name := makeVariableName .Name -}}
+{{- $name := makePropertyVariableName . | makeVariableName -}}
 {{- $type := makeProxyInArgTypeProxy . }}
   static const char* {{.Name}}Name() { return "{{.Name}}"; }
   virtual {{$type}} {{$name}}() const = 0;

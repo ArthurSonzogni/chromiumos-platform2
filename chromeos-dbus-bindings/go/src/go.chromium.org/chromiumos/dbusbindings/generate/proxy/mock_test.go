@@ -73,6 +73,15 @@ func TestGenerateMockProxies(t *testing.T) {
 				Type:      "a{sv}",
 				Access:    "read",
 				DocString: "\n        property doc\n      ",
+			}, {
+				Name:      "Class",
+				Type:      "u",
+				Access:    "read",
+				DocString: "\n        property doc\n      ",
+				Annotation: introspect.Annotation{
+					Name:  "org.chromium.DBus.Argument.VariableName",
+					Value: "bluetooth_class",
+				},
 			},
 		},
 		DocString: "\n      interface doc\n    ",
@@ -157,6 +166,8 @@ class InterfaceProxyInterface {
 
   static const char* CapabilitiesName() { return "Capabilities"; }
   virtual const brillo::VariantDictionary& capabilities() const = 0;
+  static const char* ClassName() { return "Class"; }
+  virtual uint32_t bluetooth_class() const = 0;
 
   virtual const dbus::ObjectPath& GetObjectPath() const = 0;
   virtual dbus::ObjectProxy* GetObjectProxy() const = 0;
@@ -209,6 +220,7 @@ class InterfaceProxyMock : public InterfaceProxyInterface {
                                                        const std::tuple<int32_t, base::ScopedFD>&)>& /*signal_callback*/,
                     dbus::ObjectProxy::OnConnectedCallback* /*on_connected_callback*/));
   MOCK_CONST_METHOD0(capabilities, const brillo::VariantDictionary&());
+  MOCK_CONST_METHOD0(bluetooth_class, uint32_t());
   MOCK_CONST_METHOD0(GetObjectPath, const dbus::ObjectPath&());
   MOCK_CONST_METHOD0(GetObjectProxy, dbus::ObjectProxy*());
   MOCK_METHOD1(SetPropertyChangedCallback,
