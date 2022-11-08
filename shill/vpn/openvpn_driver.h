@@ -235,7 +235,7 @@ class OpenVPNDriver : public VPNDriver, public RpcTaskDelegate {
   base::FilePath tls_auth_file_;
   base::FilePath openvpn_config_directory_;
   base::FilePath openvpn_config_file_;
-  IPConfig::Properties ip_properties_;
+  std::unique_ptr<IPConfig::Properties> ipv4_properties_;
 
   // The PID of the spawned openvpn process. May be 0 if no process has been
   // spawned yet or the process has died.

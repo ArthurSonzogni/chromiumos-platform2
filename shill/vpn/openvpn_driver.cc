@@ -185,7 +185,7 @@ void OpenVPNDriver::Cleanup() {
     openvpn_config_file_.clear();
   }
   rpc_task_.reset();
-  ip_properties_ = IPConfig::Properties();
+  ipv4_properties_ = nullptr;
   if (pid_) {
     process_manager()->StopProcessAndBlock(pid_);
     pid_ = 0;
@@ -305,6 +305,9 @@ void OpenVPNDriver::GetLogin(std::string* /*user*/, std::string* /*password*/) {
 
 void OpenVPNDriver::Notify(const std::string& reason,
                            const std::map<std::string, std::string>& dict) {
+  if (ipv4_properties_ == nullptr) {
+    ipv4_properties_ = std::make_unique<IPConfig::Properties>();
+  }
   LOG(INFO) << "IP configuration received: " << reason;
   // We only registered "--up" script so this should be the only
   // reason we get notified here. Note that "--up-restart" is set
@@ -314,7 +317,7 @@ void OpenVPNDriver::Notify(const std::string& reason,
     return;
   }
   // On restart/reconnect, update the existing IP configuration.
-  ParseIPConfiguration(dict, &ip_properties_);
+  ParseIPConfiguration(dict, ipv4_properties_.get());
   ReportConnectionMetrics();
   if (event_handler_) {
     event_handler_->OnDriverConnected(interface_name_, interface_index_);
@@ -324,7 +327,10 @@ void OpenVPNDriver::Notify(const std::string& reason,
 }
 
 std::unique_ptr<IPConfig::Properties> OpenVPNDriver::GetIPv4Properties() const {
-  return std::make_unique<IPConfig::Properties>(ip_properties_);
+  if (ipv4_properties_ == nullptr) {
+    return nullptr;
+  }
+  return std::make_unique<IPConfig::Properties>(*ipv4_properties_);
 }
 
 std::unique_ptr<IPConfig::Properties> OpenVPNDriver::GetIPv6Properties() const {

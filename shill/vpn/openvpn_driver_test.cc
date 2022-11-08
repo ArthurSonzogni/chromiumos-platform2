@@ -307,7 +307,7 @@ TEST_F(OpenVPNDriverTest, Notify) {
   // Tests that existing properties are reused if no new ones provided.
   EXPECT_CALL(event_handler_,
               OnDriverConnected(kInterfaceName, kInterfaceIndex));
-  driver_->ip_properties_.address = "1.2.3.4";
+  driver_->ipv4_properties_->address = "1.2.3.4";
   driver_->Notify("up", config);
   ip_properties = driver_->GetIPv4Properties();
   ASSERT_NE(ip_properties, nullptr);
@@ -1071,11 +1071,12 @@ TEST_F(OpenVPNDriverTest, Cleanup) {
   // Ensure no crash.
   driver_->Cleanup();
 
+  driver_->ipv4_properties_ = std::make_unique<IPConfig::Properties>();
   const int kPID = 123456;
   driver_->pid_ = kPID;
   driver_->rpc_task_.reset(new RpcTask(&control_, this));
   driver_->interface_name_ = kInterfaceName;
-  driver_->ip_properties_.address = "1.2.3.4";
+  driver_->ipv4_properties_->address = "1.2.3.4";
   base::FilePath tls_auth_file;
   EXPECT_TRUE(base::CreateTemporaryFile(&tls_auth_file));
   EXPECT_FALSE(tls_auth_file.empty());
@@ -1091,7 +1092,7 @@ TEST_F(OpenVPNDriverTest, Cleanup) {
   EXPECT_TRUE(driver_->interface_name_.empty());
   EXPECT_FALSE(base::PathExists(tls_auth_file));
   EXPECT_TRUE(driver_->tls_auth_file_.empty());
-  EXPECT_TRUE(driver_->ip_properties_.address.empty());
+  EXPECT_EQ(nullptr, driver_->ipv4_properties_);
 }
 
 TEST_F(OpenVPNDriverTest, SpawnOpenVPN) {

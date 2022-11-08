@@ -271,7 +271,11 @@ void L2TPIPsecDriver::Disconnect() {
 
 std::unique_ptr<IPConfig::Properties> L2TPIPsecDriver::GetIPv4Properties()
     const {
-  return std::make_unique<IPConfig::Properties>(ip_properties_);
+  if (ipv4_properties_ == nullptr) {
+    LOG(DFATAL) << "ipv4_properties_ is invalid.";
+    return nullptr;
+  }
+  return std::make_unique<IPConfig::Properties>(*ipv4_properties_);
 }
 
 std::unique_ptr<IPConfig::Properties> L2TPIPsecDriver::GetIPv6Properties()
@@ -350,7 +354,7 @@ void L2TPIPsecDriver::OnIPsecConnected(
   }
   LOG(INFO) << "VPN connection established";
   ReportConnectionMetrics();
-  ip_properties_ = ip_properties;
+  ipv4_properties_ = std::make_unique<IPConfig::Properties>(ip_properties);
   event_handler_->OnDriverConnected(link_name, interface_index);
 }
 

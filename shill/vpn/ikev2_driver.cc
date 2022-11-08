@@ -180,7 +180,10 @@ void IKEv2Driver::Disconnect() {
 }
 
 std::unique_ptr<IPConfig::Properties> IKEv2Driver::GetIPv4Properties() const {
-  return std::make_unique<IPConfig::Properties>(ip_properties_);
+  if (ipv4_properties_ == nullptr) {
+    return nullptr;
+  }
+  return std::make_unique<IPConfig::Properties>(*ipv4_properties_);
 }
 
 std::unique_ptr<IPConfig::Properties> IKEv2Driver::GetIPv6Properties() const {
@@ -258,7 +261,7 @@ void IKEv2Driver::OnIPsecConnected(const std::string& link_name,
     return;
   }
   ReportConnectionMetrics();
-  ip_properties_ = ip_properties;
+  ipv4_properties_ = std::make_unique<IPConfig::Properties>(ip_properties);
   event_handler_->OnDriverConnected(link_name, interface_index);
 }
 

@@ -223,7 +223,7 @@ class ThirdPartyVpnDriver : public VPNDriver {
   int tun_fd_;
 
   // Configuration properties of the virtual VPN device set by the VPN client.
-  IPConfig::Properties ip_properties_;
+  std::unique_ptr<IPConfig::Properties> ipv4_properties_;
   bool ip_properties_set_;
 
   IOHandlerFactory* io_handler_factory_;

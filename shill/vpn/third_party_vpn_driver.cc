@@ -338,48 +338,48 @@ void ThirdPartyVpnDriver::SetParameters(
     return;
   }
 
-  ip_properties_ = IPConfig::Properties();
-  ip_properties_.address_family = IPAddress::kFamilyIPv4;
+  ipv4_properties_ = std::make_unique<IPConfig::Properties>();
+  ipv4_properties_->address_family = IPAddress::kFamilyIPv4;
 
-  ProcessIp(parameters, kAddressParameterThirdPartyVpn, &ip_properties_.address,
-            true, error_message);
+  ProcessIp(parameters, kAddressParameterThirdPartyVpn,
+            &ipv4_properties_->address, true, error_message);
   ProcessIp(parameters, kBroadcastAddressParameterThirdPartyVpn,
-            &ip_properties_.broadcast_address, false, error_message);
+            &ipv4_properties_->broadcast_address, false, error_message);
 
-  ip_properties_.gateway = ip_properties_.address;
+  ipv4_properties_->gateway = ipv4_properties_->address;
 
   ProcessInt32(parameters, kSubnetPrefixParameterThirdPartyVpn,
-               &ip_properties_.subnet_prefix, 0, 32, true, error_message);
-  ProcessInt32(parameters, kMtuParameterThirdPartyVpn, &ip_properties_.mtu,
+               &ipv4_properties_->subnet_prefix, 0, 32, true, error_message);
+  ProcessInt32(parameters, kMtuParameterThirdPartyVpn, &ipv4_properties_->mtu,
                IPConfig::kMinIPv4MTU, kConstantMaxMtu, false, error_message);
 
   ProcessSearchDomainArray(parameters, kDomainSearchParameterThirdPartyVpn,
-                           kNonIPDelimiter, &ip_properties_.domain_search,
+                           kNonIPDelimiter, &ipv4_properties_->domain_search,
                            false, error_message);
   ProcessIPArray(parameters, kDnsServersParameterThirdPartyVpn, kIPDelimiter,
-                 &ip_properties_.dns_servers, false, error_message,
+                 &ipv4_properties_->dns_servers, false, error_message,
                  warning_message);
 
   known_cidrs_.clear();
 
   ProcessIPArrayCIDR(parameters, kExclusionListParameterThirdPartyVpn,
-                     kIPDelimiter, &ip_properties_.exclusion_list, true,
+                     kIPDelimiter, &ipv4_properties_->exclusion_list, true,
                      error_message, warning_message);
-  if (!ip_properties_.exclusion_list.empty()) {
+  if (!ipv4_properties_->exclusion_list.empty()) {
     // The first excluded IP is used to find the default gateway. The logic that
     // finds the default gateway does not work for default route "0.0.0.0/0".
     // Hence, this code ensures that the first IP is not default.
-    IPAddress address(ip_properties_.address_family);
-    address.SetAddressAndPrefixFromString(ip_properties_.exclusion_list[0]);
+    IPAddress address(ipv4_properties_->address_family);
+    address.SetAddressAndPrefixFromString(ipv4_properties_->exclusion_list[0]);
     if (address.IsDefault() && !address.prefix()) {
-      if (ip_properties_.exclusion_list.size() > 1) {
-        swap(ip_properties_.exclusion_list[0],
-             ip_properties_.exclusion_list[1]);
+      if (ipv4_properties_->exclusion_list.size() > 1) {
+        swap(ipv4_properties_->exclusion_list[0],
+             ipv4_properties_->exclusion_list[1]);
       } else {
         // When there is only a single entry which is a default address, it can
         // be cleared since the default behavior is to not route any traffic to
         // the tunnel interface.
-        ip_properties_.exclusion_list.clear();
+        ipv4_properties_->exclusion_list.clear();
       }
     }
   }
@@ -392,15 +392,15 @@ void ThirdPartyVpnDriver::SetParameters(
   ProcessIPArrayCIDR(parameters, kInclusionListParameterThirdPartyVpn,
                      kIPDelimiter, &inclusion_list, true, error_message,
                      warning_message);
-  ip_properties_.inclusion_list = inclusion_list;
+  ipv4_properties_->inclusion_list = inclusion_list;
 
   if (!error_message->empty()) {
     LOG(ERROR) << __func__ << ": " << error_message;
     return;
   }
-  ip_properties_.default_route = false;
-  ip_properties_.blackhole_ipv6 = true;
-  ip_properties_.method = kTypeVPN;
+  ipv4_properties_->default_route = false;
+  ipv4_properties_->blackhole_ipv6 = true;
+  ipv4_properties_->method = kTypeVPN;
   if (!ip_properties_set_) {
     ip_properties_set_ = true;
     metrics()->SendEnumToUMA(Metrics::kMetricVpnDriver,
@@ -496,7 +496,7 @@ void ThirdPartyVpnDriver::OnLinkReady(const std::string& link_name,
   interface_name_ = link_name;
   interface_index_ = interface_index;
 
-  ip_properties_ = IPConfig::Properties();
+  ipv4_properties_ = std::make_unique<IPConfig::Properties>();
   ip_properties_set_ = false;
 
   tun_fd_ = manager()->device_info()->OpenTunnelInterface(interface_name_);
@@ -518,7 +518,11 @@ void ThirdPartyVpnDriver::OnLinkReady(const std::string& link_name,
 
 std::unique_ptr<IPConfig::Properties> ThirdPartyVpnDriver::GetIPv4Properties()
     const {
-  return std::make_unique<IPConfig::Properties>(ip_properties_);
+  if (ipv4_properties_ == nullptr) {
+    LOG(DFATAL) << "ipv4_properties_ is invalid.";
+    return nullptr;
+  }
+  return std::make_unique<IPConfig::Properties>(*ipv4_properties_);
 }
 
 std::unique_ptr<IPConfig::Properties> ThirdPartyVpnDriver::GetIPv6Properties()

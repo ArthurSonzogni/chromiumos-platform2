@@ -76,7 +76,7 @@ class IKEv2Driver : public VPNDriver {
 
   EventHandler* event_handler_ = nullptr;
   std::unique_ptr<VPNConnection> ipsec_connection_;
-  IPConfig::Properties ip_properties_;
+  std::unique_ptr<IPConfig::Properties> ipv4_properties_;
 
   base::WeakPtrFactory<IKEv2Driver> weak_factory_{this};
 };
