@@ -15,7 +15,7 @@ class ShutdownFromSuspendStub : public ShutdownFromSuspendInterface {
   ShutdownFromSuspendStub(const ShutdownFromSuspendStub&) = delete;
   ShutdownFromSuspendStub& operator=(const ShutdownFromSuspendStub&) = delete;
 
-  ~ShutdownFromSuspendStub() = default;
+  ~ShutdownFromSuspendStub() override = default;
 
   void set_action(Action action) { action_ = action; }
 

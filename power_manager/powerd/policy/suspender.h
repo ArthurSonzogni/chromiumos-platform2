@@ -108,7 +108,7 @@ class Suspender : public SuspendDelayObserver,
       CANCELED,
     };
 
-    virtual ~Delegate() {}
+    virtual ~Delegate() = default;
 
     // Returns a initial value for suspend-related IDs that's likely (but not
     // guaranteed) to yield successive IDs that are unique across all of the

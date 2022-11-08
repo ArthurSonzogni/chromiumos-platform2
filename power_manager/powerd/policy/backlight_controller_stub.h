@@ -19,11 +19,11 @@ namespace power_manager::policy {
 // policy::BacklightController implementation that returns dummy values.
 class BacklightControllerStub : public policy::BacklightController {
  public:
-  BacklightControllerStub();
+  BacklightControllerStub() = default;
   BacklightControllerStub(const BacklightControllerStub&) = delete;
   BacklightControllerStub& operator=(const BacklightControllerStub&) = delete;
 
-  ~BacklightControllerStub() override;
+  ~BacklightControllerStub() override = default;
 
   const std::vector<PowerSource>& power_source_changes() const {
     return power_source_changes_;

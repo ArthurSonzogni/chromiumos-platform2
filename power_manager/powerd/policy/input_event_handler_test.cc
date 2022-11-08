@@ -78,12 +78,12 @@ std::string GetAcknowledgmentDelayAction(base::TimeDelta delay) {
 class TestInputEventHandlerDelegate : public InputEventHandler::Delegate,
                                       public ActionRecorder {
  public:
-  TestInputEventHandlerDelegate() {}
+  TestInputEventHandlerDelegate() = default;
   TestInputEventHandlerDelegate(const TestInputEventHandlerDelegate&) = delete;
   TestInputEventHandlerDelegate& operator=(
       const TestInputEventHandlerDelegate&) = delete;
 
-  ~TestInputEventHandlerDelegate() override {}
+  ~TestInputEventHandlerDelegate() override = default;
 
   // InputEventHandler::Delegate implementation:
   void HandleLidClosed() override { AppendAction(kLidClosed); }
@@ -117,7 +117,7 @@ class InputEventHandlerTest : public ::testing::Test {
     handler_.clock_for_testing()->set_current_time_for_testing(
         base::TimeTicks::FromInternalValue(1000));
   }
-  ~InputEventHandlerTest() override {}
+  ~InputEventHandlerTest() override = default;
 
  protected:
   // Initializes |handler_|.

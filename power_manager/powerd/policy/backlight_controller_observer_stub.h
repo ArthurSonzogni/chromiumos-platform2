@@ -24,13 +24,13 @@ class BacklightControllerObserverStub : public BacklightControllerObserver {
     BacklightController* source;
   };
 
-  BacklightControllerObserverStub();
+  BacklightControllerObserverStub() = default;
   BacklightControllerObserverStub(const BacklightControllerObserverStub&) =
       delete;
   BacklightControllerObserverStub& operator=(
       const BacklightControllerObserverStub&) = delete;
 
-  ~BacklightControllerObserverStub() override;
+  ~BacklightControllerObserverStub() override = default;
 
   const std::vector<ChangeTuple>& changes() const { return changes_; }
 

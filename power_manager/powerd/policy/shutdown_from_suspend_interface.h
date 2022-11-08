@@ -29,8 +29,8 @@ class ShutdownFromSuspendInterface {
     // Shut the system down immediately.
     SHUT_DOWN,
   };
-  ShutdownFromSuspendInterface() {}
-  virtual ~ShutdownFromSuspendInterface() {}
+  ShutdownFromSuspendInterface() = default;
+  virtual ~ShutdownFromSuspendInterface() = default;
 
   // Updates state in anticipation of the system suspending, returning the
   // action that should be performed.

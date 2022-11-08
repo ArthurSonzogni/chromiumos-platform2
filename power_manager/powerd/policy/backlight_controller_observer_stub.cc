@@ -6,10 +6,6 @@
 
 namespace power_manager::policy {
 
-BacklightControllerObserverStub::BacklightControllerObserverStub() {}
-
-BacklightControllerObserverStub::~BacklightControllerObserverStub() {}
-
 void BacklightControllerObserverStub::Clear() {
   changes_.clear();
 }

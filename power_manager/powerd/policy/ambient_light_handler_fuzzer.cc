@@ -29,8 +29,8 @@ namespace power_manager::policy {
 // AmbientLightHandler::Delegate implementation that does nothing.
 class FuzzTestDelegate : public AmbientLightHandler::Delegate {
  public:
-  FuzzTestDelegate() {}
-  ~FuzzTestDelegate() override {}
+  FuzzTestDelegate() = default;
+  ~FuzzTestDelegate() override = default;
 
   double percent() const { return 0; }
   AmbientLightHandler::BrightnessChangeCause cause() const {

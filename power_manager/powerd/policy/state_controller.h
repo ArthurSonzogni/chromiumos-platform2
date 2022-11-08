@@ -57,7 +57,7 @@ class StateController : public PrefsObserver {
   // StateController (or otherwise help it interact with the real world).
   class Delegate {
    public:
-    virtual ~Delegate() {}
+    virtual ~Delegate() = default;
 
     // Returns true if a USB input devices is connected.
     virtual bool IsUsbInputDeviceConnected() = 0;

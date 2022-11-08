@@ -70,13 +70,13 @@ class AdaptiveChargingControllerInterface : public system::PowerSupplyObserver {
         double display_battery_percentage) = 0;
   };
 
-  AdaptiveChargingControllerInterface() {}
+  AdaptiveChargingControllerInterface() = default;
   AdaptiveChargingControllerInterface(
       const AdaptiveChargingControllerInterface&) = delete;
   AdaptiveChargingControllerInterface& operator=(
       const AdaptiveChargingControllerInterface&) = delete;
 
-  virtual ~AdaptiveChargingControllerInterface() {}
+  virtual ~AdaptiveChargingControllerInterface() = default;
 
   // For handling setting changes from the UI settings page or Enterprise
   // policy.

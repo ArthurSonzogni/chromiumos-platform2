@@ -27,7 +27,7 @@ class TestDelegate : public AmbientLightHandler::Delegate {
   TestDelegate(const TestDelegate&) = delete;
   TestDelegate& operator=(const TestDelegate&) = delete;
 
-  ~TestDelegate() override {}
+  ~TestDelegate() override = default;
 
   double percent() const { return percent_; }
   AmbientLightHandler::BrightnessChangeCause cause() const { return cause_; }
@@ -59,7 +59,7 @@ class AmbientLightHandlerTest : public ::testing::Test {
   AmbientLightHandlerTest(const AmbientLightHandlerTest&) = delete;
   AmbientLightHandlerTest& operator=(const AmbientLightHandlerTest&) = delete;
 
-  ~AmbientLightHandlerTest() override {}
+  ~AmbientLightHandlerTest() override = default;
 
  protected:
   // Initializes |handler_|.

@@ -114,8 +114,6 @@ const char InputDeviceController::kTPAD[] = "TPAD";
 const char InputDeviceController::kTSCR[] = "TSCR";
 const char InputDeviceController::kCRFP[] = "CRFP";
 
-InputDeviceController::InputDeviceController() {}
-
 InputDeviceController::~InputDeviceController() {
   if (udev_)
     udev_->RemoveTaggedDeviceObserver(this);

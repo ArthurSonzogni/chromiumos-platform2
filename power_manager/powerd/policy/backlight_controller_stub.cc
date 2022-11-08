@@ -10,10 +10,6 @@
 
 namespace power_manager::policy {
 
-BacklightControllerStub::BacklightControllerStub() {}
-
-BacklightControllerStub::~BacklightControllerStub() {}
-
 void BacklightControllerStub::ResetStats() {
   power_source_changes_.clear();
   display_mode_changes_.clear();

@@ -35,8 +35,6 @@ SuspendDelayController::SuspendDelayController(
   DCHECK_LT(dark_resume_min_delay_, max_delay_timeout_);
 }
 
-SuspendDelayController::~SuspendDelayController() {}
-
 bool SuspendDelayController::ReadyForSuspend() const {
   return delay_ids_being_waited_on_.empty() &&
          !min_delay_expiration_timer_.IsRunning();

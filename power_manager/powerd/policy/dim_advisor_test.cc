@@ -33,7 +33,7 @@ class MockStateController : public StateController {
 
 class DimAdvisorTest : public ::testing::Test {
  public:
-  DimAdvisorTest() {}
+  DimAdvisorTest() = default;
   void SetUp() override {
     ml_decision_dbus_proxy_ = dbus_wrapper_.GetObjectProxy(
         chromeos::kMlDecisionServiceName, chromeos::kMlDecisionServicePath);

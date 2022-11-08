@@ -42,7 +42,7 @@ class InputEventHandler : public system::InputObserver {
   // InputEventHandler.
   class Delegate {
    public:
-    virtual ~Delegate() {}
+    virtual ~Delegate() = default;
 
     // Handles the lid being closed.
     virtual void HandleLidClosed() = 0;

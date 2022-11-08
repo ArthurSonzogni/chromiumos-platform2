@@ -26,7 +26,7 @@ class TestObserver : public SuspendDelayObserver {
   TestObserver(const TestObserver&) = delete;
   TestObserver& operator=(const TestObserver&) = delete;
 
-  ~TestObserver() override {}
+  ~TestObserver() override = default;
 
   // Must be called before RunUntilReadyForSuspend().
   void set_timeout(base::TimeDelta timeout) { timeout_ = timeout; }

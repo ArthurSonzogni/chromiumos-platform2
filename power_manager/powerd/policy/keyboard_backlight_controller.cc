@@ -70,8 +70,6 @@ KeyboardBacklightController::TestApi::TestApi(
     KeyboardBacklightController* controller)
     : controller_(controller) {}
 
-KeyboardBacklightController::TestApi::~TestApi() = default;
-
 bool KeyboardBacklightController::TestApi::TriggerTurnOffTimeout() {
   if (!controller_->turn_off_timer_.IsRunning())
     return false;

@@ -37,11 +37,11 @@ class BacklightController {
     SLOW,
   };
 
-  BacklightController() {}
+  BacklightController() = default;
   BacklightController(const BacklightController&) = delete;
   BacklightController& operator=(const BacklightController&) = delete;
 
-  virtual ~BacklightController() {}
+  virtual ~BacklightController() = default;
 
   // Adds or removes an observer.
   virtual void AddObserver(BacklightControllerObserver* observer) = 0;

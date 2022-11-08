@@ -31,8 +31,8 @@ class ExternalAmbientLightHandler : public AmbientLightHandler::Delegate {
   // ExternalAmbientLightHandler.
   class Delegate {
    public:
-    Delegate() {}
-    virtual ~Delegate() {}
+    Delegate() = default;
+    virtual ~Delegate() = default;
 
     // Invoked when the backlight brightness should be adjusted in response
     // to a change in ambient light.

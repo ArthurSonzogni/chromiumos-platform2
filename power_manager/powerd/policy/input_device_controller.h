@@ -63,7 +63,7 @@ class InputDeviceController : public policy::BacklightControllerObserver,
     TABLET,       // Tablet mode, e.g. lid open more than 180 degrees.
   };
 
-  InputDeviceController();
+  InputDeviceController() = default;
   InputDeviceController(const InputDeviceController&) = delete;
   InputDeviceController& operator=(const InputDeviceController&) = delete;
 

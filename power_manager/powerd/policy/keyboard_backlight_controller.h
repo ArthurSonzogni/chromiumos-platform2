@@ -49,7 +49,7 @@ class KeyboardBacklightController : public BacklightController,
     TestApi(const TestApi&) = delete;
     TestApi& operator=(const TestApi&) = delete;
 
-    ~TestApi();
+    ~TestApi() = default;
 
     Clock* clock() { return controller_->clock_.get(); }
 

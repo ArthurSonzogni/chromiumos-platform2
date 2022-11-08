@@ -31,7 +31,7 @@ class ThermalEventHandlerTest : public ::testing::Test {
   }
   ThermalEventHandlerTest(const ThermalEventHandlerTest&) = delete;
   ThermalEventHandlerTest& operator=(const ThermalEventHandlerTest&) = delete;
-  ~ThermalEventHandlerTest() override {}
+  ~ThermalEventHandlerTest() override = default;
 
   void SetUp() override { handler_.Init(); }
 

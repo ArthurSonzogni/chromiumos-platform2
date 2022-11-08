@@ -34,7 +34,7 @@ class SuspendDelayController {
   SuspendDelayController(const SuspendDelayController&) = delete;
   SuspendDelayController& operator=(const SuspendDelayController&) = delete;
 
-  ~SuspendDelayController();
+  ~SuspendDelayController() = default;
 
   // Default value corresponding to maximum suspend delay i.e. maximum time
   // spent waiting to suspend after it's initiated.

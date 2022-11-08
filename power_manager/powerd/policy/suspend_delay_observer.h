@@ -13,7 +13,7 @@ class SuspendDelayController;
 
 class SuspendDelayObserver : public base::CheckedObserver {
  public:
-  virtual ~SuspendDelayObserver() {}
+  virtual ~SuspendDelayObserver() = default;
 
   // Called when all clients that previously registered suspend delays have
   // reported that they're ready for the system to be suspended.  |suspend_id|
