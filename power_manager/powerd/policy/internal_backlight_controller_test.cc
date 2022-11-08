@@ -190,9 +190,12 @@ TEST_F(InternalBacklightControllerTest, IncreaseAndDecreaseBrightness) {
 
   // Start at 3/4 of a step above the middle step. After a decrease request, the
   // brightness should be snapped to the middle step.
-  const double kStep = 100.0 / InternalBacklightController::kMaxBrightnessSteps;
+  const double kStep =
+      100.0 /
+      static_cast<double>(InternalBacklightController::kMaxBrightnessSteps);
   const double kMiddlePercent =
-      kStep * InternalBacklightController::kMaxBrightnessSteps / 2;
+      kStep *
+      static_cast<double>(InternalBacklightController::kMaxBrightnessSteps / 2);
   test::CallSetScreenBrightness(
       dbus_wrapper_.get(), kMiddlePercent + 0.75 * kStep,
       SetBacklightBrightnessRequest_Transition_INSTANT,
@@ -362,9 +365,9 @@ TEST_F(InternalBacklightControllerTest, LinearMappingForSmallBacklightRange) {
   const double kMinVisiblePercent =
       InternalBacklightController::kMinVisiblePercent;
   for (int i = 1; i <= max_backlight_level_; ++i) {
-    double percent = kMinVisiblePercent + (100.0 - kMinVisiblePercent) *
-                                              (i - 1) /
-                                              (max_backlight_level_ - 1);
+    double percent = kMinVisiblePercent +
+                     (100.0 - kMinVisiblePercent) * (i - 1) /
+                         (static_cast<double>(max_backlight_level_) - 1);
     EXPECT_EQ(static_cast<int64_t>(i), PercentToLevel(percent));
   }
 }
@@ -961,8 +964,8 @@ TEST_F(InternalBacklightControllerTest, MinVisibleLevelPrefUndercutsDefault) {
   // Set the min-visible-level pref below the computed default.
   int64_t computed_min = static_cast<int64_t>(
       lround(InternalBacklightController::kDefaultMinVisibleBrightnessFraction *
-             max_backlight_level_));
-  default_min_visible_level_ = static_cast<int64_t>(computed_min * 0.5);
+             static_cast<double>(max_backlight_level_)));
+  default_min_visible_level_ = computed_min / 2;
   ASSERT_GT(default_min_visible_level_, 0);
   ASSERT_LT(default_min_visible_level_, computed_min);
 

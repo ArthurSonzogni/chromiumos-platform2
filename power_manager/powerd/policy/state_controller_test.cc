@@ -721,7 +721,8 @@ TEST_F(StateControllerTest, ScaleDelaysWhilePresenting) {
   const base::TimeDelta kWarnDelay = base::Seconds(330);
   const base::TimeDelta kIdleDelay = base::Seconds(340);
 
-  const base::TimeDelta kScaledDimDelay = kDimDelay * kScreenDimFactor;
+  const base::TimeDelta kScaledDimDelay =
+      base::Microseconds(kDimDelay.InMicrosecondsF() * kScreenDimFactor);
   const base::TimeDelta kDelayDiff = kScaledDimDelay - kDimDelay;
   const base::TimeDelta kScaledOffDelay = kOffDelay + kDelayDiff;
   const base::TimeDelta kScaledLockDelay = kLockDelay + kDelayDiff;
@@ -1751,7 +1752,8 @@ TEST_F(StateControllerTest, IncreaseDelaysAfterUserActivity) {
 
   // This should result in the dimming delay being doubled and its distance
   // to all of the other delays being held constant.
-  const base::TimeDelta kScaledDimDelay = kDelayFactor * kDimDelay;
+  const base::TimeDelta kScaledDimDelay =
+      base::Microseconds(kDelayFactor * kDimDelay.InMicrosecondsF());
   ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(kScaledDimDelay));
   EXPECT_EQ(kScreenDim, delegate_.GetActions());
   ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(kOffDelay - kDimDelay));
@@ -2199,7 +2201,8 @@ TEST_F(StateControllerTest, ReportInactivityDelays) {
   EXPECT_FALSE(proto.has_screen_lock_ms());
 
   // Enter presentation mode and check that the reported delays are adjusted.
-  const base::TimeDelta kScaledScreenDim = kScreenDim * kScreenDimFactor;
+  const base::TimeDelta kScaledScreenDim =
+      base::Microseconds(kScreenDim.InMicrosecondsF() * kScreenDimFactor);
   const base::TimeDelta kDelayDiff = kScaledScreenDim - kScreenDim;
   controller_.HandleDisplayModeChange(DisplayMode::PRESENTATION);
   EXPECT_EQ(GetInactivityDelaysChangedString(

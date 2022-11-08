@@ -159,8 +159,9 @@ void InternalBacklightController::Init(
   current_level_ = backlight_->GetCurrentBrightnessLevel();
 
   if (!prefs_->GetInt64(kMinVisibleBacklightLevelPref, &min_visible_level_)) {
-    min_visible_level_ = static_cast<int64_t>(
-        lround(kDefaultMinVisibleBrightnessFraction * max_level_));
+    min_visible_level_ =
+        static_cast<int64_t>(lround(kDefaultMinVisibleBrightnessFraction *
+                                    static_cast<double>(max_level_)));
   }
   min_visible_level_ = std::min(
       std::max(min_visible_level_, static_cast<int64_t>(1)), max_level_);
@@ -206,7 +207,8 @@ void InternalBacklightController::Init(
     // |min_brightness_level_| and 0.
     step_percent_ =
         (kMaxPercent - kMinVisiblePercent) /
-        std::min(kMaxBrightnessSteps - 1, max_level_ - min_visible_level_);
+        static_cast<double>(
+            std::min(kMaxBrightnessSteps - 1, max_level_ - min_visible_level_));
   }
   CHECK_GT(step_percent_, 0.0);
 
@@ -220,13 +222,14 @@ void InternalBacklightController::Init(
       level_to_percent_exponent_ = 1.0;
       break;
     default:
-      level_to_percent_exponent_ = max_level_ >= kMinLevelsForNonLinearMapping
-                                       ? kDefaultLevelToPercentExponent
-                                       : 1.0;
+      level_to_percent_exponent_ =
+          static_cast<double>(max_level_) >= kMinLevelsForNonLinearMapping
+              ? kDefaultLevelToPercentExponent
+              : 1.0;
   }
 
-  dimmed_brightness_percent_ = ClampPercentToVisibleRange(
-      LevelToPercent(lround(kDimmedBrightnessFraction * max_level_)));
+  dimmed_brightness_percent_ = ClampPercentToVisibleRange(LevelToPercent(
+      lround(kDimmedBrightnessFraction * static_cast<double>(max_level_))));
 
   RegisterIncreaseBrightnessHandler(
       dbus_wrapper_, kIncreaseScreenBrightnessMethod,
@@ -467,7 +470,8 @@ double InternalBacklightController::LevelToPercent(int64_t raw_level) const {
   // If the passed-in level is below the minimum visible level, just map it
   // linearly into [0, kMinVisiblePercent).
   if (raw_level < min_visible_level_)
-    return kMinVisiblePercent * raw_level / min_visible_level_;
+    return kMinVisiblePercent * static_cast<double>(raw_level) /
+           static_cast<double>(min_visible_level_);
 
   // Since we're at or above the minimum level, we know that we're at 100% if
   // the min and max are equal.
@@ -475,7 +479,7 @@ double InternalBacklightController::LevelToPercent(int64_t raw_level) const {
     return 100.0;
 
   double linear_fraction = static_cast<double>(raw_level - min_visible_level_) /
-                           (max_level_ - min_visible_level_);
+                           static_cast<double>(max_level_ - min_visible_level_);
   return kMinVisiblePercent +
          (kMaxPercent - kMinVisiblePercent) *
              pow(linear_fraction, level_to_percent_exponent_);
@@ -483,15 +487,16 @@ double InternalBacklightController::LevelToPercent(int64_t raw_level) const {
 
 int64_t InternalBacklightController::PercentToLevel(double percent) const {
   if (percent < kMinVisiblePercent)
-    return lround(min_visible_level_ * percent / kMinVisiblePercent);
+    return lround(static_cast<double>(min_visible_level_) * percent /
+                  kMinVisiblePercent);
 
   if (percent == kMaxPercent)
     return max_level_;
 
   double linear_fraction =
       (percent - kMinVisiblePercent) / (kMaxPercent - kMinVisiblePercent);
-  return lround(min_visible_level_ +
-                (max_level_ - min_visible_level_) *
+  return lround(static_cast<double>(min_visible_level_) +
+                static_cast<double>(max_level_ - min_visible_level_) *
                     pow(linear_fraction, 1.0 / level_to_percent_exponent_));
 }
 
