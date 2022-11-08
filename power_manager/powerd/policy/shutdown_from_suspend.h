@@ -45,7 +45,7 @@ class ShutdownFromSuspend : public ShutdownFromSuspendInterface {
   void HandleFullResume() override;
 
  private:
-  ShutdownFromSuspend(
+  explicit ShutdownFromSuspend(
       std::unique_ptr<brillo::timers::SimpleAlarmTimer> alarm_timer);
 
   friend class ShutdownFromSuspendTest;
