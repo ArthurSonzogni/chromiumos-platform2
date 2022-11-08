@@ -70,10 +70,9 @@ void AmbientLightHandler::Init(const std::string& steps_pref_value,
                                double smoothing_constant) {
   std::vector<std::string> lines = base::SplitString(
       steps_pref_value, "\n", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
-  for (std::vector<std::string>::iterator iter = lines.begin();
-       iter != lines.end(); ++iter) {
+  for (std::string& line : lines) {
     std::vector<std::string> segments = base::SplitString(
-        *iter, " ", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
+        line, " ", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
     BrightnessStep new_step;
     if (segments.size() == 3 &&
         base::StringToDouble(segments[0], &new_step.ac_target_percent) &&
@@ -90,7 +89,7 @@ void AmbientLightHandler::Init(const std::string& steps_pref_value,
                                  &new_step.increase_lux_threshold)) {
       // Okay, we've read all the fields.
     } else {
-      LOG(FATAL) << "Steps pref has invalid line \"" << *iter << "\"";
+      LOG(FATAL) << "Steps pref has invalid line \"" << line << "\"";
     }
     steps_.push_back(new_step);
   }

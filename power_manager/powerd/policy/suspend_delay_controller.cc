@@ -221,12 +221,11 @@ void SuspendDelayController::RemoveDelayFromWaitList(int delay_id) {
 
 void SuspendDelayController::OnMaxDelayExpiration() {
   std::string tardy_delays;
-  for (std::set<int>::const_iterator it = delay_ids_being_waited_on_.begin();
-       it != delay_ids_being_waited_on_.end(); ++it) {
-    const DelayInfo& delay = registered_delays_[*it];
+  for (int delay_id : delay_ids_being_waited_on_) {
+    const DelayInfo& delay = registered_delays_[delay_id];
     if (!tardy_delays.empty())
       tardy_delays += ", ";
-    tardy_delays += base::NumberToString(*it) + " (" + delay.dbus_client +
+    tardy_delays += base::NumberToString(delay_id) + " (" + delay.dbus_client +
                     ": " + delay.description + ")";
   }
   LOG(WARNING) << "Timed out while waiting for " << GetLogDescription()

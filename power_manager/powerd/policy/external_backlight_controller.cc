@@ -341,9 +341,7 @@ void ExternalBacklightController::NotifyObservers(
 void ExternalBacklightController::UpdateDisplays(
     const std::vector<system::DisplayInfo>& displays) {
   ExternalDisplayMap updated_displays;
-  for (std::vector<system::DisplayInfo>::const_iterator it = displays.begin();
-       it != displays.end(); ++it) {
-    const system::DisplayInfo& info = *it;
+  for (const system::DisplayInfo& info : displays) {
     if (info.i2c_path.empty())
       continue;
     if (info.connector_status !=

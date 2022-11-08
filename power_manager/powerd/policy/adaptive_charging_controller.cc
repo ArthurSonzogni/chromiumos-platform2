@@ -623,9 +623,9 @@ void ChargeHistory::ScheduleRewrites() {
 }
 
 void ChargeHistory::OnRewriteTimerFired() {
-  for (auto it = scheduled_rewrites_.begin(); it != scheduled_rewrites_.end();
-       it++) {
-    bool success = WriteTimeDeltaToFile(it->first, it->second);
+  for (const std::pair<const base::FilePath, base::TimeDelta>& it :
+       scheduled_rewrites_) {
+    bool success = WriteTimeDeltaToFile(it.first, it.second);
     DCHECK(success);
   }
   scheduled_rewrites_.clear();
