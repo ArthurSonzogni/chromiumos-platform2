@@ -224,7 +224,7 @@ bool CameraHal::SetUpCamera(int id, const CameraSpec& spec) {
 
   android::CameraMetadata static_metadata, request_template;
 
-  if (!FillDefaultMetadata(&static_metadata, &request_template).ok()) {
+  if (!FillDefaultMetadata(&static_metadata, &request_template, spec).ok()) {
     return false;
   }
 
@@ -278,13 +278,33 @@ void CameraHal::ApplySpec(const HalSpec& old_spec, const HalSpec& new_spec) {
         VLOGF(1) << "Camera " << id << " connected state changed "
                  << old_camera_spec.connected << "->" << it->connected;
         NotifyCameraConnected(id, it->connected);
-      } else if (it->connected && it->frames != old_camera_spec.frames) {
-        // TODO(pihsun): For frames spec change it's possible to just start
-        // returning new frames in the CameraClient instead of simulating
-        // unplug / plug the camera.
-        VLOGF(1) << "Camera " << id << " frames spec changed";
-        NotifyCameraConnected(id, false);
-        NotifyCameraConnected(id, true);
+      } else if (it->connected) {
+        if (it->supported_formats != old_camera_spec.supported_formats) {
+          VLOGF(1) << "Camera " << id << " supported formats changed";
+          NotifyCameraConnected(id, false);
+          TearDownCamera(id);
+
+          // TODO(b:261682032): Sleep here to make sure the disconnect /
+          // teardown event is properly propagated.
+          base::PlatformThread::Sleep(base::Microseconds(300));
+
+          // Supported format changes change static metadata, so we need to
+          // regenerate static metadata here.
+          if (!SetUpCamera(id, *it)) {
+            // TODO(pihsun): Better handle error? We should at least remove the
+            // entry from the new spec.
+            LOGF(WARNING) << "Error when setting up camera id " << id;
+            continue;
+          }
+          NotifyCameraConnected(id, true);
+        } else if (it->frames != old_camera_spec.frames) {
+          // TODO(pihsun): For frames spec change it's possible to just start
+          // returning new frames in the CameraClient instead of simulating
+          // unplug / plug the camera.
+          VLOGF(1) << "Camera " << id << " frames spec changed";
+          NotifyCameraConnected(id, false);
+          NotifyCameraConnected(id, true);
+        }
       }
     }
   }

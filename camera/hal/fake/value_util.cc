@@ -55,7 +55,7 @@ ListWithPath::Iterator ListWithPath::end() const {
                 << value
 #define WARN_MISSING(path) LOGF(WARNING) << "missing required key at " << path
 #define WARN_MISSING_WITH_TYPE(path, type) \
-  WARN_MISSING(path) << ": " << type << "expected"
+  WARN_MISSING(path) << ": " << type << " expected"
 
 std::optional<DictWithPath> GetIfDict(const ValueWithPath& v) {
   auto ret = v->GetIfDict();

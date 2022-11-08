@@ -9,9 +9,12 @@
 #include <absl/status/status.h>
 #include <camera/camera_metadata.h>
 
+#include "hal/fake/hal_spec.h"
+
 namespace cros {
 absl::Status FillDefaultMetadata(android::CameraMetadata* static_metadata,
-                                 android::CameraMetadata* request_metadata);
+                                 android::CameraMetadata* request_metadata,
+                                 const CameraSpec& spec);
 
 absl::Status FillResultMetadata(android::CameraMetadata* metadata);
 }

@@ -15,6 +15,18 @@
 
 namespace cros {
 
+struct SupportedFormatSpec {
+  int width = 0;
+  int height = 0;
+
+  bool operator==(const SupportedFormatSpec& rhs) const {
+    return width == rhs.width && height == rhs.height;
+  }
+  bool operator!=(const SupportedFormatSpec& rhs) const {
+    return !(*this == rhs);
+  }
+};
+
 struct FramesFileSpec {
   base::FilePath path;
 
@@ -34,6 +46,7 @@ using FramesSpec = std::variant<FramesFileSpec, FramesTestPatternSpec>;
 struct CameraSpec {
   int id = 0;
   bool connected = false;
+  std::vector<SupportedFormatSpec> supported_formats;
   FramesSpec frames = FramesTestPatternSpec();
 };
 

@@ -14,6 +14,7 @@
 #include <hardware/camera3.h>
 
 #include "cros-camera/common.h"
+#include "hal/fake/hal_spec.h"
 
 namespace cros {
 
@@ -84,14 +85,13 @@ class MetadataUpdater {
 };
 
 absl::Status FillDefaultMetadata(android::CameraMetadata* static_metadata,
-                                 android::CameraMetadata* request_metadata) {
+                                 android::CameraMetadata* request_metadata,
+                                 const CameraSpec& spec) {
   MetadataUpdater update_static(static_metadata);
   MetadataUpdater update_request(request_metadata);
 
   // TODO(pihsun): All these values should be derived from the supported
   // formats in camera config.
-  constexpr int32_t kWidth = 1920;
-  constexpr int32_t kHeight = 1080;
   constexpr int32_t kThumbnailWidth = 192;
   constexpr int32_t kThumbnailHeight = 108;
   constexpr int32_t kFps = 60;
@@ -194,7 +194,8 @@ absl::Status FillDefaultMetadata(android::CameraMetadata* static_metadata,
   update_request(ANDROID_JPEG_QUALITY, uint8_t{90});
   update_request(ANDROID_JPEG_THUMBNAIL_QUALITY, uint8_t{90});
 
-  // TODO(pihsun): This should be derived from supported formats.
+  // TODO(pihsun): This should be derived from supported formats when thumbnail
+  // generation is done.
   update_request(ANDROID_JPEG_THUMBNAIL_SIZE,
                  {kThumbnailWidth, kThumbnailHeight});
 
@@ -242,44 +243,15 @@ absl::Status FillDefaultMetadata(android::CameraMetadata* static_metadata,
   // android.scaler
   update_static(ANDROID_SCALER_AVAILABLE_MAX_DIGITAL_ZOOM, 1.0f);
 
-  // TODO(pihsun): This should be derived from supported formats.
-  update_static(
-      ANDROID_SCALER_AVAILABLE_MIN_FRAME_DURATIONS,
-      std::vector<int64_t>{HAL_PIXEL_FORMAT_BLOB, kWidth, kHeight,
-                           kFrameDuration, HAL_PIXEL_FORMAT_YCbCr_420_888,
-                           kWidth, kHeight, kFrameDuration});
-
   update_static(ANDROID_SCALER_AVAILABLE_ROTATE_AND_CROP_MODES,
                 ANDROID_SCALER_ROTATE_AND_CROP_NONE);
   update_request(ANDROID_SCALER_ROTATE_AND_CROP,
                  ANDROID_SCALER_ROTATE_AND_CROP_NONE);
 
-  // TODO(pihsun): This should be derived from supported formats.
-  update_static(
-      ANDROID_SCALER_AVAILABLE_STALL_DURATIONS,
-      std::vector<int64_t>{HAL_PIXEL_FORMAT_BLOB, kWidth, kHeight, 0,
-                           HAL_PIXEL_FORMAT_YCbCr_420_888, kWidth, kHeight, 0});
-
-  // TODO(pihsun): This currently doesn't satisfy the requirement, since 240p,
-  // 480p, 720p is missing.
-  update_static(ANDROID_SCALER_AVAILABLE_STREAM_CONFIGURATIONS,
-                std::vector<int32_t>{
-                    HAL_PIXEL_FORMAT_BLOB, kWidth, kHeight,
-                    ANDROID_SCALER_AVAILABLE_STREAM_CONFIGURATIONS_OUTPUT,
-                    HAL_PIXEL_FORMAT_YCbCr_420_888, kWidth, kHeight,
-                    ANDROID_SCALER_AVAILABLE_STREAM_CONFIGURATIONS_OUTPUT});
-
   update_static(ANDROID_SCALER_CROPPING_TYPE,
                 ANDROID_SCALER_CROPPING_TYPE_CENTER_ONLY);
 
   // android.sensor
-  std::vector<int32_t> active_array_size = {0, 0, kWidth, kHeight};
-
-  update_static(ANDROID_SENSOR_INFO_ACTIVE_ARRAY_SIZE, active_array_size);
-  update_static(ANDROID_SENSOR_INFO_PIXEL_ARRAY_SIZE, {kWidth, kHeight});
-  update_static(ANDROID_SENSOR_INFO_PRE_CORRECTION_ACTIVE_ARRAY_SIZE,
-                active_array_size);
-
   update_static(ANDROID_SENSOR_INFO_TIMESTAMP_SOURCE,
                 ANDROID_SENSOR_INFO_TIMESTAMP_SOURCE_REALTIME);
 
@@ -318,6 +290,66 @@ absl::Status FillDefaultMetadata(android::CameraMetadata* static_metadata,
 
   // android.sync
   update_static(ANDROID_SYNC_MAX_LATENCY, ANDROID_SYNC_MAX_LATENCY_UNKNOWN);
+
+  // metadata that are derived from supported formats.
+  std::vector<int64_t> available_min_frame_durations;
+  std::vector<int64_t> available_stall_durations;
+  std::vector<int32_t> available_stream_configurations;
+  int32_t max_width = 0, max_height = 0;
+  for (const auto& supported_format : spec.supported_formats) {
+    available_min_frame_durations.insert(available_min_frame_durations.end(),
+                                         {
+                                             HAL_PIXEL_FORMAT_BLOB,
+                                             supported_format.width,
+                                             supported_format.height,
+                                             kFrameDuration,
+                                             HAL_PIXEL_FORMAT_YCbCr_420_888,
+                                             supported_format.width,
+                                             supported_format.height,
+                                             kFrameDuration,
+                                         });
+    available_stall_durations.insert(available_stall_durations.end(),
+                                     {
+                                         HAL_PIXEL_FORMAT_BLOB,
+                                         supported_format.width,
+                                         supported_format.height,
+                                         0,
+                                         HAL_PIXEL_FORMAT_YCbCr_420_888,
+                                         supported_format.width,
+                                         supported_format.height,
+                                         0,
+                                     });
+
+    available_stream_configurations.insert(
+        available_stream_configurations.end(),
+        {
+            HAL_PIXEL_FORMAT_BLOB,
+            supported_format.width,
+            supported_format.height,
+            ANDROID_SCALER_AVAILABLE_STREAM_CONFIGURATIONS_OUTPUT,
+            HAL_PIXEL_FORMAT_YCbCr_420_888,
+            supported_format.width,
+            supported_format.height,
+            ANDROID_SCALER_AVAILABLE_STREAM_CONFIGURATIONS_OUTPUT,
+        });
+
+    max_width = std::max(max_width, supported_format.width);
+    max_height = std::max(max_height, supported_format.height);
+  }
+  update_static(ANDROID_SCALER_AVAILABLE_MIN_FRAME_DURATIONS,
+                available_min_frame_durations);
+  update_static(ANDROID_SCALER_AVAILABLE_STALL_DURATIONS,
+                available_stall_durations);
+  update_static(ANDROID_SCALER_AVAILABLE_STREAM_CONFIGURATIONS,
+                available_stream_configurations);
+
+  // TODO(pihsun): Provide an option to override this from the config file.
+  std::vector<int32_t> active_array_size = {0, 0, max_width, max_height};
+
+  update_static(ANDROID_SENSOR_INFO_ACTIVE_ARRAY_SIZE, active_array_size);
+  update_static(ANDROID_SENSOR_INFO_PIXEL_ARRAY_SIZE, {max_width, max_height});
+  update_static(ANDROID_SENSOR_INFO_PRE_CORRECTION_ACTIVE_ARRAY_SIZE,
+                active_array_size);
 
   // android.request.available*
   std::vector<camera_metadata_tag> static_tags = update_static.updated_tags();

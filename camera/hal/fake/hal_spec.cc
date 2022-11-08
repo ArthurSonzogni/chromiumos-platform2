@@ -21,6 +21,9 @@ namespace {
 constexpr char kCamerasKey[] = "cameras";
 constexpr char kIdKey[] = "id";
 constexpr char kConnectedKey[] = "connected";
+constexpr char kSupportedFormatsKey[] = "supported_formats";
+constexpr char kWidthKey[] = "width";
+constexpr char kHeightKey[] = "height";
 constexpr char kFramesKey[] = "frames";
 constexpr char kPathKey[] = "path";
 
@@ -31,11 +34,40 @@ FramesSpec ParseFramesSpec(const DictWithPath& frames_value) {
   return FramesTestPatternSpec();
 }
 
+std::vector<SupportedFormatSpec> ParseSupportedFormatSpecs(
+    const ListWithPath& supported_formats_value) {
+  std::vector<SupportedFormatSpec> supported_formats;
+  // TODO(pihsun): This currently might not satisfy the requirement, since
+  // 240p, 480p, 720p might be missing.
+  for (const auto& c : supported_formats_value) {
+    auto supported_format_value = GetIfDict(c);
+    if (!supported_format_value.has_value()) {
+      continue;
+    }
+    SupportedFormatSpec supported_format;
+    if (auto width =
+            GetRequiredValue<int>(*supported_format_value, kWidthKey)) {
+      supported_format.width = *width;
+    } else {
+      continue;
+    }
+    if (auto height =
+            GetRequiredValue<int>(*supported_format_value, kHeightKey)) {
+      supported_format.height = *height;
+    } else {
+      continue;
+    }
+    // TODO(pihsun): Support frame rates, actual format.
+    supported_formats.push_back(supported_format);
+  }
+  return supported_formats;
+}
+
 std::vector<CameraSpec> ParseCameraSpecs(const ListWithPath& cameras_value) {
   std::vector<CameraSpec> camera_specs;
   for (auto c : cameras_value) {
     auto spec_value = GetIfDict(c);
-    if (!spec_value) {
+    if (!spec_value.has_value()) {
       continue;
     }
 
@@ -60,6 +92,47 @@ std::vector<CameraSpec> ParseCameraSpecs(const ListWithPath& cameras_value) {
       camera_spec.frames = ParseFramesSpec(*frames);
     } else {
       camera_spec.frames = FramesTestPatternSpec();
+    }
+
+    if (auto supported_formats =
+            GetValue<ListWithPath>(*spec_value, kSupportedFormatsKey)) {
+      camera_spec.supported_formats =
+          ParseSupportedFormatSpecs(*supported_formats);
+      if (camera_spec.supported_formats.empty()) {
+        LOGF(WARNING) << "empty supported_formats at "
+                      << supported_formats->path << ", ignore";
+        continue;
+      }
+    } else {
+      // Using default supported formats.
+      // Resolutions are the required ones in
+      // https://chromeos.google.com/partner/dlm/docs/latest-requirements/chromebook.html#cam-sw-0003-v01
+      camera_spec.supported_formats = {
+          {
+              .width = 320,
+              .height = 240,
+          },
+          {
+              .width = 640,
+              .height = 360,
+          },
+          {
+              .width = 640,
+              .height = 480,
+          },
+          {
+              .width = 1280,
+              .height = 720,
+          },
+          {
+              .width = 1280,
+              .height = 960,
+          },
+          {
+              .width = 1920,
+              .height = 1080,
+          },
+      };
     }
 
     camera_specs.push_back(camera_spec);
