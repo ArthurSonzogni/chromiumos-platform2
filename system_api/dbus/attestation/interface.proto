@@ -56,6 +56,8 @@ message GetKeyInfoReply {
   optional bytes certificate = 7;
   // The payload associated with the key.
   optional bytes payload = 8;
+  // The certified key credential in DER format.
+  optional bytes certified_key_credential = 9;
 }
 
 message GetEndorsementInfoRequest {
@@ -327,7 +329,7 @@ message FinishCertificateRequestRequest {
 
 message FinishCertificateRequestReply {
   optional AttestationStatus status = 1;
-  // The PCA issued certificate chain in PEM format.  By
+  // The PCA issued certificate chain in PEM format. By
   // convention the certified key certificate is listed
   // first followed by intermediate CA certificate(s).
   // The PCA root certificate is not included.
@@ -336,6 +338,8 @@ message FinishCertificateRequestReply {
   optional bytes public_key = 3;
   // The tpm key blob that the key can be loaded to TPM with.
   optional bytes key_blob = 4;
+  // The PCA issued certificate in DER format.
+  optional bytes certified_key_credential = 5;
 }
 
 // Goes through the entire cert process, including creating cert, sending the
@@ -381,6 +385,8 @@ message GetCertificateReply {
   optional bytes public_key = 3;
   // The tpm key blob that the key can be loaded to TPM with.
   optional bytes key_blob = 4;
+  // The PCA issued certificate in DER format.
+  optional bytes certified_key_credential = 5;
 }
 
 // Sign a challenge for an enterprise device / user.  This challenge is
