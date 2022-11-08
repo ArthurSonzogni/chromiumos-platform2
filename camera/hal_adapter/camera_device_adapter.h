@@ -267,13 +267,9 @@ class CameraDeviceAdapter : public camera3_callback_ops_t {
   // The callback to run when the device is closed.
   base::OnceCallback<void()> close_callback_;
 
-  // Since Close() can be called in |camera_device_ops_thread_| or in
-  // main thread, use lock to protect |close_called_|.
-  base::Lock close_lock_;
-
   // Set when Close() is called. No more calls to the device APIs may be
-  // made once |close_called_| is set.
-  bool close_called_ GUARDED_BY(close_lock_);
+  // made once |device_closed_| is set.
+  bool device_closed_;
 
   // The real camera device.
   camera3_device_t* camera_device_;

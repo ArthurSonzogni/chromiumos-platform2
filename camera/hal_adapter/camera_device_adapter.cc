@@ -188,7 +188,7 @@ CameraDeviceAdapter::CameraDeviceAdapter(
       get_internal_camera_id_callback_(get_internal_camera_id_callback),
       get_public_camera_id_callback_(get_public_camera_id_callback),
       close_callback_(std::move(close_callback)),
-      close_called_(false),
+      device_closed_(false),
       camera_device_(camera_device),
       device_api_version_(device_api_version),
       static_info_(static_info),
@@ -485,12 +485,13 @@ mojom::CameraMetadataPtr CameraDeviceAdapter::ConstructDefaultRequestSettings(
 int32_t CameraDeviceAdapter::ProcessCaptureRequest(
     mojom::Camera3CaptureRequestPtr request) {
   VLOGF_ENTER();
+  DCHECK(camera_device_ops_thread_.task_runner()->BelongsToCurrentThread());
   TRACE_HAL_ADAPTER(kCameraTraceKeyFrameNumber, request->frame_number);
 
   // Complete the pending reprocess request first if exists. We need to
   // prioritize reprocess requests because CCA can be waiting for the
   // reprocessed picture before unblocking UI.
-  {
+  if (!device_closed_) {
     base::AutoLock lock(process_reprocess_request_callback_lock_);
     if (!process_reprocess_request_callback_.is_null())
       std::move(process_reprocess_request_callback_).Run();
@@ -663,15 +664,14 @@ int32_t CameraDeviceAdapter::RegisterBuffer(
 
 int32_t CameraDeviceAdapter::Close() {
   VLOGF_ENTER();
+  DCHECK(camera_device_ops_thread_.task_runner()->BelongsToCurrentThread());
   TRACE_HAL_ADAPTER();
 
-  {
-    base::AutoLock l(close_lock_);
-    if (close_called_) {
-      return 0;
-    }
-    close_called_ = true;
+  if (device_closed_) {
+    return 0;
   }
+  device_closed_ = true;
+
   // Stop the capture monitors before closing the streams in case it takes time
   // and triggers the timeout.
   capture_monitor_.StopMonitor(CameraMonitor::MonitorType::kRequestsMonitor);
@@ -699,6 +699,7 @@ int32_t CameraDeviceAdapter::ConfigureStreamsAndGetAllocatedBuffers(
     mojom::Camera3StreamConfigurationPtr* updated_config,
     AllocatedBuffers* allocated_buffers) {
   VLOGF_ENTER();
+  DCHECK(camera_device_ops_thread_.task_runner()->BelongsToCurrentThread());
   TRACE_HAL_ADAPTER();
 
   int32_t result = ConfigureStreams(std::move(config), updated_config);
@@ -1290,10 +1291,6 @@ void CameraDeviceAdapter::ReprocessEffectsOnReprocessEffectThread(
                          adapter->ProcessCaptureRequest(nullptr);
                        },
                        base::Unretained(this)));
-    reprocess_context.result = future->Get();
-    if (reprocess_context.result != 0) {
-      LOGF(ERROR) << "Failed to process capture request after reprocessing";
-    }
   }
 }
 
@@ -1301,8 +1298,13 @@ void CameraDeviceAdapter::ProcessReprocessRequestOnDeviceOpsThread(
     std::unique_ptr<Camera3CaptureDescriptor> desc,
     base::OnceCallback<void(int32_t)> callback) {
   VLOGF_ENTER();
-  std::move(callback).Run(camera_device_->ops->process_capture_request(
-      camera_device_, desc->LockForRequest()));
+  DCHECK(camera_device_ops_thread_.task_runner()->BelongsToCurrentThread());
+  int ret = camera_device_->ops->process_capture_request(
+      camera_device_, desc->LockForRequest());
+  if (ret != 0) {
+    LOGF(ERROR) << "Failed to process capture request after reprocessing";
+  }
+  std::move(callback).Run(ret);
 }
 
 void CameraDeviceAdapter::ResetDeviceOpsDelegateOnThread() {
