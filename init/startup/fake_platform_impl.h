@@ -6,8 +6,10 @@
 #define INIT_STARTUP_FAKE_PLATFORM_IMPL_H_
 
 #include <stdlib.h>
-#include <string>
 #include <sys/types.h>
+
+#include <set>
+#include <string>
 #include <unordered_map>
 #include <vector>
 
@@ -44,9 +46,12 @@ class FakePlatform : public Platform {
 
   void SetIoctlReturnValue(int ret);
 
+  std::set<std::string> GetClobberArgs();
+
   // `startup::Platform` overrides.
   bool Stat(const base::FilePath& path, struct stat* st) override;
   bool Statvfs(const base::FilePath& path, struct statvfs* st) override;
+  bool Lstat(const base::FilePath& path, struct stat* st) override;
   bool Mount(const base::FilePath& src,
              const base::FilePath& dst,
              const std::string& type,
@@ -72,6 +77,10 @@ class FakePlatform : public Platform {
 
   void ClobberLog(const std::string& msg) override;
 
+  void Clobber(const std::string& boot_alert_msg,
+               const std::vector<std::string>& args,
+               const std::string& clobber_log_msg) override;
+
   void RemoveInBackground(const std::vector<base::FilePath>& paths) override;
 
  private:
@@ -85,6 +94,7 @@ class FakePlatform : public Platform {
   std::unordered_map<std::string, int> alert_result_map_;
   int vpd_result_;
   base::FilePath clobber_log_;
+  std::set<std::string> clobber_args_;
 };
 
 }  // namespace startup

@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <sys/types.h>
 
+#include <set>
 #include <string>
 #include <vector>
 
@@ -54,6 +55,10 @@ void FakePlatform::SetClobberLogFile(const base::FilePath& path) {
   clobber_log_ = path;
 }
 
+std::set<std::string> FakePlatform::GetClobberArgs() {
+  return clobber_args_;
+}
+
 bool FakePlatform::Stat(const base::FilePath& path, struct stat* st) {
   std::unordered_map<std::string, struct stat>::iterator it;
   it = result_map_.find(path.value());
@@ -69,6 +74,17 @@ bool FakePlatform::Statvfs(const base::FilePath& path, struct statvfs* st) {
   std::unordered_map<std::string, struct statvfs>::iterator it;
   it = result_statvfs_map_.find(path.value());
   if (st == nullptr || it == result_statvfs_map_.end()) {
+    return false;
+  }
+
+  *st = it->second;
+  return true;
+}
+
+bool FakePlatform::Lstat(const base::FilePath& path, struct stat* st) {
+  std::unordered_map<std::string, struct stat>::iterator it;
+  it = result_map_.find(path.value());
+  if (st == nullptr || it == result_map_.end()) {
     return false;
   }
 
@@ -155,6 +171,16 @@ void FakePlatform::RemoveInBackground(
 
 void FakePlatform::ClobberLog(const std::string& msg) {
   WriteFile(clobber_log_, msg);
+}
+
+void FakePlatform::Clobber(const std::string& boot_alert_msg,
+                           const std::vector<std::string>& args,
+                           const std::string& clobber_log_msg) {
+  BootAlert(boot_alert_msg);
+  ClobberLog(clobber_log_msg);
+  for (std::string arg : args) {
+    clobber_args_.insert(arg);
+  }
 }
 
 }  // namespace startup

@@ -392,8 +392,7 @@ void ChromeosStartup::CheckForStatefulWipe() {
   std::string boot_alert_msg;
   std::string clobber_log_msg;
   base::FilePath reset_file = stateful_.Append(kResetFile);
-  if ((lstat(reset_file.value().c_str(), &stbuf) == 0 &&
-       S_ISLNK(stbuf.st_mode)) ||
+  if ((platform_->Lstat(reset_file, &stbuf) && S_ISLNK(stbuf.st_mode)) ||
       base::PathExists(reset_file)) {
     boot_alert_msg = "power_wash";
     // If it's not a plain file owned by us, force a powerwash.
@@ -919,6 +918,22 @@ void ChromeosStartup::DevCheckBlockDevMode(
 // Set dev_mode_ for tests.
 void ChromeosStartup::SetDevMode(bool dev_mode) {
   dev_mode_ = dev_mode;
+}
+
+// Set dev_mode_allowed_file_ for tests.
+void ChromeosStartup::SetDevModeAllowedFile(
+    const base::FilePath& allowed_file) {
+  dev_mode_allowed_file_ = allowed_file;
+}
+
+// Set state_dev_ for tests.
+void ChromeosStartup::SetStateDev(const base::FilePath& state_dev) {
+  state_dev_ = state_dev;
+}
+
+void ChromeosStartup::SetStatefulMount(
+    std::unique_ptr<StatefulMount> stateful_mount) {
+  stateful_mount_ = std::move(stateful_mount);
 }
 
 bool ChromeosStartup::DevIsDebugBuild() const {

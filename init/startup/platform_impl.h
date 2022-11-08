@@ -53,6 +53,9 @@ class Platform {
   // Wrapper around statvfs.
   virtual bool Statvfs(const base::FilePath& path, struct statvfs* st);
 
+  // Wrapper around lstat(2).
+  virtual bool Lstat(const base::FilePath& path, struct stat* st);
+
   // Wrapper around mount(2).
   virtual bool Mount(const base::FilePath& src,
                      const base::FilePath& dst,

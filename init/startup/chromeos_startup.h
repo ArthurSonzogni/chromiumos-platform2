@@ -96,13 +96,30 @@ class ChromeosStartup {
   // Move from /var/lib/whitelist to /var/lib/devicesettings.
   void MoveToLibDeviceSettings();
 
+  // Set dev_mode_allowed_file_ for tests.
+  void SetDevModeAllowedFile(const base::FilePath& allowed_file);
+
+  // Set state_dev_ for tests.
+  void SetStateDev(const base::FilePath& state_dev);
+
+  // Set stateful_mount_ for tests.
+  void SetStatefulMount(std::unique_ptr<StatefulMount> stateful_mount);
+
  private:
   friend class DevCheckBlockTest;
+  friend class StatefulWipeTest;
   FRIEND_TEST(DevCheckBlockTest, DevSWBoot);
   FRIEND_TEST(DevCheckBlockTest, SysFsVpdSlow);
   FRIEND_TEST(DevCheckBlockTest, CrosSysBlockDev);
   FRIEND_TEST(DevCheckBlockTest, ReadVpdSlowFail);
   FRIEND_TEST(DevCheckBlockTest, ReadVpdSlowPass);
+  FRIEND_TEST(StatefulWipeTest, PowerwashForced);
+  FRIEND_TEST(StatefulWipeTest, PowerwashNormal);
+  FRIEND_TEST(StatefulWipeTest, NoStateDev);
+  FRIEND_TEST(StatefulWipeTest, TransitionToVerifiedDevModeFile);
+  FRIEND_TEST(StatefulWipeTest, TransitionToVerifiedDebugBuild);
+  FRIEND_TEST(StatefulWipeTest, TransitionToDevModeNoDebugBuild);
+  FRIEND_TEST(StatefulWipeTest, TransitionToDevModeDebugBuild);
 
   friend class TpmCleanupTest;
   FRIEND_TEST(TpmCleanupTest, TpmCleanupNoFlagFile);

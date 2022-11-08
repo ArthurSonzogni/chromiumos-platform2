@@ -7,6 +7,7 @@
 #include <sys/types.h>
 
 #include <deque>
+#include <set>
 #include <string>
 #include <utility>
 #include <vector>
@@ -310,6 +311,210 @@ TEST_F(TPMTest, NeedsClobberCryptohomeKeyFile) {
   st.st_uid = getuid();
   platform_->SetStatResultForPath(cryptohome_key_file, st);
   EXPECT_EQ(startup_->NeedsClobberWithoutDevModeFile(), true);
+}
+
+class StatefulWipeTest : public ::testing::Test {
+ protected:
+  StatefulWipeTest() {}
+
+  void SetUp() override {
+    ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
+    base_dir = temp_dir_.GetPath();
+    stateful_ = base_dir.Append("mnt/stateful_partition");
+    auto crossystem_fake = std::make_unique<crossystem::fake::CrossystemFake>();
+    cros_system_ = crossystem_fake.get();
+    platform_ = new startup::FakePlatform();
+    startup_ = std::make_unique<startup::ChromeosStartup>(
+        std::make_unique<crossystem::Crossystem>(std::move(crossystem_fake)),
+        flags_, base_dir, stateful_, base_dir, base_dir,
+        std::unique_ptr<startup::FakePlatform>(platform_),
+        std::make_unique<startup::StandardMountHelper>(
+            std::make_unique<startup::FakePlatform>(), flags_, base_dir,
+            stateful_, false));
+    clobber_test_log_ = base_dir.Append("clobber_test_log");
+  }
+
+  crossystem::fake::CrossystemFake* cros_system_;
+  startup::Flags flags_;
+  base::ScopedTempDir temp_dir_;
+  base::FilePath base_dir;
+  base::FilePath stateful_;
+  startup::FakePlatform* platform_;
+  std::unique_ptr<startup::ChromeosStartup> startup_;
+  base::FilePath clobber_test_log_;
+};
+
+// Tests path for requested powerwash, but the reset file is now owned by us.
+TEST_F(StatefulWipeTest, PowerwashForced) {
+  base::FilePath reset_file = stateful_.Append("factory_install_reset");
+  platform_->SetClobberLogFile(clobber_test_log_);
+  struct stat st;
+  st.st_mode = S_IFLNK;
+  st.st_uid = -1;
+  platform_->SetStatResultForPath(reset_file, st);
+  startup_->CheckForStatefulWipe();
+  EXPECT_EQ(platform_->GetBootAlertForArg("power_wash"), 1);
+  std::string res;
+  ASSERT_TRUE(base::ReadFileToString(clobber_test_log_, &res));
+  EXPECT_EQ(res, "");
+  std::set<std::string> expected = {"keepimg", "preserve_lvs"};
+  EXPECT_EQ(platform_->GetClobberArgs(), expected);
+}
+
+// Tests normal path for user requested powerwash.
+TEST_F(StatefulWipeTest, PowerwashNormal) {
+  base::FilePath reset_file = stateful_.Append("factory_install_reset");
+  ASSERT_TRUE(CreateDirAndWriteFile(reset_file, "keepimg slow test powerwash"));
+  platform_->SetClobberLogFile(clobber_test_log_);
+  struct stat st;
+  st.st_mode = S_IFREG;
+  st.st_uid = getuid();
+  platform_->SetStatResultForPath(reset_file, st);
+  startup_->CheckForStatefulWipe();
+  EXPECT_EQ(platform_->GetBootAlertForArg("power_wash"), 1);
+  std::string res;
+  ASSERT_TRUE(base::ReadFileToString(clobber_test_log_, &res));
+  EXPECT_EQ(res, "");
+  std::set<std::string> expected = {"keepimg", "slow", "test", "powerwash"};
+  EXPECT_EQ(platform_->GetClobberArgs(), expected);
+}
+
+// Test there is no wipe when there is no physical stateful partition.
+TEST_F(StatefulWipeTest, NoStateDev) {
+  platform_->SetClobberLogFile(clobber_test_log_);
+  startup_->SetStateDev(base::FilePath());
+  startup_->CheckForStatefulWipe();
+  EXPECT_EQ(platform_->GetBootAlertForArg("power_wash"), 0);
+  EXPECT_EQ(platform_->GetBootAlertForArg("leave_dev"), 0);
+  std::string res;
+  ASSERT_FALSE(base::ReadFileToString(clobber_test_log_, &res));
+  EXPECT_EQ(res, "");
+  std::set<std::string> expected = {};
+  EXPECT_EQ(platform_->GetClobberArgs(), expected);
+}
+
+// Test transitioning to verified mode, dev_mode_allowed file is owned by us.
+TEST_F(StatefulWipeTest, TransitionToVerifiedDevModeFile) {
+  platform_->SetClobberLogFile(clobber_test_log_);
+  ASSERT_TRUE(cros_system_->VbSetSystemPropertyInt("devsw_boot", 0));
+  ASSERT_TRUE(
+      cros_system_->VbSetSystemPropertyString("mainfw_type", "not_rec"));
+  base::FilePath dev_mode_allowed = base_dir.Append(".developer_mode");
+  ASSERT_TRUE(CreateDirAndWriteFile(dev_mode_allowed, "0"));
+  struct stat st;
+  st.st_uid = getuid();
+  platform_->SetStatResultForPath(dev_mode_allowed, st);
+  startup_->SetDevMode(false);
+  startup_->SetDevModeAllowedFile(dev_mode_allowed);
+  base::FilePath state_dev = base_dir.Append("state_dev");
+  startup_->SetStateDev(state_dev);
+  startup_->CheckForStatefulWipe();
+  EXPECT_EQ(platform_->GetBootAlertForArg("leave_dev"), 1);
+  std::string res;
+  ASSERT_TRUE(base::ReadFileToString(clobber_test_log_, &res));
+  EXPECT_EQ(res, "'Leave developer mode, dev_mode file present'");
+  std::set<std::string> expected = {"fast", "keepimg"};
+  EXPECT_EQ(platform_->GetClobberArgs(), expected);
+}
+
+// Tranisitioning to verified mode, dev is a debug build.
+// We only want to fast clobber the non-protected paths to
+// preserve the testing tools.
+TEST_F(StatefulWipeTest, TransitionToVerifiedDebugBuild) {
+  platform_->SetClobberLogFile(clobber_test_log_);
+  ASSERT_TRUE(cros_system_->VbSetSystemPropertyInt("devsw_boot", 0));
+  ASSERT_TRUE(
+      cros_system_->VbSetSystemPropertyString("mainfw_type", "not_rec"));
+  ASSERT_TRUE(cros_system_->VbSetSystemPropertyInt("debug_build", 1));
+  base::FilePath dev_mode_allowed = base_dir.Append(".developer_mode");
+  ASSERT_TRUE(CreateDirAndWriteFile(dev_mode_allowed, "0"));
+  struct stat st;
+  st.st_uid = getuid();
+  platform_->SetStatResultForPath(dev_mode_allowed, st);
+  startup_->SetDevMode(true);
+  startup_->SetDevModeAllowedFile(dev_mode_allowed);
+  base::FilePath state_dev = base_dir.Append("state_dev");
+  startup_->SetStateDev(state_dev);
+  std::unique_ptr<startup::StandardMountHelper> mount_helper_ =
+      std::make_unique<startup::StandardMountHelper>(
+          std::make_unique<startup::FakePlatform>(), flags_, base_dir, base_dir,
+          true);
+  std::unique_ptr<StatefulMount> stateful_mount =
+      std::make_unique<StatefulMount>(
+          flags_, base_dir, base_dir, platform_,
+          std::unique_ptr<brillo::MockLogicalVolumeManager>(),
+          mount_helper_.get());
+  startup_->SetStatefulMount(std::move(stateful_mount));
+  startup_->CheckForStatefulWipe();
+  EXPECT_EQ(platform_->GetBootAlertForArg("leave_dev"), 0);
+  std::string res;
+  ASSERT_FALSE(base::ReadFileToString(clobber_test_log_, &res));
+  EXPECT_EQ(res, "");
+  std::set<std::string> expected = {};
+  EXPECT_EQ(platform_->GetClobberArgs(), expected);
+}
+
+// Transitioning to dev mode, dev is not a debug build.
+// Clobber should be called with |keepimg|, no need to erase
+// the stateful.
+TEST_F(StatefulWipeTest, TransitionToDevModeNoDebugBuild) {
+  platform_->SetClobberLogFile(clobber_test_log_);
+  ASSERT_TRUE(cros_system_->VbSetSystemPropertyInt("devsw_boot", 1));
+  ASSERT_TRUE(
+      cros_system_->VbSetSystemPropertyString("mainfw_type", "not_rec"));
+  base::FilePath dev_mode_allowed = base_dir.Append(".developer_mode");
+  ASSERT_TRUE(CreateDirAndWriteFile(dev_mode_allowed, "0"));
+  struct stat st;
+  st.st_uid = -1;
+  platform_->SetStatResultForPath(dev_mode_allowed, st);
+  startup_->SetDevMode(false);
+  startup_->SetDevModeAllowedFile(dev_mode_allowed);
+  base::FilePath state_dev = base_dir.Append("state_dev");
+  startup_->SetStateDev(state_dev);
+  startup_->CheckForStatefulWipe();
+  EXPECT_EQ(platform_->GetBootAlertForArg("enter_dev"), 1);
+  std::string res;
+  ASSERT_TRUE(base::ReadFileToString(clobber_test_log_, &res));
+  EXPECT_EQ(res, "Enter developer mode");
+  std::set<std::string> expected = {"keepimg"};
+  EXPECT_EQ(platform_->GetClobberArgs(), expected);
+}
+
+// Transitioning to dev mode, dev is a debug build.
+// Only fast clobber the non-protected paths in debug build to preserve
+// the testing tools.
+TEST_F(StatefulWipeTest, TransitionToDevModeDebugBuild) {
+  platform_->SetClobberLogFile(clobber_test_log_);
+  ASSERT_TRUE(cros_system_->VbSetSystemPropertyInt("devsw_boot", 1));
+  ASSERT_TRUE(
+      cros_system_->VbSetSystemPropertyString("mainfw_type", "not_rec"));
+  ASSERT_TRUE(cros_system_->VbSetSystemPropertyInt("debug_build", 1));
+  base::FilePath dev_mode_allowed = base_dir.Append(".developer_mode");
+  struct stat st;
+  st.st_uid = -1;
+  platform_->SetStatResultForPath(dev_mode_allowed, st);
+  startup_->SetDevMode(true);
+  startup_->SetDevModeAllowedFile(dev_mode_allowed);
+  base::FilePath state_dev = base_dir.Append("state_dev");
+  startup_->SetStateDev(state_dev);
+  std::unique_ptr<startup::StandardMountHelper> mount_helper_ =
+      std::make_unique<startup::StandardMountHelper>(
+          std::make_unique<startup::FakePlatform>(), flags_, base_dir, base_dir,
+          true);
+  std::unique_ptr<StatefulMount> stateful_mount =
+      std::make_unique<StatefulMount>(
+          flags_, base_dir, base_dir, platform_,
+          std::unique_ptr<brillo::MockLogicalVolumeManager>(),
+          mount_helper_.get());
+  startup_->SetStatefulMount(std::move(stateful_mount));
+  startup_->CheckForStatefulWipe();
+  EXPECT_EQ(platform_->GetBootAlertForArg("leave_dev"), 0);
+  std::string res;
+  ASSERT_FALSE(base::ReadFileToString(clobber_test_log_, &res));
+  std::set<std::string> expected = {};
+  EXPECT_EQ(platform_->GetClobberArgs(), expected);
+  base::ReadFileToString(dev_mode_allowed, &res);
+  EXPECT_EQ(res, "");
 }
 
 class TpmCleanupTest : public ::testing::Test {
