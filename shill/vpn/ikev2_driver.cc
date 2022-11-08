@@ -253,15 +253,17 @@ void IKEv2Driver::NotifyServiceOfFailure(Service::ConnectFailure failure) {
   }
 }
 
-void IKEv2Driver::OnIPsecConnected(const std::string& link_name,
-                                   int interface_index,
-                                   const IPConfig::Properties& ip_properties) {
+void IKEv2Driver::OnIPsecConnected(
+    const std::string& link_name,
+    int interface_index,
+    std::unique_ptr<IPConfig::Properties> ipv4_properties,
+    std::unique_ptr<IPConfig::Properties> ipv6_properties) {
   if (!event_handler_) {
     LOG(ERROR) << "OnIPsecConnected() triggered in illegal service state";
     return;
   }
   ReportConnectionMetrics();
-  ipv4_properties_ = std::make_unique<IPConfig::Properties>(ip_properties);
+  ipv4_properties_ = std::move(ipv4_properties);
   event_handler_->OnDriverConnected(link_name, interface_index);
 }
 

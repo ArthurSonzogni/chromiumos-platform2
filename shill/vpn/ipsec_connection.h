@@ -219,7 +219,8 @@ class IPsecConnection : public VPNConnection {
   // Callbacks from L2TPConnection.
   void OnL2TPConnected(const std::string& interface_name,
                        int interface_index,
-                       const IPConfig::Properties& properties);
+                       std::unique_ptr<IPConfig::Properties> ipv4_properties,
+                       std::unique_ptr<IPConfig::Properties> ipv6_properties);
   void OnL2TPFailure(Service::ConnectFailure reason);
   void OnL2TPStopped();
 

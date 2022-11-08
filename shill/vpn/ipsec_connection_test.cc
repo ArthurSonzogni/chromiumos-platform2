@@ -248,7 +248,8 @@ class MockCallbacks {
               OnConnected,
               (const std::string& link_name,
                int interface_index,
-               const IPConfig::Properties& ip_properties));
+               std::unique_ptr<IPConfig::Properties> ipv4_properties,
+               std::unique_ptr<IPConfig::Properties> ipv6_properties));
   MOCK_METHOD(void, OnFailure, (Service::ConnectFailure));
   MOCK_METHOD(void, OnStopped, ());
 };
@@ -698,10 +699,13 @@ TEST_F(IPsecConnectionTest, StartL2TPLayerAndConnected) {
   // L2TP connected.
   const std::string kIfName = "ppp0";
   constexpr int kIfIndex = 123;
-  const IPConfig::Properties kIPProperties;
-  l2tp_connection_->TriggerConnected(kIfName, kIfIndex, kIPProperties);
+  std::unique_ptr<IPConfig::Properties> ipv4_properties;
+  std::unique_ptr<IPConfig::Properties> ipv6_properties;
+  l2tp_connection_->TriggerConnected(kIfName, kIfIndex,
+                                     std::move(ipv4_properties),
+                                     std::move(ipv6_properties));
 
-  EXPECT_CALL(callbacks_, OnConnected(kIfName, kIfIndex, _));
+  EXPECT_CALL(callbacks_, OnConnected(kIfName, kIfIndex, _, _));
   dispatcher_.task_environment().RunUntilIdle();
 }
 
@@ -788,7 +792,7 @@ TEST_F(IPsecConnectionTest, CreateXFRMInterfaceAndNotifyConnected) {
   ipsec_connection_->InvokeScheduleConnectTask(ConnectStep::kIPsecStatusRead);
 
   std::move(registered_link_ready_cb).Run(actual_if_name, kIfIndex);
-  EXPECT_CALL(callbacks_, OnConnected(actual_if_name, kIfIndex, _));
+  EXPECT_CALL(callbacks_, OnConnected(actual_if_name, kIfIndex, _, _));
   dispatcher_.task_environment().RunUntilIdle();
 }
 

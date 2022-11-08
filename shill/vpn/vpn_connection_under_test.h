@@ -34,7 +34,8 @@ class VPNConnectionUnderTest : public VPNConnection {
 
   void TriggerConnected(const std::string& link_name,
                         int interface_index,
-                        const IPConfig::Properties& ip_properties);
+                        std::unique_ptr<IPConfig::Properties> ipv4_properties,
+                        std::unique_ptr<IPConfig::Properties> ipv6_properties);
   void TriggerFailure(Service::ConnectFailure reason,
                       const std::string& detail);
   void TriggerStopped();

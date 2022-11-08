@@ -138,7 +138,7 @@ TEST_F(NewL2TPIPsecDriverTest, ConnectAndDisconnect) {
   // Connected.
   const std::string kIfName = "ppp0";
   constexpr int kIfIndex = 123;
-  driver_->ipsec_connection()->TriggerConnected(kIfName, kIfIndex, {});
+  driver_->ipsec_connection()->TriggerConnected(kIfName, kIfIndex, {}, {});
   EXPECT_CALL(event_handler_, OnDriverConnected(kIfName, kIfIndex));
   EXPECT_CALL(metrics_, SendEnumToUMA(Metrics::kMetricVpnDriver,
                                       Metrics::kVpnDriverL2tpIpsec));
@@ -199,7 +199,7 @@ TEST_F(NewL2TPIPsecDriverTest, ConnectedFailure) {
   InvokeAndVerifyConnectAsync();
 
   // Makes it connected.
-  driver_->ipsec_connection()->TriggerConnected("ifname", 123, {});
+  driver_->ipsec_connection()->TriggerConnected("ifname", 123, {}, {});
   dispatcher_.DispatchPendingEvents();
 
   EXPECT_CALL(event_handler_, OnDriverFailure(Service::kFailureInternal, _));
@@ -216,7 +216,7 @@ TEST_F(NewL2TPIPsecDriverTest, DisconnectOnSuspend) {
   InvokeAndVerifyConnectAsync();
 
   // Makes it connected.
-  driver_->ipsec_connection()->TriggerConnected("ifname", 123, {});
+  driver_->ipsec_connection()->TriggerConnected("ifname", 123, {}, {});
   dispatcher_.DispatchPendingEvents();
 
   EXPECT_CALL(event_handler_, OnDriverFailure(Service::kFailureDisconnect, _));
@@ -228,7 +228,7 @@ TEST_F(NewL2TPIPsecDriverTest, DisconnectOnDefaultPhysicalServiceDown) {
   InvokeAndVerifyConnectAsync();
 
   // Makes it connected.
-  driver_->ipsec_connection()->TriggerConnected("ifname", 123, {});
+  driver_->ipsec_connection()->TriggerConnected("ifname", 123, {}, {});
   dispatcher_.DispatchPendingEvents();
 
   EXPECT_CALL(event_handler_, OnDriverFailure(Service::kFailureDisconnect, _));
@@ -241,7 +241,7 @@ TEST_F(NewL2TPIPsecDriverTest, DisconnectOnDefaultPhysicalServiceChanged) {
   InvokeAndVerifyConnectAsync();
 
   // Makes it connected.
-  driver_->ipsec_connection()->TriggerConnected("ifname", 123, {});
+  driver_->ipsec_connection()->TriggerConnected("ifname", 123, {}, {});
   dispatcher_.DispatchPendingEvents();
 
   EXPECT_CALL(event_handler_, OnDriverFailure(Service::kFailureDisconnect, _));

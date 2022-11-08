@@ -149,32 +149,35 @@ void L2TPConnection::Notify(const std::string& reason,
   }
 
   std::string interface_name = PPPDaemon::GetInterfaceName(dict);
-  IPConfig::Properties ip_properties = PPPDaemon::ParseIPConfiguration(dict);
+  auto ipv4_properties = std::make_unique<IPConfig::Properties>(
+      PPPDaemon::ParseIPConfiguration(dict));
+  std::unique_ptr<IPConfig::Properties> ipv6_properties;
 
   // There is no IPv6 support for L2TP/IPsec VPN at this moment, so create a
   // blackhole route for IPv6 traffic after establishing a IPv4 VPN.
-  ip_properties.blackhole_ipv6 = true;
+  ipv4_properties->blackhole_ipv6 = true;
 
   // Reduce MTU to the minimum viable for IPv6, since the IPsec layer consumes
   // some variable portion of the payload.  Although this system does not yet
   // support IPv6, it is a reasonable value to start with, since the minimum
   // IPv6 packet size will plausibly be a size any gateway would support, and
   // is also larger than the IPv4 minimum size.
-  ip_properties.mtu = IPConfig::kMinIPv6MTU;
+  ipv4_properties->mtu = IPConfig::kMinIPv6MTU;
 
-  ip_properties.method = kTypeVPN;
+  ipv4_properties->method = kTypeVPN;
 
   // Notify() could be invoked either before or after the creation of the ppp
   // interface. We need to make sure that the interface is ready (by checking
   // DeviceInfo) before invoking the connected callback here.
   int interface_index = device_info_->GetIndex(interface_name);
   if (interface_index != -1) {
-    NotifyConnected(interface_name, interface_index, ip_properties);
+    NotifyConnected(interface_name, interface_index, std::move(ipv4_properties),
+                    /*ipv6_properties=*/nullptr);
   } else {
     device_info_->AddVirtualInterfaceReadyCallback(
         interface_name,
         base::BindOnce(&L2TPConnection::OnLinkReady, weak_factory_.GetWeakPtr(),
-                       ip_properties));
+                       std::move(ipv4_properties)));
   }
 }
 
@@ -325,16 +328,18 @@ void L2TPConnection::StartXl2tpd() {
   external_task_ = std::move(external_task_local);
 }
 
-void L2TPConnection::OnLinkReady(const IPConfig::Properties& ip_properties,
-                                 const std::string& if_name,
-                                 int if_index) {
+void L2TPConnection::OnLinkReady(
+    std::unique_ptr<IPConfig::Properties> ipv4_properties,
+    const std::string& if_name,
+    int if_index) {
   if (state() != State::kConnecting) {
     // Needs to do nothing here. The ppp interface is managed by the pppd
     // process so we don't need to remove it here.
     LOG(WARNING) << "OnLinkReady() called but the current state is " << state();
     return;
   }
-  NotifyConnected(if_name, if_index, ip_properties);
+  NotifyConnected(if_name, if_index, std::move(ipv4_properties),
+                  /*ipv6_properties=*/nullptr);
 }
 
 void L2TPConnection::OnXl2tpdExitedUnexpectedly(pid_t pid, int exit_code) {

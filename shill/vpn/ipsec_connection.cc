@@ -1087,9 +1087,11 @@ void IPsecConnection::ParseDNSServers() {
   return;
 }
 
-void IPsecConnection::OnL2TPConnected(const std::string& interface_name,
-                                      int interface_index,
-                                      const IPConfig::Properties& properties) {
+void IPsecConnection::OnL2TPConnected(
+    const std::string& interface_name,
+    int interface_index,
+    std::unique_ptr<IPConfig::Properties> ipv4_properties,
+    std::unique_ptr<IPConfig::Properties> ipv6_properties) {
   if (state() != State::kConnecting) {
     // This is possible, e.g., the upper layer called Disconnect() right before
     // this callback is triggered.
@@ -1097,7 +1099,8 @@ void IPsecConnection::OnL2TPConnected(const std::string& interface_name,
                  << state();
     return;
   }
-  NotifyConnected(interface_name, interface_index, properties);
+  NotifyConnected(interface_name, interface_index, std::move(ipv4_properties),
+                  std::move(ipv6_properties));
 }
 
 void IPsecConnection::OnDisconnect() {
@@ -1158,18 +1161,20 @@ void IPsecConnection::OnXFRMInterfaceReady(const std::string& ifname,
                                            int ifindex) {
   xfrm_interface_index_ = ifindex;
 
-  IPConfig::Properties props;
-  props.address = local_virtual_ip_;
-  props.subnet_prefix = 32;
-  props.dns_servers = dns_servers_;
-  props.blackhole_ipv6 = true;
+  std::unique_ptr<IPConfig::Properties> ipv4_props =
+      std::make_unique<IPConfig::Properties>();
+  ipv4_props->address = local_virtual_ip_;
+  ipv4_props->subnet_prefix = 32;
+  ipv4_props->dns_servers = dns_servers_;
+  ipv4_props->blackhole_ipv6 = true;
   // This is a point-to-point link, gateway does not make sense here. Set it
   // default to skip RTA_GATEWAY when installing routes.
-  props.gateway = "0.0.0.0";
-  props.mtu = IPConfig::kMinIPv6MTU;
-  props.method = kTypeVPN;
+  ipv4_props->gateway = "0.0.0.0";
+  ipv4_props->mtu = IPConfig::kMinIPv6MTU;
+  ipv4_props->method = kTypeVPN;
 
-  NotifyConnected(ifname, ifindex, props);
+  NotifyConnected(ifname, ifindex, std::move(ipv4_props),
+                  /*ipv6_properties=*/nullptr);
 }
 
 void IPsecConnection::StopCharon() {

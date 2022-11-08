@@ -79,7 +79,7 @@ class L2TPConnection : public VPNConnection, public RpcTaskDelegate {
 
   // Callback registered in DeviceInfo to invoke NotifyConnected() once
   // DeviceInfo notices the ppp interface.
-  void OnLinkReady(const IPConfig::Properties& ip_properties,
+  void OnLinkReady(std::unique_ptr<IPConfig::Properties> ipv4_properties,
                    const std::string& if_name,
                    int if_index);
   void OnXl2tpdExitedUnexpectedly(pid_t pid, int exit_code);

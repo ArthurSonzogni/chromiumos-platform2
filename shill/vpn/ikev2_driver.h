@@ -65,7 +65,8 @@ class IKEv2Driver : public VPNDriver {
   // Callbacks from IPsecConnection.
   void OnIPsecConnected(const std::string& link_name,
                         int interface_index,
-                        const IPConfig::Properties& ip_properties);
+                        std::unique_ptr<IPConfig::Properties> ipv4_properties,
+                        std::unique_ptr<IPConfig::Properties> ipv6_properties);
   void OnIPsecFailure(Service::ConnectFailure failure);
   void OnIPsecStopped();
 

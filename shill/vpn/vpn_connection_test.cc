@@ -25,7 +25,7 @@ constexpr char kTestIPAddress[] = "192.168.1.2";
 
 // We only compare |address| in this test for simplicity.
 MATCHER_P(IPPropertiesEq, rhs, "") {
-  return arg.address == rhs.address;
+  return arg->address == rhs.address;
 }
 
 class MockCallbacks {
@@ -34,7 +34,8 @@ class MockCallbacks {
               OnConnected,
               (const std::string& link_name,
                int interface_index,
-               const IPConfig::Properties& ip_properties));
+               std::unique_ptr<IPConfig::Properties> ipv4_properties,
+               std::unique_ptr<IPConfig::Properties> ipv6_properties));
   MOCK_METHOD(void, OnFailure, (Service::ConnectFailure));
   MOCK_METHOD(void, OnStopped, ());
 };
@@ -51,11 +52,12 @@ class VPNConnectionTest : public testing::Test {
                        base::Unretained(&callbacks_)));
     vpn_connection_ = std::make_unique<VPNConnectionUnderTest>(
         std::move(callbacks), &dispatcher_);
-    test_ip_properties_.address = kTestIPAddress;
+    test_ipv4_properties_.address = kTestIPAddress;
   }
 
  protected:
-  IPConfig::Properties test_ip_properties_;
+  IPConfig::Properties test_ipv4_properties_;
+  IPConfig::Properties test_ipv6_properties_;
   EventDispatcherForTest dispatcher_;
   MockCallbacks callbacks_;
   std::unique_ptr<VPNConnectionUnderTest> vpn_connection_;
@@ -68,10 +70,13 @@ TEST_F(VPNConnectionTest, ConnectDisconnect) {
   dispatcher_.task_environment().RunUntilIdle();
   EXPECT_EQ(vpn_connection_->state(), VPNConnection::State::kConnecting);
 
-  vpn_connection_->TriggerConnected(kTestIfName, kTestIfIndex,
-                                    test_ip_properties_);
+  vpn_connection_->TriggerConnected(
+      kTestIfName, kTestIfIndex,
+      std::make_unique<IPConfig::Properties>(test_ipv4_properties_),
+      std::make_unique<IPConfig::Properties>(test_ipv6_properties_));
   EXPECT_CALL(callbacks_, OnConnected(kTestIfName, kTestIfIndex,
-                                      IPPropertiesEq(test_ip_properties_)));
+                                      IPPropertiesEq(test_ipv4_properties_),
+                                      IPPropertiesEq(test_ipv6_properties_)));
   EXPECT_EQ(vpn_connection_->state(), VPNConnection::State::kConnected);
   dispatcher_.task_environment().RunUntilIdle();
   EXPECT_EQ(vpn_connection_->state(), VPNConnection::State::kConnected);
@@ -105,8 +110,10 @@ TEST_F(VPNConnectionTest, ConnectedFailure) {
   vpn_connection_->Connect();
   dispatcher_.task_environment().RunUntilIdle();
 
-  vpn_connection_->TriggerConnected(kTestIfName, kTestIfIndex,
-                                    test_ip_properties_);
+  vpn_connection_->TriggerConnected(
+      kTestIfName, kTestIfIndex,
+      std::make_unique<IPConfig::Properties>(test_ipv4_properties_),
+      std::make_unique<IPConfig::Properties>(test_ipv6_properties_));
   dispatcher_.task_environment().RunUntilIdle();
 
   vpn_connection_->TriggerFailure(Service::kFailureInternal, "");

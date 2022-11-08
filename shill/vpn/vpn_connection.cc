@@ -91,14 +91,17 @@ bool VPNConnection::IsConnectingOrConnected() const {
   return state_ == State::kConnecting || state_ == State::kConnected;
 }
 
-void VPNConnection::NotifyConnected(const std::string& link_name,
-                                    int interface_index,
-                                    const IPConfig::Properties& ip_properties) {
+void VPNConnection::NotifyConnected(
+    const std::string& link_name,
+    int interface_index,
+    std::unique_ptr<IPConfig::Properties> ipv4_properties,
+    std::unique_ptr<IPConfig::Properties> ipv6_properties) {
   CheckCallWithState(__func__, state_, {State::kConnecting});
   state_ = State::kConnected;
-  dispatcher_->PostTask(FROM_HERE,
-                        base::BindOnce(callbacks_->on_connected_cb, link_name,
-                                       interface_index, ip_properties));
+  dispatcher_->PostTask(
+      FROM_HERE,
+      base::BindOnce(callbacks_->on_connected_cb, link_name, interface_index,
+                     std::move(ipv4_properties), std::move(ipv6_properties)));
 }
 
 void VPNConnection::NotifyFailure(Service::ConnectFailure reason,
