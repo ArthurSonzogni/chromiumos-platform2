@@ -31,7 +31,7 @@ class ProcessCacheInterface
   // Internalizes a process exec event from the BPF.
   virtual void PutFromBpfExec(const bpf::cros_process_start& process_start) = 0;
   // Evicts the given process from the cache if present.
-  virtual void Erase(uint64_t pid, bpf::time_ns_t start_time_ns) = 0;
+  virtual void EraseProcess(uint64_t pid, bpf::time_ns_t start_time_ns) = 0;
   // Returns num_generations worth of processes in the process tree of the given
   // pid; including pid itself. start_time_ns is used as a safety check against
   // PID reuse.
@@ -43,18 +43,19 @@ class ProcessCacheInterface
 
 class ProcessCache : public ProcessCacheInterface {
  public:
-  struct InternalKeyType {
+  struct InternalProcessKeyType {
     uint64_t start_time_t;
     uint64_t pid;
-    bool operator<(const InternalKeyType& rhs) const {
+    bool operator<(const InternalProcessKeyType& rhs) const {
       return std::tie(start_time_t, pid) < std::tie(rhs.start_time_t, rhs.pid);
     }
   };
-  struct InternalValueType {
+  struct InternalProcessValueType {
     std::unique_ptr<cros_xdr::reporting::Process> process_proto;
-    InternalKeyType parent_key;
+    InternalProcessKeyType parent_key;
   };
-  using InternalCacheType = base::LRUCache<InternalKeyType, InternalValueType>;
+  using InternalProcessCacheType =
+      base::LRUCache<InternalProcessKeyType, InternalProcessValueType>;
 
   static void PartiallyFillProcessFromBpfTaskInfo(
       const bpf::cros_process_task_info& task_info,
@@ -62,7 +63,7 @@ class ProcessCache : public ProcessCacheInterface {
 
   ProcessCache();
   void PutFromBpfExec(const bpf::cros_process_start& process_start) override;
-  void Erase(uint64_t pid, bpf::time_ns_t start_time_ns) override;
+  void EraseProcess(uint64_t pid, bpf::time_ns_t start_time_ns) override;
   std::vector<std::unique_ptr<cros_xdr::reporting::Process>>
   GetProcessHierarchy(uint64_t pid,
                       bpf::time_ns_t start_time_ns,
@@ -86,16 +87,17 @@ class ProcessCache : public ProcessCacheInterface {
   // Like LRUCache::Get, returns an internal iterator to the given key. Unlike
   // LRUCache::Get, best-effort tries to fetch missing keys from procfs. Then
   // inclusively Puts them in the cache if successful and returns an iterator.
-  InternalCacheType::const_iterator InclusiveGet(const InternalKeyType& key);
-  absl::StatusOr<InternalValueType> MakeFromProcfs(
-      const InternalKeyType& key) const;
+  InternalProcessCacheType::const_iterator InclusiveGetProcess(
+      const InternalProcessKeyType& key);
+  absl::StatusOr<InternalProcessValueType> MakeFromProcfs(
+      const InternalProcessKeyType& key) const;
   // Converts ns (from BPF) to clock_t for use in InternalKeyType. It would be
   // ideal to do this conversion in the BPF but we lack the required kernel
   // constants there.
   uint64_t LossyNsecToClockT(bpf::time_ns_t ns) const;
 
-  base::Lock cache_lock_;
-  std::unique_ptr<InternalCacheType> cache_;
+  base::Lock process_cache_lock_;
+  std::unique_ptr<InternalProcessCacheType> process_cache_;
   const base::FilePath root_path_;
   const uint64_t sc_clock_tck_;
 };

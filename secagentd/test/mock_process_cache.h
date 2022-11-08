@@ -26,7 +26,7 @@ class MockProcessCache : public ProcessCacheInterface {
               GetProcessHierarchy,
               (uint64_t, bpf::time_ns_t, int),
               (override));
-  MOCK_METHOD(void, Erase, (uint64_t, bpf::time_ns_t), (override));
+  MOCK_METHOD(void, EraseProcess, (uint64_t, bpf::time_ns_t), (override));
 };
 
 }  // namespace secagentd::testing

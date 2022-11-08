@@ -40,7 +40,7 @@ static const char kErrorFailedToResolve[] = "Failed to resolve ";
 static const char kErrorFailedToRead[] = "Failed to read ";
 static const char kErrorFailedToParse[] = "Failed to parse ";
 
-std::string StableUuid(ProcessCache::InternalKeyType seed) {
+std::string StableUuid(ProcessCache::InternalProcessKeyType seed) {
   base::MD5Digest md5;
   base::MD5Sum(&seed, sizeof(seed), &md5);
   // Convert the hash to a UUID string. Pretend to be version 4, variant 1.
@@ -159,11 +159,12 @@ absl::Status GetStatFromProcfs(const base::FilePath& stat_path,
 
 namespace secagentd {
 
-constexpr ProcessCache::InternalCacheType::size_type kProcessCacheMaxSize = 256;
+constexpr ProcessCache::InternalProcessCacheType::size_type
+    kProcessCacheMaxSize = 256;
 
 void ProcessCache::PartiallyFillProcessFromBpfTaskInfo(
     const bpf::cros_process_task_info& task_info, pb::Process* process_proto) {
-  ProcessCache::InternalKeyType key{task_info.start_time, task_info.pid};
+  ProcessCache::InternalProcessKeyType key{task_info.start_time, task_info.pid};
   process_proto->set_process_uuid(StableUuid(key));
   process_proto->set_canonical_pid(task_info.pid);
   process_proto->set_canonical_uid(task_info.uid);
@@ -174,7 +175,8 @@ void ProcessCache::PartiallyFillProcessFromBpfTaskInfo(
 
 ProcessCache::ProcessCache(const base::FilePath& root_path,
                            uint64_t sc_clock_tck)
-    : cache_(std::make_unique<InternalCacheType>(kProcessCacheMaxSize)),
+    : process_cache_(
+          std::make_unique<InternalProcessCacheType>(kProcessCacheMaxSize)),
       root_path_(root_path),
       sc_clock_tck_(sc_clock_tck) {}
 
@@ -183,57 +185,59 @@ ProcessCache::ProcessCache()
 
 void ProcessCache::PutFromBpfExec(
     const bpf::cros_process_start& process_start) {
-  InternalKeyType key{LossyNsecToClockT(process_start.task_info.start_time),
-                      process_start.task_info.pid};
+  InternalProcessKeyType key{
+      LossyNsecToClockT(process_start.task_info.start_time),
+      process_start.task_info.pid};
   auto process_proto = std::make_unique<pb::Process>();
   FillProcessFromBpf(process_start, process_proto.get());
-  InternalKeyType parent_key{
+  InternalProcessKeyType parent_key{
       LossyNsecToClockT(process_start.task_info.parent_start_time),
       process_start.task_info.ppid};
-  base::AutoLock lock(cache_lock_);
-  cache_->Put(key, InternalValueType({std::move(process_proto), parent_key}));
+  base::AutoLock lock(process_cache_lock_);
+  process_cache_->Put(
+      key, InternalProcessValueType({std::move(process_proto), parent_key}));
 }
 
-void ProcessCache::Erase(uint64_t pid, bpf::time_ns_t start_time_ns) {
-  InternalKeyType key{LossyNsecToClockT(start_time_ns), pid};
-  base::AutoLock lock(cache_lock_);
-  auto it = cache_->Peek(key);
-  if (it != cache_->end()) {
-    cache_->Erase(it);
+void ProcessCache::EraseProcess(uint64_t pid, bpf::time_ns_t start_time_ns) {
+  InternalProcessKeyType key{LossyNsecToClockT(start_time_ns), pid};
+  base::AutoLock lock(process_cache_lock_);
+  auto it = process_cache_->Peek(key);
+  if (it != process_cache_->end()) {
+    process_cache_->Erase(it);
   }
 }
 
-ProcessCache::InternalCacheType::const_iterator ProcessCache::InclusiveGet(
-    const InternalKeyType& key) {
-  cache_lock_.AssertAcquired();
+ProcessCache::InternalProcessCacheType::const_iterator
+ProcessCache::InclusiveGetProcess(const InternalProcessKeyType& key) {
+  process_cache_lock_.AssertAcquired();
   // PID 0 doesn't exist and is also used to signify the end of the process
   // "linked list".
   if (key.pid == 0) {
-    return cache_->end();
+    return process_cache_->end();
   }
-  auto it = cache_->Get(key);
-  if (it != cache_->end()) {
+  auto it = process_cache_->Get(key);
+  if (it != process_cache_->end()) {
     return it;
   }
 
   auto statusor = MakeFromProcfs(key);
   if (!statusor.ok()) {
     LOG(ERROR) << statusor.status();
-    return cache_->end();
+    return process_cache_->end();
   }
 
-  it = cache_->Put(key, std::move(*statusor));
+  it = process_cache_->Put(key, std::move(*statusor));
   return it;
 }
 
 std::vector<std::unique_ptr<pb::Process>> ProcessCache::GetProcessHierarchy(
     uint64_t pid, bpf::time_ns_t start_time_ns, int num_generations) {
   std::vector<std::unique_ptr<pb::Process>> processes;
-  InternalKeyType lookup_key{LossyNsecToClockT(start_time_ns), pid};
-  base::AutoLock lock(cache_lock_);
+  InternalProcessKeyType lookup_key{LossyNsecToClockT(start_time_ns), pid};
+  base::AutoLock lock(process_cache_lock_);
   for (int i = 0; i < num_generations; ++i) {
-    auto it = InclusiveGet(lookup_key);
-    if (it != cache_->end()) {
+    auto it = InclusiveGetProcess(lookup_key);
+    if (it != process_cache_->end()) {
       auto process_proto = std::make_unique<pb::Process>();
       process_proto->CopyFrom(*it->second.process_proto);
       processes.push_back(std::move(process_proto));
@@ -247,9 +251,10 @@ std::vector<std::unique_ptr<pb::Process>> ProcessCache::GetProcessHierarchy(
   return processes;
 }
 
-absl::StatusOr<ProcessCache::InternalValueType> ProcessCache::MakeFromProcfs(
-    const ProcessCache::InternalKeyType& key) const {
-  InternalKeyType parent_key;
+absl::StatusOr<ProcessCache::InternalProcessValueType>
+ProcessCache::MakeFromProcfs(
+    const ProcessCache::InternalProcessKeyType& key) const {
+  InternalProcessKeyType parent_key;
   auto process_proto = std::make_unique<pb::Process>();
   process_proto->set_canonical_pid(key.pid);
   process_proto->set_process_uuid(StableUuid(key));
@@ -335,7 +340,7 @@ absl::StatusOr<ProcessCache::InternalValueType> ProcessCache::MakeFromProcfs(
       parent_key.pid = 0;
     }
   }
-  return InternalValueType{std::move(process_proto), parent_key};
+  return InternalProcessValueType{std::move(process_proto), parent_key};
 }
 
 uint64_t ProcessCache::LossyNsecToClockT(bpf::time_ns_t ns) const {

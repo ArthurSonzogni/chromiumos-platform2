@@ -83,7 +83,7 @@ class ProcessCacheTestFixture : public ::testing::Test {
     }
   }
 
-  void ClearInternalCache() { process_cache_->cache_->Clear(); }
+  void ClearInternalCache() { process_cache_->process_cache_->Clear(); }
 
   void SetUp() override {
     ASSERT_TRUE(fake_root_.CreateUniqueTempDir());
@@ -360,8 +360,8 @@ TEST_F(ProcessCacheTestFixture, TestErase) {
       process_start.task_info.pid, process_start.task_info.start_time, 1);
   EXPECT_EQ(1, before.size());
 
-  process_cache_->Erase(process_start.task_info.pid,
-                        process_start.task_info.start_time);
+  process_cache_->EraseProcess(process_start.task_info.pid,
+                               process_start.task_info.start_time);
   auto after = process_cache_->GetProcessHierarchy(
       process_start.task_info.pid, process_start.task_info.start_time, 1);
   EXPECT_EQ(0, after.size());
@@ -371,8 +371,8 @@ TEST_F(ProcessCacheTestFixture, TestEraseNotInCache) {
   const bpf::cros_process_start& process_start =
       mock_spawns_[kPidChildOfChild].process_start;
   // Nothing explodes if we call erase on an uncached process.
-  process_cache_->Erase(process_start.task_info.pid,
-                        process_start.task_info.start_time);
+  process_cache_->EraseProcess(process_start.task_info.pid,
+                               process_start.task_info.start_time);
 }
 
 }  // namespace secagentd::testing

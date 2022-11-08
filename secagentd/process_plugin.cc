@@ -81,8 +81,8 @@ void ProcessPlugin::HandleRingBufferEvent(const bpf::cros_event& bpf_event) {
       const bpf::cros_process_exit& process_exit = pe.data.process_exit;
       auto terminate_event = MakeTerminateEvent(process_exit);
       if (process_exit.is_leaf) {
-        process_cache_->Erase(process_exit.task_info.pid,
-                              process_exit.task_info.start_time);
+        process_cache_->EraseProcess(process_exit.task_info.pid,
+                                     process_exit.task_info.start_time);
       }
       mutable_common = terminate_event->mutable_common();
       message = std::move(terminate_event);

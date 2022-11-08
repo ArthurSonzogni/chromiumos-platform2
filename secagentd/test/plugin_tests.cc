@@ -308,7 +308,7 @@ TEST_F(BPFPluginTestFixture, TestProcessPluginExitEventCacheHit) {
         return absl::OkStatus();
       });
 
-  EXPECT_CALL(*process_cache_, Erase(kPids[0], kStartTime));
+  EXPECT_CALL(*process_cache_, EraseProcess(kPids[0], kStartTime));
 
   cbs_.ring_buffer_event_callback.Run(a);
 
@@ -375,7 +375,7 @@ TEST_F(BPFPluginTestFixture, TestProcessPluginExitEventCacheMiss) {
         return absl::OkStatus();
       });
 
-  EXPECT_CALL(*process_cache_, Erase(_, _)).Times(0);
+  EXPECT_CALL(*process_cache_, EraseProcess(_, _)).Times(0);
 
   cbs_.ring_buffer_event_callback.Run(a);
 
