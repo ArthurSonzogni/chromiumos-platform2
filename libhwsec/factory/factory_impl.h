@@ -32,6 +32,9 @@ class HWSEC_EXPORT FactoryImpl : public Factory {
   // Constructor for no isolated thread.
   explicit FactoryImpl(OnCurrentTaskRunner);
 
+  // Constructor for custom middleware.
+  explicit FactoryImpl(std::unique_ptr<MiddlewareOwner> middleware);
+
   ~FactoryImpl() override;
 
   std::unique_ptr<CryptohomeFrontend> GetCryptohomeFrontend() override;
@@ -41,7 +44,7 @@ class HWSEC_EXPORT FactoryImpl : public Factory {
   std::unique_ptr<ChapsFrontend> GetChapsFrontend() override;
   std::unique_ptr<U2fFrontend> GetU2fFrontend() override;
 
- private:
+ protected:
   std::unique_ptr<MiddlewareOwner> default_middleware_;
   MiddlewareOwner& middleware_;
 };

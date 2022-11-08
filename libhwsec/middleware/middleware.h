@@ -197,6 +197,13 @@ class Middleware {
       return MakeStatus<TPMError>("No middleware", TPMRetryAction::kNoRetry);
     }
 
+#if USE_FUZZER
+    if (middleware->data_provider_) {
+      return FuzzedObject<SubClassResult<decltype(Func)>>()(
+          *middleware->data_provider_);
+    }
+#endif
+
     if (!middleware->backend_) {
       return MakeStatus<TPMError>("No backend", TPMRetryAction::kNoRetry);
     }

@@ -27,6 +27,10 @@ FactoryImpl::FactoryImpl(FactoryImpl::OnCurrentTaskRunner)
           MiddlewareOwner::OnCurrentTaskRunner())),
       middleware_(*default_middleware_) {}
 
+FactoryImpl::FactoryImpl(std::unique_ptr<MiddlewareOwner> middleware)
+    : default_middleware_(std::move(middleware)),
+      middleware_(*default_middleware_) {}
+
 FactoryImpl::~FactoryImpl() {}
 
 std::unique_ptr<CryptohomeFrontend> FactoryImpl::GetCryptohomeFrontend() {

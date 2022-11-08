@@ -7,6 +7,7 @@
 
 #include <atomic>
 #include <memory>
+#include <optional>
 #include <utility>
 
 #include <absl/base/attributes.h>
@@ -21,6 +22,18 @@
 #include "libhwsec/middleware/middleware_derivative.h"
 #include "libhwsec/proxy/proxy.h"
 #include "libhwsec/status.h"
+
+#if USE_FUZZER
+#include <fuzzer/FuzzedDataProvider.h>
+#include "libhwsec/fuzzed/basic_objects.h"
+#include "libhwsec/fuzzed/hwsec_objects.h"
+#include "libhwsec/fuzzed/ifx_info.h"
+#include "libhwsec/fuzzed/key_management.h"
+#include "libhwsec/fuzzed/middleware.h"
+#include "libhwsec/fuzzed/pinweaver.h"
+#include "libhwsec/fuzzed/recovery_crypto.h"
+#include "libhwsec/fuzzed/signature_sealing.h"
+#endif
 
 #ifndef BUILD_LIBHWSEC
 #error "Don't include this file outside libhwsec!"
@@ -62,14 +75,25 @@ class HWSEC_EXPORT MiddlewareOwner {
 
   MiddlewareDerivative Derive();
 
+#if USE_FUZZER
+  void set_data_provider(FuzzedDataProvider* data_provider) {
+    data_provider_ = data_provider;
+  }
+#endif
+
  private:
-  void InitBackend(std::unique_ptr<Backend> custom_backend);
+  void InitBackend();
+  void InitWithCustomBackend(std::unique_ptr<Backend> custom_backend);
   void FiniBackend();
 
   std::unique_ptr<base::Thread> background_thread_;
 
   scoped_refptr<base::TaskRunner> task_runner_;
   std::atomic<base::PlatformThreadId> thread_id_;
+
+#if USE_FUZZER
+  FuzzedDataProvider* data_provider_ = nullptr;
+#endif
 
   // Use thread_local to ensure the proxy and backend could only be accessed on
   // a thread.

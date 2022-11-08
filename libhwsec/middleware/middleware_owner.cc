@@ -5,6 +5,7 @@
 #include "libhwsec/middleware/middleware_owner.h"
 
 #include <memory>
+#include <optional>
 #include <utility>
 
 #include <base/callback.h>
@@ -27,6 +28,12 @@
 
 namespace {
 constexpr char kThreadName[] = "libhwsec_thread";
+
+scoped_refptr<base::TaskRunner> GetCurrentTaskRunnerOrNullptr() {
+  return base::SequencedTaskRunnerHandle::IsSet()
+             ? base::SequencedTaskRunnerHandle::Get()
+             : nullptr;
+}
 }  // namespace
 
 namespace hwsec {
@@ -37,36 +44,42 @@ MiddlewareOwner::MiddlewareOwner() {
       base::Thread::Options(base::MessagePumpType::IO, 0));
   task_runner_ = background_thread_->task_runner();
   thread_id_ = background_thread_->GetThreadId();
-  base::OnceClosure task = base::BindOnce(&MiddlewareOwner::InitBackend,
-                                          weak_factory_.GetWeakPtr(), nullptr);
+  base::OnceClosure task =
+      base::BindOnce(&MiddlewareOwner::InitBackend, weak_factory_.GetWeakPtr());
   Middleware(Derive()).RunBlockingTask(std::move(task));
 }
 
 MiddlewareOwner::MiddlewareOwner(OnCurrentTaskRunner)
-    : MiddlewareOwner(nullptr, OnCurrentTaskRunner{}) {}
+    : task_runner_(GetCurrentTaskRunnerOrNullptr()),
+      thread_id_(base::PlatformThread::CurrentId()) {
+  base::OnceClosure task =
+      base::BindOnce(&MiddlewareOwner::InitBackend, weak_factory_.GetWeakPtr());
+  Middleware(Derive()).RunBlockingTask(std::move(task));
+}
 
 MiddlewareOwner::MiddlewareOwner(scoped_refptr<base::TaskRunner> task_runner)
-    : MiddlewareOwner(nullptr, std::move(task_runner)) {}
-
-MiddlewareOwner::MiddlewareOwner(std::unique_ptr<Backend> custom_backend,
-                                 OnCurrentTaskRunner) {
-  task_runner_ = base::SequencedTaskRunnerHandle::IsSet()
-                     ? base::SequencedTaskRunnerHandle::Get()
-                     : nullptr;
-  thread_id_ = base::PlatformThread::CurrentId();
+    : task_runner_(std::move(task_runner)), thread_id_(base::kInvalidThreadId) {
   base::OnceClosure task =
-      base::BindOnce(&MiddlewareOwner::InitBackend, weak_factory_.GetWeakPtr(),
-                     std::move(custom_backend));
+      base::BindOnce(&MiddlewareOwner::InitBackend, weak_factory_.GetWeakPtr());
   Middleware(Derive()).RunBlockingTask(std::move(task));
 }
 
 MiddlewareOwner::MiddlewareOwner(std::unique_ptr<Backend> custom_backend,
-                                 scoped_refptr<base::TaskRunner> task_runner) {
-  task_runner_ = std::move(task_runner);
-  thread_id_ = base::kInvalidThreadId;
+                                 OnCurrentTaskRunner)
+    : task_runner_(GetCurrentTaskRunnerOrNullptr()),
+      thread_id_(base::PlatformThread::CurrentId()) {
   base::OnceClosure task =
-      base::BindOnce(&MiddlewareOwner::InitBackend, weak_factory_.GetWeakPtr(),
-                     std::move(custom_backend));
+      base::BindOnce(&MiddlewareOwner::InitWithCustomBackend,
+                     weak_factory_.GetWeakPtr(), std::move(custom_backend));
+  Middleware(Derive()).RunBlockingTask(std::move(task));
+}
+
+MiddlewareOwner::MiddlewareOwner(std::unique_ptr<Backend> custom_backend,
+                                 scoped_refptr<base::TaskRunner> task_runner)
+    : task_runner_(std::move(task_runner)), thread_id_(base::kInvalidThreadId) {
+  base::OnceClosure task =
+      base::BindOnce(&MiddlewareOwner::InitWithCustomBackend,
+                     weak_factory_.GetWeakPtr(), std::move(custom_backend));
   Middleware(Derive()).RunBlockingTask(std::move(task));
 }
 
@@ -83,7 +96,6 @@ MiddlewareOwner::~MiddlewareOwner() {
 }
 
 MiddlewareDerivative MiddlewareOwner::Derive() {
-  CHECK(thread_id_ != base::kInvalidThreadId);
   return MiddlewareDerivative{
       .task_runner = task_runner_,
       .thread_id = thread_id_,
@@ -91,16 +103,11 @@ MiddlewareDerivative MiddlewareOwner::Derive() {
   };
 }
 
-void MiddlewareOwner::InitBackend(std::unique_ptr<Backend> custom_backend) {
+void MiddlewareOwner::InitBackend() {
   CHECK(!backend_) << "Should not init backend twice.";
 
   if (thread_id_ == base::kInvalidThreadId) {
     thread_id_ = base::PlatformThread::CurrentId();
-  }
-
-  if (custom_backend != nullptr) {
-    backend_ = std::move(custom_backend);
-    return;
   }
 
   TPM_SELECT_BEGIN;
@@ -127,6 +134,17 @@ void MiddlewareOwner::InitBackend(std::unique_ptr<Backend> custom_backend) {
     return;
   });
   TPM_SELECT_END;
+}
+
+void MiddlewareOwner::InitWithCustomBackend(
+    std::unique_ptr<Backend> custom_backend) {
+  CHECK(!backend_) << "Should not init backend twice.";
+
+  if (thread_id_ == base::kInvalidThreadId) {
+    thread_id_ = base::PlatformThread::CurrentId();
+  }
+
+  backend_ = std::move(custom_backend);
 }
 
 void MiddlewareOwner::FiniBackend() {

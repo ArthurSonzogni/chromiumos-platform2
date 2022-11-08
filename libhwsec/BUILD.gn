@@ -47,6 +47,7 @@ pkg_config("target_defaults") {
     "USE_TPM_DYNAMIC=${use.tpm_dynamic}",
     "USE_TPM1=${use.tpm}||${use.test}",
     "USE_TPM2=${use.tpm2}||${use.test}",
+    "USE_FUZZER=${use.fuzzer}",
     "BIOMETRICS_DEV=true",
   ]
 
@@ -221,6 +222,10 @@ source_set("hardware_abstraction_external_library") {
   if (use.tpm || use.fuzzer || use.test) {
     sources += [ "backend/tpm1/static_utils.cc" ]
     libs += [ "tspi" ]
+  }
+
+  if (use.fuzzer) {
+    sources += [ "factory/fuzzed_factory.cc" ]
   }
 
   configs += [
