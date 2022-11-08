@@ -4,7 +4,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-. /usr/sbin/secure-wipe.sh
+. "$(dirname "$0")/secure-wipe.sh"
 
 # Fully erase the disks on the device via firmware and verify it is erased
 # properly.
@@ -19,7 +19,7 @@ main() {
   local disk_found=0
 
   for dev in $(list_fixed_ata_disks) $(list_fixed_mmc_disks) \
-      $(list_fixed_nvme_nss); do
+      $(list_fixed_nvme_nss) $(list_fixed_ufs_disks); do
     disk_found=1
     # Before secure_erase, disk is written with a checksummed random pattern
     # and verified if the pattern is written correctly. This part can only be
@@ -40,7 +40,7 @@ main() {
   done
 
   for dev in $(list_fixed_ata_disks) $(list_fixed_mmc_disks) \
-      $(list_fixed_nvme_disks); do
+      $(list_fixed_nvme_disks) $(list_fixed_ufs_disks); do
     # To ensure NVMe device is physically erased, set strict option to 1.
     # To avoid running secure_erase multiple times with different
     # namespaces for the same NVMe device, character device is given as
@@ -53,7 +53,7 @@ main() {
   done
 
   for dev in $(list_fixed_ata_disks) $(list_fixed_mmc_disks) \
-      $(list_fixed_nvme_nss); do
+      $(list_fixed_nvme_nss) $(list_fixed_ufs_disks); do
     # After secure_erase, verify the disk is zeroed. This part can only be
     # executed using block devices.
     perform_fio_op "/dev/${dev}" "${dev_size}" "verify_disk_wipe"

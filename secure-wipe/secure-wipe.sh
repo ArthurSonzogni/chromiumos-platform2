@@ -230,6 +230,30 @@ secure_erase_mmc() {
   fi
 }
 
+secure_erase_ufs() {
+  local disk="$1"
+  local strict="$2"
+  local rc
+
+  blkdiscard "${disk}"
+  rc=$?
+  if [ ${rc} -ne 0 ]; then
+    echo "Failed to discard the device"
+  else
+    /usr/sbin/factory_ufs clobber -b "${disk}" -p 600
+    rc=$?
+    if [ ${rc} -ne 0 ]; then
+      echo "Failed to purge the device"
+    fi
+  fi
+
+  if [ "${strict}" = "1" ] && [ ${rc} -ne 0 ]; then
+    return ${STRICT_RETURN_VALUE}
+  else
+    return 0
+  fi
+}
+
 # Erase an ATA device using internal firmware function
 #
 # To trigger the ATA SECURE ERASE function, the disk must be
@@ -389,6 +413,9 @@ secure_erase() {
     ;;
     NVME)
       secure_erase_nvme "${disk}" "${strict}"
+    ;;
+    UFS)
+      secure_erase_ufs "${disk}" "${strict}"
     ;;
     *)
       echo "Unable to identify the type of disk: -${disk_type}-"
