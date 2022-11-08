@@ -12,14 +12,12 @@
 
 #include "libhwsec/frontend/frontend_impl.h"
 #include "libhwsec/frontend/pinweaver/frontend.h"
-#include "libhwsec/hwsec_export.h"
 #include "libhwsec/status.h"
 #include "libhwsec/structures/operation_policy.h"
 
 namespace hwsec {
 
-class HWSEC_EXPORT PinWeaverFrontendImpl : public PinWeaverFrontend,
-                                           public FrontendImpl {
+class PinWeaverFrontendImpl : public PinWeaverFrontend, public FrontendImpl {
  public:
   using FrontendImpl::FrontendImpl;
   ~PinWeaverFrontendImpl() override = default;

@@ -38,34 +38,30 @@ Tpm2SimulatorFactoryForTest::~Tpm2SimulatorFactoryForTest() {}
 
 std::unique_ptr<CryptohomeFrontend>
 Tpm2SimulatorFactoryForTest::GetCryptohomeFrontend() {
-  return std::make_unique<CryptohomeFrontendImpl>(
-      Middleware(middleware_->Derive()));
+  return std::make_unique<CryptohomeFrontendImpl>(middleware_->Derive());
 }
 
 std::unique_ptr<PinWeaverFrontend>
 Tpm2SimulatorFactoryForTest::GetPinWeaverFrontend() {
-  return std::make_unique<PinWeaverFrontendImpl>(
-      Middleware(middleware_->Derive()));
+  return std::make_unique<PinWeaverFrontendImpl>(middleware_->Derive());
 }
 
 std::unique_ptr<RecoveryCryptoFrontend>
 Tpm2SimulatorFactoryForTest::GetRecoveryCryptoFrontend() {
-  return std::make_unique<RecoveryCryptoFrontendImpl>(
-      Middleware(middleware_->Derive()));
+  return std::make_unique<RecoveryCryptoFrontendImpl>(middleware_->Derive());
 }
 
 std::unique_ptr<ClientFrontend>
 Tpm2SimulatorFactoryForTest::GetClientFrontend() {
-  return std::make_unique<ClientFrontendImpl>(
-      Middleware(middleware_->Derive()));
+  return std::make_unique<ClientFrontendImpl>(middleware_->Derive());
 }
 
 std::unique_ptr<ChapsFrontend> Tpm2SimulatorFactoryForTest::GetChapsFrontend() {
-  return std::make_unique<ChapsFrontendImpl>(Middleware(middleware_->Derive()));
+  return std::make_unique<ChapsFrontendImpl>(middleware_->Derive());
 }
 
 std::unique_ptr<U2fFrontend> Tpm2SimulatorFactoryForTest::GetU2fFrontend() {
-  return std::make_unique<U2fFrontendImpl>(Middleware(middleware_->Derive()));
+  return std::make_unique<U2fFrontendImpl>(middleware_->Derive());
 }
 
 }  // namespace hwsec

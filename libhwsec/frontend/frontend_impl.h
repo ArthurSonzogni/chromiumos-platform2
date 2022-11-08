@@ -9,19 +9,25 @@
 #include <utility>
 
 #include "libhwsec/frontend/frontend.h"
-#include "libhwsec/hwsec_export.h"
-#include "libhwsec/middleware/middleware.h"
+#include "libhwsec/middleware/middleware_derivative.h"
+
+#ifndef BUILD_LIBHWSEC
+#error "Don't include this file outside libhwsec!"
+#endif
 
 namespace hwsec {
 
-class HWSEC_EXPORT FrontendImpl : public Frontend {
+// Forward declarations
+class Middleware;
+
+class FrontendImpl : public Frontend {
  public:
-  explicit FrontendImpl(Middleware middleware)
-      : middleware_(std::move(middleware)) {}
-  ~FrontendImpl() override = default;
+  explicit FrontendImpl(MiddlewareDerivative middleware_derivative);
+  ~FrontendImpl() override;
 
  protected:
-  Middleware middleware_;
+  std::unique_ptr<Middleware> default_middleware_;
+  Middleware& middleware_;
 };
 
 }  // namespace hwsec

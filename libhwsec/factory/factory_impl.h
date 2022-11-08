@@ -15,9 +15,11 @@
 #include "libhwsec/frontend/pinweaver/frontend.h"
 #include "libhwsec/frontend/recovery_crypto/frontend.h"
 #include "libhwsec/frontend/u2fd/frontend.h"
-#include "libhwsec/middleware/middleware.h"
 
 namespace hwsec {
+
+// Forward declarations
+class MiddlewareOwner;
 
 class HWSEC_EXPORT FactoryImpl : public Factory {
  public:
@@ -40,7 +42,8 @@ class HWSEC_EXPORT FactoryImpl : public Factory {
   std::unique_ptr<U2fFrontend> GetU2fFrontend() override;
 
  private:
-  MiddlewareOwner middleware_;
+  std::unique_ptr<MiddlewareOwner> default_middleware_;
+  MiddlewareOwner& middleware_;
 };
 
 }  // namespace hwsec

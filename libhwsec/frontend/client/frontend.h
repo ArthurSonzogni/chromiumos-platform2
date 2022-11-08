@@ -11,13 +11,12 @@
 #include <brillo/secure_blob.h>
 
 #include "libhwsec/frontend/frontend.h"
-#include "libhwsec/hwsec_export.h"
 #include "libhwsec/status.h"
 #include "libhwsec/structures/ifx_info.h"
 
 namespace hwsec {
 
-class HWSEC_EXPORT ClientFrontend : public Frontend {
+class ClientFrontend : public Frontend {
  public:
   ~ClientFrontend() override = default;
 

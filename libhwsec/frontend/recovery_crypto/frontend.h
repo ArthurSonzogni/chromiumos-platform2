@@ -12,13 +12,12 @@
 
 #include "libhwsec/backend/recovery_crypto.h"
 #include "libhwsec/frontend/frontend.h"
-#include "libhwsec/hwsec_export.h"
 #include "libhwsec/status.h"
 #include "libhwsec/structures/operation_policy.h"
 
 namespace hwsec {
 
-class HWSEC_EXPORT RecoveryCryptoFrontend : public Frontend {
+class RecoveryCryptoFrontend : public Frontend {
  public:
   ~RecoveryCryptoFrontend() override = default;
 

@@ -43,6 +43,7 @@ pkg_config("target_defaults") {
   ]
 
   defines = [
+    "BUILD_LIBHWSEC",
     "USE_TPM_DYNAMIC=${use.tpm_dynamic}",
     "USE_TPM1=${use.tpm}||${use.test}",
     "USE_TPM2=${use.tpm2}||${use.test}",
@@ -211,13 +212,7 @@ source_set("hardware_abstraction_external_library") {
   sources = [
     "${root_gen_dir}/include/libhwsec/structures/signature_sealed_data.cc",
     "factory/factory_impl.cc",
-    "frontend/chaps/frontend_impl.cc",
-    "frontend/client/frontend_impl.cc",
-    "frontend/cryptohome/frontend_impl.cc",
-    "frontend/pinweaver/frontend_impl.cc",
-    "frontend/recovery_crypto/frontend_impl.cc",
-    "frontend/u2fd/frontend_impl.cc",
-    "middleware/middleware.cc",
+    "middleware/middleware_owner.cc",
     "structures/key.cc",
   ]
 
@@ -241,6 +236,13 @@ source_set("hardware_abstraction_external_library") {
 source_set("hardware_abstraction_internal_library") {
   sources = [
     "backend/digest_algorithms.cc",
+    "frontend/chaps/frontend_impl.cc",
+    "frontend/client/frontend_impl.cc",
+    "frontend/cryptohome/frontend_impl.cc",
+    "frontend/frontend_impl.cc",
+    "frontend/pinweaver/frontend_impl.cc",
+    "frontend/recovery_crypto/frontend_impl.cc",
+    "frontend/u2fd/frontend_impl.cc",
     "proxy/proxy.cc",
     "proxy/proxy_impl.cc",
   ]

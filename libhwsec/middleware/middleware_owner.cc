@@ -2,11 +2,18 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "libhwsec/middleware/middleware.h"
+#include "libhwsec/middleware/middleware_owner.h"
 
+#include <memory>
+#include <utility>
+
+#include <base/callback.h>
+#include <base/callback_helpers.h>
+#include <base/logging.h>
 #include <libhwsec-foundation/tpm/tpm_version.h>
 
 #include "libhwsec/backend/backend.h"
+#include "libhwsec/middleware/middleware.h"
 #include "libhwsec/proxy/proxy_impl.h"
 #include "libhwsec/status.h"
 

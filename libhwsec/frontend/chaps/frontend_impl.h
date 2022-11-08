@@ -12,14 +12,12 @@
 
 #include "libhwsec/frontend/chaps/frontend.h"
 #include "libhwsec/frontend/frontend_impl.h"
-#include "libhwsec/hwsec_export.h"
 #include "libhwsec/status.h"
 #include "libhwsec/structures/key.h"
 
 namespace hwsec {
 
-class HWSEC_EXPORT ChapsFrontendImpl : public ChapsFrontend,
-                                       public FrontendImpl {
+class ChapsFrontendImpl : public ChapsFrontend, public FrontendImpl {
  public:
   using FrontendImpl::FrontendImpl;
   ~ChapsFrontendImpl() override = default;

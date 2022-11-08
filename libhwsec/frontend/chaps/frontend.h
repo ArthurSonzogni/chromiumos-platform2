@@ -11,9 +11,9 @@
 #include <absl/container/flat_hash_set.h>
 #include <brillo/secure_blob.h>
 
-#include "libhwsec/backend/backend.h"
+#include "libhwsec/backend/key_management.h"
+#include "libhwsec/backend/signing.h"
 #include "libhwsec/frontend/frontend.h"
-#include "libhwsec/hwsec_export.h"
 #include "libhwsec/status.h"
 #include "libhwsec/structures/key.h"
 #include "libhwsec/structures/operation_policy.h"
@@ -28,9 +28,9 @@ struct ChapsSealedData {
   brillo::Blob encrypted_data;
 };
 
-class HWSEC_EXPORT ChapsFrontend : public Frontend {
+class ChapsFrontend : public Frontend {
  public:
-  using CreateKeyResult = Backend::KeyManagement::CreateKeyResult;
+  using CreateKeyResult = KeyManagement::CreateKeyResult;
   using GetRandomSecureBlobCallback =
       base::OnceCallback<void(StatusOr<brillo::SecureBlob>)>;
   using SealDataCallback = base::OnceCallback<void(StatusOr<ChapsSealedData>)>;

@@ -12,14 +12,12 @@
 
 #include "libhwsec/frontend/client/frontend.h"
 #include "libhwsec/frontend/frontend_impl.h"
-#include "libhwsec/hwsec_export.h"
 #include "libhwsec/status.h"
 #include "libhwsec/structures/operation_policy.h"
 
 namespace hwsec {
 
-class HWSEC_EXPORT ClientFrontendImpl : public ClientFrontend,
-                                        public FrontendImpl {
+class ClientFrontendImpl : public ClientFrontend, public FrontendImpl {
  public:
   using FrontendImpl::FrontendImpl;
   ~ClientFrontendImpl() override = default;

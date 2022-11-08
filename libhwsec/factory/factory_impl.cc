@@ -18,39 +18,40 @@
 
 namespace hwsec {
 
-FactoryImpl::FactoryImpl() {}
+FactoryImpl::FactoryImpl()
+    : default_middleware_(std::make_unique<MiddlewareOwner>()),
+      middleware_(*default_middleware_) {}
 
 FactoryImpl::FactoryImpl(FactoryImpl::OnCurrentTaskRunner)
-    : middleware_(MiddlewareOwner::OnCurrentTaskRunner()) {}
+    : default_middleware_(std::make_unique<MiddlewareOwner>(
+          MiddlewareOwner::OnCurrentTaskRunner())),
+      middleware_(*default_middleware_) {}
 
 FactoryImpl::~FactoryImpl() {}
 
 std::unique_ptr<CryptohomeFrontend> FactoryImpl::GetCryptohomeFrontend() {
-  return std::make_unique<CryptohomeFrontendImpl>(
-      Middleware(middleware_.Derive()));
+  return std::make_unique<CryptohomeFrontendImpl>(middleware_.Derive());
 }
 
 std::unique_ptr<PinWeaverFrontend> FactoryImpl::GetPinWeaverFrontend() {
-  return std::make_unique<PinWeaverFrontendImpl>(
-      Middleware(middleware_.Derive()));
+  return std::make_unique<PinWeaverFrontendImpl>(middleware_.Derive());
 }
 
 std::unique_ptr<RecoveryCryptoFrontend>
 FactoryImpl::GetRecoveryCryptoFrontend() {
-  return std::make_unique<RecoveryCryptoFrontendImpl>(
-      Middleware(middleware_.Derive()));
+  return std::make_unique<RecoveryCryptoFrontendImpl>(middleware_.Derive());
 }
 
 std::unique_ptr<ClientFrontend> FactoryImpl::GetClientFrontend() {
-  return std::make_unique<ClientFrontendImpl>(Middleware(middleware_.Derive()));
+  return std::make_unique<ClientFrontendImpl>(middleware_.Derive());
 }
 
 std::unique_ptr<ChapsFrontend> FactoryImpl::GetChapsFrontend() {
-  return std::make_unique<ChapsFrontendImpl>(Middleware(middleware_.Derive()));
+  return std::make_unique<ChapsFrontendImpl>(middleware_.Derive());
 }
 
 std::unique_ptr<U2fFrontend> FactoryImpl::GetU2fFrontend() {
-  return std::make_unique<U2fFrontendImpl>(Middleware(middleware_.Derive()));
+  return std::make_unique<U2fFrontendImpl>(middleware_.Derive());
 }
 
 }  // namespace hwsec

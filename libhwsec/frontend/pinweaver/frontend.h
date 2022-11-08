@@ -10,21 +10,20 @@
 
 #include <brillo/secure_blob.h>
 
-#include "libhwsec/backend/backend.h"
+#include "libhwsec/backend/pinweaver.h"
 #include "libhwsec/frontend/frontend.h"
-#include "libhwsec/hwsec_export.h"
 #include "libhwsec/status.h"
 #include "libhwsec/structures/operation_policy.h"
 
 namespace hwsec {
 
-class HWSEC_EXPORT PinWeaverFrontend : public Frontend {
+class PinWeaverFrontend : public Frontend {
  public:
-  using CredentialTreeResult = Backend::PinWeaver::CredentialTreeResult;
-  using GetLogResult = Backend::PinWeaver::GetLogResult;
-  using ReplayLogOperationResult = Backend::PinWeaver::ReplayLogOperationResult;
-  using DelaySchedule = Backend::PinWeaver::DelaySchedule;
-  using PinWeaverEccPoint = Backend::PinWeaver::PinWeaverEccPoint;
+  using CredentialTreeResult = PinWeaver::CredentialTreeResult;
+  using GetLogResult = PinWeaver::GetLogResult;
+  using ReplayLogOperationResult = PinWeaver::ReplayLogOperationResult;
+  using DelaySchedule = PinWeaver::DelaySchedule;
+  using PinWeaverEccPoint = PinWeaver::PinWeaverEccPoint;
 
   ~PinWeaverFrontend() override = default;
 

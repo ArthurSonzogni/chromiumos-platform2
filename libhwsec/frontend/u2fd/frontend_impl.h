@@ -9,13 +9,12 @@
 
 #include "libhwsec/frontend/frontend_impl.h"
 #include "libhwsec/frontend/u2fd/frontend.h"
-#include "libhwsec/hwsec_export.h"
 #include "libhwsec/status.h"
 #include "libhwsec/structures/key.h"
 
 namespace hwsec {
 
-class HWSEC_EXPORT U2fFrontendImpl : public U2fFrontend, public FrontendImpl {
+class U2fFrontendImpl : public U2fFrontend, public FrontendImpl {
  public:
   using FrontendImpl::FrontendImpl;
   ~U2fFrontendImpl() override = default;

@@ -12,14 +12,12 @@
 
 #include "libhwsec/frontend/cryptohome/frontend.h"
 #include "libhwsec/frontend/frontend_impl.h"
-#include "libhwsec/hwsec_export.h"
 #include "libhwsec/status.h"
 #include "libhwsec/structures/key.h"
 
 namespace hwsec {
 
-class HWSEC_EXPORT CryptohomeFrontendImpl : public CryptohomeFrontend,
-                                            public FrontendImpl {
+class CryptohomeFrontendImpl : public CryptohomeFrontend, public FrontendImpl {
  public:
   using FrontendImpl::FrontendImpl;
   ~CryptohomeFrontendImpl() override = default;

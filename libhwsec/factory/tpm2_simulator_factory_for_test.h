@@ -8,7 +8,6 @@
 #include <memory>
 #include <utility>
 
-#include "libhwsec/backend/backend.h"
 #include "libhwsec/factory/factory.h"
 #include "libhwsec/frontend/chaps/frontend.h"
 #include "libhwsec/frontend/client/frontend.h"
@@ -17,9 +16,13 @@
 #include "libhwsec/frontend/recovery_crypto/frontend.h"
 #include "libhwsec/frontend/u2fd/frontend.h"
 #include "libhwsec/hwsec_export.h"
-#include "libhwsec/middleware/middleware.h"
 
 namespace hwsec {
+
+// Forward declarations
+class Backend;
+class MiddlewareOwner;
+class Proxy;
 
 // A TPM2 simulator factory implementation for testing.
 //

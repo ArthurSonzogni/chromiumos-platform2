@@ -5,6 +5,10 @@
 #ifndef LIBHWSEC_PROXY_PROXY_H_
 #define LIBHWSEC_PROXY_PROXY_H_
 
+#ifndef BUILD_LIBHWSEC
+#error "Don't include this file outside libhwsec!"
+#endif
+
 // Forward declarations
 namespace hwsec {
 namespace overalls {

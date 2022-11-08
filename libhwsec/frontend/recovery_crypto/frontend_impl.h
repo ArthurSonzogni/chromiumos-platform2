@@ -12,14 +12,13 @@
 
 #include "libhwsec/frontend/frontend_impl.h"
 #include "libhwsec/frontend/recovery_crypto/frontend.h"
-#include "libhwsec/hwsec_export.h"
 #include "libhwsec/status.h"
 #include "libhwsec/structures/operation_policy.h"
 
 namespace hwsec {
 
-class HWSEC_EXPORT RecoveryCryptoFrontendImpl : public RecoveryCryptoFrontend,
-                                                public FrontendImpl {
+class RecoveryCryptoFrontendImpl : public RecoveryCryptoFrontend,
+                                   public FrontendImpl {
  public:
   using FrontendImpl::FrontendImpl;
   ~RecoveryCryptoFrontendImpl() override = default;

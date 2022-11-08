@@ -26,6 +26,10 @@
 #include "libhwsec/backend/storage.h"
 #include "libhwsec/backend/vendor.h"
 
+#ifndef BUILD_LIBHWSEC
+#error "Don't include this file outside libhwsec!"
+#endif
+
 namespace hwsec {
 
 // Backend is the layer to abstract the difference between different security

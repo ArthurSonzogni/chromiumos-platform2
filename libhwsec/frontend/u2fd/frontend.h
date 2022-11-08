@@ -7,17 +7,16 @@
 
 #include <brillo/secure_blob.h>
 
-#include "libhwsec/backend/backend.h"
+#include "libhwsec/backend/key_management.h"
 #include "libhwsec/frontend/frontend.h"
-#include "libhwsec/hwsec_export.h"
 #include "libhwsec/status.h"
 #include "libhwsec/structures/key.h"
 
 namespace hwsec {
 
-class HWSEC_EXPORT U2fFrontend : public Frontend {
+class U2fFrontend : public Frontend {
  public:
-  using CreateKeyResult = Backend::KeyManagement::CreateKeyResult;
+  using CreateKeyResult = KeyManagement::CreateKeyResult;
 
   ~U2fFrontend() override = default;
 

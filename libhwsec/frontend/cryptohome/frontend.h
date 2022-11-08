@@ -11,22 +11,23 @@
 #include <absl/container/flat_hash_set.h>
 #include <brillo/secure_blob.h>
 
-#include "libhwsec/backend/backend.h"
+#include "libhwsec/backend/key_management.h"
+#include "libhwsec/backend/signature_sealing.h"
+#include "libhwsec/backend/storage.h"
 #include "libhwsec/frontend/frontend.h"
-#include "libhwsec/hwsec_export.h"
 #include "libhwsec/status.h"
 #include "libhwsec/structures/key.h"
 #include "libhwsec/structures/operation_policy.h"
 
 namespace hwsec {
 
-class HWSEC_EXPORT CryptohomeFrontend : public Frontend {
+class CryptohomeFrontend : public Frontend {
  public:
-  using CreateKeyResult = Backend::KeyManagement::CreateKeyResult;
-  using StorageState = Backend::Storage::ReadyState;
-  using ChallengeID = Backend::SignatureSealing::ChallengeID;
-  using ChallengeResult = Backend::SignatureSealing::ChallengeResult;
-  using SignatureSealingAlgorithm = Backend::SignatureSealing::Algorithm;
+  using CreateKeyResult = KeyManagement::CreateKeyResult;
+  using StorageState = Storage::ReadyState;
+  using ChallengeID = SignatureSealing::ChallengeID;
+  using ChallengeResult = SignatureSealing::ChallengeResult;
+  using SignatureSealingAlgorithm = SignatureSealing::Algorithm;
 
   ~CryptohomeFrontend() override = default;
 
