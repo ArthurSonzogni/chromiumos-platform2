@@ -996,6 +996,26 @@ TEST_F(CrashCollectorTest, StripGaiaId) {
   EXPECT_EQ(kCrashWithGaiaID, kCrashWithoutGaiaID);
 }
 
+TEST_F(CrashCollectorTest, StripLocationInformation) {
+  std::string kCrashWithLocationInformation =
+      "remove Cell ID: 'AB123' sample"
+      "stay Cell: '123' sample"
+      "remove Location area code: '12Abcd3' sample"
+      "stay Location area code: '123AsDF' sample"
+      "stay code: 33 sample"
+      "remove Cell ID: '234234' sample";
+
+  std::string kCrashWithoutLocationInformation =
+      "remove <redacted location information> sample"
+      "stay Cell: '123' sample"
+      "remove <redacted location information> sample"
+      "stay Location area code: '123AsDF' sample"
+      "stay code: 33 sample"
+      "remove <redacted location information> sample";
+  collector_.StripLocationInformation(&kCrashWithLocationInformation);
+  EXPECT_EQ(kCrashWithLocationInformation, kCrashWithoutLocationInformation);
+}
+
 TEST_F(CrashCollectorTest, StripSerialNumbers) {
   // Test calling StripSensitiveData w/ some actual lines from a real crash;
   // included two serial numbers (though replaced them with some bogusness).

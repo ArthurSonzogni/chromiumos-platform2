@@ -130,6 +130,9 @@ const char kCollectionErrorSignature[] = "crash_reporter-user-collection";
 
 const char kGaiaIdRegEx[] =
     R"((\"?\bgaia_id\"?[=:]['\"])(\d+)(\b['\"])|(\{id: )(\d+)(, email:))";
+
+const char kLocationInformationRegEx[] =
+    R"((Cell ID: ')([0-9a-fA-F]+)(')|(Location area code: ')([0-9a-fA-F]+)('))";
 }  // namespace
 
 const char* const CrashCollector::kUnknownValue = "unknown";
@@ -772,6 +775,7 @@ void CrashCollector::StripSensitiveData(std::string* contents) {
   StripEmailAddresses(contents);
   StripIPv4Addresses(contents);
   StripGaiaId(contents);
+  StripLocationInformation(contents);
   StripSerialNumbers(contents);
   StripRecoveryId(contents);
 }
@@ -870,6 +874,14 @@ void CrashCollector::StripGaiaId(std::string* contents) {
   // Ensure RegEx has no parsing errors and is valid.
   CHECK_EQ("", gaia_id_re.error());
   RE2::GlobalReplace(contents, gaia_id_re, "<redacted gaia ID>");
+}
+
+void CrashCollector::StripLocationInformation(std::string* contents) {
+  RE2 location_information_re(kLocationInformationRegEx);
+  // Ensure RegEx has no parsing errors and is valid.
+  CHECK_EQ("", location_information_re.error());
+  RE2::GlobalReplace(contents, location_information_re,
+                     "<redacted location information>");
 }
 
 void CrashCollector::StripSerialNumbers(std::string* contents) {
