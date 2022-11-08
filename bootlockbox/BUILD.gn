@@ -10,6 +10,7 @@ group("all") {
     ":bootlockboxd",
     ":bootlockboxtool",
     ":install_policy",
+    ":install_tmpfiles_config",
   ]
   if (use.test) {
     deps += [ ":boot_lockbox_test" ]
@@ -122,4 +123,9 @@ install_config("install_policy") {
   install_path = "/usr/share/policy"
 
   outputs = [ "bootlockboxd-seccomp.policy" ]
+}
+
+install_config("install_tmpfiles_config") {
+  sources = [ "tmpfiles.d/bootlockbox.conf" ]
+  install_path = "/usr/lib/tmpfiles.d"
 }
