@@ -31,11 +31,11 @@
 #include "camera/mojo/camera3.mojom.h"
 #include "common/camera_hal3_helpers.h"
 #include "common/stream_manipulator.h"
+#include "common/stream_manipulator_manager.h"
 #include "common/utils/common_types.h"
 #include "common/utils/cros_camera_mojo_utils.h"
 #include "cros-camera/camera_buffer_manager.h"
 #include "cros-camera/camera_metrics.h"
-#include "hal_adapter/camera_metadata_inspector.h"
 #include "hal_adapter/scoped_yuv_buffer_handle.h"
 
 namespace cros {
@@ -110,7 +110,7 @@ class CameraDeviceAdapter : public camera3_callback_ops_t {
       base::RepeatingCallback<int(int)> get_internal_camera_id_callback,
       base::RepeatingCallback<int(int)> get_public_camera_id_callback,
       base::OnceCallback<void()> close_callback,
-      std::vector<std::unique_ptr<StreamManipulator>> stream_manipulators);
+      std::unique_ptr<StreamManipulatorManager> stream_manipulator_manager);
 
   CameraDeviceAdapter(const CameraDeviceAdapter&) = delete;
   CameraDeviceAdapter& operator=(const CameraDeviceAdapter&) = delete;
@@ -359,7 +359,7 @@ class CameraDeviceAdapter : public camera3_callback_ops_t {
   // this situation.
   CameraMonitor capture_monitor_;
 
-  std::vector<std::unique_ptr<StreamManipulator>> stream_manipulators_;
+  std::unique_ptr<StreamManipulatorManager> stream_manipulator_manager_;
 };
 
 }  // namespace cros

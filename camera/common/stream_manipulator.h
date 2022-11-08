@@ -29,10 +29,20 @@
 
 namespace cros {
 
-class CameraDeviceAdapter;
-
 // Interface class that can be used by feature implementations to add hooks into
-// the standard camera HAL3 capture pipeline.
+// the standard camera HAL3 capture pipeline. The StreamManipulators are enabled
+// through platform or device specific settings.
+//
+// The hooks of the StreamManipulators are called by StreamManipulatorManager,
+// which is owned by CameraDeviceAdapter, in the various HAL3 APIs. See the
+// comments below for details regarding where each hook is called and its
+// expected behavior. For ProcessCaptureRequest / ProcessCaptureResult and
+// ConfigureStreams / OnConfiguredStreams pairs, StreamManipulatorManager will
+// iterate through the list of StreamManipulators with reverse order.
+//
+// StreamManipulatorManager will iterate through all the StreamManipulators
+// regardless of the return value of each hook call. The return value of the
+// hook is mainly used to log the status for each StreamManipulator.
 class CROS_CAMERA_EXPORT StreamManipulator {
  public:
   struct Options {
@@ -91,74 +101,54 @@ class CROS_CAMERA_EXPORT StreamManipulator {
   // client_type) pair.
   static bool UpdateStaticMetadata(android::CameraMetadata* static_info);
 
-  // Gets the set of enabled StreamManipulator instances. The StreamManipulators
-  // are enabled through platform or device specific settings. This factory
-  // method is called by CameraDeviceAdapter.
-  //
-  // The hooks of the StreamManipulators are called by CameraDeviceAdapter in
-  // the various HAL3 APIs. See the comments below for details regarding where
-  // each hook is called and its expected behavior. For
-  // ProcessCaptureRequest / ProcessCaptureResult and
-  // ConfigureStreams / OnConfiguredStreams pairs, CameraDeviceAdapter will
-  // iterate through the list of StreamManipulators with reverse order.
-  //
-  // CameraDeviceAdapter will iterate through all the StreamManipulators
-  // regardless of the return value of each hook call. The return value of the
-  // hook is mainly used to log the status for each StreamManipulator.
-  static std::vector<std::unique_ptr<StreamManipulator>>
-  GetEnabledStreamManipulators(
-      Options options,
-      RuntimeOptions* runtime_options,
-      GpuResources* gpu_resources,
-      CameraMojoChannelManagerToken* mojo_manager_token);
-
   virtual ~StreamManipulator() = default;
 
   // The followings are hooks to the camera3_device_ops APIs and will be called
-  // by CameraDeviceAdapter on the CameraDeviceOpsThread.
+  // by StreamManipulatorManager on the CameraDeviceOpsThread.
 
   // A hook to the camera3_device_ops::initialize(). Will be called by
-  // CameraDeviceAdapter with the camera device static metadata |static_info|.
+  // StreamManipulatorManager with the camera device static metadata
+  // |static_info|.
   virtual bool Initialize(const camera_metadata_t* static_info,
                           CaptureResultCallback result_callback) = 0;
 
   // A hook to the upper part of camera3_device_ops::configure_streams(). Will
-  // be called by CameraDeviceAdapter with the stream configuration
+  // be called by StreamManipulatorManager with the stream configuration
   // |stream_config| requested by the camera client.
   virtual bool ConfigureStreams(Camera3StreamConfiguration* stream_config) = 0;
 
-  // A hook to the lower part of camera3_device_ops::configure_streams().
-  // Will be called by CameraDeviceAdapter with the updated stream configuration
+  // A hook to the lower part of camera3_device_ops::configure_streams(). Will
+  // be called by StreamManipulatorManager with the updated stream configuration
   // |stream_config| returned by the camera HAL implementation.
   virtual bool OnConfiguredStreams(
       Camera3StreamConfiguration* stream_config) = 0;
 
   // A hook to the camera3_device_ops::construct_default_request_settings().
-  // Will be called by CameraDeviceAdapter with the default request settings
-  // |default_request_settings| prepared by the camera HAL implementation for
-  // type |type|.
+  // Will be called by StreamManipulatorManager with the default request
+  // settings |default_request_settings| prepared by the camera HAL
+  // implementation for type |type|.
   virtual bool ConstructDefaultRequestSettings(
       android::CameraMetadata* default_request_settings, int type) = 0;
 
   // A hook to the camera3_device_ops::process_capture_request(). Will be called
-  // by CameraDeviceAdapter for each incoming capture request |request|.
+  // by StreamManipulatorManager for each incoming capture request |request|.
   virtual bool ProcessCaptureRequest(Camera3CaptureDescriptor* request) = 0;
 
   // A hook to the camera3_device_ops::flush(). Will be called by
-  // CameraDeviceAdapter when the camera client requests a flush.
+  // StreamManipulatorManager when the camera client requests a flush.
   virtual bool Flush() = 0;
 
   // The followings are hooks to the camera3_callback_ops APIs and will be
-  // called by CameraDeviceAdapter on the CameraCallbackOpsThread.
+  // called by StreamManipulatorManager on the CameraCallbackOpsThread.
 
   // A hook to the camera3_callback_ops::process_capture_result(). Will be
-  // called by CameraDeviceAdapter for each capture result |result| produced by
-  // the camera HAL implementation.
+  // called by StreamManipulatorManager for each capture result |result|
+  // produced by the camera HAL implementation.
   virtual bool ProcessCaptureResult(Camera3CaptureDescriptor* result) = 0;
 
   // A hook to the camera3_callback_ops::notify(). Will be called by
-  // CameraDeviceAdapter for each notify message |msg| produced by the camera
-  // HAL implemnetation.
+  // StreamManipulatorManager for each notify message |msg| produced by the
+  // camera HAL implemnetation.
   virtual bool Notify(camera3_notify_msg_t* msg) = 0;
 };
 

@@ -4,7 +4,7 @@
  * found in the LICENSE file.
  */
 
-#include "hal_adapter/camera_metadata_inspector.h"
+#include "common/camera_metadata_inspector.h"
 
 #include <algorithm>
 #include <utility>

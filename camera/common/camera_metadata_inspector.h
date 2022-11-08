@@ -4,8 +4,8 @@
  * found in the LICENSE file.
  */
 
-#ifndef CAMERA_HAL_ADAPTER_CAMERA_METADATA_INSPECTOR_H_
-#define CAMERA_HAL_ADAPTER_CAMERA_METADATA_INSPECTOR_H_
+#ifndef CAMERA_COMMON_CAMERA_METADATA_INSPECTOR_H_
+#define CAMERA_COMMON_CAMERA_METADATA_INSPECTOR_H_
 
 #include <map>
 #include <memory>
@@ -18,6 +18,7 @@
 #include <base/threading/thread.h>
 #include <base/time/time.h>
 #include <camera/camera_metadata.h>
+#include <cros-camera/export.h>
 #include <hardware/camera3.h>
 #include <re2/re2.h>
 
@@ -32,7 +33,7 @@ struct DiffData {
   std::string FormatValue(int width);
 };
 
-class CameraMetadataInspector {
+class CROS_CAMERA_EXPORT CameraMetadataInspector {
  public:
   // Holds the string representation of the entries of a metadata.
   using DataMap = std::map<std::string, std::string>;
@@ -140,4 +141,4 @@ class CameraMetadataInspector {
 
 }  // namespace cros
 
-#endif  // CAMERA_HAL_ADAPTER_CAMERA_METADATA_INSPECTOR_H_
+#endif  // CAMERA_COMMON_CAMERA_METADATA_INSPECTOR_H_

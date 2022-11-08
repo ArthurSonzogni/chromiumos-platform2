@@ -29,6 +29,7 @@
 #include <system/camera_metadata_hidden.h>
 
 #include "common/stream_manipulator.h"
+#include "common/stream_manipulator_manager.h"
 #include "common/utils/cros_camera_mojo_utils.h"
 #include "cros-camera/camera_metrics.h"
 #include "cros-camera/common.h"
@@ -254,7 +255,7 @@ int32_t CameraHalAdapter::OpenDevice(
       camera_device, info.device_version, metadata,
       std::move(get_internal_camera_id_callback),
       std::move(get_public_camera_id_callback), std::move(close_callback),
-      StreamManipulator::GetEnabledStreamManipulators(
+      std::make_unique<StreamManipulatorManager>(
           StreamManipulator::Options{
               .camera_module_name = camera_module->common.name,
           },

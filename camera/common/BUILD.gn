@@ -99,6 +99,7 @@ source_set("base") {
     "//camera/common/camera_buffer_pool.cc",
     "//camera/common/camera_buffer_utils.cc",
     "//camera/common/camera_hal3_helpers.cc",
+    "//camera/common/camera_metadata_inspector.cc",
     "//camera/common/camera_metadata_string_utils.cc",
     "//camera/common/embed_file_toc.cc",
     "//camera/common/exif_utils.cc",
@@ -238,6 +239,7 @@ source_set("stream_manipulator") {
   sources = [
     "//camera/common/still_capture_processor_impl.cc",
     "//camera/common/stream_manipulator.cc",
+    "//camera/common/stream_manipulator_manager.cc",
     "//camera/common/sw_privacy_switch_stream_manipulator.cc",
   ]
   public_configs = [ ":target_defaults" ]

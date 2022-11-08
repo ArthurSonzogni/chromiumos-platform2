@@ -180,7 +180,7 @@ CameraDeviceAdapter::CameraDeviceAdapter(
     base::RepeatingCallback<int(int)> get_internal_camera_id_callback,
     base::RepeatingCallback<int(int)> get_public_camera_id_callback,
     base::OnceCallback<void()> close_callback,
-    std::vector<std::unique_ptr<StreamManipulator>> stream_manipulators)
+    std::unique_ptr<StreamManipulatorManager> stream_manipulator_manager)
     : camera_device_ops_thread_("CameraDeviceOpsThread"),
       camera_callback_ops_thread_("CameraCallbackOpsThread"),
       fence_sync_thread_("FenceSyncThread"),
@@ -193,7 +193,7 @@ CameraDeviceAdapter::CameraDeviceAdapter(
       device_api_version_(device_api_version),
       static_info_(static_info),
       camera_metrics_(CameraMetrics::New()),
-      stream_manipulators_(std::move(stream_manipulators)) {
+      stream_manipulator_manager_(std::move(stream_manipulator_manager)) {
   VLOGF_ENTER() << ":" << camera_device_;
   camera3_callback_ops_t::process_capture_result = ProcessCaptureResult;
   camera3_callback_ops_t::notify = Notify;
@@ -273,20 +273,9 @@ int32_t CameraDeviceAdapter::Initialize(
     return -ENODEV;
   }
 
-  for (size_t i = 0; i < stream_manipulators_.size(); ++i) {
-    stream_manipulators_[i]->Initialize(
-        static_info_,
-        base::BindRepeating(
-            [](CameraDeviceAdapter* self,
-               base::span<std::unique_ptr<StreamManipulator>> upper_sms,
-               Camera3CaptureDescriptor result) {
-              for (auto it = upper_sms.rbegin(); it != upper_sms.rend(); ++it) {
-                (*it)->ProcessCaptureResult(&result);
-              }
-              self->ReturnResultToClient(self, std::move(result));
-            },
-            this, base::make_span(stream_manipulators_.begin(), i)));
-  }
+  stream_manipulator_manager_->Initialize(
+      static_info_,
+      base::BindRepeating(CameraDeviceAdapter::ReturnResultToClient, this));
 
   base::AutoLock l(callback_ops_delegate_lock_);
   // Unlike the camera module, only one peer is allowed to access a camera
@@ -392,9 +381,7 @@ int32_t CameraDeviceAdapter::ConfigureStreams(
   });
 
   // TODO(kamesan): Handle the failures.
-  for (auto& stream_manipulator : stream_manipulators_) {
-    stream_manipulator->ConfigureStreams(&stream_config);
-  }
+  stream_manipulator_manager_->ConfigureStreams(&stream_config);
 
   int32_t result = 0;
   {
@@ -404,12 +391,7 @@ int32_t CameraDeviceAdapter::ConfigureStreams(
     stream_config.Unlock();
   }
 
-  // Call OnConfiguredStreams in reverse order so the stream manipulators can
-  // unwind the stream modifications.
-  for (auto it = stream_manipulators_.rbegin();
-       it != stream_manipulators_.rend(); ++it) {
-    (*it)->OnConfiguredStreams(&stream_config);
-  }
+  stream_manipulator_manager_->OnConfiguredStreams(&stream_config);
 
   if (result == 0) {
     *updated_config = mojom::Camera3StreamConfiguration::New();
@@ -492,10 +474,8 @@ mojom::CameraMetadataPtr CameraDeviceAdapter::ConstructDefaultRequestSettings(
     request_template.acquire(clone_camera_metadata(
         camera_device_->ops->construct_default_request_settings(camera_device_,
                                                                 request_type)));
-    for (auto& stream_manipulator : stream_manipulators_) {
-      stream_manipulator->ConstructDefaultRequestSettings(&request_template,
-                                                          request_type);
-    }
+    stream_manipulator_manager_->ConstructDefaultRequestSettings(
+        &request_template, request_type);
   }
   return internal::SerializeCameraMetadata(request_template.getAndLock());
 }
@@ -634,27 +614,7 @@ int32_t CameraDeviceAdapter::ProcessCaptureRequest(
   // the stream manipulators so that they can still do incremental changes on
   // top of the cached settings.
   Camera3CaptureDescriptor request_descriptor(req);
-  for (size_t i = 0; i < stream_manipulators_.size(); ++i) {
-    if (camera_metadata_inspector_ &&
-        camera_metadata_inspector_->IsPositionInspected(i)) {
-      camera_metadata_inspector_->InspectRequest(
-          request_descriptor.LockForRequest(), i);
-      request_descriptor.Unlock();
-    }
-    {
-      TRACE_EVENT(kCameraTraceCategoryHalAdapter, "SM::ProcessCaptureRequest",
-                  kCameraTraceKeyFrameNumber,
-                  request_descriptor.frame_number());
-      stream_manipulators_[i]->ProcessCaptureRequest(&request_descriptor);
-    }
-  }
-  if (camera_metadata_inspector_ &&
-      camera_metadata_inspector_->IsPositionInspected(
-          stream_manipulators_.size())) {
-    camera_metadata_inspector_->InspectRequest(
-        request_descriptor.LockForRequest(), stream_manipulators_.size());
-    request_descriptor.Unlock();
-  }
+  stream_manipulator_manager_->ProcessCaptureRequest(&request_descriptor);
 
   {
     TRACE_EVENT(kCameraTraceCategoryHalAdapter, "HAL::ProcessCaptureRequest",
@@ -677,9 +637,7 @@ int32_t CameraDeviceAdapter::Flush() {
   VLOGF_ENTER();
   TRACE_HAL_ADAPTER();
 
-  for (auto& stream_manipulator : stream_manipulators_) {
-    stream_manipulator->Flush();
-  }
+  stream_manipulator_manager_->Flush();
   return camera_device_->ops->flush(camera_device_);
 }
 
@@ -776,30 +734,8 @@ void CameraDeviceAdapter::ProcessCaptureResult(
 
   self->capture_monitor_.Kick(CameraMonitor::MonitorType::kResultsMonitor);
 
-  // Call ProcessCaptureResult in reverse order of that of ProcessCaptureRequest
-  // so the stream manipulators can unwind the buffer states.
   Camera3CaptureDescriptor result_descriptor(*result);
-  if (self->camera_metadata_inspector_ &&
-      self->camera_metadata_inspector_->IsPositionInspected(
-          self->stream_manipulators_.size())) {
-    self->camera_metadata_inspector_->InspectResult(
-        result_descriptor.LockForResult(), self->stream_manipulators_.size());
-    result_descriptor.Unlock();
-  }
-  for (size_t i = 0; i < self->stream_manipulators_.size(); ++i) {
-    size_t j = self->stream_manipulators_.size() - i - 1;
-    {
-      TRACE_EVENT(kCameraTraceCategoryHalAdapter, "SM::ProcessCaptureResult",
-                  kCameraTraceKeyFrameNumber, result_descriptor.frame_number());
-      self->stream_manipulators_[j]->ProcessCaptureResult(&result_descriptor);
-    }
-    if (self->camera_metadata_inspector_ &&
-        self->camera_metadata_inspector_->IsPositionInspected(j)) {
-      self->camera_metadata_inspector_->InspectResult(
-          result_descriptor.LockForResult(), j);
-      result_descriptor.Unlock();
-    }
-  }
+  self->stream_manipulator_manager_->ProcessCaptureResult(&result_descriptor);
 
   {
     TRACE_EVENT(kCameraTraceCategoryHalAdapter, "Client::ProcessCaptureResult",
@@ -885,9 +821,7 @@ void CameraDeviceAdapter::Notify(const camera3_callback_ops_t* ops,
   }
 
   camera3_notify_msg_t* mutable_msg = const_cast<camera3_notify_msg_t*>(msg);
-  for (auto& stream_manipulator : self->stream_manipulators_) {
-    stream_manipulator->Notify(mutable_msg);
-  }
+  self->stream_manipulator_manager_->Notify(mutable_msg);
 
   mojom::Camera3NotifyMsgPtr msg_ptr = self->PrepareNotifyMsg(mutable_msg);
   base::AutoLock l(self->callback_ops_delegate_lock_);
