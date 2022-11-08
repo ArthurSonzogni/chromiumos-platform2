@@ -21,6 +21,7 @@
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
 #include "shill/mock_routing_table.h"
+#include "shill/mojom/mock_mojo_service_provider.h"
 #include "shill/net/io_handler.h"
 #include "shill/net/mock_netlink_manager.h"
 #include "shill/net/mock_process_manager.h"
@@ -72,7 +73,8 @@ class DaemonTaskTest : public Test {
         control_(new MockControl()),
         metrics_(new MockMetrics()),
         manager_(new MockManager(control_, dispatcher_, metrics_)),
-        device_info_(manager_) {}
+        device_info_(manager_),
+        mojo_provider_(new MockMojoServiceProvider(manager_)) {}
   ~DaemonTaskTest() override = default;
   void SetUp() override {
     // Tests initialization done by the daemon's constructor
@@ -85,6 +87,7 @@ class DaemonTaskTest : public Test {
     daemon_.control_.reset(control_);        // Passes ownership
     daemon_.dispatcher_.reset(dispatcher_);  // Passes ownership
     daemon_.netlink_manager_ = &netlink_manager_;
+    daemon_.mojo_provider_.reset(mojo_provider_);
   }
   void StartDaemon() { daemon_.Start(); }
 
@@ -113,6 +116,7 @@ class DaemonTaskTest : public Test {
   MockManager* manager_;
   MockNetlinkManager netlink_manager_;
   DeviceInfo device_info_;
+  MockMojoServiceProvider* mojo_provider_;
 };
 
 TEST_F(DaemonTaskTest, StartStop) {
@@ -137,9 +141,11 @@ TEST_F(DaemonTaskTest, StartStop) {
       .WillOnce(Return(kNl80211MessageType));
   EXPECT_CALL(netlink_manager_, Start());
   EXPECT_CALL(*manager_, Start()).After(routing_table_started);
+  EXPECT_CALL(*mojo_provider_, Start());
   StartDaemon();
   Mock::VerifyAndClearExpectations(manager_);
 
+  EXPECT_CALL(*mojo_provider_, Stop());
   EXPECT_CALL(*manager_, Stop());
   EXPECT_CALL(process_manager_, Stop());
 

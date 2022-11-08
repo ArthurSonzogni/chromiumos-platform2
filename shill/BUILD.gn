@@ -5,6 +5,7 @@
 import("//common-mk/deps.gni")
 import("//common-mk/generate-dbus-adaptors.gni")
 import("//common-mk/generate-dbus-proxies.gni")
+import("//common-mk/mojom_bindings_generator.gni")
 import("//common-mk/pkg_config.gni")
 import("//common-mk/proto_library.gni")
 import("//common-mk/protoctxt.gni")
@@ -15,6 +16,7 @@ group("all") {
     ":mobile_operator_db",
     ":mobile_operator_db-db",
     ":mobile_operator_db-protos",
+    ":mojo_policy",
     ":openvpn-script",
     ":shill",
     ":shill-chromeos-dbus-adaptors",
@@ -100,9 +102,11 @@ pkg_config("target_defaults") {
     "dbus-1",
     "libbrillo",
     "libchrome",
+    "libmojo",
     "libpatchpanel-client",
     "libshill-net",
     "libtirpc",
+    "mojo_service_manager",
     "re2",
 
     # system_api depends on protobuf (or protobuf-lite). It must appear
@@ -231,6 +235,15 @@ generate_dbus_proxies("generate_bluetooth_proxies") {
   ]
 }
 
+generate_mojom_bindings("mojo_bindings") {
+  sources = [ "mojom/passpoint.mojom" ]
+}
+
+install_config("mojo_policy") {
+  sources = [ "mojom/shill_mojo.json" ]
+  install_path = "/etc/mojo/service_manager/policy"
+}
+
 static_library("libshill") {
   sources = [
     "cellular/apn_list.cc",
@@ -314,6 +327,8 @@ static_library("libshill") {
     "mac_address.cc",
     "manager.cc",
     "metrics.cc",
+    "mojom/mojo_passpoint_service.cc",
+    "mojom/mojo_service_provider.cc",
     "network/dhcp_controller.cc",
     "network/dhcp_provider.cc",
     "network/dhcpv4_config.cc",
@@ -400,6 +415,7 @@ static_library("libshill") {
     ":generate_supplicant_proxies",
     ":generate_upstart_proxies",
     ":mobile_operator_db",
+    ":mojo_bindings",
     ":shill-chromeos-dbus-adaptors",
   ]
   pkg_deps = [ "libstructuredmetrics" ]

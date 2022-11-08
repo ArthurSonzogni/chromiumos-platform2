@@ -17,6 +17,7 @@
 #include <base/strings/string_split.h>
 #include <brillo/minijail/minijail.h>
 #include <brillo/syslog_logging.h>
+#include <mojo/core/embedder/embedder.h>
 
 #include "shill/daemon_task.h"
 #include "shill/error.h"
@@ -160,6 +161,9 @@ int main(int argc, char** argv) {
       cl->HasSwitch(switches::kIgnoreUnknownEthernet);
 
   settings.passive_mode = cl->HasSwitch(switches::kPassiveMode);
+
+  // Initialize Mojo for the whole process.
+  mojo::core::Init();
 
   shill::Config config;
   // Construct the daemon first, so we get our AtExitManager.

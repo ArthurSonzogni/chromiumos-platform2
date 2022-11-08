@@ -21,6 +21,7 @@ class DHCPProvider;
 class Error;
 class Manager;
 class Metrics;
+class MojoServiceProvider;
 class NetlinkManager;
 class ProcessManager;
 class RoutingTable;
@@ -91,6 +92,7 @@ class DaemonTask {
   NetlinkManager* netlink_manager_;
   ProcessManager* process_manager_;
   std::unique_ptr<Manager> manager_;
+  std::unique_ptr<MojoServiceProvider> mojo_provider_;
   base::OnceClosure termination_completed_callback_;
 };
 

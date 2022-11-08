@@ -9,6 +9,7 @@
 #include <vector>
 
 #include <base/files/file_path.h>
+#include <base/strings/string_piece_forward.h>
 
 namespace shill {
 
@@ -34,6 +35,13 @@ class CertificateFile {
     root_directory_ = root_directory;
   }
 
+  // Removes the non-empty lines between the PEM header and footer lines
+  // in |pem_data|, removing all leading and trailing whitespace.  If
+  // neither a header nor a footer appears, assume they were not provided
+  // by the caller and return all non-empty lines.  Returns the resulting
+  // inner portion on success, or an empty string otherwise.
+  static std::string ExtractHexData(const base::StringPiece pem_data);
+
  private:
   friend class CertificateFileTest;
 
@@ -43,13 +51,6 @@ class CertificateFile {
   // Start and end strings for a PEM certificate.
   static const char kPEMHeader[];
   static const char kPEMFooter[];
-
-  // Removes the non-empty lines betweeen the PEM header and footer lines
-  // in |pem_data|, removing all leading and trailing whitespace.  If
-  // neither a header nor a footer appears, assume they were not provided
-  // by the caller and return all non-empty lines.  Returns the resulting
-  // inner portion on success, or an empty string otherwise.
-  static std::string ExtractHexData(const std::string& pem_data);
 
   // Creates a temporary output file with |output_data| in it.  Returns the
   // path the output data on success or an empty FilePath otherwise.

@@ -12,6 +12,7 @@
 #include <base/check_op.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <base/strings/string_piece.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
@@ -55,7 +56,7 @@ base::FilePath CertificateFile::CreatePEMFromStrings(
 }
 
 // static
-std::string CertificateFile::ExtractHexData(const std::string& pem_data) {
+std::string CertificateFile::ExtractHexData(const base::StringPiece pem_data) {
   bool found_header = false;
   bool found_footer = false;
   const auto input_lines = base::SplitString(

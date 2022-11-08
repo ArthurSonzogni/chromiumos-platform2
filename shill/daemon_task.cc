@@ -4,6 +4,7 @@
 
 #include "shill/daemon_task.h"
 
+#include <memory>
 #include <utility>
 
 #include <linux/rtnetlink.h>
@@ -18,6 +19,7 @@
 #include "shill/error.h"
 #include "shill/logging.h"
 #include "shill/manager.h"
+#include "shill/mojom/mojo_service_provider.h"
 #include "shill/net/ndisc.h"
 #include "shill/net/netlink_manager.h"
 #include "shill/net/nl80211_message.h"
@@ -86,6 +88,7 @@ void DaemonTask::Init() {
   control_->RegisterManagerObject(
       manager_.get(),
       base::BindOnce(&DaemonTask::Start, base::Unretained(this)));
+  mojo_provider_ = std::make_unique<MojoServiceProvider>(manager_.get());
   ApplySettings();
 }
 
@@ -146,9 +149,12 @@ void DaemonTask::Start() {
     netlink_manager_->Start();
   }
   manager_->Start();
+  mojo_provider_->Start();
 }
 
 void DaemonTask::Stop() {
+  mojo_provider_->Stop();
+  mojo_provider_ = nullptr;
   manager_->Stop();
   manager_ = nullptr;  // Release manager resources, including DBus adaptor.
   dhcp_provider_->Stop();

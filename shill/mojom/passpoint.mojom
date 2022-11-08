@@ -1,0 +1,32 @@
+// Copyright 2023 The Chromium Authors
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+module chromeos.connectivity.mojom;
+
+// PasspointSubscription describes a set of credentials installed in Shill.
+struct PasspointSubscription {
+  // Credentials set unique identifier. This is a Shill identifier that can be
+  // used to match with the passpointID service property.
+  string id@0;
+  // List of the domains compatible with the service provider. Domains are FQDN
+  // (like "passpoint.myprovider.com").
+  array<string> domains@1;
+  // Human readable name of the service provider.
+  string friendly_name@2;
+  // Source of the credentials: an application package name when provisioned
+  // through an ARC application, or a string that describes the provisioning
+  // method otherwise.
+  string provisioning_source@3;
+  // Certificate authority trusted to validate server identity in PEM format. It
+  // is an ascii string that contains the PEM header, the certificate content in
+  // base64 string and the PEM footer.
+  string? trusted_ca@4;
+};
+
+// Interface used by any service that wants to access Passpoint subscriptions
+// and follow their changes. The expected client is the network settings UI.
+interface PasspointService {
+  // Obtain the details of the Passpoint subscription designated by id.
+  GetPasspointSubscription@0(string id) => (PasspointSubscription? result);
+};
