@@ -35,8 +35,13 @@ FanotifyWatcher::~FanotifyWatcher() = default;
 void FanotifyWatcher::AddWatch(const base::FilePath& path) {
   DCHECK(task_runner_->RunsTasksInCurrentSequence());
 
-  int res = fanotify_mark(fanotify_fd_.get(), FAN_MARK_ADD | FAN_MARK_MOUNT,
-                          FAN_OPEN_PERM, AT_FDCWD, path.value().c_str());
+  // We need to mark the whole filesystem in order to receive events from all
+  // the mounts with the protected files and from all mount namespaces.
+  // FAN_MARK_FILESYSTEM is available only since Linux 4.20 and the following
+  // call will fail on boards with older kernels.
+  int res =
+      fanotify_mark(fanotify_fd_.get(), FAN_MARK_ADD | FAN_MARK_FILESYSTEM,
+                    FAN_OPEN_PERM, AT_FDCWD, path.value().c_str());
 
   if (res != 0) {
     PLOG(ERROR) << "fanotify_mark (" << path << ") failed";
