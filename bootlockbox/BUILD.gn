@@ -65,6 +65,7 @@ executable("bootlockboxd") {
     "vboot_host",
   ]
   libs = [
+    "hwsec-profiling",
     "keyutils",
     "tpm_manager",
   ]
