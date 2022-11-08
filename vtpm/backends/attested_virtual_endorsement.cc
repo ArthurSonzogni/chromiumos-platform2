@@ -55,7 +55,7 @@ trunks::TPM_RC AttestedVirtualEndorsement::Create() {
   }
   // Extract the key, blob, and the certificate.
   blob_ = reply.key_blob();
-  certificate_ = reply.certificate();
+  certificate_ = reply.certified_key_credential();
   return trunks::TPM_RC_SUCCESS;
 }
 

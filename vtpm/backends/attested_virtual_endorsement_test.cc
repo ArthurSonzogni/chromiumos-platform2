@@ -44,7 +44,7 @@ class AttestedVirtualEndorsementTest : public testing::Test {
   bool FakeGetCertificate(const attestation::GetCertificateRequest& request,
                           attestation::GetCertificateReply* reply) {
     reply->set_key_blob(request.SerializeAsString());
-    reply->set_certificate(kFakeCertificate);
+    reply->set_certified_key_credential(kFakeCertificate);
     reply->set_status(attestation::STATUS_SUCCESS);
     return true;
   }
