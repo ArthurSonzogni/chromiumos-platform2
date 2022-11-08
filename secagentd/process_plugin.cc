@@ -99,11 +99,8 @@ void ProcessPlugin::HandleRingBufferEvent(const bpf::cros_event& bpf_event) {
     return;
   }
   if (message) {
-    absl::Status status = message_sender_->SendMessage(
-        destination, mutable_common, std::move(message));
-    if (status != absl::OkStatus()) {
-      LOG(ERROR) << "SendMessage FAILED: Message not sent. status=" << status;
-    }
+    message_sender_->SendMessage(destination, mutable_common,
+                                 std::move(message), std::nullopt);
   }
 }
 

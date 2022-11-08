@@ -41,19 +41,24 @@ pkg_config("target_defaults") {
   # NOSORT
   pkg_deps = [
     "absl",
+    "libattestation-client",
     "libbpf",
     "libbrillo",
     "libchrome",
     "libmissiveclient",
     "libmetrics",
+    "libtpm_manager-client",
     "openssl",
     "protobuf",
+    "system_api",
+    "vboot_host",
   ]
   defines = global_use_defines
 }
 
 static_library("libsecagent") {
   sources = [
+    "agent_plugin.cc",
     "bpf_utils.cc",
     "daemon.cc",
     "factories.cc",

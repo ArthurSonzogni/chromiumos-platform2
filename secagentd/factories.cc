@@ -7,6 +7,8 @@
 #include <utility>
 
 #include "absl/strings/str_format.h"
+#include "attestation/proto_bindings/interface.pb.h"
+#include "attestation-client/attestation/dbus-proxies.h"
 #include "base/memory/scoped_refptr.h"
 #include "secagentd/bpf_skeleton_wrappers.h"
 #include "secagentd/message_sender.h"
@@ -88,6 +90,26 @@ std::unique_ptr<PluginInterface> PluginFactory::Create(
     case PluginType::kProcess:
       rv = std::make_unique<ProcessPlugin>(bpf_skeleton_factory_,
                                            message_sender, process_cache);
+      break;
+
+    default:
+      CHECK(false) << "Unsupported plugin type";
+  }
+  return rv;
+}
+
+std::unique_ptr<PluginInterface> PluginFactory::Create(
+    PluginType type,
+    scoped_refptr<MessageSenderInterface> message_sender,
+    std::unique_ptr<org::chromium::AttestationProxy> attestation_proxy,
+    std::unique_ptr<org::chromium::TpmManagerProxy> tpm_manager_proxy,
+    base::OnceCallback<void()> cb) {
+  std::unique_ptr<PluginInterface> rv{nullptr};
+  switch (type) {
+    case PluginType::kAgent:
+      rv = std::make_unique<AgentPlugin>(
+          message_sender, std::move(attestation_proxy),
+          std::move(tpm_manager_proxy), std::move(cb));
       break;
 
     default:

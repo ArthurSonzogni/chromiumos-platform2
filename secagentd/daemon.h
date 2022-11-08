@@ -11,6 +11,7 @@
 #include "base/memory/scoped_refptr.h"
 #include "base/timer/timer.h"
 #include "brillo/daemons/dbus_daemon.h"
+#include "missive/proto/security_xdr_events.pb.h"
 #include "policy/libpolicy.h"
 #include "secagentd/message_sender.h"
 #include "secagentd/plugins.h"
@@ -27,7 +28,7 @@ namespace secagentd {
 
 class Daemon : public brillo::DBusDaemon {
   struct Inject {
-    std::unique_ptr<PluginFactoryInterface> bpf_plugin_factory_;
+    std::unique_ptr<PluginFactoryInterface> plugin_factory_;
     std::unique_ptr<policy::PolicyProvider> policy_provider_;
     scoped_refptr<MessageSender> message_sender_;
     scoped_refptr<ProcessCacheInterface> process_cache_;
@@ -44,21 +45,26 @@ class Daemon : public brillo::DBusDaemon {
   int OnInit() override;
   int OnEventLoopStarted() override;
   void OnShutdown(int*) override;
-  int RunPlugins();
-  int CreateAndRunBpfPlugins();
-  int CreateAndRunAgentPlugins();
+  // Creates and runs the agent plugin. The agent plugin will call back and run
+  // the other plugins after agent start event is successfully sent.
+  int CreateAndRunAgentPlugin();
+  // Runs all of the plugin within the plugins_ vector.
+  void RunPlugins();
+  // Creates plugin of the given type.
+  int CreatePlugin(Types::Plugin);
   // Return true if xdr_reporting_policy_ has changed.
   bool XdrReportingIsEnabled();
+  // Polls the current policy for Xdr reporting every 10 minutes. Starts/stops
+  // reporting depending on the policy.
   void PollXdrReportingIsEnabled();
 
  private:
   base::RepeatingTimer check_xdr_reporting_timer_;
-  base::RepeatingTimer heart_beat_;
-  base::RepeatingTimer send_report_;
   scoped_refptr<MessageSender> message_sender_;
   scoped_refptr<ProcessCacheInterface> process_cache_;
-  std::unique_ptr<PluginFactoryInterface> bpf_plugin_factory_;
-  std::vector<std::unique_ptr<PluginInterface>> bpf_plugins_;
+  std::unique_ptr<PluginFactoryInterface> plugin_factory_;
+  std::vector<std::unique_ptr<PluginInterface>> plugins_;
+  std::unique_ptr<PluginInterface> agent_plugin_;
   std::unique_ptr<policy::PolicyProvider> policy_provider_;
   bool bypass_policy_for_testing_ = false;
   bool xdr_reporting_policy_ = false;

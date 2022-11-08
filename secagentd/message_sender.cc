@@ -12,6 +12,7 @@
 #include "absl/status/status.h"
 #include "base/files/file_path.h"
 #include "base/files/file_util.h"
+#include "base/functional/bind.h"
 #include "base/synchronization/lock.h"
 #include "base/task/sequenced_task_runner.h"
 #include "missive/client/report_queue.h"
@@ -26,10 +27,17 @@ namespace secagentd {
 
 namespace {
 
-void EnqueueCallback(reporting::Destination destination,
-                     ::reporting::Status status) {
+void SendMessageStatusCallback(
+    reporting::Destination destination,
+    std::optional<reporting::ReportQueue::EnqueueCallback> cb,
+    reporting::Status status) {
   if (!status.ok()) {
     LOG(ERROR) << destination << ", status=" << status;
+  }
+
+  if (cb.has_value()) {
+    base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
+        FROM_HERE, base::BindOnce(std::move(cb.value()), status));
   }
 }
 
@@ -128,10 +136,11 @@ absl::Status MessageSender::Initialize() {
   return InitializeQueues();
 }
 
-absl::Status MessageSender::SendMessage(
+void MessageSender::SendMessage(
     reporting::Destination destination,
     pb::CommonEventDataFields* mutable_common,
-    std::unique_ptr<google::protobuf::MessageLite> message) {
+    std::unique_ptr<google::protobuf::MessageLite> message,
+    std::optional<reporting::ReportQueue::EnqueueCallback> cb) {
   auto it = queue_map_.find(destination);
   CHECK(it != queue_map_.end());
 
@@ -139,9 +148,10 @@ absl::Status MessageSender::SendMessage(
     base::AutoLock lock(common_lock_);
     mutable_common->CopyFrom(common_);
   }
-  it->second.get()->Enqueue(std::move(message), ::reporting::SECURITY,
-                            base::BindOnce(&EnqueueCallback, destination));
-  return absl::OkStatus();
+
+  it->second.get()->Enqueue(
+      std::move(message), reporting::SECURITY,
+      base::BindOnce(&SendMessageStatusCallback, destination, std::move(cb)));
 }
 
 }  // namespace secagentd

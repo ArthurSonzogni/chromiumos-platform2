@@ -10,11 +10,16 @@
 
 #include "absl/status/status.h"
 #include "absl/strings/str_format.h"
+#include "attestation/proto_bindings/interface.pb.h"
+#include "attestation-client/attestation/dbus-proxies.h"
 #include "base/memory/scoped_refptr.h"
+#include "base/timer/timer.h"
 #include "missive/proto/security_xdr_events.pb.h"
 #include "secagentd/bpf_skeleton_wrappers.h"
 #include "secagentd/message_sender.h"
 #include "secagentd/process_cache.h"
+#include "tpm_manager/proto_bindings/tpm_manager.pb.h"
+#include "tpm_manager-client/tpm_manager/dbus-proxies.h"
 
 namespace secagentd {
 
@@ -52,6 +57,51 @@ class ProcessPlugin : public PluginInterface {
   std::unique_ptr<BpfSkeletonInterface> skeleton_wrapper_;
 };
 
+class AgentPlugin : public PluginInterface {
+ public:
+  explicit AgentPlugin(
+      scoped_refptr<MessageSenderInterface> message_sender,
+      std::unique_ptr<org::chromium::AttestationProxy> attestation_proxy,
+      std::unique_ptr<org::chromium::TpmManagerProxy> tpm_manager_proxy,
+      base::OnceCallback<void()> cb);
+
+  // Initialize Agent proto and starts agent heartbeat events.
+  absl::Status Activate() override;
+  std::string GetName() const override;
+
+ private:
+  // Starts filling in the tcb fields of the agent proto and initializes async
+  // timers that wait for tpm_manager and attestation to be ready. When services
+  // are ready GetBootInformation() and GetTpmInformation() will be called to
+  // fill remaining fields.
+  void StartInitializingAgentProto();
+  // Delayed function that will be called when attestation is ready. Fills the
+  // boot information in the agent proto.
+  void GetBootInformation(bool available);
+  // Delayed function that will be called when tpm_manager is ready. Fills the
+  // tpm information in the agent proto.
+  void GetTpmInformation(bool available);
+  // Sends the agent start event. Uses the StartEventStatusCallback() to handle
+  // the status of the message.
+  void SendAgentStartEvent();
+  // Sends an agent heartbeat event every 5 minutes.
+  void SendAgentHeartbeatEvent();
+  // Checks the message status of the agent start event. If the message is
+  // successfully sent it calls the daemon callback to run the remaining
+  // plugins. If the message fails to send it will retry sending the message
+  // every 3 seconds.
+  void StartEventStatusCallback(reporting::Status status);
+
+  base::RepeatingTimer agent_heartbeat_timer_;
+  cros_xdr::reporting::TcbAttributes tcb_attributes_;
+  base::WeakPtrFactory<AgentPlugin> weak_ptr_factory_;
+  scoped_refptr<MessageSenderInterface> message_sender_;
+  std::unique_ptr<org::chromium::AttestationProxy> attestation_proxy_;
+  std::unique_ptr<org::chromium::TpmManagerProxy> tpm_manager_proxy_;
+  base::OnceCallback<void()> daemon_cb_;
+  base::Lock tcb_attributes_lock_;
+};
+
 class PluginFactoryInterface {
  public:
   enum class PluginType { kAgent, kProcess };
@@ -60,6 +110,12 @@ class PluginFactoryInterface {
       PluginType type,
       scoped_refptr<MessageSenderInterface> message_sender,
       scoped_refptr<ProcessCacheInterface> process_cache) = 0;
+  virtual std::unique_ptr<PluginInterface> Create(
+      PluginType type,
+      scoped_refptr<MessageSenderInterface> message_sender,
+      std::unique_ptr<org::chromium::AttestationProxy> attestation_proxy,
+      std::unique_ptr<org::chromium::TpmManagerProxy> tpm_manager_proxy,
+      base::OnceCallback<void()> cb) = 0;
   virtual ~PluginFactoryInterface() = default;
 };
 
@@ -87,6 +143,12 @@ class PluginFactory : public PluginFactoryInterface {
       PluginType type,
       scoped_refptr<MessageSenderInterface> message_sender,
       scoped_refptr<ProcessCacheInterface> process_cache) override;
+  std::unique_ptr<PluginInterface> Create(
+      PluginType type,
+      scoped_refptr<MessageSenderInterface> message_sender,
+      std::unique_ptr<org::chromium::AttestationProxy> attestation_proxy,
+      std::unique_ptr<org::chromium::TpmManagerProxy> tpm_manager_proxy,
+      base::OnceCallback<void()> cb) override;
 
  private:
   scoped_refptr<BpfSkeletonFactoryInterface> bpf_skeleton_factory_;

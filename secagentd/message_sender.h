@@ -6,6 +6,7 @@
 #define SECAGENTD_MESSAGE_SENDER_H_
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <unordered_map>
 #include <utility>
@@ -25,10 +26,11 @@ class MessageSenderInterface
     : public base::RefCountedThreadSafe<MessageSenderInterface> {
  public:
   virtual absl::Status Initialize() = 0;
-  virtual absl::Status SendMessage(
+  virtual void SendMessage(
       reporting::Destination destination,
       cros_xdr::reporting::CommonEventDataFields* mutable_common,
-      std::unique_ptr<google::protobuf::MessageLite> message) = 0;
+      std::unique_ptr<google::protobuf::MessageLite> message,
+      std::optional<reporting::ReportQueue::EnqueueCallback> cb) = 0;
   virtual ~MessageSenderInterface() = default;
 };
 
@@ -48,10 +50,13 @@ class MessageSender : public MessageSenderInterface {
   // Creates and enqueues a given proto message to the given destination.
   // Populates mutable_common with common fields if not nullptr. mutable_common
   // must be owned within message.
-  absl::Status SendMessage(
+  // Allows for an optional callback that will be called with the message
+  // status.
+  void SendMessage(
       reporting::Destination destination,
       cros_xdr::reporting::CommonEventDataFields* mutable_common,
-      std::unique_ptr<google::protobuf::MessageLite> message) override;
+      std::unique_ptr<google::protobuf::MessageLite> message,
+      std::optional<reporting::ReportQueue::EnqueueCallback> cb) override;
 
   // Allow calling the private test-only constructor without befriending
   // scoped_refptr.

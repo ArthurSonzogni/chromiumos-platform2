@@ -120,9 +120,7 @@ TEST_P(BPFPluginTestFixture, TestBPFEventIsAvailable) {
 
   // Maybe serve up the event information.
   bpf::cros_event a;
-  EXPECT_CALL(*message_sender_, SendMessage)
-      .Times(AnyNumber())
-      .WillRepeatedly(Return(absl::OkStatus()));
+  EXPECT_CALL(*message_sender_, SendMessage).Times(AnyNumber());
   cbs_.ring_buffer_event_callback.Run(a);
 }
 
@@ -172,10 +170,11 @@ TEST_F(BPFPluginTestFixture, TestProcessPluginExecEvent) {
   pb::CommonEventDataFields* actual_mutable_common = nullptr;
   EXPECT_CALL(
       *message_sender_,
-      SendMessage(Eq(reporting::Destination::CROS_SECURITY_PROCESS), _, _))
+      SendMessage(Eq(reporting::Destination::CROS_SECURITY_PROCESS), _, _, _))
       .WillOnce([&actual_sent_message, &actual_mutable_common](
                     auto d, pb::CommonEventDataFields* c,
-                    std::unique_ptr<google::protobuf::MessageLite> m) {
+                    std::unique_ptr<google::protobuf::MessageLite> m,
+                    std::optional<reporting::ReportQueue::EnqueueCallback> cb) {
         // SaveArgByMove unfortunately doesn't exist.
         actual_sent_message = std::move(m);
         actual_mutable_common = c;
@@ -246,10 +245,11 @@ TEST_F(BPFPluginTestFixture, TestProcessPluginExecEventPartialHierarchy) {
   std::unique_ptr<google::protobuf::MessageLite> actual_sent_message;
   EXPECT_CALL(
       *message_sender_,
-      SendMessage(Eq(reporting::Destination::CROS_SECURITY_PROCESS), _, _))
+      SendMessage(Eq(reporting::Destination::CROS_SECURITY_PROCESS), _, _, _))
       .WillOnce([&actual_sent_message](
                     auto d, auto c,
-                    std::unique_ptr<google::protobuf::MessageLite> m) {
+                    std::unique_ptr<google::protobuf::MessageLite> m,
+                    std::optional<reporting::ReportQueue::EnqueueCallback> cb) {
         actual_sent_message = std::move(m);
         return absl::OkStatus();
       });
@@ -299,10 +299,11 @@ TEST_F(BPFPluginTestFixture, TestProcessPluginExitEventCacheHit) {
   pb::CommonEventDataFields* actual_mutable_common = nullptr;
   EXPECT_CALL(
       *message_sender_,
-      SendMessage(Eq(reporting::Destination::CROS_SECURITY_PROCESS), _, _))
+      SendMessage(Eq(reporting::Destination::CROS_SECURITY_PROCESS), _, _, _))
       .WillOnce([&actual_sent_message, &actual_mutable_common](
                     auto d, pb::CommonEventDataFields* c,
-                    std::unique_ptr<google::protobuf::MessageLite> m) {
+                    std::unique_ptr<google::protobuf::MessageLite> m,
+                    std::optional<reporting::ReportQueue::EnqueueCallback> cb) {
         actual_sent_message = std::move(m);
         actual_mutable_common = c;
         return absl::OkStatus();
@@ -366,10 +367,11 @@ TEST_F(BPFPluginTestFixture, TestProcessPluginExitEventCacheMiss) {
   pb::CommonEventDataFields* actual_mutable_common = nullptr;
   EXPECT_CALL(
       *message_sender_,
-      SendMessage(Eq(reporting::Destination::CROS_SECURITY_PROCESS), _, _))
+      SendMessage(Eq(reporting::Destination::CROS_SECURITY_PROCESS), _, _, _))
       .WillOnce([&actual_sent_message, &actual_mutable_common](
                     auto d, pb::CommonEventDataFields* c,
-                    std::unique_ptr<google::protobuf::MessageLite> m) {
+                    std::unique_ptr<google::protobuf::MessageLite> m,
+                    std::optional<reporting::ReportQueue::EnqueueCallback> cb) {
         actual_sent_message = std::move(m);
         actual_mutable_common = c;
         return absl::OkStatus();

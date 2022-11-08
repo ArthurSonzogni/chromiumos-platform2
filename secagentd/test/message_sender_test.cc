@@ -5,6 +5,7 @@
 #include "secagentd/message_sender.h"
 
 #include <memory>
+#include <optional>
 #include <string>
 
 #include "base/files/file_path.h"
@@ -163,8 +164,8 @@ TEST_F(MessageSenderTestFixture, TestSendMessageValidDestination) {
   reporting::Destination destination =
       reporting::Destination::CROS_SECURITY_PROCESS;
 
-  EXPECT_OK(message_sender_->SendMessage(destination, mutable_common,
-                                         std::move(process_message)));
+  message_sender_->SendMessage(destination, mutable_common,
+                               std::move(process_message), std::nullopt);
   auto process_deserialized =
       std::make_unique<cros_xdr::reporting::XdrProcessEvent>();
   process_deserialized->ParseFromString(proto_string);
@@ -188,8 +189,8 @@ TEST_F(MessageSenderTestFixture, TestSendMessageValidDestination) {
   auto agent_message = std::make_unique<cros_xdr::reporting::XdrAgentEvent>();
   mutable_common = agent_message->mutable_common();
   destination = reporting::Destination::CROS_SECURITY_AGENT;
-  EXPECT_OK(message_sender_->SendMessage(destination, mutable_common,
-                                         std::move(agent_message)));
+  message_sender_->SendMessage(destination, mutable_common,
+                               std::move(agent_message), std::nullopt);
   auto agent_deserialized =
       std::make_unique<cros_xdr::reporting::XdrAgentEvent>();
   agent_deserialized->ParseFromString(proto_string);
@@ -206,8 +207,8 @@ TEST_F(MessageSenderTestFixture, TestSendMessageInvalidDestination) {
 
   EXPECT_DEATH(
       {
-        static_cast<void>(message_sender_->SendMessage(
-            destination, mutable_common, std::move(message)));
+        message_sender_->SendMessage(destination, mutable_common,
+                                     std::move(message), std::nullopt);
       },
       ".*FATAL secagentd_testrunner:.*Check failed: it != queue_map_\\.end.*");
 }

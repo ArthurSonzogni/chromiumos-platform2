@@ -2,11 +2,17 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <unistd.h>
+
+#include <iomanip>
 #include <memory>
 #include <sysexits.h>
 #include <utility>
 
 #include "absl/status/status.h"
+#include "attestation/proto_bindings/interface.pb.h"
+#include "attestation-client/attestation/dbus-proxies.h"
+#include "base/logging.h"
 #include "base/memory/scoped_refptr.h"
 #include "base/task/thread_pool/thread_pool_instance.h"
 #include "base/time/time.h"
@@ -23,7 +29,7 @@
 namespace secagentd {
 
 Daemon::Daemon(struct Inject injected) {
-  bpf_plugin_factory_ = std::move(injected.bpf_plugin_factory_);
+  plugin_factory_ = std::move(injected.plugin_factory_);
   message_sender_ = std::move(injected.message_sender_);
   process_cache_ = std::move(injected.process_cache_);
   policy_provider_ = std::move(injected.policy_provider_);
@@ -38,15 +44,15 @@ int Daemon::OnInit() {
     return rv;
   }
 
-  if (bpf_plugin_factory_ == nullptr) {
-    bpf_plugin_factory_ = std::make_unique<PluginFactory>();
+  if (plugin_factory_ == nullptr) {
+    plugin_factory_ = std::make_unique<PluginFactory>();
   }
 
   if (message_sender_ == nullptr) {
     // Set up ERP.
     base::ThreadPoolInstance::CreateAndStartWithDefaultParams(
         "missive_thread_pool");
-    ::reporting::MissiveClient::Initialize(bus_.get());
+    reporting::MissiveClient::Initialize(bus_.get());
 
     message_sender_ = base::MakeRefCounted<MessageSender>();
 
@@ -68,43 +74,56 @@ int Daemon::OnInit() {
   return EX_OK;
 }
 
-int Daemon::CreateAndRunBpfPlugins() {
-  auto plugin = bpf_plugin_factory_->Create(Types::Plugin::kProcess,
-                                            message_sender_, process_cache_);
+int Daemon::CreateAndRunAgentPlugin() {
+  agent_plugin_ = plugin_factory_->Create(
+      Types::Plugin::kAgent, message_sender_,
+      std::make_unique<org::chromium::AttestationProxy>(bus_),
+      std::make_unique<org::chromium::TpmManagerProxy>(bus_),
+      base::BindOnce(&Daemon::RunPlugins, base::Unretained(this)));
+
+  if (!agent_plugin_) {
+    return EX_SOFTWARE;
+  }
+
+  absl::Status result = agent_plugin_->Activate();
+  if (!result.ok()) {
+    LOG(ERROR) << result.message();
+    return EX_SOFTWARE;
+  }
+
+  return EX_OK;
+}
+
+void Daemon::RunPlugins() {
+  if (CreatePlugin(PluginFactory::PluginType::kProcess) != EX_OK) {
+    QuitWithExitCode(EX_SOFTWARE);
+  }
+
+  for (auto& plugin : plugins_) {
+    absl::Status result = plugin->Activate();
+    if (!result.ok()) {
+      LOG(ERROR) << result.message();
+      QuitWithExitCode(EX_SOFTWARE);
+    }
+  }
+}
+
+int Daemon::CreatePlugin(PluginFactory::PluginType type) {
+  std::unique_ptr<PluginInterface> plugin;
+  switch (type) {
+    case PluginFactory::PluginType::kProcess: {
+      plugin = plugin_factory_->Create(Types::Plugin::kProcess, message_sender_,
+                                       process_cache_);
+      break;
+    }
+    default:
+      CHECK(false) << "Unsupported plugin type";
+  }
 
   if (!plugin) {
     return EX_SOFTWARE;
   }
-
-  bpf_plugins_.push_back(std::move(plugin));
-
-  for (auto& plugin : bpf_plugins_) {
-    // If BPFs fail loading this is a serious error and the daemon should exit.
-    absl::Status result = plugin->Activate();
-    if (!result.ok()) {
-      LOG(ERROR) << result.message();
-      return EX_SOFTWARE;
-    }
-  }
-  return EX_OK;
-}
-
-int Daemon::CreateAndRunAgentPlugins() {
-  // TODO(b:241578769): Implement and run agent plugin.
-  return EX_OK;
-}
-
-int Daemon::RunPlugins() {
-  int rv;
-
-  rv = CreateAndRunBpfPlugins();
-  if (rv != EX_OK) {
-    return rv;
-  }
-  rv = CreateAndRunAgentPlugins();
-  if (rv != EX_OK) {
-    return rv;
-  }
+  plugins_.push_back(std::move(plugin));
 
   return EX_OK;
 }
@@ -155,7 +174,9 @@ void Daemon::PollXdrReportingIsEnabled() {
       // This is emitted at most once per daemon lifetime.
       MetricsSender::GetInstance().SendEnumMetricToUMA(
           metrics::kPolicy, metrics::Policy::kEnabled);
-      int rv = RunPlugins();
+      // Agent plugin will call back and run other plugins after agent start
+      // event is successfully sent.
+      int rv = CreateAndRunAgentPlugin();
       if (rv != EX_OK) {
         QuitWithExitCode(rv);
       }
@@ -169,7 +190,7 @@ void Daemon::PollXdrReportingIsEnabled() {
 
 void Daemon::OnShutdown(int* exit_code) {
   // Disconnect missive.
-  ::reporting::MissiveClient::Shutdown();
+  reporting::MissiveClient::Shutdown();
 
   brillo::DBusDaemon::OnShutdown(exit_code);
 }

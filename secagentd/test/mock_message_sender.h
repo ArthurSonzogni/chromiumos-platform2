@@ -18,11 +18,12 @@ namespace secagentd::testing {
 class MockMessageSender : public MessageSenderInterface {
  public:
   MOCK_METHOD(absl::Status, Initialize, (), (override));
-  MOCK_METHOD(absl::Status,
+  MOCK_METHOD(void,
               SendMessage,
               (reporting::Destination,
                cros_xdr::reporting::CommonEventDataFields*,
-               std::unique_ptr<google::protobuf::MessageLite>),
+               std::unique_ptr<google::protobuf::MessageLite>,
+               std::optional<reporting::ReportQueue::EnqueueCallback> cb),
               (override));
 };
 
