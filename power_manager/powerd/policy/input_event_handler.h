@@ -60,7 +60,7 @@ class InputEventHandler : public system::InputObserver {
     // TabletMode::UNSUPPORTED will never be passed.
     virtual void HandleTabletModeChange(TabletMode mode) = 0;
 
-    // Shuts the system down in reponse to the power button being pressed while
+    // Shuts the system down in response to the power button being pressed while
     // no display is connected.
     virtual void ShutDownForPowerButtonWithNoDisplay() = 0;
 

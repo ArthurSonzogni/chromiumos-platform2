@@ -474,7 +474,7 @@ class Suspender : public SuspendDelayObserver,
   int initial_num_attempts_ = 0;
 
   // The boot time at which the system entered dark resume. Set by
-  // HandleDarkResume() when it sees a sucessful dark resume.
+  // HandleDarkResume() when it sees a successful dark resume.
   base::TimeTicks dark_resume_start_time_;
 
   // Information about each wake that occurred during dark resume. This vector

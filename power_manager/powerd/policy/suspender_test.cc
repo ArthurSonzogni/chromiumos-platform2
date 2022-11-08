@@ -1089,7 +1089,7 @@ TEST_F(SuspenderTest, RerunDarkSuspendDelaysForCanceledSuspend) {
   EXPECT_EQ(kSuspend, delegate_.GetActions());
   EXPECT_EQ(0, dbus_wrapper_.num_sent_signals());
 
-  // The resuspend attempt is finally sucessful. Reset the suspend callback so
+  // The resuspend attempt is finally successful. Reset the suspend callback so
   // that dark resume is not set to true after Suspend() runs.
   delegate_.set_suspend_callback(base::RepeatingClosure());
   dark_resume_.set_in_dark_resume(false);

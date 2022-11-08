@@ -614,7 +614,7 @@ class StateController : public PrefsObserver {
   OngoingStateActivityLogger wake_lock_logger_;
 
   // Watcher to monitor the presence of |kCrashBootCollectorDoneFile|.
-  // Presence of this file indicates successfull collection of per-boot crash
+  // Presence of this file indicates successful collection of per-boot crash
   // collection.
   base::FilePathWatcher crash_boot_collector_watcher_;
 
