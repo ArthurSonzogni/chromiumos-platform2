@@ -179,7 +179,8 @@ void InternalBacklightController::Init(
                   &instant_transitions_below_min_level_);
 
   if (sensor) {
-    ambient_light_handler_.reset(new AmbientLightHandler(sensor, this));
+    ambient_light_handler_ =
+        std::make_unique<AmbientLightHandler>(sensor, this);
     ambient_light_handler_->set_name("panel");
     std::string pref_value;
     CHECK(prefs_->GetString(kInternalBacklightAlsStepsPref, &pref_value))

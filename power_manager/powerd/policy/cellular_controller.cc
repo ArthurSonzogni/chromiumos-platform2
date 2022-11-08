@@ -515,7 +515,7 @@ void CellularController::OnShillReset(bool reset) {
 }
 
 void CellularController::InitShillProxyInterface() {
-  shill_.reset(new shill::Client(dbus_wrapper_->GetBus()));
+  shill_ = std::make_unique<shill::Client>(dbus_wrapper_->GetBus());
   shill_->RegisterProcessChangedHandler(base::BindRepeating(
       &CellularController::OnShillReset, weak_ptr_factory_.GetWeakPtr()));
   shill_->RegisterOnAvailableCallback(base::BindOnce(

@@ -5,6 +5,7 @@
 #include "power_manager/powerd/policy/suspender.h"
 
 #include <algorithm>
+#include <memory>
 #include <string>
 
 #include <base/check.h>
@@ -78,8 +79,8 @@ void Suspender::Init(
 
   const int initial_id = delegate_->GetInitialSuspendId();
   suspend_request_id_ = initial_id - 1;
-  suspend_delay_controller_.reset(new SuspendDelayController(
-      initial_id, "", SuspendDelayController::kDefaultMaxSuspendDelayTimeout));
+  suspend_delay_controller_ = std::make_unique<SuspendDelayController>(
+      initial_id, "", SuspendDelayController::kDefaultMaxSuspendDelayTimeout);
   suspend_delay_controller_->AddObserver(this);
 
   // Default dark suspend delay same as regular suspend timeout if the pref
@@ -96,8 +97,8 @@ void Suspender::Init(
   }
   const int initial_dark_id = delegate_->GetInitialDarkSuspendId();
   dark_suspend_id_ = initial_dark_id - 1;
-  dark_suspend_delay_controller_.reset(new SuspendDelayController(
-      initial_dark_id, "dark", max_dark_suspend_delay_timeout));
+  dark_suspend_delay_controller_ = std::make_unique<SuspendDelayController>(
+      initial_dark_id, "dark", max_dark_suspend_delay_timeout);
   dark_suspend_delay_controller_->AddObserver(this);
 
   display_watcher->AddObserver(this);
