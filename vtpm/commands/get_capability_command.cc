@@ -55,14 +55,17 @@ std::string CapabilityToString(trunks::TPM_CAP cap) {
 GetCapabilityCommand::GetCapabilityCommand(
     trunks::CommandParser* command_parser,
     trunks::ResponseSerializer* response_serializer,
+    Command* direct_forwarder,
     TpmHandleManager* tpm_handle_manager,
     TpmPropertyManager* tpm_property_manager)
     : command_parser_(command_parser),
       response_serializer_(response_serializer),
+      direct_forwarder_(direct_forwarder),
       tpm_handle_manager_(tpm_handle_manager),
       tpm_property_manager_(tpm_property_manager) {
   CHECK(command_parser_);
   CHECK(response_serializer_);
+  CHECK(direct_forwarder_);
   CHECK(tpm_handle_manager_);
   CHECK(tpm_property_manager_);
 }
@@ -92,6 +95,9 @@ void GetCapabilityCommand::Run(const std::string& command,
   trunks::TPMS_CAPABILITY_DATA cap_data = {.capability = cap};
 
   switch (cap) {
+    // The implementation of the algorithms are backed by the host TPM.
+    case trunks::TPM_CAP_ALGS:
+      return direct_forwarder_->Run(command, std::move(callback));
     case trunks::TPM_CAP_HANDLES:
       rc = GetCapabilityTpmHandles(property, property_count, has_more,
                                    cap_data.data.handles);

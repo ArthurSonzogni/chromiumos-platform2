@@ -120,7 +120,8 @@ std::unique_ptr<Virtualizer> Virtualizer::Create(Virtualizer::Profile profile) {
     // add `GetCapabilityCommand`.
     v->commands_.emplace_back(std::make_unique<GetCapabilityCommand>(
         &v->real_command_parser_, &v->real_response_serializer_,
-        v->real_tpm_handle_manager_.get(), &v->real_tpm_property_manager_));
+        &v->direct_forwarder_, v->real_tpm_handle_manager_.get(),
+        &v->real_tpm_property_manager_));
 
     v->AddCommandSupport(trunks::TPM_CC_GetCapability,
                          v->commands_.back().get());

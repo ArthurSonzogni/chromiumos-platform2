@@ -23,6 +23,7 @@ class GetCapabilityCommand : public Command {
  public:
   GetCapabilityCommand(trunks::CommandParser* command_parser,
                        trunks::ResponseSerializer* response_serializer,
+                       Command* direct_forwarder,
                        TpmHandleManager* tpm_handle_manager,
                        TpmPropertyManager* tpm_property_manager);
   void Run(const std::string& command,
@@ -54,6 +55,7 @@ class GetCapabilityCommand : public Command {
 
   trunks::CommandParser* const command_parser_;
   trunks::ResponseSerializer* const response_serializer_;
+  Command* const direct_forwarder_;
   TpmHandleManager* const tpm_handle_manager_;
   TpmPropertyManager* const tpm_property_manager_;
 };

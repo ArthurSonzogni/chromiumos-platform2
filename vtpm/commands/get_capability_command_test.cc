@@ -17,6 +17,7 @@
 
 #include "vtpm/backends/mock_tpm_handle_manager.h"
 #include "vtpm/backends/real_tpm_property_manager.h"
+#include "vtpm/commands/mock_command.h"
 
 namespace vtpm {
 
@@ -28,6 +29,7 @@ using ::testing::Pointee;
 using ::testing::Return;
 using ::testing::SetArgPointee;
 using ::testing::StrictMock;
+using ::testing::WithArgs;
 
 constexpr char kFakeRequest[] = "fake request";
 constexpr char kTestResponse[] = "test response";
@@ -97,12 +99,13 @@ class GetCapabilityCommandTest : public testing::Test {
   }
   StrictMock<trunks::MockCommandParser> mock_cmd_parser_;
   StrictMock<trunks::MockResponseSerializer> mock_resp_serializer_;
+  StrictMock<MockCommand> mock_direct_forwarder_;
   StrictMock<MockTpmHandleManager> mock_tpm_handle_manager_;
   // The real one is even simpler than mocks or fakes just use the real one.
   RealTpmPropertyManager real_property_manager_;
-  GetCapabilityCommand command_{&mock_cmd_parser_, &mock_resp_serializer_,
-                                &mock_tpm_handle_manager_,
-                                &real_property_manager_};
+  GetCapabilityCommand command_{
+      &mock_cmd_parser_, &mock_resp_serializer_, &mock_direct_forwarder_,
+      &mock_tpm_handle_manager_, &real_property_manager_};
 };
 
 namespace {
@@ -355,7 +358,7 @@ TEST_F(GetCapabilityCommandTest, FailureUnsupportedCap) {
   EXPECT_CALL(
       mock_cmd_parser_,
       ParseCommandGetCapability(Pointee(std::string(kFakeRequest)), _, _, _))
-      .WillOnce(DoAll(SetArgPointee<1>(trunks::TPM_CAP_ALGS),
+      .WillOnce(DoAll(SetArgPointee<1>(trunks::TPM_CAP_LAST),
                       SetArgPointee<2>(kFakeHandle),
                       SetArgPointee<3>(kFakeRequestedPropertyCount),
                       Return(trunks::TPM_RC_SUCCESS)));
@@ -631,6 +634,27 @@ TEST_F(GetCapabilityCommandTest, PCRsSuccess) {
   EXPECT_CALL(mock_resp_serializer_,
               SerializeResponseGetCapability(NO, IsEmptyPcrSelection(), _))
       .WillOnce(SetArgPointee<2>(kTestResponse));
+
+  command_.Run(kFakeRequest, std::move(callback));
+  EXPECT_EQ(response, kTestResponse);
+}
+
+TEST_F(GetCapabilityCommandTest, AlgorithmsForwarded) {
+  std::string response;
+  CommandResponseCallback callback =
+      base::BindOnce([](std::string* resp_out,
+                        const std::string& resp_in) { *resp_out = resp_in; },
+                     &response);
+  EXPECT_CALL(
+      mock_cmd_parser_,
+      ParseCommandGetCapability(Pointee(std::string(kFakeRequest)), _, _, _))
+      .WillOnce(DoAll(SetArgPointee<1>(trunks::TPM_CAP_ALGS),
+                      Return(trunks::TPM_RC_SUCCESS)));
+
+  EXPECT_CALL(mock_direct_forwarder_, Run(kFakeRequest, _))
+      .WillOnce(WithArgs<1>([](CommandResponseCallback callback) {
+        std::move(callback).Run(kTestResponse);
+      }));
 
   command_.Run(kFakeRequest, std::move(callback));
   EXPECT_EQ(response, kTestResponse);
