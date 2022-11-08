@@ -6,6 +6,7 @@
 #include <brillo/dbus/dbus_object.h>
 
 #include <memory>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -180,6 +181,15 @@ void DBusInterface::ClaimInterface(
   release_interface_cb_.ReplaceClosure(
       base::BindOnce(&ExportedObjectManager::ReleaseInterface, object_manager,
                      object_path, interface_name_));
+}
+
+std::vector<std::string> DBusInterface::GetMethodNames() const {
+  std::vector<std::string> names;
+  names.reserve(handlers_.size());
+  for (const auto& [name, handler] : handlers_) {
+    names.push_back(name);
+  }
+  return names;
 }
 
 void DBusInterface::HandleMethodCall(dbus::MethodCall* method_call,

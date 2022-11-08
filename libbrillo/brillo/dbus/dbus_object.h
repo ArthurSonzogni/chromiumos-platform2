@@ -66,6 +66,7 @@ class MyDbusObject {
 #include <memory>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include <base/bind.h>
 #include <base/callback_helpers.h>
@@ -436,6 +437,10 @@ class BRILLO_EXPORT DBusInterface final {
       const std::string& signal_name) {
     return RegisterSignalOfType<DBusSignal<Args...>>(signal_name);
   }
+
+  // Returns the set of registered method names. The result is guaranteed to
+  // contain no duplicates; there's NO guarantee about any particular ordering.
+  std::vector<std::string> GetMethodNames() const;
 
  private:
   // Helper to create an instance of DBusInterfaceMethodHandlerInterface-derived

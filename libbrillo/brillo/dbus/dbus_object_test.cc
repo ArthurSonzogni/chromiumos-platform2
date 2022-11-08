@@ -14,10 +14,13 @@
 #include <dbus/object_path.h>
 #include <dbus/mock_bus.h>
 #include <dbus/mock_exported_object.h>
+#include <gmock/gmock.h>
+#include <gtest/gtest.h>
 
 using ::testing::_;
 using ::testing::AnyNumber;
 using ::testing::Return;
+using ::testing::UnorderedElementsAre;
 
 namespace brillo {
 namespace dbus_utils {
@@ -466,6 +469,21 @@ TEST_F(DBusObjectTest, ShouldReleaseOnlyClaimedInterfaces) {
   // ExportedObjectManager.  Since no interfaces have finished exporting
   // handlers, nothing should be released.
   dbus_object_.reset();
+}
+
+TEST_F(DBusObjectTest, MethodNames) {
+  DBusInterface* itf1 = dbus_object_->FindInterface(kTestInterface1);
+  ASSERT_TRUE(itf1);
+  EXPECT_THAT(
+      itf1->GetMethodNames(),
+      UnorderedElementsAre(kTestMethod_Add, kTestMethod_Negate,
+                           kTestMethod_Positive, kTestMethod_AddSubtract));
+
+  DBusInterface* itf2 = dbus_object_->FindInterface(kTestInterface2);
+  ASSERT_TRUE(itf2);
+  EXPECT_THAT(
+      itf2->GetMethodNames(),
+      UnorderedElementsAre(kTestMethod_StrLen, kTestMethod_CheckNonEmpty));
 }
 
 }  // namespace dbus_utils
