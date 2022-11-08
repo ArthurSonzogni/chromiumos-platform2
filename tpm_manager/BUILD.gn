@@ -10,6 +10,7 @@ import("//common-mk/proto_library.gni")
 
 group("all") {
   deps = [
+    ":install_tmpfiles_config",
     ":local_data_migration",
     ":tpm_managerd",
   ]
@@ -285,4 +286,9 @@ if (use.fuzzer) {
     configs = [ ":local_proto_include" ]
     sources = [ "${proto_in_dir}/tpm_manager_service_fuzzer_data.proto" ]
   }
+}
+
+install_config("install_tmpfiles_config") {
+  sources = [ "server/tmpfiles.d/tpm_manager.conf" ]
+  install_path = "/usr/lib/tmpfiles.d"
 }
