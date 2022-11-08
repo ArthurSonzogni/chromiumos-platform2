@@ -69,6 +69,7 @@ bool ExpandPropertyFiles(const base::FilePath& source_path,
                          const base::FilePath& dest_path,
                          bool single_file,
                          bool hw_oemcrypto_support,
+                         bool include_soc_props,
                          bool debuggable,
                          scoped_refptr<::dbus::Bus> bus);
 

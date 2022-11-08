@@ -42,7 +42,10 @@ enum class ExtraProps {
   kCdm,
 
   // ro.soc.manufacturer and .model, parsed from /proc/cpuinfo.
-  kSoc,
+  kX86Soc,
+
+  // ro.soc.manufacturer and .model, parsed from /sys/bus/soc/devices.
+  kArmSoc,
 };
 
 // The path in the chromeos-config database where Android properties will be
@@ -289,13 +292,13 @@ bool ExpandPropertyContents(const std::string& content,
       break;
     }
 
-    case ExtraProps::kSoc:
-#if defined(ARCH_CPU_ARM_FAMILY)
+    case ExtraProps::kArmSoc:
       AppendArmSocProperties(base::FilePath("/sys/bus/soc/devices"), config,
                              &new_properties);
-#else
+      break;
+
+    case ExtraProps::kX86Soc:
       AppendX86SocProperties(base::FilePath("/proc/cpuinfo"), &new_properties);
-#endif
       break;
   }
 
@@ -574,11 +577,21 @@ bool ExpandPropertyFiles(const base::FilePath& source_path,
                          const base::FilePath& dest_path,
                          bool single_file,
                          bool hw_oemcrypto_support,
+                         bool include_soc_props,
                          bool debuggable,
                          scoped_refptr<::dbus::Bus> bus) {
   brillo::CrosConfig config;
   if (single_file)
     base::DeleteFile(dest_path);
+
+  ExtraProps soc_props_type = ExtraProps::kNone;
+  if (include_soc_props) {
+#if defined(ARCH_CPU_ARM_FAMILY)
+    soc_props_type = ExtraProps::kArmSoc;
+#else
+    soc_props_type = ExtraProps::kX86Soc;
+#endif
+  }
 
   // default.prop may not exist. Silently skip it if not found.
   for (const auto& tuple :
@@ -590,7 +603,7 @@ bool ExpandPropertyFiles(const base::FilePath& source_path,
             "default.prop", true, "", ExtraProps::kNone},
         {"build.prop", false, "", ExtraProps::kNone},
         {"system_ext_build.prop", true, "system_ext.", ExtraProps::kNone},
-        {"vendor_build.prop", false, "vendor.", ExtraProps::kSoc},
+        {"vendor_build.prop", false, "vendor.", soc_props_type},
         {"odm_build.prop", true, "odm.", ExtraProps::kNone},
         {"product_build.prop", true, "product.",
          hw_oemcrypto_support ? ExtraProps::kCdm : ExtraProps::kNone}}) {

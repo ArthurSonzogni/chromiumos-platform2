@@ -2657,9 +2657,10 @@ void ArcSetup::OnPrepareHostGeneratedDir() {
     CHECK(bus);
   }
 
-  EXIT_IF(!ExpandPropertyFiles(
-      property_files_source_dir, property_files_dest_path,
-      /*single_file=*/is_arcvm, hw_oemcrypto_support, debuggable, bus));
+  EXIT_IF(!ExpandPropertyFiles(property_files_source_dir,
+                               property_files_dest_path,
+                               /*single_file=*/is_arcvm, hw_oemcrypto_support,
+                               /*include_soc_props=*/true, debuggable, bus));
 
   if (!is_arcvm)
     return;
