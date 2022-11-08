@@ -219,10 +219,7 @@ class TestDelegate : public Suspender::Delegate, public ActionRecorder {
 
 class SuspenderTest : public testing::Test {
  public:
-  SuspenderTest()
-      : test_api_(&suspender_),
-        pref_retry_delay_ms_(10000),
-        pref_num_retries_(10) {}
+  SuspenderTest() : test_api_(&suspender_) {}
   SuspenderTest(const SuspenderTest&) = delete;
   SuspenderTest& operator=(const SuspenderTest&) = delete;
 
@@ -304,8 +301,8 @@ class SuspenderTest : public testing::Test {
   Suspender suspender_;
   Suspender::TestApi test_api_;
 
-  int64_t pref_retry_delay_ms_;
-  int64_t pref_num_retries_;
+  int64_t pref_retry_delay_ms_ = 10000;
+  int64_t pref_num_retries_ = 10;
 };
 
 // Tests the standard suspend/resume cycle.

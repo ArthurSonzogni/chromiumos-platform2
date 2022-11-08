@@ -219,30 +219,7 @@ class StateControllerTest : public testing::Test {
             dbus_wrapper_.GetObjectProxy(chromeos::kMlDecisionServiceName,
                                          chromeos::kMlDecisionServicePath)),
         hps_dbus_proxy_(dbus_wrapper_.GetObjectProxy(hps::kHpsServiceName,
-                                                     hps::kHpsServicePath)),
-        now_(base::TimeTicks::FromInternalValue(1000)),
-        default_ac_suspend_delay_(base::Seconds(120)),
-        default_ac_screen_off_delay_(base::Seconds(100)),
-        default_ac_screen_dim_delay_(base::Seconds(90)),
-        default_ac_quick_dim_delay_(base::Seconds(70)),
-        default_ac_quick_lock_delay_(base::Seconds(80)),
-        default_battery_suspend_delay_(base::Seconds(60)),
-        default_battery_screen_off_delay_(base::Seconds(40)),
-        default_battery_screen_dim_delay_(base::Seconds(30)),
-        default_battery_quick_dim_delay_(base::Seconds(20)),
-        default_battery_quick_lock_delay_(base::Seconds(25)),
-        default_disable_idle_suspend_(0),
-        default_factory_mode_(0),
-        default_require_usb_input_device_to_suspend_(0),
-        default_avoid_suspend_when_headphone_jack_plugged_(0),
-        default_ignore_external_policy_(0),
-        default_defer_external_display_timeout_(0),
-        initial_power_source_(PowerSource::AC),
-        initial_lid_state_(LidState::OPEN),
-        initial_display_mode_(DisplayMode::NORMAL),
-        send_initial_display_mode_(true),
-        send_initial_policy_(true),
-        update_engine_operation_(update_engine::Operation::IDLE) {
+                                                     hps::kHpsServicePath)) {
     dbus_wrapper_.SetMethodCallback(base::BindRepeating(
         &StateControllerTest::HandleDBusMethodCall, base::Unretained(this)));
   }
@@ -472,47 +449,48 @@ class StateControllerTest : public testing::Test {
   dbus::ObjectProxy* ml_decision_proxy_;    // owned by |dbus_wrapper_|
   dbus::ObjectProxy* hps_dbus_proxy_;       // owned by |dbus_wrapper_|
 
-  base::TimeTicks now_;
+  base::TimeTicks now_ = base::TimeTicks::FromInternalValue(1000);
 
   // Last delay that was passed to StepTimeAndTriggerTimeout().
   base::TimeDelta last_step_delay_;
 
   // Preference values.  Tests may change these before calling Init().
-  base::TimeDelta default_ac_suspend_delay_;
-  base::TimeDelta default_ac_screen_off_delay_;
-  base::TimeDelta default_ac_screen_dim_delay_;
-  base::TimeDelta default_ac_quick_dim_delay_;
-  base::TimeDelta default_ac_quick_lock_delay_;
-  base::TimeDelta default_battery_suspend_delay_;
-  base::TimeDelta default_battery_screen_off_delay_;
-  base::TimeDelta default_battery_screen_dim_delay_;
-  base::TimeDelta default_battery_quick_dim_delay_;
-  base::TimeDelta default_battery_quick_lock_delay_;
-  int64_t default_disable_idle_suspend_;
-  int64_t default_factory_mode_;
-  int64_t default_require_usb_input_device_to_suspend_;
-  int64_t default_avoid_suspend_when_headphone_jack_plugged_;
-  int64_t default_ignore_external_policy_;
-  int64_t default_defer_external_display_timeout_;
+  base::TimeDelta default_ac_suspend_delay_ = base::Seconds(120);
+  base::TimeDelta default_ac_screen_off_delay_ = base::Seconds(100);
+  base::TimeDelta default_ac_screen_dim_delay_ = base::Seconds(90);
+  base::TimeDelta default_ac_quick_dim_delay_ = base::Seconds(70);
+  base::TimeDelta default_ac_quick_lock_delay_ = base::Seconds(80);
+  base::TimeDelta default_battery_suspend_delay_ = base::Seconds(60);
+  base::TimeDelta default_battery_screen_off_delay_ = base::Seconds(40);
+  base::TimeDelta default_battery_screen_dim_delay_ = base::Seconds(30);
+  base::TimeDelta default_battery_quick_dim_delay_ = base::Seconds(20);
+  base::TimeDelta default_battery_quick_lock_delay_ = base::Seconds(25);
+  int64_t default_disable_idle_suspend_ = 0;
+  int64_t default_factory_mode_ = 0;
+  int64_t default_require_usb_input_device_to_suspend_ = 0;
+  int64_t default_avoid_suspend_when_headphone_jack_plugged_ = 0;
+  int64_t default_ignore_external_policy_ = 0;
+  int64_t default_defer_external_display_timeout_ = 0;
 
   // Values passed by Init() to StateController::Init().
-  PowerSource initial_power_source_;
-  LidState initial_lid_state_;
+  PowerSource initial_power_source_ = PowerSource::AC;
+  LidState initial_lid_state_ = LidState::OPEN;
 
   // Initial display mode to send in Init().
-  DisplayMode initial_display_mode_;
-  bool send_initial_display_mode_;
+  DisplayMode initial_display_mode_ = DisplayMode::NORMAL;
+  bool send_initial_display_mode_ = true;
 
   // Trigger wait_for_crash_boot_collect_timeout in Init().
   bool trigger_wait_for_crash_boot_collect_timeout_ = true;
 
   // Initial policy to send in Init().
   PowerManagementPolicy initial_policy_;
-  bool send_initial_policy_;
+  bool send_initial_policy_ = true;
 
   // Operation for update_engine to return in response to GetStatusAdvanced
   // calls.
-  update_engine::Operation update_engine_operation_;
+  update_engine::Operation update_engine_operation_ =
+      update_engine::Operation::IDLE;
 
   // Names of D-Bus method calls.
   std::vector<std::string> dbus_method_calls_;

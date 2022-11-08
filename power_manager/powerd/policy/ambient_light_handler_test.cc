@@ -20,10 +20,7 @@ namespace {
 // brightness percent that was passed to it.
 class TestDelegate : public AmbientLightHandler::Delegate {
  public:
-  TestDelegate()
-      : percent_(-1.0),
-        cause_(AmbientLightHandler::BrightnessChangeCause::AMBIENT_LIGHT),
-        resume_lux_(0) {}
+  TestDelegate() = default;
   TestDelegate(const TestDelegate&) = delete;
   TestDelegate& operator=(const TestDelegate&) = delete;
 
@@ -47,9 +44,10 @@ class TestDelegate : public AmbientLightHandler::Delegate {
   }
 
  private:
-  double percent_;
-  AmbientLightHandler::BrightnessChangeCause cause_;
-  int resume_lux_;
+  double percent_ = -1.0;
+  AmbientLightHandler::BrightnessChangeCause cause_ =
+      AmbientLightHandler::BrightnessChangeCause::AMBIENT_LIGHT;
+  int resume_lux_ = 0;
 };
 
 class AmbientLightHandlerTest : public ::testing::Test {

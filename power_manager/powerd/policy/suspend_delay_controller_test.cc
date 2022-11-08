@@ -22,7 +22,7 @@ constexpr base::TimeDelta kSuspendTimeout = base::Seconds(5);
 
 class TestObserver : public SuspendDelayObserver {
  public:
-  TestObserver() : timeout_(kSuspendTimeout) {}
+  TestObserver() = default;
   TestObserver(const TestObserver&) = delete;
   TestObserver& operator=(const TestObserver&) = delete;
 
@@ -42,7 +42,7 @@ class TestObserver : public SuspendDelayObserver {
 
  private:
   // Maximum time to wait for readiness.
-  base::TimeDelta timeout_;
+  base::TimeDelta timeout_ = kSuspendTimeout;
 
   TestMainLoopRunner loop_runner_;
 };
