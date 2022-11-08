@@ -35,10 +35,20 @@ class ModemSignalProxy : public ModemSignalProxyInterface {
              ResultOnceCallback callback,
              int timeout) override;
 
+  void SetupThresholds(const KeyValueStore& settings,
+                       Error* /*error*/,
+                       ResultOnceCallback callback,
+                       int timeout) override;
+
  private:
   // Callbacks for Setup async call.
   void OnSetupSuccess(ResultOnceCallback callback);
   void OnSetupFailure(ResultOnceCallback callback, brillo::Error* dbus_error);
+
+  // Callbacks for SetupThresholds async call.
+  void OnSetupThresholdsSuccess(ResultOnceCallback callback);
+  void OnSetupThresholdsFailure(ResultOnceCallback callback,
+                                brillo::Error* dbus_error);
 
   std::unique_ptr<org::freedesktop::ModemManager1::Modem::SignalProxy> proxy_;
 

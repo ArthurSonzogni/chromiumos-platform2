@@ -68,6 +68,8 @@ constexpr base::TimeDelta CellularCapability3gpp::kTimeoutSetupLocation =
 constexpr base::TimeDelta CellularCapability3gpp::kTimeoutSetupSignal =
     base::Seconds(45);
 constexpr base::TimeDelta
+    CellularCapability3gpp::kTimeoutSetupSignalThresholds = base::Seconds(45);
+constexpr base::TimeDelta
     CellularCapability3gpp::kTimeoutRegistrationDroppedUpdate =
         base::Seconds(15);
 constexpr base::TimeDelta CellularCapability3gpp::kTimeoutSetPowerState =
@@ -108,11 +110,17 @@ const char CellularCapability3gpp::kUplinkSpeedBpsProperty[] = "uplink-speed";
 const char CellularCapability3gpp::kDownlinkSpeedBpsProperty[] =
     "downlink-speed";
 
+const char CellularCapability3gpp::kRssiThresholdProperty[] = "rssi-threshold";
+const char CellularCapability3gpp::kErrorThresholdProperty[] =
+    "error-rate-threshold";
+const uint32_t CellularCapability3gpp::kRssiThreshold = 3;
+const bool CellularCapability3gpp::kErrorThreshold = false;
+
 const int CellularCapability3gpp::kUnknownLockRetriesLeft = 999;
 
 namespace {
 
-const int kSignalQualityUpdateRateSeconds = 5;
+const int kSignalQualityUpdateRateSeconds = 60;
 
 // Plugin strings via ModemManager.
 const char kTelitMMPlugin[] = "Telit";
@@ -456,11 +464,13 @@ void CellularCapability3gpp::EnableModemCompleted(ResultOnceCallback callback,
                                  weak_ptr_factory_.GetWeakPtr()));
   }
 
-  ResultOnceCallback setup_signal_callback =
-      base::BindOnce(&CellularCapability3gpp::OnSetupSignalReply,
+  ResultOnceCallback setup_signal_thresholds_callback =
+      base::BindOnce(&CellularCapability3gpp::OnSetupSignalThresholdsReply,
                      weak_ptr_factory_.GetWeakPtr());
-  SetupSignal(kSignalQualityUpdateRateSeconds,
-              std::move(setup_signal_callback));
+  KeyValueStore settings;
+  settings.Set<uint32_t>(kRssiThresholdProperty, kRssiThreshold);
+  settings.Set<bool>(kErrorThresholdProperty, kErrorThreshold);
+  SetupSignalThresholds(settings, std::move(setup_signal_thresholds_callback));
 
   // Try to get profiles list from the modem, and then call the callback
   // to complete the enabling process.
@@ -1581,6 +1591,15 @@ void CellularCapability3gpp::SetupSignal(uint32_t rate,
                              kTimeoutSetupSignal.InMilliseconds());
 }
 
+void CellularCapability3gpp::SetupSignalThresholds(
+    const KeyValueStore& settings, ResultOnceCallback callback) {
+  SLOG(this, 3) << __func__;
+  Error error;
+  modem_signal_proxy_->SetupThresholds(
+      settings, &error, std::move(callback),
+      kTimeoutSetupSignalThresholds.InMilliseconds());
+}
+
 void CellularCapability3gpp::OnSetupLocationReply(const Error& error) {
   SLOG(this, 3) << __func__;
   if (error.IsFailure()) {
@@ -1597,6 +1616,19 @@ void CellularCapability3gpp::OnSetupSignalReply(const Error& error) {
   if (error.IsFailure()) {
     SLOG(this, 2) << "Failed to setup modem signal capability.";
     return;
+  }
+}
+
+void CellularCapability3gpp::OnSetupSignalThresholdsReply(const Error& error) {
+  SLOG(this, 3) << __func__;
+  if (error.IsFailure()) {
+    SLOG(this, 2) << "Failed to setup modem signal thresholds capability."
+                  << " Falling back to polling mechanism.";
+    ResultOnceCallback setup_signal_callback =
+        base::BindOnce(&CellularCapability3gpp::OnSetupSignalReply,
+                       weak_ptr_factory_.GetWeakPtr());
+    SetupSignal(kSignalQualityUpdateRateSeconds,
+                std::move(setup_signal_callback));
   }
 }
 
@@ -2449,18 +2481,23 @@ void CellularCapability3gpp::OnModemSignalPropertiesChanged(
     if (props.ContainsVariant(signal_property)) {
       auto tech_props = props.GetVariant(signal_property).Get<KeyValueStore>();
       double signal_quality = 0.0;
+      std::string signal_measurement = "";
 
       if (tech_props.Contains<double>(kRsrpProperty) &&
           (signal_property == MM_MODEM_SIGNAL_PROPERTY_NR5G ||
            signal_property == MM_MODEM_SIGNAL_PROPERTY_LTE)) {
+        signal_measurement = kRsrpProperty;
         signal_quality = tech_props.Get<double>(kRsrpProperty);
         scaled_quality = kRsrpBounds.GetAsPercentage(signal_quality);
       } else if (tech_props.Contains<double>(kRscpProperty) &&
                  (signal_property == MM_MODEM_SIGNAL_PROPERTY_UMTS)) {
+        signal_measurement = kRscpProperty;
         signal_quality = tech_props.Get<double>(kRscpProperty);
         scaled_quality = kRscpBounds.GetAsPercentage(signal_quality);
       } else if (tech_props.Contains<double>(kRssiProperty) &&
-                 (signal_property == MM_MODEM_SIGNAL_PROPERTY_GSM)) {
+                 (signal_property == MM_MODEM_SIGNAL_PROPERTY_UMTS ||
+                  signal_property == MM_MODEM_SIGNAL_PROPERTY_GSM)) {
+        signal_measurement = kRssiProperty;
         signal_quality = tech_props.Get<double>(kRssiProperty);
         scaled_quality = kRssiBounds.GetAsPercentage(signal_quality);
       } else {
@@ -2469,7 +2506,9 @@ void CellularCapability3gpp::OnModemSignalPropertiesChanged(
         continue;
       }
 
-      SLOG(this, 4) << "signal_quality:" << signal_quality
+      SLOG(this, 3) << " signal_property: " << signal_property
+                    << " signal_measurement: " << signal_measurement
+                    << " signal_quality:" << signal_quality
                     << " scaled_quality:" << scaled_quality;
       cellular()->HandleNewSignalQuality(scaled_quality);
       // we've found a signal quality indicator, no need to parse other

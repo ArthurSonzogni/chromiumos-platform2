@@ -27,6 +27,11 @@ class ModemSignalProxyInterface {
                      Error* error,
                      ResultOnceCallback callback,
                      int timeout) = 0;
+
+  virtual void SetupThresholds(const KeyValueStore& settings,
+                               Error* error,
+                               ResultOnceCallback callback,
+                               int timeout) = 0;
 };
 
 }  // namespace mm1

@@ -26,6 +26,11 @@ class MockModemSignalProxy : public ModemSignalProxyInterface {
               Setup,
               (const int, Error*, ResultOnceCallback, int),
               (override));
+
+  MOCK_METHOD(void,
+              SetupThresholds,
+              (const KeyValueStore& settings, Error*, ResultOnceCallback, int),
+              (override));
 };
 
 }  // namespace mm1

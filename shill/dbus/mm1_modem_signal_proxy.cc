@@ -59,5 +59,37 @@ void ModemSignalProxy::OnSetupFailure(ResultOnceCallback callback,
   std::move(callback).Run(error);
 }
 
+void ModemSignalProxy::SetupThresholds(const KeyValueStore& settings,
+                                       Error* /*error*/,
+                                       ResultOnceCallback callback,
+                                       int timeout) {
+  SLOG(&proxy_->GetObjectPath(), 2) << __func__;
+  brillo::VariantDictionary settings_dict =
+      KeyValueStore::ConvertToVariantDictionary(settings);
+  auto split_callback = base::SplitOnceCallback(std::move(callback));
+  proxy_->SetupThresholdsAsync(
+      settings_dict,
+      base::BindOnce(&ModemSignalProxy::OnSetupThresholdsSuccess,
+                     weak_factory_.GetWeakPtr(),
+                     std::move(split_callback.first)),
+      base::BindOnce(&ModemSignalProxy::OnSetupThresholdsFailure,
+                     weak_factory_.GetWeakPtr(),
+                     std::move(split_callback.second)),
+      timeout);
+}
+
+void ModemSignalProxy::OnSetupThresholdsSuccess(ResultOnceCallback callback) {
+  SLOG(&proxy_->GetObjectPath(), 2) << __func__;
+  std::move(callback).Run(Error());
+}
+
+void ModemSignalProxy::OnSetupThresholdsFailure(ResultOnceCallback callback,
+                                                brillo::Error* dbus_error) {
+  SLOG(&proxy_->GetObjectPath(), 2) << __func__;
+  Error error;
+  CellularError::FromMM1ChromeosDBusError(dbus_error, &error);
+  std::move(callback).Run(error);
+}
+
 }  // namespace mm1
 }  // namespace shill

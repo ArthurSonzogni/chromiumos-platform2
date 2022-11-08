@@ -58,6 +58,7 @@ class CellularCapability3gpp {
   static const base::TimeDelta kTimeoutSetInitialEpsBearer;
   static const base::TimeDelta kTimeoutSetupLocation;
   static const base::TimeDelta kTimeoutSetupSignal;
+  static const base::TimeDelta kTimeoutSetupSignalThresholds;
   static const base::TimeDelta kTimeoutEnterPin;
   static const base::TimeDelta kTimeoutRegistrationDroppedUpdate;
   static const base::TimeDelta kTimeoutSetPowerState;
@@ -250,6 +251,9 @@ class CellularCapability3gpp {
 
   void SetupSignal(uint32_t rate, ResultOnceCallback callback);
 
+  void SetupSignalThresholds(const KeyValueStore& settings,
+                             ResultOnceCallback callback);
+
   // Used to encapsulate bounds for rssi/rsrp
   struct SignalQualityBounds {
     const double min_threshold;
@@ -312,6 +316,11 @@ class CellularCapability3gpp {
   // store come from modem manager is bps.
   static const char kUplinkSpeedBpsProperty[];
   static const char kDownlinkSpeedBpsProperty[];
+
+  static const char kRssiThresholdProperty[];
+  static const char kErrorThresholdProperty[];
+  static const uint32_t kRssiThreshold;
+  static const bool kErrorThreshold;
 
   static const int kUnknownLockRetriesLeft;
 
@@ -487,6 +496,7 @@ class CellularCapability3gpp {
                           const std::map<uint32_t, brillo::Any>& results,
                           const Error& error);
   void OnSetupSignalReply(const Error& error);
+  void OnSetupSignalThresholdsReply(const Error& error);
   void OnSetInitialEpsBearerReply(ResultOnceCallback callback,
                                   const Error& error);
 

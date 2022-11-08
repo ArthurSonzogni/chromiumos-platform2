@@ -14,6 +14,8 @@ namespace mm1 {
 MockModemSignalProxy::MockModemSignalProxy() {
   ON_CALL(*this, Setup(_, _, _, _))
       .WillByDefault(SetOperationFailedInArgumentAndWarn<1>());
+  ON_CALL(*this, SetupThresholds(_, _, _, _))
+      .WillByDefault(SetOperationFailedInArgumentAndWarn<1>());
 }
 
 MockModemSignalProxy::~MockModemSignalProxy() = default;
