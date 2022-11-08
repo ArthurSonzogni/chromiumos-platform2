@@ -50,6 +50,8 @@ class FakePlatform final : public Platform {
 
   bool Rename(const base::FilePath& from, const base::FilePath& to) override;
   bool Move(const base::FilePath& from, const base::FilePath& to) override;
+  bool FindFilesystemDevice(const base::FilePath& filesystem,
+                            std::string* device) override;
   bool Copy(const base::FilePath& from, const base::FilePath& to) override;
   bool StatVFS(const base::FilePath& path, struct statvfs* vfs) override;
   bool TouchFileDurable(const base::FilePath& path) override;
@@ -149,6 +151,10 @@ class FakePlatform final : public Platform {
                     uid_t user_id,
                     gid_t group_id,
                     bool follow_links) const override;
+  bool SetSELinuxContext(const base::FilePath& path,
+                         const std::string& context) override;
+  bool RestoreSELinuxContexts(const base::FilePath& path,
+                              bool recursive) override;
   bool SafeDirChown(const base::FilePath& path,
                     uid_t user_id,
                     gid_t group_id) override;
@@ -189,6 +195,7 @@ class FakePlatform final : public Platform {
   std::optional<std::vector<bool>> AreDirectoriesMounted(
       const std::vector<base::FilePath>& directories) override;
 
+  base::FilePath GetStatefulDevice() override;
   brillo::LoopDeviceManager* GetLoopDeviceManager() override;
   brillo::LogicalVolumeManager* GetLogicalVolumeManager() override;
   brillo::MockLogicalVolumeManager* GetMockLogicalVolumeManager();

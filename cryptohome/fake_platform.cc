@@ -214,6 +214,11 @@ bool FakePlatform::Move(const base::FilePath& from, const base::FilePath& to) {
   return real_platform_.Move(TestFilePath(from), TestFilePath(to));
 }
 
+bool FakePlatform::FindFilesystemDevice(const base::FilePath& filesystem,
+                                        std::string* device) {
+  return real_platform_.FindFilesystemDevice(TestFilePath(filesystem), device);
+}
+
 bool FakePlatform::Copy(const base::FilePath& from, const base::FilePath& to) {
   return real_platform_.Copy(TestFilePath(from), TestFilePath(to));
 }
@@ -636,6 +641,16 @@ bool FakePlatform::SetOwnership(const base::FilePath& path,
   return true;
 }
 
+bool FakePlatform::SetSELinuxContext(const base::FilePath& path,
+                                     const std::string& context) {
+  return real_platform_.SetSELinuxContext(TestFilePath(path), context);
+}
+
+bool FakePlatform::RestoreSELinuxContexts(const base::FilePath& path,
+                                          bool recursive) {
+  return real_platform_.RestoreSELinuxContexts(TestFilePath(path), recursive);
+}
+
 bool FakePlatform::SafeDirChown(const base::FilePath& path,
                                 uid_t user_id,
                                 gid_t group_id) {
@@ -740,6 +755,10 @@ void FakePlatform::LazyUnmount(const base::FilePath& path) {
   // TODO(dlunev): actually implement lazy unmount in fake mapper, for now busy
   // target will just fail silently.
   (void)fake_mount_mapper_->Unmount(normalized_path);
+}
+
+base::FilePath FakePlatform::GetStatefulDevice() {
+  return base::FilePath();
 }
 
 bool FakePlatform::GetLoopDeviceMounts(
