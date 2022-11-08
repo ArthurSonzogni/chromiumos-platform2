@@ -181,6 +181,17 @@ bool FakeStore::SetUint64(const std::string& group,
   return WriteSetting(group, key, value);
 }
 
+bool FakeStore::GetInt64(const std::string& group,
+                         const std::string& key,
+                         int64_t* value) const {
+  return ReadSetting(group, key, value);
+}
+
+bool FakeStore::SetInt64(const std::string& group,
+                         const std::string& key,
+                         int64_t value) {
+  return WriteSetting(group, key, value);
+}
 bool FakeStore::GetStringList(const std::string& group,
                               const std::string& key,
                               std::vector<std::string>* value) const {

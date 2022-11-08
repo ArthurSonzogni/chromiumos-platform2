@@ -4,6 +4,7 @@
 
 #include "shill/wifi/passpoint_credentials.h"
 
+#include <limits>
 #include <string>
 #include <vector>
 
@@ -62,7 +63,9 @@ PasspointCredentials::PasspointCredentials(
     const std::vector<uint64_t>& required_home_ois,
     const std::vector<uint64_t>& roaming_consortia,
     bool metered_override,
-    const std::string& android_package_name)
+    const std::string& android_package_name,
+    const std::string& friendly_name,
+    uint64_t expiration_time_milliseconds)
     : domains_(domains),
       realm_(realm),
       home_ois_(home_ois),
@@ -70,6 +73,8 @@ PasspointCredentials::PasspointCredentials(
       roaming_consortia_(roaming_consortia),
       metered_override_(metered_override),
       android_package_name_(android_package_name),
+      friendly_name_(friendly_name),
+      expiration_time_milliseconds_(expiration_time_milliseconds),
       id_(id),
       profile_(nullptr),
       supplicant_id_(DBusControl::NullRpcIdentifier()) {}
@@ -140,6 +145,9 @@ void PasspointCredentials::Load(const StoreInterface* storage) {
   storage->GetUint64List(id_, kStorageRoamingConsortia, &roaming_consortia_);
   storage->GetBool(id_, kStorageMeteredOverride, &metered_override_);
   storage->GetString(id_, kStorageAndroidPackageName, &android_package_name_);
+  storage->GetString(id_, kStorageFriendlyName, &friendly_name_);
+  storage->GetInt64(id_, kStorageExpirationTimeMilliseconds,
+                    &expiration_time_milliseconds_);
   eap_.Load(storage, id_);
 }
 
@@ -156,6 +164,9 @@ bool PasspointCredentials::Save(StoreInterface* storage) {
   storage->SetUint64List(id_, kStorageRoamingConsortia, roaming_consortia_);
   storage->SetBool(id_, kStorageMeteredOverride, metered_override_);
   storage->SetString(id_, kStorageAndroidPackageName, android_package_name_);
+  storage->SetString(id_, kStorageFriendlyName, friendly_name_);
+  storage->SetInt64(id_, kStorageExpirationTimeMilliseconds,
+                    expiration_time_milliseconds_);
   eap_.Save(storage, id_, /*save_credentials=*/true);
 
   return true;
@@ -178,6 +189,11 @@ PasspointCredentialsRefPtr PasspointCredentials::CreatePasspointCredentials(
   std::vector<uint64_t> home_ois, required_home_ois, roaming_consortia;
   bool metered_override;
   std::string android_package_name;
+  std::string friendly_name;
+  // "Expiration time" value where there is no expiration time.
+  const std::string kNoExpirationTime =
+      base::NumberToString(std::numeric_limits<int64_t>::min());
+  int64_t expiration_time_milliseconds = std::numeric_limits<int64_t>::min();
 
   domains = args.Lookup<std::vector<std::string>>(
       kPasspointCredentialsDomainsProperty, std::vector<std::string>());
@@ -228,12 +244,27 @@ PasspointCredentialsRefPtr PasspointCredentials::CreatePasspointCredentials(
       args.Lookup<bool>(kPasspointCredentialsMeteredOverrideProperty, false);
   android_package_name = args.Lookup<std::string>(
       kPasspointCredentialsAndroidPackageNameProperty, std::string());
+  friendly_name = args.Lookup<std::string>(
+      kPasspointCredentialsFriendlyNameProperty, std::string());
+  const auto value = args.Lookup<std::string>(
+      kPasspointCredentialsExpirationTimeMillisecondsProperty,
+      kNoExpirationTime);
+  if (!base::StringToInt64(value, &expiration_time_milliseconds)) {
+    Error::PopulateAndLog(
+        FROM_HERE, error, Error::kInvalidArguments,
+        "invalid " +
+            std::string(
+                kPasspointCredentialsExpirationTimeMillisecondsProperty) +
+            ": \"" + value + "\" was not a valid decimal string");
+    return nullptr;
+  }
 
   // Create the set of credentials with a unique identifier.
   std::string id = GenerateIdentifier();
   PasspointCredentialsRefPtr creds = new PasspointCredentials(
       id, domains, realm, home_ois, required_home_ois, roaming_consortia,
-      metered_override, android_package_name);
+      metered_override, android_package_name, friendly_name,
+      expiration_time_milliseconds);
 
   // Load EAP credentials from the set of properties.
   creds->eap_.Load(args);

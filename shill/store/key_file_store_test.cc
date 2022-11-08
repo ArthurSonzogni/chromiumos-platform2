@@ -625,6 +625,50 @@ TEST_F(KeyFileStoreTest, SetUint64) {
       ReadKeyFile());
 }
 
+TEST_F(KeyFileStoreTest, GetInt64) {
+  static const char kGroup[] = "numbers";
+  static const char kKeyGood[] = "good";
+  static const char kKeyBad[] = "bad";
+  const int64_t kValueGood = 1836475854449306472;
+  static const char kValueBad[] = "nan";
+  // Use base::NumberToString() instead of using something like "%llu"
+  // (not correct for built-in 64 bit architectures) or PRIu64 (does not
+  // work correctly using cros_workon_make due to include intricacies).
+  WriteKeyFile(base::StringPrintf(
+      "[%s]\n"
+      "%s=%s\n"
+      "%s=%s\n",
+      kGroup, kKeyGood, base::NumberToString(kValueGood).c_str(), kKeyBad,
+      kValueBad));
+  ASSERT_TRUE(store_->Open());
+  {
+    int64_t value = 0;
+    EXPECT_TRUE(store_->GetInt64(kGroup, kKeyGood, &value));
+    EXPECT_EQ(kValueGood, value);
+  }
+  {
+    int64_t value;
+    EXPECT_FALSE(store_->GetInt64(kGroup, kKeyBad, &value));
+    EXPECT_FALSE(store_->GetInt64(kGroup, "invalid", &value));
+    EXPECT_FALSE(store_->GetInt64("invalid", kKeyGood, &value));
+  }
+  EXPECT_TRUE(store_->GetInt64(kGroup, kKeyGood, nullptr));
+  ASSERT_TRUE(store_->Close());
+}
+
+TEST_F(KeyFileStoreTest, SetInt64) {
+  static const char kGroup[] = "int-group";
+  static const char kKey[] = "test-int";
+  const int64_t kValue = -1836475854449306470;
+  ASSERT_TRUE(store_->Open());
+  ASSERT_TRUE(store_->SetInt64(kGroup, kKey, kValue));
+  ASSERT_TRUE(store_->Close());
+  EXPECT_EQ(
+      base::StringPrintf("[%s]\n"
+                         "%s=%s\n",
+                         kGroup, kKey, base::NumberToString(kValue).c_str()),
+      ReadKeyFile());
+}
 TEST_F(KeyFileStoreTest, GetStringList) {
   static const char kGroup[] = "string-lists";
   static const char kKeyEmpty[] = "empty";

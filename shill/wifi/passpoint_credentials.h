@@ -85,6 +85,10 @@ class PasspointCredentials : public base::RefCounted<PasspointCredentials> {
   const std::string android_package_name() const {
     return android_package_name_;
   }
+  const std::string& friendly_name() const { return friendly_name_; }
+  int64_t expiration_time_milliseconds() const {
+    return expiration_time_milliseconds_;
+  }
   const ProfileRefPtr& profile() const { return profile_; }
   const RpcIdentifier& supplicant_id() const { return supplicant_id_; }
 
@@ -102,6 +106,9 @@ class PasspointCredentials : public base::RefCounted<PasspointCredentials> {
   static constexpr char kStorageRoamingConsortia[] = "RoamingConsortia";
   static constexpr char kStorageMeteredOverride[] = "MeteredOverride";
   static constexpr char kStorageAndroidPackageName[] = "AndroidPackageName";
+  static constexpr char kStorageFriendlyName[] = "FriendlyName";
+  static constexpr char kStorageExpirationTimeMilliseconds[] =
+      "ExpirationTimeMilliseconds";
 
   PasspointCredentials(const std::string& id,
                        const std::vector<std::string>& domains,
@@ -110,7 +117,9 @@ class PasspointCredentials : public base::RefCounted<PasspointCredentials> {
                        const std::vector<uint64_t>& required_home_ois,
                        const std::vector<uint64_t>& rc,
                        bool metered_override,
-                       const std::string& android_package_name);
+                       const std::string& android_package_name,
+                       const std::string& friendly_name,
+                       uint64_t expiration_time_milliseconds);
 
   // Create a unique identifier for the set of credentials.
   static std::string GenerateIdentifier();
@@ -147,6 +156,12 @@ class PasspointCredentials : public base::RefCounted<PasspointCredentials> {
   bool metered_override_;
   // Package name of the application that provided the credentials, if any.
   std::string android_package_name_;
+  // Human readable name for the set of credentials.
+  std::string friendly_name_;
+  // Time before the expiration of the set of credentials, in milliseconds since
+  // January 1, 1970, 00:00:00 GMT. The min value of int64_t means the field is
+  // unset.
+  int64_t expiration_time_milliseconds_;
 
   // Credentials unique identifier.
   std::string id_;

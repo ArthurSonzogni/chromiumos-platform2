@@ -602,12 +602,14 @@ class WiFiProviderTest : public testing::Test {
       const std::vector<uint64_t>& required_home_ois,
       const std::vector<uint64_t>& roaming_consortia,
       bool metered_override,
-      const std::string& app_package_name) {
+      const std::string& app_package_name,
+      const std::string& friendly_name,
+      uint64_t expiration_time) {
     std::string id = base::StringPrintf("entry_%d", storage_entry_index_);
     auto* profile_storage = static_cast<FakeStore*>(profile->GetStorage());
     PasspointCredentialsRefPtr creds = new PasspointCredentials(
         id, domains, realm, home_ois, required_home_ois, roaming_consortia,
-        metered_override, app_package_name);
+        metered_override, app_package_name, friendly_name, expiration_time);
     creds->Save(profile_storage);
     storage_entry_index_++;
     return id;
@@ -626,11 +628,13 @@ class WiFiProviderTest : public testing::Test {
       const std::vector<uint64_t>& required_home_ois,
       const std::vector<uint64_t>& roaming_consortia,
       bool metered_override,
-      const std::string& app_package_name) {
+      const std::string& app_package_name,
+      const std::string& friendly_name,
+      uint64_t expiration_time) {
     std::string id = PasspointCredentials::GenerateIdentifier();
     PasspointCredentialsRefPtr creds = new PasspointCredentials(
         id, domains, realm, home_ois, required_home_ois, roaming_consortia,
-        metered_override, app_package_name);
+        metered_override, app_package_name, friendly_name, expiration_time);
     provider_.AddCredentials(creds);
     return id;
   }
@@ -1903,6 +1907,8 @@ TEST_F(WiFiProviderTest, LoadCredentialsFromProfileAndCheckContent) {
   std::vector<uint64_t> required_home_ois{0x111222333444, 0x99887744};
   std::vector<uint64_t> roaming_consortia{0x1010101010, 0x2020202020};
   std::string app_name("com.sp-blue.app");
+  std::string friendly_name("My Provider");
+  uint64_t expiration_time = 1906869600000;
 
   EXPECT_CALL(manager_, GetEnabledDeviceWithTechnology(_))
       .Times(2)
@@ -1912,7 +1918,7 @@ TEST_F(WiFiProviderTest, LoadCredentialsFromProfileAndCheckContent) {
   std::string id = AddCredentialsToProfileStorage(
       user_profile_.get(), domains, realm, home_ois, required_home_ois,
       roaming_consortia,
-      /*metered_override=*/true, app_name);
+      /*metered_override=*/true, app_name, friendly_name, expiration_time);
   provider_.LoadCredentialsFromProfile(user_profile_.get());
 
   // Check the credentials are correct.
@@ -1938,6 +1944,8 @@ TEST_F(WiFiProviderTest, LoadUnloadCredentialsFromProfile) {
   std::string realm("sp-blue.com");
   std::vector<uint64_t> ois{0x123456789, 0x65798731, 0x1};
   std::string app_name("com.sp-blue.app");
+  std::string friendly_name("My Provider");
+  uint64_t expiration_time = 1906869600000;
 
   // We expect: two adds and two removes
   EXPECT_CALL(manager_, GetEnabledDeviceWithTechnology(_))
@@ -1945,19 +1953,19 @@ TEST_F(WiFiProviderTest, LoadUnloadCredentialsFromProfile) {
       .WillRepeatedly(Return(nullptr));
 
   // Add credentials to both Profiles.
-  std::string id_default =
-      AddCredentialsToProfileStorage(default_profile_.get(), domains, realm,
-                                     /*home_ois=*/ois,
-                                     /*required_home_ois=*/ois,
-                                     /*roaming_consortia=*/ois,
-                                     /*metered_override=*/true, app_name);
+  std::string id_default = AddCredentialsToProfileStorage(
+      default_profile_.get(), domains, realm,
+      /*home_ois=*/ois,
+      /*required_home_ois=*/ois,
+      /*roaming_consortia=*/ois,
+      /*metered_override=*/true, app_name, friendly_name, expiration_time);
   provider_.LoadCredentialsFromProfile(default_profile_.get());
-  std::string id_user =
-      AddCredentialsToProfileStorage(user_profile_.get(), domains, realm,
-                                     /*home_ois=*/ois,
-                                     /*required_home_ois=*/ois,
-                                     /*roaming_consortia=*/ois,
-                                     /*metered_override=*/true, app_name);
+  std::string id_user = AddCredentialsToProfileStorage(
+      user_profile_.get(), domains, realm,
+      /*home_ois=*/ois,
+      /*required_home_ois=*/ois,
+      /*roaming_consortia=*/ois,
+      /*metered_override=*/true, app_name, friendly_name, expiration_time);
   provider_.LoadCredentialsFromProfile(user_profile_.get());
 
   // Check both credentials are available
@@ -1982,6 +1990,8 @@ TEST_F(WiFiProviderTest, AddRemoveCredentials) {
   std::string realm("sp-red.com");
   std::vector<uint64_t> ois{0x1122334455, 0x97643165, 0x30};
   std::string app_name("com.sp-red.app");
+  std::string friendly_name("My Red Provider");
+  uint64_t expiration_time = 1906869610000;
 
   // We expect two calls, one during add, one during remove.
   EXPECT_CALL(manager_, GetEnabledDeviceWithTechnology(_))
@@ -1990,7 +2000,8 @@ TEST_F(WiFiProviderTest, AddRemoveCredentials) {
 
   // Add a set of credentials.
   std::string id =
-      AddCredentialsToProvider(domains, realm, ois, ois, ois, false, app_name);
+      AddCredentialsToProvider(domains, realm, ois, ois, ois, false, app_name,
+                               friendly_name, expiration_time);
   PasspointCredentialsRefPtr creds = GetCredentials(id);
   EXPECT_TRUE(creds != nullptr);
 

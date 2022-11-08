@@ -78,6 +78,16 @@ class StubStorage : public StoreInterface {
                  uint64_t value) override {
     return false;
   }
+  bool GetInt64(const std::string& group,
+                const std::string& key,
+                int64_t* value) const override {
+    return false;
+  }
+  bool SetInt64(const std::string& group,
+                const std::string& key,
+                int64_t value) override {
+    return false;
+  }
   bool GetStringList(const std::string& group,
                      const std::string& key,
                      std::vector<std::string>* value) const override {

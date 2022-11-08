@@ -219,6 +219,9 @@ TEST_F(PasspointCredentialsTest, Create) {
   const std::vector<std::string> kCaCertPem{"pem first line",
                                             "pem second line"};
   const std::string kPackageName("com.foo.bar");
+  const std::string kFriendlyName("My Service Provider");
+  const std::string kExpirationTime = "1906869600000";
+  const int64_t kExpirationTimeValue = 1906869600000;
   const std::string kCertId("cert-id");
   const std::string kKeyId("key-id");
   const std::string kSubjectNameMatch("domain1.com");
@@ -258,6 +261,9 @@ TEST_F(PasspointCredentialsTest, Create) {
   EXPECT_EQ(kRoamingConsortia, creds->roaming_consortia());
   EXPECT_TRUE(creds->metered_override());
   EXPECT_EQ(kPackageName, creds->android_package_name());
+  EXPECT_EQ(std::string(), creds->friendly_name());
+  EXPECT_EQ(std::numeric_limits<int64_t>::min(),
+            creds->expiration_time_milliseconds());
   EXPECT_TRUE(creds->eap().IsConnectable());
   EXPECT_FALSE(creds->eap().use_system_cas());
 
@@ -272,6 +278,9 @@ TEST_F(PasspointCredentialsTest, Create) {
                  toStringList(kRoamingConsortia));
   properties.Set(kPasspointCredentialsMeteredOverrideProperty, true);
   properties.Set(kPasspointCredentialsAndroidPackageNameProperty, kPackageName);
+  properties.Set(kPasspointCredentialsFriendlyNameProperty, kFriendlyName);
+  properties.Set(kPasspointCredentialsExpirationTimeMillisecondsProperty,
+                 kExpirationTime);
   properties.Set(kEapMethodProperty, kMethodTTLS);
   properties.Set(kEapPhase2AuthProperty,
                  std::string(kEapPhase2AuthTTLSMSCHAPV2));
@@ -289,6 +298,8 @@ TEST_F(PasspointCredentialsTest, Create) {
   EXPECT_EQ(kRoamingConsortia, creds->roaming_consortia());
   EXPECT_TRUE(creds->metered_override());
   EXPECT_EQ(kPackageName, creds->android_package_name());
+  EXPECT_EQ(kFriendlyName, creds->friendly_name());
+  EXPECT_EQ(kExpirationTimeValue, creds->expiration_time_milliseconds());
   EXPECT_TRUE(creds->eap().IsConnectable());
 
   // Verify Passpoint+EAP-TTLS without CA cert and with altname match list
@@ -396,7 +407,8 @@ TEST_F(PasspointCredentialsTest, ToSupplicantProperties) {
 
   PasspointCredentialsRefPtr creds = new PasspointCredentials(
       "an_id", domains, realm, home_ois, required_home_ois, roaming_consortia,
-      /*metered_override=*/false, "app_package_name");
+      /*metered_override=*/false, "app_package_name", "My Passpoint Provider",
+      0);
 
   // Add the minimal set of EAP properties
   KeyValueStore eap_store;
@@ -428,7 +440,8 @@ TEST_F(PasspointCredentialsTest, ToSupplicantProperties) {
 
   creds = new PasspointCredentials(
       "an_id", domains, realm, home_ois, required_home_ois, roaming_consortia,
-      /*metered_override=*/false, "app_package_name");
+      /*metered_override=*/false, "app_package_name", "My Passpoint Provider",
+      0);
 
   // EAP method and authentication is missing, it will be rejected.
   properties.Clear();

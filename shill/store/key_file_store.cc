@@ -636,6 +636,36 @@ bool KeyFileStore::SetUint64(const std::string& group,
   return true;
 }
 
+bool KeyFileStore::GetInt64(const std::string& group,
+                            const std::string& key,
+                            int64_t* value) const {
+  CHECK(key_file_);
+  std::optional<std::string> data = key_file_->Get(group, key);
+  if (!data.has_value()) {
+    SLOG(10) << "Failed to lookup (" << group << ":" << key << ")";
+    return false;
+  }
+
+  int64_t i;
+  if (!base::StringToInt64(data.value(), &i)) {
+    SLOG(10) << "Failed to parse (" << group << ":" << key << "): "
+             << " as int64";
+    return false;
+  }
+
+  if (value) {
+    *value = i;
+  }
+  return true;
+}
+
+bool KeyFileStore::SetInt64(const std::string& group,
+                            const std::string& key,
+                            int64_t value) {
+  CHECK(key_file_);
+  key_file_->Set(group, key, base::NumberToString(value));
+  return true;
+}
 bool KeyFileStore::GetStringList(const std::string& group,
                                  const std::string& key,
                                  std::vector<std::string>* value) const {

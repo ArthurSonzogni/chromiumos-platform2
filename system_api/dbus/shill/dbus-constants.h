@@ -360,6 +360,9 @@ const char kPasspointCredentialsRoamingConsortiaProperty[] = "RoamingConsortia";
 const char kPasspointCredentialsMeteredOverrideProperty[] = "MeteredOverride";
 const char kPasspointCredentialsAndroidPackageNameProperty[] =
     "AndroidPackageName";
+const char kPasspointCredentialsFriendlyNameProperty[] = "FriendlyName";
+const char kPasspointCredentialsExpirationTimeMillisecondsProperty[] =
+    "ExpirationTimeMilliseconds";
 
 // Base Device property names.
 const char kAddressProperty[] = "Address";  // Also used for IPConfig.

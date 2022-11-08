@@ -75,6 +75,12 @@ class KeyFileStore : public StoreInterface {
   bool SetUint64(const std::string& group,
                  const std::string& key,
                  uint64_t value) override;
+  bool GetInt64(const std::string& group,
+                const std::string& key,
+                int64_t* value) const override;
+  bool SetInt64(const std::string& group,
+                const std::string& key,
+                int64_t value) override;
   bool GetStringList(const std::string& group,
                      const std::string& key,
                      std::vector<std::string>* value) const override;

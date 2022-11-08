@@ -127,6 +127,20 @@ class StoreInterface {
                          const std::string& key,
                          uint64_t value) = 0;
 
+  // Gets a 64-bit signed integer |value| associated with |group|:|key|.
+  // Returns true on success and false on failure (including when the
+  // |group|:|key| is not present in the store).  It is not an error to
+  // pass NULL as |value| to simply test for the presence of this value.
+  virtual bool GetInt64(const std::string& group,
+                        const std::string& key,
+                        int64_t* value) const = 0;
+
+  // Associates |group|:|key| with a 64-bit signed integer |value|. Returns
+  // true on success, false otherwise.
+  virtual bool SetInt64(const std::string& group,
+                        const std::string& key,
+                        int64_t value) = 0;
+
   // Gets a string list |value| associated with |group|:|key|. Returns true on
   // success and false on failure (including when |group|:|key| is not present
   // in the store).  It is not an error to pass NULL as |value| to simply test
