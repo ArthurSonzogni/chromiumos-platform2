@@ -58,11 +58,8 @@ std::vector<trunks::TPM_HANDLE> MakeFakeFoundHandles(int size) {
   return handles;
 }
 
-MATCHER_P(IsCommandNumberOf, v, "") {
-  return arg.data.tpm_properties.count == 1 &&
-         arg.data.tpm_properties.tpm_property[0].property ==
-             trunks::TPM_PT_TOTAL_COMMANDS &&
-         arg.data.tpm_properties.tpm_property[0].value == v;
+MATCHER_P(IsPropertyCountOf, v, "") {
+  return arg.data.tpm_properties.count == v;
 }
 
 MATCHER_P2(IsCommandListOf, first, count, "") {
@@ -75,10 +72,6 @@ MATCHER_P2(IsCommandListOf, first, count, "") {
     }
   }
   return true;
-}
-
-MATCHER(IsEmptyPropertyList, "") {
-  return arg.data.tpm_properties.count == 0;
 }
 
 MATCHER(IsEmptyPcrSelection, "") {
@@ -94,8 +87,6 @@ class GetCapabilityCommandTest : public testing::Test {
     for (int i = 0; i < count; ++i) {
       real_property_manager_.AddCommand(kFakeFirstTpmCommandCode + i);
     }
-    real_property_manager_.AddCapabilityProperty(trunks::TPM_PT_TOTAL_COMMANDS,
-                                                 count);
   }
   StrictMock<trunks::MockCommandParser> mock_cmd_parser_;
   StrictMock<trunks::MockResponseSerializer> mock_resp_serializer_;
@@ -412,101 +403,6 @@ TEST_F(GetCapabilityCommandTest, FailureParserError) {
   EXPECT_EQ(response, kTestResponse);
 }
 
-TEST_F(GetCapabilityCommandTest, TpmPropertyTotalCommandsSuccess) {
-  std::string response;
-  CommandResponseCallback callback =
-      base::BindOnce([](std::string* resp_out,
-                        const std::string& resp_in) { *resp_out = resp_in; },
-                     &response);
-  EXPECT_CALL(
-      mock_cmd_parser_,
-      ParseCommandGetCapability(Pointee(std::string(kFakeRequest)), _, _, _))
-      .WillOnce(DoAll(SetArgPointee<1>(trunks::TPM_CAP_TPM_PROPERTIES),
-                      SetArgPointee<2>(trunks::TPM_PT_TOTAL_COMMANDS),
-                      SetArgPointee<3>(1), Return(trunks::TPM_RC_SUCCESS)));
-
-  InitializeCommandCount(kFakeTotalCommandCount);
-
-  EXPECT_CALL(mock_resp_serializer_,
-              SerializeResponseGetCapability(
-                  NO, IsCommandNumberOf(kFakeTotalCommandCount), _))
-      .WillOnce(SetArgPointee<2>(kTestResponse));
-
-  command_.Run(kFakeRequest, std::move(callback));
-  EXPECT_EQ(response, kTestResponse);
-}
-
-TEST_F(GetCapabilityCommandTest,
-       TpmPropertyTotalCommandsSuccessExcessivePropertyCount) {
-  std::string response;
-  CommandResponseCallback callback =
-      base::BindOnce([](std::string* resp_out,
-                        const std::string& resp_in) { *resp_out = resp_in; },
-                     &response);
-  EXPECT_CALL(
-      mock_cmd_parser_,
-      ParseCommandGetCapability(Pointee(std::string(kFakeRequest)), _, _, _))
-      .WillOnce(DoAll(SetArgPointee<1>(trunks::TPM_CAP_TPM_PROPERTIES),
-                      SetArgPointee<2>(trunks::TPM_PT_TOTAL_COMMANDS),
-                      SetArgPointee<3>(5), Return(trunks::TPM_RC_SUCCESS)));
-
-  InitializeCommandCount(kFakeTotalCommandCount);
-
-  EXPECT_CALL(mock_resp_serializer_,
-              SerializeResponseGetCapability(
-                  NO, IsCommandNumberOf(kFakeTotalCommandCount), _))
-      .WillOnce(SetArgPointee<2>(kTestResponse));
-
-  command_.Run(kFakeRequest, std::move(callback));
-  EXPECT_EQ(response, kTestResponse);
-}
-
-TEST_F(GetCapabilityCommandTest,
-       TpmPropertyTotalCommandsSuccessZeroPropertyCount) {
-  std::string response;
-  CommandResponseCallback callback =
-      base::BindOnce([](std::string* resp_out,
-                        const std::string& resp_in) { *resp_out = resp_in; },
-                     &response);
-  EXPECT_CALL(
-      mock_cmd_parser_,
-      ParseCommandGetCapability(Pointee(std::string(kFakeRequest)), _, _, _))
-      .WillOnce(DoAll(SetArgPointee<1>(trunks::TPM_CAP_TPM_PROPERTIES),
-                      SetArgPointee<2>(trunks::TPM_PT_TOTAL_COMMANDS),
-                      SetArgPointee<3>(0), Return(trunks::TPM_RC_SUCCESS)));
-
-  InitializeCommandCount(kFakeTotalCommandCount);
-
-  EXPECT_CALL(mock_resp_serializer_,
-              SerializeResponseGetCapability(YES, IsEmptyPropertyList(), _))
-      .WillOnce(SetArgPointee<2>(kTestResponse));
-
-  command_.Run(kFakeRequest, std::move(callback));
-  EXPECT_EQ(response, kTestResponse);
-}
-
-TEST_F(GetCapabilityCommandTest,
-       TpmPropertyTotalCommandFailureUnsupportedTpmProperty) {
-  std::string response;
-  CommandResponseCallback callback =
-      base::BindOnce([](std::string* resp_out,
-                        const std::string& resp_in) { *resp_out = resp_in; },
-                     &response);
-  EXPECT_CALL(
-      mock_cmd_parser_,
-      ParseCommandGetCapability(Pointee(std::string(kFakeRequest)), _, _, _))
-      .WillOnce(DoAll(SetArgPointee<1>(trunks::TPM_CAP_TPM_PROPERTIES),
-                      SetArgPointee<2>(trunks::TPM_PT_NONE),
-                      SetArgPointee<3>(1), Return(trunks::TPM_RC_SUCCESS)));
-
-  EXPECT_CALL(mock_resp_serializer_,
-              SerializeResponseGetCapability(NO, IsEmptyPropertyList(), _))
-      .WillOnce(SetArgPointee<2>(kTestResponse));
-
-  command_.Run(kFakeRequest, std::move(callback));
-  EXPECT_EQ(response, kTestResponse);
-}
-
 TEST_F(GetCapabilityCommandTest, CommandsSuccess) {
   std::string response;
   CommandResponseCallback callback =
@@ -528,6 +424,78 @@ TEST_F(GetCapabilityCommandTest, CommandsSuccess) {
       SerializeResponseGetCapability(
           NO, IsCommandListOf(kFakeFirstTpmCommandCode, kFakeTotalCommandCount),
           _))
+      .WillOnce(SetArgPointee<2>(kTestResponse));
+
+  command_.Run(kFakeRequest, std::move(callback));
+  EXPECT_EQ(response, kTestResponse);
+}
+
+TEST_F(GetCapabilityCommandTest, TpmPropertiesSuccessHasMore) {
+  std::string response;
+  CommandResponseCallback callback =
+      base::BindOnce([](std::string* resp_out,
+                        const std::string& resp_in) { *resp_out = resp_in; },
+                     &response);
+  // `TPM_PT_AUDIT_COUNTER_1` is the last TPM property on the spec.
+  EXPECT_CALL(
+      mock_cmd_parser_,
+      ParseCommandGetCapability(Pointee(std::string(kFakeRequest)), _, _, _))
+      .WillOnce(DoAll(SetArgPointee<1>(trunks::TPM_CAP_TPM_PROPERTIES),
+                      SetArgPointee<2>(trunks::TPM_PT_TOTAL_COMMANDS),
+                      SetArgPointee<3>(5), Return(trunks::TPM_RC_SUCCESS)));
+
+  InitializeCommandCount(kFakeTotalCommandCount);
+
+  EXPECT_CALL(mock_resp_serializer_,
+              SerializeResponseGetCapability(YES, IsPropertyCountOf(5), _))
+      .WillOnce(SetArgPointee<2>(kTestResponse));
+
+  command_.Run(kFakeRequest, std::move(callback));
+  EXPECT_EQ(response, kTestResponse);
+}
+
+TEST_F(GetCapabilityCommandTest, TpmPropertiesSuccessExcessivePropertyCount) {
+  std::string response;
+  CommandResponseCallback callback =
+      base::BindOnce([](std::string* resp_out,
+                        const std::string& resp_in) { *resp_out = resp_in; },
+                     &response);
+  // `TPM_PT_AUDIT_COUNTER_1` is the last TPM property on the spec.
+  EXPECT_CALL(
+      mock_cmd_parser_,
+      ParseCommandGetCapability(Pointee(std::string(kFakeRequest)), _, _, _))
+      .WillOnce(DoAll(SetArgPointee<1>(trunks::TPM_CAP_TPM_PROPERTIES),
+                      SetArgPointee<2>(trunks::TPM_PT_AUDIT_COUNTER_1),
+                      SetArgPointee<3>(5), Return(trunks::TPM_RC_SUCCESS)));
+
+  InitializeCommandCount(kFakeTotalCommandCount);
+
+  EXPECT_CALL(mock_resp_serializer_,
+              SerializeResponseGetCapability(NO, IsPropertyCountOf(1), _))
+      .WillOnce(SetArgPointee<2>(kTestResponse));
+
+  command_.Run(kFakeRequest, std::move(callback));
+  EXPECT_EQ(response, kTestResponse);
+}
+
+TEST_F(GetCapabilityCommandTest, TpmPropertiesSuccessExactPropertyCount) {
+  std::string response;
+  CommandResponseCallback callback =
+      base::BindOnce([](std::string* resp_out,
+                        const std::string& resp_in) { *resp_out = resp_in; },
+                     &response);
+  // `TPM_PT_AUDIT_COUNTER_1` is the last TPM property on the spec.
+  EXPECT_CALL(
+      mock_cmd_parser_,
+      ParseCommandGetCapability(Pointee(std::string(kFakeRequest)), _, _, _))
+      .WillOnce(DoAll(SetArgPointee<1>(trunks::TPM_CAP_TPM_PROPERTIES),
+                      SetArgPointee<2>(trunks::TPM_PT_AUDIT_COUNTER_1),
+                      SetArgPointee<3>(1), Return(trunks::TPM_RC_SUCCESS)));
+
+  InitializeCommandCount(kFakeTotalCommandCount);
+
+  EXPECT_CALL(mock_resp_serializer_,
+              SerializeResponseGetCapability(NO, IsPropertyCountOf(1), _))
       .WillOnce(SetArgPointee<2>(kTestResponse));
 
   command_.Run(kFakeRequest, std::move(callback));

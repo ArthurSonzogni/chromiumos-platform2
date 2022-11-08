@@ -161,32 +161,7 @@ std::unique_ptr<Virtualizer> Virtualizer::Create(Virtualizer::Profile profile) {
         std::make_unique<UnsupportedCommand>(v->response_serializer_));
     v->fallback_command_ = v->commands_.back().get();
     // Others are not implemented yet.
-
-    // All commands should be added before this line in order to ensure the
-    // CapabilityTpmProperties are correct.
-    v->real_tpm_property_manager_.AddCapabilityProperty(
-        trunks::TPM_PT_MANUFACTURER, 'CROS');
-    v->real_tpm_property_manager_.AddCapabilityProperty(
-        trunks::TPM_PT_VENDOR_STRING_1, 0);
-    v->real_tpm_property_manager_.AddCapabilityProperty(
-        trunks::TPM_PT_VENDOR_STRING_2, 0);
-    v->real_tpm_property_manager_.AddCapabilityProperty(
-        trunks::TPM_PT_VENDOR_STRING_3, 0);
-    v->real_tpm_property_manager_.AddCapabilityProperty(
-        trunks::TPM_PT_VENDOR_STRING_4, 0);
-    v->real_tpm_property_manager_.AddCapabilityProperty(
-        trunks::TPM_PT_VENDOR_STRING_4, 0);
-    v->real_tpm_property_manager_.AddCapabilityProperty(
-        trunks::TPM_PT_VENDOR_TPM_TYPE, 0);
-    v->real_tpm_property_manager_.AddCapabilityProperty(
-        trunks::TPM_PT_FIRMWARE_VERSION_1, 0);
-    v->real_tpm_property_manager_.AddCapabilityProperty(
-        trunks::TPM_PT_FIRMWARE_VERSION_2, 0);
-    v->real_tpm_property_manager_.AddCapabilityProperty(
-        trunks::TPM_PT_TOTAL_COMMANDS,
-        v->real_tpm_property_manager_.GetCommandList().size());
   }
-
   return v;
 }
 
