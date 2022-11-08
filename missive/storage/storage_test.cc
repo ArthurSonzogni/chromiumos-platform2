@@ -14,7 +14,6 @@
 #include <base/containers/flat_map.h>
 #include <base/feature_list.h>
 #include <base/files/scoped_temp_dir.h>
-#include <base/guid.h>
 #include <base/strings/strcat.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/task/sequenced_task_runner.h>
@@ -54,8 +53,6 @@ using ::testing::Eq;
 using ::testing::Gt;
 using ::testing::HasSubstr;
 using ::testing::Invoke;
-using ::testing::IsEmpty;
-using ::testing::Not;
 using ::testing::Property;
 using ::testing::Return;
 using ::testing::Sequence;
@@ -1071,17 +1068,6 @@ class StorageTest
 constexpr std::array<const char*, 3> kData = {"Rec1111", "Rec222", "Rec33"};
 constexpr std::array<const char*, 3> kMoreData = {"More1111", "More222",
                                                   "More33"};
-TEST_P(StorageTest, ReadPipelineId) {
-  CreateTestStorageOrDie(BuildTestStorageOptions());
-
-  // TODO(b/249381224): investigate why removing WriteStringOrDie causes test to
-  // fail
-  WriteStringOrDie(FAST_BATCH, kData[0]);
-
-  StatusOr<base::StringPiece> pipeline_id_result = storage_->GetPipelineId();
-  EXPECT_THAT(pipeline_id_result.status(), Eq(Status::StatusOK()));
-  EXPECT_TRUE(base::IsValidGUID(pipeline_id_result.ValueOrDie()));
-}
 
 TEST_P(StorageTest, WriteIntoNewStorageAndReopen) {
   CreateTestStorageOrDie(BuildTestStorageOptions());

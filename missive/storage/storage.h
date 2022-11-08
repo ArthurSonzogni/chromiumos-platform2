@@ -79,10 +79,6 @@ class Storage : public base::RefCountedThreadSafe<Storage> {
   // be paased here.
   void UpdateEncryptionKey(SignedEncryptionInfo signed_encryption_key);
 
-  // Returns the pipeline ID stored in the filesystem. All errors are handled
-  // internally.
-  base::StringPiece GetPipelineId() const;
-
   // Registers completion notification callback. Thread-safe.
   // All registered callbacks are called when all queues destructions come
   // to their completion and the Storage is destructed as well.
@@ -104,9 +100,6 @@ class Storage : public base::RefCountedThreadSafe<Storage> {
   // It can be invoked multiple times in parallel, but will only do
   // one server roundtrip and notify all requestors upon its completion.
   class KeyDelivery;
-
-  // Private helper class for pipeline ID upload/download to the file system.
-  class PipelineIdInStorage;
 
   // Private constructor, to be called by Create factory method only.
   // Queues need to be added afterwards.
@@ -150,9 +143,6 @@ class Storage : public base::RefCountedThreadSafe<Storage> {
 
   // Upload provider callback.
   const UploaderInterface::AsyncStartUploaderCb async_start_upload_cb_;
-
-  // Internal pipeline ID management module.
-  const std::unique_ptr<PipelineIdInStorage> pipeline_id_in_storage_;
 
   // Task runner for storage-wide operations (initialization, queues selection).
   const scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner_;

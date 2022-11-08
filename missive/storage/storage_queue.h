@@ -120,12 +120,6 @@ class StorageQueue : public base::RefCountedDeleteOnSequence<StorageQueue> {
   // CollectFilesForUpload.
   void Flush(base::OnceCallback<void(Status)> completion_cb);
 
-  // Performs a full "reset" of the queue:
-  // - Deletes all unused files
-  // - Creates a new generation id
-  // Only used to recover from file corruption scenarios.
-  Status Purge();
-
   // Registers completion notification callback. Thread-safe.
   // All registered callbacks are called when the queue destruction comes
   // to its completion.
