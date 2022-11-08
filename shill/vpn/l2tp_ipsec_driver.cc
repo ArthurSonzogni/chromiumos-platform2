@@ -274,6 +274,11 @@ std::unique_ptr<IPConfig::Properties> L2TPIPsecDriver::GetIPv4Properties()
   return std::make_unique<IPConfig::Properties>(ip_properties_);
 }
 
+std::unique_ptr<IPConfig::Properties> L2TPIPsecDriver::GetIPv6Properties()
+    const {
+  return nullptr;
+}
+
 std::string L2TPIPsecDriver::GetProviderType() const {
   return kProviderL2tpIpsec;
 }

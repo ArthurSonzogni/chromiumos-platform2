@@ -30,6 +30,7 @@ class L2TPIPsecDriver : public VPNDriver {
   base::TimeDelta ConnectAsync(EventHandler* handler) override;
   void Disconnect() override;
   std::unique_ptr<IPConfig::Properties> GetIPv4Properties() const override;
+  std::unique_ptr<IPConfig::Properties> GetIPv6Properties() const override;
   std::string GetProviderType() const override;
   void OnConnectTimeout() override;
 

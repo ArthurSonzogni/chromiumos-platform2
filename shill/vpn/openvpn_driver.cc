@@ -327,6 +327,10 @@ std::unique_ptr<IPConfig::Properties> OpenVPNDriver::GetIPv4Properties() const {
   return std::make_unique<IPConfig::Properties>(ip_properties_);
 }
 
+std::unique_ptr<IPConfig::Properties> OpenVPNDriver::GetIPv6Properties() const {
+  return nullptr;
+}
+
 void OpenVPNDriver::ParseIPConfiguration(
     const std::map<std::string, std::string>& configuration,
     IPConfig::Properties* properties) const {

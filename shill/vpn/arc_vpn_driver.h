@@ -30,6 +30,7 @@ class ArcVpnDriver : public VPNDriver {
   void Disconnect() override;
   void OnConnectTimeout() override;
   std::unique_ptr<IPConfig::Properties> GetIPv4Properties() const override;
+  std::unique_ptr<IPConfig::Properties> GetIPv6Properties() const override;
 
  private:
   static const Property kProperties[];

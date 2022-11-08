@@ -235,10 +235,10 @@ std::unique_ptr<IPConfig::Properties> WireGuardDriver::GetIPv4Properties()
 
 std::unique_ptr<IPConfig::Properties> WireGuardDriver::GetIPv6Properties()
     const {
-  if (ipv6_properties_.subnet_prefix == 0) {
-    return nullptr;
+  if (ipv6_properties_.address_family != IPAddress::kFamilyUnknown) {
+    return std::make_unique<IPConfig::Properties>(ipv6_properties_);
   }
-  return std::make_unique<IPConfig::Properties>(ipv6_properties_);
+  return nullptr;
 }
 
 std::string WireGuardDriver::GetProviderType() const {

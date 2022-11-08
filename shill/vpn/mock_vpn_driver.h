@@ -29,6 +29,10 @@ class MockVPNDriver : public VPNDriver {
               GetIPv4Properties,
               (),
               (const, override));
+  MOCK_METHOD(std::unique_ptr<IPConfig::Properties>,
+              GetIPv6Properties,
+              (),
+              (const, override));
   MOCK_METHOD(bool,
               Load,
               (const StoreInterface*, const std::string&),

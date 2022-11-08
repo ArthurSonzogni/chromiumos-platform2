@@ -183,6 +183,10 @@ std::unique_ptr<IPConfig::Properties> IKEv2Driver::GetIPv4Properties() const {
   return std::make_unique<IPConfig::Properties>(ip_properties_);
 }
 
+std::unique_ptr<IPConfig::Properties> IKEv2Driver::GetIPv6Properties() const {
+  return nullptr;
+}
+
 std::string IKEv2Driver::GetProviderType() const {
   return kProviderIKEv2;
 }

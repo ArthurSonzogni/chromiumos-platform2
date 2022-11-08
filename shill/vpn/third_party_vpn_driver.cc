@@ -521,6 +521,11 @@ std::unique_ptr<IPConfig::Properties> ThirdPartyVpnDriver::GetIPv4Properties()
   return std::make_unique<IPConfig::Properties>(ip_properties_);
 }
 
+std::unique_ptr<IPConfig::Properties> ThirdPartyVpnDriver::GetIPv6Properties()
+    const {
+  return nullptr;
+}
+
 void ThirdPartyVpnDriver::FailService(Service::ConnectFailure failure,
                                       const std::string& error_details) {
   SLOG(2) << __func__ << "(" << error_details << ")";

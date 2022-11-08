@@ -60,6 +60,10 @@ class VPNDriverUnderTest : public VPNDriver {
               GetIPv4Properties,
               (),
               (const, override));
+  MOCK_METHOD(std::unique_ptr<IPConfig::Properties>,
+              GetIPv6Properties,
+              (),
+              (const, override));
   MOCK_METHOD(std::string, GetProviderType, (), (const, override));
 
  private:

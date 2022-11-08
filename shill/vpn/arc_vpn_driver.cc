@@ -81,6 +81,10 @@ std::unique_ptr<IPConfig::Properties> ArcVpnDriver::GetIPv4Properties() const {
   return std::make_unique<IPConfig::Properties>(ip_properties);
 }
 
+std::unique_ptr<IPConfig::Properties> ArcVpnDriver::GetIPv6Properties() const {
+  return nullptr;
+}
+
 std::string ArcVpnDriver::GetProviderType() const {
   return std::string(kProviderArcVpn);
 }
