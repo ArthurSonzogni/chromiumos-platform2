@@ -58,6 +58,10 @@ namespace attestation {
 
 namespace {
 
+constexpr char kFakeCert[] = "fake cert";
+constexpr char kFakeCaCert[] = "fake_ca_cert";
+constexpr char kFakeCaCert2[] = "fake_ca_cert2";
+
 TpmVersion GetTpmVersionUnderTest() {
   SET_DEFAULT_TPM_FOR_TESTING;
 
@@ -133,11 +137,11 @@ std::string GetFakeCertificateChain() {
   const std::string kBeginCertificate = "-----BEGIN CERTIFICATE-----\n";
   const std::string kEndCertificate = "-----END CERTIFICATE-----";
   std::string pem = kBeginCertificate;
-  pem += brillo::data_encoding::Base64EncodeWrapLines("fake_cert");
+  pem += brillo::data_encoding::Base64EncodeWrapLines(kFakeCert);
   pem += kEndCertificate + "\n" + kBeginCertificate;
-  pem += brillo::data_encoding::Base64EncodeWrapLines("fake_ca_cert");
+  pem += brillo::data_encoding::Base64EncodeWrapLines(kFakeCaCert);
   pem += kEndCertificate + "\n" + kBeginCertificate;
-  pem += brillo::data_encoding::Base64EncodeWrapLines("fake_ca_cert2");
+  pem += brillo::data_encoding::Base64EncodeWrapLines(kFakeCaCert2);
   pem += kEndCertificate;
   return pem;
 }
@@ -269,9 +273,9 @@ class AttestationServiceBaseTest : public testing::Test {
   CertifiedKey GenerateFakeCertifiedKey() const {
     CertifiedKey key;
     key.set_public_key("public_key");
-    key.set_certified_key_credential("fake_cert");
-    key.set_intermediate_ca_cert("fake_ca_cert");
-    *key.add_additional_intermediate_ca_cert() = "fake_ca_cert2";
+    key.set_certified_key_credential(kFakeCert);
+    key.set_intermediate_ca_cert(kFakeCaCert);
+    *key.add_additional_intermediate_ca_cert() = kFakeCaCert2;
     key.set_key_name("label");
     key.set_certified_key_info("certify_info");
     key.set_certified_key_proof("signature");
@@ -586,9 +590,9 @@ TEST_F(AttestationServiceBaseTest, GetKeyInfoSuccess) {
   // Setup a certified key in the key store.
   CertifiedKey key;
   key.set_public_key("public_key");
-  key.set_certified_key_credential("fake_cert");
-  key.set_intermediate_ca_cert("fake_ca_cert");
-  *key.add_additional_intermediate_ca_cert() = "fake_ca_cert2";
+  key.set_certified_key_credential(kFakeCert);
+  key.set_intermediate_ca_cert(kFakeCaCert);
+  *key.add_additional_intermediate_ca_cert() = kFakeCaCert2;
   key.set_key_name("label");
   key.set_certified_key_info("certify_info");
   key.set_certified_key_proof("signature");
@@ -608,6 +612,7 @@ TEST_F(AttestationServiceBaseTest, GetKeyInfoSuccess) {
     EXPECT_EQ("public_key", reply.public_key());
     EXPECT_EQ("certify_info", reply.certify_info());
     EXPECT_EQ("signature", reply.certify_info_signature());
+    EXPECT_EQ(kFakeCert, reply.certified_key_credential());
     EXPECT_EQ(GetFakeCertificateChain(), reply.certificate());
     std::move(quit_closure).Run();
   };
@@ -622,9 +627,9 @@ TEST_F(AttestationServiceBaseTest, GetKeyInfoSuccessNoUser) {
   // Setup a certified key in the device key store.
   CertifiedKey& key = *mock_database_.GetMutableProtobuf()->add_device_keys();
   key.set_public_key("public_key");
-  key.set_certified_key_credential("fake_cert");
-  key.set_intermediate_ca_cert("fake_ca_cert");
-  *key.add_additional_intermediate_ca_cert() = "fake_ca_cert2";
+  key.set_certified_key_credential(kFakeCert);
+  key.set_intermediate_ca_cert(kFakeCaCert);
+  *key.add_additional_intermediate_ca_cert() = kFakeCaCert2;
   key.set_key_name("label");
   key.set_certified_key_info("certify_info");
   key.set_certified_key_proof("signature");
@@ -640,6 +645,7 @@ TEST_F(AttestationServiceBaseTest, GetKeyInfoSuccessNoUser) {
     EXPECT_EQ("public_key", reply.public_key());
     EXPECT_EQ("certify_info", reply.certify_info());
     EXPECT_EQ("signature", reply.certify_info_signature());
+    EXPECT_EQ(kFakeCert, reply.certified_key_credential());
     EXPECT_EQ(GetFakeCertificateChain(), reply.certificate());
     std::move(quit_closure).Run();
   };
@@ -1201,9 +1207,9 @@ class AttestationServiceTest : public AttestationServiceBaseTest,
       response_pb.set_status(OK);
       response_pb.set_detail("");
       response_pb.set_message_id(message_id);
-      response_pb.set_certified_key_credential("fake_cert");
-      response_pb.set_intermediate_ca_cert("fake_ca_cert");
-      *response_pb.add_additional_intermediate_ca_cert() = "fake_ca_cert2";
+      response_pb.set_certified_key_credential(kFakeCert);
+      response_pb.set_intermediate_ca_cert(kFakeCaCert);
+      *response_pb.add_additional_intermediate_ca_cert() = kFakeCaCert2;
     } else {
       response_pb.set_status(SERVER_ERROR);
       response_pb.set_message_id(message_id);
@@ -1802,9 +1808,9 @@ TEST_P(AttestationServiceTest, RegisterSuccess) {
   CertifiedKey key;
   key.set_key_blob("key_blob");
   key.set_public_key("public_key");
-  key.set_certified_key_credential("fake_cert");
-  key.set_intermediate_ca_cert("fake_ca_cert");
-  *key.add_additional_intermediate_ca_cert() = "fake_ca_cert2";
+  key.set_certified_key_credential(kFakeCert);
+  key.set_intermediate_ca_cert(kFakeCaCert);
+  *key.add_additional_intermediate_ca_cert() = kFakeCaCert2;
   key.set_key_name("label");
   key.set_key_type(KEY_TYPE_RSA);
   key.set_key_usage(KEY_USAGE_SIGN);
@@ -1839,9 +1845,9 @@ TEST_P(AttestationServiceTest, RegisterSuccessNoUser) {
   CertifiedKey& key = *mock_database_.GetMutableProtobuf()->add_device_keys();
   key.set_key_blob("key_blob");
   key.set_public_key("public_key");
-  key.set_certified_key_credential("fake_cert");
-  key.set_intermediate_ca_cert("fake_ca_cert");
-  *key.add_additional_intermediate_ca_cert() = "fake_ca_cert2";
+  key.set_certified_key_credential(kFakeCert);
+  key.set_intermediate_ca_cert(kFakeCaCert);
+  *key.add_additional_intermediate_ca_cert() = kFakeCaCert2;
   key.set_key_name("label");
   key.set_key_type(KEY_TYPE_RSA);
   key.set_key_usage(KEY_USAGE_SIGN);
@@ -1871,9 +1877,9 @@ TEST_P(AttestationServiceTest, RegisterSuccessWithCertificates) {
   CertifiedKey key;
   key.set_key_blob("key_blob");
   key.set_public_key("public_key");
-  key.set_certified_key_credential("fake_cert");
-  key.set_intermediate_ca_cert("fake_ca_cert");
-  *key.add_additional_intermediate_ca_cert() = "fake_ca_cert2";
+  key.set_certified_key_credential(kFakeCert);
+  key.set_intermediate_ca_cert(kFakeCaCert);
+  *key.add_additional_intermediate_ca_cert() = kFakeCaCert2;
   key.set_key_name("label");
   key.set_key_type(KEY_TYPE_RSA);
   key.set_key_usage(KEY_USAGE_SIGN);
@@ -1885,11 +1891,11 @@ TEST_P(AttestationServiceTest, RegisterSuccessWithCertificates) {
   // catch performance regressions.
   EXPECT_CALL(mock_key_store_,
               Register("user", "label", KEY_TYPE_RSA, KEY_USAGE_SIGN,
-                       "key_blob", "public_key", "fake_cert"))
+                       "key_blob", "public_key", kFakeCert))
       .Times(1);
-  EXPECT_CALL(mock_key_store_, RegisterCertificate("user", "fake_ca_cert"))
+  EXPECT_CALL(mock_key_store_, RegisterCertificate("user", kFakeCaCert))
       .Times(1);
-  EXPECT_CALL(mock_key_store_, RegisterCertificate("user", "fake_ca_cert2"))
+  EXPECT_CALL(mock_key_store_, RegisterCertificate("user", kFakeCaCert2))
       .Times(1);
   EXPECT_CALL(mock_key_store_, Delete("user", "label")).Times(1);
   // Set expectations on the outputs.
@@ -1912,9 +1918,9 @@ TEST_P(AttestationServiceTest, RegisterSuccessNoUserWithCertificates) {
   CertifiedKey& key = *mock_database_.GetMutableProtobuf()->add_device_keys();
   key.set_key_blob("key_blob");
   key.set_public_key("public_key");
-  key.set_certified_key_credential("fake_cert");
-  key.set_intermediate_ca_cert("fake_ca_cert");
-  *key.add_additional_intermediate_ca_cert() = "fake_ca_cert2";
+  key.set_certified_key_credential(kFakeCert);
+  key.set_intermediate_ca_cert(kFakeCaCert);
+  *key.add_additional_intermediate_ca_cert() = kFakeCaCert2;
   key.set_key_name("label");
   key.set_key_type(KEY_TYPE_RSA);
   key.set_key_usage(KEY_USAGE_SIGN);
@@ -1922,12 +1928,10 @@ TEST_P(AttestationServiceTest, RegisterSuccessNoUserWithCertificates) {
   // catch performance regressions.
   EXPECT_CALL(mock_key_store_,
               Register("", "label", KEY_TYPE_RSA, KEY_USAGE_SIGN, "key_blob",
-                       "public_key", "fake_cert"))
+                       "public_key", kFakeCert))
       .Times(1);
-  EXPECT_CALL(mock_key_store_, RegisterCertificate("", "fake_ca_cert"))
-      .Times(1);
-  EXPECT_CALL(mock_key_store_, RegisterCertificate("", "fake_ca_cert2"))
-      .Times(1);
+  EXPECT_CALL(mock_key_store_, RegisterCertificate("", kFakeCaCert)).Times(1);
+  EXPECT_CALL(mock_key_store_, RegisterCertificate("", kFakeCaCert2)).Times(1);
   // Set expectations on the outputs.
   auto callback = [](base::OnceClosure quit_closure, Database* database,
                      const RegisterKeyWithChapsTokenReply& reply) {
@@ -2002,7 +2006,7 @@ TEST_P(AttestationServiceTest, RegisterIntermediateFailure) {
   // Setup a key in the user key store.
   CertifiedKey key;
   key.set_key_name("label");
-  key.set_intermediate_ca_cert("fake_ca_cert");
+  key.set_intermediate_ca_cert(kFakeCaCert);
   std::string key_bytes;
   key.SerializeToString(&key_bytes);
   EXPECT_CALL(mock_key_store_, Read("user", "label", _))
@@ -2028,7 +2032,7 @@ TEST_P(AttestationServiceTest, RegisterAdditionalFailure) {
   // Setup a key in the user key store.
   CertifiedKey key;
   key.set_key_name("label");
-  *key.add_additional_intermediate_ca_cert() = "fake_ca_cert2";
+  *key.add_additional_intermediate_ca_cert() = kFakeCaCert2;
   std::string key_bytes;
   key.SerializeToString(&key_bytes);
   EXPECT_CALL(mock_key_store_, Read("user", "label", _))
@@ -2055,9 +2059,9 @@ TEST_P(AttestationServiceTest, DeleteKeysByLabelSuccess) {
   CertifiedKey key;
   key.set_key_blob("key_blob");
   key.set_public_key("public_key");
-  key.set_certified_key_credential("fake_cert");
-  key.set_intermediate_ca_cert("fake_ca_cert");
-  *key.add_additional_intermediate_ca_cert() = "fake_ca_cert2";
+  key.set_certified_key_credential(kFakeCert);
+  key.set_intermediate_ca_cert(kFakeCaCert);
+  *key.add_additional_intermediate_ca_cert() = kFakeCaCert2;
   key.set_key_name("label");
   key.set_key_type(KEY_TYPE_RSA);
   key.set_key_usage(KEY_USAGE_SIGN);
@@ -2086,9 +2090,9 @@ TEST_P(AttestationServiceTest, DeleteKeyByLabelNoUserSuccess) {
   CertifiedKey& key = *mock_database_.GetMutableProtobuf()->add_device_keys();
   key.set_key_blob("key_blob");
   key.set_public_key("public_key");
-  key.set_certified_key_credential("fake_cert");
-  key.set_intermediate_ca_cert("fake_ca_cert");
-  *key.add_additional_intermediate_ca_cert() = "fake_ca_cert2";
+  key.set_certified_key_credential(kFakeCert);
+  key.set_intermediate_ca_cert(kFakeCaCert);
+  *key.add_additional_intermediate_ca_cert() = kFakeCaCert2;
   key.set_key_name("label");
   key.set_key_type(KEY_TYPE_RSA);
   key.set_key_usage(KEY_USAGE_SIGN);
@@ -2161,9 +2165,9 @@ TEST_P(AttestationServiceTest, DeleteKeyByPrefixNoUserSuccess) {
     CertifiedKey& key = *mock_database_.GetMutableProtobuf()->add_device_keys();
     key.set_key_blob("key_blob");
     key.set_public_key("public_key");
-    key.set_certified_key_credential("fake_cert");
-    key.set_intermediate_ca_cert("fake_ca_cert");
-    *key.add_additional_intermediate_ca_cert() = "fake_ca_cert2";
+    key.set_certified_key_credential(kFakeCert);
+    key.set_intermediate_ca_cert(kFakeCaCert);
+    *key.add_additional_intermediate_ca_cert() = kFakeCaCert2;
     key.set_key_name(key_label);
     key.set_key_type(KEY_TYPE_RSA);
     key.set_key_usage(KEY_USAGE_SIGN);
@@ -3155,6 +3159,7 @@ TEST_P(AttestationServiceTest, GetCertificateSuccess) {
     EXPECT_EQ(reply.status(), STATUS_SUCCESS);
     EXPECT_TRUE(reply.has_public_key());
     EXPECT_TRUE(reply.has_certificate());
+    EXPECT_TRUE(reply.has_certified_key_credential());
     EXPECT_TRUE(reply.has_key_blob());
     quit_closure.Run();
   };
@@ -3182,6 +3187,7 @@ TEST_P(AttestationServiceTest, GetDeviceSetupCertificateRequestSuccess) {
     EXPECT_EQ(reply.status(), STATUS_SUCCESS);
     EXPECT_TRUE(reply.has_public_key());
     EXPECT_TRUE(reply.has_certificate());
+    EXPECT_TRUE(reply.has_certified_key_credential());
     EXPECT_TRUE(reply.has_key_blob());
     quit_closure.Run();
   };
@@ -3208,6 +3214,7 @@ TEST_P(AttestationServiceTest, GetCertificateSuccessNoop) {
     EXPECT_EQ(reply.status(), STATUS_SUCCESS);
     EXPECT_TRUE(reply.has_public_key());
     EXPECT_TRUE(reply.has_certificate());
+    EXPECT_TRUE(reply.has_certified_key_credential());
     EXPECT_TRUE(reply.has_key_blob());
     quit_closure.Run();
   };
@@ -3256,6 +3263,7 @@ TEST_P(AttestationServiceTest, GetCertificateSuccessForced) {
                      const GetCertificateReply& reply) {
     EXPECT_EQ(reply.status(), STATUS_SUCCESS);
     EXPECT_TRUE(reply.has_certificate());
+    EXPECT_TRUE(reply.has_certified_key_credential());
     quit_closure.Run();
   };
   GetCertificateRequest request;

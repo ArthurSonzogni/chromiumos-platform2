@@ -766,6 +766,7 @@ void AttestationService::GetKeyInfoTask(
   result->set_public_key(public_key_info);
   result->set_certify_info(key.certified_key_info());
   result->set_certify_info_signature(key.certified_key_proof());
+  result->set_certified_key_credential(key.certified_key_credential());
   if (key.has_intermediate_ca_cert()) {
     result->set_certificate(CreatePEMCertificateChain(key));
   } else {
@@ -1471,9 +1472,7 @@ bool AttestationService::PopulateAndStoreCertifiedKey(
     const AttestationCertificateResponse& response_pb,
     const std::string& username,
     const std::string& key_label,
-    CertifiedKey* key,
-    std::string* certificate_chain,
-    std::string* key_blob) {
+    CertifiedKey* key) {
   // Finish populating the CertifiedKey protobuf and store it.
   key->set_key_name(key_label);
   key->set_certified_key_credential(response_pb.certified_key_credential());
@@ -1481,11 +1480,9 @@ bool AttestationService::PopulateAndStoreCertifiedKey(
   key->mutable_additional_intermediate_ca_cert()->MergeFrom(
       response_pb.additional_intermediate_ca_cert());
   if (!SaveKey(username, key_label, *key)) {
+    LOG(ERROR) << "Attestation: Failed to save key.";
     return false;
   }
-  LOG(INFO) << "Attestation: Certified key credential received and stored.";
-  *certificate_chain = CreatePEMCertificateChain(*key);
-  *key_blob = key->key_blob();
   return true;
 }
 
@@ -2750,6 +2747,8 @@ void AttestationService::ReturnForAllCertificateRequestAliases(
     for (const auto& alias : certificate_queue_.PopAllAliases(data)) {
       if (data != alias) {
         alias->set_certificate(data->certificate());
+        alias->set_key_blob(data->key_blob());
+        alias->set_certified_key_credential(data->certified_key_credential());
         alias->ReturnCertificate();
       }
     }
@@ -2857,6 +2856,8 @@ void AttestationService::StartCertificateTask(
     }
     data->set_public_key(std::move(public_key_info));
     data->set_certificate(CreatePEMCertificateChain(key));
+    data->set_certified_key_credential(key.certified_key_credential());
+    data->set_key_blob(key.key_blob());
     data->set_action(AttestationFlowAction::kNoop);
     return;
   }
@@ -2901,6 +2902,8 @@ void AttestationService::FinishCertificateTask(
   }
   data->set_public_key(std::move(*(reply->mutable_public_key())));
   data->set_certificate(std::move(*(reply->mutable_certificate())));
+  data->set_certified_key_credential(
+      std::move(*(reply->mutable_certified_key_credential())));
   data->set_key_blob((std::move(*(reply->mutable_key_blob()))));
   data->set_action(AttestationFlowAction::kNoop);
 }
@@ -3060,14 +3063,16 @@ void AttestationService::FinishCertificateRequestTask(
     return;
   }
   pending_cert_requests_.erase(iter);
-  if (!PopulateAndStoreCertifiedKey(
-          response_pb, request.username(), request.key_label(), &key,
-          result->mutable_certificate(), result->mutable_key_blob())) {
-    result->clear_certificate();
-    result->clear_key_blob();
+  if (!PopulateAndStoreCertifiedKey(response_pb, request.username(),
+                                    request.key_label(), &key)) {
     result->set_status(STATUS_UNEXPECTED_DEVICE_ERROR);
     return;
   }
+  LOG(INFO) << "Attestation: Certified key credential received and stored.";
+  result->set_status(STATUS_SUCCESS);
+  result->set_certificate(CreatePEMCertificateChain(key));
+  result->set_certified_key_credential(key.certified_key_credential());
+  result->set_key_blob(key.key_blob());
 }
 
 void AttestationService::GetCertificate(const GetCertificateRequest& request,

@@ -76,11 +76,18 @@ class AttestationFlowData {
     result_response_ = result_response;
   }
   const std::string& certificate() const { return certificate_; }
+  const std::string& certified_key_credential() const {
+    return certified_key_credential_;
+  }
+  const std::string& key_blob() const { return key_blob_; }
   void set_public_key(std::string public_key) {
     public_key_ = std::move(public_key);
   }
   void set_certificate(std::string certificate) {
     certificate_ = std::move(certificate);
+  }
+  void set_certified_key_credential(std::string certified_key_credential) {
+    certified_key_credential_ = std::move(certified_key_credential);
   }
   void set_key_blob(std::string blob) { key_blob_ = std::move(blob); }
 
@@ -99,6 +106,7 @@ class AttestationFlowData {
   std::string result_response_;
   std::string public_key_;
   std::string certificate_;
+  std::string certified_key_credential_;
   std::string key_blob_;
 };
 
