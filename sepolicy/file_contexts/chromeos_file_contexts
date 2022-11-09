@@ -134,6 +134,13 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /usr/bin/seneschal              u:object_r:cros_seneschal_exec:s0
 /usr/bin/shill                  u:object_r:cros_shill_exec:s0
 /usr/bin/sound_card_init        u:object_r:cros_sound_card_init_exec:s0
+/usr/bin/ti50-emulator-ec_comm    u:object_r:cros_ti50-emulator-ec_comm_exec:s0
+/usr/bin/ti50-emulator-fw_updater u:object_r:cros_ti50-emulator-fw_updater_exec:s0
+/usr/bin/ti50-emulator-kernel     u:object_r:cros_ti50-emulator-kernel_exec:s0
+/usr/bin/ti50-emulator-pinweaver  u:object_r:cros_ti50-emulator-pinweaver_exec:s0
+/usr/bin/ti50-emulator-sys_mgr    u:object_r:cros_ti50-emulator-sys_mgr_exec:s0
+/usr/bin/ti50-emulator-tpm2       u:object_r:cros_ti50-emulator-tpm2_exec:s0
+/usr/bin/ti50-emulator-u2f        u:object_r:cros_ti50-emulator-u2f_exec:s0
 /usr/bin/timberslide            u:object_r:cros_timberslide_exec:s0
 /usr/bin/tlsdated               u:object_r:cros_tlsdated_exec:s0
 /usr/bin/tpm2-simulator         u:object_r:cros_tpm2_simulator_exec:s0

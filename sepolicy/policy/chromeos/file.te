@@ -182,6 +182,13 @@ type cros_sshd_exec, exec_type, file_type, cros_file_type, cros_system_file_type
 type cros_sslh_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_syslog_cat_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_tcsd_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
+type cros_ti50-emulator-ec_comm_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
+type cros_ti50-emulator-fw_updater_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
+type cros_ti50-emulator-kernel_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
+type cros_ti50-emulator-pinweaver_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
+type cros_ti50-emulator-sys_mgr_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
+type cros_ti50-emulator-tpm2_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
+type cros_ti50-emulator-u2f_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_timberslide_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_tlsdated_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_tpm_managerd_exec, exec_type, file_type, cros_file_type, cros_system_file_type;

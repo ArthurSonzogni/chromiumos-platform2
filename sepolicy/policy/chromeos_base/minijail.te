@@ -45,6 +45,8 @@ chromeos_domain
 -cros_debugd_minijail
 -frecon
 -cros_ssh_session
+-cros_tpm2_simulator
+-cros_tpm2_simulator_minijail
 } cros_minijail_exec:file execute;
 
 dev_only(`
