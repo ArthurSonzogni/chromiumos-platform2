@@ -40,6 +40,7 @@
 #include "cryptohome/auth_factor/auth_factor_metadata.h"
 #include "cryptohome/auth_factor/auth_factor_type.h"
 #include "cryptohome/auth_session_manager.h"
+#include "cryptohome/challenge_credentials/mock_challenge_credentials_helper.h"
 #include "cryptohome/credential_verifier_test_utils.h"
 #include "cryptohome/crypto_error.h"
 #include "cryptohome/cryptohome_common.h"
@@ -47,10 +48,12 @@
 #include "cryptohome/key_objects.h"
 #include "cryptohome/mock_credential_verifier.h"
 #include "cryptohome/mock_cryptohome_keys_manager.h"
+#include "cryptohome/mock_key_challenge_service_factory.h"
 #include "cryptohome/mock_keyset_management.h"
 #include "cryptohome/mock_platform.h"
 #include "cryptohome/pkcs11/mock_pkcs11_token_factory.h"
 #include "cryptohome/scrypt_verifier.h"
+#include "cryptohome/smart_card_verifier.h"
 #include "cryptohome/storage/homedirs.h"
 #include "cryptohome/storage/mock_mount.h"
 #include "cryptohome/user_secret_stash.h"
@@ -275,6 +278,8 @@ class AuthSessionTest : public ::testing::Test {
   NiceMock<MockPkcs11TokenFactory> pkcs11_token_factory_;
   Crypto crypto_{&hwsec_, &pinweaver_, &cryptohome_keys_manager_, nullptr};
   NiceMock<MockKeysetManagement> keyset_management_;
+  NiceMock<MockChallengeCredentialsHelper> challenge_credentials_helper_;
+  NiceMock<MockKeyChallengeServiceFactory> key_challenge_service_factory_;
   NiceMock<MockAuthBlockUtility> auth_block_utility_;
   std::unique_ptr<AuthBlockUtility> auth_block_utility_impl_;
   AuthFactorManager auth_factor_manager_{&platform_};
@@ -2259,6 +2264,31 @@ class AuthSessionWithUssExperimentTest : public AuthSessionTest {
     SetUserSecretStashExperimentForTesting(/*enabled=*/std::nullopt);
   }
 
+  struct ReplyToVerifyKey {
+    void operator()(const std::string& account_id,
+                    const structure::ChallengePublicKeyInfo& public_key_info,
+                    std::unique_ptr<KeyChallengeService> key_challenge_service,
+                    ChallengeCredentialsHelper::VerifyKeyCallback callback) {
+      if (is_key_valid) {
+        std::move(callback).Run(OkStatus<error::CryptohomeTPMError>());
+      } else {
+        const error::CryptohomeError::ErrorLocationPair
+            kErrorLocationPlaceholder =
+                error::CryptohomeError::ErrorLocationPair(
+                    static_cast<
+                        ::cryptohome::error::CryptohomeError::ErrorLocation>(1),
+                    "Testing1");
+
+        std::move(callback).Run(MakeStatus<error::CryptohomeTPMError>(
+            kErrorLocationPlaceholder,
+            error::ErrorActionSet({error::ErrorAction::kIncorrectAuth}),
+            hwsec::TPMRetryAction::kUserAuth));
+      }
+    }
+
+    bool is_key_valid = false;
+  };
+
   user_data_auth::CryptohomeErrorCode AddPasswordAuthFactor(
       const std::string& password, AuthSession& auth_session) {
     EXPECT_CALL(auth_block_utility_,
@@ -3378,6 +3408,143 @@ TEST_F(AuthSessionWithUssExperimentTest,
   // There should be no verifier created for the recovery factor.
   UserSession* user_session = FindOrCreateUserSession(kFakeUsername);
   EXPECT_THAT(user_session->GetCredentialVerifiers(), IsEmpty());
+}
+
+// Test scenario where we add a Smart Card/Challenge Response credential,
+// and go through the authentication flow twice. On the second authentication,
+// AuthSession should use the lightweight verify check.
+TEST_F(AuthSessionWithUssExperimentTest, AuthenticateSmartCardAuthFactor) {
+  // Setup.
+  brillo::Blob public_key_spki_der = brillo::BlobFromString("public_key");
+  const std::string obfuscated_username = SanitizeUserName(kFakeUsername);
+  const brillo::SecureBlob kFakePerCredentialSecret("fake-vkk");
+  // Setting the expectation that the user exists.
+  EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(true));
+  // Generating the USS.
+  CryptohomeStatusOr<std::unique_ptr<UserSecretStash>> uss_status =
+      UserSecretStash::CreateRandom(FileSystemKeyset::CreateRandom());
+  ASSERT_TRUE(uss_status.ok());
+  std::unique_ptr<UserSecretStash> uss = std::move(uss_status).value();
+  std::optional<brillo::SecureBlob> uss_main_key =
+      UserSecretStash::CreateRandomMainKey();
+  ASSERT_TRUE(uss_main_key.has_value());
+  // Creating the auth factor.
+  AuthFactor auth_factor(
+      AuthFactorType::kSmartCard, kFakeLabel,
+      AuthFactorMetadata{
+          .metadata = SmartCardAuthFactorMetadata{.public_key_spki_der =
+                                                      public_key_spki_der}},
+      AuthBlockState{.state = ChallengeCredentialAuthBlockState()});
+  EXPECT_TRUE(
+      auth_factor_manager_.SaveAuthFactor(obfuscated_username, auth_factor)
+          .ok());
+  // Adding the auth factor into the USS and persisting the latter.
+  const KeyBlobs key_blobs = {.vkk_key = kFakePerCredentialSecret};
+  std::optional<brillo::SecureBlob> wrapping_key =
+      key_blobs.DeriveUssCredentialSecret();
+  ASSERT_TRUE(wrapping_key.has_value());
+  EXPECT_TRUE(uss->AddWrappedMainKey(uss_main_key.value(), kFakeLabel,
+                                     wrapping_key.value())
+                  .ok());
+  CryptohomeStatusOr<brillo::Blob> encrypted_uss =
+      uss->GetEncryptedContainer(uss_main_key.value());
+  ASSERT_TRUE(encrypted_uss.ok());
+  EXPECT_TRUE(user_secret_stash_storage_
+                  .Persist(encrypted_uss.value(), obfuscated_username)
+                  .ok());
+  // Creating the auth session.
+  int flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE;
+  CryptohomeStatusOr<AuthSession*> auth_session_status =
+      auth_session_manager_.CreateAuthSession(
+          kFakeUsername, flags, AuthIntent::kDecrypt,
+          /*enable_create_backup_vk_with_uss =*/false);
+  EXPECT_TRUE(auth_session_status.ok());
+  AuthSession* auth_session = auth_session_status.value();
+  EXPECT_TRUE(auth_session->user_exists());
+  EXPECT_EQ(auth_session->user_secret_stash_for_testing(), nullptr);
+
+  // Verify.
+  EXPECT_EQ(auth_session->GetStatus(),
+            AuthStatus::kAuthStatusFurtherFactorRequired);
+  EXPECT_THAT(auth_session->authorized_intents(), IsEmpty());
+
+  // Test.
+  // Setting the expectation that the auth block utility will derive key blobs.
+  EXPECT_CALL(auth_block_utility_,
+              GetAuthBlockTypeFromState(
+                  AuthBlockStateTypeIs<ChallengeCredentialAuthBlockState>()))
+      .WillRepeatedly(Return(AuthBlockType::kChallengeCredential));
+  EXPECT_CALL(auth_block_utility_,
+              DeriveKeyBlobsWithAuthBlockAsync(
+                  AuthBlockType::kChallengeCredential, _, _, _))
+      .WillOnce([&kFakePerCredentialSecret](
+                    AuthBlockType auth_block_type, const AuthInput& auth_input,
+                    const AuthBlockState& auth_state,
+                    AuthBlock::DeriveCallback derive_callback) {
+        auto key_blobs = std::make_unique<KeyBlobs>();
+        key_blobs->vkk_key = kFakePerCredentialSecret;
+        std::move(derive_callback)
+            .Run(OkStatus<CryptohomeCryptoError>(), std::move(key_blobs));
+        return true;
+      });
+
+  EXPECT_CALL(auth_block_utility_, CreateCredentialVerifier(_, kFakeLabel, _))
+      .WillOnce(Return(ByMove(SmartCardVerifier::Create(
+          kFakeLabel, public_key_spki_der, &challenge_credentials_helper_,
+          &key_challenge_service_factory_))));
+
+  // Calling AuthenticateAuthFactor.
+  user_data_auth::AuthenticateAuthFactorRequest authenticate_request;
+  authenticate_request.set_auth_session_id(auth_session->serialized_token());
+  authenticate_request.set_auth_factor_label(kFakeLabel);
+  authenticate_request.mutable_auth_input()
+      ->mutable_smart_card_input()
+      ->add_signature_algorithms(
+          user_data_auth::CHALLENGE_RSASSA_PKCS1_V1_5_SHA256);
+  TestFuture<CryptohomeStatus> authenticate_future;
+  EXPECT_TRUE(auth_session->AuthenticateAuthFactor(
+      authenticate_request, authenticate_future.GetCallback()));
+
+  // Verify.
+  EXPECT_THAT(authenticate_future.Get(), IsOk());
+  EXPECT_EQ(auth_session->GetStatus(), AuthStatus::kAuthStatusAuthenticated);
+  EXPECT_THAT(
+      auth_session->authorized_intents(),
+      UnorderedElementsAre(AuthIntent::kDecrypt, AuthIntent::kVerifyOnly));
+  EXPECT_NE(auth_session->user_secret_stash_for_testing(), nullptr);
+  EXPECT_NE(auth_session->user_secret_stash_main_key_for_testing(),
+            std::nullopt);
+  // There should be a verifier created for the smart card factor.
+  UserSession* user_session = FindOrCreateUserSession(kFakeUsername);
+  EXPECT_THAT(user_session->GetCredentialVerifiers(),
+              UnorderedElementsAre(IsVerifierPtrWithLabel(kFakeLabel)));
+
+  CryptohomeStatusOr<AuthSession*> verify_auth_session_status =
+      auth_session_manager_.CreateAuthSession(
+          kFakeUsername, flags, AuthIntent::kVerifyOnly,
+          /*enable_create_backup_vk_with_uss =*/false);
+  EXPECT_TRUE(verify_auth_session_status.ok());
+  AuthSession* verify_auth_session = verify_auth_session_status.value();
+  authenticate_request.set_auth_session_id(
+      verify_auth_session->serialized_token());
+
+  // Expect that next authentication will go through lightweight
+  // verification.
+  EXPECT_CALL(auth_block_utility_,
+              IsVerifyWithAuthFactorSupported(AuthIntent::kVerifyOnly,
+                                              AuthFactorType::kSmartCard))
+      .WillRepeatedly(Return(true));
+
+  // Simulate a successful key verification.
+  EXPECT_CALL(challenge_credentials_helper_, VerifyKey(_, _, _, _))
+      .WillOnce(ReplyToVerifyKey{/*is_key_valid=*/true});
+
+  // Call AuthenticateAuthFactor again.
+  TestFuture<CryptohomeStatus> verify_authenticate_future;
+  EXPECT_TRUE(verify_auth_session->AuthenticateAuthFactor(
+      authenticate_request, verify_authenticate_future.GetCallback()));
+  EXPECT_THAT(verify_auth_session->authorized_intents(),
+              UnorderedElementsAre(AuthIntent::kVerifyOnly));
 }
 
 // Test that AuthenticateAuthFactor succeeds for the `AuthIntent::kVerifyOnly`

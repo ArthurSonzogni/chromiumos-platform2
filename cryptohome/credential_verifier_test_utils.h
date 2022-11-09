@@ -57,11 +57,51 @@ class IsVerifierPtrWithLabelAndPasswordMatcher
   std::string label_;
   std::string password_;
 };
+
+// Matcher for verifying that a CredentialVerifier* has the specified label and
+// matches against the specified password.
+class IsVerifierPtrWithLabelMatcher
+    : public ::testing::MatcherInterface<const CredentialVerifier*> {
+ public:
+  explicit IsVerifierPtrWithLabelMatcher(std::string label)
+      : label_(std::move(label)) {}
+
+  bool MatchAndExplain(
+      const CredentialVerifier* verifier,
+      ::testing::MatchResultListener* listener) const override {
+    if (!verifier) {
+      *listener << "verifier is null";
+      return false;
+    }
+
+    if (verifier->auth_factor_label() != label_) {
+      *listener << "label is: " << verifier->auth_factor_label() << "\n";
+    }
+    return (verifier->auth_factor_label() == label_);
+  }
+
+  void DescribeTo(std::ostream* os) const override {
+    *os << "has label " << label_;
+  }
+
+  void DescribeNegationTo(std::ostream* os) const override {
+    *os << "does not have label " << label_;
+  }
+
+ private:
+  std::string label_;
+};
+
 ::testing::Matcher<const CredentialVerifier*> IsVerifierPtrWithLabelAndPassword(
     std::string label, std::string password) {
   return ::testing::MakeMatcher<const CredentialVerifier*>(
       new IsVerifierPtrWithLabelAndPasswordMatcher(std::move(label),
                                                    std::move(password)));
+}
+::testing::Matcher<const CredentialVerifier*> IsVerifierPtrWithLabel(
+    std::string label) {
+  return ::testing::MakeMatcher<const CredentialVerifier*>(
+      new IsVerifierPtrWithLabelMatcher(std::move(label)));
 }
 
 }  // namespace cryptohome
