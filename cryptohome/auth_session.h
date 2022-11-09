@@ -526,7 +526,7 @@ class AuthSession final {
   // TODO(b/204482221): Make `request_auth_factor_type` mandatory.
   void LoadVaultKeysetAndFsKeys(
       std::optional<AuthFactorType> request_auth_factor_type,
-      const std::optional<brillo::SecureBlob> passkey,
+      const AuthInput& auth_input,
       const AuthBlockType& auth_block_type,
       std::unique_ptr<AuthSessionPerformanceTimer>
           auth_session_performance_timer,

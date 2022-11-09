@@ -846,7 +846,7 @@ bool AuthSession::AuthenticateViaVaultKeyset(
   // as a callback that loads |vault_keyset_| and resaves if needed.
   AuthBlock::DeriveCallback derive_callback = base::BindOnce(
       &AuthSession::LoadVaultKeysetAndFsKeys, weak_factory_.GetWeakPtr(),
-      request_auth_factor_type, auth_input.user_input, auth_block_type,
+      request_auth_factor_type, auth_input, auth_block_type,
       std::move(auth_session_performance_timer), std::move(on_done));
 
   return auth_block_utility_->DeriveKeyBlobsWithAuthBlockAsync(
@@ -855,7 +855,7 @@ bool AuthSession::AuthenticateViaVaultKeyset(
 
 void AuthSession::LoadVaultKeysetAndFsKeys(
     std::optional<AuthFactorType> request_auth_factor_type,
-    const std::optional<brillo::SecureBlob> passkey,
+    const AuthInput& auth_input,
     const AuthBlockType& auth_block_type,
     std::unique_ptr<AuthSessionPerformanceTimer> auth_session_performance_timer,
     StatusCallback on_done,
@@ -929,7 +929,7 @@ void AuthSession::LoadVaultKeysetAndFsKeys(
     keyset_management_->ResetLECredentialsWithValidatedVK(*vault_keyset_,
                                                           obfuscated_username_);
   }
-  ResaveVaultKeysetIfNeeded(passkey);
+  ResaveVaultKeysetIfNeeded(auth_input.user_input);
   file_system_keyset_ = FileSystemKeyset(*vault_keyset_);
 
   CryptohomeStatus prepare_status = OkStatus<error::CryptohomeError>();
@@ -946,18 +946,16 @@ void AuthSession::LoadVaultKeysetAndFsKeys(
   // Flip the status on the successful authentication.
   SetAuthSessionAsAuthenticated(kAuthorizedIntentsForFullAuth);
 
-  // Set the credential verifier for this credential. If we don't know what the
-  // factor type is then assume we have a password verifier as that's the only
-  // type that works with the old APIs.
-  if (passkey.has_value()) {
-    AuthFactorType verifier_type = AuthFactorType::kPassword;
-    if (request_auth_factor_type) {
-      verifier_type = *request_auth_factor_type;
-    }
-    AuthInput auth_input = CreatePasswordAuthInputForLegacyCode(
-        obfuscated_username_, auth_block_utility_->GetLockedToSingleUser(),
-        *passkey);
-    AddCredentialVerifier(verifier_type, vault_keyset_->GetLabel(), auth_input);
+  // Set the credential verifier for this credential.
+  if (request_auth_factor_type) {
+    AddCredentialVerifier(*request_auth_factor_type, vault_keyset_->GetLabel(),
+                          auth_input);
+  } else if (auth_input.user_input.has_value()) {
+    // If we don't know what the
+    // factor type is then assume we have a password verifier as that's the only
+    // type that works with the old APIs.
+    AddCredentialVerifier(AuthFactorType::kPassword, vault_keyset_->GetLabel(),
+                          auth_input);
   }
 
   ReportTimerDuration(auth_session_performance_timer.get());
@@ -1683,9 +1681,7 @@ void AuthSession::UpdateAuthFactorViaUserSecretStash(
   }
 
   // Create the credential verifier if applicable.
-  if (auth_input.user_input.has_value()) {
-    AddCredentialVerifier(auth_factor_type, auth_factor->label(), auth_input);
-  }
+  AddCredentialVerifier(auth_factor_type, auth_factor->label(), auth_input);
 
   LOG(INFO) << "AuthSession: updated auth factor " << auth_factor->label()
             << " in USS.";
@@ -2269,7 +2265,7 @@ void AuthSession::PersistAuthFactorToUserSecretStash(
   }
 
   // Create the credential verifier if applicable.
-  if (!user_has_configured_auth_factor_ && auth_input.user_input.has_value()) {
+  if (!user_has_configured_auth_factor_) {
     AddCredentialVerifier(auth_factor_type, auth_factor->label(), auth_input);
   }
 
@@ -2657,9 +2653,7 @@ void AuthSession::LoadUSSMainKeyAndFsKeyset(
   SetAuthSessionAsAuthenticated(kAuthorizedIntentsForFullAuth);
 
   // Set the credential verifier for this credential.
-  if (auth_input.user_input.has_value()) {
-    AddCredentialVerifier(auth_factor_type, auth_factor_label, auth_input);
-  }
+  AddCredentialVerifier(auth_factor_type, auth_factor_label, auth_input);
 
   if (enable_create_backup_vk_with_uss_ &&
       auth_factor_type == AuthFactorType::kPassword) {
