@@ -232,6 +232,25 @@ TEST_F(NvReadCommandTest, FailureWrongSessionHandle) {
   EXPECT_EQ(response, kTestResponse);
 }
 
+TEST_F(NvReadCommandTest, FailureExcessiveLargeSizeToRead) {
+  std::string response;
+  CommandResponseCallback callback =
+      base::BindOnce([](std::string* resp_out,
+                        const std::string& resp_in) { *resp_out = resp_in; },
+                     &response);
+  size_ = MAX_NV_BUFFER_SIZE + 1;
+  EXPECT_CALL(
+      mock_cmd_parser_,
+      ParseCommandNvRead(Pointee(std::string(kFakeRequest)), _, _, _, _, _));
+
+  EXPECT_CALL(mock_resp_serializer_,
+              SerializeHeaderOnlyResponse(trunks::TPM_RC_VALUE, _))
+      .WillOnce(SetArgPointee<1>(kTestResponse));
+
+  command_.Run(kFakeRequest, std::move(callback));
+  EXPECT_EQ(response, kTestResponse);
+}
+
 TEST_F(NvReadCommandTest, FailureParserError) {
   std::string response;
   CommandResponseCallback callback =

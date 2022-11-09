@@ -67,6 +67,13 @@ trunks::TPM_RC NvReadCommand::RunInternal(const std::string& command,
     return trunks::TPM_RC_NV_AUTHORIZATION;
   }
 
+  // If the size is even larger than the buffer size, i.e., this virtual TPM's
+  // `MAX_NV_BUFFER_SIZE` defined in `tpm_generated.h`, return `TPM_RC_VALUE` as
+  // what we learnt from some geenric TPMs.
+  if (size > MAX_NV_BUFFER_SIZE) {
+    return trunks::TPM_RC_VALUE;
+  }
+
   // Get the password.
   std::string nv_data;
   const std::string password(auth.hmac.buffer,
