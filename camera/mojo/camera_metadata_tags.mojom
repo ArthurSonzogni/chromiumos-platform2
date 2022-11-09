@@ -8,6 +8,16 @@
  * Generated automatically from camera_metadata_tags.mojom.mako
  */
 
+ /**
+  * Enums here are 1:1 mapping with Android Camera HAL3 metadata tags, used for
+  * communication between ARC, cros_camera_service, and Chrome browser.
+  * Any kind of opaque third party's camera codes are sandboxed and has no
+  * ability to directly communicate with Chrome browser, for details please see
+  * https://source.chromium.org/chromiumos/chromiumos/codesearch/+/main:src/platform2/camera/README.md
+  * These enums should be synced ideally every time ChromiumOS is supporting a
+  * new major Android version.
+  */
+
 module cros.mojom;
 
 /**
