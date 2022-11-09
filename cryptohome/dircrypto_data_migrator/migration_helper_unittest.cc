@@ -47,6 +47,7 @@ namespace cryptohome {
 namespace dircrypto_data_migrator {
 
 namespace {
+
 constexpr uint64_t kDefaultChunkSize = 128;
 constexpr char kMtimeXattrName[] = "user.mtime";
 constexpr char kAtimeXattrName[] = "user.atime";
@@ -54,6 +55,7 @@ constexpr char kAtimeXattrName[] = "user.atime";
 constexpr char kStatusFilesDir[] = "/home/.shadow/deadbeef/status_dir";
 constexpr char kFromDir[] = "/home/.shadow/deadbeef/temporary_mount";
 constexpr char kToDir[] = "/home/.shadow/deadbeef/mount";
+
 }  // namespace
 
 class MigrationHelperTest : public ::testing::Test {
@@ -275,7 +277,7 @@ TEST_F(MigrationHelperTest, OneEmptyFile) {
   EXPECT_TRUE(platform_.FileExists(to_dir_.Append(kFileName)));
 }
 
-TEST_F(MigrationHelperTest, OneEmptyFileInDirectory) {
+TEST_F(MigrationHelperTest, OneEmptyFileInNestedDirectory) {
   MigrationHelper helper(&platform_, from_dir_, to_dir_, status_files_dir_,
                          kDefaultChunkSize, MigrationType::FULL);
   helper.set_namespaced_mtime_xattr_name_for_testing(kMtimeXattrName);
@@ -465,33 +467,6 @@ TEST_F(MigrationHelperTest, CopyOwnership) {
       .WillOnce(Return(true));
   EXPECT_TRUE(
       helper.CopyAttributes(kDir, FileEnumerator::FileInfo(kFromDir, stat)));
-}
-
-TEST_F(MigrationHelperTest, MigrateNestedDir) {
-  MigrationHelper helper(&platform_, from_dir_, to_dir_, status_files_dir_,
-                         kDefaultChunkSize, MigrationType::FULL);
-  helper.set_namespaced_mtime_xattr_name_for_testing(kMtimeXattrName);
-  helper.set_namespaced_atime_xattr_name_for_testing(kAtimeXattrName);
-
-  constexpr char kDir1[] = "directory1";
-  constexpr char kDir2[] = "directory2";
-  constexpr char kFileName[] = "empty_file";
-
-  // Create directory1/directory2/empty_file in from_dir_.
-  ASSERT_TRUE(platform_.CreateDirectory(from_dir_.Append(kDir1).Append(kDir2)));
-  ASSERT_TRUE(platform_.TouchFileDurable(
-      from_dir_.Append(kDir1).Append(kDir2).Append(kFileName)));
-  ASSERT_TRUE(platform_.IsDirectoryEmpty(to_dir_));
-
-  EXPECT_TRUE(helper.Migrate(base::BindRepeating(
-      &MigrationHelperTest::ProgressCaptor, base::Unretained(this))));
-
-  // The file is moved.
-  EXPECT_TRUE(platform_.FileExists(
-      to_dir_.Append(kDir1).Append(kDir2).Append(kFileName)));
-  EXPECT_FALSE(platform_.FileExists(
-      from_dir_.Append(kDir1).Append(kDir2).Append(kFileName)));
-  EXPECT_TRUE(platform_.IsDirectoryEmpty(from_dir_.Append(kDir1)));
 }
 
 TEST_F(MigrationHelperTest, MigrateInProgress) {

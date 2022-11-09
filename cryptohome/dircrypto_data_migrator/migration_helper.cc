@@ -40,6 +40,7 @@ namespace cryptohome {
 namespace dircrypto_data_migrator {
 
 namespace {
+
 constexpr char kMtimeXattrName[] = "trusted.CrosDirCryptoMigrationMtime";
 constexpr char kAtimeXattrName[] = "trusted.CrosDirCryptoMigrationAtime";
 // Expected maximum erasure block size on devices (4MB).
@@ -94,7 +95,7 @@ class MigrationStartAndEndStatusReporter {
  public:
   MigrationStartAndEndStatusReporter(MigrationType migration_type,
                                      bool resumed,
-                                     const AtomicFlag& is_cancelled)
+                                     const base::AtomicFlag& is_cancelled)
       : migration_type_(migration_type),
         resumed_(resumed),
         is_cancelled_(is_cancelled),
@@ -141,7 +142,7 @@ class MigrationStartAndEndStatusReporter {
  private:
   const MigrationType migration_type_;
   const bool resumed_;
-  const AtomicFlag& is_cancelled_;
+  const base::AtomicFlag& is_cancelled_;
   DircryptoMigrationEndStatus end_status_;
 };
 
@@ -337,7 +338,6 @@ MigrationHelper::MigrationHelper(Platform* platform,
       namespaced_mtime_xattr_name_(kMtimeXattrName),
       namespaced_atime_xattr_name_(kAtimeXattrName),
       failed_operation_type_(kMigrationFailedAtOtherOperation),
-      failed_path_type_(kMigrationFailedUnderOther),
       failed_error_type_(base::File::FILE_OK),
       num_job_threads_(0),
       max_job_list_size_(kDefaultMaxJobListSize),
@@ -1001,7 +1001,6 @@ void MigrationHelper::RecordFileError(
   {  // Record the data for the final end-status report.
     base::AutoLock lock(failure_info_lock_);
     failed_operation_type_ = operation;
-    failed_path_type_ = path;
     failed_error_type_ = error;
   }
 }

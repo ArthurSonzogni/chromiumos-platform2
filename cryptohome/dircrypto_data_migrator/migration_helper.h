@@ -1,6 +1,7 @@
 // Copyright 2017 The ChromiumOS Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
+
 #ifndef CRYPTOHOME_DIRCRYPTO_DATA_MIGRATOR_MIGRATION_HELPER_H_
 #define CRYPTOHOME_DIRCRYPTO_DATA_MIGRATOR_MIGRATION_HELPER_H_
 
@@ -12,13 +13,13 @@
 #include <base/callback.h>
 #include <base/files/file_path.h>
 #include <base/logging.h>
+#include <base/synchronization/atomic_flag.h>
 #include <base/synchronization/condition_variable.h>
 #include <base/synchronization/lock.h>
 #include <chromeos/dbus/service_constants.h>
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 
 #include "cryptohome/cryptohome_metrics.h"
-#include "cryptohome/dircrypto_data_migrator/atomic_flag.h"
 #include "cryptohome/migration_type.h"
 #include "cryptohome/platform.h"
 
@@ -111,27 +112,6 @@ class MigrationHelper {
   // Triggers cancellation of the ongoing migration, and returns without waiting
   // for it to happen. Can be called on any thread.
   void Cancel();
-
-  // Converts user_data_auth::DircryptoMigrationStatus (a protobuf enum field
-  // defined in UserDataAuth.proto), to cryptohome::DircryptoMigrationStatus (a
-  // C/C++ enum field defined in dbus-constants.h). This will be removed after
-  // the migratio to the new UserDataAuth dbus interface.
-  static DircryptoMigrationStatus ConvertDircryptoMigrationStatus(
-      user_data_auth::DircryptoMigrationStatus status) {
-    switch (status) {
-      case user_data_auth::DIRCRYPTO_MIGRATION_SUCCESS:
-        return DIRCRYPTO_MIGRATION_SUCCESS;
-      case user_data_auth::DIRCRYPTO_MIGRATION_FAILED:
-        return DIRCRYPTO_MIGRATION_FAILED;
-      case user_data_auth::DIRCRYPTO_MIGRATION_INITIALIZING:
-        return DIRCRYPTO_MIGRATION_INITIALIZING;
-      case user_data_auth::DIRCRYPTO_MIGRATION_IN_PROGRESS:
-        return DIRCRYPTO_MIGRATION_IN_PROGRESS;
-      default:
-        LOG(DFATAL) << "Unknown status in ConvertDircryptoMigrationStatus";
-        return DIRCRYPTO_MIGRATION_FAILED;
-    }
-  }
 
  private:
   FRIEND_TEST(MigrationHelperTest, CopyOwnership);
@@ -240,9 +220,8 @@ class MigrationHelper {
   base::FilePath skipped_file_list_path_;
 
   DircryptoMigrationFailedOperationType failed_operation_type_;
-  DircryptoMigrationFailedPathType failed_path_type_;
   base::File::Error failed_error_type_;
-  // Lock for failed_operation_type_, failed_path_type_, and failed_error_type_.
+  // Lock for |failed_operation_type_| and |failed_error_type_|.
   base::Lock failure_info_lock_;
 
   size_t num_job_threads_;
@@ -252,7 +231,7 @@ class MigrationHelper {
   std::map<base::FilePath, int> child_counts_;  // Child count for directories.
   base::Lock child_counts_lock_;                // Lock for child_counts_.
 
-  AtomicFlag is_cancelled_;
+  base::AtomicFlag is_cancelled_;
 };
 
 }  // namespace dircrypto_data_migrator
