@@ -184,7 +184,7 @@ constexpr char kExpectedSwanctlConfIKEv2EAP[] = R"(connections {
     proposals = "aes128-aes192-aes256-camellia128-camellia192-camellia256-aesxcbc-aescmac-sha256-sha384-sha512-ecp256-ecp384-ecp521-ecp256bp-ecp384bp-ecp512bp-curve25519-curve448-modp3072-modp4096-modp6144-modp8192-modp2048,aes128gcm16-aes192gcm16-aes256gcm16-chacha20poly1305-aes128gcm12-aes192gcm12-aes256gcm12-aes128gcm8-aes192gcm8-aes256gcm8-prfsha256-prfsha384-prfsha512-prfaesxcbc-prfaescmac-ecp256-ecp384-ecp521-ecp256bp-ecp384bp-ecp512bp-curve25519-curve448-modp3072-modp4096-modp6144-modp8192-modp2048"
     remote_addrs = "10.0.0.1"
     version = "2"
-    vips = "0.0.0.0"
+    vips = "0.0.0.0,::"
     local-xauth {
       auth = "eap-mschapv2"
       eap_id = "xauth_user"
@@ -195,7 +195,7 @@ constexpr char kExpectedSwanctlConfIKEv2EAP[] = R"(connections {
         esp_proposals = "aes128gcm16-aes192gcm16-aes256gcm16,aes128-aes192-aes256-sha256-sha384-sha512-aesxcbc"
         local_ts = "dynamic"
         mode = "tunnel"
-        remote_ts = "0.0.0.0/0"
+        remote_ts = "0.0.0.0/0,::/0"
         set_mark_out = "0x500"
       }
     }
@@ -225,7 +225,7 @@ constexpr char kSwanctlListSAsL2TPOutput[] =
 
 constexpr char kSwanctlListSAsIKEv2Output[] =
     R"(vpn: #1, ESTABLISHED, IKEv2, f32cfa4a3b007894_i* 7cc2f86218f11619_r
-  local  '192.168.1.2' @ 192.168.1.2[4500] [10.10.10.2]
+  local  '192.168.1.2' @ 192.168.1.2[4500] [10.10.10.2 fec0::2]
   remote '192.168.1.3' @ 192.168.1.3[4500]
   AES_CBC-128/HMAC_SHA2_256_128/PRF_HMAC_SHA2_256/MODP_3072
   established 56s ago, rekeying in 14192s, reauth in 8601s
@@ -663,6 +663,7 @@ TEST_F(IPsecConnectionTest, SwanctlListSAsIKEv2) {
 
   // Checks the parsed virtual ip.
   EXPECT_EQ(ipsec_connection_->local_virtual_ipv4(), "10.10.10.2");
+  EXPECT_EQ(ipsec_connection_->local_virtual_ipv6(), "fec0::2");
 
   // Checks the parsed cipher suites.
   EXPECT_EQ(ipsec_connection_->ike_encryption_algo(),

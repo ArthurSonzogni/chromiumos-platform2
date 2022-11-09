@@ -541,7 +541,7 @@ void IPsecConnection::WriteSwanctlConfig() {
     case Config::IKEVersion::kV2:
       vpn_section->AddKeyValue("version", "2");  // IKEv2
       vpn_section->AddKeyValue("proposals", kIKEv2DefaultIKEProposals);
-      vpn_section->AddKeyValue("vips", "0.0.0.0");
+      vpn_section->AddKeyValue("vips", "0.0.0.0,::");
       vpn_section->AddKeyValue("if_id_in", kIfIdString);
       vpn_section->AddKeyValue("if_id_out", kIfIdString);
       break;
@@ -673,7 +673,7 @@ void IPsecConnection::WriteSwanctlConfig() {
       break;
     case Config::IKEVersion::kV2:
       child_section->AddKeyValue("local_ts", "dynamic");
-      child_section->AddKeyValue("remote_ts", "0.0.0.0/0");
+      child_section->AddKeyValue("remote_ts", "0.0.0.0/0,::/0");
       child_section->AddKeyValue("esp_proposals", kIKEv2DefaultESPProposals);
       child_section->AddKeyValue("mode", "tunnel");
       break;
@@ -1201,20 +1201,41 @@ void IPsecConnection::OnXFRMInterfaceReady(const std::string& ifname,
                                            int ifindex) {
   xfrm_interface_index_ = ifindex;
 
-  std::unique_ptr<IPConfig::Properties> ipv4_props =
-      std::make_unique<IPConfig::Properties>();
-  ipv4_props->address = local_virtual_ipv4_;
-  ipv4_props->subnet_prefix = 32;
-  ipv4_props->dns_servers = dns_servers_;
-  ipv4_props->blackhole_ipv6 = true;
-  // This is a point-to-point link, gateway does not make sense here. Set it
-  // default to skip RTA_GATEWAY when installing routes.
-  ipv4_props->gateway = "0.0.0.0";
-  ipv4_props->mtu = IPConfig::kMinIPv6MTU;
-  ipv4_props->method = kTypeVPN;
+  std::unique_ptr<IPConfig::Properties> ipv4_props = nullptr;
+  std::unique_ptr<IPConfig::Properties> ipv6_props = nullptr;
+  if (local_virtual_ipv4_ != "") {
+    ipv4_props = std::make_unique<IPConfig::Properties>();
+    ipv4_props->address = local_virtual_ipv4_;
+    ipv4_props->address_family = IPAddress::kFamilyIPv4;
+    ipv4_props->subnet_prefix = 32;
+    ipv4_props->dns_servers = dns_servers_;
+    ipv4_props->blackhole_ipv6 = true;
+    // This is a point-to-point link, gateway does not make sense here. Set it
+    // default to skip RTA_GATEWAY when installing routes.
+    ipv4_props->gateway = "0.0.0.0";
+    ipv4_props->mtu = IPConfig::kMinIPv6MTU;
+    ipv4_props->method = kTypeVPN;
+  }
+  if (local_virtual_ipv6_ != "") {
+    ipv6_props = std::make_unique<IPConfig::Properties>();
+    ipv6_props->address = local_virtual_ipv6_;
+    ipv6_props->address_family = IPAddress::kFamilyIPv6;
+    ipv6_props->subnet_prefix = 128;
+    ipv6_props->dns_servers = dns_servers_;
+    ipv6_props->blackhole_ipv6 = false;
+    // This is a point-to-point link, gateway does not make sense here. Set it
+    // default to skip RTA_GATEWAY when installing routes.
+    ipv6_props->gateway = "::";
+    ipv6_props->mtu = IPConfig::kMinIPv6MTU;
+    ipv6_props->method = kTypeVPN;
+  }
+  // In dual stack case, IPv6 traffic is allowed.
+  if (ipv4_props != nullptr && ipv6_props != nullptr) {
+    ipv4_props->blackhole_ipv6 = false;
+  }
 
   NotifyConnected(ifname, ifindex, std::move(ipv4_props),
-                  /*ipv6_properties=*/nullptr);
+                  std::move(ipv6_props));
 }
 
 void IPsecConnection::StopCharon() {
