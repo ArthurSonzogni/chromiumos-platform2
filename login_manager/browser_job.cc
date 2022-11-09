@@ -21,7 +21,7 @@
 #include <base/json/json_writer.h>
 #include <base/logging.h>
 #include <base/rand_util.h>
-#include <base/stl_util.h>
+#include <base/ranges/algorithm.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <base/values.h>
@@ -163,7 +163,7 @@ pid_t BrowserJob::CurrentPid() const {
 }
 
 bool BrowserJob::IsGuestSession() {
-  return base::STLCount(arguments_, kGuestSessionFlag) > 0;
+  return base::ranges::count(arguments_, kGuestSessionFlag) > 0;
 }
 
 bool BrowserJob::ShouldRunBrowser() {
