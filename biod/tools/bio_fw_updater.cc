@@ -125,6 +125,11 @@ int main(int argc, char* argv[]) {
   auto status = biod::updater::FindFirmwareFile(
       base::FilePath(biod::updater::kFirmwareDir), &cros_config, &file);
 
+  if (status == FindFirmwareFileStatus::kBoardUnavailable) {
+    LOG(ERROR) << "Fingerprint board name unavailable.";
+    return EXIT_FAILURE;
+  }
+
   if (status == FindFirmwareFileStatus::kNoDirectory ||
       status == FindFirmwareFileStatus::kFileNotFound) {
     LOG(INFO) << "No firmware "

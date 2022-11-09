@@ -25,6 +25,7 @@ enum class FindFirmwareFileStatus {
   kNoDirectory,
   kFileNotFound,
   kMultipleFiles,
+  kBoardUnavailable,
 };
 
 // Searches for the externally packaged firmware binary using a glob.

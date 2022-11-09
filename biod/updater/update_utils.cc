@@ -21,7 +21,6 @@
 namespace {
 
 constexpr char kFirmwareGlobSuffix[] = "_*.bin";
-constexpr char kFirmwareLegacyBoardPattern[] = "*_fp";
 constexpr char kUpdateDisableFile[] = "/opt/google/biod/fw/.disable_fp_updater";
 
 }  // namespace
@@ -41,18 +40,22 @@ bool UpdateDisallowed() {
   return base::PathExists(base::FilePath(kUpdateDisableFile));
 }
 
-// FindFirmwareFile searches |directory| for a single firmware file
-// that matches the |board_name|+|kFirmwareGlobSuffix| file pattern.
-// If a single matching firmware file is found is found,
-// its path is written to |file|. Otherwise, |file| will be untouched.
-static FindFirmwareFileStatus FindFirmwareFile(const base::FilePath& directory,
-                                               const std::string& board_name,
-                                               base::FilePath* file) {
+FindFirmwareFileStatus FindFirmwareFile(
+    const base::FilePath& directory,
+    brillo::CrosConfigInterface* cros_config,
+    base::FilePath* file) {
+  std::optional<std::string> board_name = biod::FingerprintBoard(cros_config);
+  if (!board_name.has_value() || board_name->empty()) {
+    LOG(ERROR) << "Fingerprint board name is unavailable";
+    return FindFirmwareFileStatus::kBoardUnavailable;
+  }
+  LOG(INFO) << "Identified fingerprint board name as '" << *board_name << "'.";
+
   if (!base::DirectoryExists(directory)) {
     return FindFirmwareFileStatus::kNoDirectory;
   }
 
-  std::string glob(board_name + std::string(kFirmwareGlobSuffix));
+  std::string glob(*board_name + std::string(kFirmwareGlobSuffix));
   base::FileEnumerator fw_bin_list(directory, false,
                                    base::FileEnumerator::FileType::FILES, glob);
 
@@ -78,23 +81,6 @@ static FindFirmwareFileStatus FindFirmwareFile(const base::FilePath& directory,
   return FindFirmwareFileStatus::kFoundFile;
 }
 
-FindFirmwareFileStatus FindFirmwareFile(
-    const base::FilePath& directory,
-    brillo::CrosConfigInterface* cros_config,
-    base::FilePath* file) {
-  std::optional<std::string> board_name = biod::FingerprintBoard(cros_config);
-  if (board_name) {
-    LOG(INFO) << "Identified fingerprint board name as '" << *board_name
-              << "'.";
-  } else {
-    LOG(WARNING) << "Fingerprint board name is unavailable, continuing with "
-                    "legacy update.";
-    board_name = kFirmwareLegacyBoardPattern;
-  }
-
-  return FindFirmwareFile(directory, *board_name, file);
-}
-
 std::string FindFirmwareFileStatusToString(FindFirmwareFileStatus status) {
   switch (status) {
     case FindFirmwareFileStatus::kFoundFile:
@@ -105,6 +91,8 @@ std::string FindFirmwareFileStatusToString(FindFirmwareFileStatus status) {
       return "Firmware file not found.";
     case FindFirmwareFileStatus::kMultipleFiles:
       return "More than one firmware file was found.";
+    case FindFirmwareFileStatus::kBoardUnavailable:
+      return "Fingerprint board name is not available.";
   }
 
   NOTREACHED();
