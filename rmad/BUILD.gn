@@ -9,6 +9,7 @@ group("all") {
     ":install_dbus_activation",
     ":install_dbus_config",
     ":install_seccomp_policy",
+    ":install_service_manager_policy_config",
     ":install_upstart_config",
     ":rmad",
   ]
@@ -72,6 +73,12 @@ install_config("install_seccomp_policy") {
     "rmad-seccomp.policy",
     "rmad-executor-seccomp.policy",
   ]
+}
+
+# Install the policy for mojo service manager.
+install_config("install_service_manager_policy_config") {
+  sources = [ "init/mojo/cros_rmad.jsonc" ]
+  install_path = "/etc/mojo/service_manager/policy"
 }
 
 if (use.test) {

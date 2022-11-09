@@ -6,11 +6,13 @@ import("//common-mk/pkg_config.gni")
 
 pkg_config("target_defaults") {
   pkg_deps = [
+    "iioservice_ipc",
     "libbrillo",
     "libchrome",
     "libcros_config",
     "libec",
     "libmems",
+    "mojo_service_manager",
     "protobuf",
     "re2",
     "system_api",
@@ -36,6 +38,7 @@ source_set("libutils") {
     "iio_ec_sensor_utils_impl.cc",
     "iio_sensor_probe_utils_impl.cc",
     "json_store.cc",
+    "mojo_service_utils_impl.cc",
     "regions_utils_impl.cc",
     "ssfc_utils_impl.cc",
     "sys_utils_impl.cc",
@@ -67,6 +70,7 @@ if (use.test) {
       "iio_ec_sensor_utils_test.cc",
       "iio_sensor_probe_utils_test.cc",
       "json_store_test.cc",
+      "mojo_service_utils_test.cc",
       "regions_utils_test.cc",
       "ssfc_utils_test.cc",
       "sys_utils_test.cc",
