@@ -1771,9 +1771,6 @@ int main(int argc, char** argv) {
               "Start a termina VM with a default config");
   DEFINE_bool(start_plugin_vm, false, "Start a plugin VM");
   DEFINE_bool(start_arc_vm, false, "Start an ARCVM");
-  DEFINE_bool(launch_application, false,
-              "Launches an application in a container");
-  DEFINE_bool(get_icon, false, "Get an app icon from a container within a VM");
   DEFINE_bool(sync_time, false, "Update VM times");
   DEFINE_bool(attach_usb, false, "Attach a USB device to a VM");
   DEFINE_bool(detach_usb, false, "Detach a USB device from a VM");
