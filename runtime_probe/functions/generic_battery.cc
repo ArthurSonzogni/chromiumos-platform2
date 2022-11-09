@@ -75,7 +75,7 @@ std::optional<base::Value::Dict> ProbeBatteryFromEc() {
 
   // TODO(itspeter): Extra take care if there are multiple batteries.
   base::Value::Dict bat;
-  pcrecpp::RE re(R"(Battery info:\n)"
+  pcrecpp::RE re(R"(Battery (?:\d+ )?info:\n)"
                  R"(  OEM name *: *(.*)\n)"
                  R"(  Model number *: *(.*)\n)"
                  R"(  Chemistry *: *(.*)\n)"
