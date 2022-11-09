@@ -19,6 +19,7 @@ group("all") {
       ":libbrillo_tests",
       ":libinstallattributes_tests",
       ":libpolicy_tests",
+      ":secure_blob_test_runner",
     ]
   }
   if (use.fuzzer) {
@@ -618,6 +619,44 @@ if (use.test) {
       ":libbrillo-grpc",
       "../common-mk/testrunner:testrunner",
     ]
+  }
+
+  executable("secure_blob_test_helper") {
+    sources = [ "brillo/secure_blob_test_helper.cc" ]
+    configs += [ ":target_defaults" ]
+    cflags = [ "-Wno-format-zero-length" ]
+    deps = [ ":libbrillo_static" ]
+
+    if (is_debug) {
+      cflags += [
+        "-fprofile-arcs",
+        "-ftest-coverage",
+        "-fno-inline",
+      ]
+      libs = [ "gcov" ]
+    }
+  }
+
+  executable("secure_blob_test_runner") {
+    sources = [ "brillo/secure_blob_test_runner.cc" ]
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+    ]
+    cflags = [ "-Wno-format-zero-length" ]
+    deps = [
+      ":libbrillo_static",
+      ":secure_blob_test_helper",
+    ]
+
+    if (is_debug) {
+      cflags += [
+        "-fprofile-arcs",
+        "-ftest-coverage",
+        "-fno-inline",
+      ]
+      libs = [ "gcov" ]
+    }
   }
 }
 
