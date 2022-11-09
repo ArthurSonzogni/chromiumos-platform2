@@ -24,6 +24,7 @@
 #include "libhwsec/backend/tpm2/signing.h"
 #include "libhwsec/backend/tpm2/state.h"
 #include "libhwsec/backend/tpm2/storage.h"
+#include "libhwsec/backend/tpm2/u2f.h"
 #include "libhwsec/backend/tpm2/vendor.h"
 #include "libhwsec/middleware/middleware.h"
 #include "libhwsec/proxy/proxy.h"
@@ -95,6 +96,7 @@ class BackendTpm2 : public Backend {
   PinWeaver* GetPinWeaver() override { return &pinweaver_; }
   Vendor* GetVendor() override { return &vendor_; }
   RecoveryCrypto* GetRecoveryCrypto() override { return &recovery_crypto_; }
+  U2f* GetU2f() override { return &u2f_; }
 
   Proxy& proxy_;
 
@@ -115,6 +117,7 @@ class BackendTpm2 : public Backend {
   PinWeaverTpm2 pinweaver_{*this};
   VendorTpm2 vendor_{*this};
   RecoveryCryptoTpm2 recovery_crypto_{*this};
+  U2fTpm2 u2f_{*this};
 
   MiddlewareDerivative middleware_derivative_;
 };

@@ -48,6 +48,11 @@ enum class TPMRetryAction {
   // Action failed - The elliptic curve scalar out of range.
   // Recommended action: Retry the operation with different scalar.
   kEllipticCurveScalarOutOfRange,
+
+  // Action failed - User presence not detected.
+  // Recommended action: Informs the user that they need to provide user
+  // presence.
+  kUserPresence,
 };
 
 }  // namespace hwsec

@@ -23,6 +23,7 @@
 #include "libhwsec/backend/mock_signing.h"
 #include "libhwsec/backend/mock_state.h"
 #include "libhwsec/backend/mock_storage.h"
+#include "libhwsec/backend/mock_u2f.h"
 #include "libhwsec/backend/mock_vendor.h"
 
 namespace hwsec {
@@ -46,6 +47,7 @@ class MockBackend : public Backend {
     MockPinWeaver pinweaver;
     MockVendor vendor;
     MockRecoveryCrypto recovery_crypto;
+    MockU2f u2f;
   };
 
   MockBackend() = default;
@@ -78,6 +80,7 @@ class MockBackend : public Backend {
   RecoveryCrypto* GetRecoveryCrypto() override {
     return &mock_data_.recovery_crypto;
   }
+  U2f* GetU2f() override { return &mock_data_.u2f; }
 
   MockBackendData mock_data_;
 };

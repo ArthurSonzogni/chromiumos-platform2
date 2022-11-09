@@ -275,6 +275,7 @@ source_set("hardware_abstraction_internal_library") {
       "backend/tpm1/signing.cc",
       "backend/tpm1/state.cc",
       "backend/tpm1/storage.cc",
+      "backend/tpm1/u2f.cc",
       "backend/tpm1/vendor.cc",
     ]
     libs += [ "tspi" ]
@@ -297,6 +298,7 @@ source_set("hardware_abstraction_internal_library") {
       "backend/tpm2/signing.cc",
       "backend/tpm2/state.cc",
       "backend/tpm2/storage.cc",
+      "backend/tpm2/u2f.cc",
       "backend/tpm2/vendor.cc",
     ]
     libs += [ "trunks" ]
@@ -404,6 +406,7 @@ if (use.test) {
         "backend/tpm1/signing_test.cc",
         "backend/tpm1/state_test.cc",
         "backend/tpm1/storage_test.cc",
+        "backend/tpm1/u2f_test.cc",
         "backend/tpm1/vendor_test.cc",
         "error/tpm1_error_test.cc",
         "overalls/overalls_api_test.cc",
@@ -427,6 +430,7 @@ if (use.test) {
         "backend/tpm2/signing_test.cc",
         "backend/tpm2/state_test.cc",
         "backend/tpm2/storage_test.cc",
+        "backend/tpm2/u2f_test.cc",
         "backend/tpm2/vendor_test.cc",
         "error/tpm2_error_test.cc",
       ]

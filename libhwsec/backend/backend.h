@@ -24,6 +24,7 @@
 #include "libhwsec/backend/signing.h"
 #include "libhwsec/backend/state.h"
 #include "libhwsec/backend/storage.h"
+#include "libhwsec/backend/u2f.h"
 #include "libhwsec/backend/vendor.h"
 
 #ifndef BUILD_LIBHWSEC
@@ -68,6 +69,7 @@ class Backend {
   using PinWeaver = ::hwsec::PinWeaver;
   using Vendor = ::hwsec::Vendor;
   using RecoveryCrypto = ::hwsec::RecoveryCrypto;
+  using U2f = ::hwsec::U2f;
 
   virtual ~Backend() = default;
 
@@ -106,6 +108,8 @@ class Backend {
       return GetVendor();
     else if constexpr (std::is_same_v<SubClass, RecoveryCrypto>)
       return GetRecoveryCrypto();
+    else if constexpr (std::is_same_v<SubClass, U2f>)
+      return GetU2f();
     NOTREACHED() << "Should not reach here.";
   }
 
@@ -126,6 +130,7 @@ class Backend {
   virtual PinWeaver* GetPinWeaver() = 0;
   virtual Vendor* GetVendor() = 0;
   virtual RecoveryCrypto* GetRecoveryCrypto() = 0;
+  virtual U2f* GetU2f() = 0;
 };
 
 }  // namespace hwsec
