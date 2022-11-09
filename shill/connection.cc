@@ -290,9 +290,13 @@ void Connection::UpdateFromIPConfig(const IPConfig::Properties& properties) {
     LOG(WARNING) << "Expect limited network connectivity.";
   }
 
+  // For VPNs IPv6 overlay shill has to create default route by itself.
+  // For physical networks with RAs it is done by kernel.
   if (gateway.IsValid() && properties.default_route &&
       gateway.family() == IPAddress::kFamilyIPv4) {
-    // For IPv6 we rely on default route added by kernel
+    routing_table_->SetDefaultRoute(interface_index_, gateway, table_id_);
+  } else if (properties.method == kTypeVPN && properties.default_route &&
+             gateway.IsValid() && gateway.family() == IPAddress::kFamilyIPv6) {
     routing_table_->SetDefaultRoute(interface_index_, gateway, table_id_);
   }
 
