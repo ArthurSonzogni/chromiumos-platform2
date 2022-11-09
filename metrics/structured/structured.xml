@@ -1192,6 +1192,252 @@
     </metric>
   </event>
 
+  <event name="WiFiLinkQualityTrigger">
+    <summary>
+      Report when shill or wpa_supplicant requests a Link Quality Report from
+      the firmware/driver. It can happen when the kernel has notified userspace
+      that the wireless link may be having issues (e.g. low RSSI, beacon or
+      packet loss, IP-level failures...) or when userspace simply wants to
+      monitor the quality of the link periodically.
+    </summary>
+    <metric name="BootId" type="hmac-string">
+      <summary>
+        Random ID generated at boot time to detect reboots.
+      </summary>
+    </metric>
+    <metric name="SystemTime" type="int">
+      <summary>
+        The time elapsed since boot, in microseconds.
+      </summary>
+    </metric>
+    <metric name="EventVersion" type="int">
+      <summary>
+        Integer version number that indicates the format of the event.
+        Used by the event processor to know which metric is available in a
+        particular event.
+        v0: unknown (should not happen)
+        v1: initial version
+      </summary>
+    </metric>
+    <metric name="SessionTag" type="int">
+      <summary>
+        A SessionTag links a WiFiConnectionAttempt, WiFiConnectionAttemptResult
+        and WiFiConnectionEnd that correspond to the same connection.
+      </summary>
+    </metric>
+    <metric name="Type" type="int">
+      <summary>
+        Enum |WiFiLinkQualityTrigger| to report what type of event triggered a
+        Link Quality Report:
+        - CQM event
+        - IP level failure
+        - Periodic polling
+        - ...
+      </summary>
+    </metric>
+  </event>
+
+  <event name="WiFiLinkQualityReport">
+    <summary>
+      Report statistics about the WiFi link (e.g. bitrate, TX retransmit rates)
+      that can be used to diagnose if the wireless link is “good” or “bad”.
+      Most metrics are defined in nl80211_sta_info and nl80211_rate_info,
+      or derived from some of those attributes.
+    </summary>
+    <metric name="BootId" type="hmac-string">
+      <summary>
+        Random ID generated at boot time to detect reboots.
+      </summary>
+    </metric>
+    <metric name="SystemTime" type="int">
+      <summary>
+        The time elapsed since boot, in microseconds.
+      </summary>
+    </metric>
+    <metric name="EventVersion" type="int">
+      <summary>
+        Integer version number that indicates the format of the event.
+        Used by the event processor to know which metric is available in a
+        particular event.
+        v0: unknown (should not happen)
+        v1: initial version
+      </summary>
+    </metric>
+    <metric name="SessionTag" type="int">
+      <summary>
+        A SessionTag links a WiFiConnectionAttempt, WiFiConnectionAttemptResult
+        and WiFiConnectionEnd that correspond to the same connection.
+      </summary>
+    </metric>
+    <metric name="RXPackets" type="int">
+      <summary>
+        Number of packets received (NL80211_STA_INFO_RX_PACKETS).
+      </summary>
+    </metric>
+    <metric name="RXBytes" type="int">
+      <summary>
+        Number of bytes received (NL80211_STA_INFO_RX_BYTES).
+      </summary>
+    </metric>
+    <metric name="TXPackets" type="int">
+      <summary>
+        Number of packets transmitted (NL80211_STA_INFO_TX_PACKETS).
+      </summary>
+    </metric>
+    <metric name="TXBytes" type="int">
+      <summary>
+        Number of bytes transmitted (NL80211_STA_INFO_TX_BYTES).
+      </summary>
+    </metric>
+    <metric name="TXRetries" type="int">
+      <summary>
+        Number of TX retransmissions (NL80211_STA_INFO_TX_RETRIES).
+      </summary>
+    </metric>
+    <metric name="TXFailures" type="int">
+      <summary>
+        Number of TX failures (NL80211_STA_INFO_TX_FAILED).
+      </summary>
+    </metric>
+    <metric name="RXDrops" type="int">
+      <summary>
+        Number of RX packets dropped (NL80211_STA_INFO_RX_DROP_MISC).
+      </summary>
+    </metric>
+    <metric name="Chain0Signal" type="int">
+      <summary>
+        Signal strength of chain 0 (NL80211_STA_INFO_CHAIN_SIGNAL).
+      </summary>
+    </metric>
+    <metric name="Chain0SignalAvg" type="int">
+      <summary>
+        Average signal strength (NL80211_STA_INFO_CHAIN_SIGNAL_AVG).
+      </summary>
+    </metric>
+    <metric name="Chain1Signal" type="int">
+      <summary>
+        Signal strength of chain 1 (NL80211_STA_INFO_CHAIN_SIGNAL).
+      </summary>
+    </metric>
+    <metric name="Chain1SignalAvg" type="int">
+      <summary>
+        Average signal strength (NL80211_STA_INFO_CHAIN_SIGNAL_AVG).
+      </summary>
+    </metric>
+    <metric name="BeaconSignalAvg" type="int">
+      <summary>
+        Average signal strength of beacons (NL80211_STA_INFO_BEACON_SIGNAL_AVG).
+      </summary>
+    </metric>
+    <metric name="BeaconsReceived" type="int">
+      <summary>
+        Number of beacons received (NL80211_STA_INFO_BEACON_RX).
+      </summary>
+    </metric>
+    <metric name="BeaconsLost" type="int">
+      <summary>
+        Number of beacons lost (NL80211_STA_INFO_BEACON_LOSS).
+      </summary>
+    </metric>
+    <metric name="ExpectedThroughput" type="int">
+      <summary>
+        Expected throughput (NL80211_STA_EXPECTED_THROUGHPUT).
+      </summary>
+    </metric>
+    <metric name="RXRate" type="int">
+      <summary>
+        RX bitrate in 100Kb/s units (NL80211_RATE_INFO_BITRATE32).
+      </summary>
+    </metric>
+    <metric name="RXMCS" type="int">
+      <summary>
+        RX MCS index.
+        nl80211: NL80211_RATE_INFO_MCS, NL80211_RATE_INFO_VHT_MCS,
+        NL80211_RATE_INFO_HE_MCS, NL80211_RATE_INFO_EHT_MCS
+      </summary>
+    </metric>
+    <metric name="RXChannelWidth" type="int">
+      <summary>
+        Bandwidth of the channel (20MHz, 40MHz, etc.)
+        nl80211: NL80211_RATE_INFO_40_MHZ_WIDTH, NL80211_RATE_INFO_80_MHZ_WIDTH,
+        NL80211_RATE_INFO_160_MHZ_WIDTH, NL80211_RATE_INFO_320_MHZ_WIDTH
+        shill: WiFiChannelWidth enum
+      </summary>
+    </metric>
+    <metric name="RXMode" type="int">
+      <summary>
+        Is the link in HT, VHT, HE, EHT mode?
+        nl80211: NL80211_RATE_INFO_VHT_*, NL80211_RATE_INFO_HE_*,
+        NL80211_RATE_INFO_EHT_*
+        shill: WiFiLinkStatsMode enum
+      </summary>
+    </metric>
+    <metric name="RXGuardInterval" type="int">
+      <summary>
+        Is the guard interval 400ns, 800ns, 1.6us or 3.2 us?
+        nl80211: NL80211_RATE_INFO_SHORT_GI, NL80211_RATE_INFO_HE_GI
+        shill: WiFiLinkStatsGI enum
+      </summary>
+    </metric>
+    <metric name="RXNSS" type="int">
+      <summary>
+        RX NSS, number of spatial streams.
+        nl80211: NL80211_RATE_INFO_VHT_NSS, NL80211_RATE_INFO_HE_NSS
+      </summary>
+    </metric>
+    <metric name="RXDCM" type="int">
+      <summary>
+        RX HE DCM, dual carrier modulation (NL80211_RATE_INFO_HE_DCM).
+      </summary>
+    </metric>
+    <metric name="TXRate" type="int">
+      <summary>
+        TX bitrate in 100Kb/s units (NL80211_RATE_INFO_BITRATE32).
+      </summary>
+    </metric>
+    <metric name="TXMCS" type="int">
+      <summary>
+        TX MCS index.
+        nl80211: NL80211_RATE_INFO_MCS, NL80211_RATE_INFO_VHT_MCS,
+        NL80211_RATE_INFO_HE_MCS, NL80211_RATE_INFO_EHT_MCS
+      </summary>
+    </metric>
+    <metric name="TXChannelWidth" type="int">
+      <summary>
+        Bandwidth of the channel (20MHz, 40MHz, etc.)
+        nl80211: NL80211_RATE_INFO_40_MHZ_WIDTH, NL80211_RATE_INFO_80_MHZ_WIDTH,
+        NL80211_RATE_INFO_160_MHZ_WIDTH, NL80211_RATE_INFO_320_MHZ_WIDTH
+        shill: WiFiChannelWidth enum
+      </summary>
+    </metric>
+    <metric name="TXMode" type="int">
+      <summary>
+        Is the link in HT, VHT, HE, EHT mode?
+        nl80211: NL80211_RATE_INFO_VHT_*, NL80211_RATE_INFO_HE_*,
+        NL80211_RATE_INFO_EHT_*
+        shill: WiFiLinkStatsMode enum
+      </summary>
+    </metric>
+    <metric name="TXGuardInterval" type="int">
+      <summary>
+        Is the guard interval 400ns, 800ns, 1.6us or 3.2 us?
+        nl80211: NL80211_RATE_INFO_SHORT_GI, NL80211_RATE_INFO_HE_GI
+        shill: WiFiLinkStatsGI enum
+      </summary>
+    </metric>
+    <metric name="TXNSS" type="int">
+      <summary>
+        TX NSS, number of spatial streams.
+        nl80211: NL80211_RATE_INFO_VHT_NSS, NL80211_RATE_INFO_HE_NSS
+      </summary>
+    </metric>
+    <metric name="TXDCM" type="int">
+      <summary>
+        TX HE DCM, dual carrier modulation (NL80211_RATE_INFO_HE_DCM).
+      </summary>
+    </metric>
+  </event>
+
 </project>
 
 <project name="TestProjectOne">
