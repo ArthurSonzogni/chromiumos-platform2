@@ -41,9 +41,9 @@ class BackendTpm2TestBase : public ::testing::Test {
   }
 
  protected:
+  std::unique_ptr<ProxyForTest> proxy_;
   std::unique_ptr<MiddlewareOwner> middleware_owner_;
   std::unique_ptr<Middleware> middleware_;
-  std::unique_ptr<ProxyForTest> proxy_;
   BackendTpm2* backend_;
 };
 
