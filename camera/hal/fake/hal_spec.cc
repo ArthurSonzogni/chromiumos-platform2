@@ -25,7 +25,7 @@ constexpr char kFramesKey[] = "frames";
 constexpr char kPathKey[] = "path";
 
 FramesSpec ParseFramesSpec(const DictWithPath& frames_value) {
-  if (auto path = GetValue<std::string>(frames_value, kPathKey)) {
+  if (auto path = GetRequiredValue<std::string>(frames_value, kPathKey)) {
     return FramesFileSpec{base::FilePath(*path)};
   }
   return FramesTestPatternSpec();
@@ -41,7 +41,7 @@ std::vector<CameraSpec> ParseCameraSpecs(const ListWithPath& cameras_value) {
 
     CameraSpec camera_spec;
 
-    if (auto id = GetValue<int>(*spec_value, kIdKey)) {
+    if (auto id = GetRequiredValue<int>(*spec_value, kIdKey)) {
       if (base::Contains(camera_specs, *id,
                          [](const CameraSpec& spec) { return spec.id; })) {
         LOGF(WARNING) << "duplicated id " << *id << " at " << spec_value->path
@@ -53,10 +53,13 @@ std::vector<CameraSpec> ParseCameraSpecs(const ListWithPath& cameras_value) {
       // TODO(pihsun): Use generated ID for this case?
       continue;
     }
-    camera_spec.connected = GetValue(*spec_value, kConnectedKey, false);
+    camera_spec.connected =
+        GetValue<bool>(*spec_value, kConnectedKey).value_or(false);
 
     if (auto frames = GetValue<DictWithPath>(*spec_value, kFramesKey)) {
       camera_spec.frames = ParseFramesSpec(*frames);
+    } else {
+      camera_spec.frames = FramesTestPatternSpec();
     }
 
     camera_specs.push_back(camera_spec);
@@ -76,7 +79,7 @@ std::optional<HalSpec> ParseHalSpecFromJsonValue(const base::Value& value) {
     return {};
   }
 
-  if (auto cameras = GetValue<ListWithPath>(*root_dict, kCamerasKey)) {
+  if (auto cameras = GetRequiredValue<ListWithPath>(*root_dict, kCamerasKey)) {
     spec.cameras = ParseCameraSpecs(*cameras);
   }
 

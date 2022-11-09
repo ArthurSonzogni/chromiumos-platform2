@@ -58,24 +58,28 @@ template <typename T, typename... Ts>
 using is_one_of = std::disjunction<std::is_same<T, Ts>...>;
 
 template <typename T>
-using is_supported_literal_type = is_one_of<T, int, bool, double, std::string>;
+using is_supported_type = is_one_of<T,
+                                    int,
+                                    bool,
+                                    double,
+                                    std::string,
+                                    ValueWithPath,
+                                    DictWithPath,
+                                    ListWithPath>;
 
-template <typename T>
-using is_supported_value_type =
-    is_one_of<T, ValueWithPath, DictWithPath, ListWithPath>;
+// Gets a value corresponds to a key from a dict. Print error and return
+// nullopt if the key doesn't exist or it's not of correct type.
+template <typename T,
+          typename = typename std::enable_if_t<is_supported_type<T>::value>>
+std::optional<T> GetRequiredValue(const DictWithPath& dict,
+                                  base::StringPiece key);
 
-template <
-    typename T,
-    typename = typename std::enable_if_t<is_supported_literal_type<T>::value ||
-                                         is_supported_value_type<T>::value>>
+// Gets a value corresponds to a key from a dict. Return nullopt if the key
+// doesn't exist or it's not of correct type, but only print error if the key
+// exists but is not of the correct type.
+template <typename T,
+          typename = typename std::enable_if_t<is_supported_type<T>::value>>
 std::optional<T> GetValue(const DictWithPath& dict, base::StringPiece key);
-
-template <
-    typename T,
-    typename = typename std::enable_if_t<is_supported_literal_type<T>::value>>
-T GetValue(const DictWithPath& dict,
-           base::StringPiece key,
-           const T& default_value);
 
 }  // namespace cros
 
