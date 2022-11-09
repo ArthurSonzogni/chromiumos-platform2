@@ -1,0 +1,32 @@
+# Copyright 2022 The ChromiumOS Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/pkg_config.gni")
+
+group("all") {
+  deps = [ ":opencl_cacher" ]
+  if (use.test) {
+    deps += []
+  }
+  if (use.fuzzer) {
+    deps += []
+  }
+}
+
+pkg_config("target_defaults") {
+  pkg_deps = [
+    "libbrillo",
+    "libchrome",
+  ]
+}
+
+executable("opencl_cacher") {
+  sources = [ "main.cc" ]
+  configs += [ ":target_defaults" ]
+  deps = [
+    "//ml_core:libcros_ml_core",
+    "//ml_core/dlc:dlc_client",
+  ]
+  install_path = "bin"
+}

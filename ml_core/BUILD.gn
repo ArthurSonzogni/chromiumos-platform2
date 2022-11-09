@@ -6,7 +6,10 @@ import("//common-mk/mojom_bindings_generator.gni")
 import("//common-mk/pkg_config.gni")
 
 group("all") {
-  deps = [ ":libcros_ml_core" ]
+  deps = [
+    ":libcros_ml_core",
+    "//ml_core/opencl_caching:all",
+  ]
   if (use.test) {
     deps += []
   }
