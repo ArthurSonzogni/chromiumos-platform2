@@ -486,8 +486,7 @@ const camera_metadata_t* CameraHalAdapter::GetUpdatedCameraMetadata(
   TRACE_HAL_ADAPTER(kCameraTraceKeyClientType, camera_client_type,
                     kCameraTraceKeyCameraId, camera_id);
 
-  auto& metadata =
-      static_metadata_map_[std::make_pair(camera_id, camera_client_type)];
+  auto& metadata = static_metadata_map_[camera_id][camera_client_type];
   if (metadata) {
     return metadata->getAndLock();
   }
@@ -563,6 +562,7 @@ void CameraHalAdapter::CameraDeviceStatusChange(
         if (it != device_adapters_.end()) {
           device_adapters_.erase(it);
         }
+        static_metadata_map_.erase(public_camera_id);
         LOGF(INFO) << "External camera unplugged"
                    << ", public_camera_id = " << public_camera_id;
       } else {

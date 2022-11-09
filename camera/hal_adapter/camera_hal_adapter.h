@@ -225,9 +225,11 @@ class CameraHalAdapter {
   // '2', '\0', '3', '\0', '1', '0', '\0'.
   std::map<int, std::string> physical_camera_id_map_;
 
-  // A mapping from (camera ID, camera client type) to their static metadata.
-  base::flat_map<std::pair<int, mojom::CameraClientType>,
-                 std::unique_ptr<android::CameraMetadata>>
+  // A mapping from camera ID to mapping from camera client type to their
+  // static metadata.
+  base::flat_map<int,
+                 base::flat_map<mojom::CameraClientType,
+                                std::unique_ptr<android::CameraMetadata>>>
       static_metadata_map_;
 
   // We need to keep the status for each camera to send up-to-date information
