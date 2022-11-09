@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef OOBE_CONFIG_ROLLBACK_OPENSSL_ENCRYPTION_H_
-#define OOBE_CONFIG_ROLLBACK_OPENSSL_ENCRYPTION_H_
+#ifndef OOBE_CONFIG_ENCRYPTION_OPENSSL_ENCRYPTION_H_
+#define OOBE_CONFIG_ENCRYPTION_OPENSSL_ENCRYPTION_H_
 
 #include <optional>
 
@@ -34,4 +34,4 @@ std::optional<brillo::SecureBlob> Decrypt(const EncryptedData& encrypted_data);
 
 }  // namespace oobe_config
 
-#endif  // OOBE_CONFIG_ROLLBACK_OPENSSL_ENCRYPTION_H_
+#endif  // OOBE_CONFIG_ENCRYPTION_OPENSSL_ENCRYPTION_H_

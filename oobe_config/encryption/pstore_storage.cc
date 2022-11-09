@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "oobe_config/pstore_storage.h"
+#include "oobe_config/encryption/pstore_storage.h"
 
 #include <optional>
 #include <sstream>

@@ -12,13 +12,11 @@
 #include <base/strings/strcat.h>
 #include <base/strings/string_number_conversions.h>
 
-#include "oobe_config/filesystem/file_handler.h"
+#include "oobe_config/encryption/openssl_encryption.h"
 #include "oobe_config/filesystem/file_handler_for_testing.h"
 #include "oobe_config/load_oobe_config_rollback.h"
 #include "oobe_config/oobe_config.h"
-#include "oobe_config/rollback_constants.h"
 #include "oobe_config/rollback_data.pb.h"
-#include "oobe_config/rollback_openssl_encryption.h"
 
 class Environment {
  public:

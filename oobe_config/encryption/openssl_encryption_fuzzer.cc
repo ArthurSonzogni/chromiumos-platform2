@@ -9,7 +9,7 @@
 #include <brillo/secure_blob.h>
 #include <fuzzer/FuzzedDataProvider.h>
 
-#include "oobe_config/rollback_openssl_encryption.h"
+#include "oobe_config/encryption/openssl_encryption.h"
 
 class Environment {
  public:

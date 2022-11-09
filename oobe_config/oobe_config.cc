@@ -14,10 +14,10 @@
 #include <base/logging.h>
 #include <brillo/secure_blob.h>
 
+#include "oobe_config/encryption/openssl_encryption.h"
+#include "oobe_config/encryption/pstore_storage.h"
 #include "oobe_config/network_exporter.h"
-#include "oobe_config/pstore_storage.h"
 #include "oobe_config/rollback_data.pb.h"
-#include "oobe_config/rollback_openssl_encryption.h"
 
 namespace oobe_config {
 

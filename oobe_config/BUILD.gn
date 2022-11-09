@@ -22,7 +22,7 @@ group("all") {
   if (use.fuzzer) {
     deps += [
       ":load_oobe_config_rollback_fuzzer",
-      ":rollback_openssl_encryption_fuzzer",
+      ":openssl_encryption_fuzzer",
     ]
   }
 }
@@ -66,13 +66,13 @@ pkg_config("liboobeconfig_config") {
 # oobe_config library.
 static_library("liboobeconfig") {
   sources = [
+    "encryption/openssl_encryption.cc",
+    "encryption/pstore_storage.cc",
     "filesystem/file_handler.cc",
     "load_oobe_config_rollback.cc",
     "metrics.cc",
     "network_exporter.cc",
     "oobe_config.cc",
-    "pstore_storage.cc",
-    "rollback_openssl_encryption.cc",
   ]
   configs += [ ":liboobeconfig_config" ]
   all_dependent_configs = [ ":target_defaults" ]
@@ -145,12 +145,12 @@ if (use.test) {
 
   executable("oobe_config_test") {
     sources = [
+      "encryption/openssl_encryption_test.cc",
       "filesystem/file_handler_for_testing.cc",
       "filesystem/file_handler_test.cc",
       "load_oobe_config_rollback_test.cc",
       "oobe_config_test.cc",
       "rollback_helper_test.cc",
-      "rollback_openssl_encryption_test.cc",
     ]
     configs += [
       "//common-mk:test",
@@ -182,8 +182,8 @@ if (use.fuzzer) {
     pkg_deps = [ "libprotobuf-mutator" ]
   }
 
-  executable("rollback_openssl_encryption_fuzzer") {
-    sources = [ "rollback_openssl_encryption_fuzzer.cc" ]
+  executable("openssl_encryption_fuzzer") {
+    sources = [ "encryption/openssl_encryption_fuzzer.cc" ]
     configs += [
       "//common-mk/common_fuzzer:common_fuzzer",
       ":target_defaults",

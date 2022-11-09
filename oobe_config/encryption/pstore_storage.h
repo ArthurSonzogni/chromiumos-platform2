@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef OOBE_CONFIG_PSTORE_STORAGE_H_
-#define OOBE_CONFIG_PSTORE_STORAGE_H_
+#ifndef OOBE_CONFIG_ENCRYPTION_PSTORE_STORAGE_H_
+#define OOBE_CONFIG_ENCRYPTION_PSTORE_STORAGE_H_
 
 #include <optional>
 #include <string>
@@ -33,4 +33,4 @@ std::optional<std::string> LoadFromPstore(
 
 }  // namespace oobe_config
 
-#endif  // OOBE_CONFIG_PSTORE_STORAGE_H_
+#endif  // OOBE_CONFIG_ENCRYPTION_PSTORE_STORAGE_H_

@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "oobe_config/rollback_openssl_encryption.h"
+#include "oobe_config/encryption/openssl_encryption.h"
 
 #include <optional>
 #include <string>
