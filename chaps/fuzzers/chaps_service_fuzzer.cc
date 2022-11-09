@@ -7,6 +7,7 @@
 #include <vector>
 
 #include <base/command_line.h>
+#include <base/files/scoped_temp_dir.h>
 #include <base/logging.h>
 #include <base/test/task_environment.h>
 #include <base/test/test_timeouts.h>
@@ -134,6 +135,7 @@ class ChapsServiceFuzzer {
   explicit ChapsServiceFuzzer(FuzzedDataProvider* hwsec_data_provider,
                               FuzzedDataProvider* data_provider)
       : data_provider_(data_provider) {
+    CHECK(tmp_dir_.CreateUniqueTempDir());
     chaps_metrics_ = std::make_unique<chaps::ChapsMetrics>();
     factory_ = std::make_unique<chaps::ChapsFactoryImpl>(chaps_metrics_.get());
     hwsec_factory_ =
@@ -647,8 +649,7 @@ class ChapsServiceFuzzer {
         break;
       }
       case TokenManagerInterfaceRequest::kUnloadToken: {
-        auto path = base::FilePath(ConsumeLowEntropyRandomLengthString(10));
-        slot_manager_->UnloadToken(GetIsolateCredential(), path);
+        slot_manager_->UnloadToken(GetIsolateCredential(), tmp_dir_.GetPath());
         break;
       }
       case TokenManagerInterfaceRequest::kGetTokenPath: {
@@ -686,13 +687,12 @@ class ChapsServiceFuzzer {
   }
 
   void LoadToken() {
-    auto path = base::FilePath(ConsumeLowEntropyRandomLengthString(10));
     auto auth_data =
         brillo::SecureBlob(ConsumeLowEntropyRandomLengthString(10));
     std::string label = ConsumeLowEntropyRandomLengthString(10);
     int slot_id;
-    if (slot_manager_->LoadToken(GetIsolateCredential(), path, auth_data, label,
-                                 &slot_id)) {
+    if (slot_manager_->LoadToken(GetIsolateCredential(), tmp_dir_.GetPath(),
+                                 auth_data, label, &slot_id)) {
       generated_slot_ids_.push_back(slot_id);
     }
   }
@@ -898,6 +898,7 @@ class ChapsServiceFuzzer {
   std::vector<int> generated_slot_ids_;
   std::vector<uint64_t> generated_session_ids_;
   std::vector<uint64_t> generated_object_handles_;
+  base::ScopedTempDir tmp_dir_;
 };
 
 }  // namespace
