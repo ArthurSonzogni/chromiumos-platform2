@@ -15,6 +15,7 @@
 #include "libhwsec/frontend/pinweaver/frontend.h"
 #include "libhwsec/frontend/recovery_crypto/frontend.h"
 #include "libhwsec/frontend/u2fd/frontend.h"
+#include "libhwsec/frontend/u2fd/vendor_frontend.h"
 #include "libhwsec/structures/threading_mode.h"
 
 namespace hwsec {
@@ -38,6 +39,7 @@ class HWSEC_EXPORT FactoryImpl : public Factory {
   std::unique_ptr<ClientFrontend> GetClientFrontend() override;
   std::unique_ptr<ChapsFrontend> GetChapsFrontend() override;
   std::unique_ptr<U2fFrontend> GetU2fFrontend() override;
+  std::unique_ptr<U2fVendorFrontend> GetU2fVendorFrontend() override;
 
  protected:
   std::unique_ptr<MiddlewareOwner> default_middleware_;

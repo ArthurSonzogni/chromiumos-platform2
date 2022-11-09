@@ -14,6 +14,7 @@
 #include "libhwsec/frontend/pinweaver/frontend_impl.h"
 #include "libhwsec/frontend/recovery_crypto/frontend_impl.h"
 #include "libhwsec/frontend/u2fd/frontend_impl.h"
+#include "libhwsec/frontend/u2fd/vendor_frontend_impl.h"
 #include "libhwsec/middleware/middleware.h"
 #include "libhwsec/proxy/tpm2_simulator_proxy_for_test.h"
 
@@ -61,6 +62,11 @@ std::unique_ptr<ChapsFrontend> Tpm2SimulatorFactoryForTest::GetChapsFrontend() {
 
 std::unique_ptr<U2fFrontend> Tpm2SimulatorFactoryForTest::GetU2fFrontend() {
   return std::make_unique<U2fFrontendImpl>(middleware_->Derive());
+}
+
+std::unique_ptr<U2fVendorFrontend>
+Tpm2SimulatorFactoryForTest::GetU2fVendorFrontend() {
+  return std::make_unique<U2fVendorFrontendImpl>(middleware_->Derive());
 }
 
 }  // namespace hwsec

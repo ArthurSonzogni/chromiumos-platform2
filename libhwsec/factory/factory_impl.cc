@@ -14,6 +14,7 @@
 #include "libhwsec/frontend/pinweaver/frontend_impl.h"
 #include "libhwsec/frontend/recovery_crypto/frontend_impl.h"
 #include "libhwsec/frontend/u2fd/frontend_impl.h"
+#include "libhwsec/frontend/u2fd/vendor_frontend_impl.h"
 #include "libhwsec/middleware/middleware.h"
 
 namespace hwsec {
@@ -51,6 +52,10 @@ std::unique_ptr<ChapsFrontend> FactoryImpl::GetChapsFrontend() {
 
 std::unique_ptr<U2fFrontend> FactoryImpl::GetU2fFrontend() {
   return std::make_unique<U2fFrontendImpl>(middleware_.Derive());
+}
+
+std::unique_ptr<U2fVendorFrontend> FactoryImpl::GetU2fVendorFrontend() {
+  return std::make_unique<U2fVendorFrontendImpl>(middleware_.Derive());
 }
 
 }  // namespace hwsec

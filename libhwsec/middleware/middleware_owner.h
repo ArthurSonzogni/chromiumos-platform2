@@ -34,6 +34,7 @@
 #include "libhwsec/fuzzed/pinweaver.h"
 #include "libhwsec/fuzzed/recovery_crypto.h"
 #include "libhwsec/fuzzed/signature_sealing.h"
+#include "libhwsec/fuzzed/u2f.h"
 #endif
 
 #ifndef BUILD_LIBHWSEC
