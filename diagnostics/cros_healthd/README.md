@@ -1,7 +1,7 @@
 # cros_healthd: Telemetry and Diagnostics Daemon
 
-cros_healthd provides telemetry and diagnostics support for enterprise-enrolled
-devices.
+cros_healthd provides the universal one-stop telemetry and diagnostics API
+support for the ChromeOS system.
 
 ## Design
 
