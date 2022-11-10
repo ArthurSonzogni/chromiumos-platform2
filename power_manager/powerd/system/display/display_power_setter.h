@@ -14,8 +14,7 @@ namespace dbus {
 class ObjectProxy;
 }  // namespace dbus
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 class DBusWrapperInterface;
 
@@ -72,7 +71,6 @@ class DisplayPowerSetter : public DisplayPowerSetterInterface {
   dbus::ObjectProxy* display_service_proxy_;  // non-owned
 };
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system
 
 #endif  // POWER_MANAGER_POWERD_SYSTEM_DISPLAY_DISPLAY_POWER_SETTER_H_

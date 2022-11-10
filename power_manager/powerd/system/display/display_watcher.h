@@ -17,8 +17,7 @@
 #include "power_manager/powerd/system/display/display_watcher_observer.h"
 #include "power_manager/powerd/system/udev_subsystem_observer.h"
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 struct UdevEvent;
 class UdevInterface;
@@ -119,7 +118,6 @@ class DisplayWatcher : public DisplayWatcherInterface,
   base::FilePath i2c_dev_path_for_testing_;
 };
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system
 
 #endif  // POWER_MANAGER_POWERD_SYSTEM_DISPLAY_DISPLAY_WATCHER_H_

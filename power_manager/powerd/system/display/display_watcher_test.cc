@@ -17,8 +17,7 @@
 #include "power_manager/powerd/system/udev_stub.h"
 #include "power_manager/powerd/system/udev_subsystem_observer.h"
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 namespace {
 
@@ -368,5 +367,4 @@ TEST_F(DisplayWatcherTest, NonEvdiDeviceSysPath) {
   EXPECT_EQ(pci_path.value(), watcher_.GetDisplays()[0].sys_path.value());
 }
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system

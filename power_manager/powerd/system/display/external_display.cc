@@ -27,8 +27,7 @@
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/util.h"
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 namespace {
 
@@ -449,5 +448,4 @@ ExternalDisplay::ReceiveResult ExternalDisplay::ReceiveMessage(
   return ReceiveResult::SUCCESS;
 }
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system

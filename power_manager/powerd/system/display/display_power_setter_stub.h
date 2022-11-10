@@ -11,8 +11,7 @@
 #include "power_manager/common/clock.h"
 #include "power_manager/powerd/system/display/display_power_setter.h"
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 // Stub DisplayPowerSetterInterface implementation for tests that just
 // keeps track of the most-recently-requested change.
@@ -57,7 +56,6 @@ class DisplayPowerSetterStub : public DisplayPowerSetterInterface {
   bool dimmed_;
 };
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system
 
 #endif  // POWER_MANAGER_POWERD_SYSTEM_DISPLAY_DISPLAY_POWER_SETTER_STUB_H_

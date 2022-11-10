@@ -21,8 +21,7 @@
 
 struct i2c_rdwr_ioctl_data;
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 // Class for controlling an external display via DDC/CI.
 //
@@ -301,7 +300,6 @@ class ExternalDisplay {
   base::OneShotTimer timer_;
 };
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system
 
 #endif  // POWER_MANAGER_POWERD_SYSTEM_DISPLAY_EXTERNAL_DISPLAY_H_

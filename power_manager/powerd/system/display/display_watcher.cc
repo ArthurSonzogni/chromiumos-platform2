@@ -14,8 +14,7 @@
 
 #include "power_manager/powerd/system/udev.h"
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 namespace {
 
@@ -204,5 +203,4 @@ void DisplayWatcher::UpdateDisplays() {
   }
 }
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system

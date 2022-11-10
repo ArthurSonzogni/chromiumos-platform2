@@ -4,8 +4,7 @@
 
 #include "power_manager/powerd/system/display/display_power_setter_stub.h"
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 DisplayPowerSetterStub::DisplayPowerSetterStub()
     : clock_(nullptr),
@@ -28,5 +27,4 @@ void DisplayPowerSetterStub::SetDisplaySoftwareDimming(bool dimmed) {
   dimmed_ = dimmed;
 }
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system

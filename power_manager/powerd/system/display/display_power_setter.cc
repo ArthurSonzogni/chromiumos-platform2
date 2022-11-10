@@ -16,8 +16,7 @@
 #include "power_manager/common/util.h"
 #include "power_manager/powerd/system/dbus_wrapper.h"
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 namespace {
 
@@ -89,5 +88,4 @@ void DisplayPowerSetter::SendStateToDisplayService(
                                 kDisplayServiceDBusTimeout);
 }
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system

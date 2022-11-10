@@ -7,8 +7,7 @@
 #include <base/check.h>
 #include <base/logging.h>
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 DisplayWatcherStub::DisplayWatcherStub() {}
 
@@ -61,5 +60,4 @@ void DisplayWatcherStub::RemoveDisplay(const DisplayInfo& display_info) {
   }
 }
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system

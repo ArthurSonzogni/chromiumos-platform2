@@ -7,8 +7,7 @@
 
 #include <base/files/file_path.h>
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 // Information about a connected display.
 struct DisplayInfo {
@@ -41,7 +40,6 @@ struct DisplayInfo {
   ConnectorStatus connector_status = ConnectorStatus::UNKNOWN;
 };
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system
 
 #endif  // POWER_MANAGER_POWERD_SYSTEM_DISPLAY_DISPLAY_INFO_H_

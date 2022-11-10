@@ -21,8 +21,7 @@
 #include "power_manager/common/metrics_constants.h"
 #include "power_manager/common/metrics_sender_stub.h"
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 namespace {
 
@@ -579,5 +578,4 @@ TEST_F(ExternalDisplayTest, AbsoluteBrightness) {
   EXPECT_EQ(GetSetBrightnessMessage(85), delegate_->PopSentMessage());
 }
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system

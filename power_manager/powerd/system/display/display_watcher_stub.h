@@ -10,8 +10,7 @@
 
 #include "power_manager/powerd/system/display/display_watcher.h"
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 // Stub implementation of DisplayWatcherInterface for testing.
 class DisplayWatcherStub : public DisplayWatcherInterface {
@@ -40,7 +39,6 @@ class DisplayWatcherStub : public DisplayWatcherInterface {
   std::vector<DisplayInfo> displays_;
 };
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system
 
 #endif  // POWER_MANAGER_POWERD_SYSTEM_DISPLAY_DISPLAY_WATCHER_STUB_H_
