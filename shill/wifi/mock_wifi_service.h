@@ -75,6 +75,14 @@ class MockWiFiService : public WiFiService {
               EmitDisconnectionEvent,
               (Metrics::WiFiDisconnectionType, IEEE_80211::WiFiReasonCode),
               (override));
+  MOCK_METHOD(void,
+              EmitLinkQualityTriggerEvent,
+              (Metrics::WiFiLinkQualityTrigger),
+              (const, override));
+  MOCK_METHOD(void,
+              EmitLinkQualityReportEvent,
+              (const Metrics::WiFiLinkQualityReport&),
+              (const, override));
 };
 
 }  // namespace shill

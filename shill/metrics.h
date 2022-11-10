@@ -5,6 +5,7 @@
 #ifndef SHILL_METRICS_H_
 #define SHILL_METRICS_H_
 
+#include <cstdint>
 #include <list>
 #include <map>
 #include <memory>
@@ -1283,6 +1284,9 @@ class Metrics : public DefaultServiceObserver {
   // value for the field.
   static constexpr int kWiFiStructuredMetricsErrorValue = -1;
 
+  // 9999 is wpa_supplicant's value for "invalid RSSI", let's use the same.
+  static constexpr int kWiFiStructuredMetricsErrorValueRSSI = 9999;
+
   // Some WiFi adapters like the ones integrated in some Qualcomm SoCs do not
   // have a PCI vendor/product/subsystem ID. When we detect such an adapter on
   // the system we use "0x0000" as PCI Vendor ID since that ID is not used by
@@ -1309,6 +1313,10 @@ class Metrics : public DefaultServiceObserver {
   static constexpr char kWiFiSessionTagConnectionAttemptResultSuffix[] =
       "ConnectionAttemptResult";
   static constexpr char kWiFiSessionTagDisconnectionSuffix[] = "Disconnection";
+  static constexpr char kWiFiSessionTagLinkQualityTriggerSuffix[] =
+      "LinkQualityTrigger";
+  static constexpr char kWiFiSessionTagLinkQualityReportSuffix[] =
+      "LinkQualityReport";
 
   Metrics();
   Metrics(const Metrics&) = delete;
@@ -1613,6 +1621,88 @@ class Metrics : public DefaultServiceObserver {
   virtual void NotifyWiFiDisconnection(WiFiDisconnectionType type,
                                        IEEE_80211::WiFiReasonCode reason,
                                        uint64_t session_tag);
+
+  enum WiFiLinkQualityTrigger {
+    kWiFiLinkQualityTriggerUnknown = 0,
+    kWiFiLinkQualityTriggerCQMRSSILow = 1,
+    kWiFiLinkQualityTriggerCQMRSSIHigh = 2,
+    kWiFiLinkQualityTriggerCQMBeaconLoss = 3,
+    kWiFiLinkQualityTriggerCQMPacketLoss = 4,
+    kWiFiLinkQualityTriggerPeriodicCheck = 5,
+    kWiFiLinkQualityTriggerIPConfigurationStart = 6,
+    kWiFiLinkQualityTriggerConnected = 7,
+    kWiFiLinkQualityTriggerDHCPRenewOnRoam = 8,
+    kWiFiLinkQualityTriggerDHCPSuccess = 9,
+    kWiFiLinkQualityTriggerDHCPFailure = 10,
+    kWiFiLinkQualityTriggerSlaacFinished = 11,
+    kWiFiLinkQualityTriggerNetworkValidationStart = 12,
+    kWiFiLinkQualityTriggerNetworkValidationSuccess = 13,
+    kWiFiLinkQualityTriggerNetworkValidationFailure = 14,
+  };
+
+  enum WiFiChannelWidth {
+    kWiFiChannelWidthUnknown = 0,
+    kWiFiChannelWidth20MHz = 1,
+    kWiFiChannelWidth40MHz = 2,
+    kWiFiChannelWidth80MHz = 3,
+    kWiFiChannelWidth80p80MHz = 4,  // 80+80MHz channels.
+    kWiFiChannelWidth160MHz = 5,
+    kWiFiChannelWidth320MHz = 6,
+  };
+
+  enum WiFiLinkMode {
+    kWiFiLinkModeUnknown = 0,
+    kWiFiLinkModeLegacy = 1,
+    kWiFiLinkModeVHT = 2,
+    kWiFiLinkModeHE = 3,
+    kWiFiLinkModeEHT = 4,
+  };
+
+  enum WiFiGuardInterval {
+    kWiFiGuardIntervalUnknown = 0,
+    kWiFiGuardInterval_0_4 = 1,
+    kWiFiGuardInterval_0_8 = 2,
+    kWiFiGuardInterval_1_6 = 3,
+    kWiFiGuardInterval_3_2 = 4,
+  };
+
+  struct WiFiRxTxStats {
+    int64_t packets = kWiFiStructuredMetricsErrorValue;
+    int64_t bytes = kWiFiStructuredMetricsErrorValue;
+    int bitrate = kWiFiStructuredMetricsErrorValue;  // unit is 100 Kb/s.
+    int mcs = kWiFiStructuredMetricsErrorValue;
+    WiFiChannelWidth width = kWiFiChannelWidthUnknown;
+    WiFiLinkMode mode = kWiFiLinkModeUnknown;
+    WiFiGuardInterval gi = kWiFiGuardIntervalUnknown;
+    int nss = kWiFiStructuredMetricsErrorValue;
+    int dcm = kWiFiStructuredMetricsErrorValue;
+  };
+
+  struct WiFiLinkQualityReport {
+    int64_t tx_retries = kWiFiStructuredMetricsErrorValue;
+    int64_t tx_failures = kWiFiStructuredMetricsErrorValue;
+    int64_t rx_drops = kWiFiStructuredMetricsErrorValue;
+    int chain0_signal = kWiFiStructuredMetricsErrorValueRSSI;
+    int chain0_signal_avg = kWiFiStructuredMetricsErrorValueRSSI;
+    int chain1_signal = kWiFiStructuredMetricsErrorValueRSSI;
+    int chain1_signal_avg = kWiFiStructuredMetricsErrorValueRSSI;
+    int beacon_signal_avg = kWiFiStructuredMetricsErrorValueRSSI;
+    int64_t beacons_received = kWiFiStructuredMetricsErrorValue;
+    int64_t beacons_lost = kWiFiStructuredMetricsErrorValue;
+    int64_t expected_throughput = kWiFiStructuredMetricsErrorValue;
+    WiFiRxTxStats rx;
+    WiFiRxTxStats tx;
+  };
+
+  // Emits the |WiFiLinkQualityTrigger| structured event.
+  mockable void NotifyWiFiLinkQualityTrigger(WiFiLinkQualityTrigger trigger,
+                                             uint64_t session_tag);
+
+  // Emits the |WiFiLinkQualityReport| structured event. It contains information
+  // about the quality of the wireless link (e.g. MCS index, rate of packet
+  // loss, etc.)
+  mockable void NotifyWiFiLinkQualityReport(const WiFiLinkQualityReport& report,
+                                            uint64_t session_tag);
 
   // Returns a persistent hash to be used to uniquely identify an APN.
   static int64_t HashApn(const std::string& uuid,

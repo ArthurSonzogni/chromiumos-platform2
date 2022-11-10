@@ -2601,6 +2601,81 @@ TEST_F(WiFiServiceTest, DisconnectionInvalidTagUMA) {
       IEEE_80211::kReasonCodeTooManySTAs);
 }
 
+TEST_F(WiFiServiceTest, QualityLinkTriggerEmitsStructuredMetricWithTag) {
+  WiFiServiceRefPtr service = MakeServiceWithWiFi(kSecurityClassNone);
+  uint64_t session_tag;
+  Metrics::WiFiLinkQualityTrigger trigger =
+      Metrics::kWiFiLinkQualityTriggerCQMBeaconLoss;
+
+  // We need a connection attempt for the tag to be valid.
+  service->EmitConnectionAttemptEvent();
+  session_tag = GetSessionTag(service);
+  // The link quality trigger event must have the same session tag as the
+  // "connection attempt" event.
+  EXPECT_CALL(*metrics(), NotifyWiFiLinkQualityTrigger(trigger, session_tag));
+  service->EmitLinkQualityTriggerEvent(trigger);
+}
+
+TEST_F(WiFiServiceTest, QualityLinkTriggerEmitsStructuredMetricWithInvalidTag) {
+  WiFiServiceRefPtr service = MakeServiceWithWiFi(kSecurityClassNone);
+  Metrics::WiFiLinkQualityTrigger trigger =
+      Metrics::kWiFiLinkQualityTriggerCQMBeaconLoss;
+
+  // If we have not attempted to connect yet, the session tag of the link
+  // quality trigger event must be invalid.
+  EXPECT_CALL(*metrics(), NotifyWiFiLinkQualityTrigger(
+                              trigger, WiFiService::kSessionTagInvalid));
+  service->EmitLinkQualityTriggerEvent(trigger);
+}
+
+TEST_F(WiFiServiceTest, QualityLinkTriggerValidTagUMA) {
+  WiFiServiceRefPtr service = MakeServiceWithWiFi(kSecurityClassNone);
+
+  // We need a connection attempt for the tag to be valid.
+  service->EmitConnectionAttemptEvent();
+  // For a "link quality trigger" event after a "connection attempt" event,
+  // the state of the session tag should be "expected".
+  EXPECT_CALL(
+      *metrics(),
+      SendEnumToUMA(
+          base::StringPrintf("%s.%s", Metrics::kWiFiSessionTagStateMetricPrefix,
+                             Metrics::kWiFiSessionTagLinkQualityTriggerSuffix),
+          Metrics::kWiFiSessionTagStateExpected,
+          Metrics::kWiFiSessionTagStateMax));
+  service->EmitLinkQualityTriggerEvent(
+      Metrics::kWiFiLinkQualityTriggerCQMRSSIHigh);
+}
+
+TEST_F(WiFiServiceTest, QualityLinkTriggerInvalidTagUMA) {
+  WiFiServiceRefPtr service = MakeServiceWithWiFi(kSecurityClassNone);
+
+  // For a "link quality trigger" event without a "connection attempt" event,
+  // the state of the session tag should be "unexpected".
+  EXPECT_CALL(
+      *metrics(),
+      SendEnumToUMA(
+          base::StringPrintf("%s.%s", Metrics::kWiFiSessionTagStateMetricPrefix,
+                             Metrics::kWiFiSessionTagLinkQualityTriggerSuffix),
+          Metrics::kWiFiSessionTagStateUnexpected,
+          Metrics::kWiFiSessionTagStateMax));
+  service->EmitLinkQualityTriggerEvent(
+      Metrics::kWiFiLinkQualityTriggerCQMBeaconLoss);
+}
+
+TEST_F(WiFiServiceTest, QualityLinkReportEmitsStructuredMetricWithTag) {
+  WiFiServiceRefPtr service = MakeServiceWithWiFi(kSecurityClassNone);
+  uint64_t session_tag;
+
+  // We need a connection attempt for the tag to be valid.
+  service->EmitConnectionAttemptEvent();
+  session_tag = GetSessionTag(service);
+  Metrics::WiFiLinkQualityReport report;
+  // The link quality report event must have the same session tag as the
+  // "connection attempt" event.
+  EXPECT_CALL(*metrics(), NotifyWiFiLinkQualityReport(_, session_tag));
+  service->EmitLinkQualityReportEvent(report);
+}
+
 TEST_F(WiFiServiceTest, CompareWithSameTechnology) {
   PasspointCredentialsRefPtr credentials = new PasspointCredentials("an_id");
 

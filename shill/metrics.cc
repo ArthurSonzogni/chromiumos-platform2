@@ -1351,6 +1351,76 @@ void Metrics::NotifyWiFiDisconnection(WiFiDisconnectionType type,
       .Record();
 }
 
+void Metrics::NotifyWiFiLinkQualityTrigger(WiFiLinkQualityTrigger trigger,
+                                           uint64_t session_tag) {
+  int64_t usecs;
+  if (!time_ || !time_->GetMicroSecondsMonotonic(&usecs)) {
+    LOG(ERROR) << "Failed to read timestamp";
+    usecs = kWiFiStructuredMetricsErrorValue;
+  }
+  // Do NOT modify the verbosity of the Session Tag log without a privacy
+  // review.
+  SLOG(WiFiService::kSessionTagMinimumLogVerbosity)
+      << __func__ << ": Session Tag 0x" << PseudonymizeTag(session_tag);
+  SLOG(2) << __func__ << ": Trigger " << trigger;
+  metrics::structured::events::wi_fi::WiFiLinkQualityTrigger()
+      .SetBootId(WiFiMetricsUtils::GetBootId())
+      .SetSystemTime(usecs)
+      .SetEventVersion(kWiFiStructuredMetricsVersion)
+      .SetSessionTag(session_tag)
+      .SetType(trigger)
+      .Record();
+}
+
+void Metrics::NotifyWiFiLinkQualityReport(const WiFiLinkQualityReport& report,
+                                          uint64_t session_tag) {
+  int64_t usecs;
+  if (!time_ || !time_->GetMicroSecondsMonotonic(&usecs)) {
+    LOG(ERROR) << "Failed to read timestamp";
+    usecs = kWiFiStructuredMetricsErrorValue;
+  }
+  // Do NOT modify the verbosity of the Session Tag log without a privacy
+  // review.
+  SLOG(WiFiService::kSessionTagMinimumLogVerbosity)
+      << __func__ << ": Session Tag 0x" << PseudonymizeTag(session_tag);
+
+  metrics::structured::events::wi_fi::WiFiLinkQualityReport()
+      .SetBootId(WiFiMetricsUtils::GetBootId())
+      .SetSystemTime(usecs)
+      .SetEventVersion(kWiFiStructuredMetricsVersion)
+      .SetSessionTag(session_tag)
+      .SetRXPackets(report.rx.packets)
+      .SetRXBytes(report.rx.bytes)
+      .SetTXPackets(report.tx.packets)
+      .SetTXBytes(report.tx.bytes)
+      .SetTXRetries(report.tx_retries)
+      .SetTXFailures(report.tx_failures)
+      .SetRXDrops(report.rx_drops)
+      .SetChain0Signal(report.chain0_signal)
+      .SetChain0SignalAvg(report.chain0_signal_avg)
+      .SetChain1Signal(report.chain1_signal)
+      .SetChain1SignalAvg(report.chain1_signal_avg)
+      .SetBeaconSignalAvg(report.beacon_signal_avg)
+      .SetBeaconsReceived(report.beacons_received)
+      .SetBeaconsLost(report.beacons_lost)
+      .SetExpectedThroughput(report.expected_throughput)
+      .SetRXRate(report.rx.bitrate)
+      .SetRXMCS(report.rx.mcs)
+      .SetRXChannelWidth(report.rx.width)
+      .SetRXMode(report.rx.mode)
+      .SetRXGuardInterval(report.rx.gi)
+      .SetRXNSS(report.rx.nss)
+      .SetRXDCM(report.rx.dcm)
+      .SetTXRate(report.tx.bitrate)
+      .SetTXMCS(report.tx.mcs)
+      .SetTXChannelWidth(report.tx.width)
+      .SetTXMode(report.tx.mode)
+      .SetTXGuardInterval(report.tx.gi)
+      .SetTXNSS(report.tx.nss)
+      .SetTXDCM(report.tx.dcm)
+      .Record();
+}
+
 // static
 int Metrics::GetRegulatoryDomainValue(std::string country_code) {
   // Convert country code to upper case before checking validity.

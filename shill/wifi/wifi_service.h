@@ -277,6 +277,14 @@ class WiFiService : public Service {
       Metrics::WiFiDisconnectionType type,
       IEEE_80211::WiFiReasonCode disconnect_reason);
 
+  // Emits the |WiFiLinkQualityTrigger| structured event.
+  mockable void EmitLinkQualityTriggerEvent(
+      Metrics::WiFiLinkQualityTrigger trigger) const;
+
+  // Emits the |WiFiLinkQualityReport| structured event.
+  mockable void EmitLinkQualityReportEvent(
+      const Metrics::WiFiLinkQualityReport& report) const;
+
   void set_expecting_disconnect(bool val) { expecting_disconnect_ = val; }
   bool expecting_disconnect() const { return expecting_disconnect_; }
 

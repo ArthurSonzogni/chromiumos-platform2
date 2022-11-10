@@ -1050,6 +1050,20 @@ void WiFiService::EmitDisconnectionEvent(
   session_tag_ = kSessionTagInvalid;
 }
 
+void WiFiService::EmitLinkQualityTriggerEvent(
+    Metrics::WiFiLinkQualityTrigger trigger) const {
+  ValidateTagState(kSessionTagExpectedValid,
+                   Metrics::kWiFiSessionTagLinkQualityTriggerSuffix);
+  metrics()->NotifyWiFiLinkQualityTrigger(trigger, session_tag_);
+}
+
+void WiFiService::EmitLinkQualityReportEvent(
+    const Metrics::WiFiLinkQualityReport& report) const {
+  ValidateTagState(kSessionTagExpectedValid,
+                   Metrics::kWiFiSessionTagLinkQualityReportSuffix);
+  metrics()->NotifyWiFiLinkQualityReport(report, session_tag_);
+}
+
 WiFiService::UpdateMACAddressRet WiFiService::UpdateMACAddress() {
   const auto now = clock_->Now();
   bool rotating = false;
