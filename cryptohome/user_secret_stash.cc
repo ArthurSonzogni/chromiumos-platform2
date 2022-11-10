@@ -51,7 +51,7 @@ namespace {
 // critical bug in USS such that we need to stop and rollback the experiment,
 // this version will be marked as invalid in the server side. After the bug is
 // fixed and USS can be enabled again, this version needs to be incremented.
-constexpr int kCurrentUssVersion = 1;
+constexpr int kCurrentUssVersion = 2;
 
 constexpr char kEnableUssFeatureTestFlagPath[] =
     "/var/lib/cryptohome/uss_enabled";
