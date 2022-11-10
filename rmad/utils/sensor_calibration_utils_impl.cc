@@ -34,8 +34,7 @@ constexpr double kProgressInit = 0.0;
 constexpr double kProgressGetOriginalCalibbias = 0.2;
 constexpr double kProgressSensorDataReceived = 0.7;
 constexpr double kProgressBiasCalculated = 0.8;
-constexpr double kProgressComplete = 1.0;
-constexpr double kProgressBiasWritten = kProgressComplete;
+constexpr double kProgressCalibbiasCached = 0.9;
 
 constexpr char kCalibbiasPrefix[] = "in_";
 constexpr char kCalibbiasPostfix[] = "_calibbias";
@@ -75,8 +74,9 @@ namespace rmad {
 SensorCalibrationUtilsImpl::SensorCalibrationUtilsImpl(
     scoped_refptr<MojoServiceUtils> mojo_service,
     const std::string& location,
-    const std::string& name)
-    : location_(location), name_(name) {
+    const std::string& name,
+    RmadComponent component)
+    : location_(location), name_(name), component_(component) {
   CHECK(kValidSensorNames.find(name) != kValidSensorNames.end())
       << "Sensor name \"" << name << "\" is invalid.";
 
@@ -91,9 +91,11 @@ SensorCalibrationUtilsImpl::SensorCalibrationUtilsImpl(
 SensorCalibrationUtilsImpl::SensorCalibrationUtilsImpl(
     const std::string& location,
     const std::string& name,
+    RmadComponent component,
     std::unique_ptr<IioEcSensorUtils> iio_ec_sensor_utils)
     : location_(location),
       name_(name),
+      component_(component),
       iio_ec_sensor_utils_(std::move(iio_ec_sensor_utils)) {
   calibbias_ = kSensorCalibbias.at(name);
   channels_ = kSensorChannels.at(name);
@@ -101,55 +103,64 @@ SensorCalibrationUtilsImpl::SensorCalibrationUtilsImpl(
 }
 
 void SensorCalibrationUtilsImpl::Calibrate(
-    CalibrationProgressCallback progress_callback,
+    CalibrationComponentStatusCallback component_status_callback,
     CalibrationResultCallback result_callback) {
   CHECK(iio_ec_sensor_utils_);
   CHECK_EQ(GetLocation(), iio_ec_sensor_utils_->GetLocation());
   CHECK_EQ(GetName(), iio_ec_sensor_utils_->GetName());
 
   std::vector<double> original_calibbias;
-  progress_callback.Run(kProgressInit);
+  component_status_callback.Run(GenerateComponentStatus(
+      CalibrationComponentStatus::RMAD_CALIBRATION_IN_PROGRESS, kProgressInit));
 
   // Before the calibration, we get original calibbias by reading sysfs.
   if (!iio_ec_sensor_utils_->GetSysValues(calibbias_, &original_calibbias)) {
-    progress_callback.Run(kProgressFailed);
+    component_status_callback.Run(GenerateComponentStatus(
+        CalibrationComponentStatus::RMAD_CALIBRATION_FAILED, kProgressFailed));
     return;
   }
-  progress_callback.Run(kProgressGetOriginalCalibbias);
+  component_status_callback.Run(GenerateComponentStatus(
+      CalibrationComponentStatus::RMAD_CALIBRATION_GET_ORIGINAL_CALIBBIAS,
+      kProgressGetOriginalCalibbias));
 
   // Due to the uncertainty of the sensor value, we use the average value to
   // calibrate it.
   if (!iio_ec_sensor_utils_->GetAvgData(
           base::BindOnce(&SensorCalibrationUtilsImpl::HandleGetAvgDataResult,
-                         base::Unretained(this), progress_callback,
+                         base::Unretained(this), component_status_callback,
                          std::move(result_callback), original_calibbias),
           channels_, kSamples)) {
     LOG(ERROR) << GetLocation() << ":" << GetName()
                << ": Failed to accumulate data.";
-    progress_callback.Run(kProgressFailed);
+    component_status_callback.Run(GenerateComponentStatus(
+        CalibrationComponentStatus::RMAD_CALIBRATION_FAILED, kProgressFailed));
     return;
   }
 }
 
 void SensorCalibrationUtilsImpl::HandleGetAvgDataResult(
-    CalibrationProgressCallback progress_callback,
+    CalibrationComponentStatusCallback component_status_callback,
     CalibrationResultCallback result_callback,
     const std::vector<double>& original_calibbias,
     const std::vector<double>& avg_data,
     const std::vector<double>& variance_data) {
   std::map<std::string, int> calibbias;
-  progress_callback.Run(kProgressSensorDataReceived);
+  component_status_callback.Run(GenerateComponentStatus(
+      CalibrationComponentStatus::RMAD_CALIBRATION_SENSOR_DATA_RECEIVED,
+      kProgressSensorDataReceived));
 
   if (avg_data.size() != ideal_values_.size()) {
     LOG(ERROR) << GetLocation() << ":" << GetName() << ": Get wrong data size "
                << avg_data.size();
-    progress_callback.Run(kProgressFailed);
+    component_status_callback.Run(GenerateComponentStatus(
+        CalibrationComponentStatus::RMAD_CALIBRATION_FAILED, kProgressFailed));
     return;
   }
 
   if (GetName() == SensorCalibrationUtilsImpl::kAccelSensorName &&
       !CheckVariance(variance_data)) {
-    progress_callback.Run(kProgressFailed);
+    component_status_callback.Run(GenerateComponentStatus(
+        CalibrationComponentStatus::RMAD_CALIBRATION_FAILED, kProgressFailed));
     return;
   }
 
@@ -163,17 +174,23 @@ void SensorCalibrationUtilsImpl::HandleGetAvgDataResult(
       LOG(ERROR) << GetLocation() << ":" << GetName()
                  << ": Data is out of range, the sensor may be damaged or the"
                     " device setup is incorrect.";
-      progress_callback.Run(kProgressFailed);
+      component_status_callback.Run(GenerateComponentStatus(
+          CalibrationComponentStatus::RMAD_CALIBRATION_FAILED,
+          kProgressFailed));
       return;
     }
     std::string entry = kCalibbiasPrefix + channels_.at(i) + "_" +
                         GetLocation() + kCalibbiasPostfix;
     calibbias[entry] = round(offset / kCalibbias2SensorReading.at(GetName()));
   }
-  progress_callback.Run(kProgressBiasCalculated);
+  component_status_callback.Run(GenerateComponentStatus(
+      CalibrationComponentStatus::RMAD_CALIBRATION_CALIBBIAS_CALCULATED,
+      kProgressBiasCalculated));
 
   std::move(result_callback).Run(calibbias);
-  progress_callback.Run(kProgressBiasWritten);
+  component_status_callback.Run(GenerateComponentStatus(
+      CalibrationComponentStatus::RMAD_CALIBRATION_CALIBBIAS_CACHED,
+      kProgressCalibbiasCached));
 }
 
 bool SensorCalibrationUtilsImpl::CheckVariance(
@@ -202,6 +219,15 @@ const std::string& SensorCalibrationUtilsImpl::GetLocation() const {
 
 const std::string& SensorCalibrationUtilsImpl::GetName() const {
   return name_;
+}
+
+CalibrationComponentStatus SensorCalibrationUtilsImpl::GenerateComponentStatus(
+    CalibrationComponentStatus::CalibrationStatus status, double progress) {
+  CalibrationComponentStatus component_status;
+  component_status.set_component(component_);
+  component_status.set_status(status);
+  component_status.set_progress(progress);
+  return component_status;
 }
 
 }  // namespace rmad

@@ -48,8 +48,26 @@ bool IsCompleteStatus(CalibrationComponentStatus::CalibrationStatus status) {
          status == CalibrationComponentStatus::RMAD_CALIBRATION_SKIP;
 }
 
+bool IsFailedStatus(CalibrationComponentStatus::CalibrationStatus status) {
+  return status == CalibrationComponentStatus::RMAD_CALIBRATION_FAILED;
+}
+
 bool IsInProgressStatus(CalibrationComponentStatus::CalibrationStatus status) {
-  return status == CalibrationComponentStatus::RMAD_CALIBRATION_IN_PROGRESS;
+  return status == CalibrationComponentStatus::RMAD_CALIBRATION_IN_PROGRESS ||
+         status == CalibrationComponentStatus::
+                       RMAD_CALIBRATION_GET_ORIGINAL_CALIBBIAS ||
+         status == CalibrationComponentStatus::
+                       RMAD_CALIBRATION_SENSOR_DATA_RECEIVED ||
+         status == CalibrationComponentStatus::
+                       RMAD_CALIBRATION_CALIBBIAS_CALCULATED ||
+         status ==
+             CalibrationComponentStatus::RMAD_CALIBRATION_CALIBBIAS_CACHED;
+}
+
+bool IsPendingWriteStatus(
+    CalibrationComponentStatus::CalibrationStatus status) {
+  return status ==
+         CalibrationComponentStatus::RMAD_CALIBRATION_CALIBBIAS_CACHED;
 }
 
 bool IsUnknownStatus(CalibrationComponentStatus::CalibrationStatus status) {

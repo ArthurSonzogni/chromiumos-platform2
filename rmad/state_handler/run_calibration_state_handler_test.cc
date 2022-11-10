@@ -67,10 +67,10 @@ class RunCalibrationStateHandlerTest : public StateHandlerTest {
   };
 
   scoped_refptr<RunCalibrationStateHandler> CreateStateHandler(
-      const std::vector<double>& base_acc_progress,
-      const std::vector<double>& lid_acc_progress,
-      const std::vector<double>& base_gyro_progress,
-      const std::vector<double>& lid_gyro_progress) {
+      const std::vector<double>& base_acc_progresses,
+      const std::vector<double>& lid_acc_progresses,
+      const std::vector<double>& base_gyro_progresses,
+      const std::vector<double>& lid_gyro_progresses) {
     // Mock |SensorCalibrationUtils|.
     std::unique_ptr<StrictMock<MockSensorCalibrationUtils>> base_acc_utils =
         std::make_unique<StrictMock<MockSensorCalibrationUtils>>();
@@ -81,55 +81,133 @@ class RunCalibrationStateHandlerTest : public StateHandlerTest {
     std::unique_ptr<StrictMock<MockSensorCalibrationUtils>> lid_gyro_utils =
         std::make_unique<StrictMock<MockSensorCalibrationUtils>>();
 
-    expected_progresses_[RMAD_COMPONENT_BASE_ACCELEROMETER] = base_acc_progress;
-    expected_progresses_[RMAD_COMPONENT_LID_ACCELEROMETER] = lid_acc_progress;
-    expected_progresses_[RMAD_COMPONENT_BASE_GYROSCOPE] = base_gyro_progress;
-    expected_progresses_[RMAD_COMPONENT_LID_GYROSCOPE] = lid_gyro_progress;
+    CalibrationComponentStatus component_status;
+
+    std::vector<CalibrationComponentStatus> base_acc_statuses;
+    component_status.set_component(RMAD_COMPONENT_BASE_ACCELEROMETER);
+    for (auto progress : base_acc_progresses) {
+      if (progress < 0) {
+        component_status.set_status(
+            CalibrationComponentStatus::RMAD_CALIBRATION_FAILED);
+      } else if (0 < progress && progress < 1) {
+        component_status.set_status(
+            CalibrationComponentStatus::RMAD_CALIBRATION_IN_PROGRESS);
+      } else if (progress == 1) {
+        component_status.set_status(
+            CalibrationComponentStatus::RMAD_CALIBRATION_COMPLETE);
+      }
+      component_status.set_progress(progress);
+      base_acc_statuses.push_back(component_status);
+    }
+
+    std::vector<CalibrationComponentStatus> lid_acc_statuses;
+    component_status.set_component(RMAD_COMPONENT_LID_ACCELEROMETER);
+    for (auto progress : lid_acc_progresses) {
+      if (progress < 0) {
+        component_status.set_status(
+            CalibrationComponentStatus::RMAD_CALIBRATION_FAILED);
+      } else if (0 < progress && progress < 1) {
+        component_status.set_status(
+            CalibrationComponentStatus::RMAD_CALIBRATION_IN_PROGRESS);
+      } else if (progress == 1) {
+        component_status.set_status(
+            CalibrationComponentStatus::RMAD_CALIBRATION_COMPLETE);
+      }
+      component_status.set_progress(progress);
+      lid_acc_statuses.push_back(component_status);
+    }
+
+    std::vector<CalibrationComponentStatus> base_gyro_statuses;
+    component_status.set_component(RMAD_COMPONENT_BASE_GYROSCOPE);
+    for (auto progress : base_gyro_progresses) {
+      if (progress < 0) {
+        component_status.set_status(
+            CalibrationComponentStatus::RMAD_CALIBRATION_FAILED);
+      } else if (0 < progress && progress < 1) {
+        component_status.set_status(
+            CalibrationComponentStatus::RMAD_CALIBRATION_IN_PROGRESS);
+      } else if (progress == 1) {
+        component_status.set_status(
+            CalibrationComponentStatus::RMAD_CALIBRATION_COMPLETE);
+      }
+      component_status.set_progress(progress);
+      base_gyro_statuses.push_back(component_status);
+    }
+
+    std::vector<CalibrationComponentStatus> lid_gyro_statuses;
+    component_status.set_component(RMAD_COMPONENT_LID_GYROSCOPE);
+    for (auto progress : lid_gyro_progresses) {
+      if (progress < 0) {
+        component_status.set_status(
+            CalibrationComponentStatus::RMAD_CALIBRATION_FAILED);
+      } else if (0 < progress && progress < 1) {
+        component_status.set_status(
+            CalibrationComponentStatus::RMAD_CALIBRATION_IN_PROGRESS);
+      } else if (progress == 1) {
+        component_status.set_status(
+            CalibrationComponentStatus::RMAD_CALIBRATION_COMPLETE);
+      }
+      component_status.set_progress(progress);
+      lid_gyro_statuses.push_back(component_status);
+    }
+
+    expected_component_statuses_[RMAD_COMPONENT_BASE_ACCELEROMETER] =
+        base_acc_statuses;
+    expected_component_statuses_[RMAD_COMPONENT_LID_ACCELEROMETER] =
+        lid_acc_statuses;
+    expected_component_statuses_[RMAD_COMPONENT_BASE_GYROSCOPE] =
+        base_gyro_statuses;
+    expected_component_statuses_[RMAD_COMPONENT_LID_GYROSCOPE] =
+        lid_gyro_statuses;
 
     EXPECT_CALL(*base_acc_utils, Calibrate(_, _))
-        .WillRepeatedly([base_acc_progress](
-                            SensorCalibrationUtils::CalibrationProgressCallback
-                                progress_callback,
-                            SensorCalibrationUtils::CalibrationResultCallback&&
-                                result_callback) {
-          for (auto progress : base_acc_progress) {
-            progress_callback.Run(progress);
-          }
-          std::move(result_callback).Run(std::map<std::string, int>());
-        });
+        .WillRepeatedly(
+            [base_acc_statuses](
+                SensorCalibrationUtils::CalibrationComponentStatusCallback
+                    component_status_callback,
+                SensorCalibrationUtils::CalibrationResultCallback&&
+                    result_callback) {
+              for (auto component_status : base_acc_statuses) {
+                component_status_callback.Run(component_status);
+              }
+              std::move(result_callback).Run(std::map<std::string, int>());
+            });
     EXPECT_CALL(*lid_acc_utils, Calibrate(_, _))
-        .WillRepeatedly([lid_acc_progress](
-                            SensorCalibrationUtils::CalibrationProgressCallback
-                                progress_callback,
-                            SensorCalibrationUtils::CalibrationResultCallback&&
-                                result_callback) {
-          for (auto progress : lid_acc_progress) {
-            progress_callback.Run(progress);
-          }
-          std::move(result_callback).Run(std::map<std::string, int>());
-        });
+        .WillRepeatedly(
+            [lid_acc_statuses](
+                SensorCalibrationUtils::CalibrationComponentStatusCallback
+                    component_status_callback,
+                SensorCalibrationUtils::CalibrationResultCallback&&
+                    result_callback) {
+              for (auto component_status : lid_acc_statuses) {
+                component_status_callback.Run(component_status);
+              }
+              std::move(result_callback).Run(std::map<std::string, int>());
+            });
     EXPECT_CALL(*base_gyro_utils, Calibrate(_, _))
-        .WillRepeatedly([base_gyro_progress](
-                            SensorCalibrationUtils::CalibrationProgressCallback
-                                progress_callback,
-                            SensorCalibrationUtils::CalibrationResultCallback&&
-                                result_callback) {
-          for (auto progress : base_gyro_progress) {
-            progress_callback.Run(progress);
-          }
-          std::move(result_callback).Run(std::map<std::string, int>());
-        });
+        .WillRepeatedly(
+            [base_gyro_statuses](
+                SensorCalibrationUtils::CalibrationComponentStatusCallback
+                    component_status_callback,
+                SensorCalibrationUtils::CalibrationResultCallback&&
+                    result_callback) {
+              for (auto component_status : base_gyro_statuses) {
+                component_status_callback.Run(component_status);
+              }
+              std::move(result_callback).Run(std::map<std::string, int>());
+            });
     EXPECT_CALL(*lid_gyro_utils, Calibrate(_, _))
-        .WillRepeatedly([lid_gyro_progress](
-                            SensorCalibrationUtils::CalibrationProgressCallback
-                                progress_callback,
-                            SensorCalibrationUtils::CalibrationResultCallback&&
-                                result_callback) {
-          for (auto progress : lid_gyro_progress) {
-            progress_callback.Run(progress);
-          }
-          std::move(result_callback).Run(std::map<std::string, int>());
-        });
+        .WillRepeatedly(
+            [lid_gyro_statuses](
+                SensorCalibrationUtils::CalibrationComponentStatusCallback
+                    component_status_callback,
+                SensorCalibrationUtils::CalibrationResultCallback&&
+                    result_callback) {
+              for (auto component_status : lid_gyro_statuses) {
+                component_status_callback.Run(component_status);
+              }
+              std::move(result_callback).Run(std::map<std::string, int>());
+            });
 
     // To PostTask into TaskRunner, we ignore the return value of Calibrate.
     // However, it will cause mock leaks in unittest. We use StrictMock and
@@ -159,21 +237,23 @@ class RunCalibrationStateHandlerTest : public StateHandlerTest {
         std::move(lid_gyro_utils), std::move(vpd_utils));
   }
 
-  void CheckProgress(CalibrationComponentStatus component_progress) {
-    auto& expected_progress =
-        expected_progresses_[component_progress.component()];
-    EXPECT_EQ(expected_progress.front(), component_progress.progress());
-    EXPECT_NO_FATAL_FAILURE(expected_progress.erase(expected_progress.begin()));
-    if (0 < component_progress.progress() &&
-        component_progress.progress() < 1.0) {
-      EXPECT_EQ(component_progress.status(),
-                CalibrationComponentStatus::RMAD_CALIBRATION_IN_PROGRESS);
-    } else if (component_progress.progress() >= 1.0) {
-      EXPECT_EQ(component_progress.status(),
-                CalibrationComponentStatus::RMAD_CALIBRATION_COMPLETE);
-    } else {
-      EXPECT_EQ(component_progress.status(),
+  void CheckProgress(CalibrationComponentStatus component_component_status) {
+    auto& expected_component_status =
+        expected_component_statuses_[component_component_status.component()];
+    EXPECT_EQ(expected_component_status.front().component(),
+              component_component_status.component());
+    EXPECT_EQ(expected_component_status.front().status(),
+              component_component_status.status());
+    EXPECT_DOUBLE_EQ(expected_component_status.front().progress(),
+                     component_component_status.progress());
+    EXPECT_NO_FATAL_FAILURE(
+        expected_component_status.erase(expected_component_status.begin()));
+    if (component_component_status.progress() < 0) {
+      EXPECT_EQ(component_component_status.status(),
                 CalibrationComponentStatus::RMAD_CALIBRATION_FAILED);
+    } else if (0 < component_component_status.progress() &&
+               component_component_status.progress() < 1) {
+      EXPECT_TRUE(IsInProgressStatus(component_component_status.status()));
     }
   }
 
@@ -203,7 +283,8 @@ class RunCalibrationStateHandlerTest : public StateHandlerTest {
             Invoke(this, &RunCalibrationStateHandlerTest::CheckProgress)));
   }
 
-  std::map<RmadComponent, std::vector<double>> expected_progresses_;
+  std::map<RmadComponent, std::vector<CalibrationComponentStatus>>
+      expected_component_statuses_;
   std::vector<CalibrationOverallStatus> overall_status_history_;
 };
 

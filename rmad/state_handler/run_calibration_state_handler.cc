@@ -30,19 +30,23 @@ RunCalibrationStateHandler::RunCalibrationStateHandler(
   sensor_calibration_utils_map_[RMAD_COMPONENT_BASE_ACCELEROMETER] =
       std::make_unique<SensorCalibrationUtilsImpl>(
           mojo_service_, SensorCalibrationUtilsImpl::kBaseLocationName,
-          SensorCalibrationUtilsImpl::kAccelSensorName);
+          SensorCalibrationUtilsImpl::kAccelSensorName,
+          RMAD_COMPONENT_BASE_ACCELEROMETER);
   sensor_calibration_utils_map_[RMAD_COMPONENT_LID_ACCELEROMETER] =
       std::make_unique<SensorCalibrationUtilsImpl>(
           mojo_service_, SensorCalibrationUtilsImpl::kLidLocationName,
-          SensorCalibrationUtilsImpl::kAccelSensorName);
+          SensorCalibrationUtilsImpl::kAccelSensorName,
+          RMAD_COMPONENT_LID_ACCELEROMETER);
   sensor_calibration_utils_map_[RMAD_COMPONENT_BASE_GYROSCOPE] =
       std::make_unique<SensorCalibrationUtilsImpl>(
           mojo_service_, SensorCalibrationUtilsImpl::kBaseLocationName,
-          SensorCalibrationUtilsImpl::kGyroSensorName);
+          SensorCalibrationUtilsImpl::kGyroSensorName,
+          RMAD_COMPONENT_BASE_GYROSCOPE);
   sensor_calibration_utils_map_[RMAD_COMPONENT_LID_GYROSCOPE] =
       std::make_unique<SensorCalibrationUtilsImpl>(
           mojo_service_, SensorCalibrationUtilsImpl::kLidLocationName,
-          SensorCalibrationUtilsImpl::kGyroSensorName);
+          SensorCalibrationUtilsImpl::kGyroSensorName,
+          RMAD_COMPONENT_LID_GYROSCOPE);
 }
 
 RunCalibrationStateHandler::RunCalibrationStateHandler(
@@ -222,7 +226,7 @@ void RunCalibrationStateHandler::CalibrateAndSendProgress(
   utils->Calibrate(
       base::BindRepeating(
           &RunCalibrationStateHandler::UpdateCalibrationProgress,
-          base::Unretained(this), component),
+          base::Unretained(this)),
       base::BindOnce(&RunCalibrationStateHandler::UpdateCalibrationResult,
                      base::Unretained(this)));
 
@@ -230,11 +234,11 @@ void RunCalibrationStateHandler::CalibrateAndSendProgress(
 }
 
 void RunCalibrationStateHandler::UpdateCalibrationProgress(
-    RmadComponent component, double progress) {
+    CalibrationComponentStatus component_status) {
   DETACH_FROM_SEQUENCE(sequence_checker_);
   sequenced_task_runner_->PostTask(
       FROM_HERE, base::BindOnce(&RunCalibrationStateHandler::SaveAndSend,
-                                base::Unretained(this), component, progress));
+                                base::Unretained(this), component_status));
 }
 
 void RunCalibrationStateHandler::UpdateCalibrationResult(
@@ -244,44 +248,51 @@ void RunCalibrationStateHandler::UpdateCalibrationResult(
                                 base::Unretained(vpd_utils_.get()), result));
 }
 
-void RunCalibrationStateHandler::SaveAndSend(RmadComponent component,
-                                             double progress) {
+void RunCalibrationStateHandler::SaveAndSend(
+    CalibrationComponentStatus component_status) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  CalibrationComponentStatus::CalibrationStatus status =
-      CalibrationComponentStatus::RMAD_CALIBRATION_IN_PROGRESS;
-
-  if (progress >= 1.0) {
-    status = CalibrationComponentStatus::RMAD_CALIBRATION_COMPLETE;
-  } else if (progress < 0) {
-    status = CalibrationComponentStatus::RMAD_CALIBRATION_FAILED;
+  auto component = component_status.component();
+  auto status = component_status.status();
+  // TODO(genechang): Remove workaround after Chrome can handle other enums.
+  if (IsInProgressStatus(status)) {
+    component_status.set_status(
+        CalibrationComponentStatus::RMAD_CALIBRATION_IN_PROGRESS);
   }
-
-  CalibrationComponentStatus component_status;
-  component_status.set_component(component);
-  component_status.set_status(status);
-  component_status.set_progress(progress);
   sequenced_task_runner_->PostTask(
       FROM_HERE,
       base::BindOnce(&RunCalibrationStateHandler::SendComponentSignal,
                      base::Unretained(this), component_status));
 
-  auto pre_status = calibration_map_[setup_instruction_][component];
-  if (pre_status != status) {
+  if (!IsInProgressStatus(status) || IsPendingWriteStatus(status)) {
     calibration_map_[setup_instruction_][component] = status;
     SetCalibrationMap(json_store_, calibration_map_);
 
-    bool in_progress = false;
+    bool all_pending = true;
     bool failed = false;
-    for (auto [ignore, other_status] : calibration_map_[setup_instruction_]) {
-      in_progress |= IsInProgressStatus(other_status) ||
-                     IsWaitingForCalibration(other_status);
+    for (auto [other_component, other_status] :
+         calibration_map_[setup_instruction_]) {
+      all_pending &= IsPendingWriteStatus(other_status) ||
+                     IsCompleteStatus(other_status) ||
+                     IsFailedStatus(other_status);
       failed |=
           other_status == CalibrationComponentStatus::RMAD_CALIBRATION_FAILED;
     }
 
-    // We only update the overall status after all calibrations are done.
-    if (!in_progress) {
-      failed |= (vpd_utils_.get() && !vpd_utils_->FlushOutRoVpdCache());
+    // We only flush results to vpd and update the overall status after all
+    // calibrations are done.
+    if (all_pending) {
+      bool write_vpd = vpd_utils_->FlushOutRoVpdCache();
+      CalibrationComponentStatus::CalibrationStatus write_status =
+          write_vpd ? CalibrationComponentStatus::RMAD_CALIBRATION_COMPLETE
+                    : CalibrationComponentStatus::RMAD_CALIBRATION_FAILED;
+      for (auto [other_component, other_status] :
+           calibration_map_[setup_instruction_]) {
+        if (IsPendingWriteStatus(other_status))
+          calibration_map_[setup_instruction_][other_component] = write_status;
+      }
+      SetCalibrationMap(json_store_, calibration_map_);
+
+      failed |= !write_vpd;
       CalibrationOverallStatus overall_status;
       if (failed) {
         overall_status = CalibrationOverallStatus::

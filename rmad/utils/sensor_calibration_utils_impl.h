@@ -22,12 +22,14 @@ class SensorCalibrationUtilsImpl : public SensorCalibrationUtils {
   explicit SensorCalibrationUtilsImpl(
       scoped_refptr<MojoServiceUtils> mojo_service,
       const std::string& location,
-      const std::string& name);
+      const std::string& name,
+      RmadComponent component);
 
   // Used to inject iio_ec_sensor_utils for testing.
   explicit SensorCalibrationUtilsImpl(
       const std::string& location,
       const std::string& name,
+      RmadComponent component,
       std::unique_ptr<IioEcSensorUtils> iio_ec_sensor_utils);
 
   ~SensorCalibrationUtilsImpl() override = default;
@@ -35,7 +37,7 @@ class SensorCalibrationUtilsImpl : public SensorCalibrationUtils {
   const std::string& GetLocation() const;
   const std::string& GetName() const;
 
-  void Calibrate(CalibrationProgressCallback progress_callback,
+  void Calibrate(CalibrationComponentStatusCallback component_status_callback,
                  CalibrationResultCallback result_callback) override;
 
   static constexpr char kGyroSensorName[] = "cros-ec-gyro";
@@ -44,12 +46,15 @@ class SensorCalibrationUtilsImpl : public SensorCalibrationUtils {
   static constexpr char kLidLocationName[] = "lid";
 
  private:
-  void HandleGetAvgDataResult(CalibrationProgressCallback progress_callback,
-                              CalibrationResultCallback result_callback,
-                              const std::vector<double>& original_calibbias,
-                              const std::vector<double>& avg_data,
-                              const std::vector<double>& variance_data);
+  void HandleGetAvgDataResult(
+      CalibrationComponentStatusCallback component_status_callback,
+      CalibrationResultCallback result_callback,
+      const std::vector<double>& original_calibbias,
+      const std::vector<double>& avg_data,
+      const std::vector<double>& variance_data);
   bool CheckVariance(const std::vector<double> variances) const;
+  CalibrationComponentStatus GenerateComponentStatus(
+      CalibrationComponentStatus::CalibrationStatus, double progress);
 
   std::vector<std::string> calibbias_;
   std::vector<std::string> channels_;
@@ -59,6 +64,7 @@ class SensorCalibrationUtilsImpl : public SensorCalibrationUtils {
   // and name (cros-ec-accel or cros-ec-gyro)
   std::string location_;
   std::string name_;
+  RmadComponent component_;
 
   // utils part.
   std::unique_ptr<IioEcSensorUtils> iio_ec_sensor_utils_;

@@ -42,8 +42,14 @@ bool IsWaitingForCalibration(
 // Check whether calibration is complete (complete or skipped by user) or not.
 bool IsCompleteStatus(CalibrationComponentStatus::CalibrationStatus status);
 
+// Check whether calibration is failed or not.
+bool IsFailedStatus(CalibrationComponentStatus::CalibrationStatus status);
+
 // Check whether the status is in progress or not.
 bool IsInProgressStatus(CalibrationComponentStatus::CalibrationStatus status);
+
+// Check whether the status is pending write or not.
+bool IsPendingWriteStatus(CalibrationComponentStatus::CalibrationStatus status);
 
 // Check whether the status is unknown or not.
 bool IsUnknownStatus(CalibrationComponentStatus::CalibrationStatus status);

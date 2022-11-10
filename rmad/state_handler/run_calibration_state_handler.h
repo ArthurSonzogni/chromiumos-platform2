@@ -59,11 +59,11 @@ class RunCalibrationStateHandler : public BaseStateHandler {
  private:
   bool RetrieveVarsAndCalibrate();
   void CalibrateAndSendProgress(RmadComponent component);
-  void UpdateCalibrationProgress(RmadComponent component, double progress);
+  void UpdateCalibrationProgress(CalibrationComponentStatus component_status);
   void UpdateCalibrationResult(const std::map<std::string, int>& result);
 
   void HandleMojoServiceDisconnection();
-  void SaveAndSend(RmadComponent component, double progress);
+  void SaveAndSend(CalibrationComponentStatus component_status);
   void SendComponentSignal(CalibrationComponentStatus component_status);
   void SendOverallSignal(CalibrationOverallStatus overall_status);
 

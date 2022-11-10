@@ -9,6 +9,7 @@
 #include <string>
 
 #include <base/callback.h>
+#include <rmad/proto_bindings/rmad.pb.h>
 
 namespace rmad {
 
@@ -17,16 +18,17 @@ class SensorCalibrationUtils {
   SensorCalibrationUtils() = default;
   virtual ~SensorCalibrationUtils() = default;
 
-  // Define callback to update calibration progress via doubles (failed: -1.0,
-  // in progress: [0.0, 1.0), done: 1.0).
-  using CalibrationProgressCallback = base::RepeatingCallback<void(double)>;
+  // Define callback to update calibration progress.
+  using CalibrationComponentStatusCallback =
+      base::RepeatingCallback<void(CalibrationComponentStatus)>;
   // Define callback to update calibration result via map (keyname in vpd ->
   // calibration bias).
   using CalibrationResultCallback =
       base::OnceCallback<void(const std::map<std::string, int>&)>;
 
-  virtual void Calibrate(CalibrationProgressCallback progress_callback,
-                         CalibrationResultCallback result_callback) = 0;
+  virtual void Calibrate(
+      CalibrationComponentStatusCallback component_status_callback,
+      CalibrationResultCallback result_callback) = 0;
 };
 
 }  // namespace rmad

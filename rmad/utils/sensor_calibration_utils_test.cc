@@ -40,7 +40,7 @@ const std::vector<double> kInvalidVariance = {1, 2, 30};
 constexpr double kProgressFailed = -1.0;
 constexpr double kProgressInit = 0.0;
 constexpr double kProgressGetOriginalCalibbias = 0.2;
-constexpr double kProgressComplete = 1.0;
+constexpr double kProgressCalibbiasCached = 0.9;
 
 const std::set<std::string> kValidSensorNames = {
     rmad::SensorCalibrationUtilsImpl::kGyroSensorName,
@@ -110,8 +110,8 @@ class SensorCalibrationUtilsImplTest : public testing::Test {
             }));
   }
 
-  void QueueProgress(double progress) {
-    received_progresses_.push_back(progress);
+  void QueueProgress(CalibrationComponentStatus component_status) {
+    received_component_statuses_.push_back(component_status);
   }
 
   void QueueResult(const std::map<std::string, int>& result) {
@@ -121,7 +121,7 @@ class SensorCalibrationUtilsImplTest : public testing::Test {
   }
 
  protected:
-  std::vector<double> received_progresses_;
+  std::vector<CalibrationComponentStatus> received_component_statuses_;
   std::vector<int> received_results_;
 };
 
@@ -148,7 +148,7 @@ TEST_F(SensorCalibrationUtilsImplTest, Calibrate_WithoutOriginalBias_Success) {
 
   auto calib_utils = std::make_unique<SensorCalibrationUtilsImpl>(
       kLocation, SensorCalibrationUtilsImpl::kGyroSensorName,
-      std::move(mock_iio_ec_sensor_utils));
+      RMAD_COMPONENT_BASE_GYROSCOPE, std::move(mock_iio_ec_sensor_utils));
 
   calib_utils->Calibrate(
       base::BindRepeating(&SensorCalibrationUtilsImplTest::QueueProgress,
@@ -156,10 +156,15 @@ TEST_F(SensorCalibrationUtilsImplTest, Calibrate_WithoutOriginalBias_Success) {
       base::BindOnce(&SensorCalibrationUtilsImplTest::QueueResult,
                      base::Unretained(this)));
 
-  // Check if sent progresses contain kProgressInit to kProgressComplete.
-  EXPECT_EQ(received_progresses_.size(), 2);
-  EXPECT_DOUBLE_EQ(received_progresses_.front(), kProgressInit);
-  EXPECT_DOUBLE_EQ(received_progresses_.back(), kProgressGetOriginalCalibbias);
+  EXPECT_GE(received_component_statuses_.size(), 2);
+  EXPECT_EQ(received_component_statuses_.front().status(),
+            CalibrationComponentStatus::RMAD_CALIBRATION_IN_PROGRESS);
+  EXPECT_EQ(received_component_statuses_.front().progress(), kProgressInit);
+  EXPECT_EQ(
+      received_component_statuses_.back().status(),
+      CalibrationComponentStatus::RMAD_CALIBRATION_GET_ORIGINAL_CALIBBIAS);
+  EXPECT_EQ(received_component_statuses_.back().progress(),
+            kProgressGetOriginalCalibbias);
 }
 
 TEST_F(SensorCalibrationUtilsImplTest, Calibrate_WithOriginalBias_Success) {
@@ -185,7 +190,7 @@ TEST_F(SensorCalibrationUtilsImplTest, Calibrate_WithOriginalBias_Success) {
 
   auto calib_utils = std::make_unique<SensorCalibrationUtilsImpl>(
       kLocation, SensorCalibrationUtilsImpl::kGyroSensorName,
-      std::move(mock_iio_ec_sensor_utils));
+      RMAD_COMPONENT_BASE_GYROSCOPE, std::move(mock_iio_ec_sensor_utils));
 
   calib_utils->Calibrate(
       base::BindRepeating(&SensorCalibrationUtilsImplTest::QueueProgress,
@@ -193,11 +198,15 @@ TEST_F(SensorCalibrationUtilsImplTest, Calibrate_WithOriginalBias_Success) {
       base::BindOnce(&SensorCalibrationUtilsImplTest::QueueResult,
                      base::Unretained(this)));
 
-  // Check if sent progresses contain kProgressInit to
-  // kProgressGetOriginalCalibbias.
-  EXPECT_EQ(received_progresses_.size(), 2);
-  EXPECT_DOUBLE_EQ(received_progresses_.front(), kProgressInit);
-  EXPECT_DOUBLE_EQ(received_progresses_.back(), kProgressGetOriginalCalibbias);
+  EXPECT_GE(received_component_statuses_.size(), 2);
+  EXPECT_EQ(received_component_statuses_.front().status(),
+            CalibrationComponentStatus::RMAD_CALIBRATION_IN_PROGRESS);
+  EXPECT_EQ(received_component_statuses_.front().progress(), kProgressInit);
+  EXPECT_EQ(
+      received_component_statuses_.back().status(),
+      CalibrationComponentStatus::RMAD_CALIBRATION_GET_ORIGINAL_CALIBBIAS);
+  EXPECT_EQ(received_component_statuses_.back().progress(),
+            kProgressGetOriginalCalibbias);
 }
 
 TEST_F(SensorCalibrationUtilsImplTest, Calibrate_NoAvgData_Failed) {
@@ -222,7 +231,7 @@ TEST_F(SensorCalibrationUtilsImplTest, Calibrate_NoAvgData_Failed) {
 
   auto calib_utils = std::make_unique<SensorCalibrationUtilsImpl>(
       kLocation, SensorCalibrationUtilsImpl::kGyroSensorName,
-      std::move(mock_iio_ec_sensor_utils));
+      RMAD_COMPONENT_BASE_GYROSCOPE, std::move(mock_iio_ec_sensor_utils));
 
   calib_utils->Calibrate(
       base::BindRepeating(&SensorCalibrationUtilsImplTest::QueueProgress,
@@ -230,11 +239,13 @@ TEST_F(SensorCalibrationUtilsImplTest, Calibrate_NoAvgData_Failed) {
       base::BindOnce(&SensorCalibrationUtilsImplTest::QueueResult,
                      base::Unretained(this)));
 
-  // Check if sent progresses contain kProgressInit,
-  // kProgressGetOriginalCalibbias, and kProgressFailed.
-  EXPECT_EQ(received_progresses_.size(), 3);
-  EXPECT_DOUBLE_EQ(received_progresses_.front(), kProgressInit);
-  EXPECT_DOUBLE_EQ(received_progresses_.back(), kProgressFailed);
+  EXPECT_GE(received_component_statuses_.size(), 2);
+  EXPECT_EQ(received_component_statuses_.front().status(),
+            CalibrationComponentStatus::RMAD_CALIBRATION_IN_PROGRESS);
+  EXPECT_EQ(received_component_statuses_.front().progress(), kProgressInit);
+  EXPECT_EQ(received_component_statuses_.back().status(),
+            CalibrationComponentStatus::RMAD_CALIBRATION_FAILED);
+  EXPECT_EQ(received_component_statuses_.back().progress(), kProgressFailed);
 }
 
 TEST_F(SensorCalibrationUtilsImplTest, Calibrate_NoSysValues_Failed) {
@@ -252,7 +263,7 @@ TEST_F(SensorCalibrationUtilsImplTest, Calibrate_NoSysValues_Failed) {
 
   auto calib_utils = std::make_unique<SensorCalibrationUtilsImpl>(
       kLocation, SensorCalibrationUtilsImpl::kGyroSensorName,
-      std::move(mock_iio_ec_sensor_utils));
+      RMAD_COMPONENT_BASE_GYROSCOPE, std::move(mock_iio_ec_sensor_utils));
 
   calib_utils->Calibrate(
       base::BindRepeating(&SensorCalibrationUtilsImplTest::QueueProgress,
@@ -260,10 +271,13 @@ TEST_F(SensorCalibrationUtilsImplTest, Calibrate_NoSysValues_Failed) {
       base::BindOnce(&SensorCalibrationUtilsImplTest::QueueResult,
                      base::Unretained(this)));
 
-  // Check if sent progresses contain kProgressInit and kProgressFailed.
-  EXPECT_EQ(received_progresses_.size(), 2);
-  EXPECT_DOUBLE_EQ(received_progresses_.front(), kProgressInit);
-  EXPECT_DOUBLE_EQ(received_progresses_.back(), kProgressFailed);
+  EXPECT_GE(received_component_statuses_.size(), 2);
+  EXPECT_EQ(received_component_statuses_.front().status(),
+            CalibrationComponentStatus::RMAD_CALIBRATION_IN_PROGRESS);
+  EXPECT_EQ(received_component_statuses_.front().progress(), kProgressInit);
+  EXPECT_EQ(received_component_statuses_.back().status(),
+            CalibrationComponentStatus::RMAD_CALIBRATION_FAILED);
+  EXPECT_EQ(received_component_statuses_.back().progress(), kProgressFailed);
 }
 
 TEST_F(SensorCalibrationUtilsImplTest, HandleGetAvgDataResult_Success) {
@@ -285,7 +299,7 @@ TEST_F(SensorCalibrationUtilsImplTest, HandleGetAvgDataResult_Success) {
 
   auto calib_utils = std::make_unique<SensorCalibrationUtilsImpl>(
       kLocation, SensorCalibrationUtilsImpl::kGyroSensorName,
-      std::move(mock_iio_ec_sensor_utils));
+      RMAD_COMPONENT_BASE_GYROSCOPE, std::move(mock_iio_ec_sensor_utils));
 
   calib_utils->Calibrate(
       base::BindRepeating(&SensorCalibrationUtilsImplTest::QueueProgress,
@@ -293,10 +307,14 @@ TEST_F(SensorCalibrationUtilsImplTest, HandleGetAvgDataResult_Success) {
       base::BindOnce(&SensorCalibrationUtilsImplTest::QueueResult,
                      base::Unretained(this)));
 
-  // Check if sent progresses contain kProgressInit to kProgressComplete.
-  EXPECT_EQ(received_progresses_.size(), 5);
-  EXPECT_DOUBLE_EQ(received_progresses_.front(), kProgressInit);
-  EXPECT_DOUBLE_EQ(received_progresses_.back(), kProgressComplete);
+  EXPECT_GE(received_component_statuses_.size(), 2);
+  EXPECT_EQ(received_component_statuses_.front().status(),
+            CalibrationComponentStatus::RMAD_CALIBRATION_IN_PROGRESS);
+  EXPECT_EQ(received_component_statuses_.front().progress(), kProgressInit);
+  EXPECT_EQ(received_component_statuses_.back().status(),
+            CalibrationComponentStatus::RMAD_CALIBRATION_CALIBBIAS_CACHED);
+  EXPECT_EQ(received_component_statuses_.back().progress(),
+            kProgressCalibbiasCached);
 }
 
 TEST_F(SensorCalibrationUtilsImplTest,
@@ -319,7 +337,7 @@ TEST_F(SensorCalibrationUtilsImplTest,
 
   auto calib_utils = std::make_unique<SensorCalibrationUtilsImpl>(
       kLocation, SensorCalibrationUtilsImpl::kGyroSensorName,
-      std::move(mock_iio_ec_sensor_utils));
+      RMAD_COMPONENT_BASE_GYROSCOPE, std::move(mock_iio_ec_sensor_utils));
 
   calib_utils->Calibrate(
       base::BindRepeating(&SensorCalibrationUtilsImplTest::QueueProgress,
@@ -327,10 +345,13 @@ TEST_F(SensorCalibrationUtilsImplTest,
       base::BindOnce(&SensorCalibrationUtilsImplTest::QueueResult,
                      base::Unretained(this)));
 
-  // Check if sent progresses contain kProgressInit to kProgressFailed.
-  EXPECT_EQ(received_progresses_.size(), 4);
-  EXPECT_DOUBLE_EQ(received_progresses_.front(), kProgressInit);
-  EXPECT_DOUBLE_EQ(received_progresses_.back(), kProgressFailed);
+  EXPECT_GE(received_component_statuses_.size(), 2);
+  EXPECT_EQ(received_component_statuses_.front().status(),
+            CalibrationComponentStatus::RMAD_CALIBRATION_IN_PROGRESS);
+  EXPECT_EQ(received_component_statuses_.front().progress(), kProgressInit);
+  EXPECT_EQ(received_component_statuses_.back().status(),
+            CalibrationComponentStatus::RMAD_CALIBRATION_FAILED);
+  EXPECT_EQ(received_component_statuses_.back().progress(), kProgressFailed);
 }
 
 TEST_F(SensorCalibrationUtilsImplTest, Calibrate_Check_Variance_Success) {
@@ -352,7 +373,7 @@ TEST_F(SensorCalibrationUtilsImplTest, Calibrate_Check_Variance_Success) {
 
   auto calib_utils = std::make_unique<SensorCalibrationUtilsImpl>(
       kLocation, SensorCalibrationUtilsImpl::kAccelSensorName,
-      std::move(mock_iio_ec_sensor_utils));
+      RMAD_COMPONENT_BASE_ACCELEROMETER, std::move(mock_iio_ec_sensor_utils));
 
   calib_utils->Calibrate(
       base::BindRepeating(&SensorCalibrationUtilsImplTest::QueueProgress,
@@ -360,10 +381,14 @@ TEST_F(SensorCalibrationUtilsImplTest, Calibrate_Check_Variance_Success) {
       base::BindOnce(&SensorCalibrationUtilsImplTest::QueueResult,
                      base::Unretained(this)));
 
-  // Check if sent progresses contain kProgressInit to kProgressComplete.
-  EXPECT_EQ(received_progresses_.size(), 5);
-  EXPECT_DOUBLE_EQ(received_progresses_.front(), kProgressInit);
-  EXPECT_DOUBLE_EQ(received_progresses_.back(), kProgressComplete);
+  EXPECT_GE(received_component_statuses_.size(), 2);
+  EXPECT_EQ(received_component_statuses_.front().status(),
+            CalibrationComponentStatus::RMAD_CALIBRATION_IN_PROGRESS);
+  EXPECT_EQ(received_component_statuses_.front().progress(), kProgressInit);
+  EXPECT_EQ(received_component_statuses_.back().status(),
+            CalibrationComponentStatus::RMAD_CALIBRATION_CALIBBIAS_CACHED);
+  EXPECT_EQ(received_component_statuses_.back().progress(),
+            kProgressCalibbiasCached);
 }
 
 TEST_F(SensorCalibrationUtilsImplTest, Calibrate_Check_Variance_Wrong_Size) {
@@ -385,7 +410,7 @@ TEST_F(SensorCalibrationUtilsImplTest, Calibrate_Check_Variance_Wrong_Size) {
 
   auto calib_utils = std::make_unique<SensorCalibrationUtilsImpl>(
       kLocation, SensorCalibrationUtilsImpl::kAccelSensorName,
-      std::move(mock_iio_ec_sensor_utils));
+      RMAD_COMPONENT_BASE_ACCELEROMETER, std::move(mock_iio_ec_sensor_utils));
 
   calib_utils->Calibrate(
       base::BindRepeating(&SensorCalibrationUtilsImplTest::QueueProgress,
@@ -393,10 +418,13 @@ TEST_F(SensorCalibrationUtilsImplTest, Calibrate_Check_Variance_Wrong_Size) {
       base::BindOnce(&SensorCalibrationUtilsImplTest::QueueResult,
                      base::Unretained(this)));
 
-  // Check if sent progresses contain kProgressInit to kProgressComplete.
-  EXPECT_EQ(received_progresses_.size(), 4);
-  EXPECT_DOUBLE_EQ(received_progresses_.front(), kProgressInit);
-  EXPECT_DOUBLE_EQ(received_progresses_.back(), kProgressFailed);
+  EXPECT_GE(received_component_statuses_.size(), 2);
+  EXPECT_EQ(received_component_statuses_.front().status(),
+            CalibrationComponentStatus::RMAD_CALIBRATION_IN_PROGRESS);
+  EXPECT_EQ(received_component_statuses_.front().progress(), kProgressInit);
+  EXPECT_EQ(received_component_statuses_.back().status(),
+            CalibrationComponentStatus::RMAD_CALIBRATION_FAILED);
+  EXPECT_EQ(received_component_statuses_.back().progress(), kProgressFailed);
 }
 
 TEST_F(SensorCalibrationUtilsImplTest, Calibrate_Check_Variance_Too_High) {
@@ -418,7 +446,7 @@ TEST_F(SensorCalibrationUtilsImplTest, Calibrate_Check_Variance_Too_High) {
 
   auto calib_utils = std::make_unique<SensorCalibrationUtilsImpl>(
       kLocation, SensorCalibrationUtilsImpl::kAccelSensorName,
-      std::move(mock_iio_ec_sensor_utils));
+      RMAD_COMPONENT_BASE_ACCELEROMETER, std::move(mock_iio_ec_sensor_utils));
 
   calib_utils->Calibrate(
       base::BindRepeating(&SensorCalibrationUtilsImplTest::QueueProgress,
@@ -426,10 +454,13 @@ TEST_F(SensorCalibrationUtilsImplTest, Calibrate_Check_Variance_Too_High) {
       base::BindOnce(&SensorCalibrationUtilsImplTest::QueueResult,
                      base::Unretained(this)));
 
-  // Check if sent progresses contain kProgressInit to kProgressComplete.
-  EXPECT_EQ(received_progresses_.size(), 4);
-  EXPECT_DOUBLE_EQ(received_progresses_.front(), kProgressInit);
-  EXPECT_DOUBLE_EQ(received_progresses_.back(), kProgressFailed);
+  EXPECT_GE(received_component_statuses_.size(), 2);
+  EXPECT_EQ(received_component_statuses_.front().status(),
+            CalibrationComponentStatus::RMAD_CALIBRATION_IN_PROGRESS);
+  EXPECT_EQ(received_component_statuses_.front().progress(), kProgressInit);
+  EXPECT_EQ(received_component_statuses_.back().status(),
+            CalibrationComponentStatus::RMAD_CALIBRATION_FAILED);
+  EXPECT_EQ(received_component_statuses_.back().progress(), kProgressFailed);
 }
 
 TEST_F(SensorCalibrationUtilsImplTest, Calibrate_Check_Offset_Too_High) {
@@ -452,7 +483,7 @@ TEST_F(SensorCalibrationUtilsImplTest, Calibrate_Check_Offset_Too_High) {
 
   auto calib_utils = std::make_unique<SensorCalibrationUtilsImpl>(
       kLocation, SensorCalibrationUtilsImpl::kAccelSensorName,
-      std::move(mock_iio_ec_sensor_utils));
+      RMAD_COMPONENT_BASE_ACCELEROMETER, std::move(mock_iio_ec_sensor_utils));
 
   calib_utils->Calibrate(
       base::BindRepeating(&SensorCalibrationUtilsImplTest::QueueProgress,
@@ -460,10 +491,13 @@ TEST_F(SensorCalibrationUtilsImplTest, Calibrate_Check_Offset_Too_High) {
       base::BindOnce(&SensorCalibrationUtilsImplTest::QueueResult,
                      base::Unretained(this)));
 
-  // Check if sent progresses contain kProgressInit to kProgressComplete.
-  EXPECT_EQ(received_progresses_.size(), 4);
-  EXPECT_DOUBLE_EQ(received_progresses_.front(), kProgressInit);
-  EXPECT_DOUBLE_EQ(received_progresses_.back(), kProgressFailed);
+  EXPECT_GE(received_component_statuses_.size(), 2);
+  EXPECT_EQ(received_component_statuses_.front().status(),
+            CalibrationComponentStatus::RMAD_CALIBRATION_IN_PROGRESS);
+  EXPECT_EQ(received_component_statuses_.front().progress(), kProgressInit);
+  EXPECT_EQ(received_component_statuses_.back().status(),
+            CalibrationComponentStatus::RMAD_CALIBRATION_FAILED);
+  EXPECT_EQ(received_component_statuses_.back().progress(), kProgressFailed);
 }
 
 }  // namespace rmad
