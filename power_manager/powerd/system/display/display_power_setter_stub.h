@@ -40,20 +40,20 @@ class DisplayPowerSetterStub : public DisplayPowerSetterInterface {
 
  private:
   // Not owned and may be null. Used to update |last_set_display_power_time_|.
-  Clock* clock_;
+  Clock* clock_ = nullptr;
 
   // Arguments passed to most-recent SetDisplayPower() call.
-  chromeos::DisplayPowerState state_;
+  chromeos::DisplayPowerState state_ = chromeos::DISPLAY_POWER_ALL_ON;
   base::TimeDelta delay_;
 
   // Number of times that SetDisplayPower() has been called.
-  int num_power_calls_;
+  int num_power_calls_ = 0;
 
   // Last time at which SetDisplayPower() was called.
   base::TimeTicks last_set_display_power_time_;
 
   // Value of most-recent SetDisplaySoftwareDimming() call.
-  bool dimmed_;
+  bool dimmed_ = false;
 };
 
 }  // namespace power_manager::system

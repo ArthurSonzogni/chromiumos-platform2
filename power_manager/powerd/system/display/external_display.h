@@ -270,17 +270,17 @@ class ExternalDisplay {
   Clock clock_;
 
   // Current state of the object.
-  State state_;
+  State state_ = State::IDLE;
 
   // Brightness believed to be currently used by the display, as a percentage in
   // the range [0.0, 100.0]. Note that the actual brightness may change in the
   // background, e.g. in response to the user hitting physical buttons on the
   // display.
-  double current_brightness_percent_;
+  double current_brightness_percent_ = 0.0;
 
   // Maximum brightness value supported by the display, in display-specific
   // units.
-  uint16_t max_brightness_level_;
+  uint16_t max_brightness_level_ = 0;
 
   // Last time at which |current_brightness_percent_| and
   // |max_brightness_level_| were updated.
@@ -288,11 +288,11 @@ class ExternalDisplay {
 
   // Amount by which the brightness should be offset, as a percentage in the
   // range [-100.0, 100.0].
-  double pending_brightness_adjustment_percent_;
+  double pending_brightness_adjustment_percent_ = 0.0;
 
   // Absolute brightness to set, as a percentage in the range [0.0, 100.0]. This
   // value will be less than zero if no change is pending.
-  double pending_brightness_percent_;
+  double pending_brightness_percent_ = -1.0;
 
   // Invokes UpdateState(). Used to enforce the mandatory delays between
   // requesting the brightness and reading the reply, and after sending a "set"

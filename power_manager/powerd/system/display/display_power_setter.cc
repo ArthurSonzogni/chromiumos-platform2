@@ -39,8 +39,7 @@ std::string DisplayPowerStateToString(chromeos::DisplayPowerState state) {
 
 }  // namespace
 
-DisplayPowerSetter::DisplayPowerSetter()
-    : dbus_wrapper_(nullptr), display_service_proxy_(nullptr) {}
+DisplayPowerSetter::DisplayPowerSetter() {}
 
 DisplayPowerSetter::~DisplayPowerSetter() {}
 

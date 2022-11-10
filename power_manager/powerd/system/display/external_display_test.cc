@@ -33,7 +33,7 @@ std::string Hex(uint8_t byte) {
 // Test implementation of ExternalDisplay::Delegate.
 class TestDelegate : public ExternalDisplay::Delegate {
  public:
-  TestDelegate() : report_write_failure_(false), report_read_failure_(false) {}
+  TestDelegate() {}
   TestDelegate(const TestDelegate&) = delete;
   TestDelegate& operator=(const TestDelegate&) = delete;
 
@@ -117,8 +117,8 @@ class TestDelegate : public ExternalDisplay::Delegate {
   std::vector<uint8_t> reply_message_;
 
   // True if either writes or reads should report failure.
-  bool report_write_failure_;
-  bool report_read_failure_;
+  bool report_write_failure_ = false;
+  bool report_read_failure_ = false;
 };
 
 }  // namespace

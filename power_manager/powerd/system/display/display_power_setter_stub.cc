@@ -6,11 +6,7 @@
 
 namespace power_manager::system {
 
-DisplayPowerSetterStub::DisplayPowerSetterStub()
-    : clock_(nullptr),
-      state_(chromeos::DISPLAY_POWER_ALL_ON),
-      num_power_calls_(0),
-      dimmed_(false) {}
+DisplayPowerSetterStub::DisplayPowerSetterStub() {}
 
 DisplayPowerSetterStub::~DisplayPowerSetterStub() {}
 

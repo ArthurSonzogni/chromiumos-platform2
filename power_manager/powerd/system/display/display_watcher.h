@@ -103,7 +103,7 @@ class DisplayWatcher : public DisplayWatcherInterface,
   // Scans /sys and updates |displays_|.
   void UpdateDisplays();
 
-  UdevInterface* udev_;  // weak pointer
+  UdevInterface* udev_ = nullptr;  // weak pointer
 
   base::ObserverList<DisplayWatcherObserver> observers_;
 

@@ -23,7 +23,7 @@ namespace {
 // Stub implementation of DisplayWatcherObserver.
 class TestObserver : public DisplayWatcherObserver {
  public:
-  TestObserver() : num_display_changes_(0) {}
+  TestObserver() {}
   TestObserver(const TestObserver&) = delete;
   TestObserver& operator=(const TestObserver&) = delete;
 
@@ -38,7 +38,7 @@ class TestObserver : public DisplayWatcherObserver {
 
  private:
   // Number of times that OnDisplaysChanged() has been called.
-  int num_display_changes_;
+  int num_display_changes_ = 0;
 };
 
 }  // namespace
