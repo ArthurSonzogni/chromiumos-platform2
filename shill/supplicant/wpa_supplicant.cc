@@ -65,19 +65,23 @@ const char WPASupplicant::kInterfacePropertyAssocStatusCode[] =
 const char WPASupplicant::kInterfacePropertyAuthStatusCode[] = "AuthStatusCode";
 const char WPASupplicant::kInterfacePropertyCapabilities[] = "Capabilities";
 const char WPASupplicant::kInterfacePropertyConfigFile[] = "ConfigFile";
+const char WPASupplicant::kInterfacePropertyCreate[] = "Create";
+const char WPASupplicant::kInterfacePropertyCurrentAuthMode[] =
+    "CurrentAuthMode";
 const char WPASupplicant::kInterfacePropertyCurrentBSS[] = "CurrentBSS";
 const char WPASupplicant::kInterfacePropertyDepth[] = "depth";
 const char WPASupplicant::kInterfacePropertyDisconnectReason[] =
     "DisconnectReason";
+const char WPASupplicant::kInterfacePropertyDriver[] = "Driver";
+const char WPASupplicant::kInterfacePropertyName[] = "Ifname";
 const char WPASupplicant::kInterfacePropertyRoamTime[] = "RoamTime";
 const char WPASupplicant::kInterfacePropertyRoamComplete[] = "RoamComplete";
 const char WPASupplicant::kInterfacePropertySessionLength[] = "SessionLength";
-const char WPASupplicant::kInterfacePropertyCurrentAuthMode[] =
-    "CurrentAuthMode";
-const char WPASupplicant::kInterfacePropertyDriver[] = "Driver";
-const char WPASupplicant::kInterfacePropertyName[] = "Ifname";
 const char WPASupplicant::kInterfacePropertyState[] = "State";
 const char WPASupplicant::kInterfacePropertySubject[] = "subject";
+const char WPASupplicant::kInterfacePropertyType[] = "Type";
+const char WPASupplicant::kInterfacePropertyTypeAP[] = "ap";
+const char WPASupplicant::kInterfacePropertyTypeStation[] = "sta";
 const char WPASupplicant::kInterfaceState4WayHandshake[] = "4way_handshake";
 const char WPASupplicant::kInterfaceStateAssociated[] = "associated";
 const char WPASupplicant::kInterfaceStateAssociating[] = "associating";

@@ -48,9 +48,10 @@ class SupplicantManager {
   SupplicantProcessProxyInterface* proxy() const { return proxy_.get(); }
 
  private:
-  friend class WiFiObjectTest;
   friend class EthernetTest;
+  friend class HotspotDeviceTest;
   friend class SupplicantManagerTest;
+  friend class WiFiObjectTest;
 
   void AddSupplicantListener(
       const SupplicantListenerCallback& present_callback);

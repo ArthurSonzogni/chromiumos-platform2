@@ -16,9 +16,11 @@
 
 namespace shill {
 
+class ControlInterface;
 class EventDispatcher;
 class Manager;
 class Metrics;
+class SupplicantProcessProxyInterface;
 
 // LocalDevice superclass. This class is used as a base class for local
 // connection interface. Individual local connection interface type will inherit
@@ -68,8 +70,6 @@ class LocalDevice : public base::RefCounted<LocalDevice> {
   uint32_t phy_index() const { return phy_index_; }
   IfaceType iface_type() const { return iface_type_; }
 
-  EventDispatcher* Dispatcher() const;
-
  protected:
   FRIEND_TEST(LocalDeviceTest, PostDeviceEvent);
   FRIEND_TEST(LocalDeviceTest, SetEnabled);
@@ -83,6 +83,11 @@ class LocalDevice : public base::RefCounted<LocalDevice> {
   // Post a task and use registered callback function |callback_| to handle
   // device event.
   void PostDeviceEvent(DeviceEvent event);
+
+  // Return the proxy to the wpa_supplicant process.
+  SupplicantProcessProxyInterface* SupplicantProcessProxy() const;
+  ControlInterface* ControlInterface() const;
+  EventDispatcher* Dispatcher() const;
 
  private:
   friend class LocalDeviceTest;

@@ -523,6 +523,7 @@ class Manager {
   friend class CellularTest;
   friend class DeviceInfoTest;
   friend class DeviceTest;
+  friend class HotspotDeviceTest;
   friend class L2TPIPsecDriverTest;
   friend class ManagerAdaptorInterface;
   friend class ManagerTest;

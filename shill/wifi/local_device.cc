@@ -84,6 +84,14 @@ EventDispatcher* LocalDevice::Dispatcher() const {
   return manager_->dispatcher();
 }
 
+SupplicantProcessProxyInterface* LocalDevice::SupplicantProcessProxy() const {
+  return manager_->supplicant_manager()->proxy();
+}
+
+ControlInterface* LocalDevice::ControlInterface() const {
+  return manager_->control_interface();
+}
+
 std::ostream& operator<<(std::ostream& stream, LocalDevice::IfaceType type) {
   if (type == LocalDevice::IfaceType::kAP) {
     stream << "ap";

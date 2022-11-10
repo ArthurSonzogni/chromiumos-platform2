@@ -743,6 +743,7 @@ if (use.test) {
       "upstart/upstart_test.cc",
       "virtual_device_test.cc",
       "vpn/mock_vpn_provider.cc",
+      "wifi/hotspot_device_test.cc",
       "wifi/local_device_test.cc",
       "wifi/mock_wake_on_wifi.cc",
       "wifi/mock_wifi.cc",
