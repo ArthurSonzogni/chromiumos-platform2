@@ -143,7 +143,7 @@ TEST_F(DisplayWatcherTest, DisplayStatus) {
   EXPECT_EQ(system::DisplayInfo::ConnectorStatus::CONNECTED,
             watcher_.GetDisplays().front().connector_status);
   // Make sure observers receive a notification when the status changes from
-  // "unkown" to "connected".
+  // "unknown" to "connected".
   EXPECT_TRUE(watcher_.trigger_debounce_timeout_for_testing());
   EXPECT_EQ(2, observer.num_display_changes());
 
