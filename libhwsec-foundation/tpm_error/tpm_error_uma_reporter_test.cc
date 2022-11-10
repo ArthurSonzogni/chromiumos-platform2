@@ -75,9 +75,13 @@ TEST_F(TpmErrorUmaReporterTest, ReportTpm1CommandAndResponseUnknownClient) {
   TpmErrorData data;
   SetTpmMetricsClientID(TpmMetricsClientID::kUnknown);
 
-  // Unknown client should not be reported and directly return true.
   data.command = kFakeCommand;
   data.response = 0;
+  std::string metrics_name =
+      std::string(kTpm1CommandAndResponsePrefix) + ".Unknown";
+  uint32_t metrics_value = (data.command << 16) + (data.response & 0xFFFF);
+  EXPECT_CALL(mock_metrics_library_,
+              SendSparseToUMA(metrics_name, metrics_value));
   EXPECT_EQ(reporter_.ReportTpm1CommandAndResponse(data), true);
 }
 
@@ -112,9 +116,13 @@ TEST_F(TpmErrorUmaReporterTest, ReportTpm2CommandAndResponseUnknownClient) {
   TpmErrorData data;
   SetTpmMetricsClientID(TpmMetricsClientID::kUnknown);
 
-  // Unknown client should not be reported and directly return true.
   data.command = kFakeCommand;
   data.response = 0;
+  std::string metrics_name =
+      std::string(kTpm2CommandAndResponsePrefix) + ".Unknown";
+  uint32_t metrics_value = (data.command << 16) + (data.response & 0xFFFF);
+  EXPECT_CALL(mock_metrics_library_,
+              SendSparseToUMA(metrics_name, metrics_value));
   EXPECT_EQ(reporter_.ReportTpm2CommandAndResponse(data), true);
 }
 
