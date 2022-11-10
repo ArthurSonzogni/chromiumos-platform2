@@ -632,11 +632,11 @@
     <summary>
       Record a shimless rma report once it is completed or aborted.
     </summary>
-    <metric name="OverallTime" type="int">
-      <summary>Overall time spent to complete the whole process.</summary>
+    <metric name="OverallTime" type="double">
+      <summary>Overall time spent to complete the whole process in seconds.</summary>
     </metric>
-    <metric name="RunningTime" type="int">
-      <summary>Time spent with RMA daemon running.</summary>
+    <metric name="RunningTime" type="double">
+      <summary>Time spent with RMA daemon running in seconds.</summary>
     </metric>
     <metric name="IsComplete" type="int">
       <summary>
@@ -739,7 +739,7 @@
         1: Abort is called in the state.
       </summary>
     </metric>
-    <metric name="OverallTime" type="int">
+    <metric name="OverallTime" type="double">
       <summary>Overall time spent to complete the state in seconds.</summary>
     </metric>
     <metric name="TransitionCount" type="int">

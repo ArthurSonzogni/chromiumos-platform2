@@ -43,8 +43,7 @@ bool MetricsUtilsImpl::RecordShimlessRmaReport(
     LOG(ERROR) << "Failed to get timestamp of the first setup.";
     return false;
   }
-  report.SetOverallTime(
-      static_cast<int>(current_timestamp - first_setup_timestamp));
+  report.SetOverallTime(current_timestamp - first_setup_timestamp);
 
   double setup_timestamp;
   if (!GetMetricsValue(json_store, kMetricsSetupTimestamp, &setup_timestamp) ||
@@ -58,7 +57,7 @@ bool MetricsUtilsImpl::RecordShimlessRmaReport(
   // return value is ignored.
   GetMetricsValue(json_store, kMetricsRunningTime, &running_time);
   running_time += current_timestamp - setup_timestamp;
-  report.SetRunningTime(static_cast<int>(running_time));
+  report.SetRunningTime(running_time);
 
   if (bool is_complete;
       GetMetricsValue(json_store, kMetricsIsComplete, &is_complete)) {
@@ -206,8 +205,7 @@ bool MetricsUtilsImpl::RecordShimlessRmaStateReport(
                    << ": Invalid overall time: " << data.overall_time;
         return false;
       }
-      structured_state_report.SetOverallTime(
-          static_cast<int64_t>(data.overall_time));
+      structured_state_report.SetOverallTime(data.overall_time);
 
       if (data.transition_count <= 0) {
         LOG(ERROR) << state_case
