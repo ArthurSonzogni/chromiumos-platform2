@@ -7,8 +7,8 @@
 #include <assert.h>
 #include <unistd.h>
 
-#include "sommelier.h"          // NOLINT(build/include_directory)
-#include "sommelier-tracing.h"  // NOLINT(build/include_directory)
+#include "../sommelier.h"          // NOLINT(build/include_directory)
+#include "../sommelier-tracing.h"  // NOLINT(build/include_directory)
 
 struct sl_mmap* sl_mmap_create(int fd,
                                size_t size,

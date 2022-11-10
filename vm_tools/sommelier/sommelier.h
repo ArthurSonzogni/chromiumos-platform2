@@ -13,9 +13,9 @@
 #include <xcb/xcb.h>
 #include <xkbcommon/xkbcommon.h>
 
+#include "compositor/sommelier-mmap.h"  // NOLINT(build/include_directory)
 #include "sommelier-ctx.h"     // NOLINT(build/include_directory)
 #include "sommelier-global.h"  // NOLINT(build/include_directory)
-#include "sommelier-mmap.h"    // NOLINT(build/include_directory)
 #include "sommelier-util.h"    // NOLINT(build/include_directory)
 #include "sommelier-window.h"  // NOLINT(build/include_directory)
 #include "weak-resource-ptr.h"  // NOLINT(build/include_directory)

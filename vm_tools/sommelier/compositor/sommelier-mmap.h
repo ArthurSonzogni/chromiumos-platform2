@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef VM_TOOLS_SOMMELIER_SOMMELIER_MMAP_H_
-#define VM_TOOLS_SOMMELIER_SOMMELIER_MMAP_H_
+#ifndef VM_TOOLS_SOMMELIER_COMPOSITOR_SOMMELIER_MMAP_H_
+#define VM_TOOLS_SOMMELIER_COMPOSITOR_SOMMELIER_MMAP_H_
 
 #include <gbm.h>
 #include <sys/types.h>
@@ -62,4 +62,4 @@ void sl_mmap_end_access(struct sl_mmap* map);
 struct sl_mmap* sl_mmap_ref(struct sl_mmap* map);
 void sl_mmap_unref(struct sl_mmap* map);
 
-#endif  // VM_TOOLS_SOMMELIER_SOMMELIER_MMAP_H_
+#endif  // VM_TOOLS_SOMMELIER_COMPOSITOR_SOMMELIER_MMAP_H_
