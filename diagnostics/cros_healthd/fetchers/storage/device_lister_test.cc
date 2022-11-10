@@ -32,10 +32,10 @@ TEST(StorageDeviceListerTest, EmmcRoot) {
   EXPECT_THAT(result, UnorderedElementsAre("mmcblk0", "nvme0n1", "nvme0n2",
                                            "missing_model_and_name_test",
                                            "missing_revision", "name_file_test",
-                                           "model_file_test"));
+                                           "model_file_test", "sdc"));
 }
 
-TEST(StorageDeviceListerTest, NvmeRoot) {
+TEST(StorageDeviceListerTest, NonEmmcRoot) {
   auto mock_platform = std::make_unique<MockPlatform>();
   EXPECT_CALL(*mock_platform, GetRootDeviceName())
       .WillRepeatedly(Return("nvme0n1"));
@@ -45,7 +45,7 @@ TEST(StorageDeviceListerTest, NvmeRoot) {
   EXPECT_THAT(result, UnorderedElementsAre("nvme0n1", "nvme0n2",
                                            "missing_model_and_name_test",
                                            "missing_revision", "name_file_test",
-                                           "model_file_test"));
+                                           "model_file_test", "sdc"));
 }
 
 }  // namespace

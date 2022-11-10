@@ -14,7 +14,6 @@
 
 #include "diagnostics/common/statusor.h"
 #include "diagnostics/cros_healthd/fetchers/storage/platform.h"
-#include "diagnostics/cros_healthd/fetchers/storage/storage_device_adapter.h"
 #include "diagnostics/cros_healthd/utils/error_utils.h"
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
 
@@ -32,34 +31,24 @@ class StorageDeviceInfo {
       ash::cros_healthd::mojom::StorageDevicePurpose purpose,
       const Platform* platform);
 
-  // PopulateDeviceInfo fills the fields of Mojo's data structure representing
-  // a block device. It is responsible for population of most of the info.
-  Status PopulateDeviceInfo(
-      ash::cros_healthd::mojom::NonRemovableBlockDeviceInfo* output_info);
-
-  // PopulateLegaceInfo fills the fields of Mojo's data structure representing
-  // a block device. It is responsible for population of fields which are kept
-  // for compatibility with the existing applications and will be gradually
-  // replaced.
-  void PopulateLegacyFields(
-      ash::cros_healthd::mojom::NonRemovableBlockDeviceInfo* output_info);
+  // FetchDeviceInfo fills the mutable fields of Mojo's data structure
+  // representing a block device.
+  StatusOr<ash::cros_healthd::mojom::NonRemovableBlockDeviceInfoPtr>
+  FetchDeviceInfo();
 
  private:
   const base::FilePath dev_sys_path_;
   const base::FilePath dev_node_path_;
-  const std::string subsystem_;
-  const ash::cros_healthd::mojom::StorageDevicePurpose purpose_;
-  const std::unique_ptr<const StorageDeviceAdapter> adapter_;
-  // platform_ is owned by the StorageDeviceManager.
-  const Platform* platform_;
+  const Platform* const platform_;
 
   brillo::DiskIoStat iostat_;
+  ash::cros_healthd::mojom::NonRemovableBlockDeviceInfoPtr
+      immutable_block_device_info_;
 
   StorageDeviceInfo(const base::FilePath& dev_sys_path,
                     const base::FilePath& dev_node_path,
-                    const std::string& subsystem,
-                    ash::cros_healthd::mojom::StorageDevicePurpose purpose,
-                    std::unique_ptr<StorageDeviceAdapter> adapter,
+                    ash::cros_healthd::mojom::NonRemovableBlockDeviceInfoPtr
+                        immutable_block_device_info,
                     const Platform* platform);
   StorageDeviceInfo(const StorageDeviceInfo&) = delete;
   StorageDeviceInfo(StorageDeviceInfo&&) = delete;

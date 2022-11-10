@@ -4,10 +4,13 @@
 
 #include "diagnostics/cros_healthd/fetchers/storage/device_info.h"
 
+#include <algorithm>
+#include <cstddef>
 #include <cstdint>
 #include <memory>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include <base/check.h>
 #include <base/check_op.h>
@@ -20,12 +23,7 @@
 
 #include "diagnostics/common/status_macros.h"
 #include "diagnostics/common/statusor.h"
-#include "diagnostics/cros_healthd/fetchers/storage/caching_device_adapter.h"
-#include "diagnostics/cros_healthd/fetchers/storage/default_device_adapter.h"
-#include "diagnostics/cros_healthd/fetchers/storage/emmc_device_adapter.h"
-#include "diagnostics/cros_healthd/fetchers/storage/nvme_device_adapter.h"
-#include "diagnostics/cros_healthd/fetchers/storage/storage_device_adapter.h"
-#include "diagnostics/cros_healthd/fetchers/storage/ufs_device_adapter.h"
+#include "diagnostics/cros_healthd/fetchers/storage/device_info_constants.h"
 #include "diagnostics/cros_healthd/utils/error_utils.h"
 #include "diagnostics/cros_healthd/utils/file_utils.h"
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
@@ -36,41 +34,270 @@ namespace {
 
 namespace mojo_ipc = ::ash::cros_healthd::mojom;
 
-// Creates a specific adapter for device's data retrieval.
-std::unique_ptr<StorageDeviceAdapter> CreateDeviceSpecificAdapter(
-    const base::FilePath& dev_sys_path, const std::string& subsystem) {
+template <typename T>
+bool ReadIntegerAndLogError(const base::FilePath& directory,
+                            const std::string& filename,
+                            bool (*StringToInteger)(base::StringPiece, T*),
+                            T* out) {
+  if (!ReadInteger(directory, filename, StringToInteger, out)) {
+    LOG(ERROR) << "Failed to read " << directory.Append(filename);
+    return false;
+  }
+  return true;
+}
+
+template <typename StringType>
+bool ReadAndTrimStringAndLogError(const base::FilePath& directory,
+                                  const std::string& filename,
+                                  StringType* out) {
+  if (!ReadAndTrimString(directory.Append(filename), out)) {
+    LOG(ERROR) << "Failed to read " << directory.Append(filename);
+    return false;
+  }
+  return true;
+}
+
+mojo_ipc::NonRemovableBlockDeviceInfoPtr FetchDefaultImmutableBlockDeviceInfo(
+    const base::FilePath& dev_sys_path) {
+  // This piece is for compatibility and will be replaced with a simple
+  // return ""; when all the devices are covered properly.
+  std::string model;
+  if (!ReadAndTrimString(dev_sys_path, kDefaultModelFile, &model)) {
+    if (!ReadAndTrimString(dev_sys_path, kDefaultAltModelFile, &model)) {
+      LOG(ERROR) << "Failed to read " << dev_sys_path.Append(kDefaultModelFile)
+                 << " and " << dev_sys_path.Append(kDefaultAltModelFile);
+      return nullptr;
+    }
+  }
+
+  auto block_device_info = mojo_ipc::NonRemovableBlockDeviceInfo::New();
+  block_device_info->name = model;
+  block_device_info->vendor_id = mojo_ipc::BlockDeviceVendor::NewOther(0);
+  block_device_info->product_id = mojo_ipc::BlockDeviceProduct::NewOther(0);
+  block_device_info->revision = mojo_ipc::BlockDeviceRevision::NewOther(0);
+  block_device_info->firmware_version =
+      mojo_ipc::BlockDeviceFirmware::NewOther(0);
+  return block_device_info;
+}
+
+mojo_ipc::NonRemovableBlockDeviceInfoPtr FetchEmmcImmutableBlockDeviceInfo(
+    const base::FilePath& dev_sys_path) {
+  std::string model;
+  uint32_t oem_id;
+  uint64_t fwrev;
+  if (!ReadAndTrimString(dev_sys_path, kEmmcNameFile, &model) ||
+      !ReadIntegerAndLogError(dev_sys_path, kEmmcOemIdFile,
+                              &base::HexStringToUInt, &oem_id) ||
+      !ReadIntegerAndLogError(dev_sys_path, kEmmcFirmwareVersionFile,
+                              &base::HexStringToUInt64, &fwrev)) {
+    return nullptr;
+  }
+
+  // TODO(b/259401555): Revisit the necessity of casting it to uint64_t.
+  // "pnm", having the same content as |model|, is an 6 ASCII characters long
+  // string, so it cannot be parsed with base::HexStringToUInt64 directly.
+  char bytes[sizeof(uint64_t)] = {0};
+  memcpy(bytes, model.c_str(), std::min(model.length(), sizeof(uint64_t)));
+  uint64_t pnm = *reinterpret_cast<uint64_t*>(bytes);
+
+  uint32_t prv;
+  if (!ReadInteger(dev_sys_path, kEmmcRevisionFile, &base::HexStringToUInt,
+                   &prv)) {
+    // Older eMMC devices may not have prv, but they should have hwrev.
+    if (!ReadInteger(dev_sys_path, kEmmcAltRevisionFile, &base::HexStringToUInt,
+                     &prv)) {
+      LOG(ERROR) << "Failed to read " << dev_sys_path.Append(kEmmcRevisionFile)
+                 << " and " << dev_sys_path.Append(kEmmcAltRevisionFile);
+      return nullptr;
+    }
+  }
+
+  auto block_device_info = mojo_ipc::NonRemovableBlockDeviceInfo::New();
+  block_device_info->name = model;
+  block_device_info->vendor_id =
+      mojo_ipc::BlockDeviceVendor::NewEmmcOemid(oem_id);
+  block_device_info->product_id = mojo_ipc::BlockDeviceProduct::NewEmmcPnm(pnm);
+  block_device_info->revision = mojo_ipc::BlockDeviceRevision::NewEmmcPrv(prv);
+  block_device_info->firmware_version =
+      mojo_ipc::BlockDeviceFirmware::NewEmmcFwrev(fwrev);
+  return block_device_info;
+}
+
+mojo_ipc::NonRemovableBlockDeviceInfoPtr FetchNvmeImmutableBlockDeviceInfo(
+    const base::FilePath& dev_sys_path) {
+  std::string model;
+  uint32_t subsystem_vendor;
+  uint64_t subsystem_device;
+  if (!ReadAndTrimStringAndLogError(dev_sys_path, kNvmeModelFile, &model) ||
+      !ReadIntegerAndLogError(dev_sys_path, kNvmeVendorIdFile,
+                              &base::HexStringToUInt, &subsystem_vendor) ||
+      !ReadIntegerAndLogError(dev_sys_path, kNvmeProductIdFile,
+                              &base::HexStringToUInt64, &subsystem_device)) {
+    return nullptr;
+  }
+
+  uint32_t pcie_rev;
+  if (base::PathExists(dev_sys_path.Append(kNvmeRevisionFile))) {
+    if (!ReadIntegerAndLogError(dev_sys_path, kNvmeRevisionFile,
+                                &base::HexStringToUInt, &pcie_rev)) {
+      return nullptr;
+    }
+  } else {
+    // Try legacy method if the revision file is missing.
+    std::vector<char> bytes;
+    bytes.resize(sizeof(pci_config_space));
+
+    int read = base::ReadFile(dev_sys_path.Append(kNvmeConfigFile),
+                              bytes.data(), bytes.size());
+
+    // Failed to read the file.
+    if (read < 0) {
+      LOG(ERROR) << "Failed to read " << dev_sys_path.Append(kNvmeConfigFile);
+      return nullptr;
+    }
+
+    // File present, but the config space is truncated, assume revision == 0.
+    if (read < sizeof(pci_config_space)) {
+      pcie_rev = 0;
+    } else {
+      pci_config_space* pci = reinterpret_cast<pci_config_space*>(bytes.data());
+      pcie_rev = pci->revision;
+    }
+  }
+
+  std::string str_firmware_rev;
+  auto path = dev_sys_path.Append(kNvmeFirmwareVersionFile);
+  if (!ReadFileToString(path, &str_firmware_rev)) {
+    LOG(ERROR) << "Failed to read " << path;
+    return nullptr;
+  }
+
+  char bytes[sizeof(uint64_t)] = {0};
+  memcpy(bytes, str_firmware_rev.c_str(),
+         std::min(str_firmware_rev.length(), sizeof(uint64_t)));
+  uint64_t firmware_rev = *reinterpret_cast<uint64_t*>(bytes);
+
+  auto block_device_info = mojo_ipc::NonRemovableBlockDeviceInfo::New();
+  block_device_info->name = model;
+  block_device_info->vendor_id =
+      mojo_ipc::BlockDeviceVendor::NewNvmeSubsystemVendor(subsystem_vendor);
+  block_device_info->product_id =
+      mojo_ipc::BlockDeviceProduct::NewNvmeSubsystemDevice(subsystem_device);
+  block_device_info->revision =
+      mojo_ipc::BlockDeviceRevision::NewNvmePcieRev(pcie_rev);
+  block_device_info->firmware_version =
+      mojo_ipc::BlockDeviceFirmware::NewNvmeFirmwareRev(firmware_rev);
+  return block_device_info;
+}
+
+mojo_ipc::NonRemovableBlockDeviceInfoPtr FetchUfsImmutableBlockDeviceInfo(
+    const base::FilePath& dev_sys_path) {
+  std::string model;
+  if (!ReadAndTrimStringAndLogError(dev_sys_path, kUfsModelFile, &model)) {
+    return nullptr;
+  }
+
+  base::FilePath controller_node =
+      brillo::UfsSysfsToControllerNode(dev_sys_path);
+  if (controller_node.empty()) {
+    LOG(ERROR) << "Failed to get controller node for " << dev_sys_path;
+    return nullptr;
+  }
+  uint32_t manfid;
+  if (!ReadIntegerAndLogError(controller_node, kUfsManfidFile,
+                              &base::HexStringToUInt, &manfid)) {
+    return nullptr;
+  }
+
+  std::string str_fwrev;
+  if (!ReadAndTrimString(dev_sys_path, kUfsFirmwareVersionFile, &str_fwrev)) {
+    LOG(ERROR) << "Failed to read "
+               << dev_sys_path.Append(kUfsFirmwareVersionFile);
+    return nullptr;
+  }
+
+  // This is not entirely correct. UFS exports revision as 4 2-byte unicode
+  // characters. But Linux's UFS subsystem converts it to a raw ascii string.
+  // This is a temporary fixture to provide meaningful info on this aspect.
+  // TODO(dlunev): use raw representation, either through ufs-utils, or create
+  // a new kernel's node.
+  char bytes[sizeof(uint64_t)] = {0};
+  memcpy(bytes, str_fwrev.c_str(),
+         std::min(str_fwrev.length(), sizeof(uint64_t)));
+  uint64_t fwrev = *reinterpret_cast<uint64_t*>(bytes);
+
+  auto block_device_info = mojo_ipc::NonRemovableBlockDeviceInfo::New();
+  block_device_info->name = model;
+  block_device_info->vendor_id =
+      mojo_ipc::BlockDeviceVendor::NewJedecManfid(manfid);
+  block_device_info->product_id = mojo_ipc::BlockDeviceProduct::NewOther(0);
+  block_device_info->revision = mojo_ipc::BlockDeviceRevision::NewOther(0);
+  block_device_info->firmware_version =
+      mojo_ipc::BlockDeviceFirmware::NewUfsFwrev(fwrev);
+  return block_device_info;
+}
+
+mojo_ipc::NonRemovableBlockDeviceInfoPtr FetchImmutableBlockDeviceInfo(
+    const base::FilePath& dev_sys_path,
+    const base::FilePath& dev_node_path,
+    const std::string& subsystem,
+    mojo_ipc::StorageDevicePurpose purpose,
+    const Platform* platform) {
+  mojo_ipc::NonRemovableBlockDeviceInfoPtr block_device_info;
+
   // A particular device has a chain of subsystems it belongs to. We pass them
   // here in a colon-separated format (e.g. "block:mmc:mmc_host:pci"). We expect
   // that the root subsystem is "block", and the type of the block device
   // immediately follows it.
-  constexpr char kBlockSubsystem[] = "block";
-  constexpr char kNvmeSubsystem[] = "nvme";
-  constexpr char kMmcSubsystem[] = "mmc";
-  constexpr int kBlockSubsystemIndex = 0;
-  constexpr int kBlockTypeSubsystemIndex = 1;
-  constexpr int kMinComponentLength = 2;
   auto subs = base::SplitString(subsystem, ":", base::KEEP_WHITESPACE,
                                 base::SPLIT_WANT_NONEMPTY);
 
   if (subs.size() < kMinComponentLength ||
       subs[kBlockSubsystemIndex] != kBlockSubsystem)
     return nullptr;
-  if (subs[kBlockTypeSubsystemIndex] == kNvmeSubsystem)
-    return std::make_unique<NvmeDeviceAdapter>(dev_sys_path);
-  if (subs[kBlockTypeSubsystemIndex] == kMmcSubsystem)
-    return std::make_unique<EmmcDeviceAdapter>(dev_sys_path);
-  if (brillo::IsUfs(dev_sys_path))
-    return std::make_unique<UfsDeviceAdapter>(dev_sys_path);
-  return std::make_unique<DefaultDeviceAdapter>(dev_sys_path);
-}
 
-// Creates a device-specific adapter and wraps it into a caching decorator.
-std::unique_ptr<StorageDeviceAdapter> CreateAdapter(
-    const base::FilePath& dev_sys_path, const std::string& subsystem) {
-  auto adapter = CreateDeviceSpecificAdapter(dev_sys_path, subsystem);
-  if (!adapter)
-    return nullptr;
-  return std::make_unique<CachingDeviceAdapter>(std::move(adapter));
+  if (subs[kBlockTypeSubsystemIndex] == kNvmeSubsystem) {
+    block_device_info = FetchNvmeImmutableBlockDeviceInfo(dev_sys_path);
+  } else if (subs[kBlockTypeSubsystemIndex] == kMmcSubsystem) {
+    block_device_info = FetchEmmcImmutableBlockDeviceInfo(dev_sys_path);
+  } else if (brillo::IsUfs(dev_sys_path)) {
+    block_device_info = FetchUfsImmutableBlockDeviceInfo(dev_sys_path);
+  } else {
+    // TODO(b/259401854): Revisit the necessity of default storage type.
+    block_device_info = FetchDefaultImmutableBlockDeviceInfo(dev_sys_path);
+  }
+
+  if (block_device_info) {
+    block_device_info->path = dev_node_path.value();
+    block_device_info->type = subsystem;
+    block_device_info->purpose = purpose;
+
+    auto size_or = platform->GetDeviceSizeBytes(dev_node_path);
+    if (!size_or.ok())
+      return nullptr;
+    block_device_info->size = size_or.value();
+
+    // Fetch legacy device info.
+    // Not all devices in sysfs have a serial, so ignore the return code.
+    ReadInteger(dev_sys_path, kLegacySerialFile, &base::HexStringToUInt,
+                &block_device_info->serial);
+
+    // |manfid| (manufacturer_id) is a legacy field for backward compatibility
+    // only, so no need to return nullptr when not found.
+    uint64_t manfid = 0;
+    if (ReadInteger(dev_sys_path, kLegacyManfidFile, &base::HexStringToUInt64,
+                    &manfid)) {
+      if (manfid > 0xFF) {
+        LOG(ERROR)
+            << "manfid is expected to be less than or equal to 0xFF, got: "
+            << manfid;
+        return nullptr;
+      }
+      block_device_info->manufacturer_id = manfid;
+    }
+  }
+
+  return block_device_info;
 }
 
 }  // namespace
@@ -78,20 +305,13 @@ std::unique_ptr<StorageDeviceAdapter> CreateAdapter(
 StorageDeviceInfo::StorageDeviceInfo(
     const base::FilePath& dev_sys_path,
     const base::FilePath& dev_node_path,
-    const std::string& subsystem,
-    mojo_ipc::StorageDevicePurpose purpose,
-    std::unique_ptr<StorageDeviceAdapter> adapter,
+    mojo_ipc::NonRemovableBlockDeviceInfoPtr immutable_block_device_info,
     const Platform* platform)
     : dev_sys_path_(dev_sys_path),
       dev_node_path_(dev_node_path),
-      subsystem_(subsystem),
-      purpose_(purpose),
-      adapter_(std::move(adapter)),
       platform_(platform),
-      iostat_(dev_sys_path) {
-  DCHECK(adapter_);
-  DCHECK(platform_);
-}
+      iostat_(dev_sys_path),
+      immutable_block_device_info_(std::move(immutable_block_device_info)) {}
 
 std::unique_ptr<StorageDeviceInfo> StorageDeviceInfo::Create(
     const base::FilePath& dev_sys_path,
@@ -99,37 +319,18 @@ std::unique_ptr<StorageDeviceInfo> StorageDeviceInfo::Create(
     const std::string& subsystem,
     mojo_ipc::StorageDevicePurpose purpose,
     const Platform* platform) {
-  auto adapter = CreateAdapter(dev_sys_path, subsystem);
-  if (!adapter)
+  auto immutable_block_device_info = FetchImmutableBlockDeviceInfo(
+      dev_sys_path, dev_node_path, subsystem, purpose, platform);
+  if (!immutable_block_device_info)
     return nullptr;
   return std::unique_ptr<StorageDeviceInfo>(
-      new StorageDeviceInfo(dev_sys_path, dev_node_path, subsystem, purpose,
-                            std::move(adapter), platform));
+      new StorageDeviceInfo(dev_sys_path, dev_node_path,
+                            std::move(immutable_block_device_info), platform));
 }
 
-Status StorageDeviceInfo::PopulateDeviceInfo(
-    mojo_ipc::NonRemovableBlockDeviceInfo* output_info) {
-  DCHECK(output_info);
-
-  output_info->path = dev_node_path_.value();
-  output_info->type = subsystem_;
-  output_info->purpose = purpose_;
-
-  ASSIGN_OR_RETURN(output_info->size,
-                   platform_->GetDeviceSizeBytes(dev_node_path_));
-  ASSIGN_OR_RETURN(output_info->name, adapter_->GetModel());
-
-  // Returns mojo objects.
-  ASSIGN_OR_RETURN(auto vendor, adapter_->GetVendorId());
-  ASSIGN_OR_RETURN(auto product, adapter_->GetProductId());
-  ASSIGN_OR_RETURN(auto revision, adapter_->GetRevision());
-  ASSIGN_OR_RETURN(auto fwversion, adapter_->GetFirmwareVersion());
-
-  output_info->vendor_id = vendor.Clone();
-  output_info->product_id = product.Clone();
-  output_info->revision = revision.Clone();
-  output_info->firmware_version = fwversion.Clone();
-
+StatusOr<mojo_ipc::NonRemovableBlockDeviceInfoPtr>
+StorageDeviceInfo::FetchDeviceInfo() {
+  auto output_info = immutable_block_device_info_.Clone();
   std::optional<brillo::DiskIoStat::Snapshot> iostat_snapshot =
       iostat_.GetSnapshot();
   if (!iostat_snapshot.has_value()) {
@@ -159,26 +360,7 @@ Status StorageDeviceInfo::PopulateDeviceInfo(
   output_info->bytes_read_since_last_boot =
       sector_size * iostat_snapshot->GetReadSectors();
 
-  return Status::OkStatus();
-}
-
-void StorageDeviceInfo::PopulateLegacyFields(
-    mojo_ipc::NonRemovableBlockDeviceInfo* output_info) {
-  DCHECK(output_info);
-
-  constexpr char kLegacySerialFile[] = "device/serial";
-  constexpr char kLegacyManfidFile[] = "device/manfid";
-
-  // Not all devices in sysfs have a serial, so ignore the return code.
-  ReadInteger(dev_sys_path_, kLegacySerialFile, &base::HexStringToUInt,
-              &output_info->serial);
-
-  uint64_t manfid = 0;
-  if (ReadInteger(dev_sys_path_, kLegacyManfidFile, &base::HexStringToUInt64,
-                  &manfid)) {
-    DCHECK_EQ(manfid & 0xFF, manfid);
-    output_info->manufacturer_id = manfid;
-  }
+  return output_info;
 }
 
 }  // namespace diagnostics

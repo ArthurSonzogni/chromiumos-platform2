@@ -127,10 +127,8 @@ StorageDeviceManager::FetchDevicesInfo(const base::FilePath& root) {
   RETURN_IF_ERROR(RefreshDevices(root));
 
   for (auto& dev_info_pair : devices_) {
-    mojo_ipc::NonRemovableBlockDeviceInfo info;
     auto& dev_info = dev_info_pair.second;
-    RETURN_IF_ERROR(dev_info->PopulateDeviceInfo(&info));
-    dev_info->PopulateLegacyFields(&info);
+    ASSIGN_OR_RETURN(auto info, dev_info->FetchDeviceInfo());
     devices.push_back(info.Clone());
   }
 
