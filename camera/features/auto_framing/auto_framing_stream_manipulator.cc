@@ -848,15 +848,11 @@ bool AutoFramingStreamManipulator::ProcessFullFrameOnThread(
     last_timestamp_ = *ctx->timestamp;
   }
 
-  if (full_frame_buffer->release_fence != -1) {
-    if (sync_wait(full_frame_buffer->release_fence, kSyncWaitTimeoutMs) != 0) {
-      LOGF(ERROR) << "sync_wait() HAL buffer timed out on capture result "
-                  << frame_number;
-      ++metrics_.errors[AutoFramingError::kProcessResultError];
-      return false;
-    }
-    close(full_frame_buffer->release_fence);
-    full_frame_buffer->release_fence = -1;
+  if (!WaitOnAndClearReleaseFence(*full_frame_buffer, kSyncWaitTimeoutMs)) {
+    LOGF(ERROR) << "sync_wait() HAL buffer timed out on capture result "
+                << frame_number;
+    ++metrics_.errors[AutoFramingError::kProcessResultError];
+    return false;
   }
 
   if (ctx->state_transition.first != State::kOff &&

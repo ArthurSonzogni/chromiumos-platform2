@@ -20,6 +20,7 @@
 #include <skia/gpu/GrYUVABackendTextures.h>
 #include <sync/sync.h>
 
+#include "common/camera_hal3_helpers.h"
 #include "cros-camera/camera_buffer_manager.h"
 #include "cros-camera/camera_metadata_utils.h"
 #include "features/frame_annotator/libs/face_rectangles_frame_annotator.h"
@@ -211,23 +212,19 @@ bool FrameAnnotatorStreamManipulator::ProcessCaptureResultOnGpuThread(
     }
   }
 
-  std::vector<camera3_stream_buffer_t> output_buffers;
-  for (const auto& b : result->GetOutputBuffers()) {
-    output_buffers.emplace_back(b);
+  for (auto& b : result->GetMutableOutputBuffers()) {
     if (b.stream != yuv_stream_) {
       continue;
     }
-    auto& buffer = output_buffers.back();
-    if (buffer.status == CAMERA3_BUFFER_STATUS_ERROR) {
+    if (b.status == CAMERA3_BUFFER_STATUS_ERROR) {
       continue;
     }
-    bool res = PlotOnGpuThread(&buffer);
+    bool res = PlotOnGpuThread(b);
     if (!res) {
       return false;
     }
   }
 
-  result->SetOutputBuffers(output_buffers);
   return true;
 }
 
@@ -256,19 +253,17 @@ bool FrameAnnotatorStreamManipulator::SetUpContextsOnGpuThread() {
 }
 
 bool FrameAnnotatorStreamManipulator::PlotOnGpuThread(
-    camera3_stream_buffer_t* buffer) {
+    camera3_stream_buffer_t& buffer) {
   DCHECK(gpu_thread_.IsCurrentThread());
 
-  auto input_release_fence = base::ScopedFD(buffer->release_fence);
-  if (input_release_fence.is_valid() &&
-      sync_wait(input_release_fence.get(), kSyncWaitTimeoutMs) != 0) {
-    LOGF(ERROR) << "sync_wait() timed out on input buffer";
+  if (!WaitOnAndClearReleaseFence(buffer, kSyncWaitTimeoutMs)) {
+    LOGF(ERROR) << "Timed out waiting for input buffer";
     return false;
   }
 
   // Convert SharedImage to SkImage and create a SkCanvas.
   auto image = SharedImage::CreateFromBuffer(
-      *buffer->buffer, Texture2D::Target::kTarget2D, true);
+      *buffer.buffer, Texture2D::Target::kTarget2D, true);
   auto sk_image = SkImage::MakeFromYUVATextures(gr_context_.get(),
                                                 ConvertToGrTextures(image));
   auto surface = SkSurface::MakeRenderTarget(
@@ -284,12 +279,11 @@ bool FrameAnnotatorStreamManipulator::PlotOnGpuThread(
     }
   }
   if (surface_need_flush) {
-    FlushSkSurfaceToBuffer(surface.get(), *buffer->buffer);
+    FlushSkSurfaceToBuffer(surface.get(), *buffer.buffer);
   }
 
-  buffer->acquire_fence = -1;
-  buffer->release_fence = -1;
-  buffer->status = CAMERA3_BUFFER_STATUS_OK;
+  DCHECK_EQ(buffer.acquire_fence, -1);
+  buffer.status = CAMERA3_BUFFER_STATUS_OK;
   return true;
 }
 

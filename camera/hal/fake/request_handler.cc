@@ -72,15 +72,14 @@ void RequestHandler::HandleRequest(std::unique_ptr<CaptureRequest> request) {
     if (ret != 0) {
       // If buffer is not ready, set |release_fence| to notify framework to
       // wait the buffer again.
-      buffer.release_fence = buffer.acquire_fence;
-      LOGFID(ERROR, id_) << "Fence sync_wait failed: " << buffer.acquire_fence;
+      AbortGrallocBufferSync(*request);
+      LOGFID(ERROR, id_) << "Acquire fence sync_wait failed: "
+                         << buffer.acquire_fence;
       HandleAbortedRequest(*request);
       return;
-    } else {
-      close(buffer.acquire_fence);
     }
-
     // HAL has to set |acquire_fence| to -1 for output buffers.
+    close(buffer.acquire_fence);
     buffer.acquire_fence = -1;
   }
 

@@ -8,6 +8,7 @@
 
 #include <algorithm>
 #include <utility>
+#include "common/camera_hal3_helpers.h"
 
 namespace cros {
 
@@ -22,6 +23,8 @@ constexpr char kLogFrameMetadataKey[] = "log_frame_metadata";
 constexpr char kDebugKey[] = "debug";
 
 constexpr char kTagFaceRectangles[] = "face_rectangles";
+
+constexpr int kSyncWaitTimeoutMs = 300;
 
 void LogFaceInfo(int frame_number, const human_sensing::CrosFace& face) {
   VLOGFID(2, frame_number) << "\t(" << face.bounding_box.x1 << ", "
@@ -129,11 +132,15 @@ bool FaceDetectionStreamManipulator::ProcessCaptureResult(
     return true;
   }
 
+  auto output_buffers = result->GetMutableOutputBuffers();
   if (result->frame_number() % options_.fd_frame_interval == 0 &&
       result->num_output_buffers() > 0) {
-    std::optional<camera3_stream_buffer_t> buffer =
-        SelectFaceDetectionBuffer(result);
+    auto* buffer = SelectFaceDetectionBuffer(output_buffers);
     if (buffer) {
+      if (!WaitOnAndClearReleaseFence(*buffer, kSyncWaitTimeoutMs)) {
+        LOGF(ERROR) << "Timed out waiting for detection buffer";
+        return false;
+      }
       face_detector_->DetectAsync(
           *(buffer->buffer), active_array_dimension_,
           base::BindOnce(&FaceDetectionStreamManipulator::OnFaceDetected,
@@ -191,9 +198,9 @@ bool FaceDetectionStreamManipulator::Flush() {
   return true;
 }
 
-std::optional<camera3_stream_buffer_t>
+camera3_stream_buffer_t*
 FaceDetectionStreamManipulator::SelectFaceDetectionBuffer(
-    Camera3CaptureDescriptor* result) {
+    base::span<camera3_stream_buffer_t> output_buffers) {
   auto is_larger_or_closer_to_native_aspect_ratio =
       [&](const camera3_stream_t* lhs, const camera3_stream_t* rhs) -> bool {
     if (lhs->width >= rhs->width && lhs->height >= rhs->height) {
@@ -213,9 +220,9 @@ FaceDetectionStreamManipulator::SelectFaceDetectionBuffer(
            std::abs(rhs_aspect_ratio - active_aspect_ratio);
   };
 
-  std::optional<camera3_stream_buffer_t> ret;
+  camera3_stream_buffer_t* ret = nullptr;
 
-  for (auto b : result->GetOutputBuffers()) {
+  for (auto& b : output_buffers) {
     const auto* s = b.stream;
     if (s->stream_type != CAMERA3_STREAM_OUTPUT) {
       continue;
@@ -236,7 +243,7 @@ FaceDetectionStreamManipulator::SelectFaceDetectionBuffer(
       // matter for the majority of the time, as for most cases the requested
       // streams would have the same aspect ratio.
       if (!ret || is_larger_or_closer_to_native_aspect_ratio(s, ret->stream)) {
-        ret = b;
+        ret = &b;
       }
     }
   }

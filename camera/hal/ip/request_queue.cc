@@ -89,6 +89,7 @@ std::unique_ptr<CaptureRequest> RequestQueue::Pop() {
     if (sync_wait(buffer->acquire_fence, 300)) {
       LOGF(ERROR) << "Timed out waiting on camera buffer acquire fence";
     }
+    close(buffer->acquire_fence);
   }
 
   struct timespec time;

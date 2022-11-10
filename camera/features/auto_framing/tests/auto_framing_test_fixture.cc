@@ -10,6 +10,7 @@
 
 #include <utility>
 
+#include "common/camera_hal3_helpers.h"
 #include "features/auto_framing/auto_framing_stream_manipulator.h"
 
 namespace cros::tests {
@@ -492,14 +493,11 @@ bool AutoFramingTestFixture::ProcessCaptureResult(
     return false;
   }
 
-  for (auto& b : result.GetOutputBuffers()) {
-    if (b.release_fence != -1) {
-      constexpr int kSyncWaitTimeoutMs = 300;
-      if (sync_wait(b.release_fence, kSyncWaitTimeoutMs) != 0) {
-        LOGF(ERROR) << "sync_wait() timed out";
-        return false;
-      }
-      close(b.release_fence);
+  for (auto& b : result.GetMutableOutputBuffers()) {
+    constexpr int kSyncWaitTimeoutMs = 300;
+    if (!WaitOnAndClearReleaseFence(b, kSyncWaitTimeoutMs)) {
+      LOGF(ERROR) << "sync_wait() timed out";
+      return false;
     }
     if (b.stream == &client_blob_stream_) {
       still_capture_result_received_.Signal();

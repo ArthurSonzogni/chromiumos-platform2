@@ -22,6 +22,7 @@
 #include <sys/mman.h>
 
 #include "camera/mojo/camera3.mojom.h"
+#include "common/camera_hal3_helpers.h"
 #include "common/libcamera_connector/camera_metadata_utils.h"
 #include "common/libcamera_connector/supported_formats.h"
 #include "cros-camera/common.h"
@@ -91,7 +92,7 @@ void CameraClientOps::ProcessCaptureResult(
       CHECK_EQ(mojo::UnwrapPlatformFile(std::move(output_buffer->release_fence),
                                         &fence),
                MOJO_RESULT_OK);
-      if (sync_wait(fence.release(), 1000) != 0) {
+      if (sync_wait(fence.get(), 1000) != 0) {
         LOGF(ERROR) << "Failed to wait for release fence on buffer";
       }
     }

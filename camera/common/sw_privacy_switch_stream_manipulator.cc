@@ -14,6 +14,7 @@
 #include <linux/videodev2.h>
 #include <sync/sync.h>
 
+#include "common/camera_hal3_helpers.h"
 #include "cros-camera/camera_buffer_manager.h"
 #include "cros-camera/exif_utils.h"
 #include "cros-camera/jpeg_compressor.h"
@@ -84,46 +85,37 @@ bool SWPrivacySwitchStreamManipulator::ProcessCaptureResult(
     return true;
   }
 
-  std::vector<camera3_stream_buffer_t> result_buffers;
-  for (auto& buffer : result->GetOutputBuffers()) {
-    buffer_handle_t handle = *buffer.buffer;
-    bool is_success = true;
-    auto mapping = ScopedMapping(handle);
+  for (auto& buffer : result->GetMutableOutputBuffers()) {
     constexpr int kSyncWaitTimeoutMs = 300;
-    if (mapping.is_valid() &&
-        (buffer.release_fence == -1 ||
-         !sync_wait(buffer.release_fence, kSyncWaitTimeoutMs))) {
+    if (!WaitOnAndClearReleaseFence(buffer, kSyncWaitTimeoutMs)) {
+      LOGF(ERROR) << "Timed out waiting for acquiring output buffer";
+      buffer.status = CAMERA3_BUFFER_STATUS_ERROR;
+      continue;
+    }
+    buffer_handle_t handle = *buffer.buffer;
+    auto mapping = ScopedMapping(handle);
+    bool buffer_cleared = false;
+    if (mapping.is_valid()) {
       switch (mapping.drm_format()) {
         case DRM_FORMAT_NV12:
           FillInFrameWithBlackPixelsNV12(mapping);
+          buffer_cleared = true;
           break;
         case DRM_FORMAT_R8:  // JPEG.
-          is_success = FillInFrameWithBlackJpegImage(
+          buffer_cleared = FillInFrameWithBlackJpegImage(
               handle, mapping, buffer.stream->width, buffer.stream->height);
           break;
         default:
           FillInFrameWithZeros(mapping);
-          is_success = false;
+          LOGF(WARNING) << "Unsupported format "
+                        << FormatToString(mapping.drm_format());
           break;
       }
-    } else {
-      is_success = false;
     }
-
-    if (is_success) {
-      result_buffers.push_back(buffer);
-    } else {
-      LOGF(WARNING) << "Unsupported format "
-                    << FormatToString(mapping.drm_format());
-      result_buffers.push_back(
-          camera3_stream_buffer_t{.stream = buffer.stream,
-                                  .buffer = buffer.buffer,
-                                  .status = CAMERA3_BUFFER_STATUS_ERROR,
-                                  .acquire_fence = -1,
-                                  .release_fence = -1});
+    if (!buffer_cleared) {
+      buffer.status = CAMERA3_BUFFER_STATUS_ERROR;
     }
   }
-  result->SetOutputBuffers(result_buffers);
 
   return true;
 }

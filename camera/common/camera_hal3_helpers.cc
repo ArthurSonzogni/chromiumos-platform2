@@ -11,6 +11,7 @@
 
 #include <base/json/json_writer.h>
 #include <base/values.h>
+#include <sync/sync.h>
 
 #include "cros-camera/tracing.h"
 
@@ -82,6 +83,19 @@ bool AddListItemToMetadataTag(android::CameraMetadata* metadata,
   std::vector<int32_t> data(begin, end);
   data.push_back(item);
   return metadata->update(tag, data.data(), data.size()) == 0;
+}
+
+bool WaitOnAndClearReleaseFence(camera3_stream_buffer_t& buffer,
+                                int timeout_ms) {
+  if (buffer.release_fence == -1) {
+    return true;
+  }
+  if (sync_wait(buffer.release_fence, timeout_ms) != 0) {
+    return false;
+  }
+  close(buffer.release_fence);
+  buffer.release_fence = -1;
+  return true;
 }
 
 //
@@ -341,6 +355,11 @@ void Camera3CaptureDescriptor::ResetInputBuffer() {
 
 base::span<const camera3_stream_buffer_t>
 Camera3CaptureDescriptor::GetOutputBuffers() const {
+  return {output_buffers_.data(), output_buffers_.size()};
+}
+
+base::span<camera3_stream_buffer_t>
+Camera3CaptureDescriptor::GetMutableOutputBuffers() {
   return {output_buffers_.data(), output_buffers_.size()};
 }
 

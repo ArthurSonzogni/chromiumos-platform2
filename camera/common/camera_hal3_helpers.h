@@ -66,6 +66,16 @@ bool AddListItemToMetadataTag(android::CameraMetadata* metadata,
                               uint32_t tag,
                               int32_t item);
 
+// Waits on |buffer.release_fence|, if valid, to be signalled with timeout
+// |timeout_ms|. Returns true if the release fence is invalid (i.e. equals to
+// -1), or if the fence is signalled within |timeout_ms|. Returns false
+// otherwise.
+//
+// |buffer.release_fence| is closed and resets it to -1 on success. The function
+// leaves |buffer.release_fence| untouched if the fence wait times out.
+[[nodiscard]] bool CROS_CAMERA_EXPORT
+WaitOnAndClearReleaseFence(camera3_stream_buffer_t& buffer, int timeout_ms);
+
 // A container for passing metadata across different StreamManipulator instances
 // to allow different feature implementations to communicate with one another.
 struct FeatureMetadata {
@@ -205,6 +215,7 @@ class CROS_CAMERA_EXPORT Camera3CaptureDescriptor {
 
   // Getter and setter for the output buffers.
   base::span<const camera3_stream_buffer_t> GetOutputBuffers() const;
+  base::span<camera3_stream_buffer_t> GetMutableOutputBuffers();
   void SetOutputBuffers(
       base::span<const camera3_stream_buffer_t> output_buffers);
   void AppendOutputBuffer(const camera3_stream_buffer_t& buffer);

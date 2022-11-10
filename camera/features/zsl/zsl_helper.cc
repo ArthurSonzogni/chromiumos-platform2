@@ -20,6 +20,7 @@
 #include <sync/sync.h>
 #include <system/camera_metadata.h>
 
+#include "common/camera_hal3_helpers.h"
 #include "cros-camera/camera_metadata_utils.h"
 #include "cros-camera/common.h"
 #include "cros-camera/constants.h"
@@ -594,7 +595,7 @@ void ZslHelper::WaitAttachedFrame(uint32_t frame_number,
 
 void ZslHelper::WaitAttachedFrameOnFenceSyncThread(
     uint32_t frame_number, base::ScopedFD release_fence) {
-  if (release_fence != -1 &&
+  if (release_fence.is_valid() &&
       sync_wait(release_fence.get(), ZslHelper::kZslSyncWaitTimeoutMs)) {
     LOGF(WARNING) << "Failed to wait for release fence on attached ZSL buffer";
   } else {
@@ -623,8 +624,7 @@ void ZslHelper::ReleaseStreamBuffer(camera3_stream_buffer_t buffer) {
 
 void ZslHelper::ReleaseStreamBufferOnFenceSyncThread(
     camera3_stream_buffer_t buffer) {
-  if (buffer.release_fence != -1 &&
-      sync_wait(buffer.release_fence, ZslHelper::kZslSyncWaitTimeoutMs)) {
+  if (!WaitOnAndClearReleaseFence(buffer, ZslHelper::kZslSyncWaitTimeoutMs)) {
     LOGF(WARNING) << "Failed to wait for release fence on ZSL input buffer";
   } else {
     if (!zsl_buffer_manager_->ReleaseBuffer(*buffer.buffer)) {

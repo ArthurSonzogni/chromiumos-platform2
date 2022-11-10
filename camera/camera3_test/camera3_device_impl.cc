@@ -11,6 +11,7 @@
 #include <sync/sync.h>
 
 #include "camera3_test/camera3_perf_log.h"
+#include "common/camera_hal3_helpers.h"
 #include "cros-camera/common.h"
 
 namespace camera3_test {
@@ -543,7 +544,7 @@ void Camera3DeviceImpl::ProcessCaptureResultOnThread(
     ProcessPartialResult(result.get());
   }
 
-  for (const auto& stream_buffer : result->stream_buffers) {
+  for (auto& stream_buffer : result->stream_buffers) {
     ASSERT_NE(nullptr, stream_buffer.buffer)
         << "Capture result output buffer is null";
     // An error may be expected while flushing
@@ -558,11 +559,8 @@ void Camera3DeviceImpl::ProcessCaptureResultOnThread(
               stream_buffer.buffer_handle)
         << "Buffers of the same stream are delivered out of order";
     stream_output_buffer_map_[stream_buffer.stream].pop_front();
-    if (stream_buffer.release_fence != -1) {
-      ASSERT_EQ(0, sync_wait(stream_buffer.release_fence, 1000))
-          << "Error waiting on buffer acquire fence";
-      close(stream_buffer.release_fence);
-    }
+    ASSERT_TRUE(cros::WaitOnAndClearReleaseFence(stream_buffer, 1000))
+        << "Error waiting on buffer acquire fence";
   }
   capture_result_info_map_[result->frame_number].output_buffers_.insert(
       capture_result_info_map_[result->frame_number].output_buffers_.end(),
