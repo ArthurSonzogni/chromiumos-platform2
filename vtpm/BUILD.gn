@@ -96,6 +96,7 @@ executable("vtpmd") {
     ":vtpmd_config",
   ]
 
+  libs = [ "hwsec-profiling" ]
   install_path = "sbin"
 
   deps = [
