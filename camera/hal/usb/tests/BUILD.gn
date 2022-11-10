@@ -8,7 +8,6 @@ group("all") {
   deps = [
     ":camera_characteristics_test",
     ":camera_dfu_test",
-    ":media_v4l2_is_capture_device",
     ":media_v4l2_test",
   ]
 }
@@ -47,14 +46,6 @@ executable("camera_dfu_test") {
     "libusb-1.0",
     "re2",
   ]
-}
-
-executable("media_v4l2_is_capture_device") {
-  sources = [
-    "media_v4l2_device.cc",
-    "media_v4l2_is_capture_device.cc",
-  ]
-  configs += [ "//camera/build:cros_camera_common" ]
 }
 
 executable("media_v4l2_test") {
