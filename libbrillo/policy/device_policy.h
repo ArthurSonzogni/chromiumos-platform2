@@ -80,7 +80,9 @@ class DevicePolicy {
 
   // Load device policy off of disk into |policy_|.
   // Returns true unless there is a policy on disk and loading it fails.
-  virtual bool LoadPolicy() = 0;
+  // If |delete_invalid_files| is set to true, it deletes the files for
+  // which the policy loading failed.
+  virtual bool LoadPolicy(bool delete_invalid_files) = 0;
 
   // Returns true if OOBE has been completed and if the device has been enrolled
   // as an enterprise or enterpriseAD device.

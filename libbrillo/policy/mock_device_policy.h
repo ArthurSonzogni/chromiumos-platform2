@@ -49,11 +49,12 @@ namespace policy {
 class MockDevicePolicy : public DevicePolicy {
  public:
   MockDevicePolicy() {
-    ON_CALL(*this, LoadPolicy()).WillByDefault(testing::Return(true));
+    ON_CALL(*this, LoadPolicy(/*delete_invalid_files=*/testing::_))
+        .WillByDefault(testing::Return(true));
   }
   ~MockDevicePolicy() override = default;
 
-  MOCK_METHOD(bool, LoadPolicy, (), (override));
+  MOCK_METHOD(bool, LoadPolicy, (bool), (override));
   MOCK_METHOD(bool, IsEnterpriseEnrolled, (), (const, override));
 
   MOCK_METHOD(bool, GetPolicyRefreshRate, (int*), (const, override));

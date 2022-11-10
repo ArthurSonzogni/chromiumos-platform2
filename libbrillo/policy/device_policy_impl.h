@@ -41,8 +41,21 @@ class DevicePolicyImpl : public DevicePolicy {
     return device_policy_;
   }
 
+  const enterprise_management::PolicyFetchResponse& get_policy_fetch_response()
+      const {
+    return policy_;
+  }
+
+  int get_number_of_policy_files() const { return number_of_policy_files_; }
+
+  int get_number_of_invalid_files() const { return number_of_invalid_files_; }
+
+  // Loads the device policy. The |delete| argument specifies whether to delete
+  // the device policy files that failed to load or pass validation.
+  bool LoadPolicyDeleteInvalid(bool delete_invalid_files);
+
   // DevicePolicy overrides:
-  bool LoadPolicy() override;
+  bool LoadPolicy(bool delete_invalid_files) override;
   bool IsEnterpriseEnrolled() const override;
   bool GetPolicyRefreshRate(int* rate) const override;
   bool GetGuestModeEnabled(bool* guest_mode_enabled) const override;
@@ -153,6 +166,12 @@ class DevicePolicyImpl : public DevicePolicy {
   enterprise_management::PolicyFetchResponse policy_;
   enterprise_management::PolicyData policy_data_;
   enterprise_management::ChromeDeviceSettingsProto device_policy_;
+
+  // Total number of device policy files identified.
+  int number_of_policy_files_ = 0;
+
+  // Number of device policy files that have been detected as invalid.
+  int number_of_invalid_files_ = 0;
 
   // If true, verify that policy files are owned by root. True in production
   // but can be set to false by tests.

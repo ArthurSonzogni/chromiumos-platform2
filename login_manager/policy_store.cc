@@ -51,6 +51,7 @@ bool PolicyStore::LoadOrCreate() {
 }
 
 bool PolicyStore::LoadOrCreateFromPath(const base::FilePath& policy_path) {
+  DCHECK(!is_resilient_store_);
   std::string polstr;
   cached_policy_data_.clear();
   policy::LoadPolicyResult result =
@@ -60,12 +61,7 @@ bool PolicyStore::LoadOrCreateFromPath(const base::FilePath& policy_path) {
       cached_policy_data_ = polstr;
       return true;
     case policy::LoadPolicyResult::kFileNotFound:
-      if (!is_resilient_store_) {
-        return true;
-      }
-      LOG(WARNING) << "Resilient policy file not found: "
-                   << policy_path.value();
-      return false;
+      return true;
     case policy::LoadPolicyResult::kFailedToReadFile:
       LOG(WARNING) << "Failed to read policy file: " << policy_path.value();
       return false;

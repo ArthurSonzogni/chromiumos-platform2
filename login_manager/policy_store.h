@@ -23,6 +23,8 @@ class PolicyKey;
 // and persisted to disk on-demand.
 //
 // THIS CLASS DOES NO SIGNATURE VALIDATION.
+// However, derived classes like `ResilientPolicyStore` might perform
+// signature validation.
 class PolicyStore {
  public:
   explicit PolicyStore(const base::FilePath& policy_path);
@@ -60,10 +62,6 @@ class PolicyStore {
   // there is a policy on disk and loading it fails.
   virtual bool LoadOrCreate();
 
-  // Load the signed policy off of disk into |policy_| from |policy_path|.
-  // Returns true unless there is a policy on disk and loading it fails.
-  bool LoadOrCreateFromPath(const base::FilePath& policy_path);
-
   // Persist |policy_| to disk at |policy_path|.
   // Returns false if there's an error while writing data.
   bool PersistToPath(const base::FilePath& policy_path);
@@ -79,6 +77,10 @@ class PolicyStore {
   LoadResult load_result_ = NOT_LOADED;
 
  private:
+  // Load the signed policy off of disk into |policy_| from |policy_path|.
+  // Returns true unless there is a policy on disk and loading it fails.
+  bool LoadOrCreateFromPath(const base::FilePath& policy_path);
+
   // The type of policy store. If resilient, the latest policy data are stored
   // in multiple files.
   const bool is_resilient_store_;

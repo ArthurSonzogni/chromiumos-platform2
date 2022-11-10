@@ -1629,9 +1629,11 @@ TEST_P(CrashCollectorParameterizedTest, MetaData) {
   std::unique_ptr<policy::MockDevicePolicy> test_device_policy =
       std::make_unique<policy::MockDevicePolicy>();
   if (!test_case.enterprise_enrolled) {
-    EXPECT_CALL(*test_device_policy, LoadPolicy()).WillOnce(Return(false));
+    EXPECT_CALL(*test_device_policy, LoadPolicy(/*delete_invalid_files=*/false))
+        .WillOnce(Return(false));
   } else {
-    EXPECT_CALL(*test_device_policy, LoadPolicy()).WillOnce(Return(true));
+    EXPECT_CALL(*test_device_policy, LoadPolicy(/*delete_invalid_files=*/false))
+        .WillOnce(Return(true));
     EXPECT_CALL(*test_device_policy, IsEnterpriseEnrolled())
         .WillOnce(Return(*test_case.enterprise_enrolled));
   }

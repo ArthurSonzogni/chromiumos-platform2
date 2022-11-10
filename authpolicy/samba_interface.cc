@@ -602,7 +602,7 @@ ErrorType SambaInterface::Initialize(bool expect_config) {
         std::move(device_policy_impl_for_testing);
     if (!policy_impl)
       policy_impl = std::make_unique<policy::DevicePolicyImpl>();
-    if (!policy_impl->LoadPolicy()) {
+    if (!policy_impl->LoadPolicy(/*delete_invalid_files=*/false)) {
       LOG(ERROR) << "Failed to load device policy. Authentication and policy "
                     "fetch might behave unexpectedly until the next device "
                     "policy fetch.";

@@ -1650,7 +1650,7 @@ std::string CrashCollector::GetKernelVersion() const {
 std::optional<bool> CrashCollector::IsEnterpriseEnrolled() {
   DCHECK(device_policy_);
   if (!device_policy_loaded_) {
-    if (!device_policy_->LoadPolicy()) {
+    if (!device_policy_->LoadPolicy(/*delete_invalid_files=*/false)) {
       LOG(ERROR) << "Failed to load device policy";
       return std::nullopt;
     }

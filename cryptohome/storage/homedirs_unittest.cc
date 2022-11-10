@@ -145,7 +145,8 @@ class HomeDirsTest
                      const std::string& owner,
                      bool ephemeral_users_enabled,
                      const std::string& clean_up_strategy) {
-    EXPECT_CALL(*mock_device_policy_, LoadPolicy())
+    EXPECT_CALL(*mock_device_policy_,
+                LoadPolicy(/*delete_invalid_files=*/false))
         .WillRepeatedly(Return(true));
     EXPECT_CALL(*mock_device_policy_, GetOwner(_))
         .WillRepeatedly(SetOwner(owner_known, owner));

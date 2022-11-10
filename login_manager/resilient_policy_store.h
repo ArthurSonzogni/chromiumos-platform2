@@ -8,8 +8,11 @@
 #include "login_manager/policy_store.h"
 
 #include <map>
+#include <memory>
+#include <utility>
 
 #include <base/files/file_path.h>
+#include <policy/device_policy_impl.h>
 
 namespace login_manager {
 class LoginMetrics;
@@ -38,6 +41,11 @@ class ResilientPolicyStore : public PolicyStore {
   // but deletion is only allowed for component policy.
   bool Delete() override;
 
+  void set_device_policy_for_testing(
+      std::unique_ptr<policy::DevicePolicyImpl> device_policy) {
+    device_policy_ = std::move(device_policy);
+  }
+
  private:
   // Check the policy files from the most recent to the oldest until a valid
   // file is found. Loads the signed policy off of the valid file into
@@ -46,10 +54,9 @@ class ResilientPolicyStore : public PolicyStore {
   // and loading fails for all the policy files present.
   bool LoadOrCreate() override;
 
-  // Read and validate the policy files corresponding to names from
-  // |sorted_policy_file_names|. Keeps at most |kMaxPolicyFileCount| valid
-  // policy files, the rest gets deleted. Logs UMA stats about the number of
-  // invalid policy files identified.
+  // Removes the files from oldest to newest until a maximum limit of files
+  // allowed remains on disk. It's expected that at most one file is deleted
+  // in this function.
   void CleanupPolicyFiles(
       const std::map<int, base::FilePath>& sorted_policy_file_paths);
 
@@ -57,6 +64,7 @@ class ResilientPolicyStore : public PolicyStore {
                                             int number_of_invalid_files);
 
   LoginMetrics* metrics_ = nullptr;  //  Not owned.
+  std::unique_ptr<policy::DevicePolicyImpl> device_policy_;
 };
 }  // namespace login_manager
 

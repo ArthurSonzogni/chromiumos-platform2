@@ -34,7 +34,8 @@ PolicyProvider::~PolicyProvider() {}
 bool PolicyProvider::Reload() {
   if (!device_policy_)
     return false;
-  device_policy_is_loaded_ = device_policy_->LoadPolicy();
+  device_policy_is_loaded_ =
+      device_policy_->LoadPolicy(/*delete_invalid_files=*/false);
   if (!device_policy_is_loaded_) {
     LOG(WARNING) << "Could not load the device policy file.";
   }

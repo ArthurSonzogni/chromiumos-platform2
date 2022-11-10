@@ -52,7 +52,7 @@ class MetricsLibraryTest : public testing::Test {
     lib_.SetOutputFile(kTestUMAEventsFile.value());
     EXPECT_EQ(0, WriteFile(kTestUMAEventsFile, "", 0));
     device_policy_ = new policy::MockDevicePolicy();
-    EXPECT_CALL(*device_policy_, LoadPolicy())
+    EXPECT_CALL(*device_policy_, LoadPolicy(/*delete_invalid_files=*/false))
         .Times(AnyNumber())
         .WillRepeatedly(Return(true));
     EXPECT_CALL(*device_policy_, GetMetricsEnabled(_))
@@ -324,7 +324,7 @@ class CMetricsLibraryTest : public testing::Test {
     ml.SetOutputFile(kTestUMAEventsFile.value());
     EXPECT_EQ(0, WriteFile(kTestUMAEventsFile, "", 0));
     device_policy_ = new policy::MockDevicePolicy();
-    EXPECT_CALL(*device_policy_, LoadPolicy())
+    EXPECT_CALL(*device_policy_, LoadPolicy(/*delete_invalid_files=*/false))
         .Times(AnyNumber())
         .WillRepeatedly(Return(true));
     EXPECT_CALL(*device_policy_, GetMetricsEnabled(_))

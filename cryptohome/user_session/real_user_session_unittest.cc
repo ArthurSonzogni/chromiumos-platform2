@@ -181,7 +181,8 @@ class RealUserSessionTest : public ::testing::Test {
 
   void PreparePolicy(bool enterprise_owned, const std::string& owner) {
     homedirs_->set_enterprise_owned(enterprise_owned);
-    EXPECT_CALL(*mock_device_policy_, LoadPolicy())
+    EXPECT_CALL(*mock_device_policy_,
+                LoadPolicy(/*delete_invalid_files=*/false))
         .WillRepeatedly(Return(true));
     EXPECT_CALL(*mock_device_policy_, GetOwner(_))
         .WillRepeatedly(DoAll(SetArgPointee<0>(owner), Return(!owner.empty())));

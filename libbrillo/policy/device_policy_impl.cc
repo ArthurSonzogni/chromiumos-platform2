@@ -200,9 +200,11 @@ DevicePolicyImpl::DevicePolicyImpl()
 
 DevicePolicyImpl::~DevicePolicyImpl() {}
 
-bool DevicePolicyImpl::LoadPolicy() {
+bool DevicePolicyImpl::LoadPolicy(bool delete_invalid_files) {
   std::map<int, base::FilePath> sorted_policy_file_paths =
       policy::GetSortedResilientPolicyFilePaths(policy_path_);
+  number_of_policy_files_ = sorted_policy_file_paths.size();
+  number_of_invalid_files_ = 0;
   if (sorted_policy_file_paths.empty())
     return false;
 
@@ -217,6 +219,11 @@ bool DevicePolicyImpl::LoadPolicy() {
       policy_loaded = true;
       break;
     }
+    if (delete_invalid_files) {
+      LOG(ERROR) << "Invalid device policy file: " << policy_path.value();
+      base::DeleteFile(policy_path);
+    }
+    number_of_invalid_files_++;
   }
 
   return policy_loaded;
@@ -987,7 +994,7 @@ bool DevicePolicyImpl::LoadPolicyFromFile(const base::FilePath& policy_path) {
   }
   if (!policy_data_.ParseFromString(policy_.policy_data()) ||
       !policy_data_.has_policy_value()) {
-    LOG(ERROR) << "Policy on disk could not be parsed!";
+    LOG(ERROR) << "Policy data could not be parsed!";
     return false;
   }
 
