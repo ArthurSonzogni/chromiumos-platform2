@@ -63,7 +63,8 @@ trunks::TPM_RC NvReadCommand::RunInternal(const std::string& command,
 
   // Only support the case that the nv index itself as the auth handle.
   if (auth_handle != nv_index) {
-    return trunks::TPM_RC_HANDLE;
+    LOG(ERROR) << __func__ << ": Unsupported or wrong auth handle.";
+    return trunks::TPM_RC_NV_AUTHORIZATION;
   }
 
   // Get the password.

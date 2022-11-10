@@ -203,7 +203,7 @@ TEST_F(NvReadCommandTest, FailureInconsistentAuthIndex) {
       ParseCommandNvRead(Pointee(std::string(kFakeRequest)), _, _, _, _, _));
 
   EXPECT_CALL(mock_resp_serializer_,
-              SerializeHeaderOnlyResponse(trunks::TPM_RC_HANDLE, _))
+              SerializeHeaderOnlyResponse(trunks::TPM_RC_NV_AUTHORIZATION, _))
       .WillOnce(SetArgPointee<1>(kTestResponse));
 
   ++auth_handle_;
