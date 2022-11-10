@@ -513,3 +513,36 @@ def test_filter_output(tmp_path, executable_path, key, expected_result):
     )
 
     assert result.stdout == expected_result
+
+
+def test_factory_override(tmp_path, executable_path):
+    """Test that the --sku-id and --custom-label-tag flags work."""
+    make_fake_sysroot(
+        tmp_path,
+        fdt_frid="Google_Lazor.123_456",
+        fdt_sku=3,
+        configs=TROGDOR_CONFIGS,
+    )
+
+    result = subprocess.run(
+        [
+            executable_path,
+            "--sysroot",
+            tmp_path,
+            "-v",
+            "--sku-id",
+            "6",
+            "--custom-label-tag",
+            "lazorwl",
+        ],
+        check=True,
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.PIPE,
+        encoding="utf-8",
+    )
+
+    assert getvars(result.stdout) == {
+        "SKU": "6",
+        "CONFIG_INDEX": "6",
+        "FIRMWARE_MANIFEST_KEY": "limozeen",
+    }
