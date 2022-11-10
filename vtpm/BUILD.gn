@@ -11,6 +11,7 @@ group("all") {
     ":install_init",
     ":install_policy",
     ":install_systemd",
+    ":install_tmpfiles_config",
     ":vtpmd",
   ]
   if (use.test) {
@@ -119,6 +120,11 @@ install_config("install_policy") {
 install_config("install_systemd") {
   sources = [ "org.chromium.Vtpm.conf" ]
   install_path = "/etc/dbus-1/system.d"
+}
+
+install_config("install_tmpfiles_config") {
+  sources = [ "tmpfiles.d/vtpm.conf" ]
+  install_path = "/usr/lib/tmpfiles.d"
 }
 
 if (use.test) {
