@@ -12,8 +12,8 @@
   <feature name="android.hardware.sensor.gyroscope"/>
   <feature name="android.hardware.sensor.compass"/>
   <unavailable-feature name="android.hardware.sensor.light"/>
-  <feature name="android.hardware.touchscreen"/>
-  <feature name="android.hardware.touchscreen.multitouch"/>
-  <feature name="android.hardware.touchscreen.multitouch.distinct"/>
-  <feature name="android.hardware.touchscreen.multitouch.jazzhand"/>
+  <unavailable-feature name="android.hardware.touchscreen"/>
+  <unavailable-feature name="android.hardware.touchscreen.multitouch"/>
+  <unavailable-feature name="android.hardware.touchscreen.multitouch.distinct"/>
+  <unavailable-feature name="android.hardware.touchscreen.multitouch.jazzhand"/>
 </permissions>
