@@ -340,8 +340,8 @@ TEST_F(ExternalDisplayTest, InvalidBrightnessReplies) {
 
   // Run through each test case, making sure that no subsequent request is sent
   // after the bogus reply is returned. The timer also shouldn't be rescheduled.
-  for (size_t i = 0; i < test_cases.size(); ++i) {
-    SCOPED_TRACE(test_cases[i].description);
+  for (const TestCase& test_case : test_cases) {
+    SCOPED_TRACE(test_case.description);
 
     display_.AdjustBrightnessByPercent(10.0);
     ASSERT_EQ(request_brightness_message_, delegate_->PopSentMessage());
@@ -352,11 +352,11 @@ TEST_F(ExternalDisplayTest, InvalidBrightnessReplies) {
                   .ToString(),
               PopMetric());
 
-    delegate_->set_reply_message(test_cases[i].reply);
+    delegate_->set_reply_message(test_case.reply);
     ASSERT_TRUE(test_api_.TriggerTimeout());
     EXPECT_EQ(MetricsSenderStub::Metric::CreateEnum(
                   metrics::kExternalBrightnessReadResultName,
-                  static_cast<int>(test_cases[i].metric),
+                  static_cast<int>(test_case.metric),
                   metrics::kExternalDisplayResultMax)
                   .ToString(),
               PopMetric());
