@@ -536,8 +536,8 @@ diag_wifi_internal() {
     if is_wifi "${ifc}" ; then
       echo "iw dev ${ifc} survey dump:"
       "${IW}" dev "${ifc}" survey dump | output_anonymize
-      echo "iw dev ${ifc} station dump:"
-      "${IW}" dev "${ifc}" station dump | output_anonymize
+      echo "iw dev ${ifc} station dump -v:"
+      "${IW}" dev "${ifc}" station dump -v | output_anonymize
       echo "iw dev ${ifc} scan dump:"
       "${IW}" dev "${ifc}" scan dump | output_anonymize | grep -v SSID
       echo "iw dev ${ifc} link:"
