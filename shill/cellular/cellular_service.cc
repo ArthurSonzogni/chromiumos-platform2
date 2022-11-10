@@ -24,7 +24,7 @@
 #include "shill/cellular/apn_list.h"
 #include "shill/cellular/cellular.h"
 #include "shill/cellular/cellular_consts.h"
-#include "shill/cellular/cellular_service_provider.h"
+#include "shill/data_types.h"
 #include "shill/dbus/dbus_control.h"
 #include "shill/manager.h"
 #include "shill/store/property_accessor.h"
@@ -797,11 +797,8 @@ std::string CellularService::CalculateActivationType(Error* error) {
   return GetActivationTypeString();
 }
 
-Stringmap CellularService::GetApn(Error* /*error*/) {
-  return apn_info_;
-}
-
-bool CellularService::SetApn(const Stringmap& value, Error* error) {
+Stringmap CellularService::ValidateCustomApn(const Stringmap& value,
+                                             bool using_apn_revamp_ui) {
   // Only copy in the fields we care about, and validate the contents.
   // If the "apn" field is missing or empty, the APN is cleared.
   std::string new_apn;
@@ -821,20 +818,40 @@ bool CellularService::SetApn(const Stringmap& value, Error* error) {
       new_apn_info[kApnPasswordProperty] = str;
     if (GetNonEmptyField(value, kApnAuthenticationProperty, &str))
       new_apn_info[kApnAuthenticationProperty] = str;
-    // TODO(b/251512775): Chrome will keep sending the "attach" value until the
-    // old UI is obsoleted. Convert the attach value into |kApnTypesProperty|.
-    // SetApn should not contain the key |kApnTypesProperty|.
-    if (GetNonEmptyField(value, kApnAttachProperty, &str)) {
-      new_apn_info[kApnTypesProperty] =
-          ApnList::JoinApnTypes({kApnTypeIA, kApnTypeDefault});
+    if (using_apn_revamp_ui) {
+      if (GetNonEmptyField(value, kApnTypesProperty, &str))
+        new_apn_info[kApnTypesProperty] = str;
+      if (GetNonEmptyField(value, kApnIdProperty, &str))
+        new_apn_info[kApnIdProperty] = str;
+      if (GetNonEmptyField(value, kApnSourceProperty, &str))
+        new_apn_info[kApnSourceProperty] = str;
+      if (GetNonEmptyField(value, kApnIpTypeProperty, &str))
+        new_apn_info[kApnIpTypeProperty] = str;
     } else {
-      new_apn_info[kApnTypesProperty] =
-          ApnList::JoinApnTypes({kApnTypeDefault});
+      // TODO(b/251512775): Chrome will keep sending the "attach" value on
+      // |SetApn| until the old UI is obsoleted. Convert the attach value into
+      // |kApnTypesProperty|.
+      // SetApn should not contain the key |kApnTypesProperty|.
+      if (GetNonEmptyField(value, kApnAttachProperty, &str)) {
+        new_apn_info[kApnTypesProperty] =
+            ApnList::JoinApnTypes({kApnTypeIA, kApnTypeDefault});
+      } else {
+        new_apn_info[kApnTypesProperty] =
+            ApnList::JoinApnTypes({kApnTypeDefault});
+      }
     }
-
     new_apn_info[cellular::kApnVersionProperty] =
         base::NumberToString(cellular::kCurrentApnCacheVersion);
   }
+  return new_apn_info;
+}
+
+Stringmap CellularService::GetApn(Error* /*error*/) {
+  return apn_info_;
+}
+
+bool CellularService::SetApn(const Stringmap& value, Error* error) {
+  Stringmap new_apn_info = ValidateCustomApn(value, false);
   if (apn_info_ == new_apn_info) {
     return true;
   }
@@ -882,11 +899,40 @@ Stringmaps CellularService::GetUserApnList(Error* /*error*/) {
 
 bool CellularService::SetUserApnList(const Stringmaps& value, Error* error) {
   SLOG(this, 2) << __func__;
-  // TODO(b/245598183): Finish implementation
-  user_apn_list_.emplace(value);
+  bool exist_attach = false;
+  Stringmaps new_apn_info_list;
+  for (auto& apn_value : value) {
+    Stringmap new_apn_info =
+        new_apn_info_list.emplace_back(ValidateCustomApn(apn_value, true));
+    exist_attach = exist_attach || ApnList::IsAttachApn(new_apn_info);
+  }
+
+  if (user_apn_list_.has_value() &&
+      user_apn_list_.value() == new_apn_info_list) {
+    return true;
+  }
+  user_apn_list_.emplace(new_apn_info_list);
   adaptor()->EmitStringmapsChanged(kCellularUserApnListProperty,
                                    user_apn_list_.value());
-  return true;
+
+  // TODO(b/217767378): Replace reattach with a call to SetNextAttachApn.
+  if (exist_attach || ApnList::IsAttachApn(last_attach_apn_info_)) {
+    // If the new APN is an 'attach APN',we need to detach and re-attach
+    // to the LTE network in order to use it.
+    // If we were using an attach APN, and we are no longer using it, we should
+    // also re-attach to clear the attach APN in the modem.
+    cellular_->ReAttach();
+    return true;
+  }
+  if (!IsConnected()) {
+    return true;
+  }
+  Disconnect(error, __func__);
+  if (!error->IsSuccess()) {
+    return false;
+  }
+  Connect(error, __func__);
+  return error->IsSuccess();
 }
 
 KeyValueStore CellularService::GetStorageProperties() const {

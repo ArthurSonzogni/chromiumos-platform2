@@ -742,7 +742,7 @@ void CellularCapability3gpp::OnServiceCreated() {
 
 void CellularCapability3gpp::SetupConnectProperties(KeyValueStore* properties) {
   SetRoamingProperties(properties);
-  apn_try_list_ = cellular()->BuildApnTryList();
+  apn_try_list_ = cellular()->BuildDefaultApnTryList();
   for (const auto& apn_info : apn_try_list_) {
     if (SetApnProperties(apn_info, properties))
       break;
@@ -1888,10 +1888,7 @@ void CellularCapability3gpp::OnProfilesChanged(const Profiles& profiles) {
 
   // Set the new parameters for the initial EPS bearer (e.g. LTE Attach APN)
   // An empty list will result on clearing the Attach APN by |SetNextAttachApn|
-  attach_apn_try_list_ = cellular()->BuildApnTryList();
-  base::EraseIf(attach_apn_try_list_, [](const Stringmap& apn_info) {
-    return !ApnList::IsAttachApn(apn_info);
-  });
+  attach_apn_try_list_ = cellular()->BuildAttachApnTryList();
 
   if (attach_apn_try_list_.size() > 0) {
     if (base::Contains(attach_apn_try_list_.front(), kApnSourceProperty) &&

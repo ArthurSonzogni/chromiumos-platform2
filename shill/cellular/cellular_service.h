@@ -106,6 +106,10 @@ class CellularService : public Service {
   const std::string& ppp_username() const { return ppp_username_; }
   const std::string& ppp_password() const { return ppp_password_; }
 
+  const std::optional<Stringmaps>& user_apn_list() const {
+    return user_apn_list_;
+  }
+
   Stringmap* GetUserSpecifiedApn();
   Stringmap* GetLastGoodApn();
   virtual void SetLastGoodApn(const Stringmap& apn_info);
@@ -136,6 +140,9 @@ class CellularService : public Service {
   }
   void set_apn_info_for_testing(const Stringmap& apn_info) {
     apn_info_ = apn_info;
+  }
+  void set_user_apn_list_for_testing(const Stringmaps& user_apn_list) {
+    user_apn_list_ = user_apn_list;
   }
 
  protected:
@@ -214,6 +221,7 @@ class CellularService : public Service {
   bool IsOutOfCredits(Error* /*error*/);
   bool SetAllowRoaming(const bool& value, Error* error);
   bool GetAllowRoaming(Error* /*error*/);
+  Stringmap ValidateCustomApn(const Stringmap& value, bool using_apn_revamp_ui);
   Stringmaps GetUserApnList(Error* error);
   bool SetUserApnList(const Stringmaps& value, Error* error);
 

@@ -17,6 +17,7 @@
 #include <base/time/time.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
+#include "shill/cellular/apn_list.h"
 #include "shill/cellular/dbus_objectmanager_proxy_interface.h"
 #include "shill/cellular/mobile_operator_info.h"
 #include "shill/device.h"
@@ -257,14 +258,23 @@ class Cellular : public Device,
   // Called when an OTA profile update arrives from the network.
   void OnProfilesChanged();
 
-  // Returns a list of APNs to try, in the following order:
-  // - the APN, if any, that was set by the user
+  // Returns a list of APNs of type |apn_type| to try. The logic when using
+  // SetApn and SetUserApnList(APN UI revamp) differs. When using
+  // |SetUserApnList| and the user has set at least 1 APN , only custom APNs
+  // will be included in the list, otherwise the logic is the same as |SetApn|.
+  // The APNs returned when using |SetApn| are in the following order:
+  // - the APN, if any, that was set by the user(for SetApn only)
   // - APNs that the modem reports as provisioned profiles
   // - the list of APNs found in the mobile broadband provider DB for the
   //   home provider associated with the current SIM
   // - the last APN that resulted in a successful connection attempt on the
   //   current network (if any)
-  std::deque<Stringmap> BuildApnTryList() const;
+  std::deque<Stringmap> BuildApnTryList(ApnList::ApnType apn_type) const;
+
+  // Same as BuildApnTryList, but it only returns IA APNs.
+  std::deque<Stringmap> BuildAttachApnTryList() const;
+  // Same as BuildApnTryList, but it only returns DEFAULT APNs.
+  std::deque<Stringmap> BuildDefaultApnTryList() const;
 
   // Update the home provider from the information in |operator_info|. This
   // information may be from the SIM / received OTA.

@@ -18,6 +18,7 @@
 #include <base/check.h>
 #include <base/check_op.h>
 #include <base/containers/contains.h>
+#include <base/containers/cxx20_erase.h>
 #include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
@@ -30,6 +31,7 @@
 #include <chromeos/dbus/service_constants.h>
 #include <ModemManager/ModemManager.h>
 
+#include "dbus/shill/dbus-constants.h"
 #include "shill/adaptor_interfaces.h"
 #include "shill/cellular/apn_list.h"
 #include "shill/cellular/cellular_bearer.h"
@@ -2117,30 +2119,64 @@ bool Cellular::CompareApns(const Stringmap& apn1, const Stringmap& apn2) const {
   return true;
 }
 
-std::deque<Stringmap> Cellular::BuildApnTryList() const {
+std::deque<Stringmap> Cellular::BuildAttachApnTryList() const {
+  return BuildApnTryList(ApnList::ApnType::kAttach);
+}
+
+std::deque<Stringmap> Cellular::BuildDefaultApnTryList() const {
+  return BuildApnTryList(ApnList::ApnType::kDefault);
+}
+
+std::deque<Stringmap> Cellular::BuildApnTryList(
+    ApnList::ApnType apn_type) const {
   std::deque<Stringmap> apn_try_list;
   bool add_last_good_apn = true;
-
+  std::vector<const Stringmap*> custom_apns_info;
   const Stringmap* custom_apn_info = nullptr;
   const Stringmap* last_good_apn_info = nullptr;
+  const Stringmaps* user_apn_list = nullptr;
   if (service_) {
-    custom_apn_info = service_->GetUserSpecifiedApn();
+    if (service_->user_apn_list().has_value()) {
+      user_apn_list = &service_->user_apn_list().value();
+      for (const auto& user_apn : *user_apn_list) {
+        if (ApnList::IsApnType(user_apn, apn_type))
+          custom_apns_info.emplace_back(&user_apn);
+      }
+    } else if (service_->GetUserSpecifiedApn() &&
+               ApnList::IsApnType(*service_->GetUserSpecifiedApn(), apn_type)) {
+      custom_apn_info = service_->GetUserSpecifiedApn();
+      custom_apns_info.emplace_back(custom_apn_info);
+    }
+
     last_good_apn_info = service_->GetLastGoodApn();
-    if (custom_apn_info) {
-      apn_try_list.push_back(*custom_apn_info);
-      apn_try_list.back()[kApnSourceProperty] = kApnSourceUi;
-      SLOG(this, 3) << __func__ << " Adding User Specified APN:"
-                    << GetStringmapValue(*custom_apn_info, kApnProperty)
-                    << " Is attach:" << ApnList::IsAttachApn(*custom_apn_info);
-      if (last_good_apn_info &&
-          CompareApns(*last_good_apn_info, *custom_apn_info)) {
+    for (auto user_apn : custom_apns_info) {
+      apn_try_list.push_back(*user_apn);
+      if (!base::Contains(apn_try_list.back(), kApnSourceProperty))
+        apn_try_list.back()[kApnSourceProperty] = kApnSourceUi;
+
+      SLOG(this, 3) << __func__ << " Adding User Specified APN: "
+                    << GetStringmapValue(apn_try_list.back(), kApnProperty)
+                    << " APN types: "
+                    << GetStringmapValue(apn_try_list.back(), kApnTypesProperty)
+                    << " APN source: "
+                    << GetStringmapValue(apn_try_list.back(),
+                                         kApnSourceProperty);
+      if (user_apn_list ||
+          (last_good_apn_info &&
+           CompareApns(*last_good_apn_info, apn_try_list.back()))) {
         add_last_good_apn = false;
       }
     }
   }
-
+  // With the revamp APN UI, if the user has entered an APN in the UI, only
+  // customs APNs are used. Return early.
+  if (user_apn_list && user_apn_list->size() > 0) {
+    return apn_try_list;
+  }
   // Ensure all Modem APNs are added before MODB APNs.
   for (auto apn : apn_list_) {
+    if (!ApnList::IsApnType(apn, apn_type))
+      continue;
     DCHECK(base::Contains(apn, kApnSourceProperty));
     // Verify all APNs are either from the Modem or MODB.
     DCHECK(apn[kApnSourceProperty] == cellular::kApnSourceModem ||
@@ -2149,13 +2185,19 @@ std::deque<Stringmap> Cellular::BuildApnTryList() const {
       continue;
     apn_try_list.push_back(apn);
   }
-  // Add MODB APNs and update the origin of the custom APN.
+  // Add MODB APNs and update the origin of the custom APN(only for old UI).
   int index_of_first_modb_apn = apn_try_list.size();
-  for (auto apn : apn_list_) {
-    if (custom_apn_info && CompareApns(*custom_apn_info, apn)) {
+  for (const auto& apn : apn_list_) {
+    if (!ApnList::IsApnType(apn, apn_type))
+      continue;
+    // Updating the origin of the custom APN is only needed for the old UI,
+    // since the APN UI revamp will include the correct APN source.
+    if (!user_apn_list && custom_apn_info &&
+        CompareApns(*custom_apn_info, apn) &&
+        base::Contains(apn, kApnSourceProperty)) {
       // If |custom_apn_info| is not null, it is located at the first position
       // of |apn_try_list|, and we update the APN source for it.
-      apn_try_list[0][kApnSourceProperty] = apn[kApnSourceProperty];
+      apn_try_list[0][kApnSourceProperty] = apn.at(kApnSourceProperty);
       continue;
     }
 
@@ -2164,7 +2206,8 @@ std::deque<Stringmap> Cellular::BuildApnTryList() const {
     if (is_same_as_last_good_apn)
       add_last_good_apn = false;
 
-    if (apn[kApnSourceProperty] == cellular::kApnSourceMoDb) {
+    if (base::Contains(apn, kApnSourceProperty) &&
+        apn.at(kApnSourceProperty) == cellular::kApnSourceMoDb) {
       if (is_same_as_last_good_apn) {
         apn_try_list.insert(apn_try_list.begin() + index_of_first_modb_apn,
                             apn);
@@ -2176,13 +2219,14 @@ std::deque<Stringmap> Cellular::BuildApnTryList() const {
 
   // The last good APN will be a last-ditch effort to connect in case the APN
   // list is misconfigured somehow.
-  if (last_good_apn_info && add_last_good_apn) {
+  if (last_good_apn_info && add_last_good_apn &&
+      ApnList::IsApnType(*last_good_apn_info, apn_type)) {
     apn_try_list.push_back(*last_good_apn_info);
-    LOG(INFO) << __func__ << " Adding last good APN (fallback):"
+    LOG(INFO) << __func__ << " Adding last good APN (fallback): "
               << GetStringmapValue(*last_good_apn_info, kApnProperty)
-              << " Is attach:" << ApnList::IsAttachApn(*last_good_apn_info);
+              << " APN types: "
+              << GetStringmapValue(*last_good_apn_info, kApnTypesProperty);
   }
-
   return apn_try_list;
 }
 
