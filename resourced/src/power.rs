@@ -342,10 +342,8 @@ impl<C: config::ConfigProvider, P: PowerSourceProvider> PowerPreferencesManager
         }
 
         if let Some(root) = self.root.to_str() {
-            /* TODO(b/233359053): These values should be migrated to chromeos-config */
             if rtc == RTCAudioActive::Active || fullscreen == FullscreenVideo::Active {
-                // Set EPP to 70%. Not all platforms support hardware EPP.
-                if let Err(err) = set_epp(root, "179") {
+                if let Err(err) = set_epp(root, "balance_power") {
                     error!("Failed to set energy performance preference: {:#}", err);
                 }
             } else if rtc != RTCAudioActive::Active && fullscreen != FullscreenVideo::Active {

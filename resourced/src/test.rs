@@ -1098,9 +1098,21 @@ fn test_power_update_power_preferences_epp() -> Result<()> {
     };
 
     let tests = [
-        (RTCAudioActive::Active, FullscreenVideo::Inactive, "179"),
-        (RTCAudioActive::Inactive, FullscreenVideo::Active, "179"),
-        (RTCAudioActive::Active, FullscreenVideo::Active, "179"),
+        (
+            RTCAudioActive::Active,
+            FullscreenVideo::Inactive,
+            "balance_power",
+        ),
+        (
+            RTCAudioActive::Inactive,
+            FullscreenVideo::Active,
+            "balance_power",
+        ),
+        (
+            RTCAudioActive::Active,
+            FullscreenVideo::Active,
+            "balance_power",
+        ),
         (
             RTCAudioActive::Inactive,
             FullscreenVideo::Inactive,
