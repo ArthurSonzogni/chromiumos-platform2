@@ -169,6 +169,10 @@ class AutoFramingStreamManipulator : public StreamManipulator {
   Rect<float> full_frame_crop_;
   int partial_result_count_ = 0;
 
+  // Flagged if any failure during Initialize() and ConfigureStreams() that
+  // disables auto-framing processing.
+  bool setup_failed_ = false;
+
   // Per-stream-config contexts.
   State state_ = State::kDisabled;
   base::ElapsedTimer state_transition_timer_;

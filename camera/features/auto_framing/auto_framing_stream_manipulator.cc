@@ -382,6 +382,7 @@ bool AutoFramingStreamManipulator::InitializeOnThread(
   TRACE_AUTO_FRAMING();
 
   result_callback_ = result_callback;
+  setup_failed_ = false;
 
   std::optional<int32_t> partial_result_count =
       GetRoMetadata<int32_t>(static_info, ANDROID_REQUEST_PARTIAL_RESULT_COUNT);
@@ -397,6 +398,7 @@ bool AutoFramingStreamManipulator::InitializeOnThread(
   if (!active_array_dimension_.is_valid()) {
     LOGF(ERROR) << "Invalid active array size: "
                 << active_array_dimension_.ToString();
+    setup_failed_ = true;
     ++metrics_.errors[AutoFramingError::kInitializationError];
     return false;
   }
@@ -406,6 +408,7 @@ bool AutoFramingStreamManipulator::InitializeOnThread(
       options_.max_video_height);
   if (!full_frame_size_.is_valid() || !still_size_.is_valid()) {
     LOGF(ERROR) << "Cannot find suitable full video/still frame resolutions";
+    setup_failed_ = true;
     ++metrics_.errors[AutoFramingError::kInitializationError];
     return false;
   }
@@ -426,6 +429,9 @@ bool AutoFramingStreamManipulator::ConfigureStreamsOnThread(
   TRACE_AUTO_FRAMING(kCameraTraceKeyStreamConfigurations,
                      stream_config->ToJsonString());
 
+  if (setup_failed_) {
+    return false;
+  }
   ResetOnThread();
 
   if (VLOG_IS_ON(1)) {
@@ -477,6 +483,7 @@ bool AutoFramingStreamManipulator::ConfigureStreamsOnThread(
   }
   if (!target_size.is_valid()) {
     LOGF(ERROR) << "No valid output stream found in stream config";
+    setup_failed_ = true;
     ++metrics_.errors[AutoFramingError::kConfigurationError];
     return false;
   }
@@ -504,11 +511,13 @@ bool AutoFramingStreamManipulator::ConfigureStreamsOnThread(
 
   if (!stream_config->SetStreams(hal_streams)) {
     LOGF(ERROR) << "Failed to manipulate stream config";
+    setup_failed_ = true;
     ++metrics_.errors[AutoFramingError::kConfigurationError];
     return false;
   }
 
   if (!SetUpPipelineOnThread(target_aspect_ratio_x, target_aspect_ratio_y)) {
+    setup_failed_ = true;
     return false;
   }
 
@@ -528,6 +537,10 @@ bool AutoFramingStreamManipulator::OnConfiguredStreamsOnThread(
   TRACE_AUTO_FRAMING(kCameraTraceKeyStreamConfigurations,
                      stream_config->ToJsonString());
 
+  if (setup_failed_) {
+    return false;
+  }
+
   if (VLOG_IS_ON(1)) {
     VLOGF(1) << "Configured streams from HAL:";
     for (auto* s : stream_config->GetStreams()) {
@@ -538,6 +551,7 @@ bool AutoFramingStreamManipulator::OnConfiguredStreamsOnThread(
   if ((full_frame_stream_.usage & kFullFrameBufferUsage) !=
       kFullFrameBufferUsage) {
     LOGF(ERROR) << "Failed to negotiate buffer usage on full frame stream";
+    setup_failed_ = true;
     ++metrics_.errors[AutoFramingError::kConfigurationError];
     return false;
   }
@@ -567,6 +581,7 @@ bool AutoFramingStreamManipulator::OnConfiguredStreamsOnThread(
     if ((still_yuv_stream_->usage & kStillYuvBufferUsage) !=
         kStillYuvBufferUsage) {
       LOGF(ERROR) << "Failed to negotiate buffer usage on still YUV stream";
+      setup_failed_ = true;
       ++metrics_.errors[AutoFramingError::kConfigurationError];
       return false;
     }
@@ -583,6 +598,7 @@ bool AutoFramingStreamManipulator::OnConfiguredStreamsOnThread(
 
   if (!stream_config->SetStreams(client_streams_)) {
     LOGF(ERROR) << "Failed to recover stream config";
+    setup_failed_ = true;
     ++metrics_.errors[AutoFramingError::kConfigurationError];
     return false;
   }
@@ -610,6 +626,10 @@ bool AutoFramingStreamManipulator::ProcessCaptureRequestOnThread(
     Camera3CaptureDescriptor* request) {
   DCHECK(gpu_resources_->gpu_task_runner()->BelongsToCurrentThread());
   TRACE_AUTO_FRAMING(kCameraTraceKeyFrameNumber, request->frame_number());
+
+  if (setup_failed_) {
+    return false;
+  }
 
   if (VLOG_IS_ON(2)) {
     VLOGFID(2, request->frame_number())
@@ -710,6 +730,10 @@ bool AutoFramingStreamManipulator::ProcessCaptureResultOnThread(
     Camera3CaptureDescriptor* result) {
   DCHECK(gpu_resources_->gpu_task_runner()->BelongsToCurrentThread());
   TRACE_AUTO_FRAMING(kCameraTraceKeyFrameNumber, result->frame_number());
+
+  if (setup_failed_) {
+    return false;
+  }
 
   if (VLOG_IS_ON(2)) {
     VLOGFID(2, result->frame_number()) << "Result stream buffers from HAL:";
