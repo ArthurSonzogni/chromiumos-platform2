@@ -27,7 +27,7 @@ class TestObserver : public DisplayWatcherObserver {
   TestObserver(const TestObserver&) = delete;
   TestObserver& operator=(const TestObserver&) = delete;
 
-  virtual ~TestObserver() {}
+  ~TestObserver() override {}
 
   int num_display_changes() const { return num_display_changes_; }
 
