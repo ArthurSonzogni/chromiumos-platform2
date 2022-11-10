@@ -16,13 +16,12 @@ constexpr char kCrosConfigFPBoard[] = "board";
 constexpr char kCrosConfigFPLocation[] = "sensor-location";
 
 // Since /fingerprint/sensor-location is an optional field, the only information
-// that is relevant to the updater is if fingerprint is explicitly not
-// supported.
-bool FingerprintUnsupported(brillo::CrosConfigInterface* cros_config) {
+// that is relevant to the updater is if fingerprint is explicitly supported.
+bool FingerprintSupported(brillo::CrosConfigInterface* cros_config) {
   std::string fingerprint_location;
   if (cros_config->GetString(kCrosConfigFPPath, kCrosConfigFPLocation,
                              &fingerprint_location)) {
-    if (fingerprint_location == "none") {
+    if (fingerprint_location != "none") {
       return true;
     }
   }

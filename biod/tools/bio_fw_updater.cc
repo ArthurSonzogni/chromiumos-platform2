@@ -115,7 +115,7 @@ int main(int argc, char* argv[]) {
 
   // Check if model supports fingerprint
   brillo::CrosConfig cros_config;
-  if (biod::FingerprintUnsupported(&cros_config)) {
+  if (!biod::FingerprintSupported(&cros_config)) {
     LOG(INFO) << "Fingerprint is not supported on this model, exiting.";
     return EXIT_SUCCESS;
   }

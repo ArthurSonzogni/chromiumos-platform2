@@ -9,24 +9,24 @@
 
 namespace biod {
 
-TEST(FingerprintUnsupportedTest, FingerprintLocationUnset) {
+TEST(FingerprintSupportedTest, FingerprintLocationUnset) {
   // Given a device that does not indicate fingerprint sensor location
   brillo::FakeCrosConfig cros_config;
-  // expect FingerprintUnsupported to report false.
-  EXPECT_FALSE(FingerprintUnsupported(&cros_config));
+  // expect FingerprintSupported to report false.
+  EXPECT_FALSE(FingerprintSupported(&cros_config));
 }
 
-TEST(FingerprintUnsupportedTest, FingerprintLocationSet) {
+TEST(FingerprintSupportedTest, FingerprintLocationSet) {
   brillo::FakeCrosConfig cros_config;
   cros_config.SetString(kCrosConfigFPPath, kCrosConfigFPLocation,
                         "power-button-top-left");
-  EXPECT_FALSE(FingerprintUnsupported(&cros_config));
+  EXPECT_TRUE(FingerprintSupported(&cros_config));
 }
 
-TEST(FingerprintUnsupportedTest, FingerprintLocationSetNone) {
+TEST(FingerprintSupportedTest, FingerprintLocationSetNone) {
   brillo::FakeCrosConfig cros_config;
   cros_config.SetString(kCrosConfigFPPath, kCrosConfigFPLocation, "none");
-  EXPECT_TRUE(FingerprintUnsupported(&cros_config));
+  EXPECT_FALSE(FingerprintSupported(&cros_config));
 }
 
 }  // namespace biod

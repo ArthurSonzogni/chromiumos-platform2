@@ -159,6 +159,7 @@ if (use.test) {
   }
   executable("biod_test_runner") {
     sources = [
+      "biod_config_test.cc",
       "biod_crypto_test.cc",
       "biod_metrics_test.cc",
       "biod_storage_test.cc",

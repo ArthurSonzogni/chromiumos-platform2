@@ -32,9 +32,9 @@ static constexpr base::TimeDelta kTimeout = base::Seconds(30);
 
 constexpr char kHelpMessage[] = "bio_wash resets the SBP.";
 
-bool IsFingerprintUnsupported() {
+bool IsFingerprintSupported() {
   brillo::CrosConfig cros_config;
-  return biod::FingerprintUnsupported(&cros_config);
+  return biod::FingerprintSupported(&cros_config);
 }
 
 int DoBioWash(const bool factory_init = false) {
@@ -88,7 +88,7 @@ int main(int argc, char* argv[]) {
   biod::LogVersion();
 
   // Check if model supports fingerprint
-  if (!FLAGS_force && IsFingerprintUnsupported()) {
+  if (!FLAGS_force && !IsFingerprintSupported()) {
     LOG(INFO) << "Fingerprint is not supported on this model, exiting.";
     return EXIT_SUCCESS;
   }

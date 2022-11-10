@@ -22,15 +22,15 @@ constexpr char kFpBoardNocturne[] = "nocturne_fp";
 constexpr char kFpBoardBloonchipper[] = "bloonchipper";
 
 /**
- * @brief Deduce if fingerprint is explicitly not supported.
+ * @brief Deduce if fingerprint is explicitly supported.
  *
- * This will only register as unsupported if cros_config explicitly
- * indicates that fingerprint is not supported on the model.
+ * This will only register as supported if cros_config explicitly
+ * indicates that fingerprint is supported on the model.
  *
- * @return true if fingerprint is not supported on this platform,
- *         false if fingerprint may be supported on this platform
+ * @return true if fingerprint is supported on this platform,
+ *         false if fingerprint may not be supported on this platform
  */
-bool FingerprintUnsupported(brillo::CrosConfigInterface* cros_config);
+bool FingerprintSupported(brillo::CrosConfigInterface* cros_config);
 
 /**
  * @brief Fetch the fingerprint board name (dartmonkey, bloonchipper, etc).
