@@ -82,8 +82,6 @@ class AuthBlockUtilityImpl final : public AuthBlockUtility {
       AuthBlockState& out_state,
       KeyBlobs& out_key_blobs) const override;
 
-  // Creates KeyBlobs and AuthBlockState for the given credentials and returns
-  // through the asynchronous create_callback.
   bool CreateKeyBlobsWithAuthBlockAsync(
       AuthBlockType auth_block_type,
       const AuthInput& auth_input,
@@ -95,8 +93,6 @@ class AuthBlockUtilityImpl final : public AuthBlockUtility {
       const AuthBlockState& state,
       KeyBlobs& out_key_blobs) const override;
 
-  // Creates KeyBlobs and AuthBlockState for the given credentials and returns
-  // through the asynchronous derive_callback.
   bool DeriveKeyBlobsWithAuthBlockAsync(
       AuthBlockType auth_block_type,
       const AuthInput& auth_input,
@@ -108,13 +104,9 @@ class AuthBlockUtilityImpl final : public AuthBlockUtility {
       const bool is_recovery,
       const bool is_challenge_credential) const override;
 
-  // This function returns the AuthBlock type for
-  // AuthBlock::Derive() based on AutBlockState.
   AuthBlockType GetAuthBlockTypeFromState(
       const AuthBlockState& state) const override;
 
-  // Returns the set of supported AuthIntents, determined from the PinWeaver
-  // AuthBlockState if it is available.
   base::flat_set<AuthIntent> GetSupportedIntentsFromState(
       const AuthBlockState& auth_block_state) const override;
 
@@ -144,17 +136,14 @@ class AuthBlockUtilityImpl final : public AuthBlockUtility {
 
   bool IsChallengeCredentialReady(const AuthInput& auth_input) const override;
 
- private:
-  // This helper function serves as a factory method to return the authblock
-  // used in authentication.
+  // Factory functions for constructing synchronous and asynchronous auth blocks
+  // of a given type.
   CryptoStatusOr<std::unique_ptr<SyncAuthBlock>> GetAuthBlockWithType(
       const AuthBlockType& auth_block_type) const;
-
-  // This helper function returns an authblock with asynchronous create and
-  // derive.
   CryptoStatusOr<std::unique_ptr<AuthBlock>> GetAsyncAuthBlockWithType(
       const AuthBlockType& auth_block_type, const AuthInput& auth_input);
 
+ private:
   // Non-owned object used for the keyset management operations. Must be alive
   // for the entire lifecycle of the class.
   KeysetManagement* const keyset_management_;
@@ -180,15 +169,6 @@ class AuthBlockUtilityImpl final : public AuthBlockUtility {
   // Fingerprint service, used by operations that need to interact with
   // fingerprint sensors.
   std::unique_ptr<FingerprintAuthBlockService> fp_service_;
-
-  friend class AuthBlockUtilityImplTest;
-  FRIEND_TEST(AuthBlockUtilityImplTest, GetAsyncAuthBlockWithType);
-  FRIEND_TEST(AuthBlockUtilityImplTest, GetAsyncAuthBlockWithTypeFail);
-
-  // TODO(b/246576446): remove the following two lines once AuthBlockUtility
-  // has the functions to set up fingerprint service state.
-  FRIEND_TEST(AuthBlockUtilityImplTest, VerifyFingerprintSuccess);
-  FRIEND_TEST(AuthBlockUtilityImplTest, VerifyFingerprintFailure);
 };
 
 }  // namespace cryptohome
