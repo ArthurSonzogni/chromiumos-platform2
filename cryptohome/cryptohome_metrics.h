@@ -426,17 +426,6 @@ enum class OOPMountCleanupResult {
   kMaxValue = kFailedToKill
 };
 
-// List of generic results of attestation-related operations. These entries
-// should not be renumbered and numeric values should never be reused.
-// These values are persisted to logs. Entries should not be renumbered and
-// numeric values should never be reused.
-enum class AttestationOpsStatus {
-  kSuccess = 0,
-  kFailure = 1,
-  kInvalidPcr0Value = 2,
-  kMaxValue
-};
-
 // List of possible results from migrating the files at ~/MyFiles to
 // ~/MyFiles/Downloads. These values are persisted to logs. Entries should not
 // be renumbered and numeric values should never be reused.
@@ -498,13 +487,6 @@ enum class LEReplayError {
   kRemoveInsertedCredentialsError = 4,
   kMaxValue,
 };
-
-// Attestation-related operations. Those are suffixes of the histogram
-// kAttestationStatusHistogramPrefix defined in the .cc file.
-inline constexpr char kAttestationDecryptDatabase[] = "DecryptDatabase";
-inline constexpr char kAttestationMigrateDatabase[] = "MigrateDatabase";
-inline constexpr char kAttestationPrepareForEnrollment[] =
-    "PrepareForEnrollment";
 
 // Various counts for ReportVaultKeysetMetrics.
 struct VaultKeysetMetrics {
@@ -765,12 +747,6 @@ void ReportOOPMountOperationResult(OOPMountOperationResult result);
 
 // Reports the result of an out-of-process cleanup operation.
 void ReportOOPMountCleanupResult(OOPMountCleanupResult result);
-
-// Reports the result of attestation-related operations. |operation| should be
-// one of the suffixes of the histogram kAttestationStatusHistogramPrefix listed
-// above.
-void ReportAttestationOpsStatus(const std::string& operation,
-                                AttestationOpsStatus status);
 
 // Reports the result of an InvalidateDirCryptoKey operation.
 void ReportInvalidateDirCryptoKeyResult(bool result);

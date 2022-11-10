@@ -214,8 +214,6 @@ static_assert(
 constexpr char kCryptohomeDeprecatedApiHistogramName[] =
     "Cryptohome.DeprecatedApiCalled";
 
-constexpr char kAttestationStatusHistogramPrefix[] = "Hwsec.Attestation.Status";
-
 // Set to true to disable CryptohomeError related reporting, see
 // DisableErrorMetricsReporting().
 bool g_disable_error_metrics = false;
@@ -733,18 +731,6 @@ void ReportOOPMountCleanupResult(OOPMountCleanupResult result) {
   g_metrics->SendEnumToUMA(kOOPMountCleanupResultHistogram,
                            static_cast<int>(result),
                            static_cast<int>(max_event));
-}
-
-void ReportAttestationOpsStatus(const std::string& operation,
-                                AttestationOpsStatus status) {
-  if (!g_metrics) {
-    return;
-  }
-
-  const std::string histogram =
-      std::string(kAttestationStatusHistogramPrefix) + "." + operation;
-  g_metrics->SendEnumToUMA(histogram, static_cast<int>(status),
-                           static_cast<int>(AttestationOpsStatus::kMaxValue));
 }
 
 void ReportPrepareForRemovalResult(AuthBlockType auth_block_type,
