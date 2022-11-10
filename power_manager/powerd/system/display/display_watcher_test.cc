@@ -23,11 +23,11 @@ namespace {
 // Stub implementation of DisplayWatcherObserver.
 class TestObserver : public DisplayWatcherObserver {
  public:
-  TestObserver() {}
+  TestObserver() = default;
   TestObserver(const TestObserver&) = delete;
   TestObserver& operator=(const TestObserver&) = delete;
 
-  ~TestObserver() override {}
+  ~TestObserver() override = default;
 
   int num_display_changes() const { return num_display_changes_; }
 
@@ -51,7 +51,7 @@ class DisplayWatcherTest : public testing::Test {
     CHECK(device_dir_.CreateUniqueTempDir());
     watcher_.set_i2c_dev_path_for_testing(device_dir_.GetPath());
   }
-  ~DisplayWatcherTest() override {}
+  ~DisplayWatcherTest() override = default;
 
  protected:
   // Creates a directory named |device_name| in |device_dir_| and adds a symlink

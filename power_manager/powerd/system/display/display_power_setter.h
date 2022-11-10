@@ -21,12 +21,12 @@ class DBusWrapperInterface;
 // Interface for turning displays on and off.
 class DisplayPowerSetterInterface {
  public:
-  DisplayPowerSetterInterface() {}
+  DisplayPowerSetterInterface() = default;
   DisplayPowerSetterInterface(const DisplayPowerSetterInterface&) = delete;
   DisplayPowerSetterInterface& operator=(const DisplayPowerSetterInterface&) =
       delete;
 
-  virtual ~DisplayPowerSetterInterface() {}
+  virtual ~DisplayPowerSetterInterface() = default;
 
   // Configures displays to use |state| after |delay|. If another change has
   // already been scheduled, it will be aborted. If |delay| is zero, the change
@@ -46,11 +46,11 @@ class DisplayPowerSetterInterface {
 // DBusWrapperInterface.
 class DisplayPowerSetter : public DisplayPowerSetterInterface {
  public:
-  DisplayPowerSetter();
+  DisplayPowerSetter() = default;
   DisplayPowerSetter(const DisplayPowerSetter&) = delete;
   DisplayPowerSetter& operator=(const DisplayPowerSetter&) = delete;
 
-  ~DisplayPowerSetter() override;
+  ~DisplayPowerSetter() override = default;
 
   // Ownership of |dbus_wrapper| remains with the caller.
   void Init(DBusWrapperInterface* dbus_wrapper);

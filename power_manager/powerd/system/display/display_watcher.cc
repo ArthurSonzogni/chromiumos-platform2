@@ -56,8 +56,6 @@ const char DisplayWatcher::kDrmStatusFile[] = "status";
 const char DisplayWatcher::kDrmStatusConnected[] = "connected";
 const char DisplayWatcher::kDrmStatusUnknown[] = "unknown";
 
-DisplayWatcher::DisplayWatcher() {}
-
 DisplayWatcher::~DisplayWatcher() {
   if (udev_) {
     udev_->RemoveSubsystemObserver(kI2CUdevSubsystem, this);

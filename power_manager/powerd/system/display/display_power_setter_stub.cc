@@ -6,10 +6,6 @@
 
 namespace power_manager::system {
 
-DisplayPowerSetterStub::DisplayPowerSetterStub() {}
-
-DisplayPowerSetterStub::~DisplayPowerSetterStub() {}
-
 void DisplayPowerSetterStub::SetDisplayPower(chromeos::DisplayPowerState state,
                                              base::TimeDelta delay) {
   state_ = state;

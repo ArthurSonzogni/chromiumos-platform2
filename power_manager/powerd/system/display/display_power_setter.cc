@@ -39,10 +39,6 @@ std::string DisplayPowerStateToString(chromeos::DisplayPowerState state) {
 
 }  // namespace
 
-DisplayPowerSetter::DisplayPowerSetter() {}
-
-DisplayPowerSetter::~DisplayPowerSetter() {}
-
 void DisplayPowerSetter::Init(DBusWrapperInterface* dbus_wrapper) {
   DCHECK(dbus_wrapper);
   dbus_wrapper_ = dbus_wrapper;

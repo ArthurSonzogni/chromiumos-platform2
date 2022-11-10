@@ -122,7 +122,7 @@ class ExternalDisplay {
   // communicate with devices.
   class Delegate {
    public:
-    virtual ~Delegate() {}
+    virtual ~Delegate() = default;
 
     // Returns a name describing the I2C bus represented by this object.
     virtual std::string GetName() const = 0;
@@ -181,7 +181,7 @@ class ExternalDisplay {
     TestApi(const TestApi&) = delete;
     TestApi& operator=(const TestApi&) = delete;
 
-    ~TestApi();
+    ~TestApi() = default;
 
     // Advances |display_|'s clock by |interval|.
     void AdvanceTime(base::TimeDelta interval);
@@ -201,7 +201,7 @@ class ExternalDisplay {
   ExternalDisplay(const ExternalDisplay&) = delete;
   ExternalDisplay& operator=(const ExternalDisplay&) = delete;
 
-  ~ExternalDisplay();
+  ~ExternalDisplay() = default;
 
   // Adjusts the display's brightness by |offset_percent|, a linearly-calculated
   // percent in the range [-100.0, 100.0]. Note that the adjustment will happen

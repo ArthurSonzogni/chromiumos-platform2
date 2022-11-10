@@ -33,11 +33,11 @@ std::string Hex(uint8_t byte) {
 // Test implementation of ExternalDisplay::Delegate.
 class TestDelegate : public ExternalDisplay::Delegate {
  public:
-  TestDelegate() {}
+  TestDelegate() = default;
   TestDelegate(const TestDelegate&) = delete;
   TestDelegate& operator=(const TestDelegate&) = delete;
 
-  ~TestDelegate() override {}
+  ~TestDelegate() override = default;
 
   void set_reply_message(const std::vector<uint8_t>& message) {
     reply_message_ = message;
@@ -143,7 +143,7 @@ class ExternalDisplayTest : public testing::Test {
             ExternalDisplay::kDdcGetCommand ^
             ExternalDisplay::kDdcBrightnessIndex);
   }
-  ~ExternalDisplayTest() override {}
+  ~ExternalDisplayTest() override = default;
 
  protected:
   // Updates the checksum byte that's already present at the end of |message|.

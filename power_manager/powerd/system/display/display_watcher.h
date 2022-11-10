@@ -25,7 +25,7 @@ class UdevInterface;
 // Watches for displays being connected or disconnected.
 class DisplayWatcherInterface {
  public:
-  virtual ~DisplayWatcherInterface() {}
+  virtual ~DisplayWatcherInterface() = default;
 
   // Returns the current list of connected displays.
   virtual const std::vector<DisplayInfo>& GetDisplays() const = 0;
@@ -56,7 +56,7 @@ class DisplayWatcher : public DisplayWatcherInterface,
   // unknown.
   static const char kDrmStatusUnknown[];
 
-  DisplayWatcher();
+  DisplayWatcher() = default;
   DisplayWatcher(const DisplayWatcher&) = delete;
   DisplayWatcher& operator=(const DisplayWatcher&) = delete;
 

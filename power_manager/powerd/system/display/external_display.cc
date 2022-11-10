@@ -118,8 +118,6 @@ ExternalDisplay::TestApi::TestApi(ExternalDisplay* display)
       base::TimeTicks::FromInternalValue(1000));  // Arbitrary.
 }
 
-ExternalDisplay::TestApi::~TestApi() {}
-
 void ExternalDisplay::TestApi::AdvanceTime(base::TimeDelta interval) {
   display_->clock_.set_current_time_for_testing(
       display_->clock_.GetCurrentTime() + interval);
@@ -141,8 +139,6 @@ bool ExternalDisplay::TestApi::TriggerTimeout() {
 
 ExternalDisplay::ExternalDisplay(std::unique_ptr<Delegate> delegate)
     : delegate_(std::move(delegate)) {}
-
-ExternalDisplay::~ExternalDisplay() {}
 
 void ExternalDisplay::AdjustBrightnessByPercent(double percent_offset) {
   pending_brightness_adjustment_percent_ += percent_offset;

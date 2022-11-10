@@ -17,11 +17,11 @@ namespace power_manager::system {
 // keeps track of the most-recently-requested change.
 class DisplayPowerSetterStub : public DisplayPowerSetterInterface {
  public:
-  DisplayPowerSetterStub();
+  DisplayPowerSetterStub() = default;
   DisplayPowerSetterStub(const DisplayPowerSetterStub&) = delete;
   DisplayPowerSetterStub& operator=(const DisplayPowerSetterStub&) = delete;
 
-  ~DisplayPowerSetterStub() override;
+  ~DisplayPowerSetterStub() override = default;
 
   chromeos::DisplayPowerState state() const { return state_; }
   base::TimeDelta delay() const { return delay_; }

@@ -9,10 +9,6 @@
 
 namespace power_manager::system {
 
-DisplayWatcherStub::DisplayWatcherStub() {}
-
-DisplayWatcherStub::~DisplayWatcherStub() {}
-
 const std::vector<DisplayInfo>& DisplayWatcherStub::GetDisplays() const {
   return displays_;
 }
