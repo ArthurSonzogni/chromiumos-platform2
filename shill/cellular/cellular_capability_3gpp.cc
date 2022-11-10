@@ -230,9 +230,9 @@ std::string MaskApnValue(const Stringmap& apn_info, const std::string& value) {
   // modem or the MODB.
   bool print_value =
       SLOG_IS_ON(Cellular, 3) || value.empty() ||
-      (base::Contains(apn_info, cellular::kApnSource) &&
-       (apn_info.at(cellular::kApnSource) == cellular::kApnSourceMoDb ||
-        apn_info.at(cellular::kApnSource) == cellular::kApnSourceModem));
+      (base::Contains(apn_info, kApnSourceProperty) &&
+       (apn_info.at(kApnSourceProperty) == cellular::kApnSourceMoDb ||
+        apn_info.at(kApnSourceProperty) == cellular::kApnSourceModem));
   return print_value ? value : "*****";
 }
 
@@ -1894,9 +1894,8 @@ void CellularCapability3gpp::OnProfilesChanged(const Profiles& profiles) {
   });
 
   if (attach_apn_try_list_.size() > 0) {
-    if (base::Contains(attach_apn_try_list_.front(), cellular::kApnSource) &&
-        attach_apn_try_list_.front().at(cellular::kApnSource) ==
-            cellular::kApnSourceUi) {
+    if (base::Contains(attach_apn_try_list_.front(), kApnSourceProperty) &&
+        attach_apn_try_list_.front().at(kApnSourceProperty) == kApnSourceUi) {
       SLOG(this, 2) << "Using user entered Attach APN, skipping round robin";
       // Only keep the user entered Attach APN.
       while (attach_apn_try_list_.size() > 1)

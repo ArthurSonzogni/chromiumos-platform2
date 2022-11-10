@@ -49,8 +49,7 @@ TEST(ApnListTest, AddApn) {
                ApnList::JoinApnTypes({"DEFAULT", "IA"}).c_str());
   EXPECT_STREQ(apn->at(kApnUsernameProperty).c_str(), "user1");
   EXPECT_STREQ(apn->at(kApnPasswordProperty).c_str(), "pass1");
-  EXPECT_STREQ(apn->at(cellular::kApnSource).c_str(),
-               cellular::kApnSourceModem);
+  EXPECT_STREQ(apn->at(kApnSourceProperty).c_str(), cellular::kApnSourceModem);
 
   apn = &apns.at(1);
   EXPECT_STREQ(apn->at(kApnProperty).c_str(), "apn2");
@@ -59,8 +58,7 @@ TEST(ApnListTest, AddApn) {
   EXPECT_STREQ(apn->at(kApnTypesProperty).c_str(), "DEFAULT");
   EXPECT_STREQ(apn->at(kApnUsernameProperty).c_str(), "user2");
   EXPECT_STREQ(apn->at(kApnPasswordProperty).c_str(), "pass2");
-  EXPECT_STREQ(apn->at(cellular::kApnSource).c_str(),
-               cellular::kApnSourceModem);
+  EXPECT_STREQ(apn->at(kApnSourceProperty).c_str(), cellular::kApnSourceModem);
 
   std::vector<MobileOperatorInfo::MobileAPN> mobile_apns2;
   mobile_apns2.push_back(mobile_apn1);
@@ -77,7 +75,7 @@ TEST(ApnListTest, AddApn) {
                ApnList::JoinApnTypes({"DEFAULT", "IA"}).c_str());
   EXPECT_STREQ(apn->at(kApnUsernameProperty).c_str(), "user1");
   EXPECT_STREQ(apn->at(kApnPasswordProperty).c_str(), "pass1");
-  EXPECT_STREQ(apn->at(cellular::kApnSource).c_str(), cellular::kApnSourceMoDb);
+  EXPECT_STREQ(apn->at(kApnSourceProperty).c_str(), cellular::kApnSourceMoDb);
 }
 
 }  // namespace shill

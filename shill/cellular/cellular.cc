@@ -2097,7 +2097,7 @@ void Cellular::OnProfilesChanged() {
 bool Cellular::CompareApns(const Stringmap& apn1, const Stringmap& apn2) const {
   static const std::string always_ignore_keys[] = {
       cellular::kApnVersionProperty, kApnNameProperty, kApnLanguageProperty,
-      cellular::kApnSource};
+      kApnSourceProperty};
   std::set<std::string> ignore_keys{std::begin(always_ignore_keys),
                                     std::end(always_ignore_keys)};
 
@@ -2128,7 +2128,7 @@ std::deque<Stringmap> Cellular::BuildApnTryList() const {
     last_good_apn_info = service_->GetLastGoodApn();
     if (custom_apn_info) {
       apn_try_list.push_back(*custom_apn_info);
-      apn_try_list.back()[cellular::kApnSource] = cellular::kApnSourceUi;
+      apn_try_list.back()[kApnSourceProperty] = kApnSourceUi;
       SLOG(this, 3) << __func__ << " Adding User Specified APN:"
                     << GetStringmapValue(*custom_apn_info, kApnProperty)
                     << " Is attach:" << ApnList::IsAttachApn(*custom_apn_info);
@@ -2141,11 +2141,11 @@ std::deque<Stringmap> Cellular::BuildApnTryList() const {
 
   // Ensure all Modem APNs are added before MODB APNs.
   for (auto apn : apn_list_) {
-    DCHECK(base::Contains(apn, cellular::kApnSource));
+    DCHECK(base::Contains(apn, kApnSourceProperty));
     // Verify all APNs are either from the Modem or MODB.
-    DCHECK(apn[cellular::kApnSource] == cellular::kApnSourceModem ||
-           apn[cellular::kApnSource] == cellular::kApnSourceMoDb);
-    if (apn[cellular::kApnSource] != cellular::kApnSourceModem)
+    DCHECK(apn[kApnSourceProperty] == cellular::kApnSourceModem ||
+           apn[kApnSourceProperty] == cellular::kApnSourceMoDb);
+    if (apn[kApnSourceProperty] != cellular::kApnSourceModem)
       continue;
     apn_try_list.push_back(apn);
   }
@@ -2155,7 +2155,7 @@ std::deque<Stringmap> Cellular::BuildApnTryList() const {
     if (custom_apn_info && CompareApns(*custom_apn_info, apn)) {
       // If |custom_apn_info| is not null, it is located at the first position
       // of |apn_try_list|, and we update the APN source for it.
-      apn_try_list[0][cellular::kApnSource] = apn[cellular::kApnSource];
+      apn_try_list[0][kApnSourceProperty] = apn[kApnSourceProperty];
       continue;
     }
 
@@ -2164,7 +2164,7 @@ std::deque<Stringmap> Cellular::BuildApnTryList() const {
     if (is_same_as_last_good_apn)
       add_last_good_apn = false;
 
-    if (apn[cellular::kApnSource] == cellular::kApnSourceMoDb) {
+    if (apn[kApnSourceProperty] == cellular::kApnSourceMoDb) {
       if (is_same_as_last_good_apn) {
         apn_try_list.insert(apn_try_list.begin() + index_of_first_modb_apn,
                             apn);

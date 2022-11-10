@@ -66,10 +66,10 @@ void ApnList::AddApn(const MobileOperatorInfo::MobileAPN& mobile_apn,
       {mobile_apn.apn_types.begin(), mobile_apn.apn_types.end()});
   switch (source) {
     case ApnSource::kModb:
-      props[cellular::kApnSource] = cellular::kApnSourceMoDb;
+      props[kApnSourceProperty] = cellular::kApnSourceMoDb;
       break;
     case ApnSource::kModem:
-      props[cellular::kApnSource] = cellular::kApnSourceModem;
+      props[kApnSourceProperty] = cellular::kApnSourceModem;
       break;
   }
   for (const auto& lname : mobile_apn.operator_name_list) {

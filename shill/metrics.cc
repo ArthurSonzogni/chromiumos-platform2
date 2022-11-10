@@ -962,18 +962,18 @@ void Metrics::NotifyDetailedCellularConnectionResult(
   else if (result.roaming_state == kRoamingStateRoaming)
     roaming = kCellularRoamingStateRoaming;
 
-  DCHECK(base::Contains(result.apn_info, cellular::kApnSource));
-  if (base::Contains(result.apn_info, cellular::kApnSource)) {
-    if (result.apn_info.at(cellular::kApnSource) == cellular::kApnSourceMoDb)
+  DCHECK(base::Contains(result.apn_info, kApnSourceProperty));
+  if (base::Contains(result.apn_info, kApnSourceProperty)) {
+    if (result.apn_info.at(kApnSourceProperty) == cellular::kApnSourceMoDb)
       apn_source = kCellularApnSourceMoDb;
-    else if (result.apn_info.at(cellular::kApnSource) == cellular::kApnSourceUi)
+    else if (result.apn_info.at(kApnSourceProperty) == kApnSourceUi)
       apn_source = kCellularApnSourceUi;
-    else if (result.apn_info.at(cellular::kApnSource) ==
+    else if (result.apn_info.at(kApnSourceProperty) ==
              cellular::kApnSourceModem)
       apn_source = kCellularApnSourceModem;
 
-    if (result.apn_info.at(cellular::kApnSource) == cellular::kApnSourceMoDb ||
-        result.apn_info.at(cellular::kApnSource) == cellular::kApnSourceModem) {
+    if (result.apn_info.at(kApnSourceProperty) == cellular::kApnSourceMoDb ||
+        result.apn_info.at(kApnSourceProperty) == cellular::kApnSourceModem) {
       if (base::Contains(result.apn_info, kApnProperty))
         apn_name = result.apn_info.at(kApnProperty);
       if (base::Contains(result.apn_info, kApnUsernameProperty))

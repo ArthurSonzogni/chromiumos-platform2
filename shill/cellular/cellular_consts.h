@@ -14,11 +14,9 @@ namespace cellular {
 // it by changing the version.
 const char kApnVersionProperty[] = "version";
 const int kCurrentApnCacheVersion = 2;
-const char kApnSource[] = "apn_source";
 
 // APN Source.
 const char kApnSourceMoDb[] = "modb";
-const char kApnSourceUi[] = "ui";
 const char kApnSourceModem[] = "modem";
 
 }  // namespace cellular
