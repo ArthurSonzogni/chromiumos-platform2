@@ -5,14 +5,14 @@ authors = ["The ChromiumOS Authors"]
 edition = "2021"
 
 [dependencies]
-anyhow = "=1.0.56"
-dbus = "=0.9.3"
-dbus-crossroads = "=0.5.0"
-dbus-tokio = "=0.7.5"
+anyhow = "1.0.56"
+dbus = "0.9.3"
+dbus-crossroads = "0.5.0"
+dbus-tokio = "0.7.5"
 libchromeos = { path = "../libchromeos-rs" } # provided by ebuild
-protobuf = "=2.24.1"
+protobuf = "2.24.1"
 system_api = { path = "../system_api" } # provided by ebuild
-tokio = { version = "=1.19.2", features = [
+tokio = { version = "1.19.2", features = [
   "macros",
   "rt-multi-thread",
   "signal",
