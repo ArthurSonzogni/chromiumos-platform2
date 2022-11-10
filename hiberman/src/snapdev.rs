@@ -67,13 +67,11 @@ impl Default for UswsuspKeyBlob {
 }
 
 #[repr(C)]
-#[repr(packed)]
 #[derive(Copy, Clone, Default)]
 pub struct UswsuspUserKey {
     meta_size: i64,
     key_len: u32,
     key: [u8; 32],
-    pad: u32,
 }
 
 impl UswsuspUserKey {
