@@ -13,7 +13,6 @@
 #include <base/time/time.h>
 #include <dbus/message.h>
 
-#include "power_manager/common/util.h"
 #include "power_manager/powerd/system/dbus_wrapper.h"
 
 namespace power_manager::system {

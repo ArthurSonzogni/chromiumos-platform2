@@ -15,7 +15,6 @@
 #include <gtest/gtest.h>
 
 #include "power_manager/powerd/system/udev_stub.h"
-#include "power_manager/powerd/system/udev_subsystem_observer.h"
 
 namespace power_manager::system {
 
