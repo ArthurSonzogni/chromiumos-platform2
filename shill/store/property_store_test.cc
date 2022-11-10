@@ -93,6 +93,7 @@ INSTANTIATE_TEST_SUITE_P(PropertyStoreTestInstance,
                                 PropertyStoreTest::kInt32V,
                                 PropertyStoreTest::kStringV,
                                 PropertyStoreTest::kStringmapV,
+                                PropertyStoreTest::kStringmapsV,
                                 PropertyStoreTest::kStringsV,
                                 PropertyStoreTest::kUint16V,
                                 PropertyStoreTest::kUint16sV,
@@ -273,18 +274,6 @@ TEST_F(PropertyStoreTest, ClearPropertyNonexistent) {
   EXPECT_CALL(*this, TestCallback(_)).Times(0);
   EXPECT_FALSE(store.ClearProperty("", &error));
   EXPECT_EQ(Error::kInvalidProperty, error.type());
-}
-
-// Separate from SetPropertyNonexistent, because
-// SetAnyProperty doesn't support Stringmaps.
-TEST_F(PropertyStoreTest, SetStringmapsProperty) {
-  PropertyStore store(base::BindRepeating(&PropertyStoreTest::TestCallback,
-                                          base::Unretained(this)));
-
-  Error error;
-  EXPECT_CALL(*this, TestCallback(_)).Times(0);
-  store.SetAnyProperty("", PropertyStoreTest::kStringmapsV, &error);
-  EXPECT_EQ(Error::kInternalError, error.type());
 }
 
 // KeyValueStoreProperty is only defined for derived types so handle
@@ -499,6 +488,27 @@ TEST_F(PropertyStoreTest, SetAnyProperty) {
   }
   {
     // Register property value.
+    const std::string key = "stringmapsp";
+    Stringmaps value(1);
+    value[0]["noooo"] = "yesss";
+    store.RegisterStringmaps(key, &value);
+
+    // Verify property value.
+    Stringmaps test_value;
+    Error error;
+    EXPECT_TRUE(store.GetStringmapsProperty(key, &test_value, &error));
+    EXPECT_TRUE(value == test_value);
+
+    // Set property using brillo::Any variant type.
+    Stringmaps new_value(1);
+    new_value[0]["yesss"] = "noooo";
+    store.SetAnyProperty(key, brillo::Any(new_value), &error);
+    EXPECT_TRUE(error.IsSuccess());
+    EXPECT_TRUE(store.GetStringmapsProperty(key, &test_value, &error));
+    EXPECT_TRUE(new_value == test_value);
+  }
+  {
+    // Register property value.
     const std::string key = "stringsp";
     Strings value;
     std::string element;
@@ -662,6 +672,7 @@ TEST_F(PropertyStoreTest, SetAndGetProperties) {
   const std::string kStringKey = "stringp";
   const std::string kStringsKey = "stringsp";
   const std::string kStringmapKey = "stringmapp";
+  const std::string kStringmapsKey = "stringmapsp";
   const std::string kUint8Key = "uint8p";
   const std::string kUint16Key = "uint16p";
   const std::string kUint32Key = "uint32p";
@@ -671,6 +682,8 @@ TEST_F(PropertyStoreTest, SetAndGetProperties) {
   std::string string_value = "string";
   Stringmap stringmap_value;
   stringmap_value["noooo"] = "yesss";
+  Stringmaps stringmaps_value(1);
+  stringmaps_value[0]["noooo"] = "yesss";
   Strings strings_value;
   strings_value.push_back("yesss");
   uint8_t uint8_value = 8;
@@ -683,6 +696,7 @@ TEST_F(PropertyStoreTest, SetAndGetProperties) {
   store.RegisterString(kStringKey, &string_value);
   store.RegisterStrings(kStringsKey, &strings_value);
   store.RegisterStringmap(kStringmapKey, &stringmap_value);
+  store.RegisterStringmaps(kStringmapsKey, &stringmaps_value);
   store.RegisterUint8(kUint8Key, &uint8_value);
   store.RegisterUint16(kUint16Key, &uint16_value);
   store.RegisterUint32(kUint32Key, &uint32_value);
@@ -716,6 +730,8 @@ TEST_F(PropertyStoreTest, SetAndGetProperties) {
   std::string new_string_value = "strings";
   Stringmap new_stringmap_value;
   new_stringmap_value["yesss"] = "noooo";
+  Stringmaps new_stringmaps_value(1);
+  new_stringmaps_value[0]["yesss"] = "noooo";
   Strings new_strings_value;
   new_strings_value.push_back("noooo");
   uint8_t new_uint8_value = 9;
@@ -732,6 +748,8 @@ TEST_F(PropertyStoreTest, SetAndGetProperties) {
   dict.insert(std::make_pair(kInt32Key, brillo::Any(new_int32_value)));
   dict.insert(std::make_pair(kStringKey, brillo::Any(new_string_value)));
   dict.insert(std::make_pair(kStringmapKey, brillo::Any(new_stringmap_value)));
+  dict.insert(
+      std::make_pair(kStringmapsKey, brillo::Any(new_stringmaps_value)));
   dict.insert(std::make_pair(kStringsKey, brillo::Any(new_strings_value)));
   dict.insert(std::make_pair(kUint8Key, brillo::Any(new_uint8_value)));
   dict.insert(std::make_pair(kUint16Key, brillo::Any(new_uint16_value)));
@@ -760,6 +778,8 @@ TEST_F(PropertyStoreTest, SetAndGetProperties) {
   EXPECT_EQ(new_string_value, result_dict[kStringKey].Get<std::string>());
   EXPECT_TRUE(new_stringmap_value ==
               result_dict[kStringmapKey].Get<Stringmap>());
+  EXPECT_TRUE(new_stringmaps_value ==
+              result_dict[kStringmapsKey].Get<Stringmaps>());
   EXPECT_TRUE(new_strings_value == result_dict[kStringsKey].Get<Strings>());
   EXPECT_EQ(new_uint8_value, result_dict[kUint8Key].Get<uint8_t>());
   EXPECT_EQ(new_uint16_value, result_dict[kUint16Key].Get<uint16_t>());

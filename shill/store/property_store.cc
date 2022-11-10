@@ -88,9 +88,7 @@ void PropertyStore::SetAnyProperty(const std::string& name,
   } else if (value.IsTypeCompatible<Stringmap>()) {
     SetStringmapProperty(name, value.Get<Stringmap>(), error);
   } else if (value.IsTypeCompatible<Stringmaps>()) {
-    SLOG(1) << " can't yet handle setting type "
-            << value.GetUndecoratedTypeName();
-    error->Populate(Error::kInternalError);
+    SetStringmapsProperty(name, value.Get<Stringmaps>(), error);
   } else if (value.IsTypeCompatible<Strings>()) {
     SetStringsProperty(name, value.Get<Strings>(), error);
   } else if (value.IsTypeCompatible<ByteArray>()) {
