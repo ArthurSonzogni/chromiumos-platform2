@@ -468,6 +468,18 @@ class WiFiService : public Service {
 
   Metrics::WiFiConnectionAttemptInfo ConnectionAttemptInfo() const;
 
+  enum SessionTagExpectedState {
+    kSessionTagExpectedValid,
+    kSessionTagExpectedUnset
+  };
+
+  // Verify that the session tag is in the state we expect it to be: no already
+  // existing tag if we haven't attempted to connect yet, and a valid tag if
+  // we've attempted to connect.
+  // The state of the tag (expected or not) is also sent to UMA.
+  void ValidateTagState(SessionTagExpectedState expected_state,
+                        const char* uma_suffix) const;
+
   uint64_t session_tag() const { return session_tag_; }
 
   // Clock for time-related events.

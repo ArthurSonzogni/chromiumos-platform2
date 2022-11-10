@@ -984,14 +984,38 @@ Metrics::WiFiConnectionAttemptInfo WiFiService::ConnectionAttemptInfo() const {
   return info;
 }
 
-void WiFiService::EmitConnectionAttemptEvent() {
-  Metrics::WiFiSessionTagState tag_state =
+void WiFiService::ValidateTagState(SessionTagExpectedState expected_state,
+                                   const char* uma_suffix) const {
+  Metrics::WiFiSessionTagState uma_tag_state =
       Metrics::kWiFiSessionTagStateExpected;
-  if (session_tag_ != kSessionTagInvalid) {
-    tag_state = Metrics::kWiFiSessionTagStateUnexpected;
-    SLOG(this, kSessionTagMinimumLogVerbosity) << __func__ << ": Found an"
-                                               << " existing session tag.";
+  switch (expected_state) {
+    case kSessionTagExpectedValid:
+      if (session_tag_ == kSessionTagInvalid) {
+        uma_tag_state = Metrics::kWiFiSessionTagStateUnexpected;
+      }
+      break;
+    case kSessionTagExpectedUnset:
+      if (session_tag_ != kSessionTagInvalid) {
+        uma_tag_state = Metrics::kWiFiSessionTagStateUnexpected;
+      }
+      break;
   }
+  if (uma_tag_state != Metrics::kWiFiSessionTagStateExpected) {
+    SLOG(this, kSessionTagMinimumLogVerbosity)
+        << __func__ << ": " << uma_suffix << ": Found an "
+        << (expected_state == kSessionTagExpectedValid ? "invalid" : "existing")
+        << " session tag.";
+  }
+  metrics()->SendEnumToUMA(
+      base::StringPrintf("%s.%s", Metrics::kWiFiSessionTagStateMetricPrefix,
+                         uma_suffix),
+      uma_tag_state, Metrics::kWiFiSessionTagStateMax);
+}
+
+void WiFiService::EmitConnectionAttemptEvent() {
+  ValidateTagState(kSessionTagExpectedUnset,
+                   Metrics::kWiFiSessionTagConnectionAttemptSuffix);
+
   // When we attempt to connect to an AP, we generate a session tag that will be
   // used to mark the structured metrics events that belong to the same session.
   // We use a random number as a tag to guarantee uniqueness of the tag so that
@@ -999,27 +1023,15 @@ void WiFiService::EmitConnectionAttemptEvent() {
   // sessions.
   session_tag_ = base::RandUint64();
   metrics()->NotifyWiFiConnectionAttempt(ConnectionAttemptInfo(), session_tag_);
-  metrics()->SendEnumToUMA(
-      base::StringPrintf("%s.%s", Metrics::kWiFiSessionTagStateMetricPrefix,
-                         Metrics::kWiFiSessionTagConnectionAttemptSuffix),
-      tag_state, Metrics::kWiFiSessionTagStateMax);
 }
 
 void WiFiService::EmitConnectionAttemptResultEvent(
     Service::ConnectFailure failure) {
-  Metrics::WiFiSessionTagState tag_state =
-      Metrics::kWiFiSessionTagStateExpected;
-  if (session_tag_ == kSessionTagInvalid) {
-    tag_state = Metrics::kWiFiSessionTagStateUnexpected;
-    SLOG(this, kSessionTagMinimumLogVerbosity) << __func__ << ": Found an"
-                                               << " invalid session tag.";
-  }
+  ValidateTagState(kSessionTagExpectedValid,
+                   Metrics::kWiFiSessionTagConnectionAttemptResultSuffix);
+
   metrics()->NotifyWiFiConnectionAttemptResult(
       Metrics::ConnectFailureToServiceErrorEnum(failure), session_tag_);
-  metrics()->SendEnumToUMA(
-      base::StringPrintf("%s.%s", Metrics::kWiFiSessionTagStateMetricPrefix,
-                         Metrics::kWiFiSessionTagConnectionAttemptResultSuffix),
-      tag_state, Metrics::kWiFiSessionTagStateMax);
   if (failure != Service::kFailureNone) {
     // If the connection attempt was not successful there won't be a
     // corresponding disconnection event. Reset the session tag.
@@ -1030,18 +1042,10 @@ void WiFiService::EmitConnectionAttemptResultEvent(
 void WiFiService::EmitDisconnectionEvent(
     Metrics::WiFiDisconnectionType type,
     IEEE_80211::WiFiReasonCode disconnect_reason) {
-  Metrics::WiFiSessionTagState tag_state =
-      Metrics::kWiFiSessionTagStateExpected;
-  if (session_tag_ == kSessionTagInvalid) {
-    tag_state = Metrics::kWiFiSessionTagStateUnexpected;
-    SLOG(this, kSessionTagMinimumLogVerbosity) << __func__ << ": Found an"
-                                               << " invalid session tag.";
-  }
+  ValidateTagState(kSessionTagExpectedValid,
+                   Metrics::kWiFiSessionTagDisconnectionSuffix);
+
   metrics()->NotifyWiFiDisconnection(type, disconnect_reason, session_tag_);
-  metrics()->SendEnumToUMA(
-      base::StringPrintf("%s.%s", Metrics::kWiFiSessionTagStateMetricPrefix,
-                         Metrics::kWiFiSessionTagDisconnectionSuffix),
-      tag_state, Metrics::kWiFiSessionTagStateMax);
   // No more events in the session now that we've disconnected, reset the tag.
   session_tag_ = kSessionTagInvalid;
 }
