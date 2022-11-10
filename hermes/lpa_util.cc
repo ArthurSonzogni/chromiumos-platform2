@@ -45,6 +45,7 @@ const std::map<int, const char*>& GetOuterErrorMap() {
       {lpa::core::Lpa::kGetDefaultProfileFromSmdpError,
        "Lpa GetDefaultProfileFromSmdp: "},
       {lpa::core::Lpa::kSendNotificationsError, "Lpa SendNotifications: "},
+      {lpa::core::Lpa::kGetPendingProfilesError, "Lpa GetPendingProfiles: "},
   };
   return err_map;
 }

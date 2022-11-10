@@ -86,6 +86,34 @@
         </tp:docstring>
       </arg>
     </method>
+    <method name="RefreshSmdxProfiles">
+      <tp:docstring>
+        Request Events/Profiles from SM-DX. Will update the Profiles
+        property as needed prior to returning.
+      </tp:docstring>
+      <annotation name="org.chromium.DBus.Method.Kind" value="async" />
+      <arg name="activation_code" type="s" direction="in">
+        <tp:docstring>
+          Root smdx or "" for lpa.ds.gsma.com
+        </tp:docstring>
+      </arg>
+      <arg name="should_not_switch_slot" type="b" direction="in" >
+      <tp:docstring>
+        If set to true, the active slot before and after fetching profiles
+        will be unchanged.
+      </tp:docstring>
+      </arg>
+      <arg name="profiles" type="ao" direction="out">
+        <tp:docstring>
+          Profile object representing the found profiles.
+        </tp:docstring>
+      </arg>
+      <arg name="last_scan_error" type="s" direction="out">
+        <tp:docstring>
+           returned if the SMDX scan encountered a problem at any of the SMDX servers. The property will be similar to the errors returned over DBus during profile installation from an SMDP.
+        </tp:docstring>
+      </arg>
+    </method>
     <method name="SetTestMode">
       <tp:docstring>
         Set/unset test mode. If set to true, the LPA will list test profiles

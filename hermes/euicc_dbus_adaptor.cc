@@ -66,6 +66,17 @@ void EuiccDBusAdaptor::RequestPendingProfiles(
   euicc_->RequestPendingProfiles(std::move(dbus_result), in_root_smds);
 }
 
+void EuiccDBusAdaptor::RefreshSmdxProfiles(
+    std::unique_ptr<DBusResponse<std::vector<dbus::ObjectPath>, std::string>>
+        response,
+    const std::string& activation_code,
+    bool should_not_switch_slot) {
+  DbusResult<std::vector<dbus::ObjectPath>, std::string> dbus_result(
+      std::move(response));
+  euicc_->RefreshSmdxProfiles(std::move(dbus_result), activation_code,
+                              should_not_switch_slot);
+}
+
 void EuiccDBusAdaptor::RequestInstalledProfiles(
     std::unique_ptr<DBusResponse<>> response) {
   DbusResult<> dbus_result(std::move(response));

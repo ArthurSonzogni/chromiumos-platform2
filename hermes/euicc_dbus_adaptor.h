@@ -7,6 +7,7 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "hermes/adaptor_interfaces.h"
 
@@ -40,6 +41,11 @@ class EuiccDBusAdaptor : public EuiccAdaptorInterface,
   // Update the PendingProfiles property.
   void RequestPendingProfiles(std::unique_ptr<DBusResponse<>> response,
                               const std::string& in_root_smds) override;
+  void RefreshSmdxProfiles(
+      std::unique_ptr<DBusResponse<std::vector<dbus::ObjectPath>, std::string>>
+          response,
+      const std::string& activation_code,
+      bool should_not_switch_slot) override;
   void RequestInstalledProfiles(
       std::unique_ptr<DBusResponse<>> response) override;
   void RefreshInstalledProfiles(std::unique_ptr<DBusResponse<>> response,

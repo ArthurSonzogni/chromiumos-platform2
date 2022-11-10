@@ -36,8 +36,8 @@ namespace hermes {
 
 namespace {
 
-const char kDefaultProdRootSmds[] = "lpa.ds.gsma.com";
-const char kDefaultTestRootSmds[] = "testrootsmds.example.com";
+const char kDefaultProdRootSmds[] = "1$lpa.ds.gsma.com$";
+const char kDefaultTestRootSmds[] = "1$testrootsmds.example.com$";
 
 void PrintEuiccEventResult(int err) {
   if (err) {
@@ -390,6 +390,7 @@ void Euicc::OnInstalledProfilesReceived(
                      std::move(dbus_result)));
 }
 
+/* Deprecated in favor of RefreshPendingProfiles */
 void Euicc::RequestPendingProfiles(DbusResult<> dbus_result,
                                    std::string root_smds) {
   LOG(INFO) << __func__;
@@ -409,6 +410,7 @@ void Euicc::RequestPendingProfiles(DbusResult<> dbus_result,
             std::move(get_pending_profiles_from_smds), std::move(dbus_result));
 }
 
+/* Deprecated in favor of RefreshPendingProfiles */
 void Euicc::GetPendingProfilesFromSmds(std::string root_smds,
                                        DbusResult<> dbus_result) {
   auto default_smds =
@@ -423,6 +425,92 @@ void Euicc::GetPendingProfilesFromSmds(std::string root_smds,
       });
 }
 
+void Euicc::RefreshSmdxProfiles(
+    DbusResult<std::vector<dbus::ObjectPath>, std::string> dbus_result,
+    const std::string& activation_code,
+    bool restore_slot) {
+  LOG(INFO) << __func__ << " restore_slot: " << restore_slot;
+  VLOG(2) << "activation code: " << activation_code;
+  if (!context_->lpa()->IsLpaIdle()) {
+    context_->executor()->PostDelayedTask(
+        FROM_HERE,
+        base::BindOnce(&Euicc::RefreshSmdxProfiles, weak_factory_.GetWeakPtr(),
+                       std::move(dbus_result), std::move(activation_code),
+                       restore_slot),
+        kLpaRetryDelay);
+    return;
+  }
+  auto get_pending_profiles_from_smds = base::BindOnce(
+      &Euicc::GetPendingProfilesFromSmdx, weak_factory_.GetWeakPtr(),
+      std::move(activation_code), restore_slot);
+  InitEuicc(InitEuiccStep::CHECK_IF_INITIALIZED,
+            std::move(get_pending_profiles_from_smds), std::move(dbus_result));
+}
+
+void Euicc::GetPendingProfilesFromSmdx(
+    std::string activation_code,
+    bool restore_slot,
+    DbusResult<std::vector<dbus::ObjectPath>, std::string> dbus_result) {
+  auto default_smds =
+      use_test_certs_ ? kDefaultTestRootSmds : kDefaultProdRootSmds;
+  auto smds = activation_code.empty() ? default_smds : activation_code;
+  context_->lpa()->GetPendingProfilesFromSmds(
+      smds, context_->executor(),
+      [dbus_result{std::move(dbus_result)}, restore_slot, this](
+          std::vector<lpa::proto::ProfileInfo>& profile_infos,
+          int error) mutable {
+        OnSmdxProfilesReceived(restore_slot, profile_infos, error,
+                               std::move(dbus_result));
+      });
+}
+
+void Euicc::OnSmdxProfilesReceived(
+    bool restore_slot,
+    const std::vector<lpa::proto::ProfileInfo>& profile_infos,
+    int error,
+    DbusResult<std::vector<dbus::ObjectPath>, std::string> dbus_result) {
+  LOG(INFO) << __func__;
+  auto decoded_error = LpaErrorToBrillo(FROM_HERE, error);
+  std::vector<dbus::ObjectPath> profile_paths;
+  for (const auto& info : profile_infos) {
+    // Do not create a profile if the profile has already been exposed on DBus.
+    if (profiles_.find(info.iccid()) != profiles_.end()) {
+      profile_paths.push_back(profiles_[info.iccid()]->object_path());
+      continue;
+    }
+    auto profile =
+        Profile::Create(info, physical_slot_, slot_info_.eid_,
+                        /*is_pending*/ true,
+                        base::BindRepeating(&Euicc::OnProfileEnabled,
+                                            weak_factory_.GetWeakPtr()));
+    if (profile) {
+      profile_paths.push_back(profile->object_path());
+      profiles_[profile->GetIccid()] = std::move(profile);
+    }
+  }
+  UpdateProfilesProperty();
+  if (decoded_error) {
+    LOG(ERROR) << "Failed to retrieve pending profiles: "
+               << decoded_error->GetCode();
+  }
+  auto last_scan_err = decoded_error ? decoded_error->GetCode() : "";
+  if (!restore_slot) {
+    EndEuiccOpPendingProfiles(std::move(profile_paths), last_scan_err,
+                              std::move(dbus_result));
+    return;
+  }
+  // Restore the active slot and Run end_euicc_op.
+  auto end_euicc_op = base::BindOnce(
+      &Euicc::EndEuiccOpPendingProfiles, weak_factory_.GetWeakPtr(),
+      std::move(profile_paths), std::move(last_scan_err));
+  context_->modem_control()->RestoreActiveSlot(base::BindOnce(
+      &Euicc::RunOnSuccess<std::vector<dbus::ObjectPath>, std::string>,
+      weak_factory_.GetWeakPtr(), EuiccOp::REQUEST_PENDING,
+      std::move(end_euicc_op), std::move(dbus_result)));
+}
+
+// OnPendingProfilesReceived will be deprecated once OnSmdxProfilesReceived is
+// used by Chrome. b/256892838
 void Euicc::OnPendingProfilesReceived(
     const std::vector<lpa::proto::ProfileInfo>& profile_infos,
     int error,
@@ -609,6 +697,14 @@ void Euicc::EndEuiccOp(EuiccOp euicc_op,
 // and callbacks.
 void Euicc::EndEuiccOpNoObject(EuiccOp euicc_op, DbusResult<> dbus_result) {
   EndEuiccOp(euicc_op, std::move(dbus_result));
+}
+
+void Euicc::EndEuiccOpPendingProfiles(
+    std::vector<dbus::ObjectPath> profile_paths,
+    std::string last_scan_err,
+    DbusResult<std::vector<dbus::ObjectPath>, std::string> dbus_result) {
+  EndEuiccOp(EuiccOp::REQUEST_PENDING, std::move(dbus_result),
+             std::move(profile_paths), std::move(last_scan_err));
 }
 
 template <typename... T>

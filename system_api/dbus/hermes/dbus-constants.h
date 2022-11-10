@@ -33,6 +33,7 @@ const char kInstallProfileFromActivationCode[] =
 const char kInstallPendingProfile[] = "InstallPendingProfile";
 const char kRefreshInstalledProfiles[] = "RefreshInstalledProfiles";
 const char kRequestPendingProfiles[] = "RequestPendingProfiles";
+const char kRefreshSmdxProfiles[] = "RefreshSmdxProfiles";
 const char kRequestInstalledProfiles[] = "RequestInstalledProfiles";
 const char kUninstallProfile[] = "UninstallProfile";
 const char kResetMemory[] = "ResetMemory";
