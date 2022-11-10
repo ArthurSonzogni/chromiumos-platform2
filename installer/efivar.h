@@ -24,6 +24,8 @@ class EfiVarInterface {
  public:
   using Bytes = std::unique_ptr<uint8_t, base::FreeDeleter>;
 
+  virtual ~EfiVarInterface() = default;
+
   virtual bool EfiVariablesSupported() = 0;
 
   virtual std::optional<std::string> GetNextVariableName() = 0;

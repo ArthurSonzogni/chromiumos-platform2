@@ -326,19 +326,28 @@ TEST_F(BootOrderTest, Contains) {
 
 class EfiBootManagerTest : public ::testing::Test {
  protected:
-  EfiBootManagerTest()
-      : efi_boot_manager_(efivar_, metrics_, kCrosEfiDefaultDescription) {}
+  void SetUp() override {
+    efi_boot_manager_ = std::make_unique<EfiBootManager>(
+        std::make_unique<EfiVarFake>(), std::make_unique<MockMetrics>(),
+        kCrosEfiDefaultDescription);
+    // We know these casts are safe because we just created the objects.
+    efivar_ = static_cast<EfiVarFake*>(efi_boot_manager_->EfiVar());
+    metrics_ = static_cast<MockMetrics*>(efi_boot_manager_->Metrics());
+  }
 
-  EfiVarFake efivar_;
-  MockMetrics metrics_;
-  EfiBootManager efi_boot_manager_;
+  // Store as a pointer because we can't reassign in SetUp: EfiBootManager has
+  // no copy constructor.
+  std::unique_ptr<EfiBootManager> efi_boot_manager_;
+  // Store pointers to these, which live in efi_boot_manager.
+  EfiVarFake* efivar_;
+  MockMetrics* metrics_;
 };
 
 TEST_F(EfiBootManagerTest, LoadEntry) {
-  efivar_.SetData({{"BootFFFF", VecU8From(kExampleDataQemuDisk,
-                                          sizeof(kExampleDataQemuDisk))}});
+  efivar_->SetData({{"BootFFFF", VecU8From(kExampleDataQemuDisk,
+                                           sizeof(kExampleDataQemuDisk))}});
 
-  auto result = efi_boot_manager_.LoadEntry(EfiBootNumber(0xFFFF));
+  auto result = efi_boot_manager_->LoadEntry(EfiBootNumber(0xFFFF));
 
   ASSERT_TRUE(result.has_value());
   EXPECT_EQ(result->Description(), kExampleDescriptionQemuDisk);
@@ -347,10 +356,10 @@ TEST_F(EfiBootManagerTest, LoadEntry) {
 }
 
 TEST_F(EfiBootManagerTest, LoadNonDiskEntry) {
-  efivar_.SetData({{"BootFFFF", VecU8From(kExampleDataQemuPXE,
-                                          sizeof(kExampleDataQemuPXE))}});
+  efivar_->SetData({{"BootFFFF", VecU8From(kExampleDataQemuPXE,
+                                           sizeof(kExampleDataQemuPXE))}});
 
-  auto result = efi_boot_manager_.LoadEntry(EfiBootNumber(0xFFFF));
+  auto result = efi_boot_manager_->LoadEntry(EfiBootNumber(0xFFFF));
 
   ASSERT_TRUE(result.has_value());
   EXPECT_EQ(result->Description(), kExampleDescriptionQemuPXE);
@@ -360,27 +369,27 @@ TEST_F(EfiBootManagerTest, LoadNonDiskEntry) {
 
 TEST_F(EfiBootManagerTest, LoadEntryFail) {
   // Don't inject anything, so it fails.
-  auto result = efi_boot_manager_.LoadEntry(EfiBootNumber(0xFFFF));
+  auto result = efi_boot_manager_->LoadEntry(EfiBootNumber(0xFFFF));
 
   EXPECT_FALSE(result.has_value());
 }
 
 TEST_F(EfiBootManagerTest, EntryRoundTrip) {
-  efivar_.SetData(
+  efivar_->SetData(
       {{"BootFFFF", VecU8From(kExampleDataLinux, sizeof(kExampleDataLinux))}});
 
-  auto contents = efi_boot_manager_.LoadEntry(EfiBootNumber(0xFFFF));
+  auto contents = efi_boot_manager_->LoadEntry(EfiBootNumber(0xFFFF));
   ASSERT_TRUE(contents.has_value());
 
   // Clear so that we can check what gets written to it.
-  efivar_.data_.clear();
+  efivar_->data_.clear();
 
   EfiVarError error = 0;
-  bool success = efi_boot_manager_.WriteEntry(EfiBootNumber(0xFFFF),
-                                              contents.value(), &error);
+  bool success = efi_boot_manager_->WriteEntry(EfiBootNumber(0xFFFF),
+                                               contents.value(), &error);
   ASSERT_TRUE(success);
   ASSERT_EQ(error, 0);
-  EXPECT_THAT(efivar_.data_,
+  EXPECT_THAT(efivar_->data_,
               Contains(Pair("BootFFFF", VecU8From(kExampleDataLinux,
                                                   sizeof(kExampleDataLinux)))));
 }
@@ -388,19 +397,19 @@ TEST_F(EfiBootManagerTest, EntryRoundTrip) {
 TEST_F(EfiBootManagerTest, NextAvailableBootNum) {
   std::optional<EfiBootNumber> boot_num;
   // Test an empty list.
-  efi_boot_manager_.SetEntries({});
-  boot_num = efi_boot_manager_.NextAvailableBootNum();
+  efi_boot_manager_->SetEntries({});
+  boot_num = efi_boot_manager_->NextAvailableBootNum();
   EXPECT_TRUE(boot_num.has_value());
   EXPECT_EQ(boot_num->Number(), 0);
   // Test that it picks an available number.
-  efi_boot_manager_.SetEntries({BootPair(0, {}, {})});
-  boot_num = efi_boot_manager_.NextAvailableBootNum();
+  efi_boot_manager_->SetEntries({BootPair(0, {}, {})});
+  boot_num = efi_boot_manager_->NextAvailableBootNum();
   EXPECT_TRUE(boot_num.has_value());
   EXPECT_EQ(boot_num->Number(), 1);
   // Test that it picks the lowest available.
-  efi_boot_manager_.SetEntries(
+  efi_boot_manager_->SetEntries(
       {BootPair(0, {}, {}), BootPair(1, {}, {}), BootPair(9, {}, {})});
-  boot_num = efi_boot_manager_.NextAvailableBootNum();
+  boot_num = efi_boot_manager_->NextAvailableBootNum();
   EXPECT_TRUE(boot_num.has_value());
   EXPECT_EQ(boot_num->Number(), 2);
 
@@ -411,8 +420,8 @@ TEST_F(EfiBootManagerTest, NextAvailableBootNum) {
     full.emplace(EfiBootNumber(num), EfiBootEntryContents({}, {}));
   }
 
-  efi_boot_manager_.SetEntries(full);
-  boot_num = efi_boot_manager_.NextAvailableBootNum();
+  efi_boot_manager_->SetEntries(full);
+  boot_num = efi_boot_manager_->NextAvailableBootNum();
   EXPECT_FALSE(boot_num.has_value());
 }
 
@@ -423,21 +432,21 @@ TEST_F(EfiBootManagerTest, FindContentsInBootOrder) {
   std::optional<EfiBootNumber> entry;
 
   // Desired not present in entries
-  efi_boot_manager_.SetBootOrder(
+  efi_boot_manager_->SetBootOrder(
       BootOrderFromExample(kExampleBootOrder123, sizeof(kExampleBootOrder123)));
-  efi_boot_manager_.SetEntries({
+  efi_boot_manager_->SetEntries({
       BootPair(1, kExampleDescriptionQemuDisk,
                VecU8From(kExamplePathQemuDisk, sizeof(kExamplePathQemuDisk))),
       BootPair(2, kExampleDescriptionQemuPXE,
                VecU8From(kExamplePathQemuPXE, sizeof(kExamplePathQemuPXE))),
   });
-  entry = efi_boot_manager_.FindContentsInBootOrder(desired);
+  entry = efi_boot_manager_->FindContentsInBootOrder(desired);
   EXPECT_FALSE(entry.has_value());
 
   // Desired is present in entries, but not boot order
-  efi_boot_manager_.SetBootOrder(
+  efi_boot_manager_->SetBootOrder(
       BootOrderFromExample(kExampleBootOrder123, sizeof(kExampleBootOrder123)));
-  efi_boot_manager_.SetEntries({
+  efi_boot_manager_->SetEntries({
       BootPair(1, kExampleDescriptionQemuDisk,
                VecU8From(kExamplePathQemuDisk, sizeof(kExamplePathQemuDisk))),
       BootPair(2, kExampleDescriptionQemuPXE,
@@ -445,13 +454,13 @@ TEST_F(EfiBootManagerTest, FindContentsInBootOrder) {
       BootPair(4, kExampleDescriptionCros,
                VecU8From(kExamplePathCros, sizeof(kExamplePathCros))),
   });
-  entry = efi_boot_manager_.FindContentsInBootOrder(desired);
+  entry = efi_boot_manager_->FindContentsInBootOrder(desired);
   EXPECT_FALSE(entry.has_value());
 
   // Desired is present in entries and boot order
-  efi_boot_manager_.SetBootOrder(
+  efi_boot_manager_->SetBootOrder(
       BootOrderFromExample(kExampleBootOrder123, sizeof(kExampleBootOrder123)));
-  efi_boot_manager_.SetEntries({
+  efi_boot_manager_->SetEntries({
       BootPair(1, kExampleDescriptionQemuDisk,
                VecU8From(kExamplePathQemuDisk, sizeof(kExamplePathQemuDisk))),
       BootPair(2, kExampleDescriptionQemuPXE,
@@ -461,7 +470,7 @@ TEST_F(EfiBootManagerTest, FindContentsInBootOrder) {
   });
   EfiBootNumber entry_num(3);
 
-  entry = efi_boot_manager_.FindContentsInBootOrder(desired);
+  entry = efi_boot_manager_->FindContentsInBootOrder(desired);
   EXPECT_TRUE(entry.has_value());
   EXPECT_EQ(entry.value().Number(), 3);
 }
@@ -473,17 +482,17 @@ TEST_F(EfiBootManagerTest, FindContents) {
   std::optional<EfiBootNumber> entry;
 
   // Desired not present in entries
-  efi_boot_manager_.SetEntries({
+  efi_boot_manager_->SetEntries({
       BootPair(1, {},
                VecU8From(kExamplePathQemuDisk, sizeof(kExamplePathQemuDisk))),
       BootPair(2, {},
                VecU8From(kExamplePathQemuPXE, sizeof(kExamplePathQemuPXE))),
   });
-  entry = efi_boot_manager_.FindContents(desired);
+  entry = efi_boot_manager_->FindContents(desired);
   EXPECT_FALSE(entry.has_value());
 
   // Desired is present in entries
-  efi_boot_manager_.SetEntries({
+  efi_boot_manager_->SetEntries({
       BootPair(1, kExampleDescriptionQemuDisk,
                VecU8From(kExamplePathQemuDisk, sizeof(kExamplePathQemuDisk))),
       BootPair(2, kExampleDescriptionQemuPXE,
@@ -493,17 +502,17 @@ TEST_F(EfiBootManagerTest, FindContents) {
   });
   EfiBootNumber entry_num(3);
 
-  entry = efi_boot_manager_.FindContents(desired);
+  entry = efi_boot_manager_->FindContents(desired);
   EXPECT_TRUE(entry.has_value());
   EXPECT_EQ(entry.value().Number(), 3);
 }
 
 TEST_F(EfiBootManagerTest, RemoveAllManagedEntries) {
-  efi_boot_manager_.SetBootOrder(
+  efi_boot_manager_->SetBootOrder(
       BootOrderFromExample(kExampleBootOrder123, sizeof(kExampleBootOrder123)));
 
   // Set up to also empty the boot order.
-  efi_boot_manager_.SetEntries({
+  efi_boot_manager_->SetEntries({
       BootPair(0x0001, kCrosEfiDefaultDescription, {}),
       BootPair(0xA000, "Chromium", {}),
       BootPair(0x0002, kCrosEfiDefaultDescription, {}),
@@ -515,7 +524,7 @@ TEST_F(EfiBootManagerTest, RemoveAllManagedEntries) {
   });
 
   // Set these to check for erasure/nonerasure
-  efivar_.SetData({
+  efivar_->SetData({
       {"Boot0001", {}},
       {"Boot0002", {}},
       {"Boot0003", {}},
@@ -526,39 +535,39 @@ TEST_F(EfiBootManagerTest, RemoveAllManagedEntries) {
       {"BootE000", {}},
   });
 
-  efi_boot_manager_.RemoveAllManagedEntries();
+  efi_boot_manager_->RemoveAllManagedEntries();
 
   EXPECT_THAT(
-      efivar_.data_,
+      efivar_->data_,
       UnorderedElementsAre(Key("BootA000"), Key("BootB000"), Key("BootC000"),
                            Key("BootD000"), Key("BootE000")));
 
-  EXPECT_TRUE(efi_boot_manager_.Order().Data().empty());
+  EXPECT_TRUE(efi_boot_manager_->Order().Data().empty());
 }
 
 TEST_F(EfiBootManagerTest, UpdateEfiBootEntries_NoBootEntries) {
-  efivar_.SetData({{"BootOrder", {}}});
+  efivar_->SetData({{"BootOrder", {}}});
   InstallConfig install_config;
 
-  bool success = efi_boot_manager_.UpdateEfiBootEntries(install_config, 64);
+  bool success = efi_boot_manager_->UpdateEfiBootEntries(install_config, 64);
 
   EXPECT_TRUE(success);
-  EXPECT_THAT(efivar_.data_, Contains(Pair("BootOrder", BootOrderData({0}))));
-  EXPECT_THAT(efivar_.data_, Contains(Key("Boot0000")));
+  EXPECT_THAT(efivar_->data_, Contains(Pair("BootOrder", BootOrderData({0}))));
+  EXPECT_THAT(efivar_->data_, Contains(Key("Boot0000")));
 }
 
 TEST_F(EfiBootManagerTest, UpdateEfiBootEntries_NoCrosEntry) {
-  efivar_.SetData({
+  efivar_->SetData({
       {"BootOrder", BootOrderData({0})},
       {"Boot0000", VecU8From(kExampleDataQemuPXE, sizeof(kExampleDataQemuPXE))},
       {"Boot0001", VecU8From(kExampleDataLinux, sizeof(kExampleDataLinux))},
   });
   InstallConfig install_config;
 
-  bool success = efi_boot_manager_.UpdateEfiBootEntries(install_config, 64);
+  bool success = efi_boot_manager_->UpdateEfiBootEntries(install_config, 64);
 
   EXPECT_TRUE(success);
-  EXPECT_THAT(efivar_.data_,
+  EXPECT_THAT(efivar_->data_,
               UnorderedElementsAre(
                   Pair("BootOrder", BootOrderData({2, 0})),
                   Pair("Boot0000", VecU8From(kExampleDataQemuPXE,
@@ -569,7 +578,7 @@ TEST_F(EfiBootManagerTest, UpdateEfiBootEntries_NoCrosEntry) {
 }
 
 TEST_F(EfiBootManagerTest, UpdateEfiBootEntries_CrosEntryNotInBootOrder) {
-  efivar_.SetData({
+  efivar_->SetData({
       {"BootOrder", BootOrderData({1, 0})},
       {"Boot0000", VecU8From(kExampleDataQemuPXE, sizeof(kExampleDataQemuPXE))},
       {"Boot0001", VecU8From(kExampleDataLinux, sizeof(kExampleDataLinux))},
@@ -577,10 +586,10 @@ TEST_F(EfiBootManagerTest, UpdateEfiBootEntries_CrosEntryNotInBootOrder) {
   });
   InstallConfig install_config;
 
-  bool success = efi_boot_manager_.UpdateEfiBootEntries(install_config, 64);
+  bool success = efi_boot_manager_->UpdateEfiBootEntries(install_config, 64);
 
   EXPECT_TRUE(success);
-  EXPECT_THAT(efivar_.data_,
+  EXPECT_THAT(efivar_->data_,
               UnorderedElementsAre(
                   Pair("BootOrder", BootOrderData({2, 1, 0})),
                   Pair("Boot0000", VecU8From(kExampleDataQemuPXE,
@@ -592,7 +601,7 @@ TEST_F(EfiBootManagerTest, UpdateEfiBootEntries_CrosEntryNotInBootOrder) {
 }
 
 TEST_F(EfiBootManagerTest, UpdateEfiBootEntries_CrosInBootOrder) {
-  efivar_.SetData({
+  efivar_->SetData({
       {"BootOrder", BootOrderData({1, 0, 2})},
       {"Boot0000", VecU8From(kExampleDataQemuPXE, sizeof(kExampleDataQemuPXE))},
       {"Boot0001", VecU8From(kExampleDataLinux, sizeof(kExampleDataLinux))},
@@ -600,10 +609,10 @@ TEST_F(EfiBootManagerTest, UpdateEfiBootEntries_CrosInBootOrder) {
   });
   InstallConfig install_config;
 
-  bool success = efi_boot_manager_.UpdateEfiBootEntries(install_config, 64);
+  bool success = efi_boot_manager_->UpdateEfiBootEntries(install_config, 64);
 
   EXPECT_TRUE(success);
-  EXPECT_THAT(efivar_.data_,
+  EXPECT_THAT(efivar_->data_,
               UnorderedElementsAre(
                   Pair("BootOrder", BootOrderData({1, 0, 2})),
                   Pair("Boot0000", VecU8From(kExampleDataQemuPXE,
@@ -615,7 +624,7 @@ TEST_F(EfiBootManagerTest, UpdateEfiBootEntries_CrosInBootOrder) {
 }
 
 TEST_F(EfiBootManagerTest, UpdateEfiBootEntries_ExcessCrosEntries) {
-  efivar_.SetData({
+  efivar_->SetData({
       {"BootOrder", BootOrderData({1, 0, 2})},
       {"Boot0001", VecU8From(kExampleDataCros, sizeof(kExampleDataCros))},
       {"Boot0002", VecU8From(kExampleDataQemuPXE, sizeof(kExampleDataQemuPXE))},
@@ -625,10 +634,10 @@ TEST_F(EfiBootManagerTest, UpdateEfiBootEntries_ExcessCrosEntries) {
   });
   InstallConfig install_config;
 
-  bool success = efi_boot_manager_.UpdateEfiBootEntries(install_config, 64);
+  bool success = efi_boot_manager_->UpdateEfiBootEntries(install_config, 64);
 
   EXPECT_TRUE(success);
-  EXPECT_THAT(efivar_.data_,
+  EXPECT_THAT(efivar_->data_,
               UnorderedElementsAre(
                   Pair("BootOrder", BootOrderData({1, 0, 2})),
                   Pair("Boot0002", VecU8From(kExampleDataQemuPXE,
@@ -640,39 +649,39 @@ TEST_F(EfiBootManagerTest, UpdateEfiBootEntries_ExcessCrosEntries) {
 }
 
 TEST_F(EfiBootManagerTest, UpdateEfiBootEntries_WriteFail) {
-  efivar_.SetData({{"BootOrder", {}}});
-  efivar_.set_variable_result_ = {EPERM};
+  efivar_->SetData({{"BootOrder", {}}});
+  efivar_->set_variable_result_ = {EPERM};
   InstallConfig install_config;
 
-  bool success = efi_boot_manager_.UpdateEfiBootEntries(install_config, 64);
+  bool success = efi_boot_manager_->UpdateEfiBootEntries(install_config, 64);
 
   EXPECT_FALSE(success);
-  EXPECT_THAT(efivar_.data_,
+  EXPECT_THAT(efivar_->data_,
               UnorderedElementsAre(Pair("BootOrder", BootOrderData({}))));
 }
 
 TEST_F(EfiBootManagerTest, UpdateEfiBootEntries_AcceptableWriteFail) {
-  efivar_.SetData({{"BootOrder", {}}});
+  efivar_->SetData({{"BootOrder", {}}});
   // ENOSPC is an acceptable fail, says b/226935367.
-  efivar_.set_variable_result_ = {ENOSPC};
+  efivar_->set_variable_result_ = {ENOSPC};
   InstallConfig install_config;
 
-  bool success = efi_boot_manager_.UpdateEfiBootEntries(install_config, 64);
+  bool success = efi_boot_manager_->UpdateEfiBootEntries(install_config, 64);
 
   EXPECT_TRUE(success);
-  EXPECT_THAT(efivar_.data_,
+  EXPECT_THAT(efivar_->data_,
               UnorderedElementsAre(Pair("BootOrder", BootOrderData({}))));
 }
 
 TEST_F(EfiBootManagerTest, UpdateEfiBootEntries_BootWriteFail) {
-  efivar_.SetData({{"BootOrder", {}}});
-  efivar_.set_variable_result_ = {std::nullopt, EPERM};
+  efivar_->SetData({{"BootOrder", {}}});
+  efivar_->set_variable_result_ = {std::nullopt, EPERM};
   InstallConfig install_config;
 
-  bool success = efi_boot_manager_.UpdateEfiBootEntries(install_config, 64);
+  bool success = efi_boot_manager_->UpdateEfiBootEntries(install_config, 64);
 
   EXPECT_FALSE(success);
-  EXPECT_THAT(efivar_.data_,
+  EXPECT_THAT(efivar_->data_,
               UnorderedElementsAre(
                   Pair("BootOrder", BootOrderData({})),
                   Pair("Boot0000",
@@ -680,15 +689,15 @@ TEST_F(EfiBootManagerTest, UpdateEfiBootEntries_BootWriteFail) {
 }
 
 TEST_F(EfiBootManagerTest, UpdateEfiBootEntries_AcceptableBootWriteFail) {
-  efivar_.SetData({{"BootOrder", {}}});
+  efivar_->SetData({{"BootOrder", {}}});
   // ENOSPC is an acceptable fail, says b/226935367.
-  efivar_.set_variable_result_ = {std::nullopt, ENOSPC};
+  efivar_->set_variable_result_ = {std::nullopt, ENOSPC};
   InstallConfig install_config;
 
-  bool success = efi_boot_manager_.UpdateEfiBootEntries(install_config, 64);
+  bool success = efi_boot_manager_->UpdateEfiBootEntries(install_config, 64);
 
   EXPECT_TRUE(success);
-  EXPECT_THAT(efivar_.data_,
+  EXPECT_THAT(efivar_->data_,
               UnorderedElementsAre(
                   Pair("BootOrder", BootOrderData({})),
                   Pair("Boot0000",
@@ -696,7 +705,7 @@ TEST_F(EfiBootManagerTest, UpdateEfiBootEntries_AcceptableBootWriteFail) {
 }
 
 TEST_F(EfiBootManagerTest, UpdateEfiBootEntries_EntryCountMetrics) {
-  efivar_.SetData({
+  efivar_->SetData({
       {"BootOrder", BootOrderData({1, 0, 2})},
       {"Boot0001", VecU8From(kExampleDataCros, sizeof(kExampleDataCros))},
       {"Boot0002", VecU8From(kExampleDataQemuPXE, sizeof(kExampleDataQemuPXE))},
@@ -711,22 +720,22 @@ TEST_F(EfiBootManagerTest, UpdateEfiBootEntries_EntryCountMetrics) {
 
   InstallConfig install_config;
 
-  EXPECT_CALL(metrics_, SendMetric(kUMAEfiEntryCountName, total_boot_entries,
-                                   kUMAEfiEntryCountMin, kUMAEfiEntryCountMax,
-                                   kUMAEfiEntryCountBuckets));
-  EXPECT_CALL(metrics_,
+  EXPECT_CALL(*metrics_, SendMetric(kUMAEfiEntryCountName, total_boot_entries,
+                                    kUMAEfiEntryCountMin, kUMAEfiEntryCountMax,
+                                    kUMAEfiEntryCountBuckets));
+  EXPECT_CALL(*metrics_,
               SendMetric(kUMAEfiEntryFailedLoadName, failed_loads,
                          kUMAEfiEntryFailedLoadMin, kUMAEfiEntryFailedLoadMax,
                          kUMAEfiEntryFailedLoadBuckets));
-  EXPECT_CALL(metrics_,
+  EXPECT_CALL(*metrics_,
               SendLinearMetric(kUMAManagedEfiEntryCountName, managed_entries,
                                kUMAManagedEfiEntryCountMax));
 
-  efi_boot_manager_.UpdateEfiBootEntries(install_config, 64);
+  efi_boot_manager_->UpdateEfiBootEntries(install_config, 64);
 }
 
 TEST_F(EfiBootManagerTest, UpdateEfiBootEntries_LoadFailMetrics) {
-  efivar_.SetData({
+  efivar_->SetData({
       {"BootOrder", BootOrderData({1, 0, 2})},
       {"Boot0001", VecU8From(kExampleDataCros, sizeof(kExampleDataCros))},
       {"Boot0002", VecU8From(kExampleDataQemuPXE, sizeof(kExampleDataQemuPXE))},
@@ -735,23 +744,23 @@ TEST_F(EfiBootManagerTest, UpdateEfiBootEntries_LoadFailMetrics) {
       {"Boot0005", VecU8From(kExampleDataCros, sizeof(kExampleDataCros))},
   });
   // Simulate a filed load.
-  efivar_.variable_names_.push_back("Boot0BAD");
+  efivar_->variable_names_.push_back("Boot0BAD");
 
   const int total_boot_entries = 6;
   const int failed_loads = 1;
 
   InstallConfig install_config;
 
-  EXPECT_CALL(metrics_, SendMetric(kUMAEfiEntryCountName, total_boot_entries,
-                                   kUMAEfiEntryCountMin, kUMAEfiEntryCountMax,
-                                   kUMAEfiEntryCountBuckets));
-  EXPECT_CALL(metrics_,
+  EXPECT_CALL(*metrics_, SendMetric(kUMAEfiEntryCountName, total_boot_entries,
+                                    kUMAEfiEntryCountMin, kUMAEfiEntryCountMax,
+                                    kUMAEfiEntryCountBuckets));
+  EXPECT_CALL(*metrics_,
               SendMetric(kUMAEfiEntryFailedLoadName, failed_loads,
                          kUMAEfiEntryFailedLoadMin, kUMAEfiEntryFailedLoadMax,
                          kUMAEfiEntryFailedLoadBuckets));
-  EXPECT_CALL(metrics_, SendLinearMetric).Times(0);
+  EXPECT_CALL(*metrics_, SendLinearMetric).Times(0);
 
-  efi_boot_manager_.UpdateEfiBootEntries(install_config, 64);
+  efi_boot_manager_->UpdateEfiBootEntries(install_config, 64);
 }
 
 TEST(EfiVarTest, IsEfiGlobalGUID) {

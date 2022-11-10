@@ -14,7 +14,6 @@
 
 using ::testing::Expectation;
 
-
 TEST(PostinstSuccessUMATest, Unknown) {
   MockMetrics metrics;
 

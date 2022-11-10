@@ -321,10 +321,15 @@ class EfiBootManager {
   using EntriesMap =
       std::map<EfiBootNumber, EfiBootEntryContents, EfiBootNumber::Comparator>;
 
-  EfiBootManager(EfiVarInterface& efivar,
-                 MetricsInterface& metrics,
+  EfiBootManager(std::unique_ptr<EfiVarInterface> efivar,
+                 std::unique_ptr<MetricsInterface> metrics,
                  const std::string& description)
-      : efivar_(&efivar), metrics_(&metrics), entry_description_(description) {}
+      : efivar_(std::move(efivar)),
+        metrics_(std::move(metrics)),
+        entry_description_(description) {
+    CHECK(efivar_);
+    CHECK(metrics_);
+  }
 
   // Wrapper around libefivar's variable iteration to filter only Boot* entries.
   // Returns each Boot entry name in turn until all are read, nullopt after.
@@ -678,13 +683,16 @@ class EfiBootManager {
   BootOrder Order() const { return boot_order_; }
   void SetBootOrder(const BootOrder& order) { boot_order_ = order; }
 
+  EfiVarInterface* EfiVar() const { return efivar_.get(); }
+  MetricsInterface* Metrics() const { return metrics_.get(); }
+
  private:
   // An interface around libefivar, handles the actual writing/reading to
   // sysfs and other filesystem access.
-  EfiVarInterface* efivar_;
+  std::unique_ptr<EfiVarInterface> efivar_;
 
   // An interface around sending metrics.
-  MetricsInterface* metrics_;
+  std::unique_ptr<MetricsInterface> metrics_;
 
   // Container for our entries, mapping boot numbers to entry contents.
   EntriesMap entries_;
@@ -699,8 +707,8 @@ class EfiBootManager {
 
 // Wraps some advance checks and final logging around the actual logic in Impl.
 bool UpdateEfiBootEntries(const InstallConfig& install_config) {
-  EfiVarImpl efivar;
-  if (!efivar.EfiVariablesSupported()) {
+  std::unique_ptr<EfiVarInterface> efivar = std::make_unique<EfiVarImpl>();
+  if (!efivar->EfiVariablesSupported()) {
     LOG(INFO) << "EFI runtime services not available."
                  " Assuming called from a Legacy context or on a device that"
                  " intentionally blocks efi runtime services.";
@@ -717,11 +725,11 @@ bool UpdateEfiBootEntries(const InstallConfig& install_config) {
     return false;
   }
 
-  // A Metrics object to pass in. We'll pass a ref, but ownership stays here.
   std::unique_ptr<MetricsInterface> metrics =
       MetricsInterface::GetMetricsInstance();
 
-  EfiBootManager efi_boot_manager(efivar, *metrics, EfiDescription());
+  EfiBootManager efi_boot_manager(std::move(efivar), std::move(metrics),
+                                  EfiDescription());
   if (!efi_boot_manager.UpdateEfiBootEntries(install_config,
                                              efi_size.value())) {
     // On install if we can't manage efi entries we can't be sure that we've
