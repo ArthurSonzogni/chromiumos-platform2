@@ -23,6 +23,7 @@
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/string_piece_forward.h"
 #include "base/strings/string_tokenizer.h"
+#include "base/strings/string_util.h"
 #include "base/strings/stringprintf.h"
 #include "base/synchronization/lock.h"
 #include "missive/proto/security_xdr_events.pb.h"
@@ -114,7 +115,8 @@ absl::Status GetNsFromPath(const base::FilePath& ns_symlink_path,
 
 absl::Status GetStatFromProcfs(const base::FilePath& stat_path,
                                uint64_t* ppid,
-                               uint64_t* starttime_t) {
+                               uint64_t* starttime_t,
+                               std::string* set_comm_if_kthread) {
   std::string proc_stat_contents;
   if (!base::ReadFileToString(stat_path, &proc_stat_contents)) {
     return absl::NotFoundError(
@@ -144,15 +146,31 @@ absl::Status GetStatFromProcfs(const base::FilePath& stat_path,
 
   // We need the following fields (1-indexed in man page):
   // (4) ppid  %d
+  // (9) flags  %u
   // (22) starttime  %llu
   // And remember that we started tokenizing at (2) comm.
   static const size_t kPpidField = 2;
+  static const size_t kFlagsField = 7;
   static const size_t kStarttimeField = 20;
+  uint32_t flags;
   if ((stat_tokens.size() <= kStarttimeField) ||
       (!base::StringToUint64(stat_tokens[kPpidField], ppid)) ||
+      (!base::StringToUint(stat_tokens[kFlagsField], &flags)) ||
       (!base::StringToUint64(stat_tokens[kStarttimeField], starttime_t))) {
     return absl::OutOfRangeError(
         base::StrCat({kErrorFailedToParse, stat_path.value()}));
+  }
+  constexpr uint32_t kPfKthread = 0x00200000;  // Defined in linux/sched.h.
+  if (flags & kPfKthread) {
+    size_t start_of_comm = proc_stat_contents.find('(');
+    if (start_of_comm != std::string::npos &&
+        (start_of_comm + 1 <= end_of_comm)) {
+      *set_comm_if_kthread = base::StrCat(
+          {"[",
+           base::MakeStringPiece(proc_stat_contents.begin() + start_of_comm + 1,
+                                 proc_stat_contents.begin() + end_of_comm),
+           "]"});
+    }
   }
   return absl::OkStatus();
 }
@@ -368,45 +386,43 @@ ProcessCache::MakeFromProcfs(const ProcessCache::InternalProcessKeyType& key) {
 
   const base::FilePath exe_symlink_path = proc_pid_dir.Append("exe");
   base::FilePath exe_path;
-  if (!base::ReadSymbolicLink(exe_symlink_path, &exe_path)) {
-    return absl::NotFoundError(
-        base::StrCat({kErrorFailedToResolve, exe_symlink_path.value()}));
-  }
-  // TODO(b/253661187): nsenter the process' mount namespace for correctness.
-  base::stat_wrapper_t exe_stat;
-  if (base::File::Stat(exe_path.value().c_str(), &exe_stat)) {
-    return absl::NotFoundError(
-        base::StrCat({kErrorFailedToStat, exe_path.value()}));
-  }
-
-  auto image_proto = process_proto->mutable_image();
-  const base::FilePath mnt_ns_symlink_path =
-      proc_pid_dir.Append("ns").Append("mnt");
-  uint64_t mnt_ns;
-  auto status = GetNsFromPath(mnt_ns_symlink_path, &mnt_ns);
-  if (!status.ok()) {
-    return status;
-  }
-  image_proto->set_pathname(exe_path.value());
-  image_proto->set_mnt_ns(mnt_ns);
-  image_proto->set_inode_device_id(exe_stat.st_dev);
-  image_proto->set_inode(exe_stat.st_ino);
-  image_proto->set_canonical_uid(exe_stat.st_uid);
-  image_proto->set_canonical_gid(exe_stat.st_gid);
-  image_proto->set_mode(exe_stat.st_mode);
-
-  InternalImageKeyType image_key{
-      exe_stat.st_dev,
-      exe_stat.st_ino,
-      {exe_stat.st_mtim.tv_sec, exe_stat.st_mtim.tv_nsec},
-      {exe_stat.st_ctim.tv_sec, exe_stat.st_ctim.tv_nsec}};
-  {
-    base::AutoLock lock(image_cache_lock_);
-    auto it = InclusiveGetImage(image_key, exe_path);
-    if (it != image_cache_->end()) {
-      process_proto->mutable_image()->set_sha256(it->second.sha256);
+  if (base::ReadSymbolicLink(exe_symlink_path, &exe_path)) {
+    // TODO(b/253661187): nsenter the process' mount namespace for correctness.
+    base::stat_wrapper_t exe_stat;
+    if (base::File::Stat(exe_path.value().c_str(), &exe_stat)) {
+      return absl::NotFoundError(
+          base::StrCat({kErrorFailedToStat, exe_path.value()}));
     }
-  }
+
+    auto image_proto = process_proto->mutable_image();
+    const base::FilePath mnt_ns_symlink_path =
+        proc_pid_dir.Append("ns").Append("mnt");
+    uint64_t mnt_ns;
+    auto status = GetNsFromPath(mnt_ns_symlink_path, &mnt_ns);
+    if (!status.ok()) {
+      return status;
+    }
+    image_proto->set_pathname(exe_path.value());
+    image_proto->set_mnt_ns(mnt_ns);
+    image_proto->set_inode_device_id(exe_stat.st_dev);
+    image_proto->set_inode(exe_stat.st_ino);
+    image_proto->set_canonical_uid(exe_stat.st_uid);
+    image_proto->set_canonical_gid(exe_stat.st_gid);
+    image_proto->set_mode(exe_stat.st_mode);
+
+    InternalImageKeyType image_key{
+        exe_stat.st_dev,
+        exe_stat.st_ino,
+        {exe_stat.st_mtim.tv_sec, exe_stat.st_mtim.tv_nsec},
+        {exe_stat.st_ctim.tv_sec, exe_stat.st_ctim.tv_nsec}};
+    {
+      base::AutoLock lock(image_cache_lock_);
+      auto it = InclusiveGetImage(image_key, exe_path);
+      if (it != image_cache_->end()) {
+        process_proto->mutable_image()->set_sha256(it->second.sha256);
+      }
+    }
+  }  // Else we're likely processing a kthread and there's no image to report.
 
   const base::FilePath cmdline_path = proc_pid_dir.Append("cmdline");
   std::string cmdline_contents;
@@ -422,7 +438,11 @@ ProcessCache::MakeFromProcfs(const ProcessCache::InternalProcessKeyType& key) {
   // starttime is used as a key against pid reuse.
   const base::FilePath stat_path = proc_pid_dir.Append("stat");
   uint64_t procfs_start_time_t;
-  status = GetStatFromProcfs(stat_path, &parent_key.pid, &procfs_start_time_t);
+  // mutable_commandline is already empty if this process is a kthread. So put
+  // in the comm instead.
+  auto status =
+      GetStatFromProcfs(stat_path, &parent_key.pid, &procfs_start_time_t,
+                        process_proto->mutable_commandline());
   if (!status.ok()) {
     return status;
   }
@@ -437,14 +457,15 @@ ProcessCache::MakeFromProcfs(const ProcessCache::InternalProcessKeyType& key) {
   }
 
   // parent_key.pid is filled in by this point but we also need start_time.
-  // parent_key.pid == 0 implies current process is init. No need to traverse
-  // further.
+  // parent_key.pid == 0 implies current process is init or a kthread. No need
+  // to traverse further.
   if (parent_key.pid != 0) {
     const base::FilePath parent_stat_path = root_path_.Append(
         base::StringPrintf("proc/%" PRIu64 "/stat", parent_key.pid));
     uint64_t unused_ppid;
+    std::string unused_comm;
     status = GetStatFromProcfs(parent_stat_path, &unused_ppid,
-                               &parent_key.start_time_t);
+                               &parent_key.start_time_t, &unused_comm);
     if (!status.ok() || key.start_time_t < parent_key.start_time_t) {
       LOG(WARNING) << "Failed to establish parent linkage for PID " << key.pid;
       // Signifies end of our "linked list".

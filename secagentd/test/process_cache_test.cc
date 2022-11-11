@@ -39,10 +39,12 @@ MATCHER_P(EqualsProto,
 void ExpectPartialMatch(pb::Process& expected, pb::Process& actual) {
   EXPECT_EQ(expected.canonical_pid(), actual.canonical_pid());
   EXPECT_EQ(expected.commandline(), actual.commandline());
-  EXPECT_EQ(expected.image().pathname(), actual.image().pathname());
-  EXPECT_EQ(expected.image().mnt_ns(), actual.image().mnt_ns());
-  EXPECT_STRCASEEQ(expected.image().sha256().c_str(),
-                   actual.image().sha256().c_str());
+  if (expected.has_image()) {
+    EXPECT_EQ(expected.image().pathname(), actual.image().pathname());
+    EXPECT_EQ(expected.image().mnt_ns(), actual.image().mnt_ns());
+    EXPECT_STRCASEEQ(expected.image().sha256().c_str(),
+                     actual.image().sha256().c_str());
+  }
 }
 
 void FillDynamicImageInfoFromMockFs(
@@ -81,6 +83,7 @@ class ProcessCacheTestFixture : public ::testing::Test {
   };
 
   static constexpr uint64_t kPidInit = 1;
+  static constexpr uint64_t kPidKthreadd = 2;
   static constexpr uint64_t kPidChildOfInit = 962;
   static constexpr uint64_t kPidChildOfChild = 23888;
   static constexpr uint64_t kPidTrickyComm = 8934;
@@ -94,9 +97,11 @@ class ProcessCacheTestFixture : public ::testing::Test {
       ASSERT_TRUE(base::CreateDirectory(pid_dir));
       ASSERT_TRUE(base::WriteFile(pid_dir.Append("stat"), p.second.procstat));
       ASSERT_TRUE(base::WriteFile(pid_dir.Append("cmdline"), p.second.cmdline));
-      ASSERT_TRUE(base::WriteFile(p.second.exe_path, p.second.exe_contents));
-      ASSERT_TRUE(
-          base::CreateSymbolicLink(p.second.exe_path, pid_dir.Append("exe")));
+      if (!p.second.exe_path.empty()) {
+        ASSERT_TRUE(base::WriteFile(p.second.exe_path, p.second.exe_contents));
+        ASSERT_TRUE(
+            base::CreateSymbolicLink(p.second.exe_path, pid_dir.Append("exe")));
+      }
       const base::FilePath ns_dir = pid_dir.Append("ns");
       ASSERT_TRUE(base::CreateDirectory(ns_dir));
       ASSERT_TRUE(base::CreateSymbolicLink(p.second.mnt_ns_symlink,
@@ -134,6 +139,16 @@ class ProcessCacheTestFixture : public ::testing::Test {
           // 4d4328fb2f25759a7bd95772f2caf19af15ad7722c4105dd403a391a6e795b88  -
           .exe_sha256 = "4D4328FB2F25759A7BD95772F2CAF19AF15AD7722C4105DD403A39"
                         "1A6E795B88",
+          .mnt_ns_symlink = base::FilePath("mnt:[402653184]"),
+          .expected_proto = pb::Process()}},
+        {kPidKthreadd,
+         {.procstat = "2 (kthreadd) S 0 0 0 0 -1 2129984 0 0 0 0 0 22 0 0 20 0 "
+                      "1 0 2 0 0 18446744073709551615 0 0 0 0 0 0 0 2147483647 "
+                      "0 1 0 0 0 4 0 0 0 0 0 0 0 0 0 0 0 0 0",
+          .starttime_ns = 20000001,
+          .cmdline = "",
+          .exe_path = base::FilePath(),
+          .exe_contents = "",
           .mnt_ns_symlink = base::FilePath("mnt:[402653184]"),
           .expected_proto = pb::Process()}},
         {kPidChildOfInit,
@@ -181,6 +196,8 @@ class ProcessCacheTestFixture : public ::testing::Test {
         402653184);
     mock_procfs_[kPidInit].expected_proto.mutable_image()->set_sha256(
         mock_procfs_[kPidInit].exe_sha256);
+    mock_procfs_[kPidKthreadd].expected_proto.set_canonical_pid(kPidKthreadd);
+    mock_procfs_[kPidKthreadd].expected_proto.set_commandline("[kthreadd]");
     mock_procfs_[kPidChildOfInit].expected_proto.set_canonical_pid(
         kPidChildOfInit);
     mock_procfs_[kPidChildOfInit].expected_proto.set_commandline(
@@ -414,7 +431,22 @@ TEST_F(ProcessCacheTestFixture, ParseTrickyComm) {
   EXPECT_EQ(3, actual.size());
 }
 
-TEST_F(ProcessCacheTestFixture, TestProcessErase) {
+TEST_F(ProcessCacheTestFixture, TestChildOfKthread) {
+  bpf::cros_process_start& process_start =
+      mock_spawns_[kPidChildOfChild].process_start;
+  process_start.task_info.ppid = kPidKthreadd;
+  process_start.task_info.parent_start_time =
+      mock_procfs_[kPidKthreadd].starttime_ns;
+  process_cache_->PutFromBpfExec(process_start);
+  auto actual = process_cache_->GetProcessHierarchy(
+      process_start.task_info.pid, process_start.task_info.start_time, 3);
+  // Kthread doesn't have a parent. So we only get one ancestral process despite
+  // asking for 3 as usual.
+  EXPECT_EQ(2, actual.size());
+  ExpectPartialMatch(mock_procfs_[kPidKthreadd].expected_proto, *actual[1]);
+}
+
+TEST_F(ProcessCacheTestFixture, TestErase) {
   const bpf::cros_process_start& process_start =
       mock_spawns_[kPidChildOfChild].process_start;
   process_cache_->PutFromBpfExec(process_start);

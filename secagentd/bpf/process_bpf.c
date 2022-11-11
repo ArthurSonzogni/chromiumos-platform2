@@ -19,6 +19,13 @@ struct {
   __uint(max_entries, CROS_MAX_STRUCT_SIZE * 1024);
 } rb SEC(".maps");
 
+static inline __attribute__((always_inline)) bool is_kthread(
+    const struct task_struct* t) {
+  // From sched.h:
+  // #define PF_KTHREAD  0x00200000
+  return (BPF_CORE_READ(t, flags) & 0x00200000);
+}
+
 static inline __attribute__((always_inline)) void fill_ns_info(
     struct cros_namespace_info* ns_info, const struct task_struct* t) {
   ns_info->pid_ns = BPF_CORE_READ(t, nsproxy, pid_ns_for_children, ns.inum);
@@ -105,6 +112,9 @@ int BPF_PROG(handle_sched_process_exec,
              struct task_struct* current,
              pid_t old_pid,
              struct linux_binprm* bprm) {
+  if (is_kthread(current)) {
+    return 0;
+  }
   // Reserve sample from BPF ringbuf.
   struct cros_event* event =
       (struct cros_event*)(bpf_ringbuf_reserve(&rb, sizeof(*event), 0));
@@ -131,6 +141,9 @@ SEC("raw_tracepoint/sched_process_exit")
 SEC("tp_btf/sched_process_exit")
 #endif  // USE_MIN_CORE_BTF
 int BPF_PROG(handle_sched_process_exit, struct task_struct* current) {
+  if (is_kthread(current)) {
+    return 0;
+  }
   if (BPF_CORE_READ(current, pid) != BPF_CORE_READ(current, tgid)) {
     // We didn't report an exec event for this task since it's not a
     // thread group leader. So avoid reporting a terminate event for it.
