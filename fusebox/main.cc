@@ -122,6 +122,18 @@ class FuseBoxClient : public FileSystem {
     return *inode_table;
   }
 
+  static AccessMode CreateAccessMode(int flags) {
+    switch (flags & O_ACCMODE) {
+      case O_RDONLY:
+        return AccessMode::READ_ONLY;
+      case O_WRONLY:
+        return AccessMode::WRITE_ONLY;
+      case O_RDWR:
+        return AccessMode::READ_WRITE;
+    }
+    return AccessMode::NO_ACCESS;
+  }
+
   template <typename Signature>
   void CallFuseBoxServerMethod(dbus::MethodCall* method_call,
                                base::OnceCallback<Signature> callback) {
@@ -733,66 +745,38 @@ class FuseBoxClient : public FileSystem {
     const std::string path = GetInodeTable().GetDevicePath(node);
     const std::string type = mtp_device_type(device);
 
-    int mode = request->flags() & O_ACCMODE;
-    if (mode == O_RDONLY) {
-      uint64_t handle = fusebox::OpenFile();
-      fusebox::SetFileData(handle, path, type);
-      request->ReplyOpen(handle);
-      return;
-    }
+    Open2RequestProto request_proto;
+    request_proto.set_file_system_url(path);
+    request_proto.set_access_mode(CreateAccessMode(request->flags()));
 
-    if (device.mode == "ro") {
-      errno = request->ReplyError(EROFS);
-      PLOG(ERROR) << "open";
-      return;
-    }
-
-    if (type != kMTPType) {
-      uint64_t handle = fusebox::OpenFile();
-      fusebox::SetFileData(handle, path, type);
-      request->ReplyOpen(handle);
-      return;
-    }
-
-    CHECK(request->flags() & O_ACCMODE);  // open for write
-
-    dbus::MethodCall method(kFuseBoxServiceInterface, kOpenMethod);
+    dbus::MethodCall method(kFuseBoxServiceInterface, kOpen2Method);
     dbus::MessageWriter writer(&method);
+    writer.AppendProtoAsArrayOfBytes(request_proto);
 
-    writer.AppendString(path);
-    VLOG(1) << "open flags " << OpenFlagsToString(request->flags());
-    writer.AppendInt32(request->flags());
-
-    auto open_response = base::BindOnce(
-        &FuseBoxClient::OpenResponse, weak_ptr_factory_.GetWeakPtr(),
-        std::move(request), node->ino, path, type);
-    CallFuseBoxServerMethod(&method, std::move(open_response));
+    auto open2_response = base::BindOnce(&FuseBoxClient::Open2Response,
+                                         weak_ptr_factory_.GetWeakPtr(),
+                                         std::move(request), ino, path, type);
+    CallFuseBoxServerMethod(&method, std::move(open2_response));
   }
 
-  void OpenResponse(std::unique_ptr<OpenRequest> request,
-                    ino_t ino,
-                    std::string path,
-                    std::string type,
-                    dbus::Response* response) {
-    VLOG(1) << "open-resp " << ino;
-
-    if (request->IsInterrupted())
-      return;
-
-    CHECK(request->flags() & O_ACCMODE);  // open for write
+  void Open2Response(std::unique_ptr<OpenRequest> request,
+                     ino_t ino,
+                     std::string path,
+                     std::string type,
+                     dbus::Response* response) {
+    VLOG(1) << "open2-resp";
 
     dbus::MessageReader reader(response);
-    if (int error = GetResponseErrno(&reader, response, "open")) {
-      request->ReplyError(error);
+    Open2ResponseProto response_proto;
+    if (!reader.PopArrayOfBytesAsProto(&response_proto)) {
+      request->ReplyError(EINVAL);
       return;
     }
+    uint64_t server_side_fuse_handle =
+        response_proto.has_fuse_handle() ? response_proto.fuse_handle() : 0;
 
-    base::ScopedFD fd;
-    reader.PopFileDescriptor(&fd);
-
-    uint64_t handle = fusebox::OpenFile(std::move(fd));
-    fusebox::SetFileData(handle, path, type);
-
+    uint64_t handle = fusebox::OpenFile();
+    fusebox::SetFileData(handle, server_side_fuse_handle, path, type);
     request->ReplyOpen(handle);
   }
 
@@ -829,10 +813,39 @@ class FuseBoxClient : public FileSystem {
       return;
     }
 
+    auto data = fusebox::GetFileData(request->fh());
+    // For a transitional period, interpret "Open2 returning a 0 fuse_handle"
+    // to mean "the Fusebox server (chrome) opts for the Fusebox client (this
+    // program) to use the old Read method instead of the new Read2 method". In
+    // the long term, a 0 fuse_handle will simply be an error.
+    if (data.server_side_fuse_handle == 0) {
+      LegacyRead(std::move(request), ino, size, off, data.path);
+      return;
+    }
+
+    Read2RequestProto request_proto;
+    request_proto.set_fuse_handle(data.server_side_fuse_handle);
+    request_proto.set_offset(off);
+    request_proto.set_length(size);
+
+    dbus::MethodCall method(kFuseBoxServiceInterface, kRead2Method);
+    dbus::MessageWriter writer(&method);
+    writer.AppendProtoAsArrayOfBytes(request_proto);
+
+    auto read2_response =
+        base::BindOnce(&FuseBoxClient::Read2Response,
+                       weak_ptr_factory_.GetWeakPtr(), std::move(request));
+    CallFuseBoxServerMethod(&method, std::move(read2_response));
+  }
+
+  void LegacyRead(std::unique_ptr<BufferRequest> request,
+                  ino_t ino,
+                  size_t size,
+                  off_t off,
+                  const std::string& path) {
     dbus::MethodCall method(kFuseBoxServiceInterface, kReadMethod);
     dbus::MessageWriter writer(&method);
 
-    auto path = fusebox::GetFileData(request->fh()).path;
     writer.AppendString(path);
     writer.AppendInt64(base::strict_cast<int64_t>(off));
     writer.AppendInt32(base::saturated_cast<int32_t>(size));
@@ -871,6 +884,31 @@ class FuseBoxClient : public FileSystem {
     reader.PopArrayOfBytes(&buf, &length);
 
     request->ReplyBuffer(buf, length);
+  }
+
+  void Read2Response(std::unique_ptr<BufferRequest> request,
+                     dbus::Response* response) {
+    VLOG(1) << "read2-resp";
+
+    if (request->IsInterrupted())
+      return;
+
+    dbus::MessageReader reader(response);
+    Read2ResponseProto response_proto;
+    if (!reader.PopArrayOfBytesAsProto(&response_proto)) {
+      request->ReplyError(EINVAL);
+      return;
+    }
+    int32_t posix_error_code = response_proto.has_posix_error_code()
+                                   ? response_proto.posix_error_code()
+                                   : 0;
+    if (posix_error_code != 0) {
+      request->ReplyError(posix_error_code);
+      return;
+    }
+
+    const std::string& data = response_proto.data();
+    request->ReplyBuffer(data.data(), data.size());
   }
 
   void ReadFileDescriptor(std::unique_ptr<BufferRequest> request,
@@ -1009,40 +1047,37 @@ class FuseBoxClient : public FileSystem {
     auto data = fusebox::GetFileData(request->fh());
     fusebox::CloseFile(request->fh());
 
-    if (data.type != kMTPType) {
-      request->ReplyOk();
-      return;
-    }
+    Close2RequestProto request_proto;
+    request_proto.set_fuse_handle(data.server_side_fuse_handle);
 
-    // TODO(crbug.com/1249754): implement kCloseMethod. ReplyOk here for now,
-    // to suppress method "not implemented" error logs.
-    if (data.type == kMTPType) {
-      request->ReplyOk();
-      return;
-    }
-
-    dbus::MethodCall method(kFuseBoxServiceInterface, kCloseMethod);
+    dbus::MethodCall method(kFuseBoxServiceInterface, kClose2Method);
     dbus::MessageWriter writer(&method);
+    writer.AppendProtoAsArrayOfBytes(request_proto);
 
-    writer.AppendString(data.path);
-
-    auto release_response =
-        base::BindOnce(&FuseBoxClient::ReleaseResponse,
-                       weak_ptr_factory_.GetWeakPtr(), std::move(request), ino);
-    CallFuseBoxServerMethod(&method, std::move(release_response));
+    auto close2_response =
+        base::BindOnce(&FuseBoxClient::Close2Response,
+                       weak_ptr_factory_.GetWeakPtr(), std::move(request));
+    CallFuseBoxServerMethod(&method, std::move(close2_response));
   }
 
-  void ReleaseResponse(std::unique_ptr<OkRequest> request,
-                       ino_t ino,
-                       dbus::Response* response) {
-    VLOG(1) << "release-resp fh " << request->fh();
+  void Close2Response(std::unique_ptr<OkRequest> request,
+                      dbus::Response* response) {
+    VLOG(1) << "close2-resp fh " << request->fh();
 
     if (request->IsInterrupted())
       return;
 
     dbus::MessageReader reader(response);
-    if (int error = GetResponseErrno(&reader, response, "release")) {
-      request->ReplyError(error);
+    Close2ResponseProto response_proto;
+    if (!reader.PopArrayOfBytesAsProto(&response_proto)) {
+      request->ReplyError(EINVAL);
+      return;
+    }
+    int32_t posix_error_code = response_proto.has_posix_error_code()
+                                   ? response_proto.posix_error_code()
+                                   : 0;
+    if (posix_error_code != 0) {
+      request->ReplyError(posix_error_code);
       return;
     }
 

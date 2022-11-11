@@ -14,7 +14,8 @@
 namespace fusebox {
 
 struct HandleData {
-  int fd = -1;       // Backing fd (-1 if none)
+  int fd = -1;  // Backing fd (-1 if none)
+  uint64_t server_side_fuse_handle = 0;
   std::string path;  // Optional file path data
   std::string type;  // Optional file path type
 };
@@ -32,7 +33,10 @@ int GetFileDescriptor(uint64_t handle);
 HandleData GetFileData(uint64_t handle);
 
 // Sets handle data if file |handle| is open. True on success.
-bool SetFileData(uint64_t handle, std::string path, std::string type = {});
+bool SetFileData(uint64_t handle,
+                 uint64_t server_side_fuse_handle,
+                 std::string path,
+                 std::string type = {});
 
 // Close the file |handle|. Returns its backing fd.
 base::ScopedFD CloseFile(uint64_t handle);

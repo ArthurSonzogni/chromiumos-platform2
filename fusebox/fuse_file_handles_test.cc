@@ -103,19 +103,19 @@ TEST(FuseFileHandlesTest, FileHandlesFileData) {
   EXPECT_EQ(-1, GetFileDescriptor(handle));
 
   // The handle can hold optional data.
-  EXPECT_EQ(true, SetFileData(handle, "something"));
+  EXPECT_EQ(true, SetFileData(handle, 0, "something"));
   EXPECT_EQ("something", GetFileData(handle).path);
   EXPECT_EQ("", GetFileData(handle).type);
   EXPECT_EQ(-1, GetFileData(handle).fd);
 
   // The data path could be a url.
-  EXPECT_EQ(true, SetFileData(handle, "file://foo/bar"));
+  EXPECT_EQ(true, SetFileData(handle, 0, "file://foo/bar"));
   EXPECT_EQ("file://foo/bar", GetFileData(handle).path);
   EXPECT_EQ("", GetFileData(handle).type);
   EXPECT_EQ(-1, GetFileData(handle).fd);
 
   // An optional type can be specified.
-  EXPECT_EQ(true, SetFileData(handle, "filesystem:url", "mtp"));
+  EXPECT_EQ(true, SetFileData(handle, 0, "filesystem:url", "mtp"));
   EXPECT_EQ("filesystem:url", GetFileData(handle).path);
   EXPECT_EQ("mtp", GetFileData(handle).type);
   EXPECT_EQ(-1, GetFileData(handle).fd);

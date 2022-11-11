@@ -47,10 +47,14 @@ HandleData GetFileData(uint64_t handle) {
   return it->second;
 }
 
-bool SetFileData(uint64_t handle, std::string path, std::string type) {
+bool SetFileData(uint64_t handle,
+                 uint64_t server_side_fuse_handle,
+                 std::string path,
+                 std::string type) {
   const auto it = GetFileHandles().find(handle);
   if (it == GetFileHandles().end())
     return false;
+  it->second.server_side_fuse_handle = server_side_fuse_handle;
   std::swap(it->second.path, path);
   std::swap(it->second.type, type);
   return true;
