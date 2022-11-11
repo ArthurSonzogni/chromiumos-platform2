@@ -4025,14 +4025,13 @@ void UserDataAuth::StartAuthSession(
 
   // Discover any available auth factors from the AuthSession.
   std::set<std::string> listed_auth_factor_labels;
-  for (const auto& label_and_factor : auth_session->label_to_auth_factor()) {
-    const std::unique_ptr<AuthFactor>& auth_factor = label_and_factor.second;
+  for (const AuthFactor& auth_factor : auth_session->auth_factor_map()) {
     std::optional<user_data_auth::AuthFactor> proto_factor = GetAuthFactorProto(
-        auth_factor->metadata(), auth_factor->type(), auth_factor->label());
+        auth_factor.metadata(), auth_factor.type(), auth_factor.label());
     if (proto_factor.has_value()) {
       // Only output one factor per label.
       auto [unused, was_inserted] =
-          listed_auth_factor_labels.insert(auth_factor->label());
+          listed_auth_factor_labels.insert(auth_factor.label());
       if (!was_inserted) {
         continue;
       }
@@ -4041,7 +4040,7 @@ void UserDataAuth::StartAuthSession(
       // authentication.
       auto supported_intents =
           auth_block_utility_->GetSupportedIntentsFromState(
-              auth_factor->auth_block_state());
+              auth_factor.auth_block_state());
       std::optional<AuthIntent> requested_intent =
           AuthIntentFromProto(request.intent());
       if (requested_intent && supported_intents.contains(*requested_intent)) {

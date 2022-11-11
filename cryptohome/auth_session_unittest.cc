@@ -84,6 +84,7 @@ using ::testing::DoAll;
 using ::testing::ElementsAre;
 using ::testing::Field;
 using ::testing::IsEmpty;
+using ::testing::IsNull;
 using ::testing::Matcher;
 using ::testing::NiceMock;
 using ::testing::NotNull;
@@ -1290,11 +1291,6 @@ TEST_F(AuthSessionTest, AuthenticateAuthFactorExistingVKUserNoResave) {
   // Setup AuthSession.
   AuthBlockState auth_block_state;
   auth_block_state.state = TpmBoundToPcrAuthBlockState();
-  std::map<std::string, std::unique_ptr<AuthFactor>> auth_factor_map;
-  auth_factor_map.emplace(
-      kFakeLabel,
-      std::make_unique<AuthFactor>(AuthFactorType::kPassword, kFakeLabel,
-                                   AuthFactorMetadata(), auth_block_state));
   int flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE;
 
   EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(true));
@@ -1308,8 +1304,9 @@ TEST_F(AuthSessionTest, AuthenticateAuthFactorExistingVKUserNoResave) {
   EXPECT_THAT(AuthStatus::kAuthStatusFurtherFactorRequired,
               auth_session->GetStatus());
   EXPECT_TRUE(auth_session->user_exists());
-  auth_session->set_label_to_auth_factor_for_testing(
-      std::move(auth_factor_map));
+  auth_session->add_auth_factor_for_testing(
+      std::make_unique<AuthFactor>(AuthFactorType::kPassword, kFakeLabel,
+                                   AuthFactorMetadata(), auth_block_state));
 
   // Test
   // Calling AuthenticateAuthFactor.
@@ -1333,11 +1330,6 @@ TEST_F(AuthSessionTest,
   // Setup AuthSession.
   AuthBlockState auth_block_state;
   auth_block_state.state = ScryptAuthBlockState();
-  std::map<std::string, std::unique_ptr<AuthFactor>> auth_factor_map;
-  auth_factor_map.emplace(
-      kFakeLabel,
-      std::make_unique<AuthFactor>(AuthFactorType::kPassword, kFakeLabel,
-                                   AuthFactorMetadata(), auth_block_state));
   int flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE;
 
   EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(true));
@@ -1351,8 +1343,9 @@ TEST_F(AuthSessionTest,
   EXPECT_THAT(AuthStatus::kAuthStatusFurtherFactorRequired,
               auth_session->GetStatus());
   EXPECT_TRUE(auth_session->user_exists());
-  auth_session->set_label_to_auth_factor_for_testing(
-      std::move(auth_factor_map));
+  auth_session->add_auth_factor_for_testing(
+      std::make_unique<AuthFactor>(AuthFactorType::kPassword, kFakeLabel,
+                                   AuthFactorMetadata(), auth_block_state));
 
   // Test
   // Calling AuthenticateAuthFactor.
@@ -1436,11 +1429,6 @@ TEST_F(AuthSessionTest,
   // Setup AuthSession.
   AuthBlockState auth_block_state;
   auth_block_state.state = ScryptAuthBlockState();
-  std::map<std::string, std::unique_ptr<AuthFactor>> auth_factor_map;
-  auth_factor_map.emplace(
-      kFakeLabel,
-      std::make_unique<AuthFactor>(AuthFactorType::kPassword, kFakeLabel,
-                                   AuthFactorMetadata(), auth_block_state));
   int flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE;
 
   EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(true));
@@ -1454,8 +1442,9 @@ TEST_F(AuthSessionTest,
   EXPECT_THAT(AuthStatus::kAuthStatusFurtherFactorRequired,
               auth_session->GetStatus());
   EXPECT_TRUE(auth_session->user_exists());
-  auth_session->set_label_to_auth_factor_for_testing(
-      std::move(auth_factor_map));
+  auth_session->add_auth_factor_for_testing(
+      std::make_unique<AuthFactor>(AuthFactorType::kPassword, kFakeLabel,
+                                   AuthFactorMetadata(), auth_block_state));
 
   // Test
   // Calling AuthenticateAuthFactor.
@@ -1541,11 +1530,6 @@ TEST_F(AuthSessionTest,
   // Setup AuthSession.
   AuthBlockState auth_block_state;
   auth_block_state.state = PinWeaverAuthBlockState();
-  std::map<std::string, std::unique_ptr<AuthFactor>> auth_factor_map;
-  auth_factor_map.emplace(
-      kFakePinLabel,
-      std::make_unique<AuthFactor>(AuthFactorType::kPin, kFakePinLabel,
-                                   AuthFactorMetadata(), auth_block_state));
   int flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE;
 
   EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(true));
@@ -1559,8 +1543,9 @@ TEST_F(AuthSessionTest,
   EXPECT_THAT(AuthStatus::kAuthStatusFurtherFactorRequired,
               auth_session->GetStatus());
   EXPECT_TRUE(auth_session->user_exists());
-  auth_session->set_label_to_auth_factor_for_testing(
-      std::move(auth_factor_map));
+  auth_session->add_auth_factor_for_testing(
+      std::make_unique<AuthFactor>(AuthFactorType::kPin, kFakePinLabel,
+                                   AuthFactorMetadata(), auth_block_state));
 
   // Test
   // Calling AuthenticateAuthFactor.
@@ -1627,11 +1612,6 @@ TEST_F(AuthSessionTest, AuthenticateAuthFactorMismatchLabelAndType) {
   // Setup AuthSession.
   AuthBlockState auth_block_state;
   auth_block_state.state = PinWeaverAuthBlockState();
-  std::map<std::string, std::unique_ptr<AuthFactor>> auth_factor_map;
-  auth_factor_map.emplace(
-      kFakePinLabel,
-      std::make_unique<AuthFactor>(AuthFactorType::kPin, kFakePinLabel,
-                                   AuthFactorMetadata(), auth_block_state));
   int flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE;
 
   EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(true));
@@ -1645,8 +1625,9 @@ TEST_F(AuthSessionTest, AuthenticateAuthFactorMismatchLabelAndType) {
   EXPECT_THAT(AuthStatus::kAuthStatusFurtherFactorRequired,
               auth_session->GetStatus());
   EXPECT_TRUE(auth_session->user_exists());
-  auth_session->set_label_to_auth_factor_for_testing(
-      std::move(auth_factor_map));
+  auth_session->add_auth_factor_for_testing(
+      std::make_unique<AuthFactor>(AuthFactorType::kPin, kFakePinLabel,
+                                   AuthFactorMetadata(), auth_block_state));
 
   // Test
   // Calling AuthenticateAuthFactor.
@@ -1979,13 +1960,9 @@ TEST_F(AuthSessionTest, UpdateAuthFactorSucceedsForPasswordVK) {
 
   AuthBlockState auth_block_state;
   auth_block_state.state = TpmBoundToPcrAuthBlockState();
-  std::map<std::string, std::unique_ptr<AuthFactor>> auth_factor_map;
-  auth_factor_map.emplace(
-      kFakeLabel,
+  auth_session->add_auth_factor_for_testing(
       std::make_unique<AuthFactor>(AuthFactorType::kPassword, kFakeLabel,
                                    AuthFactorMetadata(), auth_block_state));
-  auth_session->set_label_to_auth_factor_for_testing(
-      std::move(auth_factor_map));
 
   // Creating the user.
   EXPECT_TRUE(auth_session->OnUserCreated().ok());
@@ -2059,13 +2036,9 @@ TEST_F(AuthSessionTest, UpdateAuthFactorFailsLabelNotMatchForVK) {
 
   AuthBlockState auth_block_state;
   auth_block_state.state = TpmBoundToPcrAuthBlockState();
-  std::map<std::string, std::unique_ptr<AuthFactor>> auth_factor_map;
-  auth_factor_map.emplace(
-      kFakeLabel,
+  auth_session->add_auth_factor_for_testing(
       std::make_unique<AuthFactor>(AuthFactorType::kPassword, kFakeLabel,
                                    AuthFactorMetadata(), auth_block_state));
-  auth_session->set_label_to_auth_factor_for_testing(
-      std::move(auth_factor_map));
 
   // Creating the user.
   EXPECT_TRUE(auth_session->OnUserCreated().ok());
@@ -2112,13 +2085,9 @@ TEST_F(AuthSessionTest, UpdateAuthFactorFailsLabelNotFoundForVK) {
 
   AuthBlockState auth_block_state;
   auth_block_state.state = TpmBoundToPcrAuthBlockState();
-  std::map<std::string, std::unique_ptr<AuthFactor>> auth_factor_map;
-  auth_factor_map.emplace(
-      kFakeLabel,
+  auth_session->add_auth_factor_for_testing(
       std::make_unique<AuthFactor>(AuthFactorType::kPassword, kFakeLabel,
                                    AuthFactorMetadata(), auth_block_state));
-  auth_session->set_label_to_auth_factor_for_testing(
-      std::move(auth_factor_map));
 
   // Creating the user.
   EXPECT_TRUE(auth_session->OnUserCreated().ok());
@@ -2186,14 +2155,6 @@ TEST_F(AuthSessionTest, RemoveAuthFactorUpdatesAuthFactorMap) {
   AuthBlockState auth_block_state;
   auth_block_state.state = TpmBoundToPcrAuthBlockState();
 
-  std::map<std::string, std::unique_ptr<AuthFactor>> auth_factor_map;
-  auth_factor_map[kFakeLabel] =
-      std::make_unique<AuthFactor>(AuthFactorType::kPassword, kFakeLabel,
-                                   AuthFactorMetadata(), auth_block_state);
-  auth_factor_map[kFakeOtherLabel] =
-      std::make_unique<AuthFactor>(AuthFactorType::kPassword, kFakeOtherLabel,
-                                   AuthFactorMetadata(), auth_block_state);
-
   // Create AuthSession.
   EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(true));
 
@@ -2209,8 +2170,12 @@ TEST_F(AuthSessionTest, RemoveAuthFactorUpdatesAuthFactorMap) {
   EXPECT_EQ(auth_session->GetStatus(),
             AuthStatus::kAuthStatusFurtherFactorRequired);
   EXPECT_TRUE(auth_session->user_exists());
-  auth_session->set_label_to_auth_factor_for_testing(
-      std::move(auth_factor_map));
+  auth_session->add_auth_factor_for_testing(
+      std::make_unique<AuthFactor>(AuthFactorType::kPassword, kFakeLabel,
+                                   AuthFactorMetadata(), auth_block_state));
+  auth_session->add_auth_factor_for_testing(
+      std::make_unique<AuthFactor>(AuthFactorType::kPassword, kFakeOtherLabel,
+                                   AuthFactorMetadata(), auth_block_state));
 
   EXPECT_EQ(AuthenticateAuthFactorVK(kFakeLabel, kFakePass, *auth_session),
             user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
@@ -2558,8 +2523,7 @@ TEST_F(AuthSessionWithUssExperimentTest, AddPasswordAuthFactorViaUss) {
       auth_factor_manager_.ListAuthFactors(SanitizeUserName(kFakeUsername));
   EXPECT_THAT(stored_factors,
               ElementsAre(Pair(kFakeLabel, AuthFactorType::kPassword)));
-  EXPECT_NE(auth_session->label_to_auth_factor_.find(kFakeLabel),
-            auth_session->label_to_auth_factor_.end());
+  EXPECT_THAT(auth_session->auth_factor_map().Find(kFakeLabel), NotNull());
 }
 
 // Test that a new auth factor can be added to the newly created user using
@@ -2627,8 +2591,7 @@ TEST_F(AuthSessionWithUssExperimentTest, AddPasswordAuthFactorViaAsyncUss) {
       auth_factor_manager_.ListAuthFactors(SanitizeUserName(kFakeUsername));
   EXPECT_THAT(stored_factors,
               ElementsAre(Pair(kFakeLabel, AuthFactorType::kPassword)));
-  EXPECT_NE(auth_session->label_to_auth_factor_.find(kFakeLabel),
-            auth_session->label_to_auth_factor_.end());
+  EXPECT_THAT(auth_session->auth_factor_map().Find(kFakeLabel), NotNull());
 }
 
 // Test the new auth factor failure path when asynchronous key creation fails.
@@ -3571,13 +3534,9 @@ TEST_F(AuthSessionWithUssExperimentTest, LightweightPasswordAuthentication) {
           /*enable_create_backup_vk_with_uss =*/false);
   EXPECT_TRUE(auth_session_status.ok());
   AuthSession* auth_session = auth_session_status.value();
-  std::map<std::string, std::unique_ptr<AuthFactor>> auth_factor_map;
-  auth_factor_map.emplace(
-      kFakeLabel,
+  auth_session->add_auth_factor_for_testing(
       std::make_unique<AuthFactor>(AuthFactorType::kPassword, kFakeLabel,
                                    AuthFactorMetadata(), AuthBlockState()));
-  auth_session->set_label_to_auth_factor_for_testing(
-      std::move(auth_factor_map));
   EXPECT_CALL(auth_block_utility_,
               IsVerifyWithAuthFactorSupported(AuthIntent::kVerifyOnly,
                                               AuthFactorType::kPassword))
@@ -3845,13 +3804,9 @@ TEST_F(AuthSessionWithUssExperimentTest, NoLightweightAuthForDecryption) {
           /*enable_create_backup_vk_with_uss =*/false);
   EXPECT_TRUE(auth_session_status.ok());
   AuthSession* auth_session = auth_session_status.value();
-  std::map<std::string, std::unique_ptr<AuthFactor>> auth_factor_map;
-  auth_factor_map.emplace(
-      kFakeLabel,
+  auth_session->add_auth_factor_for_testing(
       std::make_unique<AuthFactor>(AuthFactorType::kPassword, kFakeLabel,
                                    AuthFactorMetadata(), AuthBlockState()));
-  auth_session->set_label_to_auth_factor_for_testing(
-      std::move(auth_factor_map));
   // Set up VaultKeyset authentication mock.
   EXPECT_CALL(keyset_management_, GetVaultKeyset(_, kFakeLabel))
       .WillOnce(Return(ByMove(std::make_unique<VaultKeyset>())));
@@ -3926,10 +3881,8 @@ TEST_F(AuthSessionWithUssExperimentTest, RemoveAuthFactor) {
   EXPECT_THAT(stored_factors,
               ElementsAre(Pair(kFakeLabel, AuthFactorType::kPassword),
                           Pair(kFakePinLabel, AuthFactorType::kPin)));
-  EXPECT_NE(auth_session->label_to_auth_factor_.find(kFakeLabel),
-            auth_session->label_to_auth_factor_.end());
-  EXPECT_NE(auth_session->label_to_auth_factor_.find(kFakePinLabel),
-            auth_session->label_to_auth_factor_.end());
+  EXPECT_THAT(auth_session->auth_factor_map().Find(kFakeLabel), NotNull());
+  EXPECT_THAT(auth_session->auth_factor_map().Find(kFakePinLabel), NotNull());
 
   // Test.
 
@@ -3948,10 +3901,8 @@ TEST_F(AuthSessionWithUssExperimentTest, RemoveAuthFactor) {
       auth_factor_manager_.ListAuthFactors(SanitizeUserName(kFakeUsername));
   EXPECT_THAT(stored_factors_1,
               ElementsAre(Pair(kFakeLabel, AuthFactorType::kPassword)));
-  EXPECT_NE(auth_session->label_to_auth_factor_.find(kFakeLabel),
-            auth_session->label_to_auth_factor_.end());
-  EXPECT_EQ(auth_session->label_to_auth_factor_.find(kFakePinLabel),
-            auth_session->label_to_auth_factor_.end());
+  EXPECT_THAT(auth_session->auth_factor_map().Find(kFakeLabel), NotNull());
+  EXPECT_THAT(auth_session->auth_factor_map().Find(kFakePinLabel), IsNull());
 
   // Calling AuthenticateAuthFactor for password succeeds.
   error = AuthenticatePasswordAuthFactor(kFakePass, *auth_session);
@@ -4332,13 +4283,9 @@ TEST_F(AuthSessionWithUssExperimentTest, AuthenticateAuthFactorWebAuthnIntent) {
           /*enable_create_backup_vk_with_uss =*/false);
   EXPECT_TRUE(auth_session_status.ok());
   AuthSession* auth_session = auth_session_status.value();
-  std::map<std::string, std::unique_ptr<AuthFactor>> auth_factor_map;
-  auth_factor_map.emplace(
-      kFakeLabel,
+  auth_session->add_auth_factor_for_testing(
       std::make_unique<AuthFactor>(AuthFactorType::kPassword, kFakeLabel,
                                    AuthFactorMetadata(), AuthBlockState()));
-  auth_session->set_label_to_auth_factor_for_testing(
-      std::move(auth_factor_map));
   // Set up VaultKeyset authentication mock.
   EXPECT_CALL(keyset_management_, GetVaultKeyset(_, kFakeLabel))
       .WillOnce(Return(ByMove(std::make_unique<VaultKeyset>())));

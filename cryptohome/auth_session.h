@@ -27,6 +27,7 @@
 #include "cryptohome/auth_blocks/prepare_token.h"
 #include "cryptohome/auth_factor/auth_factor.h"
 #include "cryptohome/auth_factor/auth_factor_manager.h"
+#include "cryptohome/auth_factor/auth_factor_map.h"
 #include "cryptohome/auth_factor/auth_factor_type.h"
 #include "cryptohome/auth_factor_vault_keyset_converter.h"
 #include "cryptohome/auth_intent.h"
@@ -214,10 +215,7 @@ class AuthSession final {
   }
 
   // Returns the map from the label to the auth factor.
-  const std::map<std::string, std::unique_ptr<AuthFactor>>&
-  label_to_auth_factor() const {
-    return label_to_auth_factor_;
-  }
+  const AuthFactorMap& auth_factor_map() const { return auth_factor_map_; }
 
   // Returns the decrypted USS object, or null if it's not available. Exposed
   // only for unit tests.
@@ -242,11 +240,9 @@ class AuthSession final {
     vault_keyset_ = std::move(value);
   }
 
-  // Sets |label_to_auth_factor_| which maps existing AuthFactor labels to their
-  // corresponding AuthFactors for testing purpose.
-  void set_label_to_auth_factor_for_testing(
-      std::map<std::string, std::unique_ptr<AuthFactor>> value) {
-    label_to_auth_factor_ = std::move(value);
+  // Injects an auth factor into the session for testing purposes.
+  void add_auth_factor_for_testing(std::unique_ptr<AuthFactor> auth_factor) {
+    auth_factor_map_.Add(std::move(auth_factor));
   }
 
   // Static function which returns a serialized token in a vector format. The
@@ -635,7 +631,7 @@ class AuthSession final {
   // TODO(crbug.com/1171024): Change this to AuthFactor
   std::map<std::string, cryptohome::KeyData> key_label_data_;
   // Map containing the auth factors already configured for this user.
-  std::map<std::string, std::unique_ptr<AuthFactor>> label_to_auth_factor_;
+  AuthFactorMap auth_factor_map_;
   // Key used by AuthenticateAuthFactor for cryptohome recovery AuthFactor.
   // It's set only after GetRecoveryRequest() call, and is std::nullopt in other
   // cases.

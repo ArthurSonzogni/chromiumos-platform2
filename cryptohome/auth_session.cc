@@ -256,13 +256,15 @@ CryptohomeStatus AuthSession::Initialize() {
   // experiment is enabled.
   // After USS is enabled there will be backup VKs in disk. They are used for
   // authentication only if USS is disabled after once being enabled.
-  std::map<std::string, std::unique_ptr<AuthFactor>>
-      label_to_auth_factor_for_backup_vks;
+  std::map<std::string, std::unique_ptr<AuthFactor>> backup_factor_map;
   if (persistent_user_exists) {
+    std::map<std::string, std::unique_ptr<AuthFactor>> factor_map;
     converter_->VaultKeysetsToAuthFactorsAndKeyLabelData(
-        username_, label_to_auth_factor_, label_to_auth_factor_for_backup_vks,
-        &key_label_data_);
+        username_, factor_map, backup_factor_map, &key_label_data_);
     user_has_configured_credential_ = !key_label_data_.empty();
+    for (auto& [unused, factor] : factor_map) {
+      auth_factor_map_.Add(std::move(factor));
+    }
   }
 
   // Before IsUserSecretStashExperimentEnabled() there are no backup
@@ -278,16 +280,20 @@ CryptohomeStatus AuthSession::Initialize() {
   // USSMigration is enabled.
   if (enable_create_backup_vk_with_uss_ &&
       !IsUserSecretStashExperimentEnabled(platform_) &&
-      label_to_auth_factor_.empty() &&
-      !label_to_auth_factor_for_backup_vks.empty()) {
+      auth_factor_map_.empty() && !backup_factor_map.empty()) {
     user_has_configured_credential_ = true;
-    label_to_auth_factor_ = std::move(label_to_auth_factor_for_backup_vks);
+    for (auto& [unused, factor] : backup_factor_map) {
+      auth_factor_map_.Add(std::move(factor));
+    }
   }
 
   if (!user_has_configured_credential_) {
-    label_to_auth_factor_ =
+    std::map<std::string, std::unique_ptr<AuthFactor>> factor_map =
         auth_factor_manager_->LoadAllAuthFactors(obfuscated_username_);
-    user_has_configured_auth_factor_ = !label_to_auth_factor_.empty();
+    for (auto& [unused, factor] : factor_map) {
+      auth_factor_map_.Add(std::move(factor));
+    }
+    user_has_configured_auth_factor_ = !auth_factor_map_.empty();
   }
 
   RecordAuthSessionStart();
@@ -450,8 +456,7 @@ void AuthSession::CreateAndPersistVaultKeyset(
   AuthFactorType auth_factor_type = AuthFactorType::kPassword;
   if (added_auth_factor) {
     auth_factor_type = added_auth_factor->type();
-    label_to_auth_factor_.emplace(key_data.label(),
-                                  std::move(added_auth_factor));
+    auth_factor_map_.Add(std::move(added_auth_factor));
   } else {
     LOG(WARNING) << "Failed to convert added keyset to AuthFactor.";
   }
@@ -1079,7 +1084,6 @@ bool AuthSession::AuthenticateAuthFactor(
   // These may be null as a given label may have a verifier, a factor, both, or
   // neither.
   const CredentialVerifier* verifier = nullptr;
-  const AuthFactor* auth_factor = nullptr;
   {
     // Search for a verifier from the User Session, if available.
     const UserSession* user_session = user_session_map_->Find(username_);
@@ -1093,13 +1097,9 @@ bool AuthSession::AuthenticateAuthFactor(
       }
     }
   }
-  {
-    // Search for an auth factor. This will find both VK and USS factors.
-    auto iter = label_to_auth_factor_.find(request.auth_factor_label());
-    if (iter != label_to_auth_factor_.end()) {
-      auth_factor = iter->second.get();
-    }
-  }
+  // Search for an auth factor. This will find both VK and USS factors.
+  const AuthFactor* auth_factor =
+      auth_factor_map_.Find(request.auth_factor_label());
 
   // Construct the auth input. If a factor is available, use it to construct the
   // input, otherwise use the verifier. If neither are available then just make
@@ -1216,10 +1216,10 @@ void AuthSession::RemoveAuthFactor(
   }
 
   auto remove_timer_start = base::TimeTicks::Now();
-  auto auth_factor_label = request.auth_factor_label();
-  auto label_to_auth_factor_iter =
-      label_to_auth_factor_.find(auth_factor_label);
-  if (label_to_auth_factor_iter == label_to_auth_factor_.end()) {
+  const auto& auth_factor_label = request.auth_factor_label();
+
+  AuthFactor* auth_factor = auth_factor_map_.Find(auth_factor_label);
+  if (!auth_factor) {
     LOG(ERROR) << "AuthSession: Key to remove not found: " << auth_factor_label;
     std::move(on_done).Run(MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocAuthSessionFactorNotFoundInRemoveAuthFactor),
@@ -1228,7 +1228,7 @@ void AuthSession::RemoveAuthFactor(
     return;
   }
 
-  if (label_to_auth_factor_.size() == 1) {
+  if (auth_factor_map_.size() == 1) {
     LOG(ERROR) << "AuthSession: Cannot remove the last auth factor.";
     std::move(on_done).Run(MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocAuthSessionLastFactorInRemoveAuthFactor),
@@ -1251,8 +1251,8 @@ void AuthSession::RemoveAuthFactor(
   }
 
   if (user_secret_stash_) {
-    CryptohomeStatus remove_status = RemoveAuthFactorViaUserSecretStash(
-        auth_factor_label, *label_to_auth_factor_iter->second /*AuthFactor*/);
+    CryptohomeStatus remove_status =
+        RemoveAuthFactorViaUserSecretStash(auth_factor_label, *auth_factor);
     if (!remove_status.ok()) {
       LOG(ERROR) << "AuthSession: Failed to remove auth factor.";
       std::move(on_done).Run(
@@ -1269,7 +1269,7 @@ void AuthSession::RemoveAuthFactor(
 
       // Removal of the AuthFactor completed successfully, remove the
       // AuthFactor from the map.
-      label_to_auth_factor_.erase(label_to_auth_factor_iter);
+      auth_factor_map_.Remove(auth_factor_label);
       // Report time taken for a successful remove.
       ReportTimerDuration(kAuthSessionRemoveAuthFactorUSSTimer,
                           remove_timer_start, "" /*append_string*/);
@@ -1283,8 +1283,8 @@ void AuthSession::RemoveAuthFactor(
   // from disk regardless of its purpose, i.e backup, regular or migrated.
   CryptohomeStatus remove_status = RemoveKeysetByLabel(
       *keyset_management_, obfuscated_username_, auth_factor_label);
-  if (!remove_status.ok() && label_to_auth_factor_iter->second->type() !=
-                                 AuthFactorType::kCryptohomeRecovery) {
+  if (!remove_status.ok() &&
+      auth_factor->type() != AuthFactorType::kCryptohomeRecovery) {
     LOG(ERROR) << "AuthSession: Failed to remove the backup VaultKeyset.";
     std::move(on_done).Run(MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocAuthSessionRemoveVKFailedInRemoveAuthFactor),
@@ -1295,7 +1295,7 @@ void AuthSession::RemoveAuthFactor(
   }
 
   // Remove the AuthFactor from the map.
-  label_to_auth_factor_.erase(label_to_auth_factor_iter);
+  auth_factor_map_.Remove(auth_factor_label);
 
   // Report time taken for a successful remove.
   user_secret_stash_
@@ -1401,9 +1401,9 @@ void AuthSession::UpdateAuthFactor(
     return;
   }
 
-  auto label_to_auth_factor_iter =
-      label_to_auth_factor_.find(request.auth_factor_label());
-  if (label_to_auth_factor_iter == label_to_auth_factor_.end()) {
+  AuthFactor* existing_auth_factor =
+      auth_factor_map_.Find(request.auth_factor_label());
+  if (!existing_auth_factor) {
     LOG(ERROR) << "AuthSession: Key to update not found: "
                << request.auth_factor_label();
     std::move(on_done).Run(MakeStatus<CryptohomeError>(
@@ -1437,7 +1437,6 @@ void AuthSession::UpdateAuthFactor(
   }
 
   // Auth factor type has to be the same as before.
-  AuthFactor* existing_auth_factor = label_to_auth_factor_iter->second.get();
   if (existing_auth_factor->type() != auth_factor_type) {
     std::move(on_done).Run(MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocAuthSessionDifferentTypeInUpdateAuthFactor),
@@ -1685,7 +1684,7 @@ void AuthSession::UpdateAuthFactorViaUserSecretStash(
 
   LOG(INFO) << "AuthSession: updated auth factor " << auth_factor->label()
             << " in USS.";
-  label_to_auth_factor_[auth_factor->label()] = std::move(auth_factor);
+  auth_factor_map_.Add(std::move(auth_factor));
   ReportTimerDuration(auth_session_performance_timer.get());
   std::move(on_done).Run(OkStatus<CryptohomeError>());
 }
@@ -1813,9 +1812,8 @@ bool AuthSession::GetRecoveryRequest(
   user_data_auth::GetRecoveryRequestReply reply;
 
   // Check the factor exists.
-  auto label_to_auth_factor_iter =
-      label_to_auth_factor_.find(request.auth_factor_label());
-  if (label_to_auth_factor_iter == label_to_auth_factor_.end()) {
+  AuthFactor* auth_factor = auth_factor_map_.Find(request.auth_factor_label());
+  if (!auth_factor) {
     LOG(ERROR) << "Authentication key not found: "
                << request.auth_factor_label();
     ReplyWithError(std::move(on_done), reply,
@@ -1829,7 +1827,6 @@ bool AuthSession::GetRecoveryRequest(
   }
 
   // Read CryptohomeRecoveryAuthBlockState.
-  AuthFactor* auth_factor = label_to_auth_factor_iter->second.get();
   if (auth_factor->type() != AuthFactorType::kCryptohomeRecovery) {
     LOG(ERROR) << "GetRecoveryRequest can be called only for "
                   "kCryptohomeRecovery auth factor";
@@ -2271,7 +2268,7 @@ void AuthSession::PersistAuthFactorToUserSecretStash(
 
   LOG(INFO) << "AuthSession: added auth factor " << auth_factor->label()
             << " into USS.";
-  label_to_auth_factor_.emplace(auth_factor->label(), std::move(auth_factor));
+  auth_factor_map_.Add(std::move(auth_factor));
   user_has_configured_auth_factor_ = true;
 
   // Report timer for how long AuthSession operation takes.
@@ -2680,10 +2677,10 @@ void AuthSession::LoadUSSMainKeyAndFsKeyset(
 void AuthSession::ResetLECredentials() {
   CryptoError error;
   // Loop through all the AuthFactors.
-  for (auto& iter : label_to_auth_factor_) {
+  for (auto& auth_factor : auth_factor_map_) {
     // Look for only pinweaver backed AuthFactors.
     auto* state = std::get_if<::cryptohome::PinWeaverAuthBlockState>(
-        &(iter.second->auth_block_state().state));
+        &(auth_factor.auth_block_state().state));
     if (!state) {
       continue;
     }
@@ -2694,12 +2691,11 @@ void AuthSession::ResetLECredentials() {
     }
 
     // Get the reset secret from the USS for this auth factor label.
-    const std::string auth_factor_label = iter.first;
     std::optional<brillo::SecureBlob> reset_secret =
-        user_secret_stash_->GetResetSecretForLabel(auth_factor_label);
+        user_secret_stash_->GetResetSecretForLabel(auth_factor.label());
     if (!reset_secret.has_value()) {
       LOG(WARNING) << "No reset secret for auth factor with label "
-                   << auth_factor_label << ", and cannot reset credential.";
+                   << auth_factor.label() << ", and cannot reset credential.";
       continue;
     }
 

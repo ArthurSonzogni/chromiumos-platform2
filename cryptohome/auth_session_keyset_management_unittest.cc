@@ -780,10 +780,9 @@ TEST_F(AuthSessionTestWithKeysetManagement, USSDisableddNotListBackupVKs) {
   EXPECT_TRUE(auth_session2->user_has_configured_credential());
   // Map contains the password, but when user_has_configured_credential is
   // false, this means factor are not backed by a non-backup VK
-  EXPECT_NE(auth_session2->label_to_auth_factor().find(kPasswordLabel),
-            auth_session2->label_to_auth_factor().end());
-  EXPECT_NE(auth_session2->label_to_auth_factor().find(kPasswordLabel2),
-            auth_session2->label_to_auth_factor().end());
+  EXPECT_THAT(auth_session2->auth_factor_map().Find(kPasswordLabel), NotNull());
+  EXPECT_THAT(auth_session2->auth_factor_map().Find(kPasswordLabel2),
+              NotNull());
 }
 
 // Test that AuthSession list the backup VKs on session start if USS is disabled
@@ -829,10 +828,9 @@ TEST_F(AuthSessionTestWithKeysetManagement, USSRollbackListBackupVKs) {
   EXPECT_TRUE(vk2->IsForBackup());
   EXPECT_TRUE(auth_session2->user_has_configured_credential());
 
-  EXPECT_NE(auth_session2->label_to_auth_factor().find(kPasswordLabel),
-            auth_session2->label_to_auth_factor().end());
-  EXPECT_NE(auth_session2->label_to_auth_factor().find(kPasswordLabel2),
-            auth_session2->label_to_auth_factor().end());
+  EXPECT_THAT(auth_session2->auth_factor_map().Find(kPasswordLabel), NotNull());
+  EXPECT_THAT(auth_session2->auth_factor_map().Find(kPasswordLabel2),
+              NotNull());
 }
 
 }  // namespace cryptohome
