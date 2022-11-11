@@ -393,14 +393,19 @@ void CellularCapability3gpp::EnableModemCompleted(
     GetProperties();
   }
 
-  if (error.IsFailure() || error.type() == Error::kWrongState) {
-    // TODO(b/172215298): Is it OK to return before the SetPowerState
-    // D-Bus call completes?
+  if (error.IsFailure()) {
+    /* Very cool that Error is not copyable for no good reason. */
+    auto passed_error = std::make_unique<Error>();
+    passed_error->CopyFrom(error);
+    ResultCallback cb = base::BindRepeating(
+        [](const ResultCallback& callback, std::unique_ptr<Error> error,
+           const Error& /*unused*/) { callback.Run(*error); },
+        callback, base::Passed(&passed_error));
+
     // TODO(b/256525852): Revert this once we land the proper fix in modem fw.
     modem_proxy_->SetPowerState(
-        IsModemFM101() ? MM_MODEM_POWER_STATE_ON : MM_MODEM_POWER_STATE_LOW,
-        base::DoNothing(), kSetPowerStateTimeoutMilliseconds);
-    callback.Run(error);
+        IsModemFM101() ? MM_MODEM_POWER_STATE_ON : MM_MODEM_POWER_STATE_LOW, cb,
+        kSetPowerStateTimeoutMilliseconds);
     return;
   }
 
