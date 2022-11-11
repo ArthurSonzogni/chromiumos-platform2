@@ -12,13 +12,10 @@
 #include <utility>
 
 #include <base/callback.h>
-#include <base/memory/ref_counted.h>
 #include <base/memory/scoped_refptr.h>
 #include <base/memory/weak_ptr.h>
 #include <base/sequence_checker.h>
 #include <base/task/sequenced_task_runner.h>
-#include <base/values.h>
-#include <google/protobuf/message_lite.h>
 
 #include "missive/client/report_queue.h"
 #include "missive/client/report_queue_configuration.h"

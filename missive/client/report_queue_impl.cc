@@ -13,16 +13,13 @@
 #include <base/callback.h>
 #include <base/json/json_writer.h>
 #include <base/memory/ptr_util.h>
-#include <base/memory/ref_counted.h>
 #include <base/memory/scoped_refptr.h>
 #include <base/notreached.h>
 #include <base/sequence_checker.h>
-#include <base/strings/strcat.h>
 #include <base/task/bind_post_task.h>
 #include <base/task/task_traits.h>
 #include <base/task/thread_pool.h>
 #include <base/time/time.h>
-#include <base/values.h>
 
 #include "missive/client/report_queue_configuration.h"
 #include "missive/proto/record.pb.h"
@@ -41,6 +38,7 @@ void AddRecordToStorage(scoped_refptr<StorageModuleInterface> storage,
                         Priority priority,
                         std::string dm_token,
                         Destination destination,
+                        int64_t reserved_space,
                         ReportQueue::RecordProducer record_producer,
                         StorageModuleInterface::EnqueueCallback callback) {
   // Generate record data.
@@ -54,6 +52,9 @@ void AddRecordToStorage(scoped_refptr<StorageModuleInterface> storage,
   Record record;
   *record.mutable_data() = std::move(record_result.ValueOrDie());
   record.set_destination(destination);
+  if (reserved_space > 0L) {
+    record.set_reserved_space(reserved_space);
+  }
 
   // |record| with no DM token is assumed to be associated with device DM token
   if (!dm_token.empty()) {
@@ -110,7 +111,8 @@ void ReportQueueImpl::AddProducedRecord(RecordProducer record_producer,
       FROM_HERE, {base::TaskPriority::BEST_EFFORT},
       base::BindOnce(&AddRecordToStorage, storage_, priority,
                      config_->dm_token(), config_->destination(),
-                     std::move(record_producer), std::move(callback)));
+                     config_->reserved_space(), std::move(record_producer),
+                     std::move(callback)));
 }
 
 void ReportQueueImpl::Flush(Priority priority, FlushCallback callback) {
