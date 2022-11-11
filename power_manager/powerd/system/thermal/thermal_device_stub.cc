@@ -11,10 +11,6 @@
 
 namespace power_manager::system {
 
-ThermalDeviceStub::ThermalDeviceStub()
-    : current_state_(DeviceThermalState::kUnknown),
-      type_(ThermalDeviceType::kUnknown) {}
-
 void ThermalDeviceStub::AddObserver(ThermalDeviceObserver* observer) {
   DCHECK(observer);
   observers_.AddObserver(observer);

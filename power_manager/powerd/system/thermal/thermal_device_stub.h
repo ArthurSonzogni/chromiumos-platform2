@@ -17,7 +17,7 @@ namespace power_manager::system {
 
 class ThermalDeviceStub : public ThermalDeviceInterface {
  public:
-  ThermalDeviceStub();
+  ThermalDeviceStub() = default;
   ThermalDeviceStub(const ThermalDeviceStub&) = delete;
   ThermalDeviceStub& operator=(const ThermalDeviceStub&) = delete;
 
@@ -43,9 +43,9 @@ class ThermalDeviceStub : public ThermalDeviceInterface {
   // List of observers that are currently interested in updates from this.
   base::ObserverList<ThermalDeviceObserver> observers_;
 
-  DeviceThermalState current_state_;
+  DeviceThermalState current_state_ = DeviceThermalState::kUnknown;
 
-  ThermalDeviceType type_;
+  ThermalDeviceType type_ = ThermalDeviceType::kUnknown;
 };
 
 }  // namespace power_manager::system
