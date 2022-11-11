@@ -17,7 +17,7 @@
 
 namespace shill {
 
-struct nl80211_sta_info {
+struct Nl80211StaInfo {
   uint32_t rx_packets_success;
   uint32_t tx_packets_success;
   uint32_t rx_bytes_success;
@@ -35,9 +35,9 @@ class WiFiLinkStatistics {
     // The event that triggered the snapshot of WiFiLinkStatistics.
     WiFi::LinkStatisticsTrigger trigger = WiFi::LinkStatisticsTrigger::kUnknown;
     base::Time timestamp;
-    nl80211_sta_info nl80211_link_stats;
+    Nl80211StaInfo nl80211_link_stats;
     Nl80211LinkStatistics(WiFi::LinkStatisticsTrigger trigger,
-                          const nl80211_sta_info& stats)
+                          const Nl80211StaInfo& stats)
         : trigger(trigger), nl80211_link_stats(stats) {
       timestamp = base::Time::Now();
     }
