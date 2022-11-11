@@ -195,3 +195,32 @@ enum NvmeSelfTestTypeEnum {
   kShortSelfTest = 0, // Short time self-test.
   kLongSelfTest = 1,  // Long time self-test.
 };
+
+// Enumeration of each possible LEDs on a device.
+//
+// NextMinVersion: 1, NextIndex: 6
+[Stable, Extensible]
+enum LedName {
+  // This is required for backwards compatibility, should not be used.
+  [Default] kUnmappedEnumField = 0,
+  kBattery = 1,
+  kPower = 2,
+  kAdapter = 3,
+  kLeft = 4,
+  kRight = 5,
+};
+
+// Enumeration of each possible supported LED colors.
+//
+// NextMinVersion: 1, NextIndex: 7
+[Stable, Extensible]
+enum LedColor {
+  // This is required for backwards compatibility, should not be used.
+  [Default] kUnmappedEnumField = 0,
+  kRed = 1,
+  kGreen = 2,
+  kBlue = 3,
+  kYellow = 4,
+  kWhite = 5,
+  kAmber = 6,
+};
