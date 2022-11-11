@@ -109,9 +109,12 @@ bool CoolingDevice::InitSysfsFile() {
               << ") cooling device: " << device_path_;
     type_ = ThermalDeviceType::kOtherCooling;
   }
-  threshold_fair_ = ceil(max_state * kScale.at(type_).fair);
-  threshold_serious_ = ceil(max_state * kScale.at(type_).serious);
-  threshold_critical_ = ceil(max_state * kScale.at(type_).critical);
+  threshold_fair_ =
+      ceil(static_cast<double>(max_state) * kScale.at(type_).fair);
+  threshold_serious_ =
+      ceil(static_cast<double>(max_state) * kScale.at(type_).serious);
+  threshold_critical_ =
+      ceil(static_cast<double>(max_state) * kScale.at(type_).critical);
 
   polling_file_.Init(polling_path_);
   return true;
