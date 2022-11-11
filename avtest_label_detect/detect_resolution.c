@@ -14,6 +14,17 @@
 
 #include "label_detect.h"
 
+#if defined(USE_V4L2_CODEC)
+// TODO(b/255770680): Remove this once V4L2 header is updated.
+#ifndef V4L2_PIX_FMT_AV1
+#define V4L2_PIX_FMT_AV1 v4l2_fourcc('A', 'V', '0', '1') /* AV1 */
+#endif
+#ifndef V4L2_PIX_FMT_AV1_FRAME
+#define V4L2_PIX_FMT_AV1_FRAME \
+  v4l2_fourcc('A', 'V', '1', 'F') /* AV1 parsed frame */
+#endif
+#endif  // defined(USE_V4L2_CODEC)
+
 #if defined(USE_VAAPI) || defined(USE_V4L2_CODEC)
 static const int32_t width_4k = 3840;
 static const int32_t height_4k = 2160;
@@ -218,6 +229,14 @@ static bool is_v4l2_4k_device_dec_hevc(int fd) {
                            V4L2_PIX_FMT_HEVC);
 }
 
+// Determines if is_v4l2_4k_device() for AV1 decoding.
+static bool is_v4l2_4k_device_dec_av1(int fd) {
+  return is_v4l2_4k_device(fd, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE,
+                           V4L2_PIX_FMT_AV1) ||
+         is_v4l2_4k_device(fd, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE,
+                           V4L2_PIX_FMT_AV1_FRAME);
+}
+
 #endif  // defined(USE_V4L2_CODEC)
 
 /* Determines "4k_video_h264". Return true, if either the VAAPI device
@@ -286,6 +305,11 @@ bool detect_4k_device_av1(void) {
   return does_any_device_support_resolution(
       kDRMDevicePattern, query_support_for_dec_av1, width_4k, height_4k);
 #endif  // defined(USE_VAAPI)
+
+#if defined(USE_V4L2_CODEC)
+  if (is_any_device(kVideoDevicePattern, is_v4l2_4k_device_dec_av1))
+    return true;
+#endif  // defined(USE_V4L2_CODEC)
 
   return false;
 }
