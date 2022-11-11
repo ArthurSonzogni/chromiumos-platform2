@@ -78,7 +78,7 @@ class CoolingDeviceTest : public ::testing::Test {
     WriteCurState(0);
     WriteType("Processor");
 
-    cooling_device_.reset(new CoolingDevice(device_dir_));
+    cooling_device_ = std::make_unique<CoolingDevice>(device_dir_);
     cooling_device_->set_poll_interval_for_testing(kPollInterval);
     cooling_device_->AddObserver(&observer_);
   }
