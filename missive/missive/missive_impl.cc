@@ -132,12 +132,11 @@ void MissiveImpl::CreateStorage(
     StorageOptions storage_options,
     base::OnceCallback<void(StatusOr<scoped_refptr<StorageModule>>)> callback) {
   StorageModule::Create(
-      storage_options,
+      std::move(storage_options),
       base::BindPostTask(
           sequenced_task_runner_,
           base::BindRepeating(&MissiveImpl::AsyncStartUpload, GetWeakPtr())),
-      EncryptionModule::Create(/*renew_encryption_key_period=*/base::Days(1),
-                               storage_options.clock()),
+      EncryptionModule::Create(),
       CompressionModule::Create(kCompressionThreshold, kCompressionType),
       std::move(callback));
 }

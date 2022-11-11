@@ -12,8 +12,6 @@
 #include <base/files/file_path.h>
 #include <base/memory/scoped_refptr.h>
 #include <base/strings/string_piece.h>
-#include <base/time/default_tick_clock.h>
-#include <base/time/tick_clock.h>
 #include <base/time/time.h>
 
 #include "missive/proto/record_constants.pb.h"
@@ -37,8 +35,7 @@ class StorageOptions {
  public:
   using QueuesOptionsList = std::vector<std::pair<Priority, QueueOptions>>;
 
-  explicit StorageOptions(
-      const base::TickClock* clock = base::DefaultTickClock::GetInstance());
+  StorageOptions();
   StorageOptions(const StorageOptions& options);
   StorageOptions& operator=(const StorageOptions& options) = delete;
   virtual ~StorageOptions();
@@ -91,8 +88,6 @@ class StorageOptions {
     return memory_resource_;
   }
 
-  const base::TickClock* clock() const { return clock_; }
-
  private:
   // Subdirectory of the location assigned for this Storage.
   base::FilePath directory_;
@@ -107,9 +102,6 @@ class StorageOptions {
   // Resources managements.
   scoped_refptr<ResourceInterface> memory_resource_;
   scoped_refptr<ResourceInterface> disk_space_resource_;
-
-  // Clock reference (real clock for prod, simulated clock for tests).
-  const base::TickClock* const clock_;
 };
 
 // Single queue options class allowing to set parameters individually, e.g.:
@@ -161,7 +153,6 @@ class QueueOptions {
   scoped_refptr<ResourceInterface> memory_resource() const {
     return storage_options_.memory_resource();
   }
-  const base::TickClock* clock() const { return storage_options_.clock(); }
 
  private:
   // Whole storage options, which this queue options are based on.

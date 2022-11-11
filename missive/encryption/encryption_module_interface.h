@@ -10,7 +10,6 @@
 #include <base/callback.h>
 #include <base/memory/ref_counted.h>
 #include <base/strings/string_piece.h>
-#include <base/time/tick_clock.h>
 #include <base/time/time.h>
 
 #include "missive/proto/record.pb.h"
@@ -31,8 +30,7 @@ class EncryptionModuleInterface
   static const char kEncryptedReporting[];
 
   explicit EncryptionModuleInterface(
-      base::TimeDelta renew_encryption_key_period,
-      const base::TickClock* clock);
+      base::TimeDelta renew_encryption_key_period = base::Days(1));
   EncryptionModuleInterface(const EncryptionModuleInterface& other) = delete;
   EncryptionModuleInterface& operator=(const EncryptionModuleInterface& other) =
       delete;
@@ -87,9 +85,6 @@ class EncryptionModuleInterface
 
   // Period of encryption key update.
   const base::TimeDelta renew_encryption_key_period_;
-
-  // Clock reference (real clock for prod, simulated clock for tests).
-  const base::TickClock* const clock_;
 };
 
 }  // namespace reporting
