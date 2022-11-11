@@ -366,6 +366,10 @@ static int sl_handle_virtwl_socket_event(int fd, uint32_t mask, void* data) {
 bool sl_context_init_wayland_channel(struct sl_context* ctx,
                                      struct wl_event_loop* event_loop,
                                      bool display) {
+  if (ctx->channel == NULL) {
+    // Running in noop mode, without virtualization.
+    return true;
+  }
   int rv = ctx->channel->init();
   if (rv) {
     fprintf(stderr, "error: could not initialize wayland channel: %s\n",

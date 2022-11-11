@@ -179,6 +179,13 @@ static void sl_data_offer_receive(struct wl_client* client,
   struct sl_host_data_offer* host =
       static_cast<sl_host_data_offer*>(wl_resource_get_user_data(resource));
 
+  if (host->ctx->channel == NULL) {
+    // Running in noop mode, without virtualization.
+    wl_data_offer_receive(host->proxy, mime_type, fd);
+    close(fd);
+    return;
+  }
+
   int pipe_fd, rv;
   rv = host->ctx->channel->create_pipe(pipe_fd);
   if (rv) {

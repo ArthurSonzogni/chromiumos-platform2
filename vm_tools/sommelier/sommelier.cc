@@ -2546,16 +2546,28 @@ static void sl_send_data(struct sl_context* ctx, xcb_atom_t data_type) {
   wl_array_init(&ctx->selection_data);
   ctx->selection_data_ack_pending = 0;
 
-  int pipe_fd;
-  rv = ctx->channel->create_pipe(pipe_fd);
-  if (rv) {
-    fprintf(stderr, "error: failed to create virtwl pipe: %s\n", strerror(-rv));
-    sl_send_selection_notify(ctx, XCB_ATOM_NONE);
-    return;
-  }
+  if (ctx->channel == NULL) {
+    // Running in noop mode, without virtualization.
+    int p[2];
 
-  fd_to_receive = pipe_fd;
-  fd_to_wayland = pipe_fd;
+    rv = pipe2(p, O_CLOEXEC | O_NONBLOCK);
+    errno_assert(!rv);
+
+    fd_to_receive = p[0];
+    fd_to_wayland = p[1];
+  } else {
+    int pipe_fd;
+    rv = ctx->channel->create_pipe(pipe_fd);
+    if (rv) {
+      fprintf(stderr, "error: failed to create virtwl pipe: %s\n",
+              strerror(-rv));
+      sl_send_selection_notify(ctx, XCB_ATOM_NONE);
+      return;
+    }
+
+    fd_to_receive = pipe_fd;
+    fd_to_wayland = pipe_fd;
+  }
 
   xcb_get_atom_name_reply_t* atom_name_reply =
       xcb_get_atom_name_reply(ctx->connection, atom_name_cookie, NULL);
@@ -3301,8 +3313,7 @@ static void sl_print_usage() {
       "  --frame-color=COLOR\t\tWindow frame color for X11 clients\n"
       "  --no-support-damage-buffer\t"
       "Disable wl_surface::damage_buffer support.\n"
-      "  --virtwl-device=DEVICE\tVirtWL device to use\n"
-      "  --drm-device=DEVICE\t\tDRM device to use\n"
+      "  --force-drm-device=DEVICE\tDRM device to use\n"
       "  --glamor\t\t\tUse glamor to accelerate X11 clients\n"
       "  --timing-filename=PATH\tPath to timing output log\n"
       "  --direct-scale\t\tEnable direct scaling mode\n"
@@ -3311,7 +3322,9 @@ static void sl_print_usage() {
       "  --trace-system\t\tPerfetto trace to system daemon\n"
 #endif
       "  --fullscreen-mode=MODE\tDefault fullscreen behavior (immersive,"
-      " plain)\n");
+      " plain)\n"
+      "  --noop-driver\t\tPass through to existing Wayland server"
+      " without virtualization\n");
 }
 
 static const char* sl_arg_value(const char* arg) {
@@ -3641,6 +3654,7 @@ int real_main(int argc, char** argv) {
   const char* frame_color = getenv("SOMMELIER_FRAME_COLOR");
   const char* dark_frame_color = getenv("SOMMELIER_DARK_FRAME_COLOR");
   const char* support_damage_buffer = getenv("SOMMELIER_SUPPORT_DAMAGE_BUFFER");
+  const char* force_drm_device = NULL;
   const char* glamor = getenv("SOMMELIER_GLAMOR");
   const char* fullscreen_mode = getenv("SOMMELIER_FULLSCREEN_MODE");
   const char* peer_cmd_prefix = getenv("SOMMELIER_PEER_CMD_PREFIX");
@@ -3653,6 +3667,7 @@ int real_main(int argc, char** argv) {
   const char* xauth_path = getenv("SOMMELIER_XAUTH_PATH");
   const char* xfont_path = getenv("SOMMELIER_XFONT_PATH");
   const char* socket_name = "wayland-0";
+  bool noop_driver = false;
   struct wl_event_loop* event_loop;
   struct wl_listener client_destroy_listener = {};
   client_destroy_listener.notify = sl_client_destroy_notify;
@@ -3728,6 +3743,8 @@ int real_main(int argc, char** argv) {
       frame_color = sl_arg_value(arg);
     } else if (strstr(arg, "--dark-frame-color") == arg) {
       dark_frame_color = sl_arg_value(arg);
+    } else if (strstr(arg, "--force-drm-device") == arg) {
+      force_drm_device = sl_arg_value(arg);
     } else if (strstr(arg, "--no-support-damage-buffer") == arg) {
       support_damage_buffer = "0";
     } else if (strstr(arg, "--glamor") == arg) {
@@ -3746,6 +3763,8 @@ int real_main(int argc, char** argv) {
       ctx.enable_xshape = true;
     } else if (strstr(arg, "--virtgpu-channel") == arg) {
       ctx.use_virtgpu_channel = true;
+    } else if (strstr(arg, "--noop-driver") == arg) {
+      noop_driver = true;
 #ifdef PERFETTO_TRACING
     } else if (strstr(arg, "--trace-filename") == arg) {
       ctx.trace_filename = sl_arg_value(arg);
@@ -3845,7 +3864,9 @@ int real_main(int argc, char** argv) {
   ctx.host_display = wl_display_create();
   assert(ctx.host_display);
 
-  if (ctx.use_virtgpu_channel) {
+  if (noop_driver) {
+    ctx.channel = NULL;
+  } else if (ctx.use_virtgpu_channel) {
     ctx.channel = new VirtGpuChannel();
   } else {
     ctx.channel = new VirtWaylandChannel();
@@ -3856,8 +3877,21 @@ int real_main(int argc, char** argv) {
     return EXIT_FAILURE;
   }
 
+  int drm_fd = -1;
   char* drm_device = NULL;
-  int drm_fd = open_virtgpu(&drm_device);
+  if (force_drm_device != NULL) {
+    // Use DRM device specified on the command line.
+    drm_fd = open(force_drm_device, O_RDWR | O_CLOEXEC);
+    if (drm_fd == -1) {
+      fprintf(stderr, "error: could not open %s (%s)\n", force_drm_device,
+              strerror(errno));
+      return EXIT_FAILURE;
+    }
+    drm_device = strdup(force_drm_device);
+  } else {
+    // Enumerate render nodes to find the virtio_gpu device.
+    drm_fd = open_virtgpu(&drm_device);
+  }
   if (drm_fd >= 0) {
     ctx.gbm = gbm_create_device(drm_fd);
     if (!ctx.gbm) {
