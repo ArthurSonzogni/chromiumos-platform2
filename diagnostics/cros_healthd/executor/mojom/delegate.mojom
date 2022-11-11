@@ -5,6 +5,7 @@
 module ash.cros_healthd.mojom;
 
 import "diagnostics/cros_healthd/executor/mojom/executor.mojom";
+import "diagnostics/mojom/public/cros_healthd_diagnostics.mojom";
 
 interface Delegate {
   // Get fingerprint frame data with specific capture type. We only support
@@ -25,4 +26,14 @@ interface Delegate {
   // * |result| - Fingerprint information.
   // * |err| - Error message if existed.
   GetFingerprintInfo() => (FingerprintInfoResult result, string? err);
+
+  // Set the target LED to the specified color.
+  //
+  // The request:
+  // * |name| - The target LED.
+  // * |color| - The specified LED color.
+  //
+  // The response:
+  // * |err| - Error message if existed.
+  SetLedColor(LedName name, LedColor color) => (string? err);
 };

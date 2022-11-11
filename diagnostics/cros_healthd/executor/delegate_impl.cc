@@ -4,6 +4,7 @@
 
 #include "diagnostics/cros_healthd/executor/delegate_impl.h"
 
+#include <array>
 #include <fcntl.h>
 #include <utility>
 
@@ -14,6 +15,7 @@
 #include <libec/fingerprint/fp_mode_command.h>
 #include <libec/get_protocol_info_command.h>
 #include <libec/get_version_command.h>
+#include <libec/led_control_command.h>
 #include <libec/mkbp_event.h>
 
 #include "diagnostics/cros_healthd/executor/constants.h"
@@ -31,6 +33,44 @@ ec::FpMode ToEcFpMode(mojom::FingerprintCaptureType type) {
       return ec::FpMode(ec::FpMode::Mode::kCapturePattern1);
     case mojom::FingerprintCaptureType::kResetTest:
       return ec::FpMode(ec::FpMode::Mode::kCaptureResetTest);
+  }
+}
+
+enum ec_led_id ToEcLedId(mojom::LedName name) {
+  switch (name) {
+    case mojom::LedName::kBattery:
+      return EC_LED_ID_BATTERY_LED;
+    case mojom::LedName::kPower:
+      return EC_LED_ID_POWER_LED;
+    case mojom::LedName::kAdapter:
+      return EC_LED_ID_ADAPTER_LED;
+    case mojom::LedName::kLeft:
+      return EC_LED_ID_LEFT_LED;
+    case mojom::LedName::kRight:
+      return EC_LED_ID_RIGHT_LED;
+    case mojom::LedName::kUnmappedEnumField:
+      LOG(WARNING) << "LedName UnmappedEnumField";
+      return EC_LED_ID_COUNT;
+  }
+}
+
+enum ec_led_colors ToEcLedColor(mojom::LedColor color) {
+  switch (color) {
+    case mojom::LedColor::kRed:
+      return EC_LED_COLOR_RED;
+    case mojom::LedColor::kGreen:
+      return EC_LED_COLOR_GREEN;
+    case mojom::LedColor::kBlue:
+      return EC_LED_COLOR_BLUE;
+    case mojom::LedColor::kYellow:
+      return EC_LED_COLOR_YELLOW;
+    case mojom::LedColor::kWhite:
+      return EC_LED_COLOR_WHITE;
+    case mojom::LedColor::kAmber:
+      return EC_LED_COLOR_AMBER;
+    case mojom::LedColor::kUnmappedEnumField:
+      LOG(WARNING) << "LedColor UnmappedEnumField";
+      return EC_LED_COLOR_COUNT;
   }
 }
 
@@ -139,6 +179,35 @@ void DelegateImpl::GetFingerprintInfo(GetFingerprintInfoCallback callback) {
   result->rw_fw = version.Image() == EC_IMAGE_RW;
 
   std::move(callback).Run(std::move(result), std::nullopt);
+}
+
+void DelegateImpl::SetLedColor(mojom::LedName name,
+                               mojom::LedColor color,
+                               SetLedColorCallback callback) {
+  auto ec_led_id = ToEcLedId(name);
+  if (ec_led_id == EC_LED_ID_COUNT) {
+    std::move(callback).Run("Unknown LED name");
+    return;
+  }
+  auto ec_led_color = ToEcLedColor(color);
+  if (ec_led_color == EC_LED_COLOR_COUNT) {
+    std::move(callback).Run("Unknown LED color");
+    return;
+  }
+
+  auto cros_fd = base::ScopedFD(open(ec::kCrosEcPath, O_RDWR));
+
+  // Set brightness to 255 for the highest brightness level.
+  std::array<uint8_t, EC_LED_COLOR_COUNT> brightness = {};
+  brightness[ec_led_color] = 255;
+
+  ec::LedControlSetCommand cmd(ec_led_id, brightness);
+  if (!cmd.Run(cros_fd.get())) {
+    std::move(callback).Run("Failed to set the LED color");
+    return;
+  }
+
+  std::move(callback).Run(std::nullopt);
 }
 
 }  // namespace diagnostics
