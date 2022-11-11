@@ -11,10 +11,12 @@
 #include <gtest/gtest.h>
 
 using hwsec_foundation::error::testing::IsOk;
+using hwsec_foundation::error::testing::IsOkAnd;
 using hwsec_foundation::error::testing::IsOkAndHolds;
 using hwsec_foundation::error::testing::NotOk;
 using hwsec_foundation::error::testing::NotOkAnd;
 using hwsec_foundation::error::testing::NotOkWith;
+using testing::Ge;
 
 namespace hwsec_foundation::status {
 
@@ -81,6 +83,7 @@ TEST_F(ErrorTestingHelperTest, IsOk) {
 
   EXPECT_THAT(Calc(5), IsOkAndHolds(5 * 5));
   EXPECT_THAT(Calc(123), IsOkAndHolds(123 * 123));
+  EXPECT_THAT(Calc(123), IsOkAnd(Ge(10000)));
 }
 
 TEST_F(ErrorTestingHelperTest, NotOk) {

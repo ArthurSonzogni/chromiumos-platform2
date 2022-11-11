@@ -44,6 +44,14 @@ MATCHER_P(IsOkAndHolds, m, "") {
   return true;
 }
 
+MATCHER_P(IsOkAnd, m, "") {
+  if (!arg.ok()) {
+    *result_listener << "status: " << arg.status();
+    return false;
+  }
+  return ExplainMatchResult(m, arg.value(), result_listener);
+}
+
 MATCHER(NotOk, "") {
   if (arg.ok()) {
     *result_listener << "is ok";
