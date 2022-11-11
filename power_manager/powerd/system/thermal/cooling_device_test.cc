@@ -36,11 +36,11 @@ constexpr base::TimeDelta kPollInterval = base::Milliseconds(100);
 // it receives a thermal state change.
 class TestObserver : public ThermalDeviceObserver {
  public:
-  TestObserver() {}
+  TestObserver() = default;
   TestObserver(const TestObserver&) = delete;
   TestObserver& operator=(const TestObserver&) = delete;
 
-  ~TestObserver() override {}
+  ~TestObserver() override = default;
 
   // Runs |loop_| until OnThermalChanged() is called.
   bool RunUntilThermalChanged() {
@@ -59,11 +59,11 @@ class TestObserver : public ThermalDeviceObserver {
 
 class CoolingDeviceTest : public ::testing::Test {
  public:
-  CoolingDeviceTest() {}
+  CoolingDeviceTest() = default;
   CoolingDeviceTest(const CoolingDeviceTest&) = delete;
   CoolingDeviceTest& operator=(const CoolingDeviceTest&) = delete;
 
-  ~CoolingDeviceTest() override {}
+  ~CoolingDeviceTest() override = default;
 
   void SetUp() override {
     CHECK(temp_dir_.CreateUniqueTempDir());

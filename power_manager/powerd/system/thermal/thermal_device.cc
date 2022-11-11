@@ -36,8 +36,6 @@ ThermalDevice::ThermalDevice(base::FilePath device_path)
       poll_interval_(kDefaultPollInterval),
       current_state_(DeviceThermalState::kUnknown) {}
 
-ThermalDevice::~ThermalDevice() {}
-
 void ThermalDevice::AddObserver(ThermalDeviceObserver* observer) {
   DCHECK(observer);
   observers_.AddObserver(observer);

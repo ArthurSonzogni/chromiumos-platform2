@@ -21,7 +21,7 @@ class ThermalDeviceStub : public ThermalDeviceInterface {
   ThermalDeviceStub(const ThermalDeviceStub&) = delete;
   ThermalDeviceStub& operator=(const ThermalDeviceStub&) = delete;
 
-  ~ThermalDeviceStub() override;
+  ~ThermalDeviceStub() override = default;
 
   // ThermalDeviceInterface implementation:
   void AddObserver(ThermalDeviceObserver* observer) override;

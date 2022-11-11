@@ -28,11 +28,11 @@ enum class ThermalDeviceType {
 
 class ThermalDeviceInterface {
  public:
-  ThermalDeviceInterface() {}
+  ThermalDeviceInterface() = default;
   ThermalDeviceInterface(const ThermalDeviceInterface&) = delete;
   ThermalDeviceInterface& operator=(const ThermalDeviceInterface&) = delete;
 
-  virtual ~ThermalDeviceInterface() {}
+  virtual ~ThermalDeviceInterface() = default;
 
   // Adds or removes observers for thermal state change.
   virtual void AddObserver(ThermalDeviceObserver* observer) = 0;
@@ -52,7 +52,7 @@ class ThermalDevice : public ThermalDeviceInterface {
   ThermalDevice(const ThermalDevice&) = delete;
   ThermalDevice& operator=(const ThermalDevice&) = delete;
 
-  ~ThermalDevice() override;
+  ~ThermalDevice() override = default;
 
   void set_poll_interval_for_testing(base::TimeDelta interval) {
     poll_interval_ = interval;

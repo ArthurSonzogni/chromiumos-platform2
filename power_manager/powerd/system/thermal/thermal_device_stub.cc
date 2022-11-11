@@ -15,8 +15,6 @@ ThermalDeviceStub::ThermalDeviceStub()
     : current_state_(DeviceThermalState::kUnknown),
       type_(ThermalDeviceType::kUnknown) {}
 
-ThermalDeviceStub::~ThermalDeviceStub() {}
-
 void ThermalDeviceStub::AddObserver(ThermalDeviceObserver* observer) {
   DCHECK(observer);
   observers_.AddObserver(observer);
