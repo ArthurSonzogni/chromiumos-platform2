@@ -18,6 +18,7 @@
 #include <brillo/file_utils.h>
 
 #include "rmad/constants.h"
+#include "rmad/logs/logs_utils.h"
 #include "rmad/metrics/metrics_constants.h"
 #include "rmad/metrics/metrics_utils.h"
 
@@ -82,7 +83,7 @@ BaseStateHandler::GetNextStateCaseReply BaseStateHandler::NextStateCaseWrapper(
     RmadState::StateCase state_case,
     RmadErrorCode error,
     AdditionalActivity activity) {
-  if (!StoreErrorCode(error)) {
+  if (!StoreErrorCode(state_case, error)) {
     LOG(ERROR) << "Failed to store the error code to |json_store_|.";
   }
 
@@ -105,7 +106,8 @@ BaseStateHandler::GetNextStateCaseReply BaseStateHandler::NextStateCaseWrapper(
                               RMAD_ADDITIONAL_ACTIVITY_NOTHING);
 }
 
-bool BaseStateHandler::StoreErrorCode(RmadErrorCode error) {
+bool BaseStateHandler::StoreErrorCode(RmadState::StateCase state_case,
+                                      RmadErrorCode error) {
   // If this is expected, then we do nothing.
   if (std::find(kExpectedErrorCodes.begin(), kExpectedErrorCodes.end(),
                 error) != kExpectedErrorCodes.end()) {
@@ -119,7 +121,8 @@ bool BaseStateHandler::StoreErrorCode(RmadErrorCode error) {
   occurred_errors.push_back(RmadErrorCode_Name(error));
 
   return MetricsUtils::SetMetricsValue(json_store_, kMetricsOccurredErrors,
-                                       occurred_errors);
+                                       occurred_errors) &&
+         RecordOccurredErrorToLogs(json_store_, state_case, error);
 }
 
 bool BaseStateHandler::StoreAdditionalActivity(AdditionalActivity activity) {

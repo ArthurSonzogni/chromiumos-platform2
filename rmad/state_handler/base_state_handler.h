@@ -81,7 +81,7 @@ class BaseStateHandler : public base::RefCounted<BaseStateHandler> {
   GetNextStateCaseReply NextStateCaseWrapper(RmadErrorCode error);
 
   // Store the error code to |json_store_|.
-  bool StoreErrorCode(RmadErrorCode error);
+  bool StoreErrorCode(RmadState::StateCase state_case, RmadErrorCode error);
 
   // Store the additional activity to |json_store_|.
   bool StoreAdditionalActivity(AdditionalActivity activity);

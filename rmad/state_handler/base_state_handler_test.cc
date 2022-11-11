@@ -13,6 +13,7 @@
 #include <gtest/gtest.h>
 
 #include "rmad/constants.h"
+#include "rmad/logs/logs_constants.h"
 #include "rmad/metrics/metrics_constants.h"
 #include "rmad/metrics/metrics_utils.h"
 #include "rmad/state_handler/state_handler_test_common.h"
@@ -155,10 +156,11 @@ TEST_F(BaseStateHandlerTest, RetrieveState_WelcomeStateSuccess) {
 
 TEST_F(BaseStateHandlerTest, StoreErrorCode_Success) {
   std::vector<std::string> target_occurred_errors;
+  const RmadState::StateCase current_state = RmadState::kComponentsRepair;
   for (int i = RmadErrorCode_MIN; i <= RmadErrorCode_MAX; i++) {
     auto handler = CreateStateHandler();
     RmadErrorCode error_code = static_cast<RmadErrorCode>(i);
-    EXPECT_TRUE(handler->StoreErrorCode(error_code));
+    EXPECT_TRUE(handler->StoreErrorCode(current_state, error_code));
 
     if (std::find(kExpectedErrorCodes.begin(), kExpectedErrorCodes.end(),
                   error_code) == kExpectedErrorCodes.end()) {
@@ -171,6 +173,17 @@ TEST_F(BaseStateHandlerTest, StoreErrorCode_Success) {
                                 &occurred_errors);
   EXPECT_EQ(occurred_errors, target_occurred_errors);
 
+  base::Value logs(base::Value::Type::DICT);
+  json_store_->GetValue(kLogs, &logs);
+
+  const base::Value::List* events = logs.GetDict().FindList(kEvents);
+  const int num_error_codes =
+      RmadErrorCode_MAX - RmadErrorCode_MIN - kExpectedErrorCodes.size() + 1;
+  EXPECT_EQ(num_error_codes, events->size());
+  const base::Value::Dict& event = (*events)[0].GetDict();
+  EXPECT_EQ(static_cast<int>(current_state), event.FindInt(kStateId));
+  EXPECT_EQ(static_cast<int>(LogEventType::kError), event.FindInt(kType));
+
   // TODO(genechang): Refactor and check metrics parsing here.
 }
 
@@ -182,9 +195,11 @@ TEST_F(BaseStateHandlerTest, StoreErrorCode_Failed) {
     RmadErrorCode error_code = static_cast<RmadErrorCode>(i);
     if (std::find(kExpectedErrorCodes.begin(), kExpectedErrorCodes.end(),
                   error_code) == kExpectedErrorCodes.end()) {
-      EXPECT_FALSE(handler->StoreErrorCode(error_code));
+      EXPECT_FALSE(
+          handler->StoreErrorCode(RmadState::kComponentsRepair, error_code));
     } else {
-      EXPECT_TRUE(handler->StoreErrorCode(error_code));
+      EXPECT_TRUE(
+          handler->StoreErrorCode(RmadState::kComponentsRepair, error_code));
     }
   }
 

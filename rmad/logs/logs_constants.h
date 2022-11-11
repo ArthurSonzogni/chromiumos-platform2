@@ -23,6 +23,9 @@ inline constexpr char kDetails[] = "details";
 inline constexpr char kFromStateId[] = "from_state_id";
 inline constexpr char kToStateId[] = "to_state_id";
 
+// Error keys.
+inline constexpr char kOccurredError[] = "occurred_error";
+
 // State specific attributes.
 inline constexpr char kLogReplacedComponents[] = "replaced_components";
 inline constexpr char kLogReworkSelected[] = "rework_selected";

@@ -21,6 +21,11 @@ bool RecordStateTransitionToLogs(scoped_refptr<JsonStore> json_store,
                                  RmadState::StateCase from_state,
                                  RmadState::StateCase to_state);
 
+// Adds the occurred error to `json_store`. Returns true if successful.
+bool RecordOccurredErrorToLogs(scoped_refptr<JsonStore> json_store,
+                               RmadState::StateCase current_state,
+                               RmadErrorCode error);
+
 // Adds the selected repair components to `json_store`. Returns true if
 // successful.
 bool RecordSelectedComponentsToLogs(

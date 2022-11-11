@@ -316,7 +316,7 @@ bool ProvisionDeviceStateHandler::CheckSensorStatusIntegrity(
     }
     // 4. replaced only w/o mlb repair -> V1: log message, V2: let user check
     // TODO(genechang): Set to a missing status for displaying messages in V2
-    StoreErrorCode(RMAD_ERROR_MISSING_COMPONENT);
+    StoreErrorCode(RmadState::kProvisionDevice, RMAD_ERROR_MISSING_COMPONENT);
     component_integrity = false;
   }
 

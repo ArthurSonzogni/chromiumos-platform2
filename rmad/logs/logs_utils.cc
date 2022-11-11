@@ -60,6 +60,16 @@ bool RecordStateTransitionToLogs(scoped_refptr<JsonStore> json_store,
                         std::move(details));
 }
 
+bool RecordOccurredErrorToLogs(scoped_refptr<JsonStore> json_store,
+                               RmadState::StateCase current_state,
+                               RmadErrorCode error) {
+  base::Value details(base::Value::Type::DICT);
+  details.SetKey(kOccurredError, ConvertToValue(static_cast<int>(error)));
+
+  return AddEventToJson(json_store, current_state, LogEventType::kError,
+                        std::move(details));
+}
+
 bool RecordSelectedComponentsToLogs(
     scoped_refptr<JsonStore> json_store,
     const std::vector<std::string>& replaced_components,

@@ -222,4 +222,24 @@ TEST_F(LogsUtilsTest, RecordRestockOption) {
   EXPECT_FALSE(event.FindDict(kDetails)->FindBool(kLogRestockOption).value());
 }
 
+// Simulates adding an error to an empty `logs` json.
+TEST_F(LogsUtilsTest, RecordError) {
+  EXPECT_TRUE(CreateInputFile(kDefaultJson, std::size(kDefaultJson) - 1));
+
+  const RmadState::StateCase current_state = RmadState::kComponentsRepair;
+  const RmadErrorCode error = RmadErrorCode::RMAD_ERROR_CANNOT_CANCEL_RMA;
+
+  EXPECT_TRUE(RecordOccurredErrorToLogs(json_store_, current_state, error));
+  base::Value logs(base::Value::Type::DICT);
+  json_store_->GetValue(kLogs, &logs);
+
+  const base::Value::List* events = logs.GetDict().FindList(kEvents);
+  EXPECT_EQ(1, events->size());
+  const base::Value::Dict& event = (*events)[0].GetDict();
+  EXPECT_EQ(static_cast<int>(current_state), event.FindInt(kStateId));
+  EXPECT_EQ(static_cast<int>(LogEventType::kError), event.FindInt(kType));
+  EXPECT_EQ(static_cast<int>(error),
+            event.FindDict(kDetails)->FindInt(kOccurredError));
+}
+
 }  // namespace rmad
