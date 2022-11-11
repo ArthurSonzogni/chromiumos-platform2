@@ -997,3 +997,57 @@ Progress: 100
 Status: Passed
 Status message: ARC DNS resolution routine passed with no problems.
 ```
+
+## Sensor Routines
+
+### Sensitive Sensor
+
+Checks whether the changed sample data can be observed from all channels of
+sensitive sensors including accelerometers, gyroscope sensors, magnetometers,
+and gravity sensors.
+
+The sensitive sensor routine has no parameters.
+
+To run the sensitive sensor routine:
+
+From crosh:
+```bash
+crosh> diag sensitive_sensor
+```
+
+From cros-health-tool:
+```bash
+$ cros-health-tool diag --action=run_routine --routine=sensitive_sensor
+```
+
+Sample output:
+```bash
+Progress: 100
+Output: {
+   "failed_sensors": [  ],
+   "passed_sensors": [ {
+      "channels": [ "timestamp", "accel_x", "accel_y", "accel_z" ],
+      "id": 3,
+      "types": [ "Accel" ]
+   }, {
+      "channels": [ "timestamp", "gravity_x", "gravity_y", "gravity_z" ],
+      "id": 10000,
+      "types": [ "Gravity" ]
+   }, {
+      "channels": [ "timestamp", "magn_x", "magn_y", "magn_z" ],
+      "id": 5,
+      "types": [ "Magn" ]
+   }, {
+      "channels": [ "timestamp", "accel_x", "accel_y", "accel_z" ],
+      "id": 0,
+      "types": [ "Accel" ]
+   }, {
+      "channels": [ "timestamp", "anglvel_x", "anglvel_y", "anglvel_z" ],
+      "id": 4,
+      "types": [ "Gyro" ]
+   } ]
+}
+
+Status: Passed
+Status message: Sensitive sensor routine passed.
+```
