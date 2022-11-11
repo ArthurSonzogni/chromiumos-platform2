@@ -13,6 +13,7 @@ group("all") {
     ":dbus_conf",
     ":install_client_headers",
     ":install_pkcs11_header",
+    ":install_tmpfiles_config",
     ":libchaps",
     ":p11_replay",
   ]
@@ -205,6 +206,11 @@ executable("p11_replay") {
   install_path = "bin"
   configs += [ ":target_defaults" ]
   deps = [ ":libchaps" ]
+}
+
+install_config("install_tmpfiles_config") {
+  sources = [ "tmpfiles.d/chaps.conf" ]
+  install_path = "/usr/lib/tmpfiles.d"
 }
 
 if (use.test) {
