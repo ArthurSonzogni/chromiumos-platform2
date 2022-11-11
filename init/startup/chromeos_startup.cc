@@ -131,7 +131,7 @@ bool ChromeosStartup::IsTPMOwned() {
   // Check file contents
   if (!utils::ReadFileToInt(owned, &output)) {
     PLOG(WARNING) << "Could not determine TPM owned, failed to read "
-                  << kTPMOwnedPath;
+                  << owned.value();
     return true;
   }
   if (output == 0) {
