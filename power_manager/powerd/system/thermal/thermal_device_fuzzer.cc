@@ -26,8 +26,7 @@ namespace {
 constexpr base::TimeDelta kPollInterval = base::Milliseconds(10);
 }  // namespace
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 namespace {
 
@@ -101,8 +100,7 @@ class ThermalDeviceFuzzer {
   std::unique_ptr<CoolingDevice> cooling_device;
 };
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system
 
 class Environment {
  public:

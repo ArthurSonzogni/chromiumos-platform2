@@ -20,8 +20,7 @@
 
 #include "power_manager/powerd/system/thermal/cooling_device.h"
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 namespace {
 
@@ -67,5 +66,4 @@ ThermalDeviceFactory::CreateThermalDevices(
   return ret;
 }
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system

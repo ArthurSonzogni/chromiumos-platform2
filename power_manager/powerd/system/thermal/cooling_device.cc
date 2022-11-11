@@ -20,8 +20,7 @@
 #include "power_manager/common/util.h"
 #include "power_manager/powerd/system/thermal/device_thermal_state.h"
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 namespace {
 
@@ -135,5 +134,4 @@ DeviceThermalState CoolingDevice::CalculateThermalState(int sysfs_data) {
   return DeviceThermalState::kNominal;
 }
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system

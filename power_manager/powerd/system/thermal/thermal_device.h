@@ -16,8 +16,7 @@
 #include "power_manager/powerd/system/thermal/device_thermal_state.h"
 #include "power_manager/powerd/system/thermal/thermal_device_observer.h"
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 enum class ThermalDeviceType {
   kUnknown = 0,
@@ -126,7 +125,6 @@ class ThermalDevice : public ThermalDeviceInterface {
   DeviceThermalState current_state_;
 };
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system
 
 #endif  // POWER_MANAGER_POWERD_SYSTEM_THERMAL_THERMAL_DEVICE_H_

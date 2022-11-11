@@ -18,8 +18,7 @@
 #include <brillo/message_loops/base_message_loop.h>
 #include <fuzzer/FuzzedDataProvider.h>
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 class AmbientLightSensorFuzzer {
  public:
@@ -76,8 +75,7 @@ class AmbientLightSensorFuzzer {
   base::ScopedTempDir temp_dir_;
 };
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system
 
 // Disable logging.
 struct Environment {

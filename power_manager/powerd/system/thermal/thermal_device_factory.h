@@ -10,8 +10,7 @@
 
 #include "power_manager/powerd/system/thermal/thermal_device.h"
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 class ThermalDeviceFactory {
  public:
@@ -26,7 +25,6 @@ class ThermalDeviceFactory {
   ThermalDeviceFactory& operator=(const ThermalDeviceFactory&) = delete;
 };
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system
 
 #endif  // POWER_MANAGER_POWERD_SYSTEM_THERMAL_THERMAL_DEVICE_FACTORY_H_

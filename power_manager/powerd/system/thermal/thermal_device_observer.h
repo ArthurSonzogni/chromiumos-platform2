@@ -7,8 +7,7 @@
 
 #include <base/observer_list_types.h>
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 class ThermalDeviceInterface;
 
@@ -22,7 +21,6 @@ class ThermalDeviceObserver : public base::CheckedObserver {
   virtual void OnThermalChanged(ThermalDeviceInterface* sensor) = 0;
 };
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system
 
 #endif  // POWER_MANAGER_POWERD_SYSTEM_THERMAL_THERMAL_DEVICE_OBSERVER_H_

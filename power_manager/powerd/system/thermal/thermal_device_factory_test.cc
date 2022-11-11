@@ -14,8 +14,7 @@
 #include <base/files/scoped_temp_dir.h>
 #include <gtest/gtest.h>
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 TEST(ThermalDeviceFactory, CreateThermalDevices) {
   base::ScopedTempDir scoped_temp_dir;
@@ -41,5 +40,4 @@ TEST(ThermalDeviceFactory, CreateThermalDevices) {
   EXPECT_EQ(expected_paths, actual_paths);
 }
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system

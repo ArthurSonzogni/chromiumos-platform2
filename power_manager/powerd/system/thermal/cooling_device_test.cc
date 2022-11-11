@@ -22,8 +22,7 @@
 #include "power_manager/powerd/system/thermal/device_thermal_state.h"
 #include "power_manager/powerd/system/thermal/thermal_device_observer.h"
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 namespace {
 
@@ -219,5 +218,4 @@ TEST_F(CoolingDeviceTest, ZeroMaxState) {
   EXPECT_EQ(DeviceThermalState::kUnknown, cooling_device_->GetThermalState());
 }
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system

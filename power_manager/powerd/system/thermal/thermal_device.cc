@@ -16,8 +16,7 @@
 
 #include "power_manager/powerd/system/thermal/device_thermal_state.h"
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 namespace {
 
@@ -121,5 +120,4 @@ ThermalDeviceType ThermalDevice::GetType() const {
   return type_;
 }
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system

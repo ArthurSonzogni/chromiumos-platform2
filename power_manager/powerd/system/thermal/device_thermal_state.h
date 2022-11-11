@@ -9,8 +9,7 @@
 
 #include "power_manager/proto_bindings/thermal.pb.h"
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 enum class DeviceThermalState {
   // Thermal state is unknown.
@@ -36,7 +35,6 @@ std::string DeviceThermalStateToString(DeviceThermalState state);
 ThermalEvent::ThermalState DeviceThermalStateToProto(
     system::DeviceThermalState state);
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system
 
 #endif  // POWER_MANAGER_POWERD_SYSTEM_THERMAL_DEVICE_THERMAL_STATE_H_

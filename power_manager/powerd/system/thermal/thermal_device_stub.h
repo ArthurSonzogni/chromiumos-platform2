@@ -13,8 +13,7 @@
 #include "power_manager/powerd/system/thermal/thermal_device.h"
 #include "power_manager/powerd/system/thermal/thermal_device_observer.h"
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 class ThermalDeviceStub : public ThermalDeviceInterface {
  public:
@@ -49,7 +48,6 @@ class ThermalDeviceStub : public ThermalDeviceInterface {
   ThermalDeviceType type_;
 };
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system
 
 #endif  // POWER_MANAGER_POWERD_SYSTEM_THERMAL_THERMAL_DEVICE_STUB_H_
