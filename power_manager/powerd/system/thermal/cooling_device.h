@@ -15,7 +15,8 @@ class CoolingDevice : public ThermalDevice {
   using ThermalDevice::ThermalDevice;
   CoolingDevice(const CoolingDevice&) = delete;
   CoolingDevice& operator=(const CoolingDevice&) = delete;
-  // Read sysfs to determine the scaling for nominal/fair/serious/critcal state.
+  // Read sysfs to determine the scaling for nominal/fair/serious/critical
+  // state.
   bool InitSysfsFile() override;
 
  protected:
