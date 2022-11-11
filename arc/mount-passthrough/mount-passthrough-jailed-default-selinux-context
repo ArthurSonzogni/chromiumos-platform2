@@ -1,9 +1,10 @@
 #!/bin/bash
-# Copyright 2016 The ChromiumOS Authors
+# Copyright 2022 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-# Runs mount-passthrough with minijail0 as chronos.
+# Runs mount-passthrough with minijail0 as chronos with the default SELinux
+# context.
 
 set -e
 
@@ -39,6 +40,6 @@ set -- "$@" "false" # enter_concierge_namespace
 # open files. See b/30236190 for more context.
 set -- "$@" "8192" # max_number_of_open_fds
 
-set -- "$@" "false" # use_default_selinux_context
+set -- "$@" "true" # use_default_selinux_context
 
 run_mount_passthrough_with_minijail0 "$@"

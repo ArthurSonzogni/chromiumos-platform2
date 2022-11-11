@@ -31,6 +31,7 @@ executable("mount-passthrough") {
 install_config("install_bin") {
   sources = [
     "mount-passthrough-jailed",
+    "mount-passthrough-jailed-default-selinux-context",
     "mount-passthrough-jailed-media",
     "mount-passthrough-jailed-play",
   ]
