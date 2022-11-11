@@ -3813,10 +3813,17 @@ void WiFi::HandleUpdatedLinkStatistics() {
   endpoint->UpdateSignalStrength(
       static_cast<signed char>(station_stats_.signal));
 
-  // Update telemetry.
+  // Update telemetry and Service link speed properties.
   if (station_stats_.tx.bitrate != UINT_MAX) {
     metrics()->SendToUMA(Metrics::kMetricWifiTxBitrate,
                          station_stats_.tx.bitrate / 10);
+    if (current_service_) {
+      // Convert the unit of link speed from 100Kbps to Kbps.
+      current_service_->SetUplinkSpeedKbps(station_stats_.tx.bitrate * 100);
+    }
+  }
+  if (station_stats_.rx.bitrate != UINT_MAX && current_service_) {
+    current_service_->SetDownlinkSpeedKbps(station_stats_.rx.bitrate * 100);
   }
   if (!pending_nl80211_stats_requests_.empty()) {
     // Only emit 1 telemetry event with link statistics, even if we had multiple

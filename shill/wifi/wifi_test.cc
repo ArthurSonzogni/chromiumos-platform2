@@ -2680,6 +2680,82 @@ TEST_F(WiFiMainTest, SignalChanged) {
   EXPECT_EQ(GetStationStats().signal, -70);
 }
 
+TEST_F(WiFiMainTest, UpdateLinkSpeed) {
+  StartWiFi();
+  WiFiEndpointRefPtr endpoint;
+  RpcIdentifier bss_path;
+  MockWiFiServiceRefPtr service(
+      SetupConnectedService(RpcIdentifier(""), &endpoint, &bss_path));
+
+  KeyValueStore props;
+  // We dont care about Signal but signal related properties are required.
+  props.Set<int32_t>(WPASupplicant::kSignalChangePropertyRSSI, -70);
+  props.Set<uint32_t>(WPASupplicant::kSignalChangePropertyRxSpeed, 20000UL);
+  props.Set<uint32_t>(WPASupplicant::kSignalChangePropertyTxSpeed, 50000UL);
+  KeyValueStore properties;
+  properties.Set<KeyValueStore>(WPASupplicant::kSignalChangeProperty, props);
+
+  EXPECT_CALL(*service, SetDownlinkSpeedKbps(20000)).Times(1);
+  EXPECT_CALL(*service, SetUplinkSpeedKbps(50000)).Times(1);
+
+  PropertiesChanged(properties);
+  event_dispatcher_->DispatchPendingEvents();
+
+  StopWiFi();
+}
+
+TEST_F(WiFiMainTest, EmptyLinkSpeed) {
+  StartWiFi();
+  WiFiEndpointRefPtr endpoint;
+  RpcIdentifier bss_path;
+  MockWiFiServiceRefPtr service(
+      SetupConnectedService(RpcIdentifier(""), &endpoint, &bss_path));
+
+  KeyValueStore props;
+  // We dont care about Signal but signal related properties are required.
+  // Check if link speeds will be set when the properties are not set.
+  props.Set<int32_t>(WPASupplicant::kSignalChangePropertyRSSI, -70);
+  KeyValueStore properties;
+  properties.Set<KeyValueStore>(WPASupplicant::kSignalChangeProperty, props);
+
+  EXPECT_CALL(*service, SetDownlinkSpeedKbps(_)).Times(0);
+  EXPECT_CALL(*service, SetUplinkSpeedKbps(_)).Times(0);
+
+  PropertiesChanged(properties);
+  event_dispatcher_->DispatchPendingEvents();
+
+  StopWiFi();
+}
+
+TEST_F(WiFiMainTest, UpdateLinkSpeedWhenDisconnected) {
+  StartWiFi();
+  WiFiEndpointRefPtr endpoint;
+  RpcIdentifier bss_path;
+  MockWiFiServiceRefPtr service(
+      SetupConnectedService(RpcIdentifier(""), &endpoint, &bss_path));
+
+  // Disconnect wifi and make sure it is disconnected.
+  ReportCurrentBSSChanged(RpcIdentifier(WPASupplicant::kCurrentBSSNull));
+  EXPECT_EQ(nullptr, GetCurrentService());
+
+  KeyValueStore props;
+  // We dont care about Signal but signal related properties are required.
+  // Check if link speeds will be set when wifi is disconnected.
+  props.Set<int32_t>(WPASupplicant::kSignalChangePropertyRSSI, -70);
+  props.Set<uint32_t>(WPASupplicant::kSignalChangePropertyRxSpeed, 20000UL);
+  props.Set<uint32_t>(WPASupplicant::kSignalChangePropertyTxSpeed, 50000UL);
+  KeyValueStore properties;
+  properties.Set<KeyValueStore>(WPASupplicant::kSignalChangeProperty, props);
+
+  EXPECT_CALL(*service, SetDownlinkSpeedKbps(_)).Times(0);
+  EXPECT_CALL(*service, SetUplinkSpeedKbps(_)).Times(0);
+
+  PropertiesChanged(properties);
+  event_dispatcher_->DispatchPendingEvents();
+
+  StopWiFi();
+}
+
 TEST_F(WiFiMainTest, ReconnectTimer) {
   StartWiFi();
   MockWiFiServiceRefPtr service(

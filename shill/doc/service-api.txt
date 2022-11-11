@@ -1887,6 +1887,16 @@ Properties	string ArcVpn.TunnelChrome [writeonly]
 			seconds since the Windows epoch (1601-01-01
 			00:00:00 UTC).
 
+		uint32 UplinkSpeedKbps [readonly]
+
+			Theoretical maximal uplink speed of current service in Kbps, currently
+			only defined for physical networks (WiFi, Ethernet, Cellular).
+
+		uint32 DownlinkSpeedKbps [readonly]
+
+			Theoretical maximal downlink speed of current service in Kbps, currently
+			only defined for physical networks (WiFi, Ethernet, Cellular).
+
 		string Type [readonly]
 
 			The service type; one of:

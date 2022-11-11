@@ -13,6 +13,7 @@
 #include <set>
 #include <stdio.h>
 #include <string.h>
+#include <sys/ioctl.h>
 #include <time.h>
 
 #include <base/bind.h>
@@ -64,6 +65,9 @@ namespace {
 constexpr char kVpdEthernetMacFilePath[] = "/sys/firmware/vpd/ro/ethernet_mac0";
 // Path to file with |dock_mac| VPD field value.
 constexpr char kVpdDockMacFilePath[] = "/sys/firmware/vpd/ro/dock_mac";
+
+// Factor used to convert mbps to kbps.
+constexpr uint32_t kMbpsToKbpsFactor = 1e3;
 
 bool IsValidMac(const std::string& mac_address) {
   if (mac_address.length() != 12) {
@@ -249,6 +253,10 @@ void Ethernet::ConnectTo(EthernetService* service) {
   };
   network()->Start(opts);
   SetServiceState(Service::kStateConfiguring);
+
+  // Update link speeds. link speeds are expected to be constant during the L2
+  // connection for ethernet.
+  UpdateLinkSpeed();
 }
 
 std::string Ethernet::GetStorageIdentifier() const {
@@ -899,6 +907,43 @@ std::string Ethernet::GetDeviceBusType() const {
     return kDeviceBusTypeUsb;
   }
   return std::string();
+}
+
+void Ethernet::UpdateLinkSpeed() {
+  if (!selected_service()) {
+    return;
+  }
+
+  // TODO(b/262817724): Refactor the ioctl(SIOCETHTOOL) code into a common
+  // function so that it can be reused in several functions.
+  struct ethtool_cmd ecmd;
+  struct ifreq ifr;
+  int fd;
+
+  memset(&ecmd, 0, sizeof(ecmd));
+  memset(&ifr, 0, sizeof(ifr));
+  fd = sockets_->Socket(PF_INET, SOCK_DGRAM | SOCK_CLOEXEC, IPPROTO_IP);
+  if (fd < 0) {
+    PLOG(ERROR) << LoggingTag() << " " << __func__
+                << " Failed to allocate socket";
+    return;
+  }
+  ScopedSocketCloser socket_closer(sockets_.get(), fd);
+
+  ecmd.cmd = ETHTOOL_GSET;
+  ifr.ifr_data = &ecmd;
+  strncpy(ifr.ifr_name, link_name().c_str(), sizeof(ifr.ifr_name));
+
+  if (sockets_->Ioctl(fd, SIOCETHTOOL, &ifr) != 0) {
+    PLOG(ERROR) << LoggingTag() << " " << __func__
+                << " ETHTOOL_GSET command failed ";
+  }
+  // Value we get from ecmd is mbps, convert it to kbps to keep
+  // with other technologies.
+  selected_service()->SetUplinkSpeedKbps(ethtool_cmd_speed(&ecmd) *
+                                         kMbpsToKbpsFactor);
+  selected_service()->SetDownlinkSpeedKbps(ethtool_cmd_speed(&ecmd) *
+                                           kMbpsToKbpsFactor);
 }
 
 }  // namespace shill

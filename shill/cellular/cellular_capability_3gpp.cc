@@ -1039,6 +1039,12 @@ void CellularCapability3gpp::UpdateActiveBearer() {
     SLOG(this, 2) << "Found active bearer \"" << path.value() << "\".";
     CHECK(!active_bearer_) << "Found more than one active bearer.";
     active_bearer_ = std::move(bearer);
+    bearer_dbus_properties_proxy_ =
+        control_interface()->CreateDBusPropertiesProxy(
+            GetActiveBearer()->dbus_path(), GetActiveBearer()->dbus_service());
+    bearer_dbus_properties_proxy_->SetPropertiesChangedCallback(
+        base::BindRepeating(&CellularCapability3gpp::OnPropertiesChanged,
+                            base::Unretained(this)));
   }
 
   if (!active_bearer_)
@@ -1592,6 +1598,53 @@ void CellularCapability3gpp::OnPropertiesChanged(
     // sim properties (imsi, operator name) are updated when MM moves out
     // of the locked state.
     UpdateSims();
+  }
+  if (interface == MM_DBUS_INTERFACE_BEARER) {
+    OnBearerPropertiesChanged(changed_properties);
+  }
+}
+
+void CellularCapability3gpp::OnBearerPropertiesChanged(
+    const KeyValueStore& properties) {
+  if (properties.Contains<KeyValueStore>(MM_BEARER_PROPERTY_STATS)) {
+    KeyValueStore stats =
+        properties.Get<KeyValueStore>(MM_BEARER_PROPERTY_STATS);
+    UpdateLinkSpeed(stats);
+  }
+}
+// UpdateLinkSpeed will get called while initiation process of cellular and
+// When properties are updated during the connection.
+void CellularCapability3gpp::UpdateLinkSpeed(const KeyValueStore& properties) {
+  ServiceRefPtr service = cellular()->selected_service();
+  // Uplink and downlink retrieve from modemm manager is in bps unit, we need
+  // to convert it to Kbps to be consistent with other technology.
+  if (!service) {
+    return;
+  }
+
+  uint32_t link_speed_kbps;
+  if (properties.Contains<uint64_t>(kPropertyUpLinkSpeedBps)) {
+    if (properties.Get<uint64_t>(kPropertyUpLinkSpeedBps) / 1000 > UINT_MAX) {
+      LOG(ERROR) << __func__ << " Uplink speed is: "
+                 << properties.Get<uint64_t>(kPropertyUpLinkSpeedBps) / 1000
+                 << " kb/s, exceeding uint max: " << UINT_MAX
+                 << ", not updated.";
+      return;
+    }
+    link_speed_kbps = properties.Get<uint64_t>(kPropertyUpLinkSpeedBps) / 1000;
+    service->SetUplinkSpeedKbps(link_speed_kbps);
+  }
+  if (properties.Contains<uint64_t>(kPropertyDownLinkSpeedBps)) {
+    if (properties.Get<uint64_t>(kPropertyDownLinkSpeedBps) / 1000 > UINT_MAX) {
+      LOG(ERROR) << __func__ << " Downlink speed is: "
+                 << properties.Get<uint64_t>(kPropertyDownLinkSpeedBps) / 1000
+                 << " kb/s, exceeding uint max: " << UINT_MAX
+                 << ", not updated.";
+      return;
+    }
+    link_speed_kbps =
+        properties.Get<uint64_t>(kPropertyDownLinkSpeedBps) / 1000;
+    service->SetDownlinkSpeedKbps(link_speed_kbps);
   }
 }
 

@@ -164,6 +164,8 @@ const char kTypeProperty[] = "Type";
 const char kUIDataProperty[] = "UIData";
 const char kVisibleProperty[] = "Visible";
 const char kONCSourceProperty[] = "ONCSource";
+const char kUplinkSpeedPropertyKbps[] = "UplinkSpeedKbps";
+const char kDownlinkSpeedPropertyKbps[] = "DownlinkSpeedKbps";
 
 // Cellular Service property names.
 const char kActivationStateProperty[] = "Cellular.ActivationState";

@@ -144,6 +144,12 @@ class EthernetTest : public testing::Test {
   void SetService(const EthernetServiceRefPtr& service) {
     ethernet_->service_ = service;
   }
+  void SelectService(const EthernetServiceRefPtr& service) {
+    ethernet_->SelectService(service);
+  }
+
+  void UpdateLinkSpeed() { ethernet_->UpdateLinkSpeed(); }
+
   const PropertyStore& GetStore() { return ethernet_->store(); }
   void StartEthernet() {
     ON_CALL(manager_, dhcp_hostname()).WillByDefault(ReturnRef(dhcp_hostname_));
@@ -353,6 +359,14 @@ TEST_F(EthernetTest, ConnectToLinkDown) {
 }
 
 TEST_F(EthernetTest, ConnectToSuccess) {
+  // We do not care about Sockets call but they are used in UpdateLinkSpeed()
+  // in ethernet_->ConnectTo.
+  constexpr int kFakeFd = 789;
+  EXPECT_CALL(*mock_sockets_, Socket(_, _, _)).WillOnce(Return(kFakeFd));
+  EXPECT_CALL(*mock_sockets_, Ioctl(kFakeFd, SIOCETHTOOL, _))
+      .WillOnce(Return(1));
+  EXPECT_CALL(*mock_sockets_, Close(kFakeFd));
+
   auto dhcp_controller = new MockDHCPController(&control_interface_, ifname_);
   StartEthernet();
   SetLinkUp(true);
@@ -654,6 +668,29 @@ TEST_F(EthernetTest, SetMacAddressServiceStorageIdentifierChange) {
   // Must set nullptr to avoid mock objects leakage.
   mock_service_->set_profile(nullptr);
   StopEthernet();
+}
+
+TEST_F(EthernetTest, UpdateLinkSpeed) {
+  // We do not care about Sockets call but they are used in UpdateLinkSpeed()
+  // In order to let RunEthtoolCmd() succeed we need to return a positive number
+  // for Ioctl
+  constexpr int kFakeFd = 789;
+  EXPECT_CALL(*mock_sockets_, Socket(_, _, _)).WillOnce(Return(kFakeFd));
+  EXPECT_CALL(*mock_sockets_, Ioctl(kFakeFd, SIOCETHTOOL, _))
+      .WillOnce(Return(1));
+  EXPECT_CALL(*mock_sockets_, Close(kFakeFd));
+
+  EXPECT_CALL(*mock_service_, SetUplinkSpeedKbps(_));
+
+  SelectService(mock_service_);
+  UpdateLinkSpeed();
+}
+
+TEST_F(EthernetTest, UpdateLinkSpeedNoSelectedService) {
+  EXPECT_CALL(*mock_service_, SetUplinkSpeedKbps(_)).Times(0);
+
+  SelectService(nullptr);
+  UpdateLinkSpeed();
 }
 
 }  // namespace shill

@@ -90,6 +90,8 @@ class Ethernet : public Device, public SupplicantEventDelegateInterface {
   friend class EthernetServiceTest;  // For weak_ptr_factory_.
 
   FRIEND_TEST(EthernetProviderTest, MultipleServices);
+  FRIEND_TEST(EthernetProviderTest, UpdateLinkSpeed);
+  FRIEND_TEST(EthernetProviderTest, UpdateLinkSpeedNoSelectedService);
 
   // Return a pointer to the EthernetProvider for Ethernet devices.
   EthernetProvider* GetProvider();
@@ -159,6 +161,8 @@ class Ethernet : public Device, public SupplicantEventDelegateInterface {
 
   // Returns device bus type on success. Otherwise, returns empty string.
   std::string GetDeviceBusType() const;
+
+  void UpdateLinkSpeed();
 
   EthernetServiceRefPtr service_;
   bool link_up_;

@@ -162,6 +162,7 @@ class CellularCapability3gppTest : public testing::TestWithParam<std::string> {
     capability_ = static_cast<CellularCapability3gpp*>(
         cellular_->capability_for_testing());
     cellular_->SetServiceForTesting(service_);
+    cellular_->SetSelectedServiceForTesting(service_);
     cellular_service_provider_.Start();
     metrics_.RegisterDevice(cellular_->interface_index(),
                             Technology::kCellular);
@@ -189,6 +190,7 @@ class CellularCapability3gppTest : public testing::TestWithParam<std::string> {
     metrics_.RegisterDevice(cellular_->interface_index(),
                             Technology::kCellular);
     cellular_->SetServiceForTesting(nullptr);
+    cellular_->SetSelectedServiceForTesting(nullptr);
     service_ = nullptr;
     CHECK(cellular_->HasOneRef());
     cellular_ = nullptr;
@@ -2219,6 +2221,41 @@ TEST_F(CellularCapability3gppTest, UnknownIccid) {
             kUnknownIccid);
   EXPECT_TRUE(sim_slot_info[1].Get<std::string>(kSIMSlotInfoICCID).empty());
   VerifyAndSetActivationExpectations();
+}
+
+TEST_F(CellularCapability3gppTest, UpdateLinkSpeed) {
+  InitProxies();
+
+  constexpr char kPropertyUpLinkSpeed[] = "uplink-speed";
+  constexpr char kPropertyDownLinkSpeed[] = "downlink-speed";
+  KeyValueStore stats;
+  stats.Set<uint64_t>(kPropertyUpLinkSpeed, 200000UL);
+  stats.Set<uint64_t>(kPropertyDownLinkSpeed, 100000UL);
+
+  KeyValueStore props;
+  props.Set<KeyValueStore>(MM_BEARER_PROPERTY_STATS, stats);
+
+  EXPECT_CALL(*service_, SetUplinkSpeedKbps(200)).Times(1);
+  EXPECT_CALL(*service_, SetDownlinkSpeedKbps(100)).Times(1);
+  capability_->OnPropertiesChanged(MM_DBUS_INTERFACE_BEARER, props);
+}
+
+TEST_F(CellularCapability3gppTest, UpdateLinkSpeedNoSelectedService) {
+  InitProxies();
+  cellular_->SetSelectedServiceForTesting(nullptr);
+
+  constexpr char kPropertyUpLinkSpeed[] = "uplink-speed";
+  constexpr char kPropertyDownLinkSpeed[] = "downlink-speed";
+  KeyValueStore stats;
+  stats.Set<uint64_t>(kPropertyUpLinkSpeed, 200000UL);
+  stats.Set<uint64_t>(kPropertyDownLinkSpeed, 100000UL);
+
+  KeyValueStore props;
+  props.Set<KeyValueStore>(MM_BEARER_PROPERTY_STATS, stats);
+
+  EXPECT_CALL(*service_, SetUplinkSpeedKbps(_)).Times(0);
+  EXPECT_CALL(*service_, SetDownlinkSpeedKbps(_)).Times(0);
+  capability_->OnPropertiesChanged(MM_DBUS_INTERFACE_BEARER, props);
 }
 
 }  // namespace shill

@@ -39,6 +39,14 @@ class MockEthernetService : public EthernetService {
               (const std::string&, size_t),
               (override));
   MOCK_METHOD(void, ClearEAPCertification, (), (override));
+  MOCK_METHOD(void,
+              SetUplinkSpeedKbps,
+              (uint32_t uplink_speed_kbps),
+              (override));
+  MOCK_METHOD(void,
+              SetDownlinkSpeedKbps,
+              (uint32_t downlink_speed_kbps),
+              (override));
 };
 
 }  // namespace shill

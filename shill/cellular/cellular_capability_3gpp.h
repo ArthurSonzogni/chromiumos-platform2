@@ -190,6 +190,11 @@ class CellularCapability3gpp : public CellularCapability {
   // when no SIM is present.
   static const RpcIdentifier kRootPath;
 
+  // Keys for bearer stats properties. The unit of link speeds in the key value
+  // store come from modemm manager is bps.
+  static constexpr char kPropertyUpLinkSpeedBps[] = "uplink-speed";
+  static constexpr char kPropertyDownLinkSpeedBps[] = "downlink-speed";
+
  protected:
   virtual void SetupConnectProperties(KeyValueStore* properties);
   virtual void InitProxies();
@@ -233,6 +238,7 @@ class CellularCapability3gpp : public CellularCapability {
   FRIEND_TEST(CellularCapability3gppTest, StartModemInWrongState);
   FRIEND_TEST(CellularCapability3gppTest, StartModemWithDeferredEnableFailure);
   FRIEND_TEST(CellularCapability3gppTest, UpdateActiveBearer);
+  FRIEND_TEST(CellularCapability3gppTest, UpdateLinkSpeed);
   FRIEND_TEST(CellularCapability3gppTest, UpdatePendingActivationState);
   FRIEND_TEST(CellularCapability3gppTest, UpdateRegistrationState);
   FRIEND_TEST(CellularCapability3gppTest,
@@ -338,6 +344,9 @@ class CellularCapability3gpp : public CellularCapability {
       std::unique_ptr<DBusPropertiesProxy> sim_properties_proxy,
       const KeyValueStore& properties);
 
+  // Bearer property change handlers
+  void OnBearerPropertiesChanged(const KeyValueStore& properties);
+
   // Connect helpers and callbacks
   void CallConnect(const KeyValueStore& properties,
                    const ResultCallback& callback);
@@ -377,6 +386,9 @@ class CellularCapability3gpp : public CellularCapability {
   void UpdateServiceActivationState();
   void OnResetAfterActivationReply(const Error& error);
 
+  // Update uplink and downlink speed in service.
+  void UpdateLinkSpeed(const KeyValueStore& properties);
+
   bool proxies_initialized_ = false;
   std::unique_ptr<mm1::ModemModem3gppProxyInterface> modem_3gpp_proxy_;
   std::unique_ptr<mm1::ModemModem3gppProfileManagerProxyInterface>
@@ -387,6 +399,7 @@ class CellularCapability3gpp : public CellularCapability {
   std::unique_ptr<mm1::SimProxyInterface> sim_proxy_;
   std::unique_ptr<mm1::ModemLocationProxyInterface> modem_location_proxy_;
   std::unique_ptr<DBusPropertiesProxy> dbus_properties_proxy_;
+  std::unique_ptr<DBusPropertiesProxy> bearer_dbus_properties_proxy_;
 
   // Used to enrich information about the network operator in |ParseScanResult|.
   // TODO(pprabhu) Instead instantiate a local |MobileOperatorInfo| instance

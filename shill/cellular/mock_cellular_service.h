@@ -34,6 +34,14 @@ class MockCellularService : public CellularService {
   MOCK_METHOD(ConnectState, state, (), (const, override));
   MOCK_METHOD(bool, explicitly_disconnected, (), (const, override));
   MOCK_METHOD(const std::string&, activation_state, (), (const, override));
+  MOCK_METHOD(void,
+              SetUplinkSpeedKbps,
+              (uint32_t uplink_speed_kbps),
+              (override));
+  MOCK_METHOD(void,
+              SetDownlinkSpeedKbps,
+              (uint32_t downlink_speed_kbps),
+              (override));
 
  private:
   std::string default_activation_state_;

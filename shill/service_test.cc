@@ -261,6 +261,18 @@ class ServiceTest : public PropertyStoreTest {
   std::string storage_id_;
   MockPowerManager* power_manager_;  // Owned by |mock_manager_|.
   std::vector<Technology> technology_order_for_sorting_;
+
+  void SetUplinkSpeedKbps(uint32_t uplink_speed_kbps) {
+    service_->SetUplinkSpeedKbps(uplink_speed_kbps);
+  }
+
+  void SetDownlinkSpeedKbps(uint32_t downlink_speed_kbps) {
+    service_->SetDownlinkSpeedKbps(downlink_speed_kbps);
+  }
+
+  uint32_t uplink_speed_kbps() { return service_->uplink_speed_kbps(); }
+
+  uint32_t downlink_speed_kbps() { return service_->downlink_speed_kbps(); }
 };
 
 class AllMockServiceTest : public testing::Test {
@@ -2644,4 +2656,28 @@ TEST_F(ServiceTest, ResetTrafficCounters) {
   }
 }
 
+TEST_F(ServiceTest, UpdateLinkSpeed) {
+  EXPECT_CALL(*GetAdaptor(), EmitIntChanged(kUplinkSpeedPropertyKbps, 10))
+      .Times(1);
+  EXPECT_CALL(*GetAdaptor(), EmitIntChanged(kDownlinkSpeedPropertyKbps, 20))
+      .Times(1);
+
+  SetUplinkSpeedKbps(10);
+  SetDownlinkSpeedKbps(20);
+
+  EXPECT_EQ(uplink_speed_kbps(), 10);
+  EXPECT_EQ(downlink_speed_kbps(), 20);
+}
+
+TEST_F(ServiceTest, UpdateLinkSpeedTwice) {
+  // Check link speed is only set once when the setter is called twice on
+  // identical value.
+  EXPECT_CALL(*GetAdaptor(), EmitIntChanged(kUplinkSpeedPropertyKbps, _))
+      .Times(1);
+
+  SetUplinkSpeedKbps(30);
+  SetUplinkSpeedKbps(30);
+
+  EXPECT_EQ(uplink_speed_kbps(), 30);
+}
 }  // namespace shill

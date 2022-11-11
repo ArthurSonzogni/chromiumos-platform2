@@ -366,6 +366,7 @@ class Cellular : public Device,
   // Sets a Service for testing. When set, Cellular does not create or destroy
   // the associated Service.
   void SetServiceForTesting(CellularServiceRefPtr service);
+  void SetSelectedServiceForTesting(CellularServiceRefPtr service);
 
   void set_home_provider_for_testing(const Stringmap& home_provider) {
     home_provider_ = home_provider;

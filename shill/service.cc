@@ -291,6 +291,9 @@ Service::Service(Manager* manager, Technology technology)
   HelpRegisterConstDerivedUint64(kTrafficCounterResetTimeProperty,
                                  &Service::GetTrafficCounterResetTimeProperty);
 
+  store_.RegisterConstUint32(kUplinkSpeedPropertyKbps, &uplink_speed_kbps_);
+  store_.RegisterConstUint32(kDownlinkSpeedPropertyKbps, &downlink_speed_kbps_);
+
   metrics()->RegisterService(*this);
 
   static_ip_parameters_.PlumbPropertyStore(&store_);
@@ -2259,4 +2262,17 @@ Metrics* Service::metrics() const {
   return manager_->metrics();
 }
 
+void Service::SetUplinkSpeedKbps(uint32_t uplink_speed_kbps) {
+  if (uplink_speed_kbps != uplink_speed_kbps_) {
+    uplink_speed_kbps_ = uplink_speed_kbps;
+    adaptor_->EmitIntChanged(kUplinkSpeedPropertyKbps, uplink_speed_kbps_);
+  }
+}
+
+void Service::SetDownlinkSpeedKbps(uint32_t downlink_speed_kbps) {
+  if (downlink_speed_kbps != downlink_speed_kbps_) {
+    downlink_speed_kbps_ = downlink_speed_kbps;
+    adaptor_->EmitIntChanged(kDownlinkSpeedPropertyKbps, downlink_speed_kbps_);
+  }
+}
 }  // namespace shill

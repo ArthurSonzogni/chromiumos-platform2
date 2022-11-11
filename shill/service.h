@@ -429,6 +429,13 @@ class Service : public base::RefCounted<Service> {
   virtual void SendPostReadyStateMetrics(
       int64_t /*time_resume_to_ready_milliseconds*/) const {}
 
+  // Setter and getter for uplink and downlink speeds for the service.
+  // The unit of both link speeds are Kbps.
+  mockable void SetUplinkSpeedKbps(uint32_t uplink_speed_kbps);
+  uint32_t uplink_speed_kbps() const { return uplink_speed_kbps_; }
+  mockable void SetDownlinkSpeedKbps(uint32_t downlink_speed_kbps);
+  uint32_t downlink_speed_kbps() const { return downlink_speed_kbps_; }
+
   bool auto_connect() const { return auto_connect_; }
   void SetAutoConnect(bool connect);
 
@@ -1069,6 +1076,10 @@ class Service : public base::RefCounted<Service> {
   // Counts the total number of portal detection attempts for the current active
   // connection.
   int portal_detection_count_ = 0;
+
+  // Uplink and downlink speed for the service in Kbps.
+  uint32_t uplink_speed_kbps_;
+  uint32_t downlink_speed_kbps_;
 };
 
 }  // namespace shill

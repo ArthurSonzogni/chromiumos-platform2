@@ -83,6 +83,8 @@ class MockWiFiService : public WiFiService {
               EmitLinkQualityReportEvent,
               (const Metrics::WiFiLinkQualityReport&),
               (const, override));
+  MOCK_METHOD(void, SetUplinkSpeedKbps, (uint32_t), (override));
+  MOCK_METHOD(void, SetDownlinkSpeedKbps, (uint32_t), (override));
 };
 
 }  // namespace shill

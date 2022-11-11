@@ -2671,4 +2671,8 @@ void Cellular::SetServiceForTesting(CellularServiceRefPtr service) {
   service_ = service;
 }
 
+void Cellular::SetSelectedServiceForTesting(CellularServiceRefPtr service) {
+  SelectService(service);
+}
+
 }  // namespace shill
