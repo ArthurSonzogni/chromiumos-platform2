@@ -50,10 +50,15 @@ constexpr char kSandboxDirPath[] = "/usr/share/policy/";
 constexpr char kFingerprintSeccompPolicyPath[] = "fingerprint-seccomp.policy";
 constexpr char kFingerprintUserAndGroup[] = "healthd_fp";
 
+// SECCOMP policy for LED related routines.
+constexpr char kLedSeccompPolicyPath[] = "ec_led-seccomp.policy";
+
+// The user and group for accessing EC.
+constexpr char kEcUserAndGroup[] = "healthd_ec";
+
 // SECCOMP policy for ectool pwmgetfanrpm:
 constexpr char kFanSpeedSeccompPolicyPath[] =
     "ectool_pwmgetfanrpm-seccomp.policy";
-constexpr char kEctoolUserAndGroup[] = "healthd_ec";
 constexpr char kEctoolBinary[] = "/usr/sbin/ectool";
 // The ectool command used to collect fan speed in RPM.
 constexpr char kGetFanRpmCommand[] = "pwmgetfanrpm";
@@ -178,6 +183,29 @@ void GetFingerprintInfoTask(
       &GetFingerprintInfoCallback, std::move(cb), std::move(delegate)));
 }
 
+void SetLedColorCallback(mojom::Executor::SetLedColorCallback callback,
+                         std::unique_ptr<DelegateProcess> delegate,
+                         const std::optional<std::string>& err) {
+  delegate.reset();
+  std::move(callback).Run(err);
+}
+
+void SetLedColorTask(mojom::LedName name,
+                     mojom::LedColor color,
+                     mojom::Executor::SetLedColorCallback callback) {
+  auto delegate = std::make_unique<DelegateProcess>(
+      kLedSeccompPolicyPath, kEcUserAndGroup, kNullCapability,
+      /*readonly_mount_points=*/std::vector<base::FilePath>{},
+      /*writable_mount_points=*/
+      std::vector<base::FilePath>{base::FilePath{"/dev/cros_ec"}});
+
+  auto cb = mojo::WrapCallbackWithDefaultInvokeIfNotRun(std::move(callback),
+                                                        kFailToLaunchDelegate);
+  delegate->remote()->SetLedColor(
+      name, color,
+      base::BindOnce(&SetLedColorCallback, std::move(cb), std::move(delegate)));
+}
+
 }  // namespace
 
 // Exported for testing.
@@ -213,7 +241,7 @@ void Executor::GetFanSpeed(GetFanSpeedCallback callback) {
 
   base::OnceClosure closure = base::BindOnce(
       &Executor::RunUntrackedBinary, weak_factory_.GetWeakPtr(),
-      seccomp_policy_path, sandboxing_args, kEctoolUserAndGroup, binary_path,
+      seccomp_policy_path, sandboxing_args, kEcUserAndGroup, binary_path,
       binary_args, std::move(result), std::move(callback));
 
   base::ThreadPool::PostTask(FROM_HERE, {base::MayBlock()}, std::move(closure));
@@ -490,7 +518,7 @@ void Executor::GetLidAngle(GetLidAngleCallback callback) {
 
   base::OnceClosure closure = base::BindOnce(
       &Executor::RunUntrackedBinary, weak_factory_.GetWeakPtr(),
-      seccomp_policy_path, sandboxing_args, kEctoolUserAndGroup, binary_path,
+      seccomp_policy_path, sandboxing_args, kEcUserAndGroup, binary_path,
       binary_args, std::move(result), std::move(callback));
 
   base::ThreadPool::PostTask(FROM_HERE, {base::MayBlock()}, std::move(closure));
@@ -506,6 +534,14 @@ void Executor::GetFingerprintFrame(mojom::FingerprintCaptureType type,
 void Executor::GetFingerprintInfo(GetFingerprintInfoCallback callback) {
   base::SequencedTaskRunnerHandle::Get()->PostTask(
       FROM_HERE, base::BindOnce(&GetFingerprintInfoTask, std::move(callback)));
+}
+
+void Executor::SetLedColor(mojom::LedName name,
+                           mojom::LedColor color,
+                           SetLedColorCallback callback) {
+  base::SequencedTaskRunnerHandle::Get()->PostTask(
+      FROM_HERE,
+      base::BindOnce(&SetLedColorTask, name, color, std::move(callback)));
 }
 
 void Executor::RunUntrackedBinary(

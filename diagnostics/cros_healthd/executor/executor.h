@@ -62,6 +62,9 @@ class Executor final : public ash::cros_healthd::mojom::Executor {
       ash::cros_healthd::mojom::FingerprintCaptureType type,
       GetFingerprintFrameCallback callback) override;
   void GetFingerprintInfo(GetFingerprintInfoCallback callback) override;
+  void SetLedColor(ash::cros_healthd::mojom::LedName name,
+                   ash::cros_healthd::mojom::LedColor color,
+                   SetLedColorCallback callback) override;
 
  private:
   // Runs the given binary with the given arguments and sandboxing. If
