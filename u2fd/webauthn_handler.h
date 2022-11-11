@@ -208,10 +208,13 @@ class WebAuthnHandler {
   // Appends a none attestation to |response|. Only used in MakeCredential.
   void AppendNoneAttestation(MakeCredentialResponse* response);
 
-  // Creates and returns an U2F attestation statement for |data_to_sign|, or
-  // nullopt if attestation fails.
+  // Creates and returns an U2F attestation statement, or nullopt if attestation
+  // fails.
   std::optional<std::vector<uint8_t>> MakeFidoU2fAttestationStatement(
-      const std::vector<uint8_t>& data_to_sign,
+      const std::vector<uint8_t>& app_id,
+      const std::vector<uint8_t>& challenge,
+      const std::vector<uint8_t>& pub_key,
+      const std::vector<uint8_t>& key_handle,
       const MakeCredentialRequest::AttestationConveyancePreference
           attestation_conveyance_preference);
 

@@ -75,12 +75,22 @@ class U2fCommandProcessor {
 
   // Sign data using the attestation certificate.
   virtual MakeCredentialResponse::MakeCredentialStatus G2fAttest(
-      const std::vector<uint8_t>& data,
-      const brillo::SecureBlob& secret,
-      uint8_t format,
+      const std::vector<uint8_t>& rp_id_hash,
+      const brillo::SecureBlob& credential_secret,
+      const std::vector<uint8_t>& challenge,
+      const std::vector<uint8_t>& credential_public_key,
+      const std::vector<uint8_t>& credential_id,
+      std::vector<uint8_t>* cert_out,
       std::vector<uint8_t>* signature_out) = 0;
 
-  virtual std::optional<std::vector<uint8_t>> GetG2fCert() = 0;
+  // Use a random software key to sign the data.
+  virtual bool G2fSoftwareAttest(
+      const std::vector<uint8_t>& rp_id_hash,
+      const std::vector<uint8_t>& challenge,
+      const std::vector<uint8_t>& credential_public_key,
+      const std::vector<uint8_t>& credential_id,
+      std::vector<uint8_t>* cert_out,
+      std::vector<uint8_t>* signature_out) = 0;
 
   // Return the algorithm type of the key pair U2fGenerate generates.
   virtual CoseAlgorithmIdentifier GetAlgorithm() = 0;

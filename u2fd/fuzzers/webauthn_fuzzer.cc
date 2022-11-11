@@ -23,12 +23,11 @@
 #include <fuzzer/FuzzedDataProvider.h>
 #include <gmock/gmock.h>
 #include <google/protobuf/descriptor.h>
+#include <libhwsec/factory/fuzzed_factory.h>
 #include <libprotobuf-mutator/src/libfuzzer/libfuzzer_macro.h>
 #include <metrics/metrics_library_mock.h>
-#include <trunks/fuzzed_command_transceiver.h>
 #include <user_data_auth-client-test/user_data_auth/dbus-proxy-mocks.h>
 
-#include "u2fd/client/tpm_vendor_cmd.h"
 #include "u2fd/fuzzers/fuzzed_allowlisting_util_factory.h"
 #include "u2fd/fuzzers/fuzzed_user_state.h"
 #include "u2fd/fuzzers/webauthn_fuzzer_data.pb.h"
@@ -50,7 +49,6 @@ using google::protobuf::Reflection;
 
 constexpr char kStorageRootPath[] = "/tmp/webauthn_fuzzer";
 const std::string kCredentialSecret('E', 64);
-constexpr size_t kMaxTpmMessageLength = 512;
 
 class WebAuthnFuzzer : public brillo::Daemon {
  public:
@@ -88,9 +86,7 @@ class WebAuthnFuzzer : public brillo::Daemon {
 
     PrepareMockCryptohome();
 
-    tpm_proxy_ = std::make_unique<u2f::TpmVendorCommandProxy>(
-        std::make_unique<trunks::FuzzedCommandTransceiver>(
-            &data_provider_, kMaxTpmMessageLength));
+    hwsec_factory_ = std::make_unique<hwsec::FuzzedFactory>(data_provider_);
 
     user_state_ = std::make_unique<u2f::FuzzedUserState>(&data_provider_);
 
@@ -107,7 +103,7 @@ class WebAuthnFuzzer : public brillo::Daemon {
 
     PrepareStorage();
     auto u2f_command_processor = std::make_unique<u2f::U2fCommandProcessorGsc>(
-        tpm_proxy_.get(), request_presence);
+        hwsec_factory_->GetU2fVendorFrontend(), request_presence);
 
     handler_->Initialize(mock_bus_.get(), user_state_.get(), u2f_mode,
                          std::move(u2f_command_processor),
@@ -247,7 +243,7 @@ class WebAuthnFuzzer : public brillo::Daemon {
   std::unique_ptr<u2f::WebAuthnHandler> handler_;
   scoped_refptr<dbus::MockBus> mock_bus_;
   scoped_refptr<dbus::MockObjectProxy> mock_auth_dialog_proxy_;
-  std::unique_ptr<u2f::TpmVendorCommandProxy> tpm_proxy_;
+  std::unique_ptr<hwsec::FuzzedFactory> hwsec_factory_;
   std::unique_ptr<dbus::Response> mock_auth_dialog_response_;
   std::unique_ptr<u2f::FuzzedUserState> user_state_;
   std::unique_ptr<u2f::FuzzedAllowlistingUtilFactory>

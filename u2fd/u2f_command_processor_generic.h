@@ -68,16 +68,24 @@ class U2fCommandProcessorGeneric : public U2fCommandProcessor {
 
   // Currently doesn't support u2f/g2f mode.
   MakeCredentialResponse::MakeCredentialStatus G2fAttest(
-      const std::vector<uint8_t>& data,
-      const brillo::SecureBlob& secret,
-      uint8_t format,
+      const std::vector<uint8_t>& rp_id_hash,
+      const brillo::SecureBlob& credential_secret,
+      const std::vector<uint8_t>& challenge,
+      const std::vector<uint8_t>& credential_public_key,
+      const std::vector<uint8_t>& credential_id,
+      std::vector<uint8_t>* cert_out,
       std::vector<uint8_t>* signature_out) override {
     return MakeCredentialResponse::INTERNAL_ERROR;
   }
 
   // Currently doesn't support u2f/g2f mode.
-  std::optional<std::vector<uint8_t>> GetG2fCert() override {
-    return std::nullopt;
+  bool G2fSoftwareAttest(const std::vector<uint8_t>& rp_id_hash,
+                         const std::vector<uint8_t>& challenge,
+                         const std::vector<uint8_t>& credential_public_key,
+                         const std::vector<uint8_t>& credential_id,
+                         std::vector<uint8_t>* cert_out,
+                         std::vector<uint8_t>* signature_out) override {
+    return false;
   }
 
   CoseAlgorithmIdentifier GetAlgorithm() override;

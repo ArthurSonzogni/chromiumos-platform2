@@ -53,9 +53,8 @@ constexpr char kRpId[] = "example.com";
 // Wrong RP id is used to test app id extension path.
 constexpr char kWrongRpId[] = "wrong.com";
 
-// // Dummy cr50 U2F_SIGN_RESP.
-const struct u2f_sign_resp kU2fSignResponse = {.sig_r = {[0 ... 31] = 0x12},
-                                               .sig_s = {[0 ... 31] = 0x34}};
+constexpr uint8_t kSigR[32] = {[0 ... 31] = 0x12};
+constexpr uint8_t kSigS[32] = {[0 ... 31] = 0x34};
 
 // AuthenticatorData field sizes, in bytes.
 constexpr int kRpIdHashBytes = 32;
@@ -116,14 +115,31 @@ CredentialPublicKey GetCredPubKey() {
 }
 
 std::vector<uint8_t> GetSignature() {
-  return *util::SignatureToDerBytes(kU2fSignResponse.sig_r,
-                                    kU2fSignResponse.sig_s);
+  return *util::SignatureToDerBytes(kSigR, kSigS);
 }
 
 brillo::SecureBlob ArrayToSecureBlob(const char* array) {
   brillo::SecureBlob blob;
   CHECK(brillo::SecureBlob::HexStringToSecureBlob(array, &blob));
   return blob;
+}
+
+// Example of a cert that would be returned by cr50.
+constexpr char kDummyG2fCert[] =
+    "308201363081DDA0030201020210442D32429223D041240350303716EE6B300A06082A8648"
+    "CE3D040302300F310D300B06035504031304637235303022180F3230303030313031303030"
+    "3030305A180F32303939313233313233353935395A300F310D300B06035504031304637235"
+    "303059301306072A8648CE3D020106082A8648CE3D030107034200045165719A9975F6FD30"
+    "CC2516C22FE841F65F9D2EE7B8B72F76807AEBD8CA3376005C7FA86453E4B10DB7BFAD5D2B"
+    "D00DB4A7C4845AD06D686ACD0252387618ECA31730153013060B2B0601040182E51C020101"
+    "040403020308300A06082A8648CE3D0403020348003045022100F09976F373920FEF8205C4"
+    "B1FB1DA21EB9F3F176B7DF433A1ADE0F3F38B721960220179D9B9051BFCCCC90BA6BB42B86"
+    "111D7A9C4FB56DFD39FB426081DD027AD609";
+
+std::vector<uint8_t> GetDummyG2fCert() {
+  std::vector<uint8_t> cert;
+  base::HexStringToBytes(kDummyG2fCert, &cert);
+  return cert;
 }
 
 }  // namespace
@@ -623,9 +639,7 @@ TEST_F(WebAuthnHandlerTestBase, GetAssertionVerificationSuccess) {
                                          rp_id_hash.size()) +  // RP ID hash
                          std::string("05"  // Flag: user present, user verified
                                      "(..){4}")));  // Signature counter
-        EXPECT_EQ(util::ToVector(assertion.signature()),
-                  util::SignatureToDerBytes(kU2fSignResponse.sig_r,
-                                            kU2fSignResponse.sig_s));
+        EXPECT_EQ(util::ToVector(assertion.signature()), GetSignature());
         *called_ptr = true;
       },
       &called, GetVersionedCredIdString()));
@@ -982,6 +996,11 @@ TEST_F(WebAuthnHandlerTestU2fMode, MakeCredentialPresenceSuccess) {
   // to storage.
   EXPECT_CALL(*mock_webauthn_storage_, WriteRecord(_)).Times(0);
 
+  EXPECT_CALL(*mock_processor_, G2fSoftwareAttest(_, _, _, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<4>(GetDummyG2fCert()),
+                      SetArgPointee<5>(GetSignature()),
+                      Return(MakeCredentialResponse::SUCCESS)));
+
   const std::string expected_authenticator_data_regex =
       base::HexEncode(GetRpIdHash()) +
       std::string(
@@ -1105,9 +1124,7 @@ TEST_F(WebAuthnHandlerTestU2fMode, GetAssertionSignLegacyCredentialSuccess) {
                 std::string(
                     "01"           // Flag: user present
                     "2A172A17"));  // kSignatureCounter in network byte order
-        EXPECT_EQ(util::ToVector(assertion.signature()),
-                  util::SignatureToDerBytes(kU2fSignResponse.sig_r,
-                                            kU2fSignResponse.sig_s));
+        EXPECT_EQ(util::ToVector(assertion.signature()), GetSignature());
         *called_ptr = true;
       },
       &called));
@@ -1166,9 +1183,7 @@ TEST_F(WebAuthnHandlerTestU2fMode, GetAssertionSignLegacyCredentialAppIdMatch) {
                 std::string(
                     "01"           // Flag: user present
                     "2A172A17"));  // kSignatureCounter in network byte order
-        EXPECT_EQ(util::ToVector(assertion.signature()),
-                  util::SignatureToDerBytes(kU2fSignResponse.sig_r,
-                                            kU2fSignResponse.sig_s));
+        EXPECT_EQ(util::ToVector(assertion.signature()), GetSignature());
         *called_ptr = true;
       },
       &called));
@@ -1231,9 +1246,7 @@ TEST_F(WebAuthnHandlerTestU2fMode,
                                          rp_id_hash.size()) +  // RP ID hash
                          std::string("05"  // Flag: user present, user verified
                                      "(..){4}")));  // Signature counter
-        EXPECT_EQ(util::ToVector(assertion.signature()),
-                  util::SignatureToDerBytes(kU2fSignResponse.sig_r,
-                                            kU2fSignResponse.sig_s));
+        EXPECT_EQ(util::ToVector(assertion.signature()), GetSignature());
         *called_ptr = true;
       },
       &called, GetVersionedCredIdString()));
@@ -1306,9 +1319,7 @@ TEST_F(WebAuthnHandlerTestU2fMode,
                                          rp_id_hash.size()) +  // RP ID hash
                          std::string("05"  // Flag: user present, user verified
                                      "(..){4}")));  // Signature counter
-        EXPECT_EQ(util::ToVector(assertion.signature()),
-                  util::SignatureToDerBytes(kU2fSignResponse.sig_r,
-                                            kU2fSignResponse.sig_s));
+        EXPECT_EQ(util::ToVector(assertion.signature()), GetSignature());
         *called_ptr = true;
       },
       // The platform credential should appear in the assertion even though it
@@ -1338,24 +1349,6 @@ class WebAuthnHandlerTestG2fMode : public WebAuthnHandlerTestU2fMode {
 
 namespace {
 
-// Example of a cert that would be returned by cr50.
-constexpr char kDummyG2fCert[] =
-    "308201363081DDA0030201020210442D32429223D041240350303716EE6B300A06082A8648"
-    "CE3D040302300F310D300B06035504031304637235303022180F3230303030313031303030"
-    "3030305A180F32303939313233313233353935395A300F310D300B06035504031304637235"
-    "303059301306072A8648CE3D020106082A8648CE3D030107034200045165719A9975F6FD30"
-    "CC2516C22FE841F65F9D2EE7B8B72F76807AEBD8CA3376005C7FA86453E4B10DB7BFAD5D2B"
-    "D00DB4A7C4845AD06D686ACD0252387618ECA31730153013060B2B0601040182E51C020101"
-    "040403020308300A06082A8648CE3D0403020348003045022100F09976F373920FEF8205C4"
-    "B1FB1DA21EB9F3F176B7DF433A1ADE0F3F38B721960220179D9B9051BFCCCC90BA6BB42B86"
-    "111D7A9C4FB56DFD39FB426081DD027AD609";
-
-std::vector<uint8_t> GetDummyG2fCert() {
-  std::vector<uint8_t> cert;
-  base::HexStringToBytes(kDummyG2fCert, &cert);
-  return cert;
-}
-
 TEST_F(WebAuthnHandlerTestG2fMode, MakeCredentialPresenceSuccess) {
   MakeCredentialRequest request;
   request.set_rp_id(kRpId);
@@ -1384,10 +1377,10 @@ TEST_F(WebAuthnHandlerTestG2fMode, MakeCredentialPresenceSuccess) {
   EXPECT_CALL(*mock_webauthn_storage_, WriteRecord(_)).Times(0);
 
   // G2f attestation mock.
-  EXPECT_CALL(*mock_processor_, GetG2fCert())
-      .WillOnce(Return(GetDummyG2fCert()));
-  EXPECT_CALL(*mock_processor_, G2fAttest(_, _, _, _))
-      .WillOnce(Return(MakeCredentialResponse::SUCCESS));
+  EXPECT_CALL(*mock_processor_, G2fAttest(_, _, _, _, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<5>(GetDummyG2fCert()),
+                      SetArgPointee<6>(GetSignature()),
+                      Return(MakeCredentialResponse::SUCCESS)));
   EXPECT_CALL(*mock_allowlisting_util_, AppendDataToCert(_))
       .WillOnce(Return(true));
 

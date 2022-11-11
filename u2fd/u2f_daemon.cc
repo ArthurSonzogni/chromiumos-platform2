@@ -320,7 +320,7 @@ bool U2fDaemon::InitializeWebAuthnHandler(U2fMode u2f_mode) {
 
 #if USE_GSC
   u2f_command_processor = std::make_unique<U2fCommandProcessorGsc>(
-      u2fhid_service_->tpm_proxy(), request_presence);
+      hwsec_factory_.GetU2fVendorFrontend(), request_presence);
 #else
   auto u2f_frontend = hwsec_factory_.GetU2fFrontend();
   if (!u2f_frontend->IsEnabled().value_or(false)) {

@@ -3,29 +3,45 @@
 // found in the LICENSE file.
 
 #include <memory>
-#include <regex>  // NOLINT(build/c++11)
 #include <string>
 #include <utility>
 #include <vector>
 
 #include <base/check.h>
+#include <base/containers/span.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/test/task_environment.h>
 #include <base/time/time.h>
 #include <brillo/dbus/mock_dbus_method_response.h>
+#include <libhwsec/frontend/u2fd/mock_vendor_frontend.h>
+#include <libhwsec/frontend/u2fd/vendor_frontend.h>
+#include <libhwsec-foundation/error/testing_helper.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "u2fd/client/mock_tpm_vendor_cmd.h"
 #include "u2fd/client/util.h"
 #include "u2fd/u2f_command_processor_gsc.h"
 
 namespace u2f {
 namespace {
 
-using ::brillo::dbus_utils::MockDBusMethodResponse;
+using GenerateResult = hwsec::u2f::GenerateResult;
+using Signature = hwsec::u2f::Signature;
+using ConsumeMode = hwsec::u2f::ConsumeMode;
+using UserPresenceMode = hwsec::u2f::UserPresenceMode;
+
+using hwsec::TPMError;
+using hwsec::TPMRetryAction;
+using hwsec_foundation::status::MakeStatus;
+
+using hwsec_foundation::error::testing::IsOkAndHolds;
+using hwsec_foundation::error::testing::NotOk;
+using hwsec_foundation::error::testing::ReturnError;
+using hwsec_foundation::error::testing::ReturnOk;
+using hwsec_foundation::error::testing::ReturnValue;
 
 using ::testing::_;
+using ::testing::ByMove;
 using ::testing::DoAll;
 using ::testing::Matcher;
 using ::testing::MatchesRegex;
@@ -36,15 +52,24 @@ using ::testing::StrictMock;
 constexpr base::TimeDelta kVerificationTimeout = base::Seconds(10);
 constexpr base::TimeDelta kRequestPresenceDelay = base::Milliseconds(500);
 constexpr int kMaxRetries = kVerificationTimeout / kRequestPresenceDelay;
-constexpr uint32_t kCr50StatusSuccess = 0;
-constexpr uint32_t kCr50StatusNotAllowed = 0x507;
-constexpr uint32_t kCr50StatusPasswordRequired = 0x50a;
 
 constexpr char kCredentialSecret[65] = {[0 ... 63] = 'E', '\0'};
-// Dummy RP id.
+// Stub RP id.
 constexpr char kRpId[] = "example.com";
 // Wrong RP id is used to test app id extension path.
 constexpr char kWrongRpId[] = "wrong.com";
+
+// Example of a cert that would be returned by cr50.
+constexpr char kStubG2fCert[] =
+    "308201363081DDA0030201020210442D32429223D041240350303716EE6B300A06082A8648"
+    "CE3D040302300F310D300B06035504031304637235303022180F3230303030313031303030"
+    "3030305A180F32303939313233313233353935395A300F310D300B06035504031304637235"
+    "303059301306072A8648CE3D020106082A8648CE3D030107034200045165719A9975F6FD30"
+    "CC2516C22FE841F65F9D2EE7B8B72F76807AEBD8CA3376005C7FA86453E4B10DB7BFAD5D2B"
+    "D00DB4A7C4845AD06D686ACD0252387618ECA31730153013060B2B0601040182E51C020101"
+    "040403020308300A06082A8648CE3D0403020348003045022100F09976F373920FEF8205C4"
+    "B1FB1DA21EB9F3F176B7DF433A1ADE0F3F38B721960220179D9B9051BFCCCC90BA6BB42B86"
+    "111D7A9C4FB56DFD39FB426081DD027AD609";
 
 std::vector<uint8_t> GetRpIdHash() {
   return util::Sha256(std::string(kRpId));
@@ -56,10 +81,6 @@ std::vector<uint8_t> GetWrongRpIdHash() {
 
 std::vector<uint8_t> GetHashToSign() {
   return std::vector<uint8_t>(U2F_P256_SIZE, 0xcd);
-}
-
-std::vector<uint8_t> GetDataToSign() {
-  return std::vector<uint8_t>(256, 0xcd);
 }
 
 brillo::SecureBlob GetUserSecret() {
@@ -78,113 +99,23 @@ std::vector<uint8_t> GetAuthTimeSecretHash() {
   return std::vector<uint8_t>(32, 0xFD);
 }
 
-std::string ExpectedUserPresenceU2fGenerateRequestRegex(bool uv_compatible) {
-  // See U2F_GENERATE_REQ in //platform/ec/include/u2f.h
-  static const std::string request_regex_uv_compatible =
-      base::HexEncode(GetRpIdHash().data(), GetRpIdHash().size()) +  // AppId
-      std::string("[A-F0-9]{64}") +  // Credential Secret
-      std::string("0B") +            // U2F_UV_ENABLED_KH | U2F_AUTH_ENFORCE
-      std::string("(FD){32}");       // Auth time secret hash
-
-  static const std::string request_regex =
-      base::HexEncode(GetRpIdHash().data(), GetRpIdHash().size()) +  // AppId
-      std::string("(EE){32}") +  // Legacy user secret
-      std::string("03") +        // U2F_UV_ENABLED_KH | U2F_AUTH_ENFORCE
-      std::string("(00){32}");   // Auth time secret hash, unset
-  return uv_compatible ? request_regex_uv_compatible : request_regex;
+std::vector<uint8_t> GetChallenge() {
+  return std::vector<uint8_t>(32, 0xDD);
 }
 
-std::string ExpectedUserVerificationU2fGenerateRequestRegex() {
-  // See U2F_GENERATE_REQ in //platform/ec/include/u2f.h
-  static const std::string request_regex =
-      base::HexEncode(GetRpIdHash().data(), GetRpIdHash().size()) +  // AppId
-      std::string("[A-F0-9]{64}") +  // Credential Secret
-      std::string("08") +            // U2F_UV_ENABLED_KH
-      std::string("(FD){32}");       // Auth time secret hash
-  return request_regex;
+std::vector<uint8_t> GetSigR() {
+  return std::vector<uint8_t>(32, 0xEE);
 }
 
-// Only used to test U2fSign, where the hash to sign can be determined.
-std::string ExpectedDeterministicU2fSignRequestRegex() {
-  // See U2F_SIGN_REQ in //platform/ec/include/u2f.h
-  static const std::string request_regex =
-      base::HexEncode(GetRpIdHash().data(), GetRpIdHash().size()) +  // AppId
-      std::string("(EE){32}") +  // Credential Secret
-      std::string("(FD){64}") +  // Key handle
-      std::string("(CD){32}") +  // Hash to sign
-      std::string("03");         // U2F_AUTH_ENFORCE
-  return request_regex;
+std::vector<uint8_t> GetSigS() {
+  return std::vector<uint8_t>(32, 0xFF);
 }
 
-// User-verification flow version.
-std::string ExpectedDeterministicU2fSignVersionedRequestRegex() {
-  // See U2F_SIGN_REQ in //platform/ec/include/u2f.h
-  static const std::string request_regex =
-      base::HexEncode(GetRpIdHash().data(), GetRpIdHash().size()) +  // AppId
-      std::string("(EE){32}") +  // User Secret
-      std::string("(00){32}") +  // Auth time secret
-      std::string("(CD){32}") +  // Hash to sign
-      std::string("00") +        // Flag
-      std::string("(FD){113}");  // Versioned Key handle
-  return request_regex;
+std::vector<uint8_t> GetStubG2fCert() {
+  std::vector<uint8_t> cert;
+  base::HexStringToBytes(kStubG2fCert, &cert);
+  return cert;
 }
-
-std::string ExpectedU2fSignCheckOnlyRequestRegex() {
-  // See U2F_SIGN_REQ in //platform/ec/include/u2f.h
-  static const std::string request_regex =
-      base::HexEncode(GetRpIdHash().data(), GetRpIdHash().size()) +  // AppId
-      std::string("(EE){32}") +  // User Secret
-      std::string("(FD){64}") +  // Key handle
-      std::string("(00){32}") +  // Hash to sign (empty)
-      std::string("07");         // U2F_AUTH_CHECK_ONLY
-  return request_regex;
-}
-
-std::string ExpectedU2fSignCheckOnlyRequestRegexWrongRpId() {
-  // See U2F_SIGN_REQ in //platform/ec/include/u2f.h
-  static const std::string request_regex =
-      base::HexEncode(GetWrongRpIdHash().data(),
-                      GetWrongRpIdHash().size()) +  // AppId
-      std::string("(EE){32}") +                     // User Secret
-      std::string("(FD){64}") +                     // Key handle
-      std::string("(00){32}") +                     // Hash to sign (empty)
-      std::string("07");                            // U2F_AUTH_CHECK_ONLY
-  return request_regex;
-}
-
-// User-verification flow version
-std::string ExpectedU2fSignCheckOnlyVersionedRequestRegex() {
-  // See U2F_SIGN_REQ in //platform/ec/include/u2f.h
-  static const std::string request_regex =
-      base::HexEncode(GetRpIdHash().data(), GetRpIdHash().size()) +  // AppId
-      std::string("(EE){32}") +  // User Secret
-      std::string("(00){32}") +  // Auth time secret
-      std::string("(00){32}") +  // Hash to sign (empty)
-      std::string("07") +        // U2F_AUTH_CHECK_ONLY
-      std::string("(FD){113}");  // Versioned Key handle
-  return request_regex;
-}
-
-// Dummy cr50 U2F_GENERATE_RESP.
-const struct u2f_generate_resp kU2fGenerateResponse = {
-    .pubKey = {.pointFormat = 0xAB,
-               .x = {[0 ... 31] = 0xAB},
-               .y = {[0 ... 31] = 0xAB}},
-    .keyHandle = {.origin_seed = {[0 ... 31] = 0xFD},
-                  .hmac = {[0 ... 31] = 0xFD}}};
-const struct u2f_generate_versioned_resp kU2fGenerateVersionedResponse = {
-    .pubKey = {.pointFormat = 0xAB,
-               .x = {[0 ... 31] = 0xAB},
-               .y = {[0 ... 31] = 0xAB}},
-    .keyHandle = {.header = {.version = 0xFD,
-                             .origin_seed = {[0 ... 31] = 0xFD},
-                             .kh_hmac = {[0 ... 31] = 0xFD}},
-                  .authorization_salt = {[0 ... 15] = 0xFD},
-                  .authorization_hmac = {[0 ... 31] = 0xFD}}};
-
-// Dummy cr50 U2F_SIGN_RESP.
-const struct u2f_sign_resp kU2fSignResponse = {.sig_r = {[0 ... 31] = 0x12},
-                                               .sig_s = {[0 ... 31] = 0x34}};
 
 brillo::SecureBlob ArrayToSecureBlob(const char* array) {
   brillo::SecureBlob blob;
@@ -192,22 +123,35 @@ brillo::SecureBlob ArrayToSecureBlob(const char* array) {
   return blob;
 }
 
-MATCHER_P(StructMatchesRegex, pattern, "") {
-  std::string arg_hex = base::HexEncode(&arg, sizeof(arg));
-  if (std::regex_match(arg_hex, std::regex(pattern))) {
-    return true;
-  }
-  *result_listener << arg_hex << " did not match regex: " << pattern;
-  return false;
-}
-
 }  // namespace
+
+class FakePublicKey : public hwsec::u2f::PublicKey {
+ public:
+  explicit FakePublicKey(brillo::Blob raw) : data_(std::move(raw)) {
+    CHECK_EQ(data_.size(), 65);
+  }
+
+  base::span<const uint8_t> x() const override {
+    return base::make_span(data_.data() + 1, 32);
+  }
+
+  base::span<const uint8_t> y() const override {
+    return base::make_span(data_.data() + 33, 32);
+  }
+
+  const brillo::Blob& raw() const override { return data_; }
+
+ private:
+  brillo::Blob data_;
+};
 
 class U2fCommandProcessorGscTest : public ::testing::Test {
  public:
   void SetUp() override {
-    processor_ =
-        std::make_unique<U2fCommandProcessorGsc>(&mock_tpm_proxy_, [this]() {
+    auto mock_u2f_frontend = std::make_unique<hwsec::MockU2fVendorFrontend>();
+    mock_u2f_frontend_ = mock_u2f_frontend.get();
+    processor_ = std::make_unique<U2fCommandProcessorGsc>(
+        std::move(mock_u2f_frontend), [this]() {
           presence_requested_count_++;
           task_environment_.FastForwardBy(kRequestPresenceDelay);
         });
@@ -224,11 +168,12 @@ class U2fCommandProcessorGscTest : public ::testing::Test {
 
   static std::vector<uint8_t> GetCredPubKeyCbor() {
     return U2fCommandProcessorGsc::EncodeCredentialPublicKeyInCBOR(
-        GetCredPubKeyRaw());
+        std::vector<uint8_t>(32, 0xAB), std::vector<uint8_t>(32, 0xAB));
   }
 
-  void CallAndWaitForPresence(std::function<uint32_t()> fn, uint32_t* status) {
-    processor_->CallAndWaitForPresence(fn, status);
+  hwsec::StatusOr<int> CallAndWaitForPresence(
+      std::function<hwsec::StatusOr<int>()> fn) {
+    return processor_->CallAndWaitForPresenceForTest(fn);
   }
 
   bool PresenceRequested() { return presence_requested_count_ > 0; }
@@ -274,20 +219,31 @@ class U2fCommandProcessorGscTest : public ::testing::Test {
   }
 
   MakeCredentialResponse::MakeCredentialStatus G2fAttest(
-      const std::vector<uint8_t>& data,
-      const brillo::SecureBlob& secret,
+      const std::vector<uint8_t>& rp_id_hash,
+      const brillo::SecureBlob& credential_secret,
+      const std::vector<uint8_t>& challenge,
+      const std::vector<uint8_t>& credential_public_key,
+      const std::vector<uint8_t>& credential_id,
+      std::vector<uint8_t>* cert_out,
       std::vector<uint8_t>* signature_out) {
-    return processor_->G2fAttest(data, secret, U2F_ATTEST_FORMAT_REG_RESP,
+    return processor_->G2fAttest(rp_id_hash, credential_secret, challenge,
+                                 credential_public_key, credential_id, cert_out,
                                  signature_out);
   }
 
-  void InsertAuthTimeSecretHashToCredentialId(std::vector<uint8_t>* input) {
-    auto hash = GetAuthTimeSecretHash();
-    processor_->InsertAuthTimeSecretHashToCredentialId(&hash, input);
+  bool G2fSoftwareAttest(const std::vector<uint8_t>& rp_id_hash,
+                         const std::vector<uint8_t>& challenge,
+                         const std::vector<uint8_t>& credential_public_key,
+                         const std::vector<uint8_t>& credential_id,
+                         std::vector<uint8_t>* cert_out,
+                         std::vector<uint8_t>* signature_out) {
+    return processor_->G2fSoftwareAttest(rp_id_hash, challenge,
+                                         credential_public_key, credential_id,
+                                         cert_out, signature_out);
   }
 
   int presence_requested_expected_ = 0;
-  StrictMock<MockTpmVendorCommandProxy> mock_tpm_proxy_;
+  hwsec::MockU2fVendorFrontend* mock_u2f_frontend_;
 
  private:
   int presence_requested_count_ = 0;
@@ -300,32 +256,30 @@ class U2fCommandProcessorGscTest : public ::testing::Test {
 namespace {
 
 TEST_F(U2fCommandProcessorGscTest, CallAndWaitForPresenceDirectSuccess) {
-  uint32_t status = kCr50StatusNotAllowed;
   // If presence is already available, we won't request it.
-  CallAndWaitForPresence([]() { return kCr50StatusSuccess; }, &status);
-  EXPECT_EQ(status, kCr50StatusSuccess);
+  EXPECT_THAT(CallAndWaitForPresence([]() { return 0; }), IsOkAndHolds(0));
   presence_requested_expected_ = 0;
 }
 
 TEST_F(U2fCommandProcessorGscTest, CallAndWaitForPresenceRequestSuccess) {
-  uint32_t status = kCr50StatusNotAllowed;
-  CallAndWaitForPresence(
-      [this]() {
-        if (PresenceRequested())
-          return kCr50StatusSuccess;
-        return kCr50StatusNotAllowed;
-      },
-      &status);
-  EXPECT_EQ(status, kCr50StatusSuccess);
+  EXPECT_THAT(CallAndWaitForPresence([this]() -> hwsec::StatusOr<int> {
+                if (PresenceRequested())
+                  return 0;
+                return MakeStatus<TPMError>("Not allowed",
+                                            TPMRetryAction::kUserPresence);
+              }),
+              IsOkAndHolds(0));
   presence_requested_expected_ = 1;
 }
 
 TEST_F(U2fCommandProcessorGscTest, CallAndWaitForPresenceTimeout) {
-  uint32_t status = kCr50StatusSuccess;
   base::TimeTicks verification_start = base::TimeTicks::Now();
-  CallAndWaitForPresence([]() { return kCr50StatusNotAllowed; }, &status);
+  EXPECT_THAT(CallAndWaitForPresence([]() {
+                return MakeStatus<TPMError>("Not allowed",
+                                            TPMRetryAction::kUserPresence);
+              }),
+              NotOk());
   EXPECT_GE(base::TimeTicks::Now() - verification_start, kVerificationTimeout);
-  EXPECT_EQ(status, kCr50StatusNotAllowed);
   presence_requested_expected_ = kMaxRetries;
 }
 
@@ -336,14 +290,17 @@ TEST_F(U2fCommandProcessorGscTest, U2fGenerateVersionedNoAuthTimeSecretHash) {
 }
 
 TEST_F(U2fCommandProcessorGscTest, U2fGenerateVersionedSuccessUserPresence) {
-  EXPECT_CALL(
-      mock_tpm_proxy_,
-      SendU2fGenerate(
-          StructMatchesRegex(ExpectedUserPresenceU2fGenerateRequestRegex(true)),
-          Matcher<u2f_generate_versioned_resp*>(_)))
-      .WillOnce(Return(kCr50StatusNotAllowed))
-      .WillOnce(DoAll(SetArgPointee<1>(kU2fGenerateVersionedResponse),
-                      Return(kCr50StatusSuccess)));
+  EXPECT_CALL(*mock_u2f_frontend_, Generate(_, _, ConsumeMode::kConsume,
+                                            UserPresenceMode::kRequired, _))
+      .WillOnce(
+          ReturnError<TPMError>("Not allowed", TPMRetryAction::kUserPresence))
+      .WillOnce([](const auto&, const auto&, auto, auto, const auto&) {
+        return GenerateResult{
+            .public_key = std::make_unique<FakePublicKey>(
+                U2fCommandProcessorGscTest::GetCredPubKeyRaw()),
+            .key_handle = GetVersionedCredId(),
+        };
+      });
   std::vector<uint8_t> cred_id;
   CredentialPublicKey cred_pubkey;
   auto auth_time_secret_hash = GetAuthTimeSecretHash();
@@ -358,12 +315,10 @@ TEST_F(U2fCommandProcessorGscTest, U2fGenerateVersionedSuccessUserPresence) {
 }
 
 TEST_F(U2fCommandProcessorGscTest, U2fGenerateVersionedNoUserPresence) {
-  EXPECT_CALL(
-      mock_tpm_proxy_,
-      SendU2fGenerate(
-          StructMatchesRegex(ExpectedUserPresenceU2fGenerateRequestRegex(true)),
-          Matcher<u2f_generate_versioned_resp*>(_)))
-      .WillRepeatedly(Return(kCr50StatusNotAllowed));
+  EXPECT_CALL(*mock_u2f_frontend_, Generate(_, _, ConsumeMode::kConsume,
+                                            UserPresenceMode::kRequired, _))
+      .WillRepeatedly(
+          ReturnError<TPMError>("Not allowed", TPMRetryAction::kUserPresence));
   auto auth_time_secret_hash = GetAuthTimeSecretHash();
   EXPECT_EQ(U2fGenerate(PresenceRequirement::kPowerButton,
                         /* uv_compatible = */ true, &auth_time_secret_hash,
@@ -373,14 +328,18 @@ TEST_F(U2fCommandProcessorGscTest, U2fGenerateVersionedNoUserPresence) {
 }
 
 TEST_F(U2fCommandProcessorGscTest, U2fGenerateSuccessUserPresence) {
-  EXPECT_CALL(
-      mock_tpm_proxy_,
-      SendU2fGenerate(StructMatchesRegex(
-                          ExpectedUserPresenceU2fGenerateRequestRegex(false)),
-                      Matcher<u2f_generate_resp*>(_)))
-      .WillOnce(Return(kCr50StatusNotAllowed))
-      .WillOnce(DoAll(SetArgPointee<1>(kU2fGenerateResponse),
-                      Return(kCr50StatusSuccess)));
+  EXPECT_CALL(*mock_u2f_frontend_,
+              GenerateUserPresenceOnly(_, _, ConsumeMode::kConsume,
+                                       UserPresenceMode::kRequired))
+      .WillOnce(
+          ReturnError<TPMError>("Not allowed", TPMRetryAction::kUserPresence))
+      .WillOnce([](const auto&, const auto&, auto, auto) {
+        return GenerateResult{
+            .public_key = std::make_unique<FakePublicKey>(
+                U2fCommandProcessorGscTest::GetCredPubKeyRaw()),
+            .key_handle = GetCredId(),
+        };
+      });
   std::vector<uint8_t> cred_id;
   CredentialPublicKey cred_pubkey;
   EXPECT_EQ(
@@ -394,12 +353,11 @@ TEST_F(U2fCommandProcessorGscTest, U2fGenerateSuccessUserPresence) {
 }
 
 TEST_F(U2fCommandProcessorGscTest, U2fGenerateNoUserPresence) {
-  EXPECT_CALL(
-      mock_tpm_proxy_,
-      SendU2fGenerate(StructMatchesRegex(
-                          ExpectedUserPresenceU2fGenerateRequestRegex(false)),
-                      Matcher<u2f_generate_resp*>(_)))
-      .WillRepeatedly(Return(kCr50StatusNotAllowed));
+  EXPECT_CALL(*mock_u2f_frontend_,
+              GenerateUserPresenceOnly(_, _, ConsumeMode::kConsume,
+                                       UserPresenceMode::kRequired))
+      .WillRepeatedly(
+          ReturnError<TPMError>("Not allowed", TPMRetryAction::kUserPresence));
   EXPECT_EQ(U2fGenerate(PresenceRequirement::kPowerButton,
                         /* uv_compatible = */ false, nullptr, nullptr, nullptr),
             MakeCredentialResponse::VERIFICATION_FAILED);
@@ -408,14 +366,15 @@ TEST_F(U2fCommandProcessorGscTest, U2fGenerateNoUserPresence) {
 
 TEST_F(U2fCommandProcessorGscTest,
        U2fGenerateVersionedSuccessUserVerification) {
-  EXPECT_CALL(
-      mock_tpm_proxy_,
-      SendU2fGenerate(
-          StructMatchesRegex(ExpectedUserVerificationU2fGenerateRequestRegex()),
-          Matcher<u2f_generate_versioned_resp*>(_)))
-      // Should succeed at the first time since no presence is required.
-      .WillOnce(DoAll(SetArgPointee<1>(kU2fGenerateVersionedResponse),
-                      Return(kCr50StatusSuccess)));
+  EXPECT_CALL(*mock_u2f_frontend_, Generate(_, _, ConsumeMode::kNoConsume,
+                                            UserPresenceMode::kNotRequired, _))
+      .WillOnce([](const auto&, const auto&, auto, auto, const auto&) {
+        return GenerateResult{
+            .public_key = std::make_unique<FakePublicKey>(
+                U2fCommandProcessorGscTest::GetCredPubKeyRaw()),
+            .key_handle = GetVersionedCredId(),
+        };
+      });
   std::vector<uint8_t> cred_id;
   CredentialPublicKey cred_pubkey;
   auto auth_time_secret_hash = GetAuthTimeSecretHash();
@@ -429,11 +388,11 @@ TEST_F(U2fCommandProcessorGscTest,
 }
 
 TEST_F(U2fCommandProcessorGscTest, U2fSignPresenceNoPresence) {
-  EXPECT_CALL(mock_tpm_proxy_,
-              SendU2fSign(Matcher<const u2f_sign_req&>(StructMatchesRegex(
-                              ExpectedDeterministicU2fSignRequestRegex())),
-                          _))
-      .WillRepeatedly(Return(kCr50StatusNotAllowed));
+  EXPECT_CALL(*mock_u2f_frontend_,
+              SignUserPresenceOnly(_, _, _, ConsumeMode::kConsume,
+                                   UserPresenceMode::kRequired, _))
+      .WillRepeatedly(
+          ReturnError<TPMError>("Not allowed", TPMRetryAction::kUserPresence));
   std::vector<uint8_t> signature;
   EXPECT_EQ(U2fSign(GetHashToSign(), GetCredId(),
                     PresenceRequirement::kPowerButton, &signature),
@@ -442,67 +401,57 @@ TEST_F(U2fCommandProcessorGscTest, U2fSignPresenceNoPresence) {
 }
 
 TEST_F(U2fCommandProcessorGscTest, U2fSignPresenceSuccess) {
-  EXPECT_CALL(mock_tpm_proxy_,
-              SendU2fSign(Matcher<const u2f_sign_req&>(StructMatchesRegex(
-                              ExpectedDeterministicU2fSignRequestRegex())),
-                          _))
-      .WillOnce(Return(kCr50StatusNotAllowed))
-      .WillOnce(DoAll(SetArgPointee<1>(kU2fSignResponse),
-                      Return(kCr50StatusSuccess)));
+  EXPECT_CALL(*mock_u2f_frontend_,
+              SignUserPresenceOnly(_, _, _, ConsumeMode::kConsume,
+                                   UserPresenceMode::kRequired, _))
+      .WillOnce(
+          ReturnError<TPMError>("Not allowed", TPMRetryAction::kUserPresence))
+      .WillOnce(ReturnValue(Signature{
+          .r = GetSigR(),
+          .s = GetSigS(),
+      }));
   std::vector<uint8_t> signature;
   EXPECT_EQ(U2fSign(GetHashToSign(), GetCredId(),
                     PresenceRequirement::kPowerButton, &signature),
             MakeCredentialResponse::SUCCESS);
-  EXPECT_EQ(signature, util::SignatureToDerBytes(kU2fSignResponse.sig_r,
-                                                 kU2fSignResponse.sig_s));
+  EXPECT_EQ(signature,
+            util::SignatureToDerBytes(GetSigR().data(), GetSigS().data()));
   presence_requested_expected_ = 1;
 }
 
 TEST_F(U2fCommandProcessorGscTest, U2fSignVersionedSuccess) {
   brillo::Blob credential_id(GetVersionedCredId());
-  EXPECT_CALL(
-      mock_tpm_proxy_,
-      SendU2fSign(Matcher<const u2f_sign_versioned_req&>(StructMatchesRegex(
-                      ExpectedDeterministicU2fSignVersionedRequestRegex())),
-                  _))
-      .WillOnce(DoAll(SetArgPointee<1>(kU2fSignResponse),
-                      Return(kCr50StatusSuccess)));
+  EXPECT_CALL(*mock_u2f_frontend_, Sign(_, _, _, _, ConsumeMode::kNoConsume,
+                                        UserPresenceMode::kNotRequired, _))
+      .WillOnce(ReturnValue(Signature{
+          .r = GetSigR(),
+          .s = GetSigS(),
+      }));
   std::vector<uint8_t> signature;
   EXPECT_EQ(U2fSign(GetHashToSign(), credential_id, PresenceRequirement::kNone,
                     &signature),
             MakeCredentialResponse::SUCCESS);
-  EXPECT_EQ(signature, util::SignatureToDerBytes(kU2fSignResponse.sig_r,
-                                                 kU2fSignResponse.sig_s));
+  EXPECT_EQ(signature,
+            util::SignatureToDerBytes(GetSigR().data(), GetSigS().data()));
 }
 
 TEST_F(U2fCommandProcessorGscTest, U2fSignCheckOnlyWrongRpIdHash) {
-  EXPECT_CALL(mock_tpm_proxy_,
-              SendU2fSign(Matcher<const u2f_sign_req&>(StructMatchesRegex(
-                              ExpectedU2fSignCheckOnlyRequestRegexWrongRpId())),
-                          _))
-      .WillOnce(Return(kCr50StatusPasswordRequired));
+  EXPECT_CALL(*mock_u2f_frontend_, CheckUserPresenceOnly)
+      .WillOnce(ReturnError<TPMError>("Not allowed", TPMRetryAction::kNoRetry));
   EXPECT_EQ(U2fSignCheckOnly(GetWrongRpIdHash(), GetCredId()),
             HasCredentialsResponse::UNKNOWN_CREDENTIAL_ID);
 }
 
 TEST_F(U2fCommandProcessorGscTest, U2fSignCheckOnlySuccess) {
-  EXPECT_CALL(mock_tpm_proxy_,
-              SendU2fSign(Matcher<const u2f_sign_req&>(StructMatchesRegex(
-                              ExpectedU2fSignCheckOnlyRequestRegex())),
-                          _))
-      .WillOnce(Return(kCr50StatusSuccess));
+  EXPECT_CALL(*mock_u2f_frontend_, CheckUserPresenceOnly)
+      .WillOnce(ReturnOk<TPMError>());
   EXPECT_EQ(U2fSignCheckOnly(GetRpIdHash(), GetCredId()),
             HasCredentialsResponse::SUCCESS);
 }
 
 TEST_F(U2fCommandProcessorGscTest, U2fSignCheckOnlyVersionedSuccess) {
   brillo::Blob credential_id(GetVersionedCredId());
-  EXPECT_CALL(
-      mock_tpm_proxy_,
-      SendU2fSign(Matcher<const u2f_sign_versioned_req&>(StructMatchesRegex(
-                      ExpectedU2fSignCheckOnlyVersionedRequestRegex())),
-                  _))
-      .WillOnce(Return(kCr50StatusSuccess));
+  EXPECT_CALL(*mock_u2f_frontend_, Check).WillOnce(ReturnOk<TPMError>());
   EXPECT_EQ(U2fSignCheckOnly(GetRpIdHash(), credential_id),
             HasCredentialsResponse::SUCCESS);
 }
@@ -514,28 +463,28 @@ TEST_F(U2fCommandProcessorGscTest, U2fSignCheckOnlyWrongLength) {
 }
 
 TEST_F(U2fCommandProcessorGscTest, G2fAttestSuccess) {
-  EXPECT_CALL(mock_tpm_proxy_, SendU2fAttest(_, _)).WillOnce(Return(0));
+  EXPECT_CALL(*mock_u2f_frontend_, GetG2fCert)
+      .WillOnce(ReturnValue(GetStubG2fCert()));
+  EXPECT_CALL(*mock_u2f_frontend_, G2fAttest)
+      .WillOnce(ReturnValue(Signature{
+          .r = GetSigR(),
+          .s = GetSigS(),
+      }));
   auto secret = GetUserSecret();
-  brillo::Blob signature_out;
-  EXPECT_EQ(G2fAttest(GetDataToSign(), secret, &signature_out),
+  brillo::Blob cert_out, signature_out;
+  EXPECT_EQ(G2fAttest(GetRpIdHash(), secret, GetChallenge(), GetCredPubKeyRaw(),
+                      GetCredId(), &cert_out, &signature_out),
             MakeCredentialResponse::SUCCESS);
 }
 
-TEST_F(U2fCommandProcessorGscTest, InsertAuthTimeSecretHashToCredentialId) {
-  std::vector<uint8_t> input;
-  input.reserve(sizeof(u2f_versioned_key_handle));
-  input.insert(input.cend(), 65, 0x01);  // header
-  input.insert(input.cend(), 16, 0x02);  // authorization_salt
-  input.insert(input.cend(), 32, 0x03);  // authorization_hmac
-  InsertAuthTimeSecretHashToCredentialId(&input);
-
-  const std::string expected_output(
-      "(01){65}"    // header
-      "(02){16}"    // authorization_salt
-      "(FD){32}"    // auth_time_secret_hash
-      "(03){32}");  // authorization_hmac
-  EXPECT_THAT(base::HexEncode(input.data(), input.size()),
-              MatchesRegex(expected_output));
+TEST_F(U2fCommandProcessorGscTest, G2fSoftwareAttestSuccess) {
+  EXPECT_CALL(*mock_u2f_frontend_, GetG2fAttestData)
+      .WillOnce(ReturnValue(brillo::Blob(30)));
+  auto secret = GetUserSecret();
+  brillo::Blob cert_out, signature_out;
+  EXPECT_TRUE(G2fSoftwareAttest(GetRpIdHash(), GetChallenge(),
+                                GetCredPubKeyRaw(), GetCredId(), &cert_out,
+                                &signature_out));
 }
 
 }  // namespace

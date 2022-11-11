@@ -55,13 +55,24 @@ class MockU2fCommandProcessor : public U2fCommandProcessor {
 
   MOCK_METHOD(MakeCredentialResponse::MakeCredentialStatus,
               G2fAttest,
-              (const std::vector<uint8_t>& data,
-               const brillo::SecureBlob& secret,
-               uint8_t format,
-               std::vector<uint8_t>* signature_out),
+              (const std::vector<uint8_t>&,
+               const brillo::SecureBlob&,
+               const std::vector<uint8_t>&,
+               const std::vector<uint8_t>&,
+               const std::vector<uint8_t>&,
+               std::vector<uint8_t>*,
+               std::vector<uint8_t>*),
               (override));
 
-  MOCK_METHOD(std::optional<std::vector<uint8_t>>, GetG2fCert, (), (override));
+  MOCK_METHOD(bool,
+              G2fSoftwareAttest,
+              (const std::vector<uint8_t>&,
+               const std::vector<uint8_t>&,
+               const std::vector<uint8_t>&,
+               const std::vector<uint8_t>&,
+               std::vector<uint8_t>*,
+               std::vector<uint8_t>*),
+              (override));
 
   MOCK_METHOD(CoseAlgorithmIdentifier, GetAlgorithm, (), (override));
 };

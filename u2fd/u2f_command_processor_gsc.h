@@ -6,11 +6,14 @@
 #define U2FD_U2F_COMMAND_PROCESSOR_GSC_H_
 
 #include <functional>
+#include <memory>
 #include <optional>
 #include <vector>
 
+#include <base/containers/span.h>
 #include <brillo/dbus/dbus_method_response.h>
 #include <brillo/secure_blob.h>
+#include <libhwsec/frontend/u2fd/vendor_frontend.h>
 #include <trunks/cr50_headers/u2f.h>
 #include <u2f/proto_bindings/u2f_interface.pb.h>
 
@@ -23,11 +26,10 @@ namespace u2f {
 
 class U2fCommandProcessorGsc : public U2fCommandProcessor {
  public:
-  // |tpm_proxy| - proxy to send commands to TPM. Owned by U2fDaemon and should
-  // outlive WebAuthnHandler.
+  // |u2f_frontend| - libhwsec class to deal with U2f vendor commands.
   // |request_presence| - callback for performing other platform tasks when
   // expecting the user to press the power button.
-  U2fCommandProcessorGsc(TpmVendorCommandProxy* tpm_proxy,
+  U2fCommandProcessorGsc(std::unique_ptr<hwsec::U2fVendorFrontend> u2f_frontend,
                          std::function<void()> request_presence);
 
   U2fCommandProcessorGsc(const U2fCommandProcessorGsc&) = delete;
@@ -74,50 +76,60 @@ class U2fCommandProcessorGsc : public U2fCommandProcessor {
   // Run a U2F_ATTEST command to sign data using the cr50 individual attestation
   // certificate.
   MakeCredentialResponse::MakeCredentialStatus G2fAttest(
-      const std::vector<uint8_t>& data,
-      const brillo::SecureBlob& secret,
-      uint8_t format,
+      const std::vector<uint8_t>& rp_id_hash,
+      const brillo::SecureBlob& credential_secret,
+      const std::vector<uint8_t>& challenge,
+      const std::vector<uint8_t>& credential_public_key,
+      const std::vector<uint8_t>& credential_id,
+      std::vector<uint8_t>* cert_out,
       std::vector<uint8_t>* signature_out) override;
 
-  std::optional<std::vector<uint8_t>> GetG2fCert() override;
+  // Use a random software key to sign the data.
+  bool G2fSoftwareAttest(const std::vector<uint8_t>& rp_id_hash,
+                         const std::vector<uint8_t>& challenge,
+                         const std::vector<uint8_t>& credential_public_key,
+                         const std::vector<uint8_t>& credential_id,
+                         std::vector<uint8_t>* cert_out,
+                         std::vector<uint8_t>* signature_out) override;
 
   CoseAlgorithmIdentifier GetAlgorithm() override;
+
+  hwsec::StatusOr<int> CallAndWaitForPresenceForTest(
+      std::function<hwsec::StatusOr<int>()> fn);
 
  private:
   friend class U2fCommandProcessorGscTest;
 
-  // Inserts the hash of auth-time secret into a versioned KH to form a
-  // WebAuthn credential id.
-  void InsertAuthTimeSecretHashToCredentialId(
-      const brillo::Blob* auth_time_secret_hash, std::vector<uint8_t>* input);
-
-  // Removes the hash of auth-time secret into a credential id so that cr50
-  // receives the original versioned KH.
-  void RemoveAuthTimeSecretHashFromCredentialId(std::vector<uint8_t>* input);
-
   // Repeatedly sends u2f_generate request to the TPM if there's no presence.
-  template <typename Response>
   MakeCredentialResponse::MakeCredentialStatus SendU2fGenerateWaitForPresence(
-      struct u2f_generate_req* generate_req,
-      Response* generate_resp,
+      bool is_up_only,
+      const std::vector<uint8_t>& rp_id_hash,
+      const brillo::SecureBlob& credential_secret,
+      const std::optional<std::vector<uint8_t>>& auth_time_secret_hash,
       std::vector<uint8_t>* credential_id,
       CredentialPublicKey* credential_public_key);
 
   // Repeatedly sends u2f_sign request to the TPM if there's no presence.
-  template <typename Request>
   GetAssertionResponse::GetAssertionStatus SendU2fSignWaitForPresence(
-      Request* sign_req,
-      struct u2f_sign_resp* sign_resp,
+      bool is_up_only,
+      const std::vector<uint8_t>& rp_id_hash,
+      const brillo::SecureBlob& credential_secret,
+      const std::optional<brillo::SecureBlob>& auth_time_secret,
+      const std::vector<uint8_t>& hash_to_sign,
+      const std::vector<uint8_t>& key_handle,
       std::vector<uint8_t>* signature);
 
   // Prompts the user for presence through |request_presence_| and calls |fn|
   // repeatedly until success or timeout.
-  void CallAndWaitForPresence(std::function<uint32_t()> fn, uint32_t* status);
+  template <typename T, typename F>
+  hwsec::StatusOr<T> CallAndWaitForPresence(F fn);
 
   static std::vector<uint8_t> EncodeCredentialPublicKeyInCBOR(
-      const std::vector<uint8_t>& credential_public_key);
+      base::span<const uint8_t> x, base::span<const uint8_t> y);
 
-  TpmVendorCommandProxy* tpm_proxy_ = nullptr;
+  std::optional<std::vector<uint8_t>> GetG2fCert();
+
+  std::unique_ptr<hwsec::U2fVendorFrontend> u2f_frontend_;
   std::function<void()> request_presence_;
 };
 

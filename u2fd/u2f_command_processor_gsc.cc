@@ -5,16 +5,20 @@
 #include "u2fd/u2f_command_processor_gsc.h"
 
 #include <functional>
+#include <memory>
 #include <optional>
 #include <string>
 #include <utility>
 #include <vector>
 
+#include <base/check.h>
+#include <base/containers/span.h>
 #include <base/time/time.h>
 #include <brillo/dbus/dbus_method_response.h>
 #include <brillo/secure_blob.h>
 #include <chromeos/cbor/values.h>
 #include <chromeos/cbor/writer.h>
+#include <libhwsec-foundation/status/status_chain_macros.h>
 #include <openssl/sha.h>
 #include <trunks/cr50_headers/u2f.h>
 #include <u2f/proto_bindings/u2f_interface.pb.h>
@@ -24,6 +28,13 @@
 #include "u2fd/client/util.h"
 #include "u2fd/u2f_command_processor.h"
 #include "u2fd/webauthn_handler.h"
+
+using hwsec::TPMError;
+using hwsec::TPMRetryAction;
+using GenerateResult = hwsec::u2f::GenerateResult;
+using Signature = hwsec::u2f::Signature;
+using ConsumeMode = hwsec::u2f::ConsumeMode;
+using UserPresenceMode = hwsec::u2f::UserPresenceMode;
 
 namespace u2f {
 
@@ -44,15 +55,15 @@ const int kCoseECKeyYLabel = -3;
 
 constexpr base::TimeDelta kVerificationTimeout = base::Seconds(10);
 
-// Cr50 Response codes.
-// TODO(louiscollard): Don't duplicate these.
-constexpr uint32_t kCr50StatusNotAllowed = 0x507;
-
 }  // namespace
 
 U2fCommandProcessorGsc::U2fCommandProcessorGsc(
-    TpmVendorCommandProxy* tpm_proxy, std::function<void()> request_presence)
-    : tpm_proxy_(tpm_proxy), request_presence_(request_presence) {}
+    std::unique_ptr<hwsec::U2fVendorFrontend> u2f_frontend,
+    std::function<void()> request_presence)
+    : u2f_frontend_(std::move(u2f_frontend)),
+      request_presence_(request_presence) {
+  CHECK(u2f_frontend_);
+}
 
 MakeCredentialResponse::MakeCredentialStatus
 U2fCommandProcessorGsc::U2fGenerate(const std::vector<uint8_t>& rp_id_hash,
@@ -65,59 +76,43 @@ U2fCommandProcessorGsc::U2fGenerate(const std::vector<uint8_t>& rp_id_hash,
                                     std::vector<uint8_t>* /*unused*/) {
   DCHECK(rp_id_hash.size() == SHA256_DIGEST_LENGTH);
 
-  struct u2f_generate_req generate_req = {};
-  if (!util::VectorToObject(rp_id_hash, generate_req.appId,
-                            sizeof(generate_req.appId))) {
-    return MakeCredentialResponse::INVALID_REQUEST;
-  }
-  if (!util::VectorToObject(credential_secret, generate_req.userSecret,
-                            sizeof(generate_req.userSecret))) {
-    return MakeCredentialResponse::INVALID_REQUEST;
-  }
-
   if (uv_compatible) {
     if (!auth_time_secret_hash) {
       LOG(ERROR) << "No auth-time secret hash to use for u2f_generate.";
       return MakeCredentialResponse::INTERNAL_ERROR;
     }
-    generate_req.flags |= U2F_UV_ENABLED_KH;
-    memcpy(generate_req.authTimeSecretHash, auth_time_secret_hash->data(),
-           auth_time_secret_hash->size());
-    struct u2f_generate_versioned_resp generate_resp = {};
 
-    MakeCredentialResponse::MakeCredentialStatus status;
     if (presence_requirement != PresenceRequirement::kPowerButton) {
-      uint32_t generate_status =
-          tpm_proxy_->SendU2fGenerate(generate_req, &generate_resp);
-      if (generate_status != 0)
+      ASSIGN_OR_RETURN(
+          const GenerateResult& result,
+          u2f_frontend_->Generate(
+              rp_id_hash, credential_secret, ConsumeMode::kNoConsume,
+              UserPresenceMode::kNotRequired, *auth_time_secret_hash),
+          _.WithStatus<TPMError>("Failed to generate U2F credential")
+              .LogError()
+              .As(MakeCredentialResponse::INTERNAL_ERROR));
+      if (!result.public_key) {
+        LOG(ERROR) << "No public key in generate result.";
         return MakeCredentialResponse::INTERNAL_ERROR;
+      }
 
-      util::AppendToVector(generate_resp.pubKey, &credential_public_key->raw);
-      util::AppendToVector(
-          EncodeCredentialPublicKeyInCBOR(credential_public_key->raw),
-          &credential_public_key->cbor);
-      util::AppendToVector(generate_resp.keyHandle, credential_id);
-      status = MakeCredentialResponse::SUCCESS;
+      credential_public_key->raw = result.public_key->raw();
+      credential_public_key->cbor = EncodeCredentialPublicKeyInCBOR(
+          result.public_key->x(), result.public_key->y());
+      *credential_id = std::move(result.key_handle);
+      return MakeCredentialResponse::SUCCESS;
     } else {
-      // Require user presence, consume.
-      generate_req.flags |= U2F_AUTH_ENFORCE;
-      status = SendU2fGenerateWaitForPresence(
-          &generate_req, &generate_resp, credential_id, credential_public_key);
+      return SendU2fGenerateWaitForPresence(
+          /*is_up_only=*/false, rp_id_hash, credential_secret,
+          *auth_time_secret_hash, credential_id, credential_public_key);
     }
-    if (status == MakeCredentialResponse::SUCCESS) {
-      InsertAuthTimeSecretHashToCredentialId(auth_time_secret_hash,
-                                             credential_id);
-    }
-    return status;
   } else {
     // Non-versioned KH must be signed with power button press.
     if (presence_requirement != PresenceRequirement::kPowerButton)
       return MakeCredentialResponse::INTERNAL_ERROR;
-    // Require user presence, consume.
-    generate_req.flags |= U2F_AUTH_ENFORCE;
-    struct u2f_generate_resp generate_resp = {};
-    return SendU2fGenerateWaitForPresence(&generate_req, &generate_resp,
-                                          credential_id, credential_public_key);
+    return SendU2fGenerateWaitForPresence(
+        /*is_up_only=*/true, rp_id_hash, credential_secret, std::nullopt,
+        credential_id, credential_public_key);
   }
 }
 
@@ -132,35 +127,19 @@ GetAssertionResponse::GetAssertionStatus U2fCommandProcessorGsc::U2fSign(
   DCHECK(rp_id_hash.size() == SHA256_DIGEST_LENGTH);
 
   if (credential_id.size() == U2F_V1_KH_SIZE + SHA256_DIGEST_LENGTH) {
-    // Allow waiving presence if sign_req.authTimeSecret is correct.
-    struct u2f_sign_versioned_req sign_req = {};
-    if (!util::VectorToObject(rp_id_hash, sign_req.appId,
-                              sizeof(sign_req.appId))) {
-      return GetAssertionResponse::INVALID_REQUEST;
-    }
-    if (!util::VectorToObject(credential_secret, sign_req.userSecret,
-                              sizeof(sign_req.userSecret))) {
-      return GetAssertionResponse::INVALID_REQUEST;
-    }
-    std::vector<uint8_t> key_handle(credential_id);
-    RemoveAuthTimeSecretHashFromCredentialId(&key_handle);
-    if (!util::VectorToObject(key_handle, &sign_req.keyHandle,
-                              sizeof(sign_req.keyHandle))) {
-      return GetAssertionResponse::INVALID_REQUEST;
-    }
-    if (!util::VectorToObject(hash_to_sign, sign_req.hash,
-                              sizeof(sign_req.hash))) {
-      return GetAssertionResponse::INVALID_REQUEST;
-    }
-    struct u2f_sign_resp sign_resp = {};
-
     if (presence_requirement != PresenceRequirement::kPowerButton) {
-      uint32_t sign_status = tpm_proxy_->SendU2fSign(sign_req, &sign_resp);
-      if (sign_status != 0)
-        return GetAssertionResponse::INTERNAL_ERROR;
+      ASSIGN_OR_RETURN(
+          const Signature& sig,
+          u2f_frontend_->Sign(rp_id_hash, credential_secret,
+                              /*auth_time_secret=*/std::nullopt, hash_to_sign,
+                              ConsumeMode::kNoConsume,
+                              UserPresenceMode::kNotRequired, credential_id),
+          _.WithStatus<TPMError>("Failed to sign using U2F credential")
+              .LogError()
+              .As(GetAssertionResponse::INTERNAL_ERROR));
 
       std::optional<std::vector<uint8_t>> opt_signature =
-          util::SignatureToDerBytes(sign_resp.sig_r, sign_resp.sig_s);
+          util::SignatureToDerBytes(sig.r.data(), sig.s.data());
       if (!opt_signature.has_value()) {
         return GetAssertionResponse::INTERNAL_ERROR;
       }
@@ -168,36 +147,19 @@ GetAssertionResponse::GetAssertionStatus U2fCommandProcessorGsc::U2fSign(
       return GetAssertionResponse::SUCCESS;
     }
 
-    // Require user presence, consume.
-    sign_req.flags |= U2F_AUTH_ENFORCE;
-    return SendU2fSignWaitForPresence(&sign_req, &sign_resp, signature);
+    return SendU2fSignWaitForPresence(
+        /*is_up_only=*/false, rp_id_hash, credential_secret,
+        /*auth_time_secret=*/std::nullopt, hash_to_sign, credential_id,
+        signature);
   } else if (credential_id.size() == U2F_V0_KH_SIZE) {
     // Non-versioned KH must be signed with power button press.
     if (presence_requirement != PresenceRequirement::kPowerButton)
       return GetAssertionResponse::INTERNAL_ERROR;
 
-    struct u2f_sign_req sign_req = {
-        .flags = U2F_AUTH_ENFORCE  // Require user presence, consume.
-    };
-    if (!util::VectorToObject(rp_id_hash, sign_req.appId,
-                              sizeof(sign_req.appId))) {
-      return GetAssertionResponse::INVALID_REQUEST;
-    }
-    if (!util::VectorToObject(credential_secret, sign_req.userSecret,
-                              sizeof(sign_req.userSecret))) {
-      return GetAssertionResponse::INVALID_REQUEST;
-    }
-    if (!util::VectorToObject(credential_id, &sign_req.keyHandle,
-                              sizeof(sign_req.keyHandle))) {
-      return GetAssertionResponse::INVALID_REQUEST;
-    }
-    if (!util::VectorToObject(hash_to_sign, sign_req.hash,
-                              sizeof(sign_req.hash))) {
-      return GetAssertionResponse::INVALID_REQUEST;
-    }
-
-    struct u2f_sign_resp sign_resp = {};
-    return SendU2fSignWaitForPresence(&sign_req, &sign_resp, signature);
+    return SendU2fSignWaitForPresence(
+        /*is_up_only=*/true, rp_id_hash, credential_secret,
+        /*auth_time_secret=*/std::nullopt, hash_to_sign, credential_id,
+        signature);
   } else {
     return GetAssertionResponse::UNKNOWN_CREDENTIAL_ID;
   }
@@ -209,112 +171,192 @@ U2fCommandProcessorGsc::U2fSignCheckOnly(
     const std::vector<uint8_t>& credential_id,
     const brillo::SecureBlob& credential_secret,
     const std::vector<uint8_t>* /*unused*/) {
-  uint32_t sign_status;
+  hwsec::Status sign_status;
 
   if (credential_id.size() == U2F_V1_KH_SIZE + SHA256_DIGEST_LENGTH) {
-    struct u2f_sign_versioned_req sign_req = {.flags = U2F_AUTH_CHECK_ONLY};
-    if (!util::VectorToObject(rp_id_hash, sign_req.appId,
-                              sizeof(sign_req.appId))) {
-      return HasCredentialsResponse::INVALID_REQUEST;
-    }
-    if (!util::VectorToObject(credential_secret, sign_req.userSecret,
-                              sizeof(sign_req.userSecret))) {
-      return HasCredentialsResponse::INVALID_REQUEST;
-    }
-    std::vector<uint8_t> key_handle(credential_id);
-    RemoveAuthTimeSecretHashFromCredentialId(&key_handle);
-    if (!util::VectorToObject(key_handle, &sign_req.keyHandle,
-                              sizeof(sign_req.keyHandle))) {
-      return HasCredentialsResponse::INVALID_REQUEST;
-    }
-
-    struct u2f_sign_resp sign_resp;
-
-    sign_status = tpm_proxy_->SendU2fSign(sign_req, &sign_resp);
-    brillo::SecureClearContainer(sign_req.userSecret);
+    sign_status =
+        u2f_frontend_->Check(rp_id_hash, credential_secret, credential_id);
   } else if (credential_id.size() == U2F_V0_KH_SIZE) {
-    struct u2f_sign_req sign_req = {.flags = U2F_AUTH_CHECK_ONLY};
-    if (!util::VectorToObject(rp_id_hash, sign_req.appId,
-                              sizeof(sign_req.appId))) {
-      return HasCredentialsResponse::INVALID_REQUEST;
-    }
-    if (!util::VectorToObject(credential_secret, sign_req.userSecret,
-                              sizeof(sign_req.userSecret))) {
-      return HasCredentialsResponse::INVALID_REQUEST;
-    }
-    if (!util::VectorToObject(credential_id, &sign_req.keyHandle,
-                              sizeof(sign_req.keyHandle))) {
-      return HasCredentialsResponse::INVALID_REQUEST;
-    }
-
-    struct u2f_sign_resp sign_resp;
-
-    sign_status = tpm_proxy_->SendU2fSign(sign_req, &sign_resp);
-    brillo::SecureClearContainer(sign_req.userSecret);
+    sign_status = u2f_frontend_->CheckUserPresenceOnly(
+        rp_id_hash, credential_secret, credential_id);
   } else {
     return HasCredentialsResponse::UNKNOWN_CREDENTIAL_ID;
   }
 
-  // Return status of 0 indicates the credential is valid.
-  return (sign_status == 0) ? HasCredentialsResponse::SUCCESS
-                            : HasCredentialsResponse::UNKNOWN_CREDENTIAL_ID;
+  return sign_status.ok() ? HasCredentialsResponse::SUCCESS
+                          : HasCredentialsResponse::UNKNOWN_CREDENTIAL_ID;
 }
 
 MakeCredentialResponse::MakeCredentialStatus U2fCommandProcessorGsc::G2fAttest(
-    const std::vector<uint8_t>& data,
-    const brillo::SecureBlob& secret,
-    uint8_t format,
+    const std::vector<uint8_t>& rp_id_hash,
+    const brillo::SecureBlob& credential_secret,
+    const std::vector<uint8_t>& challenge,
+    const std::vector<uint8_t>& credential_public_key,
+    const std::vector<uint8_t>& credential_id,
+    std::vector<uint8_t>* cert_out,
     std::vector<uint8_t>* signature_out) {
-  struct u2f_attest_req attest_req = {
-      .format = format, .dataLen = static_cast<uint8_t>(data.size())};
-  if (!util::VectorToObject(secret, attest_req.userSecret,
-                            sizeof(attest_req.userSecret))) {
-    return MakeCredentialResponse::INTERNAL_ERROR;
-  }
-  if (!util::VectorToObject(data, attest_req.data, sizeof(attest_req.data))) {
+  std::optional<std::vector<uint8_t>> cert = GetG2fCert();
+  if (!cert.has_value()) {
     return MakeCredentialResponse::INTERNAL_ERROR;
   }
 
-  struct u2f_attest_resp attest_resp = {};
-  uint32_t attest_status = tpm_proxy_->SendU2fAttest(attest_req, &attest_resp);
+  ASSIGN_OR_RETURN(
+      const Signature& signature,
+      u2f_frontend_->G2fAttest(rp_id_hash, credential_secret, challenge,
+                               credential_id, credential_public_key),
+      _.WithStatus<TPMError>("Failed to attest U2F credential")
+          .LogError()
+          .As(MakeCredentialResponse::INTERNAL_ERROR));
 
-  brillo::SecureClearBytes(&attest_req.userSecret,
-                           sizeof(attest_req.userSecret));
+  std::optional<std::vector<uint8_t>> sig_opt =
+      util::SignatureToDerBytes(signature.r.data(), signature.s.data());
 
-  if (attest_status != 0) {
-    // We are attesting to a key handle that we just created, so if
-    // attestation fails we have hit some internal error.
-    LOG(ERROR) << "U2F_ATTEST failed, status: " << std::hex
-               << static_cast<uint32_t>(attest_status);
-    return MakeCredentialResponse::INTERNAL_ERROR;
-  }
-
-  std::optional<std::vector<uint8_t>> signature =
-      util::SignatureToDerBytes(attest_resp.sig_r, attest_resp.sig_s);
-
-  if (!signature.has_value()) {
+  if (!sig_opt.has_value()) {
     LOG(ERROR) << "DER encoding of U2F_ATTEST signature failed.";
     return MakeCredentialResponse::INTERNAL_ERROR;
   }
 
-  *signature_out = *signature;
+  *cert_out = std::move(*cert);
+  *signature_out = std::move(*sig_opt);
 
   return MakeCredentialResponse::SUCCESS;
 }
 
-std::optional<std::vector<uint8_t>> U2fCommandProcessorGsc::GetG2fCert() {
-  std::string cert_str;
-  std::vector<uint8_t> cert;
+bool U2fCommandProcessorGsc::G2fSoftwareAttest(
+    const std::vector<uint8_t>& rp_id_hash,
+    const std::vector<uint8_t>& challenge,
+    const std::vector<uint8_t>& credential_public_key,
+    const std::vector<uint8_t>& credential_id,
+    std::vector<uint8_t>* cert_out,
+    std::vector<uint8_t>* signature_out) {
+  ASSIGN_OR_RETURN(
+      const brillo::Blob& data,
+      u2f_frontend_->GetG2fAttestData(rp_id_hash, challenge, credential_id,
+                                      credential_public_key),
+      _.WithStatus<TPMError>("Failed to get G2F attest data")
+          .LogError()
+          .As(false));
+  return util::DoSoftwareAttest(data, cert_out, signature_out);
+}
 
-  uint32_t get_cert_status = tpm_proxy_->GetG2fCertificate(&cert_str);
+CoseAlgorithmIdentifier U2fCommandProcessorGsc::GetAlgorithm() {
+  return CoseAlgorithmIdentifier::kEs256;
+}
 
-  if (get_cert_status != 0) {
-    LOG(ERROR) << "Failed to retrieve G2F certificate, status: " << std::hex
-               << get_cert_status;
-    return std::nullopt;
+MakeCredentialResponse::MakeCredentialStatus
+U2fCommandProcessorGsc::SendU2fGenerateWaitForPresence(
+    bool is_up_only,
+    const std::vector<uint8_t>& rp_id_hash,
+    const brillo::SecureBlob& credential_secret,
+    const std::optional<std::vector<uint8_t>>& auth_time_secret_hash,
+    std::vector<uint8_t>* credential_id,
+    CredentialPublicKey* credential_public_key) {
+  if (!is_up_only) {
+    DCHECK(auth_time_secret_hash.has_value());
   }
 
-  util::AppendToVector(cert_str, &cert);
+  auto generate_result = CallAndWaitForPresence<GenerateResult>(
+      [this, is_up_only, rp_id_hash, credential_secret,
+       auth_time_secret_hash]() {
+        if (is_up_only) {
+          return u2f_frontend_->GenerateUserPresenceOnly(
+              rp_id_hash, credential_secret, ConsumeMode::kConsume,
+              UserPresenceMode::kRequired);
+        }
+        return u2f_frontend_->Generate(
+            rp_id_hash, credential_secret, ConsumeMode::kConsume,
+            UserPresenceMode::kRequired, *auth_time_secret_hash);
+      });
+
+  if (!generate_result.ok()) {
+    LOG(ERROR) << "U2F_GENERATE failed:" << generate_result.status() << ".";
+    // TODO(b/235286980): Return suitable error depending on the generate_result
+    // here.
+    return MakeCredentialResponse::VERIFICATION_FAILED;
+  }
+  if (!generate_result->public_key) {
+    LOG(ERROR) << "No public key in generate result.";
+    return MakeCredentialResponse::INTERNAL_ERROR;
+  }
+
+  credential_public_key->raw = generate_result->public_key->raw();
+  credential_public_key->cbor = EncodeCredentialPublicKeyInCBOR(
+      generate_result->public_key->x(), generate_result->public_key->y());
+  *credential_id = std::move(generate_result->key_handle);
+  return MakeCredentialResponse::SUCCESS;
+}
+
+GetAssertionResponse::GetAssertionStatus
+U2fCommandProcessorGsc::SendU2fSignWaitForPresence(
+    bool is_up_only,
+    const std::vector<uint8_t>& rp_id_hash,
+    const brillo::SecureBlob& credential_secret,
+    const std::optional<brillo::SecureBlob>& auth_time_secret,
+    const std::vector<uint8_t>& hash_to_sign,
+    const std::vector<uint8_t>& key_handle,
+    std::vector<uint8_t>* signature) {
+  auto sign_result = CallAndWaitForPresence<Signature>(
+      [this, is_up_only, rp_id_hash, credential_secret, auth_time_secret,
+       hash_to_sign, key_handle]() {
+        if (is_up_only) {
+          return u2f_frontend_->SignUserPresenceOnly(
+              rp_id_hash, credential_secret, hash_to_sign,
+              ConsumeMode::kConsume, UserPresenceMode::kRequired, key_handle);
+        }
+        return u2f_frontend_->Sign(
+            rp_id_hash, credential_secret, auth_time_secret, hash_to_sign,
+            ConsumeMode::kConsume, UserPresenceMode::kRequired, key_handle);
+      });
+
+  if (!sign_result.ok()) {
+    LOG(ERROR) << "U2F_SIGN failed:" << sign_result.status() << ".";
+    // TODO(b/235286980): Return suitable error depending on the sign_result
+    // here.
+    return GetAssertionResponse::VERIFICATION_FAILED;
+  }
+
+  std::optional<std::vector<uint8_t>> opt_signature =
+      util::SignatureToDerBytes(sign_result->r.data(), sign_result->s.data());
+  if (!opt_signature.has_value()) {
+    LOG(ERROR) << "Failed to parse U2f signature.";
+    return GetAssertionResponse::INTERNAL_ERROR;
+  }
+  *signature = *opt_signature;
+  return GetAssertionResponse::SUCCESS;
+}
+
+template <typename T, typename F>
+hwsec::StatusOr<T> U2fCommandProcessorGsc::CallAndWaitForPresence(F fn) {
+  hwsec::StatusOr<T> status = fn();
+  base::TimeTicks verification_start = base::TimeTicks::Now();
+  while (!status.ok() &&
+         status.err_status()->ToTPMRetryAction() ==
+             TPMRetryAction::kUserPresence &&
+         base::TimeTicks::Now() - verification_start < kVerificationTimeout) {
+    // We need user presence. Show a notification requesting it, and try again.
+    // We have a delay in request_presence_, so we didn't need to sleep again.
+    request_presence_();
+    status = fn();
+  }
+  return status;
+}
+
+std::vector<uint8_t> U2fCommandProcessorGsc::EncodeCredentialPublicKeyInCBOR(
+    base::span<const uint8_t> x, base::span<const uint8_t> y) {
+  cbor::Value::MapValue cbor_map;
+  cbor_map[cbor::Value(kCoseKeyKtyLabel)] = cbor::Value(kCoseKeyKtyEC2);
+  cbor_map[cbor::Value(kCoseKeyAlgLabel)] = cbor::Value(kCoseKeyAlgES256);
+  cbor_map[cbor::Value(kCoseECKeyCrvLabel)] = cbor::Value(1);
+  cbor_map[cbor::Value(kCoseECKeyXLabel)] = cbor::Value(x);
+  cbor_map[cbor::Value(kCoseECKeyYLabel)] = cbor::Value(y);
+  return *cbor::Writer::Write(cbor::Value(std::move(cbor_map)));
+}
+
+std::optional<std::vector<uint8_t>> U2fCommandProcessorGsc::GetG2fCert() {
+  ASSIGN_OR_RETURN(brillo::Blob cert, u2f_frontend_->GetG2fCert(),
+                   _.WithStatus<TPMError>("Failed to get G2F cert")
+                       .LogError()
+                       .As(std::nullopt));
 
   if (!util::RemoveCertificatePadding(&cert)) {
     LOG(ERROR) << "Failed to remove padding from G2F certificate ";
@@ -324,122 +366,9 @@ std::optional<std::vector<uint8_t>> U2fCommandProcessorGsc::GetG2fCert() {
   return cert;
 }
 
-CoseAlgorithmIdentifier U2fCommandProcessorGsc::GetAlgorithm() {
-  return CoseAlgorithmIdentifier::kEs256;
-}
-
-// This is needed for backward compatibility. Credential id's that were already
-// generated have inserted hash, so we continue to insert/remove them.
-void U2fCommandProcessorGsc::InsertAuthTimeSecretHashToCredentialId(
-    const brillo::Blob* auth_time_secret_hash, std::vector<uint8_t>* input) {
-  CHECK(input->size() == U2F_V1_KH_SIZE);
-  // The auth time secret hash should be inserted right after the header and
-  // the authorization salt, before the authorization hmac.
-  input->insert(
-      input->cbegin() + offsetof(u2f_versioned_key_handle, authorization_hmac),
-      auth_time_secret_hash->cbegin(), auth_time_secret_hash->cend());
-}
-
-// This is needed for backward compatibility. Credential id's that were already
-// generated have inserted hash, so we continue to insert/remove them.
-void U2fCommandProcessorGsc::RemoveAuthTimeSecretHashFromCredentialId(
-    std::vector<uint8_t>* input) {
-  CHECK_EQ(input->size(), U2F_V1_KH_SIZE + SHA256_DIGEST_LENGTH);
-  // The auth time secret hash is after the header and the authorization salt,
-  // before the authorization hmac. Remove it so that cr50 recognizes the KH.
-  const std::vector<uint8_t>::const_iterator remove_begin =
-      input->cbegin() + offsetof(u2f_versioned_key_handle, authorization_hmac);
-  input->erase(remove_begin, remove_begin + SHA256_DIGEST_LENGTH);
-}
-
-template <typename Response>
-MakeCredentialResponse::MakeCredentialStatus
-U2fCommandProcessorGsc::SendU2fGenerateWaitForPresence(
-    struct u2f_generate_req* generate_req,
-    Response* generate_resp,
-    std::vector<uint8_t>* credential_id,
-    CredentialPublicKey* credential_public_key) {
-  uint32_t generate_status = -1;
-
-  CallAndWaitForPresence(
-      [this, generate_req, generate_resp]() {
-        return tpm_proxy_->SendU2fGenerate(*generate_req, generate_resp);
-      },
-      &generate_status);
-  brillo::SecureClearContainer(generate_req->userSecret);
-
-  if (generate_status == 0) {
-    util::AppendToVector(generate_resp->pubKey, &credential_public_key->raw);
-    util::AppendToVector(
-        EncodeCredentialPublicKeyInCBOR(credential_public_key->raw),
-        &credential_public_key->cbor);
-    util::AppendToVector(generate_resp->keyHandle, credential_id);
-    return MakeCredentialResponse::SUCCESS;
-  }
-
-  LOG(ERROR) << "U2F_GENERATE failed with status " << std::hex
-             << generate_status << ".";
-  return MakeCredentialResponse::VERIFICATION_FAILED;
-}
-
-template <typename Request>
-GetAssertionResponse::GetAssertionStatus
-U2fCommandProcessorGsc::SendU2fSignWaitForPresence(
-    Request* sign_req,
-    struct u2f_sign_resp* sign_resp,
-    std::vector<uint8_t>* signature) {
-  uint32_t sign_status = -1;
-
-  CallAndWaitForPresence(
-      [this, sign_req, sign_resp]() {
-        return tpm_proxy_->SendU2fSign(*sign_req, sign_resp);
-      },
-      &sign_status);
-  brillo::SecureClearContainer(sign_req->userSecret);
-
-  if (sign_status == 0) {
-    std::optional<std::vector<uint8_t>> opt_signature =
-        util::SignatureToDerBytes(sign_resp->sig_r, sign_resp->sig_s);
-    if (!opt_signature.has_value()) {
-      LOG(ERROR) << "Failed to parse U2f signature.";
-      return GetAssertionResponse::INTERNAL_ERROR;
-    }
-    *signature = *opt_signature;
-    return GetAssertionResponse::SUCCESS;
-  }
-
-  LOG(ERROR) << "U2F_SIGN failed with status " << std::hex << sign_status
-             << ".";
-  return GetAssertionResponse::VERIFICATION_FAILED;
-}
-
-void U2fCommandProcessorGsc::CallAndWaitForPresence(
-    std::function<uint32_t()> fn, uint32_t* status) {
-  *status = fn();
-  base::TimeTicks verification_start = base::TimeTicks::Now();
-  while (*status == kCr50StatusNotAllowed &&
-         base::TimeTicks::Now() - verification_start < kVerificationTimeout) {
-    // We need user presence. Show a notification requesting it, and try again.
-    // We have a delay in request_presence_, so we didn't need to sleep again.
-    request_presence_();
-    *status = fn();
-  }
-}
-
-std::vector<uint8_t> U2fCommandProcessorGsc::EncodeCredentialPublicKeyInCBOR(
-    const std::vector<uint8_t>& credential_public_key) {
-  DCHECK_EQ(credential_public_key.size(), sizeof(struct u2f_ec_point));
-  cbor::Value::MapValue cbor_map;
-  cbor_map[cbor::Value(kCoseKeyKtyLabel)] = cbor::Value(kCoseKeyKtyEC2);
-  cbor_map[cbor::Value(kCoseKeyAlgLabel)] = cbor::Value(kCoseKeyAlgES256);
-  cbor_map[cbor::Value(kCoseECKeyCrvLabel)] = cbor::Value(1);
-  cbor_map[cbor::Value(kCoseECKeyXLabel)] = cbor::Value(base::make_span(
-      credential_public_key.data() + offsetof(struct u2f_ec_point, x),
-      U2F_EC_KEY_SIZE));
-  cbor_map[cbor::Value(kCoseECKeyYLabel)] = cbor::Value(base::make_span(
-      credential_public_key.data() + offsetof(struct u2f_ec_point, y),
-      U2F_EC_KEY_SIZE));
-  return *cbor::Writer::Write(cbor::Value(std::move(cbor_map)));
+hwsec::StatusOr<int> U2fCommandProcessorGsc::CallAndWaitForPresenceForTest(
+    std::function<hwsec::StatusOr<int>()> fn) {
+  return CallAndWaitForPresence<int>(fn);
 }
 
 }  // namespace u2f

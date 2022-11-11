@@ -530,13 +530,11 @@ void WebAuthnHandler::DoMakeCredential(
       session.response->Return(response);
       return;
     }
-    const std::vector<uint8_t> data_to_sign =
-        util::BuildU2fRegisterResponseSignedData(
-            rp_id_hash, util::ToVector(session.request.client_data_hash()),
-            credential_public_key.raw, credential_id);
     std::optional<std::vector<uint8_t>> attestation_statement =
         MakeFidoU2fAttestationStatement(
-            data_to_sign, session.request.attestation_conveyance_preference());
+            rp_id_hash, util::ToVector(session.request.client_data_hash()),
+            credential_public_key.raw, credential_id,
+            session.request.attestation_conveyance_preference());
     if (!attestation_statement) {
       LOG(ERROR)
           << "MakeCredential: Failed to make FIDO attestation statement.";
@@ -642,22 +640,16 @@ void WebAuthnHandler::AppendNoneAttestation(MakeCredentialResponse* response) {
 
 std::optional<std::vector<uint8_t>>
 WebAuthnHandler::MakeFidoU2fAttestationStatement(
-    const std::vector<uint8_t>& data_to_sign,
+    const std::vector<uint8_t>& app_id,
+    const std::vector<uint8_t>& challenge,
+    const std::vector<uint8_t>& pub_key,
+    const std::vector<uint8_t>& key_handle,
     const MakeCredentialRequest::AttestationConveyancePreference
         attestation_conveyance_preference) {
   std::vector<uint8_t> attestation_cert;
   std::vector<uint8_t> signature;
   if (attestation_conveyance_preference == MakeCredentialRequest::G2F &&
       u2f_mode_ == U2fMode::kU2fExtended) {
-    std::optional<std::vector<uint8_t>> g2f_cert =
-        u2f_command_processor_->GetG2fCert();
-    if (g2f_cert.has_value()) {
-      attestation_cert = *g2f_cert;
-    } else {
-      LOG(ERROR) << "Failed to get G2f cert for MakeCredential";
-      return std::nullopt;
-    }
-
     std::optional<brillo::SecureBlob> user_secret =
         user_state_->GetUserSecret();
     if (!user_secret.has_value()) {
@@ -666,8 +658,9 @@ WebAuthnHandler::MakeFidoU2fAttestationStatement(
     }
 
     MakeCredentialResponse::MakeCredentialStatus attest_status =
-        u2f_command_processor_->G2fAttest(
-            data_to_sign, *user_secret, U2F_ATTEST_FORMAT_REG_RESP, &signature);
+        u2f_command_processor_->G2fAttest(app_id, *user_secret, challenge,
+                                          pub_key, key_handle,
+                                          &attestation_cert, &signature);
 
     if (attest_status != MakeCredentialResponse::SUCCESS) {
       LOG(ERROR) << "Failed to do G2f attestation for MakeCredential";
@@ -680,7 +673,9 @@ WebAuthnHandler::MakeFidoU2fAttestationStatement(
       return std::nullopt;
     }
   } else {
-    if (!util::DoSoftwareAttest(data_to_sign, &attestation_cert, &signature)) {
+    if (!u2f_command_processor_->G2fSoftwareAttest(
+            app_id, challenge, pub_key, key_handle, &attestation_cert,
+            &signature)) {
       LOG(ERROR) << "Failed to do software attestation for MakeCredential";
       return std::nullopt;
     }
