@@ -210,4 +210,23 @@ void DelegateImpl::SetLedColor(mojom::LedName name,
   std::move(callback).Run(std::nullopt);
 }
 
+void DelegateImpl::ResetLedColor(mojom::LedName name,
+                                 ResetLedColorCallback callback) {
+  auto ec_led_id = ToEcLedId(name);
+  if (ec_led_id == EC_LED_ID_COUNT) {
+    std::move(callback).Run("Unknown LED name");
+    return;
+  }
+
+  auto cros_fd = base::ScopedFD(open(ec::kCrosEcPath, O_RDWR));
+
+  ec::LedControlAutoCommand cmd(ec_led_id);
+  if (!cmd.Run(cros_fd.get())) {
+    std::move(callback).Run("Failed to reset LED color");
+    return;
+  }
+
+  std::move(callback).Run(std::nullopt);
+}
+
 }  // namespace diagnostics

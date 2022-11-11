@@ -36,4 +36,13 @@ interface Delegate {
   // The response:
   // * |err| - Error message if existed.
   SetLedColor(LedName name, LedColor color) => (string? err);
+
+  // Switch the LED back to be automatically controlled by EC.
+  //
+  // The request:
+  // * |name| - The target LED.
+  //
+  // The response:
+  // * |err| - Error message if existed.
+  ResetLedColor(LedName name) => (string? err);
 };
