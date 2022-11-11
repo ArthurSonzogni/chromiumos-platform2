@@ -14,6 +14,21 @@
 
 namespace shill {
 namespace {
+
+bool IsNetworkEvent(WiFiLinkStatistics::Trigger trigger) {
+  // Only update the state if the link statistics request was triggered by an
+  // IP-level event, not lower level events like periodic checks or CQM.
+  return trigger == WiFiLinkStatistics::Trigger::kIPConfigurationStart ||
+         trigger == WiFiLinkStatistics::Trigger::kConnected ||
+         trigger == WiFiLinkStatistics::Trigger::kDHCPRenewOnRoam ||
+         trigger == WiFiLinkStatistics::Trigger::kDHCPSuccess ||
+         trigger == WiFiLinkStatistics::Trigger::kDHCPFailure ||
+         trigger == WiFiLinkStatistics::Trigger::kSlaacFinished ||
+         trigger == WiFiLinkStatistics::Trigger::kNetworkValidationStart ||
+         trigger == WiFiLinkStatistics::Trigger::kNetworkValidationSuccess ||
+         trigger == WiFiLinkStatistics::Trigger::kNetworkValidationFailure;
+}
+
 // Determine if the WiFi link statistics should be print to log.
 bool ShouldPrintWiFiLinkStatistics(WiFiLinkStatistics::Trigger trigger) {
   // It doesn't consider if the service is connected (Service::IsConnected() ==
@@ -268,8 +283,7 @@ void WiFiLinkStatistics::Reset() {
 
 void WiFiLinkStatistics::UpdateNl80211LinkStatistics(
     Trigger trigger, const StationStats& stats) {
-  // nl80211 station information for WiFi link diagnosis
-  if (trigger == Trigger::kUnknown) {
+  if (!IsNetworkEvent(trigger)) {
     return;
   }
 

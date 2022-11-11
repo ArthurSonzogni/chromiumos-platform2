@@ -2898,7 +2898,7 @@ void WiFi::OnConnected() {
     // this earlier when the association process succeeded.
     current_service_->ResetSuspectedCredentialFailures();
   }
-  RequestStationInfo();
+  RequestStationInfo(WiFiLinkStatistics::Trigger::kBackground);
 
   // Clears the link monitor states for the previous connection.
   ipv4_gateway_found_ = false;
@@ -3676,7 +3676,13 @@ void WiFi::ReportScanResultToUma(ScanState state, ScanMethod method) {
   }
 }
 
-void WiFi::RequestStationInfo() {
+void WiFi::EmitStationInfoRequestEvent(WiFiLinkStatistics::Trigger trigger) {
+  // TODO(b/239864299): emit a structured event once it's been implemented. For
+  // now, this method is a placeholder to develop the rest of the code.
+  SLOG(this, 3) << __func__ << ": trigger " << static_cast<int>(trigger);
+}
+
+void WiFi::RequestStationInfo(WiFiLinkStatistics::Trigger trigger) {
   // It is able to only request NL80211 link statistics if the device is L2
   // connected.
   if (supplicant_state_ != WPASupplicant::kInterfaceStateCompleted) {
@@ -3706,6 +3712,31 @@ void WiFi::RequestStationInfo() {
     return;
   }
 
+  // shill requests the station info every |kRequestStationInfoPeriod| seconds,
+  // which is 20s at the time of writing, in particular to update the signal
+  // strength. We don't necessarily want to add the statistics to structured
+  // events that often, so we only emit the event once we've passed multiple
+  // |kRequestStationInfoPeriod| periods.
+  // Note: link statistics requests triggered by non-periodic events (e.g CQM,
+  // some IP-level events, etc.) will interfere with the way we track the
+  // |kReportStationInfoSample| interval since they will cancel pending calls
+  // to background stats reports, but that's not a problem, we only care about
+  // the approximate interval between structured events, it does not have to be
+  // exact.
+  if (trigger == WiFiLinkStatistics::Trigger::kBackground) {
+    if (station_info_reqs_ % kReportStationInfoSample == 0) {
+      EmitStationInfoRequestEvent(WiFiLinkStatistics::Trigger::kPeriodicCheck);
+      pending_nl80211_stats_requests_.push_back(
+          WiFiLinkStatistics::Trigger::kPeriodicCheck);
+    }
+    station_info_reqs_++;
+  }
+
+  if (trigger != WiFiLinkStatistics::Trigger::kUnknown &&
+      trigger != WiFiLinkStatistics::Trigger::kBackground) {
+    EmitStationInfoRequestEvent(trigger);
+    pending_nl80211_stats_requests_.push_back(trigger);
+  }
   netlink_manager_->SendNl80211Message(
       &get_station,
       base::BindRepeating(&WiFi::OnReceivedStationInfo,
@@ -3714,7 +3745,8 @@ void WiFi::RequestStationInfo() {
       base::BindRepeating(&NetlinkManager::OnNetlinkMessageError));
 
   request_station_info_callback_.Reset(base::BindOnce(
-      &WiFi::RequestStationInfo, weak_ptr_factory_while_started_.GetWeakPtr()));
+      &WiFi::RequestStationInfo, weak_ptr_factory_while_started_.GetWeakPtr(),
+      WiFiLinkStatistics::Trigger::kBackground));
   dispatcher()->PostDelayedTask(FROM_HERE,
                                 request_station_info_callback_.callback(),
                                 kRequestStationInfoPeriod);
@@ -3777,6 +3809,13 @@ bool WiFi::ParseStationBitrate(const AttributeListConstRefPtr& rate_info,
   // TODO(b/239864299): Handle DCM.
 
   return ret;
+}
+
+void WiFi::EmitStationInfoReceivedEvent(
+    const WiFiLinkStatistics::StationStats& /* stats*/) {
+  // TODO(b/239864299): emit a structured event once it's been implemented. For
+  // now, this method is a placeholder to develop the rest of the code.
+  SLOG(this, 3) << __func__;
 }
 
 void WiFi::OnReceivedStationInfo(const Nl80211Message& nl80211_message) {
@@ -3883,17 +3922,27 @@ void WiFi::OnReceivedStationInfo(const Nl80211Message& nl80211_message) {
 
   station_stats_ = stats;
 
-  wifi_link_statistics_->UpdateNl80211LinkStatistics(
-      current_nl80211_network_event_, station_stats_);
-  // Reset current_nl80211_network_event_ to prevent unnecessary
-  // WiFiLinkStatistics update/print
-  current_nl80211_network_event_ = WiFiLinkStatistics::Trigger::kUnknown;
+  if (!pending_nl80211_stats_requests_.empty()) {
+    // Only emit 1 telemetry event with link statistics, even if we had multiple
+    // trigger events (e.g. CQM and DHCP in quick succession).
+    EmitStationInfoReceivedEvent(station_stats_);
+    for (auto req : pending_nl80211_stats_requests_) {
+      wifi_link_statistics_->UpdateNl80211LinkStatistics(req, station_stats_);
+    }
+    pending_nl80211_stats_requests_.clear();
+  }
+}
+
+void WiFi::ResetStationInfoRequests() {
+  pending_nl80211_stats_requests_.clear();
+  station_info_reqs_ = 0;
+  station_stats_ = {};
 }
 
 void WiFi::StopRequestingStationInfo() {
   SLOG(this, 2) << "WiFi Device " << link_name() << ": " << __func__;
   request_station_info_callback_.Cancel();
-  station_stats_ = {};
+  ResetStationInfoRequests();
 }
 
 void WiFi::RemoveSupplicantNetworks() {
@@ -3954,8 +4003,7 @@ void WiFi::OnIPv6ConfiguredWithSLAACAddress() {
 void WiFi::RetrieveLinkStatistics(WiFiLinkStatistics::Trigger event) {
   current_rtnl_network_event_ = event;
   RTNLHandler::GetInstance()->RequestDump(RTNLHandler::kRequestLink);
-  current_nl80211_network_event_ = event;
-  RequestStationInfo();
+  RequestStationInfo(event);
 }
 
 bool WiFi::IsConnectedToCurrentService() {

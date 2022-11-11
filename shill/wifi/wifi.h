@@ -76,6 +76,7 @@
 #include <linux/nl80211.h>
 #include <time.h>
 
+#include <list>
 #include <map>
 #include <memory>
 #include <set>
@@ -392,8 +393,14 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   static const int kNumFastScanAttempts;
   static constexpr base::TimeDelta kFastScanInterval = base::Seconds(10);
   static constexpr base::TimeDelta kReconnectTimeout = base::Seconds(10);
+  // Request the STA info from the driver periodically, among other things to
+  // update the signal strength.
   static constexpr base::TimeDelta kRequestStationInfoPeriod =
       base::Seconds(20);
+  // In addition to updating the link statistics locally, somewhat less
+  // less frequently (1 in |kReportStationInfoSample|) we also report the link
+  // statistics through structured metrics.
+  static constexpr int kReportStationInfoSample = 30;
   // Time to wait after waking from suspend to report the connection status to
   // metrics.
   // 1 second is less than the time it takes to scan and establish a new
@@ -619,12 +626,21 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // Enable or disable debugging for the current connection attempt.
   void SetConnectionDebugging(bool enabled);
 
+  // Send a structured event to notify that we've requested link statistics
+  // from the driver.
+  void EmitStationInfoRequestEvent(WiFiLinkStatistics::Trigger trigger);
+
+  // Send a structured event with the link statistics that had been requested.
+  void EmitStationInfoReceivedEvent(
+      const WiFiLinkStatistics::StationStats& stats);
+
   // Request and retrieve information about the currently connected station.
-  void RequestStationInfo();
+  void RequestStationInfo(WiFiLinkStatistics::Trigger trigger);
   void OnReceivedStationInfo(const Nl80211Message& nl80211_message);
   static bool ParseStationBitrate(const AttributeListConstRefPtr& rate_info,
                                   WiFiLinkStatistics::LinkStats* stats);
   void StopRequestingStationInfo();
+  void ResetStationInfoRequests();
 
   void ConnectToSupplicant();
 
@@ -814,6 +830,10 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // Executes periodically while a service is connected, to update the
   // signal strength from the currently connected AP.
   base::CancelableOnceClosure request_station_info_callback_;
+  // Keep track of how many times we've requested the STA info from the driver.
+  // We used the number to report the STA info to the structured metrics every
+  // X times.
+  int station_info_reqs_;
   // Executes when WPA supplicant reports that a scan has failed via a ScanDone
   // signal.
   base::CancelableOnceClosure scan_failed_callback_;
@@ -894,11 +914,13 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
 
   // Used for the diagnosis on link failures defined in WiFiLinkStatistics.
   std::unique_ptr<WiFiLinkStatistics> wifi_link_statistics_;
-  // Keep the current network event for RTNL link and nl80211 statistics.
+  // Keep the current network event for RTNL link statistics.
   WiFiLinkStatistics::Trigger current_rtnl_network_event_ =
       WiFiLinkStatistics::Trigger::kUnknown;
-  WiFiLinkStatistics::Trigger current_nl80211_network_event_ =
-      WiFiLinkStatistics::Trigger::kUnknown;
+
+  // List of the events that have requested STA info but whose request hasn't
+  // been serviced yet.
+  std::list<WiFiLinkStatistics::Trigger> pending_nl80211_stats_requests_;
 
   // Phy interface index of this WiFi device.
   uint32_t phy_index_;

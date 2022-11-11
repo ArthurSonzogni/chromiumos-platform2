@@ -4,6 +4,7 @@
 
 #include "shill/wifi/wifi.h"
 
+#include <gmock/gmock-cardinalities.h>
 #include <linux/if.h>
 #include <linux/netlink.h>  // Needs typedefs from sys/socket.h.
 #include <netinet/ether.h>
@@ -26,6 +27,7 @@
 #include <chromeos/dbus/service_constants.h>
 #include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 
+#include "base/time/time.h"
 #include "shill/dbus/dbus_control.h"
 #include "shill/error.h"
 #include "shill/event_dispatcher.h"
@@ -1027,7 +1029,9 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
   void ReportWiFiDebugScopeChanged(bool enabled) {
     wifi_->OnWiFiDebugScopeChanged(enabled);
   }
-  void RequestStationInfo() { wifi_->RequestStationInfo(); }
+  void RequestStationInfo(WiFiLinkStatistics::Trigger trigger) {
+    wifi_->RequestStationInfo(trigger);
+  }
   void ReportReceivedStationInfo(const Nl80211Message& nl80211_message) {
     wifi_->OnReceivedStationInfo(nl80211_message);
   }
@@ -4044,7 +4048,7 @@ TEST_F(WiFiTimerTest, RequestStationInfo) {
   // It is not L2 connected.
   EXPECT_CALL(log, Log(_, _, HasSubstr("we are not connected")));
   ReportStateChanged(WPASupplicant::kInterfaceStateAuthenticating);
-  RequestStationInfo();
+  RequestStationInfo(WiFiLinkStatistics::Trigger::kUnknown);
 
   // Endpoint does not exist in endpoint_by_rpcid_.
   SetSupplicantBSS(
@@ -4053,7 +4057,7 @@ TEST_F(WiFiTimerTest, RequestStationInfo) {
   EXPECT_CALL(
       log,
       Log(_, _, HasSubstr("Can't get endpoint for current supplicant BSS")));
-  RequestStationInfo();
+  RequestStationInfo(WiFiLinkStatistics::Trigger::kUnknown);
   Mock::VerifyAndClearExpectations(&netlink_manager_);
   Mock::VerifyAndClearExpectations(&*mock_dispatcher_);
 
@@ -4066,7 +4070,7 @@ TEST_F(WiFiTimerTest, RequestStationInfo) {
   EXPECT_CALL(*mock_dispatcher_,
               PostDelayedTask(_, _, WiFi::kRequestStationInfoPeriod));
   SetSupplicantBSS(connected_bss);
-  RequestStationInfo();
+  RequestStationInfo(WiFiLinkStatistics::Trigger::kBackground);
 
   // Now test that a properly formatted New Station message updates strength.
   NewStationMessage new_station;
@@ -5560,6 +5564,12 @@ TEST_F(WiFiMainTest, NetworkEventTransition) {
 
   // IP configuration starts
   ReportStateChanged(WPASupplicant::kInterfaceStateCompleted);
+  // Catch all to avoid failing on calls triggered by other events
+  // (e.g. monitoring).
+  EXPECT_CALL(*wifi_link_statistics_, UpdateNl80211LinkStatistics(_, _))
+      .Times(AnyNumber());
+  // One of the call to |UpdateNl80211LinkStatistics()| must correspond to the
+  // IP configuration start.
   EXPECT_CALL(*wifi_link_statistics_,
               UpdateNl80211LinkStatistics(
                   WiFiLinkStatistics::Trigger::kIPConfigurationStart, _))

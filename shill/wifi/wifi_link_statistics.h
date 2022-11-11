@@ -52,6 +52,24 @@ class WiFiLinkStatistics {
     // A network validation attempt has completed but Internet connectivity
     // was not verified.
     kNetworkValidationFailure,
+    // The kernel notified us, through a CQM event, that the RSSI is considered
+    // low, it's below the configured threshold.
+    kCQMRSSILow,
+    // The kernel notified us, through a CQM event, that the RSSI is considered
+    // high, it's above the configured threshold.
+    kCQMRSSIHigh,
+    // The kernel notified us, through a CQM event, that we have not received
+    // beacons from the AP recently.
+    kCQMBeaconLoss,
+    // The kernel notified us, through a CQM event, that we've lost packets.
+    kCQMPacketLoss,
+    // In addition to reacting on network events and kernel notifications, we
+    // also report the quality of the link periodically.
+    kPeriodicCheck,
+    // We always update (some of) the link statistics in the background, every
+    // |WiFi::kRequestStationInfoPeriod|. Among other things that allows us to
+    // update the signal strength UI regularly.
+    kBackground,
   };
 
   enum class ChannelWidth {
