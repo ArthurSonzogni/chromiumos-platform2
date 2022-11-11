@@ -9,6 +9,7 @@ import("//common-mk/proto_library.gni")
 group("all") {
   deps = [
     ":featured",
+    ":hmac",
     ":libc_fake_feature_library",
     ":libfake_platform_features",
     ":libfeatures",
@@ -20,6 +21,7 @@ group("all") {
       ":c_feature_check_example",
       ":cpp_feature_check_example",
       ":feature_library_test",
+      ":hmac_test",
       ":service_test",
     ]
   }
@@ -34,6 +36,7 @@ pkg_config("target_defaults") {
     "libbrillo",
     "libchrome",
     "libsession_manager-client",
+    "openssl",
   ]
 }
 
@@ -85,6 +88,12 @@ shared_library("libc_fake_feature_library") {
   deps = [ ":libfake_platform_features" ]
 }
 
+static_library("hmac") {
+  visibility = [ ":*" ]  # Only targets in this BUILD file
+  sources = [ "hmac.cc" ]
+  configs += [ ":target_defaults" ]
+}
+
 if (use.test) {
   pkg_config("test_helper_config") {
     pkg_deps = [
@@ -92,6 +101,19 @@ if (use.test) {
       "libbrillo-test",
       "libchrome",
       "libchrome-test",
+    ]
+  }
+
+  executable("hmac_test") {
+    sources = [ "hmac_test.cc" ]
+    configs += [
+      "//common-mk:test",
+      ":test_helper_config",
+      ":target_defaults",
+    ]
+    deps = [
+      ":hmac",
+      "//common-mk/testrunner:testrunner",
     ]
   }
 
