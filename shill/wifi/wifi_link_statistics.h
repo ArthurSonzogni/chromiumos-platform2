@@ -17,20 +17,20 @@
 
 namespace shill {
 
-struct Nl80211StaInfo {
-  uint32_t rx_packets_success;
-  uint32_t tx_packets_success;
-  uint32_t rx_bytes_success;
-  uint32_t tx_bytes_success;
-  uint32_t tx_packets_failure;
-  uint32_t tx_retries;
-  uint64_t rx_packets_dropped;
-  int32_t last_rx_signal_dbm;
-  int32_t avg_rx_signal_dbm;
-};
-
 class WiFiLinkStatistics {
  public:
+  struct Nl80211StaInfo {
+    uint32_t rx_packets_success;
+    uint32_t tx_packets_success;
+    uint32_t rx_bytes_success;
+    uint32_t tx_bytes_success;
+    uint32_t tx_packets_failure;
+    uint32_t tx_retries;
+    uint64_t rx_packets_dropped;
+    int32_t last_rx_signal_dbm;
+    int32_t avg_rx_signal_dbm;
+  };
+
   struct Nl80211LinkStatistics {
     // The event that triggered the snapshot of WiFiLinkStatistics.
     WiFi::LinkStatisticsTrigger trigger = WiFi::LinkStatisticsTrigger::kUnknown;

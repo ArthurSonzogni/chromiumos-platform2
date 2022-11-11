@@ -65,9 +65,10 @@ bool DoesEndMatchStartEvent(WiFi::LinkStatisticsTrigger start_event,
 
 // Calculate the difference between NL80211 link statistics old_stats and
 // new_stats
-Nl80211StaInfo Nl80211LinkStatisticsDiff(const Nl80211StaInfo& old_stats,
-                                         const Nl80211StaInfo& new_stats) {
-  Nl80211StaInfo diff_stats;
+WiFiLinkStatistics::Nl80211StaInfo Nl80211LinkStatisticsDiff(
+    const WiFiLinkStatistics::Nl80211StaInfo& old_stats,
+    const WiFiLinkStatistics::Nl80211StaInfo& new_stats) {
+  WiFiLinkStatistics::Nl80211StaInfo diff_stats;
   diff_stats.rx_packets_success =
       new_stats.rx_packets_success - old_stats.rx_packets_success;
   diff_stats.tx_packets_success =
@@ -117,7 +118,8 @@ std::string RtnlLinkStatisticsToString(
 }
 
 // Convert NL80211 link statistics to string
-std::string Nl80211LinkStatisticsToString(const Nl80211StaInfo& diff_stats) {
+std::string Nl80211LinkStatisticsToString(
+    const WiFiLinkStatistics::Nl80211StaInfo& diff_stats) {
   return std::string(kPacketReceiveSuccessesProperty) + " " +
          std::to_string(diff_stats.rx_packets_success) + " " +
          kPacketTransmitSuccessesProperty + " " +
@@ -138,8 +140,9 @@ std::string Nl80211LinkStatisticsToString(const Nl80211StaInfo& diff_stats) {
          std::to_string(diff_stats.avg_rx_signal_dbm);
 }
 
-Nl80211StaInfo ConvertNl80211StaInfo(const KeyValueStore& link_statistics) {
-  Nl80211StaInfo stats;
+WiFiLinkStatistics::Nl80211StaInfo ConvertNl80211StaInfo(
+    const KeyValueStore& link_statistics) {
+  WiFiLinkStatistics::Nl80211StaInfo stats;
   std::vector<std::pair<std::string, uint32_t*>>
       nl80211_sta_info_properties_u32 = {
           {kPacketReceiveSuccessesProperty, &stats.rx_packets_success},
