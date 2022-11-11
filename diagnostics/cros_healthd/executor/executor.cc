@@ -206,6 +206,28 @@ void SetLedColorTask(mojom::LedName name,
       base::BindOnce(&SetLedColorCallback, std::move(cb), std::move(delegate)));
 }
 
+void ResetLedColorCallback(mojom::Executor::ResetLedColorCallback callback,
+                           std::unique_ptr<DelegateProcess> delegate,
+                           const std::optional<std::string>& err) {
+  delegate.reset();
+  std::move(callback).Run(err);
+}
+
+void ResetLedColorTask(mojom::LedName name,
+                       mojom::Executor::ResetLedColorCallback callback) {
+  auto delegate = std::make_unique<DelegateProcess>(
+      kLedSeccompPolicyPath, kEcUserAndGroup, kNullCapability,
+      /*readonly_mount_points=*/std::vector<base::FilePath>{},
+      /*writable_mount_points=*/
+      std::vector<base::FilePath>{base::FilePath{"/dev/cros_ec"}});
+
+  auto cb = mojo::WrapCallbackWithDefaultInvokeIfNotRun(std::move(callback),
+                                                        kFailToLaunchDelegate);
+  delegate->remote()->ResetLedColor(
+      name, base::BindOnce(&ResetLedColorCallback, std::move(cb),
+                           std::move(delegate)));
+}
+
 }  // namespace
 
 // Exported for testing.
@@ -542,6 +564,12 @@ void Executor::SetLedColor(mojom::LedName name,
   base::SequencedTaskRunnerHandle::Get()->PostTask(
       FROM_HERE,
       base::BindOnce(&SetLedColorTask, name, color, std::move(callback)));
+}
+
+void Executor::ResetLedColor(ash::cros_healthd::mojom::LedName name,
+                             ResetLedColorCallback callback) {
+  base::SequencedTaskRunnerHandle::Get()->PostTask(
+      FROM_HERE, base::BindOnce(&ResetLedColorTask, name, std::move(callback)));
 }
 
 void Executor::RunUntrackedBinary(

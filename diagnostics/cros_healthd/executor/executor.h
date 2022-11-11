@@ -65,6 +65,8 @@ class Executor final : public ash::cros_healthd::mojom::Executor {
   void SetLedColor(ash::cros_healthd::mojom::LedName name,
                    ash::cros_healthd::mojom::LedColor color,
                    SetLedColorCallback callback) override;
+  void ResetLedColor(ash::cros_healthd::mojom::LedName name,
+                     ResetLedColorCallback callback) override;
 
  private:
   // Runs the given binary with the given arguments and sandboxing. If
