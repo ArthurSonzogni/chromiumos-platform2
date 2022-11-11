@@ -116,6 +116,11 @@ Summarization of borealis frame timings. 2 KiB.
 
 Contains the most recent Proton crash dump containing debug info. ~11 KiB.
 
+## borealis_rootfs_reports
+
+Contains MD5 digests for paths in the Borealis read-only rootfs.
+This report may inform if the Borealis rootfs has become corrupted. ~44 KiB.
+
 ## borealis_steam_compat_logs
 
 Contains versions of Steam compatibility tools used per game in the last 5 min.
