@@ -124,7 +124,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // base Device class. This enum is used for labelling link statistics obtained
   // from NL80211 and RTNL kernel interfaces for a WiFi interface at the time of
   // these events.
-  enum class NetworkEvent {
+  enum class LinkStatisticsTrigger {
     kUnknown,
     // IPv4 and IPv6 dynamic configuration is starting for this network. This
     // corresponds to the start of the initial DHCP lease acquisition by dhcpcd
@@ -702,7 +702,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   void OnNetworkValidationSuccess() override;
   void OnNetworkValidationFailure() override;
 
-  void RetrieveLinkStatistics(NetworkEvent event);
+  void RetrieveLinkStatistics(LinkStatisticsTrigger event);
 
   // Returns true iff the WiFi device is connected to the current service.
   bool IsConnectedToCurrentService();
@@ -928,11 +928,13 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // Used to report the current state of our wireless link.
   KeyValueStore link_statistics_;
 
-  // Used for the diagnosis on link failures defined in NetworkEvent
+  // Used for the diagnosis on link failures defined in WiFiLinkStatistics.
   std::unique_ptr<WiFiLinkStatistics> wifi_link_statistics_;
   // Keep the current network event for RTNL and nl80211 link statistics
-  NetworkEvent current_rtnl_network_event_ = NetworkEvent::kUnknown;
-  NetworkEvent current_nl80211_network_event_ = NetworkEvent::kUnknown;
+  LinkStatisticsTrigger current_rtnl_network_event_ =
+      LinkStatisticsTrigger::kUnknown;
+  LinkStatisticsTrigger current_nl80211_network_event_ =
+      LinkStatisticsTrigger::kUnknown;
 
   // Phy interface index of this WiFi device.
   uint32_t phy_index_;

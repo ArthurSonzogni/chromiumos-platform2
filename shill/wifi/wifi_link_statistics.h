@@ -32,25 +32,25 @@ struct nl80211_sta_info {
 class WiFiLinkStatistics {
  public:
   struct Nl80211LinkStatistics {
-    // The NetworkEvent at which the snapshot of WiFiLinkStatistics was made
-    WiFi::NetworkEvent network_event = WiFi::NetworkEvent::kUnknown;
+    // The event that triggered the snapshot of WiFiLinkStatistics.
+    WiFi::LinkStatisticsTrigger trigger = WiFi::LinkStatisticsTrigger::kUnknown;
     base::Time timestamp;
     nl80211_sta_info nl80211_link_stats;
-    Nl80211LinkStatistics(WiFi::NetworkEvent event,
+    Nl80211LinkStatistics(WiFi::LinkStatisticsTrigger trigger,
                           const nl80211_sta_info& stats)
-        : network_event(event), nl80211_link_stats(stats) {
+        : trigger(trigger), nl80211_link_stats(stats) {
       timestamp = base::Time::Now();
     }
   };
 
   struct RtnlLinkStatistics {
-    // The NetworkEvent at which the snapshot of WiFiLinkStatistics was made
-    WiFi::NetworkEvent network_event = WiFi::NetworkEvent::kUnknown;
+    // The event that triggered the snapshot of WiFiLinkStatistics.
+    WiFi::LinkStatisticsTrigger trigger = WiFi::LinkStatisticsTrigger::kUnknown;
     base::Time timestamp;
     old_rtnl_link_stats64 rtnl_link_stats;
-    RtnlLinkStatistics(WiFi::NetworkEvent event,
+    RtnlLinkStatistics(WiFi::LinkStatisticsTrigger event,
                        const old_rtnl_link_stats64& stats)
-        : network_event(event), rtnl_link_stats(stats) {
+        : trigger(event), rtnl_link_stats(stats) {
       timestamp = base::Time::Now();
     }
   };
@@ -61,10 +61,11 @@ class WiFiLinkStatistics {
   // Clear all existing nl80211 and RTNL link statistics in the lists
   void Reset();
 
-  static std::string NetworkEventToString(WiFi::NetworkEvent event);
+  static std::string LinkStatisticsTriggerToString(
+      WiFi::LinkStatisticsTrigger event);
 
   // Update a new snapshot of WiFi link statistics.
-  // If network_event is a start network event, the WiFi link statistics is
+  // If trigger is a start network event, the WiFi link statistics is
   // appended to the WiFi link statistics list; if it is an end network
   // event, pop the WiFi link statistics of the corresponding start network
   // event from the list and print the difference if the end network event is a
@@ -75,14 +76,15 @@ class WiFiLinkStatistics {
   // statistics of the start network event is left in the list and matches
   // the wrong end network event.
   mockable void UpdateNl80211LinkStatistics(
-      WiFi::NetworkEvent network_event, const KeyValueStore& link_statistics);
-  mockable void UpdateRtnlLinkStatistics(WiFi::NetworkEvent network_event,
+      WiFi::LinkStatisticsTrigger trigger,
+      const KeyValueStore& link_statistics);
+  mockable void UpdateRtnlLinkStatistics(WiFi::LinkStatisticsTrigger trigger,
                                          const old_rtnl_link_stats64& stats);
 
  private:
   friend class WiFiLinkStatisticsTest;
 
-  // The snapshot of link statistics is updated if the network event is not
+  // The snapshot of link statistics is updated if the trigger is not
   // kUnknown. The difference between the end and start network events is
   // printed to the log if necessary, i.e., the end network event is a failure,
   // such as kDHCPFailure, kNetworkValidationFailure
