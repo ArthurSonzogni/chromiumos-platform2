@@ -1,7 +1,6 @@
 // Copyright 2022 The ChromiumOS Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
-
 use anyhow::{bail, Result};
 use glob::glob;
 use libchromeos::sys::info;
@@ -16,6 +15,9 @@ const DEVICE_POWER_LIMIT_PATH: &str = "sys/class/powercap/intel-rapl:0";
 /// Base path for cpufreq relative to rootdir.
 const DEVICE_CPUFREQ_PATH: &str = "sys/devices/system/cpu/cpufreq";
 
+/// The threshold divsor for the minimum difference between min and max freq
+const CPU_DIFF_THRESHOLD_DIVISOR: i32 = 5;
+
 /// Utility class for controlling device CPU parameters.
 /// To be used by resourced-nvpd communication and game mode power steering.
 /// resourced-nvpd APIs documented in [`go/resourced-grpcs`](http://go/resourced-grpcs)
@@ -28,7 +30,9 @@ pub struct DeviceCpuStatus {
     energy_curr_path: PathBuf,
     energy_max: u64,
     cpu_max_freq_path_pattern: String,
+    cpu_min_freq_path_pattern: String,
     cpu_max_freq_default: u64,
+    cpu_min_freq_default: u64,
 }
 
 #[allow(dead_code)]
@@ -111,15 +115,62 @@ impl DeviceCpuStatus {
     ///
     /// # Arguments
     ///
-    /// * `val` - Value to set.  If it is above max, system will set it to max.
+    /// * `val` - Value to set.  If it is above max, system will set it to max. If it results in the
+    /// difference between current min and max to be less than the threshold then
+    /// the value will remain unchanged.
     ///
     /// # Return
     ///
     /// Result<()>
-    pub fn set_all_max_cpu_freq(&self, val: u64) -> Result<()> {
-        info!("Setting All CPU freq");
-        for entry in glob(&self.cpu_max_freq_path_pattern)? {
-            std::fs::write(&entry?, val.to_string().as_bytes())?;
+    pub fn set_all_max_cpu_freq(&self, val_max: u64) -> Result<()> {
+        let threshold = (self.cpu_max_freq_default - self.cpu_min_freq_default)
+            / (CPU_DIFF_THRESHOLD_DIVISOR as u64);
+        info!("Setting All CPU max freq");
+        let cpus: Result<Vec<_>, _> = glob(&self.cpu_max_freq_path_pattern)?.collect();
+        let cpus = cpus?;
+        for curr_cpu in cpus {
+            let cpu_min_path =
+                PathBuf::from(str::replace(&curr_cpu.display().to_string(), "max", "min"));
+            let val_min = common::read_file_to_u64(cpu_min_path)?;
+            if (val_max - val_min) > threshold {
+                std::fs::write(curr_cpu, val_max.to_string().as_bytes())?;
+            } else {
+                bail!("Requested frequency too close to min");
+            }
+        }
+        Ok(())
+    }
+
+    /// Setter for `scaling_min_freq` (per-core min clock).
+    ///
+    /// Sets the frequency flooring for all cores.
+    /// TODO: assumes uniform cores, expand to set p-cores and e-cores to different frequencies.
+    ///
+    /// # Arguments
+    ///
+    /// * `val` - Value to set.  If it is below min, system will set it to min.
+    /// If it results in the difference between current min and max to be
+    /// less than the threshold thenthe value will remain unchanged.
+    ///
+    /// # Return
+    ///
+    /// Result<()>
+    pub fn set_all_min_cpu_freq(&self, val_min: u64) -> Result<()> {
+        let threshold = (self.cpu_max_freq_default - self.cpu_min_freq_default)
+            / (CPU_DIFF_THRESHOLD_DIVISOR as u64);
+        info!("Setting All CPU min freq");
+        let cpus: Result<Vec<_>, _> = glob(&self.cpu_min_freq_path_pattern)?.collect();
+        let cpus = cpus?;
+
+        for curr_cpu in cpus {
+            let cpu_max_path =
+                PathBuf::from(str::replace(&curr_cpu.display().to_string(), "min", "max"));
+            let val_max = common::read_file_to_u64(cpu_max_path)?;
+            if (val_max - val_min) > threshold {
+                std::fs::write(curr_cpu, val_min.to_string().as_bytes())?;
+            } else {
+                bail!("Requested frequency too close to max");
+            }
         }
         Ok(())
     }
@@ -132,8 +183,10 @@ impl DeviceCpuStatus {
     /// # Return
     ///
     /// Result<()>
-    pub fn reset_all_max_cpu_freq(&self) -> Result<()> {
-        self.set_all_max_cpu_freq(self.cpu_max_freq_default)
+    pub fn reset_all_max_min_cpu_freq(&self) -> Result<()> {
+        self.set_all_max_cpu_freq(self.cpu_max_freq_default)?;
+        self.set_all_min_cpu_freq(self.cpu_min_freq_default)?;
+        Ok(())
     }
 
     /// Create a new DeviceCpuStatus.
@@ -174,10 +227,12 @@ impl DeviceCpuStatus {
         let cpu_max_freq_path_pattern = cpu_max_freq_path.to_str().unwrap_or_default();
         let cpu_0_max_path = PathBuf::from(str::replace(cpu_max_freq_path_pattern, "*", "0"));
         // always latch baseline max, since local max may have already been modified.
-        let cpu_max_freq_default = root
+        let cpu_min_freq_path = root
             .join(DEVICE_CPUFREQ_PATH)
-            .join("policy0/cpuinfo_max_freq");
-
+            .join("policy*/scaling_min_freq");
+        let cpu_min_freq_path_pattern = cpu_min_freq_path.to_str().unwrap_or_default();
+        let cpu_0_min_path = PathBuf::from(str::replace(cpu_min_freq_path_pattern, "*", "0"));
+        // always latch baseline min, since local min may have already been modified.
         if power_limit_0_current_path.exists()
             && power_limit_0_max_path.exists()
             && power_limit_1_current_path.exists()
@@ -185,7 +240,8 @@ impl DeviceCpuStatus {
             && energy_curr_path.exists()
             && energy_max_path.exists()
             && cpu_0_max_path.exists()
-            && cpu_max_freq_default.exists()
+            && cpu_0_min_path.exists()
+            && CPU_DIFF_THRESHOLD_DIVISOR > 0
         {
             info!("All sysfs file paths found");
             Ok(DeviceCpuStatus {
@@ -196,8 +252,10 @@ impl DeviceCpuStatus {
                 energy_curr_path,
                 energy_max: common::read_file_to_u64(energy_max_path)?,
                 cpu_max_freq_path_pattern: cpu_max_freq_path_pattern.to_owned(),
+                cpu_min_freq_path_pattern: cpu_min_freq_path_pattern.to_owned(),
                 // Todo: Change to vector for ADL heterogeneous cores.
-                cpu_max_freq_default: common::read_file_to_u64(cpu_max_freq_default)?,
+                cpu_max_freq_default: common::read_file_to_u64(cpu_0_max_path)?,
+                cpu_min_freq_default: common::read_file_to_u64(cpu_0_min_path)?,
             })
         } else {
             info!(
@@ -224,7 +282,19 @@ impl DeviceCpuStatus {
             );
             info!(
                 "cpu_max_freq_default_path_pattern.exists() {} (only pattern 0 checked)",
-                cpu_max_freq_default.exists()
+                cpu_max_freq_path.exists()
+            );
+            info!(
+                "cpu_min_freq_path_pattern.exists() {} (only pattern 0 checked)",
+                cpu_0_min_path.exists()
+            );
+            info!(
+                "cpu_min_freq_default_path_pattern.exists() {} (only pattern 0 checked)",
+                cpu_min_freq_path.exists()
+            );
+            info!(
+                "CPU_DIFF_THRESHOLD_DIVISOR == 0 {}",
+                CPU_DIFF_THRESHOLD_DIVISOR == 0
             );
 
             bail!("Could not find all sysfs files for CPU status")
@@ -251,24 +321,32 @@ mod tests {
         Ok(())
     }
 
-    fn write_mock_cpu(root: &Path, cpu_num: i32, baseline_max: u64, curr_max: u64) -> Result<()> {
+    fn write_mock_cpu(
+        root: &Path,
+        cpu_num: i32,
+        baseline_max: u64,
+        curr_max: u64,
+        baseline_min: u64,
+        curr_min: u64,
+    ) -> Result<()> {
         let policy_path = root
             .join(super::DEVICE_CPUFREQ_PATH)
             .join(format!("policy{cpu_num}"));
         std::fs::write(
             policy_path.join("cpuinfo_max_freq"),
             baseline_max.to_string(),
-        )?;
+        )
+        .expect("Failed to write to file!");
+        std::fs::write(
+            policy_path.join("cpuinfo_min_freq"),
+            baseline_min.to_string(),
+        )
+        .expect("Failed to write to file!");
+
         std::fs::write(policy_path.join("scaling_max_freq"), curr_max.to_string())?;
 
+        std::fs::write(policy_path.join("scaling_min_freq"), curr_min.to_string())?;
         Ok(())
-    }
-
-    fn helper_read_cpu0_freq(root: &Path) -> i32 {
-        let policy_path = root.join(super::DEVICE_CPUFREQ_PATH).join("policy0");
-        let read_val = std::fs::read(policy_path.join("scaling_max_freq")).unwrap();
-
-        str::from_utf8(&read_val).unwrap().parse::<i32>().unwrap()
     }
 
     fn setup_mock_cpu_dev_dirs(root: &Path) -> anyhow::Result<()> {
@@ -280,6 +358,20 @@ mod tests {
             )?;
         }
         Ok(())
+    }
+
+    fn helper_read_cpu0_freq_max(root: &Path) -> i32 {
+        let policy_path = root.join(super::DEVICE_CPUFREQ_PATH).join("policy0");
+        let read_val = std::fs::read(policy_path.join("scaling_max_freq")).unwrap();
+
+        str::from_utf8(&read_val).unwrap().parse::<i32>().unwrap()
+    }
+
+    fn helper_read_cpu0_freq_min(root: &Path) -> i32 {
+        let policy_path = root.join(super::DEVICE_CPUFREQ_PATH).join("policy0");
+        let read_val = std::fs::read(policy_path.join("scaling_min_freq")).unwrap();
+
+        str::from_utf8(&read_val).unwrap().parse::<i32>().unwrap()
     }
 
     fn setup_mock_files(root: &Path) -> anyhow::Result<()> {
@@ -326,6 +418,7 @@ mod tests {
         let root = tempdir()?;
         setup_mock_cpu_dev_dirs(root.path()).unwrap();
         setup_mock_files(root.path()).unwrap();
+        write_mock_cpu(root.path(), 0, 3200000, 3000000, 400000, 1000000).unwrap();
         write_mock_pl0(root.path(), 15000000).unwrap();
         let mock_cpu_dev_res = DeviceCpuStatus::new(PathBuf::from(root.path()));
         assert!(mock_cpu_dev_res.is_ok());
@@ -340,17 +433,30 @@ mod tests {
         let root = tempdir()?;
         setup_mock_cpu_dev_dirs(root.path()).unwrap();
         setup_mock_files(root.path()).unwrap();
-        write_mock_cpu(root.path(), 0, 3200000, 2000000).unwrap();
+        for cpu in 0..MOCK_NUM_CPU {
+            write_mock_cpu(root.path(), cpu, 3200000, 3000000, 400000, 1000000).unwrap();
+        }
+
         let mock_cpu_dev_res = DeviceCpuStatus::new(PathBuf::from(root.path()));
         assert!(mock_cpu_dev_res.is_ok());
         let mock_cpu_dev = mock_cpu_dev_res?;
-        assert_eq!(helper_read_cpu0_freq(root.path()), 2000000);
+        assert_eq!(helper_read_cpu0_freq_max(root.path()), 3000000);
 
-        mock_cpu_dev.set_all_max_cpu_freq(3000000)?;
-        assert_eq!(helper_read_cpu0_freq(root.path()), 3000000);
+        mock_cpu_dev.set_all_max_cpu_freq(2000000)?;
+        assert_eq!(helper_read_cpu0_freq_max(root.path()), 2000000);
 
-        mock_cpu_dev.reset_all_max_cpu_freq()?;
-        assert_eq!(helper_read_cpu0_freq(root.path()), 3200000);
+        mock_cpu_dev.set_all_min_cpu_freq(1200000)?;
+        assert_eq!(helper_read_cpu0_freq_min(root.path()), 1200000);
+
+        mock_cpu_dev.reset_all_max_min_cpu_freq()?;
+        assert_eq!(helper_read_cpu0_freq_max(root.path()), 3000000);
+        assert_eq!(helper_read_cpu0_freq_min(root.path()), 1000000);
+
+        mock_cpu_dev.set_all_max_cpu_freq(1600000)?;
+        assert_eq!(helper_read_cpu0_freq_max(root.path()), 1600000);
+
+        mock_cpu_dev.set_all_max_cpu_freq(2800000)?;
+        assert_eq!(helper_read_cpu0_freq_min(root.path()), 1000000);
 
         Ok(())
     }
