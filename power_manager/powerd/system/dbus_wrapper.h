@@ -22,11 +22,9 @@ namespace dbus {
 class Bus;
 }  // namespace dbus
 
-namespace google {
-namespace protobuf {
+namespace google::protobuf {
 class MessageLite;
-}  // namespace protobuf
-}  // namespace google
+}  // namespace google::protobuf
 
 namespace power_manager::system {
 
