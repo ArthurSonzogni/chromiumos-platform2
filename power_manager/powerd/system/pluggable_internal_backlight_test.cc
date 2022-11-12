@@ -19,8 +19,7 @@
 #include "power_manager/powerd/system/internal_backlight.h"
 #include "power_manager/powerd/system/udev_stub.h"
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 namespace {
 
@@ -151,5 +150,4 @@ TEST_F(PluggableInternalBacklightTest, InvalidDevice) {
   EXPECT_EQ(0, observer.num_changes());
 }
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system

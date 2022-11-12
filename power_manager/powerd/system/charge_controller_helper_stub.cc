@@ -4,8 +4,7 @@
 
 #include "power_manager/powerd/system/charge_controller_helper_stub.h"
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 constexpr int ChargeControllerHelperStub::kPeakShiftThresholdUnset = -1;
 
@@ -84,5 +83,4 @@ void ChargeControllerHelperStub::Reset() {
   custom_charge_stop_ = kCustomChargeThresholdUnset;
 }
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system

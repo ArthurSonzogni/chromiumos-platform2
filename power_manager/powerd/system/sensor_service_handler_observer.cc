@@ -6,8 +6,7 @@
 
 #include "power_manager/powerd/system/sensor_service_handler.h"
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 SensorServiceHandlerObserver::~SensorServiceHandlerObserver() {
   sensor_service_handler_->RemoveObserver(this);
@@ -19,5 +18,4 @@ SensorServiceHandlerObserver::SensorServiceHandlerObserver(
   sensor_service_handler_->AddObserver(this);
 }
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system

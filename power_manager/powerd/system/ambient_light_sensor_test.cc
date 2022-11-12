@@ -12,8 +12,7 @@
 
 #include "power_manager/powerd/system/ambient_light_observer.h"
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 namespace {
 
@@ -148,5 +147,4 @@ TEST_F(AmbientLightSensorTest, UpdateWithLuxAndColorTemperature) {
   EXPECT_EQ(200, sensor_->GetColorTemperature());
 }
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system

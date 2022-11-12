@@ -22,8 +22,7 @@
 
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 namespace {
 // C++14's <algorithm> could do std::max(EV_MAX, KEY_MAX, SW_MAX);
@@ -183,5 +182,4 @@ std::shared_ptr<EventDeviceInterface> EventDeviceFactory::Open(
   return std::shared_ptr<EventDeviceInterface>(new EventDevice(fd, path));
 }
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system

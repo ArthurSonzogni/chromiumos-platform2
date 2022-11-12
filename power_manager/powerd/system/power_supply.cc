@@ -41,8 +41,7 @@
 #include "power_manager/powerd/system/udev.h"
 #include "power_manager/proto_bindings/power_supply_properties.pb.h"
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 namespace {
 
@@ -1610,5 +1609,4 @@ bool PowerSupply::SetPowerSource(const std::string& id) {
   return true;
 }
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system

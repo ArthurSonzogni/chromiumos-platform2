@@ -10,8 +10,7 @@
 #include <base/logging.h>
 #include <libec/device_event_command.h>
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 // The current implementation does read->set->write. This isn't ideal because
 // the enable mask can be modified between the read and the write by anything
@@ -61,5 +60,4 @@ void EnableCrosEcDeviceEvent(enum ec_device_event event, bool enable) {
             << " for " << event;
 }
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system

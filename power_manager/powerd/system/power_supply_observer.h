@@ -7,8 +7,7 @@
 
 #include <base/observer_list_types.h>
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 struct PowerStatus;
 
@@ -20,7 +19,6 @@ class PowerSupplyObserver : public base::CheckedObserver {
   virtual void OnPowerStatusUpdate() = 0;
 };
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system
 
 #endif  // POWER_MANAGER_POWERD_SYSTEM_POWER_SUPPLY_OBSERVER_H_

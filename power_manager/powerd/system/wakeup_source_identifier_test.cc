@@ -18,8 +18,7 @@
 #include "power_manager/common/util.h"
 #include "power_manager/powerd/system/udev_stub.h"
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 namespace {
 
 const char kRandomEventCountPath[] = "wakeup/wakeup45/event_count";
@@ -125,5 +124,4 @@ TEST_F(WakeupSourceIdentifierTest, TestMultipleInputDevicesWithSameWakePath) {
 }
 
 }  // namespace
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system

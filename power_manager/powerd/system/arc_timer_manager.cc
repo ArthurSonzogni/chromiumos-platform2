@@ -25,8 +25,7 @@
 
 #include "power_manager/common/clock.h"
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 namespace {
 
@@ -364,5 +363,4 @@ ArcTimerManager::ArcTimerInfo* ArcTimerManager::FindArcTimerInfo(
   return (it == timers_.end()) ? nullptr : it->second.get();
 }
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system

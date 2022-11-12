@@ -14,8 +14,7 @@
 #include <base/check.h>
 #include <base/time/time.h>
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 AmbientLightSensorManagerFile::AmbientLightSensorManagerFile(
     PrefsInterface* prefs)
@@ -89,5 +88,4 @@ std::unique_ptr<AmbientLightSensor> AmbientLightSensorManagerFile::CreateSensor(
   return sensor;
 }
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system

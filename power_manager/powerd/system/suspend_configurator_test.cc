@@ -17,8 +17,7 @@
 #include "power_manager/common/fake_prefs.h"
 #include "power_manager/common/power_constants.h"
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 namespace {
 // Path to write to configure system suspend mode.
@@ -383,5 +382,4 @@ TEST_F(SuspendConfiguratorTest, TestkECLastResumeResultPathExist) {
   EXPECT_TRUE(suspend_configurator_.UndoPrepareForSuspend());
 }
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system

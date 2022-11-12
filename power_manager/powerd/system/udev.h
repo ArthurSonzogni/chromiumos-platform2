@@ -18,8 +18,7 @@ struct udev;
 struct udev_device;
 struct udev_monitor;
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 class TaggedDevice;
 class UdevSubsystemObserver;
@@ -187,7 +186,6 @@ class Udev : public UdevInterface {
   std::unique_ptr<base::FileDescriptorWatcher::Controller> controller_;
 };
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system
 
 #endif  // POWER_MANAGER_POWERD_SYSTEM_UDEV_H_

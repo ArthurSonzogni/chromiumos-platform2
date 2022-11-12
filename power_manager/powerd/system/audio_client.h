@@ -21,8 +21,7 @@ class Response;
 class Signal;
 }  // namespace dbus
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 // Real implementation of AudioClientInterface that monitors audio activity as
 // reported by CRAS, the Chrome OS audio server.
@@ -120,7 +119,6 @@ class AudioClient : public AudioClientInterface,
   base::WeakPtrFactory<AudioClient> weak_ptr_factory_;
 };
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system
 
 #endif  // POWER_MANAGER_POWERD_SYSTEM_AUDIO_CLIENT_H_

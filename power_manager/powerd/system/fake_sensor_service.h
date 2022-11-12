@@ -14,8 +14,7 @@
 
 #include "power_manager/powerd/system/fake_sensor_device.h"
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 class FakeSensorService : public cros::mojom::SensorService {
  public:
@@ -55,7 +54,6 @@ class FakeSensorService : public cros::mojom::SensorService {
       observers_;
 };
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system
 
 #endif  // POWER_MANAGER_POWERD_SYSTEM_FAKE_SENSOR_SERVICE_H_

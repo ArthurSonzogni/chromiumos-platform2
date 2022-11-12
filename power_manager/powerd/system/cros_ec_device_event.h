@@ -7,8 +7,7 @@
 
 #include "libec/device_event_command.h"
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 // Enable device event in CrOS EC.
 //
@@ -16,7 +15,6 @@ namespace system {
 // enable: true for enabling, false for disabling.
 void EnableCrosEcDeviceEvent(enum ec_device_event event, bool enable);
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system
 
 #endif  // POWER_MANAGER_POWERD_SYSTEM_CROS_EC_DEVICE_EVENT_H_

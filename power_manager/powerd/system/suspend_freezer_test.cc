@@ -16,8 +16,7 @@
 #include <base/files/file_util.h>
 #include <gtest/gtest.h>
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 namespace {
 
@@ -260,5 +259,4 @@ TEST_F(SuspendFreezerTest, TestCircularDeps) {
   EXPECT_EQ(mock_sys_utils_->file_contents_[test2], kFreezerStateThawed);
 }
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system

@@ -7,8 +7,7 @@
 #include <memory>
 #include <string>
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 AmbientLightSensorManagerStub::AmbientLightSensorManagerStub()
     : AmbientLightSensorManagerStub(0) {}
@@ -37,5 +36,4 @@ AmbientLightSensorManagerStub::GetSensorForKeyboardBacklight() {
   return keyboard_backlight_sensor_.get();
 }
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system

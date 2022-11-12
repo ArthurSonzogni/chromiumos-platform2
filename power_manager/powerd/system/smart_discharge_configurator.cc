@@ -10,8 +10,7 @@
 #include <base/logging.h>
 #include <libec/smart_discharge_command.h>
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 void ConfigureSmartDischarge(int64_t to_zero_hr,
                              int64_t cutoff_ua,
@@ -41,5 +40,4 @@ void ConfigureSmartDischarge(int64_t to_zero_hr,
             << cmd.ECStayupThresholdMilliAmpHours() << " mAh";
 }
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system

@@ -7,8 +7,7 @@
 
 #include <base/check.h>
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 void UserProximityWatcherStub::AddObserver(UserProximityObserver* observer) {
   DCHECK(observer);
@@ -36,5 +35,4 @@ void UserProximityWatcherStub::SendEvent(int id, UserProximity proximity) {
   }
 }
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system

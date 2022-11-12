@@ -7,8 +7,7 @@
 
 #include "power_manager/powerd/system/ambient_light_sensor_interface.h"
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 class AmbientLightSensorManagerInterface {
  public:
@@ -25,7 +24,6 @@ class AmbientLightSensorManagerInterface {
   virtual bool HasColorSensor() = 0;
 };
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system
 
 #endif  // POWER_MANAGER_POWERD_SYSTEM_AMBIENT_LIGHT_SENSOR_MANAGER_INTERFACE_H_

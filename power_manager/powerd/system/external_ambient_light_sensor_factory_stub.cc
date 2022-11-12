@@ -8,8 +8,7 @@
 
 #include "power_manager/powerd/system/ambient_light_sensor_stub.h"
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 std::unique_ptr<AmbientLightSensorInterface>
 ExternalAmbientLightSensorFactoryStub::CreateSensor(
@@ -17,5 +16,4 @@ ExternalAmbientLightSensorFactoryStub::CreateSensor(
   return std::make_unique<AmbientLightSensorStub>(0);
 }
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system

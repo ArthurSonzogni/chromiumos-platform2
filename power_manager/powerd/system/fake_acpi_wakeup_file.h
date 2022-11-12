@@ -12,8 +12,7 @@
 
 #include "power_manager/powerd/system/acpi_wakeup_helper.h"
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 // Fake file implementation for use in unit tests and fuzzers.
 class FakeAcpiWakeupFile : public AcpiWakeupFileInterface {
@@ -67,7 +66,6 @@ class FakeAcpiWakeupFile : public AcpiWakeupFileInterface {
   std::unique_ptr<std::string> contents_after_write_;
 };
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system
 
 #endif  // POWER_MANAGER_POWERD_SYSTEM_FAKE_ACPI_WAKEUP_FILE_H_

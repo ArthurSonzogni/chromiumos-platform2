@@ -19,8 +19,7 @@
 #include "power_manager/powerd/system/ambient_light_sensor.h"
 #include "power_manager/powerd/system/async_file_reader.h"
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 class AmbientLightSensorDelegateFile : public AmbientLightSensorDelegate {
  public:
@@ -129,7 +128,6 @@ class AmbientLightSensorDelegateFile : public AmbientLightSensorDelegate {
   SensorLocation expected_sensor_location_;
 };
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system
 
 #endif  // POWER_MANAGER_POWERD_SYSTEM_AMBIENT_LIGHT_SENSOR_DELEGATE_FILE_H_

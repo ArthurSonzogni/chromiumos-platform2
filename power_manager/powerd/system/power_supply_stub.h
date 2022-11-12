@@ -12,8 +12,7 @@
 #include <base/observer_list.h>
 #include <base/time/time.h>
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 // Stub implementation of PowerSupplyInterface used by tests.
 class PowerSupplyStub : public PowerSupplyInterface {
@@ -56,7 +55,6 @@ class PowerSupplyStub : public PowerSupplyInterface {
   base::ObserverList<PowerSupplyObserver> observers_;
 };
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system
 
 #endif  // POWER_MANAGER_POWERD_SYSTEM_POWER_SUPPLY_STUB_H_

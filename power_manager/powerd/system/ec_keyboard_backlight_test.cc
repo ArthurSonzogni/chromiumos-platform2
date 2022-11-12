@@ -14,8 +14,7 @@
 using ::testing::Ref;
 using ::testing::Return;
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 class MockGetKeyboardBacklightCommand : public ec::GetKeyboardBacklightCommand {
  public:
@@ -49,5 +48,4 @@ TEST_F(EcKeyboardBacklightTest, InitFail) {
 
 /* TODO: Add unit test for SetBrightnessLevel (b:234926943). */
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system

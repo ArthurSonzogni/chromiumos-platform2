@@ -19,8 +19,7 @@
 #include "power_manager/common/util.h"
 #include "power_manager/powerd/system/audio_observer.h"
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 namespace {
 
@@ -280,5 +279,4 @@ void AudioClient::UpdateAudioState(int num_output_streams, bool output_active) {
   }
 }
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system

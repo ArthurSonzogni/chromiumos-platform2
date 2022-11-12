@@ -11,8 +11,7 @@
 #include <base/bind.h>
 #include <base/check.h>
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 void AmbientLightSensor::SetDelegate(
     std::unique_ptr<AmbientLightSensorDelegate> delegate) {
@@ -73,5 +72,4 @@ int AmbientLightSensor::GetColorTemperature() {
   return color_temperature_;
 }
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system

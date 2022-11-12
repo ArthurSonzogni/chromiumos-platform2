@@ -10,8 +10,7 @@
 #include <optional>
 #include <string>
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 class FakeLight : public FakeSensorDevice {
  public:
@@ -29,7 +28,6 @@ class FakeLight : public FakeSensorDevice {
   bool is_color_sensor_;
 };
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system
 
 #endif  // POWER_MANAGER_POWERD_SYSTEM_FAKE_LIGHT_H_

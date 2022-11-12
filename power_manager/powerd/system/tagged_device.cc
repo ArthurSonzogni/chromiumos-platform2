@@ -6,8 +6,7 @@
 
 #include <base/strings/string_tokenizer.h>
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 TaggedDevice::TaggedDevice() {}
 
@@ -28,5 +27,4 @@ bool TaggedDevice::HasTag(const std::string& tag) const {
   return tags_.find(tag) != tags_.end();
 }
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system

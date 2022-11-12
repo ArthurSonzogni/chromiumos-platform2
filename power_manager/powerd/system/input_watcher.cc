@@ -30,8 +30,7 @@
 #include "power_manager/powerd/system/udev.h"
 #include "power_manager/powerd/system/wakeup_device.h"
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 namespace {
 
@@ -483,5 +482,4 @@ void InputWatcher::SendQueuedEvents() {
   queued_events_.clear();
 }
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system

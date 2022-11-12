@@ -6,8 +6,7 @@
 
 #include <utility>
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 FakeSensorService::FakeSensorService() = default;
 FakeSensorService::~FakeSensorService() = default;
@@ -81,5 +80,4 @@ void FakeSensorService::RegisterNewDevicesObserver(
           std::move(observer)));
 }
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system

@@ -7,8 +7,7 @@
 
 #include "power_manager/powerd/system/suspend_freezer.h"
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 // Stub implementation of SuspendFreezerInterface for use by tests.
 class SuspendFreezerStub : public SuspendFreezerInterface {
@@ -25,7 +24,6 @@ class SuspendFreezerStub : public SuspendFreezerInterface {
   bool ThawUserspace() override { return true; }
 };
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system
 
 #endif  // POWER_MANAGER_POWERD_SYSTEM_SUSPEND_FREEZER_STUB_H_

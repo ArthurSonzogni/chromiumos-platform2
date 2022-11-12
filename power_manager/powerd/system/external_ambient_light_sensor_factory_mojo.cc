@@ -8,8 +8,7 @@
 
 #include "power_manager/powerd/system/ambient_light_sensor_delegate_mojo.h"
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 ExternalAmbientLightSensorFactoryMojo::ExternalAmbientLightSensorFactoryMojo(
     AmbientLightSensorWatcherMojo* watcher)
@@ -28,5 +27,4 @@ ExternalAmbientLightSensorFactoryMojo::CreateSensor(
   return sensor;
 }
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system

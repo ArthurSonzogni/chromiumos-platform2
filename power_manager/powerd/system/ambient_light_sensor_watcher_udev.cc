@@ -12,8 +12,7 @@
 
 #include <base/logging.h>
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 const char AmbientLightSensorWatcherUdev::kIioUdevSubsystem[] = "iio";
 
@@ -113,5 +112,4 @@ void AmbientLightSensorWatcherUdev::OnRemoveUdevDevice(
   NotifyObservers();
 }
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system

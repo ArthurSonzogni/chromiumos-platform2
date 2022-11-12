@@ -10,8 +10,7 @@
 
 #include <gtest/gtest.h>
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 class AmbientLightSensorDelegateTest
     : public testing::TestWithParam<
@@ -48,5 +47,4 @@ INSTANTIATE_TEST_SUITE_P(
         std::make_pair(std::vector<std::optional<int>>{50, 50, 100}, 20921),
         std::make_pair(std::vector<std::optional<int>>{50, 60, 60}, 7253)));
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system

@@ -5,8 +5,7 @@
 #ifndef POWER_MANAGER_POWERD_SYSTEM_USER_PROXIMITY_WATCHER_INTERFACE_H_
 #define POWER_MANAGER_POWERD_SYSTEM_USER_PROXIMITY_WATCHER_INTERFACE_H_
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 class UserProximityObserver;
 
@@ -29,7 +28,6 @@ class UserProximityWatcherInterface {
   // TODO(egranata): add querying mechanisms
 };
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system
 
 #endif  // POWER_MANAGER_POWERD_SYSTEM_USER_PROXIMITY_WATCHER_INTERFACE_H_

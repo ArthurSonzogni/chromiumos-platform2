@@ -6,8 +6,7 @@
 
 #include <base/check.h>
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 AudioClientStub::AudioClientStub() = default;
 
@@ -35,5 +34,4 @@ void AudioClientStub::SetSuspended(bool suspended) {
   suspended_ = suspended;
 }
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system

@@ -18,8 +18,7 @@
 #include "power_manager/powerd/system/fake_sensor_service.h"
 #include "power_manager/powerd/system/sensor_service_handler.h"
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 namespace {
 
@@ -424,5 +423,4 @@ TEST_F(AmbientLightSensorManagerMojoTest, DeviceRemovedWithTwoSensors) {
   EXPECT_TRUE(fake_lights_[kFakeBaseId]->HasReceivers());
 }
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system

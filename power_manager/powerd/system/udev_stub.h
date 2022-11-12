@@ -16,8 +16,7 @@
 
 #include "power_manager/powerd/system/udev.h"
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 // Stub implementation of UdevInterface for use in tests.
 class UdevStub : public UdevInterface {
@@ -103,7 +102,6 @@ class UdevStub : public UdevInterface {
   bool stop_accepting_sysattr_for_testing_;
 };
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system
 
 #endif  // POWER_MANAGER_POWERD_SYSTEM_UDEV_STUB_H_

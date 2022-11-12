@@ -11,8 +11,7 @@
 
 #include "power_manager/powerd/system/bluez_battery_provider.h"
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 class MockBluezBatteryProvider : public BluezBatteryProvider {
  public:
@@ -22,7 +21,6 @@ class MockBluezBatteryProvider : public BluezBatteryProvider {
   MOCK_METHOD(void, UpdateDeviceBattery, (const std::string&, int), (override));
 };
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system
 
 #endif  // POWER_MANAGER_POWERD_SYSTEM_MOCK_BLUEZ_BATTERY_PROVIDER_H_

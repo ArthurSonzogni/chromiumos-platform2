@@ -13,8 +13,7 @@
 #include "power_manager/powerd/system/ambient_light_sensor_delegate.h"
 #include "power_manager/powerd/system/ambient_light_sensor_interface.h"
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 class AmbientLightSensor : public AmbientLightSensorInterface {
  public:
@@ -52,7 +51,6 @@ class AmbientLightSensor : public AmbientLightSensorInterface {
   std::unique_ptr<AmbientLightSensorDelegate> delegate_;
 };
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system
 
 #endif  // POWER_MANAGER_POWERD_SYSTEM_AMBIENT_LIGHT_SENSOR_H_

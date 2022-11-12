@@ -21,8 +21,7 @@
 #include "power_manager/powerd/system/udev_stub.h"
 #include "power_manager/proto_bindings/peripheral_battery_status.pb.h"
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 using std::string;
 
@@ -659,5 +658,4 @@ TEST_F(PeripheralBatteryWatcherTest, UdevEventsWithSerial) {
   EXPECT_FALSE(test_wrapper_.RunUntilSignalSent(kShortUpdateTimeout));
 }
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system

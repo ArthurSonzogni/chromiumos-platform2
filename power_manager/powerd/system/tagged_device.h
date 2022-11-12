@@ -10,8 +10,7 @@
 
 #include <base/files/file_path.h>
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 // Represents a udev device with powerd tags associated to it.
 class TaggedDevice {
@@ -39,7 +38,6 @@ class TaggedDevice {
   std::unordered_set<std::string> tags_;
 };
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system
 
 #endif  // POWER_MANAGER_POWERD_SYSTEM_TAGGED_DEVICE_H_

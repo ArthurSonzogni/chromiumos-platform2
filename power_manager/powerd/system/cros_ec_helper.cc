@@ -12,8 +12,7 @@
 
 #include "power_manager/common/util.h"
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 namespace {
 
@@ -80,5 +79,4 @@ bool CrosEcHelper::AllowWakeupAsTablet(bool enabled) {
   return true;
 }
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system

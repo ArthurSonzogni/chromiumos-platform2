@@ -9,8 +9,7 @@
 
 #include "power_manager/powerd/system/audio_client_interface.h"
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 // Stub implementation of AudioClientInterface for use by tests.
 class AudioClientStub : public AudioClientInterface {
@@ -43,7 +42,6 @@ class AudioClientStub : public AudioClientInterface {
   base::ObserverList<AudioObserver> observers_;
 };
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system
 
 #endif  // POWER_MANAGER_POWERD_SYSTEM_AUDIO_CLIENT_STUB_H_

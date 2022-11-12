@@ -18,8 +18,7 @@ using ::testing::AnyNumber;
 using ::testing::Return;
 using ::testing::SaveArg;
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 namespace {
 
@@ -149,5 +148,4 @@ TEST_F(BluezBatteryProviderTest, BatteryUpdate) {
   bluez_battery_provider_.Reset();
 }
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system

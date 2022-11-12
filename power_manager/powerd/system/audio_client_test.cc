@@ -19,8 +19,7 @@
 #include "power_manager/powerd/system/audio_observer.h"
 #include "power_manager/powerd/system/dbus_wrapper_stub.h"
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 namespace {
 
 // Trivial implementation of AudioObserver for unit tests.
@@ -272,5 +271,4 @@ TEST_F(AudioClientTest, PowerdCrashAfterAudioSuspended) {
   EXPECT_FALSE(audio_suspended_);
 }
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system

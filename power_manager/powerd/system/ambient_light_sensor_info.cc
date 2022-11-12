@@ -6,8 +6,7 @@
 
 #include <tuple>
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 bool AmbientLightSensorInfo::operator<(
     const AmbientLightSensorInfo& rhs) const {
@@ -19,5 +18,4 @@ bool AmbientLightSensorInfo::operator==(const AmbientLightSensorInfo& o) const {
   return !(*this < o || o < *this);
 }
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system

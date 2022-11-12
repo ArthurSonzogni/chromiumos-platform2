@@ -9,8 +9,7 @@
 #include <base/check_op.h>
 #include <base/logging.h>
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 RollingAverage::RollingAverage(size_t window_size)
     : running_total_(0.0), window_size_(window_size) {
@@ -63,5 +62,4 @@ void RollingAverage::DeleteSample() {
   }
 }
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system

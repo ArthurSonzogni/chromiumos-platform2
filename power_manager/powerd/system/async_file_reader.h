@@ -15,8 +15,7 @@
 #include <base/files/file_path.h>
 #include <base/timer/timer.h>
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 class AsyncFileReader {
  public:
@@ -91,7 +90,6 @@ class AsyncFileReader {
   base::RepeatingTimer update_state_timer_;
 };
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system
 
 #endif  // POWER_MANAGER_POWERD_SYSTEM_ASYNC_FILE_READER_H_

@@ -7,8 +7,7 @@
 
 #include <base/observer_list_types.h>
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 class AmbientLightSensorInterface;
 
@@ -23,7 +22,6 @@ class AmbientLightObserver : public base::CheckedObserver {
   virtual void OnAmbientLightUpdated(AmbientLightSensorInterface* sensor) = 0;
 };
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system
 
 #endif  // POWER_MANAGER_POWERD_SYSTEM_AMBIENT_LIGHT_OBSERVER_H_

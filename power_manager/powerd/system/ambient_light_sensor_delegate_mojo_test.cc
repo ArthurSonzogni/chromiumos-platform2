@@ -18,8 +18,7 @@
 #include "power_manager/powerd/system/ambient_light_observer.h"
 #include "power_manager/powerd/system/fake_light.h"
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 namespace {
 
@@ -215,5 +214,4 @@ TEST_F(AmbientLightSensorDelegateMojoTest, GiveUpAfterTooManyFailures) {
   EXPECT_FALSE(fake_light_->HasReceivers());
 }
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system

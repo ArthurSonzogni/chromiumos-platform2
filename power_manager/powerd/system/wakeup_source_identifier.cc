@@ -15,8 +15,7 @@
 #include <base/check_op.h>
 #include <base/logging.h>
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 WakeupSourceIdentifier::WakeupSourceIdentifier(UdevInterface* udev) {
   DCHECK(udev);
@@ -136,5 +135,4 @@ void WakeupSourceIdentifier::HandleRemovedInput(const std::string& input_name) {
             << input_device_wakeup_path.value() << " for wake events";
 }
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system

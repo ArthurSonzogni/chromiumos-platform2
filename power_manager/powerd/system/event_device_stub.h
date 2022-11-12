@@ -15,8 +15,7 @@
 #include <base/callback.h>
 #include <linux/input.h>
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 // EventDeviceInterface implementation that returns canned values for testing.
 class EventDeviceStub : public EventDeviceInterface {
@@ -109,7 +108,6 @@ class EventDeviceFactoryStub : public EventDeviceFactoryInterface {
   std::map<base::FilePath, std::shared_ptr<EventDeviceInterface>> devices_;
 };
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system
 
 #endif  // POWER_MANAGER_POWERD_SYSTEM_EVENT_DEVICE_STUB_H_

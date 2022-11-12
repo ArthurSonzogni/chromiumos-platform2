@@ -18,8 +18,7 @@
 
 #include "power_manager/common/power_constants.h"
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 namespace {
 
 // Handles the result of an attempt to connect to a D-Bus signal, logging an
@@ -71,5 +70,4 @@ void DBusObjectManagerWrapper::set_interfaces_removed_callback(
       callback, base::BindOnce(&HandleSignalConnected));
 }
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system

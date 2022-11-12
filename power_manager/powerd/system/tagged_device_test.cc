@@ -8,8 +8,7 @@
 
 #include <gtest/gtest.h>
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 TEST(TaggedDeviceTest, HasTag) {
   TaggedDevice tagged_device("/sys/devices/a", base::FilePath("/sys/devices/a"),
@@ -19,5 +18,4 @@ TEST(TaggedDeviceTest, HasTag) {
   EXPECT_FALSE(tagged_device.HasTag("baz"));
 }
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system

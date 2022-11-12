@@ -12,8 +12,7 @@
 
 #include "power_manager/common/util.h"
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 namespace {
 
@@ -63,5 +62,4 @@ std::vector<base::FilePath> LockfileChecker::GetValidLockfiles() const {
   return paths;
 }
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system

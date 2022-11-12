@@ -14,8 +14,7 @@
 #include "power_manager/common/prefs.h"
 #include "power_manager/common/util.h"
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 namespace {
 // Default DMI ID directory
@@ -126,5 +125,4 @@ bool MachineQuirks::IsQuirkMatch(std::string field_name,
   return false;
 }
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system

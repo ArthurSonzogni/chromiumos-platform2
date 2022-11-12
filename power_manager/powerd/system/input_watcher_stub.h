@@ -9,8 +9,7 @@
 
 #include "power_manager/powerd/system/input_watcher_interface.h"
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 // Stub implementation of InputWatcherInterface for use by tests.
 class InputWatcherStub : public InputWatcherInterface {
@@ -49,7 +48,6 @@ class InputWatcherStub : public InputWatcherInterface {
   base::ObserverList<InputObserver> observers_;
 };
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system
 
 #endif  // POWER_MANAGER_POWERD_SYSTEM_INPUT_WATCHER_STUB_H_

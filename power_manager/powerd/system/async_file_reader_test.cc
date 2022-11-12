@@ -18,8 +18,7 @@
 #include "power_manager/common/test_main_loop_runner.h"
 #include "power_manager/common/util.h"
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 namespace {
 
@@ -176,5 +175,4 @@ TEST_F(AsyncFileReaderTest, InitWithMissingFile) {
   EXPECT_FALSE(file_reader_->Init(path_));
 }
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system

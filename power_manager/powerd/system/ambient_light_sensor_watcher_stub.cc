@@ -4,8 +4,7 @@
 
 #include "power_manager/powerd/system/ambient_light_sensor_watcher_stub.h"
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 void AmbientLightSensorWatcherStub::AddSensor(
     const AmbientLightSensorInfo& device_info) {
@@ -43,5 +42,4 @@ void AmbientLightSensorWatcherStub::RemoveSensor(
   }
 }
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system

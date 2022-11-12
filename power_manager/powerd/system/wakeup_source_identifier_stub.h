@@ -7,8 +7,7 @@
 
 #include "power_manager/powerd/system/wakeup_source_identifier_interface.h"
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 class WakeupSourceIdentifierStub : public WakeupSourceIdentifierInterface {
  public:
@@ -31,7 +30,6 @@ class WakeupSourceIdentifierStub : public WakeupSourceIdentifierInterface {
   bool input_device_caused_last_wake_ = false;
 };
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system
 
 #endif  // POWER_MANAGER_POWERD_SYSTEM_WAKEUP_SOURCE_IDENTIFIER_STUB_H_

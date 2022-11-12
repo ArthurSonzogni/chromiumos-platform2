@@ -11,8 +11,7 @@
 
 #include "power_manager/powerd/system/ambient_light_sensor_info.h"
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 // Interface for receiving notifications from AmbientLightSensorWatcher about
 // changes to ambient light sensors.
@@ -23,7 +22,6 @@ class AmbientLightSensorWatcherObserver : public base::CheckedObserver {
       const std::vector<AmbientLightSensorInfo>& ambient_light_sensors) = 0;
 };
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system
 
 #endif  // POWER_MANAGER_POWERD_SYSTEM_AMBIENT_LIGHT_SENSOR_WATCHER_OBSERVER_H_

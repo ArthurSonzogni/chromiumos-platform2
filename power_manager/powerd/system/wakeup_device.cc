@@ -24,8 +24,7 @@ char kWakeupSysDirPattern[] = "wakeup*";
 
 }  // namespace
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 // static
 std::unique_ptr<WakeupDeviceInterface> WakeupDevice::CreateWakeupDevice(
@@ -130,5 +129,4 @@ bool WakeupDevice::ReadEventCount(uint64_t* event_count_out) {
   return false;
 }
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system

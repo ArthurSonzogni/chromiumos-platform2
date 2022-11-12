@@ -18,8 +18,7 @@
 #include "power_manager/powerd/system/udev_subsystem_observer.h"
 #include "power_manager/powerd/system/wakeup_source_identifier_interface.h"
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 struct UdevEvent;
 class UdevInterface;
@@ -60,7 +59,6 @@ class WakeupSourceIdentifier : public WakeupSourceIdentifierInterface,
   MonitoredPathsMap monitored_paths_;
 };
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system
 
 #endif  // POWER_MANAGER_POWERD_SYSTEM_WAKEUP_SOURCE_IDENTIFIER_H_

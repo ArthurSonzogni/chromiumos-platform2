@@ -9,8 +9,7 @@
 
 #include <base/logging.h>
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 // static
 std::optional<int> AmbientLightSensorDelegate::CalculateColorTemperature(
@@ -48,5 +47,4 @@ void AmbientLightSensorDelegate::SetLuxCallback(
   set_lux_callback_ = std::move(set_lux_callback);
 }
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system

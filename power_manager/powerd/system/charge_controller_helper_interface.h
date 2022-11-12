@@ -9,8 +9,7 @@
 
 #include "power_manager/proto_bindings/policy.pb.h"
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 // Important note: It is not final version of interface,
 // blocked by b:125011171.
@@ -71,7 +70,6 @@ class ChargeControllerHelperInterface {
                                                 int custom_charge_stop) = 0;
 };
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system
 
 #endif  // POWER_MANAGER_POWERD_SYSTEM_CHARGE_CONTROLLER_HELPER_INTERFACE_H_

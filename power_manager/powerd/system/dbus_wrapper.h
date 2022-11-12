@@ -28,8 +28,7 @@ class MessageLite;
 }  // namespace protobuf
 }  // namespace google
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 // Interface for sending D-Bus messages.  A stub implementation can be
 // instantiated by tests to verify behavior without actually communicating with
@@ -179,7 +178,6 @@ class DBusWrapper : public DBusWrapperInterface {
   base::WeakPtrFactory<DBusWrapper> weak_ptr_factory_;
 };
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system
 
 #endif  // POWER_MANAGER_POWERD_SYSTEM_DBUS_WRAPPER_H_

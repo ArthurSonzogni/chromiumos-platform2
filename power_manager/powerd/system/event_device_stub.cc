@@ -6,8 +6,7 @@
 
 #include <base/logging.h>
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 EventDeviceStub::EventDeviceStub()
     : is_cros_fp_(false),
@@ -109,5 +108,4 @@ std::shared_ptr<EventDeviceInterface> EventDeviceFactoryStub::Open(
                               : std::shared_ptr<EventDeviceInterface>();
 }
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system

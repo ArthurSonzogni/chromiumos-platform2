@@ -4,8 +4,7 @@
 
 #include "power_manager/powerd/system/cros_ec_helper_stub.h"
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 CrosEcHelperStub::CrosEcHelperStub() : wakeup_as_tablet_allowed_(false) {}
 CrosEcHelperStub::~CrosEcHelperStub() {}
@@ -23,5 +22,4 @@ bool CrosEcHelperStub::IsWakeupAsTabletAllowed() {
   return wakeup_as_tablet_allowed_;
 }
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system

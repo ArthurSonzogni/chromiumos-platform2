@@ -4,8 +4,7 @@
 
 #include "power_manager/powerd/system/dark_resume_stub.h"
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 DarkResumeStub::DarkResumeStub() {}
 
@@ -21,5 +20,4 @@ bool DarkResumeStub::IsEnabled() {
   return enabled_;
 }
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system

@@ -16,8 +16,7 @@
 
 #include "power_manager/powerd/system/internal_backlight.h"
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 class EcKeyboardBacklight : public InternalBacklight {
  public:
@@ -40,7 +39,6 @@ class EcKeyboardBacklight : public InternalBacklight {
   std::unique_ptr<ec::GetKeyboardBacklightCommand> get_cmd_;
 };
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system
 
 #endif  // POWER_MANAGER_POWERD_SYSTEM_EC_KEYBOARD_BACKLIGHT_H_

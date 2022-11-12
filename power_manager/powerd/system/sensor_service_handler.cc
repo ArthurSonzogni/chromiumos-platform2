@@ -10,8 +10,7 @@
 #include <base/bind.h>
 #include <base/threading/thread_task_runner_handle.h>
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 namespace {
 constexpr uint32_t kMaxReconnectDelayInSeconds = 1000;
 }  // namespace
@@ -152,5 +151,4 @@ void SensorServiceHandler::NotifyObserverWithCurrentDevices(
     observer->OnNewDeviceAdded(id_types.first, id_types.second);
 }
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system

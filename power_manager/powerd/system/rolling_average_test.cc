@@ -8,8 +8,7 @@
 
 #include <gtest/gtest.h>
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 TEST(RollingAverageTest, SingleSample) {
   RollingAverage average(1);
@@ -102,5 +101,4 @@ TEST(RollingAverageTest, HasMaxSamples) {
   EXPECT_EQ(false, average.HasMaxSamples());
 }
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system

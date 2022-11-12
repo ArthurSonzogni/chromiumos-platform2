@@ -28,8 +28,7 @@
 #include "power_manager/powerd/system/udev_stub.h"
 #include "power_manager/proto_bindings/power_supply_properties.pb.h"
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 namespace {
 
@@ -2359,5 +2358,4 @@ TEST_F(PowerSupplyTest, BarreljackAndUSBPresent) {
   proto.Clear();
 }
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system

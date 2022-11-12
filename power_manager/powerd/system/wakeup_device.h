@@ -11,8 +11,7 @@
 
 #include "power_manager/powerd/system/wakeup_device_interface.h"
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 class WakeupDevice : public WakeupDeviceInterface {
  public:
@@ -55,7 +54,6 @@ class WakeupDevice : public WakeupDeviceInterface {
   bool was_pre_suspend_read_successful_ = false;
 };
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system
 
 #endif  // POWER_MANAGER_POWERD_SYSTEM_WAKEUP_DEVICE_H_

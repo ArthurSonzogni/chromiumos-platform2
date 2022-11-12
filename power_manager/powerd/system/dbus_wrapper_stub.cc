@@ -16,8 +16,7 @@
 #include <base/threading/thread_task_runner_handle.h>
 #include <dbus/dbus.h>
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 namespace {
 
@@ -276,5 +275,4 @@ void DBusWrapperStub::CallMethodAsync(
                                 CallMethodSync(proxy, method_call, timeout)));
 }
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system

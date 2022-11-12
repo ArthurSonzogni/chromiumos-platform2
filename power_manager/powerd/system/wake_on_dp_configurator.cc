@@ -12,8 +12,7 @@
 #include <libec/get_mkbp_wake_mask_command.h>
 #include <libec/set_mkbp_wake_mask_command.h>
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 namespace {
 
 bool GetMkbpWakeMask(const base::ScopedFD& cros_ec_fd,
@@ -72,5 +71,4 @@ void ConfigureWakeOnDp(bool enable) {
     LOG(INFO) << "Wake on dp is " << (enable ? "enabled" : "disabled");
 }
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system

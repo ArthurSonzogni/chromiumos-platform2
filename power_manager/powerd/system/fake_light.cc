@@ -9,8 +9,7 @@
 
 #include "power_manager/powerd/system/ambient_light_sensor_delegate_mojo.h"
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 FakeLight::FakeLight(bool is_color_sensor,
                      std::optional<std::string> name,
@@ -40,5 +39,4 @@ void FakeLight::GetAllChannelIds(GetAllChannelIdsCallback callback) {
   std::move(callback).Run(std::move(channel_ids));
 }
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system

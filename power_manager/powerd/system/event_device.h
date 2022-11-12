@@ -15,8 +15,7 @@
 #include <base/files/file_descriptor_watcher_posix.h>
 #include <base/files/file_path.h>
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 // Real implementation of EventDeviceInterface.
 class EventDevice : public EventDeviceInterface {
@@ -69,7 +68,6 @@ class EventDeviceFactory : public EventDeviceFactoryInterface {
       const base::FilePath& path) override;
 };
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system
 
 #endif  // POWER_MANAGER_POWERD_SYSTEM_EVENT_DEVICE_H_

@@ -10,8 +10,7 @@
 
 #include "power_manager/powerd/system/dark_resume_interface.h"
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 // Stub implementation of DarkResumeInterface for tests.
 class DarkResumeStub : public DarkResumeInterface {
@@ -39,7 +38,6 @@ class DarkResumeStub : public DarkResumeInterface {
   bool enabled_ = false;
 };
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system
 
 #endif  // POWER_MANAGER_POWERD_SYSTEM_DARK_RESUME_STUB_H_

@@ -17,8 +17,7 @@
 #include "power_manager/common/prefs.h"
 #include "power_manager/common/util.h"
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 AmbientLightSensorInterface*
 AmbientLightSensorManagerMojo::GetSensorForInternalBacklight() {
@@ -375,5 +374,4 @@ void AmbientLightSensorManagerMojo::SetSensorDeviceMojo(Sensor* sensor,
   sensor->sensor->SetDelegate(std::move(delegate));
 }
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system

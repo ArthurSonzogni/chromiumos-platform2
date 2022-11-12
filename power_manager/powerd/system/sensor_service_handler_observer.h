@@ -10,8 +10,7 @@
 #include <base/observer_list_types.h>
 #include <iioservice/mojo/sensor.mojom.h>
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 class SensorServiceHandler;
 
@@ -35,7 +34,6 @@ class SensorServiceHandlerObserver : public base::CheckedObserver {
   SensorServiceHandler* sensor_service_handler_;
 };
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system
 
 #endif  // POWER_MANAGER_POWERD_SYSTEM_SENSOR_SERVICE_HANDLER_OBSERVER_H_

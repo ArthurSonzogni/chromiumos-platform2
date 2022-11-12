@@ -9,8 +9,7 @@
 
 #include <base/time/time.h>
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 // This class tracks the rolling average from a continuous sequence of
 // samples.
@@ -65,7 +64,6 @@ class RollingAverage {
   size_t window_size_;
 };
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system
 
 #endif  // POWER_MANAGER_POWERD_SYSTEM_ROLLING_AVERAGE_H_

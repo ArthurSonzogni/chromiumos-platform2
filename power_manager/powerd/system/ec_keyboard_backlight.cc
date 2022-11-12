@@ -19,8 +19,7 @@
 #include "power_manager/common/clock.h"
 #include "power_manager/common/util.h"
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 const int EcKeyboardBacklight::kMaxBrightnessLevel = 100;
 
@@ -90,5 +89,4 @@ bool EcKeyboardBacklight::WriteBrightness(int64_t new_level) {
   return true;
 }
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system

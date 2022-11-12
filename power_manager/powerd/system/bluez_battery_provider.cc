@@ -15,8 +15,7 @@
 
 #include "power_manager/powerd/system/bluez_battery_provider.h"
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 namespace {
 
@@ -203,5 +202,4 @@ BluezBattery* BluezBatteryProvider::GetBattery(const std::string& address) {
   return nullptr;
 }
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system

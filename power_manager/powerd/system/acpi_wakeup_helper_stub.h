@@ -10,8 +10,7 @@
 
 #include "power_manager/powerd/system/acpi_wakeup_helper_interface.h"
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 class AcpiWakeupHelperStub : public AcpiWakeupHelperInterface {
  public:
@@ -31,7 +30,6 @@ class AcpiWakeupHelperStub : public AcpiWakeupHelperInterface {
   std::map<std::string, bool> wakeup_enabled_;
 };
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system
 
 #endif  // POWER_MANAGER_POWERD_SYSTEM_ACPI_WAKEUP_HELPER_STUB_H_

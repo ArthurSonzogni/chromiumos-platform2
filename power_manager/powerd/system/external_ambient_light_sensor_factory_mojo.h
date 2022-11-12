@@ -10,8 +10,7 @@
 #include "power_manager/powerd/system/ambient_light_sensor_watcher_mojo.h"
 #include "power_manager/powerd/system/external_ambient_light_sensor_factory_interface.h"
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 // Creates external ambient light sensors that use
 // AmbientLightSensorDelegateMojo.
@@ -26,7 +25,6 @@ class ExternalAmbientLightSensorFactoryMojo
   AmbientLightSensorWatcherMojo* watcher_ = nullptr;
 };
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system
 
 #endif  // POWER_MANAGER_POWERD_SYSTEM_EXTERNAL_AMBIENT_LIGHT_SENSOR_FACTORY_MOJO_H_

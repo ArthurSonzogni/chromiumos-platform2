@@ -6,8 +6,7 @@
 
 #include <base/check.h>
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 void PowerSupplyStub::NotifyObservers() {
   for (PowerSupplyObserver& observer : observers_)
@@ -45,5 +44,4 @@ void PowerSupplyStub::SetAdaptiveCharging(const base::TimeTicks& target_time,
 
 void PowerSupplyStub::ClearAdaptiveCharging() {}
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system

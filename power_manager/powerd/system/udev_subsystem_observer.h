@@ -11,8 +11,7 @@
 
 #include "power_manager/powerd/system/udev.h"
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 struct UdevEvent;
 
@@ -25,7 +24,6 @@ class UdevSubsystemObserver : public base::CheckedObserver {
   virtual void OnUdevEvent(const UdevEvent& event) = 0;
 };
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system
 
 #endif  // POWER_MANAGER_POWERD_SYSTEM_UDEV_SUBSYSTEM_OBSERVER_H_

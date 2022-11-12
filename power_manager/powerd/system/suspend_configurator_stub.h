@@ -7,8 +7,7 @@
 
 #include "power_manager/powerd/system/suspend_configurator.h"
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 // Stub implementation of SuspendConfiguratorInterface for use by tests.
 class SuspendConfiguratorStub : public SuspendConfiguratorInterface {
@@ -35,7 +34,6 @@ class SuspendConfiguratorStub : public SuspendConfiguratorInterface {
   bool hibernate_available_for_testing_ = true;
 };
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system
 
 #endif  // POWER_MANAGER_POWERD_SYSTEM_SUSPEND_CONFIGURATOR_STUB_H_

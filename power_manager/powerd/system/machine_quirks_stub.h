@@ -7,8 +7,7 @@
 
 #include "power_manager/powerd/system/machine_quirks.h"
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 // Stub implementation of MachineQuirksInterface for tests.
 class MachineQuirksStub : public MachineQuirksInterface {
@@ -37,7 +36,6 @@ class MachineQuirksStub : public MachineQuirksInterface {
   PrefsInterface* prefs_;
 };
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system
 
 #endif  // POWER_MANAGER_POWERD_SYSTEM_MACHINE_QUIRKS_STUB_H_

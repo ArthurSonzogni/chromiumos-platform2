@@ -27,8 +27,7 @@
 
 #include "power_manager/common/util.h"
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 namespace {
 
@@ -317,5 +316,4 @@ bool AmbientLightSensorDelegateFile::InitAlsFile() {
   return false;
 }
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system

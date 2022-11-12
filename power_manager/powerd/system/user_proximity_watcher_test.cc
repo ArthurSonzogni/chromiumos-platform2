@@ -30,8 +30,7 @@
 #include "power_manager/powerd/system/user_proximity_observer.h"
 #include "power_manager/powerd/system/user_proximity_watcher.h"
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 namespace {
 
@@ -605,5 +604,4 @@ TEST_F(UserProximityWatcherTest, ProximityEnabledConfigManyRisingFalling) {
 
 }  // namespace
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system

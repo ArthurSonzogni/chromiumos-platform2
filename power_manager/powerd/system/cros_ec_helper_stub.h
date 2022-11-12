@@ -10,8 +10,7 @@
 
 #include "power_manager/powerd/system/cros_ec_helper_interface.h"
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 class CrosEcHelperStub : public CrosEcHelperInterface {
  public:
@@ -31,7 +30,6 @@ class CrosEcHelperStub : public CrosEcHelperInterface {
   bool wakeup_as_tablet_allowed_;
 };
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system
 
 #endif  // POWER_MANAGER_POWERD_SYSTEM_CROS_EC_HELPER_STUB_H_

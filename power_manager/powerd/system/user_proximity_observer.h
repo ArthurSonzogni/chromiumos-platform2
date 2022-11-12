@@ -9,8 +9,7 @@
 
 #include "power_manager/common/power_constants.h"
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 // Interface for classes interested in observing events announced by any
 // kind of user proximity sensor (i.e. any piece of hardware, software or mix
@@ -37,7 +36,6 @@ class UserProximityObserver : public base::CheckedObserver {
   virtual void OnProximityEvent(int id, UserProximity value) = 0;
 };
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system
 
 #endif  // POWER_MANAGER_POWERD_SYSTEM_USER_PROXIMITY_OBSERVER_H_

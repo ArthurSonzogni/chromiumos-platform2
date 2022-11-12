@@ -4,8 +4,7 @@
 
 #include "power_manager/powerd/system/ambient_light_sensor_watcher_observer_stub.h"
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 AmbientLightSensorWatcherObserverStub::AmbientLightSensorWatcherObserverStub(
     AmbientLightSensorWatcherInterface* watcher)
@@ -32,5 +31,4 @@ void AmbientLightSensorWatcherObserverStub::OnAmbientLightSensorsChanged(
   num_als_ = displays.size();
 }
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system

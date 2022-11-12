@@ -16,8 +16,7 @@
 #include "power_manager/common/prefs.h"
 #include "power_manager/common/util.h"
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 constexpr char kCpuInfoPath[] = "/proc/cpuinfo";
 
@@ -248,5 +247,4 @@ bool SuspendConfigurator::HasIntelCpu() {
   return false;
 }
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system

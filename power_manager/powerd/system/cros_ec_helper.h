@@ -9,8 +9,7 @@
 
 #include "power_manager/powerd/system/cros_ec_helper_interface.h"
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 class CrosEcHelper : public CrosEcHelperInterface {
  public:
@@ -33,7 +32,6 @@ class CrosEcHelper : public CrosEcHelperInterface {
   base::FilePath wake_angle_sysfs_node_;
 };
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system
 
 #endif  // POWER_MANAGER_POWERD_SYSTEM_CROS_EC_HELPER_H_

@@ -15,8 +15,7 @@
 #include "power_manager/common/power_constants.h"
 #include "power_manager/powerd/system/udev_subsystem_observer.h"
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 // Monitors device sys paths to identify the potential wakeup reason. Monitors
 // only if the |wakeup_device_path| points to a directory with power/wakeup
@@ -43,7 +42,6 @@ class WakeupSourceIdentifierInterface {
   virtual bool InputDeviceCausedLastWake() const = 0;
 };
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system
 
 #endif  // POWER_MANAGER_POWERD_SYSTEM_WAKEUP_SOURCE_IDENTIFIER_INTERFACE_H_

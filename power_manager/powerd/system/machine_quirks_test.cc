@@ -14,8 +14,7 @@
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/util.h"
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 namespace {
 
@@ -176,5 +175,4 @@ TEST_F(MachineQuirksTest, ApplyQuirksToPrefsWhenIsSuspendToIdle) {
   EXPECT_EQ(1, suspend_to_idle_pref);
 }
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system

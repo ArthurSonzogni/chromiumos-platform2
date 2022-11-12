@@ -8,8 +8,7 @@
 
 #include <base/check.h>
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 InputWatcherStub::InputWatcherStub()
     : lid_state_(LidState::OPEN),
@@ -60,5 +59,4 @@ bool InputWatcherStub::IsUSBInputDeviceConnected() const {
   return usb_input_device_connected_;
 }
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system

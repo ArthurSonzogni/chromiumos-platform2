@@ -29,8 +29,7 @@
 #include "power_manager/powerd/system/ambient_light_sensor.h"
 #include "power_manager/powerd/system/async_file_reader.h"
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 class AmbientLightSensorDelegateMojo
     : public AmbientLightSensorDelegate,
@@ -147,7 +146,6 @@ class AmbientLightSensorDelegateMojo
                            GiveUpAfterTooManyFailures);
 };
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system
 
 #endif  // POWER_MANAGER_POWERD_SYSTEM_AMBIENT_LIGHT_SENSOR_DELEGATE_MOJO_H_

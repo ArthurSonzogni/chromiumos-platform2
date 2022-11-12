@@ -12,8 +12,7 @@
 #include "power_manager/powerd/system/ambient_light_sensor_watcher_observer.h"
 #include "power_manager/powerd/system/udev_subsystem_observer.h"
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 // Real implementation of AmbientLightSensorWatcherInterface that reports
 // devices from /sys.
@@ -54,7 +53,6 @@ class AmbientLightSensorWatcherUdev : public AmbientLightSensorWatcherInterface,
   UdevInterface* udev_;  // weak pointer
 };
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system
 
 #endif  // POWER_MANAGER_POWERD_SYSTEM_AMBIENT_LIGHT_SENSOR_WATCHER_UDEV_H_

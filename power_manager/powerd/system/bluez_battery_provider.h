@@ -16,8 +16,7 @@
 
 #include "power_manager/powerd/system/dbus_wrapper.h"
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 // Represents an exported battery object on org.bluez.BatteryProvider1
 // interface.
@@ -110,7 +109,6 @@ class BluezBatteryProvider : public dbus::ObjectManager::Interface {
   base::WeakPtrFactory<BluezBatteryProvider> weak_ptr_factory_;
 };
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system
 
 #endif  // POWER_MANAGER_POWERD_SYSTEM_BLUEZ_BATTERY_PROVIDER_H_

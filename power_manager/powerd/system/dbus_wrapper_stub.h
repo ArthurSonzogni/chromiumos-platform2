@@ -17,8 +17,7 @@
 
 #include "power_manager/powerd/system/dbus_wrapper.h"
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 // Stub implementation of DBusWrapperInterface for testing.
 class DBusWrapperStub : public DBusWrapperInterface {
@@ -167,7 +166,6 @@ class DBusWrapperStub : public DBusWrapperInterface {
   MethodCallback method_callback_;
 };
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system
 
 #endif  // POWER_MANAGER_POWERD_SYSTEM_DBUS_WRAPPER_STUB_H_

@@ -7,8 +7,7 @@
 
 #include "power_manager/powerd/system/ambient_light_sensor_watcher_interface.h"
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 // Stub implementation of AmbientLightSensorWatcherInterface for testing.
 class AmbientLightSensorWatcherStub
@@ -25,7 +24,6 @@ class AmbientLightSensorWatcherStub
   void RemoveSensor(const AmbientLightSensorInfo& device_info);
 };
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system
 
 #endif  // POWER_MANAGER_POWERD_SYSTEM_AMBIENT_LIGHT_SENSOR_WATCHER_STUB_H_

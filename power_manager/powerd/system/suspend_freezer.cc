@@ -18,8 +18,7 @@
 #include <base/threading/platform_thread.h>
 #include <base/time/time.h>
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 const base::FilePath kBasePath("/sys/fs/cgroup/freezer");
 const base::FilePath kWakeupCountPath("/sys/power/wakeup_count");
@@ -329,5 +328,4 @@ void SuspendFreezer::SystemUtilsInterface::GetSubDirs(
   }
 }
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system

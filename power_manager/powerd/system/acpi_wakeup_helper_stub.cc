@@ -4,8 +4,7 @@
 
 #include "power_manager/powerd/system/acpi_wakeup_helper_stub.h"
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 AcpiWakeupHelperStub::AcpiWakeupHelperStub() {}
 AcpiWakeupHelperStub::~AcpiWakeupHelperStub() {}
@@ -29,5 +28,4 @@ bool AcpiWakeupHelperStub::SetWakeupEnabled(const std::string& device_name,
   return true;
 }
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system

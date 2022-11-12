@@ -19,9 +19,7 @@
 #include <base/files/file_path.h>
 #include <base/time/time.h>
 
-namespace power_manager {
-
-namespace system {
+namespace power_manager::system {
 
 static constexpr char kFreezerStateFrozen[] = "FROZEN";
 static constexpr char kFreezerStateThawed[] = "THAWED";
@@ -141,7 +139,6 @@ class SuspendFreezer : public SuspendFreezerInterface {
   PrefsInterface* prefs_;  // non-owned
 };
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system
 
 #endif  // POWER_MANAGER_POWERD_SYSTEM_SUSPEND_FREEZER_H_

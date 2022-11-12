@@ -7,8 +7,7 @@
 #include <string>
 #include <utility>
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 const std::vector<AmbientLightSensorInfo>&
 AmbientLightSensorWatcherInterface::GetAmbientLightSensors() const {
@@ -45,5 +44,4 @@ void AmbientLightSensorWatcherInterface::NotifyObservers() {
   }
 }
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system

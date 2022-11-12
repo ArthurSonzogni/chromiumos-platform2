@@ -17,8 +17,7 @@
 
 #include "power_manager/powerd/system/sensor_service_handler_observer.h"
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 class SensorServiceHandler
     : public cros::mojom::SensorServiceNewDevicesObserver {
@@ -79,7 +78,6 @@ class SensorServiceHandler
   SEQUENCE_CHECKER(sequence_checker_);
 };
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system
 
 #endif  // POWER_MANAGER_POWERD_SYSTEM_SENSOR_SERVICE_HANDLER_H_

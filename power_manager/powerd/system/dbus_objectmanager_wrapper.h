@@ -24,8 +24,7 @@ namespace dbus {
 class Bus;
 }  // namespace dbus
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 using DBusInterfaceToProperties =
     std::map<std::string, brillo::VariantDictionary>;
@@ -80,7 +79,6 @@ class DBusObjectManagerWrapper : public DBusObjectManagerProxyInterface {
   std::unique_ptr<org::freedesktop::DBus::ObjectManagerProxy> proxy_;
   base::WeakPtrFactory<DBusObjectManagerWrapper> weak_factory_{this};
 };
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system
 
 #endif  // POWER_MANAGER_POWERD_SYSTEM_DBUS_OBJECTMANAGER_WRAPPER_H_

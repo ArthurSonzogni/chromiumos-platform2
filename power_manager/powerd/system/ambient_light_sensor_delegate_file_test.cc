@@ -19,8 +19,7 @@
 #include "power_manager/common/test_main_loop_runner.h"
 #include "power_manager/powerd/system/ambient_light_observer.h"
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 namespace {
 
@@ -244,5 +243,4 @@ TEST_F(AmbientLightSensorDelegateFileTest, FailToFindSensorByName) {
   EXPECT_LT(sensor_->GetAmbientLightLux(), 0);
 }
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system

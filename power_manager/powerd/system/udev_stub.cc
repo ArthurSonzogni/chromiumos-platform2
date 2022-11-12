@@ -10,8 +10,7 @@
 
 #include <base/check.h>
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 UdevStub::UdevStub() : stop_accepting_sysattr_for_testing_(false) {}
 
@@ -149,5 +148,4 @@ bool UdevStub::GetDevlinks(const std::string& syspath,
   return true;
 }
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system

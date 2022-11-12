@@ -9,8 +9,7 @@
 
 #include "power_manager/powerd/system/charge_controller_helper_interface.h"
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 // Real implementation of ChargeControllerHelperInterface.
 class WilcoChargeControllerHelper final
@@ -40,7 +39,6 @@ class WilcoChargeControllerHelper final
                                         int custom_charge_stop) override;
 };
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system
 
 #endif  // POWER_MANAGER_POWERD_SYSTEM_WILCO_CHARGE_CONTROLLER_HELPER_H_

@@ -11,8 +11,7 @@
 
 #include "power_manager/powerd/system/ambient_light_sensor_interface.h"
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 // Stub implementation of AmbientLightSensorInterface for use by tests.
 class AmbientLightSensorStub : public AmbientLightSensorInterface {
@@ -55,7 +54,6 @@ class AmbientLightSensorStub : public AmbientLightSensorInterface {
   base::FilePath path_;
 };
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system
 
 #endif  // POWER_MANAGER_POWERD_SYSTEM_AMBIENT_LIGHT_SENSOR_STUB_H_

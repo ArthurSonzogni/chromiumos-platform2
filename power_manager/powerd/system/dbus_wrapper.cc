@@ -18,8 +18,7 @@
 
 #include "power_manager/common/power_constants.h"
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 namespace {
 
 // Handles the result of an attempt to connect to a D-Bus signal, logging an
@@ -171,5 +170,4 @@ void DBusWrapper::HandleNameOwnerChangedSignal(dbus::Signal* signal) {
     observer.OnDBusNameOwnerChanged(name, old_owner, new_owner);
 }
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system

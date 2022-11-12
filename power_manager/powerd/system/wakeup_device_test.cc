@@ -18,8 +18,7 @@
 
 #include "power_manager/common/power_constants.h"
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 namespace {
 
 // Creates and writes |val| to |sys_path|. Also creates all necessary parent
@@ -130,5 +129,4 @@ TEST_F(WakeupDeviceTest, TestWakeupCountReadFailAfterResume) {
   EXPECT_FALSE(wakeup_device_->CausedLastWake());
 }
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system

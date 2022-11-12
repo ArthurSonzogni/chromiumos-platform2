@@ -9,8 +9,7 @@
 
 #include <base/files/file_path.h>
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 // Per device object that helps in identifying if this device is one of the
 // reasons for last wake.
@@ -34,7 +33,6 @@ class WakeupDeviceInterface {
   virtual bool CausedLastWake() const = 0;
 };
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system
 
 #endif  // POWER_MANAGER_POWERD_SYSTEM_WAKEUP_DEVICE_INTERFACE_H_

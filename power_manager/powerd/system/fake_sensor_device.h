@@ -13,8 +13,7 @@
 #include <iioservice/mojo/sensor.mojom.h>
 #include <mojo/public/cpp/bindings/receiver_set.h>
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 class FakeSensorDevice : public cros::mojom::SensorDevice {
  public:
@@ -82,7 +81,6 @@ class FakeSensorDevice : public cros::mojom::SensorDevice {
   mojo::ReceiverSet<cros::mojom::SensorDevice> receiver_set_;
 };
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system
 
 #endif  // POWER_MANAGER_POWERD_SYSTEM_FAKE_SENSOR_DEVICE_H_

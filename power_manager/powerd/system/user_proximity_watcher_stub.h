@@ -11,8 +11,7 @@
 #include "power_manager/common/power_constants.h"
 #include "power_manager/powerd/system/user_proximity_watcher_interface.h"
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 // Stub implementation of UserProximityWatcherInterface for use by tests.
 class UserProximityWatcherStub : public UserProximityWatcherInterface {
@@ -40,7 +39,6 @@ class UserProximityWatcherStub : public UserProximityWatcherInterface {
   std::vector<TabletMode> tablet_mode_changes_;
 };
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system
 
 #endif  // POWER_MANAGER_POWERD_SYSTEM_USER_PROXIMITY_WATCHER_STUB_H_

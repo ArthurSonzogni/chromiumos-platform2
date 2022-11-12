@@ -20,8 +20,7 @@
 #include "power_manager/common/clock.h"
 #include "power_manager/common/util.h"
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 class InternalBacklightTest : public ::testing::Test {
  public:
@@ -310,5 +309,4 @@ TEST_F(InternalBacklightTest, BlPower) {
   EXPECT_EQ(FB_BLANK_UNBLANK, ReadFile(kPowerFile));
 }
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system

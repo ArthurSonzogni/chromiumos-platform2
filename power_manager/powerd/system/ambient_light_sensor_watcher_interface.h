@@ -12,8 +12,7 @@
 #include "power_manager/powerd/system/ambient_light_sensor_info.h"
 #include "power_manager/powerd/system/ambient_light_sensor_watcher_observer.h"
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 // Watches for ambient light sensors being connected or disconnected.
 class AmbientLightSensorWatcherInterface {
@@ -40,7 +39,6 @@ class AmbientLightSensorWatcherInterface {
   base::ObserverList<AmbientLightSensorWatcherObserver> observers_;
 };
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system
 
 #endif  // POWER_MANAGER_POWERD_SYSTEM_AMBIENT_LIGHT_SENSOR_WATCHER_INTERFACE_H_

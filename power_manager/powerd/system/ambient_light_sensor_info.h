@@ -9,8 +9,7 @@
 
 #include <base/files/file_path.h>
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 // Information about a connected ambient light sensor.
 struct AmbientLightSensorInfo {
@@ -29,7 +28,6 @@ struct AmbientLightSensorInfo {
   int32_t id = -1;
 };
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system
 
 #endif  // POWER_MANAGER_POWERD_SYSTEM_AMBIENT_LIGHT_SENSOR_INFO_H_

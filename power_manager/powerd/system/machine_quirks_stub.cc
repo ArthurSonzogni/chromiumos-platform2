@@ -9,8 +9,7 @@
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/prefs.h"
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 MachineQuirksStub::MachineQuirksStub() {
   ResetQuirks();
@@ -52,5 +51,4 @@ void MachineQuirksStub::SetSuspendBlockedQuirkDetected(bool value) {
   block_suspend_ = value;
 }
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system

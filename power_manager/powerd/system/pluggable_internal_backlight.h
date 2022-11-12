@@ -14,8 +14,7 @@
 #include "power_manager/powerd/system/backlight_interface.h"
 #include "power_manager/powerd/system/udev_subsystem_observer.h"
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 class BacklightObserver;
 class InternalBacklight;
@@ -73,7 +72,6 @@ class PluggableInternalBacklight : public BacklightInterface,
   std::unique_ptr<InternalBacklight> device_;
 };
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system
 
 #endif  // POWER_MANAGER_POWERD_SYSTEM_PLUGGABLE_INTERNAL_BACKLIGHT_H_

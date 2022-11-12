@@ -9,8 +9,7 @@
 
 #include "power_manager/powerd/system/ambient_light_observer.h"
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 class AmbientLightSensorInterface {
  public:
@@ -40,7 +39,6 @@ class AmbientLightSensorInterface {
   virtual base::FilePath GetIlluminancePath() const = 0;
 };
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system
 
 #endif  // POWER_MANAGER_POWERD_SYSTEM_AMBIENT_LIGHT_SENSOR_INTERFACE_H_

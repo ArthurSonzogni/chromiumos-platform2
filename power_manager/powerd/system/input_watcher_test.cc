@@ -23,8 +23,7 @@
 #include "power_manager/powerd/system/input_observer.h"
 #include "power_manager/powerd/system/udev_stub.h"
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 namespace {
 
 // Strings that can be compared against TestObserver::GetActions().
@@ -712,5 +711,4 @@ TEST_F(InputWatcherTest, TolerateMissingDevInputDirectory) {
   EXPECT_FALSE(input_watcher_->IsUSBInputDeviceConnected());
 }
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system

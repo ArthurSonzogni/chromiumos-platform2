@@ -6,8 +6,7 @@
 
 #include <base/check.h>
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 BacklightStub::BacklightStub(int64_t max_level,
                              int64_t current_level,
@@ -69,5 +68,4 @@ void BacklightStub::SetBrightnessScale(
   scale_ = scale;
 }
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system

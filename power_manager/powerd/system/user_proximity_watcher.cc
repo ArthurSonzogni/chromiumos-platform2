@@ -30,8 +30,7 @@
 #include "power_manager/powerd/system/udev.h"
 #include "power_manager/powerd/system/user_proximity_observer.h"
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 namespace {
 
@@ -495,5 +494,4 @@ void UserProximityWatcher::OnNewUdevDevice(const UdevDeviceInfo& device_info) {
     LOG(ERROR) << "Unable to setup proximity sensor " << device_info.syspath;
 }
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system

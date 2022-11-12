@@ -12,8 +12,7 @@
 #include <base/strings/string_piece.h>
 #include <base/strings/string_tokenizer.h>
 
-namespace power_manager {
-namespace system {
+namespace power_manager::system {
 
 namespace {
 const base::FilePath kAcpiWakeupPath("/proc/acpi/wakeup");
@@ -125,5 +124,4 @@ bool AcpiWakeupHelper::ToggleWakeupEnabled(const std::string& device_name) {
   return true;
 }
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system
