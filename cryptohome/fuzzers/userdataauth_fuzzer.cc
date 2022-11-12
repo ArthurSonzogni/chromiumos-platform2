@@ -39,8 +39,8 @@
 #include <libhwsec/factory/fuzzed_factory.h>
 #include <tpm_manager/client/mock_tpm_manager_utility.h>
 
-#include "cryptohome/fake_platform.h"
 #include "cryptohome/filesystem_layout.h"
+#include "cryptohome/fuzzers/fuzzed_platform.h"
 #include "cryptohome/fuzzers/fuzzed_proto_generator.h"
 #include "cryptohome/mock_uss_experiment_config_fetcher.h"
 #include "cryptohome/platform.h"
@@ -240,7 +240,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
       /*lsb_release_time=*/base::Time::UnixEpoch());
 
   // Prepare `UserDataAuth`'s dependencies.
-  FakePlatform platform;
+  FuzzedPlatform platform(provider);
   std::unique_ptr<CryptohomeVaultFactory> vault_factory =
       CreateVaultFactory(platform, provider);
   std::unique_ptr<MountFactory> mount_factory = CreateMountFactory();

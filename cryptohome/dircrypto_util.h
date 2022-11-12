@@ -22,6 +22,9 @@ enum class KeyState {
   NOT_SUPPORTED,  // The directory doesn't support dircrypto.
   NO_KEY,         // No key is set.
   ENCRYPTED,      // Key is set.
+
+  // Must be the last item.
+  kMaxValue = ENCRYPTED
 };
 
 // KeyReference describes an in-use fscrypt key.

@@ -87,6 +87,9 @@ enum class ExpireMountResult {
   kUnmounted,
   kBusy,
   kError,
+
+  // Must be the last item.
+  kMaxValue = kError
 };
 
 // List of remount options.
@@ -96,6 +99,9 @@ enum class RemountOption {
   kShared,
   kMountsFlowIn,  // Equivalent to MS_SLAVE
   kUnbindable,
+
+  // Must be the last item.
+  kMaxValue = kUnbindable
 };
 
 // A class for enumerating the files in a provided path. The order of the

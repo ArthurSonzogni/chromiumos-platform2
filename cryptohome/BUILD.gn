@@ -486,6 +486,7 @@ if (use.fuzzer) {
   static_library("fuzz-helpers") {
     sources = [
       "fuzzers/blob_mutator.cc",
+      "fuzzers/fuzzed_platform.cc",
       "fuzzers/fuzzed_proto_generator.cc",
     ]
     configs += [ ":target_defaults" ]
