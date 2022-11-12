@@ -14,6 +14,9 @@ namespace power_manager::system {
 
 class ThermalDeviceFactory {
  public:
+  ThermalDeviceFactory(const ThermalDeviceFactory&) = delete;
+  ThermalDeviceFactory& operator=(const ThermalDeviceFactory&) = delete;
+
   // Look at default sysfs thermal device path to create ThermalDevice objects.
   static std::vector<std::unique_ptr<ThermalDeviceInterface>>
   CreateThermalDevices(const char device_list_path_for_testing[] = nullptr);
@@ -21,8 +24,6 @@ class ThermalDeviceFactory {
  private:
   // Private constructor to make this class static method only.
   ThermalDeviceFactory() {}
-  ThermalDeviceFactory(const ThermalDeviceFactory&) = delete;
-  ThermalDeviceFactory& operator=(const ThermalDeviceFactory&) = delete;
 };
 
 }  // namespace power_manager::system
