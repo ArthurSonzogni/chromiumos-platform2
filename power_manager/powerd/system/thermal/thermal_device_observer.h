@@ -15,7 +15,7 @@ class ThermalDeviceInterface;
 // from thermal devices.
 class ThermalDeviceObserver : public base::CheckedObserver {
  public:
-  virtual ~ThermalDeviceObserver() = default;
+  ~ThermalDeviceObserver() override = default;
 
   // Called when the thermal state changed.
   virtual void OnThermalChanged(ThermalDeviceInterface* sensor) = 0;
