@@ -20,7 +20,6 @@
 #include <gtest/gtest.h>
 
 #include "power_manager/common/battery_percentage_converter.h"
-#include "power_manager/common/clock.h"
 #include "power_manager/common/fake_prefs.h"
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/test_main_loop_runner.h"

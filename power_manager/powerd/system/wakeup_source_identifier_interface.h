@@ -12,9 +12,6 @@
 
 #include <base/files/file_path.h>
 
-#include "power_manager/common/power_constants.h"
-#include "power_manager/powerd/system/udev_subsystem_observer.h"
-
 namespace power_manager::system {
 
 // Monitors device sys paths to identify the potential wakeup reason. Monitors

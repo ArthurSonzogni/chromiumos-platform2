@@ -6,6 +6,7 @@
 
 #include <utility>
 
+#include "power_manager/powerd/system/ambient_light_sensor.h"
 #include "power_manager/powerd/system/ambient_light_sensor_delegate_file.h"
 
 namespace power_manager::system {

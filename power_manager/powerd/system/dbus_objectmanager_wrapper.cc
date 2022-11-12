@@ -16,8 +16,6 @@
 #include <dbus/message.h>
 #include <google/protobuf/message_lite.h>
 
-#include "power_manager/common/power_constants.h"
-
 namespace power_manager::system {
 namespace {
 

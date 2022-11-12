@@ -16,8 +16,6 @@
 #include <dbus/exported_object.h>
 #include <dbus/object_proxy.h>
 
-#include "power_manager/common/power_constants.h"
-
 namespace dbus {
 class Bus;
 }  // namespace dbus

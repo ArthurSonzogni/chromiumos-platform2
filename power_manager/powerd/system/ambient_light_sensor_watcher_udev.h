@@ -7,9 +7,7 @@
 
 #include <iioservice/mojo/sensor.mojom.h>
 
-#include "power_manager/powerd/system/ambient_light_sensor_info.h"
 #include "power_manager/powerd/system/ambient_light_sensor_watcher_interface.h"
-#include "power_manager/powerd/system/ambient_light_sensor_watcher_observer.h"
 #include "power_manager/powerd/system/udev_subsystem_observer.h"
 
 namespace power_manager::system {

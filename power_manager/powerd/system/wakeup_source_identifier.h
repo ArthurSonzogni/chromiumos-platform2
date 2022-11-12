@@ -12,7 +12,6 @@
 
 #include <base/files/file_path.h>
 
-#include "power_manager/common/power_constants.h"
 #include "power_manager/powerd/system/udev_subsystem_observer.h"
 #include "power_manager/powerd/system/wakeup_source_identifier_interface.h"
 

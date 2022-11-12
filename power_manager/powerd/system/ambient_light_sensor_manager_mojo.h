@@ -16,9 +16,7 @@
 #include <mojo/public/cpp/bindings/receiver.h>
 #include <mojo/public/cpp/bindings/remote.h>
 
-#include "power_manager/common/power_constants.h"
 #include "power_manager/powerd/system/ambient_light_sensor.h"
-#include "power_manager/powerd/system/ambient_light_sensor_delegate_mojo.h"
 #include "power_manager/powerd/system/ambient_light_sensor_manager_interface.h"
 #include "power_manager/powerd/system/sensor_service_handler.h"
 #include "power_manager/powerd/system/sensor_service_handler_observer.h"

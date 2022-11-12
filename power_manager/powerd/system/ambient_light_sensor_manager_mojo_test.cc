@@ -13,7 +13,7 @@
 #include <gtest/gtest.h>
 
 #include "power_manager/common/fake_prefs.h"
-#include "power_manager/powerd/system/ambient_light_sensor_delegate_mojo.h"
+#include "power_manager/common/power_constants.h"
 #include "power_manager/powerd/system/fake_light.h"
 #include "power_manager/powerd/system/fake_sensor_service.h"
 #include "power_manager/powerd/system/sensor_service_handler.h"

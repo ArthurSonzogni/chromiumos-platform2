@@ -16,7 +16,6 @@
 #include <gtest/gtest.h>
 
 #include "power_manager/common/test_main_loop_runner.h"
-#include "power_manager/common/util.h"
 
 namespace power_manager::system {
 

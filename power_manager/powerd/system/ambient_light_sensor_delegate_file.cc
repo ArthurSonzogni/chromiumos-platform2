@@ -25,8 +25,6 @@
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 
-#include "power_manager/common/util.h"
-
 namespace power_manager::system {
 
 namespace {

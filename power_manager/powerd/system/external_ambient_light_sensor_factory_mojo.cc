@@ -6,6 +6,7 @@
 
 #include <utility>
 
+#include "power_manager/powerd/system/ambient_light_sensor.h"
 #include "power_manager/powerd/system/ambient_light_sensor_delegate_mojo.h"
 
 namespace power_manager::system {

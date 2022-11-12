@@ -16,6 +16,7 @@
 #include <gtest/gtest.h>
 
 #include "power_manager/common/fake_prefs.h"
+#include "power_manager/common/power_constants.h"
 #include "power_manager/common/test_main_loop_runner.h"
 #include "power_manager/powerd/system/ambient_light_observer.h"
 

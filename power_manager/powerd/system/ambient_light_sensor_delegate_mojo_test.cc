@@ -16,6 +16,8 @@
 #include <gtest/gtest.h>
 
 #include "power_manager/powerd/system/ambient_light_observer.h"
+#include "power_manager/powerd/system/ambient_light_sensor.h"
+#include "power_manager/powerd/system/ambient_light_sensor_interface.h"
 #include "power_manager/powerd/system/fake_light.h"
 
 namespace power_manager::system {

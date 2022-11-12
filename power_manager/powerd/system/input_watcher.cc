@@ -23,12 +23,9 @@
 
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/prefs.h"
-#include "power_manager/common/util.h"
-#include "power_manager/powerd/system/acpi_wakeup_helper.h"
 #include "power_manager/powerd/system/event_device_interface.h"
 #include "power_manager/powerd/system/input_observer.h"
 #include "power_manager/powerd/system/udev.h"
-#include "power_manager/powerd/system/wakeup_device.h"
 
 namespace power_manager::system {
 

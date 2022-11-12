@@ -10,8 +10,6 @@
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 
-#include "power_manager/common/util.h"
-
 namespace power_manager::system {
 
 namespace {

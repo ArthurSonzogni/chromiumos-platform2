@@ -9,7 +9,6 @@
 
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/prefs.h"
-#include "power_manager/common/util.h"
 
 #include <base/check.h>
 #include <base/time/time.h>

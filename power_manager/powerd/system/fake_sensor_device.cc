@@ -7,8 +7,6 @@
 #include <optional>
 #include <utility>
 
-#include "power_manager/powerd/system/ambient_light_sensor_delegate_mojo.h"
-
 #include <base/check.h>
 #include <base/logging.h>
 

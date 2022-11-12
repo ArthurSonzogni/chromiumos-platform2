@@ -18,7 +18,6 @@
 #include <base/check_op.h>
 #include <base/containers/flat_map.h>
 #include <base/logging.h>
-#include "base/strings/string_number_conversions.h"
 #include <base/strings/stringprintf.h>
 
 namespace power_manager::system {

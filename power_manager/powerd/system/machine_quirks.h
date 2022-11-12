@@ -9,8 +9,6 @@
 
 #include <base/files/file_path.h>
 
-#include "power_manager/common/prefs_observer.h"
-
 namespace power_manager {
 
 class PrefsInterface;

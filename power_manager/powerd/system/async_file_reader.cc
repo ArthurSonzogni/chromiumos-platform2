@@ -15,8 +15,6 @@
 #include <base/logging.h>
 #include <base/time/time.h>
 
-#include "power_manager/common/util.h"
-
 namespace power_manager::system {
 
 namespace {

@@ -15,7 +15,7 @@
 
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/prefs.h"
-#include "power_manager/common/util.h"
+#include "power_manager/powerd/system/ambient_light_sensor_delegate_mojo.h"
 
 namespace power_manager::system {
 

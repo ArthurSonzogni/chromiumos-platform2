@@ -11,7 +11,6 @@
 #include <vector>
 
 #include "power_manager/powerd/system/ambient_light_sensor_watcher_interface.h"
-#include "power_manager/powerd/system/ambient_light_sensor_watcher_observer.h"
 #include "power_manager/powerd/system/sensor_service_handler.h"
 #include "power_manager/powerd/system/sensor_service_handler_observer.h"
 

@@ -14,8 +14,6 @@
 #include <dbus/message.h>
 #include <dbus/object_manager.h>
 
-#include "power_manager/powerd/system/dbus_wrapper.h"
-
 namespace power_manager::system {
 
 // Represents an exported battery object on org.bluez.BatteryProvider1

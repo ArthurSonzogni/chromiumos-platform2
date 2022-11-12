@@ -10,7 +10,6 @@
 
 #include <base/time/time.h>
 
-#include "power_manager/common/power_constants.h"
 #include "power_manager/powerd/system/ambient_light_sensor.h"
 #include "power_manager/powerd/system/ambient_light_sensor_delegate_file.h"
 #include "power_manager/powerd/system/ambient_light_sensor_manager_interface.h"

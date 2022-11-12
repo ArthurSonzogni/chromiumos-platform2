@@ -14,9 +14,7 @@
 #include <base/files/file_path.h>
 #include <base/timer/timer.h>
 
-#include "power_manager/common/power_constants.h"
-#include "power_manager/powerd/system/ambient_light_observer.h"
-#include "power_manager/powerd/system/ambient_light_sensor.h"
+#include "power_manager/powerd/system/ambient_light_sensor_delegate.h"
 #include "power_manager/powerd/system/async_file_reader.h"
 
 namespace power_manager::system {

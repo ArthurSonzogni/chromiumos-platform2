@@ -16,9 +16,6 @@
 #include <libec/ec_command.h>
 #include <libec/pwm_command.h>
 
-#include "power_manager/common/clock.h"
-#include "power_manager/common/util.h"
-
 namespace power_manager::system {
 
 const int EcKeyboardBacklight::kMaxBrightnessLevel = 100;

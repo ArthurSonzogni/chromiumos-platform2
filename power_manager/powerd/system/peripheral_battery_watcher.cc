@@ -22,7 +22,6 @@
 #include <chromeos/dbus/service_constants.h>
 #include <re2/re2.h>
 
-#include "power_manager/common/util.h"
 #include "power_manager/powerd/system/dbus_wrapper.h"
 #include "power_manager/proto_bindings/peripheral_battery_status.pb.h"
 

@@ -5,7 +5,7 @@
 #ifndef POWER_MANAGER_POWERD_SYSTEM_CROS_EC_DEVICE_EVENT_H_
 #define POWER_MANAGER_POWERD_SYSTEM_CROS_EC_DEVICE_EVENT_H_
 
-#include "libec/device_event_command.h"
+#include <chromeos/ec/ec_commands.h>
 
 namespace power_manager::system {
 
