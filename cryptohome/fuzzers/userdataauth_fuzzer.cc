@@ -10,7 +10,6 @@
 #include <utility>
 #include <vector>
 
-#include <absl/container/flat_hash_set.h>
 #include <base/check.h>
 #include <base/command_line.h>
 #include <base/logging.h>
@@ -33,15 +32,7 @@
 #include <fuzzer/FuzzedDataProvider.h>
 #include <gmock/gmock.h>
 #include <google/protobuf/stubs/logging.h>
-#include <libhwsec/error/tpm_error.h>
-#include <libhwsec/error/tpm_retry_action.h>
-#include <libhwsec/factory/mock_factory.h>
-#include <libhwsec/frontend/cryptohome/mock_frontend.h>
-#include <libhwsec/frontend/pinweaver/mock_frontend.h>
-#include <libhwsec/status.h>
-#include <libhwsec/structures/key.h>
-#include <libhwsec-foundation/error/testing_helper.h>
-#include <libhwsec-foundation/status/status_chain.h>
+#include <libhwsec/factory/fuzzed_factory.h>
 #include <tpm_manager/client/mock_tpm_manager_utility.h>
 
 #include "cryptohome/fake_platform.h"
@@ -56,13 +47,8 @@ namespace {
 
 using ::brillo::Blob;
 using ::brillo::BlobFromString;
-using ::hwsec::StatusOr;
-using ::hwsec_foundation::error::testing::ReturnValue;
-using ::hwsec_foundation::status::MakeStatus;
-using ::hwsec_foundation::status::StatusChain;
 using ::testing::_;
 using ::testing::NiceMock;
-using ::testing::Return;
 
 // Performs initialization and holds state that's shared across all invocations
 // of the fuzzer.
@@ -85,69 +71,6 @@ class Environment {
   // inputs.
   google::protobuf::LogSilencer log_silencer_;
 };
-
-hwsec::TPMRetryAction GenerateFuzzedTPMRetryAction(
-    FuzzedDataProvider& provider) {
-  return static_cast<hwsec::TPMRetryAction>(
-      provider.ConsumeIntegralInRange<int>(
-          static_cast<int>(hwsec::TPMRetryAction::kNone),
-          static_cast<int>(
-              hwsec::TPMRetryAction::kEllipticCurveScalarOutOfRange)));
-}
-
-StatusChain<hwsec::TPMErrorBase> GenerateFuzzedTPMErrorStatus(
-    FuzzedDataProvider& provider) {
-  return MakeStatus<hwsec::TPMError>(provider.ConsumeRandomLengthString(),
-                                     GenerateFuzzedTPMRetryAction(provider));
-}
-
-// TODO(b/258111195): Replace with calling generic libhwsec fuzzer support code.
-void SetUpFuzzedHwsecMocks(hwsec::MockCryptohomeFrontend& hwsec,
-                           FuzzedDataProvider& provider) {
-  ON_CALL(hwsec, GetSupportedAlgo()).WillByDefault([]() {
-    return absl::flat_hash_set<hwsec::KeyAlgoType>({
-        hwsec::KeyAlgoType::kRsa,
-        hwsec::KeyAlgoType::kEcc,
-    });
-  });
-  ON_CALL(hwsec, GetSpaceState(_))
-      .WillByDefault(
-          ReturnValue(hwsec::CryptohomeFrontend::StorageState::kReady));
-  ON_CALL(hwsec, IsReady()).WillByDefault([&]() -> StatusOr<bool> {
-    if (provider.ConsumeBool())
-      return GenerateFuzzedTPMErrorStatus(provider);
-    return provider.ConsumeBool();
-  });
-  ON_CALL(hwsec, IsPinWeaverEnabled()).WillByDefault([&]() -> StatusOr<bool> {
-    if (provider.ConsumeBool())
-      return GenerateFuzzedTPMErrorStatus(provider);
-    return provider.ConsumeBool();
-  });
-  ON_CALL(hwsec, IsSrkRocaVulnerable()).WillByDefault([&]() -> StatusOr<bool> {
-    if (provider.ConsumeBool())
-      return GenerateFuzzedTPMErrorStatus(provider);
-    return provider.ConsumeBool();
-  });
-  ON_CALL(hwsec, CreateCryptohomeKey(_))
-      .WillByDefault(
-          [&](hwsec::KeyAlgoType)
-              -> StatusOr<hwsec::CryptohomeFrontend::CreateKeyResult> {
-            if (!provider.ConsumeBool())
-              return GenerateFuzzedTPMErrorStatus(provider);
-            return hwsec::CryptohomeFrontend::CreateKeyResult{
-                .key = hwsec::ScopedKey(
-                    hwsec::Key{
-                        .token = provider.ConsumeIntegral<hwsec::KeyToken>(),
-                    },
-                    hwsec::MiddlewareDerivative{
-                        .task_runner = base::SequencedTaskRunnerHandle::Get(),
-                        .thread_id = base::PlatformThread::CurrentId(),
-                    }),
-                .key_blob =
-                    BlobFromString(provider.ConsumeRandomLengthString()),
-            };
-          });
-}
 
 std::string GenerateFuzzedDBusMethodName(
     const brillo::dbus_utils::DBusObject& dbus_object,
@@ -245,17 +168,13 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
 
   // Prepare `UserDataAuth`'s dependencies.
   FakePlatform platform;
-  NiceMock<hwsec::MockFactory> hwsec_factory;
+  hwsec::FuzzedFactory hwsec_factory(provider);
   NiceMock<tpm_manager::MockTpmManagerUtility> tpm_manager_utility;
   NiceMock<MockUssExperimentConfigFetcher> uss_experiment_config_fetcher;
   auto bus =
       base::MakeRefCounted<NiceMock<dbus::MockBus>>(dbus::Bus::Options());
   auto mount_thread_bus =
       base::MakeRefCounted<NiceMock<dbus::MockBus>>(dbus::Bus::Options());
-  NiceMock<hwsec::MockCryptohomeFrontend> hwsec;
-  SetUpFuzzedHwsecMocks(hwsec, provider);
-  NiceMock<hwsec::MockPinWeaverFrontend> pinweaver;
-  ON_CALL(pinweaver, IsEnabled()).WillByDefault(ReturnValue(false));
 
   // Prepare `UserDataAuth`. Set up a single-thread mode (which is not how the
   // daemon works in production, but allows faster and reproducible fuzzing).
@@ -265,8 +184,6 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   userdataauth->set_dbus(bus);
   userdataauth->set_mount_thread_dbus(mount_thread_bus);
   userdataauth->set_hwsec_factory(&hwsec_factory);
-  userdataauth->set_hwsec(&hwsec);
-  userdataauth->set_pinweaver(&pinweaver);
   userdataauth->set_tpm_manager_util_(&tpm_manager_utility);
   userdataauth->set_uss_experiment_config_fetcher(
       &uss_experiment_config_fetcher);

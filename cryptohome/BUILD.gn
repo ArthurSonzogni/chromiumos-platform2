@@ -515,7 +515,7 @@ if (use.fuzzer) {
       "fuzzers/fuzzed_proto_generator.cc",
       "fuzzers/userdataauth_fuzzer.cc",
     ]
-    libs = [ "hwsec-foundation" ]
+    libs = [ "hwsec" ]
     configs += [
       "//common-mk/common_fuzzer",
       "//common-mk:test",
