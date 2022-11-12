@@ -5,8 +5,6 @@
 #ifndef POWER_MANAGER_POWERD_SYSTEM_WAKEUP_SOURCE_IDENTIFIER_H_
 #define POWER_MANAGER_POWERD_SYSTEM_WAKEUP_SOURCE_IDENTIFIER_H_
 
-#include "power_manager/powerd/system/wakeup_source_identifier.h"
-
 #include <map>
 #include <memory>
 #include <set>
