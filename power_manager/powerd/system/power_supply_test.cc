@@ -81,7 +81,7 @@ const char* kInvalidUsbTypeValues[] = {
 class TestObserver : public PowerSupplyObserver {
  public:
   explicit TestObserver(PowerSupply* power_supply)
-      : power_supply_(power_supply), num_updates_(0) {
+      : power_supply_(power_supply) {
     power_supply_->AddObserver(this);
   }
   TestObserver(const TestObserver&) = delete;
@@ -107,7 +107,7 @@ class TestObserver : public PowerSupplyObserver {
   PowerSupply* power_supply_ = nullptr;  // Not owned.
 
   // Number of times that OnPowerStatusUpdate() has been called.
-  int num_updates_;
+  int num_updates_ = 0;
 
   TestMainLoopRunner runner_;
 };

@@ -77,7 +77,6 @@ AmbientLightSensorDelegateFile::AmbientLightSensorDelegateFile(
     : device_list_path_(kDefaultDeviceListPath),
       poll_interval_(kDefaultPollInterval),
       enable_color_support_(enable_color_support),
-      num_init_attempts_(0),
       expected_sensor_location_(expected_sensor_location) {}
 
 AmbientLightSensorDelegateFile::AmbientLightSensorDelegateFile(
@@ -86,7 +85,6 @@ AmbientLightSensorDelegateFile::AmbientLightSensorDelegateFile(
       device_(device),
       poll_interval_(kDefaultPollInterval),
       enable_color_support_(enable_color_support),
-      num_init_attempts_(0),
       expected_sensor_location_(SensorLocation::UNKNOWN) {}
 
 void AmbientLightSensorDelegateFile::Init(bool read_immediately) {

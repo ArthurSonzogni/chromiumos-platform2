@@ -14,7 +14,7 @@ namespace power_manager::system {
 // Stub implementation of InputWatcherInterface for use by tests.
 class InputWatcherStub : public InputWatcherInterface {
  public:
-  InputWatcherStub();
+  InputWatcherStub() = default;
   InputWatcherStub(const InputWatcherStub&) = delete;
   InputWatcherStub& operator=(const InputWatcherStub&) = delete;
 
@@ -41,9 +41,9 @@ class InputWatcherStub : public InputWatcherInterface {
 
  private:
   // Current input state.
-  LidState lid_state_;
-  TabletMode tablet_mode_;
-  bool usb_input_device_connected_;
+  LidState lid_state_ = LidState::OPEN;
+  TabletMode tablet_mode_ = TabletMode::UNSUPPORTED;
+  bool usb_input_device_connected_ = true;
 
   base::ObserverList<InputObserver> observers_;
 };

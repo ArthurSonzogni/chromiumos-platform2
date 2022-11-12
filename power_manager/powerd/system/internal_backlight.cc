@@ -35,14 +35,6 @@ const char InternalBacklight::kMaxBrightnessFilename[] = "max_brightness";
 const char InternalBacklight::kBlPowerFilename[] = "bl_power";
 const char InternalBacklight::kScaleFilename[] = "scale";
 
-InternalBacklight::InternalBacklight()
-    : clock_(new Clock),
-      brightness_scale_(BrightnessScale::kUnknown),
-      transition_start_level_(0),
-      transition_end_level_(0),
-      max_brightness_level_(0),
-      current_brightness_level_(0) {}
-
 bool InternalBacklight::Init(const base::FilePath& base_path,
                              const std::string& pattern) {
   base::FileEnumerator enumerator(base_path, false,

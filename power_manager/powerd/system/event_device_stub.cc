@@ -8,17 +8,6 @@
 
 namespace power_manager::system {
 
-EventDeviceStub::EventDeviceStub()
-    : is_cros_fp_(false),
-      is_lid_switch_(false),
-      is_tablet_mode_switch_(false),
-      is_power_button_(false),
-      hover_supported_(false),
-      has_left_button_(false),
-      initial_lid_state_(LidState::OPEN),
-      initial_tablet_mode_(TabletMode::OFF) {}
-
-
 void EventDeviceStub::AppendEvent(uint16_t type, uint16_t code, int32_t value) {
   input_event event;
   memset(&event, 0, sizeof(event));

@@ -14,7 +14,7 @@ namespace power_manager::system {
 
 class CrosEcHelperStub : public CrosEcHelperInterface {
  public:
-  CrosEcHelperStub();
+  CrosEcHelperStub() = default;
   CrosEcHelperStub(const CrosEcHelperStub&) = delete;
   CrosEcHelperStub& operator=(const CrosEcHelperStub&) = delete;
 
@@ -27,7 +27,7 @@ class CrosEcHelperStub : public CrosEcHelperInterface {
   bool IsWakeupAsTabletAllowed();
 
  private:
-  bool wakeup_as_tablet_allowed_;
+  bool wakeup_as_tablet_allowed_ = false;
 };
 
 }  // namespace power_manager::system

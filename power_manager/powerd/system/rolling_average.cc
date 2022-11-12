@@ -11,8 +11,7 @@
 
 namespace power_manager::system {
 
-RollingAverage::RollingAverage(size_t window_size)
-    : running_total_(0.0), window_size_(window_size) {
+RollingAverage::RollingAverage(size_t window_size) : window_size_(window_size) {
   DCHECK_GT(window_size_, static_cast<size_t>(0));
 }
 

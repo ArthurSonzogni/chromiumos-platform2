@@ -20,7 +20,7 @@ namespace power_manager::system {
 // EventDeviceInterface implementation that returns canned values for testing.
 class EventDeviceStub : public EventDeviceInterface {
  public:
-  EventDeviceStub();
+  EventDeviceStub() = default;
   EventDeviceStub(const EventDeviceStub&) = delete;
   EventDeviceStub& operator=(const EventDeviceStub&) = delete;
 
@@ -68,14 +68,14 @@ class EventDeviceStub : public EventDeviceInterface {
   std::string debug_name_;
   std::string name_;
   std::string phys_path_;
-  bool is_cros_fp_;
-  bool is_lid_switch_;
-  bool is_tablet_mode_switch_;
-  bool is_power_button_;
-  bool hover_supported_;
-  bool has_left_button_;
-  LidState initial_lid_state_;
-  TabletMode initial_tablet_mode_;
+  bool is_cros_fp_ = false;
+  bool is_lid_switch_ = false;
+  bool is_tablet_mode_switch_ = false;
+  bool is_power_button_ = false;
+  bool hover_supported_ = false;
+  bool has_left_button_ = false;
+  LidState initial_lid_state_ = LidState::OPEN;
+  TabletMode initial_tablet_mode_ = TabletMode::OFF;
 
   // Events to be returned by the next call to ReadEvents().
   std::vector<input_event> events_;

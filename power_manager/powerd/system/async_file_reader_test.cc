@@ -69,8 +69,7 @@ class AsyncFileReaderTest : public ::testing::Test {
  public:
   AsyncFileReaderTest()
       : temp_dir_(new base::ScopedTempDir()),
-        file_reader_(new AsyncFileReader()),
-        got_error_(false) {
+        file_reader_(new AsyncFileReader()) {
     CHECK(temp_dir_->CreateUniqueTempDir());
     CHECK(temp_dir_->IsValid());
     path_ = temp_dir_->GetPath().Append(kDummyFileName);
@@ -128,7 +127,7 @@ class AsyncFileReaderTest : public ::testing::Test {
   std::string data_;
 
   // True if |file_reader_| reported an error.
-  bool got_error_;
+  bool got_error_ = false;
 };
 
 // Read an empty file.

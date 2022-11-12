@@ -28,7 +28,7 @@ class InternalBacklight : public BacklightInterface {
   static const char kBlPowerFilename[];
   static const char kScaleFilename[];
 
-  InternalBacklight();
+  InternalBacklight() = default;
   InternalBacklight(const InternalBacklight&) = delete;
   InternalBacklight& operator=(const InternalBacklight&) = delete;
 
@@ -83,7 +83,7 @@ class InternalBacklight : public BacklightInterface {
   // Cancels |transition_timeout_id_| if set.
   void CancelTransition();
 
-  std::unique_ptr<Clock> clock_;
+  std::unique_ptr<Clock> clock_ = std::make_unique<Clock>();
 
   // Device directory.
   base::FilePath device_path_;
@@ -99,7 +99,7 @@ class InternalBacklight : public BacklightInterface {
   base::FilePath bl_power_path_;
 
   // Scale of the brightness curve (linear, non-linear or unknown).
-  BrightnessScale brightness_scale_;
+  BrightnessScale brightness_scale_ = BrightnessScale::kUnknown;
 
   // Calls HandleTransitionTimeout().
   base::RepeatingTimer transition_timer_;
@@ -112,15 +112,15 @@ class InternalBacklight : public BacklightInterface {
   base::TimeTicks transition_end_time_;
 
   // Start and end brightness level for the current transition.
-  int64_t transition_start_level_;
-  int64_t transition_end_level_;
+  int64_t transition_start_level_ = 0;
+  int64_t transition_end_level_ = 0;
 
  protected:
   bool DoSetBrightnessLevel(int64_t level, base::TimeDelta interval);
 
   // Cached maximum and last-set brightness levels.
-  int64_t max_brightness_level_;
-  int64_t current_brightness_level_;
+  int64_t max_brightness_level_ = 0;
+  int64_t current_brightness_level_ = 0;
 };
 
 }  // namespace power_manager::system

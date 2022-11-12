@@ -10,11 +10,6 @@
 
 namespace power_manager::system {
 
-InputWatcherStub::InputWatcherStub()
-    : lid_state_(LidState::OPEN),
-      tablet_mode_(TabletMode::UNSUPPORTED),
-      usb_input_device_connected_(true) {}
-
 void InputWatcherStub::NotifyObserversAboutLidState() {
   for (InputObserver& observer : observers_)
     observer.OnLidEvent(lid_state_);

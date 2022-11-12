@@ -58,7 +58,7 @@ class RollingAverage {
   std::queue<Sample> samples_;
 
   // Sum of values in |samples_|.
-  double running_total_;
+  double running_total_ = 0.0;
 
   // Maximum number of samples to store.
   size_t window_size_;

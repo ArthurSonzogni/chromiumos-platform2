@@ -116,10 +116,7 @@ class InputWatcherTest : public testing::Test {
  public:
   InputWatcherTest()
       : scoped_event_device_factory_(new EventDeviceFactoryStub()),
-        event_device_factory_(scoped_event_device_factory_.get()),
-        use_lid_pref_(1),
-        legacy_power_button_pref_(0),
-        detect_hover_pref_(0) {
+        event_device_factory_(scoped_event_device_factory_.get()) {
     CHECK(temp_dir_.CreateUniqueTempDir());
 
     dev_input_path_ = temp_dir_.GetPath().Append(base::FilePath("dev/input"));
@@ -188,9 +185,9 @@ class InputWatcherTest : public testing::Test {
   std::unique_ptr<TestObserver> observer_;
 
   // Initial values for prefs.
-  int64_t use_lid_pref_;
-  int64_t legacy_power_button_pref_;
-  int64_t detect_hover_pref_;
+  int64_t use_lid_pref_ = 1;
+  int64_t legacy_power_button_pref_ = 0;
+  int64_t detect_hover_pref_ = 0;
 };
 
 TEST_F(InputWatcherTest, DetectUSBDevices) {

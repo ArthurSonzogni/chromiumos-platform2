@@ -104,7 +104,7 @@ class AmbientLightSensorDelegateFile : public AmbientLightSensorDelegate {
   bool enable_color_support_;
 
   // Number of attempts to find and open the lux file made so far.
-  int num_init_attempts_;
+  int num_init_attempts_ = 0;
 
   // This is the ambient light sensor asynchronous file I/O object.
   AsyncFileReader als_file_;

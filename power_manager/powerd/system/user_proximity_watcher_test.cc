@@ -66,8 +66,7 @@ class TestObserver : public UserProximityObserver, public ActionRecorder {
 class UserProximityWatcherTest : public testing::Test {
  public:
   UserProximityWatcherTest()
-      : user_proximity_watcher_(std::make_unique<UserProximityWatcher>()),
-        initial_tablet_mode_(TabletMode::UNSUPPORTED) {
+      : user_proximity_watcher_(std::make_unique<UserProximityWatcher>()) {
     user_proximity_watcher_->set_open_iio_events_func_for_testing(
         base::BindRepeating(&UserProximityWatcherTest::OpenTestIioFd,
                             base::Unretained(this)));
@@ -187,7 +186,7 @@ class UserProximityWatcherTest : public testing::Test {
   TestMainLoopRunner loop_runner_;
   std::unique_ptr<TestObserver> observer_;
   int open_sensor_count_ = 0;
-  TabletMode initial_tablet_mode_;
+  TabletMode initial_tablet_mode_ = TabletMode::UNSUPPORTED;
 };
 
 TEST_F(UserProximityWatcherTest, DetectUsableWifiDevice) {

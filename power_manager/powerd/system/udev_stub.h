@@ -14,6 +14,7 @@
 #include <base/compiler_specific.h>
 #include <base/observer_list.h>
 
+#include "power_manager/powerd/system/tagged_device.h"
 #include "power_manager/powerd/system/udev.h"
 
 namespace power_manager::system {
@@ -21,7 +22,7 @@ namespace power_manager::system {
 // Stub implementation of UdevInterface for use in tests.
 class UdevStub : public UdevInterface {
  public:
-  UdevStub();
+  UdevStub() = default;
   UdevStub(const UdevStub&) = delete;
   UdevStub& operator=(const UdevStub&) = delete;
 
@@ -99,7 +100,7 @@ class UdevStub : public UdevInterface {
   SysattrMap map_;
   // Make SetSysattr() fail under test if this is true and SetSysattr() hasn't
   // created the attribute already.
-  bool stop_accepting_sysattr_for_testing_;
+  bool stop_accepting_sysattr_for_testing_ = false;
 };
 
 }  // namespace power_manager::system
