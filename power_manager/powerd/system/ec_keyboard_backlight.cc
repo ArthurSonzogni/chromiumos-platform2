@@ -24,12 +24,11 @@ namespace power_manager::system {
 const int EcKeyboardBacklight::kMaxBrightnessLevel = 100;
 
 EcKeyboardBacklight::EcKeyboardBacklight()
-    : InternalBacklight(),
-      get_cmd_(std::make_unique<ec::GetKeyboardBacklightCommand>()) {}
+    : get_cmd_(std::make_unique<ec::GetKeyboardBacklightCommand>()) {}
 
 EcKeyboardBacklight::EcKeyboardBacklight(
     std::unique_ptr<ec::GetKeyboardBacklightCommand> get_cmd)
-    : InternalBacklight(), get_cmd_(std::move(get_cmd)) {}
+    : get_cmd_(std::move(get_cmd)) {}
 
 EcKeyboardBacklight::~EcKeyboardBacklight() {}
 
