@@ -267,12 +267,12 @@ void InputWatcher::OnNewEvents(EventDeviceInterface* device) {
   VLOG(1) << "Read " << events.size() << " event(s) from "
           << device->GetDebugName();
   const uint32_t device_types = GetDeviceTypes(device);
-  for (size_t i = 0; i < events.size(); ++i) {
+  for (const input_event& event : events) {
     // Update |lid_state_| here instead of in ProcessEvent() so we can avoid
     // modifying it in response to queued events.
     if (device_types & DEVICE_LID_SWITCH)
-      GetLidStateFromEvent(events[i], &lid_state_);
-    ProcessEvent(events[i], device_types);
+      GetLidStateFromEvent(event, &lid_state_);
+    ProcessEvent(event, device_types);
   }
 }
 

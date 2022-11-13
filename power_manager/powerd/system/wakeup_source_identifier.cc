@@ -4,6 +4,7 @@
 
 #include "power_manager/powerd/system/wakeup_source_identifier.h"
 
+#include <functional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -109,10 +110,11 @@ void WakeupSourceIdentifier::HandleAddedInput(
 void WakeupSourceIdentifier::HandleRemovedInput(const std::string& input_name) {
   base::FilePath input_device_wakeup_path;
 
-  for (auto it = wakeup_devices_.begin(); it != wakeup_devices_.end(); it++) {
-    if (it->second.count(input_name)) {
-      it->second.erase(input_name);
-      input_device_wakeup_path = it->first;
+  for (std::pair<const base::FilePath, std::set<std::string>>& wakeup_device :
+       wakeup_devices_) {
+    if (wakeup_device.second.count(input_name)) {
+      wakeup_device.second.erase(input_name);
+      input_device_wakeup_path = wakeup_device.first;
     }
   }
 

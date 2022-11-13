@@ -506,8 +506,7 @@ TEST_F(PowerSupplyTest, LinePowerWithUsbType) {
             power_status.external_power);
 
   // Invalid usb_type values should report as low-power USB.
-  for (size_t i = 0; i < std::size(kInvalidUsbTypeValues); ++i) {
-    const char* kType = kInvalidUsbTypeValues[i];
+  for (const char* const kType : kInvalidUsbTypeValues) {
     SCOPED_TRACE(kType);
     WriteValue(ac_dir_, "usb_type", kType);
     ASSERT_TRUE(UpdateStatus(&power_status));
@@ -784,8 +783,7 @@ TEST_F(PowerSupplyTest, DualRolePowerSources) {
   ASSERT_EQ(Role::DUAL_ROLE, status.ports[1].role);
 
   // USB should not report as dual role if usb_type is craaaazy.
-  for (size_t i = 0; i < std::size(kInvalidUsbTypeValues); ++i) {
-    const char* kType = kInvalidUsbTypeValues[i];
+  for (const char* const kType : kInvalidUsbTypeValues) {
     SCOPED_TRACE(kType);
     WriteValue(line2_dir, "usb_type", kType);
     ASSERT_TRUE(UpdateStatus(&status));
