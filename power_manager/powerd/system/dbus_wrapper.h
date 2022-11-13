@@ -117,6 +117,9 @@ class DBusWrapperInterface {
 // bus.
 class DBusWrapper : public DBusWrapperInterface {
  public:
+  DBusWrapper(const DBusWrapper&) = delete;
+  DBusWrapper& operator=(const DBusWrapper&) = delete;
+
   ~DBusWrapper() override;
 
   // Factory method for DBusWrapper. Returns nullptr on failure.
@@ -156,8 +159,6 @@ class DBusWrapper : public DBusWrapperInterface {
   // Create DBusWrappers using the factory method above.
   DBusWrapper(scoped_refptr<dbus::Bus> bus,
               dbus::ExportedObject* exported_object);
-  DBusWrapper(const DBusWrapper&) = delete;
-  DBusWrapper& operator=(const DBusWrapper&) = delete;
 
   // Handles NameOwnerChanged signals emitted by dbus-daemon.
   void HandleNameOwnerChangedSignal(dbus::Signal* signal);

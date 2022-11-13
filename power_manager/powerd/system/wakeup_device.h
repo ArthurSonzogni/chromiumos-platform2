@@ -25,6 +25,9 @@ class WakeupDevice : public WakeupDeviceInterface {
   // directory under device sysfs path (wakeup/wakeupN/event_count).
   static const char kPowerEventCountPath[];
 
+  WakeupDevice(const WakeupDevice&) = delete;
+  WakeupDevice& operator=(const WakeupDevice&) = delete;
+
   ~WakeupDevice() override;
 
   // Implementation of WakeupDeviceInterface.
@@ -34,8 +37,6 @@ class WakeupDevice : public WakeupDeviceInterface {
 
  private:
   explicit WakeupDevice(const base::FilePath& path);
-  WakeupDevice(const WakeupDevice&) = delete;
-  WakeupDevice& operator=(const WakeupDevice&) = delete;
 
   // Reads the |kPowerEventCountPath|. |event_count_out| is set to the read
   // value if the read is successful. Returns true on success, false otherwise.
