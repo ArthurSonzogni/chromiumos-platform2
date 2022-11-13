@@ -39,7 +39,7 @@ class DBusWrapperInterface {
                                         const std::string& old_owner,
                                         const std::string& new_owner) {}
 
-    virtual ~Observer() {}
+    ~Observer() override {}
   };
 
   virtual ~DBusWrapperInterface() {}

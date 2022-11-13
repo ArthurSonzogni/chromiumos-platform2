@@ -16,7 +16,7 @@ namespace power_manager::system {
 class MockBluezBatteryProvider : public BluezBatteryProvider {
  public:
   MockBluezBatteryProvider() = default;
-  virtual ~MockBluezBatteryProvider() = default;
+  ~MockBluezBatteryProvider() override = default;
 
   MOCK_METHOD(void, UpdateDeviceBattery, (const std::string&, int), (override));
 };

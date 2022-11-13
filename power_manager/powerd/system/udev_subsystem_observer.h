@@ -18,7 +18,7 @@ struct UdevEvent;
 // Interface for receiving notification of udev events from UdevInterface.
 class UdevSubsystemObserver : public base::CheckedObserver {
  public:
-  virtual ~UdevSubsystemObserver() {}
+  ~UdevSubsystemObserver() override {}
 
   // Called when an event has been received from an observed subsystem.
   virtual void OnUdevEvent(const UdevEvent& event) = 0;

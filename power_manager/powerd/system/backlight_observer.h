@@ -18,7 +18,7 @@ class BacklightObserver : public base::CheckedObserver {
   virtual void OnBacklightDeviceChanged(BacklightInterface* backlight) = 0;
 
  protected:
-  virtual ~BacklightObserver() = default;
+  ~BacklightObserver() override = default;
 };
 
 }  // namespace power_manager::system

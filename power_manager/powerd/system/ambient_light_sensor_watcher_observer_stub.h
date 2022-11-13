@@ -25,7 +25,7 @@ class AmbientLightSensorWatcherObserverStub
   AmbientLightSensorWatcherObserverStub& operator=(
       const AmbientLightSensorWatcherObserverStub&) = delete;
 
-  virtual ~AmbientLightSensorWatcherObserverStub();
+  ~AmbientLightSensorWatcherObserverStub() override;
 
   int num_als_changes() const;
   int num_als() const;

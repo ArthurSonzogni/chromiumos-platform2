@@ -23,7 +23,7 @@ class SensorServiceHandlerObserver : public base::CheckedObserver {
   virtual void SensorServiceConnected() = 0;
   virtual void SensorServiceDisconnected() = 0;
 
-  virtual ~SensorServiceHandlerObserver();
+  ~SensorServiceHandlerObserver() override;
 
  protected:
   // Will add itself to |sensor_service_handler_| in c'tor, and remove itself in

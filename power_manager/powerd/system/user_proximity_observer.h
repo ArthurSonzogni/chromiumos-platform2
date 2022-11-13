@@ -25,7 +25,7 @@ class UserProximityObserver : public base::CheckedObserver {
   };
 
   UserProximityObserver() = default;
-  virtual ~UserProximityObserver() = default;
+  ~UserProximityObserver() override = default;
 
   // Called when a new proximity sensor is detected. |id| is a unique key
   // that will be used to identify this sensor in all future events; |roles|

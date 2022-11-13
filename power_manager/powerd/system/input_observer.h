@@ -15,7 +15,7 @@ namespace power_manager::system {
 // InputWatcher class.
 class InputObserver : public base::CheckedObserver {
  public:
-  virtual ~InputObserver() {}
+  ~InputObserver() override {}
 
   // Called when the lid is opened or closed. LidState::NOT_PRESENT will never
   // be passed.
