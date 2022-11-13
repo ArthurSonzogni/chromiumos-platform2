@@ -43,7 +43,7 @@ class MachineQuirks : public MachineQuirksInterface {
   MachineQuirks(const MachineQuirks&) = delete;
   MachineQuirks& operator=(const MachineQuirks&) = delete;
 
-  ~MachineQuirks();
+  ~MachineQuirks() override;
 
   void Init(PrefsInterface* prefs) override;
   // When a machine quirk is found, set the corresponding pref to 1

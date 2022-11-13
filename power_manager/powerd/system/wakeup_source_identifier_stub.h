@@ -16,7 +16,7 @@ class WakeupSourceIdentifierStub : public WakeupSourceIdentifierInterface {
   WakeupSourceIdentifierStub& operator=(const WakeupSourceIdentifierStub&) =
       delete;
 
-  ~WakeupSourceIdentifierStub();
+  ~WakeupSourceIdentifierStub() override;
 
   void PrepareForSuspendRequest() override;
 

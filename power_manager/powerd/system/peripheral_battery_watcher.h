@@ -67,7 +67,7 @@ class PeripheralBatteryWatcher : public UdevSubsystemObserver {
   PeripheralBatteryWatcher(const PeripheralBatteryWatcher&) = delete;
   PeripheralBatteryWatcher& operator=(const PeripheralBatteryWatcher&) = delete;
 
-  ~PeripheralBatteryWatcher();
+  ~PeripheralBatteryWatcher() override;
 
   void set_battery_path_for_testing(const base::FilePath& path) {
     peripheral_battery_path_ = path;
