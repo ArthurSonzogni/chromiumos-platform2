@@ -54,7 +54,6 @@ const char kGetInactivityDelaysMethod[] = "GetInactivityDelays";
 const char kCreateArcTimersMethod[] = "CreateArcTimers";
 const char kStartArcTimerMethod[] = "StartArcTimer";
 const char kDeleteArcTimersMethod[] = "DeleteArcTimers";
-const char kHasAmbientColorDeviceMethod[] = "HasAmbientColorDevice";
 const char kChangeWifiRegDomainMethod[] = "ChangeWifiRegDomain";
 const char kChargeNowForAdaptiveChargingMethod[] =
     "ChargeNowForAdaptiveCharging";

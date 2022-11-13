@@ -1265,8 +1265,6 @@ void Daemon::InitDBus() {
        &Daemon::HandleSetBacklightsForcedOffMethod},
       {kGetBacklightsForcedOffMethod,
        &Daemon::HandleGetBacklightsForcedOffMethod},
-      {kHasAmbientColorDeviceMethod,
-       &Daemon::HandleHasAmbientColorDeviceMethod},
       {kChangeWifiRegDomainMethod, &Daemon::HandleChangeWifiRegDomainMethod},
   };
   for (const auto& it : kDaemonMethods) {
@@ -1670,18 +1668,6 @@ std::unique_ptr<dbus::Response> Daemon::HandleGetBacklightsForcedOffMethod(
                         ? false
                         : all_backlight_controllers_.front()->GetForcedOff();
   dbus::MessageWriter(response.get()).AppendBool(forced_off);
-  return response;
-}
-
-std::unique_ptr<dbus::Response> Daemon::HandleHasAmbientColorDeviceMethod(
-    dbus::MethodCall* method_call) {
-  std::unique_ptr<dbus::Response> response(
-      dbus::Response::FromMethodCall(method_call));
-  bool has_color_device = false;
-  if (light_sensor_manager_)
-    has_color_device = light_sensor_manager_->HasColorSensor();
-
-  dbus::MessageWriter(response.get()).AppendBool(has_color_device);
   return response;
 }
 

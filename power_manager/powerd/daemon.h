@@ -293,11 +293,6 @@ class Daemon : public policy::AdaptiveChargingControllerInterface::Delegate,
       dbus::MethodCall* method_call);
   std::unique_ptr<dbus::Response> HandleGetBacklightsForcedOffMethod(
       dbus::MethodCall* method_call);
-  // TODO(crbug.com/1036038): Chrome will use "AllowAmbientEQ" feature flag
-  // instead of this D-Bus method. To be removed once Chrome finishes cleanup
-  // and uprev.
-  std::unique_ptr<dbus::Response> HandleHasAmbientColorDeviceMethod(
-      dbus::MethodCall* method_call);
   std::unique_ptr<dbus::Response> HandleChangeWifiRegDomainMethod(
       dbus::MethodCall* method_call);
   std::unique_ptr<dbus::Response> HandleChargeNowForAdaptiveChargingMethod(
