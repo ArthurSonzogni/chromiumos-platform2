@@ -200,9 +200,9 @@ void InternalBacklight::HandleTransitionTimeout() {
     double transition_fraction =
         (now - transition_start_time_).InMillisecondsF() /
         (transition_end_time_ - transition_start_time_).InMillisecondsF();
-    int64_t intermediate_amount =
-        lround(transition_fraction *
-               (transition_end_level_ - transition_start_level_));
+    int64_t intermediate_amount = lround(
+        transition_fraction *
+        static_cast<double>((transition_end_level_ - transition_start_level_)));
     new_level = transition_start_level_ + intermediate_amount;
   }
 

@@ -89,8 +89,10 @@ bool ReadInt64(const base::FilePath& directory,
 double ReadScaledDouble(const base::FilePath& directory,
                         const std::string& filename) {
   int64_t value = 0;
-  return ReadInt64(directory, filename, &value) ? kDoubleScaleFactor * value
-                                                : 0.0;
+  if (!ReadInt64(directory, filename, &value))
+    return 0.0;
+
+  return kDoubleScaleFactor * static_cast<double>(value);
 }
 
 // Returns the string surrounded by brackets via the |out| parameter.

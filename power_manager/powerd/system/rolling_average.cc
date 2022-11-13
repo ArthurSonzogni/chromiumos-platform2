@@ -33,7 +33,9 @@ void RollingAverage::AddSample(double value, const base::TimeTicks& time) {
 }
 
 double RollingAverage::GetAverage() const {
-  return samples_.empty() ? 0.0 : running_total_ / samples_.size();
+  return samples_.empty()
+             ? 0.0
+             : running_total_ / static_cast<double>(samples_.size());
 }
 
 base::TimeDelta RollingAverage::GetTimeDelta() const {
