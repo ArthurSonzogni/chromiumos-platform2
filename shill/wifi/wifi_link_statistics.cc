@@ -10,8 +10,6 @@
 
 #include <chromeos/dbus/service_constants.h>
 
-#include "shill/logging.h"
-
 namespace shill {
 namespace {
 // Determine if the WiFi link statistics should be print to log.
@@ -207,7 +205,8 @@ std::string WiFiLinkStatistics::LinkStatisticsTriggerToString(
     case WiFi::LinkStatisticsTrigger::kNetworkValidationFailure:
       return "kNetworkValidationFailure";
     default:
-      LOG(ERROR) << "Invalid LinkStatisticsTrigger: " << (unsigned int)trigger;
+      LOG(ERROR) << "Invalid LinkStatisticsTrigger: "
+                 << static_cast<unsigned int>(trigger);
       return "Invalid";
   }
 }
