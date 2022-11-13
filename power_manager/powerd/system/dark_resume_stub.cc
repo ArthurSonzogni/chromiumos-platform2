@@ -6,10 +6,6 @@
 
 namespace power_manager::system {
 
-DarkResumeStub::DarkResumeStub() {}
-
-DarkResumeStub::~DarkResumeStub() {}
-
 void DarkResumeStub::HandleSuccessfulResume(bool from_hibernate) {}
 
 bool DarkResumeStub::InDarkResume() {

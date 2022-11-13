@@ -17,7 +17,7 @@ namespace power_manager::system {
 // Watches for ambient light sensors being connected or disconnected.
 class AmbientLightSensorWatcherInterface {
  public:
-  virtual ~AmbientLightSensorWatcherInterface() {}
+  virtual ~AmbientLightSensorWatcherInterface() = default;
 
   // Returns the current list of connected ambient light sensors.
   const std::vector<AmbientLightSensorInfo>& GetAmbientLightSensors() const;

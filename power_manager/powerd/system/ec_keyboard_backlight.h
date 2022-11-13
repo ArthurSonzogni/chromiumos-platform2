@@ -28,7 +28,7 @@ class EcKeyboardBacklight : public InternalBacklight {
   EcKeyboardBacklight(const EcKeyboardBacklight&) = delete;
   EcKeyboardBacklight& operator=(const EcKeyboardBacklight&) = delete;
 
-  ~EcKeyboardBacklight() override;
+  ~EcKeyboardBacklight() override = default;
 
   bool Init(ec::EcUsbEndpointInterface* uep);
   bool SetBrightnessLevel(int64_t level, base::TimeDelta interval) override;

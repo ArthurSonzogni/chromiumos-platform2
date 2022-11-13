@@ -13,7 +13,7 @@ struct PowerStatus;
 
 class PowerSupplyObserver : public base::CheckedObserver {
  public:
-  ~PowerSupplyObserver() override {}
+  ~PowerSupplyObserver() override = default;
 
   // Called when the power status has been updated.
   virtual void OnPowerStatusUpdate() = 0;

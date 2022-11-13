@@ -15,8 +15,8 @@ namespace power_manager::system {
 // without user interaction to display notifications, or to show alarms.
 class DarkResumeInterface {
  public:
-  DarkResumeInterface() {}
-  virtual ~DarkResumeInterface() {}
+  DarkResumeInterface() = default;
+  virtual ~DarkResumeInterface() = default;
 
   // Reads the system state to see if it's in a dark resume.
   virtual void HandleSuccessfulResume(bool from_hibernate) = 0;

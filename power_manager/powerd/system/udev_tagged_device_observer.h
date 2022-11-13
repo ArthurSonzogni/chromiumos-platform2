@@ -15,7 +15,7 @@ class TaggedDevice;
 
 class UdevTaggedDeviceObserver : public base::CheckedObserver {
  public:
-  ~UdevTaggedDeviceObserver() override {}
+  ~UdevTaggedDeviceObserver() override = default;
 
   // Called whenever a device with powerd tags set is added or changed.
   // Implementations should be idempotent, i.e. multiple invocations should have

@@ -12,7 +12,7 @@ namespace power_manager::system {
 
 AmbientLightSensorStub::AmbientLightSensorStub(int lux) : lux_(lux) {}
 
-AmbientLightSensorStub::~AmbientLightSensorStub() {}
+AmbientLightSensorStub::~AmbientLightSensorStub() = default;
 
 void AmbientLightSensorStub::NotifyObservers() {
   for (AmbientLightObserver& observer : observers_)

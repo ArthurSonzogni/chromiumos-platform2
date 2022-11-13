@@ -10,11 +10,11 @@ namespace power_manager::system {
 // Helper class to manipulate EC settings.
 class CrosEcHelperInterface {
  public:
-  CrosEcHelperInterface() {}
+  CrosEcHelperInterface() = default;
   CrosEcHelperInterface(const CrosEcHelperInterface&) = delete;
   CrosEcHelperInterface& operator=(const CrosEcHelperInterface&) = delete;
 
-  virtual ~CrosEcHelperInterface() {}
+  virtual ~CrosEcHelperInterface() = default;
 
   // Checks whether EC supports setting wake angle.
   virtual bool IsWakeAngleSupported() = 0;

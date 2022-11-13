@@ -129,7 +129,7 @@ class InputWatcherTest : public testing::Test {
         temp_dir_.GetPath().Append(base::FilePath("sys/class/input"));
     CHECK(base::CreateDirectory(sys_class_input_path_));
   }
-  ~InputWatcherTest() override {}
+  ~InputWatcherTest() override = default;
 
  protected:
   // Initializes |input_watcher_|. Intended to be called by tests after

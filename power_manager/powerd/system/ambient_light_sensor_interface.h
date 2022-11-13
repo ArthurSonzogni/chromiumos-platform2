@@ -13,11 +13,11 @@ namespace power_manager::system {
 
 class AmbientLightSensorInterface {
  public:
-  AmbientLightSensorInterface() {}
+  AmbientLightSensorInterface() = default;
   AmbientLightSensorInterface(const AmbientLightSensorInterface&) = delete;
   AmbientLightSensorInterface& operator=(const AmbientLightSensorInterface&) =
       delete;
-  virtual ~AmbientLightSensorInterface() {}
+  virtual ~AmbientLightSensorInterface() = default;
 
   // Adds or removes observers for sensor readings.
   virtual void AddObserver(AmbientLightObserver* observer) = 0;

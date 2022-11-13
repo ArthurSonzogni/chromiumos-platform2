@@ -27,7 +27,7 @@ class AmbientLightSensorWatcherMojo : public AmbientLightSensorWatcherInterface,
   AmbientLightSensorWatcherMojo& operator=(
       const AmbientLightSensorWatcherMojo&) = delete;
 
-  ~AmbientLightSensorWatcherMojo() override;
+  ~AmbientLightSensorWatcherMojo() override = default;
 
   // SensorServiceHandlerObserver overrides:
   void OnNewDeviceAdded(

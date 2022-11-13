@@ -19,8 +19,8 @@ const base::FilePath kAcpiWakeupPath("/proc/acpi/wakeup");
 
 class AcpiWakeupFile : public AcpiWakeupFileInterface {
  public:
-  AcpiWakeupFile() {}
-  ~AcpiWakeupFile() override {}
+  AcpiWakeupFile() = default;
+  ~AcpiWakeupFile() override = default;
 
   bool Exists() override { return base::PathExists(kAcpiWakeupPath); }
 
@@ -38,8 +38,6 @@ class AcpiWakeupFile : public AcpiWakeupFileInterface {
 }  // namespace
 
 AcpiWakeupHelper::AcpiWakeupHelper() : file_(new AcpiWakeupFile()) {}
-
-AcpiWakeupHelper::~AcpiWakeupHelper() {}
 
 void AcpiWakeupHelper::set_file_for_testing(
     std::unique_ptr<AcpiWakeupFileInterface> file) {

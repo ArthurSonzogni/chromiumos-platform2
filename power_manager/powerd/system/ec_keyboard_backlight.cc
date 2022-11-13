@@ -27,8 +27,6 @@ EcKeyboardBacklight::EcKeyboardBacklight(
     std::unique_ptr<ec::GetKeyboardBacklightCommand> get_cmd)
     : get_cmd_(std::move(get_cmd)) {}
 
-EcKeyboardBacklight::~EcKeyboardBacklight() {}
-
 bool EcKeyboardBacklight::Init(ec::EcUsbEndpointInterface* uep) {
   usb_endpoint_ = uep;
   max_brightness_level_ = kMaxBrightnessLevel;

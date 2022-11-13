@@ -35,8 +35,8 @@ class AmbientLightSensorManagerMojoTest : public ::testing::Test {
   AmbientLightSensorManagerMojoTest& operator=(
       const AmbientLightSensorManagerMojoTest&) = delete;
 
-  AmbientLightSensorManagerMojoTest() {}
-  ~AmbientLightSensorManagerMojoTest() override {}
+  AmbientLightSensorManagerMojoTest() = default;
+  ~AmbientLightSensorManagerMojoTest() override = default;
 
  protected:
   void TearDown() override { manager_.reset(); }

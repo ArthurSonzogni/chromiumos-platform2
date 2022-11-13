@@ -7,7 +7,6 @@
 namespace power_manager::system {
 
 CrosEcHelperStub::CrosEcHelperStub() : wakeup_as_tablet_allowed_(false) {}
-CrosEcHelperStub::~CrosEcHelperStub() {}
 
 bool CrosEcHelperStub::IsWakeAngleSupported() {
   return true;

@@ -16,11 +16,11 @@ namespace power_manager::system {
 class TaggedDevice {
  public:
   // Default constructor for easier use with std::map.
-  TaggedDevice();
+  TaggedDevice() = default;
   TaggedDevice(const std::string& syspath,
                const base::FilePath& wakeup_device_path,
                const std::string& tags);
-  ~TaggedDevice();
+  ~TaggedDevice() = default;
 
   const std::string& syspath() const { return syspath_; }
   const base::FilePath& wakeup_device_path() const {

@@ -14,11 +14,11 @@ class InputObserver;
 // An interface for querying vaguely-input-related state.
 class InputWatcherInterface {
  public:
-  InputWatcherInterface() {}
+  InputWatcherInterface() = default;
   InputWatcherInterface(const InputWatcherInterface&) = delete;
   InputWatcherInterface& operator=(const InputWatcherInterface&) = delete;
 
-  virtual ~InputWatcherInterface() {}
+  virtual ~InputWatcherInterface() = default;
 
   // Adds or removes an observer.
   virtual void AddObserver(InputObserver* observer) = 0;

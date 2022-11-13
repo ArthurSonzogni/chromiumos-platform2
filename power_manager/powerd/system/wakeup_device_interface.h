@@ -15,11 +15,11 @@ namespace power_manager::system {
 // reasons for last wake.
 class WakeupDeviceInterface {
  public:
-  WakeupDeviceInterface() {}
+  WakeupDeviceInterface() = default;
   WakeupDeviceInterface(const WakeupDeviceInterface&) = delete;
   WakeupDeviceInterface& operator=(const WakeupDeviceInterface&) = delete;
 
-  virtual ~WakeupDeviceInterface() {}
+  virtual ~WakeupDeviceInterface() = default;
 
   // Records wakeup_count before suspending to identify if the
   // device woke up the system after resume.

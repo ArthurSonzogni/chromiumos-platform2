@@ -18,7 +18,7 @@ class CrosEcHelperStub : public CrosEcHelperInterface {
   CrosEcHelperStub(const CrosEcHelperStub&) = delete;
   CrosEcHelperStub& operator=(const CrosEcHelperStub&) = delete;
 
-  ~CrosEcHelperStub() override;
+  ~CrosEcHelperStub() override = default;
 
   // Implementation of EcHelperInterface.
   bool IsWakeAngleSupported() override;

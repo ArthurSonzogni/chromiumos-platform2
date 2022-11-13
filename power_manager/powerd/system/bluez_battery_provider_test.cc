@@ -32,11 +32,11 @@ constexpr char kTestAddressPath[] = "12_34_56_AB_CD_EF";
 
 class BluezBatteryProviderTest : public ::testing::Test {
  public:
-  BluezBatteryProviderTest() {}
+  BluezBatteryProviderTest() = default;
   BluezBatteryProviderTest(const BluezBatteryProviderTest&) = delete;
   BluezBatteryProviderTest& operator=(const BluezBatteryProviderTest&) = delete;
 
-  ~BluezBatteryProviderTest() override {}
+  ~BluezBatteryProviderTest() override = default;
 
   void SetUp() override { bus_ = new dbus::MockBus(dbus::Bus::Options()); }
 

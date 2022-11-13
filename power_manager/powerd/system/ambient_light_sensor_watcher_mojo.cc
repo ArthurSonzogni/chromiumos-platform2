@@ -16,8 +16,6 @@ AmbientLightSensorWatcherMojo::AmbientLightSensorWatcherMojo(
     SensorServiceHandler* sensor_service_handler)
     : SensorServiceHandlerObserver(sensor_service_handler) {}
 
-AmbientLightSensorWatcherMojo::~AmbientLightSensorWatcherMojo() {}
-
 void AmbientLightSensorWatcherMojo::OnNewDeviceAdded(
     int32_t iio_device_id, const std::vector<cros::mojom::DeviceType>& types) {
   if (std::find(types.begin(), types.end(), cros::mojom::DeviceType::LIGHT) ==

@@ -18,7 +18,7 @@ namespace system {
 // Abstraction layer that allows us to mock MachineQuirks when testing.
 class MachineQuirksInterface {
  public:
-  virtual ~MachineQuirksInterface() {}
+  virtual ~MachineQuirksInterface() = default;
   virtual void Init(PrefsInterface* prefs) = 0;
   // When a machine quirk is found, set the corresponding pref to 1
   virtual void ApplyQuirksToPrefs() = 0;
@@ -43,7 +43,7 @@ class MachineQuirks : public MachineQuirksInterface {
   MachineQuirks(const MachineQuirks&) = delete;
   MachineQuirks& operator=(const MachineQuirks&) = delete;
 
-  ~MachineQuirks() override;
+  ~MachineQuirks() override = default;
 
   void Init(PrefsInterface* prefs) override;
   // When a machine quirk is found, set the corresponding pref to 1

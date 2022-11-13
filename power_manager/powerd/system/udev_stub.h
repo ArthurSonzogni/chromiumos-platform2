@@ -25,7 +25,7 @@ class UdevStub : public UdevInterface {
   UdevStub(const UdevStub&) = delete;
   UdevStub& operator=(const UdevStub&) = delete;
 
-  ~UdevStub() override;
+  ~UdevStub() override = default;
 
   // Returns true if |observer| is registered for |subsystem|.
   bool HasSubsystemObserver(const std::string& subsystem,

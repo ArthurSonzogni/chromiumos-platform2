@@ -57,11 +57,11 @@ class EventDevice : public EventDeviceInterface {
 
 class EventDeviceFactory : public EventDeviceFactoryInterface {
  public:
-  EventDeviceFactory();
+  EventDeviceFactory() = default;
   EventDeviceFactory(const EventDeviceFactory&) = delete;
   EventDeviceFactory& operator=(const EventDeviceFactory&) = delete;
 
-  ~EventDeviceFactory() override;
+  ~EventDeviceFactory() override = default;
 
   // Implementation of EventDeviceFactoryInterface.
   std::shared_ptr<EventDeviceInterface> Open(

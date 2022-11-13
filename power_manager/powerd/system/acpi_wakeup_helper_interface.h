@@ -12,12 +12,12 @@ namespace power_manager::system {
 // Helper class to manipulate ACPI wakeup settings.
 class AcpiWakeupHelperInterface {
  public:
-  AcpiWakeupHelperInterface() {}
+  AcpiWakeupHelperInterface() = default;
   AcpiWakeupHelperInterface(const AcpiWakeupHelperInterface&) = delete;
   AcpiWakeupHelperInterface& operator=(const AcpiWakeupHelperInterface&) =
       delete;
 
-  virtual ~AcpiWakeupHelperInterface() {}
+  virtual ~AcpiWakeupHelperInterface() = default;
 
   // Checks whether /proc/acpi/wakeup is available on this system.
   virtual bool IsSupported() = 0;

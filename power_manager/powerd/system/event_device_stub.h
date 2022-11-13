@@ -24,7 +24,7 @@ class EventDeviceStub : public EventDeviceInterface {
   EventDeviceStub(const EventDeviceStub&) = delete;
   EventDeviceStub& operator=(const EventDeviceStub&) = delete;
 
-  ~EventDeviceStub() override;
+  ~EventDeviceStub() override = default;
 
   const base::RepeatingClosure& new_events_cb() const { return new_events_cb_; }
   void set_debug_name(const std::string& name) { debug_name_ = name; }
@@ -88,11 +88,11 @@ class EventDeviceStub : public EventDeviceInterface {
 // testing.
 class EventDeviceFactoryStub : public EventDeviceFactoryInterface {
  public:
-  EventDeviceFactoryStub();
+  EventDeviceFactoryStub() = default;
   EventDeviceFactoryStub(const EventDeviceFactoryStub&) = delete;
   EventDeviceFactoryStub& operator=(const EventDeviceFactoryStub&) = delete;
 
-  ~EventDeviceFactoryStub() override;
+  ~EventDeviceFactoryStub() override = default;
 
   // Adds a mapping in |devices_| so that |device| will be returned in response
   // to Open() calls for |path|.

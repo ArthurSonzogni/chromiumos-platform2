@@ -20,13 +20,13 @@ namespace power_manager::system {
 
 class WakeupSourceIdentifierInterface {
  public:
-  WakeupSourceIdentifierInterface() {}
+  WakeupSourceIdentifierInterface() = default;
   WakeupSourceIdentifierInterface(const WakeupSourceIdentifierInterface&) =
       delete;
   WakeupSourceIdentifierInterface& operator=(
       const WakeupSourceIdentifierInterface&) = delete;
 
-  virtual ~WakeupSourceIdentifierInterface() {}
+  virtual ~WakeupSourceIdentifierInterface() = default;
 
   // Should be called at the beginning of a new suspend request.
   virtual void PrepareForSuspendRequest() = 0;

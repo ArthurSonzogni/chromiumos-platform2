@@ -43,8 +43,6 @@ const char WakeupDevice::kPowerEventCountPath[] = "event_count";
 
 WakeupDevice::WakeupDevice(const base::FilePath& path) : sys_path_(path) {}
 
-WakeupDevice::~WakeupDevice() {}
-
 void WakeupDevice::PrepareForSuspend() {
   // This can happen when the device is no more a wake source (if power/wakeup
   // is disabled).

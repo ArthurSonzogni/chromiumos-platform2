@@ -55,8 +55,6 @@ CrosEcHelper::CrosEcHelper() {
   LOG(INFO) << "This device does not support EC wake angle control";
 }
 
-CrosEcHelper::~CrosEcHelper() {}
-
 bool CrosEcHelper::IsWakeAngleSupported() {
   return wake_angle_supported_;
 }

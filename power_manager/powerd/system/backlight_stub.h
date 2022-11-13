@@ -24,7 +24,7 @@ class BacklightStub : public BacklightInterface {
   BacklightStub(const BacklightStub&) = delete;
   BacklightStub& operator=(const BacklightStub&) = delete;
 
-  ~BacklightStub() override;
+  ~BacklightStub() override = default;
 
   void set_clock(Clock* clock) { clock_ = clock; }
   void set_device_exists(bool exists) { device_exists_ = exists; }

@@ -89,8 +89,6 @@ AmbientLightSensorDelegateFile::AmbientLightSensorDelegateFile(
       num_init_attempts_(0),
       expected_sensor_location_(SensorLocation::UNKNOWN) {}
 
-AmbientLightSensorDelegateFile::~AmbientLightSensorDelegateFile() {}
-
 void AmbientLightSensorDelegateFile::Init(bool read_immediately) {
   if (read_immediately)
     ReadAls();

@@ -13,8 +13,6 @@ BacklightStub::BacklightStub(int64_t max_level,
                              BrightnessScale scale)
     : max_level_(max_level), current_level_(current_level), scale_(scale) {}
 
-BacklightStub::~BacklightStub() {}
-
 void BacklightStub::NotifyDeviceChanged() {
   for (BacklightObserver& observer : observers_)
     observer.OnBacklightDeviceChanged(this);

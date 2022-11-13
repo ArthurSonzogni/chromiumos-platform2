@@ -17,11 +17,11 @@ class BacklightObserver;
 // Interface for getting and setting the backlight level from hardware.
 class BacklightInterface {
  public:
-  BacklightInterface() {}
+  BacklightInterface() = default;
   BacklightInterface(const BacklightInterface&) = delete;
   BacklightInterface& operator=(const BacklightInterface&) = delete;
 
-  virtual ~BacklightInterface() {}
+  virtual ~BacklightInterface() = default;
 
   enum class BrightnessScale {
     kUnknown,

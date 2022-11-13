@@ -50,8 +50,8 @@ struct UdevEvent {
 // Watches the udev manager for device-related events (e.g. hotplug).
 class UdevInterface {
  public:
-  UdevInterface() {}
-  virtual ~UdevInterface() {}
+  UdevInterface() = default;
+  virtual ~UdevInterface() = default;
 
   // Adds or removes an observer for watching |subsystem|. To receive events,
   // this subsystem must also be given a "powerd" tag by

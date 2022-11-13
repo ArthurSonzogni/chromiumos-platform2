@@ -24,8 +24,8 @@ namespace power_manager::system {
 
 class InternalBacklightTest : public ::testing::Test {
  public:
-  InternalBacklightTest() {}
-  ~InternalBacklightTest() override {}
+  InternalBacklightTest() = default;
+  ~InternalBacklightTest() override = default;
 
   void SetUp() override {
     CHECK(temp_dir_.CreateUniqueTempDir());

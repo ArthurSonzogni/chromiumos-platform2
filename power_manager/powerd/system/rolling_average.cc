@@ -16,8 +16,6 @@ RollingAverage::RollingAverage(size_t window_size)
   DCHECK_GT(window_size_, static_cast<size_t>(0));
 }
 
-RollingAverage::~RollingAverage() {}
-
 void RollingAverage::AddSample(double value, const base::TimeTicks& time) {
   if (!samples_.empty() && time < samples_.back().time) {
     LOG(WARNING) << "Sample " << value << "'s timestamp ("

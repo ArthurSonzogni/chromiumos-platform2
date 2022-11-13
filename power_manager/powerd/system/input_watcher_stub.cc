@@ -15,8 +15,6 @@ InputWatcherStub::InputWatcherStub()
       tablet_mode_(TabletMode::UNSUPPORTED),
       usb_input_device_connected_(true) {}
 
-InputWatcherStub::~InputWatcherStub() {}
-
 void InputWatcherStub::NotifyObserversAboutLidState() {
   for (InputObserver& observer : observers_)
     observer.OnLidEvent(lid_state_);

@@ -6,8 +6,8 @@
 
 namespace power_manager::system {
 
-AcpiWakeupHelperStub::AcpiWakeupHelperStub() {}
-AcpiWakeupHelperStub::~AcpiWakeupHelperStub() {}
+AcpiWakeupHelperStub::AcpiWakeupHelperStub() = default;
+AcpiWakeupHelperStub::~AcpiWakeupHelperStub() = default;
 
 bool AcpiWakeupHelperStub::IsSupported() {
   return true;

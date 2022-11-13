@@ -35,8 +35,8 @@ constexpr char kGoodSyspath2[] =
 
 class AmbientLightSensorWatcherMojoTest : public testing::Test {
  public:
-  AmbientLightSensorWatcherMojoTest() {}
-  ~AmbientLightSensorWatcherMojoTest() override {}
+  AmbientLightSensorWatcherMojoTest() = default;
+  ~AmbientLightSensorWatcherMojoTest() override = default;
 
  protected:
   void SetUp() override {

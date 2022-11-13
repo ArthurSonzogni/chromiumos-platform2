@@ -49,11 +49,11 @@ constexpr char kPeripheralChargerBatteryPCHGSysname[] = "PCHG0";
 
 class TestWrapper : public DBusWrapperStub {
  public:
-  TestWrapper() {}
+  TestWrapper() = default;
   TestWrapper(const TestWrapper&) = delete;
   TestWrapper& operator=(const TestWrapper&) = delete;
 
-  ~TestWrapper() override {}
+  ~TestWrapper() override = default;
 
   // Runs |loop_| until battery status is sent through D-Bus.
   bool RunUntilSignalSent(const base::TimeDelta& timeout) {
@@ -80,12 +80,12 @@ class TestWrapper : public DBusWrapperStub {
 
 class PeripheralBatteryWatcherTest : public ::testing::Test {
  public:
-  PeripheralBatteryWatcherTest() {}
+  PeripheralBatteryWatcherTest() = default;
   PeripheralBatteryWatcherTest(const PeripheralBatteryWatcherTest&) = delete;
   PeripheralBatteryWatcherTest& operator=(const PeripheralBatteryWatcherTest&) =
       delete;
 
-  ~PeripheralBatteryWatcherTest() override {}
+  ~PeripheralBatteryWatcherTest() override = default;
 
   void SetUp() override {
     auto bluez_battery_provider = std::make_unique<MockBluezBatteryProvider>();

@@ -44,11 +44,11 @@ class AmbientLightSensorDelegate {
   static std::optional<int> CalculateColorTemperature(
       const std::map<ChannelType, int>& readings);
 
-  AmbientLightSensorDelegate() {}
+  AmbientLightSensorDelegate() = default;
   AmbientLightSensorDelegate(const AmbientLightSensorDelegate&) = delete;
   AmbientLightSensorDelegate& operator=(const AmbientLightSensorDelegate&) =
       delete;
-  virtual ~AmbientLightSensorDelegate() {}
+  virtual ~AmbientLightSensorDelegate() = default;
 
   virtual bool IsColorSensor() const = 0;
   virtual base::FilePath GetIlluminancePath() const = 0;

@@ -23,8 +23,8 @@ constexpr char kGoodSyspath[] =
 
 class AmbientLightSensorWatcherUdevTest : public testing::Test {
  public:
-  AmbientLightSensorWatcherUdevTest() {}
-  ~AmbientLightSensorWatcherUdevTest() override {}
+  AmbientLightSensorWatcherUdevTest() = default;
+  ~AmbientLightSensorWatcherUdevTest() override = default;
 
  protected:
   void Init() { watcher_.Init(&udev_); }

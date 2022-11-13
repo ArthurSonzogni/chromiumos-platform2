@@ -20,7 +20,7 @@ class RollingAverage {
   RollingAverage(const RollingAverage&) = delete;
   RollingAverage& operator=(const RollingAverage&) = delete;
 
-  ~RollingAverage();
+  ~RollingAverage() = default;
 
   // Adds a sample of |value| collected at |time|. Negative values are allowed.
   void AddSample(double value, const base::TimeTicks& time);

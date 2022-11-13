@@ -13,7 +13,7 @@ namespace power_manager::system {
 // the AudioDetector class.
 class AudioObserver : public base::CheckedObserver {
  public:
-  ~AudioObserver() override {}
+  ~AudioObserver() override = default;
 
   // Called when audio activity starts or stops.
   virtual void OnAudioStateChange(bool active) = 0;

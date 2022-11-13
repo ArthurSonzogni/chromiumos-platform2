@@ -18,10 +18,10 @@ namespace {
 
 class TestObserver : public AmbientLightObserver {
  public:
-  TestObserver() {}
+  TestObserver() = default;
   TestObserver(const TestObserver&) = delete;
   TestObserver& operator=(const TestObserver&) = delete;
-  ~TestObserver() override {}
+  ~TestObserver() override = default;
 
   bool Updated() {
     bool updated = updated_;
@@ -65,11 +65,11 @@ class TestDelegate : public AmbientLightSensorDelegate {
 
 class AmbientLightSensorTest : public ::testing::Test {
  public:
-  AmbientLightSensorTest() {}
+  AmbientLightSensorTest() = default;
   AmbientLightSensorTest(const AmbientLightSensorTest&) = delete;
   AmbientLightSensorTest& operator=(const AmbientLightSensorTest&) = delete;
 
-  ~AmbientLightSensorTest() override {}
+  ~AmbientLightSensorTest() override = default;
 
  protected:
   void SetUp() override {

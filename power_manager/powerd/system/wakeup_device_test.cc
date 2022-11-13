@@ -51,7 +51,7 @@ class WakeupDeviceTest : public testing::Test {
   WakeupDeviceTest(const WakeupDeviceTest&) = delete;
   WakeupDeviceTest& operator=(const WakeupDeviceTest&) = delete;
 
-  ~WakeupDeviceTest() override {}
+  ~WakeupDeviceTest() override = default;
 
  protected:
   std::unique_ptr<WakeupDeviceInterface> wakeup_device_;

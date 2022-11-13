@@ -64,7 +64,7 @@ class AudioClientTest : public testing::Test {
   AudioClientTest(const AudioClientTest&) = delete;
   AudioClientTest& operator=(const AudioClientTest&) = delete;
 
-  ~AudioClientTest() override {}
+  ~AudioClientTest() override = default;
 
   void Init() { audio_client_.Init(&dbus_wrapper_, run_dir_.GetPath()); }
 

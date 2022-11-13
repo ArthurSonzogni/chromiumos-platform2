@@ -14,13 +14,10 @@
 #include <base/time/time.h>
 #include <base/timer/timer.h>
 
+#include "power_manager/common/clock.h"
 #include "power_manager/powerd/system/backlight_interface.h"
 
-namespace power_manager {
-
-class Clock;
-
-namespace system {
+namespace power_manager::system {
 
 // Controls a panel or keyboard backlight via sysfs.
 class InternalBacklight : public BacklightInterface {
@@ -35,7 +32,7 @@ class InternalBacklight : public BacklightInterface {
   InternalBacklight(const InternalBacklight&) = delete;
   InternalBacklight& operator=(const InternalBacklight&) = delete;
 
-  ~InternalBacklight() override;
+  ~InternalBacklight() override = default;
 
   // Initialize the backlight object.
   //
@@ -126,7 +123,6 @@ class InternalBacklight : public BacklightInterface {
   int64_t current_brightness_level_;
 };
 
-}  // namespace system
-}  // namespace power_manager
+}  // namespace power_manager::system
 
 #endif  // POWER_MANAGER_POWERD_SYSTEM_INTERNAL_BACKLIGHT_H_

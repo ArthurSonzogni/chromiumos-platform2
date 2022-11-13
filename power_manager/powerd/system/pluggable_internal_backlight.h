@@ -26,7 +26,7 @@ class UdevInterface;
 class PluggableInternalBacklight : public BacklightInterface,
                                    public UdevSubsystemObserver {
  public:
-  PluggableInternalBacklight();
+  PluggableInternalBacklight() = default;
   PluggableInternalBacklight(const PluggableInternalBacklight&) = delete;
   PluggableInternalBacklight& operator=(const PluggableInternalBacklight&) =
       delete;

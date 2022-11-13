@@ -17,11 +17,11 @@ namespace power_manager::system {
 // semantics.
 class AcpiWakeupFileInterface {
  public:
-  AcpiWakeupFileInterface() {}
+  AcpiWakeupFileInterface() = default;
   AcpiWakeupFileInterface(const AcpiWakeupFileInterface&) = delete;
   AcpiWakeupFileInterface& operator=(const AcpiWakeupFileInterface&) = delete;
 
-  virtual ~AcpiWakeupFileInterface() {}
+  virtual ~AcpiWakeupFileInterface() = default;
 
   // Checks whether the file exists.
   virtual bool Exists() = 0;
@@ -39,7 +39,7 @@ class AcpiWakeupHelper : public AcpiWakeupHelperInterface {
   AcpiWakeupHelper(const AcpiWakeupHelper&) = delete;
   AcpiWakeupHelper& operator=(const AcpiWakeupHelper&) = delete;
 
-  ~AcpiWakeupHelper() override;
+  ~AcpiWakeupHelper() override = default;
 
   // Forces use of a fake implementation instead of /proc/acpi/wakeup. Only for
   // testing.

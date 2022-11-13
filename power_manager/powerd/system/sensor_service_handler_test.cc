@@ -45,8 +45,8 @@ class SensorServiceHandlerTest : public ::testing::Test {
   SensorServiceHandlerTest(const SensorServiceHandlerTest&) = delete;
   SensorServiceHandlerTest& operator=(const SensorServiceHandlerTest&) = delete;
 
-  SensorServiceHandlerTest() {}
-  ~SensorServiceHandlerTest() override {}
+  SensorServiceHandlerTest() = default;
+  ~SensorServiceHandlerTest() override = default;
 
  protected:
   void SetUp() override {

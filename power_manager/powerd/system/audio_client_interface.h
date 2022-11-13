@@ -12,11 +12,11 @@ namespace power_manager::system {
 // Interface for monitoring system audio activity.
 class AudioClientInterface {
  public:
-  AudioClientInterface() {}
+  AudioClientInterface() = default;
   AudioClientInterface(const AudioClientInterface&) = delete;
   AudioClientInterface& operator=(const AudioClientInterface&) = delete;
 
-  virtual ~AudioClientInterface() {}
+  virtual ~AudioClientInterface() = default;
 
   // Returns the current state of the headphone jack and of HDMI audio.
   virtual bool GetHeadphoneJackPlugged() const = 0;

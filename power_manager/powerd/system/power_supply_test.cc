@@ -116,7 +116,7 @@ class TestObserver : public PowerSupplyObserver {
 
 class PowerSupplyTest : public ::testing::Test {
  public:
-  PowerSupplyTest() {}
+  PowerSupplyTest() = default;
 
   void SetUp() override {
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());

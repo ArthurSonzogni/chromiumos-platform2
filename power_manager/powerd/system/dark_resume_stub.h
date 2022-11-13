@@ -15,11 +15,11 @@ namespace power_manager::system {
 // Stub implementation of DarkResumeInterface for tests.
 class DarkResumeStub : public DarkResumeInterface {
  public:
-  DarkResumeStub();
+  DarkResumeStub() = default;
   DarkResumeStub(const DarkResumeStub&) = delete;
   DarkResumeStub& operator=(const DarkResumeStub&) = delete;
 
-  ~DarkResumeStub() override;
+  ~DarkResumeStub() override = default;
 
   void set_in_dark_resume(bool in_dark_resume) {
     in_dark_resume_ = in_dark_resume;

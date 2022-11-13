@@ -39,10 +39,10 @@ class DBusWrapperInterface {
                                         const std::string& old_owner,
                                         const std::string& new_owner) {}
 
-    ~Observer() override {}
+    ~Observer() override = default;
   };
 
-  virtual ~DBusWrapperInterface() {}
+  virtual ~DBusWrapperInterface() = default;
 
   // Adds or removes an observer.
   virtual void AddObserver(Observer* observer) = 0;

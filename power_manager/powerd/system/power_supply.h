@@ -226,8 +226,8 @@ struct PowerStatus {
 // voltage level, current, etc.
 class PowerSupplyInterface {
  public:
-  PowerSupplyInterface() {}
-  virtual ~PowerSupplyInterface() {}
+  PowerSupplyInterface() = default;
+  virtual ~PowerSupplyInterface() = default;
 
   // Adds or removes an observer.
   virtual void AddObserver(PowerSupplyObserver* observer) = 0;
@@ -275,7 +275,7 @@ class PowerSupply : public PowerSupplyInterface, public UdevSubsystemObserver {
     TestApi(const TestApi&) = delete;
     TestApi& operator=(const TestApi&) = delete;
 
-    ~TestApi() {}
+    ~TestApi() = default;
 
     base::TimeDelta current_poll_delay() const {
       return power_supply_->current_poll_delay_for_testing_;

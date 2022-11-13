@@ -18,7 +18,6 @@ EventDeviceStub::EventDeviceStub()
       initial_lid_state_(LidState::OPEN),
       initial_tablet_mode_(TabletMode::OFF) {}
 
-EventDeviceStub::~EventDeviceStub() {}
 
 void EventDeviceStub::AppendEvent(uint16_t type, uint16_t code, int32_t value) {
   input_event event;
@@ -91,10 +90,6 @@ void EventDeviceStub::WatchForEvents(
     const base::RepeatingClosure& new_events_cb) {
   new_events_cb_ = new_events_cb;
 }
-
-EventDeviceFactoryStub::EventDeviceFactoryStub() {}
-
-EventDeviceFactoryStub::~EventDeviceFactoryStub() {}
 
 void EventDeviceFactoryStub::RegisterDevice(
     const base::FilePath& path, std::shared_ptr<EventDeviceInterface> device) {

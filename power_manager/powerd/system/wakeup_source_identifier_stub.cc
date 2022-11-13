@@ -7,8 +7,8 @@
 namespace power_manager {
 namespace system {
 
-WakeupSourceIdentifierStub::WakeupSourceIdentifierStub() {}
-WakeupSourceIdentifierStub::~WakeupSourceIdentifierStub() {}
+WakeupSourceIdentifierStub::WakeupSourceIdentifierStub() = default;
+WakeupSourceIdentifierStub::~WakeupSourceIdentifierStub() = default;
 
 void WakeupSourceIdentifierStub::PrepareForSuspendRequest() {}
 

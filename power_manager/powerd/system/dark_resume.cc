@@ -15,10 +15,6 @@
 
 namespace power_manager::system {
 
-DarkResume::DarkResume() {}
-
-DarkResume::~DarkResume() {}
-
 void DarkResume::Init(
     PrefsInterface* prefs,
     WakeupSourceIdentifierInterface* wakeup_source_identifier) {

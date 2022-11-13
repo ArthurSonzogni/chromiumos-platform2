@@ -14,8 +14,6 @@ namespace power_manager::system {
 
 UdevStub::UdevStub() : stop_accepting_sysattr_for_testing_(false) {}
 
-UdevStub::~UdevStub() {}
-
 bool UdevStub::HasSubsystemObserver(const std::string& subsystem,
                                     UdevSubsystemObserver* observer) const {
   const auto it = subsystem_observers_.find(subsystem);

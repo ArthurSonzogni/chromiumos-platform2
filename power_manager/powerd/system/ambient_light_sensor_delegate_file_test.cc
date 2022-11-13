@@ -37,10 +37,10 @@ constexpr char kDeviceName[] = "device0";
 // until it receives notification that the ambient light level has changed.
 class TestObserver : public AmbientLightObserver {
  public:
-  TestObserver() {}
+  TestObserver() = default;
   TestObserver(const TestObserver&) = delete;
   TestObserver& operator=(const TestObserver&) = delete;
-  ~TestObserver() override {}
+  ~TestObserver() override = default;
 
   // Runs |loop_| until OnAmbientLightUpdated() is called.
   bool RunUntilAmbientLightUpdated() {
@@ -60,12 +60,12 @@ class TestObserver : public AmbientLightObserver {
 
 class AmbientLightSensorDelegateFileTest : public ::testing::Test {
  public:
-  AmbientLightSensorDelegateFileTest() {}
+  AmbientLightSensorDelegateFileTest() = default;
   AmbientLightSensorDelegateFileTest(
       const AmbientLightSensorDelegateFileTest&) = delete;
   AmbientLightSensorDelegateFileTest& operator=(
       const AmbientLightSensorDelegateFileTest&) = delete;
-  ~AmbientLightSensorDelegateFileTest() override {}
+  ~AmbientLightSensorDelegateFileTest() override = default;
 
  protected:
   void SetUp() override {

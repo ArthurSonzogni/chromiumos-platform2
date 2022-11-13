@@ -16,7 +16,7 @@ namespace power_manager::system {
 // Interface for creating external ambient light sensors.
 class ExternalAmbientLightSensorFactoryInterface {
  public:
-  virtual ~ExternalAmbientLightSensorFactoryInterface() {}
+  virtual ~ExternalAmbientLightSensorFactoryInterface() = default;
 
   virtual std::unique_ptr<AmbientLightSensorInterface> CreateSensor(
       const AmbientLightSensorInfo& als_info) const = 0;

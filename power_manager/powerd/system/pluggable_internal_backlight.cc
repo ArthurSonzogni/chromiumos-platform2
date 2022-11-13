@@ -15,8 +15,6 @@
 
 namespace power_manager::system {
 
-PluggableInternalBacklight::PluggableInternalBacklight() {}
-
 PluggableInternalBacklight::~PluggableInternalBacklight() {
   if (udev_)
     udev_->RemoveSubsystemObserver(udev_subsystem_, this);

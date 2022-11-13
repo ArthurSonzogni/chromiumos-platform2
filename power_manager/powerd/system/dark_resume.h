@@ -22,11 +22,11 @@ class WakeupSourceIdentifierInterface;
 // count to identify the wake source.
 class DarkResume : public DarkResumeInterface, public PrefsObserver {
  public:
-  DarkResume();
+  DarkResume() = default;
   DarkResume(const DarkResume&) = delete;
   DarkResume& operator=(const DarkResume&) = delete;
 
-  ~DarkResume() override;
+  ~DarkResume() override = default;
 
   // Reads preferences on whether dark resume is enabled.
   void Init(PrefsInterface* prefs,

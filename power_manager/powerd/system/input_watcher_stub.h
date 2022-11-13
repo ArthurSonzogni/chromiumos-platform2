@@ -18,7 +18,7 @@ class InputWatcherStub : public InputWatcherInterface {
   InputWatcherStub(const InputWatcherStub&) = delete;
   InputWatcherStub& operator=(const InputWatcherStub&) = delete;
 
-  ~InputWatcherStub() override;
+  ~InputWatcherStub() override = default;
 
   void set_lid_state(LidState state) { lid_state_ = state; }
   void set_tablet_mode(TabletMode tablet_mode) { tablet_mode_ = tablet_mode; }

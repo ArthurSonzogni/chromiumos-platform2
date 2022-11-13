@@ -69,8 +69,8 @@ class AmbientLightSensorDelegateMojoTest : public ::testing::Test {
   AmbientLightSensorDelegateMojoTest& operator=(
       const AmbientLightSensorDelegateMojoTest&) = delete;
 
-  AmbientLightSensorDelegateMojoTest() {}
-  ~AmbientLightSensorDelegateMojoTest() override {}
+  AmbientLightSensorDelegateMojoTest() = default;
+  ~AmbientLightSensorDelegateMojoTest() override = default;
 
  protected:
   void SetUp() override {

@@ -11,12 +11,12 @@ namespace power_manager::system {
 
 class AmbientLightSensorManagerInterface {
  public:
-  AmbientLightSensorManagerInterface() {}
+  AmbientLightSensorManagerInterface() = default;
   AmbientLightSensorManagerInterface(
       const AmbientLightSensorManagerInterface&) = delete;
   AmbientLightSensorManagerInterface& operator=(
       const AmbientLightSensorManagerInterface&) = delete;
-  virtual ~AmbientLightSensorManagerInterface() {}
+  virtual ~AmbientLightSensorManagerInterface() = default;
 
   virtual AmbientLightSensorInterface* GetSensorForInternalBacklight() = 0;
   virtual AmbientLightSensorInterface* GetSensorForKeyboardBacklight() = 0;

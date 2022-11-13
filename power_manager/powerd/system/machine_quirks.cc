@@ -33,8 +33,6 @@ const base::FilePath kPowerManagerSuspendPreventionFile(
 
 MachineQuirks::MachineQuirks() : dmi_id_dir_(kDefaultDmiIdDir) {}
 
-MachineQuirks::~MachineQuirks() {}
-
 void MachineQuirks::Init(PrefsInterface* prefs) {
   DCHECK(prefs);
   prefs_ = prefs;

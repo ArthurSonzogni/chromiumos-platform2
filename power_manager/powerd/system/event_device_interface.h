@@ -22,8 +22,8 @@ namespace power_manager::system {
 // the kernel evdev interface: /dev/input/eventN.
 class EventDeviceInterface {
  public:
-  EventDeviceInterface() {}
-  virtual ~EventDeviceInterface() {}
+  EventDeviceInterface() = default;
+  virtual ~EventDeviceInterface() = default;
 
   // Returns a human-readable identifier to be used for debugging.
   virtual std::string GetDebugName() = 0;
@@ -74,8 +74,8 @@ class EventDeviceInterface {
 
 class EventDeviceFactoryInterface {
  public:
-  EventDeviceFactoryInterface() {}
-  virtual ~EventDeviceFactoryInterface() {}
+  EventDeviceFactoryInterface() = default;
+  virtual ~EventDeviceFactoryInterface() = default;
 
   // Opens an event device by path. Returns the device or NULL on error.
   // TODO(crbug.com/1073772,ejcaruso): migrate to unique_ptr.

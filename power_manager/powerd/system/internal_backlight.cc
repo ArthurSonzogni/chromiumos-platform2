@@ -43,8 +43,6 @@ InternalBacklight::InternalBacklight()
       max_brightness_level_(0),
       current_brightness_level_(0) {}
 
-InternalBacklight::~InternalBacklight() {}
-
 bool InternalBacklight::Init(const base::FilePath& base_path,
                              const std::string& pattern) {
   base::FileEnumerator enumerator(base_path, false,

@@ -8,8 +8,6 @@
 
 namespace power_manager::system {
 
-TaggedDevice::TaggedDevice() {}
-
 TaggedDevice::TaggedDevice(const std::string& syspath,
                            const base::FilePath& wakeup_device_path,
                            const std::string& tags) {
@@ -20,8 +18,6 @@ TaggedDevice::TaggedDevice(const std::string& syspath,
   while (parts.GetNext())
     tags_.insert(parts.token());
 }
-
-TaggedDevice::~TaggedDevice() {}
 
 bool TaggedDevice::HasTag(const std::string& tag) const {
   return tags_.find(tag) != tags_.end();

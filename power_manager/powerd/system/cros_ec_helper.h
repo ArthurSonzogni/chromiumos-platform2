@@ -17,7 +17,7 @@ class CrosEcHelper : public CrosEcHelperInterface {
   CrosEcHelper(const CrosEcHelper&) = delete;
   CrosEcHelper& operator=(const CrosEcHelper&) = delete;
 
-  ~CrosEcHelper() override;
+  ~CrosEcHelper() override = default;
 
   // Implementation of EcHelperInterface.
   bool IsWakeAngleSupported() override;

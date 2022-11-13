@@ -35,7 +35,7 @@ class AmbientLightSensorDelegateFile : public AmbientLightSensorDelegate {
       delete;
   AmbientLightSensorDelegateFile& operator=(
       const AmbientLightSensorDelegateFile&) = delete;
-  ~AmbientLightSensorDelegateFile() override;
+  ~AmbientLightSensorDelegateFile() override = default;
 
   void set_device_list_path_for_testing(const base::FilePath& path) {
     device_list_path_ = path;

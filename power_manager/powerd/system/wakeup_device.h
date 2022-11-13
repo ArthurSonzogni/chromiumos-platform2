@@ -28,7 +28,7 @@ class WakeupDevice : public WakeupDeviceInterface {
   WakeupDevice(const WakeupDevice&) = delete;
   WakeupDevice& operator=(const WakeupDevice&) = delete;
 
-  ~WakeupDevice() override;
+  ~WakeupDevice() override = default;
 
   // Implementation of WakeupDeviceInterface.
   void PrepareForSuspend() override;

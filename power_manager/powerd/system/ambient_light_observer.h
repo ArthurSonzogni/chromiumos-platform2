@@ -15,7 +15,7 @@ class AmbientLightSensorInterface;
 // light level from AmbientLightSensor.
 class AmbientLightObserver : public base::CheckedObserver {
  public:
-  ~AmbientLightObserver() override {}
+  ~AmbientLightObserver() override = default;
 
   // Called when the light level is measured. The measured level may be
   // unchanged from the previously-observed level.

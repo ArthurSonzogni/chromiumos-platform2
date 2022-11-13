@@ -168,10 +168,6 @@ void EventDevice::WatchForEvents(const base::RepeatingClosure& new_events_cb) {
   fd_watcher_ = base::FileDescriptorWatcher::WatchReadable(fd_, new_events_cb);
 }
 
-EventDeviceFactory::EventDeviceFactory() {}
-
-EventDeviceFactory::~EventDeviceFactory() {}
-
 std::shared_ptr<EventDeviceInterface> EventDeviceFactory::Open(
     const base::FilePath& path) {
   int fd = HANDLE_EINTR(open(path.value().c_str(), O_RDONLY | O_NONBLOCK));
