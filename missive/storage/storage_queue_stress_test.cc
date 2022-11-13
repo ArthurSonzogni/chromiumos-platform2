@@ -61,8 +61,10 @@ class TestUploadClient : public UploaderInterface {
       std::pair<int64_t /*generation id */, int64_t /*sequencing id*/>,
       std::optional<std::string /*digest*/>>;
 
-  explicit TestUploadClient(LastRecordDigestMap* last_record_digest_map)
-      : last_record_digest_map_(last_record_digest_map) {}
+  TestUploadClient(base::RepeatingClosure completed_cb,
+                   LastRecordDigestMap* last_record_digest_map)
+      : completed_cb_(completed_cb),
+        last_record_digest_map_(last_record_digest_map) {}
 
   void ProcessRecord(EncryptedRecord encrypted_record,
                      ScopedReservation scoped_reservation,
@@ -115,9 +117,13 @@ class TestUploadClient : public UploaderInterface {
     ASSERT_TRUE(false) << "There should be no gaps";
   }
 
-  void Completed(Status status) override { ASSERT_OK(status); }
+  void Completed(Status status) override {
+    ASSERT_OK(status) << status;
+    completed_cb_.Run();
+  }
 
  private:
+  base::RepeatingClosure completed_cb_;
   std::optional<int64_t> generation_id_;
   LastRecordDigestMap* const last_record_digest_map_;
 
@@ -139,7 +145,8 @@ class StorageQueueStressTest : public ::testing::TestWithParam<size_t> {
     ResetTestStorageQueue();
   }
 
-  void CreateTestStorageQueueOrDie(const QueueOptions& options) {
+  void CreateTestStorageQueueOrDie(const QueueOptions& options,
+                                   base::RepeatingClosure completed_cb) {
     ASSERT_FALSE(storage_queue_) << "StorageQueue already assigned";
     test_encryption_module_ =
         base::MakeRefCounted<test::TestEncryptionModule>();
@@ -154,7 +161,7 @@ class StorageQueueStressTest : public ::testing::TestWithParam<size_t> {
     StorageQueue::Create(
         options,
         base::BindRepeating(&StorageQueueStressTest::AsyncStartTestUploader,
-                            base::Unretained(this)),
+                            base::Unretained(this), completed_cb),
         test_encryption_module_, test_compression_module_,
         storage_queue_create_event.cb());
     StatusOr<scoped_refptr<StorageQueue>> storage_queue_result =
@@ -184,11 +191,13 @@ class StorageQueueStressTest : public ::testing::TestWithParam<size_t> {
   }
 
   void AsyncStartTestUploader(
+      base::RepeatingClosure completed_cb,
       UploaderInterface::UploadReason reason,
       UploaderInterface::UploaderInterfaceResultCb start_uploader_cb) {
     // Ignore reason for stress test.
     std::move(start_uploader_cb)
-        .Run(std::make_unique<TestUploadClient>(&last_record_digest_map_));
+        .Run(std::make_unique<TestUploadClient>(completed_cb,
+                                                &last_record_digest_map_));
   }
 
   void WriteStringAsync(base::StringPiece data,
@@ -234,14 +243,18 @@ TEST_P(StorageQueueStressTest,
         &write_waiter);
 
     SCOPED_TRACE(base::StrCat({"Create ", base::NumberToString(iStart)}));
+    test::TestCallbackWaiter completed_waiter;
+    completed_waiter.Attach();
     CreateTestStorageQueueOrDie(
         QueueOptions(options_)
             .set_subdirectory("D1")
             .set_file_prefix("F0001")
             .set_max_single_file_size(GetParam())
             .set_upload_period(base::TimeDelta::Max())
-            .set_upload_retry_delay(
-                base::TimeDelta()));  // No retry by default.
+            .set_upload_retry_delay(base::TimeDelta()),
+        base::BindRepeating(
+            &test::TestCallbackWaiter::Signal,
+            base::Unretained(&completed_waiter)));  // No retry by default.
 
     // Write into the queue at random order (simultaneously).
     SCOPED_TRACE(base::StrCat({"Write ", base::NumberToString(iStart)}));
@@ -266,7 +279,10 @@ TEST_P(StorageQueueStressTest,
     FlushOrDie();
 
     SCOPED_TRACE(base::StrCat({"Reset ", base::NumberToString(iStart)}));
+
+    completed_waiter.Wait();
     ResetTestStorageQueue();
+
     EXPECT_THAT(last_record_digest_map_.size(),
                 Eq((iStart + 1) * kTotalWritesPerStart));
 
