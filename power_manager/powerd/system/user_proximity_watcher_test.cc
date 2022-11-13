@@ -99,8 +99,8 @@ class UserProximityWatcherTest : public testing::Test {
     }
     CHECK(user_proximity_watcher_->Init(&prefs_, &udev_, std::move(config),
                                         initial_tablet_mode_));
-    observer_.reset(
-        new TestObserver(user_proximity_watcher_.get(), &loop_runner_));
+    observer_ = std::make_unique<TestObserver>(user_proximity_watcher_.get(),
+                                               &loop_runner_);
   }
 
   ~UserProximityWatcherTest() override {

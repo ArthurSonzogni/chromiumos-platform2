@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdlib>
+#include <memory>
 #include <optional>
 #include <utility>
 
@@ -666,11 +667,11 @@ void PowerSupply::Init(
 
   int64_t samples = 0;
   CHECK(prefs_->GetInt64(kMaxCurrentSamplesPref, &samples));
-  current_samples_on_line_power_.reset(new RollingAverage(samples));
-  current_samples_on_battery_power_.reset(new RollingAverage(samples));
+  current_samples_on_line_power_ = std::make_unique<RollingAverage>(samples);
+  current_samples_on_battery_power_ = std::make_unique<RollingAverage>(samples);
 
   CHECK(prefs_->GetInt64(kMaxChargeSamplesPref, &samples));
-  charge_samples_.reset(new RollingAverage(samples));
+  charge_samples_ = std::make_unique<RollingAverage>(samples);
 
   LOG(INFO) << "Using low battery time threshold of "
             << low_battery_shutdown_time_.InSeconds()

@@ -127,8 +127,8 @@ class PowerSupplyTest : public ::testing::Test {
     prefs_.SetInt64(kMaxCurrentSamplesPref, 5);
     prefs_.SetInt64(kMaxChargeSamplesPref, 5);
 
-    power_supply_.reset(new PowerSupply);
-    test_api_.reset(new PowerSupply::TestApi(power_supply_.get()));
+    power_supply_ = std::make_unique<PowerSupply>();
+    test_api_ = std::make_unique<PowerSupply::TestApi>(power_supply_.get());
     test_api_->SetCurrentTime(kStartTime);
 
     ac_dir_ = temp_dir_.GetPath().Append("AC");
