@@ -29,7 +29,7 @@ void RollingAverage::AddSample(double value, const base::TimeTicks& time) {
   while (samples_.size() >= window_size_)
     DeleteSample();
   running_total_ += value;
-  samples_.push(Sample(value, time));
+  samples_.emplace(value, time);
 }
 
 double RollingAverage::GetAverage() const {

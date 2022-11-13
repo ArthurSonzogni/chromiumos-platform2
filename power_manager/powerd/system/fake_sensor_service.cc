@@ -75,9 +75,7 @@ void FakeSensorService::GetDevice(
 void FakeSensorService::RegisterNewDevicesObserver(
     mojo::PendingRemote<cros::mojom::SensorServiceNewDevicesObserver>
         observer) {
-  observers_.emplace_back(
-      mojo::Remote<cros::mojom::SensorServiceNewDevicesObserver>(
-          std::move(observer)));
+  observers_.emplace_back(std::move(observer));
 }
 
 }  // namespace power_manager::system

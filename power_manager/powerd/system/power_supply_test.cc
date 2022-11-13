@@ -322,7 +322,7 @@ TEST(PowerSupplyStaticTest, ConnectedSourcesAreEqual) {
 
   // A disconnected port should be disregarded.
   constexpr char kId1[] = "ID1";
-  a.ports.push_back(PowerStatus::Port());
+  a.ports.emplace_back();
   a.ports[0].id = kId1;
   EXPECT_TRUE(PowerSupply::ConnectedSourcesAreEqual(a, b));
   EXPECT_TRUE(PowerSupply::ConnectedSourcesAreEqual(b, a));
@@ -334,7 +334,7 @@ TEST(PowerSupplyStaticTest, ConnectedSourcesAreEqual) {
   EXPECT_FALSE(PowerSupply::ConnectedSourcesAreEqual(b, a));
 
   // A disconnected port that's added to |b| should be ignored.
-  b.ports.push_back(PowerStatus::Port());
+  b.ports.emplace_back();
   b.ports[0].id = kId1;
   EXPECT_FALSE(PowerSupply::ConnectedSourcesAreEqual(a, b));
   EXPECT_FALSE(PowerSupply::ConnectedSourcesAreEqual(b, a));

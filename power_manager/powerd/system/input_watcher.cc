@@ -179,7 +179,7 @@ LidState InputWatcher::QueryLidState() {
 
     queued_events_.reserve(queued_events_.size() + events.size());
     for (auto event : events)
-      queued_events_.push_back(std::make_pair(event, device_types));
+      queued_events_.emplace_back(event, device_types);
     VLOG(1) << "Queued " << events.size()
             << " event(s) while querying lid state";
   }

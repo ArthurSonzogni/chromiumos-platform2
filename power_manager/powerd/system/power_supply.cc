@@ -999,7 +999,7 @@ bool PowerSupply::UpdatePowerStatus(UpdatePolicy policy) {
 void PowerSupply::ReadLinePowerDirectory(const base::FilePath& path,
                                          PowerStatus* status) {
   // Add the port and fill in its details as we go.
-  status->ports.push_back(PowerStatus::Port());
+  status->ports.emplace_back();
   PowerStatus::Port* port = &status->ports.back();
   port->id = GetIdForPath(path);
   const auto location_it = port_names_.find(path.BaseName().value());
