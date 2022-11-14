@@ -1449,6 +1449,7 @@
         "hardware-properties": {
           "form-factor": "CHROMESLATE",
           "has-backlight": true,
+          "has-privacy-screen": true,
           "psu-type": "battery",
           "recovery-input": "POWER_BUTTON"
         },

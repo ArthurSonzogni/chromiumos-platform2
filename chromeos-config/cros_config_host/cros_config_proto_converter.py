@@ -1387,6 +1387,10 @@ def _build_hardware_properties(hw_topology):
     if recovery_input and recovery_input in recovery_input_names:
         _upsert(recovery_input_names[recovery_input], result, "recovery-input")
 
+    privacy_screen = hw_topology.screen.hardware_feature.privacy_screen
+    if privacy_screen.present == topology_pb2.HardwareFeatures.PRESENT:
+        result["has-privacy-screen"] = True
+
     return result
 
 
