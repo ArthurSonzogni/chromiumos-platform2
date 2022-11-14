@@ -52,6 +52,13 @@ constexpr char kNumDeadPixels[] = "Fingerprint.Sensor.NumDeadPixels";
 constexpr char kUploadTemplateSuccess[] = "Fingerprint.UploadTemplate.Success";
 constexpr char kPartialAttemptsBeforeSuccess[] =
     "Fingerprint.Unlock.PartialAttemptsBeforeSuccess";
+constexpr char kFpSensorErrorNoIrq[] = "Fingerprint.SensorError.NoIrq";
+constexpr char kFpSensorErrorSpiCommunication[] =
+    "Fingerprint.SensorError.SpiCommunication";
+constexpr char kFpSensorErrorBadHardwareID[] =
+    "Fingerprint.SensorError.BadHwid";
+constexpr char kFpSensorErrorInitializationFailure[] =
+    "Fingerprint.SensorError.InitializationFailure";
 
 // See
 // https://chromium.googlesource.com/chromium/src.git/+/HEAD/tools/metrics/histograms/README.md#count-histograms_choosing-number-of-buckets
@@ -204,6 +211,26 @@ bool BiodMetrics::SendPartialAttemptsBeforeSuccess(int partial_attempts) {
   // kMaxPartialAttempts = 20.
   return metrics_lib_->SendEnumToUMA(metrics::kPartialAttemptsBeforeSuccess,
                                      partial_attempts, 21);
+}
+
+bool BiodMetrics::SendFpSensorErrorNoIrq(bool no_irq) {
+  return metrics_lib_->SendBoolToUMA(metrics::kFpSensorErrorNoIrq, no_irq);
+}
+
+bool BiodMetrics::SendFpSensorErrorSpiCommunication(
+    bool spi_communication_error) {
+  return metrics_lib_->SendBoolToUMA(metrics::kFpSensorErrorSpiCommunication,
+                                     spi_communication_error);
+}
+
+bool BiodMetrics::SendFpSensorErrorBadHardwareID(bool bad_hwid) {
+  return metrics_lib_->SendBoolToUMA(metrics::kFpSensorErrorBadHardwareID,
+                                     bad_hwid);
+}
+
+bool BiodMetrics::SendFpSensorErrorInitializationFailure(bool init_failure) {
+  return metrics_lib_->SendBoolToUMA(
+      metrics::kFpSensorErrorInitializationFailure, init_failure);
 }
 
 }  // namespace biod

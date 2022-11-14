@@ -32,6 +32,10 @@ extern const char kUpdaterReason[];
 extern const char kUpdaterDurationNoUpdate[];
 extern const char kUpdaterDurationUpdate[];
 extern const char kNumDeadPixels[];
+extern const char kFpSensorErrorNoIrq[];
+extern const char kFpSensorErrorSpiCommunication[];
+extern const char kFpSensorErrorBadHardwareID[];
+extern const char kFpSensorErrorInitializationFailure[];
 
 // Special value to send to UMA on EC command related metrics.
 constexpr int kCmdRunFailure = -1;
@@ -80,6 +84,11 @@ class BiodMetricsInterface {
   virtual bool SendDeadPixelCount(int num_dead_pixels) = 0;
   virtual bool SendUploadTemplateResult(int ec_result) = 0;
   virtual bool SendPartialAttemptsBeforeSuccess(int partial_attempts) = 0;
+  virtual bool SendFpSensorErrorNoIrq(bool no_irq) = 0;
+  virtual bool SendFpSensorErrorSpiCommunication(
+      bool spi_communication_error) = 0;
+  virtual bool SendFpSensorErrorBadHardwareID(bool bad_hwid) = 0;
+  virtual bool SendFpSensorErrorInitializationFailure(bool init_failure) = 0;
 };
 
 class BiodMetrics : public BiodMetricsInterface {
@@ -134,6 +143,11 @@ class BiodMetrics : public BiodMetricsInterface {
   // EC_MKBP_FP_ERR_MATCH_NO_LOW_COVERAGE. This counts how many partial attempts
   // is actually used before each successful match.
   bool SendPartialAttemptsBeforeSuccess(int partial_attempts) override;
+
+  bool SendFpSensorErrorNoIrq(bool no_irq) override;
+  bool SendFpSensorErrorSpiCommunication(bool spi_communication_error) override;
+  bool SendFpSensorErrorBadHardwareID(bool bad_hwid) override;
+  bool SendFpSensorErrorInitializationFailure(bool init_failure) override;
 
   void SetMetricsLibraryForTesting(
       std::unique_ptr<MetricsLibraryInterface> metrics_lib);

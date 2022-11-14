@@ -444,18 +444,30 @@ bool CrosFpDevice::Init() {
   LOG(INFO) << "  Model ID   : 0x" << std::hex << info_->sensor_id()->model_id;
   LOG(INFO) << "  Version    : " << info_->sensor_id()->version;
   std::string error_flags;
-  if ((info_->GetFpSensorErrors() & FpSensorErrors::kNoIrq) !=
-      FpSensorErrors::kNone)
-    error_flags += "NO_IRQ ";
-  if ((info_->GetFpSensorErrors() & FpSensorErrors::kSpiCommunication) !=
-      FpSensorErrors::kNone)
-    error_flags += "SPI_COMM ";
-  if ((info_->GetFpSensorErrors() & FpSensorErrors::kBadHardwareID) !=
-      FpSensorErrors::kNone)
-    error_flags += "BAD_HWID ";
-  if ((info_->GetFpSensorErrors() & FpSensorErrors::kInitializationFailure) !=
-      FpSensorErrors::kNone)
-    error_flags += "INIT_FAIL";
+
+  bool no_irq_error = (info_->GetFpSensorErrors() & FpSensorErrors::kNoIrq) !=
+                      FpSensorErrors::kNone;
+  error_flags += (no_irq_error ? "NO_IRQ " : "");
+  biod_metrics_->SendFpSensorErrorNoIrq(no_irq_error);
+
+  bool spi_communication_error =
+      (info_->GetFpSensorErrors() & FpSensorErrors::kSpiCommunication) !=
+      FpSensorErrors::kNone;
+  error_flags += (spi_communication_error ? "SPI_COMM " : "");
+  biod_metrics_->SendFpSensorErrorSpiCommunication(spi_communication_error);
+
+  bool bad_hwid_error =
+      (info_->GetFpSensorErrors() & FpSensorErrors::kBadHardwareID) !=
+      FpSensorErrors::kNone;
+  error_flags += (bad_hwid_error ? "BAD_HWID " : "");
+  biod_metrics_->SendFpSensorErrorBadHardwareID(bad_hwid_error);
+
+  bool init_failure_error =
+      (info_->GetFpSensorErrors() & FpSensorErrors::kInitializationFailure) !=
+      FpSensorErrors::kNone;
+  error_flags += (init_failure_error ? "INIT_FAIL" : "");
+  biod_metrics_->SendFpSensorErrorInitializationFailure(init_failure_error);
+
   LOG(INFO) << "  Errors     : " << error_flags;
   LOG(INFO) << "CROS FP Image Info ";
   // Prints the pixel format in FOURCC format.

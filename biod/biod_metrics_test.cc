@@ -262,5 +262,62 @@ TEST_F(BiodMetricsTest, SendPartialAttemptsBeforeSuccess) {
   biod_metrics_.SendPartialAttemptsBeforeSuccess(partial_attempts);
 }
 
+TEST_F(BiodMetricsTest, SendFpSensorErrorNoIrq) {
+  EXPECT_CALL(*GetMetricsLibraryMock(),
+              SendBoolToUMA(metrics::kFpSensorErrorNoIrq, true))
+      .Times(1);
+  biod_metrics_.SendFpSensorErrorNoIrq(true);
+  testing::Mock::VerifyAndClearExpectations(GetMetricsLibraryMock());
+
+  EXPECT_CALL(*GetMetricsLibraryMock(),
+              SendBoolToUMA(metrics::kFpSensorErrorNoIrq, false))
+      .Times(1);
+  biod_metrics_.SendFpSensorErrorNoIrq(false);
+  testing::Mock::VerifyAndClearExpectations(GetMetricsLibraryMock());
+}
+
+TEST_F(BiodMetricsTest, SendFpSensorErrorSpiCommunication) {
+  EXPECT_CALL(*GetMetricsLibraryMock(),
+              SendBoolToUMA(metrics::kFpSensorErrorSpiCommunication, true))
+      .Times(1);
+  biod_metrics_.SendFpSensorErrorSpiCommunication(true);
+  testing::Mock::VerifyAndClearExpectations(GetMetricsLibraryMock());
+
+  EXPECT_CALL(*GetMetricsLibraryMock(),
+              SendBoolToUMA(metrics::kFpSensorErrorSpiCommunication, false))
+      .Times(1);
+  biod_metrics_.SendFpSensorErrorSpiCommunication(false);
+  testing::Mock::VerifyAndClearExpectations(GetMetricsLibraryMock());
+}
+
+TEST_F(BiodMetricsTest, SendFpSensorErrorBadHardwareID) {
+  EXPECT_CALL(*GetMetricsLibraryMock(),
+              SendBoolToUMA(metrics::kFpSensorErrorBadHardwareID, true))
+      .Times(1);
+  biod_metrics_.SendFpSensorErrorBadHardwareID(true);
+  testing::Mock::VerifyAndClearExpectations(GetMetricsLibraryMock());
+
+  EXPECT_CALL(*GetMetricsLibraryMock(),
+              SendBoolToUMA(metrics::kFpSensorErrorBadHardwareID, false))
+      .Times(1);
+  biod_metrics_.SendFpSensorErrorBadHardwareID(false);
+  testing::Mock::VerifyAndClearExpectations(GetMetricsLibraryMock());
+}
+
+TEST_F(BiodMetricsTest, SendFpSensorErrorInitializationFailure) {
+  EXPECT_CALL(*GetMetricsLibraryMock(),
+              SendBoolToUMA(metrics::kFpSensorErrorInitializationFailure, true))
+      .Times(1);
+  biod_metrics_.SendFpSensorErrorInitializationFailure(true);
+  testing::Mock::VerifyAndClearExpectations(GetMetricsLibraryMock());
+
+  EXPECT_CALL(
+      *GetMetricsLibraryMock(),
+      SendBoolToUMA(metrics::kFpSensorErrorInitializationFailure, false))
+      .Times(1);
+  biod_metrics_.SendFpSensorErrorInitializationFailure(false);
+  testing::Mock::VerifyAndClearExpectations(GetMetricsLibraryMock());
+}
+
 }  // namespace
 }  // namespace biod

@@ -48,6 +48,19 @@ class MockBiodMetrics : public BiodMetricsInterface {
               SendPartialAttemptsBeforeSuccess,
               (int partial_attempts),
               (override));
+  MOCK_METHOD(bool, SendFpSensorErrorNoIrq, (bool no_irq), (override));
+  MOCK_METHOD(bool,
+              SendFpSensorErrorSpiCommunication,
+              (bool spi_communication_error),
+              (override));
+  MOCK_METHOD(bool,
+              SendFpSensorErrorBadHardwareID,
+              (bool bad_hwid),
+              (override));
+  MOCK_METHOD(bool,
+              SendFpSensorErrorInitializationFailure,
+              (bool init_failure),
+              (override));
 };
 
 }  // namespace metrics
