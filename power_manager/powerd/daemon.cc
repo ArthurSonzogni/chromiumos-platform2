@@ -1266,6 +1266,7 @@ void Daemon::InitDBus() {
       {kGetBacklightsForcedOffMethod,
        &Daemon::HandleGetBacklightsForcedOffMethod},
       {kChangeWifiRegDomainMethod, &Daemon::HandleChangeWifiRegDomainMethod},
+      {kGetTabletModeMethod, &Daemon::HandleGetTabletModeMethod},
   };
   for (const auto& it : kDaemonMethods) {
     dbus_wrapper_->ExportMethod(
@@ -1700,6 +1701,16 @@ std::unique_ptr<dbus::Response> Daemon::HandleChangeWifiRegDomainMethod(
             << WifiRegDomainToString(domain) << "\"";
   wifi_controller_->HandleRegDomainChange(domain);
   return nullptr;
+}
+
+std::unique_ptr<dbus::Response> Daemon::HandleGetTabletModeMethod(
+    dbus::MethodCall* method_call) {
+  std::unique_ptr<dbus::Response> response(
+      dbus::Response::FromMethodCall(method_call));
+
+  const TabletMode tablet_mode = input_watcher_->GetTabletMode();
+  dbus::MessageWriter(response.get()).AppendBool(tablet_mode == TabletMode::ON);
+  return response;
 }
 
 void Daemon::OnSessionStateChange(const std::string& state_str) {

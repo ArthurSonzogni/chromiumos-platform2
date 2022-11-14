@@ -52,6 +52,7 @@ const char kCreateArcTimersMethod[] = "CreateArcTimers";
 const char kStartArcTimerMethod[] = "StartArcTimer";
 const char kDeleteArcTimersMethod[] = "DeleteArcTimers";
 const char kChangeWifiRegDomainMethod[] = "ChangeWifiRegDomain";
+const char kGetTabletModeMethod[] = "GetTabletMode";
 const char kChargeNowForAdaptiveChargingMethod[] =
     "ChargeNowForAdaptiveCharging";
 const char kGetChargeHistoryMethod[] = "GetChargeHistory";
