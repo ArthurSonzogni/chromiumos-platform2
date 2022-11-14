@@ -63,8 +63,8 @@ brillo::SecureBlob GetWebAuthnSecret() {
   return brillo::SecureBlob(kWebAuthnSecretString);
 }
 
-std::vector<uint8_t> GetCredentialSecret() {
-  return HexArrayToBlob(kCredentialSecretHex);
+brillo::SecureBlob GetCredentialSecret() {
+  return brillo::SecureBlob(HexArrayToBlob(kCredentialSecretHex));
 }
 
 std::vector<uint8_t> GetRpIdHash() {

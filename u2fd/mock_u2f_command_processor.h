@@ -9,6 +9,7 @@
 #include <vector>
 
 #include <brillo/dbus/dbus_method_response.h>
+#include <brillo/secure_blob.h>
 #include <gmock/gmock.h>
 #include <trunks/cr50_headers/u2f.h>
 
@@ -24,7 +25,7 @@ class MockU2fCommandProcessor : public U2fCommandProcessor {
   MOCK_METHOD(MakeCredentialResponse::MakeCredentialStatus,
               U2fGenerate,
               (const std::vector<uint8_t>& rp_id_hash,
-               const std::vector<uint8_t>& credential_secret,
+               const brillo::SecureBlob& credential_secret,
                PresenceRequirement presence_requirement,
                bool uv_compatible,
                const brillo::Blob* auth_time_secret_hash,
@@ -38,7 +39,7 @@ class MockU2fCommandProcessor : public U2fCommandProcessor {
               (const std::vector<uint8_t>& rp_id_hash,
                const std::vector<uint8_t>& hash_to_sign,
                const std::vector<uint8_t>& credential_id,
-               const std::vector<uint8_t>& credential_secret,
+               const brillo::SecureBlob& credential_secret,
                const std::vector<uint8_t>* credential_key_blob,
                PresenceRequirement presence_requirement,
                std::vector<uint8_t>* signature),
@@ -48,7 +49,7 @@ class MockU2fCommandProcessor : public U2fCommandProcessor {
               U2fSignCheckOnly,
               (const std::vector<uint8_t>& rp_id_hash,
                const std::vector<uint8_t>& credential_id,
-               const std::vector<uint8_t>& credential_secret,
+               const brillo::SecureBlob& credential_secret,
                const std::vector<uint8_t>* credential_key_blob),
               (override));
 

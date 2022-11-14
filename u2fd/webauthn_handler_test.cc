@@ -76,8 +76,8 @@ std::vector<uint8_t> GetWrongRpIdHash() {
   return util::Sha256(std::string(kWrongRpId));
 }
 
-std::vector<uint8_t> GetCorrectUserSecret() {
-  return std::vector<uint8_t>(32, '\xee');
+brillo::SecureBlob GetCorrectUserSecret() {
+  return brillo::SecureBlob(32, '\xee');
 }
 
 std::string GetClientDataHash() {
@@ -123,12 +123,6 @@ std::vector<uint8_t> GetSignature() {
 brillo::SecureBlob ArrayToSecureBlob(const char* array) {
   brillo::SecureBlob blob;
   CHECK(brillo::SecureBlob::HexStringToSecureBlob(array, &blob));
-  return blob;
-}
-
-brillo::Blob HexArrayToBlob(const char* array) {
-  brillo::Blob blob;
-  CHECK(base::HexStringToBytes(array, &blob));
   return blob;
 }
 
@@ -511,7 +505,7 @@ TEST_F(WebAuthnHandlerTestBase, GetAssertionInvalidKeyHandle) {
 
   EXPECT_CALL(*mock_webauthn_storage_,
               GetSecretAndKeyBlobByCredentialId(GetCredIdString(), _, _))
-      .WillOnce(DoAll(SetArgPointee<1>(HexArrayToBlob(kCredentialSecret)),
+      .WillOnce(DoAll(SetArgPointee<1>(ArrayToSecureBlob(kCredentialSecret)),
                       Return(true)));
   ExpectGetUserSecret();
   // 3 calls to SignCheckOnly, one for each credential type.
@@ -549,20 +543,21 @@ TEST_F(WebAuthnHandlerTestBase, GetAssertionUPUpgradedToUV) {
   // Pass DoU2fSignCheckOnly so that we can get to UV flow.
   EXPECT_CALL(*mock_webauthn_storage_, GetSecretAndKeyBlobByCredentialId(
                                            GetVersionedCredIdString(), _, _))
-      .WillRepeatedly(DoAll(SetArgPointee<1>(HexArrayToBlob(kCredentialSecret)),
-                            Return(true)));
+      .WillRepeatedly(
+          DoAll(SetArgPointee<1>(ArrayToSecureBlob(kCredentialSecret)),
+                Return(true)));
   ExpectGetUserSecret();
 
   EXPECT_CALL(*mock_processor_,
               U2fSignCheckOnly(GetRpIdHash(), GetVersionedCredId(),
-                               HexArrayToBlob(kCredentialSecret), _))
+                               ArrayToSecureBlob(kCredentialSecret), _))
       .WillRepeatedly(Return(HasCredentialsResponse::SUCCESS));
   EXPECT_CALL(*mock_processor_, U2fSignCheckOnly(_, GetVersionedCredId(),
                                                  GetCorrectUserSecret(), _))
       .WillRepeatedly(Return(HasCredentialsResponse::UNKNOWN_CREDENTIAL_ID));
   EXPECT_CALL(*mock_processor_,
               U2fSign(GetRpIdHash(), _, GetVersionedCredId(),
-                      HexArrayToBlob(kCredentialSecret), _,
+                      ArrayToSecureBlob(kCredentialSecret), _,
                       PresenceRequirement::kAuthorizationSecret, _))
       .WillOnce(Return(GetAssertionResponse::SUCCESS));
 
@@ -590,21 +585,22 @@ TEST_F(WebAuthnHandlerTestBase, GetAssertionVerificationSuccess) {
 
   EXPECT_CALL(*mock_webauthn_storage_, GetSecretAndKeyBlobByCredentialId(
                                            GetVersionedCredIdString(), _, _))
-      .WillRepeatedly(DoAll(SetArgPointee<1>(HexArrayToBlob(kCredentialSecret)),
-                            Return(true)));
+      .WillRepeatedly(
+          DoAll(SetArgPointee<1>(ArrayToSecureBlob(kCredentialSecret)),
+                Return(true)));
 
   ExpectGetUserSecret();
 
   EXPECT_CALL(*mock_processor_,
               U2fSignCheckOnly(GetRpIdHash(), GetVersionedCredId(),
-                               HexArrayToBlob(kCredentialSecret), _))
+                               ArrayToSecureBlob(kCredentialSecret), _))
       .WillRepeatedly(Return(HasCredentialsResponse::SUCCESS));
   EXPECT_CALL(*mock_processor_, U2fSignCheckOnly(_, GetVersionedCredId(),
                                                  GetCorrectUserSecret(), _))
       .WillRepeatedly(Return(HasCredentialsResponse::UNKNOWN_CREDENTIAL_ID));
   EXPECT_CALL(*mock_processor_,
               U2fSign(GetRpIdHash(), _, GetVersionedCredId(),
-                      HexArrayToBlob(kCredentialSecret), _,
+                      ArrayToSecureBlob(kCredentialSecret), _,
                       PresenceRequirement::kAuthorizationSecret, _))
       .WillOnce(DoAll(SetArgPointee<6>(GetSignature()),
                       Return(GetAssertionResponse::SUCCESS)));
@@ -669,13 +665,13 @@ TEST_F(WebAuthnHandlerTestBase, HasCredentialsMatchPlatformAuthenticator) {
 
   EXPECT_CALL(*mock_webauthn_storage_, GetSecretAndKeyBlobByCredentialId(
                                            GetVersionedCredIdString(), _, _))
-      .WillOnce(DoAll(SetArgPointee<1>(HexArrayToBlob(kCredentialSecret)),
+      .WillOnce(DoAll(SetArgPointee<1>(ArrayToSecureBlob(kCredentialSecret)),
                       Return(true)));
   ExpectGetUserSecret();
 
   EXPECT_CALL(*mock_processor_,
               U2fSignCheckOnly(GetRpIdHash(), GetVersionedCredId(),
-                               HexArrayToBlob(kCredentialSecret), _))
+                               ArrayToSecureBlob(kCredentialSecret), _))
       .WillOnce(Return(HasCredentialsResponse::SUCCESS));
   EXPECT_CALL(*mock_processor_,
               U2fSignCheckOnly(GetRpIdHash(), GetVersionedCredId(),
@@ -749,7 +745,7 @@ TEST_F(WebAuthnHandlerTestBase, HasCredentialsSomeMatches) {
 
   EXPECT_CALL(*mock_webauthn_storage_, GetSecretAndKeyBlobByCredentialId(
                                            GetVersionedCredIdString(), _, _))
-      .WillOnce(DoAll(SetArgPointee<1>(HexArrayToBlob(kCredentialSecret)),
+      .WillOnce(DoAll(SetArgPointee<1>(ArrayToSecureBlob(kCredentialSecret)),
                       Return(true)));
   EXPECT_CALL(*mock_webauthn_storage_, GetSecretAndKeyBlobByCredentialId(
                                            unknown_credential_id_string, _, _))
@@ -758,7 +754,7 @@ TEST_F(WebAuthnHandlerTestBase, HasCredentialsSomeMatches) {
 
   EXPECT_CALL(*mock_processor_,
               U2fSignCheckOnly(GetRpIdHash(), GetVersionedCredId(),
-                               HexArrayToBlob(kCredentialSecret), _))
+                               ArrayToSecureBlob(kCredentialSecret), _))
       .WillOnce(Return(HasCredentialsResponse::SUCCESS));
   EXPECT_CALL(*mock_processor_,
               U2fSignCheckOnly(GetRpIdHash(), GetVersionedCredId(),
@@ -1199,19 +1195,20 @@ TEST_F(WebAuthnHandlerTestU2fMode,
 
   EXPECT_CALL(*mock_webauthn_storage_, GetSecretAndKeyBlobByCredentialId(
                                            GetVersionedCredIdString(), _, _))
-      .WillRepeatedly(DoAll(SetArgPointee<1>(HexArrayToBlob(kCredentialSecret)),
-                            Return(true)));
+      .WillRepeatedly(
+          DoAll(SetArgPointee<1>(ArrayToSecureBlob(kCredentialSecret)),
+                Return(true)));
   ExpectGetUserSecret();
   EXPECT_CALL(*mock_processor_,
               U2fSignCheckOnly(GetRpIdHash(), GetVersionedCredId(),
-                               HexArrayToBlob(kCredentialSecret), _))
+                               ArrayToSecureBlob(kCredentialSecret), _))
       .WillOnce(Return(HasCredentialsResponse::SUCCESS));
   EXPECT_CALL(*mock_processor_, U2fSignCheckOnly(_, GetVersionedCredId(),
                                                  GetCorrectUserSecret(), _))
       .WillRepeatedly(Return(HasCredentialsResponse::UNKNOWN_CREDENTIAL_ID));
   EXPECT_CALL(*mock_processor_,
               U2fSign(GetRpIdHash(), _, GetVersionedCredId(),
-                      HexArrayToBlob(kCredentialSecret), _,
+                      ArrayToSecureBlob(kCredentialSecret), _,
                       PresenceRequirement::kAuthorizationSecret, _))
       .WillOnce(DoAll(SetArgPointee<6>(GetSignature()),
                       Return(GetAssertionResponse::SUCCESS)));
@@ -1264,8 +1261,9 @@ TEST_F(WebAuthnHandlerTestU2fMode,
 
   EXPECT_CALL(*mock_webauthn_storage_, GetSecretAndKeyBlobByCredentialId(
                                            GetVersionedCredIdString(), _, _))
-      .WillRepeatedly(DoAll(SetArgPointee<1>(HexArrayToBlob(kCredentialSecret)),
-                            Return(true)));
+      .WillRepeatedly(
+          DoAll(SetArgPointee<1>(ArrayToSecureBlob(kCredentialSecret)),
+                Return(true)));
   EXPECT_CALL(*mock_webauthn_storage_,
               GetSecretAndKeyBlobByCredentialId(GetCredIdString(), _, _))
       .WillRepeatedly(Return(false));
@@ -1274,7 +1272,7 @@ TEST_F(WebAuthnHandlerTestU2fMode,
   // credential should go through U2fSign.
   EXPECT_CALL(*mock_processor_,
               U2fSignCheckOnly(GetRpIdHash(), GetVersionedCredId(),
-                               HexArrayToBlob(kCredentialSecret), _))
+                               ArrayToSecureBlob(kCredentialSecret), _))
       .WillOnce(Return(HasCredentialsResponse::SUCCESS));
   EXPECT_CALL(*mock_processor_, U2fSignCheckOnly(_, GetVersionedCredId(),
                                                  GetCorrectUserSecret(), _))
@@ -1285,7 +1283,7 @@ TEST_F(WebAuthnHandlerTestU2fMode,
 
   EXPECT_CALL(*mock_processor_,
               U2fSign(GetRpIdHash(), _, GetVersionedCredId(),
-                      HexArrayToBlob(kCredentialSecret), _,
+                      ArrayToSecureBlob(kCredentialSecret), _,
                       PresenceRequirement::kAuthorizationSecret, _))
       .WillOnce(DoAll(SetArgPointee<6>(GetSignature()),
                       Return(GetAssertionResponse::SUCCESS)));

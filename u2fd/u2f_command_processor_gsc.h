@@ -10,6 +10,7 @@
 #include <vector>
 
 #include <brillo/dbus/dbus_method_response.h>
+#include <brillo/secure_blob.h>
 #include <trunks/cr50_headers/u2f.h>
 #include <u2f/proto_bindings/u2f_interface.pb.h>
 
@@ -40,7 +41,7 @@ class U2fCommandProcessorGsc : public U2fCommandProcessor {
   // |presence_requirement|.
   MakeCredentialResponse::MakeCredentialStatus U2fGenerate(
       const std::vector<uint8_t>& rp_id_hash,
-      const std::vector<uint8_t>& credential_secret,
+      const brillo::SecureBlob& credential_secret,
       PresenceRequirement presence_requirement,
       bool uv_compatible,
       const brillo::Blob* auth_time_secret_hash,
@@ -57,7 +58,7 @@ class U2fCommandProcessorGsc : public U2fCommandProcessor {
       const std::vector<uint8_t>& rp_id_hash,
       const std::vector<uint8_t>& hash_to_sign,
       const std::vector<uint8_t>& credential_id,
-      const std::vector<uint8_t>& credential_secret,
+      const brillo::SecureBlob& credential_secret,
       const std::vector<uint8_t>* credential_key_blob,
       PresenceRequirement presence_requirement,
       std::vector<uint8_t>* signature) override;
@@ -67,7 +68,7 @@ class U2fCommandProcessorGsc : public U2fCommandProcessor {
   HasCredentialsResponse::HasCredentialsStatus U2fSignCheckOnly(
       const std::vector<uint8_t>& rp_id_hash,
       const std::vector<uint8_t>& credential_id,
-      const std::vector<uint8_t>& credential_secret,
+      const brillo::SecureBlob& credential_secret,
       const std::vector<uint8_t>* credential_key_blob) override;
 
   // Run a U2F_ATTEST command to sign data using the cr50 individual attestation

@@ -444,7 +444,7 @@ void WebAuthnHandler::DoMakeCredential(
                          session.request.verification_type() ==
                              VerificationType::VERIFICATION_USER_PRESENCE);
 
-  brillo::Blob credential_secret(kCredentialSecretSize);
+  brillo::SecureBlob credential_secret(kCredentialSecretSize);
   if (uv_compatible) {
     if (RAND_bytes(credential_secret.data(), credential_secret.size()) != 1) {
       LOG(ERROR)
@@ -465,8 +465,7 @@ void WebAuthnHandler::DoMakeCredential(
       session.response->Return(response);
       return;
     }
-    credential_secret =
-        std::vector<uint8_t>(legacy_secret->begin(), legacy_secret->end());
+    credential_secret = std::move(*legacy_secret);
   }
 
   MakeCredentialResponse::MakeCredentialStatus generate_status =
@@ -821,7 +820,8 @@ void WebAuthnHandler::DoGetAssertion(struct GetAssertionSession session,
   GetAssertionResponse response;
 
   bool is_u2f_authenticator_credential = false;
-  std::vector<uint8_t> credential_secret, credential_key_blob;
+  brillo::SecureBlob credential_secret;
+  std::vector<uint8_t> credential_key_blob;
   if (!webauthn_storage_->GetSecretAndKeyBlobByCredentialId(
           session.credential_id, &credential_secret, &credential_key_blob)) {
     if (!AllowPresenceMode()) {
@@ -842,8 +842,7 @@ void WebAuthnHandler::DoGetAssertion(struct GetAssertionSession session,
       session.response->Return(response);
       return;
     }
-    credential_secret =
-        std::vector<uint8_t>(legacy_secret->begin(), legacy_secret->end());
+    credential_secret = std::move(*legacy_secret);
     is_u2f_authenticator_credential = true;
   }
 
@@ -902,7 +901,8 @@ MatchedCredentials WebAuthnHandler::FindMatchedCredentials(
 
   // Platform authenticator credentials.
   for (const auto& credential_id : all_credentials) {
-    std::vector<uint8_t> credential_secret, credential_key_blob;
+    brillo::SecureBlob credential_secret;
+    std::vector<uint8_t> credential_key_blob;
 
     if (!webauthn_storage_->GetSecretAndKeyBlobByCredentialId(
             credential_id, &credential_secret, &credential_key_blob))
@@ -934,9 +934,7 @@ MatchedCredentials WebAuthnHandler::FindMatchedCredentials(
     // First try matching rp_id.
     HasCredentialsResponse::HasCredentialsStatus ret =
         u2f_command_processor_->U2fSignCheckOnly(
-            rp_id_hash, util::ToVector(credential_id),
-            std::vector<uint8_t>(user_secret->begin(), user_secret->end()),
-            nullptr);
+            rp_id_hash, util::ToVector(credential_id), *user_secret, nullptr);
     DCHECK(HasCredentialsResponse::HasCredentialsStatus_IsValid(ret));
     switch (ret) {
       case HasCredentialsResponse::SUCCESS:
@@ -959,9 +957,7 @@ MatchedCredentials WebAuthnHandler::FindMatchedCredentials(
 
     // Try matching app_id.
     ret = u2f_command_processor_->U2fSignCheckOnly(
-        app_id_hash, util::ToVector(credential_id),
-        std::vector<uint8_t>(user_secret->begin(), user_secret->end()),
-        nullptr);
+        app_id_hash, util::ToVector(credential_id), *user_secret, nullptr);
     DCHECK(HasCredentialsResponse::HasCredentialsStatus_IsValid(ret));
     switch (ret) {
       case HasCredentialsResponse::SUCCESS:

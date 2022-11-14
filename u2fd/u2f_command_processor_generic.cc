@@ -80,6 +80,14 @@ bool IsCredentialIdValid(struct credential_id_v1 cred) {
   return original_hash == hash;
 }
 
+// Normally we shouldn't put secure blob data into raw vectors, but in this U2F
+// implementation the cred secret is more like a salt than a secret, so it's
+// fine to not protect it using secure container.
+void AppendCredSecretToVector(const brillo::SecureBlob& from,
+                              std::vector<uint8_t>* to) {
+  to->insert(to->end(), from.begin(), from.end());
+}
+
 }  // namespace
 
 U2fCommandProcessorGeneric::U2fCommandProcessorGeneric(
@@ -96,7 +104,7 @@ U2fCommandProcessorGeneric::U2fCommandProcessorGeneric(
 MakeCredentialResponse::MakeCredentialStatus
 U2fCommandProcessorGeneric::U2fGenerate(
     const std::vector<uint8_t>& rp_id_hash,
-    const std::vector<uint8_t>& credential_secret,
+    const brillo::SecureBlob& credential_secret,
     PresenceRequirement presence_requirement,
     bool uv_compatible,
     const brillo::Blob* auth_time_secret_hash,
@@ -155,7 +163,7 @@ U2fCommandProcessorGeneric::U2fGenerate(
   util::AppendToVector(kCurrentVersion, &data);
   util::AppendToVector(auth_salt, &data);
   util::AppendToVector(rp_id_hash, &data);
-  util::AppendToVector(credential_secret, &data);
+  AppendCredSecretToVector(credential_secret, &data);
   util::AppendToVector(result->key_blob, &data);
 
   std::vector<uint8_t> hmac = util::HmacSha256(*webauthn_secret, data);
@@ -183,7 +191,7 @@ GetAssertionResponse::GetAssertionStatus U2fCommandProcessorGeneric::U2fSign(
     const std::vector<uint8_t>& rp_id_hash,
     const std::vector<uint8_t>& hash_to_sign,
     const std::vector<uint8_t>& credential_id,
-    const std::vector<uint8_t>& credential_secret,
+    const brillo::SecureBlob& credential_secret,
     const std::vector<uint8_t>* credential_key_blob,
     PresenceRequirement presence_requirement,
     std::vector<uint8_t>* signature) {
@@ -223,7 +231,7 @@ GetAssertionResponse::GetAssertionStatus U2fCommandProcessorGeneric::U2fSign(
   util::AppendToVector(cred.version, &data);
   util::AppendToVector(cred.auth_salt, &data);
   util::AppendToVector(rp_id_hash, &data);
-  util::AppendToVector(credential_secret, &data);
+  AppendCredSecretToVector(credential_secret, &data);
   util::AppendToVector(*credential_key_blob, &data);
 
   std::vector<uint8_t> hmac = util::HmacSha256(*webauthn_secret, data);
@@ -262,7 +270,7 @@ HasCredentialsResponse::HasCredentialsStatus
 U2fCommandProcessorGeneric::U2fSignCheckOnly(
     const std::vector<uint8_t>& rp_id_hash,
     const std::vector<uint8_t>& credential_id,
-    const std::vector<uint8_t>& credential_secret,
+    const brillo::SecureBlob& credential_secret,
     const std::vector<uint8_t>* credential_key_blob) {
   if (rp_id_hash.size() != SHA256_DIGEST_LENGTH ||
       credential_secret.size() != kCredentialSecretSize ||

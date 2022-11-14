@@ -62,8 +62,8 @@ std::vector<uint8_t> GetDataToSign() {
   return std::vector<uint8_t>(256, 0xcd);
 }
 
-std::vector<uint8_t> GetUserSecret() {
-  return std::vector<uint8_t>(32, 'E');
+brillo::SecureBlob GetUserSecret() {
+  return brillo::SecureBlob(32, 'E');
 }
 
 std::vector<uint8_t> GetCredId() {
@@ -186,9 +186,9 @@ const struct u2f_generate_versioned_resp kU2fGenerateVersionedResponse = {
 const struct u2f_sign_resp kU2fSignResponse = {.sig_r = {[0 ... 31] = 0x12},
                                                .sig_s = {[0 ... 31] = 0x34}};
 
-brillo::Blob HexArrayToBlob(const char* array) {
-  brillo::Blob blob;
-  CHECK(base::HexStringToBytes(array, &blob));
+brillo::SecureBlob ArrayToSecureBlob(const char* array) {
+  brillo::SecureBlob blob;
+  CHECK(brillo::SecureBlob::HexStringToSecureBlob(array, &blob));
   return blob;
 }
 
@@ -250,9 +250,9 @@ class U2fCommandProcessorGscTest : public ::testing::Test {
       credential_pubkey = &pubkey;
     }
     return processor_->U2fGenerate(
-        GetRpIdHash(), HexArrayToBlob(kCredentialSecret), presence_requirement,
-        uv_compatible, auth_time_secret_hash, credential_id, credential_pubkey,
-        nullptr);
+        GetRpIdHash(), ArrayToSecureBlob(kCredentialSecret),
+        presence_requirement, uv_compatible, auth_time_secret_hash,
+        credential_id, credential_pubkey, nullptr);
   }
 
   GetAssertionResponse::GetAssertionStatus U2fSign(
@@ -261,15 +261,16 @@ class U2fCommandProcessorGscTest : public ::testing::Test {
       PresenceRequirement presence_requirement,
       std::vector<uint8_t>* signature) {
     return processor_->U2fSign(GetRpIdHash(), hash_to_sign, credential_id,
-                               HexArrayToBlob(kCredentialSecret), nullptr,
+                               ArrayToSecureBlob(kCredentialSecret), nullptr,
                                presence_requirement, signature);
   }
 
   HasCredentialsResponse::HasCredentialsStatus U2fSignCheckOnly(
       const std::vector<uint8_t>& rp_id_hash,
       const std::vector<uint8_t>& credential_id) {
-    return processor_->U2fSignCheckOnly(
-        rp_id_hash, credential_id, HexArrayToBlob(kCredentialSecret), nullptr);
+    return processor_->U2fSignCheckOnly(rp_id_hash, credential_id,
+                                        ArrayToSecureBlob(kCredentialSecret),
+                                        nullptr);
   }
 
   MakeCredentialResponse::MakeCredentialStatus G2fAttest(
@@ -514,7 +515,7 @@ TEST_F(U2fCommandProcessorGscTest, U2fSignCheckOnlyWrongLength) {
 
 TEST_F(U2fCommandProcessorGscTest, G2fAttestSuccess) {
   EXPECT_CALL(mock_tpm_proxy_, SendU2fAttest(_, _)).WillOnce(Return(0));
-  auto secret = brillo::SecureBlob(GetUserSecret());
+  auto secret = GetUserSecret();
   brillo::Blob signature_out;
   EXPECT_EQ(G2fAttest(GetDataToSign(), secret, &signature_out),
             MakeCredentialResponse::SUCCESS);

@@ -19,8 +19,10 @@
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/values.h>
+#include <brillo/scoped_umask.h>
+#include <brillo/secure_blob.h>
+#include <brillo/secure_string.h>
 
-#include "brillo/scoped_umask.h"
 #include "u2fd/client/util.h"
 
 namespace u2f {
@@ -68,7 +70,9 @@ bool WebAuthnStorage::WriteRecord(const WebAuthnRecord& record) {
 
   base::Value record_value(base::Value::Type::DICTIONARY);
   record_value.SetStringKey(kCredentialIdKey, credential_id_hex);
-  record_value.SetStringKey(kSecretKey, base::Base64Encode(record.secret));
+  record_value.SetStringKey(
+      kSecretKey, base::Base64Encode(brillo::Blob(record.secret.begin(),
+                                                  record.secret.end())));
   record_value.SetStringKey(kKeyBlobKey, base::Base64Encode(record.key_blob));
   record_value.SetStringKey(kRpIdKey, record.rp_id);
   record_value.SetStringKey(kRpDisplayNameKey, record.rp_display_name);
@@ -262,7 +266,7 @@ bool WebAuthnStorage::LoadRecords() {
 
     records_.emplace_back(WebAuthnRecord{
         .credential_id = credential_id,
-        .secret = brillo::Blob(secret.begin(), secret.end()),
+        .secret = brillo::SecureBlob(secret.begin(), secret.end()),
         .key_blob = brillo::Blob(key_blob.begin(), key_blob.end()),
         .rp_id = *rp_id,
         .rp_display_name = *rp_display_name,
@@ -270,6 +274,7 @@ bool WebAuthnStorage::LoadRecords() {
         .user_display_name = *user_display_name,
         .timestamp = *timestamp,
         .is_resident_key = *is_resident_key});
+    brillo::SecureClearContainer(secret);
   }
   VLOG(1) << "Loaded " << records_.size() << " WebAuthn records to memory.";
   return read_all_records_successfully;
@@ -281,7 +286,7 @@ bool WebAuthnStorage::SendRecordCountToUMA(MetricsLibraryInterface* metrics) {
                             kRecordCountBuckets);
 }
 
-std::optional<brillo::Blob> WebAuthnStorage::GetSecretByCredentialId(
+std::optional<brillo::SecureBlob> WebAuthnStorage::GetSecretByCredentialId(
     const std::string& credential_id) {
   for (const WebAuthnRecord& record : records_) {
     if (record.credential_id == credential_id) {
@@ -293,7 +298,7 @@ std::optional<brillo::Blob> WebAuthnStorage::GetSecretByCredentialId(
 
 bool WebAuthnStorage::GetSecretAndKeyBlobByCredentialId(
     const std::string& credential_id,
-    brillo::Blob* secret,
+    brillo::SecureBlob* secret,
     brillo::Blob* key_blob) {
   for (const WebAuthnRecord& record : records_) {
     if (record.credential_id == credential_id) {

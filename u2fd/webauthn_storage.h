@@ -23,10 +23,7 @@ struct WebAuthnRecord {
   // Credential id in bytes. Will be hex-encoded.
   std::string credential_id;
   // Secret to use for this credential in bytes. Will be base64-encoded.
-  // We do not use SecureBlob here because: 1. Loading many SecureBlobs in
-  // memory will hit RLIMIT_MEMLOCK. 2. With physical presence and auth-time
-  // secret, this per-credential secret is more like a salt.
-  brillo::Blob secret;
+  brillo::SecureBlob secret;
   // Key blob containing wrapped TPM key, used in generic TPM case.
   brillo::Blob key_blob;
   // The relying party id.
@@ -62,12 +59,12 @@ class WebAuthnStorage {
   // Clears in-memory records.
   virtual void Reset();
 
-  virtual std::optional<brillo::Blob> GetSecretByCredentialId(
+  virtual std::optional<brillo::SecureBlob> GetSecretByCredentialId(
       const std::string& credential_id);
 
   virtual bool GetSecretAndKeyBlobByCredentialId(
       const std::string& credential_id,
-      brillo::Blob* secret,
+      brillo::SecureBlob* secret,
       brillo::Blob* key_blob);
 
   virtual std::optional<WebAuthnRecord> GetRecordByCredentialId(

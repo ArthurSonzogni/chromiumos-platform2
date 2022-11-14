@@ -12,6 +12,7 @@
 
 #include <base/time/time.h>
 #include <brillo/dbus/dbus_method_response.h>
+#include <brillo/secure_blob.h>
 #include <chromeos/cbor/values.h>
 #include <chromeos/cbor/writer.h>
 #include <openssl/sha.h>
@@ -54,15 +55,14 @@ U2fCommandProcessorGsc::U2fCommandProcessorGsc(
     : tpm_proxy_(tpm_proxy), request_presence_(request_presence) {}
 
 MakeCredentialResponse::MakeCredentialStatus
-U2fCommandProcessorGsc::U2fGenerate(
-    const std::vector<uint8_t>& rp_id_hash,
-    const std::vector<uint8_t>& credential_secret,
-    PresenceRequirement presence_requirement,
-    bool uv_compatible,
-    const brillo::Blob* auth_time_secret_hash,
-    std::vector<uint8_t>* credential_id,
-    CredentialPublicKey* credential_public_key,
-    std::vector<uint8_t>* /*unused*/) {
+U2fCommandProcessorGsc::U2fGenerate(const std::vector<uint8_t>& rp_id_hash,
+                                    const brillo::SecureBlob& credential_secret,
+                                    PresenceRequirement presence_requirement,
+                                    bool uv_compatible,
+                                    const brillo::Blob* auth_time_secret_hash,
+                                    std::vector<uint8_t>* credential_id,
+                                    CredentialPublicKey* credential_public_key,
+                                    std::vector<uint8_t>* /*unused*/) {
   DCHECK(rp_id_hash.size() == SHA256_DIGEST_LENGTH);
 
   struct u2f_generate_req generate_req = {};
@@ -125,7 +125,7 @@ GetAssertionResponse::GetAssertionStatus U2fCommandProcessorGsc::U2fSign(
     const std::vector<uint8_t>& rp_id_hash,
     const std::vector<uint8_t>& hash_to_sign,
     const std::vector<uint8_t>& credential_id,
-    const std::vector<uint8_t>& credential_secret,
+    const brillo::SecureBlob& credential_secret,
     const std::vector<uint8_t>* /*unused*/,
     PresenceRequirement presence_requirement,
     std::vector<uint8_t>* signature) {
@@ -207,7 +207,7 @@ HasCredentialsResponse::HasCredentialsStatus
 U2fCommandProcessorGsc::U2fSignCheckOnly(
     const std::vector<uint8_t>& rp_id_hash,
     const std::vector<uint8_t>& credential_id,
-    const std::vector<uint8_t>& credential_secret,
+    const brillo::SecureBlob& credential_secret,
     const std::vector<uint8_t>* /*unused*/) {
   uint32_t sign_status;
 
