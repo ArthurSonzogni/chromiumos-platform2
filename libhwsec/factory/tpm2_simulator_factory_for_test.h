@@ -16,6 +16,7 @@
 #include "libhwsec/frontend/recovery_crypto/frontend.h"
 #include "libhwsec/frontend/u2fd/frontend.h"
 #include "libhwsec/hwsec_export.h"
+#include "libhwsec/structures/threading_mode.h"
 
 namespace hwsec {
 
@@ -26,13 +27,17 @@ class Proxy;
 
 // A TPM2 simulator factory implementation for testing.
 //
+// The default mode will run the middleware on current task runner, but that
+// need to be used carefully in multi-thread environment.
+//
 // Example usage:
 //   Tpm2SimulatorFactoryForTest factory;
 //   StatusOr<bool> ready = factory.GetCryptohomeFrontend()->IsReady();
 
 class HWSEC_EXPORT Tpm2SimulatorFactoryForTest : public Factory {
  public:
-  Tpm2SimulatorFactoryForTest();
+  explicit Tpm2SimulatorFactoryForTest(
+      ThreadingMode mode = ThreadingMode::kCurrentThread);
   ~Tpm2SimulatorFactoryForTest() override;
   std::unique_ptr<CryptohomeFrontend> GetCryptohomeFrontend() override;
   std::unique_ptr<PinWeaverFrontend> GetPinWeaverFrontend() override;

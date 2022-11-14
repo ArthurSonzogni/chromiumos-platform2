@@ -18,13 +18,8 @@
 
 namespace hwsec {
 
-FactoryImpl::FactoryImpl()
-    : default_middleware_(std::make_unique<MiddlewareOwner>()),
-      middleware_(*default_middleware_) {}
-
-FactoryImpl::FactoryImpl(FactoryImpl::OnCurrentTaskRunner)
-    : default_middleware_(std::make_unique<MiddlewareOwner>(
-          MiddlewareOwner::OnCurrentTaskRunner())),
+FactoryImpl::FactoryImpl(ThreadingMode mode)
+    : default_middleware_(std::make_unique<MiddlewareOwner>(mode)),
       middleware_(*default_middleware_) {}
 
 FactoryImpl::FactoryImpl(std::unique_ptr<MiddlewareOwner> middleware)

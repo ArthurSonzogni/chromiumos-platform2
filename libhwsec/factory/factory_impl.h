@@ -15,6 +15,7 @@
 #include "libhwsec/frontend/pinweaver/frontend.h"
 #include "libhwsec/frontend/recovery_crypto/frontend.h"
 #include "libhwsec/frontend/u2fd/frontend.h"
+#include "libhwsec/structures/threading_mode.h"
 
 namespace hwsec {
 
@@ -23,14 +24,8 @@ class MiddlewareOwner;
 
 class HWSEC_EXPORT FactoryImpl : public Factory {
  public:
-  // A tag to indicate the backend would be run on the current thread.
-  struct OnCurrentTaskRunner {};
-
-  // Constructor for an isolated thread.
-  FactoryImpl();
-
-  // Constructor for no isolated thread.
-  explicit FactoryImpl(OnCurrentTaskRunner);
+  explicit FactoryImpl(
+      ThreadingMode mode = ThreadingMode::kStandaloneWorkerThread);
 
   // Constructor for custom middleware.
   explicit FactoryImpl(std::unique_ptr<MiddlewareOwner> middleware);

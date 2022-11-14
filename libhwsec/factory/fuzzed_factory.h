@@ -9,8 +9,12 @@
 
 #include "libhwsec/factory/factory_impl.h"
 #include "libhwsec/hwsec_export.h"
+#include "libhwsec/structures/threading_mode.h"
 
 // A fuzzed factory implementation for fuzzing.
+//
+// The default mode will run the middleware on current task runner, but that
+// need to be used carefully in multi-thread environment.
 //
 // Example usage:
 //   FuzzedFactory factory(data_provider);
@@ -22,7 +26,8 @@ namespace hwsec {
 
 class HWSEC_EXPORT FuzzedFactory : public FactoryImpl {
  public:
-  explicit FuzzedFactory(FuzzedDataProvider& data_provider);
+  explicit FuzzedFactory(FuzzedDataProvider& data_provider,
+                         ThreadingMode mode = ThreadingMode::kCurrentThread);
 
   ~FuzzedFactory() override;
 };

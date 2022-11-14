@@ -22,6 +22,7 @@
 #include "libhwsec/middleware/middleware_derivative.h"
 #include "libhwsec/proxy/proxy.h"
 #include "libhwsec/status.h"
+#include "libhwsec/structures/threading_mode.h"
 
 #if USE_FUZZER
 #include <fuzzer/FuzzedDataProvider.h>
@@ -45,31 +46,12 @@ class Middleware;
 
 class HWSEC_EXPORT MiddlewareOwner {
  public:
-  // A tag to indicate the backend would be run on the current thread.
-  // All CallSync would run immediately in this mode.
-  // If the current thread doesn't have any task runner, the CallAsync would
-  // check failed.
-  struct OnCurrentTaskRunner {};
-
   friend class Middleware;
 
-  // Constructor for an isolated thread.
-  MiddlewareOwner();
+  explicit MiddlewareOwner(ThreadingMode mode);
 
-  // Constructor for no isolated thread.
-  explicit MiddlewareOwner(OnCurrentTaskRunner);
-
-  // Constructor for custom task runner, the task runner cannot be the current
-  // thread.
-  explicit MiddlewareOwner(scoped_refptr<base::TaskRunner> task_runner);
-
-  // Constructor for custom backend and no isolated thread.
-  MiddlewareOwner(std::unique_ptr<Backend> custom_backend, OnCurrentTaskRunner);
-
-  // Constructor for custom backend and task runner, the task runner cannot be
-  // the current thread.
-  MiddlewareOwner(std::unique_ptr<Backend> custom_backend,
-                  scoped_refptr<base::TaskRunner> task_runner);
+  // Constructor for custom backend.
+  MiddlewareOwner(std::unique_ptr<Backend> custom_backend, ThreadingMode mode);
 
   virtual ~MiddlewareOwner();
 
@@ -82,6 +64,7 @@ class HWSEC_EXPORT MiddlewareOwner {
 #endif
 
  private:
+  void InitThreadingMode(ThreadingMode mode);
   void InitBackend();
   void InitWithCustomBackend(std::unique_ptr<Backend> custom_backend);
   void FiniBackend();

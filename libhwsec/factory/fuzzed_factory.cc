@@ -15,9 +15,10 @@
 
 namespace hwsec {
 
-FuzzedFactory::FuzzedFactory(FuzzedDataProvider& data_provider)
+FuzzedFactory::FuzzedFactory(FuzzedDataProvider& data_provider,
+                             ThreadingMode mode)
     : FactoryImpl(std::make_unique<MiddlewareOwner>(
-          /*custom_backend=*/nullptr, MiddlewareOwner::OnCurrentTaskRunner{})) {
+          /*custom_backend=*/nullptr, mode)) {
   middleware_.set_data_provider(&data_provider);
 }
 

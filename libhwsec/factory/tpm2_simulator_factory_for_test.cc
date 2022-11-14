@@ -19,7 +19,7 @@
 
 namespace hwsec {
 
-Tpm2SimulatorFactoryForTest::Tpm2SimulatorFactoryForTest() {
+Tpm2SimulatorFactoryForTest::Tpm2SimulatorFactoryForTest(ThreadingMode mode) {
   auto proxy = std::make_unique<Tpm2SimulatorProxyForTest>();
   CHECK(proxy->Init());
   proxy_ = std::move(proxy);
@@ -28,8 +28,7 @@ Tpm2SimulatorFactoryForTest::Tpm2SimulatorFactoryForTest() {
   BackendTpm2* backend_ptr = backend.get();
   backend_ = std::move(backend);
 
-  middleware_ = std::make_unique<MiddlewareOwner>(
-      std::move(backend_), MiddlewareOwner::OnCurrentTaskRunner{});
+  middleware_ = std::make_unique<MiddlewareOwner>(std::move(backend_), mode);
 
   backend_ptr->set_middleware_derivative_for_test(middleware_->Derive());
 }

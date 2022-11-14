@@ -111,7 +111,7 @@ U2fDaemon::U2fDaemon(bool force_u2f,
       g2f_allowlist_data_(g2f_allowlist_data),
       legacy_kh_fallback_(legacy_kh_fallback),
       service_started_(false),
-      hwsec_factory_(hwsec::FactoryImpl::OnCurrentTaskRunner()) {
+      hwsec_factory_(hwsec::ThreadingMode::kCurrentThread) {
 #if USE_GSC
   u2fhid_service_ = std::make_unique<U2fHidServiceImpl>(legacy_kh_fallback);
 #endif  // USE_GSC
