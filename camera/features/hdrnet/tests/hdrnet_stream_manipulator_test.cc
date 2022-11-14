@@ -276,12 +276,14 @@ class HdrNetStreamManipulatorTest : public Test {
 
   void ProcessCaptureResult(Camera3CaptureDescriptor result) {
     callback_received_.insert(result.frame_number());
+    returned_result_ = std::move(result);
   }
 
   base::test::SingleThreadTaskEnvironment task_environment_;
   GpuResources gpu_resources_;
   StreamManipulator::RuntimeOptions runtime_options_;
   std::unique_ptr<HdrNetStreamManipulator> stream_manipulator_;
+  Camera3CaptureDescriptor returned_result_;
   Camera3Stream impl_720p_stream_;
   Camera3Stream yuv_480p_stream_;
   Camera3Stream yuv_1080p_stream_;
@@ -564,13 +566,14 @@ TEST_F(HdrNetStreamManipulatorTest, ProcessCaptureResultTest) {
       camera3_capture_result_t{.frame_number = kFrameNumber});
   result.SetOutputBuffers(request.GetOutputBuffers());
 
-  ASSERT_TRUE(stream_manipulator_->ProcessCaptureResult(&result));
+  ASSERT_TRUE(stream_manipulator_->ProcessCaptureResult(std::move(result)));
 
   // The result should have all the YUV output buffers as requested.
-  EXPECT_EQ(result.num_output_buffers(), num_yuv_buffers_in_original_request);
+  EXPECT_EQ(returned_result_.num_output_buffers(),
+            num_yuv_buffers_in_original_request);
   // The buffers should be restored to the ones that was provided by the capture
   // request.
-  for (const auto& buffer : result.GetOutputBuffers()) {
+  for (const auto& buffer : returned_result_.GetOutputBuffers()) {
     if (impl_720p_stream_.HasSameSize(*buffer.stream)) {
       EXPECT_EQ(impl_720p_stream_.get(), buffer.stream);
     } else if (yuv_1080p_stream_.HasSameSize(*buffer.stream)) {
@@ -647,14 +650,15 @@ TEST_F(HdrNetStreamManipulatorTest,
       camera3_capture_result_t{.frame_number = kFrameNumber});
   result.SetOutputBuffers(request.GetOutputBuffers());
 
-  ASSERT_TRUE(stream_manipulator_->ProcessCaptureResult(&result));
+  ASSERT_TRUE(stream_manipulator_->ProcessCaptureResult(std::move(result)));
 
   // The result should have the same number of YUV output buffers as requested.
   // BLOB output should be handled by still capture processor.
-  EXPECT_EQ(result.num_output_buffers(), num_yuv_buffers_in_original_request);
+  EXPECT_EQ(returned_result_.num_output_buffers(),
+            num_yuv_buffers_in_original_request);
   // The buffers should be restored to the ones that was provided by the capture
   // request.
-  for (const auto& buffer : result.GetOutputBuffers()) {
+  for (const auto& buffer : returned_result_.GetOutputBuffers()) {
     if (impl_720p_stream_.HasSameSize(*buffer.stream)) {
       EXPECT_EQ(impl_720p_stream_.get(), buffer.stream);
     } else if (yuv_480p_stream_.HasSameSize(*buffer.stream)) {

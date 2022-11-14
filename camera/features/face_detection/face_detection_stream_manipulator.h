@@ -60,7 +60,7 @@ class FaceDetectionStreamManipulator : public StreamManipulator {
   bool ConstructDefaultRequestSettings(
       android::CameraMetadata* default_request_settings, int type) override;
   bool ProcessCaptureRequest(Camera3CaptureDescriptor* request) override;
-  bool ProcessCaptureResult(Camera3CaptureDescriptor* result) override;
+  bool ProcessCaptureResult(Camera3CaptureDescriptor result) override;
   bool Notify(camera3_notify_msg_t* msg) override;
   bool Flush() override;
 
@@ -88,6 +88,8 @@ class FaceDetectionStreamManipulator : public StreamManipulator {
   Options options_;
   Size active_array_dimension_;
   uint8_t active_face_detect_mode_ = ANDROID_STATISTICS_FACE_DETECT_MODE_OFF;
+
+  CaptureResultCallback result_callback_;
 
   // Protects |latest_faces_| and |frame_info_| since they can be accessed on
   // different threads.

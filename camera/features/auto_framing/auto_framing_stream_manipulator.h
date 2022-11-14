@@ -79,7 +79,7 @@ class AutoFramingStreamManipulator : public StreamManipulator {
   bool ConstructDefaultRequestSettings(
       android::CameraMetadata* default_request_settings, int type) override;
   bool ProcessCaptureRequest(Camera3CaptureDescriptor* request) override;
-  bool ProcessCaptureResult(Camera3CaptureDescriptor* result) override;
+  bool ProcessCaptureResult(Camera3CaptureDescriptor result) override;
   bool Notify(camera3_notify_msg_t* msg) override;
   bool Flush() override;
 

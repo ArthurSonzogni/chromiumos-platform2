@@ -78,6 +78,7 @@ FaceDetectionStreamManipulator::FaceDetectionStreamManipulator(
 bool FaceDetectionStreamManipulator::Initialize(
     const camera_metadata_t* static_info,
     CaptureResultCallback result_callback) {
+  result_callback_ = std::move(result_callback);
   base::span<const int32_t> active_array_size = GetRoMetadataAsSpan<int32_t>(
       static_info, ANDROID_SENSOR_INFO_ACTIVE_ARRAY_SIZE);
   DCHECK_EQ(active_array_size.size(), 4);
@@ -140,24 +141,26 @@ bool FaceDetectionStreamManipulator::ProcessCaptureRequest(
 }
 
 bool FaceDetectionStreamManipulator::ProcessCaptureResult(
-    Camera3CaptureDescriptor* result) {
+    Camera3CaptureDescriptor result) {
   if (!options_.enable) {
+    result_callback_.Run(std::move(result));
     return true;
   }
 
-  auto output_buffers = result->GetMutableOutputBuffers();
-  if (result->frame_number() % options_.fd_frame_interval == 0 &&
-      result->num_output_buffers() > 0) {
+  auto output_buffers = result.GetMutableOutputBuffers();
+  if (result.frame_number() % options_.fd_frame_interval == 0 &&
+      result.num_output_buffers() > 0) {
     auto* buffer = SelectFaceDetectionBuffer(output_buffers);
     if (buffer) {
       if (!WaitOnAndClearReleaseFence(*buffer, kSyncWaitTimeoutMs)) {
         LOGF(ERROR) << "Timed out waiting for detection buffer";
+        result_callback_.Run(std::move(result));
         return false;
       }
       face_detector_->DetectAsync(
           *(buffer->buffer), active_array_dimension_,
           base::BindOnce(&FaceDetectionStreamManipulator::OnFaceDetected,
-                         base::Unretained(this), result->frame_number()));
+                         base::Unretained(this), result.frame_number()));
     }
   }
 
@@ -190,7 +193,7 @@ bool FaceDetectionStreamManipulator::ProcessCaptureResult(
                          static_cast<float>(active_array_dimension_.height),
                      0.0f, 1.0f);
     }
-    metadata_logger_.Log(result->frame_number(), kTagFaceRectangles,
+    metadata_logger_.Log(result.frame_number(), kTagFaceRectangles,
                          base::span<const float>(flattened_faces.data(),
                                                  flattened_faces.size()));
   }
@@ -198,9 +201,10 @@ bool FaceDetectionStreamManipulator::ProcessCaptureResult(
   // Report the face rectangles in result metadata. Restore the metadata to
   // what originally requested by the client so the metadata overridden by us is
   // transparent to the client.
-  SetResultAeMetadata(result);
-  RestoreClientRequestSettings(result);
+  SetResultAeMetadata(&result);
+  RestoreClientRequestSettings(&result);
 
+  result_callback_.Run(std::move(result));
   return true;
 }
 

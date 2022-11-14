@@ -7,6 +7,7 @@
 #include "features/zsl/zsl_stream_manipulator.h"
 
 #include <optional>
+#include <utility>
 
 #include "cros-camera/camera_metadata_utils.h"
 #include "cros-camera/common.h"
@@ -38,6 +39,7 @@ bool ZslStreamManipulator::UpdateStaticMetadata(
 
 bool ZslStreamManipulator::Initialize(const camera_metadata_t* static_info,
                                       CaptureResultCallback result_callback) {
+  result_callback_ = std::move(result_callback);
   std::optional<uint8_t> vendor_tag =
       GetRoMetadata<uint8_t>(static_info, kCrosZslVendorTagCanAttempt);
   can_attempt_zsl_ = vendor_tag.has_value() && *vendor_tag == 1;
@@ -120,22 +122,24 @@ bool ZslStreamManipulator::ProcessCaptureRequest(
 }
 
 bool ZslStreamManipulator::ProcessCaptureResult(
-    Camera3CaptureDescriptor* result) {
+    Camera3CaptureDescriptor result) {
   if (!can_attempt_zsl_) {
+    result_callback_.Run(std::move(result));
     return true;
   }
   bool is_input_transformed = false;
   if (zsl_enabled_) {
-    zsl_helper_->ProcessZslCaptureResult(result, &is_input_transformed);
+    zsl_helper_->ProcessZslCaptureResult(&result, &is_input_transformed);
   }
   // If we attempt ZSL, we'll add ANDROID_CONTROL_ENABLE_ZSL to the capture
   // template which will then require us to add it to capture results as well.
-  if (result->partial_result() == partial_result_count_) {
-    result->UpdateMetadata<uint8_t>(
+  if (result.partial_result() == partial_result_count_) {
+    result.UpdateMetadata<uint8_t>(
         ANDROID_CONTROL_ENABLE_ZSL,
         std::array<uint8_t, 1>{ANDROID_CONTROL_ENABLE_ZSL_TRUE});
   }
 
+  result_callback_.Run(std::move(result));
   return true;
 }
 

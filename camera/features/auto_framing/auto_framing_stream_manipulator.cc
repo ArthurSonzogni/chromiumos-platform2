@@ -152,11 +152,6 @@ std::optional<int64_t> TryGetSensorTimestamp(Camera3CaptureDescriptor* desc) {
                                : std::nullopt;
 }
 
-template <class T>
-std::vector<T> CopyToVector(base::span<const T> src) {
-  return std::vector<T>(src.begin(), src.end());
-}
-
 Rect<float> AdjustCropRectToTargetAspectRatio(const Rect<float>& rect,
                                               float target_aspect_ratio) {
   const float aspect_ratio = rect.width / rect.height;
@@ -309,7 +304,8 @@ bool AutoFramingStreamManipulator::Initialize(
   gpu_resources_->PostGpuTaskSync(
       FROM_HERE,
       base::BindOnce(&AutoFramingStreamManipulator::InitializeOnThread,
-                     base::Unretained(this), static_info, result_callback),
+                     base::Unretained(this), static_info,
+                     std::move(result_callback)),
       &ret);
   return ret;
 }
@@ -355,14 +351,15 @@ bool AutoFramingStreamManipulator::ProcessCaptureRequest(
 }
 
 bool AutoFramingStreamManipulator::ProcessCaptureResult(
-    Camera3CaptureDescriptor* result) {
+    Camera3CaptureDescriptor result) {
   bool ret;
   gpu_resources_->PostGpuTaskSync(
       FROM_HERE,
       base::BindOnce(
           &AutoFramingStreamManipulator::ProcessCaptureResultOnThread,
-          base::Unretained(this), result),
+          base::Unretained(this), &result),
       &ret);
+  result_callback_.Run(std::move(result));
   return ret;
 }
 
@@ -381,7 +378,7 @@ bool AutoFramingStreamManipulator::InitializeOnThread(
   DCHECK(!result_callback.is_null());
   TRACE_AUTO_FRAMING();
 
-  result_callback_ = result_callback;
+  result_callback_ = std::move(result_callback);
   setup_failed_ = false;
 
   std::optional<int32_t> partial_result_count =

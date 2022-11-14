@@ -52,7 +52,7 @@ class EffectsStreamManipulator : public StreamManipulator {
   bool ConstructDefaultRequestSettings(
       android::CameraMetadata* default_request_settings, int type) override;
   bool ProcessCaptureRequest(Camera3CaptureDescriptor* request) override;
-  bool ProcessCaptureResult(Camera3CaptureDescriptor* result) override;
+  bool ProcessCaptureResult(Camera3CaptureDescriptor result) override;
   bool ProcessCaptureResultOnThread(Camera3CaptureDescriptor* result);
   bool Notify(camera3_notify_msg_t* msg) override;
   bool Flush() override;
@@ -71,6 +71,7 @@ class EffectsStreamManipulator : public StreamManipulator {
   ReloadableConfigFile config_;
   Options options_;
   RuntimeOptions* runtime_options_;
+  CaptureResultCallback result_callback_;
 
   EffectsConfig active_runtime_effects_config_ = EffectsConfig();
 

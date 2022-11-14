@@ -8,6 +8,7 @@
 
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <drm_fourcc.h>
@@ -55,6 +56,7 @@ SWPrivacySwitchStreamManipulator::SWPrivacySwitchStreamManipulator(
 bool SWPrivacySwitchStreamManipulator::Initialize(
     const camera_metadata_t* static_info,
     CaptureResultCallback result_callback) {
+  result_callback_ = std::move(result_callback);
   return true;
 }
 
@@ -79,13 +81,14 @@ bool SWPrivacySwitchStreamManipulator::ProcessCaptureRequest(
 }
 
 bool SWPrivacySwitchStreamManipulator::ProcessCaptureResult(
-    Camera3CaptureDescriptor* result) {
+    Camera3CaptureDescriptor result) {
   if (runtime_options_->sw_privacy_switch_state() !=
       mojom::CameraPrivacySwitchState::ON) {
+    result_callback_.Run(std::move(result));
     return true;
   }
 
-  for (auto& buffer : result->GetMutableOutputBuffers()) {
+  for (auto& buffer : result.GetMutableOutputBuffers()) {
     constexpr int kSyncWaitTimeoutMs = 300;
     if (!WaitOnAndClearReleaseFence(buffer, kSyncWaitTimeoutMs)) {
       LOGF(ERROR) << "Timed out waiting for acquiring output buffer";
@@ -117,6 +120,7 @@ bool SWPrivacySwitchStreamManipulator::ProcessCaptureResult(
     }
   }
 
+  result_callback_.Run(std::move(result));
   return true;
 }
 

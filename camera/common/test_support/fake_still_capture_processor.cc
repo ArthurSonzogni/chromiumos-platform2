@@ -55,8 +55,13 @@ void FakeStillCaptureProcessor::QueuePendingYuvImage(
 void FakeStillCaptureProcessor::MaybeProduceCaptureResult(int frame_number) {
   if (result_descriptor_[frame_number].has_apps_segments &&
       result_descriptor_[frame_number].has_yuv_buffer) {
+    camera3_stream_t stream = {.format = HAL_PIXEL_FORMAT_BLOB};
+    camera3_stream_buffer_t stream_buffer = {.stream = &stream,
+                                             .release_fence = -1};
     result_callback_.Run(Camera3CaptureDescriptor(camera3_capture_result_t{
-        .frame_number = static_cast<uint32_t>(frame_number)}));
+        .frame_number = static_cast<uint32_t>(frame_number),
+        .num_output_buffers = 1,
+        .output_buffers = &stream_buffer}));
   }
 }
 

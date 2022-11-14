@@ -102,6 +102,7 @@ FrameAnnotatorStreamManipulator::~FrameAnnotatorStreamManipulator() {
 bool FrameAnnotatorStreamManipulator::Initialize(
     const camera_metadata_t* static_info,
     CaptureResultCallback result_callback) {
+  result_callback_ = std::move(result_callback);
   base::span<const int32_t> active_array_size = GetRoMetadataAsSpan<int32_t>(
       static_info, ANDROID_SENSOR_INFO_ACTIVE_ARRAY_SIZE);
   DCHECK_EQ(active_array_size.size(), 4);
@@ -176,8 +177,9 @@ bool FrameAnnotatorStreamManipulator::ProcessCaptureRequest(
 }
 
 bool FrameAnnotatorStreamManipulator::ProcessCaptureResult(
-    Camera3CaptureDescriptor* result) {
+    Camera3CaptureDescriptor result) {
   if (frame_annotators_.empty()) {
+    result_callback_.Run(std::move(result));
     return true;
   }
 
@@ -186,8 +188,9 @@ bool FrameAnnotatorStreamManipulator::ProcessCaptureResult(
       FROM_HERE,
       base::BindOnce(
           &FrameAnnotatorStreamManipulator::ProcessCaptureResultOnGpuThread,
-          base::Unretained(this), base::Unretained(result)),
+          base::Unretained(this), &result),
       &ret);
+  result_callback_.Run(std::move(result));
   return ret;
 }
 

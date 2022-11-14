@@ -29,10 +29,23 @@ namespace cros {
 
 class CROS_CAMERA_EXPORT StreamManipulatorManager {
  public:
-  StreamManipulatorManager(StreamManipulator::CreateOptions create_options,
+  struct CreateOptions {
+    // Used to identify the camera device that the stream manipulators will be
+    // created for (e.g. USB v.s. vendor camera HAL).
+    std::string camera_module_name;
+
+    // Used by the face detection stream manipulator to provide a callback for
+    // camera HAL.
+    base::OnceCallback<void(FaceDetectionResultCallback)>
+        set_face_detection_result_callback;
+  };
+
+  StreamManipulatorManager(CreateOptions create_options,
                            StreamManipulator::RuntimeOptions* runtime_options,
                            GpuResources* gpu_resources,
                            CameraMojoChannelManagerToken* mojo_manager_token);
+  explicit StreamManipulatorManager(
+      std::vector<std::unique_ptr<StreamManipulator>> stream_manipulators);
   ~StreamManipulatorManager() = default;
 
   bool Initialize(const camera_metadata_t* static_info,
@@ -43,7 +56,7 @@ class CROS_CAMERA_EXPORT StreamManipulatorManager {
       android::CameraMetadata* default_request_settings, int type);
   bool ProcessCaptureRequest(Camera3CaptureDescriptor* request);
   bool Flush();
-  bool ProcessCaptureResult(Camera3CaptureDescriptor* result);
+  void ProcessCaptureResult(Camera3CaptureDescriptor result);
   bool Notify(camera3_notify_msg_t* msg);
 
  private:
@@ -52,6 +65,29 @@ class CROS_CAMERA_EXPORT StreamManipulatorManager {
   // The metadata inspector to dump capture requests / results in realtime
   // for debugging if enabled.
   std::unique_ptr<CameraMetadataInspector> camera_metadata_inspector_;
+
+  // A callback to return the capture result to the framework.
+  StreamManipulator::CaptureResultCallback result_callback_;
+
+  // A thread where StreamManipulator::ProcessCaptureResult() runs if
+  // StreamManipulator does not specify a thread for the task via
+  // StreamManipulator::GetTaskRunner().
+  base::Thread default_capture_result_thread_;
+
+  // A callback that is called by StreamManipulator to call the next
+  // StreamManipulator::ProcessCaptureResult(). |stream_manipulator_index| is
+  // the index of the StreamManipulator that is going to process |result|.
+  // |stream_manipulator_index| is bound by StreamManipulatorManager.
+  void ProcessCaptureResultOnStreamManipulator(int stream_manipulator_index,
+                                               Camera3CaptureDescriptor result);
+
+  // A callback that is called by StreamManipulator to return the capture result
+  // to the framework.
+  void ReturnResultToClient(Camera3CaptureDescriptor result);
+
+  // For the meaning of |position|, see the comment of CameraMetadataInspector's
+  // |inspect_positions_|.
+  void InspectResult(int position, Camera3CaptureDescriptor& result);
 };
 
 }  // namespace cros

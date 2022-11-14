@@ -233,16 +233,6 @@ bool CameraDeviceAdapter::Start(
   }
   device_ops_delegate_ = std::make_unique<Camera3DeviceOpsDelegate>(
       this, camera_device_ops_thread_.task_runner());
-  partial_result_count_ = [&]() {
-    camera_metadata_ro_entry entry;
-    if (find_camera_metadata_ro_entry(
-            static_info_, ANDROID_REQUEST_PARTIAL_RESULT_COUNT, &entry) != 0) {
-      return 1;
-    }
-    return entry.data.i32[0];
-  }();
-  camera_metadata_inspector_ =
-      CameraMetadataInspector::Create(partial_result_count_);
   has_reprocess_effect_vendor_tag_callback_ =
       std::move(has_reprocess_effect_vendor_tag_callback);
   reprocess_effect_callback_ = std::move(reprocess_effect_callback);
@@ -737,15 +727,8 @@ void CameraDeviceAdapter::ProcessCaptureResult(
 
   self->capture_monitor_.Kick(CameraMonitor::MonitorType::kResultsMonitor);
 
-  Camera3CaptureDescriptor result_descriptor(*result);
-  self->stream_manipulator_manager_->ProcessCaptureResult(&result_descriptor);
-
-  {
-    TRACE_EVENT(kCameraTraceCategoryHalAdapter, "Client::ProcessCaptureResult",
-                kCameraTraceKeyFrameNumber, result_descriptor.frame_number(),
-                kCameraTraceKeyCaptureInfo, result_descriptor.ToJsonString());
-    ReturnResultToClient(ops, std::move(result_descriptor));
-  }
+  self->stream_manipulator_manager_->ProcessCaptureResult(
+      Camera3CaptureDescriptor(*result));
 }
 
 // static

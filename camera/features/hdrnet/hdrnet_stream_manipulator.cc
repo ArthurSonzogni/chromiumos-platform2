@@ -291,15 +291,16 @@ bool HdrNetStreamManipulator::ProcessCaptureRequest(
 }
 
 bool HdrNetStreamManipulator::ProcessCaptureResult(
-    Camera3CaptureDescriptor* result) {
+    Camera3CaptureDescriptor result) {
   DCHECK(gpu_resources_);
 
   bool ret;
   gpu_resources_->PostGpuTaskSync(
       FROM_HERE,
       base::BindOnce(&HdrNetStreamManipulator::ProcessCaptureResultOnGpuThread,
-                     base::Unretained(this), base::Unretained(result)),
+                     base::Unretained(this), base::Unretained(&result)),
       &ret);
+  result_callback_.Run(std::move(result));
   return ret;
 }
 

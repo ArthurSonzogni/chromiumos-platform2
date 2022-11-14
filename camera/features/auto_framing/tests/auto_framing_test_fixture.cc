@@ -240,7 +240,16 @@ bool AutoFramingTestFixture::SetUp(
           locked_static_info,
           base::BindRepeating(
               [](base::WaitableEvent* event, Camera3CaptureDescriptor result) {
-                event->Signal();
+                for (auto& b : result.GetMutableOutputBuffers()) {
+                  constexpr int kSyncWaitTimeoutMs = 300;
+                  if (!WaitOnAndClearReleaseFence(b, kSyncWaitTimeoutMs)) {
+                    LOGF(WARNING) << "Failed to wait on release fence";
+                  }
+                  if (b.stream->format == HAL_PIXEL_FORMAT_BLOB) {
+                    DCHECK(!event->IsSignaled());
+                    event->Signal();
+                  }
+                }
               },
               &still_capture_result_received_))) {
     LOGF(ERROR) << "Failed to initialize AutoFramingStreamManipulator";
@@ -484,24 +493,14 @@ bool AutoFramingTestFixture::ProcessCaptureResult(
       .output_buffers = buffers.data(),
       .partial_result = 1,
   });
-  if (!auto_framing_stream_manipulator_->ProcessCaptureResult(&result)) {
+  if (!auto_framing_stream_manipulator_->ProcessCaptureResult(
+          std::move(result))) {
     LOGF(ERROR) << "Failed to process capture result";
     return false;
   }
   if (result_metadata_.unlock(locked_result_metadata) != 0) {
     LOGF(ERROR) << "Failed to unlock result metadata";
     return false;
-  }
-
-  for (auto& b : result.GetMutableOutputBuffers()) {
-    constexpr int kSyncWaitTimeoutMs = 300;
-    if (!WaitOnAndClearReleaseFence(b, kSyncWaitTimeoutMs)) {
-      LOGF(ERROR) << "sync_wait() timed out";
-      return false;
-    }
-    if (b.stream == &client_blob_stream_) {
-      still_capture_result_received_.Signal();
-    }
   }
 
   if (has_blob) {

@@ -65,8 +65,10 @@ bool FrameAnnotatorLoaderStreamManipulator::Initialize(
     const camera_metadata_t* static_info,
     CaptureResultCallback result_callback) {
   if (stream_manipulator_) {
-    return stream_manipulator_->Initialize(static_info, result_callback);
+    return stream_manipulator_->Initialize(static_info,
+                                           std::move(result_callback));
   }
+  result_callback_ = std::move(result_callback);
   return true;
 }
 
@@ -104,10 +106,11 @@ bool FrameAnnotatorLoaderStreamManipulator::ProcessCaptureRequest(
 }
 
 bool FrameAnnotatorLoaderStreamManipulator::ProcessCaptureResult(
-    Camera3CaptureDescriptor* result) {
+    Camera3CaptureDescriptor result) {
   if (stream_manipulator_) {
-    return stream_manipulator_->ProcessCaptureResult(result);
+    return stream_manipulator_->ProcessCaptureResult(std::move(result));
   }
+  result_callback_.Run(std::move(result));
   return true;
 }
 

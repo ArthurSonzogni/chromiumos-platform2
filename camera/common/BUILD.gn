@@ -23,6 +23,7 @@ group("all") {
       ":cbm_test",
       ":embed_file_toc_test",
       ":future_test",
+      ":stream_manipulator_manager_test",
       "//camera/features/zsl:zsl_helper_test",
     ]
   }
@@ -405,6 +406,12 @@ if (use.test) {
     ]
     configs += [ ":target_defaults_test" ]
     deps = [ ":embed_file_toc_test_files" ]
+  }
+
+  executable("stream_manipulator_manager_test") {
+    sources = [ "//camera/common/stream_manipulator_manager_test.cc" ]
+    configs += [ ":target_defaults_test" ]
+    deps = [ ":stream_manipulator" ]
   }
 }
 

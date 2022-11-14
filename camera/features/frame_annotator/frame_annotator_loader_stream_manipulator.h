@@ -28,12 +28,13 @@ class FrameAnnotatorLoaderStreamManipulator : public StreamManipulator {
   bool ConstructDefaultRequestSettings(
       android::CameraMetadata* default_request_settings, int type) override;
   bool ProcessCaptureRequest(Camera3CaptureDescriptor* request) override;
-  bool ProcessCaptureResult(Camera3CaptureDescriptor* result) override;
+  bool ProcessCaptureResult(Camera3CaptureDescriptor result) override;
   bool Notify(camera3_notify_msg_t* msg) override;
   bool Flush() override;
 
  private:
   base::ScopedNativeLibrary frame_annotator_lib_;
+  CaptureResultCallback result_callback_;
 
   std::unique_ptr<StreamManipulator> stream_manipulator_;
 };

@@ -336,15 +336,8 @@ class CameraDeviceAdapter : public camera3_callback_ops_t {
   // The callback to handle reprocessing effect.
   ReprocessEffectCallback reprocess_effect_callback_;
 
-  // The metadata inspector to dump capture requests / results in realtime
-  // for debugging if enabled.
-  std::unique_ptr<CameraMetadataInspector> camera_metadata_inspector_;
-
   // Metrics for camera service.
   std::unique_ptr<CameraMetrics> camera_metrics_;
-
-  // ANDROID_PARTIAL_RESULT_COUNT from static metadata.
-  int32_t partial_result_count_;
 
   // Cached request settings that always track the latest set of request
   // metadata.

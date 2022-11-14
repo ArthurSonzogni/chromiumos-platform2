@@ -11,6 +11,7 @@
 #include <libyuv.h>
 #include <sync/sync.h>
 #include <system/graphics.h>
+#include <utility>
 
 // gtest's internal typedef of None and Bool conflicts with the None and Bool
 // macros in X11/X.h (https://github.com/google/googletest/issues/371).
@@ -96,7 +97,14 @@ class SWPrivacySwitchTest : public ::testing::Test {
   SWPrivacySwitchTest()
       : runtime_options_(StreamManipulator::RuntimeOptions()),
         stream_manipulator_(&runtime_options_,
-                            g_env->mojo_manager_token_.get()) {}
+                            g_env->mojo_manager_token_.get()) {
+    stream_manipulator_.Initialize(
+        {}, base::BindRepeating(
+                [](SWPrivacySwitchTest* self, Camera3CaptureDescriptor result) {
+                  self->returned_result_ = std::move(result);
+                },
+                base::Unretained(this)));
+  }
 
   Camera3CaptureDescriptor WrapWithCamera3CaptureDescriptorResult(
       buffer_handle_t* handle) const {
@@ -119,6 +127,7 @@ class SWPrivacySwitchTest : public ::testing::Test {
 
   StreamManipulator::RuntimeOptions runtime_options_;
   SWPrivacySwitchStreamManipulator stream_manipulator_;
+  Camera3CaptureDescriptor returned_result_;
 };
 
 TEST_F(SWPrivacySwitchTest, NV12Output) {
@@ -129,11 +138,11 @@ TEST_F(SWPrivacySwitchTest, NV12Output) {
 
   // When |sw_privacy_switch_state| is OFF.
   auto result = WrapWithCamera3CaptureDescriptorResult(handle.get());
-  ASSERT_TRUE(stream_manipulator_.ProcessCaptureResult(&result))
+  ASSERT_TRUE(stream_manipulator_.ProcessCaptureResult(std::move(result)))
       << "SWPrivacySwitchStreamManipulator::ProcessCaptureResult failed when"
          "|sw_privacy_switch_state| is OFF";
   WaitForReleaseFence(
-      base::ScopedFD(result.GetOutputBuffers()[0].release_fence));
+      base::ScopedFD(returned_result_.GetOutputBuffers()[0].release_fence));
   {
     auto mapping = ScopedMapping(*handle);
     ASSERT_TRUE(mapping.is_valid()) << "Failed to map buffer";
@@ -144,11 +153,11 @@ TEST_F(SWPrivacySwitchTest, NV12Output) {
   // When |sw_privacy_switch_state| is ON.
   runtime_options_.SetSWPrivacySwitchState(mojom::CameraPrivacySwitchState::ON);
   result = WrapWithCamera3CaptureDescriptorResult(handle.get());
-  ASSERT_TRUE(stream_manipulator_.ProcessCaptureResult(&result))
+  ASSERT_TRUE(stream_manipulator_.ProcessCaptureResult(std::move(result)))
       << "SWPrivacySwitchStreamManipulator::ProcessCaptureResult failed when"
          "|sw_privacy_switch_state| was ON";
   WaitForReleaseFence(
-      base::ScopedFD(result.GetOutputBuffers()[0].release_fence));
+      base::ScopedFD(returned_result_.GetOutputBuffers()[0].release_fence));
   {
     auto mapping = ScopedMapping(*handle);
     ASSERT_TRUE(mapping.is_valid()) << "Failed to map buffer";
@@ -174,11 +183,11 @@ TEST_F(SWPrivacySwitchTest, JpegOutput) {
   // should be still invalid and libyuv::MJPGToNV12 should fail, because
   // SWPrivacySwitchStreamManipulator should not change the frame.
   auto result = WrapWithCamera3CaptureDescriptorResult(jpeg_handle.get());
-  ASSERT_TRUE(stream_manipulator_.ProcessCaptureResult(&result))
+  ASSERT_TRUE(stream_manipulator_.ProcessCaptureResult(std::move(result)))
       << "SWPrivacySwitchStreamManipulator::ProcessCaptureResult failed"
          "when |sw_privacy_switch_state| was OFF";
   WaitForReleaseFence(
-      base::ScopedFD(result.GetOutputBuffers()[0].release_fence));
+      base::ScopedFD(returned_result_.GetOutputBuffers()[0].release_fence));
   {
     auto jpeg_mapping = ScopedMapping(*jpeg_handle);
     ASSERT_TRUE(jpeg_mapping.is_valid()) << "Failed to map buffer";
@@ -197,11 +206,11 @@ TEST_F(SWPrivacySwitchTest, JpegOutput) {
   // frame should be black.
   runtime_options_.SetSWPrivacySwitchState(mojom::CameraPrivacySwitchState::ON);
   result = WrapWithCamera3CaptureDescriptorResult(jpeg_handle.get());
-  ASSERT_TRUE(stream_manipulator_.ProcessCaptureResult(&result))
+  ASSERT_TRUE(stream_manipulator_.ProcessCaptureResult(std::move(result)))
       << "SWPrivacySwitchStreamManipulator::ProcessCaptureResult failed"
          "when |sw_privacy_switch_state| was ON";
   WaitForReleaseFence(
-      base::ScopedFD(result.GetOutputBuffers()[0].release_fence));
+      base::ScopedFD(returned_result_.GetOutputBuffers()[0].release_fence));
   {
     auto jpeg_mapping = ScopedMapping(*jpeg_handle);
     ASSERT_TRUE(jpeg_mapping.is_valid()) << "Failed to map buffer";

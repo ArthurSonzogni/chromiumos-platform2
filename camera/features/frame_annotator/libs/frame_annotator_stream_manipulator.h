@@ -36,7 +36,7 @@ class FrameAnnotatorStreamManipulator : public StreamManipulator {
   bool ConstructDefaultRequestSettings(
       android::CameraMetadata* default_request_settings, int type) override;
   bool ProcessCaptureRequest(Camera3CaptureDescriptor* request) override;
-  bool ProcessCaptureResult(Camera3CaptureDescriptor* result) override;
+  bool ProcessCaptureResult(Camera3CaptureDescriptor result) override;
   bool Notify(camera3_notify_msg_t* msg) override;
   bool Flush() override;
 
@@ -50,6 +50,7 @@ class FrameAnnotatorStreamManipulator : public StreamManipulator {
 
   ReloadableConfigFile config_;
   FrameAnnotator::Options options_;
+  CaptureResultCallback result_callback_;
 
   Size active_array_dimension_;
   const camera3_stream_t* yuv_stream_ = nullptr;

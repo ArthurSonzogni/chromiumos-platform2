@@ -46,17 +46,6 @@ namespace cros {
 // hook is mainly used to log the status for each StreamManipulator.
 class CROS_CAMERA_EXPORT StreamManipulator {
  public:
-  struct CreateOptions {
-    // Used to identify the camera device that the stream manipulators will be
-    // created for (e.g. USB v.s. vendor camera HAL).
-    std::string camera_module_name;
-
-    // Used by the face detection stream manipulator to provide a callback for
-    // camera HAL.
-    base::OnceCallback<void(FaceDetectionResultCallback)>
-        set_face_detection_result_callback;
-  };
-
   class RuntimeOptions {
    public:
     void SetAutoFramingState(mojom::CameraAutoFramingState state);
@@ -114,7 +103,8 @@ class CROS_CAMERA_EXPORT StreamManipulator {
 
   // A hook to the camera3_device_ops::initialize(). Will be called by
   // StreamManipulatorManager with the camera device static metadata
-  // |static_info|.
+  // |static_info|. |result_callback| must be saved to pass on the processed
+  // capture result in ProcessCaptureResult().
   virtual bool Initialize(const camera_metadata_t* static_info,
                           CaptureResultCallback result_callback) = 0;
 
@@ -149,13 +139,18 @@ class CROS_CAMERA_EXPORT StreamManipulator {
 
   // A hook to the camera3_callback_ops::process_capture_result(). Will be
   // called by StreamManipulatorManager for each capture result |result|
-  // produced by the camera HAL implementation.
-  virtual bool ProcessCaptureResult(Camera3CaptureDescriptor* result) = 0;
+  // produced by the camera HAL implementation. |result_callback| passed in by
+  // Initialize() must be called to pass on the processed capture result.
+  virtual bool ProcessCaptureResult(Camera3CaptureDescriptor result) = 0;
 
   // A hook to the camera3_callback_ops::notify(). Will be called by
   // StreamManipulatorManager for each notify message |msg| produced by the
   // camera HAL implemnetation.
   virtual bool Notify(camera3_notify_msg_t* msg) = 0;
+
+  // Override this method to use StreamManipulator's own thread to run
+  // ProcessCaptureResult().
+  virtual scoped_refptr<base::SingleThreadTaskRunner> GetTaskRunner();
 };
 
 }  // namespace cros

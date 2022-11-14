@@ -12,6 +12,7 @@
 #include <base/synchronization/lock.h>
 #include <base/thread_annotations.h>
 
+#include "common/camera_buffer_handle.h"
 #include "common/camera_hal3_helpers.h"
 #include "common/common_tracing.h"
 #include "common/still_capture_processor_impl.h"
@@ -52,7 +53,7 @@ namespace {
 
 void MaybeEnableHdrNetStreamManipulator(
     const FeatureProfile& feature_profile,
-    StreamManipulator::CreateOptions& create_options,
+    StreamManipulatorManager::CreateOptions& create_options,
     GpuResources* gpu_resources,
     std::vector<std::unique_ptr<StreamManipulator>>* out_stream_manipulators) {
 #if USE_CAMERA_FEATURE_HDRNET
@@ -137,11 +138,13 @@ void MaybeEnableAutoFramingStreamManipulator(
 }  // namespace
 
 StreamManipulatorManager::StreamManipulatorManager(
-    StreamManipulator::CreateOptions create_options,
+    CreateOptions create_options,
     StreamManipulator::RuntimeOptions* runtime_options,
     GpuResources* gpu_resources,
-    CameraMojoChannelManagerToken* mojo_manager_token) {
+    CameraMojoChannelManagerToken* mojo_manager_token)
+    : default_capture_result_thread_("DefaultCaptureResultThread") {
   TRACE_COMMON();
+  CHECK(default_capture_result_thread_.Start());
   FeatureProfile feature_profile;
 
 #if USE_CAMERA_FEATURE_FRAME_ANNOTATOR
@@ -173,25 +176,48 @@ StreamManipulatorManager::StreamManipulatorManager(
   stream_manipulators_.emplace_back(
       std::make_unique<SWPrivacySwitchStreamManipulator>(runtime_options,
                                                          mojo_manager_token));
+  LOGF(INFO) << "SWPrivacySwitchStreamManipulator enabled";
+}
+
+StreamManipulatorManager::StreamManipulatorManager(
+    std::vector<std::unique_ptr<StreamManipulator>> stream_manipulators)
+    : default_capture_result_thread_("DefaultCaptureResultThread") {
+  TRACE_COMMON();
+  CHECK(default_capture_result_thread_.Start());
+  stream_manipulators_ = std::move(stream_manipulators);
 }
 
 bool StreamManipulatorManager::Initialize(
     const camera_metadata_t* static_info,
     StreamManipulator::CaptureResultCallback result_callback) {
   TRACE_COMMON();
-  for (size_t i = 0; i < stream_manipulators_.size(); ++i) {
+  result_callback_ = result_callback;
+
+  int partial_result_count = [&]() {
+    camera_metadata_ro_entry entry;
+    if (find_camera_metadata_ro_entry(
+            static_info, ANDROID_REQUEST_PARTIAL_RESULT_COUNT, &entry) != 0) {
+      return 1;
+    }
+    return entry.data.i32[0];
+  }();
+  camera_metadata_inspector_ =
+      CameraMetadataInspector::Create(partial_result_count);
+
+  if (stream_manipulators_.empty()) {
+    return true;
+  }
+
+  stream_manipulators_[0]->Initialize(
+      static_info,
+      base::BindRepeating(&StreamManipulatorManager::ReturnResultToClient,
+                          base::Unretained(this)));
+  for (int i = 1; i < stream_manipulators_.size(); ++i) {
     stream_manipulators_[i]->Initialize(
         static_info,
         base::BindRepeating(
-            [](StreamManipulator::CaptureResultCallback result_callback,
-               base::span<std::unique_ptr<StreamManipulator>> upper_sms,
-               Camera3CaptureDescriptor result) {
-              for (auto it = upper_sms.rbegin(); it != upper_sms.rend(); ++it) {
-                (*it)->ProcessCaptureResult(&result);
-              }
-              result_callback.Run(std::move(result));
-            },
-            result_callback, base::make_span(stream_manipulators_.begin(), i)));
+            &StreamManipulatorManager::ProcessCaptureResultOnStreamManipulator,
+            base::Unretained(this), i - 1));
   }
   return true;
 }
@@ -237,7 +263,8 @@ bool StreamManipulatorManager::ProcessCaptureRequest(
       request->Unlock();
     }
     {
-      TRACE_EVENT(kCameraTraceCategoryCommon, "SM::ProcessCaptureRequest",
+      TRACE_EVENT(kCameraTraceCategoryCommon,
+                  "StreamManipulator::ProcessCaptureRequest",
                   kCameraTraceKeyFrameNumber, request->frame_number());
       stream_manipulators_[i]->ProcessCaptureRequest(request);
     }
@@ -260,32 +287,34 @@ bool StreamManipulatorManager::Flush() {
   return true;
 }
 
-bool StreamManipulatorManager::ProcessCaptureResult(
-    Camera3CaptureDescriptor* result) {
+void StreamManipulatorManager::ProcessCaptureResult(
+    Camera3CaptureDescriptor result) {
   TRACE_COMMON();
-  // Call ProcessCaptureResult in reverse order of that of ProcessCaptureRequest
-  // so the stream manipulators can unwind the buffer states.
-  if (camera_metadata_inspector_ &&
-      camera_metadata_inspector_->IsPositionInspected(
-          stream_manipulators_.size())) {
-    camera_metadata_inspector_->InspectResult(result->LockForResult(),
-                                              stream_manipulators_.size());
-    result->Unlock();
+  // Some camera HAL may use their own storage to hold |buffer_handle_t*|s in
+  // the |result|, and it doesn't out-live this |process_capture_result| call.
+  // Fix them to our maintained storage so we can send |result| safely.
+  if (const auto* b = result.GetInputBuffer()) {
+    auto* handle = camera_buffer_handle_t::FromBufferHandle(*b->buffer);
+    CHECK(handle);
+    camera3_stream_buffer_t buffer = *b;
+    buffer.buffer = const_cast<buffer_handle_t*>(&handle->self);
+    result.SetInputBuffer(buffer);
   }
-  for (size_t i = 0; i < stream_manipulators_.size(); ++i) {
-    size_t j = stream_manipulators_.size() - i - 1;
-    {
-      TRACE_EVENT(kCameraTraceCategoryCommon, "SM::ProcessCaptureResult",
-                  kCameraTraceKeyFrameNumber, result->frame_number());
-      stream_manipulators_[j]->ProcessCaptureResult(result);
-    }
-    if (camera_metadata_inspector_ &&
-        camera_metadata_inspector_->IsPositionInspected(j)) {
-      camera_metadata_inspector_->InspectResult(result->LockForResult(), j);
-      result->Unlock();
-    }
+  base::span<camera3_stream_buffer_t> output_buffers =
+      result.GetMutableOutputBuffers();
+  for (auto& b : output_buffers) {
+    auto* handle = camera_buffer_handle_t::FromBufferHandle(*b.buffer);
+    CHECK(handle);
+    b.buffer = const_cast<buffer_handle_t*>(&handle->self);
   }
-  return true;
+
+  if (stream_manipulators_.empty()) {
+    ReturnResultToClient(std::move(result));
+    return;
+  }
+
+  ProcessCaptureResultOnStreamManipulator(stream_manipulators_.size() - 1,
+                                          std::move(result));
 }
 
 bool StreamManipulatorManager::Notify(camera3_notify_msg_t* msg) {
@@ -295,6 +324,46 @@ bool StreamManipulatorManager::Notify(camera3_notify_msg_t* msg) {
     (*it)->Notify(msg);
   }
   return true;
+}
+
+void StreamManipulatorManager::ProcessCaptureResultOnStreamManipulator(
+    int stream_manipulator_index, Camera3CaptureDescriptor result) {
+  TRACE_COMMON(kCameraTraceKeyFrameNumber, result.frame_number());
+  DCHECK(0 <= stream_manipulator_index &&
+         stream_manipulator_index < stream_manipulators_.size());
+  InspectResult(stream_manipulator_index + 1, result);
+
+  auto task_runner =
+      stream_manipulators_[stream_manipulator_index]->GetTaskRunner();
+  if (task_runner == nullptr) {
+    task_runner = default_capture_result_thread_.task_runner();
+  }
+  task_runner->PostTask(
+      FROM_HERE,
+      base::BindOnce(
+          base::IgnoreResult(&StreamManipulator::ProcessCaptureResult),
+          base::Unretained(
+              stream_manipulators_[stream_manipulator_index].get()),
+          std::move(result)));
+}
+
+void StreamManipulatorManager::ReturnResultToClient(
+    Camera3CaptureDescriptor result) {
+  TRACE_COMMON(kCameraTraceKeyFrameNumber, result.frame_number(),
+               kCameraTraceKeyCaptureInfo, result.ToJsonString());
+  DCHECK(!result_callback_.is_null());
+  InspectResult(0, result);
+  result_callback_.Run(std::move(result));
+}
+
+void StreamManipulatorManager::InspectResult(int position,
+                                             Camera3CaptureDescriptor& result) {
+  DCHECK(0 <= position && position <= stream_manipulators_.size());
+  if (camera_metadata_inspector_ &&
+      camera_metadata_inspector_->IsPositionInspected(position)) {
+    camera_metadata_inspector_->InspectResult(result.LockForResult(), position);
+    result.Unlock();
+  }
 }
 
 }  // namespace cros

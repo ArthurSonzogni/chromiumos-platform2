@@ -118,4 +118,8 @@ bool StreamManipulator::UpdateStaticMetadata(
   return true;
 }
 
+scoped_refptr<base::SingleThreadTaskRunner> StreamManipulator::GetTaskRunner() {
+  return nullptr;
+}
+
 }  // namespace cros

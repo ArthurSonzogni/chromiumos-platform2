@@ -51,6 +51,7 @@ bool GcamAeStreamManipulator::Initialize(
     const camera_metadata_t* static_info,
     CaptureResultCallback result_callback) {
   TRACE_GCAM_AE();
+  result_callback_ = std::move(result_callback);
 
   static_info_.acquire(clone_camera_metadata(static_info));
   {
@@ -143,38 +144,40 @@ bool GcamAeStreamManipulator::ProcessCaptureRequest(
 }
 
 bool GcamAeStreamManipulator::ProcessCaptureResult(
-    Camera3CaptureDescriptor* result) {
+    Camera3CaptureDescriptor result) {
   TRACE_GCAM_AE();
 
   if (VLOG_IS_ON(2)) {
-    VLOGFID(2, result->frame_number()) << "Got result:";
-    for (const auto& hal_result_buffer : result->GetOutputBuffers()) {
+    VLOGFID(2, result.frame_number()) << "Got result:";
+    for (const auto& hal_result_buffer : result.GetOutputBuffers()) {
       VLOGF(2) << "\t" << GetDebugString(hal_result_buffer.stream);
     }
   }
 
   base::AutoLock lock(ae_controller_lock_);
-  if (result->has_metadata()) {
-    ae_controller_->RecordAeMetadata(result);
-    ae_controller_->SetResultAeMetadata(result);
+  if (result.has_metadata()) {
+    ae_controller_->RecordAeMetadata(&result);
+    ae_controller_->SetResultAeMetadata(&result);
   }
 
   // Pass along the calculated HDR ratio to HdrNetStreamManipulator for HDRnet
   // rendering.
-  result->feature_metadata().hdr_ratio =
-      ae_controller_->GetCalculatedHdrRatio(result->frame_number());
+  result.feature_metadata().hdr_ratio =
+      ae_controller_->GetCalculatedHdrRatio(result.frame_number());
 
-  if (result->num_output_buffers() == 0) {
+  if (result.num_output_buffers() == 0) {
+    result_callback_.Run(std::move(result));
     return true;
   }
 
-  for (auto& buffer : result->GetOutputBuffers()) {
+  for (auto& buffer : result.GetOutputBuffers()) {
     if (buffer.stream == yuv_stream_) {
-      ae_controller_->RecordYuvBuffer(result->frame_number(), *buffer.buffer,
+      ae_controller_->RecordYuvBuffer(result.frame_number(), *buffer.buffer,
                                       base::ScopedFD());
     }
   }
 
+  result_callback_.Run(std::move(result));
   return true;
 }
 
