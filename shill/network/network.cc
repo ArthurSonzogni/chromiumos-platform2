@@ -263,6 +263,13 @@ void Network::OnStaticIPConfigChanged(const NetworkConfig& config) {
     return;
   }
 
+  if (ipconfig() == nullptr) {
+    LOG(WARNING)
+        << interface_name_
+        << " is not configured with IPv4. Skip applying static IP config";
+    return;
+  }
+
   // Clear the previously applied static IP parameters. The new config will be
   // applied in ConfigureStaticIPTask().
   ipconfig()->ApplyNetworkConfig(saved_network_config_);
