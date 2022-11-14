@@ -90,6 +90,8 @@ const char WPASupplicant::kInterfaceStateCompleted[] = "completed";
 const char WPASupplicant::kInterfaceStateDisconnected[] = "disconnected";
 const char WPASupplicant::kInterfaceStateGroupHandshake[] = "group_handshake";
 const char WPASupplicant::kInterfaceStateInactive[] = "inactive";
+const char WPASupplicant::kInterfaceStateInterfaceDisabled[] =
+    "interface_disabled";
 const char WPASupplicant::kInterfaceStateScanning[] = "scanning";
 const char WPASupplicant::kKeyManagementIeee8021X[] = "IEEE8021X";
 const char WPASupplicant::kKeyManagementFTEAP[] = "FT-EAP";

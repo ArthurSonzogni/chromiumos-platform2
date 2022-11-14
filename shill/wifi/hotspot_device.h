@@ -7,6 +7,8 @@
 
 #include <string>
 
+#include <base/memory/weak_ptr.h>
+
 #include "shill/store/key_value_store.h"
 #include "shill/supplicant/supplicant_event_delegate_interface.h"
 #include "shill/wifi/local_device.h"
@@ -59,17 +61,22 @@ class HotspotDevice : public LocalDevice,
 
  private:
   friend class HotspotDeviceTest;
+  FRIEND_TEST(HotspotDeviceTest, InterfaceDisabled);
 
   // Create an AP interface and connect to the wpa_supplicant interface proxy.
   bool CreateInterface();
   // Remove the AP interface and disconnect from the wpa_supplicant interface
   // proxy.
   bool RemoveInterface();
+  void PropertiesChangedTask(const KeyValueStore& properties);
+  void StateChanged(const std::string& new_state);
 
   std::unique_ptr<SupplicantInterfaceProxyInterface>
       supplicant_interface_proxy_;
   // wpa_supplicant's RPC path for this device/interface.
   RpcIdentifier supplicant_interface_path_;
+  std::string supplicant_state_;
+  base::WeakPtrFactory<HotspotDevice> weak_ptr_factory_{this};
 };
 
 }  // namespace shill

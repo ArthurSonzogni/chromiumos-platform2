@@ -7,25 +7,30 @@
 #include <string>
 
 #include <base/memory/ref_counted.h>
+#include <base/test/mock_callback.h>
+#include <gmock/gmock.h>
 
 #include "shill/error.h"
 #include "shill/mock_control.h"
 #include "shill/mock_event_dispatcher.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
+#include "shill/store/key_value_store.h"
 #include "shill/supplicant/mock_supplicant_interface_proxy.h"
 #include "shill/supplicant/mock_supplicant_process_proxy.h"
 #include "shill/test_event_dispatcher.h"
 #include "shill/testing.h"
+#include "shill/supplicant/wpa_supplicant.h"
 #include "shill/wifi/hotspot_device.h"
-#include "shill/wifi/mock_wifi_phy.h"
-#include "shill/wifi/wifi_phy.h"
+#include "shill/wifi/local_device.h"
 
 using ::testing::_;
 using ::testing::DoAll;
+using ::testing::Mock;
 using ::testing::NiceMock;
 using ::testing::Return;
 using ::testing::SetArgPointee;
+using ::testing::StrictMock;
 using ::testing::Test;
 
 namespace shill {
@@ -41,12 +46,7 @@ class HotspotDeviceTest : public testing::Test {
   HotspotDeviceTest()
       : manager_(&control_interface_, &dispatcher_, &metrics_),
         device_(new HotspotDevice(
-            &manager_,
-            kDeviceName,
-            kDeviceAddress,
-            kPhyIndex,
-            base::BindRepeating(&HotspotDeviceTest::OnLocalDeviceEvent,
-                                base::Unretained(this)))),
+            &manager_, kDeviceName, kDeviceAddress, kPhyIndex, cb.Get())),
         supplicant_process_proxy_(new NiceMock<MockSupplicantProcessProxy>()),
         supplicant_interface_proxy_(
             new NiceMock<MockSupplicantInterfaceProxy>()) {
@@ -57,15 +57,14 @@ class HotspotDeviceTest : public testing::Test {
   }
   ~HotspotDeviceTest() override = default;
 
+  void DispatchPendingEvents() { dispatcher_.DispatchPendingEvents(); }
+
  private:
   std::unique_ptr<SupplicantInterfaceProxyInterface>
   CreateSupplicantInterfaceProxy(SupplicantEventDelegateInterface* delegate,
                                  const RpcIdentifier& object_path) {
     CHECK(supplicant_interface_proxy_);
     return std::move(supplicant_interface_proxy_);
-  }
-
-  void OnLocalDeviceEvent(LocalDevice::DeviceEvent event, LocalDevice* device) {
   }
 
   NiceMock<MockControl> control_interface_;
@@ -76,6 +75,9 @@ class HotspotDeviceTest : public testing::Test {
   // protected fields interspersed between private fields, due to
   // initialization order
  protected:
+  StrictMock<
+      base::MockRepeatingCallback<void(LocalDevice::DeviceEvent, LocalDevice*)>>
+      cb;
   scoped_refptr<HotspotDevice> device_;
   MockSupplicantProcessProxy* supplicant_process_proxy_;
 
@@ -91,7 +93,12 @@ TEST_F(HotspotDeviceTest, DeviceCleanStartStop) {
 
   EXPECT_CALL(*supplicant_process_proxy_, RemoveInterface(_))
       .WillOnce(Return(true));
+  // Expect no DeviceEvent::kInterfaceDisabled sent if the interface is
+  // destroyed by caller not Kernel.
+  EXPECT_CALL(cb, Run(_, _)).Times(0);
   EXPECT_TRUE(device_->Stop());
+  DispatchPendingEvents();
+  Mock::VerifyAndClearExpectations(&cb);
 }
 
 TEST_F(HotspotDeviceTest, DeviceExistStart) {
@@ -101,6 +108,29 @@ TEST_F(HotspotDeviceTest, DeviceExistStart) {
       .WillOnce(DoAll(SetArgPointee<1>(RpcIdentifier("/default/path")),
                       Return(true)));
   EXPECT_TRUE(device_->Start());
+}
+
+TEST_F(HotspotDeviceTest, InterfaceDisabled) {
+  KeyValueStore props;
+  props.Set<std::string>(WPASupplicant::kInterfacePropertyState,
+                         WPASupplicant::kInterfaceStateInterfaceDisabled);
+
+  // Expect supplicant_state_ change and kInterfaceDisabled DeviceEvent sent.
+  EXPECT_CALL(cb, Run(LocalDevice::DeviceEvent::kInterfaceDisabled, _))
+      .Times(1);
+  device_->PropertiesChangedTask(props);
+  EXPECT_EQ(device_->supplicant_state_,
+            WPASupplicant::kInterfaceStateInterfaceDisabled);
+  DispatchPendingEvents();
+  Mock::VerifyAndClearExpectations(&cb);
+
+  // Expect no supplicant_state_ change and no DeviceEvent sent with same state.
+  EXPECT_CALL(cb, Run(_, _)).Times(0);
+  device_->PropertiesChangedTask(props);
+  EXPECT_EQ(device_->supplicant_state_,
+            WPASupplicant::kInterfaceStateInterfaceDisabled);
+  DispatchPendingEvents();
+  Mock::VerifyAndClearExpectations(&cb);
 }
 
 }  // namespace shill
