@@ -38,6 +38,9 @@ struct BRILLO_EXPORT EffectsConfig {
   // Must be built with --define DRISHTI_PROFILING=1
   bool enable_profiling = false;
 
+  // Run models to position light automatically.
+  bool enable_auto_light_pos = true;
+
   inline bool operator==(const EffectsConfig& rhs) const {
     return effect == rhs.effect && blur_level == rhs.blur_level &&
            segmentation_gpu_api == rhs.segmentation_gpu_api &&
