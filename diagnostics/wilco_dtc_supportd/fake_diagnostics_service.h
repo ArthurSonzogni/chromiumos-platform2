@@ -118,6 +118,13 @@ class FakeDiagnosticsService final
   void RunFingerprintAliveRoutine(RunFingerprintAliveRoutineCallback) override;
   void RunPrivacyScreenRoutine(bool target_state,
                                RunPrivacyScreenRoutineCallback) override;
+  void RunLedLitUpRoutine(
+      ash::cros_healthd::mojom::LedName name,
+      ash::cros_healthd::mojom::LedColor color,
+      mojo::PendingRemote<ash::cros_healthd::mojom::LedLitUpRoutineReplier>
+          replier,
+      RunLedLitUpRoutineCallback callback) override;
+
   // Overrides the default behavior of GetCrosHealthdDiagnosticsService to test
   // situations where mojo methods were called prior to wilco_dtc_supportd's
   // mojo service being established.

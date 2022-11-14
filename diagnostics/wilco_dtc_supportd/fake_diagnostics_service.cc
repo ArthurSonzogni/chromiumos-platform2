@@ -245,6 +245,14 @@ void FakeDiagnosticsService::RunPrivacyScreenRoutine(
   std::move(callback).Run(run_routine_response_.Clone());
 }
 
+void FakeDiagnosticsService::RunLedLitUpRoutine(
+    mojo_ipc::LedName name,
+    mojo_ipc::LedColor color,
+    mojo::PendingRemote<mojo_ipc::LedLitUpRoutineReplier> replier,
+    RunLedLitUpRoutineCallback callback) {
+  std::move(callback).Run(run_routine_response_.Clone());
+}
+
 void FakeDiagnosticsService::SetMojoServiceIsAvailable(bool is_available) {
   is_available_ = is_available;
 }

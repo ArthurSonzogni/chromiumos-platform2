@@ -220,4 +220,12 @@ void FakeRoutineService::RunPrivacyScreenRoutine(
   NOTIMPLEMENTED();
 }
 
+void FakeRoutineService::RunLedLitUpRoutine(
+    mojo_ipc::LedName name,
+    mojo_ipc::LedColor color,
+    mojo::PendingRemote<mojo_ipc::LedLitUpRoutineReplier> replier,
+    RunLedLitUpRoutineCallback callback) {
+  NOTIMPLEMENTED();
+}
+
 }  // namespace diagnostics

@@ -286,6 +286,9 @@ int diag_main(int argc, char** argv) {
         }
         routine_result = actions.ActionRunPrivacyScreenRoutine(target_state);
         break;
+      case mojo_ipc::DiagnosticRoutineEnum::kLedLitUp:
+        NOTIMPLEMENTED();
+        return EXIT_FAILURE;
       case mojo_ipc::DiagnosticRoutineEnum::kUnknown:
         // Never map FLAGS_routine to kUnknown field.
         NOTREACHED();

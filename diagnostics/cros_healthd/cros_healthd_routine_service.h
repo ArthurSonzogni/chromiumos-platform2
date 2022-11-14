@@ -128,6 +128,12 @@ class CrosHealthdRoutineService final
       RunFingerprintAliveRoutineCallback callback) override;
   void RunPrivacyScreenRoutine(
       bool target_state, RunPrivacyScreenRoutineCallback callback) override;
+  void RunLedLitUpRoutine(
+      ash::cros_healthd::mojom::LedName name,
+      ash::cros_healthd::mojom::LedColor color,
+      mojo::PendingRemote<ash::cros_healthd::mojom::LedLitUpRoutineReplier>
+          replier,
+      RunLedLitUpRoutineCallback callback) override;
 
  private:
   void RunRoutine(

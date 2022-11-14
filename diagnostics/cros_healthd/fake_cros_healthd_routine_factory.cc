@@ -390,4 +390,13 @@ std::unique_ptr<DiagnosticRoutine>
 FakeCrosHealthdRoutineFactory::MakePrivacyScreenRoutine(bool target_state) {
   return std::move(next_routine_);
 }
+
+std::unique_ptr<DiagnosticRoutine>
+FakeCrosHealthdRoutineFactory::MakeLedLitUpRoutine(
+    ash::cros_healthd::mojom::LedName name,
+    ash::cros_healthd::mojom::LedColor color,
+    mojo::PendingRemote<ash::cros_healthd::mojom::LedLitUpRoutineReplier>
+        replier) {
+  return std::move(next_routine_);
+}
 }  // namespace diagnostics

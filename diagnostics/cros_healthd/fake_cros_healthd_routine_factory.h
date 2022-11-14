@@ -104,6 +104,11 @@ class FakeCrosHealthdRoutineFactory final : public CrosHealthdRoutineFactory {
   std::unique_ptr<DiagnosticRoutine> MakeFingerprintAliveRoutine() override;
   std::unique_ptr<DiagnosticRoutine> MakePrivacyScreenRoutine(
       bool target_state) override;
+  std::unique_ptr<DiagnosticRoutine> MakeLedLitUpRoutine(
+      ash::cros_healthd::mojom::LedName name,
+      ash::cros_healthd::mojom::LedColor color,
+      mojo::PendingRemote<ash::cros_healthd::mojom::LedLitUpRoutineReplier>
+          replier) override;
 
  private:
   // The routine that will be returned by any calls to MakeSomeRoutine.

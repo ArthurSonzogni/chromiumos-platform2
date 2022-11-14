@@ -195,6 +195,13 @@ class CrosHealthdMojoAdapterImpl final : public CrosHealthdMojoAdapter {
   ash::cros_healthd::mojom::RunRoutineResponsePtr RunPrivacyScreenRoutine(
       bool target_state) override;
 
+  // Runs the LED lit up routine.
+  ash::cros_healthd::mojom::RunRoutineResponsePtr RunLedLitUpRoutine(
+      ash::cros_healthd::mojom::LedName name,
+      ash::cros_healthd::mojom::LedColor color,
+      mojo::PendingRemote<ash::cros_healthd::mojom::LedLitUpRoutineReplier>
+          replier) override;
+
   // Returns which routines are available on the platform.
   std::optional<std::vector<ash::cros_healthd::mojom::DiagnosticRoutineEnum>>
   GetAvailableRoutines() override;
@@ -951,6 +958,27 @@ CrosHealthdMojoAdapterImpl::RunPrivacyScreenRoutine(bool target_state) {
 
   cros_healthd_diagnostics_service_->RunPrivacyScreenRoutine(
       target_state,
+      base::BindOnce(&OnMojoResponseReceived<
+                         ash::cros_healthd::mojom::RunRoutineResponsePtr>,
+                     &response, run_loop.QuitClosure()));
+  run_loop.Run();
+
+  return response;
+}
+
+ash::cros_healthd::mojom::RunRoutineResponsePtr
+CrosHealthdMojoAdapterImpl::RunLedLitUpRoutine(
+    ash::cros_healthd::mojom::LedName name,
+    ash::cros_healthd::mojom::LedColor color,
+    mojo::PendingRemote<ash::cros_healthd::mojom::LedLitUpRoutineReplier>
+        replier) {
+  if (!cros_healthd_service_factory_.is_bound() && !Connect())
+    return nullptr;
+
+  ash::cros_healthd::mojom::RunRoutineResponsePtr response;
+  base::RunLoop run_loop;
+  cros_healthd_diagnostics_service_->RunLedLitUpRoutine(
+      name, color, std::move(replier),
       base::BindOnce(&OnMojoResponseReceived<
                          ash::cros_healthd::mojom::RunRoutineResponsePtr>,
                      &response, run_loop.QuitClosure()));

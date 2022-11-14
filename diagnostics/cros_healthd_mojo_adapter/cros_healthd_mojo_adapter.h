@@ -201,6 +201,13 @@ class CrosHealthdMojoAdapter {
   virtual ash::cros_healthd::mojom::RunRoutineResponsePtr
   RunPrivacyScreenRoutine(bool target_state) = 0;
 
+  // Runs the LED lit up routine.
+  virtual ash::cros_healthd::mojom::RunRoutineResponsePtr RunLedLitUpRoutine(
+      ash::cros_healthd::mojom::LedName name,
+      ash::cros_healthd::mojom::LedColor color,
+      mojo::PendingRemote<ash::cros_healthd::mojom::LedLitUpRoutineReplier>
+          replier) = 0;
+
   // Returns which routines are available on the platform.
   virtual std::optional<
       std::vector<ash::cros_healthd::mojom::DiagnosticRoutineEnum>>
