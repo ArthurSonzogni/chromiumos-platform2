@@ -50,15 +50,6 @@ const struct {
     {"Unsupported", mojo_ipc::DiagnosticRoutineStatusEnum::kUnsupported},
     {"Not run", mojo_ipc::DiagnosticRoutineStatusEnum::kNotRun}};
 
-const struct {
-  const char* readable_user_message;
-  mojo_ipc::DiagnosticRoutineUserMessageEnum user_message_enum;
-} kDiagnosticRoutineReadableUserMessages[] = {
-    {"Unplug the AC adapter.",
-     mojo_ipc::DiagnosticRoutineUserMessageEnum::kUnplugACPower},
-    {"Plug in the AC adapter.",
-     mojo_ipc::DiagnosticRoutineUserMessageEnum::kPlugInACPower}};
-
 std::string GetSwitchFromRoutine(mojo_ipc::DiagnosticRoutineEnum routine) {
   static base::NoDestructor<
       std::map<mojo_ipc::DiagnosticRoutineEnum, std::string>>
@@ -76,6 +67,36 @@ std::string GetSwitchFromRoutine(mojo_ipc::DiagnosticRoutineEnum routine) {
       << "Invalid routine to switch lookup with routine: " << routine;
 
   return routine_itr->second;
+}
+
+void WaitUntilEnterPressed() {
+  std::cout << "Press ENTER to continue." << std::endl;
+  std::string dummy;
+  std::getline(std::cin, dummy);
+}
+
+void HandleGetLedColorMatchedInvocation(
+    mojo_ipc::LedLitUpRoutineReplier::GetColorMatchedCallback callback) {
+  // Print a newline so we don't overwrite the progress percent.
+  std::cout << '\n';
+
+  std::optional<bool> answer;
+  do {
+    std::cout << "Is the LED lit up in the specified color? "
+                 "Input y/n then press ENTER to continue."
+              << std::endl;
+    std::string input;
+    std::getline(std::cin, input);
+
+    if (!input.empty() && input[0] == 'y') {
+      answer = true;
+    } else if (!input.empty() && input[0] == 'n') {
+      answer = false;
+    }
+  } while (!answer.has_value());
+
+  DCHECK(answer.has_value());
+  std::move(callback).Run(answer.value());
 }
 
 }  // namespace
@@ -304,6 +325,20 @@ bool DiagActions::ActionRunPrivacyScreenRoutine(bool target_state) {
   return ProcessRoutineResponse(response);
 }
 
+bool DiagActions::ActionRunLedRoutine(mojo_ipc::LedName name,
+                                      mojo_ipc::LedColor color) {
+  mojo::PendingReceiver<mojo_ipc::LedLitUpRoutineReplier> replier_receiver;
+  mojo::PendingRemote<mojo_ipc::LedLitUpRoutineReplier> replier_remote(
+      replier_receiver.InitWithNewPipeAndPassRemote());
+  led_lit_up_routine_replier_ =
+      std::make_unique<LedLitUpRoutineReplier>(std::move(replier_receiver));
+  led_lit_up_routine_replier_->SetGetColorMatchedHandler(
+      base::BindRepeating(&HandleGetLedColorMatchedInvocation));
+  auto response =
+      adapter_->RunLedLitUpRoutine(name, color, std::move(replier_remote));
+  return ProcessRoutineResponse(response);
+}
+
 void DiagActions::ForceCancelAtPercent(uint32_t percent) {
   CHECK_LE(percent, 100) << "Percent must be <= 100.";
   force_cancel_ = true;
@@ -376,10 +411,6 @@ bool DiagActions::PollRoutineAndProcessResult() {
   }
 
   if (response->routine_update_union->is_interactive_update()) {
-    // Print a newline so we don't overwrite the progress percent. No need to
-    // flush the output, since ProcessInteractiveResultAndContinue() will do
-    // that itself.
-    std::cout << '\n';
     return ProcessInteractiveResultAndContinue(
         std::move(response->routine_update_union->get_interactive_update()));
   }
@@ -415,34 +446,41 @@ bool DiagActions::PollRoutineAndProcessResult() {
 
 bool DiagActions::ProcessInteractiveResultAndContinue(
     mojo_ipc::InteractiveRoutineUpdatePtr interactive_result) {
+  // Print a newline so we don't overwrite the progress percent.
+  std::cout << '\n';
   // Interactive updates require us to print out instructions to the user on the
   // console. Once the user responds by pressing the ENTER key, we need to send
   // a continue command to the routine and restart waiting for results.
-  bool user_message_found = false;
-  mojo_ipc::DiagnosticRoutineUserMessageEnum user_message =
-      interactive_result->user_message;
-  for (const auto& item : kDiagnosticRoutineReadableUserMessages) {
-    if (item.user_message_enum == user_message) {
-      user_message_found = true;
-      std::cout << item.readable_user_message << std::endl
-                << "Press ENTER to continue." << std::endl;
+  //
+  // kCheckLedColor is an exception, which use a pending_remote to communicate
+  // with the routine. It should be migrated to the new routine API in the
+  // future.
+  bool skip_sending_continue_command = false;
+  switch (interactive_result->user_message) {
+    case mojo_ipc::DiagnosticRoutineUserMessageEnum::kUnplugACPower:
+      std::cout << "Unplug the AC adapter." << std::endl;
+      WaitUntilEnterPressed();
       break;
-    }
+    case mojo_ipc::DiagnosticRoutineUserMessageEnum::kPlugInACPower:
+      std::cout << "Plug in the AC adapter." << std::endl;
+      WaitUntilEnterPressed();
+      break;
+    case mojo_ipc::DiagnosticRoutineUserMessageEnum::kCheckLedColor:
+      // Don't send the continue command because it communicates with the
+      // routine through |HandleGetLedColorMatchedInvocation|.
+      skip_sending_continue_command = true;
+      break;
+    case mojo_ipc::DiagnosticRoutineUserMessageEnum::kUnknown:
+      LOG(ERROR) << "Unknown routine user message enum";
+      RemoveRoutine();
+      return false;
   }
 
-  if (!user_message_found) {
-    LOG(ERROR) << "No human-readable string for user message: "
-               << static_cast<int>(user_message);
-    RemoveRoutine();
-    return false;
+  if (!skip_sending_continue_command) {
+    auto response = adapter_->GetRoutineUpdate(
+        id_, mojo_ipc::DiagnosticRoutineCommandEnum::kContinue,
+        false /* include_output */);
   }
-
-  std::string dummy;
-  std::getline(std::cin, dummy);
-
-  auto response = adapter_->GetRoutineUpdate(
-      id_, mojo_ipc::DiagnosticRoutineCommandEnum::kContinue,
-      false /* include_output */);
   return PollRoutineAndProcessResult();
 }
 

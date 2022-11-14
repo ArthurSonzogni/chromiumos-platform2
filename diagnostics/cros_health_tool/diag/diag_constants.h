@@ -73,7 +73,9 @@ constexpr struct {
     {"fingerprint_alive",
      ash::cros_healthd::mojom::DiagnosticRoutineEnum::kFingerprintAlive},
     {"privacy_screen",
-     ash::cros_healthd::mojom::DiagnosticRoutineEnum::kPrivacyScreen}};
+     ash::cros_healthd::mojom::DiagnosticRoutineEnum::kPrivacyScreen},
+    {"led_lit_up", ash::cros_healthd::mojom::DiagnosticRoutineEnum::kLedLitUp}};
+
 }  // namespace diagnostics
 
 #endif  // DIAGNOSTICS_CROS_HEALTH_TOOL_DIAG_DIAG_CONSTANTS_H_

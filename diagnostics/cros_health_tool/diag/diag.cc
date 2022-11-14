@@ -38,6 +38,43 @@ constexpr base::TimeDelta kRoutinePollIntervalTimeDelta =
 // Maximum time we're willing to wait for a routine to finish.
 constexpr base::TimeDelta kMaximumRoutineExecutionTimeDelta = base::Hours(1);
 
+const struct {
+  const char* readable_name;
+  mojo_ipc::LedName name;
+} kLedNameSwitches[] = {{"battery", mojo_ipc::LedName::kBattery},
+                        {"power", mojo_ipc::LedName::kPower},
+                        {"adapter", mojo_ipc::LedName::kAdapter},
+                        {"left", mojo_ipc::LedName::kLeft},
+                        {"right", mojo_ipc::LedName::kRight}};
+
+const struct {
+  const char* readable_color;
+  mojo_ipc::LedColor color;
+} kLedColorSwitches[] = {{"red", mojo_ipc::LedColor::kRed},
+                         {"green", mojo_ipc::LedColor::kGreen},
+                         {"blue", mojo_ipc::LedColor::kBlue},
+                         {"yellow", mojo_ipc::LedColor::kYellow},
+                         {"white", mojo_ipc::LedColor::kWhite},
+                         {"amber", mojo_ipc::LedColor::kAmber}};
+
+mojo_ipc::LedName LedNameFromString(const std::string& str) {
+  for (const auto& item : kLedNameSwitches) {
+    if (str == item.readable_name) {
+      return item.name;
+    }
+  }
+  return mojo_ipc::LedName::kUnmappedEnumField;
+}
+
+mojo_ipc::LedColor LedColorFromString(const std::string& str) {
+  for (const auto& item : kLedColorSwitches) {
+    if (str == item.readable_color) {
+      return item.color;
+    }
+  }
+  return mojo_ipc::LedColor::kUnmappedEnumField;
+}
+
 }  // namespace
 
 int diag_main(int argc, char** argv) {
@@ -94,6 +131,14 @@ int diag_main(int argc, char** argv) {
 
   // Flag for the privacy screen routine.
   DEFINE_string(set_privacy_screen, "on", "Privacy screen target state.");
+
+  // Flags for the LED routine.
+  DEFINE_string(led_name, "",
+                "The target LED for the LED routine. Options are:"
+                "\n\tbattery, power, adapter, left, right.");
+  DEFINE_string(led_color, "",
+                "The target color for the LED routine. Options are:"
+                "\n\tred, green, blue, yellow, white, amber.");
 
   brillo::FlagHelper::Init(argc, argv, "diag - Device diagnostic tool.");
 
@@ -286,9 +331,19 @@ int diag_main(int argc, char** argv) {
         }
         routine_result = actions.ActionRunPrivacyScreenRoutine(target_state);
         break;
-      case mojo_ipc::DiagnosticRoutineEnum::kLedLitUp:
-        NOTIMPLEMENTED();
-        return EXIT_FAILURE;
+      case mojo_ipc::DiagnosticRoutineEnum::kLedLitUp: {
+        mojo_ipc::LedName name = LedNameFromString(FLAGS_led_name);
+        if (name == mojo_ipc::LedName::kUnmappedEnumField) {
+          std::cout << "Unknown led_name: " << FLAGS_led_name << std::endl;
+          return EXIT_FAILURE;
+        }
+        mojo_ipc::LedColor color = LedColorFromString(FLAGS_led_color);
+        if (color == mojo_ipc::LedColor::kUnmappedEnumField) {
+          std::cout << "Unknown led_color: " << FLAGS_led_color << std::endl;
+          return EXIT_FAILURE;
+        }
+        routine_result = actions.ActionRunLedRoutine(name, color);
+      } break;
       case mojo_ipc::DiagnosticRoutineEnum::kUnknown:
         // Never map FLAGS_routine to kUnknown field.
         NOTREACHED();

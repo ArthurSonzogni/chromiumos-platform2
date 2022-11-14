@@ -23,5 +23,6 @@ source_set("libdiag") {
   sources = [
     "diag.cc",
     "diag_actions.cc",
+    "repliers/led_lit_up_routine_replier.cc",
   ]
 }

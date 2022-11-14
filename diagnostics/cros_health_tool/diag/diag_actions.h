@@ -14,6 +14,7 @@
 #include <base/time/tick_clock.h>
 #include <base/time/time.h>
 
+#include "diagnostics/cros_health_tool/diag/repliers/led_lit_up_routine_replier.h"
 #include "diagnostics/cros_healthd_mojo_adapter/cros_healthd_mojo_adapter.h"
 
 namespace diagnostics {
@@ -92,6 +93,8 @@ class DiagActions final {
   bool ActionRunFingerprintRoutine();
   bool ActionRunFingerprintAliveRoutine();
   bool ActionRunPrivacyScreenRoutine(bool target_state);
+  bool ActionRunLedRoutine(ash::cros_healthd::mojom::LedName name,
+                           ash::cros_healthd::mojom::LedColor color);
 
   // Cancels the next routine run, when that routine reports a progress percent
   // greater than or equal to |percent|. Should be called before running the
@@ -144,6 +147,9 @@ class DiagActions final {
   // Unowned pointer which should outlive this instance. Allows the default tick
   // clock to be overridden for testing.
   const base::TickClock* tick_clock_;
+
+  // Used in the LED lit up routine.
+  std::unique_ptr<LedLitUpRoutineReplier> led_lit_up_routine_replier_;
 };
 
 }  // namespace diagnostics
