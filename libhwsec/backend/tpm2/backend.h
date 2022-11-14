@@ -18,6 +18,7 @@
 #include "libhwsec/backend/tpm2/pinweaver.h"
 #include "libhwsec/backend/tpm2/random.h"
 #include "libhwsec/backend/tpm2/recovery_crypto.h"
+#include "libhwsec/backend/tpm2/ro_data.h"
 #include "libhwsec/backend/tpm2/sealing.h"
 #include "libhwsec/backend/tpm2/session_management.h"
 #include "libhwsec/backend/tpm2/signature_sealing.h"
@@ -79,7 +80,7 @@ class BackendTpm2 : public Backend {
   State* GetState() override { return &state_; }
   DAMitigation* GetDAMitigation() override { return &da_mitigation_; }
   Storage* GetStorage() override { return &storage_; }
-  RoData* GetRoData() override { return nullptr; }
+  RoData* GetRoData() override { return &ro_data_; }
   Sealing* GetSealing() override { return &sealing_; }
   SignatureSealing* GetSignatureSealing() override {
     return &signature_sealing_;
@@ -118,6 +119,7 @@ class BackendTpm2 : public Backend {
   VendorTpm2 vendor_{*this};
   RecoveryCryptoTpm2 recovery_crypto_{*this};
   U2fTpm2 u2f_{*this};
+  RoDataTpm2 ro_data_{*this};
 
   MiddlewareDerivative middleware_derivative_;
 };
