@@ -20,12 +20,6 @@ is_factory_mode() {
   is_factory_test_mode || is_factory_installer_mode
 }
 
-inhibit_if_factory_mode() {
-  if is_factory_mode && [ "${disable_inhibit}" -eq 0 ]; then
-    initctl stop --no-wait "$1"
-  fi
-}
-
 factory_mount_var_and_home_chronos() {
   local option_file="${FACTORY_DIR}/init/encstateful_mount_option"
   local option=""
