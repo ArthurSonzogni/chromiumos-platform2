@@ -9,6 +9,7 @@
 #include <memory>
 #include <string>
 
+#include "cryptohome/auth_blocks/auth_block_utility.h"
 #include "cryptohome/auth_factor/auth_factor.h"
 
 namespace cryptohome {
@@ -17,9 +18,15 @@ namespace cryptohome {
 // Must be use on single thread and sequence only.
 class AuthFactorMap final {
  private:
+  // Structure containing an auth factor loaded from storage along with metadata
+  // about the storage it was loaded from.
+  struct StoredAuthFactor {
+    std::unique_ptr<AuthFactor> auth_factor;
+    AuthFactorStorageType storage_type;
+  };
   // Declared here in the beginning to allow us to reference the underlying
   // storage type when defining the iterator.
-  using Storage = std::map<std::string, std::unique_ptr<AuthFactor>>;
+  using Storage = std::map<std::string, StoredAuthFactor>;
 
   // Iterator template that can act as both a regular and const iterator. This
   // wraps the underlying map iterator but exposes the underlying UserSession as
@@ -48,7 +55,7 @@ class AuthFactorMap final {
       return *this;
     }
 
-    value_type& operator*() const { return *iter_->second; }
+    value_type& operator*() const { return *iter_->second.auth_factor; }
 
     bool operator==(const iterator_base& rhs) const {
       return iter_ == rhs.iter_;
@@ -78,13 +85,18 @@ class AuthFactorMap final {
   iterator end() { return iterator(storage_.end()); }
   const_iterator end() const { return const_iterator(storage_.end()); }
 
-  // Add a factor to the map. The factors are only stored by label and so adding
-  // a new factor with the same label will overwrite the prior one.
-  void Add(std::unique_ptr<AuthFactor> auth_factor);
+  // Add a factor to the map, along with the given storage type. The factors are
+  // only stored by label and so adding a new factor with the same label will
+  // overwrite the prior one.
+  void Add(std::unique_ptr<AuthFactor> auth_factor,
+           AuthFactorStorageType storage_type);
+
   // Removes the factor for a given label. Does nothing if there is no factor
   // with that label.
   void Remove(const std::string& label);
-  // Returns a pointer the factor for a given label, or null if there's none.
+
+  // Returns a pointer to the factor for a given label, or null if there is no
+  // factor for this label.
   AuthFactor* Find(const std::string& label);
   const AuthFactor* Find(const std::string& label) const;
 

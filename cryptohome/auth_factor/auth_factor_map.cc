@@ -11,9 +11,11 @@
 
 namespace cryptohome {
 
-void AuthFactorMap::Add(std::unique_ptr<AuthFactor> auth_factor) {
+void AuthFactorMap::Add(std::unique_ptr<AuthFactor> auth_factor,
+                        AuthFactorStorageType storage_type) {
   std::string label = auth_factor->label();
-  storage_[std::move(label)] = std::move(auth_factor);
+  storage_[std::move(label)] = {.auth_factor = std::move(auth_factor),
+                                .storage_type = storage_type};
 }
 
 void AuthFactorMap::Remove(const std::string& label) {
@@ -25,7 +27,7 @@ AuthFactor* AuthFactorMap::Find(const std::string& label) {
   if (iter == storage_.end()) {
     return nullptr;
   }
-  return iter->second.get();
+  return iter->second.auth_factor.get();
 }
 
 const AuthFactor* AuthFactorMap::Find(const std::string& label) const {
@@ -33,7 +35,7 @@ const AuthFactor* AuthFactorMap::Find(const std::string& label) const {
   if (iter == storage_.end()) {
     return nullptr;
   }
-  return iter->second.get();
+  return iter->second.auth_factor.get();
 }
 
 }  // namespace cryptohome

@@ -263,7 +263,8 @@ CryptohomeStatus AuthSession::Initialize() {
         username_, factor_map, backup_factor_map, &key_label_data_);
     user_has_configured_credential_ = !key_label_data_.empty();
     for (auto& [unused, factor] : factor_map) {
-      auth_factor_map_.Add(std::move(factor));
+      auth_factor_map_.Add(std::move(factor),
+                           AuthFactorStorageType::kVaultKeyset);
     }
   }
 
@@ -283,7 +284,8 @@ CryptohomeStatus AuthSession::Initialize() {
       auth_factor_map_.empty() && !backup_factor_map.empty()) {
     user_has_configured_credential_ = true;
     for (auto& [unused, factor] : backup_factor_map) {
-      auth_factor_map_.Add(std::move(factor));
+      auth_factor_map_.Add(std::move(factor),
+                           AuthFactorStorageType::kVaultKeyset);
     }
   }
 
@@ -291,7 +293,8 @@ CryptohomeStatus AuthSession::Initialize() {
     std::map<std::string, std::unique_ptr<AuthFactor>> factor_map =
         auth_factor_manager_->LoadAllAuthFactors(obfuscated_username_);
     for (auto& [unused, factor] : factor_map) {
-      auth_factor_map_.Add(std::move(factor));
+      auth_factor_map_.Add(std::move(factor),
+                           AuthFactorStorageType::kUserSecretStash);
     }
     user_has_configured_auth_factor_ = !auth_factor_map_.empty();
   }
@@ -456,7 +459,8 @@ void AuthSession::CreateAndPersistVaultKeyset(
   AuthFactorType auth_factor_type = AuthFactorType::kPassword;
   if (added_auth_factor) {
     auth_factor_type = added_auth_factor->type();
-    auth_factor_map_.Add(std::move(added_auth_factor));
+    auth_factor_map_.Add(std::move(added_auth_factor),
+                         AuthFactorStorageType::kVaultKeyset);
   } else {
     LOG(WARNING) << "Failed to convert added keyset to AuthFactor.";
   }
@@ -1684,7 +1688,8 @@ void AuthSession::UpdateAuthFactorViaUserSecretStash(
 
   LOG(INFO) << "AuthSession: updated auth factor " << auth_factor->label()
             << " in USS.";
-  auth_factor_map_.Add(std::move(auth_factor));
+  auth_factor_map_.Add(std::move(auth_factor),
+                       AuthFactorStorageType::kUserSecretStash);
   ReportTimerDuration(auth_session_performance_timer.get());
   std::move(on_done).Run(OkStatus<CryptohomeError>());
 }
@@ -2268,7 +2273,8 @@ void AuthSession::PersistAuthFactorToUserSecretStash(
 
   LOG(INFO) << "AuthSession: added auth factor " << auth_factor->label()
             << " into USS.";
-  auth_factor_map_.Add(std::move(auth_factor));
+  auth_factor_map_.Add(std::move(auth_factor),
+                       AuthFactorStorageType::kUserSecretStash);
   user_has_configured_auth_factor_ = true;
 
   // Report timer for how long AuthSession operation takes.

@@ -241,8 +241,9 @@ class AuthSession final {
   }
 
   // Injects an auth factor into the session for testing purposes.
-  void add_auth_factor_for_testing(std::unique_ptr<AuthFactor> auth_factor) {
-    auth_factor_map_.Add(std::move(auth_factor));
+  void add_auth_factor_for_testing(std::unique_ptr<AuthFactor> auth_factor,
+                                   AuthFactorStorageType storage_type) {
+    auth_factor_map_.Add(std::move(auth_factor), storage_type);
   }
 
   // Static function which returns a serialized token in a vector format. The

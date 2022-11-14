@@ -10,6 +10,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "cryptohome/auth_blocks/auth_block_utility.h"
 #include "cryptohome/auth_factor/auth_factor.h"
 
 namespace cryptohome {
@@ -55,7 +56,7 @@ TEST_F(AuthFactorMapTest, InitialEmpty) {
 
 TEST_F(AuthFactorMapTest, AddOne) {
   auto [factor, ptr] = MakeFactor(kLabel1);
-  factor_map_.Add(std::move(factor));
+  factor_map_.Add(std::move(factor), AuthFactorStorageType::kVaultKeyset);
 
   EXPECT_THAT(factor_map_.empty(), IsFalse());
   EXPECT_THAT(factor_map_.size(), Eq(1));
@@ -68,8 +69,8 @@ TEST_F(AuthFactorMapTest, AddOne) {
 TEST_F(AuthFactorMapTest, AddTwo) {
   auto [factor1, ptr1] = MakeFactor(kLabel1);
   auto [factor2, ptr2] = MakeFactor(kLabel2);
-  factor_map_.Add(std::move(factor1));
-  factor_map_.Add(std::move(factor2));
+  factor_map_.Add(std::move(factor1), AuthFactorStorageType::kVaultKeyset);
+  factor_map_.Add(std::move(factor2), AuthFactorStorageType::kUserSecretStash);
 
   EXPECT_THAT(factor_map_.empty(), IsFalse());
   EXPECT_THAT(factor_map_.size(), Eq(2));
@@ -82,8 +83,8 @@ TEST_F(AuthFactorMapTest, AddTwo) {
 TEST_F(AuthFactorMapTest, AddDuplicate) {
   auto [factor1, ptr1] = MakeFactor(kLabel1);
   auto [factor2, ptr2] = MakeFactor(kLabel1);
-  factor_map_.Add(std::move(factor1));
-  factor_map_.Add(std::move(factor2));
+  factor_map_.Add(std::move(factor1), AuthFactorStorageType::kVaultKeyset);
+  factor_map_.Add(std::move(factor2), AuthFactorStorageType::kUserSecretStash);
 
   EXPECT_THAT(factor_map_.empty(), IsFalse());
   EXPECT_THAT(factor_map_.size(), Eq(1));
