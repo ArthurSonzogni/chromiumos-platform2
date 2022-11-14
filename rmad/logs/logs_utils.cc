@@ -129,4 +129,24 @@ bool RecordRestockOptionToLogs(scoped_refptr<JsonStore> json_store,
                         std::move(details));
 }
 
+bool RecordComponentCalibrationStatusToLogs(
+    scoped_refptr<JsonStore> json_store,
+    const std::vector<std::pair<std::string, LogCalibrationStatus>>&
+        component_statuses) {
+  base::Value components(base::Value::Type::LIST);
+  for (auto& component_status : component_statuses) {
+    base::Value component(base::Value::Type::DICT);
+    component.SetKey(kLogComponent, ConvertToValue(component_status.first));
+    component.SetKey(kLogCalibrationStatus,
+                     ConvertToValue(static_cast<int>(component_status.second)));
+    components.Append(std::move(component));
+  }
+
+  base::Value details(base::Value::Type::DICT);
+  details.SetKey(kLogCalibrationComponents, std::move(components));
+
+  return AddEventToJson(json_store, RmadState::kCheckCalibration,
+                        LogEventType::kData, std::move(details));
+}
+
 }  // namespace rmad

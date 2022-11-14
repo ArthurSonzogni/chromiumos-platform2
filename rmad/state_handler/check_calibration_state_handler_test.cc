@@ -14,6 +14,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "rmad/logs/logs_constants.h"
 #include "rmad/state_handler/state_handler_test_common.h"
 
 using testing::_;
@@ -272,6 +273,37 @@ TEST_F(CheckCalibrationStateHandlerTest,
                                   {kLidGyroName, kStatusCompleteName}}}};
 
   EXPECT_EQ(current_calibration_map, target_calibration_map);
+
+  // Verify the failed and retried calibrations were recorded to logs.
+  base::Value logs(base::Value::Type::DICT);
+  json_store_->GetValue(kLogs, &logs);
+
+  const base::Value::List* events = logs.GetDict().FindList(kEvents);
+  const base::Value::List* skipped_components =
+      (*events)[0].GetDict().FindDict(kDetails)->FindList(
+          kLogCalibrationComponents);
+  EXPECT_EQ(2, skipped_components->size());
+  EXPECT_EQ(kBaseAccName,
+            *(*skipped_components)[0].GetDict().FindString(kLogComponent));
+  EXPECT_EQ(static_cast<int>(LogCalibrationStatus::kFailed),
+            (*skipped_components)[0].GetDict().FindInt(kLogCalibrationStatus));
+  EXPECT_EQ(kLidAccName,
+            *(*skipped_components)[1].GetDict().FindString(kLogComponent));
+  EXPECT_EQ(static_cast<int>(LogCalibrationStatus::kFailed),
+            (*skipped_components)[1].GetDict().FindInt(kLogCalibrationStatus));
+
+  const base::Value::List* retry_components =
+      (*events)[1].GetDict().FindDict(kDetails)->FindList(
+          kLogCalibrationComponents);
+  EXPECT_EQ(2, retry_components->size());
+  EXPECT_EQ(kBaseAccName,
+            *(*retry_components)[0].GetDict().FindString(kLogComponent));
+  EXPECT_EQ(static_cast<int>(LogCalibrationStatus::kRetry),
+            (*retry_components)[0].GetDict().FindInt(kLogCalibrationStatus));
+  EXPECT_EQ(kLidAccName,
+            *(*retry_components)[1].GetDict().FindString(kLogComponent));
+  EXPECT_EQ(static_cast<int>(LogCalibrationStatus::kRetry),
+            (*retry_components)[1].GetDict().FindInt(kLogCalibrationStatus));
 }
 
 TEST_F(CheckCalibrationStateHandlerTest, GetNextStateCase_SuccessSkipSensors) {
@@ -329,6 +361,23 @@ TEST_F(CheckCalibrationStateHandlerTest, GetNextStateCase_SuccessSkipSensors) {
                                   {kLidGyroName, kStatusCompleteName}}}};
 
   EXPECT_EQ(current_calibration_map, target_calibration_map);
+
+  // Verify the skipped calibrations were recorded to logs.
+  base::Value logs(base::Value::Type::DICT);
+  json_store_->GetValue(kLogs, &logs);
+
+  const base::Value::List* events = logs.GetDict().FindList(kEvents);
+  const base::Value::List* components =
+      (*events)[1].GetDict().FindDict(kDetails)->FindList(
+          kLogCalibrationComponents);
+  EXPECT_EQ(2, components->size());
+  EXPECT_EQ(kBaseAccName,
+            *(*components)[0].GetDict().FindString(kLogComponent));
+  EXPECT_EQ(static_cast<int>(LogCalibrationStatus::kSkip),
+            (*components)[0].GetDict().FindInt(kLogCalibrationStatus));
+  EXPECT_EQ(kLidAccName, *(*components)[1].GetDict().FindString(kLogComponent));
+  EXPECT_EQ(static_cast<int>(LogCalibrationStatus::kSkip),
+            (*components)[1].GetDict().FindInt(kLogCalibrationStatus));
 }
 
 TEST_F(CheckCalibrationStateHandlerTest, GetNextStateCase_WrongComponentsSize) {

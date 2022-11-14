@@ -242,4 +242,48 @@ TEST_F(LogsUtilsTest, RecordError) {
             event.FindDict(kDetails)->FindInt(kOccurredError));
 }
 
+// Simulates adding component calibration statuses to an empty `logs` json.
+TEST_F(LogsUtilsTest, RecordComponentCalibrationStatus) {
+  EXPECT_TRUE(CreateInputFile(kDefaultJson, std::size(kDefaultJson) - 1));
+
+  const std::string component1 =
+      RmadComponent_Name(RMAD_COMPONENT_BASE_ACCELEROMETER);
+  const LogCalibrationStatus status1 = LogCalibrationStatus::kFailed;
+  const std::string component2 =
+      RmadComponent_Name(RMAD_COMPONENT_BASE_GYROSCOPE);
+  const LogCalibrationStatus status2 = LogCalibrationStatus::kSkip;
+  const std::string component3 =
+      RmadComponent_Name(RMAD_COMPONENT_LID_ACCELEROMETER);
+  const LogCalibrationStatus status3 = LogCalibrationStatus::kRetry;
+
+  std::vector<std::pair<std::string, LogCalibrationStatus>>
+      calibration_statuses{
+          {component1, status1}, {component2, status2}, {component3, status3}};
+
+  EXPECT_TRUE(RecordComponentCalibrationStatusToLogs(json_store_,
+                                                     calibration_statuses));
+  base::Value logs(base::Value::Type::DICT);
+  json_store_->GetValue(kLogs, &logs);
+
+  const base::Value::List* events = logs.GetDict().FindList(kEvents);
+  EXPECT_EQ(1, events->size());
+  const base::Value::Dict& event = (*events)[0].GetDict();
+  EXPECT_EQ(static_cast<int>(RmadState::kCheckCalibration),
+            event.FindInt(kStateId));
+  EXPECT_EQ(static_cast<int>(LogEventType::kData), event.FindInt(kType));
+
+  const base::Value::List* components =
+      event.FindDict(kDetails)->FindList(kLogCalibrationComponents);
+  EXPECT_EQ(3, components->size());
+  EXPECT_EQ(component1, *(*components)[0].GetDict().FindString(kLogComponent));
+  EXPECT_EQ(static_cast<int>(status1),
+            (*components)[0].GetDict().FindInt(kLogCalibrationStatus));
+  EXPECT_EQ(component2, *(*components)[1].GetDict().FindString(kLogComponent));
+  EXPECT_EQ(static_cast<int>(status2),
+            (*components)[1].GetDict().FindInt(kLogCalibrationStatus));
+  EXPECT_EQ(component3, *(*components)[2].GetDict().FindString(kLogComponent));
+  EXPECT_EQ(static_cast<int>(status3),
+            (*components)[2].GetDict().FindInt(kLogCalibrationStatus));
+}
+
 }  // namespace rmad

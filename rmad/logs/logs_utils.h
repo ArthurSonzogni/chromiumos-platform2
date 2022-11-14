@@ -6,10 +6,12 @@
 #define RMAD_LOGS_LOGS_UTILS_H_
 
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/memory/scoped_refptr.h>
 
+#include "rmad/logs/logs_constants.h"
 #include "rmad/proto_bindings/rmad.pb.h"
 #include "rmad/utils/json_store.h"
 
@@ -53,6 +55,13 @@ bool RecordRsuChallengeCodeToLogs(scoped_refptr<JsonStore> json_store,
 // Adds the restock option to `json_store`. Returns true if successful.
 bool RecordRestockOptionToLogs(scoped_refptr<JsonStore> json_store,
                                bool restock);
+
+// Adds the components calibration statuses to `json_store`. Returns true if
+// successful.
+bool RecordComponentCalibrationStatusToLogs(
+    scoped_refptr<JsonStore> json_store,
+    const std::vector<std::pair<std::string, LogCalibrationStatus>>&
+        component_statuses);
 
 }  // namespace rmad
 

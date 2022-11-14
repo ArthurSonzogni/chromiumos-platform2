@@ -35,12 +35,22 @@ inline constexpr char kLogWpDisableMethod[] = "wp_disable_method";
 inline constexpr char kLogRsuChallengeCode[] = "challenge_code";
 inline constexpr char kLogRsuHwid[] = "hwid";
 inline constexpr char kLogRestockOption[] = "restock_option";
+inline constexpr char kLogCalibrationComponents[] = "calibration_components";
+inline constexpr char kLogComponent[] = "component";
+inline constexpr char kLogCalibrationStatus[] = "calibration_status";
 
 enum class LogEventType {
   kTransition = 0,
   kData = 1,
   kError = 2,
   kMaxValue = kError,
+};
+
+enum class LogCalibrationStatus {
+  kFailed = 0,
+  kSkip = 1,
+  kRetry = 2,
+  kMaxValue = kRetry,
 };
 
 }  // namespace rmad

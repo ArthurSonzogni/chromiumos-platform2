@@ -6,10 +6,14 @@
 
 #include <memory>
 #include <string>
+#include <utility>
+#include <vector>
 
 #include <base/logging.h>
 
 #include "rmad/constants.h"
+#include "rmad/logs/logs_constants.h"
+#include "rmad/logs/logs_utils.h"
 #include "rmad/utils/calibration_utils.h"
 
 namespace rmad {
@@ -64,6 +68,8 @@ RmadErrorCode CheckCalibrationStateHandler::InitializeState() {
 
   // We mark all components with an unexpected status as failed because it may
   // have some errors.
+  std::vector<std::pair<std::string, LogCalibrationStatus>>
+      log_component_statuses;
   for (auto [instruction, components] : calibration_map_) {
     for (auto [component, status] : components) {
       if (calibration_map_.count(instruction) &&
@@ -72,6 +78,11 @@ RmadErrorCode CheckCalibrationStateHandler::InitializeState() {
           status = CalibrationComponentStatus::RMAD_CALIBRATION_FAILED;
         }
         calibration_map_[instruction][component] = status;
+
+        if (status == CalibrationComponentStatus::RMAD_CALIBRATION_FAILED) {
+          log_component_statuses.emplace_back(RmadComponent_Name(component),
+                                              LogCalibrationStatus::kFailed);
+        }
       }
     }
   }
@@ -79,6 +90,10 @@ RmadErrorCode CheckCalibrationStateHandler::InitializeState() {
   if (!SetCalibrationMap(json_store_, calibration_map_)) {
     LOG(ERROR) << "Failed to set calibration status.";
     return RMAD_ERROR_STATE_HANDLER_INITIALIZATION_FAILED;
+  }
+
+  if (!log_component_statuses.empty()) {
+    RecordComponentCalibrationStatusToLogs(json_store_, log_component_statuses);
   }
 
   state_ = ConvertDictionaryToState(calibration_map_);
@@ -164,6 +179,10 @@ bool CheckCalibrationStateHandler::CheckIsCalibrationRequired(
     return false;
   }
 
+  // Capture the calibration statuses for logs.
+  std::vector<std::pair<std::string, LogCalibrationStatus>>
+      log_component_statuses;
+
   // All components here are valid.
   for (int i = 0; i < user_selection.components_size(); ++i) {
     const CalibrationComponentStatus& component_status =
@@ -198,6 +217,19 @@ bool CheckCalibrationStateHandler::CheckIsCalibrationRequired(
     }
     calibration_map_[GetCalibrationSetupInstruction(component)][component] =
         status;
+
+    if (status == CalibrationComponentStatus::RMAD_CALIBRATION_WAITING ||
+        status == CalibrationComponentStatus::RMAD_CALIBRATION_SKIP) {
+      log_component_statuses.emplace_back(
+          RmadComponent_Name(component),
+          status == CalibrationComponentStatus::RMAD_CALIBRATION_WAITING
+              ? LogCalibrationStatus::kRetry
+              : LogCalibrationStatus::kSkip);
+    }
+  }
+
+  if (!log_component_statuses.empty()) {
+    RecordComponentCalibrationStatusToLogs(json_store_, log_component_statuses);
   }
 
   *error_code = RMAD_ERROR_OK;
