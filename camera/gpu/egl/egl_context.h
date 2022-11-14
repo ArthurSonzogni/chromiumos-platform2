@@ -46,6 +46,9 @@ class EglContext {
   // Makes the EglContext the current context.
   bool MakeCurrent();
 
+  // Gets underlying EGLContext object.
+  EGLContext Get() const;
+
  private:
   // Invalidates the EglContext instance.
   void Invalidate();

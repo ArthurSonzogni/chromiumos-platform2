@@ -11,6 +11,10 @@
 #include <memory>
 #include <string>
 
+#include <EGL/egl.h>
+#include <GLES3/gl3.h>
+#include <GLES2/gl2ext.h>
+
 #include <base/files/file_path.h>
 
 #include "bindings/effects_pipeline_bindings.h"
@@ -23,10 +27,9 @@ class BRILLO_EXPORT ProcessedFrameObserver {
  public:
   virtual ~ProcessedFrameObserver() = default;
   virtual void OnFrameProcessed(int64_t timestamp,
-                                const uint8_t* frame_data,
+                                GLuint texture,
                                 uint32_t frame_width,
-                                uint32_t frame_height,
-                                uint32_t stride) = 0;
+                                uint32_t frame_height) = 0;
 };
 
 // Wrapper around the Effects Pipeline C bindings that are imported
@@ -38,14 +41,14 @@ class BRILLO_EXPORT EffectsPipeline {
   // Create an instance of the Pipeline.
   static std::unique_ptr<EffectsPipeline> Create(
       const base::FilePath& dlc_root_path,
+      EGLContext share_context,
       const base::FilePath& caching_dir_override = base::FilePath(""));
 
   // Queue an input frame (ImageFormat::SRGB / RG24 / RGB888) for processing.
   virtual bool ProcessFrame(int64_t timestamp,
-                            const uint8_t* frame_data,
+                            GLuint frame_texture,
                             uint32_t frame_width,
-                            uint32_t frame_height,
-                            uint32_t stride) = 0;
+                            uint32_t frame_height) = 0;
 
   // Wait until all the queued frames are processed.
   virtual bool Wait() = 0;

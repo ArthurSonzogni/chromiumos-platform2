@@ -96,4 +96,8 @@ void EglContext::Invalidate() {
   }
 }
 
+EGLContext EglContext::Get() const {
+  return context_;
+}
+
 }  // namespace cros

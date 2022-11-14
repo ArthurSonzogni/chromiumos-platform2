@@ -28,13 +28,12 @@ class EffectsPipelineImpl : public cros::EffectsPipeline {
   }
 
   virtual bool ProcessFrame(int64_t timestamp,
-                            const uint8_t* frame_data,
+                            GLuint frame_texture,
                             uint32_t frame_width,
-                            uint32_t frame_height,
-                            uint32_t stride) {
+                            uint32_t frame_height) {
     frames_started_ = true;
-    return process_frame_fn_(pipeline_, timestamp, frame_data, frame_width,
-                             frame_height, stride);
+    return process_frame_fn_(pipeline_, timestamp, frame_texture, frame_width,
+                             frame_height);
   }
 
   virtual bool Wait() { return wait_fn_(pipeline_); }
@@ -57,6 +56,7 @@ class EffectsPipelineImpl : public cros::EffectsPipeline {
  protected:
   EffectsPipelineImpl() {}
   bool Initialize(const base::FilePath& dlc_root_path,
+                  EGLContext share_context,
                   const base::FilePath& caching_dir_override) {
 #ifdef USE_LOCAL_ML_CORE_INTERNAL
     // TODO(jmpollock) this should be /usr/local/lib on arm.
@@ -117,8 +117,10 @@ class EffectsPipelineImpl : public cros::EffectsPipeline {
       caching_dir = caching_dir_override;
     }
 
-    pipeline_ =
-        create_fn_(caching_dir.empty() ? nullptr : caching_dir.value().c_str());
+    const char* caching_dir_ptr(
+        caching_dir.empty() ? nullptr : caching_dir.value().c_str());
+
+    pipeline_ = create_fn_(share_context, caching_dir_ptr);
     LOG(INFO) << "Pipeline created, cache_dir: " << caching_dir;
     set_rendered_image_observer_fn_(
         pipeline_, this, &EffectsPipelineImpl::RenderedImageFrameHandler);
@@ -129,14 +131,13 @@ class EffectsPipelineImpl : public cros::EffectsPipeline {
  private:
   static void RenderedImageFrameHandler(void* handler,
                                         int64_t timestamp,
-                                        const uint8_t* frame_data,
+                                        GLuint frame_texture,
                                         uint32_t frame_width,
-                                        uint32_t frame_height,
-                                        uint32_t stride) {
+                                        uint32_t frame_height) {
     EffectsPipelineImpl* pipeline = static_cast<EffectsPipelineImpl*>(handler);
     if (pipeline->rendered_image_observer_) {
       pipeline->rendered_image_observer_->OnFrameProcessed(
-          timestamp, frame_data, frame_width, frame_height, stride);
+          timestamp, frame_texture, frame_width, frame_height);
     }
   }
 
@@ -193,10 +194,12 @@ namespace cros {
 
 std::unique_ptr<EffectsPipeline> EffectsPipeline::Create(
     const base::FilePath& dlc_root_path,
+    EGLContext share_context,
     const base::FilePath& caching_dir_override) {
   auto pipeline =
       std::unique_ptr<EffectsPipelineImpl>(new EffectsPipelineImpl());
-  if (!pipeline->Initialize(dlc_root_path, caching_dir_override)) {
+  if (!pipeline->Initialize(dlc_root_path, share_context,
+                            caching_dir_override)) {
     return nullptr;
   }
   return pipeline;

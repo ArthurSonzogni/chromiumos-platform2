@@ -14,6 +14,9 @@
 #include <string>
 #include <vector>
 
+#undef Status
+#include <absl/status/status.h>
+
 #include "common/camera_buffer_pool.h"
 #include "common/metadata_logger.h"
 #include "common/reloadable_config_file.h"
@@ -47,24 +50,26 @@ class EffectsStreamManipulator : public StreamManipulator {
   bool Initialize(const camera_metadata_t* static_info,
                   CaptureResultCallback result_callback) override;
   bool ConfigureStreams(Camera3StreamConfiguration* stream_config) override;
-  bool ConfigureStreamsOnThread(Camera3StreamConfiguration* stream_config);
   bool OnConfiguredStreams(Camera3StreamConfiguration* stream_config) override;
   bool ConstructDefaultRequestSettings(
       android::CameraMetadata* default_request_settings, int type) override;
   bool ProcessCaptureRequest(Camera3CaptureDescriptor* request) override;
   bool ProcessCaptureResult(Camera3CaptureDescriptor result) override;
-  bool ProcessCaptureResultOnThread(Camera3CaptureDescriptor* result);
   bool Notify(camera3_notify_msg_t* msg) override;
   bool Flush() override;
   void OnFrameProcessed(int64_t timestamp,
-                        const uint8_t* data,
-                        uint32_t data_len);
+                        GLuint texture,
+                        uint32_t width,
+                        uint32_t height);
 
  private:
   void OnOptionsUpdated(const base::Value::Dict& json_values);
 
   void SetEffect(EffectsConfig* new_config, void (*callback)(bool));
-  void GpuSync();
+  bool SetupGlThread();
+  bool EnsureImages(buffer_handle_t buffer_handle);
+  bool NV12ToRGBA();
+  void RGBAToNV12(GLuint texture, uint32_t width, uint32_t height);
   void CreatePipeline(const base::FilePath& dlc_root_path);
   std::optional<int64_t> TryGetSensorTimestamp(Camera3CaptureDescriptor* desc);
 
@@ -77,20 +82,22 @@ class EffectsStreamManipulator : public StreamManipulator {
 
   camera3_stream_t* yuv_stream_ = nullptr;
   std::unique_ptr<EffectsPipeline> pipeline_;
-  void* buffer_ptr_ = nullptr;
 
-  ScopedBufferHandle frame_buffer_;
-  SharedImage gpu_image_;
-  uint16_t prev_height_ = 0;
-  uint16_t prev_width_ = 0;
+  // Buffer for input frame converted into RGBA.
+  ScopedBufferHandle input_buffer_rgba_;
+
+  // SharedImage for |input_buffer_rgba|.
+  SharedImage input_image_rgba_;
+
+  SharedImage input_image_yuv_;
+  absl::Status frame_status_ = absl::OkStatus();
 
   std::unique_ptr<EglContext> egl_context_;
   std::unique_ptr<GpuImageProcessor> image_processor_;
 
-  CameraThread thread_;
-
   int64_t timestamp_ = 0;
   int64_t last_timestamp_ = 0;
+  CameraThread gl_thread_;
 };
 
 }  // namespace cros

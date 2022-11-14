@@ -6,6 +6,8 @@
 
 #include "features/effects/effects_stream_manipulator.h"
 
+#include <GLES3/gl3.h>
+
 #include <sync/sync.h>
 
 #include <unistd.h>
@@ -18,8 +20,10 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/time/time.h>
-#include "base/containers/stack_container.h"
+#include <base/containers/stack_container.h>
+#include <base/functional/callback_helpers.h>
 
+#include "common/camera_hal3_helpers.h"
 #include "cros-camera/camera_buffer_manager.h"
 #include "cros-camera/camera_metadata_utils.h"
 #include "gpu/egl/egl_fence.h"
@@ -29,6 +33,8 @@
 namespace cros {
 
 namespace {
+
+const int kSyncWaitTimeoutMs = 8;
 
 bool GetStringFromKey(const base::Value::Dict& obj,
                       const std::string& key,
@@ -51,26 +57,24 @@ constexpr char kRelightEnabled[] = "relight_enabled";
 constexpr uint8_t kMaxNumBuffers = 8;
 
 constexpr uint32_t kRGBAFormat = HAL_PIXEL_FORMAT_RGBX_8888;
-constexpr uint32_t kBufferUsage = GRALLOC_USAGE_SW_READ_OFTEN |
-                                  GRALLOC_USAGE_SW_WRITE_OFTEN |
-                                  GRALLOC_USAGE_HW_TEXTURE;
+constexpr uint32_t kBufferUsage = GRALLOC_USAGE_HW_TEXTURE;
 
 class RenderedImageObserver : public ProcessedFrameObserver {
  public:
   explicit RenderedImageObserver(
-      base::RepeatingCallback<void(int64_t, const uint8_t*, uint32_t)>
+      base::RepeatingCallback<void(int64_t, GLuint, uint32_t, uint32_t)>
           processed_frame_callback)
       : frame_processed_callback_(processed_frame_callback) {}
-  virtual void OnFrameProcessed(int64_t timestamp,
-                                const uint8_t* frame_data,
-                                uint32_t frame_width,
-                                uint32_t frame_height,
-                                uint32_t stride) {
-    frame_processed_callback_.Run(timestamp, frame_data, stride * frame_height);
+  void OnFrameProcessed(int64_t timestamp,
+                        GLuint frame_texture,
+                        uint32_t frame_width,
+                        uint32_t frame_height) override {
+    frame_processed_callback_.Run(timestamp, frame_texture, frame_width,
+                                  frame_height);
   }
 
  private:
-  base::RepeatingCallback<void(int64_t, const uint8_t*, uint32_t)>
+  base::RepeatingCallback<void(int64_t, GLuint, uint32_t, uint32_t)>
       frame_processed_callback_;
 };
 
@@ -81,26 +85,28 @@ EffectsStreamManipulator::EffectsStreamManipulator(
     : config_(ReloadableConfigFile::Options{
           config_file_path, base::FilePath(kOverrideEffectsConfigFile)}),
       runtime_options_(runtime_options),
-      thread_("EffectsThread") {
+      gl_thread_("EffectsGlThread") {
   if (!config_.IsValid()) {
-    LOGF(ERROR) << "Cannot load valid config; turn off feature by default";
+    LOGF(ERROR) << "Cannot load valid config. Turning off feature by default";
+    options_.enable = false;
+  }
+
+  CHECK(gl_thread_.Start());
+
+  bool ret;
+  gl_thread_.PostTaskSync(
+      FROM_HERE,
+      base::BindOnce(&EffectsStreamManipulator::SetupGlThread,
+                     base::Unretained(this)),
+      &ret);
+  if (!ret) {
+    LOGF(ERROR) << "Failed to start GL thread. Turning off feature by default";
     options_.enable = false;
   }
 
   if (!runtime_options_->GetDlcRootPath().empty()) {
     CreatePipeline(base::FilePath(runtime_options_->GetDlcRootPath()));
   }
-  CHECK(thread_.Start());
-}
-
-void EffectsStreamManipulator::CreatePipeline(
-    const base::FilePath& dlc_root_path) {
-  pipeline_ = EffectsPipeline::Create(dlc_root_path);
-  pipeline_->SetRenderedImageObserver(std::make_unique<RenderedImageObserver>(
-      base::BindRepeating(&EffectsStreamManipulator::OnFrameProcessed,
-                          base::Unretained(this))));
-  config_.SetCallback(base::BindRepeating(
-      &EffectsStreamManipulator::OnOptionsUpdated, base::Unretained(this)));
 }
 
 bool EffectsStreamManipulator::Initialize(
@@ -111,17 +117,6 @@ bool EffectsStreamManipulator::Initialize(
 }
 
 bool EffectsStreamManipulator::ConfigureStreams(
-    Camera3StreamConfiguration* stream_config) {
-  bool ret;
-  thread_.PostTaskSync(
-      FROM_HERE,
-      base::BindOnce(&EffectsStreamManipulator::ConfigureStreamsOnThread,
-                     base::Unretained(this), stream_config),
-      &ret);
-  return ret;
-}
-
-bool EffectsStreamManipulator::ConfigureStreamsOnThread(
     Camera3StreamConfiguration* stream_config) {
   yuv_stream_ = nullptr;
 
@@ -161,23 +156,6 @@ bool EffectsStreamManipulator::ConfigureStreamsOnThread(
   }
   yuv_stream_->usage |= kBufferUsage;
 
-  if (!egl_context_) {
-    egl_context_ = EglContext::GetSurfacelessContext();
-    if (!egl_context_->IsValid()) {
-      LOGF(ERROR) << "Failed to create EGL context";
-      return false;
-    }
-  }
-  if (!egl_context_->MakeCurrent()) {
-    LOGF(ERROR) << "Failed to make EGL context current";
-    return false;
-  }
-  image_processor_ = std::make_unique<GpuImageProcessor>();
-  if (!image_processor_) {
-    LOGF(ERROR) << "Failed to create GpuImageProcessor";
-    return false;
-  }
-
   return true;
 }
 
@@ -196,23 +174,6 @@ bool EffectsStreamManipulator::ProcessCaptureRequest(
   return true;
 }
 
-bool EffectsStreamManipulator::ProcessCaptureResult(
-    Camera3CaptureDescriptor result) {
-  if (runtime_options_->sw_privacy_switch_state() ==
-      mojom::CameraPrivacySwitchState::ON) {
-    result_callback_.Run(std::move(result));
-    return true;
-  }
-  bool ret;
-  thread_.PostTaskSync(
-      FROM_HERE,
-      base::BindOnce(&EffectsStreamManipulator::ProcessCaptureResultOnThread,
-                     base::Unretained(this), &result),
-      &ret);
-  result_callback_.Run(std::move(result));
-  return ret;
-}
-
 std::optional<int64_t> EffectsStreamManipulator::TryGetSensorTimestamp(
     Camera3CaptureDescriptor* desc) {
   base::span<const int64_t> timestamp =
@@ -221,8 +182,18 @@ std::optional<int64_t> EffectsStreamManipulator::TryGetSensorTimestamp(
                                : std::nullopt;
 }
 
-bool EffectsStreamManipulator::ProcessCaptureResultOnThread(
-    Camera3CaptureDescriptor* result) {
+bool EffectsStreamManipulator::ProcessCaptureResult(
+    Camera3CaptureDescriptor result) {
+  base::ScopedClosureRunner callback_action(base::BindOnce(
+      [](Camera3CaptureDescriptor& result,
+         CaptureResultCallback& result_callback) {
+        result_callback.Run(std::move(result));
+      },
+      std::ref(result), std::ref(result_callback_)));
+  if (runtime_options_->sw_privacy_switch_state() ==
+      mojom::CameraPrivacySwitchState::ON) {
+    return true;
+  }
   if (!yuv_stream_)
     return true;
 
@@ -234,7 +205,7 @@ bool EffectsStreamManipulator::ProcessCaptureResultOnThread(
 
   camera3_stream_buffer_t yuv_buffer = {};
   base::StackVector<camera3_stream_buffer_t, kMaxNumBuffers> result_buffers;
-  for (auto& b : result->GetOutputBuffers()) {
+  for (auto& b : result.GetOutputBuffers()) {
     if (b.stream != yuv_stream_) {
       result_buffers->push_back(b);
     } else {
@@ -244,51 +215,57 @@ bool EffectsStreamManipulator::ProcessCaptureResultOnThread(
   if (yuv_buffer.status != CAMERA3_BUFFER_STATUS_OK) {
     LOGF(ERROR) << "EffectsStreamManipulator received buffer with "
                    "error in result "
-                << result->frame_number();
+                << result.frame_number();
+    return false;
+  }
+
+  if (!WaitOnAndClearReleaseFence(yuv_buffer, kSyncWaitTimeoutMs)) {
+    LOGF(ERROR) << "Timed out waiting for input buffer";
     return false;
   }
 
   buffer_handle_t buffer_handle = *yuv_buffer.buffer;
-  uint32_t width = CameraBufferManager::GetWidth(buffer_handle);
-  uint32_t height = CameraBufferManager::GetHeight(buffer_handle);
 
   auto manager = CameraBufferManager::GetInstance();
-  manager->Register(buffer_handle);
-
-  SharedImage input_image = SharedImage::CreateFromBuffer(
-      buffer_handle, Texture2D::Target::kTarget2D, true);
-
-  if (width != prev_width_ || height != prev_height_) {
-    frame_buffer_ = CameraBufferManager::AllocateScopedBuffer(
-        width, height, kRGBAFormat, kBufferUsage);
-    if (!frame_buffer_) {
-      LOGF(ERROR) << "Failed to allocate frame buffer";
-      return false;
-    }
-    gpu_image_ = SharedImage::CreateFromBuffer(*frame_buffer_,
-                                               Texture2D::Target::kTarget2D);
+  if (manager->Register(buffer_handle) != 0) {
+    LOG(ERROR) << "Failed to register buffer";
+    return false;
   }
-  prev_height_ = height;
-  prev_width_ = width;
+  base::ScopedClosureRunner deregister_action(base::BindOnce(
+      [](CameraBufferManager* manager, buffer_handle_t buffer_handle) {
+        if (manager->Deregister(buffer_handle) != 0) {
+          LOG(ERROR) << "Failed to deregister buffer";
+        }
+      },
+      manager, buffer_handle));
 
-  bool conv_result = image_processor_->NV12ToRGBA(
-      input_image.y_texture(), input_image.uv_texture(), gpu_image_.texture());
-  glFinish();
+  bool ret;
 
-  if (!conv_result) {
-    LOGF(ERROR) << "Failed to convert from YUV to RGB";
+  gl_thread_.PostTaskSync(
+      FROM_HERE,
+      base::BindOnce(&EffectsStreamManipulator::EnsureImages,
+                     base::Unretained(this), buffer_handle),
+      &ret);
+  if (!ret) {
+    LOGF(ERROR) << "Failed to ensure GPU resources";
     return false;
   }
 
-  ScopedMapping scoped_mapping = ScopedMapping(gpu_image_.buffer());
-  buffer_ptr_ = scoped_mapping.plane(0).addr;
+  gl_thread_.PostTaskSync(FROM_HERE,
+                          base::BindOnce(&EffectsStreamManipulator::NV12ToRGBA,
+                                         base::Unretained(this)),
+                          &ret);
+  if (!ret) {
+    LOGF(ERROR) << "Failed to convert from YUV to RGB";
+    return false;
+  }
 
   auto new_config = runtime_options_->GetEffectsConfig();
   if (active_runtime_effects_config_ != new_config) {
     active_runtime_effects_config_ = new_config;
     SetEffect(&new_config, nullptr);
   }
-  auto timestamp = TryGetSensorTimestamp(result);
+  auto timestamp = TryGetSensorTimestamp(&result);
   timestamp_ = timestamp.has_value() ? *timestamp : timestamp_ + 1;
 
   if (timestamp_ <= last_timestamp_) {
@@ -299,27 +276,21 @@ bool EffectsStreamManipulator::ProcessCaptureResultOnThread(
                << timestamp_;
   }
   last_timestamp_ = timestamp_;
-  pipeline_->ProcessFrame(timestamp_,
-                          reinterpret_cast<const uint8_t*>(buffer_ptr_),
-                          scoped_mapping.width(), scoped_mapping.height(),
-                          scoped_mapping.plane(0).stride);
-
+  frame_status_ = absl::OkStatus();
+  pipeline_->ProcessFrame(timestamp_, input_image_rgba_.texture().handle(),
+                          input_image_rgba_.texture().width(),
+                          input_image_rgba_.texture().height());
   pipeline_->Wait();
-
-  conv_result = image_processor_->RGBAToNV12(
-      gpu_image_.texture(), input_image.y_texture(), input_image.uv_texture());
-  glFinish();
-
-  if (!conv_result) {
-    LOGF(ERROR) << "Failed to convert from RGB to YUV";
+  if (!frame_status_.ok()) {
+    LOG(ERROR) << frame_status_.message();
     return false;
   }
 
-  manager->Deregister(buffer_handle);
   yuv_buffer.status = CAMERA3_BUFFER_STATUS_OK;
   result_buffers->push_back(yuv_buffer);
-  result->SetOutputBuffers(base::span<camera3_stream_buffer_t>(
+  result.SetOutputBuffers(base::span<camera3_stream_buffer_t>(
       result_buffers->begin(), result_buffers->end()));
+
   return true;
 }
 
@@ -332,9 +303,13 @@ bool EffectsStreamManipulator::Flush() {
 }
 
 void EffectsStreamManipulator::OnFrameProcessed(int64_t timestamp,
-                                                const uint8_t* data,
-                                                uint32_t data_len) {
-  memcpy(buffer_ptr_, data, data_len);
+                                                GLuint texture,
+                                                uint32_t width,
+                                                uint32_t height) {
+  gl_thread_.PostTaskSync(
+      FROM_HERE,
+      base::BindOnce(&EffectsStreamManipulator::RGBAToNV12,
+                     base::Unretained(this), texture, width, height));
 }
 
 void EffectsStreamManipulator::OnOptionsUpdated(
@@ -391,6 +366,93 @@ void EffectsStreamManipulator::SetEffect(EffectsConfig* new_config,
   } else {
     LOGF(WARNING) << "SetEffect called, but pipeline not ready.";
   }
+}
+
+bool EffectsStreamManipulator::SetupGlThread() {
+  DCHECK(gl_thread_.task_runner()->BelongsToCurrentThread());
+  if (!egl_context_) {
+    egl_context_ = EglContext::GetSurfacelessContext();
+    if (!egl_context_->IsValid()) {
+      LOGF(ERROR) << "Failed to create EGL context";
+      return false;
+    }
+  }
+  if (!egl_context_->MakeCurrent()) {
+    LOGF(ERROR) << "Failed to make EGL context current";
+    return false;
+  }
+
+  image_processor_ = std::make_unique<GpuImageProcessor>();
+  if (!image_processor_) {
+    LOGF(ERROR) << "Failed to create GpuImageProcessor";
+    return false;
+  }
+
+  return true;
+}
+
+bool EffectsStreamManipulator::EnsureImages(buffer_handle_t buffer_handle) {
+  DCHECK(gl_thread_.task_runner()->BelongsToCurrentThread());
+
+  uint32_t target_width = CameraBufferManager::GetWidth(buffer_handle);
+  uint32_t target_height = CameraBufferManager::GetHeight(buffer_handle);
+
+  input_image_yuv_ = SharedImage::CreateFromBuffer(
+      buffer_handle, Texture2D::Target::kTarget2D, true);
+
+  if (!input_buffer_rgba_ ||
+      target_width != CameraBufferManager::GetWidth(*input_buffer_rgba_) ||
+      target_height != CameraBufferManager::GetHeight(*input_buffer_rgba_)) {
+    input_buffer_rgba_ = CameraBufferManager::AllocateScopedBuffer(
+        target_width, target_height, kRGBAFormat,
+        kBufferUsage | GRALLOC_USAGE_SW_READ_NEVER);
+    if (!input_buffer_rgba_) {
+      LOGF(ERROR) << "Failed to allocate frame buffer";
+      return false;
+    }
+    input_image_rgba_ = SharedImage::CreateFromBuffer(
+        *input_buffer_rgba_, Texture2D::Target::kTarget2D);
+  }
+
+  return true;
+}
+
+bool EffectsStreamManipulator::NV12ToRGBA() {
+  DCHECK(gl_thread_.task_runner()->BelongsToCurrentThread());
+
+  bool conv_result = image_processor_->NV12ToRGBA(input_image_yuv_.y_texture(),
+                                                  input_image_yuv_.uv_texture(),
+                                                  input_image_rgba_.texture());
+  glFinish();
+  return conv_result;
+}
+
+void EffectsStreamManipulator::RGBAToNV12(GLuint texture,
+                                          uint32_t width,
+                                          uint32_t height) {
+  DCHECK(gl_thread_.task_runner()->BelongsToCurrentThread());
+
+  Texture2D texture_2d(texture, kRGBAFormat, width, height);
+  bool conv_result = image_processor_->RGBAToNV12(
+      texture_2d, input_image_yuv_.y_texture(), input_image_yuv_.uv_texture());
+  glFinish();
+  texture_2d.Release();
+
+  input_image_yuv_ = SharedImage();
+
+  if (!conv_result) {
+    frame_status_ = absl::InternalError("Failed to convert from RGB to YUV");
+  }
+}
+
+void EffectsStreamManipulator::CreatePipeline(
+    const base::FilePath& dlc_root_path) {
+  pipeline_ = EffectsPipeline::Create(dlc_root_path, egl_context_->Get());
+  pipeline_->SetRenderedImageObserver(std::make_unique<RenderedImageObserver>(
+      base::BindRepeating(&EffectsStreamManipulator::OnFrameProcessed,
+                          base::Unretained(this))));
+  config_.SetCallback(base::BindRepeating(
+      &EffectsStreamManipulator::OnOptionsUpdated, base::Unretained(this)));
 }
 
 }  // namespace cros

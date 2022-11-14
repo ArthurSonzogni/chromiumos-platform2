@@ -32,7 +32,8 @@ int main(int argc, char* argv[]) {
     return EX_SOFTWARE;
   }
 
-  auto pipeline = cros::EffectsPipeline::Create(dlc_loader.GetDlcRootPath());
+  auto pipeline =
+      cros::EffectsPipeline::Create(dlc_loader.GetDlcRootPath(), nullptr);
   auto config = cros::EffectsConfig();
   config.segmentation_gpu_api = cros::mojom::GpuApi::kOpenCL;
   config.relighting_gpu_api = cros::mojom::GpuApi::kOpenCL;

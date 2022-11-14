@@ -97,6 +97,17 @@ Texture2D::Texture2D(Texture2D&& other) {
   *this = std::move(other);
 }
 
+Texture2D::Texture2D(GLuint texture,
+                     GLenum internal_format,
+                     int width,
+                     int height,
+                     int mipmap_levels)
+    : target_(GL_TEXTURE_2D),
+      id_(texture),
+      internal_format_(internal_format),
+      width_(width),
+      height_(height) {}
+
 Texture2D& Texture2D::operator=(Texture2D&& other) {
   if (this != &other) {
     Invalidate();

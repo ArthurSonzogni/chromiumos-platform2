@@ -1,18 +1,19 @@
 // Copyright 2022 The ChromiumOS Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
-
-// This file is copied directly from
-// chromeos/ml/effects_pipeline/effects_pipeline_bindings.h
-// and SHOULD NOT BE MODIFIED HERE. It will get delivered with the
-// libcros_ml_core_internal.so bundle once that is set up.
 //
-// TODO(b/232703203): Make sure this file comes across with the lib.
+// Needs to be manually kept in sync with
+// //chromeos/ml/effects_pipeline/effects_pipeline_bindings.h
 
 #ifndef ML_CORE_BINDINGS_EFFECTS_PIPELINE_BINDINGS_H_
 #define ML_CORE_BINDINGS_EFFECTS_PIPELINE_BINDINGS_H_
 
 #include <stdint.h>
+
+#include <EGL/egl.h>
+#include <GLES2/gl2ext.h>
+#include <GLES3/gl3.h>
+
 #include "ml_core/mojo/effects_pipeline.mojom.h"
 
 namespace cros {
@@ -71,12 +72,12 @@ struct BRILLO_EXPORT EffectsConfig {
 extern "C" {
 typedef void (*cros_ml_effects_OnFrameProcessedHandler)(void* handler,
                                                         int64_t timestamp,
-                                                        const uint8_t* data,
+                                                        GLuint frame_texture,
                                                         uint32_t frame_width,
-                                                        uint32_t frame_height,
-                                                        uint32_t stride);
+                                                        uint32_t frame_height);
 
-void* cros_ml_effects_CreateEffectsPipeline(const char* caching_dir);
+void* cros_ml_effects_CreateEffectsPipeline(EGLContext share_context,
+                                            const char* caching_dir);
 typedef decltype(&cros_ml_effects_CreateEffectsPipeline)
     cros_ml_effects_CreateEffectsPipelineFn;
 
@@ -86,10 +87,9 @@ typedef decltype(&cros_ml_effects_DeleteEffectsPipeline)
 
 bool cros_ml_effects_ProcessFrame(void* pipeline,
                                   int64_t timestamp,
-                                  const uint8_t* frame_data,
+                                  GLuint frame_texture,
                                   uint32_t frame_width,
-                                  uint32_t frame_height,
-                                  uint32_t stride);
+                                  uint32_t frame_height);
 typedef decltype(&cros_ml_effects_ProcessFrame) cros_ml_effects_ProcessFrameFn;
 
 bool cros_ml_effects_Wait(void* pipeline);
