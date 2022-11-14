@@ -251,14 +251,27 @@ int32_t CameraHalAdapter::OpenDevice(
   base::OnceCallback<void()> close_callback = base::BindOnce(
       &CameraHalAdapter::CloseDeviceCallback, base::Unretained(this),
       base::ThreadTaskRunnerHandle::Get(), camera_id, camera_client_type);
+  base::OnceCallback<void(FaceDetectionResultCallback)>
+      set_face_detection_result_callback;
+  if (cros_camera_hal->set_face_detection_result_callback != nullptr) {
+    set_face_detection_result_callback = base::BindOnce(
+        [](cros_camera_hal_t* hal, int camera_id,
+           FaceDetectionResultCallback cb) {
+          hal->set_face_detection_result_callback(camera_id, cb);
+        },
+        // The |cros_camera_hal| outlives the stream manipulator.
+        base::Unretained(cros_camera_hal), internal_camera_id);
+  }
+
   device_adapters_[camera_id] = std::make_unique<CameraDeviceAdapter>(
       camera_device, info.device_version, metadata,
       std::move(get_internal_camera_id_callback),
       std::move(get_public_camera_id_callback), std::move(close_callback),
       std::make_unique<StreamManipulatorManager>(
-          StreamManipulator::Options{
+          StreamManipulator::CreateOptions{
               .camera_module_name = camera_module->common.name,
-          },
+              .set_face_detection_result_callback =
+                  std::move(set_face_detection_result_callback)},
           &stream_manipulator_runtime_options_, gpu_resources_,
           mojo_manager_token_));
 

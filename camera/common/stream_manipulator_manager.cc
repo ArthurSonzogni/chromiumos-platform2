@@ -52,7 +52,7 @@ namespace {
 
 void MaybeEnableHdrNetStreamManipulator(
     const FeatureProfile& feature_profile,
-    const StreamManipulator::Options& options,
+    StreamManipulator::CreateOptions& create_options,
     GpuResources* gpu_resources,
     std::vector<std::unique_ptr<StreamManipulator>>* out_stream_manipulators) {
 #if USE_CAMERA_FEATURE_HDRNET
@@ -61,7 +61,7 @@ void MaybeEnableHdrNetStreamManipulator(
   }
   constexpr const char kIntelIpu6CameraModuleName[] =
       "Intel IPU6 Camera HAL Module";
-  if (options.camera_module_name == kIntelIpu6CameraModuleName) {
+  if (create_options.camera_module_name == kIntelIpu6CameraModuleName) {
     // The pipeline looks like:
     //        ____       ________       _________
     //   --> |    | --> |        | --> |         | -->
@@ -85,7 +85,8 @@ void MaybeEnableHdrNetStreamManipulator(
       out_stream_manipulators->emplace_back(
           std::make_unique<FaceDetectionStreamManipulator>(
               feature_profile.GetConfigFilePath(
-                  FeatureProfile::FeatureType::kFaceDetection)));
+                  FeatureProfile::FeatureType::kFaceDetection),
+              std::move(create_options.set_face_detection_result_callback)));
       LOGF(INFO) << "FaceDetectionStreamManipulator enabled";
     }
 #endif
@@ -136,7 +137,7 @@ void MaybeEnableAutoFramingStreamManipulator(
 }  // namespace
 
 StreamManipulatorManager::StreamManipulatorManager(
-    StreamManipulator::Options options,
+    StreamManipulator::CreateOptions create_options,
     StreamManipulator::RuntimeOptions* runtime_options,
     GpuResources* gpu_resources,
     CameraMojoChannelManagerToken* mojo_manager_token) {
@@ -151,8 +152,8 @@ StreamManipulatorManager::StreamManipulatorManager(
 
   MaybeEnableAutoFramingStreamManipulator(feature_profile, runtime_options,
                                           gpu_resources, &stream_manipulators_);
-  MaybeEnableHdrNetStreamManipulator(feature_profile, options, gpu_resources,
-                                     &stream_manipulators_);
+  MaybeEnableHdrNetStreamManipulator(feature_profile, create_options,
+                                     gpu_resources, &stream_manipulators_);
 
 #if USE_CAMERA_FEATURE_EFFECTS
   if (feature_profile.IsEnabled(FeatureProfile::FeatureType::kEffects)) {

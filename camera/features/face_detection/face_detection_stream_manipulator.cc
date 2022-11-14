@@ -10,6 +10,8 @@
 #include <utility>
 #include "common/camera_hal3_helpers.h"
 
+#include "cros-camera/cros_camera_hal.h"
+
 namespace cros {
 
 namespace {
@@ -48,7 +50,9 @@ void LogFaceInfo(int frame_number, const human_sensing::CrosFace& face) {
 //
 
 FaceDetectionStreamManipulator::FaceDetectionStreamManipulator(
-    base::FilePath config_file_path)
+    base::FilePath config_file_path,
+    base::OnceCallback<void(FaceDetectionResultCallback)>
+        set_face_detection_result_callback)
     : config_(ReloadableConfigFile::Options{
           config_file_path, base::FilePath(kOverrideFaceDetectionConfigFile)}),
       metadata_logger_({.dump_path = base::FilePath(kMetadataDumpPath)}),
@@ -60,6 +64,15 @@ FaceDetectionStreamManipulator::FaceDetectionStreamManipulator(
   config_.SetCallback(
       base::BindRepeating(&FaceDetectionStreamManipulator::OnOptionsUpdated,
                           base::Unretained(this)));
+
+  if (!set_face_detection_result_callback.is_null()) {
+    LOGF(INFO) << "Setting face detection callback to camera HAL";
+    FaceDetectionResultCallback face_detection_result_callback =
+        base::BindRepeating(&FaceDetectionStreamManipulator::GetLatestFaces,
+                            base::Unretained(this));
+    std::move(set_face_detection_result_callback)
+        .Run(std::move(face_detection_result_callback));
+  }
 }
 
 bool FaceDetectionStreamManipulator::Initialize(
@@ -115,7 +128,7 @@ bool FaceDetectionStreamManipulator::ProcessCaptureRequest(
   }
 
   // Carry down the latest detected faces as Gcam AE's input metadata.
-  request->feature_metadata().faces = latest_faces_;
+  request->feature_metadata().faces = latest_face_detection_result_.faces;
   if (VLOG_IS_ON(2)) {
     VLOGFID(2, request->frame_number()) << "Set face(s):";
     for (const auto& f : *request->feature_metadata().faces) {
@@ -151,11 +164,12 @@ bool FaceDetectionStreamManipulator::ProcessCaptureResult(
   base::AutoLock lock(lock_);
 
   if (options_.log_frame_metadata) {
-    std::vector<float> flattened_faces(latest_faces_.size() * 4);
+    std::vector<float> flattened_faces(
+        latest_face_detection_result_.faces.size() * 4);
     // Log the face rectangles in normalized rectangles so that it can be
     // consumed by the Gcam AE CLI directly.
-    for (int i = 0; i < latest_faces_.size(); ++i) {
-      const human_sensing::CrosFace& f = latest_faces_[i];
+    for (int i = 0; i < latest_face_detection_result_.faces.size(); ++i) {
+      const human_sensing::CrosFace& f = latest_face_detection_result_.faces[i];
       const int base = i * 4;
       // Left
       flattened_faces[base] = std::clamp(
@@ -324,7 +338,7 @@ void FaceDetectionStreamManipulator::SetResultAeMetadata(
       frame_info.face_detect_mode != ANDROID_STATISTICS_FACE_DETECT_MODE_OFF) {
     std::vector<int32_t> face_coordinates;
     std::vector<uint8_t> face_scores;
-    for (const auto& f : latest_faces_) {
+    for (const auto& f : latest_face_detection_result_.faces) {
       face_coordinates.push_back(f.bounding_box.x1);
       face_coordinates.push_back(f.bounding_box.y1);
       face_coordinates.push_back(f.bounding_box.x2);
@@ -346,7 +360,7 @@ void FaceDetectionStreamManipulator::SetResultAeMetadata(
     }
   }
 
-  result->feature_metadata().faces = latest_faces_;
+  result->feature_metadata().faces = latest_face_detection_result_.faces;
 }
 
 FaceDetectionStreamManipulator::FrameInfo&
@@ -398,7 +412,13 @@ void FaceDetectionStreamManipulator::OnFaceDetected(
     }
   }
   base::AutoLock lock(lock_);
-  latest_faces_ = std::move(faces);
+  latest_face_detection_result_ = {.frame_number = frame_number,
+                                   .faces = std::move(faces)};
+}
+
+FaceDetectionResult FaceDetectionStreamManipulator::GetLatestFaces() {
+  base::AutoLock lock(lock_);
+  return latest_face_detection_result_;
 }
 
 }  // namespace cros

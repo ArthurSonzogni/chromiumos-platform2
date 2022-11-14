@@ -22,6 +22,7 @@
 #include "common/camera_hal3_helpers.h"
 #include "common/vendor_tag_manager.h"
 #include "cros-camera/camera_mojo_channel_manager_token.h"
+#include "cros-camera/cros_camera_hal.h"
 #include "cros-camera/export.h"
 #include "gpu/gpu_resources.h"
 #include "ml_core/effects_pipeline.h"
@@ -45,10 +46,15 @@ namespace cros {
 // hook is mainly used to log the status for each StreamManipulator.
 class CROS_CAMERA_EXPORT StreamManipulator {
  public:
-  struct Options {
+  struct CreateOptions {
     // Used to identify the camera device that the stream manipulators will be
     // created for (e.g. USB v.s. vendor camera HAL).
     std::string camera_module_name;
+
+    // Used by the face detection stream manipulator to provide a callback for
+    // camera HAL.
+    base::OnceCallback<void(FaceDetectionResultCallback)>
+        set_face_detection_result_callback;
   };
 
   class RuntimeOptions {

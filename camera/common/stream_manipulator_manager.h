@@ -29,7 +29,7 @@ namespace cros {
 
 class CROS_CAMERA_EXPORT StreamManipulatorManager {
  public:
-  StreamManipulatorManager(StreamManipulator::Options options,
+  StreamManipulatorManager(StreamManipulator::CreateOptions create_options,
                            StreamManipulator::RuntimeOptions* runtime_options,
                            GpuResources* gpu_resources,
                            CameraMojoChannelManagerToken* mojo_manager_token);

@@ -16,6 +16,7 @@
 #include "common/stream_manipulator.h"
 #include "cros-camera/camera_face_detection.h"
 #include "cros-camera/common_types.h"
+#include "cros-camera/cros_camera_hal.h"
 
 namespace cros {
 
@@ -44,7 +45,10 @@ class FaceDetectionStreamManipulator : public StreamManipulator {
     bool debug = false;
   };
 
-  explicit FaceDetectionStreamManipulator(base::FilePath config_file_path);
+  explicit FaceDetectionStreamManipulator(
+      base::FilePath config_file_path,
+      base::OnceCallback<void(FaceDetectionResultCallback)>
+          set_face_detection_result_callback);
 
   ~FaceDetectionStreamManipulator() override = default;
 
@@ -77,6 +81,7 @@ class FaceDetectionStreamManipulator : public StreamManipulator {
   void OnFaceDetected(uint32_t frame_number,
                       FaceDetectResult detect_result,
                       std::vector<human_sensing::CrosFace> faces);
+  FaceDetectionResult GetLatestFaces();
 
   // Face detector settings.
   ReloadableConfigFile config_;
@@ -88,8 +93,8 @@ class FaceDetectionStreamManipulator : public StreamManipulator {
   // different threads.
   base::Lock lock_;
 
-  // The latest face ROIs detected by the CrOS face detector.
-  std::vector<human_sensing::CrosFace> latest_faces_ GUARDED_BY(lock_);
+  // The latest face detection result detected by the CrOS face detector.
+  FaceDetectionResult latest_face_detection_result_ GUARDED_BY(lock_);
 
   // Ring buffer for the per-frame face detection metadata.
   static constexpr size_t kFrameInfoRingBufferSize = 12;

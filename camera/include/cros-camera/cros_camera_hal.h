@@ -10,10 +10,17 @@
 #define CROS_CAMERA_HAL_INFO_SYM CCHI
 #define CROS_CAMERA_HAL_INFO_SYM_AS_STR "CCHI"
 
+#include <vector>
+
 #include <base/callback.h>
+#include <hardware/camera3.h>
 #include <hardware/camera_common.h>
 
 #include "cros-camera/camera_mojo_channel_manager_token.h"
+
+#if USE_CAMERA_FEATURE_FACE_DETECTION || defined(FACE_DETECTION)
+#include "cros-camera/camera_face_detection.h"
+#endif
 
 namespace cros {
 
@@ -33,6 +40,19 @@ enum class ClientType {
   kAshChrome = 5,
   kLacrosChrome = 6
 };
+
+struct FaceDetectionResult {
+  // The frame number that the face detection was run on.
+  uint32_t frame_number;
+
+#if USE_CAMERA_FEATURE_FACE_DETECTION || defined(FACE_DETECTION)
+  // The detected face ROIs.
+  std::vector<human_sensing::CrosFace> faces;
+#endif
+};
+
+using FaceDetectionResultCallback =
+    base::RepeatingCallback<FaceDetectionResult()>;
 
 using PrivacySwitchStateChangeCallback =
     base::RepeatingCallback<void(int camera_id, PrivacySwitchState state)>;
@@ -69,6 +89,12 @@ typedef struct cros_camera_hal {
   int (*get_camera_info_ext)(int id,
                              struct camera_info* info,
                              ClientType client_type);
+
+  /**
+   * Registers facessd detect callback.
+   */
+  void (*set_face_detection_result_callback)(
+      int camera_id, FaceDetectionResultCallback callback);
 
   /* reserved for future use */
   void* reserved[4];
