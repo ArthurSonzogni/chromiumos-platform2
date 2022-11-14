@@ -372,6 +372,9 @@ bool ArcVm::Start(base::FilePath kernel, VmBuilder vm_builder) {
       .AppendAudioDevice(VmBuilder::AudioDeviceType::kVirtio,
                          "capture=true,backend=cras,client_type=arcvm,"
                          "socket_type=unified")
+      // Each shared directory is a new PCI device, before adding a new shared
+      // directory configuration, please consult if you really do need to add a
+      // new PCI device. TODO(b/237618542): Unify these.
       .AppendSharedDir(oem_etc_shared_dir)
       .AppendSharedDir(shared_testharness)
       .AppendSharedDir(shared_apkcache)
