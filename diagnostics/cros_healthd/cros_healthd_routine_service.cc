@@ -486,7 +486,8 @@ void CrosHealthdRoutineService::PopulateAvailableRoutines(
       mojo_ipc::DiagnosticRoutineEnum::kArcHttp,
       mojo_ipc::DiagnosticRoutineEnum::kArcPing,
       mojo_ipc::DiagnosticRoutineEnum::kArcDnsResolution,
-      mojo_ipc::DiagnosticRoutineEnum::kSensitiveSensor};
+      mojo_ipc::DiagnosticRoutineEnum::kSensitiveSensor,
+      mojo_ipc::DiagnosticRoutineEnum::kLedLitUp};
 
   if (context_->system_config()->HasBattery()) {
     available_routines_.insert(
