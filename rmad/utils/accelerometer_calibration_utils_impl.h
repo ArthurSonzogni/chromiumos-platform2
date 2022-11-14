@@ -5,18 +5,21 @@
 #ifndef RMAD_UTILS_ACCELEROMETER_CALIBRATION_UTILS_IMPL_H_
 #define RMAD_UTILS_ACCELEROMETER_CALIBRATION_UTILS_IMPL_H_
 
-#include "rmad/utils/sensor_calibration_utils.h"
-
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "rmad/utils/iio_ec_sensor_utils.h"
+#include "rmad/utils/mojo_service_utils.h"
+#include "rmad/utils/sensor_calibration_utils.h"
 
 namespace rmad {
 
 class AccelerometerCalibrationUtilsImpl : public SensorCalibrationUtils {
  public:
-  explicit AccelerometerCalibrationUtilsImpl(const std::string& location);
+  explicit AccelerometerCalibrationUtilsImpl(
+      scoped_refptr<MojoServiceUtils> mojo_service,
+      const std::string& location);
   explicit AccelerometerCalibrationUtilsImpl(
       const std::string& location,
       std::unique_ptr<IioEcSensorUtils> iio_ec_sensor_utils);
@@ -26,6 +29,11 @@ class AccelerometerCalibrationUtilsImpl : public SensorCalibrationUtils {
                  CalibrationResultCallback result_callback) override;
 
  private:
+  void HandleGetAvgDataResult(CalibrationProgressCallback progress_callback,
+                              CalibrationResultCallback result_callback,
+                              const std::vector<double>& original_calibbias,
+                              const std::vector<double>& avg_data,
+                              const std::vector<double>& variance_data);
   // utils part
   std::unique_ptr<IioEcSensorUtils> iio_ec_sensor_utils_;
 };

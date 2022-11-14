@@ -53,10 +53,10 @@ const std::vector<double> kAccelerometerIdealValues = {0, 0, kGravity};
 namespace rmad {
 
 AccelerometerCalibrationUtilsImpl::AccelerometerCalibrationUtilsImpl(
-    const std::string& location)
+    scoped_refptr<MojoServiceUtils> mojo_service, const std::string& location)
     : SensorCalibrationUtils(location, kSensorName) {
-  iio_ec_sensor_utils_ =
-      std::make_unique<IioEcSensorUtilsImpl>(location, kSensorName);
+  iio_ec_sensor_utils_ = std::make_unique<IioEcSensorUtilsImpl>(
+      mojo_service, location, kSensorName);
 }
 
 AccelerometerCalibrationUtilsImpl::AccelerometerCalibrationUtilsImpl(
@@ -72,10 +72,7 @@ void AccelerometerCalibrationUtilsImpl::Calibrate(
   CHECK_EQ(GetLocation(), iio_ec_sensor_utils_->GetLocation());
   CHECK_EQ(GetName(), iio_ec_sensor_utils_->GetName());
 
-  std::vector<double> avg_data;
-  std::vector<double> variance_data;
   std::vector<double> original_calibbias;
-  std::map<std::string, int> calibbias;
   progress_callback.Run(kProgressInit);
 
   // Before the calibration, we get original calibbias by reading sysfs.
@@ -88,12 +85,26 @@ void AccelerometerCalibrationUtilsImpl::Calibrate(
 
   // Due to the uncertainty of the sensor value, we use the average value to
   // calibrate it.
-  if (!iio_ec_sensor_utils_->GetAvgData(kAccelerometerChannels, kSamples,
-                                        &avg_data, &variance_data)) {
+  if (!iio_ec_sensor_utils_->GetAvgData(
+          base::BindOnce(
+              &AccelerometerCalibrationUtilsImpl::HandleGetAvgDataResult,
+              base::Unretained(this), progress_callback,
+              std::move(result_callback), original_calibbias),
+          kAccelerometerChannels, kSamples)) {
     LOG(ERROR) << location_ << ":" << name_ << ": Failed to accumulate data.";
     progress_callback.Run(kProgressFailed);
     return;
   }
+}
+
+void AccelerometerCalibrationUtilsImpl::HandleGetAvgDataResult(
+    CalibrationProgressCallback progress_callback,
+    CalibrationResultCallback result_callback,
+    const std::vector<double>& original_calibbias,
+    const std::vector<double>& avg_data,
+    const std::vector<double>& variance_data) {
+  std::map<std::string, int> calibbias;
+
   progress_callback.Run(kProgressSensorDataReceived);
 
   if (avg_data.size() != kAccelerometerIdealValues.size()) {

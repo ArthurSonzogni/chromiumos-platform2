@@ -25,13 +25,10 @@ namespace {
 constexpr char kLocation[] = "TestLocation";
 constexpr char kSensorName[] = "cros-ec-gyro";
 
-constexpr double kDegree2Radian = M_PI / 180.0;
-// The calibbias data unit is 1/1024 dps, and the sensor reading is rad/s.
-constexpr double kCalibbias2SensorReading = kDegree2Radian / 1024;
-
-constexpr double kProgressComplete = 1.0;
 constexpr double kProgressFailed = -1.0;
 constexpr double kProgressInit = 0.0;
+constexpr double kProgressGetOriginalCalibbias = 0.2;
+constexpr double kProgressComplete = 1.0;
 
 const std::vector<std::string> kGyroscopeCalibbias = {"in_anglvel_x_calibbias",
                                                       "in_anglvel_y_calibbias",
@@ -49,11 +46,12 @@ namespace rmad {
 
 class GyroscopeCalibrationUtilsImplTest : public testing::Test {
  public:
-  GyroscopeCalibrationUtilsImplTest() {}
+  GyroscopeCalibrationUtilsImplTest() = default;
 
-  std::unique_ptr<GyroscopeCalibrationUtilsImpl>
-  CreateGyroscopeCalibrationUtils(const std::vector<double>& avg_data,
-                                  const std::vector<double>& sys_values) {
+  void DefineGetSysValuesActions(
+      std::unique_ptr<StrictMock<MockIioEcSensorUtils>>&
+          mock_iio_ec_sensor_utils,
+      const std::vector<double>& sys_values) {
     auto mock_output_helper = [](const std::vector<double>& data,
                                  std::vector<double>* output) {
       if (data.size() == 0 || !output) {
@@ -63,24 +61,11 @@ class GyroscopeCalibrationUtilsImplTest : public testing::Test {
       return true;
     };
 
-    auto mock_iio_ec_sensor_utils =
-        std::make_unique<StrictMock<MockIioEcSensorUtils>>(kLocation,
-                                                           kSensorName);
-    EXPECT_CALL(*mock_iio_ec_sensor_utils,
-                GetAvgData(kGyroscopeChannels, _, _, _))
-        .WillRepeatedly(WithArg<2>(
-            [avg_data, &mock_output_helper](std::vector<double>* output) {
-              return mock_output_helper(avg_data, output);
-            }));
-
     EXPECT_CALL(*mock_iio_ec_sensor_utils, GetSysValues(kGyroscopeCalibbias, _))
         .WillRepeatedly(WithArg<1>(
             [sys_values, &mock_output_helper](std::vector<double>* output) {
               return mock_output_helper(sys_values, output);
             }));
-
-    return std::make_unique<GyroscopeCalibrationUtilsImpl>(
-        kLocation, std::move(mock_iio_ec_sensor_utils));
   }
 
   void QueueProgress(double progress) {
@@ -100,8 +85,17 @@ class GyroscopeCalibrationUtilsImplTest : public testing::Test {
 
 TEST_F(GyroscopeCalibrationUtilsImplTest,
        Calibrate_WithoutOriginalBias_Success) {
-  auto gyro_calib_utils =
-      CreateGyroscopeCalibrationUtils(kAvgTestData, kZeroOriginalBias);
+  auto mock_iio_ec_sensor_utils =
+      std::make_unique<StrictMock<MockIioEcSensorUtils>>(kLocation,
+                                                         kSensorName);
+
+  DefineGetSysValuesActions(mock_iio_ec_sensor_utils, kZeroOriginalBias);
+  EXPECT_CALL(*mock_iio_ec_sensor_utils, GetAvgData(_, kGyroscopeChannels, _))
+      .Times(1)
+      .WillRepeatedly(Return(true));
+
+  auto gyro_calib_utils = std::make_unique<GyroscopeCalibrationUtilsImpl>(
+      kLocation, std::move(mock_iio_ec_sensor_utils));
 
   gyro_calib_utils->Calibrate(
       base::BindRepeating(&GyroscopeCalibrationUtilsImplTest::QueueProgress,
@@ -110,20 +104,102 @@ TEST_F(GyroscopeCalibrationUtilsImplTest,
                      base::Unretained(this)));
 
   // Check if sent progresses contain kProgressInit to kProgressComplete.
-  EXPECT_GE(received_progresses_.size(), 2);
+  EXPECT_EQ(received_progresses_.size(), 2);
   EXPECT_DOUBLE_EQ(received_progresses_.front(), kProgressInit);
-  EXPECT_DOUBLE_EQ(received_progresses_.back(), kProgressComplete);
-
-  EXPECT_EQ(received_results_.size(), kGyroscopeChannels.size());
-  for (int i = 0; i < kAvgTestData.size(); i++) {
-    EXPECT_EQ(received_results_[i],
-              round(-kAvgTestData[i] / kCalibbias2SensorReading));
-  }
+  EXPECT_DOUBLE_EQ(received_progresses_.back(), kProgressGetOriginalCalibbias);
 }
 
 TEST_F(GyroscopeCalibrationUtilsImplTest, Calibrate_WithOriginalBias_Success) {
-  auto gyro_calib_utils =
-      CreateGyroscopeCalibrationUtils(kAvgTestData, kOriginalBias);
+  auto mock_iio_ec_sensor_utils =
+      std::make_unique<StrictMock<MockIioEcSensorUtils>>(kLocation,
+                                                         kSensorName);
+
+  DefineGetSysValuesActions(mock_iio_ec_sensor_utils, kOriginalBias);
+  EXPECT_CALL(*mock_iio_ec_sensor_utils, GetAvgData(_, kGyroscopeChannels, _))
+      .Times(1)
+      .WillRepeatedly(Return(true));
+
+  auto gyro_calib_utils = std::make_unique<GyroscopeCalibrationUtilsImpl>(
+      kLocation, std::move(mock_iio_ec_sensor_utils));
+
+  gyro_calib_utils->Calibrate(
+      base::BindRepeating(&GyroscopeCalibrationUtilsImplTest::QueueProgress,
+                          base::Unretained(this)),
+      base::BindOnce(&GyroscopeCalibrationUtilsImplTest::QueueResult,
+                     base::Unretained(this)));
+
+  // Check if sent progresses contain kProgressInit to
+  // kProgressGetOriginalCalibbias.
+  EXPECT_EQ(received_progresses_.size(), 2);
+  EXPECT_DOUBLE_EQ(received_progresses_.front(), kProgressInit);
+  EXPECT_DOUBLE_EQ(received_progresses_.back(), kProgressGetOriginalCalibbias);
+}
+
+TEST_F(GyroscopeCalibrationUtilsImplTest, Calibrate_NoAvgData_Failed) {
+  auto mock_iio_ec_sensor_utils =
+      std::make_unique<StrictMock<MockIioEcSensorUtils>>(kLocation,
+                                                         kSensorName);
+
+  DefineGetSysValuesActions(mock_iio_ec_sensor_utils, kZeroOriginalBias);
+  EXPECT_CALL(*mock_iio_ec_sensor_utils, GetAvgData(_, kGyroscopeChannels, _))
+      .Times(1)
+      .WillRepeatedly(Return(false));
+
+  auto gyro_calib_utils = std::make_unique<GyroscopeCalibrationUtilsImpl>(
+      kLocation, std::move(mock_iio_ec_sensor_utils));
+
+  gyro_calib_utils->Calibrate(
+      base::BindRepeating(&GyroscopeCalibrationUtilsImplTest::QueueProgress,
+                          base::Unretained(this)),
+      base::BindOnce(&GyroscopeCalibrationUtilsImplTest::QueueResult,
+                     base::Unretained(this)));
+
+  // Check if sent progresses contain kProgressInit,
+  // kProgressGetOriginalCalibbias, and kProgressFailed.
+  EXPECT_EQ(received_progresses_.size(), 3);
+  EXPECT_DOUBLE_EQ(received_progresses_.front(), kProgressInit);
+  EXPECT_DOUBLE_EQ(received_progresses_.back(), kProgressFailed);
+}
+
+TEST_F(GyroscopeCalibrationUtilsImplTest, Calibrate_NoSysValues_Failed) {
+  auto mock_iio_ec_sensor_utils =
+      std::make_unique<StrictMock<MockIioEcSensorUtils>>(kLocation,
+                                                         kSensorName);
+
+  DefineGetSysValuesActions(mock_iio_ec_sensor_utils, {});
+  EXPECT_CALL(*mock_iio_ec_sensor_utils, GetAvgData(_, kGyroscopeChannels, _))
+      .Times(0);
+
+  auto gyro_calib_utils = std::make_unique<GyroscopeCalibrationUtilsImpl>(
+      kLocation, std::move(mock_iio_ec_sensor_utils));
+
+  gyro_calib_utils->Calibrate(
+      base::BindRepeating(&GyroscopeCalibrationUtilsImplTest::QueueProgress,
+                          base::Unretained(this)),
+      base::BindOnce(&GyroscopeCalibrationUtilsImplTest::QueueResult,
+                     base::Unretained(this)));
+
+  // Check if sent progresses contain kProgressInit and kProgressFailed.
+  EXPECT_EQ(received_progresses_.size(), 2);
+  EXPECT_DOUBLE_EQ(received_progresses_.front(), kProgressInit);
+  EXPECT_DOUBLE_EQ(received_progresses_.back(), kProgressFailed);
+}
+
+TEST_F(GyroscopeCalibrationUtilsImplTest, HandleGetAvgDataResult_Success) {
+  auto mock_iio_ec_sensor_utils =
+      std::make_unique<StrictMock<MockIioEcSensorUtils>>(kLocation,
+                                                         kSensorName);
+
+  DefineGetSysValuesActions(mock_iio_ec_sensor_utils, kZeroOriginalBias);
+  EXPECT_CALL(*mock_iio_ec_sensor_utils, GetAvgData(_, kGyroscopeChannels, _))
+      .Times(1)
+      .WillRepeatedly(WithArg<0>([](GetAvgDataCallback result_callback) {
+        std::move(result_callback).Run(kAvgTestData, {});
+        return true;
+      }));
+
+  auto gyro_calib_utils = std::make_unique<GyroscopeCalibrationUtilsImpl>(
+      kLocation, std::move(mock_iio_ec_sensor_utils));
 
   gyro_calib_utils->Calibrate(
       base::BindRepeating(&GyroscopeCalibrationUtilsImplTest::QueueProgress,
@@ -132,21 +208,27 @@ TEST_F(GyroscopeCalibrationUtilsImplTest, Calibrate_WithOriginalBias_Success) {
                      base::Unretained(this)));
 
   // Check if sent progresses contain kProgressInit to kProgressComplete.
-  EXPECT_GE(received_progresses_.size(), 2);
+  EXPECT_EQ(received_progresses_.size(), 5);
   EXPECT_DOUBLE_EQ(received_progresses_.front(), kProgressInit);
   EXPECT_DOUBLE_EQ(received_progresses_.back(), kProgressComplete);
-
-  EXPECT_EQ(received_results_.size(), kGyroscopeChannels.size());
-  for (int i = 0; i < kAvgTestData.size(); i++) {
-    EXPECT_EQ(
-        received_results_[i],
-        kOriginalBias[i] + round(-kAvgTestData[i] / kCalibbias2SensorReading));
-  }
 }
 
-TEST_F(GyroscopeCalibrationUtilsImplTest, Calibrate_NoAvgData_Failed) {
-  auto gyro_calib_utils =
-      CreateGyroscopeCalibrationUtils({}, kZeroOriginalBias);
+TEST_F(GyroscopeCalibrationUtilsImplTest,
+       HandleGetAvgDataResult_Inconsistent_Channel_Size) {
+  auto mock_iio_ec_sensor_utils =
+      std::make_unique<StrictMock<MockIioEcSensorUtils>>(kLocation,
+                                                         kSensorName);
+
+  DefineGetSysValuesActions(mock_iio_ec_sensor_utils, kZeroOriginalBias);
+  EXPECT_CALL(*mock_iio_ec_sensor_utils, GetAvgData(_, kGyroscopeChannels, _))
+      .Times(1)
+      .WillRepeatedly(WithArg<0>([](GetAvgDataCallback result_callback) {
+        std::move(result_callback).Run({}, {});
+        return true;
+      }));
+
+  auto gyro_calib_utils = std::make_unique<GyroscopeCalibrationUtilsImpl>(
+      kLocation, std::move(mock_iio_ec_sensor_utils));
 
   gyro_calib_utils->Calibrate(
       base::BindRepeating(&GyroscopeCalibrationUtilsImplTest::QueueProgress,
@@ -155,49 +237,9 @@ TEST_F(GyroscopeCalibrationUtilsImplTest, Calibrate_NoAvgData_Failed) {
                      base::Unretained(this)));
 
   // Check if sent progresses contain kProgressInit to kProgressFailed.
-  EXPECT_GE(received_progresses_.size(), 2);
+  EXPECT_EQ(received_progresses_.size(), 4);
   EXPECT_DOUBLE_EQ(received_progresses_.front(), kProgressInit);
   EXPECT_DOUBLE_EQ(received_progresses_.back(), kProgressFailed);
-
-  // Check if nothing is sent on failure.
-  EXPECT_EQ(received_results_.size(), 0);
-}
-
-TEST_F(GyroscopeCalibrationUtilsImplTest, Calibrate_NoSysValues_Failed) {
-  auto gyro_calib_utils = CreateGyroscopeCalibrationUtils(kAvgTestData, {});
-
-  gyro_calib_utils->Calibrate(
-      base::BindRepeating(&GyroscopeCalibrationUtilsImplTest::QueueProgress,
-                          base::Unretained(this)),
-      base::BindOnce(&GyroscopeCalibrationUtilsImplTest::QueueResult,
-                     base::Unretained(this)));
-
-  // Check if sent progresses contain kProgressInit to kProgressFailed.
-  EXPECT_GE(received_progresses_.size(), 2);
-  EXPECT_DOUBLE_EQ(received_progresses_.front(), kProgressInit);
-  EXPECT_DOUBLE_EQ(received_progresses_.back(), kProgressFailed);
-
-  // Check if nothing is sent on failure.
-  EXPECT_EQ(received_results_.size(), 0);
-}
-
-TEST_F(GyroscopeCalibrationUtilsImplTest, Calibrate_WrongAvgDataSize_Failed) {
-  auto gyro_calib_utils =
-      CreateGyroscopeCalibrationUtils({1}, kZeroOriginalBias);
-
-  gyro_calib_utils->Calibrate(
-      base::BindRepeating(&GyroscopeCalibrationUtilsImplTest::QueueProgress,
-                          base::Unretained(this)),
-      base::BindOnce(&GyroscopeCalibrationUtilsImplTest::QueueResult,
-                     base::Unretained(this)));
-
-  // Check if sent progresses contain kProgressInit to kProgressFailed.
-  EXPECT_GE(received_progresses_.size(), 2);
-  EXPECT_DOUBLE_EQ(received_progresses_.front(), kProgressInit);
-  EXPECT_DOUBLE_EQ(received_progresses_.back(), kProgressFailed);
-
-  // Check if nothing is sent on failure.
-  EXPECT_EQ(received_results_.size(), 0);
 }
 
 }  // namespace rmad

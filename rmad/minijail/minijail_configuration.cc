@@ -49,6 +49,8 @@ void EnterMinijail(bool set_admin_caps) {
                 0);
   // Required for using D-Bus.
   minijail_bind(j.get(), "/run/dbus", "/run/dbus", 0);
+  // Required by |mojo_service_manager| utility.
+  minijail_bind(j.get(), "/run/mojo", "/run/mojo", 0);
   // Required by |vpd| utility.
   minijail_bind(j.get(), "/run/lock", "/run/lock", 1);
 

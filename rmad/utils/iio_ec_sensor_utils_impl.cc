@@ -15,8 +15,6 @@
 #include <base/strings/string_util.h>
 #include <re2/re2.h>
 
-#include "rmad/utils/cmd_utils_impl.h"
-
 namespace {
 
 constexpr int kMaxNumEntries = 1024;
@@ -31,135 +29,55 @@ constexpr char kIioDeviceEntryFrequencyAvailable[] =
     "sampling_frequency_available";
 constexpr char kIioDeviceEntryScale[] = "scale";
 
-constexpr char kIioServiceClientCmdPath[] = "/usr/sbin/iioservice_simpleclient";
-constexpr char kIioParameterChannelsPrefix[] = "--channels=";
-constexpr char kIioParameterFrequencyPrefix[] = "--frequency=";
-constexpr char kIioParameterDeviceIdPrefix[] = "--device_id=";
-constexpr char kIioParameterSamplesPrefix[] = "--samples=";
-constexpr char kIioParameterTimeoutPrefix[] = "--timeout=";
-
 }  // namespace
 
 namespace rmad {
 
-IioEcSensorUtilsImpl::IioEcSensorUtilsImpl(const std::string& location,
-                                           const std::string& name)
+IioEcSensorUtilsImpl::IioEcSensorUtilsImpl(
+    scoped_refptr<MojoServiceUtils> mojo_service,
+    const std::string& location,
+    const std::string& name)
     : IioEcSensorUtils(location, name),
       sysfs_prefix_(kIioDevicePathPrefix),
-      initialized_(false) {
-  cmd_utils_ = std::make_unique<CmdUtilsImpl>();
+      initialized_(false),
+      mojo_service_(mojo_service) {
   Initialize();
 }
 
-IioEcSensorUtilsImpl::IioEcSensorUtilsImpl(const std::string& location,
-                                           const std::string& name,
-                                           const std::string& sysfs_prefix,
-                                           std::unique_ptr<CmdUtils> cmd_utils)
+IioEcSensorUtilsImpl::IioEcSensorUtilsImpl(
+    scoped_refptr<MojoServiceUtils> mojo_service,
+    const std::string& location,
+    const std::string& name,
+    const std::string& sysfs_prefix)
     : IioEcSensorUtils(location, name),
       sysfs_prefix_(sysfs_prefix),
       initialized_(false),
-      cmd_utils_(std::move(cmd_utils)) {
+      mojo_service_(mojo_service) {
   Initialize();
 }
 
-bool IioEcSensorUtilsImpl::GetAvgData(const std::vector<std::string>& channels,
-                                      int samples,
-                                      std::vector<double>* avg_data,
-                                      std::vector<double>* variance) const {
+bool IioEcSensorUtilsImpl::GetAvgData(GetAvgDataCallback result_callback,
+                                      const std::vector<std::string>& channels,
+                                      int samples) {
   CHECK_GT(channels.size(), 0);
   CHECK_GT(samples, 0);
-  CHECK(avg_data);
 
-  if (samples == 1 && variance) {
-    LOG(ERROR) << "We can only estimate variance when |samples| > 1.";
-    return false;
-  }
+  // Bind callback for OnSampleUpdated.
+  get_avg_data_result_callback_ = std::move(result_callback);
 
   if (!initialized_) {
     LOG(ERROR) << location_ << ":" << name_ << " is not initialized.";
     return false;
   }
 
-  std::string parameter_channels = kIioParameterChannelsPrefix;
-  for (auto channel : channels) {
-    parameter_channels += channel + " ";
-  }
+  target_channels_ = channels;
+  sample_times_ = samples;
+  samples_to_discard_ = kNumberFirstReadsDiscarded;
+  sampled_data_.clear();
 
-  std::vector<std::string> argv{
-      kIioServiceClientCmdPath,
-      parameter_channels,
-      kIioParameterFrequencyPrefix + base::NumberToString(frequency_),
-      kIioParameterDeviceIdPrefix + base::NumberToString(id_),
-      kIioParameterSamplesPrefix +
-          base::NumberToString(samples + kNumberFirstReadsDiscarded),
-      kIioParameterTimeoutPrefix +
-          base::NumberToString(ceil(kSecond2Millisecond / frequency_) +
-                               kTimeoutOverheadInMS),
-  };
-
-  std::string value;
-  if (!cmd_utils_->GetOutputAndError(argv, &value)) {
-    std::string whole_cmd;
-    for (auto arg : argv) {
-      whole_cmd += " " + arg;
-    }
-    LOG(ERROR) << location_ << ":" << name_ << ": Failed to get data by"
-               << whole_cmd;
-    return false;
-  }
-
-  std::vector<std::vector<double>> data(channels.size());
-  for (int i = 0; i < channels.size(); i++) {
-    re2::StringPiece str_piece(value);
-    re2::RE2 reg(channels[i] + R"(: ([-+]?\d+))");
-    std::string match;
-    double raw_data;
-
-    while (RE2::FindAndConsume(&str_piece, reg, &match)) {
-      if (!base::StringToDouble(match, &raw_data)) {
-        LOG(WARNING) << location_ << ":" << name_ << ": Failed to parse data ["
-                     << match << "]";
-        continue;
-      }
-
-      data.at(i).push_back(raw_data * scale_);
-    }
-
-    if (data.at(i).size() != samples + kNumberFirstReadsDiscarded) {
-      LOG(ERROR) << location_ << ":" << name_ << ":" << channels[i]
-                 << ": We received " << data.at(i).size() << " instead of "
-                 << samples << " + " << kNumberFirstReadsDiscarded
-                 << " (dropped few invalid reads at the beginning) samples.";
-      return false;
-    }
-
-    // Remove first few invalid reads as a workaround of crrev/c/1423123.
-    // This would be fixed by FW update later.
-    // TODO(genechang): Remove this workaround when new firmware is released.
-    data.at(i).erase(data.at(i).begin(),
-                     data.at(i).begin() + kNumberFirstReadsDiscarded);
-    CHECK_EQ(data.at(i).size(), samples);
-  }
-
-  avg_data->resize(channels.size());
-  for (int i = 0; i < channels.size(); i++) {
-    avg_data->at(i) =
-        std::accumulate(data.at(i).begin(), data.at(i).end(), 0.0) / samples;
-  }
-
-  if (!variance) {
-    return true;
-  }
-
-  CHECK_GT(samples, 1);
-  variance->resize(channels.size(), 0.0);
-  for (int i = 0; i < channels.size(); i++) {
-    const double avg = avg_data->at(i);
-    for (double value : data.at(i)) {
-      variance->at(i) += (value - avg) * (value - avg);
-    }
-    variance->at(i) /= data.at(i).size() - 1;
-  }
+  mojo_service_->GetSensorDevice(id_)->GetAllChannelIds(
+      base::BindOnce(&IioEcSensorUtilsImpl::HandleGetAllChannelIds,
+                     weak_ptr_factory_.GetMutableWeakPtr()));
 
   return true;
 }
@@ -261,6 +179,99 @@ bool IioEcSensorUtilsImpl::InitializeFromSysfsPath(
   }
 
   return true;
+}
+
+void IioEcSensorUtilsImpl::OnSampleUpdated(
+    const base::flat_map<int, int64_t>& data) {
+  // TODO(jeffulin): Remove this workaround when new firmware is released.
+  if (samples_to_discard_-- > 0)
+    return;
+
+  for (const auto& channel_id : target_channel_ids_) {
+    sampled_data_[channel_id].push_back(
+        static_cast<double>(data.at(channel_id)) * scale_);
+  }
+
+  // Check if we got enough samples and stop sampling.
+  if (sampled_data_.at(target_channel_ids_.at(0)).size() == sample_times_) {
+    mojo_service_->GetSensorDevice(id_)->StopReadingSamples();
+    LOG(INFO) << "Stopped sampling";
+    FinishSampling();
+  }
+}
+
+void IioEcSensorUtilsImpl::FinishSampling() {
+  std::vector<double> avg_data;
+  avg_data.resize(target_channels_.size());
+  for (int i = 0; i < target_channels_.size(); i++) {
+    const int channel_id = target_channel_ids_.at(i);
+    avg_data.at(i) = std::accumulate(sampled_data_.at(channel_id).begin(),
+                                     sampled_data_.at(channel_id).end(), 0.0) /
+                     sample_times_;
+  }
+
+  std::vector<double> variance;
+  variance.resize(target_channels_.size(), 0.0);
+  for (int i = 0; i < target_channels_.size(); i++) {
+    const double avg = avg_data.at(i);
+    const int channel_id = target_channel_ids_.at(i);
+    for (const double value : sampled_data_.at(channel_id)) {
+      variance.at(i) += (value - avg) * (value - avg);
+    }
+    variance.at(i) /=
+        static_cast<double>(sampled_data_.at(channel_id).size() - 1);
+  }
+
+  std::move(get_avg_data_result_callback_)
+      .Run(std::move(avg_data), std::move(variance));
+}
+
+void IioEcSensorUtilsImpl::OnErrorOccurred(
+    cros::mojom::ObserverErrorType type) {
+  LOG(ERROR) << "Got observer error while reading samples: " << type;
+  std::move(get_avg_data_result_callback_).Run({}, {});
+}
+
+void IioEcSensorUtilsImpl::HandleSetChannelsEnabled(
+    const std::vector<int>& failed_channel_ids) {
+  if (!failed_channel_ids.empty()) {
+    LOG(ERROR) << "Failed to enable channels.";
+    std::move(get_avg_data_result_callback_).Run({}, {});
+    return;
+  }
+
+  mojo_service_->GetSensorDevice(id_)->StartReadingSamples(
+      device_sample_receiver_.BindNewPipeAndPassRemote());
+}
+
+void IioEcSensorUtilsImpl::HandleGetAllChannelIds(
+    const std::vector<std::string>& channels) {
+  channel_id_map_.clear();
+  target_channel_ids_.clear();
+
+  for (auto it = channels.begin(); it != channels.end(); it++) {
+    channel_id_map_[*it] = it - channels.begin();
+  }
+
+  for (const auto& channel : target_channels_) {
+    if (channel_id_map_.find(channel) == channel_id_map_.end()) {
+      LOG(ERROR) << "Channel \"" << channel
+                 << "\" is not an available channel.";
+      std::move(get_avg_data_result_callback_).Run({}, {});
+      return;
+    }
+    target_channel_ids_.push_back(channel_id_map_[channel]);
+  }
+
+  mojo_service_->GetSensorDevice(id_)->SetTimeout(
+      ceil(kSecond2Millisecond / frequency_) + kTimeoutOverheadInMS);
+  mojo_service_->GetSensorDevice(id_)->SetFrequency(frequency_,
+                                                    base::DoNothing());
+
+  mojo_service_->GetSensorDevice(id_)->SetChannelsEnabled(
+      target_channel_ids_, true,
+      base::BindOnce(&IioEcSensorUtilsImpl::HandleSetChannelsEnabled,
+                     weak_ptr_factory_.GetMutableWeakPtr()));
 }
 
 }  // namespace rmad

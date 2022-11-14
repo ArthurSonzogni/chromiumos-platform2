@@ -48,10 +48,10 @@ const std::vector<double> kGyroscopIdealValues = {0, 0, 0};
 namespace rmad {
 
 GyroscopeCalibrationUtilsImpl::GyroscopeCalibrationUtilsImpl(
-    const std::string& location)
+    scoped_refptr<MojoServiceUtils> mojo_service, const std::string& location)
     : SensorCalibrationUtils(location, kSensorName) {
-  iio_ec_sensor_utils_ =
-      std::make_unique<IioEcSensorUtilsImpl>(location, kSensorName);
+  iio_ec_sensor_utils_ = std::make_unique<IioEcSensorUtilsImpl>(
+      mojo_service, location, kSensorName);
 }
 
 GyroscopeCalibrationUtilsImpl::GyroscopeCalibrationUtilsImpl(
@@ -67,9 +67,7 @@ void GyroscopeCalibrationUtilsImpl::Calibrate(
   CHECK_EQ(GetLocation(), iio_ec_sensor_utils_->GetLocation());
   CHECK_EQ(GetName(), iio_ec_sensor_utils_->GetName());
 
-  std::vector<double> avg_data;
   std::vector<double> original_calibbias;
-  std::map<std::string, int> calibbias;
   progress_callback.Run(kProgressInit);
 
   // Before the calibration, we get original calibbias by reading sysfs.
@@ -82,12 +80,24 @@ void GyroscopeCalibrationUtilsImpl::Calibrate(
 
   // Due to the uncertainty of the sensor value, we use the average value to
   // calibrate it.
-  if (!iio_ec_sensor_utils_->GetAvgData(kGyroscopeChannels, kSamples,
-                                        &avg_data)) {
+  if (!iio_ec_sensor_utils_->GetAvgData(
+          base::BindOnce(&GyroscopeCalibrationUtilsImpl::HandleGetAvgDataResult,
+                         base::Unretained(this), progress_callback,
+                         std::move(result_callback), original_calibbias),
+          kGyroscopeChannels, kSamples)) {
     LOG(ERROR) << location_ << ":" << name_ << ": Failed to accumulate data.";
     progress_callback.Run(kProgressFailed);
     return;
   }
+}
+
+void GyroscopeCalibrationUtilsImpl::HandleGetAvgDataResult(
+    CalibrationProgressCallback progress_callback,
+    CalibrationResultCallback result_callback,
+    const std::vector<double>& original_calibbias,
+    const std::vector<double>& avg_data,
+    const std::vector<double>& variance_data) {
+  std::map<std::string, int> calibbias;
   progress_callback.Run(kProgressSensorDataReceived);
 
   // For each axis, we calculate the difference between the ideal values.

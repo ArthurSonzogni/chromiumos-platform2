@@ -18,11 +18,27 @@ void MojoServiceUtilsImpl::Initialize() {
 
   CHECK(pending_remote);
   service_manager_.Bind(std::move(pending_remote));
+  service_manager_.set_disconnect_with_reason_handler(base::BindOnce(
+      [](base::RepeatingCallback<void()> callback, uint32_t error,
+         const std::string& message) {
+        LOG(ERROR) << "Mojo service manager disconnected\n"
+                   << "Error code: " << error << ", message: " << message;
+        callback.Run();
+      },
+      connection_error_callback_));
 
   // Bind the Sensor Service.
   service_manager_->Request(
       chromeos::mojo_services::kIioSensor, std::nullopt,
       sensor_service_.BindNewPipeAndPassReceiver().PassPipe());
+  sensor_service_.set_disconnect_with_reason_handler(base::BindOnce(
+      [](base::RepeatingCallback<void()> callback, uint32_t error,
+         const std::string& message) {
+        LOG(ERROR) << "Sensor service disconnected\n"
+                   << "Error code: " << error << ", message: " << message;
+        callback.Run();
+      },
+      connection_error_callback_));
 
   is_initialized = true;
 }
@@ -38,6 +54,15 @@ cros::mojom::SensorDevice* MojoServiceUtilsImpl::GetSensorDevice(
   if (sensor_devices_map_.find(device_id) == sensor_devices_map_.end()) {
     sensor_service_->GetDevice(
         device_id, sensor_devices_map_[device_id].BindNewPipeAndPassReceiver());
+    sensor_devices_map_[device_id].set_disconnect_with_reason_handler(
+        base::BindOnce(
+            [](int device_id, base::RepeatingCallback<void()> callback,
+               uint32_t error, const std::string& message) {
+              LOG(ERROR) << "Device " << device_id << " disconnected\n"
+                         << "Error code: " << error << ", message: " << message;
+              callback.Run();
+            },
+            device_id, connection_error_callback_));
   }
 
   return sensor_devices_map_[device_id].get();
@@ -55,6 +80,11 @@ void MojoServiceUtilsImpl::SetInitializedForTesting() {
 void MojoServiceUtilsImpl::InsertDeviceForTesting(int device_id) {
   sensor_service_->GetDevice(
       device_id, sensor_devices_map_[device_id].BindNewPipeAndPassReceiver());
+}
+
+void MojoServiceUtilsImpl::SetConnectionErrorHandler(
+    base::RepeatingCallback<void()> callback) {
+  connection_error_callback_ = std::move(callback);
 }
 
 }  // namespace rmad

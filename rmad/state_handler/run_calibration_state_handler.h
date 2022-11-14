@@ -19,6 +19,7 @@
 #include <base/timer/timer.h>
 
 #include "rmad/utils/calibration_utils.h"
+#include "rmad/utils/mojo_service_utils.h"
 #include "rmad/utils/sensor_calibration_utils.h"
 #include "rmad/utils/vpd_utils_impl.h"
 
@@ -61,6 +62,7 @@ class RunCalibrationStateHandler : public BaseStateHandler {
   void UpdateCalibrationProgress(RmadComponent component, double progress);
   void UpdateCalibrationResult(const std::map<std::string, int>& result);
 
+  void HandleMojoServiceDisconnection();
   void SaveAndSend(RmadComponent component, double progress);
   void SendComponentSignal(CalibrationComponentStatus component_status);
   void SendOverallSignal(CalibrationOverallStatus overall_status);
@@ -81,15 +83,16 @@ class RunCalibrationStateHandler : public BaseStateHandler {
   // progress.
   std::map<RmadComponent, std::unique_ptr<SensorCalibrationUtils>>
       sensor_calibration_utils_map_;
-  // To run sensor calibration with the same settings simultaneously, we do it
-  // in parallel using a normal TaskRunner.
-  scoped_refptr<base::TaskRunner> calibration_task_runner_;
   // To prevent race conditions, we post all critical sections to the same
   // SequencedTaskRunner to execute operations sequentially.
   scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner_;
   SEQUENCE_CHECKER(sequence_checker_);
   std::unique_ptr<VpdUtils> vpd_utils_;
+  scoped_refptr<MojoServiceUtilsImpl> mojo_service_;
   bool current_round_finished_;
+  bool is_testing_ = false;
+
+  base::WeakPtrFactory<RunCalibrationStateHandler> weak_factory_{this};
 };
 
 }  // namespace rmad

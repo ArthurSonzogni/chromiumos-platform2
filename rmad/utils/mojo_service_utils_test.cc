@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "base/memory/scoped_refptr.h"
 #include "mojo/core/embedder/embedder.h"
 #include "mojo/public/cpp/bindings/receiver.h"
 #include "rmad/utils/mock_sensor_service.h"
@@ -25,36 +26,36 @@ class MojoServiceUtilsTest : public testing::Test {
 };
 
 TEST_F(MojoServiceUtilsTest, Request_Sensor_Device_Before_Initialization) {
-  auto utils = MojoServiceUtilsImpl();
-  EXPECT_EQ(utils.GetSensorDevice(1), nullptr);
+  auto utils = base::MakeRefCounted<MojoServiceUtilsImpl>();
+  EXPECT_EQ(utils->GetSensorDevice(1), nullptr);
 }
 
 TEST_F(MojoServiceUtilsTest, Request_Nonexistent_Sensor_Device) {
-  auto utils = MojoServiceUtilsImpl();
-  utils.SetInitializedForTesting();
+  auto utils = base::MakeRefCounted<MojoServiceUtilsImpl>();
+  utils->SetInitializedForTesting();
 
   MockSensorService mock_sensor_service;
   EXPECT_CALL(mock_sensor_service, GetDevice(_, _)).Times(1);
   mojo::Receiver<cros::mojom::SensorService> receiver{&mock_sensor_service};
 
-  utils.SetSensorServiceForTesting(receiver.BindNewPipeAndPassRemote());
-  utils.GetSensorDevice(1);
+  utils->SetSensorServiceForTesting(receiver.BindNewPipeAndPassRemote());
+  utils->GetSensorDevice(1);
   receiver.FlushForTesting();
 }
 
 TEST_F(MojoServiceUtilsTest, Request_Existent_Sensor_Device) {
-  auto utils = MojoServiceUtilsImpl();
-  utils.SetInitializedForTesting();
+  auto utils = base::MakeRefCounted<MojoServiceUtilsImpl>();
+  utils->SetInitializedForTesting();
 
   MockSensorService mock_sensor_service;
   EXPECT_CALL(mock_sensor_service, GetDevice(_, _)).Times(1);
   mojo::Receiver<cros::mojom::SensorService> receiver{&mock_sensor_service};
 
-  utils.SetSensorServiceForTesting(receiver.BindNewPipeAndPassRemote());
+  utils->SetSensorServiceForTesting(receiver.BindNewPipeAndPassRemote());
 
   // 1 call from |InsertDeviceForTesting|, 0 call from |GetSensorDevice|.
-  utils.InsertDeviceForTesting(1);
-  utils.GetSensorDevice(1);
+  utils->InsertDeviceForTesting(1);
+  utils->GetSensorDevice(1);
   receiver.FlushForTesting();
 }
 

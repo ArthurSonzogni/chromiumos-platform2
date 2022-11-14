@@ -16,6 +16,7 @@
 #include "rmad/utils/accelerometer_calibration_utils_impl.h"
 #include "rmad/utils/calibration_utils.h"
 #include "rmad/utils/gyroscope_calibration_utils_impl.h"
+#include "rmad/utils/mojo_service_utils.h"
 
 namespace rmad {
 
@@ -25,15 +26,17 @@ RunCalibrationStateHandler::RunCalibrationStateHandler(
     : BaseStateHandler(json_store, daemon_callback),
       current_round_finished_(false) {
   DETACH_FROM_SEQUENCE(sequence_checker_);
+  mojo_service_ = base::MakeRefCounted<MojoServiceUtilsImpl>();
   vpd_utils_ = std::make_unique<VpdUtilsImpl>();
   sensor_calibration_utils_map_[RMAD_COMPONENT_BASE_ACCELEROMETER] =
-      std::make_unique<AccelerometerCalibrationUtilsImpl>("base");
+      std::make_unique<AccelerometerCalibrationUtilsImpl>(mojo_service_,
+                                                          "base");
   sensor_calibration_utils_map_[RMAD_COMPONENT_LID_ACCELEROMETER] =
-      std::make_unique<AccelerometerCalibrationUtilsImpl>("lid");
+      std::make_unique<AccelerometerCalibrationUtilsImpl>(mojo_service_, "lid");
   sensor_calibration_utils_map_[RMAD_COMPONENT_BASE_GYROSCOPE] =
-      std::make_unique<GyroscopeCalibrationUtilsImpl>("base");
+      std::make_unique<GyroscopeCalibrationUtilsImpl>(mojo_service_, "base");
   sensor_calibration_utils_map_[RMAD_COMPONENT_LID_GYROSCOPE] =
-      std::make_unique<GyroscopeCalibrationUtilsImpl>("lid");
+      std::make_unique<GyroscopeCalibrationUtilsImpl>(mojo_service_, "lid");
 }
 
 RunCalibrationStateHandler::RunCalibrationStateHandler(
@@ -46,7 +49,8 @@ RunCalibrationStateHandler::RunCalibrationStateHandler(
     std::unique_ptr<VpdUtils> vpd_utils)
     : BaseStateHandler(json_store, daemon_callback),
       vpd_utils_(std::move(vpd_utils)),
-      current_round_finished_(false) {
+      current_round_finished_(false),
+      is_testing_(true) {
   DETACH_FROM_SEQUENCE(sequence_checker_);
   sensor_calibration_utils_map_[RMAD_COMPONENT_BASE_ACCELEROMETER] =
       std::move(base_acc_utils);
@@ -61,9 +65,13 @@ RunCalibrationStateHandler::RunCalibrationStateHandler(
 RmadErrorCode RunCalibrationStateHandler::InitializeState() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   if (!state_.has_run_calibration()) {
+    if (!is_testing_) {
+      mojo_service_->Initialize();
+      mojo_service_->SetConnectionErrorHandler(base::BindRepeating(
+          &RunCalibrationStateHandler::HandleMojoServiceDisconnection,
+          weak_factory_.GetMutableWeakPtr()));
+    }
     state_.set_allocated_run_calibration(new RunCalibrationState);
-    calibration_task_runner_ = base::ThreadPool::CreateTaskRunner(
-        {base::TaskPriority::BEST_EFFORT, base::MayBlock()});
     sequenced_task_runner_ = base::SequencedTaskRunnerHandle::Get();
   }
   setup_instruction_ = RMAD_CALIBRATION_INSTRUCTION_NEED_TO_CHECK;
@@ -205,15 +213,13 @@ void RunCalibrationStateHandler::CalibrateAndSendProgress(
       CalibrationComponentStatus::RMAD_CALIBRATION_IN_PROGRESS;
   SetCalibrationMap(json_store_, calibration_map_);
 
-  calibration_task_runner_->PostTask(
-      FROM_HERE,
-      base::BindOnce(
-          &SensorCalibrationUtils::Calibrate, base::Unretained(utils.get()),
-          base::BindRepeating(
-              &RunCalibrationStateHandler::UpdateCalibrationProgress,
-              base::Unretained(this), component),
-          base::BindOnce(&RunCalibrationStateHandler::UpdateCalibrationResult,
-                         base::Unretained(this))));
+  utils->Calibrate(
+      base::BindRepeating(
+          &RunCalibrationStateHandler::UpdateCalibrationProgress,
+          base::Unretained(this), component),
+      base::BindOnce(&RunCalibrationStateHandler::UpdateCalibrationResult,
+                     base::Unretained(this)));
+
   LOG(INFO) << "Start calibrating for " << RmadComponent_Name(component);
 }
 
@@ -301,6 +307,16 @@ void RunCalibrationStateHandler::SendComponentSignal(
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   daemon_callback_->GetCalibrationComponentSignalCallback().Run(
       component_status);
+}
+
+void RunCalibrationStateHandler::HandleMojoServiceDisconnection() {
+  if (current_round_finished_) {
+    return;
+  }
+
+  current_round_finished_ = true;
+  daemon_callback_->GetCalibrationOverallSignalCallback().Run(
+      RMAD_CALIBRATION_OVERALL_CURRENT_ROUND_FAILED);
 }
 
 void RunCalibrationStateHandler::SendOverallSignal(

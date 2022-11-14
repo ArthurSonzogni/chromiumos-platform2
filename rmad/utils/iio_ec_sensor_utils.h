@@ -8,7 +8,13 @@
 #include <string>
 #include <vector>
 
+#include <base/callback.h>
+
 namespace rmad {
+
+using GetAvgDataCallback =
+    base::OnceCallback<void(const std::vector<double>& avg_data,
+                            const std::vector<double>& variance_data)>;
 
 class IioEcSensorUtils {
  public:
@@ -28,10 +34,9 @@ class IioEcSensorUtils {
   // |avg_data| unaffected. If |variance| is set, it is computed when |samples|
   // > 1, otherwise the function fails. Returns true if the function succeeds,
   // otherwise returns false.
-  virtual bool GetAvgData(const std::vector<std::string>& channels,
-                          int samples,
-                          std::vector<double>* avg_data,
-                          std::vector<double>* variance = nullptr) const = 0;
+  virtual bool GetAvgData(GetAvgDataCallback result_callback,
+                          const std::vector<std::string>& channels,
+                          int samples) = 0;
 
   // Read |entries| to |values| in the sysfs of iioservice.
   // Returns true if it succeeds for all entries, otherwise it returns false.

@@ -7,16 +7,23 @@
 
 #include <map>
 
+#include <base/memory/ref_counted.h>
 #include <iioservice/mojo/sensor.mojom.h>
 #include <mojo/public/cpp/bindings/remote.h>
 #include <mojo_service_manager/lib/mojom/service_manager.mojom.h>
 
 namespace rmad {
 
-class MojoServiceUtils {
+class MojoServiceUtils : public base::RefCounted<MojoServiceUtils> {
  public:
-  virtual ~MojoServiceUtils() = default;
+  MojoServiceUtils() = default;
   virtual cros::mojom::SensorDevice* GetSensorDevice(int device_id) = 0;
+
+ protected:
+  // Hide the destructor so we don't accidentally delete this while there are
+  // references to it.
+  friend class base::RefCounted<MojoServiceUtils>;
+  virtual ~MojoServiceUtils() = default;
 };
 
 class MojoServiceUtilsImpl : public MojoServiceUtils {
@@ -24,7 +31,6 @@ class MojoServiceUtilsImpl : public MojoServiceUtils {
   MojoServiceUtilsImpl() = default;
   MojoServiceUtilsImpl(const MojoServiceUtilsImpl&) = delete;
   MojoServiceUtilsImpl& operator=(const MojoServiceUtilsImpl&) = delete;
-  ~MojoServiceUtilsImpl() override = default;
 
   void Initialize();
   cros::mojom::SensorDevice* GetSensorDevice(int device_id) override;
@@ -34,6 +40,7 @@ class MojoServiceUtilsImpl : public MojoServiceUtils {
       mojo::PendingRemote<cros::mojom::SensorService> service);
   void InsertDeviceForTesting(int device_id);
   void SetInitializedForTesting();
+  void SetConnectionErrorHandler(base::RepeatingCallback<void()> callback);
 
  private:
   bool is_initialized = false;
@@ -41,6 +48,8 @@ class MojoServiceUtilsImpl : public MojoServiceUtils {
       service_manager_;
   mojo::Remote<cros::mojom::SensorService> sensor_service_;
   std::map<int, mojo::Remote<cros::mojom::SensorDevice>> sensor_devices_map_;
+  base::RepeatingCallback<void()> connection_error_callback_ =
+      base::DoNothing();
 };
 
 }  // namespace rmad
