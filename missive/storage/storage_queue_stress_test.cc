@@ -17,9 +17,11 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/synchronization/waitable_event.h>
 #include <base/feature_list.h>
+#include <base/task/sequenced_task_runner.h>
 #include <base/task/thread_pool.h>
 #include <base/test/scoped_feature_list.h>
 #include <base/test/task_environment.h>
+#include <base/thread_annotations.h>
 #include <crypto/sha2.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -30,19 +32,12 @@
 #include "missive/proto/record.pb.h"
 #include "missive/resources/resource_interface.h"
 #include "missive/storage/storage_configuration.h"
+#include "missive/storage/storage_uploader_interface.h"
 #include "missive/util/status.h"
 #include "missive/util/statusor.h"
 #include "missive/util/test_support_callbacks.h"
 
-using ::testing::_;
-using ::testing::Between;
 using ::testing::Eq;
-using ::testing::Invoke;
-using ::testing::NotNull;
-using ::testing::Return;
-using ::testing::Sequence;
-using ::testing::StrEq;
-using ::testing::WithArg;
 
 namespace reporting {
 namespace {
@@ -61,14 +56,19 @@ class TestUploadClient : public UploaderInterface {
       std::pair<int64_t /*generation id */, int64_t /*sequencing id*/>,
       std::optional<std::string /*digest*/>>;
 
-  TestUploadClient(base::RepeatingClosure completed_cb,
-                   LastRecordDigestMap* last_record_digest_map)
-      : completed_cb_(completed_cb),
-        last_record_digest_map_(last_record_digest_map) {}
+  explicit TestUploadClient(LastRecordDigestMap* last_record_digest_map)
+      : last_record_digest_map_(last_record_digest_map) {
+    DETACH_FROM_SEQUENCE(test_uploader_checker_);
+  }
+
+  ~TestUploadClient() override {
+    DCHECK_CALLED_ON_VALID_SEQUENCE(test_uploader_checker_);
+  }
 
   void ProcessRecord(EncryptedRecord encrypted_record,
                      ScopedReservation scoped_reservation,
                      base::OnceCallback<void(bool)> processed_cb) override {
+    DCHECK_CALLED_ON_VALID_SEQUENCE(test_uploader_checker_);
     WrappedRecord wrapped_record;
     ASSERT_TRUE(wrapped_record.ParseFromString(
         encrypted_record.encrypted_wrapped_record()));
@@ -114,20 +114,22 @@ class TestUploadClient : public UploaderInterface {
   void ProcessGap(SequenceInformation sequence_information,
                   uint64_t count,
                   base::OnceCallback<void(bool)> processed_cb) override {
+    DCHECK_CALLED_ON_VALID_SEQUENCE(test_uploader_checker_);
     ASSERT_TRUE(false) << "There should be no gaps";
   }
 
   void Completed(Status status) override {
+    DCHECK_CALLED_ON_VALID_SEQUENCE(test_uploader_checker_);
     ASSERT_OK(status) << status;
-    completed_cb_.Run();
   }
 
  private:
-  base::RepeatingClosure completed_cb_;
-  std::optional<int64_t> generation_id_;
-  LastRecordDigestMap* const last_record_digest_map_;
+  SEQUENCE_CHECKER(test_uploader_checker_);
 
-  Sequence test_upload_sequence_;
+  std::optional<int64_t> generation_id_
+      GUARDED_BY_CONTEXT(test_uploader_checker_);
+  LastRecordDigestMap* const last_record_digest_map_
+      GUARDED_BY_CONTEXT(test_uploader_checker_);
 };
 
 class StorageQueueStressTest : public ::testing::TestWithParam<size_t> {
@@ -141,12 +143,9 @@ class StorageQueueStressTest : public ::testing::TestWithParam<size_t> {
     options_.set_directory(base::FilePath(location_.GetPath()));
   }
 
-  void TearDown() override {
-    ResetTestStorageQueue();
-  }
+  void TearDown() override { ResetTestStorageQueue(); }
 
-  void CreateTestStorageQueueOrDie(const QueueOptions& options,
-                                   base::RepeatingClosure completed_cb) {
+  void CreateTestStorageQueueOrDie(const QueueOptions& options) {
     ASSERT_FALSE(storage_queue_) << "StorageQueue already assigned";
     test_encryption_module_ =
         base::MakeRefCounted<test::TestEncryptionModule>();
@@ -161,7 +160,7 @@ class StorageQueueStressTest : public ::testing::TestWithParam<size_t> {
     StorageQueue::Create(
         options,
         base::BindRepeating(&StorageQueueStressTest::AsyncStartTestUploader,
-                            base::Unretained(this), completed_cb),
+                            base::Unretained(this)),
         test_encryption_module_, test_compression_module_,
         storage_queue_create_event.cb());
     StatusOr<scoped_refptr<StorageQueue>> storage_queue_result =
@@ -191,13 +190,21 @@ class StorageQueueStressTest : public ::testing::TestWithParam<size_t> {
   }
 
   void AsyncStartTestUploader(
-      base::RepeatingClosure completed_cb,
       UploaderInterface::UploadReason reason,
       UploaderInterface::UploaderInterfaceResultCb start_uploader_cb) {
-    // Ignore reason for stress test.
+    // Accept only MANUAL upload.
+    if (reason != UploaderInterface::UploadReason::MANUAL) {
+      LOG(ERROR) << "Upload not expected, reason="
+                 << UploaderInterface::ReasonToString(reason);
+      std::move(start_uploader_cb)
+          .Run(Status(
+              error::CANCELLED,
+              base::StrCat({"Unexpected upload ignored, reason=",
+                            UploaderInterface::ReasonToString(reason)})));
+      return;
+    }
     std::move(start_uploader_cb)
-        .Run(std::make_unique<TestUploadClient>(completed_cb,
-                                                &last_record_digest_map_));
+        .Run(std::make_unique<TestUploadClient>(&last_record_digest_map_));
   }
 
   void WriteStringAsync(base::StringPiece data,
@@ -243,18 +250,14 @@ TEST_P(StorageQueueStressTest,
         &write_waiter);
 
     SCOPED_TRACE(base::StrCat({"Create ", base::NumberToString(iStart)}));
-    test::TestCallbackWaiter completed_waiter;
-    completed_waiter.Attach();
     CreateTestStorageQueueOrDie(
         QueueOptions(options_)
             .set_subdirectory("D1")
             .set_file_prefix("F0001")
             .set_max_single_file_size(GetParam())
             .set_upload_period(base::TimeDelta::Max())
-            .set_upload_retry_delay(base::TimeDelta()),
-        base::BindRepeating(
-            &test::TestCallbackWaiter::Signal,
-            base::Unretained(&completed_waiter)));  // No retry by default.
+            .set_upload_retry_delay(
+                base::TimeDelta()));  // No retry by default.
 
     // Write into the queue at random order (simultaneously).
     SCOPED_TRACE(base::StrCat({"Write ", base::NumberToString(iStart)}));
@@ -279,8 +282,6 @@ TEST_P(StorageQueueStressTest,
     FlushOrDie();
 
     SCOPED_TRACE(base::StrCat({"Reset ", base::NumberToString(iStart)}));
-
-    completed_waiter.Wait();
     ResetTestStorageQueue();
 
     EXPECT_THAT(last_record_digest_map_.size(),
