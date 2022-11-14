@@ -332,25 +332,32 @@ void TetheringManager::Start() {}
 
 void TetheringManager::Stop() {}
 
-bool TetheringManager::SetEnabled(bool enabled, Error* error) {
+void TetheringManager::SetEnabled(
+    bool enabled, base::OnceCallback<void(SetEnabledResult result)> callback) {
   if (!allowed_) {
-    Error::PopulateAndLog(FROM_HERE, error, Error::kPermissionDenied,
-                          "Tethering is not allowed");
-    return false;
+    LOG(ERROR) << __func__ << ": not allowed";
+    manager_->dispatcher()->PostTask(
+        FROM_HERE,
+        base::BindOnce(std::move(callback), SetEnabledResult::kNotAllowed));
+    return;
   }
 
   const auto profile = manager_->ActiveProfile();
   // TODO(b/172224298): prefer using Profile::IsDefault.
   if (profile->GetUser().empty()) {
-    Error::PopulateAndLog(FROM_HERE, error, Error::kIllegalOperation,
-                          "Tethering is not allowed without user profile");
-    return false;
+    LOG(ERROR) << __func__ << ": not allowed without user profile";
+    manager_->dispatcher()->PostTask(
+        FROM_HERE,
+        base::BindOnce(std::move(callback), SetEnabledResult::kNotAllowed));
+    return;
   }
 
   if (!Save(profile->GetStorage())) {
-    Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
-                          "Failed to save config to user profile");
-    return false;
+    LOG(ERROR) << __func__ << ": failed to save config to user profile";
+    manager_->dispatcher()->PostTask(
+        FROM_HERE,
+        base::BindOnce(std::move(callback), SetEnabledResult::kFailure));
+    return;
   }
 
   // TODO(b/235762746) If the upstream technology is Cellular, obtain the
@@ -361,7 +368,28 @@ bool TetheringManager::SetEnabled(bool enabled, Error* error) {
   // class).
 
   // TODO(b/235762439): Routine to enable/disable tethering session.
-  return true;
+  manager_->dispatcher()->PostTask(
+      FROM_HERE,
+      base::BindOnce(std::move(callback), SetEnabledResult::kSuccess));
+}
+
+// static
+const std::string TetheringManager::SetEnabledResultName(
+    SetEnabledResult result) {
+  switch (result) {
+    case SetEnabledResult::kSuccess:
+      return kTetheringEnableResultSuccess;
+    case SetEnabledResult::kFailure:
+      return kTetheringEnableResultFailure;
+    case SetEnabledResult::kNotAllowed:
+      return kTetheringEnableResultNotAllowed;
+    case SetEnabledResult::kInvalidProperties:
+      return kTetheringEnableResultInvalidProperties;
+    case SetEnabledResult::kUpstreamNetworkNotAvailable:
+      return kTetheringEnableResultUpstreamNotAvailable;
+    default:
+      return "unknown";
+  }
 }
 
 void TetheringManager::CheckReadiness(

@@ -44,8 +44,12 @@ class TetheringManager {
   enum class SetEnabledResult {
     kSuccess,
     kFailure,
+    kNotAllowed,
+    kInvalidProperties,
     kUpstreamNetworkNotAvailable,
   };
+
+  static const std::string SetEnabledResultName(SetEnabledResult result);
 
   // Storage group for tethering configs.
   static constexpr char kStorageId[] = "tethering";
@@ -63,7 +67,8 @@ class TetheringManager {
   // Stop TetheringManager.
   void Stop();
   // Enable or disable a tethering session with existing tethering config.
-  bool SetEnabled(bool enabled, Error* error);
+  void SetEnabled(bool enabled,
+                  base::OnceCallback<void(SetEnabledResult result)> callback);
   // Check if upstream network is ready for tethering.
   void CheckReadiness(
       base::OnceCallback<void(EntitlementStatus result)> callback);

@@ -497,12 +497,15 @@ bool ManagerDBusAdaptor::RemovePasspointCredentials(
   return !e.ToChromeosError(error);
 }
 
-bool ManagerDBusAdaptor::SetTetheringEnabled(brillo::ErrorPtr* error,
-                                             bool enabled) {
-  SLOG(this, 2) << __func__ << ": " << enabled;
-  Error e;
-  manager_->tethering_manager()->SetEnabled(enabled, &e);
-  return !e.ToChromeosError(error);
+void ManagerDBusAdaptor::SetTetheringEnabled(
+    DBusMethodResponsePtr<std::string> response, bool enabled) {
+  auto on_result_fn = [](shill::DBusMethodResponsePtr<std::string> response,
+                         TetheringManager::SetEnabledResult result) {
+    std::move(response)->Return(TetheringManager::SetEnabledResultName(result));
+  };
+
+  manager_->tethering_manager()->SetEnabled(
+      enabled, base::BindOnce(on_result_fn, std::move(response)));
 }
 
 void ManagerDBusAdaptor::CheckTetheringReadiness(

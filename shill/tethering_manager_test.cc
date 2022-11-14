@@ -16,6 +16,7 @@
 #include <gtest/gtest.h>
 
 #include "shill/error.h"
+#include "shill/ethernet/mock_ethernet_provider.h"
 #include "shill/manager.h"
 #include "shill/technology.h"
 #include "shill/mock_control.h"
@@ -26,6 +27,7 @@
 #include "shill/store/fake_store.h"
 #include "shill/store/property_store.h"
 #include "shill/test_event_dispatcher.h"
+#include "shill/upstart/mock_upstart.h"
 #include "shill/wifi/mock_wake_on_wifi.h"
 #include "shill/wifi/mock_wifi.h"
 
@@ -100,7 +102,16 @@ class TetheringManagerTest : public testing::Test {
         path_(temp_dir_.GetPath().value()),
         manager_(
             &control_interface_, &dispatcher_, &metrics_, path_, path_, path_),
-        tethering_manager_(manager_.tethering_manager()) {}
+        tethering_manager_(manager_.tethering_manager()),
+        ethernet_provider_(new NiceMock<MockEthernetProvider>()),
+        upstart_(new NiceMock<MockUpstart>(&control_interface_)) {
+    // Replace the manager's Ethernet provider with mock.
+    manager_.ethernet_provider_.reset(ethernet_provider_);
+    // Update the manager's map from technology to provider.
+    manager_.UpdateProviderMapping();
+    // Replace the manager's upstart instance with mock.
+    manager_.upstart_.reset(upstart_);
+  }
   ~TetheringManagerTest() override = default;
 
   scoped_refptr<MockWiFi> MakeWiFi(const std::string& ifname,
@@ -152,11 +163,15 @@ class TetheringManagerTest : public testing::Test {
     return is_success;
   }
 
-  bool SetEnabled(TetheringManager* tethering_manager, bool enabled) {
-    Error error;
-    bool is_success = tethering_manager->SetEnabled(enabled, &error);
-    EXPECT_EQ(is_success, error.IsSuccess());
-    return is_success;
+  void SetEnabled(TetheringManager* tethering_manager,
+                  bool enabled,
+                  TetheringManager::SetEnabledResult expected_result) {
+    StrictMock<base::MockOnceCallback<void(TetheringManager::SetEnabledResult)>>
+        cb;
+    tethering_manager->SetEnabled(enabled, cb.Get());
+    EXPECT_CALL(cb, Run(expected_result));
+    DispatchPendingEvents();
+    Mock::VerifyAndClearExpectations(&cb);
   }
 
   KeyValueStore GetConfig(TetheringManager* tethering_manager) {
@@ -217,6 +232,8 @@ class TetheringManagerTest : public testing::Test {
   std::string path_;
   Manager manager_;
   TetheringManager* tethering_manager_;
+  MockEthernetProvider* ethernet_provider_;
+  MockUpstart* upstart_;
 };
 
 TEST_F(TetheringManagerTest, GetTetheringCapabilities) {
@@ -323,14 +340,16 @@ TEST_F(TetheringManagerTest, SetTetheringEnabled) {
   // SetEnabled fails for the default profile.
   ASSERT_EQ(Error::kSuccess, TestCreateProfile(&manager_, kDefaultProfile));
   EXPECT_EQ(Error::kSuccess, TestPushProfile(&manager_, kDefaultProfile));
-  EXPECT_FALSE(SetEnabled(tethering_manager_, true));
+  SetEnabled(tethering_manager_, true,
+             TetheringManager::SetEnabledResult::kNotAllowed);
 
   // SetEnabled succeeds for a user profile.
   ASSERT_TRUE(base::CreateDirectory(temp_dir_.GetPath().Append("user")));
   ASSERT_EQ(Error::kSuccess, TestCreateProfile(&manager_, kUserProfile));
   EXPECT_EQ(Error::kSuccess, TestPushProfile(&manager_, kUserProfile));
   KeyValueStore config = GetConfig(tethering_manager_);
-  EXPECT_TRUE(SetEnabled(tethering_manager_, true));
+  SetEnabled(tethering_manager_, true,
+             TetheringManager::SetEnabledResult::kSuccess);
 
   // Log out user and check a new SSID and passphrase is generated.
   EXPECT_EQ(Error::kSuccess, TestPopProfile(&manager_, kUserProfile));
@@ -438,12 +457,14 @@ TEST_F(TetheringManagerTest, TetheringIsNotAllowed) {
   // Tethering is not allowed. SetAndPersistConfig and SetEnabled should fail.
   SetAllowed(tethering_manager_, false);
   EXPECT_FALSE(SetAndPersistConfig(tethering_manager_, config));
-  EXPECT_FALSE(SetEnabled(tethering_manager_, true));
+  SetEnabled(tethering_manager_, true,
+             TetheringManager::SetEnabledResult::kNotAllowed);
 
   // Tethering is allowed. SetAndPersistConfig and SetEnabled should succeed.
   SetAllowed(tethering_manager_, true);
   EXPECT_TRUE(SetAndPersistConfig(tethering_manager_, config));
-  EXPECT_TRUE(SetEnabled(tethering_manager_, true));
+  SetEnabled(tethering_manager_, true,
+             TetheringManager::SetEnabledResult::kSuccess);
 }
 
 TEST_F(TetheringManagerTest, CheckReadiness) {
@@ -514,6 +535,23 @@ TEST_F(TetheringManagerTest, CheckReadiness) {
   EXPECT_CALL(cb, Run(TetheringManager::EntitlementStatus::kReady));
   DispatchPendingEvents();
   Mock::VerifyAndClearExpectations(&cb);
+}
+
+TEST_F(TetheringManagerTest, SetEnabledResultName) {
+  EXPECT_EQ("success", TetheringManager::SetEnabledResultName(
+                           TetheringManager::SetEnabledResult::kSuccess));
+  EXPECT_EQ("failure", TetheringManager::SetEnabledResultName(
+                           TetheringManager::SetEnabledResult::kFailure));
+  EXPECT_EQ("not_allowed",
+            TetheringManager::SetEnabledResultName(
+                TetheringManager::SetEnabledResult::kNotAllowed));
+  EXPECT_EQ("invalid_properties",
+            TetheringManager::SetEnabledResultName(
+                TetheringManager::SetEnabledResult::kInvalidProperties));
+  EXPECT_EQ(
+      "upstream_not_available",
+      TetheringManager::SetEnabledResultName(
+          TetheringManager::SetEnabledResult::kUpstreamNetworkNotAvailable));
 }
 
 }  // namespace shill

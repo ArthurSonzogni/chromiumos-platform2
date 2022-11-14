@@ -471,6 +471,10 @@ Methods		dict GetProperties()
 			Enables or disables tethering with the corresponding properties in
 			Manager.TetheringConfig. Only supports cellular and ethernet as the
 			upstream technologies. Only supports WiFi as the downstream technology.
+			Returns a string indicating the result. This could be any one of,
+			"success", "failure", "not_allowed", "invalid_properties",
+			"upstream_not_available".
+
 
 		string CheckTetheringReadiness()
 
@@ -769,11 +773,6 @@ Properties	object ActiveProfile [readonly]
 			string state
 				state of the tethering instance. The state could be any one of
 				"idle", "starting", "active", "stopping", "failure"
-			string error
-				string indicating the failure reason if the state property is
-				"failure". This could be any one of "not_allowed", "no_upstream",
-				"invalid_properties", "upstream_not_ready", "upstream_failure",
-				"downstream_failure", "network_failure"
 			array{dict} active_clients
 				string IPv4
 					IPv4 address of the associated client expressed in the
