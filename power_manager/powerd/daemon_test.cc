@@ -198,7 +198,7 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
     resourced_call_count_ = 0;
     resourced_fail_ = 0;
 
-    daemon_.reset(new Daemon(this, run_dir_.GetPath()));
+    daemon_ = std::make_unique<Daemon>(this, run_dir_.GetPath());
     daemon_->set_wakeup_count_path_for_testing(wakeup_count_path_);
     daemon_->set_oobe_completed_path_for_testing(oobe_completed_path_);
     daemon_->set_cros_ec_path_for_testing(cros_ec_path_);

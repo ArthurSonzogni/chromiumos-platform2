@@ -10,6 +10,7 @@
 #include <algorithm>
 #include <cmath>
 #include <map>
+#include <memory>
 #include <utility>
 
 #include <base/bind.h>
@@ -1286,7 +1287,7 @@ void Daemon::InitDBus() {
   int64_t tpm_threshold = 0;
   prefs_->GetInt64(kTpmCounterSuspendThresholdPref, &tpm_threshold);
   if (tpm_threshold > 0) {
-    tpm_manager_proxy_.reset(new org::chromium::TpmManagerProxy(bus));
+    tpm_manager_proxy_ = std::make_unique<org::chromium::TpmManagerProxy>(bus);
     tpm_manager_proxy_->GetObjectProxy()->WaitForServiceToBeAvailable(
         base::BindRepeating(&Daemon::HandleTpmManagerdAvailable,
                             weak_ptr_factory_.GetWeakPtr()));

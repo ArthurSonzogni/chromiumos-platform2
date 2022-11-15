@@ -213,7 +213,7 @@ class ObserverImpl : public power_manager::system::AmbientLightObserver {
 
  private:
   void ResetRunner() {
-    runner_.reset(new base::RunLoop());
+    runner_ = std::make_unique<base::RunLoop>();
     closure_ = runner_->QuitClosure();
     timed_out_ = false;
 
