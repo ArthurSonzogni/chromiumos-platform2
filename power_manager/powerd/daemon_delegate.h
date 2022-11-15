@@ -11,9 +11,17 @@
 #include <string>
 #include <vector>
 
+#include "power_manager/common/battery_percentage_converter.h"
+#include "power_manager/common/power_constants.h"
+#include "power_manager/powerd/policy/adaptive_charging_controller.h"
+#include "power_manager/powerd/system/cros_ec_helper_interface.h"
+#include "power_manager/powerd/system/suspend_freezer.h"
+
 #include <base/files/file_path.h>
+#include <dbus/bus.h>
 #include <libec/charge_control_set_command.h>
 #include <libec/ec_usb_endpoint.h>
+#include <ml/dbus-proxies.h>
 
 namespace power_manager {
 

@@ -27,7 +27,6 @@
 #include <tpm_manager/proto_bindings/tpm_manager.pb.h>
 #include <tpm_manager-client/tpm_manager/dbus-proxies.h>
 
-#include "power_manager/common/prefs_observer.h"
 #include "power_manager/powerd/policy/adaptive_charging_controller.h"
 #include "power_manager/powerd/policy/bluetooth_controller.h"
 #include "power_manager/powerd/policy/cellular_controller.h"

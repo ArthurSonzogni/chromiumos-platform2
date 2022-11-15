@@ -42,7 +42,6 @@
 #include "power_manager/powerd/system/dbus_wrapper_stub.h"
 #include "power_manager/powerd/system/display/display_power_setter_stub.h"
 #include "power_manager/powerd/system/display/display_watcher_stub.h"
-#include "power_manager/powerd/system/ec_keyboard_backlight.h"
 #include "power_manager/powerd/system/external_ambient_light_sensor_factory_stub.h"
 #include "power_manager/powerd/system/input_watcher_stub.h"
 #include "power_manager/powerd/system/lockfile_checker_stub.h"

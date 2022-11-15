@@ -31,6 +31,8 @@
 #include <cros_config/cros_config.h>
 #include <libec/ec_usb_endpoint.h>
 #include <metrics/metrics_library.h>
+#include <ml/dbus-proxies.h>
+
 #if USE_IIOSERVICE
 #include <mojo/core/embedder/embedder.h>
 #include <mojo/core/embedder/scoped_ipc_support.h>
