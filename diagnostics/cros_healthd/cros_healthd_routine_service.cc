@@ -11,6 +11,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/callback_helpers.h>
 #include <base/check.h>
 #include <base/logging.h>
 #include <base/time/time.h>
@@ -448,8 +449,8 @@ void CrosHealthdRoutineService::PopulateAvailableRoutines(
   // |barreir| will be destructed automatically at the end of this function,
   // which ensures |completion_callback| will only be run after all the
   // synchronous and asynchronous availability checks are done.
-  CallbackBarrier barreir{base::BindOnce([](bool _ /* ignored */) {
-                          }).Then(std::move(completion_callback))};
+  CallbackBarrier barreir{
+      base::IgnoreArgs<bool>(std::move(completion_callback))};
 
   // Routines that are supported on all devices.
   available_routines_ = {
