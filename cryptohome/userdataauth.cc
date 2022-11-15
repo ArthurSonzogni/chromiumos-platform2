@@ -4010,8 +4010,7 @@ void UserDataAuth::StartAuthSession(
   reply.set_auth_session_id(auth_session->serialized_token());
   reply.set_user_exists(auth_session->user_exists());
 
-  if (!auth_session->user_has_configured_credential() &&
-      !auth_session->user_has_configured_auth_factor() &&
+  if (auth_session->auth_factor_map().empty() &&
       (auth_session->user_exists() && !auth_session->ephemeral_user())) {
     ReplyWithError(
         std::move(on_done), reply,

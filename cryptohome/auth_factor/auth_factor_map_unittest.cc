@@ -4,6 +4,7 @@
 
 #include "cryptohome/auth_factor/auth_factor_map.h"
 
+#include <optional>
 #include <string>
 #include <utility>
 
@@ -18,8 +19,8 @@ namespace {
 
 using ::testing::Eq;
 using ::testing::IsFalse;
-using ::testing::IsNull;
 using ::testing::IsTrue;
+using ::testing::Ref;
 
 constexpr char kLabel1[] = "factor1";
 constexpr char kLabel2[] = "factor2";
@@ -48,10 +49,16 @@ class AuthFactorMapTest : public testing::Test {
 TEST_F(AuthFactorMapTest, InitialEmpty) {
   EXPECT_THAT(factor_map_.empty(), IsTrue());
   EXPECT_THAT(factor_map_.size(), Eq(0));
-  EXPECT_THAT(factor_map_.Find(kLabel1), IsNull());
-  EXPECT_THAT(factor_map_.Find(kLabel2), IsNull());
-  EXPECT_THAT(const_factor_map().Find(kLabel1), IsNull());
-  EXPECT_THAT(const_factor_map().Find(kLabel2), IsNull());
+  EXPECT_THAT(
+      factor_map_.HasFactorWithStorage(AuthFactorStorageType::kVaultKeyset),
+      IsFalse());
+  EXPECT_THAT(
+      factor_map_.HasFactorWithStorage(AuthFactorStorageType::kUserSecretStash),
+      IsFalse());
+  EXPECT_THAT(factor_map_.Find(kLabel1), Eq(std::nullopt));
+  EXPECT_THAT(factor_map_.Find(kLabel2), Eq(std::nullopt));
+  EXPECT_THAT(const_factor_map().Find(kLabel1), Eq(std::nullopt));
+  EXPECT_THAT(const_factor_map().Find(kLabel2), Eq(std::nullopt));
 }
 
 TEST_F(AuthFactorMapTest, AddOne) {
@@ -60,10 +67,20 @@ TEST_F(AuthFactorMapTest, AddOne) {
 
   EXPECT_THAT(factor_map_.empty(), IsFalse());
   EXPECT_THAT(factor_map_.size(), Eq(1));
-  EXPECT_THAT(factor_map_.Find(kLabel1), Eq(ptr));
-  EXPECT_THAT(factor_map_.Find(kLabel2), IsNull());
-  EXPECT_THAT(const_factor_map().Find(kLabel1), Eq(ptr));
-  EXPECT_THAT(const_factor_map().Find(kLabel2), IsNull());
+  EXPECT_THAT(
+      factor_map_.HasFactorWithStorage(AuthFactorStorageType::kVaultKeyset),
+      IsTrue());
+  EXPECT_THAT(
+      factor_map_.HasFactorWithStorage(AuthFactorStorageType::kUserSecretStash),
+      IsFalse());
+  EXPECT_THAT(factor_map_.Find(kLabel1)->auth_factor(), Ref(*ptr));
+  EXPECT_THAT(factor_map_.Find(kLabel1)->storage_type(),
+              Eq(AuthFactorStorageType::kVaultKeyset));
+  EXPECT_THAT(factor_map_.Find(kLabel2), Eq(std::nullopt));
+  EXPECT_THAT(const_factor_map().Find(kLabel1)->auth_factor(), Ref(*ptr));
+  EXPECT_THAT(const_factor_map().Find(kLabel1)->storage_type(),
+              Eq(AuthFactorStorageType::kVaultKeyset));
+  EXPECT_THAT(const_factor_map().Find(kLabel2), Eq(std::nullopt));
 }
 
 TEST_F(AuthFactorMapTest, AddTwo) {
@@ -74,10 +91,24 @@ TEST_F(AuthFactorMapTest, AddTwo) {
 
   EXPECT_THAT(factor_map_.empty(), IsFalse());
   EXPECT_THAT(factor_map_.size(), Eq(2));
-  EXPECT_THAT(factor_map_.Find(kLabel1), Eq(ptr1));
-  EXPECT_THAT(factor_map_.Find(kLabel2), Eq(ptr2));
-  EXPECT_THAT(const_factor_map().Find(kLabel1), Eq(ptr1));
-  EXPECT_THAT(const_factor_map().Find(kLabel2), Eq(ptr2));
+  EXPECT_THAT(
+      factor_map_.HasFactorWithStorage(AuthFactorStorageType::kVaultKeyset),
+      IsTrue());
+  EXPECT_THAT(
+      factor_map_.HasFactorWithStorage(AuthFactorStorageType::kUserSecretStash),
+      IsTrue());
+  EXPECT_THAT(factor_map_.Find(kLabel1)->auth_factor(), Ref(*ptr1));
+  EXPECT_THAT(factor_map_.Find(kLabel1)->storage_type(),
+              Eq(AuthFactorStorageType::kVaultKeyset));
+  EXPECT_THAT(factor_map_.Find(kLabel2)->auth_factor(), Ref(*ptr2));
+  EXPECT_THAT(factor_map_.Find(kLabel2)->storage_type(),
+              Eq(AuthFactorStorageType::kUserSecretStash));
+  EXPECT_THAT(const_factor_map().Find(kLabel1)->auth_factor(), Ref(*ptr1));
+  EXPECT_THAT(const_factor_map().Find(kLabel1)->storage_type(),
+              Eq(AuthFactorStorageType::kVaultKeyset));
+  EXPECT_THAT(const_factor_map().Find(kLabel2)->auth_factor(), Ref(*ptr2));
+  EXPECT_THAT(const_factor_map().Find(kLabel2)->storage_type(),
+              Eq(AuthFactorStorageType::kUserSecretStash));
 }
 
 TEST_F(AuthFactorMapTest, AddDuplicate) {
@@ -88,10 +119,20 @@ TEST_F(AuthFactorMapTest, AddDuplicate) {
 
   EXPECT_THAT(factor_map_.empty(), IsFalse());
   EXPECT_THAT(factor_map_.size(), Eq(1));
-  EXPECT_THAT(factor_map_.Find(kLabel1), Eq(ptr2));
-  EXPECT_THAT(factor_map_.Find(kLabel2), IsNull());
-  EXPECT_THAT(const_factor_map().Find(kLabel1), Eq(ptr2));
-  EXPECT_THAT(const_factor_map().Find(kLabel2), IsNull());
+  EXPECT_THAT(
+      factor_map_.HasFactorWithStorage(AuthFactorStorageType::kVaultKeyset),
+      IsFalse());
+  EXPECT_THAT(
+      factor_map_.HasFactorWithStorage(AuthFactorStorageType::kUserSecretStash),
+      IsTrue());
+  EXPECT_THAT(factor_map_.Find(kLabel1)->auth_factor(), Ref(*ptr2));
+  EXPECT_THAT(factor_map_.Find(kLabel1)->storage_type(),
+              Eq(AuthFactorStorageType::kUserSecretStash));
+  EXPECT_THAT(factor_map_.Find(kLabel2), Eq(std::nullopt));
+  EXPECT_THAT(const_factor_map().Find(kLabel1)->auth_factor(), Ref(*ptr2));
+  EXPECT_THAT(const_factor_map().Find(kLabel1)->storage_type(),
+              Eq(AuthFactorStorageType::kUserSecretStash));
+  EXPECT_THAT(const_factor_map().Find(kLabel2), Eq(std::nullopt));
 }
 
 }  // namespace

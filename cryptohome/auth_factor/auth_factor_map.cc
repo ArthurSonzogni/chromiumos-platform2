@@ -4,6 +4,7 @@
 
 #include "cryptohome/auth_factor/auth_factor_map.h"
 
+#include <optional>
 #include <string>
 #include <utility>
 
@@ -22,20 +23,32 @@ void AuthFactorMap::Remove(const std::string& label) {
   storage_.erase(label);
 }
 
-AuthFactor* AuthFactorMap::Find(const std::string& label) {
-  auto iter = storage_.find(label);
-  if (iter == storage_.end()) {
-    return nullptr;
+bool AuthFactorMap::HasFactorWithStorage(
+    AuthFactorStorageType storage_type) const {
+  for (const auto& [unused, value] : storage_) {
+    if (value.storage_type == storage_type) {
+      return true;
+    }
   }
-  return iter->second.auth_factor.get();
+  return false;
 }
 
-const AuthFactor* AuthFactorMap::Find(const std::string& label) const {
+std::optional<AuthFactorMap::StoredAuthFactorView> AuthFactorMap::Find(
+    const std::string& label) {
   auto iter = storage_.find(label);
   if (iter == storage_.end()) {
-    return nullptr;
+    return std::nullopt;
   }
-  return iter->second.auth_factor.get();
+  return StoredAuthFactorView(&iter->second);
+}
+
+std::optional<AuthFactorMap::StoredAuthFactorConstView> AuthFactorMap::Find(
+    const std::string& label) const {
+  auto iter = storage_.find(label);
+  if (iter == storage_.end()) {
+    return std::nullopt;
+  }
+  return StoredAuthFactorConstView(&iter->second);
 }
 
 }  // namespace cryptohome

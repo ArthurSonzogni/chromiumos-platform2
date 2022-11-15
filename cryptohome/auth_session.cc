@@ -261,7 +261,6 @@ CryptohomeStatus AuthSession::Initialize() {
     std::map<std::string, std::unique_ptr<AuthFactor>> factor_map;
     converter_->VaultKeysetsToAuthFactorsAndKeyLabelData(
         username_, factor_map, backup_factor_map, &key_label_data_);
-    user_has_configured_credential_ = !key_label_data_.empty();
     for (auto& [unused, factor] : factor_map) {
       auth_factor_map_.Add(std::move(factor),
                            AuthFactorStorageType::kVaultKeyset);
@@ -282,21 +281,19 @@ CryptohomeStatus AuthSession::Initialize() {
   if (enable_create_backup_vk_with_uss_ &&
       !IsUserSecretStashExperimentEnabled(platform_) &&
       auth_factor_map_.empty() && !backup_factor_map.empty()) {
-    user_has_configured_credential_ = true;
     for (auto& [unused, factor] : backup_factor_map) {
       auth_factor_map_.Add(std::move(factor),
                            AuthFactorStorageType::kVaultKeyset);
     }
   }
 
-  if (!user_has_configured_credential_) {
+  if (auth_factor_map_.empty()) {
     std::map<std::string, std::unique_ptr<AuthFactor>> factor_map =
         auth_factor_manager_->LoadAllAuthFactors(obfuscated_username_);
     for (auto& [unused, factor] : factor_map) {
       auth_factor_map_.Add(std::move(factor),
                            AuthFactorStorageType::kUserSecretStash);
     }
-    user_has_configured_auth_factor_ = !auth_factor_map_.empty();
   }
 
   RecordAuthSessionStart();
@@ -439,7 +436,9 @@ void AuthSession::CreateAndPersistVaultKeyset(
   }
 
   CryptohomeStatus status =
-      AddVaultKeyset(key_data, !user_has_configured_credential_,
+      AddVaultKeyset(key_data,
+                     !auth_factor_map_.HasFactorWithStorage(
+                         AuthFactorStorageType::kVaultKeyset),
                      VaultKeysetIntent{.backup = false}, std::move(key_blobs),
                      std::move(auth_state));
 
@@ -467,11 +466,10 @@ void AuthSession::CreateAndPersistVaultKeyset(
 
   // Flip the flag, so that our future invocations go through AddKeyset() and
   // not AddInitialKeyset(). Create a verifier if applicable.
-  if (!user_has_configured_credential_ && vault_keyset_) {
+  if (auth_factor_map_.size() <= 1 && vault_keyset_) {
     AddCredentialVerifier(auth_factor_type, vault_keyset_->GetLabel(),
                           auth_input);
   }
-  user_has_configured_credential_ = true;
 
   // Report timer for how long AuthSession operation takes.
   ReportTimerDuration(auth_session_performance_timer.get());
@@ -480,13 +478,13 @@ void AuthSession::CreateAndPersistVaultKeyset(
 
 CryptohomeStatus AuthSession::AddVaultKeyset(
     const KeyData& key_data,
-    bool initial_keyset,
+    bool is_initial_keyset,
     VaultKeysetIntent vk_backup_intent,
     std::unique_ptr<KeyBlobs> key_blobs,
     std::unique_ptr<AuthBlockState> auth_state) {
   DCHECK(key_blobs);
   DCHECK(auth_state);
-  if (initial_keyset) {
+  if (is_initial_keyset) {
     if (!file_system_keyset_.has_value()) {
       LOG(ERROR) << "AddInitialKeyset: file_system_keyset is invalid.";
       return MakeStatus<CryptohomeError>(
@@ -536,7 +534,7 @@ CryptohomeStatus AuthSession::AddVaultKeyset(
 void AuthSession::CreateKeyBlobsToAddKeyset(
     const AuthInput& auth_input,
     const KeyData& key_data,
-    bool initial_keyset,
+    bool is_initial_keyset,
     std::unique_ptr<AuthSessionPerformanceTimer> auth_session_performance_timer,
     StatusCallback on_done) {
   AuthBlockType auth_block_type;
@@ -563,7 +561,7 @@ void AuthSession::CreateKeyBlobsToAddKeyset(
   // AuthSession::CreateAndPersistVaultKeyset(), which calls
   // VaultKeyset::Encrypt().
   if (auth_block_type == AuthBlockType::kPinWeaver) {
-    if (initial_keyset) {
+    if (is_initial_keyset) {
       // The initial keyset cannot be a PIN, when using vault keysets.
       std::move(on_done).Run(MakeStatus<CryptohomeError>(
           CRYPTOHOME_ERR_LOC(kLocAuthSessionPinweaverUnsupportedInAddKeyset),
@@ -606,7 +604,8 @@ void AuthSession::AddCredentials(
       std::make_unique<AuthSessionPerformanceTimer>(
           kAuthSessionAddCredentialsTimer);
 
-  if (user_has_configured_credential_) {  // AddKeyset
+  if (auth_factor_map_.HasFactorWithStorage(
+          AuthFactorStorageType::kVaultKeyset)) {  // AddKeyset
     // Can't add kiosk key for an existing user.
     if (credentials->key_data().type() == KeyData::KEY_TYPE_KIOSK) {
       LOG(WARNING) << "Add Credentials: tried adding kiosk auth for user";
@@ -652,15 +651,17 @@ void AuthSession::AddCredentials(
       .cryptohome_recovery_auth_input = std::nullopt,
       .challenge_credential_auth_input =
           CreateChallengeCredentialAuthInput(request.authorization())};
-  if (user_has_configured_credential_) {
+  if (auth_factor_map_.HasFactorWithStorage(
+          AuthFactorStorageType::kVaultKeyset)) {
     auth_input.reset_seed = vault_keyset_->GetResetSeed();
   }
 
-  bool is_initial_keyset = !user_has_configured_credential_;
-
-  CreateKeyBlobsToAddKeyset(
-      auth_input, credentials->key_data(), is_initial_keyset,
-      std::move(auth_session_performance_timer), std::move(on_done));
+  CreateKeyBlobsToAddKeyset(auth_input, credentials->key_data(),
+                            /*is_initial_keyset=*/
+                            !auth_factor_map_.HasFactorWithStorage(
+                                AuthFactorStorageType::kVaultKeyset),
+                            std::move(auth_session_performance_timer),
+                            std::move(on_done));
 }
 
 void AuthSession::UpdateCredential(
@@ -1102,7 +1103,7 @@ void AuthSession::AuthenticateAuthFactor(
     }
   }
   // Search for an auth factor. This will find both VK and USS factors.
-  const AuthFactor* auth_factor =
+  std::optional<AuthFactorMap::StoredAuthFactorView> stored_auth_factor =
       auth_factor_map_.Find(request.auth_factor_label());
 
   // Construct the auth input. If a factor is available, use it to construct the
@@ -1111,9 +1112,9 @@ void AuthSession::AuthenticateAuthFactor(
   AuthInput auth_input;
   {
     const AuthFactorMetadata& metadata =
-        auth_factor ? auth_factor->metadata()
-                    : (verifier ? verifier->auth_factor_metadata()
-                                : AuthFactorMetadata());
+        stored_auth_factor ? stored_auth_factor->auth_factor().metadata()
+                           : (verifier ? verifier->auth_factor_metadata()
+                                       : AuthFactorMetadata());
 
     CryptohomeStatusOr<AuthInput> auth_input_status =
         CreateAuthInputForAuthentication(request.auth_input(), metadata);
@@ -1135,7 +1136,8 @@ void AuthSession::AuthenticateAuthFactor(
   // fingerprint check for verification intent.
   // TODO(b/243808147): Don't special-case kiosk, after the factor loading code
   // is fixed to not backfill missing types.
-  if (auth_factor && *request_auth_factor_type != auth_factor->type() &&
+  if (stored_auth_factor &&
+      *request_auth_factor_type != stored_auth_factor->auth_factor().type() &&
       request_auth_factor_type != AuthFactorType::kKiosk) {
     LOG(ERROR) << "Unexpected mismatch in type from label and auth_input.";
     std::move(on_done).Run(MakeStatus<CryptohomeError>(
@@ -1156,7 +1158,7 @@ void AuthSession::AuthenticateAuthFactor(
     return;
   }
 
-  if (!auth_factor) {
+  if (!stored_auth_factor) {
     LOG(ERROR) << "Authentication key not found: "
                << request.auth_factor_label();
     std::move(on_done).Run(MakeStatus<CryptohomeError>(
@@ -1166,8 +1168,9 @@ void AuthSession::AuthenticateAuthFactor(
     return;
   }
 
-  // If the user has configured AuthFactors, then we proceed with USS flow.
-  if (user_has_configured_auth_factor_) {
+  // If this auth factor comes from USS, run the USS flow.
+  if (stored_auth_factor->storage_type() ==
+      AuthFactorStorageType::kUserSecretStash) {
     // Record current time for timing for how long AuthenticateAuthFactor will
     // take.
     auto auth_session_performance_timer =
@@ -1176,7 +1179,8 @@ void AuthSession::AuthenticateAuthFactor(
 
     AuthenticateViaUserSecretStash(request.auth_factor_label(), auth_input,
                                    std::move(auth_session_performance_timer),
-                                   *auth_factor, std::move(on_done));
+                                   stored_auth_factor->auth_factor(),
+                                   std::move(on_done));
     return;
   }
 
@@ -1222,8 +1226,9 @@ void AuthSession::RemoveAuthFactor(
   auto remove_timer_start = base::TimeTicks::Now();
   const auto& auth_factor_label = request.auth_factor_label();
 
-  AuthFactor* auth_factor = auth_factor_map_.Find(auth_factor_label);
-  if (!auth_factor) {
+  std::optional<AuthFactorMap::StoredAuthFactorView> stored_auth_factor =
+      auth_factor_map_.Find(auth_factor_label);
+  if (!stored_auth_factor) {
     LOG(ERROR) << "AuthSession: Key to remove not found: " << auth_factor_label;
     std::move(on_done).Run(MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocAuthSessionFactorNotFoundInRemoveAuthFactor),
@@ -1254,9 +1259,12 @@ void AuthSession::RemoveAuthFactor(
     return;
   }
 
-  if (user_secret_stash_) {
-    CryptohomeStatus remove_status =
-        RemoveAuthFactorViaUserSecretStash(auth_factor_label, *auth_factor);
+  bool remove_using_uss =
+      user_secret_stash_ && stored_auth_factor->storage_type() ==
+                                AuthFactorStorageType::kUserSecretStash;
+  if (remove_using_uss) {
+    CryptohomeStatus remove_status = RemoveAuthFactorViaUserSecretStash(
+        auth_factor_label, stored_auth_factor->auth_factor());
     if (!remove_status.ok()) {
       LOG(ERROR) << "AuthSession: Failed to remove auth factor.";
       std::move(on_done).Run(
@@ -1287,8 +1295,8 @@ void AuthSession::RemoveAuthFactor(
   // from disk regardless of its purpose, i.e backup, regular or migrated.
   CryptohomeStatus remove_status = RemoveKeysetByLabel(
       *keyset_management_, obfuscated_username_, auth_factor_label);
-  if (!remove_status.ok() &&
-      auth_factor->type() != AuthFactorType::kCryptohomeRecovery) {
+  if (!remove_status.ok() && stored_auth_factor->auth_factor().type() !=
+                                 AuthFactorType::kCryptohomeRecovery) {
     LOG(ERROR) << "AuthSession: Failed to remove the backup VaultKeyset.";
     std::move(on_done).Run(MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocAuthSessionRemoveVKFailedInRemoveAuthFactor),
@@ -1302,11 +1310,13 @@ void AuthSession::RemoveAuthFactor(
   auth_factor_map_.Remove(auth_factor_label);
 
   // Report time taken for a successful remove.
-  user_secret_stash_
-      ? ReportTimerDuration(kAuthSessionRemoveAuthFactorUSSTimer,
-                            remove_timer_start, "" /*append_string*/)
-      : ReportTimerDuration(kAuthSessionRemoveAuthFactorVKTimer,
-                            remove_timer_start, "" /*append_string*/);
+  if (remove_using_uss) {
+    ReportTimerDuration(kAuthSessionRemoveAuthFactorUSSTimer,
+                        remove_timer_start, "" /*append_string*/);
+  } else {
+    ReportTimerDuration(kAuthSessionRemoveAuthFactorVKTimer, remove_timer_start,
+                        "" /*append_string*/);
+  }
   std::move(on_done).Run(OkStatus<CryptohomeError>());
 }
 
@@ -1405,9 +1415,9 @@ void AuthSession::UpdateAuthFactor(
     return;
   }
 
-  AuthFactor* existing_auth_factor =
+  std::optional<AuthFactorMap::StoredAuthFactorView> stored_auth_factor =
       auth_factor_map_.Find(request.auth_factor_label());
-  if (!existing_auth_factor) {
+  if (!stored_auth_factor) {
     LOG(ERROR) << "AuthSession: Key to update not found: "
                << request.auth_factor_label();
     std::move(on_done).Run(MakeStatus<CryptohomeError>(
@@ -1441,7 +1451,7 @@ void AuthSession::UpdateAuthFactor(
   }
 
   // Auth factor type has to be the same as before.
-  if (existing_auth_factor->type() != auth_factor_type) {
+  if (stored_auth_factor->auth_factor().type() != auth_factor_type) {
     std::move(on_done).Run(MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocAuthSessionDifferentTypeInUpdateAuthFactor),
         ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
@@ -1479,11 +1489,12 @@ void AuthSession::UpdateAuthFactor(
 
   // Report timer for how long UpdateAuthFactor operation takes.
   auto auth_session_performance_timer =
-      user_secret_stash_
-          ? std::make_unique<AuthSessionPerformanceTimer>(
-                kAuthSessionUpdateAuthFactorUSSTimer, auth_block_type)
-          : std::make_unique<AuthSessionPerformanceTimer>(
-                kAuthSessionUpdateAuthFactorVKTimer, auth_block_type);
+      std::make_unique<AuthSessionPerformanceTimer>(
+          stored_auth_factor->storage_type() ==
+                  AuthFactorStorageType::kUserSecretStash
+              ? kAuthSessionUpdateAuthFactorUSSTimer
+              : kAuthSessionUpdateAuthFactorVKTimer,
+          auth_block_type);
   auth_session_performance_timer->auth_block_type = auth_block_type;
 
   KeyData key_data;
@@ -1499,12 +1510,9 @@ void AuthSession::UpdateAuthFactor(
     return;
   }
 
-  AuthFactorStorageType auth_factor_storage_type =
-      user_secret_stash_ ? AuthFactorStorageType::kUserSecretStash
-                         : AuthFactorStorageType::kVaultKeyset;
   auto create_callback = GetUpdateAuthFactorCallback(
       auth_factor_type, auth_factor_label, auth_factor_metadata, key_data,
-      auth_input_status.value(), auth_factor_storage_type,
+      auth_input_status.value(), stored_auth_factor->storage_type(),
       std::move(auth_session_performance_timer), std::move(on_done));
 
   auth_block_utility_->CreateKeyBlobsWithAuthBlockAsync(
@@ -1817,8 +1825,9 @@ void AuthSession::GetRecoveryRequest(
   user_data_auth::GetRecoveryRequestReply reply;
 
   // Check the factor exists.
-  AuthFactor* auth_factor = auth_factor_map_.Find(request.auth_factor_label());
-  if (!auth_factor) {
+  std::optional<AuthFactorMap::StoredAuthFactorView> stored_auth_factor =
+      auth_factor_map_.Find(request.auth_factor_label());
+  if (!stored_auth_factor) {
     LOG(ERROR) << "Authentication key not found: "
                << request.auth_factor_label();
     ReplyWithError(std::move(on_done), reply,
@@ -1832,7 +1841,8 @@ void AuthSession::GetRecoveryRequest(
   }
 
   // Read CryptohomeRecoveryAuthBlockState.
-  if (auth_factor->type() != AuthFactorType::kCryptohomeRecovery) {
+  if (stored_auth_factor->auth_factor().type() !=
+      AuthFactorType::kCryptohomeRecovery) {
     LOG(ERROR) << "GetRecoveryRequest can be called only for "
                   "kCryptohomeRecovery auth factor";
     ReplyWithError(
@@ -1846,7 +1856,7 @@ void AuthSession::GetRecoveryRequest(
   }
 
   auto* state = std::get_if<::cryptohome::CryptohomeRecoveryAuthBlockState>(
-      &(auth_factor->auth_block_state().state));
+      &(stored_auth_factor->auth_factor().auth_block_state().state));
   if (!state) {
     ReplyWithError(std::move(on_done), reply,
                    MakeStatus<CryptohomeError>(
@@ -2212,7 +2222,10 @@ void AuthSession::PersistAuthFactorToUserSecretStash(
     // existing label is overridden. We assume label is unique identifier across
     // all type of VaultKeysets, i.e backup, migrated, regular. So override is
     // only to guarantee power glitches don't cause any issue.
-    status = AddVaultKeyset(key_data, !user_has_configured_auth_factor_,
+    status = AddVaultKeyset(key_data,
+                            /*is_initial_keyset=*/
+                            !auth_factor_map_.HasFactorWithStorage(
+                                AuthFactorStorageType::kUserSecretStash),
                             VaultKeysetIntent{.backup = true},
                             std::move(key_blobs), std::move(auth_block_state));
     if (!status.ok()) {
@@ -2266,7 +2279,7 @@ void AuthSession::PersistAuthFactorToUserSecretStash(
   }
 
   // Create the credential verifier if applicable.
-  if (!user_has_configured_auth_factor_) {
+  if (auth_factor_map_.empty()) {
     AddCredentialVerifier(auth_factor_type, auth_factor->label(), auth_input);
   }
 
@@ -2274,7 +2287,6 @@ void AuthSession::PersistAuthFactorToUserSecretStash(
             << " into USS.";
   auth_factor_map_.Add(std::move(auth_factor),
                        AuthFactorStorageType::kUserSecretStash);
-  user_has_configured_auth_factor_ = true;
 
   // Report timer for how long AuthSession operation takes.
   ReportTimerDuration(auth_session_performance_timer.get());
@@ -2385,7 +2397,8 @@ void AuthSession::AddAuthFactor(
   // If user doesn't have UserSecretStash and hasn't configured credentials with
   // VaultKeysets it is initial keyset and user can't add a PIN credential as an
   // initial keyset since PIN VaultKeyset doesn't store reset_seed.
-  if (!user_secret_stash_ && !user_has_configured_credential_) {
+  if (!user_secret_stash_ && !auth_factor_map_.HasFactorWithStorage(
+                                 AuthFactorStorageType::kVaultKeyset)) {
     if (auth_factor_type == AuthFactorType::kPin) {
       // The initial keyset cannot be a PIN, when using vault keysets.
       std::move(on_done).Run(MakeStatus<CryptohomeError>(

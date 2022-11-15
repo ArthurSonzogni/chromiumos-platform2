@@ -7,6 +7,7 @@
 
 #include <map>
 #include <memory>
+#include <optional>
 #include <string>
 
 #include "cryptohome/auth_blocks/auth_block_utility.h"
@@ -73,6 +74,37 @@ class AuthFactorMap final {
   using iterator = iterator_base<AuthFactor>;
   using const_iterator = iterator_base<const AuthFactor>;
 
+  // Class that exports a view of the underlying StoredAuthFactor.
+  class StoredAuthFactorConstView {
+   public:
+    explicit StoredAuthFactorConstView(const StoredAuthFactor* storage)
+        : storage_(storage) {
+      CHECK(storage);
+    }
+
+    StoredAuthFactorConstView(const StoredAuthFactorConstView&) = default;
+    StoredAuthFactorConstView& operator=(const StoredAuthFactorConstView&) =
+        default;
+
+    const AuthFactor& auth_factor() const { return *storage_->auth_factor; }
+
+    AuthFactorStorageType storage_type() const {
+      return storage_->storage_type;
+    }
+
+   protected:
+    const StoredAuthFactor* storage_;
+  };
+
+  // Non-const version of the view, which adds non-const overloads.
+  class StoredAuthFactorView : public StoredAuthFactorConstView {
+   public:
+    using StoredAuthFactorConstView::StoredAuthFactorConstView;
+
+    using StoredAuthFactorConstView::auth_factor;
+    AuthFactor& auth_factor() { return *storage_->auth_factor; }
+  };
+
   AuthFactorMap() = default;
   AuthFactorMap(const AuthFactorMap&) = delete;
   AuthFactorMap& operator=(const AuthFactorMap&) = delete;
@@ -95,10 +127,13 @@ class AuthFactorMap final {
   // with that label.
   void Remove(const std::string& label);
 
-  // Returns a pointer to the factor for a given label, or null if there is no
-  // factor for this label.
-  AuthFactor* Find(const std::string& label);
-  const AuthFactor* Find(const std::string& label) const;
+  // Reports if the map contains any factors of the given storage type.
+  bool HasFactorWithStorage(AuthFactorStorageType storage_type) const;
+
+  // Return a view of the stored factor, or nullopt if there is no factor for
+  // the given label.
+  std::optional<StoredAuthFactorView> Find(const std::string& label);
+  std::optional<StoredAuthFactorConstView> Find(const std::string& label) const;
 
  private:
   Storage storage_;

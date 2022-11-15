@@ -83,12 +83,13 @@ using ::testing::_;
 using ::testing::ByMove;
 using ::testing::DoAll;
 using ::testing::ElementsAre;
+using ::testing::Eq;
 using ::testing::Field;
 using ::testing::IsEmpty;
 using ::testing::IsNull;
 using ::testing::Matcher;
 using ::testing::NiceMock;
-using ::testing::NotNull;
+using ::testing::Optional;
 using ::testing::Pair;
 using ::testing::Return;
 using ::testing::UnorderedElementsAre;
@@ -2618,7 +2619,7 @@ TEST_F(AuthSessionWithUssExperimentTest, AddPasswordAuthFactorViaUss) {
       auth_factor_manager_.ListAuthFactors(SanitizeUserName(kFakeUsername));
   EXPECT_THAT(stored_factors,
               ElementsAre(Pair(kFakeLabel, AuthFactorType::kPassword)));
-  EXPECT_THAT(auth_session->auth_factor_map().Find(kFakeLabel), NotNull());
+  EXPECT_THAT(auth_session->auth_factor_map().Find(kFakeLabel), Optional(_));
 }
 
 // Test that a new auth factor can be added to the newly created user using
@@ -2686,7 +2687,7 @@ TEST_F(AuthSessionWithUssExperimentTest, AddPasswordAuthFactorViaAsyncUss) {
       auth_factor_manager_.ListAuthFactors(SanitizeUserName(kFakeUsername));
   EXPECT_THAT(stored_factors,
               ElementsAre(Pair(kFakeLabel, AuthFactorType::kPassword)));
-  EXPECT_THAT(auth_session->auth_factor_map().Find(kFakeLabel), NotNull());
+  EXPECT_THAT(auth_session->auth_factor_map().Find(kFakeLabel), Optional(_));
 }
 
 // Test the new auth factor failure path when asynchronous key creation fails.
@@ -3911,8 +3912,8 @@ TEST_F(AuthSessionWithUssExperimentTest, RemoveAuthFactor) {
   EXPECT_THAT(stored_factors,
               ElementsAre(Pair(kFakeLabel, AuthFactorType::kPassword),
                           Pair(kFakePinLabel, AuthFactorType::kPin)));
-  EXPECT_THAT(auth_session->auth_factor_map().Find(kFakeLabel), NotNull());
-  EXPECT_THAT(auth_session->auth_factor_map().Find(kFakePinLabel), NotNull());
+  EXPECT_THAT(auth_session->auth_factor_map().Find(kFakeLabel), Optional(_));
+  EXPECT_THAT(auth_session->auth_factor_map().Find(kFakePinLabel), Optional(_));
 
   // Test.
 
@@ -3931,8 +3932,9 @@ TEST_F(AuthSessionWithUssExperimentTest, RemoveAuthFactor) {
       auth_factor_manager_.ListAuthFactors(SanitizeUserName(kFakeUsername));
   EXPECT_THAT(stored_factors_1,
               ElementsAre(Pair(kFakeLabel, AuthFactorType::kPassword)));
-  EXPECT_THAT(auth_session->auth_factor_map().Find(kFakeLabel), NotNull());
-  EXPECT_THAT(auth_session->auth_factor_map().Find(kFakePinLabel), IsNull());
+  EXPECT_THAT(auth_session->auth_factor_map().Find(kFakeLabel), Optional(_));
+  EXPECT_THAT(auth_session->auth_factor_map().Find(kFakePinLabel),
+              Eq(std::nullopt));
 
   // Calling AuthenticateAuthFactor for password succeeds.
   error = AuthenticatePasswordAuthFactor(kFakePass, *auth_session);

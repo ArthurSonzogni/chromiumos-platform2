@@ -189,18 +189,6 @@ class AuthSession final {
   // This function returns if the user existed when the auth session started.
   bool user_exists() const { return user_exists_; }
 
-  // This function returns if the user has any credential configured. When a
-  // credential is added, this value changes from false to true.
-  bool user_has_configured_credential() const {
-    return user_has_configured_credential_;
-  }
-
-  // This function returns if the user has any auth factors configured. When an
-  // auth factor is added, this value changes from false to true.
-  bool user_has_configured_auth_factor() const {
-    return user_has_configured_auth_factor_;
-  }
-
   // This function returns if the AuthSession is being setup for an ephemeral
   // user.
   bool ephemeral_user() const { return is_ephemeral_user_; }
@@ -355,7 +343,7 @@ class AuthSession final {
   // add a VaultKeyset.
   void CreateKeyBlobsToAddKeyset(const AuthInput& auth_input,
                                  const KeyData& key_data,
-                                 bool initial_keyset,
+                                 bool is_initial_keyset,
                                  std::unique_ptr<AuthSessionPerformanceTimer>
                                      auth_session_performance_timer,
                                  StatusCallback on_done);
@@ -368,9 +356,9 @@ class AuthSession final {
 
   // Adds VaultKeyset for the |obfuscated_username_| by calling
   // KeysetManagement::AddInitialKeyset() or KeysetManagement::AddKeyset()
-  // based on |initial_keyset|.
+  // based on |is_initial_keyset|.
   CryptohomeStatus AddVaultKeyset(const KeyData& key_data,
-                                  bool initial_keyset,
+                                  bool is_initial_keyset,
                                   VaultKeysetIntent vk_backup_intent,
                                   std::unique_ptr<KeyBlobs> key_blobs,
                                   std::unique_ptr<AuthBlockState> auth_state);
@@ -624,10 +612,6 @@ class AuthSession final {
   std::optional<FileSystemKeyset> file_system_keyset_ = std::nullopt;
   // Whether the user existed at the time this object was constructed.
   bool user_exists_ = false;
-  // Whether the user has any credential configured so far.
-  bool user_has_configured_credential_ = false;
-  // Whether the user has any authfactor/uss configured so far.
-  bool user_has_configured_auth_factor_ = false;
   // Map to store the label and public KeyData.
   // TODO(crbug.com/1171024): Change this to AuthFactor
   std::map<std::string, cryptohome::KeyData> key_label_data_;

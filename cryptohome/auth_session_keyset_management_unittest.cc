@@ -51,6 +51,7 @@ namespace cryptohome {
 using ::testing::_;
 using ::testing::NiceMock;
 using ::testing::NotNull;
+using ::testing::Optional;
 using ::testing::Return;
 
 using base::test::TaskEnvironment;
@@ -365,8 +366,10 @@ TEST_F(AuthSessionTestWithKeysetManagement, USSEnabledCreatesBackupVKs) {
   EXPECT_NE(vk2, nullptr);
   EXPECT_TRUE(vk2->IsForBackup());
 
-  EXPECT_TRUE(auth_session->user_has_configured_auth_factor());
-  EXPECT_FALSE(auth_session->user_has_configured_credential());
+  EXPECT_TRUE(auth_session->auth_factor_map().HasFactorWithStorage(
+      AuthFactorStorageType::kUserSecretStash));
+  EXPECT_FALSE(auth_session->auth_factor_map().HasFactorWithStorage(
+      AuthFactorStorageType::kVaultKeyset));
 
   SetUserSecretStashExperimentForTesting(/*enabled=*/false);
 }
@@ -405,7 +408,8 @@ TEST_F(AuthSessionTestWithKeysetManagement, USSDisabledNotCreatesBackupVKs) {
       keyset_management_->GetVaultKeyset(users_[0].obfuscated, kPasswordLabel2);
   EXPECT_NE(vk2, nullptr);
   EXPECT_FALSE(vk2->IsForBackup());
-  EXPECT_TRUE(auth_session->user_has_configured_credential());
+  EXPECT_TRUE(auth_session->auth_factor_map().HasFactorWithStorage(
+      AuthFactorStorageType::kVaultKeyset));
 }
 
 // Test that backup VaultKeysets are removed together with the AuthFactor.
@@ -438,8 +442,10 @@ TEST_F(AuthSessionTestWithKeysetManagement, USSEnabledRemovesBackupVKs) {
       keyset_management_->GetVaultKeyset(users_[0].obfuscated, kPasswordLabel2);
   EXPECT_NE(vk2, nullptr);
   EXPECT_TRUE(vk2->IsForBackup());
-  EXPECT_TRUE(auth_session.user_has_configured_auth_factor());
-  EXPECT_FALSE(auth_session.user_has_configured_credential());
+  EXPECT_TRUE(auth_session.auth_factor_map().HasFactorWithStorage(
+      AuthFactorStorageType::kUserSecretStash));
+  EXPECT_FALSE(auth_session.auth_factor_map().HasFactorWithStorage(
+      AuthFactorStorageType::kVaultKeyset));
 
   // Test
   RemoveFactor(auth_session, kPasswordLabel2, kPassword2);
@@ -480,8 +486,10 @@ TEST_F(AuthSessionTestWithKeysetManagement, USSEnabledUpdateBackupVKs) {
       keyset_management_->GetVaultKeyset(users_[0].obfuscated, kPasswordLabel);
   EXPECT_NE(vk1, nullptr);
   EXPECT_TRUE(vk1->IsForBackup());
-  EXPECT_TRUE(auth_session.user_has_configured_auth_factor());
-  EXPECT_FALSE(auth_session.user_has_configured_credential());
+  EXPECT_TRUE(auth_session.auth_factor_map().HasFactorWithStorage(
+      AuthFactorStorageType::kUserSecretStash));
+  EXPECT_FALSE(auth_session.auth_factor_map().HasFactorWithStorage(
+      AuthFactorStorageType::kVaultKeyset));
 
   // Test
   // Update the auth factor and see the backup VaultKeyset is still a backup.
@@ -492,8 +500,10 @@ TEST_F(AuthSessionTestWithKeysetManagement, USSEnabledUpdateBackupVKs) {
       keyset_management_->GetVaultKeyset(users_[0].obfuscated, kPasswordLabel);
   EXPECT_NE(vk2, nullptr);
   EXPECT_TRUE(vk2->IsForBackup());
-  EXPECT_TRUE(auth_session.user_has_configured_auth_factor());
-  EXPECT_FALSE(auth_session.user_has_configured_credential());
+  EXPECT_TRUE(auth_session.auth_factor_map().HasFactorWithStorage(
+      AuthFactorStorageType::kUserSecretStash));
+  EXPECT_FALSE(auth_session.auth_factor_map().HasFactorWithStorage(
+      AuthFactorStorageType::kVaultKeyset));
 }
 
 // Test that authentication with backup VK succeeds when USS is rolled back
@@ -590,8 +600,10 @@ TEST_F(AuthSessionTestWithKeysetManagement,
       keyset_management_->GetVaultKeyset(users_[0].obfuscated, kPasswordLabel);
   EXPECT_NE(vk1, nullptr);
   EXPECT_TRUE(vk1->IsForBackup());
-  EXPECT_TRUE(auth_session->user_has_configured_auth_factor());
-  EXPECT_FALSE(auth_session->user_has_configured_credential());
+  EXPECT_TRUE(auth_session->auth_factor_map().HasFactorWithStorage(
+      AuthFactorStorageType::kUserSecretStash));
+  EXPECT_FALSE(auth_session->auth_factor_map().HasFactorWithStorage(
+      AuthFactorStorageType::kVaultKeyset));
 
   // Test
   // See that authentication with the backup password succeeds
@@ -603,8 +615,10 @@ TEST_F(AuthSessionTestWithKeysetManagement,
           /*enable_create_backup_vk_with_uss =*/true);
   EXPECT_TRUE(auth_session2_status.ok());
   AuthSession* auth_session2 = auth_session2_status.value();
-  EXPECT_TRUE(auth_session2->user_has_configured_credential());
-  EXPECT_FALSE(auth_session2->user_has_configured_auth_factor());
+  EXPECT_TRUE(auth_session2->auth_factor_map().HasFactorWithStorage(
+      AuthFactorStorageType::kVaultKeyset));
+  EXPECT_FALSE(auth_session2->auth_factor_map().HasFactorWithStorage(
+      AuthFactorStorageType::kUserSecretStash));
 
   EXPECT_CALL(mock_auth_block_utility_,
               GetAuthBlockStateFromVaultKeyset(_, _, _))
@@ -691,8 +705,10 @@ TEST_F(AuthSessionTestWithKeysetManagement,
       keyset_management_->GetVaultKeyset(users_[0].obfuscated, kPasswordLabel);
   EXPECT_NE(vk1, nullptr);
   EXPECT_TRUE(vk1->IsForBackup());
-  EXPECT_TRUE(auth_session.user_has_configured_auth_factor());
-  EXPECT_FALSE(auth_session.user_has_configured_credential());
+  EXPECT_TRUE(auth_session.auth_factor_map().HasFactorWithStorage(
+      AuthFactorStorageType::kUserSecretStash));
+  EXPECT_FALSE(auth_session.auth_factor_map().HasFactorWithStorage(
+      AuthFactorStorageType::kVaultKeyset));
 
   // Test
   // See that authentication with the backup password succeeds if USS is
@@ -710,8 +726,10 @@ TEST_F(AuthSessionTestWithKeysetManagement,
           /*enable_create_backup_vk_with_uss =*/true);
   EXPECT_TRUE(auth_session2_status.ok());
   AuthSession* auth_session2 = auth_session2_status.value();
-  EXPECT_TRUE(auth_session2->user_has_configured_credential());
-  EXPECT_FALSE(auth_session2->user_has_configured_auth_factor());
+  EXPECT_TRUE(auth_session2->auth_factor_map().HasFactorWithStorage(
+      AuthFactorStorageType::kVaultKeyset));
+  EXPECT_FALSE(auth_session2->auth_factor_map().HasFactorWithStorage(
+      AuthFactorStorageType::kUserSecretStash));
 
   EXPECT_CALL(mock_auth_block_utility_,
               GetAuthBlockStateFromVaultKeyset(_, _, _))
@@ -777,12 +795,12 @@ TEST_F(AuthSessionTestWithKeysetManagement, USSDisableddNotListBackupVKs) {
   // Verify
   EXPECT_FALSE(vk1->IsForBackup());
   EXPECT_FALSE(vk2->IsForBackup());
-  EXPECT_TRUE(auth_session2->user_has_configured_credential());
-  // Map contains the password, but when user_has_configured_credential is
-  // false, this means factor are not backed by a non-backup VK
-  EXPECT_THAT(auth_session2->auth_factor_map().Find(kPasswordLabel), NotNull());
+  EXPECT_TRUE(auth_session2->auth_factor_map().HasFactorWithStorage(
+      AuthFactorStorageType::kVaultKeyset));
+  EXPECT_THAT(auth_session2->auth_factor_map().Find(kPasswordLabel),
+              Optional(_));
   EXPECT_THAT(auth_session2->auth_factor_map().Find(kPasswordLabel2),
-              NotNull());
+              Optional(_));
 }
 
 // Test that AuthSession list the backup VKs on session start if USS is disabled
@@ -811,8 +829,10 @@ TEST_F(AuthSessionTestWithKeysetManagement, USSRollbackListBackupVKs) {
   std::unique_ptr<VaultKeyset> vk2 =
       keyset_management_->GetVaultKeyset(users_[0].obfuscated, kPasswordLabel2);
   EXPECT_NE(vk2, nullptr);
-  EXPECT_TRUE(auth_session->user_has_configured_auth_factor());
-  EXPECT_FALSE(auth_session->user_has_configured_credential());
+  EXPECT_TRUE(auth_session->auth_factor_map().HasFactorWithStorage(
+      AuthFactorStorageType::kUserSecretStash));
+  EXPECT_FALSE(auth_session->auth_factor_map().HasFactorWithStorage(
+      AuthFactorStorageType::kVaultKeyset));
 
   // Test
   SetUserSecretStashExperimentForTesting(/*enabled=*/false);
@@ -826,11 +846,13 @@ TEST_F(AuthSessionTestWithKeysetManagement, USSRollbackListBackupVKs) {
   // Verify
   EXPECT_TRUE(vk1->IsForBackup());
   EXPECT_TRUE(vk2->IsForBackup());
-  EXPECT_TRUE(auth_session2->user_has_configured_credential());
+  EXPECT_TRUE(auth_session2->auth_factor_map().HasFactorWithStorage(
+      AuthFactorStorageType::kVaultKeyset));
 
-  EXPECT_THAT(auth_session2->auth_factor_map().Find(kPasswordLabel), NotNull());
+  EXPECT_THAT(auth_session2->auth_factor_map().Find(kPasswordLabel),
+              Optional(_));
   EXPECT_THAT(auth_session2->auth_factor_map().Find(kPasswordLabel2),
-              NotNull());
+              Optional(_));
 }
 
 }  // namespace cryptohome
