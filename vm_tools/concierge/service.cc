@@ -82,6 +82,7 @@
 #include <vm_concierge/proto_bindings/concierge_service.pb.h>
 #include <vm_protos/proto_bindings/vm_guest.pb.h>
 
+#include "base/files/scoped_file.h"
 #include "vm_tools/common/naming.h"
 #include "vm_tools/concierge/arc_vm.h"
 #include "vm_tools/concierge/dlc_helper.h"
@@ -239,6 +240,53 @@ const std::vector<std::string> kExtMkfsOpts = {
     "-Elazy_itable_init=0,lazy_journal_init=0,discard", "-Ocasefold",
     "-i" + std::to_string(kExt4BytesPerInode)};
 
+// Fds to all the images required while starting a VM.
+struct VmStartImageFds {
+  std::optional<base::ScopedFD> kernel_fd;
+  std::optional<base::ScopedFD> rootfs_fd;
+  std::optional<base::ScopedFD> initrd_fd;
+  std::optional<base::ScopedFD> storage_fd;
+  std::optional<base::ScopedFD> bios_fd;
+  std::optional<base::ScopedFD> pflash_fd;
+};
+
+std::optional<VmStartImageFds> GetVmStartImageFds(
+    const std::unique_ptr<dbus::MessageReader>& reader,
+    const google::protobuf::RepeatedField<int>& fds) {
+  struct VmStartImageFds result;
+  for (const auto& fdType : fds) {
+    base::ScopedFD fd;
+    if (!reader->PopFileDescriptor(&fd)) {
+      LOG(ERROR) << "Failed to pop VM start image file descriptor";
+      return std::nullopt;
+    }
+    switch (fdType) {
+      case StartVmRequest_FdType_KERNEL:
+        result.kernel_fd = std::move(fd);
+        break;
+      case StartVmRequest_FdType_ROOTFS:
+        result.rootfs_fd = std::move(fd);
+        break;
+      case StartVmRequest_FdType_INITRD:
+        result.initrd_fd = std::move(fd);
+        break;
+      case StartVmRequest_FdType_STORAGE:
+        result.storage_fd = std::move(fd);
+        break;
+      case StartVmRequest_FdType_BIOS:
+        result.bios_fd = std::move(fd);
+        break;
+      case StartVmRequest_FdType_PFLASH:
+        result.pflash_fd = std::move(fd);
+        break;
+      default:
+        LOG(WARNING) << "received request with unknown FD type " << fdType
+                     << ". Ignoring.";
+    }
+  }
+  return result;
+}
+
 // Passes |method_call| to |handler| and passes the response to
 // |response_sender|. If |handler| returns NULL, an empty response is created
 // and sent.
@@ -284,10 +332,11 @@ void RunListenerService(grpc::Service* listener,
   }
 }
 
-// Sets up a gRPC listener service by starting the |grpc_thread| and posting the
-// main task to run for the thread. |listener_address| should be the address the
-// gRPC server is listening on. A copy of the pointer to the server is put in
-// |server_copy|. Returns true if setup & started successfully, false otherwise.
+// Sets up a gRPC listener service by starting the |grpc_thread| and posting
+// the main task to run for the thread. |listener_address| should be the
+// address the gRPC server is listening on. A copy of the pointer to the
+// server is put in |server_copy|. Returns true if setup & started
+// successfully, false otherwise.
 bool SetupListenerService(base::Thread* grpc_thread,
                           grpc::Service* listener_impl,
                           const std::string& listener_address,
@@ -502,9 +551,9 @@ void FormatDiskImageStatus(const DiskImageOperation* op,
 uint64_t GetFileUsage(const base::FilePath& path) {
   struct stat st;
   if (stat(path.value().c_str(), &st) == 0) {
-    // Use the st_blocks value to get the space usage (as in 'du') of the file.
-    // st_blocks is always in units of 512 bytes, regardless of the underlying
-    // filesystem and block device block size.
+    // Use the st_blocks value to get the space usage (as in 'du') of the
+    // file. st_blocks is always in units of 512 bytes, regardless of the
+    // underlying filesystem and block device block size.
     return st.st_blocks * 512;
   }
   return 0;
@@ -687,12 +736,12 @@ std::unique_ptr<dbus::Response> ReclaimVmMemoryInternal(
   return dbus_response;
 }
 
-// Determines what classification type this VM has. Classifications are roughly
-// related to products, and the classification broadly determines what features
-// are available to a given VM.
+// Determines what classification type this VM has. Classifications are
+// roughly related to products, and the classification broadly determines what
+// features are available to a given VM.
 //
-// TODO(b/213090722): Determining a VM's type based on its properties like this
-// is undesirable. Instead we should provide the type in the request, and
+// TODO(b/213090722): Determining a VM's type based on its properties like
+// this is undesirable. Instead we should provide the type in the request, and
 // determine its properties from that.
 VmInfo::VmType ClassifyVm(const StartVmRequest& request) {
   if (request.vm().dlc_id() == "borealis-dlc")
@@ -1662,40 +1711,11 @@ StartVmResponse Service::StartVm(StartVmRequest request,
   VmInfo* vm_info = response.mutable_vm_info();
   vm_info->set_vm_type(classification);
 
-  std::optional<base::ScopedFD> kernel_fd, rootfs_fd, initrd_fd, storage_fd,
-      bios_fd, pflash_fd;
-  for (const auto& fdType : request.fds()) {
-    base::ScopedFD fd;
-    if (!reader->PopFileDescriptor(&fd)) {
-      std::stringstream ss;
-      ss << "failed to get a " << StartVmRequest_FdType_Name(fdType) << " FD";
-      LOG(ERROR) << ss.str();
-      response.set_failure_reason(ss.str());
-      return response;
-    }
-    switch (fdType) {
-      case StartVmRequest_FdType_KERNEL:
-        kernel_fd = std::move(fd);
-        break;
-      case StartVmRequest_FdType_ROOTFS:
-        rootfs_fd = std::move(fd);
-        break;
-      case StartVmRequest_FdType_INITRD:
-        initrd_fd = std::move(fd);
-        break;
-      case StartVmRequest_FdType_STORAGE:
-        storage_fd = std::move(fd);
-        break;
-      case StartVmRequest_FdType_BIOS:
-        bios_fd = std::move(fd);
-        break;
-      case StartVmRequest_FdType_PFLASH:
-        pflash_fd = std::move(fd);
-        break;
-      default:
-        LOG(WARNING) << "received request with unknown FD type " << fdType
-                     << ". Ignoring.";
-    }
+  std::optional<VmStartImageFds> vm_start_image_fds =
+      GetVmStartImageFds(reader, request.fds());
+  if (!vm_start_image_fds) {
+    response.set_failure_reason("failed to get a VmStartImage fd");
+    return response;
   }
 
   // Make sure we have our signal connected if starting a Termina VM.
@@ -1725,9 +1745,11 @@ StartVmResponse Service::StartVm(StartVmRequest request,
   }
 
   string failure_reason;
-  VMImageSpec image_spec = GetImageSpec(
-      request.vm(), kernel_fd, rootfs_fd, initrd_fd, bios_fd, pflash_fd,
-      classification == VmInfo::TERMINA, &failure_reason);
+  VMImageSpec image_spec =
+      GetImageSpec(request.vm(), vm_start_image_fds->kernel_fd,
+                   vm_start_image_fds->rootfs_fd, vm_start_image_fds->initrd_fd,
+                   vm_start_image_fds->bios_fd, vm_start_image_fds->pflash_fd,
+                   classification == VmInfo::TERMINA, &failure_reason);
   if (!failure_reason.empty()) {
     LOG(ERROR) << "Failed to get image paths: " << failure_reason;
     response.set_failure_reason("Failed to get image paths: " + failure_reason);
@@ -1881,7 +1903,7 @@ StartVmResponse Service::StartVm(StartVmRequest request,
   }
 
   // Check if an opened storage image was passed over D-BUS.
-  if (storage_fd.has_value()) {
+  if (vm_start_image_fds->storage_fd.has_value()) {
     // We only allow untrusted VMs to mount extra storage.
     if (!is_untrusted_vm) {
       LOG(ERROR) << "storage fd passed for a trusted VM";
@@ -1890,7 +1912,7 @@ StartVmResponse Service::StartVm(StartVmRequest request,
       return response;
     }
 
-    int raw_fd = storage_fd.value().get();
+    int raw_fd = vm_start_image_fds->storage_fd.value().get();
     string failure_reason = RemoveCloseOnExec(raw_fd);
     if (!failure_reason.empty()) {
       LOG(ERROR) << "failed to remove close-on-exec flag: " << failure_reason;
@@ -2233,7 +2255,7 @@ StartVmResponse Service::StartVm(StartVmRequest request,
 
   // Mount an extra disk in the VM. We mount them after calling StartTermina
   // because /mnt/external is set up there.
-  if (storage_fd.has_value()) {
+  if (vm_start_image_fds->storage_fd.has_value()) {
     const string external_disk_path =
         base::StringPrintf("/dev/vd%c", disk_letter++);
 
