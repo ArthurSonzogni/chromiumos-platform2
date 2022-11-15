@@ -454,6 +454,7 @@ static_library("libcryptohome") {
     "../storage/arc_disk_quota.cc",
     "../storage/cryptohome_vault.cc",
     "../storage/cryptohome_vault_factory.cc",
+    "../storage/dircrypto_migration_helper_delegate.cc",
     "../storage/file_system_keyset.cc",
     "../storage/homedirs.cc",
     "../storage/mount.cc",

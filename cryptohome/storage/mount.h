@@ -175,7 +175,10 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   bool PerformMigration(
       const dircrypto_data_migrator::MigrationHelper::ProgressCallback&
           callback,
-      std::unique_ptr<dircrypto_data_migrator::MigrationHelper> migrator);
+      const base::FilePath& source,
+      const base::FilePath& destination,
+      const base::FilePath& status_files_dir,
+      MigrationType migration_type);
 
   // A special of UnmountCryptohome to be called from the migration path.
   void UnmountCryptohomeFromMigration();

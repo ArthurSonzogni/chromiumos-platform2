@@ -20,7 +20,7 @@
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 
 #include "cryptohome/cryptohome_metrics.h"
-#include "cryptohome/migration_type.h"
+#include "cryptohome/dircrypto_data_migrator/migration_helper_delegate.h"
 #include "cryptohome/platform.h"
 
 namespace base {
@@ -69,11 +69,11 @@ class MigrationHelper {
   // If |minimal_migration| is true, progress reporting will be omitted and only
   // important profile parts will be migrated. Most user data will be wiped.
   MigrationHelper(Platform* platform,
+                  MigrationHelperDelegate* delegate,
                   const base::FilePath& from,
                   const base::FilePath& to,
                   const base::FilePath& status_files_dir,
-                  uint64_t max_chunk_size,
-                  MigrationType migration_type);
+                  uint64_t max_chunk_size);
 
   MigrationHelper(const MigrationHelper&) = delete;
   MigrationHelper& operator=(const MigrationHelper&) = delete;
@@ -192,15 +192,16 @@ class MigrationHelper {
   // of that total and failed_xattr_size to UMA.
   void ReportTotalXattrSize(const base::FilePath& path, int failed_xattr_size);
 
-  Platform* platform_;
-  base::FilePath from_base_path_;
-  base::FilePath to_base_path_;
-  ProgressCallback progress_callback_;
+  Platform* const platform_;
+  MigrationHelperDelegate* const delegate_;
+  const base::FilePath from_base_path_;
+  const base::FilePath to_base_path_;
   const base::FilePath status_files_dir_;
-  uint64_t max_chunk_size_;
-  MigrationType migration_type_;
+  const uint64_t max_chunk_size_;
   // Allowlisted paths for minimal migration. May contain directories and files.
   std::vector<base::FilePath> minimal_migration_paths_;
+
+  ProgressCallback progress_callback_;
 
   uint64_t effective_chunk_size_;
   uint64_t total_byte_count_;

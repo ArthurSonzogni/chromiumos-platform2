@@ -41,6 +41,7 @@
 #include "cryptohome/dircrypto_util.h"
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/platform.h"
+#include "cryptohome/storage/dircrypto_migration_helper_delegate.h"
 #include "cryptohome/storage/error.h"
 #include "cryptohome/storage/homedirs.h"
 #include "cryptohome/storage/mount_utils.h"
@@ -318,17 +319,15 @@ bool Mount::MigrateFromEcryptfs(
   std::string obfuscated_username = SanitizeUserName(username_);
   FilePath source = GetUserTemporaryMountDirectory(obfuscated_username);
   FilePath destination = GetUserMountDirectory(obfuscated_username);
+  FilePath status_files_dir = UserPath(obfuscated_username);
 
   if (!platform_->DirectoryExists(source) || !OwnsMountPoint(source)) {
     LOG(ERROR) << "Unexpected ecryptfs source state.";
     return false;
   }
   // Do migration.
-  constexpr uint64_t kMaxChunkSize = 128 * 1024 * 1024;
-  if (!PerformMigration(callback, std::make_unique<MigrationHelper>(
-                                      platform_, source, destination,
-                                      UserPath(obfuscated_username),
-                                      kMaxChunkSize, migration_type))) {
+  if (!PerformMigration(callback, source, destination, status_files_dir,
+                        migration_type)) {
     return false;
   }
 
@@ -349,6 +348,7 @@ bool Mount::MigrateFromDircrypto(
   std::string obfuscated_username = SanitizeUserName(username_);
   FilePath source = GetUserMountDirectory(obfuscated_username);
   FilePath destination = GetUserTemporaryMountDirectory(obfuscated_username);
+  FilePath status_files_dir = UserPath(obfuscated_username);
 
   if (!platform_->DirectoryExists(destination) ||
       !OwnsMountPoint(destination)) {
@@ -356,11 +356,8 @@ bool Mount::MigrateFromDircrypto(
     return false;
   }
   // Do migration.
-  constexpr uint64_t kMaxChunkSize = 128 * 1024 * 1024;
-  if (!PerformMigration(callback, std::make_unique<MigrationHelper>(
-                                      platform_, source, destination,
-                                      UserPath(obfuscated_username),
-                                      kMaxChunkSize, migration_type))) {
+  if (!PerformMigration(callback, source, destination, status_files_dir,
+                        migration_type)) {
     return false;
   }
 
@@ -377,15 +374,23 @@ bool Mount::MigrateFromDircrypto(
 }
 
 bool Mount::PerformMigration(const MigrationHelper::ProgressCallback& callback,
-                             std::unique_ptr<MigrationHelper> migrator) {
+                             const base::FilePath& source,
+                             const base::FilePath& destination,
+                             const base::FilePath& status_files_dir,
+                             MigrationType migration_type) {
+  constexpr uint64_t kMaxChunkSize = 128 * 1024 * 1024;
+  DircryptoMigrationHelperDelegate delegate(migration_type);
+  MigrationHelper migrator(platform_, &delegate, source, destination,
+                           status_files_dir, kMaxChunkSize);
+
   {  // Abort if already cancelled.
     base::AutoLock lock(active_dircrypto_migrator_lock_);
     if (is_dircrypto_migration_cancelled_)
       return false;
     CHECK(!active_dircrypto_migrator_);
-    active_dircrypto_migrator_ = migrator.get();
+    active_dircrypto_migrator_ = &migrator;
   }
-  bool success = migrator->Migrate(callback);
+  bool success = migrator.Migrate(callback);
 
   UnmountCryptohomeFromMigration();
   {  // Signal the waiting thread.

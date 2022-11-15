@@ -25,8 +25,10 @@
 #include <base/synchronization/waitable_event.h>
 #include <base/threading/thread.h>
 
+#include "cryptohome/dircrypto_data_migrator/migration_helper_delegate.h"
 #include "cryptohome/migration_type.h"
 #include "cryptohome/mock_platform.h"
+#include "cryptohome/storage/dircrypto_migration_helper_delegate.h"
 
 extern "C" {
 #include <linux/fs.h>
@@ -61,7 +63,8 @@ constexpr char kToDir[] = "/home/.shadow/deadbeef/mount";
 class MigrationHelperTest : public ::testing::Test {
  public:
   MigrationHelperTest()
-      : status_files_dir_(kStatusFilesDir),
+      : delegate_(MigrationHelperDelegate(MigrationType::FULL)),
+        status_files_dir_(kStatusFilesDir),
         from_dir_(kFromDir),
         to_dir_(kToDir) {}
   virtual ~MigrationHelperTest() {}
@@ -81,6 +84,9 @@ class MigrationHelperTest : public ::testing::Test {
 
  protected:
   NiceMock<MockPlatform> platform_;
+  // TODO(b/258402655): Use a mock of MigrationHelperDelegate and check that its
+  // methods are called correctly.
+  MigrationHelperDelegate delegate_;
 
   base::FilePath status_files_dir_;
   base::FilePath from_dir_;
@@ -92,8 +98,8 @@ class MigrationHelperTest : public ::testing::Test {
 };
 
 TEST_F(MigrationHelperTest, EmptyTest) {
-  MigrationHelper helper(&platform_, from_dir_, to_dir_, status_files_dir_,
-                         kDefaultChunkSize, MigrationType::FULL);
+  MigrationHelper helper(&platform_, &delegate_, from_dir_, to_dir_,
+                         status_files_dir_, kDefaultChunkSize);
   helper.set_namespaced_mtime_xattr_name_for_testing(kMtimeXattrName);
   helper.set_namespaced_atime_xattr_name_for_testing(kAtimeXattrName);
 
@@ -107,8 +113,8 @@ TEST_F(MigrationHelperTest, EmptyTest) {
 TEST_F(MigrationHelperTest, CopyAttributesDirectory) {
   // This test only covers permissions and xattrs.  Ownership copying requires
   // more extensive mocking and is covered in CopyOwnership test.
-  MigrationHelper helper(&platform_, from_dir_, to_dir_, status_files_dir_,
-                         kDefaultChunkSize, MigrationType::FULL);
+  MigrationHelper helper(&platform_, &delegate_, from_dir_, to_dir_,
+                         status_files_dir_, kDefaultChunkSize);
   helper.set_namespaced_mtime_xattr_name_for_testing(kMtimeXattrName);
   helper.set_namespaced_atime_xattr_name_for_testing(kAtimeXattrName);
 
@@ -167,8 +173,8 @@ TEST_F(MigrationHelperTest, CopyAttributesDirectory) {
 }
 
 TEST_F(MigrationHelperTest, DirectoryPartiallyMigrated) {
-  MigrationHelper helper(&platform_, from_dir_, to_dir_, status_files_dir_,
-                         kDefaultChunkSize, MigrationType::FULL);
+  MigrationHelper helper(&platform_, &delegate_, from_dir_, to_dir_,
+                         status_files_dir_, kDefaultChunkSize);
   helper.set_namespaced_mtime_xattr_name_for_testing(kMtimeXattrName);
   helper.set_namespaced_atime_xattr_name_for_testing(kAtimeXattrName);
 
@@ -204,8 +210,8 @@ TEST_F(MigrationHelperTest, CopySymlink) {
   // This test does not cover setting ownership values as that requires more
   // extensive mocking.  Ownership copying instead is covered by the
   // CopyOwnership test.
-  MigrationHelper helper(&platform_, from_dir_, to_dir_, status_files_dir_,
-                         kDefaultChunkSize, MigrationType::FULL);
+  MigrationHelper helper(&platform_, &delegate_, from_dir_, to_dir_,
+                         status_files_dir_, kDefaultChunkSize);
   helper.set_namespaced_mtime_xattr_name_for_testing(kMtimeXattrName);
   helper.set_namespaced_atime_xattr_name_for_testing(kAtimeXattrName);
   FilePath target;
@@ -259,8 +265,8 @@ TEST_F(MigrationHelperTest, CopySymlink) {
 }
 
 TEST_F(MigrationHelperTest, OneEmptyFile) {
-  MigrationHelper helper(&platform_, from_dir_, to_dir_, status_files_dir_,
-                         kDefaultChunkSize, MigrationType::FULL);
+  MigrationHelper helper(&platform_, &delegate_, from_dir_, to_dir_,
+                         status_files_dir_, kDefaultChunkSize);
   helper.set_namespaced_mtime_xattr_name_for_testing(kMtimeXattrName);
   helper.set_namespaced_atime_xattr_name_for_testing(kAtimeXattrName);
 
@@ -278,8 +284,8 @@ TEST_F(MigrationHelperTest, OneEmptyFile) {
 }
 
 TEST_F(MigrationHelperTest, OneEmptyFileInNestedDirectory) {
-  MigrationHelper helper(&platform_, from_dir_, to_dir_, status_files_dir_,
-                         kDefaultChunkSize, MigrationType::FULL);
+  MigrationHelper helper(&platform_, &delegate_, from_dir_, to_dir_,
+                         status_files_dir_, kDefaultChunkSize);
   helper.set_namespaced_mtime_xattr_name_for_testing(kMtimeXattrName);
   helper.set_namespaced_atime_xattr_name_for_testing(kAtimeXattrName);
 
@@ -305,8 +311,8 @@ TEST_F(MigrationHelperTest, OneEmptyFileInNestedDirectory) {
 }
 
 TEST_F(MigrationHelperTest, UnreadableFile) {
-  MigrationHelper helper(&platform_, from_dir_, to_dir_, status_files_dir_,
-                         kDefaultChunkSize, MigrationType::FULL);
+  MigrationHelper helper(&platform_, &delegate_, from_dir_, to_dir_,
+                         status_files_dir_, kDefaultChunkSize);
   helper.set_namespaced_mtime_xattr_name_for_testing(kMtimeXattrName);
   helper.set_namespaced_atime_xattr_name_for_testing(kAtimeXattrName);
 
@@ -335,8 +341,8 @@ TEST_F(MigrationHelperTest, CopyAttributesFile) {
   // This test does not cover setting ownership values as that requires more
   // extensive mocking.  Ownership copying instead is covered by the
   // CopyOwnership test.
-  MigrationHelper helper(&platform_, from_dir_, to_dir_, status_files_dir_,
-                         kDefaultChunkSize, MigrationType::FULL);
+  MigrationHelper helper(&platform_, &delegate_, from_dir_, to_dir_,
+                         status_files_dir_, kDefaultChunkSize);
   helper.set_namespaced_mtime_xattr_name_for_testing(kMtimeXattrName);
   helper.set_namespaced_atime_xattr_name_for_testing(kAtimeXattrName);
 
@@ -415,8 +421,8 @@ TEST_F(MigrationHelperTest, CopyAttributesFile) {
 }
 
 TEST_F(MigrationHelperTest, CopyOwnership) {
-  MigrationHelper helper(&platform_, from_dir_, to_dir_, status_files_dir_,
-                         kDefaultChunkSize, MigrationType::FULL);
+  MigrationHelper helper(&platform_, &delegate_, from_dir_, to_dir_,
+                         status_files_dir_, kDefaultChunkSize);
   helper.set_namespaced_mtime_xattr_name_for_testing(kMtimeXattrName);
   helper.set_namespaced_atime_xattr_name_for_testing(kAtimeXattrName);
 
@@ -473,8 +479,8 @@ TEST_F(MigrationHelperTest, MigrateInProgress) {
   // Test the case where the migration was interrupted part way through, but in
   // a clean way such that the two directory trees are consistent (files are
   // only present in one or the other)
-  MigrationHelper helper(&platform_, from_dir_, to_dir_, status_files_dir_,
-                         kDefaultChunkSize, MigrationType::FULL);
+  MigrationHelper helper(&platform_, &delegate_, from_dir_, to_dir_,
+                         status_files_dir_, kDefaultChunkSize);
   helper.set_namespaced_mtime_xattr_name_for_testing(kMtimeXattrName);
   helper.set_namespaced_atime_xattr_name_for_testing(kAtimeXattrName);
 
@@ -496,8 +502,8 @@ TEST_F(MigrationHelperTest, MigrateInProgressDuplicateFile) {
   // Test the case where the migration was interrupted part way through,
   // resulting in files that were successfully written to destination but not
   // yet removed from the source.
-  MigrationHelper helper(&platform_, from_dir_, to_dir_, status_files_dir_,
-                         kDefaultChunkSize, MigrationType::FULL);
+  MigrationHelper helper(&platform_, &delegate_, from_dir_, to_dir_,
+                         status_files_dir_, kDefaultChunkSize);
   helper.set_namespaced_mtime_xattr_name_for_testing(kMtimeXattrName);
   helper.set_namespaced_atime_xattr_name_for_testing(kAtimeXattrName);
 
@@ -519,8 +525,8 @@ TEST_F(MigrationHelperTest, MigrateInProgressDuplicateFile) {
 TEST_F(MigrationHelperTest, MigrateInProgressPartialFile) {
   // Test the case where the migration was interrupted part way through, with a
   // file having been partially copied to the destination but not fully.
-  MigrationHelper helper(&platform_, from_dir_, to_dir_, status_files_dir_,
-                         kDefaultChunkSize, MigrationType::FULL);
+  MigrationHelper helper(&platform_, &delegate_, from_dir_, to_dir_,
+                         status_files_dir_, kDefaultChunkSize);
   helper.set_namespaced_mtime_xattr_name_for_testing(kMtimeXattrName);
   helper.set_namespaced_atime_xattr_name_for_testing(kAtimeXattrName);
 
@@ -562,8 +568,8 @@ TEST_F(MigrationHelperTest, MigrateInProgressPartialFileDuplicateData) {
   // Test the case where the migration was interrupted part way through, with a
   // file having been partially copied to the destination but the source file
   // not yet having been truncated to reflect that.
-  MigrationHelper helper(&platform_, from_dir_, to_dir_, status_files_dir_,
-                         kDefaultChunkSize, MigrationType::FULL);
+  MigrationHelper helper(&platform_, &delegate_, from_dir_, to_dir_,
+                         status_files_dir_, kDefaultChunkSize);
   helper.set_namespaced_mtime_xattr_name_for_testing(kMtimeXattrName);
   helper.set_namespaced_atime_xattr_name_for_testing(kAtimeXattrName);
 
@@ -602,8 +608,8 @@ TEST_F(MigrationHelperTest, MigrateInProgressPartialFileDuplicateData) {
 }
 
 TEST_F(MigrationHelperTest, ProgressCallback) {
-  MigrationHelper helper(&platform_, from_dir_, to_dir_, status_files_dir_,
-                         kDefaultChunkSize, MigrationType::FULL);
+  MigrationHelper helper(&platform_, &delegate_, from_dir_, to_dir_,
+                         status_files_dir_, kDefaultChunkSize);
   helper.set_namespaced_mtime_xattr_name_for_testing(kMtimeXattrName);
   helper.set_namespaced_atime_xattr_name_for_testing(kAtimeXattrName);
 
@@ -663,8 +669,8 @@ TEST_F(MigrationHelperTest, ProgressCallback) {
 }
 
 TEST_F(MigrationHelperTest, NotEnoughFreeSpace) {
-  MigrationHelper helper(&platform_, from_dir_, to_dir_, status_files_dir_,
-                         kDefaultChunkSize, MigrationType::FULL);
+  MigrationHelper helper(&platform_, &delegate_, from_dir_, to_dir_,
+                         status_files_dir_, kDefaultChunkSize);
 
   EXPECT_CALL(platform_, AmountOfFreeDiskSpace(_)).WillOnce(Return(0));
   EXPECT_FALSE(helper.Migrate(base::BindRepeating(
@@ -674,8 +680,8 @@ TEST_F(MigrationHelperTest, NotEnoughFreeSpace) {
 TEST_F(MigrationHelperTest, ForceSmallerChunkSize) {
   constexpr int kMaxChunkSize = 128 << 20;  // 128MB
   constexpr int kNumJobThreads = 2;
-  MigrationHelper helper(&platform_, from_dir_, to_dir_, status_files_dir_,
-                         kMaxChunkSize, MigrationType::FULL);
+  MigrationHelper helper(&platform_, &delegate_, from_dir_, to_dir_,
+                         status_files_dir_, kMaxChunkSize);
   helper.set_namespaced_mtime_xattr_name_for_testing(kMtimeXattrName);
   helper.set_namespaced_atime_xattr_name_for_testing(kAtimeXattrName);
   helper.set_num_job_threads_for_testing(kNumJobThreads);
@@ -705,8 +711,8 @@ TEST_F(MigrationHelperTest, ForceSmallerChunkSize) {
 }
 
 TEST_F(MigrationHelperTest, SkipInvalidSQLiteFiles) {
-  MigrationHelper helper(&platform_, from_dir_, to_dir_, status_files_dir_,
-                         kDefaultChunkSize, MigrationType::FULL);
+  MigrationHelper helper(&platform_, &delegate_, from_dir_, to_dir_,
+                         status_files_dir_, kDefaultChunkSize);
   helper.set_namespaced_mtime_xattr_name_for_testing(kMtimeXattrName);
   helper.set_namespaced_atime_xattr_name_for_testing(kAtimeXattrName);
   const char kCorruptedFilePath[] =
@@ -736,8 +742,8 @@ TEST_F(MigrationHelperTest, SkipInvalidSQLiteFiles) {
 }
 
 TEST_F(MigrationHelperTest, AllJobThreadsFailing) {
-  MigrationHelper helper(&platform_, from_dir_, to_dir_, status_files_dir_,
-                         kDefaultChunkSize, MigrationType::FULL);
+  MigrationHelper helper(&platform_, &delegate_, from_dir_, to_dir_,
+                         status_files_dir_, kDefaultChunkSize);
   helper.set_namespaced_mtime_xattr_name_for_testing(kMtimeXattrName);
   helper.set_namespaced_atime_xattr_name_for_testing(kAtimeXattrName);
 
@@ -760,8 +766,9 @@ TEST_F(MigrationHelperTest, AllJobThreadsFailing) {
 }
 
 TEST_F(MigrationHelperTest, SkipDuppedGCacheTmpDir) {
-  MigrationHelper helper(&platform_, from_dir_, to_dir_, status_files_dir_,
-                         kDefaultChunkSize, MigrationType::FULL);
+  DircryptoMigrationHelperDelegate delegate(MigrationType::FULL);
+  MigrationHelper helper(&platform_, &delegate, from_dir_, to_dir_,
+                         status_files_dir_, kDefaultChunkSize);
   helper.set_namespaced_mtime_xattr_name_for_testing(kMtimeXattrName);
   helper.set_namespaced_atime_xattr_name_for_testing(kAtimeXattrName);
 
@@ -789,8 +796,9 @@ TEST_F(MigrationHelperTest, SkipDuppedGCacheTmpDir) {
 }
 
 TEST_F(MigrationHelperTest, MinimalMigration) {
-  MigrationHelper helper(&platform_, from_dir_, to_dir_, status_files_dir_,
-                         kDefaultChunkSize, MigrationType::MINIMAL);
+  DircryptoMigrationHelperDelegate delegate(MigrationType::MINIMAL);
+  MigrationHelper helper(&platform_, &delegate, from_dir_, to_dir_,
+                         status_files_dir_, kDefaultChunkSize);
   helper.set_namespaced_mtime_xattr_name_for_testing(kMtimeXattrName);
   helper.set_namespaced_atime_xattr_name_for_testing(kAtimeXattrName);
 
@@ -861,8 +869,8 @@ TEST_F(MigrationHelperTest, MinimalMigration) {
 }
 
 TEST_F(MigrationHelperTest, CancelMigrationBeforeStart) {
-  MigrationHelper helper(&platform_, from_dir_, to_dir_, status_files_dir_,
-                         kDefaultChunkSize, MigrationType::FULL);
+  MigrationHelper helper(&platform_, &delegate_, from_dir_, to_dir_,
+                         status_files_dir_, kDefaultChunkSize);
   helper.set_namespaced_mtime_xattr_name_for_testing(kMtimeXattrName);
   helper.set_namespaced_atime_xattr_name_for_testing(kAtimeXattrName);
 
@@ -873,8 +881,8 @@ TEST_F(MigrationHelperTest, CancelMigrationBeforeStart) {
 }
 
 TEST_F(MigrationHelperTest, CancelMigrationOnAnotherThread) {
-  MigrationHelper helper(&platform_, from_dir_, to_dir_, status_files_dir_,
-                         kDefaultChunkSize, MigrationType::FULL);
+  MigrationHelper helper(&platform_, &delegate_, from_dir_, to_dir_,
+                         status_files_dir_, kDefaultChunkSize);
   helper.set_namespaced_mtime_xattr_name_for_testing(kMtimeXattrName);
   helper.set_namespaced_atime_xattr_name_for_testing(kAtimeXattrName);
 
@@ -917,8 +925,8 @@ class DataMigrationTest : public MigrationHelperTest,
                           public ::testing::WithParamInterface<size_t> {};
 
 TEST_P(DataMigrationTest, CopyFileData) {
-  MigrationHelper helper(&platform_, from_dir_, to_dir_, status_files_dir_,
-                         kDefaultChunkSize, MigrationType::FULL);
+  MigrationHelper helper(&platform_, &delegate_, from_dir_, to_dir_,
+                         status_files_dir_, kDefaultChunkSize);
   helper.set_namespaced_mtime_xattr_name_for_testing(kMtimeXattrName);
   helper.set_namespaced_atime_xattr_name_for_testing(kAtimeXattrName);
 
@@ -959,8 +967,8 @@ class MigrationHelperJobListTest
       public ::testing::WithParamInterface<size_t> {};
 
 TEST_P(MigrationHelperJobListTest, ProcessJobs) {
-  MigrationHelper helper(&platform_, from_dir_, to_dir_, status_files_dir_,
-                         kDefaultChunkSize, MigrationType::FULL);
+  MigrationHelper helper(&platform_, &delegate_, from_dir_, to_dir_,
+                         status_files_dir_, kDefaultChunkSize);
   helper.set_namespaced_mtime_xattr_name_for_testing(kMtimeXattrName);
   helper.set_namespaced_atime_xattr_name_for_testing(kAtimeXattrName);
   helper.set_max_job_list_size_for_testing(GetParam());

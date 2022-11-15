@@ -30,6 +30,7 @@
 #include <chromeos/dbus/service_constants.h>
 
 #include "cryptohome/cryptohome_metrics.h"
+#include "cryptohome/migration_type.h"
 #include "cryptohome/storage/mount.h"
 
 extern "C" {
@@ -317,17 +318,17 @@ class MigrationHelper::WorkerPool {
 };
 
 MigrationHelper::MigrationHelper(Platform* platform,
+                                 MigrationHelperDelegate* delegate,
                                  const base::FilePath& from,
                                  const base::FilePath& to,
                                  const base::FilePath& status_files_dir,
-                                 uint64_t max_chunk_size,
-                                 MigrationType migration_type)
+                                 uint64_t max_chunk_size)
     : platform_(platform),
+      delegate_(delegate),
       from_base_path_(from),
       to_base_path_(to),
       status_files_dir_(status_files_dir),
       max_chunk_size_(max_chunk_size),
-      migration_type_(migration_type),
       effective_chunk_size_(0),
       total_byte_count_(0),
       total_directory_byte_count_(0),
@@ -342,7 +343,7 @@ MigrationHelper::MigrationHelper(Platform* platform,
       num_job_threads_(0),
       max_job_list_size_(kDefaultMaxJobListSize),
       worker_pool_(new WorkerPool(this)) {
-  if (migration_type_ == MigrationType::MINIMAL) {
+  if (delegate_->migration_type() == MigrationType::MINIMAL) {
     for (const char* path : kMinimalMigrationRootPathsAllowlist) {
       minimal_migration_paths_.emplace_back(
           base::FilePath(kRootHomeSuffix).Append(path));
@@ -360,8 +361,8 @@ bool MigrationHelper::Migrate(const ProgressCallback& progress_callback) {
   base::ElapsedTimer timer;
   skipped_file_list_path_ = to_base_path_.Append(kSkippedFileListFileName);
   const bool resumed = IsMigrationStarted();
-  MigrationStartAndEndStatusReporter status_reporter(migration_type_, resumed,
-                                                     is_cancelled_);
+  MigrationStartAndEndStatusReporter status_reporter(
+      delegate_->migration_type(), resumed, is_cancelled_);
 
   if (progress_callback.is_null()) {
     LOG(ERROR) << "Invalid progress callback";
@@ -416,9 +417,8 @@ bool MigrationHelper::Migrate(const ProgressCallback& progress_callback) {
     effective_chunk_size_ =
         effective_chunk_size_ - (effective_chunk_size_ % kErasureBlockSize);
 
-  if (migration_type_ == MigrationType::FULL) {
-    // Only calculate data size if not doing a minimal migration, as we're
-    // skipping most data in minimal migration.
+  if (delegate_->ShouldReportProgress()) {
+    // Calculate total bytes to migrate only if we need to report the progress.
     if (!CalculateDataToMigrate(from_base_path_)) {
       LOG(ERROR) << "Failed to calculate number of bytes to migrate";
       return false;
@@ -438,10 +438,7 @@ bool MigrationHelper::Migrate(const ProgressCallback& progress_callback) {
                                         failed_error_type_);
     return false;
   }
-  const auto migration_timer_id = migration_type_ == MigrationType::MINIMAL
-                                      ? kDircryptoMinimalMigrationTimer
-                                      : kDircryptoMigrationTimer;
-  ReportTimerStart(migration_timer_id);
+  delegate_->ReportStartTime();
   LOG(INFO) << "Preparation took " << timer.Elapsed().InMilliseconds()
             << " ms.";
   // MigrateDir() recursively traverses the directory tree on the main thread,
@@ -460,18 +457,18 @@ bool MigrationHelper::Migrate(const ProgressCallback& progress_callback) {
     return false;
   }
   if (!resumed)
-    ReportTimerStop(migration_timer_id);
+    delegate_->ReportEndTime();
 
   // One more progress update to say that we've hit 100%
   ReportStatus(user_data_auth::DIRCRYPTO_MIGRATION_IN_PROGRESS);
   status_reporter.SetSuccess();
   const int elapsed_ms = timer.Elapsed().InMilliseconds();
   const int speed_kb_per_s = elapsed_ms ? (total_byte_count_ / elapsed_ms) : 0;
-  if (migration_type_ == MigrationType::MINIMAL) {
-    LOG(INFO) << "Minimal migration took " << elapsed_ms << " ms.";
-  } else {
+  if (delegate_->ShouldReportProgress()) {
     LOG(INFO) << "Migrated " << total_byte_count_ << " bytes in " << elapsed_ms
               << " ms at " << speed_kb_per_s << " KB/s.";
+  } else {
+    LOG(INFO) << "Minimal migration took " << elapsed_ms << " ms.";
   }
   return true;
 }
@@ -526,8 +523,7 @@ void MigrationHelper::IncrementMigratedBytes(uint64_t bytes) {
 
 void MigrationHelper::ReportStatus(
     user_data_auth::DircryptoMigrationStatus status) {
-  // Don't report for minimal migration, because we haven't calculated totals.
-  if (migration_type_ == MigrationType::MINIMAL) {
+  if (!delegate_->ShouldReportProgress()) {
     return;
   }
 
@@ -541,7 +537,7 @@ void MigrationHelper::ReportStatus(
 }
 
 bool MigrationHelper::ShouldMigrateFile(const base::FilePath& child) {
-  if (migration_type_ == MigrationType::FULL) {
+  if (delegate_->migration_type() == MigrationType::FULL) {
     // crbug.com/728892: This directory can be falling into a weird state that
     // confuses the migrator. Never try migration. Just delete it. This is fine
     // because Cryptohomed anyway creates a pass-through directory at this path
