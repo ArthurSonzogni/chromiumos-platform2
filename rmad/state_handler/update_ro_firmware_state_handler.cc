@@ -21,6 +21,8 @@
 #include <re2/re2.h>
 
 #include "rmad/constants.h"
+#include "rmad/logs/logs_constants.h"
+#include "rmad/logs/logs_utils.h"
 #include "rmad/system/power_manager_client_impl.h"
 #include "rmad/udev/udev_device.h"
 #include "rmad/udev/udev_utils.h"
@@ -103,6 +105,8 @@ RmadErrorCode UpdateRoFirmwareStateHandler::InitializeState() {
       json_store_->GetValue(kFirmwareUpdated, &firmware_updated) &&
       firmware_updated) {
     status_ = RMAD_UPDATE_RO_FIRMWARE_COMPLETE;
+    RecordFirmwareUpdateStatusToLogs(json_store_,
+                                     FirmwareUpdateStatus::kFirmwareComplete);
   } else {
     status_ = RMAD_UPDATE_RO_FIRMWARE_WAIT_USB;
   }
@@ -256,23 +260,29 @@ void UpdateRoFirmwareStateHandler::WaitUsb() {
     // External disk is detected but no rootfs partition found. Treat this
     // case as file not found.
     status_ = RMAD_UPDATE_RO_FIRMWARE_FILE_NOT_FOUND;
+    RecordFirmwareUpdateStatusToLogs(
+        json_store_, FirmwareUpdateStatus::kUsbPluggedInFileNotFound);
   }
 }
 
 void UpdateRoFirmwareStateHandler::OnCopyCompleted(bool copy_success) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  FirmwareUpdateStatus firmware_update_status;
   if (copy_success) {
     LOG(INFO) << "Found firmware updater";
     status_ = RMAD_UPDATE_RO_FIRMWARE_UPDATING;
     updater_task_runner_->PostTask(
         FROM_HERE, base::BindOnce(&UpdateRoFirmwareStateHandler::OnCopySuccess,
                                   base::Unretained(this)));
+    firmware_update_status = FirmwareUpdateStatus::kUsbPluggedIn;
   } else {
     LOG(WARNING) << "Cannot find firmware updater";
     status_ = RMAD_UPDATE_RO_FIRMWARE_FILE_NOT_FOUND;
     DCHECK(!check_usb_timer_.IsRunning());
     StartPollingTimer();
+    firmware_update_status = FirmwareUpdateStatus::kUsbPluggedInFileNotFound;
   }
+  RecordFirmwareUpdateStatusToLogs(json_store_, firmware_update_status);
 }
 
 void UpdateRoFirmwareStateHandler::OnCopySuccess() {
@@ -292,17 +302,21 @@ void UpdateRoFirmwareStateHandler::OnCopySuccess() {
 
 void UpdateRoFirmwareStateHandler::OnUpdateCompleted(bool update_success) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  FirmwareUpdateStatus firmware_update_status;
   if (update_success) {
     json_store_->SetValue(kFirmwareUpdated, true);
     status_ = RMAD_UPDATE_RO_FIRMWARE_REBOOTING;
     PostRebootTask();
+    firmware_update_status = FirmwareUpdateStatus::kFirmwareUpdated;
   } else {
     // Treat update failure as "no valid updater file".
     // TODO(chenghan): Add an enum for update failure.
     status_ = RMAD_UPDATE_RO_FIRMWARE_FILE_NOT_FOUND;
     DCHECK(!check_usb_timer_.IsRunning());
     StartPollingTimer();
+    firmware_update_status = FirmwareUpdateStatus::kUsbPluggedInFileNotFound;
   }
+  RecordFirmwareUpdateStatusToLogs(json_store_, firmware_update_status);
 }
 
 bool UpdateRoFirmwareStateHandler::RunFirmwareUpdater() {

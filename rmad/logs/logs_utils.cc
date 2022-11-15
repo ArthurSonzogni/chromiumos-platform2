@@ -149,4 +149,13 @@ bool RecordComponentCalibrationStatusToLogs(
                         LogEventType::kData, std::move(details));
 }
 
+bool RecordFirmwareUpdateStatusToLogs(scoped_refptr<JsonStore> json_store,
+                                      FirmwareUpdateStatus status) {
+  base::Value details(base::Value::Type::DICT);
+  details.SetKey(kFirmwareStatus, ConvertToValue(static_cast<int>(status)));
+
+  return AddEventToJson(json_store, RmadState::kUpdateRoFirmware,
+                        LogEventType::kData, std::move(details));
+}
+
 }  // namespace rmad

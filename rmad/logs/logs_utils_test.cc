@@ -286,4 +286,26 @@ TEST_F(LogsUtilsTest, RecordComponentCalibrationStatus) {
             (*components)[2].GetDict().FindInt(kLogCalibrationStatus));
 }
 
+// Simulates adding the firmware update status updates to an empty `logs` json.
+TEST_F(LogsUtilsTest, RecordFirmwareUpdateStatus) {
+  EXPECT_TRUE(CreateInputFile(kDefaultJson, std::size(kDefaultJson) - 1));
+
+  const FirmwareUpdateStatus status1 = FirmwareUpdateStatus::kFirmwareUpdated;
+  const FirmwareUpdateStatus status2 = FirmwareUpdateStatus::kFirmwareComplete;
+
+  EXPECT_TRUE(RecordFirmwareUpdateStatusToLogs(json_store_, status1));
+  EXPECT_TRUE(RecordFirmwareUpdateStatusToLogs(json_store_, status2));
+  base::Value logs(base::Value::Type::DICT);
+  json_store_->GetValue(kLogs, &logs);
+
+  const base::Value::List* events = logs.GetDict().FindList(kEvents);
+  EXPECT_EQ(2, events->size());
+  const base::Value::Dict& event1 = (*events)[0].GetDict();
+  EXPECT_EQ(static_cast<int>(status1),
+            event1.FindDict(kDetails)->FindInt(kFirmwareStatus));
+  const base::Value::Dict& event2 = (*events)[1].GetDict();
+  EXPECT_EQ(static_cast<int>(status2),
+            event2.FindDict(kDetails)->FindInt(kFirmwareStatus));
+}
+
 }  // namespace rmad

@@ -38,6 +38,7 @@ inline constexpr char kLogRestockOption[] = "restock_option";
 inline constexpr char kLogCalibrationComponents[] = "calibration_components";
 inline constexpr char kLogComponent[] = "component";
 inline constexpr char kLogCalibrationStatus[] = "calibration_status";
+inline constexpr char kFirmwareStatus[] = "firmware_status";
 
 enum class LogEventType {
   kTransition = 0,
@@ -51,6 +52,14 @@ enum class LogCalibrationStatus {
   kSkip = 1,
   kRetry = 2,
   kMaxValue = kRetry,
+};
+
+enum class FirmwareUpdateStatus {
+  kUsbPluggedIn = 0,
+  kUsbPluggedInFileNotFound = 1,
+  kFirmwareUpdated = 2,
+  kFirmwareComplete = 3,
+  kMaxValue = kFirmwareComplete,
 };
 
 }  // namespace rmad
