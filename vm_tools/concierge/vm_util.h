@@ -32,6 +32,19 @@ namespace concierge {
 // Path to process file descriptors.
 constexpr char kProcFileDescriptorsPath[] = "/proc/self/fd/";
 
+// Describes key components of a VM.
+struct VMImageSpec {
+  base::FilePath kernel;
+  base::FilePath initrd;
+  base::FilePath rootfs;
+  base::FilePath bios;
+  base::FilePath pflash;
+  base::FilePath tools_disk;
+  bool is_trusted_image;
+
+  VMImageSpec() = default;
+};
+
 class Disk {
  public:
   struct Config {

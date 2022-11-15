@@ -287,6 +287,76 @@ std::optional<VmStartImageFds> GetVmStartImageFds(
   return result;
 }
 
+std::string ConvertToFdBasedPaths(brillo::SafeFD& root_fd,
+                                  bool is_rootfs_writable,
+                                  VMImageSpec& image_spec,
+                                  std::vector<brillo::SafeFD>& owned_fds) {
+  std::string failure_reason;
+  if (image_spec.kernel.empty() && image_spec.bios.empty()) {
+    LOG(ERROR) << "neither a kernel nor a BIOS were provided";
+    failure_reason = "neither a kernel nor a BIOS were provided";
+    return failure_reason;
+  }
+
+  if (!image_spec.kernel.empty()) {
+    failure_reason =
+        ConvertToFdBasedPath(root_fd, &image_spec.kernel, O_RDONLY, owned_fds);
+
+    if (!failure_reason.empty()) {
+      LOG(ERROR) << "Missing VM kernel path: " << image_spec.kernel.value();
+      failure_reason = "Kernel path does not exist";
+      return failure_reason;
+    }
+  }
+
+  if (!image_spec.bios.empty()) {
+    failure_reason =
+        ConvertToFdBasedPath(root_fd, &image_spec.bios, O_RDONLY, owned_fds);
+
+    if (!failure_reason.empty()) {
+      LOG(ERROR) << "Missing VM BIOS path: " << image_spec.bios.value();
+      failure_reason = "BIOS path does not exist";
+      return failure_reason;
+    }
+  }
+
+  if (!image_spec.pflash.empty()) {
+    failure_reason =
+        ConvertToFdBasedPath(root_fd, &image_spec.pflash, O_RDONLY, owned_fds);
+
+    if (!failure_reason.empty()) {
+      LOG(ERROR) << "Missing VM pflash path: " << image_spec.pflash.value();
+      failure_reason = "pflash path does not exist";
+      return failure_reason;
+    }
+  }
+
+  if (!image_spec.initrd.empty()) {
+    failure_reason =
+        ConvertToFdBasedPath(root_fd, &image_spec.initrd, O_RDONLY, owned_fds);
+
+    if (!failure_reason.empty()) {
+      LOG(ERROR) << "Missing VM initrd path: " << image_spec.initrd.value();
+      failure_reason = "Initrd path does not exist";
+      return failure_reason;
+    }
+  }
+
+  if (!image_spec.rootfs.empty()) {
+    failure_reason =
+        ConvertToFdBasedPath(root_fd, &image_spec.rootfs,
+                             is_rootfs_writable ? O_RDWR : O_RDONLY, owned_fds);
+
+    if (!failure_reason.empty()) {
+      LOG(ERROR) << "Missing VM rootfs path: " << image_spec.rootfs.value();
+      failure_reason = "Rootfs path does not exist";
+      return failure_reason;
+    }
+  }
+
+  return failure_reason;
+}
+
 // Passes |method_call| to |handler| and passes the response to
 // |response_sender|. If |handler| returns NULL, an empty response is created
 // and sent.
@@ -1756,66 +1826,11 @@ StartVmResponse Service::StartVm(StartVmRequest request,
     return response;
   }
 
-  if (!image_spec.kernel.empty()) {
-    failure_reason = ConvertToFdBasedPath(root_fd.first, &image_spec.kernel,
-                                          O_RDONLY, owned_fds);
-
-    if (!failure_reason.empty()) {
-      LOG(ERROR) << "Missing VM kernel path: " << image_spec.kernel.value();
-      response.set_failure_reason("Kernel path does not exist");
-      return response;
-    }
-  }
-
-  if (!image_spec.bios.empty()) {
-    failure_reason = ConvertToFdBasedPath(root_fd.first, &image_spec.bios,
-                                          O_RDONLY, owned_fds);
-
-    if (!failure_reason.empty()) {
-      LOG(ERROR) << "Missing VM BIOS path: " << image_spec.bios.value();
-      response.set_failure_reason("BIOS path does not exist");
-      return response;
-    }
-  }
-
-  if (!image_spec.pflash.empty()) {
-    failure_reason = ConvertToFdBasedPath(root_fd.first, &image_spec.pflash,
-                                          O_RDONLY, owned_fds);
-
-    if (!failure_reason.empty()) {
-      LOG(ERROR) << "Missing VM pflash path: " << image_spec.pflash.value();
-      response.set_failure_reason("pflash path does not exist");
-      return response;
-    }
-  }
-
-  if (image_spec.kernel.empty() && image_spec.bios.empty()) {
-    LOG(ERROR) << "neither a kernel nor a BIOS were provided";
-    response.set_failure_reason("neither a kernel nor a BIOS were provided");
+  string convert_fd_based_path_result = ConvertToFdBasedPaths(
+      root_fd.first, request.writable_rootfs(), image_spec, owned_fds);
+  if (!convert_fd_based_path_result.empty()) {
+    response.set_failure_reason(convert_fd_based_path_result);
     return response;
-  }
-
-  if (!image_spec.initrd.empty()) {
-    failure_reason = ConvertToFdBasedPath(root_fd.first, &image_spec.initrd,
-                                          O_RDONLY, owned_fds);
-
-    if (!failure_reason.empty()) {
-      LOG(ERROR) << "Missing VM initrd path: " << image_spec.initrd.value();
-      response.set_failure_reason("Initrd path does not exist");
-      return response;
-    }
-  }
-
-  if (!image_spec.rootfs.empty()) {
-    failure_reason = ConvertToFdBasedPath(
-        root_fd.first, &image_spec.rootfs,
-        request.writable_rootfs() ? O_RDWR : O_RDONLY, owned_fds);
-
-    if (!failure_reason.empty()) {
-      LOG(ERROR) << "Missing VM rootfs path: " << image_spec.rootfs.value();
-      response.set_failure_reason("Rootfs path does not exist");
-      return response;
-    }
   }
 
   const bool is_untrusted_vm =
@@ -4551,7 +4566,7 @@ base::FilePath Service::GetVmImagePath(const std::string& dlc_id,
   return base::FilePath(dlc_root.value());
 }
 
-Service::VMImageSpec Service::GetImageSpec(
+VMImageSpec Service::GetImageSpec(
     const vm_tools::concierge::VirtualMachineSpec& vm,
     const std::optional<base::ScopedFD>& kernel_fd,
     const std::optional<base::ScopedFD>& rootfs_fd,
