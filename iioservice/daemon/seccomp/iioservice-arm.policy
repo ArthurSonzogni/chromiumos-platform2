@@ -59,6 +59,7 @@ openat: 1
 pipe2: 1
 poll: 1
 prctl: arg0 == PR_SET_NAME
+process_vm_readv: 1
 read: 1
 readlink: 1
 readlinkat: 1

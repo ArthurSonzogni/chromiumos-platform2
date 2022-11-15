@@ -112,6 +112,7 @@ prctl: arg0 == PR_SET_SECCOMP || arg0 == PR_SET_NO_NEW_PRIVS || \
        arg0 == PR_SET_NAME
 pread64: 1
 prlimit64: 1
+process_vm_readv: 1
 read: 1
 readlinkat: 1
 recvmsg: 1

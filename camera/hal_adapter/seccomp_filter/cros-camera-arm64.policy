@@ -57,6 +57,7 @@ openat: 1
 pipe2: 1
 ppoll: 1
 prctl: 1
+process_vm_readv: 1
 pselect6: 1
 read: 1
 readlinkat: 1

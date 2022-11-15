@@ -71,6 +71,7 @@ ppoll: 1
 ppoll_time64: 1
 prctl: 1
 prlimit64: 1
+process_vm_readv: 1
 pselect6: 1
 pselect6_time64: 1
 read: 1
