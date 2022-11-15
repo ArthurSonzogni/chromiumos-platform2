@@ -10,6 +10,7 @@
 #include <optional>
 #include <string>
 #include <vector>
+#include "libec/fingerprint/fp_sensor_errors.h"
 
 #include <brillo/secure_blob.h>
 #include <chromeos/ec/ec_commands.h>
@@ -74,6 +75,8 @@ class CrosFpDeviceInterface {
 
   virtual ec::EcCmdVersionSupportStatus EcCmdVersionSupported(uint16_t cmd,
                                                               uint32_t ver) = 0;
+
+  virtual ec::FpSensorErrors GetHwErrors() = 0;
 };
 
 }  // namespace ec

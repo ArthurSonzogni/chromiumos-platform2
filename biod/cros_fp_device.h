@@ -72,6 +72,8 @@ class CrosFpDevice : public ec::CrosFpDeviceInterface {
   int TemplateVersion() override;
   int DeadPixelCount() override;
 
+  ec::FpSensorErrors GetHwErrors() override;
+
   ec::EcCmdVersionSupportStatus EcCmdVersionSupported(uint16_t cmd,
                                                       uint32_t ver) override;
 

@@ -755,6 +755,14 @@ int CrosFpDevice::DeadPixelCount() {
   return info_->NumDeadPixels();
 }
 
+FpSensorErrors CrosFpDevice::GetHwErrors() {
+  if (!info_) {
+    UpdateFpInfo();
+  }
+  CHECK(info_);
+  return info_->GetFpSensorErrors();
+}
+
 void CrosFpDevice::SetMkbpEventCallback(CrosFpDevice::MkbpCallback callback) {
   mkbp_event_ = callback;
 }

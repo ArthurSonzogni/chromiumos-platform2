@@ -37,6 +37,7 @@ class MockCrosFpDevice : public ec::CrosFpDeviceInterface {
   MOCK_METHOD(int, MaxTemplateCount, (), (override));
   MOCK_METHOD(int, TemplateVersion, (), (override));
   MOCK_METHOD(int, DeadPixelCount, (), (override));
+  MOCK_METHOD(ec::FpSensorErrors, GetHwErrors, (), (override));
   MOCK_METHOD(ec::EcCmdVersionSupportStatus,
               EcCmdVersionSupported,
               (uint16_t cmd, uint32_t ver),
