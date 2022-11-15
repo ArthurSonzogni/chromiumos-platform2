@@ -359,7 +359,6 @@ UserDataAuth::UserDataAuth()
       default_install_attrs_(nullptr),
       install_attrs_(nullptr),
       enterprise_owned_(false),
-      reported_pkcs11_init_fail_(false),
       default_user_activity_timestamp_manager_(
           new UserOldestActivityTimestampManager(platform_)),
       user_activity_timestamp_manager_(
