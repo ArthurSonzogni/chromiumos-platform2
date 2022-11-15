@@ -614,8 +614,6 @@ void ReportTimerDuration(const TimerType& timer_type,
                          base::TimeTicks start_time,
                          const std::string& parameter_string);
 
-void ReportChecksum(ChecksumStatus status);
-
 // Reports the result of credentials revocation for `auth_block_type` to the
 // "Cryptohome.{AuthBlockType}.CredentialRevocationResult" histogram.
 void ReportCredentialRevocationResult(AuthBlockType auth_block_type,

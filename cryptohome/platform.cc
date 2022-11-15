@@ -82,7 +82,6 @@ extern "C" {
 }
 
 #include "cryptohome/crc32.h"
-#include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/dircrypto_util.h"
 
 using base::FilePath;
@@ -1607,13 +1606,11 @@ void Platform::VerifyChecksum(const FilePath& path,
   }
   FilePath name = path.AddExtension("sum");
   if (!FileExists(name)) {
-    ReportChecksum(kChecksumDoesNotExist);
     return;
   }
   std::string saved_sum;
   if (!base::ReadFileToString(name, &saved_sum)) {
     LOG(ERROR) << "CHECKSUM: Failed to read checksum for " << path.value();
-    ReportChecksum(kChecksumReadError);
     return;
   }
   if (saved_sum != GetChecksum(content, content_size)) {
@@ -1624,17 +1621,14 @@ void Platform::VerifyChecksum(const FilePath& path,
     if (!base::GetFileInfo(path, &content_file_info) ||
         !base::GetFileInfo(name, &checksum_file_info)) {
       LOG(ERROR) << "CHECKSUM: Failed to read file info for " << path.value();
-      ReportChecksum(kChecksumReadError);
       return;
     }
     base::TimeDelta checksum_timestamp_diff =
         checksum_file_info.last_modified - content_file_info.last_modified;
     if (checksum_timestamp_diff.magnitude().InSeconds() > 1) {
       LOG(ERROR) << "CHECKSUM: Checksum out-of-sync for " << path.value();
-      ReportChecksum(kChecksumOutOfSync);
     } else {
       LOG(ERROR) << "CHECKSUM: Failed to verify checksum for " << path.value();
-      ReportChecksum(kChecksumMismatch);
     }
     // Attempt to update the checksum to match the current content.
     mode_t current_mode;
@@ -1643,7 +1637,6 @@ void Platform::VerifyChecksum(const FilePath& path,
     }
     return;
   }
-  ReportChecksum(kChecksumOK);
 }
 
 FileEnumerator::FileInfo::FileInfo(

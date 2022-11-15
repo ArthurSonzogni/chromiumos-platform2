@@ -23,7 +23,6 @@ struct TimerHistogramParams {
 };
 
 constexpr char kCryptohomeErrorHistogram[] = "Cryptohome.Errors";
-constexpr char kChecksumStatusHistogram[] = "Cryptohome.ChecksumStatus";
 constexpr char kCredentialRevocationResultHistogram[] =
     "Cryptohome.%s.CredentialRevocationResult";
 constexpr char kCryptohomeDeletedUserProfilesHistogram[] =
@@ -381,14 +380,6 @@ void ReportTimerDuration(const TimerType& timer_type,
                        kTimerHistogramParams[timer_type].min_sample,
                        kTimerHistogramParams[timer_type].max_sample,
                        kTimerHistogramParams[timer_type].num_buckets);
-}
-
-void ReportChecksum(ChecksumStatus status) {
-  if (!g_metrics) {
-    return;
-  }
-  g_metrics->SendEnumToUMA(kChecksumStatusHistogram, status,
-                           kChecksumStatusNumBuckets);
 }
 
 void ReportCredentialRevocationResult(AuthBlockType auth_block_type,
