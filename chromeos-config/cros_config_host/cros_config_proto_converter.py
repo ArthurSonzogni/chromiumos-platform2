@@ -2925,14 +2925,15 @@ def _proximity_map(configs, project_name, output_dir, build_root_dir):
                     )
                     if os.path.exists(output_path):
                         with open(output_path) as f:
-                            if f.read() != semtech_file_content:
+                            if f.read().rstrip("\n") != semtech_file_content:
                                 raise Exception(
                                     f"Project {project_name} has conflicting"
                                     f"proximity file content under {filename}"
                                 )
                     else:
                         with open(output_path, "w") as f:
-                            f.write(semtech_file_content)
+                            # Using print function adds proper trailing newline.
+                            print(semtech_file_content, file=f)
                     system_path = (
                         "/usr/share/chromeos-assets"
                         "/proximity-sensor"
