@@ -65,8 +65,6 @@ class MigrationHelper {
   // for the desired size of data to transfer at once, but may be reduced if
   // there is not enough free space on disk or the provided max_chunk_size is
   // inefficient.
-  // If |minimal_migration| is true, progress reporting will be omitted and only
-  // important profile parts will be migrated. Most user data will be wiped.
   MigrationHelper(Platform* platform,
                   MigrationHelperDelegate* delegate,
                   const base::FilePath& from,
@@ -135,9 +133,6 @@ class MigrationHelper {
   //   child - relative path under the base path to migrate.
   bool MigrateDir(const base::FilePath& child,
                   const FileEnumerator::FileInfo& info);
-  // Returns true if |child| should be migrated. false means that it will be
-  // deleted in the old user home, but not copied to the new user home.
-  bool ShouldMigrateFile(const base::FilePath& child);
   // Creates a new link |to_base_path_|/|child| which has the same attributes
   // and target as |from_base_path_|/|child|.  If the target points to an
   // absolute path under |from_base_path_|, it is rewritten to point to the
@@ -196,8 +191,6 @@ class MigrationHelper {
   const base::FilePath to_base_path_;
   const base::FilePath status_files_dir_;
   const uint64_t max_chunk_size_;
-  // Allowlisted paths for minimal migration. May contain directories and files.
-  std::vector<base::FilePath> minimal_migration_paths_;
 
   ProgressCallback progress_callback_;
 

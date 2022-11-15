@@ -29,9 +29,6 @@
 #include <base/timer/elapsed_timer.h>
 #include <chromeos/dbus/service_constants.h>
 
-#include "cryptohome/migration_type.h"
-#include "cryptohome/storage/mount.h"
-
 extern "C" {
 #include <linux/fs.h>
 }
@@ -50,42 +47,6 @@ constexpr uint64_t kFreeSpaceBuffer = kErasureBlockSize;
 
 // The maximum size of job list.
 constexpr size_t kDefaultMaxJobListSize = 100000;
-
-// List of paths in the root part of the user home to be migrated when minimal
-// migration is performed. If the last component of a path is *, it means that
-// all children should be migrated too.
-const char* const kMinimalMigrationRootPathsAllowlist[] = {
-    // Keep the user policy - network/proxy settings could be stored here and
-    // chrome will need network access to re-setup the wiped profile. Also, we
-    // want to make absolutely sure that the user session does not end up in an
-    // unmanaged state (without policy).
-    "session_manager/policy",
-};
-
-// List of paths in the user part of the user home to be migrated when minimal
-// migration is performed. If the path refers to a directory, all children will
-// be migrated too.
-const char* const kMinimalMigrationUserPathsAllowlist[] = {
-    // Migrate the log directory, because it only gets created on fresh user
-    // home creation by copying the skeleton structure. If it's missing, chrome
-    // user sessoin won't log.
-    "log",
-    // Migrate the user's certificate database, in case the user has client
-    // certificates necesary to access networks.
-    ".pki",
-    // Migrate Cookies, as authentiation tokens might be stored in cookies.
-    "Cookies",
-    "Cookies-journal",
-    // Migrate state realted to HTTPS, especially channel binding state (Origin
-    // Bound Certs), and transport security (HSTS).
-    "Origin Bound Certs",
-    "Origin Bound Certs-journal",
-    "TransportSecurity",
-    // Web Data contains the Token Service Table which authentication tokens for
-    // chrome services (sign-in OAuth2 token).
-    "Web Data",
-    "Web Data-journal",
-};
 
 // Sends the UMA stat for the start/end status of migration respectively in the
 // constructor/destructor. By default the "generic error" end status is set, so
@@ -328,18 +289,7 @@ MigrationHelper::MigrationHelper(Platform* platform,
       failed_error_type_(base::File::FILE_OK),
       num_job_threads_(0),
       max_job_list_size_(kDefaultMaxJobListSize),
-      worker_pool_(new WorkerPool(this)) {
-  if (delegate_->migration_type() == MigrationType::MINIMAL) {
-    for (const char* path : kMinimalMigrationRootPathsAllowlist) {
-      minimal_migration_paths_.emplace_back(
-          base::FilePath(kRootHomeSuffix).Append(path));
-    }
-    for (const char* path : kMinimalMigrationUserPathsAllowlist) {
-      minimal_migration_paths_.emplace_back(
-          base::FilePath(kUserHomeSuffix).Append(path));
-    }
-  }
-}
+      worker_pool_(new WorkerPool(this)) {}
 
 MigrationHelper::~MigrationHelper() {}
 
@@ -521,39 +471,6 @@ void MigrationHelper::ReportStatus(
   next_report_ = base::TimeTicks::Now() + kStatusSignalInterval;
 }
 
-// TODO(b/258402655): Move this method to |delegate_|.
-bool MigrationHelper::ShouldMigrateFile(const base::FilePath& child) {
-  if (delegate_->migration_type() == MigrationType::FULL) {
-    // crbug.com/728892: This directory can be falling into a weird state that
-    // confuses the migrator. Never try migration. Just delete it. This is fine
-    // because Cryptohomed anyway creates a pass-through directory at this path
-    // and Chrome never uses contents of the directory left by old sessions.
-    if (child == base::FilePath(kUserHomeSuffix)
-                     .Append(kGCacheDir)
-                     .Append(kGCacheVersion1Dir)
-                     .Append(kGCacheTmpDir)) {
-      return false;
-    }
-
-    return true;
-  } else {
-    // Minimal migration - process the allowlist. Because the allowlist is
-    // supposed to be small, we won't recurse into many subdirectories, so we
-    // assume that iterating all allowlist elements for each file is fine.
-    for (const auto& migration_path : minimal_migration_paths_) {
-      // If the current path is one of the allowlisted paths, or its
-      // parent, migrate it.
-      if (child == migration_path || child.IsParent(migration_path))
-        return true;
-      // Recursively migrate contents of directories specified for migration.
-      if (migration_path.IsParent(child))
-        return true;
-    }
-
-    return false;
-  }
-}
-
 bool MigrationHelper::MigrateDir(const base::FilePath& child,
                                  const FileEnumerator::FileInfo& info) {
   if (is_cancelled_.IsSet()) {
@@ -586,7 +503,7 @@ bool MigrationHelper::MigrateDir(const base::FilePath& child,
     const FileEnumerator::FileInfo& entry_info = enumerator->GetInfo();
     const base::FilePath& new_child = child.Append(entry.BaseName());
     mode_t mode = entry_info.stat().st_mode;
-    if (!ShouldMigrateFile(new_child)) {
+    if (!delegate_->ShouldMigrateFile(new_child)) {
       // Delete paths which should be skipped
       if (!platform_->DeletePathRecursively(entry)) {
         PLOG(ERROR) << "Failed to delete " << entry.value();

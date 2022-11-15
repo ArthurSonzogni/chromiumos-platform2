@@ -62,8 +62,7 @@ constexpr char kToDir[] = "/home/.shadow/deadbeef/mount";
 class MigrationHelperTest : public ::testing::Test {
  public:
   MigrationHelperTest()
-      : delegate_(MigrationHelperDelegate(MigrationType::FULL)),
-        status_files_dir_(kStatusFilesDir),
+      : status_files_dir_(kStatusFilesDir),
         from_dir_(kFromDir),
         to_dir_(kToDir) {}
   virtual ~MigrationHelperTest() {}

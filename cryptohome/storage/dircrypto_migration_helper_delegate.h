@@ -5,6 +5,8 @@
 #ifndef CRYPTOHOME_STORAGE_DIRCRYPTO_MIGRATION_HELPER_DELEGATE_H_
 #define CRYPTOHOME_STORAGE_DIRCRYPTO_MIGRATION_HELPER_DELEGATE_H_
 
+#include <vector>
+
 #include <base/files/file_path.h>
 
 #include "cryptohome/data_migrator/migration_helper.h"
@@ -28,6 +30,7 @@ class DircryptoMigrationHelperDelegate
 
   // dircrypto_data_migrator::MigrationHelperDelegate overrides:
   bool ShouldReportProgress() override;
+  bool ShouldMigrateFile(const base::FilePath& child) override;
   void ReportStartTime() override;
   void ReportEndTime() override;
   void ReportStartStatus(data_migrator::MigrationStartStatus status) override;
@@ -39,6 +42,12 @@ class DircryptoMigrationHelperDelegate
   void ReportFailedNoSpace(int initial_migration_free_space_mb,
                            int failure_free_space_mb) override;
   void ReportFailedNoSpaceXattrSizeInBytes(int total_xattr_size_bytes) override;
+
+ private:
+  const MigrationType migration_type_;
+
+  // Allowlisted paths for minimal migration. May contain directories and files.
+  std::vector<base::FilePath> minimal_migration_paths_;
 };
 
 }  // namespace cryptohome

@@ -9,7 +9,6 @@
 #include <base/files/file_path.h>
 
 #include "cryptohome/data_migrator/metrics.h"
-#include "cryptohome/migration_type.h"
 
 namespace cryptohome::data_migrator {
 
@@ -17,22 +16,21 @@ namespace cryptohome::data_migrator {
 // the migration.
 class MigrationHelperDelegate {
  public:
-  // TODO(b/258402655): Remove this constructor, the data member
-  // |migration_type_| and its getter migration_type() after removing dependency
-  // on MigrationType from MigrationHelper.
-  explicit MigrationHelperDelegate(MigrationType migration_type)
-      : migration_type_(migration_type) {}
+  MigrationHelperDelegate() = default;
   virtual ~MigrationHelperDelegate() = default;
 
   MigrationHelperDelegate(const MigrationHelperDelegate&) = delete;
   MigrationHelperDelegate& operator=(const MigrationHelperDelegate&) = delete;
 
-  virtual MigrationType migration_type() { return migration_type_; }
-
   // Returns whether MigrationHelper should occasionally report the progress of
   // the migration, which includes the bytes already migrated and the total
   // bytes to be migrated.
   virtual bool ShouldReportProgress() { return true; }
+
+  // Returns true if |path| (relative path from the root directory of the
+  // migration source) should be migrated. false means that it will be deleted
+  // from the migration source, but not copied to the migration destination.
+  virtual bool ShouldMigrateFile(const base::FilePath& path) { return true; }
 
   // Reports the current time as the migration start time.
   virtual void ReportStartTime() {}
@@ -67,12 +65,6 @@ class MigrationHelperDelegate {
   // and the size of an xattr attempted to be set on the file.
   virtual void ReportFailedNoSpaceXattrSizeInBytes(int total_xattr_size_bytes) {
   }
-
-  // TODO(b/258402655): Move more Ext4-migration-specific part of
-  // data_migrator to this class.
-
- private:
-  const MigrationType migration_type_;
 };
 
 }  // namespace cryptohome::data_migrator
