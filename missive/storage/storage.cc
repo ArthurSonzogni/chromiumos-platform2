@@ -27,7 +27,6 @@
 #include <base/task/task_traits.h>
 #include <base/task/thread_pool.h>
 #include <base/threading/thread.h>
-#include <base/threading/thread_task_runner_handle.h>
 #include <google/protobuf/io/zero_copy_stream_impl.h>
 
 #include "missive/compression/compression_module.h"

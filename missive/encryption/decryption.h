@@ -13,7 +13,6 @@
 #include <base/memory/scoped_refptr.h>
 #include <base/strings/string_piece.h>
 #include <base/threading/thread.h>
-#include <base/threading/thread_task_runner_handle.h>
 
 #include "missive/encryption/encryption.h"
 #include "missive/util/status.h"

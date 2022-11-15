@@ -12,7 +12,7 @@
 
 #include <base/callback.h>
 #include <base/memory/ref_counted.h>
-#include <base/threading/thread_task_runner_handle.h>
+#include <base/threading/sequenced_task_runner_handle.h>
 
 #include "missive/dbus/upload_client.h"
 #include "missive/proto/record.pb.h"
@@ -21,7 +21,8 @@ namespace reporting::test {
 
 class MockUploadClient : public UploadClient {
  public:
-  MockUploadClient() : UploadClient(base::ThreadTaskRunnerHandle::Get()) {}
+  MockUploadClient()
+      : UploadClient(base::SequencedTaskRunner::GetCurrentDefault()) {}
 
   MOCK_METHOD(void,
               SendEncryptedRecords,
