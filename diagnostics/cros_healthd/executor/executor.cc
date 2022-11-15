@@ -129,8 +129,7 @@ void ReadTrimFileAndReplyCallback(
 }
 
 void GetFingerprintFrameCallback(
-    base::OnceCallback<void(mojom::FingerprintFrameResultPtr,
-                            const std::optional<std::string>&)> callback,
+    mojom::Executor::GetFingerprintFrameCallback callback,
     std::unique_ptr<DelegateProcess> delegate,
     mojom::FingerprintFrameResultPtr result,
     const std::optional<std::string>& err) {
@@ -140,8 +139,7 @@ void GetFingerprintFrameCallback(
 
 void GetFingerprintFrameTask(
     mojom::FingerprintCaptureType type,
-    base::OnceCallback<void(mojom::FingerprintFrameResultPtr,
-                            const std::optional<std::string>&)> callback) {
+    mojom::Executor::GetFingerprintFrameCallback callback) {
   auto delegate = std::make_unique<DelegateProcess>(
       kFingerprintSeccompPolicyPath, kFingerprintUserAndGroup, kNullCapability,
       /*readonly_mount_points=*/std::vector<base::FilePath>{},
@@ -157,8 +155,7 @@ void GetFingerprintFrameTask(
 }
 
 void GetFingerprintInfoCallback(
-    base::OnceCallback<void(mojom::FingerprintInfoResultPtr,
-                            const std::optional<std::string>&)> callback,
+    mojom::Executor::GetFingerprintInfoCallback callback,
     std::unique_ptr<DelegateProcess> delegate,
     mojom::FingerprintInfoResultPtr result,
     const std::optional<std::string>& err) {
@@ -167,8 +164,7 @@ void GetFingerprintInfoCallback(
 }
 
 void GetFingerprintInfoTask(
-    base::OnceCallback<void(mojom::FingerprintInfoResultPtr,
-                            const std::optional<std::string>&)> callback) {
+    mojom::Executor::GetFingerprintInfoCallback callback) {
   auto delegate = std::make_unique<DelegateProcess>(
       kFingerprintSeccompPolicyPath, kFingerprintUserAndGroup, kNullCapability,
       /*readonly_mount_points=*/std::vector<base::FilePath>{},
