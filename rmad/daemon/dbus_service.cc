@@ -220,39 +220,42 @@ scoped_refptr<DaemonCallback> DBusService::CreateDaemonCallback() const {
   auto daemon_callback = base::MakeRefCounted<DaemonCallback>();
   daemon_callback->SetHardwareVerificationSignalCallback(
       base::BindRepeating(&DBusService::SendHardwareVerificationResultSignal,
-                          weak_ptr_factory_.GetWeakPtr()));
+                          weak_ptr_factory_.GetMutableWeakPtr()));
   daemon_callback->SetUpdateRoFirmwareSignalCallback(
       base::BindRepeating(&DBusService::SendUpdateRoFirmwareStatusSignal,
-                          weak_ptr_factory_.GetWeakPtr()));
+                          weak_ptr_factory_.GetMutableWeakPtr()));
   daemon_callback->SetCalibrationOverallSignalCallback(
       base::BindRepeating(&DBusService::SendCalibrationOverallSignal,
-                          weak_ptr_factory_.GetWeakPtr()));
+                          weak_ptr_factory_.GetMutableWeakPtr()));
   daemon_callback->SetCalibrationComponentSignalCallback(
       base::BindRepeating(&DBusService::SendCalibrationProgressSignal,
-                          weak_ptr_factory_.GetWeakPtr()));
+                          weak_ptr_factory_.GetMutableWeakPtr()));
   daemon_callback->SetProvisionSignalCallback(
       base::BindRepeating(&DBusService::SendProvisionProgressSignal,
-                          weak_ptr_factory_.GetWeakPtr()));
+                          weak_ptr_factory_.GetMutableWeakPtr()));
   daemon_callback->SetFinalizeSignalCallback(
       base::BindRepeating(&DBusService::SendFinalizeProgressSignal,
-                          weak_ptr_factory_.GetWeakPtr()));
+                          weak_ptr_factory_.GetMutableWeakPtr()));
   daemon_callback->SetWriteProtectSignalCallback(
       base::BindRepeating(&DBusService::SendHardwareWriteProtectionStateSignal,
-                          weak_ptr_factory_.GetWeakPtr()));
-  daemon_callback->SetPowerCableSignalCallback(base::BindRepeating(
-      &DBusService::SendPowerCableStateSignal, weak_ptr_factory_.GetWeakPtr()));
-  daemon_callback->SetExternalDiskSignalCallback(base::BindRepeating(
-      &DBusService::SendExternalDiskSignal, weak_ptr_factory_.GetWeakPtr()));
-  daemon_callback->SetExecuteMountAndWriteLogCallback(base::BindRepeating(
-      &DBusService::ExecuteMountAndWriteLog, weak_ptr_factory_.GetWeakPtr()));
+                          weak_ptr_factory_.GetMutableWeakPtr()));
+  daemon_callback->SetPowerCableSignalCallback(
+      base::BindRepeating(&DBusService::SendPowerCableStateSignal,
+                          weak_ptr_factory_.GetMutableWeakPtr()));
+  daemon_callback->SetExternalDiskSignalCallback(
+      base::BindRepeating(&DBusService::SendExternalDiskSignal,
+                          weak_ptr_factory_.GetMutableWeakPtr()));
+  daemon_callback->SetExecuteMountAndWriteLogCallback(
+      base::BindRepeating(&DBusService::ExecuteMountAndWriteLog,
+                          weak_ptr_factory_.GetMutableWeakPtr()));
   daemon_callback->SetExecuteMountAndCopyFirmwareUpdaterCallback(
       base::BindRepeating(&DBusService::ExecuteMountAndCopyFirmwareUpdater,
-                          weak_ptr_factory_.GetWeakPtr()));
+                          weak_ptr_factory_.GetMutableWeakPtr()));
   daemon_callback->SetExecuteRebootEcCallback(base::BindRepeating(
-      &DBusService::ExecuteRebootEc, weak_ptr_factory_.GetWeakPtr()));
+      &DBusService::ExecuteRebootEc, weak_ptr_factory_.GetMutableWeakPtr()));
   daemon_callback->SetExecuteRequestRmaPowerwashCallback(
       base::BindRepeating(&DBusService::ExecuteRequestRmaPowerwash,
-                          weak_ptr_factory_.GetWeakPtr()));
+                          weak_ptr_factory_.GetMutableWeakPtr()));
   return daemon_callback;
 }
 
