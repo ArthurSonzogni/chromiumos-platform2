@@ -29,8 +29,8 @@
 #include "power_manager/common/metrics_sender_stub.h"
 #include "power_manager/common/power_constants.h"
 #include "power_manager/powerd/daemon_delegate.h"
-#include "power_manager/powerd/policy/backlight_controller_stub.h"
 #include "power_manager/powerd/policy/mock_adaptive_charging_controller.h"
+#include "power_manager/powerd/policy/mock_backlight_controller.h"
 #include "power_manager/powerd/system/acpi_wakeup_helper_stub.h"
 #include "power_manager/powerd/system/ambient_light_sensor_manager_stub.h"
 #include "power_manager/powerd/system/ambient_light_sensor_watcher_stub.h"
@@ -60,7 +60,9 @@
 #include "power_manager/proto_bindings/switch_states.pb.h"
 
 using ::testing::_;
+using ::testing::Mock;
 using ::testing::Return;
+using ::testing::Sequence;
 
 namespace power_manager {
 
@@ -92,11 +94,11 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
         passed_ec_keyboard_backlight_(new system::BacklightStub(
             100, 100, system::BacklightInterface::BrightnessScale::kUnknown)),
         passed_external_backlight_controller_(
-            new policy::BacklightControllerStub()),
+            new policy::MockBacklightController()),
         passed_internal_backlight_controller_(
-            new policy::BacklightControllerStub()),
+            new policy::MockBacklightController()),
         passed_keyboard_backlight_controller_(
-            new policy::BacklightControllerStub()),
+            new policy::MockBacklightController()),
         passed_input_watcher_(new system::InputWatcherStub()),
         passed_acpi_wakeup_helper_(new system::AcpiWakeupHelperStub()),
         passed_ec_helper_(new system::CrosEcHelperStub()),
@@ -551,11 +553,11 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
   std::unique_ptr<system::BacklightStub> passed_keyboard_backlight_;
   std::unique_ptr<ec::EcUsbEndpointInterface> passed_ec_usb_endpoint_;
   std::unique_ptr<system::BacklightStub> passed_ec_keyboard_backlight_;
-  std::unique_ptr<policy::BacklightControllerStub>
+  std::unique_ptr<policy::MockBacklightController>
       passed_external_backlight_controller_;
-  std::unique_ptr<policy::BacklightControllerStub>
+  std::unique_ptr<policy::MockBacklightController>
       passed_internal_backlight_controller_;
-  std::unique_ptr<policy::BacklightControllerStub>
+  std::unique_ptr<policy::MockBacklightController>
       passed_keyboard_backlight_controller_;
   std::unique_ptr<system::InputWatcherStub> passed_input_watcher_;
   std::unique_ptr<system::AcpiWakeupHelperStub> passed_acpi_wakeup_helper_;
@@ -595,9 +597,9 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
   system::BacklightStub* internal_backlight_;
   system::BacklightStub* keyboard_backlight_;
   system::BacklightStub* ec_keyboard_backlight_;
-  policy::BacklightControllerStub* external_backlight_controller_;
-  policy::BacklightControllerStub* internal_backlight_controller_;
-  policy::BacklightControllerStub* keyboard_backlight_controller_;
+  policy::MockBacklightController* external_backlight_controller_;
+  policy::MockBacklightController* internal_backlight_controller_;
+  policy::MockBacklightController* keyboard_backlight_controller_;
   system::InputWatcherStub* input_watcher_;
   system::AcpiWakeupHelperStub* acpi_wakeup_helper_;
   system::CrosEcHelperStub* ec_helper_;
@@ -641,110 +643,137 @@ TEST_F(DaemonTest, NotifyMembersAboutEvents) {
   prefs_->SetInt64(kHasKeyboardBacklightPref, 1);
 
   Init();
-  internal_backlight_controller_->ResetStats();
-  keyboard_backlight_controller_->ResetStats();
 
   // Power button events.
+  EXPECT_CALL(*internal_backlight_controller_, HandlePowerButtonPress())
+      .Times(1);
+  EXPECT_CALL(*keyboard_backlight_controller_, HandlePowerButtonPress())
+      .Times(1);
   input_watcher_->NotifyObserversAboutPowerButtonEvent(ButtonState::DOWN);
-  EXPECT_EQ(1, internal_backlight_controller_->power_button_presses());
-  EXPECT_EQ(1, keyboard_backlight_controller_->power_button_presses());
+  Mock::VerifyAndClearExpectations(internal_backlight_controller_);
+  Mock::VerifyAndClearExpectations(keyboard_backlight_controller_);
 
   // Hover state changes.
-  input_watcher_->NotifyObserversAboutHoverState(true);
-  input_watcher_->NotifyObserversAboutHoverState(false);
-  ASSERT_EQ(2, internal_backlight_controller_->hover_state_changes().size());
-  EXPECT_TRUE(internal_backlight_controller_->hover_state_changes()[0]);
-  EXPECT_FALSE(internal_backlight_controller_->hover_state_changes()[1]);
-  ASSERT_EQ(2, keyboard_backlight_controller_->hover_state_changes().size());
-  EXPECT_TRUE(keyboard_backlight_controller_->hover_state_changes()[0]);
-  EXPECT_FALSE(keyboard_backlight_controller_->hover_state_changes()[1]);
+  {
+    Sequence s1, s2;
+    EXPECT_CALL(*internal_backlight_controller_, HandleHoverStateChange(true))
+        .InSequence(s1);
+    EXPECT_CALL(*internal_backlight_controller_, HandleHoverStateChange(false))
+        .InSequence(s1);
+    EXPECT_CALL(*keyboard_backlight_controller_, HandleHoverStateChange(true))
+        .InSequence(s2);
+    EXPECT_CALL(*keyboard_backlight_controller_, HandleHoverStateChange(false))
+        .InSequence(s2);
+
+    input_watcher_->NotifyObserversAboutHoverState(true);
+    input_watcher_->NotifyObserversAboutHoverState(false);
+
+    Mock::VerifyAndClearExpectations(internal_backlight_controller_);
+    Mock::VerifyAndClearExpectations(keyboard_backlight_controller_);
+  }
 
   // Lid events.
+  EXPECT_CALL(*internal_backlight_controller_,
+              HandleLidStateChange(LidState::CLOSED))
+      .Times(1);
+  EXPECT_CALL(*keyboard_backlight_controller_,
+              HandleLidStateChange(LidState::CLOSED))
+      .Times(1);
   input_watcher_->set_lid_state(LidState::CLOSED);
   input_watcher_->NotifyObserversAboutLidState();
-  ASSERT_EQ(1, internal_backlight_controller_->lid_state_changes().size());
-  EXPECT_EQ(LidState::CLOSED,
-            internal_backlight_controller_->lid_state_changes()[0]);
-  ASSERT_EQ(1, keyboard_backlight_controller_->lid_state_changes().size());
-  EXPECT_EQ(LidState::CLOSED,
-            keyboard_backlight_controller_->lid_state_changes()[0]);
+  Mock::VerifyAndClearExpectations(internal_backlight_controller_);
+  Mock::VerifyAndClearExpectations(keyboard_backlight_controller_);
 
   // Tablet mode changes.
+  EXPECT_CALL(*internal_backlight_controller_,
+              HandleTabletModeChange(TabletMode::ON))
+      .Times(1);
+  EXPECT_CALL(*keyboard_backlight_controller_,
+              HandleTabletModeChange(TabletMode::ON))
+      .Times(1);
   input_watcher_->set_tablet_mode(TabletMode::ON);
   input_watcher_->NotifyObserversAboutTabletMode();
-  ASSERT_EQ(1, internal_backlight_controller_->tablet_mode_changes().size());
-  EXPECT_EQ(TabletMode::ON,
-            internal_backlight_controller_->tablet_mode_changes()[0]);
-  ASSERT_EQ(1, keyboard_backlight_controller_->tablet_mode_changes().size());
-  EXPECT_EQ(TabletMode::ON,
-            keyboard_backlight_controller_->tablet_mode_changes()[0]);
   ASSERT_EQ(1, user_proximity_watcher_->tablet_mode_changes().size());
   EXPECT_EQ(TabletMode::ON, user_proximity_watcher_->tablet_mode_changes()[0]);
+  Mock::VerifyAndClearExpectations(internal_backlight_controller_);
+  Mock::VerifyAndClearExpectations(keyboard_backlight_controller_);
 
   // Power source changes.
+  EXPECT_CALL(*internal_backlight_controller_,
+              HandlePowerSourceChange(PowerSource::AC))
+      .Times(1);
+  EXPECT_CALL(*keyboard_backlight_controller_,
+              HandlePowerSourceChange(PowerSource::AC))
+      .Times(1);
   system::PowerStatus status;
   status.line_power_on = true;
   power_supply_->set_status(status);
   power_supply_->NotifyObservers();
-  ASSERT_EQ(1, internal_backlight_controller_->power_source_changes().size());
-  EXPECT_EQ(PowerSource::AC,
-            internal_backlight_controller_->power_source_changes()[0]);
-  ASSERT_EQ(1, keyboard_backlight_controller_->power_source_changes().size());
-  EXPECT_EQ(PowerSource::AC,
-            keyboard_backlight_controller_->power_source_changes()[0]);
+  Mock::VerifyAndClearExpectations(internal_backlight_controller_);
+  Mock::VerifyAndClearExpectations(keyboard_backlight_controller_);
 
   // User activity reports.
+  EXPECT_CALL(*internal_backlight_controller_,
+              HandleUserActivity(USER_ACTIVITY_BRIGHTNESS_UP_KEY_PRESS))
+      .Times(1);
+  EXPECT_CALL(*keyboard_backlight_controller_,
+              HandleUserActivity(USER_ACTIVITY_BRIGHTNESS_UP_KEY_PRESS))
+      .Times(1);
   dbus::MethodCall user_call(kPowerManagerInterface, kHandleUserActivityMethod);
   dbus::MessageWriter(&user_call)
       .AppendInt32(USER_ACTIVITY_BRIGHTNESS_UP_KEY_PRESS);
   ASSERT_TRUE(dbus_wrapper_->CallExportedMethodSync(&user_call).get());
-  ASSERT_EQ(1, internal_backlight_controller_->user_activity_reports().size());
-  EXPECT_EQ(USER_ACTIVITY_BRIGHTNESS_UP_KEY_PRESS,
-            internal_backlight_controller_->user_activity_reports()[0]);
-  ASSERT_EQ(1, keyboard_backlight_controller_->user_activity_reports().size());
-  EXPECT_EQ(USER_ACTIVITY_BRIGHTNESS_UP_KEY_PRESS,
-            keyboard_backlight_controller_->user_activity_reports()[0]);
+  Mock::VerifyAndClearExpectations(internal_backlight_controller_);
+  Mock::VerifyAndClearExpectations(keyboard_backlight_controller_);
 
   // Video activity reports.
+  EXPECT_CALL(*internal_backlight_controller_, HandleVideoActivity(true))
+      .Times(1);
+  EXPECT_CALL(*keyboard_backlight_controller_, HandleVideoActivity(true))
+      .Times(1);
   dbus_wrapper_->SetMethodCallback(base::BindRepeating(
       &DaemonTest::HandleResourcedMethodCall, base::Unretained(this)));
   dbus::MethodCall video_call(kPowerManagerInterface,
                               kHandleVideoActivityMethod);
   dbus::MessageWriter(&video_call).AppendBool(true /* fullscreen */);
   ASSERT_TRUE(dbus_wrapper_->CallExportedMethodSync(&video_call).get());
-  ASSERT_EQ(1, internal_backlight_controller_->video_activity_reports().size());
-  EXPECT_EQ(true, internal_backlight_controller_->video_activity_reports()[0]);
-  ASSERT_EQ(1, keyboard_backlight_controller_->video_activity_reports().size());
-  EXPECT_EQ(true, keyboard_backlight_controller_->video_activity_reports()[0]);
   ASSERT_EQ(0, resourced_fail_);
   ASSERT_EQ(1, resourced_call_count_);
+  Mock::VerifyAndClearExpectations(internal_backlight_controller_);
+  Mock::VerifyAndClearExpectations(keyboard_backlight_controller_);
 
   // Display mode / projecting changes.
+  EXPECT_CALL(*internal_backlight_controller_,
+              HandleDisplayModeChange(DisplayMode::PRESENTATION))
+      .Times(1);
+  EXPECT_CALL(*keyboard_backlight_controller_,
+              HandleDisplayModeChange(DisplayMode::PRESENTATION))
+      .Times(1);
   dbus::MethodCall display_call(kPowerManagerInterface, kSetIsProjectingMethod);
   dbus::MessageWriter(&display_call).AppendBool(true /* is_projecting */);
   ASSERT_TRUE(dbus_wrapper_->CallExportedMethodSync(&display_call).get());
-  ASSERT_EQ(1, internal_backlight_controller_->display_mode_changes().size());
-  EXPECT_EQ(DisplayMode::PRESENTATION,
-            internal_backlight_controller_->display_mode_changes()[0]);
-  ASSERT_EQ(1, keyboard_backlight_controller_->display_mode_changes().size());
-  EXPECT_EQ(DisplayMode::PRESENTATION,
-            keyboard_backlight_controller_->display_mode_changes()[0]);
+  Mock::VerifyAndClearExpectations(internal_backlight_controller_);
+  Mock::VerifyAndClearExpectations(keyboard_backlight_controller_);
 
   // Policy updates.
-  dbus::MethodCall policy_call(kPowerManagerInterface, kSetPolicyMethod);
-  PowerManagementPolicy policy;
   const char kPolicyReason[] = "foo";
+  PowerManagementPolicy policy;
   policy.set_reason(kPolicyReason);
+  EXPECT_CALL(*internal_backlight_controller_, HandlePolicyChange(_)).Times(1);
+  EXPECT_CALL(*keyboard_backlight_controller_, HandlePolicyChange(_)).Times(1);
+  dbus::MethodCall policy_call(kPowerManagerInterface, kSetPolicyMethod);
   dbus::MessageWriter(&policy_call).AppendProtoAsArrayOfBytes(policy);
   ASSERT_TRUE(dbus_wrapper_->CallExportedMethodSync(&policy_call).get());
-  ASSERT_EQ(1, internal_backlight_controller_->policy_changes().size());
-  EXPECT_EQ(kPolicyReason,
-            internal_backlight_controller_->policy_changes()[0].reason());
-  ASSERT_EQ(1, keyboard_backlight_controller_->policy_changes().size());
-  EXPECT_EQ(kPolicyReason,
-            keyboard_backlight_controller_->policy_changes()[0].reason());
+  Mock::VerifyAndClearExpectations(internal_backlight_controller_);
+  Mock::VerifyAndClearExpectations(keyboard_backlight_controller_);
 
   // Session state changes.
+  EXPECT_CALL(*internal_backlight_controller_,
+              HandleSessionStateChange(SessionState::STARTED))
+      .Times(1);
+  EXPECT_CALL(*keyboard_backlight_controller_,
+              HandleSessionStateChange(SessionState::STARTED))
+      .Times(1);
   dbus::Signal session_signal(login_manager::kSessionManagerInterface,
                               login_manager::kSessionStateChangedSignal);
   dbus::MessageWriter(&session_signal).AppendString("started");
@@ -752,39 +781,43 @@ TEST_F(DaemonTest, NotifyMembersAboutEvents) {
       dbus_wrapper_->GetObjectProxy(login_manager::kSessionManagerServiceName,
                                     login_manager::kSessionManagerServicePath),
       &session_signal);
-  ASSERT_EQ(1, internal_backlight_controller_->session_state_changes().size());
-  EXPECT_EQ(SessionState::STARTED,
-            internal_backlight_controller_->session_state_changes()[0]);
-  ASSERT_EQ(1, keyboard_backlight_controller_->session_state_changes().size());
-  EXPECT_EQ(SessionState::STARTED,
-            keyboard_backlight_controller_->session_state_changes()[0]);
+  Mock::VerifyAndClearExpectations(internal_backlight_controller_);
+  Mock::VerifyAndClearExpectations(keyboard_backlight_controller_);
 
   // Chrome restarts.
+  EXPECT_CALL(*internal_backlight_controller_, HandleDisplayServiceStart())
+      .Times(2);
+  EXPECT_CALL(*keyboard_backlight_controller_, HandleDisplayServiceStart())
+      .Times(2);
   dbus_wrapper_->NotifyNameOwnerChanged(chromeos::kDisplayServiceName, "old",
                                         "new");
   dbus_wrapper_->NotifyNameOwnerChanged(chromeos::kDisplayServiceName, "new",
                                         "newer");
-  EXPECT_EQ(2, internal_backlight_controller_->display_service_starts());
-  EXPECT_EQ(2, keyboard_backlight_controller_->display_service_starts());
+  Mock::VerifyAndClearExpectations(internal_backlight_controller_);
+  Mock::VerifyAndClearExpectations(keyboard_backlight_controller_);
 
   // Wake notification events.
+  EXPECT_CALL(*internal_backlight_controller_, HandleWakeNotification())
+      .Times(1);
   dbus::MethodCall wake_notification_call(kPowerManagerInterface,
                                           kHandleWakeNotificationMethod);
   ASSERT_TRUE(
       dbus_wrapper_->CallExportedMethodSync(&wake_notification_call).get());
-  ASSERT_EQ(1, internal_backlight_controller_->wake_notification_reports());
 }
 
 TEST_F(DaemonTest, DontReportTabletModeChangeFromInit) {
-  prefs_->SetInt64(kHasKeyboardBacklightPref, 1);
-  input_watcher_->set_tablet_mode(TabletMode::ON);
-  Init();
+  EXPECT_CALL(*internal_backlight_controller_, HandleTabletModeChange(_))
+      .Times(0);
+  EXPECT_CALL(*keyboard_backlight_controller_, HandleTabletModeChange(_))
+      .Times(0);
 
   // The initial tablet mode is already passed to
   // CreateKeyboardBacklightController(), so Init() shouldn't send an extra
   // notification about it changing.
-  EXPECT_EQ(0, internal_backlight_controller_->tablet_mode_changes().size());
-  EXPECT_EQ(0, keyboard_backlight_controller_->tablet_mode_changes().size());
+
+  prefs_->SetInt64(kHasKeyboardBacklightPref, 1);
+  input_watcher_->set_tablet_mode(TabletMode::ON);
+  Init();
 }
 
 TEST_F(DaemonTest, EcKeyboardBacklightEnabled) {
@@ -796,13 +829,19 @@ TEST_F(DaemonTest, ForceBacklightsOff) {
   prefs_->SetInt64(kHasKeyboardBacklightPref, 1);
   Init();
 
+  EXPECT_CALL(*internal_backlight_controller_, SetForcedOff(true)).Times(1);
+  ON_CALL(*internal_backlight_controller_, GetForcedOff())
+      .WillByDefault(Return(true));
+
+  EXPECT_CALL(*keyboard_backlight_controller_, SetForcedOff(true)).Times(1);
+  ON_CALL(*keyboard_backlight_controller_, GetForcedOff())
+      .WillByDefault(Return(true));
+
   // Tell Daemon to force the backlights off.
   dbus::MethodCall set_off_call(kPowerManagerInterface,
                                 kSetBacklightsForcedOffMethod);
   dbus::MessageWriter(&set_off_call).AppendBool(true);
   ASSERT_TRUE(dbus_wrapper_->CallExportedMethodSync(&set_off_call).get());
-  EXPECT_TRUE(internal_backlight_controller_->forced_off());
-  EXPECT_TRUE(keyboard_backlight_controller_->forced_off());
 
   dbus::MethodCall get_call(kPowerManagerInterface,
                             kGetBacklightsForcedOffMethod);
@@ -812,13 +851,22 @@ TEST_F(DaemonTest, ForceBacklightsOff) {
   ASSERT_TRUE(dbus::MessageReader(response.get()).PopBool(&forced_off));
   EXPECT_TRUE(forced_off);
 
+  Mock::VerifyAndClearExpectations(internal_backlight_controller_);
+  Mock::VerifyAndClearExpectations(keyboard_backlight_controller_);
+
+  EXPECT_CALL(*internal_backlight_controller_, SetForcedOff(false)).Times(1);
+  ON_CALL(*internal_backlight_controller_, GetForcedOff())
+      .WillByDefault(Return(false));
+
+  EXPECT_CALL(*keyboard_backlight_controller_, SetForcedOff(false)).Times(1);
+  ON_CALL(*keyboard_backlight_controller_, GetForcedOff())
+      .WillByDefault(Return(false));
+
   // Now stop forcing them off.
   dbus::MethodCall set_on_call(kPowerManagerInterface,
                                kSetBacklightsForcedOffMethod);
   dbus::MessageWriter(&set_on_call).AppendBool(false);
   ASSERT_TRUE(dbus_wrapper_->CallExportedMethodSync(&set_on_call).get());
-  EXPECT_FALSE(internal_backlight_controller_->forced_off());
-  EXPECT_FALSE(keyboard_backlight_controller_->forced_off());
 
   response = dbus_wrapper_->CallExportedMethodSync(&get_call);
   ASSERT_TRUE(response.get());
@@ -831,6 +879,8 @@ TEST_F(DaemonTest, RequestShutdown) {
   Init();
 
   EXPECT_CALL(*adaptive_charging_controller_, HandleShutdown()).Times(1);
+  EXPECT_CALL(*internal_backlight_controller_, SetShuttingDown(true)).Times(1);
+  EXPECT_CALL(*keyboard_backlight_controller_, SetShuttingDown(true)).Times(1);
 
   async_commands_.clear();
   sync_commands_.clear();
@@ -838,9 +888,6 @@ TEST_F(DaemonTest, RequestShutdown) {
   dbus::MessageWriter message_writer(&method_call);
   message_writer.AppendInt32(REQUEST_SHUTDOWN_FOR_USER);
   ASSERT_TRUE(dbus_wrapper_->CallExportedMethodSync(&method_call).get());
-
-  EXPECT_TRUE(internal_backlight_controller_->shutting_down());
-  EXPECT_TRUE(keyboard_backlight_controller_->shutting_down());
 
   EXPECT_EQ(0, sync_commands_.size());
   ASSERT_EQ(1, async_commands_.size());
@@ -875,6 +922,10 @@ TEST_F(DaemonTest, ShutDownForLowBattery) {
   prefs_->SetInt64(kHasKeyboardBacklightPref, 1);
   Init();
 
+  // Keep the display backlight on so we can show a low-battery alert.
+  EXPECT_CALL(*internal_backlight_controller_, SetShuttingDown(_)).Times(0);
+  EXPECT_CALL(*keyboard_backlight_controller_, SetShuttingDown(true)).Times(1);
+
   // We shouldn't shut down if the battery isn't below the threshold.
   async_commands_.clear();
   system::PowerStatus status;
@@ -889,10 +940,6 @@ TEST_F(DaemonTest, ShutDownForLowBattery) {
   status.battery_below_shutdown_threshold = true;
   power_supply_->set_status(status);
   power_supply_->NotifyObservers();
-
-  // Keep the display backlight on so we can show a low-battery alert.
-  EXPECT_FALSE(internal_backlight_controller_->shutting_down());
-  EXPECT_TRUE(keyboard_backlight_controller_->shutting_down());
 
   ASSERT_EQ(1, async_commands_.size());
   EXPECT_EQ(GetShutdownCommand(ShutdownReason::LOW_BATTERY),
@@ -1101,6 +1148,19 @@ TEST_F(DaemonTest, SetBatterySustain) {
 }
 
 TEST_F(DaemonTest, PrepareToSuspendAndResume) {
+  Sequence s1;
+  EXPECT_CALL(*internal_backlight_controller_,
+              HandleLidStateChange(LidState::CLOSED))
+      .InSequence(s1);
+  EXPECT_CALL(*internal_backlight_controller_, SetSuspended(true))
+      .InSequence(s1);
+  EXPECT_CALL(*internal_backlight_controller_,
+              HandleLidStateChange(LidState::OPEN))
+      .InSequence(s1);
+  EXPECT_CALL(*internal_backlight_controller_, SetSuspended(false))
+      .InSequence(s1);
+
+  // Initial lid state
   input_watcher_->set_lid_state(LidState::OPEN);
 
   Init();
@@ -1108,28 +1168,13 @@ TEST_F(DaemonTest, PrepareToSuspendAndResume) {
   input_watcher_->set_lid_state(LidState::CLOSED);
   input_watcher_->NotifyObserversAboutLidState();
 
-  EXPECT_EQ(LidState::CLOSED,
-            internal_backlight_controller_->lid_state_changes()[0]);
-
   daemon_->PrepareToSuspend();
-
   EXPECT_TRUE(power_supply_->suspended());
-  EXPECT_TRUE(internal_backlight_controller_->suspended());
 
   daemon_->DoSuspend(1, true, base::Milliseconds(0), false);
 
   input_watcher_->set_lid_state(LidState::OPEN);
-
-  // Ensure that lid state remains closed until UndoPrepareToSuspend
-  EXPECT_EQ(LidState::CLOSED,
-            internal_backlight_controller_->lid_state_changes().back());
-
   daemon_->UndoPrepareToSuspend(true, 0, false);
-
-  EXPECT_EQ(LidState::OPEN,
-            internal_backlight_controller_->lid_state_changes().back());
-
-  EXPECT_FALSE(internal_backlight_controller_->suspended());
   EXPECT_FALSE(power_supply_->suspended());
 }
 
