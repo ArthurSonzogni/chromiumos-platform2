@@ -165,6 +165,8 @@ class Daemon : public policy::AdaptiveChargingControllerInterface::Delegate,
   void SetSuspendAnnounced(bool announced) override;
   bool GetSuspendAnnounced() override;
   void PrepareToSuspend() override;
+  void SuspendAudio() override;
+  void ResumeAudio() override;
   SuspendResult DoSuspend(uint64_t wakeup_count,
                           bool wakeup_count_valid,
                           base::TimeDelta duration,

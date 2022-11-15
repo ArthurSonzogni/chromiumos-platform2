@@ -113,6 +113,10 @@ class TestDelegate : public Suspender::Delegate, public ActionRecorder {
 
   void PrepareToSuspend() override { AppendAction(kPrepare); }
 
+  void SuspendAudio() override {}
+
+  void ResumeAudio() override {}
+
   SuspendResult DoSuspend(uint64_t wakeup_count,
                           bool wakeup_count_valid,
                           base::TimeDelta duration,

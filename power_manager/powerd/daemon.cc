@@ -836,9 +836,17 @@ void Daemon::PrepareToSuspend() {
   SetBacklightsSuspended(true);
 
   power_supply_->SetSuspended(true);
+  metrics_collector_->PrepareForSuspend();
+}
+
+void Daemon::SuspendAudio() {
   if (audio_client_)
     audio_client_->SetSuspended(true);
-  metrics_collector_->PrepareForSuspend();
+}
+
+void Daemon::ResumeAudio() {
+  if (audio_client_)
+    audio_client_->SetSuspended(false);
 }
 
 policy::Suspender::Delegate::SuspendResult Daemon::DoSuspend(
@@ -971,8 +979,6 @@ void Daemon::UndoPrepareToSuspend(bool success,
   // off for the displays).
   SetBacklightsSuspended(false);
 
-  if (audio_client_)
-    audio_client_->SetSuspended(false);
   power_supply_->SetSuspended(false);
 
   if (success)

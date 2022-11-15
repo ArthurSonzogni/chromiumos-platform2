@@ -634,6 +634,13 @@ void Suspender::FinishRequest(bool success,
   shutdown_from_suspend_->HandleFullResume();
   if (adaptive_charging_controller_)
     adaptive_charging_controller_->HandleFullResume();
+
+  // Since the SuspendAudio is triggered after other processes have announced
+  // suspend readiness, to be in pair, trigger ResumeAudio before emitting
+  // SuspendDone D-Bus signal, which is generated to inform other processes that
+  // suspend request is completed (during resume).
+  delegate_->ResumeAudio();
+
   EmitSuspendDoneSignal(suspend_request_id_, suspend_duration, wakeup_type,
                         hibernated);
   delegate_->SetSuspendAnnounced(false);
@@ -696,6 +703,11 @@ Suspender::State Suspender::Suspend() {
                    << static_cast<int>(suspend_request_flavor_);
       break;
   }
+
+  // SuspendAudio needs to happen after other processes have announced suspend
+  // readiness. It can't be done earlier since VMs using virtio-snd requires
+  // active Audio to properly suspend themselves.
+  delegate_->SuspendAudio();
 
   if (hibernate) {
     CHECK(prefs_->GetBool(kDisableHibernatePref, &hibernate_disabled));

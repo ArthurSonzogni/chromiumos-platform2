@@ -141,8 +141,16 @@ class Suspender : public SuspendDelayObserver,
 
     // Performs any work that needs to happen before other processes are
     // informed that the system is about to suspend, including turning off the
-    // backlight and muting audio. Called by StartRequest().
+    // backlight. Called by StartRequest().
     virtual void PrepareToSuspend() = 0;
+
+    // Suspend audio: it needs to happen after other processes have announced
+    // suspend readiness. It can't be done earlier since VMs using virtio-snd
+    // requires active CRAS to properly suspend themselves. Called by Suspend().
+    virtual void SuspendAudio() = 0;
+
+    // Undoes SuspendAudio
+    virtual void ResumeAudio() = 0;
 
     // Synchronously runs the powerd_suspend script to suspend the system for
     // |duration|. If |wakeup_count_valid| is true, passes |wakeup_count| to the
