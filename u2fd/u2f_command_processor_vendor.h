@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef U2FD_U2F_COMMAND_PROCESSOR_GSC_H_
-#define U2FD_U2F_COMMAND_PROCESSOR_GSC_H_
+#ifndef U2FD_U2F_COMMAND_PROCESSOR_VENDOR_H_
+#define U2FD_U2F_COMMAND_PROCESSOR_VENDOR_H_
 
 #include <functional>
 #include <memory>
@@ -14,28 +14,28 @@
 #include <brillo/dbus/dbus_method_response.h>
 #include <brillo/secure_blob.h>
 #include <libhwsec/frontend/u2fd/vendor_frontend.h>
-#include <trunks/cr50_headers/u2f.h>
 #include <u2f/proto_bindings/u2f_interface.pb.h>
 
-#include "u2fd/client/tpm_vendor_cmd.h"
 #include "u2fd/client/user_state.h"
 #include "u2fd/u2f_command_processor.h"
 #include "u2fd/webauthn_handler.h"
 
 namespace u2f {
 
-class U2fCommandProcessorGsc : public U2fCommandProcessor {
+class U2fCommandProcessorVendor : public U2fCommandProcessor {
  public:
   // |u2f_frontend| - libhwsec class to deal with U2f vendor commands.
   // |request_presence| - callback for performing other platform tasks when
   // expecting the user to press the power button.
-  U2fCommandProcessorGsc(std::unique_ptr<hwsec::U2fVendorFrontend> u2f_frontend,
-                         std::function<void()> request_presence);
+  U2fCommandProcessorVendor(
+      std::unique_ptr<hwsec::U2fVendorFrontend> u2f_frontend,
+      std::function<void()> request_presence);
 
-  U2fCommandProcessorGsc(const U2fCommandProcessorGsc&) = delete;
-  U2fCommandProcessorGsc& operator=(const U2fCommandProcessorGsc&) = delete;
+  U2fCommandProcessorVendor(const U2fCommandProcessorVendor&) = delete;
+  U2fCommandProcessorVendor& operator=(const U2fCommandProcessorVendor&) =
+      delete;
 
-  ~U2fCommandProcessorGsc() override {}
+  ~U2fCommandProcessorVendor() override {}
 
   // Runs a U2F_GENERATE command to create a new key handle, and stores the key
   // handle in |credential_id| and the public key in |credential_public_key|.
@@ -98,7 +98,7 @@ class U2fCommandProcessorGsc : public U2fCommandProcessor {
       std::function<hwsec::StatusOr<int>()> fn);
 
  private:
-  friend class U2fCommandProcessorGscTest;
+  friend class U2fCommandProcessorVendorTest;
 
   // Repeatedly sends u2f_generate request to the TPM if there's no presence.
   MakeCredentialResponse::MakeCredentialStatus SendU2fGenerateWaitForPresence(
@@ -129,10 +129,13 @@ class U2fCommandProcessorGsc : public U2fCommandProcessor {
 
   std::optional<std::vector<uint8_t>> GetG2fCert();
 
+  hwsec::StatusOr<hwsec::u2f::Config> GetConfig();
+
+  std::optional<hwsec::u2f::Config> config_ = std::nullopt;
   std::unique_ptr<hwsec::U2fVendorFrontend> u2f_frontend_;
   std::function<void()> request_presence_;
 };
 
 }  // namespace u2f
 
-#endif  // U2FD_U2F_COMMAND_PROCESSOR_GSC_H_
+#endif  // U2FD_U2F_COMMAND_PROCESSOR_VENDOR_H_

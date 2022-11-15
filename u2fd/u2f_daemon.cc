@@ -21,11 +21,10 @@
 #include <user_data_auth-client/user_data_auth/dbus-proxies.h>
 
 #include "u2fd/u2f_command_processor.h"
-#if USE_GSC
-#include "u2fd/u2f_command_processor_gsc.h"
-#include "u2fd/u2fhid_service_impl.h"
-#else
 #include "u2fd/u2f_command_processor_generic.h"
+#include "u2fd/u2f_command_processor_vendor.h"
+#if USE_GSC
+#include "u2fd/u2fhid_service_impl.h"
 #endif
 
 namespace u2f {
@@ -318,19 +317,19 @@ bool U2fDaemon::InitializeWebAuthnHandler(U2fMode u2f_mode) {
         });
   }
 
-#if USE_GSC
-  u2f_command_processor = std::make_unique<U2fCommandProcessorGsc>(
-      hwsec_factory_.GetU2fVendorFrontend(), request_presence);
-#else
-  auto u2f_frontend = hwsec_factory_.GetU2fFrontend();
-  if (!u2f_frontend->IsEnabled().value_or(false)) {
+  if (auto u2f_vendor_frontend = hwsec_factory_.GetU2fVendorFrontend();
+      u2f_vendor_frontend->IsEnabled().value_or(false)) {
+    u2f_command_processor = std::make_unique<U2fCommandProcessorVendor>(
+        std::move(u2f_vendor_frontend), request_presence);
+  } else if (auto u2f_frontend = hwsec_factory_.GetU2fFrontend();
+             u2f_frontend->IsEnabled().value_or(false)) {
+    u2f_command_processor = std::make_unique<U2fCommandProcessorGeneric>(
+        user_state_.get(),
+        std::make_unique<org::chromium::UserDataAuthInterfaceProxy>(bus_.get()),
+        std::move(u2f_frontend));
+  } else {
     return false;
   }
-  u2f_command_processor = std::make_unique<U2fCommandProcessorGeneric>(
-      user_state_.get(),
-      std::make_unique<org::chromium::UserDataAuthInterfaceProxy>(bus_.get()),
-      std::move(u2f_frontend));
-#endif
 
   webauthn_handler_.Initialize(bus_.get(), user_state_.get(), u2f_mode,
                                std::move(u2f_command_processor),

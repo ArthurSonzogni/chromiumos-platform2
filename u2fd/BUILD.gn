@@ -63,6 +63,7 @@ static_library("libu2fd") {
   sources = [
     "allowlisting_util.cc",
     "u2f_command_processor_generic.cc",
+    "u2f_command_processor_vendor.cc",
     "u2f_daemon.cc",
     "webauthn_handler.cc",
     "webauthn_storage.cc",
@@ -79,7 +80,6 @@ static_library("libu2fd") {
   deps = [ "//common-mk/external_dependencies:policy-protos" ]
   if (use.fuzzer || use.cr50_onboard || use.ti50_onboard) {
     sources += [
-      "u2f_command_processor_gsc.cc",
       "u2f_corp_processor_interface.cc",
       "u2f_msg_handler.cc",
       "u2fhid.cc",
@@ -175,6 +175,7 @@ if (use.test) {
     sources = [
       "allowlisting_util_test.cc",
       "u2f_command_processor_generic_test.cc",
+      "u2f_command_processor_vendor_test.cc",
       "webauthn_handler_test.cc",
       "webauthn_storage_test.cc",
     ]
@@ -190,10 +191,7 @@ if (use.test) {
       "//common-mk/testrunner",
     ]
     if (use.cr50_onboard || use.ti50_onboard) {
-      sources += [
-        "u2f_command_processor_gsc_test.cc",
-        "u2f_msg_handler_test.cc",
-      ]
+      sources += [ "u2f_msg_handler_test.cc" ]
     }
   }
 }

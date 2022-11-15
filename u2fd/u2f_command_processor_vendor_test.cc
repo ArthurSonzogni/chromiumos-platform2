@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "u2fd/u2f_command_processor_vendor.h"
+
 #include <memory>
 #include <string>
 #include <utility>
@@ -20,7 +22,6 @@
 #include <gtest/gtest.h>
 
 #include "u2fd/client/util.h"
-#include "u2fd/u2f_command_processor_gsc.h"
 
 namespace u2f {
 namespace {
@@ -71,6 +72,11 @@ constexpr char kStubG2fCert[] =
     "B1FB1DA21EB9F3F176B7DF433A1ADE0F3F38B721960220179D9B9051BFCCCC90BA6BB42B86"
     "111D7A9C4FB56DFD39FB426081DD027AD609";
 
+constexpr hwsec::u2f::Config kConfig{
+    .up_only_kh_size = 20,
+    .kh_size = 30,
+};
+
 std::vector<uint8_t> GetRpIdHash() {
   return util::Sha256(std::string(kRpId));
 }
@@ -80,7 +86,7 @@ std::vector<uint8_t> GetWrongRpIdHash() {
 }
 
 std::vector<uint8_t> GetHashToSign() {
-  return std::vector<uint8_t>(U2F_P256_SIZE, 0xcd);
+  return std::vector<uint8_t>(32, 0xcd);
 }
 
 brillo::SecureBlob GetUserSecret() {
@@ -88,11 +94,11 @@ brillo::SecureBlob GetUserSecret() {
 }
 
 std::vector<uint8_t> GetCredId() {
-  return std::vector<uint8_t>(U2F_V0_KH_SIZE, 0xFD);
+  return std::vector<uint8_t>(kConfig.up_only_kh_size, 0xFD);
 }
 
 std::vector<uint8_t> GetVersionedCredId() {
-  return std::vector<uint8_t>(U2F_V1_KH_SIZE + SHA256_DIGEST_LENGTH, 0xFD);
+  return std::vector<uint8_t>(kConfig.kh_size, 0xFD);
 }
 
 std::vector<uint8_t> GetAuthTimeSecretHash() {
@@ -145,12 +151,14 @@ class FakePublicKey : public hwsec::u2f::PublicKey {
   brillo::Blob data_;
 };
 
-class U2fCommandProcessorGscTest : public ::testing::Test {
+class U2fCommandProcessorVendorTest : public ::testing::Test {
  public:
   void SetUp() override {
     auto mock_u2f_frontend = std::make_unique<hwsec::MockU2fVendorFrontend>();
     mock_u2f_frontend_ = mock_u2f_frontend.get();
-    processor_ = std::make_unique<U2fCommandProcessorGsc>(
+    EXPECT_CALL(*mock_u2f_frontend_, GetConfig)
+        .WillRepeatedly(ReturnValue(kConfig));
+    processor_ = std::make_unique<U2fCommandProcessorVendor>(
         std::move(mock_u2f_frontend), [this]() {
           presence_requested_count_++;
           task_environment_.FastForwardBy(kRequestPresenceDelay);
@@ -167,7 +175,7 @@ class U2fCommandProcessorGscTest : public ::testing::Test {
   }
 
   static std::vector<uint8_t> GetCredPubKeyCbor() {
-    return U2fCommandProcessorGsc::EncodeCredentialPublicKeyInCBOR(
+    return U2fCommandProcessorVendor::EncodeCredentialPublicKeyInCBOR(
         std::vector<uint8_t>(32, 0xAB), std::vector<uint8_t>(32, 0xAB));
   }
 
@@ -250,18 +258,18 @@ class U2fCommandProcessorGscTest : public ::testing::Test {
   base::test::TaskEnvironment task_environment_{
       base::test::TaskEnvironment::TimeSource::MOCK_TIME};
 
-  std::unique_ptr<U2fCommandProcessorGsc> processor_;
+  std::unique_ptr<U2fCommandProcessorVendor> processor_;
 };
 
 namespace {
 
-TEST_F(U2fCommandProcessorGscTest, CallAndWaitForPresenceDirectSuccess) {
+TEST_F(U2fCommandProcessorVendorTest, CallAndWaitForPresenceDirectSuccess) {
   // If presence is already available, we won't request it.
   EXPECT_THAT(CallAndWaitForPresence([]() { return 0; }), IsOkAndHolds(0));
   presence_requested_expected_ = 0;
 }
 
-TEST_F(U2fCommandProcessorGscTest, CallAndWaitForPresenceRequestSuccess) {
+TEST_F(U2fCommandProcessorVendorTest, CallAndWaitForPresenceRequestSuccess) {
   EXPECT_THAT(CallAndWaitForPresence([this]() -> hwsec::StatusOr<int> {
                 if (PresenceRequested())
                   return 0;
@@ -272,7 +280,7 @@ TEST_F(U2fCommandProcessorGscTest, CallAndWaitForPresenceRequestSuccess) {
   presence_requested_expected_ = 1;
 }
 
-TEST_F(U2fCommandProcessorGscTest, CallAndWaitForPresenceTimeout) {
+TEST_F(U2fCommandProcessorVendorTest, CallAndWaitForPresenceTimeout) {
   base::TimeTicks verification_start = base::TimeTicks::Now();
   EXPECT_THAT(CallAndWaitForPresence([]() {
                 return MakeStatus<TPMError>("Not allowed",
@@ -283,13 +291,14 @@ TEST_F(U2fCommandProcessorGscTest, CallAndWaitForPresenceTimeout) {
   presence_requested_expected_ = kMaxRetries;
 }
 
-TEST_F(U2fCommandProcessorGscTest, U2fGenerateVersionedNoAuthTimeSecretHash) {
+TEST_F(U2fCommandProcessorVendorTest,
+       U2fGenerateVersionedNoAuthTimeSecretHash) {
   EXPECT_EQ(U2fGenerate(PresenceRequirement::kPowerButton,
                         /* uv_compatible = */ true, nullptr, nullptr, nullptr),
             MakeCredentialResponse::INTERNAL_ERROR);
 }
 
-TEST_F(U2fCommandProcessorGscTest, U2fGenerateVersionedSuccessUserPresence) {
+TEST_F(U2fCommandProcessorVendorTest, U2fGenerateVersionedSuccessUserPresence) {
   EXPECT_CALL(*mock_u2f_frontend_, Generate(_, _, ConsumeMode::kConsume,
                                             UserPresenceMode::kRequired, _))
       .WillOnce(
@@ -297,7 +306,7 @@ TEST_F(U2fCommandProcessorGscTest, U2fGenerateVersionedSuccessUserPresence) {
       .WillOnce([](const auto&, const auto&, auto, auto, const auto&) {
         return GenerateResult{
             .public_key = std::make_unique<FakePublicKey>(
-                U2fCommandProcessorGscTest::GetCredPubKeyRaw()),
+                U2fCommandProcessorVendorTest::GetCredPubKeyRaw()),
             .key_handle = GetVersionedCredId(),
         };
       });
@@ -309,12 +318,13 @@ TEST_F(U2fCommandProcessorGscTest, U2fGenerateVersionedSuccessUserPresence) {
                         &cred_id, &cred_pubkey),
             MakeCredentialResponse::SUCCESS);
   EXPECT_EQ(cred_id, GetVersionedCredId());
-  EXPECT_EQ(cred_pubkey.cbor, U2fCommandProcessorGscTest::GetCredPubKeyCbor());
-  EXPECT_EQ(cred_pubkey.raw, U2fCommandProcessorGscTest::GetCredPubKeyRaw());
+  EXPECT_EQ(cred_pubkey.cbor,
+            U2fCommandProcessorVendorTest::GetCredPubKeyCbor());
+  EXPECT_EQ(cred_pubkey.raw, U2fCommandProcessorVendorTest::GetCredPubKeyRaw());
   presence_requested_expected_ = 1;
 }
 
-TEST_F(U2fCommandProcessorGscTest, U2fGenerateVersionedNoUserPresence) {
+TEST_F(U2fCommandProcessorVendorTest, U2fGenerateVersionedNoUserPresence) {
   EXPECT_CALL(*mock_u2f_frontend_, Generate(_, _, ConsumeMode::kConsume,
                                             UserPresenceMode::kRequired, _))
       .WillRepeatedly(
@@ -327,7 +337,7 @@ TEST_F(U2fCommandProcessorGscTest, U2fGenerateVersionedNoUserPresence) {
   presence_requested_expected_ = kMaxRetries;
 }
 
-TEST_F(U2fCommandProcessorGscTest, U2fGenerateSuccessUserPresence) {
+TEST_F(U2fCommandProcessorVendorTest, U2fGenerateSuccessUserPresence) {
   EXPECT_CALL(*mock_u2f_frontend_,
               GenerateUserPresenceOnly(_, _, ConsumeMode::kConsume,
                                        UserPresenceMode::kRequired))
@@ -336,7 +346,7 @@ TEST_F(U2fCommandProcessorGscTest, U2fGenerateSuccessUserPresence) {
       .WillOnce([](const auto&, const auto&, auto, auto) {
         return GenerateResult{
             .public_key = std::make_unique<FakePublicKey>(
-                U2fCommandProcessorGscTest::GetCredPubKeyRaw()),
+                U2fCommandProcessorVendorTest::GetCredPubKeyRaw()),
             .key_handle = GetCredId(),
         };
       });
@@ -347,12 +357,13 @@ TEST_F(U2fCommandProcessorGscTest, U2fGenerateSuccessUserPresence) {
                   /* uv_compatible = */ false, nullptr, &cred_id, &cred_pubkey),
       MakeCredentialResponse::SUCCESS);
   EXPECT_EQ(cred_id, GetCredId());
-  EXPECT_EQ(cred_pubkey.cbor, U2fCommandProcessorGscTest::GetCredPubKeyCbor());
-  EXPECT_EQ(cred_pubkey.raw, U2fCommandProcessorGscTest::GetCredPubKeyRaw());
+  EXPECT_EQ(cred_pubkey.cbor,
+            U2fCommandProcessorVendorTest::GetCredPubKeyCbor());
+  EXPECT_EQ(cred_pubkey.raw, U2fCommandProcessorVendorTest::GetCredPubKeyRaw());
   presence_requested_expected_ = 1;
 }
 
-TEST_F(U2fCommandProcessorGscTest, U2fGenerateNoUserPresence) {
+TEST_F(U2fCommandProcessorVendorTest, U2fGenerateNoUserPresence) {
   EXPECT_CALL(*mock_u2f_frontend_,
               GenerateUserPresenceOnly(_, _, ConsumeMode::kConsume,
                                        UserPresenceMode::kRequired))
@@ -364,14 +375,14 @@ TEST_F(U2fCommandProcessorGscTest, U2fGenerateNoUserPresence) {
   presence_requested_expected_ = kMaxRetries;
 }
 
-TEST_F(U2fCommandProcessorGscTest,
+TEST_F(U2fCommandProcessorVendorTest,
        U2fGenerateVersionedSuccessUserVerification) {
   EXPECT_CALL(*mock_u2f_frontend_, Generate(_, _, ConsumeMode::kNoConsume,
                                             UserPresenceMode::kNotRequired, _))
       .WillOnce([](const auto&, const auto&, auto, auto, const auto&) {
         return GenerateResult{
             .public_key = std::make_unique<FakePublicKey>(
-                U2fCommandProcessorGscTest::GetCredPubKeyRaw()),
+                U2fCommandProcessorVendorTest::GetCredPubKeyRaw()),
             .key_handle = GetVersionedCredId(),
         };
       });
@@ -383,11 +394,12 @@ TEST_F(U2fCommandProcessorGscTest,
                         &auth_time_secret_hash, &cred_id, &cred_pubkey),
             MakeCredentialResponse::SUCCESS);
   EXPECT_EQ(cred_id, GetVersionedCredId());
-  EXPECT_EQ(cred_pubkey.cbor, U2fCommandProcessorGscTest::GetCredPubKeyCbor());
-  EXPECT_EQ(cred_pubkey.raw, U2fCommandProcessorGscTest::GetCredPubKeyRaw());
+  EXPECT_EQ(cred_pubkey.cbor,
+            U2fCommandProcessorVendorTest::GetCredPubKeyCbor());
+  EXPECT_EQ(cred_pubkey.raw, U2fCommandProcessorVendorTest::GetCredPubKeyRaw());
 }
 
-TEST_F(U2fCommandProcessorGscTest, U2fSignPresenceNoPresence) {
+TEST_F(U2fCommandProcessorVendorTest, U2fSignPresenceNoPresence) {
   EXPECT_CALL(*mock_u2f_frontend_,
               SignUserPresenceOnly(_, _, _, ConsumeMode::kConsume,
                                    UserPresenceMode::kRequired, _))
@@ -400,7 +412,7 @@ TEST_F(U2fCommandProcessorGscTest, U2fSignPresenceNoPresence) {
   presence_requested_expected_ = kMaxRetries;
 }
 
-TEST_F(U2fCommandProcessorGscTest, U2fSignPresenceSuccess) {
+TEST_F(U2fCommandProcessorVendorTest, U2fSignPresenceSuccess) {
   EXPECT_CALL(*mock_u2f_frontend_,
               SignUserPresenceOnly(_, _, _, ConsumeMode::kConsume,
                                    UserPresenceMode::kRequired, _))
@@ -419,7 +431,7 @@ TEST_F(U2fCommandProcessorGscTest, U2fSignPresenceSuccess) {
   presence_requested_expected_ = 1;
 }
 
-TEST_F(U2fCommandProcessorGscTest, U2fSignVersionedSuccess) {
+TEST_F(U2fCommandProcessorVendorTest, U2fSignVersionedSuccess) {
   brillo::Blob credential_id(GetVersionedCredId());
   EXPECT_CALL(*mock_u2f_frontend_, Sign(_, _, _, _, ConsumeMode::kNoConsume,
                                         UserPresenceMode::kNotRequired, _))
@@ -435,34 +447,35 @@ TEST_F(U2fCommandProcessorGscTest, U2fSignVersionedSuccess) {
             util::SignatureToDerBytes(GetSigR().data(), GetSigS().data()));
 }
 
-TEST_F(U2fCommandProcessorGscTest, U2fSignCheckOnlyWrongRpIdHash) {
+TEST_F(U2fCommandProcessorVendorTest, U2fSignCheckOnlyWrongRpIdHash) {
   EXPECT_CALL(*mock_u2f_frontend_, CheckUserPresenceOnly)
       .WillOnce(ReturnError<TPMError>("Not allowed", TPMRetryAction::kNoRetry));
   EXPECT_EQ(U2fSignCheckOnly(GetWrongRpIdHash(), GetCredId()),
             HasCredentialsResponse::UNKNOWN_CREDENTIAL_ID);
 }
 
-TEST_F(U2fCommandProcessorGscTest, U2fSignCheckOnlySuccess) {
+TEST_F(U2fCommandProcessorVendorTest, U2fSignCheckOnlySuccess) {
   EXPECT_CALL(*mock_u2f_frontend_, CheckUserPresenceOnly)
       .WillOnce(ReturnOk<TPMError>());
   EXPECT_EQ(U2fSignCheckOnly(GetRpIdHash(), GetCredId()),
             HasCredentialsResponse::SUCCESS);
 }
 
-TEST_F(U2fCommandProcessorGscTest, U2fSignCheckOnlyVersionedSuccess) {
+TEST_F(U2fCommandProcessorVendorTest, U2fSignCheckOnlyVersionedSuccess) {
   brillo::Blob credential_id(GetVersionedCredId());
   EXPECT_CALL(*mock_u2f_frontend_, Check).WillOnce(ReturnOk<TPMError>());
   EXPECT_EQ(U2fSignCheckOnly(GetRpIdHash(), credential_id),
             HasCredentialsResponse::SUCCESS);
 }
 
-TEST_F(U2fCommandProcessorGscTest, U2fSignCheckOnlyWrongLength) {
-  std::vector<uint8_t> wrong_length_key_handle(U2F_V0_KH_SIZE + 1, 0xab);
+TEST_F(U2fCommandProcessorVendorTest, U2fSignCheckOnlyWrongLength) {
+  std::vector<uint8_t> wrong_length_key_handle(kConfig.up_only_kh_size + 1,
+                                               0xab);
   EXPECT_EQ(U2fSignCheckOnly(GetRpIdHash(), wrong_length_key_handle),
             HasCredentialsResponse::UNKNOWN_CREDENTIAL_ID);
 }
 
-TEST_F(U2fCommandProcessorGscTest, G2fAttestSuccess) {
+TEST_F(U2fCommandProcessorVendorTest, G2fAttestSuccess) {
   EXPECT_CALL(*mock_u2f_frontend_, GetG2fCert)
       .WillOnce(ReturnValue(GetStubG2fCert()));
   EXPECT_CALL(*mock_u2f_frontend_, G2fAttest)
@@ -477,7 +490,7 @@ TEST_F(U2fCommandProcessorGscTest, G2fAttestSuccess) {
             MakeCredentialResponse::SUCCESS);
 }
 
-TEST_F(U2fCommandProcessorGscTest, G2fSoftwareAttestSuccess) {
+TEST_F(U2fCommandProcessorVendorTest, G2fSoftwareAttestSuccess) {
   EXPECT_CALL(*mock_u2f_frontend_, GetG2fAttestData)
       .WillOnce(ReturnValue(brillo::Blob(30)));
   auto secret = GetUserSecret();

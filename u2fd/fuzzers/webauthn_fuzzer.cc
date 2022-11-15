@@ -31,7 +31,7 @@
 #include "u2fd/fuzzers/fuzzed_allowlisting_util_factory.h"
 #include "u2fd/fuzzers/fuzzed_user_state.h"
 #include "u2fd/fuzzers/webauthn_fuzzer_data.pb.h"
-#include "u2fd/u2f_command_processor_gsc.h"
+#include "u2fd/u2f_command_processor_vendor.h"
 #include "u2fd/webauthn_handler.h"
 
 namespace {
@@ -102,8 +102,9 @@ class WebAuthnFuzzer : public brillo::Daemon {
         allowlisting_util_factory_->CreateAllowlistingUtil();
 
     PrepareStorage();
-    auto u2f_command_processor = std::make_unique<u2f::U2fCommandProcessorGsc>(
-        hwsec_factory_->GetU2fVendorFrontend(), request_presence);
+    auto u2f_command_processor =
+        std::make_unique<u2f::U2fCommandProcessorVendor>(
+            hwsec_factory_->GetU2fVendorFrontend(), request_presence);
 
     handler_->Initialize(mock_bus_.get(), user_state_.get(), u2f_mode,
                          std::move(u2f_command_processor),

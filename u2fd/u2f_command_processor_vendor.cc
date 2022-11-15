@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "u2fd/u2f_command_processor_gsc.h"
+#include "u2fd/u2f_command_processor_vendor.h"
 
 #include <functional>
 #include <memory>
@@ -20,10 +20,8 @@
 #include <chromeos/cbor/writer.h>
 #include <libhwsec-foundation/status/status_chain_macros.h>
 #include <openssl/sha.h>
-#include <trunks/cr50_headers/u2f.h>
 #include <u2f/proto_bindings/u2f_interface.pb.h>
 
-#include "u2fd/client/tpm_vendor_cmd.h"
 #include "u2fd/client/user_state.h"
 #include "u2fd/client/util.h"
 #include "u2fd/u2f_command_processor.h"
@@ -57,7 +55,7 @@ constexpr base::TimeDelta kVerificationTimeout = base::Seconds(10);
 
 }  // namespace
 
-U2fCommandProcessorGsc::U2fCommandProcessorGsc(
+U2fCommandProcessorVendor::U2fCommandProcessorVendor(
     std::unique_ptr<hwsec::U2fVendorFrontend> u2f_frontend,
     std::function<void()> request_presence)
     : u2f_frontend_(std::move(u2f_frontend)),
@@ -66,16 +64,15 @@ U2fCommandProcessorGsc::U2fCommandProcessorGsc(
 }
 
 MakeCredentialResponse::MakeCredentialStatus
-U2fCommandProcessorGsc::U2fGenerate(const std::vector<uint8_t>& rp_id_hash,
-                                    const brillo::SecureBlob& credential_secret,
-                                    PresenceRequirement presence_requirement,
-                                    bool uv_compatible,
-                                    const brillo::Blob* auth_time_secret_hash,
-                                    std::vector<uint8_t>* credential_id,
-                                    CredentialPublicKey* credential_public_key,
-                                    std::vector<uint8_t>* /*unused*/) {
-  DCHECK(rp_id_hash.size() == SHA256_DIGEST_LENGTH);
-
+U2fCommandProcessorVendor::U2fGenerate(
+    const std::vector<uint8_t>& rp_id_hash,
+    const brillo::SecureBlob& credential_secret,
+    PresenceRequirement presence_requirement,
+    bool uv_compatible,
+    const brillo::Blob* auth_time_secret_hash,
+    std::vector<uint8_t>* credential_id,
+    CredentialPublicKey* credential_public_key,
+    std::vector<uint8_t>* /*unused*/) {
   if (uv_compatible) {
     if (!auth_time_secret_hash) {
       LOG(ERROR) << "No auth-time secret hash to use for u2f_generate.";
@@ -116,7 +113,7 @@ U2fCommandProcessorGsc::U2fGenerate(const std::vector<uint8_t>& rp_id_hash,
   }
 }
 
-GetAssertionResponse::GetAssertionStatus U2fCommandProcessorGsc::U2fSign(
+GetAssertionResponse::GetAssertionStatus U2fCommandProcessorVendor::U2fSign(
     const std::vector<uint8_t>& rp_id_hash,
     const std::vector<uint8_t>& hash_to_sign,
     const std::vector<uint8_t>& credential_id,
@@ -124,9 +121,12 @@ GetAssertionResponse::GetAssertionStatus U2fCommandProcessorGsc::U2fSign(
     const std::vector<uint8_t>* /*unused*/,
     PresenceRequirement presence_requirement,
     std::vector<uint8_t>* signature) {
-  DCHECK(rp_id_hash.size() == SHA256_DIGEST_LENGTH);
+  ASSIGN_OR_RETURN(const hwsec::u2f::Config& config, GetConfig(),
+                   _.WithStatus<TPMError>("Failed to get U2F config")
+                       .LogError()
+                       .As(GetAssertionResponse::INTERNAL_ERROR));
 
-  if (credential_id.size() == U2F_V1_KH_SIZE + SHA256_DIGEST_LENGTH) {
+  if (credential_id.size() == config.kh_size) {
     if (presence_requirement != PresenceRequirement::kPowerButton) {
       ASSIGN_OR_RETURN(
           const Signature& sig,
@@ -151,7 +151,7 @@ GetAssertionResponse::GetAssertionStatus U2fCommandProcessorGsc::U2fSign(
         /*is_up_only=*/false, rp_id_hash, credential_secret,
         /*auth_time_secret=*/std::nullopt, hash_to_sign, credential_id,
         signature);
-  } else if (credential_id.size() == U2F_V0_KH_SIZE) {
+  } else if (credential_id.size() == config.up_only_kh_size) {
     // Non-versioned KH must be signed with power button press.
     if (presence_requirement != PresenceRequirement::kPowerButton)
       return GetAssertionResponse::INTERNAL_ERROR;
@@ -166,17 +166,22 @@ GetAssertionResponse::GetAssertionStatus U2fCommandProcessorGsc::U2fSign(
 }
 
 HasCredentialsResponse::HasCredentialsStatus
-U2fCommandProcessorGsc::U2fSignCheckOnly(
+U2fCommandProcessorVendor::U2fSignCheckOnly(
     const std::vector<uint8_t>& rp_id_hash,
     const std::vector<uint8_t>& credential_id,
     const brillo::SecureBlob& credential_secret,
     const std::vector<uint8_t>* /*unused*/) {
+  ASSIGN_OR_RETURN(const hwsec::u2f::Config& config, GetConfig(),
+                   _.WithStatus<TPMError>("Failed to get U2F config")
+                       .LogError()
+                       .As(HasCredentialsResponse::INTERNAL_ERROR));
+
   hwsec::Status sign_status;
 
-  if (credential_id.size() == U2F_V1_KH_SIZE + SHA256_DIGEST_LENGTH) {
+  if (credential_id.size() == config.kh_size) {
     sign_status =
         u2f_frontend_->Check(rp_id_hash, credential_secret, credential_id);
-  } else if (credential_id.size() == U2F_V0_KH_SIZE) {
+  } else if (credential_id.size() == config.up_only_kh_size) {
     sign_status = u2f_frontend_->CheckUserPresenceOnly(
         rp_id_hash, credential_secret, credential_id);
   } else {
@@ -187,7 +192,8 @@ U2fCommandProcessorGsc::U2fSignCheckOnly(
                           : HasCredentialsResponse::UNKNOWN_CREDENTIAL_ID;
 }
 
-MakeCredentialResponse::MakeCredentialStatus U2fCommandProcessorGsc::G2fAttest(
+MakeCredentialResponse::MakeCredentialStatus
+U2fCommandProcessorVendor::G2fAttest(
     const std::vector<uint8_t>& rp_id_hash,
     const brillo::SecureBlob& credential_secret,
     const std::vector<uint8_t>& challenge,
@@ -222,7 +228,7 @@ MakeCredentialResponse::MakeCredentialStatus U2fCommandProcessorGsc::G2fAttest(
   return MakeCredentialResponse::SUCCESS;
 }
 
-bool U2fCommandProcessorGsc::G2fSoftwareAttest(
+bool U2fCommandProcessorVendor::G2fSoftwareAttest(
     const std::vector<uint8_t>& rp_id_hash,
     const std::vector<uint8_t>& challenge,
     const std::vector<uint8_t>& credential_public_key,
@@ -239,12 +245,12 @@ bool U2fCommandProcessorGsc::G2fSoftwareAttest(
   return util::DoSoftwareAttest(data, cert_out, signature_out);
 }
 
-CoseAlgorithmIdentifier U2fCommandProcessorGsc::GetAlgorithm() {
+CoseAlgorithmIdentifier U2fCommandProcessorVendor::GetAlgorithm() {
   return CoseAlgorithmIdentifier::kEs256;
 }
 
 MakeCredentialResponse::MakeCredentialStatus
-U2fCommandProcessorGsc::SendU2fGenerateWaitForPresence(
+U2fCommandProcessorVendor::SendU2fGenerateWaitForPresence(
     bool is_up_only,
     const std::vector<uint8_t>& rp_id_hash,
     const brillo::SecureBlob& credential_secret,
@@ -287,7 +293,7 @@ U2fCommandProcessorGsc::SendU2fGenerateWaitForPresence(
 }
 
 GetAssertionResponse::GetAssertionStatus
-U2fCommandProcessorGsc::SendU2fSignWaitForPresence(
+U2fCommandProcessorVendor::SendU2fSignWaitForPresence(
     bool is_up_only,
     const std::vector<uint8_t>& rp_id_hash,
     const brillo::SecureBlob& credential_secret,
@@ -326,7 +332,7 @@ U2fCommandProcessorGsc::SendU2fSignWaitForPresence(
 }
 
 template <typename T, typename F>
-hwsec::StatusOr<T> U2fCommandProcessorGsc::CallAndWaitForPresence(F fn) {
+hwsec::StatusOr<T> U2fCommandProcessorVendor::CallAndWaitForPresence(F fn) {
   hwsec::StatusOr<T> status = fn();
   base::TimeTicks verification_start = base::TimeTicks::Now();
   while (!status.ok() &&
@@ -341,7 +347,7 @@ hwsec::StatusOr<T> U2fCommandProcessorGsc::CallAndWaitForPresence(F fn) {
   return status;
 }
 
-std::vector<uint8_t> U2fCommandProcessorGsc::EncodeCredentialPublicKeyInCBOR(
+std::vector<uint8_t> U2fCommandProcessorVendor::EncodeCredentialPublicKeyInCBOR(
     base::span<const uint8_t> x, base::span<const uint8_t> y) {
   cbor::Value::MapValue cbor_map;
   cbor_map[cbor::Value(kCoseKeyKtyLabel)] = cbor::Value(kCoseKeyKtyEC2);
@@ -352,7 +358,7 @@ std::vector<uint8_t> U2fCommandProcessorGsc::EncodeCredentialPublicKeyInCBOR(
   return *cbor::Writer::Write(cbor::Value(std::move(cbor_map)));
 }
 
-std::optional<std::vector<uint8_t>> U2fCommandProcessorGsc::GetG2fCert() {
+std::optional<std::vector<uint8_t>> U2fCommandProcessorVendor::GetG2fCert() {
   ASSIGN_OR_RETURN(brillo::Blob cert, u2f_frontend_->GetG2fCert(),
                    _.WithStatus<TPMError>("Failed to get G2F cert")
                        .LogError()
@@ -366,7 +372,15 @@ std::optional<std::vector<uint8_t>> U2fCommandProcessorGsc::GetG2fCert() {
   return cert;
 }
 
-hwsec::StatusOr<int> U2fCommandProcessorGsc::CallAndWaitForPresenceForTest(
+hwsec::StatusOr<hwsec::u2f::Config> U2fCommandProcessorVendor::GetConfig() {
+  if (config_.has_value()) {
+    return *config_;
+  }
+  ASSIGN_OR_RETURN(config_, u2f_frontend_->GetConfig());
+  return *config_;
+}
+
+hwsec::StatusOr<int> U2fCommandProcessorVendor::CallAndWaitForPresenceForTest(
     std::function<hwsec::StatusOr<int>()> fn) {
   return CallAndWaitForPresence<int>(fn);
 }

@@ -23,7 +23,7 @@
 #include <u2f/proto_bindings/u2f_interface.pb.h>
 
 #include "u2fd/client/util.h"
-#include "u2fd/u2f_command_processor_gsc.h"
+#include "u2fd/u2f_command_processor.h"
 
 namespace u2f {
 
