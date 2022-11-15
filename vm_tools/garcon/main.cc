@@ -52,6 +52,7 @@ const int kSyslogCritical = LOG_CRIT;
 
 #include "google/protobuf/util/json_util.h"
 #include "vm_tools/common/spawn_util.h"
+#include "vm_tools/garcon/file_chooser_dbus_service.h"
 #include "vm_tools/garcon/host_notifier.h"
 #include "vm_tools/garcon/package_kit_proxy.h"
 #include "vm_tools/garcon/screensaver_dbus_service.h"
@@ -232,13 +233,17 @@ void CreatePackageKitProxy(
   event->Signal();
 }
 
-void CreateScreenSaverDBusService(
+void CreateDBusServices(
     base::WaitableEvent* event,
-    std::unique_ptr<vm_tools::garcon::ScreenSaverDBusService>* proxy_ptr) {
+    std::unique_ptr<vm_tools::garcon::ScreenSaverDBusService>*
+        screensaver_proxy_ptr,
+    std::unique_ptr<vm_tools::garcon::FileChooserDBusService>*
+        file_chooser_proxy_ptr) {
   // We don't want to receive SIGTERM on this thread.
   BlockSigterm();
 
-  *proxy_ptr = vm_tools::garcon::ScreenSaverDBusService::Create();
+  *screensaver_proxy_ptr = vm_tools::garcon::ScreenSaverDBusService::Create();
+  *file_chooser_proxy_ptr = vm_tools::garcon::FileChooserDBusService::Create();
   event->Signal();
 }
 
@@ -619,21 +624,21 @@ int main(int argc, char** argv) {
   }
   event.Reset();
 
-  // This needs to be created on the D-Bus thread.
+  // These need to be created on the D-Bus thread.
   std::unique_ptr<vm_tools::garcon::ScreenSaverDBusService> screensaver;
+  std::unique_ptr<vm_tools::garcon::FileChooserDBusService> file_chooser;
   ret = dbus_thread.task_runner()->PostTask(
       FROM_HERE,
-      base::BindOnce(&CreateScreenSaverDBusService, &event, &screensaver));
+      base::BindOnce(&CreateDBusServices, &event, &screensaver, &file_chooser));
   if (!ret) {
-    LOG(ERROR)
-        << "Failed to post Screensaver D-Bus server creation to D-Bus thread";
+    LOG(ERROR) << "Failed to post D-Bus server creation to D-Bus thread";
     return -1;
   }
   // Wait for the creation to complete.
   event.Wait();
-  if (!screensaver) {
+  if (!screensaver || !file_chooser) {
     // Not returning -1 on failure as it is not essential for the VM to start.
-    LOG(ERROR) << "Failed in creating the Screensaver D-Bus server";
+    LOG(ERROR) << "Failed in creating the D-Bus servers";
   }
   event.Reset();
 

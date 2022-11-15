@@ -70,6 +70,7 @@ static_library("libgarcon") {
     "../garcon/ansible_playbook_application.cc",
     "../garcon/arc_sideload.cc",
     "../garcon/desktop_file.cc",
+    "../garcon/file_chooser_dbus_service.cc",
     "../garcon/host_notifier.cc",
     "../garcon/icon_finder.cc",
     "../garcon/icon_index_file.cc",
