@@ -1805,14 +1805,15 @@ StartVmResponse Service::StartVm(StartVmRequest request,
 
   // Exists just to keep FDs around for crosvm to inherit
   std::vector<brillo::SafeFD> owned_fds;
-  auto root_fd = brillo::SafeFD::Root();
+  auto root_fd_result = brillo::SafeFD::Root();
 
-  if (brillo::SafeFD::IsError(root_fd.second)) {
+  if (brillo::SafeFD::IsError(root_fd_result.second)) {
     LOG(ERROR) << "Could not open root directory: "
-               << static_cast<int>(root_fd.second);
+               << static_cast<int>(root_fd_result.second);
     response.set_failure_reason("Could not open root directory");
     return response;
   }
+  auto root_fd = std::move(root_fd_result.first);
 
   string failure_reason;
   VMImageSpec image_spec =
@@ -1827,7 +1828,7 @@ StartVmResponse Service::StartVm(StartVmRequest request,
   }
 
   string convert_fd_based_path_result = ConvertToFdBasedPaths(
-      root_fd.first, request.writable_rootfs(), image_spec, owned_fds);
+      root_fd, request.writable_rootfs(), image_spec, owned_fds);
   if (!convert_fd_based_path_result.empty()) {
     response.set_failure_reason(convert_fd_based_path_result);
     return response;
@@ -1861,7 +1862,7 @@ StartVmResponse Service::StartVm(StartVmRequest request,
   // to keep compatibility with older components with only vm_rootfs.img.
   string tools_device;
   if (base::PathExists(image_spec.tools_disk)) {
-    failure_reason = ConvertToFdBasedPath(root_fd.first, &image_spec.tools_disk,
+    failure_reason = ConvertToFdBasedPath(root_fd, &image_spec.tools_disk,
                                           O_RDONLY, owned_fds);
     if (!failure_reason.empty()) {
       LOG(ERROR) << "Could not open tools_disk file";
@@ -1906,7 +1907,7 @@ StartVmResponse Service::StartVm(StartVmRequest request,
 
     auto path = base::FilePath(disk.path());
     failure_reason = ConvertToFdBasedPath(
-        root_fd.first, &path, config.writable ? O_RDWR : O_RDONLY, owned_fds);
+        root_fd, &path, config.writable ? O_RDWR : O_RDONLY, owned_fds);
 
     if (!failure_reason.empty()) {
       LOG(ERROR) << "Could not open disk file";
