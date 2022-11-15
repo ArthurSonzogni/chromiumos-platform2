@@ -19,7 +19,7 @@
 #include <chromeos/dbus/service_constants.h>
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 
-#include "cryptohome/cryptohome_metrics.h"
+#include "cryptohome/data_migrator/metrics.h"
 #include "cryptohome/data_migrator/migration_helper_delegate.h"
 #include "cryptohome/platform.h"
 
@@ -54,6 +54,8 @@ class MigrationHelper {
   // be migrated, including what has already been migrated.  If
   // |progress.status| is not DIRCRYPTO_MIGRATION_IN_PROGRESS the two
   // aforementioned values should be ignored as they are undefined.
+  // TODO(b/258402655): Do not use user_data_auth::DircryptoMigrationProgress
+  // in the argument of the callback.
   using ProgressCallback = base::RepeatingCallback<void(
       const user_data_auth::DircryptoMigrationProgress& progress)>;
 
@@ -163,12 +165,11 @@ class MigrationHelper {
   // file operations (|platform_| methods or base:: functions), not after
   // the batched file operation utility to keep the granularity of the stat
   // and to avoid unintended duplicated logging.
-  void RecordFileError(DircryptoMigrationFailedOperationType operation,
+  void RecordFileError(MigrationFailedOperationType operation,
                        const base::FilePath& child,
                        base::File::Error error);
-  void RecordFileErrorWithCurrentErrno(
-      DircryptoMigrationFailedOperationType operation,
-      const base::FilePath& child);
+  void RecordFileErrorWithCurrentErrno(MigrationFailedOperationType operation,
+                                       const base::FilePath& child);
   // Records the fact that the file at |rel_path| was skipped during migration.
   void RecordSkippedFile(const base::FilePath& rel_path);
 
@@ -217,7 +218,7 @@ class MigrationHelper {
   std::string namespaced_atime_xattr_name_;
   base::FilePath skipped_file_list_path_;
 
-  DircryptoMigrationFailedOperationType failed_operation_type_;
+  MigrationFailedOperationType failed_operation_type_;
   base::File::Error failed_error_type_;
   // Lock for |failed_operation_type_| and |failed_error_type_|.
   base::Lock failure_info_lock_;

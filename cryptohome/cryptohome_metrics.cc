@@ -467,8 +467,8 @@ void ReportFreeDiskSpaceDuringLoginTotalFreedInMb(int mb) {
       kMax, kNumBuckets);
 }
 
-void ReportDircryptoMigrationStartStatus(MigrationType migration_type,
-                                         DircryptoMigrationStartStatus status) {
+void ReportDircryptoMigrationStartStatus(
+    MigrationType migration_type, data_migrator::MigrationStartStatus status) {
   if (!g_metrics) {
     return;
   }
@@ -476,11 +476,12 @@ void ReportDircryptoMigrationStartStatus(MigrationType migration_type,
       migration_type == MigrationType::FULL
           ? kCryptohomeDircryptoMigrationStartStatusHistogram
           : kCryptohomeDircryptoMinimalMigrationStartStatusHistogram;
-  g_metrics->SendEnumToUMA(metric, status, kMigrationStartStatusNumBuckets);
+  g_metrics->SendEnumToUMA(metric, status,
+                           data_migrator::kMigrationStartStatusNumBuckets);
 }
 
-void ReportDircryptoMigrationEndStatus(MigrationType migration_type,
-                                       DircryptoMigrationEndStatus status) {
+void ReportDircryptoMigrationEndStatus(
+    MigrationType migration_type, data_migrator::MigrationEndStatus status) {
   if (!g_metrics) {
     return;
   }
@@ -488,7 +489,8 @@ void ReportDircryptoMigrationEndStatus(MigrationType migration_type,
       migration_type == MigrationType::FULL
           ? kCryptohomeDircryptoMigrationEndStatusHistogram
           : kCryptohomeDircryptoMinimalMigrationEndStatusHistogram;
-  g_metrics->SendEnumToUMA(metric, status, kMigrationEndStatusNumBuckets);
+  g_metrics->SendEnumToUMA(metric, status,
+                           data_migrator::kMigrationEndStatusNumBuckets);
 }
 
 void ReportDircryptoMigrationFailedErrorCode(base::File::Error error_code) {
@@ -501,13 +503,13 @@ void ReportDircryptoMigrationFailedErrorCode(base::File::Error error_code) {
 }
 
 void ReportDircryptoMigrationFailedOperationType(
-    DircryptoMigrationFailedOperationType type) {
+    data_migrator::MigrationFailedOperationType type) {
   if (!g_metrics) {
     return;
   }
   g_metrics->SendEnumToUMA(
       kCryptohomeDircryptoMigrationFailedOperationTypeHistogram, type,
-      kMigrationFailedOperationTypeNumBuckets);
+      data_migrator::kMigrationFailedOperationTypeNumBuckets);
 }
 
 void ReportDircryptoMigrationFailedPathType(

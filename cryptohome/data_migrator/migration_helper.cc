@@ -29,7 +29,6 @@
 #include <base/timer/elapsed_timer.h>
 #include <chromeos/dbus/service_constants.h>
 
-#include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/migration_type.h"
 #include "cryptohome/storage/mount.h"
 
@@ -93,16 +92,16 @@ const char* const kMinimalMigrationUserPathsAllowlist[] = {
 // to report other status, call an appropriate method to overwrite it.
 class MigrationStartAndEndStatusReporter {
  public:
-  MigrationStartAndEndStatusReporter(MigrationType migration_type,
+  MigrationStartAndEndStatusReporter(MigrationHelperDelegate* delegate,
                                      bool resumed,
                                      const base::AtomicFlag& is_cancelled)
-      : migration_type_(migration_type),
+      : delegate_(delegate),
         resumed_(resumed),
         is_cancelled_(is_cancelled),
         end_status_(resumed ? kResumedMigrationFailedGeneric
                             : kNewMigrationFailedGeneric) {
-    ReportDircryptoMigrationStartStatus(
-        migration_type, resumed_ ? kMigrationResumed : kMigrationStarted);
+    delegate_->ReportStartStatus(resumed_ ? kMigrationResumed
+                                          : kMigrationStarted);
   }
   MigrationStartAndEndStatusReporter(
       const MigrationStartAndEndStatusReporter&) = delete;
@@ -114,7 +113,7 @@ class MigrationStartAndEndStatusReporter {
       end_status_ =
           resumed_ ? kResumedMigrationCancelled : kNewMigrationCancelled;
     }
-    ReportDircryptoMigrationEndStatus(migration_type_, end_status_);
+    delegate_->ReportEndStatus(end_status_);
   }
 
   void SetSuccess() {
@@ -126,7 +125,7 @@ class MigrationStartAndEndStatusReporter {
                            : kNewMigrationFailedLowDiskSpace;
   }
 
-  void SetFileErrorFailure(DircryptoMigrationFailedOperationType operation,
+  void SetFileErrorFailure(MigrationFailedOperationType operation,
                            base::File::Error error) {
     // Some notable special cases are given distinct enum values.
     if (operation == kMigrationFailedAtOpenSourceFile &&
@@ -140,22 +139,10 @@ class MigrationStartAndEndStatusReporter {
   }
 
  private:
-  const MigrationType migration_type_;
+  MigrationHelperDelegate* delegate_;
   const bool resumed_;
   const base::AtomicFlag& is_cancelled_;
-  DircryptoMigrationEndStatus end_status_;
-};
-
-struct PathTypeMapping {
-  const char* path;
-  DircryptoMigrationFailedPathType type;
-};
-
-const PathTypeMapping kPathTypeMappings[] = {
-    {"root/android-data", kMigrationFailedUnderAndroidOther},
-    {"user/Downloads", kMigrationFailedUnderDownloads},
-    {"user/Cache", kMigrationFailedUnderCache},
-    {"user/GCache", kMigrationFailedUnderGcache},
+  MigrationEndStatus end_status_;
 };
 
 }  // namespace
@@ -360,8 +347,8 @@ bool MigrationHelper::Migrate(const ProgressCallback& progress_callback) {
   base::ElapsedTimer timer;
   skipped_file_list_path_ = to_base_path_.Append(kSkippedFileListFileName);
   const bool resumed = IsMigrationStarted();
-  MigrationStartAndEndStatusReporter status_reporter(
-      delegate_->migration_type(), resumed, is_cancelled_);
+  MigrationStartAndEndStatusReporter status_reporter(delegate_, resumed,
+                                                     is_cancelled_);
 
   if (progress_callback.is_null()) {
     LOG(ERROR) << "Invalid progress callback";
@@ -423,9 +410,8 @@ bool MigrationHelper::Migrate(const ProgressCallback& progress_callback) {
       return false;
     }
     if (!resumed) {
-      ReportDircryptoMigrationTotalByteCountInMb(total_byte_count_ / 1024 /
-                                                 1024);
-      ReportDircryptoMigrationTotalFileCount(n_files_ + n_dirs_ + n_symlinks_);
+      delegate_->ReportTotalSize(total_byte_count_ / 1024 / 1024,
+                                 n_files_ + n_dirs_ + n_symlinks_);
     }
   }
   ReportStatus(user_data_auth::DIRCRYPTO_MIGRATION_IN_PROGRESS);
@@ -535,6 +521,7 @@ void MigrationHelper::ReportStatus(
   next_report_ = base::TimeTicks::Now() + kStatusSignalInterval;
 }
 
+// TODO(b/258402655): Move this method to |delegate_|.
 bool MigrationHelper::ShouldMigrateFile(const base::FilePath& child) {
   if (delegate_->migration_type() == MigrationType::FULL) {
     // crbug.com/728892: This directory can be falling into a weird state that
@@ -956,39 +943,14 @@ bool MigrationHelper::SetExtendedAttributeIfNotPresent(
   return true;
 }
 
-void MigrationHelper::RecordFileError(
-    DircryptoMigrationFailedOperationType operation,
-    const base::FilePath& child,
-    base::File::Error error) {
-  DircryptoMigrationFailedPathType path = kMigrationFailedUnderOther;
-  for (const auto& path_type_mapping : kPathTypeMappings) {
-    if (base::FilePath(path_type_mapping.path).IsParent(child)) {
-      path = path_type_mapping.type;
-      break;
-    }
-  }
-  // Android cache files are either under
-  //   root/android-data/data/data/<package name>/cache
-  //   root/android-data/data/media/0/Android/data/<package name>/cache
-  if (path == kMigrationFailedUnderAndroidOther) {
-    std::vector<std::string> components = child.GetComponents();
-    if ((components.size() >= 7u && components[2] == "data" &&
-         components[3] == "data" && components[5] == "cache") ||
-        (components.size() >= 10u && components[2] == "data" &&
-         components[3] == "media" && components[4] == "0" &&
-         components[5] == "Android" && components[6] == "data" &&
-         components[8] == "cache")) {
-      path = kMigrationFailedUnderAndroidCache;
-    }
-  }
-
+void MigrationHelper::RecordFileError(MigrationFailedOperationType operation,
+                                      const base::FilePath& child,
+                                      base::File::Error error) {
   // Report UMA stats here for each single error.
-  ReportDircryptoMigrationFailedOperationType(operation);
-  ReportDircryptoMigrationFailedPathType(path);
-  ReportDircryptoMigrationFailedErrorCode(error);
+  delegate_->ReportFailure(error, operation, child);
 
   if (error == base::File::FILE_ERROR_NO_SPACE) {
-    ReportDircryptoMigrationFailedNoSpace(
+    delegate_->ReportFailedNoSpace(
         initial_free_space_bytes_ / (1024 * 1024),
         platform_->AmountOfFreeDiskSpace(to_base_path_) / (1024 * 1024));
   }
@@ -1001,8 +963,7 @@ void MigrationHelper::RecordFileError(
 }
 
 void MigrationHelper::RecordFileErrorWithCurrentErrno(
-    DircryptoMigrationFailedOperationType operation,
-    const base::FilePath& child) {
+    MigrationFailedOperationType operation, const base::FilePath& child) {
   RecordFileError(operation, child, base::File::OSErrorToFileError(errno));
 }
 
@@ -1128,7 +1089,7 @@ void MigrationHelper::ReportTotalXattrSize(const base::FilePath& path,
     }
     xattr_size += value.length();
   }
-  ReportDircryptoMigrationFailedNoSpaceXattrSizeInBytes(xattr_size);
+  delegate_->ReportFailedNoSpaceXattrSizeInBytes(xattr_size);
 }
 
 }  // namespace cryptohome::data_migrator
