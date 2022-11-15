@@ -1100,6 +1100,39 @@ TEST_F(DaemonTest, SetBatterySustain) {
   EXPECT_TRUE(daemon_->SetBatterySustain(70, 80));
 }
 
+TEST_F(DaemonTest, PrepareToSuspendAndResume) {
+  input_watcher_->set_lid_state(LidState::OPEN);
+
+  Init();
+
+  input_watcher_->set_lid_state(LidState::CLOSED);
+  input_watcher_->NotifyObserversAboutLidState();
+
+  EXPECT_EQ(LidState::CLOSED,
+            internal_backlight_controller_->lid_state_changes()[0]);
+
+  daemon_->PrepareToSuspend();
+
+  EXPECT_TRUE(power_supply_->suspended());
+  EXPECT_TRUE(internal_backlight_controller_->suspended());
+
+  daemon_->DoSuspend(1, true, base::Milliseconds(0), false);
+
+  input_watcher_->set_lid_state(LidState::OPEN);
+
+  // Ensure that lid state remains closed until UndoPrepareToSuspend
+  EXPECT_EQ(LidState::CLOSED,
+            internal_backlight_controller_->lid_state_changes().back());
+
+  daemon_->UndoPrepareToSuspend(true, 0, false);
+
+  EXPECT_EQ(LidState::OPEN,
+            internal_backlight_controller_->lid_state_changes().back());
+
+  EXPECT_FALSE(internal_backlight_controller_->suspended());
+  EXPECT_FALSE(power_supply_->suspended());
+}
+
 // TODO(chromeos-power): Add more tests. Namely:
 // - PrepareToSuspend / UndoPrepareToSuspend
 // - Creating and deleting suspend_announced file

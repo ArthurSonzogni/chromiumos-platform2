@@ -9,10 +9,6 @@
 namespace power_manager {
 namespace system {
 
-PowerSupplyStub::PowerSupplyStub() : refresh_result_(true) {}
-
-PowerSupplyStub::~PowerSupplyStub() {}
-
 void PowerSupplyStub::NotifyObservers() {
   for (PowerSupplyObserver& observer : observers_)
     observer.OnPowerStatusUpdate();
@@ -36,7 +32,9 @@ bool PowerSupplyStub::RefreshImmediately() {
   return refresh_result_;
 }
 
-void PowerSupplyStub::SetSuspended(bool suspended) {}
+void PowerSupplyStub::SetSuspended(bool suspended) {
+  suspended_ = suspended;
+}
 
 void PowerSupplyStub::SetAdaptiveChargingSupported(bool supported) {}
 

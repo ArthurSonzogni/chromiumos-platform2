@@ -18,14 +18,17 @@ namespace system {
 // Stub implementation of PowerSupplyInterface used by tests.
 class PowerSupplyStub : public PowerSupplyInterface {
  public:
-  PowerSupplyStub();
+  PowerSupplyStub() = default;
+
   PowerSupplyStub(const PowerSupplyStub&) = delete;
   PowerSupplyStub& operator=(const PowerSupplyStub&) = delete;
 
-  ~PowerSupplyStub() override;
+  ~PowerSupplyStub() override = default;
 
   void set_refresh_result(bool result) { refresh_result_ = result; }
   void set_status(const PowerStatus& status) { status_ = status; }
+
+  bool suspended() const { return suspended_; }
 
   // Notifies registered observers that the power status has been updated.
   void NotifyObservers();
@@ -44,7 +47,8 @@ class PowerSupplyStub : public PowerSupplyInterface {
 
  private:
   // Result to return from RefreshImmediately().
-  bool refresh_result_;
+  bool refresh_result_ = true;
+  bool suspended_ = false;
 
   // Status to return.
   PowerStatus status_;
