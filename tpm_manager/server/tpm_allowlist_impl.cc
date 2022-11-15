@@ -21,6 +21,7 @@ namespace {
 #if USE_TPM_DYNAMIC
 
 constexpr char kTpmForceAllowTpmFile[] = "/var/lib/tpm_manager/force_allow_tpm";
+constexpr char kNoPreinitFlagFile[] = "/run/tpm_manager/no_preinit";
 
 // The path to check the TPM is enabled or not.
 constexpr char kTpmEnabledFile[] = "/sys/class/tpm/tpm0/enabled";
@@ -204,6 +205,24 @@ bool TpmAllowlistImpl::IsAllowed() {
   std::optional<bool> force_allow = IsForceAllow();
   if (force_allow.has_value()) {
     return force_allow.value();
+  }
+
+  if (USE_OS_INSTALL_SERVICE) {
+    if (base::PathExists(base::FilePath(kNoPreinitFlagFile))) {
+      // If USE_OS_INSTALL_SERVICE, kNoPreinitFlagFile will be touched in the
+      // pre-start phase of tpm_managerd if the OS is running from installer
+      // (see check_tpm_preinit_condition.cc). Note that under current scope
+      // USE_OS_INSTALL_SERVICE and USE_TPM_DYNAMIC will always have the same
+      // value (and only in reven case both flags are true).
+      LOG(WARNING) << __func__
+                   << ": Disallow TPM when OS running from installer.";
+      return false;
+    }
+  }
+
+  if (!tpm_status_->IsTpmEnabled()) {
+    LOG(WARNING) << __func__ << ": Disallow the disabled TPM.";
+    return false;
   }
 
   TPM_SELECT_BEGIN;

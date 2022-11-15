@@ -781,6 +781,7 @@ TEST_F(TpmManagerServiceTest_Preinit, TakeOwnershipNoTpm) {
   Run();
 }
 
+#if !USE_OS_INSTALL_SERVICE
 TEST_F(TpmManagerServiceTest_NoPreinit, TakeOwnershipFollowedByDisableDA) {
   // Called in `InitializeTask()`.
   EXPECT_CALL(mock_tpm_status_, GetTpmOwned(_))
@@ -802,6 +803,7 @@ TEST_F(TpmManagerServiceTest_NoPreinit, TakeOwnershipFollowedByDisableDA) {
   service_->TakeOwnership(request, base::BindOnce(callback, this));
   Run();
 }
+#endif
 
 TEST_F(TpmManagerServiceTest_Preinit, RemoveOwnerDependencyReadFailure) {
   EXPECT_CALL(mock_local_data_store_, Read(_)).WillRepeatedly(Return(false));
@@ -1264,6 +1266,7 @@ TEST_F(TpmManagerServiceTest_Preinit, TpmManagerTpmNotAllowedNoCrash) {
   RunServiceWorkerAndQuit();
 }
 
+#if !USE_OS_INSTALL_SERVICE
 TEST_F(TpmManagerServiceTest_NoPreinit, UpdateTpmStatusAfterTakeOwnership) {
   EXPECT_CALL(mock_tpm_status_, GetTpmOwned(_))
       .WillOnce(DoAll(SetArgPointee<0>(TpmStatus::kTpmUnowned), Return(true)))
@@ -1317,6 +1320,7 @@ TEST_F(TpmManagerServiceTest_NoPreinit, UpdateTpmStatusAfterTakeOwnership) {
                           base::BindLambdaForTesting(callback_taken));
   Run();
 }
+#endif
 
 TEST_F(TpmManagerServiceTest_Preinit, RetryGetTpmStatusUntilSuccess) {
   EXPECT_CALL(mock_tpm_status_, GetTpmOwned(_))

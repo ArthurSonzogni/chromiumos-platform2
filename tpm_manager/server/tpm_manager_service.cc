@@ -35,8 +35,6 @@ namespace {
 constexpr int kDictionaryAttackResetPeriodInHours = 1;
 constexpr base::TimeDelta kUploadAlertsPeriod = base::Hours(6);
 
-constexpr char kIsRunningFromInstaller[] = "is_running_from_installer";
-constexpr char kInstallerYes[] = "yes\n";
 constexpr char kPowerWashCompletedFile[] =
     "/mnt/stateful_partition/unencrypted/.powerwash_completed";
 constexpr char kPowerWashReportedFile[] =
@@ -83,21 +81,6 @@ int GetFingerprint(uint32_t family,
       static_cast<uint8_t>(hash[0]) | static_cast<uint8_t>(hash[1]) << 8 |
       static_cast<uint8_t>(hash[2]) << 16 | static_cast<uint8_t>(hash[3]) << 24;
   return result & 0x7fffffff;
-}
-
-bool IsRunningFromInstaller() {
-  if (USE_OS_INSTALL_SERVICE) {
-    std::string output;
-    if (!base::GetAppOutput({kIsRunningFromInstaller}, &output)) {
-      LOG(ERROR) << "Failed to run is_running_from_installer";
-    }
-
-    if (output == kInstallerYes) {
-      return true;
-    }
-  }
-
-  return false;
 }
 
 }  // namespace
@@ -317,18 +300,8 @@ std::unique_ptr<GetTpmStatusReply> TpmManagerService::InitializeTask() {
     return reply;
   }
 
-  if (IsRunningFromInstaller() || !tpm_status_->IsTpmEnabled()) {
+  if (!tpm_status_->IsTpmEnabled()) {
     LOG(WARNING) << __func__ << ": TPM is disabled.";
-
-    if (USE_TPM_INSECURE_FALLBACK) {
-      // Don't allow the TPM to be used when it is disabled. This is
-      // necessary because when the TPM is active but disabled, some
-      // operations like reading nvram spaces are still possible. But
-      // since the TPM is disabled, we can't assume that the data is valid
-      // in that case; it might come from an old install.
-      tpm_allowed_ = false;
-    }
-
     reply->set_enabled(false);
     reply->set_status(STATUS_SUCCESS);
     return reply;
