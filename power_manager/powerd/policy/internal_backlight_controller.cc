@@ -542,6 +542,11 @@ bool InternalBacklightController::IsUsingAmbientLight() const {
 }
 
 void InternalBacklightController::ReportAmbientLightOnResumeMetrics(int lux) {
+  // Ignore the ambient light sensor reading if the lid is closed.
+  if (LidState::CLOSED == lid_state_) {
+    return;
+  }
+
   if (ambient_light_metrics_callback_) {
     ambient_light_metrics_callback_.Run(lux);
   }

@@ -1154,11 +1154,22 @@ TEST_F(DaemonTest, PrepareToSuspendAndResume) {
       .InSequence(s1);
   EXPECT_CALL(*internal_backlight_controller_, SetSuspended(true))
       .InSequence(s1);
+  // The following steps in the sequence are to ensure that the lid state is
+  // handled before being notified of a resume from suspend.
   EXPECT_CALL(*internal_backlight_controller_,
               HandleLidStateChange(LidState::OPEN))
       .InSequence(s1);
   EXPECT_CALL(*internal_backlight_controller_, SetSuspended(false))
       .InSequence(s1);
+
+  // We require that no ambient light sensor readings are received by the
+  // delegate between suspend and resume.
+  // If an ALS reading is received before the internal backlight
+  // controller gets the lid state open update it would result in the reading
+  // being ignored and a later reading being reported in the UMA.
+  EXPECT_CALL(*internal_backlight_controller_,
+              ReportAmbientLightOnResumeMetrics(_))
+      .Times(0);
 
   // Initial lid state
   input_watcher_->set_lid_state(LidState::OPEN);

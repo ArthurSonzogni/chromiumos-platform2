@@ -9,18 +9,21 @@
 
 #include <gmock/gmock.h>
 
+#include "power_manager/powerd/policy/ambient_light_handler.h"
 #include "power_manager/powerd/policy/backlight_controller.h"
 
 namespace power_manager {
 namespace policy {
 
-class MockBacklightController : public BacklightController {
+class MockBacklightController : public BacklightController,
+                                public AmbientLightHandler::Delegate {
  public:
   MockBacklightController() = default;
   MockBacklightController(const MockBacklightController&) = delete;
   MockBacklightController& operator=(const MockBacklightController&) = delete;
   ~MockBacklightController() override = default;
 
+  // BacklightController methods
   MOCK_METHOD(void,
               AddObserver,
               (BacklightControllerObserver * observer),
@@ -59,6 +62,19 @@ class MockBacklightController : public BacklightController {
               RegisterAmbientLightResumeMetricsHandler,
               (AmbientLightOnResumeMetricsCallback callback),
               (override));
+
+  // AmbientLightHandler::Delegate methods
+  MOCK_METHOD(void,
+              SetBrightnessPercentForAmbientLight,
+              (double brightness_percent,
+               AmbientLightHandler::BrightnessChangeCause cause),
+              (override));
+  MOCK_METHOD(void,
+              OnColorTemperatureChanged,
+              (int color_temperature),
+              (override));
+  MOCK_METHOD(void, ReportAmbientLightOnResumeMetrics, (int lux), (override));
+  MOCK_METHOD(bool, IsUsingAmbientLight, (), (const, override));
 };
 
 }  // namespace policy
