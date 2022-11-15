@@ -12,6 +12,8 @@
 #include <base/strings/strcat.h>
 #include <base/strings/string_number_conversions.h>
 
+#include "oobe_config/filesystem/file_handler.h"
+#include "oobe_config/filesystem/file_handler_for_testing.h"
 #include "oobe_config/load_oobe_config_rollback.h"
 #include "oobe_config/oobe_config.h"
 #include "oobe_config/rollback_constants.h"
@@ -37,26 +39,20 @@ constexpr char kRollbackDataKey[] = "rollback_data";
 DEFINE_PROTO_FUZZER(const RollbackData& input) {
   static Environment env;
 
-  base::ScopedTempDir fake_root_dir;
-  CHECK(fake_root_dir.CreateUniqueTempDir());
-
-  base::CreateDirectory(fake_root_dir.GetPath().Append(
-      base::FilePath(std::string(kRestoreTempPath).substr(1))));
+  FileHandlerForTesting file_handler;
 
   std::string serialized_input;
   CHECK(input.SerializeToString(&serialized_input));
 
-  OobeConfig oobe_config;
-  oobe_config.set_prefix_path_for_testing(fake_root_dir.GetPath());
-  LoadOobeConfigRollback load_config(&oobe_config);
+  OobeConfig oobe_config(file_handler);
+  LoadOobeConfigRollback load_config(&oobe_config, file_handler);
 
   auto encrypted_data = Encrypt(brillo::SecureBlob(serialized_input));
   CHECK(encrypted_data.has_value());
 
   // TODO(b/234826714): Pass data directly to load_config instead of relying on
-  // files.
-  CHECK(oobe_config.WriteFile(
-      base::FilePath(kUnencryptedStatefulRollbackDataFile),
+  // files. Could use a fake file handler to easily do so.
+  CHECK(file_handler.WriteEncryptedRollbackData(
       brillo::BlobToString(encrypted_data->data)));
 
   std::string hex_data_with_header =
@@ -64,9 +60,7 @@ DEFINE_PROTO_FUZZER(const RollbackData& input) {
                     base::HexEncode(encrypted_data->key.data(),
                                     encrypted_data->key.size())});
 
-  CHECK(oobe_config.WriteFile(
-      base::FilePath(kPstorePath).Append("pmsg-ramoops-0"),
-      hex_data_with_header));
+  CHECK(file_handler.WriteRamoopsData(hex_data_with_header));
 
   std::string config, enrollment_domain;
   CHECK(load_config.GetOobeConfigJson(&config, &enrollment_domain));

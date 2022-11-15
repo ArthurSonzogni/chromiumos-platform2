@@ -12,13 +12,15 @@
 #include <base/files/scoped_temp_dir.h>
 #include <gtest/gtest.h>
 
+#include "oobe_config/filesystem/file_handler_for_testing.h"
+
 namespace oobe_config {
 
 class OobeConfigTest : public ::testing::Test {
  protected:
   void SetUp() override;
 
-  base::ScopedTempDir fake_root_dir_;
+  FileHandlerForTesting file_handler_;
   std::unique_ptr<OobeConfig> oobe_config_;
 };
 

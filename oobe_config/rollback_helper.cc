@@ -18,10 +18,10 @@
 #include <base/check_op.h>
 #include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
+#include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
 
-#include "oobe_config/oobe_config.h"
 #include "oobe_config/rollback_constants.h"
 
 namespace oobe_config {

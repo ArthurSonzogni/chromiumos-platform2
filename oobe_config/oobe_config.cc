@@ -4,7 +4,6 @@
 
 #include "oobe_config/oobe_config.h"
 
-#include <map>
 #include <optional>
 #include <utility>
 
@@ -13,81 +12,26 @@
 #include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <brillo/secure_blob.h>
 
-#include "base/files/file_path.h"
 #include "oobe_config/network_exporter.h"
 #include "oobe_config/pstore_storage.h"
-#include "oobe_config/rollback_constants.h"
 #include "oobe_config/rollback_data.pb.h"
 #include "oobe_config/rollback_openssl_encryption.h"
 
 namespace oobe_config {
 
-OobeConfig::OobeConfig() = default;
+OobeConfig::OobeConfig(FileHandler file_handler)
+    : file_handler_(std::move(file_handler)) {}
 OobeConfig::~OobeConfig() = default;
 
-base::FilePath OobeConfig::GetPrefixedFilePath(
-    const base::FilePath& file_path) const {
-  if (prefix_path_for_testing_.empty())
-    return file_path;
-  DCHECK(!file_path.value().empty());
-  DCHECK_EQ('/', file_path.value()[0]);
-  return prefix_path_for_testing_.Append(file_path.value().substr(1));
-}
-
-bool OobeConfig::ReadFileWithoutPrefix(const base::FilePath& file_path,
-                                       std::string* out_content) const {
-  bool result = base::ReadFileToString(file_path, out_content);
-  if (result) {
-    LOG(INFO) << "Loaded " << file_path.value();
-  } else {
-    LOG(ERROR) << "Couldn't read " << file_path.value();
-    *out_content = "";
-  }
-  return result;
-}
-
-bool OobeConfig::ReadFile(const base::FilePath& file_path,
-                          std::string* out_content) const {
-  return ReadFileWithoutPrefix(GetPrefixedFilePath(file_path), out_content);
-}
-
-bool OobeConfig::FileExists(const base::FilePath& file_path) const {
-  return base::PathExists(GetPrefixedFilePath(file_path));
-}
-
-bool OobeConfig::WriteFileWithoutPrefix(const base::FilePath& file_path,
-                                        const std::string& data) const {
-  if (!base::CreateDirectory(file_path.DirName())) {
-    PLOG(ERROR) << "Couldn't create directory for " << file_path.value();
-    return false;
-  }
-  int bytes_written = base::WriteFile(file_path, data.c_str(), data.size());
-  if (bytes_written != data.size()) {
-    PLOG(ERROR) << "Couldn't write " << file_path.value()
-                << " bytes=" << bytes_written;
-    return false;
-  }
-  LOG(INFO) << "Wrote " << file_path.value();
-  return true;
-}
-
-bool OobeConfig::WriteFile(const base::FilePath& file_path,
-                           const std::string& data) const {
-  return WriteFileWithoutPrefix(GetPrefixedFilePath(file_path), data);
-}
-
 void OobeConfig::GetRollbackData(RollbackData* rollback_data) const {
-  if (base::PathExists(GetPrefixedFilePath(
-          base::FilePath(kSaveTempPath).Append(kOobeCompletedFileName)))) {
+  if (file_handler_.HasOobeCompletedFlag()) {
     // If OOBE has been completed already, we know the EULA has been accepted.
     rollback_data->set_eula_auto_accept(true);
   }
 
-  if (base::PathExists(
-          GetPrefixedFilePath(base::FilePath(kSaveTempPath)
-                                  .Append(kMetricsReportingEnabledFileName)))) {
-    // If |kMetricsReportingEnabledFile| exists, metrics are enabled.
+  if (file_handler_.HasMetricsReportingEnabledFlag()) {
     rollback_data->set_eula_send_statistics(true);
   }
 
@@ -135,19 +79,19 @@ bool OobeConfig::EncryptedRollbackSave() const {
   }
 
   if (!StageForPstore(encrypted_rollback_data->key.to_string(),
-                      prefix_path_for_testing_)) {
+                      file_handler_)) {
     LOG(ERROR)
         << "Failed to prepare data for storage in the encrypted reboot vault";
     return false;
   }
 
-  if (!WriteFile(base::FilePath(kUnencryptedStatefulRollbackDataFile),
-                 brillo::BlobToString(encrypted_rollback_data->data))) {
+  if (!file_handler_.WriteEncryptedRollbackData(
+          brillo::BlobToString(encrypted_rollback_data->data))) {
     LOG(ERROR) << "Failed to write encrypted rollback data file.";
     return false;
   }
 
-  if (!WriteFile(base::FilePath(kDataSavedFile), std::string())) {
+  if (!file_handler_.CreateDataSavedFlag()) {
     LOG(ERROR) << "Failed to write data saved flag.";
     return false;
   }
@@ -157,15 +101,14 @@ bool OobeConfig::EncryptedRollbackSave() const {
 
 bool OobeConfig::EncryptedRollbackRestore() const {
   LOG(INFO) << "Fetching key from pstore.";
-  std::optional<std::string> key = LoadFromPstore(prefix_path_for_testing_);
+  std::optional<std::string> key = LoadFromPstore(file_handler_);
   if (!key.has_value()) {
     LOG(ERROR) << "Failed to load key from pstore.";
     return false;
   }
 
   std::string encrypted_data;
-  if (!ReadFile(base::FilePath(kUnencryptedStatefulRollbackDataFile),
-                &encrypted_data)) {
+  if (!file_handler_.ReadEncryptedRollbackData(&encrypted_data)) {
     return false;
   }
   std::optional<brillo::SecureBlob> decrypted_data = Decrypt(
@@ -179,8 +122,7 @@ bool OobeConfig::EncryptedRollbackRestore() const {
 
   // Write the unencrypted data immediately to
   // kEncryptedStatefulRollbackDataPath.
-  if (!WriteFile(base::FilePath(kEncryptedStatefulRollbackDataFile),
-                 rollback_data_str)) {
+  if (!file_handler_.WriteDecryptedRollbackData(rollback_data_str)) {
     return false;
   }
 
@@ -189,26 +131,9 @@ bool OobeConfig::EncryptedRollbackRestore() const {
     LOG(ERROR) << "Couldn't parse proto.";
     return false;
   }
-  LOG(INFO) << "Parsed " << kUnencryptedStatefulRollbackDataFile;
+  LOG(INFO) << "Parsed decrypted rollback data";
 
   return true;
-}
-
-bool OobeConfig::HasDecryptedRollbackData() const {
-  return FileExists(base::FilePath(kEncryptedStatefulRollbackDataFile));
-}
-
-bool OobeConfig::HasEncryptedRollbackData() const {
-  return FileExists(base::FilePath(kUnencryptedStatefulRollbackDataFile));
-}
-
-bool OobeConfig::ShouldSaveRollbackData() const {
-  return FileExists(base::FilePath(kRollbackSaveMarkerFile));
-}
-
-bool OobeConfig::DeleteRollbackSaveFlagFile() const {
-  return base::DeleteFile(
-      GetPrefixedFilePath(base::FilePath(kRollbackSaveMarkerFile)));
 }
 
 }  // namespace oobe_config

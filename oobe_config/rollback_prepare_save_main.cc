@@ -7,8 +7,8 @@
 #include <base/logging.h>
 #include <brillo/syslog_logging.h>
 
+#include "oobe_config/filesystem/file_handler.h"
 #include "oobe_config/metrics.h"
-#include "oobe_config/oobe_config.h"
 #include "oobe_config/rollback_helper.h"
 
 namespace {
@@ -31,11 +31,12 @@ int main(int argc, char* argv[]) {
   LOG(INFO) << "Starting rollback_prepare_save";
 
   oobe_config::Metrics metrics;
-  const bool should_save = oobe_config::OobeConfig().ShouldSaveRollbackData();
+  oobe_config::FileHandler file_handler;
+  const bool should_save = file_handler.HasRollbackSaveTriggerFlag();
   const bool force = cl->HasSwitch(kForce);
   if (should_save || force) {
     LOG(INFO) << "Cleaning up rollback save flag file.";
-    oobe_config::OobeConfig().DeleteRollbackSaveFlagFile();
+    file_handler.RemoveRollbackSaveTriggerFlag();
 
     LOG(INFO) << "Saving rollback data. forced=" << force;
     const bool save_succeeded = oobe_config::PrepareSave(

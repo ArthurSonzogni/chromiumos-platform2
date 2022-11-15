@@ -10,6 +10,8 @@
 
 #include <base/files/file_path.h>
 
+#include "oobe_config/filesystem/file_handler.h"
+
 namespace oobe_config {
 
 // These functions take advantage of a utility called pstore: Writes to /dev/
@@ -21,11 +23,13 @@ namespace oobe_config {
 // staging was successful.
 // Note that clobber_state does the actual appending to pstore right before
 // wiping the device.
-bool StageForPstore(const std::string& data, const base::FilePath& root_path);
+bool StageForPstore(const std::string& data,
+                    const oobe_config::FileHandler& file_handler);
 
 // Loads data directly from pstore. Returns `std::nullopt` if
 // no rollback data was found.
-std::optional<std::string> LoadFromPstore(const base::FilePath& root_path);
+std::optional<std::string> LoadFromPstore(
+    const oobe_config::FileHandler& file_handler);
 
 }  // namespace oobe_config
 

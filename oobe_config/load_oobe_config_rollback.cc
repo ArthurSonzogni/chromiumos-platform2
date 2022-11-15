@@ -4,6 +4,8 @@
 
 #include "oobe_config/load_oobe_config_rollback.h"
 
+#include <utility>
+
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/json/json_writer.h>
@@ -11,7 +13,6 @@
 #include <base/values.h>
 
 #include "oobe_config/oobe_config.h"
-#include "oobe_config/rollback_constants.h"
 #include "oobe_config/rollback_data.pb.h"
 
 using base::FilePath;
@@ -20,8 +21,9 @@ using std::unique_ptr;
 
 namespace oobe_config {
 
-LoadOobeConfigRollback::LoadOobeConfigRollback(OobeConfig* oobe_config)
-    : oobe_config_(oobe_config) {}
+LoadOobeConfigRollback::LoadOobeConfigRollback(OobeConfig* oobe_config,
+                                               FileHandler file_handler)
+    : file_handler_(std::move(file_handler)), oobe_config_(oobe_config) {}
 
 bool LoadOobeConfigRollback::GetOobeConfigJson(string* config,
                                                string* enrollment_domain) {
@@ -30,16 +32,13 @@ bool LoadOobeConfigRollback::GetOobeConfigJson(string* config,
   *config = "";
   *enrollment_domain = "";
 
-  // We use `kRestoreTempPath` to store decrypted rollback data. It should be
-  // created by tmpfiles config before starting oobe_config_restore daemon.
-  // Crash if it doesn't exist.
-  CHECK(oobe_config_->FileExists(base::FilePath(kRestoreTempPath)));
+  // Restore path is created by tmpfiles config.
+  CHECK(file_handler_.HasRestorePath());
 
-  if (oobe_config_->HasEncryptedRollbackData() &&
-      !oobe_config_->HasDecryptedRollbackData()) {
+  if (file_handler_.HasEncryptedRollbackData() &&
+      !file_handler_.HasDecryptedRollbackData()) {
     LOG(INFO) << "Decrypting rollback data.";
 
-    // Decrypt the proto from kUnencryptedRollbackDataPath.
     bool restore_result = oobe_config_->EncryptedRollbackRestore();
 
     if (!restore_result) {
@@ -51,11 +50,9 @@ bool LoadOobeConfigRollback::GetOobeConfigJson(string* config,
     }
   }
 
-  if (oobe_config_->HasDecryptedRollbackData()) {
+  if (file_handler_.HasDecryptedRollbackData()) {
     string rollback_data_str;
-    if (!oobe_config_->ReadFile(
-            base::FilePath(kEncryptedStatefulRollbackDataFile),
-            &rollback_data_str)) {
+    if (!file_handler_.ReadDecryptedRollbackData(&rollback_data_str)) {
       LOG(ERROR) << "Could not read decrypted rollback data file.";
       metrics_.RecordRestoreResult(Metrics::OobeRestoreResult::kStage3Failure);
       return false;

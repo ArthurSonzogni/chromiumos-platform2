@@ -66,6 +66,7 @@ pkg_config("liboobeconfig_config") {
 # oobe_config library.
 static_library("liboobeconfig") {
   sources = [
+    "filesystem/file_handler.cc",
     "load_oobe_config_rollback.cc",
     "metrics.cc",
     "network_exporter.cc",
@@ -144,6 +145,8 @@ if (use.test) {
 
   executable("oobe_config_test") {
     sources = [
+      "filesystem/file_handler_for_testing.cc",
+      "filesystem/file_handler_test.cc",
       "load_oobe_config_rollback_test.cc",
       "oobe_config_test.cc",
       "rollback_helper_test.cc",
@@ -164,7 +167,10 @@ if (use.test) {
 
 if (use.fuzzer) {
   executable("load_oobe_config_rollback_fuzzer") {
-    sources = [ "load_oobe_config_rollback_fuzzer.cc" ]
+    sources = [
+      "filesystem/file_handler_for_testing.cc",
+      "load_oobe_config_rollback_fuzzer.cc",
+    ]
     configs += [
       "//common-mk/common_fuzzer:common_fuzzer",
       ":target_defaults",

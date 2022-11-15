@@ -5,9 +5,9 @@
 #ifndef OOBE_CONFIG_LOAD_OOBE_CONFIG_ROLLBACK_H_
 #define OOBE_CONFIG_LOAD_OOBE_CONFIG_ROLLBACK_H_
 
+#include "oobe_config/filesystem/file_handler.h"
 #include "oobe_config/load_oobe_config_interface.h"
 
-#include <memory>
 #include <string>
 
 #include <base/files/file_path.h>
@@ -23,7 +23,8 @@ class RollbackData;
 // file after rollback.
 class LoadOobeConfigRollback : public LoadOobeConfigInterface {
  public:
-  explicit LoadOobeConfigRollback(OobeConfig* oobe_config);
+  explicit LoadOobeConfigRollback(OobeConfig* oobe_config,
+                                  FileHandler file_handler = FileHandler());
   LoadOobeConfigRollback(const LoadOobeConfigRollback&) = delete;
   LoadOobeConfigRollback& operator=(const LoadOobeConfigRollback&) = delete;
 
@@ -39,6 +40,7 @@ class LoadOobeConfigRollback : public LoadOobeConfigInterface {
   // failure. During stage 1 of rollback, the process exits before returning.
   bool AssembleConfig(const RollbackData& rollback_data, std::string* config);
 
+  FileHandler file_handler_;
   OobeConfig* oobe_config_;
   Metrics metrics_;  // For UMA metrics logging.
 };

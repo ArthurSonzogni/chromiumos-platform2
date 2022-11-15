@@ -10,8 +10,6 @@
 #include <base/files/scoped_temp_dir.h>
 #include <gtest/gtest.h>
 
-#include "base/files/file_path.h"
-#include "base/files/file_util.h"
 #include "oobe_config/oobe_config.h"
 #include "oobe_config/oobe_config_test.h"
 #include "oobe_config/rollback_constants.h"
@@ -23,35 +21,25 @@ class LoadOobeConfigRollbackTest : public OobeConfigTest {
   void SetUp() override {
     OobeConfigTest::SetUp();
 
-    load_config_ = std::make_unique<LoadOobeConfigRollback>(oobe_config_.get());
-
-    base::CreateDirectory(fake_root_dir_.GetPath().Append(
-        base::FilePath(std::string(kRestoreTempPath).substr(1))));
-    oobe_config_->WriteFile(
-        base::FilePath(kSaveTempPath).Append(kOobeCompletedFileName), "");
+    load_config_ = std::make_unique<LoadOobeConfigRollback>(oobe_config_.get(),
+                                                            file_handler_);
   }
 
   void FakePreceedingRollback() {
     // First create rollback data and pstore data.
+    ASSERT_TRUE(file_handler_.CreateOobeCompletedFlag());
     ASSERT_TRUE(oobe_config_->EncryptedRollbackSave());
     std::string rollback_data;
-    ASSERT_TRUE(oobe_config_->ReadFile(
-        base::FilePath(kUnencryptedStatefulRollbackDataFile), &rollback_data));
+    ASSERT_TRUE(file_handler_.ReadEncryptedRollbackData(&rollback_data));
     std::string pstore_data;
-    ASSERT_TRUE(oobe_config_->ReadFile(base::FilePath(kRollbackDataForPmsgFile),
-                                       &pstore_data));
+    ASSERT_TRUE(file_handler_.ReadPstoreData(&pstore_data));
 
     // Move data around to fake preceding rollback.
-    ASSERT_TRUE(oobe_config_->WriteFile(
-        base::FilePath(kUnencryptedStatefulRollbackDataFile), rollback_data));
-    ASSERT_TRUE(oobe_config_->WriteFile(
-        base::FilePath(kPstorePath).Append("pmsg-ramoops-0"), pstore_data));
+    ASSERT_TRUE(file_handler_.WriteEncryptedRollbackData(rollback_data));
+    ASSERT_TRUE(file_handler_.WriteRamoopsData(pstore_data));
   }
 
-  void DeletePstoreData() {
-    ASSERT_TRUE(oobe_config_->WriteFile(
-        base::FilePath(kPstorePath).Append("pmsg-ramoops-0"), ""));
-  }
+  void DeletePstoreData() { ASSERT_TRUE(file_handler_.RemoveRamoopsData()); }
 
   std::unique_ptr<LoadOobeConfigRollback> load_config_;
 };

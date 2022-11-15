@@ -15,28 +15,12 @@
 #include <base/strings/strcat.h>
 #include <base/strings/string_number_conversions.h>
 
-#include "oobe_config/rollback_constants.h"
+#include "oobe_config/filesystem/file_handler.h"
 
 namespace oobe_config {
 namespace {
 
 const char kRollbackDataKey[] = "rollback_data";
-const char kRamoopsFilePattern[] = "pmsg-ramoops-*";
-
-base::FilePath PrefixAbsolutePath(const base::FilePath& prefix,
-                                  const base::FilePath& file_path) {
-  if (prefix.empty())
-    return file_path;
-  DCHECK(!file_path.empty());
-  DCHECK_EQ('/', file_path.value()[0]);
-  return prefix.Append(file_path.value().substr(1));
-}
-
-base::FileEnumerator EnumerateRamoops(const base::FilePath& root_path) {
-  return base::FileEnumerator(
-      PrefixAbsolutePath(root_path, base::FilePath(kPstorePath)),
-      /*recursive=*/false, base::FileEnumerator::FILES, kRamoopsFilePattern);
-}
 
 bool ExtractRollbackData(const base::FilePath& file,
                          std::string* rollback_data) {
@@ -69,22 +53,18 @@ std::optional<std::string> HexToBinary(const std::string& hex) {
 
 }  // namespace
 
-bool StageForPstore(const std::string& data, const base::FilePath& root_path) {
+bool StageForPstore(const std::string& data,
+                    const oobe_config::FileHandler& file_handler) {
   std::string hex_data_with_header = base::StrCat(
       {kRollbackDataKey, " ", base::HexEncode(data.data(), data.size())});
 
-  int bytes_written = base::WriteFile(
-      PrefixAbsolutePath(root_path, base::FilePath(kRollbackDataForPmsgFile)),
-      hex_data_with_header.c_str(), hex_data_with_header.size());
-  if (bytes_written != hex_data_with_header.size()) {
-    LOG(ERROR) << "Could not write " << kRollbackDataForPmsgFile;
-    return false;
-  }
-  return true;
+  return file_handler.WritePstoreData(hex_data_with_header);
 }
 
-std::optional<std::string> LoadFromPstore(const base::FilePath& root_path) {
-  base::FileEnumerator pmsg_ramoops_enumerator = EnumerateRamoops(root_path);
+std::optional<std::string> LoadFromPstore(
+    const oobe_config::FileHandler& file_handler) {
+  base::FileEnumerator pmsg_ramoops_enumerator =
+      file_handler.RamoopsFileEnumerator();
   for (base::FilePath ramoops_file = pmsg_ramoops_enumerator.Next();
        !ramoops_file.empty(); ramoops_file = pmsg_ramoops_enumerator.Next()) {
     LOG(INFO) << "Looking at file " << ramoops_file.value();
