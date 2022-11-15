@@ -7,7 +7,6 @@
 
 #include <memory>
 #include <string>
-#include <utility>
 
 #include "cryptohome/cleanup/user_oldest_activity_timestamp_manager.h"
 #include "cryptohome/keyset_management.h"
@@ -22,14 +21,14 @@ namespace cryptohome {
 class RealUserSessionFactory : public UserSessionFactory {
  public:
   RealUserSessionFactory(
-      std::unique_ptr<MountFactory> mount_factory,
+      MountFactory* mount_factory,
       Platform* platform,
       HomeDirs* homedirs,
       KeysetManagement* keyset_management,
       UserOldestActivityTimestampManager* user_activity_timestamp_manager,
       Pkcs11TokenFactory* pkcs11_token_factory)
       : UserSessionFactory(),
-        mount_factory_(std::move(mount_factory)),
+        mount_factory_(mount_factory),
         platform_(platform),
         homedirs_(homedirs),
         keyset_management_(keyset_management),
@@ -49,12 +48,12 @@ class RealUserSessionFactory : public UserSessionFactory {
   }
 
  private:
-  std::unique_ptr<MountFactory> mount_factory_;
-  Platform* platform_;
-  HomeDirs* homedirs_;
-  KeysetManagement* keyset_management_;
-  UserOldestActivityTimestampManager* user_activity_timestamp_manager_;
-  Pkcs11TokenFactory* pkcs11_token_factory_;
+  MountFactory* const mount_factory_;
+  Platform* const platform_;
+  HomeDirs* const homedirs_;
+  KeysetManagement* const keyset_management_;
+  UserOldestActivityTimestampManager* const user_activity_timestamp_manager_;
+  Pkcs11TokenFactory* const pkcs11_token_factory_;
 };
 
 }  // namespace cryptohome
