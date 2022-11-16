@@ -11,8 +11,11 @@
 
 #include "libhwsec-foundation/hwsec-foundation_export.h"
 
-namespace hwsec_foundation {
-namespace tpm {
+#if !defined(USE_TPM1) || !defined(USE_TPM2) || !defined(USE_TPM_DYNAMIC)
+#error "Don't include this file w/o defining the value of TPM types"
+#endif
+
+namespace hwsec_foundation::tpm {
 
 enum class TPMVer {
   kUnknown = 0,
@@ -28,7 +31,7 @@ RuntimeTPMVer(std::optional<TPMVer> set_cache_for_testing = std::nullopt);
 
 #else
 
-constexpr TPMVer RuntimeTPMVer() {
+inline constexpr TPMVer RuntimeTPMVer() {
 #if USE_TPM1
   return TPMVer::kTPM1;
 #elif USE_TPM2
@@ -40,8 +43,7 @@ constexpr TPMVer RuntimeTPMVer() {
 
 #endif
 
-}  // namespace tpm
-}  // namespace hwsec_foundation
+}  // namespace hwsec_foundation::tpm
 
 /**
  * These macros could help the caller switching between
