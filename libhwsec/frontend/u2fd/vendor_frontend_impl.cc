@@ -119,6 +119,11 @@ StatusOr<brillo::Blob> U2fVendorFrontendImpl::GetG2fCert() {
   return middleware_.CallSync<&Backend::RoData::Read>(RoSpace::kG2fCert);
 }
 
+StatusOr<U2fVendorFrontendImpl::RwVersion>
+U2fVendorFrontendImpl::GetRwVersion() {
+  return middleware_.CallSync<&Backend::Vendor::GetRwVersion>();
+}
+
 StatusOr<u2f::Config> U2fVendorFrontendImpl::GetConfig() {
   return middleware_.CallSync<&Backend::U2f::GetConfig>();
 }

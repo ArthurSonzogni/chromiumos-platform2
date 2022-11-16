@@ -34,6 +34,7 @@ class VendorTpm1 : public Backend::Vendor,
   StatusOr<brillo::Blob> GetRsuDeviceId() override;
   StatusOr<IFXFieldUpgradeInfo> GetIFXFieldUpgradeInfo() override;
   Status DeclareTpmFirmwareStable() override;
+  StatusOr<RwVersion> GetRwVersion() override;
   StatusOr<brillo::Blob> SendRawCommand(const brillo::Blob& command) override;
 
  private:

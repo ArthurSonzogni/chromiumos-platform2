@@ -31,6 +31,7 @@ class MockVendor : public Vendor {
               (),
               (override));
   MOCK_METHOD(Status, DeclareTpmFirmwareStable, (), (override));
+  MOCK_METHOD(StatusOr<RwVersion>, GetRwVersion, (), (override));
   MOCK_METHOD(StatusOr<brillo::Blob>,
               SendRawCommand,
               (const brillo::Blob& command),

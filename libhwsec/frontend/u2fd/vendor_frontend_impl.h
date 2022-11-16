@@ -68,6 +68,7 @@ class U2fVendorFrontendImpl : public U2fVendorFrontend, public FrontendImpl {
                                       const brillo::Blob& public_key,
                                       const brillo::Blob& salt) override;
   StatusOr<brillo::Blob> GetG2fCert() override;
+  StatusOr<RwVersion> GetRwVersion() override;
   StatusOr<u2f::Config> GetConfig() override;
 };
 

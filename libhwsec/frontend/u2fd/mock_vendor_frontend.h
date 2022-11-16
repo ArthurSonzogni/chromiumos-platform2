@@ -89,6 +89,7 @@ class MockU2fVendorFrontend : public MockFrontend, public U2fVendorFrontend {
                const brillo::Blob&,
                const brillo::Blob&),
               (override));
+  MOCK_METHOD(StatusOr<RwVersion>, GetRwVersion, (), (override));
   MOCK_METHOD(StatusOr<brillo::Blob>, GetG2fCert, (), (override));
   MOCK_METHOD(StatusOr<u2f::Config>, GetConfig, (), (override));
 };

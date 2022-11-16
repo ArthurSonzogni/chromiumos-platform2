@@ -28,13 +28,13 @@
 #include <fuzzer/FuzzedDataProvider.h>
 #include "libhwsec/fuzzed/basic_objects.h"
 #include "libhwsec/fuzzed/hwsec_objects.h"
-#include "libhwsec/fuzzed/ifx_info.h"
 #include "libhwsec/fuzzed/key_management.h"
 #include "libhwsec/fuzzed/middleware.h"
 #include "libhwsec/fuzzed/pinweaver.h"
 #include "libhwsec/fuzzed/recovery_crypto.h"
 #include "libhwsec/fuzzed/signature_sealing.h"
 #include "libhwsec/fuzzed/u2f.h"
+#include "libhwsec/fuzzed/vendor.h"
 #endif
 
 #ifndef BUILD_LIBHWSEC

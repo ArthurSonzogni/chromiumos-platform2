@@ -242,6 +242,10 @@ Status VendorTpm1::DeclareTpmFirmwareStable() {
   return OkStatus();
 }
 
+StatusOr<VendorTpm1::RwVersion> VendorTpm1::GetRwVersion() {
+  return MakeStatus<TPMError>("Unimplemented", TPMRetryAction::kNoRetry);
+}
+
 StatusOr<brillo::Blob> VendorTpm1::SendRawCommand(const brillo::Blob& command) {
   return MakeStatus<TPMError>("Unimplemented", TPMRetryAction::kNoRetry);
 }

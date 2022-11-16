@@ -17,6 +17,12 @@ namespace hwsec {
 // Vendor provide the vendor specific commands.
 class Vendor {
  public:
+  struct RwVersion {
+    uint32_t epoch;
+    uint32_t major;
+    uint32_t minor;
+  };
+
   // Gets the family.
   virtual StatusOr<uint32_t> GetFamily() = 0;
 
@@ -49,6 +55,9 @@ class Vendor {
 
   // Declares the TPM firmware is stable.
   virtual Status DeclareTpmFirmwareStable() = 0;
+
+  // Gets the GSC RW version.
+  virtual StatusOr<RwVersion> GetRwVersion() = 0;
 
   // Sends the raw |command|.
   virtual StatusOr<brillo::Blob> SendRawCommand(

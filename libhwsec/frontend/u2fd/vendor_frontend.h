@@ -8,6 +8,7 @@
 #include <brillo/secure_blob.h>
 
 #include "libhwsec/backend/u2f.h"
+#include "libhwsec/backend/vendor.h"
 #include "libhwsec/frontend/frontend.h"
 #include "libhwsec/status.h"
 #include "libhwsec/structures/u2f.h"
@@ -16,6 +17,8 @@ namespace hwsec {
 
 class U2fVendorFrontend : public Frontend {
  public:
+  using RwVersion = Vendor::RwVersion;
+
   ~U2fVendorFrontend() override = default;
 
   // Is the U2F commands enabled or not.
@@ -202,6 +205,8 @@ class U2fVendorFrontend : public Frontend {
       const brillo::Blob& salt) = 0;
 
   virtual StatusOr<brillo::Blob> GetG2fCert() = 0;
+
+  virtual StatusOr<RwVersion> GetRwVersion() = 0;
 
   virtual StatusOr<u2f::Config> GetConfig() = 0;
 };
