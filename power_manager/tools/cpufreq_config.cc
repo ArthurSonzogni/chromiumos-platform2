@@ -66,7 +66,7 @@ std::optional<std::string> CpufreqConf::GetValue(std::string key) const {
   return std::nullopt;
 }
 
-bool BatteryStateIsCharging(void) {
+bool BatteryStateIsCharging() {
   base::AtExitManager at_exit_manager;
   base::SingleThreadTaskExecutor task_executor(base::MessagePumpType::IO);
 
