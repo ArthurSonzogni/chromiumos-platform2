@@ -436,10 +436,20 @@ bool ChromeosChrootPostinst(const InstallConfig& install_config,
         LOG(ERROR) << "UpdatePartitionTable failed.";
         return false;
       }
-      // At this point in the script, the new partition has been marked bootable
-      // and a reboot will boot into it. Thus, it's important that any future
-      // errors in this script do not cause this script to return failure unless
-      // in factory mode.
+
+      // For Chromebook firmware (`BiosType::kSecure`) the new partition has now
+      // been marked bootable (for most devices, see Note below) and a reboot
+      // will boot into it. Thus, it's important that any future errors in this
+      // script do not cause this script to return failure unless in factory
+      // mode.
+      //
+      // For other BiosTypes, while we might boot to the new partition the files
+      // on the EFI System Partition aren't yet set up to boot successfully.
+      //
+      // Note: for devices using MTD storage the partition won't be marked
+      // bootable until `cgpt_manager.Finalize` is called or cgpt_manager is
+      // destructed. b/260606556
+
       FixUnencryptedPermission();
 
       // We have a new image, making the ureadahead pack files
@@ -470,6 +480,8 @@ bool ChromeosChrootPostinst(const InstallConfig& install_config,
       if (!is_factory_install &&
           !RunBoardPostInstall(install_config.root.mount())) {
         LOG(ERROR) << "Failed to perform board specific post install script.";
+        // The comment starting "For Chromebook firmware..." says not to return
+        // failure here. Looks like we're doing it anyway?
         return false;
       }
 
