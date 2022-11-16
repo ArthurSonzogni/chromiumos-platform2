@@ -214,7 +214,7 @@ class MetricsCollector {
   // This function parses the counter that keeps track of number of usecs the
   // CPU spends in the lowest power state. When |pre_suspend| is true, it
   // records the residency in |s0ix_residency_usecs_before_suspend_|. When it's
-  // false, it reports the S0ix residency rate (%) in comparision to suspend
+  // false, it reports the S0ix residency rate (%) in comparison to suspend
   // time.
   void TrackS0ixResidency(bool pre_suspend);
 

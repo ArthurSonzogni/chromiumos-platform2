@@ -3,7 +3,7 @@
 // found in the LICENSE file.
 
 // This file is meant for debugging use to manually trigger a proper
-// suspend, excercising the full path through the power manager.
+// suspend, exercising the full path through the power manager.
 // The actual work to suspend the system is done by powerd_suspend.
 // This tool will block and only exit after it has received a D-Bus
 // resume signal from powerd.
