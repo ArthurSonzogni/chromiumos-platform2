@@ -31,6 +31,11 @@ pkg_config("bootlockbox_dependent_config") {
   } else {
     pkg_deps += [ "protobuf-lite" ]
   }
+  defines = [
+    "USE_TPM1=${use.tpm}",
+    "USE_TPM2=${use.tpm2}",
+    "USE_TPM_DYNAMIC=${use.tpm_dynamic}",
+  ]
 }
 
 # Main programs.
