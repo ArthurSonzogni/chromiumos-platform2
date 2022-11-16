@@ -49,7 +49,6 @@
 #include "cryptohome/platform.h"
 #include "cryptohome/storage/arc_disk_quota.h"
 #include "cryptohome/storage/homedirs.h"
-#include "cryptohome/storage/mount.h"
 #include "cryptohome/storage/mount_factory.h"
 #include "cryptohome/user_secret_stash_storage.h"
 #include "cryptohome/user_session/user_session.h"
@@ -1079,7 +1078,7 @@ class UserDataAuth {
   // no logging will be done by the caller.
   bool StatefulRecoveryMount(const std::string& username,
                              const std::string& passkey,
-                             FilePath* out_home_path);
+                             base::FilePath* out_home_path);
 
   // This is a utility function for stateful recovery to unmount all user's home
   // directories. It'll return true if all the user's home directories are
