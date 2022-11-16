@@ -15,6 +15,7 @@
 #include <base/bind.h>
 #include <base/check.h>
 #include <base/check_op.h>
+#include <base/files/file.h>
 #include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
@@ -578,11 +579,19 @@ const char PowerSupply::kLinePowerStatusCharging[] = "Charging";
 const double PowerSupply::kLowBatteryShutdownSafetyPercent = 5.0;
 
 PowerSupply::PowerSupply()
-    : clock_(std::make_unique<Clock>()), weak_ptr_factory_(this) {}
+    : clock_(std::make_unique<Clock>()), weak_ptr_factory_(this) {
+  // TODO(b/207716926): Temporary change to find FD leaks in powerd.
+  temp_file_ = base::OpenFile(base::FilePath("/dev/null"), "r");
+}
 
 PowerSupply::~PowerSupply() {
   if (udev_)
     udev_->RemoveSubsystemObserver(kUdevSubsystem, this);
+
+  if (temp_file_ != nullptr) {
+    base::CloseFile(temp_file_);
+    temp_file_ = nullptr;
+  }
 }
 
 void PowerSupply::Init(
@@ -1483,7 +1492,25 @@ void PowerSupply::SchedulePoll() {
   base::TimeDelta delay;
   base::TimeTicks now = clock_->GetCurrentTime();
   int64_t samples = 0;
-  CHECK(prefs_->GetInt64(kMaxCurrentSamplesPref, &samples));
+  // TODO(b/207716926): Temporary change to find FD leaks in powerd.
+  bool ok = prefs_->GetInt64(kMaxCurrentSamplesPref, &samples);
+  if (!ok) {
+    if (temp_file_ != nullptr) {
+      base::CloseFile(temp_file_);  // Release pre-allocated FD.
+      temp_file_ = nullptr;
+    }
+    base::FilePath fdpath;
+    base::FileEnumerator it(
+        base::FilePath("/proc/self/fd"), false,
+        base::FileEnumerator::FILES | base::FileEnumerator::SHOW_SYM_LINKS,
+        "*");
+    for (base::FilePath name = it.Next(); !name.empty(); name = it.Next()) {
+      if (base::ReadSymbolicLink(name, &fdpath)) {
+        LOG(ERROR) << "b/207716926: " << fdpath.BaseName().value();
+      }
+    }
+  }
+  CHECK(ok);
 
   // Wait |kBatteryStabilizedSlack| after |battery_stabilized_timestamp_| to
   // start polling for the current and charge to stabilized.

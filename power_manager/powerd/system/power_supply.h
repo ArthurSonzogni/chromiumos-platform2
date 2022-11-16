@@ -517,6 +517,9 @@ class PowerSupply : public PowerSupplyInterface, public UdevSubsystemObserver {
 
   base::ObserverList<PowerSupplyObserver> observers_;
 
+  // TODO(b/207716926): Temporary change to find FD leaks in powerd.
+  FILE* temp_file_;
+
   // Most-recently-computed status.
   PowerStatus power_status_;
 
