@@ -48,19 +48,17 @@ inline string GetShellDictionary(FuzzedDataProvider* fuzz_data) {
   })";
 }
 
-inline string GetEctoolDictionary(FuzzedDataProvider* fuzz_data) {
+inline string GetEcI2cDictionary(FuzzedDataProvider* fuzz_data) {
   return R"({
-    "ectool_i2cread": {
+    "ec_i2c": {
       "size": )" +
          rand_int() + R"(,
-      "port": )" +
+      "i2c_bus": )" +
          rand_int() + R"(,
-      "addr": )" +
+      "chip_addr": )" +
          rand_int() + R"(,
-      "offset": )" +
-         rand_int() + R"(,
-      "key": ")" +
-         JsonSafe(rand_str(30)) + R"("
+      "data_addr": )" +
+         rand_int() + R"(
     }
   })";
 }
@@ -96,7 +94,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
       })";
       break;
     case 2:
-      eval_str = GetEctoolDictionary(&fuzz_data);
+      eval_str = GetEcI2cDictionary(&fuzz_data);
       break;
     case 3:
       eval_str = GetVPDCachedDictionary(&fuzz_data);
