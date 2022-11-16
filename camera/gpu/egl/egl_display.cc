@@ -54,7 +54,7 @@ bool IsGetPlatformDisplaySupported() {
 }
 
 bool IsRunningOnVM() {
-  static bool is_in_vm = []() {
+  static bool is_in_qemu_vm = []() {
     const base::FilePath sys_vendor_path(
         "/sys/devices/virtual/dmi/id/sys_vendor");
     std::string raw_str, vendor_str;
@@ -63,7 +63,18 @@ bool IsRunningOnVM() {
     base::TrimWhitespaceASCII(raw_str, base::TRIM_ALL, &vendor_str);
     return vendor_str == "QEMU";
   }();
-  return is_in_vm;
+
+  static bool is_in_gce_vm = []() {
+    const base::FilePath board_name_path(
+        "/sys/devices/virtual/dmi/id/board_name");
+    std::string raw_str, board_name_str;
+    constexpr size_t kMaxStrSize = 128;
+    base::ReadFileToStringWithMaxSize(board_name_path, &raw_str, kMaxStrSize);
+    base::TrimWhitespaceASCII(raw_str, base::TRIM_ALL, &board_name_str);
+    return board_name_str == "Google Compute Engine";
+  }();
+
+  return is_in_qemu_vm || is_in_gce_vm;
 }
 
 }  // namespace
