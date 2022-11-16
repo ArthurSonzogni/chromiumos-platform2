@@ -27,7 +27,8 @@ namespace u2f {
 // U2F HID service. Initialized by U2F Daemon.
 class U2fHidServiceImpl : public U2fHidService {
  public:
-  explicit U2fHidServiceImpl(bool legacy_kh_fallback);
+  explicit U2fHidServiceImpl(
+      std::unique_ptr<hwsec::U2fVendorFrontend> u2f_frontend);
   U2fHidServiceImpl(const U2fHidServiceImpl&) = delete;
   U2fHidServiceImpl& operator=(const U2fHidServiceImpl&) = delete;
 
@@ -49,11 +50,8 @@ class U2fHidServiceImpl : public U2fHidService {
   std::optional<attestation::GetCertifiedNvIndexReply> GetCertifiedG2fCert(
       int g2f_cert_size) override;
 
-  TpmVendorCommandProxy* tpm_proxy() override { return &tpm_proxy_; }
-
  private:
-  const bool legacy_kh_fallback_;
-
+  std::unique_ptr<hwsec::U2fVendorFrontend> u2f_frontend_;
   TpmVendorCommandProxy tpm_proxy_;
   dbus::ObjectProxy* attestation_proxy_;  // Not Owned.
 

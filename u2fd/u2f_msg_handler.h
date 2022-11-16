@@ -11,10 +11,10 @@
 #include <vector>
 
 #include <attestation/proto_bindings/interface.pb.h>
+#include <libhwsec/frontend/u2fd/vendor_frontend.h>
 #include <metrics/metrics_library.h>
 
 #include "u2fd/allowlisting_util.h"
-#include "u2fd/client/tpm_vendor_cmd.h"
 #include "u2fd/client/u2f_apdu.h"
 #include "u2fd/client/user_state.h"
 #include "u2fd/u2f_corp_processor_interface.h"
@@ -30,10 +30,9 @@ class U2fMessageHandler : public U2fMessageHandlerInterface {
   U2fMessageHandler(std::unique_ptr<AllowlistingUtil> allowlisting_util,
                     std::function<void()> request_user_presence,
                     UserState* user_state,
-                    TpmVendorCommandProxy* proxy,
+                    hwsec::U2fVendorFrontend* u2f_frontend,
                     org::chromium::SessionManagerInterfaceProxy* sm_proxy,
                     MetricsLibraryInterface* metrics,
-                    bool allow_legacy_kh_sign,
                     bool allow_g2f_attestation,
                     U2fCorpProcessorInterface* u2f_corp_processor);
 
@@ -48,53 +47,15 @@ class U2fMessageHandler : public U2fMessageHandlerInterface {
   U2fResponseApdu ProcessU2fAuthenticate(
       const U2fAuthenticateRequestApdu& request);
 
-  // Status for execution of a cr50 command. Includes status of preparation
-  // of the request, actual execution of the cr50 command, and any processing
-  // of the response.
-  enum class Cr50CmdStatus : uint32_t {
-    // Cr50 return codes, map to vendor_cmd_rc in tpm_vendor_cmds.h
-    kSuccess = 0,
-    kNotAllowed = 0x507,
-    kPasswordRequired = 0x50a,
-    // Errors that occur in u2fd while processing requests/responses.
-    kInvalidState = 0x580,
-    kInvalidResponseData,
-  };
-
-  // Wrapper functions for cr50 U2F vendor commands.
-
-  // Run a U2F_GENERATE command to create a new key handle.
-  Cr50CmdStatus DoU2fGenerate(const std::vector<uint8_t>& app_id,
-                              std::vector<uint8_t>* pub_key,
-                              std::vector<uint8_t>* key_handle);
-  // Run a U2F_SIGN command to sign a hash using an existing key handle.
-  Cr50CmdStatus DoU2fSign(const std::vector<uint8_t>& app_id,
-                          const std::vector<uint8_t>& key_handle,
-                          const std::vector<uint8_t>& hash,
-                          std::vector<uint8_t>* signature);
-  // Run a U2F_SIGN command to check if a key handle is valid.
-  Cr50CmdStatus DoU2fSignCheckOnly(const std::vector<uint8_t>& app_id,
-                                   const std::vector<uint8_t>& key_handle);
-  // Run a U2F_ATTEST command to sign data using the cr50 individual attestation
-  // certificate. Returns true on success.
-  Cr50CmdStatus DoG2fAttest(const std::vector<uint8_t>& data,
-                            uint8_t format,
-                            std::vector<uint8_t>* sig_out);
-
   // Builds an empty U2F response with the specified status code.
   U2fResponseApdu BuildEmptyResponse(uint16_t sw);
-
-  // Builds an empty U2F response with a U2F status code corresponding to the
-  // specified cr50 status.
-  U2fResponseApdu BuildErrorResponse(Cr50CmdStatus status);
 
   std::unique_ptr<AllowlistingUtil> allowlisting_util_;
   std::function<void()> request_user_presence_;
   UserState* user_state_;
-  TpmVendorCommandProxy* proxy_;
+  hwsec::U2fVendorFrontend* u2f_frontend_;
   MetricsLibraryInterface* metrics_;
 
-  const bool allow_legacy_kh_sign_;
   const bool allow_g2f_attestation_;
 
   U2fCorpProcessorInterface* u2f_corp_processor_;

@@ -112,7 +112,11 @@ U2fDaemon::U2fDaemon(bool force_u2f,
       service_started_(false),
       hwsec_factory_(hwsec::ThreadingMode::kCurrentThread) {
 #if USE_GSC
-  u2fhid_service_ = std::make_unique<U2fHidServiceImpl>(legacy_kh_fallback);
+  auto u2f_vendor_frontend = hwsec_factory_.GetU2fVendorFrontend();
+  if (u2f_vendor_frontend->IsEnabled().value_or(false)) {
+    u2fhid_service_ =
+        std::make_unique<U2fHidServiceImpl>(std::move(u2f_vendor_frontend));
+  }
 #endif  // USE_GSC
 }
 

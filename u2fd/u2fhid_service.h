@@ -41,8 +41,6 @@ class U2fHidService {
   // must be specified in |g2f_cert_size|.
   virtual std::optional<attestation::GetCertifiedNvIndexReply>
   GetCertifiedG2fCert(int g2f_cert_size) = 0;
-
-  virtual TpmVendorCommandProxy* tpm_proxy() = 0;
 };
 
 }  // namespace u2f

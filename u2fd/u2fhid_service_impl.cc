@@ -37,8 +37,11 @@ constexpr uint32_t kCorpProductId = 0x5212;
 
 }  // namespace
 
-U2fHidServiceImpl::U2fHidServiceImpl(bool legacy_kh_fallback)
-    : legacy_kh_fallback_(legacy_kh_fallback) {}
+U2fHidServiceImpl::U2fHidServiceImpl(
+    std::unique_ptr<hwsec::U2fVendorFrontend> u2f_frontend)
+    : u2f_frontend_(std::move(u2f_frontend)) {
+  CHECK(u2f_frontend_);
+}
 
 bool U2fHidServiceImpl::InitializeDBusProxies(dbus::Bus* bus) {
   if (!tpm_proxy_.Init()) {
@@ -112,8 +115,8 @@ bool U2fHidServiceImpl::CreateU2fHid(
 
   u2f_msg_handler_ = std::make_unique<u2f::U2fMessageHandler>(
       std::move(allowlisting_util), request_user_presence, user_state,
-      &tpm_proxy_, sm_proxy, metrics, legacy_kh_fallback_,
-      allow_g2f_attestation, u2f_corp_processor_.get());
+      u2f_frontend_.get(), sm_proxy, metrics, allow_g2f_attestation,
+      u2f_corp_processor_.get());
 
   u2fhid_ = std::make_unique<u2f::U2fHid>(
       std::make_unique<u2f::UHidDevice>(vendor_id, product_id, kDeviceName,

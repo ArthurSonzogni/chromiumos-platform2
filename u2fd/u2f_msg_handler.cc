@@ -11,12 +11,19 @@
 
 #include <base/logging.h>
 #include <brillo/secure_blob.h>
+#include <libhwsec-foundation/status/status_chain_macros.h>
 #include <session_manager/dbus-proxies.h>
 #include <trunks/cr50_headers/u2f.h>
 
-#include "u2fd/client/tpm_vendor_cmd.h"
 #include "u2fd/client/util.h"
 #include "u2fd/u2f_corp_processor_interface.h"
+
+using hwsec::TPMError;
+using hwsec::TPMRetryAction;
+using GenerateResult = hwsec::u2f::GenerateResult;
+using Signature = hwsec::u2f::Signature;
+using ConsumeMode = hwsec::u2f::ConsumeMode;
+using UserPresenceMode = hwsec::u2f::UserPresenceMode;
 
 namespace u2f {
 
@@ -32,19 +39,12 @@ constexpr uint8_t kU2fVer2Prefix = 5;
 // UMA Metric names.
 constexpr char kU2fCommand[] = "Platform.U2F.Command";
 
-std::optional<std::vector<uint8_t>> GetG2fCert(TpmVendorCommandProxy* proxy) {
-  std::string cert_str;
-  std::vector<uint8_t> cert;
-
-  uint32_t get_cert_status = proxy->GetG2fCertificate(&cert_str);
-
-  if (get_cert_status != 0) {
-    LOG(ERROR) << "Failed to retrieve G2F certificate, status: " << std::hex
-               << get_cert_status;
-    return std::nullopt;
-  }
-
-  util::AppendToVector(cert_str, &cert);
+std::optional<std::vector<uint8_t>> GetG2fCert(
+    hwsec::U2fVendorFrontend* u2f_frontend) {
+  ASSIGN_OR_RETURN(std::vector<uint8_t> cert, u2f_frontend->GetG2fCert(),
+                   _.WithStatus<TPMError>("Failed to get G2F cert")
+                       .LogError()
+                       .As(std::nullopt));
 
   if (!util::RemoveCertificatePadding(&cert)) {
     LOG(ERROR) << "Failed to remove padding from G2F certificate ";
@@ -60,20 +60,20 @@ U2fMessageHandler::U2fMessageHandler(
     std::unique_ptr<AllowlistingUtil> allowlisting_util,
     std::function<void()> request_user_presence,
     UserState* user_state,
-    TpmVendorCommandProxy* proxy,
+    hwsec::U2fVendorFrontend* u2f_frontend,
     org::chromium::SessionManagerInterfaceProxy* sm_proxy,
     MetricsLibraryInterface* metrics,
-    bool allow_legacy_kh_sign,
     bool allow_g2f_attestation,
     U2fCorpProcessorInterface* u2f_corp_processor)
     : allowlisting_util_(std::move(allowlisting_util)),
       request_user_presence_(request_user_presence),
       user_state_(user_state),
-      proxy_(proxy),
+      u2f_frontend_(u2f_frontend),
       metrics_(metrics),
-      allow_legacy_kh_sign_(allow_legacy_kh_sign),
       allow_g2f_attestation_(allow_g2f_attestation),
-      u2f_corp_processor_(u2f_corp_processor) {}
+      u2f_corp_processor_(u2f_corp_processor) {
+  CHECK(u2f_frontend_);
+}
 
 U2fResponseApdu U2fMessageHandler::ProcessMsg(const std::string& req) {
   uint16_t u2f_status = 0;
@@ -145,65 +145,88 @@ U2fResponseApdu U2fMessageHandler::ProcessMsg(const std::string& req) {
 
 U2fResponseApdu U2fMessageHandler::ProcessU2fRegister(
     const U2fRegisterRequestApdu& request) {
-  std::vector<uint8_t> pub_key;
-  std::vector<uint8_t> key_handle;
   VLOG(1) << "U2F registration requested.";
 
-  Cr50CmdStatus generate_status =
-      DoU2fGenerate(request.GetAppId(), &pub_key, &key_handle);
-
-  if (generate_status != Cr50CmdStatus::kSuccess) {
-    if (generate_status == Cr50CmdStatus::kNotAllowed) {
-      LOG(WARNING) << "U2fGenerate requests user presence.";
-      request_user_presence_();
-    } else {
-      LOG(ERROR) << "U2fGenerate failed with status " << std::hex
-                 << static_cast<uint32_t>(generate_status) << ".";
-    }
-    return BuildErrorResponse(generate_status);
+  std::optional<brillo::SecureBlob> user_secret = user_state_->GetUserSecret();
+  if (!user_secret.has_value()) {
+    return BuildEmptyResponse(U2F_SW_WTF);
   }
 
+  hwsec::StatusOr<GenerateResult> generate_result =
+      u2f_frontend_->GenerateUserPresenceOnly(request.GetAppId(), *user_secret,
+                                              ConsumeMode::kConsume,
+                                              UserPresenceMode::kRequired);
+  if (!generate_result.ok()) {
+    if (generate_result.err_status()->ToTPMRetryAction() ==
+        TPMRetryAction::kUserPresence) {
+      LOG(WARNING) << "U2fGenerate requests user presence.";
+      request_user_presence_();
+      return BuildEmptyResponse(U2F_SW_CONDITIONS_NOT_SATISFIED);
+    }
+    LOG(ERROR) << "U2fGenerate failed:" << generate_result.status() << ".";
+    return BuildEmptyResponse(U2F_SW_WTF);
+  }
+  if (!generate_result->public_key) {
+    LOG(ERROR) << "No public key in generate result.";
+    return BuildEmptyResponse(U2F_SW_WTF);
+  }
+  std::vector<uint8_t> public_key = generate_result->public_key->raw();
+  std::vector<uint8_t> key_handle = std::move(generate_result->key_handle);
+
   std::vector<uint8_t> data_to_sign = util::BuildU2fRegisterResponseSignedData(
-      request.GetAppId(), request.GetChallenge(), pub_key, key_handle);
+      request.GetAppId(), request.GetChallenge(), public_key, key_handle);
 
   std::vector<uint8_t> attestation_cert;
   std::vector<uint8_t> signature;
-  std::vector<uint8_t> allowlisting_data;
 
   if (allow_g2f_attestation_ && request.UseG2fAttestation()) {
-    std::optional<std::vector<uint8_t>> g2f_cert = GetG2fCert(proxy_);
+    std::optional<std::vector<uint8_t>> g2f_cert = GetG2fCert(u2f_frontend_);
 
-    if (g2f_cert.has_value()) {
-      attestation_cert = *g2f_cert;
-    } else {
+    if (!g2f_cert.has_value()) {
       LOG(ERROR) << "Failed to get g2f cert.";
       return BuildEmptyResponse(U2F_SW_WTF);
     }
+    attestation_cert = *g2f_cert;
 
-    Cr50CmdStatus attest_status =
-        DoG2fAttest(data_to_sign, U2F_ATTEST_FORMAT_REG_RESP, &signature);
+    ASSIGN_OR_RETURN(const Signature& sig,
+                     u2f_frontend_->G2fAttest(request.GetAppId(), *user_secret,
+                                              request.GetChallenge(),
+                                              key_handle, public_key),
+                     _.WithStatus<TPMError>("Failed to attest U2F credential")
+                         .LogError()
+                         .As(BuildEmptyResponse(U2F_SW_WTF)));
 
-    if (attest_status != Cr50CmdStatus::kSuccess) {
-      LOG(ERROR) << "G2fAttest failed with status " << std::hex
-                 << static_cast<uint32_t>(attest_status) << ".";
+    std::optional<std::vector<uint8_t>> sig_der =
+        util::SignatureToDerBytes(sig.r.data(), sig.s.data());
+    if (!sig_der.has_value()) {
+      LOG(ERROR) << "DER encoding of U2F_ATTEST signature failed.";
       return BuildEmptyResponse(U2F_SW_WTF);
     }
+    signature = std::move(*sig_der);
 
     if (allowlisting_util_ != nullptr &&
         !allowlisting_util_->AppendDataToCert(&attestation_cert)) {
       LOG(ERROR) << "Failed to get allowlisting data for G2F Enroll Request.";
       return BuildEmptyResponse(U2F_SW_WTF);
     }
-  } else if (!util::DoSoftwareAttest(data_to_sign, &attestation_cert,
-                                     &signature)) {
-    LOG(ERROR) << "Software attest failed.";
-    return BuildEmptyResponse(U2F_SW_WTF);
+  } else {
+    ASSIGN_OR_RETURN(
+        const std::vector<uint8_t>& data,
+        u2f_frontend_->GetG2fAttestData(
+            request.GetAppId(), request.GetChallenge(), key_handle, public_key),
+        _.WithStatus<TPMError>("Failed to get G2F attest data")
+            .LogError()
+            .As(BuildEmptyResponse(U2F_SW_WTF)));
+    if (!util::DoSoftwareAttest(data, &attestation_cert, &signature)) {
+      LOG(ERROR) << "Failed to do software attest.";
+      return BuildEmptyResponse(U2F_SW_WTF);
+    }
   }
 
   // Prepare response, as specified by "U2F Raw Message Formats".
   U2fResponseApdu register_resp;
   register_resp.AppendByte(kU2fVer2Prefix);
-  register_resp.AppendBytes(pub_key);
+  register_resp.AppendBytes(public_key);
   register_resp.AppendByte(key_handle.size());
   register_resp.AppendBytes(key_handle);
   register_resp.AppendBytes(attestation_cert);
@@ -235,19 +258,27 @@ std::vector<uint8_t> BuildU2fAuthenticateResponseSignedData(
 U2fResponseApdu U2fMessageHandler::ProcessU2fAuthenticate(
     const U2fAuthenticateRequestApdu& request) {
   VLOG(1) << "U2F authentication requested.";
+
+  std::optional<brillo::SecureBlob> user_secret = user_state_->GetUserSecret();
+  if (!user_secret.has_value()) {
+    return BuildEmptyResponse(U2F_SW_WTF);
+  }
+
   if (request.IsAuthenticateCheckOnly()) {
     // The authenticate only version of this command always returns an error (on
     // success, returns an error requesting presence).
-    Cr50CmdStatus sign_status =
-        DoU2fSignCheckOnly(request.GetAppId(), request.GetKeyHandle());
-    if (sign_status == Cr50CmdStatus::kSuccess) {
-      VLOG(1) << "Finished processing U2F authentication (check-only) request.";
-      return BuildEmptyResponse(U2F_SW_CONDITIONS_NOT_SATISFIED);
-    } else {
-      LOG(ERROR) << "U2fSignCheckOnly failed with status " << std::hex
-                 << static_cast<uint32_t>(sign_status) << ".";
-      return BuildErrorResponse(sign_status);
+    hwsec::Status status = u2f_frontend_->CheckUserPresenceOnly(
+        request.GetAppId(), *user_secret, request.GetKeyHandle());
+    if (!status.ok()) {
+      LOG(ERROR) << "U2fSignCheckOnly failed: " << status << ".";
+      return BuildEmptyResponse(status.err_status()->ToTPMRetryAction() ==
+                                        TPMRetryAction::kUserAuth
+                                    ? U2F_SW_WRONG_DATA
+                                    : U2F_SW_WTF);
     }
+
+    VLOG(1) << "Finished processing U2F authentication (check-only) request.";
+    return BuildEmptyResponse(U2F_SW_CONDITIONS_NOT_SATISFIED);
   }
 
   std::optional<std::vector<uint8_t>> counter = user_state_->GetCounter();
@@ -256,24 +287,28 @@ U2fResponseApdu U2fMessageHandler::ProcessU2fAuthenticate(
     return BuildEmptyResponse(U2F_SW_WTF);
   }
 
-  std::vector<uint8_t> to_sign = BuildU2fAuthenticateResponseSignedData(
-      request.GetAppId(), request.GetChallenge(), *counter);
+  std::vector<uint8_t> hash_to_sign =
+      util::Sha256(BuildU2fAuthenticateResponseSignedData(
+          request.GetAppId(), request.GetChallenge(), *counter));
 
-  std::vector<uint8_t> signature;
-
-  Cr50CmdStatus sign_status =
-      DoU2fSign(request.GetAppId(), request.GetKeyHandle(),
-                util::Sha256(to_sign), &signature);
-
-  if (sign_status != Cr50CmdStatus::kSuccess) {
-    if (sign_status == Cr50CmdStatus::kNotAllowed) {
+  hwsec::StatusOr<Signature> sig = u2f_frontend_->SignUserPresenceOnly(
+      request.GetAppId(), *user_secret, hash_to_sign, ConsumeMode::kConsume,
+      UserPresenceMode::kRequired, request.GetKeyHandle());
+  if (!sig.ok()) {
+    auto action = sig.err_status()->ToTPMRetryAction();
+    if (action == TPMRetryAction::kUserPresence) {
       LOG(WARNING) << "U2fSign requests user presence.";
       request_user_presence_();
-    } else {
-      LOG(ERROR) << "U2fSign failed with status " << std::hex
-                 << static_cast<uint32_t>(sign_status) << ".";
+      return BuildEmptyResponse(U2F_SW_CONDITIONS_NOT_SATISFIED);
     }
-    return BuildErrorResponse(sign_status);
+    LOG(ERROR) << "U2fSign failed:" << sig.status() << ".";
+    return BuildEmptyResponse(
+        action == TPMRetryAction::kUserAuth ? U2F_SW_WRONG_DATA : U2F_SW_WTF);
+  }
+  std::optional<std::vector<uint8_t>> sig_der =
+      util::SignatureToDerBytes(sig->r.data(), sig->s.data());
+  if (!sig_der.has_value()) {
+    return BuildEmptyResponse(U2F_SW_WTF);
   }
 
   if (!user_state_->IncrementCounter()) {
@@ -290,207 +325,17 @@ U2fResponseApdu U2fMessageHandler::ProcessU2fAuthenticate(
   U2fResponseApdu auth_resp;
   auth_resp.AppendByte(U2F_AUTH_FLAG_TUP);
   auth_resp.AppendBytes(*counter);
-  auth_resp.AppendBytes(signature);
+  auth_resp.AppendBytes(*sig_der);
   auth_resp.SetStatus(U2F_SW_NO_ERROR);
 
   VLOG(1) << "Finished processing U2F authentication request.";
   return auth_resp;
 }
 
-U2fMessageHandler::Cr50CmdStatus U2fMessageHandler::DoU2fGenerate(
-    const std::vector<uint8_t>& app_id,
-    std::vector<uint8_t>* pub_key,
-    std::vector<uint8_t>* key_handle) {
-  std::optional<brillo::SecureBlob> user_secret = user_state_->GetUserSecret();
-  if (!user_secret.has_value()) {
-    return Cr50CmdStatus::kInvalidState;
-  }
-
-  struct u2f_generate_req generate_req = {
-      .flags = U2F_AUTH_ENFORCE  // Require user presence, consume.
-  };
-  if (!util::VectorToObject(app_id, generate_req.appId,
-                            sizeof(generate_req.appId))) {
-    return Cr50CmdStatus::kInvalidState;
-  }
-  if (!util::VectorToObject(*user_secret, generate_req.userSecret,
-                            sizeof(generate_req.userSecret))) {
-    return Cr50CmdStatus::kInvalidState;
-  }
-
-  struct u2f_generate_resp generate_resp = {};
-  Cr50CmdStatus generate_status = static_cast<Cr50CmdStatus>(
-      proxy_->SendU2fGenerate(generate_req, &generate_resp));
-
-  brillo::SecureClearBytes(&generate_req.userSecret,
-                           sizeof(generate_req.userSecret));
-
-  if (generate_status != Cr50CmdStatus::kSuccess) {
-    return generate_status;
-  }
-
-  util::AppendToVector(generate_resp.pubKey, pub_key);
-  util::AppendToVector(generate_resp.keyHandle, key_handle);
-
-  return Cr50CmdStatus::kSuccess;
-}
-
-U2fMessageHandler::Cr50CmdStatus U2fMessageHandler::DoU2fSign(
-    const std::vector<uint8_t>& app_id,
-    const std::vector<uint8_t>& key_handle,
-    const std::vector<uint8_t>& hash,
-    std::vector<uint8_t>* signature_out) {
-  std::optional<brillo::SecureBlob> user_secret = user_state_->GetUserSecret();
-  if (!user_secret.has_value()) {
-    return Cr50CmdStatus::kInvalidState;
-  }
-
-  struct u2f_sign_req sign_req = {
-      .flags = U2F_AUTH_ENFORCE  // Require user presence, consume.
-  };
-  if (allow_legacy_kh_sign_)
-    sign_req.flags |= SIGN_LEGACY_KH;
-  if (!util::VectorToObject(app_id, sign_req.appId, sizeof(sign_req.appId))) {
-    return Cr50CmdStatus::kInvalidState;
-  }
-  if (!util::VectorToObject(*user_secret, sign_req.userSecret,
-                            sizeof(sign_req.userSecret))) {
-    return Cr50CmdStatus::kInvalidState;
-  }
-  if (!util::VectorToObject(key_handle, &sign_req.keyHandle,
-                            sizeof(sign_req.keyHandle))) {
-    return Cr50CmdStatus::kInvalidState;
-  }
-  if (!util::VectorToObject(hash, sign_req.hash, sizeof(sign_req.hash))) {
-    return Cr50CmdStatus::kInvalidState;
-  }
-
-  struct u2f_sign_resp sign_resp = {};
-  Cr50CmdStatus sign_status =
-      static_cast<Cr50CmdStatus>(proxy_->SendU2fSign(sign_req, &sign_resp));
-
-  brillo::SecureClearBytes(&sign_req.userSecret, sizeof(sign_req.userSecret));
-
-  if (sign_status != Cr50CmdStatus::kSuccess) {
-    return sign_status;
-  }
-
-  std::optional<std::vector<uint8_t>> signature =
-      util::SignatureToDerBytes(sign_resp.sig_r, sign_resp.sig_s);
-
-  if (!signature.has_value()) {
-    return Cr50CmdStatus::kInvalidResponseData;
-  }
-
-  *signature_out = *signature;
-
-  return Cr50CmdStatus::kSuccess;
-}
-
-U2fMessageHandler::Cr50CmdStatus U2fMessageHandler::DoU2fSignCheckOnly(
-    const std::vector<uint8_t>& app_id,
-    const std::vector<uint8_t>& key_handle) {
-  std::optional<brillo::SecureBlob> user_secret = user_state_->GetUserSecret();
-  if (!user_secret.has_value()) {
-    return Cr50CmdStatus::kInvalidState;
-  }
-
-  struct u2f_sign_req sign_req = {
-      .flags = U2F_AUTH_CHECK_ONLY  // No user presence required, no consume.
-  };
-  if (!util::VectorToObject(app_id, sign_req.appId, sizeof(sign_req.appId))) {
-    return Cr50CmdStatus::kInvalidState;
-  }
-  if (!util::VectorToObject(*user_secret, sign_req.userSecret,
-                            sizeof(sign_req.userSecret))) {
-    return Cr50CmdStatus::kInvalidState;
-  }
-  if (!util::VectorToObject(key_handle, &sign_req.keyHandle,
-                            sizeof(sign_req.keyHandle))) {
-    return Cr50CmdStatus::kInvalidState;
-  }
-
-  Cr50CmdStatus sign_status =
-      static_cast<Cr50CmdStatus>(proxy_->SendU2fSign(sign_req, nullptr));
-
-  brillo::SecureClearBytes(&sign_req.userSecret, sizeof(sign_req.userSecret));
-
-  return sign_status;
-}
-
-U2fMessageHandler::Cr50CmdStatus U2fMessageHandler::DoG2fAttest(
-    const std::vector<uint8_t>& data,
-    uint8_t format,
-    std::vector<uint8_t>* signature_out) {
-  std::optional<brillo::SecureBlob> user_secret = user_state_->GetUserSecret();
-  if (!user_secret.has_value()) {
-    return Cr50CmdStatus::kInvalidState;
-  }
-
-  struct u2f_attest_req attest_req = {
-      .format = format, .dataLen = static_cast<uint8_t>(data.size())};
-  if (!util::VectorToObject(*user_secret, attest_req.userSecret,
-                            sizeof(attest_req.userSecret))) {
-    return Cr50CmdStatus::kInvalidState;
-  }
-  if (!util::VectorToObject(data, attest_req.data, sizeof(attest_req.data))) {
-    return Cr50CmdStatus::kInvalidState;
-  }
-
-  struct u2f_attest_resp attest_resp = {};
-  Cr50CmdStatus attest_status = static_cast<Cr50CmdStatus>(
-      proxy_->SendU2fAttest(attest_req, &attest_resp));
-
-  brillo::SecureClearBytes(&attest_req.userSecret,
-                           sizeof(attest_req.userSecret));
-
-  if (attest_status != Cr50CmdStatus::kSuccess) {
-    // We are attesting to a key handle that we just created, so if
-    // attestation fails we have hit some internal error.
-    LOG(ERROR) << "U2F_ATTEST failed, status: " << std::hex
-               << static_cast<uint32_t>(attest_status);
-    return attest_status;
-  }
-
-  std::optional<std::vector<uint8_t>> signature =
-      util::SignatureToDerBytes(attest_resp.sig_r, attest_resp.sig_s);
-
-  if (!signature.has_value()) {
-    LOG(ERROR) << "DER encoding of U2F_ATTEST signature failed.";
-    return Cr50CmdStatus::kInvalidResponseData;
-  }
-
-  *signature_out = *signature;
-
-  return Cr50CmdStatus::kSuccess;
-}
-
 U2fResponseApdu U2fMessageHandler::BuildEmptyResponse(uint16_t sw) {
   U2fResponseApdu resp_apdu;
   resp_apdu.SetStatus(sw);
   return resp_apdu;
-}
-
-U2fResponseApdu U2fMessageHandler::BuildErrorResponse(Cr50CmdStatus status) {
-  uint16_t sw;
-
-  switch (status) {
-    case Cr50CmdStatus::kNotAllowed:
-      sw = U2F_SW_CONDITIONS_NOT_SATISFIED;
-      break;
-    case Cr50CmdStatus::kPasswordRequired:
-      sw = U2F_SW_WRONG_DATA;
-      break;
-    case Cr50CmdStatus::kInvalidState:
-      sw = U2F_SW_WTF;
-      break;
-    default:
-      LOG(ERROR) << "Unexpected Cr50CmdStatus: " << std::hex
-                 << static_cast<uint32_t>(status);
-      sw = U2F_SW_WTF;
-  }
-
-  return BuildEmptyResponse(sw);
 }
 
 }  // namespace u2f
