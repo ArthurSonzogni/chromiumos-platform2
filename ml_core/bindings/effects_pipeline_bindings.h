@@ -25,6 +25,13 @@ struct BRILLO_EXPORT EffectsConfig {
   // Name of the effect. Used to identify which effect object to instantiate
   mojom::CameraEffect effect = mojom::CameraEffect::kNone;
 
+  // Whether portrait relighting should be enabled.
+  bool relight_enabled = false;
+  // Whether background blur should be enabled
+  bool blur_enabled = false;
+  // Whether background replace should be enabled
+  bool replace_enabled = false;
+
   // How much blur to apply for the background blur effect.
   mojom::BlurLevel blur_level = mojom::BlurLevel::kMedium;
 
@@ -48,7 +55,10 @@ struct BRILLO_EXPORT EffectsConfig {
     return effect == rhs.effect && blur_level == rhs.blur_level &&
            segmentation_gpu_api == rhs.segmentation_gpu_api &&
            graph_max_frames_in_flight == rhs.graph_max_frames_in_flight &&
-           enable_profiling == rhs.enable_profiling;
+           enable_profiling == rhs.enable_profiling &&
+           relight_enabled == rhs.relight_enabled &&
+           blur_enabled == rhs.blur_enabled &&
+           replace_enabled == rhs.replace_enabled;
   }
 
   inline bool operator!=(const EffectsConfig& rhs) const {

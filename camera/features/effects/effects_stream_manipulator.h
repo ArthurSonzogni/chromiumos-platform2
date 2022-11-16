@@ -63,7 +63,7 @@ class EffectsStreamManipulator : public StreamManipulator {
  private:
   void OnOptionsUpdated(const base::Value& json_values);
 
-  void SetEffect(EffectsConfig new_config);
+  void SetEffect(EffectsConfig* new_config, void (*callback)(bool));
   void GpuSync();
   void CreatePipeline(const base::FilePath& dlc_root_path);
 

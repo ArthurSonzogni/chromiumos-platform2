@@ -14,11 +14,11 @@
 #include <string>
 #include <utility>
 
+#include <base/callback_helpers.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
-#include "base/containers/stack_container.h"
-#include <base/callback_helpers.h>
 #include <base/time/time.h>
+#include "base/containers/stack_container.h"
 
 #include "cros-camera/camera_buffer_manager.h"
 #include "cros-camera/camera_metadata_utils.h"
@@ -44,6 +44,9 @@ bool GetStringFromKey(const base::Value& obj,
 
 constexpr char kEffectKey[] = "effect";
 constexpr char kBlurLevelKey[] = "blur_level";
+constexpr char kBlurEnabled[] = "blur_enabled";
+constexpr char kReplaceEnabled[] = "replace_enabled";
+constexpr char kRelightEnabled[] = "relight_enabled";
 
 constexpr uint8_t kMaxNumBuffers = 8;
 
@@ -272,7 +275,7 @@ bool EffectsStreamManipulator::ProcessCaptureResultOnThread(
   auto new_config = runtime_options_->GetEffectsConfig();
   if (active_runtime_effects_config_ != new_config) {
     active_runtime_effects_config_ = new_config;
-    SetEffect(new_config);
+    SetEffect(&new_config, nullptr);
   }
   pipeline_->ProcessFrame(result->frame_number(),
                           reinterpret_cast<const uint8_t*>(buffer_ptr_),
@@ -323,19 +326,6 @@ void EffectsStreamManipulator::OnOptionsUpdated(
   if (GetStringFromKey(json_values, kEffectKey, &tmp)) {
     if (tmp == std::string("blur")) {
       new_config.effect = mojom::CameraEffect::kBackgroundBlur;
-      std::string blur_level;
-      GetStringFromKey(json_values, kBlurLevelKey, &blur_level);
-      if (blur_level == "lowest") {
-        new_config.blur_level = mojom::BlurLevel::kLowest;
-      } else if (blur_level == "light") {
-        new_config.blur_level = mojom::BlurLevel::kLight;
-      } else if (blur_level == "medium") {
-        new_config.blur_level = mojom::BlurLevel::kMedium;
-      } else if (blur_level == "heavy") {
-        new_config.blur_level = mojom::BlurLevel::kHeavy;
-      } else if (blur_level == "maximum") {
-        new_config.blur_level = mojom::BlurLevel::kMaximum;
-      }
     } else if (tmp == std::string("replace")) {
       new_config.effect = mojom::CameraEffect::kBackgroundReplace;
     } else if (tmp == std::string("relight")) {
@@ -348,15 +338,34 @@ void EffectsStreamManipulator::OnOptionsUpdated(
       LOGF(WARNING) << "Unknown Effect: " << tmp;
       return;
     }
+    LoadIfExist(json_values, kBlurEnabled, &new_config.blur_enabled);
+    LoadIfExist(json_values, kReplaceEnabled, &new_config.replace_enabled);
+    LoadIfExist(json_values, kRelightEnabled, &new_config.relight_enabled);
+
+    std::string blur_level;
+    GetStringFromKey(json_values, kBlurLevelKey, &blur_level);
+    if (blur_level == "lowest") {
+      new_config.blur_level = mojom::BlurLevel::kLowest;
+    } else if (blur_level == "light") {
+      new_config.blur_level = mojom::BlurLevel::kLight;
+    } else if (blur_level == "medium") {
+      new_config.blur_level = mojom::BlurLevel::kMedium;
+    } else if (blur_level == "heavy") {
+      new_config.blur_level = mojom::BlurLevel::kHeavy;
+    } else if (blur_level == "maximum") {
+      new_config.blur_level = mojom::BlurLevel::kMaximum;
+    }
+
     LOGF(INFO) << "Effect Updated: " << tmp;
 
-    pipeline_->SetEffect(&new_config, nullptr);
+    SetEffect(&new_config, nullptr);
   }
 }
 
-void EffectsStreamManipulator::SetEffect(EffectsConfig new_config) {
+void EffectsStreamManipulator::SetEffect(EffectsConfig* new_config,
+                                         void (*callback)(bool)) {
   if (pipeline_) {
-    pipeline_->SetEffect(&new_config, nullptr);
+    pipeline_->SetEffect(new_config, callback);
   } else {
     LOGF(WARNING) << "SetEffect called, but pipeline not ready.";
   }
