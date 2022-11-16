@@ -24,8 +24,11 @@ void ShaderCacheMountStatusChanged(
     std::string* error_out,
     base::WaitableEvent* event,
     bool expected_mount,
-    const shadercached::ShaderCacheMountStatus& mount_status) {
-  if (!mount_status.error().empty()) {
+    const shadercached::ShaderCacheMountStatus& mount_status,
+    bool was_replaced) {
+  if (was_replaced) {
+    *error_out = "Another garcon call overrode the waiting request";
+  } else if (!mount_status.error().empty()) {
     *error_out = mount_status.error();
   } else if (mount_status.mounted() == expected_mount) {
     *error_out = "";
@@ -164,12 +167,26 @@ void ShadercachedHelper::UninstallShaderCache(
 bool ShadercachedHelper::AddCallback(const CallbackCondition& condition,
                                      std::string* error_out,
                                      base::WaitableEvent* event_to_notify) {
-  // Do not queue callback if there is already one. This is to prevent memory
-  // increase from misbehaving user (ex. spamming game launches) when DLC
-  // download is taking time.
+  // If there is already a process waiting for the game to finish downloading,
+  // send error to the existing process and replace the waiting with the new
+  // one.
+  //
+  // This is to prevent memory increase from misbehaving user (ex. spamming game
+  // launches) when DLC download is taking time.
+  //
+  // On game-launch fossilize, two processes are 'racing' - garcon client that
+  // waits for shader cache download+mount and on-device foz blob processing.
+  // If one of them finishes, the other process is killed.
+  // Game-launch fossilize process may run multiple times in sequence for dx12
+  // games. This means if garcon client is waiting but on-device processing
+  // finishes, garcon client is killed and a new one is created.
+  // Hence, we have to make the client always wait for the latest garcon call
+  // for the game.
   if (mount_callbacks_.find(condition) != mount_callbacks_.end()) {
-    *error_out = "Already installing shader cache for the Steam app";
-    return false;
+    LOG(WARNING) << "Already installing shader cache for the Steam app, "
+                 << "replacing the callback";
+    shadercached::ShaderCacheMountStatus unused_mount_status;
+    std::move(mount_callbacks_[condition]).Run(unused_mount_status, true);
   }
 
   mount_callbacks_[condition] = base::BindOnce(
@@ -194,7 +211,7 @@ void ShadercachedHelper::MountStatusChanged(dbus::Signal* signal) {
   if (mount_callbacks_.find(condition) != mount_callbacks_.end()) {
     LOG(INFO) << "Notifying shader cache mount callback for VM "
               << mount_status.vm_name();
-    std::move(mount_callbacks_[condition]).Run(mount_status);
+    std::move(mount_callbacks_[condition]).Run(mount_status, false);
     mount_callbacks_.erase(condition);
   } else {
     LOG(WARNING) << "No callback found for " << mount_status.steam_app_id();

@@ -63,7 +63,8 @@ class ShadercachedHelper {
                    base::WaitableEvent* event_to_notify);
 
   using MountResultCallback = base::OnceCallback<void(
-      const shadercached::ShaderCacheMountStatus& mount_state)>;
+      const shadercached::ShaderCacheMountStatus& mount_state,
+      bool was_replaced)>;
 
   // This method listens to the D-Bus signal then reads the proto message. It
   // calls the callback that matches the signal in |mount_callbacks_|.
