@@ -2,18 +2,25 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <stdio.h>
+#include <cstdint>
+#include <cstdio>
+#include <string>
 
 #include <absl/strings/str_format.h>
 #include <base/command_line.h>
 #include <base/strings/string_number_conversions.h>
-#include <trunks/command_codes.h>
-#include <trunks/error_codes.h>
+#include <libhwsec-foundation/tpm/tpm_version.h>
+
+#include "hwsec-host-utils/tpm1_decode.h"
+#include "hwsec-host-utils/tpm2_decode.h"
+
+using hwsec_foundation::tpm::TPMVer;
 
 namespace {
 
 constexpr char kXml[] = "xml";
 constexpr char kHelp[] = "help";
+constexpr char kTpmVersion[] = "tpm_version";
 
 void PrintUsage() {
   printf("Usage: tpm_commmand_response_decoder [OPTION]... -- [VALUE]...\n");
@@ -29,19 +36,11 @@ void PrintUsage() {
   printf("  --xml   Format the string as the xml entry.\n");
   printf("          e.g. <int value=\"23658635\"\n");
   printf("                label=\"TPM_CC_NV_ReadPublic: TPM_RC_HANDLE\"/>\n");
+  printf("  --tpm_version  The version of TPM code, 1 or 2. default is 2\n");
 }
 
 std::string ToXml(int value, const std::string& label) {
   return absl::StrFormat("<int value=\"%d\" label=\"%s\"/>", value, label);
-}
-
-std::string DecodeCommandResponse(uint32_t data) {
-  trunks::TPM_CC cc = data >> 16;
-  trunks::TPM_RC rc = data & 0xFFFF;
-
-  std::string command = trunks::GetCommandString(cc);
-  std::string response = trunks::GetErrorString(rc);
-  return command + ": " + response;
 }
 
 bool ParseValue(const std::string& input, uint32_t& output) {
@@ -76,6 +75,19 @@ int main(int argc, char** argv) {
     to_xml = true;
   }
 
+  TPMVer tpm_version = TPMVer::kTPM2;
+  if (cl->HasSwitch(kTpmVersion)) {
+    std::string version_string = cl->GetSwitchValueASCII(kTpmVersion);
+    if (version_string == "1") {
+      tpm_version = TPMVer::kTPM1;
+    } else if (version_string == "2") {
+      tpm_version = TPMVer::kTPM2;
+    } else {
+      printf("Invalid TPMVer: \"%s\"", version_string.c_str());
+      return -1;
+    }
+  }
+
   const auto& args = cl->GetArgs();
   if (args.empty()) {
     PrintUsage();
@@ -89,10 +101,25 @@ int main(int argc, char** argv) {
       return -1;
     }
 
-    std::string result = DecodeCommandResponse(data);
+    uint32_t cc = data >> 16;
+    uint32_t rc = data & 0xFFFF;
+
+    std::string result;
+    switch (tpm_version) {
+      case TPMVer::kTPM1:
+        result = hwsec_host_utils::DecodeTpm1CommandResponse(cc, rc);
+        break;
+      case TPMVer::kTPM2:
+        result = hwsec_host_utils::DecodeTpm2CommandResponse(cc, rc);
+        break;
+      default:
+        printf("Unsupported TPMVer: %d", tpm_version);
+        return -1;
+    }
     if (to_xml) {
       result = ToXml(data, result);
     }
     printf("%s\n", result.c_str());
   }
+  return 0;
 }
