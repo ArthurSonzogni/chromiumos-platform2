@@ -5,6 +5,7 @@
 #ifndef SHILL_WIFI_WIFI_LINK_STATISTICS_H_
 #define SHILL_WIFI_WIFI_LINK_STATISTICS_H_
 
+#include <cstdint>
 #include <list>
 #include <string>
 
@@ -19,16 +20,52 @@ namespace shill {
 
 class WiFiLinkStatistics {
  public:
+  enum class ChannelWidth {
+    kChannelWidthUnknown,
+    kChannelWidth20MHz,
+    kChannelWidth40MHz,
+    kChannelWidth80MHz,
+    kChannelWidth80p80MHz,  // 80+80MHz channel configuration.
+    kChannelWidth160MHz,
+    kChannelWidth320MHz,
+  };
+  enum class LinkMode {
+    kLinkModeUnknown,
+    kLinkModeLegacy,
+    kLinkModeVHT,
+    kLinkModeHE,
+    kLinkModeEHT,
+  };
+
+  enum class GuardInterval {
+    kLinkStatsGIUnknown,
+    kLinkStatsGI_0_4,
+    kLinkStatsGI_0_8,
+    kLinkStatsGI_1_6,
+    kLinkStatsGI_3_2,
+  };
+
+  struct LinkStats {
+    uint32_t packets = -1;
+    uint32_t bytes = -1;
+    uint32_t bitrate = -1;  // unit is 100Kb/s.
+    uint8_t mcs = -1;
+    ChannelWidth width = ChannelWidth::kChannelWidthUnknown;
+    LinkMode mode = LinkMode::kLinkModeUnknown;
+    GuardInterval gi = GuardInterval::kLinkStatsGIUnknown;
+    uint8_t nss = -1;
+    uint8_t dcm = -1;
+  };
+
   struct StationStats {
-    uint32_t rx_packets_success;
-    uint32_t tx_packets_success;
-    uint32_t rx_bytes_success;
-    uint32_t tx_bytes_success;
-    uint32_t tx_packets_failure;
-    uint32_t tx_retries;
-    uint64_t rx_packets_dropped;
-    int32_t last_rx_signal_dbm;
-    int32_t avg_rx_signal_dbm;
+    uint32_t inactive_time = -1;
+    uint32_t tx_retries = -1;
+    uint32_t tx_failed = -1;
+    uint64_t rx_drop_misc = -1;
+    int32_t signal = 9999;  // wpa_supplicant uses int32_t value, default 9999.
+    int32_t signal_avg = 9999;
+    LinkStats rx;
+    LinkStats tx;
   };
 
   struct Nl80211LinkStatistics {

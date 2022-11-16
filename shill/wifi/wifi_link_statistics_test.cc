@@ -22,17 +22,53 @@ namespace shill {
 namespace {
 
 constexpr WiFiLinkStatistics::StationStats kDhcpStartNl80211Stats = {
-    63, 75, 503, 653, 9, 5, 15, -33, -30};
+    .tx_retries = 5,
+    .tx_failed = 9,
+    .rx_drop_misc = 15,
+    .signal = -33,
+    .signal_avg = -30,
+    .rx = {.packets = 63, .bytes = 503},
+    .tx = {.packets = 75, .bytes = 653}};
 constexpr WiFiLinkStatistics::StationStats kDhcpEndNl80211Stats = {
-    3587, 4163, 52305, 56778, 67, 93, 153, -23, -30};
+    .tx_retries = 93,
+    .tx_failed = 67,
+    .rx_drop_misc = 153,
+    .signal = -23,
+    .signal_avg = -30,
+    .rx = {.packets = 3587, .bytes = 52305},
+    .tx = {.packets = 4163, .bytes = 56778}};
 constexpr WiFiLinkStatistics::StationStats kDhcpDiffNl80211Stats = {
-    3524, 4088, 51802, 56125, 58, 88, 138, -23, -30};
+    .tx_retries = 88,
+    .tx_failed = 58,
+    .rx_drop_misc = 138,
+    .signal = -23,
+    .signal_avg = -30,
+    .rx = {.packets = 3524, .bytes = 51802},
+    .tx = {.packets = 4088, .bytes = 56125}};
 constexpr WiFiLinkStatistics::StationStats kNetworkValidationStartNl80211Stats =
-    {96, 112, 730, 816, 15, 20, 37, -28, -29};
+    {.tx_retries = 20,
+     .tx_failed = 15,
+     .rx_drop_misc = 37,
+     .signal = -28,
+     .signal_avg = -29,
+     .rx = {.packets = 96, .bytes = 730},
+     .tx = {.packets = 112, .bytes = 816}};
 constexpr WiFiLinkStatistics::StationStats kNetworkValidationEndNl80211Stats = {
-    3157, 3682, 29676, 31233, 56, 88, 103, -27, -30};
+    .tx_retries = 88,
+    .tx_failed = 56,
+    .rx_drop_misc = 103,
+    .signal = -27,
+    .signal_avg = -30,
+    .rx = {.packets = 3157, .bytes = 29676},
+    .tx = {.packets = 3682, .bytes = 31233}};
 constexpr WiFiLinkStatistics::StationStats kNetworkValidationDiffNl80211Stats =
-    {3061, 3570, 28946, 30417, 41, 68, 66, -27, -30};
+    {.tx_retries = 68,
+     .tx_failed = 41,
+     .rx_drop_misc = 66,
+     .signal = -27,
+     .signal_avg = -30,
+     .rx = {.packets = 3061, .bytes = 28946},
+     .tx = {.packets = 3570, .bytes = 30417}};
 constexpr old_rtnl_link_stats64 kDhcpStartRtnlStats = {
     17, 32, 105, 206, 3, 2, 8, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 constexpr old_rtnl_link_stats64 kDhcpEndRtnlStats = {
@@ -58,23 +94,22 @@ std::string Nl80211Log(WiFi::LinkStatisticsTrigger start_event,
          " -> " + WiFiLinkStatistics::LinkStatisticsTriggerToString(end_event) +
          "; the NL80211 link statistics delta for the last 0 seconds is " +
          std::string(kPacketReceiveSuccessesProperty) + " " +
-         std::to_string(diff_stats.rx_packets_success) + " " +
+         std::to_string(diff_stats.rx.packets) + " " +
          kPacketTransmitSuccessesProperty + " " +
-         std::to_string(diff_stats.tx_packets_success) + " " +
+         std::to_string(diff_stats.tx.packets) + " " +
          kByteReceiveSuccessesProperty + " " +
-         std::to_string(diff_stats.rx_bytes_success) + " " +
+         std::to_string(diff_stats.rx.bytes) + " " +
          kByteTransmitSuccessesProperty + " " +
-         std::to_string(diff_stats.tx_bytes_success) + " " +
+         std::to_string(diff_stats.tx.bytes) + " " +
          kPacketTransmitFailuresProperty + " " +
-         std::to_string(diff_stats.tx_packets_failure) + " " +
-         kTransmitRetriesProperty + " " +
-         std::to_string(diff_stats.tx_retries) + " " +
+         std::to_string(diff_stats.tx_failed) + " " + kTransmitRetriesProperty +
+         " " + std::to_string(diff_stats.tx_retries) + " " +
          kPacketReceiveDropProperty + " " +
-         std::to_string(diff_stats.rx_packets_dropped) +
+         std::to_string(diff_stats.rx_drop_misc) +
          "; the current signal information: " + kLastReceiveSignalDbmProperty +
-         " " + std::to_string(diff_stats.last_rx_signal_dbm) + " " +
+         " " + std::to_string(diff_stats.signal) + " " +
          kAverageReceiveSignalDbmProperty + " " +
-         std::to_string(diff_stats.avg_rx_signal_dbm);
+         std::to_string(diff_stats.signal_avg);
 }
 
 std::string RtnlLog(WiFi::LinkStatisticsTrigger start_event,
@@ -98,23 +133,23 @@ const KeyValueStore CreateNl80211LinkStatistics(
     const WiFiLinkStatistics::StationStats& nl80211_stats) {
   KeyValueStore link_statistics;
   link_statistics.Set<uint32_t>(kPacketReceiveSuccessesProperty,
-                                nl80211_stats.rx_packets_success);
+                                nl80211_stats.rx.packets);
   link_statistics.Set<uint32_t>(kPacketTransmitSuccessesProperty,
-                                nl80211_stats.tx_packets_success);
+                                nl80211_stats.tx.packets);
   link_statistics.Set<uint32_t>(kByteReceiveSuccessesProperty,
-                                nl80211_stats.rx_bytes_success);
+                                nl80211_stats.rx.bytes);
   link_statistics.Set<uint32_t>(kByteTransmitSuccessesProperty,
-                                nl80211_stats.tx_bytes_success);
+                                nl80211_stats.tx.bytes);
   link_statistics.Set<uint32_t>(kPacketTransmitFailuresProperty,
-                                nl80211_stats.tx_packets_failure);
+                                nl80211_stats.tx_failed);
   link_statistics.Set<uint32_t>(kTransmitRetriesProperty,
                                 nl80211_stats.tx_retries);
   link_statistics.Set<uint64_t>(kPacketReceiveDropProperty,
-                                nl80211_stats.rx_packets_dropped);
+                                nl80211_stats.rx_drop_misc);
   link_statistics.Set<int32_t>(kLastReceiveSignalDbmProperty,
-                               nl80211_stats.last_rx_signal_dbm);
+                               nl80211_stats.signal);
   link_statistics.Set<int32_t>(kAverageReceiveSignalDbmProperty,
-                               nl80211_stats.avg_rx_signal_dbm);
+                               nl80211_stats.signal_avg);
   return link_statistics;
 }
 }  // namespace

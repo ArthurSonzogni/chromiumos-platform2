@@ -69,21 +69,15 @@ WiFiLinkStatistics::StationStats Nl80211LinkStatisticsDiff(
     const WiFiLinkStatistics::StationStats& old_stats,
     const WiFiLinkStatistics::StationStats& new_stats) {
   WiFiLinkStatistics::StationStats diff_stats;
-  diff_stats.rx_packets_success =
-      new_stats.rx_packets_success - old_stats.rx_packets_success;
-  diff_stats.tx_packets_success =
-      new_stats.tx_packets_success - old_stats.tx_packets_success;
-  diff_stats.rx_bytes_success =
-      new_stats.rx_bytes_success - old_stats.rx_bytes_success;
-  diff_stats.tx_bytes_success =
-      new_stats.tx_bytes_success - old_stats.tx_bytes_success;
-  diff_stats.tx_packets_failure =
-      new_stats.tx_packets_failure - old_stats.tx_packets_failure;
+  diff_stats.rx.packets = new_stats.rx.packets - old_stats.rx.packets;
+  diff_stats.tx.packets = new_stats.tx.packets - old_stats.tx.packets;
+  diff_stats.rx.bytes = new_stats.rx.bytes - old_stats.rx.bytes;
+  diff_stats.tx.bytes = new_stats.tx.bytes - old_stats.tx.bytes;
+  diff_stats.tx_failed = new_stats.tx_failed - old_stats.tx_failed;
   diff_stats.tx_retries = new_stats.tx_retries - old_stats.tx_retries;
-  diff_stats.rx_packets_dropped =
-      new_stats.rx_packets_dropped - old_stats.rx_packets_dropped;
-  diff_stats.last_rx_signal_dbm = new_stats.last_rx_signal_dbm;
-  diff_stats.avg_rx_signal_dbm = new_stats.avg_rx_signal_dbm;
+  diff_stats.rx_drop_misc = new_stats.rx_drop_misc - old_stats.rx_drop_misc;
+  diff_stats.signal = new_stats.signal;
+  diff_stats.signal_avg = new_stats.signal_avg;
   return diff_stats;
 }
 
@@ -121,23 +115,22 @@ std::string RtnlLinkStatisticsToString(
 std::string Nl80211LinkStatisticsToString(
     const WiFiLinkStatistics::StationStats& diff_stats) {
   return std::string(kPacketReceiveSuccessesProperty) + " " +
-         std::to_string(diff_stats.rx_packets_success) + " " +
+         std::to_string(diff_stats.rx.packets) + " " +
          kPacketTransmitSuccessesProperty + " " +
-         std::to_string(diff_stats.tx_packets_success) + " " +
+         std::to_string(diff_stats.tx.packets) + " " +
          kByteReceiveSuccessesProperty + " " +
-         std::to_string(diff_stats.rx_bytes_success) + " " +
+         std::to_string(diff_stats.rx.bytes) + " " +
          kByteTransmitSuccessesProperty + " " +
-         std::to_string(diff_stats.tx_bytes_success) + " " +
+         std::to_string(diff_stats.tx.bytes) + " " +
          kPacketTransmitFailuresProperty + " " +
-         std::to_string(diff_stats.tx_packets_failure) + " " +
-         kTransmitRetriesProperty + " " +
-         std::to_string(diff_stats.tx_retries) + " " +
+         std::to_string(diff_stats.tx_failed) + " " + kTransmitRetriesProperty +
+         " " + std::to_string(diff_stats.tx_retries) + " " +
          kPacketReceiveDropProperty + " " +
-         std::to_string(diff_stats.rx_packets_dropped) +
+         std::to_string(diff_stats.rx_drop_misc) +
          "; the current signal information: " + kLastReceiveSignalDbmProperty +
-         " " + std::to_string(diff_stats.last_rx_signal_dbm) + " " +
+         " " + std::to_string(diff_stats.signal) + " " +
          kAverageReceiveSignalDbmProperty + " " +
-         std::to_string(diff_stats.avg_rx_signal_dbm);
+         std::to_string(diff_stats.signal_avg);
 }
 
 WiFiLinkStatistics::StationStats ConvertNl80211StaInfo(
@@ -145,11 +138,11 @@ WiFiLinkStatistics::StationStats ConvertNl80211StaInfo(
   WiFiLinkStatistics::StationStats stats;
   std::vector<std::pair<std::string, uint32_t*>>
       nl80211_sta_info_properties_u32 = {
-          {kPacketReceiveSuccessesProperty, &stats.rx_packets_success},
-          {kPacketTransmitSuccessesProperty, &stats.tx_packets_success},
-          {kByteReceiveSuccessesProperty, &stats.rx_bytes_success},
-          {kByteTransmitSuccessesProperty, &stats.tx_bytes_success},
-          {kPacketTransmitFailuresProperty, &stats.tx_packets_failure},
+          {kPacketReceiveSuccessesProperty, &stats.rx.packets},
+          {kPacketTransmitSuccessesProperty, &stats.tx.packets},
+          {kByteReceiveSuccessesProperty, &stats.rx.bytes},
+          {kByteTransmitSuccessesProperty, &stats.tx.bytes},
+          {kPacketTransmitFailuresProperty, &stats.tx_failed},
           {kTransmitRetriesProperty, &stats.tx_retries}};
 
   for (const auto& kv : nl80211_sta_info_properties_u32) {
@@ -160,7 +153,7 @@ WiFiLinkStatistics::StationStats ConvertNl80211StaInfo(
 
   std::vector<std::pair<std::string, uint64_t*>>
       nl80211_sta_info_properties_u64 = {
-          {kPacketReceiveDropProperty, &stats.rx_packets_dropped}};
+          {kPacketReceiveDropProperty, &stats.rx_drop_misc}};
 
   for (const auto& kv : nl80211_sta_info_properties_u64) {
     if (link_statistics.Contains<uint64_t>(kv.first)) {
@@ -170,8 +163,8 @@ WiFiLinkStatistics::StationStats ConvertNl80211StaInfo(
 
   std::vector<std::pair<std::string, int32_t*>>
       nl80211_sta_info_properties_s32 = {
-          {kLastReceiveSignalDbmProperty, &stats.last_rx_signal_dbm},
-          {kAverageReceiveSignalDbmProperty, &stats.avg_rx_signal_dbm}};
+          {kLastReceiveSignalDbmProperty, &stats.signal},
+          {kAverageReceiveSignalDbmProperty, &stats.signal_avg}};
 
   for (const auto& kv : nl80211_sta_info_properties_s32) {
     if (link_statistics.Contains<int32_t>(kv.first)) {
