@@ -13,7 +13,7 @@
 #include <gmock/gmock.h>
 
 #include "cryptohome/credentials.h"
-#include "cryptohome/dircrypto_data_migrator/migration_helper.h"
+#include "cryptohome/data_migrator/migration_helper.h"
 #include "cryptohome/migration_type.h"
 #include "cryptohome/pkcs11/pkcs11_token.h"
 #include "cryptohome/storage/cryptohome_vault.h"
@@ -28,12 +28,11 @@ class MockUserSession : public UserSession {
   MOCK_METHOD(bool, IsActive, (), (const, override));
   MOCK_METHOD(bool, IsEphemeral, (), (const, override));
   MOCK_METHOD(bool, OwnsMountPoint, (const base::FilePath&), (const, override));
-  MOCK_METHOD(
-      bool,
-      MigrateVault,
-      (const dircrypto_data_migrator::MigrationHelper::ProgressCallback&,
-       MigrationType),
-      (override));
+  MOCK_METHOD(bool,
+              MigrateVault,
+              (const data_migrator::MigrationHelper::ProgressCallback&,
+               MigrationType),
+              (override));
   MOCK_METHOD(MountStatus,
               MountVault,
               (const std::string&,

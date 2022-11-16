@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CRYPTOHOME_DIRCRYPTO_DATA_MIGRATOR_MIGRATION_HELPER_H_
-#define CRYPTOHOME_DIRCRYPTO_DATA_MIGRATOR_MIGRATION_HELPER_H_
+#ifndef CRYPTOHOME_DATA_MIGRATOR_MIGRATION_HELPER_H_
+#define CRYPTOHOME_DATA_MIGRATOR_MIGRATION_HELPER_H_
 
 #include <map>
 #include <memory>
@@ -20,15 +20,14 @@
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 
 #include "cryptohome/cryptohome_metrics.h"
-#include "cryptohome/dircrypto_data_migrator/migration_helper_delegate.h"
+#include "cryptohome/data_migrator/migration_helper_delegate.h"
 #include "cryptohome/platform.h"
 
 namespace base {
 class Thread;
 }
 
-namespace cryptohome {
-namespace dircrypto_data_migrator {
+namespace cryptohome::data_migrator {
 
 extern const char kMigrationStartedFileName[];
 extern const char kSkippedFileListFileName[];
@@ -36,10 +35,8 @@ extern const char kSourceURLXattrName[];
 extern const char kReferrerURLXattrName[];
 
 // A helper class for migrating files to new file system with small overhead of
-// diskspace.
-// This class is only designed to migrate data from ecryptfs to ext4 encryption,
-// and therefore makes some assumptions about the underlying file systems.  In
-// particular:
+// diskspace. This class makes the following assumptions about the underlying
+// file systems:
 //   Sparse files in the source tree are not supported.  They will be treated as
 //   normal files, and therefore cause disk usage to increase after the
 //   migration.
@@ -235,7 +232,6 @@ class MigrationHelper {
   base::AtomicFlag is_cancelled_;
 };
 
-}  // namespace dircrypto_data_migrator
-}  // namespace cryptohome
+}  // namespace cryptohome::data_migrator
 
-#endif  // CRYPTOHOME_DIRCRYPTO_DATA_MIGRATOR_MIGRATION_HELPER_H_
+#endif  // CRYPTOHOME_DATA_MIGRATOR_MIGRATION_HELPER_H_

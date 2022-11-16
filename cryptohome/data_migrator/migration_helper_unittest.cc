@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "cryptohome/dircrypto_data_migrator/migration_helper.h"
+#include "cryptohome/data_migrator/migration_helper.h"
 
 #include <string>
 #include <vector>
@@ -25,7 +25,7 @@
 #include <base/synchronization/waitable_event.h>
 #include <base/threading/thread.h>
 
-#include "cryptohome/dircrypto_data_migrator/migration_helper_delegate.h"
+#include "cryptohome/data_migrator/migration_helper_delegate.h"
 #include "cryptohome/migration_type.h"
 #include "cryptohome/mock_platform.h"
 #include "cryptohome/storage/dircrypto_migration_helper_delegate.h"
@@ -45,8 +45,7 @@ using testing::Return;
 using testing::SetErrnoAndReturn;
 using testing::Values;
 
-namespace cryptohome {
-namespace dircrypto_data_migrator {
+namespace cryptohome::data_migrator {
 
 namespace {
 
@@ -1013,5 +1012,4 @@ INSTANTIATE_TEST_SUITE_P(JobListSize,
                          MigrationHelperJobListTest,
                          Values(1, 10, 100, 1000));
 
-}  // namespace dircrypto_data_migrator
-}  // namespace cryptohome
+}  // namespace cryptohome::data_migrator

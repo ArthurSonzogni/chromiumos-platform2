@@ -17,6 +17,7 @@
 #include "cryptohome/cleanup/user_oldest_activity_timestamp_manager.h"
 #include "cryptohome/credential_verifier.h"
 #include "cryptohome/credentials.h"
+#include "cryptohome/data_migrator/migration_helper.h"
 #include "cryptohome/error/cryptohome_mount_error.h"
 #include "cryptohome/keyset_management.h"
 #include "cryptohome/pkcs11/pkcs11_token.h"
@@ -25,8 +26,6 @@
 #include "cryptohome/storage/homedirs.h"
 #include "cryptohome/storage/mount.h"
 #include "cryptohome/user_session/user_session.h"
-
-#include "cryptohome/dircrypto_data_migrator/migration_helper.h"
 
 namespace cryptohome {
 
@@ -55,8 +54,7 @@ class RealUserSession : public UserSession {
   }
 
   bool MigrateVault(
-      const dircrypto_data_migrator::MigrationHelper::ProgressCallback&
-          callback,
+      const data_migrator::MigrationHelper::ProgressCallback& callback,
       MigrationType migration_type) override {
     return mount_->MigrateEncryption(callback, migration_type);
   }

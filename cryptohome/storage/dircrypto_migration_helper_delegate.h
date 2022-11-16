@@ -5,14 +5,14 @@
 #ifndef CRYPTOHOME_STORAGE_DIRCRYPTO_MIGRATION_HELPER_DELEGATE_H_
 #define CRYPTOHOME_STORAGE_DIRCRYPTO_MIGRATION_HELPER_DELEGATE_H_
 
-#include "cryptohome/dircrypto_data_migrator/migration_helper_delegate.h"
+#include "cryptohome/data_migrator/migration_helper_delegate.h"
 
 namespace cryptohome {
 
 // Delegate class for MigrationHelper that implements logic specific to the Ext4
 // migration.
 class DircryptoMigrationHelperDelegate
-    : public dircrypto_data_migrator::MigrationHelperDelegate {
+    : public data_migrator::MigrationHelperDelegate {
  public:
   explicit DircryptoMigrationHelperDelegate(MigrationType migration_type);
   ~DircryptoMigrationHelperDelegate() override = default;

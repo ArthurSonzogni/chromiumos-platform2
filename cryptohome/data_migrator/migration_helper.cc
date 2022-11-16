@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "cryptohome/dircrypto_data_migrator/migration_helper.h"
+#include "cryptohome/data_migrator/migration_helper.h"
 
 #include <algorithm>
 #include <deque>
@@ -37,8 +37,7 @@ extern "C" {
 #include <linux/fs.h>
 }
 
-namespace cryptohome {
-namespace dircrypto_data_migrator {
+namespace cryptohome::data_migrator {
 
 namespace {
 
@@ -1132,5 +1131,4 @@ void MigrationHelper::ReportTotalXattrSize(const base::FilePath& path,
   ReportDircryptoMigrationFailedNoSpaceXattrSizeInBytes(xattr_size);
 }
 
-}  // namespace dircrypto_data_migrator
-}  // namespace cryptohome
+}  // namespace cryptohome::data_migrator

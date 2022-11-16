@@ -16,7 +16,7 @@
 
 #include "cryptohome/credential_verifier.h"
 #include "cryptohome/credentials.h"
-#include "cryptohome/dircrypto_data_migrator/migration_helper.h"
+#include "cryptohome/data_migrator/migration_helper.h"
 #include "cryptohome/error/cryptohome_mount_error.h"
 #include "cryptohome/migration_type.h"
 #include "cryptohome/pkcs11/pkcs11_token.h"
@@ -47,8 +47,7 @@ class UserSession {
 
   // Perform migration of the vault to a different encryption type.
   virtual bool MigrateVault(
-      const dircrypto_data_migrator::MigrationHelper::ProgressCallback&
-          callback,
+      const data_migrator::MigrationHelper::ProgressCallback& callback,
       MigrationType migration_type) = 0;
 
   // Mounts disk backed vault for the given username with the supplied file

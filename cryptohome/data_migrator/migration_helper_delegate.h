@@ -2,12 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CRYPTOHOME_DIRCRYPTO_DATA_MIGRATOR_MIGRATION_HELPER_DELEGATE_H_
-#define CRYPTOHOME_DIRCRYPTO_DATA_MIGRATOR_MIGRATION_HELPER_DELEGATE_H_
+#ifndef CRYPTOHOME_DATA_MIGRATOR_MIGRATION_HELPER_DELEGATE_H_
+#define CRYPTOHOME_DATA_MIGRATOR_MIGRATION_HELPER_DELEGATE_H_
 
 #include "cryptohome/migration_type.h"
 
-namespace cryptohome::dircrypto_data_migrator {
+namespace cryptohome::data_migrator {
 
 // Delegate class for MigrationHelper that handles logic specific to the type of
 // the migration.
@@ -36,12 +36,12 @@ class MigrationHelperDelegate {
   virtual void ReportEndTime() {}
 
   // TODO(b/258402655): Move more Ext4-migration-specific part of
-  // dircrypto_data_migrator to this class.
+  // data_migrator to this class.
 
  private:
   const MigrationType migration_type_;
 };
 
-}  // namespace cryptohome::dircrypto_data_migrator
+}  // namespace cryptohome::data_migrator
 
-#endif  // CRYPTOHOME_DIRCRYPTO_DATA_MIGRATOR_MIGRATION_HELPER_DELEGATE_H_
+#endif  // CRYPTOHOME_DATA_MIGRATOR_MIGRATION_HELPER_DELEGATE_H_

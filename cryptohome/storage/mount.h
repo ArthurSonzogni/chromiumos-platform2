@@ -29,7 +29,7 @@
 #include <policy/device_policy.h>
 #include <policy/libpolicy.h>
 
-#include "cryptohome/dircrypto_data_migrator/migration_helper.h"
+#include "cryptohome/data_migrator/migration_helper.h"
 #include "cryptohome/migration_type.h"
 #include "cryptohome/platform.h"
 #include "cryptohome/storage/cryptohome_vault.h"
@@ -115,8 +115,7 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   // If |migration_type| is MINIMAL, no progress reporting will be done and only
   // allowlisted paths will be migrated.
   virtual bool MigrateEncryption(
-      const dircrypto_data_migrator::MigrationHelper::ProgressCallback&
-          callback,
+      const data_migrator::MigrationHelper::ProgressCallback& callback,
       MigrationType migration_type);
 
   // Cancels the active encryption migration if there is, and wait for it to
@@ -163,18 +162,15 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
       const std::string& obfuscated_username) const;
 
   bool MigrateFromEcryptfs(
-      const dircrypto_data_migrator::MigrationHelper::ProgressCallback&
-          callback,
+      const data_migrator::MigrationHelper::ProgressCallback& callback,
       MigrationType migration_type);
 
   bool MigrateFromDircrypto(
-      const dircrypto_data_migrator::MigrationHelper::ProgressCallback&
-          callback,
+      const data_migrator::MigrationHelper::ProgressCallback& callback,
       MigrationType migration_type);
 
   bool PerformMigration(
-      const dircrypto_data_migrator::MigrationHelper::ProgressCallback&
-          callback,
+      const data_migrator::MigrationHelper::ProgressCallback& callback,
       const base::FilePath& source,
       const base::FilePath& destination,
       const base::FilePath& status_files_dir,
@@ -216,8 +212,7 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   // Whether to bind mount Downloads/.
   bool bind_mount_downloads_;
 
-  dircrypto_data_migrator::MigrationHelper* active_dircrypto_migrator_ =
-      nullptr;
+  data_migrator::MigrationHelper* active_dircrypto_migrator_ = nullptr;
   bool is_dircrypto_migration_cancelled_ = false;
   base::Lock active_dircrypto_migrator_lock_;
   base::ConditionVariable dircrypto_migration_stopped_condition_;

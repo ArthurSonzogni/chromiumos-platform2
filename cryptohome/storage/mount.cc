@@ -37,7 +37,7 @@
 
 #include "cryptohome/cryptohome_common.h"
 #include "cryptohome/cryptohome_metrics.h"
-#include "cryptohome/dircrypto_data_migrator/migration_helper.h"
+#include "cryptohome/data_migrator/migration_helper.h"
 #include "cryptohome/dircrypto_util.h"
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/platform.h"
@@ -57,7 +57,7 @@ using brillo::cryptohome::home::GetUserPath;
 using brillo::cryptohome::home::IsSanitizedUserName;
 using brillo::cryptohome::home::kGuestUserName;
 using brillo::cryptohome::home::SanitizeUserName;
-using cryptohome::dircrypto_data_migrator::MigrationHelper;
+using cryptohome::data_migrator::MigrationHelper;
 using hwsec_foundation::SecureBlobToHex;
 
 namespace {

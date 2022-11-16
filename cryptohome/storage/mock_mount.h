@@ -35,12 +35,11 @@ class MockMount : public Mount {
   MOCK_METHOD(bool, IsNonEphemeralMounted, (), (const, override));
   MOCK_METHOD(bool, OwnsMountPoint, (const base::FilePath&), (const, override));
 
-  MOCK_METHOD(
-      bool,
-      MigrateEncryption,
-      (const dircrypto_data_migrator::MigrationHelper::ProgressCallback&,
-       MigrationType),
-      (override));
+  MOCK_METHOD(bool,
+              MigrateEncryption,
+              (const data_migrator::MigrationHelper::ProgressCallback&,
+               MigrationType),
+              (override));
 };
 }  // namespace cryptohome
 
