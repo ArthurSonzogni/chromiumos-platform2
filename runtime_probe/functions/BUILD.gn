@@ -26,6 +26,7 @@ source_set("functions") {
     "edid.cc",
     "ethernet_network.cc",
     "generic_battery.cc",
+    "generic_camera.cc",
     "generic_network.cc",
     "generic_storage.cc",
     "gpu.cc",
@@ -51,6 +52,7 @@ if (use.test) {
     sources = [
       "edid_test.cc",
       "generic_battery_test.cc",
+      "generic_camera_test.cc",
       "gpu_test.cc",
       "input_device_test.cc",
       "memory_test.cc",

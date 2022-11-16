@@ -14,6 +14,7 @@
 #include "runtime_probe/functions/edid.h"
 #include "runtime_probe/functions/ethernet_network.h"
 #include "runtime_probe/functions/generic_battery.h"
+#include "runtime_probe/functions/generic_camera.h"
 #include "runtime_probe/functions/generic_network.h"
 #include "runtime_probe/functions/generic_storage.h"
 #include "runtime_probe/functions/gpu.h"
@@ -61,6 +62,7 @@ auto ProbeFunction::registered_functions_ =
                                      EdidFunction,
                                      EthernetNetworkFunction,
                                      GenericBattery,
+                                     GenericCameraFunction,
                                      GenericNetworkFunction,
                                      GenericStorageFunction,
                                      GpuFunction,

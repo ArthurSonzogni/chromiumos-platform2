@@ -5,11 +5,15 @@
 #ifndef RUNTIME_PROBE_UTILS_FUNCTION_TEST_UTILS_H_
 #define RUNTIME_PROBE_UTILS_FUNCTION_TEST_UTILS_H_
 
+#include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
+#include <base/json/json_reader.h>
 #include <base/values.h>
 
+#include "runtime_probe/probe_function.h"
 #include "runtime_probe/system/context_mock_impl.h"
 #include "runtime_probe/utils/file_test_utils.h"
 
@@ -32,6 +36,33 @@ class BaseFunctionTest : public BaseFileTest {
  private:
   ContextMockImpl mock_context_;
 };
+
+// A fake probe function that always gets |fake_result_| as probe results.
+template <typename ProbeFunctionType>
+class FakeProbeFunction : public ProbeFunctionType {
+  using ProbeFunctionType::ProbeFunctionType;
+
+ public:
+  typename ProbeFunctionType::DataType fake_result_;
+
+ private:
+  typename ProbeFunctionType::DataType EvalImpl() const override {
+    return fake_result_.Clone();
+  }
+};
+
+// Create a fake of |ProbeFunctionType| that always returns |probe_result|.
+template <typename ProbeFunctionType>
+std::unique_ptr<ProbeFunctionType> CreateFakeProbeFunction(
+    const std::string& probe_result) {
+  base::Value probe_statement(base::Value::Type::DICTIONARY);
+  auto probe_function =
+      CreateProbeFunction<FakeProbeFunction<ProbeFunctionType>>(
+          probe_statement);
+  auto res = base::JSONReader::Read(probe_result);
+  probe_function->fake_result_ = std::move(res->GetList());
+  return probe_function;
+}
 
 }  // namespace runtime_probe
 
