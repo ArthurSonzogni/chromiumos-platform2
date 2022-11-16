@@ -148,7 +148,8 @@ int main(int argc, char** argv) {
                                   ? energy_after[i] - energy_before[i]
                                   : power_domains[i].max_energy -
                                         energy_before[i] + energy_after[i];
-      double average_power = energy_delta / (time_delta.InSecondsF() * 1e6);
+      double average_power =
+          static_cast<double>(energy_delta) / (time_delta.InSecondsF() * 1e6);
 
       // Skip enormous sample if the counter is reset during suspend-to-RAM
       if (average_power > kMaxWatts) {

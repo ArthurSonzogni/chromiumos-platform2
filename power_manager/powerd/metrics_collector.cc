@@ -101,7 +101,8 @@ int MetricsCollector::GetExpectedS0ixResidencyPercent(
   base::TimeDelta expected_residency =
       suspend_time - MetricsCollector::KS0ixOverheadTime;
   int s0ix_residency_percent =
-      static_cast<int>(round((actual_residency * 100.0) / expected_residency));
+      static_cast<int>(round((actual_residency.InMicrosecondsF() * 100.0) /
+                             expected_residency.InMicrosecondsF()));
   return std::min(100, s0ix_residency_percent);
 }
 

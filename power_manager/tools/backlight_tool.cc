@@ -163,13 +163,15 @@ class Converter {
 
   // Converts a brightness level to a linear percent in [0.0, 100.0].
   double LevelToLinearPercent(int64_t level) {
-    return level * 100.0 / backlight_.GetMaxBrightnessLevel();
+    return static_cast<double>(level) * 100.0 /
+           static_cast<double>(backlight_.GetMaxBrightnessLevel());
   }
 
   // Converts a linear percent in [0.0, 100.0] to a brightness level.
   int64_t LinearPercentToLevel(double percent) {
     return static_cast<int64_t>(roundl(
-        ClampPercent(percent) * backlight_.GetMaxBrightnessLevel() / 100.0));
+        ClampPercent(percent) *
+        static_cast<double>(backlight_.GetMaxBrightnessLevel()) / 100.0));
   }
 
   // Returns the initial brightness level requested by |controller_|.
