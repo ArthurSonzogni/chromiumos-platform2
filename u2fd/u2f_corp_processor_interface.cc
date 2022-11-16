@@ -12,7 +12,6 @@
 #include <metrics/metrics_library.h>
 #include <trunks/cr50_headers/u2f.h>
 
-#include "u2fd/client/tpm_vendor_cmd.h"
 #include "u2fd/client/u2f_corp_firmware_version.h"
 #include "u2fd/client/u2f_corp_processor.h"
 
@@ -60,11 +59,11 @@ U2fCorpProcessorInterface::~U2fCorpProcessorInterface() {
 void U2fCorpProcessorInterface::Initialize(
     U2fCorpFirmwareVersion fw_version,
     org::chromium::SessionManagerInterfaceProxy* sm_proxy,
-    TpmVendorCommandProxy* tpm_proxy,
+    hwsec::U2fVendorFrontend* u2f_frontend,
     MetricsLibraryInterface* metrics,
     std::function<void()> request_presence) {
   if (processor_) {
-    processor_->Initialize(fw_version, sm_proxy, tpm_proxy, metrics,
+    processor_->Initialize(fw_version, sm_proxy, u2f_frontend, metrics,
                            request_presence);
   } else {
     VLOG(1) << "Stub initialized.";

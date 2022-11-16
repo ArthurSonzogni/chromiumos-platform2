@@ -6,13 +6,14 @@
 
 #include <string>
 
-#include "u2fd/client/tpm_vendor_cmd.h"
+#include <libhwsec/frontend/u2fd/vendor_frontend.h>
+
 #include "u2fd/client/u2f_client_export.h"
 
 namespace u2f {
 
-U2fCorpFirmwareVersion U2fCorpFirmwareVersion::FromTpmRwVersion(
-    const TpmRwVersion& rw_version) {
+U2fCorpFirmwareVersion U2fCorpFirmwareVersion::FromRwVersion(
+    const hwsec::U2fVendorFrontend::RwVersion& rw_version) {
   // In b/232715968, we decided to use the following transformation to transform
   // the 12-byte TPM RW version into the 3-byte firmware version expected in U2F
   // Corp. In practice this won't overflow.

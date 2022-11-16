@@ -7,7 +7,8 @@
 
 #include <string>
 
-#include "u2fd/client/tpm_vendor_cmd.h"
+#include <libhwsec/frontend/u2fd/vendor_frontend.h>
+
 #include "u2fd/client/u2f_client_export.h"
 
 namespace u2f {
@@ -17,8 +18,8 @@ class U2F_CLIENT_EXPORT U2fCorpFirmwareVersion {
   U2fCorpFirmwareVersion() = default;
   ~U2fCorpFirmwareVersion() = default;
 
-  static U2fCorpFirmwareVersion FromTpmRwVersion(
-      const TpmRwVersion& rw_version);
+  static U2fCorpFirmwareVersion FromRwVersion(
+      const hwsec::U2fVendorFrontend::RwVersion& rw_version);
 
   std::string ToString() const;
 

@@ -52,7 +52,6 @@ class U2fHidServiceImpl : public U2fHidService {
 
  private:
   std::unique_ptr<hwsec::U2fVendorFrontend> u2f_frontend_;
-  TpmVendorCommandProxy tpm_proxy_;
   dbus::ObjectProxy* attestation_proxy_;  // Not Owned.
 
   // Virtual USB Device

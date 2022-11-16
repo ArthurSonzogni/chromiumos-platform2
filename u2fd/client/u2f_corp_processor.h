@@ -7,10 +7,10 @@
 
 #include <functional>
 
+#include <libhwsec/frontend/u2fd/vendor_frontend.h>
 #include <metrics/metrics_library.h>
 #include <session_manager/dbus-proxies.h>
 
-#include "u2fd/client/tpm_vendor_cmd.h"
 #include "u2fd/client/u2f_apdu.h"
 #include "u2fd/client/u2f_corp_firmware_version.h"
 
@@ -23,7 +23,7 @@ class U2fCorpProcessor {
 
   virtual void Initialize(U2fCorpFirmwareVersion fw_version,
                           org::chromium::SessionManagerInterfaceProxy* sm_proxy,
-                          TpmVendorCommandProxy* tpm_proxy,
+                          hwsec::U2fVendorFrontend* u2f_frontend,
                           MetricsLibraryInterface* metrics,
                           std::function<void()> request_presence) = 0;
 

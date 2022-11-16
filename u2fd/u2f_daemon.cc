@@ -23,9 +23,7 @@
 #include "u2fd/u2f_command_processor.h"
 #include "u2fd/u2f_command_processor_generic.h"
 #include "u2fd/u2f_command_processor_vendor.h"
-#if USE_GSC
 #include "u2fd/u2fhid_service_impl.h"
-#endif
 
 namespace u2f {
 
@@ -111,13 +109,11 @@ U2fDaemon::U2fDaemon(bool force_u2f,
       legacy_kh_fallback_(legacy_kh_fallback),
       service_started_(false),
       hwsec_factory_(hwsec::ThreadingMode::kCurrentThread) {
-#if USE_GSC
   auto u2f_vendor_frontend = hwsec_factory_.GetU2fVendorFrontend();
   if (u2f_vendor_frontend->IsEnabled().value_or(false)) {
     u2fhid_service_ =
         std::make_unique<U2fHidServiceImpl>(std::move(u2f_vendor_frontend));
   }
-#endif  // USE_GSC
 }
 
 int U2fDaemon::OnInit() {

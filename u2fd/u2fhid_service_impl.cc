@@ -18,7 +18,6 @@
 #include <session_manager/dbus-proxies.h>
 #include <trunks/cr50_headers/virtual_nvmem.h>
 
-#include "u2fd/client/tpm_vendor_cmd.h"
 #include "u2fd/client/u2f_corp_firmware_version.h"
 #include "u2fd/client/user_state.h"
 #include "u2fd/u2f_corp_processor_interface.h"
@@ -44,11 +43,6 @@ U2fHidServiceImpl::U2fHidServiceImpl(
 }
 
 bool U2fHidServiceImpl::InitializeDBusProxies(dbus::Bus* bus) {
-  if (!tpm_proxy_.Init()) {
-    LOG(ERROR) << "Failed to initialize trunksd DBus proxy";
-    return false;
-  }
-
   attestation_proxy_ = bus->GetObjectProxy(
       attestation::kAttestationServiceName,
       dbus::ObjectPath(attestation::kAttestationServicePath));
@@ -73,27 +67,23 @@ bool U2fHidServiceImpl::CreateU2fHid(
   std::string dev_id(8, '\0');
 
   if (enable_corp_protocol) {
-    TpmRwVersion rw_version;
-    uint32_t status = tpm_proxy_.GetRwVersion(&rw_version);
-    if (status != 0) {
-      LOG(ERROR) << "GetRwVersion failed with status " << std::hex << status
-                 << ".";
+    hwsec::StatusOr<hwsec::U2fVendorFrontend::RwVersion> version =
+        u2f_frontend_->GetRwVersion();
+    if (!version.ok()) {
+      LOG(ERROR) << "GetRwVersion failed: " << version.status() << ".";
     } else {
-      fw_version = U2fCorpFirmwareVersion::FromTpmRwVersion(rw_version);
+      fw_version = U2fCorpFirmwareVersion::FromRwVersion(*version);
 
       u2f_corp_processor_ = std::make_unique<U2fCorpProcessorInterface>();
-      u2f_corp_processor_->Initialize(fw_version, sm_proxy, &tpm_proxy_,
+      u2f_corp_processor_->Initialize(fw_version, sm_proxy, u2f_frontend_.get(),
                                       metrics, request_user_presence);
     }
 
-    std::string cert;
-    status = tpm_proxy_.GetG2fCertificate(&cert);
-    if (status != 0) {
-      LOG(ERROR) << "GetG2fCertificate failed with status " << std::hex
-                 << status << ".";
+    hwsec::StatusOr<brillo::Blob> cert = u2f_frontend_->GetG2fCert();
+    if (!cert.ok()) {
+      LOG(ERROR) << "GetG2fCert failed: " << cert.status() << ".";
     } else {
-      std::optional<brillo::Blob> sn =
-          util::ParseSerialNumberFromCert(brillo::BlobFromString(cert));
+      std::optional<brillo::Blob> sn = util::ParseSerialNumberFromCert(*cert);
       if (!sn.has_value()) {
         LOG(ERROR) << "Failed to parse serial number from g2f cert.";
       } else {

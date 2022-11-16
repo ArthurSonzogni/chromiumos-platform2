@@ -20,9 +20,6 @@ pkg_config("target_defaults") {
     "protobuf",
     "system_api",
   ]
-  if (use.fuzzer || use.cr50_onboard || use.ti50_onboard) {
-    pkg_deps += [ "libtrunks" ]
-  }
 }
 
 proto_library("user_state_proto") {
@@ -36,17 +33,13 @@ proto_library("user_state_proto") {
 
 shared_library("libu2fd-client") {
   sources = [
+    "u2f_apdu.cc",
+    "u2f_corp_firmware_version.cc",
     "user_state.cc",
     "util.cc",
   ]
-  if (use.fuzzer || use.cr50_onboard || use.ti50_onboard) {
-    sources += [
-      "tpm_vendor_cmd.cc",
-      "u2f_apdu.cc",
-      "u2f_corp_firmware_version.cc",
-    ]
-  }
   configs += [ ":target_defaults" ]
+  libs = [ "hwsec" ]
   deps = [ ":user_state_proto" ]
   install_path = "lib"
 }
