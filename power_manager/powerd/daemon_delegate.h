@@ -65,11 +65,11 @@ class PrefsInterface;
 // objects.
 class DaemonDelegate {
  public:
-  DaemonDelegate() {}
+  DaemonDelegate() = default;
   DaemonDelegate(const DaemonDelegate&) = delete;
   DaemonDelegate& operator=(const DaemonDelegate&) = delete;
 
-  virtual ~DaemonDelegate() {}
+  virtual ~DaemonDelegate() = default;
 
   // Crashes if prefs can't be loaded (e.g. due to a missing directory).
   virtual std::unique_ptr<PrefsInterface> CreatePrefs() = 0;

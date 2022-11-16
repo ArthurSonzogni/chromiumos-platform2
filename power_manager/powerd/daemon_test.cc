@@ -169,7 +169,7 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
   DaemonTest(const DaemonTest&) = delete;
   DaemonTest& operator=(const DaemonTest&) = delete;
 
-  ~DaemonTest() override {}
+  ~DaemonTest() override = default;
 
   void Init() {
     // These prefs are required by policy::Suspender.

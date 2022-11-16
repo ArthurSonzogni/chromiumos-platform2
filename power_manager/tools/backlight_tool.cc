@@ -193,7 +193,7 @@ class ObserverImpl : public power_manager::system::AmbientLightObserver {
   ObserverImpl& operator=(const ObserverImpl&) = delete;
 
   ObserverImpl() { ResetRunner(); }
-  ~ObserverImpl() override {}
+  ~ObserverImpl() override = default;
 
   bool RunUntilAmbientLightUpdated() {
     CHECK(runner_.get());
