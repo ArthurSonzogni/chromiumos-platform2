@@ -42,8 +42,7 @@ using ::testing::Return;
 using ::testing::StrictMock;
 using ::testing::Test;
 
-namespace power_manager {
-namespace metrics {
+namespace power_manager::metrics {
 
 class MetricsCollectorTest : public Test {
  public:
@@ -1123,5 +1122,4 @@ TEST_F(S0ixResidencyMetricsTest, SuspendTimeMoreThanMaxResidency) {
   Mock::VerifyAndClearExpectations(metrics_lib_);
 }
 
-}  // namespace metrics
-}  // namespace power_manager
+}  // namespace power_manager::metrics
