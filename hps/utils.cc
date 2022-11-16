@@ -222,12 +222,22 @@ std::string HpsRegValToString(HpsReg reg, uint16_t val) {
           return "kMcuFlashWriteError";
         case RError::kPanic:
           return "kPanic";
+        case RError::kFpgaPanic:
+          return "kFpgaPanic";
+        case RError::kFpgaException:
+          return "kFpgaException";
         case RError::kHostI2cBusError:
           return "kHostI2cBusError";
         case RError::kHostI2cOverrun:
           return "kHostI2cOverrun";
-        case RError::kCamera:
-          return "kCamera";
+        case RError::kCameraI2c:
+          return "kCameraI2c";
+        case RError::kCameraImageTimeout:
+          return "kCameraImageTimeout";
+        case RError::kCameraUnexpectedId:
+          return "kCameraUnexpectedId";
+        case RError::kCameraUnexpectedReset:
+          return "kCameraUnexpectedReset";
         case RError::kSpiFlash:
           return "kSpiFlash";
         case RError::kHostI2cBadRequest:
