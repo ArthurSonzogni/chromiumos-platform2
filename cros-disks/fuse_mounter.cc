@@ -219,7 +219,7 @@ std::unique_ptr<MountPoint> FUSEMounter::Mount(
   const bool read_only = config_.read_only || IsReadOnlyMount(params);
 
   const base::FilePath fuse_device_path("/dev/fuse");
-  const base::File fuse_file = base::File(
+  base::File fuse_file = base::File(
       fuse_device_path,
       base::File::FLAG_OPEN | base::File::FLAG_READ | base::File::FLAG_WRITE);
   if (!fuse_file.IsValid()) {
@@ -287,8 +287,8 @@ std::unique_ptr<MountPoint> FUSEMounter::Mount(
   }
 
   // Start FUSE daemon.
-  std::unique_ptr<SandboxedProcess> process =
-      StartDaemon(fuse_file, source, target_path, std::move(params), error);
+  std::unique_ptr<SandboxedProcess> process = StartDaemon(
+      std::move(fuse_file), source, target_path, std::move(params), error);
 
   if (!process) {
     DCHECK_NE(*error, MountError::kSuccess);
@@ -306,7 +306,7 @@ std::unique_ptr<MountPoint> FUSEMounter::Mount(
 }
 
 std::unique_ptr<SandboxedProcess> FUSEMounter::StartDaemon(
-    const base::File& fuse_file,
+    base::File fuse_file,
     const std::string& source,
     const base::FilePath& target_path,
     std::vector<std::string> params,

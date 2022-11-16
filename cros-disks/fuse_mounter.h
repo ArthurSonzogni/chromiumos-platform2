@@ -138,7 +138,7 @@ class FUSEMounter : public Mounter {
   // FUSE kernel layer via the |fuse_file|. Returns the Process holding the FUSE
   // daemon.
   std::unique_ptr<SandboxedProcess> StartDaemon(
-      const base::File& fuse_file,
+      base::File fuse_file,
       const std::string& source,
       const base::FilePath& target_path,
       std::vector<std::string> params,
