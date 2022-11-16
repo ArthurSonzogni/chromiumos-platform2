@@ -72,7 +72,7 @@ Modem::~Modem() {
 void Modem::CreateDevice(const InterfaceToProperties& properties) {
   SLOG(this, 1) << __func__;
 
-  uint32_t capabilities = std::numeric_limits<uint32_t>::max();
+  uint32_t capabilities = MM_MODEM_CAPABILITY_NONE;
   const auto iter = properties.find(MM_DBUS_INTERFACE_MODEM);
   if (iter == properties.end()) {
     LOG(ERROR) << "Cellular device with no modem properties";

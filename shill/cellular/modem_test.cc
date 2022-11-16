@@ -209,7 +209,10 @@ TEST_F(ModemTest, CreateDeviceEarlyFailures) {
 
 TEST_F(ModemTest, CreateDevicePPP) {
   InterfaceToProperties properties;
-  properties[MM_DBUS_INTERFACE_MODEM] = KeyValueStore();
+  KeyValueStore modem_properties;
+  modem_properties.Set<uint32_t>(MM_MODEM_PROPERTY_CURRENTCAPABILITIES,
+                                 MM_MODEM_CAPABILITY_LTE);
+  properties[MM_DBUS_INTERFACE_MODEM] = modem_properties;
 
   // MM_MODEM_PROPERTY_PORTS is unset, so GetLinkName will fail. Modem will
   // assume a PPP dongle and CreateDeviceFromModemProperties will succeed.
