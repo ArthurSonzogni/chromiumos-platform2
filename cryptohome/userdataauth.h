@@ -15,6 +15,8 @@
 #include <base/check.h>
 #include <base/files/file_path.h>
 #include <base/location.h>
+#include <base/task/single_thread_task_runner.h>
+#include <base/threading/platform_thread.h>
 #include <base/threading/thread.h>
 #include <base/unguessable_token.h>
 #include <brillo/secure_blob.h>
@@ -60,12 +62,6 @@ namespace cryptohome {
 
 class UserDataAuth {
  public:
-  // TestThreadId used to indicate the thread type.
-  enum class TestThreadId {
-    kOriginThread,
-    kMountThread,
-  };
-
   struct MountArgs {
     // Whether to create the vault if it is missing.
     bool create_if_missing = false;
@@ -483,19 +479,19 @@ class UserDataAuth {
 
   // Returns true if we are currently running on the origin thread
   bool IsOnOriginThread() const {
-    // Note that this function should not rely on |origin_task_runner_| because
-    // it may be unavailable when this function is first called by
+    // Note that this function should not solely rely on |origin_task_runner_|
+    // because it may be unavailable when this function is first called by
     // UserDataAuth::Initialize()
-    if (!mount_thread_ && mount_task_runner_) {
-      return current_thread_id_for_test_ == TestThreadId::kOriginThread;
+    if (origin_task_runner_) {
+      return origin_task_runner_->RunsTasksInCurrentSequence();
     }
     return base::PlatformThread::CurrentId() == origin_thread_id_;
   }
 
   // Returns true if we are currently running on the mount thread
   bool IsOnMountThread() const {
-    if (!mount_thread_) {
-      return current_thread_id_for_test_ == TestThreadId::kMountThread;
+    if (mount_task_runner_) {
+      return mount_task_runner_->RunsTasksInCurrentSequence();
     }
     // GetThreadId blocks if the thread is not started yet.
     return mount_thread_->IsRunning() &&
@@ -676,16 +672,6 @@ class UserDataAuth {
   void set_mount_task_runner(
       scoped_refptr<base::SingleThreadTaskRunner> mount_task_runner) {
     mount_task_runner_ = mount_task_runner;
-  }
-
-  // Override |current_thread_id_for_test_| for testing purpose
-  void set_current_thread_id_for_test(TestThreadId current_thread_id_for_test) {
-    current_thread_id_for_test_ = current_thread_id_for_test;
-  }
-
-  // Retrieve the current thread id, for testing purpose only.
-  TestThreadId get_current_thread_id_for_test() {
-    return current_thread_id_for_test_;
   }
 
   // Override |low_disk_space_handler_| for testing purpose
@@ -1208,10 +1194,6 @@ class UserDataAuth {
 
   // The task runner that belongs to the mount thread.
   scoped_refptr<base::SingleThreadTaskRunner> mount_task_runner_;
-
-  // This variable is used only for unit testing purpose. We could use this to
-  // know current task is running on origin thread or mount thread.
-  TestThreadId current_thread_id_for_test_ = TestThreadId::kOriginThread;
 
   // =============== Basic Utilities Related Variables ===============
   // The system salt that is used for obfuscating the username

@@ -302,8 +302,6 @@ class AuthSessionInterfaceTestBase : public ::testing::Test {
     userdataauth_.set_install_attrs(&install_attrs_);
     userdataauth_.set_mount_task_runner(
         task_environment.GetMainThreadTaskRunner());
-    userdataauth_.set_current_thread_id_for_test(
-        UserDataAuth::TestThreadId::kMountThread);
     userdataauth_.set_pinweaver(&pinweaver_);
   }
 

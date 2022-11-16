@@ -156,8 +156,6 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
     userdataauth_.set_install_attrs(&install_attrs_);
     userdataauth_.set_mount_task_runner(
         task_environment_.GetMainThreadTaskRunner());
-    userdataauth_.set_current_thread_id_for_test(
-        UserDataAuth::TestThreadId::kMountThread);
     userdataauth_.set_auth_block_utility(auth_block_utility_.get());
     file_system_keyset_ = FileSystemKeyset::CreateRandom();
     AddUser(kUsername, kPassword);
