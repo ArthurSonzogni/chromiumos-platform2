@@ -330,7 +330,6 @@ Daemon::Daemon(DaemonDelegate* delegate, const base::FilePath& run_dir)
       cellular_controller_(std::make_unique<policy::CellularController>()),
       metrics_collector_(new metrics::MetricsCollector),
       arc_timer_manager_(std::make_unique<system::ArcTimerManager>()),
-      retry_shutdown_for_lockfile_timer_(),
       wakeup_count_path_(kDefaultWakeupCountPath),
       oobe_completed_path_(kDefaultOobeCompletedPath),
       cros_ec_path_(ec::kCrosEcPath),

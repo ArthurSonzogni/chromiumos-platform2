@@ -150,8 +150,7 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
         adaptive_charging_controller_(
             passed_adaptive_charging_controller_.get()),
         adaptive_charging_proxy_(passed_adaptive_charging_proxy_.get()),
-        charge_control_set_command_(passed_charge_control_set_command_.get()),
-        pid_(2) {
+        charge_control_set_command_(passed_charge_control_set_command_.get()) {
     CHECK(run_dir_.CreateUniqueTempDir());
     CHECK(run_dir_.IsValid());
 
@@ -629,7 +628,7 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
   base::FilePath proc_path_;
 
   // Value to return from GetPid().
-  pid_t pid_;
+  pid_t pid_ = 2;
 
   // Command lines executed via Launch() and Run(), respectively.
   std::vector<std::string> async_commands_;
