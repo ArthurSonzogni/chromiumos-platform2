@@ -65,10 +65,10 @@ bool DoesEndMatchStartEvent(WiFi::LinkStatisticsTrigger start_event,
 
 // Calculate the difference between NL80211 link statistics old_stats and
 // new_stats
-WiFiLinkStatistics::Nl80211StaInfo Nl80211LinkStatisticsDiff(
-    const WiFiLinkStatistics::Nl80211StaInfo& old_stats,
-    const WiFiLinkStatistics::Nl80211StaInfo& new_stats) {
-  WiFiLinkStatistics::Nl80211StaInfo diff_stats;
+WiFiLinkStatistics::StationStats Nl80211LinkStatisticsDiff(
+    const WiFiLinkStatistics::StationStats& old_stats,
+    const WiFiLinkStatistics::StationStats& new_stats) {
+  WiFiLinkStatistics::StationStats diff_stats;
   diff_stats.rx_packets_success =
       new_stats.rx_packets_success - old_stats.rx_packets_success;
   diff_stats.tx_packets_success =
@@ -119,7 +119,7 @@ std::string RtnlLinkStatisticsToString(
 
 // Convert NL80211 link statistics to string
 std::string Nl80211LinkStatisticsToString(
-    const WiFiLinkStatistics::Nl80211StaInfo& diff_stats) {
+    const WiFiLinkStatistics::StationStats& diff_stats) {
   return std::string(kPacketReceiveSuccessesProperty) + " " +
          std::to_string(diff_stats.rx_packets_success) + " " +
          kPacketTransmitSuccessesProperty + " " +
@@ -140,9 +140,9 @@ std::string Nl80211LinkStatisticsToString(
          std::to_string(diff_stats.avg_rx_signal_dbm);
 }
 
-WiFiLinkStatistics::Nl80211StaInfo ConvertNl80211StaInfo(
+WiFiLinkStatistics::StationStats ConvertNl80211StaInfo(
     const KeyValueStore& link_statistics) {
-  WiFiLinkStatistics::Nl80211StaInfo stats;
+  WiFiLinkStatistics::StationStats stats;
   std::vector<std::pair<std::string, uint32_t*>>
       nl80211_sta_info_properties_u32 = {
           {kPacketReceiveSuccessesProperty, &stats.rx_packets_success},
@@ -226,7 +226,7 @@ void WiFiLinkStatistics::UpdateNl80211LinkStatistics(
     return;
   }
 
-  Nl80211StaInfo stats = ConvertNl80211StaInfo(link_statistics);
+  StationStats stats = ConvertNl80211StaInfo(link_statistics);
   // If the trigger is an end network event, erase the link statistics of its
   // start network event and print the difference to the log if necessary.
   if (IsEndNetworkEvent(trigger)) {

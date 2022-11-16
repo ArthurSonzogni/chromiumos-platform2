@@ -19,7 +19,7 @@ namespace shill {
 
 class WiFiLinkStatistics {
  public:
-  struct Nl80211StaInfo {
+  struct StationStats {
     uint32_t rx_packets_success;
     uint32_t tx_packets_success;
     uint32_t rx_bytes_success;
@@ -35,9 +35,9 @@ class WiFiLinkStatistics {
     // The event that triggered the snapshot of WiFiLinkStatistics.
     WiFi::LinkStatisticsTrigger trigger = WiFi::LinkStatisticsTrigger::kUnknown;
     base::Time timestamp;
-    Nl80211StaInfo nl80211_link_stats;
+    StationStats nl80211_link_stats;
     Nl80211LinkStatistics(WiFi::LinkStatisticsTrigger trigger,
-                          const Nl80211StaInfo& stats)
+                          const StationStats& stats)
         : trigger(trigger), nl80211_link_stats(stats) {
       timestamp = base::Time::Now();
     }

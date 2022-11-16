@@ -21,20 +21,18 @@ using ::testing::StrEq;
 namespace shill {
 namespace {
 
-constexpr WiFiLinkStatistics::Nl80211StaInfo kDhcpStartNl80211Stats = {
+constexpr WiFiLinkStatistics::StationStats kDhcpStartNl80211Stats = {
     63, 75, 503, 653, 9, 5, 15, -33, -30};
-constexpr WiFiLinkStatistics::Nl80211StaInfo kDhcpEndNl80211Stats = {
+constexpr WiFiLinkStatistics::StationStats kDhcpEndNl80211Stats = {
     3587, 4163, 52305, 56778, 67, 93, 153, -23, -30};
-constexpr WiFiLinkStatistics::Nl80211StaInfo kDhcpDiffNl80211Stats = {
+constexpr WiFiLinkStatistics::StationStats kDhcpDiffNl80211Stats = {
     3524, 4088, 51802, 56125, 58, 88, 138, -23, -30};
-constexpr WiFiLinkStatistics::Nl80211StaInfo
-    kNetworkValidationStartNl80211Stats = {96, 112, 730, 816, 15,
-                                           20, 37,  -28, -29};
-constexpr WiFiLinkStatistics::Nl80211StaInfo kNetworkValidationEndNl80211Stats =
-    {3157, 3682, 29676, 31233, 56, 88, 103, -27, -30};
-constexpr WiFiLinkStatistics::Nl80211StaInfo
-    kNetworkValidationDiffNl80211Stats = {3061, 3570, 28946, 30417, 41,
-                                          68,   66,   -27,   -30};
+constexpr WiFiLinkStatistics::StationStats kNetworkValidationStartNl80211Stats =
+    {96, 112, 730, 816, 15, 20, 37, -28, -29};
+constexpr WiFiLinkStatistics::StationStats kNetworkValidationEndNl80211Stats = {
+    3157, 3682, 29676, 31233, 56, 88, 103, -27, -30};
+constexpr WiFiLinkStatistics::StationStats kNetworkValidationDiffNl80211Stats =
+    {3061, 3570, 28946, 30417, 41, 68, 66, -27, -30};
 constexpr old_rtnl_link_stats64 kDhcpStartRtnlStats = {
     17, 32, 105, 206, 3, 2, 8, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 constexpr old_rtnl_link_stats64 kDhcpEndRtnlStats = {
@@ -54,7 +52,7 @@ constexpr old_rtnl_link_stats64 kNetworkValidationDiffRtnlStats = {
 
 std::string Nl80211Log(WiFi::LinkStatisticsTrigger start_event,
                        WiFi::LinkStatisticsTrigger end_event,
-                       const WiFiLinkStatistics::Nl80211StaInfo& diff_stats) {
+                       const WiFiLinkStatistics::StationStats& diff_stats) {
   return "Network event related to NL80211 link statistics: " +
          WiFiLinkStatistics::LinkStatisticsTriggerToString(start_event) +
          " -> " + WiFiLinkStatistics::LinkStatisticsTriggerToString(end_event) +
@@ -97,7 +95,7 @@ std::string RtnlLog(WiFi::LinkStatisticsTrigger start_event,
 }
 
 const KeyValueStore CreateNl80211LinkStatistics(
-    const WiFiLinkStatistics::Nl80211StaInfo& nl80211_stats) {
+    const WiFiLinkStatistics::StationStats& nl80211_stats) {
   KeyValueStore link_statistics;
   link_statistics.Set<uint32_t>(kPacketReceiveSuccessesProperty,
                                 nl80211_stats.rx_packets_success);
