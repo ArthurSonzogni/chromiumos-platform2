@@ -41,6 +41,7 @@ constexpr char kCameraTraceCategoryHdrnetDebug[] = "camera.hdrnet.debug";
 constexpr char kCameraTraceCategoryHdrnet[] = "camera.hdrnet";
 constexpr char kCameraTraceCategoryJpegDebug[] = "camera.jpeg.debug";
 constexpr char kCameraTraceCategoryJpeg[] = "camera.jpeg";
+constexpr char kCameraTraceCategoryPortraitMode[] = "camera.portrait_mode";
 constexpr char kCameraTraceCategoryUsbHal[] = "camera.usb_hal";
 constexpr char kCameraTraceCategoryZsl[] = "camera.zsl";
 
@@ -92,6 +93,8 @@ PERFETTO_DEFINE_CATEGORIES(
         .SetTags("debug"),
     perfetto::Category(cros::kCameraTraceCategoryJpeg)
         .SetDescription("Events from CrOS JPEG codec"),
+    perfetto::Category(cros::kCameraTraceCategoryPortraitMode)
+        .SetDescription("Events from CrOS Portrait Mode"),
     perfetto::Category(cros::kCameraTraceCategoryUsbHal)
         .SetDescription("Events from CrOS Camera USB HAL"),
     perfetto::Category(cros::kCameraTraceCategoryZsl)

@@ -18,8 +18,8 @@
 namespace cros {
 
 // These are half-closed intervals as [kFooStart, kFooEnd).
-const uint32_t kReprocessEffectVendorTagStart = 0x80000000;
-const uint32_t kReprocessEffectVendorTagEnd = 0x80010000;
+const uint32_t kPortraitModeVendorTagStart = 0x80000000;
+const uint32_t kPortraitModeVendorTagEnd = 0x80010000;
 
 const uint32_t kUsbHalVendorTagStart = 0x80010000;
 const uint32_t kUsbHalVendorTagEnd = 0x80020000;

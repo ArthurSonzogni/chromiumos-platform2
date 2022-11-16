@@ -48,6 +48,10 @@
 #include "features/frame_annotator/frame_annotator_loader_stream_manipulator.h"
 #endif
 
+#if USE_CAMERA_FEATURE_PORTRAIT_MODE
+#include "features/portrait_mode/portrait_mode_stream_manipulator.h"
+#endif
+
 namespace cros {
 
 namespace {
@@ -153,6 +157,12 @@ StreamManipulatorManager::StreamManipulatorManager(
   stream_manipulators_.emplace_back(
       std::make_unique<FrameAnnotatorLoaderStreamManipulator>());
   LOGF(INFO) << "FrameAnnotatorLoaderStreamManipulator enabled";
+#endif
+
+#if USE_CAMERA_FEATURE_PORTRAIT_MODE
+  stream_manipulators_.emplace_back(
+      std::make_unique<PortraitModeStreamManipulator>(mojo_manager_token));
+  LOGF(INFO) << "PortraitModeStreamManipulator enabled";
 #endif
 
   stream_manipulators_.emplace_back(

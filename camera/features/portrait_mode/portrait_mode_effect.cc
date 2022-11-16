@@ -1,10 +1,10 @@
 /*
- * Copyright 2018 The ChromiumOS Authors
+ * Copyright 2022 The ChromiumOS Authors
  * Use of this source code is governed by a BSD-style license that can be
  * found in the LICENSE file.
  */
 
-#include "hal_adapter/reprocess_effect/portrait_mode_effect.h"
+#include "features/portrait_mode/portrait_mode_effect.h"
 
 #include <linux/videodev2.h>
 #include <sys/types.h>
@@ -38,73 +38,29 @@
 
 namespace cros {
 
-// 1: enable portrait processing
-// 0: disable portrait processing; apps should not set this value
-const VendorTagInfo kRequestVendorTag[] = {
-    {"com.google.effect.portraitMode", TYPE_BYTE, {.u8 = 0}}};
-
-// SegmentationResult::kSuccess: portrait mode segmentation succeeds
-// SegmentationResult::kFailure: portrait mode segmentation fails
-// SegmentationResult::kTimeout: portrait processing timeout
-const VendorTagInfo kResultVendorTag[] = {
-    {"com.google.effect.portraitModeSegmentationResult", TYPE_BYTE, {.u8 = 0}}};
-
 PortraitModeEffect::PortraitModeEffect()
-    : enable_vendor_tag_(0),
-      result_vendor_tag_(0),
-      buffer_manager_(CameraBufferManager::GetInstance()),
+    : buffer_manager_(CameraBufferManager::GetInstance()),
       gpu_algo_manager_(nullptr),
       condvar_(&lock_) {}
 
-int32_t PortraitModeEffect::InitializeAndGetVendorTags(
-    std::vector<VendorTagInfo>* request_vendor_tags,
-    std::vector<VendorTagInfo>* result_vendor_tags,
-    CameraMojoChannelManagerToken* token) {
-  if (!request_vendor_tags || !result_vendor_tags) {
-    return -EINVAL;
-  }
-
+int32_t PortraitModeEffect::Initialize(CameraMojoChannelManagerToken* token) {
   gpu_algo_manager_ = GPUAlgoManager::GetInstance(token);
   if (!gpu_algo_manager_) {
     LOGF(WARNING)
         << "Cannot connect to GPU algorithm service. Disable portrait mode.";
     return 0;
   }
-  *request_vendor_tags = {std::begin(kRequestVendorTag),
-                          std::end(kRequestVendorTag)};
-  *result_vendor_tags = {std::begin(kResultVendorTag),
-                         std::end(kResultVendorTag)};
-  return 0;
-}
-
-int32_t PortraitModeEffect::SetVendorTags(uint32_t request_vendor_tag_start,
-                                          uint32_t request_vendor_tag_count,
-                                          uint32_t result_vendor_tag_start,
-                                          uint32_t result_vendor_tag_count) {
-  if (request_vendor_tag_count != std::size(kRequestVendorTag) ||
-      result_vendor_tag_count != std::size(kResultVendorTag)) {
-    return -EINVAL;
-  }
-  enable_vendor_tag_ = request_vendor_tag_start;
-  result_vendor_tag_ = result_vendor_tag_start;
-  LOGF(INFO) << "Allocated vendor tag " << std::hex << enable_vendor_tag_;
   return 0;
 }
 
 int32_t PortraitModeEffect::ReprocessRequest(
-    const camera_metadata_t& settings,
+    bool can_process_portrait,
     buffer_handle_t input_buffer,
     uint32_t orientation,
-    android::CameraMetadata* result_metadata,
+    SegmentationResult* segmentation_result,
     buffer_handle_t output_buffer) {
   constexpr base::TimeDelta kPortraitProcessorTimeout = base::Seconds(15);
   if (!input_buffer || !output_buffer) {
-    return -EINVAL;
-  }
-  camera_metadata_ro_entry_t entry = {};
-  if (find_camera_metadata_ro_entry(&settings, enable_vendor_tag_, &entry) !=
-      0) {
-    LOGF(ERROR) << "Failed to find portrait mode vendor tag";
     return -EINVAL;
   }
   ScopedMapping input_mapping(input_buffer);
@@ -116,7 +72,7 @@ int32_t PortraitModeEffect::ReprocessRequest(
   DCHECK_EQ(output_mapping.height(), height);
   DCHECK_EQ(output_mapping.v4l2_format(), v4l2_format);
 
-  if (entry.data.u8[0] != 0) {
+  if (can_process_portrait) {
     const uint32_t kRGBNumOfChannels = 3;
     size_t rgb_buf_size = width * height * kRGBNumOfChannels;
     base::UnsafeSharedMemoryRegion input_rgb_shm_region =
@@ -138,8 +94,8 @@ int32_t PortraitModeEffect::ReprocessRequest(
     uint32_t rgb_buf_stride = width * kRGBNumOfChannels;
     int result = 0;
     base::ScopedClosureRunner result_metadata_runner(
-        base::BindOnce(&PortraitModeEffect::UpdateResultMetadata,
-                       base::Unretained(this), result_metadata, &result));
+        base::BindOnce(&PortraitModeEffect::UpdateSegmentationResult,
+                       base::Unretained(this), segmentation_result, &result));
     result = ConvertYUVToRGB(input_mapping, input_rgb_shm_mapping.memory(),
                              rgb_buf_stride);
     if (result != 0) {
@@ -211,8 +167,8 @@ int32_t PortraitModeEffect::ReprocessRequest(
       // Portrait processing finishes with non-zero result when there's no human
       // face in the image. Returns 0 here with the status set in the vendor tag
       // by |result_metadata_runner|.
-      // TODO(kamesan): make the status returned from portrait library more
-      // fine-grained to filter critical errors.
+      // TODO(julianachang): make the status returned from portrait library more
+      // fine-grained to filter critical errors. (b/268126664)
       return 0;
     }
 
@@ -223,8 +179,8 @@ int32_t PortraitModeEffect::ReprocessRequest(
     }
     return result;
   } else {
-    // TODO(hywu): add an API to query if an effect want to reprocess this
-    // request or not
+    // TODO(julianachang): Add unit tests to test whether we want to reprocess
+    // this request without portrait processing, or just remove this part.
     LOGF(WARNING) << "Portrait mode is turned off. Just copy the image.";
     switch (v4l2_format) {
       case V4L2_PIX_FMT_NV12:
@@ -265,14 +221,12 @@ int32_t PortraitModeEffect::ReprocessRequest(
   return 0;
 }
 
-void PortraitModeEffect::UpdateResultMetadata(
-    android::CameraMetadata* result_metadata, const int* result) {
-  SegmentationResult segmentation_result =
-      (*result == 0) ? SegmentationResult::kSuccess
-                     : (*result == -ETIMEDOUT) ? SegmentationResult::kTimeout
-                                               : SegmentationResult::kFailure;
-  result_metadata->update(result_vendor_tag_,
-                          reinterpret_cast<uint8_t*>(&segmentation_result), 1);
+void PortraitModeEffect::UpdateSegmentationResult(
+    SegmentationResult* segmentation_result, const int* result) {
+  *segmentation_result = (*result == 0) ? SegmentationResult::kSuccess
+                         : (*result == -ETIMEDOUT)
+                             ? SegmentationResult::kTimeout
+                             : SegmentationResult::kFailure;
 }
 
 void PortraitModeEffect::ReturnCallback(uint32_t status,

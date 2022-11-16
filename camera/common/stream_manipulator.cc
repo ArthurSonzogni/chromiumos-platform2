@@ -41,6 +41,10 @@
 #include "features/frame_annotator/frame_annotator_loader_stream_manipulator.h"
 #endif
 
+#if USE_CAMERA_FEATURE_PORTRAIT_MODE
+#include "features/portrait_mode/portrait_mode_stream_manipulator.h"
+#endif
+
 namespace cros {
 
 namespace {
@@ -139,6 +143,11 @@ bool StreamManipulator::UpdateVendorTags(VendorTagManager& vendor_tag_manager) {
       !RotateAndCropStreamManipulator::UpdateVendorTags(vendor_tag_manager)) {
     return false;
   }
+#if USE_CAMERA_FEATURE_PORTRAIT_MODE
+  if (!PortraitModeStreamManipulator::UpdateVendorTags(vendor_tag_manager)) {
+    return false;
+  }
+#endif
   return true;
 }
 
@@ -149,6 +158,11 @@ bool StreamManipulator::UpdateStaticMetadata(
       !RotateAndCropStreamManipulator::UpdateStaticMetadata(static_info)) {
     return false;
   }
+#if USE_CAMERA_FEATURE_PORTRAIT_MODE
+  if (!PortraitModeStreamManipulator::UpdateStaticMetadata(static_info)) {
+    return false;
+  }
+#endif
   return true;
 }
 

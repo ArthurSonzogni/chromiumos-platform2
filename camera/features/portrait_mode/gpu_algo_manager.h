@@ -1,11 +1,11 @@
 /*
- * Copyright 2019 The ChromiumOS Authors
+ * Copyright 2022 The ChromiumOS Authors
  * Use of this source code is governed by a BSD-style license that can be
  * found in the LICENSE file.
  */
 
-#ifndef CAMERA_HAL_ADAPTER_REPROCESS_EFFECT_GPU_ALGO_MANAGER_H_
-#define CAMERA_HAL_ADAPTER_REPROCESS_EFFECT_GPU_ALGO_MANAGER_H_
+#ifndef CAMERA_FEATURES_PORTRAIT_MODE_GPU_ALGO_MANAGER_H_
+#define CAMERA_FEATURES_PORTRAIT_MODE_GPU_ALGO_MANAGER_H_
 
 #include <map>
 #include <memory>
@@ -59,4 +59,4 @@ class GPUAlgoManager : public camera_algorithm_callback_ops_t {
 
 }  // namespace cros
 
-#endif  // CAMERA_HAL_ADAPTER_REPROCESS_EFFECT_GPU_ALGO_MANAGER_H_
+#endif  // CAMERA_FEATURES_PORTRAIT_MODE_GPU_ALGO_MANAGER_H_

@@ -185,7 +185,6 @@ CameraDeviceAdapter::CameraDeviceAdapter(
     : camera_device_ops_thread_("CameraDeviceOpsThread"),
       camera_callback_ops_thread_("CameraCallbackOpsThread"),
       fence_sync_thread_("FenceSyncThread"),
-      reprocess_effect_thread_("ReprocessEffectThread"),
       get_internal_camera_id_callback_(get_internal_camera_id_callback),
       get_public_camera_id_callback_(get_public_camera_id_callback),
       close_callback_(std::move(close_callback)),
@@ -217,10 +216,7 @@ CameraDeviceAdapter::~CameraDeviceAdapter() {
   camera_callback_ops_thread_.Stop();
 }
 
-bool CameraDeviceAdapter::Start(
-    HasReprocessEffectVendorTagCallback
-        has_reprocess_effect_vendor_tag_callback,
-    ReprocessEffectCallback reprocess_effect_callback) {
+bool CameraDeviceAdapter::Start() {
   if (!camera_device_ops_thread_.Start()) {
     LOGF(ERROR) << "Failed to start CameraDeviceOpsThread";
     return false;
@@ -231,9 +227,6 @@ bool CameraDeviceAdapter::Start(
   }
   device_ops_delegate_ = std::make_unique<Camera3DeviceOpsDelegate>(
       this, camera_device_ops_thread_.task_runner());
-  has_reprocess_effect_vendor_tag_callback_ =
-      std::move(has_reprocess_effect_vendor_tag_callback);
-  reprocess_effect_callback_ = std::move(reprocess_effect_callback);
   return true;
 }
 
@@ -256,10 +249,6 @@ int32_t CameraDeviceAdapter::Initialize(
       LOGF(ERROR) << "Fence sync thread failed to start";
       return -ENODEV;
     }
-  }
-  if (!reprocess_effect_thread_.Start()) {
-    LOGF(ERROR) << "Reprocessing effect thread failed to start";
-    return -ENODEV;
   }
 
   stream_manipulator_manager_->Initialize(
@@ -475,18 +464,6 @@ int32_t CameraDeviceAdapter::ProcessCaptureRequest(
   DCHECK(camera_device_ops_thread_.task_runner()->BelongsToCurrentThread());
   TRACE_HAL_ADAPTER("frame_number", request->frame_number);
 
-  // Complete the pending reprocess request first if exists. We need to
-  // prioritize reprocess requests because CCA can be waiting for the
-  // reprocessed picture before unblocking UI.
-  if (!device_closed_) {
-    base::AutoLock lock(process_reprocess_request_callback_lock_);
-    if (!process_reprocess_request_callback_.is_null())
-      std::move(process_reprocess_request_callback_).Run();
-  }
-  if (!request) {
-    return 0;
-  }
-
   camera3_capture_request_t req;
   req.frame_number = request->frame_number;
 
@@ -581,24 +558,6 @@ int32_t CameraDeviceAdapter::ProcessCaptureRequest(
     }
   }
 
-  // Apply reprocessing effects
-  if (req.input_buffer && req.num_output_buffers != 0 &&
-      has_reprocess_effect_vendor_tag_callback_.Run(*req.settings)) {
-    VLOGF(1) << "Applying reprocessing effects on input buffer";
-    // Run reprocessing effect asynchronously so that it does not block other
-    // requests.  It introduces a risk that buffers of the same stream may be
-    // returned out of order.  Since CTS would not go this way and GCA would
-    // not mix reprocessing effect captures with normal ones, it should be
-    // fine.
-    auto req_ptr = std::make_unique<Camera3CaptureDescriptor>(req);
-    reprocess_effect_thread_.task_runner()->PostTask(
-        FROM_HERE,
-        base::BindOnce(
-            &CameraDeviceAdapter::ReprocessEffectsOnReprocessEffectThread,
-            base::Unretained(this), std::move(req_ptr)));
-    return 0;
-  }
-
   // TODO(jcliang): We may need to cache the last request settings here. In case
   // where the client sets a null settings we can pass the cached settings to
   // the stream manipulators so that they can still do incremental changes on
@@ -675,7 +634,6 @@ int32_t CameraDeviceAdapter::Close() {
   capture_monitor_.StopMonitor(CameraMonitor::MonitorType::kRequestsMonitor);
   capture_monitor_.StopMonitor(CameraMonitor::MonitorType::kResultsMonitor);
 
-  reprocess_effect_thread_.Stop();
   int32_t ret = 0;
   {
     TRACE_HAL_ADAPTER_EVENT("HAL::Close");
@@ -760,38 +718,9 @@ void CameraDeviceAdapter::ReturnResultToClient(
   CameraDeviceAdapter* self = const_cast<CameraDeviceAdapter*>(
       static_cast<const CameraDeviceAdapter*>(ops));
   mojom::Camera3CaptureResultPtr result_ptr;
-  {
-    base::AutoLock reprocess_handles_lock(self->reprocess_handles_lock_);
-    const Camera3StreamBuffer* input_buffer =
-        result_descriptor.GetInputBuffer();
-    if (input_buffer && !self->reprocess_handles_.empty() &&
-        *(input_buffer->buffer()) == *self->reprocess_handles_.front()) {
-      std::optional<Camera3StreamBuffer> in_buf =
-          result_descriptor.AcquireInputBuffer();
-      // Restore original input buffer
-      base::AutoLock buffer_handles_lock(self->buffer_handles_lock_);
-      in_buf->mutable_raw_buffer().buffer =
-          &self->buffer_handles_.at(self->input_buffer_handle_ids_.front())
-               ->self;
-      result_descriptor.SetInputBuffer(std::move(in_buf.value()));
-      self->reprocess_handles_.pop_front();
-      self->input_buffer_handle_ids_.pop_front();
-    }
-  }
-  {
-    base::AutoLock reprocess_result_metadata_lock(
-        self->reprocess_result_metadata_lock_);
-    auto it =
-        self->reprocess_result_metadata_.find(result_descriptor.frame_number());
-    if (it != self->reprocess_result_metadata_.end() && !it->second.isEmpty() &&
-        result_descriptor.has_metadata()) {
-      result_descriptor.AppendMetadata(it->second.getAndLock());
-      self->reprocess_result_metadata_.erase(result_descriptor.frame_number());
-    }
-    camera3_capture_result_t* locked_result = result_descriptor.LockForResult();
-    result_ptr = self->PrepareCaptureResult(locked_result);
-    result_descriptor.Unlock();
-  }
+  camera3_capture_result_t* locked_result = result_descriptor.LockForResult();
+  result_ptr = self->PrepareCaptureResult(locked_result);
+  result_descriptor.Unlock();
 
   // process_capture_result may be called multiple times for a single frame,
   // each time with a new disjoint piece of metadata and/or set of gralloc
@@ -1200,147 +1129,6 @@ void CameraDeviceAdapter::RemoveBufferOnFenceSyncThread(
                        base::Unretained(this), std::move(release_fence),
                        std::move(buffer)));
   }
-}
-
-void CameraDeviceAdapter::ReprocessEffectsOnReprocessEffectThread(
-    std::unique_ptr<Camera3CaptureDescriptor> desc) {
-  TRACE_HAL_ADAPTER();
-
-  DCHECK(desc->has_input_buffer());
-  DCHECK_GT(desc->num_output_buffers(), 0);
-  const camera3_stream_t* input_stream = desc->GetInputBuffer()->stream();
-  const camera3_stream_t* output_stream = desc->GetOutputBuffers()[0].stream();
-  // Here we assume reprocessing effects can provide only one output of the
-  // same size and format as that of input. Invoke HAL reprocessing if more
-  // outputs, scaling and/or format conversion are required since ISP
-  // may provide hardware acceleration for these operations.
-  bool need_hal_reprocessing =
-      (desc->num_output_buffers() != 1) ||
-      (input_stream->width != output_stream->width) ||
-      (input_stream->height != output_stream->height) ||
-      (input_stream->format != output_stream->format);
-
-  struct ReprocessContext {
-    ReprocessContext(CameraDeviceAdapter* d,
-                     const camera3_capture_request_t* r,
-                     bool n)
-        : result(0),
-          device_adapter(d),
-          capture_request(r),
-          need_hal_reprocessing(n) {}
-
-    ~ReprocessContext() {
-      if (result != 0) {
-        camera3_notify_msg_t msg{
-            .type = CAMERA3_MSG_ERROR,
-            .message.error.frame_number = capture_request->frame_number,
-            .message.error.error_code = CAMERA3_MSG_ERROR_REQUEST};
-        device_adapter->Notify(device_adapter, &msg);
-      }
-      if (result != 0 || !need_hal_reprocessing) {
-        camera3_capture_result_t capture_result{
-            .frame_number = capture_request->frame_number,
-            .result = capture_request->settings,
-            .num_output_buffers = capture_request->num_output_buffers,
-            .output_buffers = capture_request->output_buffers,
-            .input_buffer = capture_request->input_buffer};
-        device_adapter->ProcessCaptureResult(device_adapter, &capture_result);
-      }
-    }
-
-    int32_t result;
-    CameraDeviceAdapter* device_adapter;
-    const camera3_capture_request_t* capture_request;
-    bool need_hal_reprocessing;
-  };
-  const camera3_capture_request_t* req = desc->LockForRequest();
-  ReprocessContext reprocess_context(this, req, need_hal_reprocessing);
-  buffer_handle_t output_buffer = *req->output_buffers[0].buffer;
-  ScopedBufferHandle scoped_output_handle;
-  if (need_hal_reprocessing) {
-    scoped_output_handle = CameraBufferManager::AllocateScopedBuffer(
-        input_stream->width, input_stream->height,
-        HAL_PIXEL_FORMAT_YCbCr_420_888,
-        GRALLOC_USAGE_SW_READ_OFTEN | GRALLOC_USAGE_SW_WRITE_OFTEN);
-    if (!scoped_output_handle) {
-      LOGF(ERROR) << "Failed to allocate reprocessing output buffer";
-      reprocess_context.result = -EINVAL;
-      return;
-    }
-    output_buffer = *scoped_output_handle;
-  }
-  ScopedMapping output_mapping(output_buffer);
-  if (!output_mapping.is_valid()) {
-    LOGF(ERROR) << "Failed to map reprocessing output buffer";
-    reprocess_context.result = -EINVAL;
-    return;
-  }
-  buffer_handle_t input_buffer = *req->input_buffer->buffer;
-  ScopedMapping input_mapping(input_buffer);
-  if (!input_mapping.is_valid()) {
-    LOGF(ERROR) << "Failed to map reprocessing input buffer";
-    reprocess_context.result = -EINVAL;
-    return;
-  }
-
-  android::CameraMetadata reprocess_result_metadata;
-  reprocess_context.result = reprocess_effect_callback_.Run(
-      *req->settings, input_buffer, &reprocess_result_metadata, output_buffer);
-  if (reprocess_context.result != 0) {
-    LOGF(ERROR) << "Failed to apply reprocess effect";
-    return;
-  }
-  if (need_hal_reprocessing) {
-    // Replace the input buffer with reprocessing output buffer
-    DCHECK_NE(scoped_output_handle, nullptr);
-    {
-      base::AutoLock reprocess_handles_lock(reprocess_handles_lock_);
-      reprocess_handles_.push_back(std::move(scoped_output_handle));
-      input_buffer_handle_ids_.push_back(
-          reinterpret_cast<const camera_buffer_handle_t*>(
-              *req->input_buffer->buffer)
-              ->buffer_id);
-      req->input_buffer->buffer = reprocess_handles_.back().get();
-    }
-    {
-      base::AutoLock reprocess_result_metadata_lock(
-          reprocess_result_metadata_lock_);
-      reprocess_result_metadata_.emplace(req->frame_number,
-                                         reprocess_result_metadata);
-    }
-    // Store the HAL reprocessing request and wait for CameraDeviceOpsThread to
-    // complete it. Also post a null capture request to guarantee it will be
-    // called when there's no existing capture requests.
-    desc->Unlock();
-    auto future = cros::Future<int32_t>::Create(nullptr);
-    {
-      base::AutoLock lock(process_reprocess_request_callback_lock_);
-      DCHECK(process_reprocess_request_callback_.is_null());
-      process_reprocess_request_callback_ = base::BindOnce(
-          &CameraDeviceAdapter::ProcessReprocessRequestOnDeviceOpsThread,
-          base::Unretained(this), std::move(desc),
-          cros::GetFutureCallback(future));
-    }
-    camera_device_ops_thread_.task_runner()->PostTask(
-        FROM_HERE, base::BindOnce(
-                       [](CameraDeviceAdapter* adapter) {
-                         // Ignore returned value.
-                         adapter->ProcessCaptureRequest(nullptr);
-                       },
-                       base::Unretained(this)));
-  }
-}
-
-void CameraDeviceAdapter::ProcessReprocessRequestOnDeviceOpsThread(
-    std::unique_ptr<Camera3CaptureDescriptor> desc,
-    base::OnceCallback<void(int32_t)> callback) {
-  DCHECK(camera_device_ops_thread_.task_runner()->BelongsToCurrentThread());
-  int ret = camera_device_->ops->process_capture_request(
-      camera_device_, desc->LockForRequest());
-  if (ret != 0) {
-    LOGF(ERROR) << "Failed to process capture request after reprocessing";
-  }
-  std::move(callback).Run(ret);
 }
 
 void CameraDeviceAdapter::ResetDeviceOpsDelegateOnThread() {

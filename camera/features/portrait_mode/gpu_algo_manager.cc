@@ -1,10 +1,10 @@
 /*
- * Copyright 2019 The ChromiumOS Authors
+ * Copyright 2022 The ChromiumOS Authors
  * Use of this source code is governed by a BSD-style license that can be
  * found in the LICENSE file.
  */
 
-#include "hal_adapter/reprocess_effect/gpu_algo_manager.h"
+#include "features/portrait_mode/gpu_algo_manager.h"
 
 #include <utility>
 #include <vector>

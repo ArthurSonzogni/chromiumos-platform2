@@ -268,16 +268,7 @@ int32_t CameraHalAdapter::OpenDevice(
           &stream_manipulator_runtime_options_, gpu_resources_,
           mojo_manager_token_));
 
-  CameraDeviceAdapter::HasReprocessEffectVendorTagCallback
-      has_reprocess_effect_vendor_tag_callback = base::BindRepeating(
-          &ReprocessEffectManager::HasReprocessEffectVendorTag,
-          base::Unretained(&reprocess_effect_manager_));
-  CameraDeviceAdapter::ReprocessEffectCallback reprocess_effect_callback =
-      base::BindRepeating(&ReprocessEffectManager::ReprocessRequest,
-                          base::Unretained(&reprocess_effect_manager_));
-  if (!device_adapters_[camera_id]->Start(
-          std::move(has_reprocess_effect_vendor_tag_callback),
-          std::move(reprocess_effect_callback))) {
+  if (!device_adapters_[camera_id]->Start()) {
     device_adapters_.erase(camera_id);
     return -ENODEV;
   }
@@ -492,8 +483,6 @@ const camera_metadata_t* CameraHalAdapter::GetUpdatedCameraMetadata(
   metadata = std::make_unique<android::CameraMetadata>();
   metadata->acquire(clone_camera_metadata(static_metadata));
 
-  reprocess_effect_manager_.UpdateStaticMetadata(metadata.get());
-
   if (!StreamManipulator::UpdateStaticMetadata(metadata.get())) {
     LOGF(ERROR)
         << "Failed to update the static metadata from StreamManipulators";
@@ -605,12 +594,6 @@ void CameraHalAdapter::TorchModeStatusChange(
 void CameraHalAdapter::StartOnThread(base::OnceCallback<void(bool)> callback) {
   DCHECK(camera_module_thread_.task_runner()->BelongsToCurrentThread());
 
-  if (reprocess_effect_manager_.Initialize(mojo_manager_token_) != 0) {
-    LOGF(ERROR) << "Failed to initialize reprocess effect manager";
-    std::move(callback).Run(false);
-    return;
-  }
-
   if (!vendor_tag_manager_.Add(kArcvmVendorTagHostTime,
                                kArcvmVendorTagSectionName,
                                kArcvmVendorTagHostTimeTagName, TYPE_INT64)) {
@@ -619,13 +602,6 @@ void CameraHalAdapter::StartOnThread(base::OnceCallback<void(bool)> callback) {
     std::move(callback).Run(false);
     return;
   }
-
-  if (!vendor_tag_manager_.Add(&reprocess_effect_manager_)) {
-    LOGF(ERROR) << "Failed to add the vendor tags of reprocess effect manager";
-    std::move(callback).Run(false);
-    return;
-  }
-
   if (!StreamManipulator::UpdateVendorTags(vendor_tag_manager_)) {
     LOGF(ERROR) << "Failed to add the vendor tags from StreamManipualtors";
     std::move(callback).Run(false);

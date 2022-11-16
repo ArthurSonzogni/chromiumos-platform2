@@ -27,17 +27,12 @@
 
 #include "camera/mojo/camera3.mojom.h"
 #include "camera/mojo/camera_common.mojom.h"
-#include "camera/mojo/cros_camera_service.mojom.h"
 #include "common/stream_manipulator.h"
-#include "common/utils/common_types.h"
 #include "common/vendor_tag_manager.h"
 #include "cros-camera/camera_metrics.h"
 #include "cros-camera/camera_mojo_channel_manager_token.h"
 #include "cros-camera/cros_camera_hal.h"
-#include "cros-camera/future.h"
-#include "hal_adapter/reprocess_effect/reprocess_effect_manager.h"
 #include "ml_core/dlc/dlc_client.h"
-#include "ml_core/mojo/effects_pipeline.mojom.h"
 
 namespace cros {
 
@@ -279,9 +274,6 @@ class CameraHalAdapter {
 
   // The vendor tag manager.
   VendorTagManager vendor_tag_manager_;
-
-  // The reprocess effect manager.
-  ReprocessEffectManager reprocess_effect_manager_;
 
   // The map of session start time.
   std::map<int, base::ElapsedTimer> session_timer_map_;

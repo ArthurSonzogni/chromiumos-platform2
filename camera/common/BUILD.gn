@@ -312,11 +312,14 @@ source_set("stream_manipulator") {
     ":jpeg",
     "//camera/gpu:gpu_resources",
   ]
+  if (use.camera_feature_auto_framing) {
+    deps += [ "//camera/features/auto_framing" ]
+  }
   if (use.camera_feature_face_detection) {
     deps += [ "//camera/features/face_detection" ]
   }
-  if (use.camera_feature_auto_framing) {
-    deps += [ "//camera/features/auto_framing" ]
+  if (use.camera_feature_frame_annotator) {
+    deps += [ "//camera/features/frame_annotator" ]
   }
   if (use.camera_feature_hdrnet) {
     deps += [
@@ -324,8 +327,8 @@ source_set("stream_manipulator") {
       "//camera/features/hdrnet",
     ]
   }
-  if (use.camera_feature_frame_annotator) {
-    deps += [ "//camera/features/frame_annotator" ]
+  if (use.camera_feature_portrait_mode) {
+    deps += [ "//camera/features/portrait_mode" ]
   }
 }
 
@@ -350,9 +353,6 @@ shared_library("libcros_camera") {
     "//camera/features/rotate_and_crop",
     "//camera/features/zsl",
   ]
-  if (use.camera_feature_portrait_mode) {
-    deps += [ ":camera_gpu_algorithm" ]
-  }
   if (use.camera_feature_effects) {
     deps += [ "//camera/features/effects" ]
   }
