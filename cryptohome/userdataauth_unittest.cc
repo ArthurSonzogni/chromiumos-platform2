@@ -23,6 +23,7 @@
 #include <cryptohome/proto_bindings/auth_factor.pb.h>
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <dbus/mock_bus.h>
+#include <featured/fake_platform_features.h>
 #include <libhwsec/factory/mock_factory.h>
 #include <libhwsec/frontend/cryptohome/mock_frontend.h>
 #include <libhwsec/frontend/pinweaver/mock_frontend.h>
@@ -199,8 +200,13 @@ class UserDataAuthTestBase : public ::testing::Test {
     userdataauth_->set_key_challenge_service_factory(
         &key_challenge_service_factory_);
     userdataauth_->set_low_disk_space_handler(&low_disk_space_handler_);
-    // Empty token list by default.  The effect is that there are no attempts
-    // to unload tokens unless a test explicitly sets up the token list.
+
+    fake_feature_lib_ =
+        std::make_unique<feature::FakePlatformFeatures>(mount_bus_);
+    userdataauth_->set_feature_lib(fake_feature_lib_.get());
+    // Empty token list by default.  The effect is that there are no
+    // attempts to unload tokens unless a test explicitly sets up the token
+    // list.
     ON_CALL(chaps_client_, GetTokenList(_, _)).WillByDefault(Return(true));
     // Skip CleanUpStaleMounts by default.
     ON_CALL(platform_, GetMountsBySourcePrefix(_, _))
@@ -370,6 +376,8 @@ class UserDataAuthTestBase : public ::testing::Test {
 
   // Unowned pointer to the session object.
   NiceMock<MockUserSession>* session_ = nullptr;
+
+  std::unique_ptr<feature::PlatformFeaturesInterface> fake_feature_lib_;
 
   // Declare |userdataauth_| last so it gets destroyed before all the mocks.
   // This is important because otherwise the background thread may call into

@@ -4,6 +4,7 @@
 
 #include "cryptohome/userdataauth.h"
 
+#include <memory>
 #include <optional>
 #include <set>
 #include <string>
@@ -29,6 +30,7 @@
 #include <chromeos/constants/cryptohome.h>
 #include <cryptohome/proto_bindings/auth_factor.pb.h>
 #include <dbus/cryptohome/dbus-constants.h>
+#include <featured/feature_library.h>
 #include <libhwsec/factory/factory_impl.h>
 #include <libhwsec/status.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
@@ -315,6 +317,12 @@ void ReplyWithAuthenticationResult(
   ReplyWithError(std::move(on_done), std::move(reply), status);
 }
 
+// Control switch value for enabling backup VaultKeyset creation with USS.
+constexpr struct VariationsFeature kCrOSLateBootMigrateToUserSecretStash = {
+    .name = "CrOSLateBootMigrateToUserSecretStash",
+    .default_state = FEATURE_DISABLED_BY_DEFAULT,
+};
+
 }  // namespace
 
 UserDataAuth::UserDataAuth()
@@ -368,8 +376,11 @@ UserDataAuth::UserDataAuth()
       fscrypt_v2_(false),
       legacy_mount_(true),
       bind_mount_downloads_(true),
+      migrate_to_user_secret_stash_(false),
       default_arc_disk_quota_(nullptr),
-      arc_disk_quota_(nullptr) {}
+      arc_disk_quota_(nullptr),
+      default_feature_lib_(nullptr),
+      feature_lib_(nullptr) {}
 
 UserDataAuth::~UserDataAuth() {
   if (low_disk_space_handler_) {
@@ -677,7 +688,22 @@ bool UserDataAuth::PostDBusInitialize() {
       FROM_HERE, base::BindOnce(&UserDataAuth::CreateUssExperimentConfigFetcher,
                                 base::Unretained(this)));
 
+  PostTaskToMountThread(
+      FROM_HERE,
+      base::BindOnce(&UserDataAuth::FetchMigrateToUserSecretStashFlag,
+                     base::Unretained(this)));
+
   return true;
+}
+
+void UserDataAuth::FetchMigrateToUserSecretStashFlag() {
+  AssertOnMountThread();
+  if (!feature_lib_) {
+    default_feature_lib_ = feature::PlatformFeatures::New(mount_thread_bus_);
+    feature_lib_ = default_feature_lib_.get();
+  }
+  set_migrate_to_user_secret_stash(
+      feature_lib_->IsEnabledBlocking(kCrOSLateBootMigrateToUserSecretStash));
 }
 
 void UserDataAuth::InitializeChallengeCredentialsHelper() {

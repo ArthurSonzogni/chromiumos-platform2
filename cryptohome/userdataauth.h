@@ -22,6 +22,7 @@
 #include <brillo/secure_blob.h>
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <dbus/bus.h>
+#include <featured/feature_library.h>
 #include <libhwsec/factory/factory.h>
 #include <libhwsec/frontend/cryptohome/frontend.h>
 #include <libhwsec/frontend/pinweaver/frontend.h>
@@ -180,6 +181,10 @@ class UserDataAuth {
   // Enable creating LVM volumes for applications.
   void set_enable_application_containers(bool value) {
     enable_application_containers_ = value;
+  }
+
+  void set_migrate_to_user_secret_stash(bool enabled) {
+    migrate_to_user_secret_stash_ = enabled;
   }
 
   // Set the |legacy_mount_| variable. For more information on legacy_mount_,
@@ -672,6 +677,10 @@ class UserDataAuth {
     low_disk_space_handler_ = low_disk_space_handler;
   }
 
+  void set_feature_lib(feature::PlatformFeaturesInterface* feature_lib) {
+    feature_lib_ = feature_lib;
+  }
+
   // Retrieve the session associated with the given user, for testing purpose
   // only.
   UserSession* FindUserSessionForTest(const std::string& username) {
@@ -1156,6 +1165,9 @@ class UserDataAuth {
   // network is ready.
   void CreateUssExperimentConfigFetcher();
 
+  // Called on Mount thread. This fetches the finch flag for USS Migration.
+  void FetchMigrateToUserSecretStashFlag();
+
   // =============== PinWeaver Related Methods ===============
 
   // Called on Mount thread. Pairing secret (Pk) is established once per
@@ -1447,6 +1459,9 @@ class UserDataAuth {
   // Whether Downloads/ should be bind mounted.
   bool bind_mount_downloads_;
 
+  // This value is fetched from feature flag
+  bool migrate_to_user_secret_stash_;
+
   // The default ARC Disk Quota object. This is used to provide Quota related
   // information function for ARC.
   std::unique_ptr<ArcDiskQuota> default_arc_disk_quota_;
@@ -1471,6 +1486,12 @@ class UserDataAuth {
   // Flag to cache the status of whether Pk establishment is blocked
   // successfully, so we don't have to do this multiple times.
   bool pk_establishment_blocked_;
+
+  // Feature library to fetch enabled feature on Finch.
+  std::unique_ptr<feature::PlatformFeaturesInterface> default_feature_lib_;
+
+  // This holds the object that checks for feature enabled.
+  feature::PlatformFeaturesInterface* feature_lib_;
 
   friend class AuthSessionTestWithKeysetManagement;
   FRIEND_TEST(AuthSessionTestWithKeysetManagement,
