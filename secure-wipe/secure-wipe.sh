@@ -240,7 +240,7 @@ secure_erase_ufs() {
   if [ ${rc} -ne 0 ]; then
     echo "Failed to discard the device"
   else
-    /usr/sbin/factory_ufs clobber -b "${disk}" -p 600
+    /usr/sbin/factory_ufs purge -t 600
     rc=$?
     if [ ${rc} -ne 0 ]; then
       echo "Failed to purge the device"
