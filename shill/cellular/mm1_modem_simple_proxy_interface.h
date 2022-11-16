@@ -30,7 +30,6 @@ class ModemSimpleProxyInterface {
   virtual void Disconnect(const RpcIdentifier& bearer,
                           const ResultCallback& callback,
                           int timeout) = 0;
-  virtual void GetStatus(KeyValueStoreCallback callback, int timeout) = 0;
 };
 
 }  // namespace mm1

@@ -34,7 +34,6 @@ class ModemSimpleProxy : public ModemSimpleProxyInterface {
   void Disconnect(const RpcIdentifier& bearer,
                   const ResultCallback& callback,
                   int timeout) override;
-  void GetStatus(KeyValueStoreCallback callback, int timeout) override;
 
  private:
   // Callbacks for Connect async call.
@@ -46,11 +45,6 @@ class ModemSimpleProxy : public ModemSimpleProxyInterface {
   void OnDisconnectSuccess(const ResultCallback& callback);
   void OnDisconnectFailure(const ResultCallback& callbac,
                            brillo::Error* dbus_error);
-
-  // Callbacks for GetStatus async call.
-  void OnGetStatusSuccess(KeyValueStoreCallback callback,
-                          const brillo::VariantDictionary& status);
-  void OnGetStatusFailure(KeyValueStoreCallback callback, brillo::Error* error);
 
   std::unique_ptr<org::freedesktop::ModemManager1::Modem::SimpleProxy> proxy_;
 

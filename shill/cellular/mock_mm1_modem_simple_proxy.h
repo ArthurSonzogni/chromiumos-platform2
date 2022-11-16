@@ -30,7 +30,6 @@ class MockModemSimpleProxy : public ModemSimpleProxyInterface {
               Disconnect,
               (const RpcIdentifier&, const ResultCallback&, int),
               (override));
-  MOCK_METHOD(void, GetStatus, (KeyValueStoreCallback, int), (override));
 };
 
 }  // namespace mm1
