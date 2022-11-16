@@ -318,7 +318,7 @@ fn main() -> Result<(), ()> {
     install_memfd_handler();
     let mut args = std::env::args();
 
-    if let Err(e) = syslog::init(IDENT.to_string(), false /* log_to_stderr */) {
+    if let Err(e) = syslog::init(IDENT.to_string(), true /* log_to_stderr */) {
         eprintln!("failed to initialize syslog: {}", e);
         return Err(());
     }
