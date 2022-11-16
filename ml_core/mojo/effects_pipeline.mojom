@@ -24,6 +24,7 @@ enum CameraEffect {
 enum GpuApi {
   kOpenCL = 0,
   [Default] kOpenGL = 1,
+  kAny = 2,
 };
 
 // Indicates the state of requesting a switch effect.
@@ -36,11 +37,11 @@ enum SetEffectResult {
 // Defines which level of blur to apply with the background blur effect.
 [Extensible]
 enum BlurLevel {
-  kLowest,
-  kLight,
-  [Default] kMedium,
-  kHeavy,
-  kMaximum,
+  kLowest = 0,
+  kLight = 1,
+  [Default] kMedium = 2,
+  kHeavy = 3,
+  kMaximum = 4,
 };
 
 // Structure used for configuring and enabling video conferencing effects.

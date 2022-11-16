@@ -31,6 +31,9 @@ struct BRILLO_EXPORT EffectsConfig {
   // Select which GPU API to use to perform the segmentation inference
   mojom::GpuApi segmentation_gpu_api = mojom::GpuApi::kOpenGL;
 
+  // Select which GPU API to use to perform the relighting inference
+  mojom::GpuApi relighting_gpu_api = mojom::GpuApi::kOpenGL;
+
   // Maximum number of frames allowed in flight.
   int graph_max_frames_in_flight = 2;
 
