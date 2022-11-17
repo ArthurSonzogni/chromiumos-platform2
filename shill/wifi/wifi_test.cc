@@ -1262,7 +1262,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
     wifi_->HandleNetlinkBroadcast(netlink_message);
   }
 
-  void RetrieveLinkStatistics(WiFiLinkStatistics::LinkStatisticsTrigger event) {
+  void RetrieveLinkStatistics(WiFiLinkStatistics::Trigger event) {
     wifi_->RetrieveLinkStatistics(event);
   }
 
@@ -5555,94 +5555,80 @@ TEST_F(WiFiMainTest, NetworkEventTransition) {
 
   // IP configuration starts
   ReportStateChanged(WPASupplicant::kInterfaceStateCompleted);
-  EXPECT_CALL(
-      *wifi_link_statistics_,
-      UpdateNl80211LinkStatistics(
-          WiFiLinkStatistics::LinkStatisticsTrigger::kIPConfigurationStart, _))
-      .Times(1);
-  ReportReceivedStationInfo(new_station);
-  EXPECT_CALL(
-      *wifi_link_statistics_,
-      UpdateRtnlLinkStatistics(
-          WiFiLinkStatistics::LinkStatisticsTrigger::kIPConfigurationStart, _))
-      .Times(1);
-  ReportReceivedRtnlLinkStatistics(stats);
-
-  RetrieveLinkStatistics(
-      WiFiLinkStatistics::LinkStatisticsTrigger::kDHCPFailure);
-
   EXPECT_CALL(*wifi_link_statistics_,
               UpdateNl80211LinkStatistics(
-                  WiFiLinkStatistics::LinkStatisticsTrigger::kDHCPFailure, _))
+                  WiFiLinkStatistics::Trigger::kIPConfigurationStart, _))
       .Times(1);
   ReportReceivedStationInfo(new_station);
   EXPECT_CALL(*wifi_link_statistics_,
               UpdateRtnlLinkStatistics(
-                  WiFiLinkStatistics::LinkStatisticsTrigger::kDHCPFailure, _))
+                  WiFiLinkStatistics::Trigger::kIPConfigurationStart, _))
+      .Times(1);
+  ReportReceivedRtnlLinkStatistics(stats);
+
+  RetrieveLinkStatistics(WiFiLinkStatistics::Trigger::kDHCPFailure);
+
+  EXPECT_CALL(
+      *wifi_link_statistics_,
+      UpdateNl80211LinkStatistics(WiFiLinkStatistics::Trigger::kDHCPFailure, _))
+      .Times(1);
+  ReportReceivedStationInfo(new_station);
+  EXPECT_CALL(
+      *wifi_link_statistics_,
+      UpdateRtnlLinkStatistics(WiFiLinkStatistics::Trigger::kDHCPFailure, _))
       .Times(1);
   ReportReceivedRtnlLinkStatistics(stats);
 
   // Test network validation failure
-  RetrieveLinkStatistics(
-      WiFiLinkStatistics::LinkStatisticsTrigger::kNetworkValidationStart);
+  RetrieveLinkStatistics(WiFiLinkStatistics::Trigger::kNetworkValidationStart);
 
-  EXPECT_CALL(
-      *wifi_link_statistics_,
-      UpdateNl80211LinkStatistics(
-          WiFiLinkStatistics::LinkStatisticsTrigger::kNetworkValidationStart,
-          _))
+  EXPECT_CALL(*wifi_link_statistics_,
+              UpdateNl80211LinkStatistics(
+                  WiFiLinkStatistics::Trigger::kNetworkValidationStart, _))
       .Times(1);
   ReportReceivedStationInfo(new_station);
-  EXPECT_CALL(
-      *wifi_link_statistics_,
-      UpdateRtnlLinkStatistics(
-          WiFiLinkStatistics::LinkStatisticsTrigger::kNetworkValidationStart,
-          _))
+  EXPECT_CALL(*wifi_link_statistics_,
+              UpdateRtnlLinkStatistics(
+                  WiFiLinkStatistics::Trigger::kNetworkValidationStart, _))
       .Times(1);
   ReportReceivedRtnlLinkStatistics(stats);
 
   // DHCP failure
-  RetrieveLinkStatistics(
-      WiFiLinkStatistics::LinkStatisticsTrigger::kDHCPFailure);
-  EXPECT_CALL(*wifi_link_statistics_,
-              UpdateNl80211LinkStatistics(
-                  WiFiLinkStatistics::LinkStatisticsTrigger::kDHCPFailure, _))
+  RetrieveLinkStatistics(WiFiLinkStatistics::Trigger::kDHCPFailure);
+  EXPECT_CALL(
+      *wifi_link_statistics_,
+      UpdateNl80211LinkStatistics(WiFiLinkStatistics::Trigger::kDHCPFailure, _))
       .Times(1);
   ReportReceivedStationInfo(new_station);
-  EXPECT_CALL(*wifi_link_statistics_,
-              UpdateRtnlLinkStatistics(
-                  WiFiLinkStatistics::LinkStatisticsTrigger::kDHCPFailure, _))
+  EXPECT_CALL(
+      *wifi_link_statistics_,
+      UpdateRtnlLinkStatistics(WiFiLinkStatistics::Trigger::kDHCPFailure, _))
       .Times(1);
   ReportReceivedRtnlLinkStatistics(stats);
   // SLAAC success
-  RetrieveLinkStatistics(
-      WiFiLinkStatistics::LinkStatisticsTrigger::kSlaacFinished);
+  RetrieveLinkStatistics(WiFiLinkStatistics::Trigger::kSlaacFinished);
   EXPECT_CALL(*wifi_link_statistics_,
               UpdateNl80211LinkStatistics(
-                  WiFiLinkStatistics::LinkStatisticsTrigger::kSlaacFinished, _))
+                  WiFiLinkStatistics::Trigger::kSlaacFinished, _))
       .Times(1);
   ReportReceivedStationInfo(new_station);
-  EXPECT_CALL(*wifi_link_statistics_,
-              UpdateRtnlLinkStatistics(
-                  WiFiLinkStatistics::LinkStatisticsTrigger::kSlaacFinished, _))
+  EXPECT_CALL(
+      *wifi_link_statistics_,
+      UpdateRtnlLinkStatistics(WiFiLinkStatistics::Trigger::kSlaacFinished, _))
       .Times(1);
   ReportReceivedRtnlLinkStatistics(stats);
 
   // Network validation failure
   RetrieveLinkStatistics(
-      WiFiLinkStatistics::LinkStatisticsTrigger::kNetworkValidationFailure);
-  EXPECT_CALL(
-      *wifi_link_statistics_,
-      UpdateNl80211LinkStatistics(
-          WiFiLinkStatistics::LinkStatisticsTrigger::kNetworkValidationFailure,
-          _))
+      WiFiLinkStatistics::Trigger::kNetworkValidationFailure);
+  EXPECT_CALL(*wifi_link_statistics_,
+              UpdateNl80211LinkStatistics(
+                  WiFiLinkStatistics::Trigger::kNetworkValidationFailure, _))
       .Times(1);
   ReportReceivedStationInfo(new_station);
-  EXPECT_CALL(
-      *wifi_link_statistics_,
-      UpdateRtnlLinkStatistics(
-          WiFiLinkStatistics::LinkStatisticsTrigger::kNetworkValidationFailure,
-          _))
+  EXPECT_CALL(*wifi_link_statistics_,
+              UpdateRtnlLinkStatistics(
+                  WiFiLinkStatistics::Trigger::kNetworkValidationFailure, _))
       .Times(1);
   ReportReceivedRtnlLinkStatistics(stats);
 }

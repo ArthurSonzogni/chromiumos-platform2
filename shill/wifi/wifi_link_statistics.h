@@ -23,7 +23,7 @@ class WiFiLinkStatistics {
   // base Device class. This enum is used for labelling link statistics obtained
   // from NL80211 and RTNL kernel interfaces for a WiFi interface at the time of
   // these events.
-  enum class LinkStatisticsTrigger {
+  enum class Trigger {
     kUnknown,
     // IPv4 and IPv6 dynamic configuration is starting for this network. This
     // corresponds to the start of the initial DHCP lease acquisition by dhcpcd
@@ -104,11 +104,10 @@ class WiFiLinkStatistics {
 
   struct Nl80211LinkStatistics {
     // The event that triggered the snapshot of WiFiLinkStatistics.
-    LinkStatisticsTrigger trigger = LinkStatisticsTrigger::kUnknown;
+    Trigger trigger = Trigger::kUnknown;
     base::Time timestamp;
     StationStats nl80211_link_stats;
-    Nl80211LinkStatistics(LinkStatisticsTrigger trigger,
-                          const StationStats& stats)
+    Nl80211LinkStatistics(Trigger trigger, const StationStats& stats)
         : trigger(trigger), nl80211_link_stats(stats) {
       timestamp = base::Time::Now();
     }
@@ -116,11 +115,10 @@ class WiFiLinkStatistics {
 
   struct RtnlLinkStatistics {
     // The event that triggered the snapshot of WiFiLinkStatistics.
-    LinkStatisticsTrigger trigger = LinkStatisticsTrigger::kUnknown;
+    Trigger trigger = Trigger::kUnknown;
     base::Time timestamp;
     old_rtnl_link_stats64 rtnl_link_stats;
-    RtnlLinkStatistics(LinkStatisticsTrigger event,
-                       const old_rtnl_link_stats64& stats)
+    RtnlLinkStatistics(Trigger event, const old_rtnl_link_stats64& stats)
         : trigger(event), rtnl_link_stats(stats) {
       timestamp = base::Time::Now();
     }
@@ -132,7 +130,7 @@ class WiFiLinkStatistics {
   // Clear all existing nl80211 and RTNL link statistics in the lists
   void Reset();
 
-  static std::string LinkStatisticsTriggerToString(LinkStatisticsTrigger event);
+  static std::string LinkStatisticsTriggerToString(Trigger event);
 
   // Update a new snapshot of WiFi link statistics.
   // If trigger is a start network event, the WiFi link statistics is
@@ -146,8 +144,8 @@ class WiFiLinkStatistics {
   // statistics of the start network event is left in the list and matches
   // the wrong end network event.
   mockable void UpdateNl80211LinkStatistics(
-      LinkStatisticsTrigger trigger, const KeyValueStore& link_statistics);
-  mockable void UpdateRtnlLinkStatistics(LinkStatisticsTrigger trigger,
+      Trigger trigger, const KeyValueStore& link_statistics);
+  mockable void UpdateRtnlLinkStatistics(Trigger trigger,
                                          const old_rtnl_link_stats64& stats);
 
  private:

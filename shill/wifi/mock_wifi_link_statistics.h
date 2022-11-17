@@ -18,12 +18,12 @@ class MockWiFiLinkStatistics : public WiFiLinkStatistics {
 
   MOCK_METHOD(void,
               UpdateNl80211LinkStatistics,
-              (WiFiLinkStatistics::LinkStatisticsTrigger trigger,
+              (WiFiLinkStatistics::Trigger trigger,
                const KeyValueStore& link_statistics),
               (override));
   MOCK_METHOD(void,
               UpdateRtnlLinkStatistics,
-              (WiFiLinkStatistics::LinkStatisticsTrigger trigger,
+              (WiFiLinkStatistics::Trigger trigger,
                const old_rtnl_link_stats64& stats),
               (override));
 };

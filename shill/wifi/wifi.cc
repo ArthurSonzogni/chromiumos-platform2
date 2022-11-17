@@ -2423,8 +2423,7 @@ void WiFi::StateChanged(const std::string& new_state) {
         is_roaming_in_progress_ = false;
         if (network()->TimeToNextDHCPLeaseRenewal() != std::nullopt) {
           LOG(INFO) << link_name() << " renewing L3 configuration after roam.";
-          RetrieveLinkStatistics(
-              WiFiLinkStatistics::LinkStatisticsTrigger::kDHCPRenewOnRoam);
+          RetrieveLinkStatistics(WiFiLinkStatistics::Trigger::kDHCPRenewOnRoam);
           network()->RenewDHCPLease();
           affected_service->SetRoamState(Service::kRoamStateConfiguring);
         }
@@ -2445,7 +2444,7 @@ void WiFi::StateChanged(const std::string& new_state) {
       network()->Start(opts);
       LOG(INFO) << link_name() << " is up; started L3 configuration.";
       RetrieveLinkStatistics(
-          WiFiLinkStatistics::LinkStatisticsTrigger::kIPConfigurationStart);
+          WiFiLinkStatistics::Trigger::kIPConfigurationStart);
       affected_service->SetState(Service::kStateConfiguring);
       if (affected_service->IsSecurityMatch(kSecurityWep)) {
         // With the overwhelming majority of WEP networks, we cannot assume
@@ -2891,7 +2890,7 @@ void WiFi::TriggerPassiveScan(const FreqSet& freqs) {
 
 void WiFi::OnConnected() {
   Device::OnConnected();
-  RetrieveLinkStatistics(WiFiLinkStatistics::LinkStatisticsTrigger::kConnected);
+  RetrieveLinkStatistics(WiFiLinkStatistics::Trigger::kConnected);
   if (current_service_ && current_service_->IsSecurityMatch(kSecurityWep)) {
     // With a WEP network, we are now reasonably certain the credentials are
     // correct, whereas with other network types we were able to determine
@@ -3895,8 +3894,7 @@ void WiFi::OnReceivedStationInfo(const Nl80211Message& nl80211_message) {
       current_nl80211_network_event_, link_statistics_);
   // Reset current_nl80211_network_event_ to prevent unnecessary
   // WiFiLinkStatistics update/print
-  current_nl80211_network_event_ =
-      WiFiLinkStatistics::LinkStatisticsTrigger::kUnknown;
+  current_nl80211_network_event_ = WiFiLinkStatistics::Trigger::kUnknown;
 }
 
 void WiFi::StopRequestingStationInfo() {
@@ -3913,33 +3911,29 @@ void WiFi::RemoveSupplicantNetworks() {
 }
 
 void WiFi::OnGetDHCPLease() {
-  RetrieveLinkStatistics(
-      WiFiLinkStatistics::LinkStatisticsTrigger::kDHCPSuccess);
+  RetrieveLinkStatistics(WiFiLinkStatistics::Trigger::kDHCPSuccess);
 }
 
 void WiFi::OnGetDHCPFailure() {
-  RetrieveLinkStatistics(
-      WiFiLinkStatistics::LinkStatisticsTrigger::kDHCPFailure);
+  RetrieveLinkStatistics(WiFiLinkStatistics::Trigger::kDHCPFailure);
 }
 
 void WiFi::OnGetSLAACAddress() {
-  RetrieveLinkStatistics(
-      WiFiLinkStatistics::LinkStatisticsTrigger::kSlaacFinished);
+  RetrieveLinkStatistics(WiFiLinkStatistics::Trigger::kSlaacFinished);
 }
 
 void WiFi::OnNetworkValidationStart() {
-  RetrieveLinkStatistics(
-      WiFiLinkStatistics::LinkStatisticsTrigger::kNetworkValidationStart);
+  RetrieveLinkStatistics(WiFiLinkStatistics::Trigger::kNetworkValidationStart);
 }
 
 void WiFi::OnNetworkValidationSuccess() {
   RetrieveLinkStatistics(
-      WiFiLinkStatistics::LinkStatisticsTrigger::kNetworkValidationSuccess);
+      WiFiLinkStatistics::Trigger::kNetworkValidationSuccess);
 }
 
 void WiFi::OnNetworkValidationFailure() {
   RetrieveLinkStatistics(
-      WiFiLinkStatistics::LinkStatisticsTrigger::kNetworkValidationFailure);
+      WiFiLinkStatistics::Trigger::kNetworkValidationFailure);
 }
 
 void WiFi::OnIPv4ConfiguredWithDHCPLease() {
@@ -3964,8 +3958,7 @@ void WiFi::OnIPv6ConfiguredWithSLAACAddress() {
   wake_on_wifi_->OnConnectedAndReachable(std::nullopt);
 }
 
-void WiFi::RetrieveLinkStatistics(
-    WiFiLinkStatistics::LinkStatisticsTrigger event) {
+void WiFi::RetrieveLinkStatistics(WiFiLinkStatistics::Trigger event) {
   current_rtnl_network_event_ = event;
   RTNLHandler::GetInstance()->RequestDump(RTNLHandler::kRequestLink);
   current_nl80211_network_event_ = event;
@@ -4081,8 +4074,7 @@ void WiFi::OnReceivedRtnlLinkStatistics(const old_rtnl_link_stats64& stats) {
                                                   stats);
   // Reset current_rtnl_network_event_ to prevent unnecessary WiFiLinkStatistics
   // update/print
-  current_rtnl_network_event_ =
-      WiFiLinkStatistics::LinkStatisticsTrigger::kUnknown;
+  current_rtnl_network_event_ = WiFiLinkStatistics::Trigger::kUnknown;
 }
 
 bool WiFi::SupportsWEP() const {

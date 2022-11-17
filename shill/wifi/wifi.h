@@ -667,7 +667,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   void OnNetworkValidationSuccess() override;
   void OnNetworkValidationFailure() override;
 
-  void RetrieveLinkStatistics(WiFiLinkStatistics::LinkStatisticsTrigger event);
+  void RetrieveLinkStatistics(WiFiLinkStatistics::Trigger event);
 
   // Returns true iff the WiFi device is connected to the current service.
   bool IsConnectedToCurrentService();
@@ -896,10 +896,10 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // Used for the diagnosis on link failures defined in WiFiLinkStatistics.
   std::unique_ptr<WiFiLinkStatistics> wifi_link_statistics_;
   // Keep the current network event for RTNL link and nl80211 statistics.
-  WiFiLinkStatistics::LinkStatisticsTrigger current_rtnl_network_event_ =
-      WiFiLinkStatistics::LinkStatisticsTrigger::kUnknown;
-  WiFiLinkStatistics::LinkStatisticsTrigger current_nl80211_network_event_ =
-      WiFiLinkStatistics::LinkStatisticsTrigger::kUnknown;
+  WiFiLinkStatistics::Trigger current_rtnl_network_event_ =
+      WiFiLinkStatistics::Trigger::kUnknown;
+  WiFiLinkStatistics::Trigger current_nl80211_network_event_ =
+      WiFiLinkStatistics::Trigger::kUnknown;
 
   // Phy interface index of this WiFi device.
   uint32_t phy_index_;
