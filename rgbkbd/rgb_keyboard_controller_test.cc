@@ -137,35 +137,35 @@ TEST_F(RgbKeyboardControllerTest, SetCapsLockStateWithAlternateHighlight) {
 }
 
 TEST_F(RgbKeyboardControllerTest, SetRainbowModeFourZoneFortyLed) {
-  controller_->SetCapabilitiesForTesting(
+  controller_->SetKeyboardCapabilityForTesting(
       RgbKeyboardCapabilities::kFourZoneFortyLed);
   controller_->SetRainbowMode();
   ValidateLog(kRainbowModeFourZoneFortyLed);
 }
 
 TEST_F(RgbKeyboardControllerTest, SetRainbowModeIndividualKey) {
-  controller_->SetCapabilitiesForTesting(
+  controller_->SetKeyboardCapabilityForTesting(
       RgbKeyboardCapabilities::kIndividualKey);
   controller_->SetRainbowMode();
   ValidateLog(kRainbowModeIndividualKey);
 }
 
 TEST_F(RgbKeyboardControllerTest, SetRainbowModeFourZoneTwelveLed) {
-  controller_->SetCapabilitiesForTesting(
+  controller_->SetKeyboardCapabilityForTesting(
       RgbKeyboardCapabilities::kFourZoneTwelveLed);
   controller_->SetRainbowMode();
   ValidateLog(kRainbowModeFourZoneTwelveLed);
 }
 
 TEST_F(RgbKeyboardControllerTest, SetRainbowModeFourZoneFourLed) {
-  controller_->SetCapabilitiesForTesting(
+  controller_->SetKeyboardCapabilityForTesting(
       RgbKeyboardCapabilities::kFourZoneFourLed);
   controller_->SetRainbowMode();
   ValidateLog(kRainbowModeFourZoneFourLed);
 }
 
 TEST_F(RgbKeyboardControllerTest, SetRainbowModeCapsLockEnabled) {
-  controller_->SetCapabilitiesForTesting(
+  controller_->SetKeyboardCapabilityForTesting(
       RgbKeyboardCapabilities::kIndividualKey);
   controller_->SetCapsLockState(/*enabled=*/true);
   EXPECT_TRUE(logger_->ResetLog());
