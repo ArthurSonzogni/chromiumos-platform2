@@ -159,35 +159,6 @@ class Middleware {
     return t;
   }
 
-  template <typename Arg>
-  static bool ReloadKeyHandler(hwsec::Backend* backend, const Arg& key) {
-    if constexpr (std::is_same_v<Arg, Key>) {
-      auto* key_mgr = backend->Get<Backend::KeyManagement>();
-      if (key_mgr == nullptr) {
-        return false;
-      }
-      if (Status status = key_mgr->ReloadIfPossible(key); !status.ok()) {
-        LOG(WARNING) << "Failed to reload key parameter: "
-                     << status.err_status();
-        return false;
-      }
-      return true;
-    }
-    return false;
-  }
-
-  static bool FlushInvalidSessions(hwsec::Backend* backend) {
-    auto* session_mgr = backend->Get<Backend::SessionManagement>();
-    if (session_mgr == nullptr) {
-      return false;
-    }
-    if (Status status = session_mgr->FlushInvalidSessions(); !status.ok()) {
-      LOG(WARNING) << "Failed to flush invalid sessions: " << status.status();
-      return false;
-    }
-    return true;
-  }
-
   template <auto Func, typename... Args>
   static SubClassResult<decltype(Func)> CallSyncInternal(
       base::WeakPtr<MiddlewareOwner> middleware, Args... args) {
@@ -214,39 +185,11 @@ class Middleware {
                                   TPMRetryAction::kNoRetry);
     }
 
-    for (RetryInternalData retry_data;;) {
+    for (TPMRetryHandler retry_handler;;) {
       SubClassResult<decltype(Func)> result = (sub->*Func)(args...);
-      if (result.ok()) {
+      if (retry_handler.HandleResult(result, *middleware->backend_, args...)) {
         return result;
       }
-      switch (result.err_status()->ToTPMRetryAction()) {
-        case TPMRetryAction::kCommunication:
-          RetryDelayHandler(&retry_data);
-          break;
-        case TPMRetryAction::kLater: {
-          bool shall_retry = false;
-          // Flush the invalid sessions.
-          shall_retry |= FlushInvalidSessions(middleware->backend_.get());
-          // fold expression with || operator.
-          shall_retry |=
-              (ReloadKeyHandler(middleware->backend_.get(), args) || ...);
-          // Don't continue retry if all reload/flush operations failed.
-          if (!shall_retry) {
-            return result;
-          }
-          RetryDelayHandler(&retry_data);
-          break;
-        }
-        default:
-          return result;
-      }
-      if (retry_data.try_count <= 0) {
-        return MakeStatus<TPMError>("Retry Failed", TPMRetryAction::kReboot)
-            .Wrap(std::move(result).err_status());
-      }
-
-      LOG(WARNING) << "Retry libhwsec error: "
-                   << std::move(result).err_status();
     }
   }
 

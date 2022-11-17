@@ -17,7 +17,6 @@
 #include <base/threading/thread.h>
 
 #include "libhwsec/backend/backend.h"
-#include "libhwsec/error/tpm_retry_handler.h"
 #include "libhwsec/hwsec_export.h"
 #include "libhwsec/middleware/middleware_derivative.h"
 #include "libhwsec/proxy/proxy.h"
@@ -44,10 +43,12 @@
 namespace hwsec {
 
 class Middleware;
+class TPMRetryHandler;
 
 class HWSEC_EXPORT MiddlewareOwner {
  public:
   friend class Middleware;
+  friend class TPMRetryHandler;
 
   explicit MiddlewareOwner(ThreadingMode mode);
 

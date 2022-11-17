@@ -16,7 +16,6 @@
 #include <base/logging.h>
 #include <brillo/secure_blob.h>
 #include <libhwsec/status.h>
-#include <libhwsec/error/tpm_retry_handler.h>
 #include <libhwsec-foundation/crypto/aes.h>
 #include <libhwsec-foundation/crypto/scrypt.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
