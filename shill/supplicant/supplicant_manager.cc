@@ -29,14 +29,14 @@ SupplicantManager::SupplicantManager(Manager* manager)
     : control_interface_(manager->control_interface()),
       dispatcher_(manager->dispatcher()) {}
 
-SupplicantManager::~SupplicantManager() = default;
+SupplicantManager::~SupplicantManager() {}
 
 void SupplicantManager::Start() {
   proxy_ = control_interface_->CreateSupplicantProcessProxy(
-      base::BindRepeating(&SupplicantManager::OnSupplicantPresence,
-                          base::Unretained(this), true),
-      base::BindRepeating(&SupplicantManager::OnSupplicantPresence,
-                          base::Unretained(this), false));
+      base::BindRepeating(&SupplicantManager::OnSupplicantPresence, AsWeakPtr(),
+                          true),
+      base::BindRepeating(&SupplicantManager::OnSupplicantPresence, AsWeakPtr(),
+                          false));
 }
 
 void SupplicantManager::AddSupplicantListener(

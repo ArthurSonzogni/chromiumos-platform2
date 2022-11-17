@@ -532,6 +532,7 @@ class Manager {
   friend class TetheringManagerTest;
   friend class VPNServiceTest;
   friend class WiFiObjectTest;
+  friend class DaemonTaskTest;
 
   FRIEND_TEST(CellularCapability3gppTest, TerminationAction);
   FRIEND_TEST(CellularCapability3gppTest, TerminationActionRemovedByStopModem);
@@ -582,6 +583,7 @@ class Manager {
   FRIEND_TEST(VPNProviderTest, SetDefaultRoutingPolicy);
   FRIEND_TEST(WiFiServiceTest, ConnectTaskFT);
   FRIEND_TEST(WiFiMainTest, ScanAllowRoam);
+  FRIEND_TEST(DaemonTaskTest, SupplicantAppearsAfterStop);
 
   void AutoConnect();
   // Ensure always-on VPN follows the current configuration, ie: hardware

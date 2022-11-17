@@ -10,6 +10,7 @@
 
 #include <base/bind.h>
 #include <base/callback.h>
+#include <base/memory/weak_ptr.h>
 
 namespace shill {
 
@@ -47,11 +48,18 @@ class SupplicantManager {
 
   SupplicantProcessProxyInterface* proxy() const { return proxy_.get(); }
 
+  base::WeakPtr<SupplicantManager> AsWeakPtr() {
+    return weak_factory_.GetWeakPtr();
+  }
+
  private:
   friend class EthernetTest;
   friend class HotspotDeviceTest;
   friend class SupplicantManagerTest;
   friend class WiFiObjectTest;
+  friend class DaemonTaskTest;
+
+  FRIEND_TEST(DaemonTaskTest, SupplicantAppearsAfterStop);
 
   void AddSupplicantListener(
       const SupplicantListenerCallback& present_callback);
@@ -68,6 +76,8 @@ class SupplicantManager {
   std::unique_ptr<SupplicantProcessProxyInterface> proxy_;
   std::vector<SupplicantListenerCallback> listeners_;
   bool present_ = false;
+
+  base::WeakPtrFactory<SupplicantManager> weak_factory_{this};
 };
 
 }  // namespace shill

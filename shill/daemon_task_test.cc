@@ -29,6 +29,7 @@
 #include "shill/net/nl80211_message.h"
 #include "shill/network/mock_dhcp_provider.h"
 #include "shill/shill_test_config.h"
+#include "shill/supplicant/supplicant_manager.h"
 #include "shill/test_event_dispatcher.h"
 
 using ::testing::_;
@@ -141,7 +142,21 @@ TEST_F(DaemonTaskTest, StartStop) {
 
   EXPECT_CALL(*manager_, Stop());
   EXPECT_CALL(process_manager_, Stop());
+
   StopDaemon();
+}
+
+TEST_F(DaemonTaskTest, SupplicantAppearsAfterStop) {
+  // This test verifies that the daemon won't crash upon receiving Dbus message
+  // via ControlInterface, which outlives the Manager. The SupplicantManager is
+  // owned by the Manager, which is freed after Stop().
+  StartDaemon();
+  manager_->supplicant_manager()->Start();
+
+  StopDaemon();
+
+  control_->supplicant_appear().Run();
+  dispatcher_->DispatchPendingEvents();
 }
 
 ACTION_P2(CompleteAction, manager, name) {
