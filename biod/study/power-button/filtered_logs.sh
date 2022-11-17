@@ -45,6 +45,8 @@ StartAuthSession
 EndAuthSession
 DoMatchEvent result
 Ignoring fp match
+Done writing record
+Done deleting record
 EOF
 
 # Events from EC firmware related to power button
