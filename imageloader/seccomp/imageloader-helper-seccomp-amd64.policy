@@ -55,6 +55,7 @@ pipe: 1
 poll: 1
 pread64: 1
 prctl: 1
+process_vm_readv: 1
 pwrite64: 1
 read: 1
 recvmsg: 1

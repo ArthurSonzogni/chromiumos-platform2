@@ -48,6 +48,7 @@ openat: 1
 pipe: 1
 poll: 1
 prctl: 1
+process_vm_readv: 1
 pwrite64: 1
 read: 1
 rename: 1
