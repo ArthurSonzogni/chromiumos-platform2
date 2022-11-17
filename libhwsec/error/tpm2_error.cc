@@ -50,6 +50,14 @@ TPMRetryAction TPM2Error::ToTPMRetryAction() const {
     case trunks::SAPI_RC_MALFORMED_RESPONSE:
       status = TPMRetryAction::kCommunication;
       break;
+    // Invalid session to the TPM.
+    case trunks::TPM_RC_REFERENCE_S0:
+    case trunks::TPM_RC_REFERENCE_S1:
+    case trunks::TPM_RC_REFERENCE_S2:
+    case trunks::TPM_RC_REFERENCE_S3:
+    case trunks::TPM_RC_REFERENCE_S4:
+    case trunks::TPM_RC_REFERENCE_S5:
+    case trunks::TPM_RC_REFERENCE_S6:
     // Invalid handle to the TPM.
     case trunks::TPM_RC_HANDLE:
     case trunks::TPM_RC_REFERENCE_H0:
@@ -59,6 +67,7 @@ TPMRetryAction TPM2Error::ToTPMRetryAction() const {
     case trunks::TPM_RC_REFERENCE_H4:
     case trunks::TPM_RC_REFERENCE_H5:
     case trunks::TPM_RC_REFERENCE_H6:
+    // Might be caused by invalid handle or session.
     case trunks::TPM_RC_INTEGRITY:
     case trunks::SAPI_RC_BAD_PARAMETER:
       status = TPMRetryAction::kLater;
