@@ -78,6 +78,18 @@ void MaybeEnableHdrNetStreamManipulator(
     // * Gcam AE is placed after HDRnet because it needs raw result frames as
     //   input to get accurate AE metering, and because Gcam AE produces the
     //   HDR ratio needed by HDRnet to render the output frame.
+
+#if USE_CAMERA_FEATURE_FACE_DETECTION
+    if (feature_profile.IsEnabled(
+            FeatureProfile::FeatureType::kFaceDetection)) {
+      out_stream_manipulators->emplace_back(
+          std::make_unique<FaceDetectionStreamManipulator>(
+              feature_profile.GetConfigFilePath(
+                  FeatureProfile::FeatureType::kFaceDetection)));
+      LOGF(INFO) << "FaceDetectionStreamManipulator enabled";
+    }
+#endif
+
     std::unique_ptr<JpegCompressor> jpeg_compressor =
         JpegCompressor::GetInstance(CameraMojoChannelManager::GetInstance());
     out_stream_manipulators->emplace_back(
@@ -139,17 +151,6 @@ StreamManipulatorManager::StreamManipulatorManager(
 
   MaybeEnableAutoFramingStreamManipulator(feature_profile, runtime_options,
                                           gpu_resources, &stream_manipulators_);
-
-#if USE_CAMERA_FEATURE_FACE_DETECTION
-  if (feature_profile.IsEnabled(FeatureProfile::FeatureType::kFaceDetection)) {
-    stream_manipulators_.emplace_back(
-        std::make_unique<FaceDetectionStreamManipulator>(
-            feature_profile.GetConfigFilePath(
-                FeatureProfile::FeatureType::kFaceDetection)));
-    LOGF(INFO) << "FaceDetectionStreamManipulator enabled";
-  }
-#endif
-
   MaybeEnableHdrNetStreamManipulator(feature_profile, options, gpu_resources,
                                      &stream_manipulators_);
 
