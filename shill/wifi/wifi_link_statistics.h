@@ -14,12 +14,46 @@
 #include "shill/mockable.h"
 #include "shill/net/rtnl_link_stats.h"
 #include "shill/store/key_value_store.h"
-#include "shill/wifi/wifi.h"
 
 namespace shill {
 
 class WiFiLinkStatistics {
  public:
+  // Enum corresponding to various network layer events defined in the
+  // base Device class. This enum is used for labelling link statistics obtained
+  // from NL80211 and RTNL kernel interfaces for a WiFi interface at the time of
+  // these events.
+  enum class LinkStatisticsTrigger {
+    kUnknown,
+    // IPv4 and IPv6 dynamic configuration is starting for this network. This
+    // corresponds to the start of the initial DHCP lease acquisition by dhcpcd
+    // and to the start of IPv6 SLAAC in the kernel.
+    kIPConfigurationStart,
+    // The network is connected and one of IPv4 or IPv6 is provisioned. This
+    // corresponds to the beginning of the first network validation event if
+    // PortalDetector is used for validating the network Internet access.
+    kConnected,
+    // A roaming event is triggering a DHCP renew.
+    kDHCPRenewOnRoam,
+    // DHCPv4 lease acquisation has successfully completed.
+    kDHCPSuccess,
+    // DHCPv4 lease acquisation has failed. This event happens whenever the
+    // DHCPController instance associated with the network invokes its
+    // FailureCallback.
+    kDHCPFailure,
+    // IPv6 SLAAC has completed successfully. On IPv4-only networks where IPv6
+    // is not available, there is no timeout event of failure event recorded.
+    kSlaacFinished,
+    // A network validation attempt by PortalDetector is starting.
+    kNetworkValidationStart,
+    // A network validation attempt has completed and verified Internet
+    // connectivity.
+    kNetworkValidationSuccess,
+    // A network validation attempt has completed but Internet connectivity
+    // was not verified.
+    kNetworkValidationFailure,
+  };
+
   enum class ChannelWidth {
     kChannelWidthUnknown,
     kChannelWidth20MHz,
@@ -70,10 +104,10 @@ class WiFiLinkStatistics {
 
   struct Nl80211LinkStatistics {
     // The event that triggered the snapshot of WiFiLinkStatistics.
-    WiFi::LinkStatisticsTrigger trigger = WiFi::LinkStatisticsTrigger::kUnknown;
+    LinkStatisticsTrigger trigger = LinkStatisticsTrigger::kUnknown;
     base::Time timestamp;
     StationStats nl80211_link_stats;
-    Nl80211LinkStatistics(WiFi::LinkStatisticsTrigger trigger,
+    Nl80211LinkStatistics(LinkStatisticsTrigger trigger,
                           const StationStats& stats)
         : trigger(trigger), nl80211_link_stats(stats) {
       timestamp = base::Time::Now();
@@ -82,10 +116,10 @@ class WiFiLinkStatistics {
 
   struct RtnlLinkStatistics {
     // The event that triggered the snapshot of WiFiLinkStatistics.
-    WiFi::LinkStatisticsTrigger trigger = WiFi::LinkStatisticsTrigger::kUnknown;
+    LinkStatisticsTrigger trigger = LinkStatisticsTrigger::kUnknown;
     base::Time timestamp;
     old_rtnl_link_stats64 rtnl_link_stats;
-    RtnlLinkStatistics(WiFi::LinkStatisticsTrigger event,
+    RtnlLinkStatistics(LinkStatisticsTrigger event,
                        const old_rtnl_link_stats64& stats)
         : trigger(event), rtnl_link_stats(stats) {
       timestamp = base::Time::Now();
@@ -98,8 +132,7 @@ class WiFiLinkStatistics {
   // Clear all existing nl80211 and RTNL link statistics in the lists
   void Reset();
 
-  static std::string LinkStatisticsTriggerToString(
-      WiFi::LinkStatisticsTrigger event);
+  static std::string LinkStatisticsTriggerToString(LinkStatisticsTrigger event);
 
   // Update a new snapshot of WiFi link statistics.
   // If trigger is a start network event, the WiFi link statistics is
@@ -113,9 +146,8 @@ class WiFiLinkStatistics {
   // statistics of the start network event is left in the list and matches
   // the wrong end network event.
   mockable void UpdateNl80211LinkStatistics(
-      WiFi::LinkStatisticsTrigger trigger,
-      const KeyValueStore& link_statistics);
-  mockable void UpdateRtnlLinkStatistics(WiFi::LinkStatisticsTrigger trigger,
+      LinkStatisticsTrigger trigger, const KeyValueStore& link_statistics);
+  mockable void UpdateRtnlLinkStatistics(LinkStatisticsTrigger trigger,
                                          const old_rtnl_link_stats64& stats);
 
  private:

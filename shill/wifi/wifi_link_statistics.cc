@@ -13,7 +13,8 @@
 namespace shill {
 namespace {
 // Determine if the WiFi link statistics should be print to log.
-bool ShouldPrintWiFiLinkStatistics(WiFi::LinkStatisticsTrigger trigger) {
+bool ShouldPrintWiFiLinkStatistics(
+    WiFiLinkStatistics::LinkStatisticsTrigger trigger) {
   // It doesn't consider if the service is connected (Service::IsConnected() ==
   // true) when determining if the WiFi link statistics should be printed.
   // There are two examples where the service is connected, but the necessity of
@@ -29,35 +30,41 @@ bool ShouldPrintWiFiLinkStatistics(WiFi::LinkStatisticsTrigger trigger) {
   // It may print unnecessary WiFi link statistics if the state of the service
   // is not considered. It is acceptable because the size of the WiFi link
   // statistics in netlog is small.
-  return trigger == WiFi::LinkStatisticsTrigger::kDHCPFailure ||
-         trigger == WiFi::LinkStatisticsTrigger::kNetworkValidationFailure;
+  return trigger == WiFiLinkStatistics::LinkStatisticsTrigger::kDHCPFailure ||
+         trigger == WiFiLinkStatistics::LinkStatisticsTrigger::
+                        kNetworkValidationFailure;
 }
 
-bool IsEndNetworkEvent(WiFi::LinkStatisticsTrigger trigger) {
-  return trigger == WiFi::LinkStatisticsTrigger::kConnected ||
-         trigger == WiFi::LinkStatisticsTrigger::kDHCPSuccess ||
-         trigger == WiFi::LinkStatisticsTrigger::kDHCPFailure ||
-         trigger == WiFi::LinkStatisticsTrigger::kSlaacFinished ||
-         trigger == WiFi::LinkStatisticsTrigger::kNetworkValidationSuccess ||
-         trigger == WiFi::LinkStatisticsTrigger::kNetworkValidationFailure;
+bool IsEndNetworkEvent(WiFiLinkStatistics::LinkStatisticsTrigger trigger) {
+  return trigger == WiFiLinkStatistics::LinkStatisticsTrigger::kConnected ||
+         trigger == WiFiLinkStatistics::LinkStatisticsTrigger::kDHCPSuccess ||
+         trigger == WiFiLinkStatistics::LinkStatisticsTrigger::kDHCPFailure ||
+         trigger == WiFiLinkStatistics::LinkStatisticsTrigger::kSlaacFinished ||
+         trigger == WiFiLinkStatistics::LinkStatisticsTrigger::
+                        kNetworkValidationSuccess ||
+         trigger == WiFiLinkStatistics::LinkStatisticsTrigger::
+                        kNetworkValidationFailure;
 }
 
-bool DoesEndMatchStartEvent(WiFi::LinkStatisticsTrigger start_event,
-                            WiFi::LinkStatisticsTrigger end_event) {
+bool DoesEndMatchStartEvent(
+    WiFiLinkStatistics::LinkStatisticsTrigger start_event,
+    WiFiLinkStatistics::LinkStatisticsTrigger end_event) {
   // kIPConfigurationStart is used to represent IPv4 and IPv6 configuration
   // start, so kConnected doesn't actually have a corresponding start event.
   switch (end_event) {
-    case WiFi::LinkStatisticsTrigger::kDHCPSuccess:
-    case WiFi::LinkStatisticsTrigger::kDHCPFailure:
+    case WiFiLinkStatistics::LinkStatisticsTrigger::kDHCPSuccess:
+    case WiFiLinkStatistics::LinkStatisticsTrigger::kDHCPFailure:
+      return start_event == WiFiLinkStatistics::LinkStatisticsTrigger::
+                                kIPConfigurationStart ||
+             start_event ==
+                 WiFiLinkStatistics::LinkStatisticsTrigger::kDHCPRenewOnRoam;
+    case WiFiLinkStatistics::LinkStatisticsTrigger::kSlaacFinished:
       return start_event ==
-                 WiFi::LinkStatisticsTrigger::kIPConfigurationStart ||
-             start_event == WiFi::LinkStatisticsTrigger::kDHCPRenewOnRoam;
-    case WiFi::LinkStatisticsTrigger::kSlaacFinished:
-      return start_event == WiFi::LinkStatisticsTrigger::kIPConfigurationStart;
-    case WiFi::LinkStatisticsTrigger::kNetworkValidationSuccess:
-    case WiFi::LinkStatisticsTrigger::kNetworkValidationFailure:
+             WiFiLinkStatistics::LinkStatisticsTrigger::kIPConfigurationStart;
+    case WiFiLinkStatistics::LinkStatisticsTrigger::kNetworkValidationSuccess:
+    case WiFiLinkStatistics::LinkStatisticsTrigger::kNetworkValidationFailure:
       return start_event ==
-             WiFi::LinkStatisticsTrigger::kNetworkValidationStart;
+             WiFiLinkStatistics::LinkStatisticsTrigger::kNetworkValidationStart;
     default:
       return false;
   }
@@ -178,27 +185,27 @@ WiFiLinkStatistics::StationStats ConvertNl80211StaInfo(
 
 // static
 std::string WiFiLinkStatistics::LinkStatisticsTriggerToString(
-    WiFi::LinkStatisticsTrigger trigger) {
+    LinkStatisticsTrigger trigger) {
   switch (trigger) {
-    case WiFi::LinkStatisticsTrigger::kUnknown:
+    case LinkStatisticsTrigger::kUnknown:
       return "kUnknown";
-    case WiFi::LinkStatisticsTrigger::kIPConfigurationStart:
+    case LinkStatisticsTrigger::kIPConfigurationStart:
       return "kIPConfigurationStart";
-    case WiFi::LinkStatisticsTrigger::kConnected:
+    case LinkStatisticsTrigger::kConnected:
       return "kConnected";
-    case WiFi::LinkStatisticsTrigger::kDHCPRenewOnRoam:
+    case LinkStatisticsTrigger::kDHCPRenewOnRoam:
       return "kDHCPRenewOnRoam";
-    case WiFi::LinkStatisticsTrigger::kDHCPSuccess:
+    case LinkStatisticsTrigger::kDHCPSuccess:
       return "kDHCPSuccess";
-    case WiFi::LinkStatisticsTrigger::kDHCPFailure:
+    case LinkStatisticsTrigger::kDHCPFailure:
       return "kDHCPFailure";
-    case WiFi::LinkStatisticsTrigger::kSlaacFinished:
+    case LinkStatisticsTrigger::kSlaacFinished:
       return "kSlaacFinished";
-    case WiFi::LinkStatisticsTrigger::kNetworkValidationStart:
+    case LinkStatisticsTrigger::kNetworkValidationStart:
       return "kNetworkValidationStart";
-    case WiFi::LinkStatisticsTrigger::kNetworkValidationSuccess:
+    case LinkStatisticsTrigger::kNetworkValidationSuccess:
       return "kNetworkValidationSuccess";
-    case WiFi::LinkStatisticsTrigger::kNetworkValidationFailure:
+    case LinkStatisticsTrigger::kNetworkValidationFailure:
       return "kNetworkValidationFailure";
     default:
       LOG(ERROR) << "Invalid LinkStatisticsTrigger: "
@@ -213,9 +220,9 @@ void WiFiLinkStatistics::Reset() {
 }
 
 void WiFiLinkStatistics::UpdateNl80211LinkStatistics(
-    WiFi::LinkStatisticsTrigger trigger, const KeyValueStore& link_statistics) {
+    LinkStatisticsTrigger trigger, const KeyValueStore& link_statistics) {
   // nl80211 station information for WiFi link diagnosis
-  if (trigger == WiFi::LinkStatisticsTrigger::kUnknown) {
+  if (trigger == LinkStatisticsTrigger::kUnknown) {
     return;
   }
 
@@ -250,15 +257,15 @@ void WiFiLinkStatistics::UpdateNl80211LinkStatistics(
     // Add an extra nl80211 link statistics because kIPConfigurationStart
     // corresponds to the start of the initial DHCP lease acquisition by dhcpcd
     // and to the start of IPv6 SLAAC in the kernel.
-    if (trigger == WiFi::LinkStatisticsTrigger::kIPConfigurationStart) {
+    if (trigger == LinkStatisticsTrigger::kIPConfigurationStart) {
       nl80211_link_statistics_.emplace_back(trigger, stats);
     }
   }
 }
 
 void WiFiLinkStatistics::UpdateRtnlLinkStatistics(
-    WiFi::LinkStatisticsTrigger trigger, const old_rtnl_link_stats64& stats) {
-  if (trigger == WiFi::LinkStatisticsTrigger::kUnknown) {
+    LinkStatisticsTrigger trigger, const old_rtnl_link_stats64& stats) {
+  if (trigger == LinkStatisticsTrigger::kUnknown) {
     return;
   }
   // If the trigger is an end network event, erase the link statistics of its
@@ -289,7 +296,7 @@ void WiFiLinkStatistics::UpdateRtnlLinkStatistics(
     // Add an extra RTNL link statistics because kIPConfigurationStart
     // corresponds to the start of the initial DHCP lease acquisition by dhcpcd
     // and to the start of IPv6 SLAAC in the kernel.
-    if (trigger == WiFi::LinkStatisticsTrigger::kIPConfigurationStart) {
+    if (trigger == LinkStatisticsTrigger::kIPConfigurationStart) {
       rtnl_link_statistics_.emplace_back(trigger, stats);
     }
   }

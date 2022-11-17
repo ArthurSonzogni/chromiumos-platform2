@@ -99,6 +99,7 @@
 #include "shill/store/key_value_store.h"
 #include "shill/supplicant/supplicant_event_delegate_interface.h"
 #include "shill/supplicant/supplicant_manager.h"
+#include "shill/wifi/wifi_link_statistics.h"
 
 namespace shill {
 
@@ -112,7 +113,6 @@ class SupplicantInterfaceProxyInterface;
 class SupplicantProcessProxyInterface;
 class WakeOnWiFiInterface;
 class WiFiCQM;
-class WiFiLinkStatistics;
 class WiFiPhy;
 class WiFiProvider;
 class WiFiService;
@@ -120,41 +120,6 @@ class WiFiService;
 // WiFi class. Specialization of Device for WiFi.
 class WiFi : public Device, public SupplicantEventDelegateInterface {
  public:
-  // Enum corresponding to various network layer events defined in the
-  // base Device class. This enum is used for labelling link statistics obtained
-  // from NL80211 and RTNL kernel interfaces for a WiFi interface at the time of
-  // these events.
-  enum class LinkStatisticsTrigger {
-    kUnknown,
-    // IPv4 and IPv6 dynamic configuration is starting for this network. This
-    // corresponds to the start of the initial DHCP lease acquisition by dhcpcd
-    // and to the start of IPv6 SLAAC in the kernel.
-    kIPConfigurationStart,
-    // The network is connected and one of IPv4 or IPv6 is provisioned. This
-    // corresponds to the beginning of the first network validation event if
-    // PortalDetector is used for validating the network Internet access.
-    kConnected,
-    // A roaming event is triggering a DHCP renew.
-    kDHCPRenewOnRoam,
-    // DHCPv4 lease acquisation has successfully completed.
-    kDHCPSuccess,
-    // DHCPv4 lease acquisation has failed. This event happens whenever the
-    // DHCPController instance associated with the network invokes its
-    // FailureCallback.
-    kDHCPFailure,
-    // IPv6 SLAAC has completed successfully. On IPv4-only networks where IPv6
-    // is not available, there is no timeout event of failure event recorded.
-    kSlaacFinished,
-    // A network validation attempt by PortalDetector is starting.
-    kNetworkValidationStart,
-    // A network validation attempt has completed and verified Internet
-    // connectivity.
-    kNetworkValidationSuccess,
-    // A network validation attempt has completed but Internet connectivity
-    // was not verified.
-    kNetworkValidationFailure,
-  };
-
   using FreqSet = std::set<uint32_t>;
 
   WiFi(Manager* manager,
@@ -702,7 +667,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   void OnNetworkValidationSuccess() override;
   void OnNetworkValidationFailure() override;
 
-  void RetrieveLinkStatistics(LinkStatisticsTrigger event);
+  void RetrieveLinkStatistics(WiFiLinkStatistics::LinkStatisticsTrigger event);
 
   // Returns true iff the WiFi device is connected to the current service.
   bool IsConnectedToCurrentService();
@@ -930,11 +895,11 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
 
   // Used for the diagnosis on link failures defined in WiFiLinkStatistics.
   std::unique_ptr<WiFiLinkStatistics> wifi_link_statistics_;
-  // Keep the current network event for RTNL and nl80211 link statistics
-  LinkStatisticsTrigger current_rtnl_network_event_ =
-      LinkStatisticsTrigger::kUnknown;
-  LinkStatisticsTrigger current_nl80211_network_event_ =
-      LinkStatisticsTrigger::kUnknown;
+  // Keep the current network event for RTNL link and nl80211 statistics.
+  WiFiLinkStatistics::LinkStatisticsTrigger current_rtnl_network_event_ =
+      WiFiLinkStatistics::LinkStatisticsTrigger::kUnknown;
+  WiFiLinkStatistics::LinkStatisticsTrigger current_nl80211_network_event_ =
+      WiFiLinkStatistics::LinkStatisticsTrigger::kUnknown;
 
   // Phy interface index of this WiFi device.
   uint32_t phy_index_;
