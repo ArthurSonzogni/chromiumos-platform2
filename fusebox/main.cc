@@ -1107,15 +1107,6 @@ class FuseBoxClient : public FileSystem {
       return;
     }
 
-    Device device = GetInodeTable().GetDevice(parent_node);
-    bool read_only = device.mode == "ro";
-
-    if (read_only) {
-      errno = request->ReplyError(EROFS);
-      PLOG(ERROR) << "create";
-      return;
-    }
-
     Node* node = GetInodeTable().Create(parent, name);
     if (!node) {
       request->ReplyError(errno);
@@ -1123,13 +1114,12 @@ class FuseBoxClient : public FileSystem {
       return;
     }
 
+    CreateRequestProto request_proto;
+    request_proto.set_file_system_url(GetInodeTable().GetDevicePath(node));
+
     dbus::MethodCall method(kFuseBoxServiceInterface, kCreateMethod);
     dbus::MessageWriter writer(&method);
-
-    auto path = GetInodeTable().GetDevicePath(node);
-    writer.AppendString(path);
-    VLOG(1) << "create flags " << OpenFlagsToString(request->flags());
-    writer.AppendInt32(request->flags());
+    writer.AppendProtoAsArrayOfBytes(request_proto);
 
     auto create_response = base::BindOnce(&FuseBoxClient::CreateResponse,
                                           weak_ptr_factory_.GetWeakPtr(),
@@ -1148,18 +1138,37 @@ class FuseBoxClient : public FileSystem {
     }
 
     dbus::MessageReader reader(response);
-    if (int error = GetResponseErrno(&reader, response, "create")) {
+    CreateResponseProto response_proto;
+    if (!reader.PopArrayOfBytesAsProto(&response_proto)) {
       GetInodeTable().Forget(ino);
-      request->ReplyError(error);
+      request->ReplyError(EINVAL);
+      return;
+    }
+    int32_t posix_error_code = response_proto.has_posix_error_code()
+                                   ? response_proto.posix_error_code()
+                                   : 0;
+    if (posix_error_code != 0) {
+      GetInodeTable().Forget(ino);
+      request->ReplyError(posix_error_code);
       return;
     }
 
     fuse_entry_param entry = {0};
     entry.ino = static_cast<fuse_ino_t>(ino);
-    entry.attr = GetServerStat(ino, &reader);
+    if (response_proto.has_stat()) {
+      entry.attr = MakeStatFromProto(ino, response_proto.stat());
+    }
+    entry.attr_timeout = kEntryTimeoutSeconds;
+    entry.entry_timeout = kEntryTimeoutSeconds;
 
     request->SetEntry(entry);
-    Open(std::move(request), ino);
+
+    uint64_t server_side_fuse_handle =
+        response_proto.has_fuse_handle() ? response_proto.fuse_handle() : 0;
+
+    uint64_t handle = fusebox::OpenFile();
+    fusebox::SetFileData(handle, server_side_fuse_handle, "", "");
+    request->ReplyOpen(handle);
   }
 
   void OnStorageAttached(dbus::Signal* signal) {
