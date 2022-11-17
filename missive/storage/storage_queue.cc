@@ -17,7 +17,6 @@
 
 #include <base/bind.h>
 #include <base/callback.h>
-#include <base/callback_list.h>
 #include <base/containers/adapters.h>
 #include <base/containers/flat_set.h>
 #include <base/files/file.h>
@@ -1607,7 +1606,7 @@ class StorageQueue::WriteContext : public TaskRunnerContext<Status> {
     // Release encrypted record memory, so scoped reservation may act.
     encrypted_record_result.ValueOrDie().Clear();
 
-    // Write into storage on sequntial task runner.
+    // Write into storage on sequential task runner.
     Schedule(&WriteContext::WriteRecord, base::Unretained(this),
              std::move(buffer));
   }
