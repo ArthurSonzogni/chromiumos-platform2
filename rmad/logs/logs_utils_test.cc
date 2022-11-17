@@ -48,6 +48,14 @@ constexpr char kSampleLogsJson[] = R"(
       },
       {
         "details": {
+            "occurred_error": 41
+        },
+        "state_id": 15,
+        "timestamp": 1668635055.687762,
+        "type": 2
+      },
+      {
+        "details": {
            "from_state_id": 10,
            "to_state_id": 14
         },
@@ -61,6 +69,7 @@ constexpr char kSampleLogsJson[] = R"(
 )";
 constexpr char kExpectedLogText[] =
     R"([2022-11-16 21:44:15] Transitioned from Welcome to Restock
+[2022-11-16 21:44:15] ERROR in ProvisionDevice: RMAD_ERROR_WP_ENABLED
 [2022-11-16 21:44:15] Transitioned from Restock to RunCalibration
 )";
 

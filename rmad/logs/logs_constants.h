@@ -43,6 +43,7 @@ inline constexpr char kFirmwareStatus[] = "firmware_status";
 // Log string formats.
 constexpr char kLogTimestampFormat[] = "[%04d-%02d-%02d %02d:%02d:%02d] ";
 constexpr char kLogTransitionFormat[] = "Transitioned from %s to %s\n";
+constexpr char kLogErrorFormat[] = "ERROR in %s: %s\n";
 
 enum class LogEventType {
   kTransition = 0,

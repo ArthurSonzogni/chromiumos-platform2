@@ -65,6 +65,7 @@ std::string GenerateTextLogString(scoped_refptr<JsonStore> json_store) {
   for (const base::Value& event : *events) {
     const base::Value::Dict& event_dict = event.GetDict();
     const int type = event_dict.FindInt(kType).value();
+    const int current_state_id = event_dict.FindInt(kStateId).value();
 
     // Append the timestamp prefix.
     base::Time::Exploded exploded;
@@ -88,8 +89,16 @@ std::string GenerateTextLogString(scoped_refptr<JsonStore> json_store) {
                                                      GetStateName(to_state)));
         break;
       }
-      case LogEventType::kData:
       case LogEventType::kError: {
+        const RmadErrorCode error_code = static_cast<RmadErrorCode>(
+            details->FindInt(kOccurredError).value());
+        generated_text_log.append(base::StringPrintf(
+            kLogErrorFormat,
+            GetStateName(static_cast<RmadState::StateCase>(current_state_id)),
+            RmadErrorCode_Name(error_code).c_str()));
+        break;
+      }
+      case LogEventType::kData: {
       }
     }
   }
