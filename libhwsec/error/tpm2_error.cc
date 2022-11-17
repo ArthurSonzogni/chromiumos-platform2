@@ -58,6 +58,10 @@ TPMRetryAction TPM2Error::ToTPMRetryAction() const {
     case trunks::TPM_RC_REFERENCE_S4:
     case trunks::TPM_RC_REFERENCE_S5:
     case trunks::TPM_RC_REFERENCE_S6:
+    // Might be caused by invalid session.
+    case trunks::TPM_RC_BAD_AUTH:
+      status = TPMRetryAction::kSession;
+      break;
     // Invalid handle to the TPM.
     case trunks::TPM_RC_HANDLE:
     case trunks::TPM_RC_REFERENCE_H0:
