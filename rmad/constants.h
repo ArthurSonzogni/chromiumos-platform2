@@ -6,7 +6,12 @@
 #define RMAD_CONSTANTS_H_
 
 #include <array>
+#include <map>
+#include <string>
 #include <utility>
+
+#include <base/containers/fixed_flat_map.h>
+#include <base/strings/string_piece.h>
 
 #include "rmad/proto_bindings/rmad.pb.h"
 
@@ -55,6 +60,30 @@ inline constexpr std::array<RmadComponent, 4> kComponentsNeedManualCalibration =
      RMAD_COMPONENT_BASE_GYROSCOPE, RMAD_COMPONENT_LID_GYROSCOPE};
 inline constexpr std::array<RmadComponent, 2> kComponentsNeedUpdateCbi = {
     RMAD_COMPONENT_BASE_GYROSCOPE, RMAD_COMPONENT_LID_GYROSCOPE};
+
+// We map RmadState::StateCase (enum) to std::string to represent state in a
+// more readable way.
+constexpr auto kStateNames =
+    base::MakeFixedFlatMap<RmadState::StateCase, base::StringPiece>({
+        {RmadState::kWelcome, "Welcome"},
+        {RmadState::kComponentsRepair, "ComponentsRepair"},
+        {RmadState::kDeviceDestination, "DeviceDestination"},
+        {RmadState::kWipeSelection, "WipeSelection"},
+        {RmadState::kWpDisableMethod, "WpDisableMethod"},
+        {RmadState::kWpDisableRsu, "WpDisableRsu"},
+        {RmadState::kWpDisablePhysical, "WpDisablePhysical"},
+        {RmadState::kWpDisableComplete, "WpDisableComplete"},
+        {RmadState::kUpdateRoFirmware, "UpdateRoFirmware"},
+        {RmadState::kRestock, "Restock"},
+        {RmadState::kUpdateDeviceInfo, "UpdateDeviceInfo"},
+        {RmadState::kProvisionDevice, "ProvisionDevice"},
+        {RmadState::kSetupCalibration, "SetupCalibration"},
+        {RmadState::kRunCalibration, "RunCalibration"},
+        {RmadState::kCheckCalibration, "CheckCalibration"},
+        {RmadState::kWpEnablePhysical, "WpEnablePhysical"},
+        {RmadState::kFinalize, "Finalize"},
+        {RmadState::kRepairComplete, "RepairComplete"},
+    });
 
 }  // namespace rmad
 

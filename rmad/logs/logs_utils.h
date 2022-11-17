@@ -17,6 +17,9 @@
 
 namespace rmad {
 
+// Return a formatted JSON of all log events.
+std::string GenerateCompleteLogsString(scoped_refptr<JsonStore> json_store);
+
 // Adds a state transition type event to `json_store`. Returns true if
 // successful.
 bool RecordStateTransitionToLogs(scoped_refptr<JsonStore> json_store,

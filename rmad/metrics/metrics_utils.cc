@@ -10,34 +10,11 @@
 #include <base/logging.h>
 #include <base/memory/scoped_refptr.h>
 
+#include "rmad/constants.h"
 #include "rmad/proto_bindings/rmad.pb.h"
 #include "rmad/utils/json_store.h"
 
 namespace rmad {
-
-// We map RmadState::StateCase (enum) to std::string to represent state in a
-// more readable way. Additionally, we added prefixes to ensure the order in
-// which we display messages to technicians.
-const std::map<RmadState::StateCase, std::string> kStateNames = {
-    {RmadState::kWelcome, "00_Welcome"},
-    {RmadState::kComponentsRepair, "01_ComponentsRepair"},
-    {RmadState::kDeviceDestination, "02_DeviceDestination"},
-    {RmadState::kWipeSelection, "03_WipeSelection"},
-    {RmadState::kWpDisableMethod, "04_WpDisableMethod"},
-    {RmadState::kWpDisableRsu, "05_WpDisableRsu"},
-    {RmadState::kWpDisablePhysical, "06_WpDisablePhysical"},
-    {RmadState::kWpDisableComplete, "07_WpDisableComplete"},
-    {RmadState::kUpdateRoFirmware, "08_UpdateRoFirmware"},
-    {RmadState::kRestock, "09_Restock"},
-    {RmadState::kUpdateDeviceInfo, "10_UpdateDeviceInfo"},
-    {RmadState::kProvisionDevice, "11_ProvisionDevice"},
-    {RmadState::kSetupCalibration, "12_SetupCalibration"},
-    {RmadState::kRunCalibration, "13_RunCalibration"},
-    {RmadState::kCheckCalibration, "14_CheckCalibration"},
-    {RmadState::kWpEnablePhysical, "15_WpEnablePhysical"},
-    {RmadState::kFinalize, "16_Finalize"},
-    {RmadState::kRepairComplete, "17_RepairComplete"},
-};
 
 bool StateMetricsData::operator==(const StateMetricsData& other) const {
   return state_case == other.state_case && is_aborted == other.is_aborted &&

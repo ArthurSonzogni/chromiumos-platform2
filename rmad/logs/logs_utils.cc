@@ -9,8 +9,10 @@
 #include <utility>
 #include <vector>
 
+#include <base/check.h>
 #include <base/json/json_string_value_serializer.h>
 #include <base/memory/scoped_refptr.h>
+#include <base/strings/stringprintf.h>
 #include <base/time/time.h>
 #include <base/values.h>
 
@@ -23,6 +25,12 @@
 namespace rmad {
 
 namespace {
+
+const char* GetStateName(RmadState::StateCase state) {
+  auto it = kStateNames.find(state);
+  CHECK(it != kStateNames.end());
+  return it->second.data();
+}
 
 bool AddEventToJson(scoped_refptr<JsonStore> json_store,
                     RmadState::StateCase state,
@@ -47,7 +55,53 @@ bool AddEventToJson(scoped_refptr<JsonStore> json_store,
   return json_store->SetValue(kLogs, std::move(logs));
 }
 
+std::string GenerateTextLogString(scoped_refptr<JsonStore> json_store) {
+  std::string generated_text_log;
+
+  base::Value logs(base::Value::Type::DICT);
+  json_store->GetValue(kLogs, &logs);
+  const base::Value::List* events = logs.GetDict().FindList(kEvents);
+
+  for (const base::Value& event : *events) {
+    const base::Value::Dict& event_dict = event.GetDict();
+    const int type = event_dict.FindInt(kType).value();
+
+    // Append the timestamp prefix.
+    base::Time::Exploded exploded;
+    base::Time::FromDoubleT(event_dict.FindDouble(kTimestamp).value())
+        .LocalExplode(&exploded);
+    generated_text_log.append(
+        base::StringPrintf(kLogTimestampFormat, exploded.year, exploded.month,
+                           exploded.day_of_month, exploded.hour,
+                           exploded.minute, exploded.second));
+
+    const base::Value::Dict* details = event_dict.FindDict(kDetails);
+    switch (static_cast<LogEventType>(type)) {
+      case LogEventType::kTransition: {
+        const RmadState::StateCase from_state =
+            static_cast<RmadState::StateCase>(
+                details->FindInt(kFromStateId).value());
+        const RmadState::StateCase to_state = static_cast<RmadState::StateCase>(
+            details->FindInt(kToStateId).value());
+        generated_text_log.append(base::StringPrintf(kLogTransitionFormat,
+                                                     GetStateName(from_state),
+                                                     GetStateName(to_state)));
+        break;
+      }
+      case LogEventType::kData:
+      case LogEventType::kError: {
+      }
+    }
+  }
+
+  return generated_text_log;
+}
+
 }  // namespace
+
+std::string GenerateCompleteLogsString(scoped_refptr<JsonStore> json_store) {
+  return GenerateTextLogString(json_store);
+}
 
 bool RecordStateTransitionToLogs(scoped_refptr<JsonStore> json_store,
                                  RmadState::StateCase from_state,

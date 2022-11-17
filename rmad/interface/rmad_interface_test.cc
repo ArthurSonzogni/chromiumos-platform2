@@ -107,21 +107,21 @@ constexpr char kExpectedLog[] = R"({
    "ro_firmware_verified": true,
    "running_time": 333.333,
    "state_metrics": {
-      "00_Welcome": {
-         "state_case": 1,
-         "state_get_log_count": 3,
-         "state_is_aborted": false,
-         "state_overall_time": 123.456,
-         "state_save_log_count": 4,
-         "state_transition_count": 2
-      },
-      "01_ComponentsRepair": {
+      "ComponentsRepair": {
          "state_case": 2,
          "state_get_log_count": 0,
          "state_is_aborted": true,
          "state_overall_time": 332.544,
          "state_save_log_count": 0,
          "state_transition_count": 1
+      },
+      "Welcome": {
+         "state_case": 1,
+         "state_get_log_count": 3,
+         "state_is_aborted": false,
+         "state_overall_time": 123.456,
+         "state_save_log_count": 4,
+         "state_transition_count": 2
       }
    }
 }
@@ -137,21 +137,21 @@ constexpr char kExpectedLog2[] = R"({
    "ro_firmware_verified": true,
    "running_time": 333.333,
    "state_metrics": {
-      "00_Welcome": {
-         "state_case": 1,
-         "state_get_log_count": 3,
-         "state_is_aborted": false,
-         "state_overall_time": 123.456,
-         "state_save_log_count": 4,
-         "state_transition_count": 2
-      },
-      "01_ComponentsRepair": {
+      "ComponentsRepair": {
          "state_case": 2,
          "state_get_log_count": 1,
          "state_is_aborted": true,
          "state_overall_time": 332.544,
          "state_save_log_count": 0,
          "state_transition_count": 1
+      },
+      "Welcome": {
+         "state_case": 1,
+         "state_get_log_count": 3,
+         "state_is_aborted": false,
+         "state_overall_time": 123.456,
+         "state_save_log_count": 4,
+         "state_transition_count": 2
       }
    }
 }

@@ -33,6 +33,36 @@ constexpr char kDefaultJson[] = R"(
   "setup_timestamp": 1663970456.867931
 }
 )";
+constexpr char kSampleLogsJson[] = R"(
+{
+  "logs": {
+    "events": [
+      {
+        "details": {
+           "from_state_id": 1,
+           "to_state_id": 10
+        },
+        "state_id": 1,
+        "timestamp": 1668635055.687762,
+        "type": 0
+      },
+      {
+        "details": {
+           "from_state_id": 10,
+           "to_state_id": 14
+        },
+        "state_id": 10,
+        "timestamp": 1668635055.688008,
+        "type": 0
+      }
+    ]
+  }
+}
+)";
+constexpr char kExpectedLogText[] =
+    R"([2022-11-16 21:44:15] Transitioned from Welcome to Restock
+[2022-11-16 21:44:15] Transitioned from Restock to RunCalibration
+)";
 
 }  // namespace
 
@@ -306,6 +336,13 @@ TEST_F(LogsUtilsTest, RecordFirmwareUpdateStatus) {
   const base::Value::Dict& event2 = (*events)[1].GetDict();
   EXPECT_EQ(static_cast<int>(status2),
             event2.FindDict(kDetails)->FindInt(kFirmwareStatus));
+}
+
+// Simulates generating a text log.
+TEST_F(LogsUtilsTest, GenerateTextLog) {
+  EXPECT_TRUE(CreateInputFile(kSampleLogsJson, std::size(kSampleLogsJson) - 1));
+
+  EXPECT_EQ(kExpectedLogText, GenerateCompleteLogsString(json_store_));
 }
 
 }  // namespace rmad
