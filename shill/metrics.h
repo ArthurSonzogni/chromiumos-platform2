@@ -1675,6 +1675,39 @@ class Metrics : public DefaultServiceObserver {
     WiFiGuardInterval gi = kWiFiGuardIntervalUnknown;
     int nss = kWiFiStructuredMetricsErrorValue;
     int dcm = kWiFiStructuredMetricsErrorValue;
+    bool operator==(const WiFiRxTxStats& other) const {
+      if (packets != other.packets) {
+        return false;
+      }
+      if (bytes != other.bytes) {
+        return false;
+      }
+      if (bitrate != other.bitrate) {
+        return false;
+      }
+      if (mcs != other.mcs) {
+        return false;
+      }
+      if (width != other.width) {
+        return false;
+      }
+      if (mode != other.mode) {
+        return false;
+      }
+      if (gi != other.gi) {
+        return false;
+      }
+      if (nss != other.nss) {
+        return false;
+      }
+      if (dcm != other.dcm) {
+        return false;
+      }
+      return true;
+    }
+    bool operator!=(const WiFiRxTxStats& other) const {
+      return !(*this == other);
+    }
   };
 
   struct WiFiLinkQualityReport {
@@ -1691,6 +1724,51 @@ class Metrics : public DefaultServiceObserver {
     int64_t expected_throughput = kWiFiStructuredMetricsErrorValue;
     WiFiRxTxStats rx;
     WiFiRxTxStats tx;
+    bool operator==(const WiFiLinkQualityReport& other) const {
+      if (tx_retries != other.tx_retries) {
+        return false;
+      }
+      if (tx_failures != other.tx_failures) {
+        return false;
+      }
+      if (rx_drops != other.rx_drops) {
+        return false;
+      }
+      if (chain0_signal != other.chain0_signal) {
+        return false;
+      }
+      if (chain0_signal_avg != other.chain0_signal_avg) {
+        return false;
+      }
+      if (chain1_signal != other.chain1_signal) {
+        return false;
+      }
+      if (chain1_signal_avg != other.chain1_signal_avg) {
+        return false;
+      }
+      if (beacon_signal_avg != other.beacon_signal_avg) {
+        return false;
+      }
+      if (beacons_received != other.beacons_received) {
+        return false;
+      }
+      if (beacons_lost != other.beacons_lost) {
+        return false;
+      }
+      if (expected_throughput != other.expected_throughput) {
+        return false;
+      }
+      if (rx != other.rx) {
+        return false;
+      }
+      if (tx != other.tx) {
+        return false;
+      }
+      return true;
+    }
+    bool operator!=(const WiFiLinkQualityReport& other) const {
+      return !(*this == other);
+    }
   };
 
   // Emits the |WiFiLinkQualityTrigger| structured event.

@@ -11,6 +11,7 @@
 
 #include <base/time/time.h>
 
+#include "shill/metrics.h"
 #include "shill/mockable.h"
 #include "shill/net/rtnl_link_stats.h"
 #include "shill/store/key_value_store.h"
@@ -169,6 +170,12 @@ class WiFiLinkStatistics {
                                             const StationStats& stats);
   mockable void UpdateRtnlLinkStatistics(Trigger trigger,
                                          const old_rtnl_link_stats64& stats);
+
+  static Metrics::WiFiLinkQualityTrigger ConvertLinkStatsTriggerEvent(
+      Trigger trigger);
+
+  static Metrics::WiFiLinkQualityReport ConvertLinkStatsReport(
+      const StationStats& stats);
 
  private:
   friend class WiFiLinkStatisticsTest;

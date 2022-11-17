@@ -197,6 +197,75 @@ std::string ConvertToBitrateString(WiFiLinkStatistics::LinkStats link_stats) {
   return out;
 }
 
+Metrics::WiFiRxTxStats ConvertRxTxStats(
+    const WiFiLinkStatistics::LinkStats& stats) {
+  Metrics::WiFiRxTxStats link_stats;
+  link_stats.packets = stats.packets;
+  link_stats.bytes = stats.bytes;
+  link_stats.bitrate = stats.bitrate;
+  link_stats.mcs = stats.mcs;
+  switch (stats.width) {
+    case WiFiLinkStatistics::ChannelWidth::kChannelWidth20MHz:
+      link_stats.width = Metrics::kWiFiChannelWidth20MHz;
+      break;
+    case WiFiLinkStatistics::ChannelWidth::kChannelWidth40MHz:
+      link_stats.width = Metrics::kWiFiChannelWidth40MHz;
+      break;
+    case WiFiLinkStatistics::ChannelWidth::kChannelWidth80MHz:
+      link_stats.width = Metrics::kWiFiChannelWidth80MHz;
+      break;
+    case WiFiLinkStatistics::ChannelWidth::kChannelWidth80p80MHz:
+      link_stats.width = Metrics::kWiFiChannelWidth80p80MHz;
+      break;
+    case WiFiLinkStatistics::ChannelWidth::kChannelWidth160MHz:
+      link_stats.width = Metrics::kWiFiChannelWidth160MHz;
+      break;
+    case WiFiLinkStatistics::ChannelWidth::kChannelWidth320MHz:
+      link_stats.width = Metrics::kWiFiChannelWidth320MHz;
+      break;
+    default:
+      link_stats.width = Metrics::kWiFiChannelWidthUnknown;
+      break;
+  }
+  switch (stats.mode) {
+    case WiFiLinkStatistics::LinkMode::kLinkModeLegacy:
+      link_stats.mode = Metrics::kWiFiLinkModeLegacy;
+      break;
+    case WiFiLinkStatistics::LinkMode::kLinkModeVHT:
+      link_stats.mode = Metrics::kWiFiLinkModeVHT;
+      break;
+    case WiFiLinkStatistics::LinkMode::kLinkModeHE:
+      link_stats.mode = Metrics::kWiFiLinkModeHE;
+      break;
+    case WiFiLinkStatistics::LinkMode::kLinkModeEHT:
+      link_stats.mode = Metrics::kWiFiLinkModeEHT;
+      break;
+    default:
+      link_stats.mode = Metrics::kWiFiLinkModeUnknown;
+      break;
+  }
+  switch (stats.gi) {
+    case WiFiLinkStatistics::GuardInterval::kLinkStatsGI_0_4:
+      link_stats.gi = Metrics::kWiFiGuardInterval_0_4;
+      break;
+    case WiFiLinkStatistics::GuardInterval::kLinkStatsGI_0_8:
+      link_stats.gi = Metrics::kWiFiGuardInterval_0_8;
+      break;
+    case WiFiLinkStatistics::GuardInterval::kLinkStatsGI_1_6:
+      link_stats.gi = Metrics::kWiFiGuardInterval_1_6;
+      break;
+    case WiFiLinkStatistics::GuardInterval::kLinkStatsGI_3_2:
+      link_stats.gi = Metrics::kWiFiGuardInterval_3_2;
+      break;
+    default:
+      link_stats.gi = Metrics::kWiFiGuardIntervalUnknown;
+      break;
+  }
+  // TODO(b/239864299): Handle DCM.
+  link_stats.nss = stats.nss;
+  return link_stats;
+}
+
 }  // namespace
 
 // static
@@ -360,6 +429,56 @@ void WiFiLinkStatistics::UpdateRtnlLinkStatistics(
       rtnl_link_statistics_.emplace_back(trigger, stats);
     }
   }
+}
+
+// static
+Metrics::WiFiLinkQualityTrigger
+WiFiLinkStatistics::ConvertLinkStatsTriggerEvent(Trigger trigger) {
+  switch (trigger) {
+    case Trigger::kIPConfigurationStart:
+      return Metrics::kWiFiLinkQualityTriggerIPConfigurationStart;
+    case Trigger::kConnected:
+      return Metrics::kWiFiLinkQualityTriggerConnected;
+    case Trigger::kDHCPRenewOnRoam:
+      return Metrics::kWiFiLinkQualityTriggerDHCPRenewOnRoam;
+    case Trigger::kDHCPSuccess:
+      return Metrics::kWiFiLinkQualityTriggerDHCPSuccess;
+    case Trigger::kDHCPFailure:
+      return Metrics::kWiFiLinkQualityTriggerDHCPFailure;
+    case Trigger::kSlaacFinished:
+      return Metrics::kWiFiLinkQualityTriggerSlaacFinished;
+    case Trigger::kNetworkValidationStart:
+      return Metrics::kWiFiLinkQualityTriggerNetworkValidationStart;
+    case Trigger::kNetworkValidationSuccess:
+      return Metrics::kWiFiLinkQualityTriggerNetworkValidationSuccess;
+    case Trigger::kNetworkValidationFailure:
+      return Metrics::kWiFiLinkQualityTriggerNetworkValidationFailure;
+    case Trigger::kCQMRSSILow:
+      return Metrics::kWiFiLinkQualityTriggerCQMRSSILow;
+    case Trigger::kCQMRSSIHigh:
+      return Metrics::kWiFiLinkQualityTriggerCQMRSSIHigh;
+    case Trigger::kCQMBeaconLoss:
+      return Metrics::kWiFiLinkQualityTriggerCQMBeaconLoss;
+    case Trigger::kCQMPacketLoss:
+      return Metrics::kWiFiLinkQualityTriggerCQMPacketLoss;
+    case Trigger::kPeriodicCheck:
+      return Metrics::kWiFiLinkQualityTriggerPeriodicCheck;
+    default:
+      return Metrics::kWiFiLinkQualityTriggerUnknown;
+  }
+}
+
+// static
+Metrics::WiFiLinkQualityReport WiFiLinkStatistics::ConvertLinkStatsReport(
+    const StationStats& stats) {
+  Metrics::WiFiLinkQualityReport report;
+
+  report.tx_retries = stats.tx_retries;
+  report.tx_failures = stats.tx_failed;
+  report.rx_drops = stats.rx_drop_misc;
+  report.rx = ConvertRxTxStats(stats.rx);
+  report.tx = ConvertRxTxStats(stats.tx);
+  return report;
 }
 
 }  // namespace shill

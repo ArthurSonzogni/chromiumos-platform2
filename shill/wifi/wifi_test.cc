@@ -5,6 +5,7 @@
 #include "shill/wifi/wifi.h"
 
 #include <gmock/gmock-cardinalities.h>
+#include <gmock/gmock-spec-builders.h>
 #include <linux/if.h>
 #include <linux/netlink.h>  // Needs typedefs from sys/socket.h.
 #include <netinet/ether.h>
@@ -34,6 +35,7 @@
 #include "shill/geolocation_info.h"
 #include "shill/logging.h"
 #include "shill/manager.h"
+#include "shill/metrics.h"
 #include "shill/mock_adaptors.h"
 #include "shill/mock_control.h"
 #include "shill/mock_device.h"
@@ -1036,6 +1038,13 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
     wifi_->OnReceivedStationInfo(nl80211_message);
   }
   void StopRequestingStationInfo() { wifi_->StopRequestingStationInfo(); }
+  void EmitStationInfoRequest(WiFiLinkStatistics::Trigger trigger) {
+    wifi_->EmitStationInfoRequestEvent(trigger);
+  }
+  void EmitStationInfoReceivedEvent(
+      const WiFiLinkStatistics::StationStats& stats) {
+    wifi_->EmitStationInfoReceivedEvent(stats);
+  }
   void ReportReceivedRtnlLinkStatistics(const old_rtnl_link_stats64& stats) {
     wifi_->OnReceivedRtnlLinkStatistics(stats);
   }
@@ -4257,6 +4266,123 @@ TEST_F(WiFiTimerTest, RequestStationInfo) {
   StopRequestingStationInfo();
   link_statistics = GetLinkStatistics();
   EXPECT_TRUE(link_statistics.IsEmpty());
+}
+
+TEST_F(WiFiMainTest, EmitStationInfoRequestEvery10thPeriod) {
+  // Setup a connected service.
+  StartWiFi();
+  MockWiFiServiceRefPtr service =
+      SetupConnectedService(RpcIdentifier(""), nullptr, nullptr);
+  constexpr int iterations = 90;
+  // For every 30 calls to RequestStationInfo() for background monitoring
+  // we emit 1 "periodic check" event.
+  EXPECT_CALL(*service, EmitLinkQualityTriggerEvent(
+                            Metrics::kWiFiLinkQualityTriggerPeriodicCheck))
+      .Times(iterations / 30);
+  for (int i = 0; i < iterations; ++i) {
+    RequestStationInfo(WiFiLinkStatistics::Trigger::kBackground);
+  }
+}
+
+TEST_F(WiFiMainTest, EmitStationInfoRequestEventOnLinkStatsRequest) {
+  // Setup a connected service.
+  StartWiFi();
+  MockWiFiServiceRefPtr service =
+      SetupConnectedService(RpcIdentifier(""), nullptr, nullptr);
+  WiFiLinkStatistics::Trigger trigger =
+      WiFiLinkStatistics::Trigger::kCQMBeaconLoss;
+  EXPECT_CALL(*service, EmitLinkQualityTriggerEvent(
+                            Metrics::kWiFiLinkQualityTriggerCQMBeaconLoss))
+      .Times(1);
+  RetrieveLinkStatistics(trigger);
+}
+
+TEST_F(WiFiMainTest, EmitStationInfoReportOnInfoReceived) {
+  // Setup a connected service.
+  StartWiFi();
+  WiFiEndpointRefPtr endpoint;
+  MockWiFiServiceRefPtr service =
+      SetupConnectedService(RpcIdentifier(""), &endpoint, nullptr);
+
+  // Create nl8011 STA INFO message. The message must contain the signal level
+  // attribute.
+  NewStationMessage sta;
+  AttributeListRefPtr sta_info;
+  sta.attributes()->CreateRawAttribute(NL80211_ATTR_MAC, "BSSID");
+  sta.attributes()->SetRawAttributeValue(
+      NL80211_ATTR_MAC, ByteString::CreateFromHexString(endpoint->bssid_hex()));
+  sta.attributes()->CreateNestedAttribute(NL80211_ATTR_STA_INFO,
+                                          "Station Info");
+  sta.attributes()->GetNestedAttributeList(NL80211_ATTR_STA_INFO, &sta_info);
+
+  sta_info->CreateU8Attribute(NL80211_STA_INFO_SIGNAL, "Signal");
+  sta_info->SetU8AttributeValue(NL80211_STA_INFO_SIGNAL, -20);
+
+  sta.attributes()->SetNestedAttributeHasAValue(NL80211_ATTR_STA_INFO);
+
+  RetrieveLinkStatistics(WiFiLinkStatistics::Trigger::kConnected);
+  EXPECT_CALL(*service, EmitLinkQualityReportEvent(_)).Times(1);
+  ReportReceivedStationInfo(sta);
+}
+
+TEST_F(WiFiMainTest, EmitStationInfoRequest) {
+  MockWiFiServiceRefPtr service = MakeMockService(WiFiSecurity::kNone);
+
+  // If we're connected to a service, we emit a trigger event.
+  SetCurrentService(service);
+  WiFiLinkStatistics::Trigger trigger =
+      WiFiLinkStatistics::Trigger::kCQMBeaconLoss;
+  EXPECT_CALL(*service, EmitLinkQualityTriggerEvent(
+                            Metrics::kWiFiLinkQualityTriggerCQMBeaconLoss))
+      .Times(1);
+  EmitStationInfoRequest(trigger);
+}
+
+TEST_F(WiFiMainTest, EmitStationInfoRequestNotConnected) {
+  MockWiFiServiceRefPtr service = MakeMockService(WiFiSecurity::kNone);
+  // We never connected to a service, we do not emit an event.
+  EXPECT_CALL(*service, EmitLinkQualityTriggerEvent(_)).Times(0);
+  EmitStationInfoRequest(WiFiLinkStatistics::Trigger::kCQMBeaconLoss);
+}
+
+TEST_F(WiFiMainTest, EmitStationInfoRequestDisconnected) {
+  MockWiFiServiceRefPtr service = MakeMockService(WiFiSecurity::kNone);
+  // We're connected to a service.
+  SetCurrentService(service);
+  // We disconnect from the service.
+  SetCurrentService(nullptr);
+  // If we're disconnected from the service, we do not emit an event.
+  EXPECT_CALL(*service, EmitLinkQualityTriggerEvent(_)).Times(0);
+  EmitStationInfoRequest(WiFiLinkStatistics::Trigger::kCQMBeaconLoss);
+}
+
+TEST_F(WiFiMainTest, EmitStationInfoReceivedEvent) {
+  MockWiFiServiceRefPtr service = MakeMockService(WiFiSecurity::kNone);
+  // If we're connected to a service, we emit a report event.
+  SetCurrentService(service);
+  EXPECT_CALL(*service, EmitLinkQualityReportEvent(_)).Times(1);
+  WiFiLinkStatistics::StationStats stats;
+  EmitStationInfoReceivedEvent(stats);
+}
+
+TEST_F(WiFiMainTest, EmitStationInfoReceivedEventNotConnected) {
+  MockWiFiServiceRefPtr service = MakeMockService(WiFiSecurity::kNone);
+  // We never connected to a service, we do not emit an event.
+  EXPECT_CALL(*service, EmitLinkQualityReportEvent(_)).Times(0);
+  WiFiLinkStatistics::StationStats stats;
+  EmitStationInfoReceivedEvent(stats);
+}
+
+TEST_F(WiFiMainTest, EmitStationInfoReceivedEventDisconnected) {
+  MockWiFiServiceRefPtr service = MakeMockService(WiFiSecurity::kNone);
+  // We're connected to a service.
+  SetCurrentService(service);
+  // We disconnect from the service.
+  SetCurrentService(nullptr);
+  // If we're disconnected from the service, we do not emit an event.
+  EXPECT_CALL(*service, EmitLinkQualityReportEvent(_)).Times(0);
+  WiFiLinkStatistics::StationStats stats;
+  EmitStationInfoReceivedEvent(stats);
 }
 
 TEST_F(WiFiTimerTest, ResumeDispatchesConnectivityReportTask) {

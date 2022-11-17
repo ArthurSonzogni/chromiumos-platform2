@@ -4,14 +4,19 @@
 
 #include "shill/wifi/wifi_link_statistics.h"
 
+#include <algorithm>
+#include <iterator>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include <gmock/gmock.h>
 
 #include <base/strings/stringprintf.h>
 
 #include <chromeos/dbus/service_constants.h>
+#include <gtest/gtest.h>
+#include "shill/metrics.h"
 #include "shill/mock_log.h"
 
 using ::testing::_;
@@ -294,6 +299,198 @@ TEST_F(WiFiLinkStatisticsTest, DhcpNetworkValidationFailures) {
       .Times(1);
   UpdateRtnlLinkStatistics(WiFiLinkStatistics::Trigger::kDHCPFailure,
                            kDhcpEndRtnlStats);
+}
+
+TEST_F(WiFiLinkStatisticsTest, StationInfoTriggerConvert) {
+  std::vector<WiFiLinkStatistics::Trigger> triggers = {
+      WiFiLinkStatistics::Trigger::kUnknown,
+      WiFiLinkStatistics::Trigger::kIPConfigurationStart,
+      WiFiLinkStatistics::Trigger::kConnected,
+      WiFiLinkStatistics::Trigger::kDHCPRenewOnRoam,
+      WiFiLinkStatistics::Trigger::kDHCPSuccess,
+      WiFiLinkStatistics::Trigger::kDHCPFailure,
+      WiFiLinkStatistics::Trigger::kSlaacFinished,
+      WiFiLinkStatistics::Trigger::kNetworkValidationStart,
+      WiFiLinkStatistics::Trigger::kNetworkValidationSuccess,
+      WiFiLinkStatistics::Trigger::kNetworkValidationFailure,
+      WiFiLinkStatistics::Trigger::kCQMRSSILow,
+      WiFiLinkStatistics::Trigger::kCQMRSSIHigh,
+      WiFiLinkStatistics::Trigger::kCQMBeaconLoss,
+      WiFiLinkStatistics::Trigger::kCQMPacketLoss,
+      WiFiLinkStatistics::Trigger::kPeriodicCheck,
+      WiFiLinkStatistics::Trigger::kBackground};
+
+  std::vector<Metrics::WiFiLinkQualityTrigger> expected = {
+      Metrics::kWiFiLinkQualityTriggerUnknown,
+      Metrics::kWiFiLinkQualityTriggerIPConfigurationStart,
+      Metrics::kWiFiLinkQualityTriggerConnected,
+      Metrics::kWiFiLinkQualityTriggerDHCPRenewOnRoam,
+      Metrics::kWiFiLinkQualityTriggerDHCPSuccess,
+      Metrics::kWiFiLinkQualityTriggerDHCPFailure,
+      Metrics::kWiFiLinkQualityTriggerSlaacFinished,
+      Metrics::kWiFiLinkQualityTriggerNetworkValidationStart,
+      Metrics::kWiFiLinkQualityTriggerNetworkValidationSuccess,
+      Metrics::kWiFiLinkQualityTriggerNetworkValidationFailure,
+      Metrics::kWiFiLinkQualityTriggerCQMRSSILow,
+      Metrics::kWiFiLinkQualityTriggerCQMRSSIHigh,
+      Metrics::kWiFiLinkQualityTriggerCQMBeaconLoss,
+      Metrics::kWiFiLinkQualityTriggerCQMPacketLoss,
+      Metrics::kWiFiLinkQualityTriggerPeriodicCheck,
+      Metrics::kWiFiLinkQualityTriggerUnknown};
+
+  EXPECT_EQ(triggers.size(), expected.size());
+  std::vector<Metrics::WiFiLinkQualityTrigger> converted;
+  for (auto trigger : triggers) {
+    converted.push_back(
+        WiFiLinkStatistics::ConvertLinkStatsTriggerEvent(trigger));
+  }
+  EXPECT_TRUE(std::equal(expected.begin(), expected.end(), converted.begin()));
+}
+
+TEST_F(WiFiLinkStatisticsTest, StationInfoReportConvert) {
+  // Assign an arbitrary value to the fields that are not yet supported by
+  // the conversion method. That will make the test fail when the conversion
+  // method starts handling those fields, which will ensure that the test also
+  // gets updated to handle them.
+  constexpr int64_t kNotHandledYet = 31;
+
+  WiFiLinkStatistics::StationStats stats = {
+      .tx_retries = 50,
+      .tx_failed = 3,
+      .rx_drop_misc = 5,
+      .signal = kNotHandledYet,
+      .signal_avg = kNotHandledYet,
+      .rx =
+          {
+              .packets = 1500,
+              .bytes = 8000,
+              .bitrate = 100,
+              .mcs = 9,
+              .nss = 2,
+              .dcm = kNotHandledYet,
+          },
+      .tx =
+          {
+              .packets = 1300,
+              .bytes = 7000,
+              .bitrate = 200,
+              .mcs = 7,
+              .nss = 2,
+              .dcm = kNotHandledYet,
+          },
+  };
+
+  Metrics::WiFiLinkQualityReport expected = {
+      .tx_retries = 50,
+      .tx_failures = 3,
+      .rx_drops = 5,
+      .rx =
+          {
+              .packets = 1500,
+              .bytes = 8000,
+              .bitrate = 100,
+              .mcs = 9,
+              .nss = 2,
+          },
+      .tx =
+          {
+              .packets = 1300,
+              .bytes = 7000,
+              .bitrate = 200,
+              .mcs = 7,
+              .nss = 2,
+          },
+  };
+
+  std::vector<WiFiLinkStatistics::ChannelWidth> widths = {
+      WiFiLinkStatistics::ChannelWidth::kChannelWidthUnknown,
+      WiFiLinkStatistics::ChannelWidth::kChannelWidth20MHz,
+      WiFiLinkStatistics::ChannelWidth::kChannelWidth40MHz,
+      WiFiLinkStatistics::ChannelWidth::kChannelWidth80MHz,
+      WiFiLinkStatistics::ChannelWidth::kChannelWidth80p80MHz,
+      WiFiLinkStatistics::ChannelWidth::kChannelWidth160MHz,
+      WiFiLinkStatistics::ChannelWidth::kChannelWidth320MHz,
+  };
+  std::vector<Metrics::WiFiChannelWidth> expected_widths = {
+      Metrics::kWiFiChannelWidthUnknown,  Metrics::kWiFiChannelWidth20MHz,
+      Metrics::kWiFiChannelWidth40MHz,    Metrics::kWiFiChannelWidth80MHz,
+      Metrics::kWiFiChannelWidth80p80MHz, Metrics::kWiFiChannelWidth160MHz,
+      Metrics::kWiFiChannelWidth320MHz,
+  };
+  EXPECT_EQ(widths.size(), expected_widths.size());
+
+  WiFiLinkStatistics::StationStats s = stats;
+  Metrics::WiFiLinkQualityReport e = expected;
+  for (auto it = widths.begin(); it != widths.end(); ++it) {
+    s.rx.width = *it;
+    e.rx.width = expected_widths[it - widths.begin()];
+    EXPECT_EQ(e, WiFiLinkStatistics::ConvertLinkStatsReport(s));
+  }
+  s = stats;
+  e = expected;
+  for (auto it = widths.begin(); it != widths.end(); ++it) {
+    s.tx.width = *it;
+    e.tx.width = expected_widths[it - widths.begin()];
+    EXPECT_EQ(e, WiFiLinkStatistics::ConvertLinkStatsReport(s));
+  }
+
+  std::vector<WiFiLinkStatistics::LinkMode> modes = {
+      WiFiLinkStatistics::LinkMode::kLinkModeUnknown,
+      WiFiLinkStatistics::LinkMode::kLinkModeLegacy,
+      WiFiLinkStatistics::LinkMode::kLinkModeVHT,
+      WiFiLinkStatistics::LinkMode::kLinkModeHE,
+      WiFiLinkStatistics::LinkMode::kLinkModeEHT,
+  };
+  std::vector<Metrics::WiFiLinkMode> expected_modes = {
+      Metrics::kWiFiLinkModeUnknown, Metrics::kWiFiLinkModeLegacy,
+      Metrics::kWiFiLinkModeVHT,     Metrics::kWiFiLinkModeHE,
+      Metrics::kWiFiLinkModeEHT,
+  };
+  EXPECT_EQ(modes.size(), expected_modes.size());
+
+  s = stats;
+  e = expected;
+  for (auto it = modes.begin(); it != modes.end(); ++it) {
+    s.rx.mode = *it;
+    e.rx.mode = expected_modes[it - modes.begin()];
+    EXPECT_EQ(e, WiFiLinkStatistics::ConvertLinkStatsReport(s));
+  }
+  s = stats;
+  e = expected;
+  for (auto it = modes.begin(); it != modes.end(); ++it) {
+    s.tx.mode = *it;
+    e.tx.mode = expected_modes[it - modes.begin()];
+    EXPECT_EQ(e, WiFiLinkStatistics::ConvertLinkStatsReport(s));
+  }
+
+  std::vector<WiFiLinkStatistics::GuardInterval> gi = {
+      WiFiLinkStatistics::GuardInterval::kLinkStatsGIUnknown,
+      WiFiLinkStatistics::GuardInterval::kLinkStatsGI_0_4,
+      WiFiLinkStatistics::GuardInterval::kLinkStatsGI_0_8,
+      WiFiLinkStatistics::GuardInterval::kLinkStatsGI_1_6,
+      WiFiLinkStatistics::GuardInterval::kLinkStatsGI_3_2,
+  };
+  std::vector<Metrics::WiFiGuardInterval> expected_gi = {
+      Metrics::kWiFiGuardIntervalUnknown, Metrics::kWiFiGuardInterval_0_4,
+      Metrics::kWiFiGuardInterval_0_8,    Metrics::kWiFiGuardInterval_1_6,
+      Metrics::kWiFiGuardInterval_3_2,
+  };
+  EXPECT_EQ(gi.size(), expected_gi.size());
+
+  s = stats;
+  e = expected;
+  for (auto it = gi.begin(); it != gi.end(); ++it) {
+    s.rx.gi = *it;
+    e.rx.gi = expected_gi[it - gi.begin()];
+    EXPECT_EQ(e, WiFiLinkStatistics::ConvertLinkStatsReport(s));
+  }
+  s = stats;
+  e = expected;
+  for (auto it = gi.begin(); it != gi.end(); ++it) {
+    s.tx.gi = *it;
+    e.tx.gi = expected_gi[it - gi.begin()];
+    EXPECT_EQ(e, WiFiLinkStatistics::ConvertLinkStatsReport(s));
+  }
 }
 
 }  // namespace shill

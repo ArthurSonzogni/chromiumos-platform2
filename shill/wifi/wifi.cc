@@ -3677,9 +3677,14 @@ void WiFi::ReportScanResultToUma(ScanState state, ScanMethod method) {
 }
 
 void WiFi::EmitStationInfoRequestEvent(WiFiLinkStatistics::Trigger trigger) {
-  // TODO(b/239864299): emit a structured event once it's been implemented. For
-  // now, this method is a placeholder to develop the rest of the code.
-  SLOG(this, 3) << __func__ << ": trigger " << static_cast<int>(trigger);
+  if (!current_service_.get()) {
+    SLOG(this, 2) << __func__ << ": WiFi " << link_name()
+                  << " tried to emit STA info trigger event"
+                  << " without being connected.";
+    return;
+  }
+  current_service_->EmitLinkQualityTriggerEvent(
+      WiFiLinkStatistics::ConvertLinkStatsTriggerEvent(trigger));
 }
 
 void WiFi::RequestStationInfo(WiFiLinkStatistics::Trigger trigger) {
@@ -3812,10 +3817,15 @@ bool WiFi::ParseStationBitrate(const AttributeListConstRefPtr& rate_info,
 }
 
 void WiFi::EmitStationInfoReceivedEvent(
-    const WiFiLinkStatistics::StationStats& /* stats*/) {
-  // TODO(b/239864299): emit a structured event once it's been implemented. For
-  // now, this method is a placeholder to develop the rest of the code.
-  SLOG(this, 3) << __func__;
+    const WiFiLinkStatistics::StationStats& stats) {
+  if (!current_service_.get()) {
+    SLOG(this, 2) << __func__ << ": WiFi " << link_name()
+                  << " tried to emit STA info event"
+                  << " without being connected.";
+    return;
+  }
+  current_service_->EmitLinkQualityReportEvent(
+      WiFiLinkStatistics::ConvertLinkStatsReport(stats));
 }
 
 void WiFi::OnReceivedStationInfo(const Nl80211Message& nl80211_message) {
