@@ -132,6 +132,10 @@ class WiFiLinkStatistics {
 
   static std::string LinkStatisticsTriggerToString(Trigger event);
 
+  // Convert StationStats to a key/value store object that can be used to export
+  // statistics over D-Bus.
+  static KeyValueStore StationStatsToKV(const StationStats& stats);
+
   // Update a new snapshot of WiFi link statistics.
   // If trigger is a start network event, the WiFi link statistics is
   // appended to the WiFi link statistics list; if it is an end network
@@ -143,8 +147,8 @@ class WiFiLinkStatistics {
   // start network event and end network event; otherwise, the WiFi link
   // statistics of the start network event is left in the list and matches
   // the wrong end network event.
-  mockable void UpdateNl80211LinkStatistics(
-      Trigger trigger, const KeyValueStore& link_statistics);
+  mockable void UpdateNl80211LinkStatistics(Trigger trigger,
+                                            const StationStats& stats);
   mockable void UpdateRtnlLinkStatistics(Trigger trigger,
                                          const old_rtnl_link_stats64& stats);
 

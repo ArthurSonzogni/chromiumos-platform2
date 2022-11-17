@@ -128,30 +128,6 @@ std::string RtnlLog(WiFiLinkStatistics::Trigger start_event,
          std::to_string(diff_stats.rx_dropped) + " tx_dropped " +
          std::to_string(diff_stats.tx_dropped);
 }
-
-const KeyValueStore CreateNl80211LinkStatistics(
-    const WiFiLinkStatistics::StationStats& nl80211_stats) {
-  KeyValueStore link_statistics;
-  link_statistics.Set<uint32_t>(kPacketReceiveSuccessesProperty,
-                                nl80211_stats.rx.packets);
-  link_statistics.Set<uint32_t>(kPacketTransmitSuccessesProperty,
-                                nl80211_stats.tx.packets);
-  link_statistics.Set<uint32_t>(kByteReceiveSuccessesProperty,
-                                nl80211_stats.rx.bytes);
-  link_statistics.Set<uint32_t>(kByteTransmitSuccessesProperty,
-                                nl80211_stats.tx.bytes);
-  link_statistics.Set<uint32_t>(kPacketTransmitFailuresProperty,
-                                nl80211_stats.tx_failed);
-  link_statistics.Set<uint32_t>(kTransmitRetriesProperty,
-                                nl80211_stats.tx_retries);
-  link_statistics.Set<uint64_t>(kPacketReceiveDropProperty,
-                                nl80211_stats.rx_drop_misc);
-  link_statistics.Set<int32_t>(kLastReceiveSignalDbmProperty,
-                               nl80211_stats.signal);
-  link_statistics.Set<int32_t>(kAverageReceiveSignalDbmProperty,
-                               nl80211_stats.signal_avg);
-  return link_statistics;
-}
 }  // namespace
 
 class WiFiLinkStatisticsTest : public ::testing::Test {
@@ -160,10 +136,10 @@ class WiFiLinkStatisticsTest : public ::testing::Test {
   ~WiFiLinkStatisticsTest() override = default;
 
  protected:
-  void UpdateNl80211LinkStatistics(WiFiLinkStatistics::Trigger trigger,
-                                   const KeyValueStore& link_statistics) {
-    wifi_link_statistics_->UpdateNl80211LinkStatistics(trigger,
-                                                       link_statistics);
+  void UpdateNl80211LinkStatistics(
+      WiFiLinkStatistics::Trigger trigger,
+      const WiFiLinkStatistics::StationStats& stats) {
+    wifi_link_statistics_->UpdateNl80211LinkStatistics(trigger, stats);
   }
 
   void UpdateRtnlLinkStatistics(WiFiLinkStatistics::Trigger trigger,
@@ -184,7 +160,7 @@ TEST_F(WiFiLinkStatisticsTest, DhcpFailure) {
       .Times(0);
   UpdateNl80211LinkStatistics(
       WiFiLinkStatistics::Trigger::kIPConfigurationStart,
-      CreateNl80211LinkStatistics(kDhcpStartNl80211Stats));
+      kDhcpStartNl80211Stats);
   EXPECT_CALL(log,
               Log(logging::LOGGING_INFO, _, HasSubstr("RTNL link statistics")))
       .Times(0);
@@ -198,9 +174,8 @@ TEST_F(WiFiLinkStatisticsTest, DhcpFailure) {
                            WiFiLinkStatistics::Trigger::kDHCPFailure,
                            kDhcpDiffNl80211Stats))))
       .Times(1);
-  UpdateNl80211LinkStatistics(
-      WiFiLinkStatistics::Trigger::kDHCPFailure,
-      CreateNl80211LinkStatistics(kDhcpEndNl80211Stats));
+  UpdateNl80211LinkStatistics(WiFiLinkStatistics::Trigger::kDHCPFailure,
+                              kDhcpEndNl80211Stats);
   EXPECT_CALL(
       log, Log(logging::LOGGING_INFO, _,
                StrEq(RtnlLog(WiFiLinkStatistics::Trigger::kIPConfigurationStart,
@@ -220,7 +195,7 @@ TEST_F(WiFiLinkStatisticsTest, NetworkValidationFailure) {
       .Times(0);
   UpdateNl80211LinkStatistics(
       WiFiLinkStatistics::Trigger::kNetworkValidationStart,
-      CreateNl80211LinkStatistics(kNetworkValidationStartNl80211Stats));
+      kNetworkValidationStartNl80211Stats);
   EXPECT_CALL(log,
               Log(logging::LOGGING_INFO, _, HasSubstr("RTNL link statistics")))
       .Times(0);
@@ -237,7 +212,7 @@ TEST_F(WiFiLinkStatisticsTest, NetworkValidationFailure) {
       .Times(1);
   UpdateNl80211LinkStatistics(
       WiFiLinkStatistics::Trigger::kNetworkValidationFailure,
-      CreateNl80211LinkStatistics(kNetworkValidationEndNl80211Stats));
+      kNetworkValidationEndNl80211Stats);
   EXPECT_CALL(
       log,
       Log(logging::LOGGING_INFO, _,
@@ -259,7 +234,7 @@ TEST_F(WiFiLinkStatisticsTest, DhcpNetworkValidationFailures) {
       .Times(0);
   UpdateNl80211LinkStatistics(
       WiFiLinkStatistics::Trigger::kIPConfigurationStart,
-      CreateNl80211LinkStatistics(kDhcpStartNl80211Stats));
+      kDhcpStartNl80211Stats);
   EXPECT_CALL(log,
               Log(logging::LOGGING_INFO, _, HasSubstr("RTNL link statistics")))
       .Times(0);
@@ -272,7 +247,7 @@ TEST_F(WiFiLinkStatisticsTest, DhcpNetworkValidationFailures) {
       .Times(0);
   UpdateNl80211LinkStatistics(
       WiFiLinkStatistics::Trigger::kNetworkValidationStart,
-      CreateNl80211LinkStatistics(kNetworkValidationStartNl80211Stats));
+      kNetworkValidationStartNl80211Stats);
   EXPECT_CALL(log,
               Log(logging::LOGGING_INFO, _, HasSubstr("RTNL link statistics")))
       .Times(0);
@@ -289,7 +264,7 @@ TEST_F(WiFiLinkStatisticsTest, DhcpNetworkValidationFailures) {
       .Times(1);
   UpdateNl80211LinkStatistics(
       WiFiLinkStatistics::Trigger::kNetworkValidationFailure,
-      CreateNl80211LinkStatistics(kNetworkValidationEndNl80211Stats));
+      kNetworkValidationEndNl80211Stats);
   EXPECT_CALL(
       log,
       Log(logging::LOGGING_INFO, _,
@@ -309,9 +284,8 @@ TEST_F(WiFiLinkStatisticsTest, DhcpNetworkValidationFailures) {
                            WiFiLinkStatistics::Trigger::kDHCPFailure,
                            kDhcpDiffNl80211Stats))))
       .Times(1);
-  UpdateNl80211LinkStatistics(
-      WiFiLinkStatistics::Trigger::kDHCPFailure,
-      CreateNl80211LinkStatistics(kDhcpEndNl80211Stats));
+  UpdateNl80211LinkStatistics(WiFiLinkStatistics::Trigger::kDHCPFailure,
+                              kDhcpEndNl80211Stats);
   EXPECT_CALL(
       log, Log(logging::LOGGING_INFO, _,
                StrEq(RtnlLog(WiFiLinkStatistics::Trigger::kIPConfigurationStart,

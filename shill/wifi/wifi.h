@@ -437,7 +437,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
 
   SupplicantProcessProxyInterface* supplicant_process_proxy() const;
 
-  // RPC accessor for |link_statistics_|.
+  // RPC accessor for |station_stats_|.
   KeyValueStore GetLinkStatistics(Error* error);
 
   Uint16s GetAllScanFrequencies(Error* /* error */);
@@ -623,8 +623,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   void RequestStationInfo();
   void OnReceivedStationInfo(const Nl80211Message& nl80211_message);
   static bool ParseStationBitrate(const AttributeListConstRefPtr& rate_info,
-                                  std::string* out,
-                                  int* rate_out);
+                                  WiFiLinkStatistics::LinkStats* stats);
   void StopRequestingStationInfo();
 
   void ConnectToSupplicant();
@@ -891,7 +890,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   uint64_t receive_byte_count_at_connect_;
 
   // Used to report the current state of our wireless link.
-  KeyValueStore link_statistics_;
+  WiFiLinkStatistics::StationStats station_stats_;
 
   // Used for the diagnosis on link failures defined in WiFiLinkStatistics.
   std::unique_ptr<WiFiLinkStatistics> wifi_link_statistics_;

@@ -7,6 +7,8 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include "base/strings/stringprintf.h"
+#include "shill/store/key_value_store.h"
 
 #include <chromeos/dbus/service_constants.h>
 
@@ -133,45 +135,51 @@ std::string Nl80211LinkStatisticsToString(
          std::to_string(diff_stats.signal_avg);
 }
 
-WiFiLinkStatistics::StationStats ConvertNl80211StaInfo(
-    const KeyValueStore& link_statistics) {
-  WiFiLinkStatistics::StationStats stats;
-  std::vector<std::pair<std::string, uint32_t*>>
-      nl80211_sta_info_properties_u32 = {
-          {kPacketReceiveSuccessesProperty, &stats.rx.packets},
-          {kPacketTransmitSuccessesProperty, &stats.tx.packets},
-          {kByteReceiveSuccessesProperty, &stats.rx.bytes},
-          {kByteTransmitSuccessesProperty, &stats.tx.bytes},
-          {kPacketTransmitFailuresProperty, &stats.tx_failed},
-          {kTransmitRetriesProperty, &stats.tx_retries}};
-
-  for (const auto& kv : nl80211_sta_info_properties_u32) {
-    if (link_statistics.Contains<uint32_t>(kv.first)) {
-      *kv.second = link_statistics.Get<uint32_t>(kv.first);
-    }
+std::string ConvertToBitrateString(WiFiLinkStatistics::LinkStats link_stats) {
+  std::string mcs_str;
+  switch (link_stats.mode) {
+    case WiFiLinkStatistics::LinkMode::kLinkModeLegacy:
+      mcs_str = base::StringPrintf(" MCS %d", link_stats.mcs);
+      break;
+    case WiFiLinkStatistics::LinkMode::kLinkModeVHT:
+      mcs_str = base::StringPrintf(" VHT-MCS %d", link_stats.mcs);
+      break;
+    default:
+      break;
   }
 
-  std::vector<std::pair<std::string, uint64_t*>>
-      nl80211_sta_info_properties_u64 = {
-          {kPacketReceiveDropProperty, &stats.rx_drop_misc}};
-
-  for (const auto& kv : nl80211_sta_info_properties_u64) {
-    if (link_statistics.Contains<uint64_t>(kv.first)) {
-      *kv.second = link_statistics.Get<uint64_t>(kv.first);
-    }
+  std::string nss_str;
+  WiFiLinkStatistics::LinkStats defaults;
+  if (link_stats.nss != defaults.nss) {
+    nss_str = base::StringPrintf(" VHT-NSS %d", link_stats.nss);
   }
 
-  std::vector<std::pair<std::string, int32_t*>>
-      nl80211_sta_info_properties_s32 = {
-          {kLastReceiveSignalDbmProperty, &stats.signal},
-          {kAverageReceiveSignalDbmProperty, &stats.signal_avg}};
-
-  for (const auto& kv : nl80211_sta_info_properties_s32) {
-    if (link_statistics.Contains<int32_t>(kv.first)) {
-      *kv.second = link_statistics.Get<int32_t>(kv.first);
-    }
+  std::string width_str;
+  switch (link_stats.width) {
+    case WiFiLinkStatistics::ChannelWidth::kChannelWidth40MHz:
+      width_str = base::StringPrintf(" 40MHz");
+      break;
+    case WiFiLinkStatistics::ChannelWidth::kChannelWidth80MHz:
+      width_str = base::StringPrintf(" 80MHz");
+      break;
+    case WiFiLinkStatistics::ChannelWidth::kChannelWidth80p80MHz:
+      width_str = base::StringPrintf(" 80+80MHz");
+      break;
+    case WiFiLinkStatistics::ChannelWidth::kChannelWidth160MHz:
+      width_str = base::StringPrintf(" 160MHz");
+      break;
+    default:
+      break;
   }
-  return stats;
+
+  std::string out = base::StringPrintf(
+      "%d.%d MBit/s%s%s%s%s", link_stats.bitrate / 10, link_stats.bitrate % 10,
+      mcs_str.c_str(), width_str.c_str(),
+      link_stats.gi == WiFiLinkStatistics::GuardInterval::kLinkStatsGI_0_4
+          ? " short GI"
+          : "",
+      nss_str.c_str());
+  return out;
 }
 
 }  // namespace
@@ -206,19 +214,65 @@ std::string WiFiLinkStatistics::LinkStatisticsTriggerToString(Trigger trigger) {
   }
 }
 
+// static
+KeyValueStore WiFiLinkStatistics::StationStatsToKV(const StationStats& stats) {
+  KeyValueStore kv;
+  StationStats defaults;
+  if (stats.inactive_time != defaults.inactive_time) {
+    kv.Set<uint32_t>(kInactiveTimeMillisecondsProperty, stats.inactive_time);
+  }
+  if (stats.rx.packets != defaults.rx.packets) {
+    kv.Set<uint32_t>(kPacketReceiveSuccessesProperty, stats.rx.packets);
+  }
+  if (stats.tx.packets != defaults.tx.packets) {
+    kv.Set<uint32_t>(kPacketTransmitSuccessesProperty, stats.tx.packets);
+  }
+  if (stats.rx.bytes != defaults.rx.bytes) {
+    kv.Set<uint32_t>(kByteReceiveSuccessesProperty, stats.rx.bytes);
+  }
+  if (stats.tx.bytes != defaults.tx.bytes) {
+    kv.Set<uint32_t>(kByteTransmitSuccessesProperty, stats.tx.bytes);
+  }
+  if (stats.tx_failed != defaults.tx_failed) {
+    kv.Set<uint32_t>(kPacketTransmitFailuresProperty, stats.tx_failed);
+  }
+  if (stats.tx_retries != defaults.tx_retries) {
+    kv.Set<uint32_t>(kTransmitRetriesProperty, stats.tx_retries);
+  }
+  if (stats.rx_drop_misc != defaults.rx_drop_misc) {
+    kv.Set<uint64_t>(kPacketReceiveDropProperty, stats.rx_drop_misc);
+  }
+
+  if (stats.signal != defaults.signal) {
+    kv.Set<int32_t>(kLastReceiveSignalDbmProperty, stats.signal);
+  }
+  if (stats.signal_avg != defaults.signal_avg) {
+    kv.Set<int32_t>(kAverageReceiveSignalDbmProperty, stats.signal_avg);
+  }
+
+  if (stats.tx.bitrate != defaults.tx.bitrate) {
+    kv.Set<std::string>(kTransmitBitrateProperty,
+                        ConvertToBitrateString(stats.tx));
+  }
+  if (stats.rx.bitrate != defaults.rx.bitrate) {
+    kv.Set<std::string>(kReceiveBitrateProperty,
+                        ConvertToBitrateString(stats.rx));
+  }
+  return kv;
+}
+
 void WiFiLinkStatistics::Reset() {
   nl80211_link_statistics_.clear();
   rtnl_link_statistics_.clear();
 }
 
 void WiFiLinkStatistics::UpdateNl80211LinkStatistics(
-    Trigger trigger, const KeyValueStore& link_statistics) {
+    Trigger trigger, const StationStats& stats) {
   // nl80211 station information for WiFi link diagnosis
   if (trigger == Trigger::kUnknown) {
     return;
   }
 
-  StationStats stats = ConvertNl80211StaInfo(link_statistics);
   // If the trigger is an end network event, erase the link statistics of its
   // start network event and print the difference to the log if necessary.
   if (IsEndNetworkEvent(trigger)) {

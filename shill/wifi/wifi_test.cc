@@ -1031,6 +1031,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
   void ReportReceivedStationInfo(const Nl80211Message& nl80211_message) {
     wifi_->OnReceivedStationInfo(nl80211_message);
   }
+  void StopRequestingStationInfo() { wifi_->StopRequestingStationInfo(); }
   void ReportReceivedRtnlLinkStatistics(const old_rtnl_link_stats64& stats) {
     wifi_->OnReceivedRtnlLinkStatistics(stats);
   }
@@ -4248,6 +4249,10 @@ TEST_F(WiFiTimerTest, RequestStationInfo) {
     EXPECT_EQ(rate,
               link_statistics.Lookup<std::string>(kReceiveBitrateProperty, ""));
   }
+
+  StopRequestingStationInfo();
+  link_statistics = GetLinkStatistics();
+  EXPECT_TRUE(link_statistics.IsEmpty());
 }
 
 TEST_F(WiFiTimerTest, ResumeDispatchesConnectivityReportTask) {

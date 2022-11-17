@@ -18,8 +18,7 @@ class MockWiFiLinkStatistics : public WiFiLinkStatistics {
 
   MOCK_METHOD(void,
               UpdateNl80211LinkStatistics,
-              (WiFiLinkStatistics::Trigger trigger,
-               const KeyValueStore& link_statistics),
+              (WiFiLinkStatistics::Trigger trigger, const StationStats& stats),
               (override));
   MOCK_METHOD(void,
               UpdateRtnlLinkStatistics,

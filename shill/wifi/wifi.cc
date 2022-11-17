@@ -49,6 +49,7 @@
 #include "shill/net/shill_time.h"
 #include "shill/network/dhcp_controller.h"
 #include "shill/scope_logger.h"
+#include "shill/store/key_value_store.h"
 #include "shill/store/property_accessor.h"
 #include "shill/supplicant/supplicant_eap_state_handler.h"
 #include "shill/supplicant/supplicant_interface_proxy_interface.h"
@@ -3453,7 +3454,7 @@ SupplicantProcessProxyInterface* WiFi::supplicant_process_proxy() const {
 }
 
 KeyValueStore WiFi::GetLinkStatistics(Error* /*error*/) {
-  return link_statistics_;
+  return WiFiLinkStatistics::StationStatsToKV(station_stats_);
 }
 
 Uint16s WiFi::GetAllScanFrequencies(Error* /* error */) {
@@ -3721,63 +3722,61 @@ void WiFi::RequestStationInfo() {
 
 // static
 bool WiFi::ParseStationBitrate(const AttributeListConstRefPtr& rate_info,
-                               std::string* out,
-                               int* rate_out) {
-  uint32_t rate = 0;      // In 100Kbps.
+                               WiFiLinkStatistics::LinkStats* stats) {
   uint16_t u16_rate = 0;  // In 100Kbps.
-  uint8_t mcs = 0;
-  uint8_t nss = 0;
   bool band_flag = false;
   bool is_short_gi = false;
-  std::string mcs_info;
-  std::string nss_info;
-  std::string band_info;
+  bool ret = false;
 
   if (rate_info->GetU16AttributeValue(NL80211_RATE_INFO_BITRATE, &u16_rate)) {
-    rate = static_cast<uint32_t>(u16_rate);
+    stats->bitrate = static_cast<uint32_t>(u16_rate);
+    ret = true;
   } else {
-    rate_info->GetU32AttributeValue(NL80211_RATE_INFO_BITRATE32, &rate);
+    ret = rate_info->GetU32AttributeValue(NL80211_RATE_INFO_BITRATE32,
+                                          &stats->bitrate);
   }
 
-  if (rate_info->GetU8AttributeValue(NL80211_RATE_INFO_MCS, &mcs)) {
-    mcs_info = base::StringPrintf(" MCS %d", mcs);
-  } else if (rate_info->GetU8AttributeValue(NL80211_RATE_INFO_VHT_MCS, &mcs)) {
-    mcs_info = base::StringPrintf(" VHT-MCS %d", mcs);
+  if (rate_info->GetU8AttributeValue(NL80211_RATE_INFO_MCS, &stats->mcs)) {
+    stats->mode = WiFiLinkStatistics::LinkMode::kLinkModeLegacy;
+  } else if (rate_info->GetU8AttributeValue(NL80211_RATE_INFO_VHT_MCS,
+                                            &stats->mcs)) {
+    stats->mode = WiFiLinkStatistics::LinkMode::kLinkModeVHT;
+  }
+  // TODO(b/239864299): Handle HE and EHT modes.
+
+  if (rate_info->GetU8AttributeValue(NL80211_RATE_INFO_VHT_NSS, &stats->nss)) {
+    stats->mode = WiFiLinkStatistics::LinkMode::kLinkModeVHT;
   }
 
-  if (rate_info->GetU8AttributeValue(NL80211_RATE_INFO_VHT_NSS, &nss)) {
-    nss_info = base::StringPrintf(" VHT-NSS %d", nss);
-  }
-
+  stats->width = WiFiLinkStatistics::ChannelWidth::kChannelWidth20MHz;
   if (rate_info->GetFlagAttributeValue(NL80211_RATE_INFO_40_MHZ_WIDTH,
                                        &band_flag) &&
       band_flag) {
-    band_info = base::StringPrintf(" 40MHz");
+    stats->width = WiFiLinkStatistics::ChannelWidth::kChannelWidth40MHz;
   } else if (rate_info->GetFlagAttributeValue(NL80211_RATE_INFO_80_MHZ_WIDTH,
                                               &band_flag) &&
              band_flag) {
-    band_info = base::StringPrintf(" 80MHz");
+    stats->width = WiFiLinkStatistics::ChannelWidth::kChannelWidth80MHz;
   } else if (rate_info->GetFlagAttributeValue(NL80211_RATE_INFO_80P80_MHZ_WIDTH,
                                               &band_flag) &&
              band_flag) {
-    band_info = base::StringPrintf(" 80+80MHz");
+    stats->width = WiFiLinkStatistics::ChannelWidth::kChannelWidth80p80MHz;
   } else if (rate_info->GetFlagAttributeValue(NL80211_RATE_INFO_160_MHZ_WIDTH,
                                               &band_flag) &&
              band_flag) {
-    band_info = base::StringPrintf(" 160MHz");
+    stats->width = WiFiLinkStatistics::ChannelWidth::kChannelWidth160MHz;
   }
+  // TODO(b/239864299): Handle 320MHz channels.
 
   rate_info->GetFlagAttributeValue(NL80211_RATE_INFO_SHORT_GI, &is_short_gi);
-
-  if (rate) {
-    *out = base::StringPrintf("%d.%d MBit/s%s%s%s%s", rate / 10, rate % 10,
-                              mcs_info.c_str(), band_info.c_str(),
-                              is_short_gi ? " short GI" : "", nss_info.c_str());
-    *rate_out = rate / 10;
-    return true;
+  // TODO(b/239864299): Handle guard intervals for 802.11ax
+  if (is_short_gi) {
+    stats->gi = WiFiLinkStatistics::GuardInterval::kLinkStatsGI_0_4;
   }
 
-  return false;
+  // TODO(b/239864299): Handle DCM.
+
+  return ret;
 }
 
 void WiFi::OnReceivedStationInfo(const Nl80211Message& nl80211_message) {
@@ -3829,69 +3828,63 @@ void WiFi::OnReceivedStationInfo(const Nl80211Message& nl80211_message) {
 
   endpoint->UpdateSignalStrength(static_cast<signed char>(signal));
 
-  link_statistics_.Clear();
-
-  std::vector<std::pair<int, std::string>> u32_property_map = {
-      {NL80211_STA_INFO_INACTIVE_TIME, kInactiveTimeMillisecondsProperty},
-      {NL80211_STA_INFO_RX_PACKETS, kPacketReceiveSuccessesProperty},
-      {NL80211_STA_INFO_TX_FAILED, kPacketTransmitFailuresProperty},
-      {NL80211_STA_INFO_TX_PACKETS, kPacketTransmitSuccessesProperty},
-      {NL80211_STA_INFO_TX_RETRIES, kTransmitRetriesProperty},
-      {NL80211_STA_INFO_RX_BYTES, kByteReceiveSuccessesProperty},
-      {NL80211_STA_INFO_TX_BYTES, kByteTransmitSuccessesProperty}};
-
-  for (const auto& kv : u32_property_map) {
+  WiFiLinkStatistics::StationStats stats;
+  std::vector<std::pair<int, uint32_t*>> nl80211_sta_info_properties_u32 = {
+      {NL80211_STA_INFO_INACTIVE_TIME, &stats.inactive_time},
+      {NL80211_STA_INFO_RX_PACKETS, &stats.rx.packets},
+      {NL80211_STA_INFO_TX_PACKETS, &stats.tx.packets},
+      {NL80211_STA_INFO_RX_BYTES, &stats.rx.bytes},
+      {NL80211_STA_INFO_TX_BYTES, &stats.tx.bytes},
+      {NL80211_STA_INFO_TX_FAILED, &stats.tx_failed},
+      {NL80211_STA_INFO_TX_RETRIES, &stats.tx_retries}};
+  for (const auto& kv : nl80211_sta_info_properties_u32) {
     uint32_t value;
     if (station_info->GetU32AttributeValue(kv.first, &value)) {
-      link_statistics_.Set<uint32_t>(kv.second, value);
+      *kv.second = value;
     }
   }
 
-  std::vector<std::pair<int, std::string>> u64_property_map = {
-      {NL80211_STA_INFO_RX_DROP_MISC, kPacketReceiveDropProperty}};
-
-  for (const auto& kv : u64_property_map) {
+  std::vector<std::pair<int, uint64_t*>> nl80211_sta_info_properties_u64 = {
+      {NL80211_STA_INFO_RX_DROP_MISC, &stats.rx_drop_misc}};
+  for (const auto& kv : nl80211_sta_info_properties_u64) {
     uint64_t value;
     if (station_info->GetU64AttributeValue(kv.first, &value)) {
-      link_statistics_.Set<uint64_t>(kv.second, value);
+      *kv.second = value;
     }
   }
 
-  std::vector<std::pair<int, std::string>> s8_property_map = {
-      {NL80211_STA_INFO_SIGNAL, kLastReceiveSignalDbmProperty},
-      {NL80211_STA_INFO_SIGNAL_AVG, kAverageReceiveSignalDbmProperty}};
-
-  for (const auto& kv : s8_property_map) {
+  std::vector<std::pair<int, int32_t*>> nl80211_sta_info_properties_s32 = {
+      {NL80211_STA_INFO_SIGNAL, &stats.signal},
+      {NL80211_STA_INFO_SIGNAL_AVG, &stats.signal_avg}};
+  for (const auto& kv : nl80211_sta_info_properties_s32) {
     uint8_t value;
     if (station_info->GetU8AttributeValue(kv.first, &value)) {
-      // Despite these values being reported as a U8 by the kernel, these
-      // should be interpreted as signed char.
-      link_statistics_.Set<int32_t>(kv.second, static_cast<signed char>(value));
+      // Despite these values being reported as a U8 by the kernel, they are
+      // actually signed values.
+      // Cast U8 to S8 first to preserve the sign, then cast to S32.
+      *kv.second = static_cast<int32_t>(static_cast<int8_t>(value));
     }
   }
 
   AttributeListConstRefPtr transmit_info;
   if (station_info->ConstGetNestedAttributeList(NL80211_STA_INFO_TX_BITRATE,
                                                 &transmit_info)) {
-    std::string str;
-    int rate;
-    if (ParseStationBitrate(transmit_info, &str, &rate)) {
-      link_statistics_.Set<std::string>(kTransmitBitrateProperty, str);
-      metrics()->SendToUMA(Metrics::kMetricWifiTxBitrate, rate);
+    if (ParseStationBitrate(transmit_info, &stats.tx)) {
+      metrics()->SendToUMA(Metrics::kMetricWifiTxBitrate,
+                           stats.tx.bitrate / 10);
     }
   }
 
   AttributeListConstRefPtr receive_info;
   if (station_info->ConstGetNestedAttributeList(NL80211_STA_INFO_RX_BITRATE,
                                                 &receive_info)) {
-    std::string str;
-    int rate;
-    if (ParseStationBitrate(receive_info, &str, &rate)) {
-      link_statistics_.Set<std::string>(kReceiveBitrateProperty, str);
-    }
+    ParseStationBitrate(receive_info, &stats.rx);
   }
+
+  station_stats_ = stats;
+
   wifi_link_statistics_->UpdateNl80211LinkStatistics(
-      current_nl80211_network_event_, link_statistics_);
+      current_nl80211_network_event_, station_stats_);
   // Reset current_nl80211_network_event_ to prevent unnecessary
   // WiFiLinkStatistics update/print
   current_nl80211_network_event_ = WiFiLinkStatistics::Trigger::kUnknown;
@@ -3900,7 +3893,7 @@ void WiFi::OnReceivedStationInfo(const Nl80211Message& nl80211_message) {
 void WiFi::StopRequestingStationInfo() {
   SLOG(this, 2) << "WiFi Device " << link_name() << ": " << __func__;
   request_station_info_callback_.Cancel();
-  link_statistics_.Clear();
+  station_stats_ = {};
 }
 
 void WiFi::RemoveSupplicantNetworks() {
