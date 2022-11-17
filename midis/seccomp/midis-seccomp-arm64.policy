@@ -57,6 +57,7 @@ munmap: 1
 openat: 1
 pipe2: 1
 ppoll: 1
+process_vm_readv: 1
 read: 1
 recvmsg: 1
 rt_sigprocmask: 1
