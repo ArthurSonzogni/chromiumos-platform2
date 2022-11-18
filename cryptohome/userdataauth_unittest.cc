@@ -5371,4 +5371,84 @@ TEST_F(UserDataAuthTestThreaded, ShutdownTask) {
   }));
 }
 
+// ============== Full API Behaviour Test for Negative Testing ==============
+
+// This section holds tests that simulate API calls so that we can test that the
+// right error comes up in error conditions.
+
+// This serves as the base class for all full API behaviour tests. It is for a
+// set of integration-style unit tests that is aimed at stressing the negative
+// cases from an API usage perspective. This differs from other unit tests in
+// which it is written in more of a integration test style and verifies the
+// behaviour of cryptohomed APIs rather than the UserDataAuth class.
+class UserDataAuthApiTest : public UserDataAuthTest {
+ public:
+  UserDataAuthApiTest() = default;
+
+  // Simply the Sync() version of StartAuthSession(). Caller should check that
+  // the returned value is not nullopt, which indicates that the call did not
+  // finish.
+  std::optional<user_data_auth::StartAuthSessionReply> StartAuthSessionSync(
+      const user_data_auth::StartAuthSessionRequest& in_request) {
+    std::optional<user_data_auth::StartAuthSessionReply> out_reply;
+    userdataauth_->StartAuthSession(
+        in_request, base::BindOnce(
+                        [](std::optional<user_data_auth::StartAuthSessionReply>*
+                               out_reply_ptr,
+                           const user_data_auth::StartAuthSessionReply& reply) {
+                          *out_reply_ptr = reply;
+                        },
+                        base::Unretained(&out_reply)));
+    RunUntilIdle();
+    return out_reply;
+  }
+
+  // Obtain a test auth session for kUsername1. Result is nullopt if it's
+  // unsuccessful.
+  std::optional<std::string> GetTestUnauthedAuthSession(
+      user_data_auth::AuthIntent =
+          user_data_auth::AuthIntent::AUTH_INTENT_DECRYPT) {
+    user_data_auth::StartAuthSessionRequest req;
+    req.mutable_account_id()->set_account_id(kUsername1);
+    req.set_intent(user_data_auth::AuthIntent::AUTH_INTENT_DECRYPT);
+    std::optional<user_data_auth::StartAuthSessionReply> reply =
+        StartAuthSessionSync(req);
+    if (!reply.has_value()) {
+      LOG(ERROR) << "GetTestUnauthedAuthSession() failed because "
+                    "StartAuthSession() did not complete.";
+      return std::nullopt;
+    }
+
+    if (reply.value().error_info().primary_action() !=
+        user_data_auth::PrimaryAction::PRIMARY_NO_ERROR) {
+      LOG(ERROR) << "GetTestUnauthedAuthSession() failed because "
+                    "StartAuthSession() failed.";
+      return std::nullopt;
+    }
+    return reply.value().auth_session_id();
+  }
+
+ private:
+  static constexpr char kUsername1[] = "foo@gmail.com";
+};
+
+// Matches against user_data_auth::CryptohomeErrorInfo to see if it contains an
+// active recommendation for the specified PossibleAction |action|. "Active
+// recommendation" here refers to a correct PrimaryAction value such that the
+// PossibleAction field is active and not disregarded.
+MATCHER_P(HasPossibleAction, action, "") {
+  if (arg.primary_action() != user_data_auth::PrimaryAction::PRIMARY_NONE) {
+    *result_listener
+        << "Invalid PrimaryAction when checking for PossibleAction: "
+        << user_data_auth::PrimaryAction_Name(arg.primary_action());
+    return false;
+  }
+  for (int i = 0; i < arg.possible_actions_size(); i++) {
+    if (arg.possible_actions(i) == action)
+      return true;
+  }
+
+  return false;
+}
+
 }  // namespace cryptohome
