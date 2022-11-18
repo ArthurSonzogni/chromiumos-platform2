@@ -62,7 +62,8 @@ class MetricsLibraryInterface {
   virtual ~MetricsLibraryInterface() {}
 };
 
-// Library used to send metrics to Chrome/UMA.
+// Library used to send metrics to Chrome/UMA. The Send* methods in this class
+// are not thread-safe. Do not call them in parallel.
 class MetricsLibrary : public MetricsLibraryInterface {
  public:
   MetricsLibrary();
