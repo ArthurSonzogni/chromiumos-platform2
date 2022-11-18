@@ -54,6 +54,30 @@ enum class StorageQueueOperationKind {
 // sequencing id to be eliminated.
 class StorageQueue : public base::RefCountedDeleteOnSequence<StorageQueue> {
  public:
+  // These values are persisted to logs. Entries should not be renumbered and
+  // numeric values should never be reused.
+  enum ResourceExhaustedCase : int {
+    NO_DISK_SPACE = 0,
+    NO_DISK_SPACE_METADATA = 1,
+    CANNOT_WRITE_HEADER = 2,
+    CANNOT_WRITE_DATA = 3,
+    CANNOT_PAD = 4,
+    CANNOT_WRITE_GENERATION = 5,
+    CANNOT_WRITE_DIGEST = 6,
+    RESERVED_SPACE_NOT_OBSERVED = 7,
+    NO_MEMORY_FOR_WRITE_BUFFER = 8,
+    NO_MEMORY_FOR_ENCRYPTED_RECORD = 9,
+    NO_MEMORY_FOR_READ_BUFFER = 10,
+    NO_MEMORY_FOR_UPLOAD = 11,
+    TOO_MUCH_DATA_TO_READ = 12,
+    DISK_SPACE_EXCEEDED_ADDING_FILE = 13,
+    kMaxValue = 14
+  };
+
+  // UMA name
+  static constexpr char kResourceExhaustedCaseUmaName[] =
+      "Platform.Missive.ResourceExhaustedCase";
+
   // Creates StorageQueue instance with the specified options, and returns it
   // with the |completion_cb| callback. |async_start_upload_cb| is a factory
   // callback that instantiates UploaderInterface every time the queue starts

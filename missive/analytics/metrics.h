@@ -12,7 +12,6 @@
 #include <base/task/sequenced_task_runner.h>
 #include <base/task/thread_pool.h>
 #include <metrics/metrics_library.h>
-#include <metrics/metrics_library_mock.h>
 
 namespace reporting::analytics {
 

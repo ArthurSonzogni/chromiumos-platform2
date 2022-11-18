@@ -42,6 +42,7 @@
 #include <crypto/sha2.h>
 #include <google/protobuf/io/zero_copy_stream_impl_lite.h>
 
+#include "missive/analytics/metrics.h"
 #include "missive/compression/compression_module.h"
 #include "missive/encryption/encryption_module_interface.h"
 #include "missive/proto/record.pb.h"
@@ -58,6 +59,19 @@
 namespace reporting {
 
 namespace {
+
+// Helper function for ResourceExhaustedCase UMA upload.
+void SendResExCaseToUma(StorageQueue::ResourceExhaustedCase case_enum) {
+  // The ChromeOS metrics instance.
+  static constexpr auto kExclusiveMax =
+      static_cast<int>(StorageQueue::ResourceExhaustedCase::kMaxValue);
+  const auto res = analytics::Metrics::Get().SendLinearToUMA(
+      /*name=*/StorageQueue::kResourceExhaustedCaseUmaName,
+      static_cast<int>(case_enum), kExclusiveMax);
+  LOG_IF(ERROR, !res) << "SendLinearToUMA failure, "
+                      << StorageQueue::kResourceExhaustedCaseUmaName << " "
+                      << static_cast<int>(case_enum);
+}
 
 // Metadata file name prefix.
 constexpr char METADATA_NAME[] = "META";
@@ -587,6 +601,7 @@ Status StorageQueue::WriteHeaderAndBlock(
                                 " status=", open_status.ToString()}));
   }
   if (!options_.disk_space_resource()->Reserve(total_size)) {
+    SendResExCaseToUma(ResourceExhaustedCase::NO_DISK_SPACE);
     return Status(
         error::RESOURCE_EXHAUSTED,
         base::StrCat({"Not enough disk space available to write into file=",
@@ -594,6 +609,7 @@ Status StorageQueue::WriteHeaderAndBlock(
   }
   auto write_status = file->Append(header.SerializeToString());
   if (!write_status.ok()) {
+    SendResExCaseToUma(ResourceExhaustedCase::CANNOT_WRITE_HEADER);
     return Status(error::RESOURCE_EXHAUSTED,
                   base::StrCat({"Cannot write file=", file->name(),
                                 " status=", write_status.status().ToString()}));
@@ -601,6 +617,7 @@ Status StorageQueue::WriteHeaderAndBlock(
   if (data.size() > 0) {
     write_status = file->Append(data);
     if (!write_status.ok()) {
+      SendResExCaseToUma(ResourceExhaustedCase::CANNOT_WRITE_DATA);
       return Status(
           error::RESOURCE_EXHAUSTED,
           base::StrCat({"Cannot write file=", file->name(),
@@ -614,6 +631,7 @@ Status StorageQueue::WriteHeaderAndBlock(
     crypto::RandBytes(junk_bytes, pad_size);
     write_status = file->Append(base::StringPiece(&junk_bytes[0], pad_size));
     if (!write_status.ok()) {
+      SendResExCaseToUma(ResourceExhaustedCase::CANNOT_PAD);
       return Status(error::RESOURCE_EXHAUSTED,
                     base::StrCat({"Cannot pad file=", file->name(), " status=",
                                   write_status.status().ToString()}));
@@ -648,6 +666,7 @@ Status StorageQueue::WriteMetadata(base::StringPiece current_record_digest) {
   // Account for the metadata file size.
   if (!options_.disk_space_resource()->Reserve(sizeof(generation_id_) +
                                                current_record_digest.size())) {
+    SendResExCaseToUma(ResourceExhaustedCase::NO_DISK_SPACE_METADATA);
     return Status(
         error::RESOURCE_EXHAUSTED,
         base::StrCat({"Not enough disk space available to write into file=",
@@ -660,6 +679,7 @@ Status StorageQueue::WriteMetadata(base::StringPiece current_record_digest) {
   auto append_result = meta_file->Append(base::StringPiece(
       reinterpret_cast<const char*>(&generation_id_), sizeof(generation_id_)));
   if (!append_result.ok()) {
+    SendResExCaseToUma(ResourceExhaustedCase::CANNOT_WRITE_GENERATION);
     return Status(
         error::RESOURCE_EXHAUSTED,
         base::StrCat({"Cannot write metafile=", meta_file->name(),
@@ -668,6 +688,7 @@ Status StorageQueue::WriteMetadata(base::StringPiece current_record_digest) {
   // Write last record digest.
   append_result = meta_file->Append(current_record_digest);
   if (!append_result.ok()) {
+    SendResExCaseToUma(ResourceExhaustedCase::CANNOT_WRITE_DIGEST);
     return Status(
         error::RESOURCE_EXHAUSTED,
         base::StrCat({"Cannot write metafile=", meta_file->name(),
@@ -1093,6 +1114,7 @@ class StorageQueue::ReadContext : public TaskRunnerContext<Status> {
     ScopedReservation scoped_reservation(
         blob.size(), storage_queue_->options().memory_resource());
     if (!scoped_reservation.reserved()) {
+      SendResExCaseToUma(ResourceExhaustedCase::NO_MEMORY_FOR_UPLOAD);
       Response(
           Status(error::RESOURCE_EXHAUSTED, "Insufficient memory for upload"));
       return;
@@ -1456,6 +1478,7 @@ class StorageQueue::WriteContext : public TaskRunnerContext<Status> {
       if (space_used + record_.ByteSizeLong() + record_.reserved_space() >
           space_total) {
         // Do not apply degradation, if insufficient - just reject with error.
+        SendResExCaseToUma(ResourceExhaustedCase::RESERVED_SPACE_NOT_OBSERVED);
         Response(Status(
             error::RESOURCE_EXHAUSTED,
             base::StrCat({"Write would not leave enough reserved space=",
@@ -1518,6 +1541,7 @@ class StorageQueue::WriteContext : public TaskRunnerContext<Status> {
         wrapped_record.ByteSizeLong(),
         storage_queue_->options().memory_resource());
     if (!scoped_reservation.reserved()) {
+      SendResExCaseToUma(ResourceExhaustedCase::NO_MEMORY_FOR_WRITE_BUFFER);
       Schedule(&ReadContext::Response, base::Unretained(this),
                Status(error::RESOURCE_EXHAUSTED,
                       "Not enough memory for the write buffer"));
@@ -1592,9 +1616,10 @@ class StorageQueue::WriteContext : public TaskRunnerContext<Status> {
         encrypted_record_result.ValueOrDie().ByteSizeLong(),
         storage_queue_->options().memory_resource());
     if (!scoped_reservation.reserved()) {
+      SendResExCaseToUma(ResourceExhaustedCase::NO_MEMORY_FOR_ENCRYPTED_RECORD);
       Schedule(&ReadContext::Response, base::Unretained(this),
                Status(error::RESOURCE_EXHAUSTED,
-                      "Not enough memory for the write buffer"));
+                      "Not enough memory for encrypted record"));
       return;
     }
     std::string buffer;
@@ -1894,6 +1919,7 @@ StorageQueue::SingleFile::Create(
   if (!disk_space_resource->Reserve(size)) {
     LOG(WARNING) << "Disk space exceeded adding file "
                  << filename.MaybeAsASCII();
+    SendResExCaseToUma(ResourceExhaustedCase::DISK_SPACE_EXCEEDED_ADDING_FILE);
     return Status(
         error::RESOURCE_EXHAUSTED,
         base::StrCat({"Not enough disk space available to include file=",
@@ -1992,6 +2018,7 @@ StatusOr<base::StringPiece> StorageQueue::SingleFile::Read(
                                 " File ", name()}));
   }
   if (size > max_buffer_size) {
+    SendResExCaseToUma(ResourceExhaustedCase::TOO_MUCH_DATA_TO_READ);
     return Status(error::RESOURCE_EXHAUSTED, "Too much data to read");
   }
   if (size_ == 0) {
@@ -2006,6 +2033,7 @@ StatusOr<base::StringPiece> StorageQueue::SingleFile::Read(
         std::min(max_buffer_size, RoundUpToFrameSize(size_));
     // Register with resource management.
     if (!memory_resource_->Reserve(buffer_size)) {
+      SendResExCaseToUma(ResourceExhaustedCase::NO_MEMORY_FOR_READ_BUFFER);
       return Status(error::RESOURCE_EXHAUSTED,
                     "Not enough memory for the read buffer");
     }

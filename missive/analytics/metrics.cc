@@ -12,7 +12,6 @@
 #include <base/no_destructor.h>
 #include <base/task/sequenced_task_runner.h>
 #include <metrics/metrics_library.h>
-#include <metrics/metrics_library_mock.h>
 
 namespace reporting::analytics {
 
@@ -38,8 +37,8 @@ bool Metrics::PostUMATask(FuncType send_to_uma_func, ArgTypes... args) {
             LOG_IF(WARNING, !success) << "Send to UMA failed.";
           },
           // Safe to use `metrics_.get()` because `metrics_` never gets
-          // destructed. For tasks posted in tests, the tasks are always done
-          // before the test terminates.
+          // destructed. For tasks posted in tests, the tasks must be always
+          // completed before the test terminates.
           send_to_uma_func, base::Unretained(metrics_.get()), args...));
 }
 

@@ -26,9 +26,10 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "missive/analytics/metrics.h"
+#include "missive/analytics/metrics_test_util.h"
 #include "missive/compression/compression_module.h"
 #include "missive/compression/decompression.h"
-#include "missive/compression/test_compression_module.h"
 #include "missive/encryption/test_encryption_module.h"
 #include "missive/proto/record.pb.h"
 #include "missive/resources/resource_interface.h"
@@ -744,6 +745,8 @@ class StorageQueueTest
   // Sequenced task runner where all EXPECTs will happen.
   const scoped_refptr<base::SequencedTaskRunner> main_task_runner_{
       base::SequencedTaskRunnerHandle::Get()};
+
+  analytics::Metrics::TestEnvironment metrics_test_environment_;
 
   base::ScopedTempDir location_;
   StorageOptions options_;
@@ -2129,10 +2132,18 @@ TEST_P(StorageQueueTest, WriteRecordWithInsufficientDiskSpace) {
   // does not affect other tests
   const auto original_disk_space = options_.disk_space_resource()->GetTotal();
   options_.disk_space_resource()->Test_SetTotal(0);
+  EXPECT_CALL(
+      analytics::Metrics::TestEnvironment::GetMockMetricsLibrary(),
+      SendLinearToUMA(
+          StrEq(StorageQueue::kResourceExhaustedCaseUmaName),
+          Eq(StorageQueue::ResourceExhaustedCase::NO_DISK_SPACE_METADATA),
+          Eq(StorageQueue::ResourceExhaustedCase::kMaxValue)))
+      .WillOnce(Return(true));
   Status write_result = WriteString(kData[0]);
   options_.disk_space_resource()->Test_SetTotal(original_disk_space);
   EXPECT_FALSE(write_result.ok());
   EXPECT_EQ(write_result.error_code(), error::RESOURCE_EXHAUSTED);
+  task_environment_.RunUntilIdle();  // For asynchronous UMA upload.
 }
 
 TEST_P(StorageQueueTest, WriteRecordWithInsufficientMemory) {
@@ -2142,10 +2153,20 @@ TEST_P(StorageQueueTest, WriteRecordWithInsufficientMemory) {
   // not affect other tests
   const auto original_total_memory = options_.memory_resource()->GetTotal();
   options_.memory_resource()->Test_SetTotal(0);
+
+  EXPECT_CALL(
+      analytics::Metrics::TestEnvironment::GetMockMetricsLibrary(),
+      SendLinearToUMA(
+          StrEq(StorageQueue::kResourceExhaustedCaseUmaName),
+          Eq(StorageQueue::ResourceExhaustedCase::NO_MEMORY_FOR_WRITE_BUFFER),
+          Eq(StorageQueue::ResourceExhaustedCase::kMaxValue)))
+      .WillOnce(Return(true));
+
   Status write_result = WriteString(kData[0]);
   options_.memory_resource()->Test_SetTotal(original_total_memory);
   EXPECT_FALSE(write_result.ok());
   EXPECT_EQ(write_result.error_code(), error::RESOURCE_EXHAUSTED);
+  task_environment_.RunUntilIdle();  // For asynchronous UMA upload.
 }
 
 TEST_P(StorageQueueTest, WriteRecordWithReservedSpace) {
