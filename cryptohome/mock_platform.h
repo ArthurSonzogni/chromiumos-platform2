@@ -7,8 +7,8 @@
 
 #include <map>
 #include <memory>
-#include <string>
 #include <optional>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -235,7 +235,7 @@ class MockPlatform : public Platform {
   MOCK_METHOD(bool,
               SetPermissions,
               (const base::FilePath&, mode_t),
-              (const, override));
+              (override));
   MOCK_METHOD(bool, SafeDirChmod, (const base::FilePath&, mode_t), (override));
   MOCK_METHOD(bool,
               GetOwnership,
@@ -244,7 +244,7 @@ class MockPlatform : public Platform {
   MOCK_METHOD(bool,
               SetOwnership,
               (const base::FilePath&, uid_t, gid_t, bool),
-              (const, override));
+              (override));
   MOCK_METHOD(bool,
               SafeDirChown,
               (const base::FilePath&, uid_t, gid_t),
@@ -315,7 +315,7 @@ class MockPlatform : public Platform {
   MOCK_METHOD(bool,
               SetGroupAccessible,
               (const base::FilePath&, gid_t group_id, mode_t group_mode),
-              (const, override));
+              (override));
   MOCK_METHOD(int64_t,
               GetQuotaCurrentSpaceForUid,
               (const base::FilePath&, uid_t),
@@ -328,14 +328,11 @@ class MockPlatform : public Platform {
               GetQuotaCurrentSpaceForProjectId,
               (const base::FilePath&, int),
               (const, override));
-  MOCK_METHOD(bool,
-              SetQuotaProjectIdWithFd,
-              (int, int, int*),
-              (const, override));
+  MOCK_METHOD(bool, SetQuotaProjectIdWithFd, (int, int, int*), (override));
   MOCK_METHOD(bool,
               SetQuotaProjectInheritanceFlagWithFd,
               (bool, int, int*),
-              (const, override));
+              (override));
   MOCK_METHOD(int64_t,
               ComputeDirectoryDiskUsage,
               (const base::FilePath&),

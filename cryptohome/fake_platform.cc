@@ -631,7 +631,7 @@ bool FakePlatform::GetOwnership(const base::FilePath& path,
 bool FakePlatform::SetOwnership(const base::FilePath& path,
                                 uid_t user_id,
                                 gid_t group_id,
-                                bool follow_links) const {
+                                bool follow_links) {
   base::AutoLock lock(mappings_lock_);
   const base::FilePath real_path = TestFilePath(path);
   if (!IsLink(path) && !FileExists(path)) {
@@ -675,8 +675,7 @@ bool FakePlatform::GetPermissions(const base::FilePath& path,
   return true;
 }
 
-bool FakePlatform::SetPermissions(const base::FilePath& path,
-                                  mode_t mode) const {
+bool FakePlatform::SetPermissions(const base::FilePath& path, mode_t mode) {
   base::AutoLock lock(mappings_lock_);
   const base::FilePath real_path = TestFilePath(path);
   if (!IsLink(path) && !FileExists(path)) {

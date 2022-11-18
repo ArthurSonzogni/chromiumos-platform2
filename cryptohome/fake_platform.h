@@ -150,7 +150,7 @@ class FakePlatform final : public Platform {
   bool SetOwnership(const base::FilePath& path,
                     uid_t user_id,
                     gid_t group_id,
-                    bool follow_links) const override;
+                    bool follow_links) override;
   bool SetSELinuxContext(const base::FilePath& path,
                          const std::string& context) override;
   bool RestoreSELinuxContexts(const base::FilePath& path,
@@ -159,7 +159,7 @@ class FakePlatform final : public Platform {
                     uid_t user_id,
                     gid_t group_id) override;
   bool GetPermissions(const base::FilePath& path, mode_t* mode) const override;
-  bool SetPermissions(const base::FilePath& path, mode_t mode) const override;
+  bool SetPermissions(const base::FilePath& path, mode_t mode) override;
   bool SafeDirChmod(const base::FilePath& path, mode_t mode) override;
   bool SafeCreateDirAndSetOwnershipAndPermissions(const base::FilePath& path,
                                                   mode_t mode,

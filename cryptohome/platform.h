@@ -300,7 +300,7 @@ class Platform {
   virtual bool SetOwnership(const base::FilePath& directory,
                             uid_t user_id,
                             gid_t group_id,
-                            bool follow_links) const;
+                            bool follow_links);
 
   // Calls the platform stat() function to obtain the permissions of
   // the given path. The path may be a directory or a file.
@@ -316,7 +316,7 @@ class Platform {
   // Parameters
   //   path - The path to change the permissions on
   //   mode - the mode to change the permissions to
-  virtual bool SetPermissions(const base::FilePath& path, mode_t mode) const;
+  virtual bool SetPermissions(const base::FilePath& path, mode_t mode);
 
   // Sets the path accessible by a group with specified permissions
   //
@@ -326,7 +326,7 @@ class Platform {
   //   group_mode - The group permissions to assign to the path
   virtual bool SetGroupAccessible(const base::FilePath& path,
                                   gid_t group_id,
-                                  mode_t group_mode) const;
+                                  mode_t group_mode);
 
   // Return the available disk space in bytes on the volume containing |path|,
   // or -1 on failure.
@@ -370,9 +370,7 @@ class Platform {
   //   project_id - The project ID
   //   fd - The FD
   //   out_error - errno when ioctl fails
-  virtual bool SetQuotaProjectIdWithFd(int project_id,
-                                       int fd,
-                                       int* out_error) const;
+  virtual bool SetQuotaProjectIdWithFd(int project_id, int fd, int* out_error);
 
   // Sets or resets the Quota Inheritance flags on |fd|.
   // Returns true if ioctl syscall succeeds.
@@ -383,7 +381,7 @@ class Platform {
   //   out_error - errno when ioctl fails
   virtual bool SetQuotaProjectInheritanceFlagWithFd(bool enable,
                                                     int fd,
-                                                    int* out_error) const;
+                                                    int* out_error);
 
   // Returns true if the specified file exists.
   //

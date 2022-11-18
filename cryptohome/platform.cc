@@ -446,7 +446,7 @@ bool Platform::GetOwnership(const FilePath& path,
 bool Platform::SetOwnership(const FilePath& path,
                             uid_t user_id,
                             gid_t group_id,
-                            bool follow_links) const {
+                            bool follow_links) {
   int ret;
   if (follow_links)
     ret = chown(path.value().c_str(), user_id, group_id);
@@ -470,7 +470,7 @@ bool Platform::GetPermissions(const FilePath& path, mode_t* mode) const {
   return true;
 }
 
-bool Platform::SetPermissions(const FilePath& path, mode_t mode) const {
+bool Platform::SetPermissions(const FilePath& path, mode_t mode) {
   if (chmod(path.value().c_str(), mode)) {
     PLOG(ERROR) << "chmod() of " << path.value() << " to (" << std::oct << mode
                 << ") failed.";
@@ -481,7 +481,7 @@ bool Platform::SetPermissions(const FilePath& path, mode_t mode) const {
 
 bool Platform::SetGroupAccessible(const FilePath& path,
                                   gid_t group_id,
-                                  mode_t group_mode) const {
+                                  mode_t group_mode) {
   uid_t user_id;
   mode_t mode;
   if (!GetOwnership(path, &user_id, NULL, true) ||
@@ -528,9 +528,7 @@ int64_t Platform::GetQuotaCurrentSpaceForProjectId(const base::FilePath& device,
   return dq.dqb_curspace;
 }
 
-bool Platform::SetQuotaProjectIdWithFd(int project_id,
-                                       int fd,
-                                       int* out_error) const {
+bool Platform::SetQuotaProjectIdWithFd(int project_id, int fd, int* out_error) {
   struct fsxattr fsx = {};
   if (ioctl(fd, FS_IOC_FSGETXATTR, &fsx) < 0) {
     *out_error = errno;
@@ -548,7 +546,7 @@ bool Platform::SetQuotaProjectIdWithFd(int project_id,
 
 bool Platform::SetQuotaProjectInheritanceFlagWithFd(bool enable,
                                                     int fd,
-                                                    int* out_error) const {
+                                                    int* out_error) {
   uint32_t flags;
   if (ioctl(fd, FS_IOC_GETFLAGS, &flags) < 0) {
     *out_error = errno;
@@ -1049,8 +1047,7 @@ bool Platform::Copy(const FilePath& from, const FilePath& to) {
 bool Platform::CopyPermissionsCallback(const FilePath& old_base,
                                        const FilePath& new_base,
                                        const FilePath& file_path,
-                                       const base::stat_wrapper_t& file_info
-) {
+                                       const base::stat_wrapper_t& file_info) {
   // Find the new path that corresponds with the old path given by file_info.
   FilePath old_path = file_path;
   FilePath new_path = new_base;
