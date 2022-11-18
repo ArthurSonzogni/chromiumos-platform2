@@ -97,16 +97,17 @@ base::FilePath GetUserDownloadsPath(const std::string& username) {
       .Append("MyFiles/Downloads");
 }
 
-std::set<ino64_t> EnumerateInodes(const base::FilePath& root_path) {
-  std::set<ino64_t> inodes;
+std::set<std::pair<base::FilePath, ino64_t>> EnumerateFiles(
+    const base::FilePath& root_path) {
+  std::set<std::pair<base::FilePath, ino64_t>> files;
   base::FileEnumerator enumerator(root_path, /*recursive=*/true,
                                   base::FileEnumerator::FILES);
   for (base::FilePath entry = enumerator.Next(); !entry.empty();
        entry = enumerator.Next()) {
-    inodes.insert(enumerator.GetInfo().stat().st_ino);
+    files.insert(std::make_pair(entry, enumerator.GetInfo().stat().st_ino));
   }
 
-  return inodes;
+  return files;
 }
 
 }  // namespace
@@ -203,6 +204,8 @@ std::vector<uint8_t> DlpAdaptor::AddFile(
     response.set_error_message("Failed to add entry to database");
     return SerializeProto(response);
   }
+
+  AddPerFileWatch({std::make_pair(base::FilePath(request.file_path()), inode)});
 
   return SerializeProto(response);
 }
@@ -391,11 +394,22 @@ void DlpAdaptor::InitDatabase(const base::FilePath database_path,
   }
   base::ThreadTaskRunnerHandle::Get()->PostTaskAndReplyWithResult(
       FROM_HERE,
-      base::BindOnce(
-          &EnumerateInodes,
-          GetUserDownloadsPath(GetSanitizedUsername(dbus_object_.get()))),
+      base::BindOnce(&EnumerateFiles, GetUserDownloadsPath(GetSanitizedUsername(
+                                          dbus_object_.get()))),
       base::BindOnce(&DlpAdaptor::CleanupAndSetDatabase, base::Unretained(this),
                      std::move(db), std::move(init_callback)));
+}
+
+void DlpAdaptor::AddPerFileWatch(
+    const std::set<std::pair<base::FilePath, ino64_t>>& files) {
+  if (!fanotify_watcher_)
+    return;
+
+  for (const auto& entry : files) {
+    if (db_->GetFileEntryByInode(entry.second)) {
+      fanotify_watcher_->AddFileDeleteWatch(entry.first);
+    }
+  }
 }
 
 void DlpAdaptor::EnsureFanotifyWatcherStarted() {
@@ -411,6 +425,12 @@ void DlpAdaptor::EnsureFanotifyWatcherStarted() {
   const std::string sanitized_username =
       GetSanitizedUsername(dbus_object_.get());
   fanotify_watcher_->AddWatch(GetUserDownloadsPath(sanitized_username));
+
+  base::ThreadTaskRunnerHandle::Get()->PostTaskAndReplyWithResult(
+      FROM_HERE,
+      base::BindOnce(&EnumerateFiles, GetUserDownloadsPath(GetSanitizedUsername(
+                                          dbus_object_.get()))),
+      base::BindOnce(&DlpAdaptor::AddPerFileWatch, base::Unretained(this)));
 }
 
 void DlpAdaptor::ProcessFileOpenRequest(
@@ -455,6 +475,22 @@ void DlpAdaptor::ProcessFileOpenRequest(
                      std::move(callbacks.first)),
       base::BindOnce(&DlpAdaptor::OnDlpPolicyMatchedError,
                      base::Unretained(this), std::move(callbacks.second)));
+}
+
+void DlpAdaptor::OnFileDeleted(ino_t inode) {
+  if (!db_) {
+    LOG(WARNING) << "DLP database is not ready yet.";
+    return;
+  }
+
+  if (!db_->GetFileEntryByInode(inode).has_value()) {
+    // The file is not in the DB.
+    return;
+  }
+
+  if (!db_->DeleteFileEntryByInode(inode)) {
+    LOG(ERROR) << "Can't delete entry from database: " << inode;
+  }
 }
 
 void DlpAdaptor::OnDlpPolicyMatched(base::OnceCallback<void(bool)> callback,
@@ -627,10 +663,16 @@ ino_t DlpAdaptor::GetInodeValue(const std::string& path) {
   return file_stats.st_ino;
 }
 
-void DlpAdaptor::CleanupAndSetDatabase(std::unique_ptr<DlpDatabase> db,
-                                       base::OnceClosure callback,
-                                       std::set<ino64_t> inodes) {
+void DlpAdaptor::CleanupAndSetDatabase(
+    std::unique_ptr<DlpDatabase> db,
+    base::OnceClosure callback,
+    const std::set<std::pair<base::FilePath, ino64_t>>& files) {
   DCHECK(db);
+
+  std::set<ino64_t> inodes;
+  for (const auto& entry : files) {
+    inodes.insert(entry.second);
+  }
 
   if (db->DeleteFileEntriesWithInodesNotInSet(inodes)) {
     db_.swap(db);

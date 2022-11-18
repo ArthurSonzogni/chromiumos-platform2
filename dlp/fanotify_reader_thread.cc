@@ -18,6 +18,36 @@
 #include "base/threading/platform_thread.h"
 #include "base/threading/sequenced_task_runner_handle.h"
 
+namespace {
+
+// TODO(b/259688785): Update fanofity headers to include the struct.
+/* Variable length info record following event metadata */
+struct fanotify_event_info_header {
+  __u8 info_type;
+  __u8 pad;
+  __u16 len;
+};
+
+// TODO(b/259688785): Update fanofity headers to include the struct.
+/*
+ * Unique file identifier info record.
+ * This structure is used for records of types FAN_EVENT_INFO_TYPE_FID,
+ * FAN_EVENT_INFO_TYPE_DFID and FAN_EVENT_INFO_TYPE_DFID_NAME.
+ * For FAN_EVENT_INFO_TYPE_DFID_NAME there is additionally a null terminated
+ * name immediately after the file handle.
+ */
+struct fanotify_event_info_fid {
+  struct fanotify_event_info_header hdr;
+  __kernel_fsid_t fsid;
+  /*
+   * Following is an opaque struct file_handle that can be passed as
+   * an argument to open_by_handle_at(2).
+   */
+  unsigned char handle[];
+};
+
+}  // namespace
+
 namespace dlp {
 
 FanotifyReaderThread::FanotifyReaderThread(
@@ -54,7 +84,8 @@ void FanotifyReaderThread::RunLoop() {
   CHECK_LE(0, fanotify_fd_);
   CHECK_GT(FD_SETSIZE, fanotify_fd_);
 
-  std::vector<char> buffer(0);
+  // Set constant large buffer size per fanotify man page recommendations.
+  char buffer[4096];
   while (true) {
     fd_set rfds;
     FD_ZERO(&rfds);
@@ -64,7 +95,7 @@ void FanotifyReaderThread::RunLoop() {
     tv.tv_sec = 1;
     tv.tv_usec = 0;
 
-    // Wait until some inotify events are available.
+    // Wait until some fanotify events are available.
     int select_result =
         HANDLE_EINTR(select(fanotify_fd_ + 1, &rfds, nullptr, nullptr, &tv));
     if (select_result < 0) {
@@ -74,18 +105,8 @@ void FanotifyReaderThread::RunLoop() {
       continue;
     }
 
-    // Adjust buffer size to current event queue size.
-    int buffer_size;
-    int ioctl_result =
-        HANDLE_EINTR(ioctl(fanotify_fd_, FIONREAD, &buffer_size));
-    if (ioctl_result != 0) {
-      PLOG(WARNING) << "ioctl failed";
-      return;
-    }
-
-    buffer.resize(buffer_size);
     ssize_t bytes_read =
-        HANDLE_EINTR(read(fanotify_fd_, &buffer[0], buffer_size));
+        HANDLE_EINTR(read(fanotify_fd_, buffer, sizeof(buffer)));
     if (bytes_read < 0) {
       PLOG(WARNING) << "read from fanotify fd failed";
       return;
@@ -93,30 +114,51 @@ void FanotifyReaderThread::RunLoop() {
 
     fanotify_event_metadata* metadata =
         reinterpret_cast<fanotify_event_metadata*>(&buffer[0]);
-    while (FAN_EVENT_OK(metadata, bytes_read)) {
+    for (; FAN_EVENT_OK(metadata, bytes_read);
+         metadata = FAN_EVENT_NEXT(metadata, bytes_read)) {
       if (metadata->vers != FANOTIFY_METADATA_VERSION) {
         LOG(ERROR) << "mismatch of fanotify metadata version";
         return;
       }
-      if (metadata->fd >= 0) {
-        base::ScopedFD fd(metadata->fd);
-        if (metadata->mask & FAN_OPEN_PERM) {
-          struct stat st;
-          if (fstat(fd.get(), &st)) {
-            PLOG(ERROR) << "fstat failed";
-            metadata = FAN_EVENT_NEXT(metadata, bytes_read);
-            continue;
-          }
-
-          parent_task_runner_->PostTask(
-              FROM_HERE, base::BindOnce(&Delegate::OnFileOpenRequested,
-                                        base::Unretained(delegate_), st.st_ino,
-                                        metadata->pid, std::move(fd)));
-        } else {
-          LOG(WARNING) << "unexpected fanotify event: " << metadata->mask;
+      if (metadata->mask & FAN_OPEN_PERM) {
+        if (metadata->fd < 0) {
+          LOG(ERROR) << "invalid file descriptor for OPEN_PERM event";
+          continue;
         }
+        base::ScopedFD fd(metadata->fd);
+        struct stat st;
+        if (fstat(fd.get(), &st)) {
+          PLOG(ERROR) << "fstat failed";
+          continue;
+        }
+
+        parent_task_runner_->PostTask(
+            FROM_HERE, base::BindOnce(&Delegate::OnFileOpenRequested,
+                                      base::Unretained(delegate_), st.st_ino,
+                                      metadata->pid, std::move(fd)));
+      } else if (metadata->mask & FAN_DELETE_SELF) {
+        struct file_handle* file_handle;
+        struct fanotify_event_info_fid* fid;
+        fid = (struct fanotify_event_info_fid*)(metadata + 1);
+        // TODO(b/259688785): Update fanofity headers to include the const.
+        if (fid->hdr.info_type != /*FAN_EVENT_INFO_TYPE_FID=*/1) {
+          LOG(ERROR) << "expected FID type DELETE_SELF event";
+          continue;
+        }
+
+        file_handle = (struct file_handle*)fid->handle;
+        uint32_t* handle = reinterpret_cast<uint32_t*>(file_handle->f_handle);
+        if (file_handle->handle_type != /*FILEID_INO32_GEN=*/1) {
+          LOG(ERROR) << "unexpected file_handle type: "
+                     << file_handle->handle_type;
+          continue;
+        }
+        parent_task_runner_->PostTask(
+            FROM_HERE, base::BindOnce(&Delegate::OnFileDeleted,
+                                      base::Unretained(delegate_), handle[0]));
+      } else {
+        LOG(WARNING) << "unexpected fanotify event: " << metadata->mask;
       }
-      metadata = FAN_EVENT_NEXT(metadata, bytes_read);
     }
   }
 }

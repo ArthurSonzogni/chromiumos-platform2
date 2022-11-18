@@ -21,6 +21,8 @@ class FanotifyWatcher : public FanotifyReaderThread::Delegate {
    public:
     virtual void ProcessFileOpenRequest(
         ino_t inode, int pid, base::OnceCallback<void(bool)> callback) = 0;
+
+    virtual void OnFileDeleted(ino_t inode) = 0;
   };
 
   explicit FanotifyWatcher(Delegate* delegate);
@@ -28,19 +30,32 @@ class FanotifyWatcher : public FanotifyReaderThread::Delegate {
   FanotifyWatcher(const FanotifyWatcher&) = delete;
   FanotifyWatcher& operator=(const FanotifyWatcher&) = delete;
 
-  // Start to listen to event for the mount point with |path|.
+  // Start to listen to OPEN_PERM event for the mount point with |path|.
   void AddWatch(const base::FilePath& path);
 
+  // Start to listen to DELETE_SELF event for the file on |path|.
+  void AddFileDeleteWatch(const base::FilePath& path);
+
  private:
+  // FanotifyReaderThread::Delegate overrides:
   void OnFileOpenRequested(ino_t inode, int pid, base::ScopedFD fd) override;
+  void OnFileDeleted(ino_t inode) override;
 
   void OnRequestProcessed(base::ScopedFD fd, bool allowed);
 
   scoped_refptr<base::SequencedTaskRunner> task_runner_;
-  // fanotify file descriptor should be destructed before the reader thread so
+
+  // We need two sets of fanotify file descriptors and thread so that one of
+  // them identifies objects by file handles (FAN_CLASS_NOTIF) and another
+  // identifies objects by file descriptors (FAN_CLASS_CONTENT).
+  //
+  // fanotify file descriptors should be destructed before the reader thread so
   // that the read loop there will exit on closed file descriptor.
-  FanotifyReaderThread thread_;
-  base::ScopedFD fanotify_fd_;
+  FanotifyReaderThread fd_events_thread_;
+  FanotifyReaderThread fh_events_thread_;
+  base::ScopedFD fanotify_fd_events_fd_;
+  base::ScopedFD fanotify_fh_events_fd_;
+
   Delegate* delegate_;
 };
 

@@ -23,6 +23,10 @@ class FanotifyReaderThread : public base::PlatformThread::Delegate {
                                      int pid,
                                      base::ScopedFD fd) = 0;
 
+    // Called when a file with |inode| was deleted. The file might already not
+    // exist on the filesystem.
+    virtual void OnFileDeleted(ino_t inode) = 0;
+
    protected:
     virtual ~Delegate() = default;
   };

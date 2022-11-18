@@ -86,7 +86,8 @@ class DlpAdaptor : public org::chromium::DlpAdaptor,
   FRIEND_TEST(DlpAdaptorTest, RequestAllowedWithoutDatabase);
   FRIEND_TEST(DlpAdaptorTest, GetFilesSources);
   FRIEND_TEST(DlpAdaptorTest, GetFilesSourcesWithoutDatabase);
-  FRIEND_TEST(DlpAdaptorTest, GetFilesSourcesFileDeleted);
+  FRIEND_TEST(DlpAdaptorTest, GetFilesSourcesFileDeletedDBReopened);
+  FRIEND_TEST(DlpAdaptorTest, GetFilesSourcesFileDeletedInFlight);
   FRIEND_TEST(DlpAdaptorTest, SetDlpFilesPolicy);
   FRIEND_TEST(DlpAdaptorTest, CheckFilesTransfer);
 
@@ -98,9 +99,11 @@ class DlpAdaptor : public org::chromium::DlpAdaptor,
   // Initializes |fanotify_watcher_| if not yet started.
   void EnsureFanotifyWatcherStarted();
 
+  // FanotifyWatcher::Delegate overrides:
   void ProcessFileOpenRequest(ino_t inode,
                               int pid,
                               base::OnceCallback<void(bool)> callback) override;
+  void OnFileDeleted(ino_t inode) override;
 
   // Callbacks on DlpPolicyMatched D-Bus request.
   void OnDlpPolicyMatched(base::OnceCallback<void(bool)> callback,
@@ -150,9 +153,15 @@ class DlpAdaptor : public org::chromium::DlpAdaptor,
 
   // Removes entries from |db| that are not present in |inodes| and sets the
   // used database to |db|. |callback| is called if this successfully finishes.
-  void CleanupAndSetDatabase(std::unique_ptr<DlpDatabase> db,
-                             base::OnceClosure callback,
-                             std::set<ino64_t> inodes);
+  void CleanupAndSetDatabase(
+      std::unique_ptr<DlpDatabase> db,
+      base::OnceClosure callback,
+      const std::set<std::pair<base::FilePath, ino64_t>>& inodes);
+
+  // Requests fanotify to add per-file watch (FAN_DELETE_SELF event) for each
+  // of the provided files if they exist in the database.
+  void AddPerFileWatch(
+      const std::set<std::pair<base::FilePath, ino64_t>>& files);
 
   // If true, DlpAdaptor won't try to initialise `fanotify_watcher_`.
   bool is_fanotify_watcher_started_for_testing_ = false;
