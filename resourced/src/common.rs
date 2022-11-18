@@ -18,7 +18,7 @@ use crate::power;
 use crate::cgroup_x86_64::{media_dynamic_cgroup, MediaDynamicCgroupAction};
 
 // Extract the parsing function for unittest.
-pub fn parse_file_to_u64<R: BufRead>(reader: R) -> Result<u64> {
+fn parse_file_to_u64<R: BufRead>(reader: R) -> Result<u64> {
     let first_line = reader.lines().next().context("No content in buffer")??;
     first_line
         .parse()
@@ -203,7 +203,7 @@ fn set_gt_boost_freq_mhz(mode: RTCAudioActive) -> Result<()> {
 }
 
 // Extract the impl function for unittest.
-pub fn set_gt_boost_freq_mhz_impl(root: &Path, mode: RTCAudioActive) -> Result<()> {
+fn set_gt_boost_freq_mhz_impl(root: &Path, mode: RTCAudioActive) -> Result<()> {
     const SYSFS_BASE: &str = "sys/class/drm";
     const BOOST_PATH: &str = "gt_boost_freq_mhz";
     const MIN_PATH: &str = "gt_min_freq_mhz";
@@ -244,4 +244,61 @@ pub fn set_gt_boost_freq_mhz_impl(root: &Path, mode: RTCAudioActive) -> Result<(
     std::fs::write(card_path.join(BOOST_PATH), gt_boost_freq_mhz)?;
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+    use tempfile::tempdir;
+
+    #[test]
+    fn test_parse_file_to_u64() {
+        assert_eq!(
+            parse_file_to_u64("123".to_string().as_bytes()).unwrap(),
+            123
+        );
+        assert_eq!(
+            parse_file_to_u64("456\n789".to_string().as_bytes()).unwrap(),
+            456
+        );
+        assert!(parse_file_to_u64("".to_string().as_bytes()).is_err());
+        assert!(parse_file_to_u64("abc".to_string().as_bytes()).is_err());
+    }
+
+    fn write_i32_to_file(path: &Path, value: i32) -> Result<()> {
+        fs::create_dir_all(
+            path.parent()
+                .with_context(|| format!("cannot get parent: {}", path.display()))?,
+        )?;
+
+        std::fs::write(path, value.to_string())?;
+        Ok(())
+    }
+
+    #[test]
+    fn test_set_gt_boost_freq_mhz() -> Result<()> {
+        const GT_BOOST_FREQ_MHZ_PATH: &str = "sys/class/drm/card0/gt_boost_freq_mhz";
+        const GT_MAX_FREQ_MHZ_PATH: &str = "sys/class/drm/card0/gt_max_freq_mhz";
+        const GT_MIN_FREQ_MHZ_PATH: &str = "sys/class/drm/card0/gt_min_freq_mhz";
+
+        let root = tempdir()?;
+        let root_path = root.path();
+        let gt_boost_freq_mhz_path = root_path.join(GT_BOOST_FREQ_MHZ_PATH);
+        let gt_max_freq_mhz_path = root_path.join(GT_MAX_FREQ_MHZ_PATH);
+        let gt_min_freq_mhz_path = root_path.join(GT_MIN_FREQ_MHZ_PATH);
+        write_i32_to_file(&gt_boost_freq_mhz_path, 500)?;
+        write_i32_to_file(&gt_max_freq_mhz_path, 1100)?;
+        write_i32_to_file(&gt_min_freq_mhz_path, 300)?;
+
+        set_gt_boost_freq_mhz_impl(root_path, RTCAudioActive::Active)?;
+
+        assert_eq!(read_file_to_u64(&gt_boost_freq_mhz_path)?, 300);
+
+        set_gt_boost_freq_mhz_impl(root_path, RTCAudioActive::Inactive)?;
+
+        assert_eq!(read_file_to_u64(&gt_boost_freq_mhz_path)?, 1100);
+
+        Ok(())
+    }
 }

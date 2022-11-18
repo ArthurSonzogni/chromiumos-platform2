@@ -15,9 +15,6 @@ mod cgroup_x86_64;
 #[cfg(target_arch = "x86_64")]
 mod cpu_scaling;
 
-#[cfg(test)]
-mod test;
-
 use std::path::Path;
 
 use anyhow::{bail, Result};

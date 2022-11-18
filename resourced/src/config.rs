@@ -9,7 +9,7 @@ use anyhow::{bail, Context, Result};
 
 use crate::common::read_file_to_u64;
 
-pub const RESOURCED_CONFIG_PATH: &str = "run/chromeos-config/v1/resource/";
+const RESOURCED_CONFIG_PATH: &str = "run/chromeos-config/v1/resource/";
 
 pub trait ConfigProvider {
     fn read_power_preferences(
@@ -200,5 +200,143 @@ impl ConfigProvider for DirectoryConfigProvider {
         }
 
         Ok(Some(preferences))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+    use tempfile::tempdir;
+
+    #[test]
+    fn test_config_provider_empty_root() -> Result<()> {
+        let root = tempdir()?;
+        let provider = DirectoryConfigProvider {
+            root: root.path().to_path_buf(),
+        };
+
+        let preference =
+            provider.read_power_preferences(PowerSourceType::AC, PowerPreferencesType::Default)?;
+
+        assert!(preference.is_none());
+
+        let preference =
+            provider.read_power_preferences(PowerSourceType::DC, PowerPreferencesType::Default)?;
+
+        assert!(preference.is_none());
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_config_provider_empty_dir() -> Result<()> {
+        let root = tempdir()?;
+        let path = root.path().join(RESOURCED_CONFIG_PATH);
+        fs::create_dir_all(path).unwrap();
+
+        let provider = DirectoryConfigProvider {
+            root: root.path().to_path_buf(),
+        };
+
+        let preference =
+            provider.read_power_preferences(PowerSourceType::AC, PowerPreferencesType::Default)?;
+
+        assert!(preference.is_none());
+
+        let preference =
+            provider.read_power_preferences(PowerSourceType::DC, PowerPreferencesType::Default)?;
+
+        assert!(preference.is_none());
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_config_provider_ondemand_all_types() -> Result<()> {
+        let power_source_params = [(PowerSourceType::AC, "ac"), (PowerSourceType::DC, "dc")];
+
+        let preference_params = [
+            (PowerPreferencesType::Default, "default-power-preferences"),
+            (PowerPreferencesType::WebRTC, "web-rtc-power-preferences"),
+            (
+                PowerPreferencesType::Fullscreen,
+                "fullscreen-power-preferences",
+            ),
+            (
+                PowerPreferencesType::BorealisGaming,
+                "borealis-gaming-power-preferences",
+            ),
+            (
+                PowerPreferencesType::ArcvmGaming,
+                "arcvm-gaming-power-preferences",
+            ),
+        ];
+
+        for (power_source, power_source_path) in power_source_params {
+            for (preference, preference_path) in preference_params {
+                let root = tempdir()?;
+                let ondemand_path = root
+                    .path()
+                    .join(RESOURCED_CONFIG_PATH)
+                    .join(power_source_path)
+                    .join(preference_path)
+                    .join("governor")
+                    .join("ondemand");
+                fs::create_dir_all(&ondemand_path)?;
+
+                let powersave_bias_path = ondemand_path.join("powersave-bias");
+                fs::write(&powersave_bias_path, b"340")?;
+
+                let provider = DirectoryConfigProvider {
+                    root: root.path().to_path_buf(),
+                };
+
+                let actual = provider.read_power_preferences(power_source, preference)?;
+
+                let expected = PowerPreferences {
+                    governor: Some(Governor::Ondemand {
+                        powersave_bias: 340,
+                        sampling_rate: None,
+                    }),
+                };
+
+                assert_eq!(expected, actual.unwrap());
+
+                // Now try with a sampling_rate 0 (unset)
+
+                let powersave_bias_path = ondemand_path.join("sampling-rate-ms");
+                fs::write(&powersave_bias_path, b"0")?;
+
+                let actual = provider.read_power_preferences(power_source, preference)?;
+
+                let expected = PowerPreferences {
+                    governor: Some(Governor::Ondemand {
+                        powersave_bias: 340,
+                        sampling_rate: None,
+                    }),
+                };
+
+                assert_eq!(expected, actual.unwrap());
+
+                // Now try with a sampling_rate 16
+
+                let powersave_bias_path = ondemand_path.join("sampling-rate-ms");
+                fs::write(&powersave_bias_path, b"16")?;
+
+                let actual = provider.read_power_preferences(power_source, preference)?;
+
+                let expected = PowerPreferences {
+                    governor: Some(Governor::Ondemand {
+                        powersave_bias: 340,
+                        sampling_rate: Some(16000),
+                    }),
+                };
+
+                assert_eq!(expected, actual.unwrap());
+            }
+        }
+
+        Ok(())
     }
 }
