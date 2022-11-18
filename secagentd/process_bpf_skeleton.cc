@@ -12,6 +12,7 @@
 #include "secagentd/bpf_skeleton_wrappers.h"
 #include "secagentd/bpf_skeletons/skeleton_process_bpf.h"
 #include "secagentd/bpf_utils.h"
+#include "secagentd/metrics_sender.h"
 
 namespace secagentd {
 
@@ -64,14 +65,20 @@ absl::Status ProcessBpfSkeleton::LoadAndAttach() {
 #endif  // USE_MIN_CORE_BTF
 
   if (!skel_) {
+    MetricsSender::GetInstance().SendEnumMetricToUMA(
+        metrics::kProcessBpfAttach, metrics::BpfAttachResult::kErrorOpen);
     return absl::InternalError("BPF skeleton failed to open.");
   }
   if (process_bpf__load(skel_)) {
+    MetricsSender::GetInstance().SendEnumMetricToUMA(
+        metrics::kProcessBpfAttach, metrics::BpfAttachResult::kErrorLoad);
     return absl::InternalError(
         "ProcessBPF: application failed loading and verification.");
   }
 
   if (process_bpf__attach(skel_)) {
+    MetricsSender::GetInstance().SendEnumMetricToUMA(
+        metrics::kProcessBpfAttach, metrics::BpfAttachResult::kErrorLoad);
     return absl::InternalError("ProcessBPF: program failed to attach.");
   }
 
@@ -88,11 +95,15 @@ absl::Status ProcessBpfSkeleton::LoadAndAttach() {
   }
 
   if (map_fd < 0 || !rb_ || epoll_fd < 0) {
+    MetricsSender::GetInstance().SendEnumMetricToUMA(
+        metrics::kProcessBpfAttach, metrics::BpfAttachResult::kErrorRingBuffer);
     return absl::InternalError("ProcessBPF: Ring buffer creation failed.");
   }
 
   rb_watch_readable_ = base::FileDescriptorWatcher::WatchReadable(
       epoll_fd, callbacks_.ring_buffer_read_ready_callback);
+  MetricsSender::GetInstance().SendEnumMetricToUMA(
+      metrics::kProcessBpfAttach, metrics::BpfAttachResult::kSuccess);
   return absl::OkStatus();
 }
 }  // namespace secagentd

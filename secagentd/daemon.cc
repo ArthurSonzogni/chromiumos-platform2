@@ -7,7 +7,6 @@
 #include <utility>
 
 #include "absl/status/status.h"
-#include "base/bind.h"
 #include "base/memory/scoped_refptr.h"
 #include "base/task/thread_pool/thread_pool_instance.h"
 #include "base/time/time.h"
@@ -17,6 +16,7 @@
 #include "policy/libpolicy.h"
 #include "secagentd/daemon.h"
 #include "secagentd/message_sender.h"
+#include "secagentd/metrics_sender.h"
 #include "secagentd/plugins.h"
 #include "secagentd/process_cache.h"
 
@@ -113,6 +113,10 @@ int Daemon::OnEventLoopStarted() {
                           base::Unretained(this)));
 
   // Delay before first timer invocation so add check.
+  // We emit this metric here and not inside the polled method so that we do it
+  // exactly once per daemon lifetime.
+  MetricsSender::GetInstance().SendEnumMetricToUMA(metrics::kPolicy,
+                                                   metrics::Policy::kChecked);
   PollXdrReportingIsEnabled();
 
   return EX_OK;
@@ -139,6 +143,9 @@ void Daemon::PollXdrReportingIsEnabled() {
   if (XdrReportingIsEnabled()) {
     if (xdr_reporting_policy_) {
       LOG(INFO) << "Starting event reporting";
+      // This is emitted at most once per daemon lifetime.
+      MetricsSender::GetInstance().SendEnumMetricToUMA(
+          metrics::kPolicy, metrics::Policy::kEnabled);
       int rv = RunPlugins();
       if (rv != EX_OK) {
         QuitWithExitCode(rv);
