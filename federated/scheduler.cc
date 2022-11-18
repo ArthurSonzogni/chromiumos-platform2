@@ -79,7 +79,7 @@ void Scheduler::Schedule() {
     DVLOG(1) << "dlc fcp isn't installed, call dlc service to install it";
     dlcservice_client_->RegisterDlcStateChangedSignalHandler(
         base::BindRepeating(&Scheduler::OnDlcStateChanged,
-                            weak_ptr_factory_.GetWeakPtr()),
+                            weak_ptr_factory_.GetMutableWeakPtr()),
         base::BindOnce(&OnDBusSignalConnected));
 
     error.reset();

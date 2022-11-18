@@ -41,7 +41,7 @@ PowerSupplyTrainingCondition::PowerSupplyTrainingCondition(dbus::Bus* bus)
       power_manager::kPowerManagerInterface,
       power_manager::kPowerSupplyPollSignal,
       base::BindRepeating(&PowerSupplyTrainingCondition::OnPowerSupplyReceived,
-                          weak_ptr_factory_.GetWeakPtr()),
+                          weak_ptr_factory_.GetMutableWeakPtr()),
       base::BindOnce(&OnSignalConnected));
 
   DVLOG(1) << "Construct PowerSupplyTrainingCondition";

@@ -33,7 +33,7 @@ SessionManagerProxy::SessionManagerProxy(
     : proxy_(std::move(proxy)), weak_ptr_factory_(this) {
   proxy_->RegisterSessionStateChangedSignalHandler(
       base::BindRepeating(&SessionManagerProxy::OnSessionStateChanged,
-                          weak_ptr_factory_.GetWeakPtr()),
+                          weak_ptr_factory_.GetMutableWeakPtr()),
       base::BindOnce(&OnSignalConnected));
 }
 

@@ -66,7 +66,7 @@ void Daemon::InitDBus() {
   CHECK(federated_service_exported_object->ExportMethodAndBlock(
       kFederatedInterfaceName, kBootstrapMojoConnectionMethod,
       base::BindRepeating(&Daemon::BootstrapMojoConnection,
-                          weak_ptr_factory_.GetWeakPtr())));
+                          weak_ptr_factory_.GetMutableWeakPtr())));
 
   // Takes ownership of the Federated service.
   CHECK(bus_->RequestOwnershipAndBlock(kFederatedServiceName,
