@@ -5451,4 +5451,27 @@ MATCHER_P(HasPossibleAction, action, "") {
   return false;
 }
 
+TEST_F(UserDataAuthApiTest, RemoveStillMounted) {
+  // If a home directory is mounted it'll return false for Remove().
+  EXPECT_CALL(homedirs_, Remove(_)).WillOnce(Return(false));
+
+  std::optional<std::string> session_id = GetTestUnauthedAuthSession();
+  ASSERT_TRUE(session_id.has_value());
+
+  user_data_auth::RemoveRequest req;
+  req.set_auth_session_id(session_id.value());
+  user_data_auth::RemoveReply reply;
+
+  reply = userdataauth_->Remove(req);
+
+  // Failure to Remove() due to still mounted vault should result in Reboot and
+  // Powerwash recommendation.
+  EXPECT_THAT(
+      reply.error_info(),
+      HasPossibleAction(user_data_auth::PossibleAction::POSSIBLY_REBOOT));
+  EXPECT_THAT(
+      reply.error_info(),
+      HasPossibleAction(user_data_auth::PossibleAction::POSSIBLY_POWERWASH));
+}
+
 }  // namespace cryptohome
