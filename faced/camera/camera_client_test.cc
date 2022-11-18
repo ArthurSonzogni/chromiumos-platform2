@@ -53,16 +53,16 @@ TEST(IsFormatEqualTest, IsFormatEqual) {
 // Tests that the camera client is able to probe info for a single fake camera
 // info.
 TEST_F(CameraClientTest, Create) {
-  testing::FakeCameraService fake_camera_service_connector;
+  auto fake_camera_service_connector =
+      std::make_unique<testing::FakeCameraService>();
   testing::CameraSet yuv_camera_set = testing::YuvCameraSet();
-  fake_camera_service_connector.AddCameraInfo(yuv_camera_set.camera_info,
-                                              /*is_removed=*/false);
+  fake_camera_service_connector->AddCameraInfo(yuv_camera_set.camera_info,
+                                               /*is_removed=*/false);
 
   // Create a camera client.
   FACE_ASSERT_OK_AND_ASSIGN(
       std::unique_ptr<CameraClient> camera_client,
-      CrosCameraClient::Create(std::make_unique<testing::FakeCameraService>(
-          fake_camera_service_connector)));
+      CrosCameraClient::Create(std::move(fake_camera_service_connector)));
 
   // Check that the expected formats are reported.
   FACE_ASSERT_OK_AND_ASSIGN(std::vector<CameraClient::DeviceInfo> devices,
@@ -108,34 +108,37 @@ class SimpleFrameProcessor : public FrameProcessor {
 
 // Tests CameraClient::CaptureFrames() with a custom FrameProcessor
 TEST_F(CameraClientTest, CaptureFrames) {
-  testing::FakeCameraService fake_camera_service_connector;
-
+  // Create a fake camera service.
+  auto fake_camera_service_connector =
+      std::make_unique<testing::FakeCameraService>();
   testing::CameraSet yuv_camera_set = testing::YuvCameraSet();
-  const int frames_available = 10;
-  const int frames_to_process = 5;
-  fake_camera_service_connector.AddCameraInfo(yuv_camera_set.camera_info,
-                                              /*is_removed=*/false);
+  fake_camera_service_connector->AddCameraInfo(yuv_camera_set.camera_info,
+                                               /*is_removed=*/false);
 
   // Add frames available from the fake camera
-  for (int i = 0; i < frames_available; i++) {
-    fake_camera_service_connector.AddResult(yuv_camera_set.result);
+  const int kFramesAvailable = 10;
+  const int kFramesToProcess = 5;
+  for (int i = 0; i < kFramesAvailable; i++) {
+    fake_camera_service_connector->AddResult(yuv_camera_set.result);
   }
 
   // Create a camera client.
   FACE_ASSERT_OK_AND_ASSIGN(
       std::unique_ptr<CameraClient> camera_client,
-      CrosCameraClient::Create(std::make_unique<testing::FakeCameraService>(
-          fake_camera_service_connector)));
+      CrosCameraClient::Create(std::move(fake_camera_service_connector)));
 
+  // Start a capture.
   BlockingFuture<absl::Status> status;
   auto frame_processor =
-      base::MakeRefCounted<SimpleFrameProcessor>(frames_to_process);
+      base::MakeRefCounted<SimpleFrameProcessor>(kFramesToProcess);
   camera_client->CaptureFrames(
       {.camera_id = 0, .format = yuv_camera_set.format_infos[0]},
       frame_processor, status.PromiseCallback());
 
+  // Wait for the capture to finish, and ensure we received the
+  // expected number of frames.
   EXPECT_TRUE(status.Wait().ok());
-  ASSERT_EQ(frame_processor->FramesProcessed(), frames_to_process);
+  ASSERT_EQ(frame_processor->FramesProcessed(), kFramesToProcess);
 }
 
 TEST(GetHighestResolutionFormat, EmptyDevice) {
