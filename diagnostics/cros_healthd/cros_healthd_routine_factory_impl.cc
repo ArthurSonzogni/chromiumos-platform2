@@ -35,6 +35,7 @@
 #include "diagnostics/cros_healthd/routines/https_firewall/https_firewall.h"
 #include "diagnostics/cros_healthd/routines/https_latency/https_latency.h"
 #include "diagnostics/cros_healthd/routines/lan_connectivity/lan_connectivity.h"
+#include "diagnostics/cros_healthd/routines/led_lit_up/led_lit_up.h"
 #include "diagnostics/cros_healthd/routines/memory/memory.h"
 #include "diagnostics/cros_healthd/routines/nvme_self_test/nvme_self_test.h"
 #include "diagnostics/cros_healthd/routines/nvme_wear_level/nvme_wear_level.h"
@@ -287,8 +288,8 @@ CrosHealthdRoutineFactoryImpl::MakeLedLitUpRoutine(
     ash::cros_healthd::mojom::LedColor color,
     mojo::PendingRemote<ash::cros_healthd::mojom::LedLitUpRoutineReplier>
         replier) {
-  NOTIMPLEMENTED();
-  return nullptr;
+  return std::make_unique<LedLitUpRoutine>(context_, name, color,
+                                           std::move(replier));
 }
 
 }  // namespace diagnostics
