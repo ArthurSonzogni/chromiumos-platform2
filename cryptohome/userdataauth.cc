@@ -5128,7 +5128,7 @@ void UserDataAuth::GetAuthSessionStatusImpl(
   }
 }
 
-bool UserDataAuth::GetRecoveryRequest(
+void UserDataAuth::GetRecoveryRequest(
     user_data_auth::GetRecoveryRequestRequest request,
     base::OnceCallback<void(const user_data_auth::GetRecoveryRequestReply&)>
         on_done) {
@@ -5147,9 +5147,9 @@ bool UserDataAuth::GetRecoveryRequest(
                                        ErrorAction::kReboot}),
                        user_data_auth::CryptohomeErrorCode::
                            CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN));
-    return false;
+    return;
   }
-  return auth_session->GetRecoveryRequest(request, std::move(on_done));
+  auth_session->GetRecoveryRequest(request, std::move(on_done));
 }
 
 }  // namespace cryptohome

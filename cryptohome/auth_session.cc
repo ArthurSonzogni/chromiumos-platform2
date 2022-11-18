@@ -815,7 +815,7 @@ void AuthSession::UpdateVaultKeyset(
   std::move(on_done).Run(OkStatus<CryptohomeError>());
 }
 
-bool AuthSession::AuthenticateViaVaultKeyset(
+void AuthSession::AuthenticateViaVaultKeyset(
     std::optional<AuthFactorType> request_auth_factor_type,
     const std::string& key_label,
     const AuthInput& auth_input,
@@ -833,7 +833,7 @@ bool AuthSession::AuthenticateViaVaultKeyset(
         CRYPTOHOME_ERR_LOC(kLocAuthSessionBlockStateMissingInAuthViaVaultKey),
         ErrorActionSet({error::ErrorAction::kDevCheckUnexpectedState}),
         user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED));
-    return false;
+    return;
   }
 
   // Determine the auth block type to use.
@@ -845,7 +845,7 @@ bool AuthSession::AuthenticateViaVaultKeyset(
         CRYPTOHOME_ERR_LOC(kLocAuthSessionInvalidBlockTypeInAuthViaVaultKey),
         ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
         user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED));
-    return false;
+    return;
   }
 
   // Parameterize the AuthSession performance timer by AuthBlockType
@@ -858,7 +858,7 @@ bool AuthSession::AuthenticateViaVaultKeyset(
       request_auth_factor_type, auth_input, auth_block_type,
       std::move(auth_session_performance_timer), std::move(on_done));
 
-  return auth_block_utility_->DeriveKeyBlobsWithAuthBlockAsync(
+  auth_block_utility_->DeriveKeyBlobsWithAuthBlockAsync(
       auth_block_type, auth_input, auth_state, std::move(derive_callback));
 }
 
@@ -1062,7 +1062,7 @@ const FileSystemKeyset& AuthSession::file_system_keyset() const {
   return file_system_keyset_.value();
 }
 
-bool AuthSession::AuthenticateAuthFactor(
+void AuthSession::AuthenticateAuthFactor(
     const user_data_auth::AuthenticateAuthFactorRequest& request,
     StatusCallback on_done) {
   LOG(INFO) << "AuthSession: " << IntentToDebugString(auth_intent_)
@@ -1081,7 +1081,7 @@ bool AuthSession::AuthenticateAuthFactor(
         ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
         user_data_auth::CryptohomeErrorCode::
             CRYPTOHOME_ERROR_INVALID_ARGUMENT));
-    return false;
+    return;
   }
 
   // The CredentialVerifier and/or AuthFactor to be used for authentication.
@@ -1123,7 +1123,7 @@ bool AuthSession::AuthenticateAuthFactor(
               CRYPTOHOME_ERR_LOC(
                   kLocAuthSessionInputParseFailedInAuthAuthFactor))
               .Wrap(std::move(auth_input_status).status()));
-      return false;
+      return;
     }
     auth_input = std::move(*auth_input_status);
   }
@@ -1143,7 +1143,7 @@ bool AuthSession::AuthenticateAuthFactor(
         ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
         user_data_auth::CryptohomeErrorCode::
             CRYPTOHOME_ERROR_INVALID_ARGUMENT));
-    return false;
+    return;
   }
 
   // If suitable, attempt lightweight authentication via a credential verifier.
@@ -1153,7 +1153,7 @@ bool AuthSession::AuthenticateAuthFactor(
         base::BindOnce(&AuthSession::CompleteVerifyOnlyAuthentication,
                        weak_factory_.GetWeakPtr(), std::move(on_done));
     verifier->Verify(auth_input, std::move(verify_callback));
-    return true;
+    return;
   }
 
   if (!auth_factor) {
@@ -1163,7 +1163,7 @@ bool AuthSession::AuthenticateAuthFactor(
         CRYPTOHOME_ERR_LOC(kLocAuthSessionFactorNotFoundInAuthAuthFactor),
         ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_KEY_NOT_FOUND));
-    return false;
+    return;
   }
 
   // If the user has configured AuthFactors, then we proceed with USS flow.
@@ -1177,7 +1177,7 @@ bool AuthSession::AuthenticateAuthFactor(
     AuthenticateViaUserSecretStash(request.auth_factor_label(), auth_input,
                                    std::move(auth_session_performance_timer),
                                    *auth_factor, std::move(on_done));
-    return true;
+    return;
   }
 
   // If user does not have USS AuthFactors, then we switch to authentication
@@ -1191,7 +1191,7 @@ bool AuthSession::AuthenticateAuthFactor(
     std::move(on_done).Run(MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocAuthSessionVKConverterFailedInAuthAuthFactor),
         ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}), error));
-    return false;
+    return;
   }
   // Record current time for timing for how long AuthenticateAuthFactor will
   // take.
@@ -1201,7 +1201,7 @@ bool AuthSession::AuthenticateAuthFactor(
 
   // Note that we pass the request's type and label instead of the AuthFactor's
   // one, because legacy VKs could not contain these fields.
-  return AuthenticateViaVaultKeyset(
+  AuthenticateViaVaultKeyset(
       *request_auth_factor_type, request.auth_factor_label(), auth_input,
       std::move(auth_session_performance_timer), std::move(on_done));
 }
@@ -1810,7 +1810,7 @@ void AuthSession::TerminateAuthFactor(
   std::move(on_done).Run(std::move(status));
 }
 
-bool AuthSession::GetRecoveryRequest(
+void AuthSession::GetRecoveryRequest(
     user_data_auth::GetRecoveryRequestRequest request,
     base::OnceCallback<void(const user_data_auth::GetRecoveryRequestReply&)>
         on_done) {
@@ -1828,7 +1828,7 @@ bool AuthSession::GetRecoveryRequest(
                        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
                        user_data_auth::CryptohomeErrorCode::
                            CRYPTOHOME_ERROR_KEY_NOT_FOUND));
-    return false;
+    return;
   }
 
   // Read CryptohomeRecoveryAuthBlockState.
@@ -1842,7 +1842,7 @@ bool AuthSession::GetRecoveryRequest(
             ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
             user_data_auth::CryptohomeErrorCode::
                 CRYPTOHOME_ERROR_KEY_NOT_FOUND));
-    return false;
+    return;
   }
 
   auto* state = std::get_if<::cryptohome::CryptohomeRecoveryAuthBlockState>(
@@ -1855,7 +1855,7 @@ bool AuthSession::GetRecoveryRequest(
                        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
                        user_data_auth::CryptohomeErrorCode::
                            CRYPTOHOME_ERROR_KEY_NOT_FOUND));
-    return false;
+    return;
   }
 
   brillo::SecureBlob ephemeral_pub_key, recovery_request;
@@ -1879,13 +1879,12 @@ bool AuthSession::GetRecoveryRequest(
         MakeStatus<CryptohomeError>(
             CRYPTOHOME_ERR_LOC(kLocCryptoFailedInGenerateRecoveryRequest))
             .Wrap(std::move(status)));
-    return false;
+    return;
   }
 
   cryptohome_recovery_ephemeral_pub_key_ = ephemeral_pub_key;
   reply.set_recovery_request(recovery_request.to_string());
   std::move(on_done).Run(reply);
-  return true;
 }
 
 void AuthSession::ResaveVaultKeysetIfNeeded(

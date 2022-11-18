@@ -1408,8 +1408,8 @@ TEST_F(AuthSessionTest,
       });
 
   TestFuture<CryptohomeStatus> authenticate_future;
-  EXPECT_TRUE(auth_session->AuthenticateAuthFactor(
-      request, authenticate_future.GetCallback()));
+  auth_session->AuthenticateAuthFactor(request,
+                                       authenticate_future.GetCallback());
 
   // Verify.
   EXPECT_THAT(authenticate_future.Get(), IsOk());
@@ -1511,8 +1511,8 @@ TEST_F(AuthSessionTest,
       });
 
   TestFuture<CryptohomeStatus> authenticate_future;
-  EXPECT_TRUE(auth_session->AuthenticateAuthFactor(
-      request, authenticate_future.GetCallback()));
+  auth_session->AuthenticateAuthFactor(request,
+                                       authenticate_future.GetCallback());
 
   // Verify.
   EXPECT_THAT(authenticate_future.Get(), IsOk());
@@ -1599,8 +1599,8 @@ TEST_F(AuthSessionTest,
       });
 
   TestFuture<CryptohomeStatus> authenticate_future;
-  EXPECT_TRUE(auth_session->AuthenticateAuthFactor(
-      request, authenticate_future.GetCallback()));
+  auth_session->AuthenticateAuthFactor(request,
+                                       authenticate_future.GetCallback());
 
   // Verify.
   EXPECT_THAT(authenticate_future.Get(), IsOk());
@@ -1643,8 +1643,8 @@ TEST_F(AuthSessionTest, AuthenticateAuthFactorMismatchLabelAndType) {
   request.mutable_auth_input()->mutable_password_input()->set_secret(kFakePin);
 
   TestFuture<CryptohomeStatus> authenticate_future;
-  EXPECT_FALSE(auth_session->AuthenticateAuthFactor(
-      request, authenticate_future.GetCallback()));
+  auth_session->AuthenticateAuthFactor(request,
+                                       authenticate_future.GetCallback());
 
   // Verify.
   ASSERT_THAT(authenticate_future.Get(), NotOk());
@@ -2886,8 +2886,8 @@ TEST_F(AuthSessionWithUssExperimentTest, AuthenticatePasswordAuthFactorViaUss) {
   request.set_auth_factor_label(kFakeLabel);
   request.mutable_auth_input()->mutable_password_input()->set_secret(kFakePass);
   TestFuture<CryptohomeStatus> authenticate_future;
-  EXPECT_TRUE(auth_session->AuthenticateAuthFactor(
-      request, authenticate_future.GetCallback()));
+  auth_session->AuthenticateAuthFactor(request,
+                                       authenticate_future.GetCallback());
 
   // Verify.
   EXPECT_THAT(authenticate_future.Get(), IsOk());
@@ -2984,8 +2984,8 @@ TEST_F(AuthSessionWithUssExperimentTest,
   request.mutable_auth_input()->mutable_password_input()->set_secret(kFakePass);
 
   TestFuture<CryptohomeStatus> authenticate_future;
-  EXPECT_TRUE(auth_session->AuthenticateAuthFactor(
-      request, authenticate_future.GetCallback()));
+  auth_session->AuthenticateAuthFactor(request,
+                                       authenticate_future.GetCallback());
 
   // Verify.
   EXPECT_THAT(authenticate_future.Get(), IsOk());
@@ -3085,8 +3085,8 @@ TEST_F(AuthSessionWithUssExperimentTest,
   request.mutable_auth_input()->mutable_password_input()->set_secret(kFakePass);
 
   TestFuture<CryptohomeStatus> authenticate_future;
-  EXPECT_TRUE(auth_session->AuthenticateAuthFactor(
-      request, authenticate_future.GetCallback()));
+  auth_session->AuthenticateAuthFactor(request,
+                                       authenticate_future.GetCallback());
 
   // Verify.
   ASSERT_THAT(authenticate_future.Get(), NotOk());
@@ -3172,8 +3172,8 @@ TEST_F(AuthSessionWithUssExperimentTest, AuthenticatePinAuthFactorViaUss) {
   request.set_auth_factor_label(kFakePinLabel);
   request.mutable_auth_input()->mutable_pin_input()->set_secret(kFakePin);
   TestFuture<CryptohomeStatus> authenticate_future;
-  EXPECT_TRUE(auth_session->AuthenticateAuthFactor(
-      request, authenticate_future.GetCallback()));
+  auth_session->AuthenticateAuthFactor(request,
+                                       authenticate_future.GetCallback());
 
   // Verify.
   EXPECT_THAT(authenticate_future.Get(), IsOk());
@@ -3317,14 +3317,14 @@ TEST_F(AuthSessionWithUssExperimentTest,
   bool called = false;
   user_data_auth::CryptohomeErrorCode error =
       user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
-  EXPECT_TRUE(auth_session->GetRecoveryRequest(
+  auth_session->GetRecoveryRequest(
       request, base::BindOnce(
                    [](bool& called, user_data_auth::CryptohomeErrorCode& error,
                       const user_data_auth::GetRecoveryRequestReply& reply) {
                      called = true;
                      error = reply.error();
                    },
-                   std::ref(called), std::ref(error))));
+                   std::ref(called), std::ref(error)));
 
   // Verify.
   EXPECT_TRUE(called);
@@ -3366,8 +3366,8 @@ TEST_F(AuthSessionWithUssExperimentTest,
       ->mutable_cryptohome_recovery_input()
       ->mutable_recovery_response();
   TestFuture<CryptohomeStatus> authenticate_future;
-  EXPECT_TRUE(auth_session->AuthenticateAuthFactor(
-      authenticate_request, authenticate_future.GetCallback()));
+  auth_session->AuthenticateAuthFactor(authenticate_request,
+                                       authenticate_future.GetCallback());
 
   // Verify.
   EXPECT_THAT(authenticate_future.Get(), IsOk());
@@ -3475,8 +3475,8 @@ TEST_F(AuthSessionWithUssExperimentTest, AuthenticateSmartCardAuthFactor) {
       ->add_signature_algorithms(
           user_data_auth::CHALLENGE_RSASSA_PKCS1_V1_5_SHA256);
   TestFuture<CryptohomeStatus> authenticate_future;
-  EXPECT_TRUE(auth_session->AuthenticateAuthFactor(
-      authenticate_request, authenticate_future.GetCallback()));
+  auth_session->AuthenticateAuthFactor(authenticate_request,
+                                       authenticate_future.GetCallback());
 
   // Verify.
   EXPECT_THAT(authenticate_future.Get(), IsOk());
@@ -3514,8 +3514,8 @@ TEST_F(AuthSessionWithUssExperimentTest, AuthenticateSmartCardAuthFactor) {
 
   // Call AuthenticateAuthFactor again.
   TestFuture<CryptohomeStatus> verify_authenticate_future;
-  EXPECT_TRUE(verify_auth_session->AuthenticateAuthFactor(
-      authenticate_request, verify_authenticate_future.GetCallback()));
+  verify_auth_session->AuthenticateAuthFactor(
+      authenticate_request, verify_authenticate_future.GetCallback());
   EXPECT_THAT(verify_auth_session->authorized_intents(),
               UnorderedElementsAre(AuthIntent::kVerifyOnly));
 }
@@ -3559,8 +3559,8 @@ TEST_F(AuthSessionWithUssExperimentTest, LightweightPasswordAuthentication) {
   request.set_auth_factor_label(kFakeLabel);
   request.mutable_auth_input()->mutable_password_input()->set_secret(kFakePass);
   TestFuture<CryptohomeStatus> authenticate_future;
-  EXPECT_TRUE(auth_session->AuthenticateAuthFactor(
-      request, authenticate_future.GetCallback()));
+  auth_session->AuthenticateAuthFactor(request,
+                                       authenticate_future.GetCallback());
 
   // Verify.
   EXPECT_THAT(authenticate_future.Get(), IsOk());
@@ -3601,8 +3601,8 @@ TEST_F(AuthSessionWithUssExperimentTest, LightweightFingerprintAuthentication) {
   request.set_auth_session_id(auth_session->serialized_token());
   request.mutable_auth_input()->mutable_legacy_fingerprint_input();
   TestFuture<CryptohomeStatus> authenticate_future;
-  EXPECT_TRUE(auth_session->AuthenticateAuthFactor(
-      request, authenticate_future.GetCallback()));
+  auth_session->AuthenticateAuthFactor(request,
+                                       authenticate_future.GetCallback());
 
   // Verify.
   EXPECT_THAT(authenticate_future.Get(), IsOk());
@@ -3850,8 +3850,8 @@ TEST_F(AuthSessionWithUssExperimentTest, NoLightweightAuthForDecryption) {
   request.set_auth_factor_label(kFakeLabel);
   request.mutable_auth_input()->mutable_password_input()->set_secret(kFakePass);
   TestFuture<CryptohomeStatus> authenticate_future;
-  EXPECT_TRUE(auth_session->AuthenticateAuthFactor(
-      request, authenticate_future.GetCallback()));
+  auth_session->AuthenticateAuthFactor(request,
+                                       authenticate_future.GetCallback());
 
   // Verify.
   EXPECT_THAT(authenticate_future.Get(), IsOk());
@@ -4330,8 +4330,8 @@ TEST_F(AuthSessionWithUssExperimentTest, AuthenticateAuthFactorWebAuthnIntent) {
   request.set_auth_factor_label(kFakeLabel);
   request.mutable_auth_input()->mutable_password_input()->set_secret(kFakePass);
   TestFuture<CryptohomeStatus> authenticate_future;
-  EXPECT_TRUE(auth_session->AuthenticateAuthFactor(
-      request, authenticate_future.GetCallback()));
+  auth_session->AuthenticateAuthFactor(request,
+                                       authenticate_future.GetCallback());
 
   // Verify.
   EXPECT_THAT(authenticate_future.Get(), IsOk());
@@ -4373,8 +4373,8 @@ TEST_F(AuthSessionWithUssExperimentTest, FingerprintAuthenticationForWebAuthn) {
   request.set_auth_session_id(auth_session->serialized_token());
   request.mutable_auth_input()->mutable_legacy_fingerprint_input();
   TestFuture<CryptohomeStatus> authenticate_future;
-  EXPECT_TRUE(auth_session->AuthenticateAuthFactor(
-      request, authenticate_future.GetCallback()));
+  auth_session->AuthenticateAuthFactor(request,
+                                       authenticate_future.GetCallback());
 
   // Verify.
   EXPECT_THAT(authenticate_future.Get(), IsOk());

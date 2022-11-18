@@ -1145,9 +1145,8 @@ TEST_F(AuthBlockUtilityImplTest, SyncToAsyncAdapterCreate) {
       credentials.GetObfuscatedUsername(), /*reset_secret*/ std::nullopt};
 
   // Test.
-  EXPECT_EQ(true, auth_block_utility_impl_->CreateKeyBlobsWithAuthBlockAsync(
-                      AuthBlockType::kTpmBoundToPcr, auth_input,
-                      std::move(create_callback)));
+  auth_block_utility_impl_->CreateKeyBlobsWithAuthBlockAsync(
+      AuthBlockType::kTpmBoundToPcr, auth_input, std::move(create_callback));
 }
 
 // Test that DeriveKeyBlobsWithAuthBlockAsync derives KeyBlobs,
@@ -1188,9 +1187,9 @@ TEST_F(AuthBlockUtilityImplTest, SyncToAsyncAdapterDerive) {
         EXPECT_NE(blobs->chaps_iv, std::nullopt);
       });
 
-  EXPECT_EQ(true, auth_block_utility_impl_->DeriveKeyBlobsWithAuthBlockAsync(
-                      AuthBlockType::kTpmBoundToPcr, auth_input, auth_state,
-                      std::move(derive_callback)));
+  auth_block_utility_impl_->DeriveKeyBlobsWithAuthBlockAsync(
+      AuthBlockType::kTpmBoundToPcr, auth_input, auth_state,
+      std::move(derive_callback));
 }
 
 // Test that CreateKeyBlobsWithAuthBlockAsync creates AuthBlockState
@@ -1275,9 +1274,9 @@ TEST_F(AuthBlockUtilityImplTest, AsyncChallengeCredentialCreate) {
       .dbus_service_name = kKeyDelegateDBusService};
 
   // Test.
-  EXPECT_EQ(true, auth_block_utility_impl_->CreateKeyBlobsWithAuthBlockAsync(
-                      AuthBlockType::kChallengeCredential, auth_input,
-                      std::move(create_callback)));
+  auth_block_utility_impl_->CreateKeyBlobsWithAuthBlockAsync(
+      AuthBlockType::kChallengeCredential, auth_input,
+      std::move(create_callback));
 }
 
 // The AsyncChallengeCredentialAuthBlock::Derive should work correctly.
@@ -1400,9 +1399,8 @@ TEST_F(AuthBlockUtilityImplTest, CreateKeyBlobsWithAuthBlockAsyncFails) {
       });
 
   // Test.
-  EXPECT_EQ(false, auth_block_utility_impl_->CreateKeyBlobsWithAuthBlockAsync(
-                       AuthBlockType::kMaxValue, auth_input,
-                       std::move(create_callback)));
+  auth_block_utility_impl_->CreateKeyBlobsWithAuthBlockAsync(
+      AuthBlockType::kMaxValue, auth_input, std::move(create_callback));
 }
 
 TEST_F(AuthBlockUtilityImplTest, CreateKeyBlobsWithAuthBlockWrongTypeFails) {

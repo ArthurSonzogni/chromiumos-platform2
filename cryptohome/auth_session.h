@@ -144,7 +144,7 @@ class AuthSession final {
   // AuthSession via an auth factor. It may be called multiple times depending
   // on errors or various steps involved in multi-factor authentication.
   // Note: only USS users are supported currently.
-  bool AuthenticateAuthFactor(
+  void AuthenticateAuthFactor(
       const user_data_auth::AuthenticateAuthFactorRequest& request,
       StatusCallback on_done);
 
@@ -175,7 +175,7 @@ class AuthSession final {
   // AuthFactor authentication. GetRecoveryRequest saves data in the
   // AuthSession state. This call is required before the AuthenticateAuthFactor
   // call for cryptohome recovery AuthFactor.
-  bool GetRecoveryRequest(
+  void GetRecoveryRequest(
       user_data_auth::GetRecoveryRequestRequest request,
       base::OnceCallback<void(const user_data_auth::GetRecoveryRequestReply&)>
           on_done);
@@ -506,7 +506,7 @@ class AuthSession final {
 
   // Authenticates the user using VaultKeysets with the given |auth_input|.
   // TODO(b/204482221): Make `request_auth_factor_type` mandatory.
-  bool AuthenticateViaVaultKeyset(
+  void AuthenticateViaVaultKeyset(
       std::optional<AuthFactorType> request_auth_factor_type,
       const std::string& key_label,
       const AuthInput& auth_input,

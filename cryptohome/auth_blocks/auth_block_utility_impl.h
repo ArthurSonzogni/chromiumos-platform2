@@ -82,7 +82,7 @@ class AuthBlockUtilityImpl final : public AuthBlockUtility {
       AuthBlockState& out_state,
       KeyBlobs& out_key_blobs) const override;
 
-  bool CreateKeyBlobsWithAuthBlockAsync(
+  void CreateKeyBlobsWithAuthBlockAsync(
       AuthBlockType auth_block_type,
       const AuthInput& auth_input,
       AuthBlock::CreateCallback create_callback) override;
@@ -93,7 +93,7 @@ class AuthBlockUtilityImpl final : public AuthBlockUtility {
       const AuthBlockState& state,
       KeyBlobs& out_key_blobs) const override;
 
-  bool DeriveKeyBlobsWithAuthBlockAsync(
+  void DeriveKeyBlobsWithAuthBlockAsync(
       AuthBlockType auth_block_type,
       const AuthInput& auth_input,
       const AuthBlockState& auth_state,

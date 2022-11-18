@@ -66,7 +66,7 @@ class MockAuthBlockUtility : public AuthBlockUtility {
                AuthBlockState& out_state,
                KeyBlobs& out_key_blobs),
               (const, override));
-  MOCK_METHOD(bool,
+  MOCK_METHOD(void,
               CreateKeyBlobsWithAuthBlockAsync,
               (AuthBlockType auth_block_type,
                const AuthInput& auth_input,
@@ -79,7 +79,7 @@ class MockAuthBlockUtility : public AuthBlockUtility {
                const AuthBlockState& state,
                KeyBlobs& out_key_blobs),
               (const, override));
-  MOCK_METHOD(bool,
+  MOCK_METHOD(void,
               DeriveKeyBlobsWithAuthBlockAsync,
               (AuthBlockType auth_block_type,
                const AuthInput& auth_input,

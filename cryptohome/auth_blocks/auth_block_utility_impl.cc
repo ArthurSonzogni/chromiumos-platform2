@@ -301,7 +301,7 @@ CryptoStatus AuthBlockUtilityImpl::CreateKeyBlobsWithAuthBlock(
   return OkStatus<CryptohomeCryptoError>();
 }
 
-bool AuthBlockUtilityImpl::CreateKeyBlobsWithAuthBlockAsync(
+void AuthBlockUtilityImpl::CreateKeyBlobsWithAuthBlockAsync(
     AuthBlockType auth_block_type,
     const AuthInput& auth_input,
     AuthBlock::CreateCallback create_callback) {
@@ -315,7 +315,7 @@ bool AuthBlockUtilityImpl::CreateKeyBlobsWithAuthBlockAsync(
                      kLocAuthBlockUtilNoAuthBlockInCreateKeyBlobsAsync))
                  .Wrap(std::move(auth_block).status()),
              nullptr, nullptr);
-    return false;
+    return;
   }
   ReportCreateAuthBlock(auth_block_type);
 
@@ -332,7 +332,6 @@ bool AuthBlockUtilityImpl::CreateKeyBlobsWithAuthBlockAsync(
       },
       std::move(auth_block.value()), std::move(create_callback));
   auth_block_ptr->Create(auth_input, std::move(managed_callback));
-  return true;
 }
 
 CryptoStatus AuthBlockUtilityImpl::DeriveKeyBlobsWithAuthBlock(
@@ -394,7 +393,7 @@ CryptoStatus AuthBlockUtilityImpl::DeriveKeyBlobsWithAuthBlock(
       .Wrap(std::move(error));
 }
 
-bool AuthBlockUtilityImpl::DeriveKeyBlobsWithAuthBlockAsync(
+void AuthBlockUtilityImpl::DeriveKeyBlobsWithAuthBlockAsync(
     AuthBlockType auth_block_type,
     const AuthInput& auth_input,
     const AuthBlockState& auth_state,
@@ -411,7 +410,7 @@ bool AuthBlockUtilityImpl::DeriveKeyBlobsWithAuthBlockAsync(
                      kLocAuthBlockUtilNoAuthBlockInDeriveKeyBlobsAsync))
                  .Wrap(std::move(auth_block).status()),
              nullptr);
-    return false;
+    return;
   }
   ReportCreateAuthBlock(auth_block_type);
 
@@ -427,7 +426,6 @@ bool AuthBlockUtilityImpl::DeriveKeyBlobsWithAuthBlockAsync(
       std::move(auth_block.value()), std::move(derive_callback));
 
   auth_block_ptr->Derive(auth_input, auth_state, std::move(managed_callback));
-  return true;
 }
 
 AuthBlockType AuthBlockUtilityImpl::GetAuthBlockTypeForCreation(

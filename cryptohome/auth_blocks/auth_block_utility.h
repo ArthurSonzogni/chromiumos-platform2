@@ -112,7 +112,7 @@ class AuthBlockUtility {
 
   // Creates KeyBlobs and AuthBlockState for the given credentials and returns
   // through the asynchronous create_callback.
-  virtual bool CreateKeyBlobsWithAuthBlockAsync(
+  virtual void CreateKeyBlobsWithAuthBlockAsync(
       AuthBlockType auth_block_type,
       const AuthInput& auth_input,
       AuthBlock::CreateCallback create_callback) = 0;
@@ -131,7 +131,7 @@ class AuthBlockUtility {
 
   // Creates KeyBlobs and AuthBlockState for the given credentials and returns
   // through the asynchronous derive_callback.
-  virtual bool DeriveKeyBlobsWithAuthBlockAsync(
+  virtual void DeriveKeyBlobsWithAuthBlockAsync(
       AuthBlockType auth_block_type,
       const AuthInput& auth_input,
       const AuthBlockState& auth_state,
