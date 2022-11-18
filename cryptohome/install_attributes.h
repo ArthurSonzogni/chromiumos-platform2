@@ -49,8 +49,8 @@ class InstallAttributes {
     virtual void OnFinalized() = 0;
   };
 
-  // Creates an instance of install attributes that will use the |hwsec|.
-  explicit InstallAttributes(hwsec::CryptohomeFrontend* hwsec);
+  // The provided pointers must outlive this instance.
+  InstallAttributes(Platform* platform, hwsec::CryptohomeFrontend* hwsec);
 
   InstallAttributes(const InstallAttributes&) = delete;
   InstallAttributes& operator=(const InstallAttributes&) = delete;
@@ -119,12 +119,6 @@ class InstallAttributes {
 
   virtual Lockbox* lockbox() { return lockbox_; }
 
-  // Replaces the platform implementation.
-  // Does NOT take ownership of the pointer.
-  virtual void set_platform(Platform* platform) { platform_ = platform; }
-
-  virtual Platform* platform() { return platform_; }
-
   // Returns a description of the system's install attributes as a Value.
   //
   // The Value is of type Dictionary, with keys "initialized", "version",
@@ -162,6 +156,8 @@ class InstallAttributes {
   bool ClearData();
 
  private:
+  Platform* const platform_ = nullptr;
+  hwsec::CryptohomeFrontend* const hwsec_ = nullptr;
   Status status_ = Status::kUnknown;
   base::FilePath data_file_;   // Location data is persisted to.
   base::FilePath cache_file_;  // World-readable data cache file.
@@ -170,11 +166,9 @@ class InstallAttributes {
   std::unique_ptr<SerializedInstallAttributes> default_attributes_;
   std::unique_ptr<Lockbox> default_lockbox_;
   std::unique_ptr<Platform> default_platform_;
-  // Overridable dependency pointer which allow for easy injection.
-  hwsec::CryptohomeFrontend* hwsec_;
+  // Overridable dependency pointers which allow for easy injection.
   SerializedInstallAttributes* attributes_ = nullptr;
   Lockbox* lockbox_ = nullptr;
-  Platform* platform_ = nullptr;
   base::ObserverList<Observer> observer_list_;
 };
 

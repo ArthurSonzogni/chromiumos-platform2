@@ -47,7 +47,7 @@ static constexpr char kTestData[] = "Duffle";
 // boots.
 class InstallAttributesTest : public ::testing::Test {
  public:
-  InstallAttributesTest() : install_attrs_(&hwsec_) {}
+  InstallAttributesTest() : install_attrs_(&platform_, &hwsec_) {}
   InstallAttributesTest(const InstallAttributesTest&) = delete;
   InstallAttributesTest& operator=(const InstallAttributesTest&) = delete;
 
@@ -58,7 +58,6 @@ class InstallAttributesTest : public ::testing::Test {
     ON_CALL(hwsec_, IsReady()).WillByDefault(ReturnValue(true));
 
     install_attrs_.set_lockbox(&lockbox_);
-    install_attrs_.set_platform(&platform_);
     // No pre-existing data and no TPM auth.
     Mock::VerifyAndClearExpectations(&lockbox_);
     Mock::VerifyAndClearExpectations(&hwsec_);
@@ -87,11 +86,11 @@ class InstallAttributesTest : public ::testing::Test {
     return data;
   }
 
+  NiceMock<MockPlatform> platform_;
   NiceMock<hwsec::MockCryptohomeFrontend> hwsec_;
   NiceMock<MockLockbox> lockbox_;
   brillo::Blob lockbox_data_;
   InstallAttributes install_attrs_;
-  NiceMock<MockPlatform> platform_;
 };
 
 TEST_F(InstallAttributesTest, OobeWithTpm) {

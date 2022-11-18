@@ -450,7 +450,8 @@ bool UserDataAuth::Initialize() {
   }
 
   if (!install_attrs_) {
-    default_install_attrs_ = std::make_unique<InstallAttributes>(hwsec_);
+    default_install_attrs_ =
+        std::make_unique<InstallAttributes>(platform_, hwsec_);
     install_attrs_ = default_install_attrs_.get();
   }
 

@@ -32,16 +32,17 @@ const char InstallAttributes::kDefaultCacheFile[] =
     "/run/lockbox/install_attributes.pb";
 const mode_t InstallAttributes::kCacheFilePermissions = 0644;
 
-InstallAttributes::InstallAttributes(hwsec::CryptohomeFrontend* hwsec)
-    : data_file_(kDefaultDataFile),
+InstallAttributes::InstallAttributes(Platform* platform,
+                                     hwsec::CryptohomeFrontend* hwsec)
+    : platform_(platform),
+      hwsec_(hwsec),
+      data_file_(kDefaultDataFile),
       cache_file_(kDefaultCacheFile),
       default_attributes_(new SerializedInstallAttributes()),
       default_lockbox_(new Lockbox(hwsec, hwsec::Space::kInstallAttributes)),
-      default_platform_(new Platform()),
-      hwsec_(hwsec),
       attributes_(default_attributes_.get()),
-      lockbox_(default_lockbox_.get()),
-      platform_(default_platform_.get()) {
+      lockbox_(default_lockbox_.get()) {
+  CHECK(platform_);
   CHECK(hwsec_);
   version_ = attributes_->version();  // versioning controlled by pb default.
 }
