@@ -48,6 +48,11 @@ MountError MountPoint::Unmount() {
   MountError error = MountError::kPathNotMounted;
 
   if (is_mounted_) {
+    // To prevent the umount() syscall from blocking for too long (b/258344222),
+    // request the FUSE process termination if this process is "safe" to kill.
+    if (process_ && is_read_only())
+      process_->KillPidNamespace();
+
     error = platform_->Unmount(data_.mount_path, data_.filesystem_type);
     if (error == MountError::kSuccess || error == MountError::kPathNotMounted) {
       is_mounted_ = false;

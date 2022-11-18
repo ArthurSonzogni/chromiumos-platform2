@@ -91,6 +91,11 @@ class Process {
     return captured_output_;
   }
 
+  // Request the termination of the PID namespace. Returns true if the request
+  // was taken in account. This method does not block, and does not wait for the
+  // PID namespace to be actually killed.
+  virtual bool KillPidNamespace() { return false; }
+
   // Gets the Process ID (PID) of the subprocess. If the subprocess is running
   // in a PID namespace (see class SandboxedProcess), then this gets the PID of
   // the 'init' process of the PID namespace, not the PID of the 'launcher'

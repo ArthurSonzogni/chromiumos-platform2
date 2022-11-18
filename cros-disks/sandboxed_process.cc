@@ -277,6 +277,19 @@ int SandboxedProcess::WaitNonBlockingImpl() {
   return SandboxedInit::WaitStatusToExitCode(wstatus);
 }
 
+bool SandboxedProcess::KillPidNamespace() {
+  if (!termination_fd_.is_valid())
+    return false;
+
+  DCHECK(kill_pid_namespace_);
+
+  // Closing termination_fd_ will eventually cause the termination of the 'init'
+  // process of the PID namespace.
+  termination_fd_.reset();
+  LOG(INFO) << "Requested termination of " << quote(GetProgramName());
+  return true;
+}
+
 int FakeSandboxedProcess::OnProcessLaunch(
     const std::vector<std::string>& argv) {
   return 0;

@@ -31,6 +31,8 @@ class SandboxedProcess : public Process {
 
   ~SandboxedProcess() override;
 
+  bool KillPidNamespace() override;
+
   // Loads the seccomp filters from |policy_file|. The calling process will be
   // aborted if |policy_file| does not exist, cannot be read or is malformed.
   void LoadSeccompFilterPolicy(const std::string& policy_file);
