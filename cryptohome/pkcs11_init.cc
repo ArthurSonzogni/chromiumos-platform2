@@ -28,10 +28,9 @@ constexpr char Pkcs11Init::kDefaultPin[];
 constexpr char Pkcs11Init::kDefaultSystemLabel[];
 constexpr char Pkcs11Init::kDefaultUserLabelPrefix[];
 
-Pkcs11Init::Pkcs11Init()
-    : default_platform_(new Platform), platform_(default_platform_.get()) {}
+Pkcs11Init::Pkcs11Init() = default;
 
-Pkcs11Init::~Pkcs11Init() {}
+Pkcs11Init::~Pkcs11Init() = default;
 
 void Pkcs11Init::GetTpmTokenInfo(std::string* OUT_label,
                                  std::string* OUT_user_pin) {

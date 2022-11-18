@@ -11,13 +11,10 @@
 
 #include <sys/types.h>
 
-#include <memory>
 #include <string>
 
 #include <base/files/file_path.h>
 #include <chaps/pkcs11/cryptoki.h>
-
-#include "cryptohome/platform.h"
 
 namespace cryptohome {
 
@@ -60,9 +57,6 @@ class Pkcs11Init {
   // actual token label.
   bool CheckTokenInSlot(CK_SLOT_ID slot_id,
                         const std::string& expected_label_prefix);
-
-  std::unique_ptr<Platform> default_platform_;
-  Platform* platform_;
 };
 
 }  // namespace cryptohome
