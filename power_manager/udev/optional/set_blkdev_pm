@@ -4,8 +4,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-# This script configures power management for block devices. It is executed
-# at boot time and whenever power is plugged or unplugged (through udev).
+# This script configures power management for the SATA internal device.
+# It is executed at boot time and whenever power is plugged or unplugged
+# (through udev).
 #
 # If supported by the block device APM (Advanced Power Management) is enabled,
 # otherwise the standby timeout of the device is configured. The specific
@@ -17,48 +18,43 @@ else
   on_ac="0"
 fi
 
-for dev_sysfs in /sys/block/sd[a-z]; do
-  # handle glob without matches
-  [ -e "${dev_sysfs}" ] || break
+. /usr/share/misc/chromeos-common.sh || exit 1
 
-  is_removable=$(cat "${dev_sysfs}/removable")
-  if [ "${is_removable}" = "1" ]; then
-    continue
-  fi
+dev_node="$(rootdev -s -d)"
+dev_type="$(get_device_type "${dev_node}")"
+[ "${dev_type}" = "ATA" ] || exit 0
 
-  dev_node="/dev/${dev_sysfs##*/}"
+if hdparm -B "${dev_node}" | grep -q 'APM_level.*=.*not supported'; then
+  has_apm="0"
+else
+  has_apm="1"
+fi
 
-  if hdparm -B "${dev_node}" | grep -q 'APM_level.*=.*not supported'; then
-    has_apm="0"
+# Skip APM for SanDisk SSDs, it is too aggressive (b/35524329)
+dev_sysfs="/sys/block/${dev_node##*/}"
+if grep -q "SanDisk.*SSD" "${dev_sysfs}/device/model"; then
+  has_apm="0"
+fi
+
+if [ "${has_apm}" = "1" ]; then
+  if [ "${on_ac}" = "1" ]; then
+    # max performance
+    apm_level=254
   else
-    has_apm="1"
+    # max power savings
+    apm_level=1
   fi
 
-  # Skip APM for SanDisk SSDs, it is too aggressive (b/35524329)
-  if grep -q "SanDisk.*SSD" "${dev_sysfs}/device/model"; then
-    has_apm="0"
-  fi
-
-  if [ "${has_apm}" = "1" ]; then
-    if [ "${on_ac}" = "1" ]; then
-      # max performance
-      apm_level=254
-    else
-      # max power savings
-      apm_level=1
-    fi
-
-    hdparm -B "${apm_level}" "${dev_node}"
+  hdparm -B "${apm_level}" "${dev_node}"
+else
+  # APM not supported
+  if [ "${on_ac}" = "1" ]; then
+    # set standby timeout to 2h
+    standby_timeout=120
   else
-    # APM not supported
-    if [ "${on_ac}" = "1" ]; then
-      # set standby timeout to 2h
-      standby_timeout=120
-    else
-      # set standby timeout to 5s
-      standby_timeout=1
-    fi
-
-    hdparm -S "${standby_timeout}" "${dev_node}"
+    # set standby timeout to 5s
+    standby_timeout=1
   fi
-done
+
+  hdparm -S "${standby_timeout}" "${dev_node}"
+fi
