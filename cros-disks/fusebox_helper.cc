@@ -38,8 +38,7 @@ FuseBoxHelper::FuseBoxHelper(const Platform* platform,
       sandbox_factory_(platform,
                        SandboxedExecutable{base::FilePath(kHelperTool),
                                            base::FilePath{kSeccompPolicyFile}},
-                       ResolveFuseBoxOwnerUser(platform),
-                       /* has_network_access= */ false) {}
+                       ResolveFuseBoxOwnerUser(platform)) {}
 
 FuseBoxHelper::~FuseBoxHelper() = default;
 

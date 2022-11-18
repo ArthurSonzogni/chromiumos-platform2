@@ -61,12 +61,7 @@ class DiskFUSEMounter : public FUSEMounter {
                   std::vector<std::string> options)
       : FUSEMounter(platform, reaper, std::move(filesystem_type), {}),
         upstream_factory_(upstream_factory),
-        sandbox_factory_(platform,
-                         std::move(executable),
-                         run_as,
-                         false,  // no network needed
-                         {},
-                         {}),
+        sandbox_factory_(platform, std::move(executable), run_as),
         options_(std::move(options)) {}
 
  private:
