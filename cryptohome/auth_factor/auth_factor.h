@@ -23,16 +23,20 @@
 
 namespace cryptohome {
 
-// This is an interface designed to be implemented by the different
-// authentication factors - password, pin, security keys, etc - so that
-// they take handle multiple factors of the same type and know what to do with
-// it.
+// An AuthFactor is a value that identifies a particular instance of a factor by
+// type and label and which contains a copy of all of the metadata and block
+// state.
 class AuthFactor {
  public:
   AuthFactor(AuthFactorType type,
              const std::string& label,
              const AuthFactorMetadata& metadata,
              const AuthBlockState& auth_block_state);
+
+  AuthFactor(const AuthFactor&) = default;
+  AuthFactor& operator=(const AuthFactor&) = default;
+  AuthFactor(AuthFactor&&) = default;
+  AuthFactor& operator=(AuthFactor&&) = default;
 
   ~AuthFactor() = default;
 
@@ -48,11 +52,11 @@ class AuthFactor {
 
  private:
   // The auth factor public information.
-  const AuthFactorType type_;
-  const std::string label_;
-  const AuthFactorMetadata metadata_;
+  AuthFactorType type_;
+  std::string label_;
+  AuthFactorMetadata metadata_;
   // Contains the data that the auth factor needs for deriving the secret.
-  const AuthBlockState auth_block_state_;
+  AuthBlockState auth_block_state_;
 };
 
 }  // namespace cryptohome
