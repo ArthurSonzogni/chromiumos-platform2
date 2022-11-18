@@ -365,6 +365,11 @@ std::optional<lorgnette::ScannerCapabilities> GetScannerCapabilities(
   return capabilities;
 }
 
+// RoundThousandth will round the input number at the thousandth place
+double RoundThousandth(double num) {
+  return round(num * 1000) / 1000.0;
+}
+
 void PrintScannerCapabilities(
     const lorgnette::ScannerCapabilities& capabilities) {
   std::cout << "--- Capabilities ---" << std::endl;
@@ -374,8 +379,9 @@ void PrintScannerCapabilities(
     std::cout << "\t" << source.name() << " ("
               << lorgnette::SourceType_Name(source.type()) << ")" << std::endl;
     if (source.has_area()) {
-      std::cout << "\t\t" << source.area().width() << "mm wide by "
-                << source.area().height() << "mm tall" << std::endl;
+      std::cout << "\t\t" << RoundThousandth(source.area().width())
+                << "mm wide by " << RoundThousandth(source.area().height())
+                << "mm tall" << std::endl;
     }
     std::cout << "\t\tResolutions:" << std::endl;
     for (uint32_t resolution : source.resolutions()) {
@@ -638,8 +644,8 @@ std::string ScannerCapabilitiesToJson(
     source_dict.Set("Name", source.name());
     if (source.has_area()) {
       base::Value::Dict area_dict;
-      area_dict.Set("Width", source.area().width());
-      area_dict.Set("Height", source.area().height());
+      area_dict.Set("Width", RoundThousandth(source.area().width()));
+      area_dict.Set("Height", RoundThousandth(source.area().height()));
       source_dict.Set("ScannableArea", std::move(area_dict));
     }
     base::Value::List resolution_list;

@@ -17,21 +17,21 @@ const rawLorgnetteCaps = `{
 	"Name":"ADF Duplex",
 	"Resolutions":[300],
 	"ScannableArea":{
-		"Height":355.59999084472656,
-		"Width":215.9846649169922}},
+		"Height":355.6,
+		"Width":215.985}},
 "SOURCE_ADF_SIMPLEX":{
 	"ColorModes":["MODE_COLOR","MODE_GRAYSCALE"],
 	"Name":"ADF","Resolutions":[300],
 	"ScannableArea":{
-		"Height":355.59999084472656,
-		"Width":215.9846649169922}},
+		"Height":355.6,
+		"Width":215.985}},
 "SOURCE_PLATEN":{
 	"ColorModes":["MODE_COLOR","MODE_GRAYSCALE"],
 	"Name":"Flatbed",
 	"Resolutions":[300],
 	"ScannableArea":{
-		"Height":355.59999084472656,
-		"Width":215.9846649169922}}
+		"Height":355.6,
+		"Width":215.985}}
 }`
 
 // invalidJSONString is an example of incorrectly formatted JSON data.
