@@ -967,45 +967,44 @@ class FuseBoxClient : public FileSystem {
       return;
     }
 
-    dbus::MethodCall method(kFuseBoxServiceInterface, kWriteMethod);
+    auto data = fusebox::GetFileData(request->fh());
+
+    Write2RequestProto request_proto;
+    request_proto.set_fuse_handle(data.server_side_fuse_handle);
+    request_proto.set_offset(off);
+    request_proto.mutable_data()->append(buf, size);
+
+    dbus::MethodCall method(kFuseBoxServiceInterface, kWrite2Method);
     dbus::MessageWriter writer(&method);
+    writer.AppendProtoAsArrayOfBytes(request_proto);
 
-    auto path = fusebox::GetFileData(request->fh()).path;
-    writer.AppendString(path);
-    writer.AppendInt64(base::strict_cast<int64_t>(off));
-    writer.AppendArrayOfBytes(reinterpret_cast<const uint8_t*>(buf), size);
-
-    auto write_response = base::BindOnce(&FuseBoxClient::WriteResponse,
-                                         weak_ptr_factory_.GetWeakPtr(),
-                                         std::move(request), ino, size, off);
-    CallFuseBoxServerMethod(&method, std::move(write_response));
+    auto write2_response = base::BindOnce(&FuseBoxClient::Write2Response,
+                                          weak_ptr_factory_.GetWeakPtr(),
+                                          std::move(request), size);
+    CallFuseBoxServerMethod(&method, std::move(write2_response));
   }
 
-  void WriteResponse(std::unique_ptr<WriteRequest> request,
-                     ino_t ino,
-                     size_t size,
-                     off_t off,
-                     dbus::Response* response) {
-    VLOG(1) << "write-resp fh " << request->fh() << " off " << off << " size "
-            << size;
+  void Write2Response(std::unique_ptr<WriteRequest> request,
+                      size_t length,
+                      dbus::Response* response) {
+    VLOG(1) << "write2-resp";
 
     if (request->IsInterrupted())
       return;
 
     dbus::MessageReader reader(response);
-    if (int error = GetResponseErrno(&reader, response, "write")) {
-      request->ReplyError(error);
+    Write2ResponseProto response_proto;
+    if (!reader.PopArrayOfBytesAsProto(&response_proto)) {
+      request->ReplyError(EINVAL);
       return;
     }
-
-    if (!fusebox::GetFile(request->fh())) {
-      errno = request->ReplyError(EBADF);
-      PLOG(ERROR) << "write-resp";
+    int32_t posix_error_code = response_proto.has_posix_error_code()
+                                   ? response_proto.posix_error_code()
+                                   : 0;
+    if (posix_error_code != 0) {
+      request->ReplyError(posix_error_code);
       return;
     }
-
-    uint32_t length = 0;
-    reader.PopUint32(&length);
 
     request->ReplyWrite(length);
   }
