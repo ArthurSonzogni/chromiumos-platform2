@@ -102,3 +102,4 @@ fstatfs: 1
 sched_getaffinity: 1
 sched_getparam: 1
 sched_yield: 1
+process_vm_readv: 1

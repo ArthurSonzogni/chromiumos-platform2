@@ -82,6 +82,7 @@ poll: 1
 pread64: 1
 preadv: 1
 prlimit64: arg2 == 0 && arg3 != 0
+process_vm_readv: 1
 pwrite64: 1
 pwritev: 1
 read: 1

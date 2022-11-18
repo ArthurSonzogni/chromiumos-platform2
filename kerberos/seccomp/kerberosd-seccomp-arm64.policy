@@ -80,3 +80,4 @@ utimensat: 1
 newfstatat: 1
 fstatfs: 1
 statfs: 1
+process_vm_readv: 1

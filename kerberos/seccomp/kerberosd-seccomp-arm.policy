@@ -95,3 +95,4 @@ utimensat_time64: 1
 fstatfs: 1
 fstatfs64: 1
 statfs64: 1
+process_vm_readv: 1
