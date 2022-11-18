@@ -23,7 +23,6 @@
 
 #include "cryptohome/cleanup/disk_cleanup.h"
 #include "cryptohome/cryptohome_metrics.h"
-#include "cryptohome/platform.h"
 #include "cryptohome/userdataauth.h"
 
 namespace switches {
@@ -73,9 +72,6 @@ int main(int argc, char** argv) {
 
   // Start profiling.
   hwsec_foundation::SetUpProfiling();
-
-  // Read the file before we daemonize so it can be deleted as soon as we exit.
-  cryptohome::Platform platform;
 
   base::CommandLine* cl = base::CommandLine::ForCurrentProcess();
   // Validity check of attestation mode. Historically we had monolithic and
