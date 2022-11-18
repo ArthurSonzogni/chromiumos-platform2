@@ -398,6 +398,10 @@ int MetadataHandler::FillDefaultMetadata(
   // android.sync
   update_static(ANDROID_SYNC_MAX_LATENCY, ANDROID_SYNC_MAX_LATENCY_UNKNOWN);
 
+  // Allowed configuration in session parameters
+  update_static(ANDROID_REQUEST_AVAILABLE_SESSION_KEYS,
+                std::vector<int32_t>{ANDROID_CONTROL_AE_TARGET_FPS_RANGE});
+
   return update_static.ok() && update_request.ok() ? 0 : -EINVAL;
 }
 

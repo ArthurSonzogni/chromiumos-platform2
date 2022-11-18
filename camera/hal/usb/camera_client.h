@@ -19,6 +19,7 @@
 #include <hardware/camera3.h>
 #include <hardware/hardware.h>
 
+#include "base/types/expected.h"
 #include "cros-camera/camera_buffer_manager.h"
 #include "cros-camera/camera_metrics.h"
 #include "cros-camera/face_detector_client_cros_wrapper.h"
@@ -86,29 +87,46 @@ class CameraClient {
   int Flush(const camera3_device_t* dev);
 
  private:
+  // StreamOnParameters is a wrapper for the parameters of StreamOn().
+  struct StreamOnParameters {
+    Size resolution;
+    int crop_rotate_scale_degrees;
+    bool use_native_sensor_ratio;
+    int frame_rate;
+  };
+
+  using Error = int;
+  // Returns Error value or a StreamOnParameters object resolving
+  // |stream_config|. Parses |frame_rate| from
+  // |stream_config->session_parameters| if it's available, otherwise
+  // chooses device's max frame rate for the selected resolution.
+  base::expected<StreamOnParameters, Error> BuildStreamOnParameters(
+      const camera3_stream_configuration_t* stream_config,
+      std::vector<camera3_stream_t*>& streams);
+
   // Verify a set of streams in aggregate.
   bool IsValidStreamSet(const std::vector<camera3_stream_t*>& streams);
 
   // Calculate usage and maximum number of buffers of each stream.
   void SetUpStreams(int num_buffers, std::vector<camera3_stream_t*>* streams);
 
-  // Start |request_thread_| and streaming.
-  int StreamOn(Size stream_on_resolution,
-               int crop_rotate_scale_degrees,
-               int* num_buffers,
-               bool use_native_sensor_ratio);
+  // Start |request_thread_| and streaming. Returns the
+  // number of buffers or Error value.
+  base::expected<int, Error> StreamOn(
+      const CameraClient::StreamOnParameters& streamon_params);
 
   // Stop streaming and |request_thread_|.
   void StreamOff();
 
   // Callback function for RequestHandler::StreamOn.
-  void StreamOnCallback(scoped_refptr<cros::Future<int>> future,
-                        int* out_num_buffers,
-                        int num_buffers,
-                        int result);
+  void StreamOnCallback(
+      scoped_refptr<cros::Future<base::expected<int, Error>>> future,
+      int num_buffers,
+      Error error);
 
   // Callback function for RequestHandler::StreamOff.
-  void StreamOffCallback(scoped_refptr<cros::Future<int>> future, int result);
+  void StreamOffCallback(scoped_refptr<cros::Future<Error>> future,
+                         Error error);
 
   // Check if we need and can use native sensor ratio.
   // Return true means we need to use native sensor ratio. The resolution will
@@ -179,9 +197,7 @@ class CameraClient {
     ~RequestHandler();
 
     // Synchronous call to start streaming.
-    void StreamOn(Size stream_on_resolution,
-                  int crop_rotate_scale_degrees,
-                  bool use_native_sensor_ratio,
+    void StreamOn(const CameraClient::StreamOnParameters& streamon_params,
                   base::OnceCallback<void(int, int)> callback);
 
     // Synchronous call to stop streaming.
@@ -198,9 +214,7 @@ class CameraClient {
 
    private:
     // Start streaming implementation.
-    int StreamOnImpl(Size stream_on_resolution,
-                     bool use_native_sensor_ratio,
-                     float target_frame_rate);
+    int StreamOnImpl(const CameraClient::StreamOnParameters& streamon_params);
 
     // Stop streaming implementation.
     int StreamOffImpl();
@@ -257,12 +271,6 @@ class CameraClient {
 
     // Used to notify caller that all requests are handled.
     void FlushDone(base::OnceCallback<void(int)> callback);
-
-    // Resolved to a supported frame rate within the given target fps range in
-    // |metadata|. If it fails, try the one that is closest to the target range.
-    // If there are two candidates, choose the larger one.
-    int ResolvedFrameRateFromMetadata(const android::CameraMetadata& metadata,
-                                      Size resolution);
 
     // Variables from CameraClient:
 
