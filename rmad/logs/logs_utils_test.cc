@@ -48,6 +48,18 @@ constexpr char kSampleLogsJson[] = R"(
       },
       {
         "details": {
+          "replaced_components": [
+            "RMAD_COMPONENT_KEYBOARD",
+            "RMAD_COMPONENT_CAMERA"
+          ],
+          "rework_selected": false
+        },
+        "state_id": 2,
+        "timestamp": 1668810230.12951,
+        "type": 1
+      },
+      {
+        "details": {
             "occurred_error": 41
         },
         "state_id": 15,
@@ -62,16 +74,79 @@ constexpr char kSampleLogsJson[] = R"(
         "state_id": 10,
         "timestamp": 1668635055.688008,
         "type": 0
+      },
+      {
+        "details": {
+          "wp_disable_method": "RMAD_WP_DISABLE_RSU"
+        },
+        "state_id": 4,
+        "timestamp": 1668812821.203501,
+        "type": 1
+      },
+      {
+        "details": {
+          "challenge_code": "ABC123",
+          "hwid": "FLEEX"
+        },
+        "state_id": 5,
+        "timestamp": 1668812821.417402,
+        "type": 1
+      },
+      {
+        "details": {
+          "firmware_status": 3
+        },
+        "state_id": 9,
+        "timestamp": 1668812972.125672,
+        "type": 1
+      },
+      {
+        "details": {
+          "restock_option": false
+        },
+        "state_id": 10,
+        "timestamp": 1668812984.62641,
+        "type": 1
+      },
+      {
+        "details": {
+          "calibration_components": [
+            {
+              "calibration_status": 0,
+              "component": "RMAD_COMPONENT_BASE_ACCELEROMETER"
+            },
+            {
+              "calibration_status": 1,
+              "component": "RMAD_COMPONENT_BASE_GYROSCOPE"
+            },
+            {
+              "calibration_status": 2,
+              "component": "RMAD_COMPONENT_LID_ACCELEROMETER"
+            }
+          ]
+        },
+        "state_id": 12,
+        "timestamp": 1668813225.410572,
+        "type": 1
       }
     ]
   }
 }
 )";
 constexpr char kExpectedLogText[] =
-    R"([2022-11-16 21:44:15] Transitioned from Welcome to Restock
-[2022-11-16 21:44:15] ERROR in ProvisionDevice: RMAD_ERROR_WP_ENABLED
-[2022-11-16 21:44:15] Transitioned from Restock to RunCalibration
-)";
+    "[2022-11-16 21:44:15] Transitioned from Welcome to Restock\n"
+    "[2022-11-18 22:23:50] ComponentsRepair: Selected RMAD_COMPONENT_KEYBOARD,"
+    " RMAD_COMPONENT_CAMERA\n"
+    "[2022-11-16 21:44:15] ERROR in ProvisionDevice: RMAD_ERROR_WP_ENABLED\n"
+    "[2022-11-16 21:44:15] Transitioned from Restock to RunCalibration\n"
+    "[2022-11-18 23:07:01] WpDisableMethod: Selected to disable write protect"
+    " via RMAD_WP_DISABLE_RSU\n"
+    "[2022-11-18 23:07:01] WpDisableRsu: The RSU challenge code is ABC123\n"
+    "[2022-11-18 23:09:32] UpdateRoFirmware: Firmware update complete\n"
+    "[2022-11-18 23:09:44] Restock: Continuing\n"
+    "[2022-11-18 23:13:45] CheckCalibration: Calibration for"
+    " RMAD_COMPONENT_BASE_ACCELEROMETER - Failed, RMAD_COMPONENT_BASE_GYROSCOPE"
+    " - Skipped, RMAD_COMPONENT_LID_ACCELEROMETER - Retried\n";
 
 }  // namespace
 
@@ -350,7 +425,6 @@ TEST_F(LogsUtilsTest, RecordFirmwareUpdateStatus) {
 // Simulates generating a text log.
 TEST_F(LogsUtilsTest, GenerateTextLog) {
   EXPECT_TRUE(CreateInputFile(kSampleLogsJson, std::size(kSampleLogsJson) - 1));
-
   EXPECT_EQ(kExpectedLogText, GenerateCompleteLogsString(json_store_));
 }
 

@@ -4,7 +4,9 @@
 
 #include "rmad/logs/logs_utils.h"
 
+#include <functional>
 #include <map>
+#include <sstream>
 #include <string>
 #include <utility>
 #include <vector>
@@ -12,7 +14,9 @@
 #include <base/check.h>
 #include <base/json/json_string_value_serializer.h>
 #include <base/memory/scoped_refptr.h>
+#include <base/strings/strcat.h>
 #include <base/strings/stringprintf.h>
+#include <base/strings/string_util.h>
 #include <base/time/time.h>
 #include <base/values.h>
 
@@ -30,6 +34,22 @@ const char* GetStateName(RmadState::StateCase state) {
   auto it = kStateNames.find(state);
   CHECK(it != kStateNames.end());
   return it->second.data();
+}
+
+std::string JoinValueList(
+    const base::Value::List* list,
+    const std::function<std::string(const base::Value&)>& function,
+    const std::string& separator) {
+  auto begin = list->begin();
+  auto end = list->end();
+  std::ostringstream list_stream;
+  if (begin != end) {
+    list_stream << function(*begin);
+    while (++begin != end) {
+      list_stream << separator << function(*begin);
+    }
+  }
+  return list_stream.str();
 }
 
 bool AddEventToJson(scoped_refptr<JsonStore> json_store,
@@ -53,6 +73,15 @@ bool AddEventToJson(scoped_refptr<JsonStore> json_store,
   events->Append(std::move(event));
 
   return json_store->SetValue(kLogs, std::move(logs));
+}
+
+std::string GetCalibrationStatusString(const base::Value::Dict& component) {
+  const std::string component_name = *component.FindString(kLogComponent);
+  const LogCalibrationStatus status = static_cast<LogCalibrationStatus>(
+      component.FindInt(kLogCalibrationStatus).value());
+  auto it = kLogCalibrationStatusMap.find(status);
+  CHECK(it != kLogCalibrationStatusMap.end());
+  return base::StrCat({component_name, " - ", it->second});
 }
 
 std::string GenerateTextLogString(scoped_refptr<JsonStore> json_store) {
@@ -99,8 +128,89 @@ std::string GenerateTextLogString(scoped_refptr<JsonStore> json_store) {
         break;
       }
       case LogEventType::kData: {
+        const RmadState::StateCase current_state =
+            static_cast<RmadState::StateCase>(current_state_id);
+        generated_text_log.append(base::StringPrintf(
+            kLogDetailPrefixFormat, GetStateName(current_state)));
+
+        switch (current_state) {
+          case RmadState::kComponentsRepair: {
+            const bool is_mlb_repair =
+                details->FindBool(kLogReworkSelected).value();
+            if (is_mlb_repair) {
+              generated_text_log.append(kLogSelectComponentsReworkString);
+            } else {
+              const base::Value::List* components =
+                  details->FindList(kLogReplacedComponents);
+              const std::string component_list = JoinValueList(
+                  components,
+                  [](const base::Value& value) { return value.GetString(); },
+                  ", ");
+              generated_text_log.append(base::StringPrintf(
+                  kLogSelectComponentsFormat, component_list.c_str()));
+            }
+            break;
+          }
+          case RmadState::kDeviceDestination: {
+            generated_text_log.append(base::StringPrintf(
+                kLogChooseDeviceDestinationFormat,
+                (*details->FindString(kLogDestination)).c_str()));
+            break;
+          }
+          case RmadState::kWipeSelection: {
+            const std::string wipe_device =
+                details->FindBool(kLogWipeDevice).value() ? "wipe" : "keep";
+            generated_text_log.append(base::StringPrintf(
+                kLogWipeSelectionFormat, wipe_device.c_str()));
+            break;
+          }
+          case RmadState::kWpDisableMethod: {
+            generated_text_log.append(base::StringPrintf(
+                kLogWpDisableFormat,
+                (*details->FindString(kLogWpDisableMethod)).c_str()));
+            break;
+          }
+          case RmadState::kWpDisableRsu: {
+            generated_text_log.append(base::StringPrintf(
+                kLogRsuChallengeFormat,
+                (*details->FindString(kLogRsuChallengeCode)).c_str()));
+            break;
+          }
+          case RmadState::kRestock: {
+            generated_text_log.append(
+                details->FindBool(kLogRestockOption).value()
+                    ? kLogRestockShutdownString
+                    : kLogRestockContinueString);
+            break;
+          }
+          case RmadState::kCheckCalibration: {
+            const base::Value::List* components =
+                details->FindList(kLogCalibrationComponents);
+            const std::string component_list = JoinValueList(
+                components,
+                [](const base::Value& value) {
+                  return GetCalibrationStatusString(value.GetDict());
+                },
+                ", ");
+            generated_text_log.append(base::StringPrintf(
+                kLogCalibrationFormat, component_list.c_str()));
+            break;
+          }
+          case RmadState::kUpdateRoFirmware: {
+            const FirmwareUpdateStatus status =
+                static_cast<FirmwareUpdateStatus>(
+                    details->FindInt(kFirmwareStatus).value());
+            auto it = kFirmwareUpdateStatusMap.find(status);
+            CHECK(it != kFirmwareUpdateStatusMap.end());
+            generated_text_log.append(it->second.data());
+            break;
+          }
+          default:
+            break;
+        }
       }
     }
+    generated_text_log.append("\n");
   }
 
   return generated_text_log;

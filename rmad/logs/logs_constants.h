@@ -5,7 +5,11 @@
 #ifndef RMAD_LOGS_LOGS_CONSTANTS_H_
 #define RMAD_LOGS_LOGS_CONSTANTS_H_
 
-#include <base/values.h>
+#include <map>
+#include <string>
+
+#include <base/containers/fixed_flat_map.h>
+#include <base/strings/string_piece.h>
 
 namespace rmad {
 
@@ -42,8 +46,27 @@ inline constexpr char kFirmwareStatus[] = "firmware_status";
 
 // Log string formats.
 constexpr char kLogTimestampFormat[] = "[%04d-%02d-%02d %02d:%02d:%02d] ";
-constexpr char kLogTransitionFormat[] = "Transitioned from %s to %s\n";
-constexpr char kLogErrorFormat[] = "ERROR in %s: %s\n";
+constexpr char kLogTransitionFormat[] = "Transitioned from %s to %s";
+constexpr char kLogErrorFormat[] = "ERROR in %s: %s";
+constexpr char kLogDetailPrefixFormat[] = "%s: ";
+constexpr char kLogSelectComponentsFormat[] = "Selected %s";
+constexpr char kLogSelectComponentsReworkString[] = "Selected Mainboard Rework";
+constexpr char kLogChooseDeviceDestinationFormat[] = "Selected %s";
+constexpr char kLogWipeSelectionFormat[] = "Selected to %s user data";
+constexpr char kLogWpDisableFormat[] =
+    "Selected to disable write protect via %s";
+constexpr char kLogRsuChallengeFormat[] = "The RSU challenge code is %s";
+constexpr char kLogRestockContinueString[] = "Continuing";
+constexpr char kLogRestockShutdownString[] = "Shutting down the device";
+constexpr char kLogCalibrationFormat[] = "Calibration for %s";
+constexpr char kLogCalibrationStatusFailedString[] = "Failed";
+constexpr char kLogCalibrationStatusSkippedString[] = "Skipped";
+constexpr char kLogCalibrationStatusRetriedString[] = "Retried";
+constexpr char kLogFirmwareUpdatePluggedInString[] = "Plugged in USB";
+constexpr char kLogFirmwareUpdateFileNotFoundString[] =
+    "Suitable OS image not detected on USB";
+constexpr char kFirmwareUpdatedString[] = "Firmware updated. Going to reboot";
+constexpr char kFirmwareCompleteString[] = "Firmware update complete";
 
 enum class LogEventType {
   kTransition = 0,
@@ -59,6 +82,12 @@ enum class LogCalibrationStatus {
   kMaxValue = kRetry,
 };
 
+constexpr auto kLogCalibrationStatusMap =
+    base::MakeFixedFlatMap<LogCalibrationStatus, base::StringPiece>(
+        {{LogCalibrationStatus::kFailed, kLogCalibrationStatusFailedString},
+         {LogCalibrationStatus::kSkip, kLogCalibrationStatusSkippedString},
+         {LogCalibrationStatus::kRetry, kLogCalibrationStatusRetriedString}});
+
 enum class FirmwareUpdateStatus {
   kUsbPluggedIn = 0,
   kUsbPluggedInFileNotFound = 1,
@@ -66,6 +95,15 @@ enum class FirmwareUpdateStatus {
   kFirmwareComplete = 3,
   kMaxValue = kFirmwareComplete,
 };
+
+constexpr auto kFirmwareUpdateStatusMap =
+    base::MakeFixedFlatMap<FirmwareUpdateStatus, base::StringPiece>(
+        {{FirmwareUpdateStatus::kUsbPluggedIn,
+          kLogFirmwareUpdatePluggedInString},
+         {FirmwareUpdateStatus::kUsbPluggedInFileNotFound,
+          kLogFirmwareUpdateFileNotFoundString},
+         {FirmwareUpdateStatus::kFirmwareUpdated, kFirmwareUpdatedString},
+         {FirmwareUpdateStatus::kFirmwareComplete, kFirmwareCompleteString}});
 
 }  // namespace rmad
 
