@@ -70,5 +70,36 @@ TEST(UtilsTest, FilePaths) {
             "/run/daemon-store/federated/foo/bar");
 }
 
+TEST(UtilsTest, ValidClientVersion) {
+  // Valid release versions.
+  auto client_version = ConvertClientVersion("15217.0.0");
+  EXPECT_TRUE(client_version.has_value());
+  EXPECT_EQ(client_version.value(), "chromeos_152170000000000");
+
+  client_version = ConvertClientVersion("15217.123.4");
+  EXPECT_TRUE(client_version.has_value());
+  EXPECT_EQ(client_version.value(), "chromeos_152170001230004");
+
+  client_version = ConvertClientVersion("123456789.123456.7890");
+  EXPECT_TRUE(client_version.has_value());
+  EXPECT_EQ(client_version.value(), "chromeos_1234567891234567890");
+}
+
+TEST(UtilsTest, InValidClientVersion) {
+  // Major version is too long.
+  EXPECT_EQ(ConvertClientVersion("1521715127.12345.67"), std::nullopt);
+
+  // Minor version is too long.
+  EXPECT_EQ(ConvertClientVersion("15217.1234567.8"), std::nullopt);
+
+  // Sub version is too long.
+  EXPECT_EQ(ConvertClientVersion("15217.123.45678"), std::nullopt);
+
+  // Malformed patterns
+  EXPECT_EQ(ConvertClientVersion("15217.123"), std::nullopt);
+  EXPECT_EQ(ConvertClientVersion("15217.123.4.5"), std::nullopt);
+  EXPECT_EQ(ConvertClientVersion("R109-15217.123.4"), std::nullopt);
+}
+
 }  // namespace
 }  // namespace federated

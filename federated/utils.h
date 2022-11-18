@@ -5,6 +5,7 @@
 #ifndef FEDERATED_UTILS_H_
 #define FEDERATED_UTILS_H_
 
+#include <optional>
 #include <string>
 
 #include <base/files/file_path.h>
@@ -40,6 +41,18 @@ base::FilePath GetBaseDir(const std::string& sanitized_username,
 // Converts the mojom Example struct to a TensorFlow Example proto.
 tensorflow::Example ConvertToTensorFlowExampleProto(
     const chromeos::federated::mojom::ExamplePtr& example);
+
+// Packs the given chromeos release version to a long integer and returns in
+// string format with the platform prefix "chromeos_". Returns std::nullopt if
+// the release_version doesn't match the pattern.
+// A release_version should be like: 15217.123.2. The minor version could be
+// several hundreds, let's reserve 6 digits for it. The sub version is rarely
+// greater than 1, let's reserve 4 digits. Theoretically the major version could
+// be infinite, but given it's now 15xxx and we need to pack them in an int64,
+// let's allow up to 9 digits and not pad it.
+// Then 15217.123.2 => chromeos_152170001230002
+std::optional<std::string> ConvertClientVersion(
+    const std::string& release_version);
 
 }  // namespace federated
 

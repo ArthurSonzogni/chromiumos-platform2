@@ -62,11 +62,12 @@ absl::Status FederatedLibrary::GetStatus() const {
 FederatedClient FederatedLibrary::CreateClient(
     const std::string& service_uri,
     const std::string& api_key,
+    const std::string& client_version,
     const ClientConfigMetadata client_config,
     DeviceStatusMonitor* const device_status_monitor) {
   DCHECK(status_.ok());
   return FederatedClient(run_plan_, free_run_plan_result_, service_uri, api_key,
-                         client_config, device_status_monitor);
+                         client_version, client_config, device_status_monitor);
 }
 
 }  // namespace federated

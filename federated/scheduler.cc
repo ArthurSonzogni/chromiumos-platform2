@@ -5,10 +5,12 @@
 #include "federated/scheduler.h"
 
 #include <optional>
+#include <string>
 #include <utility>
 
 #include <base/bind.h>
 #include <base/strings/stringprintf.h>
+#include <base/system/sys_info.h>
 #include <base/threading/sequenced_task_runner_handle.h>
 #include <base/time/time.h>
 #include <brillo/errors/error.h>
@@ -19,6 +21,7 @@
 #include "federated/federated_library.h"
 #include "federated/federated_metadata.h"
 #include "federated/storage_manager.h"
+#include "federated/utils.h"
 
 namespace federated {
 namespace {
@@ -27,6 +30,7 @@ constexpr char kServiceUri[] = "https://127.0.0.1:8791";
 constexpr char kApiKey[] = "";
 constexpr char kDlcId[] = "fcp";
 constexpr char kFederatedComputationLibraryName[] = "libfcp.so";
+constexpr char kLsbReleaseVersion[] = "CHROMEOS_RELEASE_VERSION";
 
 void OnDBusSignalConnected(const std::string& interface,
                            const std::string& signal,
@@ -35,6 +39,20 @@ void OnDBusSignalConnected(const std::string& interface,
     LOG(ERROR) << "Could not connect to signal " << signal << " on interface "
                << interface;
   }
+}
+
+// Gets release version from base::SysInfo and converts it to the client version
+// format, returns std::nullopt if any error.
+// See utils.cc::ConvertClientVersion for more details.
+std::optional<std::string> GetClientVersion() {
+  std::string release_version;
+  if (!base::SysInfo::GetLsbReleaseValue(kLsbReleaseVersion,
+                                         &release_version)) {
+    LOG(ERROR) << "Cannot get release version";
+    return std::nullopt;
+  }
+
+  return ConvertClientVersion(release_version);
 }
 
 }  // namespace
@@ -121,9 +139,17 @@ void Scheduler::ScheduleInternal(const std::string& dlc_root_path) {
   // `clients_` needs to be increased. Reserves the necessary capacity upfront.
   clients_.reserve(client_configs.size());
 
+  const auto client_version = GetClientVersion();
+  if (!client_version.has_value()) {
+    LOG(ERROR)
+        << "Failed to schedule the tasks because of no valid client version";
+    return;
+  }
+
   for (const auto& kv : client_configs) {
     clients_.push_back(federated_library->CreateClient(
-        kServiceUri, kApiKey, kv.second, device_status_monitor_.get()));
+        kServiceUri, kApiKey, client_version.value(), kv.second,
+        device_status_monitor_.get()));
     KeepSchedulingJobForClient(&clients_.back());
   }
 

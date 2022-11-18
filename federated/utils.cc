@@ -8,6 +8,7 @@
 #include <vector>
 
 #include <base/strings/stringprintf.h>
+#include <re2/re2.h>
 
 namespace federated {
 
@@ -16,6 +17,8 @@ using ::chromeos::federated::mojom::ExamplePtr;
 using ::chromeos::federated::mojom::FloatList;
 using ::chromeos::federated::mojom::Int64List;
 using ::chromeos::federated::mojom::ValueList;
+
+constexpr char kVersionPrefix[] = "chromeos";
 }  // namespace
 
 // TODO(alanlxl):  just random numbers, need a discussion
@@ -64,6 +67,18 @@ tensorflow::Example ConvertToTensorFlowExampleProto(const ExamplePtr& example) {
     }
   }
   return tf_example;
+}
+
+std::optional<std::string> ConvertClientVersion(
+    const std::string& release_version) {
+  int major_version, minor_version, sub_version;
+  if (!RE2::FullMatch(release_version, R"((\d{1,9})\.(\d{1,6})\.(\d{1,4}))",
+                      &major_version, &minor_version, &sub_version)) {
+    LOG(ERROR) << "Cannot parse release_version " << release_version;
+    return std::nullopt;
+  }
+  return base::StringPrintf("%s_%d%06d%04d", kVersionPrefix, major_version,
+                            minor_version, sub_version);
 }
 
 }  // namespace federated

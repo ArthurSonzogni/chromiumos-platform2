@@ -230,12 +230,14 @@ FederatedClient::FederatedClient(
     const FlFreeRunPlanResultFn free_run_plan_result,
     const std::string& service_uri,
     const std::string& api_key,
+    const std::string& client_version,
     const ClientConfigMetadata client_config,
     const DeviceStatusMonitor* const device_status_monitor)
     : run_plan_(run_plan),
       free_run_plan_result_(free_run_plan_result),
       service_uri_(service_uri),
       api_key_(api_key),
+      client_version_(client_version),
       client_config_(client_config),
       next_retry_delay_(kDefaultRetryWindow),
       device_status_monitor_(device_status_monitor) {}
@@ -261,10 +263,10 @@ void FederatedClient::RunPlan(const StorageManager* const storage_manager) {
       base_dir_in_cryptohome.c_str(),
       &context};
 
-  FlRunPlanResult result =
-      (*run_plan_)(env, service_uri_.c_str(), api_key_.c_str(),
-                   /*population_name=*/client_config_.name.c_str(),
-                   client_config_.retry_token.c_str());
+  FlRunPlanResult result = (*run_plan_)(
+      env, service_uri_.c_str(), api_key_.c_str(), client_version_.c_str(),
+      /*population_name=*/client_config_.name.c_str(),
+      client_config_.retry_token.c_str());
 
   // TODO(b/251378482): maybe log the event to UMA
   if (result.status == CONTRIBUTED || result.status == REJECTED_BY_SERVER) {

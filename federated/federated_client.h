@@ -26,6 +26,7 @@ class FederatedClient {
                   FlFreeRunPlanResultFn free_run_plan_result,
                   const std::string& service_uri,
                   const std::string& api_key,
+                  const std::string& client_version,
                   ClientConfigMetadata client_config,
                   const DeviceStatusMonitor* device_status_monitor);
   FederatedClient& operator=(const FederatedClient&) = delete;
@@ -99,6 +100,7 @@ class FederatedClient {
 
   const std::string service_uri_;
   const std::string api_key_;
+  const std::string client_version_;
 
   ClientConfigMetadata client_config_;
   base::TimeDelta next_retry_delay_;
