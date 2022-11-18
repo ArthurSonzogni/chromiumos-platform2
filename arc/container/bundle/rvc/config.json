@@ -32,6 +32,7 @@
 		"selinuxLabel": "u:r:init:s0",
 		"capabilities": {
 			"effective": [
+				"CAP_BLOCK_SUSPEND",
 				"CAP_CHOWN",
 				"CAP_DAC_OVERRIDE",
 				"CAP_DAC_READ_SEARCH",
@@ -59,6 +60,7 @@
 				"CAP_AUDIT_CONTROL"
 			],
 			"bounding": [
+				"CAP_BLOCK_SUSPEND",
 				"CAP_CHOWN",
 				"CAP_DAC_OVERRIDE",
 				"CAP_DAC_READ_SEARCH",
@@ -86,6 +88,7 @@
 				"CAP_AUDIT_CONTROL"
 			],
 			"inheritable": [
+				"CAP_BLOCK_SUSPEND",
 				"CAP_CHOWN",
 				"CAP_DAC_OVERRIDE",
 				"CAP_DAC_READ_SEARCH",
@@ -113,6 +116,7 @@
 				"CAP_AUDIT_CONTROL"
 			],
 			"permitted": [
+				"CAP_BLOCK_SUSPEND",
 				"CAP_CHOWN",
 				"CAP_DAC_OVERRIDE",
 				"CAP_DAC_READ_SEARCH",
@@ -140,6 +144,7 @@
 				"CAP_AUDIT_CONTROL"
 			],
 			"ambient": [
+				"CAP_BLOCK_SUSPEND",
 				"CAP_CHOWN",
 				"CAP_DAC_OVERRIDE",
 				"CAP_DAC_READ_SEARCH",
