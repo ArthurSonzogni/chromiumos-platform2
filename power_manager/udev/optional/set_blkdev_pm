@@ -50,7 +50,7 @@ else
   # APM not supported
   if [ "${on_ac}" = "1" ]; then
     # set standby timeout to 2h
-    standby_timeout=120
+    standby_timeout=244
   else
     # set standby timeout to 5s
     standby_timeout=1
