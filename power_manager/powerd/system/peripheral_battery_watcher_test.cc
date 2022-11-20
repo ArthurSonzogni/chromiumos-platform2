@@ -368,48 +368,6 @@ TEST_F(PeripheralBatteryWatcherTest, NonPeripheralUdevEvents) {
   EXPECT_FALSE(test_wrapper_.RunUntilSignalSent(kShortUpdateTimeout));
 }
 
-TEST_F(PeripheralBatteryWatcherTest, RefreshBluetoothBattery) {
-  battery_.Init(&test_wrapper_, &udev_);
-
-  // Initialize non-Bluetooth peripheral.
-  WriteFile(peripheral_capacity_file_, base::NumberToString(90));
-  // Initialize Bluetooth peripheral.
-  WriteFile(bluetooth_capacity_file_, base::NumberToString(80));
-
-  // RefreshBluetoothBattery is called.
-  dbus::MethodCall method_call(kPowerManagerInterface,
-                               kRefreshBluetoothBatteryMethod);
-  dbus::MessageWriter(&method_call).AppendString("11:22:33:AA:BB:CC");
-  std::unique_ptr<dbus::Response> response =
-      test_wrapper_.CallExportedMethodSync(&method_call);
-  ASSERT_TRUE(response);
-  ASSERT_EQ(dbus::Message::MESSAGE_METHOD_RETURN, response->GetMessageType());
-  // Check that powerd does not send the signal because Bluetooth batteries are
-  // reported separately to BlueZ.
-  ASSERT_FALSE(test_wrapper_.RunUntilSignalSent(kShortUpdateTimeout));
-  ASSERT_EQ(0, test_wrapper_.num_sent_signals());
-
-  // RefreshBluetoothBattery is called for non-Bluetooth device.
-  dbus::MethodCall method_call2(kPowerManagerInterface,
-                                kRefreshBluetoothBatteryMethod);
-  dbus::MessageWriter(&method_call2).AppendString("someperipheral");
-  response = test_wrapper_.CallExportedMethodSync(&method_call2);
-  ASSERT_TRUE(response);
-  ASSERT_EQ(dbus::Message::MESSAGE_METHOD_RETURN, response->GetMessageType());
-  // Check that powerd ignores the request.
-  EXPECT_FALSE(test_wrapper_.RunUntilSignalSent(kShortUpdateTimeout));
-
-  // RefreshBluetoothBattery is called for non-existing device.
-  dbus::MethodCall method_call3(kPowerManagerInterface,
-                                kRefreshBluetoothBatteryMethod);
-  dbus::MessageWriter(&method_call3).AppendString("non-existing");
-  response = test_wrapper_.CallExportedMethodSync(&method_call3);
-  ASSERT_TRUE(response);
-  ASSERT_EQ(dbus::Message::MESSAGE_METHOD_RETURN, response->GetMessageType());
-  // Check that powerd ignores the request.
-  EXPECT_FALSE(test_wrapper_.RunUntilSignalSent(kShortUpdateTimeout));
-}
-
 TEST_F(PeripheralBatteryWatcherTest, RefreshAllBatteries) {
   std::string level = base::NumberToString(80);
   WriteFile(peripheral_capacity_file_, level);

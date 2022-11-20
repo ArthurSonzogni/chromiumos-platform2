@@ -55,10 +55,6 @@ bool ReadStringFromFile(const base::FilePath& path, std::string* value_out) {
   return true;
 }
 
-std::string SysnameFromBluetoothAddress(const std::string& address) {
-  return "hid-" + base::ToLowerASCII(address) + "-battery";
-}
-
 bool ExtractBluetoothAddress(const base::FilePath& path, std::string* address) {
   // Standard HID devices have the convention of "hid-{btaddr}-battery"
   // file name in /sys/class/power_supply."
@@ -121,12 +117,6 @@ void PeripheralBatteryWatcher::Init(DBusWrapperInterface* dbus_wrapper,
 
   dbus_wrapper_ = dbus_wrapper;
   ReadBatteryStatusesTimer();
-
-  dbus_wrapper->ExportMethod(
-      kRefreshBluetoothBatteryMethod,
-      base::BindRepeating(
-          &PeripheralBatteryWatcher::OnRefreshBluetoothBatteryMethodCall,
-          weak_ptr_factory_.GetWeakPtr()));
 
   dbus_wrapper->ExportMethod(
       kRefreshAllPeripheralBatteryMethod,
@@ -343,37 +333,6 @@ void PeripheralBatteryWatcher::ErrorCallback(const base::FilePath& path,
   SendBatteryStatus(path, model_name, -1,
                     PeripheralBatteryStatus_ChargeStatus_CHARGE_STATUS_UNKNOWN,
                     "", false);
-}
-
-void PeripheralBatteryWatcher::OnRefreshBluetoothBatteryMethodCall(
-    dbus::MethodCall* method_call,
-    dbus::ExportedObject::ResponseSender response_sender) {
-  dbus::MessageReader reader(method_call);
-
-  std::string address;
-  if (!reader.PopString(&address)) {
-    LOG(WARNING) << "Failed to pop Bluetooth device address from "
-                 << kRefreshBluetoothBatteryMethod << " D-Bus method call";
-    std::move(response_sender)
-        .Run(
-            std::unique_ptr<dbus::Response>(dbus::ErrorResponse::FromMethodCall(
-                method_call, DBUS_ERROR_INVALID_ARGS,
-                "Expected device address string")));
-    return;
-  }
-
-  // Only process requests for valid Bluetooth addresses.
-  if (RE2::FullMatch(address, kBluetoothAddressRegex)) {
-    base::FilePath path = base::FilePath(peripheral_battery_path_)
-                              .Append(SysnameFromBluetoothAddress(address));
-    ReadBatteryStatus(path,
-                      true /* active, as bluetooth will interrogate device */);
-  }
-
-  // Best effort, always return success.
-  std::unique_ptr<dbus::Response> response =
-      dbus::Response::FromMethodCall(method_call);
-  std::move(response_sender).Run(std::move(response));
 }
 
 void PeripheralBatteryWatcher::OnRefreshAllPeripheralBatteryMethodCall(

@@ -141,11 +141,6 @@ class PeripheralBatteryWatcher : public UdevSubsystemObserver {
   }
 
   // Handles D-Bus method calls.
-  // TODO(b/166543531): Remove this method handler after migrating to BlueZ
-  // Battery Provider API.
-  void OnRefreshBluetoothBatteryMethodCall(
-      dbus::MethodCall* method_call,
-      dbus::ExportedObject::ResponseSender response_sender);
   void OnRefreshAllPeripheralBatteryMethodCall(
       dbus::MethodCall* method_call,
       dbus::ExportedObject::ResponseSender response_sender);
