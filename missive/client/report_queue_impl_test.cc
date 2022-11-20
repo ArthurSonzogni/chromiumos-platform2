@@ -290,7 +290,8 @@ TEST_F(ReportQueueImplTest, SuccessfulSpeculativeStringRecord) {
                                     a.cb());
 
   // Enqueue would not end until actual queue is attached.
-  speculative_report_queue->AttachActualQueue(std::move(report_queue_));
+  speculative_report_queue->PrepareToAttachActualQueue().Run(
+      std::move(report_queue_));
   const auto a_result = a.result();
   EXPECT_OK(a_result) << a_result;
 
@@ -325,7 +326,8 @@ TEST_F(ReportQueueImplTest,
                                     a.cb());
 
   // Enqueue would not end until actual queue is attached.
-  speculative_report_queue->AttachActualQueue(std::move(report_queue_));
+  speculative_report_queue->PrepareToAttachActualQueue().Run(
+      std::move(report_queue_));
   const auto a_result = a.result();
   EXPECT_OK(a_result) << a_result;
 
@@ -343,7 +345,8 @@ TEST_F(ReportQueueImplTest, SpeculativeQueueMultipleRecordsAfterCreation) {
   static constexpr char kTestString2[] = "record2";
   auto speculative_report_queue = SpeculativeReportQueueImpl::Create();
 
-  speculative_report_queue->AttachActualQueue(std::move(report_queue_));
+  speculative_report_queue->PrepareToAttachActualQueue().Run(
+      std::move(report_queue_));
   // Let everything ongoing to finish.
   task_environment_.RunUntilIdle();
 
@@ -368,37 +371,42 @@ TEST_F(ReportQueueImplTest, SpeculativeQueueCreationFailedToCreate) {
   static constexpr char kTestString[] = "record";
   test::TestEvent<Status> test_event;
 
-  auto speculative_report_queue = SpeculativeReportQueueImpl::Create();
+  {
+    auto speculative_report_queue = SpeculativeReportQueueImpl::Create();
 
-  auto attach_cb = speculative_report_queue->PrepareToAttachActualQueue();
-  std::move(attach_cb).Run(Status(error::UNKNOWN, "Failed for Test"));
+    // Fail to attach queue before calling `Enqueue`.
+    speculative_report_queue->PrepareToAttachActualQueue().Run(
+        Status(error::UNKNOWN, "Failed for Test"));
+    task_environment_.RunUntilIdle();  // Let `AttachActualQueue` finish.
 
-  speculative_report_queue->Enqueue(kTestString, Priority::IMMEDIATE,
-                                    test_event.cb());
+    speculative_report_queue->Enqueue(kTestString, Priority::IMMEDIATE,
+                                      test_event.cb());
+  }  // Destructs `speculative_report_queue` now, fails all pending Enqueues.
 
   // Unfulfilled pending Enqueue returns the queue failure status.
   const auto result = test_event.result();
   ASSERT_FALSE(result.ok());
-  EXPECT_THAT(result.code(), Eq(error::UNKNOWN));
+  EXPECT_THAT(result.code(), Eq(error::DATA_LOSS)) << result;
 }
 
-TEST_F(ReportQueueImplTest, SpeculativeQueueDeletedAfterQneueue) {
+TEST_F(ReportQueueImplTest, SpeculativeQueueEnqueueAndCreationFailed) {
   static constexpr char kTestString[] = "record";
   test::TestEvent<Status> test_event;
-  {
-    auto speculative_report_queue = SpeculativeReportQueueImpl::Create();
 
-    auto attach_cb = speculative_report_queue->PrepareToAttachActualQueue();
-    std::move(attach_cb).Run(Status(error::UNKNOWN, "Failed for Test"));
+  auto speculative_report_queue = SpeculativeReportQueueImpl::Create();
 
-    speculative_report_queue->Enqueue(kTestString, Priority::IMMEDIATE,
-                                      test_event.cb());
-  }
+  speculative_report_queue->Enqueue(kTestString, Priority::IMMEDIATE,
+                                    test_event.cb());
 
-  // Queue destructed, unfulfilled pending Enqueue returns a data loss.
+  // Fail to attach queue after calling `Enqueue`.
+  speculative_report_queue->PrepareToAttachActualQueue().Run(
+      Status(error::UNKNOWN, "Failed for Test"));
+  task_environment_.RunUntilIdle();  // Let `AttachActualQueue` finish.
+
+  // Unfulfilled pending Enqueue returns the queue failure status.
   const auto result = test_event.result();
   ASSERT_FALSE(result.ok());
-  EXPECT_THAT(result.code(), Eq(error::DATA_LOSS));
+  EXPECT_THAT(result.code(), Eq(error::UNKNOWN)) << result;
 }
 
 TEST_F(ReportQueueImplTest, EnqueueRecordWithInvalidPriority) {
@@ -416,7 +424,8 @@ TEST_F(ReportQueueImplTest, FlushSpeculativeReportQueue) {
 
   // Set up speculative report queue
   auto speculative_report_queue = SpeculativeReportQueueImpl::Create();
-  speculative_report_queue->AttachActualQueue(std::move(report_queue_));
+  speculative_report_queue->PrepareToAttachActualQueue().Run(
+      std::move(report_queue_));
   task_environment_.RunUntilIdle();
 
   EXPECT_CALL(*test_storage_module(), Flush(Eq(priority_), _))
@@ -444,16 +453,19 @@ TEST_F(ReportQueueImplTest, FlushUninitializedSpeculativeReportQueue) {
 TEST_F(ReportQueueImplTest, FlushFailedSpeculativeReportQueue) {
   test::TestEvent<Status> event;
 
-  auto speculative_report_queue = SpeculativeReportQueueImpl::Create();
-  auto attach_cb = speculative_report_queue->PrepareToAttachActualQueue();
-  std::move(attach_cb).Run(Status(error::UNKNOWN, "Failing for Test"));
-  task_environment_.RunUntilIdle();
+  {
+    auto speculative_report_queue = SpeculativeReportQueueImpl::Create();
 
-  speculative_report_queue->Flush(priority_, event.cb());
+    speculative_report_queue->PrepareToAttachActualQueue().Run(
+        Status(error::UNKNOWN, "Failed for Test"));
+    task_environment_.RunUntilIdle();  // Let `AttachActualQueue` finish.
+
+    speculative_report_queue->Flush(priority_, event.cb());
+  }  // Destructs speculative
 
   const auto result = event.result();
   ASSERT_FALSE(result.ok());
-  EXPECT_THAT(result.error_code(), Eq(error::FAILED_PRECONDITION));
+  EXPECT_THAT(result.error_code(), Eq(error::FAILED_PRECONDITION)) << result;
 }
 
 TEST_F(ReportQueueImplTest, AsyncProcessingReportQueue) {
@@ -520,7 +532,8 @@ TEST_F(ReportQueueImplTest, AsyncProcessingSpeculativeReportQueue) {
                          ReportQueue::EnqueueCallback cb) {
         std::move(cb).Run(Status::StatusOK());
       });
-  speculative_report_queue->AttachActualQueue(std::move(mock_queue));
+  speculative_report_queue->PrepareToAttachActualQueue().Run(
+      std::move(mock_queue));
 
   const auto a_string_result = a_string.result();
   EXPECT_OK(a_string_result) << a_string_result;
