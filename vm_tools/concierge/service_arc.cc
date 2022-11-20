@@ -125,63 +125,6 @@ bool IsValidDataImagePath(const base::FilePath& path) {
 // remove this function. b/219677829
 // Returns true if the StartArcVmRequest contains valid ARCVM config values.
 bool ValidateStartArcVmRequest(StartArcVmRequest* request) {
-  // List of allowed kernel parameters.
-  const std::set<std::string> kAllowedKernelParams = {
-      "androidboot.arc_generate_pai=1",
-      "androidboot.arcvm_mount_debugfs=1",
-      "androidboot.disable_download_provider=1",
-      "androidboot.disable_media_store_maintenance=1",
-      "androidboot.arc.tts.caching=1",
-      "androidboot.arc_enable_gmscore_lmk_protection=1",
-      "androidboot.arc.broadcast_anr_prenotify=1",
-      "androidboot.arc.web_view_zygote.lazy_init=1",
-      "rw",
-  };
-
-  // List of allowed kernel parameter prefixes.
-  const std::vector<std::string> kAllowedKernelParamPrefixes = {
-      "androidboot.arc_custom_tabs=",
-      "androidboot.arc_dalvik_memory_profile=",
-      "androidboot.arc_file_picker=",
-      "androidboot.arcvm.logd.size=",
-      "androidboot.arcvm_metrics_mem_psi_period=",
-      "androidboot.arcvm_ureadahead_mode=",
-      "androidboot.arcvm_virtio_blk_data=",
-      "androidboot.enable_notifications_refresh=",
-      "androidboot.host_is_in_vm=",
-      "androidboot.keyboard_shortcut_helper_integration=",
-      "androidboot.lcd_density=",
-      "androidboot.native_bridge=",
-      "androidboot.play_store_auto_update=",
-      "androidboot.usap_profile=",
-      "androidboot.zram_size=",
-      // TODO(hashimoto): This param was removed in R98. Remove this.
-      "androidboot.image_copy_paste_compat=",
-  };
-  // Filter kernel params.
-  const std::vector<std::string> params(request->params().begin(),
-                                        request->params().end());
-  request->clear_params();
-  for (const auto& param : params) {
-    if (kAllowedKernelParams.count(param) != 0) {
-      request->add_params(param);
-      continue;
-    }
-
-    auto it = std::find_if(kAllowedKernelParamPrefixes.begin(),
-                           kAllowedKernelParamPrefixes.end(),
-                           [&param](const std::string& prefix) {
-                             return base::StartsWith(param, prefix);
-                           });
-    if (it != kAllowedKernelParamPrefixes.end()) {
-      request->add_params(param);
-      continue;
-    }
-
-    LOG(WARNING) << param << " was removed because it doesn't match with any "
-                 << "allowed param or prefix";
-  }
-
   // Validate disks.
   constexpr char kEmptyDiskPath[] = "/dev/null";
   if (request->disks().size() < 1 || request->disks().size() > 4) {
@@ -365,9 +308,6 @@ StartVmResponse Service::StartArcVm(StartArcVmRequest request,
   crossystem::CrossystemImpl cros_system;
   std::vector<std::string> params =
       ArcVm::GetKernelParams(cros_system, request, seneschal_server_port);
-  params.insert(params.end(),
-                std::make_move_iterator(request.mutable_params()->begin()),
-                std::make_move_iterator(request.mutable_params()->end()));
 
   // Start the VM and build the response.
   ArcVmFeatures features;

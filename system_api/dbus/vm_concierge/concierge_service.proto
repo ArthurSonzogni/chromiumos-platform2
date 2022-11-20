@@ -344,7 +344,7 @@ message StartArcVmRequest {
   string owner_id = 4;
 
   // Parameters to pass to the ARCVM's init process.
-  repeated string params = 5;
+  repeated string params = 5 [deprecated = true];
 
   // Path to Android fstab.
   string fstab = 6;
