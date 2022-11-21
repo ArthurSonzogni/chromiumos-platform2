@@ -104,11 +104,15 @@ impl MockCommandRunner {
     }
     pub fn add_gsctool_interaction(
         &mut self,
-        flag: Vec<&str>,
+        mut flag: Vec<&str>,
         exit_status: i32,
         out: &str,
         err: &str,
     ) {
+        if cfg!(feature = "ti50_onboard") {
+            flag.push("-D");
+        }
+
         self.add_expectation(
             MockCommandInput::new(GSCTOOL_CMD_NAME, flag),
             MockCommandOutput::new(exit_status, out, err),
@@ -152,10 +156,7 @@ impl MockCommandRunner {
     }
     pub fn add_successful_gsctool_read_board_id_interaction(&mut self, board_id: BoardID) {
         self.add_gsctool_interaction(
-            #[cfg(not(feature = "ti50_onboard"))]
             vec!["-a", "-i"],
-            #[cfg(feature = "ti50_onboard")]
-            vec!["-D", "-a", "-i"],
             0,
             &format!(
                 "finding_device 18d1:5014\n\

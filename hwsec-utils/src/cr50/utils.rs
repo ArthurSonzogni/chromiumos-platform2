@@ -16,15 +16,14 @@ use crate::tpm2::BoardID;
 
 pub fn run_gsctool_cmd(
     ctx: &mut impl Context,
-    options: Vec<&str>,
+    mut options: Vec<&str>,
 ) -> Result<HwsecOutput, HwsecError> {
-    #[cfg(feature = "ti50_onboard")]
-    let dflag: Vec<&str> = vec!["-D"];
-    #[cfg(not(feature = "ti50_onboard"))]
-    let dflag: Vec<&str> = Vec::<&str>::new();
+    if cfg!(feature = "ti50_onboard") {
+        options.push("-D");
+    }
 
     ctx.cmd_runner()
-        .run(GSCTOOL_CMD_NAME, [dflag, options].concat())
+        .run(GSCTOOL_CMD_NAME, options)
         .map_err(|_| HwsecError::CommandRunnerError)
 }
 

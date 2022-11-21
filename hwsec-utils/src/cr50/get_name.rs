@@ -56,10 +56,9 @@ pub fn cr50_get_name(
 mod tests {
     use super::*;
     use crate::context::mock::MockContext;
-
-    #[cfg(not(feature = "ti50_onboard"))]
+    use crate::cr50::GSC_IMAGE_BASE_NAME;
     #[test]
-    fn test_cr50_get_name_non_ti50() {
+    fn test_cr50_get_name() {
         let mut mock_ctx = MockContext::new();
 
         mock_ctx.cmd_runner().add_gsctool_interaction(
@@ -75,39 +74,12 @@ mod tests {
         );
 
         let name = cr50_get_name(&mut mock_ctx, &["-a"]);
-        assert_eq!(
-            name,
-            Ok(String::from("/opt/google/cr50/firmware/cr50.bin.prod"))
-        );
+
+        assert_eq!(name, Ok(String::from(GSC_IMAGE_BASE_NAME) + ".prod"));
     }
 
-    #[cfg(feature = "ti50_onboard")]
     #[test]
-    fn test_cr50_get_name_ti50() {
-        let mut mock_ctx = MockContext::new();
-
-        mock_ctx.cmd_runner().add_gsctool_interaction(
-            vec!["-D", "-a", "-i"],
-            0,
-            "finding_device 18d1:5014\n\
-            Found device.\n\
-            found interface 3 endpoint 4, chunk_len 64\n\
-            READY\n\
-            -------\n\
-            Board ID space: 43425559:bcbdaaa6:00007f80\n",
-            "",
-        );
-
-        let name = cr50_get_name(&mut mock_ctx, &["-a"]);
-        assert_eq!(
-            name,
-            Ok(String::from("/opt/google/cr50/firmware/ti50.bin.prod"))
-        );
-    }
-
-    #[cfg(not(feature = "ti50_onboard"))]
-    #[test]
-    fn test_cr50_get_name_board_id_non_ti50_not_found() {
+    fn test_cr50_get_name_board_id_not_found() {
         let mut mock_ctx = MockContext::new();
 
         mock_ctx.cmd_runner().add_gsctool_interaction(
@@ -126,30 +98,8 @@ mod tests {
         assert_eq!(name, Err(HwsecError::GsctoolResponseBadFormatError));
     }
 
-    #[cfg(feature = "ti50_onboard")]
     #[test]
-    fn test_cr50_get_name_board_id_ti50_not_found() {
-        let mut mock_ctx = MockContext::new();
-
-        mock_ctx.cmd_runner().add_gsctool_interaction(
-            vec!["-D", "-a", "-i"],
-            0,
-            "finding_device 18d1:5014\n\
-            Found device.\n\
-            found interface 3 endpoint 4, chunk_len 64\n\
-            READY\n\
-            -------\n\
-            Board ID space: 43425559:bxbdaaa6:00007f80\n",
-            "",
-        );
-
-        let name = cr50_get_name(&mut mock_ctx, &["-a"]);
-        assert_eq!(name, Err(HwsecError::GsctoolResponseBadFormatError));
-    }
-
-    #[cfg(not(feature = "ti50_onboard"))]
-    #[test]
-    fn test_cr50_get_name_non_ti50_different_ext() {
+    fn test_cr50_get_name_different_ext() {
         let mut mock_ctx = MockContext::new();
 
         mock_ctx.cmd_runner().add_gsctool_interaction(
@@ -165,33 +115,7 @@ mod tests {
         );
 
         let name = cr50_get_name(&mut mock_ctx, &["-a"]);
-        assert_eq!(
-            name,
-            Ok(String::from("/opt/google/cr50/firmware/cr50.bin.prepvt"))
-        );
-    }
 
-    #[cfg(feature = "ti50_onboard")]
-    #[test]
-    fn test_cr50_get_name_ti50_different_ext() {
-        let mut mock_ctx = MockContext::new();
-
-        mock_ctx.cmd_runner().add_gsctool_interaction(
-            vec!["-D", "-a", "-i"],
-            0,
-            "finding_device 18d1:5014\n\
-            Found device.\n\
-            found interface 3 endpoint 4, chunk_len 64\n\
-            READY\n\
-            -------\n\
-            Board ID space: 43425559:bcbdaaa6:00007f10\n",
-            "",
-        );
-
-        let name = cr50_get_name(&mut mock_ctx, &["-a"]);
-        assert_eq!(
-            name,
-            Ok(String::from("/opt/google/cr50/firmware/ti50.bin.prepvt"))
-        );
+        assert_eq!(name, Ok(String::from(GSC_IMAGE_BASE_NAME) + ".prepvt"));
     }
 }
