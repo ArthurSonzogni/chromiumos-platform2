@@ -21,6 +21,7 @@
 #include <base/test/test_future.h>
 #include <base/threading/sequenced_task_runner_handle.h>
 #include <base/timer/mock_timer.h>
+#include <base/unguessable_token.h>
 #include <brillo/cryptohome.h>
 #include <brillo/secure_blob.h>
 #include <cryptohome/proto_bindings/auth_factor.pb.h>
@@ -372,15 +373,13 @@ TEST_F(AuthSessionTest, Intent) {
 }
 
 TEST_F(AuthSessionTest, TimeoutTest) {
-  bool called = false;
-  auto on_timeout = base::BindOnce(
-      [](bool* called, const base::UnguessableToken&) { *called = true; },
-      base::Unretained(&called));
+  TestFuture<base::UnguessableToken> timeout_future;
   int flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE;
   AuthSession auth_session(
-      kFakeUsername, flags, AuthIntent::kDecrypt, std::move(on_timeout),
-      &crypto_, &platform_, &user_session_map_, &keyset_management_,
-      &auth_block_utility_, &auth_factor_manager_, &user_secret_stash_storage_,
+      kFakeUsername, flags, AuthIntent::kDecrypt,
+      timeout_future.GetCallback<const base::UnguessableToken&>(), &crypto_,
+      &platform_, &user_session_map_, &keyset_management_, &auth_block_utility_,
+      &auth_factor_manager_, &user_secret_stash_storage_,
       /*enable_create_backup_vk_with_uss =*/false);
   EXPECT_EQ(auth_session.GetStatus(),
             AuthStatus::kAuthStatusFurtherFactorRequired);
@@ -390,7 +389,8 @@ TEST_F(AuthSessionTest, TimeoutTest) {
   auth_session.timeout_timer_.FireNow();
   EXPECT_EQ(auth_session.GetStatus(), AuthStatus::kAuthStatusTimedOut);
   EXPECT_THAT(auth_session.authorized_intents(), IsEmpty());
-  EXPECT_TRUE(called);
+  EXPECT_TRUE(timeout_future.IsReady());
+  EXPECT_EQ(timeout_future.Get(), auth_session.token());
 }
 
 TEST_F(AuthSessionTest, SerializedStringFromNullToken) {
@@ -429,21 +429,19 @@ TEST_F(AuthSessionTest, TokenFromString) {
 // ensures that the fields are set as they should be.
 TEST_F(AuthSessionTest, GetCredentialRegularUser) {
   // SETUP
-  bool called = false;
-  auto on_timeout = base::BindOnce(
-      [](bool* called, const base::UnguessableToken&) { *called = true; },
-      base::Unretained(&called));
+  TestFuture<base::UnguessableToken> timeout_future;
   int flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE;
   AuthSession auth_session(
-      kFakeUsername, flags, AuthIntent::kDecrypt, std::move(on_timeout),
-      &crypto_, &platform_, &user_session_map_, &keyset_management_,
-      &auth_block_utility_, &auth_factor_manager_, &user_secret_stash_storage_,
+      kFakeUsername, flags, AuthIntent::kDecrypt,
+      timeout_future.GetCallback<const base::UnguessableToken&>(), &crypto_,
+      &platform_, &user_session_map_, &keyset_management_, &auth_block_utility_,
+      &auth_factor_manager_, &user_secret_stash_storage_,
       /*enable_create_backup_vk_with_uss =*/false);
   EXPECT_EQ(auth_session.GetStatus(),
             AuthStatus::kAuthStatusFurtherFactorRequired);
 
   // TEST
-  EXPECT_FALSE(called);
+  EXPECT_FALSE(timeout_future.IsReady());
   cryptohome::AuthorizationRequest authorization_request;
   authorization_request.mutable_key()->set_secret(kFakePass);
   authorization_request.mutable_key()->mutable_data()->set_label(kFakeLabel);
@@ -466,16 +464,14 @@ TEST_F(AuthSessionTest, GetCredentialRegularUser) {
 // ensures that the fields are set as they should be.
 TEST_F(AuthSessionTest, GetCredentialKioskUser) {
   // SETUP
-  bool called = false;
-  auto on_timeout = base::BindOnce(
-      [](bool* called, const base::UnguessableToken&) { *called = true; },
-      base::Unretained(&called));
+  TestFuture<base::UnguessableToken> timeout_future;
   // SecureBlob for kFakePass above
   const brillo::SecureBlob fake_pass_blob(
       brillo::BlobFromString(kFakeUsername));
 
   AuthSession auth_session(
-      kFakeUsername, 0, AuthIntent::kDecrypt, std::move(on_timeout), &crypto_,
+      kFakeUsername, 0, AuthIntent::kDecrypt,
+      timeout_future.GetCallback<const base::UnguessableToken&>(), &crypto_,
       &platform_, &user_session_map_, &keyset_management_, &auth_block_utility_,
       &auth_factor_manager_, &user_secret_stash_storage_,
       /*enable_create_backup_vk_with_uss =*/false);
@@ -485,7 +481,7 @@ TEST_F(AuthSessionTest, GetCredentialKioskUser) {
             AuthStatus::kAuthStatusFurtherFactorRequired);
 
   // TEST
-  EXPECT_FALSE(called);
+  EXPECT_FALSE(timeout_future.IsReady());
   cryptohome::AuthorizationRequest authorization_request;
   authorization_request.mutable_key()->mutable_data()->set_label(kFakeLabel);
   authorization_request.mutable_key()->mutable_data()->set_type(
@@ -509,10 +505,6 @@ TEST_F(AuthSessionTest, GetCredentialKioskUser) {
 // Test if AuthSession correctly adds new credentials for a new user.
 TEST_F(AuthSessionTest, AddCredentialNewUser) {
   // Setup.
-  bool called = false;
-  auto on_timeout = base::BindOnce(
-      [](bool& called, const base::UnguessableToken&) { called = true; },
-      std::ref(called));
   int flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE;
   // Setting the expectation that the user does not exist.
   EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(false));
@@ -693,12 +685,6 @@ TEST_F(AuthSessionTest, AddCredentialNewUserTwice) {
 // user.
 TEST_F(AuthSessionTest, AuthenticateExistingUser) {
   // Setup.
-  bool called_timeout = false;
-  auto on_timeout = base::BindOnce(
-      [](bool& called_timeout, const base::UnguessableToken&) {
-        called_timeout = true;
-      },
-      std::ref(called_timeout));
   int flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE;
   // Setting the expectation that the user does not exist.
   EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(true));
@@ -776,12 +762,6 @@ TEST_F(AuthSessionTest, AuthenticateExistingUser) {
 // Test Authenticate() authenticates the existing user with PIN credentials.
 TEST_F(AuthSessionTest, AuthenticateWithPIN) {
   // Setup.
-  bool called_timeout = false;
-  auto on_timeout = base::BindOnce(
-      [](bool& called_timeout, const base::UnguessableToken&) {
-        called_timeout = true;
-      },
-      std::ref(called_timeout));
   int flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE;
   // Setting the expectation that the user does not exist.
   EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(true));
@@ -1056,10 +1036,6 @@ TEST_F(AuthSessionTest, AuthenticateExistingUserFailure) {
 // for an ephemeral user.
 TEST_F(AuthSessionTest, AddCredentialNewEphemeralUser) {
   // Setup.
-  bool called = false;
-  auto on_timeout = base::BindOnce(
-      [](bool& called, const base::UnguessableToken&) { called = true; },
-      std::ref(called));
   int flags =
       user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_EPHEMERAL_USER;
   // Setting the expectation that the user does not exist.
@@ -1103,10 +1079,6 @@ TEST_F(AuthSessionTest, AddCredentialNewEphemeralUser) {
 // ephemeral user.
 TEST_F(AuthSessionTest, ExistingEphemeralUser) {
   // Setup.
-  bool called = false;
-  auto on_timeout = base::BindOnce(
-      [](bool& called, const base::UnguessableToken&) { called = true; },
-      std::ref(called));
   int flags =
       user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_EPHEMERAL_USER;
 
@@ -1132,10 +1104,6 @@ TEST_F(AuthSessionTest, ExistingEphemeralUser) {
 // Test if AuthSession correctly updates existing credentials for a new user.
 TEST_F(AuthSessionTest, UpdateCredentialUnauthenticatedAuthSession) {
   // Setup.
-  bool called = false;
-  auto on_timeout = base::BindOnce(
-      [](bool& called, const base::UnguessableToken&) { called = true; },
-      std::ref(called));
   int flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE;
   // Setting the expectation that the user does exist.
   EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(true));
@@ -1170,10 +1138,6 @@ TEST_F(AuthSessionTest, UpdateCredentialUnauthenticatedAuthSession) {
 // Test if AuthSession correctly updates existing credentials for a new user.
 TEST_F(AuthSessionTest, UpdateCredentialSuccess) {
   // Setup.
-  bool called = false;
-  auto on_timeout = base::BindOnce(
-      [](bool& called, const base::UnguessableToken&) { called = true; },
-      std::ref(called));
   int flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE;
   // For AuthSession::UpdateKeyset callback to properly
   // execute auth_block_utility_ cannot be a mock
@@ -1225,10 +1189,6 @@ TEST_F(AuthSessionTest, UpdateCredentialSuccess) {
 // Test if UpdateAuthSession fails for not matching label.
 TEST_F(AuthSessionTest, UpdateCredentialInvalidLabel) {
   // Setup.
-  bool called = false;
-  auto on_timeout = base::BindOnce(
-      [](bool& called, const base::UnguessableToken&) { called = true; },
-      std::ref(called));
   int flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE;
   // Setting the expectation that the user does exist.
   EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(true));
@@ -3314,21 +3274,15 @@ TEST_F(AuthSessionWithUssExperimentTest,
   user_data_auth::GetRecoveryRequestRequest request;
   request.set_auth_session_id(auth_session->serialized_token());
   request.set_auth_factor_label(kFakeLabel);
-  bool called = false;
-  user_data_auth::CryptohomeErrorCode error =
-      user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
+  TestFuture<user_data_auth::GetRecoveryRequestReply> reply_future;
   auth_session->GetRecoveryRequest(
-      request, base::BindOnce(
-                   [](bool& called, user_data_auth::CryptohomeErrorCode& error,
-                      const user_data_auth::GetRecoveryRequestReply& reply) {
-                     called = true;
-                     error = reply.error();
-                   },
-                   std::ref(called), std::ref(error)));
+      request,
+      reply_future
+          .GetCallback<const user_data_auth::GetRecoveryRequestReply&>());
 
   // Verify.
-  EXPECT_TRUE(called);
-  EXPECT_EQ(user_data_auth::CRYPTOHOME_ERROR_NOT_SET, error);
+  EXPECT_EQ(reply_future.Get().error(),
+            user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
   EXPECT_EQ(auth_session->GetStatus(),
             AuthStatus::kAuthStatusFurtherFactorRequired);
   EXPECT_THAT(auth_session->authorized_intents(), IsEmpty());
