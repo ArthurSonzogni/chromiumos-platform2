@@ -88,7 +88,7 @@ proto_library("libmissiveprotosecurityxdrevents") {
 }
 
 goproto_library("libmissive-interface-goprotos") {
-  proto_in_dir = "//missive/proto/synced"
+  proto_in_dir = "//missive/proto/synced/pipeline"
   proto_out_dir = "go/src/"
   import_mapping = [
     "health.proto=chromiumos/reporting",
@@ -97,16 +97,16 @@ goproto_library("libmissive-interface-goprotos") {
     "status.proto=chromiumos/reporting",
   ]
   sources = [
-    "synced/health.proto",
-    "synced/record.proto",
-    "synced/record_constants.proto",
-    "synced/status.proto",
+    "synced/pipeline/health.proto",
+    "synced/pipeline/record.proto",
+    "synced/pipeline/record_constants.proto",
+    "synced/pipeline/status.proto",
   ]
 }
 
 goproto_library("libmissive-events-goprotos") {
-  proto_in_dir = "//missive/proto/synced"
+  proto_in_dir = "//missive/proto/synced/events"
   proto_out_dir = "go/src/"
   import_mapping = [ "security_xdr_events.proto=chromiumos/xdr/reporting" ]
-  sources = [ "synced/security_xdr_events.proto" ]
+  sources = [ "synced/events/security_xdr_events.proto" ]
 }
