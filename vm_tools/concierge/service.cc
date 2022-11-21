@@ -58,6 +58,7 @@
 #include <base/process/launch.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
+#include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <base/synchronization/waitable_event.h>
 #include <base/system/sys_info.h>
@@ -3035,15 +3036,37 @@ bool Service::StartTermina(TerminaVm* vm,
   return true;
 }
 
+// Executes a command on the specified disk path. Returns false when
+// `GetAppOutputWithExitCode()` fails (i.e., the command could not be launched
+// or does not exit cleanly). Otherwise returns true and sets |exit_code|.
+bool ExecuteCommandOnDisk(const base::FilePath& disk_path,
+                          const std::string& executable_path,
+                          const std::vector<string>& opts,
+                          int* exit_code) {
+  std::vector<string> args = {executable_path, disk_path.value()};
+  args.insert(args.end(), opts.begin(), opts.end());
+  string output;
+  return base::GetAppOutputWithExitCode(base::CommandLine(args), &output,
+                                        exit_code);
+}
+
+// Generates a file path that is a distinct sibling of the specified path and
+// does not contain the equal sign '='.
+base::FilePath GenerateTempFilePathWithNoEqualSign(const base::FilePath& path) {
+  string temp_name;
+  base::RemoveChars(path.BaseName().value(), "=", &temp_name);
+  return path.DirName().Append(temp_name + ".tmp");
+}
+
 // Creates a filesystem at the specified file/path.
-bool CreateFilesystem(base::FilePath disk_location,
-                      enum FilesystemType filesystem_type) {
+bool CreateFilesystem(const base::FilePath& disk_location,
+                      enum FilesystemType filesystem_type,
+                      const std::vector<string>& mkfs_opts,
+                      const std::vector<string>& tune2fs_opts) {
   std::string filesystem_string;
-  std::vector<string> mkfs_opts;
   switch (filesystem_type) {
     case FilesystemType::EXT4:
       filesystem_string = "ext4";
-      mkfs_opts = kExtMkfsOpts;
       break;
     case FilesystemType::UNSPECIFIED:
     default:
@@ -3063,20 +3086,57 @@ bool CreateFilesystem(base::FilePath disk_location,
     return true;
   }
 
-  // -q is added to silence the output.
-  std::vector<std::string> mkfs_args = {"/sbin/mkfs." + filesystem_string,
-                                        disk_location.value(), "-q"};
-  mkfs_args.insert(mkfs_args.end(), mkfs_opts.begin(), mkfs_opts.end());
-
   LOG(INFO) << "Creating " << filesystem_string << " filesystem at "
-            << disk_location.value().c_str();
+            << disk_location;
   int exit_code = -1;
-  std::string output;
-  base::GetAppOutputWithExitCode(base::CommandLine(mkfs_args), &output,
-                                 &exit_code);
+  ExecuteCommandOnDisk(disk_location, "/sbin/mkfs." + filesystem_string,
+                       mkfs_opts, &exit_code);
   if (exit_code != 0) {
-    LOG(ERROR) << "Can't format '" << disk_location.value().c_str()
-               << "' as ext4, exit status: " << exit_code;
+    LOG(ERROR) << "Can't format '" << disk_location << "' as "
+               << filesystem_string << ", exit status: " << exit_code;
+    return false;
+  }
+
+  if (tune2fs_opts.empty()) {
+    return true;
+  }
+
+  LOG(INFO) << "Adjusting ext4 filesystem at " << disk_location
+            << " with tune2fs";
+  // Currently, tune2fs cannot handle paths containing '=' (b/267134417).
+  // To avoid the issue, below we temporarily rename the disk image so that it
+  // does not contain '=', apply tune2fs to the renamed path, and then rename
+  // the disk image back to its original name.
+  // TODO(b/267134417): Remove this workaround once tune2fs is fixed.
+  const base::FilePath temp_disk_location =
+      GenerateTempFilePathWithNoEqualSign(disk_location);
+
+  if (!base::Move(disk_location, temp_disk_location)) {
+    LOG(ERROR) << "Failed to move " << disk_location << " to "
+               << temp_disk_location;
+    unlink(temp_disk_location.value().c_str());
+    return false;
+  }
+
+  exit_code = -1;
+  ExecuteCommandOnDisk(temp_disk_location, "/sbin/tune2fs", tune2fs_opts,
+                       &exit_code);
+
+  // Move the disk image back to the original location before checking the exit
+  // code. This is to make the behavior on tune2fs failures aligh with that on
+  // mkfs failures (the disk image exists in the original location).
+  // Note that the disk image is removed if the move (rename) operation fails,
+  // but it should be much rarer than mkfs/tune2fs failures.
+  if (!base::Move(temp_disk_location, disk_location)) {
+    LOG(ERROR) << "Failed to move " << temp_disk_location << " back to "
+               << disk_location;
+    unlink(temp_disk_location.value().c_str());
+    return false;
+  }
+
+  if (exit_code != 0) {
+    LOG(ERROR) << "Can't adjust '" << disk_location
+               << "' with tune2fs, exit status: " << exit_code;
     return false;
   }
 
@@ -3324,14 +3384,36 @@ std::unique_ptr<dbus::Response> Service::CreateDiskImage(
         return dbus_response;
       }
 
+      LOG(INFO) << "Sparse raw disk image created";
       response.set_status(DISK_STATUS_CREATED);
       response.set_disk_path(disk_path.value());
       writer.AppendProtoAsArrayOfBytes(response);
     }
 
-    if (request.filesystem_type() != FilesystemType::UNSPECIFIED &&
-        !CreateFilesystem(disk_path, request.filesystem_type())) {
+    if (request.filesystem_type() == FilesystemType::UNSPECIFIED) {
+      // Skip creating a filesystem when no filesystem type is specified.
+      return dbus_response;
+    }
+
+    // Create a filesystem on the disk to make it usable for the VM.
+    std::vector<string> mkfs_opts(
+        std::make_move_iterator(request.mutable_mkfs_opts()->begin()),
+        std::make_move_iterator(request.mutable_mkfs_opts()->end()));
+    if (mkfs_opts.empty()) {
+      // Set the default options.
+      mkfs_opts = kExtMkfsOpts;
+    }
+    // -q is added to silence the output.
+    mkfs_opts.push_back("-q");
+
+    const std::vector<string> tune2fs_opts(
+        std::make_move_iterator(request.mutable_tune2fs_opts()->begin()),
+        std::make_move_iterator(request.mutable_tune2fs_opts()->end()));
+
+    if (!CreateFilesystem(disk_path, request.filesystem_type(), mkfs_opts,
+                          tune2fs_opts)) {
       PLOG(ERROR) << "Failed to create filesystem";
+      unlink(disk_path.value().c_str());
       response.set_status(DISK_STATUS_FAILED);
       response.set_failure_reason("Failed to create filesystem");
       writer.AppendProtoAsArrayOfBytes(response);

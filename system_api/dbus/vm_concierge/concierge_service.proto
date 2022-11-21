@@ -841,6 +841,14 @@ message CreateDiskImageRequest {
   // used exclusively with sparse images. If this is true and disk_size is
   // non-zero, the request will fail.
   bool storage_ballooning = 9;
+
+  // Options passed to `mkfs` when creating a filesystem on the image. If
+  // unspecified, the default ones will be used.
+  repeated string mkfs_opts = 10;
+
+  // Options passed to `tune2fs` when creating a filesystem on the image. If
+  // unspecified or |filesystem_type| is not EXT4, `tune2fs` will not run.
+  repeated string tune2fs_opts = 11;
 }
 
 // Response to a CreateDiskImageRequest.
