@@ -39,7 +39,11 @@
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/fuzzers/fuzzed_proto_generator.h"
 #include "cryptohome/mock_uss_experiment_config_fetcher.h"
+#include "cryptohome/platform.h"
 #include "cryptohome/service_userdataauth.h"
+#include "cryptohome/storage/homedirs.h"
+#include "cryptohome/storage/mock_mount_factory.h"
+#include "cryptohome/storage/mount_factory.h"
 #include "cryptohome/userdataauth.h"
 
 namespace cryptohome {
@@ -71,6 +75,22 @@ class Environment {
   // inputs.
   google::protobuf::LogSilencer log_silencer_;
 };
+
+std::unique_ptr<MountFactory> CreateMountFactory() {
+  auto mount_factory = std::make_unique<MockMountFactory>();
+  auto* mount_factory_ptr = mount_factory.get();
+  // Configure the usage of in-process mount helper, as out-of-process
+  // mounting is not fuzzing-compatible.
+  EXPECT_CALL(*mount_factory, New(_, _, _, _, _))
+      .WillRepeatedly([=](Platform* platform, HomeDirs* homedirs,
+                          bool legacy_mount, bool bind_mount_downloads,
+                          bool /*use_local_mounter*/) {
+        return mount_factory_ptr->NewConcrete(platform, homedirs, legacy_mount,
+                                              bind_mount_downloads,
+                                              /*use_local_mounter=*/true);
+      });
+  return mount_factory;
+}
 
 std::string GenerateFuzzedDBusMethodName(
     const brillo::dbus_utils::DBusObject& dbus_object,
@@ -168,6 +188,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
 
   // Prepare `UserDataAuth`'s dependencies.
   FakePlatform platform;
+  std::unique_ptr<MountFactory> mount_factory = CreateMountFactory();
   hwsec::FuzzedFactory hwsec_factory(provider);
   NiceMock<tpm_manager::MockTpmManagerUtility> tpm_manager_utility;
   NiceMock<MockUssExperimentConfigFetcher> uss_experiment_config_fetcher;
@@ -181,6 +202,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   auto userdataauth = std::make_unique<UserDataAuth>();
   userdataauth->set_mount_task_runner(base::ThreadTaskRunnerHandle::Get());
   userdataauth->set_platform(&platform);
+  userdataauth->set_mount_factory_for_testing(mount_factory.get());
   userdataauth->set_dbus(bus);
   userdataauth->set_mount_thread_dbus(mount_thread_bus);
   userdataauth->set_hwsec_factory(&hwsec_factory);
