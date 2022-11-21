@@ -46,11 +46,17 @@ namespace shill {
 namespace {
 
 const int kTestInterfaceIndex = 5;
+const char kTtyName[] = "ttyUSB0";
 const char kLinkName[] = "usb0";
 const char kService[] = "org.freedesktop.ModemManager1";
 const RpcIdentifier kPath("/org/freedesktop/ModemManager1/Modem/0");
 const unsigned char kAddress[] = {0xa0, 0xb1, 0xc2, 0xd3, 0xe4, 0xf5};
 const char kAddressAsString[] = "A0B1C2D3E4F5";
+
+enum ModemTestLayout {
+  kModemTestLayoutControlOnly,     // TTY-only serial device that requires PPP
+  kModemTestLayoutControlAndData,  // TTY+NET device
+};
 
 }  // namespace
 
@@ -106,13 +112,19 @@ class ModemTest : public Test {
     EXPECT_CALL(device_info_, RegisterDevice(_)).Times(AnyNumber());
   }
 
-  InterfaceToProperties GetInterfaceProperties() {
+  InterfaceToProperties GetInterfaceProperties(ModemTestLayout layout) {
     InterfaceToProperties properties;
     KeyValueStore modem_properties;
     modem_properties.Set<uint32_t>(MM_MODEM_PROPERTY_UNLOCKREQUIRED,
                                    MM_MODEM_LOCK_NONE);
-    std::vector<std::tuple<std::string, uint32_t>> ports = {
-        std::make_tuple(kLinkName, MM_MODEM_PORT_TYPE_NET)};
+    std::vector<std::tuple<std::string, uint32_t>> ports;
+    std::tuple<std::string, uint32_t> tuple =
+        std::make_tuple(kTtyName, MM_MODEM_PORT_TYPE_AT);
+    ports.push_back(tuple);
+    if (layout == kModemTestLayoutControlAndData) {
+      tuple = std::make_tuple(kLinkName, MM_MODEM_PORT_TYPE_NET);
+      ports.push_back(tuple);
+    }
     modem_properties.SetVariant(MM_MODEM_PROPERTY_PORTS, brillo::Any(ports));
     modem_properties.Set<uint32_t>(MM_MODEM_PROPERTY_CURRENTCAPABILITIES,
                                    MM_MODEM_CAPABILITY_LTE);
@@ -153,7 +165,7 @@ TEST_F(ModemTest, PendingDevicePropertiesAndCreate) {
   // The first time we call CreateDevice, expect GetMacAddress to fail.
   EXPECT_CALL(device_info_, GetMacAddress(kTestInterfaceIndex, _))
       .WillOnce(Return(false));
-  CreateDevice(GetInterfaceProperties());
+  CreateDevice(GetInterfaceProperties(kModemTestLayoutControlAndData));
   EXPECT_TRUE(modem_->has_pending_device_info_for_testing());
 
   // When OnDeviceInfoAvailable gets called, CreateDeviceFromModemProperties
@@ -184,7 +196,7 @@ TEST_F(ModemTest, CreateDeviceEarlyFailures) {
   CreateDevice(properties);
   EXPECT_FALSE(modem_->interface_index_for_testing().has_value());
 
-  properties = GetInterfaceProperties();
+  properties = GetInterfaceProperties(kModemTestLayoutControlAndData);
 
   // Link name, but no ifindex: no device created
   EXPECT_CALL(rtnl_handler_, GetInterfaceIndex(StrEq(kLinkName)))
@@ -208,18 +220,12 @@ TEST_F(ModemTest, CreateDeviceEarlyFailures) {
 }
 
 TEST_F(ModemTest, CreateDevicePPP) {
-  InterfaceToProperties properties;
-  KeyValueStore modem_properties;
-  modem_properties.Set<uint32_t>(MM_MODEM_PROPERTY_CURRENTCAPABILITIES,
-                                 MM_MODEM_CAPABILITY_LTE);
-  properties[MM_DBUS_INTERFACE_MODEM] = modem_properties;
-
-  // MM_MODEM_PROPERTY_PORTS is unset, so GetLinkName will fail. Modem will
-  // assume a PPP dongle and CreateDeviceFromModemProperties will succeed.
+  // MM_MODEM_PROPERTY_PORTS has a single TTY, so GetLinkName will fail. Modem
+  // will assume a PPP dongle and CreateDeviceFromModemProperties will succeed.
   EXPECT_CALL(device_info_, IsDeviceBlocked(_)).WillRepeatedly(Return(false));
   EXPECT_CALL(device_info_, GetByteCounts(_, _, _))
       .WillRepeatedly(Return(true));
-  CreateDevice(properties);
+  CreateDevice(GetInterfaceProperties(kModemTestLayoutControlOnly));
   ASSERT_TRUE(modem_->interface_index_for_testing().has_value());
   int interface_index = modem_->interface_index_for_testing().value();
   EXPECT_EQ(interface_index, Modem::kFakeDevInterfaceIndex);
@@ -260,7 +266,8 @@ TEST_F(ModemTest, Create3gppDevice) {
   EXPECT_CALL(device_info_, GetMacAddress(kTestInterfaceIndex, _))
       .WillOnce(DoAll(SetArgPointee<1>(expected_address_), Return(true)));
 
-  InterfaceToProperties properties = GetInterfaceProperties();
+  InterfaceToProperties properties =
+      GetInterfaceProperties(kModemTestLayoutControlAndData);
 
   KeyValueStore modem3gpp_properties;
   modem3gpp_properties.Set<uint32_t>(
