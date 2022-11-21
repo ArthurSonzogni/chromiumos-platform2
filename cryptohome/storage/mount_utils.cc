@@ -84,6 +84,9 @@ bool WriteProtobuf(int out_fd, const google::protobuf::MessageLite& message) {
 }
 
 void ForkAndCrash(const std::string& message) {
+  // Fork-and-crashing would only add overhead when fuzzing, without any real
+  // benefit.
+#if !USE_FUZZER
   pid_t child_pid = fork();
 
   if (child_pid < 0) {
@@ -97,6 +100,7 @@ void ForkAndCrash(const std::string& message) {
     // normally.
     waitpid(child_pid, nullptr, 0);
   }
+#endif
 }
 
 user_data_auth::CryptohomeErrorCode CryptoErrorToCryptohomeError(
