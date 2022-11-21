@@ -20,6 +20,7 @@
 #include <base/test/test_future.h>
 #include <base/test/test_timeouts.h>
 #include <base/threading/sequenced_task_runner_handle.h>
+#include <base/threading/thread_task_runner_handle.h>
 #include <brillo/dbus/dbus_object_test_helpers.h>
 #include <brillo/dbus/dbus_object.h>
 #include <brillo/secure_blob.h>
@@ -74,9 +75,12 @@ class Environment {
     logging::SetMinLogLevel(logging::LOGGING_FATAL);
   }
 
+  base::test::TaskEnvironment& task_environment() { return task_environment_; }
+
  private:
   base::test::TaskEnvironment task_environment_{
-      base::test::TaskEnvironment::TimeSource::MOCK_TIME};
+      base::test::TaskEnvironment::TimeSource::MOCK_TIME,
+      base::test::TaskEnvironment::ThreadingMode::MAIN_THREAD_ONLY};
   // Suppress log spam from protobuf helpers that complain about malformed
   // inputs.
   google::protobuf::LogSilencer log_silencer_;
@@ -253,8 +257,10 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   NiceMock<hwsec::MockPinWeaverFrontend> pinweaver;
   ON_CALL(pinweaver, IsEnabled()).WillByDefault(ReturnValue(false));
 
-  // Prepare `UserDataAuth`.
+  // Prepare `UserDataAuth`. Set up a single-thread mode (which is not how the
+  // daemon works in production, but allows faster and reproducible fuzzing).
   auto userdataauth = std::make_unique<UserDataAuth>();
+  userdataauth->set_mount_task_runner(base::ThreadTaskRunnerHandle::Get());
   userdataauth->set_platform(&platform);
   userdataauth->set_dbus(bus);
   userdataauth->set_mount_thread_dbus(mount_thread_bus);
@@ -291,10 +297,10 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
     }
   }
 
-  // TODO(b/258547478): Remove this after `UserDataAuthAdaptor` lifetime issues
-  // are resolved (if it's destroyed before `UserDataAuth`, there might be
-  // callbacks with dangling pointers still scheduled on the mount thread).
-  userdataauth.reset();
+  // TODO(b/258547478): Remove this after `UserDataAuth` and
+  // `UserDataAuthAdaptor` lifetime issues are resolved (they post tasks with
+  // unretained pointers).
+  env.task_environment().RunUntilIdle();
 
   return 0;
 }
