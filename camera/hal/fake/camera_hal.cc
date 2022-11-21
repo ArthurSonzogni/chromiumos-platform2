@@ -86,8 +86,6 @@ void set_privacy_switch_callback(PrivacySwitchStateChangeCallback callback) {
   CameraHal::GetInstance().SetPrivacySwitchCallback(callback);
 }
 
-void get_vendor_tag_ops(vendor_tag_ops_t* ops) {}
-
 int open_legacy(const struct hw_module_t* module,
                 const char* id,
                 uint32_t halVersion,
@@ -357,7 +355,8 @@ camera_module_t HAL_MODULE_INFO_SYM CROS_CAMERA_EXPORT = {
     .get_number_of_cameras = cros::get_number_of_cameras,
     .get_camera_info = cros::get_camera_info,
     .set_callbacks = cros::set_callbacks,
-    .get_vendor_tag_ops = cros::get_vendor_tag_ops,
+    // TODO(pihsun): Implement faking vendor tags.
+    .get_vendor_tag_ops = nullptr,
     .open_legacy = cros::open_legacy,
     .set_torch_mode = cros::set_torch_mode,
     .init = cros::init,
