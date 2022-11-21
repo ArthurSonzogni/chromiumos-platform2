@@ -101,8 +101,8 @@ std::unique_ptr<PluginInterface> PluginFactory::Create(
 std::unique_ptr<PluginInterface> PluginFactory::Create(
     PluginType type,
     scoped_refptr<MessageSenderInterface> message_sender,
-    std::unique_ptr<org::chromium::AttestationProxy> attestation_proxy,
-    std::unique_ptr<org::chromium::TpmManagerProxy> tpm_manager_proxy,
+    std::unique_ptr<org::chromium::AttestationProxyInterface> attestation_proxy,
+    std::unique_ptr<org::chromium::TpmManagerProxyInterface> tpm_manager_proxy,
     base::OnceCallback<void()> cb) {
   std::unique_ptr<PluginInterface> rv{nullptr};
   switch (type) {

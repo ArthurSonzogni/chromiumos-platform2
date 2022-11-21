@@ -11,7 +11,10 @@
 #include "base/files/file_path.h"
 #include "base/files/file_util.h"
 #include "base/files/scoped_temp_dir.h"
+#include "base/functional/bind.h"
+#include "base/functional/callback_forward.h"
 #include "base/memory/scoped_refptr.h"
+#include "base/run_loop.h"
 #include "base/test/task_environment.h"
 #include "gtest/gtest.h"
 #include "missive/client/mock_report_queue.h"
@@ -29,6 +32,7 @@ namespace pb = cros_xdr::reporting;
 using ::testing::_;
 using ::testing::Invoke;
 using ::testing::NiceMock;
+using ::testing::WithArg;
 using ::testing::WithArgs;
 
 class MessageSenderTestFixture : public ::testing::Test {
@@ -211,6 +215,31 @@ TEST_F(MessageSenderTestFixture, TestSendMessageInvalidDestination) {
                                      std::move(message), std::nullopt);
       },
       ".*FATAL secagentd_testrunner:.*Check failed: it != queue_map_\\.end.*");
+}
+
+TEST_F(MessageSenderTestFixture, TestSendMessageWithCallback) {
+  auto message = std::make_unique<cros_xdr::reporting::XdrProcessEvent>();
+  auto mutable_common = message->mutable_common();
+  const reporting::Destination destination =
+      reporting::Destination::CROS_SECURITY_PROCESS;
+
+  EXPECT_CALL(*(mock_queue_map_.find(reporting::CROS_SECURITY_PROCESS)->second),
+              AddProducedRecord(_, kPriority_, _))
+      .WillOnce(WithArg<2>(
+          Invoke([](base::OnceCallback<void(reporting::Status)> status_cb) {
+            std::move(status_cb).Run(reporting::Status::StatusOK());
+          })));
+
+  base::RunLoop run_loop;
+  message_sender_->SendMessage(
+      destination, mutable_common, std::move(message),
+      base::BindOnce(
+          [](base::RunLoop* run_loop, reporting::Status status) {
+            EXPECT_OK(status);
+            run_loop->Quit();
+          },
+          &run_loop));
+  run_loop.Run();
 }
 
 }  // namespace secagentd::testing

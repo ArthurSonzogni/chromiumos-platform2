@@ -61,8 +61,8 @@ namespace secagentd {
 
 AgentPlugin::AgentPlugin(
     scoped_refptr<MessageSenderInterface> message_sender,
-    std::unique_ptr<org::chromium::AttestationProxy> attestation_proxy,
-    std::unique_ptr<org::chromium::TpmManagerProxy> tpm_manager_proxy,
+    std::unique_ptr<org::chromium::AttestationProxyInterface> attestation_proxy,
+    std::unique_ptr<org::chromium::TpmManagerProxyInterface> tpm_manager_proxy,
     base::OnceCallback<void()> cb)
     : weak_ptr_factory_(this), message_sender_(message_sender) {
   CHECK(message_sender != nullptr);
@@ -99,6 +99,9 @@ void AgentPlugin::StartInitializingAgentProto() {
   char buffer[VB_MAX_STRING_PROPERTY];
   auto get_fwid_rv =
       VbGetSystemPropertyString("fwid", buffer, std::size(buffer));
+  if (!get_fwid_rv) {
+    LOG(ERROR) << "Failed to retrieve fwid";
+  }
 
   // Get linux version.
   struct utsname buf;
@@ -135,7 +138,7 @@ void AgentPlugin::GetBootInformation(bool available) {
                << BrilloErrorToString(error.get());
     return;
   }
-  // TODO(b/241578769): Handle kCrosFlexUefiSecureBoot.
+  // TODO(b/259966516): Handle kCrosFlexUefiSecureBoot.
   base::AutoLock lock(tcb_attributes_lock_);
   tcb_attributes_.set_firmware_secure_boot(
       out_reply.verified_boot()
@@ -190,6 +193,9 @@ void AgentPlugin::GetTpmInformation(bool available) {
     security_chip->set_tpm_model(std::to_string(out_reply.tpm_model()));
     security_chip->set_firmware_version(
         std::to_string(out_reply.firmware_version()));
+  } else {
+    security_chip->set_kind(::cros_xdr::reporting::TcbAttributes_SecurityChip::
+                                Kind::TcbAttributes_SecurityChip_Kind_NONE);
   }
 }
 

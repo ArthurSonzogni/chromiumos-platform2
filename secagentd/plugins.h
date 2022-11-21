@@ -23,6 +23,10 @@
 
 namespace secagentd {
 
+namespace testing {
+class AgentPluginTestFixture;
+}
+
 class PluginInterface {
  public:
   // Activate the plugin.
@@ -59,17 +63,20 @@ class ProcessPlugin : public PluginInterface {
 
 class AgentPlugin : public PluginInterface {
  public:
-  explicit AgentPlugin(
-      scoped_refptr<MessageSenderInterface> message_sender,
-      std::unique_ptr<org::chromium::AttestationProxy> attestation_proxy,
-      std::unique_ptr<org::chromium::TpmManagerProxy> tpm_manager_proxy,
-      base::OnceCallback<void()> cb);
+  explicit AgentPlugin(scoped_refptr<MessageSenderInterface> message_sender,
+                       std::unique_ptr<org::chromium::AttestationProxyInterface>
+                           attestation_proxy,
+                       std::unique_ptr<org::chromium::TpmManagerProxyInterface>
+                           tpm_manager_proxy,
+                       base::OnceCallback<void()> cb);
 
   // Initialize Agent proto and starts agent heartbeat events.
   absl::Status Activate() override;
   std::string GetName() const override;
 
  private:
+  friend class testing::AgentPluginTestFixture;
+
   // Starts filling in the tcb fields of the agent proto and initializes async
   // timers that wait for tpm_manager and attestation to be ready. When services
   // are ready GetBootInformation() and GetTpmInformation() will be called to
@@ -96,8 +103,8 @@ class AgentPlugin : public PluginInterface {
   cros_xdr::reporting::TcbAttributes tcb_attributes_;
   base::WeakPtrFactory<AgentPlugin> weak_ptr_factory_;
   scoped_refptr<MessageSenderInterface> message_sender_;
-  std::unique_ptr<org::chromium::AttestationProxy> attestation_proxy_;
-  std::unique_ptr<org::chromium::TpmManagerProxy> tpm_manager_proxy_;
+  std::unique_ptr<org::chromium::AttestationProxyInterface> attestation_proxy_;
+  std::unique_ptr<org::chromium::TpmManagerProxyInterface> tpm_manager_proxy_;
   base::OnceCallback<void()> daemon_cb_;
   base::Lock tcb_attributes_lock_;
 };
@@ -113,8 +120,10 @@ class PluginFactoryInterface {
   virtual std::unique_ptr<PluginInterface> Create(
       PluginType type,
       scoped_refptr<MessageSenderInterface> message_sender,
-      std::unique_ptr<org::chromium::AttestationProxy> attestation_proxy,
-      std::unique_ptr<org::chromium::TpmManagerProxy> tpm_manager_proxy,
+      std::unique_ptr<org::chromium::AttestationProxyInterface>
+          attestation_proxy,
+      std::unique_ptr<org::chromium::TpmManagerProxyInterface>
+          tpm_manager_proxy,
       base::OnceCallback<void()> cb) = 0;
   virtual ~PluginFactoryInterface() = default;
 };
@@ -146,8 +155,10 @@ class PluginFactory : public PluginFactoryInterface {
   std::unique_ptr<PluginInterface> Create(
       PluginType type,
       scoped_refptr<MessageSenderInterface> message_sender,
-      std::unique_ptr<org::chromium::AttestationProxy> attestation_proxy,
-      std::unique_ptr<org::chromium::TpmManagerProxy> tpm_manager_proxy,
+      std::unique_ptr<org::chromium::AttestationProxyInterface>
+          attestation_proxy,
+      std::unique_ptr<org::chromium::TpmManagerProxyInterface>
+          tpm_manager_proxy,
       base::OnceCallback<void()> cb) override;
 
  private:

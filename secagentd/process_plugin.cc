@@ -49,7 +49,7 @@ ProcessPlugin::ProcessPlugin(
 }
 
 std::string ProcessPlugin::GetName() const {
-  return "ProcessBPF";
+  return "ProcessPlugin";
 }
 
 void ProcessPlugin::HandleRingBufferEvent(const bpf::cros_event& bpf_event) {

@@ -6,7 +6,6 @@
 #include <memory>
 
 #include "absl/status/status.h"
-#include "absl/status/statusor.h"
 #include "absl/strings/str_format.h"
 #include "base/memory/scoped_refptr.h"
 #include "gmock/gmock.h"  // IWYU pragma: keep
@@ -26,34 +25,16 @@ namespace secagentd::testing {
 
 namespace pb = cros_xdr::reporting;
 
-namespace {
-absl::StatusOr<Types::BpfSkeleton> PluginTypeToBpfType(
-    const Types::Plugin& type) {
-  static const absl::flat_hash_map<Types::Plugin, Types::BpfSkeleton>
-      kPluginToBpfType{{Types::Plugin::kProcess, Types::BpfSkeleton::kProcess}};
-  auto bpf_iter = kPluginToBpfType.find(type);
-  if (bpf_iter == kPluginToBpfType.end()) {
-    return absl::InternalError(
-        absl::StrFormat("plugin_to_bpf_type was unable to map plugin %s to a "
-                        "bpf skeleton type.",
-                        type));
-  }
-  return bpf_iter->second;
-}
-}  // namespace
-
 using ::testing::_;
 using ::testing::AnyNumber;
 using ::testing::ByMove;
 using ::testing::DoAll;
 using ::testing::Eq;
-using ::testing::InSequence;
 using ::testing::Ref;
 using ::testing::Return;
 using ::testing::SaveArg;
-using ::testing::TestWithParam;
 
-class BPFPluginTestFixture : public ::testing::TestWithParam<Types::Plugin> {
+class ProcessPluginTestFixture : public ::testing::Test {
  protected:
   void SetUp() override {
     bpf_skeleton_ = std::make_unique<MockBpfSkeleton>();
@@ -62,21 +43,14 @@ class BPFPluginTestFixture : public ::testing::TestWithParam<Types::Plugin> {
     message_sender_ = base::MakeRefCounted<MockMessageSender>();
     process_cache_ = base::MakeRefCounted<MockProcessCache>();
     plugin_factory_ = std::make_unique<PluginFactory>(skel_factory_);
-  }
 
-  void CreateActivatedPlugin(Types::Plugin type) {
-    plugin_ = plugin_factory_->Create(type, message_sender_, process_cache_);
-    EXPECT_TRUE(plugin_);
+    plugin_ = plugin_factory_->Create(Types::Plugin::kProcess, message_sender_,
+                                      process_cache_);
+    EXPECT_NE(nullptr, plugin_);
 
-    auto b = PluginTypeToBpfType(type);
-    ASSERT_OK(b) << b.status().message();
-    auto bpf_type = b.value();
-
-    // TODO(b/253640114): When policy checking is in place this test needs to be
-    // updated.
-    EXPECT_CALL(*skel_factory_, Create(bpf_type, _))
-        .WillOnce(DoAll(::testing::SaveArg<1>(&cbs_),
-                        Return(ByMove(std::move(bpf_skeleton_)))));
+    EXPECT_CALL(*skel_factory_, Create(Types::BpfSkeleton::kProcess, _))
+        .WillOnce(
+            DoAll(SaveArg<1>(&cbs_), Return(ByMove(std::move(bpf_skeleton_)))));
     EXPECT_OK(plugin_->Activate());
   }
 
@@ -90,30 +64,21 @@ class BPFPluginTestFixture : public ::testing::TestWithParam<Types::Plugin> {
   BpfCallbacks cbs_;
 };
 
-TEST_P(BPFPluginTestFixture, TestActivationSuccess) {
-  CreateActivatedPlugin(GetParam());
-  EXPECT_NE(nullptr, plugin_);
-}
-
-TEST_P(BPFPluginTestFixture, TestActivationFailureBadSkeleton) {
-  auto type = GetParam();
-  auto plugin = plugin_factory_->Create(type, message_sender_, process_cache_);
+TEST_F(ProcessPluginTestFixture, TestActivationFailureBadSkeleton) {
+  auto plugin = plugin_factory_->Create(Types::Plugin::kProcess,
+                                        message_sender_, process_cache_);
   EXPECT_TRUE(plugin);
 
-  auto b = PluginTypeToBpfType(type);
-  ASSERT_OK(b) << b.status().message();
-  auto bpf_type = b.value();
-
-  // TODO(b/253640114): When policy checking is in place this test needs to be
-  // updated.
-  EXPECT_CALL(*skel_factory_, Create(bpf_type, _))
+  EXPECT_CALL(*skel_factory_, Create(Types::BpfSkeleton::kProcess, _))
       .WillOnce(Return(ByMove(nullptr)));
   EXPECT_FALSE(plugin->Activate().ok());
 }
 
-TEST_P(BPFPluginTestFixture, TestBPFEventIsAvailable) {
-  CreateActivatedPlugin(GetParam());
-  EXPECT_NE(nullptr, plugin_);
+TEST_F(ProcessPluginTestFixture, TestGetName) {
+  ASSERT_EQ("ProcessPlugin", plugin_->GetName());
+}
+
+TEST_F(ProcessPluginTestFixture, TestBPFEventIsAvailable) {
   EXPECT_CALL(*bpf_skeleton_ref_, ConsumeEvent()).Times(1);
   // Notify the plugin that an event is available.
   cbs_.ring_buffer_read_ready_callback.Run();
@@ -124,10 +89,7 @@ TEST_P(BPFPluginTestFixture, TestBPFEventIsAvailable) {
   cbs_.ring_buffer_event_callback.Run(a);
 }
 
-TEST_F(BPFPluginTestFixture, TestProcessPluginExecEvent) {
-  CreateActivatedPlugin(Types::Plugin::kProcess);
-  EXPECT_NE(nullptr, plugin_);
-
+TEST_F(ProcessPluginTestFixture, TestProcessPluginExecEvent) {
   constexpr bpf::time_ns_t kSpawnStartTime = 2222;
   // Descending order in time starting from the youngest.
   constexpr uint64_t kPids[] = {3, 2, 1};
@@ -213,10 +175,7 @@ TEST_F(BPFPluginTestFixture, TestProcessPluginExecEvent) {
             actual_process_event->process_exec().spawn_namespaces().ipc_ns());
 }
 
-TEST_F(BPFPluginTestFixture, TestProcessPluginExecEventPartialHierarchy) {
-  CreateActivatedPlugin(Types::Plugin::kProcess);
-  EXPECT_NE(nullptr, plugin_);
-
+TEST_F(ProcessPluginTestFixture, TestProcessPluginExecEventPartialHierarchy) {
   constexpr bpf::time_ns_t kSpawnStartTime = 2222;
   // Populate just the spawned process and its parent. I.e one fewer that what
   // we'll be asked to return.
@@ -267,10 +226,7 @@ TEST_F(BPFPluginTestFixture, TestProcessPluginExecEventPartialHierarchy) {
   EXPECT_FALSE(actual_process_event->process_exec().has_parent_process());
 }
 
-TEST_F(BPFPluginTestFixture, TestProcessPluginExitEventCacheHit) {
-  CreateActivatedPlugin(Types::Plugin::kProcess);
-  EXPECT_NE(nullptr, plugin_);
-
+TEST_F(ProcessPluginTestFixture, TestProcessPluginExitEventCacheHit) {
   constexpr bpf::time_ns_t kStartTime = 2222;
   constexpr uint64_t kPids[] = {2, 1};
   std::vector<std::unique_ptr<pb::Process>> hierarchy;
@@ -325,10 +281,7 @@ TEST_F(BPFPluginTestFixture, TestProcessPluginExitEventCacheHit) {
                           .canonical_pid());
 }
 
-TEST_F(BPFPluginTestFixture, TestProcessPluginExitEventCacheMiss) {
-  CreateActivatedPlugin(Types::Plugin::kProcess);
-  EXPECT_NE(nullptr, plugin_);
-
+TEST_F(ProcessPluginTestFixture, TestProcessPluginExitEventCacheMiss) {
   constexpr bpf::time_ns_t kStartTimes[] = {2222, 1111};
   constexpr uint64_t kPids[] = {2, 1};
   constexpr char kParentImage[] = "/bin/bash";
@@ -402,13 +355,5 @@ TEST_F(BPFPluginTestFixture, TestProcessPluginExitEventCacheMiss) {
                               .image()
                               .pathname());
 }
-
-INSTANTIATE_TEST_SUITE_P(
-    BPFPluginTests,
-    BPFPluginTestFixture,
-    ::testing::ValuesIn<Types::Plugin>({Types::Plugin::kProcess}),
-    [](const ::testing::TestParamInfo<BPFPluginTestFixture::ParamType>& info) {
-      return absl::StrFormat("%s", info.param);
-    });
 
 }  // namespace secagentd::testing
