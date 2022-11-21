@@ -126,11 +126,11 @@ std::string GenerateFuzzedDBusMethodName(
 std::unique_ptr<dbus::MethodCall> GenerateFuzzedDBusCallMessage(
     const brillo::dbus_utils::DBusObject& dbus_object,
     const std::string& dbus_interface_name,
+    const std::string& dbus_method_name,
     const std::vector<Blob>& breadcrumbs,
     FuzzedDataProvider& provider) {
-  auto dbus_call = std::make_unique<dbus::MethodCall>(
-      dbus_interface_name,
-      GenerateFuzzedDBusMethodName(dbus_object, dbus_interface_name, provider));
+  auto dbus_call =
+      std::make_unique<dbus::MethodCall>(dbus_interface_name, dbus_method_name);
   // The serial number can be hardcoded, since we never perform concurrent D-Bus
   // requests in the fuzzer.
   dbus_call->SetSerial(1);
@@ -164,19 +164,22 @@ std::unique_ptr<dbus::Response> RunBlockingDBusCall(
 
 // Add new interesting blobs to `breadcrumbs` from `dbus_response`, if there's
 // any (i.e., a reply field which we should try using in subsequent requests).
-void UpdateBreadcrumbs(std::unique_ptr<dbus::Response> dbus_response,
+void UpdateBreadcrumbs(const std::string& dbus_method_name,
+                       std::unique_ptr<dbus::Response> dbus_response,
                        std::vector<Blob>& breadcrumbs) {
   DCHECK(dbus_response);
   dbus::MessageReader reader(dbus_response.get());
-  user_data_auth::StartAuthSessionReply start_auth_session_reply;
-  if (reader.PopArrayOfBytesAsProto(&start_auth_session_reply) &&
-      !start_auth_session_reply.auth_session_id().empty()) {
-    // Keep as a breadcrumb the AuthSessionId which the code-under-test
-    // returned, so that the fuzzer can realistically test multiple D-Bus calls
-    // against the same AuthSession (the IDs are random tokens, which Libfuzzer
-    // can't "guess" itself).
-    breadcrumbs.push_back(
-        BlobFromString(start_auth_session_reply.auth_session_id()));
+  if (dbus_method_name == user_data_auth::kStartAuthSession) {
+    user_data_auth::StartAuthSessionReply start_auth_session_reply;
+    if (reader.PopArrayOfBytesAsProto(&start_auth_session_reply) &&
+        !start_auth_session_reply.auth_session_id().empty()) {
+      // Keep as a breadcrumb the AuthSessionId which the code-under-test
+      // returned, so that the fuzzer can realistically test multiple D-Bus
+      // calls against the same AuthSession (the IDs are random tokens, which
+      // Libfuzzer can't "guess" itself).
+      breadcrumbs.push_back(
+          BlobFromString(start_auth_session_reply.auth_session_id()));
+    }
   }
 }
 
@@ -226,13 +229,16 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   // but which Libfuzzer cannot realistically generate itself.
   std::vector<Blob> breadcrumbs;
   while (provider.remaining_bytes() > 0) {
+    const std::string dbus_method_name = GenerateFuzzedDBusMethodName(
+        dbus_object, user_data_auth::kUserDataAuthInterface, provider);
     std::unique_ptr<dbus::MethodCall> dbus_call = GenerateFuzzedDBusCallMessage(
-        dbus_object, user_data_auth::kUserDataAuthInterface, breadcrumbs,
-        provider);
+        dbus_object, user_data_auth::kUserDataAuthInterface, dbus_method_name,
+        breadcrumbs, provider);
     std::unique_ptr<dbus::Response> dbus_response =
         RunBlockingDBusCall(std::move(dbus_call), dbus_object);
     if (dbus_response) {
-      UpdateBreadcrumbs(std::move(dbus_response), breadcrumbs);
+      UpdateBreadcrumbs(dbus_method_name, std::move(dbus_response),
+                        breadcrumbs);
     }
   }
 
