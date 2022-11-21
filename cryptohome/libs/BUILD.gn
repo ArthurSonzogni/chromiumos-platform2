@@ -416,6 +416,7 @@ static_library("libcrostpm") {
     "../pkcs11_init.cc",
     "../sign_in_hash_tree.cc",
     "../signature_sealing/structures_proto.cc",
+    "../uss_migrator.cc",
     "../vault_keyset.cc",
   ]
   all_dependent_configs = [ ":target_defaults" ]

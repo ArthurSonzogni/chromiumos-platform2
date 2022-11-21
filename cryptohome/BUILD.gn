@@ -360,6 +360,7 @@ if (use.test) {
       "userdataauth_auth_session_unittest.cc",
       "userdataauth_unittest.cc",
       "uss_experiment_config_fetcher_unittest.cc",
+      "uss_migrator_unittest.cc",
       "vault_keyset_unittest.cc",
     ]
     configs += [
