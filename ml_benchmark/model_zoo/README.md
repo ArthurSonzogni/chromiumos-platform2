@@ -5,6 +5,11 @@ for typical ML use cases within ChromeOS. Where applicable, baseline figures
 are provided to indicate the minimum performance requirements for these models
 to meet the user experience goals of those use cases.
 
+These models can be easily deployed to `/usr/local/share/ml-test-assets` on a
+DUT via the `chromeos-base/ml-test-assets` package:
+
+`emerge-${BOARD} ml-test-assets && cros deploy <DUT> ml-test-assets`
+
 ## Tools
 
 ### Latency, Max Memory
