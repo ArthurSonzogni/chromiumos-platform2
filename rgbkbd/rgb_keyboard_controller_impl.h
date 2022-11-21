@@ -44,7 +44,8 @@ class RgbKeyboardControllerImpl : public RgbKeyboardController {
 
   bool IsCapsLockEnabledForTesting() const { return caps_lock_enabled_; }
 
-  const std::vector<KeyColor> GetRainbowModeColorsWithoutShiftKeysForTesting();
+  std::vector<KeyColor>
+  GetRainbowModeColorsWithShiftKeysHighlightedForTesting();
   const base::flat_map<uint32_t, Color>& GetRainbowModeMapForTesting() const {
     return individual_key_rainbow_mode_map_;
   }

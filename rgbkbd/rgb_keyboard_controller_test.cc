@@ -35,6 +35,14 @@ const std::string CreateSetKeyColorLogEntry(const KeyColor& key_color) {
                        std::to_string(key_color.color.b), "\n"});
 }
 
+std::string CreateRainbowLogEntry() {
+  std::string log;
+  for (const auto& key_color : kRainbowModeIndividualKey) {
+    log.append(CreateSetKeyColorLogEntry(key_color));
+  }
+  return log;
+}
+
 const std::string CreateSetAllKeyColorsLogEntry(const Color& color) {
   return base::StrCat({"RGB::SetAllKeyColors - ", std::to_string(color.r), ",",
                        std::to_string(color.g), ",", std::to_string(color.b),
@@ -164,26 +172,17 @@ TEST_F(RgbKeyboardControllerTest, SetRainbowModeFourZoneFourLed) {
   ValidateLog(kRainbowModeFourZoneFourLed);
 }
 
-TEST_F(RgbKeyboardControllerTest, SetRainbowModeCapsLockEnabled) {
-  controller_->SetKeyboardCapabilityForTesting(
-      RgbKeyboardCapabilities::kIndividualKey);
-  controller_->SetCapsLockState(/*enabled=*/true);
-  EXPECT_TRUE(logger_->ResetLog());
-  controller_->SetRainbowMode();
-  ValidateLog(controller_->GetRainbowModeColorsWithoutShiftKeysForTesting());
-}
-
 TEST_F(RgbKeyboardControllerTest, SetRainbowModeWithCapsLock) {
   controller_->SetKeyboardCapabilityForTesting(
       RgbKeyboardCapabilities::kIndividualKey);
   // Simulate enabling caps lock.
   controller_->SetCapsLockState(/*enabled=*/true);
-  EXPECT_TRUE(logger_->ResetLog());
 
   // Set rainbow mode.
   controller_->SetRainbowMode();
 
-  ValidateLog(controller_->GetRainbowModeColorsWithoutShiftKeysForTesting());
+  ValidateLog(
+      controller_->GetRainbowModeColorsWithShiftKeysHighlightedForTesting());
   EXPECT_TRUE(logger_->ResetLog());
 
   // Disable caps lock.
@@ -277,5 +276,89 @@ TEST_F(RgbKeyboardControllerTest, RainbowModeMapUpToDate) {
     EXPECT_TRUE(
         base::Contains(rainbow_mode_map, kRainbowModeIndividualKey[i].key));
   }
+}
+
+TEST_F(RgbKeyboardControllerTest, ReinitializeSingleColorCapsLockOn) {
+  controller_->SetKeyboardCapabilityForTesting(
+      RgbKeyboardCapabilities::kIndividualKey);
+  // Set static background color.
+  const Color expected_color(/*r=*/100, /*g=*/150, /*b=*/200);
+  controller_->SetStaticBackgroundColor(expected_color.r, expected_color.g,
+                                        expected_color.b);
+
+  // Simulate enabling Capslock.
+  controller_->SetCapsLockState(/*enabled=*/true);
+  EXPECT_TRUE(controller_->IsCapsLockEnabledForTesting());
+
+  EXPECT_TRUE(logger_->ResetLog());
+
+  controller_->ReinitializeOnDeviceReconnected();
+
+  // Expect the colors to be set to solid color + highlighted Shifts after
+  // reinitialization.
+  const std::string shift_key_logs =
+      CreateSetKeyColorLogEntry({kLeftShiftKey, kCapsLockHighlightDefault}) +
+      CreateSetKeyColorLogEntry({kRightShiftKey, kCapsLockHighlightDefault});
+  const std::string background_log =
+      CreateSetAllKeyColorsLogEntry(expected_color);
+  ValidateLog(shift_key_logs + background_log + shift_key_logs);
+}
+
+TEST_F(RgbKeyboardControllerTest, ReinitializeSingleColorCapsLockOff) {
+  controller_->SetKeyboardCapabilityForTesting(
+      RgbKeyboardCapabilities::kIndividualKey);
+  // Set static background color.
+  const Color expected_color(/*r=*/100, /*g=*/150, /*b=*/200);
+  controller_->SetStaticBackgroundColor(expected_color.r, expected_color.g,
+                                        expected_color.b);
+
+  EXPECT_TRUE(logger_->ResetLog());
+
+  controller_->ReinitializeOnDeviceReconnected();
+
+  // Expect the colors to be set to solid color + unhighlighted Shifts after
+  // reinitialization.
+  const std::string shift_key_logs =
+      CreateSetKeyColorLogEntry({kLeftShiftKey, expected_color}) +
+      CreateSetKeyColorLogEntry({kRightShiftKey, expected_color});
+  ValidateLog(shift_key_logs + CreateSetAllKeyColorsLogEntry(expected_color));
+}
+
+TEST_F(RgbKeyboardControllerTest, ReinitializeRainbowCapsLockOn) {
+  controller_->SetKeyboardCapabilityForTesting(
+      RgbKeyboardCapabilities::kIndividualKey);
+  // Set rainbow mode.
+  controller_->SetRainbowMode();
+
+  // Simulate enabling Capslock.
+  controller_->SetCapsLockState(/*enabled=*/true);
+  EXPECT_TRUE(controller_->IsCapsLockEnabledForTesting());
+
+  EXPECT_TRUE(logger_->ResetLog());
+
+  controller_->ReinitializeOnDeviceReconnected();
+
+  // Expect the colors to be set to rainbow + highlighted Shifts after
+  // reinitialization.
+  ValidateLog(
+      controller_->GetRainbowModeColorsWithShiftKeysHighlightedForTesting());
+}
+
+TEST_F(RgbKeyboardControllerTest, ReinitializeRainbowCapsLockOff) {
+  controller_->SetKeyboardCapabilityForTesting(
+      RgbKeyboardCapabilities::kIndividualKey);
+  // Set rainbow mode.
+  controller_->SetRainbowMode();
+
+  EXPECT_TRUE(logger_->ResetLog());
+
+  controller_->ReinitializeOnDeviceReconnected();
+
+  // Expect the colors to be set to rainbow + unhighlighted Shifts after
+  // reinitialization.
+  const std::string shift_key_logs =
+      CreateSetKeyColorLogEntry({kLeftShiftKey, kRainbowRed}) +
+      CreateSetKeyColorLogEntry({kRightShiftKey, kRainbowPurple});
+  ValidateLog(shift_key_logs + CreateRainbowLogEntry());
 }
 }  // namespace rgbkbd

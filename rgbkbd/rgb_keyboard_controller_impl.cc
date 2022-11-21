@@ -60,7 +60,7 @@ void RgbKeyboardControllerImpl::SetStaticBackgroundColor(uint8_t r,
 
   // If Capslock was enabled, re-color the highlight keys.
   if (caps_lock_enabled_) {
-    SetCapsLockState(/*caps_lock_enabled_=*/true);
+    SetCapsLockState(/*enabled=*/true);
   }
 }
 
@@ -129,16 +129,21 @@ void RgbKeyboardControllerImpl::SetAnimationMode(RgbAnimationMode mode) {
   NOTIMPLEMENTED();
 }
 
-const std::vector<KeyColor>
-RgbKeyboardControllerImpl::GetRainbowModeColorsWithoutShiftKeysForTesting() {
+std::vector<KeyColor> RgbKeyboardControllerImpl::
+    GetRainbowModeColorsWithShiftKeysHighlightedForTesting() {
   DCHECK(capabilities_ == RgbKeyboardCapabilities::kIndividualKey);
   std::vector<KeyColor> vec;
+
+  vec.emplace_back(kLeftShiftKey, kCapsLockHighlightAlternate);
+  vec.emplace_back(kRightShiftKey, kCapsLockHighlightAlternate);
+
   for (const auto& entry : kRainbowModeIndividualKey) {
     if (entry.key == kLeftShiftKey || entry.key == kRightShiftKey) {
       continue;
     }
     vec.push_back(entry);
   }
+
   return vec;
 }
 
@@ -185,6 +190,7 @@ bool RgbKeyboardControllerImpl::IsZonedKeyboard() const {
 void RgbKeyboardControllerImpl::ReinitializeOnDeviceReconnected() {
   SetKeyColor({kLeftShiftKey, GetCurrentCapsLockColor(kLeftShiftKey)});
   SetKeyColor({kRightShiftKey, GetCurrentCapsLockColor(kRightShiftKey)});
+
   switch (background_type_) {
     case BackgroundType::kStaticSingleColor:
       SetStaticBackgroundColor(background_color_.r, background_color_.g,
