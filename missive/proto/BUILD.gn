@@ -14,27 +14,27 @@ group("all") {
 }
 
 proto_library("libmissiveprotostatus") {
-  sources = [ "synced/pipeline/status.proto" ]
+  sources = [ "synced/status.proto" ]
 
-  proto_in_dir = "//missive/proto/synced/pipeline"
+  proto_in_dir = "//missive/proto/synced"
   proto_out_dir = "include/missive/proto"
   standalone = true
 }
 
 # Record constants for use with the reporting messaging library.
 proto_library("libmissiveprotorecordconstants") {
-  sources = [ "synced/pipeline/record_constants.proto" ]
+  sources = [ "synced/record_constants.proto" ]
 
-  proto_in_dir = "//missive/proto/synced/pipeline"
+  proto_in_dir = "//missive/proto/synced"
   proto_out_dir = "include/missive/proto"
   standalone = true
 }
 
 # Record definitions for reporting.
 proto_library("libmissiveprotorecord") {
-  sources = [ "synced/pipeline/record.proto" ]
+  sources = [ "synced/record.proto" ]
 
-  proto_in_dir = "//missive/proto/synced/pipeline"
+  proto_in_dir = "//missive/proto/synced"
   proto_out_dir = "include/missive/proto"
   standalone = true
 
@@ -53,9 +53,9 @@ proto_library("test_proto") {
 }
 
 proto_library("libmissiveprotohealth") {
-  sources = [ "synced/pipeline/health.proto" ]
+  sources = [ "synced/health.proto" ]
 
-  proto_in_dir = "//missive/proto/synced/pipeline"
+  proto_in_dir = "//missive/proto/synced"
   proto_out_dir = "include/missive/proto"
   standalone = true
 
@@ -66,9 +66,9 @@ proto_library("libmissiveprotohealth") {
 }
 
 proto_library("libmissiveprotointerface") {
-  sources = [ "synced/pipeline/interface.proto" ]
+  sources = [ "synced/interface.proto" ]
 
-  proto_in_dir = "//missive/proto/synced/pipeline"
+  proto_in_dir = "//missive/proto/synced"
   proto_out_dir = "include/missive/proto/"
   standalone = true
 
@@ -80,9 +80,9 @@ proto_library("libmissiveprotointerface") {
 }
 
 proto_library("libmissiveprotosecurityxdrevents") {
-  sources = [ "synced/events/security_xdr_events.proto" ]
+  sources = [ "synced/security_xdr_events.proto" ]
 
-  proto_in_dir = "//missive/proto/synced/events"
+  proto_in_dir = "//missive/proto/synced"
   proto_out_dir = "include/missive/proto"
   standalone = true
 }
