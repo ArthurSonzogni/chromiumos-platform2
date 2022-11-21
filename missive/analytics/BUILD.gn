@@ -1,5 +1,5 @@
 # Copyright 2022 The ChromiumOS Authors
-# Use of this source code is governed by a BSD - style license that can be
+# Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
 import("//common-mk/pkg_config.gni")
@@ -13,6 +13,10 @@ pkg_config("target_defaults") {
 
 static_library("libanalytics") {
   sources = [
+    "metrics.cc",
+    "metrics.h",
+    "metrics_test_util.cc",
+    "metrics_test_util.h",
     "registry.cc",
     "registry.h",
     "resource_collector.cc",
@@ -34,6 +38,7 @@ static_library("libanalytics") {
 
 source_set("unit_tests") {
   sources = [
+    "metrics_test.cc",
     "registry_test.cc",
     "resource_collector_cpu_test.cc",
     "resource_collector_memory_test.cc",

@@ -3,13 +3,14 @@
 // found in the LICENSE file.
 
 #include "missive/analytics/resource_collector.h"
-#include "missive/analytics/resource_collector_mock.h"
 
 #include <base/test/task_environment.h>
 #include <base/time/time.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include <metrics/metrics_library_mock.h>
+
+#include "missive/analytics/metrics_test_util.h"
+#include "missive/analytics/resource_collector_mock.h"
 
 using testing::AnyNumber;
 
@@ -18,8 +19,6 @@ namespace reporting::analytics {
 class ResourceCollectorTest : public ::testing::TestWithParam<base::TimeDelta> {
  protected:
   void SetUp() override {
-    // Replace the metrics library instance with a mock one
-    resource_collector_.metrics_ = std::make_unique<MetricsLibraryMock>();
     // Uninterested in ResourceCollectorMock::Destruct calls
     EXPECT_CALL(resource_collector_, Destruct()).Times(AnyNumber());
   }
@@ -28,6 +27,7 @@ class ResourceCollectorTest : public ::testing::TestWithParam<base::TimeDelta> {
       base::test::TaskEnvironment::TimeSource::MOCK_TIME};
   // The time interval that resource collector is expected to collect resources
   const base::TimeDelta interval_{GetParam()};
+  Metrics::TestEnvironment metrics_test_environment_;
   ResourceCollectorMock resource_collector_{interval_};
 };
 

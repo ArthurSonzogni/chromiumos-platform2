@@ -12,8 +12,8 @@
 #include <base/time/time.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include <metrics/metrics_library_mock.h>
 
+#include "missive/analytics/metrics_test_util.h"
 #include "missive/resources/memory_resource_impl.h"
 #include "missive/resources/resource_interface.h"
 
@@ -25,8 +25,6 @@ namespace reporting::analytics {
 class ResourceCollectorMemoryTest : public ::testing::TestWithParam<uint64_t> {
  protected:
   void SetUp() override {
-    // Replace the metrics library instance with a mock one
-    resource_collector_.metrics_ = std::make_unique<MetricsLibraryMock>();
     // Set used memory
     resource_->Discard(resource_->GetUsed());  // discard all
     ASSERT_THAT(resource_->GetUsed(), Eq(0));
@@ -41,18 +39,18 @@ class ResourceCollectorMemoryTest : public ::testing::TestWithParam<uint64_t> {
   const base::TimeDelta kInterval{base::Seconds(20)};
   const scoped_refptr<ResourceInterface> resource_{
       base::MakeRefCounted<MemoryResourceImpl>(4 * 1024U * 1024U)};
+  Metrics::TestEnvironment metrics_test_environment_;
   ResourceCollectorMemory resource_collector_{kInterval, resource_};
 };
 
 TEST_P(ResourceCollectorMemoryTest, SuccessfullySend) {
   // Proper data should be sent to UMA upon kInterval having elapsed
-  EXPECT_CALL(
-      *static_cast<MetricsLibraryMock*>(resource_collector_.metrics_.get()),
-      SendLinearToUMA(
-          /*name=*/ResourceCollectorMemory::kUmaName,
-          /*sample=*/
-          ResourceCollectorMemory::ConvertBytesTo0_1Mibs(used_memory()),
-          /*max=*/ResourceCollectorMemory::kUmaMax))
+  EXPECT_CALL(Metrics::TestEnvironment::GetMockMetricsLibrary(),
+              SendLinearToUMA(
+                  /*name=*/ResourceCollectorMemory::kUmaName,
+                  /*sample=*/
+                  ResourceCollectorMemory::ConvertBytesTo0_1Mibs(used_memory()),
+                  /*max=*/ResourceCollectorMemory::kUmaMax))
       .Times(1)
       .WillOnce(Return(true));
   task_environment_.FastForwardBy(kInterval);

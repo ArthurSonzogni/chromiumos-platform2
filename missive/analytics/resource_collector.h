@@ -11,7 +11,8 @@
 #include <base/time/time.h>
 #include <base/timer/timer.h>
 #include <gtest/gtest_prod.h>
-#include <metrics/metrics_library.h>
+
+#include "missive/analytics/metrics.h"
 
 namespace reporting::analytics {
 
@@ -23,10 +24,6 @@ class ResourceCollector {
   virtual ~ResourceCollector();
 
  protected:
-  // The ChromeOS metrics instance.
-  std::unique_ptr<MetricsLibraryInterface> metrics_
-      GUARDED_BY_CONTEXT(sequence_checker_){std::make_unique<MetricsLibrary>()};
-
   SEQUENCE_CHECKER(sequence_checker_);
 
   // Stop the timer. A derived classes should call this method before

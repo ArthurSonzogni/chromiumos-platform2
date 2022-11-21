@@ -9,7 +9,6 @@
 #include <base/logging.h>
 #include <base/memory/scoped_refptr.h>
 #include <base/sequence_checker.h>
-#include <metrics/metrics_library.h>
 
 #include "missive/resources/resource_interface.h"
 
@@ -42,7 +41,7 @@ void ResourceCollectorMemory::Collect() {
 bool ResourceCollectorMemory::SendMemorySizeToUma(int memory_size) {
   // Use linear here because we also care about the detail of memory usage when
   // it's high.
-  return metrics_->SendLinearToUMA(
+  return Metrics::Get().SendLinearToUMA(
       /*name=*/kUmaName,
       /*sample=*/ConvertBytesTo0_1Mibs(memory_size),
       /*max=*/kUmaMax);

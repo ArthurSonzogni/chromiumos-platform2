@@ -10,7 +10,7 @@
 #include <string>
 
 #include <base/logging.h>
-#include <metrics/metrics_library.h>
+#include <base/time/time.h>
 
 #include "missive/util/status_macros.h"
 #include "missive/util/statusor.h"
@@ -36,7 +36,7 @@ void ResourceCollectorCpu::Collect() {
 
 bool ResourceCollectorCpu::SendCpuUsagePercentageToUma(
     uint64_t cpu_percentage) {
-  return metrics_->SendPercentageToUMA(
+  return Metrics::Get().SendPercentageToUMA(
       /*name=*/kUmaName,
       /*sample=*/static_cast<int>(cpu_percentage));
 }

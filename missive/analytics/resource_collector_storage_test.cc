@@ -15,7 +15,8 @@
 #include <base/time/time.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include <metrics/metrics_library_mock.h>
+
+#include "missive/analytics/metrics_test_util.h"
 
 using ::testing::Return;
 
@@ -25,8 +26,6 @@ class ResourceCollectorStorageTest
     : public ::testing::TestWithParam<std::vector<uint64_t>> {
  protected:
   void SetUp() override {
-    // Replace the metrics library instance with a mock one
-    resource_collector_.metrics_ = std::make_unique<MetricsLibraryMock>();
     DeployFilesToStorageDirectory();
   }
 
@@ -51,6 +50,8 @@ class ResourceCollectorStorageTest
   // Total file size in the mock storage
   const uint64_t total_file_size_{
       std::accumulate(GetParam().begin(), GetParam().end(), 0U)};
+  // Replace the metrics library instance with a mock one
+  Metrics::TestEnvironment metrics_test_environment_;
   ResourceCollectorStorage resource_collector_{kInterval, storage_directory_};
 };
 
@@ -66,14 +67,13 @@ TEST_P(ResourceCollectorStorageTest, SuccessfullySend) {
   }
 
   // Proper data should be sent to UMA upon kInterval having elapsed
-  EXPECT_CALL(
-      *static_cast<MetricsLibraryMock*>(resource_collector_.metrics_.get()),
-      SendToUMA(
-          /*name=*/ResourceCollectorStorage::kUmaName,
-          /*sample=*/sample,
-          /*min=*/ResourceCollectorStorage::kMin,
-          /*max=*/ResourceCollectorStorage::kMax,
-          /*nbuckets=*/ResourceCollectorStorage::kUmaNumberOfBuckets))
+  EXPECT_CALL(Metrics::TestEnvironment::GetMockMetricsLibrary(),
+              SendToUMA(
+                  /*name=*/ResourceCollectorStorage::kUmaName,
+                  /*sample=*/sample,
+                  /*min=*/ResourceCollectorStorage::kMin,
+                  /*max=*/ResourceCollectorStorage::kMax,
+                  /*nbuckets=*/ResourceCollectorStorage::kUmaNumberOfBuckets))
       .Times(1)
       .WillOnce(Return(true));
   task_environment_.FastForwardBy(kInterval);
