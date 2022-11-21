@@ -1320,8 +1320,10 @@ class UserDataAuth {
   // active.
   std::unique_ptr<UserOldestActivityTimestampManager>
       default_user_activity_timestamp_manager_;
-  // Holds timestamp_manager for testing
-  UserOldestActivityTimestampManager* user_activity_timestamp_manager_;
+  // Usually points to |default_user_activity_timestamp_manager_|, but can be
+  // overridden for testing.
+  UserOldestActivityTimestampManager* user_activity_timestamp_manager_ =
+      nullptr;
 
   // The homedirs_ object in normal operation
   std::unique_ptr<HomeDirs> default_homedirs_;

@@ -361,10 +361,6 @@ UserDataAuth::UserDataAuth()
       default_install_attrs_(nullptr),
       install_attrs_(nullptr),
       enterprise_owned_(false),
-      default_user_activity_timestamp_manager_(
-          new UserOldestActivityTimestampManager(platform_)),
-      user_activity_timestamp_manager_(
-          default_user_activity_timestamp_manager_.get()),
       default_homedirs_(nullptr),
       homedirs_(nullptr),
       default_keyset_management_(nullptr),
@@ -453,6 +449,13 @@ bool UserDataAuth::Initialize() {
     default_install_attrs_ =
         std::make_unique<InstallAttributes>(platform_, hwsec_);
     install_attrs_ = default_install_attrs_.get();
+  }
+
+  if (!user_activity_timestamp_manager_) {
+    default_user_activity_timestamp_manager_ =
+        std::make_unique<UserOldestActivityTimestampManager>(platform_);
+    user_activity_timestamp_manager_ =
+        default_user_activity_timestamp_manager_.get();
   }
 
   if (!crypto_) {
