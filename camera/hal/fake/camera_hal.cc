@@ -347,6 +347,8 @@ camera_module_t HAL_MODULE_INFO_SYM CROS_CAMERA_EXPORT = {
                .module_api_version = CAMERA_MODULE_API_VERSION_2_4,
                .hal_api_version = HARDWARE_HAL_API_VERSION,
                .id = CAMERA_HARDWARE_MODULE_ID,
+               // TODO(pihsun): Extract the module name to a constant if more
+               // tests needs to have special case for fake HAL.
                .name = "Fake Camera HAL",
                .author = "The ChromiumOS Authors",
                .methods = &gCameraModuleMethods,

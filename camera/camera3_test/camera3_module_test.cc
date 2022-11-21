@@ -571,6 +571,12 @@ TEST_F(Camera3ModuleFixture, NumberOfCameras) {
   base::FilePath camera_hal_path =
       cmd_line->GetSwitchValuePath("camera_hal_path");
   std::optional<cros::DeviceConfig> config = cros::DeviceConfig::Create();
+
+  if (strcmp(g_cam_module->common.name, "Fake Camera HAL") == 0) {
+    // Ignore this test on fake HAL, since it by default have no camera.
+    return;
+  }
+
   if (config.has_value()) {
     std::optional<int> usb_count =
         config->GetCameraCount(cros::Interface::kUsb, /*detachable=*/false);
