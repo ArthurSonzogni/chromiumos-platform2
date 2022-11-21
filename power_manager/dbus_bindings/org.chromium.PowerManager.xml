@@ -76,6 +76,15 @@
         disabled, and vice versa.
       </tp:docstring>
     </method>
+    <method name="SetKeyboardBrightness">
+      <tp:docstring>
+        Set the brightness of the keyboard backlight.
+
+        The |serialized_proto| arg is a serialized
+        power_manager::SetBacklightBrightnessRequest protobuf.
+      </tp:docstring>
+      <arg name="serialized_proto" direction="in" type="ay" />
+    </method>
     <method name="GetKeyboardBrightnessPercent">
       <tp:docstring>
         Get the current brightness of the keyboard backlight as

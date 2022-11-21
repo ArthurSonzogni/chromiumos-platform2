@@ -132,6 +132,11 @@ void KeyboardBacklightController::Init(
       base::BindRepeating(
           &KeyboardBacklightController::HandleGetBrightnessRequest,
           weak_ptr_factory_.GetWeakPtr()));
+  RegisterSetBrightnessHandler(
+      dbus_wrapper_, kSetKeyboardBrightnessMethod,
+      base::BindRepeating(
+          &KeyboardBacklightController::HandleSetBrightnessRequest,
+          weak_ptr_factory_.GetWeakPtr()));
   RegisterToggleKeyboardBacklightHandler(
       dbus_wrapper_, kToggleKeyboardBacklightMethod,
       base::BindRepeating(
@@ -605,6 +610,14 @@ void KeyboardBacklightController::HandleGetBrightnessRequest(
     double* percent_out, bool* success_out) {
   *percent_out = current_percent_;
   *success_out = true;
+}
+
+void KeyboardBacklightController::HandleSetBrightnessRequest(
+    double percent,
+    Transition transition,
+    SetBacklightBrightnessRequest_Cause cause) {
+  // TODO(b/254292590): Implement this method.
+  LOG(ERROR) << "Unimplemented request to set keyboard backlight brightness.";
 }
 
 void KeyboardBacklightController::HandleToggleKeyboardBacklightRequest() {

@@ -111,6 +111,22 @@ class KeyboardBacklightControllerTest : public ::testing::Test {
     return percent;
   }
 
+  // Calls the SetKeyboardBrightness D-Bus method.
+  void CallSetKeyboardBrightness(
+      double percent,
+      SetBacklightBrightnessRequest_Transition transition,
+      SetBacklightBrightnessRequest_Cause cause) {
+    dbus::MethodCall method_call(kPowerManagerInterface,
+                                 kSetKeyboardBrightnessMethod);
+    dbus::MessageWriter writer(&method_call);
+    SetBacklightBrightnessRequest proto;
+    proto.set_percent(percent);
+    proto.set_transition(transition);
+    proto.set_cause(cause);
+    writer.AppendProtoAsArrayOfBytes(proto);
+    ASSERT_TRUE(dbus_wrapper_.CallExportedMethodSync(&method_call));
+  }
+
   void CallToggleKeyboardBacklight() {
     dbus::MethodCall method_call(kPowerManagerInterface,
                                  kToggleKeyboardBacklightMethod);
@@ -949,6 +965,18 @@ TEST_F(KeyboardBacklightControllerTest, UserStepsNotStrictlyIncreasing) {
   user_steps_pref_ = "0.0\n0.0\n100.0";
   EXPECT_DEATH(Init(),
                "keyboard_backlight_user_steps is not strictly increasing");
+}
+
+TEST_F(KeyboardBacklightControllerTest, SetKeyboardBrightnessDbusCall) {
+  Init();
+
+  // Ensure we can call the "SetKeyboardBrightness" DBus API call.
+  EXPECT_NO_FATAL_FAILURE(CallSetKeyboardBrightness(
+      /*percent=*/50,
+      SetBacklightBrightnessRequest_Transition::
+          SetBacklightBrightnessRequest_Transition_FAST,
+      SetBacklightBrightnessRequest_Cause::
+          SetBacklightBrightnessRequest_Cause_USER_REQUEST));
 }
 
 }  // namespace power_manager::policy

@@ -139,6 +139,9 @@ class KeyboardBacklightController : public BacklightController,
   void HandleIncreaseBrightnessRequest();
   void HandleDecreaseBrightnessRequest(bool allow_off);
   void HandleGetBrightnessRequest(double* percent_out, bool* success_out);
+  void HandleSetBrightnessRequest(double percent,
+                                  Transition transition,
+                                  SetBacklightBrightnessRequest_Cause cause);
   void HandleToggleKeyboardBacklightRequest();
 
   // Updates the current brightness after assessing the current state (based on
