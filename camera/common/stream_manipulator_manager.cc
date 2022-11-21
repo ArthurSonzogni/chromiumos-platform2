@@ -38,7 +38,7 @@
 #include "features/effects/effects_stream_manipulator.h"
 #endif
 
-#if USE_CAMERA_FEATURE_FACE_DETECTION || USE_CAMERA_FEATURE_AUTO_FRAMING
+#if USE_CAMERA_FEATURE_FACE_DETECTION
 #include "features/face_detection/face_detection_stream_manipulator.h"
 #endif
 
