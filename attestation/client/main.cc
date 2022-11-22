@@ -32,6 +32,7 @@ constexpr base::TimeDelta kDefaultTimeout = base::Minutes(2);
 
 namespace attestation {
 
+const char kGetFeaturesCommand[] = "features";
 const char kCreateCommand[] = "create";
 const char kInfoCommand[] = "info";
 const char kSetKeyPayloadCommand[] = "set_key_payload";
@@ -59,6 +60,8 @@ const char kGetCertifiedNvIndex[] = "get_certified_nv_index";
 const char kUsage[] = R"(
 Usage: attestation_client <command> [<args>]
 Commands:
+  features
+      Prints the features returned by attestation service.
   create [--user=<email>] [--label=<keylabel>] [--usage=sign|decrypt]
       Creates a certifiable key.
   set_key_payload [--user=<email>] --label=<keylabel> --input=<input_file>
@@ -225,6 +228,9 @@ class ClientLoop : public ClientLoopBase {
     if (command_line->HasSwitch("help") || command_line->HasSwitch("h") ||
         args.empty() || (!args.empty() && args.front() == "help")) {
       return EX_USAGE;
+    } else if (args.front() == kGetFeaturesCommand) {
+      task = base::BindOnce(&ClientLoop::CallGetFeatures,
+                            weak_factory_.GetWeakPtr());
     } else if (args.front() == kCreateCommand) {
       std::string usage_str = command_line->GetSwitchValueASCII("usage");
       KeyUsage usage;
@@ -775,6 +781,17 @@ class ClientLoop : public ClientLoopBase {
     encrypted.SerializeToString(&output);
     WriteOutput(output);
     Quit();
+  }
+
+  void CallGetFeatures() {
+    GetFeaturesRequest request;
+    attestation_->GetFeaturesAsync(
+        request,
+        base::BindOnce(&ClientLoop::PrintReplyAndQuit<GetFeaturesReply>,
+                       weak_factory_.GetWeakPtr()),
+        base::BindOnce(&ClientLoop::PrintErrorAndQuit,
+                       weak_factory_.GetWeakPtr()),
+        kDefaultTimeout.InMilliseconds());
   }
 
   void CallCreateCertifiableKey(const std::string& label,
