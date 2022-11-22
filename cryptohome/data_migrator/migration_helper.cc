@@ -305,7 +305,7 @@ bool MigrationHelper::Migrate(const ProgressCallback& progress_callback) {
     return false;
   }
   progress_callback_ = progress_callback;
-  ReportStatus(user_data_auth::DIRCRYPTO_MIGRATION_INITIALIZING);
+  ReportStatus();
   if (!from_base_path_.IsAbsolute() || !to_base_path_.IsAbsolute()) {
     LOG(ERROR) << "Migrate must be given absolute paths";
     return false;
@@ -364,7 +364,7 @@ bool MigrationHelper::Migrate(const ProgressCallback& progress_callback) {
                                  n_files_ + n_dirs_ + n_symlinks_);
     }
   }
-  ReportStatus(user_data_auth::DIRCRYPTO_MIGRATION_IN_PROGRESS);
+  ReportStatus();
   base::stat_wrapper_t from_stat;
   if (!platform_->Stat(from_base_path_, &from_stat)) {
     PLOG(ERROR) << "Failed to stat from directory";
@@ -395,7 +395,7 @@ bool MigrationHelper::Migrate(const ProgressCallback& progress_callback) {
     delegate_->ReportEndTime();
 
   // One more progress update to say that we've hit 100%
-  ReportStatus(user_data_auth::DIRCRYPTO_MIGRATION_IN_PROGRESS);
+  ReportStatus();
   status_reporter.SetSuccess();
   const int elapsed_ms = timer.Elapsed().InMilliseconds();
   const int speed_kb_per_s = elapsed_ms ? (total_byte_count_ / elapsed_ms) : 0;
@@ -453,20 +453,15 @@ void MigrationHelper::IncrementMigratedBytes(uint64_t bytes) {
   base::AutoLock lock(migrated_byte_count_lock_);
   migrated_byte_count_ += bytes;
   if (next_report_ < base::TimeTicks::Now())
-    ReportStatus(user_data_auth::DIRCRYPTO_MIGRATION_IN_PROGRESS);
+    ReportStatus();
 }
 
-void MigrationHelper::ReportStatus(
-    user_data_auth::DircryptoMigrationStatus status) {
+void MigrationHelper::ReportStatus() {
   if (!delegate_->ShouldReportProgress()) {
     return;
   }
 
-  user_data_auth::DircryptoMigrationProgress progress;
-  progress.set_status(status);
-  progress.set_current_bytes(migrated_byte_count_);
-  progress.set_total_bytes(total_byte_count_);
-  progress_callback_.Run(progress);
+  progress_callback_.Run(migrated_byte_count_, total_byte_count_);
 
   next_report_ = base::TimeTicks::Now() + kStatusSignalInterval;
 }

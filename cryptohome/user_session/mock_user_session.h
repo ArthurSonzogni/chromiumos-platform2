@@ -13,10 +13,10 @@
 #include <gmock/gmock.h>
 
 #include "cryptohome/credentials.h"
-#include "cryptohome/data_migrator/migration_helper.h"
 #include "cryptohome/migration_type.h"
 #include "cryptohome/pkcs11/pkcs11_token.h"
 #include "cryptohome/storage/cryptohome_vault.h"
+#include "cryptohome/storage/mount.h"
 #include "cryptohome/user_session/user_session.h"
 
 namespace cryptohome {
@@ -30,8 +30,7 @@ class MockUserSession : public UserSession {
   MOCK_METHOD(bool, OwnsMountPoint, (const base::FilePath&), (const, override));
   MOCK_METHOD(bool,
               MigrateVault,
-              (const data_migrator::MigrationHelper::ProgressCallback&,
-               MigrationType),
+              (const Mount::MigrationCallback&, MigrationType),
               (override));
   MOCK_METHOD(MountStatus,
               MountVault,

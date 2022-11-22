@@ -37,8 +37,7 @@ class MockMount : public Mount {
 
   MOCK_METHOD(bool,
               MigrateEncryption,
-              (const data_migrator::MigrationHelper::ProgressCallback&,
-               MigrationType),
+              (const MigrationCallback&, MigrationType),
               (override));
 };
 }  // namespace cryptohome

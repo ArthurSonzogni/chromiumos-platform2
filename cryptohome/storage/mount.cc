@@ -32,6 +32,7 @@
 #include <brillo/scoped_umask.h>
 #include <brillo/secure_blob.h>
 #include <chromeos/constants/cryptohome.h>
+#include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
 #include <libhwsec-foundation/status/status_chain_macros.h>
 
@@ -295,19 +296,38 @@ std::string Mount::GetMountTypeString() const {
   return "";
 }
 
-bool Mount::MigrateEncryption(const MigrationHelper::ProgressCallback& callback,
+bool Mount::MigrateEncryption(const MigrationCallback& callback,
                               MigrationType migration_type) {
   if (!IsMounted()) {
     LOG(ERROR) << "Not mounted.";
     return false;
   }
+
+  auto migration_helper_callback = base::BindRepeating(
+      [](const MigrationCallback& callback, uint64_t current_bytes,
+         uint64_t total_bytes) {
+        user_data_auth::DircryptoMigrationProgress progress;
+        if (total_bytes == 0) {
+          // Since total_bytes and current_bytes in |progress| are discarded by
+          // client unless |progress.status| is DIRCRYPTO_MIGRATION_IN_PROGRESS,
+          // they are left with the default value of 0 here.
+          progress.set_status(user_data_auth::DIRCRYPTO_MIGRATION_INITIALIZING);
+        } else {
+          progress.set_status(user_data_auth::DIRCRYPTO_MIGRATION_IN_PROGRESS);
+          progress.set_current_bytes(current_bytes);
+          progress.set_total_bytes(total_bytes);
+        }
+        callback.Run(progress);
+      },
+      callback);
+
   auto mount_type = GetMountType();
   if (mount_type == MountType::ECRYPTFS_TO_DIR_CRYPTO ||
       mount_type == MountType::ECRYPTFS_TO_DMCRYPT) {
-    return MigrateFromEcryptfs(callback, migration_type);
+    return MigrateFromEcryptfs(migration_helper_callback, migration_type);
   }
   if (mount_type == MountType::DIR_CRYPTO_TO_DMCRYPT) {
-    return MigrateFromDircrypto(callback, migration_type);
+    return MigrateFromDircrypto(migration_helper_callback, migration_type);
   }
   LOG(ERROR) << "Not mounted for migration.";
   return false;

@@ -3384,8 +3384,7 @@ UserDataAuth::ResetApplicationContainer(
 
 void UserDataAuth::StartMigrateToDircrypto(
     const user_data_auth::StartMigrateToDircryptoRequest& request,
-    base::RepeatingCallback<void(
-        const user_data_auth::DircryptoMigrationProgress&)> progress_callback) {
+    Mount::MigrationCallback progress_callback) {
   AssertOnMountThread();
 
   MigrationType migration_type = request.minimal_migration()
@@ -3394,8 +3393,7 @@ void UserDataAuth::StartMigrateToDircrypto(
 
   // Note that total_bytes and current_bytes field in |progress| is discarded by
   // client whenever |progress.status| is not DIRCRYPTO_MIGRATION_IN_PROGRESS,
-  // this is why they are left with the default value of 0 here. Please see
-  // MigrationHelper::ProgressCallback for more details.
+  // this is why they are left with the default value of 0 here.
   user_data_auth::DircryptoMigrationProgress progress;
   AuthSession* auth_session = nullptr;
   if (!request.auth_session_id().empty()) {

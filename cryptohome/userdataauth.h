@@ -134,9 +134,7 @@ class UserDataAuth {
   // completes/fails.
   void StartMigrateToDircrypto(
       const user_data_auth::StartMigrateToDircryptoRequest& request,
-      base::RepeatingCallback<
-          void(const user_data_auth::DircryptoMigrationProgress&)>
-          progress_callback);
+      Mount::MigrationCallback progress_callback);
 
   // Determine if the account specified by |account| needs to do Dircrypto
   // migration. Returns CRYPTOHOME_ERROR_NOT_SET if the query is successful, and

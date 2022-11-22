@@ -634,10 +634,9 @@ enum DircryptoMigrationStatus {
 
 // The data that comes with DircryptoMigrationProgress signal.
 message DircryptoMigrationProgress {
-  // See cryptohome::dircrypto_data_migrator::MigrationHelper::ProgressCallback
-  // for more information.
-
-  // The status of the migration
+  // The status of the migration. If this is not
+  // |DIRCRYPTO_MIGRATION_IN_PROGRESS|, the following two fields |current_bytes|
+  // and |total_bytes| should be ignored as they are undefined.
   DircryptoMigrationStatus status = 1;
 
   // The amount of bytes that we've migrated over.

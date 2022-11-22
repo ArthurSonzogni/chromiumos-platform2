@@ -17,7 +17,6 @@
 #include <base/synchronization/condition_variable.h>
 #include <base/synchronization/lock.h>
 #include <chromeos/dbus/service_constants.h>
-#include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 
 #include "cryptohome/data_migrator/metrics.h"
 #include "cryptohome/data_migrator/migration_helper_delegate.h"
@@ -48,16 +47,13 @@ extern const char kReferrerURLXattrName[];
 //   option.
 class MigrationHelper {
  public:
-  // Callback for monitoring migration progress.  The |progress.current_bytes|
-  // parameter is the number of bytes migrated so far, and the
-  // |progress.total_bytes| parameter is the total number of bytes that need to
-  // be migrated, including what has already been migrated.  If
-  // |progress.status| is not DIRCRYPTO_MIGRATION_IN_PROGRESS the two
-  // aforementioned values should be ignored as they are undefined.
-  // TODO(b/258402655): Do not use user_data_auth::DircryptoMigrationProgress
-  // in the argument of the callback.
-  using ProgressCallback = base::RepeatingCallback<void(
-      const user_data_auth::DircryptoMigrationProgress& progress)>;
+  // Callback for monitoring migration progress.  The |current_bytes| is the
+  // number of bytes migrated so far, and the |total_bytes| is the total number
+  // of bytes that need to be migrated, including what has already been
+  // migrated. If |total_bytes| is 0, it means that the MigrationHelper is still
+  // initializing.
+  using ProgressCallback = base::RepeatingCallback<void(uint64_t current_bytes,
+                                                        uint64_t total_bytes)>;
 
   // Creates a new MigrationHelper for migrating from |from| to |to|.
   // Status files will be stored in |status_files_dir|, which should not be in
@@ -123,9 +119,9 @@ class MigrationHelper {
   // Increment the number of bytes migrated, potentially reporting the status if
   // its time for a new report.
   void IncrementMigratedBytes(uint64_t bytes);
-  // Call |progress_callback_| with the number of bytes already migrated, the
-  // total number of bytes to be migrated, and the migration status.
-  void ReportStatus(user_data_auth::DircryptoMigrationStatus status);
+  // Call |progress_callback_| with the number of bytes already migrated and the
+  // total number of bytes to be migrated.
+  void ReportStatus();
   // Creates a new directory that is the result of appending |child| to |to|,
   // migrating recursively all contents of the source directory.
   //

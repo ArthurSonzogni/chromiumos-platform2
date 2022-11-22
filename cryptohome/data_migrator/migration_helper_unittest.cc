@@ -73,11 +73,9 @@ class MigrationHelperTest : public ::testing::Test {
     ASSERT_TRUE(platform_.CreateDirectory(to_dir_));
   }
 
-  void ProgressCaptor(
-      const user_data_auth::DircryptoMigrationProgress& progress) {
-    migrated_values_.push_back(progress.current_bytes());
-    total_values_.push_back(progress.total_bytes());
-    status_values_.push_back(progress.status());
+  void ProgressCaptor(uint64_t current_bytes, uint64_t total_bytes) {
+    migrated_values_.push_back(current_bytes);
+    total_values_.push_back(total_bytes);
   }
 
  protected:
@@ -92,7 +90,6 @@ class MigrationHelperTest : public ::testing::Test {
 
   std::vector<uint64_t> migrated_values_;
   std::vector<uint64_t> total_values_;
-  std::vector<user_data_auth::DircryptoMigrationStatus> status_values_;
 };
 
 TEST_F(MigrationHelperTest, EmptyTest) {
@@ -639,16 +636,6 @@ TEST_F(MigrationHelperTest, ProgressCallback) {
   int callbacks = migrated_values_.size();
   EXPECT_GT(callbacks, 2);
   EXPECT_EQ(callbacks, total_values_.size());
-  EXPECT_EQ(callbacks, status_values_.size());
-
-  // Verify that the progress goes from initializing to in_progress.
-  EXPECT_EQ(user_data_auth::DIRCRYPTO_MIGRATION_INITIALIZING,
-            status_values_[0]);
-  for (int i = 1; i < callbacks; i++) {
-    SCOPED_TRACE(i);
-    EXPECT_EQ(user_data_auth::DIRCRYPTO_MIGRATION_IN_PROGRESS,
-              status_values_[i]);
-  }
 
   // Verify that migrated value starts at 0 and increases to total
   EXPECT_EQ(0, migrated_values_[1]);
@@ -658,7 +645,9 @@ TEST_F(MigrationHelperTest, ProgressCallback) {
   }
   EXPECT_EQ(expected_size, migrated_values_[callbacks - 1]);
 
-  // Verify that total always matches the expected size
+  // Verify that total always matches the expected size except for the first
+  // report where it is 0.
+  EXPECT_EQ(0, total_values_[0]);
   EXPECT_EQ(callbacks, total_values_.size());
   for (int i = 1; i < callbacks; i++) {
     SCOPED_TRACE(i);

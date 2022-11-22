@@ -25,6 +25,7 @@
 #include <base/values.h>
 #include <brillo/secure_blob.h>
 #include <chromeos/dbus/service_constants.h>
+#include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <gtest/gtest_prod.h>
 #include <policy/device_policy.h>
 #include <policy/libpolicy.h>
@@ -50,6 +51,10 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
  public:
   // Called before mount cryptohome.
   using PreMountCallback = base::RepeatingCallback<void()>;
+
+  // Called during and at the end of the Ext4 migration to report the progress.
+  using MigrationCallback = base::RepeatingCallback<void(
+      const user_data_auth::DircryptoMigrationProgress&)>;
 
   // Sets up Mount with the default locations, username, etc., as defined above.
   Mount();
@@ -114,9 +119,8 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   // Call MountCryptohome with to_migrate_from_ecryptfs beforehand.
   // If |migration_type| is MINIMAL, no progress reporting will be done and only
   // allowlisted paths will be migrated.
-  virtual bool MigrateEncryption(
-      const data_migrator::MigrationHelper::ProgressCallback& callback,
-      MigrationType migration_type);
+  virtual bool MigrateEncryption(const MigrationCallback& callback,
+                                 MigrationType migration_type);
 
   // Cancels the active encryption migration if there is, and wait for it to
   // stop.
