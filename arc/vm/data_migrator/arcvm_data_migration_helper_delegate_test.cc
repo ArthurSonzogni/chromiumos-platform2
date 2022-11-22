@@ -31,7 +31,8 @@ class ArcVmDataMigrationHelperDelegateTest : public ::testing::Test {
 };
 
 TEST_F(ArcVmDataMigrationHelperDelegateTest, ConvertUid) {
-  ArcVmDataMigrationHelperDelegate delegate;
+  // We can pass nullptr for metrics since we don't test metrics reporting.
+  ArcVmDataMigrationHelperDelegate delegate(nullptr /* metrics */);
 
   // Valid host-to-guest UID mappings (pairs of (host UID, guest UID)).
   std::vector<std::pair<uid_t, uid_t>> mapping_test_cases = {{
@@ -70,7 +71,8 @@ TEST_F(ArcVmDataMigrationHelperDelegateTest, ConvertUid) {
 }
 
 TEST_F(ArcVmDataMigrationHelperDelegateTest, ConvertGid) {
-  ArcVmDataMigrationHelperDelegate delegate;
+  // We can pass nullptr for metrics since we don't test metrics reporting.
+  ArcVmDataMigrationHelperDelegate delegate(nullptr /* metrics */);
 
   // Valid host-to-guest GID mappings (pairs of (host GID, guest GID)).
   std::vector<std::pair<gid_t, gid_t>> mapping_test_cases = {{
@@ -116,7 +118,8 @@ TEST_F(ArcVmDataMigrationHelperDelegateTest, ConvertGid) {
 }
 
 TEST_F(ArcVmDataMigrationHelperDelegateTest, ConvertXattrName) {
-  ArcVmDataMigrationHelperDelegate delegate;
+  // We can pass nullptr for metrics since we don't test metrics reporting.
+  ArcVmDataMigrationHelperDelegate delegate(nullptr /* metrics */);
 
   // user.virtiofs.security.* is converted to security.*.
   EXPECT_EQ(delegate.ConvertXattrName("user.virtiofs.security.sehash"),

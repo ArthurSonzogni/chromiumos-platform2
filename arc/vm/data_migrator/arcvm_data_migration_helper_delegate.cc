@@ -7,11 +7,11 @@
 #include <sys/stat.h>
 
 #include <array>
-#include <memory>
 #include <optional>
 #include <string>
 
 #include <base/files/file.h>
+#include <base/files/file_path.h>
 #include <base/logging.h>
 #include <base/strings/string_util.h>
 
@@ -73,8 +73,9 @@ std::optional<T> MapToGuestId(T host_id,
 
 }  // namespace
 
-ArcVmDataMigrationHelperDelegate::ArcVmDataMigrationHelperDelegate()
-    : metrics_(std::make_unique<ArcVmDataMigratorMetrics>()) {}
+ArcVmDataMigrationHelperDelegate::ArcVmDataMigrationHelperDelegate(
+    ArcVmDataMigratorMetrics* metrics)
+    : metrics_(metrics) {}
 
 ArcVmDataMigrationHelperDelegate::~ArcVmDataMigrationHelperDelegate() = default;
 
@@ -134,6 +135,27 @@ void ArcVmDataMigrationHelperDelegate::ReportTotalSize(int total_byte_count_mb,
                                                        int total_file_count) {
   metrics_->ReportTotalByteCountInMb(total_byte_count_mb);
   metrics_->ReportTotalFileCount(total_file_count);
+}
+
+void ArcVmDataMigrationHelperDelegate::ReportFailure(
+    base::File::Error error_code,
+    cryptohome::data_migrator::MigrationFailedOperationType type,
+    const base::FilePath& path,
+    cryptohome::data_migrator::FailureLocationType location_type) {
+  metrics_->ReportFailedErrorCode(error_code);
+  metrics_->ReportFailedOperationType(type);
+  // TODO(b/272151802): Report failed path type too.
+}
+
+void ArcVmDataMigrationHelperDelegate::ReportFailedNoSpace(
+    int initial_free_space_mb, int failure_free_space_mb) {
+  metrics_->ReportInitialFreeSpace(initial_free_space_mb);
+  metrics_->ReportNoSpaceFailureFreeSpace(failure_free_space_mb);
+}
+
+void ArcVmDataMigrationHelperDelegate::ReportFailedNoSpaceXattrSizeInBytes(
+    int total_xattr_size_bytes) {
+  metrics_->ReportNoSpaceXattrSize(total_xattr_size_bytes);
 }
 
 }  // namespace arc::data_migrator

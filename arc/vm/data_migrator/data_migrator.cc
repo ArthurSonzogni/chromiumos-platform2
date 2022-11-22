@@ -25,6 +25,7 @@
 
 #include "arc/vm/data_migrator/arcvm_data_migration_helper_delegate.h"
 #include "arc/vm/data_migrator/dbus_adaptors/org.chromium.ArcVmDataMigrator.h"
+#include "arc/vm/data_migrator/metrics.h"
 
 // This is provided as macro because providing it as a function would cause the
 // line numbers emitted from FROM_HERE and logger(ERROR) to be the location of
@@ -147,6 +148,7 @@ class DBusAdaptor : public org::chromium::ArcVmDataMigratorAdaptor,
     if (!base::CreateDirectory(base::FilePath(kDestinationMountPoint))) {
       LOG_AND_ADD_ERROR(PLOG, error,
                         "Failed to create destination mount point");
+      metrics_.ReportSetupResult(SetupResult::kMountPointCreationFailure);
       return false;
     }
 
@@ -154,6 +156,7 @@ class DBusAdaptor : public org::chromium::ArcVmDataMigratorAdaptor,
     loop_device_ = loop_device_manager_->AttachDeviceToFile(destination_disk);
     if (!loop_device_->IsValid()) {
       LOG_AND_ADD_ERROR(PLOG, error, "Failed to attach a loop device");
+      metrics_.ReportSetupResult(SetupResult::kLoopDeviceAttachmentFailure);
       CleanupMount();
       return false;
     }
@@ -161,6 +164,7 @@ class DBusAdaptor : public org::chromium::ArcVmDataMigratorAdaptor,
     if (mount(loop_device_->GetDevicePath().value().c_str(),
               kDestinationMountPoint, "ext4", 0, "")) {
       LOG_AND_ADD_ERROR(PLOG, error, "Failed to mount the loop device");
+      metrics_.ReportSetupResult(SetupResult::kMountFailure);
       CleanupMount();
       return false;
     }
@@ -173,11 +177,13 @@ class DBusAdaptor : public org::chromium::ArcVmDataMigratorAdaptor,
     migration_thread_ = std::make_unique<base::Thread>("migration_helper");
     if (!migration_thread_->Start()) {
       LOG_AND_ADD_ERROR(LOG, error, "Failed to start thread for migration");
+      metrics_.ReportSetupResult(SetupResult::kThreadStartFailure);
       CleanupMount();
       return false;
     }
     migration_thread_->task_runner()->PostTask(FROM_HERE, std::move(migrate));
 
+    metrics_.ReportSetupResult(SetupResult::kSuccess);
     return true;
   }
 
@@ -187,7 +193,7 @@ class DBusAdaptor : public org::chromium::ArcVmDataMigratorAdaptor,
   void Migrate(const base::FilePath& source_dir,
                const base::FilePath& status_files_dir) {
     cryptohome::Platform platform;
-    ArcVmDataMigrationHelperDelegate delegate;
+    ArcVmDataMigrationHelperDelegate delegate(&metrics_);
     constexpr uint64_t kMaxChunkSize = 128 * 1024 * 1024;
 
     {
@@ -198,6 +204,7 @@ class DBusAdaptor : public org::chromium::ArcVmDataMigratorAdaptor,
               base::FilePath(kDestinationMountPoint), status_files_dir,
               kMaxChunkSize);
     }
+
     // Unretained is safe to use here because this method (DBusAdaptor::Migrate)
     // runs on |migration_thread_| which is joined on the destruction on |this|.
     bool success = migration_helper_->Migrate(base::BindRepeating(
@@ -260,6 +267,8 @@ class DBusAdaptor : public org::chromium::ArcVmDataMigratorAdaptor,
   std::unique_ptr<base::Thread> migration_thread_;
   std::unique_ptr<cryptohome::data_migrator::MigrationHelper> migration_helper_;
   base::Lock migration_helper_lock_;
+
+  ArcVmDataMigratorMetrics metrics_;
 
   brillo::dbus_utils::DBusObject dbus_object_;
   dbus::ExportedObject* exported_object_;  // Owned by the Bus object

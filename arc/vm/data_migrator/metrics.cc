@@ -7,6 +7,7 @@
 #include <base/numerics/safe_conversions.h>
 
 using cryptohome::data_migrator::MigrationEndStatus;
+using cryptohome::data_migrator::MigrationFailedOperationType;
 using cryptohome::data_migrator::MigrationStartStatus;
 
 namespace arc::data_migrator {
@@ -18,6 +19,15 @@ constexpr char kStartStatus[] = "Arc.VmDataMigration.StartStatus";
 constexpr char kEndStatus[] = "Arc.VmDataMigration.EndStatus";
 constexpr char kTotalSizeMb[] = "Arc.VmDataMigration.TotalSizeMB";
 constexpr char kTotalFileCount[] = "Arc.VmDataMigration.TotalFiles";
+constexpr char kSetupResult[] = "Arc.VmDataMigration.SetupResult";
+constexpr char kFailedErrorCode[] = "Arc.VmDataMigration.FailedErrorCode";
+constexpr char kFailedOperationType[] =
+    "Arc.VmDataMigration.FailedOperationType";
+constexpr char kInitialFreeSpace[] = "Arc.VmDataMigration.InitialFreeSpace";
+constexpr char kNoSpaceFailureFreeSpace[] =
+    "Arc.VmDataMigration.NoSpaceFailureFreeSpace";
+constexpr char kNoSpaceFailureXattrSize[] =
+    "Arc.VmDataMigration.NoSpaceFailureXattrSize";
 
 constexpr int kNumBuckets = 50;
 
@@ -56,6 +66,45 @@ void ArcVmDataMigratorMetrics::ReportTotalFileCount(int total_file_count) {
   constexpr int kMin = 1, kMax = 1 << 20 /* 1M files */;
   metrics_library_->SendToUMA(kTotalFileCount, total_file_count, kMin, kMax,
                               kNumBuckets);
+}
+
+void ArcVmDataMigratorMetrics::ReportSetupResult(SetupResult result) {
+  metrics_library_->SendEnumToUMA(kSetupResult, result);
+}
+
+void ArcVmDataMigratorMetrics::ReportFailedErrorCode(
+    base::File::Error error_code) {
+  // Negate |error_code| since it's a non-positive integer.
+  metrics_library_->SendEnumToUMA(kFailedErrorCode, -error_code,
+                                  -base::File::FILE_ERROR_MAX);
+}
+
+void ArcVmDataMigratorMetrics::ReportFailedOperationType(
+    cryptohome::data_migrator::MigrationFailedOperationType type) {
+  metrics_library_->SendEnumToUMA(
+      kFailedOperationType, type,
+      cryptohome::data_migrator::kMigrationFailedOperationTypeNumBuckets);
+}
+
+void ArcVmDataMigratorMetrics::ReportInitialFreeSpace(
+    int initial_free_space_mb) {
+  constexpr int kMin = 1, kMax = 1 << 20 /* 1 TB */;
+  metrics_library_->SendToUMA(kInitialFreeSpace, initial_free_space_mb, kMin,
+                              kMax, kNumBuckets);
+}
+
+void ArcVmDataMigratorMetrics::ReportNoSpaceFailureFreeSpace(
+    int failure_free_space_mb) {
+  constexpr int kMin = 1, kMax = 1 << 20 /* 1 TB */;
+  metrics_library_->SendToUMA(kNoSpaceFailureFreeSpace, failure_free_space_mb,
+                              kMin, kMax, kNumBuckets);
+}
+
+void ArcVmDataMigratorMetrics::ReportNoSpaceXattrSize(
+    int total_xattr_size_bytes) {
+  constexpr int kMin = 1, kMax = 1 << 20 /* 1 MB */;
+  metrics_library_->SendToUMA(kNoSpaceFailureXattrSize, total_xattr_size_bytes,
+                              kMin, kMax, kNumBuckets);
 }
 
 }  // namespace arc::data_migrator
