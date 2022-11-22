@@ -120,7 +120,7 @@ brillo::ErrorPtr* /*error*/,
 {{- $type := makeProxyInArgTypeProxy . }}
   MOCK_CONST_METHOD0({{$name}}, {{$type}}());
 {{- if eq .Access "readwrite"}}
-  MOCK_METHOD2(set_{{$name}}, void({{$type}}, base::OnceCallback<bool>));
+  MOCK_METHOD2(set_{{$name}}, void({{$type}}, base::OnceCallback<void(bool)>));
 {{- end}}
 {{- end}}
   MOCK_CONST_METHOD0(GetObjectPath, const dbus::ObjectPath&());

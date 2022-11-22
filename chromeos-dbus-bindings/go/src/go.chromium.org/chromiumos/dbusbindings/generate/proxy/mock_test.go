@@ -834,7 +834,7 @@ class EmptyInterfaceProxyMock : public EmptyInterfaceProxyInterface {
 
   MOCK_CONST_METHOD0(readonly_property, const brillo::VariantDictionary&());
   MOCK_CONST_METHOD0(writable_property, const brillo::VariantDictionary&());
-  MOCK_METHOD2(set_writable_property, void(const brillo::VariantDictionary&, base::OnceCallback<bool>));
+  MOCK_METHOD2(set_writable_property, void(const brillo::VariantDictionary&, base::OnceCallback<void(bool)>));
   MOCK_CONST_METHOD0(GetObjectPath, const dbus::ObjectPath&());
   MOCK_CONST_METHOD0(GetObjectProxy, dbus::ObjectProxy*());
   MOCK_METHOD1(InitializeProperties,
@@ -908,7 +908,7 @@ class EmptyInterfaceProxyMock : public EmptyInterfaceProxyInterface {
 
   MOCK_CONST_METHOD0(readonly_property, const brillo::VariantDictionary&());
   MOCK_CONST_METHOD0(writable_property, const brillo::VariantDictionary&());
-  MOCK_METHOD2(set_writable_property, void(const brillo::VariantDictionary&, base::OnceCallback<bool>));
+  MOCK_METHOD2(set_writable_property, void(const brillo::VariantDictionary&, base::OnceCallback<void(bool)>));
   MOCK_CONST_METHOD0(GetObjectPath, const dbus::ObjectPath&());
   MOCK_CONST_METHOD0(GetObjectProxy, dbus::ObjectProxy*());
   MOCK_METHOD1(SetPropertyChangedCallback,
