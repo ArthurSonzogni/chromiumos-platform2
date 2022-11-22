@@ -37,6 +37,17 @@ enum VAType {
   TEST_VA = 1;
 }
 
+message GetFeaturesRequest {}
+
+message GetFeaturesReply {
+  optional AttestationStatus status = 1;
+  // If `false`, core attestation service is not available, including
+  // preparation, enrollment, and certification.
+  optional bool is_available = 2;
+  // The supported key types of the certified keys.
+  repeated KeyType supported_key_types = 3;
+}
+
 message GetKeyInfoRequest {
   optional string key_label = 1;
   optional string username = 2;
