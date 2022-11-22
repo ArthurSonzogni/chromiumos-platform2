@@ -33,6 +33,9 @@ class BRILLO_EXPORT MigrationHelperDelegate {
   // from the migration source, but not copied to the migration destination.
   virtual bool ShouldMigrateFile(const base::FilePath& path) { return true; }
 
+  // Returns whether MigrationHelper should copy quota project ID.
+  virtual bool ShouldCopyQuotaProjectId() = 0;
+
   // Reports the current time as the migration start time.
   virtual void ReportStartTime() {}
   // Reports the current time as the migration end time.

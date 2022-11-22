@@ -116,6 +116,10 @@ bool DircryptoMigrationHelperDelegate::ShouldMigrateFile(
   }
 }
 
+bool DircryptoMigrationHelperDelegate::ShouldCopyQuotaProjectId() {
+  return false;
+}
+
 void DircryptoMigrationHelperDelegate::ReportStartTime() {
   const auto migration_timer_id = migration_type_ == MigrationType::MINIMAL
                                       ? kDircryptoMinimalMigrationTimer

@@ -132,6 +132,10 @@ TEST_F(MigrationHelperTest, CopyAttributesDirectory) {
   int ext2_attrs = FS_SYNC_FL | FS_NODUMP_FL;
   ASSERT_TRUE(platform_.SetExtFileAttributes(kFromDirPath, ext2_attrs));
 
+  // Set project quota ID.
+  constexpr int from_project_id = 12345;
+  ASSERT_TRUE(platform_.SetQuotaProjectId(kFromDirPath, from_project_id));
+
   base::stat_wrapper_t from_stat;
   ASSERT_TRUE(platform_.Stat(kFromDirPath, &from_stat));
   EXPECT_TRUE(helper.Migrate(base::BindRepeating(
@@ -162,6 +166,10 @@ TEST_F(MigrationHelperTest, CopyAttributesDirectory) {
   int new_ext2_attrs;
   ASSERT_TRUE(platform_.GetExtFileAttributes(kToDirPath, &new_ext2_attrs));
   EXPECT_EQ(ext2_attrs, new_ext2_attrs & ext2_attrs);
+
+  int to_project_id = 0;
+  ASSERT_TRUE(platform_.GetQuotaProjectId(kToDirPath, &to_project_id));
+  EXPECT_EQ(from_project_id, to_project_id);
 }
 
 TEST_F(MigrationHelperTest, DirectoryPartiallyMigrated) {
@@ -365,6 +373,10 @@ TEST_F(MigrationHelperTest, CopyAttributesFile) {
   int ext2_attrs = FS_SYNC_FL | FS_NODUMP_FL;
   ASSERT_TRUE(platform_.SetExtFileAttributes(kFromFilePath, ext2_attrs));
 
+  // Set project quota ID.
+  constexpr int from_project_id = 12345;
+  ASSERT_TRUE(platform_.SetQuotaProjectId(kFromFilePath, from_project_id));
+
   base::stat_wrapper_t from_stat;
   ASSERT_TRUE(platform_.Stat(kFromFilePath, &from_stat));
   EXPECT_TRUE(helper.Migrate(base::BindRepeating(
@@ -410,6 +422,10 @@ TEST_F(MigrationHelperTest, CopyAttributesFile) {
   int new_ext2_attrs;
   ASSERT_TRUE(platform_.GetExtFileAttributes(kToFilePath, &new_ext2_attrs));
   EXPECT_EQ(ext2_attrs, new_ext2_attrs & ext2_attrs);
+
+  int to_project_id = 0;
+  ASSERT_TRUE(platform_.GetQuotaProjectId(kToFilePath, &to_project_id));
+  EXPECT_EQ(from_project_id, to_project_id);
 }
 
 TEST_F(MigrationHelperTest, CopyOwnership) {

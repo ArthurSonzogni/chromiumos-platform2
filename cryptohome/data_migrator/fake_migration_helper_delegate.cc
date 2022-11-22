@@ -26,4 +26,8 @@ bool FakeMigrationHelperDelegate::ShouldMigrateFile(
   return !base::Contains(denylisted_paths_, child);
 }
 
+bool FakeMigrationHelperDelegate::ShouldCopyQuotaProjectId() {
+  return true;
+}
+
 }  // namespace cryptohome::data_migrator

@@ -742,6 +742,16 @@ bool MigrationHelper::CopyAttributes(const base::FilePath& child,
     RecordFileErrorWithCurrentErrno(kMigrationFailedAtSetAttribute, child);
     return false;
   }
+
+  if (delegate_->ShouldCopyQuotaProjectId()) {
+    int project_id = 0;
+    if (!platform_->GetQuotaProjectId(from, &project_id)) {
+      return false;
+    }
+    if (!platform_->SetQuotaProjectId(to, project_id)) {
+      return false;
+    }
+  }
   return true;
 }
 

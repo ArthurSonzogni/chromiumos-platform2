@@ -31,6 +31,7 @@ class DircryptoMigrationHelperDelegate
   // dircrypto_data_migrator::MigrationHelperDelegate overrides:
   bool ShouldReportProgress() override;
   bool ShouldMigrateFile(const base::FilePath& child) override;
+  bool ShouldCopyQuotaProjectId() override;
   void ReportStartTime() override;
   void ReportEndTime() override;
   void ReportStartStatus(data_migrator::MigrationStartStatus status) override;

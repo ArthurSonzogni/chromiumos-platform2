@@ -18,10 +18,10 @@
 #include <brillo/syslog_logging.h>
 #include <chromeos/dbus/service_constants.h>
 #include <cryptohome/data_migrator/migration_helper.h>
-#include <cryptohome/data_migrator/migration_helper_delegate.h>
 #include <cryptohome/platform.h>
 #include <dbus/bus.h>
 
+#include "arc/vm/data_migrator/arcvm_data_migration_helper_delegate.h"
 #include "arc/vm/data_migrator/dbus_adaptors/org.chromium.ArcVmDataMigrator.h"
 
 namespace {
@@ -128,7 +128,7 @@ class DBusAdaptor : public org::chromium::ArcVmDataMigratorAdaptor,
   void Migrate(const base::FilePath& source_dir,
                const base::FilePath& status_files_dir) {
     cryptohome::Platform platform;
-    cryptohome::data_migrator::MigrationHelperDelegate delegate;
+    arc::ArcVmDataMigrationHelperDelegate delegate;
     constexpr uint64_t kMaxChunkSize = 128 * 1024 * 1024;
 
     cryptohome::data_migrator::MigrationHelper migration_helper(

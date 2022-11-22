@@ -30,7 +30,10 @@ generate_dbus_adaptors("data_migrator_adaptors") {
 }
 
 executable("arcvm_data_migrator") {
-  sources = [ "data_migrator.cc" ]
+  sources = [
+    "arcvm_data_migration_helper_delegate.cc",
+    "data_migrator.cc",
+  ]
   configs += [ ":target_defaults" ]
   install_path = "bin"
   deps = [ ":data_migrator_adaptors" ]

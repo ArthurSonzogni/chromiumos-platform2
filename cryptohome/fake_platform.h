@@ -140,6 +140,9 @@ class FakePlatform final : public Platform {
   bool GetExtFileAttributes(const base::FilePath& path, int* flags) override;
   bool SetExtFileAttributes(const base::FilePath& path, int flags) override;
   bool HasNoDumpFileAttribute(const base::FilePath& path) override;
+  bool GetQuotaProjectId(const base::FilePath& path,
+                         int* project_id) const override;
+  bool SetQuotaProjectId(const base::FilePath& path, int project_id) override;
 
   // TODO(chromium:1141301, dlunev): consider running under root to make the
   // following operate on FS, not on on fake state.
@@ -231,6 +234,7 @@ class FakePlatform final : public Platform {
       file_owners_;
   mutable std::unordered_map<base::FilePath, mode_t> file_mode_;
   mutable std::unordered_map<base::FilePath, int> file_flags_;
+  mutable std::unordered_map<base::FilePath, int> project_ids_;
 
   base::FilePath tmpfs_rootfs_;
   std::unique_ptr<FakeMountMapper> fake_mount_mapper_;

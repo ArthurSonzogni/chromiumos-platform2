@@ -351,6 +351,23 @@ class BRILLO_EXPORT Platform {
   virtual int64_t GetQuotaCurrentSpaceForProjectId(const base::FilePath& device,
                                                    int project_id) const;
 
+  // Gets the project ID of a file or directory at |path|.
+  // Returns true if ioctl syscall succeeds.
+  //
+  // Parameters
+  //   path - The path to the file or directory to get project ID
+  //   project_id - Pointer to store the obtained project ID
+  virtual bool GetQuotaProjectId(const base::FilePath& path,
+                                 int* project_id) const;
+
+  // Sets the project ID to a file or directory at |path|.
+  // Returns true if ioctl syscall succeeds.
+  //
+  // Parameters
+  //   path - The path to the file or directory to set project ID
+  //   project_id - The project ID
+  virtual bool SetQuotaProjectId(const base::FilePath& path, int project_id);
+
   // Sets the project ID to the FD.
   // Returns true if ioctl syscall succeeds.
   //

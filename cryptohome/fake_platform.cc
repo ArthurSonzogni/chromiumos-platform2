@@ -601,6 +601,33 @@ bool FakePlatform::HasNoDumpFileAttribute(const base::FilePath& path) {
          (flags & FS_NODUMP_FL) == FS_NODUMP_FL;
 }
 
+bool FakePlatform::GetQuotaProjectId(const base::FilePath& path,
+                                     int* project_id) const {
+  base::AutoLock lock(mappings_lock_);
+  const base::FilePath real_path = TestFilePath(path);
+  if (!IsLink(path) && !FileExists(path)) {
+    return false;
+  }
+  auto it = project_ids_.find(real_path);
+  if (it == project_ids_.end()) {
+    *project_id = 0;
+    return true;
+  }
+  *project_id = it->second;
+  return true;
+}
+
+bool FakePlatform::SetQuotaProjectId(const base::FilePath& path,
+                                     int project_id) {
+  base::AutoLock lock(mappings_lock_);
+  const base::FilePath real_path = TestFilePath(path);
+  if (!IsLink(path) && !FileExists(path)) {
+    return false;
+  }
+  project_ids_[real_path] = project_id;
+  return true;
+}
+
 bool FakePlatform::GetOwnership(const base::FilePath& path,
                                 uid_t* user_id,
                                 gid_t* group_id,

@@ -502,6 +502,60 @@ int64_t Platform::GetQuotaCurrentSpaceForProjectId(const base::FilePath& device,
   return dq.dqb_curspace;
 }
 
+bool Platform::GetQuotaProjectId(const base::FilePath& path,
+                                 int* project_id) const {
+  base::stat_wrapper_t stat = {};
+  if (base::File::Lstat(path.value().c_str(), &stat) != 0) {
+    PLOG(ERROR) << "Failed to stat " << path.value();
+    return false;
+  }
+  brillo::SafeFD fd;
+  brillo::SafeFD::Error err;
+  if (S_ISDIR(stat.st_mode)) {
+    std::tie(fd, err) = brillo::SafeFD::Root().first.OpenExistingDir(path);
+  } else {
+    std::tie(fd, err) = brillo::SafeFD::Root().first.OpenExistingFile(path);
+  }
+  if (brillo::SafeFD::IsError(err)) {
+    PLOG(ERROR) << "Failed to open " << path.value() << " with error "
+                << static_cast<int>(err);
+    return false;
+  }
+  DCHECK(fd.is_valid());
+
+  struct fsxattr fsx = {};
+  if (ioctl(fd.get(), FS_IOC_FSGETXATTR, &fsx) < 0) {
+    PLOG(ERROR) << "ioctl(FS_IOC_FSGETXATTR) failed";
+    return false;
+  }
+  *project_id = fsx.fsx_projid;
+  return true;
+}
+
+bool Platform::SetQuotaProjectId(const base::FilePath& path, int project_id) {
+  base::stat_wrapper_t stat = {};
+  if (base::File::Lstat(path.value().c_str(), &stat) != 0) {
+    PLOG(ERROR) << "Failed to stat " << path.value();
+    return false;
+  }
+  brillo::SafeFD fd;
+  brillo::SafeFD::Error err;
+  if (S_ISDIR(stat.st_mode)) {
+    std::tie(fd, err) = brillo::SafeFD::Root().first.OpenExistingDir(path);
+  } else {
+    std::tie(fd, err) = brillo::SafeFD::Root().first.OpenExistingFile(path);
+  }
+  if (brillo::SafeFD::IsError(err)) {
+    PLOG(ERROR) << "Failed to open " << path.value() << " with error "
+                << static_cast<int>(err);
+    return false;
+  }
+  DCHECK(fd.is_valid());
+
+  int error = 0;
+  return SetQuotaProjectIdWithFd(project_id, fd.get(), &error);
+}
+
 bool Platform::SetQuotaProjectIdWithFd(int project_id, int fd, int* out_error) {
   struct fsxattr fsx = {};
   if (ioctl(fd, FS_IOC_FSGETXATTR, &fsx) < 0) {

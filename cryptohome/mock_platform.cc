@@ -152,6 +152,12 @@ MockPlatform::MockPlatform()
   ON_CALL(*this, HasNoDumpFileAttribute(_))
       .WillByDefault(
           Invoke(fake_platform_.get(), &FakePlatform::HasNoDumpFileAttribute));
+  ON_CALL(*this, GetQuotaProjectId(_, _))
+      .WillByDefault(
+          Invoke(fake_platform_.get(), &FakePlatform::GetQuotaProjectId));
+  ON_CALL(*this, SetQuotaProjectId(_, _))
+      .WillByDefault(
+          Invoke(fake_platform_.get(), &FakePlatform::SetQuotaProjectId));
 
   ON_CALL(*this, GetOwnership(_, _, _, _))
       .WillByDefault(Invoke(fake_platform_.get(), &FakePlatform::GetOwnership));
