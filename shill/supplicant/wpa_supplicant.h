@@ -106,6 +106,10 @@ class WPASupplicant {
   // no background scan parameter should be supplied to wpa_supplicant.
   static const char kNetworkBgscanMethodNone[];
   static const char kNetworkBgscanMethodSimple[];
+  static const char kNetworkCipherGroup[];
+  static const char kNetworkCipherPairwise[];
+  static const char kNetworkCipherSuiteCCMP[];
+  static const char kNetworkCipherSuiteTKIP[];
   static const char kNetworkModeInfrastructure[];
   static const char kNetworkModeAdHoc[];
   static const char kNetworkModeAccessPoint[];

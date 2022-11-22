@@ -663,8 +663,8 @@ class WiFiProviderTest : public testing::Test {
     return provider_.GetPhyAtIndex(phy_index);
   }
 
-  StrictMock<
-      base::MockRepeatingCallback<void(LocalDevice::DeviceEvent, LocalDevice*)>>
+  StrictMock<base::MockRepeatingCallback<void(LocalDevice::DeviceEvent,
+                                              const LocalDevice*)>>
       cb;
 
   scoped_refptr<MockLocalDevice> CreateLocalDevice(

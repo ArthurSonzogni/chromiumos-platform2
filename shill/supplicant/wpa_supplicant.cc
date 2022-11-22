@@ -115,6 +115,10 @@ const char WPASupplicant::kNetworkBgscanMethodLearn[] = "learn";
 // no background scan parameter should be supplied to wpa_supplicant.
 const char WPASupplicant::kNetworkBgscanMethodNone[] = "none";
 const char WPASupplicant::kNetworkBgscanMethodSimple[] = "simple";
+const char WPASupplicant::kNetworkCipherGroup[] = "group";
+const char WPASupplicant::kNetworkCipherPairwise[] = "pairwise";
+const char WPASupplicant::kNetworkCipherSuiteCCMP[] = "CCMP";
+const char WPASupplicant::kNetworkCipherSuiteTKIP[] = "TKIP";
 const char WPASupplicant::kNetworkModeInfrastructure[] = "infrastructure";
 const char WPASupplicant::kNetworkModeAdHoc[] = "ad-hoc";
 const char WPASupplicant::kNetworkModeAccessPoint[] = "ap";

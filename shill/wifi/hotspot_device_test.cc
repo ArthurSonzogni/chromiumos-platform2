@@ -75,8 +75,8 @@ class HotspotDeviceTest : public testing::Test {
   // protected fields interspersed between private fields, due to
   // initialization order
  protected:
-  StrictMock<
-      base::MockRepeatingCallback<void(LocalDevice::DeviceEvent, LocalDevice*)>>
+  StrictMock<base::MockRepeatingCallback<void(LocalDevice::DeviceEvent,
+                                              const LocalDevice*)>>
       cb;
   scoped_refptr<HotspotDevice> device_;
   MockSupplicantProcessProxy* supplicant_process_proxy_;

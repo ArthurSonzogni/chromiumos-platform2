@@ -60,8 +60,8 @@ class LocalDeviceTest : public testing::Test {
   NiceMock<MockControl> control_interface_;
   EventDispatcherForTest dispatcher_;
   NiceMock<MockMetrics> metrics_;
-  StrictMock<
-      base::MockRepeatingCallback<void(LocalDevice::DeviceEvent, LocalDevice*)>>
+  StrictMock<base::MockRepeatingCallback<void(LocalDevice::DeviceEvent,
+                                              const LocalDevice*)>>
       cb;
   NiceMock<MockManager> manager_;
 

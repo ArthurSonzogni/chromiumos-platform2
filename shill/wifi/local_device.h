@@ -49,7 +49,7 @@ class LocalDevice : public base::RefCounted<LocalDevice> {
   // listener handler queue/set with handler register/deregister functions to
   // handle multiple listen cases in the future when needed.
   using EventCallback =
-      base::RepeatingCallback<void(DeviceEvent, LocalDevice*)>;
+      base::RepeatingCallback<void(DeviceEvent, const LocalDevice*)>;
 
   // Constructor function
   LocalDevice(Manager* manager,
@@ -66,6 +66,10 @@ class LocalDevice : public base::RefCounted<LocalDevice> {
   // Enable or disable the device.
   bool SetEnabled(bool enable);
 
+  // Post a task and use registered callback function |callback_| to handle
+  // device event.
+  void PostDeviceEvent(DeviceEvent event) const;
+
   const std::string& link_name() const { return link_name_; }
   uint32_t phy_index() const { return phy_index_; }
   IfaceType iface_type() const { return iface_type_; }
@@ -80,10 +84,6 @@ class LocalDevice : public base::RefCounted<LocalDevice> {
   // LocalDevice stop routine. Each device type should implement this method.
   virtual bool Stop() = 0;
 
-  // Post a task and use registered callback function |callback_| to handle
-  // device event.
-  void PostDeviceEvent(DeviceEvent event);
-
   // Return the proxy to the wpa_supplicant process.
   SupplicantProcessProxyInterface* SupplicantProcessProxy() const;
   ControlInterface* ControlInterface() const;
@@ -92,7 +92,7 @@ class LocalDevice : public base::RefCounted<LocalDevice> {
  private:
   friend class LocalDeviceTest;
 
-  void DeviceEventTask(DeviceEvent event);
+  void DeviceEventTask(DeviceEvent event) const;
 
   bool enabled_;
   Manager* manager_;

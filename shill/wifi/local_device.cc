@@ -17,9 +17,6 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kWiFi;
-static std::string ObjectID(const LocalDevice* d) {
-  return d->link_name();
-}
 }  // namespace Logging
 
 // Constructor function
@@ -37,15 +34,13 @@ LocalDevice::LocalDevice(Manager* manager,
       callback_(std::move(callback)) {
   mac_address_.Set(mac_address);
 
-  SLOG(this, 1) << "LocalDevice(): " << link_name_ << " type: " << iface_type_
-                << " MAC address: " << mac_address_
-                << " Phy index: " << phy_index_;
+  SLOG(1) << "LocalDevice(): " << link_name_ << " type: " << iface_type_
+          << " MAC address: " << mac_address_ << " Phy index: " << phy_index_;
 }
 
 LocalDevice::~LocalDevice() {
-  SLOG(this, 1) << "~LocalDevice(): " << link_name_ << " type: " << iface_type_
-                << " MAC address: " << mac_address_
-                << " Phy index: " << phy_index_;
+  SLOG(1) << "~LocalDevice(): " << link_name_ << " type: " << iface_type_
+          << " MAC address: " << mac_address_ << " Phy index: " << phy_index_;
 }
 
 bool LocalDevice::SetEnabled(bool enable) {
@@ -67,16 +62,16 @@ bool LocalDevice::SetEnabled(bool enable) {
   return true;
 }
 
-void LocalDevice::PostDeviceEvent(DeviceEvent event) {
-  SLOG(this, 1) << "Device " << link_name_ << " posts event: " << event;
+void LocalDevice::PostDeviceEvent(DeviceEvent event) const {
+  SLOG(1) << "Device " << link_name_ << " posts event: " << event;
 
   manager_->dispatcher()->PostTask(
       FROM_HERE, base::BindOnce(&LocalDevice::DeviceEventTask,
                                 weak_factory_.GetWeakPtr(), event));
 }
 
-void LocalDevice::DeviceEventTask(DeviceEvent event) {
-  SLOG(this, 1) << "Device " << link_name_ << " handles event: " << event;
+void LocalDevice::DeviceEventTask(DeviceEvent event) const {
+  SLOG(1) << "Device " << link_name_ << " handles event: " << event;
   callback_.Run(event, this);
 }
 
