@@ -32,7 +32,8 @@ namespace updater {
 constexpr char kFirmwareDir[] = "/opt/google/biod/fw";
 
 std::string UpdaterVersion() {
-  CHECK(brillo::kVCSID) << "The updater requires VCSID to function properly.";
+  static_assert(brillo::kVCSID,
+                "The updater requires VCSID to function properly.");
   return std::string(*brillo::kVCSID);
 }
 
