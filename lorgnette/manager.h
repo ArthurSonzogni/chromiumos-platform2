@@ -39,6 +39,23 @@ class ExportedObjectManager;
 
 namespace lorgnette {
 
+// This enum corresponds to Chromium's ScanJobFailureReason in
+// src/ash/webui/scanning/scanning_uma.h
+// DO NOT CHANGE THESE VALUES without changing values in the original file.
+enum class ScanJobFailureReason {
+  kUnknownScannerError = 0,
+  kScannerNotFound = 1,
+  kUnsupportedScanToPath = 2,
+  kSaveToDiskFailed = 3,
+  kDeviceBusy = 4,
+  kAdfJammed = 5,
+  kAdfEmpty = 6,
+  kFlatbedOpen = 7,
+  kIoError = 8,
+  kSuccess = 9,
+  kMaxValue = kSuccess,
+};
+
 namespace impl {
 
 // Returns a byte vector containing the serialized representation of |proto|.
@@ -122,6 +139,7 @@ class Manager : public org::chromium::lorgnette::ManagerAdaptor,
   static const char kMetricScanRequested[];
   static const char kMetricScanSucceeded[];
   static const char kMetricScanFailed[];
+  static const char kMetricScanFailedFailureReason[];
 
   bool StartScanInternal(brillo::ErrorPtr* error,
                          ScanFailureMode* failure_mode,
@@ -140,7 +158,8 @@ class Manager : public org::chromium::lorgnette::ManagerAdaptor,
 
   void ReportScanRequested(const std::string& device_name);
   void ReportScanSucceeded(const std::string& device_name);
-  void ReportScanFailed(const std::string& device_name);
+  void ReportScanFailed(const std::string& device_name,
+                        const ScanFailureMode failure_mode);
 
   void SendStatusSignal(const std::string& uuid,
                         const ScanState state,

@@ -31,6 +31,7 @@
 #include "lorgnette/test_util.h"
 
 using brillo::dbus_utils::MockDBusMethodResponse;
+using ::testing::_;
 using ::testing::ContainsRegex;
 using ::testing::ElementsAre;
 
@@ -127,6 +128,12 @@ class ManagerTest : public testing::Test {
     EXPECT_CALL(*metrics_library_,
                 SendEnumToUMA(Manager::kMetricScanFailed, backend,
                               DocumentScanSaneBackend::kMaxValue + 1));
+  }
+
+  void ExpectScanFailureReason(ScanJobFailureReason failure_reason) {
+    EXPECT_CALL(*metrics_library_,
+                SendEnumToUMA(Manager::kMetricScanFailedFailureReason,
+                              static_cast<int>(failure_reason), _));
   }
 
   void CompareImages(const std::string& path_a, const std::string& path_b) {
@@ -550,6 +557,7 @@ TEST_F(ManagerTest, StartScanFailToStart) {
 
   ExpectScanRequest(kOtherBackend);
   ExpectScanFailure(kOtherBackend);
+  ExpectScanFailureReason(ScanJobFailureReason::kIoError);
   StartScanResponse response =
       StartScan("TestDevice", MODE_COLOR, "Flatbed", IMAGE_FORMAT_PNG);
 
@@ -571,6 +579,7 @@ TEST_F(ManagerTest, StartScanDeviceBusy) {
 
   ExpectScanRequest(kOtherBackend);
   ExpectScanFailure(kOtherBackend);
+  ExpectScanFailureReason(ScanJobFailureReason::kDeviceBusy);
   StartScanResponse response =
       StartScan("TestDevice", MODE_COLOR, "Flatbed", IMAGE_FORMAT_PNG);
 
@@ -592,6 +601,7 @@ TEST_F(ManagerTest, StartScanAdfJammed) {
 
   ExpectScanRequest(kOtherBackend);
   ExpectScanFailure(kOtherBackend);
+  ExpectScanFailureReason(ScanJobFailureReason::kAdfJammed);
   StartScanResponse response =
       StartScan("TestDevice", MODE_COLOR, "Flatbed", IMAGE_FORMAT_PNG);
 
@@ -613,6 +623,7 @@ TEST_F(ManagerTest, StartScanAdfEmpty) {
 
   ExpectScanRequest(kOtherBackend);
   ExpectScanFailure(kOtherBackend);
+  ExpectScanFailureReason(ScanJobFailureReason::kAdfEmpty);
   StartScanResponse response =
       StartScan("TestDevice", MODE_COLOR, "Flatbed", IMAGE_FORMAT_PNG);
 
@@ -634,6 +645,7 @@ TEST_F(ManagerTest, StartScanFlatbedOpen) {
 
   ExpectScanRequest(kOtherBackend);
   ExpectScanFailure(kOtherBackend);
+  ExpectScanFailureReason(ScanJobFailureReason::kFlatbedOpen);
   StartScanResponse response =
       StartScan("TestDevice", MODE_COLOR, "Flatbed", IMAGE_FORMAT_PNG);
 
@@ -655,6 +667,7 @@ TEST_F(ManagerTest, StartScanFailToRead) {
 
   ExpectScanRequest(kOtherBackend);
   ExpectScanFailure(kOtherBackend);
+  ExpectScanFailureReason(ScanJobFailureReason::kUnknownScannerError);
   StartScanResponse response =
       StartScan("TestDevice", MODE_COLOR, "Flatbed", IMAGE_FORMAT_PNG);
 
@@ -684,6 +697,7 @@ TEST_F(ManagerTest, GetNextImageDeviceBusy) {
 
   ExpectScanRequest(kOtherBackend);
   ExpectScanFailure(kOtherBackend);
+  ExpectScanFailureReason(ScanJobFailureReason::kDeviceBusy);
   StartScanResponse response =
       StartScan("TestDevice", MODE_COLOR, "Flatbed", IMAGE_FORMAT_PNG);
 
@@ -713,6 +727,7 @@ TEST_F(ManagerTest, GetNextImageAdfJammed) {
 
   ExpectScanRequest(kOtherBackend);
   ExpectScanFailure(kOtherBackend);
+  ExpectScanFailureReason(ScanJobFailureReason::kAdfJammed);
   StartScanResponse response =
       StartScan("TestDevice", MODE_COLOR, "Flatbed", IMAGE_FORMAT_PNG);
 
@@ -742,6 +757,7 @@ TEST_F(ManagerTest, GetNextImageFlatbedOpen) {
 
   ExpectScanRequest(kOtherBackend);
   ExpectScanFailure(kOtherBackend);
+  ExpectScanFailureReason(ScanJobFailureReason::kFlatbedOpen);
   StartScanResponse response =
       StartScan("TestDevice", MODE_COLOR, "Flatbed", IMAGE_FORMAT_PNG);
 
@@ -771,6 +787,7 @@ TEST_F(ManagerTest, GetNextImageIoError) {
 
   ExpectScanRequest(kOtherBackend);
   ExpectScanFailure(kOtherBackend);
+  ExpectScanFailureReason(ScanJobFailureReason::kIoError);
   StartScanResponse response =
       StartScan("TestDevice", MODE_COLOR, "Flatbed", IMAGE_FORMAT_PNG);
 
@@ -850,6 +867,7 @@ TEST_F(ManagerTest, GetNextImageNegativeWidth) {
 
   ExpectScanRequest(kOtherBackend);
   ExpectScanFailure(kOtherBackend);
+  ExpectScanFailureReason(ScanJobFailureReason::kUnknownScannerError);
   StartScanResponse response =
       StartScan("TestDevice", MODE_COLOR, "Flatbed", IMAGE_FORMAT_PNG);
 
@@ -884,6 +902,7 @@ TEST_F(ManagerTest, GetNextImageExcessWidth) {
 
   ExpectScanRequest(kOtherBackend);
   ExpectScanFailure(kOtherBackend);
+  ExpectScanFailureReason(ScanJobFailureReason::kUnknownScannerError);
   StartScanResponse response =
       StartScan("TestDevice", MODE_COLOR, "Flatbed", IMAGE_FORMAT_PNG);
 
@@ -918,6 +937,7 @@ TEST_F(ManagerTest, GetNextImageInvalidHeight) {
 
   ExpectScanRequest(kOtherBackend);
   ExpectScanFailure(kOtherBackend);
+  ExpectScanFailureReason(ScanJobFailureReason::kUnknownScannerError);
   StartScanResponse response =
       StartScan("TestDevice", MODE_COLOR, "Flatbed", IMAGE_FORMAT_PNG);
 
@@ -952,6 +972,7 @@ TEST_F(ManagerTest, GetNextImageMismatchedSizes) {
 
   ExpectScanRequest(kOtherBackend);
   ExpectScanFailure(kOtherBackend);
+  ExpectScanFailureReason(ScanJobFailureReason::kUnknownScannerError);
   StartScanResponse response =
       StartScan("TestDevice", MODE_COLOR, "Flatbed", IMAGE_FORMAT_PNG);
 
@@ -987,6 +1008,7 @@ TEST_F(ManagerTest, GetNextImageTooLarge) {
 
   ExpectScanRequest(kOtherBackend);
   ExpectScanFailure(kOtherBackend);
+  ExpectScanFailureReason(ScanJobFailureReason::kUnknownScannerError);
   StartScanResponse response =
       StartScan("TestDevice", MODE_COLOR, "Flatbed", IMAGE_FORMAT_PNG);
 

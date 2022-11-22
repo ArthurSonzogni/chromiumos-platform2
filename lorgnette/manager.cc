@@ -125,6 +125,36 @@ ScanFailureMode GetScanFailureMode(const SANE_Status& status) {
   }
 }
 
+// This function is the same as Chromium's GetScanJobFailureReason function
+// in src/chrome/browser/ash/scanning/scan_service.cc
+// DO NOT MAKE CHANGES TO THIS FUNCTION without first changing the original
+// one.
+//
+// Returns a ScanJobFailureReason corresponding to the given `failure_mode`.
+ScanJobFailureReason GetScanJobFailureReason(
+    const ScanFailureMode failure_mode) {
+  switch (failure_mode) {
+    case SCAN_FAILURE_MODE_UNKNOWN:
+      return ScanJobFailureReason::kUnknownScannerError;
+    case SCAN_FAILURE_MODE_DEVICE_BUSY:
+      return ScanJobFailureReason::kDeviceBusy;
+    case SCAN_FAILURE_MODE_ADF_JAMMED:
+      return ScanJobFailureReason::kAdfJammed;
+    case SCAN_FAILURE_MODE_ADF_EMPTY:
+      return ScanJobFailureReason::kAdfEmpty;
+    case SCAN_FAILURE_MODE_FLATBED_OPEN:
+      return ScanJobFailureReason::kFlatbedOpen;
+    case SCAN_FAILURE_MODE_IO_ERROR:
+      return ScanJobFailureReason::kIoError;
+    case SCAN_FAILURE_MODE_NO_FAILURE:
+      [[fallthrough]];
+    case ScanFailureMode_INT_MIN_SENTINEL_DO_NOT_USE_:
+      [[fallthrough]];
+    case ScanFailureMode_INT_MAX_SENTINEL_DO_NOT_USE_:
+      NOTREACHED();
+      return ScanJobFailureReason::kUnknownScannerError;
+  }
+}
 }  // namespace
 
 namespace impl {
@@ -144,6 +174,8 @@ ColorMode ColorModeFromSaneString(const std::string& mode) {
 const char Manager::kMetricScanRequested[] = "DocumentScan.ScanRequested";
 const char Manager::kMetricScanSucceeded[] = "DocumentScan.ScanSucceeded";
 const char Manager::kMetricScanFailed[] = "DocumentScan.ScanFailed";
+const char Manager::kMetricScanFailedFailureReason[] =
+    "DocumentScan.ScanFailureReason";
 
 Manager::Manager(
     base::RepeatingCallback<void(base::TimeDelta)> activity_callback,
@@ -711,7 +743,7 @@ bool Manager::StartScanInternal(brillo::ErrorPtr* error,
     if (failure_mode)
       *failure_mode = GetScanFailureMode(status);
 
-    ReportScanFailed(request.device_name());
+    ReportScanFailed(request.device_name(), GetScanFailureMode(status));
     return false;
   }
 
@@ -741,7 +773,7 @@ void Manager::GetNextImageInternal(const std::string& uuid,
       LOG(ERROR) << "Unexpected scan state: " << ScanState_Name(result);
       [[fallthrough]];
     case SCAN_STATE_FAILED:
-      ReportScanFailed(scan_state->device_name);
+      ReportScanFailed(scan_state->device_name, failure_mode);
       SendFailureSignal(uuid, SerializeError(error), failure_mode);
       {
         base::AutoLock auto_lock(active_scans_lock_);
@@ -802,8 +834,9 @@ void Manager::GetNextImageInternal(const std::string& uuid,
     brillo::Error::AddToPrintf(&error, FROM_HERE, kDbusDomain,
                                kManagerServiceError, "Failed to start scan: %s",
                                sane_strstatus(status));
-    ReportScanFailed(scan_state->device_name);
-    SendFailureSignal(uuid, SerializeError(error), GetScanFailureMode(status));
+    failure_mode = GetScanFailureMode(status);
+    ReportScanFailed(scan_state->device_name, failure_mode);
+    SendFailureSignal(uuid, SerializeError(error), failure_mode);
     {
       base::AutoLock auto_lock(active_scans_lock_);
       active_scans_.erase(uuid);
@@ -965,9 +998,12 @@ void Manager::ReportScanSucceeded(const std::string& device_name) {
   metrics_library_->SendEnumToUMA(kMetricScanSucceeded, backend);
 }
 
-void Manager::ReportScanFailed(const std::string& device_name) {
+void Manager::ReportScanFailed(const std::string& device_name,
+                               const ScanFailureMode failure_mode) {
   DocumentScanSaneBackend backend = BackendFromDeviceName(device_name);
   metrics_library_->SendEnumToUMA(kMetricScanFailed, backend);
+  metrics_library_->SendEnumToUMA(kMetricScanFailedFailureReason,
+                                  GetScanJobFailureReason(failure_mode));
 }
 
 void Manager::SendStatusSignal(const std::string& uuid,
