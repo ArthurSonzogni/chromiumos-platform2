@@ -366,6 +366,7 @@ generate_pkg_config("libbrillo-test_pc") {
 static_library("libbrillo-test") {
   sources = [
     "brillo/blkdev_utils/loop_device_fake.cc",
+    "brillo/fake_cryptohome.cc",
     "brillo/http/http_connection_fake.cc",
     "brillo/http/http_transport_fake.cc",
     "brillo/message_loops/fake_message_loop.cc",

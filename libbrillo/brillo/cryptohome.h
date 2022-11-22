@@ -1,3 +1,4 @@
+
 // Copyright 2012 The ChromiumOS Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
@@ -5,9 +6,14 @@
 #ifndef LIBBRILLO_BRILLO_CRYPTOHOME_H_
 #define LIBBRILLO_BRILLO_CRYPTOHOME_H_
 
+#include <stdint.h>
+
+#include <memory>
 #include <string>
+#include <vector>
 
 #include <base/files/file_path.h>
+#include <base/no_destructor.h>
 #include <brillo/brillo_export.h>
 #include <brillo/secure_blob.h>
 
@@ -63,19 +69,54 @@ BRILLO_EXPORT std::string SanitizeUserNameWithSalt(const std::string& username,
 // created. This is used for testing only.
 BRILLO_EXPORT void SetUserHomePrefix(const std::string& prefix);
 
-// Overrides the contents of the system salt.
-// salt should be non-NULL and non-empty when attempting to avoid filesystem
-// usage in tests.
-// Note:
-// (1) Never mix usage with SetSystemSaltPath().
-// (2) Ownership of the pointer stays with the caller.
+// Deprecated. Prefer `FakeSystemSaltLoader`.
 BRILLO_EXPORT void SetSystemSalt(std::string* salt);
 
-// Returns the system salt.
+// Deprecated. Prefer `FakeSystemSaltLoader`.
 BRILLO_EXPORT std::string* GetSystemSalt();
 
-// Ensures the system salt is loaded in the memory.
+// Deprecated. Prefer `SystemSaltLoader::GetInstance().EnsureLoaded()`.
 BRILLO_EXPORT bool EnsureSystemSaltIsLoaded();
+
+// Helper for loading the system salt value from disk.
+class BRILLO_EXPORT SystemSaltLoader {
+ public:
+  // Returns the global singleton instance. If there's none, automatically
+  // creates one with the default parameters.
+  // TODO(b/260721017): Don't create the default instance automatically.
+  static SystemSaltLoader* GetInstance();
+
+  // Creates an instance that loads salt from the default file path. Also
+  // initializes the global singleton returned by `GetInstance()`.
+  SystemSaltLoader();
+
+  SystemSaltLoader(const SystemSaltLoader&) = delete;
+  SystemSaltLoader& operator=(const SystemSaltLoader&) = delete;
+
+  virtual ~SystemSaltLoader();
+
+  // Attempts to load the salt unless it was already done. Returns false if the
+  // loading failed.
+  bool EnsureLoaded();
+  // Returns the salt, or an empty string if it wasn't loaded.
+  const std::string& value() const;
+
+  // TODO(b/254864841): Remove once `GetSystemSalt()` is removed.
+  std::string* value_or_override();
+  // TODO(b/254864841): Remove once `SetSystemSalt()` is removed.
+  void override_value_for_testing(std::string* new_value);
+
+ protected:
+  explicit SystemSaltLoader(base::FilePath file_path);
+
+  const base::FilePath file_path_;
+  std::string value_;
+
+ private:
+  // TODO(b/254864841): Remove once `GetSystemSalt()` and `SetSystemSalt()` are
+  // removed.
+  std::string* value_override_for_testing_ = nullptr;
+};
 
 }  // namespace home
 }  // namespace cryptohome
