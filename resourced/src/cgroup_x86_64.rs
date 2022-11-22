@@ -8,15 +8,16 @@ use std::path::Path;
 use std::sync::Mutex;
 
 use anyhow::{bail, Context, Result};
-use featured::CheckFeature; // Trait CheckFeature is for is_feature_enabled_blocking
 use glob::glob;
 use libchromeos::sys::info;
 use once_cell::sync::{Lazy, OnceCell};
 
 use crate::common;
 
+#[cfg(feature = "chromeos")]
+use featured::CheckFeature; // Trait CheckFeature is for is_feature_enabled_blocking
+
 const MEDIA_MIN_ECORE_NUM: u32 = 4;
-const FEATURE_MEDIA_DYNAMIC_CGROUP: &str = "CrOSLateBootMediaDynamicCgroup";
 
 static MEDIA_DYNAMIC_CGROUP_ACTIVE: Lazy<Mutex<bool>> = Lazy::new(|| Mutex::new(false));
 static CGROUP_FEATURE_ENABLED: OnceCell<bool> = OnceCell::new();
@@ -32,24 +33,32 @@ pub fn init() -> Result<()> {
         bail!("CGROUP_FEATURE_ENABLED is already initilized");
     }
 
-    let feature = featured::Feature::new(FEATURE_MEDIA_DYNAMIC_CGROUP, false)?;
-    let features = featured::PlatformFeatures::new()?;
-
-    if CGROUP_FEATURE_ENABLED
-        .set(features.is_feature_enabled_blocking(&feature))
-        .is_err()
+    #[cfg(feature = "chromeos")]
     {
-        bail!("Failed to set CGROUP_FEATURE_ENABLED");
+        const FEATURE_MEDIA_DYNAMIC_CGROUP: &str = "CrOSLateBootMediaDynamicCgroup";
+        let feature = featured::Feature::new(FEATURE_MEDIA_DYNAMIC_CGROUP, false)?;
+        let features = featured::PlatformFeatures::new()?;
+
+        if CGROUP_FEATURE_ENABLED
+            .set(features.is_feature_enabled_blocking(&feature))
+            .is_err()
+        {
+            bail!("Failed to set CGROUP_FEATURE_ENABLED");
+        }
     }
 
     Ok(())
 }
 
 fn is_dynamic_cgroup_enabled() -> Result<bool> {
+    #[cfg(feature = "chromeos")]
     match CGROUP_FEATURE_ENABLED.get() {
         Some(value) => Ok(*value),
         None => bail!("CGROUP_FEATURE_ENABLED is not initilized"),
     }
+
+    #[cfg(not(feature = "chromeos"))]
+    Ok(false)
 }
 
 fn write_cpusets(root: &Path, cpus: &str) -> Result<()> {
