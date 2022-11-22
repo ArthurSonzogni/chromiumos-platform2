@@ -3163,4 +3163,9 @@ bool Manager::SetLOHSConfig(const KeyValueStore& properties, Error* error) {
   // TODO(b/257880335): Implement setting the LOHS config.
   return false;
 }
+
+void Manager::TetheringStatusChanged(const KeyValueStore& status) {
+  adaptor_->EmitKeyValueStoreChanged(kTetheringStatusProperty, status);
+}
+
 }  // namespace shill

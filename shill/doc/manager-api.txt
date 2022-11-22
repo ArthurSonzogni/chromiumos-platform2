@@ -797,7 +797,7 @@ Properties	object ActiveProfile [readonly]
 				channel number for WiFi downstream (WiFi downstream only)
 			string state
 				state of the tethering instance. The state could be any one of
-				"idle", "starting", "active", "stopping", "failure"
+				"idle", "starting", "active"
 			array{dict} active_clients
 				string IPv4
 					IPv4 address of the associated client expressed in the

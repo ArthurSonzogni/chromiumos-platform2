@@ -953,10 +953,8 @@ const char kTetheringStatusUpstreamServiceProperty[] = "upstream_service";
 
 // kTetheringStatusStateProperty values
 const char kTetheringStateActive[] = "active";
-const char kTetheringStateFailure[] = "failure";
 const char kTetheringStateIdle[] = "idle";
 const char kTetheringStateStarting[] = "starting";
-const char kTetheringStateStopping[] = "stopping";
 
 // SetTetheringEnabled result values
 const char kTetheringEnableResultFailure[] = "failure";

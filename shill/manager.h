@@ -534,6 +534,9 @@ class Manager {
   }
 #endif  // DISABLE_FLOSS
 
+  // Emit TetheringStatus dbus property change signal.
+  void TetheringStatusChanged(const KeyValueStore& status);
+
  private:
   friend class ArcVpnDriverTest;
   friend class CellularTest;

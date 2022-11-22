@@ -5,11 +5,14 @@
 #ifndef SHILL_TETHERING_MANAGER_H_
 #define SHILL_TETHERING_MANAGER_H_
 
+#include <memory>
 #include <string>
 
 #include "shill/refptr_types.h"
 #include "shill/store/property_store.h"
 #include "shill/technology.h"
+#include "shill/wifi/local_device.h"
+#include "shill/wifi/local_service.h"
 #include "shill/wifi/wifi_rf.h"
 #include "shill/wifi/wifi_security.h"
 
@@ -51,6 +54,12 @@ class TetheringManager {
 
   static const std::string SetEnabledResultName(SetEnabledResult result);
 
+  enum class TetheringState {
+    kTetheringIdle,
+    kTetheringStarting,
+    kTetheringActive,
+  };
+
   // Storage group for tethering configs.
   static constexpr char kStorageId[] = "tethering";
 
@@ -78,6 +87,7 @@ class TetheringManager {
   // Unload the tethering config related to |profile| and reset the tethering
   // config with default values.
   virtual void UnloadConfigFromProfile();
+  static const char* TetheringStateName(const TetheringState& state);
 
  private:
   friend class TetheringManagerTest;
@@ -88,19 +98,16 @@ class TetheringManager {
   FRIEND_TEST(TetheringManagerTest, SaveConfig);
   FRIEND_TEST(TetheringManagerTest, SetEnabled);
 
-  enum class TetheringState {
-    kTetheringIdle,
-    kTetheringStarting,
-    kTetheringActive,
-    kTetheringStopping,
-    kTetheringFailure
-  };
+  using SetEnabledResultCallback =
+      base::OnceCallback<void(SetEnabledResult result)>;
 
+  // Tethering properties get handlers.
   KeyValueStore GetCapabilities(Error* error);
   KeyValueStore GetConfig(Error* error);
+  KeyValueStore GetStatus();
+  KeyValueStore GetStatus(Error* error) { return GetStatus(); }
+
   bool SetAndPersistConfig(const KeyValueStore& config, Error* error);
-  KeyValueStore GetStatus(Error* error);
-  static const char* TetheringStateToString(const TetheringState& state);
   // Populate the shill D-Bus parameter map |properties| with the
   // parameters contained in |this| and return true if successful.
   bool ToProperties(KeyValueStore* properties) const;
@@ -113,6 +120,20 @@ class TetheringManager {
   bool Save(StoreInterface* storage);
   // Load the current tethering config from user's profile.
   bool Load(const StoreInterface* storage);
+  // Set tethering state and emit dbus property changed signal.
+  void SetState(TetheringState state);
+  void OnDownstreamDeviceEvent(LocalDevice::DeviceEvent event,
+                               const LocalDevice* device);
+  // Trigger callback function asynchronously to post SetTetheringEnabled dbus
+  // result.
+  void PostSetEnabledResult(SetEnabledResult result);
+  // Check if all the tethering resources are ready. If so post the
+  // SetTetheringEnabled dbus result.
+  void CheckAndPostTetheringResult();
+  // Prepare tethering resources to start a tethering session.
+  void StartTetheringSession();
+  // Stop and free tethering resources.
+  void StopTetheringSession();
 
   // TetheringManager is created and owned by Manager.
   Manager* manager_;
@@ -137,7 +158,21 @@ class TetheringManager {
   WiFiBand band_;
   // Preferred upstream technology to use.
   Technology upstream_technology_;
+
+  // Member to hold the result callback function. This callback function gets
+  // set when dbus method SetTetheringEnabled is called and runs when the async
+  // method call is done.
+  SetEnabledResultCallback result_callback_;
+  // Downlink hotspot device.
+  HotspotDeviceRefPtr hotspot_dev_;
+  // If downstream hotspot device event kServiceUp has been received or not.
+  bool hotspot_service_up_;
 };
+
+inline std::ostream& operator<<(std::ostream& stream,
+                                TetheringManager::TetheringState state) {
+  return stream << TetheringManager::TetheringStateName(state);
+}
 
 }  // namespace shill
 

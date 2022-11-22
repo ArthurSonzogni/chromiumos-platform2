@@ -12,6 +12,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/bind.h>
 #include <base/rand_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <chromeos/dbus/shill/dbus-constants.h>
@@ -22,7 +23,10 @@
 #include "shill/profile.h"
 #include "shill/store/property_accessor.h"
 #include "shill/technology.h"
+#include "shill/wifi/hotspot_device.h"
+#include "shill/wifi/hotspot_service.h"
 #include "shill/wifi/wifi.h"
+#include "shill/wifi/wifi_provider.h"
 
 namespace shill {
 
@@ -65,8 +69,11 @@ bool StoreToConfigString(const StoreInterface* storage,
 TetheringManager::TetheringManager(Manager* manager)
     : manager_(manager),
       allowed_(false),
-      state_(TetheringState::kTetheringIdle) {
+      state_(TetheringState::kTetheringIdle),
+      hotspot_dev_(nullptr),
+      hotspot_service_up_(false) {
   ResetConfiguration();
+  LOG(INFO) << "TetheringManager started.";
 }
 
 TetheringManager::~TetheringManager() = default;
@@ -302,16 +309,25 @@ KeyValueStore TetheringManager::GetCapabilities(Error* /* error */) {
   return caps;
 }
 
-KeyValueStore TetheringManager::GetStatus(Error* /* error */) {
+KeyValueStore TetheringManager::GetStatus() {
   KeyValueStore status;
   status.Set<std::string>(kTetheringStatusStateProperty,
-                          TetheringStateToString(state_));
+                          TetheringStateName(state_));
   return status;
 }
 
+void TetheringManager::SetState(TetheringState state) {
+  if (state_ == state)
+    return;
+
+  LOG(INFO) << "State changed from " << state_ << " to " << state;
+  state_ = state;
+
+  manager_->TetheringStatusChanged(GetStatus());
+}
+
 // static
-const char* TetheringManager::TetheringStateToString(
-    const TetheringState& state) {
+const char* TetheringManager::TetheringStateName(const TetheringState& state) {
   switch (state) {
     case TetheringState::kTetheringIdle:
       return kTetheringStateIdle;
@@ -319,10 +335,6 @@ const char* TetheringManager::TetheringStateToString(
       return kTetheringStateStarting;
     case TetheringState::kTetheringActive:
       return kTetheringStateActive;
-    case TetheringState::kTetheringStopping:
-      return kTetheringStateStopping;
-    case TetheringState::kTetheringFailure:
-      return kTetheringStateFailure;
     default:
       NOTREACHED() << "Unhandled tethering state " << static_cast<int>(state);
       return "Invalid";
@@ -331,15 +343,134 @@ const char* TetheringManager::TetheringStateToString(
 
 void TetheringManager::Start() {}
 
-void TetheringManager::Stop() {}
+void TetheringManager::Stop() {
+  StopTetheringSession();
+}
 
-void TetheringManager::SetEnabled(
-    bool enabled, base::OnceCallback<void(SetEnabledResult result)> callback) {
+void TetheringManager::PostSetEnabledResult(SetEnabledResult result) {
+  if (result_callback_) {
+    manager_->dispatcher()->PostTask(
+        FROM_HERE, base::BindOnce(std::move(result_callback_), result));
+  }
+}
+
+void TetheringManager::CheckAndPostTetheringResult() {
+  if (!hotspot_dev_ || !hotspot_dev_->IsServiceUp()) {
+    // Downstream hotspot device or service is not ready.
+    if (hotspot_service_up_) {
+      // Has already received the kServiceUp event, but device state is not
+      // correct, something went wrong. Terminate tethering session.
+      LOG(ERROR) << "Has received kServiceUp event from hotspot device but the "
+                    "device state is not correct. Terminate tethering session";
+      PostSetEnabledResult(SetEnabledResult::kFailure);
+      StopTetheringSession();
+    }
+    return;
+  }
+
+  // TODO(b/235762439): Check other tethering modules.
+
+  // TODO(b/235762746) Check if Internet access has been validated on the
+  // upstream network (pending integration of PortalDetection into the Network
+  // class).
+
+  SetState(TetheringState::kTetheringActive);
+  PostSetEnabledResult(SetEnabledResult::kSuccess);
+}
+
+void TetheringManager::StartTetheringSession() {
+  if (hotspot_dev_) {
+    LOG(ERROR) << "Tethering resources are not null when starting tethering "
+                  "session.";
+    PostSetEnabledResult(SetEnabledResult::kFailure);
+    return;
+  }
+
+  LOG(INFO) << __func__;
+
+  // Prepare the downlink hotspot device.
+  // TODO(b/235760422) Generate random MAC address and pass it to
+  // WiFiProvider.
+  hotspot_service_up_ = false;
+  hotspot_dev_ = manager_->wifi_provider()->CreateHotspotDevice(
+      "", band_, security_,
+      base::BindRepeating(&TetheringManager::OnDownstreamDeviceEvent,
+                          base::Unretained(this)));
+  if (!hotspot_dev_) {
+    LOG(ERROR) << __func__ << ": failed to create a WiFi AP interface";
+    PostSetEnabledResult(SetEnabledResult::kFailure);
+    StopTetheringSession();
+    return;
+  }
+
+  // Prepare the downlink service.
+  std::unique_ptr<HotspotService> service = std::make_unique<HotspotService>(
+      hotspot_dev_, hex_ssid_, passphrase_, security_);
+  if (!hotspot_dev_->ConfigureService(std::move(service))) {
+    LOG(ERROR) << __func__ << ": failed to configure the service";
+    PostSetEnabledResult(SetEnabledResult::kFailure);
+    StopTetheringSession();
+    return;
+  }
+
+  // TODO(b/235762439): Routine to enable other tethering modules.
+
+  // TODO(b/235762439): Add timer to timeout the start process if resources are
+  // not ready for a long time.
+
+  // TODO(b/235762746) If the upstream technology is Cellular, obtain the
+  // upstream Network with CellularServiceProvider::AcquireTetheringNetwork.
+}
+
+void TetheringManager::StopTetheringSession() {
+  if (state_ == TetheringState::kTetheringIdle) {
+    return;
+  }
+
+  LOG(INFO) << __func__;
+
+  // Remove the downstream device if any.
+  if (hotspot_dev_) {
+    hotspot_dev_->DeconfigureService();
+    manager_->wifi_provider()->DeleteLocalDevice(hotspot_dev_);
+    hotspot_dev_ = nullptr;
+  }
+
+  // TODO(b/235762439): Routine to disable other tethering modules.
+  hotspot_service_up_ = false;
+  SetState(TetheringState::kTetheringIdle);
+}
+
+void TetheringManager::OnDownstreamDeviceEvent(LocalDevice::DeviceEvent event,
+                                               const LocalDevice* device) {
+  if (!hotspot_dev_ || hotspot_dev_.get() != device) {
+    LOG(ERROR) << "Receive event from unmatched local device: "
+               << device->link_name();
+    return;
+  }
+
+  LOG(INFO) << "TetheringManager receive downstream device "
+            << device->link_name() << " event: " << event;
+
+  if (event == LocalDevice::DeviceEvent::kInterfaceDisabled ||
+      event == LocalDevice::DeviceEvent::kServiceDown) {
+    if (state_ == TetheringState::kTetheringStarting) {
+      PostSetEnabledResult(SetEnabledResult::kFailure);
+    }
+    StopTetheringSession();
+  } else if (event == LocalDevice::DeviceEvent::kServiceUp) {
+    hotspot_service_up_ = true;
+    CheckAndPostTetheringResult();
+  }
+}
+
+void TetheringManager::SetEnabled(bool enabled,
+                                  SetEnabledResultCallback callback) {
+  result_callback_ = std::move(callback);
+
   if (!allowed_) {
     LOG(ERROR) << __func__ << ": not allowed";
-    manager_->dispatcher()->PostTask(
-        FROM_HERE,
-        base::BindOnce(std::move(callback), SetEnabledResult::kNotAllowed));
+    PostSetEnabledResult(SetEnabledResult::kNotAllowed);
     return;
   }
 
@@ -347,31 +478,35 @@ void TetheringManager::SetEnabled(
   // TODO(b/172224298): prefer using Profile::IsDefault.
   if (profile->GetUser().empty()) {
     LOG(ERROR) << __func__ << ": not allowed without user profile";
-    manager_->dispatcher()->PostTask(
-        FROM_HERE,
-        base::BindOnce(std::move(callback), SetEnabledResult::kNotAllowed));
+    PostSetEnabledResult(SetEnabledResult::kNotAllowed);
     return;
   }
 
   if (!Save(profile->GetStorage())) {
     LOG(ERROR) << __func__ << ": failed to save config to user profile";
-    manager_->dispatcher()->PostTask(
-        FROM_HERE,
-        base::BindOnce(std::move(callback), SetEnabledResult::kFailure));
+    PostSetEnabledResult(SetEnabledResult::kFailure);
     return;
   }
 
-  // TODO(b/235762746) If the upstream technology is Cellular, obtain the
-  // upstream Network with CellularServiceProvider::AcquireTetheringNetwork.
+  if (enabled) {
+    if (state_ != TetheringState::kTetheringIdle) {
+      LOG(ERROR) << __func__ << ": tethering session is not in idle state";
+      PostSetEnabledResult(SetEnabledResult::kFailure);
+      return;
+    }
 
-  // TODO(b/235762746) Check if Internet access has been validated on the
-  // upstream network (pending integration of PortalDetection into the Network
-  // class).
+    SetState(TetheringState::kTetheringStarting);
+    StartTetheringSession();
+  } else {
+    if (state_ != TetheringState::kTetheringActive) {
+      LOG(ERROR) << __func__ << ": no active tethering session";
+      PostSetEnabledResult(SetEnabledResult::kFailure);
+      return;
+    }
 
-  // TODO(b/235762439): Routine to enable/disable tethering session.
-  manager_->dispatcher()->PostTask(
-      FROM_HERE,
-      base::BindOnce(std::move(callback), SetEnabledResult::kSuccess));
+    StopTetheringSession();
+    PostSetEnabledResult(SetEnabledResult::kSuccess);
+  }
 }
 
 // static
@@ -508,6 +643,7 @@ void TetheringManager::LoadConfigFromProfile(const ProfileRefPtr& profile) {
 }
 
 void TetheringManager::UnloadConfigFromProfile() {
+  StopTetheringSession();
   ResetConfiguration();
 }
 
