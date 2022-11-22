@@ -330,7 +330,8 @@ void CrosHealthdRoutineService::RunSmartctlCheckRoutine(
     mojo_ipc::NullableUint32Ptr percentage_used_threshold,
     RunSmartctlCheckRoutineCallback callback) {
   RunRoutine(
-      routine_factory_->MakeSmartctlCheckRoutine(context_->debugd_proxy()),
+      routine_factory_->MakeSmartctlCheckRoutine(
+          context_->debugd_proxy(), std::move(percentage_used_threshold)),
       mojo_ipc::DiagnosticRoutineEnum::kSmartctlCheck, std::move(callback));
 }
 

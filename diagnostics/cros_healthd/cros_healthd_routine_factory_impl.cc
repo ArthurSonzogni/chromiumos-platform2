@@ -89,9 +89,14 @@ CrosHealthdRoutineFactoryImpl::MakeBatteryHealthRoutine() {
 
 std::unique_ptr<DiagnosticRoutine>
 CrosHealthdRoutineFactoryImpl::MakeSmartctlCheckRoutine(
-    org::chromium::debugdProxyInterface* debugd_proxy) {
+    org::chromium::debugdProxyInterface* debugd_proxy,
+    ash::cros_healthd::mojom::NullableUint32Ptr percentage_used_threshold) {
   DCHECK(debugd_proxy);
-  return std::make_unique<SmartctlCheckRoutine>(debugd_proxy);
+  return std::make_unique<SmartctlCheckRoutine>(
+      debugd_proxy,
+      percentage_used_threshold.is_null()
+          ? std::nullopt
+          : std::optional<uint32_t>(percentage_used_threshold->value));
 }
 
 std::unique_ptr<DiagnosticRoutine>

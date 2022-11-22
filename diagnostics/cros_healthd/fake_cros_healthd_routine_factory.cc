@@ -220,7 +220,8 @@ FakeCrosHealthdRoutineFactory::MakeBatteryHealthRoutine() {
 
 std::unique_ptr<DiagnosticRoutine>
 FakeCrosHealthdRoutineFactory::MakeSmartctlCheckRoutine(
-    org::chromium::debugdProxyInterface* debugd_proxy) {
+    org::chromium::debugdProxyInterface* debugd_proxy,
+    mojo_ipc::NullableUint32Ptr percentage_used_threshold) {
   return std::move(next_routine_);
 }
 

@@ -385,7 +385,31 @@ TEST_F(CrosHealthdRoutineServiceTest, RunUrandomRoutine) {
 }
 
 // Test that the smartctl check routine can be run.
-TEST_F(CrosHealthdRoutineServiceTest, RunSmartctlCheckRoutine) {
+TEST_F(CrosHealthdRoutineServiceTest, RunSmartctlCheckRoutineWithoutParam) {
+  constexpr mojo_ipc::DiagnosticRoutineStatusEnum kExpectedStatus =
+      mojo_ipc::DiagnosticRoutineStatusEnum::kRunning;
+  routine_factory()->SetNonInteractiveStatus(
+      kExpectedStatus, /*status_message=*/"", /*progress_percent=*/50,
+      /*output=*/"");
+
+  mojo_ipc::RunRoutineResponsePtr response;
+  base::RunLoop run_loop;
+  // Pass the threshold as nullptr to test interface's backward compatibility.
+  service()->RunSmartctlCheckRoutine(
+      /*percentage_used_threshold=*/nullptr,
+      base::BindLambdaForTesting(
+          [&](mojo_ipc::RunRoutineResponsePtr received_response) {
+            response = std::move(received_response);
+            run_loop.Quit();
+          }));
+  run_loop.Run();
+
+  EXPECT_EQ(response->id, 1);
+  EXPECT_EQ(response->status, kExpectedStatus);
+}
+
+// Test that the smartctl check routine can be run.
+TEST_F(CrosHealthdRoutineServiceTest, RunSmartctlCheckRoutineWithParam) {
   constexpr mojo_ipc::DiagnosticRoutineStatusEnum kExpectedStatus =
       mojo_ipc::DiagnosticRoutineStatusEnum::kRunning;
   routine_factory()->SetNonInteractiveStatus(
@@ -395,7 +419,7 @@ TEST_F(CrosHealthdRoutineServiceTest, RunSmartctlCheckRoutine) {
   mojo_ipc::RunRoutineResponsePtr response;
   base::RunLoop run_loop;
   service()->RunSmartctlCheckRoutine(
-      /*percentage_used_threshold=*/mojo_ipc::NullableUint32Ptr(),
+      /*percentage_used_threshold=*/mojo_ipc::NullableUint32::New(255),
       base::BindLambdaForTesting(
           [&](mojo_ipc::RunRoutineResponsePtr received_response) {
             response = std::move(received_response);

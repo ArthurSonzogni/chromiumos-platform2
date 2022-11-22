@@ -52,7 +52,9 @@ class FakeCrosHealthdRoutineFactory final : public CrosHealthdRoutineFactory {
   std::unique_ptr<DiagnosticRoutine> MakeBatteryCapacityRoutine() override;
   std::unique_ptr<DiagnosticRoutine> MakeBatteryHealthRoutine() override;
   std::unique_ptr<DiagnosticRoutine> MakeSmartctlCheckRoutine(
-      org::chromium::debugdProxyInterface* debugd_proxy) override;
+      org::chromium::debugdProxyInterface* debugd_proxy,
+      ash::cros_healthd::mojom::NullableUint32Ptr percentage_used_threshold)
+      override;
   std::unique_ptr<DiagnosticRoutine> MakeAcPowerRoutine(
       ash::cros_healthd::mojom::AcPowerStatusEnum expected_status,
       const std::optional<std::string>& expected_power_type) override;

@@ -41,7 +41,9 @@ class CrosHealthdRoutineFactory {
   // Constructs a new instance of the smartctl check routine. See
   // diagnostics/routines/smartctl_check for details on the routine itself.
   virtual std::unique_ptr<DiagnosticRoutine> MakeSmartctlCheckRoutine(
-      org::chromium::debugdProxyInterface* debugd_proxy) = 0;
+      org::chromium::debugdProxyInterface* debugd_proxy,
+      ash::cros_healthd::mojom::NullableUint32Ptr
+          percentage_used_threshold) = 0;
   // Constructs a new instance of the AC power routine. See
   // diagnostics/routines/battery_sysfs for details on the routine itself.
   virtual std::unique_ptr<DiagnosticRoutine> MakeAcPowerRoutine(

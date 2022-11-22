@@ -5,6 +5,8 @@
 #include "diagnostics/cros_healthd/routines/smartctl_check/smartctl_check.h"
 
 #include <memory>
+#include <optional>
+#include <string>
 #include <utility>
 
 #include <base/base64.h>
@@ -40,9 +42,11 @@ namespace {
 //   (...truncated)
 bool ScrapeSmartctlAttributes(const std::string& output,
                               int* available_spare,
-                              int* available_spare_threshold) {
+                              int* available_spare_threshold,
+                              int* percentage_used) {
   bool found_available_spare = false;
   bool found_available_spare_threshold = false;
+  bool found_percentage_used = false;
   base::StringPairs pairs;
   base::SplitStringIntoKeyValuePairs(output, ':', '\n', &pairs);
   for (const auto& pair : pairs) {
@@ -61,6 +65,9 @@ bool ScrapeSmartctlAttributes(const std::string& output,
     } else if (key == "Available Spare Threshold") {
       target = available_spare_threshold;
       flag = &found_available_spare_threshold;
+    } else if (key == "Percentage Used") {
+      target = percentage_used;
+      flag = &found_percentage_used;
     } else {
       continue;
     }
@@ -72,7 +79,8 @@ bool ScrapeSmartctlAttributes(const std::string& output,
         *target = value;
     }
 
-    if (found_available_spare && found_available_spare_threshold) {
+    if (found_available_spare && found_available_spare_threshold &&
+        found_percentage_used) {
       return true;
     }
   }
@@ -83,15 +91,39 @@ bool ScrapeSmartctlAttributes(const std::string& output,
 
 namespace mojom = ::ash::cros_healthd::mojom;
 
+// Max and min value of "Percentage Used", used to validate input threshold.
+// According to NVMe spec, this value is allowed to exceed 100, and values
+// greater than 254 shall be represented as 255.
+constexpr uint32_t SmartctlCheckRoutine::kPercentageUsedMax = 255;
+constexpr uint32_t SmartctlCheckRoutine::kPercentageUsedMin = 0;
+
 SmartctlCheckRoutine::SmartctlCheckRoutine(
-    org::chromium::debugdProxyInterface* debugd_proxy)
+    org::chromium::debugdProxyInterface* debugd_proxy,
+    const std::optional<uint32_t>& percentage_used_threshold)
     : debugd_proxy_(debugd_proxy) {
   DCHECK(debugd_proxy_);
+  if (percentage_used_threshold.has_value()) {
+    percentage_used_threshold_ = percentage_used_threshold.value();
+  } else {
+    LOG(INFO)
+        << "percentage_used_threshold is empty. Default to the maximum value ("
+        << kPercentageUsedMax << ")";
+    percentage_used_threshold_ = kPercentageUsedMax;
+  }
 }
 
 SmartctlCheckRoutine::~SmartctlCheckRoutine() = default;
 
 void SmartctlCheckRoutine::Start() {
+  if (percentage_used_threshold_ > kPercentageUsedMax ||
+      percentage_used_threshold_ < kPercentageUsedMin) {
+    LOG(ERROR) << "Invalid threshold value (valid: 0-255): "
+               << percentage_used_threshold_;
+    UpdateStatus(mojom::DiagnosticRoutineStatusEnum::kError,
+                 /*percent=*/100, kSmartctlCheckRoutineThresholdError);
+    return;
+  }
+
   status_ = mojom::DiagnosticRoutineStatusEnum::kRunning;
 
   auto result_callback =
@@ -145,8 +177,9 @@ mojom::DiagnosticRoutineStatusEnum SmartctlCheckRoutine::GetStatus() {
 void SmartctlCheckRoutine::OnDebugdResultCallback(const std::string& result) {
   int available_spare;
   int available_spare_threshold;
+  int percentage_used;
   if (!ScrapeSmartctlAttributes(result, &available_spare,
-                                &available_spare_threshold)) {
+                                &available_spare_threshold, &percentage_used)) {
     LOG(ERROR) << "Unable to parse smartctl output: " << result;
     // TODO(b/260956052): Make the routine only available to NVMe, and return
     // kError in the parsing error.
@@ -158,21 +191,53 @@ void SmartctlCheckRoutine::OnDebugdResultCallback(const std::string& result) {
   base::Value result_dict(base::Value::Type::DICTIONARY);
   result_dict.SetIntKey("availableSpare", available_spare);
   result_dict.SetIntKey("availableSpareThreshold", available_spare_threshold);
+  result_dict.SetIntKey("percentageUsed", percentage_used);
+  result_dict.SetIntKey("inputPercentageUsedThreshold",
+                        percentage_used_threshold_);
   output_dict_.SetKey("resultDetails", std::move(result_dict));
 
   const bool available_spare_check_passed =
       available_spare >= available_spare_threshold;
-  if (!available_spare_check_passed) {
-    LOG(ERROR) << "available_spare (" << available_spare
-               << "%) is less than available_spare_threshold ("
-               << available_spare_threshold << "%)";
-    UpdateStatus(mojom::DiagnosticRoutineStatusEnum::kFailed,
-                 /*percent=*/100, kSmartctlCheckRoutineFailedAvailableSpare);
+  const bool percentage_used_check_passed =
+      percentage_used <= percentage_used_threshold_;
+  if (!available_spare_check_passed || !percentage_used_check_passed) {
+    if (available_spare_check_passed) {
+      LOG(ERROR) << "available_spare (" << available_spare
+                 << "%) is greater than available_spare_threshold ("
+                 << available_spare_threshold << "%), but percentage_used ("
+                 << percentage_used
+                 << "%) exceeds the given percentage_used_threshold ("
+                 << percentage_used_threshold_ << "%)";
+      UpdateStatus(mojom::DiagnosticRoutineStatusEnum::kFailed,
+                   /*percent=*/100, kSmartctlCheckRoutineFailedPercentageUsed);
+    } else if (percentage_used_check_passed) {
+      LOG(ERROR) << "percentage_used (" << percentage_used
+                 << "%) does not exceed the given percentage_used_threshold ("
+                 << percentage_used_threshold_ << "%), but available_spare ("
+                 << available_spare
+                 << "%) is less than available_spare_threshold ("
+                 << available_spare_threshold << "%)";
+      UpdateStatus(mojom::DiagnosticRoutineStatusEnum::kFailed,
+                   /*percent=*/100, kSmartctlCheckRoutineFailedAvailableSpare);
+    } else {
+      LOG(ERROR) << "available_spare (" << available_spare
+                 << "%) is less than available_spare_threshold ("
+                 << available_spare_threshold << "%), and percentage_used ("
+                 << percentage_used
+                 << "%) exceeds the given percentage_used_threshold ("
+                 << percentage_used_threshold_ << "%)";
+      UpdateStatus(mojom::DiagnosticRoutineStatusEnum::kFailed,
+                   /*percent=*/100,
+                   kSmartctlCheckRoutineFailedAvailableSpareAndPercentageUsed);
+    }
     return;
   }
   LOG(INFO) << "available_spare (" << available_spare
             << "%) is greater than available_spare_threshold ("
-            << available_spare_threshold << "%)";
+            << available_spare_threshold << "%), and percentage_used ("
+            << percentage_used
+            << "%) does not exceed the given percentage_used_threshold ("
+            << percentage_used_threshold_ << "%)";
   UpdateStatus(mojom::DiagnosticRoutineStatusEnum::kPassed,
                /*percent=*/100, kSmartctlCheckRoutineSuccess);
 }

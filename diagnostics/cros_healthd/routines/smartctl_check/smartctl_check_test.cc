@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 
@@ -31,17 +32,21 @@ using ::testing::StrictMock;
 using ::testing::WithArg;
 
 constexpr char kSmartctlOutputFormat[] =
-    "\nAvailable Spare: %d%%\nAvailable Spare Threshold: %d%%";
+    "\nAvailable Spare: %d%%\nAvailable Spare Threshold: %d%%\nPercentage "
+    "Used: %d%%";
 
 std::string GetFakeSmartctlOutput(const int available_spare,
-                                  const int available_spare_threshold) {
+                                  const int available_spare_threshold,
+                                  const int percentage_used) {
   return base::StringPrintf(kSmartctlOutputFormat, available_spare,
-                            available_spare_threshold);
+                            available_spare_threshold, percentage_used);
 }
 
 void VerifyOutput(mojo::ScopedHandle handle,
                   const int expected_available_spare,
-                  const int expected_available_spare_threshold) {
+                  const int expected_available_spare_threshold,
+                  const int expected_percentage_used,
+                  const int expected_percentage_used_threshold) {
   ASSERT_TRUE(handle->is_valid());
   const auto& shm_mapping =
       diagnostics::GetReadOnlySharedMemoryMappingFromMojoHandle(
@@ -58,6 +63,10 @@ void VerifyOutput(mojo::ScopedHandle handle,
             expected_available_spare);
   ASSERT_EQ(result_details->FindInt("availableSpareThreshold"),
             expected_available_spare_threshold);
+  ASSERT_EQ(result_details->FindInt("percentageUsed"),
+            expected_percentage_used);
+  ASSERT_EQ(result_details->FindInt("inputPercentageUsedThreshold"),
+            expected_percentage_used_threshold);
 }
 
 class SmartctlCheckRoutineTest : public testing::Test {
@@ -68,8 +77,10 @@ class SmartctlCheckRoutineTest : public testing::Test {
 
   DiagnosticRoutine* routine() { return routine_.get(); }
 
-  void CreateSmartctlCheckRoutine() {
-    routine_ = std::make_unique<SmartctlCheckRoutine>(&debugd_proxy_);
+  void CreateSmartctlCheckRoutine(
+      const std::optional<uint32_t>& percentage_used_threshold) {
+    routine_ = std::make_unique<SmartctlCheckRoutine>(
+        &debugd_proxy_, percentage_used_threshold);
   }
 
   mojom::RoutineUpdatePtr RunRoutineAndWaitForExit() {
@@ -90,17 +101,18 @@ class SmartctlCheckRoutineTest : public testing::Test {
   std::unique_ptr<SmartctlCheckRoutine> routine_;
 };
 
-// Tests that the SmartctlCheck routine passes if available_spare is greater
-// than the available_spare_threshold.
-TEST_F(SmartctlCheckRoutineTest, Pass) {
+// Tests that the SmartctlCheck routine passes with input.
+TEST_F(SmartctlCheckRoutineTest, PassWithInput) {
   int available_spare = 100;
   int available_spare_threshold = 5;
+  int percentage_used = 50;
+  int percentage_used_threshold = 255;
 
-  CreateSmartctlCheckRoutine();
+  CreateSmartctlCheckRoutine(percentage_used_threshold);
   EXPECT_CALL(debugd_proxy_, SmartctlAsync("attributes", _, _, _))
       .WillOnce(WithArg<1>([&](OnceStringCallback callback) {
-        std::move(callback).Run(
-            GetFakeSmartctlOutput(available_spare, available_spare_threshold));
+        std::move(callback).Run(GetFakeSmartctlOutput(
+            available_spare, available_spare_threshold, percentage_used));
       }));
   EXPECT_EQ(routine()->GetStatus(), mojom::DiagnosticRoutineStatusEnum::kReady);
 
@@ -109,20 +121,53 @@ TEST_F(SmartctlCheckRoutineTest, Pass) {
                              mojom::DiagnosticRoutineStatusEnum::kPassed,
                              kSmartctlCheckRoutineSuccess);
   VerifyOutput(std::move(routine_update->output), available_spare,
-               available_spare_threshold);
+               available_spare_threshold, percentage_used,
+               percentage_used_threshold);
 }
 
-// Tests that the SmartctlCheck routine fails if available_spare is below the
+// Tests that the SmartctlCheck routine passes without input.
+TEST_F(SmartctlCheckRoutineTest, PassWithoutInput) {
+  int available_spare = 100;
+  int available_spare_threshold = 5;
+  int percentage_used = 50;
+
+  CreateSmartctlCheckRoutine(std::nullopt);
+  EXPECT_CALL(debugd_proxy_, SmartctlAsync("attributes", _, _, _))
+      .WillOnce(WithArg<1>([&](OnceStringCallback callback) {
+        std::move(callback).Run(GetFakeSmartctlOutput(
+            available_spare, available_spare_threshold, percentage_used));
+      }));
+  EXPECT_EQ(routine()->GetStatus(), mojom::DiagnosticRoutineStatusEnum::kReady);
+
+  const auto& routine_update = RunRoutineAndWaitForExit();
+  VerifyNonInteractiveUpdate(routine_update->routine_update_union,
+                             mojom::DiagnosticRoutineStatusEnum::kPassed,
+                             kSmartctlCheckRoutineSuccess);
+  VerifyOutput(std::move(routine_update->output), available_spare,
+               available_spare_threshold, percentage_used,
+               SmartctlCheckRoutine::kPercentageUsedMax);
+}
+
+// Tests that the SmartctlCheck routine fails if input threshold is invalid.
+TEST_F(SmartctlCheckRoutineTest, InvalidPercentageUsedThreshold) {
+  CreateSmartctlCheckRoutine(256);
+  VerifyNonInteractiveUpdate(RunRoutineAndWaitForExit()->routine_update_union,
+                             mojom::DiagnosticRoutineStatusEnum::kError,
+                             kSmartctlCheckRoutineThresholdError);
+}
+
+// Tests that the SmartctlCheck routine fails if available_spare is below
 // available_spare_threshold.
 TEST_F(SmartctlCheckRoutineTest, AvailableSpareBelowThreshold) {
   int available_spare = 1;
   int available_spare_threshold = 5;
+  int percentage_used = 50;
 
-  CreateSmartctlCheckRoutine();
+  CreateSmartctlCheckRoutine(std::nullopt);
   EXPECT_CALL(debugd_proxy_, SmartctlAsync("attributes", _, _, _))
       .WillOnce(WithArg<1>([&](OnceStringCallback callback) {
-        std::move(callback).Run(
-            GetFakeSmartctlOutput(available_spare, available_spare_threshold));
+        std::move(callback).Run(GetFakeSmartctlOutput(
+            available_spare, available_spare_threshold, percentage_used));
       }));
   EXPECT_EQ(routine()->GetStatus(), mojom::DiagnosticRoutineStatusEnum::kReady);
 
@@ -131,13 +176,67 @@ TEST_F(SmartctlCheckRoutineTest, AvailableSpareBelowThreshold) {
                              mojom::DiagnosticRoutineStatusEnum::kFailed,
                              kSmartctlCheckRoutineFailedAvailableSpare);
   VerifyOutput(std::move(routine_update->output), available_spare,
-               available_spare_threshold);
+               available_spare_threshold, percentage_used,
+               SmartctlCheckRoutine::kPercentageUsedMax);
+}
+
+// Tests that the SmartctlCheck routine fails if percentage_used exceeds
+// percentage_used_threshold.
+TEST_F(SmartctlCheckRoutineTest, PercentageUsedAboveThreshold) {
+  int available_spare = 100;
+  int available_spare_threshold = 5;
+  int percentage_used = 50;
+  int percentage_used_threshold = 5;
+
+  CreateSmartctlCheckRoutine(percentage_used_threshold);
+  EXPECT_CALL(debugd_proxy_, SmartctlAsync("attributes", _, _, _))
+      .WillOnce(WithArg<1>([&](OnceStringCallback callback) {
+        std::move(callback).Run(GetFakeSmartctlOutput(
+            available_spare, available_spare_threshold, percentage_used));
+      }));
+  EXPECT_EQ(routine()->GetStatus(), mojom::DiagnosticRoutineStatusEnum::kReady);
+
+  const auto& routine_update = RunRoutineAndWaitForExit();
+  VerifyNonInteractiveUpdate(routine_update->routine_update_union,
+                             mojom::DiagnosticRoutineStatusEnum::kFailed,
+                             kSmartctlCheckRoutineFailedPercentageUsed);
+  VerifyOutput(std::move(routine_update->output), available_spare,
+               available_spare_threshold, percentage_used,
+               percentage_used_threshold);
+}
+
+// Tests that the SmartctlCheck routine fails if available_spare is below
+// available_spare_threshold and percentage_used used exceeds
+// percentage_used_threshold.
+TEST_F(SmartctlCheckRoutineTest,
+       AvailableSpareBelowThresholdAndPercentageUsedAboveThreshold) {
+  int available_spare = 1;
+  int available_spare_threshold = 5;
+  int percentage_used = 50;
+  int percentage_used_threshold = 5;
+
+  CreateSmartctlCheckRoutine(percentage_used_threshold);
+  EXPECT_CALL(debugd_proxy_, SmartctlAsync("attributes", _, _, _))
+      .WillOnce(WithArg<1>([&](OnceStringCallback callback) {
+        std::move(callback).Run(GetFakeSmartctlOutput(
+            available_spare, available_spare_threshold, percentage_used));
+      }));
+  EXPECT_EQ(routine()->GetStatus(), mojom::DiagnosticRoutineStatusEnum::kReady);
+
+  const auto& routine_update = RunRoutineAndWaitForExit();
+  VerifyNonInteractiveUpdate(
+      routine_update->routine_update_union,
+      mojom::DiagnosticRoutineStatusEnum::kFailed,
+      kSmartctlCheckRoutineFailedAvailableSpareAndPercentageUsed);
+  VerifyOutput(std::move(routine_update->output), available_spare,
+               available_spare_threshold, percentage_used,
+               percentage_used_threshold);
 }
 
 // Tests that the SmartctlCheck routine fails if debugd proxy returns
 // invalid data.
 TEST_F(SmartctlCheckRoutineTest, InvalidDebugdData) {
-  CreateSmartctlCheckRoutine();
+  CreateSmartctlCheckRoutine(std::nullopt);
   EXPECT_CALL(debugd_proxy_, SmartctlAsync("attributes", _, _, _))
       .WillOnce(WithArg<1>(
           [&](OnceStringCallback callback) { std::move(callback).Run(""); }));
@@ -153,7 +252,7 @@ TEST_F(SmartctlCheckRoutineTest, DebugdError) {
   const char kDebugdErrorMessage[] = "Debugd mock error for testing";
   const brillo::ErrorPtr kError =
       brillo::Error::Create(FROM_HERE, "", "", kDebugdErrorMessage);
-  CreateSmartctlCheckRoutine();
+  CreateSmartctlCheckRoutine(std::nullopt);
   EXPECT_CALL(debugd_proxy_, SmartctlAsync("attributes", _, _, _))
       .WillOnce(WithArg<2>([&](OnceErrorCallback callback) {
         std::move(callback).Run(kError.get());
