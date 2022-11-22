@@ -124,6 +124,7 @@ libbrillo_sublibs = [
       "brillo/blkdev_utils/emmc.cc",
       "brillo/blkdev_utils/loop_device.cc",
       "brillo/blkdev_utils/storage_device.cc",
+      "brillo/blkdev_utils/storage_utils.cc",
       "brillo/blkdev_utils/ufs.cc",
     ]
     libs = [ "rootdev" ]
@@ -474,6 +475,7 @@ if (use.test) {
       "brillo/backoff_entry_test.cc",
       "brillo/blkdev_utils/disk_iostat_test.cc",
       "brillo/blkdev_utils/loop_device_test.cc",
+      "brillo/blkdev_utils/storage_utils_test.cc",
       "brillo/cryptohome_test.cc",
       "brillo/data_encoding_test.cc",
       "brillo/enum_flags_test.cc",
