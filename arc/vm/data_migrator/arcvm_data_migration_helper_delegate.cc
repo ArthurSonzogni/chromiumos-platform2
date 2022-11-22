@@ -7,6 +7,7 @@
 #include <sys/stat.h>
 
 #include <array>
+#include <memory>
 #include <optional>
 #include <string>
 
@@ -72,7 +73,8 @@ std::optional<T> MapToGuestId(T host_id,
 
 }  // namespace
 
-ArcVmDataMigrationHelperDelegate::ArcVmDataMigrationHelperDelegate() = default;
+ArcVmDataMigrationHelperDelegate::ArcVmDataMigrationHelperDelegate()
+    : metrics_(std::make_unique<ArcVmDataMigratorMetrics>()) {}
 
 ArcVmDataMigrationHelperDelegate::~ArcVmDataMigrationHelperDelegate() = default;
 
@@ -108,6 +110,30 @@ std::string ArcVmDataMigrationHelperDelegate::ConvertXattrName(
     return name.substr(std::char_traits<char>::length(kVirtiofsXattrPrefix));
   }
   return name;
+}
+
+void ArcVmDataMigrationHelperDelegate::ReportStartTime() {
+  migration_start_time_ = base::TimeTicks::Now();
+}
+
+void ArcVmDataMigrationHelperDelegate::ReportEndTime() {
+  metrics_->ReportDuration(base::TimeTicks::Now() - migration_start_time_);
+}
+
+void ArcVmDataMigrationHelperDelegate::ReportStartStatus(
+    cryptohome::data_migrator::MigrationStartStatus status) {
+  metrics_->ReportStartStatus(status);
+}
+
+void ArcVmDataMigrationHelperDelegate::ReportEndStatus(
+    cryptohome::data_migrator::MigrationEndStatus status) {
+  metrics_->ReportEndStatus(status);
+}
+
+void ArcVmDataMigrationHelperDelegate::ReportTotalSize(int total_byte_count_mb,
+                                                       int total_file_count) {
+  metrics_->ReportTotalByteCountInMb(total_byte_count_mb);
+  metrics_->ReportTotalFileCount(total_file_count);
 }
 
 }  // namespace arc::data_migrator

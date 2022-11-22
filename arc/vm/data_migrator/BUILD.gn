@@ -47,8 +47,12 @@ executable("arcvm_data_migrator") {
 }
 
 static_library("libarcvm_data_migrator") {
-  sources = [ "arcvm_data_migration_helper_delegate.cc" ]
+  sources = [
+    "arcvm_data_migration_helper_delegate.cc",
+    "metrics.cc",
+  ]
   configs += [ ":target_defaults" ]
+  pkg_deps = [ "libmetrics" ]
 }
 
 install_config("install_init") {

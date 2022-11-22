@@ -5,11 +5,13 @@
 #ifndef ARC_VM_DATA_MIGRATOR_ARCVM_DATA_MIGRATION_HELPER_DELEGATE_H_
 #define ARC_VM_DATA_MIGRATOR_ARCVM_DATA_MIGRATION_HELPER_DELEGATE_H_
 
+#include <memory>
 #include <string>
 
 #include <base/files/file.h>
-
 #include <cryptohome/data_migrator/migration_helper_delegate.h>
+
+#include "arc/vm/data_migrator/metrics.h"
 
 namespace arc::data_migrator {
 
@@ -32,6 +34,19 @@ class ArcVmDataMigrationHelperDelegate
   std::string GetAtimeXattrName() override;
   bool ConvertFileMetadata(base::stat_wrapper_t* stat) override;
   std::string ConvertXattrName(const std::string& name) override;
+  void ReportStartTime() override;
+  void ReportEndTime() override;
+  void ReportStartStatus(
+      cryptohome::data_migrator::MigrationStartStatus status) override;
+  void ReportEndStatus(
+      cryptohome::data_migrator::MigrationEndStatus status) override;
+  void ReportTotalSize(int total_byte_count_mb, int total_file_count) override;
+
+ private:
+  std::unique_ptr<ArcVmDataMigratorMetrics> metrics_;
+
+  // Records the time ReportStartTime() was called.
+  base::TimeTicks migration_start_time_;
 };
 
 }  // namespace arc::data_migrator
