@@ -181,6 +181,7 @@ type cros_spaced_exec, exec_type, file_type, cros_file_type, cros_system_file_ty
 type cros_spaced_cli_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_sshd_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_sslh_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
+type cros_swap_management_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_syslog_cat_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_tcsd_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_ti50-emulator-ec_comm_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
@@ -435,6 +436,7 @@ type cros_var_lib_vm_cicerone, file_type, cros_file_type, cros_var_file_type;
 type cros_var_lib_vm_cicerone_metrics, file_type, cros_file_type, cros_var_file_type;
 type cros_var_lib_vtpm, file_type, cros_file_type, cros_var_file_type;
 type cros_var_lib_devicesettings, file_type, cros_file_type, cros_var_file_type;
+type cros_var_lib_swap, file_type, cros_file_type, cros_var_file_type;
 
 # /var/lock
 type cros_var_lock, file_type, cros_file_type, cros_var_file_type;
@@ -606,6 +608,7 @@ type cros_stateful_partition_unencrypted_preserve, file_type, cros_file_type, cr
 type cros_stateful_partition_unencrypted_profraws, file_type, cros_file_type, cros_uncategorized_file_type;
 type cros_stateful_partition_unencrypted_rma, file_type, cros_file_type, cros_uncategorized_file_type;
 type cros_stateful_partition_unencrypted_tpm_manager, file_type, cros_file_type, cros_uncategorized_file_type;
+type cros_stateful_partition_unencrypted_userspace_swap, file_type, cros_file_type, cros_uncategorized_file_type;
 
 # TODO(fqj): temporarily let un-decomposed chromeos domain to write file as tmpfs.
 type_transition {chromeos cros_arc_setup} cros_run:dir tmpfs;
