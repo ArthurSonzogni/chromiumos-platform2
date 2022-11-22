@@ -9,14 +9,18 @@
 #include <absl/strings/str_format.h>
 #include <base/command_line.h>
 #include <base/strings/string_number_conversions.h>
-#include <libhwsec-foundation/tpm/tpm_version.h>
 
 #include "hwsec-host-utils/tpm1_decode.h"
 #include "hwsec-host-utils/tpm2_decode.h"
 
-using hwsec_foundation::tpm::TPMVer;
-
 namespace {
+
+enum class TPMVer {
+  kUnknown = 0,
+  kTPM1 = 1,
+  kTPM2 = 2,
+  kNoTPM = 3,
+};
 
 constexpr char kXml[] = "xml";
 constexpr char kHelp[] = "help";
