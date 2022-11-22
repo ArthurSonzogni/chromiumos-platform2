@@ -11,6 +11,7 @@
 #include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
+#include <base/synchronization/lock.h>
 #include <base/threading/thread.h>
 #include <brillo/blkdev_utils/loop_device.h>
 #include <brillo/cryptohome.h>
@@ -51,8 +52,13 @@ class DBusAdaptor : public org::chromium::ArcVmDataMigratorAdaptor,
   }
 
   ~DBusAdaptor() override {
-    // TODO(momohatt): Cancel migration running on migration_thread_.
-
+    {
+      // Cancel migration so that it doesn't block the destruction.
+      base::AutoLock lock(migration_helper_lock_);
+      if (migration_helper_) {
+        migration_helper_->Cancel();
+      }
+    }
     CleanupMount();
   }
 
@@ -159,14 +165,22 @@ class DBusAdaptor : public org::chromium::ArcVmDataMigratorAdaptor,
     ArcVmDataMigrationHelperDelegate delegate;
     constexpr uint64_t kMaxChunkSize = 128 * 1024 * 1024;
 
-    cryptohome::data_migrator::MigrationHelper migration_helper(
-        &platform, &delegate, source_dir,
-        base::FilePath(kDestinationMountPoint), status_files_dir,
-        kMaxChunkSize);
+    {
+      base::AutoLock lock(migration_helper_lock_);
+      migration_helper_ =
+          std::make_unique<cryptohome::data_migrator::MigrationHelper>(
+              &platform, &delegate, source_dir,
+              base::FilePath(kDestinationMountPoint), status_files_dir,
+              kMaxChunkSize);
+    }
     // Unretained is safe to use here because this method (DBusAdaptor::Migrate)
     // runs on |migration_thread_| which is joined on the destruction on |this|.
-    bool success = migration_helper.Migrate(base::BindRepeating(
+    bool success = migration_helper_->Migrate(base::BindRepeating(
         &DBusAdaptor::MigrationHelperCallback, base::Unretained(this)));
+    {
+      base::AutoLock lock(migration_helper_lock_);
+      migration_helper_.reset();
+    }
 
     DataMigrationProgress progress;
     if (success) {
@@ -219,6 +233,9 @@ class DBusAdaptor : public org::chromium::ArcVmDataMigratorAdaptor,
   std::unique_ptr<brillo::LoopDeviceManager> loop_device_manager_;
 
   std::unique_ptr<base::Thread> migration_thread_;
+  std::unique_ptr<cryptohome::data_migrator::MigrationHelper> migration_helper_;
+  base::Lock migration_helper_lock_;
+
   brillo::dbus_utils::DBusObject dbus_object_;
   dbus::ExportedObject* exported_object_;  // Owned by the Bus object
 };
