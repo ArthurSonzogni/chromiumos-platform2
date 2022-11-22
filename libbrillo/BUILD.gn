@@ -121,6 +121,7 @@ libbrillo_sublibs = [
     deps = [ ":libbrillo-core" ]
     sources = [
       "brillo/blkdev_utils/disk_iostat.cc",
+      "brillo/blkdev_utils/emmc.cc",
       "brillo/blkdev_utils/loop_device.cc",
       "brillo/blkdev_utils/storage_device.cc",
       "brillo/blkdev_utils/ufs.cc",
