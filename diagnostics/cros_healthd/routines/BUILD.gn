@@ -18,22 +18,6 @@ executable("urandom") {
   install_path = "/usr/libexec/diagnostics"
 }
 
-pkg_config("smartctl-check_pkg_deps") {
-  pkg_deps = [ "libdebugd-client" ]
-}
-
-executable("smartctl-check") {
-  sources = [
-    "smartctl_check/main.cc",
-    "smartctl_check/smartctl_check_utils.cc",
-  ]
-  configs += [
-    ":smartctl-check_pkg_deps",
-    ":common_pkg_deps",
-  ]
-  install_path = "/usr/libexec/diagnostics"
-}
-
 executable("floating-point-accuracy") {
   sources = [ "floating_point/main.cc" ]
   configs += [ ":common_pkg_deps" ]
@@ -162,8 +146,7 @@ if (use.test) {
       "sensor/sensitive_sensor_test.cc",
       "signal_strength/signal_strength_test.cc",
       "simple_routine_test.cc",
-      "smartctl_check/smartctl_check_utils.cc",
-      "smartctl_check/smartctl_check_utils_test.cc",
+      "smartctl_check/smartctl_check_test.cc",
       "subproc_routine_test.cc",
       "video_conferencing/video_conferencing_test.cc",
     ]

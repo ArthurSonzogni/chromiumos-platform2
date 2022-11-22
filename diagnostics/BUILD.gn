@@ -18,7 +18,6 @@ group("all") {
     "//diagnostics/cros_healthd/executor:executor-delegate",
     "//diagnostics/cros_healthd/routines:floating-point-accuracy",
     "//diagnostics/cros_healthd/routines:prime-search",
-    "//diagnostics/cros_healthd/routines:smartctl-check",
     "//diagnostics/cros_healthd/routines:urandom",
     "//diagnostics/wilco_dtc_supportd:wilco_dtc_supportd",
   ]

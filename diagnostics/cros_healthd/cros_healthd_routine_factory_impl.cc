@@ -88,8 +88,10 @@ CrosHealthdRoutineFactoryImpl::MakeBatteryHealthRoutine() {
 }
 
 std::unique_ptr<DiagnosticRoutine>
-CrosHealthdRoutineFactoryImpl::MakeSmartctlCheckRoutine() {
-  return CreateSmartctlCheckRoutine();
+CrosHealthdRoutineFactoryImpl::MakeSmartctlCheckRoutine(
+    org::chromium::debugdProxyInterface* debugd_proxy) {
+  DCHECK(debugd_proxy);
+  return std::make_unique<SmartctlCheckRoutine>(debugd_proxy);
 }
 
 std::unique_ptr<DiagnosticRoutine>

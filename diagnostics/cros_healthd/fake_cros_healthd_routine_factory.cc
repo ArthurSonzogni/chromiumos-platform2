@@ -219,7 +219,8 @@ FakeCrosHealthdRoutineFactory::MakeBatteryHealthRoutine() {
 }
 
 std::unique_ptr<DiagnosticRoutine>
-FakeCrosHealthdRoutineFactory::MakeSmartctlCheckRoutine() {
+FakeCrosHealthdRoutineFactory::MakeSmartctlCheckRoutine(
+    org::chromium::debugdProxyInterface* debugd_proxy) {
   return std::move(next_routine_);
 }
 

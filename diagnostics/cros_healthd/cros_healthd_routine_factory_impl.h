@@ -30,7 +30,8 @@ class CrosHealthdRoutineFactoryImpl final : public CrosHealthdRoutineFactory {
       ash::cros_healthd::mojom::NullableUint32Ptr length_seconds) override;
   std::unique_ptr<DiagnosticRoutine> MakeBatteryCapacityRoutine() override;
   std::unique_ptr<DiagnosticRoutine> MakeBatteryHealthRoutine() override;
-  std::unique_ptr<DiagnosticRoutine> MakeSmartctlCheckRoutine() override;
+  std::unique_ptr<DiagnosticRoutine> MakeSmartctlCheckRoutine(
+      org::chromium::debugdProxyInterface* debugd_proxy) override;
   std::unique_ptr<DiagnosticRoutine> MakeAcPowerRoutine(
       ash::cros_healthd::mojom::AcPowerStatusEnum expected_status,
       const std::optional<std::string>& expected_power_type) override;

@@ -328,9 +328,9 @@ void CrosHealthdRoutineService::RunSignalStrengthRoutine(
 
 void CrosHealthdRoutineService::RunSmartctlCheckRoutine(
     RunSmartctlCheckRoutineCallback callback) {
-  RunRoutine(routine_factory_->MakeSmartctlCheckRoutine(),
-             mojo_ipc::DiagnosticRoutineEnum::kSmartctlCheck,
-             std::move(callback));
+  RunRoutine(
+      routine_factory_->MakeSmartctlCheckRoutine(context_->debugd_proxy()),
+      mojo_ipc::DiagnosticRoutineEnum::kSmartctlCheck, std::move(callback));
 }
 
 void CrosHealthdRoutineService::RunUrandomRoutine(
