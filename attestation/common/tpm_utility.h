@@ -9,6 +9,7 @@
 
 #include <optional>
 #include <string>
+#include <vector>
 
 #include <attestation/proto_bindings/attestation_ca.pb.h>
 #include <attestation/proto_bindings/interface.pb.h>
@@ -30,6 +31,9 @@ class TpmUtility {
   // Override to perform initialization work. This must be called successfully
   // before calling any other methods.
   virtual bool Initialize() = 0;
+
+  // Gets the supported key types (e.g., RSA, ECC, or both).
+  virtual std::vector<KeyType> GetSupportedKeyTypes() = 0;
 
   // Returns the TPM version managed by this instance.
   virtual TpmVersion GetVersion() = 0;

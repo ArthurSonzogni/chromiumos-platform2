@@ -20,6 +20,10 @@ class MockAttestationInterface : public AttestationInterface {
 
   MOCK_METHOD(bool, Initialize, (), (override));
   MOCK_METHOD(void,
+              GetFeatures,
+              (const GetFeaturesRequest&, GetFeaturesCallback),
+              (override));
+  MOCK_METHOD(void,
               GetKeyInfo,
               (const GetKeyInfoRequest&, GetKeyInfoCallback),
               (override));

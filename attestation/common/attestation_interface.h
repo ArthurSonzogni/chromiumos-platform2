@@ -25,6 +25,11 @@ class AttestationInterface {
   // success.
   virtual bool Initialize() = 0;
 
+  // Processes a GetFeaturesRequest and responds with a GetFeaturesReply.
+  using GetFeaturesCallback = base::OnceCallback<void(const GetFeaturesReply&)>;
+  virtual void GetFeatures(const GetFeaturesRequest& request,
+                           GetFeaturesCallback callback) = 0;
+
   // Processes a GetKeyInfoRequest and responds with a GetKeyInfoReply.
   using GetKeyInfoCallback = base::OnceCallback<void(const GetKeyInfoReply&)>;
   virtual void GetKeyInfo(const GetKeyInfoRequest& request,

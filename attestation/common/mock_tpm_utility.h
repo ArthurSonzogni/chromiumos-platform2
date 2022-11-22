@@ -11,6 +11,7 @@
 
 #include <optional>
 #include <string>
+#include <vector>
 
 #include <gmock/gmock.h>
 
@@ -28,6 +29,7 @@ class MockTpmUtility : public TpmUtility {
                                const std::string& input);
 
   MOCK_METHOD(bool, Initialize, (), (override));
+  MOCK_METHOD(std::vector<KeyType>, GetSupportedKeyTypes, (), (override));
   MOCK_METHOD(TpmVersion, GetVersion, (), (override));
   MOCK_METHOD(bool, IsTpmReady, (), (override));
   MOCK_METHOD(bool,

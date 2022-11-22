@@ -96,6 +96,8 @@ class AttestationService : public AttestationInterface {
 
   // AttestationInterface methods.
   bool Initialize() override;
+  void GetFeatures(const GetFeaturesRequest& request,
+                   GetFeaturesCallback callback) override;
   void GetEnrollmentPreparations(
       const GetEnrollmentPreparationsRequest& request,
       GetEnrollmentPreparationsCallback callback) override;
@@ -254,6 +256,10 @@ class AttestationService : public AttestationInterface {
   void GetEnrollmentPreparationsTask(
       const GetEnrollmentPreparationsRequest& request,
       const std::shared_ptr<GetEnrollmentPreparationsReply>& result);
+
+  // A blocking implementation of GetFeatures.
+  void GetFeaturesTask(const GetFeaturesRequest& request,
+                       const std::shared_ptr<GetFeaturesReply>& result);
 
   // A blocking implementation of GetKeyInfo.
   void GetKeyInfoTask(const GetKeyInfoRequest& request,

@@ -27,6 +27,8 @@ void DBusService::Register(CompletionAction callback) {
   brillo::dbus_utils::DBusInterface* dbus_interface =
       dbus_object_.AddOrGetInterface(kAttestationInterface);
 
+  dbus_interface->AddMethodHandler(kGetFeatures, base::Unretained(this),
+                                   &DBusService::HandleGetFeatures);
   dbus_interface->AddMethodHandler(kGetKeyInfo, base::Unretained(this),
                                    &DBusService::HandleGetKeyInfo);
   dbus_interface->AddMethodHandler(kGetEndorsementInfo, base::Unretained(this),
@@ -85,6 +87,24 @@ void DBusService::Register(CompletionAction callback) {
                                    &DBusService::HandleGetCertifiedNvIndex);
 
   dbus_object_.RegisterAsync(std::move(callback));
+}
+
+void DBusService::HandleGetFeatures(
+    std::unique_ptr<DBusMethodResponse<const GetFeaturesReply&>> response,
+    const GetFeaturesRequest& request) {
+  VLOG(1) << __func__;
+  // Convert |response| to a shared_ptr so |service_| can safely copy the
+  // callback.
+  using SharedResponsePointer =
+      std::shared_ptr<DBusMethodResponse<const GetFeaturesReply&>>;
+  // A callback that fills the reply protobuf and sends it.
+  auto callback = [](const SharedResponsePointer& response,
+                     const GetFeaturesReply& reply) {
+    response->Return(reply);
+  };
+  service_->GetFeatures(
+      request,
+      base::BindOnce(callback, SharedResponsePointer(std::move(response))));
 }
 
 void DBusService::HandleGetKeyInfo(

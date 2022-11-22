@@ -11,6 +11,7 @@
 
 #include <optional>
 #include <string>
+#include <vector>
 
 #include <openssl/rsa.h>
 #include <trousers/scoped_tss_type.h>
@@ -31,6 +32,7 @@ class TpmUtilityV1 : public TpmUtilityCommon {
 
   // TpmUtility methods.
   bool Initialize() override;
+  std::vector<KeyType> GetSupportedKeyTypes() override;
   TpmVersion GetVersion() override { return TPM_1_2; }
   bool ActivateIdentity(const std::string& identity_key_blob,
                         const std::string& asym_ca_contents,

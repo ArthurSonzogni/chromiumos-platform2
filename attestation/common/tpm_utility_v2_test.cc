@@ -26,6 +26,7 @@ namespace {
 
 using ::testing::_;
 using ::testing::DoAll;
+using ::testing::ElementsAre;
 using ::testing::Ne;
 using ::testing::NiceMock;
 using ::testing::Optional;
@@ -176,6 +177,11 @@ class TpmUtilityTest : public testing::Test {
   std::unique_ptr<TpmUtilityV2> tpm_utility_;
   base::test::SingleThreadTaskEnvironment task_environment_;
 };
+
+TEST_F(TpmUtilityTest, GetSupportedKeyTypes) {
+  EXPECT_THAT(tpm_utility_->GetSupportedKeyTypes(),
+              ElementsAre(KEY_TYPE_RSA, KEY_TYPE_ECC));
+}
 
 TEST_F(TpmUtilityTest, ActivateIdentity) {
   ExpectGetTpmStatus();

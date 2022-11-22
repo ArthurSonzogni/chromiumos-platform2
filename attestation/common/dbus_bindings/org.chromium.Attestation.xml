@@ -14,6 +14,17 @@
 <node name="/org/chromium/Attestation"
       xmlns:tp="http://telepathy.freedesktop.org/wiki/DbusSpec#extensions-v0">
   <interface name="org.chromium.Attestation">
+    <method name="GetFeatures">
+      <arg name="request" type="ay" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="attestation::GetFeaturesRequest" />
+      </arg>
+      <arg name="reply" type="ay" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="attestation::GetFeaturesReply" />
+      </arg>
+    </method>
+
     <method name="GetKeyInfo">
       <arg name="request" type="ay" direction="in">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"

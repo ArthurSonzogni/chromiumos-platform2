@@ -733,6 +733,30 @@ void AttestationService::ShutdownTask() {
   }
 }
 
+void AttestationService::GetFeatures(const GetFeaturesRequest& request,
+                                     GetFeaturesCallback callback) {
+  auto result = std::make_shared<GetFeaturesReply>();
+  base::OnceClosure task =
+      base::BindOnce(&AttestationService::GetFeaturesTask,
+                     base::Unretained(this), request, result);
+  base::OnceClosure reply =
+      base::BindOnce(&AttestationService::TaskRelayCallback<GetFeaturesReply>,
+                     GetWeakPtr(), std::move(callback), result);
+  worker_thread_->task_runner()->PostTaskAndReply(FROM_HERE, std::move(task),
+                                                  std::move(reply));
+}
+
+void AttestationService::GetFeaturesTask(
+    const GetFeaturesRequest& request,
+    const std::shared_ptr<GetFeaturesReply>& result) {
+  result->set_is_available(false);
+  for (const KeyType key_type : tpm_utility_->GetSupportedKeyTypes()) {
+    result->set_is_available(true);
+    *(result->mutable_supported_key_types()->Add()) = key_type;
+  }
+  result->set_status(STATUS_SUCCESS);
+}
+
 void AttestationService::GetKeyInfo(const GetKeyInfoRequest& request,
                                     GetKeyInfoCallback callback) {
   auto result = std::make_shared<GetKeyInfoReply>();

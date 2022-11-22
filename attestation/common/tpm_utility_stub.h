@@ -7,6 +7,7 @@
 
 #include <optional>
 #include <string>
+#include <vector>
 
 #include "attestation/common/tpm_utility.h"
 
@@ -23,6 +24,7 @@ class TpmUtilityStub : public TpmUtility {
 
   // TpmUtility methods.
   bool Initialize() override { return true; }
+  std::vector<KeyType> GetSupportedKeyTypes() override { return {}; }
   bool IsTpmReady() override { return false; }
   bool RemoveOwnerDependency() override { return false; }
   bool IsPCR0Valid() override { return false; }

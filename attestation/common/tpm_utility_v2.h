@@ -13,6 +13,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <vector>
 
 #include <base/threading/thread.h>
 #include <trunks/trunks_factory_impl.h>
@@ -32,6 +33,7 @@ class TpmUtilityV2 : public TpmUtilityCommon {
 
   // TpmUtility methods.
   bool Initialize() override;
+  std::vector<KeyType> GetSupportedKeyTypes() override;
   TpmVersion GetVersion() override { return TPM_2_0; }
   bool ActivateIdentity(const std::string& identity_key_blob,
                         const std::string& asym_ca_contents,

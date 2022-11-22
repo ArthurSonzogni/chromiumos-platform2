@@ -4,6 +4,7 @@
 
 #include <optional>
 #include <string>
+#include <vector>
 
 #include <attestation/proto_bindings/attestation_ca.pb.h>
 #include <attestation/proto_bindings/pca_agent.pb.h>
@@ -45,6 +46,7 @@ extern "C" {
 using testing::_;
 using testing::AtMost;
 using testing::DoAll;
+using testing::ElementsAre;
 using testing::Eq;
 using testing::Invoke;
 using testing::NiceMock;
@@ -370,6 +372,22 @@ class AttestationServiceBaseTest : public testing::Test {
       base::test::TaskEnvironment::ThreadingMode::MAIN_THREAD_ONLY};
   base::RunLoop run_loop_;
 };
+
+TEST_F(AttestationServiceBaseTest, GetFeatures) {
+  EXPECT_CALL(mock_tpm_utility_, GetSupportedKeyTypes())
+      .WillOnce(Return(std::vector<KeyType>{KEY_TYPE_RSA, KEY_TYPE_ECC}));
+  auto callback = [](const base::RepeatingClosure& quit_closure,
+                     const GetFeaturesReply& reply) {
+    EXPECT_EQ(reply.status(), STATUS_SUCCESS);
+    EXPECT_THAT(reply.supported_key_types(),
+                ElementsAre(KEY_TYPE_RSA, KEY_TYPE_ECC));
+    quit_closure.Run();
+  };
+
+  GetFeaturesRequest request;
+  service_->GetFeatures(request, base::BindOnce(callback, QuitClosure()));
+  Run();
+}
 
 TEST_F(AttestationServiceBaseTest, MigrateAttestationDatabase) {
   // Simulate an older database.

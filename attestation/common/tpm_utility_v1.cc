@@ -157,6 +157,10 @@ bool TpmUtilityV1::Initialize() {
   return true;
 }
 
+std::vector<KeyType> TpmUtilityV1::GetSupportedKeyTypes() {
+  return {KEY_TYPE_RSA};
+}
+
 bool TpmUtilityV1::ActivateIdentity(const std::string& identity_key_blob,
                                     const std::string& asym_ca_contents,
                                     const std::string& sym_ca_attestation,

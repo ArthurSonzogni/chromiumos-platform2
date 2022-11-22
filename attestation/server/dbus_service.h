@@ -39,6 +39,11 @@ class DBusService {
  private:
   friend class DBusServiceTest;
 
+  // Handles a GetFeatures D-Bus call.
+  void HandleGetFeatures(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+                             const GetFeaturesReply&>> response,
+                         const GetFeaturesRequest& request);
+
   // Handles a GetKeyInfo D-Bus call.
   void HandleGetKeyInfo(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
                             const GetKeyInfoReply&>> response,
