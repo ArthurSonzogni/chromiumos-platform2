@@ -762,5 +762,25 @@ TEST(ArcVmTest, ReadWriteDisabled) {
       ArcVm::GetKernelParams(cros_system, request, kSeneschalServerPort);
   EXPECT_FALSE(base::Contains(params, "rw"));
 }
+
+TEST(ArcVmTest, WebViewZygoteLazyInitEnabled) {
+  crossystem::fake::CrossystemFake cros_system;
+  StartArcVmRequest request;
+  request.set_enable_web_view_zygote_lazy_init(true);
+  std::vector<std::string> params =
+      ArcVm::GetKernelParams(cros_system, request, kSeneschalServerPort);
+  EXPECT_TRUE(
+      base::Contains(params, "androidboot.arc.web_view_zygote.lazy_init=1"));
+}
+
+TEST(ArcVmTest, WebViewZygoteLazyInitDisabled) {
+  crossystem::fake::CrossystemFake cros_system;
+  StartArcVmRequest request;
+  request.set_enable_web_view_zygote_lazy_init(false);
+  std::vector<std::string> params =
+      ArcVm::GetKernelParams(cros_system, request, kSeneschalServerPort);
+  EXPECT_FALSE(
+      base::Contains(params, "androidboot.arc.web_view_zygote.lazy_init=1"));
+}
 }  // namespace concierge
 }  // namespace vm_tools

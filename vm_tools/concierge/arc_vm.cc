@@ -947,6 +947,8 @@ std::vector<std::string> ArcVm::GetKernelParams(
   LOG(INFO) << base::StringPrintf("Setting ARCVM guest's zram size to %d",
                                   request.guest_zram_size());
 
+  if (request.enable_web_view_zygote_lazy_init())
+    params.push_back("androidboot.arc.web_view_zygote.lazy_init=1");
   if (request.enable_rw())
     params.push_back("rw");
 

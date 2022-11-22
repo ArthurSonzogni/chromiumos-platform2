@@ -516,6 +516,9 @@ message StartArcVmRequest {
 
   // Whether rw is enabled
   bool enable_rw = 41;
+
+  // Controls whether WebView Zygote is lazily initialized in ARC.
+  bool enable_web_view_zygote_lazy_init = 42;
 }
 
 enum VmStatus {
