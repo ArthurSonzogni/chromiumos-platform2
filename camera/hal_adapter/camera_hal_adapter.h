@@ -35,8 +35,8 @@
 #include "cros-camera/camera_mojo_channel_manager_token.h"
 #include "cros-camera/cros_camera_hal.h"
 #include "cros-camera/future.h"
-#include "hal_adapter/dlc_client.h"
 #include "hal_adapter/reprocess_effect/reprocess_effect_manager.h"
+#include "ml_core/dlc/dlc_client.h"
 #include "ml_core/mojo/effects_pipeline.mojom.h"
 
 namespace cros {
