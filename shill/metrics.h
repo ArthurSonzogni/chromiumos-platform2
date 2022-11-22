@@ -518,6 +518,12 @@ class Metrics : public DefaultServiceObserver {
     kCellularRoamingStateRoaming = 2,
     kCellularRoamingStateMax
   };
+  // The |CellularApnType| values represent a bit mask, so each following value
+  // has to be the next multiple of 2- i.e., 1, 2, 4, 8, ...
+  enum class CellularApnType {
+    kCellularApnTypeDefault = 1,
+    kCellularApnTypeIA = 2,
+  };
 
   // Connection diagnostics issue produced by ConnectionDiagnostics.
   enum ConnectionDiagnosticsIssue {
@@ -1466,13 +1472,13 @@ class Metrics : public DefaultServiceObserver {
     std::string home_mccmnc;
     std::string serving_mccmnc;
     std::string roaming_state;
-    bool use_attach_apn;
     uint32_t tech_used;
     uint32_t iccid_length;
     uint32_t sim_type;
     std::string gid1;
     uint32_t modem_state;
     int interface_index;
+    uint32_t use_apn_revamp_ui;
   };
 
   // Notifies this object of the resulting status of a cellular connection

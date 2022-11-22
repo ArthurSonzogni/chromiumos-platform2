@@ -497,9 +497,14 @@
         Indicates if the device is roaming.
       </summary>
     </metric>
-    <metric name="use_attach_apn" type="int">
+    <metric name="apn_types" type="int">
       <summary>
-        Indicates if the use_attach flag is enabled.
+        Indicates the APN types supported by the current APN. This field will
+        represent the bitmask of combination of APN types. Below are the
+        supported values:
+        DEFAULT = 1
+        IA = 2
+        DUN = 4
       </summary>
     </metric>
     <metric name="apn_source" type="int">
@@ -562,6 +567,11 @@
       <summary>
         The contents of the GID1 file in the SIM card, limited to the
         first 8 bytes.
+      </summary>
+    </metric>
+    <metric name="use_apn_revamp_ui" type="int">
+      <summary>
+        Indicates if the new APN revamp UI is being used.
       </summary>
     </metric>
   </event>

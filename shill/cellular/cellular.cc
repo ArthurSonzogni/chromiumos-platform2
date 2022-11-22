@@ -1070,11 +1070,13 @@ void Cellular::NotifyDetailedCellularConnectionResult(
   SimType sim_type = kSimTypeUnknown;
   brillo::ErrorPtr detailed_error;
   std::string cellular_error;
+  bool use_apn_revamp_ui = false;
 
   std::string roaming_state;
   if (service_) {
     roaming_state = service_->roaming_state();
     iccid_len = service_->iccid().length();
+    use_apn_revamp_ui = service_->user_apn_list().has_value();
     // If EID is not empty, report as eSIM else report as pSIM
     if (!service_->eid().empty())
       sim_type = kSimTypeEsim;
@@ -1106,7 +1108,7 @@ void Cellular::NotifyDetailedCellularConnectionResult(
   result.home_mccmnc = home_provider_info_->mccmnc();
   result.serving_mccmnc = serving_operator_info_->mccmnc();
   result.roaming_state = roaming_state;
-  result.use_attach_apn = use_attach_apn_;
+  result.use_apn_revamp_ui = use_apn_revamp_ui;
   result.tech_used = tech_used;
   result.iccid_length = iccid_len;
   result.sim_type = sim_type;

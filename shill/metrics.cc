@@ -27,6 +27,7 @@
 #include <metrics/bootstat.h>
 #include <metrics/structured/structured_events.h>
 
+#include "shill/cellular/apn_list.h"
 #include "shill/cellular/cellular_consts.h"
 #include "shill/connection_diagnostics.h"
 #include "shill/logging.h"
@@ -982,6 +983,15 @@ void Metrics::NotifyDetailedCellularConnectionResult(
         password = result.apn_info.at(kApnPasswordProperty);
     }
   }
+  // apn_types is represented by a bit mask.
+  uint32_t apn_types = 0;
+  if (ApnList::IsDefaultApn(result.apn_info)) {
+    apn_types |= static_cast<uint32_t>(
+        Metrics::CellularApnType::kCellularApnTypeDefault);
+  }
+  if (ApnList::IsAttachApn(result.apn_info)) {
+    apn_types |= static_cast<uint32_t>(CellularApnType::kCellularApnTypeIA);
+  }
 
   if (device_metrics != nullptr) {
     base::TimeDelta elapsed_time;
@@ -993,6 +1003,8 @@ void Metrics::NotifyDetailedCellularConnectionResult(
 
   SLOG(3) << __func__ << ": error:" << result.error << " uuid:" << result.uuid
           << " apn:" << apn_name << " apn_source:" << apn_source
+          << " use_apn_revamp_ui: " << result.use_apn_revamp_ui
+          << " apn_types: " << apn_types
           << " ipv4:" << static_cast<int>(result.ipv4_config_method)
           << " ipv6:" << static_cast<int>(result.ipv6_config_method)
           << " home_mccmnc:" << result.home_mccmnc
@@ -1015,7 +1027,7 @@ void Metrics::NotifyDetailedCellularConnectionResult(
           .Sethome_mccmnc(home)
           .Setserving_mccmnc(serving)
           .Setroaming_state(roaming)
-          .Setuse_attach_apn(result.use_attach_apn)
+          .Setapn_types(apn_types)
           .Setapn_source(static_cast<int64_t>(apn_source))
           .Settech_used(result.tech_used)
           .Seticcid_length(result.iccid_length)
@@ -1023,7 +1035,8 @@ void Metrics::NotifyDetailedCellularConnectionResult(
           .Setmodem_state(result.modem_state)
           .Setconnect_time(connect_time)
           .Setscan_connect_time(scan_connect_time)
-          .Setdetailed_error(detailed_error_hash);
+          .Setdetailed_error(detailed_error_hash)
+          .Setuse_apn_revamp_ui(result.use_apn_revamp_ui);
 
   std::optional<int64_t> gid1 = IntGid1(result.gid1);
   if (gid1.has_value()) {
