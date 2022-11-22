@@ -10,29 +10,47 @@
 
 #include <gtest/gtest.h>
 
+using cryptohome::data_migrator::FailureLocationType;
+
 namespace arc::data_migrator {
 
 namespace {
 
+constexpr char kDummySourcePath[] =
+    "/home/root/0123456789abcdef0123456789abcdef01234567/android-data/data";
+
 constexpr uid_t kAndroidRootUid = 655360;
 constexpr gid_t kAndroidRootGid = 655360;
+
+struct MapPathToPathTypeTestCase {
+  std::string rel_path;
+  FailedPathType type_source;
+  FailedPathType type_dest;
+  FailedPathType type_source_or_dest;
+};
 
 }  // namespace
 
 class ArcVmDataMigrationHelperDelegateTest : public ::testing::Test {
  public:
-  ArcVmDataMigrationHelperDelegateTest() = default;
+  ArcVmDataMigrationHelperDelegateTest()
+      : source_(base::FilePath(kDummySourcePath)),
+        dest_(base::FilePath(kDestinationMountPoint)) {}
   virtual ~ArcVmDataMigrationHelperDelegateTest() = default;
 
   ArcVmDataMigrationHelperDelegateTest(
       const ArcVmDataMigrationHelperDelegateTest&) = delete;
   ArcVmDataMigrationHelperDelegateTest& operator=(
       const ArcVmDataMigrationHelperDelegateTest&) = delete;
+
+ protected:
+  const base::FilePath source_;
+  const base::FilePath dest_;
 };
 
 TEST_F(ArcVmDataMigrationHelperDelegateTest, ConvertUid) {
   // We can pass nullptr for metrics since we don't test metrics reporting.
-  ArcVmDataMigrationHelperDelegate delegate(nullptr /* metrics */);
+  ArcVmDataMigrationHelperDelegate delegate(source_, nullptr /* metrics */);
 
   // Valid host-to-guest UID mappings (pairs of (host UID, guest UID)).
   std::vector<std::pair<uid_t, uid_t>> mapping_test_cases = {{
@@ -72,7 +90,7 @@ TEST_F(ArcVmDataMigrationHelperDelegateTest, ConvertUid) {
 
 TEST_F(ArcVmDataMigrationHelperDelegateTest, ConvertGid) {
   // We can pass nullptr for metrics since we don't test metrics reporting.
-  ArcVmDataMigrationHelperDelegate delegate(nullptr /* metrics */);
+  ArcVmDataMigrationHelperDelegate delegate(source_, nullptr /* metrics */);
 
   // Valid host-to-guest GID mappings (pairs of (host GID, guest GID)).
   std::vector<std::pair<gid_t, gid_t>> mapping_test_cases = {{
@@ -119,7 +137,7 @@ TEST_F(ArcVmDataMigrationHelperDelegateTest, ConvertGid) {
 
 TEST_F(ArcVmDataMigrationHelperDelegateTest, ConvertXattrName) {
   // We can pass nullptr for metrics since we don't test metrics reporting.
-  ArcVmDataMigrationHelperDelegate delegate(nullptr /* metrics */);
+  ArcVmDataMigrationHelperDelegate delegate(source_, nullptr /* metrics */);
 
   // user.virtiofs.security.* is converted to security.*.
   EXPECT_EQ(delegate.ConvertXattrName("user.virtiofs.security.sehash"),
@@ -129,6 +147,69 @@ TEST_F(ArcVmDataMigrationHelperDelegateTest, ConvertXattrName) {
   EXPECT_EQ(delegate.ConvertXattrName("user.attr"), "user.attr");
   EXPECT_EQ(delegate.ConvertXattrName("system.attr"), "system.attr");
   EXPECT_EQ(delegate.ConvertXattrName("trusted.attr"), "trusted.attr");
+}
+
+TEST_F(ArcVmDataMigrationHelperDelegateTest, MapPathToPathType) {
+  ArcVmDataMigrationHelperDelegate delegate(source_, nullptr);
+
+  std::vector<MapPathToPathTypeTestCase> test_cases{{
+      {"media/0", FailedPathType::kOtherSource, FailedPathType::kOtherDest,
+       FailedPathType::kOther},
+      {"media/0/Pictures", FailedPathType::kMediaSource,
+       FailedPathType::kMediaDest, FailedPathType::kMedia},
+      {"media/0/Pictures/capybara.jpg", FailedPathType::kMediaSource,
+       FailedPathType::kMediaDest, FailedPathType::kMedia},
+      {"media/0/Android/data/", FailedPathType::kMediaSource,
+       FailedPathType::kMediaDest, FailedPathType::kMedia},
+      {"media/0/Android/data/com.android.vending/files",
+       FailedPathType::kMediaAndroidDataSource,
+       FailedPathType::kMediaAndroidDataDest,
+       FailedPathType::kMediaAndroidData},
+      {"media/0/Android/obb/com.android.vending/files",
+       FailedPathType::kMediaAndroidObbSource,
+       FailedPathType::kMediaAndroidObbDest, FailedPathType::kMediaAndroidObb},
+      {"data/com.android.vending/cache", FailedPathType::kDataSource,
+       FailedPathType::kDataDest, FailedPathType::kData},
+      {"app/~~JBwEbfOhkonCF0Y2Fb5Bdw==/"
+       "com.android.vending-DZtQ0em8Lw17vh1IWICRYQ==/lib",
+       FailedPathType::kAppSource, FailedPathType::kAppDest,
+       FailedPathType::kApp},
+      {"user/0/com.android.vending/cache", FailedPathType::kUserSource,
+       FailedPathType::kUserDest, FailedPathType::kUser},
+      {"user_de/0/com.android.vending/cache", FailedPathType::kUserDeSource,
+       FailedPathType::kUserDeDest, FailedPathType::kUserDe},
+      {"system/packages.xml", FailedPathType::kOtherSource,
+       FailedPathType::kOtherDest, FailedPathType::kOther},
+  }};
+
+  for (const auto& test_case : test_cases) {
+    EXPECT_EQ(delegate.MapPathToPathType(base::FilePath(test_case.rel_path),
+                                         FailureLocationType::kSource),
+              test_case.type_source);
+    EXPECT_EQ(delegate.MapPathToPathType(base::FilePath(test_case.rel_path),
+                                         FailureLocationType::kDest),
+              test_case.type_dest);
+    EXPECT_EQ(delegate.MapPathToPathType(base::FilePath(test_case.rel_path),
+                                         FailureLocationType::kSourceOrDest),
+              test_case.type_source_or_dest);
+
+    // Absolute paths are supported as well. Whether the absolute path is in the
+    // migration source or in the destination does not change the result of
+    // MapPathToPathType.
+    EXPECT_EQ(delegate.MapPathToPathType(source_.Append(test_case.rel_path),
+                                         FailureLocationType::kSourceOrDest),
+              test_case.type_source_or_dest);
+    EXPECT_EQ(delegate.MapPathToPathType(dest_.Append(test_case.rel_path),
+                                         FailureLocationType::kSource),
+              test_case.type_source);
+  }
+
+  // Absolute paths that is not under the migration source or the destination
+  // are categorized separately.
+  EXPECT_EQ(
+      delegate.MapPathToPathType(base::FilePath("/data/media/0/Android/data"),
+                                 FailureLocationType::kSource),
+      FailedPathType::kUnknownAbsolutePath);
 }
 
 }  // namespace arc::data_migrator

@@ -39,9 +39,6 @@ namespace arc::data_migrator {
 
 namespace {
 
-// The mount point for the migration destinaiton.
-constexpr char kDestinationMountPoint[] = "/tmp/arcvm-data-migration-mount";
-
 class DBusAdaptor : public org::chromium::ArcVmDataMigratorAdaptor,
                     public org::chromium::ArcVmDataMigratorInterface {
  public:
@@ -193,7 +190,7 @@ class DBusAdaptor : public org::chromium::ArcVmDataMigratorAdaptor,
   void Migrate(const base::FilePath& source_dir,
                const base::FilePath& status_files_dir) {
     cryptohome::Platform platform;
-    ArcVmDataMigrationHelperDelegate delegate(&metrics_);
+    ArcVmDataMigrationHelperDelegate delegate(source_dir, &metrics_);
     constexpr uint64_t kMaxChunkSize = 128 * 1024 * 1024;
 
     {

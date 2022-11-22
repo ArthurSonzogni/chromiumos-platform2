@@ -31,6 +31,50 @@ enum class SetupResult {
   kMaxValue = kThreadStartFailure,
 };
 
+// The types of the location of files at which the migration failed. This is a
+// product of the location under Android /data (the migration root) and the
+// location from the migration tool's perspective (whether the file is in the
+// migration source, the destination, or could be both).
+// These values are persisted to logs. Entries should not be renumbered and
+// numeric values should never be reused.
+enum class FailedPathType {
+  // Absolute paths that is not under the migration source or the destination.
+  kUnknownAbsolutePath = 0,
+  // Other
+  kOtherSource = 1,
+  kOtherDest = 2,
+  kOther = 3,
+  // Contents under /data/media/0/Android/data.
+  kMediaAndroidDataSource = 4,
+  kMediaAndroidDataDest = 5,
+  kMediaAndroidData = 6,
+  // Contents under /data/media/0/Android/obb.
+  kMediaAndroidObbSource = 7,
+  kMediaAndroidObbDest = 8,
+  kMediaAndroidObb = 9,
+  // Contents under /data/media/0 excluding /data/media/0/Android/{data,obb}.
+  kMediaSource = 10,
+  kMediaDest = 11,
+  kMedia = 12,
+  // Contents under /data/app.
+  kAppSource = 13,
+  kAppDest = 14,
+  kApp = 15,
+  // Contents under /data/data.
+  kDataSource = 16,
+  kDataDest = 17,
+  kData = 18,
+  // Contents under /data/user/0.
+  kUserSource = 19,
+  kUserDest = 20,
+  kUser = 21,
+  // Contents under /data/user_de/0.
+  kUserDeSource = 22,
+  kUserDeDest = 23,
+  kUserDe = 24,
+  kMaxValue = kUserDe,
+};
+
 // A class that sends UMA metrics using MetricsLibrary. There is no D-Bus call
 // because MetricsLibrary writes the UMA data to /var/lib/metrics/uma-events.
 class ArcVmDataMigratorMetrics {
@@ -61,6 +105,9 @@ class ArcVmDataMigratorMetrics {
   // Reports the type of file operation that caused a failure.
   void ReportFailedOperationType(
       cryptohome::data_migrator::MigrationFailedOperationType type);
+
+  // Reports the type of file location at which we failed to migrate.
+  void ReportFailedPathType(FailedPathType type);
 
   // Reports device's free space at the beginning of the migration in MB.
   void ReportInitialFreeSpace(int initial_free_space_mb);

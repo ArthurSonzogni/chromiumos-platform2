@@ -16,12 +16,16 @@
 
 namespace arc::data_migrator {
 
+// The mount point for the migration destinaiton.
+extern const char kDestinationMountPoint[];
+
 // Delegate class for cryptohome::data_migrator::MigrationHelper that implements
 // logic specific to ARCVM /data migration.
 class ArcVmDataMigrationHelperDelegate
     : public cryptohome::data_migrator::MigrationHelperDelegate {
  public:
-  explicit ArcVmDataMigrationHelperDelegate(ArcVmDataMigratorMetrics* metrics);
+  ArcVmDataMigrationHelperDelegate(const base::FilePath& source,
+                                   ArcVmDataMigratorMetrics* metrics);
   ~ArcVmDataMigrationHelperDelegate() override;
 
   ArcVmDataMigrationHelperDelegate(const ArcVmDataMigrationHelperDelegate&) =
@@ -52,6 +56,15 @@ class ArcVmDataMigrationHelperDelegate
   void ReportFailedNoSpaceXattrSizeInBytes(int total_xattr_size_bytes) override;
 
  private:
+  FRIEND_TEST(ArcVmDataMigrationHelperDelegateTest, MapPathToPathType);
+
+  FailedPathType MapPathToPathType(
+      const base::FilePath& path,
+      cryptohome::data_migrator::FailureLocationType location_type);
+
+  // Migration source.
+  const base::FilePath source_;
+
   // Owned by arc::data_migrator::DBusAdaptor.
   ArcVmDataMigratorMetrics* const metrics_;
 

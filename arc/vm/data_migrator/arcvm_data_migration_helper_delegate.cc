@@ -9,13 +9,18 @@
 #include <array>
 #include <optional>
 #include <string>
+#include <utility>
 
 #include <base/files/file.h>
 #include <base/files/file_path.h>
 #include <base/logging.h>
 #include <base/strings/string_util.h>
 
+using cryptohome::data_migrator::FailureLocationType;
+
 namespace arc::data_migrator {
+
+const char kDestinationMountPoint[] = "/tmp/arcvm-data-migration-mount";
 
 namespace {
 
@@ -71,11 +76,46 @@ std::optional<T> MapToGuestId(T host_id,
   return std::nullopt;
 }
 
+// Struct for defining mappings from file paths and FailureLocationType to
+// FailedPathType. Each member of this struct corresponds to each type in
+// FailureLocationType.
+struct PathTypes {
+  FailedPathType type_source;
+  FailedPathType type_dest;
+  FailedPathType type_source_or_dest;
+};
+
+// Defines the mapping from file paths and FailureLocationType to
+// FailedPathType. List subdirectories first to get longest match.
+constexpr std::array<std::pair<const char*, PathTypes>, 7> kPathTypeMappings = {
+    {
+        {"app", PathTypes{FailedPathType::kAppSource, FailedPathType::kAppDest,
+                          FailedPathType::kApp}},
+        {"data", PathTypes{FailedPathType::kDataSource,
+                           FailedPathType::kDataDest, FailedPathType::kData}},
+        {"media/0/Android/data",
+         PathTypes{FailedPathType::kMediaAndroidDataSource,
+                   FailedPathType::kMediaAndroidDataDest,
+                   FailedPathType::kMediaAndroidData}},
+        {"media/0/Android/obb",
+         PathTypes{FailedPathType::kMediaAndroidObbSource,
+                   FailedPathType::kMediaAndroidObbDest,
+                   FailedPathType::kMediaAndroidObb}},
+        {"media/0",
+         PathTypes{FailedPathType::kMediaSource, FailedPathType::kMediaDest,
+                   FailedPathType::kMedia}},
+        {"user/0", PathTypes{FailedPathType::kUserSource,
+                             FailedPathType::kUserDest, FailedPathType::kUser}},
+        {"user_de/0",
+         PathTypes{FailedPathType::kUserDeSource, FailedPathType::kUserDeDest,
+                   FailedPathType::kUserDe}},
+    }};
+
 }  // namespace
 
 ArcVmDataMigrationHelperDelegate::ArcVmDataMigrationHelperDelegate(
-    ArcVmDataMigratorMetrics* metrics)
-    : metrics_(metrics) {}
+    const base::FilePath& source, ArcVmDataMigratorMetrics* metrics)
+    : source_(source), metrics_(metrics) {}
 
 ArcVmDataMigrationHelperDelegate::~ArcVmDataMigrationHelperDelegate() = default;
 
@@ -141,10 +181,10 @@ void ArcVmDataMigrationHelperDelegate::ReportFailure(
     base::File::Error error_code,
     cryptohome::data_migrator::MigrationFailedOperationType type,
     const base::FilePath& path,
-    cryptohome::data_migrator::FailureLocationType location_type) {
+    FailureLocationType location_type) {
   metrics_->ReportFailedErrorCode(error_code);
   metrics_->ReportFailedOperationType(type);
-  // TODO(b/272151802): Report failed path type too.
+  metrics_->ReportFailedPathType(MapPathToPathType(path, location_type));
 }
 
 void ArcVmDataMigrationHelperDelegate::ReportFailedNoSpace(
@@ -156,6 +196,46 @@ void ArcVmDataMigrationHelperDelegate::ReportFailedNoSpace(
 void ArcVmDataMigrationHelperDelegate::ReportFailedNoSpaceXattrSizeInBytes(
     int total_xattr_size_bytes) {
   metrics_->ReportNoSpaceXattrSize(total_xattr_size_bytes);
+}
+
+FailedPathType ArcVmDataMigrationHelperDelegate::MapPathToPathType(
+    const base::FilePath& path, FailureLocationType location_type) {
+  // Support absolute paths for |path| just in case, by converting them to
+  // relative paths from the migration root.
+  base::FilePath relative_path;
+  if (path.IsAbsolute()) {
+    if (!source_.AppendRelativePath(path, &relative_path) &&
+        !base::FilePath(kDestinationMountPoint)
+             .AppendRelativePath(path, &relative_path)) {
+      LOG(WARNING) << "Cannot map an absolute path that is not under the "
+                   << "migration source or the destination";
+      return FailedPathType::kUnknownAbsolutePath;
+    }
+  } else {
+    relative_path = path;
+  }
+
+  for (const auto& [directory, types] : kPathTypeMappings) {
+    if (base::FilePath(directory).IsParent(relative_path)) {
+      switch (location_type) {
+        case FailureLocationType::kSource:
+          return types.type_source;
+        case FailureLocationType::kDest:
+          return types.type_dest;
+        case FailureLocationType::kSourceOrDest:
+          return types.type_source_or_dest;
+      }
+    }
+  }
+
+  switch (location_type) {
+    case FailureLocationType::kSource:
+      return FailedPathType::kOtherSource;
+    case FailureLocationType::kDest:
+      return FailedPathType::kOtherDest;
+    case FailureLocationType::kSourceOrDest:
+      return FailedPathType::kOther;
+  }
 }
 
 }  // namespace arc::data_migrator

@@ -23,6 +23,7 @@ constexpr char kSetupResult[] = "Arc.VmDataMigration.SetupResult";
 constexpr char kFailedErrorCode[] = "Arc.VmDataMigration.FailedErrorCode";
 constexpr char kFailedOperationType[] =
     "Arc.VmDataMigration.FailedOperationType";
+constexpr char kFailedPathType[] = "Arc.VmDataMigration.FailedPathType";
 constexpr char kInitialFreeSpace[] = "Arc.VmDataMigration.InitialFreeSpace";
 constexpr char kNoSpaceFailureFreeSpace[] =
     "Arc.VmDataMigration.NoSpaceFailureFreeSpace";
@@ -84,6 +85,10 @@ void ArcVmDataMigratorMetrics::ReportFailedOperationType(
   metrics_library_->SendEnumToUMA(
       kFailedOperationType, type,
       cryptohome::data_migrator::kMigrationFailedOperationTypeNumBuckets);
+}
+
+void ArcVmDataMigratorMetrics::ReportFailedPathType(FailedPathType type) {
+  metrics_library_->SendEnumToUMA(kFailedPathType, type);
 }
 
 void ArcVmDataMigratorMetrics::ReportInitialFreeSpace(
