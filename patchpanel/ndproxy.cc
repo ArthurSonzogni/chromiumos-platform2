@@ -520,24 +520,39 @@ void NDProxy::NotifyPacketCallbacks(int recv_ifindex,
 
   // GuestDiscovery event is triggered whenever an NA advertising global
   // address or an NS with a global source address is received on a downlink.
+  const in6_addr* guest_address = nullptr;
   if ((IsGuestInterface(recv_ifindex) ||
        neighbor_monitor_links_.count(recv_ifindex) > 0) &&
       !guest_discovery_handler_.is_null()) {
-    const in6_addr* guest_address = nullptr;
     if (icmp6->icmp6_type == ND_NEIGHBOR_ADVERT) {
       const nd_neighbor_advert* na =
           reinterpret_cast<const nd_neighbor_advert*>(icmp6);
       guest_address = &(na->nd_na_target);
     } else if (icmp6->icmp6_type == ND_NEIGHBOR_SOLICIT) {
       guest_address = &(ip6->ip6_src);
+
+      // b/187918638: some cellular modems never send proper NS and NA,
+      // there is no chance that we get the guest IP as normally from NA.
+      // Instead, we have to monitor DAD NS frames and use it as judgement.
+      // Notice that since upstream never reply NA, this DAD never fails.
+      if (IsGuestToIrregularRouter(recv_ifindex)) {
+        uint8_t zerobuf[sizeof(in6_addr)] = {0};
+        // Empty source IP indicates DAD
+        if (memcmp(&ip6->ip6_src, zerobuf, sizeof(in6_addr)) == 0) {
+          const nd_neighbor_solicit* ns =
+              reinterpret_cast<const nd_neighbor_solicit*>(icmp6);
+          guest_address = &(ns->nd_ns_target);
+        }
+      }
     }
-    if (guest_address &&
-        ((guest_address->s6_addr[0] & 0xe0) == 0x20 ||   // Global Unicast
-         (guest_address->s6_addr[0] & 0xfe) == 0xfc)) {  // Unique Local
-      guest_discovery_handler_.Run(recv_ifindex, *guest_address);
-      VLOG(2) << "GuestDiscovery on interface " << recv_ifindex << ": "
-              << IPv6AddressToString(*guest_address);
-    }
+  }
+
+  if (guest_address &&
+      ((guest_address->s6_addr[0] & 0xe0) == 0x20 ||   // Global Unicast
+       (guest_address->s6_addr[0] & 0xfe) == 0xfc)) {  // Unique Local
+    guest_discovery_handler_.Run(recv_ifindex, *guest_address);
+    VLOG(2) << "GuestDiscovery on interface " << recv_ifindex << ": "
+            << IPv6AddressToString(*guest_address);
   }
 
   // RouterDiscovery event is triggered whenever an RA is received on a uplink.
@@ -820,6 +835,16 @@ bool NDProxy::IsGuestInterface(int ifindex) {
 
 bool NDProxy::IsRouterInterface(int ifindex) {
   return if_map_ra_.find(ifindex) != if_map_ra_.end();
+}
+
+bool NDProxy::IsGuestToIrregularRouter(int ifindex) {
+  if (!IsGuestInterface(ifindex))
+    return false;
+  for (int target_if : if_map_rs_[ifindex]) {
+    if (modify_ra_uplinks_.count(target_if) > 0)
+      return true;
+  }
+  return false;
 }
 
 NDProxyDaemon::NDProxyDaemon(base::ScopedFD control_fd)
