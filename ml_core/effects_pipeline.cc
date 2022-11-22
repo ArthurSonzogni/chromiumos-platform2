@@ -10,10 +10,14 @@
 #include <base/files/file_path.h>
 #include <base/logging.h>
 #include <base/scoped_native_library.h>
+#include <session_manager/dbus-proxies.h>
 
 namespace {
 
+using org::chromium::SessionManagerInterfaceProxy;
+
 constexpr char kLibraryName[] = "libcros_ml_core_internal.so";
+constexpr char kDaemonStoreBase[] = "/run/daemon-store/ml-core-effects";
 
 class EffectsPipelineImpl : public cros::EffectsPipeline {
  public:
@@ -52,7 +56,8 @@ class EffectsPipelineImpl : public cros::EffectsPipeline {
 
  protected:
   EffectsPipelineImpl() {}
-  bool Initialize(const base::FilePath& dlc_root_path) {
+  bool Initialize(const base::FilePath& dlc_root_path,
+                  const base::FilePath& caching_dir_override) {
 #ifdef USE_LOCAL_ML_CORE_INTERNAL
     // TODO(jmpollock) this should be /usr/local/lib on arm.
     base::FilePath lib_path =
@@ -105,8 +110,16 @@ class EffectsPipelineImpl : public cros::EffectsPipeline {
       return false;
     }
 
-    pipeline_ = create_fn_();
-    LOG(INFO) << "Pipeline created";
+    base::FilePath caching_dir;
+    if (caching_dir_override.empty()) {
+      caching_dir = GetDaemonStoreDir();
+    } else {
+      caching_dir = caching_dir_override;
+    }
+
+    pipeline_ =
+        create_fn_(caching_dir.empty() ? nullptr : caching_dir.value().c_str());
+    LOG(INFO) << "Pipeline created, cache_dir: " << caching_dir;
     set_rendered_image_observer_fn_(
         pipeline_, this, &EffectsPipelineImpl::RenderedImageFrameHandler);
 
@@ -125,6 +138,37 @@ class EffectsPipelineImpl : public cros::EffectsPipeline {
       pipeline->rendered_image_observer_->OnFrameProcessed(
           timestamp, frame_data, frame_width, frame_height, stride);
     }
+  }
+
+  base::FilePath GetDaemonStoreDir() {
+    // Default to "/tmp" if there is no user hash available (e.g. Guest mode)
+    // TODO(b/260157682): Investigate whether we should keep this, if so, how do
+    //                    we protect against corruption / malicious intent.
+    base::FilePath default_caching_dir("/tmp");
+    dbus::Bus::Options options;
+    options.bus_type = dbus::Bus::SYSTEM;
+    scoped_refptr<dbus::Bus> bus = new dbus::Bus(options);
+    if (!bus->Connect()) {
+      LOG(ERROR) << "Error connecting to DBus.";
+      return default_caching_dir;
+    }
+
+    auto session_manager = std::make_unique<SessionManagerInterfaceProxy>(bus);
+    brillo::ErrorPtr error;
+    std::string username, hashed_username;
+    if (!session_manager->RetrievePrimarySession(&username, &hashed_username,
+                                                 &error)) {
+      LOG(ERROR) << "Error in DBus call RetrievePrimarySession: "
+                 << error->GetMessage();
+      return default_caching_dir;
+    }
+
+    if (hashed_username.empty()) {
+      LOG(ERROR) << "No user available, using default caching dir.";
+      return default_caching_dir;
+    }
+
+    return base::FilePath(kDaemonStoreBase).Append(hashed_username);
   }
 
   std::optional<base::ScopedNativeLibrary> library_;
@@ -148,10 +192,11 @@ class EffectsPipelineImpl : public cros::EffectsPipeline {
 namespace cros {
 
 std::unique_ptr<EffectsPipeline> EffectsPipeline::Create(
-    const base::FilePath& dlc_root_path) {
+    const base::FilePath& dlc_root_path,
+    const base::FilePath& caching_dir_override) {
   auto pipeline =
       std::unique_ptr<EffectsPipelineImpl>(new EffectsPipelineImpl());
-  if (!pipeline->Initialize(dlc_root_path)) {
+  if (!pipeline->Initialize(dlc_root_path, caching_dir_override)) {
     return nullptr;
   }
   return pipeline;

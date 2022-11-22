@@ -76,7 +76,7 @@ typedef void (*cros_ml_effects_OnFrameProcessedHandler)(void* handler,
                                                         uint32_t frame_height,
                                                         uint32_t stride);
 
-void* cros_ml_effects_CreateEffectsPipeline();
+void* cros_ml_effects_CreateEffectsPipeline(const char* caching_dir);
 typedef decltype(&cros_ml_effects_CreateEffectsPipeline)
     cros_ml_effects_CreateEffectsPipelineFn;
 

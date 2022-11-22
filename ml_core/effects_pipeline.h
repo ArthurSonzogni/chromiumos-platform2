@@ -37,7 +37,8 @@ class BRILLO_EXPORT EffectsPipeline {
 
   // Create an instance of the Pipeline.
   static std::unique_ptr<EffectsPipeline> Create(
-      const base::FilePath& dlc_root_path);
+      const base::FilePath& dlc_root_path,
+      const base::FilePath& caching_dir_override = base::FilePath(""));
 
   // Queue an input frame (ImageFormat::SRGB / RG24 / RGB888) for processing.
   virtual bool ProcessFrame(int64_t timestamp,
