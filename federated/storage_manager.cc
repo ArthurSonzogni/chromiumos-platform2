@@ -76,10 +76,14 @@ void StorageManager::InitializeSessionManagerProxy(dbus::Bus* const bus) {
   }
 }
 
+bool StorageManager::IsDatabaseConnected() const {
+  return example_database_ != nullptr && example_database_->IsOpen();
+}
+
 bool StorageManager::OnExampleReceived(const std::string& client_name,
                                        const std::string& serialized_example) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  if (example_database_ == nullptr || !example_database_->IsOpen()) {
+  if (!IsDatabaseConnected()) {
     VLOG(1) << "No database connection";
     return false;
   }
@@ -98,7 +102,7 @@ std::optional<ExampleDatabase::Iterator> StorageManager::GetExampleIterator(
 
   // This method may be called from different sequence but ExampleDatabase are
   // threadsafe.
-  if (example_database_ == nullptr || !example_database_->IsOpen()) {
+  if (!IsDatabaseConnected()) {
     VLOG(1) << "No database connection";
     return std::nullopt;
   }
@@ -148,7 +152,7 @@ std::optional<ExampleDatabase::Iterator> StorageManager::GetExampleIterator(
 }
 
 bool StorageManager::UpdateMetaRecord(const MetaRecord& meta_record) const {
-  if (example_database_ == nullptr || !example_database_->IsOpen()) {
+  if (!IsDatabaseConnected()) {
     VLOG(1) << "No database connection";
     return false;
   }
@@ -178,8 +182,7 @@ void StorageManager::ConnectToDatabaseIfNecessary() {
     return;
   }
 
-  if (example_database_ != nullptr && example_database_->IsOpen() &&
-      new_sanitized_username == sanitized_username_) {
+  if (IsDatabaseConnected() && new_sanitized_username == sanitized_username_) {
     VLOG(1) << "Database for user " << sanitized_username_
             << " is already connected, nothing changed";
     return;

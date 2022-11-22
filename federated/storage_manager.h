@@ -51,6 +51,9 @@ class StorageManager : public SessionManagerObserverInterface {
   // successfully.
   virtual bool UpdateMetaRecord(const MetaRecord& meta_record) const;
 
+  // Returns true if the `example_database_` is connected.
+  bool IsDatabaseConnected() const;
+
   // Returns current logged-in user hash to generate the current accessible
   // sub_path in the daemon store (powered by cryptohome).
   // StorageManager uses this sub_path for example database, other parties (e.g.

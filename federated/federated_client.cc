@@ -245,6 +245,13 @@ FederatedClient::FederatedClient(
 FederatedClient::~FederatedClient() = default;
 
 void FederatedClient::RunPlan(const StorageManager* const storage_manager) {
+  if (!storage_manager->IsDatabaseConnected()) {
+    next_retry_delay_ = kDefaultRetryWindow;
+    DVLOG(1) << "StorageManager doesn't have a database connection, retry in "
+             << next_retry_delay_;
+    return;
+  }
+
   DCHECK(!storage_manager->sanitized_username().empty())
       << "storage_manager->sanitized_username() is unexpectedly empty!";
 
