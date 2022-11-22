@@ -61,6 +61,7 @@ pipe2: 1
 ppoll: 1
 prctl: arg0 == PR_GET_DUMPABLE || arg0 == PR_SET_DUMPABLE
 prlimit64: 1
+process_vm_readv: 1
 read: 1
 recvmsg: 1
 restart_syscall: 1
