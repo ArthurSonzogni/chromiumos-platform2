@@ -200,6 +200,9 @@ const TimerHistogramParams kTimerHistogramParams[] = {
     {"Cryptohome.TimeToUSSPersist", 0, 5000, 50},
     // The time to Load Persist a User Secret Stash from system storage.
     {"Cryptohome.TimeToUSSLoadPersisted", 0, 5000, 50},
+    // The time to migrate a VaultKeyset to UserSecretStash after authentication
+    // or update is completed.
+    {"Cryptohome.TimeToMigrateVaultKeysetToUss", 0, 6000, 60},
 };
 
 static_assert(std::size(kTimerHistogramParams) == kNumTimerTypes,
