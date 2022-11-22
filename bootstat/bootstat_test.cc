@@ -37,6 +37,10 @@ using ::testing::Return;
 using ::testing::SetArgPointee;
 
 namespace {
+
+constexpr char kProcPath[] = "proc";
+constexpr char kProcUptimePath[] = "proc/uptime";
+
 void RemoveFile(const base::FilePath& file_path) {
   // Either this is a link, or the path exists (PathExists would resolve
   // symlink).
@@ -68,15 +72,13 @@ void ValidateEventFileContents(const base::FilePath& file_path,
 class MockBootStatSystem : public BootStatSystem {
  public:
   explicit MockBootStatSystem(const base::FilePath& disk_statistics_file_path,
-                              const base::FilePath& uptime_file_path)
-      : disk_statistics_file_path_(disk_statistics_file_path),
-        uptime_file_path_(uptime_file_path) {}
+                              const base::FilePath& root_path)
+      : BootStatSystem(root_path),
+        disk_statistics_file_path_(disk_statistics_file_path) {}
 
   base::FilePath GetDiskStatisticsFilePath() const override {
     return disk_statistics_file_path_;
   }
-
-  base::FilePath GetUptimePath() const override { return uptime_file_path_; }
 
   MOCK_METHOD(std::optional<struct timespec>, GetUpTime, (), (const, override));
   MOCK_METHOD(base::ScopedFD, OpenRtc, (), (const, override));
@@ -87,7 +89,6 @@ class MockBootStatSystem : public BootStatSystem {
 
  private:
   base::FilePath disk_statistics_file_path_;
-  base::FilePath uptime_file_path_;
 };
 
 // Test environment for Bootstat class.
@@ -118,7 +119,7 @@ class BootstatTest : public ::testing::Test {
 
  private:
   base::FilePath mock_disk_file_path_;
-  base::FilePath mock_uptime_path_;
+  base::FilePath mock_root_path_;
 };
 
 void BootstatTest::SetUp() {
@@ -126,9 +127,9 @@ void BootstatTest::SetUp() {
   stats_output_dir_ = temp_dir_.GetPath().Append("stats");
   ASSERT_TRUE(base::CreateDirectory(stats_output_dir_));
   mock_disk_file_path_ = temp_dir_.GetPath().Append("block_stats");
-  mock_uptime_path_ = temp_dir_.GetPath().Append("uptime");
+  mock_root_path_ = temp_dir_.GetPath();
   boot_stat_system_ =
-      new MockBootStatSystem(mock_disk_file_path_, mock_uptime_path_);
+      new MockBootStatSystem(mock_disk_file_path_, mock_root_path_);
   boot_stat_ = std::make_unique<BootStat>(stats_output_dir_,
                                           base::WrapUnique(boot_stat_system_));
 }
@@ -138,7 +139,10 @@ bool BootstatTest::WriteMockDiskStats(const std::string& content) {
 }
 
 bool BootstatTest::WriteUptime(const std::string& content) {
-  return base::WriteFile(mock_uptime_path_, content);
+  base::FilePath dir = mock_root_path_.Append(kProcPath);
+  if (!base::CreateDirectoryAndGetError(dir, nullptr))
+    return false;
+  return base::WriteFile(mock_root_path_.Append(kProcUptimePath), content);
 }
 
 bool BootstatTest::WriteUptime(const struct timespec& uptime,

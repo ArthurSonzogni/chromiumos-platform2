@@ -28,7 +28,9 @@ namespace bootstat {
 // Abstracts system operations in order to inject on testing.
 class BootStatSystem {
  public:
-  BootStatSystem() = default;
+  BootStatSystem();
+  // Constructor for tests that may want to modify the root path.
+  explicit BootStatSystem(const base::FilePath& root_path);
   BootStatSystem(const BootStatSystem&) = delete;
   BootStatSystem& operator=(const BootStatSystem&) = delete;
   virtual ~BootStatSystem() = default;
@@ -36,9 +38,6 @@ class BootStatSystem {
   // Returns the path representing the stats file for the root disk.
   // Returns an empty path on failure.
   virtual base::FilePath GetDiskStatisticsFilePath() const;
-
-  // Returns the path for retrieving uptime (e.g., from procfs).
-  virtual base::FilePath GetUptimePath() const;
 
   // Returns the current uptime (clock_gettime's CLOCK_BOOTTIME),
   // std::nullopt on error.
@@ -52,6 +51,9 @@ class BootStatSystem {
   // Reads and return RTC's time, std::nullopt on error.
   virtual std::optional<struct rtc_time> GetRtcTime(
       base::ScopedFD* rtc_fd) const;
+
+ private:
+  base::FilePath root_path_;
 };
 
 // Basic class for bootstat API interface.

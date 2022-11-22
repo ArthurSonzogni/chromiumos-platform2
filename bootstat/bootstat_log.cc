@@ -37,7 +37,7 @@ namespace {
 // stored.
 static const char kDefaultOutputDirectoryName[] = "tmp";
 
-static constexpr char kProcUptime[] = "/proc/uptime";
+static constexpr char kProcUptime[] = "proc/uptime";
 
 static constexpr int64_t kNsecsPerSec = 1e9;
 
@@ -91,6 +91,11 @@ static std::optional<std::vector<base::TimeDelta>> ParseDecimalColumns(
 
 }  // namespace
 
+BootStatSystem::BootStatSystem() : BootStatSystem(base::FilePath("/")) {}
+
+BootStatSystem::BootStatSystem(const base::FilePath& root_path)
+    : root_path_(root_path) {}
+
 // TODO(drinkcat): Cache function output (we only need to evaluate it once)
 base::FilePath BootStatSystem::GetDiskStatisticsFilePath() const {
   char boot_path[PATH_MAX];
@@ -124,10 +129,6 @@ base::FilePath BootStatSystem::GetDiskStatisticsFilePath() const {
   return norm;
 }
 
-base::FilePath BootStatSystem::GetUptimePath() const {
-  return base::FilePath(kProcUptime);
-}
-
 std::optional<struct timespec> BootStatSystem::GetUpTime() const {
   struct timespec uptime;
   int ret = clock_gettime(CLOCK_BOOTTIME, &uptime);
@@ -139,7 +140,7 @@ std::optional<struct timespec> BootStatSystem::GetUpTime() const {
 }
 
 std::optional<base::TimeDelta> BootStatSystem::GetIdleTime() const {
-  base::FilePath path = GetUptimePath();
+  base::FilePath path = root_path_.Append(kProcUptime);
   std::string data;
   if (!base::ReadFileToString(path, &data)) {
     PLOG(ERROR) << "Cannot read uptime from: " << path;
