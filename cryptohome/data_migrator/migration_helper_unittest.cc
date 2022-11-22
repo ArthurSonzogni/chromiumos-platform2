@@ -25,10 +25,9 @@
 #include <base/synchronization/waitable_event.h>
 #include <base/threading/thread.h>
 
-#include "cryptohome/data_migrator/migration_helper_delegate.h"
+#include "cryptohome/data_migrator/fake_migration_helper_delegate.h"
 #include "cryptohome/migration_type.h"
 #include "cryptohome/mock_platform.h"
-#include "cryptohome/storage/dircrypto_migration_helper_delegate.h"
 
 extern "C" {
 #include <linux/fs.h>
@@ -80,9 +79,7 @@ class MigrationHelperTest : public ::testing::Test {
 
  protected:
   NiceMock<MockPlatform> platform_;
-  // TODO(b/258402655): Use a mock of MigrationHelperDelegate and check that its
-  // methods are called correctly.
-  MigrationHelperDelegate delegate_;
+  FakeMigrationHelperDelegate delegate_;
 
   base::FilePath status_files_dir_;
   base::FilePath from_dir_;
@@ -752,106 +749,53 @@ TEST_F(MigrationHelperTest, AllJobThreadsFailing) {
       &MigrationHelperTest::ProgressCaptor, base::Unretained(this))));
 }
 
-TEST_F(MigrationHelperTest, SkipDuppedGCacheTmpDir) {
-  DircryptoMigrationHelperDelegate delegate(MigrationType::FULL);
-  MigrationHelper helper(&platform_, &delegate, from_dir_, to_dir_,
+TEST_F(MigrationHelperTest, CheckSkippedFiles) {
+  MigrationHelper helper(&platform_, &delegate_, from_dir_, to_dir_,
                          status_files_dir_, kDefaultChunkSize);
   helper.set_namespaced_mtime_xattr_name_for_testing(kMtimeXattrName);
   helper.set_namespaced_atime_xattr_name_for_testing(kAtimeXattrName);
 
-  // Prepare the problematic path.
-  constexpr char kGCacheV1[] = "user/GCache/v1";
-  constexpr char kTmpDir[] = "tmp";
-  constexpr char kCachedDir[] = "foobar";
-  constexpr char kCachedFile[] = "tmp.gdoc";
+  // Structure:
+  //   dir/             -> not skipped
+  //     skip_dir/      -> skipped
+  //       file         -> skipped
+  //     skip_file      -> skipped
+  //     nonskip_dir/   -> not skipped
+  //       file         -> not skipped
+  //     nonskip_file   -> not skipped
+  //   file             -> not skipped
+  ASSERT_TRUE(platform_.CreateDirectory(from_dir_.Append("dir")));
+  ASSERT_TRUE(platform_.CreateDirectory(from_dir_.Append("dir/skip_dir")));
+  ASSERT_TRUE(platform_.CreateDirectory(from_dir_.Append("dir/nonskip_dir")));
+  ASSERT_TRUE(platform_.TouchFileDurable(from_dir_.Append("file")));
+  ASSERT_TRUE(platform_.TouchFileDurable(from_dir_.Append("dir/skip_file")));
+  ASSERT_TRUE(platform_.TouchFileDurable(from_dir_.Append("dir/nonskip_file")));
+  ASSERT_TRUE(
+      platform_.TouchFileDurable(from_dir_.Append("dir/skip_dir/file")));
+  ASSERT_TRUE(
+      platform_.TouchFileDurable(from_dir_.Append("dir/nonskip_dir/file")));
 
-  const base::FilePath v1_path(from_dir_.Append(kGCacheV1));
-  const base::FilePath cached_dir = v1_path.Append(kTmpDir).Append(kCachedDir);
-  const base::FilePath cached_file = cached_dir.Append(kCachedFile);
-
-  ASSERT_TRUE(platform_.CreateDirectory(cached_dir));
-  ASSERT_TRUE(platform_.TouchFileDurable(cached_file));
+  delegate_.ClearDenylistedPaths();
+  delegate_.AddDenylistedPath(FilePath("dir/skip_dir"));
+  delegate_.AddDenylistedPath(FilePath("dir/skip_file"));
 
   // Test the migration.
   EXPECT_TRUE(helper.Migrate(base::BindRepeating(
       &MigrationHelperTest::ProgressCaptor, base::Unretained(this))));
 
-  // Ensure that the inner path is never visited.
-  ASSERT_FALSE(platform_.FileExists(v1_path));
-  ASSERT_TRUE(platform_.FileExists(to_dir_.Append(kGCacheV1)));
-  ASSERT_FALSE(platform_.FileExists(to_dir_.Append(kGCacheV1).Append(kTmpDir)));
-}
+  // Check that dir/skip_dir/* and dir/skip_file were not migrated.
+  EXPECT_FALSE(platform_.DirectoryExists(to_dir_.Append("dir/skip_dir")));
+  EXPECT_FALSE(platform_.FileExists(to_dir_.Append("dir/skip_dir/file")));
+  EXPECT_FALSE(platform_.FileExists(to_dir_.Append("dir/skip_file")));
 
-TEST_F(MigrationHelperTest, MinimalMigration) {
-  DircryptoMigrationHelperDelegate delegate(MigrationType::MINIMAL);
-  MigrationHelper helper(&platform_, &delegate, from_dir_, to_dir_,
-                         status_files_dir_, kDefaultChunkSize);
-  helper.set_namespaced_mtime_xattr_name_for_testing(kMtimeXattrName);
-  helper.set_namespaced_atime_xattr_name_for_testing(kAtimeXattrName);
+  // Check that everything else were migrated.
+  EXPECT_TRUE(platform_.DirectoryExists(to_dir_.Append("dir")));
+  EXPECT_TRUE(platform_.DirectoryExists(to_dir_.Append("dir/nonskip_dir")));
+  EXPECT_TRUE(platform_.FileExists(to_dir_.Append("file")));
+  EXPECT_TRUE(platform_.FileExists(to_dir_.Append("dir/nonskip_file")));
+  EXPECT_TRUE(platform_.FileExists(to_dir_.Append("dir/nonskip_dir/file")));
 
-  std::vector<FilePath> expect_kept_dirs;
-  std::vector<FilePath> expect_kept_files;
-  std::vector<FilePath> expect_skipped_dirs;
-  std::vector<FilePath> expect_skipped_files;
-
-  // Set up expectations about what is skipped and what is kept.
-  // Random stuff not on the allowlist is skipped.
-  expect_skipped_dirs.emplace_back("user/Application Cache");
-  expect_skipped_dirs.emplace_back("root/android-data");
-  expect_skipped_files.emplace_back("user/Application Cache/subfile");
-  expect_skipped_files.emplace_back("user/skipped_file");
-  expect_skipped_files.emplace_back("root/skipped_file");
-
-  // session_manager/policy in the root section is kept along with children.
-  expect_kept_dirs.emplace_back("root/session_manager/policy");
-  expect_kept_files.emplace_back("root/session_manager/policy/subfile1");
-  expect_kept_files.emplace_back("root/session_manager/policy/subfile2");
-  expect_kept_dirs.emplace_back("user/log");
-  // .pki directory is kept along with contents
-  expect_kept_dirs.emplace_back("user/.pki");
-  expect_kept_dirs.emplace_back("user/.pki/nssdb");
-  expect_kept_files.emplace_back("user/.pki/nssdb/subfile1");
-  expect_kept_files.emplace_back("user/.pki/nssdb/subfile2");
-  // top-level Web Data is kept
-  expect_kept_files.emplace_back("user/Web Data");
-
-  // Create all directories
-  for (const auto& path : expect_kept_dirs)
-    ASSERT_TRUE(platform_.CreateDirectory(from_dir_.Append(path)))
-        << path.value();
-
-  for (const auto& path : expect_skipped_dirs)
-    ASSERT_TRUE(platform_.CreateDirectory(from_dir_.Append(path)))
-        << path.value();
-
-  // Create all files
-  for (const auto& path : expect_kept_files)
-    ASSERT_TRUE(platform_.TouchFileDurable(from_dir_.Append(path)))
-        << path.value();
-
-  for (const auto& path : expect_skipped_files)
-    ASSERT_TRUE(platform_.TouchFileDurable(from_dir_.Append(path)))
-        << path.value();
-
-  // Test the minimal migration.
-  EXPECT_TRUE(helper.Migrate(base::BindRepeating(
-      &MigrationHelperTest::ProgressCaptor, base::Unretained(this))));
-
-  // Only the expected files and directories are moved.
-  for (const auto& path : expect_kept_dirs)
-    EXPECT_TRUE(platform_.DirectoryExists(to_dir_.Append(path)))
-        << path.value();
-
-  for (const auto& path : expect_kept_files)
-    EXPECT_TRUE(platform_.FileExists(to_dir_.Append(path))) << path.value();
-
-  for (const auto& path : expect_skipped_dirs)
-    EXPECT_FALSE(platform_.FileExists(to_dir_.Append(path))) << path.value();
-
-  for (const auto& path : expect_skipped_files)
-    EXPECT_FALSE(platform_.FileExists(to_dir_.Append(path))) << path.value();
-
-  // The source is empty.
+  // Check that the source is empty.
   EXPECT_TRUE(platform_.IsDirectoryEmpty(from_dir_));
 }
 
