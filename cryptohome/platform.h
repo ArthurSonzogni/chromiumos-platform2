@@ -26,6 +26,7 @@
 #include <base/files/scoped_file.h>
 #include <brillo/blkdev_utils/loop_device.h>
 #include <brillo/blkdev_utils/lvm.h>
+#include <brillo/brillo_export.h>
 #include <brillo/process/process.h>
 #include <brillo/secure_blob.h>
 #include <gtest/gtest_prod.h>
@@ -44,16 +45,16 @@ class Time;
 namespace cryptohome {
 
 // Default umask
-extern const int kDefaultUmask;
+BRILLO_EXPORT extern const int kDefaultUmask;
 
 // Default mount flags for Platform::Mount.
-extern const uint32_t kDefaultMountFlags;
+BRILLO_EXPORT extern const uint32_t kDefaultMountFlags;
 
 // Default ext4 format opts.
-extern const std::vector<std::string> kDefaultExt4FormatOpts;
+BRILLO_EXPORT extern const std::vector<std::string> kDefaultExt4FormatOpts;
 
 // Loop devices prefix.
-extern const char kLoopPrefix[];
+BRILLO_EXPORT extern const char kLoopPrefix[];
 
 // IDs of necessary groups and users
 inline constexpr uid_t kRootUid = 0;
@@ -103,10 +104,10 @@ enum class RemountOption {
 // program where latency does not matter. This class is blocking.
 //
 // See base::FileEnumerator for details.  This is merely a mockable wrapper.
-class FileEnumerator {
+class BRILLO_EXPORT FileEnumerator {
  public:
   // Copy and assign enabled.
-  class FileInfo {
+  class BRILLO_EXPORT FileInfo {
    public:
     explicit FileInfo(const base::FileEnumerator::FileInfo& file_info);
     FileInfo(const base::FilePath& name, const base::stat_wrapper_t& stat);
@@ -152,7 +153,7 @@ class FileEnumerator {
 
 // Platform specific routines abstraction layer.
 // Also helps us to be able to mock them in tests.
-class Platform {
+class BRILLO_EXPORT Platform {
  public:
   struct Permissions {
     uid_t user;

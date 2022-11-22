@@ -22,6 +22,12 @@ group("all") {
     ":mount_encrypted_lib",
     ":stateful-recovery",
     ":stateful_recovery_lib",
+    "libs:install_data_migrator_headers",
+    "libs:install_platform_headers",
+    "libs:libcryptohome_data_migrator",
+    "libs:libcryptohome_data_migrator_pc",
+    "libs:libcryptohome_platform",
+    "libs:libcryptohome_platform_pc",
   ]
   if (use.test) {
     deps += [
@@ -251,7 +257,7 @@ if (use.test || use.fuzzer) {
     ]
     configs += [ "//common-mk:test" ]
     libs = [ "hwsec-foundation" ]
-    deps = [ "libs:libcrosplatform" ]
+    deps = [ "libs:libcryptohome_platform" ]
     pkg_deps = [
       "libbrillo",
       "libbrillo-test",

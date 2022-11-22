@@ -299,14 +299,13 @@ pkg_config("libcrosplatform_dependent_config") {
 }
 
 # Common objects.
+# TODO(b/260536618): Merge this into libcryptohome.
 static_library("libcrosplatform") {
   sources = [
     "../auth_factor/auth_factor_label.cc",
     "../auth_factor/auth_factor_manager.cc",
     "../cryptohome_metrics.cc",
-    "../dircrypto_util.cc",
     "../filesystem_layout.cc",
-    "../platform.cc",
     "../storage/encrypted_container/backing_device_factory.cc",
     "../storage/encrypted_container/dmcrypt_container.cc",
     "../storage/encrypted_container/ecryptfs_container.cc",
@@ -321,7 +320,6 @@ static_library("libcrosplatform") {
     "../storage/mount_constants.cc",
     "../user_secret_stash.cc",
     "../user_secret_stash_storage.cc",
-    "../util/get_random_suffix.cc",
   ]
   all_dependent_configs = [
     ":libcrosplatform_dependent_config",
@@ -339,7 +337,47 @@ static_library("libcrosplatform") {
   deps = [
     ":cryptohome-flatbuffers-binding",
     ":cryptohome-proto",
+    ":libcryptohome_platform",
   ]
+}
+
+shared_library("libcryptohome_platform") {
+  output_name = "libcryptohome_platform"
+  sources = [
+    "../dircrypto_util.cc",
+    "../platform.cc",
+    "../util/get_random_suffix.cc",
+  ]
+  configs += [ ":target_defaults" ]
+  libs = [
+    "keyutils",
+    "rootdev",
+    "secure_erase_file",
+  ]
+  if (use.selinux) {
+    libs += [ "selinux" ]
+  }
+  pkg_deps = [ "vboot_host" ]
+  install_path = "lib"
+}
+
+generate_pkg_config("libcryptohome_platform_pc") {
+  name = "libcryptohome_platform"
+  description = "cryptohome Platform library"
+  version = "1.0"
+  requires_private = []
+  requires = []
+  cflags = [ "-I/usr/include/cryptohome" ]
+  libs = [ "-lcryptohome_platform" ]
+  install = true
+}
+
+install_config("install_platform_headers") {
+  sources = [
+    "../dircrypto_util.h",
+    "../platform.h",
+  ]
+  install_path = "/usr/include/cryptohome"
 }
 
 static_library("libcrostpm") {
@@ -518,4 +556,35 @@ static_library("libfido") {
   ]
   all_dependent_configs = [ ":target_defaults" ]
   libs = [ "cbor" ]
+}
+
+shared_library("libcryptohome_data_migrator") {
+  output_name = "libcryptohome_data_migrator"
+  sources = [ "../data_migrator/migration_helper.cc" ]
+  configs += [ ":target_defaults" ]
+  pkg_deps = [
+    "libbrillo",
+    "libchrome",
+  ]
+  install_path = "lib"
+}
+
+generate_pkg_config("libcryptohome_data_migrator_pc") {
+  name = "libcryptohome_data_migrator"
+  description = "Migration Helper from Dircrypto data migrator"
+  version = "1.0"
+  requires_private = []
+  requires = []
+  cflags = [ "-I/usr/include/cryptohome" ]
+  libs = [ "-lcryptohome_data_migrator" ]
+  install = true
+}
+
+install_config("install_data_migrator_headers") {
+  sources = [
+    "../data_migrator/metrics.h",
+    "../data_migrator/migration_helper.h",
+    "../data_migrator/migration_helper_delegate.h",
+  ]
+  install_path = "/usr/include/cryptohome/data_migrator"
 }

@@ -7,11 +7,13 @@
 
 #include <string>
 
+#include <brillo/brillo_export.h>
+
 namespace cryptohome {
 
 // Creates a random string suitable to append to a filename. Returns an empty
 // string in case of error.
-std::string GetRandomSuffix();
+BRILLO_EXPORT std::string GetRandomSuffix();
 
 }  // namespace cryptohome
 

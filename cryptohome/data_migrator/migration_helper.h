@@ -16,6 +16,7 @@
 #include <base/synchronization/atomic_flag.h>
 #include <base/synchronization/condition_variable.h>
 #include <base/synchronization/lock.h>
+#include <brillo/brillo_export.h>
 #include <chromeos/dbus/service_constants.h>
 
 #include "cryptohome/data_migrator/metrics.h"
@@ -28,10 +29,9 @@ class Thread;
 
 namespace cryptohome::data_migrator {
 
-extern const char kMigrationStartedFileName[];
-extern const char kSkippedFileListFileName[];
-extern const char kSourceURLXattrName[];
-extern const char kReferrerURLXattrName[];
+BRILLO_EXPORT extern const char kSkippedFileListFileName[];
+BRILLO_EXPORT extern const char kSourceURLXattrName[];
+BRILLO_EXPORT extern const char kReferrerURLXattrName[];
 
 // A helper class for migrating files to new file system with small overhead of
 // diskspace. This class makes the following assumptions about the underlying
@@ -45,7 +45,7 @@ extern const char kReferrerURLXattrName[];
 //   The destination filesystem needs to support flushing hardware buffers on
 //   fsync.  In the case of Ext4, this means not disabling the barrier mount
 //   option.
-class MigrationHelper {
+class BRILLO_EXPORT MigrationHelper {
  public:
   // Callback for monitoring migration progress.  The |current_bytes| is the
   // number of bytes migrated so far, and the |total_bytes| is the total number

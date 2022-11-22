@@ -34,6 +34,10 @@ executable("arcvm_data_migrator") {
   configs += [ ":target_defaults" ]
   install_path = "bin"
   deps = [ ":data_migrator_adaptors" ]
+  pkg_deps = [
+    "libcryptohome_data_migrator",
+    "libcryptohome_platform",
+  ]
 }
 
 install_config("install_init") {

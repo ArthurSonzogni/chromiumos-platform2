@@ -37,6 +37,7 @@ namespace cryptohome::data_migrator {
 
 namespace {
 
+constexpr char kMigrationStartedFileName[] = "crypto-migration.started";
 constexpr char kMtimeXattrName[] = "trusted.CrosDirCryptoMigrationMtime";
 constexpr char kAtimeXattrName[] = "trusted.CrosDirCryptoMigrationAtime";
 // Expected maximum erasure block size on devices (4MB).
@@ -108,7 +109,6 @@ class MigrationStartAndEndStatusReporter {
 
 }  // namespace
 
-constexpr char kMigrationStartedFileName[] = "crypto-migration.started";
 // A file to store a list of files skipped during migration.  This lives in
 // root/ of the destination directory so that it is encrypted.
 constexpr char kSkippedFileListFileName[] =

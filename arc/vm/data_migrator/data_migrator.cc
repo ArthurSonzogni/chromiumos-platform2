@@ -4,6 +4,7 @@
 
 #include <sys/mount.h>
 
+#include <arcvm_data_migrator/proto_bindings/arcvm_data_migrator.pb.h>
 #include <base/bind.h>
 #include <base/command_line.h>
 #include <base/files/file_path.h>
@@ -16,9 +17,10 @@
 #include <brillo/daemons/dbus_daemon.h>
 #include <brillo/syslog_logging.h>
 #include <chromeos/dbus/service_constants.h>
+#include <cryptohome/data_migrator/migration_helper.h>
+#include <cryptohome/data_migrator/migration_helper_delegate.h>
+#include <cryptohome/platform.h>
 #include <dbus/bus.h>
-
-#include <arcvm_data_migrator/proto_bindings/arcvm_data_migrator.pb.h>
 
 #include "arc/vm/data_migrator/dbus_adaptors/org.chromium.ArcVmDataMigrator.h"
 
@@ -112,7 +114,7 @@ class DBusAdaptor : public org::chromium::ArcVmDataMigratorAdaptor,
     // Unretained is safe to use here because |migration_thread_| will be joined
     // on the destruction of |this|.
     auto migrate = base::BindOnce(&DBusAdaptor::Migrate, base::Unretained(this),
-                                  source_dir);
+                                  source_dir, android_data_dir);
     migration_thread_ = std::make_unique<base::Thread>("migration_helper");
     migration_thread_->Start();
     migration_thread_->task_runner()->PostTask(FROM_HERE, std::move(migrate));
@@ -123,15 +125,41 @@ class DBusAdaptor : public org::chromium::ArcVmDataMigratorAdaptor,
   // TODO(momohatt): Add StopMigration as a D-Bus method?
 
  private:
-  void Migrate(const base::FilePath& source_dir) {
-    // TODO(momohatt): Trigger migration from |source_dir| to
-    // |kDestinationMountPoint|.
+  void Migrate(const base::FilePath& source_dir,
+               const base::FilePath& status_files_dir) {
+    cryptohome::Platform platform;
+    cryptohome::data_migrator::MigrationHelperDelegate delegate;
+    constexpr uint64_t kMaxChunkSize = 128 * 1024 * 1024;
+
+    cryptohome::data_migrator::MigrationHelper migration_helper(
+        &platform, &delegate, source_dir,
+        base::FilePath(kDestinationMountPoint), status_files_dir,
+        kMaxChunkSize);
+    // Unretained is safe to use here because this method (DBusAdaptor::Migrate)
+    // runs on |migration_thread_| which is joined on the destruction on |this|.
+    bool success = migration_helper.Migrate(base::BindRepeating(
+        &DBusAdaptor::MigrationHelperCallback, base::Unretained(this)));
 
     arc::data_migrator::DataMigrationProgress progress;
-    progress.set_status(arc::data_migrator::DATA_MIGRATION_SUCCESS);
+    if (success) {
+      progress.set_status(arc::data_migrator::DATA_MIGRATION_SUCCESS);
+    } else {
+      progress.set_status(arc::data_migrator::DATA_MIGRATION_FAILED);
+    }
     SendMigrationProgressSignal(progress);
 
     CleanupMount();
+  }
+
+  void MigrationHelperCallback(uint64_t current_bytes, uint64_t total_bytes) {
+    arc::data_migrator::DataMigrationProgress progress_to_send;
+    if (total_bytes != 0) {
+      progress_to_send.set_status(
+          arc::data_migrator::DATA_MIGRATION_IN_PROGRESS);
+      progress_to_send.set_current_bytes(current_bytes);
+      progress_to_send.set_total_bytes(total_bytes);
+    }
+    SendMigrationProgressSignal(progress_to_send);
   }
 
   void SendMigrationProgressSignal(

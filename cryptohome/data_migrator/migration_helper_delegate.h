@@ -7,6 +7,7 @@
 
 #include <base/files/file.h>
 #include <base/files/file_path.h>
+#include <brillo/brillo_export.h>
 
 #include "cryptohome/data_migrator/metrics.h"
 
@@ -14,7 +15,7 @@ namespace cryptohome::data_migrator {
 
 // Delegate class for MigrationHelper that handles logic specific to the type of
 // the migration.
-class MigrationHelperDelegate {
+class BRILLO_EXPORT MigrationHelperDelegate {
  public:
   MigrationHelperDelegate() = default;
   virtual ~MigrationHelperDelegate() = default;
