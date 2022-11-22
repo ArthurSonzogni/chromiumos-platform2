@@ -84,11 +84,11 @@ PermissionBroker::PermissionBroker(scoped_refptr<dbus::Bus> bus,
   rule_engine_.AddRule(new DenyUsbVendorIdRule(kLinuxFoundationUsbVendorId));
   rule_engine_.AddRule(new AllowHidrawDeviceRule());
   rule_engine_.AddRule(new AllowGroupTtyDeviceRule("serial"));
+  rule_engine_.AddRule(new DenyGroupTtyDeviceRule("cfm-peripherals"));
   rule_engine_.AddRule(new DenyGroupTtyDeviceRule("modem"));
+  rule_engine_.AddRule(new DenyGroupTtyDeviceRule("scalerd"));
   rule_engine_.AddRule(new DenyGroupTtyDeviceRule("tty"));
   rule_engine_.AddRule(new DenyGroupTtyDeviceRule("uucp"));
-  rule_engine_.AddRule(new DenyGroupTtyDeviceRule("scalerd"));
-  rule_engine_.AddRule(new DenyGroupTtyDeviceRule("cfm-peripherals"));
   rule_engine_.AddRule(new DenyClaimedHidrawDeviceRule());
   rule_engine_.AddRule(new DenyUnsafeHidrawDeviceRule());
   rule_engine_.AddRule(new DenyFwUpdateHidrawDeviceRule());
