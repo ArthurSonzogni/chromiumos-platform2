@@ -659,34 +659,54 @@ Errors:
 
 ### Smartctl Check
 
-Checks to see if the drive's remaining spare capacity is high enough to protect
-against asynchronous event completion.
+Examine the device's NVMe storage's health information by examining:
+1. Critical Warning == 0x00 (no warning)
+2. Available Spare >= Available Spare Threshold
+3. Percentage Used <= Percentage Used Threshold (from request)
+The routine only passes iff all 3 checks pass.
 
-The smartctl check routine has no parameters.
+Parameters:
+-   `--percentage_used_threshold` - (Optional) a threshold number in percentage,
+    range [0, 255] inclusive, that the routine examines `percentage_used`
+    against. If not specified, the routine will default to the max allowed value
+    (255). Type: `uint32_t`. Allowable values: `(0,255)`. Default: `255`.
 
-To check that the device's spare capacity is sufficient:
+To check if the device's available_spare is above available spare_threshold, no
+critical warnings, and percentage_used doesn't exceed percentage_used_threshold
+(`150`, for example):
 
 From crosh:
 ```bash
-crosh> diag smartctl_check
+crosh> diag smartctl_check --percentage_used_threshold=150
 ```
 
 From cros-health-tool:
 ```bash
-$ cros-health-tool diag --action=run_routine --routine=smartctl_check
+$ cros-health-tool diag --action=run_routine --routine=smartctl_check --percentage_used_threshold=150
 ```
 
 Sample output:
 ```bash
 Progress: 100
+Output: {
+   "resultDetails": {
+      "availableSpare": 100,
+      "availableSpareThreshold": 5,
+      "criticalWarning": 0,
+      "inputPercentageUsedThreshold": 150,
+      "percentageUsed": 90
+   }
+}
+
 Status: Passed
-Status message: Routine passed
+Status message: smartctl-check status: PASS.
 ```
 
 Errors:
-- `smartctl-check: FAILURE: available spare is less than available spare threshold`
-- `smartctl-check: FAILURE: unable to parse smartctl output`
-- `smartctl-check: FAILURE: unable to connect to debugd XX code=XX message=XX`
+- `smartctl-check status: ERROR, threshold in percentage should be non-empty and between 0 and 255, inclusive.`
+- `smartctl-check status: ERROR, unable to parse smartctl output.`
+- `smartctl-check status: ERROR, debugd returns error.`
+- `smartctl-check status: FAILED, one or more checks have failed.`
 
 ## Network Routines
 
