@@ -93,8 +93,7 @@ int diag_main(int argc, char** argv) {
                 "conferencing routine.");
 
   // Flag for the privacy screen routine.
-  DEFINE_bool(turn_privacy_screen_on, true,
-              "Whether or not the privacy screen should be enabled.");
+  DEFINE_string(set_privacy_screen, "on", "Privacy screen target state.");
 
   brillo::FlagHelper::Init(argc, argv, "diag - Device diagnostic tool.");
 
@@ -274,8 +273,18 @@ int diag_main(int argc, char** argv) {
         routine_result = actions.ActionRunFingerprintAliveRoutine();
         break;
       case mojo_ipc::DiagnosticRoutineEnum::kPrivacyScreen:
-        routine_result =
-            actions.ActionRunPrivacyScreenRoutine(FLAGS_turn_privacy_screen_on);
+        bool target_state;
+        if (FLAGS_set_privacy_screen == "on") {
+          target_state = true;
+        } else if (FLAGS_set_privacy_screen == "off") {
+          target_state = false;
+        } else {
+          std::cout << "Invalid privacy screen target state: "
+                    << FLAGS_set_privacy_screen << ". Should be on/off."
+                    << std::endl;
+          return EXIT_FAILURE;
+        }
+        routine_result = actions.ActionRunPrivacyScreenRoutine(target_state);
         break;
       case mojo_ipc::DiagnosticRoutineEnum::kUnknown:
         // Never map FLAGS_routine to kUnknown field.
