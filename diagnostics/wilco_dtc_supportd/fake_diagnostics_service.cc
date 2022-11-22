@@ -70,6 +70,7 @@ void FakeDiagnosticsService::RunBatteryHealthRoutine(
 }
 
 void FakeDiagnosticsService::RunSmartctlCheckRoutine(
+    mojo_ipc::NullableUint32Ptr percentage_used_threshold,
     RunSmartctlCheckRoutineCallback callback) {
   std::move(callback).Run(run_routine_response_.Clone());
 }

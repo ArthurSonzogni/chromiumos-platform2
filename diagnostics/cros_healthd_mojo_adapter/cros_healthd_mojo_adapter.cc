@@ -68,8 +68,8 @@ class CrosHealthdMojoAdapterImpl final : public CrosHealthdMojoAdapter {
       override;
 
   // Runs the smartctl-check routine.
-  ash::cros_healthd::mojom::RunRoutineResponsePtr RunSmartctlCheckRoutine()
-      override;
+  ash::cros_healthd::mojom::RunRoutineResponsePtr RunSmartctlCheckRoutine(
+      const std::optional<uint32_t>& percentage_used_threshold) override;
 
   // Runs the AC power routine.
   ash::cros_healthd::mojom::RunRoutineResponsePtr RunAcPowerRoutine(
@@ -433,15 +433,25 @@ CrosHealthdMojoAdapterImpl::RunBatteryHealthRoutine() {
 }
 
 ash::cros_healthd::mojom::RunRoutineResponsePtr
-CrosHealthdMojoAdapterImpl::RunSmartctlCheckRoutine() {
+CrosHealthdMojoAdapterImpl::RunSmartctlCheckRoutine(
+    const std::optional<uint32_t>& percentage_used_threshold) {
   if (!cros_healthd_service_factory_.is_bound() && !Connect())
     return nullptr;
 
   ash::cros_healthd::mojom::RunRoutineResponsePtr response;
   base::RunLoop run_loop;
-  cros_healthd_diagnostics_service_->RunSmartctlCheckRoutine(base::BindOnce(
-      &OnMojoResponseReceived<ash::cros_healthd::mojom::RunRoutineResponsePtr>,
-      &response, run_loop.QuitClosure()));
+  ash::cros_healthd::mojom::NullableUint32Ptr
+      percentage_used_threshold_parameter;
+  if (percentage_used_threshold.has_value()) {
+    percentage_used_threshold_parameter =
+        ash::cros_healthd::mojom::NullableUint32::New(
+            percentage_used_threshold.value());
+  }
+  cros_healthd_diagnostics_service_->RunSmartctlCheckRoutine(
+      std::move(percentage_used_threshold_parameter),
+      base::BindOnce(&OnMojoResponseReceived<
+                         ash::cros_healthd::mojom::RunRoutineResponsePtr>,
+                     &response, run_loop.QuitClosure()));
   run_loop.Run();
 
   return response;

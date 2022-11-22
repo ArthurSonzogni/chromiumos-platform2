@@ -403,7 +403,10 @@ message UrandomRoutineParameters {
 }
 
 // Parameters for the smartctl_check diagnostics routine.
-message SmartctlCheckRoutineParameters {}
+message SmartctlCheckRoutineParameters {
+  // Threshold for percentage_used to determine if passed.
+  optional uint32 percentage_used_threshold = 1;
+}
 
 // Parameters for the cpu cache/stress diagnostics routine.
 message CpuRoutineParameters {

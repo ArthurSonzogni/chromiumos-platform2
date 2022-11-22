@@ -109,6 +109,7 @@ bool GetGrpcRoutineEnumFromMojoRoutineEnum(
       grpc_enum_out->push_back(grpc_api::ROUTINE_URANDOM);
       return true;
     case mojo_ipc::DiagnosticRoutineEnum::kSmartctlCheck:
+    case mojo_ipc::DiagnosticRoutineEnum::kSmartctlCheckWithPercentageUsed:
       grpc_enum_out->push_back(grpc_api::ROUTINE_SMARTCTL_CHECK);
       return true;
     case mojo_ipc::DiagnosticRoutineEnum::kCpuCache:
@@ -285,6 +286,10 @@ void RoutineService::RunRoutine(const grpc_api::RunRoutineRequest& request,
       DCHECK_EQ(request.parameters_case(),
                 grpc_api::RunRoutineRequest::kSmartctlCheckParams);
       service_->RunSmartctlCheckRoutine(
+          request.smartctl_check_params().has_percentage_used_threshold()
+              ? mojo_ipc::NullableUint32::New(
+                    request.smartctl_check_params().percentage_used_threshold())
+              : mojo_ipc::NullableUint32Ptr(),
           base::BindOnce(&RoutineService::ForwardRunRoutineResponse,
                          weak_ptr_factory_.GetWeakPtr(), callback_key));
       break;

@@ -48,6 +48,7 @@ void FakeRoutineService::RunBatteryHealthRoutine(
 }
 
 void FakeRoutineService::RunSmartctlCheckRoutine(
+    mojo_ipc::NullableUint32Ptr percentage_used_threshold,
     RunSmartctlCheckRoutineCallback callback) {
   NOTIMPLEMENTED();
 }

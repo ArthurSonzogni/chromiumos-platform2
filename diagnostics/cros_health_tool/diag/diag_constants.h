@@ -21,6 +21,9 @@ constexpr struct {
     {"urandom", ash::cros_healthd::mojom::DiagnosticRoutineEnum::kUrandom},
     {"smartctl_check",
      ash::cros_healthd::mojom::DiagnosticRoutineEnum::kSmartctlCheck},
+    {"smartctl_check_with_percentage_used",
+     ash::cros_healthd::mojom::DiagnosticRoutineEnum::
+         kSmartctlCheckWithPercentageUsed},
     {"ac_power", ash::cros_healthd::mojom::DiagnosticRoutineEnum::kAcPower},
     {"cpu_cache", ash::cros_healthd::mojom::DiagnosticRoutineEnum::kCpuCache},
     {"cpu_stress", ash::cros_healthd::mojom::DiagnosticRoutineEnum::kCpuStress},

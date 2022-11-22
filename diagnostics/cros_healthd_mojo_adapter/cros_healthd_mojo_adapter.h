@@ -70,7 +70,8 @@ class CrosHealthdMojoAdapter {
 
   // Runs the smartctl-check routine.
   virtual ash::cros_healthd::mojom::RunRoutineResponsePtr
-  RunSmartctlCheckRoutine() = 0;
+  RunSmartctlCheckRoutine(
+      const std::optional<uint32_t>& percentage_used_threshold) = 0;
 
   // Runs the AC power routine.
   virtual ash::cros_healthd::mojom::RunRoutineResponsePtr RunAcPowerRoutine(

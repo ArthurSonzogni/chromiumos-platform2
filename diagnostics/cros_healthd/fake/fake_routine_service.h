@@ -41,6 +41,7 @@ class FakeRoutineService final
   void RunBatteryHealthRoutine(
       RunBatteryHealthRoutineCallback callback) override;
   void RunSmartctlCheckRoutine(
+      ash::cros_healthd::mojom::NullableUint32Ptr percentage_used_threshold,
       RunSmartctlCheckRoutineCallback callback) override;
   void RunAcPowerRoutine(
       ash::cros_healthd::mojom::AcPowerStatusEnum expected_status,

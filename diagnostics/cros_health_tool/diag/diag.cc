@@ -123,6 +123,9 @@ int diag_main(int argc, char** argv) {
                 "Upper bound for the battery discharge routine.");
   DEFINE_uint32(minimum_charge_percent_required, 0,
                 "Lower bound for the battery charge routine.");
+  DEFINE_uint32(percentage_used_threshold, 255,
+                "Threshold number in percentage which routine examines "
+                "percentage used against.");
 
   // Flag for the video conferencing routine.
   DEFINE_string(stun_server_hostname, "",
@@ -194,7 +197,9 @@ int diag_main(int argc, char** argv) {
             base::Seconds(FLAGS_urandom_length_seconds));
         break;
       case mojo_ipc::DiagnosticRoutineEnum::kSmartctlCheck:
-        routine_result = actions.ActionRunSmartctlCheckRoutine();
+      case mojo_ipc::DiagnosticRoutineEnum::kSmartctlCheckWithPercentageUsed:
+        routine_result = actions.ActionRunSmartctlCheckRoutine(
+            FLAGS_percentage_used_threshold);
         break;
       case mojo_ipc::DiagnosticRoutineEnum::kAcPower:
         routine_result = actions.ActionRunAcPowerRoutine(

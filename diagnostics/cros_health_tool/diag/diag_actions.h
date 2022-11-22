@@ -81,7 +81,8 @@ class DiagActions final {
   bool ActionRunPrimeSearchRoutine(
       const std::optional<base::TimeDelta>& exec_duration);
   bool ActionRunSignalStrengthRoutine();
-  bool ActionRunSmartctlCheckRoutine();
+  bool ActionRunSmartctlCheckRoutine(
+      const std::optional<uint32_t>& percentage_used_threshold);
   bool ActionRunUrandomRoutine(
       const std::optional<base::TimeDelta>& length_seconds);
   bool ActionRunVideoConferencingRoutine(

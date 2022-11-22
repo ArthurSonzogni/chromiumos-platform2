@@ -110,6 +110,7 @@ class CrosHealthdRoutineService final
   void RunSignalStrengthRoutine(
       RunSignalStrengthRoutineCallback callback) override;
   void RunSmartctlCheckRoutine(
+      ash::cros_healthd::mojom::NullableUint32Ptr percentage_used_threshold,
       RunSmartctlCheckRoutineCallback callback) override;
   void RunUrandomRoutine(
       ash::cros_healthd::mojom::NullableUint32Ptr length_seconds,

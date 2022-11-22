@@ -273,8 +273,9 @@ bool DiagActions::ActionRunSignalStrengthRoutine() {
   return ProcessRoutineResponse(response);
 }
 
-bool DiagActions::ActionRunSmartctlCheckRoutine() {
-  auto response = adapter_->RunSmartctlCheckRoutine();
+bool DiagActions::ActionRunSmartctlCheckRoutine(
+    const std::optional<uint32_t>& percentage_used_threshold) {
+  auto response = adapter_->RunSmartctlCheckRoutine(percentage_used_threshold);
   return ProcessRoutineResponse(response);
 }
 
