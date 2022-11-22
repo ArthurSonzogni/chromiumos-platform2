@@ -12,6 +12,11 @@
 namespace rmad {
 
 void MojoServiceUtilsImpl::Initialize() {
+  // Reset the states of service manager and underlying services.
+  service_manager_.reset();
+  sensor_service_.reset();
+  sensor_devices_map_.clear();
+
   // Connect to the Mojo Service Manager.
   auto pending_remote =
       chromeos::mojo_service_manager::ConnectToMojoServiceManager();
@@ -51,7 +56,8 @@ cros::mojom::SensorDevice* MojoServiceUtilsImpl::GetSensorDevice(
   }
 
   // Bind the Sensor Device if it's not bound yet.
-  if (sensor_devices_map_.find(device_id) == sensor_devices_map_.end()) {
+  if (sensor_devices_map_.find(device_id) == sensor_devices_map_.end() ||
+      !sensor_devices_map_[device_id].is_bound()) {
     sensor_service_->GetDevice(
         device_id, sensor_devices_map_[device_id].BindNewPipeAndPassReceiver());
     sensor_devices_map_[device_id].set_disconnect_with_reason_handler(

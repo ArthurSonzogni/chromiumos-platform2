@@ -240,6 +240,8 @@ void IioEcSensorUtilsImpl::HandleSetChannelsEnabled(
     return;
   }
 
+  // Prepare for reading samples.
+  device_sample_receiver_.reset();
   mojo_service_->GetSensorDevice(id_)->StartReadingSamples(
       device_sample_receiver_.BindNewPipeAndPassRemote());
 }
