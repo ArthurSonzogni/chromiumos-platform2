@@ -25,14 +25,19 @@ namespace home {
 
 const char kGuestUserName[] = "$guest";
 
+namespace {
+
 // Daemon store main directory.
 constexpr char kDaemonStorePath[] = "/run/daemon-store";
 
+constexpr char kRootHomePrefix[] = "/home/root/";
+
 static char g_user_home_prefix[PATH_MAX] = "/home/user/";
-static char g_root_home_prefix[PATH_MAX] = "/home/root/";
 static char g_system_salt_path[PATH_MAX] = "/home/.shadow/salt";
 
 static std::string* salt = nullptr;
+
+}  // namespace
 
 bool EnsureSystemSaltIsLoaded() {
   if (salt && !salt->empty())
@@ -91,7 +96,7 @@ FilePath GetUserPathPrefix() {
 }
 
 FilePath GetRootPathPrefix() {
-  return FilePath(g_root_home_prefix);
+  return FilePath(kRootHomePrefix);
 }
 
 FilePath GetHashedUserPath(const std::string& hashed_username) {
@@ -108,7 +113,7 @@ FilePath GetUserPath(const std::string& username) {
 FilePath GetRootPath(const std::string& username) {
   if (!EnsureSystemSaltIsLoaded())
     return FilePath();
-  return FilePath(base::StringPrintf("%s%s", g_root_home_prefix,
+  return FilePath(base::StringPrintf("%s%s", kRootHomePrefix,
                                      SanitizeUserName(username).c_str()));
 }
 
@@ -130,13 +135,6 @@ bool IsSanitizedUserName(const std::string& sanitized) {
 void SetUserHomePrefix(const std::string& prefix) {
   if (prefix.length() < sizeof(g_user_home_prefix)) {
     snprintf(g_user_home_prefix, sizeof(g_user_home_prefix), "%s",
-             prefix.c_str());
-  }
-}
-
-void SetRootHomePrefix(const std::string& prefix) {
-  if (prefix.length() < sizeof(g_root_home_prefix)) {
-    snprintf(g_root_home_prefix, sizeof(g_root_home_prefix), "%s",
              prefix.c_str());
   }
 }

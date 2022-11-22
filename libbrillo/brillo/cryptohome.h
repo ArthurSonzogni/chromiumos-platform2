@@ -63,10 +63,6 @@ BRILLO_EXPORT std::string SanitizeUserNameWithSalt(const std::string& username,
 // created. This is used for testing only.
 BRILLO_EXPORT void SetUserHomePrefix(const std::string& prefix);
 
-// Overrides the common prefix under which the mount points for root homes are
-// created. This is used for testing only.
-BRILLO_EXPORT void SetRootHomePrefix(const std::string& prefix);
-
 // Overrides the contents of the system salt.
 // salt should be non-NULL and non-empty when attempting to avoid filesystem
 // usage in tests.
