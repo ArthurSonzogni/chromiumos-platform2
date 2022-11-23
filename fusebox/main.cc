@@ -390,16 +390,17 @@ class FuseBoxClient : public FileSystem {
       return;
     }
 
+    TruncateRequestProto request_proto;
+    request_proto.set_file_system_url(GetInodeTable().GetDevicePath(node));
+    request_proto.set_length(base::strict_cast<int64_t>(attr->st_size));
+
     dbus::MethodCall method(kFuseBoxServiceInterface, kTruncateMethod);
     dbus::MessageWriter writer(&method);
+    writer.AppendProtoAsArrayOfBytes(request_proto);
 
-    auto path = GetInodeTable().GetDevicePath(node);
-    writer.AppendString(path);
-    writer.AppendInt64(base::strict_cast<int64_t>(attr->st_size));
-
-    auto truncate_response = base::BindOnce(&FuseBoxClient::TruncateResponse,
-                                            weak_ptr_factory_.GetWeakPtr(),
-                                            std::move(request), node->ino);
+    auto truncate_response =
+        base::BindOnce(&FuseBoxClient::TruncateResponse,
+                       weak_ptr_factory_.GetWeakPtr(), std::move(request), ino);
     CallFuseBoxServerMethod(&method, std::move(truncate_response));
   }
 
@@ -412,23 +413,86 @@ class FuseBoxClient : public FileSystem {
       return;
 
     dbus::MessageReader reader(response);
-    if (int error = GetResponseErrno(&reader, response, "truncate")) {
-      request->ReplyError(error);
+    TruncateResponseProto response_proto;
+    if (!reader.PopArrayOfBytesAsProto(&response_proto)) {
+      request->ReplyError(EINVAL);
+      return;
+    }
+    int32_t posix_error_code = response_proto.has_posix_error_code()
+                                   ? response_proto.posix_error_code()
+                                   : 0;
+    if (posix_error_code != 0) {
+      request->ReplyError(posix_error_code);
+      return;
+    } else if (!response_proto.has_stat()) {
+      request->ReplyError(EINVAL);
       return;
     }
 
-    Node* node = GetInodeTable().Lookup(ino);
-    if (!node) {
-      request->ReplyError(errno);
-      PLOG(ERROR) << "truncate-resp";
+    request->ReplyAttr(MakeStatFromProto(ino, response_proto.stat()),
+                       kStatTimeoutSeconds);
+  }
+
+  void Unlink(std::unique_ptr<OkRequest> request,
+              ino_t parent,
+              const char* name) override {
+    VLOG(1) << "unlink " << parent << "/" << name;
+
+    if (request->IsInterrupted())
+      return;
+
+    errno = 0;
+    Node* parent_node = GetInodeTable().Lookup(parent);
+    if (!parent_node || (parent < FIRST_UNRESERVED_INO)) {
+      errno = request->ReplyError(errno ? errno : EACCES);
+      PLOG(ERROR) << "unlink";
       return;
     }
 
-    Device device = GetInodeTable().GetDevice(node);
-    bool read_only = device.mode == "ro";
+    Node* node = GetInodeTable().Lookup(parent, name);
+    ino_t ino = node ? node->ino : 0;
 
-    struct stat stat = GetServerStat(ino, &reader, read_only);
-    request->ReplyAttr(stat, kStatTimeoutSeconds);
+    UnlinkRequestProto request_proto;
+    request_proto.set_file_system_url(
+        base::StrCat({GetInodeTable().GetDevicePath(parent_node), "/", name}));
+
+    dbus::MethodCall method(kFuseBoxServiceInterface, kUnlinkMethod);
+    dbus::MessageWriter writer(&method);
+    writer.AppendProtoAsArrayOfBytes(request_proto);
+
+    auto unlink_response =
+        base::BindOnce(&FuseBoxClient::UnlinkResponse,
+                       weak_ptr_factory_.GetWeakPtr(), std::move(request), ino);
+    CallFuseBoxServerMethod(&method, std::move(unlink_response));
+  }
+
+  void UnlinkResponse(std::unique_ptr<OkRequest> request,
+                      ino_t ino,
+                      dbus::Response* response) {
+    VLOG(1) << "unlink-resp " << ino;
+
+    if (request->IsInterrupted()) {
+      return;
+    }
+
+    dbus::MessageReader reader(response);
+    UnlinkResponseProto response_proto;
+    if (!reader.PopArrayOfBytesAsProto(&response_proto)) {
+      request->ReplyError(EINVAL);
+      return;
+    }
+    int32_t posix_error_code = response_proto.has_posix_error_code()
+                                   ? response_proto.posix_error_code()
+                                   : 0;
+    if (posix_error_code != 0) {
+      request->ReplyError(posix_error_code);
+      return;
+    }
+
+    if (ino) {
+      GetInodeTable().Forget(ino);
+    }
+    request->ReplyOk();
   }
 
   void OpenDir(std::unique_ptr<OpenRequest> request, ino_t ino) override {
