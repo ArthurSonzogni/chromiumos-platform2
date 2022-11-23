@@ -5428,6 +5428,40 @@ class UserDataAuthApiTest : public UserDataAuthTest {
     return reply.value().auth_session_id();
   }
 
+  std::optional<user_data_auth::AuthenticateAuthSessionReply>
+  AuthenticateAuthSessionSync(
+      const user_data_auth::AuthenticateAuthSessionRequest& in_request) {
+    std::optional<user_data_auth::AuthenticateAuthSessionReply> out_reply;
+    userdataauth_->AuthenticateAuthSession(
+        in_request,
+        base::BindOnce(
+            [](std::optional<user_data_auth::AuthenticateAuthSessionReply>*
+                   out_reply_ptr,
+               const user_data_auth::AuthenticateAuthSessionReply& reply) {
+              *out_reply_ptr = reply;
+            },
+            base::Unretained(&out_reply)));
+    RunUntilIdle();
+    return out_reply;
+  }
+
+  std::optional<user_data_auth::AuthenticateAuthFactorReply>
+  AuthenticateAuthFactorSync(
+      const user_data_auth::AuthenticateAuthFactorRequest& in_request) {
+    std::optional<user_data_auth::AuthenticateAuthFactorReply> out_reply;
+    userdataauth_->AuthenticateAuthFactor(
+        in_request,
+        base::BindOnce(
+            [](std::optional<user_data_auth::AuthenticateAuthFactorReply>*
+                   out_reply_ptr,
+               const user_data_auth::AuthenticateAuthFactorReply& reply) {
+              *out_reply_ptr = reply;
+            },
+            base::Unretained(&out_reply)));
+    RunUntilIdle();
+    return out_reply;
+  }
+
  private:
   static constexpr char kUsername1[] = "foo@gmail.com";
 };
@@ -5486,6 +5520,42 @@ TEST_F(UserDataAuthApiTest, RemoveNoID) {
       reply.error_info(),
       HasPossibleAction(
           user_data_auth::PossibleAction::POSSIBLY_DEV_CHECK_UNEXPECTED_STATE));
+}
+
+TEST_F(UserDataAuthApiTest, AuthAuthSessionNoSession) {
+  user_data_auth::AuthenticateAuthSessionRequest req;
+  req.set_auth_session_id("NOT_A_VALID_AUTH_SESSION!");
+  user_data_auth::AuthenticateAuthSessionReply reply;
+
+  std::optional<user_data_auth::AuthenticateAuthSessionReply> result =
+      AuthenticateAuthSessionSync(req);
+  ASSERT_TRUE(result.has_value());
+  reply = *result;
+
+  // Failure to AuthenticateAuthSession() due to missing session should result
+  // in recommendation to reboot, because we'll need to restart the session
+  // after reboot so the problem might go away.
+  EXPECT_THAT(
+      reply.error_info(),
+      HasPossibleAction(user_data_auth::PossibleAction::POSSIBLY_REBOOT));
+}
+
+TEST_F(UserDataAuthApiTest, AuthAuthFactorNoSession) {
+  user_data_auth::AuthenticateAuthFactorRequest req;
+  req.set_auth_session_id("NOT_A_VALID_AUTH_SESSION!");
+  user_data_auth::AuthenticateAuthFactorReply reply;
+
+  std::optional<user_data_auth::AuthenticateAuthFactorReply> result =
+      AuthenticateAuthFactorSync(req);
+  ASSERT_TRUE(result.has_value());
+  reply = *result;
+
+  // Failure to AuthenticateAuthFactor() due to missing session should result in
+  // recommendation to reboot, because we'll need to restart the session after
+  // reboot so the problem might go away.
+  EXPECT_THAT(
+      reply.error_info(),
+      HasPossibleAction(user_data_auth::PossibleAction::POSSIBLY_REBOOT));
 }
 
 }  // namespace cryptohome
