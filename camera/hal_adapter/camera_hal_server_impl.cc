@@ -25,6 +25,7 @@
 #include <base/callback_helpers.h>
 #include <base/check.h>
 #include <base/check_op.h>
+#include <base/containers/contains.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
@@ -284,8 +285,25 @@ int CameraHalServerImpl::LoadCameraHal() {
        enable_external =
            config->GetBoolean(constants::kCrosEnableExternalCameraOption, true);
 
+  std::optional<base::flat_set<std::string>> enabled_hal_names;
+
+  if (config->HasKey(constants::kCrosEnabledHalsOption)) {
+    auto hal_names = config->GetStrings(constants::kCrosEnabledHalsOption,
+                                        std::vector<std::string>());
+    enabled_hal_names =
+        base::flat_set<std::string>(hal_names.begin(), hal_names.end());
+  }
+
   for (const auto& dll : GetCameraHalPaths()) {
     LOGF(INFO) << "Try to load camera hal " << dll.value();
+
+    if (enabled_hal_names.has_value()) {
+      auto filename = dll.BaseName().value();
+      if (!base::Contains(*enabled_hal_names, filename)) {
+        LOGF(INFO) << "Skipping " << dll.value() << " not in enabled_hals";
+        continue;
+      }
+    }
 
     void* handle = dlopen(dll.value().c_str(), RTLD_NOW | RTLD_LOCAL);
     if (!handle) {

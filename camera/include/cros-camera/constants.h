@@ -51,6 +51,10 @@ const char kCrosEnableFrontCameraOption[] = "enable_front_camera";
 const char kCrosEnableBackCameraOption[] = "enable_back_camera";
 const char kCrosEnableExternalCameraOption[] = "enable_external_camera";
 
+// List of string of enabled camera HAL. The format is a list of the HAL .so
+// file names. e.g. ["usb.so", "fake.so"].
+const char kCrosEnabledHalsOption[] = "enabled_hals";
+
 // boolean value for specify enable/disable the mechanism to abort camera
 // service when capture request/response monitors reach timeout.
 const char kCrosAbortWhenCaptureMonitorTimeout[] =
