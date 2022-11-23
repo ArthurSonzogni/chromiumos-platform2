@@ -88,8 +88,19 @@ void Daemon::RegisterDBusObjectsAsync(
   dbus_object_ = std::make_unique<brillo::dbus_utils::DBusObject>(
       object_manager_.get(), bus_, dbus::ObjectPath(kTypecdServicePath));
 
+  brillo::dbus_utils::DBusInterface* dbus_interface =
+      dbus_object_->AddOrGetInterface(kTypecdServiceInterface);
+  CHECK(dbus_interface) << "Couldn't get dbus_interface";
+  dbus_interface->AddSimpleMethodHandler(
+      kTypecdSetPeripheralDataAccessMethod, base::Unretained(this),
+      &Daemon::HandlePeripheralDataAccessChanged);
+
   dbus_object_->RegisterAsync(sequencer->GetHandler(
       "Failed to register D-Bus object", true /* failure_is_fatal */));
+}
+
+void Daemon::HandlePeripheralDataAccessChanged(bool enabled) {
+  features_client_->SetPeripheralDataAccessEnabled(enabled);
 }
 
 }  // namespace typecd
