@@ -1242,6 +1242,28 @@ def _build_health(config: Config):
     return result
 
 
+def _build_rma(config: Config):
+    """Builds the RMA configuration.
+
+    Args:
+        config: Config namedtuple
+
+    Returns:
+        RMA configuration.
+    """
+    if not config.sw_config.rma_config:
+        return None
+
+    rma_config = config.sw_config.rma_config
+    if not rma_config.enabled:
+        return None
+
+    result = {}
+    _upsert(rma_config.enabled, result, "enabled")
+    _upsert(rma_config.has_cbi, result, "has-cbi")
+    return result
+
+
 def _build_nnpalm(config: Config):
     """Builds the nnpalm configuration.
 
@@ -2253,6 +2275,7 @@ def _transform_build_config(config, config_files, whitelabel):
     _upsert(_build_bluetooth(config), result, "bluetooth")
     _upsert(_build_wifi(config, config_files), result, "wifi")
     _upsert(_build_health(config), result, "cros-healthd")
+    _upsert(_build_rma(config), result, "rmad")
     _upsert(_build_nnpalm(config), result, "nnpalm")
     _upsert(_build_proximity(config, config_files), result, "proximity-sensor")
     _upsert(_build_branding(config), result, "branding")

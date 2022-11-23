@@ -209,6 +209,10 @@
           "wake-on-dp": "1"
         },
         "regulatory-label": "fake_regulatory_label",
+        "rmad": {
+          "enabled": true,
+          "has-cbi": true
+        },
         "scheduler-tune": {
           "boost-urgent": 20,
           "cpuset-nonurgent": "0-5",
@@ -1343,7 +1347,8 @@
           "media-profiles": {
             "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/media_profiles_project_c.xml",
             "system-path": "/etc/media_profiles_project_c.xml"
-          }
+          },
+          "scale": 280
         },
         "audio": {
           "main": {
@@ -1463,11 +1468,12 @@
           "charging-ports": "CROS_USBPD_CHARGER0 LEFT_BACK\nCROS_USBPD_CHARGER1 RIGHT\nCROS_USBPD_CHARGER2 LEFT_FRONT",
           "defer-external-display-timeout": "10",
           "disable-dark-resume": "0",
-          "internal-backlight-no-als-ac-brightness": "80.5",
-          "internal-backlight-no-als-battery-brightness": "63.4",
+          "internal-backlight-no-als-ac-brightness": "80.1",
+          "internal-backlight-no-als-battery-brightness": "63.2",
+          "min-visible-backlight-level": "1000",
           "set-wifi-transmit-power-for-tablet-mode": "1",
           "suspend-to-idle": "1",
-          "turn-off-screen-timeout-ms": "3000",
+          "turn-off-screen-timeout-ms": "0",
           "usb-min-ac-watts": "20",
           "wake-on-dp": "1"
         },
@@ -1477,6 +1483,9 @@
           "input-boost": 15
         },
         "ui": {
+          "ash-enabled-features": [
+            "SeamlessRefreshRateSwitching"
+          ],
           "extra-ash-flags": [
             "--arc-build-properties={'device': 'fake_program_cheets', 'firstApiLevel': '28'}",
             "--ash-power-button-position={\"edge\": \"left\", \"position\": 0.9}",
