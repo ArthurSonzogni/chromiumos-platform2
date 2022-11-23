@@ -7,6 +7,7 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [features]
+# Feature chromeos is turned on when building with ebuild.
 chromeos = ["featured"]
 
 [dependencies]
