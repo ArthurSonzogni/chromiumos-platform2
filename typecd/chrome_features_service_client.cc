@@ -21,7 +21,8 @@ constexpr uint32_t kRetrySleepTimeoutMs = 400;
 namespace typecd {
 
 ChromeFeaturesServiceClient::ChromeFeaturesServiceClient(
-    scoped_refptr<dbus::Bus> bus) {
+    scoped_refptr<dbus::Bus> bus)
+    : peripheral_data_access_en_(false) {
   proxy_ = bus->GetObjectProxy(
       chromeos::kChromeFeaturesServiceName,
       dbus::ObjectPath(chromeos::kChromeFeaturesServicePath));
@@ -58,6 +59,10 @@ bool ChromeFeaturesServiceClient::IsPeripheralDataAccessEnabled() {
   LOG(ERROR)
       << "Failed to get Chrome feature: DevicePciPeripheralDataAccessEnabled.";
   return false;
+}
+
+void ChromeFeaturesServiceClient::SetPeripheralDataAccessEnabled(bool enabled) {
+  peripheral_data_access_en_ = enabled;
 }
 
 }  // namespace typecd

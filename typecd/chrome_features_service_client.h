@@ -25,7 +25,12 @@ class ChromeFeaturesServiceClient {
 
   bool IsPeripheralDataAccessEnabled();
 
+  void SetPeripheralDataAccessEnabled(bool enabled);
+
  private:
+  // Denotes whether the Data Access Protection for peripherals is disabled or
+  // not.
+  bool peripheral_data_access_en_;
   dbus::ObjectProxy* proxy_;
 
   base::WeakPtrFactory<ChromeFeaturesServiceClient> weak_ptr_factory_{this};
