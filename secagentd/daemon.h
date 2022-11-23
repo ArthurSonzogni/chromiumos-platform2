@@ -34,9 +34,10 @@ class Daemon : public brillo::DBusDaemon {
   };
 
  public:
-  Daemon() = default;
+  Daemon() = delete;
   /* dependency injection for unit tests */
   explicit Daemon(struct Inject);
+  explicit Daemon(bool);
   ~Daemon() override = default;
 
  protected:
@@ -59,7 +60,8 @@ class Daemon : public brillo::DBusDaemon {
   std::unique_ptr<PluginFactoryInterface> bpf_plugin_factory_;
   std::vector<std::unique_ptr<PluginInterface>> bpf_plugins_;
   std::unique_ptr<policy::PolicyProvider> policy_provider_;
-  bool xdr_reporting_policy_;
+  bool bypass_policy_for_testing_ = false;
+  bool xdr_reporting_policy_ = false;
 };
 };  // namespace secagentd
 

@@ -29,6 +29,9 @@ Daemon::Daemon(struct Inject injected) {
   policy_provider_ = std::move(injected.policy_provider_);
 }
 
+Daemon::Daemon(bool bypass_policy_for_testing)
+    : bypass_policy_for_testing_(bypass_policy_for_testing) {}
+
 int Daemon::OnInit() {
   int rv = brillo::DBusDaemon::OnInit();
   if (rv != EX_OK) {
@@ -124,6 +127,12 @@ int Daemon::OnEventLoopStarted() {
 
 bool Daemon::XdrReportingIsEnabled() {
   bool old_policy = xdr_reporting_policy_;
+
+  // Bypasses the policy check for testing.
+  if (bypass_policy_for_testing_) {
+    xdr_reporting_policy_ = true;
+    return old_policy != xdr_reporting_policy_;
+  }
 
   policy_provider_->Reload();
   if (policy_provider_->device_policy_is_loaded()) {
