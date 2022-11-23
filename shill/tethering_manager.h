@@ -7,11 +7,11 @@
 
 #include <string>
 
+#include "shill/refptr_types.h"
 #include "shill/store/property_store.h"
 #include "shill/technology.h"
 #include "shill/wifi/wifi_rf.h"
 #include "shill/wifi/wifi_security.h"
-#include "shill/wifi/wifi_service.h"
 
 namespace shill {
 

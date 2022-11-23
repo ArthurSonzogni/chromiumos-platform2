@@ -9,8 +9,8 @@
 
 #include <set>
 #include <string>
-#include <vector>
 #include <utility>
+#include <vector>
 
 #include <base/rand_util.h>
 #include <base/strings/string_number_conversions.h>
@@ -22,6 +22,7 @@
 #include "shill/profile.h"
 #include "shill/store/property_accessor.h"
 #include "shill/technology.h"
+#include "shill/wifi/wifi.h"
 
 namespace shill {
 

@@ -24,7 +24,6 @@
 #include "shill/portal_detector.h"
 #include "shill/refptr_types.h"
 #include "shill/service.h"
-#include "shill/wifi/wake_on_wifi.h"
 #include "shill/wifi/wifi_security.h"
 
 namespace shill {

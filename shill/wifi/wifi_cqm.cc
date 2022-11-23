@@ -13,10 +13,9 @@
 
 #include "shill/logging.h"
 #include "shill/metrics.h"
-#include "shill/net/netlink_message.h"
 #include "shill/net/nl80211_message.h"
 #include "shill/scope_logger.h"
-#include "shill/wifi/wifi_service.h"
+#include "shill/wifi/wifi.h"
 
 namespace shill {
 

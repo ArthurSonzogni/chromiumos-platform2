@@ -29,8 +29,6 @@
 #include "shill/geolocation_info.h"
 #include "shill/hook_table.h"
 #include "shill/metrics.h"
-#include "shill/mockable.h"
-#include "shill/net/ip_address.h"
 #include "shill/network/network.h"
 #include "shill/portal_detector.h"
 #include "shill/power_manager.h"
@@ -38,6 +36,7 @@
 #include "shill/provider_interface.h"
 #include "shill/service.h"
 #include "shill/store/property_store.h"
+#include "shill/supplicant/supplicant_manager.h"
 #include "shill/tethering_manager.h"
 #include "shill/upstart/upstart.h"
 
@@ -54,7 +53,6 @@ class EventDispatcher;
 class ManagerAdaptorInterface;
 class ModemInfo;
 class Resolver;
-class SupplicantManager;
 class Throttler;
 class VPNProvider;
 class WiFiProvider;
