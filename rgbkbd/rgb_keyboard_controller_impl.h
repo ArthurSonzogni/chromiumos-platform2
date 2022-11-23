@@ -35,7 +35,7 @@ class RgbKeyboardControllerImpl : public RgbKeyboardController {
   uint32_t GetRgbKeyboardCapabilities() override;
   void SetCapsLockState(bool enabled) override;
   void SetStaticBackgroundColor(uint8_t r, uint8_t g, uint8_t b) override;
-  void SetZoneColor(int zone_idx, uint8_t r, uint8_t g, uint8_t b) override;
+  void SetZoneColor(int zone, uint8_t r, uint8_t g, uint8_t b) override;
   void SetRainbowMode() override;
   void SetAnimationMode(RgbAnimationMode mode) override;
   void SetKeyboardClient(RgbKeyboard* keyboard) override;
@@ -58,12 +58,15 @@ class RgbKeyboardControllerImpl : public RgbKeyboardController {
     return key == kLeftShiftKey || key == kRightShiftKey;
   }
 
+  const std::vector<uint32_t>& GetZone(int zone) const;
+  int GetZoneCount() const;
+  Color GetRainbowZoneColor(int zone) const;
+
   Color GetCurrentCapsLockColor(uint32_t key_idx) const;
   Color GetCapsLockHighlightColor() const;
   Color GetRainbowColorForKey(uint32_t key_idx) const;
   void PopulateRainbowModeMap();
   bool IsZonedKeyboard() const;
-  const base::span<const KeyColor> GetRainbowModeForKeyboard() const;
 
   base::flat_map<uint32_t, Color> individual_key_rainbow_mode_map_;
   std::optional<RgbKeyboardCapabilities> capabilities_;

@@ -6,6 +6,7 @@
 #define RGBKBD_CONSTANTS_H_
 
 #include <cstdint>
+#include <vector>
 
 namespace rgbkbd {
 
@@ -53,93 +54,100 @@ static constexpr Color kRainbowIndigo =
 static constexpr Color kRainbowPurple =
     Color(/*r=*/0x84, /*g=*/0x20, /*b=*/0xb4);
 
+// If there are no RGB capabilities, all zones will be empty.
+const std::vector<uint32_t> kEmptyZone = std::vector<uint32_t>();
+
+const Color kIndividualKeyRainbowColors[] = {
+    kRainbowRed, kRainbowYellow, kRainbowGreen, kRainbowIndigo, kRainbowPurple,
+};
+
+const Color kFourZonesRainbowColors[] = {
+    kRainbowRed,
+    kRainbowYellow,
+    kRainbowGreen,
+    kRainbowLightBlue,
+};
+
 const KeyColor kRainbowModeIndividualKey[] = {
-    {1, kRainbowRed},      // ~
-    {2, kRainbowRed},      // 1
-    {3, kRainbowYellow},   // 2
-    {4, kRainbowYellow},   // 3
-    {5, kRainbowYellow},   // 4
-    {6, kRainbowGreen},    // 5
-    {7, kRainbowGreen},    // 6
-    {8, kRainbowGreen},    // 7
-    {9, kRainbowGreen},    // 8
-    {10, kRainbowIndigo},  // 9
-    {11, kRainbowIndigo},  // 0
-    {12, kRainbowIndigo},  // -
-    {13, kRainbowPurple},  // =
-    // Key 14 not present in this layout.
-    {15, kRainbowPurple},  // Backspace
-    {16, kRainbowRed},     // Tab
-    {17, kRainbowRed},     // Q
-    {18, kRainbowYellow},  // W
-    {19, kRainbowYellow},  // E
-    {20, kRainbowYellow},  // R
-    {21, kRainbowGreen},   // T
-    {22, kRainbowGreen},   // Y
-    {23, kRainbowGreen},   // U
-    {24, kRainbowIndigo},  // I
-    {25, kRainbowIndigo},  // O
-    {26, kRainbowIndigo},  // P
-    {27, kRainbowPurple},  // [
-    {28, kRainbowPurple},  // ]
-    {29, kRainbowPurple},  // Backslash
-    {30, kRainbowRed},     // Search/Launcher
-    {31, kRainbowRed},     // A
-    {32, kRainbowYellow},  // S
-    {33, kRainbowYellow},  // D
-    {34, kRainbowYellow},  // F
-    {35, kRainbowGreen},   // G
-    {36, kRainbowGreen},   // H
-    {37, kRainbowIndigo},  // J
-    {38, kRainbowIndigo},  // K
-    {39, kRainbowIndigo},  // L
-    {40, kRainbowPurple},  // ;
-    {41, kRainbowPurple},  // '
-    // Key 42 not present in this layout.
-    {43, kRainbowPurple},          // Enter
-    {kLeftShiftKey, kRainbowRed},  // Left Shift
-    // Key 45 not present in this layout.
-    {46, kRainbowRed},     // Z
-    {47, kRainbowYellow},  // X
-    {48, kRainbowYellow},  // C
-    {49, kRainbowYellow},  // V
-    {50, kRainbowGreen},   // B
-    {51, kRainbowIndigo},  // N
-    {52, kRainbowIndigo},  // M
-    {53, kRainbowIndigo},  // ,
-    {54, kRainbowPurple},  // .
-    {55, kRainbowPurple},  // /
-    // Key 56 not present in this layout.
-    {kRightShiftKey, kRainbowPurple},  // Right Shift
+    // Keys 42, 45, 56, 63, [65-78], [80-82], [85-88], [90-109] are not present
+    // in this layout.
+    {1, kRainbowRed},                  // ~
+    {2, kRainbowRed},                  // 1
+    {16, kRainbowRed},                 // Tab
+    {17, kRainbowRed},                 // Q
+    {30, kRainbowRed},                 // Search/Launcher
+    {31, kRainbowRed},                 // A
+    {kLeftShiftKey, kRainbowRed},      // Left Shift
+    {46, kRainbowRed},                 // Z
     {58, kRainbowRed},                 // Ctrl
-    {59, kRainbowPurple},              // Power
     {60, kRainbowRed},                 // Left Alt
+    {110, kRainbowRed},                // Escape
+    {111, kRainbowRed},                // T1: Back
+    {3, kRainbowYellow},               // 2
+    {4, kRainbowYellow},               // 3
+    {5, kRainbowYellow},               // 4
+    {18, kRainbowYellow},              // W
+    {19, kRainbowYellow},              // E
+    {20, kRainbowYellow},              // R
+    {32, kRainbowYellow},              // S
+    {33, kRainbowYellow},              // D
+    {34, kRainbowYellow},              // F
+    {47, kRainbowYellow},              // X
+    {48, kRainbowYellow},              // C
+    {49, kRainbowYellow},              // V
+    {112, kRainbowYellow},             // T2: Refresh
+    {113, kRainbowYellow},             // T3: Full Screen
+    {114, kRainbowYellow},             // T4: Overview
+    {6, kRainbowGreen},                // 5
+    {7, kRainbowGreen},                // 6
+    {8, kRainbowGreen},                // 7
+    {9, kRainbowGreen},                // 8
+    {21, kRainbowGreen},               // T
+    {22, kRainbowGreen},               // Y
+    {23, kRainbowGreen},               // U
+    {35, kRainbowGreen},               // G
+    {36, kRainbowGreen},               // H
+    {50, kRainbowGreen},               // B
     {61, kRainbowGreen},               // Space Bar
+    {115, kRainbowGreen},              // T5: Snapshot
+    {116, kRainbowGreen},              // T6: Brightness Down
+    {117, kRainbowGreen},              // T7: Brightness Up
+    {118, kRainbowGreen},              // T8: RGB Backlight Off
+    {119, kRainbowGreen},              // T9: Play/Pause
+    {10, kRainbowIndigo},              // 9
+    {11, kRainbowIndigo},              // 0
+    {12, kRainbowIndigo},              // -
+    {24, kRainbowIndigo},              // I
+    {25, kRainbowIndigo},              // O
+    {26, kRainbowIndigo},              // P
+    {37, kRainbowIndigo},              // J
+    {38, kRainbowIndigo},              // K
+    {39, kRainbowIndigo},              // L
+    {51, kRainbowIndigo},              // N
+    {52, kRainbowIndigo},              // M
+    {53, kRainbowIndigo},              // ,
+    {120, kRainbowIndigo},             // T10: Mic Mute
+    {121, kRainbowIndigo},             // T1: Volume Mute
+    {122, kRainbowIndigo},             // T9: Play/Pause
+    {123, kRainbowIndigo},             // T10: Mic Mute
+    {13, kRainbowPurple},              // =
+    {15, kRainbowPurple},              // Backspace
+    {27, kRainbowPurple},              // [
+    {28, kRainbowPurple},              // ]
+    {29, kRainbowPurple},              // Backslash
+    {40, kRainbowPurple},              // ;
+    {41, kRainbowPurple},              // '
+    {43, kRainbowPurple},              // Enter
+    {54, kRainbowPurple},              // .
+    {55, kRainbowPurple},              // /
+    {kRightShiftKey, kRainbowPurple},  // Right Shift
+    {59, kRainbowPurple},              // Power
     {62, kRainbowPurple},              // Right Alt
-    // Key 63 not present in this layout.
-    {64, kRainbowPurple},  // Right Ctrl
-    // Keys [65-78] not present in this layout.
-    {79, kRainbowPurple},  // Left Arrow
-    // Keys [80-82] not present in this layout.
-    {83, kRainbowPurple},  // Top Arrow
-    {84, kRainbowPurple},  // Bottom Arrow
-    // Keys [85-88] not present in this layout.
-    {89, kRainbowPurple},  // Right Arrow
-    // Keys [90-109] not present in this layout.
-    {110, kRainbowRed},     // Escape
-    {111, kRainbowRed},     // T1: Back
-    {112, kRainbowYellow},  // T2: Refresh
-    {113, kRainbowYellow},  // T3: Full Screen
-    {114, kRainbowYellow},  // T4: Overview
-    {115, kRainbowGreen},   // T5: Snapshot
-    {116, kRainbowGreen},   // T6: Brightness Down
-    {117, kRainbowGreen},   // T7: Brightness Up
-    {118, kRainbowGreen},   // T8: RGB Backlight Off
-    {119, kRainbowGreen},   // T9: Play/Pause
-    {120, kRainbowIndigo},  // T10: Mic Mute
-    {121, kRainbowIndigo},  // T1: Volume Mute
-    {122, kRainbowIndigo},  // T9: Play/Pause
-    {123, kRainbowIndigo},  // T10: Mic Mute
+    {64, kRainbowPurple},              // Right Ctrl
+    {79, kRainbowPurple},              // Left Arrow
+    {83, kRainbowPurple},              // Top Arrow
+    {84, kRainbowPurple},              // Bottom Arrow
+    {89, kRainbowPurple},              // Right Arrow
 };
 
 const KeyColor kRainbowModeFourZoneFortyLed[] = {
@@ -172,6 +180,11 @@ const KeyColor kRainbowModeFourZoneFourLed[] = {{1, kRainbowRed},
                                                 {2, kRainbowYellow},
                                                 {3, kRainbowGreen},
                                                 {4, kRainbowLightBlue}};
+
+const std::vector<std::vector<uint32_t>>& GetIndividualKeyZones();
+const std::vector<std::vector<uint32_t>>& GetFourtyLedZones();
+const std::vector<std::vector<uint32_t>>& GetTwelveLedZones();
+const std::vector<std::vector<uint32_t>>& GetFourLedZones();
 
 }  // namespace rgbkbd
 

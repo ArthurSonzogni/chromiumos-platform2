@@ -45,6 +45,8 @@ generate_dbus_adaptors("rgbkbd-adaptor") {
 
 static_library("librgbkbd") {
   sources = [
+    "constants.cc",
+    "constants.h",
     "internal_rgb_keyboard.cc",
     "internal_rgb_keyboard.h",
     "keyboard_backlight_logger.cc",

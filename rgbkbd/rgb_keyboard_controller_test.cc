@@ -43,6 +43,15 @@ std::string CreateRainbowLogEntry() {
   return log;
 }
 
+std::string CreateIndividualKeyZoneColorLogEntry(int zone, Color color) {
+  std::string log;
+  for (const auto& key : GetIndividualKeyZones()[zone]) {
+    KeyColor key_color = {key, color};
+    log.append(CreateSetKeyColorLogEntry(key_color));
+  }
+  return log;
+}
+
 const std::string CreateSetAllKeyColorsLogEntry(const Color& color) {
   return base::StrCat({"RGB::SetAllKeyColors - ", std::to_string(color.r), ",",
                        std::to_string(color.g), ",", std::to_string(color.b),
@@ -244,6 +253,37 @@ TEST_F(RgbKeyboardControllerTest, SetStaticBackgroundColorWithCapsLock) {
   // background color.
   ValidateLog(CreateSetKeyColorLogEntry({kLeftShiftKey, expected_color}) +
               CreateSetKeyColorLogEntry({kRightShiftKey, expected_color}));
+}
+
+// TODO(swifton): Add a test with Caps Lock after fixing Caps Lock handling.
+TEST_F(RgbKeyboardControllerTest, SetStaticZoneColor) {
+  controller_->SetKeyboardCapabilityForTesting(
+      RgbKeyboardCapabilities::kIndividualKey);
+
+  const Color expected_color(/*r=*/100, /*g=*/150, /*b=*/200);
+  const int expected_zone = 2;
+
+  controller_->SetZoneColor(expected_zone, expected_color.r, expected_color.g,
+                            expected_color.b);
+
+  const std::string expected_log =
+      CreateIndividualKeyZoneColorLogEntry(expected_zone, expected_color);
+  ValidateLog(expected_log);
+}
+
+TEST_F(RgbKeyboardControllerTest, SetZoneColorDoesNotPermitOutOfBoundsAccess) {
+  controller_->SetKeyboardCapabilityForTesting(
+      RgbKeyboardCapabilities::kIndividualKey);
+
+  const Color expected_color(/*r=*/100, /*g=*/150, /*b=*/200);
+
+  controller_->SetZoneColor(-1, expected_color.r, expected_color.g,
+                            expected_color.b);
+  controller_->SetZoneColor(5, expected_color.r, expected_color.g,
+                            expected_color.b);
+
+  // The log should be empty.
+  ValidateLog("");
 }
 
 TEST_F(RgbKeyboardControllerTest, SetCapsLockStateWithPerZoneKeyboard) {

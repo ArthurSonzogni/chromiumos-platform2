@@ -79,48 +79,86 @@ void RgbKeyboardControllerImpl::SetKeyboardCapabilityForTesting(
   }
 }
 
-const base::span<const KeyColor>
-RgbKeyboardControllerImpl::GetRainbowModeForKeyboard() const {
+const std::vector<uint32_t>& RgbKeyboardControllerImpl::GetZone(
+    int zone) const {
   DCHECK(capabilities_.has_value());
+  DCHECK(zone >= 0 && zone < GetZoneCount());
   switch (capabilities_.value()) {
     case RgbKeyboardCapabilities::kNone:
       NOTREACHED();
-      return base::span<const KeyColor>();
+      return kEmptyZone;
     case RgbKeyboardCapabilities::kIndividualKey:
-      return base::span<const KeyColor>(kRainbowModeIndividualKey,
-                                        std::size(kRainbowModeIndividualKey));
+      return GetIndividualKeyZones()[zone];
     case RgbKeyboardCapabilities::kFourZoneFortyLed:
-      return base::span<const KeyColor>(
-          kRainbowModeFourZoneFortyLed,
-          std::size(kRainbowModeFourZoneFortyLed));
+      return GetFourtyLedZones()[zone];
     case RgbKeyboardCapabilities::kFourZoneTwelveLed:
-      return base::span<const KeyColor>(
-          kRainbowModeFourZoneTwelveLed,
-          std::size(kRainbowModeFourZoneTwelveLed));
+      return GetTwelveLedZones()[zone];
     case RgbKeyboardCapabilities::kFourZoneFourLed:
-      return base::span<const KeyColor>(kRainbowModeFourZoneFourLed,
-                                        std::size(kRainbowModeFourZoneFourLed));
+      return GetFourLedZones()[zone];
   }
 }
 
-// TODO(swifton): Implement this stub.
-void RgbKeyboardControllerImpl::SetZoneColor(int zone_idx,
+int RgbKeyboardControllerImpl::GetZoneCount() const {
+  DCHECK(capabilities_.has_value());
+  switch (capabilities_.value()) {
+    case RgbKeyboardCapabilities::kNone:
+      return 0;
+    case RgbKeyboardCapabilities::kIndividualKey:
+      return 5;
+    case RgbKeyboardCapabilities::kFourZoneFortyLed:
+    case RgbKeyboardCapabilities::kFourZoneTwelveLed:
+    case RgbKeyboardCapabilities::kFourZoneFourLed:
+      return 4;
+  }
+}
+
+Color RgbKeyboardControllerImpl::GetRainbowZoneColor(int zone) const {
+  DCHECK(capabilities_.has_value());
+  DCHECK(zone >= 0 && zone < GetZoneCount());
+  switch (capabilities_.value()) {
+    case RgbKeyboardCapabilities::kNone:
+      NOTREACHED();
+      return kWhiteBackgroundColor;
+    case RgbKeyboardCapabilities::kIndividualKey:
+      return kIndividualKeyRainbowColors[zone];
+    case RgbKeyboardCapabilities::kFourZoneFortyLed:
+      return kFourZonesRainbowColors[zone];
+    case RgbKeyboardCapabilities::kFourZoneTwelveLed:
+      return kFourZonesRainbowColors[zone];
+    case RgbKeyboardCapabilities::kFourZoneFourLed:
+      return kFourZonesRainbowColors[zone];
+  }
+}
+
+void RgbKeyboardControllerImpl::SetZoneColor(int zone,
                                              uint8_t r,
                                              uint8_t g,
                                              uint8_t b) {
-  NOTIMPLEMENTED();
+  if (zone < 0 || zone >= GetZoneCount()) {
+    LOG(ERROR) << "Attempted to set color for invalid zone: " << zone;
+    return;
+  }
+  // TODO(swifton): fix Caps Lock handling.
+  for (uint32_t led : GetZone(zone)) {
+    // Check if caps lock is enabled to avoid overriding the caps lock
+    // highlight keys.
+    if (caps_lock_enabled_ && IsShiftKey(led)) {
+      continue;
+    }
+
+    keyboard_->SetKeyColor(led, r, g, b);
+  }
 }
 
 void RgbKeyboardControllerImpl::SetRainbowMode() {
+  DCHECK(capabilities_.has_value());
+
   background_type_ = BackgroundType::kStaticRainbow;
-  for (const auto& entry : GetRainbowModeForKeyboard()) {
-    // Check if caps lock is enabled to avoid overriding the caps lock
-    // highlight keys.
-    if (caps_lock_enabled_ && IsShiftKey(entry.key)) {
-      continue;
-    }
-    keyboard_->SetKeyColor(entry.key, entry.color.r, entry.color.g,
-                           entry.color.b);
+
+  int zone_count = GetZoneCount();
+  for (int zone = 0; zone < zone_count; ++zone) {
+    Color color = GetRainbowZoneColor(zone);
+    SetZoneColor(zone, color.r, color.g, color.b);
   }
 }
 
