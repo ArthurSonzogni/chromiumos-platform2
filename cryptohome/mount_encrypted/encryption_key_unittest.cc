@@ -191,6 +191,8 @@ class EncryptionKeyTest : public testing::Test {
     ASSERT_TRUE(tmpdir_.CreateUniqueTempDir());
     ASSERT_TRUE(base::CreateDirectory(
         tmpdir_.GetPath().AppendASCII("mnt/stateful_partition")));
+    ASSERT_TRUE(base::CreateDirectory(
+        tmpdir_.GetPath().AppendASCII(paths::cryptohome::kTpmOwned).DirName()));
 
     metrics_singleton_ = std::make_unique<ScopedMountEncryptedMetricsSingleton>(
         tmpdir_.GetPath().AppendASCII("metrics").value());

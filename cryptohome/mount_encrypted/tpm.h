@@ -46,16 +46,19 @@ extern const size_t kOwnerSecretSize;
 // actual path gets constructed relative to a rootdir (which is a temporary
 // directory in tests, the actual root directory for production).
 namespace paths {
-const char kFirmwareUpdateRequest[] =
+inline constexpr char kFirmwareUpdateRequest[] =
     "mnt/stateful_partition/unencrypted/preserve/tpm_firmware_update_request";
-const char kFirmwareDir[] = "lib/firmware/tpm";
-const char kFirmwareUpdateLocator[] = "usr/sbin/tpm-firmware-locate-update";
+inline constexpr char kFirmwareDir[] = "lib/firmware/tpm";
+inline constexpr char kFirmwareUpdateLocator[] =
+    "usr/sbin/tpm-firmware-locate-update";
 
 namespace cryptohome {
-const char kTpmOwned[] = "mnt/stateful_partition/.tpm_owned";
-const char kTpmStatus[] = "mnt/stateful_partition/.tpm_status";
-const char kShallInitialize[] = "home/.shadow/.can_attempt_ownership";
-const char kAttestationDatabase[] =
+inline constexpr char kTpmOwned[] =
+    "mnt/stateful_partition/unencrypted/tpm_manager/tpm_owned";
+inline constexpr char kTpmStatus[] = "mnt/stateful_partition/.tpm_status";
+inline constexpr char kShallInitialize[] =
+    "home/.shadow/.can_attempt_ownership";
+inline constexpr char kAttestationDatabase[] =
     "mnt/stateful_partition/unencrypted/preserve/attestation.epb";
 }  // namespace cryptohome
 }  // namespace paths

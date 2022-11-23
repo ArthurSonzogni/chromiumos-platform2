@@ -517,6 +517,7 @@ has_arc(`
 /mnt/stateful_partition/unencrypted/preserve u:object_r:cros_stateful_partition_unencrypted_preserve:s0
 /mnt/stateful_partition/unencrypted/profraws(/.*)? u:object_r:cros_stateful_partition_unencrypted_profraws:s0
 /mnt/stateful_partition/unencrypted/rma-data(/.*)?   u:object_r:cros_stateful_partition_unencrypted_rma:s0
+/mnt/stateful_partition/unencrypted/tpm_manager(/.*)?   u:object_r:cros_stateful_partition_unencrypted_tpm_manager:s0
 
 # These are bind mounts so they need to match their other labels.
 /mnt/stateful_partition/home                      u:object_r:cros_home:s0

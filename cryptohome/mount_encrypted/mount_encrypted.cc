@@ -44,11 +44,15 @@ struct timeval tick = {};
 struct timeval tick_start = {};
 #endif
 
+using mount_encrypted::paths::cryptohome::kTpmOwned;
+
 namespace {
 constexpr char kBioCryptoInitPath[] = "/usr/bin/bio_crypto_init";
 constexpr char kBioTpmSeedSalt[] = "biod";
 constexpr char kBioTpmSeedTmpDir[] = "/run/bio_crypto_init";
 constexpr char kBioTpmSeedFile[] = "seed";
+constexpr char kOldTpmOwnershipStateFile[] =
+    "mnt/stateful_partition/.tpm_owned";
 static const uid_t kBiodUid = 282;
 static const gid_t kBiodGid = 282;
 
@@ -237,6 +241,28 @@ bool SendSecretToBiodTmpFile(const mount_encrypted::EncryptionKey& key) {
   return true;
 }
 
+// Originally .tpm_owned file is located in /mnt/stateful_partition. Since the
+// directory can only be written by root, .tpm_owned won't be able to get
+// touched by tpm_managerd if we run it in minijail. Therefore, we need to
+// migrate the files from /mnt/stateful_partition to the files into
+// /mnt/stateful_partition/unencrypted/tpm_manager. The migration is written
+// here since mount-encrypted is started before tpm_managerd.
+bool migrate_tpm_owership_state_file() {
+  auto dirname = base::FilePath(kTpmOwned).DirName();
+  if (!base::CreateDirectory(dirname)) {
+    LOG(ERROR) << "Failed to create dir for TPM pwnership state file.";
+    return false;
+  }
+
+  if (base::PathExists(base::FilePath(kOldTpmOwnershipStateFile))) {
+    LOG(INFO) << kOldTpmOwnershipStateFile << " exists. "
+              << "Moving it to " << kTpmOwned;
+    return base::Move(base::FilePath(kOldTpmOwnershipStateFile),
+                      base::FilePath((kTpmOwned)));
+  }
+  return true;
+}
+
 static result_code mount_encrypted_partition(
     mount_encrypted::EncryptedFs* encrypted_fs,
     const base::FilePath& rootdir,
@@ -251,6 +277,10 @@ static result_code mount_encrypted_partition(
   rc = encrypted_fs->CheckStates();
   if (rc != RESULT_SUCCESS)
     return rc;
+
+  if (!migrate_tpm_owership_state_file()) {
+    LOG(ERROR) << "Failed to migrate tpm owership state file to" << kTpmOwned;
+  }
 
   mount_encrypted::Tpm tpm;
   auto loader = mount_encrypted::SystemKeyLoader::Create(&tpm, rootdir);

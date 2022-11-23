@@ -36,7 +36,7 @@ constexpr size_t kInfineonDACounterOffset = 9;
 
 // The flag that tells if the tpm is full initialized.
 constexpr char kTpmFullyInitializedPath[] =
-    "/mnt/stateful_partition/.tpm_owned";
+    "/mnt/stateful_partition/unencrypted/tpm_manager/tpm_owned";
 
 bool TouchTpmFullyInitializedPath() {
   return brillo::WriteBlobToFile<std::vector<char>>(

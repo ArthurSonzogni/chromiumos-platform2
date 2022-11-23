@@ -604,6 +604,7 @@ type cros_stateful_partition_unencrypted_cache, file_type, cros_file_type, cros_
 type cros_stateful_partition_unencrypted_preserve, file_type, cros_file_type, cros_uncategorized_file_type;
 type cros_stateful_partition_unencrypted_profraws, file_type, cros_file_type, cros_uncategorized_file_type;
 type cros_stateful_partition_unencrypted_rma, file_type, cros_file_type, cros_uncategorized_file_type;
+type cros_stateful_partition_unencrypted_tpm_manager, file_type, cros_file_type, cros_uncategorized_file_type;
 
 # TODO(fqj): temporarily let un-decomposed chromeos domain to write file as tmpfs.
 type_transition {chromeos cros_arc_setup} cros_run:dir tmpfs;
