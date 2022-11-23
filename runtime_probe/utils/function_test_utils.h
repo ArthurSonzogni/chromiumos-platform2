@@ -34,7 +34,7 @@ class BaseFunctionTest : public BaseFileTest {
   ContextMockImpl* mock_context() { return &mock_context_; }
 
  private:
-  ContextMockImpl mock_context_;
+  ::testing::NiceMock<ContextMockImpl> mock_context_;
 };
 
 // A fake probe function that always gets |fake_result_| as probe results.

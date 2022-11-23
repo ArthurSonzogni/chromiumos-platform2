@@ -19,3 +19,17 @@ source_set("function_templates") {
   ]
   configs += [ ":target_defaults" ]
 }
+
+if (use.test) {
+  source_set("test") {
+    sources = [ "network_test.cc" ]
+    configs += [
+      ":target_defaults",
+      "//common-mk:test",
+    ]
+    deps = [
+      ":function_templates",
+      "//runtime_probe/utils:test_utils",
+    ]
+  }
+}

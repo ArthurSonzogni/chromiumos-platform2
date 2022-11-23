@@ -28,6 +28,7 @@ pkg_config("target_defaults") {
     "libbrillo",
     "libchrome",
     "libcros_config",
+    "libshill-client",
     "protobuf",
     "system_api",
     "vboot_host",
@@ -97,6 +98,7 @@ if (use.test) {
       ":daemon",
       ":lib",
       "//common-mk/testrunner",
+      "//runtime_probe/function_templates:test",
       "//runtime_probe/functions:test",
       "//runtime_probe/utils:test",
     ]

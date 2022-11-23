@@ -5,6 +5,8 @@
 #ifndef RUNTIME_PROBE_SYSTEM_CONTEXT_H_
 #define RUNTIME_PROBE_SYSTEM_CONTEXT_H_
 
+#include <memory>
+
 #include <base/files/file_path.h>
 
 #include "runtime_probe/system/helper_invoker.h"
@@ -14,6 +16,15 @@ namespace chromium {
 class debugdProxyInterface;
 }  // namespace chromium
 }  // namespace org
+
+namespace org::chromium::flimflam {
+class ManagerProxyInterface;
+class DeviceProxyInterface;
+}  // namespace org::chromium::flimflam
+
+namespace dbus {
+class ObjectPath;
+}  // namespace dbus
 
 namespace runtime_probe {
 
@@ -33,6 +44,16 @@ class Context {
 
   // Use the object returned by debugd_proxy() to make calls to debugd.
   virtual org::chromium::debugdProxyInterface* debugd_proxy() = 0;
+
+  // Use the object returned by shill_manager_proxy() to make calls to shill
+  // manager.
+  virtual org::chromium::flimflam::ManagerProxyInterface*
+  shill_manager_proxy() = 0;
+
+  // Use the object returned by CreateShillDeviceProxy() to make calls to shill
+  // device.
+  virtual std::unique_ptr<org::chromium::flimflam::DeviceProxyInterface>
+  CreateShillDeviceProxy(const dbus::ObjectPath& path) = 0;
 
   // The object to invoke the runtime_probe helper.
   virtual HelperInvoker* helper_invoker() = 0;

@@ -24,6 +24,8 @@ bool ContextImpl::SetupDBusServices() {
     return false;
   }
   debugd_proxy_ = std::make_unique<org::chromium::debugdProxy>(dbus_bus_);
+  shill_manager_proxy_ =
+      std::make_unique<org::chromium::flimflam::ManagerProxy>(dbus_bus_);
   return true;
 }
 

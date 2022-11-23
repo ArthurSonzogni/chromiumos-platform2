@@ -14,6 +14,7 @@ pkg_config("target_defaults") {
     "libbrillo",
     "libchrome",
     "libcros_config",
+    "libshill-client",
     "protobuf",
     "system_api",
     "vboot_host",

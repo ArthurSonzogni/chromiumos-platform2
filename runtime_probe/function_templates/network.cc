@@ -19,13 +19,14 @@
 #include <chromeos/dbus/service_constants.h>
 #include <shill/dbus-proxies.h>
 
+#include "runtime_probe/system/context.h"
 #include "runtime_probe/utils/file_utils.h"
 #include "runtime_probe/utils/type_utils.h"
 #include "runtime_probe/utils/value_utils.h"
 
 namespace runtime_probe {
 namespace {
-constexpr auto kNetworkDirPath("/sys/class/net/");
+constexpr auto kNetworkDirPath("sys/class/net/");
 
 constexpr auto kBusTypePci("pci");
 constexpr auto kBusTypeSdio("sdio");
@@ -70,15 +71,7 @@ std::vector<brillo::VariantDictionary> GetDevicesProps(
     std::optional<std::string> type) {
   std::vector<brillo::VariantDictionary> devices_props{};
 
-  brillo::DBusConnection dbus_connection;
-  const auto bus = dbus_connection.Connect();
-  if (bus == nullptr) {
-    LOG(ERROR) << "Failed to connect to system D-Bus service.";
-    return {};
-  }
-
-  auto shill_proxy =
-      std::make_unique<org::chromium::flimflam::ManagerProxy>(bus);
+  auto shill_proxy = Context::Get()->shill_manager_proxy();
   brillo::VariantDictionary props;
   if (!shill_proxy->GetProperties(&props, nullptr)) {
     LOG(ERROR) << "Unable to get manager properties.";
@@ -91,8 +84,7 @@ std::vector<brillo::VariantDictionary> GetDevicesProps(
   }
 
   for (const auto& path : it->second.TryGet<std::vector<dbus::ObjectPath>>()) {
-    auto device =
-        std::make_unique<org::chromium::flimflam::DeviceProxy>(bus, path);
+    auto device = Context::Get()->CreateShillDeviceProxy(path);
     brillo::VariantDictionary device_props;
     if (!device->GetProperties(&device_props, nullptr)) {
       VLOG(2) << "Unable to get device properties of " << path.value()
@@ -166,9 +158,9 @@ NetworkFunction::DataType NetworkFunction::EvalImpl() const {
   NetworkFunction::DataType result{};
 
   for (const auto& device_props : devices_props) {
-    base::FilePath node_path(
+    const base::FilePath node_path(Context::Get()->root_dir().Append(
         kNetworkDirPath +
-        device_props.at(shill::kInterfaceProperty).TryGet<std::string>());
+        device_props.at(shill::kInterfaceProperty).TryGet<std::string>()));
     std::string device_type =
         device_props.at(shill::kTypeProperty).TryGet<std::string>();
 

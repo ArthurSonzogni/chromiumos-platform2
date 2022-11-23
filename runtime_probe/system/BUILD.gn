@@ -9,12 +9,14 @@ pkg_config("target_defaults") {
     "libbrillo",
     "libchrome",
     "libdebugd-client",
+    "libshill-client",
   ]
 }
 
 source_set("system_base") {
   sources = [
     "context.cc",
+    "context_helper_impl.cc",
     "context_impl.cc",
   ]
   configs += [ ":target_defaults" ]
@@ -45,7 +47,10 @@ source_set("context_production") {
 
 if (use.test) {
   pkg_config("test_pkg_deps") {
-    pkg_deps = [ "libdebugd-client-test" ]
+    pkg_deps = [
+      "libdebugd-client-test",
+      "libshill-client-test",
+    ]
   }
 
   source_set("test_utils") {
