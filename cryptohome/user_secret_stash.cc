@@ -119,6 +119,48 @@ std::string GetCurrentOsVersion() {
   return version;
 }
 
+// Returns the UserSecretStash experiment flag value.
+UssExperimentFlag UserSecretStashExperimentResult(Platform* platform) {
+  // 1. If the state is overridden by unit tests, return this value.
+  if (GetUserSecretStashExperimentOverride().has_value() &&
+      GetUserSecretStashExperimentOverride().value()) {
+    return UssExperimentFlag::kEnabled;
+  }
+  // 2. If no unittest override defer to checking the feature test file
+  // existence. The disable file precedes the enable file.
+  if (DisableUssFeatureTestFlagFileExists(platform)) {
+    return UssExperimentFlag::kDisabled;
+  }
+  if (EnableUssFeatureTestFlagFileExists(platform)) {
+    return UssExperimentFlag::kEnabled;
+  }
+  // 3. Check the flag set by UssExperimentConfigFetcher and persist the state
+  // until next update.
+  UssExperimentFlag result = UssExperimentFlag::kNotFound;
+  std::optional<bool> flag = GetUserSecretStashExperimentFlag();
+  if (flag.has_value()) {
+    if (flag.value()) {
+      result = UssExperimentFlag::kEnabled;
+      UpdateUssStatusOnDisk(platform, UssExperimentFlag::kEnabled);
+    } else {
+      result = UssExperimentFlag::kDisabled;
+      UpdateUssStatusOnDisk(platform, UssExperimentFlag::kDisabled);
+    }
+  } else {
+    // When flag doesn't have any value, restore the previous value.
+    // If both flag files exists, USS is disabled. If no flag file is found the
+    // result will stay unchanged.
+    if (EnableUssFlagFileExists(platform)) {
+      result = UssExperimentFlag::kEnabled;
+    }
+    if (DisableUssFlagFileExists(platform)) {
+      result = UssExperimentFlag::kDisabled;
+    }
+  }
+
+  return result;
+}
+
 // Extracts the file system keyset from the given USS payload. Returns nullopt
 // on failure.
 CryptohomeStatusOr<FileSystemKeyset> GetFileSystemKeyFromPayload(
@@ -443,44 +485,12 @@ int UserSecretStashExperimentVersion() {
 }
 
 bool IsUserSecretStashExperimentEnabled(Platform* platform) {
-  // 1. If the state is overridden by unit tests, return this value.
-  if (GetUserSecretStashExperimentOverride().has_value()) {
-    return GetUserSecretStashExperimentOverride().value();
-  }
-  // 2. If no unittest override defer to checking the feature test file
-  // existence. The disable file precedes the enable file.
-  if (DisableUssFeatureTestFlagFileExists(platform)) {
-    return false;
-  }
-  if (EnableUssFeatureTestFlagFileExists(platform)) {
-    return true;
-  }
-  // 3. Check the flag set by UssExperimentConfigFetcher and persist the state
-  // until next update.
-  UssExperimentFlag result = UssExperimentFlag::kNotFound;
-  std::optional<bool> flag = GetUserSecretStashExperimentFlag();
-  if (flag.has_value()) {
-    if (flag.value()) {
-      result = UssExperimentFlag::kEnabled;
-      UpdateUssStatusOnDisk(platform, UssExperimentFlag::kEnabled);
-    } else {
-      result = UssExperimentFlag::kDisabled;
-      UpdateUssStatusOnDisk(platform, UssExperimentFlag::kDisabled);
-    }
-  } else {
-    // When flag doesn't have any value, restore the previous value.
-    // If both flag files exists, USS is disabled. If no flag file is found the
-    // result will stay unchanged.
-    if (EnableUssFlagFileExists(platform)) {
-      result = UssExperimentFlag::kEnabled;
-    }
-    if (DisableUssFlagFileExists(platform)) {
-      result = UssExperimentFlag::kDisabled;
-    }
-  }
+  return UserSecretStashExperimentResult(platform) ==
+         UssExperimentFlag::kEnabled;
+}
 
-  ReportUssExperimentFlag(result);
-  return result == UssExperimentFlag::kEnabled;
+void ReportUserSecretStashExperimentState(Platform* platform) {
+  ReportUssExperimentFlag(UserSecretStashExperimentResult(platform));
 }
 
 void SetUserSecretStashExperimentFlag(bool enabled) {

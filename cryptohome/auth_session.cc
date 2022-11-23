@@ -1080,7 +1080,6 @@ void AuthSession::AuthenticateAuthFactor(
             CRYPTOHOME_ERROR_INVALID_ARGUMENT));
     return;
   }
-
   // The CredentialVerifier and/or AuthFactor to be used for authentication.
   // These may be null as a given label may have a verifier, a factor, both, or
   // neither.

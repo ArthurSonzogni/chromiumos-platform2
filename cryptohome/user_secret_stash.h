@@ -13,6 +13,7 @@
 #include <optional>
 #include <string>
 
+#include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/error/cryptohome_error.h"
 #include "cryptohome/flatbuffer_schemas/user_secret_stash_container.h"
 #include "cryptohome/storage/file_system_keyset.h"
@@ -43,6 +44,8 @@ void SetUserSecretStashExperimentFlag(bool enabled);
 // can furthermore override this behavior using
 // `SetUserSecretStashExperimentForTesting()`.
 bool IsUserSecretStashExperimentEnabled(Platform* platform);
+void ReportUserSecretStashExperimentState(Platform* platform);
+
 // Allows to toggle the experiment state in tests. Passing nullopt reverts to
 // the default behavior.
 void SetUserSecretStashExperimentForTesting(std::optional<bool> enabled);

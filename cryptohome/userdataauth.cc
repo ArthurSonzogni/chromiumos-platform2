@@ -4814,8 +4814,10 @@ void UserDataAuth::ListAuthFactors(
       user_data_auth::CRYPTOHOME_ERROR_NOT_SET) {
     LOG(WARNING) << "Failure in listing the available VaultKeyset factors.";
   }
-  if (!IsUserSecretStashExperimentEnabled(platform_) &&
-      auth_factor_map.empty()) {
+
+  ReportUserSecretStashExperimentState(platform_);
+  bool is_uss_enabled = IsUserSecretStashExperimentEnabled(platform_);
+  if (!is_uss_enabled && auth_factor_map.empty()) {
     // Before IsUserSecretStashExperimentEnabled() there are no backup VKs in
     // disk, hence label_to_auth_factor_for_backup_vks is empty. After
     // IsUserSecretStashExperimentEnabled() is once enabled and disabled for
@@ -4850,7 +4852,7 @@ void UserDataAuth::ListAuthFactors(
     // We assume USS is available either if there are already auth factors in
     // USS, or if there are no auth factors but the experiment is enabled.
     if (!reply.configured_auth_factors_with_status().empty() ||
-        IsUserSecretStashExperimentEnabled(platform_)) {
+        is_uss_enabled) {
       storage_type = AuthFactorStorageType::kUserSecretStash;
     }
   }
