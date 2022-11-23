@@ -5474,4 +5474,18 @@ TEST_F(UserDataAuthApiTest, RemoveStillMounted) {
       HasPossibleAction(user_data_auth::PossibleAction::POSSIBLY_POWERWASH));
 }
 
+TEST_F(UserDataAuthApiTest, RemoveNoID) {
+  user_data_auth::RemoveRequest req;
+  user_data_auth::RemoveReply reply;
+
+  reply = userdataauth_->Remove(req);
+
+  // Failure to Remove() due to the lack of username in the request is
+  // unexpected, and should result in POSSIBLY_DEV_CHECK_UNEXPECTED_STATE.
+  EXPECT_THAT(
+      reply.error_info(),
+      HasPossibleAction(
+          user_data_auth::PossibleAction::POSSIBLY_DEV_CHECK_UNEXPECTED_STATE));
+}
+
 }  // namespace cryptohome
