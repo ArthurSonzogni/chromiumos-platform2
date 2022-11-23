@@ -125,6 +125,7 @@ class FakeDiagnosticsService final
       mojo::PendingRemote<ash::cros_healthd::mojom::LedLitUpRoutineReplier>
           replier,
       RunLedLitUpRoutineCallback callback) override;
+  void RunEmmcLifetimeRoutine(RunEmmcLifetimeRoutineCallback callback) override;
 
   // Overrides the default behavior of GetCrosHealthdDiagnosticsService to test
   // situations where mojo methods were called prior to wilco_dtc_supportd's

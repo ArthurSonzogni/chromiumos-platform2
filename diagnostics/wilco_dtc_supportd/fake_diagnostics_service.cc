@@ -254,6 +254,11 @@ void FakeDiagnosticsService::RunLedLitUpRoutine(
   std::move(callback).Run(run_routine_response_.Clone());
 }
 
+void FakeDiagnosticsService::RunEmmcLifetimeRoutine(
+    RunEmmcLifetimeRoutineCallback callback) {
+  std::move(callback).Run(run_routine_response_.Clone());
+}
+
 void FakeDiagnosticsService::SetMojoServiceIsAvailable(bool is_available) {
   is_available_ = is_available;
 }

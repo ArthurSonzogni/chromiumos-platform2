@@ -135,6 +135,7 @@ class CrosHealthdDiagnosticsService final
       mojo::PendingRemote<ash::cros_healthd::mojom::LedLitUpRoutineReplier>
           replier,
       RunLedLitUpRoutineCallback callback) override;
+  void RunEmmcLifetimeRoutine(RunEmmcLifetimeRoutineCallback callback) override;
 
  private:
   void RunRoutine(

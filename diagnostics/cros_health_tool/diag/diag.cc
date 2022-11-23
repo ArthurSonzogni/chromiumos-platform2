@@ -349,6 +349,9 @@ int diag_main(int argc, char** argv) {
         }
         routine_result = actions.ActionRunLedRoutine(name, color);
       } break;
+      case mojo_ipc::DiagnosticRoutineEnum::kEmmcLifetime:
+        routine_result = EXIT_FAILURE;
+        break;
       case mojo_ipc::DiagnosticRoutineEnum::kUnknown:
         // Never map FLAGS_routine to kUnknown field.
         NOTREACHED();

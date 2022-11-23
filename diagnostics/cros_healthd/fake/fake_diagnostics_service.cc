@@ -232,4 +232,9 @@ void FakeDiagnosticsService::RunLedLitUpRoutine(
   NOTIMPLEMENTED();
 }
 
+void FakeDiagnosticsService::RunEmmcLifetimeRoutine(
+    RunEmmcLifetimeRoutineCallback callback) {
+  NOTIMPLEMENTED();
+}
+
 }  // namespace diagnostics

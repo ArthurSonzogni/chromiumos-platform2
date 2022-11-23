@@ -121,6 +121,7 @@ class FakeDiagnosticsService final
       mojo::PendingRemote<ash::cros_healthd::mojom::LedLitUpRoutineReplier>
           replier,
       RunLedLitUpRoutineCallback callback) override;
+  void RunEmmcLifetimeRoutine(RunEmmcLifetimeRoutineCallback callback) override;
 };
 
 }  // namespace diagnostics

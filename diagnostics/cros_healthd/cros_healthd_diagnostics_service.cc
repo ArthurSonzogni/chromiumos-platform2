@@ -407,6 +407,11 @@ void CrosHealthdDiagnosticsService::RunLedLitUpRoutine(
       mojo_ipc::DiagnosticRoutineEnum::kLedLitUp, std::move(callback));
 }
 
+void CrosHealthdDiagnosticsService::RunEmmcLifetimeRoutine(
+    RunEmmcLifetimeRoutineCallback callback) {
+  NOTIMPLEMENTED();
+}
+
 void CrosHealthdDiagnosticsService::RunRoutine(
     std::unique_ptr<DiagnosticRoutine> routine,
     mojo_ipc::DiagnosticRoutineEnum routine_enum,
@@ -531,6 +536,9 @@ void CrosHealthdDiagnosticsService::PopulateAvailableRoutines(
   if (context_->system_config()->HasPrivacyScreen()) {
     available_routines_.insert(mojo_ipc::DiagnosticRoutineEnum::kPrivacyScreen);
   }
+
+  // TODO(dennyh): Use system_config to determine if eMMC is supported.
+  available_routines_.insert(mojo_ipc::DiagnosticRoutineEnum::kEmmcLifetime);
 }
 
 }  // namespace diagnostics
