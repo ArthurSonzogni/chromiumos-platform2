@@ -974,6 +974,26 @@ void UserDataAuthAdaptor::DoGetHibernateSecret(
   response->Return(service_->GetHibernateSecret(in_request));
 }
 
+void UserDataAuthAdaptor::GetEncryptionInfo(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        user_data_auth::GetEncryptionInfoReply>> response,
+    const user_data_auth::GetEncryptionInfoRequest& in_request) {
+  service_->PostTaskToMountThread(
+      FROM_HERE,
+      base::BindOnce(
+          &UserDataAuthAdaptor::DoGetEncryptionInfo, base::Unretained(this),
+          ThreadSafeDBusMethodResponse<user_data_auth::GetEncryptionInfoReply>::
+              MakeThreadSafe(std::move(response)),
+          in_request));
+}
+
+void UserDataAuthAdaptor::DoGetEncryptionInfo(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        user_data_auth::GetEncryptionInfoReply>> response,
+    const user_data_auth::GetEncryptionInfoRequest& in_request) {
+  response->Return(service_->GetEncryptionInfo(in_request));
+}
+
 void UserDataAuthAdaptor::StartMigrateToDircrypto(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
         user_data_auth::StartMigrateToDircryptoReply>> response,

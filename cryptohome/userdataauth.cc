@@ -3792,6 +3792,17 @@ user_data_auth::GetHibernateSecretReply UserDataAuth::GetHibernateSecret(
   return reply;
 }
 
+user_data_auth::GetEncryptionInfoReply UserDataAuth::GetEncryptionInfo(
+    const user_data_auth::GetEncryptionInfoRequest& request) {
+  AssertOnMountThread();
+  user_data_auth::GetEncryptionInfoReply reply;
+
+  const bool state = homedirs_->KeylockerForStorageEncryptionEnabled();
+  reply.set_error(user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+  reply.set_keylocker_supported(state);
+  return reply;
+}
+
 user_data_auth::CryptohomeErrorCode
 UserDataAuth::GetFirmwareManagementParameters(
     user_data_auth::FirmwareManagementParameters* fwmp) {

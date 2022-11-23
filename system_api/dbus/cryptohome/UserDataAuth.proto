@@ -596,6 +596,17 @@ message GetHibernateSecretReply {
   bytes hibernate_secret = 2;
 }
 
+// Input parameters to GetEncryptionInfo()
+message GetEncryptionInfoRequest {}
+
+// Output parameters for GetEncryptionInfo()
+message GetEncryptionInfoReply {
+  // Indicates an error if |error| is not empty.
+  CryptohomeErrorCode error = 1;
+  // Set to true if keylocker is supported.
+  bool keylocker_supported = 2;
+}
+
 // TODO(b/126307305): For the messages, below, we'll need to add the
 // documentations for them.
 
