@@ -340,9 +340,8 @@ TEST_F(AuthSessionTestWithKeysetManagement, USSEnabledCreatesBackupVKs) {
   int flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE;
 
   CryptohomeStatusOr<AuthSession*> auth_session_status =
-      auth_session_manager_->CreateAuthSession(
-          kUsername, flags, AuthIntent::kDecrypt,
-          /*enable_create_backup_vk_with_uss =*/true);
+      auth_session_manager_->CreateAuthSession(kUsername, flags,
+                                               AuthIntent::kDecrypt);
   EXPECT_TRUE(auth_session_status.ok());
   AuthSession* auth_session = auth_session_status.value();
 
@@ -383,9 +382,8 @@ TEST_F(AuthSessionTestWithKeysetManagement, USSDisabledNotCreatesBackupVKs) {
   int flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE;
 
   CryptohomeStatusOr<AuthSession*> auth_session_status =
-      auth_session_manager_->CreateAuthSession(
-          kUsername, flags, AuthIntent::kDecrypt,
-          /*enable_create_backup_vk_with_uss =*/true);
+      auth_session_manager_->CreateAuthSession(kUsername, flags,
+                                               AuthIntent::kDecrypt);
   EXPECT_TRUE(auth_session_status.ok());
   AuthSession* auth_session = auth_session_status.value();
 
@@ -421,11 +419,11 @@ TEST_F(AuthSessionTestWithKeysetManagement, USSEnabledRemovesBackupVKs) {
 
   int flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE;
 
-  AuthSession auth_session(
-      kUsername, flags, AuthIntent::kDecrypt, /*on_timeout=*/base::DoNothing(),
-      &crypto_, &platform_, &user_session_map_, keyset_management_.get(),
-      auth_block_utility_.get(), &auth_factor_manager_,
-      &user_secret_stash_storage_, /*enable_create_backup_vk_with_uss =*/true);
+  AuthSession auth_session(kUsername, flags, AuthIntent::kDecrypt,
+                           /*on_timeout=*/base::DoNothing(), &crypto_,
+                           &platform_, &user_session_map_,
+                           keyset_management_.get(), auth_block_utility_.get(),
+                           &auth_factor_manager_, &user_secret_stash_storage_);
 
   EXPECT_THAT(AuthStatus::kAuthStatusFurtherFactorRequired,
               auth_session.GetStatus());
@@ -469,11 +467,11 @@ TEST_F(AuthSessionTestWithKeysetManagement, USSEnabledUpdateBackupVKs) {
 
   int flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE;
 
-  AuthSession auth_session(
-      kUsername, flags, AuthIntent::kDecrypt, /*on_timeout=*/base::DoNothing(),
-      &crypto_, &platform_, &user_session_map_, keyset_management_.get(),
-      auth_block_utility_.get(), &auth_factor_manager_,
-      &user_secret_stash_storage_, /*enable_create_backup_vk_with_uss =*/true);
+  AuthSession auth_session(kUsername, flags, AuthIntent::kDecrypt,
+                           /*on_timeout=*/base::DoNothing(), &crypto_,
+                           &platform_, &user_session_map_,
+                           keyset_management_.get(), auth_block_utility_.get(),
+                           &auth_factor_manager_, &user_secret_stash_storage_);
 
   EXPECT_THAT(AuthStatus::kAuthStatusFurtherFactorRequired,
               auth_session.GetStatus());
@@ -524,9 +522,8 @@ TEST_F(AuthSessionTestWithKeysetManagement,
       &mock_auth_block_utility_, &auth_factor_manager_,
       &user_secret_stash_storage_);
   CryptohomeStatusOr<AuthSession*> auth_session_status =
-      auth_session_manager_impl_->CreateAuthSession(
-          kUsername, flags, AuthIntent::kDecrypt,
-          /*enable_create_backup_vk_with_uss =*/true);
+      auth_session_manager_impl_->CreateAuthSession(kUsername, flags,
+                                                    AuthIntent::kDecrypt);
   EXPECT_TRUE(auth_session_status.ok());
   AuthSession* auth_session = auth_session_status.value();
 
@@ -610,9 +607,8 @@ TEST_F(AuthSessionTestWithKeysetManagement,
   // if USS is disabled after the update.
   SetUserSecretStashExperimentForTesting(/*enabled=*/false);
   CryptohomeStatusOr<AuthSession*> auth_session2_status =
-      auth_session_manager_impl_->CreateAuthSession(
-          kUsername, flags, AuthIntent::kDecrypt,
-          /*enable_create_backup_vk_with_uss =*/true);
+      auth_session_manager_impl_->CreateAuthSession(kUsername, flags,
+                                                    AuthIntent::kDecrypt);
   EXPECT_TRUE(auth_session2_status.ok());
   AuthSession* auth_session2 = auth_session2_status.value();
   EXPECT_TRUE(auth_session2->auth_factor_map().HasFactorWithStorage(
@@ -658,11 +654,11 @@ TEST_F(AuthSessionTestWithKeysetManagement,
 
   int flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE;
 
-  AuthSession auth_session(
-      kUsername, flags, AuthIntent::kDecrypt, /*on_timeout=*/base::DoNothing(),
-      &crypto_, &platform_, &user_session_map_, keyset_management_.get(),
-      &mock_auth_block_utility_, &auth_factor_manager_,
-      &user_secret_stash_storage_, /*enable_create_backup_vk_with_uss =*/true);
+  AuthSession auth_session(kUsername, flags, AuthIntent::kDecrypt,
+                           /*on_timeout=*/base::DoNothing(), &crypto_,
+                           &platform_, &user_session_map_,
+                           keyset_management_.get(), &mock_auth_block_utility_,
+                           &auth_factor_manager_, &user_secret_stash_storage_);
 
   EXPECT_THAT(AuthStatus::kAuthStatusFurtherFactorRequired,
               auth_session.GetStatus());
@@ -721,9 +717,8 @@ TEST_F(AuthSessionTestWithKeysetManagement,
       &mock_auth_block_utility_, &auth_factor_manager_,
       &user_secret_stash_storage_);
   CryptohomeStatusOr<AuthSession*> auth_session2_status =
-      auth_session_manager_impl_->CreateAuthSession(
-          kUsername, flags, AuthIntent::kDecrypt,
-          /*enable_create_backup_vk_with_uss =*/true);
+      auth_session_manager_impl_->CreateAuthSession(kUsername, flags,
+                                                    AuthIntent::kDecrypt);
   EXPECT_TRUE(auth_session2_status.ok());
   AuthSession* auth_session2 = auth_session2_status.value();
   EXPECT_TRUE(auth_session2->auth_factor_map().HasFactorWithStorage(
@@ -765,9 +760,8 @@ TEST_F(AuthSessionTestWithKeysetManagement, USSDisableddNotListBackupVKs) {
 
   int flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE;
   CryptohomeStatusOr<AuthSession*> auth_session_status =
-      auth_session_manager_->CreateAuthSession(
-          kUsername, flags, AuthIntent::kDecrypt,
-          /*enable_create_backup_vk_with_uss =*/true);
+      auth_session_manager_->CreateAuthSession(kUsername, flags,
+                                               AuthIntent::kDecrypt);
   EXPECT_TRUE(auth_session_status.ok());
   AuthSession* auth_session = auth_session_status.value();
   EXPECT_THAT(AuthStatus::kAuthStatusFurtherFactorRequired,
@@ -786,9 +780,8 @@ TEST_F(AuthSessionTestWithKeysetManagement, USSDisableddNotListBackupVKs) {
 
   // Test
   CryptohomeStatusOr<AuthSession*> auth_session2_status =
-      auth_session_manager_->CreateAuthSession(
-          kUsername, flags, AuthIntent::kDecrypt,
-          /*enable_create_backup_vk_with_uss =*/true);
+      auth_session_manager_->CreateAuthSession(kUsername, flags,
+                                               AuthIntent::kDecrypt);
   EXPECT_TRUE(auth_session2_status.ok());
   AuthSession* auth_session2 = auth_session2_status.value();
 
@@ -811,9 +804,8 @@ TEST_F(AuthSessionTestWithKeysetManagement, USSRollbackListBackupVKs) {
 
   int flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE;
   CryptohomeStatusOr<AuthSession*> auth_session_status =
-      auth_session_manager_->CreateAuthSession(
-          kUsername, flags, AuthIntent::kDecrypt,
-          /*enable_create_backup_vk_with_uss =*/true);
+      auth_session_manager_->CreateAuthSession(kUsername, flags,
+                                               AuthIntent::kDecrypt);
   EXPECT_TRUE(auth_session_status.ok());
   AuthSession* auth_session = auth_session_status.value();
   EXPECT_THAT(AuthStatus::kAuthStatusFurtherFactorRequired,
@@ -837,9 +829,8 @@ TEST_F(AuthSessionTestWithKeysetManagement, USSRollbackListBackupVKs) {
   // Test
   SetUserSecretStashExperimentForTesting(/*enabled=*/false);
   CryptohomeStatusOr<AuthSession*> auth_session2_status =
-      auth_session_manager_->CreateAuthSession(
-          kUsername, flags, AuthIntent::kDecrypt,
-          /*enable_create_backup_vk_with_uss =*/true);
+      auth_session_manager_->CreateAuthSession(kUsername, flags,
+                                               AuthIntent::kDecrypt);
   EXPECT_TRUE(auth_session2_status.ok());
   AuthSession* auth_session2 = auth_session2_status.value();
 

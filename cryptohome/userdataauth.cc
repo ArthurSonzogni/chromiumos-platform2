@@ -328,9 +328,6 @@ void ReplyWithAuthenticationResult(
   ReplyWithError(std::move(on_done), std::move(reply), status);
 }
 
-// Control switch value for enabling backup VaultKeyset creation with USS.
-constexpr bool kEnableCreateBackupVK = true;
-
 }  // namespace
 
 UserDataAuth::UserDataAuth()
@@ -3994,7 +3991,7 @@ void UserDataAuth::StartAuthSession(
   CryptohomeStatusOr<AuthSession*> auth_session_status =
       auth_session_manager_->CreateAuthSession(
           request.account_id().account_id(), request.flags(),
-          auth_intent.value(), kEnableCreateBackupVK);
+          auth_intent.value());
   if (!auth_session_status.ok()) {
     ReplyWithError(
         std::move(on_done), reply,
@@ -4927,7 +4924,7 @@ void UserDataAuth::ListAuthFactors(
       user_data_auth::CRYPTOHOME_ERROR_NOT_SET) {
     LOG(WARNING) << "Failure in listing the available VaultKeyset factors.";
   }
-  if (kEnableCreateBackupVK && !IsUserSecretStashExperimentEnabled(platform_) &&
+  if (!IsUserSecretStashExperimentEnabled(platform_) &&
       auth_factor_map.empty()) {
     // Before IsUserSecretStashExperimentEnabled() there are no backup VKs in
     // disk, hence label_to_auth_factor_for_backup_vks is empty. After

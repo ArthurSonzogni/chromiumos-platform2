@@ -88,8 +88,7 @@ class AuthSession final {
       KeysetManagement* keyset_management,
       AuthBlockUtility* auth_block_utility,
       AuthFactorManager* auth_factor_manager,
-      UserSecretStashStorage* user_secret_stash_storage,
-      bool enable_create_backup_vk_with_uss);
+      UserSecretStashStorage* user_secret_stash_storage);
 
   ~AuthSession();
 
@@ -273,8 +272,7 @@ class AuthSession final {
       KeysetManagement* keyset_management,
       AuthBlockUtility* auth_block_utility,
       AuthFactorManager* auth_factor_manager,
-      UserSecretStashStorage* user_secret_stash_storage,
-      bool enable_create_backup_vk_with_uss);
+      UserSecretStashStorage* user_secret_stash_storage);
 
   AuthSession() = delete;
 
@@ -621,8 +619,6 @@ class AuthSession final {
   // It's set only after GetRecoveryRequest() call, and is std::nullopt in other
   // cases.
   std::optional<brillo::SecureBlob> cryptohome_recovery_ephemeral_pub_key_;
-  // Switch to enable creation of the backup VaultKeysets together with the USS.
-  bool enable_create_backup_vk_with_uss_;
   // Tokens from active auth factors, keyed off of the token's auth factor type.
   std::map<AuthFactorType, std::unique_ptr<PreparedAuthFactorToken>>
       active_auth_factor_tokens_;

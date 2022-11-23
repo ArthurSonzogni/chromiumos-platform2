@@ -167,14 +167,12 @@ CryptohomeStatusOr<std::unique_ptr<AuthSession>> AuthSession::Create(
     KeysetManagement* keyset_management,
     AuthBlockUtility* auth_block_utility,
     AuthFactorManager* auth_factor_manager,
-    UserSecretStashStorage* user_secret_stash_storage,
-    bool enable_create_backup_vk_with_uss) {
+    UserSecretStashStorage* user_secret_stash_storage) {
   // Assumption here is that keyset_management_ will outlive this AuthSession.
   auto auth_session = base::WrapUnique(new AuthSession(
       account_id, flags, intent, std::move(on_timeout), crypto, platform,
       user_session_map, keyset_management, auth_block_utility,
-      auth_factor_manager, user_secret_stash_storage,
-      enable_create_backup_vk_with_uss));
+      auth_factor_manager, user_secret_stash_storage));
 
   if (!auth_session->Initialize().ok()) {
     LOG(ERROR) << "AuthSession could not be initialized.";
@@ -198,8 +196,7 @@ AuthSession::AuthSession(
     KeysetManagement* keyset_management,
     AuthBlockUtility* auth_block_utility,
     AuthFactorManager* auth_factor_manager,
-    UserSecretStashStorage* user_secret_stash_storage,
-    bool enable_create_backup_vk_with_uss)
+    UserSecretStashStorage* user_secret_stash_storage)
     : username_(std::move(username)),
       obfuscated_username_(SanitizeUserName(username_)),
       token_(base::UnguessableToken::Create()),
@@ -215,8 +212,7 @@ AuthSession::AuthSession(
       keyset_management_(keyset_management),
       auth_block_utility_(auth_block_utility),
       auth_factor_manager_(auth_factor_manager),
-      user_secret_stash_storage_(user_secret_stash_storage),
-      enable_create_backup_vk_with_uss_(enable_create_backup_vk_with_uss) {
+      user_secret_stash_storage_(user_secret_stash_storage) {
   // Preconditions.
   DCHECK(!serialized_token_.empty());
   DCHECK(crypto_);
@@ -278,8 +274,7 @@ CryptohomeStatus AuthSession::Initialize() {
   // Therefore we don't expect to have both regular and backup VaultKeysets in
   // disk at the same time. This logic is going to change only after
   // USSMigration is enabled.
-  if (enable_create_backup_vk_with_uss_ &&
-      !IsUserSecretStashExperimentEnabled(platform_) &&
+  if (!IsUserSecretStashExperimentEnabled(platform_) &&
       auth_factor_map_.empty() && !backup_factor_map.empty()) {
     for (auto& [unused, factor] : backup_factor_map) {
       auth_factor_map_.Add(std::move(factor),
@@ -1275,19 +1270,6 @@ void AuthSession::RemoveAuthFactor(
               .Wrap(std::move(remove_status)));
       return;
     }
-    if (!enable_create_backup_vk_with_uss_) {
-      // If backup VaultKeysets are not enabled return before removing the
-      // VaultKeyset as there are no VaultKeysets together with USS.
-
-      // Removal of the AuthFactor completed successfully, remove the
-      // AuthFactor from the map.
-      auth_factor_map_.Remove(auth_factor_label);
-      // Report time taken for a successful remove.
-      ReportTimerDuration(kAuthSessionRemoveAuthFactorUSSTimer,
-                          remove_timer_start, "" /*append_string*/);
-      std::move(on_done).Run(OkStatus<CryptohomeError>());
-      return;
-    }
   }
 
   // At this point either USS is not enabled or removal of the USS AuthFactor
@@ -1641,8 +1623,7 @@ void AuthSession::UpdateAuthFactorViaUserSecretStash(
   }
 
   // Update and persist the backup VaultKeyset. Smartcard is not updatable.
-  if (enable_create_backup_vk_with_uss_ &&
-      (auth_factor_type == AuthFactorType::kPassword ||
+  if ((auth_factor_type == AuthFactorType::kPassword ||
        auth_factor_type == AuthFactorType::kPin)) {
     user_data_auth::CryptohomeErrorCode error_code =
         static_cast<user_data_auth::CryptohomeErrorCode>(
@@ -2213,8 +2194,7 @@ void AuthSession::PersistAuthFactorToUserSecretStash(
   }
 
   // Generate and persist the backup VaultKeyset
-  if (enable_create_backup_vk_with_uss_ &&
-      (auth_factor_type == AuthFactorType::kPassword ||
+  if ((auth_factor_type == AuthFactorType::kPassword ||
        auth_factor_type == AuthFactorType::kPin ||
        auth_factor_type == AuthFactorType::kSmartCard ||
        auth_factor_type == AuthFactorType::kKiosk)) {
@@ -2670,8 +2650,7 @@ void AuthSession::LoadUSSMainKeyAndFsKeyset(
   // Set the credential verifier for this credential.
   AddCredentialVerifier(auth_factor_type, auth_factor_label, auth_input);
 
-  if (enable_create_backup_vk_with_uss_ &&
-      auth_factor_type == AuthFactorType::kPassword) {
+  if (auth_factor_type == AuthFactorType::kPassword) {
     // Authentication with UserSecretStash just finished. Now load the decrypted
     // backup VaultKeyset from disk so that adding a PIN backup VaultKeyset will
     // be possible when/if needed.

@@ -44,10 +44,7 @@ class AuthSessionManager {
   // Creates new auth session for account_id. AuthSessionManager owns the
   // created AuthSession and the method returns a pointer to it.
   CryptohomeStatusOr<AuthSession*> CreateAuthSession(
-      const std::string& account_id,
-      uint32_t flags,
-      AuthIntent auth_intent,
-      bool enable_create_backup_vk_with_uss);
+      const std::string& account_id, uint32_t flags, AuthIntent auth_intent);
 
   // Removes existing auth session with token. Returns false if there's no auth
   // session with this token.
