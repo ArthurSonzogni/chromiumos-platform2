@@ -1270,7 +1270,8 @@ enum FwupdVersionFormat {
 // NextMinVersion: 1, NextIndex: 5
 [Stable, Extensible]
 enum UsbVersion {
-  // An enum value not defined in this version of the enum definition.
+  // This is for mojo compatibility between two versions. It won't be used in
+  // our code base.
   [Default] kUnmappedEnumField = 0,
   // Can't determine the usb version.
   kUnknown = 1,
@@ -1285,29 +1286,32 @@ enum UsbVersion {
 // An enumeration of the usb spec speed in Mbps.
 // Source:
 //   - https://www.kernel.org/doc/Documentation/ABI/testing/sysfs-bus-usb
+//   - https://www.kernel.org/doc/Documentation/ABI/stable/sysfs-bus-usb
 //   - https://en.wikipedia.org/wiki/USB
 //
 // NextMinVersion: 1, NextIndex: 9
 [Stable, Extensible]
 enum UsbSpecSpeed {
-  // An enum value not defined in this version of the enum definition.
+  // This is for mojo compatibility between two versions. It won't be used in
+  // our code base.
   [Default] kUnmappedEnumField = 0,
   // Unknown speed.
   kUnknown = 1,
   // Low speed.
-  kSpeed1_5 = 2,
+  k1_5Mbps = 2,
   // Full speed.
-  kSpeed12 = 3,
-  // Full speed.
-  kSpeed15 = 4,
+  k12Mbps = 3,
+  // Deprecate. Should be a typo in
+  // https://www.kernel.org/doc/Documentation/ABI/testing/sysfs-bus-usb.
+  kDeprecateSpeed = 4,
   // High Speed.
-  kSpeed480 = 5,
+  k480Mbps = 5,
   // Super Speed.
-  kSpeed5000 = 6,
+  k5Gbps = 6,
   // Super Speed+.
-  kSpeed10000 = 7,
+  k10Gbps = 7,
   // Super Speed+ Gen 2x2.
-  kSpeed20000 = 8,
+  k20Gbps = 8,
 };
 
 // The info related to usb interfaces.

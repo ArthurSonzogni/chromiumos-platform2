@@ -190,22 +190,22 @@ TEST_F(UsbUtilsTest, TestGetUsbSpecSpeed) {
   EXPECT_EQ(GetUsbSpecSpeed(fake_dev_path_), mojom::UsbSpecSpeed::kUnknown);
 
   SetUsbProp(/*layer=*/0, kFileUsbSpeed, "1.5");
-  EXPECT_EQ(GetUsbSpecSpeed(fake_dev_path_), mojom::UsbSpecSpeed::kSpeed1_5);
+  EXPECT_EQ(GetUsbSpecSpeed(fake_dev_path_), mojom::UsbSpecSpeed::k1_5Mbps);
 
-  SetUsbProp(/*layer=*/0, kFileUsbSpeed, "15");
-  EXPECT_EQ(GetUsbSpecSpeed(fake_dev_path_), mojom::UsbSpecSpeed::kSpeed15);
+  SetUsbProp(/*layer=*/0, kFileUsbSpeed, "12");
+  EXPECT_EQ(GetUsbSpecSpeed(fake_dev_path_), mojom::UsbSpecSpeed::k12Mbps);
 
   SetUsbProp(/*layer=*/0, kFileUsbSpeed, "480");
-  EXPECT_EQ(GetUsbSpecSpeed(fake_dev_path_), mojom::UsbSpecSpeed::kSpeed480);
+  EXPECT_EQ(GetUsbSpecSpeed(fake_dev_path_), mojom::UsbSpecSpeed::k480Mbps);
 
   SetUsbProp(/*layer=*/0, kFileUsbSpeed, "5000");
-  EXPECT_EQ(GetUsbSpecSpeed(fake_dev_path_), mojom::UsbSpecSpeed::kSpeed5000);
+  EXPECT_EQ(GetUsbSpecSpeed(fake_dev_path_), mojom::UsbSpecSpeed::k5Gbps);
 
   SetUsbProp(/*layer=*/0, kFileUsbSpeed, "10000");
-  EXPECT_EQ(GetUsbSpecSpeed(fake_dev_path_), mojom::UsbSpecSpeed::kSpeed10000);
+  EXPECT_EQ(GetUsbSpecSpeed(fake_dev_path_), mojom::UsbSpecSpeed::k10Gbps);
 
   SetUsbProp(/*layer=*/0, kFileUsbSpeed, "20000");
-  EXPECT_EQ(GetUsbSpecSpeed(fake_dev_path_), mojom::UsbSpecSpeed::kSpeed20000);
+  EXPECT_EQ(GetUsbSpecSpeed(fake_dev_path_), mojom::UsbSpecSpeed::k20Gbps);
 }
 
 }  // namespace

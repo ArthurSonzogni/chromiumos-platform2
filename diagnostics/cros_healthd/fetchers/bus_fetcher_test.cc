@@ -173,7 +173,7 @@ class BusFetcherTest : public BaseFileTest {
     usb_info->vendor_id = kFakeVendor;
     usb_info->product_id = kFakeDevice;
     usb_info->version = mojom::UsbVersion::kUnknown;
-    usb_info->spec_speed = mojom::UsbSpecSpeed::kSpeed5000;
+    usb_info->spec_speed = mojom::UsbSpecSpeed::k5Gbps;
 
     auto usb_fw_info = mojom::FwupdFirmwareVersionInfo::New();
     usb_fw_info->version = kFakeUsbFWVer;

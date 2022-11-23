@@ -460,19 +460,20 @@ std::string EnumToString(mojom::UsbSpecSpeed spec_speed) {
       return "UnmappedEnumField";
     case mojom::UsbSpecSpeed::kUnknown:
       return "Unknown";
-    case mojom::UsbSpecSpeed::kSpeed1_5:
+    case mojom::UsbSpecSpeed::k1_5Mbps:
       return "1.5";
-    case mojom::UsbSpecSpeed::kSpeed12:
+    case mojom::UsbSpecSpeed::k12Mbps:
       return "12";
-    case mojom::UsbSpecSpeed::kSpeed15:
-      return "15";
-    case mojom::UsbSpecSpeed::kSpeed480:
+    case mojom::UsbSpecSpeed::kDeprecateSpeed:
+      LOG(FATAL) << "Got Deprecated";
+      return "Deprecated";
+    case mojom::UsbSpecSpeed::k480Mbps:
       return "480";
-    case mojom::UsbSpecSpeed::kSpeed5000:
+    case mojom::UsbSpecSpeed::k5Gbps:
       return "5000";
-    case mojom::UsbSpecSpeed::kSpeed10000:
+    case mojom::UsbSpecSpeed::k10Gbps:
       return "10000";
-    case mojom::UsbSpecSpeed::kSpeed20000:
+    case mojom::UsbSpecSpeed::k20Gbps:
       return "20000";
   }
 }

@@ -184,19 +184,17 @@ mojom::UsbSpecSpeed GetUsbSpecSpeed(const base::FilePath& sysfs_path) {
   }
 
   if (speed == "1.5") {
-    return mojom::UsbSpecSpeed::kSpeed1_5;
+    return mojom::UsbSpecSpeed::k1_5Mbps;
   } else if (speed == "12") {
-    return mojom::UsbSpecSpeed::kSpeed12;
-  } else if (speed == "15") {
-    return mojom::UsbSpecSpeed::kSpeed15;
+    return mojom::UsbSpecSpeed::k12Mbps;
   } else if (speed == "480") {
-    return mojom::UsbSpecSpeed::kSpeed480;
+    return mojom::UsbSpecSpeed::k480Mbps;
   } else if (speed == "5000") {
-    return mojom::UsbSpecSpeed::kSpeed5000;
+    return mojom::UsbSpecSpeed::k5Gbps;
   } else if (speed == "10000") {
-    return mojom::UsbSpecSpeed::kSpeed10000;
+    return mojom::UsbSpecSpeed::k10Gbps;
   } else if (speed == "20000") {
-    return mojom::UsbSpecSpeed::kSpeed20000;
+    return mojom::UsbSpecSpeed::k20Gbps;
   }
 
   return mojom::UsbSpecSpeed::kUnknown;
