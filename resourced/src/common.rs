@@ -31,7 +31,7 @@ pub fn read_file_to_u64<P: AsRef<Path>>(filename: P) -> Result<u64> {
     parse_file_to_u64(reader)
 }
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Debug)]
 pub enum GameMode {
     // Game mode is off.
     Off = 0,
@@ -80,7 +80,7 @@ pub fn get_game_mode() -> Result<GameMode> {
     }
 }
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Debug)]
 pub enum RTCAudioActive {
     // RTC is not active.
     Inactive = 0,
@@ -102,7 +102,7 @@ impl TryFrom<u8> for RTCAudioActive {
     }
 }
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Debug)]
 pub enum FullscreenVideo {
     // Full screen video is not active.
     Inactive = 0,
@@ -266,39 +266,79 @@ mod tests {
         assert!(parse_file_to_u64("abc".to_string().as_bytes()).is_err());
     }
 
-    fn write_i32_to_file(path: &Path, value: i32) -> Result<()> {
+    fn write_i32_to_file(path: &Path, value: i32) {
         fs::create_dir_all(
             path.parent()
-                .with_context(|| format!("cannot get parent: {}", path.display()))?,
-        )?;
+                .with_context(|| format!("cannot get parent: {}", path.display()))
+                .unwrap(),
+        )
+        .unwrap();
 
-        std::fs::write(path, value.to_string())?;
-        Ok(())
+        std::fs::write(path, value.to_string()).unwrap();
     }
 
     #[test]
-    fn test_set_gt_boost_freq_mhz() -> Result<()> {
+    fn test_set_gt_boost_freq_mhz() {
         const GT_BOOST_FREQ_MHZ_PATH: &str = "sys/class/drm/card0/gt_boost_freq_mhz";
         const GT_MAX_FREQ_MHZ_PATH: &str = "sys/class/drm/card0/gt_max_freq_mhz";
         const GT_MIN_FREQ_MHZ_PATH: &str = "sys/class/drm/card0/gt_min_freq_mhz";
 
-        let root = tempdir()?;
+        let root = tempdir().unwrap();
         let root_path = root.path();
         let gt_boost_freq_mhz_path = root_path.join(GT_BOOST_FREQ_MHZ_PATH);
         let gt_max_freq_mhz_path = root_path.join(GT_MAX_FREQ_MHZ_PATH);
         let gt_min_freq_mhz_path = root_path.join(GT_MIN_FREQ_MHZ_PATH);
-        write_i32_to_file(&gt_boost_freq_mhz_path, 500)?;
-        write_i32_to_file(&gt_max_freq_mhz_path, 1100)?;
-        write_i32_to_file(&gt_min_freq_mhz_path, 300)?;
+        write_i32_to_file(&gt_boost_freq_mhz_path, 500);
+        write_i32_to_file(&gt_max_freq_mhz_path, 1100);
+        write_i32_to_file(&gt_min_freq_mhz_path, 300);
 
-        set_gt_boost_freq_mhz_impl(root_path, RTCAudioActive::Active)?;
+        set_gt_boost_freq_mhz_impl(root_path, RTCAudioActive::Active).unwrap();
 
-        assert_eq!(read_file_to_u64(&gt_boost_freq_mhz_path)?, 300);
+        assert_eq!(read_file_to_u64(&gt_boost_freq_mhz_path).unwrap(), 300);
 
-        set_gt_boost_freq_mhz_impl(root_path, RTCAudioActive::Inactive)?;
+        set_gt_boost_freq_mhz_impl(root_path, RTCAudioActive::Inactive).unwrap();
 
-        assert_eq!(read_file_to_u64(&gt_boost_freq_mhz_path)?, 1100);
+        assert_eq!(read_file_to_u64(&gt_boost_freq_mhz_path).unwrap(), 1100);
+    }
 
-        Ok(())
+    struct MockPowerPreferencesManager {}
+    impl power::PowerPreferencesManager for MockPowerPreferencesManager {
+        fn update_power_preferences(
+            &self,
+            _rtc: RTCAudioActive,
+            _fullscreen: FullscreenVideo,
+            _game: GameMode,
+        ) -> Result<()> {
+            Ok(())
+        }
+    }
+
+    #[test]
+    fn test_get_set_game_mode() {
+        let power_manager = MockPowerPreferencesManager {};
+
+        assert_eq!(get_game_mode().unwrap(), GameMode::Off);
+        set_game_mode(&power_manager, GameMode::Borealis).unwrap();
+        assert_eq!(get_game_mode().unwrap(), GameMode::Borealis);
+        set_game_mode(&power_manager, GameMode::Arc).unwrap();
+        assert_eq!(get_game_mode().unwrap(), GameMode::Arc);
+    }
+
+    #[test]
+    fn test_get_set_rtc_audio_active() {
+        let power_manager = MockPowerPreferencesManager {};
+
+        assert_eq!(get_rtc_audio_active().unwrap(), RTCAudioActive::Inactive);
+        set_rtc_audio_active(&power_manager, RTCAudioActive::Active).unwrap();
+        assert_eq!(get_rtc_audio_active().unwrap(), RTCAudioActive::Active);
+    }
+
+    #[test]
+    fn test_get_set_fullscreen_video() {
+        let power_manager = MockPowerPreferencesManager {};
+
+        assert_eq!(get_fullscreen_video().unwrap(), FullscreenVideo::Inactive);
+        set_fullscreen_video(&power_manager, FullscreenVideo::Active).unwrap();
+        assert_eq!(get_fullscreen_video().unwrap(), FullscreenVideo::Active);
     }
 }
