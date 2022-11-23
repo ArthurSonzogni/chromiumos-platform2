@@ -99,22 +99,6 @@ constexpr ssize_t kLvmSignatureOffset = 512;
 constexpr ssize_t kLvmSignatureSize = 8;
 constexpr char kLvmSignature[] = "LABELONE";
 
-class ScopedPath {
- public:
-  ScopedPath(cryptohome::Platform* platform, const FilePath& dir)
-      : platform_(platform), dir_(dir) {}
-  ~ScopedPath() {
-    if (!dir_.empty() && !platform_->DeletePathRecursively(dir_)) {
-      PLOG(WARNING) << "Failed to clean up " << dir_.value();
-    }
-  }
-  void release() { dir_.clear(); }
-
- private:
-  cryptohome::Platform* platform_;
-  FilePath dir_;
-};
-
 bool IsDirectory(const base::stat_wrapper_t& file_info) {
   return !!S_ISDIR(file_info.st_mode);
 }
@@ -400,26 +384,6 @@ std::unique_ptr<brillo::Process> Platform::CreateProcessInstance() {
   return std::make_unique<brillo::ProcessImpl>();
 }
 
-bool Platform::IsPathChild(const FilePath& parent_path,
-                           const FilePath& child_path) {
-  std::string parent = parent_path.value();
-  std::string child = child_path.value();
-  if (parent.length() == 0 || child.length() == 0) {
-    return false;
-  }
-  if (child.length() >= parent.length()) {
-    if (child.compare(0, parent.length(), parent, 0, parent.length()) == 0) {
-      return true;
-    }
-  } else if ((parent[parent.length() - 1] == '/') &&
-             (child.length() == (parent.length() - 1))) {
-    if (child.compare(0, child.length(), parent, 0, parent.length() - 1) == 0) {
-      return true;
-    }
-  }
-  return false;
-}
-
 bool Platform::GetOwnership(const FilePath& path,
                             uid_t* user_id,
                             gid_t* group_id,
@@ -474,21 +438,6 @@ bool Platform::SetPermissions(const FilePath& path, mode_t mode) {
   if (chmod(path.value().c_str(), mode)) {
     PLOG(ERROR) << "chmod() of " << path.value() << " to (" << std::oct << mode
                 << ") failed.";
-    return false;
-  }
-  return true;
-}
-
-bool Platform::SetGroupAccessible(const FilePath& path,
-                                  gid_t group_id,
-                                  mode_t group_mode) {
-  uid_t user_id;
-  mode_t mode;
-  if (!GetOwnership(path, &user_id, NULL, true) ||
-      !GetPermissions(path, &mode) ||
-      !SetOwnership(path, user_id, group_id, true /* follow_links */) ||
-      !SetPermissions(path, (mode & ~S_IRWXG) | (group_mode & S_IRWXG))) {
-    LOG(ERROR) << "Couldn't set up group access on directory: " << path.value();
     return false;
   }
   return true;
@@ -589,10 +538,6 @@ int64_t Platform::ComputeDirectoryDiskUsage(const FilePath& path) {
   return brillo::ComputeDirectoryDiskUsage(path);
 }
 
-FILE* Platform::CreateAndOpenTemporaryFile(FilePath* path) {
-  return base::CreateAndOpenTemporaryStream(path).release();
-}
-
 FILE* Platform::OpenFile(const FilePath& path, const char* mode) {
   return base::OpenFile(path, mode);
 }
@@ -609,11 +554,6 @@ void Platform::InitializeFile(base::File* file,
 
 bool Platform::LockFile(int fd) {
   return HANDLE_EINTR(flock(fd, LOCK_EX)) == 0;
-}
-
-bool Platform::WriteOpenFile(FILE* fp, const brillo::Blob& blob) {
-  return (fwrite(static_cast<const void*>(&blob.at(0)), 1, blob.size(), fp) !=
-          blob.size());
 }
 
 bool Platform::WriteFile(const FilePath& path, const brillo::Blob& blob) {
@@ -786,13 +726,6 @@ bool Platform::SafeCreateDirAndSetOwnershipAndPermissions(
   return true;
 }
 
-bool Platform::SafeCreateDirAndSetOwnership(const base::FilePath& path,
-                                            uid_t user_id,
-                                            gid_t group_id) {
-  return SafeCreateDirAndSetOwnershipAndPermissions(
-      path, brillo::SafeFD::kDefaultDirPermissions, user_id, group_id);
-}
-
 bool Platform::UdevAdmSettle(const base::FilePath& device_path,
                              bool wait_for_device) {
   brillo::ProcessImpl udevadm_process;
@@ -878,10 +811,6 @@ bool Platform::DeleteFileDurable(const FilePath& path) {
 bool Platform::DeleteFileSecurely(const FilePath& path) {
   return secure_erase_file::SecureErase(path) &&
          secure_erase_file::DropCaches();
-}
-
-bool Platform::Move(const FilePath& from, const FilePath& to) {
-  return base::Move(from, to);
 }
 
 bool Platform::EnumerateDirectoryEntries(const FilePath& path,
@@ -1044,60 +973,6 @@ bool Platform::Copy(const FilePath& from, const FilePath& to) {
   return base::CopyDirectory(from, to, true);
 }
 
-bool Platform::CopyPermissionsCallback(const FilePath& old_base,
-                                       const FilePath& new_base,
-                                       const FilePath& file_path,
-                                       const base::stat_wrapper_t& file_info) {
-  // Find the new path that corresponds with the old path given by file_info.
-  FilePath old_path = file_path;
-  FilePath new_path = new_base;
-  if (old_path != old_base) {
-    if (old_path.IsAbsolute()) {
-      if (!old_base.AppendRelativePath(old_path, &new_path)) {
-        LOG(ERROR) << "AppendRelativePath failed: parent=" << old_base.value()
-                   << ", child=" << old_path.value();
-        return false;
-      }
-    } else {
-      new_path = new_base.Append(old_path);
-    }
-  }
-  if (!SetOwnership(new_path, file_info.st_uid, file_info.st_gid,
-                    true /* follow_links */)) {
-    PLOG(ERROR) << "Failed to set ownership for " << new_path.value();
-    return false;
-  }
-  const mode_t permissions_mask = 07777;
-  if (!SetPermissions(new_path, file_info.st_mode & permissions_mask)) {
-    PLOG(ERROR) << "Failed to set permissions for " << new_path.value();
-    return false;
-  }
-  return true;
-}
-
-bool Platform::CopyWithPermissions(const FilePath& from_path,
-                                   const FilePath& to_path) {
-  if (!Copy(from_path, to_path)) {
-    PLOG(ERROR) << "Failed to copy " << from_path.value();
-    return false;
-  }
-
-  // If something goes wrong we want to blow away the half-baked path.
-  ScopedPath scoped_new_path(this, to_path);
-
-  // Unfortunately, ownership and permissions are not always retained.
-  // Apply the old ownership / permissions on a per-file basis.
-  FileEnumeratorCallback callback =
-      base::BindRepeating(&Platform::CopyPermissionsCallback,
-                          base::Unretained(this), from_path, to_path);
-  if (!WalkPath(from_path, callback))
-    return false;
-
-  // The copy is done, keep the new path.
-  scoped_new_path.release();
-  return true;
-}
-
 bool Platform::StatVFS(const FilePath& path, struct statvfs* vfs) {
   return statvfs(path.value().c_str(), vfs) == 0;
 }
@@ -1188,10 +1063,6 @@ bool Platform::SyncFileOrDirectory(const FilePath& path,
   return brillo::SyncFileOrDirectory(path, is_directory, data_sync);
 }
 
-bool Platform::DataSyncFile(const FilePath& path) {
-  return SyncFileOrDirectory(path, false /* directory */, true /* data_sync */);
-}
-
 bool Platform::SyncFile(const FilePath& path) {
   return SyncFileOrDirectory(path, false /* directory */,
                              false /* data_sync */);
@@ -1208,18 +1079,6 @@ void Platform::Sync() {
   if (delta > kLongSync) {
     LOG(WARNING) << "Long sync(): " << delta.InSeconds() << " seconds";
   }
-}
-
-std::string Platform::GetHardwareID() {
-  char buffer[VB_MAX_STRING_PROPERTY];
-  const char* rc = VbGetSystemPropertyString("hwid", buffer, std::size(buffer));
-
-  if (rc != nullptr) {
-    return std::string(rc);
-  }
-
-  LOG(WARNING) << "Could not read hwid property";
-  return std::string();
 }
 
 bool Platform::CreateSymbolicLink(const base::FilePath& path,
@@ -1523,29 +1382,6 @@ FileEnumerator* Platform::GetFileEnumerator(const FilePath& root_path,
                                             bool recursive,
                                             int file_type) {
   return new FileEnumerator(root_path, recursive, file_type);
-}
-
-bool Platform::WalkPath(const FilePath& path,
-                        const FileEnumeratorCallback& callback) {
-  base::stat_wrapper_t base_entry_info;
-  if (!Stat(path, &base_entry_info)) {
-    PLOG(ERROR) << "Failed to stat " << path.value();
-    return false;
-  }
-  if (!callback.Run(path, base_entry_info))
-    return false;
-  if (IsDirectory(base_entry_info)) {
-    int file_types =
-        base::FileEnumerator::FILES | base::FileEnumerator::DIRECTORIES;
-    std::unique_ptr<FileEnumerator> file_enumerator(
-        GetFileEnumerator(path, true, file_types));
-    FilePath entry_path;
-    while (!(entry_path = file_enumerator->Next()).empty()) {
-      if (!callback.Run(entry_path, file_enumerator->GetInfo().stat()))
-        return false;
-    }
-  }
-  return true;
 }
 
 template <class T>

@@ -49,7 +49,6 @@ class FakePlatform final : public Platform {
   bool IsDirectoryEmpty(const base::FilePath& path) override;
 
   bool Rename(const base::FilePath& from, const base::FilePath& to) override;
-  bool Move(const base::FilePath& from, const base::FilePath& to) override;
   bool FindFilesystemDevice(const base::FilePath& filesystem,
                             std::string* device) override;
   bool Copy(const base::FilePath& from, const base::FilePath& to) override;
@@ -64,7 +63,6 @@ class FakePlatform final : public Platform {
   bool CreateDirectory(const base::FilePath& path) override;
   bool CreateSparseFile(const base::FilePath& path, int64_t size) override;
 
-  bool DataSyncFile(const base::FilePath& path) override;
   bool SyncFile(const base::FilePath& path) override;
   bool SyncDirectory(const base::FilePath& path) override;
   void Sync() override;
@@ -165,10 +163,6 @@ class FakePlatform final : public Platform {
                                                   mode_t mode,
                                                   uid_t user_id,
                                                   gid_t gid) override;
-  bool SafeCreateDirAndSetOwnership(const base::FilePath& path,
-                                    uid_t user_id,
-                                    gid_t gid) override;
-
   int64_t AmountOfFreeDiskSpace(const base::FilePath& path) const override;
 
   bool Mount(const base::FilePath& from,

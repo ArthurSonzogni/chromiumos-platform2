@@ -18,8 +18,6 @@ MockPlatform::MockPlatform()
       fake_platform_(new FakePlatform()) {
   ON_CALL(*this, Rename(_, _))
       .WillByDefault(Invoke(fake_platform_.get(), &FakePlatform::Rename));
-  ON_CALL(*this, Move(_, _))
-      .WillByDefault(Invoke(fake_platform_.get(), &FakePlatform::Move));
   ON_CALL(*this, Copy(_, _))
       .WillByDefault(Invoke(fake_platform_.get(), &FakePlatform::Copy));
   ON_CALL(*this, TouchFileDurable(_))
@@ -56,8 +54,6 @@ MockPlatform::MockPlatform()
       .WillByDefault(
           Invoke(fake_platform_.get(), &FakePlatform::CreateSparseFile));
 
-  ON_CALL(*this, DataSyncFile(_))
-      .WillByDefault(Invoke(fake_platform_.get(), &FakePlatform::DataSyncFile));
   ON_CALL(*this, SyncFile(_))
       .WillByDefault(Invoke(fake_platform_.get(), &FakePlatform::SyncFile));
   ON_CALL(*this, SyncDirectory(_))
@@ -175,9 +171,6 @@ MockPlatform::MockPlatform()
       .WillByDefault(
           Invoke(fake_platform_.get(),
                  &FakePlatform::SafeCreateDirAndSetOwnershipAndPermissions));
-  ON_CALL(*this, SafeCreateDirAndSetOwnership(_, _, _))
-      .WillByDefault(Invoke(fake_platform_.get(),
-                            &FakePlatform::SafeCreateDirAndSetOwnership));
   ON_CALL(*this, GetLoopDeviceManager())
       .WillByDefault(
           Invoke(fake_platform_.get(), &FakePlatform::GetLoopDeviceManager));
@@ -212,7 +205,6 @@ MockPlatform::MockPlatform()
       .WillByDefault(
           Invoke(fake_platform_.get(), &FakePlatform::AreDirectoriesMounted));
 
-  ON_CALL(*this, SetGroupAccessible(_, _, _)).WillByDefault(Return(true));
   ON_CALL(*this, GetCurrentTime())
       .WillByDefault(Return(base::Time::NowFromSystemTime()));
   ON_CALL(*this, ReportFilesystemDetails(_, _))

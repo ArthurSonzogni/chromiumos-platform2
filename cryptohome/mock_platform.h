@@ -82,10 +82,6 @@ class MockPlatform : public Platform {
               (const base::FilePath&, const base::FilePath&),
               (override));
   MOCK_METHOD(bool,
-              Move,
-              (const base::FilePath&, const base::FilePath&),
-              (override));
-  MOCK_METHOD(bool,
               Copy,
               (const base::FilePath&, const base::FilePath&),
               (override));
@@ -106,7 +102,6 @@ class MockPlatform : public Platform {
               CreateSparseFile,
               (const base::FilePath&, int64_t),
               (override));
-  MOCK_METHOD(bool, DataSyncFile, (const base::FilePath&), (override));
   MOCK_METHOD(bool, SyncFile, (const base::FilePath&), (override));
   MOCK_METHOD(bool, SyncDirectory, (const base::FilePath&), (override));
   MOCK_METHOD(void, Sync, (), (override));
@@ -253,10 +248,6 @@ class MockPlatform : public Platform {
               SafeCreateDirAndSetOwnershipAndPermissions,
               (const base::FilePath&, mode_t, uid_t, gid_t),
               (override));
-  MOCK_METHOD(bool,
-              SafeCreateDirAndSetOwnership,
-              (const base::FilePath&, uid_t, gid_t),
-              (override));
   MOCK_METHOD(int64_t,
               AmountOfFreeDiskSpace,
               (const base::FilePath&),
@@ -312,10 +303,6 @@ class MockPlatform : public Platform {
               CreateProcessInstance,
               (),
               (override));
-  MOCK_METHOD(bool,
-              SetGroupAccessible,
-              (const base::FilePath&, gid_t group_id, mode_t group_mode),
-              (override));
   MOCK_METHOD(int64_t,
               GetQuotaCurrentSpaceForUid,
               (const base::FilePath&, uid_t),
@@ -337,8 +324,6 @@ class MockPlatform : public Platform {
               ComputeDirectoryDiskUsage,
               (const base::FilePath&),
               (override));
-  MOCK_METHOD(FILE*, CreateAndOpenTemporaryFile, (base::FilePath*), (override));
-  MOCK_METHOD(bool, WriteOpenFile, (FILE*, const brillo::Blob&), (override));
   MOCK_METHOD(base::Time, GetCurrentTime, (), (const, override));
   MOCK_METHOD(bool,
               StatVFS,
@@ -376,7 +361,6 @@ class MockPlatform : public Platform {
               (override));
   MOCK_METHOD(bool, ClearUserKeyring, (), (override));
   MOCK_METHOD(bool, FirmwareWriteProtected, (), (override));
-  MOCK_METHOD(std::string, GetHardwareID, (), (override));
   MOCK_METHOD(bool, GetBlkSize, (const base::FilePath&, uint64_t*), (override));
   MOCK_METHOD(bool, DetachLoop, (const base::FilePath&), (override));
   MOCK_METHOD(bool, DiscardDevice, (const base::FilePath&), (override));

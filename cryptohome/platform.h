@@ -164,10 +164,6 @@ class Platform {
     base::FilePath device;
   };
 
-  typedef base::RepeatingCallback<bool(const base::FilePath&,
-                                       const base::stat_wrapper_t&)>
-      FileEnumeratorCallback;
-
   Platform();
   Platform(const Platform&) = delete;
   Platform& operator=(const Platform&) = delete;
@@ -318,16 +314,6 @@ class Platform {
   //   mode - the mode to change the permissions to
   virtual bool SetPermissions(const base::FilePath& path, mode_t mode);
 
-  // Sets the path accessible by a group with specified permissions
-  //
-  // Parameters
-  //   path - The path to change the ownership and permissions on
-  //   group_id - The group ID to assign to the path
-  //   group_mode - The group permissions to assign to the path
-  virtual bool SetGroupAccessible(const base::FilePath& path,
-                                  gid_t group_id,
-                                  mode_t group_mode);
-
   // Return the available disk space in bytes on the volume containing |path|,
   // or -1 on failure.
   // Code duplicated from Chrome's base::SysInfo::AmountOfFreeDiskSpace().
@@ -429,12 +415,6 @@ class Platform {
   //  fp - FILE* to close
   virtual bool CloseFile(FILE* fp);
 
-  // Creates and opens a temporary file if possible.
-  //
-  // Parameters
-  //  path - Pointer to where the file is created if successful.
-  virtual FILE* CreateAndOpenTemporaryFile(base::FilePath* path);
-
   // Initializes a base::File.  The caller is responsible for verifying that
   // the file was successfully opened by calling base::File::IsValid().
   //
@@ -463,13 +443,6 @@ class Platform {
                                 std::string* string);
   virtual bool ReadFileToSecureBlob(const base::FilePath& path,
                                     brillo::SecureBlob* sblob);
-
-  // Writes to the open file pointer.
-  //
-  // Parameters
-  //   fp   - pointer to the FILE*
-  //   blob - data to write
-  virtual bool WriteOpenFile(FILE* fp, const brillo::Blob& blob);
 
   // Writes the entirety of the given data to |path| with 0640 permissions
   // (modulo umask).  If missing, parent (and parent of parent etc.) directories
@@ -698,17 +671,6 @@ class Platform {
   // Copies from to to.
   virtual bool Copy(const base::FilePath& from, const base::FilePath& to);
 
-  // Copies and retains permissions and ownership.
-  virtual bool CopyWithPermissions(const base::FilePath& from,
-                                   const base::FilePath& to);
-
-  // Moves a given path on the filesystem
-  //
-  // Parameters
-  //   from - path to move
-  //   to   - destination of the move
-  virtual bool Move(const base::FilePath& from, const base::FilePath& to);
-
   // Calls statvfs() on path.
   //
   // Parameters
@@ -774,13 +736,6 @@ class Platform {
   // Report condition of the Firmware Write-Protect flag.
   virtual bool FirmwareWriteProtected();
 
-  // Syncs file data to disk for the given |path| but syncs metadata only to the
-  // extent that is required to acess the file's contents.  (I.e. the directory
-  // entry and file size are sync'ed if changed, but not atime or mtime.)  This
-  // method is expensive and synchronous, use with care.  Returns true on
-  // success.
-  virtual bool DataSyncFile(const base::FilePath& path);
-
   // Syncs file data to disk for the given |path|. All metadata is synced as
   // well as file contents. This method is expensive and synchronous, use with
   // care.  Returns true on success.
@@ -795,10 +750,6 @@ class Platform {
   // Syncs everything to disk.  This method is synchronous and very, very
   // expensive; use with even more care than SyncFile.
   virtual void Sync();
-
-  // Gets the system HWID. This is the same ID that is used on some systems to
-  // extend the TPM's PCR_1.
-  virtual std::string GetHardwareID();
 
   // Creates a new symbolic link at |path| pointing to |target|.  Returns false
   // if the link could not be created successfully.
@@ -944,14 +895,10 @@ class Platform {
                             uid_t user_id,
                             gid_t group_id);
 
-  virtual bool SafeCreateDirAndSetOwnershipAndPermissions(
-      const base::FilePath& path, mode_t mode, uid_t user_id, gid_t gid);
-
   // This safely creates a directory and sets the permissions, looking for
   // symlinks and race conditions underneath.
-  virtual bool SafeCreateDirAndSetOwnership(const base::FilePath& path,
-                                            uid_t user_id,
-                                            gid_t gid);
+  virtual bool SafeCreateDirAndSetOwnershipAndPermissions(
+      const base::FilePath& path, mode_t mode, uid_t user_id, gid_t gid);
 
   // Calls "udevadm settle", optionally waiting for the device path to appear.
   virtual bool UdevAdmSettle(const base::FilePath& device_path,
@@ -968,14 +915,6 @@ class Platform {
   virtual brillo::LogicalVolumeManager* GetLogicalVolumeManager();
 
  private:
-  // Returns true if child is a file or folder below or equal to parent.  If
-  // parent is a directory, it should end with a '/' character.
-  //
-  // Parameters
-  //   parent - The parent directory
-  //   child - The child directory/file
-  bool IsPathChild(const base::FilePath& parent, const base::FilePath& child);
-
   // Calls fdatasync() on file if data_sync is true or fsync() on directory or
   // file when data_sync is false.  Returns true on success.
   //
@@ -986,35 +925,6 @@ class Platform {
   bool SyncFileOrDirectory(const base::FilePath& path,
                            bool is_directory,
                            bool data_sync);
-
-  // Calls |callback| with |path| and, if |path| is a directory, with every
-  // entry recursively.  Order is not guaranteed, see base::FileEnumerator.  If
-  // |path| is an absolute path, then the file names sent to |callback| will
-  // also be absolute.  Returns true if all invocations of |callback| succeed.
-  // If an invocation fails, the walk terminates and false is returned.
-  bool WalkPath(const base::FilePath& path,
-                const FileEnumeratorCallback& callback);
-
-  // Copies permissions from a file specified by |file_path| and |file_info| to
-  // another file with the same name but a child of |new_base|, not |old_base|.
-  bool CopyPermissionsCallback(const base::FilePath& old_base,
-                               const base::FilePath& new_base,
-                               const base::FilePath& file_path,
-                               const base::stat_wrapper_t& file_info);
-
-  // Applies ownership and permissions to a single file or directory.
-  //
-  // Parameters
-  //   default_file_info - Default ownership / perms for files.
-  //   default_dir_info - Default ownership / perms for directories.
-  //   special_cases - A map of absolute path to ownership / perms.
-  //   file_info - Info about the file or directory.
-  bool ApplyPermissionsCallback(
-      const Permissions& default_file_info,
-      const Permissions& default_dir_info,
-      const std::map<base::FilePath, Permissions>& special_cases,
-      const base::FilePath& file_path,
-      const base::stat_wrapper_t& file_info);
 
   // Reads file at |path| into a blob-like object.
   // <T> needs to implement:

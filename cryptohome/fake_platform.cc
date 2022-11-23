@@ -210,10 +210,6 @@ bool FakePlatform::Rename(const base::FilePath& from,
   return real_platform_.Rename(TestFilePath(from), TestFilePath(to));
 }
 
-bool FakePlatform::Move(const base::FilePath& from, const base::FilePath& to) {
-  return real_platform_.Move(TestFilePath(from), TestFilePath(to));
-}
-
 bool FakePlatform::FindFilesystemDevice(const base::FilePath& filesystem,
                                         std::string* device) {
   return real_platform_.FindFilesystemDevice(TestFilePath(filesystem), device);
@@ -287,10 +283,6 @@ bool FakePlatform::CreateDirectory(const base::FilePath& path) {
 
 bool FakePlatform::CreateSparseFile(const base::FilePath& path, int64_t size) {
   return real_platform_.CreateSparseFile(TestFilePath(path), size);
-}
-
-bool FakePlatform::DataSyncFile(const base::FilePath& path) {
-  return real_platform_.DataSyncFile(TestFilePath(path));
 }
 
 bool FakePlatform::SyncFile(const base::FilePath& path) {
@@ -696,15 +688,6 @@ bool FakePlatform::SafeCreateDirAndSetOwnershipAndPermissions(
     const base::FilePath& path, mode_t mode, uid_t user_id, gid_t gid) {
   if (!CreateDirectory(path) || !SafeDirChown(path, user_id, gid) ||
       !SafeDirChmod(path, mode)) {
-    return false;
-  }
-  return true;
-}
-
-bool FakePlatform::SafeCreateDirAndSetOwnership(const base::FilePath& path,
-                                                uid_t user_id,
-                                                gid_t gid) {
-  if (!CreateDirectory(path) || !SafeDirChown(path, user_id, gid)) {
     return false;
   }
   return true;

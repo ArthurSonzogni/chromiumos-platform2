@@ -41,18 +41,6 @@ class PlatformTest : public ::testing::Test {
   Platform platform_;
 };
 
-TEST_F(PlatformTest, DataSyncFileHasValidReturnCodes) {
-  const FilePath filename(GetTempName());
-  const FilePath dirname(GetTempName());
-  platform_.CreateDirectory(dirname);
-  EXPECT_FALSE(platform_.DataSyncFile(dirname));
-  EXPECT_FALSE(platform_.DataSyncFile(filename));
-  EXPECT_TRUE(platform_.WriteStringToFile(filename, "bla"));
-  EXPECT_TRUE(platform_.DataSyncFile(filename));
-  platform_.DeleteFile(filename);
-  platform_.DeletePathRecursively(dirname);
-}
-
 TEST_F(PlatformTest, SyncFileHasValidReturnCodes) {
   const FilePath filename(GetTempName());
   const FilePath dirname(GetTempName());
