@@ -9,9 +9,10 @@
 
 #include <base/memory/weak_ptr.h>
 
-#include "shill/refptr_types.h"
+#include "shill/mockable.h"
 #include "shill/store/key_value_store.h"
 #include "shill/supplicant/supplicant_event_delegate_interface.h"
+#include "shill/wifi/hotspot_service.h"
 #include "shill/wifi/local_device.h"
 
 namespace shill {
@@ -44,6 +45,15 @@ class HotspotDevice : public LocalDevice,
   // but other resources have been cleaned up.
   bool Stop() override;
 
+  // Return the configured service on this device.
+  LocalService* GetService() const override { return service_.get(); }
+
+  // Configure and select HotspotService |service|.
+  mockable bool ConfigureService(std::unique_ptr<HotspotService> service);
+
+  // Disconnect from and remove HotspotService.
+  mockable bool DeconfigureService();
+
   // Implementation of SupplicantEventDelegateInterface.  These methods
   // are called by SupplicantInterfaceProxy, in response to events from
   // wpa_supplicant.
@@ -62,7 +72,8 @@ class HotspotDevice : public LocalDevice,
 
  private:
   friend class HotspotDeviceTest;
-  FRIEND_TEST(HotspotDeviceTest, InterfaceDisabled);
+  FRIEND_TEST(HotspotDeviceTest, InterfaceDisabledEvent);
+  FRIEND_TEST(HotspotDeviceTest, ServiceEvent);
 
   // Create an AP interface and connect to the wpa_supplicant interface proxy.
   bool CreateInterface();
@@ -76,6 +87,12 @@ class HotspotDevice : public LocalDevice,
       supplicant_interface_proxy_;
   // wpa_supplicant's RPC path for this device/interface.
   RpcIdentifier supplicant_interface_path_;
+  // wpa_supplicant's RPC path for the supplicant network. It is associated with
+  // this local device subclass.
+  RpcIdentifier supplicant_network_path_;
+  // Hotspot service configured on this device.
+  std::unique_ptr<HotspotService> service_;
+
   std::string supplicant_state_;
   base::WeakPtrFactory<HotspotDevice> weak_ptr_factory_{this};
 };

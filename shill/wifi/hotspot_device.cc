@@ -15,6 +15,8 @@
 #include "shill/supplicant/supplicant_interface_proxy_interface.h"
 #include "shill/supplicant/supplicant_process_proxy_interface.h"
 #include "shill/supplicant/wpa_supplicant.h"
+#include "shill/wifi/hotspot_service.h"
+#include "shill/wifi/local_service.h"
 
 namespace shill {
 
@@ -30,9 +32,11 @@ HotspotDevice::HotspotDevice(Manager* manager,
                              LocalDevice::EventCallback callback)
     : LocalDevice(
           manager, IfaceType::kAP, link_name, mac_address, phy_index, callback),
+      service_(nullptr),
       supplicant_state_(kInterfaceStateUnknown) {
   supplicant_interface_proxy_.reset();
   supplicant_interface_path_ = RpcIdentifier("");
+  supplicant_network_path_ = RpcIdentifier("");
 }
 
 HotspotDevice::~HotspotDevice() {}
@@ -43,6 +47,49 @@ bool HotspotDevice::Start() {
 
 bool HotspotDevice::Stop() {
   return RemoveInterface();
+}
+
+bool HotspotDevice::ConfigureService(std::unique_ptr<HotspotService> service) {
+  CHECK(service);
+
+  if (service_) {
+    // Device has service configured.
+    LOG(ERROR) << __func__
+               << ": Configure service to device which already has a service "
+                  "configured.";
+    return false;
+  }
+
+  KeyValueStore service_params =
+      service->GetSupplicantConfigurationParameters();
+  if (!supplicant_interface_proxy_->AddNetwork(service_params,
+                                               &supplicant_network_path_)) {
+    LOG(ERROR) << __func__ << ": Failed to add network.";
+    return false;
+  }
+  CHECK(!supplicant_network_path_.value().empty());
+
+  service_ = std::move(service);
+  service_->SetState(LocalService::LocalServiceState::kStateStarting);
+  supplicant_interface_proxy_->SelectNetwork(supplicant_network_path_);
+  return true;
+}
+
+bool HotspotDevice::DeconfigureService() {
+  bool ret = true;
+
+  if (!supplicant_network_path_.value().empty() &&
+      !supplicant_interface_proxy_->RemoveNetwork(supplicant_network_path_)) {
+    ret = false;
+  }
+  supplicant_network_path_ = RpcIdentifier("");
+
+  if (service_) {
+    service_->SetState(LocalService::LocalServiceState::kStateIdle);
+    service_ = nullptr;
+  }
+
+  return ret;
 }
 
 bool HotspotDevice::CreateInterface() {
@@ -97,12 +144,20 @@ void HotspotDevice::StateChanged(const std::string& new_state) {
 
   LOG(INFO) << "Interface " << link_name() << " state changed from "
             << supplicant_state_ << " to " << new_state;
-  if (new_state == WPASupplicant::kInterfaceStateInterfaceDisabled)
+
+  // Convert state change to corresponding device event.
+  if (new_state == WPASupplicant::kInterfaceStateInterfaceDisabled) {
     PostDeviceEvent(DeviceEvent::kInterfaceDisabled);
+  } else if (new_state == WPASupplicant::kInterfaceStateCompleted) {
+    if (service_) {
+      service_->SetState(LocalService::LocalServiceState::kStateUp);
+    }
+  } else if (new_state == WPASupplicant::kInterfaceStateDisconnected ||
+             new_state == WPASupplicant::kInterfaceStateInactive) {
+    DeconfigureService();
+  }
 
   supplicant_state_ = new_state;
-  // TODO(b/235762279): emit kServiceUp and kServiceDown device events at
-  // appropriate wpa_supplicant state.
 }
 
 void HotspotDevice::PropertiesChangedTask(const KeyValueStore& properties) {

@@ -25,11 +25,8 @@ class MockHotspotDevice : public HotspotDevice {
 
   bool Stop() override { return true; }
 
-  MOCK_METHOD(bool,
-              ConfigureService,
-              (std::unique_ptr<LocalService>),
-              (override));
-  MOCK_METHOD(bool, DeconfigureService, (), (override));
+  MOCK_METHOD(bool, ConfigureService, (std::unique_ptr<HotspotService>), ());
+  MOCK_METHOD(bool, DeconfigureService, (), ());
   MOCK_METHOD(bool, IsServiceUp, (), (const, override));
 };
 

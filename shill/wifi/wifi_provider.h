@@ -202,7 +202,7 @@ class WiFiProvider : public ProviderInterface {
                       WiFiSecurity security,
                       LocalDevice::EventCallback callback);
 
-  // Delete a WiFi local device managed by |device|.
+  // Delete the WiFi LocalDevice |device|.
   mockable void DeleteLocalDevice(LocalDeviceRefPtr device);
 
  protected:

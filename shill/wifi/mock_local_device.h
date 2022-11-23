@@ -26,6 +26,10 @@ class MockLocalDevice : public LocalDevice {
   bool Start() override { return true; }
 
   bool Stop() override { return true; }
+
+  LocalService* GetService() const override { return nullptr; }
+
+  MOCK_METHOD(bool, IsServiceUp, (), (const, override));
 };
 
 }  // namespace shill

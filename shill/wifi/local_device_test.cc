@@ -43,6 +43,8 @@ class TestLocalDevice : public LocalDevice {
   bool Start() override { return true; }
 
   bool Stop() override { return true; }
+
+  LocalService* GetService() const override { return nullptr; }
 };
 
 class LocalDeviceTest : public testing::Test {

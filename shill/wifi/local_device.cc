@@ -87,6 +87,10 @@ ControlInterface* LocalDevice::ControlInterface() const {
   return manager_->control_interface();
 }
 
+bool LocalDevice::IsServiceUp() const {
+  return GetService() != nullptr && GetService()->IsUp();
+}
+
 std::ostream& operator<<(std::ostream& stream, LocalDevice::IfaceType type) {
   if (type == LocalDevice::IfaceType::kAP) {
     stream << "ap";

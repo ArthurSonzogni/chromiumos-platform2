@@ -12,7 +12,9 @@
 #include <base/memory/weak_ptr.h>
 
 #include "shill/mac_address.h"
+#include "shill/mockable.h"
 #include "shill/refptr_types.h"
+#include "shill/wifi/local_service.h"
 
 namespace shill {
 
@@ -70,6 +72,9 @@ class LocalDevice : public base::RefCounted<LocalDevice> {
   // device event.
   void PostDeviceEvent(DeviceEvent event) const;
 
+  // Return true if the device has a configured service and the service is up.
+  mockable bool IsServiceUp() const;
+
   const std::string& link_name() const { return link_name_; }
   uint32_t phy_index() const { return phy_index_; }
   IfaceType iface_type() const { return iface_type_; }
@@ -83,6 +88,10 @@ class LocalDevice : public base::RefCounted<LocalDevice> {
 
   // LocalDevice stop routine. Each device type should implement this method.
   virtual bool Stop() = 0;
+
+  // Get configured local service. Each device type should implement this
+  // method.
+  virtual LocalService* GetService() const = 0;
 
   // Return the proxy to the wpa_supplicant process.
   SupplicantProcessProxyInterface* SupplicantProcessProxy() const;
