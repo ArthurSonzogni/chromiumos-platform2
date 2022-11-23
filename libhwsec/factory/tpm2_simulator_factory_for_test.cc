@@ -12,7 +12,6 @@
 #include "libhwsec/proxy/tpm2_simulator_proxy_for_test.h"
 
 namespace hwsec {
-
 namespace {
 
 std::unique_ptr<Proxy> GetAndInitProxy() {

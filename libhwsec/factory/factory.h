@@ -11,6 +11,7 @@
 #include "libhwsec/frontend/chaps/frontend.h"
 #include "libhwsec/frontend/client/frontend.h"
 #include "libhwsec/frontend/cryptohome/frontend.h"
+#include "libhwsec/frontend/optee-plugin/frontend.h"
 #include "libhwsec/frontend/pinweaver/frontend.h"
 #include "libhwsec/frontend/recovery_crypto/frontend.h"
 #include "libhwsec/frontend/u2fd/frontend.h"
@@ -33,6 +34,7 @@ class Factory {
   virtual std::unique_ptr<ChapsFrontend> GetChapsFrontend() = 0;
   virtual std::unique_ptr<U2fFrontend> GetU2fFrontend() = 0;
   virtual std::unique_ptr<U2fVendorFrontend> GetU2fVendorFrontend() = 0;
+  virtual std::unique_ptr<OpteePluginFrontend> GetOpteePluginFrontend() = 0;
 };
 
 }  // namespace hwsec

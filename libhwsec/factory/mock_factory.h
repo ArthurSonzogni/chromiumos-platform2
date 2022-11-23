@@ -43,6 +43,10 @@ class MockFactory : public Factory {
               GetU2fVendorFrontend,
               (),
               (override));
+  MOCK_METHOD(std::unique_ptr<OpteePluginFrontend>,
+              GetOpteePluginFrontend,
+              (),
+              (override));
 };
 
 }  // namespace hwsec

@@ -11,6 +11,7 @@
 #include "libhwsec/frontend/chaps/frontend_impl.h"
 #include "libhwsec/frontend/client/frontend_impl.h"
 #include "libhwsec/frontend/cryptohome/frontend_impl.h"
+#include "libhwsec/frontend/optee-plugin/frontend_impl.h"
 #include "libhwsec/frontend/pinweaver/frontend_impl.h"
 #include "libhwsec/frontend/recovery_crypto/frontend_impl.h"
 #include "libhwsec/frontend/u2fd/frontend_impl.h"
@@ -56,6 +57,10 @@ std::unique_ptr<U2fFrontend> FactoryImpl::GetU2fFrontend() {
 
 std::unique_ptr<U2fVendorFrontend> FactoryImpl::GetU2fVendorFrontend() {
   return std::make_unique<U2fVendorFrontendImpl>(middleware_.Derive());
+}
+
+std::unique_ptr<OpteePluginFrontend> FactoryImpl::GetOpteePluginFrontend() {
+  return std::make_unique<OpteePluginFrontendImpl>(middleware_.Derive());
 }
 
 }  // namespace hwsec

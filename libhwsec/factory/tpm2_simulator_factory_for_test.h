@@ -36,7 +36,6 @@ class HWSEC_EXPORT Tpm2SimulatorFactoryForTestProxy {
 
   std::unique_ptr<Proxy> proxy_;
 };
-
 class HWSEC_EXPORT Tpm2SimulatorFactoryForTest
     : public Tpm2SimulatorFactoryForTestProxy,
       public FactoryImpl {
