@@ -8,65 +8,40 @@
 #include <utility>
 
 #include "libhwsec/backend/tpm2/backend.h"
-#include "libhwsec/frontend/chaps/frontend_impl.h"
-#include "libhwsec/frontend/client/frontend_impl.h"
-#include "libhwsec/frontend/cryptohome/frontend_impl.h"
-#include "libhwsec/frontend/pinweaver/frontend_impl.h"
-#include "libhwsec/frontend/recovery_crypto/frontend_impl.h"
-#include "libhwsec/frontend/u2fd/frontend_impl.h"
-#include "libhwsec/frontend/u2fd/vendor_frontend_impl.h"
 #include "libhwsec/middleware/middleware.h"
 #include "libhwsec/proxy/tpm2_simulator_proxy_for_test.h"
 
 namespace hwsec {
 
-Tpm2SimulatorFactoryForTest::Tpm2SimulatorFactoryForTest(ThreadingMode mode) {
+namespace {
+
+std::unique_ptr<Proxy> GetAndInitProxy() {
   auto proxy = std::make_unique<Tpm2SimulatorProxyForTest>();
   CHECK(proxy->Init());
-  proxy_ = std::move(proxy);
+  return proxy;
+}
 
-  auto backend = std::make_unique<BackendTpm2>(*proxy_, MiddlewareDerivative{});
+std::unique_ptr<MiddlewareOwner> GetAndInitMiddlewareOwner(ThreadingMode mode,
+                                                           Proxy& proxy) {
+  auto backend = std::make_unique<BackendTpm2>(proxy, MiddlewareDerivative{});
   BackendTpm2* backend_ptr = backend.get();
-  backend_ = std::move(backend);
-
-  middleware_ = std::make_unique<MiddlewareOwner>(std::move(backend_), mode);
-
-  backend_ptr->set_middleware_derivative_for_test(middleware_->Derive());
+  auto middleware = std::make_unique<MiddlewareOwner>(std::move(backend), mode);
+  backend_ptr->set_middleware_derivative_for_test(middleware->Derive());
+  return middleware;
 }
 
-Tpm2SimulatorFactoryForTest::~Tpm2SimulatorFactoryForTest() {}
+}  // namespace
 
-std::unique_ptr<CryptohomeFrontend>
-Tpm2SimulatorFactoryForTest::GetCryptohomeFrontend() {
-  return std::make_unique<CryptohomeFrontendImpl>(middleware_->Derive());
-}
+Tpm2SimulatorFactoryForTestProxy::Tpm2SimulatorFactoryForTestProxy(
+    std::unique_ptr<Proxy> proxy)
+    : proxy_(std::move(proxy)) {}
 
-std::unique_ptr<PinWeaverFrontend>
-Tpm2SimulatorFactoryForTest::GetPinWeaverFrontend() {
-  return std::make_unique<PinWeaverFrontendImpl>(middleware_->Derive());
-}
+Tpm2SimulatorFactoryForTestProxy::~Tpm2SimulatorFactoryForTestProxy() = default;
 
-std::unique_ptr<RecoveryCryptoFrontend>
-Tpm2SimulatorFactoryForTest::GetRecoveryCryptoFrontend() {
-  return std::make_unique<RecoveryCryptoFrontendImpl>(middleware_->Derive());
-}
+Tpm2SimulatorFactoryForTest::Tpm2SimulatorFactoryForTest(ThreadingMode mode)
+    : Tpm2SimulatorFactoryForTestProxy(GetAndInitProxy()),
+      FactoryImpl(GetAndInitMiddlewareOwner(mode, *proxy_)) {}
 
-std::unique_ptr<ClientFrontend>
-Tpm2SimulatorFactoryForTest::GetClientFrontend() {
-  return std::make_unique<ClientFrontendImpl>(middleware_->Derive());
-}
-
-std::unique_ptr<ChapsFrontend> Tpm2SimulatorFactoryForTest::GetChapsFrontend() {
-  return std::make_unique<ChapsFrontendImpl>(middleware_->Derive());
-}
-
-std::unique_ptr<U2fFrontend> Tpm2SimulatorFactoryForTest::GetU2fFrontend() {
-  return std::make_unique<U2fFrontendImpl>(middleware_->Derive());
-}
-
-std::unique_ptr<U2fVendorFrontend>
-Tpm2SimulatorFactoryForTest::GetU2fVendorFrontend() {
-  return std::make_unique<U2fVendorFrontendImpl>(middleware_->Derive());
-}
+Tpm2SimulatorFactoryForTest::~Tpm2SimulatorFactoryForTest() = default;
 
 }  // namespace hwsec
