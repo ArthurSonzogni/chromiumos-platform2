@@ -5,6 +5,8 @@
 // spaced_cli provides a command line interface disk usage queries.
 
 #include <iostream>
+#include <locale>
+#include <string>
 
 #include <base/task/single_thread_task_executor.h>
 #include <base/files/file_path.h>
@@ -17,6 +19,13 @@
 #include "spaced/disk_usage_proxy.h"
 
 namespace {
+
+class NumPunct : public std::numpunct<char> {
+ private:
+  char do_thousands_sep() const override { return ','; }
+  std::string do_grouping() const override { return "\3"; }
+};
+
 std::string UpdateStateToString(const spaced::StatefulDiskSpaceState& state) {
   switch (state) {
     case spaced::StatefulDiskSpaceState::NONE:
@@ -57,8 +66,17 @@ int main(int argc, char** argv) {
   DEFINE_bool(get_root_device_size, false, "Gets the size of the root device");
   DEFINE_bool(monitor_stateful, false,
               "Monitors the space available on the stateful partition");
+  DEFINE_bool(human, false, "Print human-readable numbers");
 
-  brillo::FlagHelper::Init(argc, argv, "Chromium OS Space Daemon CLI");
+  brillo::FlagHelper::Init(argc, argv, "ChromiumOS Space Daemon CLI");
+
+  std::string nl;
+  if (FLAGS_human) {
+    // Ensure that outputted numbers have thousands separators. It makes big
+    // numbers much easier to read for a human (eg sizes expressed in bytes).
+    std::cout.imbue(std::locale(std::locale::classic(), new NumPunct));
+    nl = "\n";
+  }
 
   base::SingleThreadTaskExecutor task_executor(base::MessagePumpType::IO);
   base::FileDescriptorWatcher watcher{task_executor.task_runner()};
@@ -73,14 +91,16 @@ int main(int argc, char** argv) {
 
   if (!FLAGS_get_free_disk_space.empty()) {
     std::cout << disk_usage_proxy->GetFreeDiskSpace(
-        base::FilePath(FLAGS_get_free_disk_space));
+                     base::FilePath(FLAGS_get_free_disk_space))
+              << nl;
     return 0;
   } else if (!FLAGS_get_total_disk_space.empty()) {
     std::cout << disk_usage_proxy->GetTotalDiskSpace(
-        base::FilePath(FLAGS_get_total_disk_space));
+                     base::FilePath(FLAGS_get_total_disk_space))
+              << nl;
     return 0;
   } else if (FLAGS_get_root_device_size) {
-    std::cout << disk_usage_proxy->GetRootDeviceSize();
+    std::cout << disk_usage_proxy->GetRootDeviceSize() << nl;
     return 0;
   } else if (FLAGS_monitor_stateful) {
     EchoSpacedObserver observer;
