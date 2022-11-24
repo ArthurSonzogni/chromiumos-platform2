@@ -10,13 +10,9 @@ use log::error;
 use super::extract_board_id_from_gsctool_response;
 use super::run_gsctool_cmd;
 use super::Version;
-use super::PLATFORM_INDEX;
 use crate::command_runner::CommandRunner;
 use crate::context::Context;
 use crate::cr50::extract_rw_fw_version_from_gsctool_response;
-use crate::tpm2::nv_write;
-use crate::tpm2::nv_write_lock;
-use crate::tpm2::read_board_id;
 use crate::tpm2::ERASED_BOARD_ID;
 
 pub const WHITELABEL: u32 = 0x4000;
@@ -62,9 +58,7 @@ pub fn cr50_check_board_id_and_flag(
     new_board_id: u32,
     new_flag: u16,
 ) -> Result<(), Cr50SetBoardIDVerdict> {
-    let board_id_output = if PLATFORM_INDEX {
-        read_board_id(ctx)
-    } else {
+    let board_id_output = {
         let gsctool_raw_response = run_gsctool_cmd(ctx, vec!["-a", "-i"]).map_err(|_| {
             error!("Failed to run gsctool.");
             Cr50SetBoardIDVerdict::GeneralError
@@ -113,32 +107,6 @@ pub fn cr50_set_board_id_and_flag(
     } else {
         Ok(())
     }
-}
-
-pub fn generic_tpm2_set_board_id(
-    ctx: &mut impl Context,
-    part_1: u32,
-    flag: u16,
-) -> Result<(), Cr50SetBoardIDVerdict> {
-    let part_2: u32 = !part_1;
-    let board_id: Vec<u8> = [
-        part_1.to_le_bytes().to_vec(),
-        part_2.to_le_bytes().to_vec(),
-        flag.to_le_bytes().to_vec(),
-        vec![0x00, 0x00],
-    ]
-    .concat();
-
-    nv_write(ctx, VIRTUAL_NV_INDEX_START, board_id).map_err(|_| {
-        error!("Failed to write board id space.");
-        Cr50SetBoardIDVerdict::GeneralError
-    })?;
-
-    nv_write_lock(ctx, VIRTUAL_NV_INDEX_START).map_err(|_| {
-        error!("Failed to lock board id space.");
-        Cr50SetBoardIDVerdict::GeneralError
-    })?;
-    Ok(())
 }
 
 pub fn check_cr50_support(
@@ -239,7 +207,6 @@ mod tests {
     use crate::cr50::cr50_set_board_id_and_flag;
     use crate::cr50::Cr50SetBoardIDVerdict;
 
-    #[cfg(not(feature = "generic_tpm2"))]
     #[test]
     fn test_cr50_check_board_id_and_flag_ok() {
         use crate::context::mock::MockContext;
@@ -258,7 +225,6 @@ mod tests {
         assert_eq!(result, Ok(()));
     }
 
-    #[cfg(not(feature = "generic_tpm2"))]
     #[test]
     fn test_cr50_check_board_id_and_flag_part_1_neq_new_board_id() {
         use crate::context::mock::MockContext;
@@ -281,7 +247,6 @@ mod tests {
         );
     }
 
-    #[cfg(not(feature = "generic_tpm2"))]
     #[test]
     fn test_cr50_check_board_id_and_flag_flag_xor_new_flag_eq_whitelabel() {
         use crate::context::mock::MockContext;
@@ -301,7 +266,6 @@ mod tests {
         assert_eq!(result, Err(Cr50SetBoardIDVerdict::AlreadySetError));
     }
 
-    #[cfg(not(feature = "generic_tpm2"))]
     #[test]
     fn test_cr50_check_board_id_and_flag_board_id_flag_neq_new_flag() {
         use crate::context::mock::MockContext;
@@ -324,7 +288,6 @@ mod tests {
         );
     }
 
-    #[cfg(not(feature = "generic_tpm2"))]
     #[test]
     fn test_cr50_check_board_id_and_flag_else_case() {
         use crate::context::mock::MockContext;

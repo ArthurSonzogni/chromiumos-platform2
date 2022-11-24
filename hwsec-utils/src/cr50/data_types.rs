@@ -12,7 +12,6 @@ pub struct RmaSnBits {
     pub sn_data_version: [u8; 3],
     pub rma_status: u8,
     pub sn_bits: SnBits,
-    pub standalone_rma_sn_bits: Option<[u8; 4]>,
 }
 
 pub struct Version {

@@ -12,11 +12,9 @@ use hwsec_utils::cr50::check_cr50_support;
 use hwsec_utils::cr50::check_device;
 use hwsec_utils::cr50::cr50_check_board_id_and_flag;
 use hwsec_utils::cr50::cr50_set_board_id_and_flag;
-use hwsec_utils::cr50::generic_tpm2_set_board_id;
 use hwsec_utils::cr50::Cr50SetBoardIDVerdict;
 use hwsec_utils::cr50::Version;
 use hwsec_utils::cr50::GSC_NAME;
-use hwsec_utils::cr50::PLATFORM_INDEX;
 use log::error;
 
 fn exit_if_not_support_partial_board_id(ctx: &mut impl Context) {
@@ -137,15 +135,9 @@ fn main() {
         .map_err(|e| exit(e as i32))
         .unwrap();
 
-    if PLATFORM_INDEX {
-        generic_tpm2_set_board_id(&mut real_ctx, rlz, flag)
-            .map_err(|e| exit(e as i32))
-            .unwrap();
-    } else {
-        cr50_set_board_id_and_flag(&mut real_ctx, rlz, flag)
-            .map_err(|e| exit(e as i32))
-            .unwrap();
-    }
+    cr50_set_board_id_and_flag(&mut real_ctx, rlz, flag)
+        .map_err(|e| exit(e as i32))
+        .unwrap();
 
     println!("{}", hooray_message);
 }

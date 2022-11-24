@@ -4,38 +4,17 @@
 
 use super::RmaSnBits;
 use crate::context::Context;
-use crate::cr50::PLATFORM_INDEX;
 use crate::error::HwsecError;
 use crate::tpm2::nv_read;
 
 pub fn cr50_read_rma_sn_bits(ctx: &mut impl Context) -> Result<RmaSnBits, HwsecError> {
     const READ_SN_BITS_INDEX: u32 = 0x013fff01;
     const READ_SN_BITS_LENGTH: u16 = 16;
-    const READ_STANDALONE_RMA_BYTES_INDEX: u32 = 0x013fff04;
-    const READ_STANDALONE_RMA_BYTES_LENGTH: u16 = 4;
 
     let sn_bits = nv_read(ctx, READ_SN_BITS_INDEX, READ_SN_BITS_LENGTH)?;
     if sn_bits.len() != READ_SN_BITS_LENGTH as usize {
         return Err(HwsecError::InternalError);
     }
-
-    let standalone_rma_sn_bits: Option<[u8; 4]> = if PLATFORM_INDEX {
-        let rma_sn_bits = nv_read(
-            ctx,
-            READ_STANDALONE_RMA_BYTES_INDEX,
-            READ_STANDALONE_RMA_BYTES_LENGTH,
-        )?;
-        if rma_sn_bits.len() != READ_SN_BITS_LENGTH as usize {
-            return Err(HwsecError::InternalError);
-        }
-        Some(
-            rma_sn_bits
-                .try_into()
-                .map_err(|_| HwsecError::InternalError)?,
-        )
-    } else {
-        None
-    };
 
     Ok(RmaSnBits {
         sn_data_version: sn_bits[0..3]
@@ -45,7 +24,6 @@ pub fn cr50_read_rma_sn_bits(ctx: &mut impl Context) -> Result<RmaSnBits, HwsecE
         sn_bits: sn_bits[4..]
             .try_into()
             .map_err(|_| HwsecError::InternalError)?,
-        standalone_rma_sn_bits,
     })
 }
 
@@ -55,7 +33,6 @@ mod tests {
     use crate::context::mock::MockContext;
     use crate::tpm2::tests::split_into_hex_strtok;
 
-    #[cfg(not(feature = "generic_tpm2"))]
     #[test]
     fn test_cr50_read_rma_sn_bits_success() {
         use crate::tpm2::tests::split_into_hex_strtok;
@@ -85,7 +62,6 @@ mod tests {
                 sn_data_version: [0x0f, 0xff, 0xff],
                 rma_status: 0xff,
                 sn_bits: [0x87, 0x7f, 0x50, 0xd2, 0x08, 0xec, 0x89, 0xe9, 0xc1, 0x69, 0x1f, 0x54],
-                standalone_rma_sn_bits: None
             })
         );
     }

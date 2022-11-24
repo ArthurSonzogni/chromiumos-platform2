@@ -214,14 +214,13 @@ impl MockCommandRunner {
         );
     }
     pub fn add_successful_cr50_read_rma_sn_bits_arbitary_interaction(&mut self) {
-        // Use this when feature != generic_tpm2 && not in want of specifying rma sn bits.
+        // Use this when not in want of specifying rma sn bits.
         // Reading rma sn bits with mock context
         // after calling this function with would return
         // RmaSnBits {
         //     sn_data_version: [0x0f, 0xff, 0xff],
         //     rma_status: 0xff,
         //     sn_bits: [0x87, 0x7f, 0x50, 0xd2, 0x08, 0xec, 0x89, 0xe9, 0xc1, 0x69, 0x1f, 0x54],
-        //     standalone_rma_sn_bits: None
         // }
         self.add_successful_cr50_read_rma_sn_bits_interaction_non_generic_tpm2(RmaSnBits {
             sn_data_version: [0x0f, 0xff, 0xff],
@@ -229,7 +228,6 @@ impl MockCommandRunner {
             sn_bits: [
                 0x87, 0x7f, 0x50, 0xd2, 0x08, 0xec, 0x89, 0xe9, 0xc1, 0x69, 0x1f, 0x54,
             ],
-            standalone_rma_sn_bits: None,
         });
     }
     pub fn add_successful_get_gbb_flags_interaction(&mut self, gbb_flag: u32) {

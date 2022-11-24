@@ -18,7 +18,6 @@ hmac-sha256 = "0.1.6"
 [features]
 ti50_onboard = [] # feature has no explicit dependencies
 cr50_onboard = [] # feature has no explicit dependencies
-generic_tpm2 = [] # feature has no explicit dependencies
 
 [patch.crates-io] # ignored by ebuild
 audio_streams = { path = "../../../chroot/usr/lib/cros_rust_registry/registry/audio_streams-0.1.0/" } # ignored by ebuild

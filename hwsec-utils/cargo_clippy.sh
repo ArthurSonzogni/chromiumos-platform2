@@ -6,4 +6,3 @@
 
 cargo clippy --features ti50_onboard --all-targets -- -D warnings
 cargo clippy --features cr50_onboard --all-targets -- -D warnings
-cargo clippy --features generic_tpm2 --all-targets -- -D warnings

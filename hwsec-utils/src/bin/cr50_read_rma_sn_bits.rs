@@ -24,22 +24,9 @@ fn main() {
                 .map(|byte| format!("{:02x}", byte))
                 .collect::<String>();
 
-            let standalone_rma_sn_bits = rma_sn_bits
-                .standalone_rma_sn_bits
-                .map(|bytes| {
-                    bytes
-                        .iter()
-                        .map(|byte| format!("{:02x}", byte))
-                        .collect::<String>()
-                })
-                .unwrap_or_else(|| "".to_string());
+            let ret = format!("{}:{}:{}", sn_data_version, rma_status, sn_bits);
 
-            let ret = format!(
-                "{}:{}:{} {}",
-                sn_data_version, rma_status, sn_bits, standalone_rma_sn_bits
-            );
-
-            println!("{}", ret.trim_end());
+            println!("{}", ret);
         }
         Err(e) => eprintln!("{}", e),
     }

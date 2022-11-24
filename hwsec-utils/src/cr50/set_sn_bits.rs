@@ -15,16 +15,9 @@ use super::run_gsctool_cmd;
 use super::u8_slice_to_hex_string;
 use super::RmaSnBits;
 use super::SnBits;
-use super::PLATFORM_INDEX;
 use crate::context::Context;
-use crate::tpm2::nv_write;
-use crate::tpm2::nv_write_lock;
-use crate::tpm2::read_board_id;
 use crate::tpm2::BoardID;
 use crate::tpm2::ERASED_BOARD_ID;
-
-const SN_BITS_INDEX: u32 = 0x013fff01;
-const SN_BITS_HEADER: [u8; 4] = [0x0f, 0xff, 0xfe, 0x80];
 
 #[derive(Debug, PartialEq)]
 pub enum Cr50SetSnBitsVerdict {
@@ -79,12 +72,7 @@ pub fn cr50_compute_updater_sn_bits(sn: &str) -> SnBits {
 }
 
 pub fn board_id_is_set(ctx: &mut impl Context) -> Result<bool, Cr50SetSnBitsVerdict> {
-    let board_id: BoardID = if PLATFORM_INDEX {
-        read_board_id(ctx).map_err(|_| {
-            error!("Failed to execute read_board_id");
-            Cr50SetSnBitsVerdict::GeneralError
-        })?
-    } else {
+    let board_id: BoardID = {
         get_board_id_with_gsctool(ctx).map_err(|_| {
             error!("Failed to execute gsctool -a -i");
             Cr50SetSnBitsVerdict::GeneralError
@@ -94,11 +82,7 @@ pub fn board_id_is_set(ctx: &mut impl Context) -> Result<bool, Cr50SetSnBitsVerd
 }
 
 pub fn is_rmaed(rma_sn_bits: RmaSnBits) -> bool {
-    if PLATFORM_INDEX {
-        rma_sn_bits.standalone_rma_sn_bits == Some([0x00; 4])
-    } else {
-        rma_sn_bits.rma_status != 0xff
-    }
+    rma_sn_bits.rma_status != 0xff
 }
 
 pub fn cr50_check_sn_bits(
@@ -142,35 +126,11 @@ fn set_sn_bits_with_gsctool(
     Ok(gsctool_output.status.code().unwrap())
 }
 
-fn set_sn_bits_with_generic_tpm2_util(
-    ctx: &mut impl Context,
-    sn_bits: SnBits,
-) -> Result<i32, Cr50SetSnBitsVerdict> {
-    nv_write(
-        ctx,
-        SN_BITS_INDEX,
-        (&[&SN_BITS_HEADER[..], &sn_bits[..]].concat()[..]).to_vec(),
-    )
-    .map_err(|_| {
-        error!("Failed to write SN Bits space.");
-        Cr50SetSnBitsVerdict::GeneralError
-    })?;
-    nv_write_lock(ctx, SN_BITS_INDEX).map_err(|_| {
-        error!("Failed to write SN Bits space.");
-        Cr50SetSnBitsVerdict::GeneralError
-    })?;
-    Ok(0)
-}
-
 pub fn cr50_set_sn_bits(
     ctx: &mut impl Context,
     sn_bits: SnBits,
 ) -> Result<(), Cr50SetSnBitsVerdict> {
-    let exit_status = if PLATFORM_INDEX {
-        set_sn_bits_with_generic_tpm2_util(ctx, sn_bits)
-    } else {
-        set_sn_bits_with_gsctool(ctx, sn_bits)
-    }?;
+    let exit_status = set_sn_bits_with_gsctool(ctx, sn_bits)?;
     if exit_status != 0 {
         let warn_str: &str = if exit_status > 2 && board_id_is_set(ctx)? {
             " (Board ID is set)"
@@ -207,7 +167,6 @@ mod tests {
         );
     }
 
-    #[cfg(not(feature = "generic_tpm2"))]
     #[test]
     fn test_board_id_is_set() {
         use crate::context::mock::MockContext;
@@ -228,7 +187,6 @@ mod tests {
         assert_eq!(flag, Ok(true));
     }
 
-    #[cfg(not(feature = "generic_tpm2"))]
     #[test]
     fn test_board_id_is_not_set() {
         use crate::context::mock::MockContext;
@@ -256,7 +214,6 @@ mod tests {
                 sn_bits: [
                     0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xaa, 0xbb, 0xcc,
                 ],
-                standalone_rma_sn_bits: None,
             });
 
         let result = cr50_check_sn_bits(
@@ -280,7 +237,6 @@ mod tests {
                 sn_bits: [
                     0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xaa, 0xbb, 0xcc,
                 ],
-                standalone_rma_sn_bits: None,
             });
 
         let result = cr50_check_sn_bits(
@@ -302,7 +258,6 @@ mod tests {
                 sn_data_version: [0x12, 0x34, 0x56],
                 rma_status: 0xff,
                 sn_bits: [0x00; 12],
-                standalone_rma_sn_bits: None,
             });
 
         let result = cr50_check_sn_bits(
@@ -324,7 +279,6 @@ mod tests {
                 sn_data_version: [0x12, 0x34, 0x56],
                 rma_status: 0xff,
                 sn_bits: [0x11; 12],
-                standalone_rma_sn_bits: None,
             });
 
         let result = cr50_check_sn_bits(
@@ -351,7 +305,6 @@ mod tests {
                 sn_bits: [
                     0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xaa, 0xbb, 0xcc,
                 ],
-                standalone_rma_sn_bits: None,
             });
 
         let result = cr50_check_sn_bits(
@@ -375,7 +328,6 @@ mod tests {
                 sn_bits: [
                     0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xaa, 0xbb, 0xcc,
                 ],
-                standalone_rma_sn_bits: None,
             });
 
         let result = cr50_check_sn_bits(
@@ -388,7 +340,6 @@ mod tests {
         assert_eq!(result, Err(Cr50SetSnBitsVerdict::AlreadySetError));
     }
 
-    #[cfg(not(feature = "generic_tpm2"))]
     #[test]
     fn test_cr50_set_sn_bits_ok() {
         use crate::cr50::cr50_set_sn_bits;
@@ -410,7 +361,6 @@ mod tests {
         assert_eq!(result, Ok(()));
     }
 
-    #[cfg(not(feature = "generic_tpm2"))]
     #[test]
     fn test_cr50_set_sn_bits_gt_2_exit_code() {
         use crate::cr50::cr50_set_sn_bits;
@@ -435,7 +385,6 @@ mod tests {
         assert_eq!(result, Err(Cr50SetSnBitsVerdict::GeneralError));
     }
 
-    #[cfg(not(feature = "generic_tpm2"))]
     #[test]
     fn test_cr50_set_sn_bits_lt_3_exit_code() {
         use crate::cr50::cr50_set_sn_bits;
