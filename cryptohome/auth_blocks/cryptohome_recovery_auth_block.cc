@@ -95,9 +95,6 @@ CryptoStatus CryptohomeRecoveryAuthBlock::Create(
         ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
         CryptoError::CE_OTHER_CRYPTO);
   }
-  const std::string& obfuscated_username =
-      auth_input.obfuscated_username.value();
-
   const brillo::SecureBlob& mediator_pub_key =
       cryptohome_recovery_auth_input.mediator_pub_key.value();
   std::unique_ptr<RecoveryCryptoImpl> recovery =
@@ -113,7 +110,7 @@ CryptoStatus CryptohomeRecoveryAuthBlock::Create(
   // Generates HSM payload that would be persisted on a chromebook.
   OnboardingMetadata onboarding_metadata;
   AccountIdentifier account_id;
-  account_id.set_email(obfuscated_username);
+  account_id.set_email(auth_input.username);
   if (!recovery->GenerateRecoveryId(account_id)) {
     LOG(ERROR) << "Unable to generate a new recovery_id";
     return MakeStatus<CryptohomeCryptoError>(
@@ -139,7 +136,7 @@ CryptoStatus CryptohomeRecoveryAuthBlock::Create(
   cryptorecovery::GenerateHsmPayloadRequest generate_hsm_payload_request(
       {.mediator_pub_key = mediator_pub_key,
        .onboarding_metadata = onboarding_metadata,
-       .obfuscated_username = obfuscated_username});
+       .obfuscated_username = auth_input.obfuscated_username.value()});
   cryptorecovery::GenerateHsmPayloadResponse generate_hsm_payload_response;
   if (!recovery->GenerateHsmPayload(generate_hsm_payload_request,
                                     &generate_hsm_payload_response)) {

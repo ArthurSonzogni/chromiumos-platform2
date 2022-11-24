@@ -68,6 +68,7 @@ namespace cryptohome {
 namespace {
 constexpr char kFakeGaiaId[] = "123456789";
 constexpr char kFakeDeviceId[] = "1234-5678-AAAA-BBBB";
+constexpr char kUsername[] = "username@gmail.com";
 constexpr char kObfuscatedUsername[] = "OBFUSCATED_USERNAME";
 
 TpmEccAuthBlockState GetDefaultEccAuthBlockState() {
@@ -1362,6 +1363,7 @@ class CryptohomeRecoveryAuthBlockTest : public testing::Test {
     cryptohome_recovery_auth_input.device_user_id = kFakeDeviceId;
     auth_input.cryptohome_recovery_auth_input = cryptohome_recovery_auth_input;
     auth_input.obfuscated_username = kObfuscatedUsername;
+    auth_input.username = kUsername;
     return auth_input;
   }
 
@@ -1501,6 +1503,38 @@ TEST_F(CryptohomeRecoveryAuthBlockTest, SuccessTestWithRevocation) {
   EXPECT_EQ(created_key_blobs.vkk_key, derived_key_blobs.vkk_key);
   EXPECT_EQ(created_key_blobs.vkk_iv, derived_key_blobs.vkk_iv);
   EXPECT_EQ(created_key_blobs.chaps_iv, derived_key_blobs.chaps_iv);
+}
+
+TEST_F(CryptohomeRecoveryAuthBlockTest, CreateGeneratesRecoveryId) {
+  AuthInput auth_input = GenerateFakeAuthInput();
+
+  // IsPinWeaverEnabled()) returns `false` -> revocation is not supported.
+  hwsec::Tpm2SimulatorFactoryForTest factory;
+  std::unique_ptr<hwsec::RecoveryCryptoFrontend> recovery_crypto_fake_backend =
+      factory.GetRecoveryCryptoFrontend();
+
+  NiceMock<hwsec::MockCryptohomeFrontend> hwsec;
+  SetupMockHwsec(hwsec);
+  EXPECT_CALL(hwsec, IsPinWeaverEnabled()).WillRepeatedly(ReturnValue(false));
+
+  KeyBlobs created_key_blobs;
+  CryptohomeRecoveryAuthBlock auth_block(
+      &hwsec, recovery_crypto_fake_backend.get(), nullptr, &platform_);
+  AuthBlockState auth_state;
+  EXPECT_TRUE(
+      auth_block.Create(auth_input, &auth_state, &created_key_blobs).ok());
+  ASSERT_TRUE(created_key_blobs.vkk_key.has_value());
+  EXPECT_FALSE(auth_state.revocation_state.has_value());
+
+  std::unique_ptr<cryptorecovery::RecoveryCryptoImpl> recovery =
+      cryptorecovery::RecoveryCryptoImpl::Create(
+          recovery_crypto_fake_backend.get(), &platform_);
+  AccountIdentifier account_id;
+  account_id.set_email(kUsername);
+  std::vector<std::string> recovery_ids =
+      recovery->GetLastRecoveryIds(account_id, 10);
+  ASSERT_EQ(recovery_ids.size(), 1);
+  EXPECT_FALSE(recovery_ids[0].empty());
 }
 
 TEST_F(CryptohomeRecoveryAuthBlockTest, MissingObfuscatedUsername) {
