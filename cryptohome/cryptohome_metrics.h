@@ -19,32 +19,6 @@
 
 namespace cryptohome {
 
-// List of all the possible operation types. Used to construct the
-// correct histogram while logging to UMA. These values are persisted to logs.
-// Entries should not be renumbered and numeric values should never be reused.
-enum LECredOperationType {
-  LE_CRED_OP_RESET_TREE = 0,
-  LE_CRED_OP_INSERT = 1,
-  LE_CRED_OP_CHECK = 2,
-  LE_CRED_OP_RESET = 3,
-  LE_CRED_OP_REMOVE = 4,
-  LE_CRED_OP_SYNC = 5,
-  LE_CRED_OP_MAX
-};
-
-// List of all possible actions taken within an LE Credential operation.
-// Used to construct the correct histogram while logging to UMA.
-// These values are persisted to logs. Entries should not be renumbered and
-// numeric values should never be reused.
-enum LECredActionType {
-  LE_CRED_ACTION_LOAD_FROM_DISK = 0,
-  LE_CRED_ACTION_BACKEND = 1,
-  LE_CRED_ACTION_SAVE_TO_DISK = 2,
-  LE_CRED_ACTION_BACKEND_GET_LOG = 3,
-  LE_CRED_ACTION_BACKEND_REPLAY_LOG = 4,
-  LE_CRED_ACTION_MAX
-};
-
 // The derivation types used in the implementations of AuthBlock class.
 // Refer to cryptohome/docs/ for more details.
 // These values are persisted to logs. Entries should not be renumbered and
@@ -163,17 +137,6 @@ struct AuthSessionPerformanceTimer {
 
 // These values are persisted to logs. Entries should not be renumbered and
 // numeric values should never be reused.
-enum ChecksumStatus {
-  kChecksumOK = 0,
-  kChecksumDoesNotExist = 1,
-  kChecksumReadError = 2,
-  kChecksumMismatch = 3,
-  kChecksumOutOfSync = 4,
-  kChecksumStatusNumBuckets
-};
-
-// These values are persisted to logs. Entries should not be renumbered and
-// numeric values should never be reused.
 enum DircryptoMigrationFailedPathType {
   kMigrationFailedUnderOther = 1,
   kMigrationFailedUnderAndroidOther = 2,
@@ -228,129 +191,6 @@ enum class DiskCleanupResult {
   kNumBuckets
 };
 
-// Add new deprecated function event here.
-// These values are persisted to logs. Entries should not be renumbered and
-// numeric values should never be reused.
-// Note: All updates here must also update Chrome's enums.xml database.
-// Please see this document for more details:
-// https://chromium.googlesource.com/chromium/src/+/HEAD/tools/metrics/histograms/
-//
-// You can view them live here:
-// https://uma.googleplex.com/histograms/?histograms=Platform.Cryptohome.DeprecatedApiCalled
-enum class DeprecatedApiEvent {
-  kInitializeCastKey = 0,
-  kGetBootAttribute = 1,
-  kSetBootAttribute = 2,
-  kFlushAndSignBootAttributes = 3,
-  kSignBootLockbox = 4,
-  kVerifyBootLockbox = 5,
-  kFinalizeBootLockbox = 6,
-  kTpmIsBeingOwned = 7,
-  kProxyIsMounted = 8,
-  kProxyIsMountedForUser = 9,
-  kProxyListKeysEx = 10,
-  kProxyCheckKeyEx = 11,
-  kProxyRemoveKeyEx = 12,
-  kProxyMassRemoveKeys = 13,
-  kProxyGetKeyDataEx = 14,
-  kProxyMigrateKeyEx = 15,
-  kProxyAddKeyEx = 16,
-  kProxyAddDataRestoreKey = 17,
-  kProxyRemoveEx = 18,
-  kProxyGetSystemSalt = 19,
-  kProxyGetSanitizedUsername = 20,
-  kProxyMountEx = 21,
-  kProxyMountGuestEx = 22,
-  kProxyRenameCryptohome = 23,
-  kProxyGetAccountDiskUsage = 24,
-  kProxyUnmountEx = 25,
-  kProxyUpdateCurrentUserActivityTimestamp = 26,
-  kProxyTpmIsReady = 27,
-  kProxyTpmIsEnabled = 28,
-  kProxyTpmGetPassword = 29,
-  kProxyTpmIsOwned = 30,
-  kProxyTpmIsBeingOwned = 31,
-  kProxyTpmCanAttemptOwnership = 32,
-  kProxyTpmClearStoredPassword = 33,
-  kProxyTpmIsAttestationPrepared = 34,
-  kProxyTpmAttestationGetEnrollmentPreparationsEx = 35,
-  kProxyTpmVerifyAttestationData = 36,
-  kProxyTpmVerifyEK = 37,
-  kProxyTpmAttestationCreateEnrollRequest = 38,
-  kProxyAsyncTpmAttestationCreateEnrollRequest = 39,
-  kProxyTpmAttestationEnroll = 40,
-  kProxyAsyncTpmAttestationEnroll = 41,
-  kProxyTpmAttestationEnrollEx = 42,
-  kProxyAsyncTpmAttestationEnrollEx = 43,
-  kProxyTpmAttestationCreateCertRequest = 44,
-  kProxyAsyncTpmAttestationCreateCertRequest = 45,
-  kProxyTpmAttestationFinishCertRequest = 46,
-  kProxyAsyncTpmAttestationFinishCertRequest = 47,
-  kProxyTpmAttestationGetCertificateEx = 48,
-  kProxyAsyncTpmAttestationGetCertificateEx = 49,
-  kProxyTpmIsAttestationEnrolled = 50,
-  kProxyTpmAttestationDoesKeyExist = 51,
-  kProxyTpmAttestationGetCertificate = 52,
-  kProxyTpmAttestationGetPublicKey = 53,
-  kProxyTpmAttestationGetEnrollmentId = 54,
-  kProxyTpmAttestationRegisterKey = 55,
-  kProxyTpmAttestationSignEnterpriseChallenge = 56,
-  kProxyTpmAttestationSignEnterpriseVaChallenge = 57,
-  kProxyTpmAttestationSignEnterpriseVaChallengeV2 = 58,
-  kProxyTpmAttestationSignSimpleChallenge = 59,
-  kProxyTpmAttestationGetKeyPayload = 60,
-  kProxyTpmAttestationSetKeyPayload = 61,
-  kProxyTpmAttestationDeleteKeys = 62,
-  kProxyTpmAttestationDeleteKey = 63,
-  kProxyTpmAttestationGetEK = 64,
-  kProxyTpmAttestationResetIdentity = 65,
-  kProxyTpmGetVersionStructured = 66,
-  kProxyPkcs11IsTpmTokenReady = 67,
-  kProxyPkcs11GetTpmTokenInfo = 68,
-  kProxyPkcs11GetTpmTokenInfoForUser = 69,
-  kProxyPkcs11Terminate = 70,
-  kProxyGetStatusString = 71,
-  kProxyInstallAttributesGet = 72,
-  kProxyInstallAttributesSet = 73,
-  kProxyInstallAttributesCount = 74,
-  kProxyInstallAttributesFinalize = 75,
-  kProxyInstallAttributesIsReady = 76,
-  kProxyInstallAttributesIsSecure = 77,
-  kProxyInstallAttributesIsInvalid = 78,
-  kProxyInstallAttributesIsFirstInstall = 79,
-  kProxySignBootLockbox = 80,
-  kProxyVerifyBootLockbox = 81,
-  kProxyFinalizeBootLockbox = 82,
-  kProxyGetBootAttribute = 83,
-  kProxySetBootAttribute = 84,
-  kProxyFlushAndSignBootAttributes = 85,
-  kProxyGetLoginStatus = 86,
-  kProxyGetTpmStatus = 87,
-  kProxyGetEndorsementInfo = 88,
-  kProxyInitializeCastKey = 89,
-  kProxyStartFingerprintAuthSession = 90,
-  kProxyEndFingerprintAuthSession = 91,
-  kProxyGetWebAuthnSecret = 92,
-  kProxyGetFirmwareManagementParameters = 93,
-  kProxySetFirmwareManagementParameters = 94,
-  kProxyRemoveFirmwareManagementParameters = 95,
-  kProxyMigrateToDircrypto = 96,
-  kProxyNeedsDircryptoMigration = 97,
-  kProxyGetSupportedKeyPolicies = 98,
-  kProxyIsQuotaSupported = 99,
-  kProxyGetCurrentSpaceForUid = 100,
-  kProxyGetCurrentSpaceForGid = 101,
-  kProxyGetCurrentSpaceForProjectId = 102,
-  kProxySetProjectId = 103,
-  kProxyLockToSingleUserMountUntilReboot = 104,
-  kProxyGetRsuDeviceId = 105,
-  kProxyCheckHealth = 106,
-  kProxyStartAuthSession = 107,
-  kProxyAuthenticateAuthSession = 108,
-  kProxyAddCredentials = 109,
-  kMaxValue
-};
-
 // List of the possible results of attempting a mount operation using the
 // out-of-process mount helper.
 // These values are persisted to logs. Entries should not be renumbered and
@@ -390,10 +230,6 @@ enum class DownloadsBindMountMigrationStatus {
   kFailedSettingMigratedXattr = 7,
   kMaxValue = kFailedMovingToMyFiles
 };
-
-// Just to make sure I count correctly.
-static_assert(static_cast<int>(DeprecatedApiEvent::kMaxValue) == 110,
-              "DeprecatedApiEvent Enum miscounted");
 
 // Cros events emitted by cryptohome.
 const char kAttestationOriginSpecificIdentifiersExhausted[] =
@@ -703,30 +539,14 @@ void ReportDircryptoMigrationFailedNoSpace(int initial_migration_free_space_mb,
 void ReportDircryptoMigrationFailedNoSpaceXattrSizeInBytes(
     int total_xattr_size_bytes);
 
-// Reports the total running time of a dbus request.
-void ReportAsyncDbusRequestTotalTime(std::string task_name,
-                                     base::TimeDelta running_time);
-
-// Reports the total in-queue time of mount thread of a dbus request
-void ReportAsyncDbusRequestInqueueTime(std::string task_name,
-                                       base::TimeDelta running_time);
-
 // Reports the amount of total tasks waiting in the queue of mount thread.
 void ReportParallelTasks(int amount_of_task);
-
-// Reports when a deprecated function that is exposed on the DBus is called.
-// This is used to determine which deprecated function is truly dead code,
-// and removing it will not trigger side effects.
-void ReportDeprecatedApiCalled(DeprecatedApiEvent event);
 
 // Reports the result of an out-of-process mount operation.
 void ReportOOPMountOperationResult(OOPMountOperationResult result);
 
 // Reports the result of an out-of-process cleanup operation.
 void ReportOOPMountCleanupResult(OOPMountCleanupResult result);
-
-// Reports the result of an InvalidateDirCryptoKey operation.
-void ReportInvalidateDirCryptoKeyResult(bool result);
 
 // Reports the result of PrepareForRemoval() for `auth_block_type`
 // to the "Cryptohome.{AuthBlockType}.PrepareForRemovalResult" histogram.
@@ -745,13 +565,6 @@ void ReportCreateAuthBlock(AuthBlockType type);
 
 // Reports which kinds of auth block we are used to derive.
 void ReportDeriveAuthBlock(AuthBlockType type);
-
-// Reports whether the existing user subdirectory under the home mount has the
-// correct group. This is a temporary metric to diagnose an issue where this
-// directory is not owned by group chronos-access.
-// TODO(crbug.com/1205308): Remove once the root cause is fixed and we stop
-// seeing cases where this directory has the wrong group owner.
-void ReportUserSubdirHasCorrectGroup(bool correct);
 
 // Reports which code paths are being used today and performing what actions.
 void ReportUsageOfLegacyCodePath(LegacyCodePathLocation location, bool result);

@@ -73,10 +73,6 @@ constexpr char kCryptohomeLEResultHistogramPrefix[] = "Cryptohome.LECredential";
 constexpr char kCryptohomeLESyncOutcomeHistogramSuffix[] = ".SyncOutcome";
 constexpr char kCryptohomeLELogReplyEntryCountHistogram[] =
     "Cryptohome.LECredential.LogReplayEntryCount";
-constexpr char kCryptohomeAsyncDBusRequestsPrefix[] =
-    "Cryptohome.AsyncDBusRequest.";
-constexpr char kCryptohomeAsyncDBusRequestsInqueueTimePrefix[] =
-    "Cryptohome.AsyncDBusRequest.Inqueue.";
 constexpr char kCryptohomeParallelTasksPrefix[] = "Cryptohome.ParallelTasks";
 constexpr char kHomedirEncryptionTypeHistogram[] =
     "Cryptohome.HomedirEncryptionType";
@@ -90,8 +86,6 @@ constexpr char kOOPMountOperationResultHistogram[] =
     "Cryptohome.OOPMountOperationResult";
 constexpr char kOOPMountCleanupResultHistogram[] =
     "Cryptohome.OOPMountCleanupResult";
-constexpr char kInvalidateDirCryptoKeyResultHistogram[] =
-    "Cryptohome.InvalidateDirCryptoKeyResult";
 constexpr char kRecoveryPrepareForRemovalResultHistogram[] =
     "Cryptohome.%s.PrepareForRemovalResult";
 constexpr char kRestoreSELinuxContextResultForHome[] =
@@ -102,8 +96,6 @@ constexpr char kCreateAuthBlockTypeHistogram[] =
     "Cryptohome.CreateAuthBlockType";
 constexpr char kDeriveAuthBlockTypeHistogram[] =
     "Cryptohome.DeriveAuthBlockType";
-constexpr char kUserSubdirHasCorrectGroup[] =
-    "Cryptohome.UserSubdirHasCorrectGroup";
 constexpr char kLegacyCodePathUsageHistogramPrefix[] =
     "Cryptohome.LegacyCodePathUsage";
 constexpr char kVaultKeysetMetric[] = "Cryptohome.VaultKeysetMetric";
@@ -218,9 +210,6 @@ static_assert(
     std::size(kLegacyCodePathLocations) ==
         static_cast<int>(LegacyCodePathLocation::kMaxValue) + 1,
     "kLegacyCodePathLocations out of sync with enum LegacyCodePathLocation");
-
-constexpr char kCryptohomeDeprecatedApiHistogramName[] =
-    "Cryptohome.DeprecatedApiCalled";
 
 // Set to true to disable CryptohomeError related reporting, see
 // DisableErrorMetricsReporting().
@@ -682,42 +671,6 @@ void ReportParallelTasks(int amount_of_task) {
                        kMax, kNumBuckets);
 }
 
-void ReportAsyncDbusRequestTotalTime(std::string task_name,
-                                     base::TimeDelta running_time) {
-  if (!g_metrics) {
-    return;
-  }
-
-  // 3 mins as maximum
-  constexpr int kMin = 1, kMax = 3 * 60 * 1000, kNumBuckets = 50;
-  g_metrics->SendToUMA(kCryptohomeAsyncDBusRequestsPrefix + task_name,
-                       running_time.InMilliseconds(), kMin, kMax, kNumBuckets);
-}
-
-void ReportAsyncDbusRequestInqueueTime(std::string task_name,
-                                       base::TimeDelta running_time) {
-  if (!g_metrics) {
-    return;
-  }
-
-  // 3 mins as maximum, 3 secs of interval
-  constexpr int kMin = 1, kMax = 3 * 60 * 1000, kNumBuckets = 3 * 20;
-  g_metrics->SendToUMA(
-      kCryptohomeAsyncDBusRequestsInqueueTimePrefix + task_name,
-      running_time.InMilliseconds(), kMin, kMax, kNumBuckets);
-}
-
-void ReportDeprecatedApiCalled(DeprecatedApiEvent event) {
-  if (!g_metrics) {
-    return;
-  }
-
-  constexpr auto max_event = static_cast<int>(DeprecatedApiEvent::kMaxValue);
-  g_metrics->SendEnumToUMA(kCryptohomeDeprecatedApiHistogramName,
-                           static_cast<int>(event),
-                           static_cast<int>(max_event));
-}
-
 void ReportOOPMountOperationResult(OOPMountOperationResult result) {
   if (!g_metrics) {
     return;
@@ -769,14 +722,6 @@ void ReportRestoreSELinuxContextResultForShadowDir(bool success) {
   g_metrics->SendBoolToUMA(kRestoreSELinuxContextResultForShadow, success);
 }
 
-void ReportInvalidateDirCryptoKeyResult(bool result) {
-  if (!g_metrics) {
-    return;
-  }
-
-  g_metrics->SendBoolToUMA(kInvalidateDirCryptoKeyResultHistogram, result);
-}
-
 void ReportCreateAuthBlock(AuthBlockType type) {
   if (!g_metrics) {
     return;
@@ -793,14 +738,6 @@ void ReportDeriveAuthBlock(AuthBlockType type) {
   g_metrics->SendEnumToUMA(kDeriveAuthBlockTypeHistogram,
                            static_cast<int>(type),
                            static_cast<int>(AuthBlockType::kMaxValue));
-}
-
-void ReportUserSubdirHasCorrectGroup(bool correct) {
-  if (!g_metrics) {
-    return;
-  }
-
-  g_metrics->SendBoolToUMA(kUserSubdirHasCorrectGroup, correct);
 }
 
 void ReportUsageOfLegacyCodePath(const LegacyCodePathLocation location,
