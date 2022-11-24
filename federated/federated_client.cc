@@ -15,6 +15,7 @@
 #include "federated/device_status_monitor.h"
 #include "federated/example_database.h"
 #include "federated/federated_metadata.h"
+#include "federated/metrics.h"
 #include "federated/protos/cros_events.pb.h"
 #include "federated/protos/cros_example_selector_criteria.pb.h"
 #include "federated/utils.h"
@@ -109,18 +110,23 @@ FederatedClient::Context::~Context() = default;
 bool FederatedClient::Context::PrepareExamples(const char* const criteria_data,
                                                const int criteria_data_size,
                                                void* const context) {
+  auto* typed_context = static_cast<FederatedClient::Context*>(context);
+  const std::string& client_name = typed_context->client_name_;
+
   fcp::client::CrosExampleSelectorCriteria criteria;
   if (!criteria.ParseFromArray(criteria_data, criteria_data_size)) {
     LOG(ERROR) << "Failed to parse criteria.";
+    Metrics::GetInstance()->LogClientEvent(
+        client_name, ClientEvent::kGetExampleIteratorError);
     return false;
   }
 
   if (criteria.task_name().empty()) {
     LOG(ERROR) << "No valid task_name";
+    Metrics::GetInstance()->LogClientEvent(
+        client_name, ClientEvent::kGetExampleIteratorError);
     return false;
   }
-
-  auto* typed_context = static_cast<FederatedClient::Context*>(context);
 
   // Initializes `new_meta_record_`, if iterator is created successfully and the
   // task starts, it keeps the largest seen example id and the associated
@@ -132,19 +138,19 @@ bool FederatedClient::Context::PrepareExamples(const char* const criteria_data,
   // there may be new examples received during a computation and with timestamp
   // in between last_used_example_timestamp and last_contribution_time. Such
   // examples will never be used.
-  typed_context->new_meta_record_.identifier =
-      base::StringPrintf("%s#%s", typed_context->client_name_.c_str(),
-                         criteria.task_name().c_str());
+  typed_context->new_meta_record_.identifier = base::StringPrintf(
+      "%s#%s", client_name.c_str(), criteria.task_name().c_str());
   typed_context->new_meta_record_.last_used_example_id = -1;
   typed_context->new_meta_record_.last_used_example_timestamp =
       base::Time::UnixEpoch();
 
   std::optional<ExampleDatabase::Iterator> example_iterator =
-      typed_context->storage_manager_->GetExampleIterator(
-          typed_context->client_name_, criteria);
+      typed_context->storage_manager_->GetExampleIterator(client_name,
+                                                          criteria);
   if (!example_iterator.has_value()) {
-    DVLOG(1) << "Client " << typed_context->client_name_
-             << " failed to prepare examples.";
+    DVLOG(1) << "Client " << client_name << " failed to prepare examples.";
+    Metrics::GetInstance()->LogClientEvent(
+        client_name, ClientEvent::kGetExampleIteratorError);
     return false;
   }
 
@@ -165,6 +171,8 @@ bool FederatedClient::Context::GetNextExample(const char** const data,
       typed_context->example_iterator_.Next();
 
   if (absl::IsInvalidArgument(record.status())) {
+    Metrics::GetInstance()->LogClientEvent(
+        typed_context->client_name_, ClientEvent::kGetExampleIteratorError);
     return false;
   }
 
@@ -198,8 +206,16 @@ bool FederatedClient::Context::TrainingConditionsSatisfied(
   if (context == nullptr)
     return false;
 
-  return static_cast<FederatedClient::Context*>(context)
-      ->device_status_monitor_->TrainingConditionsSatisfied();
+  auto* typed_context = static_cast<FederatedClient::Context*>(context);
+  const bool condition_satisfied =
+      typed_context->device_status_monitor_->TrainingConditionsSatisfied();
+
+  if (!condition_satisfied) {
+    Metrics::GetInstance()->LogClientEvent(
+        typed_context->client_name_, ClientEvent::kUnsatisfiedConditionAbort);
+  }
+
+  return condition_satisfied;
 }
 
 void FederatedClient::Context::PublishEvent(const char* const event,
@@ -270,6 +286,8 @@ void FederatedClient::RunPlan(const StorageManager* const storage_manager) {
       base_dir_in_cryptohome.c_str(),
       &context};
 
+  auto scoped_metrics_recorder =
+      Metrics::GetInstance()->CreateScopedMetricsRecorder(client_config_.name);
   FlRunPlanResult result = (*run_plan_)(
       env, service_uri_.c_str(), api_key_.c_str(), client_version_.c_str(),
       /*population_name=*/client_config_.name.c_str(),
@@ -290,13 +308,20 @@ void FederatedClient::RunPlan(const StorageManager* const storage_manager) {
       next_retry_delay_ = kMinimalRetryWindow;
 
     if (result.status == CONTRIBUTED) {
+      scoped_metrics_recorder.MarkSuccess();
+      Metrics::GetInstance()->LogClientEvent(client_config_.name,
+                                             ClientEvent::kContributed);
       context.new_meta_record().timestamp = base::Time::Now();
       storage_manager->UpdateMetaRecord(context.new_meta_record());
+    } else {
+      Metrics::GetInstance()->LogClientEvent(client_config_.name,
+                                             ClientEvent::kRejected);
     }
-
   } else {
     DVLOG(1) << "Failed to checkin with the servce, result.status = "
              << result.status;
+    Metrics::GetInstance()->LogClientEvent(
+        client_config_.name, ClientEvent::kTaskFailedUnknownError);
     next_retry_delay_ = kDefaultRetryWindow;
   }
 

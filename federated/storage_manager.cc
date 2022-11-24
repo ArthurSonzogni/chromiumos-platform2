@@ -16,6 +16,7 @@
 #include <google/protobuf/util/time_util.h>
 
 #include "federated/federated_metadata.h"
+#include "federated/metrics.h"
 #include "federated/session_manager_proxy.h"
 #include "federated/utils.h"
 
@@ -87,6 +88,8 @@ bool StorageManager::OnExampleReceived(const std::string& client_name,
     VLOG(1) << "No database connection";
     return false;
   }
+
+  Metrics::GetInstance()->LogExampleReceived(client_name);
 
   ExampleRecord example_record;
   example_record.serialized_example = serialized_example;
@@ -168,6 +171,7 @@ void StorageManager::OnSessionStarted() {
 
 void StorageManager::OnSessionStopped() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  Metrics::GetInstance()->LogStorageEvent(StorageEvent::kDisconnected);
   example_database_.reset();
 }
 
@@ -179,6 +183,7 @@ void StorageManager::ConnectToDatabaseIfNecessary() {
     VLOG(1) << "Sanitized_username is empty, disconnect the database";
     example_database_.reset();
     sanitized_username_ = "";
+    Metrics::GetInstance()->LogStorageEvent(StorageEvent::kEmptyUsernameError);
     return;
   }
 
@@ -195,6 +200,7 @@ void StorageManager::ConnectToDatabaseIfNecessary() {
   if (!example_database_->Init(GetClientNames())) {
     LOG(ERROR) << "Failed to connect to database for user "
                << sanitized_username_;
+    Metrics::GetInstance()->LogStorageEvent(StorageEvent::kDbInitError);
     example_database_.reset();
   } else if (!example_database_->CheckIntegrity()) {
     LOG(ERROR) << "Failed to verify the database integrity for user "
@@ -202,12 +208,17 @@ void StorageManager::ConnectToDatabaseIfNecessary() {
     if (!base::DeleteFile(db_path)) {
       LOG(ERROR) << "Failed to delete corrupted db file " << db_path.value();
     }
+    Metrics::GetInstance()->LogStorageEvent(
+        StorageEvent::kDbIntegrityCheckError);
     example_database_.reset();
   } else if (!example_database_->DeleteOutdatedExamples(kExampleTtl)) {
     LOG(ERROR) << "Failed to delete outdated examples for user "
                << sanitized_username_;
+    Metrics::GetInstance()->LogStorageEvent(
+        StorageEvent::kDbCleanOutdatedDataError);
     example_database_.reset();
   } else {
+    Metrics::GetInstance()->LogStorageEvent(StorageEvent::kConnected);
 #if USE_LOCAL_FEDERATED_SERVER
     DVLOG(1) << "Successfully connect to database, inserts examples for test.";
     std::vector<std::string> queries = {"hey", "hey", "hey", "wow", "wow",

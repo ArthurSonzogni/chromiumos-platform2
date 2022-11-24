@@ -20,6 +20,7 @@
 #include "federated/device_status_monitor.h"
 #include "federated/federated_library.h"
 #include "federated/federated_metadata.h"
+#include "federated/metrics.h"
 #include "federated/storage_manager.h"
 #include "federated/utils.h"
 
@@ -81,8 +82,10 @@ void Scheduler::Schedule() {
     if (error != nullptr) {
       LOG(ERROR) << "Error calling dlcservice (code=" << error->GetCode()
                  << "): " << error->GetMessage();
+      Metrics::GetInstance()->LogServiceEvent(ServiceEvent::kDlcKnownError);
     } else {
       LOG(ERROR) << "Error calling dlcservice: unknown";
+      Metrics::GetInstance()->LogServiceEvent(ServiceEvent::kDlcUnknownError);
     }
     return;
   }
@@ -90,6 +93,7 @@ void Scheduler::Schedule() {
   // If installed, calls `ScheduleInternal()` instantly, otherwise triggers dlc
   // install and waits for DlcStateChanged signals.
   if (dlc_state.state() == dlcservice::DlcState::INSTALLED) {
+    Metrics::GetInstance()->LogServiceEvent(ServiceEvent::kDlcAlreadyInstalled);
     DVLOG(1) << "dlc fcp is already installed, root path is "
              << dlc_state.root_path();
     ScheduleInternal(dlc_state.root_path());
@@ -105,9 +109,14 @@ void Scheduler::Schedule() {
       if (error != nullptr) {
         LOG(ERROR) << "Error calling dlcservice (code=" << error->GetCode()
                    << "): " << error->GetMessage();
+        Metrics::GetInstance()->LogServiceEvent(ServiceEvent::kDlcKnownError);
       } else {
         LOG(ERROR) << "Error calling dlcservice: unknown";
+        Metrics::GetInstance()->LogServiceEvent(ServiceEvent::kDlcUnknownError);
       }
+    } else {
+      Metrics::GetInstance()->LogServiceEvent(
+          ServiceEvent::kDlcInstallTriggered);
     }
   }
 }
@@ -165,6 +174,8 @@ void Scheduler::OnDlcStateChanged(const dlcservice::DlcState& dlc_state) {
 
   DVLOG(1) << "dlc fcp is now installed, root path is "
            << dlc_state.root_path();
+  Metrics::GetInstance()->LogServiceEvent(ServiceEvent::kDlcNewlyInstalled);
+
   ScheduleInternal(dlc_state.root_path());
 }
 
@@ -184,6 +195,7 @@ void Scheduler::TryToStartJobForClient(
   federated_client->ResetRetryDelay();
   if (!device_status_monitor_->TrainingConditionsSatisfied()) {
     DVLOG(1) << "Device is not in a good condition for training now.";
+    Metrics::GetInstance()->LogServiceEvent(ServiceEvent::kTaskSkipped);
     KeepSchedulingJobForClient(federated_client);
     return;
   }

@@ -13,6 +13,7 @@
 #include <base/no_destructor.h>
 
 #include "federated/federated_client.h"
+#include "federated/metrics.h"
 
 namespace federated {
 
@@ -31,6 +32,7 @@ FederatedLibrary::FederatedLibrary(const std::string& lib_path)
     LOG(ERROR) << "Failed to load library, error message: " << error.ToString();
     status_ = absl::FailedPreconditionError(
         "Failed to load library, error message: " + error.ToString());
+    Metrics::GetInstance()->LogServiceEvent(ServiceEvent::kInvalidLibraryError);
     return;
   }
 
@@ -43,6 +45,8 @@ FederatedLibrary::FederatedLibrary(const std::string& lib_path)
   if (function_ptr == nullptr) {                                       \
     LOG(ERROR) << "Failed to lookup function " << #name;               \
     status_ = absl::InternalError("Failed to lookup function");        \
+    Metrics::GetInstance()->LogServiceEvent(                           \
+        ServiceEvent::kFunctionMissingError);                          \
     return;                                                            \
   }
   // Look up the function pointers.
@@ -51,6 +55,7 @@ FederatedLibrary::FederatedLibrary(const std::string& lib_path)
 #undef FEDERATED_LOOKUP_FUNCTION
 
   status_ = absl::OkStatus();
+  Metrics::GetInstance()->LogServiceEvent(ServiceEvent::kLibraryLoadingSuccess);
 }
 
 FederatedLibrary::~FederatedLibrary() = default;
