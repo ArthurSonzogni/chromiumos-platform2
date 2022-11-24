@@ -142,11 +142,10 @@ FakePlatform::FakePlatform()
       fake_loop_device_manager_(
           std::make_unique<brillo::fake::FakeLoopDeviceManager>()),
       mock_lvm_(std::make_unique<brillo::MockLogicalVolumeManager>()) {
-  base::GetTempDir(&tmpfs_rootfs_);
+  CHECK(base::GetTempDir(&tmpfs_rootfs_));
+  CHECK(tmpfs_rootfs_.IsAbsolute()) << "tmpfs_rootfs_=" << tmpfs_rootfs_;
   tmpfs_rootfs_ = tmpfs_rootfs_.Append(GetRandomSuffix());
-  if (!real_platform_.CreateDirectory(tmpfs_rootfs_)) {
-    LOG(ERROR) << "Failed to create test dir: " << tmpfs_rootfs_;
-  }
+  CHECK(real_platform_.CreateDirectory(tmpfs_rootfs_));
   fake_mount_mapper_.reset(new FakeMountMapper(tmpfs_rootfs_));
   brillo::SecureBlob system_salt;
   InitializeFilesystemLayout(this, &system_salt);
