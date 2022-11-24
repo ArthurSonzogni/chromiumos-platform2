@@ -81,6 +81,10 @@ void DBusAdaptor::SetRainbowMode() {
   rgb_keyboard_controller_.SetRainbowMode();
 }
 
+void DBusAdaptor::SetZoneColor(int zone_idx, uint8_t r, uint8_t g, uint8_t b) {
+  rgb_keyboard_controller_.SetZoneColor(zone_idx, r, g, b);
+}
+
 void DBusAdaptor::SetTestingMode(bool enable_testing, uint32_t capability) {
   if (enable_testing) {
     if (capability >

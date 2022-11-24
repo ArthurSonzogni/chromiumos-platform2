@@ -103,6 +103,14 @@ RgbKeyboardControllerImpl::GetRainbowModeForKeyboard() const {
   }
 }
 
+// TODO(swifton): Implement this stub.
+void RgbKeyboardControllerImpl::SetZoneColor(int zone_idx,
+                                             uint8_t r,
+                                             uint8_t g,
+                                             uint8_t b) {
+  NOTIMPLEMENTED();
+}
+
 void RgbKeyboardControllerImpl::SetRainbowMode() {
   background_type_ = BackgroundType::kStaticRainbow;
   for (const auto& entry : GetRainbowModeForKeyboard()) {

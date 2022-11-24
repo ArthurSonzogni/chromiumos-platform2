@@ -47,6 +47,18 @@
       </tp:docstring>
       <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
+    <method name="SetZoneColor">
+      <tp:docstring>
+        Sets the static background RGB color for the zone. If CapsLock is enabled,
+        this will not override the Capslock highlight keys. If Capslock is disabled,
+        the Capslock highlight keys will reflect this background color.
+      </tp:docstring>
+      <arg name="zone_idx" type="i" direction="in"/>
+      <arg name="r" type="y" direction="in"/>
+      <arg name="g" type="y" direction="in"/>
+      <arg name="b" type="y" direction="in"/>
+     <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+    </method>
     <method name="SetTestingMode">
       <tp:docstring>
         Used for testing purposes only. If `enable_testing` is true, the Rgbkbd
