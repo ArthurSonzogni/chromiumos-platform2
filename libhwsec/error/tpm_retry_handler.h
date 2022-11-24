@@ -47,12 +47,15 @@ class TPMRetryHandler {
     TPMRetryAction action = result.err_status()->ToTPMRetryAction();
 
     switch (action) {
+      case TPMRetryAction::kSession:
       case TPMRetryAction::kLater:
         // Flush the invalid sessions.
         retry |= FlushInvalidSessions(backend);
 
-        // fold expression with , operator.
-        ((retry |= ReloadObject(backend, args)), ...);
+        if (action == TPMRetryAction::kLater) {
+          // fold expression with , operator.
+          ((retry |= ReloadObject(backend, args)), ...);
+        }
         break;
 
       case TPMRetryAction::kCommunication:
