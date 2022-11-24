@@ -42,7 +42,6 @@ executable("cros_camera_service") {
     "reprocess_effect/gpu_algo_manager.cc",
     "reprocess_effect/portrait_mode_effect.cc",
     "reprocess_effect/reprocess_effect_manager.cc",
-    "scoped_yuv_buffer_handle.cc",
     "vendor_tag_ops_delegate.cc",
   ]
   configs += [ ":target_defaults" ]

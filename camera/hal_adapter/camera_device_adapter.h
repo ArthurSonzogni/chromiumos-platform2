@@ -36,7 +36,7 @@
 #include "common/utils/cros_camera_mojo_utils.h"
 #include "cros-camera/camera_buffer_manager.h"
 #include "cros-camera/camera_metrics.h"
-#include "hal_adapter/scoped_yuv_buffer_handle.h"
+#include "cutils/native_handle.h"
 
 namespace cros {
 
@@ -121,11 +121,9 @@ class CameraDeviceAdapter : public camera3_callback_ops_t {
       base::RepeatingCallback<bool(const camera_metadata_t&)>;
   using ReprocessEffectCallback =
       base::RepeatingCallback<int32_t(const camera_metadata_t&,
-                                      ScopedYUVBufferHandle*,
-                                      uint32_t,
-                                      uint32_t,
+                                      buffer_handle_t,
                                       android::CameraMetadata*,
-                                      ScopedYUVBufferHandle*)>;
+                                      buffer_handle_t)>;
   using AllocatedBuffers =
       base::flat_map<uint64_t, std::vector<mojom::Camera3StreamBufferPtr>>;
   // Starts the camera device adapter.  This method must be called before all
@@ -307,7 +305,7 @@ class CameraDeviceAdapter : public camera3_callback_ops_t {
   std::map<uint64_t, buffer_handle_t> allocated_stream_buffers_;
 
   // A queue of reprocessing buffers.
-  std::deque<ScopedYUVBufferHandle> reprocess_handles_;
+  std::deque<ScopedBufferHandle> reprocess_handles_;
 
   // A queue of original input buffer handles replaced by reprocessing ones.
   std::deque<uint64_t> input_buffer_handle_ids_;

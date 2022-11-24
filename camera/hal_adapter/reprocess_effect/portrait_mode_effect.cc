@@ -11,6 +11,7 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+#include <cstdint>
 #include <iterator>
 #include <memory>
 #include <string>
@@ -31,9 +32,9 @@
 #include <libyuv/convert_argb.h>
 #include <system/camera_metadata.h>
 
+#include "cros-camera/camera_buffer_manager.h"
 #include "cros-camera/camera_gpu_algo_header.h"
 #include "cros-camera/common.h"
-#include "hal_adapter/scoped_yuv_buffer_handle.h"
 
 namespace cros {
 
@@ -93,17 +94,14 @@ int32_t PortraitModeEffect::SetVendorTags(uint32_t request_vendor_tag_start,
 
 int32_t PortraitModeEffect::ReprocessRequest(
     const camera_metadata_t& settings,
-    ScopedYUVBufferHandle* input_buffer,
-    uint32_t width,
-    uint32_t height,
+    buffer_handle_t input_buffer,
     uint32_t orientation,
-    uint32_t v4l2_format,
     android::CameraMetadata* result_metadata,
-    ScopedYUVBufferHandle* output_buffer) {
+    buffer_handle_t output_buffer) {
   VLOGF_ENTER();
 
   constexpr base::TimeDelta kPortraitProcessorTimeout = base::Seconds(15);
-  if (!input_buffer || !*input_buffer || !output_buffer || !*output_buffer) {
+  if (!input_buffer || !output_buffer) {
     return -EINVAL;
   }
   camera_metadata_ro_entry_t entry = {};
@@ -112,16 +110,14 @@ int32_t PortraitModeEffect::ReprocessRequest(
     LOGF(ERROR) << "Failed to find portrait mode vendor tag";
     return -EINVAL;
   }
-  auto* input_ycbcr = input_buffer->LockYCbCr();
-  if (!input_ycbcr) {
-    LOGF(ERROR) << "Failed to lock input buffer handle";
-    return -EINVAL;
-  }
-  auto* output_ycbcr = output_buffer->LockYCbCr();
-  if (!output_ycbcr) {
-    LOGF(ERROR) << "Failed to lock output buffer handle";
-    return -EINVAL;
-  }
+  ScopedMapping input_mapping(input_buffer);
+  ScopedMapping output_mapping(output_buffer);
+  uint32_t width = input_mapping.width();
+  uint32_t height = input_mapping.height();
+  uint32_t v4l2_format = input_mapping.v4l2_format();
+  DCHECK_EQ(output_mapping.width(), width);
+  DCHECK_EQ(output_mapping.height(), height);
+  DCHECK_EQ(output_mapping.v4l2_format(), v4l2_format);
 
   if (entry.data.u8[0] != 0) {
     const uint32_t kRGBNumOfChannels = 3;
@@ -147,9 +143,8 @@ int32_t PortraitModeEffect::ReprocessRequest(
     base::ScopedClosureRunner result_metadata_runner(
         base::BindOnce(&PortraitModeEffect::UpdateResultMetadata,
                        base::Unretained(this), result_metadata, &result));
-    result = ConvertYUVToRGB(v4l2_format, *input_ycbcr,
-                             input_rgb_shm_mapping.memory(), rgb_buf_stride,
-                             width, height);
+    result = ConvertYUVToRGB(input_mapping, input_rgb_shm_mapping.memory(),
+                             rgb_buf_stride);
     if (result != 0) {
       LOGF(ERROR) << "Failed to convert from YUV to RGB";
       return result;
@@ -225,7 +220,7 @@ int32_t PortraitModeEffect::ReprocessRequest(
     }
 
     result = ConvertRGBToYUV(output_rgb_shm_mapping.memory(), rgb_buf_stride,
-                             v4l2_format, *output_ycbcr, width, height);
+                             output_mapping);
     if (result != 0) {
       LOGF(ERROR) << "Failed to convert from RGB to YUV";
     }
@@ -237,42 +232,32 @@ int32_t PortraitModeEffect::ReprocessRequest(
     switch (v4l2_format) {
       case V4L2_PIX_FMT_NV12:
       case V4L2_PIX_FMT_NV12M:
-        libyuv::CopyPlane(static_cast<const uint8_t*>(input_ycbcr->y),
-                          input_ycbcr->ystride,
-                          static_cast<uint8_t*>(output_ycbcr->y),
-                          output_ycbcr->ystride, width, height);
-        libyuv::CopyPlane_16(static_cast<const uint16_t*>(input_ycbcr->cb),
-                             input_ycbcr->cstride,
-                             static_cast<uint16_t*>(output_ycbcr->cb),
-                             output_ycbcr->cstride, width, height);
-        break;
       case V4L2_PIX_FMT_NV21:
       case V4L2_PIX_FMT_NV21M:
-        libyuv::CopyPlane(static_cast<const uint8_t*>(input_ycbcr->y),
-                          input_ycbcr->ystride,
-                          static_cast<uint8_t*>(output_ycbcr->y),
-                          output_ycbcr->ystride, width, height);
-        libyuv::CopyPlane_16(static_cast<const uint16_t*>(input_ycbcr->cr),
-                             input_ycbcr->cstride,
-                             static_cast<uint16_t*>(output_ycbcr->cr),
-                             output_ycbcr->cstride, width, height);
+        if (libyuv::NV12Copy(
+                input_mapping.plane(0).addr, input_mapping.plane(0).stride,
+                input_mapping.plane(1).addr, input_mapping.plane(1).stride,
+                output_mapping.plane(0).addr, output_mapping.plane(0).stride,
+                output_mapping.plane(1).addr, output_mapping.plane(1).stride,
+                width, height) != 0) {
+          LOGF(ERROR) << "Failed to copy NV12/NV21";
+          return -EINVAL;
+        }
         break;
       case V4L2_PIX_FMT_YUV420:
       case V4L2_PIX_FMT_YUV420M:
       case V4L2_PIX_FMT_YVU420:
       case V4L2_PIX_FMT_YVU420M:
         if (libyuv::I420Copy(
-                static_cast<const uint8_t*>(input_ycbcr->y),
-                input_ycbcr->ystride,
-                static_cast<const uint8_t*>(input_ycbcr->cb),
-                input_ycbcr->cstride,
-                static_cast<const uint8_t*>(input_ycbcr->cr),
-                input_ycbcr->cstride, static_cast<uint8_t*>(output_ycbcr->y),
-                output_ycbcr->ystride, static_cast<uint8_t*>(output_ycbcr->cb),
-                output_ycbcr->cstride, static_cast<uint8_t*>(output_ycbcr->cr),
-                output_ycbcr->cstride, width, height) != 0) {
-          LOGF(ERROR) << "Failed to copy I420";
-          return -ENOMEM;
+                input_mapping.plane(0).addr, input_mapping.plane(0).stride,
+                input_mapping.plane(1).addr, input_mapping.plane(1).stride,
+                input_mapping.plane(2).addr, input_mapping.plane(2).stride,
+                output_mapping.plane(0).addr, output_mapping.plane(0).stride,
+                output_mapping.plane(1).addr, output_mapping.plane(1).stride,
+                output_mapping.plane(2).addr, output_mapping.plane(2).stride,
+                width, height) != 0) {
+          LOGF(ERROR) << "Failed to copy YUV420";
+          return -EINVAL;
         }
         break;
       default:
@@ -301,51 +286,59 @@ void PortraitModeEffect::ReturnCallback(uint32_t status,
   condvar_.Signal();
 }
 
-int PortraitModeEffect::ConvertYUVToRGB(uint32_t v4l2_format,
-                                        const android_ycbcr& ycbcr,
+int PortraitModeEffect::ConvertYUVToRGB(const ScopedMapping& mapping,
                                         void* rgb_buf_addr,
-                                        uint32_t rgb_buf_stride,
-                                        uint32_t width,
-                                        uint32_t height) {
-  switch (v4l2_format) {
+                                        uint32_t rgb_buf_stride) {
+  switch (mapping.v4l2_format()) {
     case V4L2_PIX_FMT_NV12:
     case V4L2_PIX_FMT_NV12M:
-      if (libyuv::NV12ToRGB24(
-              static_cast<const uint8_t*>(ycbcr.y), ycbcr.ystride,
-              static_cast<const uint8_t*>(ycbcr.cb), ycbcr.cstride,
-              static_cast<uint8_t*>(rgb_buf_addr), rgb_buf_stride, width,
-              height) != 0) {
+      if (libyuv::NV12ToRGB24(mapping.plane(0).addr, mapping.plane(0).stride,
+                              mapping.plane(1).addr, mapping.plane(1).stride,
+                              static_cast<uint8_t*>(rgb_buf_addr),
+                              rgb_buf_stride, mapping.width(),
+                              mapping.height()) != 0) {
         LOGF(ERROR) << "Failed to convert from NV12 to RGB";
         return -EINVAL;
       }
       break;
     case V4L2_PIX_FMT_NV21:
     case V4L2_PIX_FMT_NV21M:
-      if (libyuv::NV21ToRGB24(
-              static_cast<const uint8_t*>(ycbcr.y), ycbcr.ystride,
-              static_cast<const uint8_t*>(ycbcr.cr), ycbcr.cstride,
-              static_cast<uint8_t*>(rgb_buf_addr), rgb_buf_stride, width,
-              height) != 0) {
+      if (libyuv::NV21ToRGB24(mapping.plane(0).addr, mapping.plane(0).stride,
+                              mapping.plane(1).addr, mapping.plane(1).stride,
+                              static_cast<uint8_t*>(rgb_buf_addr),
+                              rgb_buf_stride, mapping.width(),
+                              mapping.height()) != 0) {
         LOGF(ERROR) << "Failed to convert from NV21 to RGB";
         return -EINVAL;
       }
       break;
     case V4L2_PIX_FMT_YUV420:
     case V4L2_PIX_FMT_YUV420M:
+      if (libyuv::I420ToRGB24(mapping.plane(0).addr, mapping.plane(0).stride,
+                              mapping.plane(1).addr, mapping.plane(1).stride,
+                              mapping.plane(2).addr, mapping.plane(2).stride,
+                              static_cast<uint8_t*>(rgb_buf_addr),
+                              rgb_buf_stride, mapping.width(),
+                              mapping.height()) != 0) {
+        LOGF(ERROR) << "Failed to convert from YUV420 to RGB";
+        return -EINVAL;
+      }
+      break;
     case V4L2_PIX_FMT_YVU420:
     case V4L2_PIX_FMT_YVU420M:
-      if (libyuv::I420ToRGB24(
-              static_cast<const uint8_t*>(ycbcr.y), ycbcr.ystride,
-              static_cast<const uint8_t*>(ycbcr.cb), ycbcr.cstride,
-              static_cast<const uint8_t*>(ycbcr.cr), ycbcr.cstride,
-              static_cast<uint8_t*>(rgb_buf_addr), rgb_buf_stride, width,
-              height) != 0) {
-        LOGF(ERROR) << "Failed to convert from I420 to RGB";
+      if (libyuv::I420ToRGB24(mapping.plane(0).addr, mapping.plane(0).stride,
+                              mapping.plane(2).addr, mapping.plane(2).stride,
+                              mapping.plane(1).addr, mapping.plane(1).stride,
+                              static_cast<uint8_t*>(rgb_buf_addr),
+                              rgb_buf_stride, mapping.width(),
+                              mapping.height()) != 0) {
+        LOGF(ERROR) << "Failed to convert from YVU420 to RGB";
         return -EINVAL;
       }
       break;
     default:
-      LOGF(ERROR) << "Unsupported format " << FormatToString(v4l2_format);
+      LOGF(ERROR) << "Unsupported format "
+                  << FormatToString(mapping.v4l2_format());
       return -EINVAL;
   }
   return 0;
@@ -353,18 +346,16 @@ int PortraitModeEffect::ConvertYUVToRGB(uint32_t v4l2_format,
 
 int PortraitModeEffect::ConvertRGBToYUV(void* rgb_buf_addr,
                                         uint32_t rgb_buf_stride,
-                                        uint32_t v4l2_format,
-                                        const android_ycbcr& ycbcr,
-                                        uint32_t width,
-                                        uint32_t height) {
+                                        const ScopedMapping& mapping) {
   auto convert_rgb_to_nv = [](const uint8_t* rgb_addr,
-                              const android_ycbcr& ycbcr, uint32_t width,
-                              uint32_t height, uint32_t v4l2_format) {
+                              const ScopedMapping& mapping) {
     // TODO(hywu): convert RGB to NV12/NV21 directly
     auto div_round_up = [](uint32_t n, uint32_t d) {
       return ((n + d - 1) / d);
     };
     const uint32_t kRGBNumOfChannels = 3;
+    uint32_t width = mapping.width();
+    uint32_t height = mapping.height();
     uint32_t ystride = width;
     uint32_t cstride = div_round_up(width, 2);
     uint32_t total_size =
@@ -378,59 +369,66 @@ int PortraitModeEffect::ConvertRGBToYUV(void* rgb_buf_addr,
                             i420_cb, cstride, i420_cr, cstride, width,
                             height) != 0) {
       LOGF(ERROR) << "Failed to convert from RGB to I420";
-      return -ENOMEM;
+      return -EINVAL;
     }
-    if (v4l2_format == V4L2_PIX_FMT_NV12) {
+    if (mapping.v4l2_format() == V4L2_PIX_FMT_NV12) {
       if (libyuv::I420ToNV12(i420_y.get(), ystride, i420_cb, cstride, i420_cr,
-                             cstride, static_cast<uint8_t*>(ycbcr.y),
-                             ycbcr.ystride, static_cast<uint8_t*>(ycbcr.cb),
-                             ycbcr.cstride, width, height) != 0) {
+                             cstride, mapping.plane(0).addr,
+                             mapping.plane(0).stride, mapping.plane(1).addr,
+                             mapping.plane(1).stride, width, height) != 0) {
         LOGF(ERROR) << "Failed to convert from I420 to NV12";
-        return -ENOMEM;
+        return -EINVAL;
       }
-    } else if (v4l2_format == V4L2_PIX_FMT_NV21) {
+    } else if (mapping.v4l2_format() == V4L2_PIX_FMT_NV21) {
       if (libyuv::I420ToNV21(i420_y.get(), ystride, i420_cb, cstride, i420_cr,
-                             cstride, static_cast<uint8_t*>(ycbcr.y),
-                             ycbcr.ystride, static_cast<uint8_t*>(ycbcr.cr),
-                             ycbcr.cstride, width, height) != 0) {
+                             cstride, mapping.plane(0).addr,
+                             mapping.plane(0).stride, mapping.plane(1).addr,
+                             mapping.plane(1).stride, width, height) != 0) {
         LOGF(ERROR) << "Failed to convert from I420 to NV21";
-        return -ENOMEM;
+        return -EINVAL;
       }
     } else {
       return -EINVAL;
     }
     return 0;
   };
-  switch (v4l2_format) {
+  switch (mapping.v4l2_format()) {
     case V4L2_PIX_FMT_NV12:
     case V4L2_PIX_FMT_NV12M:
-      if (convert_rgb_to_nv(static_cast<const uint8_t*>(rgb_buf_addr), ycbcr,
-                            width, height, V4L2_PIX_FMT_NV12) != 0) {
-        return -EINVAL;
-      }
-      break;
     case V4L2_PIX_FMT_NV21:
     case V4L2_PIX_FMT_NV21M:
-      if (convert_rgb_to_nv(static_cast<const uint8_t*>(rgb_buf_addr), ycbcr,
-                            width, height, V4L2_PIX_FMT_NV21) != 0) {
+      if (convert_rgb_to_nv(static_cast<const uint8_t*>(rgb_buf_addr),
+                            mapping) != 0) {
         return -EINVAL;
       }
       break;
     case V4L2_PIX_FMT_YUV420:
     case V4L2_PIX_FMT_YUV420M:
+      if (libyuv::RGB24ToI420(static_cast<const uint8_t*>(rgb_buf_addr),
+                              rgb_buf_stride, mapping.plane(0).addr,
+                              mapping.plane(0).stride, mapping.plane(1).addr,
+                              mapping.plane(1).stride, mapping.plane(2).addr,
+                              mapping.plane(2).stride, mapping.width(),
+                              mapping.height()) != 0) {
+        LOGF(ERROR) << "Failed to convert from RGB to YUV420";
+        return -EINVAL;
+      }
+      break;
     case V4L2_PIX_FMT_YVU420:
     case V4L2_PIX_FMT_YVU420M:
       if (libyuv::RGB24ToI420(static_cast<const uint8_t*>(rgb_buf_addr),
-                              rgb_buf_stride, static_cast<uint8_t*>(ycbcr.y),
-                              ycbcr.ystride, static_cast<uint8_t*>(ycbcr.cb),
-                              ycbcr.cstride, static_cast<uint8_t*>(ycbcr.cr),
-                              ycbcr.cstride, width, height) != 0) {
-        LOGF(ERROR) << "Failed to convert from RGB";
+                              rgb_buf_stride, mapping.plane(0).addr,
+                              mapping.plane(0).stride, mapping.plane(2).addr,
+                              mapping.plane(2).stride, mapping.plane(1).addr,
+                              mapping.plane(1).stride, mapping.width(),
+                              mapping.height()) != 0) {
+        LOGF(ERROR) << "Failed to convert from RGB to YVU420";
         return -EINVAL;
       }
       break;
     default:
-      LOGF(ERROR) << "Unsupported format " << FormatToString(v4l2_format);
+      LOGF(ERROR) << "Unsupported format "
+                  << FormatToString(mapping.v4l2_format());
       return -EINVAL;
   }
   return 0;

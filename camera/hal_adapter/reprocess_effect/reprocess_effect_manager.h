@@ -46,11 +46,9 @@ class ReprocessEffectManager : public vendor_tag_ops_t {
   // result vendor tags into |result_metadata| and the caller should merge them
   // into the result metadata of capture result.
   int32_t ReprocessRequest(const camera_metadata_t& settings,
-                           ScopedYUVBufferHandle* input_buffer,
-                           uint32_t width,
-                           uint32_t height,
+                           buffer_handle_t input_buffer,
                            android::CameraMetadata* result_metadata,
-                           ScopedYUVBufferHandle* output_buffer);
+                           buffer_handle_t output_buffer);
 
   // vendor_tag_ops_t implementations.
   static int GetTagCount(const vendor_tag_ops_t* v);

@@ -153,13 +153,11 @@ void ReprocessEffectManager::UpdateStaticMetadata(
 
 int32_t ReprocessEffectManager::ReprocessRequest(
     const camera_metadata_t& settings,
-    ScopedYUVBufferHandle* input_buffer,
-    uint32_t width,
-    uint32_t height,
+    buffer_handle_t input_buffer,
     android::CameraMetadata* result_metadata,
-    ScopedYUVBufferHandle* output_buffer) {
+    buffer_handle_t output_buffer) {
   VLOGF_ENTER();
-  if (!input_buffer || !*input_buffer || !output_buffer || !*output_buffer) {
+  if (!input_buffer || !output_buffer) {
     return -EINVAL;
   }
   uint32_t orientation = 0;
@@ -180,11 +178,8 @@ int32_t ReprocessEffectManager::ReprocessRequest(
         continue;
       }
       int result = 0;
-      uint32_t v4l2_format =
-          buffer_manager_->GetV4L2PixelFormat(*output_buffer->GetHandle());
       result = vendor_tag_effect_info_map_.at(tag).effect->ReprocessRequest(
-          settings, input_buffer, width, height, orientation, v4l2_format,
-          result_metadata, output_buffer);
+          settings, input_buffer, orientation, result_metadata, output_buffer);
       if (result != 0) {
         LOGF(ERROR) << "Failed to handle reprocess request on vendor tag 0x"
                     << std::hex << tag;

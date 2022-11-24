@@ -36,39 +36,30 @@ class PortraitModeEffect final
   int32_t InitializeAndGetVendorTags(
       std::vector<VendorTagInfo>* request_vendor_tags,
       std::vector<VendorTagInfo>* result_vendor_tags,
-      CameraMojoChannelManagerToken* token);
+      CameraMojoChannelManagerToken* token) override;
 
   int32_t SetVendorTags(uint32_t request_vendor_tag_start,
                         uint32_t request_vendor_tag_count,
                         uint32_t result_vendor_tag_start,
-                        uint32_t result_vendor_tag_count);
+                        uint32_t result_vendor_tag_count) override;
 
   int32_t ReprocessRequest(const camera_metadata_t& settings,
-                           ScopedYUVBufferHandle* input_buffer,
-                           uint32_t width,
-                           uint32_t height,
+                           buffer_handle_t input_buffer,
                            uint32_t orientation,
-                           uint32_t v4l2_format,
                            android::CameraMetadata* result_metadata,
-                           ScopedYUVBufferHandle* output_buffer);
+                           buffer_handle_t output_buffer) override;
 
  private:
   void UpdateResultMetadata(android::CameraMetadata* result_metadata,
                             const int* result);
 
-  int ConvertYUVToRGB(uint32_t v4l2_format,
-                      const android_ycbcr& ycbcr,
+  int ConvertYUVToRGB(const ScopedMapping& mapping,
                       void* rgb_buf_addr,
-                      uint32_t rgb_buf_stride,
-                      uint32_t width,
-                      uint32_t height);
+                      uint32_t rgb_buf_stride);
 
   int ConvertRGBToYUV(void* rgb_buf_addr,
                       uint32_t rgb_buf_stride,
-                      uint32_t v4l2_format,
-                      const android_ycbcr& ycbcr,
-                      uint32_t width,
-                      uint32_t height);
+                      const ScopedMapping& mapping);
 
   void ReturnCallback(uint32_t status, int32_t buffer_handle);
 

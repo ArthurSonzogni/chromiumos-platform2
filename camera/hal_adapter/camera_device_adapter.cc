@@ -33,7 +33,6 @@
 #include "cros-camera/camera_buffer_manager.h"
 #include "cros-camera/common.h"
 #include "cros-camera/future.h"
-#include "cros-camera/ipc_util.h"
 #include "cros-camera/tracing.h"
 #include "cros-camera/utils/camera_config.h"
 #include "hal_adapter/camera3_callback_ops_delegate.h"
@@ -757,8 +756,7 @@ void CameraDeviceAdapter::ReturnResultToClient(
     const camera3_stream_buffer_t* input_buffer =
         result_descriptor.GetInputBuffer();
     if (input_buffer && !self->reprocess_handles_.empty() &&
-        *input_buffer->buffer ==
-            *self->reprocess_handles_.front().GetHandle()) {
+        *input_buffer->buffer == *self->reprocess_handles_.front()) {
       in_buf = *input_buffer;
       // Restore original input buffer
       base::AutoLock buffer_handles_lock(self->buffer_handles_lock_);
@@ -1203,42 +1201,44 @@ void CameraDeviceAdapter::ReprocessEffectsOnReprocessEffectThread(
   };
   const camera3_capture_request_t* req = desc->LockForRequest();
   ReprocessContext reprocess_context(this, req, need_hal_reprocessing);
-  ScopedYUVBufferHandle scoped_output_handle =
-      need_hal_reprocessing ?
-                            // Allocate reprocessing buffer
-          ScopedYUVBufferHandle::AllocateScopedYUVHandle(
-              input_stream->width, input_stream->height,
-              GRALLOC_USAGE_SW_READ_OFTEN | GRALLOC_USAGE_SW_WRITE_OFTEN)
-                            :
-                            // Wrap the output buffer
-          ScopedYUVBufferHandle::CreateScopedYUVHandle(
-              *req->output_buffers[0].buffer, output_stream->width,
-              output_stream->height,
-              GRALLOC_USAGE_SW_READ_OFTEN | GRALLOC_USAGE_SW_WRITE_OFTEN);
-  if (!scoped_output_handle) {
-    LOGF(ERROR) << "Failed to create scoped output buffer";
+  buffer_handle_t output_buffer = *req->output_buffers[0].buffer;
+  ScopedBufferHandle scoped_output_handle;
+  if (need_hal_reprocessing) {
+    scoped_output_handle = CameraBufferManager::AllocateScopedBuffer(
+        input_stream->width, input_stream->height,
+        HAL_PIXEL_FORMAT_YCbCr_420_888,
+        GRALLOC_USAGE_SW_READ_OFTEN | GRALLOC_USAGE_SW_WRITE_OFTEN);
+    if (!scoped_output_handle) {
+      LOGF(ERROR) << "Failed to allocate reprocessing output buffer";
+      reprocess_context.result = -EINVAL;
+      return;
+    }
+    output_buffer = *scoped_output_handle;
+  }
+  ScopedMapping output_mapping(output_buffer);
+  if (!output_mapping.is_valid()) {
+    LOGF(ERROR) << "Failed to map reprocessing output buffer";
     reprocess_context.result = -EINVAL;
     return;
   }
-  ScopedYUVBufferHandle scoped_input_handle =
-      ScopedYUVBufferHandle::CreateScopedYUVHandle(
-          *req->input_buffer->buffer, input_stream->width, input_stream->height,
-          GRALLOC_USAGE_SW_READ_OFTEN | GRALLOC_USAGE_SW_WRITE_OFTEN);
-  if (!scoped_input_handle) {
-    LOGF(ERROR) << "Failed to create scoped input buffer";
+  buffer_handle_t input_buffer = *req->input_buffer->buffer;
+  ScopedMapping input_mapping(input_buffer);
+  if (!input_mapping.is_valid()) {
+    LOGF(ERROR) << "Failed to map reprocessing input buffer";
     reprocess_context.result = -EINVAL;
     return;
   }
+
   android::CameraMetadata reprocess_result_metadata;
   reprocess_context.result = reprocess_effect_callback_.Run(
-      *req->settings, &scoped_input_handle, input_stream->width,
-      input_stream->height, &reprocess_result_metadata, &scoped_output_handle);
+      *req->settings, input_buffer, &reprocess_result_metadata, output_buffer);
   if (reprocess_context.result != 0) {
     LOGF(ERROR) << "Failed to apply reprocess effect";
     return;
   }
   if (need_hal_reprocessing) {
     // Replace the input buffer with reprocessing output buffer
+    DCHECK_NE(scoped_output_handle, nullptr);
     {
       base::AutoLock reprocess_handles_lock(reprocess_handles_lock_);
       reprocess_handles_.push_back(std::move(scoped_output_handle));
@@ -1246,7 +1246,7 @@ void CameraDeviceAdapter::ReprocessEffectsOnReprocessEffectThread(
           reinterpret_cast<const camera_buffer_handle_t*>(
               *req->input_buffer->buffer)
               ->buffer_id);
-      req->input_buffer->buffer = reprocess_handles_.back().GetHandle();
+      req->input_buffer->buffer = reprocess_handles_.back().get();
     }
     {
       base::AutoLock reprocess_result_metadata_lock(

@@ -17,7 +17,6 @@
 #include <system/camera_metadata.h>
 
 #include "cros-camera/camera_mojo_channel_manager_token.h"
-#include "hal_adapter/scoped_yuv_buffer_handle.h"
 
 struct VendorTagInfo {
   const char* name;
@@ -67,22 +66,16 @@ class ReprocessEffect {
   // Args:
   //    |settings|: input metadata settings
   //    |input_buffer|: input buffer
-  //    |width|: width of input buffer
-  //    |height|: height of input buffer
   //    |orientation|: clockwise rotation angle in degrees to be viewed upright
-  //    |v4l2_format|: format of input buffer
   //    |result_metadata|: output result metadata
   //    |output_buffer|: output buffer
   // Returns:
   //    0 on success; corresponding error code on failure.
   virtual int32_t ReprocessRequest(const camera_metadata_t& settings,
-                                   ScopedYUVBufferHandle* input_buffer,
-                                   uint32_t width,
-                                   uint32_t height,
+                                   buffer_handle_t input_buffer,
                                    uint32_t orientation,
-                                   uint32_t v4l2_format,
                                    android::CameraMetadata* result_metadata,
-                                   ScopedYUVBufferHandle* output_buffer) = 0;
+                                   buffer_handle_t output_buffer) = 0;
 };
 
 }  // namespace cros

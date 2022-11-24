@@ -150,9 +150,9 @@ uint8_t* GetPlaneAddr(const android_ycbcr& ycbcr,
 
 void BufferHandleDeleter::operator()(buffer_handle_t* handle) {
   if (handle) {
-    auto* cbm = cros::CameraBufferManager::GetInstance();
-    if (cbm) {
-      cbm->Free(*handle);
+    auto* buf_mgr = cros::CameraBufferManager::GetInstance();
+    if (buf_mgr) {
+      buf_mgr->Free(*handle);
     }
     delete handle;
   }
