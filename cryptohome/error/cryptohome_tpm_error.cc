@@ -106,11 +106,11 @@ CryptohomeTPMError::CryptohomeTPMError(
 StatusChain<CryptohomeTPMError> CryptohomeTPMError::MakeStatusTrait::operator()(
     const ErrorLocationPair& loc,
     std::set<CryptohomeError::Action> actions,
-    const hwsec::TPMRetryAction retry) {
+    const hwsec::TPMRetryAction retry,
+    const std::optional<user_data_auth::CryptohomeErrorCode> ec) {
   PopulateActionFromRetry(retry, &actions);
   auto unified = ErrorLocationToUnified(loc);
-  return NewStatus<CryptohomeTPMError>(unified, std::move(actions), retry,
-                                       std::nullopt);
+  return NewStatus<CryptohomeTPMError>(unified, std::move(actions), retry, ec);
 }
 
 StatusChain<CryptohomeTPMError> CryptohomeTPMError::MakeStatusTrait::operator()(

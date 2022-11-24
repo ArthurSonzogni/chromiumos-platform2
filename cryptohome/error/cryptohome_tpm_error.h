@@ -58,7 +58,9 @@ class CryptohomeTPMError : public CryptohomeCryptoError {
     hwsec_foundation::status::StatusChain<CryptohomeTPMError> operator()(
         const ErrorLocationPair& loc,
         std::set<CryptohomeError::Action> actions,
-        const hwsec::TPMRetryAction retry);
+        const hwsec::TPMRetryAction retry,
+        const std::optional<user_data_auth::CryptohomeErrorCode> ec =
+            std::nullopt);
 
     // Create an error by converting |hwsec::TPMErrorBase|
     hwsec_foundation::status::StatusChain<CryptohomeTPMError> operator()(
