@@ -94,6 +94,11 @@ structure::SignatureChallengeInfo MakeFakeKeysetChallengeInfo(
 // Base fixture class that provides some common constants, helpers and mocks for
 // testing ChallengeCredentialsHelperImpl.
 class ChallengeCredentialsHelperImplTestBase : public testing::Test {
+ public:
+  void SetUp() override {
+    ON_CALL(hwsec_, IsSrkRocaVulnerable()).WillByDefault(ReturnValue(false));
+  }
+
  protected:
   ChallengeCredentialsHelperImplTestBase()
       : challenge_credentials_helper_(&hwsec_) {}
@@ -286,6 +291,18 @@ class ChallengeCredentialsHelperImplTestBase : public testing::Test {
         .WillOnce(ReturnError<TPMError>("fake", TPMRetryAction::kNoRetry));
   }
 
+  // Sets up a mock for vulnerable SRK.
+  void SetVulnerableSrk() {
+    EXPECT_CALL(hwsec_, IsSrkRocaVulnerable).WillOnce(ReturnValue(true));
+  }
+
+  // Sets up a mock for when we can't check if SRK is vulnerable.
+  void SetSrkVulnerabilityUnknown() {
+    EXPECT_CALL(hwsec_, IsSrkRocaVulnerable)
+        .WillRepeatedly(
+            ReturnError<TPMError>("fake", TPMRetryAction::kNoRetry));
+  }
+
  protected:
   // Constants which are passed as fake data inputs to the
   // ChallengeCredentialsHelperImpl methods:
@@ -405,6 +422,27 @@ TEST_F(ChallengeCredentialsHelperImplBasicTest, GenerateNewSuccess) {
   VerifySuccessfulGenerateNewResult(*generate_new_result);
 }
 
+// Test failure of the GenerateNew() operation due to SRK vulnerable to ROCA.
+TEST_F(ChallengeCredentialsHelperImplBasicTest, GenerateNewFailureInROCA) {
+  SetVulnerableSrk();
+
+  std::unique_ptr<ChallengeCredentialsHelper::GenerateNewOrDecryptResult>
+      generate_new_result;
+  CallGenerateNew({kAlgorithm} /* key_algorithms */, &generate_new_result);
+  ASSERT_FALSE(generate_new_result);
+}
+
+// Test failure of the GenerateNew() operation due to failure to query SRK ROCA
+// status.
+TEST_F(ChallengeCredentialsHelperImplBasicTest, GenerateNewFailureInROCACheck) {
+  SetSrkVulnerabilityUnknown();
+
+  std::unique_ptr<ChallengeCredentialsHelper::GenerateNewOrDecryptResult>
+      generate_new_result;
+  CallGenerateNew({kAlgorithm} /* key_algorithms */, &generate_new_result);
+  ASSERT_FALSE(generate_new_result);
+}
+
 // Test failure of the GenerateNew() operation due to failure in salt
 // generation.
 TEST_F(ChallengeCredentialsHelperImplBasicTest,
@@ -449,6 +487,31 @@ TEST_F(ChallengeCredentialsHelperImplBasicTest,
       generate_new_result;
   CallGenerateNew({kAlgorithm} /* key_algorithms */, &generate_new_result);
   ASSERT_FALSE(generate_new_result);
+}
+
+// Test failure of the Decrypt() operation due to SRK vulnerable to ROCA.
+TEST_F(ChallengeCredentialsHelperImplBasicTest, DecryptFailureInROCA) {
+  SetVulnerableSrk();
+
+  std::unique_ptr<ChallengeCredentialsHelper::GenerateNewOrDecryptResult>
+      decrypt_result;
+  CallDecrypt({kAlgorithm} /* key_algorithms */,
+              kAlgorithm /* salt_challenge_algorithm */, Blob() /* salt */,
+              &decrypt_result);
+  ASSERT_FALSE(decrypt_result);
+}
+
+// Test failure of the Decrypt() operation due to failure to query SRK ROCA
+// status.
+TEST_F(ChallengeCredentialsHelperImplBasicTest, DecryptFailureInROCACheck) {
+  SetSrkVulnerabilityUnknown();
+
+  std::unique_ptr<ChallengeCredentialsHelper::GenerateNewOrDecryptResult>
+      decrypt_result;
+  CallDecrypt({kAlgorithm} /* key_algorithms */,
+              kAlgorithm /* salt_challenge_algorithm */, Blob() /* salt */,
+              &decrypt_result);
+  ASSERT_FALSE(decrypt_result);
 }
 
 // Test failure of the Decrypt() operation due to the input salt being empty.

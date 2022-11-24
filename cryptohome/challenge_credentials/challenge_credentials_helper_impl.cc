@@ -4,12 +4,15 @@
 
 #include "cryptohome/challenge_credentials/challenge_credentials_helper_impl.h"
 
+#include <optional>
 #include <utility>
 
 #include <base/bind.h>
 #include <base/check.h>
 #include <base/check_op.h>
 #include <base/logging.h>
+#include <base/strings/string_util.h>
+#include <base/system/sys_info.h>
 #include <libhwsec/status.h>
 #include <libhwsec/frontend/cryptohome/frontend.h>
 
@@ -44,16 +47,73 @@ bool IsOperationFailureTransient(
          action == TPMRetryAction::kLater;
 }
 
+// Returns whether the Chrome OS image is a test one.
+bool IsOsTestImage() {
+  std::string chromeos_release_track;
+  if (!base::SysInfo::GetLsbReleaseValue("CHROMEOS_RELEASE_TRACK",
+                                         &chromeos_release_track)) {
+    // Fall back to the safer assumption that we're not in a test image.
+    return false;
+  }
+  return base::StartsWith(chromeos_release_track, "test",
+                          base::CompareCase::SENSITIVE);
+}
+
 }  // namespace
 
 ChallengeCredentialsHelperImpl::ChallengeCredentialsHelperImpl(
     hwsec::CryptohomeFrontend* hwsec)
-    : hwsec_(hwsec) {
+    : roca_vulnerable_(std::nullopt), hwsec_(hwsec) {
   DCHECK(hwsec_);
 }
 
 ChallengeCredentialsHelperImpl::~ChallengeCredentialsHelperImpl() {
   DCHECK(thread_checker_.CalledOnValidThread());
+}
+
+TPMStatus ChallengeCredentialsHelperImpl::CheckSrkRocaStatus() {
+  // Prepare the TPMStatus for vulnerable case because it will be used in
+  // multiple places.
+  auto vulnerable_status = MakeStatus<CryptohomeTPMError>(
+      CRYPTOHOME_ERR_LOC(kLocChalCredHelperROCAVulnerableInCheckSrkRocaStatus),
+      ErrorActionSet({ErrorAction::kTpmUpdateRequired}),
+      TPMRetryAction::kNoRetry,
+      user_data_auth::CRYPTOHOME_ERROR_TPM_UPDATE_REQUIRED);
+
+  // Have we checked before?
+  if (roca_vulnerable_.has_value()) {
+    if (roca_vulnerable_.value()) {
+      return vulnerable_status;
+    }
+    return OkStatus<CryptohomeTPMError>();
+  }
+
+  // Fail if the security chip is known to be vulnerable and we're not in a test
+  // image.
+  hwsec::StatusOr<bool> is_srk_roca_vulnerable = hwsec_->IsSrkRocaVulnerable();
+  if (!is_srk_roca_vulnerable.ok()) {
+    LOG(ERROR) << "Failed to get the hwsec SRK ROCA vulnerable status: "
+               << is_srk_roca_vulnerable.status();
+    return MakeStatus<CryptohomeTPMError>(
+        CRYPTOHOME_ERR_LOC(
+            kLocChalCredHelperCantQueryROCAVulnInCheckSrkRocaStatus),
+        ErrorActionSet({ErrorAction::kReboot}), TPMRetryAction::kReboot,
+        user_data_auth::CRYPTOHOME_ERROR_MOUNT_FATAL);
+  }
+
+  if (is_srk_roca_vulnerable.value()) {
+    if (!IsOsTestImage()) {
+      LOG(ERROR)
+          << "Cannot do challenge-response mount: HWSec is ROCA vulnerable";
+      roca_vulnerable_ = true;
+      return vulnerable_status;
+    }
+    LOG(WARNING) << "HWSec is ROCA vulnerable; ignoring this for "
+                    "challenge-response mount due to running in test image";
+  }
+
+  roca_vulnerable_ = false;
+  return OkStatus<CryptohomeTPMError>();
 }
 
 void ChallengeCredentialsHelperImpl::GenerateNew(
@@ -64,6 +124,16 @@ void ChallengeCredentialsHelperImpl::GenerateNew(
     GenerateNewCallback callback) {
   DCHECK(thread_checker_.CalledOnValidThread());
   DCHECK(!callback.is_null());
+
+  // Check SRK ROCA status.
+  TPMStatus status = CheckSrkRocaStatus();
+  if (!status.ok()) {
+    // We can forward the TPMStatus directly without wrapping because the
+    // callback will usually Wrap() the resulting error status anyway.
+    std::move(callback).Run(std::move(status));
+    return;
+  }
+
   CancelRunningOperation();
   key_challenge_service_ = std::move(key_challenge_service);
   operation_ = std::make_unique<ChallengeCredentialsGenerateNewOperation>(
@@ -82,6 +152,16 @@ void ChallengeCredentialsHelperImpl::Decrypt(
     DecryptCallback callback) {
   DCHECK(thread_checker_.CalledOnValidThread());
   DCHECK(!callback.is_null());
+
+  // Check SRK ROCA status.
+  TPMStatus status = CheckSrkRocaStatus();
+  if (!status.ok()) {
+    // We can forward the TPMStatus directly without wrapping because the
+    // callback will usually Wrap() the resulting error status anyway.
+    std::move(callback).Run(std::move(status));
+    return;
+  }
+
   CancelRunningOperation();
   key_challenge_service_ = std::move(key_challenge_service);
   StartDecryptOperation(account_id, public_key_info, keyset_challenge_info,
@@ -95,6 +175,16 @@ void ChallengeCredentialsHelperImpl::VerifyKey(
     VerifyKeyCallback callback) {
   DCHECK(thread_checker_.CalledOnValidThread());
   DCHECK(!callback.is_null());
+
+  // Check SRK ROCA status.
+  TPMStatus status = CheckSrkRocaStatus();
+  if (!status.ok()) {
+    // We can forward the TPMStatus directly without wrapping because the
+    // callback will usually Wrap() the resulting error status anyway.
+    std::move(callback).Run(std::move(status));
+    return;
+  }
+
   CancelRunningOperation();
   key_challenge_service_ = std::move(key_challenge_service);
   operation_ = std::make_unique<ChallengeCredentialsVerifyKeyOperation>(

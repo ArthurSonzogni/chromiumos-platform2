@@ -93,6 +93,17 @@ class ChallengeCredentialsHelperImpl final : public ChallengeCredentialsHelper {
   void OnVerifyKeyCompleted(VerifyKeyCallback original_callback,
                             TPMStatus verify_status);
 
+  // This will check if the current TPM (if that's the underlying secure
+  // element) is vulnerable to ROCA vulnerability. If not, an OkStatus is
+  // returned. If we fail to check or if it is vulnerable, an error status will
+  // be returned.
+  TPMStatus CheckSrkRocaStatus();
+
+  // A cache of SRK ROCA check result. The result takes the test image into
+  // consideration, i.e. no need to check whether we're on test image if this
+  // variable is true.
+  std::optional<bool> roca_vulnerable_;
+
   // Non-owned.
   hwsec::CryptohomeFrontend* const hwsec_;
   // The key challenge service used for the currently running operation, if any.

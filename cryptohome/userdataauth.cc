@@ -21,7 +21,6 @@
 #include <base/notreached.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
-#include <base/system/sys_info.h>
 #include <base/threading/thread_task_runner_handle.h>
 #include <bootlockbox/boot_lockbox_client.h>
 #include <brillo/cryptohome.h>
@@ -113,18 +112,6 @@ const std::string& GetAccountId(const AccountIdentifier& id) {
     return id.account_id();
   }
   return id.email();
-}
-
-// Returns whether the Chrome OS image is a test one.
-bool IsOsTestImage() {
-  std::string chromeos_release_track;
-  if (!base::SysInfo::GetLsbReleaseValue("CHROMEOS_RELEASE_TRACK",
-                                         &chromeos_release_track)) {
-    // Fall back to the safer assumption that we're not in a test image.
-    return false;
-  }
-  return base::StartsWith(chromeos_release_track, "test",
-                          base::CompareCase::SENSITIVE);
 }
 
 // Whether the key can be used for lightweight challenge-response authentication
@@ -1718,31 +1705,6 @@ CryptohomeStatus UserDataAuth::InitForChallengeResponseAuth() {
         ErrorActionSet(
             {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kReboot}),
         user_data_auth::CRYPTOHOME_ERROR_MOUNT_FATAL);
-  }
-
-  // Fail if the security chip is known to be vulnerable and we're not in a test
-  // image.
-  hwsec::StatusOr<bool> is_srk_roca_vulnerable = hwsec_->IsSrkRocaVulnerable();
-  if (!is_srk_roca_vulnerable.ok()) {
-    LOG(ERROR) << "Failed to get the hwsec SRK ROCA vulnerable status: "
-               << is_srk_roca_vulnerable.status();
-    return MakeStatus<CryptohomeError>(
-        CRYPTOHOME_ERR_LOC(kLocUserDataAuthCantQueryROCAVulnInInitChalRespAuth),
-        ErrorActionSet({ErrorAction::kReboot}),
-        user_data_auth::CRYPTOHOME_ERROR_MOUNT_FATAL);
-  }
-
-  if (is_srk_roca_vulnerable.value()) {
-    if (!IsOsTestImage()) {
-      LOG(ERROR)
-          << "Cannot do challenge-response mount: HWSec is ROCA vulnerable";
-      return MakeStatus<CryptohomeError>(
-          CRYPTOHOME_ERR_LOC(kLocUserDataAuthROCAVulnerableInInitChalRespAuth),
-          ErrorActionSet({ErrorAction::kTpmUpdateRequired}),
-          user_data_auth::CRYPTOHOME_ERROR_TPM_UPDATE_REQUIRED);
-    }
-    LOG(WARNING) << "HWSec is ROCA vulnerable; ignoring this for "
-                    "challenge-response mount due to running in test image";
   }
 
   if (!mount_thread_bus_) {

@@ -935,9 +935,9 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocUserDataAuthNoTPMInInitChalRespAuth = 554,
   /* ./userdataauth.cc */
   kLocUserDataAuthTPMNotReadyInInitChalRespAuth = 555,
-  /* ./userdataauth.cc */
+  /* =Obsolete= */
   kLocUserDataAuthCantQueryROCAVulnInInitChalRespAuth = 556,
-  /* ./userdataauth.cc */
+  /* =Obsolete= */
   kLocUserDataAuthROCAVulnerableInInitChalRespAuth = 557,
   /* ./userdataauth.cc */
   kLocUserDataAuthNoDBusInInitChalRespAuth = 558,
@@ -1275,6 +1275,10 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   //// This is a separator block at value 1500
   //// See location_db.py for more info.
   //////////////////////////////////////////////////
+  /* ./challenge_credentials/challenge_credentials_helper_impl.cc */
+  kLocChalCredHelperROCAVulnerableInCheckSrkRocaStatus = 1500,
+  /* ./challenge_credentials/challenge_credentials_helper_impl.cc */
+  kLocChalCredHelperCantQueryROCAVulnInCheckSrkRocaStatus = 1501,
   //////////////////////////////////////////////////
   //// This is a separator block at value 1700
   //// See location_db.py for more info.
