@@ -29,6 +29,8 @@ use protobuf::SingularPtrField;
 use sync::Mutex;
 use system_api::client::OrgChromiumUserDataAuthInterface;
 use system_api::rpc::AccountIdentifier;
+use system_api::UserDataAuth::GetEncryptionInfoReply;
+use system_api::UserDataAuth::GetEncryptionInfoRequest;
 use system_api::UserDataAuth::GetHibernateSecretReply;
 use system_api::UserDataAuth::GetHibernateSecretRequest;
 use zeroize::Zeroize;
@@ -48,6 +50,11 @@ const HIBERMAN_DBUS_NAME: &str = "org.chromium.Hibernate";
 const HIBERMAN_DBUS_PATH: &str = "/org/chromium/Hibernate";
 /// Define the name of the resume dbus interface.
 const HIBERMAN_RESUME_DBUS_INTERFACE: &str = "org.chromium.HibernateResumeInterface";
+
+/// Define the Cryptohome name used on dbus.
+const CRYPTOHOME_DBUS_NAME: &str = "org.chromium.UserDataAuth";
+/// Define the Cryptohome path used within dbus.
+const CRYPTOHOME_DBUS_PATH: &str = "/org/chromium/UserDataAuth";
 
 /// Define the message sent by the d-bus thread to the main thread when the
 /// ResumeFromHibernate d-bus method is called.
@@ -389,8 +396,8 @@ impl HiberDbusConnection {
 fn get_secret_seed(account_id: &str, auth_session_id: &[u8], seed: &mut Vec<u8>) -> Result<()> {
     let conn = Connection::new_system().context("Failed to connect to dbus for secret seed")?;
     let conn_path = conn.with_proxy(
-        "org.chromium.UserDataAuth",
-        "/org/chromium/UserDataAuth",
+        CRYPTOHOME_DBUS_NAME,
+        CRYPTOHOME_DBUS_PATH,
         DEFAULT_DBUS_TIMEOUT,
     );
 
@@ -411,6 +418,26 @@ fn get_secret_seed(account_id: &str, auth_session_id: &[u8], seed: &mut Vec<u8>)
     seed.copy_from_slice(&reply.hibernate_secret);
     reply.hibernate_secret.fill(0);
     Ok(())
+}
+
+/// Ask cryptohome for the encryption info that contains information about
+/// Keylocker security feature. Keylocker availability determines the power state
+/// which hiberman selects. Returns true, if keylocker is supported by the platform.
+pub fn is_keylocker_enabled() -> Result<bool> {
+    let conn = Connection::new_system().context("Failed to connect to dbus for encryption info")?;
+    let conn_path = conn.with_proxy(
+        CRYPTOHOME_DBUS_NAME,
+        CRYPTOHOME_DBUS_PATH,
+        DEFAULT_DBUS_TIMEOUT,
+    );
+    let proto: GetEncryptionInfoRequest = Message::new();
+    let response = conn_path
+        .get_encryption_info(proto.write_to_bytes().unwrap())
+        .context("Failed to call GetEncryptionInfo dbus method")?;
+    let reply: GetEncryptionInfoReply = Message::parse_from_bytes(&response)
+        .context("Failed to parse GetEncryptionInfo dbus response")?;
+    let keylocker = reply.get_keylocker_supported();
+    Ok(keylocker)
 }
 
 /// Send an abort request over dbus to cancel a pending resume. The hiberman

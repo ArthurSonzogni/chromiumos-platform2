@@ -11,6 +11,7 @@ use hiberman::metrics::log_hibernate_failure;
 use hiberman::metrics::log_resume_failure;
 use hiberman::AbortResumeOptions;
 use hiberman::HibernateOptions;
+use hiberman::PlatformMode;
 use hiberman::ResumeInitOptions;
 use hiberman::ResumeOptions;
 use hiberman::{self};
@@ -211,7 +212,7 @@ fn hiberman_hibernate(args: &mut std::env::Args) -> std::result::Result<(), ()> 
     opts.optflag(
         "p",
         "platform-mode",
-        "Force enable the use of suspending to platform mode (S4)",
+        "Set the platform mode to force_s4, force_s5, detect_platform",
     );
     opts.optflag(
         "u",
@@ -234,9 +235,25 @@ fn hiberman_hibernate(args: &mut std::env::Args) -> std::result::Result<(), ()> 
         return Ok(());
     }
 
+    let platform_value = matches.opt_str("p");
+    let platform_mode = if let Some(platform_value) = platform_value {
+        match platform_value.as_str() {
+            "force_s4" => PlatformMode::ForceS4,
+            "force_s5" => PlatformMode::ForceS5,
+            "detect_platform" => PlatformMode::DetectPlatform,
+            _ => {
+                eprintln!("Invalid platform-mode value: {}", platform_value);
+                hibernate_usage(true, &opts);
+                return Err(());
+            }
+        }
+    } else {
+        PlatformMode::DetectPlatform
+    };
+
     let options = HibernateOptions {
         dry_run: matches.opt_present("n"),
-        force_platform_mode: matches.opt_present("p"),
+        platform_mode,
         test_keys: matches.opt_present("t"),
         unencrypted: matches.opt_present("u"),
         no_kernel_encryption: matches.opt_present("k"),

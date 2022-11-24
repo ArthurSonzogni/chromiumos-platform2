@@ -129,8 +129,17 @@ pub struct HibernateOptions {
     pub dry_run: bool,
     pub unencrypted: bool,
     pub test_keys: bool,
-    pub force_platform_mode: bool,
+    pub platform_mode: PlatformMode,
     pub no_kernel_encryption: bool,
+}
+
+/// Platform mode options.
+#[derive(Debug, Eq, PartialEq, Default)]
+pub enum PlatformMode {
+    ForceS4,
+    ForceS5,
+    #[default]
+    DetectPlatform,
 }
 
 /// Options taken from the command line affecting resume-init.

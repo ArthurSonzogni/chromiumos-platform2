@@ -34,6 +34,7 @@ mod volume;
 use crate::dbus::send_abort;
 pub use hiberutil::AbortResumeOptions;
 pub use hiberutil::HibernateOptions;
+pub use hiberutil::PlatformMode;
 pub use hiberutil::ResumeInitOptions;
 pub use hiberutil::ResumeOptions;
 
