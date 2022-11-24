@@ -213,7 +213,8 @@ bool EffectsStreamManipulator::ProcessCaptureResult(
   return ret;
 }
 
-std::optional<int64_t> TryGetSensorTimestamp(Camera3CaptureDescriptor* desc) {
+std::optional<int64_t> EffectsStreamManipulator::TryGetSensorTimestamp(
+    Camera3CaptureDescriptor* desc) {
   base::span<const int64_t> timestamp =
       desc->GetMetadata<int64_t>(ANDROID_SENSOR_TIMESTAMP / 1000);
   return timestamp.size() == 1 ? std::make_optional(timestamp[0])
