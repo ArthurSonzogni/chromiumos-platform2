@@ -5,7 +5,6 @@
 #ifndef FUSEBOX_MAKE_STAT_H_
 #define FUSEBOX_MAKE_STAT_H_
 
-#include <dbus/message.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <time.h>
@@ -41,11 +40,6 @@ struct stat MakeStat(ino_t ino, const struct stat& s, bool read_only = false);
 
 // Returns an inode |ino| stat with synthesized permission bits.
 struct stat MakeStatFromProto(ino_t ino, const DirEntryProto& proto);
-
-// Returns an inode |ino| stat from |reader| with synthesized permission bits.
-struct stat GetServerStat(ino_t ino,
-                          dbus::MessageReader* reader,
-                          bool read_only = false);
 
 // Returns mode string.
 std::string StatModeToString(mode_t mode);

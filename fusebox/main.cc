@@ -180,11 +180,12 @@ class FuseBoxClient : public FileSystem {
       return;
     }
 
-    dbus::MethodCall method(kFuseBoxServiceInterface, kStatMethod);
-    dbus::MessageWriter writer(&method);
+    Stat2RequestProto request_proto;
+    request_proto.set_file_system_url(GetInodeTable().GetDevicePath(node));
 
-    auto path = GetInodeTable().GetDevicePath(node);
-    writer.AppendString(path);
+    dbus::MethodCall method(kFuseBoxServiceInterface, kStat2Method);
+    dbus::MessageWriter writer(&method);
+    writer.AppendProtoAsArrayOfBytes(request_proto);
 
     auto stat_response = base::BindOnce(&FuseBoxClient::StatResponse,
                                         weak_ptr_factory_.GetWeakPtr(),
@@ -201,23 +202,24 @@ class FuseBoxClient : public FileSystem {
       return;
 
     dbus::MessageReader reader(response);
-    if (int error = GetResponseErrno(&reader, response, "getattr")) {
-      request->ReplyError(error);
+    Stat2ResponseProto response_proto;
+    if (!reader.PopArrayOfBytesAsProto(&response_proto)) {
+      request->ReplyError(EINVAL);
+      return;
+    }
+    int32_t posix_error_code = response_proto.has_posix_error_code()
+                                   ? response_proto.posix_error_code()
+                                   : 0;
+    if (posix_error_code != 0) {
+      request->ReplyError(posix_error_code);
+      return;
+    } else if (!response_proto.has_stat()) {
+      request->ReplyError(EINVAL);
       return;
     }
 
-    Node* node = GetInodeTable().Lookup(ino);
-    if (!node) {
-      request->ReplyError(errno);
-      PLOG(ERROR) << "getattr-resp";
-      return;
-    }
-
-    Device device = GetInodeTable().GetDevice(node);
-    bool read_only = device.mode == "ro";
-
-    struct stat stat = GetServerStat(ino, &reader, read_only);
-    request->ReplyAttr(stat, kStatTimeoutSeconds);
+    request->ReplyAttr(MakeStatFromProto(ino, response_proto.stat()),
+                       kStatTimeoutSeconds);
   }
 
   void Lookup(std::unique_ptr<EntryRequest> request,
@@ -243,11 +245,13 @@ class FuseBoxClient : public FileSystem {
       return;
     }
 
-    dbus::MethodCall method(kFuseBoxServiceInterface, kStatMethod);
-    dbus::MessageWriter writer(&method);
+    Stat2RequestProto request_proto;
+    request_proto.set_file_system_url(
+        base::StrCat({GetInodeTable().GetDevicePath(parent_node), "/", name}));
 
-    std::string path = GetInodeTable().GetDevicePath(parent_node);
-    writer.AppendString(path.append("/").append(name));
+    dbus::MethodCall method(kFuseBoxServiceInterface, kStat2Method);
+    dbus::MessageWriter writer(&method);
+    writer.AppendProtoAsArrayOfBytes(request_proto);
 
     auto lookup_response = base::BindOnce(
         &FuseBoxClient::LookupResponse, weak_ptr_factory_.GetWeakPtr(),
@@ -272,9 +276,13 @@ class FuseBoxClient : public FileSystem {
     // where we get the FUSE request before the corresponding OnStorageAttached
     // D-Bus signal. We therefore ask the Chrome process (via a D-Bus method
     // call) whether the subdir exists (and reply ENOENT if it doesn't).
-    dbus::MethodCall method(kFuseBoxServiceInterface, kStatMethod);
+
+    Stat2RequestProto request_proto;
+    request_proto.set_file_system_url(name);
+
+    dbus::MethodCall method(kFuseBoxServiceInterface, kStat2Method);
     dbus::MessageWriter writer(&method);
-    writer.AppendString(name);
+    writer.AppendProtoAsArrayOfBytes(request_proto);
 
     auto stat_response = base::BindOnce(&FuseBoxClient::RootLookupResponse,
                                         weak_ptr_factory_.GetWeakPtr(),
@@ -291,9 +299,16 @@ class FuseBoxClient : public FileSystem {
       return;
 
     dbus::MessageReader reader(response);
-    if (int error = GetResponseErrno(&reader, response, "rootlookup")) {
-      errno = request->ReplyError(error);
-      PLOG(ERROR) << "rootlookup";
+    Stat2ResponseProto response_proto;
+    if (!reader.PopArrayOfBytesAsProto(&response_proto)) {
+      request->ReplyError(EINVAL);
+      return;
+    }
+    int32_t posix_error_code = response_proto.has_posix_error_code()
+                                   ? response_proto.posix_error_code()
+                                   : 0;
+    if (posix_error_code != 0) {
+      request->ReplyError(posix_error_code);
       return;
     }
 
@@ -328,8 +343,16 @@ class FuseBoxClient : public FileSystem {
       return;
 
     dbus::MessageReader reader(response);
-    if (int error = GetResponseErrno(&reader, response, "lookup")) {
-      request->ReplyError(error);
+    MkDirResponseProto response_proto;
+    if (!reader.PopArrayOfBytesAsProto(&response_proto)) {
+      request->ReplyError(EINVAL);
+      return;
+    }
+    int32_t posix_error_code = response_proto.has_posix_error_code()
+                                   ? response_proto.posix_error_code()
+                                   : 0;
+    if (posix_error_code != 0) {
+      request->ReplyError(posix_error_code);
       return;
     }
 
@@ -340,13 +363,12 @@ class FuseBoxClient : public FileSystem {
       return;
     }
 
-    Device device = GetInodeTable().GetDevice(node);
-    bool read_only = device.mode == "ro";
-
     fuse_entry_param entry = {0};
     entry.ino = static_cast<fuse_ino_t>(node->ino);
-    entry.attr = GetServerStat(node->ino, &reader, read_only);
-    entry.attr_timeout = kStatTimeoutSeconds;
+    if (response_proto.has_stat()) {
+      entry.attr = MakeStatFromProto(node->ino, response_proto.stat());
+    }
+    entry.attr_timeout = kEntryTimeoutSeconds;
     entry.entry_timeout = kEntryTimeoutSeconds;
 
     request->ReplyEntry(entry);

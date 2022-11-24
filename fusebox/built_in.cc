@@ -11,6 +11,7 @@
 #include <base/logging.h>
 #include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
+#include <dbus/message.h>
 
 #include "fusebox/make_stat.h"
 
@@ -55,12 +56,14 @@ void BuiltInReadPing(scoped_refptr<dbus::ObjectProxy> dbus_proxy,
                      std::unique_ptr<BufferRequest> request,
                      size_t size,
                      off_t off) {
-  // Issue a Stat call over D-Bus. The result of the Stat doesn't matter (and
+  // Issue a Stat2 call over D-Bus. The result of the Stat2 doesn't matter (and
   // should be an error for a subdir that doesn't exist). We just want to time
   // how long it takes to respond.
-  dbus::MethodCall method(kFuseBoxServiceInterface, kStatMethod);
+  Stat2RequestProto request_proto;
+  request_proto.set_file_system_url("ping_subdir_should_not_exist");
+  dbus::MethodCall method(kFuseBoxServiceInterface, kStat2Method);
   dbus::MessageWriter writer(&method);
-  writer.AppendString("ping_subdir_should_not_exist");
+  writer.AppendProtoAsArrayOfBytes(request_proto);
   dbus_proxy->CallMethod(
       &method, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT,
       base::BindOnce(&BuiltInReadPingResponse, std::move(request),

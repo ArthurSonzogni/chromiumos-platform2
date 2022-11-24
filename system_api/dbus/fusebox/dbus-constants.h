@@ -14,6 +14,7 @@ const char kFuseBoxServicePath[] = "/org/chromium/FuseBoxService";
 
 // FuseBoxService entry methods.
 const char kStatMethod[] = "Stat";
+const char kStat2Method[] = "Stat2";
 
 // FuseBoxService directory entry methods.
 const char kReadDirMethod[] = "ReadDir";
