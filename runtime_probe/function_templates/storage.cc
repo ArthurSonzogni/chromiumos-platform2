@@ -12,19 +12,22 @@
 #include <base/strings/string_number_conversions.h>
 #include <brillo/strings/string_utils.h>
 
+#include "runtime_probe/system/context.h"
 #include "runtime_probe/utils/file_utils.h"
 #include "runtime_probe/utils/type_utils.h"
 
 namespace runtime_probe {
 namespace {
-constexpr auto kStorageDirPath("/sys/class/block/*");
+constexpr auto kStorageDirPath("sys/class/block/*");
 constexpr auto kReadFileMaxSize = 1024;
 constexpr auto kDefaultBytesPerSector = 512;
 
 // Get paths of all non-removeable physical storage.
 std::vector<base::FilePath> GetFixedDevices() {
   std::vector<base::FilePath> res{};
-  for (const auto& storage_path : Glob(kStorageDirPath)) {
+  const auto rooted_storage_dir_pattern =
+      Context::Get()->root_dir().Append(kStorageDirPath);
+  for (const auto& storage_path : Glob(rooted_storage_dir_pattern)) {
     // Only return non-removable devices.
     const auto storage_removable_path = storage_path.Append("removable");
     std::string removable_res;
@@ -41,7 +44,7 @@ std::vector<base::FilePath> GetFixedDevices() {
       continue;
     }
 
-    // Skip loobpack or dm-verity device.
+    // Skip loopback or dm-verity device.
     if (base::StartsWith(storage_path.BaseName().value(), "loop",
                          base::CompareCase::SENSITIVE) ||
         base::StartsWith(storage_path.BaseName().value(), "dm-",
@@ -94,7 +97,7 @@ int32_t GetStorageLogicalBlockSize(const base::FilePath& node_path) {
   }
   if (logical_block_size <= 0) {
     LOG(WARNING) << "The value of logical block size " << logical_block_size
-                 << " seems errorneous. Use default value instead.";
+                 << " seems erroneous. Use default value instead.";
     return kDefaultBytesPerSector;
   }
   return logical_block_size;
@@ -107,7 +110,7 @@ StorageFunction::DataType StorageFunction::EvalImpl() const {
   StorageFunction::DataType result{};
 
   for (const auto& node_path : storage_nodes_path_list) {
-    VLOG(2) << "Processnig the node " << node_path.value();
+    VLOG(2) << "Processing the node " << node_path.value();
 
     // Get type specific fields and their values.
     auto node_res = ProbeFromSysfs(node_path);

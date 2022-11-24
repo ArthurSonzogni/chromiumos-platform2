@@ -22,7 +22,10 @@ source_set("function_templates") {
 
 if (use.test) {
   source_set("test") {
-    sources = [ "network_test.cc" ]
+    sources = [
+      "network_test.cc",
+      "storage_test.cc",
+    ]
     configs += [
       ":target_defaults",
       "//common-mk:test",

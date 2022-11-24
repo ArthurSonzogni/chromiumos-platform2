@@ -4,7 +4,6 @@
 
 #include <linux/videodev2.h>
 
-#include <algorithm>
 #include <optional>
 #include <string>
 #include <utility>
@@ -22,15 +21,6 @@ namespace {
 
 constexpr char kDevPath[] = "/dev";
 constexpr char kSysVideoPath[] = "/sys/class/video4linux";
-
-// Sort the result by path since Glob does not guarantee the output order.
-void SortResultByPath(base::Value::List& res) {
-  std::sort(res.begin(), res.end(),
-            [](const base::Value& a, const base::Value& b) {
-              return *a.GetDict().FindString("path") <
-                     *b.GetDict().FindString("path");
-            });
-}
 
 class FakeUsbCameraFunction : public UsbCameraFunction {
   using UsbCameraFunction::UsbCameraFunction;
@@ -88,7 +78,6 @@ TEST_F(UsbCameraFunctionTest, ProbeUsbCamera) {
                                .device_caps = V4L2_CAP_VIDEO_CAPTURE};
 
   auto result = probe_function->Eval();
-  SortResultByPath(result);
 
   auto ans = CreateProbeResultFromJson(
       base::StringPrintf(R"JSON(
@@ -113,7 +102,7 @@ TEST_F(UsbCameraFunctionTest, ProbeUsbCamera) {
   )JSON",
                          GetPathUnderRoot({"dev/video0"}).value().c_str(),
                          GetPathUnderRoot({"dev/video1"}).value().c_str()));
-  EXPECT_EQ(result, ans);
+  ExpectUnorderedListEqual(result, ans);
 }
 
 TEST_F(UsbCameraFunctionTest, NoRequiredFields) {

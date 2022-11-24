@@ -31,6 +31,11 @@ class BaseFunctionTest : public BaseFileTest {
   // Helper function to create the expected probe result form a json string.
   static base::Value::List CreateProbeResultFromJson(const std::string& str);
 
+  // Helper function to make an assertion that |result| is equal to some
+  // permutation of |ans|.Use this function for indeterminate order results.
+  static void ExpectUnorderedListEqual(const base::Value::List& result,
+                                       const base::Value::List& ans);
+
   ContextMockImpl* mock_context() { return &mock_context_; }
 
  private:
