@@ -45,9 +45,7 @@ GuestIPv6Service::ForwardMethod GetForwardMethodByDeviceType(
     case ShillClient::Device::Type::kEthernet:
     case ShillClient::Device::Type::kEthernetEap:
     case ShillClient::Device::Type::kWifi:
-      // b/246444885: Make guests consider physical network off-link to reduce
-      // amount of NS/NA sent to the physical network.
-      return GuestIPv6Service::ForwardMethod::kMethodNDProxyInjectingRA;
+      return GuestIPv6Service::ForwardMethod::kMethodNDProxy;
     case ShillClient::Device::Type::kCellular:
       // b/187462665, b/187918638: If the physical interface is a cellular
       // modem, the network connection is expected to work as a point to point
