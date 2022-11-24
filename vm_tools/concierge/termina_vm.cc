@@ -335,11 +335,13 @@ bool TerminaVm::Start(VmBuilder vm_builder) {
                                            permission_token_)) {
       vm_builder.AppendAudioDevice(
           VmBuilder::AudioDeviceType::kVirtio,
-          "capture=true,backend=cras,client_type=borealis,socket_type=unified");
+          "capture=true,backend=cras,client_type=borealis,"
+          "socket_type=unified,num_output_devices=3,num_input_devices=3");
     } else {
       vm_builder.AppendAudioDevice(
           VmBuilder::AudioDeviceType::kVirtio,
-          "backend=cras,client_type=borealis,socket_type=unified");
+          "backend=cras,client_type=borealis,socket_type=unified,"
+          "num_output_devices=3,num_input_devices=3");
     }
   } else {
     if (features_.audio_capture) {
