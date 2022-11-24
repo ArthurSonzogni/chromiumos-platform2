@@ -78,7 +78,7 @@ TEST_F(PlatformTest, HasExtendedFileAttribute) {
   EXPECT_TRUE(platform_.HasExtendedFileAttribute(filename, name));
 
   EXPECT_FALSE(
-      platform_.HasExtendedFileAttribute(FilePath("file_not_exist"), name));
+      platform_.HasExtendedFileAttribute(FilePath("/file_not_exist"), name));
   EXPECT_FALSE(
       platform_.HasExtendedFileAttribute(filename, "user.name_not_exist"));
   platform_.DeleteFile(filename);
@@ -104,8 +104,8 @@ TEST_F(PlatformTest, ListExtendedFileAttribute) {
   EXPECT_THAT(attrs, testing::UnorderedElementsAre(name, name2));
 
   attrs.clear();
-  EXPECT_FALSE(
-      platform_.ListExtendedFileAttributes(FilePath("file_not_exist"), &attrs));
+  EXPECT_FALSE(platform_.ListExtendedFileAttributes(FilePath("/file_not_exist"),
+                                                    &attrs));
   EXPECT_TRUE(attrs.empty());
   platform_.DeleteFile(filename);
 }
@@ -125,7 +125,7 @@ TEST_F(PlatformTest, GetExtendedAttributeAsString) {
   EXPECT_EQ(value, got);
 
   EXPECT_FALSE(platform_.GetExtendedFileAttributeAsString(
-      FilePath("file_not_exist"), name, &got));
+      FilePath("/file_not_exist"), name, &got));
   EXPECT_FALSE(platform_.GetExtendedFileAttributeAsString(
       filename, "user.name_not_exist", &got));
   platform_.DeleteFile(filename);
@@ -147,7 +147,7 @@ TEST_F(PlatformTest, GetExtendedAttribute) {
   EXPECT_EQ(value, got);
 
   EXPECT_FALSE(platform_.GetExtendedFileAttribute(
-      FilePath("file_not_exist"), name, reinterpret_cast<char*>(&got),
+      FilePath("/file_not_exist"), name, reinterpret_cast<char*>(&got),
       sizeof(got)));
   EXPECT_FALSE(platform_.GetExtendedFileAttribute(
       filename, "user.name_not_exist", reinterpret_cast<char*>(&got),
@@ -175,7 +175,7 @@ TEST_F(PlatformTest, SetExtendedAttribute) {
   EXPECT_EQ(value, std::string(got.data(), got.size()));
 
   EXPECT_FALSE(platform_.SetExtendedFileAttribute(
-      FilePath("file_not_exist"), name, value.c_str(), sizeof(value)));
+      FilePath("/file_not_exist"), name, value.c_str(), sizeof(value)));
   platform_.DeleteFile(filename);
 }
 
@@ -192,7 +192,7 @@ TEST_F(PlatformTest, RemoveExtendedAttribute) {
   EXPECT_EQ(ENODATA, errno);
 
   EXPECT_FALSE(
-      platform_.RemoveExtendedFileAttribute(FilePath("file_not_exist"), name));
+      platform_.RemoveExtendedFileAttribute(FilePath("/file_not_exist"), name));
   EXPECT_FALSE(
       platform_.RemoveExtendedFileAttribute(filename, "attribute_not_exist"));
   platform_.DeleteFile(filename);

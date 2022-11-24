@@ -48,6 +48,7 @@
 
 #include <base/bind.h>
 #include <base/callback.h>
+#include <base/check.h>
 #include <base/files/file.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
@@ -158,6 +159,11 @@ const std::vector<std::string> kDefaultExt4FormatOpts(
      // Assume that the storage device is already zeroed out.
      "-E", "discard,assume_storage_prezeroed=1"});
 
+void DcheckIsNonemptyAbsolutePath(const base::FilePath& path) {
+  DCHECK(!path.empty());
+  DCHECK(path.IsAbsolute()) << "path=" << path;
+}
+
 // TODO(b/232566569): Pass dependencies (lvm, loop device manager) into platform
 // explicitly instead of creating in place.
 Platform::Platform()
@@ -247,6 +253,8 @@ bool Platform::GetMountsByDevicePrefix(
 }
 
 bool Platform::IsDirectoryMounted(const FilePath& directory) {
+  DCHECK(directory.IsAbsolute()) << "directory=" << directory;
+
   // Trivial string match from /etc/mtab to see if the cryptohome mount point is
   // listed.  This works because Chrome OS is a controlled environment and the
   // only way /home/chronos/user should be mounted is if cryptohome mounted it.
@@ -269,6 +277,8 @@ std::optional<std::vector<bool>> Platform::AreDirectoriesMounted(
   ret.reserve(directories.size());
 
   for (auto& directory : directories) {
+    DCHECK(directory.IsAbsolute()) << "directory=" << directory;
+
     bool is_mounted =
         contents.find(StringPrintf(" %s ", directory.value().c_str())) !=
         std::string::npos;
@@ -284,6 +294,9 @@ bool Platform::Mount(const FilePath& from,
                      const std::string& type,
                      uint32_t mount_flags,
                      const std::string& mount_options) {
+  DCHECK(from.IsAbsolute()) << "from=" << from;
+  DCHECK(to.IsAbsolute()) << "to=" << to;
+
   if (mount(from.value().c_str(), to.value().c_str(), type.c_str(), mount_flags,
             mount_options.c_str())) {
     return false;
@@ -295,6 +308,9 @@ bool Platform::Bind(const FilePath& from,
                     const FilePath& to,
                     RemountOption remount,
                     bool nosymfollow) {
+  DCHECK(from.IsAbsolute()) << "from=" << from;
+  DCHECK(to.IsAbsolute()) << "to=" << to;
+
   // To apply options specific to a bind mount, we have to call mount(2) twice.
   if (mount(from.value().c_str(), to.value().c_str(), nullptr, MS_BIND,
             nullptr))
@@ -335,6 +351,8 @@ bool Platform::Bind(const FilePath& from,
 }
 
 ExpireMountResult Platform::ExpireMount(const FilePath& path) {
+  DCHECK(path.IsAbsolute()) << "path=" << path;
+
   if (umount2(path.value().c_str(), MNT_EXPIRE)) {
     if (errno == EAGAIN) {
       return ExpireMountResult::kMarked;
@@ -351,6 +369,8 @@ ExpireMountResult Platform::ExpireMount(const FilePath& path) {
 }
 
 bool Platform::Unmount(const FilePath& path, bool lazy, bool* was_busy) {
+  DCHECK(path.IsAbsolute()) << "path=" << path;
+
   if (lazy) {
     if (umount2(path.value().c_str(), MNT_DETACH)) {
       if (was_busy) {
@@ -373,6 +393,8 @@ bool Platform::Unmount(const FilePath& path, bool lazy, bool* was_busy) {
 }
 
 void Platform::LazyUnmount(const FilePath& path) {
+  DCHECK(path.IsAbsolute()) << "path=" << path;
+
   if (umount2(path.value().c_str(), MNT_DETACH | UMOUNT_NOFOLLOW)) {
     if (errno != EBUSY) {
       PLOG(ERROR) << "Lazy unmount failed";
@@ -388,6 +410,8 @@ bool Platform::GetOwnership(const FilePath& path,
                             uid_t* user_id,
                             gid_t* group_id,
                             bool follow_links) const {
+  DCHECK(path.IsAbsolute()) << "path=" << path;
+
   struct stat path_status;
   int ret;
   if (follow_links)
@@ -411,6 +435,8 @@ bool Platform::SetOwnership(const FilePath& path,
                             uid_t user_id,
                             gid_t group_id,
                             bool follow_links) {
+  DCHECK(path.IsAbsolute()) << "path=" << path;
+
   int ret;
   if (follow_links)
     ret = chown(path.value().c_str(), user_id, group_id);
@@ -425,6 +451,8 @@ bool Platform::SetOwnership(const FilePath& path,
 }
 
 bool Platform::GetPermissions(const FilePath& path, mode_t* mode) const {
+  DCHECK(path.IsAbsolute()) << "path=" << path;
+
   struct stat path_status;
   if (stat(path.value().c_str(), &path_status) != 0) {
     PLOG(ERROR) << "stat() of " << path.value() << " failed.";
@@ -435,6 +463,8 @@ bool Platform::GetPermissions(const FilePath& path, mode_t* mode) const {
 }
 
 bool Platform::SetPermissions(const FilePath& path, mode_t mode) {
+  DCHECK(path.IsAbsolute()) << "path=" << path;
+
   if (chmod(path.value().c_str(), mode)) {
     PLOG(ERROR) << "chmod() of " << path.value() << " to (" << std::oct << mode
                 << ") failed.";
@@ -444,11 +474,15 @@ bool Platform::SetPermissions(const FilePath& path, mode_t mode) {
 }
 
 int64_t Platform::AmountOfFreeDiskSpace(const FilePath& path) const {
+  DCHECK(path.IsAbsolute()) << "path=" << path;
+
   return base::SysInfo::AmountOfFreeDiskSpace(path);
 }
 
 int64_t Platform::GetQuotaCurrentSpaceForUid(const base::FilePath& device,
                                              uid_t user_id) const {
+  DCHECK(device.IsAbsolute()) << "device=" << device;
+
   struct dqblk dq = {};
   if (quotactl(QCMD(Q_GETQUOTA, USRQUOTA), device.value().c_str(), user_id,
                reinterpret_cast<char*>(&dq)) != 0) {
@@ -459,6 +493,8 @@ int64_t Platform::GetQuotaCurrentSpaceForUid(const base::FilePath& device,
 
 int64_t Platform::GetQuotaCurrentSpaceForGid(const base::FilePath& device,
                                              gid_t group_id) const {
+  DCHECK(device.IsAbsolute()) << "device=" << device;
+
   struct dqblk dq = {};
   if (quotactl(QCMD(Q_GETQUOTA, GRPQUOTA), device.value().c_str(), group_id,
                reinterpret_cast<char*>(&dq)) != 0) {
@@ -469,6 +505,8 @@ int64_t Platform::GetQuotaCurrentSpaceForGid(const base::FilePath& device,
 
 int64_t Platform::GetQuotaCurrentSpaceForProjectId(const base::FilePath& device,
                                                    int project_id) const {
+  DCHECK(device.IsAbsolute()) << "device=" << device;
+
   struct dqblk dq = {};
   if (quotactl(QCMD(Q_GETQUOTA, PRJQUOTA), device.value().c_str(), project_id,
                reinterpret_cast<char*>(&dq)) != 0) {
@@ -518,27 +556,39 @@ bool Platform::SetQuotaProjectInheritanceFlagWithFd(bool enable,
 }
 
 bool Platform::FileExists(const FilePath& path) const {
+  DCHECK(path.IsAbsolute()) << "path=" << path;
+
   return base::PathExists(path);
 }
 
 int Platform::Access(const FilePath& path, uint32_t flag) {
+  DCHECK(path.IsAbsolute()) << "path=" << path;
+
   return HANDLE_EINTR(access(path.value().c_str(), flag));
 }
 
 bool Platform::DirectoryExists(const FilePath& path) {
+  DCHECK(path.IsAbsolute()) << "path=" << path;
+
   base::stat_wrapper_t buf = {};
   return Stat(path, &buf) && S_ISDIR(buf.st_mode);
 }
 
 bool Platform::GetFileSize(const FilePath& path, int64_t* size) {
+  DCHECK(path.IsAbsolute()) << "path=" << path;
+
   return base::GetFileSize(path, size);
 }
 
 int64_t Platform::ComputeDirectoryDiskUsage(const FilePath& path) {
+  DCHECK(path.IsAbsolute()) << "path=" << path;
+
   return brillo::ComputeDirectoryDiskUsage(path);
 }
 
 FILE* Platform::OpenFile(const FilePath& path, const char* mode) {
+  DCHECK(path.IsAbsolute()) << "path=" << path;
+
   return base::OpenFile(path, mode);
 }
 
@@ -557,46 +607,62 @@ bool Platform::LockFile(int fd) {
 }
 
 bool Platform::WriteFile(const FilePath& path, const brillo::Blob& blob) {
+  DCHECK(path.IsAbsolute()) << "path=" << path;
+
   return brillo::WriteBlobToFile<brillo::Blob>(path, blob);
 }
 
 bool Platform::WriteSecureBlobToFile(const FilePath& path,
                                      const brillo::SecureBlob& blob) {
+  DCHECK(path.IsAbsolute()) << "path=" << path;
+
   return brillo::WriteBlobToFile<brillo::SecureBlob>(path, blob);
 }
 
 bool Platform::WriteStringToFile(const FilePath& path,
                                  const std::string& data) {
+  DCHECK(path.IsAbsolute()) << "path=" << path;
+
   return brillo::WriteStringToFile(path, data);
 }
 
 bool Platform::WriteArrayToFile(const FilePath& path,
                                 const char* data,
                                 size_t size) {
+  DCHECK(path.IsAbsolute()) << "path=" << path;
+
   return brillo::WriteToFile(path, data, size);
 }
 
 bool Platform::WriteFileAtomic(const FilePath& path,
                                const brillo::Blob& blob,
                                mode_t mode) {
+  DCHECK(path.IsAbsolute()) << "path=" << path;
+
   return brillo::WriteBlobToFileAtomic<brillo::Blob>(path, blob, mode);
 }
 
 bool Platform::WriteSecureBlobToFileAtomic(const FilePath& path,
                                            const brillo::SecureBlob& blob,
                                            mode_t mode) {
+  DCHECK(path.IsAbsolute()) << "path=" << path;
+
   return brillo::WriteBlobToFileAtomic<brillo::SecureBlob>(path, blob, mode);
 }
 
 bool Platform::WriteStringToFileAtomic(const FilePath& path,
                                        const std::string& data,
                                        mode_t mode) {
+  DCHECK(path.IsAbsolute()) << "path=" << path;
+
   return brillo::WriteToFileAtomic(path, data.data(), data.size(), mode);
 }
 
 bool Platform::WriteFileAtomicDurable(const FilePath& path,
                                       const brillo::Blob& blob,
                                       mode_t mode) {
+  DCHECK(path.IsAbsolute()) << "path=" << path;
+
   const std::string data(reinterpret_cast<const char*>(blob.data()),
                          blob.size());
   return WriteStringToFileAtomicDurable(path, data, mode);
@@ -604,6 +670,8 @@ bool Platform::WriteFileAtomicDurable(const FilePath& path,
 
 bool Platform::WriteSecureBlobToFileAtomicDurable(
     const FilePath& path, const brillo::SecureBlob& blob, mode_t mode) {
+  DCHECK(path.IsAbsolute()) << "path=" << path;
+
   if (!WriteSecureBlobToFileAtomic(path, blob, mode))
     return false;
 
@@ -614,6 +682,8 @@ bool Platform::WriteSecureBlobToFileAtomicDurable(
 bool Platform::WriteStringToFileAtomicDurable(const FilePath& path,
                                               const std::string& data,
                                               mode_t mode) {
+  DCHECK(path.IsAbsolute()) << "path=" << path;
+
   if (!WriteStringToFileAtomic(path, data, mode))
     return false;
   WriteChecksum(path, data.data(), data.size(), mode);
@@ -621,6 +691,8 @@ bool Platform::WriteStringToFileAtomicDurable(const FilePath& path,
 }
 
 bool Platform::TouchFileDurable(const FilePath& path) {
+  DCHECK(path.IsAbsolute()) << "path=" << path;
+
   brillo::Blob empty_blob(0);
   if (!WriteFile(path, empty_blob))
     return false;
@@ -628,10 +700,14 @@ bool Platform::TouchFileDurable(const FilePath& path) {
 }
 
 bool Platform::ReadFile(const FilePath& path, brillo::Blob* blob) {
+  DCHECK(path.IsAbsolute()) << "path=" << path;
+
   return ReadFileToBlob<brillo::Blob>(path, blob);
 }
 
 bool Platform::ReadFileToString(const FilePath& path, std::string* string) {
+  DCHECK(path.IsAbsolute()) << "path=" << path;
+
   if (!base::ReadFileToString(path, string)) {
     return false;
   }
@@ -641,14 +717,20 @@ bool Platform::ReadFileToString(const FilePath& path, std::string* string) {
 
 bool Platform::ReadFileToSecureBlob(const FilePath& path,
                                     brillo::SecureBlob* sblob) {
+  DCHECK(path.IsAbsolute()) << "path=" << path;
+
   return ReadFileToBlob<brillo::SecureBlob>(path, sblob);
 }
 
 bool Platform::CreateDirectory(const FilePath& path) {
+  DCHECK(path.IsAbsolute()) << "path=" << path;
+
   return base::CreateDirectory(path);
 }
 
 bool Platform::SafeDirChmod(const base::FilePath& path, mode_t mode) {
+  DCHECK(path.IsAbsolute()) << "path=" << path;
+
   // Reset mask since we are setting the mode explicitly.
   brillo::ScopedUmask scoped_umask(0);
 
@@ -674,6 +756,8 @@ bool Platform::SafeDirChmod(const base::FilePath& path, mode_t mode) {
 bool Platform::SafeDirChown(const base::FilePath& path,
                             uid_t user_id,
                             gid_t group_id) {
+  DCHECK(path.IsAbsolute()) << "path=" << path;
+
   auto root_fd_result = brillo::SafeFD::Root();
   if (root_fd_result.second != brillo::SafeFD::Error::kNoError) {
     return false;
@@ -695,6 +779,8 @@ bool Platform::SafeDirChown(const base::FilePath& path,
 
 bool Platform::SafeCreateDirAndSetOwnershipAndPermissions(
     const base::FilePath& path, mode_t mode, uid_t user_id, gid_t group_id) {
+  DCHECK(path.IsAbsolute()) << "path=" << path;
+
   // Reset mask since we are setting the mode explicitly.
   brillo::ScopedUmask scoped_umask(0);
 
@@ -728,6 +814,8 @@ bool Platform::SafeCreateDirAndSetOwnershipAndPermissions(
 
 bool Platform::UdevAdmSettle(const base::FilePath& device_path,
                              bool wait_for_device) {
+  DCHECK(device_path.IsAbsolute()) << "device_path=" << device_path;
+
   brillo::ProcessImpl udevadm_process;
   udevadm_process.AddArg("/bin/udevadm");
   udevadm_process.AddArg("settle");
@@ -795,20 +883,28 @@ base::FilePath Platform::GetStatefulDevice() {
 }
 
 bool Platform::DeleteFile(const FilePath& path) {
+  DCHECK(path.IsAbsolute()) << "path=" << path;
+
   return base::DeleteFile(path);
 }
 
 bool Platform::DeletePathRecursively(const FilePath& path) {
+  DCHECK(path.IsAbsolute()) << "path=" << path;
+
   return base::DeletePathRecursively(path);
 }
 
 bool Platform::DeleteFileDurable(const FilePath& path) {
+  DCHECK(path.IsAbsolute()) << "path=" << path;
+
   if (!base::DeletePathRecursively(path))
     return false;
   return SyncDirectory(path.DirName());
 }
 
 bool Platform::DeleteFileSecurely(const FilePath& path) {
+  DCHECK(path.IsAbsolute()) << "path=" << path;
+
   return secure_erase_file::SecureErase(path) &&
          secure_erase_file::DropCaches();
 }
@@ -816,6 +912,8 @@ bool Platform::DeleteFileSecurely(const FilePath& path) {
 bool Platform::EnumerateDirectoryEntries(const FilePath& path,
                                          bool recursive,
                                          std::vector<FilePath>* ent_list) {
+  DCHECK(path.IsAbsolute()) << "path=" << path;
+
   auto ft = static_cast<base::FileEnumerator::FileType>(
       base::FileEnumerator::FILES | base::FileEnumerator::DIRECTORIES |
       base::FileEnumerator::SHOW_SYM_LINKS);
@@ -826,6 +924,8 @@ bool Platform::EnumerateDirectoryEntries(const FilePath& path,
 }
 
 bool Platform::IsDirectoryEmpty(const base::FilePath& path) {
+  DCHECK(path.IsAbsolute()) << "path=" << path;
+
   return base::IsDirectoryEmpty(path);
 }
 
@@ -834,11 +934,15 @@ base::Time Platform::GetCurrentTime() const {
 }
 
 bool Platform::Stat(const FilePath& path, base::stat_wrapper_t* buf) {
+  DCHECK(path.IsAbsolute()) << "path=" << path;
+
   return base::File::Lstat(path.value().c_str(), buf) == 0;
 }
 
 bool Platform::HasExtendedFileAttribute(const FilePath& path,
                                         const std::string& name) {
+  DCHECK(path.IsAbsolute()) << "path=" << path;
+
   ssize_t sz = lgetxattr(path.value().c_str(), name.c_str(), nullptr, 0);
   if (sz < 0) {
     if (errno != ENODATA) {
@@ -851,6 +955,8 @@ bool Platform::HasExtendedFileAttribute(const FilePath& path,
 
 bool Platform::ListExtendedFileAttributes(const FilePath& path,
                                           std::vector<std::string>* attr_list) {
+  DCHECK(path.IsAbsolute()) << "path=" << path;
+
   ssize_t sz = llistxattr(path.value().c_str(), nullptr, 0);
   if (sz < 0) {
     PLOG(ERROR) << "llistxattr: " << path.value();
@@ -872,6 +978,8 @@ bool Platform::ListExtendedFileAttributes(const FilePath& path,
 bool Platform::GetExtendedFileAttributeAsString(const base::FilePath& path,
                                                 const std::string& name,
                                                 std::string* value) {
+  DCHECK(path.IsAbsolute()) << "path=" << path;
+
   ssize_t sz = lgetxattr(path.value().c_str(), name.c_str(), nullptr, 0);
   if (sz < 0) {
     PLOG(ERROR) << "lgetxattr: " << path.value();
@@ -889,6 +997,8 @@ bool Platform::GetExtendedFileAttribute(const base::FilePath& path,
                                         const std::string& name,
                                         char* value,
                                         ssize_t size) {
+  DCHECK(path.IsAbsolute()) << "path=" << path;
+
   if (lgetxattr(path.value().c_str(), name.c_str(), value, size) != size) {
     PLOG(ERROR) << "lgetxattr: " << path.value();
     return false;
@@ -900,6 +1010,8 @@ bool Platform::SetExtendedFileAttribute(const base::FilePath& path,
                                         const std::string& name,
                                         const char* value,
                                         size_t size) {
+  DCHECK(path.IsAbsolute()) << "path=" << path;
+
   if (lsetxattr(path.value().c_str(), name.c_str(), value, size, 0) != 0) {
     PLOG(ERROR) << "lsetxattr: " << path.value();
     return false;
@@ -909,6 +1021,8 @@ bool Platform::SetExtendedFileAttribute(const base::FilePath& path,
 
 bool Platform::RemoveExtendedFileAttribute(const base::FilePath& path,
                                            const std::string& name) {
+  DCHECK(path.IsAbsolute()) << "path=" << path;
+
   if (lremovexattr(path.value().c_str(), name.c_str()) != 0) {
     PLOG(ERROR) << "lremovexattr: " << path.value();
     return false;
@@ -917,6 +1031,8 @@ bool Platform::RemoveExtendedFileAttribute(const base::FilePath& path,
 }
 
 bool Platform::GetExtFileAttributes(const FilePath& path, int* flags) {
+  DCHECK(path.IsAbsolute()) << "path=" << path;
+
   int fd = HANDLE_EINTR(open(path.value().c_str(), O_RDONLY));
   if (fd < 0) {
     PLOG(ERROR) << "open: " << path.value();
@@ -935,6 +1051,8 @@ bool Platform::GetExtFileAttributes(const FilePath& path, int* flags) {
 }
 
 bool Platform::SetExtFileAttributes(const FilePath& path, int flags) {
+  DCHECK(path.IsAbsolute()) << "path=" << path;
+
   int fd = HANDLE_EINTR(open(path.value().c_str(), O_RDONLY));
   if (fd < 0) {
     PLOG(ERROR) << "open: " << path.value();
@@ -960,25 +1078,38 @@ bool Platform::SetExtFileAttributes(const FilePath& path, int flags) {
 }
 
 bool Platform::HasNoDumpFileAttribute(const FilePath& path) {
+  DCHECK(path.IsAbsolute()) << "path=" << path;
+
   int flags;
   return GetExtFileAttributes(path, &flags) &&
          (flags & FS_NODUMP_FL) == FS_NODUMP_FL;
 }
 
 bool Platform::Rename(const FilePath& from, const FilePath& to) {
+  DCHECK(from.IsAbsolute()) << "from=" << from;
+  DCHECK(to.IsAbsolute()) << "to=" << to;
+
   return base::ReplaceFile(from, to, /*error=*/nullptr);
 }
 
 bool Platform::Copy(const FilePath& from, const FilePath& to) {
+  DCHECK(from.IsAbsolute()) << "from=" << from;
+  DCHECK(to.IsAbsolute()) << "to=" << to;
+
   return base::CopyDirectory(from, to, true);
 }
 
 bool Platform::StatVFS(const FilePath& path, struct statvfs* vfs) {
+  DCHECK(path.IsAbsolute()) << "path=" << path;
+
   return statvfs(path.value().c_str(), vfs) == 0;
 }
 
 bool Platform::SameVFS(const base::FilePath& mnt_a,
                        const base::FilePath& mnt_b) {
+  DCHECK(mnt_a.IsAbsolute()) << "mnt_a=" << mnt_a;
+  DCHECK(mnt_b.IsAbsolute()) << "mnt_b=" << mnt_b;
+
   struct stat stat_a, stat_b;
 
   if (lstat(mnt_a.value().c_str(), &stat_a)) {
@@ -994,6 +1125,8 @@ bool Platform::SameVFS(const base::FilePath& mnt_a,
 
 bool Platform::FindFilesystemDevice(const FilePath& filesystem_in,
                                     std::string* device) {
+  DCHECK(filesystem_in.IsAbsolute()) << "filesystem_in=" << filesystem_in;
+
   /* Clear device to indicate failure case. */
   device->clear();
 
@@ -1032,6 +1165,9 @@ bool Platform::FindFilesystemDevice(const FilePath& filesystem_in,
 
 bool Platform::ReportFilesystemDetails(const FilePath& filesystem,
                                        const FilePath& logfile) {
+  DCHECK(filesystem.IsAbsolute()) << "filesystem=" << filesystem;
+  DCHECK(logfile.IsAbsolute()) << "logfile=" << logfile;
+
   brillo::ProcessImpl process;
   int rc;
   std::string device;
@@ -1060,15 +1196,21 @@ bool Platform::FirmwareWriteProtected() {
 bool Platform::SyncFileOrDirectory(const FilePath& path,
                                    bool is_directory,
                                    bool data_sync) {
+  DCHECK(path.IsAbsolute()) << "path=" << path;
+
   return brillo::SyncFileOrDirectory(path, is_directory, data_sync);
 }
 
 bool Platform::SyncFile(const FilePath& path) {
+  DCHECK(path.IsAbsolute()) << "path=" << path;
+
   return SyncFileOrDirectory(path, false /* directory */,
                              false /* data_sync */);
 }
 
 bool Platform::SyncDirectory(const FilePath& path) {
+  DCHECK(path.IsAbsolute()) << "path=" << path;
+
   return SyncFileOrDirectory(path, true /* directory */, false /* data_sync */);
 }
 
@@ -1083,6 +1225,9 @@ void Platform::Sync() {
 
 bool Platform::CreateSymbolicLink(const base::FilePath& path,
                                   const base::FilePath& target) {
+  // Note that the `target` can be relative.
+  DCHECK(path.IsAbsolute()) << "path=" << path;
+
   if (!base::CreateSymbolicLink(target, path)) {
     PLOG(ERROR) << "Failed to create link " << path.value();
     return false;
@@ -1091,6 +1236,8 @@ bool Platform::CreateSymbolicLink(const base::FilePath& path,
 }
 
 bool Platform::ReadLink(const base::FilePath& path, base::FilePath* target) {
+  DCHECK(path.IsAbsolute()) << "path=" << path;
+
   if (!base::ReadSymbolicLink(path, target)) {
     PLOG(ERROR) << "Failed to read link " << path.value();
     return false;
@@ -1102,6 +1249,8 @@ bool Platform::SetFileTimes(const base::FilePath& path,
                             const struct timespec& atime,
                             const struct timespec& mtime,
                             bool follow_links) {
+  DCHECK(path.IsAbsolute()) << "path=" << path;
+
   const struct timespec times[2] = {atime, mtime};
   if (utimensat(AT_FDCWD, path.value().c_str(), times,
                 follow_links ? 0 : AT_SYMLINK_NOFOLLOW)) {
@@ -1128,6 +1277,8 @@ bool Platform::SendFile(int fd_to, int fd_from, off_t offset, size_t count) {
 }
 
 bool Platform::CreateSparseFile(const base::FilePath& path, int64_t size) {
+  DCHECK(path.IsAbsolute()) << "path=" << path;
+
   base::File file;
   InitializeFile(&file, path,
                  base::File::FLAG_CREATE_ALWAYS | base::File::FLAG_WRITE);
@@ -1139,6 +1290,8 @@ bool Platform::CreateSparseFile(const base::FilePath& path, int64_t size) {
 }
 
 bool Platform::GetBlkSize(const base::FilePath& device, uint64_t* size) {
+  DCHECK(device.IsAbsolute()) << "device=" << device;
+
   base::ScopedFD fd(
       HANDLE_EINTR(open(device.value().c_str(), O_RDONLY | O_CLOEXEC)));
   if (!fd.is_valid()) {
@@ -1153,6 +1306,8 @@ bool Platform::GetBlkSize(const base::FilePath& device, uint64_t* size) {
 }
 
 bool Platform::DetachLoop(const base::FilePath& device_path) {
+  DCHECK(device_path.IsAbsolute()) << "device_path=" << device_path;
+
   // TODO(dlunev): This is a horrible way to do it, but LoopDeviceManager
   // doesn't support searching by the path, only by the number, so then we have
   // a choice to either parse out the number from |device_path| or iterate over.
@@ -1174,6 +1329,8 @@ bool Platform::DetachLoop(const base::FilePath& device_path) {
 }
 
 bool Platform::DiscardDevice(const base::FilePath& device) {
+  DCHECK(device.IsAbsolute()) << "device=" << device;
+
   uint64_t size;
   if (!GetBlkSize(device, &size)) {
     LOG(ERROR) << "Failed to get device size";
@@ -1209,6 +1366,8 @@ std::vector<Platform::LoopDevice> Platform::GetAttachedLoopDevices() {
 bool Platform::FormatExt4(const base::FilePath& file,
                           const std::vector<std::string>& opts,
                           uint64_t blocks) {
+  DCHECK(file.IsAbsolute()) << "file=" << file;
+
   brillo::ProcessImpl format_process;
   format_process.AddArg("/sbin/mkfs.ext4");
 
@@ -1243,6 +1402,8 @@ bool Platform::FormatExt4(const base::FilePath& file,
 
 bool Platform::Tune2Fs(const base::FilePath& file,
                        const std::vector<std::string>& opts) {
+  DCHECK(file.IsAbsolute()) << "file=" << file;
+
   brillo::ProcessImpl tune_process;
   tune_process.AddArg("/sbin/tune2fs");
   for (const auto& arg : opts)
@@ -1265,6 +1426,8 @@ bool Platform::Tune2Fs(const base::FilePath& file,
 }
 
 bool Platform::ResizeFilesystem(const base::FilePath& file, uint64_t blocks) {
+  DCHECK(file.IsAbsolute()) << "file=" << file;
+
   brillo::ProcessImpl resize_process;
   resize_process.AddArg("/sbin/resize2fs");
   resize_process.AddArg("-f");
@@ -1286,6 +1449,8 @@ bool Platform::ResizeFilesystem(const base::FilePath& file, uint64_t blocks) {
 
 bool Platform::RestoreSELinuxContexts(const base::FilePath& path,
                                       bool recursive) {
+  DCHECK(path.IsAbsolute()) << "path=" << path;
+
 #if USE_SELINUX
   LOG(INFO) << "Restoring SELinux contexts for: " << path.value()
             << ", recursive=" << std::boolalpha << recursive;
@@ -1317,6 +1482,8 @@ std::optional<std::string> Platform::GetSELinuxContextOfFD(int fd) {
 
 bool Platform::SetSELinuxContext(const base::FilePath& path,
                                  const std::string& context) {
+  DCHECK(path.IsAbsolute()) << "path=" << path;
+
 #if USE_SELINUX
   int result = setfilecon(path.value().c_str(), context.c_str());
   if (result != 0) {
@@ -1352,20 +1519,28 @@ bool Platform::SetupProcessKeyring() {
 }
 
 dircrypto::KeyState Platform::GetDirCryptoKeyState(const FilePath& dir) {
+  DCHECK(dir.IsAbsolute()) << "dir=" << dir;
+
   return dircrypto::GetDirectoryKeyState(dir);
 }
 
 bool Platform::SetDirCryptoKey(const FilePath& dir,
                                const dircrypto::KeyReference& key_reference) {
+  DCHECK(dir.IsAbsolute()) << "dir=" << dir;
+
   return dircrypto::SetDirectoryKey(dir, key_reference);
 }
 
 int Platform::GetDirectoryPolicyVersion(const base::FilePath& dir) const {
+  DCHECK(dir.IsAbsolute()) << "dir=" << dir;
+
   return dircrypto::GetDirectoryPolicyVersion(dir);
 }
 
 bool Platform::InvalidateDirCryptoKey(
     const dircrypto::KeyReference& key_reference, const FilePath& shadow_root) {
+  DCHECK(shadow_root.IsAbsolute()) << "shadow_root=" << shadow_root;
+
   return dircrypto::RemoveDirectoryKey(key_reference, shadow_root);
 }
 
@@ -1381,11 +1556,15 @@ bool Platform::ClearUserKeyring() {
 FileEnumerator* Platform::GetFileEnumerator(const FilePath& root_path,
                                             bool recursive,
                                             int file_type) {
+  DCHECK(root_path.IsAbsolute()) << "root_path=" << root_path;
+
   return new FileEnumerator(root_path, recursive, file_type);
 }
 
 template <class T>
 bool Platform::ReadFileToBlob(const FilePath& path, T* blob) {
+  DCHECK(path.IsAbsolute()) << "path=" << path;
+
   int64_t file_size;
   if (!base::PathExists(path)) {
     return false;
@@ -1422,6 +1601,8 @@ void Platform::WriteChecksum(const FilePath& path,
                              const void* content,
                              const size_t content_size,
                              mode_t mode) {
+  DCHECK(path.IsAbsolute()) << "path=" << path;
+
   FilePath name = path.AddExtension("sum");
   WriteStringToFileAtomic(name, GetChecksum(content, content_size), mode);
 }
@@ -1429,6 +1610,8 @@ void Platform::WriteChecksum(const FilePath& path,
 void Platform::VerifyChecksum(const FilePath& path,
                               const void* content,
                               const size_t content_size) {
+  DCHECK(path.IsAbsolute()) << "path=" << path;
+
   // Exclude some system paths.
   std::string path_value = path.value();
   if (base::StartsWith(path_value, "/etc", base::CompareCase::SENSITIVE) ||
@@ -1548,6 +1731,8 @@ void FileEnumerator::FileInfo::Assign(
 FileEnumerator::FileEnumerator(const FilePath& root_path,
                                bool recursive,
                                int file_type) {
+  DCHECK(root_path.IsAbsolute()) << "root_path=" << root_path;
+
   enumerator_.reset(new base::FileEnumerator(root_path, recursive, file_type));
 }
 
@@ -1555,6 +1740,8 @@ FileEnumerator::FileEnumerator(const FilePath& root_path,
                                bool recursive,
                                int file_type,
                                const std::string& pattern) {
+  DCHECK(root_path.IsAbsolute()) << "root_path=" << root_path;
+
   enumerator_.reset(
       new base::FileEnumerator(root_path, recursive, file_type, pattern));
 }
