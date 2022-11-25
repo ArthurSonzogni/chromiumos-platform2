@@ -252,6 +252,9 @@ class DeviceInfo {
   bool GetDeviceInfoSymbolicLink(const std::string& iface_name,
                                  const std::string& path_name,
                                  base::FilePath* path_out) const;
+  // Return the path of the lower device, if any
+  bool GetLowerDeviceInfoPath(const std::string& iface_name,
+                              base::FilePath* path_out) const;
   // Classify the device named |iface_name| with RTNL kind |kind|, and return
   // an identifier indicating its type.
   virtual Technology GetDeviceTechnology(

@@ -102,6 +102,9 @@ constexpr char kInterfaceUeventBridgeSignature[] = "DEVTYPE=bridge\n";
 // Content of a device uevent file that indicates it is a WiFi device.
 constexpr char kInterfaceUeventWifiSignature[] = "DEVTYPE=wlan\n";
 
+// Content of a device uevent file that indicates it is a VLAN device.
+constexpr char kInterfaceUeventVlanSignature[] = "DEVTYPE=vlan\n";
+
 // Sysfs path to a device via its interface name.
 constexpr char kInterfaceDevice[] = "device";
 
@@ -112,6 +115,11 @@ constexpr char kInterfaceDriver[] = "device/driver";
 // a temporary fix until the mtkt7xx driver exposes the driver symlink at the
 // same "device/driver" endpoint as expected (b/225373673)
 constexpr char kInterfaceDriverMtkt7xx[] = "device/device/driver";
+
+// Sysfs path prefix to the lower device of a virtual VLAN device. E.g. for a
+// multiplexed "mbimmux1.1" device the lower device reference may be a link
+// named "lower_wwan0" pointing to the sysfs path of the "wwan0" device.
+constexpr char kInterfaceLowerPrefix[] = "lower_";
 
 // Sysfs path to the vendor ID file via its interface name.
 constexpr char kInterfaceVendorId[] = "device/vendor";
@@ -356,6 +364,20 @@ bool DeviceInfo::GetDeviceInfoSymbolicLink(const std::string& iface_name,
                                 path_out);
 }
 
+bool DeviceInfo::GetLowerDeviceInfoPath(const std::string& iface_name,
+                                        base::FilePath* path_out) const {
+  const auto type = static_cast<base::FileEnumerator::FileType>(
+      base::FileEnumerator::FILES | base::FileEnumerator::SHOW_SYM_LINKS);
+  base::FileEnumerator dir_enum(GetDeviceInfoPath(iface_name, ""), false, type);
+  for (auto curr_dir = dir_enum.Next(); !curr_dir.empty();
+       curr_dir = dir_enum.Next()) {
+    if (base::StartsWith(curr_dir.BaseName().value(), kInterfaceLowerPrefix)) {
+      return base::ReadSymbolicLink(curr_dir, path_out);
+    }
+  }
+  return false;
+}
+
 int DeviceInfo::GetDeviceArpType(const std::string& iface_name) const {
   std::string type_string;
   int arp_type;
@@ -467,6 +489,20 @@ Technology DeviceInfo::GetDeviceTechnology(
     SLOG(2) << __func__ << ": device " << iface_name
             << " has bridge signature in uevent file";
     return Technology::kEthernet;
+  }
+
+  // VLANs are virtual interfaces that have a lower real network interface;
+  // the technology of the VLAN will be the technology of the lower device.
+  if (contents.find(kInterfaceUeventVlanSignature) != std::string::npos) {
+    SLOG(2) << __func__ << ": device " << iface_name
+            << " has vlan signature in uevent file";
+    base::FilePath lower_device_path;
+    if (GetLowerDeviceInfoPath(iface_name, &lower_device_path)) {
+      std::string lower_device_name(lower_device_path.BaseName().value());
+      SLOG(2) << __func__ << ": device " << iface_name
+              << " has same technology as lower device " << lower_device_name;
+      return GetDeviceTechnology(lower_device_name, std::nullopt);
+    }
   }
 
   base::FilePath driver_path;
