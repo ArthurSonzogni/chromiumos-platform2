@@ -49,7 +49,7 @@ pub fn cr50_get_name(
         board_id.part_1, board_id.part_2, board_id.flag, board_flags, ext
     );
 
-    return Ok(format!("{}.{}", GSC_IMAGE_BASE_NAME, ext));
+    Ok(format!("{}.{}", GSC_IMAGE_BASE_NAME, ext))
 }
 
 #[cfg(test)]

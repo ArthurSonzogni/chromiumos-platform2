@@ -79,7 +79,7 @@ pub fn cr50_reset(ctx: &mut impl Context) -> Result<(), HwsecError> {
     println!("Challenge:");
     println!("{}", challenge_string);
 
-    let challenge_string = challenge_string.replace('\n', "").replace(' ', "");
+    let challenge_string = challenge_string.replace(['\n', ' '], "");
 
     let chstr = format!(
         "{}?challenge={}&hwid={}",

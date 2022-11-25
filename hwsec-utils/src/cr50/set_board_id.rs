@@ -18,7 +18,7 @@ use crate::tpm2::ERASED_BOARD_ID;
 pub const WHITELABEL: u32 = 0x4000;
 pub const VIRTUAL_NV_INDEX_START: u32 = 0x013fff00;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum Cr50SetBoardIDVerdict {
     Successful,
     GeneralError,

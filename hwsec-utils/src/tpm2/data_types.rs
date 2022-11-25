@@ -64,7 +64,7 @@ impl SessionOption {
     }
 }
 
-#[derive(PartialEq, Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct BoardID {
     pub part_1: u32,
     pub part_2: u32,
@@ -125,7 +125,7 @@ impl TpmCmdResponse {
             .map_err(|_| HwsecError::Tpm2ResponseBadFormatError)?;
 
         // Replace, for the second case, unnecessary characters to unify the format
-        let s = &s.replace("0x", "").replace(' ', "").replace('\n', "");
+        let s = &s.replace("0x", "").replace([' ', '\n'], "");
 
         // decode the string reformatted
         let decoded_response = hex_decode(s).map_err(|_| HwsecError::Tpm2ResponseBadFormatError)?;

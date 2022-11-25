@@ -19,7 +19,7 @@ use crate::context::Context;
 use crate::tpm2::BoardID;
 use crate::tpm2::ERASED_BOARD_ID;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum Cr50SetSnBitsVerdict {
     Successful,
     GeneralError,

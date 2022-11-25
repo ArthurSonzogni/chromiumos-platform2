@@ -7,7 +7,7 @@ use std::fmt::Display;
 
 pub type SnBits = [u8; 12];
 
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub struct RmaSnBits {
     pub sn_data_version: [u8; 3],
     pub rma_status: u8,
