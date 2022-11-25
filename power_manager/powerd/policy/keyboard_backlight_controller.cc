@@ -691,30 +691,21 @@ bool KeyboardBacklightController::UpdateState(
   return ApplyBrightnessPercent(automated_percent_, transition, cause);
 }
 
-bool KeyboardBacklightController::BypassBrightnessPercentageHasChangedTest(
-    Transition transition, BacklightBrightnessChange_Cause cause) {
-  // The change is a user-initiated change in the toggle state.
-  bool toggling = transition == Transition::INSTANT &&
-                  (cause == BacklightBrightnessChange_Cause_USER_TOGGLED_OFF ||
-                   cause == BacklightBrightnessChange_Cause_USER_TOGGLED_ON);
-  if (toggling)
-    return true;
-
-  // A transition is in-progress.
-  if (backlight_->TransitionInProgress())
-    return true;
-
-  return false;
-}
-
 bool KeyboardBacklightController::ApplyBrightnessPercent(
     double percent,
     Transition transition,
     BacklightBrightnessChange_Cause cause) {
   const int64_t level = PercentToLevel(percent);
-  if (!BypassBrightnessPercentageHasChangedTest(transition, cause) &&
-      level == PercentToLevel(current_percent_))
+
+  // If the new level is the same as the existing level and we are not
+  // mid-transition, there's nothing we need to do.
+  //
+  // If we are mid-transition, we may need to speed up or slow down to the
+  // target value, so may still need to perform an update.
+  if (!backlight_->TransitionInProgress() &&
+      level == PercentToLevel(current_percent_)) {
     return false;
+  }
 
   if (!backlight_->DeviceExists()) {
     // If the underlying device doesn't exist, save the new percent for later.
