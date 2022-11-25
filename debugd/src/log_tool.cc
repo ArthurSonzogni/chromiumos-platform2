@@ -47,6 +47,7 @@
 #include "debugd/src/constants.h"
 #include "debugd/src/error_utils.h"
 #include "debugd/src/metrics.h"
+#include "debugd/src/perfetto_tool.h"
 #include "debugd/src/process_with_output.h"
 
 #include <brillo/files/safe_fd.h>
@@ -734,6 +735,10 @@ bool CompressXzBuffer(const std::vector<uint8_t>& in_buffer,
 }
 
 void GetPerfData(LogTool::LogMap* map, debugd::PerfTool* perf_tool) {
+  // Collect a Perfetto trace concurrently with perf to avoid adding significant
+  // extra delay to feedback report generation.
+  std::unique_ptr<PerfettoTool> perfetto = PerfettoTool::Start();
+
   // Run perf to collect system-wide performance profile when user triggers
   // feedback report. Perf runs at sampling frequency of ~500 hz (499 is used
   // to avoid sampling periodic system activities), with callstack in each
@@ -747,6 +752,15 @@ void GetPerfData(LogTool::LogMap* map, debugd::PerfTool* perf_tool) {
   if (!perf_tool->GetPerfOutput(kPerfDurationSecs, perf_args, &perf_data,
                                 nullptr, &status, nullptr))
     return;
+
+  // Retrieve and attach the Perfetto trace.
+  if (perfetto) {
+    std::optional<std::string> perfetto_trace = perfetto->Stop();
+    if (perfetto_trace) {
+      (*map)["perfetto-data"] = LogTool::EncodeString(
+          std::move(*perfetto_trace), LogTool::Encoding::kBase64);
+    }
+  }
 
   // XZ compress the profile data.
   std::vector<uint8_t> perf_data_xz;

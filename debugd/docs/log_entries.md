@@ -369,6 +369,22 @@ it means.
 
 ## pchg_info
 
+## perf-data
+
+Performance profiling information about how much time the system spends on
+various activities (program execution stack traces). The full detail of
+can be found in the [Profile protocol buffer message type](
+https://github.com/google/pprof/blob/main/proto/profile.proto). This field is
+xz-compressed and base64-encoded.
+
+## perfetto-data
+
+A trace timeline of system and kernel performance events. The data is
+formatted as a [Perfetto trace protocol buffer message](
+https://android.googlesource.com/platform/external/perfetto/) and can be viewed
+with the [Perfetto UI](https://ui.perfetto.dev). This field is zstd-compressed
+and base64-encoded.
+
 ## platform_identity_customization_id
 
 ## platform_identity_model

@@ -120,6 +120,7 @@ static_library("libdebugd") {
     "src/oom_adj_tool.cc",
     "src/packet_capture_tool.cc",
     "src/perf_tool.cc",
+    "src/perfetto_tool.cc",
     "src/ping_tool.cc",
     "src/printscan_tool.cc",
     "src/probe_tool.cc",
@@ -174,13 +175,21 @@ pkg_config("debugd_config") {
   pkg_deps = [ "protobuf" ]
 }
 
+install_config("debugd_share_config") {
+  sources = [ "share/perfetto_feedback_config.textproto" ]
+  install_path = "/usr/share/debugd"
+}
+
 executable("debugd") {
   sources = [ "src/main.cc" ]
   configs += [
     ":debugd_config",
     ":target_defaults",
   ]
-  deps = [ ":libdebugd" ]
+  deps = [
+    ":debugd_share_config",
+    ":libdebugd",
+  ]
 }
 
 pkg_config("capture_packets_config") {
