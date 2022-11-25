@@ -9,6 +9,7 @@ group("all") {
 executable("cros-camera-tool") {
   sources = [ "//camera/tools/cros_camera_tool.cc" ]
   configs += [ "//camera/build:cros_camera_common" ]
+  install_path = "bin"
   pkg_deps = [
     "libbrillo",
     "libcros_camera_device_config",
