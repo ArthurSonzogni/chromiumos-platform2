@@ -407,7 +407,7 @@ fn get_secret_seed(account_id: &str, auth_session_id: &[u8], seed: &mut Vec<u8>)
 /// serving the dbus requests. For example, a developer may invoke the abort
 /// resume subcommand.
 pub fn send_abort(reason: &str) -> Result<()> {
-    let conn = Connection::new_system().context("Failed to connect to dbus for secret seed")?;
+    let conn = Connection::new_system().context("Failed to connect to dbus for send abort")?;
     let conn_path = conn.with_proxy(HIBERMAN_DBUS_NAME, HIBERMAN_DBUS_PATH, DEFAULT_DBUS_TIMEOUT);
 
     // Now make the method call. The ListNames method call takes zero input parameters and
