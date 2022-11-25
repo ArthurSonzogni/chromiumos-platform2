@@ -16,7 +16,7 @@ using testing::_;
 namespace {
 std::vector<uint8_t> SerializeMessageToVector(
     const google::protobuf::Message& message) {
-  std::vector<uint8_t> result(message.ByteSize());
+  std::vector<uint8_t> result(message.ByteSizeLong());
   message.SerializeToArray(result.data(), result.size());
   return result;
 }
@@ -47,7 +47,11 @@ DEFINE_PROTO_FUZZER(const dlp::DlpFuzzer& input) {
   adaptor->SetDlpFilesPolicy(
       SerializeMessageToVector(input.set_dlp_files_policy_request()));
 
-  adaptor->AddFile(SerializeMessageToVector(input.add_file_request()));
+  adaptor->AddFile(
+      std::make_unique<
+          brillo::dbus_utils::MockDBusMethodResponse<std::vector<uint8_t>>>(
+          nullptr),
+      SerializeMessageToVector(input.add_file_request()));
 
   adaptor->RequestFileAccess(
       std::make_unique<brillo::dbus_utils::MockDBusMethodResponse<
@@ -55,6 +59,9 @@ DEFINE_PROTO_FUZZER(const dlp::DlpFuzzer& input) {
       SerializeMessageToVector(input.request_file_access_request()));
 
   adaptor->GetFilesSources(
+      std::make_unique<
+          brillo::dbus_utils::MockDBusMethodResponse<std::vector<uint8_t>>>(
+          nullptr),
       SerializeMessageToVector(input.get_files_sources_request()));
 
   adaptor->CheckFilesTransfer(

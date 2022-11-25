@@ -54,14 +54,16 @@ class DlpAdaptor : public org::chromium::DlpAdaptor,
   // org::chromium::DlpInterface: (see org.chromium.Dlp.xml).
   std::vector<uint8_t> SetDlpFilesPolicy(
       const std::vector<uint8_t>& request_blob) override;
-  std::vector<uint8_t> AddFile(
-      const std::vector<uint8_t>& request_blob) override;
+  void AddFile(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+                   std::vector<uint8_t>>> response,
+               const std::vector<uint8_t>& request_blob) override;
   void RequestFileAccess(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
                              std::vector<uint8_t>,
                              brillo::dbus_utils::FileDescriptor>> response,
                          const std::vector<uint8_t>& request_blob) override;
-  std::vector<uint8_t> GetFilesSources(
-      const std::vector<uint8_t>& request_blob) override;
+  void GetFilesSources(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+                           std::vector<uint8_t>>> response,
+                       const std::vector<uint8_t>& request_blob) override;
   void CheckFilesTransfer(
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
           std::vector<uint8_t>>> response,
@@ -93,8 +95,14 @@ class DlpAdaptor : public org::chromium::DlpAdaptor,
 
   // Opens the database |db_| to store files sources, |init_callback| called
   // after the database is set.
-  void InitDatabase(const base::FilePath database_path,
+  void InitDatabase(const base::FilePath& database_path,
                     base::OnceClosure init_callback);
+
+  // Callback on InitDatabase after initialization of the database.
+  void OnDatabaseInitialized(base::OnceClosure init_callback,
+                             std::unique_ptr<DlpDatabase> db,
+                             const base::FilePath& database_path,
+                             int db_status);
 
   // Initializes |fanotify_watcher_| if not yet started.
   void EnsureFanotifyWatcherStarted();
@@ -105,15 +113,30 @@ class DlpAdaptor : public org::chromium::DlpAdaptor,
                               base::OnceCallback<void(bool)> callback) override;
   void OnFileDeleted(ino_t inode) override;
 
-  // Callbacks on DlpPolicyMatched D-Bus request.
+  // Callback on ProcessFileOpenRequest after getting data from database.
+  void ProcessFileOpenRequestWithData(int pid,
+                                      base::OnceCallback<void(bool)> callback,
+                                      std::map<ino64_t, FileEntry> file_entry);
+
+  // Callbacks on DlpPolicyMatched D-Bus request for ProcessFileOpenRequest.
   void OnDlpPolicyMatched(base::OnceCallback<void(bool)> callback,
                           const std::vector<uint8_t>& response_blob);
   void OnDlpPolicyMatchedError(base::OnceCallback<void(bool)> callback,
                                brillo::Error* error);
 
+  // Callback for RequestFileAccess after getting data from the database.
+  void ProcessRequestFileAccessWithData(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          std::vector<uint8_t>,
+          brillo::dbus_utils::FileDescriptor>> response,
+      RequestFileAccessRequest request,
+      base::ScopedFD local_fd,
+      base::ScopedFD remote_fd,
+      std::map<ino64_t, FileEntry> file_entries);
+
   using RequestFileAccessCallback =
       base::OnceCallback<void(bool, const std::string&)>;
-  // Callbacks on IsFilesTransferRestricted D-Bus request.
+  // Callbacks on IsFilesTransferRestricted D-Bus request for RequestFileAccess.
   void OnRequestFileAccess(std::vector<uint64_t> inodes,
                            int pid,
                            base::ScopedFD local_fd,
@@ -127,11 +150,29 @@ class DlpAdaptor : public org::chromium::DlpAdaptor,
           brillo::dbus_utils::FileDescriptor>> response,
       base::ScopedFD remote_fd,
       bool allowed,
-      const std::string& error);
+      const std::string& error_message);
+
+  // Callback on AddFile after adding to the database.
+  void OnFileInserted(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+                          std::vector<uint8_t>>> response,
+                      const std::string& file_path,
+                      ino_t inode,
+                      bool success);
+  // Helper to reply on AddFile request.
+  void ReplyOnAddFile(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+                          std::vector<uint8_t>>> response,
+                      std::string error_message);
+
+  // Callback for CheckFilesTransfer after getting data from the database.
+  void ProcessCheckFilesTransferWithData(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          std::vector<uint8_t>>> response,
+      CheckFilesTransferRequest request,
+      std::map<ino64_t, FileEntry> file_entries);
 
   using CheckFilesTransferCallback =
       base::OnceCallback<void(std::vector<std::string>, const std::string&)>;
-  // Callback on IsFilesTransferRestricted D-Bus request.
+  // Callback on IsFilesTransferRestricted D-Bus request for CheckFilesTransfer.
   void OnIsFilesTransferRestricted(
       base::flat_set<std::string> transferred_files,
       CheckFilesTransferCallback callback,
@@ -143,6 +184,12 @@ class DlpAdaptor : public org::chromium::DlpAdaptor,
           std::vector<uint8_t>>> response,
       std::vector<std::string> restricted_files_paths,
       const std::string& error);
+
+  // Callback on GetFilesSources after getting data from database.
+  void ProcessGetFilesSourcesWithData(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          std::vector<uint8_t>>> response,
+      std::map<ino64_t, FileEntry> file_entries);
 
   // Functions and callbacks to handle lifeline fd.
   int AddLifelineFd(int dbus_fd);
@@ -162,6 +209,15 @@ class DlpAdaptor : public org::chromium::DlpAdaptor,
   // of the provided files if they exist in the database.
   void AddPerFileWatch(
       const std::set<std::pair<base::FilePath, ino64_t>>& files);
+  // Callback on AddPerFileWatch after recieving the list of tracked files.
+  void ProcessAddPerFileWatchWithData(
+      const std::set<std::pair<base::FilePath, ino64_t>>& files,
+      std::map<ino64_t, FileEntry> file_entries);
+
+  // Callback on CleanupAndSetDatabase after removing data from database.
+  void OnDatabaseCleaned(std::unique_ptr<DlpDatabase> db,
+                         base::OnceClosure callback,
+                         bool success);
 
   // If true, DlpAdaptor won't try to initialise `fanotify_watcher_`.
   bool is_fanotify_watcher_started_for_testing_ = false;

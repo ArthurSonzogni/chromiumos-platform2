@@ -7,14 +7,16 @@
 
 #include <stdint.h>
 
+#include <map>
 #include <memory>
-#include <optional>
 #include <set>
 #include <string>
 #include <vector>
 
+#include <base/callback.h>
 #include <base/files/file_path.h>
-#include <sqlite3.h>
+#include <base/task/single_thread_task_runner.h>
+#include <base/threading/thread.h>
 
 namespace dlp {
 
@@ -31,6 +33,7 @@ struct FileEntry {
 };
 
 // Provides API to access database and base functions.
+// Access to the database is done on a separate thread.
 class DlpDatabase {
  public:
   // Creates an instance to talk to the database file at |db_path|. Init() must
@@ -44,50 +47,40 @@ class DlpDatabase {
   ~DlpDatabase();
 
   // Initializes database connection. Must be called before any other queries.
-  // Returns |SQLITE_OK| if no error occurred.
-  int Init();
-  // Returns true if the database connection is open.
-  bool IsOpen() const;
-  // Closes database connection. Returns |SQLITE_OK| if no error occurred.
-  // Otherwise SQLite error code is returned.
-  int Close();
-  // Returns true if file entries table exists.
-  bool FileEntriesTableExists() const;
-  // Creates new file entries table. Returns true if no error occurred.
-  bool CreateFileEntriesTable();
-  // Inserts file_entry into database. Returns true if no error occurred.
-  bool InsertFileEntry(const FileEntry& file_entry);
+  // Returns |SQLITE_OK| to the |callback| if no error occurred.
+  void Init(base::OnceCallback<void(int)> callback);
 
-  // Gets the file entries by inode. Returns nullopt if any error occurs or not
-  // found.
-  std::optional<FileEntry> GetFileEntryByInode(int64_t inode) const;
-  // Deletes file entry with |inode| from database. Returns true if no error
-  // occurred.
-  bool DeleteFileEntryByInode(int64_t inode);
+  // Inserts file_entry into database. Returns true to the |callback| if no
+  // error occurred.
+  void InsertFileEntry(const FileEntry& file_entry,
+                       base::OnceCallback<void(bool)> callback);
+
+  // Gets the file entries by inodes. Returns a map of only found entries to
+  // the |callback|.
+  void GetFileEntriesByInodes(
+      std::vector<ino64_t> inodes,
+      base::OnceCallback<void(std::map<ino64_t, FileEntry>)> callback) const;
+
+  // Deletes file entry with |inode| from database. Returns true to the
+  // |callback| if no error occurred.
+  void DeleteFileEntryByInode(int64_t inode,
+                              base::OnceCallback<void(bool)> callback);
+
   // Filters the file entries table to contain only entries with
-  // |inodes_to_keep| inode values.
-  bool DeleteFileEntriesWithInodesNotInSet(std::set<ino64_t> inodes_to_keep);
+  // |inodes_to_keep| inode values. Returns true to the |callback| if no error
+  // occurred.
+  void DeleteFileEntriesWithInodesNotInSet(
+      std::set<ino64_t> inodes_to_keep,
+      base::OnceCallback<void(bool)> callback);
 
  private:
-  using SqliteCallback = int (*)(void*, int, char**, char**);
+  // Class impelmenting the core functionality.
+  class Core;
 
-  // Struct holding the result of a call to Sqlite.
-  struct ExecResult {
-    int code;
-    std::string error_msg;
-  };
+  std::unique_ptr<Core> core_;
 
-  // Execute SQL.
-  ExecResult ExecSQL(const std::string& sql) const;
-  ExecResult ExecSQL(const std::string& sql,
-                     SqliteCallback callback,
-                     void* data) const;
-  // Executes SQL that deletes rows. Returns number of rows affected. Returns -1
-  // if error occurs.
-  int ExecDeleteSQL(const std::string& sql);
-
-  const base::FilePath db_path_;
-  std::unique_ptr<sqlite3, decltype(&sqlite3_close)> db_;
+  base::Thread database_thread_;
+  scoped_refptr<base::SingleThreadTaskRunner> task_runner_;
 };
 
 }  // namespace dlp

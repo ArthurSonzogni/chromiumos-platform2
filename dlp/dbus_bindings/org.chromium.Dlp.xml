@@ -30,7 +30,7 @@
       <arg name="response" type="ay" direction="out">
         Serialized AddFileResponse message.
       </arg>
-      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+      <annotation name="org.chromium.DBus.Method.Kind" value="async" />
     </method>
 
     <method name="RequestFileAccess">
@@ -61,7 +61,7 @@
       <arg name="response" type="ay" direction="out">
         Serialized GetFilesSourcesResponse message.
       </arg>
-      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+      <annotation name="org.chromium.DBus.Method.Kind" value="async" />
     </method>
 
     <method name="CheckFilesTransfer">

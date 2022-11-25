@@ -21,6 +21,7 @@
 #include <base/files/file_util.h>
 #include <base/location.h>
 #include <base/logging.h>
+#include <base/process/process_handle.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/threading/thread_task_runner_handle.h>
 #include <base/time/time.h>
@@ -30,6 +31,7 @@
 #include <dbus/dlp/dbus-constants.h>
 #include <google/protobuf/message_lite.h>
 #include <session_manager/dbus-proxies.h>
+#include <sqlite3.h>
 
 #include "dlp/proto_bindings/dlp_service.pb.h"
 
@@ -172,42 +174,37 @@ std::vector<uint8_t> DlpAdaptor::SetDlpFilesPolicy(
   return SerializeProto(response);
 }
 
-std::vector<uint8_t> DlpAdaptor::AddFile(
+void DlpAdaptor::AddFile(
+    std::unique_ptr<
+        brillo::dbus_utils::DBusMethodResponse<std::vector<uint8_t>>> response,
     const std::vector<uint8_t>& request_blob) {
   AddFileRequest request;
-  AddFileResponse response;
 
   const std::string parse_error = ParseProto(FROM_HERE, &request, request_blob);
   if (!parse_error.empty()) {
-    LOG(ERROR) << "Failed to parse AddFile request: " << parse_error;
-    response.set_error_message(parse_error);
-    return SerializeProto(response);
+    ReplyOnAddFile(std::move(response),
+                   "Failed to parse AddFile request: " + parse_error);
+    return;
   }
 
   LOG(INFO) << "Adding file to the database: " << request.file_path();
   if (!db_) {
-    LOG(ERROR) << "Database is not ready";
-    response.set_error_message("Database is not ready");
-    return SerializeProto(response);
+    ReplyOnAddFile(std::move(response), "Database is not ready");
+    return;
   }
 
   const ino_t inode = GetInodeValue(request.file_path());
   if (!inode) {
-    LOG(ERROR) << "Failed to get inode";
-    response.set_error_message("Failed to get inode");
-    return SerializeProto(response);
+    ReplyOnAddFile(std::move(response), "Failed to get inode");
+    return;
   }
 
   FileEntry file_entry = ConvertToFileEntry(inode, request);
-  if (!db_->InsertFileEntry(file_entry)) {
-    LOG(ERROR) << "Failed to add entry to database";
-    response.set_error_message("Failed to add entry to database");
-    return SerializeProto(response);
-  }
 
-  AddPerFileWatch({std::make_pair(base::FilePath(request.file_path()), inode)});
-
-  return SerializeProto(response);
+  db_->InsertFileEntry(
+      file_entry,
+      base::BindOnce(&DlpAdaptor::OnFileInserted, base::Unretained(this),
+                     std::move(response), request.file_path(), inode));
 }
 
 void DlpAdaptor::RequestFileAccess(
@@ -240,12 +237,44 @@ void DlpAdaptor::RequestFileAccess(
     return;
   }
 
-  IsFilesTransferRestrictedRequest matching_request;
-  std::vector<uint64_t> inodes;
+  std::vector<ino64_t> inodes;
   for (const auto& file_path : request.files_paths()) {
     const ino_t inode_n = GetInodeValue(file_path);
-    std::optional<FileEntry> file_entry = db_->GetFileEntryByInode(inode_n);
-    if (!file_entry) {
+    if (inode_n > 0) {
+      inodes.push_back(inode_n);
+    }
+  }
+
+  // If no valid inodes provided, return immediately.
+  if (inodes.empty()) {
+    ReplyOnRequestFileAccess(std::move(response), std::move(remote_fd),
+                             /*allowed=*/true,
+                             /*error_message=*/std::string());
+    return;
+  }
+
+  db_->GetFileEntriesByInodes(
+      inodes, base::BindOnce(&DlpAdaptor::ProcessRequestFileAccessWithData,
+                             base::Unretained(this), std::move(response),
+                             std::move(request), std::move(local_fd),
+                             std::move(remote_fd)));
+}
+
+void DlpAdaptor::ProcessRequestFileAccessWithData(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        std::vector<uint8_t>,
+        brillo::dbus_utils::FileDescriptor>> response,
+    RequestFileAccessRequest request,
+    base::ScopedFD local_fd,
+    base::ScopedFD remote_fd,
+    std::map<ino64_t, FileEntry> file_entries) {
+  IsFilesTransferRestrictedRequest matching_request;
+  std::vector<ino64_t> inodes;
+
+  for (const auto& file_path : request.files_paths()) {
+    const ino_t inode_n = GetInodeValue(file_path);
+    auto it = file_entries.find(inode_n);
+    if (it == std::end(file_entries)) {
       // Skip file if it's not DLP-protected as access to it is always allowed.
       continue;
     }
@@ -253,7 +282,7 @@ void DlpAdaptor::RequestFileAccess(
 
     FileMetadata* file_metadata = matching_request.add_transferred_files();
     file_metadata->set_inode(inode_n);
-    file_metadata->set_source_url(file_entry->source_url);
+    file_metadata->set_source_url(it->second.source_url);
     file_metadata->set_path(file_path);
   }
   // If access to all requested files was allowed, return immediately.
@@ -286,7 +315,9 @@ void DlpAdaptor::RequestFileAccess(
       /*timeout_ms=*/base::Minutes(5).InMilliseconds());
 }
 
-std::vector<uint8_t> DlpAdaptor::GetFilesSources(
+void DlpAdaptor::GetFilesSources(
+    std::unique_ptr<
+        brillo::dbus_utils::DBusMethodResponse<std::vector<uint8_t>>> response,
     const std::vector<uint8_t>& request_blob) {
   GetFilesSourcesRequest request;
   GetFilesSourcesResponse response_proto;
@@ -294,23 +325,20 @@ std::vector<uint8_t> DlpAdaptor::GetFilesSources(
   if (!parse_error.empty()) {
     LOG(ERROR) << "Failed to parse GetFilesSources request: " << parse_error;
     response_proto.set_error_message(parse_error);
-    return SerializeProto(response_proto);
+    response->Return(SerializeProto(response_proto));
+    return;
   }
 
   if (!db_) {
-    return SerializeProto(response_proto);
+    response_proto.set_error_message("Database not ready");
+    response->Return(SerializeProto(response_proto));
+    return;
   }
 
-  for (const auto& file_inode : request.files_inodes()) {
-    std::optional<FileEntry> file_entry = db_->GetFileEntryByInode(file_inode);
-    if (file_entry) {
-      FileMetadata* file_metadata = response_proto.add_files_metadata();
-      file_metadata->set_inode(file_inode);
-      file_metadata->set_source_url(file_entry->source_url);
-    }
-  }
-
-  return SerializeProto(response_proto);
+  db_->GetFileEntriesByInodes(
+      {request.files_inodes().begin(), request.files_inodes().end()},
+      base::BindOnce(&DlpAdaptor::ProcessGetFilesSourcesWithData,
+                     base::Unretained(this), std::move(response)));
 }
 
 void DlpAdaptor::CheckFilesTransfer(
@@ -321,7 +349,7 @@ void DlpAdaptor::CheckFilesTransfer(
   CheckFilesTransferResponse response_proto;
   const std::string parse_error = ParseProto(FROM_HERE, &request, request_blob);
   if (!parse_error.empty()) {
-    LOG(ERROR) << "Failed to parse GetFilesSources request: " << parse_error;
+    LOG(ERROR) << "Failed to parse CheckFilesTransfer request: " << parse_error;
     response_proto.set_error_message(parse_error);
     response->Return(SerializeProto(response_proto));
     return;
@@ -333,51 +361,33 @@ void DlpAdaptor::CheckFilesTransfer(
     return;
   }
 
-  IsFilesTransferRestrictedRequest matching_request;
-  base::flat_set<std::string> transferred_files;
+  std::vector<ino64_t> inodes;
   for (const auto& file_path : request.files_paths()) {
     const ino_t file_inode = GetInodeValue(file_path);
-    std::optional<FileEntry> file_entry = db_->GetFileEntryByInode(file_inode);
-    if (!file_entry) {
-      // Skip file if it's not DLP-protected as access to it is always allowed.
-      continue;
+    if (file_inode > 0) {
+      inodes.push_back(file_inode);
     }
-
-    transferred_files.insert(file_path);
-
-    FileMetadata* file_metadata = matching_request.add_transferred_files();
-    file_metadata->set_inode(file_inode);
-    file_metadata->set_source_url(file_entry->source_url);
-    file_metadata->set_path(file_path);
   }
 
-  if (transferred_files.empty()) {
-    response->Return(SerializeProto(response_proto));
-    return;
-  }
-
-  if (request.has_destination_url())
-    matching_request.set_destination_url(request.destination_url());
-  if (request.has_destination_component())
-    matching_request.set_destination_component(request.destination_component());
-  if (request.has_file_action())
-    matching_request.set_file_action(request.file_action());
-
-  auto callbacks = base::SplitOnceCallback(
-      base::BindOnce(&DlpAdaptor::ReplyOnCheckFilesTransfer,
-                     base::Unretained(this), std::move(response)));
-
-  dlp_files_policy_service_->IsFilesTransferRestrictedAsync(
-      SerializeProto(matching_request),
-      base::BindOnce(&DlpAdaptor::OnIsFilesTransferRestricted,
-                     base::Unretained(this), std::move(transferred_files),
-                     std::move(callbacks.first)),
-      base::BindOnce(&DlpAdaptor::OnIsFilesTransferRestrictedError,
-                     base::Unretained(this), std::move(callbacks.second)),
-      /*timeout_ms=*/base::Minutes(5).InMilliseconds());
+  db_->GetFileEntriesByInodes(
+      inodes, base::BindOnce(&DlpAdaptor::ProcessCheckFilesTransferWithData,
+                             base::Unretained(this), std::move(response),
+                             std::move(request)));
 }
 
-void DlpAdaptor::InitDatabase(const base::FilePath database_path,
+void DlpAdaptor::SetFanotifyWatcherStartedForTesting(bool is_started) {
+  is_fanotify_watcher_started_for_testing_ = is_started;
+}
+
+void DlpAdaptor::SetDownloadsPathForTesting(const base::FilePath& path) {
+  g_downloads_path_for_testing = path;
+}
+
+void DlpAdaptor::CloseDatabaseForTesting() {
+  db_.reset();
+}
+
+void DlpAdaptor::InitDatabase(const base::FilePath& database_path,
                               base::OnceClosure init_callback) {
   LOG(INFO) << "Opening database in: " << database_path.value();
   const base::FilePath database_file = database_path.Append("database");
@@ -387,7 +397,18 @@ void DlpAdaptor::InitDatabase(const base::FilePath database_path,
   }
   std::unique_ptr<DlpDatabase> db =
       std::make_unique<DlpDatabase>(database_file);
-  if (db->Init() != SQLITE_OK) {
+  DlpDatabase* db_ptr = db.get();
+
+  db_ptr->Init(base::BindOnce(&DlpAdaptor::OnDatabaseInitialized,
+                              base::Unretained(this), std::move(init_callback),
+                              std::move(db), database_path));
+}
+
+void DlpAdaptor::OnDatabaseInitialized(base::OnceClosure init_callback,
+                                       std::unique_ptr<DlpDatabase> db,
+                                       const base::FilePath& database_path,
+                                       int db_status) {
+  if (db_status != SQLITE_OK) {
     LOG(ERROR) << "Cannot connect to database " << database_path;
     std::move(init_callback).Run();
     return;
@@ -405,8 +426,21 @@ void DlpAdaptor::AddPerFileWatch(
   if (!fanotify_watcher_)
     return;
 
+  std::vector<ino64_t> inodes;
   for (const auto& entry : files) {
-    if (db_->GetFileEntryByInode(entry.second)) {
+    inodes.push_back(entry.second);
+  }
+
+  db_->GetFileEntriesByInodes(
+      inodes, base::BindOnce(&DlpAdaptor::ProcessAddPerFileWatchWithData,
+                             base::Unretained(this), files));
+}
+
+void DlpAdaptor::ProcessAddPerFileWatchWithData(
+    const std::set<std::pair<base::FilePath, ino64_t>>& files,
+    std::map<ino64_t, FileEntry> file_entries) {
+  for (const auto& entry : files) {
+    if (file_entries.find(entry.second) != std::end(file_entries)) {
       fanotify_watcher_->AddFileDeleteWatch(entry.first);
     }
   }
@@ -435,21 +469,37 @@ void DlpAdaptor::EnsureFanotifyWatcherStarted() {
 
 void DlpAdaptor::ProcessFileOpenRequest(
     ino_t inode, int pid, base::OnceCallback<void(bool)> callback) {
+  if (pid == base::GetCurrentProcId()) {
+    // Allowing itself all file accesses (to database files).
+    std::move(callback).Run(/*allowed=*/true);
+    return;
+  }
+
   if (!db_) {
     LOG(WARNING) << "DLP database is not ready yet. Allowing the file request";
     std::move(callback).Run(/*allowed=*/true);
     return;
   }
 
-  std::optional<FileEntry> file_entry = db_->GetFileEntryByInode(inode);
-  if (!file_entry) {
+  db_->GetFileEntriesByInodes(
+      {inode},
+      base::BindOnce(&DlpAdaptor::ProcessFileOpenRequestWithData,
+                     base::Unretained(this), pid, std::move(callback)));
+}
+
+void DlpAdaptor::ProcessFileOpenRequestWithData(
+    int pid,
+    base::OnceCallback<void(bool)> callback,
+    std::map<ino64_t, FileEntry> file_entries) {
+  if (file_entries.size() != 1) {
     std::move(callback).Run(/*allowed=*/true);
     return;
   }
+  const FileEntry& file_entry = file_entries.cbegin()->second;
 
   int lifeline_fd = -1;
   for (const auto& [key, value] : approved_requests_) {
-    if (base::Contains(value.first, inode) && value.second == pid) {
+    if (base::Contains(value.first, file_entry.inode) && value.second == pid) {
       lifeline_fd = key;
       break;
     }
@@ -461,9 +511,9 @@ void DlpAdaptor::ProcessFileOpenRequest(
 
   // If the file can be restricted by any DLP rule, do not allow access there.
   IsDlpPolicyMatchedRequest request;
-  request.set_source_url(file_entry->source_url);
-  request.mutable_file_metadata()->set_inode(inode);
-  request.mutable_file_metadata()->set_source_url(file_entry->source_url);
+  request.set_source_url(file_entry.source_url);
+  request.mutable_file_metadata()->set_inode(file_entry.inode);
+  request.mutable_file_metadata()->set_source_url(file_entry.source_url);
   // TODO(crbug.com/1357967)
   // request.mutable_file_metadata()->set_path();
 
@@ -483,14 +533,8 @@ void DlpAdaptor::OnFileDeleted(ino_t inode) {
     return;
   }
 
-  if (!db_->GetFileEntryByInode(inode).has_value()) {
-    // The file is not in the DB.
-    return;
-  }
-
-  if (!db_->DeleteFileEntryByInode(inode)) {
-    LOG(ERROR) << "Can't delete entry from database: " << inode;
-  }
+  db_->DeleteFileEntryByInode(inode,
+                              /*callback=*/base::DoNothing());
 }
 
 void DlpAdaptor::OnDlpPolicyMatched(base::OnceCallback<void(bool)> callback,
@@ -550,12 +594,89 @@ void DlpAdaptor::ReplyOnRequestFileAccess(
         brillo::dbus_utils::FileDescriptor>> response,
     base::ScopedFD remote_fd,
     bool allowed,
-    const std::string& error) {
+    const std::string& error_message) {
   RequestFileAccessResponse response_proto;
   response_proto.set_allowed(allowed);
-  if (!error.empty())
-    response_proto.set_error_message(error);
+  if (!error_message.empty())
+    response_proto.set_error_message(error_message);
   response->Return(SerializeProto(response_proto), std::move(remote_fd));
+}
+
+void DlpAdaptor::OnFileInserted(
+    std::unique_ptr<
+        brillo::dbus_utils::DBusMethodResponse<std::vector<uint8_t>>> response,
+    const std::string& file_path,
+    ino_t inode,
+    bool success) {
+  if (success) {
+    AddPerFileWatch({std::make_pair(base::FilePath(file_path), inode)});
+    ReplyOnAddFile(std::move(response), std::string());
+  } else {
+    ReplyOnAddFile(std::move(response), "Failed to add entry to database");
+  }
+}
+
+void DlpAdaptor::ReplyOnAddFile(
+    std::unique_ptr<
+        brillo::dbus_utils::DBusMethodResponse<std::vector<uint8_t>>> response,
+    std::string error_message) {
+  AddFileResponse response_proto;
+  if (!error_message.empty()) {
+    LOG(ERROR) << "Error while adding file: " << error_message;
+    response_proto.set_error_message(error_message);
+  }
+  response->Return(SerializeProto(response_proto));
+}
+
+void DlpAdaptor::ProcessCheckFilesTransferWithData(
+    std::unique_ptr<
+        brillo::dbus_utils::DBusMethodResponse<std::vector<uint8_t>>> response,
+    CheckFilesTransferRequest request,
+    std::map<ino64_t, FileEntry> file_entries) {
+  CheckFilesTransferResponse response_proto;
+
+  IsFilesTransferRestrictedRequest matching_request;
+  base::flat_set<std::string> transferred_files;
+  for (const auto& file_path : request.files_paths()) {
+    const ino_t file_inode = GetInodeValue(file_path);
+    auto it = file_entries.find(file_inode);
+    if (it == std::end(file_entries)) {
+      // Skip file if it's not DLP-protected as access to it is always allowed.
+      continue;
+    }
+
+    transferred_files.insert(file_path);
+
+    FileMetadata* file_metadata = matching_request.add_transferred_files();
+    file_metadata->set_inode(file_inode);
+    file_metadata->set_source_url(it->second.source_url);
+    file_metadata->set_path(file_path);
+  }
+
+  if (transferred_files.empty()) {
+    response->Return(SerializeProto(response_proto));
+    return;
+  }
+
+  if (request.has_destination_url())
+    matching_request.set_destination_url(request.destination_url());
+  if (request.has_destination_component())
+    matching_request.set_destination_component(request.destination_component());
+  if (request.has_file_action())
+    matching_request.set_file_action(request.file_action());
+
+  auto callbacks = base::SplitOnceCallback(
+      base::BindOnce(&DlpAdaptor::ReplyOnCheckFilesTransfer,
+                     base::Unretained(this), std::move(response)));
+
+  dlp_files_policy_service_->IsFilesTransferRestrictedAsync(
+      SerializeProto(matching_request),
+      base::BindOnce(&DlpAdaptor::OnIsFilesTransferRestricted,
+                     base::Unretained(this), std::move(transferred_files),
+                     std::move(callbacks.first)),
+      base::BindOnce(&DlpAdaptor::OnIsFilesTransferRestrictedError,
+                     base::Unretained(this), std::move(callbacks.second)),
+      /*timeout_ms=*/base::Minutes(5).InMilliseconds());
 }
 
 void DlpAdaptor::OnIsFilesTransferRestricted(
@@ -600,16 +721,18 @@ void DlpAdaptor::ReplyOnCheckFilesTransfer(
   response->Return(SerializeProto(response_proto));
 }
 
-void DlpAdaptor::SetFanotifyWatcherStartedForTesting(bool is_started) {
-  is_fanotify_watcher_started_for_testing_ = is_started;
-}
+void DlpAdaptor::ProcessGetFilesSourcesWithData(
+    std::unique_ptr<
+        brillo::dbus_utils::DBusMethodResponse<std::vector<uint8_t>>> response,
+    std::map<ino64_t, FileEntry> file_entries) {
+  GetFilesSourcesResponse response_proto;
+  for (const auto& [inode, entry] : file_entries) {
+    FileMetadata* file_metadata = response_proto.add_files_metadata();
+    file_metadata->set_inode(entry.inode);
+    file_metadata->set_source_url(entry.source_url);
+  }
 
-void DlpAdaptor::SetDownloadsPathForTesting(const base::FilePath& path) {
-  g_downloads_path_for_testing = path;
-}
-
-void DlpAdaptor::CloseDatabaseForTesting() {
-  db_.reset();
+  response->Return(SerializeProto(response_proto));
 }
 
 int DlpAdaptor::AddLifelineFd(int dbus_fd) {
@@ -668,13 +791,23 @@ void DlpAdaptor::CleanupAndSetDatabase(
     base::OnceClosure callback,
     const std::set<std::pair<base::FilePath, ino64_t>>& files) {
   DCHECK(db);
+  DlpDatabase* db_ptr = db.get();
 
   std::set<ino64_t> inodes;
   for (const auto& entry : files) {
     inodes.insert(entry.second);
   }
 
-  if (db->DeleteFileEntriesWithInodesNotInSet(inodes)) {
+  db_ptr->DeleteFileEntriesWithInodesNotInSet(
+      inodes,
+      base::BindOnce(&DlpAdaptor::OnDatabaseCleaned, base::Unretained(this),
+                     std::move(db), std::move(callback)));
+}
+
+void DlpAdaptor::OnDatabaseCleaned(std::unique_ptr<DlpDatabase> db,
+                                   base::OnceClosure callback,
+                                   bool success) {
+  if (success) {
     db_.swap(db);
     std::move(callback).Run();
   }

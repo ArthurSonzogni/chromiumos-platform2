@@ -7,6 +7,7 @@
 #include <cinttypes>
 #include <utility>
 
+#include <base/callback.h>
 #include <base/containers/contains.h>
 #include <base/containers/cxx20_erase_set.h>
 #include <base/files/file_path.h>
@@ -22,7 +23,7 @@ namespace dlp {
 namespace {
 
 int GetFileEntriesCallback(void* data, int count, char** row, char** names) {
-  auto* file_entries_out = static_cast<std::vector<FileEntry>*>(data);
+  auto* file_entries_out = static_cast<std::map<ino64_t, FileEntry>*>(data);
   FileEntry file_entry;
 
   if (!row[0]) {
@@ -46,7 +47,7 @@ int GetFileEntriesCallback(void* data, int count, char** row, char** names) {
   }
   file_entry.referrer_url = row[2];
 
-  file_entries_out->push_back(std::move(file_entry));
+  file_entries_out->insert_or_assign(file_entry.inode, std::move(file_entry));
   return SQLITE_OK;
 }
 
@@ -75,14 +76,64 @@ std::string EscapeSQLString(const std::string& string_to_escape) {
 
 }  // namespace
 
-DlpDatabase::DlpDatabase(const base::FilePath& db_path)
+class DlpDatabase::Core {
+ public:
+  // Creates an instance to talk to the database file at |db_path|. Init() must
+  // be called to establish connection.
+  explicit Core(const base::FilePath& db_path);
+
+  // Not copyable or movable.
+  Core(const Core&) = delete;
+  Core& operator=(const Core&) = delete;
+
+  ~Core();
+
+  // Implements the functionality from main class.
+  int Init();
+  bool InsertFileEntry(const FileEntry& file_entry);
+  std::map<ino64_t, FileEntry> GetFileEntriesByInodes(
+      std::vector<ino64_t> inodes) const;
+  bool DeleteFileEntryByInode(int64_t inode);
+  bool DeleteFileEntriesWithInodesNotInSet(std::set<ino64_t> inodes_to_keep);
+
+ private:
+  // Returns true if the database connection is open.
+  bool IsOpen() const;
+  // Closes database connection. Returns |SQLITE_OK| if no error occurred.
+  // Otherwise SQLite error code is returned.
+  int Close();
+  // Returns true if file entries table exists.
+  bool FileEntriesTableExists() const;
+  // Creates new file entries table. Returns true if no error occurred.
+  bool CreateFileEntriesTable();
+
+  using SqliteCallback = int (*)(void*, int, char**, char**);
+  // Struct holding the result of a call to Sqlite.
+  struct ExecResult {
+    int code;
+    std::string error_msg;
+  };
+  // Execute SQL.
+  ExecResult ExecSQL(const std::string& sql) const;
+  ExecResult ExecSQL(const std::string& sql,
+                     SqliteCallback callback,
+                     void* data) const;
+  // Executes SQL that deletes rows. Returns number of rows affected. Returns -1
+  // if error occurs.
+  int ExecDeleteSQL(const std::string& sql);
+
+  const base::FilePath db_path_;
+  std::unique_ptr<sqlite3, decltype(&sqlite3_close)> db_;
+};
+
+DlpDatabase::Core::Core(const base::FilePath& db_path)
     : db_path_(db_path), db_(nullptr, nullptr) {}
 
-DlpDatabase::~DlpDatabase() {
+DlpDatabase::Core::~Core() {
   Close();
 }
 
-int DlpDatabase::Init() {
+int DlpDatabase::Core::Init() {
   sqlite3* db_ptr;
   int result = sqlite3_open(db_path_.MaybeAsASCII().c_str(), &db_ptr);
   db_ = std::unique_ptr<sqlite3, decltype(&sqlite3_close)>(db_ptr,
@@ -99,11 +150,11 @@ int DlpDatabase::Init() {
   return result;
 }
 
-bool DlpDatabase::IsOpen() const {
+bool DlpDatabase::Core::IsOpen() const {
   return db_.get() != nullptr;
 }
 
-int DlpDatabase::Close() {
+int DlpDatabase::Core::Close() {
   if (!db_)
     return SQLITE_OK;
 
@@ -114,12 +165,12 @@ int DlpDatabase::Close() {
   return result;
 }
 
-bool DlpDatabase::FileEntriesTableExists() const {
+bool DlpDatabase::Core::FileEntriesTableExists() const {
   const ExecResult result = ExecSQL("SELECT id FROM file_entries LIMIT 1");
   return result.error_msg.find("no such table") == std::string::npos;
 }
 
-bool DlpDatabase::CreateFileEntriesTable() {
+bool DlpDatabase::Core::CreateFileEntriesTable() {
   const std::string sql =
       "CREATE TABLE file_entries ("
       " inode INTEGER PRIMARY KEY NOT NULL,"
@@ -134,7 +185,7 @@ bool DlpDatabase::CreateFileEntriesTable() {
   return true;
 }
 
-bool DlpDatabase::InsertFileEntry(const FileEntry& file_entry) {
+bool DlpDatabase::Core::InsertFileEntry(const FileEntry& file_entry) {
   if (!IsOpen())
     return false;
 
@@ -152,47 +203,46 @@ bool DlpDatabase::InsertFileEntry(const FileEntry& file_entry) {
   return true;
 }
 
-std::optional<FileEntry> DlpDatabase::GetFileEntryByInode(int64_t inode) const {
+std::map<ino64_t, FileEntry> DlpDatabase::Core::GetFileEntriesByInodes(
+    std::vector<ino64_t> inodes) const {
+  std::map<ino64_t, FileEntry> file_entries;
   if (!IsOpen())
-    return std::nullopt;
+    return file_entries;
 
-  std::vector<FileEntry> file_entries;
-  ExecResult result =
-      ExecSQL(base::StringPrintf("SELECT inode,source_url,referrer_url"
-                                 " FROM file_entries WHERE inode = %" PRId64,
-                                 inode),
-              GetFileEntriesCallback, &file_entries);
+  std::string sql =
+      "SELECT inode,source_url,referrer_url FROM file_entries WHERE inode IN (";
+  bool first = true;
+  for (ino64_t inode : inodes) {
+    if (!first) {
+      sql += ",";
+    }
+    sql += base::NumberToString(inode);
+    first = false;
+  }
+  sql += ")";
+
+  ExecResult result = ExecSQL(sql, GetFileEntriesCallback, &file_entries);
+
   if (result.code != SQLITE_OK) {
     LOG(ERROR) << "Failed to query: (" << result.code << ") "
                << result.error_msg;
-    return std::nullopt;
+    file_entries.clear();
+    return file_entries;
   }
 
-  if (file_entries.size() == 0) {
-    return std::nullopt;
-  }
-  if (file_entries.size() > 1) {
-    LOG(ERROR) << "Multiple entries for: (" << inode << ")";
-  }
-
-  return std::make_optional(file_entries[0]);
+  return file_entries;
 }
 
-bool DlpDatabase::DeleteFileEntryByInode(int64_t inode) {
+bool DlpDatabase::Core::DeleteFileEntryByInode(int64_t inode) {
   if (!IsOpen())
     return false;
 
   const std::string sql = base::StringPrintf(
       "DELETE FROM file_entries WHERE inode = %" PRId64, inode);
-  if (ExecDeleteSQL(sql) != 1) {
-    LOG(ERROR) << "File entry " << inode << " does not exist in the database";
-    return false;
-  }
-
-  return true;
+  return ExecDeleteSQL(sql) >= 0;
 }
 
-bool DlpDatabase::DeleteFileEntriesWithInodesNotInSet(
+bool DlpDatabase::Core::DeleteFileEntriesWithInodesNotInSet(
     std::set<ino64_t> inodes_to_keep) {
   if (!IsOpen())
     return false;
@@ -233,13 +283,13 @@ bool DlpDatabase::DeleteFileEntriesWithInodesNotInSet(
   return true;
 }
 
-DlpDatabase::ExecResult DlpDatabase::ExecSQL(const std::string& sql) const {
+DlpDatabase::Core::ExecResult DlpDatabase::Core::ExecSQL(
+    const std::string& sql) const {
   return ExecSQL(sql, nullptr, nullptr);
 }
 
-DlpDatabase::ExecResult DlpDatabase::ExecSQL(const std::string& sql,
-                                             SqliteCallback callback,
-                                             void* data) const {
+DlpDatabase::Core::ExecResult DlpDatabase::Core::ExecSQL(
+    const std::string& sql, SqliteCallback callback, void* data) const {
   char* error_msg = nullptr;
   int result = sqlite3_exec(db_.get(), sql.c_str(), callback, data, &error_msg);
   // According to sqlite3_exec() documentation, error_msg points to memory
@@ -252,7 +302,7 @@ DlpDatabase::ExecResult DlpDatabase::ExecSQL(const std::string& sql,
   return {result, error_msg_str};
 }
 
-int DlpDatabase::ExecDeleteSQL(const std::string& sql) {
+int DlpDatabase::Core::ExecDeleteSQL(const std::string& sql) {
   ExecResult result = ExecSQL(sql);
 
   if (result.code != SQLITE_OK) {
@@ -262,6 +312,69 @@ int DlpDatabase::ExecDeleteSQL(const std::string& sql) {
   }
 
   return sqlite3_changes(db_.get());
+}
+
+DlpDatabase::DlpDatabase(const base::FilePath& db_path)
+    : database_thread_("dlp_database_thread") {
+  CHECK(database_thread_.Start()) << "Failed to start database thread.";
+  task_runner_ = database_thread_.task_runner();
+
+  CHECK(!task_runner_->RunsTasksInCurrentSequence());
+  core_ = std::make_unique<Core>(db_path);
+}
+
+DlpDatabase::~DlpDatabase() {
+  core_.reset();
+  database_thread_.Stop();
+}
+
+void DlpDatabase::Init(base::OnceCallback<void(int)> callback) {
+  CHECK(!task_runner_->RunsTasksInCurrentSequence());
+  task_runner_->PostTaskAndReplyWithResult(
+      FROM_HERE,
+      base::BindOnce(&DlpDatabase::Core::Init, base::Unretained(core_.get())),
+      std::move(callback));
+}
+
+void DlpDatabase::InsertFileEntry(const FileEntry& file_entry,
+                                  base::OnceCallback<void(bool)> callback) {
+  CHECK(!task_runner_->RunsTasksInCurrentSequence());
+  task_runner_->PostTaskAndReplyWithResult(
+      FROM_HERE,
+      base::BindOnce(&DlpDatabase::Core::InsertFileEntry,
+                     base::Unretained(core_.get()), file_entry),
+      std::move(callback));
+}
+
+void DlpDatabase::GetFileEntriesByInodes(
+    std::vector<ino64_t> inodes,
+    base::OnceCallback<void(std::map<ino64_t, FileEntry>)> callback) const {
+  CHECK(!task_runner_->RunsTasksInCurrentSequence());
+  task_runner_->PostTaskAndReplyWithResult(
+      FROM_HERE,
+      base::BindOnce(&DlpDatabase::Core::GetFileEntriesByInodes,
+                     base::Unretained(core_.get()), std::move(inodes)),
+      std::move(callback));
+}
+
+void DlpDatabase::DeleteFileEntryByInode(
+    int64_t inode, base::OnceCallback<void(bool)> callback) {
+  CHECK(!task_runner_->RunsTasksInCurrentSequence());
+  task_runner_->PostTaskAndReplyWithResult(
+      FROM_HERE,
+      base::BindOnce(&DlpDatabase::Core::DeleteFileEntryByInode,
+                     base::Unretained(core_.get()), inode),
+      std::move(callback));
+}
+
+void DlpDatabase::DeleteFileEntriesWithInodesNotInSet(
+    std::set<ino64_t> inodes_to_keep, base::OnceCallback<void(bool)> callback) {
+  CHECK(!task_runner_->RunsTasksInCurrentSequence());
+  task_runner_->PostTaskAndReplyWithResult(
+      FROM_HERE,
+      base::BindOnce(&DlpDatabase::Core::DeleteFileEntriesWithInodesNotInSet,
+                     base::Unretained(core_.get()), inodes_to_keep),
+      std::move(callback));
 }
 
 }  // namespace dlp
