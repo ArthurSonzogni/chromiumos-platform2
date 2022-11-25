@@ -1,4 +1,4 @@
-// Copyright 2022 The ChromiumOS Authors.
+// Copyright 2022 The ChromiumOS Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -299,15 +299,19 @@ void sl_transform_try_window_scale(struct sl_context* ctx,
   if (!ctx->use_direct_scale)
     return;
 
-  // Transform the window dimensions using the global scaling factors
-  sl_transform_guest_to_host(ctx, nullptr, &reverse_width, &reverse_height);
+  // Reset scale so that calls to sl_transform_get_scale_factors will not
+  // use the current scale.
+  sl_transform_reset_surface_scale(ctx, surface);
+
+  // Transform the window dimensions using the global/per-output scaling factors
+  sl_transform_guest_to_host(ctx, surface, &reverse_width, &reverse_height);
 
   // Save the logical dimensions for later use
   logical_width = reverse_width;
   logical_height = reverse_height;
 
   // Transform the logical dimensions back to the virtual pixel dimensions
-  sl_transform_host_to_guest(ctx, nullptr, &reverse_width, &reverse_height);
+  sl_transform_host_to_guest(ctx, surface, &reverse_width, &reverse_height);
 
   // If the computed logical width or height is zero, force the
   // use of the global scaling factors
@@ -340,11 +344,6 @@ void sl_transform_try_window_scale(struct sl_context* ctx,
 
     if (reverse_height != height_in_pixels)
       surface->scale_round_on_y = true;
-
-  } else {
-    // We can do this with what we have now
-    // Reset the flags
-    sl_transform_reset_surface_scale(ctx, surface);
   }
 }
 

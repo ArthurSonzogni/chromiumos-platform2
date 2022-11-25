@@ -1,4 +1,4 @@
-// Copyright 2018 The ChromiumOS Authors.
+// Copyright 2018 The ChromiumOS Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -890,6 +890,14 @@ static void sl_surface_enter(void* data,
   wl_surface_send_enter(host->resource, host_output->resource);
   host->has_output = 1;
   host->output = host_output;
+  sl_transform_reset_surface_scale(host->ctx, host);
+  struct sl_window* window = NULL;
+  window = sl_context_lookup_window_for_surface(host->ctx, host->resource);
+  if (window) {
+    sl_transform_try_window_scale(host->ctx, host, window->width,
+                                  window->height);
+    sl_window_update(window);
+  }
 }
 
 static void sl_surface_leave(void* data,
