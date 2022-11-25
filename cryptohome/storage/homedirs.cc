@@ -57,10 +57,10 @@ const char kRemovableFileAttribute[] = "user.GCacheRemovable";
 const char kForceKeylockerForTestingFlag[] =
     "/run/cryptohome/.force_keylocker_for_testing";
 
-bool IsAesKeylockerSupported() {
+bool IsAesKeylockerSupported(Platform& platform) {
   std::string proc_crypto_contents;
-  return base::ReadFileToString(base::FilePath("/proc/crypto"),
-                                &proc_crypto_contents) &&
+  return platform.ReadFileToString(base::FilePath("/proc/crypto"),
+                                   &proc_crypto_contents) &&
          proc_crypto_contents.find("aeskl") != std::string::npos;
 }
 
@@ -105,14 +105,14 @@ bool HomeDirs::KeylockerForStorageEncryptionEnabled() {
   // Search through /proc/crypto for 'aeskl' as an indicator that AES Keylocker
   // is supported. Cache the results so that we don't add the latency of reading
   // /proc/crypto for every cryptohome::Mount call.
-  static bool keylocker_supported = IsAesKeylockerSupported();
+  static bool keylocker_supported = IsAesKeylockerSupported(*platform_);
 
   if (!keylocker_supported)
     return false;
 
   // Check if keylocker is force enabled for testing.
   // TODO(sarthakkukreti@, b/209516710): Remove in M102.
-  if (base::PathExists(base::FilePath(kForceKeylockerForTestingFlag))) {
+  if (platform_->FileExists(base::FilePath(kForceKeylockerForTestingFlag))) {
     LOG(INFO) << "Forced keylocker enabled for testing";
     return true;
   }
