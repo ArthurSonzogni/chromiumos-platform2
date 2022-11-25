@@ -59,7 +59,7 @@ class KeyboardBacklightController : public BacklightController,
     [[nodiscard]] bool TriggerVideoTimeout();
 
    private:
-    KeyboardBacklightController* controller_;  // weak
+    KeyboardBacklightController* controller_;  // unowned
   };
 
   // Backlight brightness percent to use when the screen is dimmed.
@@ -202,7 +202,7 @@ class KeyboardBacklightController : public BacklightController,
   PrefsInterface* prefs_ = nullptr;
   system::DBusWrapperInterface* dbus_wrapper_ = nullptr;
 
-  // Controller responsible for the display's brightness. Weak pointer.
+  // Controller responsible for the display's brightness. Unowned pointer.
   BacklightController* display_backlight_controller_ = nullptr;
 
   // May be NULL if no ambient light sensor is present.
