@@ -74,10 +74,6 @@
       "type": "selection",
       "value_descriptor": [
         {
-          "desc": "With exposure compensation",
-          "enum_value": 0
-        },
-        {
           "desc": "With manual sensor control",
           "enum_value": 1
         },

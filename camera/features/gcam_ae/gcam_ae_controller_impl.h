@@ -57,7 +57,6 @@ class GcamAeControllerImpl : public GcamAeController {
   // Restores the settings to what the client originally requested.
   void RestoreClientRequestSettings(Camera3CaptureDescriptor* result);
 
-  void SetExposureCompensation(Camera3CaptureDescriptor* request);
   void SetManualSensorControls(Camera3CaptureDescriptor* request);
 
   // Internal helper methods.
@@ -72,8 +71,6 @@ class GcamAeControllerImpl : public GcamAeController {
   DestructionCallback destruction_callback_;
 
   // AE loop controls.
-  Range<float> ae_compensation_step_delta_range_;
-
   AeStateMachine ae_state_machine_;
 
   // Device static metadata.
@@ -93,9 +90,6 @@ class GcamAeControllerImpl : public GcamAeController {
   // Device-specific AE adapter that handles AE stats extraction and AE
   // parameters computation.
   std::unique_ptr<GcamAeDeviceAdapter> ae_device_adapter_;
-
-  // AE algorithm outputs.
-  float filtered_ae_compensation_steps_ = 0.0f;
 
   // Metadata logger for tests and debugging.
   MetadataLogger* metadata_logger_ = nullptr;

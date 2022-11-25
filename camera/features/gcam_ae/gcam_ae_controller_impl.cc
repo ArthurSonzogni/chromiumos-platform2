@@ -35,11 +35,6 @@ constexpr char kGcamAeEnableKey[] = "gcam_ae_enable";
 constexpr char kMaxHdrRatioKey[] = "max_hdr_ratio";
 constexpr char kGainMultiplier[] = "gain_multiplier";
 
-// The AE compensation delta range in stops limiting the amount of AE
-// compensation step changes in each frame. This can be tuned to avoid large
-// fluctuations in AE compensation which can lead to severe AE instability.
-constexpr float kAeCompensationDeltaStopRange[] = {-0.2f, 0.2f};
-
 float LookUpHdrRatio(const base::flat_map<float, float>& max_hdr_ratio,
                      float gain) {
   DCHECK(!max_hdr_ratio.empty());
@@ -140,18 +135,16 @@ GcamAeControllerImpl::GcamAeControllerImpl(
   max_total_gain_ = options_.gain_multiplier *
                     (static_cast<float>(sensitivity_range_.upper()) /
                      static_cast<float>(sensitivity_range_.lower()));
-  ae_compensation_step_ = (static_cast<float>(ae_compensation_step->numerator) /
-                           ae_compensation_step->denominator);
+  ae_compensation_step_ =
+      (static_cast<float>(ae_compensation_step->numerator) /
+       static_cast<float>(ae_compensation_step->denominator));
   ae_compensation_range_ =
-      Range<float>(ae_compensation_range[0], ae_compensation_range[1]);
+      Range<float>(static_cast<float>(ae_compensation_range[0]),
+                   static_cast<float>(ae_compensation_range[1]));
   active_array_dimension_ = Size(active_array_size[2], active_array_size[3]);
 
   powerline_freq_ = GetPowerLineFrequencyForLocation().value_or(
       V4L2_CID_POWER_LINE_FREQUENCY_DISABLED);
-
-  ae_compensation_step_delta_range_ =
-      Range<float>(kAeCompensationDeltaStopRange[0] / ae_compensation_step_,
-                   kAeCompensationDeltaStopRange[1] / ae_compensation_step_);
 }
 
 GcamAeControllerImpl::~GcamAeControllerImpl() {
@@ -210,8 +203,8 @@ void GcamAeControllerImpl::RecordAeMetadata(Camera3CaptureDescriptor* result) {
     LOGF(WARNING) << "Cannot get ANDROID_CONTROL_AE_EXPOSURE_COMPENSATION";
     return;
   }
-  if (ae_compensation[0] < ae_compensation_range_.lower() ||
-      ae_compensation[0] > ae_compensation_range_.upper()) {
+  if (static_cast<float>(ae_compensation[0]) < ae_compensation_range_.lower() ||
+      static_cast<float>(ae_compensation[0]) > ae_compensation_range_.upper()) {
     LOGFID(WARNING, result->frame_number())
         << "Invalid AE compensation value: " << ae_compensation[0];
     return;
@@ -321,7 +314,7 @@ void GcamAeControllerImpl::RecordAeMetadata(Camera3CaptureDescriptor* result) {
     for (int i = 0; i < 9; ++i) {
       frame_info->ccm[i] =
           static_cast<float>(color_correction_transform[i].numerator) /
-          color_correction_transform[i].denominator;
+          static_cast<float>(color_correction_transform[i].denominator);
     }
     VLOGFID(2, result->frame_number())
         << "CCM: " << frame_info->ccm[0] << ", " << frame_info->ccm[1] << ", "
@@ -400,8 +393,6 @@ void GcamAeControllerImpl::OnOptionsUpdated(
   int ae_override_mode;
   if (LoadIfExist(json_values, kAeOverrideModeKey, &ae_override_mode)) {
     if (ae_override_mode ==
-            static_cast<int>(AeOverrideMode::kWithExposureCompensation) ||
-        ae_override_mode ==
             static_cast<int>(AeOverrideMode::kWithManualSensorControl) ||
         ae_override_mode == static_cast<int>(AeOverrideMode::kWithVendorTag)) {
       options_.ae_override_mode = static_cast<AeOverrideMode>(ae_override_mode);
@@ -481,6 +472,9 @@ void GcamAeControllerImpl::SetRequestAeParameters(
 
   frame_info->target_tet = ae_state_machine_.GetCaptureTet();
   frame_info->target_hdr_ratio = ae_state_machine_.GetFilteredHdrRatio();
+  VLOGFID(1, request->frame_number())
+      << "Request tet=" << frame_info->target_tet
+      << " hdr_ratio=" << frame_info->target_hdr_ratio;
   if (metadata_logger_) {
     metadata_logger_->Log(request->frame_number(), kTagHdrRatio,
                           frame_info->target_hdr_ratio);
@@ -523,9 +517,6 @@ void GcamAeControllerImpl::SetRequestAeParameters(
   }
 
   switch (options_.ae_override_mode) {
-    case AeOverrideMode::kWithExposureCompensation:
-      SetExposureCompensation(request);
-      break;
     case AeOverrideMode::kWithManualSensorControl:
       SetManualSensorControls(request);
       break;
@@ -576,11 +567,11 @@ void GcamAeControllerImpl::MaybeRunAE(int frame_number) {
                      frame_info->analog_gain * frame_info->digital_gain);
   // From 0.1 ms with 1x gain to maximum possible exposure time with maximum
   // analog plus digital gain.
-  Range<float> device_tet_range = {
+  Range<float> default_device_tet_range = {
       0.1, static_cast<float>((1000.0 / frame_info->target_fps_range.lower()) *
                               max_total_gain_)};
   AeParameters ae_parameters = ae_device_adapter_->ComputeAeParameters(
-      frame_number, *frame_info, device_tet_range, max_hdr_ratio);
+      frame_number, *frame_info, default_device_tet_range, max_hdr_ratio);
   VLOGFID(1, frame_info->frame_number)
       << "total gain=" << frame_info->analog_gain * frame_info->digital_gain
       << " max_hdr_ratio=" << max_hdr_ratio
@@ -591,23 +582,6 @@ void GcamAeControllerImpl::MaybeRunAE(int frame_number) {
                                        .tet_range = ae_parameters.tet_range},
                                       metadata_logger_);
 
-  // Compute AE exposure compensation based on the filtered TETs.
-  float actual_tet = frame_info->exposure_time_ms * frame_info->analog_gain *
-                     frame_info->digital_gain;
-  float delta_ae_compensation =
-      std::round(std::log2(ae_state_machine_.GetCaptureTet() / actual_tet) /
-                 ae_compensation_step_);
-  // Taking into consideration the compensation already applied.
-  filtered_ae_compensation_steps_ = ae_compensation_range_.Clamp(
-      frame_info->ae_compensation +
-      ae_compensation_step_delta_range_.Clamp(delta_ae_compensation));
-
-  VLOGFID(1, frame_number) << "Filtered AE compensation:"
-                           << " hdr_ratio="
-                           << ae_state_machine_.GetFilteredHdrRatio()
-                           << " exposure_compensation="
-                           << filtered_ae_compensation_steps_;
-
   if (metadata_logger_) {
     metadata_logger_->Log(
         frame_info->frame_number, kTagFrameWidth,
@@ -616,8 +590,6 @@ void GcamAeControllerImpl::MaybeRunAE(int frame_number) {
         frame_info->frame_number, kTagFrameHeight,
         base::checked_cast<int32_t>(active_array_dimension_.height));
     metadata_logger_->Log(frame_number, kTagMaxHdrRatio, max_hdr_ratio);
-    metadata_logger_->Log(frame_number, kTagFilteredExpComp,
-                          filtered_ae_compensation_steps_);
   }
 }
 
@@ -722,28 +694,6 @@ void GcamAeControllerImpl::RestoreClientRequestSettings(
           << static_cast<int>(
                  *frame_info->client_request_settings.ae_antibanding_mode);
     }
-  }
-}
-
-void GcamAeControllerImpl::SetExposureCompensation(
-    Camera3CaptureDescriptor* request) {
-  std::array<int32_t, 1> exp_comp = {
-      static_cast<int32_t>(filtered_ae_compensation_steps_)};
-  if (!request->UpdateMetadata<int32_t>(
-          ANDROID_CONTROL_AE_EXPOSURE_COMPENSATION, exp_comp)) {
-    LOGF(WARNING) << "Cannot set AE compensation in capture request";
-    return;
-  }
-  if (metadata_logger_) {
-    metadata_logger_->Log(request->frame_number(), kTagRequestAeCompensation,
-                          exp_comp[0]);
-  }
-
-  if (VLOG_IS_ON(2)) {
-    VLOGFID(2, request->frame_number())
-        << "filtered_ae_compensation_: " << filtered_ae_compensation_steps_;
-    VLOGFID(2, request->frame_number())
-        << "actual_ae_compensation_: " << exp_comp[0];
   }
 }
 

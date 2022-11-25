@@ -34,7 +34,6 @@ constexpr char kTagCcm[] = "ccm";
 constexpr char kTagEstimatedSensorSensitivity[] =
     "estimated_sensor_sensitivity";
 constexpr char kTagFaceRectangles[] = "face_rectangles";
-constexpr char kTagFilteredExpComp[] = "filtered_exposure_compensation";
 constexpr char kTagFilteredLongTet[] = "filtered_long_tet";
 constexpr char kTagFilteredShortTet[] = "filtered_short_tet";
 constexpr char kTagFrameHeight[] = "frame_height";
@@ -68,8 +67,8 @@ enum class AeStatsInputMode {
 };
 
 enum class AeOverrideMode {
-  // Let GacmAeController override AE decision with exposure compensation.
-  kWithExposureCompensation = 0,
+  // 0 is reserved for the deprecated kWithExposureCompensation to keep backward
+  // compatibility.
 
   // Let GcamAeController override AE decision with manual sensor control.
   kWithManualSensorControl = 1,
