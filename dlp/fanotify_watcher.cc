@@ -48,6 +48,7 @@ void FanotifyWatcher::AddFileDeleteWatch(const base::FilePath& path) {
 
     if (res != 0) {
       PLOG(ERROR) << "fanotify_mark for DELETE_SELF (" << path << ") failed";
+      OnFanotifyError(FanotifyError::kMarkError);
     } else {
       LOG(INFO) << "Added watch for: " << path;
     }
@@ -83,6 +84,12 @@ void FanotifyWatcher::OnFileDeleted(ino_t inode) {
   DCHECK(task_runner_->RunsTasksInCurrentSequence());
 
   delegate_->OnFileDeleted(inode);
+}
+
+void FanotifyWatcher::OnFanotifyError(FanotifyError error) {
+  DCHECK(task_runner_->RunsTasksInCurrentSequence());
+
+  delegate_->OnFanotifyError(error);
 }
 
 void FanotifyWatcher::OnRequestProcessed(base::ScopedFD fd, bool allowed) {

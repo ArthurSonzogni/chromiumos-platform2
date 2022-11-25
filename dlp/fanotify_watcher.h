@@ -10,6 +10,7 @@
 #include "base/files/scoped_file.h"
 #include "base/memory/scoped_refptr.h"
 #include "base/threading/sequenced_task_runner_handle.h"
+#include "dlp/dlp_metrics.h"
 #include "dlp/fanotify_reader_thread.h"
 
 namespace dlp {
@@ -25,6 +26,8 @@ class FanotifyWatcher : public FanotifyReaderThread::Delegate {
         ino_t inode, int pid, base::OnceCallback<void(bool)> callback) = 0;
 
     virtual void OnFileDeleted(ino_t inode) = 0;
+
+    virtual void OnFanotifyError(FanotifyError error) = 0;
   };
 
   FanotifyWatcher(Delegate* delegate,
@@ -46,6 +49,7 @@ class FanotifyWatcher : public FanotifyReaderThread::Delegate {
   // FanotifyReaderThread::Delegate overrides:
   void OnFileOpenRequested(ino_t inode, int pid, base::ScopedFD fd) override;
   void OnFileDeleted(ino_t inode) override;
+  void OnFanotifyError(FanotifyError error) override;
 
   void OnRequestProcessed(base::ScopedFD fd, bool allowed);
 

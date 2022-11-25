@@ -97,6 +97,7 @@ DlpAdaptor::DlpAdaptor(
     : org::chromium::DlpAdaptor(this),
       dbus_object_(std::move(dbus_object)),
       home_path_(home_path) {
+  dlp_metrics_ = std::make_unique<DlpMetrics>();
   fanotify_watcher_ = std::make_unique<FanotifyWatcher>(this, fanotify_perm_fd,
                                                         fanotify_notif_fd);
   dlp_files_policy_service_ =
@@ -501,6 +502,10 @@ void DlpAdaptor::OnFileDeleted(ino_t inode) {
 
   db_->DeleteFileEntryByInode(inode,
                               /*callback=*/base::DoNothing());
+}
+
+void DlpAdaptor::OnFanotifyError(FanotifyError error) {
+  dlp_metrics_->SendFanotifyError(error);
 }
 
 void DlpAdaptor::OnDlpPolicyMatched(base::OnceCallback<void(bool)> callback,

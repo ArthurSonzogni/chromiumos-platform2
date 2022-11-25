@@ -20,6 +20,7 @@
 #include <libminijail.h>
 #include <scoped_minijail.h>
 
+#include "dlp/dlp_metrics.h"
 #include "dlp/kernel_version_tools.h"
 
 namespace {
@@ -146,6 +147,8 @@ int main(int /* argc */, char* /* argv */[]) {
   brillo::OpenLog("dlp_init", true /* log_pid */);
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderrIfTty);
 
+  dlp::DlpMetrics dlp_metrics;
+
   LOG(INFO) << "DLP Init";
 
   // Get user session hash.
@@ -172,20 +175,42 @@ int main(int /* argc */, char* /* argv */[]) {
   // Initialize fanotify file descriptors.
   int fanotify_perm_fd =
       fanotify_init(FAN_CLASS_CONTENT, O_RDONLY | O_LARGEFILE);
-  PCHECK(fanotify_perm_fd >= 0) << "fanotify_init() failed";
-  if (dlp::GetKernelVersion() >= dlp::kMinKernelVersionForFanMarkFilesystem) {
-    PCHECK(!fanotify_mark(fanotify_perm_fd, FAN_MARK_ADD | FAN_MARK_FILESYSTEM,
-                          FAN_OPEN_PERM, AT_FDCWD, home_path.value().c_str()))
-        << "fanotify_mark for OPEN_PERM (" << home_path << ") failed";
+  if (fanotify_perm_fd < 0) {
+    PLOG(ERROR) << "fanotify_init() failed";
+    dlp_metrics.SendFanotifyError(dlp::FanotifyError::kInitError);
+    return 1;
+  }
+
+  const std::pair<int, int> kernel_version = dlp::GetKernelVersion();
+
+  dlp_metrics.SendBooleanHistogram(
+      dlp::kDlpFanotifyMarkFilesystemSupport,
+      kernel_version >= dlp::kMinKernelVersionForFanMarkFilesystem);
+
+  if (kernel_version >= dlp::kMinKernelVersionForFanMarkFilesystem) {
+    if (fanotify_mark(fanotify_perm_fd, FAN_MARK_ADD | FAN_MARK_FILESYSTEM,
+                      FAN_OPEN_PERM, AT_FDCWD, home_path.value().c_str()) < 0) {
+      PLOG(ERROR) << "fanotify_mark for OPEN_PERM (" << home_path << ") failed";
+      dlp_metrics.SendFanotifyError(dlp::FanotifyError::kMarkError);
+      return 1;
+    }
   } else {
     LOG(INFO) << "FAN_MARK_FILESYSTEM is not supported, DLP is not active";
   }
 
+  dlp_metrics.SendBooleanHistogram(
+      dlp::kDlpFanotifyDeleteEventSupport,
+      kernel_version >= dlp::kMinKernelVersionForFanDeleteEvents);
+
   int fanoify_notif_fd = 0;
-  if (dlp::GetKernelVersion() >= dlp::kMinKernelVersionForFanDeleteEvents) {
+  if (kernel_version >= dlp::kMinKernelVersionForFanDeleteEvents) {
     fanoify_notif_fd =
         fanotify_init(FAN_CLASS_NOTIF | /*FAN_REPORT_FID=*/0x00000200, 0);
-    PCHECK(fanoify_notif_fd >= 0) << "fanotify_init() failed";
+    if (fanoify_notif_fd < 0) {
+      PLOG(ERROR) << "fanotify_init() failed";
+      dlp_metrics.SendFanotifyError(dlp::FanotifyError::kInitError);
+      return 1;
+    }
   } else {
     LOG(INFO) << "FAN_DELETE_SELF is not supported, DLP is not listening to "
                  "file deletions";

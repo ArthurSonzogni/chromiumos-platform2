@@ -17,6 +17,7 @@
 #include "base/posix/eintr_wrapper.h"
 #include "base/threading/platform_thread.h"
 #include "base/threading/sequenced_task_runner_handle.h"
+#include "dlp/dlp_metrics.h"
 
 namespace {
 
@@ -100,6 +101,7 @@ void FanotifyReaderThread::RunLoop() {
         HANDLE_EINTR(select(fanotify_fd_ + 1, &rfds, nullptr, nullptr, &tv));
     if (select_result < 0) {
       PLOG(WARNING) << "select failed";
+      ForwardUMAErrorToParentThread(FanotifyError::kSelectError);
       return;
     } else if (select_result == 0) {
       continue;
@@ -109,6 +111,7 @@ void FanotifyReaderThread::RunLoop() {
         HANDLE_EINTR(read(fanotify_fd_, buffer, sizeof(buffer)));
     if (bytes_read < 0) {
       PLOG(WARNING) << "read from fanotify fd failed";
+      ForwardUMAErrorToParentThread(FanotifyError::kFdError);
       return;
     }
 
@@ -118,17 +121,21 @@ void FanotifyReaderThread::RunLoop() {
          metadata = FAN_EVENT_NEXT(metadata, bytes_read)) {
       if (metadata->vers != FANOTIFY_METADATA_VERSION) {
         LOG(ERROR) << "mismatch of fanotify metadata version";
+        ForwardUMAErrorToParentThread(FanotifyError::kMetadataMismatchError);
         return;
       }
       if (metadata->mask & FAN_OPEN_PERM) {
         if (metadata->fd < 0) {
           LOG(ERROR) << "invalid file descriptor for OPEN_PERM event";
+          ForwardUMAErrorToParentThread(
+              FanotifyError::kInvalidFileDescriptorError);
           continue;
         }
         base::ScopedFD fd(metadata->fd);
         struct stat st;
         if (fstat(fd.get(), &st)) {
           PLOG(ERROR) << "fstat failed";
+          ForwardUMAErrorToParentThread(FanotifyError::kFstatError);
           continue;
         }
 
@@ -143,6 +150,8 @@ void FanotifyReaderThread::RunLoop() {
         // TODO(b/259688785): Update fanofity headers to include the const.
         if (fid->hdr.info_type != /*FAN_EVENT_INFO_TYPE_FID=*/1) {
           LOG(ERROR) << "expected FID type DELETE_SELF event";
+          ForwardUMAErrorToParentThread(
+              FanotifyError::kUnexpectedEventInfoTypeError);
           continue;
         }
 
@@ -151,6 +160,8 @@ void FanotifyReaderThread::RunLoop() {
         if (file_handle->handle_type != /*FILEID_INO32_GEN=*/1) {
           LOG(ERROR) << "unexpected file_handle type: "
                      << file_handle->handle_type;
+          ForwardUMAErrorToParentThread(
+              FanotifyError::kUnexpectedFileHandleTypeError);
           continue;
         }
         parent_task_runner_->PostTask(
@@ -158,9 +169,16 @@ void FanotifyReaderThread::RunLoop() {
                                       base::Unretained(delegate_), handle[0]));
       } else {
         LOG(WARNING) << "unexpected fanotify event: " << metadata->mask;
+        ForwardUMAErrorToParentThread(FanotifyError::kUnknownError);
       }
     }
   }
+}
+
+void FanotifyReaderThread::ForwardUMAErrorToParentThread(FanotifyError error) {
+  parent_task_runner_->PostTask(
+      FROM_HERE, base::BindOnce(&Delegate::OnFanotifyError,
+                                base::Unretained(delegate_), error));
 }
 
 }  // namespace dlp

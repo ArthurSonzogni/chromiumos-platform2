@@ -21,6 +21,7 @@
 
 #include "dlp/dbus-proxies.h"
 #include "dlp/dlp_database.h"
+#include "dlp/dlp_metrics.h"
 #include "dlp/fanotify_watcher.h"
 #include "dlp/org.chromium.Dlp.h"
 #include "dlp/proto_bindings/dlp_service.pb.h"
@@ -111,6 +112,8 @@ class DlpAdaptor : public org::chromium::DlpAdaptor,
                               int pid,
                               base::OnceCallback<void(bool)> callback) override;
   void OnFileDeleted(ino_t inode) override;
+
+  void OnFanotifyError(FanotifyError error) override;
 
   // Callback on ProcessFileOpenRequest after getting data from database.
   void ProcessFileOpenRequestWithData(int pid,
@@ -236,6 +239,8 @@ class DlpAdaptor : public org::chromium::DlpAdaptor,
 
   std::unique_ptr<org::chromium::DlpFilesPolicyServiceProxy>
       dlp_files_policy_service_;
+
+  std::unique_ptr<DlpMetrics> dlp_metrics_;
 
   // Map holding the currently approved access requests.
   // Maps from the lifeline fd to a pair of list of files inodes and pid.

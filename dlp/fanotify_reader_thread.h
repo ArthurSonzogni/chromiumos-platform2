@@ -9,6 +9,7 @@
 #include "base/memory/scoped_refptr.h"
 #include "base/threading/platform_thread.h"
 #include "base/threading/sequenced_task_runner_handle.h"
+#include "dlp/dlp_metrics.h"
 
 namespace dlp {
 
@@ -27,6 +28,9 @@ class FanotifyReaderThread : public base::PlatformThread::Delegate {
     // exist on the filesystem.
     virtual void OnFileDeleted(ino_t inode) = 0;
 
+    // Called when an error occurres.
+    virtual void OnFanotifyError(FanotifyError error) = 0;
+
    protected:
     virtual ~Delegate() = default;
   };
@@ -44,6 +48,8 @@ class FanotifyReaderThread : public base::PlatformThread::Delegate {
   void ThreadMain() override;
 
   void RunLoop();
+
+  void ForwardUMAErrorToParentThread(FanotifyError error);
 
   // Task runner from which this thread is started and where the delegate is
   // running.
