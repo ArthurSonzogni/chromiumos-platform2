@@ -5,10 +5,12 @@
 // spaced_cli provides a command line interface disk usage queries.
 
 #include <cstdlib>
+#include <iomanip>
 #include <iostream>
 #include <locale>
 #include <string>
 
+#include <base/command_line.h>
 #include <base/task/single_thread_task_executor.h>
 #include <base/files/file_path.h>
 #include <base/files/file_descriptor_watcher_posix.h>
@@ -70,7 +72,9 @@ int main(int argc, char** argv) {
               "Monitors the space available on the stateful partition");
   DEFINE_bool(human, false, "Print human-readable numbers");
 
-  brillo::FlagHelper::Init(argc, argv, "ChromiumOS Space Daemon CLI");
+  brillo::FlagHelper::Init(argc, argv,
+                           "ChromiumOS Space Daemon CLI\n\n"
+                           "Usage: space_cli [options] [path]\n");
 
   std::string nl;
   if (FLAGS_human) {
@@ -83,7 +87,7 @@ int main(int argc, char** argv) {
   base::SingleThreadTaskExecutor task_executor(base::MessagePumpType::IO);
   base::FileDescriptorWatcher watcher{task_executor.task_runner()};
 
-  std::unique_ptr<spaced::DiskUsageProxy> disk_usage_proxy =
+  const std::unique_ptr<spaced::DiskUsageProxy> disk_usage_proxy =
       spaced::DiskUsageProxy::Generate();
 
   if (!disk_usage_proxy) {
@@ -96,15 +100,21 @@ int main(int argc, char** argv) {
                      base::FilePath(FLAGS_get_free_disk_space))
               << nl;
     return EXIT_SUCCESS;
-  } else if (!FLAGS_get_total_disk_space.empty()) {
+  }
+
+  if (!FLAGS_get_total_disk_space.empty()) {
     std::cout << disk_usage_proxy->GetTotalDiskSpace(
                      base::FilePath(FLAGS_get_total_disk_space))
               << nl;
     return EXIT_SUCCESS;
-  } else if (FLAGS_get_root_device_size) {
+  }
+
+  if (FLAGS_get_root_device_size) {
     std::cout << disk_usage_proxy->GetRootDeviceSize() << nl;
     return EXIT_SUCCESS;
-  } else if (FLAGS_monitor_stateful) {
+  }
+
+  if (FLAGS_monitor_stateful) {
     EchoSpacedObserver observer;
     disk_usage_proxy->AddObserver(&observer);
     disk_usage_proxy->StartMonitoring();
@@ -113,5 +123,39 @@ int main(int argc, char** argv) {
     return EXIT_SUCCESS;
   }
 
-  return EXIT_FAILURE;
+  base::FilePath path(".");
+  const base::CommandLine::StringVector args =
+      base::CommandLine::ForCurrentProcess()->GetArgs();
+
+  if (!args.empty()) {
+    if (args.size() > 1) {
+      LOG(ERROR) << "Too many command line arguments";
+      return EXIT_FAILURE;
+    }
+
+    path = base::FilePath(args[0]);
+  }
+
+  // Determine full canonical path.
+  {
+    char* const rp = realpath(path.value().c_str(), nullptr);
+    if (!rp) {
+      PLOG(ERROR) << "Cannot get real path of " << std::quoted(path.value());
+      return EXIT_FAILURE;
+    }
+
+    path = base::FilePath(rp);
+    free(rp);
+  }
+
+  std::cout << "path: " << std::quoted(path.value()) << '\n';
+  std::cout << "free_disk_space: " << disk_usage_proxy->GetFreeDiskSpace(path)
+            << '\n';
+  std::cout << "total_disk_space: " << disk_usage_proxy->GetTotalDiskSpace(path)
+            << '\n';
+  std::cout << "root_device_size: " << disk_usage_proxy->GetRootDeviceSize()
+            << '\n';
+  std::cout.flush();
+
+  return EXIT_SUCCESS;
 }
