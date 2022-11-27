@@ -31,6 +31,12 @@ inline constexpr char kSmartctlCheckRoutineDebugdError[] =
 inline constexpr char kSmartctlCheckRoutineFailedAvailableSpare[] =
     "smartctl-check status: FAILED, available_spare is less than "
     "available_spare_threshold.";
+inline constexpr char kSmartctlCheckRoutineFailedFeatureUnsupported[] =
+    "smartctl-check status: FAILED, feature unsupported.";
+// TODO(b/260675972): Avoid this hard-coded error message.
+// Fixed response message for unsupported features from debugd.
+inline constexpr char kDebugdStorageToolFeatureNotSupportedMsg[] =
+    "<This feature is not supported>";
 
 // The SmartctlCheckRoutine routine to examine available_spare against
 // available_spare_threshold.

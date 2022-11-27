@@ -143,7 +143,15 @@ mojom::DiagnosticRoutineStatusEnum SmartctlCheckRoutine::GetStatus() {
 }
 
 void SmartctlCheckRoutine::OnDebugdResultCallback(const std::string& result) {
-  int available_spare, available_spare_threshold;
+  if (result == kDebugdStorageToolFeatureNotSupportedMsg) {
+    UpdateStatus(mojom::DiagnosticRoutineStatusEnum::kFailed,
+                 /*percent=*/100,
+                 kSmartctlCheckRoutineFailedFeatureUnsupported);
+    return;
+  }
+
+  int available_spare;
+  int available_spare_threshold;
   if (!ScrapeSmartctlAttributes(result, &available_spare,
                                 &available_spare_threshold)) {
     LOG(ERROR) << "Unable to parse smartctl output: " << result;
