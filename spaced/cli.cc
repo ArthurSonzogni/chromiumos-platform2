@@ -13,6 +13,7 @@
 #include <base/files/file_descriptor_watcher_posix.h>
 #include <base/run_loop.h>
 #include <base/threading/thread.h>
+#include <base/time/time.h>
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
 
@@ -49,10 +50,10 @@ class EchoSpacedObserver : public spaced::SpacedObserverInterface {
 
   void OnStatefulDiskSpaceUpdate(
       const spaced::StatefulDiskSpaceUpdate& update) override {
-    std::cout << "State: " << UpdateStateToString(update.state())
-              << ", Available space (bytes): " << update.free_space_bytes()
+    std::cout << "Time: " << base::Time::Now()
+              << ", State: " << UpdateStateToString(update.state())
+              << ", Available space: " << update.free_space_bytes()
               << std::endl;
-    fflush(stdout);
   }
 };
 
