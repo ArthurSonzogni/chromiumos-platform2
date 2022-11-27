@@ -166,8 +166,10 @@ class InterfaceProxyInterface {
 
   static const char* CapabilitiesName() { return "Capabilities"; }
   virtual const brillo::VariantDictionary& capabilities() const = 0;
+  virtual bool is_capabilities_valid() const = 0;
   static const char* ClassName() { return "Class"; }
   virtual uint32_t bluetooth_class() const = 0;
+  virtual bool is_bluetooth_class_valid() const = 0;
 
   virtual const dbus::ObjectPath& GetObjectPath() const = 0;
   virtual dbus::ObjectProxy* GetObjectProxy() const = 0;
@@ -220,7 +222,9 @@ class InterfaceProxyMock : public InterfaceProxyInterface {
                                                        const std::tuple<int32_t, base::ScopedFD>&)>& /*signal_callback*/,
                     dbus::ObjectProxy::OnConnectedCallback* /*on_connected_callback*/));
   MOCK_CONST_METHOD0(capabilities, const brillo::VariantDictionary&());
+  MOCK_CONST_METHOD0(is_capabilities_valid, bool());
   MOCK_CONST_METHOD0(bluetooth_class, uint32_t());
+  MOCK_CONST_METHOD0(is_bluetooth_class_valid, bool());
   MOCK_CONST_METHOD0(GetObjectPath, const dbus::ObjectPath&());
   MOCK_CONST_METHOD0(GetObjectProxy, dbus::ObjectProxy*());
   MOCK_METHOD1(SetPropertyChangedCallback,
@@ -833,7 +837,9 @@ class EmptyInterfaceProxyMock : public EmptyInterfaceProxyInterface {
   EmptyInterfaceProxyMock& operator=(const EmptyInterfaceProxyMock&) = delete;
 
   MOCK_CONST_METHOD0(readonly_property, const brillo::VariantDictionary&());
+  MOCK_CONST_METHOD0(is_readonly_property_valid, bool());
   MOCK_CONST_METHOD0(writable_property, const brillo::VariantDictionary&());
+  MOCK_CONST_METHOD0(is_writable_property_valid, bool());
   MOCK_METHOD2(set_writable_property, void(const brillo::VariantDictionary&, base::OnceCallback<void(bool)>));
   MOCK_CONST_METHOD0(GetObjectPath, const dbus::ObjectPath&());
   MOCK_CONST_METHOD0(GetObjectProxy, dbus::ObjectProxy*());
@@ -907,7 +913,9 @@ class EmptyInterfaceProxyMock : public EmptyInterfaceProxyInterface {
   EmptyInterfaceProxyMock& operator=(const EmptyInterfaceProxyMock&) = delete;
 
   MOCK_CONST_METHOD0(readonly_property, const brillo::VariantDictionary&());
+  MOCK_CONST_METHOD0(is_readonly_property_valid, bool());
   MOCK_CONST_METHOD0(writable_property, const brillo::VariantDictionary&());
+  MOCK_CONST_METHOD0(is_writable_property_valid, bool());
   MOCK_METHOD2(set_writable_property, void(const brillo::VariantDictionary&, base::OnceCallback<void(bool)>));
   MOCK_CONST_METHOD0(GetObjectPath, const dbus::ObjectPath&());
   MOCK_CONST_METHOD0(GetObjectProxy, dbus::ObjectProxy*());

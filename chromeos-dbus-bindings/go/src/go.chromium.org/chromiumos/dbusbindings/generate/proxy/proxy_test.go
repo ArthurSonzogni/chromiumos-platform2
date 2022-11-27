@@ -184,8 +184,10 @@ class InterfaceProxyInterface {
 
   static const char* CapabilitiesName() { return "Capabilities"; }
   virtual const brillo::VariantDictionary& capabilities() const = 0;
+  virtual bool is_capabilities_valid() const = 0;
   static const char* ClassName() { return "Class"; }
   virtual uint32_t bluetooth_class() const = 0;
+  virtual bool is_bluetooth_class_valid() const = 0;
 
   virtual const dbus::ObjectPath& GetObjectPath() const = 0;
   virtual dbus::ObjectProxy* GetObjectProxy() const = 0;
@@ -339,8 +341,16 @@ class InterfaceProxy final : public InterfaceProxyInterface {
     return property_set_->capabilities.value();
   }
 
+  bool is_capabilities_valid() const override {
+    return property_set_->capabilities.is_valid();
+  }
+
   uint32_t bluetooth_class() const override {
     return property_set_->bluetooth_class.value();
+  }
+
+  bool is_bluetooth_class_valid() const override {
+    return property_set_->bluetooth_class.is_valid();
   }
 
  private:
@@ -1607,8 +1617,10 @@ class EmptyInterfaceProxyInterface {
 
   static const char* ReadonlyPropertyName() { return "ReadonlyProperty"; }
   virtual const brillo::VariantDictionary& readonly_property() const = 0;
+  virtual bool is_readonly_property_valid() const = 0;
   static const char* WritablePropertyName() { return "WritableProperty"; }
   virtual const brillo::VariantDictionary& writable_property() const = 0;
+  virtual bool is_writable_property_valid() const = 0;
   virtual void set_writable_property(const brillo::VariantDictionary& value,
                                      base::OnceCallback<void(bool)> callback) = 0;
 
@@ -1688,8 +1700,16 @@ class EmptyInterfaceProxy final : public EmptyInterfaceProxyInterface {
     return property_set_->readonly_property.value();
   }
 
+  bool is_readonly_property_valid() const override {
+    return property_set_->readonly_property.is_valid();
+  }
+
   const brillo::VariantDictionary& writable_property() const override {
     return property_set_->writable_property.value();
+  }
+
+  bool is_writable_property_valid() const override {
+    return property_set_->writable_property.is_valid();
   }
 
   void set_writable_property(const brillo::VariantDictionary& value,
@@ -2256,6 +2276,7 @@ class EmptyInterfaceProxyInterface {
 
   static const char* CapabilitiesName() { return "Capabilities"; }
   virtual const brillo::VariantDictionary& capabilities() const = 0;
+  virtual bool is_capabilities_valid() const = 0;
 
   virtual const dbus::ObjectPath& GetObjectPath() const = 0;
   virtual dbus::ObjectProxy* GetObjectProxy() const = 0;
@@ -2328,6 +2349,10 @@ class EmptyInterfaceProxy final : public EmptyInterfaceProxyInterface {
 
   const brillo::VariantDictionary& capabilities() const override {
     return property_set_->capabilities.value();
+  }
+
+  bool is_capabilities_valid() const override {
+    return property_set_->capabilities.is_valid();
   }
 
  private:

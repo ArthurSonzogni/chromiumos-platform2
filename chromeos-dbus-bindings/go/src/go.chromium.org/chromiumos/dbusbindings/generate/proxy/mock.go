@@ -119,6 +119,7 @@ brillo::ErrorPtr* /*error*/,
 {{- $name := makePropertyVariableName . | makeVariableName -}}
 {{- $type := makeProxyInArgTypeProxy . }}
   MOCK_CONST_METHOD0({{$name}}, {{$type}}());
+  MOCK_CONST_METHOD0(is_{{$name}}_valid, bool());
 {{- if eq .Access "readwrite"}}
   MOCK_METHOD2(set_{{$name}}, void({{$type}}, base::OnceCallback<void(bool)>));
 {{- end}}

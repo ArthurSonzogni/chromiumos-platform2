@@ -55,6 +55,7 @@ class {{$itfName}} {
 {{- $type := makeProxyInArgTypeProxy . }}
   static const char* {{.Name}}Name() { return "{{.Name}}"; }
   virtual {{$type}} {{$name}}() const = 0;
+  virtual bool is_{{$name}}_valid() const = 0;
 {{- if eq .Access "readwrite"}}
   virtual void set_{{$name}}({{$type}} value,
                    {{repeat " " (len $name)}} base::OnceCallback<void(bool)> callback) = 0;

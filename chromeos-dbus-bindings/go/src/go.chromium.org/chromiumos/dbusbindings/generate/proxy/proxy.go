@@ -265,6 +265,10 @@ class {{$proxyName}} final : public {{$itfName}} {
   {{$type}} {{$name}}() const override {
     return property_set_->{{$name}}.value();
   }
+
+  bool is_{{$name}}_valid() const override {
+    return property_set_->{{$name}}.is_valid();
+  }
 {{- if eq .Access "readwrite"}}
 
   void set_{{$name}}({{$type}} value,
