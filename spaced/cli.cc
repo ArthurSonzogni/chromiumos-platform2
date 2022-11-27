@@ -4,6 +4,7 @@
 //
 // spaced_cli provides a command line interface disk usage queries.
 
+#include <cstdlib>
 #include <iostream>
 #include <locale>
 #include <string>
@@ -87,30 +88,30 @@ int main(int argc, char** argv) {
 
   if (!disk_usage_proxy) {
     LOG(ERROR) << "Failed to get disk usage proxy";
-    return 1;
+    return EXIT_FAILURE;
   }
 
   if (!FLAGS_get_free_disk_space.empty()) {
     std::cout << disk_usage_proxy->GetFreeDiskSpace(
                      base::FilePath(FLAGS_get_free_disk_space))
               << nl;
-    return 0;
+    return EXIT_SUCCESS;
   } else if (!FLAGS_get_total_disk_space.empty()) {
     std::cout << disk_usage_proxy->GetTotalDiskSpace(
                      base::FilePath(FLAGS_get_total_disk_space))
               << nl;
-    return 0;
+    return EXIT_SUCCESS;
   } else if (FLAGS_get_root_device_size) {
     std::cout << disk_usage_proxy->GetRootDeviceSize() << nl;
-    return 0;
+    return EXIT_SUCCESS;
   } else if (FLAGS_monitor_stateful) {
     EchoSpacedObserver observer;
     disk_usage_proxy->AddObserver(&observer);
     disk_usage_proxy->StartMonitoring();
     // Infinite loop; let the user interrupt monitoring with Ctrl+C.
     base::RunLoop().Run();
-    return 0;
+    return EXIT_SUCCESS;
   }
 
-  return 1;
+  return EXIT_FAILURE;
 }
