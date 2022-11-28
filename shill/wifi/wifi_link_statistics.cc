@@ -4,16 +4,59 @@
 
 #include "shill/wifi/wifi_link_statistics.h"
 
+#include <map>
 #include <string>
 #include <utility>
 #include <vector>
 #include "base/strings/stringprintf.h"
 #include "shill/store/key_value_store.h"
+#include "shill/supplicant/wpa_supplicant.h"
 
 #include <chromeos/dbus/service_constants.h>
 
 namespace shill {
 namespace {
+
+static constexpr char kChannelWidth20MHznoHT[] = "20 MHz (no HT)";
+static constexpr char kChannelWidth20MHz[] = "20 MHz";
+static constexpr char kChannelWidth40MHz[] = "40 MHz";
+static constexpr char kChannelWidth80MHz[] = "80 MHz";
+static constexpr char kChannelWidth80p80MHz[] = "80+80 MHz";
+static constexpr char kChannelWidth160MHz[] = "160 MHz";
+
+static const std::map<std::string, WiFiLinkStatistics::LinkMode>
+    kLinkModeTranslationMap = {
+        {WPASupplicant::kSignalChangePropertyRxHEMCS,
+         WiFiLinkStatistics::LinkMode::kLinkModeHE},
+        {WPASupplicant::kSignalChangePropertyRxVHTMCS,
+         WiFiLinkStatistics::LinkMode::kLinkModeVHT},
+        {WPASupplicant::kSignalChangePropertyRxMCS,
+         WiFiLinkStatistics::LinkMode::kLinkModeLegacy},
+        {WPASupplicant::kSignalChangePropertyTxHEMCS,
+         WiFiLinkStatistics::LinkMode::kLinkModeHE},
+        {WPASupplicant::kSignalChangePropertyTxVHTMCS,
+         WiFiLinkStatistics::LinkMode::kLinkModeVHT},
+        {WPASupplicant::kSignalChangePropertyTxMCS,
+         WiFiLinkStatistics::LinkMode::kLinkModeLegacy},
+};
+
+// Undo the work of channel_width_to_string at:
+// https://source.chromium.org/chromiumos/chromiumos/codesearch/+/main:src/third_party/wpa_supplicant-cros/next/src/drivers/driver_common.c;l=100
+static const std::map<std::string, WiFiLinkStatistics::ChannelWidth>
+    kChannelWidthTranslationMap = {
+        {kChannelWidth20MHznoHT,
+         WiFiLinkStatistics::ChannelWidth::kChannelWidth20MHz},
+        {kChannelWidth20MHz,
+         WiFiLinkStatistics::ChannelWidth::kChannelWidth20MHz},
+        {kChannelWidth40MHz,
+         WiFiLinkStatistics::ChannelWidth::kChannelWidth40MHz},
+        {kChannelWidth80MHz,
+         WiFiLinkStatistics::ChannelWidth::kChannelWidth80MHz},
+        {kChannelWidth80p80MHz,
+         WiFiLinkStatistics::ChannelWidth::kChannelWidth80p80MHz},
+        {kChannelWidth160MHz,
+         WiFiLinkStatistics::ChannelWidth::kChannelWidth160MHz},
+};
 
 bool IsNetworkEvent(WiFiLinkStatistics::Trigger trigger) {
   // Only update the state if the link statistics request was triggered by an
@@ -299,7 +342,8 @@ std::string WiFiLinkStatistics::LinkStatisticsTriggerToString(Trigger trigger) {
 }
 
 // static
-KeyValueStore WiFiLinkStatistics::StationStatsToKV(const StationStats& stats) {
+KeyValueStore WiFiLinkStatistics::StationStatsToWiFiDeviceKV(
+    const StationStats& stats) {
   KeyValueStore kv;
   StationStats defaults;
   if (stats.inactive_time != defaults.inactive_time) {
@@ -343,6 +387,103 @@ KeyValueStore WiFiLinkStatistics::StationStatsToKV(const StationStats& stats) {
                         ConvertToBitrateString(stats.rx));
   }
   return kv;
+}
+
+// static
+WiFiLinkStatistics::StationStats
+WiFiLinkStatistics::StationStatsFromSupplicantKV(
+    const KeyValueStore& properties) {
+  StationStats stats;
+  stats.signal =
+      properties.Get<int32_t>(WPASupplicant::kSignalChangePropertyRSSI);
+  if (properties.Contains<int32_t>(
+          WPASupplicant::kSignalChangePropertyAverageRSSI)) {
+    stats.signal_avg = properties.Get<int32_t>(
+        WPASupplicant::kSignalChangePropertyAverageRSSI);
+  }
+  const std::vector<std::pair<std::string, uint32_t*>> signal_properties_u32 = {
+      {WPASupplicant::kSignalChangePropertyRetries, &stats.tx_retries},
+      {WPASupplicant::kSignalChangePropertyRetriesFailed, &stats.tx_failed},
+      {WPASupplicant::kSignalChangePropertyRxPackets, &stats.rx.packets},
+      {WPASupplicant::kSignalChangePropertyTxPackets, &stats.tx.packets},
+      {WPASupplicant::kSignalChangePropertyRxSpeed, &stats.rx.bitrate},
+      {WPASupplicant::kSignalChangePropertyTxSpeed, &stats.tx.bitrate},
+  };
+
+  for (const auto& kv : signal_properties_u32) {
+    if (properties.Contains<uint32_t>(kv.first)) {
+      *kv.second = properties.Get<uint32_t>(kv.first);
+    }
+  }
+
+  if (stats.tx.bitrate != UINT_MAX) {
+    stats.tx.bitrate = stats.tx.bitrate / 100;
+  }
+  if (stats.rx.bitrate != UINT_MAX) {
+    stats.rx.bitrate = stats.rx.bitrate / 100;
+  }
+
+  const std::vector<std::pair<std::string, uint8_t*>> signal_properties_u8 = {
+      {WPASupplicant::kSignalChangePropertyRxHENSS, &stats.rx.nss},
+      {WPASupplicant::kSignalChangePropertyTxHENSS, &stats.tx.nss},
+      {WPASupplicant::kSignalChangePropertyRxVHTNSS, &stats.rx.nss},
+      {WPASupplicant::kSignalChangePropertyTxVHTNSS, &stats.tx.nss},
+  };
+
+  for (const auto& kv : signal_properties_u8) {
+    if (properties.Contains<uint32_t>(kv.first)) {
+      *kv.second = static_cast<uint8_t>(properties.Get<uint32_t>(kv.first));
+    }
+  }
+
+  const std::vector<std::pair<std::string, WiFiLinkStatistics::LinkStats*>>
+      signal_properties_mcs = {
+          {WPASupplicant::kSignalChangePropertyRxHEMCS, &stats.rx},
+          {WPASupplicant::kSignalChangePropertyTxHEMCS, &stats.tx},
+          {WPASupplicant::kSignalChangePropertyRxVHTMCS, &stats.rx},
+          {WPASupplicant::kSignalChangePropertyTxVHTMCS, &stats.tx},
+          {WPASupplicant::kSignalChangePropertyRxMCS, &stats.rx},
+          {WPASupplicant::kSignalChangePropertyTxMCS, &stats.tx},
+      };
+
+  for (const auto& kv : signal_properties_mcs) {
+    if (properties.Contains<uint32_t>(kv.first)) {
+      kv.second->mcs = static_cast<uint8_t>(properties.Get<uint32_t>(kv.first));
+      const auto it = kLinkModeTranslationMap.find(kv.first);
+      if (it != kLinkModeTranslationMap.end()) {
+        kv.second->mode = it->second;
+      }
+    }
+  }
+
+  const std::vector<std::pair<std::string, uint64_t*>> signal_properties_u64 = {
+      {WPASupplicant::kSignalChangePropertyRxDropMisc, &stats.rx_drop_misc},
+      {WPASupplicant::kSignalChangePropertyRxBytes, &stats.rx.bytes},
+      {WPASupplicant::kSignalChangePropertyTxBytes, &stats.tx.bytes},
+  };
+
+  for (const auto& kv : signal_properties_u64) {
+    if (properties.Contains<uint64_t>(kv.first)) {
+      *kv.second = properties.Get<uint64_t>(kv.first);
+    }
+  }
+
+  if (properties.Contains<std::string>(
+          WPASupplicant::kSignalChangePropertyChannelWidth)) {
+    std::string width = properties.Get<std::string>(
+        WPASupplicant::kSignalChangePropertyChannelWidth);
+
+    // TODO(b/239864299): Use the same channel width for RX and TX.
+    const auto it = kChannelWidthTranslationMap.find(width);
+    if (it == kChannelWidthTranslationMap.end()) {
+      stats.rx.width = ChannelWidth::kChannelWidthUnknown;
+      stats.tx.width = ChannelWidth::kChannelWidthUnknown;
+    } else {
+      stats.rx.width = it->second;
+      stats.tx.width = it->second;
+    }
+  }
+  return stats;
 }
 
 void WiFiLinkStatistics::Reset() {

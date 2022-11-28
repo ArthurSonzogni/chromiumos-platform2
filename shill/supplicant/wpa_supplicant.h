@@ -162,6 +162,43 @@ class WPASupplicant {
   static const char kSecurityModeRSN[];
   static const char kSecurityModeWPA[];
 
+  // TODO(b/230525092): Add support for NL80211_STA_INFO_INACTIVE_TIME
+  static const char kSignalChangeProperty[];
+  static const char kSignalChangePropertyRSSI[];
+  static const char kSignalChangePropertyNoise[];
+  static const char kSignalChangePropertyChannelFrequency[];
+  static const char kSignalChangePropertyChannelWidth[];
+  static const char kSignalChangePropertyCenterFreq1[];
+  static const char kSignalChangePropertyCenterFreq2[];
+  static const char kSignalChangePropertyAverageRSSI[];
+  static const char kSignalChangePropertyRxBytes[];
+  static const char kSignalChangePropertyTxBytes[];
+  static const char kSignalChangePropertyRxPackets[];
+  static const char kSignalChangePropertyTxPackets[];
+  static const char kSignalChangePropertyBeacons[];
+  static const char kSignalChangePropertyRxSpeed[];
+  static const char kSignalChangePropertyTxSpeed[];
+  static const char kSignalChangePropertyRetries[];
+  static const char kSignalChangePropertyRetriesFailed[];
+  static const char kSignalChangePropertyLastAckRSSI[];
+  static const char kSignalChangePropertyFCSErrors[];
+  static const char kSignalChangePropertyBeaconLosses[];
+  static const char kSignalChangePropertyExpectedThroughput[];
+  static const char kSignalChangePropertyRxDropMisc[];
+  static const char kSignalChangePropertyRxMPDUS[];
+  static const char kSignalChangePropertyRxHEMCS[];
+  static const char kSignalChangePropertyTxHEMCS[];
+  static const char kSignalChangePropertyRxVHTMCS[];
+  static const char kSignalChangePropertyTxVHTMCS[];
+  static const char kSignalChangePropertyRxMCS[];
+  static const char kSignalChangePropertyTxMCS[];
+  static const char kSignalChangePropertyRxHENSS[];
+  static const char kSignalChangePropertyTxHENSS[];
+  static const char kSignalChangePropertyRxVHTNSS[];
+  static const char kSignalChangePropertyTxVHTNSS[];
+  static const char kSignalChangePropertyAverageBeaconRSSI[];
+  static const char kSignalChangePropertyAverageAckRSSI[];
+
   static const char kCredentialsPropertyDomain[];
   static const char kCredentialsPropertyPassword[];
   static const char kCredentialsPropertyRealm[];

@@ -18,6 +18,7 @@
 #include <gtest/gtest.h>
 #include "shill/metrics.h"
 #include "shill/mock_log.h"
+#include "shill/supplicant/wpa_supplicant.h"
 
 using ::testing::_;
 using ::testing::HasSubstr;
@@ -481,6 +482,230 @@ TEST_F(WiFiLinkStatisticsTest, StationInfoReportConvert) {
     e.tx.gi = expected_gi[it - gi.begin()];
     EXPECT_EQ(e, WiFiLinkStatistics::ConvertLinkStatsReport(s));
   }
+}
+
+TEST_F(WiFiLinkStatisticsTest, StationStatsFromKVHE) {
+  KeyValueStore properties;
+  properties.Set<int32_t>(WPASupplicant::kSignalChangePropertyRSSI, -70);
+  properties.Set<int32_t>(WPASupplicant::kSignalChangePropertyAverageRSSI, -62);
+  properties.Set<uint32_t>(WPASupplicant::kSignalChangePropertyRetries, 400UL);
+  properties.Set<uint32_t>(WPASupplicant::kSignalChangePropertyRetriesFailed,
+                           10UL);
+  properties.Set<uint32_t>(WPASupplicant::kSignalChangePropertyRxPackets,
+                           1000UL);
+  properties.Set<uint32_t>(WPASupplicant::kSignalChangePropertyTxPackets,
+                           1500UL);
+  properties.Set<uint32_t>(WPASupplicant::kSignalChangePropertyRxSpeed,
+                           86600UL);
+  properties.Set<uint32_t>(WPASupplicant::kSignalChangePropertyTxSpeed,
+                           50000UL);
+  properties.Set<uint32_t>(WPASupplicant::kSignalChangePropertyRxHENSS, 8UL);
+  properties.Set<uint32_t>(WPASupplicant::kSignalChangePropertyTxHENSS, 6UL);
+  properties.Set<uint32_t>(WPASupplicant::kSignalChangePropertyRxHEMCS, 15UL);
+  properties.Set<uint32_t>(WPASupplicant::kSignalChangePropertyTxHEMCS, 12UL);
+  properties.Set<uint64_t>(WPASupplicant::kSignalChangePropertyRxDropMisc,
+                           40ULL);
+  properties.Set<uint64_t>(WPASupplicant::kSignalChangePropertyRxBytes,
+                           8000ULL);
+  properties.Set<uint64_t>(WPASupplicant::kSignalChangePropertyTxBytes,
+                           10000ULL);
+  properties.Set<std::string>(WPASupplicant::kSignalChangePropertyChannelWidth,
+                              "160 MHz");
+
+  WiFiLinkStatistics::StationStats expected = {
+      .tx_retries = 400UL,
+      .tx_failed = 10UL,
+      .rx_drop_misc = 40ULL,
+      .signal = -70,
+      .signal_avg = -62,
+      .rx =
+          {
+              .packets = 1000UL,
+              .bytes = 8000ULL,
+              .bitrate = 866UL,
+              .mcs = 15,
+              .width = WiFiLinkStatistics::ChannelWidth::kChannelWidth160MHz,
+              .mode = WiFiLinkStatistics::LinkMode::kLinkModeHE,
+              .nss = 8,
+          },
+      .tx = {
+          .packets = 1500UL,
+          .bytes = 10000ULL,
+          .bitrate = 500UL,
+          .mcs = 12,
+          .width = WiFiLinkStatistics::ChannelWidth::kChannelWidth160MHz,
+          .mode = WiFiLinkStatistics::LinkMode::kLinkModeHE,
+          .nss = 6,
+      }};
+
+  WiFiLinkStatistics::StationStats stats =
+      WiFiLinkStatistics::StationStatsFromSupplicantKV(properties);
+
+  EXPECT_EQ(stats, expected);
+}
+
+TEST_F(WiFiLinkStatisticsTest, StationStatsFromKVVHT) {
+  KeyValueStore properties;
+  properties.Set<int32_t>(WPASupplicant::kSignalChangePropertyRSSI, -70);
+  properties.Set<int32_t>(WPASupplicant::kSignalChangePropertyAverageRSSI, -62);
+  properties.Set<uint32_t>(WPASupplicant::kSignalChangePropertyRetries, 400UL);
+  properties.Set<uint32_t>(WPASupplicant::kSignalChangePropertyRetriesFailed,
+                           10UL);
+  properties.Set<uint32_t>(WPASupplicant::kSignalChangePropertyRxPackets,
+                           1000UL);
+  properties.Set<uint32_t>(WPASupplicant::kSignalChangePropertyTxPackets,
+                           1500UL);
+  properties.Set<uint32_t>(WPASupplicant::kSignalChangePropertyRxSpeed,
+                           86600UL);
+  properties.Set<uint32_t>(WPASupplicant::kSignalChangePropertyTxSpeed,
+                           50000UL);
+  properties.Set<uint32_t>(WPASupplicant::kSignalChangePropertyRxVHTNSS, 8UL);
+  properties.Set<uint32_t>(WPASupplicant::kSignalChangePropertyTxVHTNSS, 6UL);
+  properties.Set<uint32_t>(WPASupplicant::kSignalChangePropertyRxVHTMCS, 15UL);
+  properties.Set<uint32_t>(WPASupplicant::kSignalChangePropertyTxVHTMCS, 12UL);
+  properties.Set<uint64_t>(WPASupplicant::kSignalChangePropertyRxDropMisc,
+                           40ULL);
+  properties.Set<uint64_t>(WPASupplicant::kSignalChangePropertyRxBytes,
+                           8000ULL);
+  properties.Set<uint64_t>(WPASupplicant::kSignalChangePropertyTxBytes,
+                           10000ULL);
+  properties.Set<std::string>(WPASupplicant::kSignalChangePropertyChannelWidth,
+                              "80 MHz");
+
+  WiFiLinkStatistics::StationStats expected = {
+      .tx_retries = 400UL,
+      .tx_failed = 10UL,
+      .rx_drop_misc = 40ULL,
+      .signal = -70,
+      .signal_avg = -62,
+      .rx =
+          {
+              .packets = 1000UL,
+              .bytes = 8000ULL,
+              .bitrate = 866UL,
+              .mcs = 15,
+              .width = WiFiLinkStatistics::ChannelWidth::kChannelWidth80MHz,
+              .mode = WiFiLinkStatistics::LinkMode::kLinkModeVHT,
+              .nss = 8,
+          },
+      .tx = {
+          .packets = 1500UL,
+          .bytes = 10000ULL,
+          .bitrate = 500UL,
+          .mcs = 12,
+          .width = WiFiLinkStatistics::ChannelWidth::kChannelWidth80MHz,
+          .mode = WiFiLinkStatistics::LinkMode::kLinkModeVHT,
+          .nss = 6,
+      }};
+
+  WiFiLinkStatistics::StationStats stats =
+      WiFiLinkStatistics::StationStatsFromSupplicantKV(properties);
+
+  EXPECT_EQ(stats, expected);
+}
+
+TEST_F(WiFiLinkStatisticsTest, StationStatsFromKVLegacy) {
+  KeyValueStore properties;
+  properties.Set<int32_t>(WPASupplicant::kSignalChangePropertyRSSI, -70);
+  properties.Set<int32_t>(WPASupplicant::kSignalChangePropertyAverageRSSI, -62);
+  properties.Set<uint32_t>(WPASupplicant::kSignalChangePropertyRetries, 400UL);
+  properties.Set<uint32_t>(WPASupplicant::kSignalChangePropertyRetriesFailed,
+                           10UL);
+  properties.Set<uint32_t>(WPASupplicant::kSignalChangePropertyRxPackets,
+                           1000UL);
+  properties.Set<uint32_t>(WPASupplicant::kSignalChangePropertyTxPackets,
+                           1500UL);
+  properties.Set<uint32_t>(WPASupplicant::kSignalChangePropertyRxSpeed,
+                           86600UL);
+  properties.Set<uint32_t>(WPASupplicant::kSignalChangePropertyTxSpeed,
+                           50000UL);
+  properties.Set<uint32_t>(WPASupplicant::kSignalChangePropertyRxMCS, 15UL);
+  properties.Set<uint32_t>(WPASupplicant::kSignalChangePropertyTxMCS, 12UL);
+  properties.Set<uint64_t>(WPASupplicant::kSignalChangePropertyRxDropMisc,
+                           40ULL);
+  properties.Set<uint64_t>(WPASupplicant::kSignalChangePropertyRxBytes,
+                           8000ULL);
+  properties.Set<uint64_t>(WPASupplicant::kSignalChangePropertyTxBytes,
+                           10000ULL);
+
+  WiFiLinkStatistics::StationStats expected = {
+      .tx_retries = 400UL,
+      .tx_failed = 10UL,
+      .rx_drop_misc = 40ULL,
+      .signal = -70,
+      .signal_avg = -62,
+      .rx =
+          {
+              .packets = 1000UL,
+              .bytes = 8000ULL,
+              .bitrate = 866UL,
+              .mcs = 15,
+              .mode = WiFiLinkStatistics::LinkMode::kLinkModeLegacy,
+          },
+      .tx = {
+          .packets = 1500UL,
+          .bytes = 10000ULL,
+          .bitrate = 500UL,
+          .mcs = 12,
+          .mode = WiFiLinkStatistics::LinkMode::kLinkModeLegacy,
+      }};
+
+  WiFiLinkStatistics::StationStats stats =
+      WiFiLinkStatistics::StationStatsFromSupplicantKV(properties);
+
+  EXPECT_EQ(stats, expected);
+}
+
+TEST_F(WiFiLinkStatisticsTest, StationStatsFromKVUnknown) {
+  KeyValueStore properties;
+  properties.Set<int32_t>(WPASupplicant::kSignalChangePropertyRSSI, -70);
+  properties.Set<int32_t>(WPASupplicant::kSignalChangePropertyAverageRSSI, -62);
+  properties.Set<uint32_t>(WPASupplicant::kSignalChangePropertyRetries, 400UL);
+  properties.Set<uint32_t>(WPASupplicant::kSignalChangePropertyRetriesFailed,
+                           10UL);
+  properties.Set<uint32_t>(WPASupplicant::kSignalChangePropertyRxPackets,
+                           1000UL);
+  properties.Set<uint32_t>(WPASupplicant::kSignalChangePropertyTxPackets,
+                           1500UL);
+  properties.Set<uint32_t>(WPASupplicant::kSignalChangePropertyRxSpeed,
+                           86600UL);
+  properties.Set<uint32_t>(WPASupplicant::kSignalChangePropertyTxSpeed,
+                           50000UL);
+  properties.Set<uint64_t>(WPASupplicant::kSignalChangePropertyRxDropMisc,
+                           40ULL);
+  properties.Set<uint64_t>(WPASupplicant::kSignalChangePropertyRxBytes,
+                           8000ULL);
+  properties.Set<uint64_t>(WPASupplicant::kSignalChangePropertyTxBytes,
+                           10000ULL);
+  properties.Set<std::string>(WPASupplicant::kSignalChangePropertyChannelWidth,
+                              "Invalid Value");
+
+  WiFiLinkStatistics::StationStats expected = {
+      .tx_retries = 400UL,
+      .tx_failed = 10UL,
+      .rx_drop_misc = 40ULL,
+      .signal = -70,
+      .signal_avg = -62,
+      .rx =
+          {
+              .packets = 1000UL,
+              .bytes = 8000ULL,
+              .bitrate = 866UL,
+              .width = WiFiLinkStatistics::ChannelWidth::kChannelWidthUnknown,
+              .mode = WiFiLinkStatistics::LinkMode::kLinkModeUnknown,
+          },
+      .tx = {
+          .packets = 1500UL,
+          .bytes = 10000ULL,
+          .bitrate = 500UL,
+          .width = WiFiLinkStatistics::ChannelWidth::kChannelWidthUnknown,
+          .mode = WiFiLinkStatistics::LinkMode::kLinkModeUnknown,
+      }};
+
+  WiFiLinkStatistics::StationStats stats =
+      WiFiLinkStatistics::StationStatsFromSupplicantKV(properties);
+
+  EXPECT_EQ(stats, expected);
 }
 
 }  // namespace shill

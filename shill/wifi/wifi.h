@@ -472,6 +472,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   void CurrentBSSChanged(const RpcIdentifier& new_bss);
   void DisconnectReasonChanged(const int32_t new_disconnect_reason);
   void CurrentAuthModeChanged(const std::string& auth_mode);
+  void SignalChanged(const KeyValueStore& properties);
   // Return the correct Metrics suffix (PSK, FTPSK, EAP, FTEAP) corresponding to
   // the current service's authentication mode.
   std::string GetSuffixFromAuthMode(const std::string& auth_mode) const;
@@ -640,6 +641,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   void OnReceivedStationInfo(const Nl80211Message& nl80211_message);
   static bool ParseStationBitrate(const AttributeListConstRefPtr& rate_info,
                                   WiFiLinkStatistics::LinkStats* stats);
+  void HandleUpdatedLinkStatistics();
   void StopRequestingStationInfo();
   void ResetStationInfoRequests();
 

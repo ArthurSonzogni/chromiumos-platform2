@@ -5,6 +5,7 @@
 #include "shill/wifi/wifi.h"
 
 #include <inttypes.h>
+#include <limits.h>
 #include <linux/if.h>  // Needs definitions from netinet/ether.h
 #include <linux/nl80211.h>
 #include <netinet/ether.h>
@@ -2150,6 +2151,19 @@ void WiFi::PropertiesChangedTask(const KeyValueStore& properties) {
     DisconnectReasonChanged(properties.Get<int32_t>(
         WPASupplicant::kInterfacePropertyDisconnectReason));
   }
+
+  // Handle signal quality change information (from a CQM event).
+  if (properties.Contains<KeyValueStore>(
+          WPASupplicant::kSignalChangeProperty)) {
+    SignalChanged(
+        properties.Get<KeyValueStore>(WPASupplicant::kSignalChangeProperty));
+  }
+}
+
+void WiFi::SignalChanged(const KeyValueStore& properties) {
+  station_stats_ = WiFiLinkStatistics::StationStatsFromSupplicantKV(properties);
+
+  HandleUpdatedLinkStatistics();
 }
 
 std::string WiFi::GetSuffixFromAuthMode(const std::string& auth_mode) const {
@@ -3454,7 +3468,7 @@ SupplicantProcessProxyInterface* WiFi::supplicant_process_proxy() const {
 }
 
 KeyValueStore WiFi::GetLinkStatistics(Error* /*error*/) {
-  return WiFiLinkStatistics::StationStatsToKV(station_stats_);
+  return WiFiLinkStatistics::StationStatsToWiFiDeviceKV(station_stats_);
 }
 
 Uint16s WiFi::GetAllScanFrequencies(Error* /* error */) {
@@ -3878,13 +3892,14 @@ void WiFi::OnReceivedStationInfo(const Nl80211Message& nl80211_message) {
   endpoint->UpdateSignalStrength(static_cast<signed char>(signal));
 
   WiFiLinkStatistics::StationStats stats;
+  uint32_t rxbytes, txbytes = UINT_MAX;
   std::vector<std::pair<int, uint32_t*>> nl80211_sta_info_properties_u32 = {
       {NL80211_STA_INFO_INACTIVE_TIME, &stats.inactive_time},
       {NL80211_STA_INFO_RX_PACKETS, &stats.rx.packets},
       {NL80211_STA_INFO_TX_PACKETS, &stats.tx.packets},
-      {NL80211_STA_INFO_RX_BYTES, &stats.rx.bytes},
-      {NL80211_STA_INFO_TX_BYTES, &stats.tx.bytes},
       {NL80211_STA_INFO_TX_FAILED, &stats.tx_failed},
+      {NL80211_STA_INFO_RX_BYTES, &rxbytes},
+      {NL80211_STA_INFO_TX_BYTES, &txbytes},
       {NL80211_STA_INFO_TX_RETRIES, &stats.tx_retries}};
   for (const auto& kv : nl80211_sta_info_properties_u32) {
     uint32_t value;
@@ -3894,12 +3909,25 @@ void WiFi::OnReceivedStationInfo(const Nl80211Message& nl80211_message) {
   }
 
   std::vector<std::pair<int, uint64_t*>> nl80211_sta_info_properties_u64 = {
+      {NL80211_STA_INFO_RX_BYTES64, &stats.rx.bytes},
+      {NL80211_STA_INFO_TX_BYTES64, &stats.tx.bytes},
       {NL80211_STA_INFO_RX_DROP_MISC, &stats.rx_drop_misc}};
   for (const auto& kv : nl80211_sta_info_properties_u64) {
     uint64_t value;
     if (station_info->GetU64AttributeValue(kv.first, &value)) {
       *kv.second = value;
     }
+  }
+
+  // Handle the case where NL80211_STA_INFO_RX_BYTES was set but
+  // NL80211_STA_INFO_RX_BYTES64 was not.
+  if (rxbytes != UINT_MAX && stats.rx.bytes == ULLONG_MAX) {
+    stats.rx.bytes = rxbytes;
+  }
+  // Handle the case where NL80211_STA_INFO_TX_BYTES was set but
+  // NL80211_STA_INFO_TX_BYTES64 was not.
+  if (txbytes != UINT_MAX && stats.tx.bytes == ULLONG_MAX) {
+    stats.tx.bytes = txbytes;
   }
 
   std::vector<std::pair<int, int32_t*>> nl80211_sta_info_properties_s32 = {
@@ -3932,6 +3960,10 @@ void WiFi::OnReceivedStationInfo(const Nl80211Message& nl80211_message) {
 
   station_stats_ = stats;
 
+  HandleUpdatedLinkStatistics();
+}
+
+void WiFi::HandleUpdatedLinkStatistics() {
   if (!pending_nl80211_stats_requests_.empty()) {
     // Only emit 1 telemetry event with link statistics, even if we had multiple
     // trigger events (e.g. CQM and DHCP in quick succession).

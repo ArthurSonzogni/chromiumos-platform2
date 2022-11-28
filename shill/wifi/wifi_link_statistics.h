@@ -6,6 +6,7 @@
 #define SHILL_WIFI_WIFI_LINK_STATISTICS_H_
 
 #include <cstdint>
+#include <limits.h>
 #include <list>
 #include <string>
 
@@ -96,26 +97,40 @@ class WiFiLinkStatistics {
   };
 
   struct LinkStats {
-    uint32_t packets = -1;
-    uint32_t bytes = -1;
-    uint32_t bitrate = -1;  // unit is 100Kb/s.
-    uint8_t mcs = -1;
+    uint32_t packets = UINT_MAX;
+    uint64_t bytes = ULLONG_MAX;
+    uint32_t bitrate = UINT_MAX;  // unit is 100Kb/s.
+    uint8_t mcs = UCHAR_MAX;
     ChannelWidth width = ChannelWidth::kChannelWidthUnknown;
     LinkMode mode = LinkMode::kLinkModeUnknown;
     GuardInterval gi = GuardInterval::kLinkStatsGIUnknown;
-    uint8_t nss = -1;
-    uint8_t dcm = -1;
+    uint8_t nss = UCHAR_MAX;
+    uint8_t dcm = UCHAR_MAX;
+    // For testing.
+    bool operator==(const LinkStats& that) const {
+      return packets == that.packets && bytes == that.bytes &&
+             bitrate == that.bitrate && mcs == that.mcs &&
+             width == that.width && mode == that.mode && gi == that.gi &&
+             nss == that.nss && dcm == that.dcm;
+    }
   };
 
   struct StationStats {
-    uint32_t inactive_time = -1;
-    uint32_t tx_retries = -1;
-    uint32_t tx_failed = -1;
-    uint64_t rx_drop_misc = -1;
+    uint32_t inactive_time = UINT_MAX;
+    uint32_t tx_retries = UINT_MAX;
+    uint32_t tx_failed = UINT_MAX;
+    uint64_t rx_drop_misc = ULLONG_MAX;
     int32_t signal = 9999;  // wpa_supplicant uses int32_t value, default 9999.
     int32_t signal_avg = 9999;
     LinkStats rx;
     LinkStats tx;
+    // For testing.
+    bool operator==(const StationStats& that) const {
+      return inactive_time == that.inactive_time &&
+             tx_retries == that.tx_retries && tx_failed == that.tx_failed &&
+             rx_drop_misc == that.rx_drop_misc && signal == that.signal &&
+             signal_avg == that.signal_avg && rx == that.rx && tx == that.tx;
+    }
   };
 
   struct Nl80211LinkStatistics {
@@ -148,9 +163,14 @@ class WiFiLinkStatistics {
 
   static std::string LinkStatisticsTriggerToString(Trigger event);
 
-  // Convert StationStats to a key/value store object that can be used to export
-  // statistics over D-Bus.
-  static KeyValueStore StationStatsToKV(const StationStats& stats);
+  // Convert StationStats to a key/value store object that is used to export
+  // the kLinkStatisticsProperty of the WiFi Device D-Bus interface.
+  static KeyValueStore StationStatsToWiFiDeviceKV(const StationStats& stats);
+
+  // Convert a key/value store object that was sent through D-Bus by
+  // wpa_supplicant's SignalChange property into StationStats for internal use.
+  static StationStats StationStatsFromSupplicantKV(
+      const KeyValueStore& properties);
 
   // Update a new snapshot of WiFi link statistics.
   // If trigger is a start network event, the WiFi link statistics is

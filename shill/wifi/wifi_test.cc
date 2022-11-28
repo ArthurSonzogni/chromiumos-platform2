@@ -962,6 +962,10 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
         .WillByDefault(Return(phy));
   }
 
+  WiFiLinkStatistics::StationStats GetStationStats() {
+    return wifi_->station_stats_;
+  }
+
   void ClearCachedCredentials(const WiFiService* service) {
     return wifi_->ClearCachedCredentials(service);
   }
@@ -2658,7 +2662,22 @@ TEST_F(WiFiMainTest, StopDisconnectReason) {
                                     IEEE_80211::kReasonCodeSenderHasLeft));
 
   event_dispatcher_->DispatchPendingEvents();
-  Mock::VerifyAndClearExpectations(GetSupplicantInterfaceProxy());
+}
+
+TEST_F(WiFiMainTest, SignalChanged) {
+  StartWiFi();
+
+  KeyValueStore props;
+  props.Set<int32_t>(WPASupplicant::kSignalChangePropertyRSSI, -70);
+  KeyValueStore properties;
+  properties.Set<KeyValueStore>(WPASupplicant::kSignalChangeProperty, props);
+
+  PropertiesChanged(properties);
+  StopWiFi();
+
+  event_dispatcher_->DispatchPendingEvents();
+
+  EXPECT_EQ(GetStationStats().signal, -70);
 }
 
 TEST_F(WiFiMainTest, ReconnectTimer) {

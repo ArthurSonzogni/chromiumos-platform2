@@ -170,6 +170,46 @@ const char WPASupplicant::kSecurityMethodPropertyKeyManagement[] = "KeyMgmt";
 const char WPASupplicant::kSecurityModeRSN[] = "RSN";
 const char WPASupplicant::kSecurityModeWPA[] = "WPA";
 
+const char WPASupplicant::kSignalChangeProperty[] = "SignalChange";
+const char WPASupplicant::kSignalChangePropertyRSSI[] = "rssi";
+const char WPASupplicant::kSignalChangePropertyNoise[] = "noise";
+const char WPASupplicant::kSignalChangePropertyChannelFrequency[] = "frequency";
+const char WPASupplicant::kSignalChangePropertyChannelWidth[] = "width";
+const char WPASupplicant::kSignalChangePropertyCenterFreq1[] = "center-frq1";
+const char WPASupplicant::kSignalChangePropertyCenterFreq2[] = "center-frq2";
+const char WPASupplicant::kSignalChangePropertyAverageRSSI[] = "avg-rssi";
+const char WPASupplicant::kSignalChangePropertyRxBytes[] = "rx-bytes";
+const char WPASupplicant::kSignalChangePropertyTxBytes[] = "tx-bytes";
+const char WPASupplicant::kSignalChangePropertyRxPackets[] = "rx-packets";
+const char WPASupplicant::kSignalChangePropertyTxPackets[] = "tx-packets";
+const char WPASupplicant::kSignalChangePropertyBeacons[] = "beacons";
+const char WPASupplicant::kSignalChangePropertyRxSpeed[] = "linkrxspeed";
+const char WPASupplicant::kSignalChangePropertyTxSpeed[] = "linktxspeed";
+const char WPASupplicant::kSignalChangePropertyRetries[] = "retries";
+const char WPASupplicant::kSignalChangePropertyRetriesFailed[] =
+    "retries-failed";
+const char WPASupplicant::kSignalChangePropertyLastAckRSSI[] = "last-ack-rssi";
+const char WPASupplicant::kSignalChangePropertyFCSErrors[] = "fcs-errors";
+const char WPASupplicant::kSignalChangePropertyBeaconLosses[] = "beacon-losses";
+const char WPASupplicant::kSignalChangePropertyExpectedThroughput[] =
+    "expected-throughput";
+const char WPASupplicant::kSignalChangePropertyRxDropMisc[] = "rx-drop-misc";
+const char WPASupplicant::kSignalChangePropertyRxMPDUS[] = "rx-mpdus";
+const char WPASupplicant::kSignalChangePropertyRxHEMCS[] = "rx-he-mcs";
+const char WPASupplicant::kSignalChangePropertyTxHEMCS[] = "tx-he-mcs";
+const char WPASupplicant::kSignalChangePropertyRxVHTMCS[] = "rx-vht-mcs";
+const char WPASupplicant::kSignalChangePropertyTxVHTMCS[] = "tx-vht-mcs";
+const char WPASupplicant::kSignalChangePropertyRxMCS[] = "rx-mcs";
+const char WPASupplicant::kSignalChangePropertyTxMCS[] = "tx-mcs";
+const char WPASupplicant::kSignalChangePropertyRxHENSS[] = "rx-he-nss";
+const char WPASupplicant::kSignalChangePropertyTxHENSS[] = "tx-he-nss";
+const char WPASupplicant::kSignalChangePropertyRxVHTNSS[] = "rx-vht-nss";
+const char WPASupplicant::kSignalChangePropertyTxVHTNSS[] = "tx-vht-nss";
+const char WPASupplicant::kSignalChangePropertyAverageBeaconRSSI[] =
+    "avg-beacon-rssi";
+const char WPASupplicant::kSignalChangePropertyAverageAckRSSI[] =
+    "avg-ack-rssi";
+
 const char WPASupplicant::kCredentialsPropertyDomain[] = "domain";
 const char WPASupplicant::kCredentialsPropertyPassword[] = "password";
 const char WPASupplicant::kCredentialsPropertyRealm[] = "realm";
