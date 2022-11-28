@@ -19,6 +19,8 @@
 namespace diagnostics {
 namespace {
 
+namespace mojom = ::ash::cros_healthd::mojom;
+
 using ::testing::Return;
 using ::testing::ReturnRef;
 using ::testing::StrictMock;
@@ -47,7 +49,7 @@ std::unique_ptr<org::bluez::Device1Proxy::PropertySet> GetDeviceProperties() {
   properties->type.ReplaceValue("BR/EDR");
   properties->appearance.ReplaceValue(2371);
   properties->modalias.ReplaceValue("bluetooth:v000ApFFFFdFFFF");
-  properties->rssi.ReplaceValue(11822);
+  properties->rssi.ReplaceValue(-55);
   properties->mtu.ReplaceValue(12320);
   properties->uuids.ReplaceValue({"00001107-d102-11e1-9b23-00025b00a5a5",
                                   "0000110c-0000-1000-8000-00805f9b34fb",
@@ -121,12 +123,12 @@ class MockBluezInfoManager final : public BluezInfoManager {
               (override));
 };
 
-class BluetoothUtilsTest : public ::testing::Test {
+class BluetoothFetcherTest : public ::testing::Test {
  protected:
-  BluetoothUtilsTest() = default;
-  BluetoothUtilsTest(const BluetoothUtilsTest&) = delete;
-  BluetoothUtilsTest& operator=(const BluetoothUtilsTest&) = delete;
-  ~BluetoothUtilsTest() = default;
+  BluetoothFetcherTest() = default;
+  BluetoothFetcherTest(const BluetoothFetcherTest&) = delete;
+  BluetoothFetcherTest& operator=(const BluetoothFetcherTest&) = delete;
+  ~BluetoothFetcherTest() = default;
 
   BluetoothFetcher* bluetooth_fetcher() { return &bluetooth_fetcher_; }
   const dbus::ObjectPath& adapter_path() { return adapter_path_; }
@@ -187,24 +189,45 @@ class BluetoothUtilsTest : public ::testing::Test {
     EXPECT_CALL(*mock_device_proxy(), address())
         .Times(device_call_times)
         .WillRepeatedly(ReturnRef(device_properties->address.value()));
+    EXPECT_CALL(*mock_device_proxy(), is_name_valid())
+        .Times(device_call_times)
+        .WillRepeatedly(Return(true));
     EXPECT_CALL(*mock_device_proxy(), name())
         .Times(device_call_times)
         .WillRepeatedly(ReturnRef(device_properties->name.value()));
+    EXPECT_CALL(*mock_device_proxy(), is_type_valid())
+        .Times(device_call_times)
+        .WillRepeatedly(Return(true));
     EXPECT_CALL(*mock_device_proxy(), type())
         .Times(device_call_times)
         .WillRepeatedly(ReturnRef(device_properties->type.value()));
+    EXPECT_CALL(*mock_device_proxy(), is_appearance_valid())
+        .Times(device_call_times)
+        .WillRepeatedly(Return(true));
     EXPECT_CALL(*mock_device_proxy(), appearance())
         .Times(device_call_times)
         .WillRepeatedly(Return(device_properties->appearance.value()));
+    EXPECT_CALL(*mock_device_proxy(), is_modalias_valid())
+        .Times(device_call_times)
+        .WillRepeatedly(Return(true));
     EXPECT_CALL(*mock_device_proxy(), modalias())
         .Times(device_call_times)
         .WillRepeatedly(ReturnRef(device_properties->modalias.value()));
+    EXPECT_CALL(*mock_device_proxy(), is_rssi_valid())
+        .Times(device_call_times)
+        .WillRepeatedly(Return(true));
     EXPECT_CALL(*mock_device_proxy(), rssi())
         .Times(device_call_times)
         .WillRepeatedly(Return(device_properties->rssi.value()));
+    EXPECT_CALL(*mock_device_proxy(), is_mtu_valid())
+        .Times(device_call_times)
+        .WillRepeatedly(Return(true));
     EXPECT_CALL(*mock_device_proxy(), mtu())
         .Times(device_call_times)
         .WillRepeatedly(Return(device_properties->mtu.value()));
+    EXPECT_CALL(*mock_device_proxy(), is_uuids_valid())
+        .Times(device_call_times)
+        .WillRepeatedly(Return(true));
     EXPECT_CALL(*mock_device_proxy(), uuids())
         .Times(device_call_times)
         .WillRepeatedly(ReturnRef(device_properties->uuids.value()));
@@ -214,6 +237,27 @@ class BluetoothUtilsTest : public ::testing::Test {
     EXPECT_CALL(*mock_device_proxy(), GetObjectPath())
         .Times(device_call_times)
         .WillRepeatedly(ReturnRef(device_path()));
+  }
+  void SetMockDeviceProxyCallWithInvalidProperties(
+      const std::unique_ptr<org::bluez::Device1Proxy::PropertySet>&
+          device_properties) {
+    EXPECT_CALL(*mock_device_proxy(), connected())
+        .WillOnce(Return(device_properties->connected.value()));
+    EXPECT_CALL(*mock_device_proxy(), address())
+        .WillOnce(ReturnRef(device_properties->address.value()));
+    EXPECT_CALL(*mock_device_proxy(), is_name_valid()).WillOnce(Return(false));
+    EXPECT_CALL(*mock_device_proxy(), is_type_valid()).WillOnce(Return(false));
+    EXPECT_CALL(*mock_device_proxy(), is_appearance_valid())
+        .WillOnce(Return(false));
+    EXPECT_CALL(*mock_device_proxy(), is_modalias_valid())
+        .WillOnce(Return(false));
+    EXPECT_CALL(*mock_device_proxy(), is_rssi_valid()).WillOnce(Return(false));
+    EXPECT_CALL(*mock_device_proxy(), is_mtu_valid()).WillOnce(Return(false));
+    EXPECT_CALL(*mock_device_proxy(), is_uuids_valid()).WillOnce(Return(false));
+    EXPECT_CALL(*mock_device_proxy(), adapter())
+        .WillOnce(ReturnRef(adapter_path()));
+    EXPECT_CALL(*mock_device_proxy(), GetObjectPath())
+        .WillOnce(ReturnRef(device_path()));
   }
   void SetMockOtherProxyCall(
       const std::unique_ptr<org::bluez::AdminPolicyStatus1Proxy::PropertySet>&
@@ -265,7 +309,7 @@ class BluetoothUtilsTest : public ::testing::Test {
 };
 
 // Test that Bluetooth info can be fetched successfully.
-TEST_F(BluetoothUtilsTest, FetchBluetoothInfo) {
+TEST_F(BluetoothFetcherTest, FetchBluetoothInfo) {
   // Get mock data.
   const auto adapter_properties = GetAdapterProperties();
   const auto device_properties = GetDeviceProperties();
@@ -344,7 +388,7 @@ TEST_F(BluetoothUtilsTest, FetchBluetoothInfo) {
 }
 
 // Test that getting no adapter and device objects is handled gracefully.
-TEST_F(BluetoothUtilsTest, NoObjects) {
+TEST_F(BluetoothFetcherTest, NoObjects) {
   auto mock_bluez_manager = std::make_unique<MockBluezInfoManager>();
   auto bluetooth_result =
       bluetooth_fetcher()->FetchBluetoothInfo(std::move(mock_bluez_manager));
@@ -354,7 +398,7 @@ TEST_F(BluetoothUtilsTest, NoObjects) {
 }
 
 // Test that the number of connected devices is counted correctly.
-TEST_F(BluetoothUtilsTest, NumConnectedDevices) {
+TEST_F(BluetoothFetcherTest, NumConnectedDevices) {
   const auto adapter_properties = GetAdapterProperties();
   const auto device_properties = GetDeviceProperties();
   SetMockAdapterProxyCall(adapter_properties);
@@ -379,7 +423,7 @@ TEST_F(BluetoothUtilsTest, NumConnectedDevices) {
 }
 
 // Test that a disconnected device is not counted as a connected device.
-TEST_F(BluetoothUtilsTest, DisconnectedDevice) {
+TEST_F(BluetoothFetcherTest, DisconnectedDevice) {
   const auto adapter_properties = GetAdapterProperties();
   const auto device_properties = GetDeviceProperties();
   SetMockAdapterProxyCall(adapter_properties);
@@ -400,6 +444,42 @@ TEST_F(BluetoothUtilsTest, DisconnectedDevice) {
   ASSERT_EQ(adapter_info.size(), 1);
   EXPECT_EQ(adapter_info[0]->num_connected_devices, 0);
   ASSERT_FALSE(adapter_info[0]->connected_devices.has_value());
+}
+
+// Test that a disconnected device is not counted as a connected device.
+TEST_F(BluetoothFetcherTest, DeviceWithInvalidProperties) {
+  const auto adapter_properties = GetAdapterProperties();
+  const auto device_properties = GetDeviceProperties();
+  SetMockAdapterProxyCall(adapter_properties);
+  SetMockDeviceProxyCallWithInvalidProperties(device_properties);
+
+  auto mock_bluez_manager = std::make_unique<MockBluezInfoManager>();
+  EXPECT_CALL(*mock_bluez_manager, adapters())
+      .WillOnce(Return(std::vector<org::bluez::Adapter1ProxyInterface*>{
+          mock_adapter_proxy()}));
+  EXPECT_CALL(*mock_bluez_manager, devices())
+      .WillOnce(Return(std::vector<org::bluez::Device1ProxyInterface*>{
+          mock_device_proxy()}));
+  auto bluetooth_result =
+      bluetooth_fetcher()->FetchBluetoothInfo(std::move(mock_bluez_manager));
+
+  ASSERT_TRUE(bluetooth_result->is_bluetooth_adapter_info());
+  const auto& adapter_info = bluetooth_result->get_bluetooth_adapter_info();
+  ASSERT_EQ(adapter_info.size(), 1);
+  EXPECT_EQ(adapter_info[0]->num_connected_devices, 1);
+  ASSERT_TRUE(adapter_info[0]->connected_devices.has_value());
+  EXPECT_EQ(adapter_info[0]->connected_devices.value().size(), 1);
+
+  const auto& device_info = adapter_info[0]->connected_devices.value()[0];
+  EXPECT_EQ(device_info->address, device_properties->address.value());
+  EXPECT_FALSE(device_info->name.has_value());
+  EXPECT_EQ(device_info->type, mojom::BluetoothDeviceType::kUnfound);
+  EXPECT_FALSE(device_info->appearance);
+  EXPECT_FALSE(device_info->modalias.has_value());
+  EXPECT_FALSE(device_info->rssi);
+  EXPECT_FALSE(device_info->mtu);
+  EXPECT_FALSE(device_info->uuids.has_value());
+  EXPECT_FALSE(device_info->battery_percentage);
 }
 
 }  // namespace

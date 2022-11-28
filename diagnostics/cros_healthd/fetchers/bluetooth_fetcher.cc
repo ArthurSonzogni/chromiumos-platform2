@@ -138,13 +138,24 @@ void BluezInfoManager::ParseDevicesInfo(
 
     mojo_ipc::BluetoothDeviceInfo info;
     info.address = device->address();
-    info.name = device->name();
-    info.type = GetDeviceType(device->type());
-    info.appearance = mojo_ipc::NullableUint16::New(device->appearance());
-    info.modalias = device->modalias();
-    info.rssi = mojo_ipc::NullableInt16::New(device->rssi());
-    info.mtu = mojo_ipc::NullableUint16::New(device->mtu());
-    info.uuids = device->uuids();
+
+    // The following are optional device properties.
+    if (device->is_name_valid())
+      info.name = device->name();
+    if (device->is_type_valid())
+      info.type = GetDeviceType(device->type());
+    else
+      info.type = mojo_ipc::BluetoothDeviceType::kUnfound;
+    if (device->is_appearance_valid())
+      info.appearance = mojo_ipc::NullableUint16::New(device->appearance());
+    if (device->is_modalias_valid())
+      info.modalias = device->modalias();
+    if (device->is_rssi_valid())
+      info.rssi = mojo_ipc::NullableInt16::New(device->rssi());
+    if (device->is_mtu_valid())
+      info.mtu = mojo_ipc::NullableUint16::New(device->mtu());
+    if (device->is_uuids_valid())
+      info.uuids = device->uuids();
 
     const auto it = battery_percentage.find(device->GetObjectPath());
     if (it != battery_percentage.end()) {
