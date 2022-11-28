@@ -68,14 +68,14 @@ bool LowDiskSpaceHandler::Init(
   if (!post_delayed_task_.Run(
           FROM_HERE,
           base::BindOnce(&LowDiskSpaceHandler::FreeDiskSpace,
-                         base::Unretained(this)),
+                         weak_factory_.GetWeakPtr()),
           base::TimeDelta()))
     return false;
 
   if (!post_delayed_task_.Run(
           FROM_HERE,
           base::BindOnce(&LowDiskSpaceHandler::LowDiskSpaceCheck,
-                         base::Unretained(this)),
+                         weak_factory_.GetWeakPtr()),
           base::TimeDelta()))
     return false;
 
@@ -147,7 +147,7 @@ void LowDiskSpaceHandler::LowDiskSpaceCheck() {
 
   post_delayed_task_.Run(FROM_HERE,
                          base::BindOnce(&LowDiskSpaceHandler::LowDiskSpaceCheck,
-                                        base::Unretained(this)),
+                                        weak_factory_.GetWeakPtr()),
                          low_disk_notification_period_);
 }
 

@@ -12,6 +12,7 @@
 #include <memory>
 
 #include <base/callback.h>
+#include <base/memory/weak_ptr.h>
 #include <base/task/single_thread_task_runner.h>
 #include <base/test/task_environment.h>
 #include <base/time/time.h>
@@ -97,6 +98,8 @@ class LowDiskSpaceHandler {
   base::Time last_update_user_activity_timestamp_time_ = base::Time();
   bool low_disk_space_signal_was_emitted_ = false;
   bool stopped_ = true;
+
+  base::WeakPtrFactory<LowDiskSpaceHandler> weak_factory_{this};
 };
 
 }  // namespace cryptohome
