@@ -41,6 +41,7 @@
 #include <base/time/time.h>
 #include <brillo/userdb_utils.h>
 #include <chromeos/constants/vm_tools.h>
+#include <chromeos/patchpanel/dbus/client.h>
 #include <re2/re2.h>
 
 #include "shill/cellular/modem_info.h"
@@ -1428,32 +1429,13 @@ void DeviceInfo::OnPatchpanelClientReady() {
 
 void DeviceInfo::OnNeighborReachabilityEvent(
     const patchpanel::NeighborReachabilityEventSignal& signal) {
-  SLOG(2) << __func__ << ": interface index: " << signal.ifindex()
-          << ", ip address: " << signal.ip_addr() << ", role: " << signal.role()
-          << ", type: " << signal.type();
-  using SignalProto = patchpanel::NeighborReachabilityEventSignal;
-
+  SLOG(2) << __func__ << ": " << signal;
   auto device = GetDevice(signal.ifindex());
   if (!device) {
-    LOG(ERROR) << "Device not found for interface index " << signal.ifindex();
+    LOG(ERROR) << __func__ << " " << signal << ": device not found";
     return;
   }
-
-  IPAddress address(signal.ip_addr());
-  if (!address.IsValid()) {
-    LOG(ERROR) << "Invalid IP address " << signal.ip_addr();
-    return;
-  }
-
-  switch (signal.type()) {
-    case SignalProto::FAILED:
-    case SignalProto::REACHABLE:
-      device->OnNeighborReachabilityEvent(address, signal.role(),
-                                          signal.type());
-      return;
-    default:
-      LOG(ERROR) << "Invalid NeighborRecabilityEvent type " << signal.type();
-  }
+  device->network()->OnNeighborReachabilityEvent(signal);
 }
 
 bool DeviceInfo::GetUserId(const std::string& user_name, uid_t* uid) const {

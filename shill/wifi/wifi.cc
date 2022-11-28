@@ -2470,6 +2470,7 @@ void WiFi::StateChanged(const std::string& new_state) {
       Network::StartOptions opts = {
           .dhcp = dhcp_opts,
           .accept_ra = true,
+          .ignore_link_monitoring = affected_service->link_monitor_disabled(),
       };
       network()->Start(opts);
       LOG(INFO) << link_name() << " is up; started L3 configuration.";
@@ -4014,26 +4015,13 @@ void WiFi::OnNeighborReachabilityEvent(
     patchpanel::NeighborReachabilityEventSignal::EventType event_type) {
   using EventSignal = patchpanel::NeighborReachabilityEventSignal;
 
-  if (event_type == EventSignal::FAILED) {
-    metrics()->NotifyNeighborLinkMonitorFailure(ip_address.family(), role);
-  }
-
-  if (!selected_service()) {
-    LOG(INFO)
-        << "Device " << link_name()
-        << ": Ignored neighbor reachability event due to no selected service";
-    return;
-  }
-  if (selected_service()->link_monitor_disabled()) {
-    SLOG(this, 2) << "Device " << link_name()
-                  << ": Link Monitoring is disabled for the selected service";
-    return;
-  }
-
   // Checks if the signal is for the gateway of the current connection.
   if (role == EventSignal::DNS_SERVER) {
     return;
   }
+
+  // TODO(b/229309479): Consider tracking gateway discovery in Network class.
+
   const auto* ipconfig = network()->ipconfig();
   const auto* ip6config = network()->ip6config();
   if (!(ipconfig && ip_address.ToString() == ipconfig->properties().gateway) &&
@@ -4059,7 +4047,7 @@ void WiFi::OnNeighborReachabilityEvent(
       OnLinkMonitorFailure(ip_address.family());
       return;
     default:
-      // Already filtered in DeviceInfo::OnPatchpanelClientReady().
+      // Already filtered in Network::OnNeighborReachabilityEvent().
       NOTREACHED();
   }
 }

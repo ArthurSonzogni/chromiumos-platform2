@@ -578,6 +578,7 @@ void Metrics::NotifySuspendActionsCompleted(bool success) {
 }
 
 void Metrics::NotifyNeighborLinkMonitorFailure(
+    Technology tech,
     IPAddress::Family family,
     patchpanel::NeighborReachabilityEventSignal::Role role) {
   NeighborLinkMonitorFailure failure = kNeighborLinkMonitorFailureUnknown;
@@ -615,7 +616,7 @@ void Metrics::NotifyNeighborLinkMonitorFailure(
     return;
   }
 
-  SendEnumToUMA(kMetricNeighborLinkMonitorFailure, failure);
+  SendEnumToUMA(kMetricNeighborLinkMonitorFailure, tech, failure);
 }
 
 void Metrics::NotifyApChannelSwitch(uint16_t frequency,

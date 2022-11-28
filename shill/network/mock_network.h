@@ -13,6 +13,7 @@
 #include <base/callback.h>
 #include <base/time/time.h>
 #include <gmock/gmock.h>
+#include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 
 #include "shill/ipconfig.h"
 #include "shill/network/network.h"
@@ -71,6 +72,9 @@ class MockNetwork : public Network {
 
   MOCK_METHOD(std::vector<std::string>, dns_servers, (), (const, override));
   MOCK_METHOD(IPAddress, local, (), (const, override));
+  MOCK_METHOD(void,
+              OnNeighborReachabilityEvent,
+              (const patchpanel::NeighborReachabilityEventSignal& signal));
 };
 
 class MockNetworkEventHandler : public Network::EventHandler {
@@ -83,6 +87,11 @@ class MockNetworkEventHandler : public Network::EventHandler {
   MOCK_METHOD(void, OnGetSLAACAddress, (), (override));
   MOCK_METHOD(void, OnIPv4ConfiguredWithDHCPLease, (), (override));
   MOCK_METHOD(void, OnIPv6ConfiguredWithSLAACAddress, (), (override));
+  MOCK_METHOD(void,
+              OnNeighborReachabilityEvent,
+              (const IPAddress&,
+               patchpanel::NeighborReachabilityEventSignal::Role,
+               patchpanel::NeighborReachabilityEventSignal::EventType));
 };
 
 }  // namespace shill

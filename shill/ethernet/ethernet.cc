@@ -250,6 +250,7 @@ void Ethernet::ConnectTo(EthernetService* service) {
   Network::StartOptions opts = {
       .dhcp = dhcp_opts,
       .accept_ra = true,
+      .ignore_link_monitoring = service->link_monitor_disabled(),
   };
   network()->Start(opts);
   SetServiceState(Service::kStateConfiguring);

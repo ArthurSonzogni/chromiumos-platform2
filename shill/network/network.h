@@ -13,6 +13,7 @@
 
 #include <base/callback.h>
 #include <base/time/time.h>
+#include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 
 #include "shill/connection.h"
 #include "shill/ipconfig.h"
@@ -85,6 +86,12 @@ class Network {
     // OnGetSLAACAddress, OnIPConfigsPropertyUpdated, and OnConnectionUpdated
     // (if IPv4 is not yet configured).
     virtual void OnIPv6ConfiguredWithSLAACAddress() = 0;
+    // Called after shill receives a NeighborReachabilityEventSignal from
+    // patchpanel's link monitor for the network interface of this Network.
+    virtual void OnNeighborReachabilityEvent(
+        const IPAddress& ip_address,
+        patchpanel::NeighborReachabilityEventSignal::Role role,
+        patchpanel::NeighborReachabilityEventSignal::EventType event_type) = 0;
   };
 
   // Options for starting a network.
@@ -93,6 +100,8 @@ class Network {
     std::optional<DHCPProvider::Options> dhcp;
     // Accept router advertisements for IPv6.
     bool accept_ra = false;
+    // When set to true, neighbor events from link monitoring are ignored.
+    bool ignore_link_monitoring = false;
   };
 
   // State for tracking the L3 connectivity (e.g., portal state is not
@@ -220,6 +229,10 @@ class Network {
   // address from link protocol, or from DHCPv4, or from static IPv4
   // configuration; and IPv6 address from SLAAC and/or from link protocol.
   std::vector<IPAddress> GetAddresses() const;
+
+  // Responds to a neighbor reachability event from patchpanel.
+  mockable void OnNeighborReachabilityEvent(
+      const patchpanel::NeighborReachabilityEventSignal& signal);
 
   // Properties of the current IP config. Returns IPv4 properties if the Network
   // is dual-stack, and default (empty) values if the Network is not connected.
@@ -373,6 +386,10 @@ class Network {
   // Remember which flag files were previously successfully written. Only used
   // in SetIPFlag().
   std::set<std::string> written_flags_;
+
+  // When set to true, neighbor events from link monitoring are ignored. This
+  // boolean is reevaluated for every new Network connection.
+  bool ignore_link_monitoring_ = false;
 
   EventHandler* event_handler_;
 

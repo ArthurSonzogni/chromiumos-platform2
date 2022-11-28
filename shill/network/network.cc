@@ -12,6 +12,7 @@
 #include <base/notreached.h>
 #include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
+#include <chromeos/patchpanel/dbus/client.h>
 
 #include "shill/connection.h"
 #include "shill/event_dispatcher.h"
@@ -75,6 +76,8 @@ Network::Network(int interface_index,
 Network::~Network() = default;
 
 void Network::Start(const Network::StartOptions& opts) {
+  ignore_link_monitoring_ = opts.ignore_link_monitoring;
+
   // accept_ra and link_protocol_ipv6 should not be set at the same time.
   DCHECK(!(opts.accept_ra && link_protocol_ipv6_properties_));
 
@@ -674,6 +677,48 @@ std::vector<IPAddress> Network::GetAddresses() const {
   }
   // link_protocol_ipv4_properties_ should already be reflected in ipconfig_
   return result;
+}
+
+void Network::OnNeighborReachabilityEvent(
+    const patchpanel::NeighborReachabilityEventSignal& signal) {
+  using SignalProto = patchpanel::NeighborReachabilityEventSignal;
+
+  IPAddress ip_address(signal.ip_addr());
+  if (!ip_address.IsValid()) {
+    LOG(ERROR) << logging_tag_ << ": " << __func__ << ": invalid IP address "
+               << signal.ip_addr();
+    return;
+  }
+
+  switch (signal.type()) {
+    case SignalProto::FAILED:
+    case SignalProto::REACHABLE:
+      break;
+    default:
+      LOG(ERROR) << logging_tag_ << ": " << __func__ << ": invalid event type "
+                 << signal.type();
+      return;
+  }
+
+  if (signal.type() == SignalProto::FAILED) {
+    metrics_->NotifyNeighborLinkMonitorFailure(technology_, ip_address.family(),
+                                               signal.role());
+  }
+
+  if (state_ == State::kIdle) {
+    LOG(INFO) << logging_tag_ << ": " << __func__ << ": Idle state, ignoring "
+              << signal;
+    return;
+  }
+
+  if (ignore_link_monitoring_) {
+    LOG(INFO) << logging_tag_ << ": " << __func__
+              << " link monitor events ignored, ignoring " << signal;
+    return;
+  }
+
+  event_handler_->OnNeighborReachabilityEvent(ip_address, signal.role(),
+                                              signal.type());
 }
 
 std::vector<std::string> Network::dns_servers() const {

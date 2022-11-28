@@ -29,6 +29,7 @@
 #include <chromeos/patchpanel/dbus/fake_client.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 
 #include "shill/cellular/mock_modem_info.h"
 #include "shill/manager.h"
@@ -46,6 +47,8 @@
 #include "shill/net/nl80211_message.h"
 #include "shill/net/rtnl_link_stats.h"
 #include "shill/net/rtnl_message.h"
+#include "shill/network/mock_network.h"
+#include "shill/network/network.h"
 #include "shill/test_event_dispatcher.h"
 #include "shill/vpn/mock_vpn_provider.h"
 
@@ -882,6 +885,25 @@ TEST_F(DeviceInfoTest, OnNeighborReachabilityEvent) {
   device_info_.RegisterDevice(device0);
   device_info_.RegisterDevice(device1);
 
+  MockNetworkEventHandler event_handler0;
+  MockNetworkEventHandler event_handler1;
+  device0->set_network_for_testing(std::make_unique<Network>(
+      kTestDeviceIndex, "null0", Technology::kEthernet,
+      /*fixed_ip_params=*/false,
+      /*event_handler=*/&event_handler0,
+      /*control_interface=*/&control_interface_,
+      /*dispatcher=*/&dispatcher_,
+      /*metrics=*/&metrics_));
+  device1->set_network_for_testing(std::make_unique<Network>(
+      kTestDeviceIndex + 1, "null1", Technology::kWiFi,
+      /*fixed_ip_params=*/false,
+      /*event_handler=*/&event_handler1,
+      /*control_interface=*/&control_interface_,
+      /*dispatcher=*/&dispatcher_,
+      /*metrics=*/&metrics_));
+  device0->network()->set_state_for_testing(Network::State::kConnected);
+  device1->network()->set_state_for_testing(Network::State::kConnected);
+
   using NeighborSignal = patchpanel::NeighborReachabilityEventSignal;
 
   NeighborSignal signal0;
@@ -889,31 +911,36 @@ TEST_F(DeviceInfoTest, OnNeighborReachabilityEvent) {
   signal0.set_ip_addr(kTestIPAddress0);
   signal0.set_role(NeighborSignal::GATEWAY);
   signal0.set_type(NeighborSignal::FAILED);
-  EXPECT_CALL(*device0, OnNeighborReachabilityEvent(IPAddress(kTestIPAddress0),
-                                                    NeighborSignal::GATEWAY,
-                                                    NeighborSignal::FAILED));
+  EXPECT_CALL(event_handler0,
+              OnNeighborReachabilityEvent(IPAddress(kTestIPAddress0),
+                                          NeighborSignal::GATEWAY,
+                                          NeighborSignal::FAILED));
   patchpanel_client_->TriggerNeighborReachabilityEvent(signal0);
+  Mock::VerifyAndClearExpectations(&event_handler0);
 
   NeighborSignal signal1;
   signal1.set_ifindex(kTestDeviceIndex + 1);
   signal1.set_ip_addr(kTestIPAddress1);
   signal1.set_role(NeighborSignal::DNS_SERVER);
   signal1.set_type(NeighborSignal::FAILED);
-  EXPECT_CALL(*device1, OnNeighborReachabilityEvent(IPAddress(kTestIPAddress1),
-                                                    NeighborSignal::DNS_SERVER,
-                                                    NeighborSignal::FAILED));
+  EXPECT_CALL(event_handler1,
+              OnNeighborReachabilityEvent(IPAddress(kTestIPAddress1),
+                                          NeighborSignal::DNS_SERVER,
+                                          NeighborSignal::FAILED));
   patchpanel_client_->TriggerNeighborReachabilityEvent(signal1);
+  Mock::VerifyAndClearExpectations(&event_handler1);
 
   NeighborSignal signal2;
   signal2.set_ifindex(kTestDeviceIndex);
   signal2.set_ip_addr(kTestIPAddress2);
   signal2.set_role(NeighborSignal::GATEWAY_AND_DNS_SERVER);
   signal2.set_type(NeighborSignal::REACHABLE);
-  EXPECT_CALL(*device0, OnNeighborReachabilityEvent(
-                            IPAddress(kTestIPAddress2),
-                            NeighborSignal::GATEWAY_AND_DNS_SERVER,
-                            NeighborSignal::REACHABLE));
+  EXPECT_CALL(event_handler0, OnNeighborReachabilityEvent(
+                                  IPAddress(kTestIPAddress2),
+                                  NeighborSignal::GATEWAY_AND_DNS_SERVER,
+                                  NeighborSignal::REACHABLE));
   patchpanel_client_->TriggerNeighborReachabilityEvent(signal2);
+  Mock::VerifyAndClearExpectations(&event_handler0);
 }
 
 TEST_F(DeviceInfoTest, CreateWireGuardInterface) {

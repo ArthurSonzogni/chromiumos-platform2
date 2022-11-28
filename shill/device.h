@@ -89,8 +89,7 @@ class Device : public base::RefCounted<Device>, Network::EventHandler {
   // without saving the new value of |enable| to the profile. If you
   // are rational (i.e. not Cellular), you should use
   // SetEnabledChecked instead.
-  void SetEnabledUnchecked(bool enable,
-                           const ResultCallback& callback);
+  void SetEnabledUnchecked(bool enable, const ResultCallback& callback);
 
   // Returns true if the underlying device reports that it is already enabled.
   // Used when the device is registered with the Manager, so that shill can
@@ -262,10 +261,11 @@ class Device : public base::RefCounted<Device>, Network::EventHandler {
 
   // Responds to a neighbor reachability event from patchpanel. The base class
   // does nothing here so the derived class doesn't need to call this.
-  virtual void OnNeighborReachabilityEvent(
+  void OnNeighborReachabilityEvent(
       const IPAddress& ip_address,
       patchpanel::NeighborReachabilityEventSignal::Role role,
-      patchpanel::NeighborReachabilityEventSignal::EventType event_type);
+      patchpanel::NeighborReachabilityEventSignal::EventType event_type)
+      override;
 
   // Returns a string formatted as "$ifname $service_log_name", or
   // "$ifname no_service" if |selected_service_| is currently not defined.

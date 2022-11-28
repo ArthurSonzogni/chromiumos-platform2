@@ -371,12 +371,11 @@ class Metrics : public DefaultServiceObserver {
 
     kNeighborLinkMonitorFailureMax
   };
-  static constexpr EnumMetric<FixedName> kMetricNeighborLinkMonitorFailure = {
-      // The name uses "Wifi" instead of "WiFi" to be compatible with data
-      // previously recorded using GetFullMetricName().
-      .n = FixedName{"Network.Shill.Wifi.NeighborLinkMonitorFailure"},
-      .max = kNeighborLinkMonitorFailureMax,
-  };
+  static constexpr EnumMetric<NameByTechnology>
+      kMetricNeighborLinkMonitorFailure = {
+          .n = NameByTechnology{"NeighborLinkMonitorFailure"},
+          .max = kNeighborLinkMonitorFailureMax,
+      };
 
   enum WiFiApChannelSwitch {
     kWiFiApChannelSwitchUndef = 0,
@@ -1382,6 +1381,7 @@ class Metrics : public DefaultServiceObserver {
   // Notifies this object of a failure in patchpanel::NeighborLinkMonitor for
   // a WiFi connection.
   void NotifyNeighborLinkMonitorFailure(
+      Technology tech,
       IPAddress::Family family,
       patchpanel::NeighborReachabilityEventSignal::Role role);
 
