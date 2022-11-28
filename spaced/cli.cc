@@ -24,6 +24,20 @@
 
 namespace {
 
+bool human_readable_sizes = false;
+
+enum Size : int64_t;
+
+std::ostream& operator<<(std::ostream& out, const Size size) {
+  const int64_t i = static_cast<int64_t>(size);
+  out << i;
+
+  if (human_readable_sizes)
+    out << " bytes (" << (i >> 20) << " MiB)";
+
+  return out;
+}
+
 class NumPunct : public std::numpunct<char> {
  private:
   char do_thousands_sep() const override { return ','; }
@@ -55,7 +69,7 @@ class EchoSpacedObserver : public spaced::SpacedObserverInterface {
       const spaced::StatefulDiskSpaceUpdate& update) override {
     std::cout << "Time: " << base::Time::Now()
               << ", State: " << UpdateStateToString(update.state())
-              << ", Available space: " << update.free_space_bytes()
+              << ", Available space: " << Size(update.free_space_bytes())
               << std::endl;
   }
 };
@@ -82,6 +96,7 @@ int main(int argc, char** argv) {
     // numbers much easier to read for a human (eg sizes expressed in bytes).
     std::cout.imbue(std::locale(std::locale::classic(), new NumPunct));
     nl = "\n";
+    human_readable_sizes = true;
   }
 
   base::SingleThreadTaskExecutor task_executor(base::MessagePumpType::IO);
@@ -96,21 +111,21 @@ int main(int argc, char** argv) {
   }
 
   if (!FLAGS_get_free_disk_space.empty()) {
-    std::cout << disk_usage_proxy->GetFreeDiskSpace(
-                     base::FilePath(FLAGS_get_free_disk_space))
+    std::cout << Size(disk_usage_proxy->GetFreeDiskSpace(
+                     base::FilePath(FLAGS_get_free_disk_space)))
               << nl;
     return EXIT_SUCCESS;
   }
 
   if (!FLAGS_get_total_disk_space.empty()) {
-    std::cout << disk_usage_proxy->GetTotalDiskSpace(
-                     base::FilePath(FLAGS_get_total_disk_space))
+    std::cout << Size(disk_usage_proxy->GetTotalDiskSpace(
+                     base::FilePath(FLAGS_get_total_disk_space)))
               << nl;
     return EXIT_SUCCESS;
   }
 
   if (FLAGS_get_root_device_size) {
-    std::cout << disk_usage_proxy->GetRootDeviceSize() << nl;
+    std::cout << Size(disk_usage_proxy->GetRootDeviceSize()) << nl;
     return EXIT_SUCCESS;
   }
 
@@ -149,12 +164,12 @@ int main(int argc, char** argv) {
   }
 
   std::cout << "path: " << std::quoted(path.value()) << '\n';
-  std::cout << "free_disk_space: " << disk_usage_proxy->GetFreeDiskSpace(path)
-            << '\n';
-  std::cout << "total_disk_space: " << disk_usage_proxy->GetTotalDiskSpace(path)
-            << '\n';
-  std::cout << "root_device_size: " << disk_usage_proxy->GetRootDeviceSize()
-            << '\n';
+  std::cout << "free_disk_space: "
+            << Size(disk_usage_proxy->GetFreeDiskSpace(path)) << '\n';
+  std::cout << "total_disk_space: "
+            << Size(disk_usage_proxy->GetTotalDiskSpace(path)) << '\n';
+  std::cout << "root_device_size: "
+            << Size(disk_usage_proxy->GetRootDeviceSize()) << '\n';
   std::cout.flush();
 
   return EXIT_SUCCESS;
