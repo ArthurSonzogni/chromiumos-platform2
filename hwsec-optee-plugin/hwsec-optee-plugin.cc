@@ -5,10 +5,12 @@
 #include "hwsec-optee-plugin/hwsec-optee-plugin.h"
 
 #include <cstddef>
+#include <cstdint>
 #include <cstring>
 #include <memory>
 
 #include <base/logging.h>
+#include <base/sys_byteorder.h>
 #include <brillo/syslog_logging.h>
 #include <libhwsec/factory/factory_impl.h>
 #include <libhwsec-foundation/status/status_chain_macros.h>
@@ -42,16 +44,36 @@ static TEEC_Result HwsecPluginInit(void) {
   return TEEC_SUCCESS;
 }
 
+static TEEC_Result GetInputLen(uint8_t* data,
+                               size_t data_len,
+                               uint32_t& input_len) {
+  if (data_len < 10) {
+    LOG(ERROR) << "The input is too short!";
+    return TEEC_ERROR_BAD_PARAMETERS;
+  }
+
+  memcpy(&input_len, data + 2, sizeof(uint32_t));
+  input_len = base::NetToHost32(input_len);
+  return TEEC_SUCCESS;
+}
+
 static TEEC_Result SendRawCommand(unsigned int sub_cmd,
                                   uint8_t* data,
                                   size_t data_len,
                                   size_t* out_len) {
-  brillo::Blob input(data, data + data_len);
+  uint32_t input_len;
+  if (TEEC_Result result = GetInputLen(data, data_len, input_len);
+      result != TEEC_SUCCESS) {
+    return result;
+  }
+
+  brillo::Blob input(data, data + input_len);
 
   ASSIGN_OR_RETURN(const brillo::Blob& output, GetHwsec().SendRawCommand(input),
                    _.LogError().As(TEEC_ERROR_BAD_STATE));
 
-  if (output.size() > *out_len) {
+  if (output.size() > data_len) {
+    LOG(ERROR) << "The input buffer is not enough for output!";
     return TEEC_ERROR_SHORT_BUFFER;
   }
 
