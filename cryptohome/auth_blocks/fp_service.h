@@ -44,9 +44,8 @@ class FingerprintAuthBlockService {
              PreparedAuthFactorToken::Consumer on_done);
 
   // Verify if the fingerprint sensor is currently in a "successfully
-  // authorized" state or not. The success or failure of this check will be
-  // passed to the given |on_done| callback.
-  void Verify(base::OnceCallback<void(CryptohomeStatus)> on_done);
+  // authorized" state or not.
+  CryptohomeStatus Verify();
 
   // Terminate stops any ongoing fingerprint sensor session and
   // clears the registered user.

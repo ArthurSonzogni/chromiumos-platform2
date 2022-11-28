@@ -69,11 +69,9 @@ class NullFingerprintAuthBlockServiceTest : public BaseTestFixture {};
 TEST_F(NullFingerprintAuthBlockServiceTest, NullVerifyFails) {
   auto service = FingerprintAuthBlockService::MakeNullService();
 
-  TestFuture<CryptohomeStatus> on_done_result;
-  service->Verify(on_done_result.GetCallback());
+  CryptohomeStatus verify_result = service->Verify();
 
-  ASSERT_THAT(on_done_result.IsReady(), IsTrue());
-  EXPECT_THAT(on_done_result.Get()->local_legacy_error(),
+  EXPECT_THAT(verify_result->local_legacy_error(),
               Eq(user_data_auth::CRYPTOHOME_ERROR_FINGERPRINT_ERROR_INTERNAL));
 }
 
@@ -199,10 +197,8 @@ TEST_F(FingerprintAuthBlockServiceTest, VerifySimpleSuccess) {
 
   // Kick off the verify. Because there was a success scan, the callback
   // shall return immediately with success result.
-  TestFuture<CryptohomeStatus> verify_result;
-  service_.Verify(verify_result.GetCallback());
-  ASSERT_THAT(verify_result.IsReady(), IsTrue());
-  ASSERT_THAT(verify_result.Get(), IsOk());
+  CryptohomeStatus verify_result = service_.Verify();
+  ASSERT_THAT(verify_result, IsOk());
   // Check the signal sender has been called.
   ASSERT_EQ(
       result_,
@@ -213,12 +209,10 @@ TEST_F(FingerprintAuthBlockServiceTest, VerifySimpleSuccess) {
 }
 
 TEST_F(FingerprintAuthBlockServiceTest, VerifySimpleFailure) {
-  // Without a previous Start() while kicking off the verify,
-  // the callback shall return immediately with a failure.
-  TestFuture<CryptohomeStatus> verify_result;
-  service_.Verify(verify_result.GetCallback());
-  ASSERT_THAT(verify_result.IsReady(), IsTrue());
-  EXPECT_THAT(verify_result.Get()->local_legacy_error(),
+  // Without a previous Start() while kicking off the verify, it should return
+  // immediately with a failure.
+  CryptohomeStatus verify_result = service_.Verify();
+  EXPECT_THAT(verify_result->local_legacy_error(),
               Eq(user_data_auth::CRYPTOHOME_ERROR_FINGERPRINT_ERROR_INTERNAL));
 }
 
@@ -243,10 +237,8 @@ TEST_F(FingerprintAuthBlockServiceTest, VerifyNoScanFailure) {
   ASSERT_THAT(start_result.Get(), IsOk());
 
   // Kick off the verify without a scan result.
-  TestFuture<CryptohomeStatus> verify_result;
-  service_.Verify(verify_result.GetCallback());
-  ASSERT_THAT(verify_result.IsReady(), IsTrue());
-  EXPECT_THAT(verify_result.Get()->local_legacy_error(),
+  CryptohomeStatus verify_result = service_.Verify();
+  EXPECT_THAT(verify_result->local_legacy_error(),
               Eq(user_data_auth::CRYPTOHOME_ERROR_FINGERPRINT_DENIED));
 
   // The session will be terminated upon destruction.
@@ -278,10 +270,8 @@ TEST_F(FingerprintAuthBlockServiceTest, VerifyAfterTerminateFailure) {
   EXPECT_THAT((*start_result.Get())->Terminate(), IsOk());
 
   // Kick off the verify.
-  TestFuture<CryptohomeStatus> verify_result;
-  service_.Verify(verify_result.GetCallback());
-  ASSERT_THAT(verify_result.IsReady(), IsTrue());
-  EXPECT_THAT(verify_result.Get()->local_legacy_error(),
+  CryptohomeStatus verify_result = service_.Verify();
+  EXPECT_THAT(verify_result->local_legacy_error(),
               Eq(user_data_auth::CRYPTOHOME_ERROR_FINGERPRINT_ERROR_INTERNAL));
 }
 
@@ -307,12 +297,10 @@ TEST_F(FingerprintAuthBlockServiceTest, VerifyRetryFailure) {
   // Simulate a retry-able scan.
   signal_callback.Run(FingerprintScanStatus::FAILED_RETRY_ALLOWED);
 
-  // Kick off the verify. Because there was a success scan, the callback
-  // shall return immediately with success result.
-  TestFuture<CryptohomeStatus> verify_result;
-  service_.Verify(verify_result.GetCallback());
-  ASSERT_THAT(verify_result.IsReady(), IsTrue());
-  EXPECT_THAT(verify_result.Get()->local_legacy_error(),
+  // Kick off the verify. Because there was a success scan, it should return
+  // immediately with success result.
+  CryptohomeStatus verify_result = service_.Verify();
+  EXPECT_THAT(verify_result->local_legacy_error(),
               Eq(user_data_auth::CRYPTOHOME_ERROR_FINGERPRINT_RETRY_REQUIRED));
 
   // The session will be terminated upon destruction.
@@ -341,12 +329,10 @@ TEST_F(FingerprintAuthBlockServiceTest, VerifyRetryDeniedFailure) {
   // Simulate a retry-able scan.
   signal_callback.Run(FingerprintScanStatus::FAILED_RETRY_NOT_ALLOWED);
 
-  // Kick off the verify. Because there was a success scan, the callback
-  // shall return immediately with success result.
-  TestFuture<CryptohomeStatus> verify_result;
-  service_.Verify(verify_result.GetCallback());
-  ASSERT_THAT(verify_result.IsReady(), IsTrue());
-  EXPECT_THAT(verify_result.Get()->local_legacy_error(),
+  // Kick off the verify. Because there was a success scan, it should return
+  // immediately with success result.
+  CryptohomeStatus verify_result = service_.Verify();
+  EXPECT_THAT(verify_result->local_legacy_error(),
               Eq(user_data_auth::CRYPTOHOME_ERROR_FINGERPRINT_DENIED));
 
   // The session will be terminated upon destruction.

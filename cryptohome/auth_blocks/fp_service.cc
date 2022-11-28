@@ -6,6 +6,7 @@
 #include <string>
 #include <utility>
 
+#include <absl/cleanup/cleanup.h>
 #include <base/bind.h>
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 
@@ -46,6 +47,10 @@ void FingerprintAuthBlockService::CheckSessionStartResult(
     std::unique_ptr<Token> token,
     PreparedAuthFactorToken::Consumer on_done,
     bool success) {
+  // If Start fails, the token will be destroyed and considered no longer
+  // active. On success the token is still active and this will be cancelled.
+  absl::Cleanup clear_active_token = [this]() { active_token_ = nullptr; };
+
   if (!success) {
     CryptohomeStatus cryptohome_status = MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocFpServiceStartSessionFailure),
@@ -53,7 +58,6 @@ void FingerprintAuthBlockService::CheckSessionStartResult(
         user_data_auth::CryptohomeErrorCode::
             CRYPTOHOME_ERROR_FINGERPRINT_ERROR_INTERNAL);
     std::move(on_done).Run(std::move(cryptohome_status));
-    active_token_ = nullptr;
     return;
   }
 
@@ -65,9 +69,10 @@ void FingerprintAuthBlockService::CheckSessionStartResult(
         user_data_auth::CryptohomeErrorCode::
             CRYPTOHOME_ERROR_FINGERPRINT_ERROR_INTERNAL);
     std::move(on_done).Run(std::move(status));
-    active_token_ = nullptr;
     return;
   }
+
+  std::move(clear_active_token).Cancel();
   fp_manager->SetSignalCallback(base::BindRepeating(
       &FingerprintAuthBlockService::Capture, base::Unretained(this)));
   token->AttachToService(this);
@@ -89,52 +94,43 @@ FingerprintAuthBlockService::MakeNullService() {
       base::BindRepeating([](user_data_auth::FingerprintScanResult) {}));
 }
 
-void FingerprintAuthBlockService::Verify(
-    base::OnceCallback<void(CryptohomeStatus)> on_done) {
-  CryptohomeStatus cryptohome_status;
+CryptohomeStatus FingerprintAuthBlockService::Verify() {
   FingerprintManager* fp_manager = fp_manager_getter_.Run();
   if (!fp_manager) {
-    cryptohome_status = MakeStatus<CryptohomeError>(
+    return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocFpServiceVerifyCouldNotGetFpManager),
         ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
         user_data_auth::CryptohomeErrorCode::
             CRYPTOHOME_ERROR_FINGERPRINT_ERROR_INTERNAL);
-    std::move(on_done).Run(std::move(cryptohome_status));
-    return;
   }
 
   // If there is no active token then the service has not been started and the
   // verification should fail.
   if (!active_token_) {
-    cryptohome_status = MakeStatus<CryptohomeError>(
+    return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocFpServiceCheckResultNoAuthSession),
         ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
         user_data_auth::CryptohomeErrorCode::
             CRYPTOHOME_ERROR_FINGERPRINT_ERROR_INTERNAL);
-    std::move(on_done).Run(std::move(cryptohome_status));
-    return;
   }
 
   // Use the latest scan result to decide the response status.
   switch (scan_result_) {
     case FingerprintScanStatus::SUCCESS:
-      cryptohome_status = OkStatus<CryptohomeError>();
-      break;
+      return OkStatus<CryptohomeError>();
     case FingerprintScanStatus::FAILED_RETRY_ALLOWED:
-      cryptohome_status = MakeStatus<CryptohomeError>(
+      return MakeStatus<CryptohomeError>(
           CRYPTOHOME_ERR_LOC(kLocFpServiceCheckResultFailedYesRetry),
           ErrorActionSet({ErrorAction::kRetry}),
           user_data_auth::CryptohomeErrorCode::
               CRYPTOHOME_ERROR_FINGERPRINT_RETRY_REQUIRED);
-      break;
     case FingerprintScanStatus::FAILED_RETRY_NOT_ALLOWED:
-      cryptohome_status = MakeStatus<CryptohomeError>(
+      return MakeStatus<CryptohomeError>(
           CRYPTOHOME_ERR_LOC(kLocFpServiceCheckResultFailedNoRetry),
           ErrorActionSet({ErrorAction::kAuth}),
           user_data_auth::CryptohomeErrorCode::
               CRYPTOHOME_ERROR_FINGERPRINT_DENIED);
   }
-  std::move(on_done).Run(std::move(cryptohome_status));
 }
 
 void FingerprintAuthBlockService::Start(
@@ -213,7 +209,7 @@ FingerprintVerifier::FingerprintVerifier(FingerprintAuthBlockService* service)
 
 void FingerprintVerifier::VerifyAsync(const AuthInput& unused,
                                       StatusCallback callback) const {
-  return service_->Verify(std::move(callback));
+  return std::move(callback).Run(service_->Verify());
 }
 
 }  // namespace cryptohome
