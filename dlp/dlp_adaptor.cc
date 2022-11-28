@@ -364,7 +364,7 @@ void DlpAdaptor::InitDatabase(const base::FilePath& database_path,
     base::WriteFile(database_path, "\0", 1);
   }
   std::unique_ptr<DlpDatabase> db =
-      std::make_unique<DlpDatabase>(database_file);
+      std::make_unique<DlpDatabase>(database_file, this);
   DlpDatabase* db_ptr = db.get();
 
   db_ptr->Init(base::BindOnce(&DlpAdaptor::OnDatabaseInitialized,
@@ -506,6 +506,10 @@ void DlpAdaptor::OnFileDeleted(ino_t inode) {
 
 void DlpAdaptor::OnFanotifyError(FanotifyError error) {
   dlp_metrics_->SendFanotifyError(error);
+}
+
+void DlpAdaptor::OnDatabaseError(DatabaseError error) {
+  dlp_metrics_->SendDatabaseError(error);
 }
 
 void DlpAdaptor::OnDlpPolicyMatched(base::OnceCallback<void(bool)> callback,

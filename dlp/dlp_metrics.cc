@@ -18,4 +18,8 @@ void DlpMetrics::SendFanotifyError(FanotifyError error) const {
   metrics_lib_->SendEnumToUMA(kDlpFanotifyErrorHistogram, error);
 }
 
+void DlpMetrics::SendDatabaseError(DatabaseError error) const {
+  metrics_lib_->SendEnumToUMA(kDlpFileDatabaseErrorHistogram, error);
+}
+
 };  // namespace dlp

@@ -162,10 +162,12 @@ int main(int /* argc */, char* /* argv */[]) {
   const base::FilePath database_path = GetDatabaseFilePath(sanitized_username);
   if (!base::CreateDirectory(database_path)) {
     PLOG(ERROR) << "Can't create database directory: " << database_path;
+    dlp_metrics.SendDatabaseError(dlp::DatabaseError::kCreateDirError);
     return 1;
   }
   if (!SetDatabaseDirectoryOwnership(database_path)) {
     LOG(ERROR) << "Can't set database directory ownership: " << database_path;
+    dlp_metrics.SendDatabaseError(dlp::DatabaseError::kSetOwnershipError);
     return 1;
   }
 

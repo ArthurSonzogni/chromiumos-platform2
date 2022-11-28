@@ -6,6 +6,7 @@
 
 #include <cinttypes>
 #include <utility>
+#include "dlp/dlp_metrics.h"
 
 #include <base/callback.h>
 #include <base/containers/contains.h>
@@ -16,6 +17,7 @@
 #include <base/strings/stringprintf.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
+#include <base/threading/sequenced_task_runner_handle.h>
 #include <sqlite3.h>
 
 namespace dlp {
@@ -80,7 +82,9 @@ class DlpDatabase::Core {
  public:
   // Creates an instance to talk to the database file at |db_path|. Init() must
   // be called to establish connection.
-  explicit Core(const base::FilePath& db_path);
+  Core(const base::FilePath& db_path,
+       scoped_refptr<base::SequencedTaskRunner> parent_task_runner,
+       DlpDatabaseDelegate* const delegate);
 
   // Not copyable or movable.
   Core(const Core&) = delete;
@@ -122,12 +126,28 @@ class DlpDatabase::Core {
   // if error occurs.
   int ExecDeleteSQL(const std::string& sql);
 
+  void ForwardUMAErrorToParentThread(DatabaseError error) const;
+
   const base::FilePath db_path_;
   std::unique_ptr<sqlite3, decltype(&sqlite3_close)> db_;
+
+  // Task runner from which this thread is started and where the delegate is
+  // running.
+  scoped_refptr<base::SequencedTaskRunner> parent_task_runner_;
+  DlpDatabaseDelegate* const delegate_;
 };
 
-DlpDatabase::Core::Core(const base::FilePath& db_path)
-    : db_path_(db_path), db_(nullptr, nullptr) {}
+DlpDatabase::Core::Core(
+    const base::FilePath& db_path,
+    scoped_refptr<base::SequencedTaskRunner> parent_task_runner,
+    DlpDatabaseDelegate* const delegate)
+    : db_path_(db_path),
+      db_(nullptr, nullptr),
+      parent_task_runner_(parent_task_runner),
+      delegate_(delegate) {
+  CHECK(delegate_);
+  CHECK(parent_task_runner_->RunsTasksInCurrentSequence());
+}
 
 DlpDatabase::Core::~Core() {
   Close();
@@ -140,11 +160,13 @@ int DlpDatabase::Core::Init() {
                                                            &sqlite3_close);
   if (result != SQLITE_OK) {
     LOG(ERROR) << "Failed to connect to database: " << result;
+    ForwardUMAErrorToParentThread(DatabaseError::kConnectionError);
     db_ = nullptr;
   }
 
   if (!FileEntriesTableExists() && !CreateFileEntriesTable()) {
     LOG(ERROR) << "Failed to create file_entries table";
+    ForwardUMAErrorToParentThread(DatabaseError::kCreateTableError);
     db_ = nullptr;
   }
   return result;
@@ -180,6 +202,7 @@ bool DlpDatabase::Core::CreateFileEntriesTable() {
   const ExecResult result = ExecSQL(sql);
   if (result.code != SQLITE_OK) {
     LOG(ERROR) << "Failed to create table: " << result.error_msg;
+    ForwardUMAErrorToParentThread(DatabaseError::kCreateTableError);
     return false;
   }
   return true;
@@ -198,6 +221,7 @@ bool DlpDatabase::Core::InsertFileEntry(const FileEntry& file_entry) {
   if (result.code != SQLITE_OK) {
     LOG(ERROR) << "Failed to insert file entry: (" << result.code << ") "
                << result.error_msg;
+    ForwardUMAErrorToParentThread(DatabaseError::kInsertIntoTableError);
     return false;
   }
   return true;
@@ -226,6 +250,7 @@ std::map<ino64_t, FileEntry> DlpDatabase::Core::GetFileEntriesByInodes(
   if (result.code != SQLITE_OK) {
     LOG(ERROR) << "Failed to query: (" << result.code << ") "
                << result.error_msg;
+    ForwardUMAErrorToParentThread(DatabaseError::kQueryError);
     file_entries.clear();
     return file_entries;
   }
@@ -253,6 +278,7 @@ bool DlpDatabase::Core::DeleteFileEntriesWithInodesNotInSet(
   if (result.code != SQLITE_OK) {
     LOG(ERROR) << "Failed to query: (" << result.code << ") "
                << result.error_msg;
+    ForwardUMAErrorToParentThread(DatabaseError::kQueryError);
     return false;
   }
 
@@ -308,19 +334,29 @@ int DlpDatabase::Core::ExecDeleteSQL(const std::string& sql) {
   if (result.code != SQLITE_OK) {
     LOG(ERROR) << "Failed to delete: (" << result.code << ") "
                << result.error_msg;
+    ForwardUMAErrorToParentThread(DatabaseError::kDeleteError);
     return -1;
   }
 
   return sqlite3_changes(db_.get());
 }
 
-DlpDatabase::DlpDatabase(const base::FilePath& db_path)
-    : database_thread_("dlp_database_thread") {
+void DlpDatabase::Core::ForwardUMAErrorToParentThread(
+    DatabaseError error) const {
+  parent_task_runner_->PostTask(
+      FROM_HERE, base::BindOnce(&DlpDatabaseDelegate::OnDatabaseError,
+                                base::Unretained(delegate_), error));
+}
+
+DlpDatabase::DlpDatabase(const base::FilePath& db_path, Delegate* delegate)
+    : database_thread_("dlp_database_thread"), delegate_(delegate) {
+  DCHECK(delegate);
   CHECK(database_thread_.Start()) << "Failed to start database thread.";
   task_runner_ = database_thread_.task_runner();
 
   CHECK(!task_runner_->RunsTasksInCurrentSequence());
-  core_ = std::make_unique<Core>(db_path);
+  core_ = std::make_unique<Core>(db_path,
+                                 base::SequencedTaskRunnerHandle::Get(), this);
 }
 
 DlpDatabase::~DlpDatabase() {
@@ -375,6 +411,10 @@ void DlpDatabase::DeleteFileEntriesWithInodesNotInSet(
       base::BindOnce(&DlpDatabase::Core::DeleteFileEntriesWithInodesNotInSet,
                      base::Unretained(core_.get()), inodes_to_keep),
       std::move(callback));
+}
+
+void DlpDatabase::OnDatabaseError(DatabaseError error) {
+  delegate_->OnDatabaseError(error);
 }
 
 }  // namespace dlp

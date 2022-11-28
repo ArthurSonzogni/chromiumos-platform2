@@ -12,6 +12,7 @@
 #include <set>
 #include <string>
 #include <vector>
+#include "dlp/dlp_metrics.h"
 
 #include <base/callback.h>
 #include <base/files/file_path.h>
@@ -32,13 +33,27 @@ struct FileEntry {
   std::string referrer_url;
 };
 
+class DlpDatabaseDelegate {
+ public:
+  // Called when an error occurres.
+  virtual void OnDatabaseError(DatabaseError error) = 0;
+
+ protected:
+  virtual ~DlpDatabaseDelegate() = default;
+};
+
 // Provides API to access database and base functions.
 // Access to the database is done on a separate thread.
-class DlpDatabase {
+class DlpDatabase : public DlpDatabaseDelegate {
  public:
+  class Delegate {
+   public:
+    // Called when an error occurres.
+    virtual void OnDatabaseError(DatabaseError error) = 0;
+  };
   // Creates an instance to talk to the database file at |db_path|. Init() must
   // be called to establish connection.
-  explicit DlpDatabase(const base::FilePath& db_path);
+  DlpDatabase(const base::FilePath& db_path, Delegate* delegate);
 
   // Not copyable or movable.
   DlpDatabase(const DlpDatabase&) = delete;
@@ -74,6 +89,9 @@ class DlpDatabase {
       base::OnceCallback<void(bool)> callback);
 
  private:
+  // DlpDatabaseDelegate overrides:
+  void OnDatabaseError(DatabaseError error) override;
+
   // Class impelmenting the core functionality.
   class Core;
 
@@ -81,6 +99,8 @@ class DlpDatabase {
 
   base::Thread database_thread_;
   scoped_refptr<base::SingleThreadTaskRunner> task_runner_;
+
+  Delegate* delegate_;
 };
 
 }  // namespace dlp

@@ -37,7 +37,8 @@ namespace dlp {
 
 class DlpAdaptor : public org::chromium::DlpAdaptor,
                    public org::chromium::DlpInterface,
-                   public FanotifyWatcher::Delegate {
+                   public FanotifyWatcher::Delegate,
+                   public DlpDatabase::Delegate {
  public:
   DlpAdaptor(std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object,
              int fanotify_perm_fd,
@@ -114,6 +115,9 @@ class DlpAdaptor : public org::chromium::DlpAdaptor,
   void OnFileDeleted(ino_t inode) override;
 
   void OnFanotifyError(FanotifyError error) override;
+
+  // DlpDatabase::Delegate overrides:
+  void OnDatabaseError(DatabaseError error) override;
 
   // Callback on ProcessFileOpenRequest after getting data from database.
   void ProcessFileOpenRequestWithData(int pid,
