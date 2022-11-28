@@ -611,6 +611,8 @@ void Port::ReportPortMetrics(Metrics* metrics) {
   else if (CableLimitingUSBSpeed(cable_limiting_speed_mode))
     metrics->ReportWrongCableError(
         WrongConfigurationMetric::kSpeedLimitingCable);
+  else
+    metrics->ReportWrongCableError(WrongConfigurationMetric::kNone);
 
   metrics_reported_ = true;
   return;

@@ -54,7 +54,8 @@ enum class WrongConfigurationMetric {
   kUSB4WrongCable = 1,
   kDPAltWrongCable = 2,
   kSpeedLimitingCable = 3,
-  kMaxValue = kSpeedLimitingCable,
+  kNone = 4,
+  kMaxValue = kNone,
 };
 
 // These values are persisted to logs. Entries should not be renumbered and
