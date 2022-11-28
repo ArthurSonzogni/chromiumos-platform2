@@ -10,6 +10,13 @@
 #include <gtest/gtest.h>
 #include <optional>
 
+#include "vm_tools/concierge/mock_crosvm_control.h"
+
+using testing::Exactly;
+using testing::NotNull;
+using testing::Return;
+using testing::StrEq;
+
 namespace vm_tools {
 namespace concierge {
 namespace {
@@ -524,6 +531,52 @@ TEST(VMUtilTest, SharedDataParamWithPrivilegedQuotaUids) {
             "20119 1,1066 656426 3934,5000 600 50,5050 660410 "
             "1994950:timeout=3600:rewrite-security-xattrs=true:ascii_casefold="
             "false:writeback=true:posix_acl=true:privileged_quota_uids=0");
+}
+
+TEST(VMUtilTest, GetBalloonStats) {
+  MockCrosvmControl::Init();
+
+  EXPECT_CALL(*MockCrosvmControl::Get(),
+              BalloonStats(StrEq("/run/nothing"), NotNull(), NotNull()))
+      .Times(Exactly(1))
+      .WillOnce([](const char* path, struct BalloonStatsFfi* stats,
+                   uint64_t* actual) {
+        *actual = 100;
+        *stats = {
+            .swap_in = 1,
+            .swap_out = 2,
+            .major_faults = 3,
+            .minor_faults = 4,
+            .free_memory = 5,
+            .total_memory = 6,
+            .available_memory = 7,
+            .disk_caches = 8,
+            .hugetlb_allocations = 9,
+            .hugetlb_failures = 10,
+            .shared_memory = 11,
+            .unevictable_memory = 12,
+        };
+
+        return true;
+      });
+
+  std::optional<BalloonStats> stats = GetBalloonStats("/run/nothing");
+
+  ASSERT_TRUE(stats);
+  ASSERT_EQ(stats->balloon_actual, 100);
+  ASSERT_EQ(stats->stats_ffi.swap_in, 1);
+  ASSERT_EQ(stats->stats_ffi.swap_out, 2);
+  ASSERT_EQ(stats->stats_ffi.major_faults, 3);
+  ASSERT_EQ(stats->stats_ffi.minor_faults, 4);
+  ASSERT_EQ(stats->stats_ffi.free_memory, 5);
+  ASSERT_EQ(stats->stats_ffi.total_memory, 6);
+  ASSERT_EQ(stats->stats_ffi.available_memory, 7);
+  ASSERT_EQ(stats->stats_ffi.disk_caches, 8);
+  ASSERT_EQ(stats->stats_ffi.hugetlb_allocations, 9);
+  ASSERT_EQ(stats->stats_ffi.hugetlb_failures, 10);
+  ASSERT_EQ(stats->stats_ffi.shared_memory, 11);
+  ASSERT_EQ(stats->stats_ffi.unevictable_memory, 12);
+  CrosvmControl::Reset();
 }
 
 }  // namespace concierge

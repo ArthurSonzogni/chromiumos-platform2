@@ -13,7 +13,6 @@
 #include <string>
 #include <vector>
 
-#include <crosvm/crosvm_control.h>
 #include <spaced/proto_bindings/spaced.pb.h>
 #include <vm_concierge/concierge_service.pb.h>
 

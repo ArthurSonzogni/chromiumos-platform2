@@ -137,6 +137,8 @@ static_library("libconcierge") {
   sources = [
     "../concierge/arc_vm.cc",
     "../concierge/balloon_policy.cc",
+    "../concierge/crosvm_control.cc",
+    "../concierge/crosvm_control_impl.cc",
     "../concierge/disk_image.cc",
     "../concierge/dlc_helper.cc",
     "../concierge/manatee_memory_service.cc",
@@ -355,6 +357,7 @@ if (use.test) {
       "../concierge/balloon_policy_test.cc",
       "../concierge/dlc_helper_test.cc",
       "../concierge/future_test.cc",
+      "../concierge/mock_crosvm_control.cc",
       "../concierge/power_manager_client_test.cc",
       "../concierge/shared_data_test.cc",
       "../concierge/termina_vm_test.cc",

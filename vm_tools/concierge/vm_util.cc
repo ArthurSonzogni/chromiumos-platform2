@@ -37,8 +37,9 @@
 
 #include <chromeos-config/libcros_config/cros_config.h>
 
-namespace vm_tools {
-namespace concierge {
+#include "vm_tools/concierge/crosvm_control.h"
+
+namespace vm_tools::concierge {
 
 const char kCrosvmBin[] = "/usr/bin/crosvm";
 
@@ -315,8 +316,8 @@ bool CheckProcessExists(pid_t pid) {
 
 std::optional<BalloonStats> GetBalloonStats(std::string socket_path) {
   BalloonStats stats;
-  if (!crosvm_client_balloon_stats(socket_path.c_str(), &stats.stats_ffi,
-                                   &stats.balloon_actual)) {
+  if (!CrosvmControl::Get()->BalloonStats(socket_path.c_str(), &stats.stats_ffi,
+                                          &stats.balloon_actual)) {
     LOG(ERROR) << "Failed to retrieve balloon stats";
     return std::nullopt;
   }
@@ -372,23 +373,23 @@ bool AttachUsbDevice(std::string socket_path,
 
   fcntl(fd, F_SETFD, 0);  // Remove the CLOEXEC
 
-  return crosvm_client_usb_attach(socket_path.c_str(), bus, addr, vid, pid,
-                                  device_path.c_str(), out_port);
+  return CrosvmControl::Get()->UsbAttach(socket_path.c_str(), bus, addr, vid,
+                                         pid, device_path.c_str(), out_port);
 }
 
 bool DetachUsbDevice(std::string socket_path, uint8_t port) {
-  return crosvm_client_usb_detach(socket_path.c_str(), port);
+  return CrosvmControl::Get()->UsbDetach(socket_path.c_str(), port);
 }
 
 bool ListUsbDevice(std::string socket_path,
                    std::vector<UsbDeviceEntry>* device) {
   // Allocate enough slots for the max number of USB devices
   // This will never be more than 255
-  const size_t max_usb_devices = crosvm_client_max_usb_devices();
+  const size_t max_usb_devices = CrosvmControl::Get()->MaxUsbDevices();
   device->resize(max_usb_devices);
 
-  ssize_t dev_count = crosvm_client_usb_list(socket_path.c_str(),
-                                             device->data(), max_usb_devices);
+  ssize_t dev_count = CrosvmControl::Get()->UsbList(
+      socket_path.c_str(), device->data(), max_usb_devices);
 
   if (dev_count < 0) {
     return false;
@@ -402,7 +403,8 @@ bool ListUsbDevice(std::string socket_path,
 bool CrosvmDiskResize(std::string socket_path,
                       int disk_index,
                       uint64_t new_size) {
-  return crosvm_client_resize_disk(socket_path.c_str(), disk_index, new_size);
+  return CrosvmControl::Get()->ResizeDisk(socket_path.c_str(), disk_index,
+                                          new_size);
 }
 
 bool UpdateCpuShares(const base::FilePath& cpu_cgroup, int cpu_shares) {
@@ -812,5 +814,4 @@ ArcVmCPUTopology::ArcVmCPUTopology(uint32_t num_cpus, uint32_t num_rt_cpus) {
   num_rt_cpus_ = num_rt_cpus;
 }
 
-}  // namespace concierge
-}  // namespace vm_tools
+}  // namespace vm_tools::concierge
