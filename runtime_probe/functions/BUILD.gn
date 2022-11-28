@@ -60,6 +60,7 @@ if (use.test) {
       "input_device_test.cc",
       "memory_test.cc",
       "mipi_camera_test.cc",
+      "mmc_storage_test.cc",
       "sequence_test.cc",
       "sysfs_test.cc",
       "tcpc_test.cc",

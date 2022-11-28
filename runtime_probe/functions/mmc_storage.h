@@ -16,7 +16,7 @@
 
 namespace runtime_probe {
 
-class MmcStorageFunction final : public StorageFunction {
+class MmcStorageFunction : public StorageFunction {
   using StorageFunction::StorageFunction;
 
  public:

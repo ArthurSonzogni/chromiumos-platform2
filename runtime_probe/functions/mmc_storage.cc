@@ -13,20 +13,17 @@
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
-#include <brillo/dbus/dbus_connection.h>
-#include <brillo/dbus/dbus_method_invoker.h>
+#include <brillo/errors/error.h>
 #include <brillo/strings/string_utils.h>
-#include <chromeos/dbus/service_constants.h>
-#include <dbus/bus.h>
-#include <dbus/object_proxy.h>
+#include <debugd/dbus-proxies.h>
 
+#include "runtime_probe/system/context.h"
 #include "runtime_probe/utils/file_utils.h"
 #include "runtime_probe/utils/value_utils.h"
 
 namespace runtime_probe {
 namespace {
 // D-Bus related constant to issue dbus call to debugd.
-constexpr auto kDebugdMmcMethodName = "Mmc";
 constexpr auto kDebugdMmcOption = "extcsd_read";
 constexpr auto kDebugdMmcDefaultTimeout = 10 * 1000;  // in ms
 
@@ -56,34 +53,6 @@ inline std::string VersionFormattedString(const std::string& v,
   return v + " (" + v_decode + ")";
 }
 
-bool GetOutputOfMmcExtcsd(std::string* output) {
-  VLOG(1) << "Issuing D-Bus call to debugd to retrieve eMMC 5.0 firmware info.";
-
-  brillo::DBusConnection dbus_connection;
-  const auto bus = dbus_connection.Connect();
-  if (bus == nullptr) {
-    LOG(ERROR) << "Failed to connect to system D-Bus service.";
-    return false;
-  }
-
-  dbus::ObjectProxy* object_proxy = bus->GetObjectProxy(
-      debugd::kDebugdServiceName, dbus::ObjectPath(debugd::kDebugdServicePath));
-
-  brillo::ErrorPtr err;
-  auto response = brillo::dbus_utils::CallMethodAndBlockWithTimeout(
-      kDebugdMmcDefaultTimeout, object_proxy, debugd::kDebugdInterface,
-      kDebugdMmcMethodName, &err, kDebugdMmcOption);
-
-  if (!response || !brillo::dbus_utils::ExtractMethodCallResults(
-                       response.get(), &err, output)) {
-    LOG(ERROR) << "Failed to get mmc extcsd results by D-Bus call to debugd. "
-                  "Error message: "
-               << err->GetMessage();
-    return false;
-  }
-  return true;
-}
-
 // Extracts the eMMC 5.0 firmware version of storage device specified
 // by |node_path| from EXT_CSD[254:262] via D-Bus call to debugd MMC method.
 std::string GetStorageFwVersion(const base::FilePath& node_path) {
@@ -93,7 +62,19 @@ std::string GetStorageFwVersion(const base::FilePath& node_path) {
           << node_path.BaseName().value();
 
   std::string ext_csd_res;
-  if (!GetOutputOfMmcExtcsd(&ext_csd_res)) {
+  brillo::ErrorPtr err;
+
+  auto debugd = Context::Get()->debugd_proxy();
+  VLOG(1) << "Issuing D-Bus call to debugd to retrieve eMMC 5.0 firmware info.";
+  if (!debugd->Mmc(kDebugdMmcOption, &ext_csd_res, &err,
+                   kDebugdMmcDefaultTimeout)) {
+    std::string err_message = "(no error message)";
+    if (err)
+      err_message = err->GetMessage();
+    LOG(ERROR) << "Failed to get mmc extcsd results by D-Bus call to debugd. "
+                  "Error message: "
+               << err_message;
+
     LOG(WARNING) << "Fail to retrieve information from mmc extcsd for \"/dev/"
                  << node_path.BaseName().value() << "\"";
     return "";
