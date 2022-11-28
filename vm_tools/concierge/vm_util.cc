@@ -59,12 +59,37 @@ constexpr char kFontsSharedDirTag[] = "fonts";
 // SCHED_CAPACITY_SCALE. That is "1 << 10".
 constexpr int kMaxCapacity = 1024;
 
+constexpr char kUringAsyncExecutorString[] = "uring";
+constexpr char kEpollAsyncExecutorString[] = "epoll";
+
 std::string BooleanParameter(const char* parameter, bool value) {
   std::string result = base::StrCat({parameter, value ? "true" : "false"});
   return result;
 }
 
 }  // namespace
+
+std::optional<AsyncExecutor> StringToAsyncExecutor(
+    const std::string& async_executor) {
+  if (async_executor == kUringAsyncExecutorString) {
+    return std::optional{AsyncExecutor::kUring};
+  } else if (async_executor == kEpollAsyncExecutorString) {
+    return std::optional{AsyncExecutor::kEpoll};
+  } else {
+    LOG(ERROR) << "Failed to convert unknown string to AsyncExecutor"
+               << async_executor;
+    return std::nullopt;
+  }
+}
+
+std::string AsyncExecutorToString(AsyncExecutor async_executor) {
+  switch (async_executor) {
+    case AsyncExecutor::kUring:
+      return kUringAsyncExecutorString;
+    case AsyncExecutor::kEpoll:
+      return kEpollAsyncExecutorString;
+  }
+}
 
 base::StringPairs Disk::GetCrosvmArgs() const {
   std::string first;
@@ -86,9 +111,14 @@ base::StringPairs Disk::GetCrosvmArgs() const {
     block_size_arg =
         base::StringPrintf(",block_size=%" PRIuS, block_size.value());
   }
+  std::string async_executor_arg;
+  if (async_executor) {
+    async_executor_arg = base::StrCat(
+        {",async_executor=", AsyncExecutorToString(async_executor.value())});
+  }
 
-  std::string second =
-      base::StrCat({path.value(), sparse_arg, o_direct_arg, block_size_arg});
+  std::string second = base::StrCat({path.value(), sparse_arg, o_direct_arg,
+                                     block_size_arg, async_executor_arg});
   base::StringPairs result = {{std::move(first), std::move(second)}};
   return result;
 }

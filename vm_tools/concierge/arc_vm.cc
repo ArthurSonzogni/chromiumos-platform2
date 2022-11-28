@@ -69,6 +69,9 @@ constexpr char kKeyToOverrideKernelPath[] = "KERNEL_PATH";
 // Custom parameter key to override the o_direct= disk parameter.
 constexpr char kKeyToOverrideODirect[] = "O_DIRECT";
 
+// Custom parameter key to override the async executor for the disk devices.
+constexpr char kKeyToOverrideIoBlockAsyncExecutor[] = "BLOCK_ASYNC_EXECUTOR";
+
 // Shared directories and their tags
 constexpr char kOemEtcSharedDir[] = "/run/arcvm/host_generated/oem/etc";
 constexpr char kOemEtcSharedDirTag[] = "oem_etc";
@@ -454,6 +457,19 @@ bool ArcVm::Start(base::FilePath kernel, VmBuilder vm_builder) {
     vm_builder.EnableODirect(true);
     /* block size for DM-verity root file system */
     vm_builder.SetBlockSize(4096);
+  }
+
+  const auto block_async_executor = custom_parameters.ObtainSpecialParameter(
+      kKeyToOverrideIoBlockAsyncExecutor);
+  if (block_async_executor) {
+    const auto executor_enum =
+        StringToAsyncExecutor(block_async_executor.value());
+    if (!executor_enum.has_value()) {
+      LOG(ERROR) << "Unknown value for BLOCK_ASYNC_EXECUTOR: "
+                 << block_async_executor.value();
+      return false;
+    }
+    vm_builder.SetBlockAsyncExecutor(executor_enum.value());
   }
 
   auto args = vm_builder.BuildVmArgs();

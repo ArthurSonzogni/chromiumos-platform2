@@ -45,6 +45,12 @@ struct VMImageSpec {
   VMImageSpec() = default;
 };
 
+// Describe the values for --async-executor options passed to crosvm
+enum class AsyncExecutor {
+  kUring,
+  kEpoll,
+};
+
 struct Disk {
   // Gets the command line argument that needs to be passed to crosvm
   // corresponding to this disk.
@@ -63,6 +69,9 @@ struct Disk {
 
   // Whether the disk access should be done with O_DIRECT by the VM.
   std::optional<bool> o_direct;
+
+  // Async executor crosvm should use to run the disk devices.
+  std::optional<AsyncExecutor> async_executor;
 
   // Block size.
   std::optional<size_t> block_size;
@@ -152,6 +161,11 @@ std::string ConvertToFdBasedPath(brillo::SafeFD& parent_fd,
                                  base::FilePath* in_out_path,
                                  int flags,
                                  std::vector<brillo::SafeFD>& fd_storage);
+
+// Convert a string to the corresponding AsyncExecutor. This returns nullopt if
+// the given string is unknown.
+std::optional<AsyncExecutor> StringToAsyncExecutor(
+    const std::string& async_executor);
 
 class CustomParametersForDev {
  public:

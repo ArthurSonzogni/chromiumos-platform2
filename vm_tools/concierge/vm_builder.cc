@@ -327,6 +327,13 @@ VmBuilder& VmBuilder::EnableODirect(bool enable) {
   return *this;
 }
 
+VmBuilder& VmBuilder::SetBlockAsyncExecutor(AsyncExecutor executor) {
+  for (auto& d : disks_) {
+    d.async_executor = executor;
+  }
+  return *this;
+}
+
 VmBuilder& VmBuilder::SetBlockSize(size_t block_size) {
   for (auto& d : disks_) {
     d.block_size = block_size;
