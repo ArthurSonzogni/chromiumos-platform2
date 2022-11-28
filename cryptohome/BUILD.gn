@@ -477,8 +477,12 @@ if (use.fuzzer) {
     ]
     libs = [ "hwsec-foundation" ]
     configs += [ "//common-mk/common_fuzzer" ]
-    deps = [ "libs:libcrosplatform" ]
-    pkg_deps = [ "libchrome-test" ]
+    pkg_deps = [
+      "libbrillo",
+      "libchrome",
+      "libchrome-test",
+      "openssl",
+    ]
   }
 
   executable("cryptohome_tpm1_cmk_migration_parser_fuzzer") {
@@ -491,11 +495,12 @@ if (use.fuzzer) {
       "hwsec-foundation",
     ]
     configs += [ "//common-mk/common_fuzzer" ]
-    deps = [
-      "libs:libcrosplatform",
-      "libs:libcrostpm",
+    pkg_deps = [
+      "libbrillo",
+      "libchrome",
+      "libchrome-test",
+      "openssl",
     ]
-    pkg_deps = [ "libchrome-test" ]
 
     # TODO(crbug/1144974): This is a workaround to let the fuzzer can build on TPM2 devices.
     if (!use.tpm) {
@@ -507,7 +512,10 @@ if (use.fuzzer) {
     sources = [ "fuzzers/cryptolib_blob_to_hex_fuzzer.cc" ]
     libs = [ "hwsec-foundation" ]
     configs += [ "//common-mk/common_fuzzer" ]
-    deps = [ "libs:libcrosplatform" ]
+    pkg_deps = [
+      "libbrillo",
+      "libchrome",
+    ]
   }
 
   executable("cryptohome_userdataauth_fuzzer") {
