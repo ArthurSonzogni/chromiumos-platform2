@@ -91,6 +91,8 @@ class CrosHealthdRoutineFactoryImpl final : public CrosHealthdRoutineFactory {
       ash::cros_healthd::mojom::LedColor color,
       mojo::PendingRemote<ash::cros_healthd::mojom::LedLitUpRoutineReplier>
           replier) override;
+  std::unique_ptr<DiagnosticRoutine> MakeEmmcLifetimeRoutine(
+      org::chromium::debugdProxyInterface* debugd_proxy) override;
 
  private:
   // Unowned pointer that should outlive this instance.

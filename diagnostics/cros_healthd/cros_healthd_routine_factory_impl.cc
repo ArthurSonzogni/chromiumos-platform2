@@ -26,6 +26,7 @@
 #include "diagnostics/cros_healthd/routines/dns_latency/dns_latency.h"
 #include "diagnostics/cros_healthd/routines/dns_resolution/dns_resolution.h"
 #include "diagnostics/cros_healthd/routines/dns_resolver_present/dns_resolver_present.h"
+#include "diagnostics/cros_healthd/routines/emmc_lifetime/emmc_lifetime.h"
 #include "diagnostics/cros_healthd/routines/fingerprint/fingerprint.h"
 #include "diagnostics/cros_healthd/routines/fingerprint_alive/fingerprint_alive.h"
 #include "diagnostics/cros_healthd/routines/floating_point/floating_point_accuracy.h"
@@ -297,6 +298,13 @@ CrosHealthdRoutineFactoryImpl::MakeLedLitUpRoutine(
         replier) {
   return std::make_unique<LedLitUpRoutine>(context_, name, color,
                                            std::move(replier));
+}
+
+std::unique_ptr<DiagnosticRoutine>
+CrosHealthdRoutineFactoryImpl::MakeEmmcLifetimeRoutine(
+    org::chromium::debugdProxyInterface* debugd_proxy) {
+  DCHECK(debugd_proxy);
+  return std::make_unique<EmmcLifetimeRoutine>(debugd_proxy);
 }
 
 }  // namespace diagnostics

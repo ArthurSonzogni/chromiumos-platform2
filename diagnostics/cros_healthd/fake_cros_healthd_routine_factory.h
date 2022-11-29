@@ -112,6 +112,8 @@ class FakeCrosHealthdRoutineFactory final : public CrosHealthdRoutineFactory {
       ash::cros_healthd::mojom::LedColor color,
       mojo::PendingRemote<ash::cros_healthd::mojom::LedLitUpRoutineReplier>
           replier) override;
+  std::unique_ptr<DiagnosticRoutine> MakeEmmcLifetimeRoutine(
+      org::chromium::debugdProxyInterface* debugd_proxy) override;
 
  private:
   // The routine that will be returned by any calls to MakeSomeRoutine.

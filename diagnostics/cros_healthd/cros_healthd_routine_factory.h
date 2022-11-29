@@ -166,6 +166,10 @@ class CrosHealthdRoutineFactory {
       ash::cros_healthd::mojom::LedColor color,
       mojo::PendingRemote<ash::cros_healthd::mojom::LedLitUpRoutineReplier>
           replier) = 0;
+  // Constructs a new instance of the eMMC lifetime routine. See
+  // diagnostics/routines/emmc_lifetime for details on the routine itself.
+  virtual std::unique_ptr<DiagnosticRoutine> MakeEmmcLifetimeRoutine(
+      org::chromium::debugdProxyInterface* debugd_proxy) = 0;
 };
 
 }  // namespace diagnostics

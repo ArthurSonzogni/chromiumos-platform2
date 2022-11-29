@@ -394,6 +394,12 @@ FakeCrosHealthdRoutineFactory::MakePrivacyScreenRoutine(bool target_state) {
 }
 
 std::unique_ptr<DiagnosticRoutine>
+FakeCrosHealthdRoutineFactory::MakeEmmcLifetimeRoutine(
+    org::chromium::debugdProxyInterface* debugd_proxy) {
+  return std::move(next_routine_);
+}
+
+std::unique_ptr<DiagnosticRoutine>
 FakeCrosHealthdRoutineFactory::MakeLedLitUpRoutine(
     ash::cros_healthd::mojom::LedName name,
     ash::cros_healthd::mojom::LedColor color,

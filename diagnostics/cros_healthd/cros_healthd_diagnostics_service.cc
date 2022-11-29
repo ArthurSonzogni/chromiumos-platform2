@@ -409,7 +409,9 @@ void CrosHealthdDiagnosticsService::RunLedLitUpRoutine(
 
 void CrosHealthdDiagnosticsService::RunEmmcLifetimeRoutine(
     RunEmmcLifetimeRoutineCallback callback) {
-  NOTIMPLEMENTED();
+  RunRoutine(
+      routine_factory_->MakeEmmcLifetimeRoutine(context_->debugd_proxy()),
+      mojo_ipc::DiagnosticRoutineEnum::kEmmcLifetime, std::move(callback));
 }
 
 void CrosHealthdDiagnosticsService::RunRoutine(
