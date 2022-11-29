@@ -890,4 +890,15 @@ std::unique_ptr<Client> Client::New(const scoped_refptr<dbus::Bus>& bus,
                                       false /* owns_bus */);
 }
 
+BRILLO_EXPORT std::ostream& operator<<(
+    std::ostream& stream, const NeighborReachabilityEventSignal& signal) {
+  return stream << "{ifindex: " << signal.ifindex()
+                << ", ip_address: " << signal.ip_addr() << ", role: "
+                << NeighborReachabilityEventSignal::Role_Name(signal.role())
+                << ", type: "
+                << NeighborReachabilityEventSignal::EventType_Name(
+                       signal.type())
+                << "}";
+}
+
 }  // namespace patchpanel

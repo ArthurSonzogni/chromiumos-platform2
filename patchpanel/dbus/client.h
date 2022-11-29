@@ -6,6 +6,7 @@
 #define PATCHPANEL_DBUS_CLIENT_H_
 
 #include <memory>
+#include <ostream>
 #include <set>
 #include <string>
 #include <utility>
@@ -151,6 +152,9 @@ class BRILLO_EXPORT Client {
  protected:
   Client() = default;
 };
+
+BRILLO_EXPORT std::ostream& operator<<(
+    std::ostream& stream, const NeighborReachabilityEventSignal& signal);
 
 }  // namespace patchpanel
 

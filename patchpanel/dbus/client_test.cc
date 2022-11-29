@@ -4,6 +4,8 @@
 
 #include "patchpanel/dbus/client.h"
 
+#include <sstream>
+
 #include <base/bind.h>
 // Ignore Wconversion warnings in libbase headers.
 #pragma GCC diagnostic push
@@ -135,6 +137,20 @@ TEST_F(ClientTest, RegisterNeighborEventHandler) {
   EXPECT_EQ(actual_signal_proto.ip_addr(), signal_proto.ip_addr());
   EXPECT_EQ(actual_signal_proto.role(), signal_proto.role());
   EXPECT_EQ(actual_signal_proto.type(), signal_proto.type());
+}
+
+TEST_F(ClientTest, RegisterNeighborEventSignal) {
+  NeighborReachabilityEventSignal signal;
+  signal.set_ifindex(1);
+  signal.set_ip_addr("192.168.1.32");
+  signal.set_role(NeighborReachabilityEventSignal::GATEWAY);
+  signal.set_type(NeighborReachabilityEventSignal::FAILED);
+
+  std::stringstream stream;
+  stream << signal;
+  EXPECT_EQ(
+      "{ifindex: 1, ip_address: 192.168.1.32, role: GATEWAY, type: FAILED}",
+      stream.str());
 }
 
 }  // namespace
