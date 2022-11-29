@@ -11,6 +11,7 @@ inline constexpr char kNvmeShortSelfTestOption[] = "short_self_test";
 inline constexpr char kNvmeLongSelfTestOption[] = "long_self_test";
 inline constexpr char kNvmeStopSelfTestOption[] = "stop_self_test";
 inline constexpr char kNvmeIdentityOption[] = "identify_controller";
+inline constexpr char kMmcExtcsdReadOption[] = "extcsd_read";
 
 }  // namespace diagnostics
 
