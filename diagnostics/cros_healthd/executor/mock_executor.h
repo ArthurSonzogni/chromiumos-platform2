@@ -9,6 +9,8 @@
 #include <gmock/gmock.h>
 #include <vector>
 
+#include <mojo/public/cpp/bindings/pending_remote.h>
+
 #include "diagnostics/cros_healthd/executor/mojom/executor.mojom.h"
 #include "diagnostics/mojom/public/nullable_primitives.mojom.h"
 
@@ -82,6 +84,13 @@ class MockExecutor final : public ash::cros_healthd::mojom::Executor {
   MOCK_METHOD(void,
               GetHciDeviceConfig,
               (GetHciDeviceConfigCallback),
+              (override));
+  MOCK_METHOD(void,
+              MonitorAudioJack,
+              (mojo::PendingRemote<ash::cros_healthd::mojom::AudioJackObserver>
+                   observer,
+               mojo::PendingReceiver<ash::cros_healthd::mojom::ProcessControl>
+                   process_control),
               (override));
 };
 

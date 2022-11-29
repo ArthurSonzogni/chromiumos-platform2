@@ -184,4 +184,11 @@ interface Executor {
   // The response:
   // * |result| - contains information of hci0 received from running the tool.
   GetHciDeviceConfig() => (ExecutedProcessResult result);
+
+  // Monitor audio jack events.
+  //
+  // The request:
+  // * |observer| - The observer to notify client.
+  MonitorAudioJack(pending_remote<AudioJackObserver> observer,
+                   pending_receiver<ProcessControl> process_control);
 };

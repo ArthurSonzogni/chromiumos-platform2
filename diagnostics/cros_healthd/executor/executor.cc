@@ -27,6 +27,7 @@
 
 #include "diagnostics/cros_healthd/executor/mojom/executor.mojom.h"
 #include "diagnostics/cros_healthd/executor/utils/delegate_process.h"
+#include "diagnostics/cros_healthd/executor/utils/process_control.h"
 #include "diagnostics/cros_healthd/process/process_with_output.h"
 #include "diagnostics/cros_healthd/routines/memory/memory_constants.h"
 #include "diagnostics/cros_healthd/utils/file_utils.h"
@@ -52,6 +53,10 @@ constexpr char kFingerprintUserAndGroup[] = "healthd_fp";
 
 // SECCOMP policy for LED related routines.
 constexpr char kLedSeccompPolicyPath[] = "ec_led-seccomp.policy";
+
+// SECCOMP policy for evdev related routines.
+constexpr char kEvdevSeccompPolicyPath[] = "evdev-seccomp.policy";
+constexpr char kEvdevUserAndGroup[] = "healthd_evdev";
 
 // The user and group for accessing EC.
 constexpr char kEcUserAndGroup[] = "healthd_ec";
@@ -595,6 +600,30 @@ void Executor::GetHciDeviceConfig(GetHciDeviceConfigCallback callback) {
       binary_args, std::move(result), std::move(callback));
 
   base::ThreadPool::PostTask(FROM_HERE, {base::MayBlock()}, std::move(closure));
+}
+
+void Executor::MonitorAudioJackTask(
+    mojo::PendingRemote<mojom::AudioJackObserver> observer,
+    mojo::PendingReceiver<mojom::ProcessControl> process_control) {
+  auto delegate = std::make_unique<DelegateProcess>(
+      kEvdevSeccompPolicyPath, kEvdevUserAndGroup, kNullCapability,
+      /*readonly_mount_points=*/
+      std::vector<base::FilePath>{base::FilePath{"/dev/input"}},
+      /*writable_mount_points=*/
+      std::vector<base::FilePath>{});
+
+  delegate->remote()->MonitorAudioJack(std::move(observer));
+  auto controller = std::make_unique<ProcessControl>(std::move(delegate));
+  process_control_set_.Add(std::move(controller), std::move(process_control));
+}
+
+void Executor::MonitorAudioJack(
+    mojo::PendingRemote<mojom::AudioJackObserver> observer,
+    mojo::PendingReceiver<mojom::ProcessControl> process_control) {
+  base::SequencedTaskRunnerHandle::Get()->PostTask(
+      FROM_HERE,
+      base::BindOnce(&Executor::MonitorAudioJackTask, base::Unretained(this),
+                     std::move(observer), std::move(process_control)));
 }
 
 void Executor::RunUntrackedBinary(

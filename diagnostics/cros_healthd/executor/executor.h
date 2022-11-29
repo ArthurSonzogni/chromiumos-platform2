@@ -69,6 +69,10 @@ class Executor final : public ash::cros_healthd::mojom::Executor {
   void ResetLedColor(ash::cros_healthd::mojom::LedName name,
                      ResetLedColorCallback callback) override;
   void GetHciDeviceConfig(GetHciDeviceConfigCallback callback) override;
+  void MonitorAudioJack(
+      mojo::PendingRemote<ash::cros_healthd::mojom::AudioJackObserver> observer,
+      mojo::PendingReceiver<ash::cros_healthd::mojom::ProcessControl>
+          process_control) override;
 
  private:
   // Runs the given binary with the given arguments and sandboxing. If
@@ -105,6 +109,11 @@ class Executor final : public ash::cros_healthd::mojom::Executor {
                         const std::vector<std::string>& binary_args,
                         ash::cros_healthd::mojom::ExecutedProcessResult* result,
                         ProcessWithOutput* process);
+
+  void MonitorAudioJackTask(
+      mojo::PendingRemote<ash::cros_healthd::mojom::AudioJackObserver> observer,
+      mojo::PendingReceiver<ash::cros_healthd::mojom::ProcessControl>
+          process_control);
 
   // Task runner for all Mojo callbacks.
   const scoped_refptr<base::SingleThreadTaskRunner> mojo_task_runner_;
