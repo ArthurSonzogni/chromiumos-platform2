@@ -233,7 +233,10 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   userdataauth->set_tpm_manager_util_(&tpm_manager_utility);
   userdataauth->set_uss_experiment_config_fetcher(
       &uss_experiment_config_fetcher);
-  CHECK(userdataauth->Initialize());
+  if (!userdataauth->Initialize()) {
+    // This should be a rare case (e.g., the mocked system salt writing failed).
+    return 0;
+  }
   CHECK(userdataauth->PostDBusInitialize());
 
   // Prepare `UserDataAuthAdaptor`. D-Bus handlers of the code-under-test become
