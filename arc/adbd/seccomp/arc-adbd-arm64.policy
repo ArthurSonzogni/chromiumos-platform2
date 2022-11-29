@@ -29,7 +29,7 @@ rename: 1
 # S_IFIFO|S_IRWXU|S_IRWXG|S_IRWXO.
 mknod: arg1 in 010777
 exit_group: 1
-unlink: 1
+unlinkat: 1
 mount: arg3 == MS_BIND || arg3 == MS_NOSUID|MS_NODEV|MS_NOEXEC
 fchown: 1
 restart_syscall: 1
