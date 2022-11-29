@@ -18,6 +18,8 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "missive/analytics/metrics.h"
+#include "missive/analytics/metrics_test_util.h"
 #include "missive/client/mock_report_queue.h"
 #include "missive/client/report_queue_configuration.h"
 #include "missive/proto/record_constants.pb.h"
@@ -63,6 +65,12 @@ class ReportQueueImplTest : public testing::Test {
     ON_CALL(mocked_policy_check_, Call())
         .WillByDefault(Return(Status::StatusOK()));
 
+    // UMA to accept all results.
+    ON_CALL(analytics::Metrics::TestEnvironment::GetMockMetricsLibrary(),
+            SendLinearToUMA(StrEq(ReportQueue::kEnqueueMetricsName), _,
+                            Eq(error::MAX_VALUE)))
+        .WillByDefault(Return(true));
+
     StatusOr<std::unique_ptr<ReportQueueConfiguration>> config_result =
         ReportQueueConfiguration::Create(dm_token_, destination_,
                                          policy_check_callback_);
@@ -89,6 +97,9 @@ class ReportQueueImplTest : public testing::Test {
 
   base::test::TaskEnvironment task_environment_{
       base::test::TaskEnvironment::TimeSource::MOCK_TIME};
+
+  // Declare it here to avoid UMA error.
+  analytics::Metrics::TestEnvironment metrics_test_environment_;
 
   const Priority priority_;
 

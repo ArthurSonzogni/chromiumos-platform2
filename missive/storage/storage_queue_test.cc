@@ -2153,7 +2153,6 @@ TEST_P(StorageQueueTest, WriteRecordWithInsufficientMemory) {
   // not affect other tests
   const auto original_total_memory = options_.memory_resource()->GetTotal();
   options_.memory_resource()->Test_SetTotal(0);
-
   EXPECT_CALL(
       analytics::Metrics::TestEnvironment::GetMockMetricsLibrary(),
       SendLinearToUMA(
@@ -2161,7 +2160,6 @@ TEST_P(StorageQueueTest, WriteRecordWithInsufficientMemory) {
           Eq(StorageQueue::ResourceExhaustedCase::NO_MEMORY_FOR_WRITE_BUFFER),
           Eq(StorageQueue::ResourceExhaustedCase::kMaxValue)))
       .WillOnce(Return(true));
-
   Status write_result = WriteString(kData[0]);
   options_.memory_resource()->Test_SetTotal(original_total_memory);
   EXPECT_FALSE(write_result.ok());

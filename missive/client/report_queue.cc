@@ -17,6 +17,7 @@
 #include <base/time/time.h>
 #include <base/values.h>
 
+#include "missive/analytics/metrics.h"
 #include "missive/proto/record.pb.h"
 #include "missive/proto/record_constants.pb.h"
 #include "missive/util/status.h"
@@ -46,6 +47,16 @@ StatusOr<std::string> ProtoToString(
   }
   return protobuf_record;
 }
+
+void EnqueueResponded(ReportQueue::EnqueueCallback callback, Status status) {
+  const auto res = analytics::Metrics::Get().SendLinearToUMA(
+      /*name=*/ReportQueue::kEnqueueMetricsName, status.code(),
+      error::Code::MAX_VALUE);
+  LOG_IF(ERROR, !res) << "SendLinearToUMA failure, "
+                      << ReportQueue::kEnqueueMetricsName << " "
+                      << static_cast<int>(status.code());
+  std::move(callback).Run(status);
+}
 }  // namespace
 
 ReportQueue::~ReportQueue() = default;
@@ -58,14 +69,15 @@ void ReportQueue::Enqueue(std::string record,
                           return std::move(record);
                         },
                         std::move(record)),
-                    priority, std::move(callback));
+                    priority,
+                    base::BindOnce(&EnqueueResponded, std::move(callback)));
 }
 
 void ReportQueue::Enqueue(base::Value record,
                           Priority priority,
                           ReportQueue::EnqueueCallback callback) const {
   AddProducedRecord(base::BindOnce(&ValueToJson, std::move(record)), priority,
-                    std::move(callback));
+                    base::BindOnce(&EnqueueResponded, std::move(callback)));
 }
 
 void ReportQueue::Enqueue(
@@ -73,7 +85,7 @@ void ReportQueue::Enqueue(
     Priority priority,
     ReportQueue::EnqueueCallback callback) const {
   AddProducedRecord(base::BindOnce(&ProtoToString, std::move(record)), priority,
-                    std::move(callback));
+                    base::BindOnce(&EnqueueResponded, std::move(callback)));
 }
 
 }  // namespace reporting

@@ -16,6 +16,8 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "missive/analytics/metrics.h"
+#include "missive/analytics/metrics_test_util.h"
 #include "missive/client/mock_report_queue.h"
 #include "missive/client/mock_report_queue_provider.h"
 #include "missive/client/report_queue.h"
@@ -28,6 +30,7 @@ using ::testing::_;
 using ::testing::Eq;
 using ::testing::Invoke;
 using ::testing::NiceMock;
+using ::testing::Return;
 using ::testing::StrEq;
 using ::testing::WithArg;
 
@@ -41,6 +44,12 @@ class ReportQueueProviderTest : public ::testing::Test {
   void SetUp() override {
     provider_ = std::make_unique<NiceMock<MockReportQueueProvider>>();
     report_queue_provider_test_helper::SetForTesting(provider_.get());
+
+    // UMA to accept all results.
+    ON_CALL(analytics::Metrics::TestEnvironment::GetMockMetricsLibrary(),
+            SendLinearToUMA(StrEq(ReportQueue::kEnqueueMetricsName), _,
+                            Eq(error::MAX_VALUE)))
+        .WillByDefault(Return(true));
   }
 
   void TearDown() override {
@@ -50,6 +59,9 @@ class ReportQueueProviderTest : public ::testing::Test {
 
   base::test::TaskEnvironment task_environment_{
       base::test::TaskEnvironment::TimeSource::MOCK_TIME};
+
+  // Declare it here to avoid UMA error.
+  analytics::Metrics::TestEnvironment metrics_test_environment_;
 
   std::unique_ptr<MockReportQueueProvider> provider_;
   const Destination destination_ = Destination::UPLOAD_EVENTS;

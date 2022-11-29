@@ -64,6 +64,8 @@ generate_pkg_config("libmissiveclient_pc") {
 # Client library for use by other daemons to call missived
 static_library("missiveclientlib") {
   sources = [
+    "analytics/metrics.cc",
+    "analytics/metrics.h",
     "client/dm_token_retriever.h",
     "client/empty_dm_token_retriever.cc",
     "client/empty_dm_token_retriever.h",
@@ -125,6 +127,8 @@ executable("missived") {
 static_library("missiveclienttestlib") {
   # testonly = true
   sources = [
+    "analytics/metrics_test_util.cc",
+    "analytics/metrics_test_util.h",
     "client/mock_dm_token_retriever.cc",
     "client/mock_dm_token_retriever.h",
     "client/mock_report_queue.cc",

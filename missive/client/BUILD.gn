@@ -76,6 +76,7 @@ static_library("report_queue") {
   configs += [ ":target_defaults" ]
   deps = [
     ":report_queue_configuration",
+    "//missive/analytics:libanalytics",
     "//missive/proto:libmissiveprotorecord",
     "//missive/proto:libmissiveprotorecordconstants",
     "//missive/storage:storage_module_interface",
