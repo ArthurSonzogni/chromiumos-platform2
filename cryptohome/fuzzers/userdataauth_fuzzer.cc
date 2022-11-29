@@ -41,7 +41,11 @@
 #include "cryptohome/mock_uss_experiment_config_fetcher.h"
 #include "cryptohome/platform.h"
 #include "cryptohome/service_userdataauth.h"
+#include "cryptohome/storage/cryptohome_vault_factory.h"
+#include "cryptohome/storage/encrypted_container/backing_device_factory.h"
+#include "cryptohome/storage/encrypted_container/encrypted_container_factory.h"
 #include "cryptohome/storage/homedirs.h"
+#include "cryptohome/storage/keyring/fake_keyring.h"
 #include "cryptohome/storage/mock_mount_factory.h"
 #include "cryptohome/storage/mount_factory.h"
 #include "cryptohome/userdataauth.h"
@@ -75,6 +79,20 @@ class Environment {
   // inputs.
   google::protobuf::LogSilencer log_silencer_;
 };
+
+std::unique_ptr<CryptohomeVaultFactory> CreateVaultFactory(
+    Platform& platform, FuzzedDataProvider& provider) {
+  // Only stub out `Keyring`, because unlike other classes its real
+  // implementation does platform operations that don't go through `Platform`.
+  auto container_factory = std::make_unique<EncryptedContainerFactory>(
+      &platform, std::make_unique<FakeKeyring>(),
+      std::make_unique<BackingDeviceFactory>(&platform));
+  container_factory->set_allow_fscrypt_v2(provider.ConsumeBool());
+  auto vault_factory = std::make_unique<CryptohomeVaultFactory>(
+      &platform, std::move(container_factory));
+  vault_factory->set_enable_application_containers(provider.ConsumeBool());
+  return vault_factory;
+}
 
 std::unique_ptr<MountFactory> CreateMountFactory() {
   auto mount_factory = std::make_unique<MockMountFactory>();
@@ -191,6 +209,8 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
 
   // Prepare `UserDataAuth`'s dependencies.
   FakePlatform platform;
+  std::unique_ptr<CryptohomeVaultFactory> vault_factory =
+      CreateVaultFactory(platform, provider);
   std::unique_ptr<MountFactory> mount_factory = CreateMountFactory();
   hwsec::FuzzedFactory hwsec_factory(provider);
   NiceMock<tpm_manager::MockTpmManagerUtility> tpm_manager_utility;
@@ -205,6 +225,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   auto userdataauth = std::make_unique<UserDataAuth>();
   userdataauth->set_mount_task_runner(base::ThreadTaskRunnerHandle::Get());
   userdataauth->set_platform(&platform);
+  userdataauth->set_vault_factory_for_testing(vault_factory.get());
   userdataauth->set_mount_factory_for_testing(mount_factory.get());
   userdataauth->set_dbus(bus);
   userdataauth->set_mount_thread_dbus(mount_thread_bus);
