@@ -170,6 +170,7 @@ copies.
 | [ureadahead-diff](./ureadahead-diff/) | Tool to calculate difference between 2 ureadahead packs |
 | [usb_bouncer](./usb_bouncer/) | Tools for managing USBGuard white-lists and configuration on ChromeOS |
 | [userfeedback](./userfeedback/) | Various utilities to gather extended data for user feedback reports |
+| [uwbd](./uwbd/) | Daemon for the UWB on ChromeOS |
 | [verity](./verity/) | Userspace tools for working dm-verity (verified disk images) |
 | [virtual_file_provider](./virtual_file_provider/) ||
 | [vm_tools](./vm_tools/) | Utilities for Virtual Machine (VM) orchestration |
