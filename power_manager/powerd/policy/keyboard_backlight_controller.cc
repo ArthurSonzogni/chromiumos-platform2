@@ -546,7 +546,7 @@ void KeyboardBacklightController::UpdateTurnOffTimer() {
       base::BindRepeating(
           base::IgnoreResult(&KeyboardBacklightController::UpdateState),
           base::Unretained(this), Transition::SLOW,
-          BacklightBrightnessChange_Cause_OTHER));
+          BacklightBrightnessChange_Cause_OTHER, SignalBehavior::kIfChanged));
 }
 
 void KeyboardBacklightController::HandleIncreaseBrightnessRequest() {
@@ -566,15 +566,12 @@ void KeyboardBacklightController::HandleIncreaseBrightnessRequest() {
   }
   num_user_adjustments_++;
 
+  // Update to the new state.
+  //
   // If we don't actually change the brightness, still emit a signal so the UI
   // can show the user that nothing changed.
-  if (user_step_index_ == static_cast<int>(user_steps_.size()) - 1) {
-    EmitBrightnessChangedSignal(dbus_wrapper_, kKeyboardBrightnessChangedSignal,
-                                current_percent_,
-                                BacklightBrightnessChange_Cause_USER_REQUEST);
-  }
-
-  UpdateState(Transition::FAST, BacklightBrightnessChange_Cause_USER_REQUEST);
+  UpdateState(Transition::FAST, BacklightBrightnessChange_Cause_USER_REQUEST,
+              SignalBehavior::kAlways);
 }
 
 void KeyboardBacklightController::HandleDecreaseBrightnessRequest(
@@ -595,15 +592,12 @@ void KeyboardBacklightController::HandleDecreaseBrightnessRequest(
   }
   num_user_adjustments_++;
 
+  // Update to the new state.
+  //
   // If we don't actually change the brightness, still emit a signal so the UI
   // can show the user that nothing changed.
-  if (user_step_index_ == 0) {
-    EmitBrightnessChangedSignal(dbus_wrapper_, kKeyboardBrightnessChangedSignal,
-                                current_percent_,
-                                BacklightBrightnessChange_Cause_USER_REQUEST);
-  }
-
-  UpdateState(Transition::FAST, BacklightBrightnessChange_Cause_USER_REQUEST);
+  UpdateState(Transition::FAST, BacklightBrightnessChange_Cause_USER_REQUEST,
+              SignalBehavior::kAlways);
 }
 
 void KeyboardBacklightController::HandleGetBrightnessRequest(
@@ -636,7 +630,8 @@ void KeyboardBacklightController::HandleToggleKeyboardBacklightRequest() {
     // Turn off the backlight.
     UpdateUserStep(0);
     UpdateState(Transition::INSTANT,
-                BacklightBrightnessChange_Cause_USER_TOGGLED_OFF);
+                BacklightBrightnessChange_Cause_USER_TOGGLED_OFF,
+                SignalBehavior::kAlways);
   } else {
     // Turn on the backlight, restoring it either to its previous value, or
     // moving it to a default value.
@@ -645,18 +640,21 @@ void KeyboardBacklightController::HandleToggleKeyboardBacklightRequest() {
         << last_positive_user_step_index_ << " not a valid index.";
     UpdateUserStep(last_positive_user_step_index_);
     UpdateState(Transition::INSTANT,
-                BacklightBrightnessChange_Cause_USER_TOGGLED_ON);
+                BacklightBrightnessChange_Cause_USER_TOGGLED_ON,
+                SignalBehavior::kAlways);
   }
 
   num_user_adjustments_++;
 }
 
 bool KeyboardBacklightController::UpdateState(
-    Transition transition, BacklightBrightnessChange_Cause cause) {
+    Transition transition,
+    BacklightBrightnessChange_Cause cause,
+    SignalBehavior signal_behavior) {
   // Force the backlight off immediately in several special cases.
   if (forced_off_ || shutting_down_ || suspended_ ||
       lid_state_ == LidState::CLOSED || tablet_mode_ == TabletMode::ON)
-    return ApplyBrightnessPercent(0.0, transition, cause);
+    return ApplyBrightnessPercent(0.0, transition, cause, signal_behavior);
 
   // If the user has asked for a specific brightness level, use it unless the
   // user is inactive.
@@ -664,14 +662,14 @@ bool KeyboardBacklightController::UpdateState(
     double percent = user_steps_[user_step_index_];
     if ((off_for_inactivity_ || dimmed_for_inactivity_) && !hovering_)
       percent = off_for_inactivity_ ? 0.0 : std::min(kDimPercent, percent);
-    return ApplyBrightnessPercent(percent, transition, cause);
+    return ApplyBrightnessPercent(percent, transition, cause, signal_behavior);
   }
 
   // If requested, force the backlight on if the user is currently or was
   // recently active and off otherwise.
   if (supports_hover_ || turn_on_for_user_activity_) {
     double percent = RecentlyHoveringOrUserActive() ? automated_percent_ : 0.0;
-    return ApplyBrightnessPercent(percent, transition, cause);
+    return ApplyBrightnessPercent(percent, transition, cause, signal_behavior);
   }
 
   // Force the backlight off for several more lower-priority conditions.
@@ -680,30 +678,34 @@ bool KeyboardBacklightController::UpdateState(
   // playing.
   if (fullscreen_video_playing_ || display_brightness_is_zero_ ||
       off_for_inactivity_) {
-    return ApplyBrightnessPercent(0.0, transition, cause);
+    return ApplyBrightnessPercent(0.0, transition, cause, signal_behavior);
   }
 
   if (dimmed_for_inactivity_) {
     return ApplyBrightnessPercent(std::min(kDimPercent, automated_percent_),
-                                  transition, cause);
+                                  transition, cause, signal_behavior);
   }
 
-  return ApplyBrightnessPercent(automated_percent_, transition, cause);
+  return ApplyBrightnessPercent(automated_percent_, transition, cause,
+                                signal_behavior);
 }
 
 bool KeyboardBacklightController::ApplyBrightnessPercent(
     double percent,
     Transition transition,
-    BacklightBrightnessChange_Cause cause) {
+    BacklightBrightnessChange_Cause cause,
+    SignalBehavior signal_behavior) {
   const int64_t level = PercentToLevel(percent);
 
-  // If the new level is the same as the existing level and we are not
-  // mid-transition, there's nothing we need to do.
+  // If the new level is the same as the existing level, we are not
+  // mid-transition, and we don't need to send a signal, then there's nothing we
+  // need to do.
   //
   // If we are mid-transition, we may need to speed up or slow down to the
   // target value, so may still need to perform an update.
   if (!backlight_->TransitionInProgress() &&
-      level == PercentToLevel(current_percent_)) {
+      level == PercentToLevel(current_percent_) &&
+      signal_behavior != SignalBehavior::kAlways) {
     return false;
   }
 

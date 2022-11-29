@@ -445,18 +445,22 @@ TEST_F(KeyboardBacklightControllerTest, IncreaseBrightness) {
   EXPECT_EQ(10, backlight_.current_level());
   EXPECT_EQ(kFastBacklightTransition, backlight_.current_interval());
   EXPECT_EQ(1, controller_.GetNumUserAdjustments());
+  EXPECT_EQ(1, dbus_wrapper_.num_sent_signals());
 
   CallIncreaseKeyboardBrightness();
   EXPECT_EQ(40, backlight_.current_level());
   EXPECT_EQ(2, controller_.GetNumUserAdjustments());
+  EXPECT_EQ(2, dbus_wrapper_.num_sent_signals());
 
   CallIncreaseKeyboardBrightness();
   EXPECT_EQ(60, backlight_.current_level());
   EXPECT_EQ(3, controller_.GetNumUserAdjustments());
+  EXPECT_EQ(3, dbus_wrapper_.num_sent_signals());
 
   CallIncreaseKeyboardBrightness();
   EXPECT_EQ(100, backlight_.current_level());
   EXPECT_EQ(4, controller_.GetNumUserAdjustments());
+  EXPECT_EQ(4, dbus_wrapper_.num_sent_signals());
 
   // A no-op increase should still emit a signal.
   dbus_wrapper_.ClearSentSignals();
@@ -488,18 +492,22 @@ TEST_F(KeyboardBacklightControllerTest, DecreaseBrightness) {
   EXPECT_EQ(60, backlight_.current_level());
   EXPECT_EQ(kFastBacklightTransition, backlight_.current_interval());
   EXPECT_EQ(1, controller_.GetNumUserAdjustments());
+  EXPECT_EQ(1, dbus_wrapper_.num_sent_signals());
 
   CallDecreaseKeyboardBrightness();
   EXPECT_EQ(40, backlight_.current_level());
   EXPECT_EQ(2, controller_.GetNumUserAdjustments());
+  EXPECT_EQ(2, dbus_wrapper_.num_sent_signals());
 
   CallDecreaseKeyboardBrightness();
   EXPECT_EQ(10, backlight_.current_level());
   EXPECT_EQ(3, controller_.GetNumUserAdjustments());
+  EXPECT_EQ(3, dbus_wrapper_.num_sent_signals());
 
   CallDecreaseKeyboardBrightness();
   EXPECT_EQ(0, backlight_.current_level());
   EXPECT_EQ(4, controller_.GetNumUserAdjustments());
+  EXPECT_EQ(4, dbus_wrapper_.num_sent_signals());
 
   // A no-op decrease should still emit a signal.
   dbus_wrapper_.ClearSentSignals();

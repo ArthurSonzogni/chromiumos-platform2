@@ -124,6 +124,13 @@ class KeyboardBacklightController : public BacklightController,
   void OnBacklightDeviceChanged(system::BacklightInterface* backlight) override;
 
  private:
+  // Indicates when certain functions should send signals about brightness
+  // changes.
+  enum class SignalBehavior {
+    kIfChanged,
+    kAlways,
+  };
+
   // Handles |video_timer_| firing, indicating that video activity has stopped.
   void HandleVideoTimeout();
 
@@ -146,11 +153,12 @@ class KeyboardBacklightController : public BacklightController,
 
   // Updates the current brightness after assessing the current state (based on
   // |dimmed_for_inactivity_|, |off_for_inactivity_|, etc.). Should be called
-  // whenever the state changes. |transition| and |cause| are passed to
-  // ApplyBrightnessPercent(). Returns true if the brightness was changed and
-  // false otherwise.
+  // whenever the state changes. |transition|, |cause|, and |signal_behavior|
+  // are passed to ApplyBrightnessPercent(). Returns true if the brightness was
+  // changed and false otherwise.
   bool UpdateState(Transition transition,
-                   BacklightBrightnessChange_Cause cause);
+                   BacklightBrightnessChange_Cause cause,
+                   SignalBehavior signal_behavior = SignalBehavior::kIfChanged);
 
   // Returns true if we want ApplyBrightnessPercent() to bypass its test for
   // whether the brightness percentage has actually changed from
@@ -160,10 +168,19 @@ class KeyboardBacklightController : public BacklightController,
       Transition transition, BacklightBrightnessChange_Cause cause);
 
   // Sets the backlight's brightness to |percent| over |transition|.
-  // Returns true and notifies observers if the brightness was changed.
+  //
+  // If |signal_behavior| is |SignalBehavior::kIfChanged|, sends a signal and
+  // notifies observers if the brightness was changed. If
+  // |SignalBehavior::kAlways|, always notifies observers. The latter may be
+  // useful for changes made in response to user actions --- UI elements may
+  // wish to show the "new" state even if it is unchanged, so show the user that
+  // nothing was done.
+  //
+  // Returns true if the brightness was changed.
   bool ApplyBrightnessPercent(double percent,
                               Transition transition,
-                              BacklightBrightnessChange_Cause cause);
+                              BacklightBrightnessChange_Cause cause,
+                              SignalBehavior signal_behavior);
 
   // Returns true if the |user_steps_| is valid; otherwise returns false.
   bool ValidateUserSteps(std::string* err_msg);
