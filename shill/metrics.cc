@@ -926,9 +926,11 @@ int64_t Metrics::HashApn(const std::string& uuid,
 }
 
 std::optional<int64_t> Metrics::IntGid1(const std::string& gid1) {
+  // Ignore if GID1 not populated in the SIM card
+  if (gid1.empty())
+    return std::nullopt;
   // GID1 has no predefined max length defined, so limit it ourselves
   //   * Input string is in HEX (so 2 chars per byte).
-  //   * Empty string will be reported as 0.
   //   * Limit the input string to 8 bytes in order to fit it in a
   //     64bit integer value.
   //   * The most usual cases are 0, 1 or 2 bytes,
