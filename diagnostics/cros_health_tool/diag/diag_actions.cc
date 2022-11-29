@@ -653,6 +653,17 @@ bool DiagActions::ActionRunLedRoutine(mojom::LedName name,
   return ProcessRoutineResponse(response);
 }
 
+bool DiagActions::ActionRunEmmcLifetimeRoutine() {
+  mojom::RunRoutineResponsePtr response;
+  base::RunLoop run_loop;
+  cros_healthd_diagnostics_service_->RunEmmcLifetimeRoutine(
+      base::BindOnce(&OnMojoResponseReceived<mojom::RunRoutineResponsePtr>,
+                     &response, run_loop.QuitClosure()));
+  run_loop.Run();
+
+  return ProcessRoutineResponse(response);
+}
+
 void DiagActions::ForceCancelAtPercent(uint32_t percent) {
   CHECK_LE(percent, 100) << "Percent must be <= 100.";
   force_cancel_ = true;

@@ -102,6 +102,7 @@ class DiagActions final {
   bool ActionRunPrivacyScreenRoutine(bool target_state);
   bool ActionRunLedRoutine(ash::cros_healthd::mojom::LedName name,
                            ash::cros_healthd::mojom::LedColor color);
+  bool ActionRunEmmcLifetimeRoutine();
 
   // Cancels the next routine run, when that routine reports a progress percent
   // greater than or equal to |percent|. Should be called before running the
