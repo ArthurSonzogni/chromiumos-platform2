@@ -50,6 +50,7 @@
 #include "cryptohome/pkcs11_init.h"
 #include "cryptohome/platform.h"
 #include "cryptohome/storage/arc_disk_quota.h"
+#include "cryptohome/storage/cryptohome_vault_factory.h"
 #include "cryptohome/storage/homedirs.h"
 #include "cryptohome/storage/mount_factory.h"
 #include "cryptohome/user_secret_stash_storage.h"
@@ -562,6 +563,11 @@ class UserDataAuth {
   void set_user_activity_timestamp_manager(
       UserOldestActivityTimestampManager* user_activity_timestamp_manager) {
     user_activity_timestamp_manager_ = user_activity_timestamp_manager;
+  }
+
+  // Override |vault_factory_| for testing purpose
+  void set_vault_factory_for_testing(CryptohomeVaultFactory* vault_factory) {
+    vault_factory_ = vault_factory;
   }
 
   // Override |homedirs_| for testing purpose
@@ -1322,6 +1328,11 @@ class UserDataAuth {
   // overridden for testing.
   UserOldestActivityTimestampManager* user_activity_timestamp_manager_ =
       nullptr;
+
+  std::unique_ptr<CryptohomeVaultFactory> default_vault_factory_;
+  // Usually points to |default_vault_factory_|, but can be overridden for
+  // testing.
+  CryptohomeVaultFactory* vault_factory_ = nullptr;
 
   // The homedirs_ object in normal operation
   std::unique_ptr<HomeDirs> default_homedirs_;

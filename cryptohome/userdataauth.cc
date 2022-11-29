@@ -507,14 +507,15 @@ bool UserDataAuth::Initialize() {
     auth_session_manager_ = default_auth_session_manager_.get();
   }
 
-  if (!homedirs_) {
+  if (!vault_factory_) {
     auto container_factory =
         std::make_unique<EncryptedContainerFactory>(platform_);
     container_factory->set_allow_fscrypt_v2(fscrypt_v2_);
-    auto vault_factory = std::make_unique<CryptohomeVaultFactory>(
+    default_vault_factory_ = std::make_unique<CryptohomeVaultFactory>(
         platform_, std::move(container_factory));
-    vault_factory->set_enable_application_containers(
+    default_vault_factory_->set_enable_application_containers(
         enable_application_containers_);
+    vault_factory_ = default_vault_factory_.get();
 
     if (platform_->IsStatefulLogicalVolumeSupported()) {
       base::FilePath stateful_device = platform_->GetStatefulDevice();
@@ -531,10 +532,12 @@ bool UserDataAuth::Initialize() {
       }
 
       if (thinpool && vg) {
-        vault_factory->CacheLogicalVolumeObjects(vg, thinpool);
+        default_vault_factory_->CacheLogicalVolumeObjects(vg, thinpool);
       }
     }
+  }
 
+  if (!homedirs_) {
     // This callback runs in HomeDirs::Remove on |this.homedirs_|. Since
     // |this.keyset_management_| won't be destroyed upon call of Remove(),
     // base::Unretained(keyset_management_) will be valid when the callback
@@ -544,7 +547,7 @@ bool UserDataAuth::Initialize() {
                             base::Unretained(keyset_management_));
     default_homedirs_ = std::make_unique<HomeDirs>(
         platform_, std::make_unique<policy::PolicyProvider>(), remove_callback,
-        std::move(vault_factory));
+        vault_factory_);
     homedirs_ = default_homedirs_.get();
   }
 

@@ -105,7 +105,8 @@ class RealUserSessionTest : public ::testing::Test {
         &platform_,
         std::make_unique<policy::PolicyProvider>(
             std::unique_ptr<policy::MockDevicePolicy>(mock_device_policy_)),
-        remove_callback);
+        remove_callback,
+        /*vault_factory=*/nullptr);
 
     AddUser(kUser0, kUserPassword0);
 

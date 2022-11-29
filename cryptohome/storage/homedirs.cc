@@ -66,23 +66,13 @@ bool IsAesKeylockerSupported(Platform& platform) {
 
 HomeDirs::HomeDirs(Platform* platform,
                    std::unique_ptr<policy::PolicyProvider> policy_provider,
-                   const RemoveCallback& remove_callback)
-    : HomeDirs(platform,
-               std::move(policy_provider),
-               remove_callback,
-               std::make_unique<CryptohomeVaultFactory>(
-                   platform,
-                   std::make_unique<EncryptedContainerFactory>(platform))) {}
-
-HomeDirs::HomeDirs(Platform* platform,
-                   std::unique_ptr<policy::PolicyProvider> policy_provider,
                    const RemoveCallback& remove_callback,
-                   std::unique_ptr<CryptohomeVaultFactory> vault_factory)
+                   CryptohomeVaultFactory* vault_factory)
     : platform_(platform),
       policy_provider_(std::move(policy_provider)),
       enterprise_owned_(false),
       lvm_migration_enabled_(false),
-      vault_factory_(std::move(vault_factory)),
+      vault_factory_(vault_factory),
       remove_callback_(remove_callback) {}
 
 HomeDirs::~HomeDirs() {}

@@ -422,19 +422,18 @@ class PersistentSystemTest : public ::testing::Test {
         std::make_unique<FakeEncryptedContainerFactory>(
             &platform_, std::make_unique<FakeKeyring>());
 
-    std::unique_ptr<CryptohomeVaultFactory> vault_factory =
-        std::make_unique<CryptohomeVaultFactory>(&platform_,
-                                                 std::move(container_factory));
+    vault_factory_ = std::make_unique<CryptohomeVaultFactory>(
+        &platform_, std::move(container_factory));
     std::shared_ptr<brillo::LvmCommandRunner> command_runner =
         std::make_shared<brillo::MockLvmCommandRunner>();
     brillo::VolumeGroup vg("STATEFUL", command_runner);
     brillo::Thinpool thinpool("thinpool", "STATEFUL", command_runner);
-    vault_factory->CacheLogicalVolumeObjects(vg, thinpool);
+    vault_factory_->CacheLogicalVolumeObjects(vg, thinpool);
 
     homedirs_ = std::make_unique<HomeDirs>(
         &platform_, std::make_unique<policy::PolicyProvider>(),
         base::BindRepeating([](const std::string& unused) {}),
-        std::move(vault_factory));
+        vault_factory_.get());
 
     mount_ =
         new Mount(&platform_, homedirs_.get(), /*legacy_mount=*/true,
@@ -444,6 +443,7 @@ class PersistentSystemTest : public ::testing::Test {
  protected:
   // Protected for trivial access.
   NiceMock<MockPlatform> platform_;
+  std::unique_ptr<CryptohomeVaultFactory> vault_factory_;
   std::unique_ptr<HomeDirs> homedirs_;
   scoped_refptr<Mount> mount_;
 
@@ -1332,11 +1332,12 @@ class EphemeralSystemTest : public ::testing::Test {
         std::make_unique<EncryptedContainerFactory>(
             &platform_, std::make_unique<FakeKeyring>(),
             std::make_unique<FakeBackingDeviceFactory>(&platform_));
+    vault_factory_ = std::make_unique<CryptohomeVaultFactory>(
+        &platform_, std::move(container_factory));
     homedirs_ = std::make_unique<HomeDirs>(
         &platform_, std::make_unique<policy::PolicyProvider>(),
         base::BindRepeating([](const std::string& unused) {}),
-        std::make_unique<CryptohomeVaultFactory>(&platform_,
-                                                 std::move(container_factory)));
+        vault_factory_.get());
 
     mount_ =
         new Mount(&platform_, homedirs_.get(), /*legacy_mount=*/true,
@@ -1348,6 +1349,7 @@ class EphemeralSystemTest : public ::testing::Test {
  protected:
   // Protected for trivial access.
   NiceMock<MockPlatform> platform_;
+  std::unique_ptr<CryptohomeVaultFactory> vault_factory_;
   std::unique_ptr<HomeDirs> homedirs_;
   scoped_refptr<Mount> mount_;
   struct statvfs ephemeral_statvfs_;

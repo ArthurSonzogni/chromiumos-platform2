@@ -64,11 +64,8 @@ class HomeDirs {
   // cryptohome is removed from the device.
   HomeDirs(Platform* platform,
            std::unique_ptr<policy::PolicyProvider> policy_provider,
-           const RemoveCallback& remove_callback);
-  HomeDirs(Platform* platform,
-           std::unique_ptr<policy::PolicyProvider> policy_provider,
            const RemoveCallback& remove_callback,
-           std::unique_ptr<CryptohomeVaultFactory> vault_factory);
+           CryptohomeVaultFactory* vault_factory);
   HomeDirs(const HomeDirs&) = delete;
   HomeDirs& operator=(const HomeDirs&) = delete;
 
@@ -178,9 +175,7 @@ class HomeDirs {
       const std::string& obfuscated_username,
       const CryptohomeVault::Options& options);
 
-  virtual CryptohomeVaultFactory* GetVaultFactory() {
-    return vault_factory_.get();
-  }
+  virtual CryptohomeVaultFactory* GetVaultFactory() { return vault_factory_; }
 
  private:
   // Choose the vault type for new vaults.
@@ -238,7 +233,7 @@ class HomeDirs {
   // |true|.
   bool lvm_migration_enabled_;
   chaps::TokenManagerClient chaps_client_;
-  std::unique_ptr<CryptohomeVaultFactory> vault_factory_;
+  CryptohomeVaultFactory* const vault_factory_ = nullptr;
   std::vector<HomeDir> unmounted_homedirs_;
   // This callback will be run in Remove() to remove LE Credentials when the
   // home directory of the corresponding user is removed.

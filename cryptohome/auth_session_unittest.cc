@@ -176,7 +176,8 @@ class AuthSessionTest : public ::testing::Test {
 
     homedirs_ = std::make_unique<HomeDirs>(
         &platform_, std::make_unique<policy::PolicyProvider>(nullptr),
-        HomeDirs::RemoveCallback());
+        HomeDirs::RemoveCallback(),
+        /*vault_factory=*/nullptr);
     auth_block_utility_impl_ = std::make_unique<AuthBlockUtilityImpl>(
         &keyset_management_, &crypto_, &platform_,
         FingerprintAuthBlockService::MakeNullService());

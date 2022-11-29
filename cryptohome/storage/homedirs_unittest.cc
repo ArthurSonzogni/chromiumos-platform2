@@ -106,6 +106,8 @@ class HomeDirsTest
         std::make_unique<EncryptedContainerFactory>(
             &platform_, std::make_unique<FakeKeyring>(),
             std::make_unique<BackingDeviceFactory>(&platform_));
+    vault_factory_ = std::make_unique<CryptohomeVaultFactory>(
+        &platform_, std::move(container_factory));
     HomeDirs::RemoveCallback remove_callback =
         base::BindRepeating(&MockKeysetManagement::RemoveLECredentials,
                             base::Unretained(&keyset_management_));
@@ -113,9 +115,7 @@ class HomeDirsTest
         &platform_,
         std::make_unique<policy::PolicyProvider>(
             std::unique_ptr<policy::MockDevicePolicy>(mock_device_policy_)),
-        remove_callback,
-        std::make_unique<CryptohomeVaultFactory>(&platform_,
-                                                 std::move(container_factory)));
+        remove_callback, vault_factory_.get());
 
     AddUser(kUser0, kUserPassword0);
     AddUser(kUser1, kUserPassword1);
@@ -161,6 +161,7 @@ class HomeDirsTest
   NiceMock<MockPlatform> platform_;
   MockKeysetManagement keyset_management_;
   policy::MockDevicePolicy* mock_device_policy_;  // owned by homedirs_
+  std::unique_ptr<CryptohomeVaultFactory> vault_factory_;
   std::unique_ptr<HomeDirs> homedirs_;
 
   // Information about users' homedirs. The order of users is equal to kUsers.
@@ -711,7 +712,7 @@ TEST_F(HomeDirsVaultTest, PickVaultType) {
     HomeDirs homedirs(&platform,
                       std::make_unique<policy::PolicyProvider>(
                           std::make_unique<policy::MockDevicePolicy>()),
-                      HomeDirs::RemoveCallback(), std::move(vault_factory));
+                      HomeDirs::RemoveCallback(), vault_factory.get());
 
     PrepareTestCase(test_case, &platform, &homedirs);
     auto vault_type_or =
