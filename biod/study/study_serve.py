@@ -26,8 +26,10 @@ import time
 # pylint: disable=import-error
 import cherrypy
 import gnupg
-from ws4py.server.cherrypyserver import WebSocketPlugin, WebSocketTool
+from ws4py.server.cherrypyserver import WebSocketPlugin
+from ws4py.server.cherrypyserver import WebSocketTool
 from ws4py.websocket import WebSocket
+
 
 # Use the image conversion library if available.
 sys.path.extend(["/usr/local/opt/fpc", "/opt/fpc"])
@@ -45,6 +47,7 @@ DEFAULT_ARGS = {
     "syslog": False,
     "gpg-keyring": "",
     "gpg-recipients": "",
+    "log-dir": "/var/log/fingerprints",
 }
 
 errors = [
