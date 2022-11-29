@@ -4,10 +4,14 @@
 
 //! Implements the cat debug command.
 
-use std::io::{copy, BufRead, BufReader, Write};
+use std::io::copy;
+use std::io::BufRead;
+use std::io::BufReader;
+use std::io::Write;
 use std::path::Path;
 
-use anyhow::{Context, Result};
+use anyhow::Context;
+use anyhow::Result;
 
 use crate::files::open_bounced_disk_file;
 

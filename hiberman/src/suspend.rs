@@ -9,34 +9,62 @@ use std::io::Write;
 use std::mem::MaybeUninit;
 use std::time::Instant;
 
-use anyhow::{Context, Result};
-use libc::{loff_t, reboot, RB_POWER_OFF};
+use anyhow::Context;
+use anyhow::Result;
+use libc::loff_t;
+use libc::reboot;
+use libc::RB_POWER_OFF;
 use libchromeos::sys::syscall;
-use log::{debug, error, info, warn};
+use log::debug;
+use log::error;
+use log::info;
+use log::warn;
 
-use crate::cookie::{set_hibernate_cookie, HibernateCookieValue};
-use crate::crypto::{CryptoMode, CryptoWriter};
-use crate::diskfile::{BouncedDiskFile, DiskFile};
-use crate::files::{
-    does_hiberfile_exist, open_metrics_file, preallocate_header_file, preallocate_hiberfile,
-    preallocate_kernel_key_file, preallocate_log_file, preallocate_metadata_file,
-    preallocate_metrics_file, STATEFUL_DIR,
-};
-use crate::hiberlog::{redirect_log, replay_logs, reset_log, HiberlogFile, HiberlogOut};
-use crate::hibermeta::{
-    HibernateMetadata, META_FLAG_ENCRYPTED, META_FLAG_KERNEL_ENCRYPTED, META_FLAG_VALID,
-    META_TAG_SIZE,
-};
+use crate::cookie::set_hibernate_cookie;
+use crate::cookie::HibernateCookieValue;
+use crate::crypto::CryptoMode;
+use crate::crypto::CryptoWriter;
+use crate::diskfile::BouncedDiskFile;
+use crate::diskfile::DiskFile;
+use crate::files::does_hiberfile_exist;
+use crate::files::open_metrics_file;
+use crate::files::preallocate_header_file;
+use crate::files::preallocate_hiberfile;
+use crate::files::preallocate_kernel_key_file;
+use crate::files::preallocate_log_file;
+use crate::files::preallocate_metadata_file;
+use crate::files::preallocate_metrics_file;
+use crate::files::STATEFUL_DIR;
+use crate::hiberlog::redirect_log;
+use crate::hiberlog::replay_logs;
+use crate::hiberlog::reset_log;
+use crate::hiberlog::HiberlogFile;
+use crate::hiberlog::HiberlogOut;
+use crate::hibermeta::HibernateMetadata;
+use crate::hibermeta::META_FLAG_ENCRYPTED;
+use crate::hibermeta::META_FLAG_KERNEL_ENCRYPTED;
+use crate::hibermeta::META_FLAG_VALID;
+use crate::hibermeta::META_TAG_SIZE;
+use crate::hiberutil::get_page_size;
+use crate::hiberutil::lock_process_memory;
+use crate::hiberutil::log_duration;
+use crate::hiberutil::log_io_duration;
+use crate::hiberutil::path_to_stateful_block;
+use crate::hiberutil::prealloc_mem;
+use crate::hiberutil::HibernateError;
 use crate::hiberutil::HibernateOptions;
-use crate::hiberutil::{
-    get_page_size, lock_process_memory, log_duration, log_io_duration, path_to_stateful_block,
-    prealloc_mem, HibernateError, BUFFER_PAGES,
-};
+use crate::hiberutil::BUFFER_PAGES;
 use crate::imagemover::ImageMover;
 use crate::keyman::HibernateKeyManager;
 use crate::lvm::is_lvm_system;
-use crate::metrics::{log_hibernate_attempt, read_and_send_metrics, MetricsFile, MetricsLogger};
-use crate::snapdev::{FrozenUserspaceTicket, SnapshotDevice, SnapshotMode, UswsuspUserKey};
+use crate::metrics::log_hibernate_attempt;
+use crate::metrics::read_and_send_metrics;
+use crate::metrics::MetricsFile;
+use crate::metrics::MetricsLogger;
+use crate::snapdev::FrozenUserspaceTicket;
+use crate::snapdev::SnapshotDevice;
+use crate::snapdev::SnapshotMode;
+use crate::snapdev::UswsuspUserKey;
 use crate::splitter::ImageSplitter;
 use crate::sysfs::Swappiness;
 use crate::volume::VolumeManager;

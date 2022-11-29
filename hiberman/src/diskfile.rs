@@ -4,16 +4,29 @@
 
 //! Implements support for accessing file contents directly via the underlying block device.
 
-use std::fs::{File, OpenOptions};
-use std::io::{Error as IoError, ErrorKind, IoSlice, IoSliceMut, Read, Seek, SeekFrom, Write};
+use std::fs::File;
+use std::fs::OpenOptions;
+use std::io::Error as IoError;
+use std::io::ErrorKind;
+use std::io::IoSlice;
+use std::io::IoSliceMut;
+use std::io::Read;
+use std::io::Seek;
+use std::io::SeekFrom;
+use std::io::Write;
 use std::os::unix::fs::OpenOptionsExt;
 
-use anyhow::{Context, Result};
-use log::{debug, error, warn};
+use anyhow::Context;
+use anyhow::Result;
+use log::debug;
+use log::error;
+use log::warn;
 
-use crate::fiemap::{Fiemap, FiemapExtent};
+use crate::fiemap::Fiemap;
+use crate::fiemap::FiemapExtent;
 use crate::files::HIBERNATE_DIR;
-use crate::hiberutil::{get_device_mounted_at_dir, get_page_size};
+use crate::hiberutil::get_device_mounted_at_dir;
+use crate::hiberutil::get_page_size;
 use crate::mmapbuf::MmapBuffer;
 
 /// The BouncedDiskFile is a convencience wrapper around the DiskFile structure.

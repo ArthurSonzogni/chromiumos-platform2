@@ -5,11 +5,15 @@
 //! Implements a basic power_manager client.
 
 use std::sync::Arc;
-use std::time::{Duration, Instant};
+use std::time::Duration;
+use std::time::Instant;
 
-use anyhow::{Context as AnyhowContext, Result};
+use anyhow::Context as AnyhowContext;
+use anyhow::Result;
 use dbus::blocking::Connection;
-use log::{debug, error, info};
+use log::debug;
+use log::error;
+use log::info;
 use sync::Mutex;
 use system_api::client::OrgChromiumPowerManager;
 

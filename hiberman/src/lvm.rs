@@ -4,18 +4,27 @@
 
 //! Implements LVM helper functions.
 
-use std::fs::{self, File, OpenOptions};
-use std::io::{Read, Seek, SeekFrom, Write};
-use std::path::{Path, PathBuf};
+use std::fs::File;
+use std::fs::OpenOptions;
+use std::fs::{self};
+use std::io::Read;
+use std::io::Seek;
+use std::io::SeekFrom;
+use std::io::Write;
+use std::path::Path;
+use std::path::PathBuf;
 use std::process::Command;
 use std::str;
 
-use anyhow::{Context, Result};
-use log::{info, warn};
+use anyhow::Context;
+use anyhow::Result;
+use log::info;
+use log::warn;
 
-use crate::hiberutil::{
-    checked_command, checked_command_output, is_snapshot_active, stateful_block_partition_one,
-};
+use crate::hiberutil::checked_command;
+use crate::hiberutil::checked_command_output;
+use crate::hiberutil::is_snapshot_active;
+use crate::hiberutil::stateful_block_partition_one;
 use crate::mmapbuf::MmapBuffer;
 
 /// Define the minimum size of a block device sector.

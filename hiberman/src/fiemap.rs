@@ -9,10 +9,12 @@ use std::fs::File;
 use std::mem;
 use std::os::unix::io::AsRawFd;
 
-use anyhow::{Context, Result};
+use anyhow::Context;
+use anyhow::Result;
 use libc::c_void;
 use libchromeos::sys::ioctl_iowr_nr;
-use log::{debug, error};
+use log::debug;
+use log::error;
 
 use crate::hiberutil::HibernateError;
 

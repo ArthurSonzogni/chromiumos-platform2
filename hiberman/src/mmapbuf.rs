@@ -8,9 +8,11 @@
 
 use libc::c_void;
 
-use anyhow::{Context, Result};
+use anyhow::Context;
+use anyhow::Result;
 
-use crate::hiberutil::{get_page_size, HibernateError};
+use crate::hiberutil::get_page_size;
+use crate::hiberutil::HibernateError;
 
 pub struct MmapBuffer {
     data: *mut u8,

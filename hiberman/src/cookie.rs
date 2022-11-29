@@ -4,14 +4,20 @@
 
 //! Manages the "valid resume image" cookie.
 
-use std::fs::{File, OpenOptions};
-use std::io::{Read, Seek, SeekFrom, Write};
+use std::fs::File;
+use std::fs::OpenOptions;
+use std::io::Read;
+use std::io::Seek;
+use std::io::SeekFrom;
+use std::io::Write;
 use std::os::unix::fs::OpenOptionsExt;
 use std::path::Path;
 
-use anyhow::{Context, Result};
+use anyhow::Context;
+use anyhow::Result;
 
-use crate::hiberutil::{path_to_stateful_block, HibernateError};
+use crate::hiberutil::path_to_stateful_block;
+use crate::hiberutil::HibernateError;
 use crate::mmapbuf::MmapBuffer;
 
 /// The hibernate cookie is a flag stored at a known location on disk. The early

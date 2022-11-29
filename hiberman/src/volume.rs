@@ -6,30 +6,51 @@
 // TODO(b/241434344): Things farming out to external processes should be
 // implemented in a common helper library instead.
 
-use anyhow::{Context, Result};
-use libc::{self, c_ulong, c_void};
-use log::{debug, error, info, warn};
+use anyhow::Context;
+use anyhow::Result;
+use libc::c_ulong;
+use libc::c_void;
+use libc::{self};
+use log::debug;
+use log::error;
+use log::info;
+use log::warn;
 
-use std::ffi::{CString, OsStr};
-use std::fs::{create_dir, read_dir, read_link, remove_file, OpenOptions};
+use std::ffi::CString;
+use std::ffi::OsStr;
+use std::fs::create_dir;
+use std::fs::read_dir;
+use std::fs::read_link;
+use std::fs::remove_file;
+use std::fs::OpenOptions;
 use std::io::Write;
 use std::os::unix::ffi::OsStrExt;
-use std::path::{Path, PathBuf};
+use std::path::Path;
+use std::path::PathBuf;
 use std::process::Command;
 use std::thread;
-use std::time::{Duration, Instant};
+use std::time::Duration;
+use std::time::Instant;
 
-use crate::cookie::{set_hibernate_cookie, HibernateCookieValue};
+use crate::cookie::set_hibernate_cookie;
+use crate::cookie::HibernateCookieValue;
 use crate::files::HIBERNATE_DIR;
-use crate::hiberutil::{
-    checked_command, checked_command_output, emergency_reboot, get_device_mounted_at_dir,
-    get_page_size, get_total_memory_pages, log_io_duration, stateful_block_partition_one,
-    HibernateError,
-};
-use crate::lvm::{
-    create_thin_volume, get_active_lvs, get_vg_name, lv_exists, lv_path, thicken_thin_volume,
-    ActivatedLogicalVolume,
-};
+use crate::hiberutil::checked_command;
+use crate::hiberutil::checked_command_output;
+use crate::hiberutil::emergency_reboot;
+use crate::hiberutil::get_device_mounted_at_dir;
+use crate::hiberutil::get_page_size;
+use crate::hiberutil::get_total_memory_pages;
+use crate::hiberutil::log_io_duration;
+use crate::hiberutil::stateful_block_partition_one;
+use crate::hiberutil::HibernateError;
+use crate::lvm::create_thin_volume;
+use crate::lvm::get_active_lvs;
+use crate::lvm::get_vg_name;
+use crate::lvm::lv_exists;
+use crate::lvm::lv_path;
+use crate::lvm::thicken_thin_volume;
+use crate::lvm::ActivatedLogicalVolume;
 use crate::snapwatch::DmSnapshotSpaceMonitor;
 
 /// Define the name of the hibernate logical volume.

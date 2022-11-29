@@ -4,11 +4,18 @@
 
 //! Coordinates suspend-to-disk activities.
 
-use getopts::{self, Options};
+use getopts::Options;
+use getopts::{self};
 use hiberman::cookie::HibernateCookieValue;
-use hiberman::metrics::{log_hibernate_failure, log_resume_failure};
-use hiberman::{self, AbortResumeOptions, HibernateOptions, ResumeInitOptions, ResumeOptions};
-use log::{error, warn};
+use hiberman::metrics::log_hibernate_failure;
+use hiberman::metrics::log_resume_failure;
+use hiberman::AbortResumeOptions;
+use hiberman::HibernateOptions;
+use hiberman::ResumeInitOptions;
+use hiberman::ResumeOptions;
+use hiberman::{self};
+use log::error;
+use log::warn;
 
 fn print_usage(message: &str, error: bool) {
     if error {

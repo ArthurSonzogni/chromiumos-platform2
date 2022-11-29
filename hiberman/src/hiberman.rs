@@ -32,7 +32,10 @@ mod sysfs;
 mod volume;
 
 use crate::dbus::send_abort;
-pub use hiberutil::{AbortResumeOptions, HibernateOptions, ResumeInitOptions, ResumeOptions};
+pub use hiberutil::AbortResumeOptions;
+pub use hiberutil::HibernateOptions;
+pub use hiberutil::ResumeInitOptions;
+pub use hiberutil::ResumeOptions;
 
 use anyhow::Result;
 use resume::ResumeConductor;

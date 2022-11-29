@@ -10,17 +10,25 @@ use std::fs::File;
 use std::io::prelude::*;
 use std::io::BufReader;
 use std::path::PathBuf;
-use std::process::{exit, Command};
+use std::process::exit;
+use std::process::Command;
 use std::str;
 use std::time::Duration;
 
-use anyhow::{Context, Result};
-use log::{debug, error, info, warn};
+use anyhow::Context;
+use anyhow::Result;
+use log::debug;
+use log::error;
+use log::info;
+use log::warn;
 use thiserror::Error as ThisError;
 
-use crate::cookie::{set_hibernate_cookie, HibernateCookieValue};
-use crate::hiberlog::{redirect_log, HiberlogOut};
-use crate::metrics::{MetricsLogger, MetricsSample};
+use crate::cookie::set_hibernate_cookie;
+use crate::cookie::HibernateCookieValue;
+use crate::hiberlog::redirect_log;
+use crate::hiberlog::HiberlogOut;
+use crate::metrics::MetricsLogger;
+use crate::metrics::MetricsSample;
 use crate::mmapbuf::MmapBuffer;
 
 /// Define the number of pages in a larger chunk used to read and write the

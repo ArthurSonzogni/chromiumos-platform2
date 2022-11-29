@@ -19,15 +19,23 @@
 //! verify its hash to detect tampering.
 
 use std::convert::TryInto;
-use std::io::{Error as IoError, ErrorKind, Read, Write};
+use std::io::Error as IoError;
+use std::io::ErrorKind;
+use std::io::Read;
+use std::io::Write;
 
-use anyhow::{Context, Result};
+use anyhow::Context;
+use anyhow::Result;
 use libc::utsname;
 use log::debug;
-use openssl::hash::{Hasher, MessageDigest};
+use openssl::hash::Hasher;
+use openssl::hash::MessageDigest;
 
-use crate::hibermeta::{HibernateMetadata, META_FLAG_KERNEL_ENCRYPTED, META_HASH_SIZE};
-use crate::hiberutil::{get_page_size, HibernateError};
+use crate::hibermeta::HibernateMetadata;
+use crate::hibermeta::META_FLAG_KERNEL_ENCRYPTED;
+use crate::hibermeta::META_HASH_SIZE;
+use crate::hiberutil::get_page_size;
+use crate::hiberutil::HibernateError;
 use crate::mmapbuf::MmapBuffer;
 
 /// A machine with 32GB RAM has 8M of Page Frame Numbers (PFNs).

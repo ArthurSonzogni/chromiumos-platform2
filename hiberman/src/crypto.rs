@@ -4,17 +4,21 @@
 
 //! Implements image symmetric encryption functionality.
 
-use std::io::{Read, Write};
+use std::io::Read;
+use std::io::Write;
 
 use openssl::symm::Mode;
 
-use anyhow::{Context, Result};
+use anyhow::Context;
+use anyhow::Result;
 use log::debug;
-use openssl::symm::{Cipher, Crypter};
+use openssl::symm::Cipher;
+use openssl::symm::Crypter;
 
-use crate::hibermeta::{
-    META_OCB_IV_SIZE, META_SYMMETRIC_IV_SIZE, META_SYMMETRIC_KEY_SIZE, META_TAG_SIZE,
-};
+use crate::hibermeta::META_OCB_IV_SIZE;
+use crate::hibermeta::META_SYMMETRIC_IV_SIZE;
+use crate::hibermeta::META_SYMMETRIC_KEY_SIZE;
+use crate::hibermeta::META_TAG_SIZE;
 use crate::mmapbuf::MmapBuffer;
 
 /// Define the size of a symmetric encryption block. If the encryption algorithm

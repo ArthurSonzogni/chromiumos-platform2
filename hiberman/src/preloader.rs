@@ -7,12 +7,20 @@
 //! waiting for user input anyway, but not yet capable of decrypting.
 
 use std::collections::VecDeque;
-use std::io::{Error as IoError, ErrorKind, IoSliceMut, Read};
+use std::io::Error as IoError;
+use std::io::ErrorKind;
+use std::io::IoSliceMut;
+use std::io::Read;
 
-use anyhow::{Context, Result};
-use log::{debug, info, warn};
+use anyhow::Context;
+use anyhow::Result;
+use log::debug;
+use log::info;
+use log::warn;
 
-use crate::hiberutil::{get_available_pages, get_page_size, get_total_memory_pages};
+use crate::hiberutil::get_available_pages;
+use crate::hiberutil::get_page_size;
+use crate::hiberutil::get_total_memory_pages;
 use crate::mmapbuf::MmapBuffer;
 
 /// Allocate buffers in chunks to keep things large but manageable. This must be

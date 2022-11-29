@@ -5,45 +5,75 @@
 //! Implements hibernate resume functionality.
 
 use std::convert::TryInto;
-use std::io::{Read, Write};
-use std::time::{Duration, Instant};
+use std::io::Read;
+use std::io::Write;
+use std::time::Duration;
+use std::time::Instant;
 
-use anyhow::{Context, Result};
-use log::{debug, error, info, warn};
+use anyhow::Context;
+use anyhow::Result;
+use log::debug;
+use log::error;
+use log::info;
+use log::warn;
 use zeroize::Zeroize;
 
-use crate::cookie::{
-    cookie_description, get_hibernate_cookie, set_hibernate_cookie, HibernateCookieValue,
-};
-use crate::crypto::{CryptoMode, CryptoReader};
-use crate::dbus::{HiberDbusConnection, PendingResumeCall};
-use crate::diskfile::{BouncedDiskFile, DiskFile};
-use crate::files::{
-    open_header_file, open_hiberfile, open_kernel_key_file, open_log_file, open_metafile,
-    open_metrics_file, remove_resume_in_progress_file,
-};
-use crate::hiberlog::{redirect_log, replay_logs, HiberlogFile, HiberlogOut};
-use crate::hibermeta::{
-    HibernateMetadata, META_FLAG_ENCRYPTED, META_FLAG_KERNEL_ENCRYPTED, META_FLAG_RESUME_FAILED,
-    META_FLAG_RESUME_LAUNCHED, META_FLAG_RESUME_STARTED, META_FLAG_VALID, META_HASH_SIZE,
-};
+use crate::cookie::cookie_description;
+use crate::cookie::get_hibernate_cookie;
+use crate::cookie::set_hibernate_cookie;
+use crate::cookie::HibernateCookieValue;
+use crate::crypto::CryptoMode;
+use crate::crypto::CryptoReader;
+use crate::dbus::HiberDbusConnection;
+use crate::dbus::PendingResumeCall;
+use crate::diskfile::BouncedDiskFile;
+use crate::diskfile::DiskFile;
+use crate::files::open_header_file;
+use crate::files::open_hiberfile;
+use crate::files::open_kernel_key_file;
+use crate::files::open_log_file;
+use crate::files::open_metafile;
+use crate::files::open_metrics_file;
+use crate::files::remove_resume_in_progress_file;
+use crate::hiberlog::redirect_log;
+use crate::hiberlog::replay_logs;
+use crate::hiberlog::HiberlogFile;
+use crate::hiberlog::HiberlogOut;
+use crate::hibermeta::HibernateMetadata;
+use crate::hibermeta::META_FLAG_ENCRYPTED;
+use crate::hibermeta::META_FLAG_KERNEL_ENCRYPTED;
+use crate::hibermeta::META_FLAG_RESUME_FAILED;
+use crate::hibermeta::META_FLAG_RESUME_LAUNCHED;
+use crate::hibermeta::META_FLAG_RESUME_STARTED;
+use crate::hibermeta::META_FLAG_VALID;
+use crate::hibermeta::META_HASH_SIZE;
+use crate::hiberutil::emit_upstart_event;
+use crate::hiberutil::get_page_size;
+use crate::hiberutil::lock_process_memory;
+use crate::hiberutil::log_duration;
+use crate::hiberutil::log_io_duration;
+use crate::hiberutil::path_to_stateful_block;
+use crate::hiberutil::HibernateError;
 use crate::hiberutil::ResumeOptions;
-use crate::hiberutil::{
-    emit_upstart_event, get_page_size, lock_process_memory, log_duration, log_io_duration,
-    path_to_stateful_block, HibernateError, BUFFER_PAGES,
-};
+use crate::hiberutil::BUFFER_PAGES;
 use crate::imagemover::ImageMover;
 use crate::keyman::HibernateKeyManager;
 use crate::lvm::activate_physical_lv;
-use crate::metrics::{read_and_send_metrics, MetricsFile, MetricsLogger, MetricsSample};
+use crate::metrics::read_and_send_metrics;
+use crate::metrics::MetricsFile;
+use crate::metrics::MetricsLogger;
+use crate::metrics::MetricsSample;
 use crate::mmapbuf::MmapBuffer;
 use crate::powerd::PowerdPendingResume;
 use crate::preloader::ImagePreloader;
-use crate::snapdev::{
-    FrozenUserspaceTicket, SnapshotDevice, SnapshotMode, UswsuspKeyBlob, UswsuspUserKey,
-};
+use crate::snapdev::FrozenUserspaceTicket;
+use crate::snapdev::SnapshotDevice;
+use crate::snapdev::SnapshotMode;
+use crate::snapdev::UswsuspKeyBlob;
+use crate::snapdev::UswsuspUserKey;
 use crate::splitter::ImageJoiner;
-use crate::volume::{PendingStatefulMerge, VolumeManager};
+use crate::volume::PendingStatefulMerge;
+use crate::volume::VolumeManager;
 
 // The maximum value expected for the GotSeed duration metric.
 pub const SEED_WAIT_METRIC_CEILING: isize = 120;

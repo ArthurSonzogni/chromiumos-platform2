@@ -4,19 +4,26 @@
 
 //! Implements support for collecting and sending hibernate metrics.
 
-use std::io::{BufRead, BufReader, Cursor, Write};
+use std::io::BufRead;
+use std::io::BufReader;
+use std::io::Cursor;
+use std::io::Write;
 use std::process::Command;
 use std::time::Duration;
 
-use anyhow::{Context, Result};
+use anyhow::Context;
+use anyhow::Result;
 use log::warn;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
+use serde::Serialize;
 
 use crate::diskfile::BouncedDiskFile;
-use crate::files::{
-    increment_file_counter, metrics_file_exists, open_attempts_file, open_hiber_fails_file,
-    open_metrics_file, open_resume_failures_file,
-};
+use crate::files::increment_file_counter;
+use crate::files::metrics_file_exists;
+use crate::files::open_attempts_file;
+use crate::files::open_hiber_fails_file;
+use crate::files::open_metrics_file;
+use crate::files::open_resume_failures_file;
 use crate::hiberutil::HibernateError;
 use crate::mmapbuf::MmapBuffer;
 

@@ -5,17 +5,29 @@
 //! High level support for creating and opening the files used by hibernate.
 
 use std::convert::TryInto;
-use std::fs::{create_dir, metadata, remove_file, File, OpenOptions};
-use std::io::{Read, Seek, SeekFrom, Write};
+use std::fs::create_dir;
+use std::fs::metadata;
+use std::fs::remove_file;
+use std::fs::File;
+use std::fs::OpenOptions;
+use std::io::Read;
+use std::io::Seek;
+use std::io::SeekFrom;
+use std::io::Write;
 use std::os::unix::io::AsRawFd;
 use std::path::Path;
 
-use anyhow::{Context, Result};
-use log::{debug, warn};
+use anyhow::Context;
+use anyhow::Result;
+use log::debug;
+use log::warn;
 
-use crate::diskfile::{BouncedDiskFile, DiskFile};
+use crate::diskfile::BouncedDiskFile;
+use crate::diskfile::DiskFile;
 use crate::hiberlog::HiberlogFile;
-use crate::hiberutil::{get_page_size, get_total_memory_pages, HibernateError};
+use crate::hiberutil::get_page_size;
+use crate::hiberutil::get_total_memory_pages;
+use crate::hiberutil::HibernateError;
 use crate::metrics::MetricsFile;
 use crate::mmapbuf::MmapBuffer;
 use crate::splitter::HIBER_HEADER_MAX_SIZE;

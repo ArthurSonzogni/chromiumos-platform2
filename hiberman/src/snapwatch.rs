@@ -6,11 +6,17 @@
 //! nearly full, and kicks off an abort if a threshold is reached.
 
 use anyhow::Result;
-use log::{error, info, warn};
+use log::error;
+use log::info;
+use log::warn;
 
 use std::convert::TryInto;
-use std::sync::mpsc::{channel, Receiver, RecvTimeoutError, Sender};
-use std::thread::{self, JoinHandle};
+use std::sync::mpsc::channel;
+use std::sync::mpsc::Receiver;
+use std::sync::mpsc::RecvTimeoutError;
+use std::sync::mpsc::Sender;
+use std::thread::JoinHandle;
+use std::thread::{self};
 use std::time::Duration;
 
 use crate::dbus::send_abort;

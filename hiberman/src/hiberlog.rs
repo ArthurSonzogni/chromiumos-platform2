@@ -3,17 +3,31 @@
 // found in the LICENSE file.
 
 //! Implement consistent logging across the hibernate and resume transition.
-use std::fs::{File, OpenOptions};
-use std::io::{BufRead, BufReader, Cursor, Read, Write};
+use std::fs::File;
+use std::fs::OpenOptions;
+use std::io::BufRead;
+use std::io::BufReader;
+use std::io::Cursor;
+use std::io::Read;
+use std::io::Write;
 use std::str;
 use std::sync::MutexGuard;
 use std::time::Instant;
 
-use anyhow::{Context, Result};
-use log::{debug, warn, Level, LevelFilter, Log, Metadata, Record};
+use anyhow::Context;
+use anyhow::Result;
+use log::debug;
+use log::warn;
+use log::Level;
+use log::LevelFilter;
+use log::Log;
+use log::Metadata;
+use log::Record;
 use once_cell::sync::OnceCell;
 use sync::Mutex;
-use syslog::{BasicLogger, Facility, Formatter3164};
+use syslog::BasicLogger;
+use syslog::Facility;
+use syslog::Formatter3164;
 
 use crate::diskfile::BouncedDiskFile;
 use crate::files::open_log_file;

@@ -8,17 +8,25 @@
 use std::convert::TryInto;
 use std::fs::create_dir;
 use std::fs::File;
-use std::io::{Read, Write};
+use std::io::Read;
+use std::io::Write;
 use std::path::Path;
 
-use anyhow::{Context, Result};
-use log::{info, warn};
+use anyhow::Context;
+use anyhow::Result;
+use log::info;
+use log::warn;
 use openssl::derive::Deriver;
-use openssl::pkey::{Id, PKey, Private, Public};
+use openssl::pkey::Id;
+use openssl::pkey::PKey;
+use openssl::pkey::Private;
+use openssl::pkey::Public;
 use zeroize::Zeroizing;
 
 use crate::files::TMPFS_DIR;
-use crate::hibermeta::{HibernateMetadata, META_ASYMMETRIC_KEY_SIZE, META_SYMMETRIC_KEY_SIZE};
+use crate::hibermeta::HibernateMetadata;
+use crate::hibermeta::META_ASYMMETRIC_KEY_SIZE;
+use crate::hibermeta::META_SYMMETRIC_KEY_SIZE;
 use crate::hiberutil::HibernateError;
 
 /// Define the name where the hibernate public key is stored.

@@ -5,14 +5,22 @@
 //! Implements support for managing hibernate metadata.
 
 use std::convert::TryFrom;
-use std::io::{Read, Write};
+use std::io::Read;
+use std::io::Write;
 
-use anyhow::{Context, Result};
-use libchromeos::rand::{rand_bytes, Source};
+use anyhow::Context;
+use anyhow::Result;
+use libchromeos::rand::rand_bytes;
+use libchromeos::rand::Source;
 use log::info;
-use openssl::symm::{Cipher, Crypter, Mode};
-use serde::{Deserialize, Serialize};
-use zeroize::{Zeroize, ZeroizeOnDrop, Zeroizing};
+use openssl::symm::Cipher;
+use openssl::symm::Crypter;
+use openssl::symm::Mode;
+use serde::Deserialize;
+use serde::Serialize;
+use zeroize::Zeroize;
+use zeroize::ZeroizeOnDrop;
+use zeroize::Zeroizing;
 
 use crate::diskfile::BouncedDiskFile;
 use crate::hiberutil::HibernateError;

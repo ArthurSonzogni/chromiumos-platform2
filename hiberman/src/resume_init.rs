@@ -6,14 +6,18 @@
 
 use std::path::PathBuf;
 
-use anyhow::{Context, Result};
-use log::{info, warn};
+use anyhow::Context;
+use anyhow::Result;
+use log::info;
+use log::warn;
 
-use crate::cookie::{
-    cookie_description, get_hibernate_cookie, set_hibernate_cookie, HibernateCookieValue,
-};
+use crate::cookie::cookie_description;
+use crate::cookie::get_hibernate_cookie;
+use crate::cookie::set_hibernate_cookie;
+use crate::cookie::HibernateCookieValue;
 use crate::files::create_resume_in_progress_file;
-use crate::hiberutil::{HibernateError, ResumeInitOptions};
+use crate::hiberutil::HibernateError;
+use crate::hiberutil::ResumeInitOptions;
 use crate::volume::VolumeManager;
 
 pub struct ResumeInitConductor {

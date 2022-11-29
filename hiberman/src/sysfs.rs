@@ -4,11 +4,17 @@
 
 //! Implements sysfs save/restore functionality.
 
-use std::fs::{File, OpenOptions};
-use std::io::{Read, Seek, SeekFrom, Write};
+use std::fs::File;
+use std::fs::OpenOptions;
+use std::io::Read;
+use std::io::Seek;
+use std::io::SeekFrom;
+use std::io::Write;
 
-use anyhow::{Context, Result};
-use log::{debug, warn};
+use anyhow::Context;
+use anyhow::Result;
+use log::debug;
+use log::warn;
 
 const SWAPPINESS_PATH: &str = "/proc/sys/vm/swappiness";
 

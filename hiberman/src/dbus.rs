@@ -4,24 +4,35 @@
 
 //! Handles the D-Bus interface for hibernate.
 
-use std::ops::{Deref, DerefMut};
-use std::sync::mpsc::{channel, Receiver, Sender};
+use std::ops::Deref;
+use std::ops::DerefMut;
+use std::sync::mpsc::channel;
+use std::sync::mpsc::Receiver;
+use std::sync::mpsc::Sender;
 use std::sync::Arc;
 use std::thread;
-use std::time::{Duration, Instant};
+use std::time::Duration;
+use std::time::Instant;
 
-use anyhow::{Context as AnyhowContext, Result};
+use anyhow::Context as AnyhowContext;
+use anyhow::Result;
 use dbus::blocking::Connection;
 use dbus::channel::MatchingReceiver;
 use dbus::message::MatchRule;
-use dbus_crossroads::{Context, Crossroads};
-use log::{debug, error, info};
-use protobuf::{Message, SingularPtrField};
+use dbus_crossroads::Context;
+use dbus_crossroads::Crossroads;
+use log::debug;
+use log::error;
+use log::info;
+use protobuf::Message;
+use protobuf::SingularPtrField;
 use sync::Mutex;
 use system_api::client::OrgChromiumUserDataAuthInterface;
 use system_api::rpc::AccountIdentifier;
-use system_api::UserDataAuth::{GetHibernateSecretReply, GetHibernateSecretRequest};
-use zeroize::{Zeroize, ZeroizeOnDrop};
+use system_api::UserDataAuth::GetHibernateSecretReply;
+use system_api::UserDataAuth::GetHibernateSecretRequest;
+use zeroize::Zeroize;
+use zeroize::ZeroizeOnDrop;
 
 use crate::hiberutil::HibernateError;
 

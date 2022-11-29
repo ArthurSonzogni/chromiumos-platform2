@@ -5,17 +5,28 @@
 //! Implements snapshot device functionality.
 
 use std::convert::TryInto;
-use std::fs::{metadata, File, OpenOptions};
+use std::fs::metadata;
+use std::fs::File;
+use std::fs::OpenOptions;
 use std::os::unix::fs::FileTypeExt;
 use std::path::Path;
 
-use anyhow::{Context, Result};
-use libc::{self, c_int, c_ulong, c_void, loff_t};
-use libchromeos::sys::{
-    ioctl_io_nr, ioctl_ior_nr, ioctl_iow_nr, ioctl_iowr_nr, ioctl_with_mut_ptr, ioctl_with_ptr,
-    ioctl_with_val,
-};
-use log::{error, info};
+use anyhow::Context;
+use anyhow::Result;
+use libc::c_int;
+use libc::c_ulong;
+use libc::c_void;
+use libc::loff_t;
+use libc::{self};
+use libchromeos::sys::ioctl_io_nr;
+use libchromeos::sys::ioctl_ior_nr;
+use libchromeos::sys::ioctl_iow_nr;
+use libchromeos::sys::ioctl_iowr_nr;
+use libchromeos::sys::ioctl_with_mut_ptr;
+use libchromeos::sys::ioctl_with_ptr;
+use libchromeos::sys::ioctl_with_val;
+use log::error;
+use log::info;
 
 use crate::hiberutil::HibernateError;
 

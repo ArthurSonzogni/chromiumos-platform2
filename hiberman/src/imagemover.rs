@@ -6,13 +6,20 @@
 //! alignment and transformation. This object represents the "motor" driving
 //! data from one file descriptor to another.
 
-use std::io::{IoSliceMut, Read, Write};
+use std::io::IoSliceMut;
+use std::io::Read;
+use std::io::Write;
 
-use anyhow::{Context, Result};
-use libc::{self, off64_t};
-use log::{debug, info, warn};
+use anyhow::Context;
+use anyhow::Result;
+use libc::off64_t;
+use libc::{self};
+use log::debug;
+use log::info;
+use log::warn;
 
-use crate::hiberutil::{get_page_size, HibernateError};
+use crate::hiberutil::get_page_size;
+use crate::hiberutil::HibernateError;
 use crate::mmapbuf::MmapBuffer;
 
 /// An ImageMover represents an engine used to move data from a source to a
