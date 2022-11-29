@@ -6,7 +6,7 @@ The ChromeOS power manager consists of several components:
     dimming the screen, suspending the system, etc.
 -   `powerd_setuid_helper`: setuid root binary used by powerd to perform actions
     requiring additional privileges.
--   `powerd_dbus_suspend`: shell script executed by powerd (by way of
+-   `powerd_suspend`: shell script executed by powerd (by way of
     `powerd_setuid_helper`) to suspend and resume the system.
 -   `send_metrics_on_resume`: shell script executed by `powerd_suspend` and by
     the `send-boot-metrics` Upstart job to report suspend-related metrics.
