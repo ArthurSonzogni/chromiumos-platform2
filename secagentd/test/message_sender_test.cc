@@ -75,7 +75,7 @@ class MessageSenderTestFixture : public ::testing::Test {
   std::unique_ptr<NiceMock<reporting::MockReportQueueProvider>> provider_;
   std::unordered_map<reporting::Destination, reporting::MockReportQueue*>
       mock_queue_map_;
-  static const reporting::Priority priority_ = reporting::SECURITY;
+  static const reporting::Priority kPriority_ = reporting::SLOW_BATCH;
   constexpr static const reporting::Destination kDestinations[2] = {
       reporting::CROS_SECURITY_PROCESS, reporting::CROS_SECURITY_AGENT};
 };
@@ -148,7 +148,7 @@ TEST_F(MessageSenderTestFixture, TestSendMessageValidDestination) {
 
   // Process Event.
   EXPECT_CALL(*(mock_queue_map_.find(reporting::CROS_SECURITY_PROCESS)->second),
-              AddProducedRecord(_, priority_, _))
+              AddProducedRecord(_, kPriority_, _))
       .WillOnce(WithArgs<0, 2>(Invoke(
           [&proto_string](
               base::OnceCallback<reporting::StatusOr<std::string>()> record_cb,
@@ -176,7 +176,7 @@ TEST_F(MessageSenderTestFixture, TestSendMessageValidDestination) {
 
   // Agent Event.
   EXPECT_CALL(*(mock_queue_map_.find(reporting::CROS_SECURITY_AGENT)->second),
-              AddProducedRecord(_, priority_, _))
+              AddProducedRecord(_, kPriority_, _))
       .WillOnce(WithArgs<0, 2>(Invoke(
           [&proto_string](
               base::OnceCallback<reporting::StatusOr<std::string>()> record_cb,

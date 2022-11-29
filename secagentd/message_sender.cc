@@ -150,7 +150,7 @@ void MessageSender::SendMessage(
   }
 
   it->second.get()->Enqueue(
-      std::move(message), reporting::SECURITY,
+      std::move(message), reporting::SLOW_BATCH,
       base::BindOnce(&SendMessageStatusCallback, destination, std::move(cb)));
 }
 
