@@ -22,6 +22,9 @@
 namespace attestation {
 
 TpmUtility* TpmUtilityFactory::New() {
+#if USE_TPM_DYNAMIC
+  return new TpmUtilityStub();
+#endif
   TPM_SELECT_BEGIN;
   TPM1_SECTION({ return new TpmUtilityV1(); });
   TPM2_SECTION({ return new TpmUtilityV2(); });
