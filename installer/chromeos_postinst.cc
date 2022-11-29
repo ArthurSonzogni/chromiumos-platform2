@@ -366,6 +366,119 @@ bool RollbackPartitionTable(CgptManager& cgpt_manager,
   return rollback_successful;
 }
 
+// Non-Chromebook/box bootloaders and their config files are stored on the
+// EFI System Partition (ESP). Mount the partition and "Do post install stuff"
+// for these bootloaders.
+//
+// Returns early for irrelevant bootloaders.
+// Returns false for some errors, true otherwise.
+// TODO(tbrandston): perhaps we should only return false for errors that would
+// interfere with completing install/update?
+bool ESPPostInstall(InstallConfig& install_config) {
+  // Early-return for bootloaders we don't handle here.
+  switch (install_config.bios_type) {
+    case BiosType::kSecure:
+      LOG(INFO) << "Not running ESPPostInstall for BiosType: kSecure";
+      return true;
+    case BiosType::kUnknown:
+      // Returning false here to maintain approximate historical behavior
+      // where kUnknown results in postinst failure.
+      LOG(ERROR) << "Exiting early for BiosType: kUnknown";
+      return false;
+    case BiosType::kUBoot:
+    case BiosType::kLegacy:
+    case BiosType::kEFI:
+      break;
+  }
+
+  install_config.boot.set_mount("/tmp/boot_mnt");
+
+  if (!base::CreateDirectory(base::FilePath(install_config.boot.mount()))) {
+    LOG(ERROR) << "Failed to create mount dir for EFI System Partition.";
+    return false;
+  }
+
+  // Mount the EFI system partition.
+  LOG(INFO) << "mount " << install_config.boot.device() << " to "
+            << install_config.boot.mount();
+  if (mount(install_config.boot.device().c_str(),
+            install_config.boot.mount().c_str(), "vfat",
+            MS_NODEV | MS_NOEXEC | MS_NOSUID, nullptr) != 0) {
+    PLOG(ERROR) << "Failed to mount " << install_config.boot.device() << " to "
+                << install_config.boot.mount();
+    return false;
+  }
+
+  bool success = true;
+
+  switch (install_config.bios_type) {
+    case BiosType::kUnknown:
+    case BiosType::kSecure:
+      success = false;
+      break;
+
+    case BiosType::kUBoot:
+      // The Arm platform only uses U-Boot, but may set cros_legacy to mean
+      // U-Boot without secure boot modifications. This may need handling.
+      if (!RunLegacyUBootPostInstall(install_config)) {
+        LOG(ERROR) << "Legacy PostInstall failed.";
+        success = false;
+      }
+      break;
+
+    case BiosType::kLegacy:
+      if (!RunLegacyPostInstall(install_config)) {
+        LOG(ERROR) << "Legacy PostInstall failed.";
+        success = false;
+        break;
+      }
+
+      // Configure EFI entries in addition to the legacy.
+      // Allows devices that can boot installers in legacy
+      // but will boot the installed target in EFI mode.
+      // Errors here are not necessarily fatal as the common
+      // case is the machine will boot successfully from legacy.
+      if (USE_POSTINSTALL_CONFIG_EFI_AND_LEGACY) {
+        if (!RunEfiPostInstall(install_config)) {
+          LOG(WARNING) << "Ignored secondary EFI PostInstall failure.";
+        }
+      }
+
+      break;
+
+    case BiosType::kEFI:
+      if (!RunEfiPostInstall(install_config)) {
+        LOG(ERROR) << "EFI PostInstall failed.";
+        success = false;
+        break;
+      }
+
+      // Optionally update the legacy boot entries to support
+      // devices that can boot from the USB in EFI mode with the
+      // installed disk booting in legacy mode.
+      if (USE_POSTINSTALL_CONFIG_EFI_AND_LEGACY) {
+        if (!RunLegacyPostInstall(install_config)) {
+          LOG(WARNING) << "Ignored secondary Legacy PostInstall failure.";
+        }
+      }
+
+      break;
+  }
+
+  std::unique_ptr<MetricsInterface> metrics =
+      MetricsInterface::GetMetricsInstance();
+  SendNonChromebookBiosSuccess(*metrics, install_config.bios_type, success);
+
+  // Unmount the EFI system partition.
+  LOG(INFO) << "umount " << install_config.boot.mount();
+  if (umount(install_config.boot.mount().c_str()) != 0) {
+    PLOG(ERROR) << "Failed to unmount " << install_config.boot.mount();
+    success = false;
+  }
+
+  return success;
+}
+
 // Do post install stuff.
 //
 // Install kernel, set up the proper bootable partition in
@@ -638,93 +751,9 @@ bool RunPostInstall(const string& install_dev,
       return true;
   }
 
-  // If we are installing to a ChromeOS Bios, we are done.
-  if (install_config.bios_type == BiosType::kSecure)
-    return true;
-
-  install_config.boot.set_mount("/tmp/boot_mnt");
-
-  if (!base::CreateDirectory(base::FilePath(install_config.boot.mount()))) {
-    return false;
-  }
-
-  // Mount the EFI system partition.
-  LOG(INFO) << "mount " << install_config.boot.device() << " to "
-            << install_config.boot.mount();
-  if (mount(install_config.boot.device().c_str(),
-            install_config.boot.mount().c_str(), "vfat",
-            MS_NODEV | MS_NOEXEC | MS_NOSUID, nullptr) != 0) {
-    PLOG(ERROR) << "Failed to mount " << install_config.boot.device() << " to "
-                << install_config.boot.mount();
-    return false;
-  }
-
-  bool success = true;
-
-  switch (install_config.bios_type) {
-    case BiosType::kUnknown:
-    case BiosType::kSecure:
-      LOG(ERROR) << "Unexpected BiosType: "
-                 << static_cast<int>(install_config.bios_type);
-      success = false;
-      break;
-
-    case BiosType::kUBoot:
-      // The Arm platform only uses U-Boot, but may set cros_legacy to mean
-      // U-Boot without secure boot modifications. This may need handling.
-      if (!RunLegacyUBootPostInstall(install_config)) {
-        LOG(ERROR) << "Legacy PostInstall failed.";
-        success = false;
-      }
-      break;
-
-    case BiosType::kLegacy:
-      if (!RunLegacyPostInstall(install_config)) {
-        LOG(ERROR) << "Legacy PostInstall failed.";
-        success = false;
-        break;
-      }
-
-      // Configure EFI entries in addition to the legacy.
-      // Allows devices that can boot installers in legacy
-      // but will boot the installed target in EFI mode.
-      // Errors here are not necessarily fatal as the common
-      // case is the machine will boot successfully from legacy.
-      if (USE_POSTINSTALL_CONFIG_EFI_AND_LEGACY) {
-        if (!RunEfiPostInstall(install_config)) {
-          LOG(WARNING) << "Ignored secondary EFI PostInstall failure.";
-        }
-      }
-
-      break;
-
-    case BiosType::kEFI:
-      if (!RunEfiPostInstall(install_config)) {
-        LOG(ERROR) << "EFI PostInstall failed.";
-        success = false;
-        break;
-      }
-
-      // Optionally update the legacy boot entries to support
-      // devices that can boot from the USB in EFI mode with the
-      // installed disk booting in legacy mode.
-      if (USE_POSTINSTALL_CONFIG_EFI_AND_LEGACY) {
-        if (!RunLegacyPostInstall(install_config)) {
-          LOG(WARNING) << "Ignored secondary Legacy PostInstall failure.";
-        }
-      }
-
-      break;
-  }
-
-  SendNonChromebookBiosSuccess(*metrics, bios_type, success);
-
-  // Unmount the EFI system partition.
-  LOG(INFO) << "umount " << install_config.boot.mount();
-  if (umount(install_config.boot.mount().c_str()) != 0) {
-    PLOG(ERROR) << "Failed to unmount " << install_config.boot.mount();
-    success = false;
-  }
-
-  return success;
+  // If ESPPostInstall fails we don't have enough info to know whether we're in
+  // a state where the Partition Table and the ESP are mismatched in what
+  // they're trying to boot or if everything is fine. If we knew we could
+  // potentially try to RollbackPartitionTable.
+  return ESPPostInstall(install_config);
 }
