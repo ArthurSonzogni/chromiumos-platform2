@@ -90,13 +90,16 @@ proto_library("libmissiveprotosecurityxdrevents") {
 goproto_library("libmissive-interface-goprotos") {
   proto_in_dir = "//missive/proto/synced/pipeline"
   proto_out_dir = "go/src/"
+  proto_lib_dirs = [ "//missive/proto/" ]
   import_mapping = [
     "health.proto=chromiumos/reporting",
+    "pipeline_interface_sym_for_tast.proto=chromiumos/reporting",
     "record.proto=chromiumos/reporting",
     "record_constants.proto=chromiumos/reporting",
     "status.proto=chromiumos/reporting",
   ]
   sources = [
+    "pipeline_interface_sym_for_tast.proto",  # b/261096728
     "synced/pipeline/health.proto",
     "synced/pipeline/record.proto",
     "synced/pipeline/record_constants.proto",
