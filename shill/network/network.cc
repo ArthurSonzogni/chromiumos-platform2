@@ -17,6 +17,7 @@
 #include "shill/device_info.h"
 #include "shill/event_dispatcher.h"
 #include "shill/logging.h"
+#include "shill/metrics.h"
 #include "shill/net/ndisc.h"
 #include "shill/net/rtnl_handler.h"
 #include "shill/network/slaac_controller.h"
@@ -61,7 +62,8 @@ Network::Network(int interface_index,
                  EventHandler* event_handler,
                  ControlInterface* control_interface,
                  DeviceInfo* device_info,
-                 EventDispatcher* dispatcher)
+                 EventDispatcher* dispatcher,
+                 Metrics* metrics)
     : interface_index_(interface_index),
       interface_name_(interface_name),
       technology_(technology),
@@ -70,6 +72,7 @@ Network::Network(int interface_index,
       control_interface_(control_interface),
       device_info_(device_info),
       dispatcher_(dispatcher),
+      metrics_(metrics),
       dhcp_provider_(DHCPProvider::GetInstance()),
       routing_table_(RoutingTable::GetInstance()),
       rtnl_handler_(RTNLHandler::GetInstance()) {}

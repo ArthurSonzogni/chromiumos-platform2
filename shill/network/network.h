@@ -28,6 +28,7 @@ namespace shill {
 
 class DeviceInfo;
 class EventDispatcher;
+class Metrics;
 class RoutingTable;
 class Service;
 
@@ -117,7 +118,8 @@ class Network {
                    EventHandler* event_handler,
                    ControlInterface* control_interface,
                    DeviceInfo* device_info,
-                   EventDispatcher* dispatcher);
+                   EventDispatcher* dispatcher,
+                   Metrics* metrics);
   Network(const Network&) = delete;
   Network& operator=(const Network&) = delete;
   virtual ~Network();
@@ -382,6 +384,7 @@ class Network {
   ControlInterface* control_interface_;
   DeviceInfo* device_info_;
   EventDispatcher* dispatcher_;
+  Metrics* metrics_;
 
   // Cache singleton pointers for performance and test purposes.
   DHCPProvider* dhcp_provider_;
