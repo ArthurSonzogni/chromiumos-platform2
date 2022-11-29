@@ -11,6 +11,10 @@
 #include <base/files/file_descriptor_watcher_posix.h>
 #include <base/files/file_path.h>
 #include <base/files/scoped_file.h>
+#include <mojo/public/cpp/bindings/pending_remote.h>
+#include <mojo/public/cpp/bindings/remote.h>
+
+#include "diagnostics/cros_healthd/executor/mojom/executor.mojom.h"
 
 namespace diagnostics {
 
@@ -49,6 +53,23 @@ class EvdevUtil {
   libevdev* dev_;
   // Delegate to implement dedicated behaviors for different evdev devices.
   Delegate* const delegate_;
+};
+
+class EvdevAudioJackObserver final : public EvdevUtil::Delegate {
+ public:
+  explicit EvdevAudioJackObserver(
+      mojo::PendingRemote<ash::cros_healthd::mojom::AudioJackObserver>
+          observer);
+
+  // EvdevUtil::Delegate overrides.
+  bool IsTarget(libevdev* dev) override;
+  void FireEvent(const input_event& event, libevdev* dev) override;
+  void InitializationFail() override;
+  void ReportProperties(libevdev* dev) override;
+
+ private:
+  EvdevUtil evdev_util_{this};
+  mojo::Remote<ash::cros_healthd::mojom::AudioJackObserver> observer_;
 };
 
 }  // namespace diagnostics

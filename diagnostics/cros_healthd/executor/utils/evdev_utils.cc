@@ -15,6 +15,8 @@ namespace diagnostics {
 
 namespace {
 
+namespace mojom = ::ash::cros_healthd::mojom;
+
 constexpr char kDevInputPath[] = "/dev/input/";
 
 }  // namespace
@@ -81,5 +83,34 @@ void EvdevUtil::OnEvdevEvent() {
     delegate_->FireEvent(ev, dev_);
   }
 }
+
+EvdevAudioJackObserver::EvdevAudioJackObserver(
+    mojo::PendingRemote<mojom::AudioJackObserver> observer)
+    : observer_(std::move(observer)) {}
+
+bool EvdevAudioJackObserver::IsTarget(libevdev* dev) {
+  return libevdev_has_event_code(dev, EV_SW, SW_HEADPHONE_INSERT) &&
+         libevdev_has_event_code(dev, EV_SW, SW_MICROPHONE_INSERT);
+}
+
+void EvdevAudioJackObserver::FireEvent(const input_event& ev, libevdev* dev) {
+  if (ev.type != EV_SW) {
+    return;
+  }
+
+  if (ev.code == SW_HEADPHONE_INSERT || ev.code == SW_MICROPHONE_INSERT) {
+    if (ev.value == 1) {
+      observer_->OnAdd();
+    } else {
+      observer_->OnRemove();
+    }
+  }
+}
+
+void EvdevAudioJackObserver::InitializationFail() {
+  observer_.reset();
+}
+
+void EvdevAudioJackObserver::ReportProperties(libevdev* dev) {}
 
 }  // namespace diagnostics

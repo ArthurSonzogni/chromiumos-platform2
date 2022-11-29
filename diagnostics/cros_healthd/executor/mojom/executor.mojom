@@ -55,6 +55,12 @@ enum FingerprintCaptureType {
 interface ProcessControl {
 };
 
+// Implemented by clients who desire audio jack notifications.
+interface AudioJackObserver {
+  OnAdd();
+  OnRemove();
+};
+
 // Root-level executor interface exposed to the cros_healthd daemon. In
 // production, this is implemented by the Executor daemon.
 interface Executor {
