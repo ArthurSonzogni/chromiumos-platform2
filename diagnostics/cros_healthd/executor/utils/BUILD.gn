@@ -9,14 +9,19 @@ pkg_config("pkg_deps") {
   pkg_deps = [
     "libbrillo",
     "libchrome",
+    "libevdev",
     "libmojo",
   ]
 }
 
 source_set("utils") {
-  deps = [ "//diagnostics/cros_healthd/executor/mojom:cros_healthd_executor_mojo_bindings" ]
+  deps = [
+    "//diagnostics/cros_healthd/executor/mojom:cros_healthd_executor_mojo_bindings",
+    "//diagnostics/cros_healthd/utils:libcros_healthd_utils",
+  ]
   sources = [
     "delegate_process.cc",
+    "evdev_utils.cc",
     "process_control.cc",
     "sandboxed_process.cc",
   ]
