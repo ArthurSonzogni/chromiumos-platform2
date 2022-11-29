@@ -18,6 +18,7 @@
 #include <sys/types.h>
 #include <sys/un.h>
 
+#include <iostream>
 #include <string>
 
 #include <base/strings/stringprintf.h>

@@ -392,29 +392,31 @@ void NetworkMonitorService::OnShillDevicesChanged(
     const std::vector<std::string>& removed) {
   System system;
   for (const auto& ifname : added) {
-    ShillClient::Device device_props;
-    if (!shill_client_->GetDeviceProperties(ifname, &device_props)) {
+    ShillClient::Device device;
+    if (!shill_client_->GetDeviceProperties(ifname, &device)) {
       LOG(ERROR)
           << "Get device props failed. Skipped creating neighbor monitor on "
           << ifname;
       continue;
     }
 
-    if (device_props.type != ShillClient::Device::Type::kWifi) {
-      LOG(INFO) << "Skipped creating neighbor monitor for interface " << ifname;
-      continue;
-    }
-
-    int ifindex = system.IfNametoindex(device_props.ifname);
-    if (ifindex == 0) {
-      PLOG(ERROR) << "Could not obtain interface index for "
-                  << device_props.ifname;
-      continue;
+    switch (device.type) {
+      // Link monitoring is possible for physical local area networks on which
+      // neighbor discovery is possible.
+      case ShillClient::Device::Type::kWifi:
+      case ShillClient::Device::Type::kEthernet:
+      case ShillClient::Device::Type::kEthernetEap:
+        break;
+      // Ignore VPN networks, Cellular networks, and other types of
+      // point-to-point networks and internal virtual networks.
+      default:
+        LOG(INFO) << "Skipped creating neighbor monitor for " << device;
+        continue;
     }
 
     auto link_monitor = std::make_unique<NeighborLinkMonitor>(
-        ifindex, device_props.ifname, rtnl_handler_, &neighbor_event_handler_);
-    link_monitor->OnIPConfigChanged(device_props.ipconfig);
+        device.ifindex, device.ifname, rtnl_handler_, &neighbor_event_handler_);
+    link_monitor->OnIPConfigChanged(device.ipconfig);
     neighbor_link_monitors_[ifname] = std::move(link_monitor);
   }
 
