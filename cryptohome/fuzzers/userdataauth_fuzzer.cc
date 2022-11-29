@@ -11,15 +11,18 @@
 #include <vector>
 
 #include <base/check.h>
+#include <base/check_op.h>
 #include <base/command_line.h>
 #include <base/logging.h>
 #include <base/memory/scoped_refptr.h>
 #include <base/task/sequenced_task_runner.h>
+#include <base/test/scoped_chromeos_version_info.h>
 #include <base/test/task_environment.h>
 #include <base/test/test_future.h>
 #include <base/test/test_timeouts.h>
 #include <base/threading/sequenced_task_runner_handle.h>
 #include <base/threading/thread_task_runner_handle.h>
+#include <base/time/time.h>
 #include <brillo/dbus/dbus_object_test_helpers.h>
 #include <brillo/dbus/dbus_object.h>
 #include <brillo/secure_blob.h>
@@ -57,6 +60,23 @@ using ::brillo::Blob;
 using ::brillo::BlobFromString;
 using ::testing::_;
 using ::testing::NiceMock;
+
+// A few typical values to choose from when simulating the system info in the
+// fuzzer. We don't use completely random strings as only few aspects are
+// relevant for code-under-test, and this way fuzzer can discover them quickly.
+constexpr const char* kLsbReleaseVariants[] = {
+    // A sample value for code running in production image.
+    "CHROMEOS_RELEASE_TRACK=stable-channel\n"
+    "CHROMEOS_RELEASE_VERSION=15160.0.0\n"
+    "DEVICETYPE=CHROMEBOOK\n",
+    // A sample value for code running in test image, and with a different
+    // device type.
+    "CHROMEOS_RELEASE_TRACK=testimage-channel\n"
+    "CHROMEOS_RELEASE_VERSION=11012.0.2018_08_28_1422\n"
+    "DEVICETYPE=CHROMEBOX\n",
+    // An empty value to simulate failure.
+    "",
+};
 
 // Performs initialization and holds state that's shared across all invocations
 // of the fuzzer.
@@ -206,6 +226,11 @@ void UpdateBreadcrumbs(const std::string& dbus_method_name,
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   static Environment env;
   FuzzedDataProvider provider(data, size);
+
+  // Prepare global singletons with per-test-case parameters.
+  base::test::ScopedChromeOSVersionInfo scoped_version(
+      provider.PickValueInArray(kLsbReleaseVariants),
+      /*lsb_release_time=*/base::Time::UnixEpoch());
 
   // Prepare `UserDataAuth`'s dependencies.
   FakePlatform platform;
