@@ -2460,10 +2460,8 @@ class UserDataAuthExTest : public UserDataAuthTest {
     check_req_.reset(new user_data_auth::CheckKeyRequest);
     mount_req_.reset(new user_data_auth::MountRequest);
     remove_req_.reset(new user_data_auth::RemoveKeyRequest);
-    mass_remove_req_.reset(new user_data_auth::MassRemoveKeysRequest);
     list_keys_req_.reset(new user_data_auth::ListKeysRequest);
     get_key_data_req_.reset(new user_data_auth::GetKeyDataRequest);
-    migrate_req_.reset(new user_data_auth::MigrateKeyRequest);
     remove_homedir_req_.reset(new user_data_auth::RemoveRequest);
     start_auth_session_req_.reset(new user_data_auth::StartAuthSessionRequest);
     authenticate_auth_session_req_.reset(
@@ -2488,10 +2486,8 @@ class UserDataAuthExTest : public UserDataAuthTest {
   std::unique_ptr<user_data_auth::CheckKeyRequest> check_req_;
   std::unique_ptr<user_data_auth::MountRequest> mount_req_;
   std::unique_ptr<user_data_auth::RemoveKeyRequest> remove_req_;
-  std::unique_ptr<user_data_auth::MassRemoveKeysRequest> mass_remove_req_;
   std::unique_ptr<user_data_auth::ListKeysRequest> list_keys_req_;
   std::unique_ptr<user_data_auth::GetKeyDataRequest> get_key_data_req_;
-  std::unique_ptr<user_data_auth::MigrateKeyRequest> migrate_req_;
   std::unique_ptr<user_data_auth::RemoveRequest> remove_homedir_req_;
   std::unique_ptr<user_data_auth::StartAuthSessionRequest>
       start_auth_session_req_;
@@ -3612,79 +3608,6 @@ TEST_F(UserDataAuthExTest, RemoveKeyInvalidArgs) {
             user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
 }
 
-TEST_F(UserDataAuthExTest, MassRemoveKeysInvalidArgsNoEmail) {
-  PrepareArguments();
-
-  EXPECT_EQ(userdataauth_->MassRemoveKeys(*mass_remove_req_.get()),
-            user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
-}
-
-TEST_F(UserDataAuthExTest, MassRemoveKeysInvalidArgsNoSecret) {
-  PrepareArguments();
-  mass_remove_req_->mutable_account_id()->set_account_id("foo@gmail.com");
-
-  EXPECT_EQ(userdataauth_->MassRemoveKeys(*mass_remove_req_.get()),
-            user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
-}
-
-TEST_F(UserDataAuthExTest, MassRemoveKeysAccountNotExist) {
-  PrepareArguments();
-  mass_remove_req_->mutable_account_id()->set_account_id("foo@gmail.com");
-  mass_remove_req_->mutable_authorization_request()->mutable_key()->set_secret(
-      "blerg");
-
-  EXPECT_CALL(homedirs_, Exists(_)).WillRepeatedly(Return(false));
-
-  EXPECT_EQ(userdataauth_->MassRemoveKeys(*mass_remove_req_.get()),
-            user_data_auth::CRYPTOHOME_ERROR_ACCOUNT_NOT_FOUND);
-}
-
-TEST_F(UserDataAuthExTest, MassRemoveKeysAuthFailed) {
-  PrepareArguments();
-  mass_remove_req_->mutable_account_id()->set_account_id("foo@gmail.com");
-  mass_remove_req_->mutable_authorization_request()->mutable_key()->set_secret(
-      "blerg");
-
-  EXPECT_CALL(homedirs_, Exists(_)).WillRepeatedly(Return(true));
-  EXPECT_CALL(keyset_management_, AreCredentialsValid(_))
-      .WillRepeatedly(Return(false));
-
-  EXPECT_EQ(userdataauth_->MassRemoveKeys(*mass_remove_req_.get()),
-            user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED);
-}
-
-TEST_F(UserDataAuthExTest, MassRemoveKeysGetLabelsFailed) {
-  PrepareArguments();
-  mass_remove_req_->mutable_account_id()->set_account_id("foo@gmail.com");
-  mass_remove_req_->mutable_authorization_request()->mutable_key()->set_secret(
-      "blerg");
-
-  EXPECT_CALL(homedirs_, Exists(_)).WillRepeatedly(Return(true));
-  EXPECT_CALL(keyset_management_, AreCredentialsValid(_))
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(keyset_management_, GetVaultKeysetLabels(_, _, _))
-      .WillRepeatedly(Return(false));
-
-  EXPECT_EQ(userdataauth_->MassRemoveKeys(*mass_remove_req_.get()),
-            user_data_auth::CRYPTOHOME_ERROR_KEY_NOT_FOUND);
-}
-
-TEST_F(UserDataAuthExTest, MassRemoveKeysForceSuccess) {
-  PrepareArguments();
-  mass_remove_req_->mutable_account_id()->set_account_id("foo@gmail.com");
-  mass_remove_req_->mutable_authorization_request()->mutable_key()->set_secret(
-      "blerg");
-
-  EXPECT_CALL(homedirs_, Exists(_)).WillRepeatedly(Return(true));
-  EXPECT_CALL(keyset_management_, AreCredentialsValid(_))
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(keyset_management_, GetVaultKeysetLabels(_, _, _))
-      .WillRepeatedly(Return(true));
-
-  EXPECT_EQ(userdataauth_->MassRemoveKeys(*mass_remove_req_.get()),
-            user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
-}
-
 constexpr char ListKeysValidityTest_label1[] = "Label 1";
 constexpr char ListKeysValidityTest_label2[] = "Yet another label";
 
@@ -3823,62 +3746,6 @@ TEST_F(UserDataAuthExTest, GetKeyDataInvalidArgs) {
   EXPECT_EQ(userdataauth_->GetKeyData(*get_key_data_req_, &keydata_out, &found),
             user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
   EXPECT_FALSE(found);
-}
-
-TEST_F(UserDataAuthExTest, MigrateKeyValidity) {
-  PrepareArguments();
-
-  constexpr char kUsername1[] = "foo@gmail.com";
-  constexpr char kSecret1[] = "some secret";
-  migrate_req_->mutable_account_id()->set_account_id(kUsername1);
-  migrate_req_->mutable_authorization_request()->mutable_key()->set_secret(
-      kSecret1);
-  migrate_req_->set_secret("blerg");
-
-  SetupMount(kUsername1);
-
-  // Test for successful case.
-
-  EXPECT_CALL(keyset_management_,
-              GetValidKeyset(Property(&Credentials::username, kUsername1)))
-      .WillOnce(Return(ByMove(std::make_unique<VaultKeyset>())));
-  EXPECT_CALL(keyset_management_,
-              Migrate(_, Property(&Credentials::username, kUsername1)))
-      .WillOnce(Return(true));
-  EXPECT_EQ(userdataauth_->MigrateKey(*migrate_req_),
-            user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
-
-  // Test for unsuccessful case when existing keyset is not validated.
-  EXPECT_CALL(keyset_management_,
-              GetValidKeyset(Property(&Credentials::username, kUsername1)))
-      .WillOnce(ReturnError<CryptohomeMountError>(
-          kErrorLocationPlaceholder, ErrorActionSet({ErrorAction::kReboot}),
-          MOUNT_ERROR_KEY_FAILURE));
-  EXPECT_EQ(userdataauth_->MigrateKey(*migrate_req_),
-            user_data_auth::CRYPTOHOME_ERROR_MIGRATE_KEY_FAILED);
-
-  // Test for unsuccessful case when keyset migration fails.
-  EXPECT_CALL(keyset_management_,
-              GetValidKeyset(Property(&Credentials::username, kUsername1)))
-      .WillOnce(Return(ByMove(std::make_unique<VaultKeyset>())));
-  EXPECT_CALL(keyset_management_,
-              Migrate(_, Property(&Credentials::username, kUsername1)))
-      .WillOnce(Return(false));
-  EXPECT_EQ(userdataauth_->MigrateKey(*migrate_req_),
-            user_data_auth::CRYPTOHOME_ERROR_MIGRATE_KEY_FAILED);
-}
-
-TEST_F(UserDataAuthExTest, MigrateKeyInvalidArguments) {
-  PrepareArguments();
-
-  // No email.
-  EXPECT_EQ(userdataauth_->MigrateKey(*migrate_req_),
-            user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
-
-  // No authorization request key secret.
-  migrate_req_->mutable_account_id()->set_account_id("foo@gmail.com");
-  EXPECT_EQ(userdataauth_->MigrateKey(*migrate_req_),
-            user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
 }
 
 TEST_F(UserDataAuthExTest, RemoveValidity) {

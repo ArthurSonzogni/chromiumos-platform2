@@ -32,13 +32,8 @@ typedef std::map<std::string, KeyData> KeyLabelMap;
 class MockKeysetManagement : public KeysetManagement {
  public:
   MockKeysetManagement() = default;
-  virtual ~MockKeysetManagement() = default;
 
   MOCK_METHOD(bool, AreCredentialsValid, (const Credentials&), (override));
-  MOCK_METHOD(bool,
-              Migrate,
-              (const VaultKeyset&, const Credentials&),
-              (override));
   MOCK_METHOD(MountStatusOr<std::unique_ptr<VaultKeyset>>,
               GetValidKeyset,
               (const Credentials&),

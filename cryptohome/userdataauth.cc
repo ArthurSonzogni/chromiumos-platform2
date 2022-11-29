@@ -2477,21 +2477,6 @@ MountStatus UserDataAuth::AttemptUserMount(
       .Wrap(std::move(mount_status));
 }
 
-bool UserDataAuth::MigrateVaultKeyset(const Credentials& existing_credentials,
-                                      const Credentials& new_credentials) {
-  DCHECK_EQ(existing_credentials.username(), new_credentials.username());
-  MountStatusOr<std::unique_ptr<VaultKeyset>> vk_status =
-      keyset_management_->GetValidKeyset(existing_credentials);
-  if (!vk_status.ok()) {
-    return false;
-  }
-
-  if (!keyset_management_->Migrate(*vk_status.value().get(), new_credentials)) {
-    return false;
-  }
-  return true;
-}
-
 CryptohomeErrorCode UserDataAuth::AddVaultKeyset(
     const Credentials& existing_credentials,
     const Credentials& new_credentials,
@@ -3053,76 +3038,6 @@ user_data_auth::CryptohomeErrorCode UserDataAuth::RemoveKey(
   return result->local_legacy_error().value();
 }
 
-user_data_auth::CryptohomeErrorCode UserDataAuth::MassRemoveKeys(
-    const user_data_auth::MassRemoveKeysRequest request) {
-  AssertOnMountThread();
-
-  if (!request.has_account_id() || !request.has_authorization_request()) {
-    LOG(ERROR) << "MassRemoveKeysRequest must have account_id and "
-                  "authorization_request.";
-    return user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT;
-  }
-
-  std::string account_id = GetAccountId(request.account_id());
-  if (account_id.empty()) {
-    LOG(ERROR) << "MassRemoveKeysRequest must have vaid account_id.";
-    return user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT;
-  }
-
-  // Note that there's no check for empty AuthorizationRequest key label because
-  // such a key will test against all VaultKeysets of a compatible
-  // key().data().type(), and thus is valid.
-
-  const std::string& auth_secret =
-      request.authorization_request().key().secret();
-  if (auth_secret.empty()) {
-    LOG(ERROR) << "No key secret in MassRemoveKeysRequest.";
-    return user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT;
-  }
-
-  Credentials credentials(account_id, SecureBlob(auth_secret));
-
-  credentials.set_key_data(request.authorization_request().key().data());
-
-  const std::string obfuscated_username = credentials.GetObfuscatedUsername();
-  if (!homedirs_->Exists(obfuscated_username)) {
-    return user_data_auth::CRYPTOHOME_ERROR_ACCOUNT_NOT_FOUND;
-  }
-
-  if (!keyset_management_->AreCredentialsValid(credentials)) {
-    return user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED;
-  }
-
-  // get all labels under the username
-  std::vector<std::string> labels;
-  if (!keyset_management_->GetVaultKeysetLabels(
-          obfuscated_username, /*include_le_labels*/ true, &labels)) {
-    return user_data_auth::CRYPTOHOME_ERROR_KEY_NOT_FOUND;
-  }
-
-  // get all exempt labels from |request|
-  std::unordered_set<std::string> exempt_labels;
-  for (int i = 0; i < request.exempt_key_data_size(); i++) {
-    exempt_labels.insert(request.exempt_key_data(i).label());
-  }
-  for (std::string label : labels) {
-    if (exempt_labels.find(label) == exempt_labels.end()) {
-      // non-exempt label, should be removed
-      std::unique_ptr<VaultKeyset> remove_vk(
-          keyset_management_->GetVaultKeyset(obfuscated_username, label));
-      if (CryptohomeStatus status = keyset_management_->ForceRemoveKeyset(
-              obfuscated_username, remove_vk->GetLegacyIndex());
-          !status.ok()) {
-        LOG(ERROR) << "MassRemoveKeys: failed to remove keyset " << label
-                   << ": " << status;
-        return user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE;
-      }
-    }
-  }
-
-  return user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
-}
-
 user_data_auth::ListKeysReply UserDataAuth::ListKeys(
     const user_data_auth::ListKeysRequest& request) {
   AssertOnMountThread();
@@ -3213,40 +3128,6 @@ user_data_auth::CryptohomeErrorCode UserDataAuth::GetKeyData(
   *found = (vk != nullptr);
   if (*found) {
     *data_out = vk->GetKeyDataOrDefault();
-  }
-
-  return user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
-}
-
-user_data_auth::CryptohomeErrorCode UserDataAuth::MigrateKey(
-    const user_data_auth::MigrateKeyRequest& request) {
-  AssertOnMountThread();
-
-  if (!request.has_account_id() || !request.has_authorization_request()) {
-    LOG(ERROR)
-        << "MigrateKeyRequest must have account_id and authorization_request.";
-    return user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT;
-  }
-
-  std::string account_id = GetAccountId(request.account_id());
-  if (account_id.empty()) {
-    LOG(ERROR) << "MigrateKeyRequest must have valid account_id.";
-    return user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT;
-  }
-
-  Credentials credentials(account_id, SecureBlob(request.secret()));
-  credentials.set_key_data(request.authorization_request().key().data());
-
-  Credentials old_credentials(
-      account_id, SecureBlob(request.authorization_request().key().secret()));
-  if (!MigrateVaultKeyset(old_credentials, credentials)) {
-    ResetDictionaryAttackMitigation();
-    return user_data_auth::CRYPTOHOME_ERROR_MIGRATE_KEY_FAILED;
-  }
-
-  UserSession* const session = sessions_->Find(account_id);
-  if (session) {
-    session->AddCredentials(credentials);
   }
 
   return user_data_auth::CRYPTOHOME_ERROR_NOT_SET;

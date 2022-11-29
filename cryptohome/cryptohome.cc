@@ -202,9 +202,7 @@ constexpr const char* kActions[] = {"mount_ex",
                                     "remove_key_ex",
                                     "get_key_data_ex",
                                     "list_keys_ex",
-                                    "migrate_key_ex",
                                     "add_key_ex",
-                                    "mass_remove_keys",
                                     "update_key_ex",
                                     "remove",
                                     "obfuscate_user",
@@ -301,9 +299,7 @@ enum ActionEnum {
   ACTION_REMOVE_KEY_EX,
   ACTION_GET_KEY_DATA_EX,
   ACTION_LIST_KEYS_EX,
-  ACTION_MIGRATE_KEY_EX,
   ACTION_ADD_KEY_EX,
-  ACTION_MASS_REMOVE_KEYS,
   ACTION_UPDATE_KEY_EX,
   ACTION_REMOVE,
   ACTION_OBFUSCATE_USER,
@@ -397,7 +393,6 @@ constexpr char kFingerprintSwitch[] = "fingerprint";
 constexpr char kKeyLabelSwitch[] = "key_label";
 constexpr char kNewKeyLabelSwitch[] = "new_key_label";
 constexpr char kRemoveKeyLabelSwitch[] = "remove_key_label";
-constexpr char kOldPasswordSwitch[] = "old_password";
 constexpr char kNewPasswordSwitch[] = "new_password";
 constexpr char kForceSwitch[] = "force";
 constexpr char kCreateSwitch[] = "create";
@@ -421,7 +416,6 @@ constexpr char kKeyPolicyLECredential[] = "le";
 constexpr char kProfileSwitch[] = "profile";
 constexpr char kIgnoreCache[] = "ignore_cache";
 constexpr char kRestoreKeyInHexSwitch[] = "restore_key_in_hex";
-constexpr char kMassRemoveExemptLabelsSwitch[] = "exempt_key_labels";
 constexpr char kUseDBus[] = "use_dbus";
 constexpr char kAuthSessionId[] = "auth_session_id";
 constexpr char kChallengeAlgorithm[] = "challenge_alg";
@@ -1312,86 +1306,6 @@ int main(int argc, char** argv) {
       return reply.error();
     }
     printer.PrintHumanOutput("Key authenticated.\n");
-  } else if (!strcmp(switches::kActions[switches::ACTION_MASS_REMOVE_KEYS],
-                     action.c_str())) {
-    user_data_auth::MassRemoveKeysRequest req;
-    if (!BuildAccountId(printer, cl, req.mutable_account_id()))
-      return 1;
-    if (!BuildAuthorization(printer, cl, &misc_proxy,
-                            true /* need_credential */,
-                            req.mutable_authorization_request()))
-      return 1;
-
-    // Since it's unlikely to have comma in a label string,
-    // exempt_key_labels are seperated by comma from command line input
-    // ( e.g. --exempt_key_labels=label1,label2,label3 )
-    std::vector<std::string> exempt_labels = SplitString(
-        cl->GetSwitchValueASCII(switches::kMassRemoveExemptLabelsSwitch), ",",
-        base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
-    for (std::string label : exempt_labels) {
-      cryptohome::KeyData* data = req.add_exempt_key_data();
-      data->set_label(label);
-    }
-
-    user_data_auth::MassRemoveKeysReply reply;
-    brillo::ErrorPtr error;
-    if (!userdataauth_proxy.MassRemoveKeys(req, &reply, &error, timeout_ms) ||
-        error) {
-      printer.PrintFormattedHumanOutput(
-          "MassRemoveKeys call failed: %s",
-          BrilloErrorToString(error.get()).c_str());
-      return 1;
-    }
-    printer.PrintReplyProtobuf(reply);
-    if (reply.error() !=
-        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
-      printer.PrintHumanOutput("MassRemoveKeys failed.\n");
-      return reply.error();
-    }
-    printer.PrintHumanOutput("MassRemoveKeys succeeded.\n");
-  } else if (!strcmp(switches::kActions[switches::ACTION_MIGRATE_KEY_EX],
-                     action.c_str())) {
-    std::string account_id, password, old_password;
-
-    if (!GetAccountId(printer, cl, &account_id)) {
-      return 1;
-    }
-
-    GetSecret(
-        printer, &misc_proxy, cl, switches::kPasswordSwitch,
-        base::StringPrintf("Enter the password for <%s>", account_id.c_str()),
-        &password);
-    GetSecret(printer, &misc_proxy, cl, switches::kOldPasswordSwitch,
-              base::StringPrintf("Enter the old password for <%s>",
-                                 account_id.c_str()),
-              &old_password);
-
-    user_data_auth::MigrateKeyRequest req;
-    req.mutable_account_id()->set_account_id(account_id);
-    req.mutable_authorization_request()->mutable_key()->set_secret(
-        old_password);
-    req.mutable_authorization_request()
-        ->mutable_key()
-        ->mutable_data()
-        ->set_label(cl->GetSwitchValueASCII(switches::kKeyLabelSwitch));
-    req.set_secret(password);
-
-    user_data_auth::MigrateKeyReply reply;
-    brillo::ErrorPtr error;
-    if (!userdataauth_proxy.MigrateKey(req, &reply, &error, timeout_ms) ||
-        error) {
-      printer.PrintFormattedHumanOutput(
-          "MigrateKeyEx call failed: %s",
-          BrilloErrorToString(error.get()).c_str());
-      return 1;
-    }
-    printer.PrintReplyProtobuf(reply);
-    if (reply.error() !=
-        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
-      printer.PrintHumanOutput("Key migration failed.\n");
-      return reply.error();
-    }
-    printer.PrintHumanOutput("Key migration succeeded.\n");
   } else if (!strcmp(switches::kActions[switches::ACTION_ADD_KEY_EX],
                      action.c_str())) {
     std::string new_password;

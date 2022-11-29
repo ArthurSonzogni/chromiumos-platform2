@@ -229,14 +229,6 @@ class UserDataAuth {
   user_data_auth::CryptohomeErrorCode RemoveKey(
       const user_data_auth::RemoveKeyRequest request);
 
-  // Remove all keys under the account specified by |request.account_id| except
-  // those listed in |request.exempt_key_data| (only the label).
-  // |request.authorization_request| contains the authorization to authorize
-  // this change. Returns CRYPTOHOME_ERROR_NOT_SET if the operation is
-  // successful.
-  user_data_auth::CryptohomeErrorCode MassRemoveKeys(
-      const user_data_auth::MassRemoveKeysRequest request);
-
   // List the keys stored in |homedirs_|.
   // See definition of ListKeysReply for what is returned.
   user_data_auth::ListKeysReply ListKeys(
@@ -253,15 +245,6 @@ class UserDataAuth {
       const user_data_auth::GetKeyDataRequest& request,
       KeyData* data_out,
       bool* found);
-
-  // This will migrate, or rather say, change the underlying secret that is used
-  // to protect the user's home directory. The home directory key to change is
-  // specified by |request.account_id|, the change is authorized by
-  // |request.authorization_request| and the new secret is specified by
-  // |request.secret|. This function will return CRYPTOHOME_ERROR_NOT_SET if the
-  // operation is successful, and other error code if it failed.
-  user_data_auth::CryptohomeErrorCode MigrateKey(
-      const user_data_auth::MigrateKeyRequest& request);
 
   // Remove the cryptohome (user's home directory) specified in
   // |request.identifier|. See definition of RemoveReply for what is returned.
@@ -979,13 +962,6 @@ class UserDataAuth {
   CryptohomeErrorCode AddVaultKeyset(const Credentials& existing_credentials,
                                      const Credentials& new_credentials,
                                      bool clobber);
-
-  //  This utility function wraps the keyset_management methods to migrate to a
-  //  new credential for the user keyset.Obtains the vault keyset by
-  //  authenticating against the existing credentials, and calls Migrate() with
-  //  this vault keyset and the given new credentials.
-  bool MigrateVaultKeyset(const Credentials& existing_credentials,
-                          const Credentials& new_credentials);
 
   // ================ Fingerprint Auth Related Methods ==================
 

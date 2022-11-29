@@ -851,47 +851,6 @@ std::unique_ptr<VaultKeyset> KeysetManagement::LoadVaultKeysetForUser(
   return keyset;
 }
 
-bool KeysetManagement::Migrate(const VaultKeyset& old_vk,
-                               const Credentials& newcreds) {
-  int key_index = old_vk.GetLegacyIndex();
-  if (key_index == -1) {
-    LOG(ERROR) << "Attempted migration of key-less mount.";
-    return false;
-  }
-  std::string obfuscated_username = newcreds.GetObfuscatedUsername();
-  // Overwrite the existing keyset.
-  base::FilePath vk_path = old_vk.GetSourceFile();
-
-  std::unique_ptr<VaultKeyset> migrated_vk(
-      vault_keyset_factory_->New(platform_, crypto_));
-  migrated_vk->InitializeToAdd(old_vk);
-  if (old_vk.HasKeyData()) {
-    migrated_vk->SetKeyData(old_vk.GetKeyData());
-  }
-
-  if (!migrated_vk->Encrypt(newcreds.passkey(), obfuscated_username).ok() ||
-      !migrated_vk->Save(vk_path)) {
-    LOG(WARNING) << "Failed to encrypt or write the new keyset to migrate.";
-    return false;
-  }
-
-  // Remove all other keysets during a "migration".
-  std::vector<int> key_indices;
-  if (!GetVaultKeysets(obfuscated_username, &key_indices)) {
-    LOG(WARNING) << "Failed to enumerate keysets after adding one. Weird.";
-    // Fallthrough: The user is migrated, but something else changed keys.
-  }
-  for (int index : key_indices) {
-    if (index == key_index)
-      continue;
-    LOG(INFO) << "Removing keyset " << index << " due to migration.";
-    CryptohomeStatus status =
-        ForceRemoveKeyset(obfuscated_username, index);  // Failure is ok.
-  }
-
-  return true;
-}
-
 void KeysetManagement::ResetLECredentials(const Credentials& creds,
                                           const std::string& obfuscated) {
   std::vector<int> key_indices;

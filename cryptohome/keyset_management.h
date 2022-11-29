@@ -150,9 +150,6 @@ class KeysetManagement {
   // claimed for a given |obfuscated| username.
   virtual bool MoveKeyset(const std::string& obfuscated, int src, int dst);
 
-  // Migrates the cryptohome vault keyset to a new one for the new credentials.
-  virtual bool Migrate(const VaultKeyset& old_vk, const Credentials& newcreds);
-
   // Attempts to reset all LE credentials associated with a username, given
   // a credential |cred|.
   void ResetLECredentials(const Credentials& creds,
