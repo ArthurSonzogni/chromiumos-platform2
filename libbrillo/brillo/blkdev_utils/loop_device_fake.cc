@@ -9,6 +9,7 @@
 #include <string>
 #include <vector>
 
+#include <base/bind.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
@@ -38,15 +39,20 @@ base::FilePath GetLoopDevicePath(int device_number) {
   return base::FilePath(base::StringPrintf("/dev/loop%d", device_number));
 }
 
-int StubIoctlRunner(const base::FilePath& path,
-                    int type,
-                    uint64_t arg,
-                    int flag) {
+}  // namespace
+
+int FakeLoopDeviceManager::StubIoctlRunner(
+    base::WeakPtr<FakeLoopDeviceManager> manager,
+    const base::FilePath& path,
+    int type,
+    uint64_t arg,
+    int flag) {
+  if (!manager)
+    return -1;
   int device_number = ParseLoopDeviceNumber(path);
   struct loop_info64* info;
   struct LoopDev* device;
-  static std::vector<struct LoopDev>& loop_device_vector =
-      *new std::vector<struct LoopDev>();
+  std::vector<LoopDev>& loop_device_vector = manager->loop_device_vector_;
 
   switch (type) {
     case LOOP_GET_STATUS64:
@@ -98,23 +104,30 @@ int StubIoctlRunner(const base::FilePath& path,
   }
 }
 
-}  // namespace
-
 FakeLoopDeviceManager::FakeLoopDeviceManager()
-    : LoopDeviceManager(base::BindRepeating(&StubIoctlRunner)) {}
+    : LoopDeviceManager(LoopIoctl()) {
+  // The callback passed to the parent class should be never invoked in the fake
+  // environment, hence it's OK to pass it as null.
+}
 
 std::unique_ptr<LoopDevice> FakeLoopDeviceManager::AttachDeviceToFile(
     const base::FilePath& backing_file) {
-  int device_number = StubIoctlRunner(base::FilePath("/dev/loop-control"),
-                                      LOOP_CTL_GET_FREE, 0, 0);
+  int device_number = loop_device_vector_.size();
+  loop_device_vector_.push_back({true, base::FilePath(), {0}});
 
-  if (StubIoctlRunner(GetLoopDevicePath(device_number), LOOP_SET_FD,
-                      reinterpret_cast<uint64_t>(&backing_file), 0) < 0)
-    return std::make_unique<LoopDevice>(-1, base::FilePath(),
-                                        base::BindRepeating(&StubIoctlRunner));
+  if (StubIoctlRunner(weak_factory_.GetWeakPtr(),
+                      GetLoopDevicePath(device_number), LOOP_SET_FD,
+                      reinterpret_cast<uint64_t>(&backing_file), 0) < 0) {
+    return std::make_unique<LoopDevice>(
+        -1, base::FilePath(),
+        base::BindRepeating(&FakeLoopDeviceManager::StubIoctlRunner,
+                            weak_factory_.GetWeakPtr()));
+  }
 
-  return std::make_unique<LoopDevice>(device_number, backing_file,
-                                      base::BindRepeating(&StubIoctlRunner));
+  return std::make_unique<LoopDevice>(
+      device_number, backing_file,
+      base::BindRepeating(&FakeLoopDeviceManager::StubIoctlRunner,
+                          weak_factory_.GetWeakPtr()));
 }
 
 std::vector<std::unique_ptr<LoopDevice>>
@@ -123,23 +136,30 @@ FakeLoopDeviceManager::SearchLoopDevicePaths(int device_number) {
   struct LoopDev device;
 
   if (device_number != -1) {
-    if (StubIoctlRunner(GetLoopDevicePath(device_number), LOOP_GET_DEV,
+    if (StubIoctlRunner(weak_factory_.GetWeakPtr(),
+                        GetLoopDevicePath(device_number), LOOP_GET_DEV,
                         reinterpret_cast<uint64_t>(&device), 0) < 0)
       return devices;
 
-    if (device.valid)
-      devices.push_back(
-          std::make_unique<LoopDevice>(device_number, device.backing_file,
-                                       base::BindRepeating(&StubIoctlRunner)));
+    if (device.valid) {
+      devices.push_back(std::make_unique<LoopDevice>(
+          device_number, device.backing_file,
+          base::BindRepeating(&FakeLoopDeviceManager::StubIoctlRunner,
+                              weak_factory_.GetWeakPtr())));
+    }
     return devices;
   }
 
   int i = 0;
-  while (StubIoctlRunner(GetLoopDevicePath(i), LOOP_GET_DEV,
-                         reinterpret_cast<uint64_t>(&device), 0) == 0) {
-    if (device.valid)
+  while (StubIoctlRunner(weak_factory_.GetWeakPtr(), GetLoopDevicePath(i),
+                         LOOP_GET_DEV, reinterpret_cast<uint64_t>(&device),
+                         0) == 0) {
+    if (device.valid) {
       devices.push_back(std::make_unique<LoopDevice>(
-          i, device.backing_file, base::BindRepeating(&StubIoctlRunner)));
+          i, device.backing_file,
+          base::BindRepeating(&FakeLoopDeviceManager::StubIoctlRunner,
+                              weak_factory_.GetWeakPtr())));
+    }
     i++;
   }
   return devices;
