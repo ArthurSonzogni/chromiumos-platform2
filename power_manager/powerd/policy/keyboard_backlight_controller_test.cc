@@ -5,10 +5,12 @@
 #include "power_manager/powerd/policy/keyboard_backlight_controller.h"
 
 #include <cmath>
+#include <limits>
 #include <string>
 
 #include <gtest/gtest.h>
 
+#include "base/strings/stringprintf.h"
 #include "power_manager/common/clock.h"
 #include "power_manager/common/fake_prefs.h"
 #include "power_manager/common/power_constants.h"
@@ -19,6 +21,7 @@
 #include "power_manager/powerd/system/ambient_light_sensor_stub.h"
 #include "power_manager/powerd/system/backlight_stub.h"
 #include "power_manager/powerd/system/dbus_wrapper_stub.h"
+#include "power_manager/proto_bindings/backlight.pb.h"
 #include "power_manager/proto_bindings/policy.pb.h"
 
 namespace power_manager::policy {
@@ -908,6 +911,171 @@ TEST_F(KeyboardBacklightControllerTest,
   // we use the first non-zero user step.
   CallToggleKeyboardBacklight();
   EXPECT_EQ(backlight_.current_level(), 10.0);
+}
+
+TEST_F(KeyboardBacklightControllerTest, SetKeyboardBrightness) {
+  initial_backlight_level_ = 0;
+  user_steps_pref_ = "0.0\n10.0\n40.0\n60.0\n100.0";
+  Init();
+  EXPECT_EQ(backlight_.current_level(), 0);
+
+  // Call SetUserBrightness, and ensure the brightness was updated and
+  // a signal emitted.
+  CallSetKeyboardBrightness(/*percent=*/45,
+                            SetBacklightBrightnessRequest_Transition_FAST,
+                            SetBacklightBrightnessRequest_Cause_USER_REQUEST);
+  EXPECT_EQ(backlight_.current_level(), 45);
+  test::CheckBrightnessChangedSignal(
+      &dbus_wrapper_, 0, kKeyboardBrightnessChangedSignal,
+      /*brightness_percent=*/45.0,
+      BacklightBrightnessChange_Cause_USER_REQUEST);
+}
+
+TEST_F(KeyboardBacklightControllerTest,
+       SetKeyboardBrightnessLowBrightnessValues) {
+  initial_backlight_level_ = 0;
+  user_steps_pref_ = "0.0\n10.0\n40.0\n60.0\n100.0";
+  Init();
+  EXPECT_EQ(backlight_.current_level(), 0);
+
+  // Calls with a brightness >= 10 should use the user-specified value.
+  CallSetKeyboardBrightness(/*percent=*/10,
+                            SetBacklightBrightnessRequest_Transition_FAST,
+                            SetBacklightBrightnessRequest_Cause_USER_REQUEST);
+  EXPECT_EQ(backlight_.current_level(), 10);
+
+  // Calls with a brightness < 10 should be truncated to zero.
+  CallSetKeyboardBrightness(/*percent=*/9.5,
+                            SetBacklightBrightnessRequest_Transition_FAST,
+                            SetBacklightBrightnessRequest_Cause_USER_REQUEST);
+  EXPECT_EQ(backlight_.current_level(), 0);
+}
+
+TEST_F(KeyboardBacklightControllerTest,
+       SetKeyboardBrightnessSetsManualControl) {
+  // Set up a system with no ALS, but user activity-based dimming enabled.
+  user_steps_pref_ = "0.0\n10.0\n40.0\n60.0\n100.0";
+  pass_light_sensor_ = false;
+  no_als_brightness_pref_ = 40.0;
+  turn_on_for_user_activity_pref_ = 1;
+  keep_on_ms_pref_ = 30'000;  // 30 seconds
+  initial_backlight_level_ = 40.0;
+  Init();
+
+  // Wait 30 seconds for the backlight to turn off due to inactivity.
+  AdvanceTime(base::Milliseconds(keep_on_ms_pref_));
+  EXPECT_EQ(backlight_.current_level(), 0);
+
+  // Call SetUserBrightness with a custom brightness. Backlight should turn on.
+  CallSetKeyboardBrightness(/*percent=*/45,
+                            SetBacklightBrightnessRequest_Transition_FAST,
+                            SetBacklightBrightnessRequest_Cause_USER_REQUEST);
+  EXPECT_EQ(backlight_.current_level(), 45);
+
+  // The backlight should remain on, even after `keep_on_ms_pref_` has passed.
+  AdvanceTime(base::Milliseconds(keep_on_ms_pref_));
+  EXPECT_EQ(backlight_.current_level(), 45);
+}
+
+TEST_F(KeyboardBacklightControllerTest, SetKeyboardBrightnessWithIncrease) {
+  initial_backlight_level_ = 0;
+  user_steps_pref_ = "0.0\n10.0\n40.0\n60.0\n100.0";
+  Init();
+  ASSERT_EQ(backlight_.current_level(), 0);
+
+  // Call SetUserBrightness, followed by an increase in brightness for various
+  // values. The brightness should jump up by a non-trivial step.
+  struct TestCase {
+    double set_brightness;
+    double expected;
+  };
+  for (TestCase test_case : std::vector<TestCase>{
+           {0, 10},
+           {1, 10},
+           {10, 40},
+           {11, 40},
+           {39, 60},
+           {41, 60},
+           {85, 100},
+           {99, 100},
+           {100, 100},
+       }) {
+    SCOPED_TRACE(base::StringPrintf(
+        "Setting brightness to %lf%% followed by an increase",
+        test_case.set_brightness));
+
+    // Manually set a brightness, followed by an increase.
+    CallSetKeyboardBrightness(/*percent=*/test_case.set_brightness,
+                              SetBacklightBrightnessRequest_Transition_FAST,
+                              SetBacklightBrightnessRequest_Cause_USER_REQUEST);
+    CallIncreaseKeyboardBrightness();
+
+    EXPECT_EQ(backlight_.current_level(), test_case.expected);
+  }
+}
+
+TEST_F(KeyboardBacklightControllerTest, SetKeyboardBrightnessWithDecrease) {
+  initial_backlight_level_ = 0;
+  user_steps_pref_ = "0.0\n10.0\n40.0\n60.0\n100.0";
+  Init();
+  ASSERT_EQ(backlight_.current_level(), 0);
+
+  // Call SetUserBrightness, followed by an decrease in brightness for various
+  // values. The brightness should decrease by a non-trivial step.
+  struct TestCase {
+    double set_brightness;
+    double expected;
+  };
+  for (TestCase test_case : std::vector<TestCase>{
+           {0, 0},
+           {1, 0},
+           {10, 0},
+           {11, 0},
+           {41, 10},
+           {59, 40},
+           {61, 40},
+           {99, 60},
+           {100, 60},
+       }) {
+    SCOPED_TRACE(
+        base::StringPrintf("Setting brightness to %lf%% followed by a decrease",
+                           test_case.set_brightness));
+
+    // Manually set a brightness, followed by a decrease.
+    CallSetKeyboardBrightness(/*percent=*/test_case.set_brightness,
+                              SetBacklightBrightnessRequest_Transition_FAST,
+                              SetBacklightBrightnessRequest_Cause_USER_REQUEST);
+    CallDecreaseKeyboardBrightness();
+
+    EXPECT_EQ(backlight_.current_level(), test_case.expected);
+  }
+}
+
+TEST_F(KeyboardBacklightControllerTest,
+       SetKeyboardBrightnessWithBadBrightness) {
+  initial_backlight_level_ = 0;
+  user_steps_pref_ = "0.0\n10.0\n40.0\n60.0\n100.0";
+  Init();
+
+  // Test bad `brightness` values.
+  struct TestCase {
+    double set_brightness;
+    double expected;
+  };
+  for (TestCase test_case : std::vector<TestCase>{
+           {-3, 0},
+           {103, 100},
+           {std::numeric_limits<double>::infinity(), 100},
+           {-std::numeric_limits<double>::infinity(), 0},
+           {std::nan("nan"), 0},
+       }) {
+    SCOPED_TRACE(base::StringPrintf("Testing input brightness of %lf%%",
+                                    test_case.set_brightness));
+    CallSetKeyboardBrightness(test_case.set_brightness,
+                              SetBacklightBrightnessRequest_Transition_FAST,
+                              SetBacklightBrightnessRequest_Cause_USER_REQUEST);
+    EXPECT_EQ(backlight_.current_level(), test_case.expected);
+  }
 }
 
 TEST_F(KeyboardBacklightControllerTest, ChangeBacklightDevice) {

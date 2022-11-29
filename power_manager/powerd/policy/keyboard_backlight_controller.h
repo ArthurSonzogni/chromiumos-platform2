@@ -198,19 +198,21 @@ class KeyboardBacklightController : public BacklightController,
   // `user_steps_`.
   ssize_t PercentToUserStepIndex(double percent) const;
 
-  // A default backlight brightness, represented by an index in `user_steps_`.
+  // A default backlight brightness, represented as a percent in the range
+  // (0.0, 100.0]
   //
   // `startup_brightness_percent` is the brightness of the keyboard at the time
   // powerd started.
   //
   // Guaranteed to be strictly positive (i.e., not off).
-  ssize_t DefaultUserStepIndex(double startup_brightness_percent) const;
+  double DefaultUserBrightnessPercent(double startup_brightness_percent) const;
 
-  // Set the backlight brightness to the given index in `user_steps_`.
+  // Set the backlight brightness to the given percentage value in the range
+  // [0, 100].
   //
   // This function also tracks the previously set value, required if the
   // user toggles the backlight from off to on.
-  void UpdateUserStep(ssize_t index);
+  void UpdateUserBrightnessPercent(double brightness);
 
   mutable std::unique_ptr<Clock> clock_;
 
@@ -260,18 +262,18 @@ class KeyboardBacklightController : public BacklightController,
   // 0 ("off"). Populated from a preference.
   std::vector<double> user_steps_;
 
-  // Current brightness step within |user_steps_| set by user, or -1 if
-  // |automated_percent_| should be used.
+  // Current user-selected brightness in the range [0.0, 100], or std::nullopt
+  // if |automated_percent_| should be used instead.
   //
-  // Update with |UpdateUserStep| to ensure |last_positive_user_step_index_|
-  // stays in sync.
-  ssize_t user_step_index_ = -1;
+  // Update with |UpdateUserBrightness| to ensure
+  // |last_positive_user_brightness_percent_| stays in sync.
+  std::optional<double> user_brightness_percent_;
 
   // The most recent non-zero user-set backlight brightness.
   //
   // Used when the backlight is toggled from off to on: we restore the
   // user's previous brightness value.
-  ssize_t last_positive_user_step_index_ = -1;
+  double last_positive_user_brightness_percent_ = -1;
 
   // Min, min visible and max percentages used to calculate scaled percentages
   // in |user_steps_| from raw percentages. This is populated from a preference.
