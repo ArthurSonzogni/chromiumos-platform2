@@ -104,6 +104,8 @@ std::vector<uint8_t> PrivateComputingAdaptor::SaveLastPingDatesStatus(
     return SerializeProto(response);
   }
 
+  LOG(INFO)
+      << "Successfully saved last ping date to /var/lib/private_computing.";
   return SerializeProto(response);
 }
 
@@ -143,6 +145,7 @@ std::vector<uint8_t> PrivateComputingAdaptor::GetLastPingDatesStatus() {
 
   // Successfully read file into |result|.
   SaveStatusRequest request;
+  LOG(INFO) << "Successfully read the last ping dates from preserved file.";
 
   if (!request.ParseFromString(result)) {
     response.set_error_message(
