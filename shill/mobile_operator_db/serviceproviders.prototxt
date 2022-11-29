@@ -12326,6 +12326,14 @@ mno {
         start: 310170863042423
         end:   310170863142422
       }
+      range {
+        start: 310170894695610
+        end:   310170894705609
+      }
+      range {
+        start: 310170894804610
+        end:   310170894819609
+      }
     }
     data {
       uuid : "592a34a4-b075-4e05-9306-3f8c86b386e4"
@@ -12675,25 +12683,15 @@ mno {
   }
   mvno {
     mvno_filter {
-      type : IMSI
-      range {
-        start: 310260099000135
-        end:   310260099010134
-      }
-      range {
-        start: 310260099055670
-        end:   310260099065669
-      }
-      range {
-        start: 310260099290255
-        end:   310260099310254
-      }
+      type : GID1
+      regex : "6136"
     }
     data {
       uuid : "302da8c0-13e4-4032-9a76-b483be401436"
       localized_name {
         name : "Kajeet"
       }
+      mccmnc : "310260"
       prioritizes_name : true
       mobile_apn {
         apn : "iot.kajeet"
@@ -13052,16 +13050,24 @@ mno {
     mvno_filter {
       type : IMSI
       range {
+        start: 311480798735658
+        end:   311480798760657
+      }
+      range {
+        start: 311480812838208
+        end:   311480812863207
+      }
+      range {
+        start: 311480954649352
+        end:   311480954699351
+      }
+      range {
         start: 311480994222617
         end:   311480994232616
       }
       range {
         start: 311480994732188
         end:   311480994852187
-      }
-      range {
-        start: 311480954649352
-        end:   311480954699351
       }
     }
     data {
