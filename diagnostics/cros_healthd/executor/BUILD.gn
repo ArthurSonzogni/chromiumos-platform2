@@ -10,6 +10,7 @@ pkg_config("libcros_healthd_executor_pkg_deps") {
     "libbrillo",
     "libchrome",
     "libec",
+    "libevdev",
     "libmojo",
   ]
 }
@@ -34,6 +35,9 @@ executable("executor-delegate") {
     "delegate_main.cc",
   ]
   configs += [ ":libcros_healthd_executor_pkg_deps" ]
-  deps = [ "//diagnostics/cros_healthd/executor/mojom:cros_healthd_executor_mojo_bindings" ]
+  deps = [
+    "//diagnostics/cros_healthd/executor/mojom:cros_healthd_executor_mojo_bindings",
+    "//diagnostics/cros_healthd/executor/utils",
+  ]
   install_path = "/usr/libexec/diagnostics"
 }

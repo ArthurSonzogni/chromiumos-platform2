@@ -6,6 +6,7 @@
 
 #include <array>
 #include <fcntl.h>
+#include <memory>
 #include <utility>
 
 #include <base/logging.h>
@@ -20,6 +21,7 @@
 
 #include "diagnostics/cros_healthd/executor/constants.h"
 #include "diagnostics/cros_healthd/executor/mojom/executor.mojom.h"
+#include "diagnostics/cros_healthd/executor/utils/evdev_utils.h"
 
 namespace {
 
@@ -227,6 +229,13 @@ void DelegateImpl::ResetLedColor(mojom::LedName name,
   }
 
   std::move(callback).Run(std::nullopt);
+}
+
+void DelegateImpl::MonitorAudioJack(
+    mojo::PendingRemote<mojom::AudioJackObserver> observer) {
+  // Long-run method. The following object keeps alive until the process
+  // terminates.
+  new EvdevAudioJackObserver(std::move(observer));
 }
 
 }  // namespace diagnostics

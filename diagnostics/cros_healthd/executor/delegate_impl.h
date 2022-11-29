@@ -5,6 +5,8 @@
 #ifndef DIAGNOSTICS_CROS_HEALTHD_EXECUTOR_DELEGATE_IMPL_H_
 #define DIAGNOSTICS_CROS_HEALTHD_EXECUTOR_DELEGATE_IMPL_H_
 
+#include <mojo/public/cpp/bindings/pending_remote.h>
+
 #include "diagnostics/cros_healthd/executor/mojom/delegate.mojom.h"
 
 namespace diagnostics {
@@ -26,6 +28,9 @@ class DelegateImpl : public ash::cros_healthd::mojom::Delegate {
                    SetLedColorCallback callback) override;
   void ResetLedColor(ash::cros_healthd::mojom::LedName name,
                      ResetLedColorCallback callback) override;
+  void MonitorAudioJack(
+      mojo::PendingRemote<ash::cros_healthd::mojom::AudioJackObserver> observer)
+      override;
 };
 
 }  // namespace diagnostics

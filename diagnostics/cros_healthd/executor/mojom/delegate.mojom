@@ -45,4 +45,10 @@ interface Delegate {
   // The response:
   // * |err| - Error message if existed.
   ResetLedColor(LedName name) => (string? err);
+
+  // Monitor audio jack events.
+  //
+  // The request:
+  // * |observer| - The observer to notify client.
+  MonitorAudioJack(pending_remote<AudioJackObserver> observer);
 };
