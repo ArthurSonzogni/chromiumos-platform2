@@ -42,6 +42,6 @@ Example usage:
 
 | Model                                     | Latency (ms)  | Accuracy                             | Power Usage | Max Memory |
 |-------------------------------------------|--------------:|-------------------------------------:|-------------|------------|
-| selfie_segmentation_landscape_256x256     |          <=10 |                                  TBD |         TBD |    <=100MB |
+| selfie_segmentation_landscape_256x256     |          <= 6 |                                  TBD |         TBD |    <=100MB |
 | convolution_benchmark_1_144x256           |          <= 4 | avg_err <=0.0003<br/>std_dev <=5e-06 |         TBD |    <=100MB |
 | convolution_benchmark_2_144x256           |          <= 4 | avg_err <=0.0003<br/>std_dev <=5e-06 |         TBD |    <=100MB |
