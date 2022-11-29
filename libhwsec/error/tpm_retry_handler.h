@@ -39,7 +39,7 @@ class TPMRetryHandler {
     if (remaining_try_count_ <= 0) {
       result = MakeStatus<TPMError>("Retry failed", TPMRetryAction::kReboot)
                    .Wrap(std::move(result).err_status());
-      return false;
+      return true;
     }
 
     bool retry = false;
