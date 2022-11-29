@@ -933,7 +933,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocLECredManPinWeaverFailedInCheckSecret = 553,
   /* =Obsolete= */
   kLocUserDataAuthNoTPMInInitChalRespAuth = 554,
-  /* ./userdataauth.cc */
+  /* =Obsolete= */
   kLocUserDataAuthTPMNotReadyInInitChalRespAuth = 555,
   /* =Obsolete= */
   kLocUserDataAuthCantQueryROCAVulnInInitChalRespAuth = 556,
@@ -1079,7 +1079,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocChalCredDecryptUnsealingResponseNoChallenge = 626,
   /* ./challenge_credentials/challenge_credentials_generate_new_operation.cc */
   kLocChalCredGenRandFailed = 627,
-  /* ./userdataauth.cc */
+  /* =Obsolete= */
   kLocUserDataAuthHwsecNotReadyInInitChalRespAuth = 628,
   /* ./userdataauth.cc */
   kLocUserDataAuthUserNonexistentInListAuthFactors = 629,
@@ -1343,6 +1343,8 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocSmartCardVerifierNoInputAlg = 2306,
   /* ./smart_card_verifier.cc */
   kLocSmartCardVerifierCannotVerify = 2307,
+  /* ./challenge_credentials/challenge_credentials_helper_impl.cc */
+  kLocChalCredHelperTpmUnavailableInCheckTpmStatus = 2308,
   //////////////////////////////////////////////////
   //// This is a separator block at value 2500
   //// See location_db.py for more info.

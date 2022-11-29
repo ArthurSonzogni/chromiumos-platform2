@@ -93,11 +93,20 @@ class ChallengeCredentialsHelperImpl final : public ChallengeCredentialsHelper {
   void OnVerifyKeyCompleted(VerifyKeyCallback original_callback,
                             TPMStatus verify_status);
 
+  // This will check if the current TPM is available. If it is available an
+  // OKStatus will be returned, if we fail to check or it is unvavailable an
+  // error status will be returned.
+  TPMStatus CheckTPMStatus();
+
   // This will check if the current TPM (if that's the underlying secure
   // element) is vulnerable to ROCA vulnerability. If not, an OkStatus is
   // returned. If we fail to check or if it is vulnerable, an error status will
   // be returned.
   TPMStatus CheckSrkRocaStatus();
+
+  // A cache of the TPM IsReady result. This checks for the availability of a
+  // TPM on device.
+  std::optional<bool> tpm_ready_;
 
   // A cache of SRK ROCA check result. The result takes the test image into
   // consideration, i.e. no need to check whether we're on test image if this

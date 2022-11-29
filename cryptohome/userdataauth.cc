@@ -1713,26 +1713,6 @@ CryptohomeStatus UserDataAuth::InitForChallengeResponseAuth() {
     return OkStatus<CryptohomeError>();
   }
 
-  hwsec::StatusOr<bool> is_ready = hwsec_->IsReady();
-  if (!is_ready.ok()) {
-    LOG(ERROR) << "Failed to get the hwsec ready state: " << is_ready.status();
-    return MakeStatus<CryptohomeError>(
-        CRYPTOHOME_ERR_LOC(kLocUserDataAuthHwsecNotReadyInInitChalRespAuth),
-        ErrorActionSet(
-            {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kFatal}),
-        user_data_auth::CRYPTOHOME_ERROR_MOUNT_FATAL);
-  }
-
-  if (!is_ready.value()) {
-    LOG(ERROR) << "HWSec must be initialized in order to do challenge-response "
-                  "authentication";
-    return MakeStatus<CryptohomeError>(
-        CRYPTOHOME_ERR_LOC(kLocUserDataAuthTPMNotReadyInInitChalRespAuth),
-        ErrorActionSet(
-            {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kReboot}),
-        user_data_auth::CRYPTOHOME_ERROR_MOUNT_FATAL);
-  }
-
   if (!mount_thread_bus_) {
     LOG(ERROR) << "Cannot do challenge-response mount without system D-Bus bus";
     return MakeStatus<CryptohomeError>(

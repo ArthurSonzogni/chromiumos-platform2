@@ -71,6 +71,41 @@ ChallengeCredentialsHelperImpl::~ChallengeCredentialsHelperImpl() {
   DCHECK(thread_checker_.CalledOnValidThread());
 }
 
+TPMStatus ChallengeCredentialsHelperImpl::CheckTPMStatus() {
+  // Prepare the TPMStatus for fault case because it will be used in
+  // multiple places.
+  auto tpm_unavailable_status = MakeStatus<CryptohomeTPMError>(
+      CRYPTOHOME_ERR_LOC(kLocChalCredHelperTpmUnavailableInCheckTpmStatus),
+      ErrorActionSet({ErrorAction::kDevCheckUnexpectedState,
+                      ErrorAction::kReboot, ErrorAction::kPowerwash}),
+      TPMRetryAction::kReboot, user_data_auth::CRYPTOHOME_ERROR_MOUNT_FATAL);
+
+  // Have we checked before?
+  if (tpm_ready_.has_value()) {
+    if (tpm_ready_.value()) {
+      return OkStatus<CryptohomeTPMError>();
+    } else {
+      return tpm_unavailable_status;
+    }
+  }
+
+  hwsec::StatusOr<bool> is_ready = hwsec_->IsReady();
+  if (!is_ready.ok()) {
+    LOG(ERROR) << "Failed to get the hwsec ready state: " << is_ready.status();
+    return tpm_unavailable_status;
+  }
+
+  if (!is_ready.value()) {
+    LOG(ERROR) << "HWSec must be initialized in order to do challenge-response "
+                  "authentication";
+    tpm_ready_ = false;
+    return tpm_unavailable_status;
+  }
+
+  tpm_ready_ = true;
+  return OkStatus<CryptohomeTPMError>();
+}
+
 TPMStatus ChallengeCredentialsHelperImpl::CheckSrkRocaStatus() {
   // Prepare the TPMStatus for vulnerable case because it will be used in
   // multiple places.
@@ -125,11 +160,18 @@ void ChallengeCredentialsHelperImpl::GenerateNew(
   DCHECK(thread_checker_.CalledOnValidThread());
   DCHECK(!callback.is_null());
 
-  // Check SRK ROCA status.
-  TPMStatus status = CheckSrkRocaStatus();
+  // Check if TPM is enabled.
+  TPMStatus status = CheckTPMStatus();
   if (!status.ok()) {
     // We can forward the TPMStatus directly without wrapping because the
     // callback will usually Wrap() the resulting error status anyway.
+    std::move(callback).Run(std::move(status));
+    return;
+  }
+
+  // Check SRK ROCA status.
+  status = CheckSrkRocaStatus();
+  if (!status.ok()) {
     std::move(callback).Run(std::move(status));
     return;
   }
@@ -153,11 +195,18 @@ void ChallengeCredentialsHelperImpl::Decrypt(
   DCHECK(thread_checker_.CalledOnValidThread());
   DCHECK(!callback.is_null());
 
-  // Check SRK ROCA status.
-  TPMStatus status = CheckSrkRocaStatus();
+  // Check if TPM is enabled.
+  TPMStatus status = CheckTPMStatus();
   if (!status.ok()) {
     // We can forward the TPMStatus directly without wrapping because the
     // callback will usually Wrap() the resulting error status anyway.
+    std::move(callback).Run(std::move(status));
+    return;
+  }
+
+  // Check SRK ROCA status.
+  status = CheckSrkRocaStatus();
+  if (!status.ok()) {
     std::move(callback).Run(std::move(status));
     return;
   }
@@ -176,11 +225,18 @@ void ChallengeCredentialsHelperImpl::VerifyKey(
   DCHECK(thread_checker_.CalledOnValidThread());
   DCHECK(!callback.is_null());
 
-  // Check SRK ROCA status.
-  TPMStatus status = CheckSrkRocaStatus();
+  // Check if TPM is enabled.
+  TPMStatus status = CheckTPMStatus();
   if (!status.ok()) {
     // We can forward the TPMStatus directly without wrapping because the
     // callback will usually Wrap() the resulting error status anyway.
+    std::move(callback).Run(std::move(status));
+    return;
+  }
+
+  // Check SRK ROCA status.
+  status = CheckSrkRocaStatus();
+  if (!status.ok()) {
     std::move(callback).Run(std::move(status));
     return;
   }

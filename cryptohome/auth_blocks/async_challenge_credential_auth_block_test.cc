@@ -584,6 +584,7 @@ class AsyncChallengeCredentialAuthBlockFullTest : public ::testing::Test {
       brillo::BlobFromString("public_key_spki_der");
 
   AsyncChallengeCredentialAuthBlockFullTest() {
+    ON_CALL(hwsec_, IsReady()).WillByDefault(ReturnValue(true));
     ON_CALL(hwsec_, IsSrkRocaVulnerable()).WillByDefault(ReturnValue(false));
 
     EXPECT_CALL(hwsec_, GetRandomBlob(_)).WillRepeatedly([](size_t length) {
