@@ -4,6 +4,7 @@
 
 #include "power_manager/common/util.h"
 
+#include <limits>
 #include <string>
 
 #include <base/files/file_path.h>
@@ -38,6 +39,24 @@ TEST(UtilTest, JoinPaths) {
   EXPECT_EQ("/a,/b,/c", JoinPaths({base::FilePath("/a"), base::FilePath("/b"),
                                    base::FilePath("/c")},
                                   ","));
+}
+
+TEST(UtilTest, ClampPercent) {
+  // Inside the range [0, 100].
+  EXPECT_EQ(ClampPercent(0.0), 0.0);
+  EXPECT_EQ(ClampPercent(50.0), 50.0);
+  EXPECT_EQ(ClampPercent(100.0), 100.0);
+
+  // Outside the range [0, 100].
+  EXPECT_EQ(ClampPercent(10000.0), 100.0);
+  EXPECT_EQ(ClampPercent(101.0), 100.0);
+  EXPECT_EQ(ClampPercent(-1.0), 0.0);
+  EXPECT_EQ(ClampPercent(-1000.0), 0.0);
+
+  // Special double numbers.
+  EXPECT_EQ(ClampPercent(std::numeric_limits<double>::infinity()), 100.0);
+  EXPECT_EQ(ClampPercent(-std::numeric_limits<double>::infinity()), 0.0);
+  EXPECT_EQ(ClampPercent(std::nan("1")), 0.0);
 }
 
 }  // namespace power_manager::util

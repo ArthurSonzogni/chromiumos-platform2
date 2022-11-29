@@ -44,6 +44,9 @@ bool ReadTypeFile(const base::FilePath& path,
 }  // namespace
 
 double ClampPercent(double percent) {
+  if (std::isnan(percent)) {
+    return 0.0;
+  }
   return std::max(0.0, std::min(100.0, percent));
 }
 
