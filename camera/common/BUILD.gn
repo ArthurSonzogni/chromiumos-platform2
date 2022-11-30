@@ -212,6 +212,15 @@ source_set("camera_algo_bridge") {
   ]
 }
 
+source_set("defect_detector") {
+  sources = [ "//camera/common/defect_detector_impl.cc" ]
+  public_configs = [ ":target_defaults" ]
+
+  # -fPIC needed by the libcros_camera.so shared library.
+  configs += [ "//common-mk:pic" ]
+  public_deps = [ ":base" ]
+}
+
 source_set("face_detection") {
   sources = [ "//camera/common/camera_face_detection.cc" ]
   libs = [ "facessd_cros" ]
@@ -328,6 +337,7 @@ shared_library("libcros_camera") {
     ":base",
     ":camera_algo_bridge",
     ":camera_connector",
+    ":defect_detector",
     ":face_detection",
     ":jpeg",
     ":libcros_camera_device_config",
