@@ -5,11 +5,14 @@
 #ifndef ML_SODA_PROTO_MOJOM_CONVERSION_H_
 #define ML_SODA_PROTO_MOJOM_CONVERSION_H_
 
+#include <optional>
 #include "chrome/knowledge/soda/extended_soda_api.pb.h"
 #include "ml/mojom/soda.mojom.h"
 
 namespace ml {
-chromeos::machine_learning::mojom::SpeechRecognizerEventPtr
+// Returns std::nullopt if `soda_response` is an internal message not
+// convertible to mojom::SpeechRecognizerEvent.
+std::optional<chromeos::machine_learning::mojom::SpeechRecognizerEventPtr>
 SpeechRecognizerEventFromProto(
     const speech::soda::chrome::SodaResponse& soda_response);
 

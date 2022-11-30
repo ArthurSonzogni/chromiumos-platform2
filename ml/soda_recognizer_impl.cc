@@ -111,8 +111,10 @@ void SodaRecognizerImpl::OnSodaEvent(const std::string& response_str) {
   } else if (IsShutdownSodaResponse(response)) {
     // Shutdowns are ignored for now.
   } else {
-    client_remote_->OnSpeechRecognizerEvent(
-        SpeechRecognizerEventFromProto(response));
+    auto recognizer_event = SpeechRecognizerEventFromProto(response);
+    if (recognizer_event != std::nullopt) {
+      client_remote_->OnSpeechRecognizerEvent(std::move(*recognizer_event));
+    }
   }
 }
 

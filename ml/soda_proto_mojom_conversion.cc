@@ -16,8 +16,15 @@ using speech::soda::chrome::SodaResponse;
 
 namespace ml {
 
-chromeos::machine_learning::mojom::SpeechRecognizerEventPtr
+std::optional<chromeos::machine_learning::mojom::SpeechRecognizerEventPtr>
 SpeechRecognizerEventFromProto(const SodaResponse& soda_response) {
+  // Always print the log lines.
+  if (soda_response.log_lines_size() > 0) {
+    for (const auto& log_line : soda_response.log_lines()) {
+      LOG(ERROR) << log_line;
+    }
+  }
+
   chromeos::machine_learning::mojom::SpeechRecognizerEventPtr
       speech_recognizer_event;
   if (soda_response.soda_type() == SodaResponse::AUDIO_LEVEL) {
@@ -48,10 +55,14 @@ SpeechRecognizerEventFromProto(const SodaResponse& soda_response) {
     speech_recognizer_event = chromeos::machine_learning::mojom::
         SpeechRecognizerEvent::NewEndpointerEvent(
             internal::EndpointerEventFromProto(soda_response));
+  } else if (soda_response.soda_type() ==
+             SodaResponse::LOGS_ONLY_ARTIFICIAL_MESSAGE) {
+    return std::nullopt;
   } else {
-    LOG(DFATAL) << "Unexpected type of soda type to convert: "
-                << speech::soda::chrome::SodaResponse_SodaMessageType_Name(
-                       soda_response.soda_type());
+    LOG(ERROR) << "Unexpected type of soda type to convert: "
+               << speech::soda::chrome::SodaResponse_SodaMessageType_Name(
+                      soda_response.soda_type());
+    return std::nullopt;
   }
   return speech_recognizer_event;
 }
