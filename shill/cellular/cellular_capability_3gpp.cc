@@ -176,6 +176,20 @@ std::string MMBearerAllowedAuthToApnAuthentication(
   }
 }
 
+std::string MMBearerIpFamilyToIpType(MMBearerIpFamily ip_type) {
+  switch (ip_type) {
+    case MM_BEARER_IP_FAMILY_IPV4:
+      return kApnIpTypeV4;
+    case MM_BEARER_IP_FAMILY_IPV6:
+      return kApnIpTypeV6;
+    case MM_BEARER_IP_FAMILY_IPV4V6:
+    case MM_BEARER_IP_FAMILY_ANY:
+      return kApnIpTypeV4V6;
+    default:
+      return "";
+  }
+}
+
 bool IsRegisteredState(MMModem3gppRegistrationState state) {
   return (state == MM_MODEM_3GPP_REGISTRATION_STATE_HOME ||
           state == MM_MODEM_3GPP_REGISTRATION_STATE_ROAMING);
@@ -1851,6 +1865,11 @@ void CellularCapability3gpp::OnProfilesChanged(const Profiles& profiles) {
         MMBearerAllowedAuthToApnAuthentication(static_cast<MMBearerAllowedAuth>(
             brillo::GetVariantValueOrDefault<uint32_t>(
                 profile, CellularBearer::kMMAllowedAuthProperty)));
+    if (base::Contains(profile, CellularBearer::kMMIpTypeProperty)) {
+      apn_info.ip_type = MMBearerIpFamilyToIpType(static_cast<MMBearerIpFamily>(
+          brillo::GetVariantValueOrDefault<uint32_t>(
+              profile, CellularBearer::kMMIpTypeProperty)));
+    }
     profiles_.push_back(std::move(apn_info));
   }
 
