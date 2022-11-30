@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <linux/nl80211.h>
+
 #include "shill/wifi/wifi_rf.h"
 
 #include <chromeos/dbus/shill/dbus-constants.h>
@@ -31,6 +33,17 @@ WiFiBand WiFiBandFromName(const std::string& name) {
     return WiFiBand::kAllBands;
   } else {
     return WiFiBand::kUnknownBand;
+  }
+}
+
+int WiFiBandToNl(WiFiBand band) {
+  switch (band) {
+    case WiFiBand::kLowBand:
+      return NL80211_BAND_2GHZ;
+    case WiFiBand::kHighBand:
+      return NL80211_BAND_5GHZ;
+    default:
+      return -1;
   }
 }
 
