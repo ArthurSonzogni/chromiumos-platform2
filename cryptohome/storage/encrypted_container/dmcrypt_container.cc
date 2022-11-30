@@ -10,6 +10,7 @@
 #include <tuple>
 #include <utility>
 
+#include <absl/cleanup/cleanup.h>
 #include <base/bind.h>
 #include <base/callback_helpers.h>
 #include <base/files/file_path.h>
@@ -92,16 +93,13 @@ bool DmcryptContainer::Setup(const FileSystemKey& encryption_key) {
   // Ensure that the dm-crypt device or the underlying backing device are
   // not left attached on the failure paths. If the backing device was created
   // during setup, purge it as well.
-  base::ScopedClosureRunner device_cleanup_runner;
-
-  if (created) {
-    device_cleanup_runner = base::ScopedClosureRunner(base::BindOnce(
-        base::IgnoreResult(&DmcryptContainer::Purge), base::Unretained(this)));
-  } else {
-    device_cleanup_runner = base::ScopedClosureRunner(
-        base::BindOnce(base::IgnoreResult(&DmcryptContainer::Teardown),
-                       base::Unretained(this)));
-  }
+  absl::Cleanup device_cleanup_runner = [this, created]() {
+    if (created) {
+      Purge();
+    } else {
+      Teardown();
+    }
+  };
 
   if (!backing_device_->Setup()) {
     LOG(ERROR) << "Failed to setup backing device";
@@ -185,7 +183,7 @@ bool DmcryptContainer::Setup(const FileSystemKey& encryption_key) {
     return false;
   }
 
-  device_cleanup_runner.ReplaceClosure(base::DoNothing());
+  std::move(device_cleanup_runner).Cancel();
   return true;
 }
 

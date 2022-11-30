@@ -17,6 +17,7 @@
 #include <memory>
 #include <vector>
 
+#include <absl/cleanup/cleanup.h>
 #include <base/at_exit.h>
 #include <base/callback.h>
 #include <base/callback_helpers.h>
@@ -164,9 +165,9 @@ int main(int argc, char** argv) {
   cryptohome::OutOfProcessMountResponse response;
   bool is_ephemeral =
       request.type() == kProtobufMountType[cryptohome::MountType::EPHEMERAL];
-  base::ScopedClosureRunner tear_down_runner =
-      base::ScopedClosureRunner(base::BindOnce(
-          &cryptohome::MountHelper::UnmountAll, base::Unretained(&mounter)));
+
+  absl::Cleanup unmount_on_exit = [&mounter]() { mounter.UnmountAll(); };
+
   if (is_ephemeral) {
     cryptohome::ReportTimerStart(cryptohome::kPerformEphemeralMountTimer);
     cryptohome::StorageStatus status = mounter.PerformEphemeralMount(
@@ -221,6 +222,6 @@ int main(int argc, char** argv) {
 
   run_loop.Run();
 
-  // |tear_down_runner| will clean up the mount now.
+  // |unmount_on_exit| will clean up the mount now.
   return EX_OK;
 }

@@ -16,6 +16,7 @@
 #include <tuple>
 #include <utility>
 
+#include <absl/cleanup/cleanup.h>
 #include <base/bind.h>
 #include <base/callback_helpers.h>
 #include <base/check.h>
@@ -116,8 +117,7 @@ StorageStatus Mount::MountEphemeralCryptohome(const std::string& username) {
   username_ = username;
   std::string obfuscated_username = SanitizeUserName(username_);
 
-  base::ScopedClosureRunner cleanup_runner(base::BindOnce(
-      base::IgnoreResult(&Mount::UnmountCryptohome), base::Unretained(this)));
+  absl::Cleanup unmount_on_exit = [this]() { UnmountCryptohome(); };
 
   // Ephemeral cryptohome can't be mounted twice.
   CHECK(active_mounter_->CanPerformEphemeralMount());
@@ -140,8 +140,7 @@ StorageStatus Mount::MountEphemeralCryptohome(const std::string& username) {
           .LogError()
       << "PerformEphemeralMount() failed, aborting ephemeral mount";
 
-  cleanup_runner.ReplaceClosure(base::DoNothing());
-
+  std::move(unmount_on_exit).Cancel();
   return StorageStatus::Ok();
 }
 
@@ -172,8 +171,7 @@ StorageStatus Mount::MountCryptohome(
   // The closure won't outlive the class so |this| will always be valid.
   // |active_mounter_| will always be valid since this callback runs in the
   // destructor at the latest.
-  base::ScopedClosureRunner cleanup_runner(base::BindOnce(
-      base::IgnoreResult(&Mount::UnmountCryptohome), base::Unretained(this)));
+  absl::Cleanup unmount_on_exit = [this]() { UnmountCryptohome(); };
 
   // Set up the cryptohome vault for mount.
   RETURN_IF_ERROR(user_cryptohome_vault_->Setup(file_system_keyset.Key()))
@@ -206,7 +204,7 @@ StorageStatus Mount::MountCryptohome(
   std::ignore = user_cryptohome_vault_->SetLazyTeardownWhenUnused();
 
   // At this point we're done mounting.
-  cleanup_runner.ReplaceClosure(base::DoNothing());
+  std::move(unmount_on_exit).Cancel();
 
   user_cryptohome_vault_->ReportVaultEncryptionType();
 

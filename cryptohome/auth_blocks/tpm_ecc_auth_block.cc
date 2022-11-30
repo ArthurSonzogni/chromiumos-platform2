@@ -11,6 +11,7 @@
 #include <utility>
 #include <vector>
 
+#include <absl/cleanup/cleanup.h>
 #include <base/callback_helpers.h>
 #include <base/check.h>
 #include <base/logging.h>
@@ -417,9 +418,7 @@ CryptoStatus TpmEccAuthBlock::DeriveVkk(bool locked_to_single_user,
             user_input, salt, gen_secrets, &derive_result, &scrypt_done));
 
     // The scrypt should be finished before exiting this socope.
-    base::ScopedClosureRunner joiner(base::BindOnce(
-        [](base::WaitableEvent* scrypt_done) { scrypt_done->Wait(); },
-        base::Unretained(&scrypt_done)));
+    absl::Cleanup joiner = [&scrypt_done]() { scrypt_done.Wait(); };
 
     brillo::Blob sealed_data(sealed_hvkkm.begin(), sealed_hvkkm.end());
 

@@ -15,6 +15,7 @@
 #include <utility>
 #include <vector>
 
+#include <absl/cleanup/cleanup.h>
 #include <base/bind.h>
 #include <base/callback_helpers.h>
 #include <base/files/file_path.h>
@@ -25,15 +26,13 @@
 #include <brillo/cryptohome.h>
 #include <brillo/process/process.h>
 #include <brillo/secure_blob.h>
-
 #include <chromeos/constants/cryptohome.h>
 
 #include "cryptohome/cryptohome_common.h"
 #include "cryptohome/cryptohome_metrics.h"
+#include "cryptohome/namespace_mounter_ipc.pb.h"
 #include "cryptohome/storage/mount_constants.h"
 #include "cryptohome/storage/mount_utils.h"
-
-#include "cryptohome/namespace_mounter_ipc.pb.h"
 
 using base::FilePath;
 using base::StringPrintf;
@@ -231,9 +230,9 @@ bool OutOfProcessMountHelper::LaunchOutOfProcessHelper(
   write_to_helper_ = helper_process_->GetPipe(STDIN_FILENO);
   int read_from_helper = helper_process_->GetPipe(STDOUT_FILENO);
 
-  base::ScopedClosureRunner kill_runner(base::BindOnce(
-      &OutOfProcessMountHelper::KillOutOfProcessHelperIfNecessary,
-      base::Unretained(this)));
+  absl::Cleanup kill_runner_on_exit = [this]() {
+    KillOutOfProcessHelperIfNecessary();
+  };
 
   if (!WriteProtobuf(write_to_helper_, request)) {
     LOG(ERROR) << "Failed to write request protobuf";
@@ -259,7 +258,7 @@ bool OutOfProcessMountHelper::LaunchOutOfProcessHelper(
   }
 
   // OOP mount helper started successfully, release the clean-up closure.
-  kill_runner.ReplaceClosure(base::DoNothing());
+  std::move(kill_runner_on_exit).Cancel();
 
   LOG(INFO) << "OOP mount helper started successfully";
   ReportOOPMountOperationResult(OOPMountOperationResult::kSuccess);

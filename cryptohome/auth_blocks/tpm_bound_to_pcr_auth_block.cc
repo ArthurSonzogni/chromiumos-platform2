@@ -12,6 +12,7 @@
 #include <variant>
 #include <vector>
 
+#include <absl/cleanup/cleanup.h>
 #include <base/callback_helpers.h>
 #include <base/check.h>
 #include <base/logging.h>
@@ -333,10 +334,8 @@ CryptoStatus TpmBoundToPcrAuthBlock::DecryptTpmBoundToPcr(
                        },
                        vault_key, salt, gen_secrets, &derive_result, &done));
 
-    // The scrypt should be finished before exiting this socope.
-    base::ScopedClosureRunner joiner(
-        base::BindOnce([](base::WaitableEvent* done) { done->Wait(); },
-                       base::Unretained(&done)));
+    // The scrypt should be finished before exiting this scope.
+    absl::Cleanup joiner = [&done]() { done.Wait(); };
 
     // Preload the sealed data while deriving secrets in scrypt.
     hwsec::StatusOr<std::optional<hwsec::ScopedKey>> preload_data =

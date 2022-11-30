@@ -9,6 +9,7 @@
 #include <tuple>
 #include <utility>
 
+#include <absl/cleanup/cleanup.h>
 #include <base/callback_helpers.h>
 #include <base/files/file_path.h>
 
@@ -48,13 +49,11 @@ bool EphemeralContainer::Setup(const FileSystemKey& encryption_key) {
     return false;
   }
 
-  base::ScopedClosureRunner cleanup(base::BindOnce(
-      [](EphemeralContainer* container, BackingDevice* backing_device) {
-        // Try purging backing device even if teardown failed.
-        std::ignore = container->Teardown();
-        std::ignore = container->Purge();
-      },
-      base::Unretained(this), base::Unretained(backing_device_.get())));
+  absl::Cleanup cleanup = [this]() {
+    // Try purging backing device even if teardown failed.
+    std::ignore = Teardown();
+    std::ignore = Purge();
+  };
 
   // Clean any pre-existing ram disks for the user.
   if (backing_device_->Exists()) {
@@ -87,8 +86,7 @@ bool EphemeralContainer::Setup(const FileSystemKey& encryption_key) {
     return false;
   }
 
-  std::ignore = cleanup.Release();
-
+  std::move(cleanup).Cancel();
   return true;
 }
 

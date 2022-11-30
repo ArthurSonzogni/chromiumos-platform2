@@ -4,18 +4,21 @@
 
 #include "cryptohome/encrypted_reboot_vault/encrypted_reboot_vault.h"
 
-#include <cryptohome/dircrypto_util.h>
-#include <cryptohome/platform.h>
-#include <cryptohome/storage/encrypted_container/filesystem_key.h>
-#include <cryptohome/storage/encrypted_container/fscrypt_container.h>
-#include <cryptohome/storage/keyring/real_keyring.h>
+#include <utility>
 
+#include <absl/cleanup/cleanup.h>
 #include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <brillo/key_value_store.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
+
+#include "cryptohome/dircrypto_util.h"
+#include "cryptohome/platform.h"
+#include "cryptohome/storage/encrypted_container/filesystem_key.h"
+#include "cryptohome/storage/encrypted_container/fscrypt_container.h"
+#include "cryptohome/storage/keyring/real_keyring.h"
 
 namespace {
 // Pstore-pmsg path.
@@ -107,9 +110,7 @@ bool EncryptedRebootVault::CreateVault() {
     return false;
   }
 
-  base::ScopedClosureRunner reset_vault(
-      base::BindOnce(base::IgnoreResult(&EncryptedRebootVault::PurgeVault),
-                     base::Unretained(this)));
+  absl::Cleanup purge_on_exit = [this]() { PurgeVault(); };
 
   // Remove the existing vault.
   PurgeVault();
@@ -131,7 +132,7 @@ bool EncryptedRebootVault::CreateVault() {
     return false;
   }
 
-  reset_vault.ReplaceClosure(base::DoNothing());
+  std::move(purge_on_exit).Cancel();
   return true;
 }
 
@@ -156,9 +157,7 @@ bool EncryptedRebootVault::UnlockVault() {
   }
 
   // We reset the vault if we fail to unlock it for any reason.
-  base::ScopedClosureRunner reset_vault(
-      base::BindOnce(base::IgnoreResult(&EncryptedRebootVault::PurgeVault),
-                     base::Unretained(this)));
+  absl::Cleanup purge_on_exit = [this]() { PurgeVault(); };
 
   if (!Validate()) {
     LOG(ERROR) << "Invalid vault; purging.";
@@ -180,6 +179,6 @@ bool EncryptedRebootVault::UnlockVault() {
     return false;
   }
 
-  reset_vault.ReplaceClosure(base::DoNothing());
+  std::move(purge_on_exit).Cancel();
   return true;
 }
