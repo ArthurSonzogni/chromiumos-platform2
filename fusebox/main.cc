@@ -35,6 +35,7 @@
 namespace fusebox {
 
 namespace {
+
 void HandleDBusSignalConnected(const std::string& interface,
                                const std::string& signal,
                                bool success) {
@@ -43,6 +44,19 @@ void HandleDBusSignalConnected(const std::string& interface,
                << signal;
   }
 }
+
+template <typename ResponseProto>
+int ReadDBusProto(dbus::Response* response, ResponseProto* proto) {
+  if (!response) {
+    return ETIMEDOUT;
+  } else if (!dbus::MessageReader(response).PopArrayOfBytesAsProto(proto)) {
+    return EPROTO;
+  } else if (proto->has_posix_error_code()) {
+    return proto->posix_error_code();
+  }
+  return 0;
+}
+
 }  // namespace
 
 class FuseBoxClient : public FileSystem {
@@ -78,9 +92,11 @@ class FuseBoxClient : public FileSystem {
   }
 
   void ListStoragesResponse(dbus::Response* response) {
-    dbus::MessageReader reader(response);
+    VLOG(1) << "liststorages-resp";
+
     ListStoragesResponseProto response_proto;
-    if (!reader.PopArrayOfBytesAsProto(&response_proto)) {
+    if (errno = ReadDBusProto(response, &response_proto); errno) {
+      PLOG(ERROR) << "liststorages-resp";
       return;
     }
     for (const auto& subdir : response_proto.storages()) {
@@ -189,20 +205,13 @@ class FuseBoxClient : public FileSystem {
                     dbus::Response* response) {
     VLOG(1) << "getattr-resp " << ino;
 
-    if (request->IsInterrupted())
-      return;
-
-    dbus::MessageReader reader(response);
-    Stat2ResponseProto response_proto;
-    if (!reader.PopArrayOfBytesAsProto(&response_proto)) {
-      request->ReplyError(EINVAL);
+    if (request->IsInterrupted()) {
       return;
     }
-    int32_t posix_error_code = response_proto.has_posix_error_code()
-                                   ? response_proto.posix_error_code()
-                                   : 0;
-    if (posix_error_code != 0) {
-      request->ReplyError(posix_error_code);
+    Stat2ResponseProto response_proto;
+    if (errno = ReadDBusProto(response, &response_proto); errno) {
+      request->ReplyError(errno);
+      PLOG(ERROR) << "getattr-resp";
       return;
     } else if (!response_proto.has_stat()) {
       request->ReplyError(EINVAL);
@@ -286,20 +295,13 @@ class FuseBoxClient : public FileSystem {
                           dbus::Response* response) {
     VLOG(1) << "rootlookup-resp " << name;
 
-    if (request->IsInterrupted())
-      return;
-
-    dbus::MessageReader reader(response);
-    Stat2ResponseProto response_proto;
-    if (!reader.PopArrayOfBytesAsProto(&response_proto)) {
-      request->ReplyError(EINVAL);
+    if (request->IsInterrupted()) {
       return;
     }
-    int32_t posix_error_code = response_proto.has_posix_error_code()
-                                   ? response_proto.posix_error_code()
-                                   : 0;
-    if (posix_error_code != 0) {
-      request->ReplyError(posix_error_code);
+    Stat2ResponseProto response_proto;
+    if (errno = ReadDBusProto(response, &response_proto); errno) {
+      request->ReplyError(errno);
+      PLOG(ERROR) << "rootlookup-resp";
       return;
     }
 
@@ -330,20 +332,13 @@ class FuseBoxClient : public FileSystem {
                       dbus::Response* response) {
     VLOG(1) << "lookup-resp " << parent << "/" << name;
 
-    if (request->IsInterrupted())
-      return;
-
-    dbus::MessageReader reader(response);
-    MkDirResponseProto response_proto;
-    if (!reader.PopArrayOfBytesAsProto(&response_proto)) {
-      request->ReplyError(EINVAL);
+    if (request->IsInterrupted()) {
       return;
     }
-    int32_t posix_error_code = response_proto.has_posix_error_code()
-                                   ? response_proto.posix_error_code()
-                                   : 0;
-    if (posix_error_code != 0) {
-      request->ReplyError(posix_error_code);
+    MkDirResponseProto response_proto;
+    if (errno = ReadDBusProto(response, &response_proto); errno) {
+      request->ReplyError(errno);
+      PLOG(ERROR) << "lookup-resp";
       return;
     }
 
@@ -422,20 +417,13 @@ class FuseBoxClient : public FileSystem {
                         dbus::Response* response) {
     VLOG(1) << "truncate-resp " << ino;
 
-    if (request->IsInterrupted())
-      return;
-
-    dbus::MessageReader reader(response);
-    TruncateResponseProto response_proto;
-    if (!reader.PopArrayOfBytesAsProto(&response_proto)) {
-      request->ReplyError(EINVAL);
+    if (request->IsInterrupted()) {
       return;
     }
-    int32_t posix_error_code = response_proto.has_posix_error_code()
-                                   ? response_proto.posix_error_code()
-                                   : 0;
-    if (posix_error_code != 0) {
-      request->ReplyError(posix_error_code);
+    TruncateResponseProto response_proto;
+    if (errno = ReadDBusProto(response, &response_proto); errno) {
+      request->ReplyError(errno);
+      PLOG(ERROR) << "truncate-resp";
       return;
     } else if (!response_proto.has_stat()) {
       request->ReplyError(EINVAL);
@@ -487,18 +475,10 @@ class FuseBoxClient : public FileSystem {
     if (request->IsInterrupted()) {
       return;
     }
-
-    dbus::MessageReader reader(response);
     UnlinkResponseProto response_proto;
-    if (!reader.PopArrayOfBytesAsProto(&response_proto)) {
-      request->ReplyError(EINVAL);
-      return;
-    }
-    int32_t posix_error_code = response_proto.has_posix_error_code()
-                                   ? response_proto.posix_error_code()
-                                   : 0;
-    if (posix_error_code != 0) {
-      request->ReplyError(posix_error_code);
+    if (errno = ReadDBusProto(response, &response_proto); errno) {
+      request->ReplyError(errno);
+      PLOG(ERROR) << "unlink-resp";
       return;
     }
 
@@ -603,17 +583,10 @@ class FuseBoxClient : public FileSystem {
                         dbus::Response* response) {
     VLOG(1) << "readdir2-resp";
 
-    dbus::MessageReader reader(response);
     ReadDir2ResponseProto response_proto;
-    if (!reader.PopArrayOfBytesAsProto(&response_proto)) {
-      dir_entry_response->Append(EINVAL);
-      return;
-    }
-    int32_t posix_error_code = response_proto.has_posix_error_code()
-                                   ? response_proto.posix_error_code()
-                                   : 0;
-    if (posix_error_code != 0) {
-      dir_entry_response->Append(posix_error_code);
+    if (errno = ReadDBusProto(response, &response_proto); errno) {
+      dir_entry_response->Append(errno);
+      PLOG(ERROR) << "readdir2-resp";
       return;
     }
     uint64_t cookie = response_proto.has_cookie() ? response_proto.cookie() : 0;
@@ -697,20 +670,11 @@ class FuseBoxClient : public FileSystem {
       GetInodeTable().Forget(ino);
       return;
     }
-
-    dbus::MessageReader reader(response);
     MkDirResponseProto response_proto;
-    if (!reader.PopArrayOfBytesAsProto(&response_proto)) {
+    if (errno = ReadDBusProto(response, &response_proto); errno) {
       GetInodeTable().Forget(ino);
-      request->ReplyError(EINVAL);
-      return;
-    }
-    int32_t posix_error_code = response_proto.has_posix_error_code()
-                                   ? response_proto.posix_error_code()
-                                   : 0;
-    if (posix_error_code != 0) {
-      GetInodeTable().Forget(ino);
-      request->ReplyError(posix_error_code);
+      request->ReplyError(errno);
+      PLOG(ERROR) << "mkdir-resp";
       return;
     }
 
@@ -766,18 +730,10 @@ class FuseBoxClient : public FileSystem {
     if (request->IsInterrupted()) {
       return;
     }
-
-    dbus::MessageReader reader(response);
     RmDirResponseProto response_proto;
-    if (!reader.PopArrayOfBytesAsProto(&response_proto)) {
-      request->ReplyError(EINVAL);
-      return;
-    }
-    int32_t posix_error_code = response_proto.has_posix_error_code()
-                                   ? response_proto.posix_error_code()
-                                   : 0;
-    if (posix_error_code != 0) {
-      request->ReplyError(posix_error_code);
+    if (errno = ReadDBusProto(response, &response_proto); errno) {
+      request->ReplyError(errno);
+      PLOG(ERROR) << "rmdir-resp";
       return;
     }
 
@@ -823,10 +779,13 @@ class FuseBoxClient : public FileSystem {
                      dbus::Response* response) {
     VLOG(1) << "open2-resp";
 
-    dbus::MessageReader reader(response);
+    if (request->IsInterrupted()) {
+      return;
+    }
     Open2ResponseProto response_proto;
-    if (!reader.PopArrayOfBytesAsProto(&response_proto)) {
-      request->ReplyError(EINVAL);
+    if (errno = ReadDBusProto(response, &response_proto); errno) {
+      request->ReplyError(errno);
+      PLOG(ERROR) << "open2-resp";
       return;
     }
     uint64_t server_side_fuse_handle =
@@ -882,20 +841,13 @@ class FuseBoxClient : public FileSystem {
                      dbus::Response* response) {
     VLOG(1) << "read2-resp";
 
-    if (request->IsInterrupted())
-      return;
-
-    dbus::MessageReader reader(response);
-    Read2ResponseProto response_proto;
-    if (!reader.PopArrayOfBytesAsProto(&response_proto)) {
-      request->ReplyError(EINVAL);
+    if (request->IsInterrupted()) {
       return;
     }
-    int32_t posix_error_code = response_proto.has_posix_error_code()
-                                   ? response_proto.posix_error_code()
-                                   : 0;
-    if (posix_error_code != 0) {
-      request->ReplyError(posix_error_code);
+    Read2ResponseProto response_proto;
+    if (errno = ReadDBusProto(response, &response_proto); errno) {
+      request->ReplyError(errno);
+      PLOG(ERROR) << "read2-resp";
       return;
     }
 
@@ -952,20 +904,13 @@ class FuseBoxClient : public FileSystem {
                       dbus::Response* response) {
     VLOG(1) << "write2-resp";
 
-    if (request->IsInterrupted())
-      return;
-
-    dbus::MessageReader reader(response);
-    Write2ResponseProto response_proto;
-    if (!reader.PopArrayOfBytesAsProto(&response_proto)) {
-      request->ReplyError(EINVAL);
+    if (request->IsInterrupted()) {
       return;
     }
-    int32_t posix_error_code = response_proto.has_posix_error_code()
-                                   ? response_proto.posix_error_code()
-                                   : 0;
-    if (posix_error_code != 0) {
-      request->ReplyError(posix_error_code);
+    Write2ResponseProto response_proto;
+    if (errno = ReadDBusProto(response, &response_proto); errno) {
+      request->ReplyError(errno);
+      PLOG(ERROR) << "write2-resp";
       return;
     }
 
@@ -1002,20 +947,13 @@ class FuseBoxClient : public FileSystem {
                       dbus::Response* response) {
     VLOG(1) << "close2-resp fh " << request->fh();
 
-    if (request->IsInterrupted())
-      return;
-
-    dbus::MessageReader reader(response);
-    Close2ResponseProto response_proto;
-    if (!reader.PopArrayOfBytesAsProto(&response_proto)) {
-      request->ReplyError(EINVAL);
+    if (request->IsInterrupted()) {
       return;
     }
-    int32_t posix_error_code = response_proto.has_posix_error_code()
-                                   ? response_proto.posix_error_code()
-                                   : 0;
-    if (posix_error_code != 0) {
-      request->ReplyError(posix_error_code);
+    Close2ResponseProto response_proto;
+    if (errno = ReadDBusProto(response, &response_proto); errno) {
+      request->ReplyError(errno);
+      PLOG(ERROR) << "close2-resp";
       return;
     }
 
@@ -1074,20 +1012,11 @@ class FuseBoxClient : public FileSystem {
       GetInodeTable().Forget(ino);
       return;
     }
-
-    dbus::MessageReader reader(response);
     CreateResponseProto response_proto;
-    if (!reader.PopArrayOfBytesAsProto(&response_proto)) {
+    if (errno = ReadDBusProto(response, &response_proto); errno) {
       GetInodeTable().Forget(ino);
-      request->ReplyError(EINVAL);
-      return;
-    }
-    int32_t posix_error_code = response_proto.has_posix_error_code()
-                                   ? response_proto.posix_error_code()
-                                   : 0;
-    if (posix_error_code != 0) {
-      GetInodeTable().Forget(ino);
-      request->ReplyError(posix_error_code);
+      request->ReplyError(errno);
+      PLOG(ERROR) << "create-resp";
       return;
     }
 
