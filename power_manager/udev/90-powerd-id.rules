@@ -19,3 +19,7 @@ SUBSYSTEM=="input", ENV{PRODUCT}=="5/*",                                     ENV
 SUBSYSTEM=="input", ENV{ID_INPUT_TABLET}=="1",      SUBSYSTEMS=="i2c",       ENV{POWERD_ROLE}="internal_stylus"
 
 SUBSYSTEM=="input", SUBSYSTEMS=="usb", DRIVERS=="usbhid", ENV{ID_MODEL}!="*[aA]udio*", ENV{POWERD_ROLE}="external_input"
+
+SUBSYSTEM=="usb", ENV{DEVTYPE}=="usb_device", \
+  ATTR{idVendor}=="18d1", ATTR{idProduct}=="5022", \
+  ENV{POWERD_ROLE}="usb_rgb_backlight"

@@ -75,6 +75,7 @@
 #include "power_manager/powerd/system/suspend_freezer.h"
 #include "power_manager/powerd/system/thermal/thermal_device.h"
 #include "power_manager/powerd/system/udev.h"
+#include "power_manager/powerd/system/usb_backlight.h"
 #include "power_manager/powerd/system/user_proximity_watcher_interface.h"
 #include "power_manager/powerd/system/wake_on_dp_configurator.h"
 #include "power_manager/powerd/system/wakeup_source_identifier.h"
@@ -166,6 +167,9 @@ const int kAdaptiveChargingSyncDBusTimeoutMs = 3000;
 #if USE_IIOSERVICE
 constexpr base::TimeDelta kReconnectServiceManagerDelay = base::Seconds(1);
 #endif  // USE_IIOSERVICE
+
+// MCU type for Prism in CrOS config
+const char kPrismRgbController[] = "prism_rgb_controller";
 
 // Passes |method_call| to |handler| and passes the response to
 // |response_sender|. If |handler| returns NULL, an empty response is
@@ -451,19 +455,30 @@ void Daemon::Init() {
       all_backlight_controllers_.push_back(display_backlight_controller_.get());
 
     if (BoolPrefIsTrue(kHasKeyboardBacklightPref)) {
-      LOG(INFO) << "Attempting to create EcKeyboardBacklight";
-      ec_usb_endpoint_ = delegate_->CreateEcUsbEndpoint();
-      keyboard_backlight_ =
-          delegate_->CreateEcKeyboardBacklight(ec_usb_endpoint_.get());
-      // All devices should receive a valid instance of EC keyboard backlight
-      // controller in keyboard_backlight_. If EC doesn't support kblight
-      // command (i.e. EC_CMD_PWM_GET_KEYBOARD_BACKLIGHT) for some reason, we
-      // fall back to the previous method below.
-      if (keyboard_backlight_ == nullptr) {
-        LOG(INFO) << "Attempting to create PluggableInternalBacklight";
-        keyboard_backlight_ = delegate_->CreatePluggableInternalBacklight(
-            udev_.get(), kKeyboardBacklightUdevSubsystem,
-            base::FilePath(kKeyboardBacklightPath), kKeyboardBacklightPattern);
+      auto config = std::make_unique<brillo::CrosConfig>();
+      std::string value;
+
+      if (config->GetString("/keyboard", "mcutype", &value) &&
+          value == kPrismRgbController) {
+        LOG(INFO) << "Attempting to create RGB keyboard backlight";
+        keyboard_backlight_ =
+            std::make_unique<system::UsbBacklight>(udev_.get());
+      } else {
+        LOG(INFO) << "Attempting to create EcKeyboardBacklight";
+        ec_usb_endpoint_ = delegate_->CreateEcUsbEndpoint();
+        keyboard_backlight_ =
+            delegate_->CreateEcKeyboardBacklight(ec_usb_endpoint_.get());
+        // All devices should receive a valid instance of EC keyboard backlight
+        // controller in keyboard_backlight_. If EC doesn't support kblight
+        // command (i.e. EC_CMD_PWM_GET_KEYBOARD_BACKLIGHT) for some reason, we
+        // fall back to the previous method below.
+        if (keyboard_backlight_ == nullptr) {
+          LOG(INFO) << "Attempting to create PluggableInternalBacklight";
+          keyboard_backlight_ = delegate_->CreatePluggableInternalBacklight(
+              udev_.get(), kKeyboardBacklightUdevSubsystem,
+              base::FilePath(kKeyboardBacklightPath),
+              kKeyboardBacklightPattern);
+        }
       }
       keyboard_backlight_controller_ =
           delegate_->CreateKeyboardBacklightController(

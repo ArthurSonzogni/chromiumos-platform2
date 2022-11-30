@@ -203,6 +203,7 @@ static_library("libsystem") {
     "powerd/system/thermal/thermal_device.cc",
     "powerd/system/thermal/thermal_device_factory.cc",
     "powerd/system/udev.cc",
+    "powerd/system/usb_backlight.cc",
     "powerd/system/user_proximity_watcher.cc",
     "powerd/system/wake_on_dp_configurator.cc",
     "powerd/system/wakeup_device.cc",
