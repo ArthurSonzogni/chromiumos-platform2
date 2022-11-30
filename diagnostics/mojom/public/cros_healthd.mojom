@@ -578,15 +578,14 @@ interface CrosHealthdDiagnosticsService {
       => (RunRoutineResponse response);
 
   // Requests that the LedLitUp routine is created and started on the
-  // platform. This routine checks whether the target LED can be lit up in the
-  // specified color.
+  // platform. This routine lights up the target LED in the specified color and
+  // requests the caller to verify the change.
   // The availability of this routine can be determined by checking that
   // kLedLitUp is returned by GetAvailableRoutines.
   //
   // The routine proceeds with the following steps:
-  // 1. Set the specified LED with the specified color. If a non-existing LED
-  //    or a non-supported color is provided, the routine may fail but the
-  //    failure is not guaranteed.
+  // 1. Set the specified LED with the specified color. If the LED name or color
+  //    is not supported by EC, the routine fails at this step.
   // 2. Invoke the |GetColorMatched| method of |replier|. The method should
   //    return |true| if the actual color matches the specified color and
   //    |false|, otherwise. Notice that there is no timeout so it will wait
@@ -604,8 +603,8 @@ interface CrosHealthdDiagnosticsService {
   //   be supported.
   //
   // The request:
-  // * |name| - specifies the LED to be lit up for testing.
-  // * |color| - specifies the color to be lit up for testing.
+  // * |name| - specifies the LED to be lit up.
+  // * |color| - specifies the color to be lit up.
   // * |replier| - a replier that can answer whether the actual LED color
   //               matches the expected color.
   //

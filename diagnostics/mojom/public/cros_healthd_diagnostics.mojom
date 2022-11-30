@@ -198,12 +198,14 @@ enum NvmeSelfTestTypeEnum {
   kLongSelfTest = 1,  // Long time self-test.
 };
 
-// Enumeration of each possible LEDs on a device.
+// Enumeration of each possible LEDs on a device. This enum type is a mirror of
+// the enums defined in EC. To find out the actual names of each installed LEDs,
+// please refer to the EC firmware.
 //
 // NextMinVersion: 1, NextIndex: 6
 [Stable, Extensible]
 enum LedName {
-  // This is required for backwards compatibility, should not be used.
+  // The default value is for backward compatibility, should not be used.
   [Default] kUnmappedEnumField = 0,
   kBattery = 1,
   kPower = 2,
@@ -217,7 +219,7 @@ enum LedName {
 // NextMinVersion: 1, NextIndex: 7
 [Stable, Extensible]
 enum LedColor {
-  // This is required for backwards compatibility, should not be used.
+  // The default value is for backward compatibility, should not be used.
   [Default] kUnmappedEnumField = 0,
   kRed = 1,
   kGreen = 2,
