@@ -104,10 +104,8 @@ KeysetManagement::GetValidKeysetWithKeyBlobs(
     const std::string& obfuscated_username,
     KeyBlobs key_blobs,
     const std::optional<std::string>& label) {
-  return GetValidKeysetImpl(
-      obfuscated_username, label,
-      base::BindRepeating(&DecryptExWrapper,
-                          base::Passed(std::move(key_blobs))));
+  return GetValidKeysetImpl(obfuscated_username, label,
+                            base::BindRepeating(&DecryptExWrapper, key_blobs));
 }
 
 MountStatusOr<std::unique_ptr<VaultKeyset>> KeysetManagement::GetValidKeyset(
