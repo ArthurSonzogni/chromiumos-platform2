@@ -3,14 +3,21 @@
 // found in the LICENSE file.
 
 #include <cstdint>
+#include <cstring>
 #include <iterator>
 #include <memory>
 #include <optional>
 
+#if __has_include(<asm/bootparam.h>)
+#include <asm/bootparam.h>
+#define HAVE_BOOTPARAM
+#endif
 #include "absl/status/status.h"
 #include "attestation/dbus-constants.h"
 #include "attestation/proto_bindings/interface.pb.h"
 #include "attestation-client-test/attestation/dbus-proxy-mocks.h"
+#include "base/files/file_path.h"
+#include "base/files/file_util.h"
 #include "base/memory/scoped_refptr.h"
 #include "base/run_loop.h"
 #include "base/strings/stringprintf.h"
@@ -140,9 +147,16 @@ class AgentPluginTestFixture : public ::testing::TestWithParam<BootmodeAndTpm> {
         .WillRepeatedly(InvokeCallbackArgument<0>(available));
   }
 
-  void CallGetBootInformation() { agent_plugin_->GetBootInformation(true); }
+  void CallGetCrosSecureBootInformation() {
+    agent_plugin_->GetCrosSecureBootInformation(true);
+  }
 
   void CallGetTpmInformation() { agent_plugin_->GetTpmInformation(true); }
+
+  void CallGetUefiSecureBootInformation(
+      const base::FilePath& boot_params_filepath) {
+    agent_plugin_->GetUefiSecureBootInformation(boot_params_filepath);
+  }
 
   pb::TcbAttributes GetTcbAttributes() {
     return agent_plugin_->tcb_attributes_;
@@ -305,6 +319,65 @@ TEST_F(AgentPluginTestFixture, TestSendStartEventFailure) {
   task_environment_.FastForwardBy(base::Seconds(10));
 }
 
+#ifdef HAVE_BOOTPARAM
+TEST_F(AgentPluginTestFixture, TestUefiSecureBootFileExistsEnabled) {
+  base::FilePath boot_params_filepath;
+  base::CreateTemporaryFile(&boot_params_filepath);
+
+  boot_params boot;
+  static constexpr int kEfiSecurebootModeEnabled = 3;
+  boot.secure_boot = kEfiSecurebootModeEnabled;
+  base::WriteFile(boot_params_filepath, reinterpret_cast<char*>(&boot),
+                  sizeof(boot));
+
+  CreateAgentPlugin(nullptr);
+  CallGetUefiSecureBootInformation(boot_params_filepath);
+
+  auto tcb = GetTcbAttributes();
+  EXPECT_EQ(pb::TcbAttributes_FirmwareSecureBoot_CROS_FLEX_UEFI_SECURE_BOOT,
+            tcb.firmware_secure_boot());
+}
+
+TEST_F(AgentPluginTestFixture, TestUefiSecureBootFileExistsNotEnabled) {
+  base::FilePath boot_params_filepath;
+  base::CreateTemporaryFile(&boot_params_filepath);
+
+  boot_params boot;
+  boot.secure_boot = -1;
+  base::WriteFile(boot_params_filepath, reinterpret_cast<char*>(&boot),
+                  sizeof(boot));
+
+  CreateAgentPlugin(nullptr);
+  CallGetUefiSecureBootInformation(boot_params_filepath);
+
+  auto tcb = GetTcbAttributes();
+  EXPECT_FALSE(tcb.has_firmware_secure_boot());
+}
+
+TEST_F(AgentPluginTestFixture, TestUefiSecureBootFileInvalidSize) {
+  base::FilePath boot_params_filepath;
+  base::CreateTemporaryFile(&boot_params_filepath);
+
+  std::string content = "invalid file size";
+  base::WriteFile(boot_params_filepath, content.c_str(), content.size());
+
+  CreateAgentPlugin(nullptr);
+  CallGetUefiSecureBootInformation(boot_params_filepath);
+
+  auto tcb = GetTcbAttributes();
+  EXPECT_FALSE(tcb.has_firmware_secure_boot());
+}
+#endif
+
+TEST_F(AgentPluginTestFixture, TestUefiSecureBootFileDoesNotExist) {
+  CreateAgentPlugin(nullptr);
+  base::FilePath non_existent_filepath = base::FilePath("badfile");
+  CallGetUefiSecureBootInformation(non_existent_filepath);
+
+  auto tcb = GetTcbAttributes();
+  EXPECT_FALSE(tcb.has_firmware_secure_boot());
+}
+
 TEST_F(AgentPluginTestFixture, TestNoTpm) {
   SetupObjectProxies(false);
   EXPECT_CALL(*tpm_manager_proxy_, GetVersionInfo)
@@ -321,7 +394,6 @@ TEST_P(AgentPluginTestFixture, TestBootAndTpmModes) {
   SetupObjectProxies(false);
   const BootmodeAndTpm param = GetParam();
 
-  // TODO(b/259966516): Handle kCrosFlexUefiSecureBoot.
   EXPECT_CALL(*attestation_proxy_, GetStatus)
       .WillOnce(
           WithArg<1>(Invoke([&param](attestation::GetStatusReply* out_reply) {
@@ -336,7 +408,7 @@ TEST_P(AgentPluginTestFixture, TestBootAndTpmModes) {
           })));
 
   CreateAgentPlugin(nullptr);
-  CallGetBootInformation();
+  CallGetCrosSecureBootInformation();
   CallGetTpmInformation();
 
   auto tcb = GetTcbAttributes();

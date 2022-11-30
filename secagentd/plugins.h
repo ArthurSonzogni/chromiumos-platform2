@@ -79,15 +79,18 @@ class AgentPlugin : public PluginInterface {
 
   // Starts filling in the tcb fields of the agent proto and initializes async
   // timers that wait for tpm_manager and attestation to be ready. When services
-  // are ready GetBootInformation() and GetTpmInformation() will be called to
-  // fill remaining fields.
+  // are ready GetCrosSecureBootInformation() and GetTpmInformation()
+  // will be called to fill remaining fields.
   void StartInitializingAgentProto();
   // Delayed function that will be called when attestation is ready. Fills the
-  // boot information in the agent proto.
-  void GetBootInformation(bool available);
+  // boot information in the agent proto if Cros Secure boot is used.
+  void GetCrosSecureBootInformation(bool available);
   // Delayed function that will be called when tpm_manager is ready. Fills the
   // tpm information in the agent proto.
   void GetTpmInformation(bool available);
+  // Fills the boot information in the agent proto if Uefi Secure boot is used.
+  // Note: Only for flex machines.
+  void GetUefiSecureBootInformation(const base::FilePath& boot_params_filepath);
   // Sends the agent start event. Uses the StartEventStatusCallback() to handle
   // the status of the message.
   void SendAgentStartEvent();

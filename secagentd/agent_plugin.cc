@@ -9,9 +9,15 @@
 #include <utility>
 #include <sys/utsname.h>
 
+#if __has_include(<asm/bootparam.h>)
+#include <asm/bootparam.h>
+#define HAVE_BOOTPARAM
+#endif
 #include "absl/status/status.h"
 #include "attestation/proto_bindings/interface.pb.h"
 #include "attestation-client/attestation/dbus-proxies.h"
+#include "base/files/file_path.h"
+#include "base/files/file_util.h"
 #include "base/functional/bind.h"
 #include "base/functional/callback_forward.h"
 #include "base/location.h"
@@ -30,6 +36,7 @@
 namespace {
 
 constexpr int kWaitForServicesTimeoutMs = 2000;
+constexpr char kBootDataFilepath[] = "/sys/kernel/boot_params/data";
 
 // Converts a brillo::Error* to string for printing.
 std::string BrilloErrorToString(brillo::Error* err) {
@@ -58,6 +65,8 @@ std::string TpmPropertyToStr(uint32_t value) {
 }  // namespace
 
 namespace secagentd {
+
+namespace pb = cros_xdr::reporting;
 
 AgentPlugin::AgentPlugin(
     scoped_refptr<MessageSenderInterface> message_sender,
@@ -90,7 +99,7 @@ absl::Status AgentPlugin::Activate() {
 
 void AgentPlugin::StartInitializingAgentProto() {
   attestation_proxy_->GetObjectProxy()->WaitForServiceToBeAvailable(
-      base::BindOnce(&AgentPlugin::GetBootInformation,
+      base::BindOnce(&AgentPlugin::GetCrosSecureBootInformation,
                      weak_ptr_factory_.GetWeakPtr()));
   tpm_manager_proxy_->GetObjectProxy()->WaitForServiceToBeAvailable(
       base::BindOnce(&AgentPlugin::GetTpmInformation,
@@ -107,6 +116,8 @@ void AgentPlugin::StartInitializingAgentProto() {
   struct utsname buf;
   int get_uname_rv = uname(&buf);
 
+  GetUefiSecureBootInformation(base::FilePath(kBootDataFilepath));
+
   base::AutoLock lock(tcb_attributes_lock_);
   if (get_fwid_rv) {
     tcb_attributes_.set_system_firmware_version(get_fwid_rv);
@@ -120,7 +131,38 @@ void AgentPlugin::StartInitializingAgentProto() {
   }
 }
 
-void AgentPlugin::GetBootInformation(bool available) {
+void AgentPlugin::GetUefiSecureBootInformation(
+    const base::FilePath& boot_params_filepath) {
+#ifdef HAVE_BOOTPARAM
+  std::string content;
+
+  if (!base::ReadFileToStringWithMaxSize(boot_params_filepath, &content,
+                                         sizeof(boot_params))) {
+    LOG(ERROR) << "Failed to read file: " << boot_params_filepath.value();
+    return;
+  }
+  if (content.size() != sizeof(boot_params)) {
+    LOG(ERROR) << boot_params_filepath.value()
+               << " boot params invalid file size";
+    return;
+  }
+  const boot_params* boot =
+      reinterpret_cast<const boot_params*>(content.c_str());
+
+  // defined in kernel's include/linux/efi.h
+  static constexpr int kEfiSecurebootModeEnabled = 3;
+  if (boot->secure_boot == kEfiSecurebootModeEnabled) {
+    base::AutoLock lock(tcb_attributes_lock_);
+    tcb_attributes_.set_firmware_secure_boot(
+        pb::TcbAttributes_FirmwareSecureBoot_CROS_FLEX_UEFI_SECURE_BOOT);
+  }
+#else
+  LOG(WARNING)
+      << "Header bootparam.h is not present. Assuming not uefi secure boot.";
+#endif
+}
+
+void AgentPlugin::GetCrosSecureBootInformation(bool available) {
   if (!available) {
     LOG(ERROR) << "Failed waiting for attestation to become available";
     return;
@@ -138,13 +180,17 @@ void AgentPlugin::GetBootInformation(bool available) {
                << BrilloErrorToString(error.get());
     return;
   }
-  // TODO(b/259966516): Handle kCrosFlexUefiSecureBoot.
+
   base::AutoLock lock(tcb_attributes_lock_);
-  tcb_attributes_.set_firmware_secure_boot(
-      out_reply.verified_boot()
-          ? cros_xdr::reporting::
-                TcbAttributes_FirmwareSecureBoot_CROS_VERIFIED_BOOT
-          : cros_xdr::reporting::TcbAttributes_FirmwareSecureBoot_NONE);
+  if (out_reply.verified_boot()) {
+    tcb_attributes_.set_firmware_secure_boot(
+        pb::TcbAttributes_FirmwareSecureBoot_CROS_VERIFIED_BOOT);
+  } else {
+    if (!tcb_attributes_.has_firmware_secure_boot()) {
+      tcb_attributes_.set_firmware_secure_boot(
+          pb::TcbAttributes_FirmwareSecureBoot_NONE);
+    }
+  }
 }
 
 void AgentPlugin::GetTpmInformation(bool available) {
@@ -170,15 +216,14 @@ void AgentPlugin::GetTpmInformation(bool available) {
   if (out_reply.has_gsc_version()) {
     switch (out_reply.gsc_version()) {
       case tpm_manager::GSC_VERSION_NOT_GSC: {
-        security_chip->set_kind(
-            cros_xdr::reporting::TcbAttributes_SecurityChip::Kind::
-                TcbAttributes_SecurityChip_Kind_TPM);
+        security_chip->set_kind(pb::TcbAttributes_SecurityChip::Kind::
+                                    TcbAttributes_SecurityChip_Kind_TPM);
         break;
       }
       case tpm_manager::GSC_VERSION_CR50:
       case tpm_manager::GSC_VERSION_TI50:
         security_chip->set_kind(
-            cros_xdr::reporting::TcbAttributes_SecurityChip::Kind::
+            pb::TcbAttributes_SecurityChip::Kind::
                 TcbAttributes_SecurityChip_Kind_GOOGLE_SECURITY_CHIP);
     }
     auto family = TpmPropertyToStr(out_reply.family());
@@ -194,13 +239,13 @@ void AgentPlugin::GetTpmInformation(bool available) {
     security_chip->set_firmware_version(
         std::to_string(out_reply.firmware_version()));
   } else {
-    security_chip->set_kind(::cros_xdr::reporting::TcbAttributes_SecurityChip::
-                                Kind::TcbAttributes_SecurityChip_Kind_NONE);
+    security_chip->set_kind(pb::TcbAttributes_SecurityChip::Kind::
+                                TcbAttributes_SecurityChip_Kind_NONE);
   }
 }
 
 void AgentPlugin::SendAgentStartEvent() {
-  auto agent_event = std::make_unique<cros_xdr::reporting::XdrAgentEvent>();
+  auto agent_event = std::make_unique<pb::XdrAgentEvent>();
   base::AutoLock lock(tcb_attributes_lock_);
   agent_event->mutable_agent_start()->mutable_tcb()->CopyFrom(tcb_attributes_);
   message_sender_->SendMessage(
@@ -212,7 +257,7 @@ void AgentPlugin::SendAgentStartEvent() {
 
 void AgentPlugin::SendAgentHeartbeatEvent() {
   // Create agent heartbeat event.
-  auto agent_event = std::make_unique<cros_xdr::reporting::XdrAgentEvent>();
+  auto agent_event = std::make_unique<pb::XdrAgentEvent>();
   base::AutoLock lock(tcb_attributes_lock_);
   agent_event->mutable_agent_heartbeat()->mutable_tcb()->CopyFrom(
       tcb_attributes_);
