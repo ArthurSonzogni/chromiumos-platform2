@@ -17,7 +17,7 @@ int main(int argc, char** argv) {
               "Set bypass_policy_for_testing to true to bypass policy");
   brillo::FlagHelper::Init(argc, argv,
                            "ChromiumOS Security Event Reporting Daemon");
-  brillo::InitLog(brillo::kLogToStderr | brillo::kLogToSyslog);
+  brillo::InitLog(brillo::kLogToStderrIfTty | brillo::kLogToSyslog);
   logging::SetMinLogLevel(FLAGS_log_level);
   auto daemon = secagentd::Daemon(FLAGS_bypass_policy_for_testing);
   return daemon.Run();
