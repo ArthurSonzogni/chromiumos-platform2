@@ -26,8 +26,14 @@ namespace vtpm {
 
 namespace {
 
-constexpr trunks::TPM_HANDLE kSrkHandle = trunks::PERSISTENT_FIRST;
-constexpr trunks::TPM_HANDLE kEkHandle = trunks::PERSISTENT_FIRST + 3;
+// Handles and index from "TCG TPM v2.0 Provisioning Guidance" v1r1 Table 2 and
+// "TCG EK Credential Profile For TPM Family 2.0; Level 0" v2.4r3.
+//
+// Note that since these are ECC objects they are at different locations than
+// the RSA objects.
+constexpr trunks::TPM_HANDLE kSrkHandle = 0x81000002;
+constexpr trunks::TPM_HANDLE kEkHandle = 0x81010002;
+constexpr trunks::TPM_NV_INDEX kVekCertIndex = 0x01C0000a;
 
 // TODO(b/228789530): Virtualizer is not the best one that decides the layout of
 // files. We should make sure that the path is managed in a more systematic way,
@@ -36,7 +42,6 @@ constexpr trunks::TPM_HANDLE kEkHandle = trunks::PERSISTENT_FIRST + 3;
 constexpr char kVsrkCachePath[] = "/var/lib/vtpm/vsrk.blob";
 constexpr char kVekCachePath[] = "/var/lib/vtpm/vek.blob";
 constexpr char kVekCertCachePath[] = "/var/lib/vtpm/vek_cert.blob";
-constexpr trunks::TPM_NV_INDEX kVekCertIndex = 0x01C00001;
 constexpr char kVirtualEndorsementPassword[] = "";
 
 constexpr trunks::TPM_CC kSupportedForwardCommands[] = {

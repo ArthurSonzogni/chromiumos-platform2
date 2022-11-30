@@ -120,20 +120,20 @@ above. Additional notes to a specific command is also documented below:
 
 Below the important constants and parameters for gLinux use are listed below:
 
-*   ECC SRK (handle **0x81000000**)
+*   ECC SRK (handle **0x81000002**)
     *   Decrypt key.
     *   curve id: TPM\_ECC\_NIST\_P256.
     *   Password authorization: empty password.
     *   Policy digest: empty.
     *   PCR: not bound.
-*   ECC EK (handle **0x81000003**)
+*   ECC EK (handle **0x81010002**)
     *   Decrypt key.
     *   curve id: TPM\_ECC\_NIST\_P256.
     *   Password authorization: empty password.
     *   Policy digest: As recommended in ECC EK template for TCG Credential
         Profile EK 2.0.
     *   PCR: not bound.
-*   ECC EK certificate (index **0x01C00001**)
+*   ECC EK certificate (index **0x01C0000a**)
 *   RSA SRK & EK: not provided.
 *   Endorsement password: empty.
 *   Owner password & lockout password: the values are not defined because the
