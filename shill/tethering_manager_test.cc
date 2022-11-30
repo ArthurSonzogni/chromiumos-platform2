@@ -6,6 +6,7 @@
 
 #include <sys/socket.h>
 
+#include <map>
 #include <memory>
 #include <set>
 #include <string>
@@ -17,6 +18,7 @@
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
 #include <base/files/scoped_temp_dir.h>
+#include <base/rand_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/test/mock_callback.h>
 #include <chromeos/dbus/shill/dbus-constants.h>
@@ -203,6 +205,9 @@ class TetheringManagerTest : public testing::Test {
     ON_CALL(*network_, IsConnected()).WillByDefault(Return(true));
     ON_CALL(*wifi_provider_, GetPhyAtIndex(hotspot_device_->phy_index()))
         .WillByDefault(Return(&wifi_phy_));
+    wifi_phy_.SetFrequencies(
+        {{0, {{.value = 2412}, {.value = 2432}, {.value = 2437}}},
+         {1, {{.value = 5220}, {.value = 5240}}}});
   }
   ~TetheringManagerTest() override = default;
 
@@ -1481,6 +1486,83 @@ TEST_F(TetheringManagerTest, CheckMACStored) {
   EXPECT_CALL(*wifi_provider_, CreateHotspotDevice(Eq(ini_mac), _, _, _))
       .WillOnce(Return(hotspot_device_));
   SetEnabled(tethering_manager_, true);
+}
+
+TEST_F(TetheringManagerTest, SelectFrequency_Empty) {
+  WiFiPhy::Frequencies frequencies;
+
+  int freq;
+  tethering_manager_->band_ = WiFiBand::kLowBand;
+  freq = tethering_manager_->SelectFrequency(frequencies);
+  EXPECT_EQ(freq, -1);
+  tethering_manager_->band_ = WiFiBand::kHighBand;
+  freq = tethering_manager_->SelectFrequency(frequencies);
+  EXPECT_EQ(freq, -1);
+  tethering_manager_->band_ = WiFiBand::kAllBands;
+  freq = tethering_manager_->SelectFrequency(frequencies);
+  EXPECT_EQ(freq, -1);
+}
+
+TEST_F(TetheringManagerTest, SelectFrequency_NoValid5G) {
+  WiFiPhy::Frequencies frequencies = {
+      {0,
+       {
+           {.value = 2412},
+           {.value = 2417},
+           {.value = 2422},
+       }},
+      {1,
+       {
+           {.flags = 1 << NL80211_FREQUENCY_ATTR_NO_IR, .value = 5200},
+           {.flags = 1 << NL80211_FREQUENCY_ATTR_RADAR, .value = 5300},
+       }}};
+  int freq;
+  tethering_manager_->band_ = WiFiBand::kAllBands;
+  freq = tethering_manager_->SelectFrequency(frequencies);
+  EXPECT_TRUE(base::Contains(frequencies[0], uint32_t(freq),
+                             [](auto& f) { return f.value; }));
+}
+
+TEST_F(TetheringManagerTest, SelectFrequency) {
+  WiFiPhy::Frequencies frequencies;
+  std::map<WiFiBand, std::pair<int, int>> rf_limits = {
+      {WiFiBand::kLowBand, {2401, 2495}},
+      {WiFiBand::kHighBand, {5150, 5895}},
+  };
+
+  for (auto band : {WiFiBand::kLowBand, WiFiBand::kHighBand}) {
+    int num_freqs = base::RandInt(1, 10);
+    std::vector<WiFiPhy::Frequency> band_freqs;
+    for (int i = 0; i < num_freqs; ++i) {
+      band_freqs.push_back(
+          {.value = static_cast<uint32_t>(
+               base::RandInt(rf_limits[band].first, rf_limits[band].second))});
+    }
+    frequencies[WiFiBandToNl(band)] = std::move(band_freqs);
+  }
+
+  int freq;
+  tethering_manager_->band_ = WiFiBand::kLowBand;
+  freq = tethering_manager_->SelectFrequency(frequencies);
+  EXPECT_GT(freq, 0);
+  EXPECT_TRUE(
+      base::Contains(frequencies[WiFiBandToNl(tethering_manager_->band_)],
+                     uint32_t(freq), [](auto& f) { return f.value; }));
+
+  tethering_manager_->band_ = WiFiBand::kHighBand;
+  freq = tethering_manager_->SelectFrequency(frequencies);
+  EXPECT_GT(freq, 0);
+  EXPECT_TRUE(
+      base::Contains(frequencies[WiFiBandToNl(tethering_manager_->band_)],
+                     uint32_t(freq), [](auto& f) { return f.value; }));
+
+  // For other preferences the selected frequency should be in 2.4 or 5GHz,
+  // however with a valid 5GHz frequency it should be preferred.
+  tethering_manager_->band_ = WiFiBand::kAllBands;
+  freq = tethering_manager_->SelectFrequency(frequencies);
+  EXPECT_GT(freq, 0);
+  EXPECT_TRUE(base::Contains(frequencies[WiFiBandToNl(WiFiBand::kHighBand)],
+                             uint32_t(freq), [](auto& f) { return f.value; }));
 }
 
 }  // namespace shill

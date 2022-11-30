@@ -4083,7 +4083,7 @@ bool WiFi::SupportsWEP() const {
           base::Contains(supported_cipher_suites_, kWEP104CipherCode));
 }
 
-const WiFiPhy* WiFi::GetWiFiPhy() {
+const WiFiPhy* WiFi::GetWiFiPhy() const {
   return provider_->GetPhyAtIndex(phy_index_);
 }
 
