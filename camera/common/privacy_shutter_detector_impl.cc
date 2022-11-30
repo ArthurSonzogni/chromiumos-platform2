@@ -59,8 +59,8 @@ bool PrivacyShutterDetectorImpl::DetectPrivacyShutterFromHandleInternal(
       auto offset = yStride * y + x;
       ySum += yData[offset];
       if (kMaxThreshold < yData[offset]) {
-        LOGF(ERROR) << "The image has a bright spot: "
-                    << static_cast<int>(yData[offset]);
+        LOGF(INFO) << "The image has a bright spot: "
+                   << static_cast<int>(yData[offset]);
         return false;
       }
     }
@@ -68,7 +68,7 @@ bool PrivacyShutterDetectorImpl::DetectPrivacyShutterFromHandleInternal(
 
   double yMean = ySum / width / height;
   if (yMean > kMeanThreshold) {
-    LOGF(ERROR) << "The image is overall bright: " << yMean;
+    LOGF(INFO) << "The image is overall bright: " << yMean;
     return false;
   }
 
@@ -82,7 +82,7 @@ bool PrivacyShutterDetectorImpl::DetectPrivacyShutterFromHandleInternal(
 
   yVar /= width * height;
   if (yVar > kVarThreshold) {
-    LOGF(ERROR) << "Variance is over threshold: " << yVar;
+    LOGF(INFO) << "Variance is over threshold: " << yVar;
     return false;
   }
 
