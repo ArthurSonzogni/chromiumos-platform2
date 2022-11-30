@@ -51,7 +51,6 @@ def GetActiveProjects() -> Generator[Path, None, None]:
 # Legacy projects that don't have a DIR_METADATA file.
 # Someone should claim them :D.
 LEGACYLIST = {
-    "authpolicy",
     "avtest_label_detect",
     "bootid-logger",
     "bootstat",
@@ -85,7 +84,6 @@ LEGACYLIST = {
     "init",
     "installer",
     "ippusb_bridge",
-    "kerberos",
     "libbrillo",
     "libchromeos-rs",
     "libchromeos-ui",
