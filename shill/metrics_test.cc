@@ -10,6 +10,7 @@
 
 #include <base/files/scoped_temp_dir.h>
 #include <chromeos/dbus/service_constants.h>
+#include <gtest/gtest.h>
 #include <metrics/metrics_library_mock.h>
 #include <metrics/timer_mock.h>
 
@@ -881,6 +882,188 @@ TEST_F(MetricsTest, NotifyNeighborLinkMonitorFailure) {
                     Metrics::kNeighborLinkMonitorFailureMax));
   metrics_.NotifyNeighborLinkMonitorFailure(
       IPAddress::kFamilyIPv6, NeighborSignal::GATEWAY_AND_DNS_SERVER);
+}
+
+TEST_F(MetricsTest, WiFiRxTxStatsComparison) {
+  Metrics::WiFiRxTxStats s1, s2;
+  EXPECT_EQ(s1, s2);
+
+  s1.packets = 5;
+  s2.packets = 5;
+  EXPECT_EQ(s1, s2);
+  s2.packets = 7;
+  EXPECT_NE(s1, s2);
+
+  s1 = {};
+  s2 = {};
+  s1.bytes = 8;
+  s2.bytes = 8;
+  EXPECT_EQ(s1, s2);
+  s2.bytes = 7;
+  EXPECT_NE(s1, s2);
+
+  s1 = {};
+  s2 = {};
+  s1.bitrate = 1000;
+  s2.bitrate = 1000;
+  EXPECT_EQ(s1, s2);
+  s2.bitrate = 2000;
+  EXPECT_NE(s1, s2);
+
+  s1 = {};
+  s2 = {};
+  s1.mcs = 9;
+  s2.mcs = 9;
+  EXPECT_EQ(s1, s2);
+  s2.mcs = 7;
+  EXPECT_NE(s1, s2);
+
+  s1 = {};
+  s2 = {};
+  s1.width = Metrics::kWiFiChannelWidth80MHz;
+  s2.width = Metrics::kWiFiChannelWidth80MHz;
+  EXPECT_EQ(s1, s2);
+  s2.width = Metrics::kWiFiChannelWidth40MHz;
+  EXPECT_NE(s1, s2);
+
+  s1 = {};
+  s2 = {};
+  s1.mode = Metrics::kWiFiLinkModeHE;
+  s2.mode = Metrics::kWiFiLinkModeHE;
+  EXPECT_EQ(s1, s2);
+  s2.mode = Metrics::kWiFiLinkModeVHT;
+  EXPECT_NE(s1, s2);
+
+  s1 = {};
+  s2 = {};
+  s1.gi = Metrics::kWiFiGuardInterval_0_8;
+  s2.gi = Metrics::kWiFiGuardInterval_0_8;
+  EXPECT_EQ(s1, s2);
+  s2.gi = Metrics::kWiFiGuardInterval_1_6;
+  EXPECT_NE(s1, s2);
+
+  s1 = {};
+  s2 = {};
+  s1.nss = 2;
+  s2.nss = 2;
+  EXPECT_EQ(s1, s2);
+  s2.nss = 4;
+  EXPECT_NE(s1, s2);
+
+  s1 = {};
+  s2 = {};
+  s1.dcm = 1;
+  s2.dcm = 1;
+  EXPECT_EQ(s1, s2);
+  s2.dcm = 0;
+  EXPECT_NE(s1, s2);
+}
+
+TEST_F(MetricsTest, WiFiLinkQualityReportComparison) {
+  Metrics::WiFiLinkQualityReport r1, r2;
+  EXPECT_EQ(r1, r2);
+
+  r1.tx_retries = 5;
+  r2.tx_retries = 5;
+  EXPECT_EQ(r1, r2);
+  r2.tx_retries = 7;
+  EXPECT_NE(r1, r2);
+
+  r1 = {};
+  r2 = {};
+  r1.tx_failures = 2;
+  r2.tx_failures = 2;
+  EXPECT_EQ(r1, r2);
+  r2.tx_failures = 3;
+  EXPECT_NE(r1, r2);
+
+  r1 = {};
+  r2 = {};
+  r1.rx_drops = 3;
+  r2.rx_drops = 3;
+  EXPECT_EQ(r1, r2);
+  r2.rx_drops = 1;
+  EXPECT_NE(r1, r2);
+
+  r1 = {};
+  r2 = {};
+  r1.chain0_signal = -55;
+  r2.chain0_signal = -55;
+  EXPECT_EQ(r1, r2);
+  r2.chain0_signal = -60;
+  EXPECT_NE(r1, r2);
+
+  r1 = {};
+  r2 = {};
+  r1.chain0_signal_avg = -51;
+  r2.chain0_signal_avg = -51;
+  EXPECT_EQ(r1, r2);
+  r2.chain0_signal_avg = -63;
+  EXPECT_NE(r1, r2);
+
+  r1 = {};
+  r2 = {};
+  r1.chain1_signal = -55;
+  r2.chain1_signal = -55;
+  EXPECT_EQ(r1, r2);
+  r2.chain1_signal = -60;
+  EXPECT_NE(r1, r2);
+
+  r1 = {};
+  r2 = {};
+  r1.chain1_signal_avg = -50;
+  r2.chain1_signal_avg = -50;
+  EXPECT_EQ(r1, r2);
+  r2.chain1_signal_avg = -52;
+  EXPECT_NE(r1, r2);
+
+  r1 = {};
+  r2 = {};
+  r1.beacon_signal_avg = -53;
+  r2.beacon_signal_avg = -53;
+  EXPECT_EQ(r1, r2);
+  r2.beacon_signal_avg = -54;
+  EXPECT_NE(r1, r2);
+
+  r1 = {};
+  r2 = {};
+  r1.beacons_received = 535;
+  r2.beacons_received = 535;
+  EXPECT_EQ(r1, r2);
+  r2.beacons_received = 700;
+  EXPECT_NE(r1, r2);
+
+  r1 = {};
+  r2 = {};
+  r1.beacons_lost = 4;
+  r2.beacons_lost = 4;
+  EXPECT_EQ(r1, r2);
+  r2.beacons_lost = 3;
+  EXPECT_NE(r1, r2);
+
+  r1 = {};
+  r2 = {};
+  r1.expected_throughput = 15000;
+  r2.expected_throughput = 15000;
+  EXPECT_EQ(r1, r2);
+  r2.expected_throughput = 16000;
+  EXPECT_NE(r1, r2);
+
+  r1 = {};
+  r2 = {};
+  r1.rx.bitrate = 20000;
+  r2.rx.bitrate = 20000;
+  EXPECT_EQ(r1, r2);
+  r2.rx.bitrate = 17000;
+  EXPECT_NE(r1, r2);
+
+  r1 = {};
+  r2 = {};
+  r1.tx.bitrate = 25000;
+  r2.tx.bitrate = 25000;
+  EXPECT_EQ(r1, r2);
+  r2.tx.bitrate = 18000;
+  EXPECT_NE(r1, r2);
 }
 
 #ifndef NDEBUG
