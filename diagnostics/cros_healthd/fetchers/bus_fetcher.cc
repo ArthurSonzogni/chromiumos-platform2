@@ -345,8 +345,10 @@ mojom::BusDevicePtr FetchThunderboltDevice(
 fwupd_utils::DeviceList ParseFwupdDevices(
     brillo::Error* err,
     const std::vector<brillo::VariantDictionary>& response) {
-  if (err)
+  if (err) {
+    LOG(WARNING) << "Unable to get fwupd devices: " << err->GetMessage();
     return {};
+  }
   return fwupd_utils::ParseDbusFwupdDeviceList(response);
 }
 
