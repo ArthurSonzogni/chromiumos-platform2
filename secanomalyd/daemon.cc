@@ -34,8 +34,9 @@ namespace secanomalyd {
 
 namespace {
 
-// Adjust the sampling frequency such that the systems with more W+X mounts are
-// more likely to send a crash report.
+// Sets the sampling frequency for W+X mount count uploads, such that the
+// systems with more W+X mounts are more likely to send a crash report, in
+// addition to limiting the total number of uploaded reports.
 constexpr int CalculateSampleFrequency(size_t wx_mount_count) {
   if (wx_mount_count <= 5)
     return 15;
@@ -48,9 +49,10 @@ constexpr int CalculateSampleFrequency(size_t wx_mount_count) {
 }
 
 constexpr base::TimeDelta kScanInterval = base::Seconds(30);
+// Used to limit the total number of UMA reports.
 // Per Platform.DailyUseTime histogram this interval should ensure that enough
 // users run the reporting.
-constexpr base::TimeDelta kReportInterval = base::Hours(2);
+constexpr base::TimeDelta kUmaReportInterval = base::Hours(2);
 
 // Used to cap the number of successful reports for the memfd execution anomaly
 // baseline condition (successful memfd_create syscall).
@@ -76,7 +78,7 @@ int Daemon::OnInit() {
 
 int Daemon::OnEventLoopStarted() {
   ScanForAnomalies();
-  ReportAnomalies();
+  ReportWXMountCount();
 
   return EX_OK;
 }
@@ -93,18 +95,22 @@ void Daemon::ScanForAnomalies() {
       kScanInterval);
 }
 
-void Daemon::ReportAnomalies() {
-  VLOG(1) << "Reporting W+X mount count";
-
-  DoWXMountCountReporting();
-
-  // TODO(b/255818130): Add a function for reporting the details of any
-  // discovered memfd execution events through crash reporter.
+void Daemon::ReportWXMountCount() {
+  VLOG(1) << "Reporting W+X mount count UMA metric";
+  if (ShouldReport(dev_)) {
+    if (SendWXMountCountToUMA(wx_mounts_.size())) {
+      // After successfully reporting W+X mount count, clear the map.
+      // If mounts still exist they'll be re-added on the next scan.
+      wx_mounts_.clear();
+    } else {
+      LOG(WARNING) << "Could not upload W+X mount count UMA metric";
+    }
+  }
 
   brillo::MessageLoop::current()->PostDelayedTask(
       FROM_HERE,
-      base::BindOnce(&Daemon::ReportAnomalies, base::Unretained(this)),
-      kReportInterval);
+      base::BindOnce(&Daemon::ReportWXMountCount, base::Unretained(this)),
+      kUmaReportInterval);
 }
 
 void Daemon::DoWXMountScan() {
@@ -165,37 +171,36 @@ void Daemon::DoWXMountScan() {
       }
     }
   }
+
+  // Report the system as anomalous if the daemon has never attempted to send a
+  // report and the W+X mount count is non-zero.
+  if (generate_reports_ && !has_attempted_wx_mount_report_ &&
+      wx_mounts_.size() > 0) {
+    // Stop subsequent reporting attempts for this execution.
+    has_attempted_wx_mount_report_ = true;
+    DoAnomalousSystemReporting();
+  }
 }
 
-void Daemon::DoWXMountCountReporting() {
-  size_t wx_mount_count = wx_mounts_.size();
+void Daemon::DoAnomalousSystemReporting() {
+  VLOG(1) << "Reporting anomalous system: W+X mount count";
   if (ShouldReport(dev_)) {
-    if (!SendWXMountCountToUMA(wx_mount_count)) {
-      LOG(WARNING) << "Could not upload W+X mount count";
+    // Send one out of every |kSampleFrequency| reports, unless |dev_| is set.
+    // |base::RandInt()| returns a random int in [min, max].
+    int range = dev_ ? 1 : CalculateSampleFrequency(wx_mounts_.size());
+    if (base::RandInt(1, range) > 1) {
+      return;
     }
 
-    // Should we send an anomalous system report?
-    if (generate_reports_ && !has_attempted_wx_mount_report_ &&
-        wx_mount_count > 0) {
-      // Stop subsequent reporting attempts for this execution.
-      has_attempted_wx_mount_report_ = true;
-      // Send one out of every |kSampleFrequency| reports, unless |dev_| is set.
-      // |base::RandInt()| returns a random int in [min, max].
-      int range = dev_ ? 1 : CalculateSampleFrequency(wx_mount_count);
-      if (base::RandInt(1, range) > 1) {
-        return;
-      }
+    bool success = ReportAnomalousSystem(wx_mounts_, range, dev_);
+    if (!success) {
+      // Reporting is best-effort so on failure we just print a warning.
+      LOG(WARNING) << "Failed to report anomalous system";
+    }
 
-      bool success = ReportAnomalousSystem(wx_mounts_, range, dev_);
-      if (!success) {
-        // Reporting is best-effort so on failure we just print a warning.
-        LOG(WARNING) << "Failed to report anomalous system";
-      }
-
-      // Report whether uploading the anomalous system report succeeded.
-      if (!SendAnomalyUploadResultToUMA(success)) {
-        LOG(WARNING) << "Could not upload metrics";
-      }
+    // Report whether uploading the anomalous system report succeeded.
+    if (!SendAnomalyUploadResultToUMA(success)) {
+      LOG(WARNING) << "Could not upload metrics";
     }
   }
 }
@@ -238,6 +243,9 @@ void Daemon::DoAuditLogScan() {
       }
     }
   }
+  // TODO(b/255818130): Add a function for reporting the details of any
+  // discovered memfd execution events through crash reporter and invoke it
+  // here.
 }
 
 }  // namespace secanomalyd

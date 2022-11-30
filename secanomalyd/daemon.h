@@ -33,19 +33,23 @@ class Daemon : public brillo::DBusDaemon {
   // all the anomaly detection tasks one by one.
   void ScanForAnomalies();
 
-  // Anomaly detection tasks.
+  // Anomaly detection tasks below check for specific anomalous conditions and
+  // invoke the appropriate reporting function if an anomaly is detected.
   void DoWXMountScan();
   void DoAuditLogScan();
 
-  // Discovered anomalies are reported at set intervals, dictated by
-  // |kReportInterval|.
-  void ReportAnomalies();
+  // Discovered anomalies are reported to UMA at set intervals, dictated by
+  // |kUmaReportInterval|.
+  void ReportWXMountCount();
 
-  // Anomaly reporting tasks.
-  void DoWXMountCountReporting();
+  // Reporting tasks have rate limiting criteria built into them for uploading
+  // crash reports.
+  void DoAnomalousSystemReporting();
 
   // Used to keep track of whether this daemon has attempted to send a crash
   // report for a W+X mount observation throughout its lifetime.
+  // Only one crash report upload is attempted for an anomaly of type W+X mount
+  // during the lifetime of the daemon.
   bool has_attempted_wx_mount_report_ = false;
 
   // Used to track successful UMA invocations for the memfd baseline metric so
