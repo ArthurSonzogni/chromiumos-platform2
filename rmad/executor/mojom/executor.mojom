@@ -48,4 +48,12 @@ interface Executor {
   // Response:
   // * |success| - true if successfully requested an RMA mode powerwash
   RequestRmaPowerwash() => (bool success);
+
+  // Request a battery cutoff.
+  //
+  // Input: None
+  //
+  // Response:
+  // * |success| - true if successfully requested a battery cutoff
+  RequestBatteryCutoff() => (bool success);
 };

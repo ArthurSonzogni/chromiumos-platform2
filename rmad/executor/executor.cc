@@ -22,6 +22,8 @@
 
 #include "rmad/executor/mojom/executor.mojom.h"
 #include "rmad/executor/mount.h"
+#include "rmad/utils/crossystem_utils.h"
+#include "rmad/utils/crossystem_utils_impl.h"
 #include "rmad/utils/ec_utils_impl.h"
 
 namespace {
@@ -83,6 +85,7 @@ Executor::Executor(
   receiver_.set_disconnect_handler(
       base::BindOnce([]() { std::exit(EXIT_SUCCESS); }));
   ec_utils_ = std::make_unique<EcUtilsImpl>();
+  crossystem_utils_ = std::make_unique<CrosSystemUtilsImpl>();
 }
 
 void Executor::MountAndWriteLog(uint8_t device_id,
@@ -167,6 +170,15 @@ void Executor::RequestRmaPowerwash(RequestRmaPowerwashCallback callback) {
     LOG(ERROR) << "Failed to sync powerwash request file";
     std::move(callback).Run(false);
   }
+  std::move(callback).Run(true);
+}
+
+void Executor::RequestBatteryCutoff(RequestBatteryCutoffCallback callback) {
+  if (!crossystem_utils_->SetInt(CrosSystemUtils::kBatteryCutoffRequestProperty,
+                                 1)) {
+    std::move(callback).Run(false);
+  }
+
   std::move(callback).Run(true);
 }
 

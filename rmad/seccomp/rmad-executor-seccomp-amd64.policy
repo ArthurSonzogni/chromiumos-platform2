@@ -2,11 +2,17 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+# rseq should be first due to frequency and purpose to decrease nptl latency
+rseq: 1
+
 readlink: 1
 read: 1
 newfstatat: 1
 openat: 1
 close: 1
+clock_getres: 1
+clock_nanosleep: 1
+dup2: 1
 mmap: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 getrandom: 1
 readlinkat: 1
@@ -24,10 +30,13 @@ brk: 1
 # CROS_EC_DEV_IOCXCMD_V2 = 0xc014ec00
 ioctl: arg1 == BLKGETSIZE64 || arg1 == TCGETS || arg1 == BLKSSZGET || \
        arg1 == 0x5331 || arg1 == 0xc014ec00
+iopl: 1
 getdents64: 1
 recvmsg: 1
 sendto: 1
 fcntl: 1
+flock: 1
+ftruncate: 1
 epoll_ctl: 1
 write: 1
 pread64: 1
@@ -57,6 +66,8 @@ mount: 1
 creat: 1
 fdatasync: 1
 umount2: 1
+umask: 1
+wait4: 1
 exit_group: 1
 restart_syscall: 1
 exit: 1

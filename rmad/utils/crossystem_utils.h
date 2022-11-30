@@ -39,6 +39,8 @@ class CrosSystemUtils {
   static constexpr char kCrosDebugProperty[] = "cros_debug";
   static constexpr char kHwidProperty[] = "hwid";
   static constexpr char kMainFwTypeProperty[] = "mainfw_type";
+  static constexpr char kBatteryCutoffRequestProperty[] =
+      "battery_cutoff_request";
 
   bool GetHwwpStatus(int* value) { return GetInt(kHwwpStatusProperty, value); }
   bool GetCrosDebug(int* value) { return GetInt(kCrosDebugProperty, value); }

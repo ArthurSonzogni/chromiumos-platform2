@@ -129,6 +129,9 @@ void NewMountNamespace() {
   minijail_mount_with_data(j.get(), "tmpfs", "/var", "tmpfs", 0, nullptr);
   minijail_bind(j.get(), "/var/lib/rmad", "/var/lib/rmad", 1);
 
+  // Required by |crossystem| utility.
+  minijail_bind(j.get(), "/run/lock", "/run/lock", 1);
+
   minijail_use_seccomp_filter(j.get());
   minijail_parse_seccomp_filters(j.get(), kRmadExecutorSeccompFilterPath);
 
