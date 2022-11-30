@@ -12,6 +12,8 @@
 #include "absl/status/status.h"
 #include "attestation/proto_bindings/interface.pb.h"
 #include "attestation-client/attestation/dbus-proxies.h"
+#include "base/functional/callback_forward.h"
+#include "base/functional/callback_helpers.h"
 #include "base/logging.h"
 #include "base/memory/scoped_refptr.h"
 #include "base/task/thread_pool/thread_pool_instance.h"
@@ -35,8 +37,10 @@ Daemon::Daemon(struct Inject injected) {
   policy_provider_ = std::move(injected.policy_provider_);
 }
 
-Daemon::Daemon(bool bypass_policy_for_testing)
-    : bypass_policy_for_testing_(bypass_policy_for_testing) {}
+Daemon::Daemon(bool bypass_policy_for_testing,
+               bool bypass_enq_ok_wait_for_testing)
+    : bypass_policy_for_testing_(bypass_policy_for_testing),
+      bypass_enq_ok_wait_for_testing_(bypass_enq_ok_wait_for_testing) {}
 
 int Daemon::OnInit() {
   int rv = brillo::DBusDaemon::OnInit();
@@ -75,11 +79,18 @@ int Daemon::OnInit() {
 }
 
 int Daemon::CreateAndRunAgentPlugin() {
+  using CbType = base::OnceCallback<void()>;
+  CbType cb_for_agent =
+      base::BindOnce(&Daemon::RunPlugins, base::Unretained(this));
+  CbType cb_for_now = base::DoNothing();
+  if (bypass_enq_ok_wait_for_testing_) {
+    std::swap(cb_for_agent, cb_for_now);
+  }
   agent_plugin_ = plugin_factory_->Create(
       Types::Plugin::kAgent, message_sender_,
       std::make_unique<org::chromium::AttestationProxy>(bus_),
       std::make_unique<org::chromium::TpmManagerProxy>(bus_),
-      base::BindOnce(&Daemon::RunPlugins, base::Unretained(this)));
+      std::move(cb_for_agent));
 
   if (!agent_plugin_) {
     return EX_SOFTWARE;
@@ -90,6 +101,9 @@ int Daemon::CreateAndRunAgentPlugin() {
     LOG(ERROR) << result.message();
     return EX_SOFTWARE;
   }
+
+  base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
+      FROM_HERE, std::move(cb_for_now));
 
   return EX_OK;
 }

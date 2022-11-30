@@ -14,11 +14,16 @@ int main(int argc, char** argv) {
                "Logging level - 0: LOG(INFO), 1: LOG(WARNING), 2: LOG(ERROR), "
                "-1: VLOG(1), -2: VLOG(2), ...");
   DEFINE_bool(bypass_policy_for_testing, false,
-              "Set bypass_policy_for_testing to true to bypass policy");
+              "Set to true to bypass policy checks at startup");
+  DEFINE_bool(
+      bypass_enq_ok_wait_for_testing, false,
+      "Set to true to skip waiting for an Agent Start event to be "
+      "enqueued successfully before attempting to enqueue subsequent events");
   brillo::FlagHelper::Init(argc, argv,
                            "ChromiumOS Security Event Reporting Daemon");
   brillo::InitLog(brillo::kLogToStderrIfTty | brillo::kLogToSyslog);
   logging::SetMinLogLevel(FLAGS_log_level);
-  auto daemon = secagentd::Daemon(FLAGS_bypass_policy_for_testing);
+  auto daemon = secagentd::Daemon(FLAGS_bypass_policy_for_testing,
+                                  FLAGS_bypass_enq_ok_wait_for_testing);
   return daemon.Run();
 }
