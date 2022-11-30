@@ -21,6 +21,16 @@ namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kCellular;
 }  // namespace Logging
 
+// static
+// These bearer properties have to match the ones in
+// org.freedesktop.ModemManager1.Bearer.xml
+const char CellularBearer::kMMApnProperty[] = "apn";
+const char CellularBearer::kMMUserProperty[] = "user";
+const char CellularBearer::kMMPasswordProperty[] = "password";
+const char CellularBearer::kMMAllowedAuthProperty[] = "allowed-auth";
+const char CellularBearer::kMMAllowRoamingProperty[] = "allow-roaming";
+const char CellularBearer::kMMIpTypeProperty[] = "ip-type";
+
 namespace {
 
 const char kPropertyAddress[] = "address";

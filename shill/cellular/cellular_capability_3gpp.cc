@@ -47,13 +47,6 @@ static std::string ObjectID(const CellularCapability3gpp* c) {
 }
 }  // namespace Logging
 
-// static
-const char CellularCapability3gpp::kConnectApn[] = "apn";
-const char CellularCapability3gpp::kConnectUser[] = "user";
-const char CellularCapability3gpp::kConnectPassword[] = "password";
-const char CellularCapability3gpp::kConnectAllowedAuth[] = "allowed-auth";
-const char CellularCapability3gpp::kConnectAllowRoaming[] = "allow-roaming";
-const char CellularCapability3gpp::kConnectIpType[] = "ip-type";
 const int64_t CellularCapability3gpp::kEnterPinTimeoutMilliseconds = 20000;
 const int64_t
     CellularCapability3gpp::kRegistrationDroppedUpdateTimeoutMilliseconds =
@@ -96,12 +89,6 @@ const char kQcomSocMMDevice[] = "qcom-soc";
 // This identifier is specified in the serviceproviders.prototxt file.
 const char kVzwIdentifier[] = "c83d6597-dc91-4d48-a3a7-d86b80123751";
 const size_t kVzwMdnLength = 10;
-
-// Keys for the entries of Profiles.
-const char kProfileApn[] = "apn";
-const char kProfileUsername[] = "username";
-const char kProfilePassword[] = "password";
-const char kProfileAuthType[] = "auth-type";
 
 std::string AccessTechnologyToString(uint32_t access_technologies) {
   // Order is important. Return the highest radio access technology.
@@ -748,7 +735,8 @@ void CellularCapability3gpp::SetupConnectProperties(KeyValueStore* properties) {
 }
 
 void CellularCapability3gpp::SetRoamingProperties(KeyValueStore* properties) {
-  properties->Set<bool>(kConnectAllowRoaming, cellular()->IsRoamingAllowed());
+  properties->Set<bool>(CellularBearer::kMMAllowRoamingProperty,
+                        cellular()->IsRoamingAllowed());
 }
 
 bool CellularCapability3gpp::IsDualStackSupported() {
@@ -800,13 +788,13 @@ bool CellularCapability3gpp::SetApnProperties(const Stringmap& apn_info,
   const std::string& apn = apn_info.at(kApnProperty);
   LOG(INFO) << __func__ << ": Using APN '" << MaskApnValue(apn_info, apn)
             << "'";
-  properties->Set<std::string>(kConnectApn, apn);
+  properties->Set<std::string>(CellularBearer::kMMApnProperty, apn);
   if (base::Contains(apn_info, kApnUsernameProperty)) {
-    properties->Set<std::string>(kConnectUser,
+    properties->Set<std::string>(CellularBearer::kMMUserProperty,
                                  apn_info.at(kApnUsernameProperty));
   }
   if (base::Contains(apn_info, kApnPasswordProperty)) {
-    properties->Set<std::string>(kConnectPassword,
+    properties->Set<std::string>(CellularBearer::kMMPasswordProperty,
                                  apn_info.at(kApnPasswordProperty));
   }
   MMBearerAllowedAuth allowed_auth = MM_BEARER_ALLOWED_AUTH_UNKNOWN;
@@ -819,11 +807,12 @@ bool CellularCapability3gpp::SetApnProperties(const Stringmap& apn_info,
     allowed_auth = MM_BEARER_ALLOWED_AUTH_CHAP;
   }
   if (allowed_auth != MM_BEARER_ALLOWED_AUTH_UNKNOWN)
-    properties->Set<uint32_t>(kConnectAllowedAuth, allowed_auth);
+    properties->Set<uint32_t>(CellularBearer::kMMAllowedAuthProperty,
+                              allowed_auth);
 
   if (IsDualStackSupported() && base::Contains(apn_info, kApnIpTypeProperty)) {
     properties->Set<uint32_t>(
-        kConnectIpType,
+        CellularBearer::kMMIpTypeProperty,
         IpTypeToMMBearerIpFamily(apn_info.at(kApnIpTypeProperty)));
   }
 
@@ -914,12 +903,13 @@ void CellularCapability3gpp::FillInitialEpsBearerPropertyMap(
             << MaskApnValue(apn_info, GetStringmapValue(apn_info, kApnProperty))
             << "'";
   if (base::Contains(apn_info, kApnProperty))
-    properties->Set<std::string>(kConnectApn, apn_info.at(kApnProperty));
+    properties->Set<std::string>(CellularBearer::kMMApnProperty,
+                                 apn_info.at(kApnProperty));
   if (base::Contains(apn_info, kApnUsernameProperty))
-    properties->Set<std::string>(kConnectUser,
+    properties->Set<std::string>(CellularBearer::kMMUserProperty,
                                  apn_info.at(kApnUsernameProperty));
   if (base::Contains(apn_info, kApnPasswordProperty)) {
-    properties->Set<std::string>(kConnectPassword,
+    properties->Set<std::string>(CellularBearer::kMMPasswordProperty,
                                  apn_info.at(kApnPasswordProperty));
   }
   MMBearerAllowedAuth allowed_auth = MM_BEARER_ALLOWED_AUTH_UNKNOWN;
@@ -932,15 +922,16 @@ void CellularCapability3gpp::FillInitialEpsBearerPropertyMap(
     allowed_auth = MM_BEARER_ALLOWED_AUTH_CHAP;
   }
   if (allowed_auth != MM_BEARER_ALLOWED_AUTH_UNKNOWN)
-    properties->Set<uint32_t>(kConnectAllowedAuth, allowed_auth);
+    properties->Set<uint32_t>(CellularBearer::kMMAllowedAuthProperty,
+                              allowed_auth);
   if (IsDualStackSupported() && base::Contains(apn_info, kApnIpTypeProperty)) {
     properties->Set<uint32_t>(
-        kConnectIpType,
+        CellularBearer::kMMIpTypeProperty,
         IpTypeToMMBearerIpFamily(apn_info.at(kApnIpTypeProperty)));
   } else {
     // If no IP type is provided, default it to IPv4, otherwise ModemManager
     // will choose a default, or will fail to accept |none| on qmi modems.
-    properties->Set<uint32_t>(kConnectIpType,
+    properties->Set<uint32_t>(CellularBearer::kMMIpTypeProperty,
                               IpTypeToMMBearerIpFamily(kApnIpTypeV4));
   }
 }
@@ -1850,16 +1841,16 @@ void CellularCapability3gpp::OnProfilesChanged(const Profiles& profiles) {
   profiles_.clear();
   for (const auto& profile : profiles) {
     MobileOperatorInfo::MobileAPN apn_info;
-    apn_info.apn =
-        brillo::GetVariantValueOrDefault<std::string>(profile, kProfileApn);
+    apn_info.apn = brillo::GetVariantValueOrDefault<std::string>(
+        profile, CellularBearer::kMMApnProperty);
     apn_info.username = brillo::GetVariantValueOrDefault<std::string>(
-        profile, kProfileUsername);
+        profile, CellularBearer::kMMUserProperty);
     apn_info.password = brillo::GetVariantValueOrDefault<std::string>(
-        profile, kProfilePassword);
+        profile, CellularBearer::kMMPasswordProperty);
     apn_info.authentication =
         MMBearerAllowedAuthToApnAuthentication(static_cast<MMBearerAllowedAuth>(
-            brillo::GetVariantValueOrDefault<uint32_t>(profile,
-                                                       kProfileAuthType)));
+            brillo::GetVariantValueOrDefault<uint32_t>(
+                profile, CellularBearer::kMMAllowedAuthProperty)));
     profiles_.push_back(std::move(apn_info));
   }
 

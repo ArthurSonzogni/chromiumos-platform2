@@ -52,14 +52,6 @@ class CellularCapability3gpp : public CellularCapability {
   using PcoList = std::vector<std::tuple<uint32_t, bool, std::vector<uint8_t>>>;
   using Profiles = std::vector<brillo::VariantDictionary>;
 
-  // Constants used in connect method call.  Make available to test matchers.
-  static const char kConnectApn[];
-  static const char kConnectUser[];
-  static const char kConnectPassword[];
-  static const char kConnectAllowedAuth[];
-  static const char kConnectAllowRoaming[];
-  static const char kConnectIpType[];
-
   using SimProperties = Cellular::SimProperties;
 
   CellularCapability3gpp(Cellular* cellular,

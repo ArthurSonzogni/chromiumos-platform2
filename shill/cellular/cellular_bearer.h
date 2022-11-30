@@ -24,6 +24,14 @@ class ControlInterface;
 // ModemManager.
 class CellularBearer {
  public:
+  // ModemManager Bearer Properties.
+  static const char kMMApnProperty[];
+  static const char kMMUserProperty[];
+  static const char kMMPasswordProperty[];
+  static const char kMMAllowedAuthProperty[];
+  static const char kMMAllowRoamingProperty[];
+  static const char kMMIpTypeProperty[];
+
   // The values are used in metrics and thus should not be changed.
   enum class IPConfigMethod { kUnknown = 0, kPPP = 1, kStatic = 2, kDHCP = 3 };
 

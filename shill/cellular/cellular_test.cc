@@ -2013,7 +2013,7 @@ TEST_P(CellularTest, ProfilesApnList) {
 
   constexpr char kApn1[] = "ota.apn";
   brillo::VariantDictionary profile;
-  profile["apn"] = std::string(kApn1);
+  profile[CellularBearer::kMMApnProperty] = std::string(kApn1);
   Capability3gppCallOnProfilesChanged({profile});
 
   constexpr char kApn2[] = "normal.apn";
@@ -2040,7 +2040,7 @@ TEST_P(CellularTest, MergeProfileAndOperatorApn) {
   constexpr char kApn[] = "normal.apn";
   constexpr char kApnName[] = "Normal APN";
   brillo::VariantDictionary profile;
-  profile["apn"] = std::string(kApn);
+  profile[CellularBearer::kMMApnProperty] = std::string(kApn);
   Capability3gppCallOnProfilesChanged({profile});
 
   std::vector<MobileOperatorInfo::MobileAPN> apn_list;
@@ -2065,8 +2065,8 @@ TEST_P(CellularTest, DontMergeProfileAndOperatorApn) {
   constexpr char kApn[] = "normal.apn";
   constexpr char kUsernameFromProfile[] = "user1";
   brillo::VariantDictionary profile;
-  profile["apn"] = std::string(kApn);
-  profile["username"] = std::string(kUsernameFromProfile);
+  profile[CellularBearer::kMMApnProperty] = std::string(kApn);
+  profile[CellularBearer::kMMUserProperty] = std::string(kUsernameFromProfile);
   Capability3gppCallOnProfilesChanged({profile});
 
   constexpr char kUsernameFromOperator[] = "user2";

@@ -79,59 +79,53 @@ const RpcIdentifier kSimPath2("/foo/sim/2");
 }  // namespace
 
 MATCHER_P(HasApn, expected_apn, "") {
-  return arg.template Contains<std::string>(
-             CellularCapability3gpp::kConnectApn) &&
+  return arg.template Contains<std::string>(CellularBearer::kMMApnProperty) &&
          expected_apn ==
-             arg.template Get<std::string>(CellularCapability3gpp::kConnectApn);
+             arg.template Get<std::string>(CellularBearer::kMMApnProperty);
 }
 
 MATCHER(HasNoUser, "") {
-  return !arg.template Contains<std::string>(
-      CellularCapability3gpp::kConnectUser);
+  return !arg.template Contains<std::string>(CellularBearer::kMMUserProperty);
 }
 
 MATCHER_P(HasUser, expected_user, "") {
-  return arg.template Contains<std::string>(
-             CellularCapability3gpp::kConnectUser) &&
-         expected_user == arg.template Get<std::string>(
-                              CellularCapability3gpp::kConnectUser);
+  return arg.template Contains<std::string>(CellularBearer::kMMUserProperty) &&
+         expected_user ==
+             arg.template Get<std::string>(CellularBearer::kMMUserProperty);
 }
 
 MATCHER(HasNoPassword, "") {
   return !arg.template Contains<std::string>(
-      CellularCapability3gpp::kConnectPassword);
+      CellularBearer::kMMPasswordProperty);
 }
 
 MATCHER_P(HasPassword, expected_password, "") {
   return arg.template Contains<std::string>(
-             CellularCapability3gpp::kConnectPassword) &&
-         expected_password == arg.template Get<std::string>(
-                                  CellularCapability3gpp::kConnectPassword);
+             CellularBearer::kMMPasswordProperty) &&
+         expected_password ==
+             arg.template Get<std::string>(CellularBearer::kMMPasswordProperty);
 }
 
 MATCHER(HasNoAllowedAuth, "") {
   return !arg.template Contains<std::string>(
-      CellularCapability3gpp::kConnectAllowedAuth);
+      CellularBearer::kMMAllowedAuthProperty);
 }
 
 MATCHER_P(HasAllowedAuth, expected_authentication, "") {
   return arg.template Contains<uint32_t>(
-             CellularCapability3gpp::kConnectAllowedAuth) &&
+             CellularBearer::kMMAllowedAuthProperty) &&
          expected_authentication ==
-             arg.template Get<uint32_t>(
-                 CellularCapability3gpp::kConnectAllowedAuth);
+             arg.template Get<uint32_t>(CellularBearer::kMMAllowedAuthProperty);
 }
 
 MATCHER(HasNoIpType, "") {
-  return !arg.template Contains<uint32_t>(
-      CellularCapability3gpp::kConnectIpType);
+  return !arg.template Contains<uint32_t>(CellularBearer::kMMIpTypeProperty);
 }
 
 MATCHER_P(HasIpType, expected_ip_type, "") {
-  return arg.template Contains<uint32_t>(
-             CellularCapability3gpp::kConnectIpType) &&
+  return arg.template Contains<uint32_t>(CellularBearer::kMMIpTypeProperty) &&
          expected_ip_type ==
-             arg.template Get<uint32_t>(CellularCapability3gpp::kConnectIpType);
+             arg.template Get<uint32_t>(CellularBearer::kMMIpTypeProperty);
 }
 
 class CellularCapability3gppTest : public testing::TestWithParam<std::string> {
@@ -1366,7 +1360,7 @@ TEST_F(CellularCapability3gppTest, SetInitialEpsBearer) {
       .Times(1)
       .WillOnce(SaveArg<2>(&set_callback));
   EXPECT_CALL(*this, TestCallback(IsSuccess()));
-  properties.Set<std::string>(CellularCapability3gpp::kConnectApn, kTestApn);
+  properties.Set<std::string>(CellularBearer::kMMApnProperty, kTestApn);
 
   cellular_->set_use_attach_apn_for_testing(true);
 
