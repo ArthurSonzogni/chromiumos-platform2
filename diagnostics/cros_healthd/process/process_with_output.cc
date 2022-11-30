@@ -11,8 +11,6 @@
 #include <base/strings/string_util.h>
 #include <brillo/errors/error_codes.h>
 
-#include "diagnostics/cros_healthd/utils/helper_tool_utils.h"
-
 namespace diagnostics {
 
 namespace {
