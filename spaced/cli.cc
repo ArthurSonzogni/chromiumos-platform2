@@ -30,12 +30,14 @@ enum Size : int64_t;
 
 std::ostream& operator<<(std::ostream& out, const Size size) {
   const int64_t i = static_cast<int64_t>(size);
-  out << i;
+
+  if (i < 0)
+    return out << "error";
 
   if (human_readable_sizes)
-    out << " bytes (" << (i >> 20) << " MiB)";
+    return out << i << " bytes (" << (i >> 20) << " MiB)";
 
-  return out;
+  return out << i;
 }
 
 class NumPunct : public std::numpunct<char> {
