@@ -90,7 +90,7 @@ bool ConfigureInstall(const string& install_dev,
   install_config->slot = slot;
   install_config->root = root;
   install_config->kernel = Partition(kernel_dev);
-  install_config->boot = Partition(boot_dev);
+  install_config->boot = Partition(boot_dev, "/tmp/boot_mnt");
   install_config->bios_type = bios_type;
   install_config->defer_update_action = defer_update_action;
 
@@ -374,7 +374,7 @@ bool RollbackPartitionTable(CgptManager& cgpt_manager,
 // Returns false for some errors, true otherwise.
 // TODO(tbrandston): perhaps we should only return false for errors that would
 // interfere with completing install/update?
-bool ESPPostInstall(InstallConfig& install_config) {
+bool ESPPostInstall(const InstallConfig& install_config) {
   // Early-return for bootloaders we don't handle here.
   switch (install_config.bios_type) {
     case BiosType::kSecure:
@@ -390,8 +390,6 @@ bool ESPPostInstall(InstallConfig& install_config) {
     case BiosType::kEFI:
       break;
   }
-
-  install_config.boot.set_mount("/tmp/boot_mnt");
 
   if (!base::CreateDirectory(base::FilePath(install_config.boot.mount()))) {
     LOG(ERROR) << "Failed to create mount dir for EFI System Partition.";
@@ -562,6 +560,18 @@ bool ChromeosChrootPostinst(const InstallConfig& install_config,
       // Note: for devices using MTD storage the partition won't be marked
       // bootable until `cgpt_manager.Finalize` is called or cgpt_manager is
       // destructed. b/260606556
+
+      // This is a no-op for Chromebook firmware/CrOS-only devices.
+      if (!ESPPostInstall(install_config)) {
+        LOG(ERROR) << "ESPPostInstall failed.";
+        // ESPPostInstall has failed. We don't know which changes have been made
+        // or which slot they'll allow booting into. My best guess is that a
+        // rollback will generally be better than leaving things as-is.
+        if (!RollbackPartitionTable(cgpt_manager, install_config)) {
+          LOG(ERROR) << "RollbackPartitionTable failed.";
+        }
+        return false;
+      }
 
       FixUnencryptedPermission();
 
@@ -737,6 +747,8 @@ bool RunPostInstall(const string& install_dev,
   LOG(INFO) << "Syncing filesystem at end of postinst...";
   sync();
 
+  // Need to reduce the amount of time as much as possible for defer update
+  // APPLY action as it will be noticeable to users. Only sleep for `kAuto`.
   switch (install_config.defer_update_action) {
     case DeferUpdateAction::kAuto:
       // Sync doesn't appear to sync out cgpt changes, so
@@ -744,16 +756,10 @@ bool RunPostInstall(const string& install_dev,
       sleep(10);
       break;
     case DeferUpdateAction::kApply:
-      // Need to reduce the amount of time as much as possible for defer update
-      // APPLY action as it will be noticeable to users.
       break;
     case DeferUpdateAction::kHold:
-      return true;
+      break;
   }
 
-  // If ESPPostInstall fails we don't have enough info to know whether we're in
-  // a state where the Partition Table and the ESP are mismatched in what
-  // they're trying to boot or if everything is fine. If we knew we could
-  // potentially try to RollbackPartitionTable.
-  return ESPPostInstall(install_config);
+  return true;
 }
