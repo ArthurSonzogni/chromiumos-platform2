@@ -96,10 +96,6 @@ log_suspend_stats() {
   rm "${tempfile}"
 }
 
-is_kip() {
-  crossystem hwid | grep -q '^KIP '
-}
-
 igb_devices=""
 
 # The Intel gigabit driver (igb) prevents Intel platforms (the only platforms
@@ -130,11 +126,6 @@ bind_igb_devices() {
     log_msg "Re-binding igb driver to ${pcidev} after resume"
     echo "${pcidev}" > /sys/bus/pci/drivers/igb/bind
   done
-}
-
-# Checks if the system has a Huawei Technologies Mobile Broadband Module.
-has_huawei_modem() {
-  lsusb -d 12d1:15bb
 }
 
 # Powers "on" or "off" the built-in modem via EC.
@@ -291,13 +282,6 @@ else
   echo OnAC > "${POWER_STATUS_ON_SUSPEND_FILE}"
 fi
 
-# Is this a Kip system with Huawei modem?
-kip_with_huawei_modem=0
-if is_kip && has_huawei_modem; then
-  log_msg "Kip with Huawei modem"
-  kip_with_huawei_modem=1
-fi
-
 result="${RESULT_FAILURE}"
 
 if saw_wakeup_event; then
@@ -318,9 +302,6 @@ else
   # See https://crrev.com/c/2963943 as an example.
   if [ -x "/usr/sbin/modem_shutdown" ]; then
     /usr/sbin/modem_shutdown
-  fi
-  if [ "${kip_with_huawei_modem}" -eq 1 ]; then
-    ec_power_modem off
   fi
 
   # Compact memory if it is fragmented.
@@ -413,10 +394,6 @@ else
 
   bind_igb_devices
 
-  # Power back on modems if they were powered off before suspend.
-  if [ "${kip_with_huawei_modem}" -eq 1 ]; then
-    ec_power_modem on
-  fi
   # `modem_startup` (along with `modem_shutdown`) exists only if board-specific
   # overlays provide one. Future project should re-use the script name when
   # powering back on modems after suspending is required.
