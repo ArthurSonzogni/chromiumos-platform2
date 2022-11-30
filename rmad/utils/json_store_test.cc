@@ -68,9 +68,9 @@ TEST_F(JsonStoreTest, InitializeNormal) {
   JSONStringValueDeserializer deserializer(kValidJson);
   int error_code;
   std::string error_message;
-  std::unique_ptr<base::Value> expected_value =
-      deserializer.Deserialize(&error_code, &error_message);
-  EXPECT_EQ(json_store->GetValues(), *expected_value);
+  base::Value::Dict expected_value = std::move(
+      deserializer.Deserialize(&error_code, &error_message)->GetDict());
+  EXPECT_EQ(json_store->GetValues(), expected_value);
 }
 
 TEST_F(JsonStoreTest, InitializeInvalidString) {
@@ -79,7 +79,7 @@ TEST_F(JsonStoreTest, InitializeInvalidString) {
   auto json_store = base::MakeRefCounted<JsonStore>(input_file);
   EXPECT_EQ(json_store->GetReadError(), JsonStore::READ_ERROR_JSON_PARSE);
   EXPECT_TRUE(json_store->ReadOnly());
-  EXPECT_EQ(json_store->GetValues(), base::Value(base::Value::Type::DICT));
+  EXPECT_EQ(json_store->GetValues(), base::Value::Dict());
 }
 
 TEST_F(JsonStoreTest, InitializeInvalidType) {
@@ -88,7 +88,7 @@ TEST_F(JsonStoreTest, InitializeInvalidType) {
   auto json_store = base::MakeRefCounted<JsonStore>(input_file);
   EXPECT_EQ(json_store->GetReadError(), JsonStore::READ_ERROR_JSON_TYPE);
   EXPECT_TRUE(json_store->ReadOnly());
-  EXPECT_EQ(json_store->GetValues(), base::Value(base::Value::Type::DICT));
+  EXPECT_EQ(json_store->GetValues(), base::Value::Dict());
 }
 
 TEST_F(JsonStoreTest, InitializeNoFile) {
@@ -96,7 +96,7 @@ TEST_F(JsonStoreTest, InitializeNoFile) {
   auto json_store = base::MakeRefCounted<JsonStore>(input_file);
   EXPECT_EQ(json_store->GetReadError(), JsonStore::READ_ERROR_NO_SUCH_FILE);
   EXPECT_FALSE(json_store->ReadOnly());
-  EXPECT_EQ(json_store->GetValues(), base::Value(base::Value::Type::DICT));
+  EXPECT_EQ(json_store->GetValues(), base::Value::Dict());
 }
 
 TEST_F(JsonStoreTest, GetValue) {

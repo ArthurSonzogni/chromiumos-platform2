@@ -35,11 +35,11 @@ base::Value ConvertToValue(const T& value) {
 // by base::Value (bool, int, double, string) or vector/map of these types.
 template <typename T>
 base::Value ConvertToValue(const std::vector<T>& values) {
-  base::Value list(base::Value::Type::LIST);
+  base::Value::List list;
   for (const auto& value : values) {
     list.Append(ConvertToValue(value));
   }
-  return list;
+  return base::Value(std::move(list));
 }
 
 // Convert a map to base::Value. The value type should be supported by
@@ -47,11 +47,11 @@ base::Value ConvertToValue(const std::vector<T>& values) {
 // TODO(chenghan): Support more types, e.g. unordered_map.
 template <typename T>
 base::Value ConvertToValue(const std::map<std::string, T>& values) {
-  base::Value dict(base::Value::Type::DICT);
+  base::Value::Dict dict;
   for (const auto& [key, value] : values) {
-    dict.SetKey(key, ConvertToValue(value));
+    dict.Set(key, ConvertToValue(value));
   }
-  return dict;
+  return base::Value(std::move(dict));
 }
 
 // Convert a map to base::Value. The value type should be supported by
@@ -59,11 +59,11 @@ base::Value ConvertToValue(const std::map<std::string, T>& values) {
 // TODO(chenghan): Support more types, e.g. unordered_map.
 template <typename T>
 base::Value ConvertToValue(const std::map<int, T>& values) {
-  base::Value dict(base::Value::Type::DICT);
+  base::Value::Dict dict;
   for (const auto& [key, value] : values) {
-    dict.SetKey(base::NumberToString(key), ConvertToValue(value));
+    dict.Set(base::NumberToString(key), ConvertToValue(value));
   }
-  return dict;
+  return base::Value(std::move(dict));
 }
 
 // Covert a base::Value to basic types (bool, int, double, string).
@@ -103,7 +103,7 @@ bool ConvertFromValue(const base::Value* data,
     return false;
   }
   std::map<std::string, T> r;
-  for (const auto& [key, child_data] : data->DictItems()) {
+  for (const auto& [key, child_data] : data->GetDict()) {
     if (T child_result; ConvertFromValue(&child_data, &child_result)) {
       r.insert({key, child_result});
     } else {
@@ -124,7 +124,7 @@ bool ConvertFromValue(const base::Value* data, std::map<int, T>* result) {
     return false;
   }
   std::map<int, T> r;
-  for (const auto& [key_str, child_data] : data->DictItems()) {
+  for (const auto& [key_str, child_data] : data->GetDict()) {
     int key;
     T child_result;
     if (base::StringToInt(key_str, &key) &&

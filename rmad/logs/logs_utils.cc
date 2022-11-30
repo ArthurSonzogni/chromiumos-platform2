@@ -55,12 +55,12 @@ std::string JoinValueList(
 bool AddEventToJson(scoped_refptr<JsonStore> json_store,
                     RmadState::StateCase state,
                     LogEventType event_type,
-                    base::Value&& details) {
-  base::Value event(base::Value::Type::DICT);
-  event.SetKey(kTimestamp, ConvertToValue(base::Time::Now().ToDoubleT()));
-  event.SetKey(kStateId, ConvertToValue(static_cast<int>(state)));
-  event.SetKey(kType, ConvertToValue(static_cast<int>(event_type)));
-  event.SetKey(kDetails, std::move(details));
+                    base::Value::Dict&& details) {
+  base::Value::Dict event;
+  event.Set(kTimestamp, base::Time::Now().ToDoubleT());
+  event.Set(kStateId, static_cast<int>(state));
+  event.Set(kType, static_cast<int>(event_type));
+  event.Set(kDetails, std::move(details));
 
   base::Value logs(base::Value::Type::DICT);
   if (json_store->GetValue(kLogs, &logs)) {
@@ -225,9 +225,9 @@ std::string GenerateCompleteLogsString(scoped_refptr<JsonStore> json_store) {
 bool RecordStateTransitionToLogs(scoped_refptr<JsonStore> json_store,
                                  RmadState::StateCase from_state,
                                  RmadState::StateCase to_state) {
-  base::Value details(base::Value::Type::DICT);
-  details.SetKey(kFromStateId, ConvertToValue(static_cast<int>(from_state)));
-  details.SetKey(kToStateId, ConvertToValue(static_cast<int>(to_state)));
+  base::Value::Dict details;
+  details.Set(kFromStateId, static_cast<int>(from_state));
+  details.Set(kToStateId, static_cast<int>(to_state));
 
   return AddEventToJson(json_store, from_state, LogEventType::kTransition,
                         std::move(details));
@@ -236,8 +236,8 @@ bool RecordStateTransitionToLogs(scoped_refptr<JsonStore> json_store,
 bool RecordOccurredErrorToLogs(scoped_refptr<JsonStore> json_store,
                                RmadState::StateCase current_state,
                                RmadErrorCode error) {
-  base::Value details(base::Value::Type::DICT);
-  details.SetKey(kOccurredError, ConvertToValue(static_cast<int>(error)));
+  base::Value::Dict details;
+  details.Set(kOccurredError, static_cast<int>(error));
 
   return AddEventToJson(json_store, current_state, LogEventType::kError,
                         std::move(details));
@@ -247,9 +247,9 @@ bool RecordSelectedComponentsToLogs(
     scoped_refptr<JsonStore> json_store,
     const std::vector<std::string>& replaced_components,
     bool is_mlb_repair) {
-  base::Value details(base::Value::Type::DICT);
-  details.SetKey(kLogReplacedComponents, ConvertToValue(replaced_components));
-  details.SetKey(kLogReworkSelected, ConvertToValue(is_mlb_repair));
+  base::Value::Dict details;
+  details.Set(kLogReplacedComponents, ConvertToValue(replaced_components));
+  details.Set(kLogReworkSelected, is_mlb_repair);
 
   return AddEventToJson(json_store, RmadState::kComponentsRepair,
                         LogEventType::kData, std::move(details));
@@ -257,8 +257,8 @@ bool RecordSelectedComponentsToLogs(
 
 bool RecordDeviceDestinationToLogs(scoped_refptr<JsonStore> json_store,
                                    const std::string& device_destination) {
-  base::Value details(base::Value::Type::DICT);
-  details.SetKey(kLogDestination, ConvertToValue(device_destination));
+  base::Value::Dict details;
+  details.Set(kLogDestination, device_destination);
 
   return AddEventToJson(json_store, RmadState::kDeviceDestination,
                         LogEventType::kData, std::move(details));
@@ -266,8 +266,8 @@ bool RecordDeviceDestinationToLogs(scoped_refptr<JsonStore> json_store,
 
 bool RecordWipeDeviceToLogs(scoped_refptr<JsonStore> json_store,
                             bool wipe_device) {
-  base::Value details(base::Value::Type::DICT);
-  details.SetKey(kLogWipeDevice, ConvertToValue(wipe_device));
+  base::Value::Dict details;
+  details.Set(kLogWipeDevice, wipe_device);
 
   return AddEventToJson(json_store, RmadState::kWipeSelection,
                         LogEventType::kData, std::move(details));
@@ -275,8 +275,8 @@ bool RecordWipeDeviceToLogs(scoped_refptr<JsonStore> json_store,
 
 bool RecordWpDisableMethodToLogs(scoped_refptr<JsonStore> json_store,
                                  const std::string& wp_disable_method) {
-  base::Value details(base::Value::Type::DICT);
-  details.SetKey(kLogWpDisableMethod, ConvertToValue(wp_disable_method));
+  base::Value::Dict details;
+  details.Set(kLogWpDisableMethod, wp_disable_method);
 
   return AddEventToJson(json_store, RmadState::kWpDisableMethod,
                         LogEventType::kData, std::move(details));
@@ -285,9 +285,9 @@ bool RecordWpDisableMethodToLogs(scoped_refptr<JsonStore> json_store,
 bool RecordRsuChallengeCodeToLogs(scoped_refptr<JsonStore> json_store,
                                   const std::string& challenge_code,
                                   const std::string& hwid) {
-  base::Value details(base::Value::Type::DICT);
-  details.SetKey(kLogRsuChallengeCode, ConvertToValue(challenge_code));
-  details.SetKey(kLogRsuHwid, ConvertToValue(hwid));
+  base::Value::Dict details;
+  details.Set(kLogRsuChallengeCode, challenge_code);
+  details.Set(kLogRsuHwid, hwid);
 
   return AddEventToJson(json_store, RmadState::kWpDisableRsu,
                         LogEventType::kData, std::move(details));
@@ -295,8 +295,8 @@ bool RecordRsuChallengeCodeToLogs(scoped_refptr<JsonStore> json_store,
 
 bool RecordRestockOptionToLogs(scoped_refptr<JsonStore> json_store,
                                bool restock) {
-  base::Value details(base::Value::Type::DICT);
-  details.SetKey(kLogRestockOption, ConvertToValue(restock));
+  base::Value::Dict details;
+  details.Set(kLogRestockOption, restock);
 
   return AddEventToJson(json_store, RmadState::kRestock, LogEventType::kData,
                         std::move(details));
@@ -306,17 +306,17 @@ bool RecordComponentCalibrationStatusToLogs(
     scoped_refptr<JsonStore> json_store,
     const std::vector<std::pair<std::string, LogCalibrationStatus>>&
         component_statuses) {
-  base::Value components(base::Value::Type::LIST);
+  base::Value::List components;
   for (auto& component_status : component_statuses) {
-    base::Value component(base::Value::Type::DICT);
-    component.SetKey(kLogComponent, ConvertToValue(component_status.first));
-    component.SetKey(kLogCalibrationStatus,
-                     ConvertToValue(static_cast<int>(component_status.second)));
+    base::Value::Dict component;
+    component.Set(kLogComponent, component_status.first);
+    component.Set(kLogCalibrationStatus,
+                  static_cast<int>(component_status.second));
     components.Append(std::move(component));
   }
 
-  base::Value details(base::Value::Type::DICT);
-  details.SetKey(kLogCalibrationComponents, std::move(components));
+  base::Value::Dict details;
+  details.Set(kLogCalibrationComponents, std::move(components));
 
   return AddEventToJson(json_store, RmadState::kCheckCalibration,
                         LogEventType::kData, std::move(details));
@@ -324,8 +324,8 @@ bool RecordComponentCalibrationStatusToLogs(
 
 bool RecordFirmwareUpdateStatusToLogs(scoped_refptr<JsonStore> json_store,
                                       FirmwareUpdateStatus status) {
-  base::Value details(base::Value::Type::DICT);
-  details.SetKey(kFirmwareStatus, ConvertToValue(static_cast<int>(status)));
+  base::Value::Dict details;
+  details.Set(kFirmwareStatus, static_cast<int>(status));
 
   return AddEventToJson(json_store, RmadState::kUpdateRoFirmware,
                         LogEventType::kData, std::move(details));

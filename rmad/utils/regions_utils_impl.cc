@@ -51,15 +51,15 @@ bool RegionsUtilsImpl::GetRegionList(
   }
 
   region_list->clear();
-  for (const auto& value : cros_regions->DictItems()) {
-    if (!value.second.is_dict()) {
+  for (const auto& [key, value] : cros_regions->GetDict()) {
+    if (!value.is_dict()) {
       LOG(WARNING) << "Failed to parse region value as a dictionary";
       continue;
     }
 
-    auto confirmed = value.second.FindBoolKey(kConfirmedRegionKey);
+    auto confirmed = value.GetDict().FindBool(kConfirmedRegionKey);
     if (confirmed.has_value() && confirmed.value()) {
-      region_list->push_back(value.first);
+      region_list->push_back(key);
     }
   }
 

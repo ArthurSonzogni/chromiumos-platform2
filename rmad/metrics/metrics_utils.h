@@ -73,7 +73,7 @@ class MetricsUtils {
     if (json_store->GetValue(kMetrics, &metrics)) {
       CHECK(metrics.is_dict());
     }
-    return ConvertFromValue(metrics.FindKey(key), result);
+    return ConvertFromValue(metrics.GetDict().Find(key), result);
   }
 
   template <typename T>
@@ -86,11 +86,11 @@ class MetricsUtils {
     }
     base::Value&& value = ConvertToValue(v);
 
-    const base::Value* result = metrics.FindKey(key);
+    const base::Value* result = metrics.GetDict().Find(key);
     if (!result || *result != value) {
       std::optional<base::Value> result_backup =
           result ? std::make_optional(result->Clone()) : std::nullopt;
-      metrics.SetKey(key, std::move(value));
+      metrics.GetDict().Set(key, std::move(value));
 
       return json_store->SetValue(kMetrics, std::move(metrics));
     }

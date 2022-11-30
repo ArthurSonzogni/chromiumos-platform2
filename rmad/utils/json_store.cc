@@ -44,7 +44,7 @@ JsonStore::ReadError TranslateJsonFileReadErrors(const base::Value* value,
   return JsonStore::READ_ERROR_NONE;
 }
 
-bool SerializeValue(const base::Value& value, std::string* output) {
+bool SerializeValue(const base::Value::Dict& value, std::string* output) {
   JSONStringValueSerializer serializer(output);
   serializer.set_pretty_print(false);
   return serializer.Serialize(value);
@@ -66,21 +66,20 @@ JsonStore::JsonStore(const base::FilePath& file_path) : file_path_(file_path) {
 }
 
 bool JsonStore::SetValue(const std::string& key, base::Value&& value) {
-  DCHECK(data_.is_dict());
   if (read_only_) {
     return false;
   }
-  const base::Value* result = data_.FindKey(key);
+  const base::Value* result = data_.Find(key);
   if (!result || *result != value) {
     std::optional<base::Value> result_backup =
         result ? std::make_optional(result->Clone()) : std::nullopt;
-    data_.SetKey(key, std::move(value));
+    data_.Set(key, std::move(value));
     bool ret = WriteToFile();
     if (!ret) {
       if (result_backup) {
-        data_.SetKey(key, std::move(*result_backup));
+        data_.Set(key, std::move(*result_backup));
       } else {
-        data_.RemoveKey(key);
+        data_.Remove(key);
       }
       read_only_ = true;
     }
@@ -91,8 +90,7 @@ bool JsonStore::SetValue(const std::string& key, base::Value&& value) {
 
 bool JsonStore::GetValue(const std::string& key,
                          const base::Value** value) const {
-  DCHECK(data_.is_dict());
-  const base::Value* result = data_.FindKey(key);
+  const base::Value* result = data_.Find(key);
   if (!result) {
     return false;
   }
@@ -113,23 +111,22 @@ bool JsonStore::GetValue(const std::string& key, base::Value* value) const {
   return true;
 }
 
-base::Value JsonStore::GetValues() const {
+base::Value::Dict JsonStore::GetValues() const {
   return data_.Clone();
 }
 
 bool JsonStore::RemoveKey(const std::string& key) {
-  DCHECK(data_.is_dict());
   if (read_only_) {
     return false;
   }
 
-  const base::Value* result = data_.FindKey(key);
+  const base::Value* result = data_.Find(key);
   if (result) {
     base::Value result_backup = result->Clone();
-    data_.RemoveKey(key);
+    data_.Remove(key);
     bool ret = WriteToFile();
     if (!ret) {
-      data_.SetKey(key, std::move(result_backup));
+      data_.Set(key, std::move(result_backup));
       read_only_ = true;
     }
     return ret;
@@ -138,7 +135,7 @@ bool JsonStore::RemoveKey(const std::string& key) {
 }
 
 bool JsonStore::Clear() {
-  data_ = base::Value(base::Value::Type::DICT);
+  data_ = base::Value::Dict();
   return WriteToFile(true);
 }
 
@@ -152,7 +149,7 @@ bool JsonStore::Sync() const {
 
 bool JsonStore::InitFromFile() {
   std::unique_ptr<JsonStore::ReadResult> read_result = ReadFromFile();
-  data_ = base::Value(base::Value::Type::DICT);
+  data_ = base::Value::Dict();
   read_only_ = false;
   read_error_ = read_result->read_error;
   switch (read_error_) {
@@ -164,7 +161,8 @@ bool JsonStore::InitFromFile() {
       read_only_ = true;
       break;
     case READ_ERROR_NONE:
-      data_ = std::move(*read_result->value);
+      // A result with non-dict-type value will have READ_ERROR_JSON_TYPE error.
+      data_ = std::move(read_result->value->GetDict());
       break;
     case READ_ERROR_NO_SUCH_FILE:
       break;

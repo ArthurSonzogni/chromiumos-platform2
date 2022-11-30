@@ -170,15 +170,15 @@ class StateMetricsDataTest : public testing::Test {
   }
 
   base::Value CreateDefaultValue() {
-    base::Value dict(base::Value::Type::DICT);
-    dict.SetKey(kStateCase, ConvertToValue(0));
-    dict.SetKey(kStateIsAborted, ConvertToValue(false));
-    dict.SetKey(kStateSetupTimestamp, ConvertToValue(0.0));
-    dict.SetKey(kStateOverallTime, ConvertToValue(0.0));
-    dict.SetKey(kStateTransitionsCount, ConvertToValue(0));
-    dict.SetKey(kStateGetLogCount, ConvertToValue(0));
-    dict.SetKey(kStateSaveLogCount, ConvertToValue(0));
-    return dict;
+    base::Value::Dict dict;
+    dict.Set(kStateCase, 0);
+    dict.Set(kStateIsAborted, false);
+    dict.Set(kStateSetupTimestamp, 0.0);
+    dict.Set(kStateOverallTime, 0.0);
+    dict.Set(kStateTransitionsCount, 0);
+    dict.Set(kStateGetLogCount, 0);
+    dict.Set(kStateSaveLogCount, 0);
+    return base::Value(std::move(dict));
   }
 };
 

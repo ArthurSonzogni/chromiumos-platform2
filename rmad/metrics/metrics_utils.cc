@@ -26,61 +26,55 @@ bool StateMetricsData::operator==(const StateMetricsData& other) const {
 }
 
 base::Value StateMetricsData::ToValue() const {
-  base::Value dict(base::Value::Type::DICT);
-  dict.SetKey(kStateCase, ConvertToValue(static_cast<int>(state_case)));
-  dict.SetKey(kStateIsAborted, ConvertToValue(is_aborted));
-  dict.SetKey(kStateSetupTimestamp, ConvertToValue(setup_timestamp));
-  dict.SetKey(kStateOverallTime, ConvertToValue(overall_time));
-  dict.SetKey(kStateTransitionsCount, ConvertToValue(transition_count));
-  dict.SetKey(kStateGetLogCount, ConvertToValue(get_log_count));
-  dict.SetKey(kStateSaveLogCount, ConvertToValue(save_log_count));
-  return dict;
+  base::Value::Dict dict;
+  dict.Set(kStateCase, static_cast<int>(state_case));
+  dict.Set(kStateIsAborted, is_aborted);
+  dict.Set(kStateSetupTimestamp, setup_timestamp);
+  dict.Set(kStateOverallTime, overall_time);
+  dict.Set(kStateTransitionsCount, transition_count);
+  dict.Set(kStateGetLogCount, get_log_count);
+  dict.Set(kStateSaveLogCount, save_log_count);
+  return base::Value(std::move(dict));
 }
 
 bool StateMetricsData::FromValue(const base::Value* value) {
   if (!value || !value->is_dict()) {
     return false;
   }
+  const base::Value::Dict& dict = value->GetDict();
 
-  if (auto state_case_it = value->FindKey(kStateCase);
-      state_case_it && state_case_it->GetIfInt().has_value()) {
-    state_case = static_cast<RmadState::StateCase>(state_case_it->GetInt());
+  if (auto state_case_it = dict.FindInt(kStateCase)) {
+    state_case = static_cast<RmadState::StateCase>(*state_case_it);
   } else {
     return false;
   }
-  if (auto is_aborted_it = value->FindKey(kStateIsAborted);
-      is_aborted_it && is_aborted_it->GetIfBool().has_value()) {
-    is_aborted = is_aborted_it->GetBool();
+  if (auto is_aborted_it = dict.FindBool(kStateIsAborted)) {
+    is_aborted = *is_aborted_it;
   } else {
     return false;
   }
-  if (auto setup_timestamp_it = value->FindKey(kStateSetupTimestamp);
-      setup_timestamp_it && setup_timestamp_it->GetIfDouble().has_value()) {
-    setup_timestamp = setup_timestamp_it->GetDouble();
+  if (auto setup_timestamp_it = dict.FindDouble(kStateSetupTimestamp)) {
+    setup_timestamp = *setup_timestamp_it;
   } else {
     return false;
   }
-  if (auto overall_time_it = value->FindKey(kStateOverallTime);
-      overall_time_it && overall_time_it->GetIfDouble().has_value()) {
-    overall_time = overall_time_it->GetDouble();
+  if (auto overall_time_it = dict.FindDouble(kStateOverallTime)) {
+    overall_time = *overall_time_it;
   } else {
     return false;
   }
-  if (auto transition_count_it = value->FindKey(kStateTransitionsCount);
-      transition_count_it && transition_count_it->GetIfInt().has_value()) {
-    transition_count = transition_count_it->GetInt();
+  if (auto transition_count_it = dict.FindInt(kStateTransitionsCount)) {
+    transition_count = *transition_count_it;
   } else {
     return false;
   }
-  if (auto get_log_count_it = value->FindKey(kStateGetLogCount);
-      get_log_count_it && get_log_count_it->GetIfInt().has_value()) {
-    get_log_count = get_log_count_it->GetInt();
+  if (auto get_log_count_it = dict.FindInt(kStateGetLogCount)) {
+    get_log_count = *get_log_count_it;
   } else {
     return false;
   }
-  if (auto save_log_count_it = value->FindKey(kStateSaveLogCount);
-      save_log_count_it && save_log_count_it->GetIfInt().has_value()) {
-    save_log_count = save_log_count_it->GetInt();
+  if (auto save_log_count_it = dict.FindInt(kStateSaveLogCount)) {
+    save_log_count = *save_log_count_it;
   } else {
     return false;
   }

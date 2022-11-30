@@ -60,8 +60,7 @@ class JsonStore : public base::RefCounted<JsonStore> {
   // true if the key is found in the dictionary, false if the key is not found.
   template <typename T>
   bool GetValue(const std::string& key, T* result) const {
-    DCHECK(data_.is_dict());
-    return ConvertFromValue(data_.FindKey(key), result);
+    return ConvertFromValue(data_.Find(key), result);
   }
 
   // Get the value associated to the key, and assign its const pointer to
@@ -76,7 +75,7 @@ class JsonStore : public base::RefCounted<JsonStore> {
   bool GetValue(const std::string& key, base::Value* result) const;
 
   // Get the complete copy of the dictionary.
-  base::Value GetValues() const;
+  base::Value::Dict GetValues() const;
 
   // Remove a key in the dictionary. Return true if the key is removed, return
   // false otherwise.
@@ -118,7 +117,7 @@ class JsonStore : public base::RefCounted<JsonStore> {
   bool WriteToFile(bool force = false);
 
   const base::FilePath file_path_;
-  base::Value data_;
+  base::Value::Dict data_;
   ReadError read_error_;
   bool read_only_;
 };

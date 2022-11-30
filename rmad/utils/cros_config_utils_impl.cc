@@ -168,23 +168,22 @@ bool CrosConfigUtilsImpl::GetMatchedItemsFromIdentity(
   }
   DCHECK(cros.is_dict());
 
-  base::Value* cros_configs = cros.FindListKey(kChromeosConfigs);
+  base::Value::List* cros_configs = cros.GetDict().FindList(kChromeosConfigs);
   if (!cros_configs) {
     LOG(ERROR) << "Failed to get the configs section from the file";
     return false;
   }
 
-  DCHECK(cros_configs->is_list());
-  for (const auto& config : cros_configs->GetList()) {
+  for (const auto& config : *cros_configs) {
     DCHECK(config.is_dict());
-    const std::string* name = config.FindStringKey(kCrosModelNameKey);
+    const std::string* name = config.GetDict().FindString(kCrosModelNameKey);
     if (!name || *name != model_name) {
       continue;
     }
 
-    const base::Value* identity = config.FindKey(kCrosIdentityPath);
-    DCHECK(identity->is_dict());
-    const base::Value* item = identity->FindKey(key);
+    const base::Value::Dict* identity =
+        config.GetDict().FindDict(kCrosIdentityPath);
+    const base::Value* item = identity->Find(key);
     if (item) {
       items.insert(item->Clone());
     }
