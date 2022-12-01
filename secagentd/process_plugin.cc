@@ -35,16 +35,6 @@ void FillNamespaces(const secagentd::bpf::cros_namespace_info& ns,
 
 namespace secagentd {
 
-static void print_process_change_ns(
-    const struct bpf::cros_process_change_namespace& p) {
-  LOG(INFO) << "\n[namespace_change]pid:" << p.pid
-            << " start_time:" << p.start_time
-            << "\n [ns]pid:" << p.new_ns.pid_ns << " mnt:" << p.new_ns.mnt_ns
-            << " cgrp:" << p.new_ns.cgroup_ns << " usr:" << p.new_ns.user_ns
-            << " uts:" << p.new_ns.uts_ns << " net:" << p.new_ns.net_ns
-            << " ipc:" << p.new_ns.ipc_ns;
-}
-
 ProcessPlugin::ProcessPlugin(
     scoped_refptr<BpfSkeletonFactoryInterface> bpf_skeleton_factory,
     scoped_refptr<MessageSenderInterface> message_sender,
@@ -86,10 +76,6 @@ void ProcessPlugin::HandleRingBufferEvent(const bpf::cros_event& bpf_event) {
       }
       mutable_common = terminate_event->mutable_common();
       message = std::move(terminate_event);
-    } else if (pe.type == bpf::process_change_namespace_type) {
-      const bpf::cros_process_change_namespace& p =
-          pe.data.process_change_namespace;
-      print_process_change_ns(p);
     } else {
       LOG(ERROR) << "ProcessBPF: unknown BPF process event type.";
       return;
