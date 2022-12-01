@@ -33,7 +33,7 @@ int64_t ConvertTimespecToMicros(const struct timespec& ts) {
 // TODO(abhishekbh): Copied from Chrome's //base/time/time_now_posix.cc. Make
 // upstream code available via libchrome and use it here:
 // http://crbug.com/166153.
-// Returns count of |clk_id|. Retuns 0 if |clk_id| isn't present on the system.
+// Returns count of |clk_id|. Returns 0 if |clk_id| isn't present on the system.
 int64_t ClockNow(clockid_t clk_id) {
   struct timespec ts;
   if (clock_gettime(clk_id, &ts) != 0) {

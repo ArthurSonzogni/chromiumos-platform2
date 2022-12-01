@@ -50,7 +50,7 @@ class AsyncFileReader {
   // Updates the state based on whether there is an ongoing file I/O.
   void UpdateState();
 
-  // Goes back to the idle state, cleans up allocated resouces.
+  // Goes back to the idle state, cleans up allocated resources.
   void Reset();
 
   // Initiates an AIO read operation.  This is a helper function for
