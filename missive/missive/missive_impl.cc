@@ -13,6 +13,7 @@
 #include <base/threading/sequenced_task_runner_handle.h>
 #include <base/time/time.h>
 
+#include "missive/analytics/metrics.h"
 #include "missive/analytics/resource_collector_cpu.h"
 #include "missive/analytics/resource_collector_memory.h"
 #include "missive/analytics/resource_collector_storage.h"
@@ -78,6 +79,7 @@ void MissiveImpl::StartUp(scoped_refptr<dbus::Bus> bus,
   DCHECK(!sequenced_task_runner_) << "Can be set only once";
   sequenced_task_runner_ = base::SequencedTaskRunnerHandle::Get();
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  analytics::Metrics::Initialize();
   DCHECK(upload_client_factory_) << "May be called only once";
   DCHECK(create_storage_factory_) << "May be called only once";
   std::move(upload_client_factory_)

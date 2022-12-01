@@ -27,7 +27,7 @@ TEST_F(MetricsTest, SendToUMA) {
   EXPECT_CALL(Metrics::TestEnvironment::GetMockMetricsLibrary(),
               SendToUMA(kName, sample, min, max, nbuckets))
       .Times(1);
-  Metrics::Get().SendToUMA(kName, sample, min, max, nbuckets);
+  Metrics::SendToUMA(kName, sample, min, max, nbuckets);
   task_environment_.RunUntilIdle();
 }
 
@@ -38,7 +38,7 @@ TEST_F(MetricsTest, SendLinearToUMA) {
   EXPECT_CALL(Metrics::TestEnvironment::GetMockMetricsLibrary(),
               SendLinearToUMA(kName, sample, max))
       .Times(1);
-  Metrics::Get().SendLinearToUMA(kName, sample, max);
+  Metrics::SendLinearToUMA(kName, sample, max);
   task_environment_.RunUntilIdle();
 }
 
@@ -48,7 +48,7 @@ TEST_F(MetricsTest, SendPercentageToUMA) {
   EXPECT_CALL(Metrics::TestEnvironment::GetMockMetricsLibrary(),
               SendPercentageToUMA(kName, sample))
       .Times(1);
-  Metrics::Get().SendPercentageToUMA(kName, sample);
+  Metrics::SendPercentageToUMA(kName, sample);
   task_environment_.RunUntilIdle();
 }
 }  // namespace reporting::analytics

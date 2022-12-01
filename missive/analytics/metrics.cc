@@ -11,51 +11,93 @@
 #include <base/memory/scoped_refptr.h>
 #include <base/no_destructor.h>
 #include <base/task/sequenced_task_runner.h>
+#include <base/task/thread_pool.h>
 #include <metrics/metrics_library.h>
 
 namespace reporting::analytics {
 
-Metrics::Metrics() = default;
+namespace {
+// The only `MetricsLibrary` instance. In production code, it never changes
+// once set.
+MetricsLibraryInterface* g_metrics_library = nullptr;
+
+// The task runner on which metrics sends data. In production code, it never
+// changes once set.
+scoped_refptr<base::SequencedTaskRunner>& metrics_task_runner() {
+  static base::NoDestructor<scoped_refptr<base::SequencedTaskRunner>>
+      task_runner;
+  return *task_runner;
+}
+}  // namespace
 
 // static
-Metrics& Metrics::Get() {
-  static base::NoDestructor<Metrics> metrics;
-  return *metrics;
+void Metrics::Initialize() {
+  if (metrics_task_runner()) {
+    LOG(ERROR) << "Metrics already initialized or scheduled to be initialized. "
+                  "skip initialization.";
+    return;
+  }
+  metrics_task_runner() = base::ThreadPool::CreateSequencedTaskRunner(
+      {base::MayBlock(), base::TaskShutdownBehavior::SKIP_ON_SHUTDOWN});
+  metrics_task_runner()->PostTask(FROM_HERE, base::BindOnce([]() {
+                                    g_metrics_library = new MetricsLibrary();
+                                  }));
 }
 
+// static
 template <typename FuncType, typename... ArgTypes>
 bool Metrics::PostUMATask(FuncType send_to_uma_func, ArgTypes... args) {
-  DCHECK(metrics_task_runner_);
-  return metrics_task_runner_->PostTask(
+  if (!metrics_task_runner()) {
+    LOG(ERROR) << "Task runner for metrics is not up. Not sending data to UMA.";
+    return false;
+  }
+
+  return metrics_task_runner()->PostTask(
       FROM_HERE,
       // Wrap send_to_uma_func with a void-return type lambda.
       base::BindOnce(
-          [](FuncType send_to_uma_func, MetricsLibraryInterface* metrics,
-             ArgTypes... args) -> void {
-            DCHECK(metrics);
-            bool success = (metrics->*send_to_uma_func)(args...);
+          [](FuncType send_to_uma_func, ArgTypes... args) -> void {
+            if (!g_metrics_library) {
+              // In theory, this block is only reachable in test.
+              LOG(ERROR)
+                  << "Metrics library not initialized. Skip sending to UMA.";
+              return;
+            }
+            const bool success =
+                (g_metrics_library->*send_to_uma_func)(args...);
             LOG_IF(WARNING, !success) << "Send to UMA failed.";
           },
-          // Safe to use `metrics_.get()` because `metrics_` never gets
-          // destructed. For tasks posted in tests, the tasks must be always
-          // completed before the test terminates.
-          send_to_uma_func, base::Unretained(metrics_.get()), args...));
+          send_to_uma_func, args...));
 }
 
+// static
 bool Metrics::SendPercentageToUMA(const std::string& name, int sample) {
   return PostUMATask(&MetricsLibraryInterface::SendPercentageToUMA, name,
                      sample);
 }
 
+// static
 bool Metrics::SendLinearToUMA(const std::string& name, int sample, int max) {
   return PostUMATask(&MetricsLibraryInterface::SendLinearToUMA, name, sample,
                      max);
 }
 
+// static
 bool Metrics::SendToUMA(
     const std::string& name, int sample, int min, int max, int nbuckets) {
   return PostUMATask(&MetricsLibraryInterface::SendToUMA, name, sample, min,
                      max, nbuckets);
+}
+
+// static
+MetricsLibraryInterface*& Metrics::GetMetricsLibraryForTest() {
+  return g_metrics_library;
+}
+
+// static
+scoped_refptr<base::SequencedTaskRunner>&
+Metrics::GetMetricsTaskRunnerForTest() {
+  return metrics_task_runner();
 }
 
 }  // namespace reporting::analytics

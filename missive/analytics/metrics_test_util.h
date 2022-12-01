@@ -27,18 +27,28 @@ class Metrics::TestEnvironment {
   TestEnvironment& operator=(const TestEnvironment&) = delete;
   ~TestEnvironment();
 
-  // Get the pointer to the mock metrics library pointer. Ownership of the
-  // pointer is not transferred.
+  // Initialize a mock metrics instance for test. This is automatically called
+  // in `TestEnvironment`. Feel free to call this method directly if more
+  // flexibility is needed. Must call `CleanUpMock` after test is done.
+  static void InitializeMock();
+
+  // Clean up mock metrics instance for test. Must be called on the same thread
+  // as `InitializeMock`. This is usually not a problem if it is called on the
+  // test thread because `InitializeMock` is normally called on the test thread.
+  // It is automatically called by `~TestEnvironment`. Feel free to call this
+  // method directly if more flexibility is needed.
+  static void CleanUpMock();
+
+  // Get the mock metrics library instance for test.
   static MetricsLibraryMock& GetMockMetricsLibrary();
 
  private:
-  scoped_refptr<base::SequencedTaskRunner> original_task_runner_{
-      std::move(Metrics::Get().metrics_task_runner_)};
-  // The original metrics. We save it here to reduce chances of flakiness: It
-  // was initialized in a thread-safe manner and it's safe to switch it back,
-  // rather than instantiating another `MetricsLibrary` instance.
-  std::unique_ptr<MetricsLibraryInterface> original_metrics_{
-      std::move(Metrics::Get().metrics_)};
+  // Pointers to the two methods that access hidden variables in metrics.cc.
+  // Defined here instead of out of class in metrics_test_util.cc because this
+  // is a friend class of Metrics.
+  static constexpr auto GetMetricsLibrary = &Metrics::GetMetricsLibraryForTest;
+  static constexpr auto GetMetricsTaskRunner =
+      &Metrics::GetMetricsTaskRunnerForTest;
 };
 }  // namespace reporting::analytics
 #endif  // MISSIVE_ANALYTICS_METRICS_TEST_UTIL_H_

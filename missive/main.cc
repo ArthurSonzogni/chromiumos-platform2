@@ -52,7 +52,7 @@ int main(int argc, char* argv[]) {
       "missive_daemon_thread_pool");
 
   LOG(INFO) << "Starting Missive Service.";
-  int exit_code =
+  const int exit_code =
       ::reporting::MissiveDaemon(
           std::make_unique<::reporting::MissiveImpl>(
               std::make_unique<::reporting::MissiveArgs>(

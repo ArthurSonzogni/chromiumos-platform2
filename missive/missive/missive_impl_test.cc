@@ -18,6 +18,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "missive/analytics/metrics_test_util.h"
 #include "missive/analytics/resource_collector_cpu.h"
 #include "missive/analytics/resource_collector_memory.h"
 #include "missive/analytics/resource_collector_storage.h"
@@ -109,6 +110,9 @@ class MissiveImplTest : public ::testing::Test {
   }
 
   base::test::TaskEnvironment task_environment_;
+  // Use the metrics test environment to prevent the real metrics from
+  // initializing.
+  analytics::Metrics::TestEnvironment metrics_test_environment_;
 
   scoped_refptr<UploadClient> upload_client_;
   scoped_refptr<MockStorageModule> storage_module_;

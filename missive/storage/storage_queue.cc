@@ -65,7 +65,7 @@ void SendResExCaseToUma(StorageQueue::ResourceExhaustedCase case_enum) {
   // The ChromeOS metrics instance.
   static constexpr auto kExclusiveMax =
       static_cast<int>(StorageQueue::ResourceExhaustedCase::kMaxValue);
-  const auto res = analytics::Metrics::Get().SendLinearToUMA(
+  const auto res = analytics::Metrics::SendLinearToUMA(
       /*name=*/StorageQueue::kResourceExhaustedCaseUmaName,
       static_cast<int>(case_enum), kExclusiveMax);
   LOG_IF(ERROR, !res) << "SendLinearToUMA failure, "

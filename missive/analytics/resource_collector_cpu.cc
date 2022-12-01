@@ -36,7 +36,7 @@ void ResourceCollectorCpu::Collect() {
 
 bool ResourceCollectorCpu::SendCpuUsagePercentageToUma(
     uint64_t cpu_percentage) {
-  return Metrics::Get().SendPercentageToUMA(
+  return Metrics::SendPercentageToUMA(
       /*name=*/kUmaName,
       /*sample=*/static_cast<int>(cpu_percentage));
 }

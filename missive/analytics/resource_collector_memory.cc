@@ -41,7 +41,7 @@ void ResourceCollectorMemory::Collect() {
 bool ResourceCollectorMemory::SendMemorySizeToUma(int memory_size) {
   // Use linear here because we also care about the detail of memory usage when
   // it's high.
-  return Metrics::Get().SendLinearToUMA(
+  return Metrics::SendLinearToUMA(
       /*name=*/kUmaName,
       /*sample=*/ConvertBytesTo0_1Mibs(memory_size),
       /*max=*/kUmaMax);

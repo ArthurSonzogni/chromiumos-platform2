@@ -35,7 +35,7 @@ void ResourceCollectorStorage::Collect() {
 }
 
 bool ResourceCollectorStorage::SendDirectorySizeToUma(int directory_size) {
-  return Metrics::Get().SendToUMA(
+  return Metrics::SendToUMA(
       /*name=*/kUmaName,
       /*sample=*/ConvertBytesToMibs(directory_size),
       /*min=*/kMin,

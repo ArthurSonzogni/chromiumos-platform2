@@ -49,7 +49,7 @@ StatusOr<std::string> ProtoToString(
 }
 
 void EnqueueResponded(ReportQueue::EnqueueCallback callback, Status status) {
-  const auto res = analytics::Metrics::Get().SendLinearToUMA(
+  const auto res = analytics::Metrics::SendLinearToUMA(
       /*name=*/ReportQueue::kEnqueueMetricsName, status.code(),
       error::Code::MAX_VALUE);
   LOG_IF(ERROR, !res) << "SendLinearToUMA failure, "

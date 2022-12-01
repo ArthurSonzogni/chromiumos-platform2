@@ -4,43 +4,68 @@
 
 #include "missive/analytics/metrics_test_util.h"
 
-#include <memory>
-#include <utility>
+#include <atomic>
 
+#include <base/logging.h>
+#include <base/memory/scoped_refptr.h>
+#include <base/run_loop.h>
 #include <base/task/sequenced_task_runner.h>
-#include <gtest/gtest.h>
+#include <base/task/single_thread_task_runner.h>
 #include <metrics/metrics_library_mock.h>
 
 #include "missive/analytics/metrics.h"
 
-using ::testing::NotNull;
-
 namespace reporting::analytics {
 
 Metrics::TestEnvironment::TestEnvironment() {
-  Metrics::Get().metrics_ = std::make_unique<MetricsLibraryMock>();
-  Metrics::Get().metrics_task_runner_ =
-      base::SequencedTaskRunner::GetCurrentDefault();
-
-  // gtest is thread-safe; supposedly these assertions on the pointers should
-  // establish a memory barrier while also making some assertions.
-  // metrics_task_runner_ is thread-safe by itself and is not asserted here.
-  EXPECT_THAT(Metrics::Get().metrics_, NotNull());
+  InitializeMock();
 }
 
 Metrics::TestEnvironment::~TestEnvironment() {
-  Metrics::Get().metrics_ = std::move(original_metrics_);
-  Metrics::Get().metrics_task_runner_ = std::move(original_task_runner_);
+  CleanUpMock();
+}
 
-  // gtest is thread-safe; supposedly these assertions on the pointers should
-  // establish a memory barrier while also making some assertions.
-  // metrics_task_runner_ is thread-safe by itself and is not asserted here.
-  EXPECT_THAT(Metrics::Get().metrics_, NotNull());
+// static
+void Metrics::TestEnvironment::InitializeMock() {
+  if (GetMetricsTaskRunner()) {
+    LOG(ERROR) << "Metrics, either fake or real, already initialized or "
+                  "scheduled to be initialized. skipping...";
+    return;
+  }
+  // Switch to the current thread because EXPECT_CALL for another thread is
+  // flaky.
+  GetMetricsTaskRunner() = base::SequencedTaskRunner::GetCurrentDefault();
+  // Safe to modify GetMetricsLibrary here because it is attached to the current
+  // thread.
+  GetMetricsLibrary() = new MetricsLibraryMock();
+}
+
+// static
+void Metrics::TestEnvironment::CleanUpMock() {
+  if (!GetMetricsTaskRunner()) {
+    LOG(ERROR) << "Metrics not initialized. Skip cleanup.";
+    return;
+  }
+
+  // Must be on the current task runner.
+  ASSERT_EQ(base::SequencedTaskRunner::GetCurrentDefault(),
+            GetMetricsTaskRunner());
+
+  GetMetricsTaskRunner() = nullptr;
+  // Safe to modify GetMetricsLibrary here because it is attached to the current
+  // thread.
+  delete GetMetricsLibrary();
+  GetMetricsLibrary() = nullptr;
+
+  // Clear the task runner up to this point to prevent GetMetricsLibrary from
+  // being accidentally accessed by this task runner in a later test.
+  base::RunLoop run_loop;
+  base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
+      FROM_HERE, run_loop.QuitClosure());
 }
 
 // static
 MetricsLibraryMock& Metrics::TestEnvironment::GetMockMetricsLibrary() {
-  return *static_cast<MetricsLibraryMock*>(Metrics::Get().metrics_.get());
+  return *static_cast<MetricsLibraryMock*>(GetMetricsLibrary());
 }
-
 }  // namespace reporting::analytics
