@@ -113,7 +113,7 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
 
     crypto_.set_le_manager_for_testing(
         std::make_unique<MockLECredentialManager>());
-    DCHECK(crypto_.Init());
+    crypto_.Init();
 
     mock_vault_keyset_factory_ = new NiceMock<MockVaultKeysetFactory>();
     ON_CALL(*mock_vault_keyset_factory_, New(&platform_, &crypto_))

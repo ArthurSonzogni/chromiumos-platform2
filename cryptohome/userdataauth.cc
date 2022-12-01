@@ -459,11 +459,7 @@ bool UserDataAuth::Initialize() {
         hwsec_, pinweaver_, cryptohome_keys_manager_, recovery_crypto_);
     crypto_ = default_crypto_.get();
   }
-
-  if (!crypto_->Init()) {
-    LOG(ERROR) << "Failed to initialize crypto.";
-    return false;
-  }
+  crypto_->Init();
 
   if (!InitializeFilesystemLayout(platform_, &system_salt_)) {
     LOG(ERROR) << "Failed to initialize filesystem layout.";

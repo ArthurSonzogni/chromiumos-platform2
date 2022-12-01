@@ -73,14 +73,15 @@ Crypto::Crypto(hwsec::CryptohomeFrontend* hwsec,
 
 Crypto::~Crypto() {}
 
-bool Crypto::Init() {
+void Crypto::Init() {
   cryptohome_keys_manager_->Init();
   if (!le_manager_) {
     hwsec::StatusOr<bool> is_enabled = pinweaver_->IsEnabled();
     if (!is_enabled.ok()) {
       LOG(ERROR) << "Failed to get pinweaver status: " << is_enabled.status();
-      // The initialization should not fail due to the pinweaver error.
-      return true;
+      // We don't report the error to the caller: this failure shouldn't abort
+      // the daemon initialization.
+      return;
     }
 
     if (is_enabled.value()) {
@@ -88,7 +89,6 @@ bool Crypto::Init() {
           pinweaver_, base::FilePath(kSignInHashTreeDir));
     }
   }
-  return true;
 }
 
 void Crypto::PasswordToPasskey(const char* password,

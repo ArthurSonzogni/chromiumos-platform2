@@ -73,7 +73,7 @@ class AuthFactorVaultKeysetConverterTest : public ::testing::Test {
     crypto_.set_le_manager_for_testing(
         std::make_unique<LECredentialManagerImpl>(
             pinweaver_.get(), temp_dir_.GetPath().Append(kCredsDir)));
-    ASSERT_TRUE(crypto_.Init());
+    crypto_.Init();
 
     EXPECT_CALL(hwsec_, IsEnabled()).WillRepeatedly(ReturnValue(true));
     EXPECT_CALL(hwsec_, IsReady()).WillRepeatedly(ReturnValue(true));

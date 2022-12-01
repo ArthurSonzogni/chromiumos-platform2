@@ -33,9 +33,8 @@ struct KeyBlobs;
 class SyncAuthBlock;
 class VaultKeyset;
 
-class Crypto {
+class Crypto final {
  public:
-  // Default constructor
   explicit Crypto(hwsec::CryptohomeFrontend* hwsec,
                   hwsec::PinWeaverFrontend* pinweaver,
                   CryptohomeKeysManager* cryptohome_keys_manager,
@@ -43,10 +42,11 @@ class Crypto {
   Crypto(const Crypto&) = delete;
   Crypto& operator=(const Crypto&) = delete;
 
-  virtual ~Crypto();
+  ~Crypto();
 
-  // Initializes Crypto
-  virtual bool Init();
+  // Must be called before calling any other method (except test-only dependency
+  // injectors).
+  void Init();
 
   // Converts a null-terminated password to a passkey (ascii-encoded first half
   // of the salted SHA256 hash of the password).
