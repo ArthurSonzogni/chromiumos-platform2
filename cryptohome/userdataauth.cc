@@ -204,20 +204,19 @@ CryptoStatus CreateKeyBlobs(const AuthBlockUtility& auth_block_utility,
                             const Credentials& credentials,
                             KeyBlobs& out_key_blobs,
                             AuthBlockState& out_state) {
-  AuthBlockType auth_block_type =
+  CryptoStatusOr<AuthBlockType> auth_block_type =
       auth_block_utility.GetAuthBlockTypeForCreation(
           is_le_credential, /*is_recovery=*/false, is_challenge_credential);
-  if (auth_block_type == AuthBlockType::kMaxValue) {
-    LOG(ERROR) << "Error in obtaining AuthBlock type.";
+  if (!auth_block_type.ok()) {
     return MakeStatus<CryptohomeCryptoError>(
-        CRYPTOHOME_ERR_LOC(kUserDataAuthInvalidAuthBlockTypeInCreateKeyBlobs),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
-        CryptoError::CE_OTHER_CRYPTO);
+               CRYPTOHOME_ERR_LOC(
+                   kUserDataAuthInvalidAuthBlockTypeInCreateKeyBlobs))
+        .Wrap(std::move(auth_block_type).status());
   }
 
   CryptoStatus err = auth_block_utility.CreateKeyBlobsWithAuthBlock(
-      auth_block_type, credentials, std::nullopt /*reset_secret*/, out_state,
-      out_key_blobs);
+      auth_block_type.value(), credentials, std::nullopt /*reset_secret*/,
+      out_state, out_key_blobs);
   if (!err.ok()) {
     LOG(ERROR) << "Error in creating AuthBlock.";
     return err;

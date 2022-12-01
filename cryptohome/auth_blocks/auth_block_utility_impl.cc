@@ -428,7 +428,7 @@ void AuthBlockUtilityImpl::DeriveKeyBlobsWithAuthBlockAsync(
   auth_block_ptr->Derive(auth_input, auth_state, std::move(managed_callback));
 }
 
-AuthBlockType AuthBlockUtilityImpl::GetAuthBlockTypeForCreation(
+CryptoStatusOr<AuthBlockType> AuthBlockUtilityImpl::GetAuthBlockTypeForCreation(
     const bool is_le_credential,
     const bool is_recovery,
     const bool is_challenge_credential) const {
@@ -468,8 +468,12 @@ AuthBlockType AuthBlockUtilityImpl::GetAuthBlockTypeForCreation(
     return AuthBlockType::kScrypt;
   }
 
-  LOG(WARNING) << "No available auth block for creation.";
-  return AuthBlockType::kMaxValue;
+  LOG(WARNING) << "No available auth block for creation: TPM unavailable.";
+  return MakeStatus<CryptohomeCryptoError>(
+      CRYPTOHOME_ERR_LOC(kLocAuthBlockUtilNoTpmInGetAuthBlockWithType),
+      ErrorActionSet(
+          {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kReboot}),
+      CryptoError::CE_OTHER_CRYPTO);
 }
 
 CryptoStatusOr<std::unique_ptr<SyncAuthBlock>>

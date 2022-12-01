@@ -138,9 +138,9 @@ class AuthBlockUtility {
       AuthBlock::DeriveCallback derive_callback) = 0;
 
   // This function returns the AuthBlock type for
-  // AuthBlock::Create() based on the |credentials|, |tpm_| and |crypto_|
-  // status.
-  virtual AuthBlockType GetAuthBlockTypeForCreation(
+  // AuthBlock::Create() based on the specified credential type, |tpm_| and
+  //  |crypto_| status. If there's no suitable AuthBlock, returns an error.
+  virtual CryptoStatusOr<AuthBlockType> GetAuthBlockTypeForCreation(
       const bool is_le_credential,
       const bool is_recovery,
       const bool is_challenge_credential) const = 0;

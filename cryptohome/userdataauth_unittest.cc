@@ -2878,7 +2878,7 @@ TEST_F(UserDataAuthExTest, MountPublicUsesPublicMountPasskeyResave) {
         EXPECT_CALL(keyset_management_, ShouldReSaveKeyset(_))
             .WillOnce(Return(true));
         EXPECT_CALL(auth_block_utility_, GetAuthBlockTypeForCreation(_, _, _))
-            .WillOnce(Return(AuthBlockType::kTpmEcc));
+            .WillOnce(ReturnValue(AuthBlockType::kTpmEcc));
         EXPECT_CALL(auth_block_utility_,
                     CreateKeyBlobsWithAuthBlock(_, _, _, _, _))
             .WillOnce(ReturnError<CryptohomeCryptoError>());
@@ -2919,7 +2919,7 @@ TEST_F(UserDataAuthExTest, MountPublicUsesPublicMountPasskeyWithNewUser) {
   EXPECT_CALL(homedirs_, Create(kUser)).WillOnce(Return(true));
 
   EXPECT_CALL(auth_block_utility_, GetAuthBlockTypeForCreation(_, _, _))
-      .WillOnce(Return(AuthBlockType::kTpmNotBoundToPcr));
+      .WillOnce(ReturnValue(AuthBlockType::kTpmNotBoundToPcr));
   EXPECT_CALL(auth_block_utility_, CreateKeyBlobsWithAuthBlock(_, _, _, _, _))
       .WillOnce(ReturnError<CryptohomeCryptoError>());
   auto vk = std::make_unique<VaultKeyset>();

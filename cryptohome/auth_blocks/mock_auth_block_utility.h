@@ -86,7 +86,7 @@ class MockAuthBlockUtility : public AuthBlockUtility {
                const AuthBlockState& auth_state,
                AuthBlock::DeriveCallback derive_callback),
               (override));
-  MOCK_METHOD(AuthBlockType,
+  MOCK_METHOD(CryptoStatusOr<AuthBlockType>,
               GetAuthBlockTypeForCreation,
               (const bool, const bool, const bool),
               (const, override));

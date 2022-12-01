@@ -1269,6 +1269,8 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocUserDataAuthFactorExtendedInfoRecoveryIdFailure = 721,
   /* ./userdataauth.cc */
   kLocUserDataAuthRecoveryObjectFailureGetRecoveryId = 722,
+  /* ./auth_blocks/auth_block_utility_impl.cc */
+  kLocAuthBlockUtilNoTpmInGetAuthBlockWithType = 723,
   //////////////////////////////////////////////////
   //// This is a separator block at value 1500
   //// See location_db.py for more info.
@@ -1393,7 +1395,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocAuthSessionTerminateInactiveAuthFactor = 3513,
   /* ./auth_blocks/fp_service.cc */
   kLocFpServiceCheckSessionStartCouldNotGetFpManager = 3514,
-  /* ./auth_blocks/auth_block_utility_impl.cc */
+  /* =Obsolete= */
   kLocAuthBlockUtilTerminateInvalidAuthFactorType = 3515,
   // End of generated content.
 };

@@ -533,7 +533,7 @@ TEST_F(AuthSessionTestWithKeysetManagement,
   EXPECT_EQ(auth_session->GetStatus(), AuthStatus::kAuthStatusAuthenticated);
 
   EXPECT_CALL(mock_auth_block_utility_, GetAuthBlockTypeForCreation(_, _, _))
-      .WillRepeatedly(Return(AuthBlockType::kTpmEcc));
+      .WillRepeatedly(ReturnValue(AuthBlockType::kTpmEcc));
 
   // Add an initial factor to USS and backup VK and update password.
   auto key_blobs = std::make_unique<KeyBlobs>();
@@ -666,7 +666,7 @@ TEST_F(AuthSessionTestWithKeysetManagement,
   EXPECT_EQ(auth_session.GetStatus(), AuthStatus::kAuthStatusAuthenticated);
 
   EXPECT_CALL(mock_auth_block_utility_, GetAuthBlockTypeForCreation(_, _, _))
-      .WillOnce(Return(AuthBlockType::kTpmEcc));
+      .WillOnce(ReturnValue(AuthBlockType::kTpmEcc));
 
   auto key_blobs = std::make_unique<KeyBlobs>();
   const brillo::SecureBlob kBlob32(32, 'A');

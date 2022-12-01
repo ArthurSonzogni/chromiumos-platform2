@@ -532,30 +532,30 @@ void AuthSession::CreateKeyBlobsToAddKeyset(
     bool is_initial_keyset,
     std::unique_ptr<AuthSessionPerformanceTimer> auth_session_performance_timer,
     StatusCallback on_done) {
-  AuthBlockType auth_block_type;
   bool is_le_credential = key_data.policy().low_entropy_credential();
   bool is_challenge_credential =
       key_data.type() == KeyData::KEY_TYPE_CHALLENGE_RESPONSE;
 
   // Generate KeyBlobs and AuthBlockState used for VaultKeyset encryption.
-  auth_block_type = auth_block_utility_->GetAuthBlockTypeForCreation(
-      is_le_credential, /*is_recovery=*/false, is_challenge_credential);
-  if (auth_block_type == AuthBlockType::kMaxValue) {
-    std::move(on_done).Run(MakeStatus<CryptohomeError>(
-        CRYPTOHOME_ERR_LOC(kLocAuthSessionInvalidBlockTypeInAddKeyset),
-        ErrorActionSet(
-            {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kReboot}),
-        user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE));
+  CryptoStatusOr<AuthBlockType> auth_block_type =
+      auth_block_utility_->GetAuthBlockTypeForCreation(
+          is_le_credential, /*is_recovery=*/false, is_challenge_credential);
+  if (!auth_block_type.ok()) {
+    std::move(on_done).Run(
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(kLocAuthSessionInvalidBlockTypeInAddKeyset),
+            user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE)
+            .Wrap(std::move(auth_block_type).status()));
     return;
   }
 
   // Parameterize the AuthSession performance timer by AuthBlockType
-  auth_session_performance_timer->auth_block_type = auth_block_type;
+  auth_session_performance_timer->auth_block_type = auth_block_type.value();
 
   // |auth_state| will be the input to
   // AuthSession::CreateAndPersistVaultKeyset(), which calls
   // VaultKeyset::Encrypt().
-  if (auth_block_type == AuthBlockType::kPinWeaver) {
+  if (auth_block_type.value() == AuthBlockType::kPinWeaver) {
     if (is_initial_keyset) {
       // The initial keyset cannot be a PIN, when using vault keysets.
       std::move(on_done).Run(MakeStatus<CryptohomeError>(
@@ -574,7 +574,7 @@ void AuthSession::CreateKeyBlobsToAddKeyset(
       key_data, auth_input, std::move(auth_session_performance_timer),
       std::move(on_done));
   auth_block_utility_->CreateKeyBlobsWithAuthBlockAsync(
-      auth_block_type, auth_input, std::move(create_callback));
+      auth_block_type.value(), auth_input, std::move(create_callback));
 }
 
 void AuthSession::AddCredentials(
@@ -716,14 +716,15 @@ void AuthSession::CreateKeyBlobsToUpdateKeyset(const Credentials& credentials,
   bool is_challenge_credential =
       credentials.key_data().type() == KeyData::KEY_TYPE_CHALLENGE_RESPONSE;
 
-  AuthBlockType auth_block_type;
-  auth_block_type = auth_block_utility_->GetAuthBlockTypeForCreation(
-      is_le_credential, /*is_recovery=*/false, is_challenge_credential);
-  if (auth_block_type == AuthBlockType::kMaxValue) {
-    std::move(on_done).Run(MakeStatus<CryptohomeError>(
-        CRYPTOHOME_ERR_LOC(kLocAuthSessionInvalidBlockTypeInUpdate),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
-        user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE));
+  CryptoStatusOr<AuthBlockType> auth_block_type =
+      auth_block_utility_->GetAuthBlockTypeForCreation(
+          is_le_credential, /*is_recovery=*/false, is_challenge_credential);
+  if (!auth_block_type.ok()) {
+    std::move(on_done).Run(
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(kLocAuthSessionInvalidBlockTypeInUpdate),
+            user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE)
+            .Wrap(std::move(auth_block_type).status()));
     return;
   }
 
@@ -731,7 +732,7 @@ void AuthSession::CreateKeyBlobsToUpdateKeyset(const Credentials& credentials,
   // record current time for timing for how long UpdateCredentials will take.
   auto auth_session_performance_timer =
       std::make_unique<AuthSessionPerformanceTimer>(
-          kAuthSessionUpdateCredentialsTimer, auth_block_type);
+          kAuthSessionUpdateCredentialsTimer, auth_block_type.value());
 
   // Create and initialize fields for auth_input.
   AuthInput auth_input = {.user_input = credentials.passkey(),
@@ -752,7 +753,7 @@ void AuthSession::CreateKeyBlobsToUpdateKeyset(const Credentials& credentials,
       /*auth_factor_type=*/std::nullopt, credentials.key_data(), auth_input,
       std::move(auth_session_performance_timer), std::move(on_done));
   auth_block_utility_->CreateKeyBlobsWithAuthBlockAsync(
-      auth_block_type, auth_input, std::move(create_callback));
+      auth_block_type.value(), auth_input, std::move(create_callback));
 }
 
 void AuthSession::UpdateVaultKeyset(
@@ -1444,17 +1445,17 @@ void AuthSession::UpdateAuthFactor(
   bool is_le_credential = auth_factor_type == AuthFactorType::kPin;
   bool is_recovery = auth_factor_type == AuthFactorType::kCryptohomeRecovery;
   // Determine the auth block type to use.
-  AuthBlockType auth_block_type =
+  CryptoStatusOr<AuthBlockType> auth_block_type =
       auth_block_utility_->GetAuthBlockTypeForCreation(
           is_le_credential, is_recovery,
           /*is_challenge_credential=*/false);
-  if (auth_block_type == AuthBlockType::kMaxValue) {
-    LOG(ERROR) << "AuthSession: Error in obtaining AuthBlockType in auth "
-                  "factor update.";
-    std::move(on_done).Run(MakeStatus<CryptohomeError>(
-        CRYPTOHOME_ERR_LOC(kLocAuthSessionInvalidBlockTypeInUpdateAuthFactor),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
-        user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE));
+  if (!auth_block_type.ok()) {
+    std::move(on_done).Run(
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(
+                kLocAuthSessionInvalidBlockTypeInUpdateAuthFactor),
+            user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE)
+            .Wrap(std::move(auth_block_type).status()));
     return;
   }
 
@@ -1476,8 +1477,8 @@ void AuthSession::UpdateAuthFactor(
                   AuthFactorStorageType::kUserSecretStash
               ? kAuthSessionUpdateAuthFactorUSSTimer
               : kAuthSessionUpdateAuthFactorVKTimer,
-          auth_block_type);
-  auth_session_performance_timer->auth_block_type = auth_block_type;
+          auth_block_type.value());
+  auth_session_performance_timer->auth_block_type = auth_block_type.value();
 
   KeyData key_data;
   // AuthFactorMetadata is needed for only smartcards. Since
@@ -1498,8 +1499,8 @@ void AuthSession::UpdateAuthFactor(
       std::move(auth_session_performance_timer), std::move(on_done));
 
   auth_block_utility_->CreateKeyBlobsWithAuthBlockAsync(
-      auth_block_type, auth_input_status.value(), std::move(create_callback));
-  return;
+      auth_block_type.value(), auth_input_status.value(),
+      std::move(create_callback));
 }
 
 AuthBlock::CreateCallback AuthSession::GetUpdateAuthFactorCallback(
@@ -1904,16 +1905,17 @@ void AuthSession::ResaveVaultKeysetIfNeeded(
   // AuthBlock type with the change in TPM state. Don't abort on failure.
   // Only password and pin type credentials are evaluated for resave. Therefore
   // we don't need the asynchronous KeyBlob creation.
-  AuthBlockType auth_block_type =
+  CryptoStatusOr<AuthBlockType> auth_block_type =
       auth_block_utility_->GetAuthBlockTypeForCreation(
           vault_keyset_->IsLECredential(), /*is_recovery=*/false,
           /*is_challenge_credential*/ false);
-  if (auth_block_type == AuthBlockType::kMaxValue) {
+  if (!auth_block_type.ok()) {
     LOG(ERROR)
-        << "Error in creating obtaining AuthBlockType, can't resave keyset.";
+        << "Error in creating obtaining AuthBlockType, can't resave keyset: "
+        << auth_block_type.status();
     return;
   }
-  if (auth_block_type == AuthBlockType::kPinWeaver) {
+  if (auth_block_type.value() == AuthBlockType::kPinWeaver) {
     LOG(ERROR) << "Pinweaver AuthBlock is not supported for resave operation, "
                   "can't resave keyset.";
     return;
@@ -1933,7 +1935,7 @@ void AuthSession::ResaveVaultKeysetIfNeeded(
       base::BindOnce(&AuthSession::ResaveKeysetOnKeyBlobsGenerated,
                      base::Unretained(this), std::move(updated_vault_keyset));
   auth_block_utility_->CreateKeyBlobsWithAuthBlockAsync(
-      auth_block_type, auth_input,
+      auth_block_type.value(), auth_input,
       /*CreateCallback*/ std::move(create_callback));
 }
 
@@ -2413,21 +2415,22 @@ void AuthSession::AddAuthFactorImpl(
   bool is_le_credential = auth_factor_type == AuthFactorType::kPin;
   bool is_recovery = auth_factor_type == AuthFactorType::kCryptohomeRecovery;
   bool is_challenge_credential = auth_factor_type == AuthFactorType::kSmartCard;
-  AuthBlockType auth_block_type =
+  CryptoStatusOr<AuthBlockType> auth_block_type =
       auth_block_utility_->GetAuthBlockTypeForCreation(
           is_le_credential, is_recovery, is_challenge_credential);
 
-  if (auth_block_type == AuthBlockType::kMaxValue) {
-    std::move(on_done).Run(MakeStatus<CryptohomeError>(
-        CRYPTOHOME_ERR_LOC(kLocAuthSessionInvalidBlockTypeInAddAuthFactorImpl),
-        ErrorActionSet(
-            {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kReboot}),
-        user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE));
+  if (!auth_block_type.ok()) {
+    std::move(on_done).Run(
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(
+                kLocAuthSessionInvalidBlockTypeInAddAuthFactorImpl),
+            user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE)
+            .Wrap(std::move(auth_block_type).status()));
     return;
   }
 
   // Parameterize timer by AuthBlockType.
-  auth_session_performance_timer->auth_block_type = auth_block_type;
+  auth_session_performance_timer->auth_block_type = auth_block_type.value();
 
   KeyData key_data;
   user_data_auth::CryptohomeErrorCode error = converter_->AuthFactorToKeyData(
@@ -2448,7 +2451,7 @@ void AuthSession::AddAuthFactorImpl(
       std::move(auth_session_performance_timer), std::move(on_done));
 
   auth_block_utility_->CreateKeyBlobsWithAuthBlockAsync(
-      auth_block_type, auth_input, std::move(create_callback));
+      auth_block_type.value(), auth_input, std::move(create_callback));
 }
 
 AuthBlock::CreateCallback AuthSession::GetAddAuthFactorCallback(

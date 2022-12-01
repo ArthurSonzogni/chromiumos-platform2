@@ -75,6 +75,8 @@ using ::cryptohome::error::CryptohomeLECredError;
 using ::hwsec::TPMErrorBase;
 using ::hwsec_foundation::DeriveSecretsScrypt;
 using ::hwsec_foundation::error::testing::IsOk;
+using ::hwsec_foundation::error::testing::IsOkAndHolds;
+using ::hwsec_foundation::error::testing::NotOk;
 using ::hwsec_foundation::error::testing::ReturnError;
 using ::hwsec_foundation::error::testing::ReturnValue;
 using ::hwsec_foundation::status::StatusChainOr;
@@ -1677,29 +1679,33 @@ TEST_F(AuthBlockUtilityImplTest, MatchAuthBlockForCreation) {
   // Test for kScrypt
   EXPECT_CALL(hwsec_, IsEnabled()).WillRepeatedly(ReturnValue(false));
   EXPECT_CALL(hwsec_, IsReady()).WillRepeatedly(ReturnValue(false));
-  EXPECT_EQ(USE_TPM_INSECURE_FALLBACK ? AuthBlockType::kScrypt
-                                      : AuthBlockType::kMaxValue,
-            auth_block_utility_impl_->GetAuthBlockTypeForCreation(
-                /*is_le_credential =*/false, /*is_recovery=*/false,
-                /*is_challenge_credential =*/false));
+  CryptoStatusOr<AuthBlockType> type_without_tpm =
+      auth_block_utility_impl_->GetAuthBlockTypeForCreation(
+          /*is_le_credential =*/false, /*is_recovery=*/false,
+          /*is_challenge_credential =*/false);
+  if (USE_TPM_INSECURE_FALLBACK) {
+    EXPECT_THAT(type_without_tpm, IsOkAndHolds(AuthBlockType::kScrypt));
+  } else {
+    EXPECT_THAT(type_without_tpm, NotOk());
+  }
 
   // Test for kPinWeaver
   KeyData key_data;
   key_data.mutable_policy()->set_low_entropy_credential(true);
   credentials.set_key_data(key_data);
-  EXPECT_EQ(AuthBlockType::kPinWeaver,
-            auth_block_utility_impl_->GetAuthBlockTypeForCreation(
-                /*is_le_credential =*/true, /*is_recovery=*/false,
-                /*is_challenge_credential =*/false));
+  EXPECT_THAT(auth_block_utility_impl_->GetAuthBlockTypeForCreation(
+                  /*is_le_credential =*/true, /*is_recovery=*/false,
+                  /*is_challenge_credential =*/false),
+              IsOkAndHolds(AuthBlockType::kPinWeaver));
 
   // Test for kChallengeResponse
   KeyData key_data2;
   key_data2.set_type(KeyData::KEY_TYPE_CHALLENGE_RESPONSE);
   credentials.set_key_data(key_data2);
-  EXPECT_EQ(AuthBlockType::kChallengeCredential,
-            auth_block_utility_impl_->GetAuthBlockTypeForCreation(
-                /*is_le_credential =*/false, /*is_recovery=*/false,
-                /*is_challenge_credential =*/true));
+  EXPECT_THAT(auth_block_utility_impl_->GetAuthBlockTypeForCreation(
+                  /*is_le_credential =*/false, /*is_recovery=*/false,
+                  /*is_challenge_credential =*/true),
+              IsOkAndHolds(AuthBlockType::kChallengeCredential));
 
   // Test for Tpm backed AuthBlock types.
   EXPECT_CALL(hwsec_, IsEnabled()).WillRepeatedly(ReturnValue(true));
@@ -1709,32 +1715,32 @@ TEST_F(AuthBlockUtilityImplTest, MatchAuthBlockForCreation) {
   credentials.set_key_data(key_data3);
 
   // Test for kTpmEcc
-  EXPECT_EQ(AuthBlockType::kTpmEcc,
-            auth_block_utility_impl_->GetAuthBlockTypeForCreation(
-                /*is_le_credential =*/false, /*is_recovery=*/false,
-                /*is_challenge_credential =*/false));
+  EXPECT_THAT(auth_block_utility_impl_->GetAuthBlockTypeForCreation(
+                  /*is_le_credential =*/false, /*is_recovery=*/false,
+                  /*is_challenge_credential =*/false),
+              IsOkAndHolds(AuthBlockType::kTpmEcc));
 
   // Test for kTpmNotBoundToPcr (No TPM or no TPM2.0)
   EXPECT_CALL(hwsec_, IsSealingSupported()).WillOnce(ReturnValue(false));
-  EXPECT_EQ(AuthBlockType::kTpmNotBoundToPcr,
-            auth_block_utility_impl_->GetAuthBlockTypeForCreation(
-                /*is_le_credential =*/false, /*is_recovery=*/false,
-                /*is_challenge_credential =*/false));
+  EXPECT_THAT(auth_block_utility_impl_->GetAuthBlockTypeForCreation(
+                  /*is_le_credential =*/false, /*is_recovery=*/false,
+                  /*is_challenge_credential =*/false),
+              IsOkAndHolds(AuthBlockType::kTpmNotBoundToPcr));
 
   // Test for kTpmBoundToPcr (TPM2.0 but no support for ECC key)
   EXPECT_CALL(hwsec_, IsSealingSupported()).WillOnce(ReturnValue(true));
   EXPECT_CALL(cryptohome_keys_manager_, GetKeyLoader(CryptohomeKeyType::kECC))
       .WillOnce(Return(nullptr));
-  EXPECT_EQ(AuthBlockType::kTpmBoundToPcr,
-            auth_block_utility_impl_->GetAuthBlockTypeForCreation(
-                /*is_le_credential =*/false, /*is_recovery=*/false,
-                /*is_challenge_credential =*/false));
+  EXPECT_THAT(auth_block_utility_impl_->GetAuthBlockTypeForCreation(
+                  /*is_le_credential =*/false, /*is_recovery=*/false,
+                  /*is_challenge_credential =*/false),
+              IsOkAndHolds(AuthBlockType::kTpmBoundToPcr));
 
   // Test for kCryptohomeRecovery
-  EXPECT_EQ(AuthBlockType::kCryptohomeRecovery,
-            auth_block_utility_impl_->GetAuthBlockTypeForCreation(
-                /*is_le_credential =*/false, /*is_recovery=*/true,
-                /*is_challenge_credential =*/false));
+  EXPECT_THAT(auth_block_utility_impl_->GetAuthBlockTypeForCreation(
+                  /*is_le_credential =*/false, /*is_recovery=*/true,
+                  /*is_challenge_credential =*/false),
+              IsOkAndHolds(AuthBlockType::kCryptohomeRecovery));
 }
 
 TEST_F(AuthBlockUtilityImplTest, GetAsyncAuthBlockWithType) {
