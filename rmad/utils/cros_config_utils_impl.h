@@ -7,6 +7,7 @@
 
 #include "rmad/utils/cros_config_utils.h"
 
+#include <map>
 #include <memory>
 #include <string>
 #include <vector>
@@ -39,6 +40,7 @@ class CrosConfigUtilsImpl : public CrosConfigUtils {
   bool GetBooleanWithDefault(const std::string& path,
                              const std::string& key,
                              bool default_value) const;
+  std::map<std::string, uint32_t> GetSsfc() const;
 
   std::string config_file_path_;
   std::unique_ptr<brillo::CrosConfigInterface> cros_config_;

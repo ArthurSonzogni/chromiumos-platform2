@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <fstream>
+#include <map>
 #include <set>
 #include <string>
 #include <utility>
@@ -13,6 +14,7 @@
 
 #include <base/json/json_reader.h>
 #include <base/logging.h>
+#include <base/strings/stringprintf.h>
 #include <base/strings/string_number_conversions.h>
 #include <chromeos-config/libcros_config/cros_config.h>
 
@@ -44,6 +46,12 @@ constexpr char kCrosRmadPath[] = "/rmad";
 constexpr char kCrosRmadEnabledKey[] = "enabled";
 constexpr char kCrosRmadHasCbiKey[] = "has-cbi";
 
+// cros_config rmad/ssfc path.
+constexpr char kCrosRmadSsfcPath[] = "/rmad/ssfc";
+constexpr char kCrosRmadSsfcIdentifierKey[] = "identifier";
+constexpr char kCrosRmadSsfcValueKey[] = "value";
+constexpr int kMaxSsfcNum = 1024;
+
 constexpr char kTrueStr[] = "true";
 
 }  // namespace
@@ -66,6 +74,7 @@ bool CrosConfigUtilsImpl::GetRmadConfig(RmadConfig* config) const {
                                           kCrosRmadEnabledKey, false);
   config->has_cbi = GetBooleanWithDefault(std::string(kCrosRmadPath),
                                           kCrosRmadHasCbiKey, false);
+  config->ssfc = GetSsfc();
 
   return true;
 }
@@ -201,6 +210,24 @@ bool CrosConfigUtilsImpl::GetBooleanWithDefault(const std::string& path,
     ret = (value_str == kTrueStr);
   }
   return ret;
+}
+
+std::map<std::string, uint32_t> CrosConfigUtilsImpl::GetSsfc() const {
+  std::map<std::string, uint32_t> ssfc_map;
+  for (int i = 0; i < kMaxSsfcNum; ++i) {
+    const std::string path = base::StringPrintf("%s/%d", kCrosRmadSsfcPath, i);
+    std::string identifier, value_str;
+    uint32_t value;
+    if (cros_config_->GetString(path, kCrosRmadSsfcIdentifierKey,
+                                &identifier) &&
+        cros_config_->GetString(path, kCrosRmadSsfcValueKey, &value_str) &&
+        base::StringToUint(value_str, &value)) {
+      ssfc_map[identifier] = value;
+    } else {
+      break;
+    }
+  }
+  return ssfc_map;
 }
 
 }  // namespace rmad

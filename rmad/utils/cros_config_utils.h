@@ -5,6 +5,7 @@
 #ifndef RMAD_UTILS_CROS_CONFIG_UTILS_H_
 #define RMAD_UTILS_CROS_CONFIG_UTILS_H_
 
+#include <map>
 #include <string>
 #include <vector>
 
@@ -15,6 +16,7 @@ namespace rmad {
 struct RmadConfig {
   bool enabled;
   bool has_cbi;
+  std::map<std::string, uint32_t> ssfc;
 };
 
 class CrosConfigUtils {

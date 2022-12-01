@@ -10,6 +10,7 @@
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/strings/stringprintf.h>
 #include <chromeos-config/libcros_config/fake_cros_config.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -42,6 +43,16 @@ constexpr char kCrosRmadEnabledKey[] = "enabled";
 constexpr char kCrosRmadHasCbiKey[] = "has-cbi";
 
 constexpr char kTrueStr[] = "true";
+
+// cros_config rmad/ssfc path.
+constexpr char kCrosRmadSsfcPath[] = "/rmad/ssfc";
+constexpr char kCrosRmadSsfcIdentifierKey[] = "identifier";
+constexpr char kCrosRmadSsfcValueKey[] = "value";
+
+constexpr char kSsfcIdentifier1[] = "TestComponent_1";
+constexpr uint32_t kSsfcValue1 = 1;
+constexpr char kSsfcIdentifier2[] = "TestComponent_2";
+constexpr uint32_t kSsfcValue2 = 2;
 
 // cros_config config.json file.
 constexpr char kJsonStoreFileName[] = "json_store_file";
@@ -162,6 +173,25 @@ class CrosConfigUtilsImplTest : public testing::Test {
                                   kCrosRmadEnabledKey, kTrueStr);
       fake_cros_config->SetString(std::string(kCrosRmadPath),
                                   kCrosRmadHasCbiKey, kTrueStr);
+      fake_cros_config->SetString(
+          base::StringPrintf("%s/%d", kCrosRmadSsfcPath, 0),
+          kCrosRmadSsfcIdentifierKey, kSsfcIdentifier1);
+      fake_cros_config->SetString(
+          base::StringPrintf("%s/%d", kCrosRmadSsfcPath, 0),
+          kCrosRmadSsfcValueKey, base::NumberToString(kSsfcValue1));
+      fake_cros_config->SetString(
+          base::StringPrintf("%s/%d", kCrosRmadSsfcPath, 1),
+          kCrosRmadSsfcIdentifierKey, kSsfcIdentifier2);
+      fake_cros_config->SetString(
+          base::StringPrintf("%s/%d", kCrosRmadSsfcPath, 1),
+          kCrosRmadSsfcValueKey, base::NumberToString(kSsfcValue2));
+    }
+
+    if (enable_rmad) {
+      fake_cros_config->SetString(std::string(kCrosRmadPath),
+                                  kCrosRmadEnabledKey, kTrueStr);
+      fake_cros_config->SetString(std::string(kCrosRmadPath),
+                                  kCrosRmadHasCbiKey, kTrueStr);
     }
 
     return std::make_unique<CrosConfigUtilsImpl>(
@@ -181,6 +211,9 @@ TEST_F(CrosConfigUtilsImplTest, GetRmadConfig_Enabled) {
   EXPECT_TRUE(cros_config_utils->GetRmadConfig(&config));
   EXPECT_TRUE(config.enabled);
   EXPECT_TRUE(config.has_cbi);
+  EXPECT_EQ(config.ssfc.size(), 2);
+  EXPECT_EQ(config.ssfc[kSsfcIdentifier1], kSsfcValue1);
+  EXPECT_EQ(config.ssfc[kSsfcIdentifier2], kSsfcValue2);
 }
 
 TEST_F(CrosConfigUtilsImplTest, GetRmadConfig_Disabled) {
