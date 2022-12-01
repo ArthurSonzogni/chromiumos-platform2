@@ -70,14 +70,14 @@ class MockKeyManagement : public KeyManagement {
               CreateKey,
               (const OperationPolicySetting& policy,
                KeyAlgoType key_algo,
-               AutoReload auto_reload,
+               const LoadKeyOptions& load_key_options,
                const CreateKeyOptions& options),
               (override));
   MOCK_METHOD(StatusOr<ScopedKey>,
               LoadKey,
               (const OperationPolicy& policy,
                const brillo::Blob& key_blob,
-               AutoReload auto_reload),
+               const LoadKeyOptions& load_key_options),
               (override));
   MOCK_METHOD(StatusOr<ScopedKey>,
               GetPersistentKey,
@@ -96,7 +96,7 @@ class MockKeyManagement : public KeyManagement {
               (const OperationPolicySetting& policy,
                const brillo::Blob& public_modulus,
                const brillo::SecureBlob& private_prime_factor,
-               AutoReload auto_reload,
+               const LoadKeyOptions& load_key_options,
                const CreateKeyOptions& options),
               (override));
   MOCK_METHOD(StatusOr<CreateKeyResult>,
@@ -105,7 +105,7 @@ class MockKeyManagement : public KeyManagement {
                const brillo::Blob& public_point_x,
                const brillo::Blob& public_point_y,
                const brillo::SecureBlob& private_value,
-               AutoReload auto_reload,
+               const LoadKeyOptions& load_key_options,
                const CreateKeyOptions& options),
               (override));
   MOCK_METHOD(StatusOr<RSAPublicInfo>, GetRSAPublicInfo, (Key key), (override));

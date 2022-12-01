@@ -80,7 +80,7 @@ TEST_F(BackendSigningTpm2Test, SignRSA) {
 
   auto key = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
       kFakePolicy, brillo::BlobFromString(kFakeKeyBlob),
-      Backend::KeyManagement::AutoReload::kFalse);
+      Backend::KeyManagement::LoadKeyOptions{});
 
   ASSERT_OK(key);
 
@@ -166,7 +166,7 @@ TEST_F(BackendSigningTpm2Test, SignECC) {
 
   auto key = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
       kFakePolicy, brillo::BlobFromString(kFakeKeyBlob),
-      Backend::KeyManagement::AutoReload::kFalse);
+      Backend::KeyManagement::LoadKeyOptions{});
 
   ASSERT_OK(key);
 
@@ -240,7 +240,7 @@ TEST_F(BackendSigningTpm2Test, SignECCWrongResponse) {
 
   auto key = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
       kFakePolicy, brillo::BlobFromString(kFakeKeyBlob),
-      Backend::KeyManagement::AutoReload::kFalse);
+      Backend::KeyManagement::LoadKeyOptions{});
 
   ASSERT_OK(key);
 
@@ -282,7 +282,7 @@ TEST_F(BackendSigningTpm2Test, SignUnknownKey) {
 
   auto key = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
       kFakePolicy, brillo::BlobFromString(kFakeKeyBlob),
-      Backend::KeyManagement::AutoReload::kFalse);
+      Backend::KeyManagement::LoadKeyOptions{});
 
   ASSERT_OK(key);
 
@@ -345,7 +345,7 @@ TEST_F(BackendSigningTpm2Test, SignRSAPkcs1v15WithNull) {
 
   auto key = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
       kFakePolicy, brillo::BlobFromString(kFakeKeyBlob),
-      Backend::KeyManagement::AutoReload::kFalse);
+      Backend::KeyManagement::LoadKeyOptions{});
 
   ASSERT_OK(key);
 
@@ -414,7 +414,7 @@ TEST_F(BackendSigningTpm2Test, SignRSARsassaPss) {
 
   auto key = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
       kFakePolicy, brillo::BlobFromString(kFakeKeyBlob),
-      Backend::KeyManagement::AutoReload::kFalse);
+      Backend::KeyManagement::LoadKeyOptions{});
 
   ASSERT_OK(key);
 
@@ -483,7 +483,7 @@ TEST_F(BackendSigningTpm2Test, SignRSARsassaPssUnsupported) {
 
   auto key = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
       kFakePolicy, brillo::BlobFromString(kFakeKeyBlob),
-      Backend::KeyManagement::AutoReload::kFalse);
+      Backend::KeyManagement::LoadKeyOptions{});
 
   ASSERT_OK(key);
 
@@ -547,7 +547,7 @@ TEST_F(BackendSigningTpm2Test, SignRSAPkcs1v15WithDecrypt) {
 
   auto key = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
       kFakePolicy, brillo::BlobFromString(kFakeKeyBlob),
-      Backend::KeyManagement::AutoReload::kFalse);
+      Backend::KeyManagement::LoadKeyOptions{});
 
   ASSERT_OK(key);
 
@@ -616,7 +616,7 @@ TEST_F(BackendSigningTpm2Test, SignRSAPkcs1v15WithDecryptTooLong) {
 
   auto key = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
       kFakePolicy, brillo::BlobFromString(kFakeKeyBlob),
-      Backend::KeyManagement::AutoReload::kFalse);
+      Backend::KeyManagement::LoadKeyOptions{});
 
   ASSERT_OK(key);
 
@@ -680,7 +680,7 @@ TEST_F(BackendSigningTpm2Test, SignRSARsassaPssWithDecrypt) {
 
   auto key = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
       kFakePolicy, brillo::BlobFromString(kFakeKeyBlob),
-      Backend::KeyManagement::AutoReload::kFalse);
+      Backend::KeyManagement::LoadKeyOptions{});
 
   ASSERT_OK(key);
 
@@ -750,7 +750,7 @@ TEST_F(BackendSigningTpm2Test, SignRSARsassaPssWithDecryptDataTooSmall) {
 
   auto key = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
       kFakePolicy, brillo::BlobFromString(kFakeKeyBlob),
-      Backend::KeyManagement::AutoReload::kFalse);
+      Backend::KeyManagement::LoadKeyOptions{});
 
   ASSERT_OK(key);
 
@@ -814,7 +814,7 @@ TEST_F(BackendSigningTpm2Test, SignRSARsassaPssWithDecryptUnsupportedMgf1Alg) {
 
   auto key = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
       kFakePolicy, brillo::BlobFromString(kFakeKeyBlob),
-      Backend::KeyManagement::AutoReload::kFalse);
+      Backend::KeyManagement::LoadKeyOptions{});
 
   ASSERT_OK(key);
 

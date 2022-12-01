@@ -226,7 +226,7 @@ RecoveryCryptoTpm1::GenerateRsaKeyPair() {
   ASSIGN_OR_RETURN(KeyManagement::CreateKeyResult created_key,
                    backend_.GetKeyManagementTpm1().CreateKey(
                        OperationPolicySetting{}, KeyAlgoType::kRsa,
-                       KeyManagement::AutoReload::kFalse,
+                       KeyManagement::LoadKeyOptions{},
                        KeyManagement::CreateKeyOptions{
                            .allow_sign = true,
                        }),
@@ -255,9 +255,9 @@ StatusOr<std::optional<brillo::Blob>> RecoveryCryptoTpm1::SignRequestPayload(
     const brillo::Blob& request_payload) {
   ASSIGN_OR_RETURN(
       ScopedKey key,
-      backend_.GetKeyManagementTpm1().LoadKey(
-          OperationPolicy{}, encrypted_rsa_private_key,
-          KeyManagement::AutoReload::kFalse),
+      backend_.GetKeyManagementTpm1().LoadKey(OperationPolicy{},
+                                              encrypted_rsa_private_key,
+                                              KeyManagement::LoadKeyOptions{}),
       _.WithStatus<TPMError>("Failed to load encrypted RSA private key"));
 
   ASSIGN_OR_RETURN(

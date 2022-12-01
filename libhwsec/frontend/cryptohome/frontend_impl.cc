@@ -50,7 +50,7 @@ StatusOr<CryptohomeFrontend::CreateKeyResult>
 CryptohomeFrontendImpl::CreateCryptohomeKey(KeyAlgoType key_algo) {
   return middleware_.CallSync<&Backend::KeyManagement::CreateKey>(
       OperationPolicySetting{}, key_algo,
-      Backend::KeyManagement::AutoReload::kTrue,
+      Backend::KeyManagement::LoadKeyOptions{.auto_reload = true},
       Backend::KeyManagement::CreateKeyOptions{
           .allow_software_gen = true,
           .allow_decrypt = true,
@@ -61,7 +61,8 @@ CryptohomeFrontendImpl::CreateCryptohomeKey(KeyAlgoType key_algo) {
 StatusOr<ScopedKey> CryptohomeFrontendImpl::LoadKey(
     const brillo::Blob& key_blob) {
   return middleware_.CallSync<&Backend::KeyManagement::LoadKey>(
-      OperationPolicy{}, key_blob, Backend::KeyManagement::AutoReload::kTrue);
+      OperationPolicy{}, key_blob,
+      Backend::KeyManagement::LoadKeyOptions{.auto_reload = true});
 }
 
 StatusOr<brillo::Blob> CryptohomeFrontendImpl::GetPubkeyHash(Key key) {

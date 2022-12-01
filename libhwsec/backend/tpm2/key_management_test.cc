@@ -97,7 +97,7 @@ TEST_F(BackendKeyManagementTpm2Test, CreateSoftwareRsaKey) {
       .WillOnce(Return(trunks::TPM_RC_SUCCESS));
 
   auto result = middleware_->CallSync<&Backend::KeyManagement::CreateKey>(
-      kFakePolicy, kFakeAlgo, Backend::KeyManagement::AutoReload::kFalse,
+      kFakePolicy, kFakeAlgo, Backend::KeyManagement::LoadKeyOptions{},
       Backend::KeyManagement::CreateKeyOptions{
           .allow_software_gen = true,
           .allow_decrypt = true,
@@ -133,7 +133,7 @@ TEST_F(BackendKeyManagementTpm2Test, CreateRsaKey) {
       .WillOnce(Return(trunks::TPM_RC_SUCCESS));
 
   auto result = middleware_->CallSync<&Backend::KeyManagement::CreateKey>(
-      kFakePolicy, kFakeAlgo, Backend::KeyManagement::AutoReload::kFalse,
+      kFakePolicy, kFakeAlgo, Backend::KeyManagement::LoadKeyOptions{},
       Backend::KeyManagement::CreateKeyOptions{
           .allow_software_gen = false,
           .allow_decrypt = true,
@@ -170,7 +170,7 @@ TEST_F(BackendKeyManagementTpm2Test, CreateRsaKeyWithParams) {
       .WillOnce(Return(trunks::TPM_RC_SUCCESS));
 
   auto result = middleware_->CallSync<&Backend::KeyManagement::CreateKey>(
-      kFakePolicy, kFakeAlgo, Backend::KeyManagement::AutoReload::kFalse,
+      kFakePolicy, kFakeAlgo, Backend::KeyManagement::LoadKeyOptions{},
       Backend::KeyManagement::CreateKeyOptions{
           .allow_software_gen = false,
           .allow_decrypt = true,
@@ -208,7 +208,7 @@ TEST_F(BackendKeyManagementTpm2Test, CreateEccKey) {
       .WillOnce(Return(trunks::TPM_RC_SUCCESS));
 
   auto result = middleware_->CallSync<&Backend::KeyManagement::CreateKey>(
-      kFakePolicy, kFakeAlgo, Backend::KeyManagement::AutoReload::kFalse,
+      kFakePolicy, kFakeAlgo, Backend::KeyManagement::LoadKeyOptions{},
       Backend::KeyManagement::CreateKeyOptions{
           .allow_software_gen = true,
           .allow_decrypt = true,
@@ -242,7 +242,7 @@ TEST_F(BackendKeyManagementTpm2Test, LoadKey) {
 
   auto result = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
       kFakePolicy, brillo::BlobFromString(kFakeKeyBlob),
-      Backend::KeyManagement::AutoReload::kFalse);
+      Backend::KeyManagement::LoadKeyOptions{});
 
   ASSERT_OK(result);
 
@@ -277,7 +277,8 @@ TEST_F(BackendKeyManagementTpm2Test, CreateAutoReloadKey) {
       .WillOnce(Return(trunks::TPM_RC_SUCCESS));
 
   auto result = middleware_->CallSync<&Backend::KeyManagement::CreateKey>(
-      kFakePolicy, kFakeAlgo, Backend::KeyManagement::AutoReload::kTrue,
+      kFakePolicy, kFakeAlgo,
+      Backend::KeyManagement::LoadKeyOptions{.auto_reload = true},
       Backend::KeyManagement::CreateKeyOptions{
           .allow_software_gen = true,
           .allow_decrypt = true,
@@ -318,7 +319,7 @@ TEST_F(BackendKeyManagementTpm2Test, LoadAutoReloadKey) {
 
   auto result = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
       kFakePolicy, brillo::BlobFromString(kFakeKeyBlob),
-      Backend::KeyManagement::AutoReload::kTrue);
+      Backend::KeyManagement::LoadKeyOptions{.auto_reload = true});
 
   ASSERT_OK(result);
 
@@ -414,7 +415,7 @@ TEST_F(BackendKeyManagementTpm2Test, GetRsaPubkeyHash) {
 
   auto result = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
       kFakePolicy, brillo::BlobFromString(kFakeKeyBlob),
-      Backend::KeyManagement::AutoReload::kFalse);
+      Backend::KeyManagement::LoadKeyOptions{});
 
   ASSERT_OK(result);
 
@@ -479,7 +480,7 @@ TEST_F(BackendKeyManagementTpm2Test, GetEccPubkeyHash) {
 
   auto result = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
       kFakePolicy, brillo::BlobFromString(kFakeKeyBlob),
-      Backend::KeyManagement::AutoReload::kFalse);
+      Backend::KeyManagement::LoadKeyOptions{});
 
   ASSERT_OK(result);
 
@@ -554,7 +555,7 @@ TEST_F(BackendKeyManagementTpm2Test, PolicyRsaKey) {
       .WillOnce(Return(trunks::TPM_RC_SUCCESS));
 
   auto result = middleware_->CallSync<&Backend::KeyManagement::CreateKey>(
-      kFakePolicy, kFakeAlgo, Backend::KeyManagement::AutoReload::kFalse,
+      kFakePolicy, kFakeAlgo, Backend::KeyManagement::LoadKeyOptions{},
       Backend::KeyManagement::CreateKeyOptions{
           .allow_software_gen = true,
           .allow_decrypt = true,
@@ -609,7 +610,7 @@ TEST_F(BackendKeyManagementTpm2Test, PolicyEccKey) {
       .WillOnce(Return(trunks::TPM_RC_SUCCESS));
 
   auto result = middleware_->CallSync<&Backend::KeyManagement::CreateKey>(
-      kFakePolicy, kFakeAlgo, Backend::KeyManagement::AutoReload::kFalse,
+      kFakePolicy, kFakeAlgo, Backend::KeyManagement::LoadKeyOptions{},
       Backend::KeyManagement::CreateKeyOptions{
           .allow_software_gen = true,
           .allow_decrypt = true,
@@ -674,8 +675,7 @@ TEST_F(BackendKeyManagementTpm2Test, WrapRsaKey) {
 
   auto result = middleware_->CallSync<&Backend::KeyManagement::WrapRSAKey>(
       kFakePolicy, brillo::BlobFromString(kFakeModulus),
-      brillo::SecureBlob(kFakePrime),
-      Backend::KeyManagement::AutoReload::kFalse,
+      brillo::SecureBlob(kFakePrime), Backend::KeyManagement::LoadKeyOptions{},
       Backend::KeyManagement::CreateKeyOptions{
           .allow_software_gen = false,
           .allow_decrypt = false,
@@ -708,8 +708,7 @@ TEST_F(BackendKeyManagementTpm2Test, WrapRsaKeyNotSupportedConfig) {
 
   auto result = middleware_->CallSync<&Backend::KeyManagement::WrapRSAKey>(
       kFakePolicy, brillo::BlobFromString(kFakeModulus),
-      brillo::SecureBlob(kFakePrime),
-      Backend::KeyManagement::AutoReload::kFalse,
+      brillo::SecureBlob(kFakePrime), Backend::KeyManagement::LoadKeyOptions{},
       Backend::KeyManagement::CreateKeyOptions{
           .allow_software_gen = false,
           .allow_decrypt = false,
@@ -730,8 +729,7 @@ TEST_F(BackendKeyManagementTpm2Test, WrapRsaKeyExponentTooLarge) {
 
   auto result = middleware_->CallSync<&Backend::KeyManagement::WrapRSAKey>(
       kFakePolicy, brillo::BlobFromString(kFakeModulus),
-      brillo::SecureBlob(kFakePrime),
-      Backend::KeyManagement::AutoReload::kFalse,
+      brillo::SecureBlob(kFakePrime), Backend::KeyManagement::LoadKeyOptions{},
       Backend::KeyManagement::CreateKeyOptions{
           .allow_software_gen = false,
           .allow_decrypt = false,
@@ -775,7 +773,7 @@ TEST_F(BackendKeyManagementTpm2Test, WrapEccKey) {
   auto result = middleware_->CallSync<&Backend::KeyManagement::WrapECCKey>(
       kFakePolicy, brillo::BlobFromString(kFakePointX),
       brillo::BlobFromString(kFakePointY), brillo::SecureBlob(kFakePrivateVal),
-      Backend::KeyManagement::AutoReload::kFalse,
+      Backend::KeyManagement::LoadKeyOptions{},
       Backend::KeyManagement::CreateKeyOptions{
           .allow_software_gen = false,
           .allow_decrypt = true,
@@ -808,7 +806,7 @@ TEST_F(BackendKeyManagementTpm2Test, WrapEccKeyNotSupportedConfig) {
   auto result = middleware_->CallSync<&Backend::KeyManagement::WrapECCKey>(
       kFakePolicy, brillo::BlobFromString(kFakePointX),
       brillo::BlobFromString(kFakePointY), brillo::SecureBlob(kFakePrivateVal),
-      Backend::KeyManagement::AutoReload::kFalse,
+      Backend::KeyManagement::LoadKeyOptions{},
       Backend::KeyManagement::CreateKeyOptions{
           .allow_software_gen = false,
           .allow_decrypt = true,
@@ -829,7 +827,7 @@ TEST_F(BackendKeyManagementTpm2Test, WrapEccKeyNotSupportedNID) {
   auto result = middleware_->CallSync<&Backend::KeyManagement::WrapECCKey>(
       kFakePolicy, brillo::BlobFromString(kFakePointX),
       brillo::BlobFromString(kFakePointY), brillo::SecureBlob(kFakePrivateVal),
-      Backend::KeyManagement::AutoReload::kFalse,
+      Backend::KeyManagement::LoadKeyOptions{},
       Backend::KeyManagement::CreateKeyOptions{
           .allow_software_gen = false,
           .allow_decrypt = true,
@@ -850,7 +848,7 @@ TEST_F(BackendKeyManagementTpm2Test, WrapEccKeyUseless) {
   auto result = middleware_->CallSync<&Backend::KeyManagement::WrapECCKey>(
       kFakePolicy, brillo::BlobFromString(kFakePointX),
       brillo::BlobFromString(kFakePointY), brillo::SecureBlob(kFakePrivateVal),
-      Backend::KeyManagement::AutoReload::kFalse,
+      Backend::KeyManagement::LoadKeyOptions{},
       Backend::KeyManagement::CreateKeyOptions{
           .allow_software_gen = false,
           .allow_decrypt = false,
@@ -907,7 +905,7 @@ TEST_F(BackendKeyManagementTpm2Test, GetRSAPublicInfo) {
 
   auto key = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
       kFakePolicy, brillo::BlobFromString(kFakeKeyBlob),
-      Backend::KeyManagement::AutoReload::kFalse);
+      Backend::KeyManagement::LoadKeyOptions{});
 
   ASSERT_OK(key);
 
@@ -942,7 +940,7 @@ TEST_F(BackendKeyManagementTpm2Test, GetRSAPublicInfoWrongType) {
 
   auto key = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
       kFakePolicy, brillo::BlobFromString(kFakeKeyBlob),
-      Backend::KeyManagement::AutoReload::kFalse);
+      Backend::KeyManagement::LoadKeyOptions{});
 
   ASSERT_OK(key);
 
@@ -1008,7 +1006,7 @@ TEST_F(BackendKeyManagementTpm2Test, GetECCPublicInfo) {
 
   auto key = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
       kFakePolicy, brillo::BlobFromString(kFakeKeyBlob),
-      Backend::KeyManagement::AutoReload::kFalse);
+      Backend::KeyManagement::LoadKeyOptions{});
 
   ASSERT_OK(key);
 
@@ -1079,7 +1077,7 @@ TEST_F(BackendKeyManagementTpm2Test, GetECCPublicInfoUnsupportedCurve) {
 
   auto key = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
       kFakePolicy, brillo::BlobFromString(kFakeKeyBlob),
-      Backend::KeyManagement::AutoReload::kFalse);
+      Backend::KeyManagement::LoadKeyOptions{});
 
   ASSERT_OK(key);
 
@@ -1110,7 +1108,7 @@ TEST_F(BackendKeyManagementTpm2Test, GetECCPublicInfoWrongType) {
 
   auto key = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
       kFakePolicy, brillo::BlobFromString(kFakeKeyBlob),
-      Backend::KeyManagement::AutoReload::kFalse);
+      Backend::KeyManagement::LoadKeyOptions{});
 
   ASSERT_OK(key);
 

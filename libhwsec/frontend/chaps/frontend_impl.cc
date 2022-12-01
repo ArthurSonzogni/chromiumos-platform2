@@ -72,7 +72,7 @@ StatusOr<ChapsFrontend::CreateKeyResult> ChapsFrontendImpl::GenerateRSAKey(
                   .auth_value = auth_value,
               },
       },
-      KeyAlgoType::kRsa, KeyManagement::AutoReload::kTrue,
+      KeyAlgoType::kRsa, KeyManagement::LoadKeyOptions{.auto_reload = true},
       Backend::KeyManagement::CreateKeyOptions{
           .allow_software_gen = false,
           .allow_decrypt = true,
@@ -95,7 +95,7 @@ StatusOr<ChapsFrontend::CreateKeyResult> ChapsFrontendImpl::GenerateECCKey(
                   .auth_value = auth_value,
               },
       },
-      KeyAlgoType::kEcc, KeyManagement::AutoReload::kTrue,
+      KeyAlgoType::kEcc, KeyManagement::LoadKeyOptions{.auto_reload = true},
       Backend::KeyManagement::CreateKeyOptions{
           .allow_software_gen = false,
           .allow_decrypt = true,
@@ -120,7 +120,7 @@ StatusOr<ChapsFrontend::CreateKeyResult> ChapsFrontendImpl::WrapRSAKey(
                   .auth_value = auth_value,
               },
       },
-      modulus, prime_factor, KeyManagement::AutoReload::kTrue,
+      modulus, prime_factor, KeyManagement::LoadKeyOptions{.auto_reload = true},
       Backend::KeyManagement::CreateKeyOptions{
           .allow_software_gen = false,
           .allow_decrypt = true,
@@ -144,7 +144,7 @@ StatusOr<ChapsFrontend::CreateKeyResult> ChapsFrontendImpl::WrapECCKey(
               },
       },
       public_point_x, public_point_y, private_value,
-      KeyManagement::AutoReload::kTrue,
+      KeyManagement::LoadKeyOptions{.auto_reload = true},
       Backend::KeyManagement::CreateKeyOptions{
           .allow_software_gen = false,
           .allow_decrypt = true,
@@ -162,7 +162,7 @@ StatusOr<ScopedKey> ChapsFrontendImpl::LoadKey(
                   .auth_value = auth_value,
               },
       },
-      key_blob, KeyManagement::AutoReload::kTrue);
+      key_blob, KeyManagement::LoadKeyOptions{.auto_reload = true});
 }
 
 StatusOr<brillo::SecureBlob> ChapsFrontendImpl::Unbind(
@@ -202,16 +202,16 @@ StatusOr<brillo::SecureBlob> ChapsFrontendImpl::UnsealData(
     const ChapsSealedData& sealed_data, const brillo::SecureBlob& auth_value) {
   // Backward compatible check.
   if (!sealed_data.encrypted_data.empty()) {
-    ASSIGN_OR_RETURN(
-        ScopedKey key,
-        middleware_.CallSync<&Backend::KeyManagement::LoadKey>(
-            OperationPolicy{
-                .permission =
-                    Permission{
-                        .auth_value = auth_value,
-                    },
-            },
-            sealed_data.key_blob, KeyManagement::AutoReload::kTrue));
+    ASSIGN_OR_RETURN(ScopedKey key,
+                     middleware_.CallSync<&Backend::KeyManagement::LoadKey>(
+                         OperationPolicy{
+                             .permission =
+                                 Permission{
+                                     .auth_value = auth_value,
+                                 },
+                         },
+                         sealed_data.key_blob,
+                         KeyManagement::LoadKeyOptions{.auto_reload = true}));
 
     return middleware_.CallSync<&Backend::Encryption::Decrypt>(
         key.GetKey(), sealed_data.encrypted_data,
@@ -293,7 +293,8 @@ void ChapsFrontendImpl::UnsealDataAsync(const ChapsSealedData& sealed_data,
                     .auth_value = auth_value,
                 },
         },
-        sealed_data.key_blob, KeyManagement::AutoReload::kTrue);
+        sealed_data.key_blob,
+        KeyManagement::LoadKeyOptions{.auto_reload = true});
     return;
   }
 

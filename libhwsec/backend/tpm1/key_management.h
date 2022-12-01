@@ -61,11 +61,11 @@ class KeyManagementTpm1 : public Backend::KeyManagement,
                      const CreateKeyOptions& options) override;
   StatusOr<CreateKeyResult> CreateKey(const OperationPolicySetting& policy,
                                       KeyAlgoType key_algo,
-                                      AutoReload auto_reload,
+                                      const LoadKeyOptions& load_key_options,
                                       const CreateKeyOptions& options) override;
   StatusOr<ScopedKey> LoadKey(const OperationPolicy& policy,
                               const brillo::Blob& key_blob,
-                              AutoReload auto_reload) override;
+                              const LoadKeyOptions& load_key_options) override;
   StatusOr<ScopedKey> GetPersistentKey(PersistentKeyType key_type) override;
   StatusOr<brillo::Blob> GetPubkeyHash(Key key) override;
   Status Flush(Key key) override;
@@ -78,14 +78,14 @@ class KeyManagementTpm1 : public Backend::KeyManagement,
       const OperationPolicySetting& policy,
       const brillo::Blob& public_modulus,
       const brillo::SecureBlob& private_prime_factor,
-      AutoReload auto_reload,
+      const LoadKeyOptions& load_key_options,
       const CreateKeyOptions& options) override;
   StatusOr<CreateKeyResult> WrapECCKey(
       const OperationPolicySetting& policy,
       const brillo::Blob& public_point_x,
       const brillo::Blob& public_point_y,
       const brillo::SecureBlob& private_value,
-      AutoReload auto_reload,
+      const LoadKeyOptions& load_key_options,
       const CreateKeyOptions& options) override;
   StatusOr<RSAPublicInfo> GetRSAPublicInfo(Key key) override;
   StatusOr<ECCPublicInfo> GetECCPublicInfo(Key key) override;
@@ -117,13 +117,14 @@ class KeyManagementTpm1 : public Backend::KeyManagement,
     ScopedTssPolicy tss_policy;
   };
 
-  StatusOr<CreateKeyResult> CreateRsaKey(const OperationPolicySetting& policy,
-                                         const CreateKeyOptions& options,
-                                         AutoReload auto_reload);
+  StatusOr<CreateKeyResult> CreateRsaKey(
+      const OperationPolicySetting& policy,
+      const CreateKeyOptions& options,
+      const LoadKeyOptions& load_key_options);
   StatusOr<CreateKeyResult> CreateSoftwareGenRsaKey(
       const OperationPolicySetting& policy,
       const CreateKeyOptions& options,
-      AutoReload auto_reload);
+      const LoadKeyOptions& load_key_options);
   StatusOr<KeyPolicyPair> LoadKeyBlob(const OperationPolicy& policy,
                                       const brillo::Blob& key_blob);
   StatusOr<ScopedKey> LoadKeyInternal(

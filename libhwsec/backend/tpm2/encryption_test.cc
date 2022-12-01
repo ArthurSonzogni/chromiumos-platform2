@@ -56,7 +56,7 @@ TEST_F(BackendEncryptionTpm2Test, Encrypt) {
 
   auto key = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
       kFakePolicy, brillo::BlobFromString(kFakeKeyBlob),
-      Backend::KeyManagement::AutoReload::kFalse);
+      Backend::KeyManagement::LoadKeyOptions{});
 
   ASSERT_OK(key);
 
@@ -96,7 +96,7 @@ TEST_F(BackendEncryptionTpm2Test, EncryptNullAlgo) {
 
   auto key = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
       kFakePolicy, brillo::BlobFromString(kFakeKeyBlob),
-      Backend::KeyManagement::AutoReload::kFalse);
+      Backend::KeyManagement::LoadKeyOptions{});
 
   ASSERT_OK(key);
 
@@ -139,7 +139,7 @@ TEST_F(BackendEncryptionTpm2Test, EncryptRsaesSha1Algo) {
 
   auto key = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
       kFakePolicy, brillo::BlobFromString(kFakeKeyBlob),
-      Backend::KeyManagement::AutoReload::kFalse);
+      Backend::KeyManagement::LoadKeyOptions{});
 
   ASSERT_OK(key);
 
@@ -183,7 +183,7 @@ TEST_F(BackendEncryptionTpm2Test, Decrypt) {
 
   auto key = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
       kFakePolicy, brillo::BlobFromString(kFakeKeyBlob),
-      Backend::KeyManagement::AutoReload::kFalse);
+      Backend::KeyManagement::LoadKeyOptions{});
 
   ASSERT_OK(key);
 

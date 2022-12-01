@@ -34,7 +34,7 @@ StatusOr<U2fFrontend::CreateKeyResult> U2fFrontendImpl::GenerateRSASigningKey(
                   .auth_value = auth_value,
               },
       },
-      KeyAlgoType::kRsa, KeyManagement::AutoReload::kTrue,
+      KeyAlgoType::kRsa, KeyManagement::LoadKeyOptions{.auto_reload = true},
       Backend::KeyManagement::CreateKeyOptions{
           .allow_software_gen = false,
           .allow_decrypt = false,
@@ -55,7 +55,7 @@ StatusOr<ScopedKey> U2fFrontendImpl::LoadKey(
                   .auth_value = auth_value,
               },
       },
-      key_blob, KeyManagement::AutoReload::kTrue);
+      key_blob, KeyManagement::LoadKeyOptions{.auto_reload = true});
 }
 
 StatusOr<brillo::Blob> U2fFrontendImpl::RSASign(Key key,

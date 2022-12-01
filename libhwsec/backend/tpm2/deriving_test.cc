@@ -80,7 +80,7 @@ TEST_F(BackendDeriveTpm2Test, DeriveSecureRsa) {
 
   auto key = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
       kFakePolicy, brillo::BlobFromString(kFakeKeyBlob),
-      Backend::KeyManagement::AutoReload::kFalse);
+      Backend::KeyManagement::LoadKeyOptions{});
 
   ASSERT_OK(key);
 
@@ -161,7 +161,7 @@ TEST_F(BackendDeriveTpm2Test, DeriveEcc) {
 
   auto key = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
       kFakePolicy, brillo::BlobFromString(kFakeKeyBlob),
-      Backend::KeyManagement::AutoReload::kFalse);
+      Backend::KeyManagement::LoadKeyOptions{});
 
   ASSERT_OK(key);
 
@@ -232,7 +232,7 @@ TEST_F(BackendDeriveTpm2Test, DeriveEccOutOfRange) {
 
   auto key = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
       kFakePolicy, brillo::BlobFromString(kFakeKeyBlob),
-      Backend::KeyManagement::AutoReload::kFalse);
+      Backend::KeyManagement::LoadKeyOptions{});
 
   ASSERT_OK(key);
 

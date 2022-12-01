@@ -193,11 +193,11 @@ Status KeyManagementTpm1::IsSupported(KeyAlgoType key_algo,
 StatusOr<KeyManagementTpm1::CreateKeyResult> KeyManagementTpm1::CreateKey(
     const OperationPolicySetting& policy,
     KeyAlgoType key_algo,
-    AutoReload auto_reload,
+    const LoadKeyOptions& load_key_options,
     const CreateKeyOptions& options) {
   switch (key_algo) {
     case KeyAlgoType::kRsa:
-      return CreateRsaKey(policy, options, auto_reload);
+      return CreateRsaKey(policy, options, load_key_options);
     default:
       return MakeStatus<TPMError>("Unsupported key creation algorithm",
                                   TPMRetryAction::kNoRetry);
@@ -207,14 +207,14 @@ StatusOr<KeyManagementTpm1::CreateKeyResult> KeyManagementTpm1::CreateKey(
 StatusOr<KeyManagementTpm1::CreateKeyResult> KeyManagementTpm1::CreateRsaKey(
     const OperationPolicySetting& policy,
     const CreateKeyOptions& options,
-    AutoReload auto_reload) {
+    const LoadKeyOptions& load_key_options) {
   ASSIGN_OR_RETURN(
       const ConfigTpm1::PcrMap& setting,
       backend_.GetConfigTpm1().ToSettingsPcrMap(policy.device_config_settings),
       _.WithStatus<TPMError>("Failed to convert setting to PCR map"));
 
   if (options.allow_software_gen && setting.empty()) {
-    return CreateSoftwareGenRsaKey(policy, options, auto_reload);
+    return CreateSoftwareGenRsaKey(policy, options, load_key_options);
   }
 
   ASSIGN_OR_RETURN(ScopedKey srk,
@@ -330,7 +330,7 @@ StatusOr<KeyManagementTpm1::CreateKeyResult> KeyManagementTpm1::CreateRsaKey(
   KeyTpm1::Type key_type = KeyTpm1::Type::kTransientKey;
   std::optional<KeyReloadDataTpm1> reload_data;
 
-  if (auto_reload == AutoReload::kTrue) {
+  if (load_key_options.auto_reload == true) {
     key_type = KeyTpm1::Type::kReloadableTransientKey;
     reload_data = KeyReloadDataTpm1{
         .policy = op_policy,
@@ -354,9 +354,10 @@ StatusOr<KeyManagementTpm1::CreateKeyResult> KeyManagementTpm1::CreateRsaKey(
 }
 
 StatusOr<KeyManagementTpm1::CreateKeyResult>
-KeyManagementTpm1::CreateSoftwareGenRsaKey(const OperationPolicySetting& policy,
-                                           const CreateKeyOptions& options,
-                                           AutoReload auto_reload) {
+KeyManagementTpm1::CreateSoftwareGenRsaKey(
+    const OperationPolicySetting& policy,
+    const CreateKeyOptions& options,
+    const LoadKeyOptions& load_key_options) {
   brillo::SecureBlob public_modulus;
   brillo::SecureBlob prime_factor;
   if (!hwsec_foundation::CreateRsaKey(
@@ -369,14 +370,14 @@ KeyManagementTpm1::CreateSoftwareGenRsaKey(const OperationPolicySetting& policy,
   return WrapRSAKey(
       policy,
       brillo::Blob(std::begin(public_modulus), std::end(public_modulus)),
-      prime_factor, auto_reload, options);
+      prime_factor, load_key_options, options);
 }
 
 StatusOr<KeyManagementTpm1::CreateKeyResult> KeyManagementTpm1::WrapRSAKey(
     const OperationPolicySetting& policy,
     const brillo::Blob& public_modulus,
     const brillo::SecureBlob& private_prime_factor,
-    AutoReload auto_reload,
+    const LoadKeyOptions& load_key_options,
     const CreateKeyOptions& options) {
   brillo::Blob exponent = options.rsa_exponent.value_or(
       brillo::Blob(std::begin(kDefaultTpmPublicExponentArray),
@@ -502,7 +503,7 @@ StatusOr<KeyManagementTpm1::CreateKeyResult> KeyManagementTpm1::WrapRSAKey(
   // TODO(b/257208272): We should reuse the auth_policy, so we don't need to
   // load it again.
   ASSIGN_OR_RETURN(
-      ScopedKey key, LoadKey(op_policy, key_blob, auto_reload),
+      ScopedKey key, LoadKey(op_policy, key_blob, load_key_options),
       _.WithStatus<TPMError>("Failed to load created software RSA key"));
 
   return CreateKeyResult{
@@ -516,14 +517,15 @@ StatusOr<KeyManagementTpm1::CreateKeyResult> KeyManagementTpm1::WrapECCKey(
     const brillo::Blob& public_point_x,
     const brillo::Blob& public_point_y,
     const brillo::SecureBlob& private_value,
-    AutoReload auto_reload,
+    const LoadKeyOptions& load_key_options,
     const CreateKeyOptions& options) {
   return MakeStatus<TPMError>("Unsupported", TPMRetryAction::kNoRetry);
 }
 
-StatusOr<ScopedKey> KeyManagementTpm1::LoadKey(const OperationPolicy& policy,
-                                               const brillo::Blob& key_blob,
-                                               AutoReload auto_reload) {
+StatusOr<ScopedKey> KeyManagementTpm1::LoadKey(
+    const OperationPolicy& policy,
+    const brillo::Blob& key_blob,
+    const LoadKeyOptions& load_key_options) {
   ASSIGN_OR_RETURN(KeyPolicyPair result, LoadKeyBlob(policy, key_blob),
                    _.WithStatus<TPMError>("Failed to load key blob"));
 
@@ -531,7 +533,7 @@ StatusOr<ScopedKey> KeyManagementTpm1::LoadKey(const OperationPolicy& policy,
 
   KeyTpm1::Type key_type = KeyTpm1::Type::kTransientKey;
   std::optional<KeyReloadDataTpm1> reload_data;
-  if (auto_reload == AutoReload::kTrue) {
+  if (load_key_options.auto_reload == true) {
     key_type = KeyTpm1::Type::kReloadableTransientKey;
     reload_data = KeyReloadDataTpm1{
         .policy = policy,

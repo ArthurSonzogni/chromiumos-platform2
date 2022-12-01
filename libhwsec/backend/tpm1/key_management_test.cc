@@ -212,7 +212,7 @@ TEST_F(BackendKeyManagementTpm1Test, CreateSoftwareGenRsaKey) {
                       Return(TPM_SUCCESS)));
 
   auto result = middleware_->CallSync<&Backend::KeyManagement::CreateKey>(
-      kFakePolicy, kFakeAlgo, Backend::KeyManagement::AutoReload::kFalse,
+      kFakePolicy, kFakeAlgo, Backend::KeyManagement::LoadKeyOptions{},
       Backend::KeyManagement::CreateKeyOptions{
           .allow_software_gen = true,
           .allow_decrypt = true,
@@ -289,7 +289,8 @@ TEST_F(BackendKeyManagementTpm1Test, CreateRsaKey) {
                       Return(TPM_SUCCESS)));
 
   auto result = middleware_->CallSync<&Backend::KeyManagement::CreateKey>(
-      kFakePolicy, kFakeAlgo, Backend::KeyManagement::AutoReload::kTrue,
+      kFakePolicy, kFakeAlgo,
+      Backend::KeyManagement::LoadKeyOptions{.auto_reload = true},
       Backend::KeyManagement::CreateKeyOptions{
           .allow_software_gen = true,
           .allow_decrypt = true,
@@ -373,7 +374,8 @@ TEST_F(BackendKeyManagementTpm1Test, CreateRsaKeyWithParams) {
                       Return(TPM_SUCCESS)));
 
   auto result = middleware_->CallSync<&Backend::KeyManagement::CreateKey>(
-      kFakePolicy, kFakeAlgo, Backend::KeyManagement::AutoReload::kTrue,
+      kFakePolicy, kFakeAlgo,
+      Backend::KeyManagement::LoadKeyOptions{.auto_reload = true},
       Backend::KeyManagement::CreateKeyOptions{
           .allow_software_gen = true,
           .allow_decrypt = true,
@@ -475,7 +477,8 @@ TEST_F(BackendKeyManagementTpm1Test, CreateRsaKeyWithAuth) {
                       Return(TPM_SUCCESS)));
 
   auto result = middleware_->CallSync<&Backend::KeyManagement::CreateKey>(
-      kFakePolicy, kFakeAlgo, Backend::KeyManagement::AutoReload::kTrue,
+      kFakePolicy, kFakeAlgo,
+      Backend::KeyManagement::LoadKeyOptions{.auto_reload = true},
       Backend::KeyManagement::CreateKeyOptions{
           .allow_software_gen = true,
           .allow_decrypt = true,
@@ -575,7 +578,8 @@ TEST_F(BackendKeyManagementTpm1Test, CreateRsaKeyWithAuthSha1) {
                       Return(TPM_SUCCESS)));
 
   auto result = middleware_->CallSync<&Backend::KeyManagement::CreateKey>(
-      kFakePolicy, kFakeAlgo, Backend::KeyManagement::AutoReload::kTrue,
+      kFakePolicy, kFakeAlgo,
+      Backend::KeyManagement::LoadKeyOptions{.auto_reload = true},
       Backend::KeyManagement::CreateKeyOptions{
           .allow_software_gen = true,
           .allow_decrypt = true,
@@ -607,7 +611,7 @@ TEST_F(BackendKeyManagementTpm1Test, LoadKey) {
                       Return(TPM_SUCCESS)));
 
   auto result = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
-      kFakePolicy, kFakeKeyBlob, Backend::KeyManagement::AutoReload::kFalse);
+      kFakePolicy, kFakeKeyBlob, Backend::KeyManagement::LoadKeyOptions{});
 
   ASSERT_OK(result);
 
@@ -664,7 +668,8 @@ TEST_F(BackendKeyManagementTpm1Test, LoadKeyWithAuth) {
       .WillOnce(Return(TPM_SUCCESS));
 
   auto result = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
-      kFakePolicy, kFakeKeyBlob, Backend::KeyManagement::AutoReload::kFalse);
+      kFakePolicy, kFakeKeyBlob,
+      Backend::KeyManagement::LoadKeyOptions{.auto_reload = false});
 
   ASSERT_OK(result);
 
@@ -700,7 +705,8 @@ TEST_F(BackendKeyManagementTpm1Test, LoadAutoReloadKey) {
                       Return(TPM_SUCCESS)));
 
   auto result = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
-      kFakePolicy, kFakeKeyBlob, Backend::KeyManagement::AutoReload::kTrue);
+      kFakePolicy, kFakeKeyBlob,
+      Backend::KeyManagement::LoadKeyOptions{.auto_reload = true});
 
   ASSERT_OK(result);
 
@@ -837,7 +843,7 @@ TEST_F(BackendKeyManagementTpm1Test, WrapRsaKey) {
 
   auto result = middleware_->CallSync<&Backend::KeyManagement::WrapRSAKey>(
       kFakePolicy, kFakeModulus, kFakePrime,
-      Backend::KeyManagement::AutoReload::kFalse,
+      Backend::KeyManagement::LoadKeyOptions{},
       Backend::KeyManagement::CreateKeyOptions{
           .allow_software_gen = false,
           .allow_decrypt = false,
@@ -973,7 +979,7 @@ TEST_F(BackendKeyManagementTpm1Test, WrapRsaKeyWithAuth) {
 
   auto result = middleware_->CallSync<&Backend::KeyManagement::WrapRSAKey>(
       kFakePolicy, kFakeModulus, kFakePrime,
-      Backend::KeyManagement::AutoReload::kFalse,
+      Backend::KeyManagement::LoadKeyOptions{},
       Backend::KeyManagement::CreateKeyOptions{
           .allow_software_gen = false,
           .allow_decrypt = false,
@@ -990,7 +996,7 @@ TEST_F(BackendKeyManagementTpm1Test, WrapECCKeyUnsupported) {
   EXPECT_THAT(
       backend_->GetKeyManagementTpm1().WrapECCKey(
           OperationPolicySetting{}, brillo::Blob(), brillo::Blob(),
-          brillo::SecureBlob(), Backend::KeyManagement::AutoReload::kFalse,
+          brillo::SecureBlob(), Backend::KeyManagement::LoadKeyOptions{},
           KeyManagement::CreateKeyOptions{}),
       NotOkWith("Unsupported"));
 }
@@ -1016,7 +1022,7 @@ TEST_F(BackendKeyManagementTpm1Test, GetPubkeyHash) {
                       Return(TPM_SUCCESS)));
 
   auto key = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
-      kFakePolicy, kFakeKeyBlob, Backend::KeyManagement::AutoReload::kFalse);
+      kFakePolicy, kFakeKeyBlob, Backend::KeyManagement::LoadKeyOptions{});
 
   ASSERT_OK(key);
 
@@ -1048,7 +1054,7 @@ TEST_F(BackendKeyManagementTpm1Test, GetRSAPublicInfo) {
                       Return(TPM_SUCCESS)));
 
   auto key = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
-      kFakePolicy, kFakeKeyBlob, Backend::KeyManagement::AutoReload::kFalse);
+      kFakePolicy, kFakeKeyBlob, Backend::KeyManagement::LoadKeyOptions{});
 
   ASSERT_OK(key);
 

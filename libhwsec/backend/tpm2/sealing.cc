@@ -90,7 +90,7 @@ StatusOr<std::optional<ScopedKey>> SealingTpm2::PreloadSealedData(
     const OperationPolicy& policy, const brillo::Blob& sealed_data) {
   ASSIGN_OR_RETURN(ScopedKey key,
                    backend_.GetKeyManagementTpm2().LoadKey(
-                       policy, sealed_data, KeyManagement::AutoReload::kFalse),
+                       policy, sealed_data, KeyManagement::LoadKeyOptions{}),
                    _.WithStatus<TPMError>("Failed to load sealed data"));
   return std::move(key);
 }
