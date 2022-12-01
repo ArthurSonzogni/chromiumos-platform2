@@ -64,9 +64,6 @@ class WiFiLinkStatistics {
     kCQMBeaconLoss,
     // The kernel notified us, through a CQM event, that we've lost packets.
     kCQMPacketLoss,
-    // In addition to reacting on network events and kernel notifications, we
-    // also report the quality of the link periodically.
-    kPeriodicCheck,
     // We always update (some of) the link statistics in the background, every
     // |WiFi::kRequestStationInfoPeriod|. Among other things that allows us to
     // update the signal strength UI regularly.

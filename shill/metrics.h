@@ -1627,7 +1627,7 @@ class Metrics : public DefaultServiceObserver {
     kWiFiLinkQualityTriggerCQMRSSIHigh = 2,
     kWiFiLinkQualityTriggerCQMBeaconLoss = 3,
     kWiFiLinkQualityTriggerCQMPacketLoss = 4,
-    kWiFiLinkQualityTriggerPeriodicCheck = 5,
+    kWiFiLinkQualityTriggerBackgroundCheck = 5,
     kWiFiLinkQualityTriggerIPConfigurationStart = 6,
     kWiFiLinkQualityTriggerConnected = 7,
     kWiFiLinkQualityTriggerDHCPRenewOnRoam = 8,

@@ -4277,7 +4277,7 @@ TEST_F(WiFiMainTest, EmitStationInfoRequestEvery30thPeriod) {
   // For every 30 calls to RequestStationInfo() for background monitoring
   // we emit 1 "periodic check" event.
   EXPECT_CALL(*service, EmitLinkQualityTriggerEvent(
-                            Metrics::kWiFiLinkQualityTriggerPeriodicCheck))
+                            Metrics::kWiFiLinkQualityTriggerBackgroundCheck))
       .Times(iterations / 30);
   for (int i = 0; i < iterations; ++i) {
     RequestStationInfo(WiFiLinkStatistics::Trigger::kBackground);

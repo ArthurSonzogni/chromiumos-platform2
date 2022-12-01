@@ -3730,18 +3730,18 @@ void WiFi::RequestStationInfo(WiFiLinkStatistics::Trigger trigger) {
   // exact.
   if (trigger == WiFiLinkStatistics::Trigger::kBackground) {
     if (station_info_reqs_ % kReportStationInfoSample == 0) {
-      EmitStationInfoRequestEvent(WiFiLinkStatistics::Trigger::kPeriodicCheck);
+      EmitStationInfoRequestEvent(WiFiLinkStatistics::Trigger::kBackground);
       pending_nl80211_stats_requests_.push_back(
-          WiFiLinkStatistics::Trigger::kPeriodicCheck);
+          WiFiLinkStatistics::Trigger::kBackground);
     }
     station_info_reqs_++;
-  }
-
-  if (trigger != WiFiLinkStatistics::Trigger::kUnknown &&
-      trigger != WiFiLinkStatistics::Trigger::kBackground) {
+  } else if (trigger != WiFiLinkStatistics::Trigger::kUnknown) {
     EmitStationInfoRequestEvent(trigger);
     pending_nl80211_stats_requests_.push_back(trigger);
   }
+  // TODO(b/260915172): we sometimes call RequestStationInfo() multiple times,
+  // sending redundant requests to the driver. We could instead only query the
+  // driver if there isn't a request already in flight.
   netlink_manager_->SendNl80211Message(
       &get_station,
       base::BindRepeating(&WiFi::OnReceivedStationInfo,

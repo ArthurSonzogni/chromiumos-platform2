@@ -461,8 +461,8 @@ WiFiLinkStatistics::ConvertLinkStatsTriggerEvent(Trigger trigger) {
       return Metrics::kWiFiLinkQualityTriggerCQMBeaconLoss;
     case Trigger::kCQMPacketLoss:
       return Metrics::kWiFiLinkQualityTriggerCQMPacketLoss;
-    case Trigger::kPeriodicCheck:
-      return Metrics::kWiFiLinkQualityTriggerPeriodicCheck;
+    case Trigger::kBackground:
+      return Metrics::kWiFiLinkQualityTriggerBackgroundCheck;
     default:
       return Metrics::kWiFiLinkQualityTriggerUnknown;
   }

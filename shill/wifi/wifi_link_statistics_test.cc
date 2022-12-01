@@ -317,7 +317,6 @@ TEST_F(WiFiLinkStatisticsTest, StationInfoTriggerConvert) {
       WiFiLinkStatistics::Trigger::kCQMRSSIHigh,
       WiFiLinkStatistics::Trigger::kCQMBeaconLoss,
       WiFiLinkStatistics::Trigger::kCQMPacketLoss,
-      WiFiLinkStatistics::Trigger::kPeriodicCheck,
       WiFiLinkStatistics::Trigger::kBackground};
 
   std::vector<Metrics::WiFiLinkQualityTrigger> expected = {
@@ -335,8 +334,7 @@ TEST_F(WiFiLinkStatisticsTest, StationInfoTriggerConvert) {
       Metrics::kWiFiLinkQualityTriggerCQMRSSIHigh,
       Metrics::kWiFiLinkQualityTriggerCQMBeaconLoss,
       Metrics::kWiFiLinkQualityTriggerCQMPacketLoss,
-      Metrics::kWiFiLinkQualityTriggerPeriodicCheck,
-      Metrics::kWiFiLinkQualityTriggerUnknown};
+      Metrics::kWiFiLinkQualityTriggerBackgroundCheck};
 
   EXPECT_EQ(triggers.size(), expected.size());
   std::vector<Metrics::WiFiLinkQualityTrigger> converted;
