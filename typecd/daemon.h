@@ -12,8 +12,8 @@
 
 #include "typecd/chrome_features_service_client.h"
 #include "typecd/cros_ec_util.h"
+#include "typecd/dbus_manager.h"
 #include "typecd/metrics.h"
-#include "typecd/notification_manager.h"
 #include "typecd/port_manager.h"
 #include "typecd/session_manager_proxy.h"
 #include "typecd/udev_monitor.h"
@@ -46,7 +46,7 @@ class Daemon : public brillo::DBusServiceDaemon {
   std::unique_ptr<PortManager> port_manager_;
   std::unique_ptr<SessionManagerProxy> session_manager_proxy_;
   std::unique_ptr<CrosECUtil> cros_ec_util_;
-  std::unique_ptr<NotificationManager> notify_mgr_;
+  std::unique_ptr<DBusManager> dbus_mgr_;
   std::unique_ptr<ChromeFeaturesServiceClient> features_client_;
   std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
   Metrics metrics_;

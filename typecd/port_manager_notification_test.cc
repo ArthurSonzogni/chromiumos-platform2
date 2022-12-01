@@ -7,8 +7,8 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "typecd/mock_dbus_manager.h"
 #include "typecd/mock_ec_util.h"
-#include "typecd/mock_notification_manager.h"
 #include "typecd/mock_port.h"
 
 using ::testing::_;
@@ -26,11 +26,10 @@ class PortManagerNotificationTest : public ::testing::Test {
     dbus_object_ = std::make_unique<brillo::dbus_utils::DBusObject>(
         nullptr, nullptr, dbus::ObjectPath(kTypecdServicePath));
 
-    // Create PortManager, MockPort and MockNotificationManager instances.
+    // Create PortManager, MockPort and MockDBusManager instances.
     port_manager_ = std::make_unique<PortManager>();
-    notification_manager_ =
-        std::make_unique<StrictMock<MockNotificationManager>>(
-            dbus_object_.get());
+    dbus_manager_ =
+        std::make_unique<StrictMock<MockDBusManager>>(dbus_object_.get());
     port_ = std::make_unique<MockPort>(base::FilePath("fakepath"), 0);
     ec_util_ = std::make_unique<MockECUtil>();
 
@@ -46,7 +45,7 @@ class PortManagerNotificationTest : public ::testing::Test {
  public:
   std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
   std::unique_ptr<PortManager> port_manager_;
-  std::unique_ptr<MockNotificationManager> notification_manager_;
+  std::unique_ptr<MockDBusManager> dbus_manager_;
   std::unique_ptr<MockPort> port_;
   std::unique_ptr<MockECUtil> ec_util_;
 };
@@ -73,13 +72,13 @@ TEST_F(PortManagerNotificationTest, ModeEntryUSB4NotifyThunderboltDp) {
       .WillRepeatedly(testing::Return(true));
 
   // Expect to send DeviceConnectedType::kThunderboltDp.
-  EXPECT_CALL(*notification_manager_,
+  EXPECT_CALL(*dbus_manager_,
               NotifyConnected(DeviceConnectedType::kThunderboltDp))
       .Times(1);
 
   // Configure |port_manager_| and run mode entry.
   port_manager_->SetUserActive(true);
-  port_manager_->SetNotificationManager(notification_manager_.get());
+  port_manager_->SetDBusManager(dbus_manager_.get());
   port_manager_->SetECUtil(ec_util_.get());
   port_manager_->ports_.insert(
       std::pair<int, std::unique_ptr<Port>>(0, std::move(port_)));
@@ -108,13 +107,13 @@ TEST_F(PortManagerNotificationTest, ModeEntryTBTNotifyThunderboltOnly) {
       .WillRepeatedly(testing::Return(true));
 
   // Expect to send DeviceConnectedType::kThunderboltOnly.
-  EXPECT_CALL(*notification_manager_,
+  EXPECT_CALL(*dbus_manager_,
               NotifyConnected(DeviceConnectedType::kThunderboltOnly))
       .Times(1);
 
   // Configure |port_manager_| and run mode entry.
   port_manager_->SetUserActive(true);
-  port_manager_->SetNotificationManager(notification_manager_.get());
+  port_manager_->SetDBusManager(dbus_manager_.get());
   port_manager_->SetECUtil(ec_util_.get());
   port_manager_->ports_.insert(
       std::pair<int, std::unique_ptr<Port>>(0, std::move(port_)));
@@ -144,7 +143,7 @@ TEST_F(PortManagerNotificationTest, ModeEntryDpAltModeNoNotifications) {
 
   // Configure |port_manager_| and run mode entry.
   port_manager_->SetUserActive(true);
-  port_manager_->SetNotificationManager(notification_manager_.get());
+  port_manager_->SetDBusManager(dbus_manager_.get());
   port_manager_->SetECUtil(ec_util_.get());
   port_manager_->ports_.insert(
       std::pair<int, std::unique_ptr<Port>>(0, std::move(port_)));
@@ -177,16 +176,16 @@ TEST_F(PortManagerNotificationTest, ModeEntryUSB4NotifySpeedLimitingCable) {
 
   // Expect to send DeviceConnectedType::kThunderboltDp and
   // CableWarningType::kSpeedLimitingCable.
-  EXPECT_CALL(*notification_manager_,
+  EXPECT_CALL(*dbus_manager_,
               NotifyConnected(DeviceConnectedType::kThunderboltDp))
       .Times(1);
-  EXPECT_CALL(*notification_manager_,
+  EXPECT_CALL(*dbus_manager_,
               NotifyCableWarning(CableWarningType::kSpeedLimitingCable))
       .Times(1);
 
   // Configure |port_manager_| and run mode entry.
   port_manager_->SetUserActive(true);
-  port_manager_->SetNotificationManager(notification_manager_.get());
+  port_manager_->SetDBusManager(dbus_manager_.get());
   port_manager_->SetECUtil(ec_util_.get());
   port_manager_->ports_.insert(
       std::pair<int, std::unique_ptr<Port>>(0, std::move(port_)));
@@ -219,16 +218,16 @@ TEST_F(PortManagerNotificationTest, ModeEntryTBTNotifySpeedLimitingCable) {
 
   // Expect to send DeviceConnectedType::kThunderboltDp and
   // CableWarningType::kSpeedLimitingCable.
-  EXPECT_CALL(*notification_manager_,
+  EXPECT_CALL(*dbus_manager_,
               NotifyConnected(DeviceConnectedType::kThunderboltDp))
       .Times(1);
-  EXPECT_CALL(*notification_manager_,
+  EXPECT_CALL(*dbus_manager_,
               NotifyCableWarning(CableWarningType::kSpeedLimitingCable))
       .Times(1);
 
   // Configure |port_manager_| and run mode entry.
   port_manager_->SetUserActive(true);
-  port_manager_->SetNotificationManager(notification_manager_.get());
+  port_manager_->SetDBusManager(dbus_manager_.get());
   port_manager_->SetECUtil(ec_util_.get());
   port_manager_->ports_.insert(
       std::pair<int, std::unique_ptr<Port>>(0, std::move(port_)));
@@ -260,16 +259,16 @@ TEST_F(PortManagerNotificationTest,
 
   // Expect to send DeviceConnectedType::kThunderboltDp and
   // CableWarningType::kInvalidUSB4ValidTBTCable.
-  EXPECT_CALL(*notification_manager_,
+  EXPECT_CALL(*dbus_manager_,
               NotifyConnected(DeviceConnectedType::kThunderboltDp))
       .Times(1);
-  EXPECT_CALL(*notification_manager_,
+  EXPECT_CALL(*dbus_manager_,
               NotifyCableWarning(CableWarningType::kInvalidUSB4ValidTBTCable))
       .Times(1);
 
   // Configure |port_manager_| and run mode entry.
   port_manager_->SetUserActive(true);
-  port_manager_->SetNotificationManager(notification_manager_.get());
+  port_manager_->SetDBusManager(dbus_manager_.get());
   port_manager_->SetECUtil(ec_util_.get());
   port_manager_->ports_.insert(
       std::pair<int, std::unique_ptr<Port>>(0, std::move(port_)));
@@ -298,13 +297,13 @@ TEST_F(PortManagerNotificationTest, ModeEntryDpAltModeNotifyInvalidUSB4Cable) {
       .WillRepeatedly(testing::Return(true));
 
   // Expect to send CableWarningType::kInvalidUSB4Cable.
-  EXPECT_CALL(*notification_manager_,
+  EXPECT_CALL(*dbus_manager_,
               NotifyCableWarning(CableWarningType::kInvalidUSB4Cable))
       .Times(1);
 
   // Configure |port_manager_| and run mode entry.
   port_manager_->SetUserActive(true);
-  port_manager_->SetNotificationManager(notification_manager_.get());
+  port_manager_->SetDBusManager(dbus_manager_.get());
   port_manager_->SetECUtil(ec_util_.get());
   port_manager_->ports_.insert(
       std::pair<int, std::unique_ptr<Port>>(0, std::move(port_)));
@@ -333,13 +332,13 @@ TEST_F(PortManagerNotificationTest, ModeEntryDpAltModeNotifyInvalidTBTCable) {
       .WillRepeatedly(testing::Return(true));
 
   // Expect to send CableWarningType::kInvalidTBTCable.
-  EXPECT_CALL(*notification_manager_,
+  EXPECT_CALL(*dbus_manager_,
               NotifyCableWarning(CableWarningType::kInvalidTBTCable))
       .Times(1);
 
   // Configure |port_manager_| and run mode entry.
   port_manager_->SetUserActive(true);
-  port_manager_->SetNotificationManager(notification_manager_.get());
+  port_manager_->SetDBusManager(dbus_manager_.get());
   port_manager_->SetECUtil(ec_util_.get());
   port_manager_->ports_.insert(
       std::pair<int, std::unique_ptr<Port>>(0, std::move(port_)));
@@ -368,13 +367,13 @@ TEST_F(PortManagerNotificationTest, ModeEntryDpAltModeNotifyInvalidDpCable) {
       .WillRepeatedly(testing::Return(true));
 
   // Expect to send CableWarningType::kInvalidDpCable
-  EXPECT_CALL(*notification_manager_,
+  EXPECT_CALL(*dbus_manager_,
               NotifyCableWarning(CableWarningType::kInvalidDpCable))
       .Times(1);
 
   // Configure |port_manager_| and run mode entry.
   port_manager_->SetUserActive(true);
-  port_manager_->SetNotificationManager(notification_manager_.get());
+  port_manager_->SetDBusManager(dbus_manager_.get());
   port_manager_->SetECUtil(ec_util_.get());
   port_manager_->ports_.insert(
       std::pair<int, std::unique_ptr<Port>>(0, std::move(port_)));
@@ -399,7 +398,7 @@ TEST_F(PortManagerNotificationTest, ECModeEntryNoCableNotification) {
 
   // Configure |port_manager| and run mode entry.
   port_manager_->SetUserActive(true);
-  port_manager_->SetNotificationManager(notification_manager_.get());
+  port_manager_->SetDBusManager(dbus_manager_.get());
   port_manager_->SetECUtil(ec_util_.get());
   port_manager_->ports_.insert(
       std::pair<int, std::unique_ptr<Port>>(0, std::move(port_)));
@@ -423,13 +422,13 @@ TEST_F(PortManagerNotificationTest, ECModeEntryNotifyInvalidDpCable) {
       .WillRepeatedly(DoAll(SetArgPointee<0>(true), Return(true)));
 
   // Expect to send CableWarningType::kInvalidDpCable.
-  EXPECT_CALL(*notification_manager_,
+  EXPECT_CALL(*dbus_manager_,
               NotifyCableWarning(CableWarningType::kInvalidDpCable))
       .Times(1);
 
   // Configure |port_manager| and run mode entry.
   port_manager_->SetUserActive(true);
-  port_manager_->SetNotificationManager(notification_manager_.get());
+  port_manager_->SetDBusManager(dbus_manager_.get());
   port_manager_->SetECUtil(ec_util_.get());
   port_manager_->ports_.insert(
       std::pair<int, std::unique_ptr<Port>>(0, std::move(port_)));

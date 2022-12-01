@@ -1,9 +1,9 @@
-// Copyright 2021 The ChromiumOS Authors
+// Copyright 2022 The ChromiumOS Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef TYPECD_NOTIFICATION_MANAGER_H_
-#define TYPECD_NOTIFICATION_MANAGER_H_
+#ifndef TYPECD_DBUS_MANAGER_H_
+#define TYPECD_DBUS_MANAGER_H_
 
 #include <brillo/daemons/dbus_daemon.h>
 #include <dbus/typecd/dbus-constants.h>
@@ -12,10 +12,10 @@
 
 namespace typecd {
 
-class NotificationManager : public org::chromium::typecdAdaptor,
-                            public org::chromium::typecdInterface {
+class DBusManager : public org::chromium::typecdAdaptor,
+                    public org::chromium::typecdInterface {
  public:
-  explicit NotificationManager(brillo::dbus_utils::DBusObject* dbus_object);
+  explicit DBusManager(brillo::dbus_utils::DBusObject* dbus_object);
 
   virtual void NotifyConnected(DeviceConnectedType type);
   virtual void NotifyCableWarning(CableWarningType type);
@@ -23,4 +23,4 @@ class NotificationManager : public org::chromium::typecdAdaptor,
 
 }  // namespace typecd
 
-#endif  // TYPECD_NOTIFICATION_MANAGER_H_
+#endif  // TYPECD_DBUS_MANAGER_H_

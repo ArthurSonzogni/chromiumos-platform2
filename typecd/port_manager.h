@@ -12,9 +12,9 @@
 #include <gtest/gtest_prod.h>
 
 #include "typecd/chrome_features_service_client.h"
+#include "typecd/dbus_manager.h"
 #include "typecd/ec_util.h"
 #include "typecd/metrics.h"
-#include "typecd/notification_manager.h"
 #include "typecd/port.h"
 #include "typecd/session_manager_observer_interface.h"
 #include "typecd/udev_monitor.h"
@@ -42,7 +42,7 @@ class PortManager : public UdevMonitor::TypecObserver,
   bool GetUserActive() { return user_active_; }
   void SetUserActive(bool active) { user_active_ = active; }
 
-  void SetNotificationManager(NotificationManager* mgr) { notify_mgr_ = mgr; }
+  void SetDBusManager(DBusManager* mgr) { dbus_mgr_ = mgr; }
 
   void SetMetrics(Metrics* metrics) { metrics_ = metrics; }
 
@@ -152,9 +152,9 @@ class PortManager : public UdevMonitor::TypecObserver,
   bool supports_usb4_;
 
   ECUtil* ec_util_;
-  // Pointer to the NotificationManager instance. NOTE: This is owned by the
-  // parent Daemon, and not PortManager.
-  NotificationManager* notify_mgr_;
+  // Pointer to the DBusManager instance. NOTE: This is owned by the parent
+  // Daemon, and not PortManager.
+  DBusManager* dbus_mgr_;
 
   // Pointer to the ChromeFeaturesServiceClient instance. NOTE: This is owned
   // by the parent Daemon, and not PortManager.

@@ -45,7 +45,7 @@ namespace typecd {
 PortManager::PortManager()
     : mode_entry_supported_(true),
       supports_usb4_(true),
-      notify_mgr_(nullptr),
+      dbus_mgr_(nullptr),
       features_client_(nullptr),
       user_active_(false),
       peripheral_data_access_(true),
@@ -324,7 +324,7 @@ void PortManager::RunModeEntry(int port_num) {
   }
 
   if (!GetModeEntrySupported()) {
-    if (!notify_mgr_)
+    if (!dbus_mgr_)
       return;
 
     // If mode entry is not attempted because the AP cannot enter modes, still
@@ -332,7 +332,7 @@ void PortManager::RunModeEntry(int port_num) {
     bool invalid_dpalt_cable = false;
     bool can_enter_dp_alt_mode = port->CanEnterDPAltMode(&invalid_dpalt_cable);
     if (can_enter_dp_alt_mode && invalid_dpalt_cable)
-      notify_mgr_->NotifyCableWarning(CableWarningType::kInvalidDpCable);
+      dbus_mgr_->NotifyCableWarning(CableWarningType::kInvalidDpCable);
 
     return;
   }
@@ -341,12 +341,12 @@ void PortManager::RunModeEntry(int port_num) {
   // While we can probably optimize this to avoid the repeat CanEnter* calls, we
   // handle the notification calls ahead, in order to prevent the logic from
   // becoming difficult to follow.
-  if (notify_mgr_) {
+  if (dbus_mgr_) {
     if (port->CanEnterTBTCompatibilityMode() == ModeEntryResult::kSuccess) {
       auto notif = port->CanEnterDPAltMode(nullptr)
                        ? DeviceConnectedType::kThunderboltDp
                        : DeviceConnectedType::kThunderboltOnly;
-      notify_mgr_->NotifyConnected(notif);
+      dbus_mgr_->NotifyConnected(notif);
     }
   }
 
@@ -368,8 +368,8 @@ void PortManager::RunModeEntry(int port_num) {
     // If the cable limits USB speed, warn the user.
     if (port->CableLimitingUSBSpeed(false)) {
       LOG(INFO) << "Cable limiting USB speed on port " << port_num;
-      if (notify_mgr_)
-        notify_mgr_->NotifyCableWarning(CableWarningType::kSpeedLimitingCable);
+      if (dbus_mgr_)
+        dbus_mgr_->NotifyCableWarning(CableWarningType::kSpeedLimitingCable);
     }
 
     return;
@@ -405,14 +405,14 @@ void PortManager::RunModeEntry(int port_num) {
     if (can_enter_usb4 == ModeEntryResult::kCableError) {
       // If TBT is entered due to a USB4 cable error, warn the user.
       LOG(WARNING) << "USB4 partner with TBT cable on port " << port_num;
-      if (notify_mgr_)
-        notify_mgr_->NotifyCableWarning(
+      if (dbus_mgr_)
+        dbus_mgr_->NotifyCableWarning(
             CableWarningType::kInvalidUSB4ValidTBTCable);
     } else if (port->CableLimitingUSBSpeed(true)) {
       // Cable limits the speed of TBT3 partner.
       LOG(INFO) << "Cable limiting USB speed on port " << port_num;
-      if (notify_mgr_)
-        notify_mgr_->NotifyCableWarning(CableWarningType::kSpeedLimitingCable);
+      if (dbus_mgr_)
+        dbus_mgr_->NotifyCableWarning(CableWarningType::kSpeedLimitingCable);
     }
 
     return;
@@ -446,8 +446,8 @@ void PortManager::RunModeEntry(int port_num) {
   }
 
   // Notify user of potential cable issue.
-  if (notify_mgr_ && cable_warning != CableWarningType::kOther)
-    notify_mgr_->NotifyCableWarning(cable_warning);
+  if (dbus_mgr_ && cable_warning != CableWarningType::kOther)
+    dbus_mgr_->NotifyCableWarning(cable_warning);
 
   return;
 }

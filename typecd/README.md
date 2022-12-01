@@ -22,9 +22,9 @@ The general structure of the classes is best illustrated by a few diagrams:
         |                                     |              |                  |                      |
         |                                     |              |                  |                      |
         |                                     |              |                  |                      |
-   UdevMonitor ---typec- udev- events---> PortManager ---> ECUtil  --> NotificationManager    SessionManagerProxy
-                                                   /|\      |            |                                   |
-                                                    |       --------------                                   |
+   UdevMonitor ---typec- udev- events---> PortManager ---> ECUtil  ------> DBusManager    SessionManagerProxy
+                                                   /|\      |                |                               |
+                                                    |       ------------------                               |
                                                     |                                                        |
                                                     ----------------------------------------------------------
                                                                      session_manager events
@@ -197,18 +197,18 @@ For unit tests, where it's difficult to emulate the asynchronous `session_manage
 the `PortManager`'s `SessionManagerObserverInterface` functions.
 
 
-### NotificationManager
+### DBusManager
 
-The `PortManager` contains a pointer to a `NotificationManager` instance which signals notification requests to Chromium over D-bus. In
+The `PortManager` contains a pointer to a `DBusManager` instance which signals notification requests to Chromium over D-bus. In
 Chromium, Aura Shell (Ash) includes instances of the `PciePeripheralNotificationController` and `UsbPeripheralNotificationController`
-classes which inherit from the `TypecdClient` class. The `NotificationManager` supports two types of D-bus message. (1) `DeviceConnectedType`
+classes which inherit from the `TypecdClient` class. The `DBusManager` supports two types of D-bus message. (1) `DeviceConnectedType`
 which signals the capabilities of the connected device and (2) `CableWarningType` which signals a scenario where the connected partner may
-be limited in some way by the cable. On receiving D-bus signals sent by the typec `NotificationManager`, the USB and PCIe notification
+be limited in some way by the cable. On receiving D-bus signals sent by the typec `DBusManager`, the USB and PCIe notification
 controller classes in Ash will process the type of signal received to determine which notification, if any, to show the user.
 
 ```
 
-                 PortManager -------> NotificationManager
+                 PortManager -----------> DBusManager
                                                |
                                                |
                                             (D-Bus)
