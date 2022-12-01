@@ -1385,6 +1385,20 @@ properties:
                 has-cbi:
                   type: boolean
                   description: Whether the device has CBI.
+                ssfc:
+                  type: array
+                  description: Mapping of components to SSFC bitmap values.
+                  items:
+                    type: object
+                    properties:
+                      identifier:
+                        type: string
+                        description: Component name in the probe statement.
+                      value:
+                        type: integer
+                        description: SSFC bitmap value of the component.
+                        minimum: 0x0
+                        maximum: 0xFFFFFFFF
             scheduler-tune:
               type: object
               description: ChromeOS scheduler's tunable values.

@@ -1421,6 +1421,13 @@ In the tables below,
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 | enabled | boolean |  | False |  | False | Whether enable Shimless RMA. |
 | has-cbi | boolean |  | False |  | False | Whether the device has CBI. |
+| ssfc | array - [ssfc](#ssfc) |  | False |  | False |  |
+
+### ssfc
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| identifier | string |  | False |  | False | Component name in the probe statement. |
+| value | integer |  | False |  | False | SSFC bitmap value of the component. Minimum value: 0x0. Maximum value: 0xffffffff. |
 
 ### scheduler-tune
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
