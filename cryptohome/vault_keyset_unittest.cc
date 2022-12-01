@@ -241,7 +241,7 @@ TEST_F(VaultKeysetTest, DeserializeTest) {
   EXPECT_TRUE(vault_keyset.ToKeysBlob(&blob));
 
   VaultKeyset new_vault_keyset;
-  new_vault_keyset.FromKeysBlob(blob);
+  EXPECT_TRUE(new_vault_keyset.FromKeysBlob(blob));
 
   EXPECT_EQ(vault_keyset.GetFek().size(), new_vault_keyset.GetFek().size());
   EXPECT_TRUE(VaultKeysetTest::FindBlobInBlob(vault_keyset.GetFek(),

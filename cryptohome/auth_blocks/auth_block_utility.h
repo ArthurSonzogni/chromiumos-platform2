@@ -155,7 +155,7 @@ class AuthBlockUtility {
       const AuthBlockState& auth_block_state) const = 0;
 
   // This populates an AuthBlockState allocated by the caller.
-  virtual bool GetAuthBlockStateFromVaultKeyset(
+  [[nodiscard]] virtual bool GetAuthBlockStateFromVaultKeyset(
       const std::string& label,
       const std::string& obfuscated_username,
       AuthBlockState& out_state) const = 0;

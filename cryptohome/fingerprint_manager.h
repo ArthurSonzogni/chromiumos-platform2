@@ -117,8 +117,8 @@ class FingerprintManager {
   // connects to relevant dbus signals. Returns false if failing to get the
   // dbus object proxy (e.g. if biod is not in a good state or the device does
   // not have fingerprint support).
-  bool Initialize(const scoped_refptr<dbus::Bus>& bus,
-                  const dbus::ObjectPath& path);
+  [[nodiscard]] bool Initialize(const scoped_refptr<dbus::Bus>& bus,
+                                const dbus::ObjectPath& path);
 
   // Callback for connecting to biod's AuthScanDoneSignal.
   void OnAuthScanDoneSignalConnected(const std::string& interface,

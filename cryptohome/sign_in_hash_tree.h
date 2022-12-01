@@ -222,10 +222,10 @@ class SignInHashTree {
   //
   // TODO(pmalani): Split into CreateLabel() and UpdateLabel() to better
   // clarify the user intention.
-  bool StoreLabel(const Label& label,
-                  const std::vector<uint8_t>& hmac,
-                  const std::vector<uint8_t>& cred_metadata,
-                  bool metadata_lost);
+  [[nodiscard]] bool StoreLabel(const Label& label,
+                                const std::vector<uint8_t>& hmac,
+                                const std::vector<uint8_t>& cred_metadata,
+                                bool metadata_lost);
 
   // Get the hash/hmac and, if applicable, the credential metadata associated
   // with a label.
@@ -251,10 +251,10 @@ class SignInHashTree {
   // be different.
   //
   // Returns true on success, false otherwise.
-  bool GetLabelData(const Label& label,
-                    std::vector<uint8_t>* hmac,
-                    std::vector<uint8_t>* cred_metadata,
-                    bool* metadata_lost);
+  [[nodiscard]] bool GetLabelData(const Label& label,
+                                  std::vector<uint8_t>* hmac,
+                                  std::vector<uint8_t>* cred_metadata,
+                                  bool* metadata_lost);
 
   // Remove the credential metadata associated with label |label| from the hash
   // tree. The |label| must refer to a leaf node; if a label for a inner node is
@@ -263,7 +263,7 @@ class SignInHashTree {
   // The function will update the HashCache after removing the label.
   //
   // Returns true on success, false otherwise.
-  bool RemoveLabel(const Label& label);
+  [[nodiscard]] bool RemoveLabel(const Label& label);
 
   // Returns the first available free leaf label for credential metadata.
   // Returns the label on success. If a free label is not available, this

@@ -99,7 +99,7 @@ void VaultKeyset::InitializeAsBackup(Platform* platform, Crypto* crypto) {
 void VaultKeyset::InitializeToAdd(const VaultKeyset& vault_keyset) {
   VaultKeysetKeys vault_keyset_keys;
   // This copies the encryption keys, reset_seed and chaps key.
-  vault_keyset.ToKeys(&vault_keyset_keys);
+  CHECK(vault_keyset.ToKeys(&vault_keyset_keys));
   FromKeys(vault_keyset_keys);
   // Set chaps key if it exists.
   if (!vault_keyset.GetChapsKey().empty()) {

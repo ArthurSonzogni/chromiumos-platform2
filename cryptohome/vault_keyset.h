@@ -58,15 +58,15 @@ class VaultKeyset {
   //  The following methods deal with importing another object type into this
   //  VaultKeyset container.
   virtual void FromKeys(const VaultKeysetKeys& keys);
-  virtual bool FromKeysBlob(const brillo::SecureBlob& keys_blob);
+  [[nodiscard]] virtual bool FromKeysBlob(const brillo::SecureBlob& keys_blob);
 
   // The following two methods export this VaultKeyset container to other
   // objects.
-  virtual bool ToKeys(VaultKeysetKeys* keys) const;
-  virtual bool ToKeysBlob(brillo::SecureBlob* keys_blob) const;
+  [[nodiscard]] virtual bool ToKeys(VaultKeysetKeys* keys) const;
+  [[nodiscard]] virtual bool ToKeysBlob(brillo::SecureBlob* keys_blob) const;
 
   // Do not call Load directly, use KeysetManagement::LoadVaultKeysetForUser.
-  virtual bool Load(const base::FilePath& filename);
+  [[nodiscard]] virtual bool Load(const base::FilePath& filename);
 
   // Encrypt must be called first.
   virtual bool Save(const base::FilePath& filename);
@@ -222,13 +222,15 @@ class VaultKeyset {
 
   // This populates each sub type of AuthBlockState into the caller allocated
   // object.
-  bool GetTpmBoundToPcrState(AuthBlockState* auth_state) const;
-  bool GetTpmNotBoundToPcrState(AuthBlockState* auth_state) const;
-  bool GetPinWeaverState(AuthBlockState* auth_state) const;
-  bool GetSignatureChallengeState(AuthBlockState* auth_state) const;
-  bool GetScryptState(AuthBlockState* auth_state) const;
-  bool GetDoubleWrappedCompatState(AuthBlockState* auth_state) const;
-  bool GetTpmEccState(AuthBlockState* auth_state) const;
+  [[nodiscard]] bool GetTpmBoundToPcrState(AuthBlockState* auth_state) const;
+  [[nodiscard]] bool GetTpmNotBoundToPcrState(AuthBlockState* auth_state) const;
+  [[nodiscard]] bool GetPinWeaverState(AuthBlockState* auth_state) const;
+  [[nodiscard]] bool GetSignatureChallengeState(
+      AuthBlockState* auth_state) const;
+  [[nodiscard]] bool GetScryptState(AuthBlockState* auth_state) const;
+  [[nodiscard]] bool GetDoubleWrappedCompatState(
+      AuthBlockState* auth_state) const;
+  [[nodiscard]] bool GetTpmEccState(AuthBlockState* auth_state) const;
 
   // Reads an auth block state and update the VaultKeyset with what it
   // returns.

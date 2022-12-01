@@ -63,21 +63,21 @@ class Crypto {
   // Returns true on success.
   // On failure, false is returned and |error| is set with the appropriate
   // error.
-  bool ResetLECredential(const VaultKeyset& vk_reset,
-                         const VaultKeyset& vk,
-                         CryptoError* error) const;
+  [[nodiscard]] bool ResetLECredential(const VaultKeyset& vk_reset,
+                                       const VaultKeyset& vk,
+                                       CryptoError* error) const;
 
   // Removes an LE credential specified by |label|.
   // Returns true on success, false otherwise.
-  bool RemoveLECredential(uint64_t label) const;
+  [[nodiscard]] bool RemoveLECredential(uint64_t label) const;
 
   // Resets an LE Credential specified by |le_label|.
   // Returns true on success.
   // On failure, false is returned and |error| is set with the appropriate
   // error.
-  bool ResetLeCredentialEx(const uint64_t le_label,
-                           const brillo::SecureBlob& reset_secret,
-                           CryptoError& out_error) const;
+  [[nodiscard]] bool ResetLeCredentialEx(const uint64_t le_label,
+                                         const brillo::SecureBlob& reset_secret,
+                                         CryptoError& out_error) const;
 
   // Returns whether TPM unseal operations with direct authorization are allowed
   // on this device. Some devices cannot reset the dictionary attack counter.
