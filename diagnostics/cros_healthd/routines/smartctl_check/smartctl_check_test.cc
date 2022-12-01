@@ -134,7 +134,7 @@ TEST_F(SmartctlCheckRoutineTest, AvailableSpareBelowThreshold) {
                available_spare_threshold);
 }
 
-// Tests that the SmartctlCheck routine returns error if debugd proxy returns
+// Tests that the SmartctlCheck routine fails if debugd proxy returns
 // invalid data.
 TEST_F(SmartctlCheckRoutineTest, InvalidDebugdData) {
   CreateSmartctlCheckRoutine();
@@ -143,22 +143,8 @@ TEST_F(SmartctlCheckRoutineTest, InvalidDebugdData) {
           [&](OnceStringCallback callback) { std::move(callback).Run(""); }));
 
   VerifyNonInteractiveUpdate(RunRoutineAndWaitForExit()->routine_update_union,
-                             mojom::DiagnosticRoutineStatusEnum::kError,
-                             kSmartctlCheckRoutineParseError);
-}
-
-// Tests that the SmartctlCheck routine fails if debugd proxy returns  the
-// feature unsupported message.
-TEST_F(SmartctlCheckRoutineTest, DebugdReturnsUnsupported) {
-  CreateSmartctlCheckRoutine();
-  EXPECT_CALL(debugd_proxy_, SmartctlAsync("attributes", _, _, _))
-      .WillOnce(WithArg<1>([&](OnceStringCallback callback) {
-        std::move(callback).Run(kDebugdStorageToolFeatureNotSupportedMsg);
-      }));
-
-  VerifyNonInteractiveUpdate(RunRoutineAndWaitForExit()->routine_update_union,
                              mojom::DiagnosticRoutineStatusEnum::kFailed,
-                             kSmartctlCheckRoutineFailedFeatureUnsupported);
+                             kSmartctlCheckRoutineFailedToParse);
 }
 
 // Tests that the SmartctlCheck routine returns error if debugd returns with an

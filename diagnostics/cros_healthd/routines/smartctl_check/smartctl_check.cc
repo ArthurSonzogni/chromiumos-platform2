@@ -143,20 +143,15 @@ mojom::DiagnosticRoutineStatusEnum SmartctlCheckRoutine::GetStatus() {
 }
 
 void SmartctlCheckRoutine::OnDebugdResultCallback(const std::string& result) {
-  if (result == kDebugdStorageToolFeatureNotSupportedMsg) {
-    UpdateStatus(mojom::DiagnosticRoutineStatusEnum::kFailed,
-                 /*percent=*/100,
-                 kSmartctlCheckRoutineFailedFeatureUnsupported);
-    return;
-  }
-
   int available_spare;
   int available_spare_threshold;
   if (!ScrapeSmartctlAttributes(result, &available_spare,
                                 &available_spare_threshold)) {
     LOG(ERROR) << "Unable to parse smartctl output: " << result;
-    UpdateStatus(mojom::DiagnosticRoutineStatusEnum::kError,
-                 /*percent=*/100, kSmartctlCheckRoutineParseError);
+    // TODO(b/260956052): Make the routine only available to NVMe, and return
+    // kError in the parsing error.
+    UpdateStatus(mojom::DiagnosticRoutineStatusEnum::kFailed,
+                 /*percent=*/100, kSmartctlCheckRoutineFailedToParse);
     return;
   }
 
