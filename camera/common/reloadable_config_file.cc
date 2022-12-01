@@ -36,23 +36,25 @@ ReloadableConfigFile::ReloadableConfigFile(const Options& options)
 void ReloadableConfigFile::SetCallback(OptionsUpdateCallback callback) {
   options_update_callback_ = std::move(callback);
   base::AutoLock lock(options_lock_);
-  if (!json_values_.is_none()) {
-    options_update_callback_.Run(json_values_);
+  if (json_values_.has_value()) {
+    options_update_callback_.Run(*json_values_);
   }
 }
 
 void ReloadableConfigFile::UpdateOption(std::string key, base::Value value) {
+  CHECK(json_values_);
   base::AutoLock lock(options_lock_);
-  json_values_.SetKey(key, std::move(value));
+  json_values_->Set(key, std::move(value));
   WriteConfigFileLocked(override_config_file_path_);
 }
 
-base::Value ReloadableConfigFile::CloneJsonValues() const {
-  return json_values_.Clone();
+base::Value::Dict ReloadableConfigFile::CloneJsonValues() const {
+  CHECK(json_values_);
+  return json_values_->Clone();
 }
 
 bool ReloadableConfigFile::IsValid() const {
-  return !json_values_.is_none();
+  return json_values_.has_value();
 }
 
 void ReloadableConfigFile::ReadConfigFileLocked(
@@ -71,23 +73,28 @@ void ReloadableConfigFile::ReadConfigFileLocked(
   if (!json_values) {
     LOGF(ERROR) << "Failed to load the config file content of " << file_path;
     return;
+  } else if (!json_values->is_dict()) {
+    LOGF(ERROR) << "Config json should be a dictionary";
+    return;
   }
-  if (json_values_.is_dict() && json_values->is_dict()) {
-    // Merge the new and existing config if both are dictionary. Keys that are
-    // present both in the existing and new config will be overwritten with the
-    // new value.
-    json_values_.MergeDictionary(&json_values.value());
+  if (json_values_) {
+    // Merge the new config with existing config, if it has been loaded. Keys
+    // that are present both in the existing and new config will be overwritten
+    // with the new value.
+    json_values_->Merge(std::move(json_values->GetDict()));
   } else {
-    json_values_ = std::move(*json_values);
+    json_values_ = std::move(json_values->GetDict());
   }
 }
 
 void ReloadableConfigFile::WriteConfigFileLocked(
     const base::FilePath& file_path) {
+  CHECK(json_values_);
   options_lock_.AssertAcquired();
   std::string json_string;
   if (!base::JSONWriter::WriteWithOptions(
-          json_values_, base::JSONWriter::OPTIONS_PRETTY_PRINT, &json_string)) {
+          *json_values_, base::JSONWriter::OPTIONS_PRETTY_PRINT,
+          &json_string)) {
     LOGF(WARNING) << "Can't jsonify config settings";
     return;
   }
@@ -99,21 +106,22 @@ void ReloadableConfigFile::WriteConfigFileLocked(
 
 void ReloadableConfigFile::OnConfigFileUpdated(const base::FilePath& file_path,
                                                bool error) {
+  CHECK(json_values_);
   base::AutoLock lock(options_lock_);
   ReadConfigFileLocked(override_config_file_path_);
   if (options_update_callback_) {
-    options_update_callback_.Run(json_values_);
+    options_update_callback_.Run(*json_values_);
   }
 }
 
-bool LoadIfExist(const base::Value& json_values,
+bool LoadIfExist(const base::Value::Dict& json_values,
                  const char* key,
                  float* output) {
   if (!output) {
     LOGF(ERROR) << "output cannot be nullptr";
     return false;
   }
-  auto value = json_values.FindDoubleKey(key);
+  auto value = json_values.FindDouble(key);
   if (!value) {
     return false;
   }
@@ -121,12 +129,14 @@ bool LoadIfExist(const base::Value& json_values,
   return true;
 }
 
-bool LoadIfExist(const base::Value& json_values, const char* key, int* output) {
+bool LoadIfExist(const base::Value::Dict& json_values,
+                 const char* key,
+                 int* output) {
   if (!output) {
     LOGF(ERROR) << "output cannot be nullptr";
     return false;
   }
-  auto value = json_values.FindIntKey(key);
+  auto value = json_values.FindInt(key);
   if (!value) {
     return false;
   }
@@ -134,14 +144,14 @@ bool LoadIfExist(const base::Value& json_values, const char* key, int* output) {
   return true;
 }
 
-bool LoadIfExist(const base::Value& json_values,
+bool LoadIfExist(const base::Value::Dict& json_values,
                  const char* key,
                  bool* output) {
   if (!output) {
     LOGF(ERROR) << "output cannot be nullptr";
     return false;
   }
-  auto value = json_values.FindBoolKey(key);
+  auto value = json_values.FindBool(key);
   if (!value) {
     return false;
   }

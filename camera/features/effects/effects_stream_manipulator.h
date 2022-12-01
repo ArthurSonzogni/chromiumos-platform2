@@ -61,7 +61,7 @@ class EffectsStreamManipulator : public StreamManipulator {
                         uint32_t data_len);
 
  private:
-  void OnOptionsUpdated(const base::Value& json_values);
+  void OnOptionsUpdated(const base::Value::Dict& json_values);
 
   void SetEffect(EffectsConfig* new_config, void (*callback)(bool));
   void GpuSync();

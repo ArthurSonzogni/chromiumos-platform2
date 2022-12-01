@@ -42,7 +42,7 @@ class GcamAeControllerImpl : public GcamAeController {
                        base::ScopedFD acquire_fence) override;
   void RecordAeMetadata(Camera3CaptureDescriptor* result) override;
   void OnOptionsUpdated(
-      const base::Value& json_values,
+      const base::Value::Dict& json_values,
       std::optional<MetadataLogger*> metadata_logger) override;
   std::optional<float> GetCalculatedHdrRatio(int frame_number) override;
   void SetRequestAeParameters(Camera3CaptureDescriptor* request) override;

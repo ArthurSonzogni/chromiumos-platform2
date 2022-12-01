@@ -206,7 +206,7 @@ class HdrNetStreamManipulator : public StreamManipulator {
   HdrNetStreamContext* GetHdrNetContextFromHdrNetStream(
       camera3_stream_t* hdrnet);
 
-  void OnOptionsUpdated(const base::Value& json_values);
+  void OnOptionsUpdated(const base::Value::Dict& json_values);
   void UploadMetrics();
 
   GpuResources* gpu_resources_;

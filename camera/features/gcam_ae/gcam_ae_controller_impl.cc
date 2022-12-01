@@ -339,7 +339,7 @@ void GcamAeControllerImpl::RecordAeMetadata(Camera3CaptureDescriptor* result) {
 }
 
 void GcamAeControllerImpl::OnOptionsUpdated(
-    const base::Value& json_values,
+    const base::Value::Dict& json_values,
     std::optional<MetadataLogger*> metadata_logger) {
   bool enabled;
   if (LoadIfExist(json_values, kGcamAeEnableKey, &enabled)) {
@@ -358,10 +358,10 @@ void GcamAeControllerImpl::OnOptionsUpdated(
     }
   }
 
-  auto max_hdr_ratio = json_values.FindDictKey(kMaxHdrRatioKey);
+  auto max_hdr_ratio = json_values.FindDict(kMaxHdrRatioKey);
   if (max_hdr_ratio) {
     base::flat_map<float, float> hdr_ratio_map;
-    for (auto [k, v] : max_hdr_ratio->GetDict()) {
+    for (auto [k, v] : *max_hdr_ratio) {
       double gain;
       if (!base::StringToDouble(k, &gain)) {
         LOGF(ERROR) << "Invalid gain value: " << k;

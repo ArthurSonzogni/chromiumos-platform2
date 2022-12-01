@@ -62,7 +62,7 @@ class CameraHal {
  private:
   void CloseDeviceOnHalThread(int id);
 
-  void OnSpecUpdated(const base::Value& json_values);
+  void OnSpecUpdated(const base::Value::Dict& json_values);
 
   void ApplySpec(const HalSpec& old_spec, const HalSpec& new_spec);
 

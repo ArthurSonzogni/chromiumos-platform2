@@ -18,7 +18,7 @@ constexpr char kSpatialFilterSigma[] = "spatial_filter_sigma";
 constexpr char kRangeFilterSigma[] = "range_filter_sigma";
 constexpr char kIirFilterStrength[] = "iir_filter_strength";
 
-void ParseHdrnetJsonOptions(const base::Value& json_values,
+void ParseHdrnetJsonOptions(const base::Value::Dict& json_values,
                             HdrNetConfig::Options& options) {
   LoadIfExist(json_values, kHdrNetEnable, &options.hdrnet_enable);
   LoadIfExist(json_values, kDumpBuffer, &options.dump_buffer);

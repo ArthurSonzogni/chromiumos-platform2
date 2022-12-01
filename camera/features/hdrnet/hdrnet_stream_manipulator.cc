@@ -1281,7 +1281,8 @@ HdrNetStreamManipulator::GetHdrNetContextFromHdrNetStream(
   return iter->second;
 }
 
-void HdrNetStreamManipulator::OnOptionsUpdated(const base::Value& json_values) {
+void HdrNetStreamManipulator::OnOptionsUpdated(
+    const base::Value::Dict& json_values) {
   ParseHdrnetJsonOptions(json_values, options_);
 
   bool denoiser_enable;

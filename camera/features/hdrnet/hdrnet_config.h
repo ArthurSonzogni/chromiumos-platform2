@@ -71,7 +71,7 @@ class HdrNetConfig {
 };
 
 // Helper function to parse general HDRnet options from the give JSON values.
-void ParseHdrnetJsonOptions(const base::Value& json_values,
+void ParseHdrnetJsonOptions(const base::Value::Dict& json_values,
                             HdrNetConfig::Options& options);
 
 }  // namespace cros

@@ -334,8 +334,8 @@ void FrameAnnotatorStreamManipulator::FlushSkSurfaceToBuffer(
 }
 
 void FrameAnnotatorStreamManipulator::OnOptionsUpdated(
-    const base::Value& json_values) {
-  if (auto flip_type = json_values.FindStringKey(kFlipTypeKey)) {
+    const base::Value::Dict& json_values) {
+  if (auto flip_type = json_values.FindString(kFlipTypeKey)) {
     base::StringPiece name = *flip_type;
     if (name == "default") {
       options_.flip_type = FrameAnnotator::FlipType::kDefault;
@@ -353,7 +353,7 @@ void FrameAnnotatorStreamManipulator::OnOptionsUpdated(
   }
 
   auto update_bool_option = [&](bool& result, const char key_name[]) {
-    result = json_values.FindBoolKey(key_name).value_or(result);
+    result = json_values.FindBool(key_name).value_or(result);
   };
   update_bool_option(options_.face_rectangles_frame_annotator,
                      kFaceRectanglesFrameAnnotatorKey);

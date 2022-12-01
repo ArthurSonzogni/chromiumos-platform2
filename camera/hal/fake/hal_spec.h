@@ -41,7 +41,8 @@ struct HalSpec {
   std::vector<CameraSpec> cameras;
 };
 
-std::optional<HalSpec> ParseHalSpecFromJsonValue(const base::Value& value);
+std::optional<HalSpec> ParseHalSpecFromJsonValue(
+    const base::Value::Dict& value);
 
 }  // namespace cros
 

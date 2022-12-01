@@ -48,7 +48,7 @@ class CROS_CAMERA_EXPORT FeatureProfile {
   // kFeatureProfileFilePath will be loaded. If |device_config| is nullopt, then
   // the default DeviceConfig instance from DeviceConfig::Create() will be used.
   explicit FeatureProfile(
-      std::optional<base::Value> feature_config = std::nullopt,
+      std::optional<base::Value::Dict> feature_config = std::nullopt,
       std::optional<DeviceConfig> device_config = std::nullopt);
 
   // Checks if |feature| is enabled.
@@ -59,7 +59,7 @@ class CROS_CAMERA_EXPORT FeatureProfile {
   base::FilePath GetConfigFilePath(FeatureType feature) const;
 
  private:
-  void OnOptionsUpdated(const base::Value& json_values);
+  void OnOptionsUpdated(const base::Value::Dict& json_values);
 
   struct FeatureSetting {
     // File path to the feature config file.

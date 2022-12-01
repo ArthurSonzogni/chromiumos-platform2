@@ -69,17 +69,13 @@ std::vector<CameraSpec> ParseCameraSpecs(const ListWithPath& cameras_value) {
 
 }  // namespace
 
-std::optional<HalSpec> ParseHalSpecFromJsonValue(const base::Value& value) {
+std::optional<HalSpec> ParseHalSpecFromJsonValue(
+    const base::Value::Dict& value) {
   HalSpec spec;
 
-  ValueWithPath root = {&value, {}};
+  DictWithPath root = {&value, {}};
 
-  auto root_dict = GetIfDict(root);
-  if (!root_dict) {
-    return {};
-  }
-
-  if (auto cameras = GetRequiredValue<ListWithPath>(*root_dict, kCamerasKey)) {
+  if (auto cameras = GetRequiredValue<ListWithPath>(root, kCamerasKey)) {
     spec.cameras = ParseCameraSpecs(*cameras);
   }
 

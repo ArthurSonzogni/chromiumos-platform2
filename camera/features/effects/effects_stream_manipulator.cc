@@ -30,10 +30,10 @@ namespace cros {
 
 namespace {
 
-bool GetStringFromKey(const base::Value& obj,
+bool GetStringFromKey(const base::Value::Dict& obj,
                       const std::string& key,
                       std::string* value) {
-  const std::string* val = obj.FindStringKey(key);
+  const std::string* val = obj.FindString(key);
   if (!val || val->empty()) {
     return false;
   }
@@ -329,7 +329,7 @@ void EffectsStreamManipulator::OnFrameProcessed(int64_t timestamp,
 }
 
 void EffectsStreamManipulator::OnOptionsUpdated(
-    const base::Value& json_values) {
+    const base::Value::Dict& json_values) {
   if (!pipeline_) {
     LOGF(WARNING) << "OnOptionsUpdated called, but pipeline not ready.";
     return;

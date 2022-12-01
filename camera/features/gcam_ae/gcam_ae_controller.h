@@ -84,7 +84,7 @@ class GcamAeController {
   // Callback for new options |json_values| in JSON format. |metadata_logger|,
   // if set, triggers logging per-frame metadata.
   virtual void OnOptionsUpdated(
-      const base::Value& json_values,
+      const base::Value::Dict& json_values,
       std::optional<MetadataLogger*> metadata_logger) = 0;
 
   // Gets the HDR ratio calculated by Gcam AE.  This is normally used to get the

@@ -382,7 +382,7 @@ void AeStateMachine::OnReset() {
   ae_locked_ = false;
 }
 
-void AeStateMachine::OnOptionsUpdated(const base::Value& json_values) {
+void AeStateMachine::OnOptionsUpdated(const base::Value::Dict& json_values) {
   base::AutoLock lock(lock_);
 
   LoadIfExist(json_values, kTetTargetThresholdLog2,

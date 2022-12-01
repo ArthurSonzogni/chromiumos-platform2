@@ -42,7 +42,7 @@ class CROS_CAMERA_EXPORT ReloadableConfigFile {
   };
 
   using OptionsUpdateCallback =
-      base::RepeatingCallback<void(const base::Value&)>;
+      base::RepeatingCallback<void(const base::Value::Dict&)>;
 
   explicit ReloadableConfigFile(const Options& options);
   ReloadableConfigFile(const ReloadableConfigFile& other) = delete;
@@ -54,7 +54,7 @@ class CROS_CAMERA_EXPORT ReloadableConfigFile {
   // the sequence that the constructor of this ReloadableConfigFile is called.
   void SetCallback(OptionsUpdateCallback callback);
   void UpdateOption(std::string key, base::Value value);
-  base::Value CloneJsonValues() const;
+  base::Value::Dict CloneJsonValues() const;
   bool IsValid() const;
 
  private:
@@ -73,29 +73,29 @@ class CROS_CAMERA_EXPORT ReloadableConfigFile {
   base::FilePathWatcher override_file_path_watcher_;
 
   base::Lock options_lock_;
-  base::Value json_values_ GUARDED_BY(options_lock_);
+  std::optional<base::Value::Dict> json_values_ GUARDED_BY(options_lock_);
 };
 
 // Helper functions to look up |key| in |json_values| and, if key exists, load
 // the corresponding value into |output|. Returns true if |output| is loaded
 // with the value found, false otherwise.
-CROS_CAMERA_EXPORT bool LoadIfExist(const base::Value& json_values,
+CROS_CAMERA_EXPORT bool LoadIfExist(const base::Value::Dict& json_values,
                                     const char* key,
                                     float* output);
-CROS_CAMERA_EXPORT bool LoadIfExist(const base::Value& json_values,
+CROS_CAMERA_EXPORT bool LoadIfExist(const base::Value::Dict& json_values,
                                     const char* key,
                                     int* output);
-CROS_CAMERA_EXPORT bool LoadIfExist(const base::Value& json_values,
+CROS_CAMERA_EXPORT bool LoadIfExist(const base::Value::Dict& json_values,
                                     const char* key,
                                     bool* output);
 
 template <typename T>
-bool LoadIfExist(const base::Value& json_values,
+bool LoadIfExist(const base::Value::Dict& json_values,
                  const char* key,
                  std::vector<T>* output) {
   static_assert(std::is_same<T, float>::value ||
                 std::is_same<T, double>::value || std::is_same<T, int>::value);
-  auto value = json_values.FindListKey(key);
+  auto value = json_values.FindList(key);
   if (!output) {
     LOGF(ERROR) << "output cannot be nullptr";
     return false;
@@ -104,7 +104,7 @@ bool LoadIfExist(const base::Value& json_values,
     return false;
   }
   output->clear();
-  for (const auto& v : value->GetList()) {
+  for (const auto& v : *value) {
     if (std::is_same<T, double>::value || std::is_same<T, float>::value) {
       output->push_back(v.GetDouble());
     } else if (std::is_same<T, int>::value) {

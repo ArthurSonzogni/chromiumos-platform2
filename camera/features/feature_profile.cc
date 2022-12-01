@@ -38,7 +38,7 @@ std::optional<FeatureProfile::FeatureType> GetFeatureType(
 
 }  // namespace
 
-FeatureProfile::FeatureProfile(std::optional<base::Value> feature_config,
+FeatureProfile::FeatureProfile(std::optional<base::Value::Dict> feature_config,
                                std::optional<DeviceConfig> device_config)
     : config_file_(ReloadableConfigFile::Options{
           base::FilePath(kFeatureProfileFilePath), base::FilePath()}),
@@ -98,7 +98,7 @@ base::FilePath FeatureProfile::GetConfigFilePath(FeatureType feature) const {
   return setting->second.config_file_path;
 }
 
-void FeatureProfile::OnOptionsUpdated(const base::Value& json_values) {
+void FeatureProfile::OnOptionsUpdated(const base::Value::Dict& json_values) {
   // Feature config file schema:
   //
   // {
@@ -125,14 +125,9 @@ void FeatureProfile::OnOptionsUpdated(const base::Value& json_values) {
     return;
   }
 
-  if (!json_values.is_dict()) {
-    LOGF(ERROR) << "Feature config must be a dict";
-    return;
-  }
-
   // Get the per-model feature profile from the top-level.
-  const base::Value* feature_profile =
-      json_values.FindDictKey(device_config_->GetModelName());
+  const base::Value::Dict* feature_profile =
+      json_values.FindDict(device_config_->GetModelName());
   if (feature_profile == nullptr) {
     LOGF(ERROR) << "Cannot find feature profile as dict for device model "
                 << std::quoted(device_config_->GetModelName());
@@ -140,7 +135,8 @@ void FeatureProfile::OnOptionsUpdated(const base::Value& json_values) {
   }
 
   // Extract "feature_set" info from the feature profile.
-  const base::Value* feature_set = feature_profile->FindListKey(kKeyFeatureSet);
+  const base::Value::List* feature_set =
+      feature_profile->FindList(kKeyFeatureSet);
   if (feature_set == nullptr) {
     LOGF(ERROR) << "Cannot find " << std::quoted(kKeyFeatureSet)
                 << " as list in the feature profile of "
@@ -149,13 +145,13 @@ void FeatureProfile::OnOptionsUpdated(const base::Value& json_values) {
   }
 
   // Construct the complete feature settings.
-  for (const auto& v : feature_set->GetList()) {
+  for (const auto& v : *feature_set) {
     if (!v.is_dict()) {
       LOGF(ERROR) << "Feature setting in " << std::quoted(kKeyFeatureSet)
                   << " must be a dict";
       continue;
     }
-    const std::string* type_str = v.FindStringKey(kKeyType);
+    const std::string* type_str = v.GetDict().FindString(kKeyType);
     if (type_str == nullptr) {
       LOGF(ERROR) << "Malformed feature setting: Cannot find key "
                   << std::quoted(kKeyType);
@@ -166,7 +162,7 @@ void FeatureProfile::OnOptionsUpdated(const base::Value& json_values) {
       LOGF(ERROR) << "Unknown feature " << std::quoted(*type_str);
       continue;
     }
-    const std::string* path_str = v.FindStringKey(kKeyConfigFilePath);
+    const std::string* path_str = v.GetDict().FindString(kKeyConfigFilePath);
     if (type_str == nullptr) {
       LOGF(ERROR) << "Malformed feature setting: Cannot find key "
                   << std::quoted(kKeyConfigFilePath);

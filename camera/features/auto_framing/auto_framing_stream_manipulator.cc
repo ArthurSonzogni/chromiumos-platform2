@@ -1250,7 +1250,7 @@ void AutoFramingStreamManipulator::UploadMetricsOnThread() {
 }
 
 void AutoFramingStreamManipulator::UpdateOptionsOnThread(
-    const base::Value& json_values) {
+    const base::Value::Dict& json_values) {
   DCHECK(gpu_resources_->gpu_task_runner()->BelongsToCurrentThread());
 
   int filter_mode, max_video_width, max_video_height;
@@ -1273,7 +1273,7 @@ void AutoFramingStreamManipulator::UpdateOptionsOnThread(
   if (LoadIfExist(json_values, kDisableDelayKey, &disable_delay)) {
     options_.disable_delay = base::Seconds(disable_delay);
   }
-  options_.enable = json_values.FindBoolKey(kEnableKey);
+  options_.enable = json_values.FindBool(kEnableKey);
   LoadIfExist(json_values, kDebugKey, &options_.debug);
 
   VLOGF(1) << "AutoFramingStreamManipulator options:"
@@ -1296,7 +1296,7 @@ void AutoFramingStreamManipulator::UpdateOptionsOnThread(
 }
 
 void AutoFramingStreamManipulator::OnOptionsUpdated(
-    const base::Value& json_values) {
+    const base::Value::Dict& json_values) {
   gpu_resources_->PostGpuTask(
       FROM_HERE,
       base::BindOnce(&AutoFramingStreamManipulator::UpdateOptionsOnThread,
