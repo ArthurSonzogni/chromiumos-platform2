@@ -89,7 +89,8 @@ hiberman start/running, process XXXX
       ```
 1. Can't I just build the image myself?
 Yes you can, using:
-```setup_board \
+```
+  setup_board \
     --force \
     --board=brya-hibernate \
   && \
