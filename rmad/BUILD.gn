@@ -35,6 +35,7 @@ executable("rmad") {
     "executor:libexecutor",
     "interface:libinterface",
     "minijail:libminijail",
+    "ssfc:libssfc",
     "utils:libutils",
   ]
 }
@@ -90,6 +91,7 @@ if (use.test) {
       "interface:libinterface_test",
       "logs:liblogs_test",
       "metrics:libmetrics_test",
+      "ssfc:libssfc_test",
       "state_handler:libstate_handler_test",
       "system:libsystem_test",
       "udev:libudev_test",
