@@ -16,5 +16,11 @@
       "CrosHealthdEvent",
       "CrosHealthdProbe"
     ]
+  },
+  {
+    "identity": "u:r:cros_health_tool:s0",
+    "request": [
+      "CrosHealthdDiagnostics"
+    ]
   }
 ]

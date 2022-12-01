@@ -9,13 +9,19 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <vector>
 
 #include <base/time/default_tick_clock.h>
 #include <base/time/tick_clock.h>
 #include <base/time/time.h>
+#include <mojo/core/embedder/embedder.h>
+#include <mojo/core/embedder/scoped_ipc_support.h>
+#include <mojo/public/cpp/bindings/remote.h>
+#include <mojo/service_constants.h>
+#include <mojo_service_manager/lib/mojom/service_manager.mojom.h>
 
 #include "diagnostics/cros_health_tool/diag/repliers/led_lit_up_routine_replier.h"
-#include "diagnostics/cros_healthd_mojo_adapter/cros_healthd_mojo_adapter.h"
+#include "diagnostics/mojom/public/cros_healthd.mojom.h"
 
 namespace diagnostics {
 
@@ -127,9 +133,26 @@ class DiagActions final {
   // |status| is known and false otherwise.
   bool PrintStatus(
       ash::cros_healthd::mojom::DiagnosticRoutineStatusEnum status);
+  // Gets an update for the specified routine.
+  ash::cros_healthd::mojom::RoutineUpdatePtr GetRoutineUpdate(
+      int32_t id,
+      ash::cros_healthd::mojom::DiagnosticRoutineCommandEnum command,
+      bool include_output);
+  // Returns which routines are available on the platform.
+  // TODO(b/237508808): Determine whether this function should be changed.
+  std::optional<std::vector<ash::cros_healthd::mojom::DiagnosticRoutineEnum>>
+  GetAvailableRoutines();
 
-  // Used to send mojo requests to cros_healthd.
-  std::unique_ptr<CrosHealthdMojoAdapter> adapter_;
+  // Necessary to establish Mojo communication with cros_healthd.
+  std::unique_ptr<mojo::core::ScopedIPCSupport> ipc_support_;
+
+  // Mojo service manager to request for mojo services.
+  mojo::Remote<chromeos::mojo_service_manager::mojom::ServiceManager>
+      service_manager_;
+  // Diagnostics Service used to run routines from diag tool.
+  mojo::Remote<ash::cros_healthd::mojom::CrosHealthdDiagnosticsService>
+      cros_healthd_diagnostics_service_;
+
   // ID of the routine being run.
   int32_t id_ = ash::cros_healthd::mojom::kFailedToStartId;
 

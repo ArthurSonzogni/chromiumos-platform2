@@ -9,6 +9,7 @@ pkg_config("libdiag_pkg_deps") {
   pkg_deps = [
     "libbrillo",
     "libchrome",
+    "mojo_service_manager",
   ]
 }
 
