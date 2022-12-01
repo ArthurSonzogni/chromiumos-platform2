@@ -61,6 +61,7 @@ if (use.test) {
       "memory_test.cc",
       "mipi_camera_test.cc",
       "mmc_storage_test.cc",
+      "nvme_storage_test.cc",
       "sequence_test.cc",
       "sysfs_test.cc",
       "tcpc_test.cc",

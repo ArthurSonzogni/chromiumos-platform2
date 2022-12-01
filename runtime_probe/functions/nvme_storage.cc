@@ -51,7 +51,10 @@ bool NvmeCliList(std::string* output) {
   if (Context::Get()->debugd_proxy()->Nvme(/*option=*/"list", output, &error)) {
     return true;
   }
-  LOG(ERROR) << "Debugd::Nvme failed: " << error->GetMessage();
+  std::string err_message = "(no error message)";
+  if (error)
+    err_message = error->GetMessage();
+  LOG(ERROR) << "Debugd::Nvme failed: " << err_message;
   return false;
 }
 

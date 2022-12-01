@@ -16,7 +16,7 @@
 
 namespace runtime_probe {
 
-class NvmeStorageFunction final : public StorageFunction {
+class NvmeStorageFunction : public StorageFunction {
   using StorageFunction::StorageFunction;
 
  public:
