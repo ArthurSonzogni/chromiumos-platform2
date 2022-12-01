@@ -33,22 +33,13 @@ bool AuthFactorMap::HasFactorWithStorage(
   return false;
 }
 
-std::optional<AuthFactorMap::StoredAuthFactorView> AuthFactorMap::Find(
-    const std::string& label) {
-  auto iter = storage_.find(label);
-  if (iter == storage_.end()) {
-    return std::nullopt;
-  }
-  return StoredAuthFactorView(&iter->second);
-}
-
-std::optional<AuthFactorMap::StoredAuthFactorConstView> AuthFactorMap::Find(
+std::optional<AuthFactorMap::ValueView> AuthFactorMap::Find(
     const std::string& label) const {
   auto iter = storage_.find(label);
   if (iter == storage_.end()) {
     return std::nullopt;
   }
-  return StoredAuthFactorConstView(&iter->second);
+  return ValueView(&iter->second);
 }
 
 }  // namespace cryptohome

@@ -4033,7 +4033,10 @@ void UserDataAuth::StartAuthSession(
 
   // Discover any available auth factors from the AuthSession.
   std::set<std::string> listed_auth_factor_labels;
-  for (const AuthFactor& auth_factor : auth_session->auth_factor_map()) {
+  for (AuthFactorMap::ValueView stored_auth_factor :
+       auth_session->auth_factor_map()) {
+    const AuthFactor& auth_factor = stored_auth_factor.auth_factor();
+
     std::optional<user_data_auth::AuthFactor> proto_factor = GetAuthFactorProto(
         auth_factor.metadata(), auth_factor.type(), auth_factor.label());
     if (proto_factor.has_value()) {

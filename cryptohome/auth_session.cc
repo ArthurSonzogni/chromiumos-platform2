@@ -1099,7 +1099,7 @@ void AuthSession::AuthenticateAuthFactor(
     }
   }
   // Search for an auth factor. This will find both VK and USS factors.
-  std::optional<AuthFactorMap::StoredAuthFactorView> stored_auth_factor =
+  std::optional<AuthFactorMap::ValueView> stored_auth_factor =
       auth_factor_map_.Find(request.auth_factor_label());
 
   // Construct the auth input. If a factor is available, use it to construct the
@@ -1222,7 +1222,7 @@ void AuthSession::RemoveAuthFactor(
   auto remove_timer_start = base::TimeTicks::Now();
   const auto& auth_factor_label = request.auth_factor_label();
 
-  std::optional<AuthFactorMap::StoredAuthFactorView> stored_auth_factor =
+  std::optional<AuthFactorMap::ValueView> stored_auth_factor =
       auth_factor_map_.Find(auth_factor_label);
   if (!stored_auth_factor) {
     LOG(ERROR) << "AuthSession: Key to remove not found: " << auth_factor_label;
@@ -1398,7 +1398,7 @@ void AuthSession::UpdateAuthFactor(
     return;
   }
 
-  std::optional<AuthFactorMap::StoredAuthFactorView> stored_auth_factor =
+  std::optional<AuthFactorMap::ValueView> stored_auth_factor =
       auth_factor_map_.Find(request.auth_factor_label());
   if (!stored_auth_factor) {
     LOG(ERROR) << "AuthSession: Key to update not found: "
@@ -1807,7 +1807,7 @@ void AuthSession::GetRecoveryRequest(
   user_data_auth::GetRecoveryRequestReply reply;
 
   // Check the factor exists.
-  std::optional<AuthFactorMap::StoredAuthFactorView> stored_auth_factor =
+  std::optional<AuthFactorMap::ValueView> stored_auth_factor =
       auth_factor_map_.Find(request.auth_factor_label());
   if (!stored_auth_factor) {
     LOG(ERROR) << "Authentication key not found: "
@@ -2677,7 +2677,9 @@ void AuthSession::LoadUSSMainKeyAndFsKeyset(
 void AuthSession::ResetLECredentials() {
   CryptoError error;
   // Loop through all the AuthFactors.
-  for (auto& auth_factor : auth_factor_map_) {
+  for (AuthFactorMap::ValueView stored_auth_factor : auth_factor_map_) {
+    const AuthFactor& auth_factor = stored_auth_factor.auth_factor();
+
     // Look for only pinweaver backed AuthFactors.
     auto* state = std::get_if<::cryptohome::PinWeaverAuthBlockState>(
         &(auth_factor.auth_block_state().state));

@@ -29,62 +29,16 @@ class AuthFactorMap final {
   // storage type when defining the iterator.
   using Storage = std::map<std::string, StoredAuthFactor>;
 
-  // Iterator template that can act as both a regular and const iterator. This
-  // wraps the underlying map iterator but exposes the underlying UserSession as
-  // a AuthFactor& or const AuthFactor&, instead of as a reference to the
-  // underlying unique_ptr<AuthFactor>.
-  template <typename T>
-  class iterator_base {
-   public:
-    using value_type = T;
-    using iterator_category = std::forward_iterator_tag;
-    using difference_type = Storage::difference_type;
-    using pointer = value_type*;
-    using reference = value_type&;
-
-    iterator_base(const iterator_base& other) = default;
-    iterator_base& operator=(const iterator_base& other) = default;
-
-    iterator_base operator++(int) {
-      iterator_base other(*this);
-      ++(*this);
-      return other;
-    }
-
-    iterator_base& operator++() {
-      ++iter_;
-      return *this;
-    }
-
-    value_type& operator*() const { return *iter_->second.auth_factor; }
-
-    bool operator==(const iterator_base& rhs) const {
-      return iter_ == rhs.iter_;
-    }
-    bool operator!=(const iterator_base& rhs) const { return !(*this == rhs); }
-
-   private:
-    friend class AuthFactorMap;
-    explicit iterator_base(Storage::const_iterator iter) : iter_(iter) {}
-
-    Storage::const_iterator iter_;
-  };
-
  public:
-  using iterator = iterator_base<AuthFactor>;
-  using const_iterator = iterator_base<const AuthFactor>;
-
   // Class that exports a view of the underlying StoredAuthFactor.
-  class StoredAuthFactorConstView {
+  class ValueView {
    public:
-    explicit StoredAuthFactorConstView(const StoredAuthFactor* storage)
-        : storage_(storage) {
+    explicit ValueView(const StoredAuthFactor* storage) : storage_(storage) {
       CHECK(storage);
     }
 
-    StoredAuthFactorConstView(const StoredAuthFactorConstView&) = default;
-    StoredAuthFactorConstView& operator=(const StoredAuthFactorConstView&) =
-        default;
+    ValueView(const ValueView&) = default;
+    ValueView& operator=(const ValueView&) = default;
 
     const AuthFactor& auth_factor() const { return *storage_->auth_factor; }
 
@@ -96,13 +50,42 @@ class AuthFactorMap final {
     const StoredAuthFactor* storage_;
   };
 
-  // Non-const version of the view, which adds non-const overloads.
-  class StoredAuthFactorView : public StoredAuthFactorConstView {
+  // Implementation of an iterator that exposes the underlying stored values in
+  // the map as a ValueView. Note that the iterator exposes the map as a
+  // sequence of values, not a sequence of key-value pairs, because the keys are
+  // the auth factor label which can be read directly from the stored value.
+  class iterator {
    public:
-    using StoredAuthFactorConstView::StoredAuthFactorConstView;
+    using value_type = ValueView;
+    using iterator_category = std::forward_iterator_tag;
+    using difference_type = Storage::difference_type;
+    using pointer = value_type*;
+    using reference = value_type&;
 
-    using StoredAuthFactorConstView::auth_factor;
-    AuthFactor& auth_factor() { return *storage_->auth_factor; }
+    iterator(const iterator& other) = default;
+    iterator& operator=(const iterator& other) = default;
+
+    iterator operator++(int) {
+      iterator other(*this);
+      ++(*this);
+      return other;
+    }
+
+    iterator& operator++() {
+      ++iter_;
+      return *this;
+    }
+
+    value_type operator*() const { return value_type{&iter_->second}; }
+
+    bool operator==(const iterator& rhs) const { return iter_ == rhs.iter_; }
+    bool operator!=(const iterator& rhs) const { return !(*this == rhs); }
+
+   private:
+    friend class AuthFactorMap;
+    explicit iterator(Storage::const_iterator iter) : iter_(iter) {}
+
+    Storage::const_iterator iter_;
   };
 
   AuthFactorMap() = default;
@@ -112,10 +95,8 @@ class AuthFactorMap final {
   bool empty() const { return storage_.empty(); }
   size_t size() const { return storage_.size(); }
 
-  iterator begin() { return iterator(storage_.begin()); }
-  const_iterator begin() const { return const_iterator(storage_.begin()); }
-  iterator end() { return iterator(storage_.end()); }
-  const_iterator end() const { return const_iterator(storage_.end()); }
+  iterator begin() const { return iterator(storage_.begin()); }
+  iterator end() const { return iterator(storage_.end()); }
 
   // Add a factor to the map, along with the given storage type. The factors are
   // only stored by label and so adding a new factor with the same label will
@@ -132,8 +113,7 @@ class AuthFactorMap final {
 
   // Return a view of the stored factor, or nullopt if there is no factor for
   // the given label.
-  std::optional<StoredAuthFactorView> Find(const std::string& label);
-  std::optional<StoredAuthFactorConstView> Find(const std::string& label) const;
+  std::optional<ValueView> Find(const std::string& label) const;
 
  private:
   Storage storage_;
