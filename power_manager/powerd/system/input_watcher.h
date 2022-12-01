@@ -51,9 +51,6 @@ class InputWatcher : public InputWatcherInterface,
   // to keyboard events.
   static const char kPowerButtonToSkipForLegacy[];
 
-  // Hardware ID for ACPI lid device.
-  static const char kAcpiLidDevice[];
-
   InputWatcher();
   InputWatcher(const InputWatcher&) = delete;
   InputWatcher& operator=(const InputWatcher&) = delete;
@@ -196,9 +193,6 @@ class InputWatcher : public InputWatcherInterface,
 
   // Name of the power button interface to skip monitoring for input events.
   std::string power_button_to_skip_;
-
-  // ACPI lid device name.
-  std::string acpi_lid_device_;
 
   UdevInterface* udev_ = nullptr;  // non-owned
 

@@ -298,7 +298,7 @@ TEST_F(InputWatcherTest, LidSwitch) {
   const base::FilePath kAcpiLidSysfsFile("/sys/devices/LNXSYSTM:00/PNP0C0D:00");
   lid_switch->set_is_lid_switch(true);
   lid_switch->set_initial_lid_state(LidState::CLOSED);
-  lid_switch->set_phys_path(std::string(InputWatcher::kAcpiLidDevice) + "0");
+  lid_switch->set_phys_path("PNP0C0D:00");
   int kLidSwitchEventNum = 0;
   AddDevice("event" + base::NumberToString(kLidSwitchEventNum), lid_switch,
             kAcpiLidSysfsFile.value());

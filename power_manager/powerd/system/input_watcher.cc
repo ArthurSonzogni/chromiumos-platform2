@@ -98,13 +98,11 @@ bool GetPowerButtonStateFromEvent(const input_event& event,
 
 const char InputWatcher::kPowerButtonToSkip[] = "LNXPWRBN";
 const char InputWatcher::kPowerButtonToSkipForLegacy[] = "isa";
-const char InputWatcher::kAcpiLidDevice[] = "PNP0C0D";
 
 InputWatcher::InputWatcher()
     : dev_input_path_(kDevInputPath),
       sys_class_input_path_(kSysClassInputPath),
       power_button_to_skip_(kPowerButtonToSkip),
-      acpi_lid_device_(kAcpiLidDevice),
       weak_ptr_factory_(this) {}
 
 InputWatcher::~InputWatcher() {
