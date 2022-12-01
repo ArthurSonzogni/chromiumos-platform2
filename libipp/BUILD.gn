@@ -21,6 +21,8 @@ group("all") {
 shared_library("libipp") {
   sources = [
     "attribute.h",
+    "errors.cc",
+    "errors.h",
     "frame.cc",
     "frame.h",
     "ipp.h",
@@ -36,6 +38,8 @@ shared_library("libipp") {
     "ipp_log.h",
     "ipp_parser.cc",
     "ipp_parser.h",
+    "validator.cc",
+    "validator.h",
   ]
   install_path = "lib"
 }
@@ -48,11 +52,13 @@ install_config("install_pkgconfig") {
 install_config("install_headers") {
   sources = [
     "attribute.h",
+    "errors.h",
     "frame.h",
     "ipp_attribute.h",
     "ipp_enums.h",
     "ipp_export.h",
     "ipp_log.h",
+    "validator.h",
   ]
   install_path = "/usr/include/chromeos/libipp"
 }
@@ -61,11 +67,13 @@ if (use.test) {
   executable("libipp_test") {
     sources = [
       "attribute_test.cc",
+      "errors_test.cc",
       "frame_test.cc",
       "ipp_attribute_test.cc",
       "ipp_encoding_test.cc",
       "ipp_enums_test.cc",
       "ipp_test.cc",
+      "validator_test.cc",
     ]
     configs += [ "//common-mk:test" ]
     run_test = true
