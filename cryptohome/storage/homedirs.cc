@@ -57,13 +57,6 @@ const char kRemovableFileAttribute[] = "user.GCacheRemovable";
 const char kForceKeylockerForTestingFlag[] =
     "/run/cryptohome/.force_keylocker_for_testing";
 
-bool IsAesKeylockerSupported(Platform& platform) {
-  std::string proc_crypto_contents;
-  return platform.ReadFileToString(base::FilePath("/proc/crypto"),
-                                   &proc_crypto_contents) &&
-         proc_crypto_contents.find("aeskl") != std::string::npos;
-}
-
 HomeDirs::HomeDirs(Platform* platform,
                    std::unique_ptr<policy::PolicyProvider> policy_provider,
                    const RemoveCallback& remove_callback,
@@ -93,11 +86,8 @@ bool HomeDirs::AreEphemeralUsersEnabled() {
 
 bool HomeDirs::KeylockerForStorageEncryptionEnabled() {
   // Search through /proc/crypto for 'aeskl' as an indicator that AES Keylocker
-  // is supported. Cache the results so that we don't add the latency of reading
-  // /proc/crypto for every cryptohome::Mount call.
-  static bool keylocker_supported = IsAesKeylockerSupported(*platform_);
-
-  if (!keylocker_supported)
+  // is supported.
+  if (!IsAesKeylockerSupported())
     return false;
 
   // Check if keylocker is force enabled for testing.
@@ -640,6 +630,18 @@ bool HomeDirs::IsOwnedByAndroidSystem(const base::FilePath& directory) const {
     return false;
   }
   return uid == kAndroidSystemUid + kArcContainerShiftUid;
+}
+
+bool HomeDirs::IsAesKeylockerSupported() {
+  // Perform the check only if there's no cached result yet.
+  if (!is_aes_keylocker_supported_.has_value()) {
+    std::string proc_crypto_contents;
+    is_aes_keylocker_supported_ =
+        platform_->ReadFileToString(base::FilePath("/proc/crypto"),
+                                    &proc_crypto_contents) &&
+        proc_crypto_contents.find("aeskl") != std::string::npos;
+  }
+  return is_aes_keylocker_supported_.value();
 }
 
 }  // namespace cryptohome

@@ -11,6 +11,7 @@
 #include <stdint.h>
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -226,6 +227,10 @@ class HomeDirs {
   // UID.
   bool IsOwnedByAndroidSystem(const base::FilePath& directory) const;
 
+  // Checks the keylocker availability in the system. Non-const in order to be
+  // able to cache its result.
+  bool IsAesKeylockerSupported();
+
   Platform* platform_;
   std::unique_ptr<policy::PolicyProvider> policy_provider_;
   bool enterprise_owned_;
@@ -238,6 +243,10 @@ class HomeDirs {
   // This callback will be run in Remove() to remove LE Credentials when the
   // home directory of the corresponding user is removed.
   RemoveCallback remove_callback_;
+
+  // Caches the result of the AES keylocker check, so that we don't add the
+  // latency of reading /proc/crypto for every cryptohome::Mount call.
+  std::optional<bool> is_aes_keylocker_supported_;
 
   // The container a not-shifted system UID in ARC++ container (AID_SYSTEM).
   static constexpr uid_t kAndroidSystemUid = 1000;
