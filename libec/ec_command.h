@@ -10,6 +10,7 @@
 #include <cerrno>
 #include <cstddef>
 #include <cstdint>
+#include <cstring>
 #include <limits>
 #include <libusb-1.0/libusb.h>
 
