@@ -14,6 +14,8 @@
 #include <base/files/file_path.h>
 #include <base/observer_list.h>
 
+#include "power_manager/powerd/system/tagged_device.h"
+
 struct udev;
 struct udev_device;
 struct udev_monitor;
@@ -99,7 +101,7 @@ class UdevInterface {
 // Actual implementation of UdevInterface.
 class Udev : public UdevInterface {
  public:
-  Udev();
+  Udev() = default;
   Udev(const Udev&) = delete;
   Udev& operator=(const Udev&) = delete;
 

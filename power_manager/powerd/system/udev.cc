@@ -18,7 +18,6 @@
 #include <base/strings/string_util.h>
 
 #include "power_manager/common/power_constants.h"
-#include "power_manager/powerd/system/tagged_device.h"
 #include "power_manager/powerd/system/udev_subsystem_observer.h"
 #include "power_manager/powerd/system/udev_tagged_device_observer.h"
 
@@ -103,8 +102,6 @@ std::string FindHciPathWithAddress(const std::string& addr) {
 }
 
 };  // namespace
-
-Udev::Udev() {}
 
 Udev::~Udev() {
   if (udev_monitor_)

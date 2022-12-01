@@ -21,11 +21,11 @@ namespace power_manager {
 // base::TickClock.
 class Clock {
  public:
-  Clock();
+  Clock() = default;
   Clock(const Clock&) = delete;
   Clock& operator=(const Clock&) = delete;
 
-  ~Clock();
+  ~Clock() = default;
 
   void set_current_time_for_testing(base::TimeTicks now) {
     current_time_for_testing_ = now;

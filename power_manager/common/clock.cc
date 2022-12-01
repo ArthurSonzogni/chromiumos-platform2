@@ -45,10 +45,6 @@ int64_t ClockNow(clockid_t clk_id) {
 
 }  // namespace
 
-Clock::Clock() {}
-
-Clock::~Clock() {}
-
 base::TimeTicks Clock::GetCurrentTime() {
   if (!current_time_for_testing_.is_null()) {
     current_time_for_testing_ += time_step_for_testing_;

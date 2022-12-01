@@ -23,7 +23,7 @@ class ThermalDeviceFactory {
 
  private:
   // Private constructor to make this class static method only.
-  ThermalDeviceFactory() {}
+  ThermalDeviceFactory() = default;
 };
 
 }  // namespace power_manager::system

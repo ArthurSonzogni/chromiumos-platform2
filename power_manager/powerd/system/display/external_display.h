@@ -135,7 +135,7 @@ class ExternalDisplay {
   // Real implementation of the Delegate interface.
   class RealDelegate : public Delegate {
    public:
-    RealDelegate();
+    RealDelegate() = default;
     RealDelegate(const RealDelegate&) = delete;
     RealDelegate& operator=(const RealDelegate&) = delete;
 
