@@ -16,7 +16,6 @@ fstat: 1
 newfstatat: 1
 ppoll: 1
 rt_sigprocmask: 1
-send: 1
 recvmsg: 1
 gettimeofday: 1
 geteuid: 1
@@ -94,3 +93,6 @@ mlock: 1
 munlock: 1
 sysinfo: 1
 fstatfs: 1
+prlimit64: 1
+sched_getattr: 1
+sched_setattr: 1
