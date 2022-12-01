@@ -41,6 +41,8 @@ using ExecuteRebootEcCallback =
     base::RepeatingCallback<void(base::OnceCallback<void(bool)>)>;
 using ExecuteRequestRmaPowerwashCallback =
     base::RepeatingCallback<void(base::OnceCallback<void(bool)>)>;
+using ExecuteRequestBatteryCutoffCallback =
+    base::RepeatingCallback<void(base::OnceCallback<void(bool)>)>;
 
 #define DECLARE_CALLBACK(type, var)                 \
  public:                                            \
@@ -80,6 +82,8 @@ class DaemonCallback : public base::RefCounted<DaemonCallback> {
   DECLARE_CALLBACK(ExecuteRebootEcCallback, execute_reboot_ec_callback_);
   DECLARE_CALLBACK(ExecuteRequestRmaPowerwashCallback,
                    execute_request_rma_powerwash_callback_);
+  DECLARE_CALLBACK(ExecuteRequestBatteryCutoffCallback,
+                   execute_request_battery_cutoff_callback_);
 };
 
 }  // namespace rmad

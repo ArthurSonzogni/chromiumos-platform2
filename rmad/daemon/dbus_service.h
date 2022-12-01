@@ -66,6 +66,7 @@ class DBusService : public brillo::DBusServiceDaemon {
       uint8_t device_id, base::OnceCallback<void(bool)> callback);
   void ExecuteRebootEc(base::OnceCallback<void(bool)> callback);
   void ExecuteRequestRmaPowerwash(base::OnceCallback<void(bool)> callback);
+  void ExecuteRequestBatteryCutoff(base::OnceCallback<void(bool)> callback);
 
  protected:
   // brillo::DBusServiceDaemon overrides.
