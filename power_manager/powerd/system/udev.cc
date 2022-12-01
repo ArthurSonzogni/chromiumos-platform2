@@ -6,6 +6,7 @@
 
 #include <libudev.h>
 
+#include <string.h>
 #include <utility>
 
 #include <base/bind.h>
@@ -28,6 +29,10 @@ namespace {
 
 const char kChromeOSClassPath[] = "/sys/class/chromeos/";
 const char kFingerprintSysfsPath[] = "/sys/class/chromeos/cros_fp";
+const char kAcpiSubsystemName[] = "acpi";
+const char kAcpiHidAttrName[] = "hid";
+const char kAcpiHidEc[] = "PNP0C09";
+const char kAcpiHidCrosEcCommandInterface[] = "GOOG0004";
 const char kBluetoothHciSysfsPrefix[] = "/sys/class/bluetooth/hci";
 const char kBluetoothIdentityFileName[] = "identity";
 // Search space for hci devices. i.e. hci0, hci1, etc. Only allow hci0 for now.
@@ -35,6 +40,7 @@ constexpr int kBluetoothMaxHci = 1;
 const char kBluetoothPhysVar[] = "phys";
 const char kPowerdRoleCrosFP[] = "cros_fingerprint";
 const char kPowerdRoleCrosBT[] = "cros_bluetooth";
+const char kPowerdRoleLidSwitch[] = "lid_switch";
 const char kPowerdRoleVar[] = "POWERD_ROLE";
 const char kPowerdUdevTag[] = "powerd";
 const char kPowerdTagsVar[] = "POWERD_TAGS";
@@ -49,6 +55,19 @@ bool HasPowerdRole(struct udev_device* device, const std::string& role) {
       udev_device_get_property_value(device, kPowerdRoleVar);
   const std::string device_role = role_cstr ? role_cstr : "";
   return role == device_role;
+}
+
+// Returns true iff `device` is in the ACPI hierarchy and its ACPI hardware ID
+// (_HID) is `acpi_hid`.
+bool HasAcpiHid(struct udev_device* device, const std::string& acpi_hid) {
+  const char* subsystem_cstr = udev_device_get_subsystem(device);
+  if (!subsystem_cstr || strcmp(subsystem_cstr, kAcpiSubsystemName) != 0)
+    return false;
+  const char* hid_cstr =
+      udev_device_get_sysattr_value(device, kAcpiHidAttrName);
+  if (!hid_cstr)
+    return false;
+  return acpi_hid == hid_cstr;
 }
 
 UdevEvent::Action StrToAction(const char* action_str) {
@@ -359,6 +378,40 @@ base::FilePath Udev::FindWakeCapableParent(const std::string& syspath) {
     if (!hci_path.empty()) {
       wakeup_device_path =
           FindParentWithSysattr(hci_path, kPowerWakeup, kUSBDevice);
+    }
+  } else if (HasPowerdRole(device, kPowerdRoleLidSwitch)) {
+    // ACPI button devices, such as the ACPI lid switch (PNP0C0D),
+    // are incapable of correctly reporting their wakeup count.
+    // As a workaround we can monitor the CrOS EC command interface
+    // device (GOOG0004) for wakeups instead.
+    // First, find the EC parent node (PNP0C09) in the ACPI hierarchy
+    // if it exists:
+    struct udev_device* ec_fwnode = nullptr;
+    while (parent) {
+      if (HasAcpiHid(parent, kAcpiHidEc)) {
+        ec_fwnode = parent;
+        break;
+      }
+      parent = udev_device_get_parent(parent);
+    }
+    // Now look for a sibling EC command interface node:
+    if (ec_fwnode) {
+      struct udev_enumerate* e = udev_enumerate_new(udev_);
+      CHECK(e);
+      CHECK_GE(udev_enumerate_add_match_parent(e, ec_fwnode), 0);
+      CHECK_GE(udev_enumerate_add_match_subsystem(e, kAcpiSubsystemName), 0);
+      CHECK_GE(udev_enumerate_add_match_sysattr(e, kAcpiHidAttrName,
+                                                kAcpiHidCrosEcCommandInterface),
+               0);
+      CHECK_GE(udev_enumerate_scan_devices(e), 0);
+      struct udev_list_entry* first = udev_enumerate_get_list_entry(e);
+      if (first) {
+        base::FilePath ec_command_fwnode_path(udev_list_entry_get_name(first));
+        // Wakeup device is the corresponding "physical" device.
+        wakeup_device_path = base::MakeAbsoluteFilePath(
+            ec_command_fwnode_path.Append("physical_node"));
+      }
+      udev_enumerate_unref(e);
     }
   } else {
     wakeup_device_path =
