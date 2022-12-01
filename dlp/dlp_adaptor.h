@@ -38,14 +38,18 @@ class DlpAdaptor : public org::chromium::DlpAdaptor,
                    public org::chromium::DlpInterface,
                    public FanotifyWatcher::Delegate {
  public:
-  explicit DlpAdaptor(
-      std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object);
+  DlpAdaptor(std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object,
+             int fanotify_perm_fd,
+             int fanotify_notif_fd,
+             const base::FilePath& home_path);
   DlpAdaptor(const DlpAdaptor&) = delete;
   DlpAdaptor& operator=(const DlpAdaptor&) = delete;
   virtual ~DlpAdaptor();
 
-  // Initializes the database to be stored in the user's cryptohome.
-  void InitDatabaseOnCryptohome();
+  // Opens the database |db_| to store files sources, |init_callback| called
+  // after the database is set.
+  void InitDatabase(const base::FilePath& database_path,
+                    base::OnceClosure init_callback);
 
   // Registers the D-Bus object and interfaces.
   void RegisterAsync(brillo::dbus_utils::AsyncEventSequencer::CompletionAction
@@ -92,11 +96,6 @@ class DlpAdaptor : public org::chromium::DlpAdaptor,
   FRIEND_TEST(DlpAdaptorTest, GetFilesSourcesFileDeletedInFlight);
   FRIEND_TEST(DlpAdaptorTest, SetDlpFilesPolicy);
   FRIEND_TEST(DlpAdaptorTest, CheckFilesTransfer);
-
-  // Opens the database |db_| to store files sources, |init_callback| called
-  // after the database is set.
-  void InitDatabase(const base::FilePath& database_path,
-                    base::OnceClosure init_callback);
 
   // Callback on InitDatabase after initialization of the database.
   void OnDatabaseInitialized(base::OnceClosure init_callback,
@@ -231,6 +230,9 @@ class DlpAdaptor : public org::chromium::DlpAdaptor,
 
   std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
 
+  // The root path to the watched directory.
+  const base::FilePath home_path_;
+
   std::unique_ptr<org::chromium::DlpFilesPolicyServiceProxy>
       dlp_files_policy_service_;
 
@@ -242,6 +244,10 @@ class DlpAdaptor : public org::chromium::DlpAdaptor,
   // requests. Maps from the lifeline fd to the watcher.
   std::map<int, std::unique_ptr<base::FileDescriptorWatcher::Controller>>
       lifeline_fd_controllers_;
+
+  // Indicated whether adding per file watch for files in the database is
+  // pending creation of the database.
+  bool pending_per_file_watches_ = false;
 };
 
 }  // namespace dlp

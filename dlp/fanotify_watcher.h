@@ -15,6 +15,8 @@
 namespace dlp {
 
 // Interacts with fanotify API to process file access events.
+// Starts to listen to the events immediately on both file descriptors,
+// but allows all OPEN_PERM requests unless |active_| is being set.
 class FanotifyWatcher : public FanotifyReaderThread::Delegate {
  public:
   class Delegate {
@@ -25,16 +27,20 @@ class FanotifyWatcher : public FanotifyReaderThread::Delegate {
     virtual void OnFileDeleted(ino_t inode) = 0;
   };
 
-  explicit FanotifyWatcher(Delegate* delegate);
-  ~FanotifyWatcher();
+  FanotifyWatcher(Delegate* delegate,
+                  int fanotify_perm_fd,
+                  int fanotify_notif_fd);
+  ~FanotifyWatcher() override;
   FanotifyWatcher(const FanotifyWatcher&) = delete;
   FanotifyWatcher& operator=(const FanotifyWatcher&) = delete;
 
-  // Start to listen to OPEN_PERM event for the mount point with |path|.
-  void AddWatch(const base::FilePath& path);
-
   // Start to listen to DELETE_SELF event for the file on |path|.
   void AddFileDeleteWatch(const base::FilePath& path);
+
+  // If |active| is true, starts processing of OPEN_PERM requests, otherwise
+  // sets to always allow them.
+  void SetActive(bool active);
+  bool IsActive() const;
 
  private:
   // FanotifyReaderThread::Delegate overrides:
@@ -44,6 +50,8 @@ class FanotifyWatcher : public FanotifyReaderThread::Delegate {
   void OnRequestProcessed(base::ScopedFD fd, bool allowed);
 
   scoped_refptr<base::SequencedTaskRunner> task_runner_;
+
+  bool active_ = false;
 
   // We need two sets of fanotify file descriptors and thread so that one of
   // them identifies objects by file handles (FAN_CLASS_NOTIF) and another

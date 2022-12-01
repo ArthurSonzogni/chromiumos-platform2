@@ -64,22 +64,6 @@ std::string ParseProto(const base::Location& from_here,
   return "";
 }
 
-// Calls Session Manager to get the user hash for the primary session. Returns
-// an empty string and logs on error.
-std::string GetSanitizedUsername(brillo::dbus_utils::DBusObject* dbus_object) {
-  std::string username;
-  std::string sanitized_username;
-  brillo::ErrorPtr error;
-  org::chromium::SessionManagerInterfaceProxy proxy(dbus_object->GetBus());
-  if (!proxy.RetrievePrimarySession(&username, &sanitized_username, &error)) {
-    const char* error_msg =
-        error ? error->GetMessage().c_str() : "Unknown error.";
-    LOG(ERROR) << "Call to RetrievePrimarySession failed. " << error_msg;
-    return std::string();
-  }
-  return sanitized_username;
-}
-
 FileEntry ConvertToFileEntry(ino_t inode, AddFileRequest request) {
   FileEntry result;
   result.inode = inode;
@@ -88,15 +72,6 @@ FileEntry ConvertToFileEntry(ino_t inode, AddFileRequest request) {
   if (request.has_referrer_url())
     result.referrer_url = request.referrer_url();
   return result;
-}
-
-base::FilePath GetUserDownloadsPath(const std::string& username) {
-  if (!g_downloads_path_for_testing.empty())
-    return g_downloads_path_for_testing;
-  // TODO(crbug.com/1200575): Refactor to not hardcode it.
-  return base::FilePath("/home/chronos/")
-      .Append("u-" + username)
-      .Append("MyFiles/Downloads");
 }
 
 std::set<std::pair<base::FilePath, ino64_t>> EnumerateFiles(
@@ -115,31 +90,21 @@ std::set<std::pair<base::FilePath, ino64_t>> EnumerateFiles(
 }  // namespace
 
 DlpAdaptor::DlpAdaptor(
-    std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object)
-    : org::chromium::DlpAdaptor(this), dbus_object_(std::move(dbus_object)) {
+    std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object,
+    int fanotify_perm_fd,
+    int fanotify_notif_fd,
+    const base::FilePath& home_path)
+    : org::chromium::DlpAdaptor(this),
+      dbus_object_(std::move(dbus_object)),
+      home_path_(home_path) {
+  fanotify_watcher_ = std::make_unique<FanotifyWatcher>(this, fanotify_perm_fd,
+                                                        fanotify_notif_fd);
   dlp_files_policy_service_ =
       std::make_unique<org::chromium::DlpFilesPolicyServiceProxy>(
           dbus_object_->GetBus().get(), kDlpFilesPolicyServiceName);
 }
 
 DlpAdaptor::~DlpAdaptor() = default;
-
-void DlpAdaptor::InitDatabaseOnCryptohome() {
-  const std::string sanitized_username =
-      GetSanitizedUsername(dbus_object_.get());
-  if (sanitized_username.empty()) {
-    LOG(ERROR) << "No active user, can't open the database";
-    return;
-  }
-  const base::FilePath database_path = base::FilePath("/run/daemon-store/dlp/")
-                                           .Append(sanitized_username)
-                                           .Append("database");
-  if (!base::CreateDirectory(database_path)) {
-    PLOG(ERROR) << "Can't create database directory";
-    return;
-  }
-  InitDatabase(database_path, /*init_callback=*/base::DoNothing());
-}
 
 void DlpAdaptor::RegisterAsync(
     brillo::dbus_utils::AsyncEventSequencer::CompletionAction
@@ -165,10 +130,9 @@ std::vector<uint8_t> DlpAdaptor::SetDlpFilesPolicy(
       std::vector<DlpFilesRule>(request.rules().begin(), request.rules().end());
 
   if (!policy_rules_.empty()) {
-    // TODO(crbug.com/1374288): Start FanotifyWatcher.
-    LOG(INFO) << "FanotifyWatcher not started.";
+    EnsureFanotifyWatcherStarted();
   } else {
-    fanotify_watcher_.reset();
+    fanotify_watcher_->SetActive(false);
   }
 
   return SerializeProto(response);
@@ -414,16 +378,14 @@ void DlpAdaptor::OnDatabaseInitialized(base::OnceClosure init_callback,
     return;
   }
   base::ThreadTaskRunnerHandle::Get()->PostTaskAndReplyWithResult(
-      FROM_HERE,
-      base::BindOnce(&EnumerateFiles, GetUserDownloadsPath(GetSanitizedUsername(
-                                          dbus_object_.get()))),
+      FROM_HERE, base::BindOnce(&EnumerateFiles, home_path_),
       base::BindOnce(&DlpAdaptor::CleanupAndSetDatabase, base::Unretained(this),
                      std::move(db), std::move(init_callback)));
 }
 
 void DlpAdaptor::AddPerFileWatch(
     const std::set<std::pair<base::FilePath, ino64_t>>& files) {
-  if (!fanotify_watcher_)
+  if (!fanotify_watcher_->IsActive())
     return;
 
   std::vector<ino64_t> inodes;
@@ -447,24 +409,25 @@ void DlpAdaptor::ProcessAddPerFileWatchWithData(
 }
 
 void DlpAdaptor::EnsureFanotifyWatcherStarted() {
-  if (fanotify_watcher_)
+  if (fanotify_watcher_->IsActive())
     return;
 
   if (is_fanotify_watcher_started_for_testing_)
     return;
 
-  LOG(INFO) << "Starting fanotify watcher";
+  LOG(INFO) << "Activating fanotify watcher";
 
-  fanotify_watcher_ = std::make_unique<FanotifyWatcher>(this);
-  const std::string sanitized_username =
-      GetSanitizedUsername(dbus_object_.get());
-  fanotify_watcher_->AddWatch(GetUserDownloadsPath(sanitized_username));
+  fanotify_watcher_->SetActive(true);
 
-  base::ThreadTaskRunnerHandle::Get()->PostTaskAndReplyWithResult(
-      FROM_HERE,
-      base::BindOnce(&EnumerateFiles, GetUserDownloadsPath(GetSanitizedUsername(
-                                          dbus_object_.get()))),
-      base::BindOnce(&DlpAdaptor::AddPerFileWatch, base::Unretained(this)));
+  // If the database is not initalized yet, we delay adding per file watch
+  // till it'll be created.
+  if (db_) {
+    base::ThreadTaskRunnerHandle::Get()->PostTaskAndReplyWithResult(
+        FROM_HERE, base::BindOnce(&EnumerateFiles, home_path_),
+        base::BindOnce(&DlpAdaptor::AddPerFileWatch, base::Unretained(this)));
+  } else {
+    pending_per_file_watches_ = true;
+  }
 }
 
 void DlpAdaptor::ProcessFileOpenRequest(
@@ -809,6 +772,15 @@ void DlpAdaptor::OnDatabaseCleaned(std::unique_ptr<DlpDatabase> db,
                                    bool success) {
   if (success) {
     db_.swap(db);
+    LOG(INFO) << "Database is initalized";
+    // If fanotify watcher is already started, we need to add watches for all
+    // files from the database.
+    if (pending_per_file_watches_) {
+      base::ThreadTaskRunnerHandle::Get()->PostTaskAndReplyWithResult(
+          FROM_HERE, base::BindOnce(&EnumerateFiles, home_path_),
+          base::BindOnce(&DlpAdaptor::AddPerFileWatch, base::Unretained(this)));
+      pending_per_file_watches_ = false;
+    }
     std::move(callback).Run();
   }
 }

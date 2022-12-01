@@ -20,7 +20,10 @@ class DlpAdaptor;
 
 class DlpDaemon : public brillo::DBusServiceDaemon {
  public:
-  DlpDaemon();
+  DlpDaemon(int fanotify_perm_fd,
+            int fanotify_notif_fd,
+            const base::FilePath& home_path,
+            const base::FilePath& database_path);
   DlpDaemon(const DlpDaemon&) = delete;
   DlpDaemon& operator=(const DlpDaemon&) = delete;
   ~DlpDaemon();
@@ -30,6 +33,15 @@ class DlpDaemon : public brillo::DBusServiceDaemon {
       brillo::dbus_utils::AsyncEventSequencer* sequencer) override;
 
  private:
+  // Params to be passed to DlpAdaptor:
+  // Already initialized fanotify file descriptors.
+  int fanotify_perm_fd_;
+  int fanotify_notif_fd_;
+  // Path to the root directory with user files.
+  const base::FilePath home_path_;
+  // Path to the database directory location.
+  const base::FilePath database_path_;
+
   std::unique_ptr<DlpAdaptor> adaptor_;
 };
 

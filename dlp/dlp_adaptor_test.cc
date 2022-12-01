@@ -745,19 +745,12 @@ TEST_F(DlpAdaptorTest, GetFilesSourcesFileDeletedDBReopened) {
                                 run_loop.QuitClosure());
   run_loop.Run();
 
-  // Create directory for files (similar to .../Downloads/)
-  base::ScopedTempDir files_directory;
-  ASSERT_TRUE(files_directory.CreateUniqueTempDir());
-  GetDlpAdaptor()->SetDownloadsPathForTesting(files_directory.GetPath());
-
   // Create files to request sources by inodes.
   base::FilePath file_path1;
-  ASSERT_TRUE(
-      base::CreateTemporaryFileInDir(files_directory.GetPath(), &file_path1));
+  ASSERT_TRUE(base::CreateTemporaryFileInDir(helper_.home_path(), &file_path1));
   const ino_t inode1 = GetDlpAdaptor()->GetInodeValue(file_path1.value());
   base::FilePath file_path2;
-  ASSERT_TRUE(
-      base::CreateTemporaryFileInDir(files_directory.GetPath(), &file_path2));
+  ASSERT_TRUE(base::CreateTemporaryFileInDir(helper_.home_path(), &file_path2));
   const ino_t inode2 = GetDlpAdaptor()->GetInodeValue(file_path2.value());
 
   const std::string source1 = "source1";
@@ -794,19 +787,12 @@ TEST_F(DlpAdaptorTest, GetFilesSourcesFileDeletedInFlight) {
                                 run_loop.QuitClosure());
   run_loop.Run();
 
-  // Create directory for files (similar to .../Downloads/)
-  base::ScopedTempDir files_directory;
-  ASSERT_TRUE(files_directory.CreateUniqueTempDir());
-  GetDlpAdaptor()->SetDownloadsPathForTesting(files_directory.GetPath());
-
   // Create files to request sources by inodes.
   base::FilePath file_path1;
-  ASSERT_TRUE(
-      base::CreateTemporaryFileInDir(files_directory.GetPath(), &file_path1));
+  ASSERT_TRUE(base::CreateTemporaryFileInDir(helper_.home_path(), &file_path1));
   const ino_t inode1 = GetDlpAdaptor()->GetInodeValue(file_path1.value());
   base::FilePath file_path2;
-  ASSERT_TRUE(
-      base::CreateTemporaryFileInDir(files_directory.GetPath(), &file_path2));
+  ASSERT_TRUE(base::CreateTemporaryFileInDir(helper_.home_path(), &file_path2));
   const ino_t inode2 = GetDlpAdaptor()->GetInodeValue(file_path2.value());
 
   const std::string source1 = "source1";

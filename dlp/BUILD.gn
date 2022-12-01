@@ -12,6 +12,7 @@ group("all") {
     ":dbus_adaptors_generator",
     ":dbus_proxies_generator",
     ":dlp",
+    ":dlp_init",
     ":install_init",
     ":install_system-services",
     ":install_systemd",
@@ -44,6 +45,7 @@ pkg_config("target_defaults") {
     "dbus-1",
     "libbrillo",
     "libchrome",
+    "libminijail",
     "libsession_manager-client",
     "sqlite3",
 
@@ -68,8 +70,16 @@ static_library("libdlp_static") {
     "dlp_database.cc",
     "fanotify_reader_thread.cc",
     "fanotify_watcher.cc",
+    "kernel_version_tools.cc",
   ]
   configs += [ ":target_defaults" ]
+}
+
+executable("dlp_init") {
+  sources = [ "dlp_init.cc" ]
+  configs += [ ":target_defaults" ]
+  install_path = "sbin"
+  deps = [ ":libdlp_static" ]
 }
 
 executable("dlp") {

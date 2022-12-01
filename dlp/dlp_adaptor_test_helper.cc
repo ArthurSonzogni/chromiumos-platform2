@@ -4,6 +4,7 @@
 
 #include "dlp/dlp_adaptor_test_helper.h"
 
+#include <base/files/file_util.h>
 #include <brillo/dbus/dbus_object.h>
 #include <dbus/dlp/dbus-constants.h>
 #include <dbus/login_manager/dbus-constants.h>
@@ -49,9 +50,15 @@ DlpAdaptorTestHelper::DlpAdaptorTestHelper() {
               GetObjectProxy(login_manager::kSessionManagerServiceName, _))
       .WillRepeatedly(Return(mock_session_manager_proxy_.get()));
 
+  EXPECT_TRUE(home_dir_.CreateUniqueTempDir());
+
+  base::ScopedFD fd_1, fd_2;
+  EXPECT_TRUE(base::CreatePipe(&fd_1, &fd_2));
+
   adaptor_ = std::make_unique<DlpAdaptor>(
       std::make_unique<brillo::dbus_utils::DBusObject>(nullptr, bus_,
-                                                       object_path));
+                                                       object_path),
+      fd_1.release(), fd_2.release(), home_dir_.GetPath());
 }
 
 DlpAdaptorTestHelper::~DlpAdaptorTestHelper() = default;

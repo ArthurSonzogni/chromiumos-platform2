@@ -7,6 +7,7 @@
 
 #include <memory>
 
+#include <base/files/scoped_temp_dir.h>
 #include <base/task/single_thread_task_executor.h>
 #include <brillo/message_loops/base_message_loop.h>
 #include <dbus/mock_bus.h>
@@ -27,6 +28,8 @@ class DlpAdaptorTestHelper {
 
   DlpAdaptor* adaptor() { return adaptor_.get(); }
 
+  const base::FilePath& home_path() const { return home_dir_.GetPath(); }
+
   scoped_refptr<dbus::MockObjectProxy> mock_dlp_files_policy_service_proxy() {
     return mock_dlp_files_policy_service_proxy_;
   }
@@ -41,6 +44,7 @@ class DlpAdaptorTestHelper {
   scoped_refptr<dbus::MockObjectProxy> mock_dlp_files_policy_service_proxy_;
   scoped_refptr<dbus::MockObjectProxy> mock_session_manager_proxy_;
 
+  base::ScopedTempDir home_dir_;
   std::unique_ptr<DlpAdaptor> adaptor_;
 
   base::SingleThreadTaskExecutor task_executor_{base::MessagePumpType::IO};
