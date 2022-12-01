@@ -18,6 +18,7 @@
 #include <base/task/single_thread_task_runner.h>
 #include <mojo/public/cpp/bindings/pending_receiver.h>
 #include <mojo/public/cpp/bindings/receiver.h>
+#include <mojo/public/cpp/bindings/unique_receiver_set.h>
 
 #include "diagnostics/cros_healthd/executor/constants.h"
 #include "diagnostics/cros_healthd/executor/mojom/executor.mojom.h"
@@ -117,6 +118,11 @@ class Executor final : public ash::cros_healthd::mojom::Executor {
   // Tracks running processes owned by the executor. Used to kill processes if
   // requested.
   std::map<std::string, std::unique_ptr<ProcessWithOutput>> processes_;
+
+  // Used to hold the child process and receiver. So the remote can reset the
+  // mojo connection to terminate the child process.
+  mojo::UniqueReceiverSet<ash::cros_healthd::mojom::ProcessControl>
+      process_control_set_;
 
   // Must be the last member of the class.
   base::WeakPtrFactory<Executor> weak_factory_{this};

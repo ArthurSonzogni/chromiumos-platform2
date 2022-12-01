@@ -51,6 +51,10 @@ enum FingerprintCaptureType {
   kResetTest = 2,
 };
 
+// Control the lifecycle of a child process of executor.
+interface ProcessControl {
+};
+
 // Root-level executor interface exposed to the cros_healthd daemon. In
 // production, this is implemented by the Executor daemon.
 interface Executor {

@@ -17,6 +17,7 @@ source_set("utils") {
   deps = [ "//diagnostics/cros_healthd/executor/mojom:cros_healthd_executor_mojo_bindings" ]
   sources = [
     "delegate_process.cc",
+    "process_control.cc",
     "sandboxed_process.cc",
   ]
   configs += [ ":pkg_deps" ]
