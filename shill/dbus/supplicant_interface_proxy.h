@@ -62,6 +62,7 @@ class SupplicantInterfaceProxy : public SupplicantInterfaceProxyInterface {
   bool RemoveCred(const RpcIdentifier& cred) override;
   bool RemoveAllCreds() override;
   bool InterworkingSelect() override;
+  bool SignalPoll(KeyValueStore* signalInfo) override;
 
  private:
   class PropertySet : public dbus::PropertySet {

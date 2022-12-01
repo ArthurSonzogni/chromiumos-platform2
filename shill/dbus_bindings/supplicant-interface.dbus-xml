@@ -36,6 +36,9 @@
       <arg name="name" type="s" direction="in"/>
       <arg name="data" type="ay" direction="out"/>
     </method>
+    <method name="SignalPoll">
+      <arg name="properties" type="a{sv}" direction="out"/>
+    </method>
     <method name="FlushBSS">
       <arg name="age" type="u" direction="in"/>
     </method>

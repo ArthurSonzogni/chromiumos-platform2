@@ -729,6 +729,10 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
     wifi_->PropertiesChanged(props);
   }
 
+  void SignalChanged(const KeyValueStore& props) {
+    wifi_->SignalChanged(props);
+  }
+
   void SelectService(const WiFiServiceRefPtr& service) {
     wifi_->SelectService(service);
   }
@@ -1037,9 +1041,6 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
   }
   void RequestStationInfo(WiFiLinkStatistics::Trigger trigger) {
     wifi_->RequestStationInfo(trigger);
-  }
-  void ReportReceivedStationInfo(const Nl80211Message& nl80211_message) {
-    wifi_->OnReceivedStationInfo(nl80211_message);
   }
   void StopRequestingStationInfo() { wifi_->StopRequestingStationInfo(); }
   void EmitStationInfoRequest(WiFiLinkStatistics::Trigger trigger) {
@@ -2674,7 +2675,6 @@ TEST_F(WiFiMainTest, SignalChanged) {
 
   PropertiesChanged(properties);
   StopWiFi();
-
   event_dispatcher_->DispatchPendingEvents();
 
   EXPECT_EQ(GetStationStats().signal, -70);
@@ -4069,7 +4069,6 @@ TEST_F(WiFiTimerTest, RequestStationInfo) {
   RpcIdentifier connected_bss = GetSupplicantBSS();
   Mock::VerifyAndClearExpectations(&*mock_dispatcher_);
 
-  EXPECT_CALL(netlink_manager_, SendNl80211Message(_, _, _, _)).Times(0);
   EXPECT_CALL(*mock_dispatcher_, PostDelayedTask(_, _, _)).Times(0);
   NiceScopedMockLog log;
 
@@ -4086,23 +4085,16 @@ TEST_F(WiFiTimerTest, RequestStationInfo) {
       log,
       Log(_, _, HasSubstr("Can't get endpoint for current supplicant BSS")));
   RequestStationInfo(WiFiLinkStatistics::Trigger::kUnknown);
-  Mock::VerifyAndClearExpectations(&netlink_manager_);
   Mock::VerifyAndClearExpectations(&*mock_dispatcher_);
 
-  // We successfully trigger a request to get the station and start a timer
-  // for the next call.
-  EXPECT_CALL(netlink_manager_,
-              SendNl80211Message(
-                  IsNl80211Command(kNl80211FamilyId, NL80211_CMD_GET_STATION),
-                  _, _, _));
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(), SignalPoll(_))
+      .WillOnce(Return(false));
   EXPECT_CALL(*mock_dispatcher_,
               PostDelayedTask(_, _, WiFi::kRequestStationInfoPeriod));
   SetSupplicantBSS(connected_bss);
-  RequestStationInfo(WiFiLinkStatistics::Trigger::kBackground);
 
-  // Now test that a properly formatted New Station message updates strength.
-  NewStationMessage new_station;
-  new_station.attributes()->CreateRawAttribute(NL80211_ATTR_MAC, "BSSID");
+  RequestStationInfo(WiFiLinkStatistics::Trigger::kBackground);
+  StopRequestingStationInfo();
 
   // Confirm that up until now no link statistics exist.
   KeyValueStore link_statistics = GetLinkStatistics();
@@ -4111,72 +4103,40 @@ TEST_F(WiFiTimerTest, RequestStationInfo) {
   // Use a reference to the endpoint instance in the WiFi device instead of
   // the copy returned by SetupConnectedService().
   WiFiEndpointRefPtr endpoint = GetEndpointMap().begin()->second;
-  new_station.attributes()->SetRawAttributeValue(
-      NL80211_ATTR_MAC, ByteString::CreateFromHexString(endpoint->bssid_hex()));
-  new_station.attributes()->CreateNestedAttribute(NL80211_ATTR_STA_INFO,
-                                                  "Station Info");
-  AttributeListRefPtr station_info;
-  new_station.attributes()->GetNestedAttributeList(NL80211_ATTR_STA_INFO,
-                                                   &station_info);
-  station_info->CreateU8Attribute(NL80211_STA_INFO_SIGNAL, "Signal");
-  const int kSignalValue = -20;
-  station_info->SetU8AttributeValue(NL80211_STA_INFO_SIGNAL, kSignalValue);
-  station_info->CreateU8Attribute(NL80211_STA_INFO_SIGNAL_AVG, "SignalAverage");
-  const int kSignalAvgValue = -40;
-  station_info->SetU8AttributeValue(NL80211_STA_INFO_SIGNAL_AVG,
-                                    kSignalAvgValue);
-  station_info->CreateU32Attribute(NL80211_STA_INFO_INACTIVE_TIME,
-                                   "InactiveTime");
-  const int32_t kInactiveTime = 100;
-  station_info->SetU32AttributeValue(NL80211_STA_INFO_INACTIVE_TIME,
-                                     kInactiveTime);
-  station_info->CreateU32Attribute(NL80211_STA_INFO_RX_PACKETS,
-                                   "ReceivedSuccesses");
-  const int32_t kReceiveSuccesses = 200;
-  station_info->SetU32AttributeValue(NL80211_STA_INFO_RX_PACKETS,
-                                     kReceiveSuccesses);
-  station_info->CreateU32Attribute(NL80211_STA_INFO_TX_FAILED,
-                                   "TransmitFailed");
-  const int32_t kTransmitFailed = 300;
-  station_info->SetU32AttributeValue(NL80211_STA_INFO_TX_FAILED,
-                                     kTransmitFailed);
-  station_info->CreateU32Attribute(NL80211_STA_INFO_TX_PACKETS,
-                                   "TransmitSuccesses");
-  const int32_t kTransmitSuccesses = 400;
-  station_info->SetU32AttributeValue(NL80211_STA_INFO_TX_PACKETS,
-                                     kTransmitSuccesses);
-  station_info->CreateU32Attribute(NL80211_STA_INFO_TX_RETRIES,
-                                   "TransmitRetries");
-  const int32_t kTransmitRetries = 500;
-  station_info->SetU32AttributeValue(NL80211_STA_INFO_TX_RETRIES,
-                                     kTransmitRetries);
-  station_info->CreateNestedAttribute(NL80211_STA_INFO_TX_BITRATE,
-                                      "TX Bitrate Info");
 
-  // Embed transmit bitrate info within the station info element.
-  AttributeListRefPtr bitrate_info;
-  station_info->GetNestedAttributeList(NL80211_STA_INFO_TX_BITRATE,
-                                       &bitrate_info);
-  bitrate_info->CreateU16Attribute(NL80211_RATE_INFO_BITRATE, "Bitrate");
-  const int16_t kBitrate = 6005;
-  bitrate_info->SetU16AttributeValue(NL80211_RATE_INFO_BITRATE, kBitrate);
-  bitrate_info->CreateU8Attribute(NL80211_RATE_INFO_MCS, "MCS");
-  const int16_t kMCS = 7;
-  bitrate_info->SetU8AttributeValue(NL80211_RATE_INFO_MCS, kMCS);
-  bitrate_info->CreateFlagAttribute(NL80211_RATE_INFO_40_MHZ_WIDTH, "HT40");
-  bitrate_info->SetFlagAttributeValue(NL80211_RATE_INFO_40_MHZ_WIDTH, true);
-  bitrate_info->CreateFlagAttribute(NL80211_RATE_INFO_SHORT_GI, "SGI");
-  bitrate_info->SetFlagAttributeValue(NL80211_RATE_INFO_SHORT_GI, false);
-  station_info->SetNestedAttributeHasAValue(NL80211_STA_INFO_TX_BITRATE);
-
-  new_station.attributes()->SetNestedAttributeHasAValue(NL80211_ATTR_STA_INFO);
+  // Create the properties object.
+  KeyValueStore properties;
+  const int32_t kSignalValue = -20;
+  properties.Set<int32_t>(WPASupplicant::kSignalChangePropertyRSSI,
+                          kSignalValue);
+  const int32_t kSignalAvgValue = -40;
+  properties.Set<int32_t>(WPASupplicant::kSignalChangePropertyAverageRSSI,
+                          kSignalAvgValue);
+  const uint32_t kReceiveSuccesses = 200U;
+  properties.Set<uint32_t>(WPASupplicant::kSignalChangePropertyRxPackets,
+                           kReceiveSuccesses);
+  const uint32_t kTransmitFailed = 300U;
+  properties.Set<uint32_t>(WPASupplicant::kSignalChangePropertyRetriesFailed,
+                           kTransmitFailed);
+  const uint32_t kTransmitSuccesses = 400U;
+  properties.Set<uint32_t>(WPASupplicant::kSignalChangePropertyTxPackets,
+                           kTransmitSuccesses);
+  const uint32_t kTransmitRetries = 500U;
+  properties.Set<uint32_t>(WPASupplicant::kSignalChangePropertyRetries,
+                           kTransmitRetries);
+  const uint32_t kBitrate = 6005U;
+  properties.Set<uint32_t>(WPASupplicant::kSignalChangePropertyTxSpeed,
+                           kBitrate * 100);
+  const uint32_t kMCS = 7U;
+  properties.Set<uint32_t>(WPASupplicant::kSignalChangePropertyTxMCS, kMCS);
+  properties.Set<std::string>(WPASupplicant::kSignalChangePropertyChannelWidth,
+                              "40 MHz");
 
   EXPECT_NE(kSignalValue, endpoint->signal_strength());
   EXPECT_CALL(*wifi_provider(), OnEndpointUpdated(EndpointMatch(endpoint)));
   EXPECT_CALL(*metrics(),
               SendToUMA(Metrics::kMetricWifiTxBitrate, kBitrate / 10));
-  AttributeListConstRefPtr station_info_prime;
-  ReportReceivedStationInfo(new_station);
+  SignalChanged(properties);
   EXPECT_EQ(kSignalValue, endpoint->signal_strength());
 
   link_statistics = GetLinkStatistics();
@@ -4188,10 +4148,6 @@ TEST_F(WiFiTimerTest, RequestStationInfo) {
       link_statistics.Contains<int32_t>(kAverageReceiveSignalDbmProperty));
   EXPECT_EQ(kSignalAvgValue,
             link_statistics.Get<int32_t>(kAverageReceiveSignalDbmProperty));
-  ASSERT_TRUE(
-      link_statistics.Contains<uint32_t>(kInactiveTimeMillisecondsProperty));
-  EXPECT_EQ(kInactiveTime,
-            link_statistics.Get<uint32_t>(kInactiveTimeMillisecondsProperty));
   ASSERT_TRUE(
       link_statistics.Contains<uint32_t>(kPacketReceiveSuccessesProperty));
   EXPECT_EQ(kReceiveSuccesses,
@@ -4212,79 +4168,6 @@ TEST_F(WiFiTimerTest, RequestStationInfo) {
             link_statistics.Lookup<std::string>(kTransmitBitrateProperty, ""));
   EXPECT_EQ("",
             link_statistics.Lookup<std::string>(kReceiveBitrateProperty, ""));
-
-  // New station info with VHT rate parameters.
-  NewStationMessage new_vht_station;
-  new_vht_station.attributes()->CreateRawAttribute(NL80211_ATTR_MAC, "BSSID");
-
-  new_vht_station.attributes()->SetRawAttributeValue(
-      NL80211_ATTR_MAC, ByteString::CreateFromHexString(endpoint->bssid_hex()));
-  new_vht_station.attributes()->CreateNestedAttribute(NL80211_ATTR_STA_INFO,
-                                                      "Station Info");
-  new_vht_station.attributes()->GetNestedAttributeList(NL80211_ATTR_STA_INFO,
-                                                       &station_info);
-  station_info->CreateU8Attribute(NL80211_STA_INFO_SIGNAL, "Signal");
-  station_info->SetU8AttributeValue(NL80211_STA_INFO_SIGNAL, kSignalValue);
-  station_info->CreateNestedAttribute(NL80211_STA_INFO_RX_BITRATE,
-                                      "RX Bitrate Info");
-  station_info->CreateNestedAttribute(NL80211_STA_INFO_TX_BITRATE,
-                                      "TX Bitrate Info");
-
-  // Embed transmit VHT bitrate info within the station info element.
-  station_info->GetNestedAttributeList(NL80211_STA_INFO_TX_BITRATE,
-                                       &bitrate_info);
-  bitrate_info->CreateU32Attribute(NL80211_RATE_INFO_BITRATE32, "Bitrate32");
-  const int32_t kVhtBitrate = 70000;
-  bitrate_info->SetU32AttributeValue(NL80211_RATE_INFO_BITRATE32, kVhtBitrate);
-  bitrate_info->CreateU8Attribute(NL80211_RATE_INFO_VHT_MCS, "VHT-MCS");
-  const int8_t kVhtMCS = 7;
-  bitrate_info->SetU8AttributeValue(NL80211_RATE_INFO_VHT_MCS, kVhtMCS);
-  bitrate_info->CreateU8Attribute(NL80211_RATE_INFO_VHT_NSS, "VHT-NSS");
-  const int8_t kVhtNSS = 1;
-  bitrate_info->SetU8AttributeValue(NL80211_RATE_INFO_VHT_NSS, kVhtNSS);
-  bitrate_info->CreateFlagAttribute(NL80211_RATE_INFO_80_MHZ_WIDTH, "VHT80");
-  bitrate_info->SetFlagAttributeValue(NL80211_RATE_INFO_80_MHZ_WIDTH, true);
-  bitrate_info->CreateFlagAttribute(NL80211_RATE_INFO_SHORT_GI, "SGI");
-  bitrate_info->SetFlagAttributeValue(NL80211_RATE_INFO_SHORT_GI, false);
-  station_info->SetNestedAttributeHasAValue(NL80211_STA_INFO_TX_BITRATE);
-
-  // Embed receive VHT bitrate info within the station info element.
-  station_info->GetNestedAttributeList(NL80211_STA_INFO_RX_BITRATE,
-                                       &bitrate_info);
-  bitrate_info->CreateU32Attribute(NL80211_RATE_INFO_BITRATE32, "Bitrate32");
-  bitrate_info->SetU32AttributeValue(NL80211_RATE_INFO_BITRATE32, kVhtBitrate);
-  bitrate_info->CreateU8Attribute(NL80211_RATE_INFO_VHT_MCS, "VHT-MCS");
-  bitrate_info->SetU8AttributeValue(NL80211_RATE_INFO_VHT_MCS, kVhtMCS);
-  bitrate_info->CreateU8Attribute(NL80211_RATE_INFO_VHT_NSS, "VHT-NSS");
-  bitrate_info->SetU8AttributeValue(NL80211_RATE_INFO_VHT_NSS, kVhtNSS);
-  bitrate_info->CreateFlagAttribute(NL80211_RATE_INFO_80_MHZ_WIDTH, "VHT80");
-  bitrate_info->SetFlagAttributeValue(NL80211_RATE_INFO_80_MHZ_WIDTH, true);
-  bitrate_info->CreateFlagAttribute(NL80211_RATE_INFO_SHORT_GI, "SGI");
-  bitrate_info->SetFlagAttributeValue(NL80211_RATE_INFO_SHORT_GI, false);
-  station_info->SetNestedAttributeHasAValue(NL80211_STA_INFO_RX_BITRATE);
-
-  new_vht_station.attributes()->SetNestedAttributeHasAValue(
-      NL80211_ATTR_STA_INFO);
-
-  EXPECT_CALL(*metrics(),
-              SendToUMA(Metrics::kMetricWifiTxBitrate, kVhtBitrate / 10));
-
-  ReportReceivedStationInfo(new_vht_station);
-
-  link_statistics = GetLinkStatistics();
-  {
-    const auto rate = base::StringPrintf(
-        "%d.%d MBit/s VHT-MCS %d 80MHz VHT-NSS %d", kVhtBitrate / 10,
-        kVhtBitrate % 10, kVhtMCS, kVhtNSS);
-    EXPECT_EQ(rate, link_statistics.Lookup<std::string>(
-                        kTransmitBitrateProperty, ""));
-    EXPECT_EQ(rate,
-              link_statistics.Lookup<std::string>(kReceiveBitrateProperty, ""));
-  }
-
-  StopRequestingStationInfo();
-  link_statistics = GetLinkStatistics();
-  EXPECT_TRUE(link_statistics.IsEmpty());
 }
 
 TEST_F(WiFiMainTest, EmitStationInfoRequestEvery30thPeriod) {
@@ -4323,25 +4206,13 @@ TEST_F(WiFiMainTest, EmitStationInfoReportOnInfoReceived) {
   MockWiFiServiceRefPtr service =
       SetupConnectedService(RpcIdentifier(""), &endpoint, nullptr);
 
-  // Create nl8011 STA INFO message. The message must contain the signal level
-  // attribute.
-  NewStationMessage sta;
-  AttributeListRefPtr sta_info;
-  sta.attributes()->CreateRawAttribute(NL80211_ATTR_MAC, "BSSID");
-  sta.attributes()->SetRawAttributeValue(
-      NL80211_ATTR_MAC, ByteString::CreateFromHexString(endpoint->bssid_hex()));
-  sta.attributes()->CreateNestedAttribute(NL80211_ATTR_STA_INFO,
-                                          "Station Info");
-  sta.attributes()->GetNestedAttributeList(NL80211_ATTR_STA_INFO, &sta_info);
-
-  sta_info->CreateU8Attribute(NL80211_STA_INFO_SIGNAL, "Signal");
-  sta_info->SetU8AttributeValue(NL80211_STA_INFO_SIGNAL, -20);
-
-  sta.attributes()->SetNestedAttributeHasAValue(NL80211_ATTR_STA_INFO);
+  // Create a KeyValueStore. The message must contain the signal property.
+  KeyValueStore properties;
+  properties.Set<int32_t>(WPASupplicant::kSignalChangePropertyRSSI, -20);
 
   RetrieveLinkStatistics(WiFiLinkStatistics::Trigger::kConnected);
   EXPECT_CALL(*service, EmitLinkQualityReportEvent(_)).Times(1);
-  ReportReceivedStationInfo(sta);
+  SignalChanged(properties);
 }
 
 TEST_F(WiFiMainTest, EmitStationInfoRequest) {
@@ -5688,24 +5559,10 @@ TEST_F(WiFiMainTest, NetworkEventTransition) {
   RpcIdentifier connected_bss = GetSupplicantBSS();
   SetSupplicantBSS(connected_bss);
 
+  KeyValueStore properties;
+  properties.Set<int32_t>(WPASupplicant::kSignalChangePropertyRSSI, -70);
+
   old_rtnl_link_stats64 stats;
-  NewStationMessage new_station;
-  new_station.attributes()->CreateRawAttribute(NL80211_ATTR_MAC, "BSSID");
-  WiFiEndpointRefPtr endpoint = GetEndpointMap().begin()->second;
-  new_station.attributes()->SetRawAttributeValue(
-      NL80211_ATTR_MAC, ByteString::CreateFromHexString(endpoint->bssid_hex()));
-  new_station.attributes()->CreateNestedAttribute(NL80211_ATTR_STA_INFO,
-                                                  "Station Info");
-  AttributeListRefPtr station_info;
-  new_station.attributes()->GetNestedAttributeList(NL80211_ATTR_STA_INFO,
-                                                   &station_info);
-  station_info->CreateU32Attribute(NL80211_STA_INFO_RX_PACKETS,
-                                   kPacketReceiveSuccessesProperty);
-  station_info->SetU32AttributeValue(NL80211_STA_INFO_RX_PACKETS, 200);
-  station_info->CreateU8Attribute(NL80211_STA_INFO_SIGNAL,
-                                  kLastReceiveSignalDbmProperty);
-  station_info->SetU8AttributeValue(NL80211_STA_INFO_SIGNAL, -20);
-  new_station.attributes()->SetNestedAttributeHasAValue(NL80211_ATTR_STA_INFO);
 
   // IP configuration starts
   ReportStateChanged(WPASupplicant::kInterfaceStateCompleted);
@@ -5719,7 +5576,7 @@ TEST_F(WiFiMainTest, NetworkEventTransition) {
               UpdateNl80211LinkStatistics(
                   WiFiLinkStatistics::Trigger::kIPConfigurationStart, _))
       .Times(1);
-  ReportReceivedStationInfo(new_station);
+  SignalChanged(properties);
   EXPECT_CALL(*wifi_link_statistics_,
               UpdateRtnlLinkStatistics(
                   WiFiLinkStatistics::Trigger::kIPConfigurationStart, _))
@@ -5732,7 +5589,7 @@ TEST_F(WiFiMainTest, NetworkEventTransition) {
       *wifi_link_statistics_,
       UpdateNl80211LinkStatistics(WiFiLinkStatistics::Trigger::kDHCPFailure, _))
       .Times(1);
-  ReportReceivedStationInfo(new_station);
+  SignalChanged(properties);
   EXPECT_CALL(
       *wifi_link_statistics_,
       UpdateRtnlLinkStatistics(WiFiLinkStatistics::Trigger::kDHCPFailure, _))
@@ -5746,7 +5603,7 @@ TEST_F(WiFiMainTest, NetworkEventTransition) {
               UpdateNl80211LinkStatistics(
                   WiFiLinkStatistics::Trigger::kNetworkValidationStart, _))
       .Times(1);
-  ReportReceivedStationInfo(new_station);
+  SignalChanged(properties);
   EXPECT_CALL(*wifi_link_statistics_,
               UpdateRtnlLinkStatistics(
                   WiFiLinkStatistics::Trigger::kNetworkValidationStart, _))
@@ -5759,7 +5616,7 @@ TEST_F(WiFiMainTest, NetworkEventTransition) {
       *wifi_link_statistics_,
       UpdateNl80211LinkStatistics(WiFiLinkStatistics::Trigger::kDHCPFailure, _))
       .Times(1);
-  ReportReceivedStationInfo(new_station);
+  SignalChanged(properties);
   EXPECT_CALL(
       *wifi_link_statistics_,
       UpdateRtnlLinkStatistics(WiFiLinkStatistics::Trigger::kDHCPFailure, _))
@@ -5771,7 +5628,7 @@ TEST_F(WiFiMainTest, NetworkEventTransition) {
               UpdateNl80211LinkStatistics(
                   WiFiLinkStatistics::Trigger::kSlaacFinished, _))
       .Times(1);
-  ReportReceivedStationInfo(new_station);
+  SignalChanged(properties);
   EXPECT_CALL(
       *wifi_link_statistics_,
       UpdateRtnlLinkStatistics(WiFiLinkStatistics::Trigger::kSlaacFinished, _))
@@ -5785,7 +5642,7 @@ TEST_F(WiFiMainTest, NetworkEventTransition) {
               UpdateNl80211LinkStatistics(
                   WiFiLinkStatistics::Trigger::kNetworkValidationFailure, _))
       .Times(1);
-  ReportReceivedStationInfo(new_station);
+  SignalChanged(properties);
   EXPECT_CALL(*wifi_link_statistics_,
               UpdateRtnlLinkStatistics(
                   WiFiLinkStatistics::Trigger::kNetworkValidationFailure, _))

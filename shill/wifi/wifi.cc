@@ -3702,8 +3702,7 @@ void WiFi::EmitStationInfoRequestEvent(WiFiLinkStatistics::Trigger trigger) {
 }
 
 void WiFi::RequestStationInfo(WiFiLinkStatistics::Trigger trigger) {
-  // It is able to only request NL80211 link statistics if the device is L2
-  // connected.
+  // It only makes sense to request station info if a link is active.
   if (supplicant_state_ != WPASupplicant::kInterfaceStateCompleted) {
     LOG(ERROR) << "Not collecting station info because we are not connected.";
     return;
@@ -3713,21 +3712,6 @@ void WiFi::RequestStationInfo(WiFiLinkStatistics::Trigger trigger) {
   if (endpoint_it == endpoint_by_rpcid_.end()) {
     LOG(ERROR) << "Can't get endpoint for current supplicant BSS "
                << supplicant_bss_.value();
-    return;
-  }
-
-  GetStationMessage get_station;
-  if (!get_station.attributes()->SetU32AttributeValue(NL80211_ATTR_IFINDEX,
-                                                      interface_index())) {
-    LOG(ERROR) << "Could not add IFINDEX attribute for GetStation message.";
-    return;
-  }
-
-  const WiFiEndpointConstRefPtr endpoint(endpoint_it->second);
-  if (!get_station.attributes()->SetRawAttributeValue(
-          NL80211_ATTR_MAC,
-          ByteString::CreateFromHexString(endpoint->bssid_hex()))) {
-    LOG(ERROR) << "Could not add MAC attribute for GetStation message.";
     return;
   }
 
@@ -3753,15 +3737,15 @@ void WiFi::RequestStationInfo(WiFiLinkStatistics::Trigger trigger) {
     EmitStationInfoRequestEvent(trigger);
     pending_nl80211_stats_requests_.push_back(trigger);
   }
+
   // TODO(b/260915172): we sometimes call RequestStationInfo() multiple times,
-  // sending redundant requests to the driver. We could instead only query the
-  // driver if there isn't a request already in flight.
-  netlink_manager_->SendNl80211Message(
-      &get_station,
-      base::BindRepeating(&WiFi::OnReceivedStationInfo,
-                          weak_ptr_factory_while_started_.GetWeakPtr()),
-      base::BindRepeating(&NetlinkManager::OnAckDoNothing),
-      base::BindRepeating(&NetlinkManager::OnNetlinkMessageError));
+  // sending redundant requests to wpa_supplicant. We could instead only query
+  // supplicant if there isn't a request already in flight.
+  KeyValueStore properties;
+  if (supplicant_interface_proxy_->SignalPoll(&properties)) {
+    // Only process a signal change if information was received.
+    SignalChanged(properties);
+  }
 
   request_station_info_callback_.Reset(base::BindOnce(
       &WiFi::RequestStationInfo, weak_ptr_factory_while_started_.GetWeakPtr(),
@@ -3769,65 +3753,6 @@ void WiFi::RequestStationInfo(WiFiLinkStatistics::Trigger trigger) {
   dispatcher()->PostDelayedTask(FROM_HERE,
                                 request_station_info_callback_.callback(),
                                 kRequestStationInfoPeriod);
-}
-
-// static
-bool WiFi::ParseStationBitrate(const AttributeListConstRefPtr& rate_info,
-                               WiFiLinkStatistics::LinkStats* stats) {
-  uint16_t u16_rate = 0;  // In 100Kbps.
-  bool band_flag = false;
-  bool is_short_gi = false;
-  bool ret = false;
-
-  if (rate_info->GetU16AttributeValue(NL80211_RATE_INFO_BITRATE, &u16_rate)) {
-    stats->bitrate = static_cast<uint32_t>(u16_rate);
-    ret = true;
-  } else {
-    ret = rate_info->GetU32AttributeValue(NL80211_RATE_INFO_BITRATE32,
-                                          &stats->bitrate);
-  }
-
-  if (rate_info->GetU8AttributeValue(NL80211_RATE_INFO_MCS, &stats->mcs)) {
-    stats->mode = WiFiLinkStatistics::LinkMode::kLinkModeLegacy;
-  } else if (rate_info->GetU8AttributeValue(NL80211_RATE_INFO_VHT_MCS,
-                                            &stats->mcs)) {
-    stats->mode = WiFiLinkStatistics::LinkMode::kLinkModeVHT;
-  }
-  // TODO(b/239864299): Handle HE and EHT modes.
-
-  if (rate_info->GetU8AttributeValue(NL80211_RATE_INFO_VHT_NSS, &stats->nss)) {
-    stats->mode = WiFiLinkStatistics::LinkMode::kLinkModeVHT;
-  }
-
-  stats->width = WiFiLinkStatistics::ChannelWidth::kChannelWidth20MHz;
-  if (rate_info->GetFlagAttributeValue(NL80211_RATE_INFO_40_MHZ_WIDTH,
-                                       &band_flag) &&
-      band_flag) {
-    stats->width = WiFiLinkStatistics::ChannelWidth::kChannelWidth40MHz;
-  } else if (rate_info->GetFlagAttributeValue(NL80211_RATE_INFO_80_MHZ_WIDTH,
-                                              &band_flag) &&
-             band_flag) {
-    stats->width = WiFiLinkStatistics::ChannelWidth::kChannelWidth80MHz;
-  } else if (rate_info->GetFlagAttributeValue(NL80211_RATE_INFO_80P80_MHZ_WIDTH,
-                                              &band_flag) &&
-             band_flag) {
-    stats->width = WiFiLinkStatistics::ChannelWidth::kChannelWidth80p80MHz;
-  } else if (rate_info->GetFlagAttributeValue(NL80211_RATE_INFO_160_MHZ_WIDTH,
-                                              &band_flag) &&
-             band_flag) {
-    stats->width = WiFiLinkStatistics::ChannelWidth::kChannelWidth160MHz;
-  }
-  // TODO(b/239864299): Handle 320MHz channels.
-
-  rate_info->GetFlagAttributeValue(NL80211_RATE_INFO_SHORT_GI, &is_short_gi);
-  // TODO(b/239864299): Handle guard intervals for 802.11ax
-  if (is_short_gi) {
-    stats->gi = WiFiLinkStatistics::GuardInterval::kLinkStatsGI_0_4;
-  }
-
-  // TODO(b/239864299): Handle DCM.
-
-  return ret;
 }
 
 void WiFi::EmitStationInfoReceivedEvent(
@@ -3842,128 +3767,23 @@ void WiFi::EmitStationInfoReceivedEvent(
       WiFiLinkStatistics::ConvertLinkStatsReport(stats));
 }
 
-void WiFi::OnReceivedStationInfo(const Nl80211Message& nl80211_message) {
-  // Verify NL80211_CMD_NEW_STATION
-  if (nl80211_message.command() != NewStationMessage::kCommand) {
-    LOG(ERROR) << "Received unexpected command:" << nl80211_message.command();
-    return;
-  }
-
-  if (supplicant_state_ != WPASupplicant::kInterfaceStateCompleted) {
-    LOG(ERROR) << "Not accepting station info because we are not connected.";
-    return;
-  }
-
+void WiFi::HandleUpdatedLinkStatistics() {
+  // Update the endpoint's signal
   EndpointMap::iterator endpoint_it = endpoint_by_rpcid_.find(supplicant_bss_);
   if (endpoint_it == endpoint_by_rpcid_.end()) {
     LOG(ERROR) << "Can't get endpoint for current supplicant BSS."
                << supplicant_bss_.value();
     return;
   }
-
-  ByteString station_bssid;
-  if (!nl80211_message.const_attributes()->GetRawAttributeValue(
-          NL80211_ATTR_MAC, &station_bssid)) {
-    LOG(ERROR) << "Unable to get MAC attribute from received station info.";
-    return;
-  }
-
   WiFiEndpointRefPtr endpoint(endpoint_it->second);
+  endpoint->UpdateSignalStrength(
+      static_cast<signed char>(station_stats_.signal));
 
-  if (!station_bssid.Equals(
-          ByteString::CreateFromHexString(endpoint->bssid_hex()))) {
-    LOG(ERROR) << "Received station info for a non-current BSS.";
-    return;
+  // Update telemetry.
+  if (station_stats_.tx.bitrate != UINT_MAX) {
+    metrics()->SendToUMA(Metrics::kMetricWifiTxBitrate,
+                         station_stats_.tx.bitrate / 10);
   }
-
-  AttributeListConstRefPtr station_info;
-  if (!nl80211_message.const_attributes()->ConstGetNestedAttributeList(
-          NL80211_ATTR_STA_INFO, &station_info)) {
-    LOG(ERROR) << "Received station info had no NL80211_ATTR_STA_INFO.";
-    return;
-  }
-
-  uint8_t signal;
-  if (!station_info->GetU8AttributeValue(NL80211_STA_INFO_SIGNAL, &signal)) {
-    LOG(ERROR) << "Received station info had no NL80211_STA_INFO_SIGNAL.";
-    return;
-  }
-
-  endpoint->UpdateSignalStrength(static_cast<signed char>(signal));
-
-  WiFiLinkStatistics::StationStats stats;
-  uint32_t rxbytes, txbytes = UINT_MAX;
-  std::vector<std::pair<int, uint32_t*>> nl80211_sta_info_properties_u32 = {
-      {NL80211_STA_INFO_INACTIVE_TIME, &stats.inactive_time},
-      {NL80211_STA_INFO_RX_PACKETS, &stats.rx.packets},
-      {NL80211_STA_INFO_TX_PACKETS, &stats.tx.packets},
-      {NL80211_STA_INFO_TX_FAILED, &stats.tx_failed},
-      {NL80211_STA_INFO_RX_BYTES, &rxbytes},
-      {NL80211_STA_INFO_TX_BYTES, &txbytes},
-      {NL80211_STA_INFO_TX_RETRIES, &stats.tx_retries}};
-  for (const auto& kv : nl80211_sta_info_properties_u32) {
-    uint32_t value;
-    if (station_info->GetU32AttributeValue(kv.first, &value)) {
-      *kv.second = value;
-    }
-  }
-
-  std::vector<std::pair<int, uint64_t*>> nl80211_sta_info_properties_u64 = {
-      {NL80211_STA_INFO_RX_BYTES64, &stats.rx.bytes},
-      {NL80211_STA_INFO_TX_BYTES64, &stats.tx.bytes},
-      {NL80211_STA_INFO_RX_DROP_MISC, &stats.rx_drop_misc}};
-  for (const auto& kv : nl80211_sta_info_properties_u64) {
-    uint64_t value;
-    if (station_info->GetU64AttributeValue(kv.first, &value)) {
-      *kv.second = value;
-    }
-  }
-
-  // Handle the case where NL80211_STA_INFO_RX_BYTES was set but
-  // NL80211_STA_INFO_RX_BYTES64 was not.
-  if (rxbytes != UINT_MAX && stats.rx.bytes == ULLONG_MAX) {
-    stats.rx.bytes = rxbytes;
-  }
-  // Handle the case where NL80211_STA_INFO_TX_BYTES was set but
-  // NL80211_STA_INFO_TX_BYTES64 was not.
-  if (txbytes != UINT_MAX && stats.tx.bytes == ULLONG_MAX) {
-    stats.tx.bytes = txbytes;
-  }
-
-  std::vector<std::pair<int, int32_t*>> nl80211_sta_info_properties_s32 = {
-      {NL80211_STA_INFO_SIGNAL, &stats.signal},
-      {NL80211_STA_INFO_SIGNAL_AVG, &stats.signal_avg}};
-  for (const auto& kv : nl80211_sta_info_properties_s32) {
-    uint8_t value;
-    if (station_info->GetU8AttributeValue(kv.first, &value)) {
-      // Despite these values being reported as a U8 by the kernel, they are
-      // actually signed values.
-      // Cast U8 to S8 first to preserve the sign, then cast to S32.
-      *kv.second = static_cast<int32_t>(static_cast<int8_t>(value));
-    }
-  }
-
-  AttributeListConstRefPtr transmit_info;
-  if (station_info->ConstGetNestedAttributeList(NL80211_STA_INFO_TX_BITRATE,
-                                                &transmit_info)) {
-    if (ParseStationBitrate(transmit_info, &stats.tx)) {
-      metrics()->SendToUMA(Metrics::kMetricWifiTxBitrate,
-                           stats.tx.bitrate / 10);
-    }
-  }
-
-  AttributeListConstRefPtr receive_info;
-  if (station_info->ConstGetNestedAttributeList(NL80211_STA_INFO_RX_BITRATE,
-                                                &receive_info)) {
-    ParseStationBitrate(receive_info, &stats.rx);
-  }
-
-  station_stats_ = stats;
-
-  HandleUpdatedLinkStatistics();
-}
-
-void WiFi::HandleUpdatedLinkStatistics() {
   if (!pending_nl80211_stats_requests_.empty()) {
     // Only emit 1 telemetry event with link statistics, even if we had multiple
     // trigger events (e.g. CQM and DHCP in quick succession).

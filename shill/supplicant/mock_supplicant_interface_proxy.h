@@ -59,6 +59,7 @@ class MockSupplicantInterfaceProxy : public SupplicantInterfaceProxyInterface {
   MOCK_METHOD(bool, RemoveCred, (const RpcIdentifier& cred), (override));
   MOCK_METHOD(bool, RemoveAllCreds, (), (override));
   MOCK_METHOD(bool, InterworkingSelect, (), (override));
+  MOCK_METHOD(bool, SignalPoll, (KeyValueStore*), (override));
 };
 
 }  // namespace shill

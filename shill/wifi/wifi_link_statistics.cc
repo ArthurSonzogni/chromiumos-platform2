@@ -401,6 +401,7 @@ WiFiLinkStatistics::StationStatsFromSupplicantKV(
     stats.signal_avg = properties.Get<int32_t>(
         WPASupplicant::kSignalChangePropertyAverageRSSI);
   }
+
   const std::vector<std::pair<std::string, uint32_t*>> signal_properties_u32 = {
       {WPASupplicant::kSignalChangePropertyRetries, &stats.tx_retries},
       {WPASupplicant::kSignalChangePropertyRetriesFailed, &stats.tx_failed},

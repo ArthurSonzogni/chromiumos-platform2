@@ -309,6 +309,19 @@ bool SupplicantInterfaceProxy::SelectNetwork(const RpcIdentifier& network) {
   return true;
 }
 
+bool SupplicantInterfaceProxy::SignalPoll(KeyValueStore* signalInfo) {
+  SLOG(&interface_proxy_->GetObjectPath(), 2) << __func__;
+  brillo::ErrorPtr error;
+  brillo::VariantDictionary properties;
+  if (!interface_proxy_->SignalPoll(&properties, &error)) {
+    LOG(ERROR) << "Failed to poll signal: " << error->GetCode() << " "
+               << error->GetMessage();
+    return false;
+  }
+  *signalInfo = KeyValueStore::ConvertFromVariantDictionary(properties);
+  return true;
+}
+
 bool SupplicantInterfaceProxy::EnableMacAddressRandomization(
     const std::vector<unsigned char>& mask, bool sched_scan) {
   SLOG(&interface_proxy_->GetObjectPath(), 2) << __func__;
