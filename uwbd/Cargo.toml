@@ -30,7 +30,7 @@ log = "0.4.14"
 protobuf = "2.24.1"
 syslog = "6.0.1"
 tokio = { version = "1.14.0", features = ["sync"] }
-uwb_core = { path = "../../aosp/external/uwb/public/local/src/rust/uwb_core", features=["proto"] } # provided by ebuild
+uwb_core = { path = "../../aosp/external/uwb/local/src/rust/uwb_core", features=["proto"] } # provided by ebuild
 
 [patch.crates-io] # ignored by ebuild
 audio_streams = { path = "../../../chroot/usr/lib/cros_rust_registry/registry/audio_streams-0.1.0/" } # ignored by ebuild
