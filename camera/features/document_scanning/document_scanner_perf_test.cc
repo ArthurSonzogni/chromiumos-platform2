@@ -64,7 +64,7 @@ class DocumentScannerPerfTestEnvironment : public ::testing::Environment {
   DocumentScannerPerfTestEnvironment(const std::string& output_path,
                                      const std::string& jpeg_image_path,
                                      const std::string& nv12_image_path)
-      : perf_values_(base::Value::Type::DICTIONARY), output_path_(output_path) {
+      : output_path_(output_path) {
     jpeg_image_ = ReadFile(base::FilePath(jpeg_image_path));
     nv12_image_ = ReadFile(base::FilePath(nv12_image_path));
   }
@@ -103,14 +103,13 @@ class DocumentScannerPerfTestEnvironment : public ::testing::Environment {
     for (int i = 0; i < kActualIterationCount; ++i) {
       target_ops.Run();
     }
-    auto avg_duration =
-        timer.Elapsed().InMilliseconds() / kActualIterationCount;
-    perf_values_.SetIntKey(metrics_name, avg_duration);
+    int avg_duration = timer.Elapsed().InMilliseconds() / kActualIterationCount;
+    perf_values_.Set(metrics_name, avg_duration);
 
     LOG(INFO) << "Perf: " << metrics_name << " => " << avg_duration << " ms";
   }
 
-  base::Value perf_values_;
+  base::Value::Dict perf_values_;
   base::FilePath output_path_;
   std::vector<uint8_t> jpeg_image_;
   std::vector<uint8_t> nv12_image_;

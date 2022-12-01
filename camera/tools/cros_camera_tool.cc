@@ -37,17 +37,17 @@ class CameraTool {
 
     base::span<const cros::PlatformCameraInfo> cameras =
         device_config_->GetPlatformCameraInfo();
-    base::Value root(base::Value::Type::LIST);
+    base::Value::List root;
     for (const auto& camera : cameras) {
-      base::Value node(base::Value::Type::DICTIONARY);
+      base::Value::Dict node;
       if (camera.eeprom) {
-        node.SetStringKey("name", camera.sysfs_name);
-        node.SetStringKey("module_id", camera.module_id());
-        node.SetStringKey("sensor_id", camera.sensor_id());
+        node.Set("name", camera.sysfs_name);
+        node.Set("module_id", camera.module_id());
+        node.Set("sensor_id", camera.sensor_id());
       } else {
         CHECK(camera.v4l2_sensor.has_value());
-        node.SetStringKey("name", camera.v4l2_sensor->name);
-        node.SetStringKey("vendor", camera.v4l2_sensor->vendor_id);
+        node.Set("name", camera.v4l2_sensor->name);
+        node.Set("vendor", camera.v4l2_sensor->vendor_id);
       }
       root.Append(std::move(node));
     }

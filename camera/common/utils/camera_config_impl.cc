@@ -27,8 +27,7 @@ std::unique_ptr<CameraConfig> CameraConfig::Create(
 
   if (!base::PathExists(config_path)) {
     // If there is no config file it means that all are default values.
-    base::Value dict(base::Value::Type::DICTIONARY);
-    return base::WrapUnique(new CameraConfigImpl(std::move(dict)));
+    return base::WrapUnique(new CameraConfigImpl(base::Value::Dict()));
   }
 
   std::string content;
@@ -50,46 +49,44 @@ std::unique_ptr<CameraConfig> CameraConfig::Create(
     return nullptr;
   }
 
-  return base::WrapUnique(new CameraConfigImpl(std::move(*result)));
+  return base::WrapUnique(new CameraConfigImpl(std::move(result->GetDict())));
 }
 
-CameraConfigImpl::CameraConfigImpl(base::Value config) {
+CameraConfigImpl::CameraConfigImpl(base::Value::Dict config) {
   config_ = std::move(config);
 }
 
 CameraConfigImpl::~CameraConfigImpl() {}
 
 bool CameraConfigImpl::HasKey(const std::string& key) const {
-  return config_.FindKey(key) != nullptr;
+  return config_.Find(key) != nullptr;
 }
 
 bool CameraConfigImpl::GetBoolean(const std::string& path,
                                   bool default_value) const {
-  std::optional<bool> result = config_.FindBoolPath(path);
-  return result.has_value() ? result.value() : default_value;
+  return config_.FindBoolByDottedPath(path).value_or(default_value);
 }
 
 int CameraConfigImpl::GetInteger(const std::string& path,
                                  int default_value) const {
-  std::optional<int> result = config_.FindIntPath(path);
-  return result.has_value() ? result.value() : default_value;
+  return config_.FindIntByDottedPath(path).value_or(default_value);
 }
 
 std::string CameraConfigImpl::GetString(
     const std::string& path, const std::string& default_value) const {
-  const std::string* result = config_.FindStringPath(path);
+  const std::string* result = config_.FindStringByDottedPath(path);
   return (result != nullptr) ? *result : default_value;
 }
 
 std::vector<std::string> CameraConfigImpl::GetStrings(
     const std::string& path,
     const std::vector<std::string>& default_value) const {
-  const base::Value* values = config_.FindListPath(path);
+  const base::Value::List* values = config_.FindListByDottedPath(path);
   if (values == nullptr)
     return default_value;
 
   std::vector<std::string> result;
-  for (const auto& s : values->GetList()) {
+  for (const auto& s : *values) {
     CHECK(s.is_string());
     result.push_back(s.GetString());
   }

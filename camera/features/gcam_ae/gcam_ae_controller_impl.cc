@@ -361,7 +361,7 @@ void GcamAeControllerImpl::OnOptionsUpdated(
   auto max_hdr_ratio = json_values.FindDictKey(kMaxHdrRatioKey);
   if (max_hdr_ratio) {
     base::flat_map<float, float> hdr_ratio_map;
-    for (auto [k, v] : max_hdr_ratio->DictItems()) {
+    for (auto [k, v] : max_hdr_ratio->GetDict()) {
       double gain;
       if (!base::StringToDouble(k, &gain)) {
         LOGF(ERROR) << "Invalid gain value: " << k;

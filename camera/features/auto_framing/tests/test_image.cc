@@ -35,10 +35,11 @@ TestImage::PixelFormat StringToPixelFormat(const std::string& str) {
 
 TestImage::Metadata ParseMetadata(const base::Value& value) {
   CHECK(value.is_dict());
+  const base::Value::Dict& dict = value.GetDict();
 
-  const std::optional<int> width = value.FindIntKey("width");
-  const std::optional<int> height = value.FindIntKey("height");
-  const std::string* pixel_format_str = value.FindStringKey("pixel_format");
+  const std::optional<int> width = dict.FindInt("width");
+  const std::optional<int> height = dict.FindInt("height");
+  const std::string* pixel_format_str = dict.FindString("pixel_format");
   CHECK(width.has_value() && height.has_value() && pixel_format_str);
 
   const TestImage::PixelFormat pixel_format =
@@ -46,9 +47,9 @@ TestImage::Metadata ParseMetadata(const base::Value& value) {
   CHECK_NE(pixel_format, TestImage::PixelFormat::kUnknown);
 
   std::vector<Rect<uint32_t>> face_rectangles;
-  const base::Value* face_rects_value = value.FindListKey("face_rectangles");
+  const base::Value::List* face_rects_value = dict.FindList("face_rectangles");
   if (face_rects_value) {
-    for (auto& face_rect_value : face_rects_value->GetList()) {
+    for (auto& face_rect_value : *face_rects_value) {
       CHECK(face_rect_value.is_list());
       const auto& list_view = face_rect_value.GetList();
       CHECK_EQ(list_view.size(), 4);

@@ -37,11 +37,11 @@ class CameraConfigImpl final : public CameraConfig {
       const std::vector<std::string>& default_value) const final;
 
  private:
-  explicit CameraConfigImpl(base::Value config);
+  explicit CameraConfigImpl(base::Value::Dict config);
   friend std::unique_ptr<CameraConfig> CameraConfig::Create(
       const std::string& config_path_string);
 
-  base::Value config_;
+  base::Value::Dict config_;
 };
 
 }  // namespace cros
