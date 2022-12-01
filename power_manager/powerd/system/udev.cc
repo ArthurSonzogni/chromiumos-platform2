@@ -41,6 +41,9 @@ const char kPowerdTagsVar[] = "POWERD_TAGS";
 // Udev device type for USB devices.
 const char kUSBDevice[] = "usb_device";
 
+// Returns true iff `device` is tagged with `role` in its udev properties.
+// Powerd role tags are applied to devices by the udev rules which are installed
+// with powerd.
 bool HasPowerdRole(struct udev_device* device, const std::string& role) {
   const char* role_cstr =
       udev_device_get_property_value(device, kPowerdRoleVar);
