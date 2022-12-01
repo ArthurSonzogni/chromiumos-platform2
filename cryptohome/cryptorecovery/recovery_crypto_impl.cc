@@ -704,9 +704,8 @@ bool RecoveryCryptoImpl::GenerateHsmPayload(
   dealer_pub_key.clear();
   publisher_key_pair.reset();
 
-  GenerateRecoveryKey(recovery_pub_point, dealer_key_pair,
-                      &response->recovery_key);
-  return true;
+  return GenerateRecoveryKey(recovery_pub_point, dealer_key_pair,
+                             &response->recovery_key);
 }
 
 bool RecoveryCryptoImpl::RecoverDestination(

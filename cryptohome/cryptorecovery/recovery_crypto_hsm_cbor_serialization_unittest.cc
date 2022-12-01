@@ -488,7 +488,7 @@ TEST_F(HsmPayloadCborHelperTest, DeserializePlainTextHsmPayload) {
   ASSERT_TRUE(CreateCborMapForTesting(fake_map, &hsm_cbor));
 
   HsmPlainText hsm_plain_text;
-  DeserializeHsmPlainTextFromCbor(hsm_cbor, &hsm_plain_text);
+  EXPECT_TRUE(DeserializeHsmPlainTextFromCbor(hsm_cbor, &hsm_plain_text));
 
   EXPECT_EQ(hsm_plain_text.dealer_pub_key, dealer_pub_key_);
   EXPECT_EQ(hsm_plain_text.mediator_share, mediator_share);

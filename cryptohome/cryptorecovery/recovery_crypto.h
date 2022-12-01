@@ -125,7 +125,7 @@ class RecoveryCrypto {
   // 6. Encrypt {AD2, PT2} using AES-GCM scheme.
   // 7. Construct `CryptoRecoveryRpcRequest` which contains `RecoveryRequest`
   // serialized to CBOR.
-  virtual bool GenerateRecoveryRequest(
+  [[nodiscard]] virtual bool GenerateRecoveryRequest(
       const GenerateRecoveryRequestRequest& request,
       CryptoRecoveryRpcRequest* recovery_request,
       brillo::SecureBlob* ephemeral_pub_key) const = 0;
@@ -152,7 +152,7 @@ class RecoveryCrypto {
   // stored in host for TPM 1.2.
   // The resulting destination share should be either added to TPM 2.0 or sealed
   // with kav for TPM 1.2 and stored in the host.
-  virtual bool GenerateHsmPayload(
+  [[nodiscard]] virtual bool GenerateHsmPayload(
       const GenerateHsmPayloadRequest& request,
       GenerateHsmPayloadResponse* response) const = 0;
 
@@ -165,7 +165,7 @@ class RecoveryCrypto {
   // whereas for TPM2, destination_share is imported into TPM2 modules, and
   // loaded back in the form of key handle, which requires no additional crypto
   // secret.
-  virtual bool RecoverDestination(
+  [[nodiscard]] virtual bool RecoverDestination(
       const RecoverDestinationRequest& request,
       brillo::SecureBlob* destination_recovery_key) const = 0;
 

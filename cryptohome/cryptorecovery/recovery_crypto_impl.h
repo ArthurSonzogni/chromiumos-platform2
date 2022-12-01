@@ -65,8 +65,10 @@ class RecoveryCryptoImpl : public RecoveryCrypto {
   // Secrets used to generate Recovery Id are stored in cryptohome but the
   // resulting Recovery Id is part of OnboardingMetadata stored outside of the
   // cryptohome.
-  bool GenerateRecoveryIdToFile(const base::FilePath& recovery_id_path) const;
-  bool GenerateRecoveryId(const AccountIdentifier& account_id) const;
+  [[nodiscard]] bool GenerateRecoveryIdToFile(
+      const base::FilePath& recovery_id_path) const;
+  [[nodiscard]] bool GenerateRecoveryId(
+      const AccountIdentifier& account_id) const;
   // Returns a vector of last |max_depth| Recovery ids. The current recovery_id
   // is returned as the first entry.
   std::vector<std::string> GetLastRecoveryIds(
@@ -76,26 +78,31 @@ class RecoveryCryptoImpl : public RecoveryCrypto {
   RecoveryCryptoImpl(hwsec_foundation::EllipticCurve ec,
                      hwsec::RecoveryCryptoFrontend* hwsec_backend,
                      Platform* platform);
-  bool GenerateRecoveryKey(const crypto::ScopedEC_POINT& recovery_pub_point,
-                           const crypto::ScopedEC_KEY& dealer_key_pair,
-                           brillo::SecureBlob* recovery_key) const;
+  [[nodiscard]] bool GenerateRecoveryKey(
+      const crypto::ScopedEC_POINT& recovery_pub_point,
+      const crypto::ScopedEC_KEY& dealer_key_pair,
+      brillo::SecureBlob* recovery_key) const;
   // Generate ephemeral public and inverse public keys {G*x, G*-x}
-  bool GenerateEphemeralKey(brillo::SecureBlob* ephemeral_spki_der,
-                            brillo::SecureBlob* ephemeral_inv_spki_der) const;
-  bool GenerateHsmAssociatedData(const brillo::SecureBlob& channel_pub_key,
-                                 const brillo::SecureBlob& rsa_pub_key,
-                                 const crypto::ScopedEC_KEY& publisher_key_pair,
-                                 const OnboardingMetadata& onboarding_metadata,
-                                 brillo::SecureBlob* hsm_associated_data) const;
-  bool IsRecoveryIdAvailable(const base::FilePath& recovery_id_path) const;
-  bool RotateRecoveryId(CryptoRecoveryIdContainer* recovery_id_pb) const;
+  [[nodiscard]] bool GenerateEphemeralKey(
+      brillo::SecureBlob* ephemeral_spki_der,
+      brillo::SecureBlob* ephemeral_inv_spki_der) const;
+  [[nodiscard]] bool GenerateHsmAssociatedData(
+      const brillo::SecureBlob& channel_pub_key,
+      const brillo::SecureBlob& rsa_pub_key,
+      const crypto::ScopedEC_KEY& publisher_key_pair,
+      const OnboardingMetadata& onboarding_metadata,
+      brillo::SecureBlob* hsm_associated_data) const;
+  [[nodiscard]] bool IsRecoveryIdAvailable(
+      const base::FilePath& recovery_id_path) const;
+  [[nodiscard]] bool RotateRecoveryId(
+      CryptoRecoveryIdContainer* recovery_id_pb) const;
   void GenerateInitialRecoveryId(
       CryptoRecoveryIdContainer* recovery_id_pb) const;
   void GenerateRecoveryIdProto(CryptoRecoveryIdContainer* recovery_id_pb) const;
-  bool LoadPersistedRecoveryIdContainer(
+  [[nodiscard]] bool LoadPersistedRecoveryIdContainer(
       const base::FilePath& recovery_id_path,
       CryptoRecoveryIdContainer* recovery_id_pb) const;
-  bool PersistRecoveryIdContainer(
+  [[nodiscard]] bool PersistRecoveryIdContainer(
       const base::FilePath& recovery_id_path,
       const CryptoRecoveryIdContainer& recovery_id_pb) const;
   std::vector<std::string> GetLastRecoveryIdsFromFile(
