@@ -169,8 +169,8 @@ class Udev : public UdevInterface {
   base::FilePath FindWakeCapableParent(const std::string& syspath);
 
   bool GetDeviceInfo(struct udev_device* dev, UdevDeviceInfo* device_info_out);
-  struct udev* udev_;
-  struct udev_monitor* udev_monitor_;
+  struct udev* udev_ = nullptr;
+  struct udev_monitor* udev_monitor_ = nullptr;
 
   // Maps from a subsystem name to the corresponding observers.
   std::map<std::string,

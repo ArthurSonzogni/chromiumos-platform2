@@ -144,7 +144,7 @@ class PeripheralBatteryWatcher : public UdevSubsystemObserver {
       dbus::MethodCall* method_call,
       dbus::ExportedObject::ResponseSender response_sender);
 
-  DBusWrapperInterface* dbus_wrapper_;  // weak
+  DBusWrapperInterface* dbus_wrapper_ = nullptr;  // weak
 
   UdevInterface* udev_ = nullptr;  // non-owned
 

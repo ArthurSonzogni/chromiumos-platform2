@@ -164,25 +164,25 @@ class AmbientLightHandler : public system::AmbientLightObserver {
   system::AmbientLightSensorInterface* sensor_;  // weak
   Delegate* delegate_;                           // weak
 
-  PowerSource power_source_;
+  PowerSource power_source_ = PowerSource::AC;
 
   // Rounded value of |smoothed_lux_| at the time of the last brightness
   // adjustment.
-  int smoothed_lux_at_last_adjustment_;
+  int smoothed_lux_at_last_adjustment_ = 0;
 
   // Smoothed lux value from simple exponential smoothing.
-  double smoothed_lux_;
+  double smoothed_lux_ = 0.0;
 
   // Smoothing constant used to calculated smoothed ambient lux level, in the
   // range of (0.0, 1.0]. Value closer to 0.0 means |smoothed_lux_| will respond
   // to ambient light change slower. Value of 1.0 means smoothing is disabled.
-  double smoothing_constant_;
+  double smoothing_constant_ = 1.0;
 
-  HysteresisState hysteresis_state_;
+  HysteresisState hysteresis_state_ = HysteresisState::IMMEDIATE;
 
   // If |hysteresis_state_| is DECREASING or INCREASING, number of readings
   // that have been received in the current state.
-  int hysteresis_count_;
+  int hysteresis_count_ = 0;
 
   // Brightness step data read from prefs. It is assumed that this data is
   // well-formed; specifically, for each entry in the file, the decrease
@@ -191,11 +191,11 @@ class AmbientLightHandler : public system::AmbientLightObserver {
   std::vector<BrightnessStep> steps_;
 
   // Current brightness step within |steps_|.
-  size_t step_index_;
+  size_t step_index_ = 0;
 
   // Has |delegate_| been notified about an ambient-light-triggered change
   // yet?
-  bool sent_initial_adjustment_;
+  bool sent_initial_adjustment_ = false;
 
   // Human-readable name included in logging messages.  Useful for
   // distinguishing between different AmbientLightHandler instances.

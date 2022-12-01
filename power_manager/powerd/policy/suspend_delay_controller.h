@@ -152,7 +152,7 @@ class SuspendDelayController {
   int next_delay_id_;
 
   // ID corresponding to the current (or most-recent) suspend attempt.
-  int current_suspend_id_;
+  int current_suspend_id_ = 0;
 
   // IDs of delays registered by clients that haven't yet said they're ready to
   // suspend.

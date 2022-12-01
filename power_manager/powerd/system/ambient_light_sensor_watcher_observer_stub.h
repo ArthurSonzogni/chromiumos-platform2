@@ -37,8 +37,8 @@ class AmbientLightSensorWatcherObserverStub
  private:
   AmbientLightSensorWatcherInterface* watcher_;  // Not owned.
   // Number of times that OnAmbientLightSensorsChanged() has been called.
-  int num_als_changes_;
-  int num_als_;
+  int num_als_changes_ = 0;
+  int num_als_ = 0;
 };
 
 }  // namespace power_manager::system

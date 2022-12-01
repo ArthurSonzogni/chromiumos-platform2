@@ -45,16 +45,7 @@ constexpr size_t AmbientLightHandler::kNumRecentReadingsToLog;
 
 AmbientLightHandler::AmbientLightHandler(
     system::AmbientLightSensorInterface* sensor, Delegate* delegate)
-    : sensor_(sensor),
-      delegate_(delegate),
-      power_source_(PowerSource::AC),
-      smoothed_lux_at_last_adjustment_(0),
-      smoothed_lux_(0),
-      smoothing_constant_(1.0),
-      hysteresis_state_(HysteresisState::IMMEDIATE),
-      hysteresis_count_(0),
-      step_index_(0),
-      sent_initial_adjustment_(false) {
+    : sensor_(sensor), delegate_(delegate) {
   DCHECK(sensor_);
   DCHECK(delegate_);
   recent_lux_readings_.reserve(kNumRecentReadingsToLog);

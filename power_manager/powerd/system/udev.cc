@@ -104,7 +104,7 @@ std::string FindHciPathWithAddress(const std::string& addr) {
 
 };  // namespace
 
-Udev::Udev() : udev_(nullptr), udev_monitor_(nullptr) {}
+Udev::Udev() {}
 
 Udev::~Udev() {
   if (udev_monitor_)

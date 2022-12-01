@@ -39,8 +39,6 @@ ThermalEventHandler::ThermalEventHandler(
     : dbus_wrapper_(dbus_wrapper),
       thermal_devices_(thermal_devices),
       clock_(std::make_unique<Clock>()),
-      last_state_(system::DeviceThermalState::kUnknown),
-      power_source_(PowerSource::AC),
       weak_ptr_factory_(this) {
   for (auto& device : thermal_devices) {
     DCHECK(device);

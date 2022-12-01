@@ -168,7 +168,7 @@ class ExternalDisplay {
     std::string name_;
 
     // File descriptor corresponding to the I2C bus passed to the c'tor.
-    int fd_;
+    int fd_ = -1;
 
     // File path for the I2C bus.
     base::FilePath i2c_path_;

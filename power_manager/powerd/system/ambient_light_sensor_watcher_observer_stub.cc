@@ -8,7 +8,7 @@ namespace power_manager::system {
 
 AmbientLightSensorWatcherObserverStub::AmbientLightSensorWatcherObserverStub(
     AmbientLightSensorWatcherInterface* watcher)
-    : watcher_(watcher), num_als_changes_(0), num_als_(0) {
+    : watcher_(watcher) {
   watcher_->AddObserver(this);
 }
 

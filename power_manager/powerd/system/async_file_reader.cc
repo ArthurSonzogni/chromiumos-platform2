@@ -28,10 +28,7 @@ constexpr base::TimeDelta kPoll = base::Milliseconds(100);
 
 }  // namespace
 
-AsyncFileReader::AsyncFileReader()
-    : read_in_progress_(false),
-      fd_(-1),
-      initial_read_size_(kInitialFileReadSize) {}
+AsyncFileReader::AsyncFileReader() : initial_read_size_(kInitialFileReadSize) {}
 
 AsyncFileReader::~AsyncFileReader() {
   Reset();

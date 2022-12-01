@@ -30,7 +30,6 @@ SuspendDelayController::SuspendDelayController(
     base::TimeDelta max_delay_timeout)
     : description_(description),
       next_delay_id_(initial_delay_id),
-      current_suspend_id_(0),
       max_delay_timeout_(max_delay_timeout) {
   DCHECK_LT(dark_resume_min_delay_, max_delay_timeout_);
 }

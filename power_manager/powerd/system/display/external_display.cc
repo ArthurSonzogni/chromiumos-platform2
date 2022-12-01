@@ -52,7 +52,7 @@ const uint8_t ExternalDisplay::kDdcGetReplyCommand = 0x02;
 const uint8_t ExternalDisplay::kDdcSetCommand = 0x03;
 const uint8_t ExternalDisplay::kDdcBrightnessIndex = 0x10;
 
-ExternalDisplay::RealDelegate::RealDelegate() : fd_(-1) {}
+ExternalDisplay::RealDelegate::RealDelegate() {}
 
 ExternalDisplay::RealDelegate::~RealDelegate() {
   if (fd_ >= 0) {

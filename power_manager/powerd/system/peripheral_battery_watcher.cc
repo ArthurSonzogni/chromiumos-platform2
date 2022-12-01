@@ -97,8 +97,7 @@ const char PeripheralBatteryWatcher::kSerialNumberFile[] = "serial_number";
 const char PeripheralBatteryWatcher::kUdevSubsystem[] = "power_supply";
 
 PeripheralBatteryWatcher::PeripheralBatteryWatcher()
-    : dbus_wrapper_(nullptr),
-      peripheral_battery_path_(kDefaultPeripheralBatteryPath),
+    : peripheral_battery_path_(kDefaultPeripheralBatteryPath),
       poll_interval_(kDefaultPollInterval),
       bluez_battery_provider_(std::make_unique<BluezBatteryProvider>()),
       weak_ptr_factory_(this) {}

@@ -61,7 +61,7 @@ class AsyncFileReader {
   void CancelUpdateStateTimeout();
 
   // Flag indicating whether there is an active AIO read.
-  bool read_in_progress_;
+  bool read_in_progress_ = false;
 
   // AIO control object.
   aiocb aio_control_;
@@ -70,7 +70,7 @@ class AsyncFileReader {
   base::FilePath path_;
 
   // File for AIO reads.
-  int fd_;
+  int fd_ = -1;
 
   // Buffer for AIO reads.
   std::unique_ptr<char[]> aio_buffer_;
