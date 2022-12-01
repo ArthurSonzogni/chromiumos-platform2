@@ -398,7 +398,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   static constexpr base::TimeDelta kRequestStationInfoPeriod =
       base::Seconds(20);
   // In addition to updating the link statistics locally, somewhat less
-  // less frequently (1 in |kReportStationInfoSample|) we also report the link
+  // frequently (1 in |kReportStationInfoSample|) we also report the link
   // statistics through structured metrics.
   static constexpr int kReportStationInfoSample = 30;
   // Time to wait after waking from suspend to report the connection status to

@@ -4268,7 +4268,7 @@ TEST_F(WiFiTimerTest, RequestStationInfo) {
   EXPECT_TRUE(link_statistics.IsEmpty());
 }
 
-TEST_F(WiFiMainTest, EmitStationInfoRequestEvery10thPeriod) {
+TEST_F(WiFiMainTest, EmitStationInfoRequestEvery30thPeriod) {
   // Setup a connected service.
   StartWiFi();
   MockWiFiServiceRefPtr service =
