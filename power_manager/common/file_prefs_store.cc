@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <memory>
 #include <set>
 #include <string>
 #include <utility>
@@ -47,7 +48,7 @@ bool FilePrefsStore::WritePrefString(const std::string& name,
 bool FilePrefsStore::Watch(
     const PrefsStoreInterface::ChangeCallback& callback) {
   callback_ = callback;
-  dir_watcher_.reset(new base::FilePathWatcher);
+  dir_watcher_ = std::make_unique<base::FilePathWatcher>();
   return dir_watcher_->Watch(
       pref_path_, base::FilePathWatcher::Type::kNonRecursive,
       base::BindRepeating(&FilePrefsStore::HandlePathChanged,
