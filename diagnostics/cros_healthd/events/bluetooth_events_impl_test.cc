@@ -5,11 +5,9 @@
 #include <memory>
 #include <utility>
 
-#include <base/bind.h>
 #include <base/check.h>
 #include <base/run_loop.h>
 #include <base/test/task_environment.h>
-#include <dbus/object_path.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <mojo/public/cpp/bindings/pending_receiver.h>
@@ -17,7 +15,6 @@
 
 #include "diagnostics/cros_healthd/events/bluetooth_events_impl.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
-#include "diagnostics/dbus_bindings/bluetooth/dbus-proxy-mocks.h"
 #include "diagnostics/mojom/public/cros_healthd_events.mojom.h"
 
 namespace diagnostics {
@@ -69,28 +66,10 @@ class BluetoothEventsImplTest : public testing::Test {
     bluetooth_events_impl_.AddObserver(std::move(observer));
   }
 
-  BluetoothEventsImpl* bluetooth_events_impl() {
-    return &bluetooth_events_impl_;
-  }
-
   MockCrosHealthdBluetoothObserver* mock_observer() { return observer_.get(); }
 
-  const dbus::ObjectPath adapter_path() {
-    return dbus::ObjectPath("/org/bluez/hci0");
-  }
-
-  const dbus::ObjectPath device_path() {
-    return dbus::ObjectPath("/org/bluez/hci0/dev_70_88_6B_92_34_70");
-  }
-
-  // Getter of mock proxy.
-  org::bluez::Adapter1ProxyMock* mock_adapter_proxy() const {
-    return static_cast<testing::StrictMock<org::bluez::Adapter1ProxyMock>*>(
-        adapter_proxy_.get());
-  }
-  org::bluez::Device1ProxyMock* mock_device_proxy() const {
-    return static_cast<testing::StrictMock<org::bluez::Device1ProxyMock>*>(
-        device_proxy_.get());
+  FakeBluetoothEventHub* fake_bluetooth_event_hub() const {
+    return mock_context_.fake_bluetooth_event_hub();
   }
 
  private:
@@ -99,11 +78,6 @@ class BluetoothEventsImplTest : public testing::Test {
   MockContext mock_context_;
   BluetoothEventsImpl bluetooth_events_impl_{&mock_context_};
   std::unique_ptr<StrictMock<MockCrosHealthdBluetoothObserver>> observer_;
-  // Mock proxy.
-  std::unique_ptr<org::bluez::Adapter1ProxyMock> adapter_proxy_ =
-      std::make_unique<testing::StrictMock<org::bluez::Adapter1ProxyMock>>();
-  std::unique_ptr<org::bluez::Device1ProxyMock> device_proxy_ =
-      std::make_unique<testing::StrictMock<org::bluez::Device1ProxyMock>>();
 };
 
 }  // namespace
@@ -115,8 +89,7 @@ TEST_F(BluetoothEventsImplTest, ReceiveAdapterAddedEvent) {
     run_loop.Quit();
   }));
 
-  EXPECT_CALL(*mock_adapter_proxy(), SetPropertyChangedCallback(_)).Times(1);
-  bluetooth_events_impl()->AdapterAdded(mock_adapter_proxy());
+  fake_bluetooth_event_hub()->SendAdapterAdded();
   run_loop.Run();
 }
 
@@ -127,7 +100,7 @@ TEST_F(BluetoothEventsImplTest, ReceiveAdapterRemovedEvent) {
     run_loop.Quit();
   }));
 
-  bluetooth_events_impl()->AdapterRemoved(adapter_path());
+  fake_bluetooth_event_hub()->SendAdapterRemoved();
   run_loop.Run();
 }
 
@@ -137,7 +110,7 @@ TEST_F(BluetoothEventsImplTest, ReceiveAdapterPropertyChangedEvent) {
   EXPECT_CALL(*mock_observer(), OnAdapterPropertyChanged())
       .WillOnce(Invoke([&]() { run_loop.Quit(); }));
 
-  bluetooth_events_impl()->AdapterPropertyChanged(mock_adapter_proxy(), "");
+  fake_bluetooth_event_hub()->SendAdapterPropertyChanged();
   run_loop.Run();
 }
 
@@ -148,8 +121,7 @@ TEST_F(BluetoothEventsImplTest, ReceiveDeviceAddedEvent) {
     run_loop.Quit();
   }));
 
-  EXPECT_CALL(*mock_device_proxy(), SetPropertyChangedCallback(_)).Times(1);
-  bluetooth_events_impl()->DeviceAdded(mock_device_proxy());
+  fake_bluetooth_event_hub()->SendDeviceAdded();
   run_loop.Run();
 }
 
@@ -160,7 +132,7 @@ TEST_F(BluetoothEventsImplTest, ReceiveDeviceRemovedEvent) {
     run_loop.Quit();
   }));
 
-  bluetooth_events_impl()->DeviceRemoved(device_path());
+  fake_bluetooth_event_hub()->SendDeviceRemoved();
   run_loop.Run();
 }
 
@@ -170,7 +142,7 @@ TEST_F(BluetoothEventsImplTest, ReceiveDevicePropertyChangedEvent) {
   EXPECT_CALL(*mock_observer(), OnDevicePropertyChanged())
       .WillOnce(Invoke([&]() { run_loop.Quit(); }));
 
-  bluetooth_events_impl()->DevicePropertyChanged(mock_device_proxy(), "");
+  fake_bluetooth_event_hub()->SendDevicePropertyChanged();
   run_loop.Run();
 }
 

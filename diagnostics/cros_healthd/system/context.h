@@ -27,7 +27,6 @@
 #include "diagnostics/cros_healthd/system/pci_util.h"
 #include "diagnostics/cros_healthd/system/system_config_interface.h"
 #include "diagnostics/cros_healthd/system/system_utilities.h"
-#include "diagnostics/dbus_bindings/bluetooth/dbus-proxies.h"
 
 namespace brillo {
 class Udev;
@@ -48,9 +47,12 @@ class ControlProxyInterface;
 namespace freedesktop {
 class fwupdProxyInterface;
 }  // namespace freedesktop
+
+class bluezProxy;
 }  // namespace org
 
 namespace diagnostics {
+class BluetoothEventHub;
 
 // A context class for holding the helper objects used in cros_healthd, which
 // simplifies the passing of the helper objects to other objects. For instance,
@@ -123,6 +125,9 @@ class Context {
   virtual ash::cros_healthd::mojom::Executor* executor();
   // Use the object returned by system_utils() to access system utilities.
   SystemUtilities* system_utils() const;
+  // Use the object returned by bluetooth_event_hub() to subscribe Bluetooth
+  // events.
+  BluetoothEventHub* bluetooth_event_hub() const;
   // Use the object returned by tick_clock() to track the passage of time.
   base::TickClock* tick_clock() const;
   // Return current time.
@@ -169,6 +174,7 @@ class Context {
   std::unique_ptr<SystemConfigInterface> system_config_;
   mojo::Remote<ash::cros_healthd::mojom::Executor> executor_;
   std::unique_ptr<SystemUtilities> system_utils_;
+  std::unique_ptr<BluetoothEventHub> bluetooth_event_hub_;
   std::unique_ptr<base::TickClock> tick_clock_;
   std::unique_ptr<org::chromium::TpmManagerProxyInterface> tpm_manager_proxy_;
   std::unique_ptr<brillo::Udev> udev_;

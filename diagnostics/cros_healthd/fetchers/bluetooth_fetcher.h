@@ -11,6 +11,7 @@
 #include <vector>
 
 #include "diagnostics/cros_healthd/fetchers/base_fetcher.h"
+#include "diagnostics/dbus_bindings/bluetooth/dbus-proxies.h"
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
 
 namespace diagnostics {

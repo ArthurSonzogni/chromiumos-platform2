@@ -20,6 +20,7 @@
 #include "diagnostics/cros_healthd/network/fake_network_health_adapter.h"
 #include "diagnostics/cros_healthd/network_diagnostics/mock_network_diagnostics_adapter.h"
 #include "diagnostics/cros_healthd/system/context.h"
+#include "diagnostics/cros_healthd/system/fake_bluetooth_event_hub.h"
 #include "diagnostics/cros_healthd/system/fake_libdrm_util.h"
 #include "diagnostics/cros_healthd/system/fake_pci_util.h"
 #include "diagnostics/cros_healthd/system/fake_system_config.h"
@@ -72,6 +73,7 @@ class MockContext final : public Context {
   FakePowerdAdapter* fake_powerd_adapter() const;
   FakeSystemConfig* fake_system_config() const;
   FakeSystemUtilities* fake_system_utils() const;
+  FakeBluetoothEventHub* fake_bluetooth_event_hub() const;
   FakeLibdrmUtil* fake_libdrm_util();
   MockExecutor* mock_executor();
   base::SimpleTestTickClock* mock_tick_clock() const;

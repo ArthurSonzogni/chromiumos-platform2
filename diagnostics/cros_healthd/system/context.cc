@@ -25,6 +25,7 @@
 #include "diagnostics/common/system/powerd_adapter_impl.h"
 #include "diagnostics/cros_healthd/network/network_health_adapter_impl.h"
 #include "diagnostics/cros_healthd/network_diagnostics/network_diagnostics_adapter_impl.h"
+#include "diagnostics/cros_healthd/system/bluetooth_event_hub.h"
 #include "diagnostics/cros_healthd/system/libdrm_util_impl.h"
 #include "diagnostics/cros_healthd/system/mojo_service_impl.h"
 #include "diagnostics/cros_healthd/system/pci_util_impl.h"
@@ -123,6 +124,8 @@ std::unique_ptr<Context> Context::Create(
   context->system_config_ = std::make_unique<SystemConfig>(
       context->cros_config_.get(), context->debugd_proxy_.get());
   context->system_utils_ = std::make_unique<SystemUtilitiesImpl>();
+  context->bluetooth_event_hub_ =
+      std::make_unique<BluetoothEventHub>(context->bluetooth_proxy_.get());
   context->tick_clock_ = std::make_unique<base::DefaultTickClock>();
   context->udev_ = brillo::Udev::Create();
 
@@ -200,6 +203,10 @@ mojom::Executor* Context::executor() {
 
 SystemUtilities* Context::system_utils() const {
   return system_utils_.get();
+}
+
+BluetoothEventHub* Context::bluetooth_event_hub() const {
+  return bluetooth_event_hub_.get();
 }
 
 base::TickClock* Context::tick_clock() const {

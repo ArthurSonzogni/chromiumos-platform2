@@ -6,13 +6,16 @@
 #define DIAGNOSTICS_CROS_HEALTHD_EVENTS_BLUETOOTH_EVENTS_IMPL_H_
 
 #include <string>
+#include <vector>
 
+#include <base/callback_list.h>
 #include <dbus/object_path.h>
 #include <mojo/public/cpp/bindings/pending_remote.h>
 #include <mojo/public/cpp/bindings/remote_set.h>
 
 #include "diagnostics/cros_healthd/events/bluetooth_events.h"
 #include "diagnostics/cros_healthd/system/context.h"
+#include "diagnostics/dbus_bindings/bluetooth/dbus-proxies.h"
 #include "diagnostics/mojom/public/cros_healthd_events.mojom.h"
 
 namespace diagnostics {
@@ -31,7 +34,6 @@ class BluetoothEventsImpl final : public BluetoothEvents {
                        observer) override;
 
  private:
-  void SetProxyCallback();
   void AdapterAdded(org::bluez::Adapter1ProxyInterface* adapter);
   void AdapterRemoved(const dbus::ObjectPath& adapter_path);
   void AdapterPropertyChanged(org::bluez::Adapter1ProxyInterface* adapter,
@@ -41,13 +43,6 @@ class BluetoothEventsImpl final : public BluetoothEvents {
   void DevicePropertyChanged(org::bluez::Device1ProxyInterface* device,
                              const std::string& property_name);
 
-  FRIEND_TEST(BluetoothEventsImplTest, ReceiveAdapterAddedEvent);
-  FRIEND_TEST(BluetoothEventsImplTest, ReceiveAdapterRemovedEvent);
-  FRIEND_TEST(BluetoothEventsImplTest, ReceiveAdapterPropertyChangedEvent);
-  FRIEND_TEST(BluetoothEventsImplTest, ReceiveDeviceAddedEvent);
-  FRIEND_TEST(BluetoothEventsImplTest, ReceiveDeviceRemovedEvent);
-  FRIEND_TEST(BluetoothEventsImplTest, ReceiveDevicePropertyChangedEvent);
-
   // Each observer in |observers_| will be notified of any Bluetooth event in
   // the ash::cros_healthd::mojom::CrosHealthdBluetoothObserver interface.
   // The InterfacePtrSet manages the lifetime of the endpoints, which are
@@ -55,10 +50,10 @@ class BluetoothEventsImpl final : public BluetoothEvents {
   // destroyed.
   mojo::RemoteSet<ash::cros_healthd::mojom::CrosHealthdBluetoothObserver>
       observers_;
-
-  // Unowned pointer. Should outlive this instance.
-  Context* const context_ = nullptr;
-  base::WeakPtrFactory<BluetoothEventsImpl> weak_ptr_factory_;
+  // The callback will be unregistered when the subscription is destructured.
+  std::vector<base::CallbackListSubscription> event_subscriptions_;
+  // Must be the last member of the class.
+  base::WeakPtrFactory<BluetoothEventsImpl> weak_ptr_factory_{this};
 };
 
 }  // namespace diagnostics

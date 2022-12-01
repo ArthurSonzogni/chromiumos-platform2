@@ -50,6 +50,7 @@ source_set("libcros_healthd_system") {
     "//diagnostics/mojom/external:cros_healthd_internal",
   ]
   sources = [
+    "bluetooth_event_hub.cc",
     "context.cc",
     "libdrm_util_impl.cc",
     "mojo_service_impl.cc",
@@ -94,6 +95,7 @@ if (use.test || use.fuzzer) {
       "//diagnostics/cros_healthd/network_diagnostics:libnetwork_diagnostics_adapter_test_utils",
     ]
     sources = [
+      "fake_bluetooth_event_hub.cc",
       "fake_libdrm_util.cc",
       "fake_mojo_service.cc",
       "fake_pci_util.cc",
@@ -116,7 +118,10 @@ if (use.test) {
   }
 
   source_set("system_config_test") {
-    sources = [ "system_config_test.cc" ]
+    sources = [
+      "bluetooth_event_hub_test.cc",
+      "system_config_test.cc",
+    ]
     configs += [
       ":system_config_test_pkg_deps",
       "//common-mk:test",
