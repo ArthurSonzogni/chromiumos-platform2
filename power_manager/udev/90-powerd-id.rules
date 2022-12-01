@@ -1,3 +1,7 @@
+# Copyright 2022 The ChromiumOS Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
 # Identify internal input devices.
 SUBSYSTEM=="input", ENV{ID_INPUT_KEYBOARD}=="1",    DRIVERS=="atkbd",        ENV{POWERD_ROLE}="internal_keyboard"
 SUBSYSTEM=="input", ENV{ID_INPUT_KEYBOARD}=="1",    DRIVERS=="cros-ec-keyb", ENV{POWERD_ROLE}="internal_keyboard"
