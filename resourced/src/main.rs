@@ -15,12 +15,11 @@ mod cgroup_x86_64;
 #[cfg(target_arch = "x86_64")]
 mod cpu_scaling;
 
-use std::path::Path;
-
 use anyhow::{bail, Result};
 use libchromeos::panic_handler::install_memfd_handler;
-use libchromeos::sys::info;
+use libchromeos::sys::{error, info};
 use libchromeos::syslog;
+use tokio::runtime::Builder;
 
 const IDENT: &str = "resourced";
 
@@ -35,17 +34,10 @@ fn main() -> Result<()> {
     #[cfg(target_arch = "x86_64")]
     cgroup_x86_64::init()?;
 
-    let root = Path::new("/");
+    let rt = Builder::new_current_thread().enable_all().build()?;
+    if let Err(err) = rt.block_on(dbus::service_main()) {
+        error!("The D-Bus service main returns error: {}", err);
+    }
 
-    let power_preferences_manager = power::DirectoryPowerPreferencesManager {
-        root: root.to_path_buf(),
-        config_provider: config::DirectoryConfigProvider {
-            root: root.to_path_buf(),
-        },
-        power_source_provider: power::DirectoryPowerSourceProvider {
-            root: root.to_path_buf(),
-        },
-    };
-
-    dbus::service_main(power_preferences_manager)
+    Ok(())
 }

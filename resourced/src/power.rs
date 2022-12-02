@@ -3,7 +3,7 @@
 // found in the LICENSE file.
 
 use std::fs::read_to_string;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
 use anyhow::{Context, Result};
@@ -54,7 +54,7 @@ impl FromStr for PowerSupplyStatus {
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct DirectoryPowerSourceProvider {
     pub root: PathBuf,
 }
@@ -170,7 +170,7 @@ fn write_to_path_patterns(pattern: &str, new_value: &str) -> Result<()> {
     Ok(())
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 /// Applies [power preferences](config::PowerPreferences) to the system by writing to
 /// the system's sysfs nodes.
 ///
@@ -354,6 +354,21 @@ impl<C: config::ConfigProvider, P: PowerSourceProvider> PowerPreferencesManager
         }
 
         Ok(())
+    }
+}
+
+pub fn new_directory_power_preferences_manager(
+    root: &Path,
+) -> DirectoryPowerPreferencesManager<config::DirectoryConfigProvider, DirectoryPowerSourceProvider>
+{
+    DirectoryPowerPreferencesManager {
+        root: root.to_path_buf(),
+        config_provider: config::DirectoryConfigProvider {
+            root: root.to_path_buf(),
+        },
+        power_source_provider: DirectoryPowerSourceProvider {
+            root: root.to_path_buf(),
+        },
     }
 }
 

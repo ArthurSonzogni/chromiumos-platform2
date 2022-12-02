@@ -171,7 +171,7 @@ fn parse_governor(path: &Path) -> Result<Option<Governor>> {
  *     * arcvm-gaming-power-preferences/governor/..
  *     * default-power-preferences/governor/..
  */
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct DirectoryConfigProvider {
     pub root: PathBuf,
 }

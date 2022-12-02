@@ -4,19 +4,21 @@
 
 use std::collections::HashMap;
 use std::convert::TryFrom;
-use std::fmt;
-use std::os::raw::c_uint;
-use std::os::unix::io::{AsRawFd, RawFd};
-use std::rc::Rc;
+use std::path::Path;
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::Arc;
 use std::time::Duration;
 
 use anyhow::Result;
-use dbus::ffidisp::{Connection, WatchEvent};
-use dbus_tree::{MTFn, MethodErr, MethodResult};
-use libchromeos::deprecated::{PollContext, PollToken, TimerFd, WatchingEvents};
+use dbus::channel::MatchingReceiver;
+use dbus::channel::Sender;
+use dbus::message::{MatchRule, Message};
+use dbus_crossroads::{Crossroads, IfaceBuilder, IfaceToken, MethodErr};
+use dbus_tokio::connection;
 use libchromeos::sys::{error, warn};
 
 use crate::common;
+use crate::config;
 use crate::memory;
 use crate::power;
 
@@ -24,439 +26,337 @@ const SERVICE_NAME: &str = "org.chromium.ResourceManager";
 const PATH_NAME: &str = "/org/chromium/ResourceManager";
 const INTERFACE_NAME: &str = SERVICE_NAME;
 
+type PowerPreferencesManager = power::DirectoryPowerPreferencesManager<
+    config::DirectoryConfigProvider,
+    power::DirectoryPowerSourceProvider,
+>;
+
 // Context data for the D-Bus service.
 struct DbusContext {
-    reset_game_mode_timer: Rc<TimerFd>,
-    reset_fullscreen_video_timer: Rc<TimerFd>,
+    power_preferences_manager: PowerPreferencesManager,
+
+    // Timer ids for skipping out-of-dated timer events.
+    reset_game_mode_timer_id: Arc<AtomicUsize>,
+    reset_fullscreen_video_timer_id: Arc<AtomicUsize>,
 }
 
-// The basic implementation of the Debug trait.
-// The associated data requires a debug bound, due to https://github.com/rust-lang/rust/issues/31518.
-impl fmt::Debug for DbusContext {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_struct("DbusContext").finish()
-    }
-}
-
-struct DbusTreeContext {
-    // We use `dyn` because using a templated type forces the generic parameter
-    // to be declared on all the dbus methods.
-    power_preferences_manager: Rc<dyn power::PowerPreferencesManager>,
-}
-
-impl fmt::Debug for DbusTreeContext {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_struct("DbusTreeContext").finish()
-    }
-}
-
-// Defines the custom data types for the D-Bus service.
-#[derive(Default)]
-struct CustomData;
-
-impl dbus_tree::DataType for CustomData {
-    type Tree = DbusTreeContext;
-    type ObjectPath = DbusContext;
-    type Interface = ();
-    type Property = ();
-    type Method = ();
-    type Signal = ();
-}
-
-type Factory = dbus_tree::Factory<MTFn<CustomData>, CustomData>;
-type MethodInfo<'a> = dbus_tree::MethodInfo<'a, MTFn<CustomData>, CustomData>;
-type Signal = dbus_tree::Signal<CustomData>;
-
-fn get_available_memory_kb(m: &MethodInfo) -> MethodResult {
-    let game_mode = match common::get_game_mode() {
-        Ok(available) => Ok(available),
-        Err(_) => Err(MethodErr::failed("Couldn't get game mode state")),
-    }?;
-    match memory::get_background_available_memory_kb(game_mode) {
-        // One message will be returned - the method return (and should always be there).
-        Ok(available) => Ok(vec![m.msg.method_return().append1(available)]),
-        Err(_) => Err(MethodErr::failed("Couldn't get available memory")),
-    }
-}
-
-fn get_foreground_available_memory_kb(m: &MethodInfo) -> MethodResult {
-    match memory::get_foreground_available_memory_kb() {
-        Ok(available) => Ok(vec![m.msg.method_return().append1(available)]),
-        Err(_) => Err(MethodErr::failed(
-            "Couldn't get foreground available memory",
-        )),
-    }
-}
-
-#[allow(clippy::unnecessary_wraps)]
-fn get_memory_margins_kb(m: &MethodInfo) -> MethodResult {
-    let margins = memory::get_memory_margins_kb();
-    Ok(vec![m.msg.method_return().append2(margins.0, margins.1)])
-}
-
-fn get_component_memory_margins_kb(m: &MethodInfo) -> MethodResult {
-    let margins = memory::get_component_margins_kb();
-    let mut result = HashMap::new();
-
-    result.insert("ChromeCritical", margins.chrome_critical);
-    result.insert("ChromeModerate", margins.chrome_moderate);
-    result.insert("ArcvmForeground", margins.arcvm_foreground);
-    result.insert("ArcvmPerceptible", margins.arcvm_perceptible);
-    result.insert("ArcvmCached", margins.arcvm_cached);
-
-    Ok(vec![m.msg.method_return().append1(result)])
-}
-
-fn set_memory_margins_bps(m: &MethodInfo) -> MethodResult {
-    let (bps_critical_raw, bps_moderate_raw): (u32, u32) = m.msg.read2()?;
-    match memory::set_memory_margins_bps(bps_critical_raw, bps_moderate_raw) {
-        Ok(()) => get_memory_margins_kb(m),
-        Err(_) => Err(MethodErr::failed("Failed to set memory thresholds")),
-    }
-}
-
-fn get_game_mode(m: &MethodInfo) -> MethodResult {
-    match common::get_game_mode() {
-        Ok(game_mode) => Ok(vec![m.msg.method_return().append1(game_mode as u8)]),
-        Err(_) => Err(MethodErr::failed("Failed to get game mode")),
-    }
-}
-
-fn set_game_mode(m: &MethodInfo) -> MethodResult {
-    let mode_raw = m.msg.read1::<u8>()?;
-    let mode = common::GameMode::try_from(mode_raw)
-        .map_err(|_| MethodErr::failed("Unsupported game mode value"))?;
-
-    let context = m.tree.get_data();
-    common::set_game_mode(&*context.power_preferences_manager, mode).map_err(|e| {
-        error!("{:#}", e);
-
-        MethodErr::failed("Failed to set game mode")
-    })?;
-
-    let timer = &m.path.get_data().reset_game_mode_timer;
-    timer
-        .clear()
-        .map_err(|_| MethodErr::failed("Failed to clear the game mode restore timer"))?;
-    Ok(vec![m.msg.method_return()])
-}
-
-fn set_game_mode_with_timeout(m: &MethodInfo) -> MethodResult {
-    let old_game_mode =
-        common::get_game_mode().map_err(|_| MethodErr::failed("Failed to get game mode"))?;
-
-    let (mode_raw, timeout_raw): (u8, u32) = m.msg.read2()?;
-    let mode = common::GameMode::try_from(mode_raw)
-        .map_err(|_| MethodErr::failed("Unsupported game mode value"))?;
-    let timeout = Duration::from_secs(timeout_raw.into());
-
-    let context = m.tree.get_data();
-    common::set_game_mode(&*context.power_preferences_manager, mode).map_err(|e| {
-        error!("{:#}", e);
-
-        MethodErr::failed("Failed to set game mode")
-    })?;
-
-    let timer = &m.path.get_data().reset_game_mode_timer;
-    timer
-        .reset(timeout, None)
-        .map_err(|_| MethodErr::failed("Failed to set the game mode restore timer"))?;
-
-    Ok(vec![m.msg.method_return().append1(old_game_mode as u8)])
-}
-
-fn get_rtc_audio_active(m: &MethodInfo) -> MethodResult {
-    match common::get_rtc_audio_active() {
-        Ok(active) => Ok(vec![m.msg.method_return().append1(active as u8)]),
-        Err(_) => Err(MethodErr::failed("Failed to get RTC audio activity")),
-    }
-}
-
-fn set_rtc_audio_active(m: &MethodInfo) -> MethodResult {
-    let active_raw = m.msg.read1::<u8>()?;
-    let active = common::RTCAudioActive::try_from(active_raw)
-        .map_err(|_| MethodErr::failed("Unsupported RTC audio active value"))?;
-
-    let context = m.tree.get_data();
-    match common::set_rtc_audio_active(&*context.power_preferences_manager, active) {
-        Ok(()) => Ok(vec![m.msg.method_return()]),
-        Err(e) => {
-            error!("{:#}", e);
-            Err(MethodErr::failed("Failed to set RTC audio activity"))
-        }
-    }
-}
-
-fn get_fullscreen_video(m: &MethodInfo) -> MethodResult {
-    match common::get_fullscreen_video() {
-        Ok(mode) => Ok(vec![m.msg.method_return().append1(mode as u8)]),
-        Err(_) => Err(MethodErr::failed("Failed to get fullscreen video activity")),
-    }
-}
-
-fn power_supply_change(m: &MethodInfo) -> MethodResult {
-    let context = m.tree.get_data();
-    match common::update_power_preferences(&*context.power_preferences_manager) {
-        Ok(()) => Ok(vec![m.msg.method_return()]),
-        Err(e) => {
-            error!("{:#}", e);
-            Err(MethodErr::failed("Failed to update power preferences"))
-        }
-    }
-}
-
-fn set_fullscreen_video_with_timeout(m: &MethodInfo) -> MethodResult {
-    let (mode_raw, timeout_raw): (u8, u32) = m.msg.read2()?;
-    let mode = common::FullscreenVideo::try_from(mode_raw)
-        .map_err(|_| MethodErr::failed("Unsupported fullscreen video value"))?;
-    let timeout = Duration::from_secs(timeout_raw.into());
-
-    let context = m.tree.get_data();
-    common::set_fullscreen_video(&*context.power_preferences_manager, mode).map_err(|e| {
-        error!("{:#}", e);
-
-        MethodErr::failed("Failed to set full screen video mode")
-    })?;
-
-    let timer = &m.path.get_data().reset_fullscreen_video_timer;
-    timer
-        .reset(timeout, None)
-        .map_err(|_| MethodErr::failed("Failed to set the fullscreen video restore timer"))?;
-
-    Ok(vec![m.msg.method_return()])
-}
-
-fn create_pressure_chrome_signal(f: &Factory) -> Signal {
-    f.signal("MemoryPressureChrome", ())
-        .sarg::<u8, _>("pressure_level")
-        .sarg::<u64, _>("reclaim_target_kb")
-}
-
-fn create_pressure_arcvm_signal(f: &Factory) -> Signal {
-    f.signal("MemoryPressureArcvm", ())
-        .sarg::<u8, _>("pressure_level")
-        .sarg::<u64, _>("reclaim_target_kb")
-}
-
-fn send_pressure_signal(conn: &Connection, signal: &Signal, level: u8, reclaim_target_kb: u64) {
-    let msg = signal
-        .msg(&PATH_NAME.into(), &INTERFACE_NAME.into())
-        .append2(level, reclaim_target_kb);
+fn send_pressure_signal(
+    conn: &dbus::nonblock::SyncConnection,
+    signal_name: &str,
+    level: u8,
+    reclaim_target_kb: u64,
+) {
+    let msg = Message::signal(
+        &PATH_NAME.into(),
+        &INTERFACE_NAME.into(),
+        &signal_name.into(),
+    )
+    .append2(level, reclaim_target_kb);
     if conn.send(msg).is_err() {
-        error!("Send pressure signal failed.");
+        error!("Send Chrome pressure signal failed.");
     }
 }
 
-pub fn service_main<P: 'static + power::PowerPreferencesManager>(
-    power_preferences_manager: P,
-) -> Result<()> {
-    // Starting up a connection to the system bus and request a name.
-    let conn = Connection::new_system()?;
-    conn.register_name(SERVICE_NAME, 0)?;
-
-    let reset_game_mode_timer = Rc::new(TimerFd::new()?);
-    let reset_fullscreen_video_timer = Rc::new(TimerFd::new()?);
-
-    let f = dbus_tree::Factory::new_fn::<CustomData>();
-
-    // We need the Rc since we use the power_preferences_manager in the tree context and in the
-    // event loop below.
-    let power_preferences_manager: Rc<dyn power::PowerPreferencesManager> =
-        Rc::new(power_preferences_manager);
-
-    let tree_context = DbusTreeContext {
-        power_preferences_manager: Rc::clone(&power_preferences_manager),
-    };
-
-    // We create a tree with one object path inside and make that path introspectable.
-    let tree = f.tree(tree_context).add(
-        f.object_path(
-            PATH_NAME,
-            DbusContext {
-                reset_game_mode_timer: reset_game_mode_timer.clone(),
-                reset_fullscreen_video_timer: reset_fullscreen_video_timer.clone(),
-            },
-        )
-        .introspectable()
-        .add(
-            f.interface(INTERFACE_NAME, ())
-                .add_m(
-                    f.method("GetAvailableMemoryKB", (), get_available_memory_kb)
-                        // Our method has one output argument.
-                        .outarg::<u64, _>("available"),
-                )
-                .add_m(
-                    f.method(
-                        "GetForegroundAvailableMemoryKB",
-                        (),
-                        get_foreground_available_memory_kb,
-                    )
-                    .outarg::<u64, _>("available"),
-                )
-                .add_m(
-                    f.method("GetMemoryMarginsKB", (), get_memory_margins_kb)
-                        .outarg::<u64, _>("reply"),
-                )
-                .add_m(
-                    f.method(
-                        "GetComponentMemoryMarginsKB",
-                        (),
-                        get_component_memory_margins_kb,
-                    )
-                    .outarg::<dbus::arg::Dict<&str, u64, ()>, _>("reply"),
-                )
-                .add_m(
-                    f.method("SetMemoryMarginsBps", (), set_memory_margins_bps)
-                        .inarg::<u32, _>("critical_bps")
-                        .inarg::<u32, _>("moderate_bps")
-                        .outarg::<Vec<u32>, _>("reply"),
-                )
-                .add_m(
-                    f.method("GetGameMode", (), get_game_mode)
-                        .outarg::<u8, _>("game_mode"),
-                )
-                .add_m(
-                    f.method("SetGameMode", (), set_game_mode)
-                        .inarg::<u8, _>("game_mode"),
-                )
-                .add_m(
-                    f.method("SetGameModeWithTimeout", (), set_game_mode_with_timeout)
-                        .inarg::<u8, _>("game_mode")
-                        .inarg::<u32, _>("timeout"),
-                )
-                .add_s(create_pressure_chrome_signal(&f))
-                .add_s(create_pressure_arcvm_signal(&f))
-                .add_m(
-                    f.method("GetRTCAudioActive", (), get_rtc_audio_active)
-                        .outarg::<u8, _>("mode"),
-                )
-                .add_m(
-                    f.method("SetRTCAudioActive", (), set_rtc_audio_active)
-                        .inarg::<u8, _>("mode"),
-                )
-                .add_m(
-                    f.method("GetFullscreenVideo", (), get_fullscreen_video)
-                        .outarg::<u8, _>("mode"),
-                )
-                .add_m(f.method("PowerSupplyChange", (), power_supply_change))
-                .add_m(
-                    f.method(
-                        "SetFullscreenVideoWithTimeout",
-                        (),
-                        set_fullscreen_video_with_timeout,
-                    )
-                    .inarg::<u8, _>("mode")
-                    .inarg::<u32, _>("timeout"),
-                ),
-        ),
-    );
-
-    tree.set_registered(&conn, true)?;
-    conn.add_handler(tree);
-
-    let pressure_chrome_signal = create_pressure_chrome_signal(&f);
-    let pressure_arcvm_signal = create_pressure_arcvm_signal(&f);
-    let check_timer = TimerFd::new()?;
-    let check_interval = Duration::from_millis(1000);
-    check_timer.reset(check_interval, Some(check_interval))?;
-
-    #[derive(PollToken)]
-    enum Token {
-        CheckTimer,
-        ResetGameModeTimer,
-        ResetFullscreenVideoTimer,
-        DBusMsg(RawFd),
-    }
-
-    let poll_ctx = PollContext::<Token>::new()?;
-
-    poll_ctx.add(&check_timer.as_raw_fd(), Token::CheckTimer)?;
-    poll_ctx.add(
-        &reset_game_mode_timer.as_raw_fd(),
-        Token::ResetGameModeTimer,
-    )?;
-    poll_ctx.add(
-        &reset_fullscreen_video_timer.as_raw_fd(),
-        Token::ResetFullscreenVideoTimer,
-    )?;
-    for watch in conn.watch_fds() {
-        let mut events = WatchingEvents::empty();
-        if watch.readable() {
-            events = events.set_read()
-        }
-        if watch.writable() {
-            events = events.set_write()
-        }
-        poll_ctx.add_fd_with_events(&watch.fd(), events, Token::DBusMsg(watch.fd()))?;
-    }
-
-    loop {
-        // Wait for events.
-        for event in poll_ctx.wait()?.iter() {
-            match event.token() {
-                Token::CheckTimer => {
-                    // wait() reads the fd. It's necessary to read periodic timerfd after each
-                    // timerout.
-                    check_timer.wait()?;
-                    match memory::get_memory_pressure_status() {
-                        Ok(pressure_status) => {
-                            send_pressure_signal(
-                                &conn,
-                                &pressure_chrome_signal,
-                                pressure_status.chrome_level as u8,
-                                pressure_status.chrome_reclaim_target_kb,
-                            );
-                            if pressure_status.arcvm_level != memory::PressureLevelArcvm::None {
-                                send_pressure_signal(
-                                    &conn,
-                                    &pressure_arcvm_signal,
-                                    pressure_status.arcvm_level as u8,
-                                    pressure_status.arcvm_reclaim_target_kb,
-                                );
-                            }
-                        }
-                        Err(e) => error!("get_memory_pressure_status() failed: {}", e),
-                    }
+fn register_interface(cr: &mut Crossroads) -> IfaceToken<DbusContext> {
+    cr.register(INTERFACE_NAME, |b: &mut IfaceBuilder<DbusContext>| {
+        b.method(
+            "GetAvailableMemoryKB",
+            (),
+            ("available",),
+            move |_, _, ()| {
+                let game_mode = match common::get_game_mode() {
+                    Ok(available) => Ok(available),
+                    Err(_) => Err(MethodErr::failed("Couldn't get game mode state")),
+                }?;
+                match memory::get_background_available_memory_kb(game_mode) {
+                    Ok(available) => Ok((available,)),
+                    Err(_) => Err(MethodErr::failed("Couldn't get available memory")),
                 }
-                Token::ResetGameModeTimer => {
-                    warn!("Game mode heartbeat timed out.");
+            },
+        );
+        b.method(
+            "GetForegroundAvailableMemoryKB",
+            (),
+            ("available",),
+            move |_, _, ()| match memory::get_foreground_available_memory_kb() {
+                Ok(available) => Ok((available,)),
+                Err(_) => Err(MethodErr::failed(
+                    "Couldn't get foreground available memory",
+                )),
+            },
+        );
+        b.method(
+            "GetMemoryMarginsKB",
+            (),
+            ("critical", "moderate"),
+            move |_, _, ()| {
+                let margins = memory::get_memory_margins_kb();
+                Ok((margins.0, margins.1))
+            },
+        );
+        b.method(
+            "GetComponentMemoryMarginsKB",
+            (),
+            ("margins",),
+            move |_, _, ()| {
+                let margins = memory::get_component_margins_kb();
+                let result = HashMap::from([
+                    ("ChromeCritical", margins.chrome_critical),
+                    ("ChromeModerate", margins.chrome_moderate),
+                    ("ArcvmForeground", margins.arcvm_foreground),
+                    ("ArcvmPerceptible", margins.arcvm_perceptible),
+                    ("ArcvmCached", margins.arcvm_cached),
+                ]);
+                Ok((result,))
+            },
+        );
+        b.method(
+            "SetMemoryMarginsBps",
+            ("critical_bps", "moderate_bps"),
+            ("critical", "moderate"),
+            move |_, _, (critical_bps, moderate_bps): (u32, u32)| {
+                match memory::set_memory_margins_bps(critical_bps, moderate_bps) {
+                    Ok(()) => {
+                        let margins = memory::get_memory_margins_kb();
+                        Ok((margins.0, margins.1))
+                    }
+                    Err(_) => Err(MethodErr::failed("Failed to set memory thresholds")),
+                }
+            },
+        );
+        b.method(
+            "GetGameMode",
+            (),
+            ("game_mode",),
+            move |_, _, ()| match common::get_game_mode() {
+                Ok(game_mode) => Ok((game_mode as u8,)),
+                Err(_) => Err(MethodErr::failed("Failed to get game mode")),
+            },
+        );
+        b.method(
+            "SetGameMode",
+            ("game_mode",),
+            (),
+            move |_, context, (mode_raw,): (u8,)| {
+                let mode = common::GameMode::try_from(mode_raw)
+                    .map_err(|_| MethodErr::failed("Unsupported game mode value"))?;
 
-                    // wait() reads the fd. It's necessary to read timerfd after timeout.
-                    reset_game_mode_timer.wait()?;
+                common::set_game_mode(&context.power_preferences_manager, mode).map_err(|e| {
+                    error!("{:#}", e);
 
-                    if common::set_game_mode(&*power_preferences_manager, common::GameMode::Off)
-                        .is_err()
+                    MethodErr::failed("Failed to set game mode")
+                })?;
+                context
+                    .reset_game_mode_timer_id
+                    .fetch_add(1, Ordering::Relaxed);
+                Ok(())
+            },
+        );
+        b.method(
+            "SetGameModeWithTimeout",
+            ("game_mode", "timeout_sec"),
+            ("origin_game_mode",),
+            move |_, context, (mode_raw, timeout_raw): (u8, u32)| {
+                let old_game_mode = common::get_game_mode()
+                    .map_err(|_| MethodErr::failed("Failed to get game mode"))?;
+                let mode = common::GameMode::try_from(mode_raw)
+                    .map_err(|_| MethodErr::failed("Unsupported game mode value"))?;
+                let timeout = Duration::from_secs(timeout_raw.into());
+                common::set_game_mode(&context.power_preferences_manager, mode).map_err(|e| {
+                    error!("set_game_mode failed: {:#}", e);
+
+                    MethodErr::failed("Failed to set game mode")
+                })?;
+
+                // Increase timer id to cancel previous timer events.
+                context
+                    .reset_game_mode_timer_id
+                    .fetch_add(1, Ordering::Relaxed);
+                let timer_id = context.reset_game_mode_timer_id.load(Ordering::Relaxed);
+                let power_preferences_manager = context.power_preferences_manager.clone();
+                let reset_game_mode_timer_id = context.reset_game_mode_timer_id.clone();
+
+                // Reset game mode after timeout.
+                tokio::spawn(async move {
+                    tokio::time::sleep(timeout).await;
+                    // If the timer id is changed, this event is canceled.
+                    if timer_id == reset_game_mode_timer_id.load(Ordering::Relaxed)
+                        && common::set_game_mode(&power_preferences_manager, common::GameMode::Off)
+                            .is_err()
                     {
                         error!("Reset game mode failed.");
                     }
+                });
+
+                Ok((old_game_mode as u8,))
+            },
+        );
+        b.method("GetRTCAudioActive", (), ("mode",), move |_, _, ()| {
+            match common::get_rtc_audio_active() {
+                Ok(active) => Ok((active as u8,)),
+                Err(_) => Err(MethodErr::failed("Failed to get RTC audio activity")),
+            }
+        });
+        b.method(
+            "SetRTCAudioActive",
+            ("mode",),
+            (),
+            move |_, context, (active_raw,): (u8,)| {
+                let active = common::RTCAudioActive::try_from(active_raw)
+                    .map_err(|_| MethodErr::failed("Unsupported RTC audio active value"))?;
+                match common::set_rtc_audio_active(&context.power_preferences_manager, active) {
+                    Ok(()) => Ok(()),
+                    Err(e) => {
+                        error!("set_rtc_audeio_active failed: {:#}", e);
+                        Err(MethodErr::failed("Failed to set RTC audio activity"))
+                    }
                 }
-                Token::ResetFullscreenVideoTimer => {
-                    warn!("Fullscreen video heartbeat timed out.");
+            },
+        );
+        b.method("GetFullscreenVideo", (), ("mode",), move |_, _, ()| {
+            match common::get_fullscreen_video() {
+                Ok(mode) => Ok((mode as u8,)),
+                Err(_) => Err(MethodErr::failed("Failed to get fullscreen video activity")),
+            }
+        });
+        b.method(
+            "SetFullscreenVideoWithTimeout",
+            ("mode", "timeout_sec"),
+            (),
+            |_, context, (mode_raw, timeout_raw): (u8, u32)| {
+                let mode = common::FullscreenVideo::try_from(mode_raw)
+                    .map_err(|_| MethodErr::failed("Unsupported fullscreen video value"))?;
+                let timeout = Duration::from_secs(timeout_raw.into());
 
-                    // wait() reads the fd. It's necessary to read timerfd after timeout.
-                    reset_fullscreen_video_timer.wait()?;
+                common::set_fullscreen_video(&context.power_preferences_manager, mode).map_err(
+                    |e| {
+                        error!("set_fullscreen_video failed: {:#}", e);
 
-                    if common::set_fullscreen_video(
-                        &*power_preferences_manager,
-                        common::FullscreenVideo::Inactive,
-                    )
-                    .is_err()
+                        MethodErr::failed("Failed to set full screen video mode")
+                    },
+                )?;
+
+                context
+                    .reset_fullscreen_video_timer_id
+                    .fetch_add(1, Ordering::Relaxed);
+                let timer_id = context
+                    .reset_fullscreen_video_timer_id
+                    .load(Ordering::Relaxed);
+                let power_preferences_manager = context.power_preferences_manager.clone();
+                let reset_fullscreen_video_timer_id =
+                    context.reset_fullscreen_video_timer_id.clone();
+                tokio::spawn(async move {
+                    tokio::time::sleep(timeout).await;
+                    if timer_id == reset_fullscreen_video_timer_id.load(Ordering::Relaxed)
+                        && common::set_fullscreen_video(
+                            &power_preferences_manager,
+                            common::FullscreenVideo::Inactive,
+                        )
+                        .is_err()
                     {
                         error!("Reset fullscreen video mode failed.");
                     }
-                }
-                Token::DBusMsg(fd) => {
-                    let mut revents = 0;
-                    if event.readable() {
-                        revents += WatchEvent::Readable as c_uint;
-                    }
-                    if event.writable() {
-                        revents += WatchEvent::Writable as c_uint;
-                    }
-                    // Iterate through the watch items would call next() to process messages.
-                    for _item in conn.watch_handle(fd, revents) {}
+                });
+
+                Ok(())
+            },
+        );
+        b.method("PowerSupplyChange", (), (), move |_, context, ()| {
+            match common::update_power_preferences(&context.power_preferences_manager) {
+                Ok(()) => Ok(()),
+                Err(e) => {
+                    error!("update_power_preferences failed: {:#}", e);
+                    Err(MethodErr::failed("Failed to update power preferences"))
                 }
             }
+        });
+
+        // Advertise the signals.
+        b.signal::<(u8, u64), _>(
+            "MemoryPressureChrome",
+            ("pressure_level", "reclaim_target_kb"),
+        );
+        b.signal::<(u8, u64), _>(
+            "MemoryPressureArcvm",
+            ("pressure_level", "reclaim_target_kb"),
+        );
+    })
+}
+
+pub async fn service_main() -> Result<()> {
+    let root = Path::new("/");
+
+    let power_preferences_manager = power::new_directory_power_preferences_manager(root);
+
+    let (io_resource, conn) = connection::new_system_sync()?;
+
+    // io_resource must be awaited to start receiving D-Bus message.
+    let _handle = tokio::spawn(async {
+        let err = io_resource.await;
+        panic!("Lost connection to D-Bus: {}", err);
+    });
+
+    conn.request_name(SERVICE_NAME, false, true, false).await?;
+
+    let mut cr = Crossroads::new();
+
+    // Enable asynchronous methods. Incoming method calls are spawned as separate tasks if
+    // necessary.
+    cr.set_async_support(Some((
+        conn.clone(),
+        Box::new(|x| {
+            tokio::spawn(x);
+        }),
+    )));
+
+    let token = register_interface(&mut cr);
+    cr.insert(
+        PATH_NAME,
+        &[token],
+        DbusContext {
+            power_preferences_manager,
+            reset_game_mode_timer_id: Arc::new(AtomicUsize::new(0)),
+            reset_fullscreen_video_timer_id: Arc::new(AtomicUsize::new(0)),
+        },
+    );
+
+    conn.start_receive(
+        MatchRule::new_method_call(),
+        Box::new(move |msg, conn| {
+            warn!("handle dbus message: {:?}", msg);
+            match cr.handle_message(msg, conn) {
+                Ok(()) => true,
+                Err(()) => {
+                    error!("error handling D-Bus message");
+                    false
+                }
+            }
+        }),
+    );
+
+    // The memory checker loop.
+    loop {
+        const MEMORY_USAGE_POLL_INTERVAL: u64 = 1000;
+        tokio::time::sleep(Duration::from_millis(MEMORY_USAGE_POLL_INTERVAL)).await;
+
+        match memory::get_memory_pressure_status() {
+            Ok(pressure_status) => {
+                send_pressure_signal(
+                    &conn,
+                    "MemoryPressureChrome",
+                    pressure_status.chrome_level as u8,
+                    pressure_status.chrome_reclaim_target_kb,
+                );
+                if pressure_status.arcvm_level != memory::PressureLevelArcvm::None {
+                    send_pressure_signal(
+                        &conn,
+                        "MemoryPressureArcvm",
+                        pressure_status.arcvm_level as u8,
+                        pressure_status.arcvm_reclaim_target_kb,
+                    );
+                }
+            }
+            Err(e) => error!("get_memory_pressure_status() failed: {}", e),
         }
     }
 }
