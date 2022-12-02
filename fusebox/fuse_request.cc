@@ -140,10 +140,7 @@ void DirEntryRequest::ReplyDone() {
   replied_ = true;
 }
 
-DirEntryResponse::DirEntryResponse(fuse_ino_t ino, uint64_t handle)
-    : parent_(ino), handle_(handle) {
-  DCHECK(handle_);
-}
+DirEntryResponse::DirEntryResponse(fuse_ino_t ino) : parent_(ino) {}
 
 void DirEntryResponse::Append(std::vector<struct DirEntry> entry, bool end) {
   entry_.insert(entry_.end(), entry.begin(), entry.end());

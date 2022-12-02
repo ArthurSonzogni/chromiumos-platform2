@@ -27,8 +27,6 @@
 #include "fusebox/built_in.h"
 #include "fusebox/file_system.h"
 #include "fusebox/file_system_fake.h"
-#include "fusebox/file_system_type.h"
-#include "fusebox/fuse_file_handles.h"
 #include "fusebox/fuse_frontend.h"
 #include "fusebox/fuse_path_inodes.h"
 #include "fusebox/make_stat.h"
@@ -536,8 +534,15 @@ class FuseBoxClient : public FileSystem {
       return;
     }
 
-    uint64_t handle = fusebox::OpenFile();
-    request->ReplyOpen(handle);
+    // As the fusebox.proto comment says, "The high bit (also known as the
+    // 1<<63 bit) is also always zero for valid [Fusebox server generated]
+    // values, so that the Fusebox client (which is itself a FUSE server) can
+    // re-purpose large uint64 values (e.g. for tracking FUSE requests that do
+    // not need a round-trip to the Fusebox server)".
+    static uint64_t next_fuse_handle = 0x8000'0000'0000'0000ul;
+    uint64_t fuse_handle = next_fuse_handle++;
+    DCHECK_EQ(fuse_handle >> 63, 1);
+    request->ReplyOpen(fuse_handle);
   }
 
   void ReadDir(std::unique_ptr<DirEntryRequest> request,
@@ -555,14 +560,7 @@ class FuseBoxClient : public FileSystem {
       return;
     }
 
-    uint64_t handle = fusebox::GetFile(request->fh());
-    if (!handle) {
-      errno = request->ReplyError(EBADF);
-      PLOG(ERROR) << "readdir";
-      return;
-    }
-
-    auto dir_entry_response = std::make_unique<DirEntryResponse>(ino, handle);
+    auto dir_entry_response = std::make_unique<DirEntryResponse>(ino);
     dir_entry_response->Append(std::move(request));
 
     if (node->ino <= FUSE_ROOT_ID) {
@@ -577,7 +575,7 @@ class FuseBoxClient : public FileSystem {
   }
 
   void RootReadDir(off_t off, std::unique_ptr<DirEntryResponse> response) {
-    VLOG(1) << "root-readdir fh " << response->handle() << " off " << off;
+    VLOG(1) << "root-readdir off " << off;
 
     std::vector<DirEntry> entries;
     for (const auto& item : device_dir_entry_)
@@ -657,13 +655,6 @@ class FuseBoxClient : public FileSystem {
     if (request->IsInterrupted())
       return;
 
-    if (!fusebox::GetFile(request->fh())) {
-      errno = request->ReplyError(EBADF);
-      PLOG(ERROR) << "releasedir";
-      return;
-    }
-
-    fusebox::CloseFile(request->fh());
     request->ReplyOk();
   }
 
@@ -820,35 +811,22 @@ class FuseBoxClient : public FileSystem {
       return;
     }
 
-    Device device = GetInodeTable().GetDevice(node);
-
-    constexpr auto mtp_device_type = [](const Device& device) {
-      if (device.name.rfind(kMTPType, 0) == 0)
-        return std::string(kMTPType);
-      return std::string();
-    };
-
-    const std::string path = GetInodeTable().GetDevicePath(node);
-    const std::string type = mtp_device_type(device);
-
     Open2RequestProto request_proto;
-    request_proto.set_file_system_url(path);
+    request_proto.set_file_system_url(GetInodeTable().GetDevicePath(node));
     request_proto.set_access_mode(CreateAccessMode(request->flags()));
 
     dbus::MethodCall method(kFuseBoxServiceInterface, kOpen2Method);
     dbus::MessageWriter writer(&method);
     writer.AppendProtoAsArrayOfBytes(request_proto);
 
-    auto open2_response = base::BindOnce(&FuseBoxClient::Open2Response,
-                                         weak_ptr_factory_.GetWeakPtr(),
-                                         std::move(request), ino, path, type);
+    auto open2_response =
+        base::BindOnce(&FuseBoxClient::Open2Response,
+                       weak_ptr_factory_.GetWeakPtr(), std::move(request), ino);
     CallFuseBoxServerMethod(&method, std::move(open2_response));
   }
 
   void Open2Response(std::unique_ptr<OpenRequest> request,
                      ino_t ino,
-                     std::string path,
-                     std::string type,
                      dbus::Response* response) {
     VLOG(1) << "open2-resp";
 
@@ -861,9 +839,7 @@ class FuseBoxClient : public FileSystem {
     uint64_t server_side_fuse_handle =
         response_proto.has_fuse_handle() ? response_proto.fuse_handle() : 0;
 
-    uint64_t handle = fusebox::OpenFile();
-    fusebox::SetFileData(handle, server_side_fuse_handle, path, type);
-    request->ReplyOpen(handle);
+    request->ReplyOpen(server_side_fuse_handle);
   }
 
   void Read(std::unique_ptr<BufferRequest> request,
@@ -887,15 +863,15 @@ class FuseBoxClient : public FileSystem {
       return;
     }
 
-    auto data = fusebox::GetFileData(request->fh());
-    if (data.server_side_fuse_handle == 0) {
+    uint64_t fuse_handle = request->fh();
+    if (fuse_handle == 0) {
       errno = request->ReplyError(EBADF);
       PLOG(ERROR) << "read";
       return;
     }
 
     Read2RequestProto request_proto;
-    request_proto.set_fuse_handle(data.server_side_fuse_handle);
+    request_proto.set_fuse_handle(fuse_handle);
     request_proto.set_offset(off);
     request_proto.set_length(size);
 
@@ -956,16 +932,15 @@ class FuseBoxClient : public FileSystem {
       return;
     }
 
-    if (!fusebox::GetFile(request->fh())) {
+    uint64_t fuse_handle = request->fh();
+    if (fuse_handle == 0) {
       errno = request->ReplyError(EBADF);
       PLOG(ERROR) << "write";
       return;
     }
 
-    auto data = fusebox::GetFileData(request->fh());
-
     Write2RequestProto request_proto;
-    request_proto.set_fuse_handle(data.server_side_fuse_handle);
+    request_proto.set_fuse_handle(fuse_handle);
     request_proto.set_offset(off);
     request_proto.mutable_data()->append(buf, size);
 
@@ -1010,17 +985,15 @@ class FuseBoxClient : public FileSystem {
     if (request->IsInterrupted())
       return;
 
-    if (!fusebox::GetFile(request->fh())) {
+    uint64_t fuse_handle = request->fh();
+    if (fuse_handle == 0) {
       errno = request->ReplyError(EBADF);
       PLOG(ERROR) << "release";
       return;
     }
 
-    auto data = fusebox::GetFileData(request->fh());
-    fusebox::CloseFile(request->fh());
-
     Close2RequestProto request_proto;
-    request_proto.set_fuse_handle(data.server_side_fuse_handle);
+    request_proto.set_fuse_handle(fuse_handle);
 
     dbus::MethodCall method(kFuseBoxServiceInterface, kClose2Method);
     dbus::MessageWriter writer(&method);
@@ -1138,9 +1111,7 @@ class FuseBoxClient : public FileSystem {
     uint64_t server_side_fuse_handle =
         response_proto.has_fuse_handle() ? response_proto.fuse_handle() : 0;
 
-    uint64_t handle = fusebox::OpenFile();
-    fusebox::SetFileData(handle, server_side_fuse_handle, "", "");
-    request->ReplyOpen(handle);
+    request->ReplyOpen(server_side_fuse_handle);
   }
 
   void OnStorageAttached(dbus::Signal* signal) {

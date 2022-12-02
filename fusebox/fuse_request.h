@@ -152,13 +152,10 @@ class DirEntryRequest : public FuseRequest {
 
 class DirEntryResponse {
  public:
-  DirEntryResponse(fuse_ino_t ino, uint64_t handle);
+  explicit DirEntryResponse(fuse_ino_t ino);
 
   // Directory ino.
   fuse_ino_t parent() const { return parent_; }
-
-  // File handle.
-  uint64_t handle() const { return handle_; }
 
   // Append |entry| DirEntry to the DirEntry list.
   void Append(std::vector<struct DirEntry> entry, bool end = false);
@@ -176,9 +173,6 @@ class DirEntryResponse {
  private:
   // Directory ino.
   fuse_ino_t const parent_;
-
-  // The open file handle of the directory: opendir(2).
-  uint64_t const handle_;
 
   // List of DirEntryRequest received from Kernel Fuse.
   std::vector<std::unique_ptr<DirEntryRequest>> request_;
