@@ -912,14 +912,6 @@ TEST_F(MetricsTest, WiFiRxTxStatsComparison) {
 
   s1 = {};
   s2 = {};
-  s1.width = Metrics::kWiFiChannelWidth80MHz;
-  s2.width = Metrics::kWiFiChannelWidth80MHz;
-  EXPECT_EQ(s1, s2);
-  s2.width = Metrics::kWiFiChannelWidth40MHz;
-  EXPECT_NE(s1, s2);
-
-  s1 = {};
-  s2 = {};
   s1.mode = Metrics::kWiFiLinkModeHE;
   s2.mode = Metrics::kWiFiLinkModeHE;
   EXPECT_EQ(s1, s2);
@@ -1039,6 +1031,14 @@ TEST_F(MetricsTest, WiFiLinkQualityReportComparison) {
   r2.expected_throughput = 15000;
   EXPECT_EQ(r1, r2);
   r2.expected_throughput = 16000;
+  EXPECT_NE(r1, r2);
+
+  r1 = {};
+  r2 = {};
+  r1.width = Metrics::kWiFiChannelWidth80MHz;
+  r2.width = Metrics::kWiFiChannelWidth80MHz;
+  EXPECT_EQ(r1, r2);
+  r2.width = Metrics::kWiFiChannelWidth40MHz;
   EXPECT_NE(r1, r2);
 
   r1 = {};

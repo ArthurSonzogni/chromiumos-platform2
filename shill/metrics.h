@@ -1641,7 +1641,6 @@ class Metrics : public DefaultServiceObserver {
     int64_t bytes = kWiFiStructuredMetricsErrorValue;
     int bitrate = kWiFiStructuredMetricsErrorValue;  // unit is 100 Kb/s.
     int mcs = kWiFiStructuredMetricsErrorValue;
-    WiFiChannelWidth width = kWiFiChannelWidthUnknown;
     WiFiLinkMode mode = kWiFiLinkModeUnknown;
     WiFiGuardInterval gi = kWiFiGuardIntervalUnknown;
     int nss = kWiFiStructuredMetricsErrorValue;
@@ -1657,9 +1656,6 @@ class Metrics : public DefaultServiceObserver {
         return false;
       }
       if (mcs != other.mcs) {
-        return false;
-      }
-      if (width != other.width) {
         return false;
       }
       if (mode != other.mode) {
@@ -1699,6 +1695,7 @@ class Metrics : public DefaultServiceObserver {
     int64_t beacons_received = kWiFiStructuredMetricsErrorValue;
     int64_t beacons_lost = kWiFiStructuredMetricsErrorValue;
     int64_t expected_throughput = kWiFiStructuredMetricsErrorValue;
+    WiFiChannelWidth width = kWiFiChannelWidthUnknown;
     WiFiRxTxStats rx;
     WiFiRxTxStats tx;
     bool bt_enabled = false;
@@ -1738,6 +1735,9 @@ class Metrics : public DefaultServiceObserver {
         return false;
       }
       if (expected_throughput != other.expected_throughput) {
+        return false;
+      }
+      if (width != other.width) {
         return false;
       }
       if (rx != other.rx) {

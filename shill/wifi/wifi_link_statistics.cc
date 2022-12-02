@@ -193,7 +193,8 @@ std::string Nl80211LinkStatisticsToString(
          std::to_string(diff_stats.signal_avg);
 }
 
-std::string ConvertToBitrateString(WiFiLinkStatistics::RxTxStats link_stats) {
+std::string ConvertToBitrateString(WiFiLinkStatistics::ChannelWidth width,
+                                   WiFiLinkStatistics::RxTxStats link_stats) {
   std::string mcs_str;
   switch (link_stats.mode) {
     case WiFiLinkStatistics::LinkMode::kLinkModeLegacy:
@@ -213,7 +214,7 @@ std::string ConvertToBitrateString(WiFiLinkStatistics::RxTxStats link_stats) {
   }
 
   std::string width_str;
-  switch (link_stats.width) {
+  switch (width) {
     case WiFiLinkStatistics::ChannelWidth::kChannelWidth40MHz:
       width_str = base::StringPrintf(" 40MHz");
       break;
@@ -240,6 +241,35 @@ std::string ConvertToBitrateString(WiFiLinkStatistics::RxTxStats link_stats) {
   return out;
 }
 
+Metrics::WiFiChannelWidth ConvertChannelWidth(
+    WiFiLinkStatistics::ChannelWidth w) {
+  Metrics::WiFiChannelWidth width = Metrics::kWiFiChannelWidthUnknown;
+  switch (w) {
+    case WiFiLinkStatistics::ChannelWidth::kChannelWidth20MHz:
+      width = Metrics::kWiFiChannelWidth20MHz;
+      break;
+    case WiFiLinkStatistics::ChannelWidth::kChannelWidth40MHz:
+      width = Metrics::kWiFiChannelWidth40MHz;
+      break;
+    case WiFiLinkStatistics::ChannelWidth::kChannelWidth80MHz:
+      width = Metrics::kWiFiChannelWidth80MHz;
+      break;
+    case WiFiLinkStatistics::ChannelWidth::kChannelWidth80p80MHz:
+      width = Metrics::kWiFiChannelWidth80p80MHz;
+      break;
+    case WiFiLinkStatistics::ChannelWidth::kChannelWidth160MHz:
+      width = Metrics::kWiFiChannelWidth160MHz;
+      break;
+    case WiFiLinkStatistics::ChannelWidth::kChannelWidth320MHz:
+      width = Metrics::kWiFiChannelWidth320MHz;
+      break;
+    default:
+      width = Metrics::kWiFiChannelWidthUnknown;
+      break;
+  }
+  return width;
+}
+
 Metrics::WiFiRxTxStats ConvertRxTxStats(
     const WiFiLinkStatistics::RxTxStats& stats) {
   Metrics::WiFiRxTxStats link_stats;
@@ -247,29 +277,7 @@ Metrics::WiFiRxTxStats ConvertRxTxStats(
   link_stats.bytes = stats.bytes;
   link_stats.bitrate = stats.bitrate;
   link_stats.mcs = stats.mcs;
-  switch (stats.width) {
-    case WiFiLinkStatistics::ChannelWidth::kChannelWidth20MHz:
-      link_stats.width = Metrics::kWiFiChannelWidth20MHz;
-      break;
-    case WiFiLinkStatistics::ChannelWidth::kChannelWidth40MHz:
-      link_stats.width = Metrics::kWiFiChannelWidth40MHz;
-      break;
-    case WiFiLinkStatistics::ChannelWidth::kChannelWidth80MHz:
-      link_stats.width = Metrics::kWiFiChannelWidth80MHz;
-      break;
-    case WiFiLinkStatistics::ChannelWidth::kChannelWidth80p80MHz:
-      link_stats.width = Metrics::kWiFiChannelWidth80p80MHz;
-      break;
-    case WiFiLinkStatistics::ChannelWidth::kChannelWidth160MHz:
-      link_stats.width = Metrics::kWiFiChannelWidth160MHz;
-      break;
-    case WiFiLinkStatistics::ChannelWidth::kChannelWidth320MHz:
-      link_stats.width = Metrics::kWiFiChannelWidth320MHz;
-      break;
-    default:
-      link_stats.width = Metrics::kWiFiChannelWidthUnknown;
-      break;
-  }
+
   switch (stats.mode) {
     case WiFiLinkStatistics::LinkMode::kLinkModeLegacy:
       link_stats.mode = Metrics::kWiFiLinkModeLegacy;
@@ -380,11 +388,11 @@ KeyValueStore WiFiLinkStatistics::StationStatsToWiFiDeviceKV(
 
   if (stats.tx.bitrate != defaults.tx.bitrate) {
     kv.Set<std::string>(kTransmitBitrateProperty,
-                        ConvertToBitrateString(stats.tx));
+                        ConvertToBitrateString(stats.width, stats.tx));
   }
   if (stats.rx.bitrate != defaults.rx.bitrate) {
     kv.Set<std::string>(kReceiveBitrateProperty,
-                        ConvertToBitrateString(stats.rx));
+                        ConvertToBitrateString(stats.width, stats.rx));
   }
   return kv;
 }
@@ -474,14 +482,11 @@ WiFiLinkStatistics::StationStatsFromSupplicantKV(
     std::string width = properties.Get<std::string>(
         WPASupplicant::kSignalChangePropertyChannelWidth);
 
-    // TODO(b/239864299): Use the same channel width for RX and TX.
     const auto it = kChannelWidthTranslationMap.find(width);
     if (it == kChannelWidthTranslationMap.end()) {
-      stats.rx.width = ChannelWidth::kChannelWidthUnknown;
-      stats.tx.width = ChannelWidth::kChannelWidthUnknown;
+      stats.width = ChannelWidth::kChannelWidthUnknown;
     } else {
-      stats.rx.width = it->second;
-      stats.tx.width = it->second;
+      stats.width = it->second;
     }
   }
   return stats;
@@ -618,6 +623,7 @@ Metrics::WiFiLinkQualityReport WiFiLinkStatistics::ConvertLinkStatsReport(
   report.tx_retries = stats.tx_retries;
   report.tx_failures = stats.tx_failed;
   report.rx_drops = stats.rx_drop_misc;
+  report.width = ConvertChannelWidth(stats.width);
   report.rx = ConvertRxTxStats(stats.rx);
   report.tx = ConvertRxTxStats(stats.tx);
   return report;

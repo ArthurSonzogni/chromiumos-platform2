@@ -413,15 +413,8 @@ TEST_F(WiFiLinkStatisticsTest, StationInfoReportConvert) {
   WiFiLinkStatistics::StationStats s = stats;
   Metrics::WiFiLinkQualityReport e = expected;
   for (auto it = widths.begin(); it != widths.end(); ++it) {
-    s.rx.width = *it;
-    e.rx.width = expected_widths[it - widths.begin()];
-    EXPECT_EQ(e, WiFiLinkStatistics::ConvertLinkStatsReport(s));
-  }
-  s = stats;
-  e = expected;
-  for (auto it = widths.begin(); it != widths.end(); ++it) {
-    s.tx.width = *it;
-    e.tx.width = expected_widths[it - widths.begin()];
+    s.width = *it;
+    e.width = expected_widths[it - widths.begin()];
     EXPECT_EQ(e, WiFiLinkStatistics::ConvertLinkStatsReport(s));
   }
 
@@ -518,13 +511,13 @@ TEST_F(WiFiLinkStatisticsTest, StationStatsFromKVHE) {
       .rx_drop_misc = 40ULL,
       .signal = -70,
       .signal_avg = -62,
+      .width = WiFiLinkStatistics::ChannelWidth::kChannelWidth160MHz,
       .rx =
           {
               .packets = 1000UL,
               .bytes = 8000ULL,
               .bitrate = 866UL,
               .mcs = 15,
-              .width = WiFiLinkStatistics::ChannelWidth::kChannelWidth160MHz,
               .mode = WiFiLinkStatistics::LinkMode::kLinkModeHE,
               .nss = 8,
           },
@@ -533,7 +526,6 @@ TEST_F(WiFiLinkStatisticsTest, StationStatsFromKVHE) {
           .bytes = 10000ULL,
           .bitrate = 500UL,
           .mcs = 12,
-          .width = WiFiLinkStatistics::ChannelWidth::kChannelWidth160MHz,
           .mode = WiFiLinkStatistics::LinkMode::kLinkModeHE,
           .nss = 6,
       }};
@@ -578,13 +570,13 @@ TEST_F(WiFiLinkStatisticsTest, StationStatsFromKVVHT) {
       .rx_drop_misc = 40ULL,
       .signal = -70,
       .signal_avg = -62,
+      .width = WiFiLinkStatistics::ChannelWidth::kChannelWidth80MHz,
       .rx =
           {
               .packets = 1000UL,
               .bytes = 8000ULL,
               .bitrate = 866UL,
               .mcs = 15,
-              .width = WiFiLinkStatistics::ChannelWidth::kChannelWidth80MHz,
               .mode = WiFiLinkStatistics::LinkMode::kLinkModeVHT,
               .nss = 8,
           },
@@ -593,7 +585,6 @@ TEST_F(WiFiLinkStatisticsTest, StationStatsFromKVVHT) {
           .bytes = 10000ULL,
           .bitrate = 500UL,
           .mcs = 12,
-          .width = WiFiLinkStatistics::ChannelWidth::kChannelWidth80MHz,
           .mode = WiFiLinkStatistics::LinkMode::kLinkModeVHT,
           .nss = 6,
       }};
@@ -686,19 +677,18 @@ TEST_F(WiFiLinkStatisticsTest, StationStatsFromKVUnknown) {
       .rx_drop_misc = 40ULL,
       .signal = -70,
       .signal_avg = -62,
+      .width = WiFiLinkStatistics::ChannelWidth::kChannelWidthUnknown,
       .rx =
           {
               .packets = 1000UL,
               .bytes = 8000ULL,
               .bitrate = 866UL,
-              .width = WiFiLinkStatistics::ChannelWidth::kChannelWidthUnknown,
               .mode = WiFiLinkStatistics::LinkMode::kLinkModeUnknown,
           },
       .tx = {
           .packets = 1500UL,
           .bytes = 10000ULL,
           .bitrate = 500UL,
-          .width = WiFiLinkStatistics::ChannelWidth::kChannelWidthUnknown,
           .mode = WiFiLinkStatistics::LinkMode::kLinkModeUnknown,
       }};
 

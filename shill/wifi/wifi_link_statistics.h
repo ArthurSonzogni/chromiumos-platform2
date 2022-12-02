@@ -101,7 +101,6 @@ class WiFiLinkStatistics {
     uint64_t bytes = ULLONG_MAX;
     uint32_t bitrate = UINT_MAX;  // unit is 100Kb/s.
     uint8_t mcs = UCHAR_MAX;
-    ChannelWidth width = ChannelWidth::kChannelWidthUnknown;
     LinkMode mode = LinkMode::kLinkModeUnknown;
     GuardInterval gi = GuardInterval::kLinkStatsGIUnknown;
     uint8_t nss = UCHAR_MAX;
@@ -109,9 +108,8 @@ class WiFiLinkStatistics {
     // For testing.
     bool operator==(const RxTxStats& that) const {
       return packets == that.packets && bytes == that.bytes &&
-             bitrate == that.bitrate && mcs == that.mcs &&
-             width == that.width && mode == that.mode && gi == that.gi &&
-             nss == that.nss && dcm == that.dcm;
+             bitrate == that.bitrate && mcs == that.mcs && mode == that.mode &&
+             gi == that.gi && nss == that.nss && dcm == that.dcm;
     }
   };
 
@@ -122,6 +120,7 @@ class WiFiLinkStatistics {
     uint64_t rx_drop_misc = ULLONG_MAX;
     int32_t signal = 9999;  // wpa_supplicant uses int32_t value, default 9999.
     int32_t signal_avg = 9999;
+    ChannelWidth width = ChannelWidth::kChannelWidthUnknown;
     RxTxStats rx;
     RxTxStats tx;
     // For testing.
@@ -129,7 +128,8 @@ class WiFiLinkStatistics {
       return inactive_time == that.inactive_time &&
              tx_retries == that.tx_retries && tx_failed == that.tx_failed &&
              rx_drop_misc == that.rx_drop_misc && signal == that.signal &&
-             signal_avg == that.signal_avg && rx == that.rx && tx == that.tx;
+             signal_avg == that.signal_avg && width == that.width &&
+             rx == that.rx && tx == that.tx;
     }
   };
 

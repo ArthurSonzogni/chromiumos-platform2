@@ -1380,6 +1380,8 @@ void Metrics::NotifyWiFiLinkQualityReport(const WiFiLinkQualityReport& report,
   SLOG(WiFiService::kSessionTagMinimumLogVerbosity)
       << __func__ << ": Session Tag 0x" << PseudonymizeTag(session_tag);
 
+  // Note: RXChannelWidth and TXChannelWidth have identical values but we have
+  // 2 separate fields for backward compatibility reasons.
   metrics::structured::events::wi_fi::WiFiLinkQualityReport sm_report =
       metrics::structured::events::wi_fi::WiFiLinkQualityReport();
   sm_report.SetBootId(WiFiMetricsUtils::GetBootId())
@@ -1403,14 +1405,14 @@ void Metrics::NotifyWiFiLinkQualityReport(const WiFiLinkQualityReport& report,
       .SetExpectedThroughput(report.expected_throughput)
       .SetRXRate(report.rx.bitrate)
       .SetRXMCS(report.rx.mcs)
-      .SetRXChannelWidth(report.rx.width)
+      .SetRXChannelWidth(report.width)
       .SetRXMode(report.rx.mode)
       .SetRXGuardInterval(report.rx.gi)
       .SetRXNSS(report.rx.nss)
       .SetRXDCM(report.rx.dcm)
       .SetTXRate(report.tx.bitrate)
       .SetTXMCS(report.tx.mcs)
-      .SetTXChannelWidth(report.tx.width)
+      .SetTXChannelWidth(report.width)
       .SetTXMode(report.tx.mode)
       .SetTXGuardInterval(report.tx.gi)
       .SetTXNSS(report.tx.nss)
