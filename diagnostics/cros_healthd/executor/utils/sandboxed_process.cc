@@ -5,18 +5,58 @@
 #include "diagnostics/cros_healthd/executor/utils/sandboxed_process.h"
 
 #include <inttypes.h>
+#include <signal.h>
+#include <sys/wait.h>
 
 #include <string>
 #include <vector>
 
+#include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <base/logging.h>
 #include <base/strings/stringprintf.h>
+#include <base/strings/string_number_conversions.h>
+#include <base/strings/string_util.h>
+
+#include "diagnostics/cros_healthd/utils/file_utils.h"
 
 namespace diagnostics {
 
+namespace {
+
+uint32_t FetchJailedProcessPid(uint32_t parent_pid) {
+  base::FilePath pid_file = base::FilePath("/proc")
+                                .Append(std::to_string(parent_pid))
+                                .Append("task")
+                                .Append(std::to_string(parent_pid))
+                                .Append("children");
+
+  std::string pid_str;
+  if (!ReadAndTrimString(pid_file, &pid_str)) {
+    return 0;
+  }
+
+  // We assume that the minijail only has one child process.
+  uint32_t pid;
+  if (!base::StringToUint(pid_str, &pid)) {
+    return 0;
+  }
+
+  return pid;
+}
+
+}  // namespace
+
 SandboxedProcess::SandboxedProcess() = default;
 
-SandboxedProcess::~SandboxedProcess() = default;
+SandboxedProcess::~SandboxedProcess() {
+  const uint8_t timeout = 3;
+  // Send SIGTERM first to prevent minijail show the warning message of SIGKILL.
+  if (KillJailedProcess(SIGTERM, timeout)) {
+    return;
+  }
+  KillJailedProcess(SIGKILL, timeout);
+}
 
 SandboxedProcess::SandboxedProcess(
     const std::vector<std::string>& command,
@@ -89,6 +129,49 @@ bool SandboxedProcess::Start() {
     BrilloProcessAddArg(arg);
   }
   return BrilloProcessStart();
+}
+
+bool SandboxedProcess::KillJailedProcess(int signal, uint8_t timeout) {
+  if (pid() == 0) {
+    // Passing pid == 0 to kill is committing suicide.  Check specifically.
+    LOG(ERROR) << "Process not running";
+    return false;
+  }
+
+  uint32_t jailed_process_pid = 0;
+  base::TimeTicks start_signal = base::TimeTicks::Now();
+  do {
+    if (jailed_process_pid == 0) {
+      jailed_process_pid = FetchJailedProcessPid(pid());
+      if (jailed_process_pid != 0 && kill(jailed_process_pid, signal) < 0) {
+        PLOG(ERROR) << "Unable to send signal to " << jailed_process_pid;
+        return false;
+      }
+    }
+
+    int status = 0;
+    pid_t w = waitpid(pid(), &status, WNOHANG);
+    if (w < 0) {
+      if (errno == ECHILD) {
+        UpdatePid(0);
+        return true;
+      }
+      PLOG(ERROR) << "Waitpid returned " << w;
+      return false;
+    }
+
+    // In normal case, the first |w| we receive is the pid of jailed process. We
+    // still need to wait until the minijail process is terminated. Once it's
+    // done, we update the pid to 0 so the brillo::Process won't kill the
+    // process again.
+    if (w == pid()) {
+      UpdatePid(0);
+      return true;
+    }
+    usleep(100);
+  } while ((base::TimeTicks::Now() - start_signal).InSecondsF() <= timeout);
+
+  return false;
 }
 
 // Prepares some arguments which need to be handled before use.

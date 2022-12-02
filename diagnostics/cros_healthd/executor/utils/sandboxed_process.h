@@ -71,6 +71,11 @@ class SandboxedProcess : public brillo::ProcessImpl {
   // Checks if a file exist. For mocking.
   virtual bool IsPathExists(const base::FilePath& path) const;
 
+  // If we send SIGKILL to minijail first, it will become zombie because the
+  // mojo socket is still there. Killing the jailed process first will make sure
+  // we release the socket resources.
+  bool KillJailedProcess(int signal, uint8_t timeout);
+
   // The arguments of minijail.
   std::vector<std::string> sandbox_arguments_;
   // The command to run by minijail.

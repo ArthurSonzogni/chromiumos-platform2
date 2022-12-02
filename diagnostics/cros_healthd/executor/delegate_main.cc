@@ -31,8 +31,6 @@ class DelegateDaemon : public brillo::Daemon {
         mojo::IncomingInvitation::Accept(std::move(endpoint));
     mojo::ScopedMessagePipeHandle pipe = invitation.ExtractMessagePipe(0);
     receiver_.Bind(mojo::PendingReceiver<mojom::Delegate>(std::move(pipe)));
-    receiver_.set_disconnect_handler(
-        base::BindOnce(&DelegateDaemon::Quit, base::Unretained(this)));
   }
   DelegateDaemon(const DelegateDaemon&) = delete;
   DelegateDaemon& operator=(const DelegateDaemon&) = delete;
