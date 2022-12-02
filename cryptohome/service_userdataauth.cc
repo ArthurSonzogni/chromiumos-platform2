@@ -723,7 +723,7 @@ void UserDataAuthAdaptor::DoGetKeyData(
         user_data_auth::GetKeyDataReply>> response,
     const user_data_auth::GetKeyDataRequest& in_request) {
   user_data_auth::GetKeyDataReply reply;
-  cryptohome::KeyData data_out;
+  KeyData data_out;
   bool found = false;
   auto status = service_->GetKeyData(in_request, &data_out, &found);
   // Note, if there's no error, then |status| is set to CRYPTOHOME_ERROR_NOT_SET

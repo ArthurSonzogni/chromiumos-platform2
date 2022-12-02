@@ -37,6 +37,8 @@
 using base::FilePath;
 using base::StringPrintf;
 
+namespace cryptohome {
+
 namespace {
 
 // How long to wait for the out-of-process helper to perform a mount.
@@ -87,44 +89,36 @@ bool WaitForHelper(int read_from_helper, const base::TimeDelta& timeout) {
   return (poll_fd.revents & POLLIN) == POLLIN;
 }
 
-std::map<cryptohome::MountType, cryptohome::OutOfProcessMountRequest_MountType>
-    kProtobufMountType = {
-        // Not mounted.
-        {cryptohome::MountType::NONE,
-         cryptohome::OutOfProcessMountRequest_MountType_NONE},
-        // Encrypted with ecryptfs.
-        {cryptohome::MountType::ECRYPTFS,
-         cryptohome::OutOfProcessMountRequest_MountType_ECRYPTFS},
-        // Encrypted with dircrypto.
-        {cryptohome::MountType::DIR_CRYPTO,
-         cryptohome::OutOfProcessMountRequest_MountType_DIR_CRYPTO},
-        // Encrypted with dmcrpyt.
-        {cryptohome::MountType::DMCRYPT,
-         cryptohome::OutOfProcessMountRequest_MountType_DMCRYPT},
-        // Ephemeral mount.
-        {cryptohome::MountType::EPHEMERAL,
-         cryptohome::OutOfProcessMountRequest_MountType_EPHEMERAL},
-        // Vault Migration.
-        {cryptohome::MountType::ECRYPTFS_TO_DIR_CRYPTO,
-         cryptohome::OutOfProcessMountRequest_MountType_ECRYPTFS_TO_DIR_CRYPTO},
-        {cryptohome::MountType::ECRYPTFS_TO_DMCRYPT,
-         cryptohome::OutOfProcessMountRequest_MountType_ECRYPTFS_TO_DMCRYPT},
-        {cryptohome::MountType::DIR_CRYPTO_TO_DMCRYPT,
-         cryptohome::OutOfProcessMountRequest_MountType_DIR_CRYPTO_TO_DMCRYPT},
+std::map<MountType, OutOfProcessMountRequest_MountType> kProtobufMountType = {
+    // Not mounted.
+    {MountType::NONE, OutOfProcessMountRequest_MountType_NONE},
+    // Encrypted with ecryptfs.
+    {MountType::ECRYPTFS, OutOfProcessMountRequest_MountType_ECRYPTFS},
+    // Encrypted with dircrypto.
+    {MountType::DIR_CRYPTO, OutOfProcessMountRequest_MountType_DIR_CRYPTO},
+    // Encrypted with dmcrpyt.
+    {MountType::DMCRYPT, OutOfProcessMountRequest_MountType_DMCRYPT},
+    // Ephemeral mount.
+    {MountType::EPHEMERAL, OutOfProcessMountRequest_MountType_EPHEMERAL},
+    // Vault Migration.
+    {MountType::ECRYPTFS_TO_DIR_CRYPTO,
+     OutOfProcessMountRequest_MountType_ECRYPTFS_TO_DIR_CRYPTO},
+    {MountType::ECRYPTFS_TO_DMCRYPT,
+     OutOfProcessMountRequest_MountType_ECRYPTFS_TO_DMCRYPT},
+    {MountType::DIR_CRYPTO_TO_DMCRYPT,
+     OutOfProcessMountRequest_MountType_DIR_CRYPTO_TO_DMCRYPT},
 };
 
-cryptohome::StorageStatus OopErrorCodeToStatus(cryptohome::MountError error) {
-  if (error == cryptohome::MOUNT_ERROR_NONE) {
-    return cryptohome::StorageStatus::Ok();
+StorageStatus OopErrorCodeToStatus(MountError error) {
+  if (error == MOUNT_ERROR_NONE) {
+    return StorageStatus::Ok();
   }
   // The error is already reported from OOP, so no need to report it here.
-  return cryptohome::StorageStatus::Make(FROM_HERE, "OOP mount failed", error,
-                                         /*report=*/false);
+  return StorageStatus::Make(FROM_HERE, "OOP mount failed", error,
+                             /*report=*/false);
 }
 
 }  // namespace
-
-namespace cryptohome {
 
 //  cryptohome_namespace_mounter enters the Chrome mount namespace and mounts
 //  the user cryptohome in that mount namespace if the flags are enabled.
@@ -188,7 +182,7 @@ StorageStatus OutOfProcessMountHelper::PerformEphemeralMount(
       username == brillo::cryptohome::home::kGuestUserName
           ? kUserSessionMountNamespacePath
           : "");
-  request.set_type(cryptohome::OutOfProcessMountRequest_MountType_EPHEMERAL);
+  request.set_type(OutOfProcessMountRequest_MountType_EPHEMERAL);
   request.set_ephemeral_loop_device(ephemeral_loop_device.value());
 
   OutOfProcessMountResponse response;

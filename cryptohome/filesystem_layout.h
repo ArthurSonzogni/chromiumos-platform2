@@ -81,11 +81,9 @@ bool GetSystemSalt(Platform* platform, brillo::SecureBlob* salt);
 bool GetPublicMountSalt(Platform* platform, brillo::SecureBlob* salt);
 
 // Gets full path for serialized RecoveryId.
-base::FilePath GetRecoveryIdPath(
-    const cryptohome::AccountIdentifier& account_id);
+base::FilePath GetRecoveryIdPath(const AccountIdentifier& account_id);
 
-bool InitializeFilesystemLayout(Platform* platform,
-                                brillo::SecureBlob* salt);
+bool InitializeFilesystemLayout(Platform* platform, brillo::SecureBlob* salt);
 
 }  // namespace cryptohome
 

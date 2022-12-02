@@ -285,7 +285,7 @@ class AuthSessionInterfaceTestBase : public ::testing::Test {
     SetUpHWSecExpectations();
     MockLECredentialManager* le_cred_manager = new MockLECredentialManager();
     crypto_.set_le_manager_for_testing(
-        std::unique_ptr<cryptohome::LECredentialManager>(le_cred_manager));
+        std::unique_ptr<LECredentialManager>(le_cred_manager));
     crypto_.Init();
 
     userdataauth_.set_platform(&platform_);

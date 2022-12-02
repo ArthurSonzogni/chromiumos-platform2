@@ -320,8 +320,7 @@ CryptoStatus PinWeaverAuthBlock::Derive(const AuthInput& auth_input,
 CryptoStatus PinWeaverAuthBlock::PrepareForRemoval(
     const AuthBlockState& auth_block_state) {
   // Read supported_intents only for AuthFactors with a PinWeaver backend.
-  auto* state = std::get_if<::cryptohome::PinWeaverAuthBlockState>(
-      &auth_block_state.state);
+  auto* state = std::get_if<PinWeaverAuthBlockState>(&auth_block_state.state);
   if (!state) {
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(

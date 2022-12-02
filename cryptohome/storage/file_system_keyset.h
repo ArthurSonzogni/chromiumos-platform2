@@ -19,7 +19,7 @@ namespace cryptohome {
 class FileSystemKeyset final {
  public:
   FileSystemKeyset();
-  explicit FileSystemKeyset(const cryptohome::VaultKeyset& vault_keyset);
+  explicit FileSystemKeyset(const VaultKeyset& vault_keyset);
   FileSystemKeyset(FileSystemKey key,
                    FileSystemKeyReference key_reference,
                    brillo::SecureBlob chaps_key);

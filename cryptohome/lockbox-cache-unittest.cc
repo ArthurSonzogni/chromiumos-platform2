@@ -65,7 +65,7 @@ class LockboxCacheTest : public testing::Test {
     EXPECT_FALSE(base::PathExists(cache_path_));
   }
 
-  cryptohome::Platform platform_;
+  Platform platform_;
   base::ScopedTempDir tmpdir_;
   base::FilePath nvram_path_;
   base::FilePath lockbox_path_;

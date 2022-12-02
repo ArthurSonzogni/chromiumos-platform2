@@ -61,7 +61,7 @@ FilePath GetMountedEphemeralUserHomePath(
 }
 
 // Sets up the SELinux context for a freshly mounted ephemeral cryptohome.
-bool SetUpSELinuxContextForEphemeralCryptohome(cryptohome::Platform* platform,
+bool SetUpSELinuxContextForEphemeralCryptohome(Platform* platform,
                                                const FilePath& source_path) {
   // Note that this is needed because the newly mounted ephemeral cryptohome is
   // a new file system, and thus the SELinux context that applies to the
@@ -294,9 +294,7 @@ MountHelper::MountHelper(bool legacy_mount,
 FilePath MountHelper::GetNewUserPath(const std::string& username) {
   std::string sanitized = SanitizeUserName(username);
   std::string user_dir = StringPrintf("u-%s", sanitized.c_str());
-  return FilePath("/home")
-      .Append(cryptohome::kDefaultSharedUser)
-      .Append(user_dir);
+  return FilePath("/home").Append(kDefaultSharedUser).Append(user_dir);
 }
 
 FilePath MountHelper::GetMountedUserHomePath(
@@ -418,7 +416,7 @@ bool MountHelper::EnsureUserMountPoints(const std::string& username) const {
 
 void MountHelper::RecursiveCopy(const FilePath& source,
                                 const FilePath& destination) const {
-  std::unique_ptr<cryptohome::FileEnumerator> file_enumerator(
+  std::unique_ptr<FileEnumerator> file_enumerator(
       platform_->GetFileEnumerator(source, false, base::FileEnumerator::FILES));
   FilePath next_path;
 
@@ -436,9 +434,8 @@ void MountHelper::RecursiveCopy(const FilePath& source,
     }
   }
 
-  std::unique_ptr<cryptohome::FileEnumerator> dir_enumerator(
-      platform_->GetFileEnumerator(source, false,
-                                   base::FileEnumerator::DIRECTORIES));
+  std::unique_ptr<FileEnumerator> dir_enumerator(platform_->GetFileEnumerator(
+      source, false, base::FileEnumerator::DIRECTORIES));
 
   while (!(next_path = dir_enumerator->Next()).empty()) {
     FilePath dir_name = FilePath(next_path).BaseName();
@@ -471,10 +468,9 @@ bool MountHelper::IsFirstMountComplete(
        GetCommonSubdirectories(mount_point, bind_mount_downloads_)) {
     initial_nodes.insert(dir.path);
   }
-  std::unique_ptr<cryptohome::FileEnumerator> skel_enumerator(
-      platform_->GetFileEnumerator(
-          SkelDir(), false,
-          base::FileEnumerator::FILES | base::FileEnumerator::DIRECTORIES));
+  std::unique_ptr<FileEnumerator> skel_enumerator(platform_->GetFileEnumerator(
+      SkelDir(), false,
+      base::FileEnumerator::FILES | base::FileEnumerator::DIRECTORIES));
   for (FilePath next = skel_enumerator->Next(); !next.empty();
        next = skel_enumerator->Next()) {
     initial_nodes.insert(user_home.Append(next.BaseName()));
@@ -482,10 +478,9 @@ bool MountHelper::IsFirstMountComplete(
 
   // If we have any nodes within the vault that are not in the set created
   // above - it means we have successfully entered a user session prior.
-  std::unique_ptr<cryptohome::FileEnumerator> vault_enumerator(
-      platform_->GetFileEnumerator(
-          user_home, false,
-          base::FileEnumerator::FILES | base::FileEnumerator::DIRECTORIES));
+  std::unique_ptr<FileEnumerator> vault_enumerator(platform_->GetFileEnumerator(
+      user_home, false,
+      base::FileEnumerator::FILES | base::FileEnumerator::DIRECTORIES));
   for (FilePath next = vault_enumerator->Next(); !next.empty();
        next = vault_enumerator->Next()) {
     if (initial_nodes.count(next) == 0) {
@@ -705,10 +700,9 @@ bool MountHelper::MountDaemonStoreDirectories(
   // Iterate over all directories in /etc/daemon-store. This list is on rootfs,
   // so it's tamper-proof and nobody can sneak in additional directories that we
   // blindly mount. The actual mounts happen on /run/daemon-store, though.
-  std::unique_ptr<cryptohome::FileEnumerator> file_enumerator(
-      platform_->GetFileEnumerator(FilePath(kEtcDaemonStoreBaseDir),
-                                   false /* recursive */,
-                                   base::FileEnumerator::DIRECTORIES));
+  std::unique_ptr<FileEnumerator> file_enumerator(platform_->GetFileEnumerator(
+      FilePath(kEtcDaemonStoreBaseDir), false /* recursive */,
+      base::FileEnumerator::DIRECTORIES));
 
   // /etc/daemon-store/<daemon-name>
   FilePath etc_daemon_store_path;
@@ -771,10 +765,9 @@ int MountHelper::MigrateDirectory(const base::FilePath& dst,
                                   const base::FilePath& src) const {
   VLOG(1) << "Migrating directory " << src << " -> " << dst;
   int num_items = 0;
-  std::unique_ptr<cryptohome::FileEnumerator> enumerator(
-      platform_->GetFileEnumerator(
-          src, false /* recursive */,
-          base::FileEnumerator::DIRECTORIES | base::FileEnumerator::FILES));
+  std::unique_ptr<FileEnumerator> enumerator(platform_->GetFileEnumerator(
+      src, false /* recursive */,
+      base::FileEnumerator::DIRECTORIES | base::FileEnumerator::FILES));
   for (base::FilePath src_obj = enumerator->Next(); !src_obj.empty();
        src_obj = enumerator->Next()) {
     base::FilePath dst_obj = dst.Append(src_obj.BaseName());

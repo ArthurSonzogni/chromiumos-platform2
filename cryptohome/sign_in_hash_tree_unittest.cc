@@ -17,6 +17,8 @@ using ::testing::Expectation;
 using ::testing::Return;
 using ::testing::SetArgPointee;
 
+namespace cryptohome {
+
 namespace {
 // The following constant names have the format:
 //  kAuxLabels<l>_<k>_<constant_number>
@@ -58,7 +60,7 @@ const std::vector<uint8_t> kRootHash14_4_2 = {
 const std::vector<uint8_t> kSampleCredData1 = {{0xA, 0xB, 0xC, 0xD}};
 
 std::vector<std::string> ConvertLabelsIntoStrings(
-    const std::vector<cryptohome::SignInHashTree::Label>& labels) {
+    const std::vector<SignInHashTree::Label>& labels) {
   std::vector<std::string> result_strings;
   for (auto const& label : labels) {
     result_strings.push_back(
@@ -68,8 +70,6 @@ std::vector<std::string> ConvertLabelsIntoStrings(
 }
 
 }  // namespace
-
-namespace cryptohome {
 
 TEST(SignInHashTreeUnitTest, GetAuxiliaryLabelsTest) {
   base::ScopedTempDir temp_dir;

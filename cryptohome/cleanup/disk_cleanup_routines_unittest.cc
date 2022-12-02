@@ -36,27 +36,27 @@ using ::testing::SetArgPointee;
 using ::testing::SetArrayArgument;
 using ::testing::StrictMock;
 
+namespace cryptohome {
+
 namespace {
 
 const char* kTestUser = "d5510a8dda6d743c46dadd979a61ae5603529742";
 
-NiceMock<cryptohome::MockFileEnumerator>* CreateMockFileEnumerator() {
-  return new NiceMock<cryptohome::MockFileEnumerator>;
+NiceMock<MockFileEnumerator>* CreateMockFileEnumerator() {
+  return new NiceMock<MockFileEnumerator>;
 }
 
-NiceMock<cryptohome::MockFileEnumerator>* CreateMockFileEnumeratorWithEntries(
+NiceMock<MockFileEnumerator>* CreateMockFileEnumeratorWithEntries(
     const std::vector<base::FilePath>& children) {
-  auto* mock = new NiceMock<cryptohome::MockFileEnumerator>;
+  auto* mock = new NiceMock<MockFileEnumerator>;
   for (const auto& child : children) {
     base::stat_wrapper_t stat = {};
-    mock->entries_.push_back(cryptohome::FileEnumerator::FileInfo(child, stat));
+    mock->entries_.push_back(FileEnumerator::FileInfo(child, stat));
   }
   return mock;
 }
 
 }  // namespace
-
-namespace cryptohome {
 
 TEST(DiskCleanupRoutinesInitialization, Init) {
   StrictMock<MockPlatform> platform_;
@@ -305,23 +305,23 @@ TEST_P(DiskCleanupRoutinesTest, DeleteAndroidCache) {
           .WillOnce(Return(true));
   }
 
-  auto* enumerator = new NiceMock<cryptohome::MockFileEnumerator>;
+  auto* enumerator = new NiceMock<MockFileEnumerator>;
 
   ASSERT_EQ(entriesToClean.size(), 2);
   base::stat_wrapper_t stat = {};
 
   stat.st_ino = 1;
   enumerator->entries_.push_back(
-      cryptohome::FileEnumerator::FileInfo(codeCacheInodeFile, stat));
+      FileEnumerator::FileInfo(codeCacheInodeFile, stat));
   enumerator->entries_.push_back(
-      cryptohome::FileEnumerator::FileInfo(cacheInodeFile, stat));
+      FileEnumerator::FileInfo(cacheInodeFile, stat));
 
   stat.st_ino = codeCacheInode;
   enumerator->entries_.push_back(
-      cryptohome::FileEnumerator::FileInfo(entriesToClean[0], stat));
+      FileEnumerator::FileInfo(entriesToClean[0], stat));
   stat.st_ino = cacheInode;
   enumerator->entries_.push_back(
-      cryptohome::FileEnumerator::FileInfo(entriesToClean[1], stat));
+      FileEnumerator::FileInfo(entriesToClean[1], stat));
 
   EXPECT_CALL(platform_,
               HasExtendedFileAttribute(codeCacheInodeFile,

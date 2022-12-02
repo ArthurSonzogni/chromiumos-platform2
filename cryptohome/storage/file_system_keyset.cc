@@ -36,8 +36,7 @@ FileSystemKeyset FileSystemKeyset::CreateRandom() {
 FileSystemKeyset::FileSystemKeyset() = default;
 FileSystemKeyset::~FileSystemKeyset() = default;
 
-FileSystemKeyset::FileSystemKeyset(
-    const cryptohome::VaultKeyset& vault_keyset) {
+FileSystemKeyset::FileSystemKeyset(const VaultKeyset& vault_keyset) {
   key_.fek = vault_keyset.GetFek();
   key_.fek_salt = vault_keyset.GetFekSalt();
   key_.fnek = vault_keyset.GetFnek();

@@ -723,8 +723,7 @@ base::flat_set<AuthIntent> AuthBlockUtilityImpl::GetSupportedIntentsFromState(
     return supported_intents;
   }
 
-  auto* state = std::get_if<::cryptohome::PinWeaverAuthBlockState>(
-      &auth_block_state.state);
+  auto* state = std::get_if<PinWeaverAuthBlockState>(&auth_block_state.state);
   if (!state) {
     supported_intents.clear();
     return supported_intents;

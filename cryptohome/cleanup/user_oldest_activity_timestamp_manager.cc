@@ -26,7 +26,7 @@ base::Time GetTimestampFileData(Platform* platform,
     return base::Time();
   }
 
-  cryptohome::Timestamp timestamp;
+  Timestamp timestamp;
   if (!timestamp.ParseFromArray(tcontents.data(), tcontents.size())) {
     return base::Time();
   }

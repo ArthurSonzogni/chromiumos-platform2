@@ -142,13 +142,13 @@ class UserDataAuth {
   // the result is stored in |result| (true for migration needed). Otherwise, an
   // error code is returned and result is in an undefined state.
   user_data_auth::CryptohomeErrorCode NeedsDircryptoMigration(
-      const cryptohome::AccountIdentifier& account, bool* result);
+      const AccountIdentifier& account, bool* result);
 
   // Return the size of the user's home directory in number of bytes. If the
   // |account| given is non-existent, then 0 is returned.
   // Negative values are reserved for future cases whereby we need to do some
   // form of error reporting.
-  int64_t GetAccountDiskUsage(const cryptohome::AccountIdentifier& account);
+  int64_t GetAccountDiskUsage(const AccountIdentifier& account);
 
   // =============== Mount Related Public Utilities ===============
 
@@ -251,7 +251,7 @@ class UserDataAuth {
   // actually the key's metadata.
   user_data_auth::CryptohomeErrorCode GetKeyData(
       const user_data_auth::GetKeyDataRequest& request,
-      cryptohome::KeyData* data_out,
+      KeyData* data_out,
       bool* found);
 
   // This will migrate, or rather say, change the underlying secret that is used
@@ -442,7 +442,7 @@ class UserDataAuth {
   // extending PCR, causing PCR-bound VKKs to be inaccessible. This is used by
   // ARC++. |account_id| contains the user that we'll lock to before reboot.
   user_data_auth::CryptohomeErrorCode LockToSingleUserMountUntilReboot(
-      const cryptohome::AccountIdentifier& account_id);
+      const AccountIdentifier& account_id);
 
   // Retrieve the RSU Device ID, return true if and only if |rsu_device_id| is
   // set to the RSU Device ID.
@@ -534,7 +534,7 @@ class UserDataAuth {
   // testing purpose only.
 
   // Override |crypto_| for testing purpose
-  void set_crypto(cryptohome::Crypto* crypto) { crypto_ = crypto; }
+  void set_crypto(Crypto* crypto) { crypto_ = crypto; }
 
   // Override |keyset_management_| for testing purpose
   void set_keyset_management(KeysetManagement* value) {
@@ -577,7 +577,7 @@ class UserDataAuth {
   }
 
   // Override |homedirs_| for testing purpose
-  void set_homedirs(cryptohome::HomeDirs* homedirs) { homedirs_ = homedirs; }
+  void set_homedirs(HomeDirs* homedirs) { homedirs_ = homedirs; }
 
   // Override |hwsec_factory_| for testing purpose
   void set_hwsec_factory(hwsec::Factory* hwsec_factory) {
@@ -609,7 +609,7 @@ class UserDataAuth {
   }
 
   // Override |platform_| for testing purpose
-  void set_platform(cryptohome::Platform* platform) { platform_ = platform; }
+  void set_platform(Platform* platform) { platform_ = platform; }
 
   // override |chaps_client_| for testing purpose
   void set_chaps_client(chaps::TokenManagerClient* chaps_client) {
@@ -622,7 +622,7 @@ class UserDataAuth {
   }
 
   // Override |arc_disk_quota_| for testing purpose
-  void set_arc_disk_quota(cryptohome::ArcDiskQuota* arc_disk_quota) {
+  void set_arc_disk_quota(ArcDiskQuota* arc_disk_quota) {
     arc_disk_quota_ = arc_disk_quota;
   }
 
@@ -1247,18 +1247,18 @@ class UserDataAuth {
   tpm_manager::TpmManagerUtility* tpm_manager_util_;
 
   // The default platform object for accessing platform related functionalities
-  std::unique_ptr<cryptohome::Platform> default_platform_;
+  std::unique_ptr<Platform> default_platform_;
 
   // The actual platform object used by this class, usually set to
   // default_platform_, but can be overridden for testing
-  cryptohome::Platform* platform_;
+  Platform* platform_;
 
   // The default crypto object for performing cryptographic operations
-  std::unique_ptr<cryptohome::Crypto> default_crypto_;
+  std::unique_ptr<Crypto> default_crypto_;
 
   // The actual crypto object used by this class, usually set to
   // default_crypto_, but can be overridden for testing
-  cryptohome::Crypto* crypto_;
+  Crypto* crypto_;
 
   // The default token manager client for accessing chapsd's PKCS#11 interface
   std::unique_ptr<chaps::TokenManagerClient> default_chaps_client_;
@@ -1313,12 +1313,12 @@ class UserDataAuth {
 
   // The default install attributes object, for accessing install attributes
   // related functionality.
-  std::unique_ptr<cryptohome::InstallAttributes> default_install_attrs_;
+  std::unique_ptr<InstallAttributes> default_install_attrs_;
 
   // The actual install attributes object used by this class, usually set to
   // |default_install_attrs_|, but can be overridden for testing. This object
   // should only be accessed on the origin thread.
-  cryptohome::InstallAttributes* install_attrs_;
+  InstallAttributes* install_attrs_;
 
   // Whether this device is an enterprise owned device. Write access should only
   // happen on mount thread.

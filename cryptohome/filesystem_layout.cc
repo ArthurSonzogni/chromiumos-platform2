@@ -73,7 +73,7 @@ bool GetOrCreateSalt(Platform* platform,
 }
 
 // Get the Account ID for an AccountIdentifier proto.
-std::string GetAccountId(const cryptohome::AccountIdentifier& id) {
+std::string GetAccountId(const AccountIdentifier& id) {
   if (id.has_account_id()) {
     return id.account_id();
   }
@@ -189,8 +189,7 @@ bool GetPublicMountSalt(Platform* platform, brillo::SecureBlob* salt) {
   return GetOrCreateSalt(platform, PublicMountSaltFile(), salt);
 }
 
-base::FilePath GetRecoveryIdPath(
-    const cryptohome::AccountIdentifier& account_id) {
+base::FilePath GetRecoveryIdPath(const AccountIdentifier& account_id) {
   std::string obfuscated =
       brillo::cryptohome::home::SanitizeUserName(GetAccountId(account_id));
   if (obfuscated.empty()) {
@@ -200,8 +199,7 @@ base::FilePath GetRecoveryIdPath(
       .Append(kRecoveryIdFile);
 }
 
-bool InitializeFilesystemLayout(Platform* platform,
-                                brillo::SecureBlob* salt) {
+bool InitializeFilesystemLayout(Platform* platform, brillo::SecureBlob* salt) {
   const base::FilePath shadow_root = ShadowRoot();
   if (!platform->DirectoryExists(shadow_root)) {
     platform->CreateDirectory(shadow_root);

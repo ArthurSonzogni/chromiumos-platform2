@@ -3181,7 +3181,7 @@ user_data_auth::ListKeysReply UserDataAuth::ListKeys(
 
 user_data_auth::CryptohomeErrorCode UserDataAuth::GetKeyData(
     const user_data_auth::GetKeyDataRequest& request,
-    cryptohome::KeyData* data_out,
+    KeyData* data_out,
     bool* found) {
   AssertOnMountThread();
 
@@ -3428,7 +3428,7 @@ void UserDataAuth::StartMigrateToDircrypto(
 }
 
 user_data_auth::CryptohomeErrorCode UserDataAuth::NeedsDircryptoMigration(
-    const cryptohome::AccountIdentifier& account, bool* result) {
+    const AccountIdentifier& account, bool* result) {
   AssertOnMountThread();
   const std::string obfuscated_username =
       SanitizeUserName(GetAccountId(account));
@@ -3452,8 +3452,7 @@ bool UserDataAuth::IsLowEntropyCredentialSupported() {
   return is_enabled.value();
 }
 
-int64_t UserDataAuth::GetAccountDiskUsage(
-    const cryptohome::AccountIdentifier& account) {
+int64_t UserDataAuth::GetAccountDiskUsage(const AccountIdentifier& account) {
   AssertOnMountThread();
   // Note that if the given |account| is invalid or non-existent, then HomeDirs'
   // implementation of ComputeDiskUsage is specified to return 0.
@@ -3909,7 +3908,7 @@ bool UserDataAuth::RequiresPowerwash() {
 
 user_data_auth::CryptohomeErrorCode
 UserDataAuth::LockToSingleUserMountUntilReboot(
-    const cryptohome::AccountIdentifier& account_id) {
+    const AccountIdentifier& account_id) {
   AssertOnOriginThread();
   const std::string obfuscated_username =
       SanitizeUserName(GetAccountId(account_id));
@@ -4027,7 +4026,7 @@ void UserDataAuth::StartAuthSession(
     return;
   }
 
-  google::protobuf::Map<std::string, cryptohome::KeyData> proto_key_map(
+  google::protobuf::Map<std::string, KeyData> proto_key_map(
       auth_session->key_label_data().begin(),
       auth_session->key_label_data().end());
   *(reply.mutable_key_label_data()) = proto_key_map;

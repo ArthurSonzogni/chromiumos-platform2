@@ -71,7 +71,7 @@ constexpr bool __attribute__((unused)) MountUserSessionOOP() {
 
 namespace cryptohome {
 
-void StartUserFileAttrsCleanerService(cryptohome::Platform* platform,
+void StartUserFileAttrsCleanerService(Platform* platform,
                                       const std::string& username) {
   std::unique_ptr<brillo::Process> file_attrs =
       platform->CreateProcessInstance();
@@ -183,13 +183,13 @@ StorageStatus Mount::MountCryptohome(
   std::string fnek_signature =
       SecureBlobToHex(file_system_keyset.KeyReference().fnek_sig);
 
-  cryptohome::ReportTimerStart(cryptohome::kPerformMountTimer);
+  ReportTimerStart(kPerformMountTimer);
   RETURN_IF_ERROR(active_mounter_->PerformMount(GetMountType(), username_,
                                                 key_signature, fnek_signature))
           .LogError()
       << "MountHelper::PerformMount failed";
 
-  cryptohome::ReportTimerStop(cryptohome::kPerformMountTimer);
+  ReportTimerStop(kPerformMountTimer);
 
   // Once mount is complete, do a deferred teardown for on the vault.
   // The teardown occurs when the vault's containers has no references ie. no

@@ -1006,7 +1006,7 @@ base::Time KeysetManagement::GetPerIndexTimestampFileData(
     return base::Time();
   }
 
-  cryptohome::Timestamp timestamp;
+  Timestamp timestamp;
   if (!timestamp.ParseFromArray(tcontents.data(), tcontents.size())) {
     return base::Time();
   }

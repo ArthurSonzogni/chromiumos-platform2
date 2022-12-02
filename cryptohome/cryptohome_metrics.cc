@@ -13,6 +13,8 @@
 #include <metrics/metrics_library.h>
 #include <metrics/timer.h>
 
+namespace cryptohome {
+
 namespace {
 
 struct TimerHistogramParams {
@@ -200,7 +202,7 @@ const TimerHistogramParams kTimerHistogramParams[] = {
     {"Cryptohome.TimeToUSSLoadPersisted", 0, 5000, 50},
 };
 
-static_assert(std::size(kTimerHistogramParams) == cryptohome::kNumTimerTypes,
+static_assert(std::size(kTimerHistogramParams) == kNumTimerTypes,
               "kTimerHistogramParams out of sync with enum TimerType");
 
 // List of strings for a patterned histogram for legacy locations.
@@ -208,7 +210,7 @@ const char* kLegacyCodePathLocations[] = {".AddKeyResetSeedGeneration"};
 
 static_assert(
     std::size(kLegacyCodePathLocations) ==
-        static_cast<int>(cryptohome::LegacyCodePathLocation::kMaxValue) + 1,
+        static_cast<int>(LegacyCodePathLocation::kMaxValue) + 1,
     "kLegacyCodePathLocations out of sync with enum LegacyCodePathLocation");
 
 constexpr char kCryptohomeDeprecatedApiHistogramName[] =
@@ -219,9 +221,9 @@ constexpr char kCryptohomeDeprecatedApiHistogramName[] =
 bool g_disable_error_metrics = false;
 
 MetricsLibraryInterface* g_metrics = NULL;
-chromeos_metrics::TimerReporter* g_timers[cryptohome::kNumTimerTypes] = {NULL};
+chromeos_metrics::TimerReporter* g_timers[kNumTimerTypes] = {NULL};
 
-chromeos_metrics::TimerReporter* GetTimer(cryptohome::TimerType timer_type) {
+chromeos_metrics::TimerReporter* GetTimer(TimerType timer_type) {
   if (!g_timers[timer_type]) {
     g_timers[timer_type] = new chromeos_metrics::TimerReporter(
         kTimerHistogramParams[timer_type].metric_name,
@@ -235,33 +237,31 @@ chromeos_metrics::TimerReporter* GetTimer(cryptohome::TimerType timer_type) {
 // These values are persisted to logs.
 // Keep in sync with respective variant enum in
 // tools/metrics/histograms/metadata/cryptohome/histograms.xml
-char const* GetAuthBlockTypeStringVariant(cryptohome::AuthBlockType type) {
+char const* GetAuthBlockTypeStringVariant(AuthBlockType type) {
   switch (type) {
-    case cryptohome::AuthBlockType::kPinWeaver:
+    case AuthBlockType::kPinWeaver:
       return "PinWeaver";
-    case cryptohome::AuthBlockType::kChallengeCredential:
+    case AuthBlockType::kChallengeCredential:
       return "ChallengeCredential";
-    case cryptohome::AuthBlockType::kDoubleWrappedCompat:
+    case AuthBlockType::kDoubleWrappedCompat:
       return "DoubleWrappedCompat";
-    case cryptohome::AuthBlockType::kTpmBoundToPcr:
+    case AuthBlockType::kTpmBoundToPcr:
       return "TpmBoundToPcr";
-    case cryptohome::AuthBlockType::kTpmNotBoundToPcr:
+    case AuthBlockType::kTpmNotBoundToPcr:
       return "TpmNotBoundToPcr";
-    case cryptohome::AuthBlockType::kScrypt:
+    case AuthBlockType::kScrypt:
       return "Scrypt";
-    case cryptohome::AuthBlockType::kCryptohomeRecovery:
+    case AuthBlockType::kCryptohomeRecovery:
       return "CryptohomeRecovery";
-    case cryptohome::AuthBlockType::kTpmEcc:
+    case AuthBlockType::kTpmEcc:
       return "TpmEcc";
-    case cryptohome::AuthBlockType::kMaxValue:
+    case AuthBlockType::kMaxValue:
       NOTREACHED();
       return "";
   }
 }
 
 }  // namespace
-
-namespace cryptohome {
 
 void InitializeMetrics() {
   g_metrics = new MetricsLibrary();
@@ -347,7 +347,7 @@ void ReportTimerDuration(
   AuthBlockType auth_block_type =
       auth_session_performance_timer->auth_block_type;
   std::string metric_name = kTimerHistogramParams[timer_type].metric_name;
-  if (auth_block_type != cryptohome::AuthBlockType::kMaxValue) {
+  if (auth_block_type != AuthBlockType::kMaxValue) {
     std::string block_type =
         base::StrCat({".", GetAuthBlockTypeStringVariant(auth_block_type)});
     metric_name.append(block_type);

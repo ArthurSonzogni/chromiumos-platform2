@@ -128,9 +128,8 @@ bool DiskCleanupRoutines::DeleteUserAndroidCache(
   // as the inodes may have been re-used elsewhere if the cache directory was
   // deleted.
   std::set<std::pair<const FilePath, ino_t>> cache_inodes;
-  std::unique_ptr<cryptohome::FileEnumerator> file_enumerator(
-      platform_->GetFileEnumerator(root, true,
-                                   base::FileEnumerator::DIRECTORIES));
+  std::unique_ptr<FileEnumerator> file_enumerator(platform_->GetFileEnumerator(
+      root, true, base::FileEnumerator::DIRECTORIES));
   FilePath next_path;
   while (!(next_path = file_enumerator->Next()).empty()) {
     ino_t inode = file_enumerator->GetInfo().stat().st_ino;

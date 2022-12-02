@@ -135,9 +135,8 @@ class AuthSession final {
   // Authenticate is called when the user wants to authenticate the current
   // AuthSession. It may be called multiple times depending on errors or various
   // steps involved in multi-factor authentication.
-  void Authenticate(
-      const cryptohome::AuthorizationRequest& authorization_request,
-      StatusCallback on_done);
+  void Authenticate(const AuthorizationRequest& authorization_request,
+                    StatusCallback on_done);
 
   // Authenticate is called when the user wants to authenticate the current
   // AuthSession via an auth factor. It may be called multiple times depending
@@ -193,11 +192,11 @@ class AuthSession final {
   bool ephemeral_user() const { return is_ephemeral_user_; }
 
   // Returns the key data with which this AuthSession is authenticated with.
-  cryptohome::KeyData current_key_data() const { return key_data_; }
+  KeyData current_key_data() const { return key_data_; }
 
   // Returns the map of Key label and KeyData that will be used as a result of
   // StartAuthSession request.
-  const std::map<std::string, cryptohome::KeyData>& key_label_data() const {
+  const std::map<std::string, KeyData>& key_label_data() const {
     return key_label_data_;
   }
 
@@ -296,7 +295,7 @@ class AuthSession final {
   // This function returns credentials based on the state of the current
   // |AuthSession|.
   MountStatusOr<std::unique_ptr<Credentials>> GetCredentials(
-      const cryptohome::AuthorizationRequest& authorization_request);
+      const AuthorizationRequest& authorization_request);
 
   // Converts the D-Bus AuthInput proto into the C++ struct. Returns nullopt on
   // failure.
@@ -313,8 +312,7 @@ class AuthSession final {
   // {.public_key_spki_der, .challenge_signature_algorithms} from
   // the challenge_response_key values in in authorization
   std::optional<ChallengeCredentialAuthInput>
-  CreateChallengeCredentialAuthInput(
-      const cryptohome::AuthorizationRequest& authorization);
+  CreateChallengeCredentialAuthInput(const AuthorizationRequest& authorization);
 
   // This function attempts to add verifier for the given label based on the
   // AuthInput. If it succeeds it will return a pointer to the verifier.
@@ -605,14 +603,14 @@ class AuthSession final {
   // VaultKeysets to AuthFactor API.
   std::unique_ptr<AuthFactorVaultKeysetConverter> converter_;
   // Used to store key meta data.
-  cryptohome::KeyData key_data_;
+  KeyData key_data_;
   // FileSystemKeyset is needed by cryptohome to mount a user.
   std::optional<FileSystemKeyset> file_system_keyset_ = std::nullopt;
   // Whether the user existed at the time this object was constructed.
   bool user_exists_ = false;
   // Map to store the label and public KeyData.
   // TODO(crbug.com/1171024): Change this to AuthFactor
-  std::map<std::string, cryptohome::KeyData> key_label_data_;
+  std::map<std::string, KeyData> key_label_data_;
   // Map containing the auth factors already configured for this user.
   AuthFactorMap auth_factor_map_;
   // Key used by AuthenticateAuthFactor for cryptohome recovery AuthFactor.

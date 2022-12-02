@@ -1006,7 +1006,7 @@ class LeCredentialsManagerTest : public ::testing::Test {
             SetArgPointee<3>(brillo::SecureBlob(HexDecode(kHexResetSecret))),
             ReturnError<CryptohomeLECredError>()));
     crypto_.set_le_manager_for_testing(
-        std::unique_ptr<cryptohome::LECredentialManager>(le_cred_manager_));
+        std::unique_ptr<LECredentialManager>(le_cred_manager_));
 
     crypto_.Init();
 

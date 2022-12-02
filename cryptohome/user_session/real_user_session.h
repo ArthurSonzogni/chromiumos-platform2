@@ -127,7 +127,7 @@ class RealUserSession : public UserSession {
   // Timer for clearing the hibernate secret.
   base::OneShotTimer clear_hibernate_secret_timer_;
 
-  scoped_refptr<cryptohome::Mount> mount_;
+  scoped_refptr<Mount> mount_;
   std::unique_ptr<Pkcs11Token> pkcs11_token_;
 
   friend class UserDataAuthTestTasked;

@@ -488,7 +488,7 @@ TEST_F(AuthBlockUtilityImplTest, CreatePinweaverAuthBlockTest) {
       .WillOnce(
           DoAll(SaveArg<1>(&le_secret), ReturnError<CryptohomeLECredError>()));
   crypto_.set_le_manager_for_testing(
-      std::unique_ptr<cryptohome::LECredentialManager>(le_cred_manager));
+      std::unique_ptr<LECredentialManager>(le_cred_manager));
   crypto_.Init();
 
   MakeAuthBlockUtilityImpl();
@@ -522,7 +522,7 @@ TEST_F(AuthBlockUtilityImplTest, DerivePinWeaverAuthBlock) {
   MockLECredentialManager* le_cred_manager = new MockLECredentialManager();
 
   crypto_.set_le_manager_for_testing(
-      std::unique_ptr<cryptohome::LECredentialManager>(le_cred_manager));
+      std::unique_ptr<LECredentialManager>(le_cred_manager));
   crypto_.Init();
 
   ASSERT_TRUE(DeriveSecretsScrypt(passkey, salt, {&le_secret}));
@@ -1819,7 +1819,7 @@ TEST_F(AuthBlockUtilityImplTest,
   EXPECT_CALL(*le_cred_manager, RemoveCredential(fake_label))
       .WillOnce(ReturnError<CryptohomeLECredError>());
   crypto_.set_le_manager_for_testing(
-      std::unique_ptr<cryptohome::LECredentialManager>(le_cred_manager));
+      std::unique_ptr<LECredentialManager>(le_cred_manager));
   crypto_.Init();
 
   CryptohomeRecoveryAuthBlockState recovery_state = {

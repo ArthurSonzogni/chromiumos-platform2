@@ -17,7 +17,7 @@ namespace {
 const mode_t kCacheFilePermissions = 0644;
 }  // namespace
 
-bool CacheLockbox(cryptohome::Platform* platform,
+bool CacheLockbox(Platform* platform,
                   const base::FilePath& nvram_path,
                   const base::FilePath& lockbox_path,
                   const base::FilePath& cache_path) {

@@ -1374,7 +1374,7 @@ TEST_F(UserDataAuthTest, SetMediaRWDataFileProjectInheritanceFlag) {
 
 TEST_F(UserDataAuthTest, LockToSingleUserMountUntilRebootValidity) {
   constexpr char kUsername1[] = "foo@gmail.com";
-  cryptohome::AccountIdentifier account_id;
+  AccountIdentifier account_id;
   account_id.set_account_id(kUsername1);
   const std::string kUsername1Obfuscated = GetObfuscatedUsername(kUsername1);
 
@@ -1389,7 +1389,7 @@ TEST_F(UserDataAuthTest, LockToSingleUserMountUntilRebootValidity) {
 
 TEST_F(UserDataAuthTest, LockToSingleUserMountUntilRebootReadPCRFail) {
   constexpr char kUsername1[] = "foo@gmail.com";
-  cryptohome::AccountIdentifier account_id;
+  AccountIdentifier account_id;
   account_id.set_account_id(kUsername1);
 
   ON_CALL(homedirs_, SetLockedToSingleUser()).WillByDefault(Return(true));
@@ -1402,7 +1402,7 @@ TEST_F(UserDataAuthTest, LockToSingleUserMountUntilRebootReadPCRFail) {
 
 TEST_F(UserDataAuthTest, LockToSingleUserMountUntilRebootAlreadyExtended) {
   constexpr char kUsername1[] = "foo@gmail.com";
-  cryptohome::AccountIdentifier account_id;
+  AccountIdentifier account_id;
   account_id.set_account_id(kUsername1);
 
   ON_CALL(homedirs_, SetLockedToSingleUser()).WillByDefault(Return(true));
@@ -1414,7 +1414,7 @@ TEST_F(UserDataAuthTest, LockToSingleUserMountUntilRebootAlreadyExtended) {
 
 TEST_F(UserDataAuthTest, LockToSingleUserMountUntilRebootExtendFail) {
   constexpr char kUsername1[] = "foo@gmail.com";
-  cryptohome::AccountIdentifier account_id;
+  AccountIdentifier account_id;
   account_id.set_account_id(kUsername1);
   const std::string kUsername1Obfuscated = GetObfuscatedUsername(kUsername1);
 
@@ -3187,7 +3187,7 @@ TEST_F(UserDataAuthExTest, AddKeyValidity) {
   EXPECT_CALL(keyset_management_, GetValidKeyset(_))
       .WillOnce(Return(ByMove(std::make_unique<VaultKeyset>())));
   EXPECT_CALL(keyset_management_, AddKeyset(_, _, _, _))
-      .WillOnce(Return(cryptohome::CRYPTOHOME_ERROR_NOT_SET));
+      .WillOnce(Return(CRYPTOHOME_ERROR_NOT_SET));
 
   EXPECT_EQ(userdataauth_->AddKey(*add_req_.get()),
             user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
@@ -3208,7 +3208,7 @@ TEST_F(UserDataAuthExTest, AddKeyResetSeedGeneration) {
       .WillOnce(Return(ByMove(std::make_unique<VaultKeyset>())));
   EXPECT_CALL(keyset_management_, AddWrappedResetSeedIfMissing(_, _));
   EXPECT_CALL(keyset_management_, AddKeyset(_, _, _, _))
-      .WillOnce(Return(cryptohome::CRYPTOHOME_ERROR_NOT_SET));
+      .WillOnce(Return(CRYPTOHOME_ERROR_NOT_SET));
 
   EXPECT_EQ(userdataauth_->AddKey(*add_req_.get()),
             user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
@@ -3453,7 +3453,7 @@ TEST_F(UserDataAuthExTest, CheckKeyFingerprintFailRetry) {
   check_req_->mutable_authorization_request()
       ->mutable_key()
       ->mutable_data()
-      ->set_type(cryptohome::KeyData::KEY_TYPE_FINGERPRINT);
+      ->set_type(KeyData::KEY_TYPE_FINGERPRINT);
 
   EXPECT_CALL(fingerprint_manager_, HasAuthSessionForUser(_))
       .WillOnce(Return(true));
@@ -3477,7 +3477,7 @@ TEST_F(UserDataAuthExTest, CheckKeyFingerprintFailNoRetry) {
   check_req_->mutable_authorization_request()
       ->mutable_key()
       ->mutable_data()
-      ->set_type(cryptohome::KeyData::KEY_TYPE_FINGERPRINT);
+      ->set_type(KeyData::KEY_TYPE_FINGERPRINT);
 
   EXPECT_CALL(fingerprint_manager_, HasAuthSessionForUser(_))
       .WillOnce(Return(true));
@@ -3501,7 +3501,7 @@ TEST_F(UserDataAuthExTest, CheckKeyFingerprintWrongUser) {
   check_req_->mutable_authorization_request()
       ->mutable_key()
       ->mutable_data()
-      ->set_type(cryptohome::KeyData::KEY_TYPE_FINGERPRINT);
+      ->set_type(KeyData::KEY_TYPE_FINGERPRINT);
 
   EXPECT_CALL(fingerprint_manager_, HasAuthSessionForUser(_))
       .WillOnce(Return(false));
@@ -3517,7 +3517,7 @@ TEST_F(UserDataAuthExTest, CheckKeyFingerprintSuccess) {
   check_req_->mutable_authorization_request()
       ->mutable_key()
       ->mutable_data()
-      ->set_type(cryptohome::KeyData::KEY_TYPE_FINGERPRINT);
+      ->set_type(KeyData::KEY_TYPE_FINGERPRINT);
 
   EXPECT_CALL(fingerprint_manager_, HasAuthSessionForUser(_))
       .WillOnce(Return(true));
@@ -3759,7 +3759,7 @@ TEST_F(UserDataAuthExTest, GetKeyDataExNoMatch) {
   EXPECT_CALL(keyset_management_, GetVaultKeyset(_, _))
       .WillOnce(Return(ByMove(std::move(vk))));
 
-  cryptohome::KeyData keydata_out;
+  KeyData keydata_out;
   bool found = false;
   EXPECT_EQ(userdataauth_->GetKeyData(*get_key_data_req_, &keydata_out, &found),
             user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
@@ -3781,7 +3781,7 @@ TEST_F(UserDataAuthExTest, GetKeyDataExOneMatch) {
   EXPECT_CALL(keyset_management_, GetVaultKeyset(_, _))
       .WillOnce(Return(ByMove(std::move(vk))));
 
-  cryptohome::KeyData keydata_out;
+  KeyData keydata_out;
   bool found = false;
   EXPECT_EQ(userdataauth_->GetKeyData(*get_key_data_req_, &keydata_out, &found),
             user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
@@ -3805,7 +3805,7 @@ TEST_F(UserDataAuthExTest, GetKeyDataExEmpty) {
       .WillRepeatedly(
           Invoke(this, &UserDataAuthExTest::GetNiceMockVaultKeyset));
 
-  cryptohome::KeyData keydata_out;
+  KeyData keydata_out;
   bool found = false;
   EXPECT_EQ(userdataauth_->GetKeyData(*get_key_data_req_, &keydata_out, &found),
             user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
@@ -3818,7 +3818,7 @@ TEST_F(UserDataAuthExTest, GetKeyDataInvalidArgs) {
   PrepareArguments();
 
   // No email.
-  cryptohome::KeyData keydata_out;
+  KeyData keydata_out;
   bool found = false;
   EXPECT_EQ(userdataauth_->GetKeyData(*get_key_data_req_, &keydata_out, &found),
             user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
@@ -3996,7 +3996,7 @@ TEST_F(UserDataAuthExTest, StartAuthSessionUnusableClobber) {
       "foo@example.com");
   EXPECT_CALL(keyset_management_, UserExists(_)).WillOnce(Return(true));
   EXPECT_CALL(platform_, GetFileEnumerator(_, _, _))
-      .WillOnce(Return(new NiceMock<cryptohome::MockFileEnumerator>));
+      .WillOnce(Return(new NiceMock<MockFileEnumerator>));
   TestFuture<user_data_auth::StartAuthSessionReply> auth_session_reply_future;
   userdataauth_->StartAuthSession(
       *start_auth_session_req_,

@@ -436,7 +436,7 @@ TEST_F(AuthSessionTest, GetCredentialRegularUser) {
 
   // TEST
   EXPECT_FALSE(timeout_future.IsReady());
-  cryptohome::AuthorizationRequest authorization_request;
+  AuthorizationRequest authorization_request;
   authorization_request.mutable_key()->set_secret(kFakePass);
   authorization_request.mutable_key()->mutable_data()->set_label(kFakeLabel);
   MountStatusOr<std::unique_ptr<Credentials>> test_creds =
@@ -475,7 +475,7 @@ TEST_F(AuthSessionTest, GetCredentialKioskUser) {
 
   // TEST
   EXPECT_FALSE(timeout_future.IsReady());
-  cryptohome::AuthorizationRequest authorization_request;
+  AuthorizationRequest authorization_request;
   authorization_request.mutable_key()->mutable_data()->set_label(kFakeLabel);
   authorization_request.mutable_key()->mutable_data()->set_type(
       KeyData::KEY_TYPE_KIOSK);
@@ -547,7 +547,7 @@ TEST_F(AuthSessionTest, AddCredentialNewUser) {
       UnorderedElementsAre(AuthIntent::kDecrypt, AuthIntent::kVerifyOnly));
 
   user_data_auth::AddCredentialsRequest add_cred_request;
-  cryptohome::AuthorizationRequest* authorization_request =
+  AuthorizationRequest* authorization_request =
       add_cred_request.mutable_authorization();
   authorization_request->mutable_key()->set_secret(kFakePass);
   authorization_request->mutable_key()->mutable_data()->set_label(kFakeLabel);
@@ -602,7 +602,7 @@ TEST_F(AuthSessionTest, AddCredentialNewUserTwice) {
   EXPECT_FALSE(auth_session->user_exists());
 
   user_data_auth::AddCredentialsRequest add_cred_request;
-  cryptohome::AuthorizationRequest* authorization_request =
+  AuthorizationRequest* authorization_request =
       add_cred_request.mutable_authorization();
   authorization_request->mutable_key()->set_secret(kFakePass);
   authorization_request->mutable_key()->mutable_data()->set_label(kFakeLabel);
@@ -643,7 +643,7 @@ TEST_F(AuthSessionTest, AddCredentialNewUserTwice) {
   // Test adding the second credential.
   // Set up expectation in callback for success.
   user_data_auth::AddCredentialsRequest add_other_cred_request;
-  cryptohome::AuthorizationRequest* other_authorization_request =
+  AuthorizationRequest* other_authorization_request =
       add_other_cred_request.mutable_authorization();
   other_authorization_request->mutable_key()->set_secret(kFakeOtherPass);
   other_authorization_request->mutable_key()->mutable_data()->set_label(
@@ -694,7 +694,7 @@ TEST_F(AuthSessionTest, AuthenticateExistingUser) {
               auth_session.GetStatus());
   EXPECT_TRUE(auth_session.user_exists());
 
-  cryptohome::AuthorizationRequest authorization_request;
+  AuthorizationRequest authorization_request;
   authorization_request.mutable_key()->set_secret(kFakePass);
   authorization_request.mutable_key()->mutable_data()->set_label(kFakeLabel);
 
@@ -770,7 +770,7 @@ TEST_F(AuthSessionTest, AuthenticateWithPIN) {
               auth_session.GetStatus());
   EXPECT_TRUE(auth_session.user_exists());
 
-  cryptohome::AuthorizationRequest authorization_request;
+  AuthorizationRequest authorization_request;
   authorization_request.mutable_key()->set_secret(kFakePin);
   authorization_request.mutable_key()->mutable_data()->set_label(kFakePinLabel);
   authorization_request.mutable_key()
@@ -846,7 +846,7 @@ TEST_F(AuthSessionTest, AuthenticateFailsOnPINLock) {
               auth_session->GetStatus());
   EXPECT_TRUE(auth_session->user_exists());
 
-  cryptohome::AuthorizationRequest authorization_request;
+  AuthorizationRequest authorization_request;
   authorization_request.mutable_key()->set_secret(kFakePin);
   authorization_request.mutable_key()->mutable_data()->set_label(kFakePinLabel);
   authorization_request.mutable_key()
@@ -970,7 +970,7 @@ TEST_F(AuthSessionTest, AuthenticateFailsAfterPINLock) {
               auth_session->GetStatus());
   EXPECT_TRUE(auth_session->user_exists());
 
-  cryptohome::AuthorizationRequest authorization_request;
+  AuthorizationRequest authorization_request;
   authorization_request.mutable_key()->set_secret(kFakePin);
   authorization_request.mutable_key()->mutable_data()->set_label(kFakePinLabel);
   authorization_request.mutable_key()
@@ -1032,7 +1032,7 @@ TEST_F(AuthSessionTest, AuthenticateExistingUserFailure) {
               auth_session->GetStatus());
   EXPECT_TRUE(auth_session->user_exists());
 
-  cryptohome::AuthorizationRequest authorization_request;
+  AuthorizationRequest authorization_request;
   authorization_request.mutable_key()->set_secret(kFakePass);
   authorization_request.mutable_key()->mutable_data()->set_label(kFakeLabel);
 
@@ -1099,7 +1099,7 @@ TEST_F(AuthSessionTest, AddCredentialNewEphemeralUser) {
   ASSERT_TRUE(auth_session->timeout_timer_.IsRunning());
 
   user_data_auth::AddCredentialsRequest add_cred_request;
-  cryptohome::AuthorizationRequest* authorization_request =
+  AuthorizationRequest* authorization_request =
       add_cred_request.mutable_authorization();
   authorization_request->mutable_key()->set_secret(kFakePass);
   authorization_request->mutable_key()->mutable_data()->set_label(kFakeLabel);
@@ -1158,7 +1158,7 @@ TEST_F(AuthSessionTest, UpdateCredentialUnauthenticatedAuthSession) {
   AuthSession* auth_session = auth_session_status.value();
 
   user_data_auth::UpdateCredentialRequest update_cred_request;
-  cryptohome::AuthorizationRequest* authorization_request =
+  AuthorizationRequest* authorization_request =
       update_cred_request.mutable_authorization();
   authorization_request->mutable_key()->set_secret(kFakePass);
   authorization_request->mutable_key()->mutable_data()->set_label(kFakeLabel);
@@ -1208,7 +1208,7 @@ TEST_F(AuthSessionTest, UpdateCredentialSuccess) {
   auth_session->set_vault_keyset_for_testing(std::move(vk));
   auth_session->SetStatus(AuthStatus::kAuthStatusAuthenticated);
   user_data_auth::UpdateCredentialRequest update_cred_request;
-  cryptohome::AuthorizationRequest* authorization_request =
+  AuthorizationRequest* authorization_request =
       update_cred_request.mutable_authorization();
   authorization_request->mutable_key()->set_secret(kFakePass);
   authorization_request->mutable_key()->mutable_data()->set_label(kFakeLabel);
@@ -1240,7 +1240,7 @@ TEST_F(AuthSessionTest, UpdateCredentialInvalidLabel) {
   EXPECT_TRUE(auth_session_status.ok());
   AuthSession* auth_session = auth_session_status.value();
   user_data_auth::UpdateCredentialRequest update_cred_request;
-  cryptohome::AuthorizationRequest* authorization_request =
+  AuthorizationRequest* authorization_request =
       update_cred_request.mutable_authorization();
   authorization_request->mutable_key()->set_secret(kFakePass);
   authorization_request->mutable_key()->mutable_data()->set_label(kFakeLabel);

@@ -502,7 +502,7 @@ TEST_F(RecoveryCryptoTest, RecoverDestinationInvalidMediatedPoint) {
 }
 
 TEST_F(RecoveryCryptoTest, GenerateRecoveryId) {
-  cryptohome::AccountIdentifier account_id;
+  AccountIdentifier account_id;
   account_id.set_account_id(kFakeUserId);
 
   // Generate a new seed and compute recovery_id.
@@ -517,7 +517,7 @@ TEST_F(RecoveryCryptoTest, GenerateRecoveryId) {
 }
 
 TEST_F(RecoveryCryptoTest, NoRecoveryId) {
-  cryptohome::AccountIdentifier account_id;
+  AccountIdentifier account_id;
   account_id.set_account_id(kFakeUserId);
 
   // Try to load recovery_id before generating it.
@@ -530,7 +530,7 @@ TEST_F(RecoveryCryptoTest, NoRecoveryId) {
 }
 
 TEST_F(RecoveryCryptoTest, VerifyRecoveryIdsHistory) {
-  cryptohome::AccountIdentifier account_id;
+  AccountIdentifier account_id;
   account_id.set_account_id(kFakeUserId);
 
   std::vector<std::string> recovery_id;
@@ -552,7 +552,7 @@ TEST_F(RecoveryCryptoTest, VerifyRecoveryIdsHistory) {
 }
 
 TEST_F(RecoveryCryptoTest, RecoveryIdsHistoryShortenThanRequested) {
-  cryptohome::AccountIdentifier account_id;
+  AccountIdentifier account_id;
   account_id.set_account_id(kFakeUserId);
 
   std::vector<std::string> recovery_id;
@@ -575,7 +575,7 @@ TEST_F(RecoveryCryptoTest, RecoveryIdsHistoryShortenThanRequested) {
 
 TEST_F(RecoveryCryptoTest, GenerateOnboardingMetadataSuccess) {
   OnboardingMetadata onboarding_metadata;
-  cryptohome::AccountIdentifier account_id;
+  AccountIdentifier account_id;
   account_id.set_account_id(kFakeUserId);
   EXPECT_TRUE(recovery_->GenerateRecoveryId(account_id));
   std::string recovery_id = recovery_->LoadStoredRecoveryId(account_id);
@@ -588,7 +588,7 @@ TEST_F(RecoveryCryptoTest, GenerateOnboardingMetadataSuccess) {
 
 TEST_F(RecoveryCryptoTest, GenerateOnboardingMetadataFileCorrupted) {
   OnboardingMetadata onboarding_metadata;
-  cryptohome::AccountIdentifier account_id;
+  AccountIdentifier account_id;
   account_id.set_account_id(kFakeUserId);
   EXPECT_TRUE(recovery_->GenerateRecoveryId(account_id));
   std::string recovery_id = recovery_->LoadStoredRecoveryId(account_id);
