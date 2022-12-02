@@ -63,6 +63,7 @@ DEFINE_boolean storage_diags "${FLAGS_FALSE}" "Print storage diagnostic \
 information on failure"
 DEFINE_boolean lvm_stateful "${FLAGS_FALSE}" "Create LVM-based stateful \
 partition"
+DEFINE_boolean minimal_copy "${FLAGS_FALSE}" "Minimal copy of partitions."
 
 
 # Parse command line
@@ -1144,7 +1145,11 @@ main() {
   copy_partition "${PARTITION_NUM_KERN_C}" "${SRC}" "${DST}" 1 1 false     # 6
   # Cache the first read of KERN so the second is read from RAM.
   # This is okay as they read from the same source.
-  copy_partition "${PARTITION_NUM_KERN_B}" "${SRC}" "${DST}" 1 1 true      # 4
+  if [ "${FLAGS_minimal_copy}" -eq "${FLAGS_TRUE}" ]; then
+    echo "Skipping copy of B kernel partition."
+  else
+    copy_partition "${PARTITION_NUM_KERN_B}" "${SRC}" "${DST}" 1 1 true    # 4
+  fi
   copy_partition "${PARTITION_NUM_KERN_A}" "${SRC}" "${DST}" 1 1 false     # 2
 
   # We want to chunk up the root filesystem.  We do this because we're
@@ -1155,8 +1160,12 @@ main() {
   # prevents this.
   local chunk_num
   for chunk_num in $(seq "${NUM_ROOTFS_CHUNKS}"); do
-    copy_partition "${PARTITION_NUM_ROOT_B}" "${SRC}" "${DST}" \
-       "${chunk_num}" "${NUM_ROOTFS_CHUNKS}" true                          # 5
+    if [ "${FLAGS_minimal_copy}" -eq "${FLAGS_TRUE}" ]; then
+      echo "Skipping copy of B root partition."
+    else
+      copy_partition "${PARTITION_NUM_ROOT_B}" "${SRC}" "${DST}" \
+         "${chunk_num}" "${NUM_ROOTFS_CHUNKS}" true                        # 5
+    fi
     copy_partition "${PARTITION_NUM_ROOT_A}" "${SRC}" "${DST}" \
        "${chunk_num}" "${NUM_ROOTFS_CHUNKS}" false                         # 3
   done
@@ -1171,7 +1180,10 @@ main() {
     # This is okay as they read from the same source.
     copy_partition "${PARTITION_NUM_MINIOS_A}" "${SRC}" "${DST}" 1 1 true  # 9
   fi
-  if [ -n "${PARTITION_NUM_MINIOS_B}" ]; then
+
+  if [ "${FLAGS_minimal_copy}" -eq "${FLAGS_TRUE}" ]; then
+    echo "Skipping copy of B miniOS partition."
+  elif [ -n "${PARTITION_NUM_MINIOS_B}" ]; then
     copy_partition "${PARTITION_NUM_MINIOS_B}" "${SRC}" "${DST}" 1 1 false # 10
   fi
 
