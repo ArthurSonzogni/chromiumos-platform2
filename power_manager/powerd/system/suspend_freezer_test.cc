@@ -76,6 +76,8 @@ class SuspendFreezerTest : public ::testing::Test {
     mock_sys_utils_->permission_fail_ = false;
     mock_sys_utils_->file_contents_[test_state_] = kFreezerStateThawed;
     suspend_freezer_.set_sys_utils_for_testing(mock_sys_utils_);
+    suspend_freezer_.clock()->set_current_time_for_testing(
+        base::TimeTicks::FromInternalValue(1000));
     suspend_freezer_.Init(&prefs_);
   }
 
