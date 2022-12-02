@@ -1359,8 +1359,7 @@
     <metric name="RXChannelWidth" type="int">
       <summary>
         Bandwidth of the channel (20MHz, 40MHz, etc.)
-        nl80211: NL80211_RATE_INFO_40_MHZ_WIDTH, NL80211_RATE_INFO_80_MHZ_WIDTH,
-        NL80211_RATE_INFO_160_MHZ_WIDTH, NL80211_RATE_INFO_320_MHZ_WIDTH
+        nl80211: NL80211_ATTR_CHANNEL_WIDTH
         shill: WiFiChannelWidth enum
       </summary>
     </metric>
@@ -1404,10 +1403,12 @@
     </metric>
     <metric name="TXChannelWidth" type="int">
       <summary>
-        Bandwidth of the channel (20MHz, 40MHz, etc.)
-        nl80211: NL80211_RATE_INFO_40_MHZ_WIDTH, NL80211_RATE_INFO_80_MHZ_WIDTH,
-        NL80211_RATE_INFO_160_MHZ_WIDTH, NL80211_RATE_INFO_320_MHZ_WIDTH
+        Bandwidth of the channel (20MHz, 40MHz, etc.). Identical to
+        RXChannelWidth, kept for compatibility reasons.
+        nl80211: NL80211_ATTR_CHANNEL_WIDTH
         shill: WiFiChannelWidth enum
+        TODO(b/261499918): when we uprev EventVersion, only keep one of the
+        redundant fields.
       </summary>
     </metric>
     <metric name="TXMode" type="int">
