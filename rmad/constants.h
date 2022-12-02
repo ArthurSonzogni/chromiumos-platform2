@@ -22,9 +22,6 @@ inline constexpr char kDefaultUnencryptedPreservePath[] =
     "/mnt/stateful_partition/unencrypted/preserve";
 inline constexpr char kTestDirPath[] = ".test";
 
-// Files for pre-stop script to read.
-inline constexpr char kCutoffRequestFilePath[] = ".battery_cutoff_request";
-
 // Files for testing purpose.
 inline constexpr char kDisablePowerwashFilePath[] = ".disable_powerwash";
 

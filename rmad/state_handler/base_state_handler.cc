@@ -170,14 +170,6 @@ bool BaseStateHandler::StoreAdditionalActivity(AdditionalActivity activity) {
       json_store_, kMetricsAdditionalActivities, additional_activities);
 }
 
-bool BaseStateHandler::RequestCutoff(
-    const base::FilePath& working_dir_path) const {
-  // The pre-stop script picks up the |kCutoffRequestFilePath| file before
-  // reboot and requests a battery cutoff by crossystem.
-  return brillo::TouchFile(
-      working_dir_path.AppendASCII(kCutoffRequestFilePath));
-}
-
 bool BaseStateHandler::IsPowerwashDisabled(
     const base::FilePath& working_dir_path) const {
   // |kDisablePowerwashFilePath| is a file for testing convenience. Manually
