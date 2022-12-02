@@ -6,9 +6,6 @@
 
 namespace ec {
 
-// TODO(b/162949739): this can be removed when C++17 is enabled.
-constexpr int FpInfoCommand::kDeadPixelsUnknown;
-
 /**
  * @return non-owning pointer which can be nullptr if command hasn't been run.
  */
