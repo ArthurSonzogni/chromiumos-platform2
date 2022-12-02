@@ -9,6 +9,7 @@
 #include <time.h>
 #include <unistd.h>
 
+#include <memory>
 #include <set>
 #include <utility>
 
@@ -24,6 +25,7 @@
 #include <dbus/message.h>
 
 #include "power_manager/common/clock.h"
+#include "power_manager/powerd/system/wakeup_timer.h"
 
 namespace power_manager::system {
 
@@ -77,7 +79,7 @@ struct ArcTimerManager::ArcTimerInfo {
   ArcTimerInfo(ArcTimerInfo&&) = delete;
   ArcTimerInfo(clockid_t clock_id,
                base::ScopedFD expiration_fd,
-               std::unique_ptr<brillo::timers::SimpleAlarmTimer> timer)
+               std::unique_ptr<WakeupTimer> timer)
       : clock_id(clock_id),
         expiration_fd(std::move(expiration_fd)),
         timer(std::move(timer)) {}
@@ -91,7 +93,7 @@ struct ArcTimerManager::ArcTimerInfo {
   const base::ScopedFD expiration_fd;
 
   // The timer that will be scheduled.
-  const std::unique_ptr<brillo::timers::SimpleAlarmTimer> timer;
+  const std::unique_ptr<WakeupTimer> timer;
 };
 
 void ArcTimerManager::Init(DBusWrapperInterface* dbus_wrapper) {
@@ -237,13 +239,12 @@ std::unique_ptr<ArcTimerManager::ArcTimerInfo> ArcTimerManager::CreateArcTimer(
   }
 
   if (create_for_testing) {
-    return std::make_unique<ArcTimerInfo>(
-        clock_id, std::move(expiration_fd),
-        brillo::timers::SimpleAlarmTimer::CreateForTesting());
+    return std::make_unique<ArcTimerInfo>(clock_id, std::move(expiration_fd),
+                                          std::make_unique<TestWakeupTimer>());
   }
 
-  std::unique_ptr<brillo::timers::SimpleAlarmTimer> simple_alarm_timer =
-      brillo::timers::SimpleAlarmTimer::Create(clock_id);
+  std::unique_ptr<WakeupTimer> simple_alarm_timer =
+      RealWakeupTimer::Create(clock_id);
   if (simple_alarm_timer == nullptr) {
     LOG(WARNING) << "Failed to create SimpleAlarmTimer for clock=" << clock_id;
     return nullptr;
@@ -316,7 +317,7 @@ void ArcTimerManager::HandleStartArcTimer(
   // because if the parent object goes away the timers are cleared and all
   // pending callbacks are cancelled. If the instance sets new timers after a
   // respawn, again, the old timers and pending callbacks are cancelled.
-  arc_timer->timer->Start(FROM_HERE, delay,
+  arc_timer->timer->Start(delay,
                           base::BindRepeating(&OnExpiration, timer_id,
                                               arc_timer->expiration_fd.get()));
   std::move(response_sender).Run(dbus::Response::FromMethodCall(method_call));

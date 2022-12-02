@@ -7,6 +7,7 @@
 
 #include "power_manager/powerd/policy/shutdown_from_suspend_interface.h"
 #include "power_manager/powerd/system/suspend_configurator.h"
+#include "power_manager/powerd/system/wakeup_timer.h"
 
 #include <memory>
 
@@ -46,7 +47,7 @@ class ShutdownFromSuspend : public ShutdownFromSuspendInterface {
 
  private:
   explicit ShutdownFromSuspend(
-      std::unique_ptr<brillo::timers::SimpleAlarmTimer> alarm_timer);
+      std::unique_ptr<power_manager::system::WakeupTimer> alarm_timer);
 
   friend class ShutdownFromSuspendTest;
 
@@ -71,7 +72,7 @@ class ShutdownFromSuspend : public ShutdownFromSuspendInterface {
   // Has |alarm_timer_| fired since last full resume.
   bool timer_fired_ = false;
   // Timer to wake the system from suspend after |shutdown_delay_|.
-  std::unique_ptr<brillo::timers::SimpleAlarmTimer> alarm_timer_;
+  std::unique_ptr<power_manager::system::WakeupTimer> alarm_timer_;
 
   system::PowerSupplyInterface* power_supply_ = nullptr;  // weak
 

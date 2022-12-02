@@ -15,14 +15,20 @@
 #include "power_manager/common/util.h"
 #include "power_manager/powerd/system/power_supply.h"
 #include "power_manager/powerd/system/suspend_configurator.h"
+#include "power_manager/powerd/system/wakeup_timer.h"
 
 namespace power_manager::policy {
 
+using power_manager::system::RealWakeupTimer;
+using power_manager::system::WakeupTimer;
+
 ShutdownFromSuspend::ShutdownFromSuspend()
-    : ShutdownFromSuspend(brillo::timers::SimpleAlarmTimer::Create()) {}
+    : ShutdownFromSuspend(RealWakeupTimer::Create(CLOCK_BOOTTIME_ALARM)) {}
+
 ShutdownFromSuspend::ShutdownFromSuspend(
-    std::unique_ptr<brillo::timers::SimpleAlarmTimer> alarm_timer)
+    std::unique_ptr<WakeupTimer> alarm_timer)
     : alarm_timer_(std::move(alarm_timer)) {}
+
 ShutdownFromSuspend::~ShutdownFromSuspend() = default;
 
 void ShutdownFromSuspend::Init(
@@ -140,7 +146,7 @@ ShutdownFromSuspend::Action ShutdownFromSuspend::PrepareForSuspendAttempt() {
     return ShutdownFromSuspend::Action::SUSPEND;
   }
   if (!alarm_timer_->IsRunning()) {
-    alarm_timer_->Start(FROM_HERE, shutdown_delay_,
+    alarm_timer_->Start(shutdown_delay_,
                         base::BindRepeating(&ShutdownFromSuspend::OnTimerWake,
                                             base::Unretained(this)));
   }

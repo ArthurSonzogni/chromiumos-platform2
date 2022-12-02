@@ -11,6 +11,7 @@
 #include "power_manager/common/test_main_loop_runner.h"
 #include "power_manager/powerd/system/power_supply_stub.h"
 #include "power_manager/powerd/system/suspend_configurator_stub.h"
+#include "power_manager/powerd/system/wakeup_timer.h"
 
 namespace power_manager::policy {
 
@@ -18,13 +19,13 @@ namespace {
 constexpr auto kRunLoopDelay = base::Milliseconds(200);
 constexpr int kShutdownAfterSecs = 1;
 constexpr auto kShutdownAfter = base::Seconds(kShutdownAfterSecs);
-}
+}  // namespace
 
 class ShutdownFromSuspendTest : public ::testing::Test {
  public:
   ShutdownFromSuspendTest()
       : shutdown_from_suspend_(
-            brillo::timers::SimpleAlarmTimer::CreateForTesting()) {}
+            std::make_unique<power_manager::system::TestWakeupTimer>()) {}
   ShutdownFromSuspendTest(const ShutdownFromSuspendTest&) = delete;
   ShutdownFromSuspendTest& operator=(const ShutdownFromSuspendTest&) = delete;
 
