@@ -12,16 +12,54 @@
 
 #include <brillo/secure_blob.h>
 #include <gmock/gmock.h>
+#include <gtest/gtest.h>
 
 #include "libhwsec/backend/pinweaver.h"
 #include "libhwsec/status.h"
-#include "libhwsec/structures/no_default_init.h"
-#include "libhwsec/structures/operation_policy.h"
 
 namespace hwsec {
 
 class MockPinWeaver : public PinWeaver {
  public:
+  MockPinWeaver() = default;
+  explicit MockPinWeaver(PinWeaver* on_call) : default_(on_call) {
+    using testing::Invoke;
+    if (!default_)
+      return;
+    ON_CALL(*this, IsEnabled)
+        .WillByDefault(Invoke(default_, &PinWeaver::IsEnabled));
+    ON_CALL(*this, GetVersion)
+        .WillByDefault(Invoke(default_, &PinWeaver::GetVersion));
+    ON_CALL(*this, Reset).WillByDefault(Invoke(default_, &PinWeaver::Reset));
+    ON_CALL(*this, InsertCredential)
+        .WillByDefault(Invoke(default_, &PinWeaver::InsertCredential));
+    ON_CALL(*this, CheckCredential)
+        .WillByDefault(Invoke(default_, &PinWeaver::CheckCredential));
+    ON_CALL(*this, RemoveCredential)
+        .WillByDefault(Invoke(default_, &PinWeaver::RemoveCredential));
+    ON_CALL(*this, ResetCredential)
+        .WillByDefault(Invoke(default_, &PinWeaver::ResetCredential));
+    ON_CALL(*this, GetLog).WillByDefault(Invoke(default_, &PinWeaver::GetLog));
+    ON_CALL(*this, ReplayLogOperation)
+        .WillByDefault(Invoke(default_, &PinWeaver::ReplayLogOperation));
+    ON_CALL(*this, GetWrongAuthAttempts)
+        .WillByDefault(Invoke(default_, &PinWeaver::GetWrongAuthAttempts));
+    ON_CALL(*this, GetDelaySchedule)
+        .WillByDefault(Invoke(default_, &PinWeaver::GetDelaySchedule));
+    ON_CALL(*this, GetDelayInSeconds)
+        .WillByDefault(Invoke(default_, &PinWeaver::GetDelayInSeconds));
+    ON_CALL(*this, GetExpirationInSeconds)
+        .WillByDefault(Invoke(default_, &PinWeaver::GetExpirationInSeconds));
+    ON_CALL(*this, GeneratePk)
+        .WillByDefault(Invoke(default_, &PinWeaver::GeneratePk));
+    ON_CALL(*this, InsertRateLimiter)
+        .WillByDefault(Invoke(default_, &PinWeaver::InsertRateLimiter));
+    ON_CALL(*this, StartBiometricsAuth)
+        .WillByDefault(Invoke(default_, &PinWeaver::StartBiometricsAuth));
+    ON_CALL(*this, BlockGeneratePk)
+        .WillByDefault(Invoke(default_, &PinWeaver::BlockGeneratePk));
+  }
+
   MOCK_METHOD(StatusOr<bool>, IsEnabled, (), (override));
   MOCK_METHOD(StatusOr<uint8_t>, GetVersion, (), (override));
   MOCK_METHOD(StatusOr<CredentialTreeResult>,
@@ -110,6 +148,9 @@ class MockPinWeaver : public PinWeaver {
                const brillo::SecureBlob& client_nonce),
               (override));
   MOCK_METHOD(Status, BlockGeneratePk, (), (override));
+
+ private:
+  PinWeaver* default_;
 };
 
 }  // namespace hwsec

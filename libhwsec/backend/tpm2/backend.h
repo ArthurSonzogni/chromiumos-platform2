@@ -30,6 +30,10 @@
 #include "libhwsec/middleware/middleware.h"
 #include "libhwsec/proxy/proxy.h"
 
+#ifndef BUILD_LIBHWSEC
+#error "Don't include this file outside libhwsec!"
+#endif
+
 namespace hwsec {
 
 class BackendTpm2 : public Backend {

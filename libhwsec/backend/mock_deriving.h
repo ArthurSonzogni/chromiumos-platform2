@@ -9,6 +9,7 @@
 
 #include <brillo/secure_blob.h>
 #include <gmock/gmock.h>
+#include <gtest/gtest.h>
 
 #include "libhwsec/backend/deriving.h"
 #include "libhwsec/status.h"
@@ -18,6 +19,16 @@ namespace hwsec {
 
 class MockDeriving : public Deriving {
  public:
+  MockDeriving() = default;
+  explicit MockDeriving(Deriving* on_call) : default_(on_call) {
+    using testing::Invoke;
+    if (!default_)
+      return;
+    ON_CALL(*this, Derive).WillByDefault(Invoke(default_, &Deriving::Derive));
+    ON_CALL(*this, SecureDerive)
+        .WillByDefault(Invoke(default_, &Deriving::SecureDerive));
+  }
+
   MOCK_METHOD(StatusOr<brillo::Blob>,
               Derive,
               (Key key, const brillo::Blob& blob),
@@ -26,6 +37,9 @@ class MockDeriving : public Deriving {
               SecureDerive,
               (Key key, const brillo::SecureBlob& blob),
               (override));
+
+ private:
+  Deriving* default_;
 };
 
 }  // namespace hwsec

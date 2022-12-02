@@ -5,7 +5,14 @@
 #ifndef LIBHWSEC_BACKEND_MOCK_BACKEND_H_
 #define LIBHWSEC_BACKEND_MOCK_BACKEND_H_
 
+#include <memory>
+#include <utility>
+
 #include <gmock/gmock.h>
+#include <gtest/gtest.h>
+
+// Allow using the backend interface via mock backend.
+#define LIBHWSEC_MOCK_BACKEND
 
 #include "libhwsec/backend/backend.h"
 #include "libhwsec/backend/mock_config.h"
@@ -51,7 +58,34 @@ class MockBackend : public Backend {
   };
 
   MockBackend() = default;
-  virtual ~MockBackend() = default;
+  explicit MockBackend(std::unique_ptr<Backend> backend)
+      : default_backend_(std::move(backend)),
+        mock_data_(MockBackendData{
+            .state = MockState(default_backend_->Get<State>()),
+            .da_mitigation =
+                MockDAMitigation(default_backend_->Get<DAMitigation>()),
+            .storage = MockStorage(default_backend_->Get<Storage>()),
+            .ro_data = MockRoData(default_backend_->Get<RoData>()),
+            .sealing = MockSealing(default_backend_->Get<Sealing>()),
+            .signature_sealing =
+                MockSignatureSealing(default_backend_->Get<SignatureSealing>()),
+            .deriving = MockDeriving(default_backend_->Get<Deriving>()),
+            .encryption = MockEncryption(default_backend_->Get<Encryption>()),
+            .signing = MockSigning(default_backend_->Get<Signing>()),
+            .key_management =
+                MockKeyManagement(default_backend_->Get<KeyManagement>()),
+            .session_management = MockSessionManagement(
+                default_backend_->Get<SessionManagement>()),
+            .config = MockConfig(default_backend_->Get<Config>()),
+            .random = MockRandom(default_backend_->Get<Random>()),
+            .pinweaver = MockPinWeaver(default_backend_->Get<PinWeaver>()),
+            .vendor = MockVendor(default_backend_->Get<Vendor>()),
+            .recovery_crypto =
+                MockRecoveryCrypto(default_backend_->Get<RecoveryCrypto>()),
+            .u2f = MockU2f(default_backend_->Get<U2f>()),
+        }) {}
+
+  ~MockBackend() override = default;
 
   MockBackendData& GetMock() { return mock_data_; }
 
@@ -82,6 +116,7 @@ class MockBackend : public Backend {
   }
   U2f* GetU2f() override { return &mock_data_.u2f; }
 
+  std::unique_ptr<Backend> default_backend_;
   MockBackendData mock_data_;
 };
 

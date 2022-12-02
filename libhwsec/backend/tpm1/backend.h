@@ -28,6 +28,10 @@
 #include "libhwsec/proxy/proxy.h"
 #include "libhwsec/tss_utils/scoped_tss_type.h"
 
+#ifndef BUILD_LIBHWSEC
+#error "Don't include this file outside libhwsec!"
+#endif
+
 namespace hwsec {
 
 class BackendTpm1 : public Backend {

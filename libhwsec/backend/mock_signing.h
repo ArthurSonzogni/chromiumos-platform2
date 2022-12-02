@@ -7,16 +7,26 @@
 
 #include <brillo/secure_blob.h>
 #include <gmock/gmock.h>
+#include <gtest/gtest.h>
 
 #include "libhwsec/backend/signing.h"
 #include "libhwsec/status.h"
 #include "libhwsec/structures/key.h"
-#include "libhwsec/structures/operation_policy.h"
 
 namespace hwsec {
 
 class MockSigning : public Signing {
  public:
+  MockSigning() = default;
+  explicit MockSigning(Signing* on_call) : default_(on_call) {
+    using testing::Invoke;
+    if (!default_)
+      return;
+    ON_CALL(*this, Sign).WillByDefault(Invoke(default_, &Signing::Sign));
+    ON_CALL(*this, RawSign).WillByDefault(Invoke(default_, &Signing::RawSign));
+    ON_CALL(*this, Verify).WillByDefault(Invoke(default_, &Signing::Verify));
+  }
+
   MOCK_METHOD(StatusOr<brillo::Blob>,
               Sign,
               (Key key,
@@ -33,6 +43,9 @@ class MockSigning : public Signing {
               Verify,
               (Key key, const brillo::Blob& signed_data),
               (override));
+
+ private:
+  Signing* default_;
 };
 
 }  // namespace hwsec

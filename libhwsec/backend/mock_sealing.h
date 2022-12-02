@@ -9,6 +9,7 @@
 
 #include <brillo/secure_blob.h>
 #include <gmock/gmock.h>
+#include <gtest/gtest.h>
 
 #include "libhwsec/backend/sealing.h"
 #include "libhwsec/status.h"
@@ -19,6 +20,19 @@ namespace hwsec {
 
 class MockSealing : public Sealing {
  public:
+  MockSealing() = default;
+  explicit MockSealing(Sealing* on_call) : default_(on_call) {
+    using testing::Invoke;
+    if (!default_)
+      return;
+    ON_CALL(*this, IsSupported)
+        .WillByDefault(Invoke(default_, &Sealing::IsSupported));
+    ON_CALL(*this, Seal).WillByDefault(Invoke(default_, &Sealing::Seal));
+    ON_CALL(*this, PreloadSealedData)
+        .WillByDefault(Invoke(default_, &Sealing::PreloadSealedData));
+    ON_CALL(*this, Unseal).WillByDefault(Invoke(default_, &Sealing::Unseal));
+  }
+
   MOCK_METHOD(StatusOr<bool>, IsSupported, (), (override));
   MOCK_METHOD(StatusOr<brillo::Blob>,
               Seal,
@@ -35,6 +49,9 @@ class MockSealing : public Sealing {
                const brillo::Blob& sealed_data,
                UnsealOptions options),
               (override));
+
+ private:
+  Sealing* default_;
 };
 
 }  // namespace hwsec

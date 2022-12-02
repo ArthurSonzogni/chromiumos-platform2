@@ -7,8 +7,9 @@
 #include <memory>
 #include <utility>
 
+#include "libhwsec/backend/mock_backend.h"
 #include "libhwsec/backend/tpm2/backend.h"
-#include "libhwsec/middleware/middleware.h"
+#include "libhwsec/middleware/middleware_owner.h"
 #include "libhwsec/proxy/tpm2_simulator_proxy_for_test.h"
 
 namespace hwsec {
@@ -20,26 +21,30 @@ std::unique_ptr<Proxy> GetAndInitProxy() {
   return proxy;
 }
 
-std::unique_ptr<MiddlewareOwner> GetAndInitMiddlewareOwner(ThreadingMode mode,
-                                                           Proxy& proxy) {
+std::unique_ptr<MiddlewareOwner> GetAndInitMiddlewareOwner(
+    ThreadingMode mode, Proxy& proxy, MockBackend*& mock_backend_ptr) {
   auto backend = std::make_unique<BackendTpm2>(proxy, MiddlewareDerivative{});
   BackendTpm2* backend_ptr = backend.get();
-  auto middleware = std::make_unique<MiddlewareOwner>(std::move(backend), mode);
+  auto mock_backend = std::make_unique<MockBackend>(std::move(backend));
+  mock_backend_ptr = mock_backend.get();
+  auto middleware =
+      std::make_unique<MiddlewareOwner>(std::move(mock_backend), mode);
   backend_ptr->set_middleware_derivative_for_test(middleware->Derive());
   return middleware;
 }
 
 }  // namespace
 
-Tpm2SimulatorFactoryForTestProxy::Tpm2SimulatorFactoryForTestProxy(
+Tpm2SimulatorFactoryForTestData::Tpm2SimulatorFactoryForTestData(
     std::unique_ptr<Proxy> proxy)
-    : proxy_(std::move(proxy)) {}
+    : proxy_(std::move(proxy)), mock_backend_ptr_(nullptr) {}
 
-Tpm2SimulatorFactoryForTestProxy::~Tpm2SimulatorFactoryForTestProxy() = default;
+Tpm2SimulatorFactoryForTestData::~Tpm2SimulatorFactoryForTestData() = default;
 
 Tpm2SimulatorFactoryForTest::Tpm2SimulatorFactoryForTest(ThreadingMode mode)
-    : Tpm2SimulatorFactoryForTestProxy(GetAndInitProxy()),
-      FactoryImpl(GetAndInitMiddlewareOwner(mode, *proxy_)) {}
+    : Tpm2SimulatorFactoryForTestData(GetAndInitProxy()),
+      FactoryImpl(GetAndInitMiddlewareOwner(mode, *proxy_, mock_backend_ptr_)) {
+}
 
 Tpm2SimulatorFactoryForTest::~Tpm2SimulatorFactoryForTest() = default;
 

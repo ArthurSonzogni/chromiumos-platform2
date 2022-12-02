@@ -10,10 +10,10 @@
 
 #include <brillo/secure_blob.h>
 #include <gmock/gmock.h>
+#include <gtest/gtest.h>
 
 #include "libhwsec/backend/signature_sealing.h"
 #include "libhwsec/status.h"
-#include "libhwsec/structures/no_default_init.h"
 #include "libhwsec/structures/operation_policy.h"
 #include "libhwsec/structures/signature_sealed_data.h"
 
@@ -21,6 +21,19 @@ namespace hwsec {
 
 class MockSignatureSealing : public SignatureSealing {
  public:
+  MockSignatureSealing() = default;
+  explicit MockSignatureSealing(SignatureSealing* on_call) : default_(on_call) {
+    using testing::Invoke;
+    if (!default_)
+      return;
+    ON_CALL(*this, Seal)
+        .WillByDefault(Invoke(default_, &SignatureSealing::Seal));
+    ON_CALL(*this, Challenge)
+        .WillByDefault(Invoke(default_, &SignatureSealing::Challenge));
+    ON_CALL(*this, Unseal)
+        .WillByDefault(Invoke(default_, &SignatureSealing::Unseal));
+  }
+
   MOCK_METHOD(StatusOr<SignatureSealedData>,
               Seal,
               (const std::vector<OperationPolicySetting>& policies,
@@ -39,6 +52,9 @@ class MockSignatureSealing : public SignatureSealing {
               Unseal,
               (ChallengeID challenge, const brillo::Blob& challenge_response),
               (override));
+
+ private:
+  SignatureSealing* default_;
 };
 
 }  // namespace hwsec

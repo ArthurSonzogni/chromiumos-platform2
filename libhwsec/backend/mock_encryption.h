@@ -9,6 +9,7 @@
 
 #include <brillo/secure_blob.h>
 #include <gmock/gmock.h>
+#include <gtest/gtest.h>
 
 #include "libhwsec/backend/encryption.h"
 #include "libhwsec/status.h"
@@ -18,6 +19,17 @@ namespace hwsec {
 
 class MockEncryption : public Encryption {
  public:
+  MockEncryption() = default;
+  explicit MockEncryption(Encryption* on_call) : default_(on_call) {
+    using testing::Invoke;
+    if (!default_)
+      return;
+    ON_CALL(*this, Encrypt)
+        .WillByDefault(Invoke(default_, &Encryption::Encrypt));
+    ON_CALL(*this, Decrypt)
+        .WillByDefault(Invoke(default_, &Encryption::Decrypt));
+  }
+
   MOCK_METHOD(StatusOr<brillo::Blob>,
               Encrypt,
               (Key key,
@@ -30,6 +42,9 @@ class MockEncryption : public Encryption {
                const brillo::Blob& ciphertext,
                EncryptionOptions options),
               (override));
+
+ private:
+  Encryption* default_;
 };
 
 }  // namespace hwsec

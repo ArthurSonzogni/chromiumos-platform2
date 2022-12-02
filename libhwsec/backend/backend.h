@@ -27,7 +27,7 @@
 #include "libhwsec/backend/u2f.h"
 #include "libhwsec/backend/vendor.h"
 
-#ifndef BUILD_LIBHWSEC
+#if !defined(BUILD_LIBHWSEC) && !defined(LIBHWSEC_MOCK_BACKEND)
 #error "Don't include this file outside libhwsec!"
 #endif
 

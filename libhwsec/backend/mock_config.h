@@ -8,6 +8,8 @@
 #include <string>
 
 #include <brillo/secure_blob.h>
+#include <gmock/gmock.h>
+#include <gtest/gtest.h>
 
 #include "libhwsec/backend/config.h"
 #include "libhwsec/status.h"
@@ -18,6 +20,20 @@ namespace hwsec {
 
 class MockConfig : public Config {
  public:
+  MockConfig() = default;
+  explicit MockConfig(Config* on_call) : default_(on_call) {
+    using testing::Invoke;
+    if (!default_)
+      return;
+    ON_CALL(*this, ToOperationPolicy)
+        .WillByDefault(Invoke(default_, &Config::ToOperationPolicy));
+    ON_CALL(*this, SetCurrentUser)
+        .WillByDefault(Invoke(default_, &Config::SetCurrentUser));
+    ON_CALL(*this, IsCurrentUserSet)
+        .WillByDefault(Invoke(default_, &Config::IsCurrentUserSet));
+    ON_CALL(*this, Quote).WillByDefault(Invoke(default_, &Config::Quote));
+  }
+
   MOCK_METHOD(StatusOr<OperationPolicy>,
               ToOperationPolicy,
               (const OperationPolicySetting& policy),
@@ -31,6 +47,9 @@ class MockConfig : public Config {
               Quote,
               (DeviceConfigs device_config, Key key),
               (override));
+
+ private:
+  Config* default_;
 };
 
 }  // namespace hwsec

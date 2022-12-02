@@ -9,6 +9,7 @@
 
 #include <brillo/secure_blob.h>
 #include <gmock/gmock.h>
+#include <gtest/gtest.h>
 
 #include "libhwsec/backend/storage.h"
 #include "libhwsec/status.h"
@@ -18,6 +19,21 @@ namespace hwsec {
 
 class MockStorage : public Storage {
  public:
+  MockStorage() = default;
+  explicit MockStorage(Storage* on_call) : default_(on_call) {
+    using testing::Invoke;
+    if (!default_)
+      return;
+    ON_CALL(*this, IsReady).WillByDefault(Invoke(default_, &Storage::IsReady));
+    ON_CALL(*this, Prepare).WillByDefault(Invoke(default_, &Storage::Prepare));
+    ON_CALL(*this, Load).WillByDefault(Invoke(default_, &Storage::Load));
+    ON_CALL(*this, Store).WillByDefault(Invoke(default_, &Storage::Store));
+    ON_CALL(*this, Lock).WillByDefault(Invoke(default_, &Storage::Lock));
+    ON_CALL(*this, Destroy).WillByDefault(Invoke(default_, &Storage::Destroy));
+    ON_CALL(*this, IsWriteLocked)
+        .WillByDefault(Invoke(default_, &Storage::IsWriteLocked));
+  }
+
   MOCK_METHOD(StatusOr<ReadyState>, IsReady, (Space space), (override));
   MOCK_METHOD(Status, Prepare, (Space space, uint32_t size), (override));
   MOCK_METHOD(StatusOr<brillo::Blob>, Load, (Space space), (override));
@@ -28,6 +44,9 @@ class MockStorage : public Storage {
   MOCK_METHOD(Status, Lock, (Space space, LockOptions options), (override));
   MOCK_METHOD(Status, Destroy, (Space space), (override));
   MOCK_METHOD(StatusOr<bool>, IsWriteLocked, (Space space), (override));
+
+ private:
+  Storage* default_;
 };
 
 }  // namespace hwsec
