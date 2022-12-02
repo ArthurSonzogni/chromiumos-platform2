@@ -237,9 +237,6 @@ AuthSession::AuthSession(
     UserSecretStashStorage* user_secret_stash_storage)
     : username_(std::move(username)),
       obfuscated_username_(SanitizeUserName(username_)),
-      token_(base::UnguessableToken::Create()),
-      serialized_token_(
-          AuthSession::GetSerializedStringFromToken(token_).value_or("")),
       is_ephemeral_user_(flags & AUTH_SESSION_FLAGS_EPHEMERAL_USER),
       auth_intent_(intent),
       on_timeout_(std::move(on_timeout)),
@@ -250,7 +247,9 @@ AuthSession::AuthSession(
       keyset_management_(keyset_management),
       auth_block_utility_(auth_block_utility),
       auth_factor_manager_(auth_factor_manager),
-      user_secret_stash_storage_(user_secret_stash_storage) {
+      user_secret_stash_storage_(user_secret_stash_storage),
+      token_(platform_->CreateUnguessableToken()),
+      serialized_token_(GetSerializedStringFromToken(token_).value_or("")) {
   // Preconditions.
   DCHECK(!serialized_token_.empty());
   DCHECK(crypto_);

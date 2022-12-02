@@ -8,6 +8,7 @@
 #include <map>
 #include <memory>
 #include <optional>
+#include <random>
 #include <string>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -17,6 +18,7 @@
 
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <base/unguessable_token.h>
 #include <brillo/blkdev_utils/loop_device_fake.h>
 #include <brillo/blkdev_utils/mock_lvm.h>
 #include <brillo/secure_blob.h>
@@ -188,11 +190,11 @@ class FakePlatform final : public Platform {
   bool IsDirectoryMounted(const base::FilePath& directory) override;
   std::optional<std::vector<bool>> AreDirectoriesMounted(
       const std::vector<base::FilePath>& directories) override;
-
   base::FilePath GetStatefulDevice() override;
   brillo::LoopDeviceManager* GetLoopDeviceManager() override;
   brillo::LogicalVolumeManager* GetLogicalVolumeManager() override;
   brillo::MockLogicalVolumeManager* GetMockLogicalVolumeManager();
+  base::UnguessableToken CreateUnguessableToken() override;
 
   // Test API
 
@@ -248,6 +250,10 @@ class FakePlatform final : public Platform {
   std::unique_ptr<brillo::MockLogicalVolumeManager> mock_lvm_;
 
   std::string* old_salt_ = nullptr;
+
+  // Pseudo-random engine for generating stable and predictable values. Note
+  // that the default constructor uses hardcoded seed.
+  std::mt19937_64 random_engine_64_;
 };
 
 }  // namespace cryptohome

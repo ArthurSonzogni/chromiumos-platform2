@@ -610,8 +610,6 @@ class AuthSession final {
 
   const std::string username_;
   const std::string obfuscated_username_;
-  const base::UnguessableToken token_;
-  const std::string serialized_token_;
 
   // AuthSession's flag configuration.
   const bool is_ephemeral_user_;
@@ -651,6 +649,10 @@ class AuthSession final {
   AuthFactorManager* const auth_factor_manager_;
   // Unowned pointer.
   UserSecretStashStorage* const user_secret_stash_storage_;
+
+  const base::UnguessableToken token_;
+  const std::string serialized_token_;
+
   // Used to decrypt/ encrypt & store credentials.
   std::unique_ptr<VaultKeyset> vault_keyset_;
   // A stateless object to convert AuthFactor API to VaultKeyset KeyData and

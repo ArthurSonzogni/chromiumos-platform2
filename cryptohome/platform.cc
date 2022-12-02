@@ -64,6 +64,7 @@
 #include <base/system/sys_info.h>
 #include <base/threading/thread.h>
 #include <base/time/time.h>
+#include <base/unguessable_token.h>
 #include <brillo/blkdev_utils/device_mapper.h>
 #include <brillo/blkdev_utils/loop_device.h>
 #include <brillo/blkdev_utils/lvm.h>
@@ -1191,6 +1192,10 @@ bool Platform::ReportFilesystemDetails(const FilePath& filesystem,
 
 bool Platform::FirmwareWriteProtected() {
   return VbGetSystemPropertyInt("wpsw_cur") != 0;
+}
+
+base::UnguessableToken Platform::CreateUnguessableToken() {
+  return base::UnguessableToken::Create();
 }
 
 bool Platform::SyncFileOrDirectory(const FilePath& path,

@@ -4,6 +4,8 @@
 
 #include "cryptohome/fake_platform.h"
 
+#include <stdint.h>
+
 #include <map>
 #include <memory>
 #include <optional>
@@ -17,6 +19,7 @@
 #include <base/files/file_path.h>
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
+#include <base/unguessable_token.h>
 #include <brillo/blkdev_utils/loop_device_fake.h>
 #include <brillo/blkdev_utils/mock_lvm.h>
 #include <brillo/cryptohome.h>
@@ -769,6 +772,16 @@ std::optional<std::vector<bool>> FakePlatform::AreDirectoriesMounted(
     result.push_back(IsDirectoryMounted(d));
   }
   return result;
+}
+
+base::UnguessableToken FakePlatform::CreateUnguessableToken() {
+  uint64_t high, low;
+  // Loop until we get suitable values (`UnguessableToken` forbids all-zeroes).
+  do {
+    high = random_engine_64_();
+    low = random_engine_64_();
+  } while (high == 0 && low == 0);
+  return base::UnguessableToken::Deserialize(high, low);
 }
 
 // Test API

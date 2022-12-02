@@ -218,6 +218,9 @@ MockPlatform::MockPlatform()
       .WillByDefault(Return(dircrypto::KeyState::NO_KEY));
   ON_CALL(*this, CreateProcessInstance())
       .WillByDefault(Invoke(this, &MockPlatform::MockCreateProcessInstance));
+  ON_CALL(*this, CreateUnguessableToken())
+      .WillByDefault(
+          Invoke(fake_platform_.get(), &FakePlatform::CreateUnguessableToken));
 }
 
 MockPlatform::~MockPlatform() {}

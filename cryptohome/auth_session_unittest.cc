@@ -411,7 +411,7 @@ TEST_F(AuthSessionTest, TokenFromUnexpectedSize) {
 }
 
 TEST_F(AuthSessionTest, TokenFromString) {
-  base::UnguessableToken original_token = base::UnguessableToken::Create();
+  base::UnguessableToken original_token = platform_.CreateUnguessableToken();
   std::optional<std::string> serialized_token =
       AuthSession::GetSerializedStringFromToken(original_token);
   EXPECT_TRUE(serialized_token.has_value());

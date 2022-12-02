@@ -16,6 +16,7 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/time/time.h>
+#include <base/unguessable_token.h>
 #include <brillo/process/process_mock.h>
 #include <gmock/gmock.h>
 
@@ -394,6 +395,7 @@ class MockPlatform : public Platform {
   MOCK_METHOD(bool, UdevAdmSettle, (const base::FilePath&, bool), (override));
   MOCK_METHOD(bool, IsStatefulLogicalVolumeSupported, (), (override));
   MOCK_METHOD(base::FilePath, GetStatefulDevice, (), (override));
+  MOCK_METHOD(base::UnguessableToken, CreateUnguessableToken, (), (override));
 
   brillo::ProcessMock* mock_process() { return mock_process_.get(); }
 

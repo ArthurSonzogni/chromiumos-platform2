@@ -24,6 +24,7 @@
 #include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
 #include <base/files/scoped_file.h>
+#include <base/unguessable_token.h>
 #include <brillo/blkdev_utils/loop_device.h>
 #include <brillo/blkdev_utils/lvm.h>
 #include <brillo/brillo_export.h>
@@ -914,6 +915,9 @@ class BRILLO_EXPORT Platform {
   virtual brillo::LoopDeviceManager* GetLoopDeviceManager();
 
   virtual brillo::LogicalVolumeManager* GetLogicalVolumeManager();
+
+  // Creates a random unguessable token. The result is a non-null token.
+  virtual base::UnguessableToken CreateUnguessableToken();
 
  private:
   // Calls fdatasync() on file if data_sync is true or fsync() on directory or
