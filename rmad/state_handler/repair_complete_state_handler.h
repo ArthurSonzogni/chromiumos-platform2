@@ -71,9 +71,10 @@ class RepairCompleteStateHandler : public BaseStateHandler {
  private:
   void RequestRmaPowerwash();
   void RequestRmaPowerwashCallback(bool success);
+  void RequestBatteryCutoff();
+  void RequestBatteryCutoffCallback(bool success);
   void Reboot();
   void Shutdown();
-  void Cutoff();
 
   bool IsExternalDiskDetected();
   void SendSignals();

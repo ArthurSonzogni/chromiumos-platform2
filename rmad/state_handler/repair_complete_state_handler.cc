@@ -146,7 +146,7 @@ RepairCompleteStateHandler::GetNextStateCase(const RmadState& state) {
       case RepairCompleteState::RMAD_REPAIR_COMPLETE_BATTERY_CUTOFF:
         // Wait for a while before cutoff.
         action_timer_.Start(FROM_HERE, kShutdownDelay, this,
-                            &RepairCompleteStateHandler::Cutoff);
+                            &RepairCompleteStateHandler::RequestBatteryCutoff);
         locked_error_ = RMAD_ERROR_EXPECT_SHUTDOWN;
         break;
       default:
@@ -172,6 +172,23 @@ void RepairCompleteStateHandler::RequestRmaPowerwashCallback(bool success) {
                       &RepairCompleteStateHandler::Reboot);
 }
 
+void RepairCompleteStateHandler::RequestBatteryCutoff() {
+  LOG(INFO) << "Requesting battery cutoff";
+  daemon_callback_->GetExecuteRequestBatteryCutoffCallback().Run(
+      base::BindOnce(&RepairCompleteStateHandler::RequestBatteryCutoffCallback,
+                     base::Unretained(this)));
+}
+
+void RepairCompleteStateHandler::RequestBatteryCutoffCallback(bool success) {
+  if (!success) {
+    LOG(ERROR) << "Failed to request battery cutoff";
+  }
+  // Battery cutoff requires a reboot (not shutdown) after the request.
+  if (!power_manager_client_->Restart()) {
+    LOG(ERROR) << "Failed to reboot";
+  }
+}
+
 void RepairCompleteStateHandler::Reboot() {
   LOG(INFO) << "RMA flow complete. Rebooting.";
   if (!power_manager_client_->Restart()) {
@@ -183,18 +200,6 @@ void RepairCompleteStateHandler::Shutdown() {
   LOG(INFO) << "RMA flow complete. Shutting down.";
   if (!power_manager_client_->Shutdown()) {
     LOG(ERROR) << "Failed to shut down";
-  }
-}
-
-void RepairCompleteStateHandler::Cutoff() {
-  LOG(INFO) << "RMA flow complete. Doing battery cutoff.";
-  if (!RequestCutoff(working_dir_path_)) {
-    LOG(ERROR) << "Failed to request battery cutoff";
-    return;
-  }
-  // Battery cutoff requires a reboot (not shutdown) after the request.
-  if (!power_manager_client_->Restart()) {
-    LOG(ERROR) << "Failed to reboot";
   }
 }
 
