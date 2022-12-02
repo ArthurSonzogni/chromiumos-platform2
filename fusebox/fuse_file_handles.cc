@@ -18,11 +18,11 @@ static auto& GetFileHandles() {
   return *handles;
 }
 
-uint64_t OpenFile(base::ScopedFD fd) {
+uint64_t OpenFile() {
   static uint64_t next = 0;
   uint64_t handle = ++next;
   CHECK(handle) << "file handles wrapped";
-  GetFileHandles()[handle].fd = fd.release();
+  GetFileHandles()[handle] = HandleData();
   return handle;
 }
 
@@ -31,13 +31,6 @@ uint64_t GetFile(uint64_t handle) {
   if (it == GetFileHandles().end())
     return 0;
   return handle;
-}
-
-int GetFileDescriptor(uint64_t handle) {
-  const auto it = GetFileHandles().find(handle);
-  if (it == GetFileHandles().end())
-    return -1;
-  return it->second.fd;
 }
 
 HandleData GetFileData(uint64_t handle) {
@@ -60,13 +53,11 @@ bool SetFileData(uint64_t handle,
   return true;
 }
 
-base::ScopedFD CloseFile(uint64_t handle) {
+void CloseFile(uint64_t handle) {
   const auto it = GetFileHandles().find(handle);
   if (it == GetFileHandles().end())
-    return {};
-  base::ScopedFD fd(it->second.fd);
+    return;
   GetFileHandles().erase(it);
-  return fd;
 }
 
 }  // namespace fusebox

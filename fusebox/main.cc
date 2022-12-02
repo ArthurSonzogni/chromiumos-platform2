@@ -893,12 +893,6 @@ class FuseBoxClient : public FileSystem {
       return;
     }
 
-    int fd = fusebox::GetFileDescriptor(request->fh());
-    if (fd != -1) {
-      ReadFileDescriptor(std::move(request), ino, fd, size, off);
-      return;
-    }
-
     auto data = fusebox::GetFileData(request->fh());
     // For a transitional period, interpret "Open2 returning a 0 fuse_handle"
     // to mean "the Fusebox server (chrome) opts for the Fusebox client (this
@@ -997,28 +991,6 @@ class FuseBoxClient : public FileSystem {
     request->ReplyBuffer(data.data(), data.size());
   }
 
-  void ReadFileDescriptor(std::unique_ptr<BufferRequest> request,
-                          ino_t ino,
-                          int fd,
-                          size_t size,
-                          off_t off) {
-    VLOG(1) << "read-fd fh " << request->fh() << " off " << off << " size "
-            << size;
-
-    DCHECK_LE(size, SSIZE_MAX);
-    std::vector<char> buf(size);
-
-    DCHECK_NE(-1, fd);
-    ssize_t length = HANDLE_EINTR(pread(fd, buf.data(), size, off));
-    if (length == -1) {
-      request->ReplyError(errno);
-      PLOG(ERROR) << "read-fd";
-      return;
-    }
-
-    request->ReplyBuffer(buf.data(), length);
-  }
-
   void Write(std::unique_ptr<WriteRequest> request,
              ino_t ino,
              const char* buf,
@@ -1044,12 +1016,6 @@ class FuseBoxClient : public FileSystem {
     if (!fusebox::GetFile(request->fh())) {
       errno = request->ReplyError(EBADF);
       PLOG(ERROR) << "write";
-      return;
-    }
-
-    int fd = fusebox::GetFileDescriptor(request->fh());
-    if (fd != -1) {
-      WriteFileDescriptor(std::move(request), ino, fd, buf, size, off);
       return;
     }
 
@@ -1089,28 +1055,6 @@ class FuseBoxClient : public FileSystem {
                                    : 0;
     if (posix_error_code != 0) {
       request->ReplyError(posix_error_code);
-      return;
-    }
-
-    request->ReplyWrite(length);
-  }
-
-  void WriteFileDescriptor(std::unique_ptr<WriteRequest> request,
-                           ino_t ino,
-                           int fd,
-                           const char* buf,
-                           size_t size,
-                           off_t off) {
-    VLOG(1) << "write-fd fh " << request->fh() << " off " << off << " size "
-            << size;
-
-    DCHECK_LE(size, SSIZE_MAX);
-
-    DCHECK_NE(-1, fd);
-    ssize_t length = HANDLE_EINTR(pwrite(fd, buf, size, off));
-    if (length == -1) {
-      request->ReplyError(errno);
-      PLOG(ERROR) << "write-fd";
       return;
     }
 
