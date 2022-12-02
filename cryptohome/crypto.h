@@ -25,12 +25,9 @@
 #include "cryptohome/crypto_error.h"
 #include "cryptohome/cryptohome_keys_manager.h"
 #include "cryptohome/le_credential_manager.h"
-#include "cryptohome/vault_keyset.pb.h"
 
 namespace cryptohome {
 
-struct KeyBlobs;
-class SyncAuthBlock;
 class VaultKeyset;
 
 class Crypto final {

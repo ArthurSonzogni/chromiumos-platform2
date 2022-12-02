@@ -12,6 +12,7 @@
 #include <gtest/gtest.h>
 
 #include "cryptohome/auth_factor/auth_factor_type.h"
+#include "cryptohome/crypto.h"
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/key_objects.h"
 #include "cryptohome/mock_platform.h"

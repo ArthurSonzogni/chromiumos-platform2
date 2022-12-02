@@ -16,6 +16,7 @@
 #include <libhwsec-foundation/crypto/hkdf.h>
 
 #include "cryptohome/crypto_error.h"
+#include "cryptohome/cryptohome_common.h"
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/error/cryptohome_crypto_error.h"
 #include "cryptohome/error/location_utils.h"

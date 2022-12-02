@@ -5,17 +5,14 @@
 #ifndef CRYPTOHOME_KEY_OBJECTS_H_
 #define CRYPTOHOME_KEY_OBJECTS_H_
 
-#include <memory>
 #include <optional>
 #include <string>
-#include <utility>
 #include <vector>
 
-#include <base/logging.h>
 #include <brillo/secure_blob.h>
 
 #include "cryptohome/cryptorecovery/cryptorecovery.pb.h"
-#include "cryptohome/vault_keyset.h"
+#include "cryptohome/flatbuffer_schemas/structures.h"
 
 namespace cryptohome {
 
