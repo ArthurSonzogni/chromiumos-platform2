@@ -14,10 +14,12 @@
 #include <base/cancelable_callback.h>
 #include <base/files/file_path.h>
 #include <base/memory/weak_ptr.h>
+#include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 
 #include "shill/certificate_file.h"
 #include "shill/device.h"
 #include "shill/event_dispatcher.h"
+#include "shill/net/ip_address.h"
 #include "shill/refptr_types.h"
 #include "shill/store/key_value_store.h"
 #include "shill/supplicant/supplicant_eap_state_handler.h"
@@ -80,6 +82,16 @@ class Ethernet : public Device, public SupplicantEventDelegateInterface {
   void StationRemoved(const RpcIdentifier& Station) override{};
 
   std::string GetStorageIdentifier() const override;
+
+  // Inherited from Device and responds to a neighbor reachability event from
+  // patchpanel. Restarts network validation if the event type contradicts the
+  // current connection state (neighbor failure + kStateOnline, or neighbour
+  // reachable + kStateNoConnectivity).
+  void OnNeighborReachabilityEvent(
+      const IPAddress& ip_address,
+      patchpanel::NeighborReachabilityEventSignal::Role role,
+      patchpanel::NeighborReachabilityEventSignal::EventType event_type)
+      override;
 
   virtual bool link_up() const { return link_up_; }
 

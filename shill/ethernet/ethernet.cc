@@ -897,4 +897,46 @@ bool Ethernet::RunEthtoolCmd(ifreq* interface_command) {
   return sockets_->Ioctl(sock, SIOCETHTOOL, interface_command) >= 0;
 }
 
+void Ethernet::OnNeighborReachabilityEvent(
+    const IPAddress& ip_address,
+    patchpanel::NeighborReachabilityEventSignal::Role role,
+    patchpanel::NeighborReachabilityEventSignal::EventType event_type) {
+  using NeighborSignal = patchpanel::NeighborReachabilityEventSignal;
+  if (role != NeighborSignal::GATEWAY &&
+      role != NeighborSignal::GATEWAY_AND_DNS_SERVER) {
+    return;
+  }
+
+  if (!selected_service()) {
+    LOG(INFO) << LoggingTag()
+              << ": No selected service, ignoring neighbor reachability event";
+    return;
+  }
+
+  // When a reachability failure event is received and the connection is thought
+  // to be healthy, make sure that network validation runs to confirm if there
+  // is no link connectivity anymore.
+  if (event_type == NeighborSignal::FAILED &&
+      selected_service()->state() == Service::kStateOnline) {
+    LOG(INFO) << LoggingTag()
+              << ": gateway reachability failure in 'online' state.";
+    // Network validation is expected to time out, do not force a restart in
+    // case some other mechanism has already triggered a revalidation which
+    // would otherwise get cancelled.
+    UpdatePortalDetector(/*restart=*/false);
+  }
+
+  // When a reachability success event is received and the connection is thought
+  // to be unhealthy, make sure that network validation runs to confirm if link
+  // connectivity has been recovered.
+  if (event_type == NeighborSignal::REACHABLE &&
+      selected_service()->state() == Service::kStateNoConnectivity) {
+    LOG(INFO) << LoggingTag()
+              << ": gateway reachability event in 'no-connectivity' state.";
+    // Validation should be confirmed as soon as possible. If Internet is
+    // validation is expected to be short so a restart is always forced.
+    UpdatePortalDetector(/*restart=*/true);
+  }
+}
+
 }  // namespace shill

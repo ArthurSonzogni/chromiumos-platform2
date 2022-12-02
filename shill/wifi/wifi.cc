@@ -4010,7 +4010,8 @@ void WiFi::OnNeighborReachabilityEvent(
   using EventSignal = patchpanel::NeighborReachabilityEventSignal;
 
   // Checks if the signal is for the gateway of the current connection.
-  if (role == EventSignal::DNS_SERVER) {
+  if (role != EventSignal::GATEWAY &&
+      role != EventSignal::GATEWAY_AND_DNS_SERVER) {
     return;
   }
 

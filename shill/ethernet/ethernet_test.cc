@@ -27,6 +27,7 @@
 #include "shill/ethernet/mock_ethernet_eap_provider.h"
 #include "shill/ethernet/mock_ethernet_provider.h"
 #include "shill/ethernet/mock_ethernet_service.h"
+#include "shill/manager.h"
 #include "shill/mock_control.h"
 #include "shill/mock_device_info.h"
 #include "shill/mock_eap_credentials.h"
@@ -39,6 +40,8 @@
 #include "shill/net/mock_sockets.h"
 #include "shill/network/mock_dhcp_controller.h"
 #include "shill/network/mock_dhcp_provider.h"
+#include "shill/network/mock_network.h"
+#include "shill/network/network.h"
 #include "shill/supplicant/mock_supplicant_interface_proxy.h"
 #include "shill/supplicant/mock_supplicant_process_proxy.h"
 #include "shill/supplicant/supplicant_manager.h"
@@ -714,6 +717,161 @@ TEST_F(EthernetTest, RunEthtoolCmd) {
 
   EXPECT_TRUE(ethernet_->RunEthtoolCmd(&ifr));
   EXPECT_FALSE(ethernet_->RunEthtoolCmd(&ifr));
+}
+
+TEST_F(EthernetTest, ReachabilityEvent_Online) {
+  using NeighborSignal = patchpanel::NeighborReachabilityEventSignal;
+
+  const IPAddress ipv4_addr("192.168.1.1");
+  const IPAddress ipv6_addr("fe80::1aa9:5ff:abcd:1234");
+  auto network =
+      std::make_unique<MockNetwork>(1, "eth0", Technology::kEthernet);
+  auto network_p = network.get();
+  ManagerProperties props = {};
+  props.portal_http_url = PortalDetector::kDefaultHttpUrl;
+  props.portal_https_url = PortalDetector::kDefaultHttpsUrl;
+  props.portal_fallback_http_urls =
+      std::vector<std::string>(PortalDetector::kDefaultFallbackHttpUrls.begin(),
+                               PortalDetector::kDefaultFallbackHttpUrls.end());
+
+  ethernet_->set_network_for_testing(std::move(network));
+  ethernet_->set_selected_service_for_testing(mock_service_);
+  SetService(mock_service_);
+  ON_CALL(*mock_service_, IsConnected(_)).WillByDefault(Return(true));
+  ON_CALL(*mock_service_, state()).WillByDefault(Return(Service::kStateOnline));
+  ON_CALL(*mock_service_, IsPortalDetectionDisabled())
+      .WillByDefault(Return(false));
+  ON_CALL(*network_p, IsPortalDetectionInProgress())
+      .WillByDefault(Return(false));
+  ON_CALL(*network_p, IsConnected()).WillByDefault(Return(true));
+  ON_CALL(manager_, GetProperties()).WillByDefault(ReturnRef(props));
+
+  // Service state is 'online', REACHABLE neighbor events are ignored.
+  EXPECT_CALL(*network_p, StartPortalDetection(_)).Times(0);
+  ethernet_->OnNeighborReachabilityEvent(ipv4_addr, NeighborSignal::GATEWAY,
+                                         NeighborSignal::REACHABLE);
+  ethernet_->OnNeighborReachabilityEvent(ipv6_addr,
+                                         NeighborSignal::GATEWAY_AND_DNS_SERVER,
+                                         NeighborSignal::REACHABLE);
+  Mock::VerifyAndClearExpectations(network_p);
+
+  // Service state is 'online', FAILED gateway neighbor events triggers network
+  // validation.
+  EXPECT_CALL(*network_p, StartPortalDetection(_)).WillOnce(Return(true));
+  ethernet_->OnNeighborReachabilityEvent(ipv4_addr, NeighborSignal::GATEWAY,
+                                         NeighborSignal::FAILED);
+  Mock::VerifyAndClearExpectations(network_p);
+
+  EXPECT_CALL(*network_p, StartPortalDetection(_));
+  ethernet_->OnNeighborReachabilityEvent(ipv6_addr,
+                                         NeighborSignal::GATEWAY_AND_DNS_SERVER,
+                                         NeighborSignal::FAILED);
+  Mock::VerifyAndClearExpectations(network_p);
+}
+
+TEST_F(EthernetTest, ReachabilityEvent_NotOnline) {
+  using NeighborSignal = patchpanel::NeighborReachabilityEventSignal;
+
+  const IPAddress ipv4_addr("192.168.1.1");
+  const IPAddress ipv6_addr("fe80::1aa9:5ff:abcd:1234");
+  auto network =
+      std::make_unique<MockNetwork>(1, "eth0", Technology::kEthernet);
+  auto network_p = network.get();
+  ManagerProperties props = {};
+  props.portal_http_url = PortalDetector::kDefaultHttpUrl;
+  props.portal_https_url = PortalDetector::kDefaultHttpsUrl;
+  props.portal_fallback_http_urls =
+      std::vector<std::string>(PortalDetector::kDefaultFallbackHttpUrls.begin(),
+                               PortalDetector::kDefaultFallbackHttpUrls.end());
+
+  ethernet_->set_network_for_testing(std::move(network));
+  ethernet_->set_selected_service_for_testing(mock_service_);
+  SetService(mock_service_);
+  ON_CALL(*mock_service_, IsConnected(_)).WillByDefault(Return(true));
+  ON_CALL(*mock_service_, state()).WillByDefault(Return(Service::kStateOnline));
+  ON_CALL(*mock_service_, IsPortalDetectionDisabled())
+      .WillByDefault(Return(false));
+  ON_CALL(*network_p, IsPortalDetectionInProgress())
+      .WillByDefault(Return(false));
+  ON_CALL(*network_p, IsConnected()).WillByDefault(Return(true));
+  ON_CALL(manager_, GetProperties()).WillByDefault(ReturnRef(props));
+
+  // Service state is connected but not 'online', FAILED neighbor events are
+  // ignored.
+  ON_CALL(*mock_service_, state())
+      .WillByDefault(Return(Service::kStateNoConnectivity));
+  EXPECT_CALL(*network_p, StartPortalDetection(_)).Times(0);
+  ethernet_->OnNeighborReachabilityEvent(ipv4_addr, NeighborSignal::GATEWAY,
+                                         NeighborSignal::FAILED);
+  ethernet_->OnNeighborReachabilityEvent(ipv6_addr,
+                                         NeighborSignal::GATEWAY_AND_DNS_SERVER,
+                                         NeighborSignal::FAILED);
+  Mock::VerifyAndClearExpectations(network_p);
+
+  // Service state is connected but not 'online', REACHABLE neighbor events
+  // triggers network validation.
+  EXPECT_CALL(*network_p, StartPortalDetection(_));
+  ethernet_->OnNeighborReachabilityEvent(ipv4_addr, NeighborSignal::GATEWAY,
+                                         NeighborSignal::REACHABLE);
+  Mock::VerifyAndClearExpectations(network_p);
+
+  EXPECT_CALL(*network_p, StartPortalDetection(_));
+  ethernet_->OnNeighborReachabilityEvent(ipv6_addr,
+                                         NeighborSignal::GATEWAY_AND_DNS_SERVER,
+                                         NeighborSignal::REACHABLE);
+  Mock::VerifyAndClearExpectations(network_p);
+}
+
+TEST_F(EthernetTest, ReachabilityEvent_DNSServers) {
+  using NeighborSignal = patchpanel::NeighborReachabilityEventSignal;
+
+  const IPAddress ipv4_addr("192.168.1.1");
+  const IPAddress ipv6_addr("fe80::1aa9:5ff:abcd:1234");
+  auto network =
+      std::make_unique<MockNetwork>(1, "eth0", Technology::kEthernet);
+  auto network_p = network.get();
+  ManagerProperties props = {};
+  props.portal_http_url = PortalDetector::kDefaultHttpUrl;
+  props.portal_https_url = PortalDetector::kDefaultHttpsUrl;
+  props.portal_fallback_http_urls =
+      std::vector<std::string>(PortalDetector::kDefaultFallbackHttpUrls.begin(),
+                               PortalDetector::kDefaultFallbackHttpUrls.end());
+
+  ethernet_->set_network_for_testing(std::move(network));
+  ethernet_->set_selected_service_for_testing(mock_service_);
+  SetService(mock_service_);
+  ON_CALL(*mock_service_, IsConnected(_)).WillByDefault(Return(true));
+  ON_CALL(*mock_service_, state()).WillByDefault(Return(Service::kStateOnline));
+  ON_CALL(*mock_service_, IsPortalDetectionDisabled())
+      .WillByDefault(Return(false));
+  ON_CALL(*network_p, IsPortalDetectionInProgress())
+      .WillByDefault(Return(false));
+  ON_CALL(*network_p, IsConnected()).WillByDefault(Return(true));
+  ON_CALL(manager_, GetProperties()).WillByDefault(ReturnRef(props));
+
+  // DNS neighbor events are always ignored.
+  EXPECT_CALL(*network_p, StartPortalDetection(_)).Times(0);
+  ON_CALL(*mock_service_, state())
+      .WillByDefault(Return(Service::kStateConnected));
+  ethernet_->OnNeighborReachabilityEvent(ipv4_addr, NeighborSignal::DNS_SERVER,
+                                         NeighborSignal::FAILED);
+  ethernet_->OnNeighborReachabilityEvent(ipv6_addr, NeighborSignal::DNS_SERVER,
+                                         NeighborSignal::FAILED);
+  ethernet_->OnNeighborReachabilityEvent(ipv4_addr, NeighborSignal::DNS_SERVER,
+                                         NeighborSignal::REACHABLE);
+  ethernet_->OnNeighborReachabilityEvent(ipv6_addr, NeighborSignal::DNS_SERVER,
+                                         NeighborSignal::REACHABLE);
+  ON_CALL(*mock_service_, state())
+      .WillByDefault(Return(Service::kStateConnected));
+  ethernet_->OnNeighborReachabilityEvent(ipv4_addr, NeighborSignal::DNS_SERVER,
+                                         NeighborSignal::FAILED);
+  ethernet_->OnNeighborReachabilityEvent(ipv6_addr, NeighborSignal::DNS_SERVER,
+                                         NeighborSignal::FAILED);
+  ethernet_->OnNeighborReachabilityEvent(ipv4_addr, NeighborSignal::DNS_SERVER,
+                                         NeighborSignal::REACHABLE);
+  ethernet_->OnNeighborReachabilityEvent(ipv6_addr, NeighborSignal::DNS_SERVER,
+                                         NeighborSignal::REACHABLE);
+  Mock::VerifyAndClearExpectations(network_p);
 }
 
 }  // namespace shill

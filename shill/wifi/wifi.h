@@ -88,10 +88,12 @@
 #include <base/memory/weak_ptr.h>
 #include <base/time/time.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
+#include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 
 #include "shill/device.h"
 #include "shill/mockable.h"
 #include "shill/net/ieee80211.h"
+#include "shill/net/ip_address.h"
 #include "shill/net/netlink_manager.h"
 #include "shill/net/rtnl_link_stats.h"
 #include "shill/net/shill_time.h"

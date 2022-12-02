@@ -10,6 +10,7 @@
 #include <gmock/gmock.h>
 
 #include "shill/ethernet/ethernet_service.h"
+#include "shill/service.h"
 
 namespace shill {
 
@@ -47,6 +48,8 @@ class MockEthernetService : public EthernetService {
               SetDownlinkSpeedKbps,
               (uint32_t downlink_speed_kbps),
               (override));
+  MOCK_METHOD(ConnectState, state, (), (const, override));
+  MOCK_METHOD(bool, IsPortalDetectionDisabled, (), (const, override));
 };
 
 }  // namespace shill
