@@ -138,6 +138,7 @@ class ShillClient {
   // name |ifname|. Returns false if an error occurs. Notes that this method
   // will block the current thread.
   virtual bool GetDeviceProperties(const std::string& ifname, Device* output);
+  bool GetDeviceProperties(const dbus::ObjectPath& device_path, Device* output);
 
   // Returns the cached interface name of the current default logical network;
   // does not initiate a property fetch.
@@ -189,17 +190,6 @@ class ShillClient {
   // The arguments is a pair of default logical network and default physical
   // network.
   void SetDefaultDevices(const std::pair<Device, Device>& devices);
-
-  // Returns a properties given an object path.
-  brillo::VariantDictionary GetServiceProperties(
-      const dbus::ObjectPath& service_path);
-  brillo::VariantDictionary GetDeviceProperties(
-      const dbus::ObjectPath& device_path);
-
-  // Returns a device given its service path, device path, and service type.
-  Device GetDevice(const dbus::ObjectPath& service_path,
-                   const dbus::ObjectPath& device_path,
-                   const std::string& service_type);
 
   // Parses the |property_value| as the IPConfigs property of the shill Device
   // identified by |device|, which
