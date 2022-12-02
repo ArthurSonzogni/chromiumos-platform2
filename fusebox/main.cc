@@ -887,19 +887,10 @@ class FuseBoxClient : public FileSystem {
       return;
     }
 
-    if (!fusebox::GetFile(request->fh())) {
+    auto data = fusebox::GetFileData(request->fh());
+    if (data.server_side_fuse_handle == 0) {
       errno = request->ReplyError(EBADF);
       PLOG(ERROR) << "read";
-      return;
-    }
-
-    auto data = fusebox::GetFileData(request->fh());
-    // For a transitional period, interpret "Open2 returning a 0 fuse_handle"
-    // to mean "the Fusebox server (chrome) opts for the Fusebox client (this
-    // program) to use the old Read method instead of the new Read2 method". In
-    // the long term, a 0 fuse_handle will simply be an error.
-    if (data.server_side_fuse_handle == 0) {
-      LegacyRead(std::move(request), ino, size, off, data.path);
       return;
     }
 
@@ -916,54 +907,6 @@ class FuseBoxClient : public FileSystem {
         base::BindOnce(&FuseBoxClient::Read2Response,
                        weak_ptr_factory_.GetWeakPtr(), std::move(request));
     CallFuseBoxServerMethod(&method, std::move(read2_response));
-  }
-
-  void LegacyRead(std::unique_ptr<BufferRequest> request,
-                  ino_t ino,
-                  size_t size,
-                  off_t off,
-                  const std::string& path) {
-    dbus::MethodCall method(kFuseBoxServiceInterface, kReadMethod);
-    dbus::MessageWriter writer(&method);
-
-    writer.AppendString(path);
-    writer.AppendInt64(base::strict_cast<int64_t>(off));
-    writer.AppendInt32(base::saturated_cast<int32_t>(size));
-
-    auto read_response = base::BindOnce(&FuseBoxClient::ReadResponse,
-                                        weak_ptr_factory_.GetWeakPtr(),
-                                        std::move(request), ino, size, off);
-    CallFuseBoxServerMethod(&method, std::move(read_response));
-  }
-
-  void ReadResponse(std::unique_ptr<BufferRequest> request,
-                    ino_t ino,
-                    size_t size,
-                    off_t off,
-                    dbus::Response* response) {
-    VLOG(1) << "read-resp fh " << request->fh() << " off " << off << " size "
-            << size;
-
-    if (request->IsInterrupted())
-      return;
-
-    dbus::MessageReader reader(response);
-    if (int error = GetResponseErrno(&reader, response, "read")) {
-      request->ReplyError(error);
-      return;
-    }
-
-    if (!fusebox::GetFile(request->fh())) {
-      errno = request->ReplyError(EBADF);
-      PLOG(ERROR) << "read-resp";
-      return;
-    }
-
-    const uint8_t* buf = nullptr;
-    size_t length = 0;
-    reader.PopArrayOfBytes(&buf, &length);
-
-    request->ReplyBuffer(buf, length);
   }
 
   void Read2Response(std::unique_ptr<BufferRequest> request,
