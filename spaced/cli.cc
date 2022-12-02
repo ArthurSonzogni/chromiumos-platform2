@@ -32,7 +32,7 @@ std::ostream& operator<<(std::ostream& out, const Size size) {
   const int64_t i = static_cast<int64_t>(size);
 
   if (i < 0)
-    return out << "error";
+    return out << "error (" << i << ")";
 
   if (human_readable_sizes)
     return out << i << " bytes (" << (i >> 20) << " MiB)";
