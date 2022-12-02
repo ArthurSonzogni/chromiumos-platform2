@@ -13,6 +13,7 @@
 
 #include "cryptohome/auth_blocks/auth_block_utility.h"
 #include "cryptohome/auth_factor/auth_factor.h"
+#include "cryptohome/auth_factor/auth_factor_storage_type.h"
 
 namespace cryptohome {
 namespace {

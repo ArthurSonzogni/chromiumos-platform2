@@ -32,6 +32,7 @@
 #include "cryptohome/auth_factor/auth_factor_manager.h"
 #include "cryptohome/auth_factor/auth_factor_metadata.h"
 #include "cryptohome/auth_factor/auth_factor_prepare_purpose.h"
+#include "cryptohome/auth_factor/auth_factor_storage_type.h"
 #include "cryptohome/auth_factor/auth_factor_type.h"
 #include "cryptohome/auth_factor/auth_factor_utils.h"
 #include "cryptohome/auth_factor_vault_keyset_converter.h"
@@ -304,18 +305,19 @@ void AuthSession::AuthSessionTimedOut() {
 }
 
 void AuthSession::RecordAuthSessionStart() const {
-  std::vector<std::string> keys;
-  for (const auto& [label, key_data] : key_label_data_) {
-    bool is_le_credential = key_data.policy().low_entropy_credential();
-    keys.push_back(base::StringPrintf("%s(type %d%s)", label.c_str(),
-                                      static_cast<int>(key_data.type()),
-                                      is_le_credential ? " le" : ""));
+  std::vector<std::string> factors;
+  factors.reserve(auth_factor_map_.size());
+  for (AuthFactorMap::ValueView item : auth_factor_map_) {
+    factors.push_back(base::StringPrintf(
+        "%s(type %d %s)", item.auth_factor().label().c_str(),
+        static_cast<int>(item.auth_factor().type()),
+        AuthFactorStorageTypeToDebugString(item.storage_type())));
   }
   LOG(INFO) << "AuthSession: started with is_ephemeral_user="
             << is_ephemeral_user_
             << " intent=" << IntentToDebugString(auth_intent_)
             << " user_exists=" << user_exists_
-            << " keys=" << base::JoinString(keys, ",") << ".";
+            << " factors=" << base::JoinString(factors, ",") << ".";
 }
 
 void AuthSession::SetAuthSessionAsAuthenticated(

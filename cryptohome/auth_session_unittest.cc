@@ -39,6 +39,7 @@
 #include "cryptohome/auth_factor/auth_factor.h"
 #include "cryptohome/auth_factor/auth_factor_manager.h"
 #include "cryptohome/auth_factor/auth_factor_metadata.h"
+#include "cryptohome/auth_factor/auth_factor_storage_type.h"
 #include "cryptohome/auth_factor/auth_factor_type.h"
 #include "cryptohome/auth_session_manager.h"
 #include "cryptohome/challenge_credentials/mock_challenge_credentials_helper.h"

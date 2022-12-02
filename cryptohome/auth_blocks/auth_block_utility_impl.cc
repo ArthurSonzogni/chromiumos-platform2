@@ -32,6 +32,7 @@
 #include "cryptohome/auth_blocks/tpm_bound_to_pcr_auth_block.h"
 #include "cryptohome/auth_blocks/tpm_ecc_auth_block.h"
 #include "cryptohome/auth_blocks/tpm_not_bound_to_pcr_auth_block.h"
+#include "cryptohome/auth_factor/auth_factor_storage_type.h"
 #include "cryptohome/auth_factor/auth_factor_type.h"
 #include "cryptohome/credentials.h"
 #include "cryptohome/crypto.h"

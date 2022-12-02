@@ -17,6 +17,7 @@
 #include "cryptohome/auth_blocks/auth_block.h"
 #include "cryptohome/auth_blocks/auth_block_type.h"
 #include "cryptohome/auth_blocks/prepare_token.h"
+#include "cryptohome/auth_factor/auth_factor_storage_type.h"
 #include "cryptohome/auth_factor/auth_factor_type.h"
 #include "cryptohome/auth_intent.h"
 #include "cryptohome/challenge_credentials/challenge_credentials_helper.h"
@@ -30,11 +31,6 @@
 #include "cryptohome/key_objects.h"
 
 namespace cryptohome {
-
-enum class AuthFactorStorageType {
-  kVaultKeyset,
-  kUserSecretStash,
-};
 
 // This is a utility class to create KeyBlobs with AuthBlocks using user
 // credentials and derive KeyBlobs with AuthBlocks using credentials and stored

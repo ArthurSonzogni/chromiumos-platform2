@@ -16,6 +16,7 @@
 #include <brillo/secure_blob.h>
 #include <gmock/gmock.h>
 
+#include "cryptohome/auth_factor/auth_factor_storage_type.h"
 #include "cryptohome/auth_factor/auth_factor_type.h"
 #include "cryptohome/credentials.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"

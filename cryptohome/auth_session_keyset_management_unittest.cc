@@ -22,6 +22,7 @@
 #include "cryptohome/auth_blocks/mock_auth_block_utility.h"
 #include "cryptohome/auth_blocks/scrypt_auth_block.h"
 #include "cryptohome/auth_factor/auth_factor_manager.h"
+#include "cryptohome/auth_factor/auth_factor_storage_type.h"
 #include "cryptohome/auth_session_manager.h"
 #include "cryptohome/challenge_credentials/mock_challenge_credentials_helper.h"
 #include "cryptohome/cleanup/mock_user_oldest_activity_timestamp_manager.h"
