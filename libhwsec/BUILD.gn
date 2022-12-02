@@ -27,6 +27,7 @@ pkg_config("target_defaults") {
     "absl",
     "libbrillo",
     "libchrome",
+    "libmetrics",
     "libtpm_manager-client",
     "openssl",
     "system_api",
@@ -250,6 +251,7 @@ source_set("hardware_abstraction_internal_library") {
     "frontend/recovery_crypto/frontend_impl.cc",
     "frontend/u2fd/frontend_impl.cc",
     "frontend/u2fd/vendor_frontend_impl.cc",
+    "middleware/metrics.cc",
     "proxy/proxy.cc",
     "proxy/proxy_impl.cc",
   ]

@@ -18,6 +18,7 @@
 
 #include "libhwsec/backend/backend.h"
 #include "libhwsec/hwsec_export.h"
+#include "libhwsec/middleware/metrics.h"
 #include "libhwsec/middleware/middleware_derivative.h"
 #include "libhwsec/proxy/proxy.h"
 #include "libhwsec/status.h"
@@ -80,8 +81,9 @@ class HWSEC_EXPORT MiddlewareOwner {
   FuzzedDataProvider* data_provider_ = nullptr;
 #endif
 
-  // Use thread_local to ensure the proxy and backend could only be accessed on
-  // a thread.
+  // Use thread_local to ensure the metrics, proxy and backend could only be
+  // accessed on a thread.
+  ABSL_CONST_INIT static inline thread_local std::unique_ptr<Metrics> metrics_;
   ABSL_CONST_INIT static inline thread_local std::unique_ptr<Proxy> proxy_;
   ABSL_CONST_INIT static inline thread_local std::unique_ptr<Backend> backend_;
 

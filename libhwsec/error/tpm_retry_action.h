@@ -53,6 +53,9 @@ enum class TPMRetryAction {
   // Recommended action: Informs the user that they need to provide user
   // presence.
   kUserPresence,
+
+  // The max value should equal to the last item.
+  kMaxValue = kUserPresence,
 };
 
 }  // namespace hwsec

@@ -23,6 +23,7 @@
 
 #include "libhwsec/backend/backend.h"
 #include "libhwsec/error/tpm_retry_handler.h"
+#include "libhwsec/middleware/function_name.h"
 #include "libhwsec/middleware/middleware_derivative.h"
 #include "libhwsec/middleware/middleware_owner.h"
 #include "libhwsec/proxy/proxy.h"
@@ -187,6 +188,12 @@ class Middleware {
 
     for (TPMRetryHandler retry_handler;;) {
       SubClassResult<decltype(Func)> result = (sub->*Func)(args...);
+
+      if (middleware->metrics_) {
+        middleware->metrics_->SendFuncResultToUMA(GetFuncName<Func>(),
+                                                  result.status());
+      }
+
       if (retry_handler.HandleResult(result, *middleware->backend_, args...)) {
         return result;
       }

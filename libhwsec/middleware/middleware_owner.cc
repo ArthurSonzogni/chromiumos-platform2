@@ -96,6 +96,8 @@ void MiddlewareOwner::InitBackend() {
     thread_id_ = base::PlatformThread::CurrentId();
   }
 
+  metrics_ = std::make_unique<Metrics>();
+
   TPM_SELECT_BEGIN;
   TPM1_SECTION({
     auto proxy = std::make_unique<ProxyImpl>();
@@ -130,12 +132,16 @@ void MiddlewareOwner::InitWithCustomBackend(
     thread_id_ = base::PlatformThread::CurrentId();
   }
 
+  // Note: The metrics and proxy is meaningless with the custom backend, so we
+  // don't init them here.
+
   backend_ = std::move(custom_backend);
 }
 
 void MiddlewareOwner::FiniBackend() {
   backend_.reset();
   proxy_.reset();
+  metrics_.reset();
 }
 
 }  // namespace hwsec
