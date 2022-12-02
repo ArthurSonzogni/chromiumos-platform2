@@ -26,7 +26,6 @@
 
 #include "fusebox/built_in.h"
 #include "fusebox/file_system.h"
-#include "fusebox/file_system_fake.h"
 #include "fusebox/fuse_frontend.h"
 #include "fusebox/fuse_path_inodes.h"
 #include "fusebox/make_stat.h"
@@ -93,8 +92,7 @@ class FuseBoxClient : public FileSystem {
     CHECK(stop_callback);
 
     fuse_frontend_.reset(new FuseFrontend(fuse_));
-    FileSystem* fs = fuse_->fake ? CreateFakeFileSystem() : this;
-    if (!fuse_frontend_->CreateFuseSession(fs, FileSystem::FuseOps()))
+    if (!fuse_frontend_->CreateFuseSession(this, FileSystem::FuseOps()))
       return EX_SOFTWARE;
 
     dbus_proxy_->SetNameOwnerChangedCallback(base::BindRepeating(
@@ -108,11 +106,6 @@ class FuseBoxClient : public FileSystem {
       PLOG(ERROR) << "service owner changed";
       fuse_frontend_->StopFuseSession(errno);
     }
-  }
-
-  static FileSystem* CreateFakeFileSystem() {
-    static base::NoDestructor<FileSystemFake> fake_file_system;
-    return fake_file_system.get();
   }
 
   static InodeTable& GetInodeTable() {
@@ -1135,9 +1128,6 @@ class FuseBoxClient : public FileSystem {
     stat = MakeStat(node->ino, stat, device.mode == "ro");
     device_dir_entry_[device.name] = {node->ino, device.name, stat.st_mode};
     GetInodeTable().SetStat(node->ino, stat);
-
-    if (fuse_->debug)
-      ShowStat(stat, device.name);
     return 0;
   }
 
@@ -1232,7 +1222,6 @@ int Run(char** mountpoint, fuse_chan* chan, int foreground) {
   auto* commandline_options = base::CommandLine::ForCurrentProcess();
   fuse.opts = commandline_options->GetSwitchValueASCII("ll");
   fuse.debug = commandline_options->HasSwitch("debug");
-  fuse.fake = commandline_options->HasSwitch("fake");
 
   if (!foreground)
     LOG(INFO) << "fusebox fuse_daemonizing";

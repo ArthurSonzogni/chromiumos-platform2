@@ -44,9 +44,6 @@ struct stat MakeStatFromProto(ino_t ino, const DirEntryProto& proto);
 // Returns mode string.
 std::string StatModeToString(mode_t mode);
 
-// Show a stat for file system entry |name|.
-void ShowStat(const struct stat& stat, const std::string& name = {});
-
 }  // namespace fusebox
 
 #endif  // FUSEBOX_MAKE_STAT_H_

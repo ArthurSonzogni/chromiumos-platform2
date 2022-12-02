@@ -60,7 +60,6 @@ struct FuseMount {
   fuse_chan* chan;
   std::string opts;
   bool debug = false;
-  bool fake = false;
 };
 
 class FuseFrontend {

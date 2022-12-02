@@ -36,11 +36,7 @@ static_library("libfusebox") {
     "built_in.h",
     "file_system.cc",
     "file_system.h",
-    "file_system_fake.cc",
-    "file_system_fake.h",
     "file_system_fuse.cc",
-    "fuse_file_handles.cc",
-    "fuse_file_handles.h",
     "fuse_path_inodes.cc",
     "fuse_path_inodes.h",
     "fuse_request.cc",
@@ -69,7 +65,6 @@ if (use.test) {
 
   executable("fusebox_test") {
     sources = [
-      "fuse_file_handles_test.cc",
       "fuse_path_inodes_test.cc",
       "make_stat_test.cc",
       "test_runner.cc",

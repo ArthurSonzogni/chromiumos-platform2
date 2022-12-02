@@ -208,21 +208,4 @@ TEST(MakeStatTest, MakeStat) {
   }
 }
 
-TEST(MakeStatTest, ShowStatForEntryName) {
-  struct stat stat = {0};
-
-  stat.st_dev = 40;
-  stat.st_ino = 41;
-  stat.st_mode = MakeStatModeBits(S_IFDIR | 0777);
-  stat.st_nlink = 42;
-  stat.st_uid = kChronosUID;
-  stat.st_gid = kChronosAccessGID;
-  stat.st_rdev = 43;
-  stat.st_atime = 44;
-  stat.st_mtime = 45;
-  stat.st_ctime = 46;
-
-  ShowStat(stat, "entry-name");
-}
-
 }  // namespace fusebox
