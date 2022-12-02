@@ -7,7 +7,12 @@ import("//common-mk/pkg_config.gni")
 import("//common-mk/proto_library.gni")
 
 group("all") {
-  deps = [ ":hardware_verifier" ]
+  deps = [
+    ":hardware_verifier",
+    ":install_dbus_config",
+    ":install_dbus_service",
+    ":install_init_config",
+  ]
   if (use.test) {
     deps += [ ":unittest_runner" ]
   }
@@ -56,10 +61,29 @@ static_library("libhardware_verifier") {
 executable("hardware_verifier") {
   sources = [ "main.cc" ]
   configs += [ ":target_defaults" ]
+  install_path = "bin"
   deps = [
     ":dbus-adaptors",
     ":libhardware_verifier",
   ]
+}
+
+install_config("install_dbus_config") {
+  sources = [ "dbus/org.chromium.HardwareVerifier.conf" ]
+  install_path = "/etc/dbus-1/system.d"
+}
+
+install_config("install_dbus_service") {
+  sources = [ "dbus/org.chromium.HardwareVerifier.service" ]
+  install_path = "/usr/share/dbus-1/system-services"
+}
+
+install_config("install_init_config") {
+  sources = [
+    "init/hardware_verifier-dbus.conf",
+    "init/hardware_verifier.conf",
+  ]
+  install_path = "/etc/init"
 }
 
 if (use.test) {
@@ -83,6 +107,7 @@ if (use.test) {
       ":target_defaults",
     ]
     data = [ "testdata/" ]
+    run_test = true
     deps = [
       ":libhardware_verifier",
       ":libhardware_verifier_test",
