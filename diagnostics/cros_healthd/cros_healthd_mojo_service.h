@@ -21,6 +21,7 @@
 #include "diagnostics/cros_healthd/utils/mojo_service_provider.h"
 #include "diagnostics/mojom/external/network_health.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd.mojom.h"
+#include "diagnostics/mojom/public/cros_healthd_routines.mojom.h"
 
 namespace diagnostics {
 
@@ -29,7 +30,8 @@ namespace diagnostics {
 class CrosHealthdMojoService final
     : public ash::cros_healthd::mojom::CrosHealthdEventService,
       public ash::cros_healthd::mojom::CrosHealthdProbeService,
-      public ash::cros_healthd::mojom::CrosHealthdSystemService {
+      public ash::cros_healthd::mojom::CrosHealthdSystemService,
+      public ash::cros_healthd::mojom::CrosHealthdRoutinesService {
  public:
   using ProbeCategoryEnum = ::ash::cros_healthd::mojom::ProbeCategoryEnum;
 
@@ -93,6 +95,12 @@ class CrosHealthdMojoService final
   // ash::cros_healthd::mojom::CrosHealthdSystemService overrides:
   void GetServiceStatus(GetServiceStatusCallback callback) override;
 
+  // ash::cros_healthd::mojom::CrosHealthdRoutinesService overrides:
+  void CreateRoutine(
+      ash::cros_healthd::mojom::RoutineArgumentPtr routine_arg,
+      mojo::PendingReceiver<ash::cros_healthd::mojom::RoutineControl>
+          routine_receiver) override;
+
   // Adds a new binding to the internal binding sets.
   void AddProbeReceiver(
       mojo::PendingReceiver<ash::cros_healthd::mojom::CrosHealthdProbeService>
@@ -120,6 +128,8 @@ class CrosHealthdMojoService final
       event_provider_;
   MojoServiceProvider<ash::cros_healthd::mojom::CrosHealthdSystemService>
       system_provider_;
+  MojoServiceProvider<ash::cros_healthd::mojom::CrosHealthdRoutinesService>
+      routine_provider_;
 
   // Unowned. The following instances should outlive this instance.
   Context* const context_ = nullptr;

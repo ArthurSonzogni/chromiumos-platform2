@@ -6,7 +6,8 @@
       "CrosHealthdDiagnostics",
       "CrosHealthdEvent",
       "CrosHealthdProbe",
-      "CrosHealthdSystem"
+      "CrosHealthdSystem",
+      "CrosHealthdRoutines"
     ]
   },
   {
@@ -14,7 +15,8 @@
     "request": [
       "CrosHealthdDiagnostics",
       "CrosHealthdEvent",
-      "CrosHealthdProbe"
+      "CrosHealthdProbe",
+      "CrosHealthdRoutines"
     ]
   },
   {
@@ -23,7 +25,8 @@
       "CrosHealthdDiagnostics",
       "CrosHealthdEvent",
       "CrosHealthdProbe",
-      "CrosHealthdSystem"
+      "CrosHealthdSystem",
+      "CrosHealthdRoutines"
     ]
   }
 ]

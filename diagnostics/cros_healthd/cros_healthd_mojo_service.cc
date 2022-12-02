@@ -12,6 +12,7 @@
 #include <base/logging.h>
 #include <chromeos/mojo/service_constants.h>
 
+#include "base/notreached.h"
 #include "diagnostics/cros_healthd/fetchers/process_fetcher.h"
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
 
@@ -31,6 +32,7 @@ CrosHealthdMojoService::CrosHealthdMojoService(
     : probe_provider_(this),
       event_provider_(this),
       system_provider_(this),
+      routine_provider_(this),
       context_(context),
       fetch_aggregator_(fetch_aggregator),
       event_aggregator_(event_aggregator),
@@ -51,6 +53,8 @@ CrosHealthdMojoService::CrosHealthdMojoService(
                            chromeos::mojo_services::kCrosHealthdEvent);
   system_provider_.Register(context->mojo_service()->GetServiceManager(),
                             chromeos::mojo_services::kCrosHealthdSystem);
+  routine_provider_.Register(context->mojo_service()->GetServiceManager(),
+                             chromeos::mojo_services::kCrosHealthdRoutines);
 }
 
 CrosHealthdMojoService::~CrosHealthdMojoService() = default;
@@ -114,6 +118,12 @@ void CrosHealthdMojoService::ProbeMultipleProcessInfo(
     ProbeMultipleProcessInfoCallback callback) {
   ProcessFetcher(context_).FetchMultipleProcessInfo(
       process_ids, ignore_single_process_info, std::move(callback));
+}
+
+void CrosHealthdMojoService::CreateRoutine(
+    mojom::RoutineArgumentPtr routine_arg,
+    mojo::PendingReceiver<mojom::RoutineControl> routine_receiver) {
+  NOTIMPLEMENTED();
 }
 
 void CrosHealthdMojoService::GetServiceStatus(
