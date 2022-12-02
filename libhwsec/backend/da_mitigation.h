@@ -5,6 +5,8 @@
 #ifndef LIBHWSEC_BACKEND_DA_MITIGATION_H_
 #define LIBHWSEC_BACKEND_DA_MITIGATION_H_
 
+#include <base/time/time.h>
+
 #include "libhwsec/status.h"
 
 namespace hwsec {
