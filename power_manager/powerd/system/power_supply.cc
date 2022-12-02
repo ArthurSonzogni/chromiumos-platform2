@@ -1183,6 +1183,7 @@ bool PowerSupply::ReadBatteryDirectory(const base::FilePath& path,
     }
   }
 
+  DCHECK_GT(nominal_voltage, 0);
   status->nominal_voltage = nominal_voltage;
 
   // ACPI has two different battery types: charge_battery and energy_battery.
@@ -1200,6 +1201,8 @@ bool PowerSupply::ReadBatteryDirectory(const base::FilePath& path,
   // just read those and the energy_now attribute.
   double charge_full = 0;
   double charge_full_design = 0;
+  double energy_full = 0;
+  double energy_full_design = 0;
   double charge = 0;
   double energy = 0;
 
@@ -1209,14 +1212,16 @@ bool PowerSupply::ReadBatteryDirectory(const base::FilePath& path,
   if (base::PathExists(path.Append("charge_full"))) {
     charge_full = ReadScaledDouble(path, "charge_full");
     charge_full_design = ReadScaledDouble(path, "charge_full_design");
+    energy_full = charge_full * nominal_voltage;
+    energy_full_design = charge_full_design * nominal_voltage;
     charge = ReadScaledDouble(path, "charge_now");
     if (energy <= 0.0)
       energy = charge * nominal_voltage;
   } else if (base::PathExists(path.Append("energy_full"))) {
-    DCHECK_GT(nominal_voltage, 0);
-    charge_full = ReadScaledDouble(path, "energy_full") / nominal_voltage;
-    charge_full_design =
-        ReadScaledDouble(path, "energy_full_design") / nominal_voltage;
+    energy_full = ReadScaledDouble(path, "energy_full");
+    energy_full_design = ReadScaledDouble(path, "energy_full_design");
+    charge_full = energy_full / nominal_voltage;
+    charge_full_design = energy_full_design / nominal_voltage;
     charge = energy / nominal_voltage;
   } else {
     LOG(WARNING) << "Ignoring reading without battery charge/energy";
@@ -1233,6 +1238,8 @@ bool PowerSupply::ReadBatteryDirectory(const base::FilePath& path,
 
   status->battery_charge_full = charge_full;
   status->battery_charge_full_design = charge_full_design;
+  status->battery_energy_full = energy_full;
+  status->battery_energy_full_design = energy_full_design;
   status->battery_charge = charge;
   status->battery_energy = energy;
 

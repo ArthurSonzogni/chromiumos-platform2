@@ -130,6 +130,10 @@ struct PowerStatus {
   double battery_charge_full = 0.0;
   double battery_charge_full_design = 0.0;
 
+  // Battery full charge and design-charge levels in watt-hours.
+  double battery_energy_full = 0.0;
+  double battery_energy_full_design = 0.0;
+
   // Observed rate at which the battery's charge has been changing, in amperes
   // (i.e. change in the charge per hour). Positive if the battery's charge has
   // increased, negative if it's decreased, and zero if the charge hasn't

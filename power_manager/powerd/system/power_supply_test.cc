@@ -458,6 +458,10 @@ TEST_F(PowerSupplyTest, ChargingAndDischarging) {
                    power_status.battery_charge_full_design);
   EXPECT_DOUBLE_EQ(kDefaultChargeFull, power_status.battery_charge_full);
   EXPECT_DOUBLE_EQ(kVoltage, power_status.battery_voltage_min_design);
+  EXPECT_DOUBLE_EQ(kDefaultChargeFullDesign * kVoltage,
+                   power_status.battery_energy_full_design);
+  EXPECT_DOUBLE_EQ(kDefaultChargeFull * kVoltage,
+                   power_status.battery_energy_full);
 
   // Test with a negative current.
   UpdateChargeAndCurrent(kCharge, -kCurrent);
@@ -466,6 +470,20 @@ TEST_F(PowerSupplyTest, ChargingAndDischarging) {
             power_status.battery_state);
   EXPECT_DOUBLE_EQ(kCharge * kVoltage, power_status.battery_energy);
   EXPECT_DOUBLE_EQ(kCurrent * kVoltage, power_status.battery_energy_rate);
+}
+
+TEST_F(PowerSupplyTest, EnergyFullNominalVoltageNotEqualVoltage) {
+  WriteDefaultValues(PowerSource::BATTERY);
+  base::DeleteFile(battery_dir_.Append("voltage_min_design"));
+  WriteDoubleValue(battery_dir_, "voltage_min_design", kVoltageMinDesign);
+  Init();
+  PowerStatus power_status;
+  ASSERT_TRUE(UpdateStatus(&power_status));
+  EXPECT_DOUBLE_EQ(kVoltageMinDesign, power_status.nominal_voltage);
+  EXPECT_DOUBLE_EQ(kDefaultChargeFullDesign * kVoltageMinDesign,
+                   power_status.battery_energy_full_design);
+  EXPECT_DOUBLE_EQ(kDefaultChargeFull * kVoltageMinDesign,
+                   power_status.battery_energy_full);
 }
 
 // Tests that the line power source doesn't need to be named "Mains".
