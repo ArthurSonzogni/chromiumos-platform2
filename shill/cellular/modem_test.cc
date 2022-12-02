@@ -27,8 +27,6 @@
 #include "shill/mock_device_info.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
-#include "shill/net/mock_rtnl_handler.h"
-#include "shill/net/rtnl_handler.h"
 #include "shill/test_event_dispatcher.h"
 
 using testing::_;
@@ -88,13 +86,12 @@ class ModemTest : public Test {
         modem_info_(&control_, &manager_),
         device_info_(&manager_),
         modem_(new Modem(kService, kPath, &device_info_)) {
-    modem_->set_rtnl_handler_for_testing(&rtnl_handler_);
   }
 
   void SetUp() {
     expected_address_ = ByteString(kAddress, std::size(kAddress));
 
-    EXPECT_CALL(rtnl_handler_, GetInterfaceIndex(kLinkName))
+    EXPECT_CALL(device_info_, GetIndex(kLinkName))
         .WillRepeatedly(Return(kTestInterfaceIndex));
 
     EXPECT_CALL(manager_, device_info()).WillRepeatedly(Return(&device_info_));
@@ -148,7 +145,6 @@ class ModemTest : public Test {
   MockModemInfo modem_info_;
   TestDeviceInfo device_info_;
   std::unique_ptr<Modem> modem_;
-  MockRTNLHandler rtnl_handler_;
   ByteString expected_address_;
 };
 
@@ -199,13 +195,12 @@ TEST_F(ModemTest, CreateDeviceEarlyFailures) {
   properties = GetInterfaceProperties(kModemTestLayoutControlAndData);
 
   // Link name, but no ifindex: no device created
-  EXPECT_CALL(rtnl_handler_, GetInterfaceIndex(StrEq(kLinkName)))
-      .WillOnce(Return(-1));
+  EXPECT_CALL(device_info_, GetIndex(StrEq(kLinkName))).WillOnce(Return(-1));
   CreateDevice(properties);
   EXPECT_FALSE(modem_->interface_index_for_testing().has_value());
 
   // The params are good, but the device is blocked.
-  EXPECT_CALL(rtnl_handler_, GetInterfaceIndex(StrEq(kLinkName)))
+  EXPECT_CALL(device_info_, GetIndex(StrEq(kLinkName)))
       .WillOnce(Return(kTestInterfaceIndex));
   EXPECT_CALL(device_info_, GetMacAddress(kTestInterfaceIndex, _))
       .WillOnce(DoAll(SetArgPointee<1>(expected_address_), Return(true)));
@@ -240,22 +235,20 @@ TEST_F(ModemTest, GetDeviceParams) {
       .Times(AnyNumber())
       .WillRepeatedly(Return(false));
 
-  EXPECT_CALL(rtnl_handler_, GetInterfaceIndex(_)).WillOnce(Return(-1));
+  EXPECT_CALL(device_info_, GetIndex(_)).WillOnce(Return(-1));
   EXPECT_FALSE(GetDeviceParams(&mac_address).has_value());
 
-  EXPECT_CALL(rtnl_handler_, GetInterfaceIndex(_)).WillOnce(Return(-2));
+  EXPECT_CALL(device_info_, GetIndex(_)).WillOnce(Return(-2));
   EXPECT_FALSE(GetDeviceParams(&mac_address).has_value());
 
-  EXPECT_CALL(rtnl_handler_, GetInterfaceIndex(_)).WillOnce(Return(1));
-  EXPECT_CALL(device_info_, GetMacAddress(_, _)).WillOnce(Return(false));
-  std::optional<int> interface_index = GetDeviceParams(&mac_address);
-  EXPECT_TRUE(interface_index.has_value());
-  EXPECT_EQ(1, interface_index.value());
+  EXPECT_CALL(device_info_, GetIndex(_)).WillOnce(Return(1));
+  EXPECT_CALL(device_info_, GetMacAddress(1, _)).WillOnce(Return(false));
+  EXPECT_FALSE(GetDeviceParams(&mac_address).has_value());
 
-  EXPECT_CALL(rtnl_handler_, GetInterfaceIndex(_)).WillOnce(Return(2));
+  EXPECT_CALL(device_info_, GetIndex(_)).WillOnce(Return(2));
   EXPECT_CALL(device_info_, GetMacAddress(2, _))
       .WillOnce(DoAll(SetArgPointee<1>(expected_address_), Return(true)));
-  interface_index = GetDeviceParams(&mac_address);
+  std::optional<int> interface_index = GetDeviceParams(&mac_address);
   EXPECT_TRUE(interface_index.has_value());
   EXPECT_EQ(2, interface_index.value());
   EXPECT_EQ(kAddressAsString, mac_address);

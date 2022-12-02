@@ -58,11 +58,6 @@ class Modem {
   static const char kFakeDevAddress[];
   static const int kFakeDevInterfaceIndex;
 
- protected:
-  void set_rtnl_handler_for_testing(RTNLHandler* rtnl_handler) {
-    rtnl_handler_ = rtnl_handler;
-  }
-
  private:
   friend class ModemTest;
 
@@ -93,7 +88,6 @@ class Modem {
   std::string link_name_;
   Cellular::Type type_;
   bool has_pending_device_info_ = false;
-  RTNLHandler* rtnl_handler_;
 
   // Serial number used to uniquify fake device names for Cellular
   // devices that don't have network devices. (Names must be unique

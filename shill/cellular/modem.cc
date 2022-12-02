@@ -19,7 +19,6 @@
 #include "shill/device_info.h"
 #include "shill/logging.h"
 #include "shill/manager.h"
-#include "shill/net/rtnl_handler.h"
 
 namespace shill {
 
@@ -48,8 +47,7 @@ Modem::Modem(const std::string& service,
     : service_(service),
       path_(path),
       device_info_(device_info),
-      type_(Cellular::kTypeInvalid),
-      rtnl_handler_(RTNLHandler::GetInstance()) {
+      type_(Cellular::kTypeInvalid) {
   SLOG(this, 1) << "Modem() Path: " << path.value();
 }
 
@@ -158,14 +156,9 @@ void Modem::CreateDeviceFromModemProperties(
   if (GetLinkName(modem_props, &link_name_)) {
     interface_index_ = GetDeviceParams(&mac_address);
     if (!interface_index_.has_value()) {
-      LOG(ERROR) << "Unable to create cellular device -- no interface index.";
-      return;
-    }
-    if (mac_address.empty()) {
       // Save our properties, wait for OnDeviceInfoAvailable to be called.
-      LOG(WARNING)
-          << __func__
-          << ": No hardware address, device creation pending device info.";
+      LOG(WARNING) << "Delaying cellular device creation for interface "
+                   << link_name_ << ".";
       initial_properties_ = properties;
       has_pending_device_info_ = true;
       return;
@@ -195,18 +188,17 @@ void Modem::CreateDeviceFromModemProperties(
 }
 
 std::optional<int> Modem::GetDeviceParams(std::string* mac_address) {
-  // TODO(petkov): Get the interface index from DeviceInfo, similar to the MAC
-  // address below.
-  int interface_index = rtnl_handler_->GetInterfaceIndex(link_name_);
+  int interface_index = device_info_->GetIndex(link_name_);
   if (interface_index < 0) {
     return std::nullopt;
   }
 
   ByteString address_bytes;
-  if (device_info_->GetMacAddress(interface_index, &address_bytes)) {
-    *mac_address = address_bytes.HexEncode();
+  if (!device_info_->GetMacAddress(interface_index, &address_bytes)) {
+    return std::nullopt;
   }
 
+  *mac_address = address_bytes.HexEncode();
   return interface_index;
 }
 
