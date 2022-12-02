@@ -507,6 +507,19 @@ enum class UssExperimentFlag {
   kMaxValue,
 };
 
+// List of possible auth factor backing store configurations that a user can
+// have. This is determined by whether a user's factors are stored in vault
+// keysets or the USS.
+// These values are persisted to logs. Entries should not be renumbered and
+// numeric values should never be reused.
+enum class AuthFactorBackingStoreConfig {
+  kEmpty = 0,            // User has no auth factors.
+  kVaultKeyset = 1,      // All factors are stored in vault keysets.
+  kUserSecretStash = 2,  // All factors are stored in the user secret stash.
+  kMixed = 3,            // Factors are stoed in a mix of backings stores.
+  kMaxValue = kMixed,
+};
+
 // Initializes cryptohome metrics. If this is not called, all calls to Report*
 // will have no effect.
 void InitializeMetrics();
@@ -776,6 +789,9 @@ void ReportFetchUssExperimentConfigRetries(int retries);
 
 // Reports the result of reading the USS experiment flag.
 void ReportUssExperimentFlag(UssExperimentFlag flag);
+
+// Reports the current state of the auth factor backing stores.
+void ReportAuthFactorBackingStoreConfig(AuthFactorBackingStoreConfig config);
 
 // Initialization helper.
 class ScopedMetricsInitializer {

@@ -292,6 +292,7 @@ CryptohomeStatus AuthSession::Initialize() {
     }
   }
 
+  auth_factor_map_.ReportAuthFactorBackingStoreMetrics();
   RecordAuthSessionStart();
   return OkStatus<CryptohomeCryptoError>();
 }

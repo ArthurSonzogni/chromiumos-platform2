@@ -10,10 +10,12 @@
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <metrics/metrics_library_mock.h>
 
 #include "cryptohome/auth_blocks/auth_block_utility.h"
 #include "cryptohome/auth_factor/auth_factor.h"
 #include "cryptohome/auth_factor/auth_factor_storage_type.h"
+#include "cryptohome/cryptohome_metrics.h"
 
 namespace cryptohome {
 namespace {
@@ -22,6 +24,7 @@ using ::testing::Eq;
 using ::testing::IsFalse;
 using ::testing::IsTrue;
 using ::testing::Ref;
+using ::testing::StrictMock;
 
 constexpr char kLabel1[] = "factor1";
 constexpr char kLabel2[] = "factor2";
@@ -40,11 +43,17 @@ std::pair<std::unique_ptr<AuthFactor>, AuthFactor*> MakeFactor(
 }
 
 class AuthFactorMapTest : public testing::Test {
+ public:
+  AuthFactorMapTest() { OverrideMetricsLibraryForTesting(&metrics_); }
+  ~AuthFactorMapTest() override { ClearMetricsLibraryForTesting(); }
+
  protected:
   // Returns a const-ref to the test object. Used for testing const methods.
   const AuthFactorMap& const_factor_map() const { return factor_map_; }
 
   AuthFactorMap factor_map_;
+
+  StrictMock<MetricsLibraryMock> metrics_;
 };
 
 TEST_F(AuthFactorMapTest, InitialEmpty) {
@@ -134,6 +143,70 @@ TEST_F(AuthFactorMapTest, AddDuplicate) {
   EXPECT_THAT(const_factor_map().Find(kLabel1)->storage_type(),
               Eq(AuthFactorStorageType::kUserSecretStash));
   EXPECT_THAT(const_factor_map().Find(kLabel2), Eq(std::nullopt));
+}
+
+TEST_F(AuthFactorMapTest, ReportMetricsEmpty) {
+  ASSERT_THAT(factor_map_.size(), Eq(0));
+
+  EXPECT_CALL(
+      metrics_,
+      SendEnumToUMA(
+          "Cryptohome.AuthFactorBackingStoreConfig",
+          static_cast<int>(AuthFactorBackingStoreConfig::kEmpty),
+          static_cast<int>(AuthFactorBackingStoreConfig::kMaxValue) + 1))
+      .Times(1);
+  factor_map_.ReportAuthFactorBackingStoreMetrics();
+}
+
+TEST_F(AuthFactorMapTest, ReportMetricsVk) {
+  auto [factor1, ptr1] = MakeFactor(kLabel1);
+  auto [factor2, ptr2] = MakeFactor(kLabel2);
+  factor_map_.Add(std::move(factor1), AuthFactorStorageType::kVaultKeyset);
+  factor_map_.Add(std::move(factor2), AuthFactorStorageType::kVaultKeyset);
+  ASSERT_THAT(factor_map_.size(), Eq(2));
+
+  EXPECT_CALL(
+      metrics_,
+      SendEnumToUMA(
+          "Cryptohome.AuthFactorBackingStoreConfig",
+          static_cast<int>(AuthFactorBackingStoreConfig::kVaultKeyset),
+          static_cast<int>(AuthFactorBackingStoreConfig::kMaxValue) + 1))
+      .Times(1);
+  factor_map_.ReportAuthFactorBackingStoreMetrics();
+}
+
+TEST_F(AuthFactorMapTest, ReportMetricsUss) {
+  auto [factor1, ptr1] = MakeFactor(kLabel1);
+  auto [factor2, ptr2] = MakeFactor(kLabel2);
+  factor_map_.Add(std::move(factor1), AuthFactorStorageType::kUserSecretStash);
+  factor_map_.Add(std::move(factor2), AuthFactorStorageType::kUserSecretStash);
+  ASSERT_THAT(factor_map_.size(), Eq(2));
+
+  EXPECT_CALL(
+      metrics_,
+      SendEnumToUMA(
+          "Cryptohome.AuthFactorBackingStoreConfig",
+          static_cast<int>(AuthFactorBackingStoreConfig::kUserSecretStash),
+          static_cast<int>(AuthFactorBackingStoreConfig::kMaxValue) + 1))
+      .Times(1);
+  factor_map_.ReportAuthFactorBackingStoreMetrics();
+}
+
+TEST_F(AuthFactorMapTest, ReportMetricsMixed) {
+  auto [factor1, ptr1] = MakeFactor(kLabel1);
+  auto [factor2, ptr2] = MakeFactor(kLabel2);
+  factor_map_.Add(std::move(factor1), AuthFactorStorageType::kVaultKeyset);
+  factor_map_.Add(std::move(factor2), AuthFactorStorageType::kUserSecretStash);
+  ASSERT_THAT(factor_map_.size(), Eq(2));
+
+  EXPECT_CALL(
+      metrics_,
+      SendEnumToUMA(
+          "Cryptohome.AuthFactorBackingStoreConfig",
+          static_cast<int>(AuthFactorBackingStoreConfig::kMixed),
+          static_cast<int>(AuthFactorBackingStoreConfig::kMaxValue) + 1))
+      .Times(1);
+  factor_map_.ReportAuthFactorBackingStoreMetrics();
 }
 
 }  // namespace

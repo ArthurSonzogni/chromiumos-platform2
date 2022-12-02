@@ -10,6 +10,7 @@
 
 #include "cryptohome/auth_factor/auth_factor.h"
 #include "cryptohome/auth_factor/auth_factor_storage_type.h"
+#include "cryptohome/cryptohome_metrics.h"
 
 namespace cryptohome {
 
@@ -41,6 +42,31 @@ std::optional<AuthFactorMap::ValueView> AuthFactorMap::Find(
     return std::nullopt;
   }
   return ValueView(&iter->second);
+}
+
+void AuthFactorMap::ReportAuthFactorBackingStoreMetrics() const {
+  bool using_vk = false, using_uss = false;
+  for (const auto& [unused, stored_auth_factor] : storage_) {
+    switch (stored_auth_factor.storage_type) {
+      case AuthFactorStorageType::kVaultKeyset:
+        using_vk = true;
+        break;
+      case AuthFactorStorageType::kUserSecretStash:
+        using_uss = true;
+        break;
+    }
+  }
+  if (using_vk && using_uss) {
+    ReportAuthFactorBackingStoreConfig(AuthFactorBackingStoreConfig::kMixed);
+  } else if (using_uss) {
+    ReportAuthFactorBackingStoreConfig(
+        AuthFactorBackingStoreConfig::kUserSecretStash);
+  } else if (using_vk) {
+    ReportAuthFactorBackingStoreConfig(
+        AuthFactorBackingStoreConfig::kVaultKeyset);
+  } else {
+    ReportAuthFactorBackingStoreConfig(AuthFactorBackingStoreConfig::kEmpty);
+  }
 }
 
 }  // namespace cryptohome

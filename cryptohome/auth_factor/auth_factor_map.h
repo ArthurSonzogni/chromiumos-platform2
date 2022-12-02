@@ -116,6 +116,9 @@ class AuthFactorMap final {
   // the given label.
   std::optional<ValueView> Find(const std::string& label) const;
 
+  // Report auth factor backing store metrics.
+  void ReportAuthFactorBackingStoreMetrics() const;
+
  private:
   Storage storage_;
 };
