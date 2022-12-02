@@ -380,6 +380,7 @@ if (use.test) {
       "error/tpm_error_test.cc",
       "error/tpm_manager_error_test.cc",
       "error/tpm_nvram_error_test.cc",
+      "middleware/function_name_test.cc",
     ]
     configs += [
       "//common-mk:test",
