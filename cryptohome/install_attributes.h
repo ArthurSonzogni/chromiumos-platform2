@@ -13,7 +13,6 @@
 #include <base/files/file_path.h>
 #include <base/observer_list.h>
 #include <base/observer_list_types.h>
-#include <base/values.h>
 #include <brillo/proto_bindings/install_attributes.pb.h>
 #include <brillo/secure_blob.h>
 #include <libhwsec/frontend/cryptohome/frontend.h>
@@ -118,12 +117,6 @@ class InstallAttributes {
   virtual void set_lockbox(Lockbox* lockbox) { lockbox_ = lockbox; }
 
   virtual Lockbox* lockbox() { return lockbox_; }
-
-  // Returns a description of the system's install attributes as a Value.
-  //
-  // The Value is of type Dictionary, with keys "initialized", "version",
-  // "lockbox_index", "secure", "invalid", "first_install" and "size".
-  virtual base::Value GetStatus();
 
   void AddObserver(Observer* obs) { observer_list_.AddObserver(obs); }
 

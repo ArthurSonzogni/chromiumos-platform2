@@ -324,28 +324,4 @@ bool InstallAttributes::ClearData() {
   return true;
 }
 
-base::Value InstallAttributes::GetStatus() {
-  base::Value dv(base::Value::Type::DICTIONARY);
-  dv.SetBoolKey("initialized",
-                status_ == Status::kFirstInstall || status_ == Status::kValid);
-  dv.SetIntKey("version", version());
-  dv.SetIntKey("lockbox_nvram_version", 2);
-  dv.SetBoolKey("secure", IsSecure());
-  dv.SetBoolKey("invalid", status_ == Status::kInvalid);
-  dv.SetBoolKey("first_install", status_ == Status::kFirstInstall);
-  dv.SetIntKey("size", Count());
-  if (Count()) {
-    base::Value attrs(base::Value::Type::DICTIONARY);
-    std::string key;
-    brillo::Blob value;
-    for (int i = 0; i < Count(); i++) {
-      GetByIndex(i, &key, &value);
-      std::string value_str(reinterpret_cast<const char*>(value.data()));
-      attrs.SetStringKey(key, value_str);
-    }
-    dv.SetKey("attrs", std::move(attrs));
-  }
-  return dv;
-}
-
 }  // namespace cryptohome
