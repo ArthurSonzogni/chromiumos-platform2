@@ -805,7 +805,7 @@ void DeviceInfo::AddLinkMsgHandler(const RTNLMessage& msg) {
   if (new_device) {
     CHECK(!device);
     std::string link_name;
-    if (!GetLinkNameFromMessage(msg, &link_name)) {
+    if (!GetLinkNameFromMessage(msg, &link_name) || link_name.empty()) {
       LOG(ERROR) << "Add Link message does not contain a link name!";
       return;
     }
@@ -813,18 +813,17 @@ void DeviceInfo::AddLinkMsgHandler(const RTNLMessage& msg) {
     infos_[dev_index].name = link_name;
     indices_[link_name] = dev_index;
 
-    if (!link_name.empty()) {
-      if (link_name == VPNProvider::kArcBridgeIfName) {
-        technology = Technology::kArcBridge;
-      } else if (IsDeviceBlocked(link_name)) {
-        technology = Technology::kBlocked;
-      } else if (!manager_->DeviceManagementAllowed(link_name)) {
-        technology = Technology::kBlocked;
-        BlockDevice(link_name);
-      } else {
-        technology = GetDeviceTechnology(link_name, msg.link_status().kind);
-      }
+    if (link_name == VPNProvider::kArcBridgeIfName) {
+      technology = Technology::kArcBridge;
+    } else if (IsDeviceBlocked(link_name)) {
+      technology = Technology::kBlocked;
+    } else if (!manager_->DeviceManagementAllowed(link_name)) {
+      technology = Technology::kBlocked;
+      BlockDevice(link_name);
+    } else {
+      technology = GetDeviceTechnology(link_name, msg.link_status().kind);
     }
+
     std::string address;
     if (msg.HasAttribute(IFLA_ADDRESS)) {
       infos_[dev_index].mac_address = msg.GetAttribute(IFLA_ADDRESS);
