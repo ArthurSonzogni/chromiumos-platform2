@@ -71,7 +71,7 @@ class Lockbox {
   // Returns
   // - true if a new space was instantiated or an old one could be used.
   // - false if the space cannot be created or claimed.
-  virtual bool Reset(LockboxError* error);
+  [[nodiscard]] virtual bool Reset(LockboxError* error);
 
   // Hashes, salts, sizes, and stores metadata required for verifying |data|
   // in TPM NVRAM for later verification.
@@ -82,7 +82,8 @@ class Lockbox {
   // Returns
   // - true if written to disk and NVRAM (if there is a tpm).
   // - false if the data could not be persisted.
-  virtual bool Store(const brillo::Blob& data, LockboxError* error);
+  [[nodiscard]] virtual bool Store(const brillo::Blob& data,
+                                   LockboxError* error);
 
  protected:
   // constructor for mock testing purpose.
@@ -117,20 +118,20 @@ class LockboxContents {
   size_t key_material_size() const { return key_material_.size(); }
 
   // Serialize to |nvram_data|.
-  bool Encode(brillo::SecureBlob* nvram_data);
+  [[nodiscard]] bool Encode(brillo::SecureBlob* nvram_data);
 
   // Deserialize from |nvram_data|.
-  bool Decode(const brillo::SecureBlob& nvram_data);
+  [[nodiscard]] bool Decode(const brillo::SecureBlob& nvram_data);
 
   // Sets key material, which must be of key_material_size().
-  bool SetKeyMaterial(const brillo::SecureBlob& key_material);
+  [[nodiscard]] bool SetKeyMaterial(const brillo::SecureBlob& key_material);
 
   // Protect |blob|, i.e. compute the digest that will later make Verify() to
   // succeed if and only if a copy of |blob| is being passed.
-  bool Protect(const brillo::Blob& blob);
+  [[nodiscard]] bool Protect(const brillo::Blob& blob);
 
   // Verify |blob| against the lockbox contents.
-  VerificationResult Verify(const brillo::Blob& blob);
+  [[nodiscard]] VerificationResult Verify(const brillo::Blob& blob);
 
  private:
   LockboxContents() = default;

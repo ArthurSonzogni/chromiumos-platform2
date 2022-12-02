@@ -1310,7 +1310,7 @@ void UserDataAuth::InitializeInstallAttributes() {
 
   // The TPM owning instance may have changed since initialization.
   // InstallAttributes can handle a NULL or !IsEnabled Tpm object.
-  install_attrs_->Init();
+  std::ignore = install_attrs_->Init();
 
   // Check if the machine is enterprise owned and report to mount_ then.
   DetectEnterpriseOwnership();
@@ -2111,7 +2111,7 @@ void UserDataAuth::ContinueMountWithCredentials(
   // The return value is ignored as it is possible we're pre-ownership.
   // The next login will assure finalization if possible.
   if (install_attrs_->status() == InstallAttributes::Status::kFirstInstall) {
-    install_attrs_->Finalize();
+    std::ignore = install_attrs_->Finalize();
   }
 
   // As per the other timers, this really only tracks time spent in
@@ -4267,7 +4267,7 @@ void UserDataAuth::PreMountHook(const std::string& obfuscated_username) {
   // The return value is ignored as it is possible we're pre-ownership.
   // The next login will assure finalization if possible.
   if (install_attrs_->status() == InstallAttributes::Status::kFirstInstall) {
-    install_attrs_->Finalize();
+    std::ignore = install_attrs_->Finalize();
   }
   // Remove all existing cryptohomes, except for the owner's one, if the
   // ephemeral users policy is on.

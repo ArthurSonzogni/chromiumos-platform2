@@ -63,7 +63,7 @@ class InstallAttributes {
 
   // Prepares the class for use including instantiating a new environment
   // if needed.
-  virtual bool Init();
+  [[nodiscard]] virtual bool Init();
 
   // Populates |value| based on the content referenced by |name|.
   //
@@ -72,7 +72,8 @@ class InstallAttributes {
   // - value: pointer to a Blob to populate with the value, if found.
   // Returns true if |name| exists in the store and |value| will be populated.
   // Returns false if the |name| does not exist.
-  virtual bool Get(const std::string& name, brillo::Blob* value) const;
+  [[nodiscard]] virtual bool Get(const std::string& name,
+                                 brillo::Blob* value) const;
 
   // Populates |name| and |value| based on the content referenced by |index|.
   //
@@ -82,9 +83,9 @@ class InstallAttributes {
   // - value: pointer to a Blob to populate with the value, if found.
   // Returns true if |index| exists in the store.
   // Returns false if the |index| does not exist.
-  virtual bool GetByIndex(int index,
-                          std::string* name,
-                          brillo::Blob* value) const;
+  [[nodiscard]] virtual bool GetByIndex(int index,
+                                        std::string* name,
+                                        brillo::Blob* value) const;
 
   // Appends |name| and |value| as an attribute pair to the internal store.
   //
@@ -93,10 +94,11 @@ class InstallAttributes {
   // - value: Blob of data to store with |name|.
   // Returns true if the association can be stored, and false if it can't.
   // If the given |name| already exists, it will be replaced.
-  virtual bool Set(const std::string& name, const brillo::Blob& value);
+  [[nodiscard]] virtual bool Set(const std::string& name,
+                                 const brillo::Blob& value);
 
   // Finalizes the install-time attributes making them tamper-evident.
-  virtual bool Finalize();
+  [[nodiscard]] virtual bool Finalize();
 
   // Returns the number of entries in the Lockbox.
   virtual int Count() const;
