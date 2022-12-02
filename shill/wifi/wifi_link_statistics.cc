@@ -193,7 +193,7 @@ std::string Nl80211LinkStatisticsToString(
          std::to_string(diff_stats.signal_avg);
 }
 
-std::string ConvertToBitrateString(WiFiLinkStatistics::LinkStats link_stats) {
+std::string ConvertToBitrateString(WiFiLinkStatistics::RxTxStats link_stats) {
   std::string mcs_str;
   switch (link_stats.mode) {
     case WiFiLinkStatistics::LinkMode::kLinkModeLegacy:
@@ -207,7 +207,7 @@ std::string ConvertToBitrateString(WiFiLinkStatistics::LinkStats link_stats) {
   }
 
   std::string nss_str;
-  WiFiLinkStatistics::LinkStats defaults;
+  WiFiLinkStatistics::RxTxStats defaults;
   if (link_stats.nss != defaults.nss) {
     nss_str = base::StringPrintf(" VHT-NSS %d", link_stats.nss);
   }
@@ -241,7 +241,7 @@ std::string ConvertToBitrateString(WiFiLinkStatistics::LinkStats link_stats) {
 }
 
 Metrics::WiFiRxTxStats ConvertRxTxStats(
-    const WiFiLinkStatistics::LinkStats& stats) {
+    const WiFiLinkStatistics::RxTxStats& stats) {
   Metrics::WiFiRxTxStats link_stats;
   link_stats.packets = stats.packets;
   link_stats.bytes = stats.bytes;
@@ -437,7 +437,7 @@ WiFiLinkStatistics::StationStatsFromSupplicantKV(
     }
   }
 
-  const std::vector<std::pair<std::string, WiFiLinkStatistics::LinkStats*>>
+  const std::vector<std::pair<std::string, WiFiLinkStatistics::RxTxStats*>>
       signal_properties_mcs = {
           {WPASupplicant::kSignalChangePropertyRxHEMCS, &stats.rx},
           {WPASupplicant::kSignalChangePropertyTxHEMCS, &stats.tx},

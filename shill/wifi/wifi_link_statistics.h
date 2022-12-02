@@ -96,7 +96,7 @@ class WiFiLinkStatistics {
     kLinkStatsGI_3_2,
   };
 
-  struct LinkStats {
+  struct RxTxStats {
     uint32_t packets = UINT_MAX;
     uint64_t bytes = ULLONG_MAX;
     uint32_t bitrate = UINT_MAX;  // unit is 100Kb/s.
@@ -107,7 +107,7 @@ class WiFiLinkStatistics {
     uint8_t nss = UCHAR_MAX;
     uint8_t dcm = UCHAR_MAX;
     // For testing.
-    bool operator==(const LinkStats& that) const {
+    bool operator==(const RxTxStats& that) const {
       return packets == that.packets && bytes == that.bytes &&
              bitrate == that.bitrate && mcs == that.mcs &&
              width == that.width && mode == that.mode && gi == that.gi &&
@@ -122,8 +122,8 @@ class WiFiLinkStatistics {
     uint64_t rx_drop_misc = ULLONG_MAX;
     int32_t signal = 9999;  // wpa_supplicant uses int32_t value, default 9999.
     int32_t signal_avg = 9999;
-    LinkStats rx;
-    LinkStats tx;
+    RxTxStats rx;
+    RxTxStats tx;
     // For testing.
     bool operator==(const StationStats& that) const {
       return inactive_time == that.inactive_time &&

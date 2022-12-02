@@ -640,7 +640,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   void RequestStationInfo(WiFiLinkStatistics::Trigger trigger);
   void OnReceivedStationInfo(const Nl80211Message& nl80211_message);
   static bool ParseStationBitrate(const AttributeListConstRefPtr& rate_info,
-                                  WiFiLinkStatistics::LinkStats* stats);
+                                  WiFiLinkStatistics::RxTxStats* stats);
   void HandleUpdatedLinkStatistics();
   void StopRequestingStationInfo();
   void ResetStationInfoRequests();
