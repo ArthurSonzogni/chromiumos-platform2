@@ -32,6 +32,8 @@
 #include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 
 #include "shill/cellular/mock_modem_info.h"
+#include "shill/ipconfig.h"
+#include "shill/logging.h"
 #include "shill/manager.h"
 #include "shill/mock_control.h"
 #include "shill/mock_device.h"
@@ -904,6 +906,18 @@ TEST_F(DeviceInfoTest, OnNeighborReachabilityEvent) {
   device0->network()->set_state_for_testing(Network::State::kConnected);
   device1->network()->set_state_for_testing(Network::State::kConnected);
 
+  IPConfig::Properties props0 = {};
+  props0.gateway = kTestIPAddress0;
+  device0->network()->set_ipconfig(
+      std::make_unique<IPConfig>(&control_interface_, "null0"));
+  device0->network()->ipconfig()->UpdateProperties(props0);
+
+  IPConfig::Properties props1 = {};
+  props1.gateway = kTestIPAddress2;
+  device1->network()->set_ip6config(
+      std::make_unique<IPConfig>(&control_interface_, "null1"));
+  device1->network()->ip6config()->UpdateProperties(props1);
+
   using NeighborSignal = patchpanel::NeighborReachabilityEventSignal;
 
   NeighborSignal signal0;
@@ -919,28 +933,31 @@ TEST_F(DeviceInfoTest, OnNeighborReachabilityEvent) {
   Mock::VerifyAndClearExpectations(&event_handler0);
 
   NeighborSignal signal1;
-  signal1.set_ifindex(kTestDeviceIndex + 1);
+  signal1.set_ifindex(kTestDeviceIndex);
   signal1.set_ip_addr(kTestIPAddress1);
   signal1.set_role(NeighborSignal::DNS_SERVER);
   signal1.set_type(NeighborSignal::FAILED);
-  EXPECT_CALL(event_handler1,
+  EXPECT_CALL(event_handler0,
               OnNeighborReachabilityEvent(IPAddress(kTestIPAddress1),
                                           NeighborSignal::DNS_SERVER,
                                           NeighborSignal::FAILED));
   patchpanel_client_->TriggerNeighborReachabilityEvent(signal1);
-  Mock::VerifyAndClearExpectations(&event_handler1);
+  Mock::VerifyAndClearExpectations(&event_handler0);
 
   NeighborSignal signal2;
-  signal2.set_ifindex(kTestDeviceIndex);
+  signal2.set_ifindex(kTestDeviceIndex + 1);
   signal2.set_ip_addr(kTestIPAddress2);
   signal2.set_role(NeighborSignal::GATEWAY_AND_DNS_SERVER);
   signal2.set_type(NeighborSignal::REACHABLE);
-  EXPECT_CALL(event_handler0, OnNeighborReachabilityEvent(
+  EXPECT_CALL(event_handler1, OnNeighborReachabilityEvent(
                                   IPAddress(kTestIPAddress2),
                                   NeighborSignal::GATEWAY_AND_DNS_SERVER,
                                   NeighborSignal::REACHABLE));
   patchpanel_client_->TriggerNeighborReachabilityEvent(signal2);
-  Mock::VerifyAndClearExpectations(&event_handler0);
+  Mock::VerifyAndClearExpectations(&event_handler1);
+
+  device0->network()->set_ipconfig(nullptr);
+  device1->network()->set_ip6config(nullptr);
 }
 
 TEST_F(DeviceInfoTest, CreateWireGuardInterface) {

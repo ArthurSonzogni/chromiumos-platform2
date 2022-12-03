@@ -866,10 +866,6 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // Tracks the process of an EAP negotiation.
   std::unique_ptr<SupplicantEAPStateHandler> eap_state_handler_;
 
-  // If the gateway has ever been reachable for the current connection. Reset
-  // in OnConnected().
-  bool ipv4_gateway_found_;
-  bool ipv6_gateway_found_;
   // Time when link monitor last failed.
   time_t last_link_monitor_failed_time_;
   // Callback to invoke when link becomes reliable again after it was previously

@@ -255,6 +255,12 @@ class Network {
     logging_tag_ = logging_tag;
   }
 
+  // Returns true if the IPv4 or IPv6 gateway respectively has been observed as
+  // a reachable neighbor for the current active connection. Reachability can
+  // only be obsrved on WiFi and Ethernet networks.
+  mockable bool ipv4_gateway_found() const { return ipv4_gateway_found_; }
+  mockable bool ipv6_gateway_found() const { return ipv6_gateway_found_; }
+
   // Only used in tests.
   void set_connection_for_testing(std::unique_ptr<Connection> connection) {
     connection_ = std::move(connection);
@@ -390,6 +396,11 @@ class Network {
   // When set to true, neighbor events from link monitoring are ignored. This
   // boolean is reevaluated for every new Network connection.
   bool ignore_link_monitoring_ = false;
+
+  // If the gateway has ever been reachable for the current connection. Reset in
+  // Start().
+  bool ipv4_gateway_found_ = false;
+  bool ipv6_gateway_found_ = false;
 
   EventHandler* event_handler_;
 

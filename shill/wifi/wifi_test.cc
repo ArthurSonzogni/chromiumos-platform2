@@ -3731,29 +3731,17 @@ TEST_F(WiFiMainTest, LinkMonitorFailure) {
 
   // We haven't heard the gateway is reachable, so we assume the problem is
   // gateway, rather than link.
-  EXPECT_CALL(
-      log, Log(logging::LOGGING_INFO, _, EndsWith("gateway was never found.")))
-      .Times(1);
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), Reattach()).Times(0);
   OnNeighborReachabilityEvent(kGatewayIPAddress, EventSignal::GATEWAY,
                               EventSignal::FAILED);
   Mock::VerifyAndClearExpectations(GetSupplicantInterfaceProxy());
 
   // Gateway has been discovered now.
-  OnNeighborReachabilityEvent(kGatewayIPAddress, EventSignal::GATEWAY,
-                              EventSignal::REACHABLE);
-
-  // Nothing should happen if the event is not for the current connection.
-  reset_service();
-  OnNeighborReachabilityEvent(kAnotherIPAddress, EventSignal::GATEWAY,
-                              EventSignal::FAILED);
+  ON_CALL(*network(), ipv4_gateway_found()).WillByDefault(Return(true));
 
   // No supplicant, so we can't Reattach.
   reset_service();
   OnSupplicantVanish();
-  EXPECT_CALL(log,
-              Log(logging::LOGGING_ERROR, _, EndsWith("Cannot reassociate.")))
-      .Times(1);
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), Reattach()).Times(0);
   OnNeighborReachabilityEvent(kGatewayIPAddress, EventSignal::GATEWAY,
                               EventSignal::FAILED);
@@ -3762,9 +3750,6 @@ TEST_F(WiFiMainTest, LinkMonitorFailure) {
   // Normal case: call Reattach.
   reset_service();
   OnSupplicantAppear();
-  EXPECT_CALL(log,
-              Log(logging::LOGGING_INFO, _, EndsWith("Called Reattach().")))
-      .Times(1);
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), Reattach())
       .WillOnce(Return(true));
   OnNeighborReachabilityEvent(kGatewayIPAddress, EventSignal::GATEWAY,
@@ -3774,9 +3759,6 @@ TEST_F(WiFiMainTest, LinkMonitorFailure) {
   // Service is unreliable, skip reassociate attempt.
   reset_service();
   service->set_unreliable(true);
-  EXPECT_CALL(log, Log(logging::LOGGING_INFO, _,
-                       EndsWith("skipping reassociate attempt.")))
-      .Times(1);
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), Reattach()).Times(0);
   OnNeighborReachabilityEvent(kGatewayIPAddress, EventSignal::GATEWAY,
                               EventSignal::FAILED);

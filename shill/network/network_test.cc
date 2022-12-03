@@ -13,6 +13,7 @@
 #include <base/strings/stringprintf.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 
 #include "shill/mock_connection.h"
 #include "shill/mock_control.h"
@@ -319,6 +320,155 @@ TEST_F(NetworkTest, DHCPRenew) {
 
 TEST_F(NetworkTest, DHCPRenewWithoutController) {
   EXPECT_FALSE(network_->RenewDHCPLease());
+}
+
+TEST_F(NetworkTest, NeighborReachabilityEvents) {
+  using NeighborSignal = patchpanel::NeighborReachabilityEventSignal;
+
+  const std::string ipv4_addr = "192.168.1.1";
+  const std::string ipv6_addr = "fe80::1aa9:5ff:abcd:1234";
+
+  network_->set_state_for_testing(Network::State::kConnected);
+  network_->set_ipconfig(
+      std::make_unique<IPConfig>(&control_interface_, kTestIfname));
+  network_->set_ip6config(
+      std::make_unique<IPConfig>(&control_interface_, kTestIfname));
+  IPConfig::Properties ipv4_props;
+  ipv4_props.gateway = ipv4_addr;
+  network_->ipconfig()->UpdateProperties(ipv4_props);
+  IPConfig::Properties ipv6_props;
+  ipv6_props.gateway = ipv6_addr;
+  network_->ip6config()->UpdateProperties(ipv6_props);
+
+  // Connected network with IPv4 configured, rechability event matching the IPv4
+  // gateway.
+  EXPECT_CALL(event_handler_, OnNeighborReachabilityEvent(
+                                  IPAddress(ipv4_addr), NeighborSignal::GATEWAY,
+                                  NeighborSignal::REACHABLE))
+      .Times(1);
+  NeighborSignal signal1;
+  signal1.set_ifindex(1);
+  signal1.set_ip_addr(ipv4_addr);
+  signal1.set_role(NeighborSignal::GATEWAY);
+  signal1.set_type(NeighborSignal::REACHABLE);
+  network_->OnNeighborReachabilityEvent(signal1);
+  EXPECT_TRUE(network_->ipv4_gateway_found());
+  EXPECT_FALSE(network_->ipv6_gateway_found());
+  Mock::VerifyAndClearExpectations(&event_handler_);
+
+  // Connected network with IPv6 configured, rechability event matching the IPv6
+  // gateway.
+  EXPECT_CALL(event_handler_,
+              OnNeighborReachabilityEvent(
+                  IPAddress(ipv6_addr), NeighborSignal::GATEWAY_AND_DNS_SERVER,
+                  NeighborSignal::REACHABLE))
+      .Times(1);
+  NeighborSignal signal2;
+  signal2.set_ifindex(1);
+  signal2.set_ip_addr(ipv6_addr);
+  signal2.set_role(NeighborSignal::GATEWAY_AND_DNS_SERVER);
+  signal2.set_type(NeighborSignal::REACHABLE);
+  network_->OnNeighborReachabilityEvent(signal2);
+  EXPECT_TRUE(network_->ipv4_gateway_found());
+  EXPECT_TRUE(network_->ipv6_gateway_found());
+  Mock::VerifyAndClearExpectations(&event_handler_);
+
+  // Signals for unrelated gateway addresses are ignored
+  NeighborSignal signal3;
+  signal3.set_ifindex(1);
+  signal3.set_ip_addr("172.16.1.1");
+  signal3.set_role(NeighborSignal::GATEWAY);
+  signal3.set_type(NeighborSignal::REACHABLE);
+  NeighborSignal signal4;
+  signal4.set_ifindex(1);
+  signal4.set_ip_addr("fe80::1122:ccdd:7890:f1g2");
+  signal4.set_role(NeighborSignal::GATEWAY);
+  signal4.set_type(NeighborSignal::REACHABLE);
+  network_->OnNeighborReachabilityEvent(signal3);
+  network_->OnNeighborReachabilityEvent(signal4);
+  EXPECT_CALL(event_handler_, OnNeighborReachabilityEvent(_, _, _)).Times(0);
+  Mock::VerifyAndClearExpectations(&event_handler_);
+
+  // Check that gateway reachability state is reset when the network starts
+  // again.
+  ExpectCreateDHCPController(true);
+  network_->Stop();
+  network_->Start(Network::StartOptions{.dhcp = DHCPProvider::Options{},
+                                        .accept_ra = true});
+  network_->set_state_for_testing(Network::State::kConfiguring);
+  EXPECT_FALSE(network_->ipv4_gateway_found());
+  EXPECT_FALSE(network_->ipv6_gateway_found());
+  Mock::VerifyAndClearExpectations(&event_handler_);
+  Mock::VerifyAndClearExpectations(&dhcp_controller_);
+
+  // Not connected yet, reachability signals are ignored.
+  EXPECT_CALL(event_handler_, OnNeighborReachabilityEvent(_, _, _)).Times(0);
+  network_->OnNeighborReachabilityEvent(signal1);
+  network_->OnNeighborReachabilityEvent(signal2);
+  EXPECT_FALSE(network_->ipv4_gateway_found());
+  EXPECT_FALSE(network_->ipv6_gateway_found());
+  Mock::VerifyAndClearExpectations(&event_handler_);
+
+  // Connected and IPv4 configured, IPv6 reachability signals are ignored.
+  EXPECT_CALL(event_handler_, OnNeighborReachabilityEvent(
+                                  IPAddress(ipv4_addr), NeighborSignal::GATEWAY,
+                                  NeighborSignal::REACHABLE))
+      .Times(1);
+  network_->set_ipconfig(
+      std::make_unique<IPConfig>(&control_interface_, kTestIfname));
+  network_->ipconfig()->UpdateProperties(ipv4_props);
+  network_->set_state_for_testing(Network::State::kConnected);
+  network_->OnNeighborReachabilityEvent(signal1);
+  network_->OnNeighborReachabilityEvent(signal2);
+  EXPECT_TRUE(network_->ipv4_gateway_found());
+  EXPECT_FALSE(network_->ipv6_gateway_found());
+  Mock::VerifyAndClearExpectations(&event_handler_);
+
+  // Disconnected, reonnected and IPv6 configured, IPv4 reachability signals are
+  // ignored.
+  ExpectCreateDHCPController(true);
+  EXPECT_CALL(event_handler_,
+              OnNeighborReachabilityEvent(
+                  IPAddress(ipv6_addr), NeighborSignal::GATEWAY_AND_DNS_SERVER,
+                  NeighborSignal::REACHABLE))
+      .Times(1);
+  network_->Stop();
+  network_->Start(Network::StartOptions{.dhcp = DHCPProvider::Options{},
+                                        .accept_ra = true});
+  network_->set_ip6config(
+      std::make_unique<IPConfig>(&control_interface_, kTestIfname));
+  network_->ip6config()->UpdateProperties(ipv6_props);
+  network_->set_state_for_testing(Network::State::kConnected);
+  network_->OnNeighborReachabilityEvent(signal1);
+  network_->OnNeighborReachabilityEvent(signal2);
+  EXPECT_FALSE(network_->ipv4_gateway_found());
+  EXPECT_TRUE(network_->ipv6_gateway_found());
+  Mock::VerifyAndClearExpectations(&event_handler_);
+  Mock::VerifyAndClearExpectations(&dhcp_controller_);
+
+  // Link monitoring disabled by configuration
+  ExpectCreateDHCPController(true);
+  EXPECT_CALL(event_handler_, OnNeighborReachabilityEvent(_, _, _)).Times(0);
+  network_->Stop();
+  network_->Start(Network::StartOptions{.dhcp = DHCPProvider::Options{},
+                                        .accept_ra = true,
+                                        .ignore_link_monitoring = true});
+  network_->set_ipconfig(
+      std::make_unique<IPConfig>(&control_interface_, kTestIfname));
+  network_->set_ip6config(
+      std::make_unique<IPConfig>(&control_interface_, kTestIfname));
+  network_->ipconfig()->UpdateProperties(ipv4_props);
+  network_->ip6config()->UpdateProperties(ipv6_props);
+  network_->set_state_for_testing(Network::State::kConnected);
+  network_->OnNeighborReachabilityEvent(signal1);
+  network_->OnNeighborReachabilityEvent(signal2);
+  EXPECT_FALSE(network_->ipv4_gateway_found());
+  EXPECT_FALSE(network_->ipv6_gateway_found());
+  Mock::VerifyAndClearExpectations(&event_handler_);
+  Mock::VerifyAndClearExpectations(&dhcp_controller_);
+
+  network_->set_ipconfig(nullptr);
+  network_->set_ip6config(nullptr);
 }
 
 // This group of tests verify the interaction between Network and Connection,

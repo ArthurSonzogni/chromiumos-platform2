@@ -77,6 +77,8 @@ Network::~Network() = default;
 
 void Network::Start(const Network::StartOptions& opts) {
   ignore_link_monitoring_ = opts.ignore_link_monitoring;
+  ipv4_gateway_found_ = false;
+  ipv6_gateway_found_ = false;
 
   // accept_ra and link_protocol_ipv6 should not be set at the same time.
   DCHECK(!(opts.accept_ra && link_protocol_ipv6_properties_));
@@ -715,6 +717,41 @@ void Network::OnNeighborReachabilityEvent(
     LOG(INFO) << logging_tag_ << ": " << __func__
               << " link monitor events ignored, ignoring " << signal;
     return;
+  }
+
+  if (signal.role() == SignalProto::GATEWAY ||
+      signal.role() == SignalProto::GATEWAY_AND_DNS_SERVER) {
+    IPConfig* ipconfig;
+    bool* gateway_found;
+    if (ip_address.family() == IPAddress::kFamilyIPv4) {
+      ipconfig = ipconfig_.get();
+      gateway_found = &ipv4_gateway_found_;
+    } else if (ip_address.family() == IPAddress::kFamilyIPv6) {
+      ipconfig = ip6config_.get();
+      gateway_found = &ipv6_gateway_found_;
+    } else {
+      NOTREACHED();
+      return;
+    }
+    // It is impossible to observe a reachability event for the current gateway
+    // before Network knows the IPConfig for the current connection: patchpanel
+    // would not emit reachability event for the correct connection yet.
+    if (!ipconfig) {
+      LOG(INFO) << logging_tag_ << ": " << __func__ << ": "
+                << IPAddress::GetAddressFamilyName(ip_address.family())
+                << " not configured, ignoring neighbor reachability event "
+                << signal;
+      return;
+    }
+    // Ignore reachability events related to a prior connection.
+    if (ipconfig->properties().gateway != signal.ip_addr()) {
+      LOG(INFO) << logging_tag_ << ": " << __func__
+                << ": ignored neighbor reachability event with conflicting "
+                   "gateway address "
+                << signal;
+      return;
+    }
+    *gateway_found = true;
   }
 
   event_handler_->OnNeighborReachabilityEvent(ip_address, signal.role(),

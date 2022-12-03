@@ -170,8 +170,6 @@ WiFi::WiFi(Manager* manager,
       pending_eap_failure_(Service::kFailureNone),
       is_debugging_connection_(false),
       eap_state_handler_(new SupplicantEAPStateHandler()),
-      ipv4_gateway_found_(false),
-      ipv6_gateway_found_(false),
       last_link_monitor_failed_time_(0),
       bgscan_short_interval_seconds_(kDefaultBgscanShortIntervalSeconds),
       bgscan_signal_threshold_dbm_(kDefaultBgscanSignalThresholdDbm),
@@ -2623,8 +2621,8 @@ void WiFi::OnLinkMonitorFailure(IPAddress::Family family) {
 
   // If we have never found the gateway, let's be conservative and not
   // do anything, in case this network topology does not have a gateway.
-  if ((family == IPAddress::kFamilyIPv4 && !ipv4_gateway_found_) ||
-      (family == IPAddress::kFamilyIPv6 && !ipv6_gateway_found_)) {
+  if ((family == IPAddress::kFamilyIPv4 && !network()->ipv4_gateway_found()) ||
+      (family == IPAddress::kFamilyIPv6 && !network()->ipv6_gateway_found())) {
     LOG(INFO) << "In " << __func__ << "(): "
               << "Skipping reassociate since gateway was never found.";
     return;
@@ -2929,10 +2927,6 @@ void WiFi::OnConnected() {
     current_service_->ResetSuspectedCredentialFailures();
   }
   RequestStationInfo(WiFiLinkStatistics::Trigger::kBackground);
-
-  // Clears the link monitor states for the previous connection.
-  ipv4_gateway_found_ = false;
-  ipv6_gateway_found_ = false;
 
   if (selected_service()->unreliable()) {
     // Post a delayed task to reset link back to reliable if no link failure is
@@ -4020,28 +4014,8 @@ void WiFi::OnNeighborReachabilityEvent(
     return;
   }
 
-  // TODO(b/229309479): Consider tracking gateway discovery in Network class.
-
-  const auto* ipconfig = network()->ipconfig();
-  const auto* ip6config = network()->ip6config();
-  if (!(ipconfig && ip_address.ToString() == ipconfig->properties().gateway) &&
-      !(ip6config &&
-        ip_address.ToString() == ip6config->properties().gateway)) {
-    LOG(INFO) << "Device " << link_name()
-              << ": Ignored neighbor reachability event since gateway address "
-                 "does not match.";
-    return;
-  }
-
   switch (event_type) {
     case EventSignal::REACHABLE:
-      if (ip_address.family() == IPAddress::kFamilyIPv4) {
-        ipv4_gateway_found_ = true;
-      } else if (ip_address.family() == IPAddress::kFamilyIPv6) {
-        ipv6_gateway_found_ = true;
-      } else {
-        NOTREACHED();
-      }
       return;
     case EventSignal::FAILED:
       OnLinkMonitorFailure(ip_address.family());
