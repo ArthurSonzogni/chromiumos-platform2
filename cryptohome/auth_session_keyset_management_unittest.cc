@@ -221,6 +221,112 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
     EXPECT_THAT(remove_future.Get(), IsOk());
   }
 
+  void AddFactorWithMockAuthBlockUtility(AuthSession& auth_session,
+                                         const std::string& label,
+                                         const std::string& secret) {
+    EXPECT_CALL(mock_auth_block_utility_, GetAuthBlockTypeForCreation(_, _, _))
+        .WillOnce(ReturnValue(AuthBlockType::kTpmEcc));
+    auto key_blobs = std::make_unique<KeyBlobs>();
+    const brillo::SecureBlob kBlob32(32, 'A');
+    const brillo::SecureBlob kBlob16(16, 'C');
+    key_blobs->vkk_key = kBlob32;
+    key_blobs->vkk_iv = kBlob16;
+    key_blobs->chaps_iv = kBlob16;
+    TpmEccAuthBlockState tpm_state = {
+        .salt = brillo::SecureBlob(kSalt),
+        .vkk_iv = kBlob32,
+        .auth_value_rounds = kAuthValueRounds,
+        .sealed_hvkkm = kBlob32,
+        .extended_sealed_hvkkm = kBlob32,
+        .tpm_public_key_hash = brillo::SecureBlob(kPublicHash),
+    };
+    auto auth_block_state = std::make_unique<AuthBlockState>();
+    auth_block_state->state = tpm_state;
+
+    EXPECT_CALL(mock_auth_block_utility_,
+                CreateKeyBlobsWithAuthBlockAsync(_, _, _))
+        .WillOnce([&key_blobs, &auth_block_state](
+                      AuthBlockType auth_block_type,
+                      const AuthInput& auth_input,
+                      AuthBlock::CreateCallback create_callback) {
+          std::move(create_callback)
+              .Run(OkStatus<CryptohomeCryptoError>(), std::move(key_blobs),
+                   std::move(auth_block_state));
+          return true;
+        });
+    user_data_auth::AddAuthFactorRequest request;
+    request.mutable_auth_factor()->set_type(
+        user_data_auth::AUTH_FACTOR_TYPE_PASSWORD);
+    request.mutable_auth_factor()->set_label(label);
+    request.mutable_auth_factor()->mutable_password_metadata();
+    request.mutable_auth_input()->mutable_password_input()->set_secret(secret);
+    request.set_auth_session_id(auth_session.serialized_token());
+    TestFuture<CryptohomeStatus> add_future;
+    auth_session.AddAuthFactor(request, add_future.GetCallback());
+    EXPECT_THAT(add_future.Get(), IsOk());
+  }
+
+  void AuthenticateAndMigrate(AuthSession& auth_session,
+                              const std::string& label,
+                              const std::string& secret) {
+    EXPECT_CALL(mock_auth_block_utility_,
+                GetAuthBlockStateFromVaultKeyset(_, _, _))
+        .WillRepeatedly(Return(true));
+    EXPECT_CALL(mock_auth_block_utility_, GetAuthBlockTypeFromState(_))
+        .WillRepeatedly(Return(AuthBlockType::kTpmEcc));
+
+    auto key_blobs2 = std::make_unique<KeyBlobs>();
+    const brillo::SecureBlob kBlob32(32, 'A');
+    const brillo::SecureBlob kBlob16(16, 'C');
+    key_blobs2->vkk_key = kBlob32;
+    key_blobs2->vkk_iv = kBlob16;
+    key_blobs2->chaps_iv = kBlob16;
+    EXPECT_CALL(mock_auth_block_utility_,
+                DeriveKeyBlobsWithAuthBlockAsync(_, _, _, _))
+        .WillOnce([&key_blobs2](AuthBlockType auth_block_type,
+                                const AuthInput& auth_input,
+                                const AuthBlockState& auth_state,
+                                AuthBlock::DeriveCallback derive_callback) {
+          std::move(derive_callback)
+              .Run(OkStatus<CryptohomeCryptoError>(), std::move(key_blobs2));
+          return true;
+        });
+    auto key_blobs = std::make_unique<KeyBlobs>();
+    key_blobs->vkk_key = kBlob32;
+    key_blobs->vkk_iv = kBlob16;
+    key_blobs->chaps_iv = kBlob16;
+    TpmEccAuthBlockState tpm_state = {
+        .salt = brillo::SecureBlob(kSalt),
+        .vkk_iv = kBlob32,
+        .auth_value_rounds = kAuthValueRounds,
+        .sealed_hvkkm = kBlob32,
+        .extended_sealed_hvkkm = kBlob32,
+        .tpm_public_key_hash = brillo::SecureBlob(kPublicHash),
+    };
+    auto auth_block_state = std::make_unique<AuthBlockState>();
+    auth_block_state->state = tpm_state;
+
+    EXPECT_CALL(mock_auth_block_utility_,
+                CreateKeyBlobsWithAuthBlockAsync(_, _, _))
+        .WillRepeatedly([&key_blobs, &auth_block_state](
+                            AuthBlockType auth_block_type,
+                            const AuthInput& auth_input,
+                            AuthBlock::CreateCallback create_callback) {
+          std::move(create_callback)
+              .Run(OkStatus<CryptohomeCryptoError>(), std::move(key_blobs),
+                   std::move(auth_block_state));
+          return true;
+        });
+    user_data_auth::AuthenticateAuthFactorRequest request;
+    request.set_auth_factor_label(label);
+    request.mutable_auth_input()->mutable_password_input()->set_secret(secret);
+    request.set_auth_session_id(auth_session.serialized_token());
+    TestFuture<CryptohomeStatus> authenticate_future;
+    auth_session.AuthenticateAuthFactor(request,
+                                        authenticate_future.GetCallback());
+    EXPECT_THAT(authenticate_future.Get(), IsOk());
+  }
+
   void AddFactor(AuthSession& auth_session,
                  const std::string& label,
                  const std::string& secret) {
@@ -845,6 +951,103 @@ TEST_F(AuthSessionTestWithKeysetManagement, USSRollbackListBackupVKs) {
               Optional(_));
   EXPECT_THAT(auth_session2->auth_factor_map().Find(kPasswordLabel2),
               Optional(_));
+}
+
+// Test that VaultKeysets are migrated to UserSecretStash when migration is
+// enabled, converting the existing VaultKeysets to backup VaultKeysets.
+TEST_F(AuthSessionTestWithKeysetManagement, MigrationEnabledMigratesToUss) {
+  if (!USE_USS_MIGRATION) {
+    GTEST_SKIP() << "Skipped because this test is valid only when USS "
+                    "migration is enabled.";
+  }
+  // Setup
+  // UserSecretStash is not enabled, setup VaultKeysets for the user.
+  int flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE;
+  // Attach the mock_auth_block_utility to our AuthSessionManager and created
+  // AuthSession.
+  auto auth_session_manager_impl_ = std::make_unique<AuthSessionManager>(
+      &crypto_, &platform_, &user_session_map_, keyset_management_.get(),
+      &mock_auth_block_utility_, &auth_factor_manager_,
+      &user_secret_stash_storage_);
+  CryptohomeStatusOr<AuthSession*> auth_session_status =
+      auth_session_manager_impl_->CreateAuthSession(kUsername, flags,
+                                                    AuthIntent::kDecrypt);
+  EXPECT_TRUE(auth_session_status.ok());
+  AuthSession* auth_session = auth_session_status.value();
+  EXPECT_THAT(AuthStatus::kAuthStatusFurtherFactorRequired,
+              auth_session->GetStatus());
+  EXPECT_TRUE(auth_session->OnUserCreated().ok());
+  EXPECT_EQ(auth_session->GetStatus(), AuthStatus::kAuthStatusAuthenticated);
+  // Add the first factor with VaultKeyset backing.
+  AddFactorWithMockAuthBlockUtility(*auth_session, kPasswordLabel, kPassword);
+
+  // Set the UserSecretStash experiment for testing to enable USS
+  // migration with the authentication.
+  SetUserSecretStashExperimentForTesting(/*enabled=*/true);
+
+  // Test that authenticating the password should migrate VaultKeyset to
+  // UserSecretStash, converting the VaultKeyset to a backup VaultKeyset.
+  CryptohomeStatusOr<AuthSession*> auth_session2_status =
+      auth_session_manager_impl_->CreateAuthSession(kUsername, flags,
+                                                    AuthIntent::kDecrypt);
+  EXPECT_TRUE(auth_session2_status.ok());
+  AuthSession* auth_session2 = auth_session2_status.value();
+  EXPECT_TRUE(auth_session2->auth_factor_map().HasFactorWithStorage(
+      AuthFactorStorageType::kVaultKeyset));
+  EXPECT_FALSE(auth_session2->auth_factor_map().HasFactorWithStorage(
+      AuthFactorStorageType::kUserSecretStash));
+  AuthenticateAndMigrate(*auth_session2, kPasswordLabel, kPassword);
+  // Add a second factor to migrate.
+  AddFactorWithMockAuthBlockUtility(*auth_session2, kPasswordLabel2,
+                                    kPassword2);
+  CryptohomeStatusOr<AuthSession*> auth_session3_status =
+      auth_session_manager_impl_->CreateAuthSession(kUsername, flags,
+                                                    AuthIntent::kDecrypt);
+  EXPECT_TRUE(auth_session3_status.ok());
+  AuthSession* auth_session3 = auth_session3_status.value();
+  AuthenticateAndMigrate(*auth_session3, kPasswordLabel2, kPassword2);
+  // Add a second factor to migrate.
+
+  // Verify
+  // Verify that migrator loaded the user_secret_stash and uss_main_key.
+  UserSecretStashStorage uss_storage(&platform_);
+  CryptohomeStatusOr<brillo::Blob> uss_serialized_container_status =
+      uss_storage.LoadPersisted(users_[0].obfuscated);
+  ASSERT_TRUE(uss_serialized_container_status.ok());
+  CryptohomeStatusOr<std::unique_ptr<UserSecretStash>>
+      user_secret_stash_status = UserSecretStash::FromEncryptedContainer(
+          uss_serialized_container_status.value(),
+          auth_session2->user_secret_stash_main_key_for_testing().value());
+  ASSERT_TRUE(user_secret_stash_status.ok());
+
+  // Verify that the user_secret_stash has the wrapped_key_blocks for the
+  // AuthFactor labels.
+  ASSERT_TRUE(
+      user_secret_stash_status.value()->HasWrappedMainKey(kPasswordLabel));
+  ASSERT_TRUE(
+      user_secret_stash_status.value()->HasWrappedMainKey(kPasswordLabel2));
+  //  Verify that the AuthFactors are created for the AuthFactor labels and
+  //  storage type is updated in the AuthFactor map for each of them.
+  std::map<std::string, std::unique_ptr<AuthFactor>> factor_map =
+      auth_factor_manager_.LoadAllAuthFactors(users_[0].obfuscated);
+  ASSERT_NE(factor_map.find(kPasswordLabel), factor_map.end());
+  ASSERT_NE(factor_map.find(kPasswordLabel2), factor_map.end());
+  ASSERT_EQ(
+      auth_session2->auth_factor_map().Find(kPasswordLabel)->storage_type(),
+      AuthFactorStorageType::kUserSecretStash);
+  ASSERT_EQ(
+      auth_session2->auth_factor_map().Find(kPasswordLabel2)->storage_type(),
+      AuthFactorStorageType::kUserSecretStash);
+  // Verify that the vault_keysets still exist and converted to backuo
+  // VaultKeysets.
+  std::unique_ptr<VaultKeyset> vk1 =
+      keyset_management_->GetVaultKeyset(users_[0].obfuscated, kPasswordLabel);
+  EXPECT_NE(vk1, nullptr);
+  EXPECT_TRUE(vk1->IsForBackup());
+  std::unique_ptr<VaultKeyset> vk2 =
+      keyset_management_->GetVaultKeyset(users_[0].obfuscated, kPasswordLabel2);
+  EXPECT_NE(vk2, nullptr);
+  EXPECT_TRUE(vk2->IsForBackup());
 }
 
 }  // namespace cryptohome

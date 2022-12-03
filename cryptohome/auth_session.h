@@ -179,6 +179,15 @@ class AuthSession final {
       base::OnceCallback<void(const user_data_auth::GetRecoveryRequestReply&)>
           on_done);
 
+  void OnMigrationUssCreated(AuthBlockType auth_block_type,
+                             AuthFactorType auth_factor_type,
+                             const AuthFactorMetadata& auth_factor_metadata,
+                             const AuthInput& auth_input,
+                             CryptohomeStatus pre_migration_status,
+                             StatusCallback on_done,
+                             std::unique_ptr<UserSecretStash> user_secret_stash,
+                             brillo::SecureBlob uss_main_key);
+
   // Return a const reference to FileSystemKeyset.
   // FileSystemKeyset is set when the auth session gets into an authenticated
   // state. So, the caller must ensure that AuthSession is in authenticated
@@ -405,6 +414,37 @@ class AuthSession final {
       std::unique_ptr<KeyBlobs> key_blobs,
       std::unique_ptr<AuthBlockState> auth_block_state);
 
+  // Persists from a migrated VaultKeyset AuthFactor and USS key block. Upon
+  // completion the |on_done| callback will be called with the pre-migration
+  // state.
+  void PersistAuthFactorToUserSecretStashOnMigration(
+      AuthFactorType auth_factor_type,
+      const std::string& auth_factor_label,
+      const AuthFactorMetadata& auth_factor_metadata,
+      const AuthInput& auth_input,
+      const KeyData& key_data,
+      std::unique_ptr<AuthSessionPerformanceTimer>
+          auth_session_performance_timer,
+      StatusCallback on_done,
+      CryptohomeStatus pre_migration_status,
+      CryptoStatus callback_error,
+      std::unique_ptr<KeyBlobs> key_blobs,
+      std::unique_ptr<AuthBlockState> auth_block_state);
+
+  // The implementation function to persists an AuthFactor and a USS key
+  // block for a new secret.
+  CryptohomeStatus PersistAuthFactorToUserSecretStashImpl(
+      AuthFactorType auth_factor_type,
+      const std::string& auth_factor_label,
+      const AuthFactorMetadata& auth_factor_metadata,
+      const AuthInput& auth_input,
+      const KeyData& key_data,
+      std::unique_ptr<AuthSessionPerformanceTimer>
+          auth_session_performance_timer,
+      CryptoStatus callback_error,
+      std::unique_ptr<KeyBlobs> key_blobs,
+      std::unique_ptr<AuthBlockState> auth_block_state);
+
   // Process the completion of a verify-only authentication attempt. The
   // |on_done| callback will be called after the results of the verification are
   // processed. Designed to be used in conjunction with
@@ -491,10 +531,11 @@ class AuthSession final {
 
   // Authenticates the user using VaultKeysets with the given |auth_input|.
   // TODO(b/204482221): Make `request_auth_factor_type` mandatory.
-  void AuthenticateViaVaultKeyset(
+  void AuthenticateViaVaultKeysetAndMigrateToUss(
       std::optional<AuthFactorType> request_auth_factor_type,
       const std::string& key_label,
       const AuthInput& auth_input,
+      const std::optional<AuthFactorMetadata>& metadata,
       std::unique_ptr<AuthSessionPerformanceTimer>
           auth_session_performance_timer,
       StatusCallback on_done);
@@ -509,7 +550,8 @@ class AuthSession final {
   void LoadVaultKeysetAndFsKeys(
       std::optional<AuthFactorType> request_auth_factor_type,
       const AuthInput& auth_input,
-      const AuthBlockType& auth_block_type,
+      AuthBlockType auth_block_type,
+      const std::optional<AuthFactorMetadata>& metadata,
       std::unique_ptr<AuthSessionPerformanceTimer>
           auth_session_performance_timer,
       StatusCallback on_done,
@@ -519,8 +561,9 @@ class AuthSession final {
   // Updates, wraps and resaves |vault_keyset_| and restores on failure.
   // |user_input| is needed to generate the AuthInput used for key blob creation
   // to wrap the updated keyset.
-  void ResaveVaultKeysetIfNeeded(
-      const std::optional<brillo::SecureBlob> user_input);
+  AuthBlockType ResaveVaultKeysetIfNeeded(
+      const std::optional<brillo::SecureBlob> user_input,
+      AuthBlockType auth_block_type);
 
   // Removes the key block with the provided `auth_factor_label` from the USS
   // and removes the `auth_factor` from disk.

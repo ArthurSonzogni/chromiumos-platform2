@@ -1349,6 +1349,12 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   //////////////////////////////////////////////////
   /* ./auth_blocks/auth_block_utility_impl.cc */
   kLocAuthBlockUtilNullLeManagerInGetAuthBlockWithType = 2500,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthNonEphemeralAuthSessionInPrepareEphemeralVault = 2501,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthEphemeralAuthSessionAttemptPreparePersistentVault = 2502,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthEphemeralAuthSessionAttemptCreatePersistentUser = 2503,
   //////////////////////////////////////////////////
   //// This is a separator block at value 2700
   //// See location_db.py for more info.
@@ -1361,9 +1367,6 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   //// This is a separator block at value 3100
   //// See location_db.py for more info.
   //////////////////////////////////////////////////
-  kLocUserDataAuthEphemeralAuthSessionAttemptPreparePersistentVault = 3100,
-  kLocUserDataAuthEphemeralAuthSessionAttemptCreatePersistentUser = 3101,
-  kLocUserDataAuthNonEphemeralAuthSessionInPrepareEphemeralVault = 3102,
   //////////////////////////////////////////////////
   //// This is a separator block at value 3300
   //// See location_db.py for more info.

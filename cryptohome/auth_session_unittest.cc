@@ -909,6 +909,7 @@ TEST_F(AuthSessionTest, NoLightweightAuthForDecryption) {
           AuthIntent::kDecrypt);
   EXPECT_TRUE(auth_session_status.ok());
   AuthSession* auth_session = auth_session_status.value();
+  SetUserSecretStashExperimentForTesting(/*enabled=*/false);
   auth_session->add_auth_factor_for_testing(
       std::make_unique<AuthFactor>(AuthFactorType::kPassword, kFakeLabel,
                                    AuthFactorMetadata(), AuthBlockState()),
