@@ -57,6 +57,7 @@ constexpr trunks::TPM_CC kSupportedForwardCommands[] = {
     trunks::TPM_CC_Sign,
     trunks::TPM_CC_VerifySignature,
     trunks::TPM_CC_Certify,
+    trunks::TPM_CC_CertifyCreation,
 };
 
 }  // namespace
