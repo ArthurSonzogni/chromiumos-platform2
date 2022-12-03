@@ -27,29 +27,23 @@ inline constexpr char kSmartctlCheckRoutineSuccess[] =
     "smartctl-check status: PASS.";
 inline constexpr char kSmartctlCheckRoutineFailedToParse[] =
     "smartctl-check status: FAILED, unable to parse smartctl output.";
+inline constexpr char kSmartctlCheckRoutineCheckFailed[] =
+    "smartctl-check status: FAILED, one or more checks have failed.";
 inline constexpr char kSmartctlCheckRoutineDebugdError[] =
     "smartctl-check status: ERROR, debugd returns error.";
-inline constexpr char kSmartctlCheckRoutineFailedAvailableSpare[] =
-    "smartctl-check status: FAILED, available_spare is less than "
-    "available_spare_threshold.";
 inline constexpr char kSmartctlCheckRoutineThresholdError[] =
     "smartctl-check status: ERROR, threshold in percentage should be non-empty "
     "and between 0 and 255, inclusive.";
-inline constexpr char kSmartctlCheckRoutineFailedPercentageUsed[] =
-    "smartctl-check status: FAILED, percentage_used exceeds the given "
-    "threshold.";
-inline constexpr char
-    kSmartctlCheckRoutineFailedAvailableSpareAndPercentageUsed[] =
-        "smartctl-check status: FAILED, available_spare is less than "
-        "available_spare_threshold, and percentage_used exceeds the given "
-        "threshold.";
 
-// The SmartctlCheckRoutine routine to examine available_spare against
-// available_spare_threshold and percentage_used against input threshold.
+// The SmartctlCheckRoutine routine to examine:
+// available_spare check: available_spare against available_spare_threshold.
+// percentage_used check: percentage_used against input threshold.
+// critical_warning check: critical_warning is 0x00 (no warning).
 class SmartctlCheckRoutine final : public DiagnosticRoutine {
  public:
   static const uint32_t kPercentageUsedMax;
   static const uint32_t kPercentageUsedMin;
+  static const uint32_t kCriticalWarningNone;
 
   SmartctlCheckRoutine(
       org::chromium::debugdProxyInterface* debugd_proxy,
