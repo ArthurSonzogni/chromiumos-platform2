@@ -5,6 +5,7 @@
 #include "missive/missive/missive_args.h"
 
 #include <base/time/time.h>
+#include <base/time/time_delta_from_string.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -14,14 +15,22 @@ namespace reporting {
 namespace {
 TEST(MissiveArgsTest, DefaultValuesTest) {
   const MissiveArgs args("", "", "", "");
-  ASSERT_THAT(args.enqueuing_record_tallier(),
-              Eq(MissiveArgs::kEnqueuingRecordTallierDefault));
-  ASSERT_THAT(args.cpu_collector_interval(),
-              Eq(MissiveArgs::kCpuCollectorIntervalDefault));
+  ASSERT_THAT(
+      args.enqueuing_record_tallier(),
+      Eq(base::TimeDeltaFromString(MissiveArgs::kEnqueuingRecordTallierDefault)
+             .value()));
+  ASSERT_THAT(
+      args.cpu_collector_interval(),
+      Eq(base::TimeDeltaFromString(MissiveArgs::kCpuCollectorIntervalDefault)
+             .value()));
   ASSERT_THAT(args.storage_collector_interval(),
-              Eq(MissiveArgs::kStorageCollectorIntervalDefault));
-  ASSERT_THAT(args.memory_collector_interval(),
-              Eq(MissiveArgs::kMemoryCollectorIntervalDefault));
+              Eq(base::TimeDeltaFromString(
+                     MissiveArgs::kStorageCollectorIntervalDefault)
+                     .value()));
+  ASSERT_THAT(
+      args.memory_collector_interval(),
+      Eq(base::TimeDeltaFromString(MissiveArgs::kMemoryCollectorIntervalDefault)
+             .value()));
 }
 
 TEST(MissiveArgsTest, ExplicitValuesTest) {
@@ -34,14 +43,22 @@ TEST(MissiveArgsTest, ExplicitValuesTest) {
 
 TEST(MissiveArgsTest, BadValuesTest) {
   const MissiveArgs args("AAAA", "BAD", "WRONG", "123");
-  ASSERT_THAT(args.enqueuing_record_tallier(),
-              Eq(MissiveArgs::kEnqueuingRecordTallierDefault));
-  ASSERT_THAT(args.cpu_collector_interval(),
-              Eq(MissiveArgs::kCpuCollectorIntervalDefault));
+  ASSERT_THAT(
+      args.enqueuing_record_tallier(),
+      Eq(base::TimeDeltaFromString(MissiveArgs::kEnqueuingRecordTallierDefault)
+             .value()));
+  ASSERT_THAT(
+      args.cpu_collector_interval(),
+      Eq(base::TimeDeltaFromString(MissiveArgs::kCpuCollectorIntervalDefault)
+             .value()));
   ASSERT_THAT(args.storage_collector_interval(),
-              Eq(MissiveArgs::kStorageCollectorIntervalDefault));
-  ASSERT_THAT(args.memory_collector_interval(),
-              Eq(MissiveArgs::kMemoryCollectorIntervalDefault));
+              Eq(base::TimeDeltaFromString(
+                     MissiveArgs::kStorageCollectorIntervalDefault)
+                     .value()));
+  ASSERT_THAT(
+      args.memory_collector_interval(),
+      Eq(base::TimeDeltaFromString(MissiveArgs::kMemoryCollectorIntervalDefault)
+             .value()));
 }
 }  // namespace
 }  // namespace reporting

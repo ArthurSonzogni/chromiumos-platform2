@@ -13,22 +13,38 @@
 #include <base/time/time_delta_from_string.h>
 #include <brillo/flag_helper.h>
 
+#include "missive/util/statusor.h"
+
 namespace reporting {
 namespace {
 
-base::TimeDelta DurationParameterValue(base::StringPiece arg_name,
-                                       base::StringPiece duration_string,
-                                       base::TimeDelta duration_default) {
-  if (duration_string.empty()) {
-    return duration_default;
-  }
+// Parses duration. If the parsed duration is invalid.
+StatusOr<base::TimeDelta> ParseDuration(base::StringPiece duration_string) {
   const auto duration_result = base::TimeDeltaFromString(duration_string);
   if (!duration_result.has_value()) {
-    LOG(ERROR) << "Unable to parse argument " << arg_name << "="
-               << duration_string << ", assumed default=" << duration_default;
-    return duration_default;
+    return Status(error::INVALID_ARGUMENT, "Duration is not parseable.");
+  }
+  if (!duration_result.value().is_positive()) {
+    return Status(error::INVALID_ARGUMENT, "Duration is not positive.");
   }
   return duration_result.value();
+}
+
+// Parses duration_string if valid. Otherwise, parses duration_default, which
+// should always be valid.
+base::TimeDelta DurationParameterValue(base::StringPiece arg_name,
+                                       base::StringPiece duration_string,
+                                       base::StringPiece duration_default) {
+  DCHECK(ParseDuration(duration_default).ok());
+
+  const auto duration_result = ParseDuration(duration_string);
+  if (!duration_result.ok()) {
+    LOG(ERROR) << "Unable to parse argument " << arg_name << "="
+               << duration_string << ", assumed default=" << duration_default
+               << ", because: " << duration_result.status();
+    return ParseDuration(duration_default).ValueOrDie();
+  }
+  return duration_result.ValueOrDie();
 }
 }  // namespace
 

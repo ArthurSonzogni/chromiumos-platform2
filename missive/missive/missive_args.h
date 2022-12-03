@@ -15,14 +15,10 @@ namespace reporting {
 
 class MissiveArgs {
  public:
-  static constexpr base::TimeDelta kEnqueuingRecordTallierDefault =
-      base::Minutes(3);
-  static constexpr base::TimeDelta kCpuCollectorIntervalDefault =
-      base::Minutes(10);
-  static constexpr base::TimeDelta kStorageCollectorIntervalDefault =
-      base::Hours(1);
-  static constexpr base::TimeDelta kMemoryCollectorIntervalDefault =
-      base::Minutes(10);
+  static constexpr char kEnqueuingRecordTallierDefault[] = "3m";
+  static constexpr char kCpuCollectorIntervalDefault[] = "10m";
+  static constexpr char kStorageCollectorIntervalDefault[] = "1h";
+  static constexpr char kMemoryCollectorIntervalDefault[] = "10m";
 
   MissiveArgs(base::StringPiece enqueuing_record_tallier,
               base::StringPiece cpu_collector_interval,

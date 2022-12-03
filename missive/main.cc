@@ -26,12 +26,17 @@ void SetLogItems() {
 }  // namespace
 
 int main(int argc, char* argv[]) {
-  DEFINE_string(enqueuing_record_tallier, "3m", "Record tallier duration");
-  DEFINE_string(cpu_collector_interval, "10m",
+  DEFINE_string(enqueuing_record_tallier,
+                ::reporting::MissiveArgs::kEnqueuingRecordTallierDefault,
+                "Record tallier duration");
+  DEFINE_string(cpu_collector_interval,
+                ::reporting::MissiveArgs::kCpuCollectorIntervalDefault,
                 "CPU resource collector interval");
-  DEFINE_string(storage_collector_interval, "10m",
+  DEFINE_string(storage_collector_interval,
+                ::reporting::MissiveArgs::kStorageCollectorIntervalDefault,
                 "Storage resource collector interval");
-  DEFINE_string(memory_collector_interval, "10m",
+  DEFINE_string(memory_collector_interval,
+                ::reporting::MissiveArgs::kMemoryCollectorIntervalDefault,
                 "Memory resource collector interval");
   brillo::FlagHelper::Init(argc, argv,
                            "missive_daemon - Administrative device "
