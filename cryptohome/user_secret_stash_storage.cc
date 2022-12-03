@@ -61,7 +61,7 @@ CryptohomeStatus UserSecretStashStorage::Persist(
 }
 
 CryptohomeStatusOr<brillo::Blob> UserSecretStashStorage::LoadPersisted(
-    const std::string& obfuscated_username) {
+    const std::string& obfuscated_username) const {
   // TODO(b:232299885): Read from the latest available slot.
   const base::FilePath path =
       UserSecretStashPath(obfuscated_username, kUserSecretStashDefaultSlot);

@@ -33,7 +33,7 @@ class UserSecretStashStorage final {
   // `UserSecretStash::FromEncryptedContainer()`) from the given user's
   // directory in the shadow root. Returns nullopt on failure.
   CryptohomeStatusOr<brillo::Blob> LoadPersisted(
-      const std::string& obfuscated_username);
+      const std::string& obfuscated_username) const;
 
  private:
   Platform* const platform_;
