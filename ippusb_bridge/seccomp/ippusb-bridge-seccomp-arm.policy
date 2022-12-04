@@ -101,6 +101,7 @@ sigaltstack: 1
 sigreturn: 1
 socket: arg0 == AF_UNIX || arg0 == AF_NETLINK || arg0 == AF_INET
 stat64: 1
+statfs: 1
 statx: 1
 tgkill: 1
 timerfd_create: 1
