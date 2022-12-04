@@ -96,6 +96,15 @@ chrome_knowledge::MultiWordExperiment MultiWordExperimentGroupToProto(
     case MultiWordExperimentGroup::kGboardRelaxedC:
       return chrome_knowledge::MultiWordExperiment::
           MULTI_WORD_EXPERIMENT_GBOARD_RELAXED_C;
+    case MultiWordExperimentGroup::kGboardD:
+      return chrome_knowledge::MultiWordExperiment::
+          MULTI_WORD_EXPERIMENT_GBOARD_D;
+    case MultiWordExperimentGroup::kGboardE:
+      return chrome_knowledge::MultiWordExperiment::
+          MULTI_WORD_EXPERIMENT_GBOARD_E;
+    case MultiWordExperimentGroup::kGboardF:
+      return chrome_knowledge::MultiWordExperiment::
+          MULTI_WORD_EXPERIMENT_GBOARD_F;
     case MultiWordExperimentGroup::kDefault:
     default:
       return chrome_knowledge::MultiWordExperiment::
