@@ -30,6 +30,7 @@
 #include <base/process/launch.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
+#include <brillo/blkdev_utils/get_backing_block_device.h>
 
 namespace secure_erase_file {
 namespace {
@@ -49,43 +50,6 @@ constexpr int kMaxExtents = 32;
 // When verifying that the original data can not be read back, we read in 1M
 // chunks instead of reading the whole file at once.
 constexpr size_t kVerifyReadSizeBytes = 1024 * 1024;
-
-const char kMountsPath[] = "/proc/mounts";
-
-// Given a file path, return the corresponding mount entry info in /proc/mount.
-// TODO(teravest): This will not work for files on eCryptfs partitions.
-// See Platform::FindFilesystemDevice() in cryptohome for logic that would work
-// for more paths.
-std::string PartitionForPath(const base::FilePath& file_path) {
-  std::string partition;
-
-  const std::string path = file_path.value();
-  std::unique_ptr<FILE, int (*)(FILE*)> mnts(setmntent(kMountsPath, "re"),
-                                             endmntent);
-  if (!mnts) {
-    PLOG(ERROR) << "Unable to open " << kMountsPath;
-    return std::string();
-  }
-
-  size_t best_length = 0;
-  auto best_mntent = std::make_unique<struct mntent>();
-
-  struct mntent* mnt;
-  // getmntent() returns a thread local, so it's safe.
-  while ((mnt = getmntent(mnts.get())) != nullptr) {
-    auto l = strlen(mnt->mnt_dir);
-    if (l > best_length && path.size() > l && path[l] == '/' &&
-        path.compare(0, l, mnt->mnt_dir) == 0) {
-      partition = std::string(mnt->mnt_fsname);
-      best_length = l;
-    }
-  }
-
-  if (best_length == 0) {
-    LOG(ERROR) << "Didn't find a partition to match path " << path;
-  }
-  return partition;
-}
 
 // Verifies that the data for an extent has been erased by seeking within the
 // partition and confirming that the original file data is erased.
@@ -218,6 +182,20 @@ bool VerifyExtentsErased(int partition_fd, const struct fiemap* fm) {
   return true;
 }
 
+bool IsDevMmc(const base::FilePath& path) {
+  struct stat stat_buf;
+  if (stat(path.value().c_str(), &stat_buf) < 0) {
+    PLOG(WARNING) << "Could not stat: " << path.value();
+    return false;
+  }
+
+  if (major(stat_buf.st_rdev) == MMC_BLOCK_MAJOR) {
+    return true;
+  }
+
+  return false;
+}
+
 }  // namespace
 
 bool IsSupported(const base::FilePath& path) {
@@ -232,15 +210,13 @@ bool IsSupported(const base::FilePath& path) {
   }
 
   // Note that this prevents us from supporting files on mount points like /var.
-  // TODO(teravest): Support files that aren't directly mounted.
-  if (major(stat_buf.st_dev) != MMC_BLOCK_MAJOR) {
-    LOG(WARNING) << "secure_erase_file only supports eMMC devices. "
-                 << "Ineligible file: " << path.value();
-    return false;
+  if (IsDevMmc(brillo::GetBackingLogicalDeviceForFile(path))) {
+    return true;
   }
 
-  // TODO(teravest): Send EXT_CSD commands to probe for eMMC command support.
-  return true;
+  LOG(WARNING) << "secure_erase_file only supports eMMC devices. "
+               << "Ineligible file: " << path.value();
+  return false;
 }
 
 bool SecureErase(const base::FilePath& path) {
@@ -256,7 +232,7 @@ bool SecureErase(const base::FilePath& path) {
     return false;
   }
 
-  std::string partition = PartitionForPath(path);
+  std::string partition = brillo::GetBackingLogicalDeviceForFile(path).value();
   if (partition.empty()) {
     LOG(ERROR) << "Partition could not be found for file: " << path.value();
     return false;
