@@ -134,8 +134,8 @@ class ModemTest : public Test {
     modem_->CreateDevice(properties);
   }
 
-  std::optional<int> GetDeviceParams(std::string* mac_address) {
-    return modem_->GetDeviceParams(mac_address);
+  std::optional<int> GetLinkDetailsFromDeviceInfo(std::string* mac_address) {
+    return modem_->GetLinkDetailsFromDeviceInfo(mac_address);
   }
 
   EventDispatcherForTest dispatcher_;
@@ -229,26 +229,27 @@ TEST_F(ModemTest, CreateDevicePPP) {
   EXPECT_EQ(device->mac_address(), Modem::kFakeDevAddress);
 }
 
-TEST_F(ModemTest, GetDeviceParams) {
+TEST_F(ModemTest, GetLinkDetailsFromDeviceInfo) {
   std::string mac_address;
   EXPECT_CALL(device_info_, GetMacAddress(_, _))
       .Times(AnyNumber())
       .WillRepeatedly(Return(false));
 
   EXPECT_CALL(device_info_, GetIndex(_)).WillOnce(Return(-1));
-  EXPECT_FALSE(GetDeviceParams(&mac_address).has_value());
+  EXPECT_FALSE(GetLinkDetailsFromDeviceInfo(&mac_address).has_value());
 
   EXPECT_CALL(device_info_, GetIndex(_)).WillOnce(Return(-2));
-  EXPECT_FALSE(GetDeviceParams(&mac_address).has_value());
+  EXPECT_FALSE(GetLinkDetailsFromDeviceInfo(&mac_address).has_value());
 
   EXPECT_CALL(device_info_, GetIndex(_)).WillOnce(Return(1));
   EXPECT_CALL(device_info_, GetMacAddress(1, _)).WillOnce(Return(false));
-  EXPECT_FALSE(GetDeviceParams(&mac_address).has_value());
+  EXPECT_FALSE(GetLinkDetailsFromDeviceInfo(&mac_address).has_value());
 
   EXPECT_CALL(device_info_, GetIndex(_)).WillOnce(Return(2));
   EXPECT_CALL(device_info_, GetMacAddress(2, _))
       .WillOnce(DoAll(SetArgPointee<1>(expected_address_), Return(true)));
-  std::optional<int> interface_index = GetDeviceParams(&mac_address);
+  std::optional<int> interface_index =
+      GetLinkDetailsFromDeviceInfo(&mac_address);
   EXPECT_TRUE(interface_index.has_value());
   EXPECT_EQ(2, interface_index.value());
   EXPECT_EQ(kAddressAsString, mac_address);

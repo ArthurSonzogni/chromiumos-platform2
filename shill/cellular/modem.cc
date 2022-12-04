@@ -154,7 +154,7 @@ void Modem::CreateDeviceFromModemProperties(
 
   std::string mac_address;
   if (GetLinkName(modem_props, &link_name_)) {
-    interface_index_ = GetDeviceParams(&mac_address);
+    interface_index_ = GetLinkDetailsFromDeviceInfo(&mac_address);
     if (!interface_index_.has_value()) {
       // Save our properties, wait for OnDeviceInfoAvailable to be called.
       LOG(WARNING) << "Delaying cellular device creation for interface "
@@ -187,7 +187,8 @@ void Modem::CreateDeviceFromModemProperties(
                 << " Enabled: " << device->enabled();
 }
 
-std::optional<int> Modem::GetDeviceParams(std::string* mac_address) {
+std::optional<int> Modem::GetLinkDetailsFromDeviceInfo(
+    std::string* mac_address) {
   int interface_index = device_info_->GetIndex(link_name_);
   if (interface_index < 0) {
     return std::nullopt;

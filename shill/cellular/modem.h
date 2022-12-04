@@ -72,7 +72,7 @@ class Modem {
   // Finds the interface index and MAC address for the kernel network device
   // with name |link_name_|. If no interface index exists, returns nullopt.
   // Otherwise sets |mac_address| if available and returns the interface index.
-  std::optional<int> GetDeviceParams(std::string* mac_address);
+  std::optional<int> GetLinkDetailsFromDeviceInfo(std::string* mac_address);
 
   CellularRefPtr GetOrCreateCellularDevice(int interface_index,
                                            const std::string& mac_address);
