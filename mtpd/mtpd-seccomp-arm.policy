@@ -101,3 +101,5 @@ readlinkat: 1
 lstat64: 1
 getdents64: 1
 fstatfs64: 1
+eventfd2: 1
+statfs: 1

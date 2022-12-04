@@ -94,3 +94,5 @@ readlink: 1
 readlinkat: 1
 lstat: 1
 fstatfs: 1
+eventfd2: 1
+statfs: 1
