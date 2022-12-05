@@ -19,7 +19,7 @@
 
 namespace {
 
-namespace service_manager = chromeos::mojo_service_manager;
+namespace mojo_service_manager = chromeos::mojo_service_manager;
 
 // The policy directory path.
 constexpr char kPolicyDirectoryPath[] = "/etc/mojo/service_manager/policy";
@@ -71,20 +71,20 @@ int main(int argc, char* argv[]) {
         base::FilePath{kExtraPolicyDirectoryPathInDevMode});
   }
 
-  service_manager::Configuration configuration{};
+  mojo_service_manager::Configuration configuration{};
   if (FLAGS_permissive) {
     configuration.is_permissive = true;
   }
 
-  service_manager::Daemon::Delegate delegate;
-  service_manager::Daemon daemon(&delegate,
-                                 base::FilePath{service_manager::kSocketPath},
-                                 policy_dir_paths, std::move(configuration));
+  mojo_service_manager::Daemon::Delegate delegate;
+  mojo_service_manager::Daemon daemon(
+      &delegate, base::FilePath{mojo_service_manager::kSocketPath},
+      policy_dir_paths, std::move(configuration));
 
   if (FLAGS_check_policy) {
     LOG(INFO) << "We are in --check-policy mode, will exit after checking the "
                  "policy.";
-    service_manager::ServicePolicyMap policy_map;
+    mojo_service_manager::ServicePolicyMap policy_map;
     if (LoadAllServicePolicyFileFromDirectories(policy_dir_paths,
                                                 &policy_map)) {
       LOG(INFO) << "Check policy result: Pass.";
