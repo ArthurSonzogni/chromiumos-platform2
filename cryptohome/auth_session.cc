@@ -136,6 +136,34 @@ cryptorecovery::RequestMetadata RequestMetadataFromProto(
   return result;
 }
 
+// Generates a PIN reset secret from the |reset_seed| of the passed password
+// VaultKeyset and updates the AuthInput  |reset_seed|, |reset_salt| and
+// |reset_secret| values.
+CryptohomeStatusOr<AuthInput> UpdateAuthInputWithResetParamsFromPasswordVk(
+    const AuthInput& auth_input, const VaultKeyset& vault_keyset) {
+  if (!vault_keyset.HasWrappedResetSeed()) {
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocUpdateAuthInputNoWrappedSeedInVaultKeyset),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
+  }
+  if (vault_keyset.GetResetSeed().empty()) {
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocUpdateAuthInputResetSeedEmptyInVaultKeyset),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
+  }
+  AuthInput out_auth_input = auth_input;
+  out_auth_input.reset_seed = vault_keyset.GetResetSeed();
+  out_auth_input.reset_salt = CreateSecureRandomBlob(kAesBlockSize);
+  out_auth_input.reset_secret = HmacSha256(out_auth_input.reset_salt.value(),
+                                           out_auth_input.reset_seed.value());
+  LOG(INFO) << "Reset seed, to generate the reset_secret for the PIN factor, "
+               "is obtained from password VaultKeyset with label: "
+            << vault_keyset.GetLabel();
+  return out_auth_input;
+}
+
 // Utility function to force-remove a keyset file for |obfuscated_username|
 // identified by |label|.
 CryptohomeStatus RemoveKeysetByLabel(KeysetManagement& keyset_management,
@@ -1023,15 +1051,24 @@ void AuthSession::OnMigrationUssCreated(
   auto migration_performance_timer =
       std::make_unique<AuthSessionPerformanceTimer>(kUSSMigrationTimer);
 
+  CryptohomeStatusOr<AuthInput> migration_auth_input_status =
+      CreateAuthInputForMigration(auth_input, auth_factor_type);
+  if (!migration_auth_input_status.ok()) {
+    LOG(ERROR) << "Failed to create migration AuthInput.";
+    // TODO(b:258711982): Create a new success metric and report the failure.
+    std::move(on_done).Run(std::move(pre_migration_status));
+  }
+
   auto create_callback = base::BindOnce(
       &AuthSession::PersistAuthFactorToUserSecretStashOnMigration,
       weak_factory_.GetWeakPtr(), auth_factor_type, key_data_.label(),
-      auth_factor_metadata, auth_input, key_data_,
+      auth_factor_metadata, migration_auth_input_status.value(), key_data_,
       std::move(migration_performance_timer), std::move(on_done),
       std::move(pre_migration_status));
 
   auth_block_utility_->CreateKeyBlobsWithAuthBlockAsync(
-      auth_block_type, auth_input, std::move(create_callback));
+      auth_block_type, migration_auth_input_status.value(),
+      std::move(create_callback));
 }
 
 void AuthSession::Authenticate(
@@ -2043,6 +2080,39 @@ CryptohomeStatusOr<AuthInput> AuthSession::CreateAuthInputForAuthentication(
   return std::move(auth_input.value());
 }
 
+CryptohomeStatusOr<AuthInput> AuthSession::CreateAuthInputForMigration(
+    const AuthInput& auth_input, AuthFactorType auth_factor_type) {
+  AuthInput migration_auth_input = auth_input;
+
+  if (!NeedsResetSecret(auth_factor_type)) {
+    // The factor is not resettable, so no extra data needed to be filled.
+    return std::move(migration_auth_input);
+  }
+
+  if (!vault_keyset_) {
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocNoVkInAuthInputForMigration),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
+  }
+
+  // After successful authentication `reset_secret` is available in the
+  // decrypted LE VaultKeyset, if the authenticated VaultKeyset is LE.
+  brillo::SecureBlob reset_secret = vault_keyset_->GetResetSecret();
+  if (!reset_secret.empty()) {
+    LOG(INFO) << "Reset secret is obtained from PIN VaultKeyset with label: "
+              << vault_keyset_->GetLabel();
+    migration_auth_input.reset_secret = std::move(reset_secret);
+    return std::move(migration_auth_input);
+  }
+
+  // Update of an LE VaultKeyset can happen only after authenticating with a
+  // password VaultKeyset, which stores the password VaultKeyset in
+  // |vault_keyset_|.
+  return UpdateAuthInputWithResetParamsFromPasswordVk(auth_input,
+                                                      *vault_keyset_);
+}
+
 CryptohomeStatusOr<AuthInput> AuthSession::CreateAuthInputForAdding(
     const user_data_auth::AuthInput& auth_input_proto,
     AuthFactorType auth_factor_type,
@@ -2070,23 +2140,9 @@ CryptohomeStatusOr<AuthInput> AuthSession::CreateAuthInputForAdding(
         ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
         user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
   }
-  if (!vault_keyset_->HasWrappedResetSeed()) {
-    return MakeStatus<CryptohomeError>(
-        CRYPTOHOME_ERR_LOC(kLocNoWrappedSeedInAuthInputForAdd),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
-        user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
-  }
-  if (vault_keyset_->GetResetSeed().empty()) {
-    return MakeStatus<CryptohomeError>(
-        CRYPTOHOME_ERR_LOC(kLocEmptySeedInAuthInputForAdd),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
-        user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
-  }
-  auth_input->reset_seed = vault_keyset_->GetResetSeed();
-  auth_input->reset_salt = CreateSecureRandomBlob(kAesBlockSize);
-  auth_input->reset_secret = HmacSha256(auth_input->reset_salt.value(),
-                                        auth_input->reset_seed.value());
-  return std::move(auth_input.value());
+
+  return UpdateAuthInputWithResetParamsFromPasswordVk(auth_input.value(),
+                                                      *vault_keyset_);
 }
 
 CredentialVerifier* AuthSession::AddCredentialVerifier(

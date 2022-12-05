@@ -238,19 +238,17 @@ CryptohomeStatus VaultKeyset::EncryptEx(const KeyBlobs& key_blobs,
 
   SetAuthBlockState(auth_state);
   if (IsLECredential()) {
-    if (reset_seed_.empty()) {
-      LOG(ERROR) << "The VaultKeyset doesn't have a reset seed, so we can't"
+    if (key_blobs.reset_secret.has_value() &&
+        !key_blobs.reset_secret.value().empty()) {
+      SetResetSecret(key_blobs.reset_secret.value());
+    } else if (reset_seed_.empty()) {
+      LOG(ERROR) << "Reset secret and reset seed are missing, so we can't"
                     " set up an LE credential.";
       return MakeStatus<CryptohomeError>(
           CRYPTOHOME_ERR_LOC(kLocVaultKeysetNoResetSeedInEncryptEx),
           ErrorActionSet({ErrorAction::kDevCheckUnexpectedState,
                           ErrorAction::kDeleteVault, ErrorAction::kAuth}),
           user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED);
-    }
-
-    if (key_blobs.reset_secret.has_value() &&
-        !key_blobs.reset_secret.value().empty()) {
-      SetResetSecret(key_blobs.reset_secret.value());
     }
     auth_locked_ = false;
   }

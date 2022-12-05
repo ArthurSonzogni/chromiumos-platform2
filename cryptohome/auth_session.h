@@ -318,6 +318,16 @@ class AuthSession final {
       AuthFactorType auth_factor_type,
       const AuthFactorMetadata& auth_factor_metadata);
 
+  // Creates AuthInput for migration from an AuthInput by adding `reset_secret`
+  // if needed. If this is called during the AuthenticateAuthFactor, after the
+  // successful authentication of the PIN factor, reset secret is obtained
+  // directly from the decrypted PIN VaultKeyset. If this is called during the
+  // UpdateAuthFactor, when AuthSession has a decrypted password VaultKesyet
+  // available, |reset_secret| is derived from the |reset_seed| on the
+  // password VaultKeyset. In each case a new backend pinweaver node is created.
+  CryptohomeStatusOr<AuthInput> CreateAuthInputForMigration(
+      const AuthInput& auth_input, AuthFactorType auth_factor_type);
+
   // Initializes a ChallengeCredentialAuthInput, i.e.
   // {.public_key_spki_der, .challenge_signature_algorithms} from
   // the challenge_response_key values in in authorization
