@@ -90,6 +90,7 @@ class EffectsStreamManipulator : public StreamManipulator {
   CameraThread thread_;
 
   int64_t timestamp_ = 0;
+  int64_t last_timestamp_ = 0;
 };
 
 }  // namespace cros

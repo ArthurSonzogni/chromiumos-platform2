@@ -290,6 +290,15 @@ bool EffectsStreamManipulator::ProcessCaptureResultOnThread(
   }
   auto timestamp = TryGetSensorTimestamp(result);
   timestamp_ = timestamp.has_value() ? *timestamp : timestamp_ + 1;
+
+  if (timestamp_ <= last_timestamp_) {
+    uint64_t timestamp_offset = last_timestamp_ + 1 - timestamp_;
+    timestamp_ += timestamp_offset;
+    LOGF(INFO) << "Found out of order timestamp."
+                  "Increasing timestamp to "
+               << timestamp_;
+  }
+  last_timestamp_ = timestamp_;
   pipeline_->ProcessFrame(timestamp_,
                           reinterpret_cast<const uint8_t*>(buffer_ptr_),
                           scoped_mapping.width(), scoped_mapping.height(),
