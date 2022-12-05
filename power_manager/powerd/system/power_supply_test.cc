@@ -1371,6 +1371,13 @@ TEST_F(PowerSupplyTest, EcDisplayBatteryPercent) {
   resp.display_soc = 800.0;
   ASSERT_TRUE(UpdateStatus(&status));
   EXPECT_EQ(80.0, status.display_battery_percentage);
+
+  // Check that display_battery_percentage isn't updated when an error in
+  // reading it from the EC occurs, causing an extreme mismatch between
+  // battery_percentage and display_battery_percentage.
+  resp.display_soc = 0.0;
+  ASSERT_FALSE(UpdateStatus(&status));
+  EXPECT_EQ(80.0, status.display_battery_percentage);
 }
 
 TEST_F(PowerSupplyTest, BadSingleBattery) {

@@ -1269,14 +1269,22 @@ bool PowerSupply::UpdateBatteryPercentagesAndState(PowerStatus* status) {
   double display_soc;
   bool is_full;
   if (GetDisplayStateOfChargeFromEC(&display_soc)) {
-    // If display_soc is 0%, read it again in case of a bad reading.
-    if (display_soc == 0.0) {
-      GetDisplayStateOfChargeFromEC(&display_soc);
-    }
-
     // Error out for bad display percentages. We'll try again later.
     if (display_soc < 0.0 || 100.0 < display_soc) {
       LOG(ERROR) << "Received bad value of display SoC: " << display_soc;
+      return false;
+    }
+
+    // If |display_soc| is 0, check that it's not a false 0 reading by comparing
+    // it to |status->battery_percentage|. |low_battery_shutdown_percent_| maps
+    // to a |display_soc| value of 0, so if |status->battery_percentage_| is
+    // greater than that (plus 1.0 for race conditions), error out.
+    if (display_soc == 0.0 &&
+        status->battery_percentage > (low_battery_shutdown_percent_ + 1.0)) {
+      LOG(ERROR) << "Display and battery percentage values have too much of a "
+                 << "discrepancy. battery_percentage is "
+                 << status->battery_percentage
+                 << " and display_battery_percentage is " << display_soc;
       return false;
     }
 
