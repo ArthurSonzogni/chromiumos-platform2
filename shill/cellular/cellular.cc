@@ -1341,6 +1341,20 @@ void Cellular::EstablishLink() {
     return;
   }
 
+  // ModemManager specifies which is the network interface that has been
+  // connected at this point, which may be either the same interface that was
+  // used to reference this Cellular device, or a completely different one.
+  // At this point, only the physical network interface is expected to be
+  // connected; fail otherwise.
+  LOG(INFO) << link_name() << ": Establish link on "
+            << bearer->data_interface();
+  int data_interface_index =
+      manager()->device_info()->GetIndex(bearer->data_interface());
+  if (data_interface_index != interface_index()) {
+    Disconnect(nullptr, "Unexpected data interface to connect");
+    return;
+  }
+
   unsigned int flags = 0;
   if (manager()->device_info()->GetFlags(interface_index(), &flags) &&
       (flags & IFF_UP) != 0) {

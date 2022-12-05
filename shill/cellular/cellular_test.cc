@@ -1861,6 +1861,35 @@ TEST_P(CellularTest, EstablishLinkFailureNoBearer) {
   EXPECT_EQ(Cellular::State::kRegistered, device_->state());
 }
 
+TEST_P(CellularTest, EstablishLinkFailureMismatchedDataInterface) {
+  if (!IsCellularTypeUnderTestOneOf({Cellular::kType3gpp})) {
+    return;
+  }
+
+  // Bearer will report an interface different to the one in the
+  // device, for now, disconnect
+  auto bearer = std::make_unique<CellularBearer>(&control_interface_,
+                                                 RpcIdentifier(""), "");
+  bearer->set_data_interface("another_one");
+  bearer->set_ipv4_config_method(CellularBearer::IPConfigMethod::kDHCP);
+  SetCapability3gppActiveBearer(std::move(bearer));
+
+  // Ensure a different interface index with +1
+  EXPECT_CALL(device_info_, GetIndex("another_one"))
+      .WillOnce(Return(device_->interface_index() + 1));
+
+  EXPECT_CALL(*mm1_simple_proxy_,
+              Disconnect(_, _, CellularCapability::kTimeoutDisconnect))
+      .WillOnce(Invoke(this, &CellularTest::InvokeDisconnect));
+  SetCapability3gppModemSimpleProxy();
+
+  SetRegisteredWithService();
+  device_->set_state_for_testing(Cellular::State::kConnected);
+  device_->EstablishLink();
+  dispatcher_.DispatchPendingEvents();
+  EXPECT_EQ(Cellular::State::kRegistered, device_->state());
+}
+
 TEST_P(CellularTest, EstablishLinkDHCP) {
   if (!IsCellularTypeUnderTestOneOf({Cellular::kType3gpp})) {
     return;
@@ -1868,6 +1897,7 @@ TEST_P(CellularTest, EstablishLinkDHCP) {
 
   auto bearer = std::make_unique<CellularBearer>(&control_interface_,
                                                  RpcIdentifier(""), "");
+  bearer->set_data_interface(kTestDeviceName);
   bearer->set_ipv4_config_method(CellularBearer::IPConfigMethod::kDHCP);
   SetCapability3gppActiveBearer(std::move(bearer));
   device_->set_state_for_testing(Cellular::State::kConnected);
@@ -1875,6 +1905,8 @@ TEST_P(CellularTest, EstablishLinkDHCP) {
   MockCellularService* service = SetMockService();
   ON_CALL(*service, state()).WillByDefault(Return(Service::kStateUnknown));
 
+  EXPECT_CALL(device_info_, GetIndex(device_->link_name()))
+      .WillOnce(Return(device_->interface_index()));
   EXPECT_CALL(device_info_, GetFlags(device_->interface_index(), _))
       .WillOnce(DoAll(SetArgPointee<1>(IFF_UP), Return(true)));
   EXPECT_CALL(*network_,
@@ -1927,6 +1959,7 @@ TEST_P(CellularTest, EstablishLinkStatic) {
 
   auto bearer = std::make_unique<CellularBearer>(&control_interface_,
                                                  RpcIdentifier(""), "");
+  bearer->set_data_interface(kTestDeviceName);
   bearer->set_ipv4_config_method(CellularBearer::IPConfigMethod::kStatic);
   bearer->set_ipv4_config_properties(
       std::make_unique<IPConfig::Properties>(ipconfig_properties));
@@ -1936,6 +1969,8 @@ TEST_P(CellularTest, EstablishLinkStatic) {
   MockCellularService* service = SetMockService();
   ON_CALL(*service, state()).WillByDefault(Return(Service::kStateUnknown));
 
+  EXPECT_CALL(device_info_, GetIndex(device_->link_name()))
+      .WillOnce(Return(device_->interface_index()));
   EXPECT_CALL(device_info_, GetFlags(device_->interface_index(), _))
       .WillOnce(DoAll(SetArgPointee<1>(IFF_UP), Return(true)));
   EXPECT_CALL(*service, SetState(Service::kStateConfiguring));
