@@ -144,10 +144,6 @@ void SetIntInVsockBuffer(uint8_t* buf, size_t index, int val) {
   return;
 }
 
-constexpr int kLogdConfigSizeSmall = 256;   // kBytes
-constexpr int kLogdConfigSizeMed = 512;     // kBytes
-constexpr int kLogdConfigSizeLarge = 1024;  // kBytes
-
 // ConnectVSock connects to arc-powerctl in the VM identified by |cid|. It
 // returns a pair. The first object is the connected socket if connection was
 // successful. The second is a bool that is true if the VM is already dead, and
@@ -979,26 +975,6 @@ std::vector<std::string> ArcVm::GetKernelParams(
     params.push_back(
         base::StringPrintf("androidboot.arcvm_metrics_mem_psi_period=%d",
                            request.vm_memory_psi_period()));
-  }
-
-  // Set logcat size, only if configured to one of the few supported sizes.
-  int logd_config_size = request.logd_config_size();
-  switch (logd_config_size) {
-    case -1:  // Logd config disabled
-      break;
-    case kLogdConfigSizeSmall:
-      params.push_back("androidboot.arcvm.logd.size=256K");
-      break;
-    case kLogdConfigSizeMed:
-      params.push_back("androidboot.arcvm.logd.size=512K");
-      break;
-    case kLogdConfigSizeLarge:
-      params.push_back("androidboot.arcvm.logd.size=1M");
-      break;
-    default:
-      LOG(WARNING) << "WARNING: Invalid logd size ignored: ["
-                   << logd_config_size << "]";
-      break;
   }
 
   switch (request.ureadahead_mode()) {

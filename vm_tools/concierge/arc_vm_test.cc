@@ -353,44 +353,6 @@ TEST(ArcVmTest, GuestZramSize100) {
   EXPECT_TRUE(base::Contains(params, "androidboot.zram_size=100"));
 }
 
-TEST(ArcVmTest, LogdConfigSizeSmall) {
-  crossystem::fake::CrossystemFake cros_system;
-  StartArcVmRequest request;
-  request.set_logd_config_size(256);
-  std::vector<std::string> params =
-      ArcVm::GetKernelParams(cros_system, request, kSeneschalServerPort);
-  EXPECT_TRUE(base::Contains(params, "androidboot.arcvm.logd.size=256K"));
-}
-
-TEST(ArcVmTest, LogdConfigSizeMed) {
-  crossystem::fake::CrossystemFake cros_system;
-  StartArcVmRequest request;
-  request.set_logd_config_size(512);
-  std::vector<std::string> params =
-      ArcVm::GetKernelParams(cros_system, request, kSeneschalServerPort);
-  EXPECT_TRUE(base::Contains(params, "androidboot.arcvm.logd.size=512K"));
-}
-
-TEST(ArcVmTest, LogdConfigSizeLarge) {
-  crossystem::fake::CrossystemFake cros_system;
-  StartArcVmRequest request;
-  request.set_logd_config_size(1024);
-  std::vector<std::string> params =
-      ArcVm::GetKernelParams(cros_system, request, kSeneschalServerPort);
-  EXPECT_TRUE(base::Contains(params, "androidboot.arcvm.logd.size=1M"));
-}
-
-TEST(ArcVmTest, LogdConfigSizeInvalid) {
-  crossystem::fake::CrossystemFake cros_system;
-  StartArcVmRequest request;
-  request.set_logd_config_size(0);
-  std::vector<std::string> params =
-      ArcVm::GetKernelParams(cros_system, request, kSeneschalServerPort);
-  for (const auto& param : params) {
-    EXPECT_FALSE(base::StartsWith(param, "androidboot.arcvm.logd.size="));
-  }
-}
-
 TEST(ArcVmTest, ChromeOsChannelStable) {
   base::test::ScopedChromeOSVersionInfo info(
       "CHROMEOS_RELEASE_TRACK=stable-channel", base::Time::Now());

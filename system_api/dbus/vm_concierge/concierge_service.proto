@@ -400,7 +400,7 @@ message StartArcVmRequest {
   bool enable_broadcast_anr_prenotify = 25;
 
   // Size of logd config in kBytes, -1 if disabled
-  int32 logd_config_size = 26;
+  int32 logd_config_size = 26 [deprecated = true];
 
   // Whether virtio blk data is enabled
   bool enable_virtio_blk_data = 27;
