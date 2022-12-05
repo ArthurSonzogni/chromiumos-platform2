@@ -539,8 +539,9 @@ void CrosHealthdDiagnosticsService::PopulateAvailableRoutines(
     available_routines_.insert(mojo_ipc::DiagnosticRoutineEnum::kPrivacyScreen);
   }
 
-  // TODO(dennyh): Use system_config to determine if eMMC is supported.
-  available_routines_.insert(mojo_ipc::DiagnosticRoutineEnum::kEmmcLifetime);
+  if (context_->system_config()->MmcSupported()) {
+    available_routines_.insert(mojo_ipc::DiagnosticRoutineEnum::kEmmcLifetime);
+  }
 }
 
 }  // namespace diagnostics

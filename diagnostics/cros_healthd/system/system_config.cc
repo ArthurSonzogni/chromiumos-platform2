@@ -184,6 +184,10 @@ bool SystemConfig::SmartCtlSupported() {
   return base::PathExists(root_dir_.AppendASCII(kSmartctlToolPath));
 }
 
+bool SystemConfig::MmcSupported() {
+  return base::PathExists(root_dir_.AppendASCII(kMmcToolPath));
+}
+
 bool SystemConfig::FingerprintDiagnosticSupported() {
   std::string enable;
   if (!cros_config_->GetString(kFingerprintPropertiesPath,

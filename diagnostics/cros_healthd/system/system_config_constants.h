@@ -38,6 +38,8 @@ inline constexpr char kNvmeToolPath[] = "usr/sbin/nvme";
 inline constexpr char kDevicePath[] = "dev";
 // Smartctl utility program path relative to the root directory.
 inline constexpr char kSmartctlToolPath[] = "usr/sbin/smartctl";
+// Mmc utility program path relative to the root directory.
+inline constexpr char kMmcToolPath[] = "usr/bin/mmc";
 // Fio utility program path relative to the root directory.
 inline constexpr char kFioToolPath[] = "usr/bin/fio";
 // The path to check a device's branding properties.
