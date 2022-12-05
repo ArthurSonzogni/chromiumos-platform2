@@ -124,8 +124,13 @@ libbrillo_sublibs = [
       "brillo/blkdev_utils/loop_device.cc",
       "brillo/blkdev_utils/ufs.cc",
     ]
+    libs = [ "rootdev" ]
+    if (use.udev) {
+      sources += [ "brillo/blkdev_utils/get_backing_block_device.cc" ]
+      deps += [ ":libbrillo-udev" ]
+    }
     if (use.device_mapper) {
-      libs = [ "lvm2cmd" ]
+      libs += [ "lvm2cmd" ]
       pkg_deps = [ "devmapper" ]
       sources += [
         "brillo/blkdev_utils/device_mapper.cc",
@@ -536,6 +541,9 @@ if (use.test) {
         "brillo/blkdev_utils/lvm_device_test.cc",
         "brillo/blkdev_utils/lvm_test.cc",
       ]
+    }
+    if (use.udev) {
+      sources += [ "brillo/blkdev_utils/get_backing_block_device_test.cc" ]
     }
     if (use.usb && use.udev) {
       sources += [
