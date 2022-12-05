@@ -363,7 +363,7 @@ class UserDataAuth {
           const user_data_auth::StartFingerprintAuthSessionReply&)> on_done);
 
   // End the current fingerprint auth session.
-  void EndFingerprintAuthSession();
+  user_data_auth::CryptohomeErrorCode EndFingerprintAuthSession();
 
   // TODO(b/184393647): This api is not currently used because secret
   // enforcement in the WebAuthn flow haven't been implemented yet. After

@@ -3544,9 +3544,17 @@ void UserDataAuth::StartFingerprintAuthSession(
                      base::Unretained(this), std::move(on_done)));
 }
 
-void UserDataAuth::EndFingerprintAuthSession() {
+user_data_auth::CryptohomeErrorCode UserDataAuth::EndFingerprintAuthSession() {
   AssertOnMountThread();
+
+  if (!fingerprint_manager_) {
+    // Fingerprint manager failed to initialize, or the device may not support
+    // fingerprint auth at all.
+    return user_data_auth::CRYPTOHOME_ERROR_FINGERPRINT_ERROR_INTERNAL;
+  }
+
   fingerprint_manager_->EndAuthSession();
+  return user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
 }
 
 user_data_auth::GetWebAuthnSecretReply UserDataAuth::GetWebAuthnSecret(

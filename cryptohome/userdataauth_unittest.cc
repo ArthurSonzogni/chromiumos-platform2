@@ -1348,6 +1348,18 @@ TEST_F(UserDataAuthTestNotInitialized, GetCurrentSpaceForArcProjectId) {
             userdataauth_->GetCurrentSpaceForArcProjectId(kProjectId));
 }
 
+TEST_F(UserDataAuthTestNotInitialized, EndFingerprintAuthSessionFailNoManager) {
+  // Undo the injection of a mock manager. This turns on the logic in
+  // `UserDataAuth` that attempts to create the manager - which fails in this
+  // test.
+  userdataauth_->set_fingerprint_manager(nullptr);
+
+  InitializeUserDataAuth();
+
+  EXPECT_EQ(userdataauth_->EndFingerprintAuthSession(),
+            user_data_auth::CRYPTOHOME_ERROR_FINGERPRINT_ERROR_INTERNAL);
+}
+
 TEST_F(UserDataAuthTest, SetMediaRWDataFileProjectId) {
   constexpr int kProjectId = 1001;
   constexpr int kFd = 1234;

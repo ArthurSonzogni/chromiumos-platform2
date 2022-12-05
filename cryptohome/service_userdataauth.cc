@@ -852,14 +852,21 @@ void UserDataAuthAdaptor::DoStartFingerprintAuthSessionDone(
 void UserDataAuthAdaptor::EndFingerprintAuthSession(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
         user_data_auth::EndFingerprintAuthSessionReply>> response,
-    const user_data_auth::EndFingerprintAuthSessionRequest& in_request) {
+    const user_data_auth::EndFingerprintAuthSessionRequest& /*in_request*/) {
   service_->PostTaskToMountThread(
-      FROM_HERE, base::BindOnce(&UserDataAuth::EndFingerprintAuthSession,
-                                base::Unretained(service_)));
+      FROM_HERE,
+      base::BindOnce(&UserDataAuthAdaptor::DoEndFingerprintAuthSession,
+                     base::Unretained(this),
+                     ThreadSafeDBusMethodResponse<
+                         user_data_auth::EndFingerprintAuthSessionReply>::
+                         MakeThreadSafe(std::move(response))));
+}
 
-  // This function returns immediately after ending the auth session.
-  // Also, this is always successful.
+void UserDataAuthAdaptor::DoEndFingerprintAuthSession(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        user_data_auth::EndFingerprintAuthSessionReply>> response) {
   user_data_auth::EndFingerprintAuthSessionReply reply;
+  reply.set_error(service_->EndFingerprintAuthSession());
   response->Return(reply);
 }
 
