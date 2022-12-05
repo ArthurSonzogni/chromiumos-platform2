@@ -12,3 +12,26 @@ source_set("features") {
   # -fPIC needed by the libcros_camera.so shared library.
   configs += [ "//common-mk:pic" ]
 }
+
+pkg_config("test_target_defaults") {
+  configs = [
+    "//camera/build:cros_camera_common",
+    "//common-mk:test",
+  ]
+  pkg_deps = [ "libchrome-test" ]
+}
+
+if (use.test) {
+  executable("feature_profile_test") {
+    sources = [
+      "//camera/features/feature_profile.cc",
+      "//camera/features/feature_profile_test.cc",
+    ]
+    configs += [ ":test_target_defaults" ]
+    deps = [
+      "//camera/common:base",
+      "//camera/common:libcros_camera_device_config",
+    ]
+    run_test = true
+  }
+}

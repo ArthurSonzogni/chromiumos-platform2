@@ -15,10 +15,18 @@
 
 #include "cros-camera/common.h"
 #include "cros-camera/constants.h"
+#include "cros-camera/device_config.h"
 
 namespace cros {
 
 namespace {
+
+constexpr char kKeyFeatureSet[] = "feature_set";
+constexpr char kKeyType[] = "type";
+constexpr char kKeyConfigFilePath[] = "config_file_path";
+constexpr char kKeyEnableOn[] = "enable_on";
+constexpr char kKeyModuleId[] = "module_id";
+constexpr char kKeySensorId[] = "sensor_id";
 
 std::optional<FeatureProfile::FeatureType> GetFeatureType(
     const std::string& feature_key) {
@@ -36,14 +44,53 @@ std::optional<FeatureProfile::FeatureType> GetFeatureType(
   return std::nullopt;
 }
 
+std::optional<FeatureProfile::DeviceMetadata> ProbeDeviceMetadata() {
+  auto conf = DeviceConfig::Create();
+  if (!conf) {
+    return std::nullopt;
+  }
+  FeatureProfile::DeviceMetadata m = {
+      .model_name = conf->GetModelName(),
+      .camera_info = {},
+  };
+  for (const auto& info : conf->GetPlatformCameraInfo()) {
+    m.camera_info.push_back(
+        {.module_id = info.module_id(), .sensor_id = info.sensor_id()});
+  }
+  return m;
+}
+
+struct EnableConditions {
+  const std::string* module_id;
+  const std::string* sensor_id;
+};
+
+bool HasMatchingCameraModule(const EnableConditions& m,
+                             const FeatureProfile::DeviceMetadata& metadata) {
+  if (!m.module_id && !m.sensor_id) {
+    // Match any camera module if neither module nor sensor id is specified.
+    return true;
+  }
+  for (const auto& d : metadata.camera_info) {
+    if (m.module_id && *m.module_id != d.module_id) {
+      continue;
+    }
+    if (m.sensor_id && *m.sensor_id != d.sensor_id) {
+      continue;
+    }
+    return true;
+  }
+  return false;
+}
+
 }  // namespace
 
 FeatureProfile::FeatureProfile(std::optional<base::Value::Dict> feature_config,
-                               std::optional<DeviceConfig> device_config)
+                               std::optional<DeviceMetadata> device_metadata)
     : config_file_(ReloadableConfigFile::Options{
           base::FilePath(kFeatureProfileFilePath), base::FilePath()}),
-      device_config_(device_config ? std::move(device_config).value()
-                                   : DeviceConfig::Create()) {
+      device_metadata_(device_metadata ? std::move(device_metadata).value()
+                                       : ProbeDeviceMetadata()) {
   if (feature_config.has_value()) {
     OnOptionsUpdated(feature_config.value());
   } else {
@@ -98,39 +145,42 @@ base::FilePath FeatureProfile::GetConfigFilePath(FeatureType feature) const {
   return setting->second.config_file_path;
 }
 
+bool FeatureProfile::ShouldEnableFeature(
+    const base::Value::Dict& feature_descriptor) {
+  const base::Value* enable_on = feature_descriptor.Find(kKeyEnableOn);
+  if (!enable_on) {
+    return true;
+  }
+  if (!enable_on->is_dict()) {
+    LOGF(ERROR) << "Attribute " << std::quoted(kKeyEnableOn)
+                << " must be a dict";
+    return false;
+  }
+
+  EnableConditions m = {
+      .module_id = enable_on->FindStringKey(kKeyModuleId),
+      .sensor_id = enable_on->FindStringKey(kKeySensorId),
+  };
+
+  if (!HasMatchingCameraModule(m, device_metadata_.value())) {
+    return false;
+  }
+
+  return true;
+}
+
 void FeatureProfile::OnOptionsUpdated(const base::Value::Dict& json_values) {
-  // Feature config file schema:
-  //
-  // {
-  //   <model>: {
-  //     "feature_set": [
-  //       {"type": <feature_type>, "config_file_path": <config_file_path>},
-  //       ...
-  //     ]
-  //   },
-  //   ...
-  // }
-  //
-  // <model>: String of device model name, e.g. "redrix".
-  // <feature_type>: String for the type of the feature, e.g. "face_detection"
-  //                 or "hdrnet".
-  // <config_file_path>: String specifying the path to the feature config file.
-
-  constexpr char kKeyFeatureSet[] = "feature_set";
-  constexpr char kKeyType[] = "type";
-  constexpr char kKeyConfigFilePath[] = "config_file_path";
-
-  if (!device_config_.has_value()) {
+  if (!device_metadata_.has_value()) {
     LOGF(WARNING) << "Device config is invalid, cannot determine model name";
     return;
   }
 
   // Get the per-model feature profile from the top-level.
   const base::Value::Dict* feature_profile =
-      json_values.FindDict(device_config_->GetModelName());
+      json_values.FindDict(device_metadata_->model_name);
   if (feature_profile == nullptr) {
     LOGF(ERROR) << "Cannot find feature profile as dict for device model "
-                << std::quoted(device_config_->GetModelName());
+                << std::quoted(device_metadata_->model_name);
     return;
   }
 
@@ -140,7 +190,7 @@ void FeatureProfile::OnOptionsUpdated(const base::Value::Dict& json_values) {
   if (feature_set == nullptr) {
     LOGF(ERROR) << "Cannot find " << std::quoted(kKeyFeatureSet)
                 << " as list in the feature profile of "
-                << std::quoted(device_config_->GetModelName());
+                << std::quoted(device_metadata_->model_name);
     return;
   }
 
@@ -166,6 +216,9 @@ void FeatureProfile::OnOptionsUpdated(const base::Value::Dict& json_values) {
     if (type_str == nullptr) {
       LOGF(ERROR) << "Malformed feature setting: Cannot find key "
                   << std::quoted(kKeyConfigFilePath);
+      continue;
+    }
+    if (!ShouldEnableFeature(v.GetDict())) {
       continue;
     }
     feature_settings_.insert(

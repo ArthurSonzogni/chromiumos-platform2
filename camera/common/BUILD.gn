@@ -24,6 +24,7 @@ group("all") {
       ":embed_file_toc_test",
       ":future_test",
       ":stream_manipulator_manager_test",
+      "//camera/features:feature_profile_test",
       "//camera/features/zsl:zsl_helper_test",
     ]
   }
