@@ -1319,13 +1319,23 @@ void Cellular::OnDisconnectFailed() {
 }
 
 void Cellular::EstablishLink() {
+  if (skip_establish_link_for_testing_) {
+    return;
+  }
+
   SLOG(this, 2) << __func__;
   CHECK_EQ(State::kConnected, state_);
   CHECK(capability_);
 
   CellularBearer* bearer = capability_->GetActiveBearer();
-  if (bearer &&
-      bearer->ipv4_config_method() == CellularBearer::IPConfigMethod::kPPP) {
+  if (!bearer) {
+    LOG(WARNING) << link_name()
+                 << ": Disconnecting due to missing active bearer.";
+    Disconnect(nullptr, "missing active bearer");
+    return;
+  }
+
+  if (bearer->ipv4_config_method() == CellularBearer::IPConfigMethod::kPPP) {
     LOG(INFO) << "Start PPP connection on " << bearer->data_interface();
     StartPPP(bearer->data_interface());
     return;

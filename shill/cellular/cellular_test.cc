@@ -852,15 +852,16 @@ TEST_P(CellularTest, Connect) {
   EXPECT_EQ(Error::kNotOnHomeNetwork, error.type());
   device_->policy_allow_roaming_ = true;
 
+  // Common state for the successful connection attempts
+  device_->set_skip_establish_link_for_testing(true);
   error.Populate(Error::kSuccess);
-  EXPECT_CALL(device_info_, GetFlags(device_->interface_index(), _))
-      .Times(3)
-      .WillRepeatedly(Return(true));
   EXPECT_CALL(*mm1_simple_proxy_,
               Connect(_, _, CellularCapability::kTimeoutConnect))
       .Times(3)
       .WillRepeatedly(Invoke(this, &CellularTest::InvokeConnect));
   SetCapability3gppModemSimpleProxy();
+
+  // Connection at home network
   device_->service_->roaming_state_ = kRoamingStateHome;
   device_->set_state_for_testing(Cellular::State::kRegistered);
   device_->Connect(device_->service().get(), &error);
@@ -868,6 +869,7 @@ TEST_P(CellularTest, Connect) {
   dispatcher_.DispatchPendingEvents();
   EXPECT_EQ(Cellular::State::kConnected, device_->state());
 
+  // Connection at roaming network
   device_->service_->allow_roaming_ = true;
   device_->service_->roaming_state_ = kRoamingStateRoaming;
   device_->set_state_for_testing(Cellular::State::kRegistered);
@@ -1839,6 +1841,24 @@ TEST_P(CellularTest, OnAfterResumeDisabledWantEnabled) {
   EXPECT_TRUE(device_->enabled_pending());
   EXPECT_TRUE(device_->enabled_persistent());
   EXPECT_EQ(Cellular::State::kModemStarted, device_->state());
+}
+
+TEST_P(CellularTest, EstablishLinkFailureNoBearer) {
+  if (!IsCellularTypeUnderTestOneOf({Cellular::kType3gpp})) {
+    return;
+  }
+
+  // Link establishment without active bearer set will fail and request
+  // disconnection
+  SetRegisteredWithService();
+  device_->set_state_for_testing(Cellular::State::kConnected);
+  EXPECT_CALL(*mm1_simple_proxy_,
+              Disconnect(_, _, CellularCapability::kTimeoutDisconnect))
+      .WillOnce(Invoke(this, &CellularTest::InvokeDisconnect));
+  SetCapability3gppModemSimpleProxy();
+  device_->EstablishLink();
+  dispatcher_.DispatchPendingEvents();
+  EXPECT_EQ(Cellular::State::kRegistered, device_->state());
 }
 
 TEST_P(CellularTest, EstablishLinkDHCP) {

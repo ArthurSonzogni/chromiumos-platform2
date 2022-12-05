@@ -384,6 +384,9 @@ class Cellular : public Device,
   void set_eid_for_testing(const std::string& eid) { eid_ = eid; }
   void set_iccid_for_testing(const std::string& iccid) { iccid_ = iccid; }
   void set_state_for_testing(const State& state) { state_ = state; }
+  void set_skip_establish_link_for_testing(bool on) {
+    skip_establish_link_for_testing_ = on;
+  }
 
   // Delay before connecting to pending connect requests. This helps prevent
   // connect failures while the Modem is still starting up.
@@ -408,6 +411,7 @@ class Cellular : public Device,
   FRIEND_TEST(CellularTest, EstablishLinkDHCP);
   FRIEND_TEST(CellularTest, EstablishLinkPPP);
   FRIEND_TEST(CellularTest, EstablishLinkStatic);
+  FRIEND_TEST(CellularTest, EstablishLinkFailureNoBearer);
   FRIEND_TEST(CellularTest, FriendlyServiceName);
   FRIEND_TEST(CellularTest, HomeProviderServingOperator);
   FRIEND_TEST(CellularTest, LinkEventUpWithPPP);
@@ -745,6 +749,9 @@ class Cellular : public Device,
 
   // The current step of the Stop process.
   std::optional<StopSteps> stop_step_;
+
+  // When set in tests, a connection attempt doesn't attempt link establishment
+  bool skip_establish_link_for_testing_ = false;
 
   base::WeakPtrFactory<Cellular> weak_ptr_factory_{this};
 };
