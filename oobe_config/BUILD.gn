@@ -10,11 +10,9 @@ import("//common-mk/proto_library.gni")
 group("all") {
   deps = [
     ":liboobeconfig",
-    ":librollback_helper",
     ":oobe_config_restore",
     ":oobe_config_save",
     ":rollback_cleanup",
-    ":rollback_prepare_save",
   ]
   if (use.test) {
     deps += [ ":oobe_config_test" ]
@@ -105,31 +103,11 @@ generate_mojom_bindings("librollback_helper_mojom") {
   sources = [ "mojom/rollback_network_config.mojom" ]
 }
 
-# rollback_helper library.
-# Used by rollback_prepare_save and rollback_cleanup.
-static_library("librollback_helper") {
-  sources = [ "rollback_helper.cc" ]
-  configs += [ ":target_defaults" ]
-}
-
-# Helper running as root before oobe_config_save.
-executable("rollback_prepare_save") {
-  sources = [ "rollback_prepare_save_main.cc" ]
-  configs += [ ":target_defaults" ]
-  deps = [
-    ":liboobeconfig",
-    ":librollback_helper",
-  ]
-}
-
-# Helper running as root after oobe_config_restore.
+# Cleanup running as root after oobe_config_restore.
 executable("rollback_cleanup") {
   sources = [ "rollback_cleanup_main.cc" ]
   configs += [ ":target_defaults" ]
-  deps = [
-    ":liboobeconfig",
-    ":librollback_helper",
-  ]
+  deps = [ ":liboobeconfig" ]
 }
 
 proto_library("oobe_config_proto") {
@@ -150,7 +128,6 @@ if (use.test) {
       "filesystem/file_handler_test.cc",
       "load_oobe_config_rollback_test.cc",
       "oobe_config_test.cc",
-      "rollback_helper_test.cc",
     ]
     configs += [
       "//common-mk:test",
@@ -159,7 +136,6 @@ if (use.test) {
     ]
     deps = [
       ":liboobeconfig",
-      ":librollback_helper",
       "//common-mk/testrunner",
     ]
   }

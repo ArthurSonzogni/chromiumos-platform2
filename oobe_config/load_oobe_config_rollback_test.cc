@@ -12,7 +12,6 @@
 
 #include "oobe_config/oobe_config.h"
 #include "oobe_config/oobe_config_test.h"
-#include "oobe_config/rollback_constants.h"
 
 namespace oobe_config {
 

@@ -39,9 +39,15 @@ class FileHandlerForTesting : public FileHandler {
   bool CreatePreservePath() const;
   // Creates the path that is normally created by pstore on boot.
   bool CreateRamoopsPath() const;
+  // Creates /home/chronos.
+  bool CreateChronosPath() const;
 
   // Checks if the flag that indicates oobe_config_save ran successfully exists.
   bool HasDataSavedFlag() const;
+
+  // Places the flag that indicates oobe is completed in oobe_config_save
+  // directory.
+  bool CreateOobeCompletedFlag() const;
 
   // Reads data staged to be preserved across powerwash in pstore from
   // oobe_config_save directory.

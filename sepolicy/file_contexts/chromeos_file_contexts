@@ -513,14 +513,15 @@ has_arc(`
 /sys/fs/cgroup/.*               u:object_r:cgroup:s0
 
 # /mnt
-/mnt/stateful_partition                      u:object_r:cros_stateful_partition:s0
-/mnt/stateful_partition/unencrypted          u:object_r:cros_stateful_partition_unencrypted:s0
-/mnt/stateful_partition/unencrypted/apkcache(/.*)?   u:object_r:apkcache_file:s0
-/mnt/stateful_partition/unencrypted/cache    u:object_r:cros_stateful_partition_unencrypted_cache:s0
-/mnt/stateful_partition/unencrypted/preserve u:object_r:cros_stateful_partition_unencrypted_preserve:s0
-/mnt/stateful_partition/unencrypted/profraws(/.*)? u:object_r:cros_stateful_partition_unencrypted_profraws:s0
-/mnt/stateful_partition/unencrypted/rma-data(/.*)?   u:object_r:cros_stateful_partition_unencrypted_rma:s0
-/mnt/stateful_partition/unencrypted/tpm_manager(/.*)?   u:object_r:cros_stateful_partition_unencrypted_tpm_manager:s0
+/mnt/stateful_partition                                        u:object_r:cros_stateful_partition:s0
+/mnt/stateful_partition/unencrypted                            u:object_r:cros_stateful_partition_unencrypted:s0
+/mnt/stateful_partition/unencrypted/apkcache(/.*)?             u:object_r:apkcache_file:s0
+/mnt/stateful_partition/unencrypted/cache                      u:object_r:cros_stateful_partition_unencrypted_cache:s0
+/mnt/stateful_partition/unencrypted/preserve                   u:object_r:cros_stateful_partition_unencrypted_preserve:s0
+/mnt/stateful_partition/unencrypted/preserve/rollback_data     u:object_r:cros_var_lib_oobe_config_save:s0
+/mnt/stateful_partition/unencrypted/profraws(/.*)?             u:object_r:cros_stateful_partition_unencrypted_profraws:s0
+/mnt/stateful_partition/unencrypted/rma-data(/.*)?             u:object_r:cros_stateful_partition_unencrypted_rma:s0
+/mnt/stateful_partition/unencrypted/tpm_manager(/.*)?          u:object_r:cros_stateful_partition_unencrypted_tpm_manager:s0
 /mnt/stateful_partition/unencrypted/userspace_swap.tmp(/.*)?   u:object_r:cros_stateful_partition_unencrypted_userspace_swap:s0
 
 # These are bind mounts so they need to match their other labels.

@@ -12,7 +12,6 @@
 
 #include "oobe_config/oobe_config.h"
 #include "oobe_config/oobe_config_restore_service.h"
-#include "oobe_config/rollback_constants.h"
 
 using brillo::dbus_utils::AsyncEventSequencer;
 using brillo::dbus_utils::DBusObject;
@@ -60,11 +59,6 @@ class OobeConfigRestoreDaemon : public brillo::DBusServiceDaemon {
 
 // Runs OobeConfigRestoreDaemon.
 int RunDaemon(bool force_start) {
-  if (!force_start && base::PathExists(base::FilePath(kOobeCompletedFile))) {
-    LOG(INFO) << "OOBE is already complete.";
-    return 0;
-  }
-
   LOG(INFO) << "Starting oobe_config_restore daemon";
   OobeConfigRestoreDaemon daemon;
   int res = daemon.Run();

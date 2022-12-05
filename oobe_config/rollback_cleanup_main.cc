@@ -7,28 +7,13 @@
 #include <base/logging.h>
 #include <brillo/syslog_logging.h>
 
-#include "oobe_config/rollback_helper.h"
-
-namespace {
-
-void InitLog() {
-  brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderrIfTty);
-  logging::SetLogItems(true /* enable_process_id */,
-                       true /* enable_thread_id */, true /* enable_timestamp */,
-                       true /* enable_tickcount */);
-}
-
-}  // namespace
+#include "oobe_config/filesystem/file_handler.h"
 
 // Cleans up after a rollback happened by deleting any remaining files.
 // Should be called once the device is owned.
 int main(int argc, char* argv[]) {
-  InitLog();
-
-  LOG(INFO)
-      << "OOBE is already complete. Cleaning up restore files if they exist.";
-  oobe_config::CleanupRestoreFiles(
-      base::FilePath() /* root_path */,
-      std::set<std::string>() /* excluded_files */);
+  oobe_config::FileHandler file_handler;
+  file_handler.RemoveRestorePath();
+  file_handler.RemoveEncryptedRollbackData();
   return 0;
 }

@@ -7,8 +7,6 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 
-#include "oobe_config/rollback_constants.h"
-
 namespace oobe_config {
 
 FileHandler::FileHandler(const std::string& root_directory)
@@ -22,6 +20,10 @@ FileHandler::~FileHandler() = default;
 
 bool FileHandler::HasRestorePath() const {
   return base::PathExists(GetFullPath(kDataRestorePath));
+}
+
+bool FileHandler::RemoveRestorePath() const {
+  return base::DeletePathRecursively(GetFullPath(kDataRestorePath));
 }
 
 bool FileHandler::HasEncryptedRollbackData() const {
@@ -43,6 +45,11 @@ bool FileHandler::WriteEncryptedRollbackData(
       GetFullPath(kPreservePath).Append(kRollbackDataFileName);
 
   return base::WriteFile(encrypted_data_file, encrypted_rollback_data);
+}
+
+bool FileHandler::RemoveEncryptedRollbackData() const {
+  return base::DeleteFile(
+      GetFullPath(kPreservePath).Append(kRollbackDataFileName));
 }
 
 bool FileHandler::HasDecryptedRollbackData() const {
@@ -84,17 +91,12 @@ bool FileHandler::CreateDataSavedFlag() const {
 
 bool FileHandler::HasOobeCompletedFlag() const {
   return base::PathExists(
-      GetFullPath(kDataSavePath).Append(kOobeCompletedFileName));
-}
-
-bool FileHandler::CreateOobeCompletedFlag() const {
-  return base::WriteFile(
-      GetFullPath(kDataSavePath).Append(kOobeCompletedFileName), std::string());
+      GetFullPath(kChronosPath).Append(kOobeCompletedFileName));
 }
 
 bool FileHandler::HasMetricsReportingEnabledFlag() const {
   return base::PathExists(
-      GetFullPath(kDataSavePath).Append(kMetricsReportingEnabledFileName));
+      GetFullPath(kChronosPath).Append(kMetricsReportingEnabledFileName));
 }
 
 bool FileHandler::WritePstoreData(const std::string& data) const {

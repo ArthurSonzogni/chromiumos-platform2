@@ -41,9 +41,9 @@ class FileHandlerTest : public ::testing::Test {
   static constexpr char kExpectedDataSavedFlag[] =
       "var/lib/oobe_config_save/.data_saved";
   static constexpr char kExpectedOobeCompletedFlag[] =
-      "var/lib/oobe_config_save/.oobe_completed";
+      "home/chronos/.oobe_completed";
   static constexpr char kExpectedMetricsReportingEnabledFlag[] =
-      "var/lib/oobe_config_save/Consent To Send Stats";
+      "home/chronos/Consent To Send Stats";
   static constexpr char kExpectedPstoreData[] =
       "var/lib/oobe_config_save/data_for_pstore";
   static constexpr char kExpectedRamoopsPath[] = "sys/fs/pstore";
@@ -149,6 +149,12 @@ TEST_F(FileHandlerTest, HasRestorePath) {
                                         base::Unretained(&file_handler)));
 }
 
+TEST_F(FileHandlerTest, RemoveRestorePath) {
+  VerifyRemoveFunction(FileHandlerTest::kExpectedRestorePath,
+                       base::BindRepeating(&FileHandler::RemoveRestorePath,
+                                           base::Unretained(&file_handler)));
+}
+
 TEST_F(FileHandlerTest, HasEncryptedRollbackData) {
   VerifyHasFunction(FileHandlerTest::kExpectedEncryptedRollbackData,
                     base::BindRepeating(&FileHandler::HasEncryptedRollbackData,
@@ -166,6 +172,13 @@ TEST_F(FileHandlerTest, WriteEncryptedRollbackData) {
   VerifyWriteFunction(
       FileHandlerTest::kExpectedEncryptedRollbackData,
       base::BindRepeating(&FileHandler::WriteEncryptedRollbackData,
+                          base::Unretained(&file_handler)));
+}
+
+TEST_F(FileHandlerTest, RemoveEncryptedRollbackData) {
+  VerifyRemoveFunction(
+      FileHandlerTest::kExpectedEncryptedRollbackData,
+      base::BindRepeating(&FileHandler::RemoveEncryptedRollbackData,
                           base::Unretained(&file_handler)));
 }
 
@@ -221,13 +234,6 @@ TEST_F(FileHandlerTest, HasOobeCompletedFlag) {
   VerifyHasFunction(FileHandlerTest::kExpectedOobeCompletedFlag,
                     base::BindRepeating(&FileHandler::HasOobeCompletedFlag,
                                         base::Unretained(&file_handler)));
-}
-
-TEST_F(FileHandlerTest, CreateOobeCompletedFlag) {
-  VerifyCreateFlagFunction(
-      FileHandlerTest::kExpectedOobeCompletedFlag,
-      base::BindRepeating(&FileHandler::CreateOobeCompletedFlag,
-                          base::Unretained(&file_handler)));
 }
 
 TEST_F(FileHandlerTest, HasMetricsReportingEnabledFlag) {

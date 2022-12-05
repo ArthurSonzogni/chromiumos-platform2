@@ -33,7 +33,6 @@
 #include <mojo/public/cpp/system/invitation.h>
 
 #include "mojom/rollback_network_config.mojom.h"
-#include "oobe_config/rollback_constants.h"
 
 namespace oobe_config {
 

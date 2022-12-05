@@ -8,7 +8,6 @@
 #include <base/files/file_util.h>
 
 #include "oobe_config/filesystem/file_handler.h"
-#include "oobe_config/rollback_constants.h"
 
 namespace oobe_config {
 
@@ -26,7 +25,7 @@ FileHandlerForTesting::~FileHandlerForTesting() = default;
 
 bool FileHandlerForTesting::CreateDefaultExistingPaths() const {
   return CreateRamoopsPath() && CreateSavePath() && CreatePreservePath() &&
-         CreateRestorePath();
+         CreateRestorePath() && CreateChronosPath();
 }
 
 bool FileHandlerForTesting::CreateRestorePath() const {
@@ -45,9 +44,18 @@ bool FileHandlerForTesting::CreateRamoopsPath() const {
   return base::CreateDirectory(GetFullPath(kRamoopsPath));
 }
 
+bool FileHandlerForTesting::CreateChronosPath() const {
+  return base::CreateDirectory(GetFullPath(kChronosPath));
+}
+
 bool FileHandlerForTesting::HasDataSavedFlag() const {
   return base::PathExists(
       GetFullPath(kDataSavePath).Append(kDataSavedFileName));
+}
+
+bool FileHandlerForTesting::CreateOobeCompletedFlag() const {
+  return base::WriteFile(
+      GetFullPath(kChronosPath).Append(kOobeCompletedFileName), std::string());
 }
 
 bool FileHandlerForTesting::ReadPstoreData(std::string* data) const {

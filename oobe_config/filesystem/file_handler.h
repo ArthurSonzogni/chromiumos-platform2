@@ -33,6 +33,8 @@ class FileHandler {
   // Checks if the folder in encrypted stateful used by oobe_config_restore
   // exists.
   bool HasRestorePath() const;
+  // Removes the folder in encrypted stateful used by oobe_config_restore.
+  bool RemoveRestorePath() const;
 
   // Checks if encrypted rollback data in powerwash-safe directory exists.
   bool HasEncryptedRollbackData() const;
@@ -41,6 +43,8 @@ class FileHandler {
   // Writes encrypted rollback data to powerwash-safe directory.
   bool WriteEncryptedRollbackData(
       const std::string& encrypted_rollback_data) const;
+  // Removes encrypted rollback data in powerwash-safe directory.
+  bool RemoveEncryptedRollbackData() const;
 
   // Checks if decrypted rollback data in oobe_config_restore directory exists.
   bool HasDecryptedRollbackData() const;
@@ -64,9 +68,6 @@ class FileHandler {
   // Checks if the flag that indicates oobe is completed exists in
   // oobe_config_save directory.
   bool HasOobeCompletedFlag() const;
-  // Places the flag that indicates oobe is completed in oobe_config_save
-  // directory.
-  bool CreateOobeCompletedFlag() const;
 
   // Checks if the flag that indicates metrics reporting is enabled exists in
   // oobe_config_save directory.
@@ -84,12 +85,17 @@ class FileHandler {
       "mnt/stateful_partition/unencrypted/preserve";
   static constexpr char kDataRestorePath[] = "var/lib/oobe_config_restore";
   static constexpr char kDataSavePath[] = "var/lib/oobe_config_save";
+  static constexpr char kChronosPath[] = "home/chronos";
 
   static constexpr char kSaveRollbackDataFile[] =
       "mnt/stateful_partition/.save_rollback_data";
 
   static constexpr char kRollbackDataFileName[] = "rollback_data";
   static constexpr char kDataSavedFileName[] = ".data_saved";
+
+  static constexpr char kOobeCompletedFileName[] = ".oobe_completed";
+  static constexpr char kMetricsReportingEnabledFileName[] =
+      "Consent To Send Stats";
 
   static constexpr char kRamoopsFilePattern[] = "pmsg-ramoops-*";
   static constexpr char kRamoopsPath[] = "sys/fs/pstore/";
