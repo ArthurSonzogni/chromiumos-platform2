@@ -75,6 +75,15 @@ const int kBatteryDischargeRateWhileSuspendedMax = 5000;
 const base::TimeDelta kBatteryDischargeRateWhileSuspendedMinSuspend =
     base::Minutes(10);
 
+const char kBatteryLifeName[] = "Power.BatteryLife";  // minute
+const int kBatteryLifeMin = 1;
+const int kBatteryLifeMax = 48 * 60;
+
+const char kBatteryLifeWhileSuspendedName[] =
+    "Power.BatteryLifeWhileSuspended";  // hour
+const int kBatteryLifeWhileSuspendedMin = 1;
+const int kBatteryLifeWhileSuspendedMax = 60 * 24;
+
 const char kBatteryRemainingWhenChargeStartsName[] =
     "Power.BatteryRemainingWhenChargeStarts";  // %
 const char kBatteryRemainingAtEndOfSessionName[] =

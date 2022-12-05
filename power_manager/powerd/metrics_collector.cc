@@ -544,6 +544,25 @@ void MetricsCollector::GenerateBatteryDischargeRateMetric() {
   if (SendMetric(kBatteryDischargeRateName, rate, kBatteryDischargeRateMin,
                  kBatteryDischargeRateMax, kDefaultDischargeBuckets))
     last_battery_discharge_rate_metric_timestamp_ = clock_.GetCurrentTime();
+
+  double low_battery_shutdown_percent = 0.0;
+  prefs_->GetDouble(kLowBatteryShutdownPercentPref,
+                    &low_battery_shutdown_percent);
+
+  int battery_life_actual =
+      static_cast<int>(round(60 * last_power_status_.battery_energy_full /
+                             last_power_status_.battery_energy_rate *
+                             (100 - low_battery_shutdown_percent) / 100.0));
+  int battery_life_design = static_cast<int>(
+      round(60 * last_power_status_.battery_energy_full_design /
+            last_power_status_.battery_energy_rate *
+            (100 - low_battery_shutdown_percent) / 100.0));
+
+  std::string metrics_name = kBatteryLifeName;
+  SendMetric(metrics_name + kBatteryCapacityActualSuffix, battery_life_actual,
+             kBatteryLifeMin, kBatteryLifeMax, kDefaultDischargeBuckets);
+  SendMetric(metrics_name + kBatteryCapacityDesignSuffix, battery_life_design,
+             kBatteryLifeMin, kBatteryLifeMax, kDefaultDischargeBuckets);
 }
 
 void MetricsCollector::GenerateBatteryDischargeRateWhileSuspendedMetric() {
@@ -577,6 +596,26 @@ void MetricsCollector::GenerateBatteryDischargeRateWhileSuspendedMetric() {
              static_cast<int>(round(discharge_rate_watts * 1000)),
              kBatteryDischargeRateWhileSuspendedMin,
              kBatteryDischargeRateWhileSuspendedMax, kDefaultDischargeBuckets);
+
+  // We don't care about battery life while hibernate.
+  if (last_suspend_was_hibernate_)
+    return;
+
+  if (discharge_rate_watts <= 0.0)
+    return;
+
+  std::string metrics_name = kBatteryLifeWhileSuspendedName;
+  SendMetric(metrics_name + kBatteryCapacityActualSuffix,
+             static_cast<int>(round(last_power_status_.battery_energy_full /
+                                    discharge_rate_watts)),
+             kBatteryLifeWhileSuspendedMin, kBatteryLifeWhileSuspendedMax,
+             kDefaultDischargeBuckets);
+  SendMetric(
+      metrics_name + kBatteryCapacityDesignSuffix,
+      static_cast<int>(round(last_power_status_.battery_energy_full_design /
+                             discharge_rate_watts)),
+      kBatteryLifeWhileSuspendedMin, kBatteryLifeWhileSuspendedMax,
+      kDefaultDischargeBuckets);
 }
 
 void MetricsCollector::GenerateAdaptiveChargingUnplugMetrics(

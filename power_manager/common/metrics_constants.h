@@ -76,6 +76,14 @@ extern const int kBatteryDischargeRateWhileSuspendedMin;
 extern const int kBatteryDischargeRateWhileSuspendedMax;
 extern const base::TimeDelta kBatteryDischargeRateWhileSuspendedMinSuspend;
 
+extern const char kBatteryLifeName[];
+extern const int kBatteryLifeMin;
+extern const int kBatteryLifeMax;
+
+extern const char kBatteryLifeWhileSuspendedName[];
+extern const int kBatteryLifeWhileSuspendedMin;
+extern const int kBatteryLifeWhileSuspendedMax;
+
 extern const char kBatteryRemainingWhenChargeStartsName[];
 extern const char kBatteryRemainingAtEndOfSessionName[];
 extern const char kBatteryRemainingAtStartOfSessionName[];

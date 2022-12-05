@@ -117,6 +117,12 @@ class MetricsCollectorTest : public Test {
     IgnoreMetric(kBatteryDischargeRateName);
     IgnoreMetric(kBatteryDischargeRateWhileHibernatedName);
     IgnoreMetric(kBatteryDischargeRateWhileSuspendedName);
+    IgnoreMetric(std::string(kBatteryLifeName) + kBatteryCapacityActualSuffix);
+    IgnoreMetric(std::string(kBatteryLifeName) + kBatteryCapacityDesignSuffix);
+    IgnoreMetric(std::string(kBatteryLifeWhileSuspendedName) +
+                 kBatteryCapacityActualSuffix);
+    IgnoreMetric(std::string(kBatteryLifeWhileSuspendedName) +
+                 kBatteryCapacityDesignSuffix);
     IgnoreEnumMetric(kBatteryInfoSampleName);
     IgnoreEnumMetric(kPowerSupplyTypeName);
     IgnoreEnumMetric(kPowerSupplyMaxVoltageName);
@@ -168,9 +174,18 @@ class MetricsCollectorTest : public Test {
         .WillRepeatedly(Return(true));
   }
 
-  void ExpectBatteryDischargeRateMetric(int sample) {
-    ExpectMetric(kBatteryDischargeRateName, sample, kBatteryDischargeRateMin,
-                 kBatteryDischargeRateMax, kDefaultDischargeBuckets);
+  void ExpectBatteryDischargeRateMetric(int discharge_rate,
+                                        int battery_life_actual,
+                                        int battery_life_design) {
+    ExpectMetric(kBatteryDischargeRateName, discharge_rate,
+                 kBatteryDischargeRateMin, kBatteryDischargeRateMax,
+                 kDefaultDischargeBuckets);
+    ExpectMetric(std::string(kBatteryLifeName) + kBatteryCapacityActualSuffix,
+                 battery_life_actual, kBatteryLifeMin, kBatteryLifeMax,
+                 kDefaultDischargeBuckets);
+    ExpectMetric(std::string(kBatteryLifeName) + kBatteryCapacityDesignSuffix,
+                 battery_life_design, kBatteryLifeMin, kBatteryLifeMax,
+                 kDefaultDischargeBuckets);
   }
 
   void ExpectNumOfSessionsPerChargeMetric(int sample) {
@@ -265,26 +280,41 @@ TEST_F(MetricsCollectorTest, BacklightLevel) {
 
 TEST_F(MetricsCollectorTest, BatteryDischargeRate) {
   power_status_.line_power_on = false;
+  prefs_.SetDouble(kLowBatteryShutdownPercentPref, 10.0);
   Init();
 
   metrics_to_test_.insert(kBatteryDischargeRateName);
+  metrics_to_test_.insert(std::string(kBatteryLifeName) +
+                          kBatteryCapacityActualSuffix);
+  metrics_to_test_.insert(std::string(kBatteryLifeName) +
+                          kBatteryCapacityDesignSuffix);
+
   IgnoreHandlePowerStatusUpdateMetrics();
 
   // This much time must elapse before the discharge rate will be reported
   // again.
   const base::TimeDelta interval = kBatteryDischargeRateInterval;
 
+  power_status_.battery_energy_full = 50.0;
+  power_status_.battery_energy_full_design = 60.0;
+
   power_status_.battery_energy_rate = 5.0;
-  ExpectBatteryDischargeRateMetric(5000);
+  int actual = round(60.0 * 50.0 / 5.0 * 0.9);
+  int design = round(60.0 * 60.0 / 5.0 * 0.9);
+  ExpectBatteryDischargeRateMetric(5000, actual, design);
   collector_.HandlePowerStatusUpdate(power_status_);
 
   power_status_.battery_energy_rate = 4.5;
-  ExpectBatteryDischargeRateMetric(4500);
+  actual = round(60.0 * 50.0 / 4.5 * 0.9);
+  design = round(60.0 * 60.0 / 4.5 * 0.9);
+  ExpectBatteryDischargeRateMetric(4500, actual, design);
   AdvanceTime(interval);
   collector_.HandlePowerStatusUpdate(power_status_);
 
   power_status_.battery_energy_rate = 6.4;
-  ExpectBatteryDischargeRateMetric(6400);
+  actual = round(60.0 * 50.0 / 6.4 * 0.9);
+  design = round(60.0 * 60.0 / 6.4 * 0.9);
+  ExpectBatteryDischargeRateMetric(6400, actual, design);
   AdvanceTime(interval);
   collector_.HandlePowerStatusUpdate(power_status_);
 
@@ -346,7 +376,6 @@ TEST_F(MetricsCollectorTest, BatteryInfoWhenChargeStarts) {
         std::string(kBatteryCapacityName) + kBatteryCapacityDesignSuffix,
         round(1000.0 * power_status_.battery_energy_full_design),
         kBatteryCapacityMin, kBatteryCapacityMax, kDefaultBuckets);
-
     collector_.HandlePowerStatusUpdate(power_status_);
 
     Mock::VerifyAndClearExpectations(metrics_lib_);
@@ -599,8 +628,15 @@ TEST_F(MetricsCollectorTest, BatteryDischargeRateWhileSuspended) {
 
   metrics_to_test_.insert(kBatteryDischargeRateWhileSuspendedName);
   metrics_to_test_.insert(kBatteryDischargeRateWhileHibernatedName);
+  metrics_to_test_.insert(std::string(kBatteryLifeWhileSuspendedName) +
+                          kBatteryCapacityActualSuffix);
+  metrics_to_test_.insert(std::string(kBatteryLifeWhileSuspendedName) +
+                          kBatteryCapacityDesignSuffix);
+
   power_status_.line_power_on = false;
   power_status_.battery_energy = kEnergyAfterResume;
+  power_status_.battery_energy_full = 50.0;
+  power_status_.battery_energy_full_design = 60.0;
   Init();
 
   // We shouldn't send a sample if we haven't suspended.
@@ -685,10 +721,19 @@ TEST_F(MetricsCollectorTest, BatteryDischargeRateWhileSuspended) {
                kBatteryDischargeRateWhileSuspendedMin,
                kBatteryDischargeRateWhileSuspendedMax,
                kDefaultDischargeBuckets);
+  ExpectMetric(std::string(kBatteryLifeWhileSuspendedName) +
+                   kBatteryCapacityActualSuffix,
+               round(1000.0 * 50.0 / rate_mw), kBatteryLifeWhileSuspendedMin,
+               kBatteryLifeWhileSuspendedMax, kDefaultDischargeBuckets);
+  ExpectMetric(std::string(kBatteryLifeWhileSuspendedName) +
+                   kBatteryCapacityDesignSuffix,
+               round(1000.0 * 60.0 / rate_mw), kBatteryLifeWhileSuspendedMin,
+               kBatteryLifeWhileSuspendedMax, kDefaultDischargeBuckets);
   collector_.HandlePowerStatusUpdate(power_status_);
 
   // The name of the metric should change to hibernate if this was a resume from
   // hibernation.
+  // We also shouldn't report Power.BatteryLifeWhileSuspended metrics.
   power_status_.battery_energy = kEnergyBeforeSuspend;
   IgnoreHandlePowerStatusUpdateMetrics();
   collector_.HandlePowerStatusUpdate(power_status_);
