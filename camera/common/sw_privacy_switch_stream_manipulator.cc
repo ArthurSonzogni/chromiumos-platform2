@@ -16,9 +16,11 @@
 #include <sync/sync.h>
 
 #include "common/camera_hal3_helpers.h"
+#include "common/common_tracing.h"
 #include "cros-camera/camera_buffer_manager.h"
 #include "cros-camera/exif_utils.h"
 #include "cros-camera/jpeg_compressor.h"
+#include "cros-camera/tracing.h"
 
 namespace cros {
 
@@ -82,6 +84,7 @@ bool SWPrivacySwitchStreamManipulator::ProcessCaptureRequest(
 
 bool SWPrivacySwitchStreamManipulator::ProcessCaptureResult(
     Camera3CaptureDescriptor result) {
+  TRACE_COMMON(kCameraTraceKeyFrameNumber, result.frame_number());
   if (runtime_options_->sw_privacy_switch_state() !=
       mojom::CameraPrivacySwitchState::ON) {
     result_callback_.Run(std::move(result));
