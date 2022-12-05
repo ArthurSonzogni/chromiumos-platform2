@@ -53,9 +53,6 @@ constexpr char kRpId[] = "example.com";
 // Wrong RP id is used to test app id extension path.
 constexpr char kWrongRpId[] = "wrong.com";
 
-constexpr uint8_t kSigR[32] = {[0 ... 31] = 0x12};
-constexpr uint8_t kSigS[32] = {[0 ... 31] = 0x34};
-
 // AuthenticatorData field sizes, in bytes.
 constexpr int kRpIdHashBytes = 32;
 constexpr int kAuthenticatorDataFlagBytes = 1;
@@ -115,7 +112,8 @@ CredentialPublicKey GetCredPubKey() {
 }
 
 std::vector<uint8_t> GetSignature() {
-  return *util::SignatureToDerBytes(kSigR, kSigS);
+  return *util::SignatureToDerBytes(std::vector<uint8_t>(32, 0x12),
+                                    std::vector<uint8_t>(32, 0x34));
 }
 
 brillo::SecureBlob ArrayToSecureBlob(const char* array) {

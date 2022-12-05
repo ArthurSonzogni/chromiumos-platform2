@@ -426,8 +426,7 @@ TEST_F(U2fCommandProcessorVendorTest, U2fSignPresenceSuccess) {
   EXPECT_EQ(U2fSign(GetHashToSign(), GetCredId(),
                     PresenceRequirement::kPowerButton, &signature),
             MakeCredentialResponse::SUCCESS);
-  EXPECT_EQ(signature,
-            util::SignatureToDerBytes(GetSigR().data(), GetSigS().data()));
+  EXPECT_EQ(signature, util::SignatureToDerBytes(GetSigR(), GetSigS()));
   presence_requested_expected_ = 1;
 }
 
@@ -443,8 +442,7 @@ TEST_F(U2fCommandProcessorVendorTest, U2fSignVersionedSuccess) {
   EXPECT_EQ(U2fSign(GetHashToSign(), credential_id, PresenceRequirement::kNone,
                     &signature),
             MakeCredentialResponse::SUCCESS);
-  EXPECT_EQ(signature,
-            util::SignatureToDerBytes(GetSigR().data(), GetSigS().data()));
+  EXPECT_EQ(signature, util::SignatureToDerBytes(GetSigR(), GetSigS()));
 }
 
 TEST_F(U2fCommandProcessorVendorTest, U2fSignCheckOnlyWrongRpIdHash) {

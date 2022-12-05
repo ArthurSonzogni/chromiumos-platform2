@@ -139,7 +139,7 @@ GetAssertionResponse::GetAssertionStatus U2fCommandProcessorVendor::U2fSign(
               .As(GetAssertionResponse::INTERNAL_ERROR));
 
       std::optional<std::vector<uint8_t>> opt_signature =
-          util::SignatureToDerBytes(sig.r.data(), sig.s.data());
+          util::SignatureToDerBytes(sig.r, sig.s);
       if (!opt_signature.has_value()) {
         return GetAssertionResponse::INTERNAL_ERROR;
       }
@@ -215,7 +215,7 @@ U2fCommandProcessorVendor::G2fAttest(
           .As(MakeCredentialResponse::INTERNAL_ERROR));
 
   std::optional<std::vector<uint8_t>> sig_opt =
-      util::SignatureToDerBytes(signature.r.data(), signature.s.data());
+      util::SignatureToDerBytes(signature.r, signature.s);
 
   if (!sig_opt.has_value()) {
     LOG(ERROR) << "DER encoding of U2F_ATTEST signature failed.";
@@ -322,7 +322,7 @@ U2fCommandProcessorVendor::SendU2fSignWaitForPresence(
   }
 
   std::optional<std::vector<uint8_t>> opt_signature =
-      util::SignatureToDerBytes(sign_result->r.data(), sign_result->s.data());
+      util::SignatureToDerBytes(sign_result->r, sign_result->s);
   if (!opt_signature.has_value()) {
     LOG(ERROR) << "Failed to parse U2f signature.";
     return GetAssertionResponse::INTERNAL_ERROR;

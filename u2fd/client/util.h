@@ -72,8 +72,8 @@ void U2F_CLIENT_EXPORT AppendSubstringToVector(const std::string& from,
 
 // Attempts to convert the specified ECDSA signature (specified as r and s
 // values) to DER encoding; returns std::nullopt on error.
-std::optional<std::vector<uint8_t>> U2F_CLIENT_EXPORT
-SignatureToDerBytes(const uint8_t* r, const uint8_t* s);
+std::optional<std::vector<uint8_t>> U2F_CLIENT_EXPORT SignatureToDerBytes(
+    const std::vector<uint8_t>& r, const std::vector<uint8_t>& s);
 
 // Returns the SHA-256 of the specified data.
 template <typename Blob>

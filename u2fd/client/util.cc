@@ -47,15 +47,20 @@ std::vector<uint8_t> ToVector(const std::string& str) {
   return vect;
 }
 
-std::optional<std::vector<uint8_t>> SignatureToDerBytes(const uint8_t* r,
-                                                        const uint8_t* s) {
+std::optional<std::vector<uint8_t>> SignatureToDerBytes(
+    const std::vector<uint8_t>& r, const std::vector<uint8_t>& s) {
+  if (r.size() != 32 || s.size() != 32) {
+    LOG(ERROR) << "Incorrect input signature size.";
+    return std::nullopt;
+  }
   crypto::ScopedBIGNUM sig_r(BN_new()), sig_s(BN_new());
   crypto::ScopedECDSA_SIG sig(ECDSA_SIG_new());
   if (!sig_r || !sig_s || !sig) {
     LOG(ERROR) << "Failed to allocate ECDSA_SIG or BIGNUM.";
     return std::nullopt;
   }
-  if (!BN_bin2bn(r, 32, sig_r.get()) || !BN_bin2bn(s, 32, sig_s.get())) {
+  if (!BN_bin2bn(r.data(), 32, sig_r.get()) ||
+      !BN_bin2bn(s.data(), 32, sig_s.get())) {
     LOG(ERROR) << "Failed to convert ECDSA_SIG parameters to BIGNUM";
     return std::nullopt;
   }

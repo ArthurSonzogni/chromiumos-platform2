@@ -197,7 +197,7 @@ U2fResponseApdu U2fMessageHandler::ProcessU2fRegister(
                          .As(BuildEmptyResponse(U2F_SW_WTF)));
 
     std::optional<std::vector<uint8_t>> sig_der =
-        util::SignatureToDerBytes(sig.r.data(), sig.s.data());
+        util::SignatureToDerBytes(sig.r, sig.s);
     if (!sig_der.has_value()) {
       LOG(ERROR) << "DER encoding of U2F_ATTEST signature failed.";
       return BuildEmptyResponse(U2F_SW_WTF);
@@ -306,7 +306,7 @@ U2fResponseApdu U2fMessageHandler::ProcessU2fAuthenticate(
         action == TPMRetryAction::kUserAuth ? U2F_SW_WRONG_DATA : U2F_SW_WTF);
   }
   std::optional<std::vector<uint8_t>> sig_der =
-      util::SignatureToDerBytes(sig->r.data(), sig->s.data());
+      util::SignatureToDerBytes(sig->r, sig->s);
   if (!sig_der.has_value()) {
     return BuildEmptyResponse(U2F_SW_WTF);
   }
