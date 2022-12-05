@@ -138,8 +138,8 @@ class CROS_CAMERA_EXPORT DeviceConfig {
   std::optional<int> count_;
 
   // Detailed topology of the camera devices, or empty when this information is
-  // not available. |count_| has value |devices_.size()| if |devices_| is not
-  // empty.
+  // not available. |count_| has value |cros_config_cameras_.size()| if
+  // |cros_config_cameras_| is not empty.
   std::vector<CrosConfigCameraInfo> cros_config_cameras_;
 
   std::optional<std::vector<PlatformCameraInfo>> platform_cameras_;
