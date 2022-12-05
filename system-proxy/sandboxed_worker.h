@@ -30,7 +30,10 @@ class SandboxedWorker {
   SandboxedWorker& operator=(const SandboxedWorker&) = delete;
   virtual ~SandboxedWorker() = default;
 
-  // Starts a sandboxed worker with pipes.
+  // Starts a sandboxed worker with pipes. I/O on the pipes is blocking so the
+  // system may stall until the entire message is sent and received via the
+  // communication channel provided by the pipes.
+  // TODO(b/261827928): Make pipes non-blocking.
   virtual bool Start();
   // Sends the credentials which include username, password and protection
   // space (optional) to the worker via communication pipes.

@@ -79,14 +79,6 @@ bool SandboxedWorker::Start() {
     return false;
   }
 
-  // Make sure the pipes never block.
-  if (!base::SetNonBlocking(child_stdin))
-    LOG(WARNING) << "Failed to set stdin non-blocking";
-  if (!base::SetNonBlocking(child_stdout))
-    LOG(WARNING) << "Failed to set stdout non-blocking";
-  if (!base::SetNonBlocking(child_stderr))
-    LOG(WARNING) << "Failed to set stderr non-blocking";
-
   stdin_pipe_.reset(child_stdin);
   stdout_pipe_.reset(child_stdout);
   stderr_pipe_.reset(child_stderr);
