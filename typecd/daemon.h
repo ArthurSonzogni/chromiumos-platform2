@@ -38,10 +38,6 @@ class Daemon : public brillo::DBusServiceDaemon {
   // state retrieved from the |session_manager_proxy_|.
   void InitUserActiveState();
 
-  // Routine to handle D-Bus calls to notify of a change in Peripheral Data
-  // Access setting state.
-  void HandlePeripheralDataAccessChanged(bool enabled);
-
   std::unique_ptr<UdevMonitor> udev_monitor_;
   std::unique_ptr<PortManager> port_manager_;
   std::unique_ptr<SessionManagerProxy> session_manager_proxy_;

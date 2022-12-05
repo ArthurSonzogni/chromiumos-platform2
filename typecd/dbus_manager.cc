@@ -23,4 +23,16 @@ void DBusManager::NotifyCableWarning(CableWarningType type) {
   SendCableWarningSignal(static_cast<uint32_t>(type));
 }
 
+bool DBusManager::SetPeripheralDataAccess(brillo::ErrorPtr* err, bool enabled) {
+  if (!features_client_) {
+    LOG(ERROR) << "Unable to call SetPeripheralDataAccessEnabled";
+    brillo::Error::AddTo(err, FROM_HERE, "Typecd", "no_features_client",
+                         "Typecd DBusManager failed features_client_ check");
+    return false;
+  }
+
+  features_client_->SetPeripheralDataAccessEnabled(enabled);
+  return true;
+}
+
 }  // namespace typecd

@@ -31,5 +31,16 @@
         </tp:docstring>
       </arg>
     </signal>
+    <method name="SetPeripheralDataAccess">
+      <tp:docstring>
+        Sets value in typecd to track the user's peripheral data access setting.
+      </tp:docstring>
+      <arg name="enabled" type="b" direction="in">
+        <tp:docstring>
+          Used to signal the user's peripheral data access setting. Set to true
+          if it is enabled and false if it is disabled.
+        </tp:docstring>
+      </arg>
+    </method>
   </interface>
 </node>

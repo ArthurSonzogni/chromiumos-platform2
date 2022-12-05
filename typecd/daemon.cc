@@ -46,12 +46,12 @@ int Daemon::OnInit() {
   cros_ec_util_ = std::make_unique<CrosECUtil>(bus_);
   port_manager_->SetECUtil(cros_ec_util_.get());
 
-  dbus_mgr_ = std::make_unique<DBusManager>(dbus_object_.get());
   port_manager_->SetDBusManager(dbus_mgr_.get());
 
   features_client_ = std::make_unique<ChromeFeaturesServiceClient>(bus_);
   features_client_->FetchPeripheralDataAccessEnabled();
   port_manager_->SetFeaturesClient(features_client_.get());
+  dbus_mgr_->SetFeaturesClient(features_client_.get());
 
   // Stash whether mode entry is supported at init, instead of querying it
   // repeatedly.
@@ -88,20 +88,10 @@ void Daemon::RegisterDBusObjectsAsync(
   DCHECK(!dbus_object_);
   dbus_object_ = std::make_unique<brillo::dbus_utils::DBusObject>(
       object_manager_.get(), bus_, dbus::ObjectPath(kTypecdServicePath));
-
-  brillo::dbus_utils::DBusInterface* dbus_interface =
-      dbus_object_->AddOrGetInterface(kTypecdServiceInterface);
-  CHECK(dbus_interface) << "Couldn't get dbus_interface";
-  dbus_interface->AddSimpleMethodHandler(
-      kTypecdSetPeripheralDataAccessMethod, base::Unretained(this),
-      &Daemon::HandlePeripheralDataAccessChanged);
+  dbus_mgr_ = std::make_unique<DBusManager>(dbus_object_.get());
 
   dbus_object_->RegisterAsync(sequencer->GetHandler(
       "Failed to register D-Bus object", true /* failure_is_fatal */));
-}
-
-void Daemon::HandlePeripheralDataAccessChanged(bool enabled) {
-  features_client_->SetPeripheralDataAccessEnabled(enabled);
 }
 
 }  // namespace typecd
