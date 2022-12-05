@@ -600,6 +600,20 @@ void Daemon::Init() {
   // Kernel will create udev events on WLC status change.
   system::EnableCrosEcDeviceEvent(EC_DEVICE_EVENT_WLC, true);
 
+  // Ensure the deprecated flag `turn_on_for_user_activity` is not clear, in
+  // preparation for removing it completely and hard-coding it to always
+  // on.
+  //
+  // TODO(b/260034799): Remove this check and the flag itself.
+  {
+    bool turn_on_for_user_activity = true;
+    prefs_->GetBool(kKeyboardBacklightTurnOnForUserActivityPref,
+                    &turn_on_for_user_activity);
+    CHECK(turn_on_for_user_activity)
+        << "Deprecated flag 'keyboard_backlight_turn_on_for_user_activity' "
+           "overridden to false. Please report at b/260034799.";
+  }
+
   // Call this last to ensure that all of our members are already initialized.
   OnPowerStatusUpdate();
 }
