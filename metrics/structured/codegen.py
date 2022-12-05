@@ -51,9 +51,7 @@ class Util:
         """
         event_name = Util.sanitize_name(event_name)
         project_name = Util.sanitize_name(project_name)
-        # TODO(crbug.com/1148168): Once the minimum python version is 3.6+,
-        # rewrite this .format and others using f-strings.
-        return Util.hash_name("cros::{}::{}".format(project_name, event_name))
+        return Util.hash_name(f"cros::{project_name}::{event_name}")
 
 
 class FileInfo:
@@ -162,7 +160,7 @@ class Template:
 
         project_names = sorted([p.name for p in self.model.projects])
         project_hashes_list = [
-            "UINT64_C({})".format(Util.hash_name(n)) for n in project_names
+            f"UINT64_C({Util.hash_name(n)})" for n in project_names
         ]
         project_hashes_literal = "{" + ", ".join(project_hashes_list) + "}"
 
