@@ -42,6 +42,7 @@
 #include "ml/test_utils.h"
 #include "ml/text_suggester_proto_mojom_conversion.h"
 #include "ml/text_suggestions.h"
+#include "ml/util.h"
 
 namespace ml {
 namespace {
@@ -1273,6 +1274,10 @@ TEST(SODARecognizerTest, FakeImplMojoCallback) {
 #ifdef USE_ONDEVICE_SPEECH
   return;
 #else
+  // TODO(b/261503945): remove after a proper gate is introduced.
+  if (IsAsan())
+    return;
+
   StrictMock<MockSodaClientImpl> soda_client_impl;
   mojo::Receiver<SodaClient> soda_client(&soda_client_impl);
   auto soda_config = SodaConfig::New();
