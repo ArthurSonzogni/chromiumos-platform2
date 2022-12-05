@@ -110,6 +110,10 @@ class MetricsCollectorTest : public Test {
     IgnoreMetric(kNumOfSessionsPerChargeName);
     IgnoreEnumMetric(kBatteryRemainingWhenChargeStartsName);
     IgnoreEnumMetric(kBatteryChargeHealthName);
+    IgnoreMetric(std::string(kBatteryCapacityName) +
+                 kBatteryCapacityActualSuffix);
+    IgnoreMetric(std::string(kBatteryCapacityName) +
+                 kBatteryCapacityDesignSuffix);
     IgnoreMetric(kBatteryDischargeRateName);
     IgnoreMetric(kBatteryDischargeRateWhileHibernatedName);
     IgnoreMetric(kBatteryDischargeRateWhileSuspendedName);
@@ -308,16 +312,22 @@ TEST_F(MetricsCollectorTest, BatteryInfoWhenChargeStarts) {
 
   power_status_.line_power_on = false;
   power_status_.battery_charge_full_design = 100.0;
+  power_status_.battery_energy_full_design = 100.0;
   Init();
 
   metrics_to_test_.insert(kBatteryRemainingWhenChargeStartsName);
   metrics_to_test_.insert(kBatteryChargeHealthName);
+  metrics_to_test_.insert(std::string(kBatteryCapacityName) +
+                          kBatteryCapacityActualSuffix);
+  metrics_to_test_.insert(std::string(kBatteryCapacityName) +
+                          kBatteryCapacityDesignSuffix);
 
   for (const auto& percentage : kBatteryPercentages) {
     IgnoreHandlePowerStatusUpdateMetrics();
 
     power_status_.line_power_on = false;
     power_status_.battery_charge_full = percentage;
+    power_status_.battery_energy_full = percentage;
     power_status_.battery_percentage = percentage;
     collector_.HandlePowerStatusUpdate(power_status_);
 
@@ -328,6 +338,15 @@ TEST_F(MetricsCollectorTest, BatteryInfoWhenChargeStarts) {
                      round(100.0 * power_status_.battery_charge_full /
                            power_status_.battery_charge_full_design),
                      kBatteryChargeHealthMax);
+    ExpectMetric(
+        std::string(kBatteryCapacityName) + kBatteryCapacityActualSuffix,
+        round(1000.0 * power_status_.battery_energy_full), kBatteryCapacityMin,
+        kBatteryCapacityMax, kDefaultBuckets);
+    ExpectMetric(
+        std::string(kBatteryCapacityName) + kBatteryCapacityDesignSuffix,
+        round(1000.0 * power_status_.battery_energy_full_design),
+        kBatteryCapacityMin, kBatteryCapacityMax, kDefaultBuckets);
+
     collector_.HandlePowerStatusUpdate(power_status_);
 
     Mock::VerifyAndClearExpectations(metrics_lib_);

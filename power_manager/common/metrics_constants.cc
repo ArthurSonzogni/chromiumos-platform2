@@ -54,6 +54,13 @@ const char kBatteryChargeHealthName[] = "Power.BatteryChargeHealth";  // %
 // >100% to account for new batteries which often charge above full
 const int kBatteryChargeHealthMax = 111;
 
+const char kBatteryCapacityActualSuffix[] = ".Actual";
+const char kBatteryCapacityDesignSuffix[] = ".Design";
+
+const char kBatteryCapacityName[] = "Power.BatteryCapacity";  // mWh
+const int kBatteryCapacityMin = 0;
+const int kBatteryCapacityMax = 200000;
+
 const char kBatteryDischargeRateName[] = "Power.BatteryDischargeRate";  // mW
 const int kBatteryDischargeRateMin = 1;
 const int kBatteryDischargeRateMax = 20000;

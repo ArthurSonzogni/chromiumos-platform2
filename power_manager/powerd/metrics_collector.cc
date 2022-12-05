@@ -265,6 +265,16 @@ void MetricsCollector::HandlePowerStatusUpdate(const PowerStatus& status) {
                      static_cast<int>(round(100.0 * status.battery_charge_full /
                                             status.battery_charge_full_design)),
                      kBatteryChargeHealthMax);
+
+      std::string metric_name = kBatteryCapacityName;
+      SendMetric(metric_name + kBatteryCapacityActualSuffix,
+                 static_cast<int>(round(1000.0 * status.battery_energy_full)),
+                 kBatteryCapacityMin, kBatteryCapacityMax, kDefaultBuckets);
+
+      SendMetric(
+          metric_name + kBatteryCapacityDesignSuffix,
+          static_cast<int>(round(1000.0 * status.battery_energy_full_design)),
+          kBatteryCapacityMin, kBatteryCapacityMax, kDefaultBuckets);
     }
   } else if (!status.line_power_on && previously_on_line_power) {
     if (session_state_ == SessionState::STARTED)
