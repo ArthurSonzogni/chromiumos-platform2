@@ -91,9 +91,13 @@ remove_old_pattern_log_files() {
 
   # Remove old chrome logs (not logged in)
   remove_old_files /var/log/chrome "chrome_*-*"
+  # Remove old lacros chrome logs (not logged in)
+  remove_old_files /var/log/lacros "lacros_*-*.log"
 
   # Remove old chrome logs (logged in)
   remove_old_files /home/chronos/user/log "chrome_*-*"
+  # Remove old lacros chrome logs (logged in)
+  remove_old_files /home/chronos/user/lacros "lacros_*-*.log"
 
   # Remove old miscellaneous UI logs
   remove_old_files /var/log/ui "ui.*-*"
