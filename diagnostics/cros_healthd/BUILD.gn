@@ -32,9 +32,9 @@ source_set("libcros_healthd") {
   ]
   sources = [
     "cros_healthd.cc",
+    "cros_healthd_diagnostics_service.cc",
     "cros_healthd_mojo_service.cc",
     "cros_healthd_routine_factory_impl.cc",
-    "cros_healthd_routine_service.cc",
     "fetch_aggregator.cc",
     "routine_parameter_fetcher.cc",
   ]
@@ -65,7 +65,7 @@ if (use.test) {
   executable("cros_healthd_test") {
     run_test = true
     sources = [
-      "cros_healthd_routine_service_test.cc",
+      "cros_healthd_diagnostics_service_test.cc",
       "fake_cros_healthd_routine_factory.cc",
       "routine_parameter_fetcher_test.cc",
     ]

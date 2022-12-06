@@ -21,7 +21,6 @@
 #include <mojo/public/cpp/system/invitation.h>
 
 #include "diagnostics/cros_healthd/cros_healthd_routine_factory_impl.h"
-#include "diagnostics/cros_healthd/cros_healthd_routine_service.h"
 #include "diagnostics/cros_healthd/events/audio_events_impl.h"
 #include "diagnostics/cros_healthd/events/bluetooth_events_impl.h"
 #include "diagnostics/cros_healthd/events/lid_events_impl.h"
@@ -61,7 +60,7 @@ CrosHealthd::CrosHealthd(mojo::PlatformChannelEndpoint endpoint,
   routine_factory_ =
       std::make_unique<CrosHealthdRoutineFactoryImpl>(context_.get());
 
-  routine_service_ = std::make_unique<CrosHealthdRoutineService>(
+  diagnostics_service_ = std::make_unique<CrosHealthdDiagnosticsService>(
       context_.get(), routine_factory_.get());
 
   mojo_service_ = std::make_unique<CrosHealthdMojoService>(
@@ -165,7 +164,7 @@ void CrosHealthd::GetDiagnosticsService(
     mojo::PendingReceiver<
         ash::cros_healthd::mojom::CrosHealthdDiagnosticsService> service) {
   // Bind the service after it becomes ready.
-  routine_service_->RegisterServiceReadyCallback(
+  diagnostics_service_->RegisterServiceReadyCallback(
       base::BindOnce(&CrosHealthd::GetDiagnosticsServiceInternal,
                      base::Unretained(this), std::move(service)));
 }
@@ -215,7 +214,7 @@ void CrosHealthd::OnDisconnect() {
 void CrosHealthd::GetDiagnosticsServiceInternal(
     mojo::PendingReceiver<
         ash::cros_healthd::mojom::CrosHealthdDiagnosticsService> service) {
-  diagnostics_receiver_set_.Add(routine_service_.get(), std::move(service));
+  diagnostics_receiver_set_.Add(diagnostics_service_.get(), std::move(service));
 }
 
 }  // namespace diagnostics

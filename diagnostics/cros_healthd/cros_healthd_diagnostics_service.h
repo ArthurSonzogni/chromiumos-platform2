@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef DIAGNOSTICS_CROS_HEALTHD_CROS_HEALTHD_ROUTINE_SERVICE_H_
-#define DIAGNOSTICS_CROS_HEALTHD_CROS_HEALTHD_ROUTINE_SERVICE_H_
+#ifndef DIAGNOSTICS_CROS_HEALTHD_CROS_HEALTHD_DIAGNOSTICS_SERVICE_H_
+#define DIAGNOSTICS_CROS_HEALTHD_CROS_HEALTHD_DIAGNOSTICS_SERVICE_H_
 
 #include <cstdint>
 #include <map>
@@ -26,15 +26,15 @@
 namespace diagnostics {
 
 // Production implementation of the CrosHealthdDiagnosticsService interface.
-class CrosHealthdRoutineService final
+class CrosHealthdDiagnosticsService final
     : public ash::cros_healthd::mojom::CrosHealthdDiagnosticsService {
  public:
-  CrosHealthdRoutineService(Context* context,
-                            CrosHealthdRoutineFactory* routine_factory);
-  CrosHealthdRoutineService(const CrosHealthdRoutineService&) = delete;
-  CrosHealthdRoutineService& operator=(const CrosHealthdRoutineService&) =
-      delete;
-  ~CrosHealthdRoutineService() override;
+  CrosHealthdDiagnosticsService(Context* context,
+                                CrosHealthdRoutineFactory* routine_factory);
+  CrosHealthdDiagnosticsService(const CrosHealthdDiagnosticsService&) = delete;
+  CrosHealthdDiagnosticsService& operator=(
+      const CrosHealthdDiagnosticsService&) = delete;
+  ~CrosHealthdDiagnosticsService() override;
 
   // Registers |callback| to run when the service is ready. If the service is
   // already ready, |callback| will be run immediately.
@@ -180,9 +180,9 @@ class CrosHealthdRoutineService final
       provider_;
 
   // Must be the last class member.
-  base::WeakPtrFactory<CrosHealthdRoutineService> weak_ptr_factory_{this};
+  base::WeakPtrFactory<CrosHealthdDiagnosticsService> weak_ptr_factory_{this};
 };
 
 }  // namespace diagnostics
 
-#endif  // DIAGNOSTICS_CROS_HEALTHD_CROS_HEALTHD_ROUTINE_SERVICE_H_
+#endif  // DIAGNOSTICS_CROS_HEALTHD_CROS_HEALTHD_DIAGNOSTICS_SERVICE_H_

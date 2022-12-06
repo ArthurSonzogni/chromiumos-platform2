@@ -16,9 +16,9 @@
 #include <mojo/public/cpp/bindings/receiver_set.h>
 #include <mojo/public/cpp/platform/platform_channel_endpoint.h>
 
+#include "diagnostics/cros_healthd/cros_healthd_diagnostics_service.h"
 #include "diagnostics/cros_healthd/cros_healthd_mojo_service.h"
 #include "diagnostics/cros_healthd/cros_healthd_routine_factory.h"
-#include "diagnostics/cros_healthd/cros_healthd_routine_service.h"
 #include "diagnostics/cros_healthd/events/audio_events.h"
 #include "diagnostics/cros_healthd/events/bluetooth_events.h"
 #include "diagnostics/cros_healthd/events/lid_events.h"
@@ -115,10 +115,10 @@ class CrosHealthd final
   // Provides support for udev-related events.
   std::unique_ptr<UdevEvents> udev_events_;
 
-  // |routine_service_| delegates routine creation to |routine_factory_|.
+  // |diagnostics_service_| delegates routine creation to |routine_factory_|.
   std::unique_ptr<CrosHealthdRoutineFactory> routine_factory_;
   // Creates new diagnostic routines and controls existing diagnostic routines.
-  std::unique_ptr<CrosHealthdRoutineService> routine_service_;
+  std::unique_ptr<CrosHealthdDiagnosticsService> diagnostics_service_;
   // Maintains the Mojo connection with cros_healthd clients.
   std::unique_ptr<CrosHealthdMojoService> mojo_service_;
   // Receiver set that connects this instance (which is an implementation of
@@ -128,7 +128,7 @@ class CrosHealthd final
   // called.
   mojo::ReceiverSet<ash::cros_healthd::mojom::CrosHealthdServiceFactory, bool>
       service_factory_receiver_set_;
-  // Mojo receiver set that connects |routine_service_| with message pipes,
+  // Mojo receiver set that connects |diagnostics_service_| with message pipes,
   // allowing the remote ends to call our methods.
   mojo::ReceiverSet<ash::cros_healthd::mojom::CrosHealthdDiagnosticsService>
       diagnostics_receiver_set_;

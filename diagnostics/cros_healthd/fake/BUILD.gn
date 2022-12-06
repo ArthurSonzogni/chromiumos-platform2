@@ -19,8 +19,8 @@ source_set("libfake_cros_healthd") {
   deps = [ "//diagnostics/mojom/public:cros_healthd_mojo_bindings" ]
   sources = [
     "fake_chromium_data_collector.cc",
+    "fake_diagnostics_service.cc",
     "fake_probe_service.cc",
-    "fake_routine_service.cc",
     "fake_sensor_device.cc",
     "fake_sensor_service.cc",
     "fake_service_manager.cc",

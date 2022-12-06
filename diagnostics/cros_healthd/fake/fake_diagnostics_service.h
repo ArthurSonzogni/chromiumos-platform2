@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef DIAGNOSTICS_CROS_HEALTHD_FAKE_FAKE_ROUTINE_SERVICE_H_
-#define DIAGNOSTICS_CROS_HEALTHD_FAKE_FAKE_ROUTINE_SERVICE_H_
+#ifndef DIAGNOSTICS_CROS_HEALTHD_FAKE_FAKE_DIAGNOSTICS_SERVICE_H_
+#define DIAGNOSTICS_CROS_HEALTHD_FAKE_FAKE_DIAGNOSTICS_SERVICE_H_
 
 #include <cstdint>
 #include <optional>
@@ -14,17 +14,17 @@
 namespace diagnostics {
 
 // Fake implementation of the CrosHealthdDiagnosticsService interface.
-class FakeRoutineService final
+class FakeDiagnosticsService final
     : public ash::cros_healthd::mojom::CrosHealthdDiagnosticsService {
  public:
   using DiagnosticRoutineStatusEnum =
       ::ash::cros_healthd::mojom::DiagnosticRoutineStatusEnum;
   using RunRoutineResponse = ::ash::cros_healthd::mojom::RunRoutineResponse;
 
-  FakeRoutineService();
-  FakeRoutineService(const FakeRoutineService&) = delete;
-  FakeRoutineService& operator=(const FakeRoutineService&) = delete;
-  ~FakeRoutineService() override;
+  FakeDiagnosticsService();
+  FakeDiagnosticsService(const FakeDiagnosticsService&) = delete;
+  FakeDiagnosticsService& operator=(const FakeDiagnosticsService&) = delete;
+  ~FakeDiagnosticsService() override;
 
   // ash::cros_healthd::mojom::CrosHealthdDiagnosticsService overrides:
   void GetAvailableRoutines(GetAvailableRoutinesCallback callback) override;
@@ -125,4 +125,4 @@ class FakeRoutineService final
 
 }  // namespace diagnostics
 
-#endif  // DIAGNOSTICS_CROS_HEALTHD_FAKE_FAKE_ROUTINE_SERVICE_H_
+#endif  // DIAGNOSTICS_CROS_HEALTHD_FAKE_FAKE_DIAGNOSTICS_SERVICE_H_

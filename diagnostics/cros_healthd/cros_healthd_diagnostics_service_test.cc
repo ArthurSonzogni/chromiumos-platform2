@@ -16,7 +16,7 @@
 #include <gtest/gtest.h>
 
 #include "diagnostics/common/mojo_test_utils.h"
-#include "diagnostics/cros_healthd/cros_healthd_routine_service.h"
+#include "diagnostics/cros_healthd/cros_healthd_diagnostics_service.h"
 #include "diagnostics/cros_healthd/fake_cros_healthd_routine_factory.h"
 #include "diagnostics/cros_healthd/routines/routine_test_utils.h"
 #include "diagnostics/cros_healthd/system/fake_mojo_service.h"
@@ -33,8 +33,8 @@ namespace mojo_ipc = ::ash::cros_healthd::mojom;
 constexpr char kRoutineDoesNotExistStatusMessage[] =
     "Specified routine does not exist.";
 
-// POD struct for RoutineUpdateCommandTest.
-struct RoutineUpdateCommandTestParams {
+// POD struct for DiagnosticsUpdateCommandTest.
+struct DiagnosticsUpdateCommandTestParams {
   mojo_ipc::DiagnosticRoutineCommandEnum command;
   mojo_ipc::DiagnosticRoutineStatusEnum expected_status;
   int num_expected_start_calls;
@@ -112,8 +112,8 @@ std::set<mojo_ipc::DiagnosticRoutineEnum> GetFioRoutines() {
       mojo_ipc::DiagnosticRoutineEnum::kDiskRead};
 }
 
-// Tests for the CrosHealthdRoutineService class.
-class CrosHealthdRoutineServiceTest : public testing::Test {
+// Tests for the CrosHealthdDiagnosticsService class.
+class CrosHealthdDiagnosticsServiceTest : public testing::Test {
  protected:
   void SetUp() override {
     mock_context_.fake_mojo_service()->InitializeFakeMojoService();
@@ -131,11 +131,11 @@ class CrosHealthdRoutineServiceTest : public testing::Test {
   // The service needs to be recreated anytime the underlying conditions for
   // which tests are populated change.
   void CreateService() {
-    service_ = std::make_unique<CrosHealthdRoutineService>(&mock_context_,
-                                                           &routine_factory_);
+    service_ = std::make_unique<CrosHealthdDiagnosticsService>(
+        &mock_context_, &routine_factory_);
   }
 
-  CrosHealthdRoutineService* service() { return service_.get(); }
+  CrosHealthdDiagnosticsService* service() { return service_.get(); }
 
   FakeCrosHealthdRoutineFactory* routine_factory() { return &routine_factory_; }
 
@@ -179,11 +179,11 @@ class CrosHealthdRoutineServiceTest : public testing::Test {
   base::test::TaskEnvironment task_environment_;
   FakeCrosHealthdRoutineFactory routine_factory_;
   MockContext mock_context_;
-  std::unique_ptr<CrosHealthdRoutineService> service_;
+  std::unique_ptr<CrosHealthdDiagnosticsService> service_;
 };
 
 // Test that RegisterServiceReadyCallback() run the callback.
-TEST_F(CrosHealthdRoutineServiceTest, RegisterServiceReadyCallback) {
+TEST_F(CrosHealthdDiagnosticsServiceTest, RegisterServiceReadyCallback) {
   base::RunLoop run_loop;
   service()->RegisterServiceReadyCallback(
       base::BindLambdaForTesting([&]() { run_loop.Quit(); }));
@@ -192,7 +192,7 @@ TEST_F(CrosHealthdRoutineServiceTest, RegisterServiceReadyCallback) {
 
 // Test that GetAvailableRoutines() returns the expected list of routines when
 // all routines are supported.
-TEST_F(CrosHealthdRoutineServiceTest, GetAvailableRoutines) {
+TEST_F(CrosHealthdDiagnosticsServiceTest, GetAvailableRoutines) {
   auto reply = ExecuteGetAvailableRoutines();
   std::set<mojo_ipc::DiagnosticRoutineEnum> reply_set(reply.begin(),
                                                       reply.end());
@@ -201,7 +201,7 @@ TEST_F(CrosHealthdRoutineServiceTest, GetAvailableRoutines) {
 
 // Test that GetAvailableRoutines returns the expected list of routines when
 // battery routines are not supported.
-TEST_F(CrosHealthdRoutineServiceTest, GetAvailableRoutinesNoBattery) {
+TEST_F(CrosHealthdDiagnosticsServiceTest, GetAvailableRoutinesNoBattery) {
   mock_context()->fake_system_config()->SetHasBattery(false);
   CreateService();
   auto reply = ExecuteGetAvailableRoutines();
@@ -216,7 +216,7 @@ TEST_F(CrosHealthdRoutineServiceTest, GetAvailableRoutinesNoBattery) {
 
 // Test that GetAvailableRoutines returns the expected list of routines when
 // privacy screen routine is not supported.
-TEST_F(CrosHealthdRoutineServiceTest, GetAvailableRoutinesNoPrivacyScreen) {
+TEST_F(CrosHealthdDiagnosticsServiceTest, GetAvailableRoutinesNoPrivacyScreen) {
   mock_context()->fake_system_config()->SetHasPrivacyScreen(false);
   CreateService();
   auto reply = ExecuteGetAvailableRoutines();
@@ -230,7 +230,7 @@ TEST_F(CrosHealthdRoutineServiceTest, GetAvailableRoutinesNoPrivacyScreen) {
 
 // Test that GetAvailableRoutines returns the expected list of routines when
 // NVMe routines are not supported.
-TEST_F(CrosHealthdRoutineServiceTest, GetAvailableRoutinesNoNvme) {
+TEST_F(CrosHealthdDiagnosticsServiceTest, GetAvailableRoutinesNoNvme) {
   mock_context()->fake_system_config()->SetNvmeSupported(false);
   CreateService();
   auto reply = ExecuteGetAvailableRoutines();
@@ -246,7 +246,7 @@ TEST_F(CrosHealthdRoutineServiceTest, GetAvailableRoutinesNoNvme) {
 
 // Test that GetAvailableRoutines returns the expected list of routines when
 // NVMe self test is not supported.
-TEST_F(CrosHealthdRoutineServiceTest, GetAvailableRoutinesNoNvmeSelfTest) {
+TEST_F(CrosHealthdDiagnosticsServiceTest, GetAvailableRoutinesNoNvmeSelfTest) {
   mock_context()->fake_system_config()->SetNvmeSelfTestSupported(false);
   CreateService();
   auto reply = ExecuteGetAvailableRoutines();
@@ -261,7 +261,7 @@ TEST_F(CrosHealthdRoutineServiceTest, GetAvailableRoutinesNoNvmeSelfTest) {
 
 // Test that GetAvailableRoutines returns the expected list of routines when
 // Smartctl routines are not supported.
-TEST_F(CrosHealthdRoutineServiceTest, GetAvailableRoutinesNoSmartctl) {
+TEST_F(CrosHealthdDiagnosticsServiceTest, GetAvailableRoutinesNoSmartctl) {
   mock_context()->fake_system_config()->SetSmartCtrlSupported(false);
   CreateService();
   auto reply = ExecuteGetAvailableRoutines();
@@ -277,7 +277,7 @@ TEST_F(CrosHealthdRoutineServiceTest, GetAvailableRoutinesNoSmartctl) {
 
 // Test that GetAvailableRoutines returns the expected list of routines when
 // fio routines are not supported.
-TEST_F(CrosHealthdRoutineServiceTest, GetAvailableRoutinesNoFio) {
+TEST_F(CrosHealthdDiagnosticsServiceTest, GetAvailableRoutinesNoFio) {
   mock_context()->fake_system_config()->SetFioSupported(false);
   CreateService();
   auto reply = ExecuteGetAvailableRoutines();
@@ -293,7 +293,7 @@ TEST_F(CrosHealthdRoutineServiceTest, GetAvailableRoutinesNoFio) {
 
 // Test that GetAvailableRoutines returns the expected list of routines when
 // wilco routines are not supported.
-TEST_F(CrosHealthdRoutineServiceTest, GetAvailableRoutinesNotWilcoDevice) {
+TEST_F(CrosHealthdDiagnosticsServiceTest, GetAvailableRoutinesNotWilcoDevice) {
   mock_context()->fake_system_config()->SetIsWilcoDevice(false);
   CreateService();
   auto reply = ExecuteGetAvailableRoutines();
@@ -309,7 +309,7 @@ TEST_F(CrosHealthdRoutineServiceTest, GetAvailableRoutinesNotWilcoDevice) {
 
 // Test that getting the status of a routine that doesn't exist returns an
 // error.
-TEST_F(CrosHealthdRoutineServiceTest, NonExistingStatus) {
+TEST_F(CrosHealthdDiagnosticsServiceTest, NonExistingStatus) {
   auto update = ExecuteGetRoutineUpdate(
       /*id=*/0, mojo_ipc::DiagnosticRoutineCommandEnum::kGetStatus,
       /*include_output=*/false);
@@ -320,7 +320,7 @@ TEST_F(CrosHealthdRoutineServiceTest, NonExistingStatus) {
 }
 
 // Test that the battery capacity routine can be run.
-TEST_F(CrosHealthdRoutineServiceTest, RunBatteryCapacityRoutine) {
+TEST_F(CrosHealthdDiagnosticsServiceTest, RunBatteryCapacityRoutine) {
   constexpr mojo_ipc::DiagnosticRoutineStatusEnum kExpectedStatus =
       mojo_ipc::DiagnosticRoutineStatusEnum::kRunning;
   routine_factory()->SetNonInteractiveStatus(
@@ -341,7 +341,7 @@ TEST_F(CrosHealthdRoutineServiceTest, RunBatteryCapacityRoutine) {
 }
 
 // Test that the battery health routine can be run.
-TEST_F(CrosHealthdRoutineServiceTest, RunBatteryHealthRoutine) {
+TEST_F(CrosHealthdDiagnosticsServiceTest, RunBatteryHealthRoutine) {
   constexpr mojo_ipc::DiagnosticRoutineStatusEnum kExpectedStatus =
       mojo_ipc::DiagnosticRoutineStatusEnum::kRunning;
   routine_factory()->SetNonInteractiveStatus(
@@ -362,7 +362,7 @@ TEST_F(CrosHealthdRoutineServiceTest, RunBatteryHealthRoutine) {
 }
 
 // Test that the urandom routine can be run.
-TEST_F(CrosHealthdRoutineServiceTest, RunUrandomRoutine) {
+TEST_F(CrosHealthdDiagnosticsServiceTest, RunUrandomRoutine) {
   constexpr mojo_ipc::DiagnosticRoutineStatusEnum kExpectedStatus =
       mojo_ipc::DiagnosticRoutineStatusEnum::kRunning;
   routine_factory()->SetNonInteractiveStatus(
@@ -385,7 +385,7 @@ TEST_F(CrosHealthdRoutineServiceTest, RunUrandomRoutine) {
 }
 
 // Test that the smartctl check routine can be run.
-TEST_F(CrosHealthdRoutineServiceTest, RunSmartctlCheckRoutineWithoutParam) {
+TEST_F(CrosHealthdDiagnosticsServiceTest, RunSmartctlCheckRoutineWithoutParam) {
   constexpr mojo_ipc::DiagnosticRoutineStatusEnum kExpectedStatus =
       mojo_ipc::DiagnosticRoutineStatusEnum::kRunning;
   routine_factory()->SetNonInteractiveStatus(
@@ -409,7 +409,7 @@ TEST_F(CrosHealthdRoutineServiceTest, RunSmartctlCheckRoutineWithoutParam) {
 }
 
 // Test that the smartctl check routine can be run.
-TEST_F(CrosHealthdRoutineServiceTest, RunSmartctlCheckRoutineWithParam) {
+TEST_F(CrosHealthdDiagnosticsServiceTest, RunSmartctlCheckRoutineWithParam) {
   constexpr mojo_ipc::DiagnosticRoutineStatusEnum kExpectedStatus =
       mojo_ipc::DiagnosticRoutineStatusEnum::kRunning;
   routine_factory()->SetNonInteractiveStatus(
@@ -432,7 +432,7 @@ TEST_F(CrosHealthdRoutineServiceTest, RunSmartctlCheckRoutineWithParam) {
 }
 
 // Test that the AC power routine can be run.
-TEST_F(CrosHealthdRoutineServiceTest, RunAcPowerRoutine) {
+TEST_F(CrosHealthdDiagnosticsServiceTest, RunAcPowerRoutine) {
   constexpr mojo_ipc::DiagnosticRoutineStatusEnum kExpectedStatus =
       mojo_ipc::DiagnosticRoutineStatusEnum::kWaiting;
   routine_factory()->SetNonInteractiveStatus(
@@ -456,7 +456,7 @@ TEST_F(CrosHealthdRoutineServiceTest, RunAcPowerRoutine) {
 }
 
 // Test that the CPU cache routine can be run.
-TEST_F(CrosHealthdRoutineServiceTest, RunCpuCacheRoutine) {
+TEST_F(CrosHealthdDiagnosticsServiceTest, RunCpuCacheRoutine) {
   constexpr mojo_ipc::DiagnosticRoutineStatusEnum kExpectedStatus =
       mojo_ipc::DiagnosticRoutineStatusEnum::kRunning;
   routine_factory()->SetNonInteractiveStatus(
@@ -479,7 +479,7 @@ TEST_F(CrosHealthdRoutineServiceTest, RunCpuCacheRoutine) {
 }
 
 // Test that the CPU stress routine can be run.
-TEST_F(CrosHealthdRoutineServiceTest, RunCpuStressRoutine) {
+TEST_F(CrosHealthdDiagnosticsServiceTest, RunCpuStressRoutine) {
   constexpr mojo_ipc::DiagnosticRoutineStatusEnum kExpectedStatus =
       mojo_ipc::DiagnosticRoutineStatusEnum::kRunning;
   routine_factory()->SetNonInteractiveStatus(
@@ -502,7 +502,7 @@ TEST_F(CrosHealthdRoutineServiceTest, RunCpuStressRoutine) {
 }
 
 // Test that the floating point accuracy routine can be run.
-TEST_F(CrosHealthdRoutineServiceTest, RunFloatingPointAccuracyRoutine) {
+TEST_F(CrosHealthdDiagnosticsServiceTest, RunFloatingPointAccuracyRoutine) {
   constexpr mojo_ipc::DiagnosticRoutineStatusEnum kExpectedStatus =
       mojo_ipc::DiagnosticRoutineStatusEnum::kRunning;
   routine_factory()->SetNonInteractiveStatus(
@@ -525,7 +525,7 @@ TEST_F(CrosHealthdRoutineServiceTest, RunFloatingPointAccuracyRoutine) {
 }
 
 // Test that the NVMe wear level routine can be run.
-TEST_F(CrosHealthdRoutineServiceTest, RunNvmeWearLevelRoutine) {
+TEST_F(CrosHealthdDiagnosticsServiceTest, RunNvmeWearLevelRoutine) {
   constexpr mojo_ipc::DiagnosticRoutineStatusEnum kExpectedStatus =
       mojo_ipc::DiagnosticRoutineStatusEnum::kRunning;
   routine_factory()->SetNonInteractiveStatus(
@@ -548,7 +548,7 @@ TEST_F(CrosHealthdRoutineServiceTest, RunNvmeWearLevelRoutine) {
 }
 
 // Test that the NVMe self-test routine can be run.
-TEST_F(CrosHealthdRoutineServiceTest, RunNvmeSelfTestRoutine) {
+TEST_F(CrosHealthdDiagnosticsServiceTest, RunNvmeSelfTestRoutine) {
   constexpr mojo_ipc::DiagnosticRoutineStatusEnum kExpectedStatus =
       mojo_ipc::DiagnosticRoutineStatusEnum::kRunning;
   routine_factory()->SetNonInteractiveStatus(
@@ -571,7 +571,7 @@ TEST_F(CrosHealthdRoutineServiceTest, RunNvmeSelfTestRoutine) {
 }
 
 // Test that the disk read routine can be run.
-TEST_F(CrosHealthdRoutineServiceTest, RunDiskReadRoutine) {
+TEST_F(CrosHealthdDiagnosticsServiceTest, RunDiskReadRoutine) {
   constexpr mojo_ipc::DiagnosticRoutineStatusEnum kExpectedStatus =
       mojo_ipc::DiagnosticRoutineStatusEnum::kWaiting;
   routine_factory()->SetNonInteractiveStatus(
@@ -595,7 +595,7 @@ TEST_F(CrosHealthdRoutineServiceTest, RunDiskReadRoutine) {
 }
 
 // Test that the prime search routine can be run.
-TEST_F(CrosHealthdRoutineServiceTest, RunPrimeSearchRoutine) {
+TEST_F(CrosHealthdDiagnosticsServiceTest, RunPrimeSearchRoutine) {
   constexpr mojo_ipc::DiagnosticRoutineStatusEnum kExpectedStatus =
       mojo_ipc::DiagnosticRoutineStatusEnum::kWaiting;
   routine_factory()->SetNonInteractiveStatus(
@@ -618,7 +618,7 @@ TEST_F(CrosHealthdRoutineServiceTest, RunPrimeSearchRoutine) {
 }
 
 // Test that the battery discharge routine can be run.
-TEST_F(CrosHealthdRoutineServiceTest, RunBatteryDischargeRoutine) {
+TEST_F(CrosHealthdDiagnosticsServiceTest, RunBatteryDischargeRoutine) {
   constexpr mojo_ipc::DiagnosticRoutineStatusEnum kExpectedStatus =
       mojo_ipc::DiagnosticRoutineStatusEnum::kWaiting;
   // TODO(crbug/1065463): Treat this as an interactive routine.
@@ -643,7 +643,7 @@ TEST_F(CrosHealthdRoutineServiceTest, RunBatteryDischargeRoutine) {
 }
 
 // Test that the battery charge routine can be run.
-TEST_F(CrosHealthdRoutineServiceTest, RunBatteryChargeRoutine) {
+TEST_F(CrosHealthdDiagnosticsServiceTest, RunBatteryChargeRoutine) {
   constexpr mojo_ipc::DiagnosticRoutineStatusEnum kExpectedStatus =
       mojo_ipc::DiagnosticRoutineStatusEnum::kWaiting;
   // TODO(crbug/1065463): Treat this as an interactive routine.
@@ -668,7 +668,7 @@ TEST_F(CrosHealthdRoutineServiceTest, RunBatteryChargeRoutine) {
 }
 
 // Test that the memory routine can be run.
-TEST_F(CrosHealthdRoutineServiceTest, RunMemoryRoutine) {
+TEST_F(CrosHealthdDiagnosticsServiceTest, RunMemoryRoutine) {
   constexpr mojo_ipc::DiagnosticRoutineStatusEnum kExpectedStatus =
       mojo_ipc::DiagnosticRoutineStatusEnum::kWaiting;
   routine_factory()->SetNonInteractiveStatus(
@@ -689,7 +689,7 @@ TEST_F(CrosHealthdRoutineServiceTest, RunMemoryRoutine) {
 }
 
 // Test that the LAN connectivity routine can be run.
-TEST_F(CrosHealthdRoutineServiceTest, RunLanConnectivityRoutine) {
+TEST_F(CrosHealthdDiagnosticsServiceTest, RunLanConnectivityRoutine) {
   constexpr mojo_ipc::DiagnosticRoutineStatusEnum kExpectedStatus =
       mojo_ipc::DiagnosticRoutineStatusEnum::kRunning;
   routine_factory()->SetNonInteractiveStatus(
@@ -710,7 +710,7 @@ TEST_F(CrosHealthdRoutineServiceTest, RunLanConnectivityRoutine) {
 }
 
 // Test that the signal strength routine can be run.
-TEST_F(CrosHealthdRoutineServiceTest, RunSignalStrengthRoutine) {
+TEST_F(CrosHealthdDiagnosticsServiceTest, RunSignalStrengthRoutine) {
   constexpr mojo_ipc::DiagnosticRoutineStatusEnum kExpectedStatus =
       mojo_ipc::DiagnosticRoutineStatusEnum::kRunning;
   routine_factory()->SetNonInteractiveStatus(
@@ -731,7 +731,7 @@ TEST_F(CrosHealthdRoutineServiceTest, RunSignalStrengthRoutine) {
 }
 
 // Test that the gateway can be pinged routine can be run.
-TEST_F(CrosHealthdRoutineServiceTest, RunGatewayCanBePingedRoutine) {
+TEST_F(CrosHealthdDiagnosticsServiceTest, RunGatewayCanBePingedRoutine) {
   constexpr mojo_ipc::DiagnosticRoutineStatusEnum kExpectedStatus =
       mojo_ipc::DiagnosticRoutineStatusEnum::kRunning;
   routine_factory()->SetNonInteractiveStatus(
@@ -752,7 +752,7 @@ TEST_F(CrosHealthdRoutineServiceTest, RunGatewayCanBePingedRoutine) {
 }
 
 // Test that the has secure WiFi connection routine can be run.
-TEST_F(CrosHealthdRoutineServiceTest, RunHasSecureWiFiConnectionRoutine) {
+TEST_F(CrosHealthdDiagnosticsServiceTest, RunHasSecureWiFiConnectionRoutine) {
   constexpr mojo_ipc::DiagnosticRoutineStatusEnum kExpectedStatus =
       mojo_ipc::DiagnosticRoutineStatusEnum::kRunning;
   routine_factory()->SetNonInteractiveStatus(
@@ -773,7 +773,7 @@ TEST_F(CrosHealthdRoutineServiceTest, RunHasSecureWiFiConnectionRoutine) {
 }
 
 // Test that the DNS resolver present routine can be run.
-TEST_F(CrosHealthdRoutineServiceTest, RunDnsResolverPresentRoutine) {
+TEST_F(CrosHealthdDiagnosticsServiceTest, RunDnsResolverPresentRoutine) {
   constexpr mojo_ipc::DiagnosticRoutineStatusEnum kExpectedStatus =
       mojo_ipc::DiagnosticRoutineStatusEnum::kRunning;
   routine_factory()->SetNonInteractiveStatus(
@@ -794,7 +794,7 @@ TEST_F(CrosHealthdRoutineServiceTest, RunDnsResolverPresentRoutine) {
 }
 
 // Test that the DNS latency routine can be run.
-TEST_F(CrosHealthdRoutineServiceTest, RunDnsLatencyRoutine) {
+TEST_F(CrosHealthdDiagnosticsServiceTest, RunDnsLatencyRoutine) {
   constexpr mojo_ipc::DiagnosticRoutineStatusEnum kExpectedStatus =
       mojo_ipc::DiagnosticRoutineStatusEnum::kRunning;
   routine_factory()->SetNonInteractiveStatus(
@@ -815,7 +815,7 @@ TEST_F(CrosHealthdRoutineServiceTest, RunDnsLatencyRoutine) {
 }
 
 // Test that the DNS resolution routine can be run.
-TEST_F(CrosHealthdRoutineServiceTest, RunDnsResolutionRoutine) {
+TEST_F(CrosHealthdDiagnosticsServiceTest, RunDnsResolutionRoutine) {
   constexpr mojo_ipc::DiagnosticRoutineStatusEnum kExpectedStatus =
       mojo_ipc::DiagnosticRoutineStatusEnum::kRunning;
   routine_factory()->SetNonInteractiveStatus(
@@ -836,7 +836,7 @@ TEST_F(CrosHealthdRoutineServiceTest, RunDnsResolutionRoutine) {
 }
 
 // Test that the captive portal routine can be run.
-TEST_F(CrosHealthdRoutineServiceTest, RunCaptivePortalRoutine) {
+TEST_F(CrosHealthdDiagnosticsServiceTest, RunCaptivePortalRoutine) {
   constexpr mojo_ipc::DiagnosticRoutineStatusEnum kExpectedStatus =
       mojo_ipc::DiagnosticRoutineStatusEnum::kRunning;
   routine_factory()->SetNonInteractiveStatus(
@@ -857,7 +857,7 @@ TEST_F(CrosHealthdRoutineServiceTest, RunCaptivePortalRoutine) {
 }
 
 // Test that the HTTP firewall routine can be run.
-TEST_F(CrosHealthdRoutineServiceTest, RunHttpFirewallRoutine) {
+TEST_F(CrosHealthdDiagnosticsServiceTest, RunHttpFirewallRoutine) {
   constexpr mojo_ipc::DiagnosticRoutineStatusEnum kExpectedStatus =
       mojo_ipc::DiagnosticRoutineStatusEnum::kRunning;
   routine_factory()->SetNonInteractiveStatus(
@@ -878,7 +878,7 @@ TEST_F(CrosHealthdRoutineServiceTest, RunHttpFirewallRoutine) {
 }
 
 // Test that the HTTPS firewall routine can be run.
-TEST_F(CrosHealthdRoutineServiceTest, RunHttpsFirewallRoutine) {
+TEST_F(CrosHealthdDiagnosticsServiceTest, RunHttpsFirewallRoutine) {
   constexpr mojo_ipc::DiagnosticRoutineStatusEnum kExpectedStatus =
       mojo_ipc::DiagnosticRoutineStatusEnum::kRunning;
   routine_factory()->SetNonInteractiveStatus(
@@ -899,7 +899,7 @@ TEST_F(CrosHealthdRoutineServiceTest, RunHttpsFirewallRoutine) {
 }
 
 // Test that the HTTPS latency routine can be run.
-TEST_F(CrosHealthdRoutineServiceTest, RunHttpsLatencyRoutine) {
+TEST_F(CrosHealthdDiagnosticsServiceTest, RunHttpsLatencyRoutine) {
   constexpr mojo_ipc::DiagnosticRoutineStatusEnum kExpectedStatus =
       mojo_ipc::DiagnosticRoutineStatusEnum::kRunning;
   routine_factory()->SetNonInteractiveStatus(
@@ -920,7 +920,7 @@ TEST_F(CrosHealthdRoutineServiceTest, RunHttpsLatencyRoutine) {
 }
 
 // Test that the video conferencing routine can be run.
-TEST_F(CrosHealthdRoutineServiceTest, RunVideoConferencingRoutine) {
+TEST_F(CrosHealthdDiagnosticsServiceTest, RunVideoConferencingRoutine) {
   constexpr mojo_ipc::DiagnosticRoutineStatusEnum kExpectedStatus =
       mojo_ipc::DiagnosticRoutineStatusEnum::kRunning;
   routine_factory()->SetNonInteractiveStatus(
@@ -944,7 +944,7 @@ TEST_F(CrosHealthdRoutineServiceTest, RunVideoConferencingRoutine) {
 }
 
 // Test that the ARC HTTP routine can be run.
-TEST_F(CrosHealthdRoutineServiceTest, RunArcHttpRoutine) {
+TEST_F(CrosHealthdDiagnosticsServiceTest, RunArcHttpRoutine) {
   constexpr mojo_ipc::DiagnosticRoutineStatusEnum kExpectedStatus =
       mojo_ipc::DiagnosticRoutineStatusEnum::kRunning;
   routine_factory()->SetNonInteractiveStatus(
@@ -965,7 +965,7 @@ TEST_F(CrosHealthdRoutineServiceTest, RunArcHttpRoutine) {
 }
 
 // Test that after a routine has been removed, we cannot access its data.
-TEST_F(CrosHealthdRoutineServiceTest, AccessStoppedRoutine) {
+TEST_F(CrosHealthdDiagnosticsServiceTest, AccessStoppedRoutine) {
   routine_factory()->SetNonInteractiveStatus(
       mojo_ipc::DiagnosticRoutineStatusEnum::kRunning, /*status_message=*/"",
       /*progress_percent=*/50, /*output=*/"");
@@ -996,7 +996,7 @@ TEST_F(CrosHealthdRoutineServiceTest, AccessStoppedRoutine) {
 }
 
 // Test that an unsupported routine cannot be run.
-TEST_F(CrosHealthdRoutineServiceTest, RunUnsupportedRoutine) {
+TEST_F(CrosHealthdDiagnosticsServiceTest, RunUnsupportedRoutine) {
   mock_context()->fake_system_config()->SetSmartCtrlSupported(false);
   CreateService();
   routine_factory()->SetNonInteractiveStatus(
@@ -1020,11 +1020,11 @@ TEST_F(CrosHealthdRoutineServiceTest, RunUnsupportedRoutine) {
             mojo_ipc::DiagnosticRoutineStatusEnum::kUnsupported);
 }
 
-// Tests for the GetRoutineUpdate() method of RoutineService with different
+// Tests for the GetRoutineUpdate() method of DiagnosticsService with different
 // commands.
 //
 // This is a parameterized test with the following parameters (accessed
-// through the POD RoutineUpdateCommandTestParams POD struct):
+// through the POD DiagnosticsUpdateCommandTestParams POD struct):
 // * |command| - mojo_ipc::DiagnosticRoutineCommandEnum sent to the routine
 //               service.
 // * |num_expected_start_calls| - number of times the underlying routine's
@@ -1033,17 +1033,17 @@ TEST_F(CrosHealthdRoutineServiceTest, RunUnsupportedRoutine) {
 //                                 Resume() method is expected to be called.
 // * |num_expected_cancel_calls| - number of times the underlying routine's
 //                                 Cancel() method is expected to be called.
-class RoutineUpdateCommandTest
-    : public CrosHealthdRoutineServiceTest,
-      public testing::WithParamInterface<RoutineUpdateCommandTestParams> {
+class DiagnosticsUpdateCommandTest
+    : public CrosHealthdDiagnosticsServiceTest,
+      public testing::WithParamInterface<DiagnosticsUpdateCommandTestParams> {
  protected:
   // Accessors to the test parameters returned by gtest's GetParam():
 
-  RoutineUpdateCommandTestParams params() const { return GetParam(); }
+  DiagnosticsUpdateCommandTestParams params() const { return GetParam(); }
 };
 
 // Test that we can send the given command.
-TEST_P(RoutineUpdateCommandTest, SendCommand) {
+TEST_P(DiagnosticsUpdateCommandTest, SendCommand) {
   constexpr mojo_ipc::DiagnosticRoutineStatusEnum kStatus =
       mojo_ipc::DiagnosticRoutineStatusEnum::kRunning;
   constexpr char kExpectedStatusMessage[] = "Expected status message.";
@@ -1079,27 +1079,27 @@ TEST_P(RoutineUpdateCommandTest, SendCommand) {
 
 INSTANTIATE_TEST_SUITE_P(
     ,
-    RoutineUpdateCommandTest,
+    DiagnosticsUpdateCommandTest,
     testing::Values(
-        RoutineUpdateCommandTestParams{
+        DiagnosticsUpdateCommandTestParams{
             mojo_ipc::DiagnosticRoutineCommandEnum::kCancel,
             mojo_ipc::DiagnosticRoutineStatusEnum::kRunning,
             /*num_expected_start_calls=*/1,
             /*num_expected_resume_calls=*/0,
             /*num_expected_cancel_calls=*/1},
-        RoutineUpdateCommandTestParams{
+        DiagnosticsUpdateCommandTestParams{
             mojo_ipc::DiagnosticRoutineCommandEnum::kContinue,
             mojo_ipc::DiagnosticRoutineStatusEnum::kRunning,
             /*num_expected_start_calls=*/1,
             /*num_expected_resume_calls=*/1,
             /*num_expected_cancel_calls=*/0},
-        RoutineUpdateCommandTestParams{
+        DiagnosticsUpdateCommandTestParams{
             mojo_ipc::DiagnosticRoutineCommandEnum::kGetStatus,
             mojo_ipc::DiagnosticRoutineStatusEnum::kRunning,
             /*num_expected_start_calls=*/1,
             /*num_expected_resume_calls=*/0,
             /*num_expected_cancel_calls=*/0},
-        RoutineUpdateCommandTestParams{
+        DiagnosticsUpdateCommandTestParams{
             mojo_ipc::DiagnosticRoutineCommandEnum::kRemove,
             mojo_ipc::DiagnosticRoutineStatusEnum::kRemoved,
             /*num_expected_start_calls=*/1,

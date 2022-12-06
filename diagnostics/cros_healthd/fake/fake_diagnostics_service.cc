@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "diagnostics/cros_healthd/fake/fake_routine_service.h"
+#include "diagnostics/cros_healthd/fake/fake_diagnostics_service.h"
 
 #include <optional>
 
@@ -15,15 +15,15 @@ namespace diagnostics {
 
 namespace mojo_ipc = ::ash::cros_healthd::mojom;
 
-FakeRoutineService::FakeRoutineService() = default;
-FakeRoutineService::~FakeRoutineService() = default;
+FakeDiagnosticsService::FakeDiagnosticsService() = default;
+FakeDiagnosticsService::~FakeDiagnosticsService() = default;
 
-void FakeRoutineService::GetAvailableRoutines(
+void FakeDiagnosticsService::GetAvailableRoutines(
     GetAvailableRoutinesCallback callback) {
   NOTIMPLEMENTED();
 }
 
-void FakeRoutineService::GetRoutineUpdate(
+void FakeDiagnosticsService::GetRoutineUpdate(
     int32_t id,
     mojo_ipc::DiagnosticRoutineCommandEnum command,
     bool include_output,
@@ -31,71 +31,71 @@ void FakeRoutineService::GetRoutineUpdate(
   NOTIMPLEMENTED();
 }
 
-void FakeRoutineService::RunUrandomRoutine(
+void FakeDiagnosticsService::RunUrandomRoutine(
     mojo_ipc::NullableUint32Ptr length_seconds,
     RunUrandomRoutineCallback callback) {
   NOTIMPLEMENTED();
 }
 
-void FakeRoutineService::RunBatteryCapacityRoutine(
+void FakeDiagnosticsService::RunBatteryCapacityRoutine(
     RunBatteryCapacityRoutineCallback callback) {
   NOTIMPLEMENTED();
 }
 
-void FakeRoutineService::RunBatteryHealthRoutine(
+void FakeDiagnosticsService::RunBatteryHealthRoutine(
     RunBatteryHealthRoutineCallback callback) {
   NOTIMPLEMENTED();
 }
 
-void FakeRoutineService::RunSmartctlCheckRoutine(
+void FakeDiagnosticsService::RunSmartctlCheckRoutine(
     mojo_ipc::NullableUint32Ptr percentage_used_threshold,
     RunSmartctlCheckRoutineCallback callback) {
   NOTIMPLEMENTED();
 }
 
-void FakeRoutineService::RunAcPowerRoutine(
+void FakeDiagnosticsService::RunAcPowerRoutine(
     mojo_ipc::AcPowerStatusEnum expected_status,
     const std::optional<std::string>& expected_power_type,
     RunAcPowerRoutineCallback callback) {
   NOTIMPLEMENTED();
 }
 
-void FakeRoutineService::RunCpuCacheRoutine(
+void FakeDiagnosticsService::RunCpuCacheRoutine(
     mojo_ipc::NullableUint32Ptr length_seconds,
     RunCpuCacheRoutineCallback callback) {
   NOTIMPLEMENTED();
 }
 
-void FakeRoutineService::RunCpuStressRoutine(
+void FakeDiagnosticsService::RunCpuStressRoutine(
     mojo_ipc::NullableUint32Ptr length_seconds,
     RunCpuStressRoutineCallback callback) {
   NOTIMPLEMENTED();
 }
 
-void FakeRoutineService::RunFloatingPointAccuracyRoutine(
+void FakeDiagnosticsService::RunFloatingPointAccuracyRoutine(
     mojo_ipc::NullableUint32Ptr length_seconds,
     RunFloatingPointAccuracyRoutineCallback callback) {
   NOTIMPLEMENTED();
 }
 
-void FakeRoutineService::DEPRECATED_RunNvmeWearLevelRoutine(
+void FakeDiagnosticsService::DEPRECATED_RunNvmeWearLevelRoutine(
     uint32_t wear_level_threshold, RunNvmeWearLevelRoutineCallback callback) {
   NOTIMPLEMENTED();
 }
 
-void FakeRoutineService::RunNvmeWearLevelRoutine(
+void FakeDiagnosticsService::RunNvmeWearLevelRoutine(
     ash::cros_healthd::mojom::NullableUint32Ptr wear_level_threshold,
     RunNvmeWearLevelRoutineCallback callback) {
   NOTIMPLEMENTED();
 }
 
-void FakeRoutineService::RunNvmeSelfTestRoutine(
+void FakeDiagnosticsService::RunNvmeSelfTestRoutine(
     mojo_ipc::NvmeSelfTestTypeEnum nvme_self_test_type,
     RunNvmeSelfTestRoutineCallback callback) {
   NOTIMPLEMENTED();
 }
 
-void FakeRoutineService::RunDiskReadRoutine(
+void FakeDiagnosticsService::RunDiskReadRoutine(
     mojo_ipc::DiskReadRoutineTypeEnum type,
     uint32_t length_seconds,
     uint32_t file_size_mb,
@@ -103,125 +103,128 @@ void FakeRoutineService::RunDiskReadRoutine(
   NOTIMPLEMENTED();
 }
 
-void FakeRoutineService::RunPrimeSearchRoutine(
+void FakeDiagnosticsService::RunPrimeSearchRoutine(
     mojo_ipc::NullableUint32Ptr length_seconds,
     RunPrimeSearchRoutineCallback callback) {
   NOTIMPLEMENTED();
 }
 
-void FakeRoutineService::RunBatteryDischargeRoutine(
+void FakeDiagnosticsService::RunBatteryDischargeRoutine(
     uint32_t length_seconds,
     uint32_t maximum_discharge_percent_allowed,
     RunBatteryDischargeRoutineCallback callback) {
   NOTIMPLEMENTED();
 }
 
-void FakeRoutineService::RunBatteryChargeRoutine(
+void FakeDiagnosticsService::RunBatteryChargeRoutine(
     uint32_t length_seconds,
     uint32_t minimum_charge_percent_required,
     RunBatteryDischargeRoutineCallback callback) {
   NOTIMPLEMENTED();
 }
 
-void FakeRoutineService::RunMemoryRoutine(RunMemoryRoutineCallback callback) {
+void FakeDiagnosticsService::RunMemoryRoutine(
+    RunMemoryRoutineCallback callback) {
   NOTIMPLEMENTED();
 }
 
-void FakeRoutineService::RunLanConnectivityRoutine(
+void FakeDiagnosticsService::RunLanConnectivityRoutine(
     RunLanConnectivityRoutineCallback callback) {
   NOTIMPLEMENTED();
 }
 
-void FakeRoutineService::RunSignalStrengthRoutine(
+void FakeDiagnosticsService::RunSignalStrengthRoutine(
     RunSignalStrengthRoutineCallback callback) {
   NOTIMPLEMENTED();
 }
 
-void FakeRoutineService::RunGatewayCanBePingedRoutine(
+void FakeDiagnosticsService::RunGatewayCanBePingedRoutine(
     RunGatewayCanBePingedRoutineCallback callback) {
   NOTIMPLEMENTED();
 }
 
-void FakeRoutineService::RunHasSecureWiFiConnectionRoutine(
+void FakeDiagnosticsService::RunHasSecureWiFiConnectionRoutine(
     RunHasSecureWiFiConnectionRoutineCallback callback) {
   NOTIMPLEMENTED();
 }
 
-void FakeRoutineService::RunDnsResolverPresentRoutine(
+void FakeDiagnosticsService::RunDnsResolverPresentRoutine(
     RunDnsResolverPresentRoutineCallback callback) {
   NOTIMPLEMENTED();
 }
 
-void FakeRoutineService::RunDnsLatencyRoutine(
+void FakeDiagnosticsService::RunDnsLatencyRoutine(
     RunDnsLatencyRoutineCallback callback) {
   NOTIMPLEMENTED();
 }
 
-void FakeRoutineService::RunDnsResolutionRoutine(
+void FakeDiagnosticsService::RunDnsResolutionRoutine(
     RunDnsResolutionRoutineCallback callback) {
   NOTIMPLEMENTED();
 }
 
-void FakeRoutineService::RunCaptivePortalRoutine(
+void FakeDiagnosticsService::RunCaptivePortalRoutine(
     RunCaptivePortalRoutineCallback callback) {
   NOTIMPLEMENTED();
 }
 
-void FakeRoutineService::RunHttpFirewallRoutine(
+void FakeDiagnosticsService::RunHttpFirewallRoutine(
     RunHttpFirewallRoutineCallback callback) {
   NOTIMPLEMENTED();
 }
 
-void FakeRoutineService::RunHttpsFirewallRoutine(
+void FakeDiagnosticsService::RunHttpsFirewallRoutine(
     RunHttpsFirewallRoutineCallback callback) {
   NOTIMPLEMENTED();
 }
 
-void FakeRoutineService::RunHttpsLatencyRoutine(
+void FakeDiagnosticsService::RunHttpsLatencyRoutine(
     RunHttpsLatencyRoutineCallback callback) {
   NOTIMPLEMENTED();
 }
 
-void FakeRoutineService::RunVideoConferencingRoutine(
+void FakeDiagnosticsService::RunVideoConferencingRoutine(
     const std::optional<std::string>& stun_server_hostname,
     RunVideoConferencingRoutineCallback callback) {
   NOTIMPLEMENTED();
 }
 
-void FakeRoutineService::RunArcHttpRoutine(RunArcHttpRoutineCallback callback) {
+void FakeDiagnosticsService::RunArcHttpRoutine(
+    RunArcHttpRoutineCallback callback) {
   NOTIMPLEMENTED();
 }
 
-void FakeRoutineService::RunArcPingRoutine(RunArcPingRoutineCallback callback) {
+void FakeDiagnosticsService::RunArcPingRoutine(
+    RunArcPingRoutineCallback callback) {
   NOTIMPLEMENTED();
 }
 
-void FakeRoutineService::RunArcDnsResolutionRoutine(
+void FakeDiagnosticsService::RunArcDnsResolutionRoutine(
     RunArcDnsResolutionRoutineCallback callback) {
   NOTIMPLEMENTED();
 }
 
-void FakeRoutineService::RunSensitiveSensorRoutine(
+void FakeDiagnosticsService::RunSensitiveSensorRoutine(
     RunSensitiveSensorRoutineCallback callback) {
   NOTIMPLEMENTED();
 }
 
-void FakeRoutineService::RunFingerprintRoutine(
+void FakeDiagnosticsService::RunFingerprintRoutine(
     RunFingerprintRoutineCallback callback) {
   NOTIMPLEMENTED();
 }
 
-void FakeRoutineService::RunFingerprintAliveRoutine(
+void FakeDiagnosticsService::RunFingerprintAliveRoutine(
     RunFingerprintAliveRoutineCallback callback) {
   NOTIMPLEMENTED();
 }
 
-void FakeRoutineService::RunPrivacyScreenRoutine(
+void FakeDiagnosticsService::RunPrivacyScreenRoutine(
     bool target_state, RunPrivacyScreenRoutineCallback callback) {
   NOTIMPLEMENTED();
 }
 
-void FakeRoutineService::RunLedLitUpRoutine(
+void FakeDiagnosticsService::RunLedLitUpRoutine(
     mojo_ipc::LedName name,
     mojo_ipc::LedColor color,
     mojo::PendingRemote<mojo_ipc::LedLitUpRoutineReplier> replier,

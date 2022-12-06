@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "diagnostics/cros_healthd/cros_healthd_routine_service.h"
+#include "diagnostics/cros_healthd/cros_healthd_diagnostics_service.h"
 
 #include <cstdint>
 #include <limits>
@@ -41,7 +41,7 @@ void SetErrorRoutineUpdate(const std::string& status_message,
 
 }  // namespace
 
-CrosHealthdRoutineService::CrosHealthdRoutineService(
+CrosHealthdDiagnosticsService::CrosHealthdDiagnosticsService(
     Context* context, CrosHealthdRoutineFactory* routine_factory)
     : context_(context), routine_factory_(routine_factory), provider_(this) {
   DCHECK(context_);
@@ -49,13 +49,13 @@ CrosHealthdRoutineService::CrosHealthdRoutineService(
 
   // Service is ready after available routines are populated.
   PopulateAvailableRoutines(
-      base::BindOnce(&CrosHealthdRoutineService::OnServiceReady,
+      base::BindOnce(&CrosHealthdDiagnosticsService::OnServiceReady,
                      weak_ptr_factory_.GetWeakPtr()));
 }
 
-CrosHealthdRoutineService::~CrosHealthdRoutineService() = default;
+CrosHealthdDiagnosticsService::~CrosHealthdDiagnosticsService() = default;
 
-void CrosHealthdRoutineService::RegisterServiceReadyCallback(
+void CrosHealthdDiagnosticsService::RegisterServiceReadyCallback(
     base::OnceClosure callback) {
   if (ready_) {
     std::move(callback).Run();
@@ -64,13 +64,13 @@ void CrosHealthdRoutineService::RegisterServiceReadyCallback(
   }
 }
 
-void CrosHealthdRoutineService::GetAvailableRoutines(
+void CrosHealthdDiagnosticsService::GetAvailableRoutines(
     GetAvailableRoutinesCallback callback) {
   std::move(callback).Run(std::vector<mojo_ipc::DiagnosticRoutineEnum>(
       available_routines_.begin(), available_routines_.end()));
 }
 
-void CrosHealthdRoutineService::GetRoutineUpdate(
+void CrosHealthdDiagnosticsService::GetRoutineUpdate(
     int32_t id,
     mojo_ipc::DiagnosticRoutineCommandEnum command,
     bool include_output,
@@ -122,7 +122,7 @@ void CrosHealthdRoutineService::GetRoutineUpdate(
       std::move(update.routine_update_union)));
 }
 
-void CrosHealthdRoutineService::RunAcPowerRoutine(
+void CrosHealthdDiagnosticsService::RunAcPowerRoutine(
     mojo_ipc::AcPowerStatusEnum expected_status,
     const std::optional<std::string>& expected_power_type,
     RunAcPowerRoutineCallback callback) {
@@ -131,14 +131,14 @@ void CrosHealthdRoutineService::RunAcPowerRoutine(
              mojo_ipc::DiagnosticRoutineEnum::kAcPower, std::move(callback));
 }
 
-void CrosHealthdRoutineService::RunBatteryCapacityRoutine(
+void CrosHealthdDiagnosticsService::RunBatteryCapacityRoutine(
     RunBatteryCapacityRoutineCallback callback) {
   RunRoutine(routine_factory_->MakeBatteryCapacityRoutine(),
              mojo_ipc::DiagnosticRoutineEnum::kBatteryCapacity,
              std::move(callback));
 }
 
-void CrosHealthdRoutineService::RunBatteryChargeRoutine(
+void CrosHealthdDiagnosticsService::RunBatteryChargeRoutine(
     uint32_t length_seconds,
     uint32_t minimum_charge_percent_required,
     RunBatteryChargeRoutineCallback callback) {
@@ -148,7 +148,7 @@ void CrosHealthdRoutineService::RunBatteryChargeRoutine(
       mojo_ipc::DiagnosticRoutineEnum::kBatteryCharge, std::move(callback));
 }
 
-void CrosHealthdRoutineService::RunBatteryDischargeRoutine(
+void CrosHealthdDiagnosticsService::RunBatteryDischargeRoutine(
     uint32_t length_seconds,
     uint32_t maximum_discharge_percent_allowed,
     RunBatteryDischargeRoutineCallback callback) {
@@ -158,21 +158,21 @@ void CrosHealthdRoutineService::RunBatteryDischargeRoutine(
       mojo_ipc::DiagnosticRoutineEnum::kBatteryDischarge, std::move(callback));
 }
 
-void CrosHealthdRoutineService::RunBatteryHealthRoutine(
+void CrosHealthdDiagnosticsService::RunBatteryHealthRoutine(
     RunBatteryHealthRoutineCallback callback) {
   RunRoutine(routine_factory_->MakeBatteryHealthRoutine(),
              mojo_ipc::DiagnosticRoutineEnum::kBatteryHealth,
              std::move(callback));
 }
 
-void CrosHealthdRoutineService::RunCaptivePortalRoutine(
+void CrosHealthdDiagnosticsService::RunCaptivePortalRoutine(
     RunCaptivePortalRoutineCallback callback) {
   RunRoutine(routine_factory_->MakeCaptivePortalRoutine(),
              mojo_ipc::DiagnosticRoutineEnum::kCaptivePortal,
              std::move(callback));
 }
 
-void CrosHealthdRoutineService::RunCpuCacheRoutine(
+void CrosHealthdDiagnosticsService::RunCpuCacheRoutine(
     mojo_ipc::NullableUint32Ptr length_seconds,
     RunCpuCacheRoutineCallback callback) {
   std::optional<base::TimeDelta> exec_duration;
@@ -182,7 +182,7 @@ void CrosHealthdRoutineService::RunCpuCacheRoutine(
              mojo_ipc::DiagnosticRoutineEnum::kCpuCache, std::move(callback));
 }
 
-void CrosHealthdRoutineService::RunCpuStressRoutine(
+void CrosHealthdDiagnosticsService::RunCpuStressRoutine(
     mojo_ipc::NullableUint32Ptr length_seconds,
     RunCpuStressRoutineCallback callback) {
   std::optional<base::TimeDelta> exec_duration;
@@ -192,7 +192,7 @@ void CrosHealthdRoutineService::RunCpuStressRoutine(
              mojo_ipc::DiagnosticRoutineEnum::kCpuStress, std::move(callback));
 }
 
-void CrosHealthdRoutineService::RunDiskReadRoutine(
+void CrosHealthdDiagnosticsService::RunDiskReadRoutine(
     mojo_ipc::DiskReadRoutineTypeEnum type,
     uint32_t length_seconds,
     uint32_t file_size_mb,
@@ -202,27 +202,27 @@ void CrosHealthdRoutineService::RunDiskReadRoutine(
              mojo_ipc::DiagnosticRoutineEnum::kDiskRead, std::move(callback));
 }
 
-void CrosHealthdRoutineService::RunDnsLatencyRoutine(
+void CrosHealthdDiagnosticsService::RunDnsLatencyRoutine(
     RunDnsLatencyRoutineCallback callback) {
   RunRoutine(routine_factory_->MakeDnsLatencyRoutine(),
              mojo_ipc::DiagnosticRoutineEnum::kDnsLatency, std::move(callback));
 }
 
-void CrosHealthdRoutineService::RunDnsResolutionRoutine(
+void CrosHealthdDiagnosticsService::RunDnsResolutionRoutine(
     RunDnsResolutionRoutineCallback callback) {
   RunRoutine(routine_factory_->MakeDnsResolutionRoutine(),
              mojo_ipc::DiagnosticRoutineEnum::kDnsResolution,
              std::move(callback));
 }
 
-void CrosHealthdRoutineService::RunDnsResolverPresentRoutine(
+void CrosHealthdDiagnosticsService::RunDnsResolverPresentRoutine(
     RunDnsResolverPresentRoutineCallback callback) {
   RunRoutine(routine_factory_->MakeDnsResolverPresentRoutine(),
              mojo_ipc::DiagnosticRoutineEnum::kDnsResolverPresent,
              std::move(callback));
 }
 
-void CrosHealthdRoutineService::RunFloatingPointAccuracyRoutine(
+void CrosHealthdDiagnosticsService::RunFloatingPointAccuracyRoutine(
     mojo_ipc::NullableUint32Ptr length_seconds,
     RunFloatingPointAccuracyRoutineCallback callback) {
   std::optional<base::TimeDelta> exec_duration;
@@ -233,55 +233,55 @@ void CrosHealthdRoutineService::RunFloatingPointAccuracyRoutine(
              std::move(callback));
 }
 
-void CrosHealthdRoutineService::RunGatewayCanBePingedRoutine(
+void CrosHealthdDiagnosticsService::RunGatewayCanBePingedRoutine(
     RunGatewayCanBePingedRoutineCallback callback) {
   RunRoutine(routine_factory_->MakeGatewayCanBePingedRoutine(),
              mojo_ipc::DiagnosticRoutineEnum::kGatewayCanBePinged,
              std::move(callback));
 }
 
-void CrosHealthdRoutineService::RunHasSecureWiFiConnectionRoutine(
+void CrosHealthdDiagnosticsService::RunHasSecureWiFiConnectionRoutine(
     RunHasSecureWiFiConnectionRoutineCallback callback) {
   RunRoutine(routine_factory_->MakeHasSecureWiFiConnectionRoutine(),
              mojo_ipc::DiagnosticRoutineEnum::kHasSecureWiFiConnection,
              std::move(callback));
 }
 
-void CrosHealthdRoutineService::RunHttpFirewallRoutine(
+void CrosHealthdDiagnosticsService::RunHttpFirewallRoutine(
     RunHttpFirewallRoutineCallback callback) {
   RunRoutine(routine_factory_->MakeHttpFirewallRoutine(),
              mojo_ipc::DiagnosticRoutineEnum::kHttpFirewall,
              std::move(callback));
 }
 
-void CrosHealthdRoutineService::RunHttpsFirewallRoutine(
+void CrosHealthdDiagnosticsService::RunHttpsFirewallRoutine(
     RunHttpsFirewallRoutineCallback callback) {
   RunRoutine(routine_factory_->MakeHttpsFirewallRoutine(),
              mojo_ipc::DiagnosticRoutineEnum::kHttpsFirewall,
              std::move(callback));
 }
 
-void CrosHealthdRoutineService::RunHttpsLatencyRoutine(
+void CrosHealthdDiagnosticsService::RunHttpsLatencyRoutine(
     RunHttpsLatencyRoutineCallback callback) {
   RunRoutine(routine_factory_->MakeHttpsLatencyRoutine(),
              mojo_ipc::DiagnosticRoutineEnum::kHttpsLatency,
              std::move(callback));
 }
 
-void CrosHealthdRoutineService::RunLanConnectivityRoutine(
+void CrosHealthdDiagnosticsService::RunLanConnectivityRoutine(
     RunLanConnectivityRoutineCallback callback) {
   RunRoutine(routine_factory_->MakeLanConnectivityRoutine(),
              mojo_ipc::DiagnosticRoutineEnum::kLanConnectivity,
              std::move(callback));
 }
 
-void CrosHealthdRoutineService::RunMemoryRoutine(
+void CrosHealthdDiagnosticsService::RunMemoryRoutine(
     RunMemoryRoutineCallback callback) {
   RunRoutine(routine_factory_->MakeMemoryRoutine(),
              mojo_ipc::DiagnosticRoutineEnum::kMemory, std::move(callback));
 }
 
-void CrosHealthdRoutineService::RunNvmeSelfTestRoutine(
+void CrosHealthdDiagnosticsService::RunNvmeSelfTestRoutine(
     mojo_ipc::NvmeSelfTestTypeEnum nvme_self_test_type,
     RunNvmeSelfTestRoutineCallback callback) {
   RunRoutine(routine_factory_->MakeNvmeSelfTestRoutine(context_->debugd_proxy(),
@@ -290,7 +290,7 @@ void CrosHealthdRoutineService::RunNvmeSelfTestRoutine(
              std::move(callback));
 }
 
-void CrosHealthdRoutineService::DEPRECATED_RunNvmeWearLevelRoutine(
+void CrosHealthdDiagnosticsService::DEPRECATED_RunNvmeWearLevelRoutine(
     uint32_t wear_level_threshold, RunNvmeWearLevelRoutineCallback callback) {
   RunRoutine(
       routine_factory_->MakeNvmeWearLevelRoutine(
@@ -299,7 +299,7 @@ void CrosHealthdRoutineService::DEPRECATED_RunNvmeWearLevelRoutine(
       mojo_ipc::DiagnosticRoutineEnum::kNvmeWearLevel, std::move(callback));
 }
 
-void CrosHealthdRoutineService::RunNvmeWearLevelRoutine(
+void CrosHealthdDiagnosticsService::RunNvmeWearLevelRoutine(
     ash::cros_healthd::mojom::NullableUint32Ptr wear_level_threshold,
     RunNvmeWearLevelRoutineCallback callback) {
   RunRoutine(routine_factory_->MakeNvmeWearLevelRoutine(
@@ -308,7 +308,7 @@ void CrosHealthdRoutineService::RunNvmeWearLevelRoutine(
              std::move(callback));
 }
 
-void CrosHealthdRoutineService::RunPrimeSearchRoutine(
+void CrosHealthdDiagnosticsService::RunPrimeSearchRoutine(
     mojo_ipc::NullableUint32Ptr length_seconds,
     RunPrimeSearchRoutineCallback callback) {
   std::optional<base::TimeDelta> exec_duration;
@@ -319,14 +319,14 @@ void CrosHealthdRoutineService::RunPrimeSearchRoutine(
              std::move(callback));
 }
 
-void CrosHealthdRoutineService::RunSignalStrengthRoutine(
+void CrosHealthdDiagnosticsService::RunSignalStrengthRoutine(
     RunSignalStrengthRoutineCallback callback) {
   RunRoutine(routine_factory_->MakeSignalStrengthRoutine(),
              mojo_ipc::DiagnosticRoutineEnum::kSignalStrength,
              std::move(callback));
 }
 
-void CrosHealthdRoutineService::RunSmartctlCheckRoutine(
+void CrosHealthdDiagnosticsService::RunSmartctlCheckRoutine(
     mojo_ipc::NullableUint32Ptr percentage_used_threshold,
     RunSmartctlCheckRoutineCallback callback) {
   RunRoutine(
@@ -335,14 +335,14 @@ void CrosHealthdRoutineService::RunSmartctlCheckRoutine(
       mojo_ipc::DiagnosticRoutineEnum::kSmartctlCheck, std::move(callback));
 }
 
-void CrosHealthdRoutineService::RunUrandomRoutine(
+void CrosHealthdDiagnosticsService::RunUrandomRoutine(
     mojo_ipc::NullableUint32Ptr length_seconds,
     RunUrandomRoutineCallback callback) {
   RunRoutine(routine_factory_->MakeUrandomRoutine(std::move(length_seconds)),
              mojo_ipc::DiagnosticRoutineEnum::kUrandom, std::move(callback));
 }
 
-void CrosHealthdRoutineService::RunVideoConferencingRoutine(
+void CrosHealthdDiagnosticsService::RunVideoConferencingRoutine(
     const std::optional<std::string>& stun_server_hostname,
     RunVideoConferencingRoutineCallback callback) {
   RunRoutine(
@@ -350,54 +350,54 @@ void CrosHealthdRoutineService::RunVideoConferencingRoutine(
       mojo_ipc::DiagnosticRoutineEnum::kVideoConferencing, std::move(callback));
 }
 
-void CrosHealthdRoutineService::RunArcHttpRoutine(
+void CrosHealthdDiagnosticsService::RunArcHttpRoutine(
     RunArcHttpRoutineCallback callback) {
   RunRoutine(routine_factory_->MakeArcHttpRoutine(),
              mojo_ipc::DiagnosticRoutineEnum::kArcHttp, std::move(callback));
 }
 
-void CrosHealthdRoutineService::RunArcPingRoutine(
+void CrosHealthdDiagnosticsService::RunArcPingRoutine(
     RunArcPingRoutineCallback callback) {
   RunRoutine(routine_factory_->MakeArcPingRoutine(),
              mojo_ipc::DiagnosticRoutineEnum::kArcPing, std::move(callback));
 }
 
-void CrosHealthdRoutineService::RunArcDnsResolutionRoutine(
+void CrosHealthdDiagnosticsService::RunArcDnsResolutionRoutine(
     RunArcDnsResolutionRoutineCallback callback) {
   RunRoutine(routine_factory_->MakeArcDnsResolutionRoutine(),
              mojo_ipc::DiagnosticRoutineEnum::kArcDnsResolution,
              std::move(callback));
 }
 
-void CrosHealthdRoutineService::RunSensitiveSensorRoutine(
+void CrosHealthdDiagnosticsService::RunSensitiveSensorRoutine(
     RunSensitiveSensorRoutineCallback callback) {
   RunRoutine(routine_factory_->MakeSensitiveSensorRoutine(),
              mojo_ipc::DiagnosticRoutineEnum::kSensitiveSensor,
              std::move(callback));
 }
 
-void CrosHealthdRoutineService::RunFingerprintRoutine(
+void CrosHealthdDiagnosticsService::RunFingerprintRoutine(
     RunFingerprintRoutineCallback callback) {
   RunRoutine(routine_factory_->MakeFingerprintRoutine(),
              mojo_ipc::DiagnosticRoutineEnum::kFingerprint,
              std::move(callback));
 }
 
-void CrosHealthdRoutineService::RunFingerprintAliveRoutine(
+void CrosHealthdDiagnosticsService::RunFingerprintAliveRoutine(
     RunFingerprintAliveRoutineCallback callback) {
   RunRoutine(routine_factory_->MakeFingerprintAliveRoutine(),
              mojo_ipc::DiagnosticRoutineEnum::kFingerprintAlive,
              std::move(callback));
 }
 
-void CrosHealthdRoutineService::RunPrivacyScreenRoutine(
+void CrosHealthdDiagnosticsService::RunPrivacyScreenRoutine(
     bool target_state, RunPrivacyScreenRoutineCallback callback) {
   RunRoutine(routine_factory_->MakePrivacyScreenRoutine(target_state),
              mojo_ipc::DiagnosticRoutineEnum::kPrivacyScreen,
              std::move(callback));
 }
 
-void CrosHealthdRoutineService::RunLedLitUpRoutine(
+void CrosHealthdDiagnosticsService::RunLedLitUpRoutine(
     mojo_ipc::LedName name,
     mojo_ipc::LedColor color,
     mojo::PendingRemote<mojo_ipc::LedLitUpRoutineReplier> replier,
@@ -407,7 +407,7 @@ void CrosHealthdRoutineService::RunLedLitUpRoutine(
       mojo_ipc::DiagnosticRoutineEnum::kLedLitUp, std::move(callback));
 }
 
-void CrosHealthdRoutineService::RunRoutine(
+void CrosHealthdDiagnosticsService::RunRoutine(
     std::unique_ptr<DiagnosticRoutine> routine,
     mojo_ipc::DiagnosticRoutineEnum routine_enum,
     base::OnceCallback<void(mojo_ipc::RunRoutineResponsePtr)> callback) {
@@ -434,15 +434,15 @@ void CrosHealthdRoutineService::RunRoutine(
       mojo_ipc::RunRoutineResponse::New(id, active_routines_[id]->GetStatus()));
 }
 
-void CrosHealthdRoutineService::HandleNvmeSelfTestSupportedResponse(
+void CrosHealthdDiagnosticsService::HandleNvmeSelfTestSupportedResponse(
     bool supported) {
   if (supported) {
     available_routines_.insert(mojo_ipc::DiagnosticRoutineEnum::kNvmeSelfTest);
   }
 }
 
-void CrosHealthdRoutineService::OnServiceReady() {
-  LOG(INFO) << "CrosHealthdRoutineService is ready.";
+void CrosHealthdDiagnosticsService::OnServiceReady() {
+  LOG(INFO) << "CrosHealthdDiagnosticsService is ready.";
   ready_ = true;
 
   provider_.Register(context_->mojo_service()->GetServiceManager(),
@@ -456,7 +456,7 @@ void CrosHealthdRoutineService::OnServiceReady() {
   }
 }
 
-void CrosHealthdRoutineService::PopulateAvailableRoutines(
+void CrosHealthdDiagnosticsService::PopulateAvailableRoutines(
     base::OnceClosure completion_callback) {
   // |barreir| will be destructed automatically at the end of this function,
   // which ensures |completion_callback| will only be run after all the
@@ -506,7 +506,7 @@ void CrosHealthdRoutineService::PopulateAvailableRoutines(
           mojo_ipc::DiagnosticRoutineEnum::kNvmeWearLevel);
     }
     auto nvme_self_test_supported_callback = base::BindOnce(
-        &CrosHealthdRoutineService::HandleNvmeSelfTestSupportedResponse,
+        &CrosHealthdDiagnosticsService::HandleNvmeSelfTestSupportedResponse,
         weak_ptr_factory_.GetWeakPtr());
     context_->system_config()->NvmeSelfTestSupported(
         barreir.Depend(std::move(nvme_self_test_supported_callback)));
