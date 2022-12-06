@@ -6,6 +6,7 @@
 
 #include "common/stream_manipulator.h"
 
+#include <iomanip>
 #include <utility>
 
 #include <base/files/file_util.h>
@@ -41,6 +42,33 @@
 
 namespace cros {
 
+namespace {
+
+const base::FilePath kSWPrivacySwitchFilePath("/run/camera/sw_privacy_switch");
+constexpr char kSWPrivacySwitchOn[] = "on";
+constexpr char kSWPrivacySwitchOff[] = "off";
+
+}  // namespace
+
+StreamManipulator::RuntimeOptions::RuntimeOptions() {
+  if (base::PathExists(kSWPrivacySwitchFilePath)) {
+    std::string state;
+    if (base::ReadFileToString(kSWPrivacySwitchFilePath, &state)) {
+      if (state == kSWPrivacySwitchOn) {
+        SetSWPrivacySwitchState(mojom::CameraPrivacySwitchState::ON);
+      } else if (state == kSWPrivacySwitchOff) {
+        SetSWPrivacySwitchState(mojom::CameraPrivacySwitchState::OFF);
+      }
+      LOGF(INFO) << "The SW privacy switch is initialized to "
+                 << std::quoted(state) << " from "
+                 << std::quoted(kSWPrivacySwitchFilePath.value());
+    } else {
+      LOGF(ERROR) << "Failed to read the SW privacy switch state from "
+                  << std::quoted(kSWPrivacySwitchFilePath.value());
+    }
+  }
+}
+
 void StreamManipulator::RuntimeOptions::SetAutoFramingState(
     mojom::CameraAutoFramingState state) {
   base::AutoLock lock(lock_);
@@ -49,8 +77,17 @@ void StreamManipulator::RuntimeOptions::SetAutoFramingState(
 
 void StreamManipulator::RuntimeOptions::SetSWPrivacySwitchState(
     mojom::CameraPrivacySwitchState state) {
-  base::AutoLock lock(lock_);
-  sw_privacy_switch_state_ = state;
+  {
+    base::AutoLock lock(lock_);
+    sw_privacy_switch_state_ = state;
+  }
+  const char* str = state == mojom::CameraPrivacySwitchState::ON
+                        ? kSWPrivacySwitchOn
+                        : kSWPrivacySwitchOff;
+  if (!base::WriteFile(kSWPrivacySwitchFilePath, str)) {
+    LOGF(ERROR) << "Failed to write the SW privacy switch state to "
+                << std::quoted(kSWPrivacySwitchFilePath.value());
+  }
 }
 
 void StreamManipulator::RuntimeOptions::SetEffectsConfig(

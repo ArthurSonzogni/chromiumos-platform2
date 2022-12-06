@@ -48,6 +48,8 @@ class CROS_CAMERA_EXPORT StreamManipulator {
  public:
   class RuntimeOptions {
    public:
+    RuntimeOptions();
+
     void SetAutoFramingState(mojom::CameraAutoFramingState state);
     void SetSWPrivacySwitchState(mojom::CameraPrivacySwitchState state);
     void SetEffectsConfig(mojom::EffectsConfigPtr config);

@@ -180,6 +180,11 @@ void CameraHalServerImpl::IPCBridge::GetCameraSWPrivacySwitchState(
 void CameraHalServerImpl::IPCBridge::SetCameraSWPrivacySwitchState(
     mojom::CameraPrivacySwitchState state) {
   DCHECK(ipc_task_runner_->BelongsToCurrentThread());
+  if (state == mojom::CameraPrivacySwitchState::UNKNOWN) {
+    LOGF(ERROR) << "Setting UNKNOWN to the SW privacy switch state is not"
+                   "allowed.";
+    return;
+  }
   if (camera_hal_adapter_->GetCameraSWPrivacySwitchState() == state) {
     return;
   }
