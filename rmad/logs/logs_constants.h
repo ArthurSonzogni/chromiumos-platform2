@@ -5,7 +5,6 @@
 #ifndef RMAD_LOGS_LOGS_CONSTANTS_H_
 #define RMAD_LOGS_LOGS_CONSTANTS_H_
 
-#include <map>
 #include <string>
 
 #include <base/containers/fixed_flat_map.h>
@@ -49,6 +48,7 @@ constexpr char kLogTimestampFormat[] = "[%04d-%02d-%02d %02d:%02d:%02d] ";
 constexpr char kLogTransitionFormat[] = "Transitioned from %s to %s";
 constexpr char kLogErrorFormat[] = "ERROR in %s: %s";
 constexpr char kLogDetailPrefixFormat[] = "%s: ";
+constexpr char kLogRepairStartString[] = "Shimless RMA Started";
 constexpr char kLogSelectComponentsFormat[] = "Selected %s";
 constexpr char kLogSelectComponentsReworkString[] = "Selected Mainboard Rework";
 constexpr char kLogChooseDeviceDestinationFormat[] = "Selected %s";

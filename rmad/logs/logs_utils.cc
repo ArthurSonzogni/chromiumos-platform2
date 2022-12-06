@@ -134,6 +134,10 @@ std::string GenerateTextLogString(scoped_refptr<JsonStore> json_store) {
             kLogDetailPrefixFormat, GetStateName(current_state)));
 
         switch (current_state) {
+          case RmadState::kWelcome: {
+            generated_text_log.append(kLogRepairStartString);
+            break;
+          }
           case RmadState::kComponentsRepair: {
             const bool is_mlb_repair =
                 details->FindBool(kLogReworkSelected).value();
@@ -240,6 +244,26 @@ bool RecordOccurredErrorToLogs(scoped_refptr<JsonStore> json_store,
   details.Set(kOccurredError, static_cast<int>(error));
 
   return AddEventToJson(json_store, current_state, LogEventType::kError,
+                        std::move(details));
+}
+
+bool RecordRepairStartToLogs(scoped_refptr<JsonStore> json_store) {
+  // Check to make sure the repair start was not already recorded.
+  base::Value logs(base::Value::Type::DICT);
+  json_store->GetValue(kLogs, &logs);
+  const base::Value::List* events = logs.GetDict().FindList(kEvents);
+  if (events) {
+    for (const base::Value& value : *events) {
+      const base::Value::Dict& event = value.GetDict();
+      if (event.FindInt(kType) == static_cast<int>(LogEventType::kData) &&
+          event.FindInt(kStateId) == static_cast<int>(RmadState::kWelcome)) {
+        return false;
+      }
+    }
+  }
+
+  base::Value::Dict details;
+  return AddEventToJson(json_store, RmadState::kWelcome, LogEventType::kData,
                         std::move(details));
 }
 

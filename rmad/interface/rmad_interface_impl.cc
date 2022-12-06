@@ -238,6 +238,8 @@ bool RmadInterfaceImpl::SetUp(scoped_refptr<DaemonCallback> daemon_callback) {
     return false;
   }
 
+  RecordRepairStartToLogs(json_store_);
+
   // If we are in the RMA process:
   //   1. Disable cellular to prevent accidentally using it.
   //   2. Start monitoring test files if we are running in test mode.

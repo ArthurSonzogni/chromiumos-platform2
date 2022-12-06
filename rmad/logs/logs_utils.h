@@ -31,6 +31,11 @@ bool RecordOccurredErrorToLogs(scoped_refptr<JsonStore> json_store,
                                RmadState::StateCase current_state,
                                RmadErrorCode error);
 
+// Adds the start of the repair to `json_store`. Checks to see if the repair
+// start was previously recorded to avoid duplication. Returns true if
+// successful.
+bool RecordRepairStartToLogs(scoped_refptr<JsonStore> json_store);
+
 // Adds the selected repair components to `json_store`. Returns true if
 // successful.
 bool RecordSelectedComponentsToLogs(

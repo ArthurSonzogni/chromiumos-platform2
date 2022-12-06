@@ -39,6 +39,13 @@ constexpr char kSampleLogsJson[] = R"(
     "events": [
       {
         "details": {
+        },
+        "state_id": 1,
+        "timestamp": 1668635055.687762,
+        "type": 1
+      },
+      {
+        "details": {
            "from_state_id": 1,
            "to_state_id": 10
         },
@@ -134,6 +141,7 @@ constexpr char kSampleLogsJson[] = R"(
 }
 )";
 constexpr char kExpectedLogText[] =
+    "[2022-11-16 21:44:15] Welcome: Shimless RMA Started\n"
     "[2022-11-16 21:44:15] Transitioned from Welcome to Restock\n"
     "[2022-11-18 22:23:50] ComponentsRepair: Selected RMAD_COMPONENT_KEYBOARD,"
     " RMAD_COMPONENT_CAMERA\n"
@@ -205,6 +213,24 @@ TEST_F(LogsUtilsTest, RecordStateTransition) {
             event2.FindDict(kDetails)->FindInt(kFromStateId));
   EXPECT_EQ(static_cast<int>(state3),
             event2.FindDict(kDetails)->FindInt(kToStateId));
+}
+
+// Simulates adding the repair start to an empty `logs` json.
+TEST_F(LogsUtilsTest, RecordRepairStart) {
+  EXPECT_TRUE(CreateInputFile(kDefaultJson, std::size(kDefaultJson) - 1));
+
+  EXPECT_TRUE(RecordRepairStartToLogs(json_store_));
+  base::Value logs(base::Value::Type::DICT);
+  json_store_->GetValue(kLogs, &logs);
+
+  const base::Value::List* events = logs.GetDict().FindList(kEvents);
+  EXPECT_EQ(1, events->size());
+  const base::Value::Dict& event = (*events)[0].GetDict();
+  EXPECT_EQ(static_cast<int>(RmadState::kWelcome), event.FindInt(kStateId));
+  EXPECT_EQ(static_cast<int>(LogEventType::kData), event.FindInt(kType));
+
+  // Attempt to record again and verify it's not added.
+  EXPECT_FALSE(RecordRepairStartToLogs(json_store_));
 }
 
 // Simulates adding replaced components to an empty `logs` json.
