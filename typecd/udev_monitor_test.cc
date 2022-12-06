@@ -125,14 +125,30 @@ class UdevMonitorTest : public ::testing::Test {
   }
 
   void TearDown() override {
+    mock_udev_monitor_.reset();
     monitor_.reset();
     typec_observer_.reset();
+  }
+
+  // Helper function to collect MockUdevMonitor initialization code in 1 place.
+  void InitMockUdevMonitor() {
+    mock_udev_monitor_ = std::make_unique<brillo::MockUdevMonitor>();
+    EXPECT_CALL(*mock_udev_monitor_, FilterAddMatchSubsystemDeviceType(
+                                         StrEq(kTypeCSubsystem), nullptr))
+        .WillOnce(Return(true));
+    EXPECT_CALL(*mock_udev_monitor_, EnableReceiving()).WillOnce(Return(true));
+    fds_ = std::make_unique<brillo::ScopedSocketPair>();
+    EXPECT_CALL(*mock_udev_monitor_, GetFileDescriptor())
+        .WillOnce(Return(fds_->left));
   }
 
   // Add a task environment to keep the FileDescriptorWatcher code happy.
   base::test::TaskEnvironment task_environment_;
   std::unique_ptr<TestTypecObserver> typec_observer_;
   std::unique_ptr<UdevMonitor> monitor_;
+  std::unique_ptr<brillo::MockUdevMonitor> mock_udev_monitor_;
+  // A valid socket pair used to make MockUdevMonitor happy.
+  std::unique_ptr<brillo::ScopedSocketPair> fds_;
 };
 
 TEST_F(UdevMonitorTest, Basic) {
@@ -171,9 +187,6 @@ TEST_F(UdevMonitorTest, Basic) {
 // Check that a port and partner can be detected after init. Also check whether
 // a subsequent partner removal is detected correctly.
 TEST_F(UdevMonitorTest, Hotplug) {
-  // Create a socket-pair; to help poke the udev monitoring logic.
-  auto fds = std::make_unique<brillo::ScopedSocketPair>();
-
   // Fake the calls for port add.
   auto device_port = std::make_unique<brillo::MockUdevDevice>();
   EXPECT_CALL(*device_port, GetSysPath()).WillOnce(Return(kFakePort0SysPath));
@@ -198,13 +211,8 @@ TEST_F(UdevMonitorTest, Hotplug) {
   EXPECT_CALL(*device_cable_add, GetAction()).WillOnce(Return("add"));
 
   // Create the Mock Udev objects and function invocation expectations.
-  auto monitor = std::make_unique<brillo::MockUdevMonitor>();
-  EXPECT_CALL(*monitor, FilterAddMatchSubsystemDeviceType(
-                            StrEq(kTypeCSubsystem), nullptr))
-      .WillOnce(Return(true));
-  EXPECT_CALL(*monitor, EnableReceiving()).WillOnce(Return(true));
-  EXPECT_CALL(*monitor, GetFileDescriptor()).WillOnce(Return(fds->left));
-  EXPECT_CALL(*monitor, ReceiveDevice())
+  InitMockUdevMonitor();
+  EXPECT_CALL(*mock_udev_monitor_, ReceiveDevice())
       .WillOnce(Return(ByMove(std::move(device_port))))
       .WillOnce(Return(ByMove(std::move(device_partner_add))))
       .WillOnce(Return(ByMove(std::move(device_partner_remove))))
@@ -212,7 +220,7 @@ TEST_F(UdevMonitorTest, Hotplug) {
 
   auto udev = std::make_unique<brillo::MockUdev>();
   EXPECT_CALL(*udev, CreateMonitorFromNetlink(StrEq(kUdevMonitorName)))
-      .WillOnce(Return(ByMove(std::move(monitor))));
+      .WillOnce(Return(ByMove(std::move(mock_udev_monitor_))));
 
   monitor_->SetUdev(std::move(udev));
 
@@ -239,27 +247,19 @@ TEST_F(UdevMonitorTest, Hotplug) {
 
 // Test that the udev handler correctly handles invalid port sysfs paths.
 TEST_F(UdevMonitorTest, InvalidPortSyspath) {
-  // Create a socket-pair; to help poke the udev monitoring logic.
-  auto fds = std::make_unique<brillo::ScopedSocketPair>();
-
   // Fake the calls for port add.
   auto device_port = std::make_unique<brillo::MockUdevDevice>();
   EXPECT_CALL(*device_port, GetSysPath()).WillOnce(Return(kInvalidPortSysPath));
   EXPECT_CALL(*device_port, GetAction()).WillOnce(Return("add"));
 
   // Create the Mock Udev objects and function invocation expectations.
-  auto monitor = std::make_unique<brillo::MockUdevMonitor>();
-  EXPECT_CALL(*monitor, FilterAddMatchSubsystemDeviceType(
-                            StrEq(kTypeCSubsystem), nullptr))
-      .WillOnce(Return(true));
-  EXPECT_CALL(*monitor, EnableReceiving()).WillOnce(Return(true));
-  EXPECT_CALL(*monitor, GetFileDescriptor()).WillOnce(Return(fds->left));
-  EXPECT_CALL(*monitor, ReceiveDevice())
+  InitMockUdevMonitor();
+  EXPECT_CALL(*mock_udev_monitor_, ReceiveDevice())
       .WillOnce(Return(ByMove(std::move(device_port))));
 
   auto udev = std::make_unique<brillo::MockUdev>();
   EXPECT_CALL(*udev, CreateMonitorFromNetlink(StrEq(kUdevMonitorName)))
-      .WillOnce(Return(ByMove(std::move(monitor))));
+      .WillOnce(Return(ByMove(std::move(mock_udev_monitor_))));
 
   monitor_->SetUdev(std::move(udev));
 
@@ -318,9 +318,6 @@ TEST_F(UdevMonitorTest, CableAndAltModeAddition) {
 
 // Check that a basic partner change event gets detected correctly.
 TEST_F(UdevMonitorTest, PartnerChanged) {
-  // Create a socket-pair; to help poke the udev monitoring logic.
-  auto fds = std::make_unique<brillo::ScopedSocketPair>();
-
   // Fake the calls for partner change.
   auto device_partner_change = std::make_unique<brillo::MockUdevDevice>();
   EXPECT_CALL(*device_partner_change, GetSysPath())
@@ -328,18 +325,13 @@ TEST_F(UdevMonitorTest, PartnerChanged) {
   EXPECT_CALL(*device_partner_change, GetAction()).WillOnce(Return("change"));
 
   // Create the Mock Udev objects and function invocation expectations.
-  auto monitor = std::make_unique<brillo::MockUdevMonitor>();
-  EXPECT_CALL(*monitor, FilterAddMatchSubsystemDeviceType(
-                            StrEq(kTypeCSubsystem), nullptr))
-      .WillOnce(Return(true));
-  EXPECT_CALL(*monitor, EnableReceiving()).WillOnce(Return(true));
-  EXPECT_CALL(*monitor, GetFileDescriptor()).WillOnce(Return(fds->left));
-  EXPECT_CALL(*monitor, ReceiveDevice())
+  InitMockUdevMonitor();
+  EXPECT_CALL(*mock_udev_monitor_, ReceiveDevice())
       .WillOnce(Return(ByMove(std::move(device_partner_change))));
 
   auto udev = std::make_unique<brillo::MockUdev>();
   EXPECT_CALL(*udev, CreateMonitorFromNetlink(StrEq(kUdevMonitorName)))
-      .WillOnce(Return(ByMove(std::move(monitor))));
+      .WillOnce(Return(ByMove(std::move(mock_udev_monitor_))));
 
   monitor_->SetUdev(std::move(udev));
 
@@ -360,9 +352,6 @@ TEST_F(UdevMonitorTest, PartnerChanged) {
 
 // Check that a basic port change event gets detected correctly.
 TEST_F(UdevMonitorTest, PortChanged) {
-  // Create a socket-pair; to help poke the udev monitoring logic.
-  auto fds = std::make_unique<brillo::ScopedSocketPair>();
-
   // Fake the calls for port change.
   auto device_port_change = std::make_unique<brillo::MockUdevDevice>();
   EXPECT_CALL(*device_port_change, GetSysPath())
@@ -370,18 +359,13 @@ TEST_F(UdevMonitorTest, PortChanged) {
   EXPECT_CALL(*device_port_change, GetAction()).WillOnce(Return("change"));
 
   // Create the Mock Udev objects and function invocation expectations.
-  auto monitor = std::make_unique<brillo::MockUdevMonitor>();
-  EXPECT_CALL(*monitor, FilterAddMatchSubsystemDeviceType(
-                            StrEq(kTypeCSubsystem), nullptr))
-      .WillOnce(Return(true));
-  EXPECT_CALL(*monitor, EnableReceiving()).WillOnce(Return(true));
-  EXPECT_CALL(*monitor, GetFileDescriptor()).WillOnce(Return(fds->left));
-  EXPECT_CALL(*monitor, ReceiveDevice())
+  InitMockUdevMonitor();
+  EXPECT_CALL(*mock_udev_monitor_, ReceiveDevice())
       .WillOnce(Return(ByMove(std::move(device_port_change))));
 
   auto udev = std::make_unique<brillo::MockUdev>();
   EXPECT_CALL(*udev, CreateMonitorFromNetlink(StrEq(kUdevMonitorName)))
-      .WillOnce(Return(ByMove(std::move(monitor))));
+      .WillOnce(Return(ByMove(std::move(mock_udev_monitor_))));
 
   monitor_->SetUdev(std::move(udev));
 
