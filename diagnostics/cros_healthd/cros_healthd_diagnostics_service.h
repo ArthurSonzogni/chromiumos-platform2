@@ -136,6 +136,11 @@ class CrosHealthdDiagnosticsService final
           replier,
       RunLedLitUpRoutineCallback callback) override;
   void RunEmmcLifetimeRoutine(RunEmmcLifetimeRoutineCallback callback) override;
+  void RunAudioSetVolumeRoutine(
+      uint64_t node_id,
+      uint8_t volume,
+      bool mute_on,
+      RunAudioSetVolumeRoutineCallback callback) override;
 
  private:
   void RunRoutine(

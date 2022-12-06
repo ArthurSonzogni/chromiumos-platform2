@@ -80,6 +80,8 @@ constexpr struct {
     {"led_lit_up", ash::cros_healthd::mojom::DiagnosticRoutineEnum::kLedLitUp},
     {"emmc_lifetime",
      ash::cros_healthd::mojom::DiagnosticRoutineEnum::kEmmcLifetime},
+    {"audio_set_volume",
+     ash::cros_healthd::mojom::DiagnosticRoutineEnum::kAudioSetVolume},
 };
 
 }  // namespace diagnostics

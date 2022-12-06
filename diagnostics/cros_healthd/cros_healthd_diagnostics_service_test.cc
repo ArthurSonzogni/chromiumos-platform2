@@ -80,7 +80,8 @@ std::set<mojo_ipc::DiagnosticRoutineEnum> GetAllAvailableRoutines() {
       mojo_ipc::DiagnosticRoutineEnum::kFingerprintAlive,
       mojo_ipc::DiagnosticRoutineEnum::kPrivacyScreen,
       mojo_ipc::DiagnosticRoutineEnum::kLedLitUp,
-      mojo_ipc::DiagnosticRoutineEnum::kEmmcLifetime};
+      mojo_ipc::DiagnosticRoutineEnum::kEmmcLifetime,
+      mojo_ipc::DiagnosticRoutineEnum::kAudioSetVolume};
 }
 
 std::set<mojo_ipc::DiagnosticRoutineEnum> GetBatteryRoutines() {

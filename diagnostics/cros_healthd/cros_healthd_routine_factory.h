@@ -170,6 +170,11 @@ class CrosHealthdRoutineFactory {
   // diagnostics/routines/emmc_lifetime for details on the routine itself.
   virtual std::unique_ptr<DiagnosticRoutine> MakeEmmcLifetimeRoutine(
       org::chromium::debugdProxyInterface* debugd_proxy) = 0;
+  // Constructs a new instance of the audio set volume routine. See
+  // diagnostics/routines/audio/audio_set_volume.cc for details on the routine
+  // itself.
+  virtual std::unique_ptr<DiagnosticRoutine> MakeAudioSetVolumeRoutine(
+      uint64_t node_id, uint8_t volume, bool mute_on) = 0;
 };
 
 }  // namespace diagnostics

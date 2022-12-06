@@ -126,6 +126,10 @@ class FakeDiagnosticsService final
           replier,
       RunLedLitUpRoutineCallback callback) override;
   void RunEmmcLifetimeRoutine(RunEmmcLifetimeRoutineCallback callback) override;
+  void RunAudioSetVolumeRoutine(uint64_t node_id,
+                                uint8_t volume,
+                                bool mute_on,
+                                RunAudioSetVolumeRoutineCallback) override;
 
   // Overrides the default behavior of GetCrosHealthdDiagnosticsService to test
   // situations where mojo methods were called prior to wilco_dtc_supportd's

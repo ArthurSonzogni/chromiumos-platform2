@@ -93,6 +93,8 @@ class CrosHealthdRoutineFactoryImpl final : public CrosHealthdRoutineFactory {
           replier) override;
   std::unique_ptr<DiagnosticRoutine> MakeEmmcLifetimeRoutine(
       org::chromium::debugdProxyInterface* debugd_proxy) override;
+  std::unique_ptr<DiagnosticRoutine> MakeAudioSetVolumeRoutine(
+      uint64_t node_id, uint8_t volume, bool mute_on) override;
 
  private:
   // Unowned pointer that should outlive this instance.
