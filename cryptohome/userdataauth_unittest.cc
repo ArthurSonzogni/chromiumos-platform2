@@ -5596,6 +5596,7 @@ class UserDataAuthApiTest : public UserDataAuthTest {
   static constexpr char kUsername1[] = "foo@gmail.com";
   static constexpr char kPassword1[] = "MyP@ssW0rd!!";
   static constexpr char kPasswordLabel[] = "Password1";
+  static constexpr char kSmartCardLabel[] = "SmartCard1";
 
   hwsec::Tpm2SimulatorFactoryForTest sim_factory_;
 };
@@ -5690,6 +5691,41 @@ TEST_F(UserDataAuthApiTest, AuthAuthFactorNoSession) {
   EXPECT_THAT(
       reply.error_info(),
       HasPossibleAction(user_data_auth::PossibleAction::POSSIBLY_REBOOT));
+}
+
+TEST_F(UserDataAuthApiTest, ChalCredBadSRKROCA) {
+  ASSERT_TRUE(CreateTestUser());
+  std::optional<std::string> session_id = GetTestAuthedAuthSession();
+  ASSERT_TRUE(session_id.has_value());
+
+  ON_CALL(sim_factory_.GetMockBackend().GetMock().vendor, IsSrkRocaVulnerable)
+      .WillByDefault(ReturnValue(true));
+
+  ON_CALL(key_challenge_service_factory_, New(_))
+      .WillByDefault(
+          Return(ByMove(std::make_unique<MockKeyChallengeService>())));
+
+  user_data_auth::AddAuthFactorRequest add_factor_request;
+  add_factor_request.set_auth_session_id(session_id.value());
+  add_factor_request.mutable_auth_factor()->set_type(
+      user_data_auth::AuthFactorType::AUTH_FACTOR_TYPE_SMART_CARD);
+  add_factor_request.mutable_auth_factor()->set_label(kSmartCardLabel);
+  add_factor_request.mutable_auth_factor()
+      ->mutable_smart_card_metadata()
+      ->set_public_key_spki_der("test_pubkey_spki_der");
+  add_factor_request.mutable_auth_input()
+      ->mutable_smart_card_input()
+      ->add_signature_algorithms(user_data_auth::SmartCardSignatureAlgorithm::
+                                     CHALLENGE_RSASSA_PKCS1_V1_5_SHA256);
+  add_factor_request.mutable_auth_input()
+      ->mutable_smart_card_input()
+      ->set_key_delegate_dbus_service_name("test_challenge_dbus");
+
+  std::optional<user_data_auth::AddAuthFactorReply> add_factor_reply =
+      AddAuthFactorSync(add_factor_request);
+  ASSERT_TRUE(add_factor_reply.has_value());
+  EXPECT_EQ(add_factor_reply->error_info().primary_action(),
+            user_data_auth::PrimaryAction::PRIMARY_TPM_UDPATE_REQUIRED);
 }
 
 }  // namespace cryptohome
