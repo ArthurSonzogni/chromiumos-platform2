@@ -1502,47 +1502,40 @@ TEST_P(Camera3FrameContentTest, DetectGreenLine) {
   GetTimeOfTimeout(kDefaultTimeoutMs, &timeout);
   WaitShutterAndCaptureResult(timeout);
   ASSERT_NE(nullptr, buffer_handle_) << "Failed to get frame buffer";
-  auto argb_image = ConvertToImage(std::move(buffer_handle_), width_, height_,
-                                   ImageFormat::IMAGE_FORMAT_ARGB);
-  ASSERT_NE(nullptr, argb_image);
+  auto i420_image = ConvertToImage(std::move(buffer_handle_), width_, height_,
+                                   ImageFormat::IMAGE_FORMAT_I420);
+  ASSERT_NE(nullptr, i420_image);
+  ASSERT_EQ(3, i420_image->planes.size());
 
-  auto IsGreenPixel = [](const uint8_t* pixel) {
-    const uint8_t kRedOrBlueUpperLimit = 50;
-    const uint8_t kGreenLowerLimit = 100;
-    const uint32_t kRedOffset = 0;
-    const uint32_t kGreenOffset = 1;
-    const uint32_t kBlueOffset = 2;
-    return *(pixel + kRedOffset)<kRedOrBlueUpperLimit&&*(pixel + kGreenOffset)>
-               kGreenLowerLimit &&
-           *(pixel + kBlueOffset) < kRedOrBlueUpperLimit;
-  };
-  auto IsBottomLineGreen = [&](const ScopedImage& argb_image) {
-    uint8_t* pixel_of_last_line =
-        argb_image->planes[0].addr +
-        argb_image->planes[0].stride * (argb_image->height - 1);
-    for (size_t i = 0; i < argb_image->planes[0].stride;
-         i += kARGBPixelWidth, pixel_of_last_line += kARGBPixelWidth) {
-      if (!IsGreenPixel(pixel_of_last_line)) {
-        return false;
+  auto IsBottomLineGreen = [&](const ScopedImage& i420_image) {
+    uint32_t plane_width = i420_image->width / 2;
+    uint32_t plane_height = i420_image->height / 2;
+    for (int plane = 1; plane < i420_image->planes.size(); plane++) {
+      int offset = plane_width * (plane_height - 1);
+      for (size_t w = 0; w < plane_width; w++) {
+        if (i420_image->planes[plane].addr[offset + w] != 0) {
+          return false;
+        }
       }
     }
     return true;
   };
-  EXPECT_FALSE(IsBottomLineGreen(argb_image))
+  EXPECT_FALSE(IsBottomLineGreen(i420_image))
       << "Green line at the bottom of captured frame";
-  auto IsRightMostLineGreen = [&](const ScopedImage& argb_image) {
-    uint8_t* last_pixel_of_line = argb_image->planes[0].addr +
-                                  argb_image->planes[0].stride -
-                                  kARGBPixelWidth;
-    for (size_t i = 0; i < argb_image->height;
-         i++, last_pixel_of_line += argb_image->planes[0].stride) {
-      if (!IsGreenPixel(last_pixel_of_line)) {
-        return false;
+  auto IsRightMostLineGreen = [&](const ScopedImage& i420_image) {
+    uint32_t plane_width = i420_image->width / 2;
+    uint32_t plane_height = i420_image->height / 2;
+    for (int plane = 1; plane < i420_image->planes.size(); plane++) {
+      for (size_t h = 1; h <= plane_height; h++) {
+        int offset = plane_width * h - 1;
+        if (i420_image->planes[plane].addr[offset] != 0) {
+          return false;
+        }
       }
     }
     return true;
   };
-  EXPECT_FALSE(IsRightMostLineGreen(argb_image))
+  EXPECT_FALSE(IsRightMostLineGreen(i420_image))
       << "Green line at the rightmost of captured frame";
 }
 
