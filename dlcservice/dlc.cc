@@ -19,6 +19,7 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <brillo/errors/error.h>
+#include <chromeos/constants/imageloader.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/dlcservice/dbus-constants.h>
 
@@ -133,7 +134,20 @@ bool DlcBase::IsInstalling() const {
 }
 
 bool DlcBase::IsInstalled() const {
-  return state_.state() == DlcState::INSTALLED;
+  if (state_.state() != DlcState::INSTALLED) {
+    return false;
+  }
+
+  auto root_mount = GetRoot();
+  if (root_mount.empty()) {
+    LOG(WARNING) << "Validating against predefined root mount.";
+    // Keep in sync with imageloader's set mount path.
+    return base::PathExists(base::FilePath(imageloader::kImageloaderMountBase)
+                                .Append(id_)
+                                .Append(package_)
+                                .Append(kRootDirectoryInsideDlcModule));
+  }
+  return base::PathExists(root_mount);
 }
 
 bool DlcBase::IsVerified() const {

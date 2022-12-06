@@ -965,4 +965,30 @@ TEST_F(DlcBaseTest, ScaledOn) {
   EXPECT_TRUE(dlc.IsScaled());
 }
 
+TEST_F(DlcBaseTest, IsInstalledButUnmounted) {
+  DlcBase dlc(kThirdDlc);
+  dlc.Initialize();
+  SetUpDlcWithSlots(kThirdDlc);
+  InstallWithUpdateEngine({kThirdDlc});
+
+  EXPECT_TRUE(dlc.MarkVerified());
+  EXPECT_EQ(dlc.GetState().state(), DlcState::NOT_INSTALLED);
+  EXPECT_CALL(*mock_image_loader_proxy_ptr_,
+              LoadDlcImage(kThirdDlc, _, _, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<3>(mount_path_.value()), Return(true)));
+  EXPECT_CALL(*mock_update_engine_proxy_ptr_,
+              SetDlcActiveValue(_, kThirdDlc, _, _))
+      .WillOnce(Return(true));
+  EXPECT_CALL(mock_state_change_reporter_, DlcStateChanged(_)).Times(2);
+  EXPECT_CALL(*mock_metrics_,
+              SendInstallResult(InstallResult::kSuccessAlreadyInstalled));
+
+  EXPECT_TRUE(dlc.Install(&err_));
+  EXPECT_TRUE(dlc.IsInstalled());
+
+  // Fake unmount.
+  ASSERT_TRUE(base::DeletePathRecursively(dlc.GetRoot()));
+  EXPECT_FALSE(dlc.IsInstalled());
+}
+
 }  // namespace dlcservice

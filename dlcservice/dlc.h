@@ -151,6 +151,7 @@ class DlcBase {
   FRIEND_TEST(DlcBaseTest, UnmountClearsMountPoint);
   FRIEND_TEST(DlcBaseTest, ReserveInstall);
   FRIEND_TEST(DlcBaseTest, UnReservedInstall);
+  FRIEND_TEST(DlcBaseTest, IsInstalledButUnmounted);
 
   // Returns the path to the DLC image given the slot.
   virtual base::FilePath GetImagePath(BootSlot::Slot slot) const;

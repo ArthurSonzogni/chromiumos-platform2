@@ -16,6 +16,7 @@
 #include <base/logging.h>
 #include <base/threading/thread_task_runner_handle.h>
 #include <base/time/time.h>
+#include <chromeos/constants/imageloader.h>
 #include <chromeos/dbus/service_constants.h>
 
 namespace imageloader {
@@ -29,7 +30,6 @@ constexpr char kSeccompFilterPath[] =
 const char ImageLoader::kImageLoaderGroupName[] = "imageloaderd";
 const char ImageLoader::kImageLoaderUserName[] = "imageloaderd";
 constexpr base::TimeDelta kShutdownTimeout = base::Seconds(20);
-const char ImageLoader::kLoadedMountsBase[] = "/run/imageloader";
 
 ImageLoader::ImageLoader(ImageLoaderConfig config,
                          std::unique_ptr<HelperProcessProxy> proxy)
@@ -178,7 +178,7 @@ bool ImageLoader::UnmountComponent(brillo::ErrorPtr* err,
                                    const std::string& name,
                                    bool* out_success) {
   base::FilePath component_mount_root =
-      base::FilePath(imageloader::ImageLoader::kLoadedMountsBase).Append(name);
+      base::FilePath(imageloader::kImageloaderMountBase).Append(name);
   *out_success = impl_.CleanupAll(false, component_mount_root, nullptr,
                                   helper_process_proxy_.get());
   PostponeShutdown();

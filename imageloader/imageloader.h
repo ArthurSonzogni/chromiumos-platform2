@@ -34,8 +34,6 @@ class ImageLoader : public brillo::DBusServiceDaemon,
   static const char kImageLoaderGroupName[];
   static const char kImageLoaderUserName[];
 
-  static const char kLoadedMountsBase[];
-
   ImageLoader(ImageLoaderConfig config,
               std::unique_ptr<HelperProcessProxy> proxy);
   ImageLoader(const ImageLoader&) = delete;

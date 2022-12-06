@@ -16,6 +16,7 @@
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
 #include <brillo/userdb_utils.h>
+#include <chromeos/constants/imageloader.h>
 #include <imageloader/proto_bindings/imageloader.pb.h>
 
 #include "imageloader/component.h"
@@ -134,7 +135,7 @@ int main(int argc, char** argv) {
   DEFINE_string(mount_point, "",
                 "Specifies the mountpoint when using either --mount or "
                 "--unmount.");
-  DEFINE_string(loaded_mounts_base, imageloader::ImageLoader::kLoadedMountsBase,
+  DEFINE_string(loaded_mounts_base, imageloader::kImageloaderMountBase,
                 "Base path where components are mounted (unless --mount_point "
                 "is used).");
   DEFINE_int32(mount_helper_fd, -1,
