@@ -130,6 +130,7 @@ if (use.test) {
       "manager_test.cc",
       "sane_client_test.cc",
       "test_util.cc",
+      "test_util_test.cc",
     ]
     configs += [
       "//common-mk:test",
