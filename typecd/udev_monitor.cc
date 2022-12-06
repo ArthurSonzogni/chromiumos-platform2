@@ -19,6 +19,7 @@ constexpr char kPortRegex[] = R"(port(\d+))";
 // TODO(pmalani): Add SOP'' support when the kernel also supports it.
 constexpr char kSOPPrimePlugRegex[] = R"(port(\d+)-plug0)";
 constexpr char kSOPPrimePlugAltModeRegex[] = R"(port(\d+)-plug0.(\d+))";
+constexpr char kPdRegex[] = R"(pd\d+)";
 
 }  // namespace
 
@@ -40,6 +41,11 @@ bool UdevMonitor::ScanDevices() {
   auto enumerate = udev_->CreateEnumerate();
   if (!enumerate->AddMatchSubsystem(kTypeCSubsystem)) {
     PLOG(ERROR) << "Couldn't add typec to enumerator match.";
+    return false;
+  }
+
+  if (!enumerate->AddMatchSubsystem(kUsbPdSubsystem)) {
+    PLOG(ERROR) << "Couldn't add USB PD to enumerator match.";
     return false;
   }
 
@@ -68,6 +74,12 @@ bool UdevMonitor::BeginMonitoring() {
   }
 
   if (!udev_monitor_->FilterAddMatchSubsystemDeviceType(kTypeCSubsystem,
+                                                        nullptr)) {
+    PLOG(ERROR) << "Failed to add typec subsystem to udev monitor.";
+    return false;
+  }
+
+  if (!udev_monitor_->FilterAddMatchSubsystemDeviceType(kUsbPdSubsystem,
                                                         nullptr)) {
     PLOG(ERROR) << "Failed to add typec subsystem to udev monitor.";
     return false;
@@ -124,6 +136,8 @@ bool UdevMonitor::HandleDeviceAddedRemoved(const base::FilePath& path,
                             &port_num) &&
              added)
       observer.OnCableAltModeAdded(path, port_num);
+    else if (RE2::FullMatch(name.value(), kPdRegex))
+      observer.OnPdDeviceAddedOrRemoved(path, added);
   }
 
   return true;

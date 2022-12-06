@@ -133,6 +133,12 @@ void PortManager::OnCableAddedOrRemoved(const base::FilePath& path,
   }
 }
 
+void PortManager::OnPdDeviceAddedOrRemoved(const base::FilePath& path,
+                                           bool added) {
+  LOG(INFO) << "PD device event at: " << path;
+  // TODO(b/236280430): Invoke PD profile creation/deletion from here.
+}
+
 void PortManager::OnCablePlugAdded(const base::FilePath& path, int port_num) {
   auto it = ports_.find(port_num);
   if (it == ports_.end()) {

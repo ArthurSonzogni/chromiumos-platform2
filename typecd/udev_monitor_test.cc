@@ -25,7 +25,9 @@ namespace typecd {
 
 namespace {
 
+constexpr char kFakePd0SysPath[] = "/sys/class/usb_power_delivery/pd0";
 constexpr char kInvalidPortSysPath[] = "/sys/class/typec/a-yz";
+constexpr char kInvalidPdSyspath[] = "/sys/class/usb_power_delivery/a-yz";
 
 // A really dumb typec observer to verify that UdevMonitor is invoking the right
 // callbacks.
@@ -69,6 +71,14 @@ class TestTypecObserver : public UdevMonitor::TypecObserver {
     num_cable_altmodes_++;
   };
 
+  void OnPdDeviceAddedOrRemoved(const base::FilePath& path,
+                                bool added) override {
+    if (added)
+      num_pd_devices_++;
+    else
+      num_pd_devices_--;
+  };
+
   void OnPartnerChanged(int port_num) override { num_partner_change_events_++; }
   void OnPortChanged(int port_num) override {
     port_change_tracker_[port_num] = true;
@@ -79,6 +89,7 @@ class TestTypecObserver : public UdevMonitor::TypecObserver {
   int GetNumCables() { return num_cables_; }
   int GetNumCableAltModes() { return num_cable_altmodes_; }
   int GetNumPartnerChangeEvents() { return num_partner_change_events_; }
+  int GetNumPdDevices() { return num_pd_devices_; }
 
   // Helper to return whether a port change event was received for |port_num|.
   bool PortChanged(int port_num) {
@@ -99,6 +110,7 @@ class TestTypecObserver : public UdevMonitor::TypecObserver {
   int num_cables_;
   int num_cable_altmodes_;
   int num_partner_change_events_;
+  int num_pd_devices_;
   // Map to check whether a change was detected for a particular port:
   // Key = port number, Value = boolean value indicating whether a change event
   // was received.
@@ -136,6 +148,9 @@ class UdevMonitorTest : public ::testing::Test {
     EXPECT_CALL(*mock_udev_monitor_, FilterAddMatchSubsystemDeviceType(
                                          StrEq(kTypeCSubsystem), nullptr))
         .WillOnce(Return(true));
+    EXPECT_CALL(*mock_udev_monitor_, FilterAddMatchSubsystemDeviceType(
+                                         StrEq(kUsbPdSubsystem), nullptr))
+        .WillOnce(Return(true));
     EXPECT_CALL(*mock_udev_monitor_, EnableReceiving()).WillOnce(Return(true));
     fds_ = std::make_unique<brillo::ScopedSocketPair>();
     EXPECT_CALL(*mock_udev_monitor_, GetFileDescriptor())
@@ -165,6 +180,8 @@ TEST_F(UdevMonitorTest, Basic) {
 
   auto enumerate = std::make_unique<brillo::MockUdevEnumerate>();
   EXPECT_CALL(*enumerate, AddMatchSubsystem(StrEq(kTypeCSubsystem)))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*enumerate, AddMatchSubsystem(StrEq(kUsbPdSubsystem)))
       .WillOnce(Return(true));
   EXPECT_CALL(*enumerate, ScanDevices()).WillOnce(Return(true));
   EXPECT_CALL(*enumerate, GetListEntry())
@@ -300,6 +317,8 @@ TEST_F(UdevMonitorTest, CableAndAltModeAddition) {
   auto enumerate = std::make_unique<brillo::MockUdevEnumerate>();
   EXPECT_CALL(*enumerate, AddMatchSubsystem(StrEq(kTypeCSubsystem)))
       .WillOnce(Return(true));
+  EXPECT_CALL(*enumerate, AddMatchSubsystem(StrEq(kUsbPdSubsystem)))
+      .WillOnce(Return(true));
   EXPECT_CALL(*enumerate, ScanDevices()).WillOnce(Return(true));
   EXPECT_CALL(*enumerate, GetListEntry())
       .WillOnce(Return(ByMove(std::move(list_entry1))));
@@ -384,6 +403,59 @@ TEST_F(UdevMonitorTest, PortChanged) {
   // triggering the event handler using the FileDescriptorWatcher.
   monitor_->HandleUdevEvent();
   EXPECT_TRUE(typec_observer_->PortChanged(0));
+}
+
+// Check USB PD device event parsing for addition, removal and
+// invalid filepath cases.
+TEST_F(UdevMonitorTest, PdDevice) {
+  // Create a socket-pair; to help poke the udev monitoring logic.
+  auto fds = std::make_unique<brillo::ScopedSocketPair>();
+
+  // Fake the calls for PD device add.
+  auto pd_add = std::make_unique<brillo::MockUdevDevice>();
+  EXPECT_CALL(*pd_add, GetSysPath()).WillOnce(Return(kFakePd0SysPath));
+  EXPECT_CALL(*pd_add, GetAction()).WillOnce(Return("add"));
+
+  // Fake the calls for PD device remove.
+  auto pd_remove = std::make_unique<brillo::MockUdevDevice>();
+  EXPECT_CALL(*pd_remove, GetSysPath()).WillOnce(Return(kFakePd0SysPath));
+  EXPECT_CALL(*pd_remove, GetAction()).WillOnce(Return("remove"));
+
+  // Fake the calls for PD device with an invalid path.
+  auto pd_invalid = std::make_unique<brillo::MockUdevDevice>();
+  EXPECT_CALL(*pd_invalid, GetSysPath()).WillOnce(Return(kInvalidPdSyspath));
+  EXPECT_CALL(*pd_invalid, GetAction()).WillOnce(Return("add"));
+
+  // Create the Mock Udev objects and function invocation expectations.
+  InitMockUdevMonitor();
+  EXPECT_CALL(*mock_udev_monitor_, ReceiveDevice())
+      .WillOnce(Return(ByMove(std::move(pd_add))))
+      .WillOnce(Return(ByMove(std::move(pd_remove))))
+      .WillOnce(Return(ByMove(std::move(pd_invalid))));
+
+  auto udev = std::make_unique<brillo::MockUdev>();
+  EXPECT_CALL(*udev, CreateMonitorFromNetlink(StrEq(kUdevMonitorName)))
+      .WillOnce(Return(ByMove(std::move(mock_udev_monitor_))));
+
+  monitor_->SetUdev(std::move(udev));
+
+  EXPECT_THAT(0, typec_observer_->GetNumPdDevices());
+
+  // Skip initial scanning, since we are only interested in testing the parsing
+  // capability for PD devices..
+  ASSERT_TRUE(monitor_->BeginMonitoring());
+
+  // It's too tedious to poke the socket pair to actually trigger the
+  // FileDescriptorWatcher without it running repeatedly.
+  //
+  // Instead we manually call HandleUdevEvent. Effectively this equivalent to
+  // triggering the event handler using the FileDescriptorWatcher.
+  monitor_->HandleUdevEvent();
+  EXPECT_THAT(1, typec_observer_->GetNumPdDevices());
+  monitor_->HandleUdevEvent();
+  EXPECT_THAT(0, typec_observer_->GetNumPdDevices());
+  monitor_->HandleUdevEvent();
+  EXPECT_THAT(0, typec_observer_->GetNumPdDevices());
 }
 
 }  // namespace typecd

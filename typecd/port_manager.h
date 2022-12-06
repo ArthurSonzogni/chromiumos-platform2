@@ -113,6 +113,8 @@ class PortManager : public UdevMonitor::TypecObserver,
                              bool added) override;
   void OnCablePlugAdded(const base::FilePath& path, int port_num) override;
   void OnCableAltModeAdded(const base::FilePath& path, int port_num) override;
+  void OnPdDeviceAddedOrRemoved(const base::FilePath& path,
+                                bool added) override;
   void OnPartnerChanged(int port_num) override;
   void OnPortChanged(int port_num) override;
 

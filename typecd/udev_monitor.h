@@ -23,6 +23,7 @@ namespace typecd {
 
 constexpr char kTypeCSubsystem[] = "typec";
 constexpr char kUdevMonitorName[] = "udev";
+constexpr char kUsbPdSubsystem[] = "usb_power_delivery";
 
 // Class to monitor udev events on the Type C subsystem and inform other
 // objects / classes of these events.
@@ -102,6 +103,12 @@ class UdevMonitor {
     virtual void OnCableAltModeAdded(const base::FilePath& path,
                                      int port_num) = 0;
 
+    // Callback that is executed when a USB PD device is registered or removed.
+    //
+    // The |path| argument refers to the sysfs path of the PD object.
+    virtual void OnPdDeviceAddedOrRemoved(const base::FilePath& path,
+                                          bool added) = 0;
+
     // Callback that is executed when a partner "change" event is received.
     //
     // The |port_num| argument refers to the port's index number.
@@ -125,6 +132,7 @@ class UdevMonitor {
   FRIEND_TEST(UdevMonitorTest, CableAndAltModeAddition);
   FRIEND_TEST(UdevMonitorTest, PartnerChanged);
   FRIEND_TEST(UdevMonitorTest, PortChanged);
+  FRIEND_TEST(UdevMonitorTest, PdDevice);
 
   // Set the |udev_| pointer to a MockUdev device. *Only* used by unit tests.
   void SetUdev(std::unique_ptr<brillo::MockUdev> udev) {
