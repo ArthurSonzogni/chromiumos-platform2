@@ -119,6 +119,10 @@ bool SWPrivacySwitchStreamManipulator::ProcessCaptureResult(
       }
     }
     if (!buffer_cleared) {
+      LOGF(ERROR) << "Failed to clear the buffer:"
+                  << " hal_pixel_format = " << buffer.stream->format
+                  << ", width = " << buffer.stream->width
+                  << ", height = " << buffer.stream->height;
       buffer.status = CAMERA3_BUFFER_STATUS_ERROR;
     }
   }
