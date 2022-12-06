@@ -156,6 +156,9 @@ void BluezInfoManager::ParseDevicesInfo(
       info.mtu = mojo_ipc::NullableUint16::New(device->mtu());
     if (device->is_uuids_valid())
       info.uuids = device->uuids();
+    if (device->is_bluetooth_class_valid())
+      info.bluetooth_class =
+          mojo_ipc::NullableUint32::New(device->bluetooth_class());
 
     const auto it = battery_percentage.find(device->GetObjectPath());
     if (it != battery_percentage.end()) {

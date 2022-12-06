@@ -744,7 +744,7 @@ struct BluetoothAdapterInfo {
 
 // Information related to one of a adapter's Bluetooth connected devices.
 //
-// NextMinVersion: 2, NextIndex: 9
+// NextMinVersion: 3, NextIndex: 10
 [Stable]
 struct BluetoothDeviceInfo {
   // The MAC address of the device.
@@ -765,6 +765,8 @@ struct BluetoothDeviceInfo {
   array<string>? uuids@7;
   // The battery percentage of the device.
   [MinVersion=1] NullableUint8? battery_percentage@8;
+  // The Bluetooth class of device (CoD) of the device.
+  [MinVersion=2] NullableUint32? bluetooth_class@9;
 };
 
 // An enumeration of type in Bluetooth device info.

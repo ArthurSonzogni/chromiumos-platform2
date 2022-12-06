@@ -189,6 +189,7 @@ event --help`.
 | mtu | uint16? | The Maximum Transmission Unit used in ATT communication. |
 | uuids | array&lt;string&gt;? | The list of the available remote services. |
 | battery_percentage | uint8? | The battery percentage of the device. |
+| bluetooth_class | uint32? | The Bluetooth class of device (CoD) of the device. |
 
 ##### BluetoothDeviceType
 | Enum | Description |

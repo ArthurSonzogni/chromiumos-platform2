@@ -49,6 +49,12 @@
        The list of the available remote services.
       </tp:docstring>
     </property>
+    <property name="Class" type="u" access="read">
+      <tp:docstring>
+       The Bluetooth class of device of the remote device.
+      </tp:docstring>
+      <annotation name="org.chromium.DBus.Argument.VariableName" value="bluetooth_class" />
+    </property>
     <property name="Connected" type="b" access="read">
       <tp:docstring>
        Indicates that the device is currently connected.
