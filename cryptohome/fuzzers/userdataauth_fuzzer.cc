@@ -25,6 +25,7 @@
 #include <base/time/time.h>
 #include <brillo/dbus/dbus_object_test_helpers.h>
 #include <brillo/dbus/dbus_object.h>
+#include <brillo/fake_cryptohome.h>
 #include <brillo/secure_blob.h>
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <dbus/bus.h>
@@ -61,6 +62,7 @@ using ::brillo::BlobFromString;
 using ::testing::_;
 using ::testing::NiceMock;
 
+constexpr char kStubSystemSalt[] = "stub-system-salt";
 // A few typical values to choose from when simulating the system info in the
 // fuzzer. We don't use completely random strings as only few aspects are
 // relevant for code-under-test, and this way fuzzer can discover them quickly.
@@ -95,6 +97,11 @@ class Environment {
   base::test::TaskEnvironment task_environment_{
       base::test::TaskEnvironment::TimeSource::MOCK_TIME,
       base::test::TaskEnvironment::ThreadingMode::MAIN_THREAD_ONLY};
+  // Initialize the system salt singleton with a stub value. Ideally we'd only
+  // override the salt path and let the fuzzer explore the salt generation
+  // flows, but for this to work we'd need to inject `Platform` into Libbrillo.
+  brillo::cryptohome::home::FakeSystemSaltLoader system_salt_loader_{
+      kStubSystemSalt};
   // Suppress log spam from protobuf helpers that complain about malformed
   // inputs.
   google::protobuf::LogSilencer log_silencer_;
