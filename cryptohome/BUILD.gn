@@ -363,8 +363,10 @@ if (use.test) {
       "uss_migrator_unittest.cc",
       "vault_keyset_unittest.cc",
     ]
+    sources += get_target_outputs(":print_proto_library")
     configs += [
       "//common-mk:test",
+      ":local_print_proto_include",
       ":target_defaults",
     ]
     libs = [
@@ -378,6 +380,7 @@ if (use.test) {
 
     deps = [
       ":fake_platform-static",
+      ":print_proto_library",
       "libs:cryptohome-proto",
       "libs:libcrostpm",
       "libs:libcryptohome",
