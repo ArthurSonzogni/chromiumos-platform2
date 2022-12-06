@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 #
 # Copyright 2018 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
@@ -10,16 +9,15 @@
 
 """Interactive visualizer of memd logs."""
 
-from __future__ import print_function
-from __future__ import division
-
 import argparse
 import glob
 import math
 import os
 import sys
 import warnings
-import matplotlib.pyplot as plt
+
+import matplotlib.pyplot as plt  # pylint: disable=import-error
+
 
 # Remove spurious warning from pyplot.
 warnings.filterwarnings(
@@ -643,30 +641,31 @@ class Plotter(object):
         filenames = [
             x[0]
             for x in sorted(
-                [(name, next(open(name))) for name in filenames],
+                [(name, next(open(name, encoding="utf-8")))
+                 for name in filenames],
                 key=lambda x: x[1],
             )
         ]
 
         # Read samples into |self._samples|.
         for filename in filenames:
-            sample_file = open(filename)
+            with open(filename, encoding="utf-8") as sample_file:
+                # Skip first line (time stamp).
+                _ = next(sample_file)
 
-            # Skip first line (time stamp).
-            _ = next(sample_file)
+                # Second line: field names.
+                line = next(sample_file)
+                if field_names:
+                    assert set(line.split()) == field_names_set
+                else:
+                    field_names = line.split()
+                    field_names_set = set(field_names)
+                    self._samples = {field_name: []
+                                     for field_name in field_names}
 
-            # Second line: field names.
-            line = next(sample_file)
-            if field_names:
-                assert set(line.split()) == field_names_set
-            else:
-                field_names = line.split()
-                field_names_set = set(field_names)
-                self._samples = {field_name: [] for field_name in field_names}
-
-            # Read the following lines, which contain samples.
-            for line in sample_file:
-                lines.append(line.split())
+                # Read the following lines, which contain samples.
+                for line in sample_file:
+                    lines.append(line.split())
 
         # Build an array of values for each field.
         for line in lines:
@@ -681,12 +680,14 @@ class Plotter(object):
 
     def read_parameters(self):
         """Reads the memd parameters file."""
+        parameters = []
         try:
-            parameters_file = open("memd.parameters")
+            with open("memd.parameters", encoding="utf-8") as parameters_file:
+                parameters = parameters_file.readlines()[1:]
         except Exception:
             die("cannot open memd.parameters")
 
-        for line in parameters_file.readlines()[1:]:
+        for line in parameters:
             name, value = line.split()
             self._memd_parameters[name] = int(value)
 
