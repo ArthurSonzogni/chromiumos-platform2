@@ -480,13 +480,24 @@ if (use.test) {
 }
 
 if (use.fuzzer) {
-  executable("cryptohome_cryptolib_rsa_oaep_decrypt_fuzzer") {
+  static_library("fuzz-helpers") {
     sources = [
       "fuzzers/blob_mutator.cc",
-      "fuzzers/cryptolib_rsa_oaep_decrypt_fuzzer.cc",
+      "fuzzers/fuzzed_proto_generator.cc",
     ]
+    configs += [ ":target_defaults" ]
+    deps = [ "libs:libcryptohome_platform" ]
+    pkg_deps = [
+      "libbrillo",
+      "libchrome",
+    ]
+  }
+
+  executable("cryptohome_cryptolib_rsa_oaep_decrypt_fuzzer") {
+    sources = [ "fuzzers/cryptolib_rsa_oaep_decrypt_fuzzer.cc" ]
     libs = [ "hwsec-foundation" ]
     configs += [ "//common-mk/common_fuzzer" ]
+    deps = [ ":fuzz-helpers" ]
     pkg_deps = [
       "libbrillo",
       "libchrome",
@@ -496,15 +507,13 @@ if (use.fuzzer) {
   }
 
   executable("cryptohome_tpm1_cmk_migration_parser_fuzzer") {
-    sources = [
-      "fuzzers/blob_mutator.cc",
-      "fuzzers/tpm1_cmk_migration_parser_fuzzer.cc",
-    ]
+    sources = [ "fuzzers/tpm1_cmk_migration_parser_fuzzer.cc" ]
     libs = [
       "hwsec",
       "hwsec-foundation",
     ]
     configs += [ "//common-mk/common_fuzzer" ]
+    deps = [ ":fuzz-helpers" ]
     pkg_deps = [
       "libbrillo",
       "libchrome",
@@ -529,10 +538,7 @@ if (use.fuzzer) {
   }
 
   executable("cryptohome_userdataauth_fuzzer") {
-    sources = [
-      "fuzzers/fuzzed_proto_generator.cc",
-      "fuzzers/userdataauth_fuzzer.cc",
-    ]
+    sources = [ "fuzzers/userdataauth_fuzzer.cc" ]
     libs = [ "hwsec" ]
     configs += [
       "//common-mk/common_fuzzer",
@@ -540,6 +546,7 @@ if (use.fuzzer) {
     ]
     deps = [
       ":fake_platform-static",
+      ":fuzz-helpers",
       "libs:libcrosplatform",
       "libs:libcrostpm",
       "libs:libcryptohome",
@@ -548,13 +555,11 @@ if (use.fuzzer) {
   }
 
   executable("cryptohome_user_secret_stash_parser_fuzzer") {
-    sources = [
-      "fuzzers/blob_mutator.cc",
-      "fuzzers/user_secret_stash_parser_fuzzer.cc",
-    ]
+    sources = [ "fuzzers/user_secret_stash_parser_fuzzer.cc" ]
     libs = [ "hwsec-foundation" ]
     configs += [ "//common-mk/common_fuzzer" ]
     deps = [
+      ":fuzz-helpers",
       "libs:libcrosplatform",
       "libs:libcryptohome",
     ]
