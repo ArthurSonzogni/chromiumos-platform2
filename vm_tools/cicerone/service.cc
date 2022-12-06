@@ -836,6 +836,7 @@ void Service::ContainerStartupCompleted(const std::string& container_token,
   proto.set_container_homedir(homedir);
   proto.set_ipv4_address(string_ip);
   proto.set_sftp_vsock_port(sftp_port);
+  proto.set_container_token(container_token);
   dbus::MessageWriter(&signal).AppendProtoAsArrayOfBytes(proto);
   exported_object_->SendSignal(&signal);
   *result = true;
