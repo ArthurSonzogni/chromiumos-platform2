@@ -4578,6 +4578,15 @@ CryptohomeStatus UserDataAuth::CreatePersistentUserImpl(
             CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN);
   }
 
+  if (auth_session->ephemeral_user()) {
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(
+            kLocUserDataAuthEphemeralAuthSessionAttemptCreatePersistentUser),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState,
+                        ErrorAction::kReboot, ErrorAction::kPowerwash}),
+        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
+  }
+
   const std::string& obfuscated_username = auth_session->obfuscated_username();
 
   // This checks presence of the actual encrypted vault. We fail if Create is

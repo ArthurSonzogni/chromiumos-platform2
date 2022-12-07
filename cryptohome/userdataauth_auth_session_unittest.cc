@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "UserDataAuth.pb.h"
 #include "cryptohome/auth_blocks/fp_service.h"
 #include "cryptohome/userdataauth.h"
 
@@ -1001,6 +1002,20 @@ TEST_F(AuthSessionInterfaceTest, CreatePersistentUserVaultExists) {
                   ->local_legacy_error()
                   .value(),
               Eq(user_data_auth::CRYPTOHOME_ERROR_MOUNT_MOUNT_POINT_BUSY));
+}
+
+// Test CreatePersistentUserImpl with Ephemeral AuthSession.
+TEST_F(AuthSessionInterfaceTest, CreatePersistentUserWithEphemeralAuthSession) {
+  CryptohomeStatusOr<AuthSession*> auth_session_status =
+      auth_session_manager_->CreateAuthSession(
+          kUsername, AUTH_SESSION_FLAGS_EPHEMERAL_USER, AuthIntent::kDecrypt);
+  EXPECT_TRUE(auth_session_status.ok());
+  AuthSession* auth_session = auth_session_status.value();
+
+  ASSERT_THAT(CreatePersistentUserImpl(auth_session->serialized_token())
+                  ->local_legacy_error()
+                  .value(),
+              Eq(user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
 }
 
 // Test CreatePersistentUserImpl with regular and expected case.
