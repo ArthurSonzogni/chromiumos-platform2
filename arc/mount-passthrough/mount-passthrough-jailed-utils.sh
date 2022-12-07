@@ -9,12 +9,12 @@
 # logic once we start to run the daemon as MediaProvider UID and GID from
 # mount-passthrough-jailed-play.
 run_mount_passthrough_with_minijail0() {
-  if [ $# -ne 14 ]; then
+  if [ $# -ne 13 ]; then
     echo "Usage: $0 source dest fuse_umask fuse_uid fuse_gid"\
       "android_app_access_type daemon_uid daemon_gid"\
       "inherit_supplementary_groups grant_cap_dac_override"\
       "force_group_permission" "enter_concierge_namespace" \
-      "max_number_of_open_fds" "use_default_selinux_context"
+      "max_number_of_open_fds"
     exit 1
   fi
 
@@ -31,7 +31,6 @@ run_mount_passthrough_with_minijail0() {
   local force_group_permission="${11}"
   local enter_concierge_namespace="${12}"
   local max_number_of_open_fds="${13}"
-  local use_default_selinux_context="${14}"
 
   # Specify the maximum number of file descriptors the process can open.
   ulimit -n "${max_number_of_open_fds}"
@@ -127,10 +126,6 @@ run_mount_passthrough_with_minijail0() {
 
   if [ "${force_group_permission}" = "true" ]; then
     set -- "$@" "--force_group_permission"
-  fi
-
-  if [ "${use_default_selinux_context}" = "true" ]; then
-    set -- "$@" "--use_default_selinux_context"
   fi
 
   exec minijail0 "$@"

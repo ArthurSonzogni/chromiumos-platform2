@@ -55,6 +55,4 @@ set -- "$@" "true" # enter_concierge_namespace
 # new restriction on the number of files they can open.
 set -- "$@" "262144" # max_number_of_open_fds
 
-set -- "$@" "false" # use_default_selinux_context
-
 run_mount_passthrough_with_minijail0 "$@"

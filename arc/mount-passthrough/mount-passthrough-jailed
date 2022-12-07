@@ -13,7 +13,6 @@ if [ $# -ne 6 ]; then
   exit 1
 fi
 
-# shellcheck source=mount-passthrough-jailed-utils.sh
 . /usr/share/arc/mount-passthrough-jailed-utils.sh
 
 # Run mount-passthrough as chronos.
@@ -38,7 +37,5 @@ set -- "$@" "false" # enter_concierge_namespace
 # This is larger than the default value 1024 because this process handles many
 # open files. See b/30236190 for more context.
 set -- "$@" "8192" # max_number_of_open_fds
-
-set -- "$@" "false" # use_default_selinux_context
 
 run_mount_passthrough_with_minijail0 "$@"
