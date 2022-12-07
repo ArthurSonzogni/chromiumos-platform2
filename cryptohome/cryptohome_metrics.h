@@ -12,6 +12,7 @@
 #include <metrics/metrics_library.h>
 
 #include "cryptohome/auth_blocks/auth_block_type.h"
+#include "cryptohome/auth_factor/auth_factor.h"
 #include "cryptohome/data_migrator/metrics.h"
 #include "cryptohome/le_credential_manager.h"
 #include "cryptohome/migration_type.h"
@@ -520,6 +521,17 @@ enum class AuthFactorBackingStoreConfig {
   kMaxValue = kMixed,
 };
 
+// List of errors from migrating a vault keyset to USS (or success=0). This enum
+// should be updated with any new errors that can occur, along with enums.xml.
+// These values are persisted to logs. Entries should not be renumbered and
+// numeric values should never be reused.
+enum class VkToUssMigrationStatus {
+  kSuccess = 0,        // Migration succeeded with no errors.
+  kFailedPersist = 1,  // Migration failed when persisting to USS.
+  kFailedInput = 2,    // Migration unable to construct an AuthInput.
+  kMaxValue = kFailedInput,
+};
+
 // Initializes cryptohome metrics. If this is not called, all calls to Report*
 // will have no effect.
 void InitializeMetrics();
@@ -792,6 +804,9 @@ void ReportUssExperimentFlag(UssExperimentFlag flag);
 
 // Reports the current state of the auth factor backing stores.
 void ReportAuthFactorBackingStoreConfig(AuthFactorBackingStoreConfig config);
+
+// Reports the result of an (attempted) migration of a keyset to USS.
+void ReportVkToUssMigrationStatus(VkToUssMigrationStatus status);
 
 // Initialization helper.
 class ScopedMetricsInitializer {

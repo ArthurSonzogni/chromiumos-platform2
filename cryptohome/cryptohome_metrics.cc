@@ -115,6 +115,7 @@ constexpr char kUssExperimentFlag[] =
     "Cryptohome.UssExperiment.UssExperimentFlag";
 constexpr char kAuthFactorBackingStoreConfig[] =
     "Cryptohome.AuthFactorBackingStoreConfig";
+constexpr char kVkToUssMigrationStatus[] = "Cryptohome.VkToUssMigrationStatus";
 constexpr char kMaskedDownloadsItems[] = "Cryptohome.MaskedDownloadsItems";
 constexpr char kDownloadsBindMountMigrationStatusHistogram[] =
     "Cryptohome.DownloadsBindMountMigrationStatus";
@@ -953,6 +954,16 @@ void ReportAuthFactorBackingStoreConfig(AuthFactorBackingStoreConfig config) {
   g_metrics->SendEnumToUMA(
       kAuthFactorBackingStoreConfig, static_cast<int>(config),
       static_cast<int>(AuthFactorBackingStoreConfig::kMaxValue) + 1);
+}
+
+void ReportVkToUssMigrationStatus(VkToUssMigrationStatus status) {
+  if (!g_metrics) {
+    return;
+  }
+
+  g_metrics->SendEnumToUMA(
+      kVkToUssMigrationStatus, static_cast<int>(status),
+      static_cast<int>(VkToUssMigrationStatus::kMaxValue) + 1);
 }
 
 }  // namespace cryptohome
