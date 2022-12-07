@@ -20,6 +20,428 @@
 
 namespace {
 
+std::string CreateDumpEntry(const std::string& key, const std::string& value);
+bool ReportDefaultPC(base::File& file, std::string* pc);
+
+}  // namespace
+
+namespace vendor {
+
+namespace intel {
+
+// More information about Intel telemetry spec: go/cros-bt-intel-telemetry
+
+constexpr char kVendorName[] = "Intel";
+constexpr int kAddrLen = 4;
+constexpr uint8_t kDebugCode = 0xFF;
+
+enum ParseErrorReason {
+  kErrorFileIO,
+  kErrorEventHeaderParsing,
+  kErrorTlvParsing,
+};
+
+// Possible values for TlvHeader::type
+enum TlvTypeId {
+  kTlvExcType = 0x01,
+  kTlvLineNum = 0x02,
+  kTlvModule = 0x03,
+  kTlvErrorId = 0x04,
+  kTlvBacktrace = 0x05,
+  kTlvAuxReg = 0x06,
+  kTlvSubType = 0x07,
+};
+
+struct EventHeader {
+  uint8_t code;
+  uint8_t len;
+  uint8_t prefix[3];
+} __attribute__((packed));
+
+// The telemetry data is written as a series of Type-Length-Value triplets.
+// Each record starts with a TlvHeader giving the Type and Length, followed by
+// a Value. The value maps to one of the structures below; the |type| field
+// tells us which one.
+struct TlvHeader {
+  uint8_t type;
+  uint8_t len;
+} __attribute__((packed));
+
+struct TlvExcType {
+  uint8_t val;
+} __attribute__((packed));
+
+struct TlvLineNum {
+  uint16_t val;
+} __attribute__((packed));
+
+struct TlvModule {
+  uint8_t val;
+} __attribute__((packed));
+
+struct TlvErrorId {
+  uint8_t val;
+} __attribute__((packed));
+
+struct TlvBacktrace {
+  uint8_t val[5][kAddrLen];
+} __attribute__((packed));
+
+struct TlvAuxReg {
+  uint8_t val[4][kAddrLen];
+} __attribute__((packed));
+
+struct TlvSubType {
+  uint8_t val;
+} __attribute__((packed));
+
+bool ParseEventHeader(base::File& file, int* data_len, std::string* line) {
+  struct EventHeader evt_header;
+  int ret;
+
+  ret = file.ReadAtCurrentPos(reinterpret_cast<char*>(&evt_header),
+                              sizeof(evt_header));
+  if (ret < sizeof(evt_header)) {
+    LOG(WARNING) << "Error reading Intel devcoredump Event Header";
+    return false;
+  }
+
+  *line = CreateDumpEntry("Intel Event Header",
+                          base::HexEncode(&evt_header, sizeof(evt_header)));
+
+  if (evt_header.code != kDebugCode) {
+    LOG(WARNING) << "Incorrect Intel devcoredump debug code";
+    return false;
+  }
+
+  if (evt_header.len <= sizeof(evt_header.prefix)) {
+    LOG(WARNING) << "Incorrect Intel devcoredump data length";
+    return false;
+  }
+
+  *data_len = evt_header.len - sizeof(evt_header.prefix);
+
+  return true;
+}
+
+bool VerifyTlvLength(struct TlvHeader& tlv_header) {
+  switch (tlv_header.type) {
+    case kTlvExcType:
+      return tlv_header.len == sizeof(struct TlvExcType);
+    case kTlvLineNum:
+      return tlv_header.len == sizeof(struct TlvLineNum);
+    case kTlvModule:
+      return tlv_header.len == sizeof(struct TlvModule);
+    case kTlvErrorId:
+      return tlv_header.len == sizeof(struct TlvErrorId);
+    case kTlvBacktrace:
+      return tlv_header.len == sizeof(struct TlvBacktrace);
+    case kTlvAuxReg:
+      return tlv_header.len == sizeof(struct TlvAuxReg);
+    case kTlvSubType:
+      return tlv_header.len == sizeof(struct TlvSubType);
+    default:
+      // There may be other, unknown types in the data stream. Assume they have
+      // the correct length since we don't understand them.
+      return true;
+  }
+}
+
+bool ParseTlvHeader(base::File& file, int* tlv_type, int* tlv_len) {
+  struct TlvHeader tlv_header;
+  int ret;
+
+  ret = file.ReadAtCurrentPos(reinterpret_cast<char*>(&tlv_header),
+                              sizeof(tlv_header));
+  if (ret < sizeof(tlv_header)) {
+    LOG(WARNING) << "Error reading Intel devcoredump TLV Header";
+    return false;
+  }
+
+  *tlv_type = tlv_header.type;
+  *tlv_len = tlv_header.len;
+
+  if (!VerifyTlvLength(tlv_header)) {
+    LOG(WARNING) << "Incorrect TLV length " << tlv_header.len
+                 << " for TLV type " << tlv_header.type;
+    return false;
+  }
+
+  return true;
+}
+
+bool ParseExceptionType(base::File& file, std::string* line) {
+  struct TlvExcType exc_type;
+  int ret;
+
+  ret = file.ReadAtCurrentPos(reinterpret_cast<char*>(&exc_type),
+                              sizeof(exc_type));
+  if (ret < sizeof(exc_type)) {
+    LOG(WARNING) << "Error reading Intel devcoredump Exception Type";
+    return false;
+  }
+
+  *line = CreateDumpEntry("Exception Type",
+                          base::HexEncode(&exc_type, sizeof(exc_type)));
+  return true;
+}
+
+bool ParseLineNumber(base::File& file, std::string* line) {
+  struct TlvLineNum line_num;
+  int ret;
+
+  ret = file.ReadAtCurrentPos(reinterpret_cast<char*>(&line_num),
+                              sizeof(line_num));
+  if (ret < sizeof(line_num)) {
+    LOG(WARNING) << "Error reading Intel devcoredump Line Number";
+    return false;
+  }
+
+  *line = CreateDumpEntry("Line Number",
+                          base::HexEncode(&line_num, sizeof(line_num)));
+  return true;
+}
+
+bool ParseModuleNumber(base::File& file, std::string* line) {
+  struct TlvModule module_num;
+  int ret;
+
+  ret = file.ReadAtCurrentPos(reinterpret_cast<char*>(&module_num),
+                              sizeof(module_num));
+  if (ret < sizeof(module_num)) {
+    LOG(WARNING) << "Error reading Intel devcoredump Module Number";
+    return false;
+  }
+
+  *line = CreateDumpEntry("Module Number",
+                          base::HexEncode(&module_num, sizeof(module_num)));
+  return true;
+}
+
+bool ParseErrorId(base::File& file, std::string* line) {
+  struct TlvErrorId error_id;
+  int ret;
+
+  ret = file.ReadAtCurrentPos(reinterpret_cast<char*>(&error_id),
+                              sizeof(error_id));
+  if (ret < sizeof(error_id)) {
+    LOG(WARNING) << "Error reading Intel devcoredump Error Id";
+    return false;
+  }
+
+  *line =
+      CreateDumpEntry("Error Id", base::HexEncode(&error_id, sizeof(error_id)));
+  return true;
+}
+
+bool ParseBacktrace(base::File& file, std::string* line) {
+  struct TlvBacktrace trace;
+  int ret;
+
+  ret = file.ReadAtCurrentPos(reinterpret_cast<char*>(&trace), sizeof(trace));
+  if (ret < sizeof(trace)) {
+    LOG(WARNING) << "Error reading Intel devcoredump Call Backtrace";
+    return false;
+  }
+
+  std::string traces;
+  for (auto& val : trace.val) {
+    base::StrAppend(&traces, {base::HexEncode(&val, kAddrLen), " "});
+  }
+  traces.pop_back();  // remove trailing whitespace.
+
+  *line = CreateDumpEntry("Call Backtrace", traces);
+  return true;
+}
+
+bool ParseAuxRegisters(base::File& file, std::string* pc, std::string* line) {
+  struct TlvAuxReg reg;
+  int ret;
+
+  ret = file.ReadAtCurrentPos(reinterpret_cast<char*>(&reg), sizeof(reg));
+  if (ret < sizeof(reg)) {
+    LOG(WARNING) << "Error reading Intel devcoredump Aux Registers";
+    return false;
+  }
+
+  *pc = base::HexEncode(&reg.val[1], kAddrLen);
+  *line = base::StrCat(
+      {CreateDumpEntry("CPSR", base::HexEncode(&reg.val[0], kAddrLen)),
+       CreateDumpEntry("PC", base::HexEncode(&reg.val[1], kAddrLen)),
+       CreateDumpEntry("SP", base::HexEncode(&reg.val[2], kAddrLen)),
+       CreateDumpEntry("BLINK", base::HexEncode(&reg.val[3], kAddrLen))});
+  return true;
+}
+
+bool ParseExceptionSubtype(base::File& file, std::string* line) {
+  struct TlvSubType sub_type;
+  int ret;
+
+  ret = file.ReadAtCurrentPos(reinterpret_cast<char*>(&sub_type),
+                              sizeof(sub_type));
+  if (ret < sizeof(sub_type)) {
+    LOG(WARNING) << "Error reading Intel devcoredump Exception Subtype";
+    return false;
+  }
+
+  *line = CreateDumpEntry("Exception Subtype",
+                          base::HexEncode(&sub_type, sizeof(sub_type)));
+  return true;
+}
+
+bool ReportParseError(ParseErrorReason error_code, base::File& file) {
+  std::string line = CreateDumpEntry("Parse Failure Reason",
+                                     base::StringPrintf("%d", error_code));
+  if (!file.WriteAtCurrentPosAndCheck(base::as_bytes(base::make_span(line)))) {
+    return false;
+  }
+  return true;
+}
+
+bool ParseIntelDump(const base::FilePath& coredump_path,
+                    const base::FilePath& target_path,
+                    const int64_t dump_start,
+                    std::string* pc) {
+  base::File dump_file(coredump_path,
+                       base::File::FLAG_OPEN | base::File::FLAG_READ);
+  base::File target_file(target_path,
+                         base::File::FLAG_OPEN | base::File::FLAG_APPEND);
+
+  if (!target_file.IsValid()) {
+    LOG(ERROR) << "Error opening file " << target_path << " Error: "
+               << base::File::ErrorToString(target_file.error_details());
+    return false;
+  }
+
+  if (!dump_file.IsValid()) {
+    LOG(ERROR) << "Error opening file " << coredump_path << " Error: "
+               << base::File::ErrorToString(dump_file.error_details());
+    // Use the default value for PC and report an empty dump.
+    if (!ReportDefaultPC(target_file, pc) ||
+        !ReportParseError(kErrorFileIO, target_file)) {
+      PLOG(ERROR) << "Error writing to target file " << target_path;
+      return false;
+    }
+    return true;
+  }
+
+  if (dump_file.Seek(base::File::FROM_BEGIN, dump_start) == -1) {
+    PLOG(ERROR) << "Error seeking file " << coredump_path;
+    // Use the default value for PC and report an empty dump.
+    if (!ReportDefaultPC(target_file, pc) ||
+        !ReportParseError(kErrorFileIO, target_file)) {
+      PLOG(ERROR) << "Error writing to target file " << target_path;
+      return false;
+    }
+    return true;
+  }
+
+  std::string line;
+  int data_len;
+  bool ret = ParseEventHeader(dump_file, &data_len, &line);
+
+  // Always report the event header whenever available, even if parsing fails.
+  if (!line.empty() && !target_file.WriteAtCurrentPosAndCheck(
+                           base::as_bytes(base::make_span(line)))) {
+    PLOG(ERROR) << "Error writing to target file " << target_path;
+    return false;
+  }
+
+  if (!ret) {
+    // Use the default value for PC and report an empty dump.
+    if (!ReportDefaultPC(target_file, pc) ||
+        !ReportParseError(kErrorEventHeaderParsing, target_file)) {
+      PLOG(ERROR) << "Error writing to target file " << target_path;
+      return false;
+    }
+    return true;
+  }
+
+  while (data_len > 0) {
+    int tlv_type;
+    int tlv_len;
+
+    line.clear();
+    ret = ParseTlvHeader(dump_file, &tlv_type, &tlv_len);
+    if (!ret || tlv_len <= 0 || tlv_len > data_len) {
+      LOG(ERROR) << "Error parsing TLV header with type " << tlv_type
+                 << " and length " << tlv_len;
+      if (!ReportParseError(kErrorTlvParsing, target_file)) {
+        PLOG(ERROR) << "Error writing to target file " << target_path;
+        return false;
+      }
+      break;
+    }
+
+    switch (tlv_type) {
+      case kTlvExcType:
+        ret = ParseExceptionType(dump_file, &line);
+        break;
+      case kTlvLineNum:
+        ret = ParseLineNumber(dump_file, &line);
+        break;
+      case kTlvModule:
+        ret = ParseModuleNumber(dump_file, &line);
+        break;
+      case kTlvErrorId:
+        ret = ParseErrorId(dump_file, &line);
+        break;
+      case kTlvBacktrace:
+        ret = ParseBacktrace(dump_file, &line);
+        break;
+      case kTlvAuxReg:
+        ret = ParseAuxRegisters(dump_file, pc, &line);
+        break;
+      case kTlvSubType:
+        ret = ParseExceptionSubtype(dump_file, &line);
+        break;
+      default:
+        if (dump_file.Seek(base::File::FROM_CURRENT, tlv_len) == -1) {
+          PLOG(ERROR) << "Error seeking file " << coredump_path;
+          ret = false;
+        }
+        break;
+    }
+
+    if (!ret) {
+      // Do not continue if parsing of any of the TLV fails because once we are
+      // out of sync with the dump, parsing further information is going to be
+      // erroneous information.
+      LOG(ERROR) << "Error parsing TLV with type " << tlv_type << " and length "
+                 << tlv_len;
+      if (!ReportParseError(kErrorTlvParsing, target_file)) {
+        PLOG(ERROR) << "Error writing to target file " << target_path;
+        return false;
+      }
+      break;
+    }
+
+    if (!line.empty() && !target_file.WriteAtCurrentPosAndCheck(
+                             base::as_bytes(base::make_span(line)))) {
+      PLOG(ERROR) << "Error writing to target file " << target_path;
+      return false;
+    }
+
+    data_len -= (sizeof(struct TlvHeader) + tlv_len);
+  }
+
+  if (pc->empty()) {
+    // If no PC found in the coredump blob, use the default value for PC
+    if (!ReportDefaultPC(target_file, pc)) {
+      PLOG(ERROR) << "Error writing to target file " << target_path;
+      return false;
+    }
+  }
+
+  return true;
+}
+
+}  // namespace intel
+
+}  // namespace vendor
+
+namespace {
+
 constexpr char kCoredumpMetaHeader[] = "Bluetooth devcoredump";
 constexpr char kCoredumpDataHeader[] = "--- Start dump ---";
 constexpr char kCoredumpDefaultPC[] = "00000000";
@@ -182,7 +604,10 @@ bool ParseDumpData(const base::FilePath& coredump_path,
     }
   }
 
-  // TODO(b/154866851): Implement vendor specific devcoredump parser
+  if (vendor_name == vendor::intel::kVendorName) {
+    return vendor::intel::ParseIntelDump(coredump_path, target_path, dump_start,
+                                         pc);
+  }
 
   LOG(WARNING) << "Unsupported bluetooth devcoredump vendor - " << vendor_name;
 
