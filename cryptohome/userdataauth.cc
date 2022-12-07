@@ -4453,6 +4453,16 @@ CryptohomeStatus UserDataAuth::PrepareEphemeralVaultImpl(
             {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kReboot}),
         user_data_auth::CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN);
   }
+
+  if (!auth_session->ephemeral_user()) {
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(
+            kLocUserDataAuthNonEphemeralAuthSessionInPrepareEphemeralVault),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState,
+                        ErrorAction::kReboot, ErrorAction::kPowerwash}),
+        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
+  }
+
   CryptohomeStatusOr<UserSession*> session_status =
       GetMountableUserSession(auth_session);
   if (!session_status.ok()) {

@@ -519,6 +519,27 @@ TEST_F(AuthSessionInterfaceTest, PrepareGuestVault) {
             user_data_auth::CRYPTOHOME_ERROR_MOUNT_MOUNT_POINT_BUSY);
 }
 
+TEST_F(AuthSessionInterfaceTest,
+       PrepareEphemeralVaultWithNonEphemeralAuthSession) {
+  MockOwnerUser("whoever", homedirs_);
+  // Auth session is initially not authenticated for ephemeral users.
+  CryptohomeStatusOr<AuthSession*> auth_session_status =
+      auth_session_manager_->CreateAuthSession(kUsername, 0,
+                                               AuthIntent::kDecrypt);
+  EXPECT_TRUE(auth_session_status.ok());
+  AuthSession* auth_session = auth_session_status.value();
+  EXPECT_THAT(auth_session->GetStatus(),
+              AuthStatus::kAuthStatusFurtherFactorRequired);
+
+  // User authed and exists.
+  auto user_session = std::make_unique<MockUserSession>();
+  CryptohomeStatus status =
+      PrepareEphemeralVaultImpl(auth_session->serialized_token());
+  ASSERT_FALSE(status.ok());
+  ASSERT_EQ(status->local_legacy_error(),
+            user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
+}
+
 TEST_F(AuthSessionInterfaceTest, PrepareEphemeralVault) {
   MockOwnerUser("whoever", homedirs_);
 

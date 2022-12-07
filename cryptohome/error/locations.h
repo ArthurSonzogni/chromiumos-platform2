@@ -1363,6 +1363,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   //////////////////////////////////////////////////
   kLocUserDataAuthEphemeralAuthSessionAttemptPreparePersistentVault = 3100,
   kLocUserDataAuthEphemeralAuthSessionAttemptCreatePersistentUser = 3101,
+  kLocUserDataAuthNonEphemeralAuthSessionInPrepareEphemeralVault = 3102,
   //////////////////////////////////////////////////
   //// This is a separator block at value 3300
   //// See location_db.py for more info.
