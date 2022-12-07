@@ -5361,17 +5361,13 @@ class UserDataAuthApiTest : public UserDataAuthTest {
   // finish.
   std::optional<user_data_auth::StartAuthSessionReply> StartAuthSessionSync(
       const user_data_auth::StartAuthSessionRequest& in_request) {
-    std::optional<user_data_auth::StartAuthSessionReply> out_reply;
+    TestFuture<user_data_auth::StartAuthSessionReply> reply_future;
     userdataauth_->StartAuthSession(
-        in_request, base::BindOnce(
-                        [](std::optional<user_data_auth::StartAuthSessionReply>*
-                               out_reply_ptr,
-                           const user_data_auth::StartAuthSessionReply& reply) {
-                          *out_reply_ptr = reply;
-                        },
-                        base::Unretained(&out_reply)));
+        in_request,
+        reply_future
+            .GetCallback<const user_data_auth::StartAuthSessionReply&>());
     RunUntilIdle();
-    return out_reply;
+    return reply_future.Get();
   }
 
   // Obtain a test auth session for kUsername1. Result is nullopt if it's
@@ -5512,84 +5508,58 @@ class UserDataAuthApiTest : public UserDataAuthTest {
   std::optional<user_data_auth::AuthenticateAuthSessionReply>
   AuthenticateAuthSessionSync(
       const user_data_auth::AuthenticateAuthSessionRequest& in_request) {
-    std::optional<user_data_auth::AuthenticateAuthSessionReply> out_reply;
+    TestFuture<user_data_auth::AuthenticateAuthSessionReply> reply_future;
     userdataauth_->AuthenticateAuthSession(
-        in_request,
-        base::BindOnce(
-            [](std::optional<user_data_auth::AuthenticateAuthSessionReply>*
-                   out_reply_ptr,
-               const user_data_auth::AuthenticateAuthSessionReply& reply) {
-              *out_reply_ptr = reply;
-            },
-            base::Unretained(&out_reply)));
+        in_request, reply_future.GetCallback<
+                        const user_data_auth::AuthenticateAuthSessionReply&>());
     RunUntilIdle();
-    return out_reply;
+    return reply_future.Get();
   }
 
   std::optional<user_data_auth::AuthenticateAuthFactorReply>
   AuthenticateAuthFactorSync(
       const user_data_auth::AuthenticateAuthFactorRequest& in_request) {
-    std::optional<user_data_auth::AuthenticateAuthFactorReply> out_reply;
+    TestFuture<user_data_auth::AuthenticateAuthFactorReply> reply_future;
     userdataauth_->AuthenticateAuthFactor(
         in_request,
-        base::BindOnce(
-            [](std::optional<user_data_auth::AuthenticateAuthFactorReply>*
-                   out_reply_ptr,
-               const user_data_auth::AuthenticateAuthFactorReply& reply) {
-              *out_reply_ptr = reply;
-            },
-            base::Unretained(&out_reply)));
+        reply_future
+            .GetCallback<const user_data_auth::AuthenticateAuthFactorReply&>());
     RunUntilIdle();
-    return out_reply;
+    return reply_future.Get();
   }
 
   std::optional<user_data_auth::CreatePersistentUserReply>
   CreatePersistentUserSync(
       const user_data_auth::CreatePersistentUserRequest& in_request) {
-    std::optional<user_data_auth::CreatePersistentUserReply> out_reply;
+    TestFuture<user_data_auth::CreatePersistentUserReply> reply_future;
     userdataauth_->CreatePersistentUser(
         in_request,
-        base::BindOnce(
-            [](std::optional<user_data_auth::CreatePersistentUserReply>*
-                   out_reply_ptr,
-               const user_data_auth::CreatePersistentUserReply& reply) {
-              *out_reply_ptr = reply;
-            },
-            base::Unretained(&out_reply)));
+        reply_future
+            .GetCallback<const user_data_auth::CreatePersistentUserReply&>());
     RunUntilIdle();
-    return out_reply;
+    return reply_future.Get();
   }
 
   std::optional<user_data_auth::AddAuthFactorReply> AddAuthFactorSync(
       const user_data_auth::AddAuthFactorRequest& in_request) {
-    std::optional<user_data_auth::AddAuthFactorReply> out_reply;
+    TestFuture<user_data_auth::AddAuthFactorReply> reply_future;
     userdataauth_->AddAuthFactor(
         in_request,
-        base::BindOnce(
-            [](std::optional<user_data_auth::AddAuthFactorReply>* out_reply_ptr,
-               const user_data_auth::AddAuthFactorReply& reply) {
-              *out_reply_ptr = reply;
-            },
-            base::Unretained(&out_reply)));
+        reply_future.GetCallback<const user_data_auth::AddAuthFactorReply&>());
     RunUntilIdle();
-    return out_reply;
+    return reply_future.Get();
   }
 
   std::optional<user_data_auth::InvalidateAuthSessionReply>
   InvalidateAuthSessionSync(
       const user_data_auth::InvalidateAuthSessionRequest& in_request) {
-    std::optional<user_data_auth::InvalidateAuthSessionReply> out_reply;
+    TestFuture<user_data_auth::InvalidateAuthSessionReply> reply_future;
     userdataauth_->InvalidateAuthSession(
         in_request,
-        base::BindOnce(
-            [](std::optional<user_data_auth::InvalidateAuthSessionReply>*
-                   out_reply_ptr,
-               const user_data_auth::InvalidateAuthSessionReply& reply) {
-              *out_reply_ptr = reply;
-            },
-            base::Unretained(&out_reply)));
+        reply_future
+            .GetCallback<const user_data_auth::InvalidateAuthSessionReply&>());
     RunUntilIdle();
-    return out_reply;
+    return reply_future.Get();
   }
 
  protected:
