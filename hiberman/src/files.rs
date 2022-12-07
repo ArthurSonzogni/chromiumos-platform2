@@ -217,7 +217,7 @@ fn open_cumulative_metrics_file(path: &Path) -> Result<File> {
         .read(true)
         .write(true)
         .create(true)
-        .open(&path)
+        .open(path)
         .context("Cannot open metrics file")?;
     Ok(file)
 }

@@ -259,7 +259,7 @@ impl HibernateMetadata {
         let mut private_buf =
             Zeroizing::new(vec![0u8; META_PRIVATE_DATA_SIZE + cipher.block_size()]);
         let mut decrypt_size = crypter
-            .update(&private_blob[..META_PRIVATE_DATA_SIZE], &mut *private_buf)
+            .update(&private_blob[..META_PRIVATE_DATA_SIZE], &mut private_buf)
             .context("Failed to decrypt private data")?;
 
         decrypt_size += crypter

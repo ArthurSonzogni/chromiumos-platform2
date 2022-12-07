@@ -92,7 +92,7 @@ const COOKIE_EMERGENCY_REBOOT_VALUE: &[u8] = b"EmergencyReboot!";
 /// Define the size of the magic token, in bytes.
 const COOKIE_SIZE: usize = 16;
 
-#[derive(PartialEq)]
+#[derive(Eq, PartialEq)]
 pub enum HibernateCookieValue {
     Uninitialized,
     NoResume,

@@ -126,13 +126,9 @@ impl Fiemap {
 
     /// Return the extent corresponding to the given offset in the file.
     pub fn extent_for_offset(&self, offset: u64) -> Option<&FiemapExtent> {
-        for extent in &self.extents {
-            if (extent.fe_logical <= offset) && ((extent.fe_logical + extent.fe_length) > offset) {
-                return Some(extent);
-            }
-        }
-
-        None
+        self.extents.iter().find(|&extent| {
+            (extent.fe_logical <= offset) && ((extent.fe_logical + extent.fe_length) > offset)
+        })
     }
 
     /// Helper function to run the fiemap ioctl without any data to determine
