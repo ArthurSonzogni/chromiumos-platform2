@@ -59,6 +59,7 @@ const char kSwapZramEnableWriteback[] = "SwapZramEnableWriteback";
 const char kSwapZramMarkIdle[] = "SwapZramMarkIdle";
 const char kSwapZramSetWritebackLimit[] = "SwapZramSetWritebackLimit";
 const char kSwapZramWriteback[] = "InitiateSwapZramWriteback";
+const char kSwapSetSwappiness[] = "SwapSetSwappiness";
 const char kBackupArcBugReport[] = "BackupArcBugReport";
 const char kDeleteArcBugReportBackup[] = "DeleteArcBugReportBackup";
 const char kKernelFeatureList[] = "KernelFeatureList";

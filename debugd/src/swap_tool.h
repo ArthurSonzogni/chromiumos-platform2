@@ -33,6 +33,9 @@ class SwapTool {
   std::string SwapZramMarkIdle(uint32_t age_seconds) const;
   std::string InitiateSwapZramWriteback(uint32_t mode) const;
 
+  // Swappiness (/proc/sys/vm/swappiness) configuration.
+  std::string SwapSetSwappiness(uint32_t swappiness_value) const;
+
   // Kstaled swap configuration.
   bool KstaledSetRatio(brillo::ErrorPtr* error, uint8_t kstaled_ratio) const;
 

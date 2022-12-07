@@ -24,6 +24,7 @@ const char kSwapHelperScript[] = "/usr/share/cros/init/swap.sh";
 const char kMGLRUEnabledPath[] = "/sys/kernel/mm/lru_gen/enabled";
 const char kSwapToolErrorString[] = "org.chromium.debugd.error.Swap";
 base::FilePath kZramDevicePath("/sys/block/zram0");
+base::FilePath kSwappinessPath("/proc/sys/vm/swappiness");
 
 constexpr base::TimeDelta kMaxIdleAge = base::Days(30);
 
@@ -188,6 +189,23 @@ std::string SwapTool::InitiateSwapZramWriteback(uint32_t mode) const {
   // We ignore the return value of WriteValueToFile because |msg|
   // contains the free form text response.
   WriteValueToFile(filepath, mode_str, &msg);
+  return msg;
+}
+
+std::string SwapTool::SwapSetSwappiness(uint32_t swappiness_value) const {
+  if (swappiness_value > 100) {
+    // Only allow swappiness_value between 0 and 100.
+    return base::StringPrintf("ERROR: Invalid swappiness: %d",
+                              swappiness_value);
+  }
+
+  base::FilePath filepath(kSwappinessPath);
+  std::string swappiness_str = std::to_string(swappiness_value);
+  std::string msg;
+
+  // We ignore the return value of WriteValueToFile because |msg|
+  // contains the free form text response.
+  WriteValueToFile(filepath, swappiness_str, &msg);
   return msg;
 }
 

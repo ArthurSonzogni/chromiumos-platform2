@@ -494,6 +494,10 @@ std::string DebugdDBusAdaptor::InitiateSwapZramWriteback(uint32_t mode) {
   return swap_tool_->InitiateSwapZramWriteback(mode);
 }
 
+std::string DebugdDBusAdaptor::SwapSetSwappiness(uint32_t swappiness_value) {
+  return swap_tool_->SwapSetSwappiness(swappiness_value);
+}
+
 std::string DebugdDBusAdaptor::SetU2fFlags(const std::string& flags) {
   return u2f_tool_->SetFlags(flags);
 }

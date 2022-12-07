@@ -1091,6 +1091,18 @@
       </arg>
       <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
+    <method name="SwapSetSwappiness">
+      <tp:docstring>
+        Set the /proc/sys/vm/swappiness to the provided |swappiness_value|.
+      </tp:docstring>
+      <arg name="status" type="s" direction="out" />
+      <arg name="swappiness_value" type="u" direction="in">
+        <tp:docstring>
+          The swappiness value with valid range: [0, 100].
+        </tp:docstring>
+      </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+    </method>
     <tp:enum name="ZramWritebackMode" type="u">
       <tp:docstring>
         The valid modes available to use for zram writeback.
