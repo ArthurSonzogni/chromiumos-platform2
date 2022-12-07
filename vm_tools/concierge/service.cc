@@ -1941,7 +1941,7 @@ StartVmResponse Service::StartVm(StartVmRequest request,
       return response;
     }
     disks.push_back(
-        Disk(std::move(image_spec.tools_disk), false /* writable */));
+        Disk{.path = std::move(image_spec.tools_disk), .writable = false});
     tools_device = base::StringPrintf("/dev/vd%c", disk_letter++);
   }
 
@@ -1971,14 +1971,13 @@ StartVmResponse Service::StartVm(StartVmRequest request,
     vm_info->set_storage_ballooning(request.storage_ballooning());
   }
 
-  for (const auto& disk : request.disks()) {
-    Disk::Config config{};
-    config.writable = disk.writable();
-    config.sparse = !IsDiskUserChosenSize(disk.path());
+  for (const auto& d : request.disks()) {
+    Disk disk{.path = base::FilePath(d.path()),
+              .writable = d.writable(),
+              .sparse = !IsDiskUserChosenSize(d.path())};
 
-    auto path = base::FilePath(disk.path());
     failure_reason = ConvertToFdBasedPath(
-        root_fd, &path, config.writable ? O_RDWR : O_RDONLY, owned_fds);
+        root_fd, &disk.path, disk.writable ? O_RDWR : O_RDONLY, owned_fds);
 
     if (!failure_reason.empty()) {
       LOG(ERROR) << "Could not open disk file";
@@ -1986,7 +1985,7 @@ StartVmResponse Service::StartVm(StartVmRequest request,
       return response;
     }
 
-    disks.push_back(Disk(path, config));
+    disks.push_back(disk);
   }
 
   // Check if an opened storage image was passed over D-BUS.
@@ -2008,9 +2007,9 @@ StartVmResponse Service::StartVm(StartVmRequest request,
       return response;
     }
 
-    disks.push_back(Disk(base::FilePath(kProcFileDescriptorsPath)
-                             .Append(base::NumberToString(raw_fd)),
-                         true /* writable */));
+    disks.push_back(Disk{.path = base::FilePath(kProcFileDescriptorsPath)
+                                     .Append(base::NumberToString(raw_fd)),
+                         .writable = true});
   }
 
   // Create the runtime directory.

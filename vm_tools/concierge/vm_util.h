@@ -45,46 +45,27 @@ struct VMImageSpec {
   VMImageSpec() = default;
 };
 
-class Disk {
- public:
-  struct Config {
-    bool writable{false};
-    std::optional<bool> sparse;
-    std::optional<bool> o_direct;
-    std::optional<size_t> block_size;
-  };
-
-  Disk(base::FilePath path, bool writable);
-  Disk(base::FilePath path, const Config& config);
-  Disk(const Disk&) = delete;
-  Disk& operator=(const Disk&) = delete;
-  Disk(Disk&&);
-  virtual ~Disk();
-
+struct Disk {
   // Gets the command line argument that needs to be passed to crosvm
   // corresponding to this disk.
   base::StringPairs GetCrosvmArgs() const;
 
   base::StringPairs GetVvuArgs() const;
 
-  void EnableODirect(bool enable);
-  void SetBlockSize(size_t block_size);
-
- private:
   // Path to the disk image on the host.
-  base::FilePath path_;
+  base::FilePath path;
 
   // Whether the disk should be writable by the VM.
-  bool writable_;
+  bool writable;
 
   // Whether the disk should allow sparse file operations (discard) by the VM.
-  std::optional<bool> sparse_;
+  std::optional<bool> sparse;
 
   // Whether the disk access should be done with O_DIRECT by the VM.
-  std::optional<bool> o_direct_;
+  std::optional<bool> o_direct;
 
   // Block size.
-  std::optional<size_t> block_size_;
+  std::optional<size_t> block_size;
 };
 
 // Path to the crosvm binary.

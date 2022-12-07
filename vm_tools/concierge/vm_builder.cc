@@ -322,14 +322,14 @@ VmBuilder& VmBuilder::EnablePerVmCoreScheduling(bool enable) {
 
 VmBuilder& VmBuilder::EnableODirect(bool enable) {
   for (auto& d : disks_) {
-    d.EnableODirect(enable);
+    d.o_direct = enable;
   }
   return *this;
 }
 
 VmBuilder& VmBuilder::SetBlockSize(size_t block_size) {
   for (auto& d : disks_) {
-    d.SetBlockSize(block_size);
+    d.block_size = block_size;
   }
   return *this;
 }

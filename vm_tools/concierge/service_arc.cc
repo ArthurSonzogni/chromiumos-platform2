@@ -212,42 +212,39 @@ StartVmResponse Service::StartArcVm(StartArcVmRequest request,
 
   // The rootfs can be treated as a disk as well and needs to be added before
   // other disks.
-  Disk::Config rootfs_config{};
-  rootfs_config.o_direct = false;
-  rootfs_config.writable = request.rootfs_writable();
+  Disk rootdisk{.writable = request.rootfs_writable(), .o_direct = false};
   const size_t rootfs_block_size = request.rootfs_block_size();
   if (rootfs_block_size) {
-    rootfs_config.block_size = rootfs_block_size;
+    rootdisk.block_size = rootfs_block_size;
   }
   const bool is_dev_mode = (VbGetSystemPropertyInt("cros_debug") == 1);
   auto rootfsPath = GetImagePath(base::FilePath(kRootfsPath), is_dev_mode);
-  auto failure_reason = ConvertToFdBasedPath(
-      root_fd.first, &rootfsPath, rootfs_config.writable ? O_RDWR : O_RDONLY,
-      owned_fds);
+  auto failure_reason =
+      ConvertToFdBasedPath(root_fd.first, &rootfsPath,
+                           rootdisk.writable ? O_RDWR : O_RDONLY, owned_fds);
   if (!failure_reason.empty()) {
     LOG(ERROR) << "Could not open rootfs image" << rootfsPath;
     response.set_failure_reason("Rootfs path does not exist");
     return response;
   }
+  rootdisk.path = rootfsPath;
+  disks.push_back(rootdisk);
 
-  disks.push_back(Disk(rootfsPath, rootfs_config));
-
-  for (const auto& disk : request.disks()) {
-    Disk::Config config{};
-    base::FilePath path =
-        GetImagePath(base::FilePath(disk.path()), is_dev_mode);
-    if (!base::PathExists(path)) {
-      LOG(ERROR) << "Missing disk path: " << path;
+  for (const auto& d : request.disks()) {
+    Disk disk{.path = GetImagePath(base::FilePath(d.path()), is_dev_mode),
+              .writable = d.writable()};
+    if (!base::PathExists(disk.path)) {
+      LOG(ERROR) << "Missing disk path: " << disk.path;
       response.set_failure_reason("One or more disk paths do not exist");
       return response;
     }
-    config.writable = disk.writable();
-    const size_t block_size = disk.block_size();
+    const size_t block_size = d.block_size();
     if (block_size) {
-      config.block_size = block_size;
+      disk.block_size = block_size;
     }
-    failure_reason = ConvertToFdBasedPath(
-        root_fd.first, &path, config.writable ? O_RDWR : O_RDONLY, owned_fds);
+    failure_reason =
+        ConvertToFdBasedPath(root_fd.first, &disk.path,
+                             disk.writable ? O_RDWR : O_RDONLY, owned_fds);
 
     if (!failure_reason.empty()) {
       LOG(ERROR) << "Could not open disk file";
@@ -255,7 +252,7 @@ StartVmResponse Service::StartArcVm(StartArcVmRequest request,
       return response;
     }
 
-    disks.push_back(Disk(path, config));
+    disks.push_back(disk);
   }
 
   base::FilePath data_disk_path;

@@ -160,13 +160,12 @@ TEST(CustomParametersForDevTest, ODirect) {
 }
 
 TEST(VMUtilTest, BlockSize) {
-  Disk::Config config;
-  Disk disk(base::FilePath("/path/to/image.img"), config);
+  Disk disk{.path = base::FilePath("/path/to/image.img")};
   EXPECT_FALSE(
       base::Contains(JoinStringPairs(disk.GetCrosvmArgs()), "block_size"));
 
-  config.block_size = 4096;
-  Disk disk_with_block_size(base::FilePath("/path/to/image.img"), config);
+  Disk disk_with_block_size{.path = base::FilePath("/path/to/image.img"),
+                            .block_size = 4096};
   EXPECT_TRUE(
       base::Contains(JoinStringPairs(disk_with_block_size.GetCrosvmArgs()),
                      "block_size=4096"));

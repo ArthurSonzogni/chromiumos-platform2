@@ -66,49 +66,30 @@ std::string BooleanParameter(const char* parameter, bool value) {
 
 }  // namespace
 
-Disk::Disk(base::FilePath path, bool writable)
-    : path_(std::move(path)), writable_(writable) {}
-
-Disk::Disk(base::FilePath path, const Disk::Config& config)
-    : path_(std::move(path)),
-      writable_(config.writable),
-      sparse_(config.sparse),
-      o_direct_(config.o_direct),
-      block_size_(config.block_size) {}
-
-Disk::Disk(Disk&&) = default;
-
-void Disk::EnableODirect(bool enable) {
-  o_direct_ = enable;
-}
-
-void Disk::SetBlockSize(size_t block_size) {
-  block_size_ = block_size;
-}
 
 base::StringPairs Disk::GetCrosvmArgs() const {
   std::string first;
-  if (writable_)
+  if (writable)
     first = "--rwdisk";
   else
     first = "--disk";
 
   std::string sparse_arg{};
-  if (sparse_) {
-    sparse_arg = BooleanParameter(",sparse=", sparse_.value());
+  if (sparse) {
+    sparse_arg = BooleanParameter(",sparse=", sparse.value());
   }
   std::string o_direct_arg{};
-  if (o_direct_) {
-    o_direct_arg = BooleanParameter(",o_direct=", o_direct_.value());
+  if (o_direct) {
+    o_direct_arg = BooleanParameter(",o_direct=", o_direct.value());
   }
   std::string block_size_arg{};
-  if (block_size_) {
+  if (block_size) {
     block_size_arg =
-        base::StringPrintf(",block_size=%" PRIuS, block_size_.value());
+        base::StringPrintf(",block_size=%" PRIuS, block_size.value());
   }
 
   std::string second =
-      base::StrCat({path_.value(), sparse_arg, o_direct_arg, block_size_arg});
+      base::StrCat({path.value(), sparse_arg, o_direct_arg, block_size_arg});
   base::StringPairs result = {{std::move(first), std::move(second)}};
   return result;
 }
@@ -116,16 +97,14 @@ base::StringPairs Disk::GetCrosvmArgs() const {
 base::StringPairs Disk::GetVvuArgs() const {
   std::string first = "--file";
   std::string read_only_arg = "";
-  if (!writable_)
+  if (!writable)
     read_only_arg = ":read-only";
 
-  std::string second = base::StrCat({path_.value(), read_only_arg});
+  std::string second = base::StrCat({path.value(), read_only_arg});
 
   base::StringPairs result = {{std::move(first), std::move(second)}};
   return result;
 }
-
-Disk::~Disk() = default;
 
 int64_t GetVmMemoryMiB() {
   int64_t sys_memory_mb = base::SysInfo::AmountOfPhysicalMemoryMB();
