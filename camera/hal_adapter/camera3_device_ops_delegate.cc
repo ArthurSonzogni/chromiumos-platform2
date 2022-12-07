@@ -28,10 +28,10 @@ std::string ConvertToJsonString(
   base::Value::List val;
   for (const auto& stream : stream_config->streams) {
     base::Value::Dict s;
-    s.Set(kCameraTraceKeyStreamId, base::NumberToString(stream->id));
-    s.Set(kCameraTraceKeyWidth, base::checked_cast<int>(stream->width));
-    s.Set(kCameraTraceKeyHeight, base::checked_cast<int>(stream->height));
-    s.Set(kCameraTraceKeyFormat, base::checked_cast<int>(stream->format));
+    s.Set("stream_id", base::NumberToString(stream->id));
+    s.Set("width", base::checked_cast<int>(stream->width));
+    s.Set("height", base::checked_cast<int>(stream->height));
+    s.Set("format", base::checked_cast<int>(stream->format));
     val.Append(std::move(s));
   }
   std::string json_string;
@@ -69,8 +69,7 @@ void Camera3DeviceOpsDelegate::ConfigureStreams(
     ConfigureStreamsCallback callback) {
   VLOGF_ENTER();
   DCHECK(task_runner_->BelongsToCurrentThread());
-  TRACE_HAL_ADAPTER(kCameraTraceKeyStreamConfigurations,
-                    ConvertToJsonString(config));
+  TRACE_HAL_ADAPTER("stream_configurations", ConvertToJsonString(config));
 
   mojom::Camera3StreamConfigurationPtr updated_config;
   int32_t result = camera_device_adapter_->ConfigureStreams(std::move(config),
@@ -99,9 +98,8 @@ void Camera3DeviceOpsDelegate::ProcessCaptureRequest(
         ToString(HalAdapterTraceEvent::kCapture),
         GetTraceTrack(HalAdapterTraceEvent::kCapture, request->frame_number,
                       output_buffer->stream_id),
-        kCameraTraceKeyFrameNumber, request->frame_number,
-        kCameraTraceKeyStreamId, output_buffer->stream_id,
-        kCameraTraceKeyBufferId, output_buffer->buffer_id);
+        "frame_number", request->frame_number, "stream_id",
+        output_buffer->stream_id, "buffer_id", output_buffer->buffer_id);
   }
   std::move(callback).Run(
       camera_device_adapter_->ProcessCaptureRequest(std::move(request)));
@@ -136,7 +134,7 @@ void Camera3DeviceOpsDelegate::RegisterBuffer(
     RegisterBufferCallback callback) {
   VLOGF_ENTER();
   DCHECK(task_runner_->BelongsToCurrentThread());
-  TRACE_HAL_ADAPTER(kCameraTraceKeyBufferId, buffer_id);
+  TRACE_HAL_ADAPTER("buffer_id", buffer_id);
 
   std::move(callback).Run(camera_device_adapter_->RegisterBuffer(
       buffer_id, type, std::move(fds), drm_format, hal_pixel_format, width,
@@ -156,8 +154,7 @@ void Camera3DeviceOpsDelegate::ConfigureStreamsAndGetAllocatedBuffers(
     ConfigureStreamsAndGetAllocatedBuffersCallback callback) {
   VLOGF_ENTER();
   DCHECK(task_runner_->BelongsToCurrentThread());
-  TRACE_HAL_ADAPTER(kCameraTraceKeyStreamConfigurations,
-                    ConvertToJsonString(config));
+  TRACE_HAL_ADAPTER("stream_configurations", ConvertToJsonString(config));
 
   mojom::Camera3StreamConfigurationPtr updated_config;
   CameraDeviceAdapter::AllocatedBuffers allocated_buffers;

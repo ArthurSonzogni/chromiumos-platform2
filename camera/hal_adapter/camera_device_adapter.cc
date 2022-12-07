@@ -478,7 +478,7 @@ int32_t CameraDeviceAdapter::ProcessCaptureRequest(
     mojom::Camera3CaptureRequestPtr request) {
   VLOGF_ENTER();
   DCHECK(camera_device_ops_thread_.task_runner()->BelongsToCurrentThread());
-  TRACE_HAL_ADAPTER(kCameraTraceKeyFrameNumber, request->frame_number);
+  TRACE_HAL_ADAPTER("frame_number", request->frame_number);
 
   // Complete the pending reprocess request first if exists. We need to
   // prioritize reprocess requests because CCA can be waiting for the
@@ -613,8 +613,8 @@ int32_t CameraDeviceAdapter::ProcessCaptureRequest(
 
   {
     TRACE_EVENT(kCameraTraceCategoryHalAdapter, "HAL::ProcessCaptureRequest",
-                kCameraTraceKeyFrameNumber, request_descriptor.frame_number(),
-                kCameraTraceKeyCaptureInfo, request_descriptor.ToJsonString());
+                "frame_number", request_descriptor.frame_number(),
+                "capture_info", request_descriptor.ToJsonString());
     return camera_device_->ops->process_capture_request(
         camera_device_, request_descriptor.LockForRequest());
   }
@@ -722,7 +722,7 @@ bool CameraDeviceAdapter::IsRequestOrResultStalling() {
 void CameraDeviceAdapter::ProcessCaptureResult(
     const camera3_callback_ops_t* ops, const camera3_capture_result_t* result) {
   VLOGF_ENTER();
-  TRACE_HAL_ADAPTER(kCameraTraceKeyFrameNumber, result->frame_number);
+  TRACE_HAL_ADAPTER("frame_number", result->frame_number);
 
   CameraDeviceAdapter* self = const_cast<CameraDeviceAdapter*>(
       static_cast<const CameraDeviceAdapter*>(ops));

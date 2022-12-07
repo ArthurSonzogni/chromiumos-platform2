@@ -466,20 +466,19 @@ std::string Camera3CaptureDescriptor::ToJsonString() const {
   }
 
   base::Value::Dict val;
-  val.Set(kCameraTraceKeyCaptureType,
+  val.Set("capture_type",
           type_ == Type::kCaptureRequest ? "Request" : "Result");
-  val.Set(kCameraTraceKeyFrameNumber, base::checked_cast<int>(frame_number_));
-  val.Set(kCameraTraceKeyInputBuffer, ToValueDict(GetInputBuffer()));
+  val.Set("frame_number", base::checked_cast<int>(frame_number_));
+  val.Set("input_buffer", ToValueDict(GetInputBuffer()));
 
   base::Value::List out_bufs;
   for (const auto& b : GetOutputBuffers()) {
     out_bufs.Append(ToValueDict(&b));
   }
-  val.Set(kCameraTraceKeyOutputBuffers, std::move(out_bufs));
+  val.Set("output_buffers", std::move(out_bufs));
 
   if (type_ == Type::kCaptureResult) {
-    val.Set(kCameraTraceKeyPartialResult,
-            base::checked_cast<int>(partial_result_));
+    val.Set("partial_result", base::checked_cast<int>(partial_result_));
   }
 
   std::string json_string;

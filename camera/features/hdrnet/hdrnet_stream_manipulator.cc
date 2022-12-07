@@ -370,8 +370,7 @@ bool HdrNetStreamManipulator::InitializeOnGpuThread(
 bool HdrNetStreamManipulator::ConfigureStreamsOnGpuThread(
     Camera3StreamConfiguration* stream_config) {
   DCHECK(gpu_resources_->gpu_task_runner()->BelongsToCurrentThread());
-  TRACE_HDRNET(kCameraTraceKeyStreamConfigurations,
-               stream_config->ToJsonString());
+  TRACE_HDRNET("stream_configurations", stream_config->ToJsonString());
 
   // Clear the stream configuration from the previous session.
   ResetStateOnGpuThread();
@@ -489,8 +488,7 @@ bool HdrNetStreamManipulator::ConfigureStreamsOnGpuThread(
 bool HdrNetStreamManipulator::OnConfiguredStreamsOnGpuThread(
     Camera3StreamConfiguration* stream_config) {
   DCHECK(gpu_resources_->gpu_task_runner()->BelongsToCurrentThread());
-  TRACE_HDRNET(kCameraTraceKeyStreamConfigurations,
-               stream_config->ToJsonString());
+  TRACE_HDRNET("stream_configurations", stream_config->ToJsonString());
 
   // Restore HDRnet streams to the original streams.
   if (VLOG_IS_ON(1)) {
@@ -549,7 +547,7 @@ bool HdrNetStreamManipulator::OnConfiguredStreamsOnGpuThread(
 bool HdrNetStreamManipulator::ProcessCaptureRequestOnGpuThread(
     Camera3CaptureDescriptor* request) {
   DCHECK(gpu_resources_->gpu_task_runner()->BelongsToCurrentThread());
-  TRACE_HDRNET(kCameraTraceKeyFrameNumber, request->frame_number());
+  TRACE_HDRNET("frame_number", request->frame_number());
 
   if (VLOG_IS_ON(2)) {
     VLOGFID(2, request->frame_number()) << " Got request:";
@@ -694,7 +692,7 @@ bool HdrNetStreamManipulator::ProcessCaptureRequestOnGpuThread(
 bool HdrNetStreamManipulator::ProcessCaptureResultOnGpuThread(
     Camera3CaptureDescriptor* result) {
   DCHECK(gpu_resources_->gpu_task_runner()->BelongsToCurrentThread());
-  TRACE_HDRNET(kCameraTraceKeyFrameNumber, result->frame_number());
+  TRACE_HDRNET("frame_number", result->frame_number());
 
   if (VLOG_IS_ON(2)) {
     VLOGFID(2, result->frame_number()) << "Got result:";
@@ -771,11 +769,10 @@ bool HdrNetStreamManipulator::ProcessCaptureResultOnGpuThread(
   // requested output buffers associated with each HDRnet buffer.
   for (auto& hdrnet_buffer : hdrnet_buffer_to_process) {
     TRACE_EVENT(kCameraTraceCategoryHdrnet,
-                "HdrNetStreamManipulator::ProcessHdrnetBuffer",
-                kCameraTraceKeyFrameNumber, result->frame_number(),
-                kCameraTraceKeyWidth, hdrnet_buffer.stream->width,
-                kCameraTraceKeyHeight, hdrnet_buffer.stream->height,
-                kCameraTraceKeyFormat, hdrnet_buffer.stream->format);
+                "HdrNetStreamManipulator::ProcessHdrnetBuffer", "frame_number",
+                result->frame_number(), "width", hdrnet_buffer.stream->width,
+                "height", hdrnet_buffer.stream->height, "format",
+                hdrnet_buffer.stream->format);
     HdrNetStreamContext* stream_context =
         GetHdrNetContextFromHdrNetStream(hdrnet_buffer.stream);
     auto request_buffer_info =
@@ -1098,9 +1095,8 @@ bool HdrNetStreamManipulator::SetUpPipelineOnGpuThread() {
   for (const auto& context : hdrnet_stream_context_) {
     camera3_stream_t* stream = context->hdrnet_stream.get();
     TRACE_EVENT(kCameraTraceCategoryHdrnet,
-                "HdrNetStreamManipulator::SetUpContextResources",
-                kCameraTraceKeyWidth, stream->width, kCameraTraceKeyHeight,
-                stream->height);
+                "HdrNetStreamManipulator::SetUpContextResources", "width",
+                stream->width, "height", stream->height);
     Size stream_size(stream->width, stream->height);
     std::vector<Size> viable_output_sizes;
     for (const auto& s : all_output_sizes) {

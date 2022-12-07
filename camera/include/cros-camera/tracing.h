@@ -36,22 +36,6 @@ constexpr char kCameraTraceCategoryGpu[] = "camera.gpu";
 constexpr char kCameraTraceCategoryHalAdapter[] = "camera.hal_adapter";
 constexpr char kCameraTraceCategoryHdrnet[] = "camera.hdrnet";
 
-// Common keys used to annotate camera trace events.
-constexpr char kCameraTraceKeyFrameNumber[] = "frame_number";
-constexpr char kCameraTraceKeyBufferId[] = "buffer_id";
-constexpr char kCameraTraceKeyCameraId[] = "camera_id";
-constexpr char kCameraTraceKeyStreamId[] = "stream_id";
-constexpr char kCameraTraceKeyWidth[] = "width";
-constexpr char kCameraTraceKeyHeight[] = "height";
-constexpr char kCameraTraceKeyFormat[] = "format";
-
-constexpr char kCameraTraceKeyStreamConfigurations[] = "stream_configurations";
-constexpr char kCameraTraceKeyCaptureInfo[] = "capture_info";
-constexpr char kCameraTraceKeyCaptureType[] = "capture_type";
-constexpr char kCameraTraceKeyPartialResult[] = "partial_result";
-constexpr char kCameraTraceKeyInputBuffer[] = "input_buffer";
-constexpr char kCameraTraceKeyOutputBuffers[] = "output_buffers";
-
 }  // namespace cros
 
 constexpr std::string_view TraceCameraEventName(const char* pretty_function) {
@@ -64,6 +48,7 @@ constexpr std::string_view TraceCameraEventName(const char* pretty_function) {
   }
   return name;
 }
+
 #define TRACE_CAMERA_EVENT_NAME TraceCameraEventName(__PRETTY_FUNCTION__)
 
 #define TRACE_EVENT_AUTOGEN(category, ...)                                \

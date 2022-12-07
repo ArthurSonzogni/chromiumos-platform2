@@ -422,8 +422,7 @@ bool AutoFramingStreamManipulator::InitializeOnThread(
 bool AutoFramingStreamManipulator::ConfigureStreamsOnThread(
     Camera3StreamConfiguration* stream_config) {
   DCHECK(gpu_resources_->gpu_task_runner()->BelongsToCurrentThread());
-  TRACE_AUTO_FRAMING(kCameraTraceKeyStreamConfigurations,
-                     stream_config->ToJsonString());
+  TRACE_AUTO_FRAMING("stream_configurations", stream_config->ToJsonString());
 
   if (setup_failed_) {
     return false;
@@ -530,8 +529,7 @@ bool AutoFramingStreamManipulator::ConfigureStreamsOnThread(
 bool AutoFramingStreamManipulator::OnConfiguredStreamsOnThread(
     Camera3StreamConfiguration* stream_config) {
   DCHECK(gpu_resources_->gpu_task_runner()->BelongsToCurrentThread());
-  TRACE_AUTO_FRAMING(kCameraTraceKeyStreamConfigurations,
-                     stream_config->ToJsonString());
+  TRACE_AUTO_FRAMING("stream_configurations", stream_config->ToJsonString());
 
   if (setup_failed_) {
     return false;
@@ -621,7 +619,7 @@ bool AutoFramingStreamManipulator::GetEnabled() {
 bool AutoFramingStreamManipulator::ProcessCaptureRequestOnThread(
     Camera3CaptureDescriptor* request) {
   DCHECK(gpu_resources_->gpu_task_runner()->BelongsToCurrentThread());
-  TRACE_AUTO_FRAMING(kCameraTraceKeyFrameNumber, request->frame_number());
+  TRACE_AUTO_FRAMING("frame_number", request->frame_number());
 
   if (setup_failed_) {
     return false;
@@ -725,7 +723,7 @@ bool AutoFramingStreamManipulator::ProcessCaptureRequestOnThread(
 bool AutoFramingStreamManipulator::ProcessCaptureResultOnThread(
     Camera3CaptureDescriptor* result) {
   DCHECK(gpu_resources_->gpu_task_runner()->BelongsToCurrentThread());
-  TRACE_AUTO_FRAMING(kCameraTraceKeyFrameNumber, result->frame_number());
+  TRACE_AUTO_FRAMING("frame_number", result->frame_number());
 
   if (setup_failed_) {
     return false;

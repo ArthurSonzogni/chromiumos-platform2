@@ -424,15 +424,12 @@ TEST(Camera3CaptureDescriptor, ToJsonStringTest) {
   EXPECT_TRUE(vals.has_value());
   EXPECT_NE(nullptr, vals->GetIfDict());
   const auto& dict_view = vals->GetDict();
-  EXPECT_STREQ("Result",
-               dict_view.FindString(kCameraTraceKeyCaptureType)->c_str());
-  EXPECT_EQ(result.frame_number,
-            dict_view.FindInt(kCameraTraceKeyFrameNumber).value());
+  EXPECT_STREQ("Result", dict_view.FindString("capture_type")->c_str());
+  EXPECT_EQ(result.frame_number, dict_view.FindInt("frame_number").value());
   EXPECT_EQ(result.num_output_buffers,
-            dict_view.FindList(kCameraTraceKeyOutputBuffers)->size());
-  EXPECT_TRUE(dict_view.FindDict(kCameraTraceKeyInputBuffer)->empty());
-  EXPECT_EQ(result.partial_result,
-            dict_view.FindInt(kCameraTraceKeyPartialResult));
+            dict_view.FindList("output_buffers")->size());
+  EXPECT_TRUE(dict_view.FindDict("input_buffer")->empty());
+  EXPECT_EQ(result.partial_result, dict_view.FindInt("partial_result"));
 }
 
 TEST(Camera3CaptureDescriptor, AddListItemToMetadataTag) {

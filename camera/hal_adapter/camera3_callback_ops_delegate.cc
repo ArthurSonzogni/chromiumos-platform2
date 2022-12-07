@@ -45,7 +45,7 @@ void Camera3CallbackOpsDelegate::ProcessCaptureResultOnThread(
     mojom::Camera3CaptureResultPtr result) {
   VLOGF_ENTER();
   DCHECK(task_runner_->BelongsToCurrentThread());
-  TRACE_HAL_ADAPTER(kCameraTraceKeyFrameNumber, result->frame_number);
+  TRACE_HAL_ADAPTER("frame_number", result->frame_number);
 
   // process_capture_result may be called multiple times for a single frame,
   // each time with a new disjoint piece of metadata and/or set of gralloc

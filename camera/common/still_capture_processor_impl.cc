@@ -248,8 +248,8 @@ StillCaptureProcessorImpl::~StillCaptureProcessorImpl() {
 void StillCaptureProcessorImpl::Initialize(
     const camera3_stream_t* const still_capture_stream,
     CaptureResultCallback result_callback) {
-  TRACE_COMMON(kCameraTraceKeyWidth, still_capture_stream->width,
-               kCameraTraceKeyHeight, still_capture_stream->height);
+  TRACE_COMMON("width", still_capture_stream->width, "height",
+               still_capture_stream->height);
 
   blob_stream_ = still_capture_stream;
   result_callback_ = std::move(result_callback);
@@ -351,9 +351,8 @@ void StillCaptureProcessorImpl::QueuePendingYuvImage(
 void StillCaptureProcessorImpl::QueuePendingOutputBufferOnThread(
     int frame_number, RequestContext request_context) {
   DCHECK(thread_.task_runner()->BelongsToCurrentThread());
-  TRACE_COMMON(kCameraTraceKeyFrameNumber, frame_number, kCameraTraceKeyWidth,
-               request_context.client_requested_buffer.stream->width,
-               kCameraTraceKeyHeight,
+  TRACE_COMMON("frame_number", frame_number, "width",
+               request_context.client_requested_buffer.stream->width, "height",
                request_context.client_requested_buffer.stream->height);
 
   request_contexts_.insert({frame_number, std::move(request_context)});
@@ -364,7 +363,7 @@ void StillCaptureProcessorImpl::QueuePendingAppsSegmentsOnThread(
     std::vector<uint8_t> apps_segments_buffer,
     std::map<uint16_t, base::span<uint8_t>> apps_segments_index) {
   DCHECK(thread_.task_runner()->BelongsToCurrentThread());
-  TRACE_COMMON(kCameraTraceKeyFrameNumber, frame_number);
+  TRACE_COMMON("frame_number", frame_number);
 
   if (request_contexts_.count(frame_number) == 0) {
     LOGF(ERROR) << "No output buffer queued";
@@ -384,7 +383,7 @@ void StillCaptureProcessorImpl::QueuePendingYuvImageOnThread(
     buffer_handle_t yuv_buffer,
     base::ScopedFD release_fence) {
   DCHECK(thread_.task_runner()->BelongsToCurrentThread());
-  TRACE_COMMON(kCameraTraceKeyFrameNumber, frame_number);
+  TRACE_COMMON("frame_number", frame_number);
 
   if (request_contexts_.count(frame_number) == 0) {
     LOGF(ERROR) << "No output buffer queued";
@@ -396,7 +395,7 @@ void StillCaptureProcessorImpl::QueuePendingYuvImageOnThread(
     TRACE_EVENT(kCameraTraceCategoryCommon,
                 "StillCaptureProcessorImpl::QueuePendingYuvImageOnThread::"
                 "EncodeJPEG",
-                kCameraTraceKeyFrameNumber, frame_number);
+                "frame_number", frame_number);
 
     if (release_fence.is_valid() && sync_wait(release_fence.get(), 1000) != 0) {
       LOGF(ERROR) << "sync_wait timeout on YUV buffer";
@@ -417,7 +416,7 @@ void StillCaptureProcessorImpl::QueuePendingYuvImageOnThread(
     TRACE_EVENT(kCameraTraceCategoryCommon,
                 "StillCaptureProcessorImpl::QueuePendingYuvImageOnThread::"
                 "GenerateThumbnail",
-                kCameraTraceKeyFrameNumber, frame_number);
+                "frame_number", frame_number);
 
     // Scale down the YUV image and produce JPEG thumbnail.
     ScopedMapping mapping(yuv_buffer);
@@ -478,7 +477,7 @@ void StillCaptureProcessorImpl::MaybeProduceCaptureResultOnThread(
     int frame_number) {
   DCHECK(thread_.task_runner()->BelongsToCurrentThread());
   DCHECK_EQ(request_contexts_.count(frame_number), 1);
-  TRACE_COMMON(kCameraTraceKeyFrameNumber, frame_number);
+  TRACE_COMMON("frame_number", frame_number);
 
   RequestContext& context = request_contexts_.at(frame_number);
   if (!(context.has_apps_segments && context.has_jpeg)) {

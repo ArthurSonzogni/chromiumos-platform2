@@ -57,9 +57,6 @@ constexpr char kArcvmVendorTagSectionName[] = "com.google.arcvm";
 constexpr char kArcvmVendorTagHostTimeTagName[] = "hostSensorTimestamp";
 constexpr uint32_t kArcvmVendorTagHostTime = kArcvmVendorTagStart;
 
-constexpr char kCameraTraceKeyDeviceStatus[] = "device_status";
-constexpr char kCameraTraceKeyClientType[] = "client_type";
-
 }  // namespace
 
 CameraHalAdapter::CameraHalAdapter(
@@ -145,7 +142,7 @@ void CameraHalAdapter::OpenCameraHal(
     mojo::PendingReceiver<mojom::CameraModule> camera_module_receiver,
     mojom::CameraClientType camera_client_type) {
   VLOGF_ENTER();
-  TRACE_HAL_ADAPTER(kCameraTraceKeyClientType, camera_client_type);
+  TRACE_HAL_ADAPTER("client_type", camera_client_type);
 
   auto module_delegate = std::make_unique<CameraModuleDelegate>(
       this, camera_module_thread_.task_runner(), camera_client_type);
@@ -167,8 +164,7 @@ int32_t CameraHalAdapter::OpenDevice(
     mojom::CameraClientType camera_client_type) {
   VLOGF_ENTER();
   DCHECK(camera_module_thread_.task_runner()->BelongsToCurrentThread());
-  TRACE_HAL_ADAPTER(kCameraTraceKeyClientType, camera_client_type,
-                    kCameraTraceKeyCameraId, camera_id);
+  TRACE_HAL_ADAPTER("client_type", camera_client_type, "camera_id", camera_id);
 
   session_timer_map_.emplace(std::piecewise_construct,
                              std::forward_as_tuple(camera_id),
@@ -334,8 +330,7 @@ int32_t CameraHalAdapter::GetCameraInfo(
     mojom::CameraClientType camera_client_type) {
   VLOGF_ENTER();
   DCHECK(camera_module_thread_.task_runner()->BelongsToCurrentThread());
-  TRACE_HAL_ADAPTER(kCameraTraceKeyClientType, camera_client_type,
-                    kCameraTraceKeyCameraId, camera_id);
+  TRACE_HAL_ADAPTER("client_type", camera_client_type, "camera_id", camera_id);
 
   camera_module_t* camera_module;
   int internal_camera_id;
@@ -397,7 +392,7 @@ int32_t CameraHalAdapter::GetCameraInfo(
 int32_t CameraHalAdapter::SetTorchMode(int32_t camera_id, bool enabled) {
   VLOGF_ENTER();
   DCHECK(camera_module_thread_.task_runner()->BelongsToCurrentThread());
-  TRACE_HAL_ADAPTER(kCameraTraceKeyCameraId, camera_id);
+  TRACE_HAL_ADAPTER("camera_id", camera_id);
 
   camera_module_t* camera_module;
   int internal_camera_id;
@@ -496,8 +491,7 @@ const camera_metadata_t* CameraHalAdapter::GetUpdatedCameraMetadata(
     int camera_id,
     mojom::CameraClientType camera_client_type,
     const camera_metadata_t* static_metadata) {
-  TRACE_HAL_ADAPTER(kCameraTraceKeyClientType, camera_client_type,
-                    kCameraTraceKeyCameraId, camera_id);
+  TRACE_HAL_ADAPTER("client_type", camera_client_type, "camera_id", camera_id);
 
   auto& metadata = static_metadata_map_[camera_id][camera_client_type];
   if (metadata) {
@@ -536,8 +530,8 @@ void CameraHalAdapter::CameraDeviceStatusChange(
     camera_device_status_t new_status) {
   VLOGF_ENTER();
   DCHECK(camera_module_thread_.task_runner()->BelongsToCurrentThread());
-  TRACE_HAL_ADAPTER(kCameraTraceKeyCameraId, internal_camera_id,
-                    kCameraTraceKeyDeviceStatus, new_status);
+  TRACE_HAL_ADAPTER("camera_id", internal_camera_id, "device_status",
+                    new_status);
 
   int public_camera_id = GetPublicId(aux->module_id, internal_camera_id);
 
@@ -601,7 +595,7 @@ void CameraHalAdapter::TorchModeStatusChange(
     torch_mode_status_t new_status) {
   VLOGF_ENTER();
   DCHECK(camera_module_thread_.task_runner()->BelongsToCurrentThread());
-  TRACE_HAL_ADAPTER(kCameraTraceKeyCameraId, internal_camera_id);
+  TRACE_HAL_ADAPTER("camera_id", internal_camera_id);
 
   int camera_id = GetPublicId(aux->module_id, internal_camera_id);
   if (camera_id == -1) {
@@ -919,8 +913,7 @@ void CameraHalAdapter::CloseDevice(int32_t camera_id,
                                    mojom::CameraClientType camera_client_type) {
   VLOGF_ENTER();
   DCHECK(camera_module_thread_.task_runner()->BelongsToCurrentThread());
-  TRACE_HAL_ADAPTER(kCameraTraceKeyClientType, camera_client_type,
-                    kCameraTraceKeyCameraId, camera_id);
+  TRACE_HAL_ADAPTER("client_type", camera_client_type, "camera_id", camera_id);
 
   LOGF(INFO) << camera_client_type << ", camera_id = " << camera_id;
   if (device_adapters_.find(camera_id) == device_adapters_.end()) {

@@ -271,8 +271,8 @@ bool StreamManipulatorManager::ProcessCaptureRequest(
     }
     {
       TRACE_EVENT(kCameraTraceCategoryCommon,
-                  "StreamManipulator::ProcessCaptureRequest",
-                  kCameraTraceKeyFrameNumber, request->frame_number());
+                  "StreamManipulator::ProcessCaptureRequest", "frame_number",
+                  request->frame_number());
       stream_manipulators_[i]->ProcessCaptureRequest(request);
     }
   }
@@ -336,7 +336,7 @@ void StreamManipulatorManager::Notify(camera3_notify_msg_t msg) {
 
 void StreamManipulatorManager::ProcessCaptureResultOnStreamManipulator(
     int stream_manipulator_index, Camera3CaptureDescriptor result) {
-  TRACE_COMMON(kCameraTraceKeyFrameNumber, result.frame_number());
+  TRACE_COMMON("frame_number", result.frame_number());
   DCHECK(0 <= stream_manipulator_index &&
          stream_manipulator_index < stream_manipulators_.size());
   InspectResult(stream_manipulator_index + 1, result);
@@ -357,8 +357,8 @@ void StreamManipulatorManager::ProcessCaptureResultOnStreamManipulator(
 
 void StreamManipulatorManager::ReturnResultToClient(
     Camera3CaptureDescriptor result) {
-  TRACE_COMMON(kCameraTraceKeyFrameNumber, result.frame_number(),
-               kCameraTraceKeyCaptureInfo, result.ToJsonString());
+  TRACE_COMMON("frame_number", result.frame_number(), "capture_info",
+               result.ToJsonString());
   DCHECK(!callbacks_.result_callback.is_null());
   InspectResult(0, result);
   callbacks_.result_callback.Run(std::move(result));

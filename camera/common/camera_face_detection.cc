@@ -153,8 +153,7 @@ void FaceDetector::DetectOnThread(const uint8_t* buffer_addr,
                                   base::OnceClosure buffer_release_callback) {
   DCHECK(thread_.task_runner()->BelongsToCurrentThread());
   CHECK(buffer_addr);
-  TRACE_COMMON(kCameraTraceKeyWidth, input_size.width, kCameraTraceKeyHeight,
-               input_size.height);
+  TRACE_COMMON("width", input_size.width, "height", input_size.height);
 
   Size scaled_size =
       (input_size.width > input_size.height)

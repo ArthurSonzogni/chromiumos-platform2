@@ -84,7 +84,7 @@ bool SWPrivacySwitchStreamManipulator::ProcessCaptureRequest(
 
 bool SWPrivacySwitchStreamManipulator::ProcessCaptureResult(
     Camera3CaptureDescriptor result) {
-  TRACE_COMMON(kCameraTraceKeyFrameNumber, result.frame_number());
+  TRACE_COMMON("frame_number", result.frame_number());
   if (runtime_options_->sw_privacy_switch_state() !=
       mojom::CameraPrivacySwitchState::ON) {
     callbacks_.result_callback.Run(std::move(result));
