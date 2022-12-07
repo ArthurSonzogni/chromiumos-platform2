@@ -30,7 +30,7 @@ namespace {
 const char kPrivateComputingLastActiveDatesReadPath[] =
     "/mnt/stateful_partition/unencrypted/preserve/last_active_dates";
 
-// Path to file storing the UTC last ping dates as serialized object
+// Path to file storing the last ping dates as serialized object
 // private_computing_service::SaveStatusRequest.
 const char kPrivateComputingLastActiveDatesWritePath[] =
     "/var/lib/private_computing/last_active_dates";
@@ -88,7 +88,7 @@ std::vector<uint8_t> PrivateComputingAdaptor::SaveLastPingDatesStatus(
 
   if (!file.IsValid()) {
     response.set_error_message(
-        "Failed to retrieve last_ping_utc_dates file descriptor.");
+        "Failed to retrieve last_active_dates file descriptor.");
     return SerializeProto(response);
   }
 
