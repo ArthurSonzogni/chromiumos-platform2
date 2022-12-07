@@ -156,7 +156,8 @@ bool NVRamBootLockbox::RegisterOwnershipCallback() {
 }
 
 bool NVRamBootLockbox::Load() {
-  if (!tpm_nvspace_->ReadNVSpace(&root_digest_, &nvspace_state_)) {
+  nvspace_state_ = tpm_nvspace_->ReadNVSpace(&root_digest_);
+  if (nvspace_state_ != NVSpaceState::kNVSpaceNormal) {
     LOG(ERROR) << "Failed to read NVRAM space.";
     return false;
   }

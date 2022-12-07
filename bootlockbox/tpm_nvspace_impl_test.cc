@@ -4,14 +4,23 @@
 
 #include "bootlockbox/tpm_nvspace_impl.h"
 
+#include <memory>
 #include <utility>
 
+#include <brillo/secure_blob.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include <libhwsec-foundation/tpm/tpm_version.h>
-#include <tpm_manager-client/tpm_manager/dbus-constants.h>
+#include <libhwsec/error/tpm_error.h>
+#include <libhwsec/error/tpm_retry_action.h>
+#include <libhwsec/frontend/bootlockbox/mock_frontend.h>
+#include <libhwsec-foundation/error/testing_helper.h>
 #include <tpm_manager-client-test/tpm_manager/dbus-proxy-mocks.h>
+#include <tpm_manager-client/tpm_manager/dbus-constants.h>
 
+using hwsec_foundation::error::testing::IsOk;
+using hwsec_foundation::error::testing::ReturnError;
+using hwsec_foundation::error::testing::ReturnOk;
+using hwsec_foundation::error::testing::ReturnValue;
 using testing::_;
 using testing::Invoke;
 using testing::NiceMock;
@@ -25,17 +34,6 @@ std::string uint16_to_string(uint16_t value) {
   return std::string(bytes, sizeof(uint16_t));
 }
 
-uint32_t GetBootLockboxNVRamIndex() {
-  TPM_SELECT_BEGIN;
-  TPM1_SECTION({ return 0x20000006; });
-  TPM2_SECTION({ return 0x800006; });
-  OTHER_TPM_SECTION({
-    LOG(ERROR) << "Failed to get the bootlockbox index on none supported TPM.";
-    return 0;
-  });
-  TPM_SELECT_END;
-}
-
 }  // namespace
 
 namespace bootlockbox {
@@ -43,383 +41,160 @@ namespace bootlockbox {
 class TPMNVSpaceImplTest : public testing::Test {
  public:
   void SetUp() override {
-    SET_DEFAULT_TPM_FOR_TESTING;
+    auto hwsec = std::make_unique<hwsec::MockBootLockboxFrontend>();
+    hwsec_ptr_ = hwsec.get();
     nvspace_utility_ =
-        std::make_unique<TPMNVSpaceImpl>(&mock_tpm_nvram_, &mock_tpm_owner_);
-    nvspace_utility_->Initialize();
+        std::make_unique<TPMNVSpaceImpl>(std::move(hwsec), &mock_tpm_owner_);
   }
 
  protected:
-  NiceMock<org::chromium::TpmNvramProxyMock> mock_tpm_nvram_;
+  hwsec::MockBootLockboxFrontend* hwsec_ptr_;
   NiceMock<org::chromium::TpmManagerProxyMock> mock_tpm_owner_;
   std::unique_ptr<TPMNVSpaceImpl> nvspace_utility_;
 };
 
 TEST_F(TPMNVSpaceImplTest, DefineNVSpaceSuccess) {
-  EXPECT_CALL(mock_tpm_nvram_, DefineSpace(_, _, _, _))
-      .WillOnce(Invoke([](const tpm_manager::DefineSpaceRequest& request,
-                          tpm_manager::DefineSpaceReply* reply,
-                          brillo::ErrorPtr*, int) {
-        EXPECT_TRUE(request.has_index());
-        EXPECT_EQ(GetBootLockboxNVRamIndex(), request.index());
-        EXPECT_TRUE(request.has_size());
-        EXPECT_EQ(kNVSpaceSize, request.size());
-        reply->set_result(tpm_manager::NVRAM_RESULT_SUCCESS);
-        return true;
-      }));
-  EXPECT_CALL(mock_tpm_owner_, RemoveOwnerDependency(_, _, _, _))
+  EXPECT_CALL(*hwsec_ptr_, GetSpaceState())
       .WillOnce(
-          Invoke([](const tpm_manager::RemoveOwnerDependencyRequest& request,
-                    tpm_manager::RemoveOwnerDependencyReply* reply,
-                    brillo::ErrorPtr*, int) {
-            EXPECT_EQ(tpm_manager::kTpmOwnerDependency_Bootlockbox,
-                      request.owner_dependency());
-            reply->set_status(tpm_manager::STATUS_SUCCESS);
-            return true;
-          }));
-  EXPECT_CALL(mock_tpm_owner_, GetTpmNonsensitiveStatus(_, _, _, _))
-      .WillOnce(
-          Invoke([](const tpm_manager::GetTpmNonsensitiveStatusRequest& request,
-                    tpm_manager::GetTpmNonsensitiveStatusReply* reply,
-                    brillo::ErrorPtr*, int) {
-            reply->set_is_enabled(true);
-            reply->set_is_owned(true);
-            reply->set_is_owner_password_present(true);
-            reply->set_status(tpm_manager::STATUS_SUCCESS);
-            return true;
-          }));
+          ReturnValue(hwsec::BootLockboxFrontend::StorageState::kPreparable));
+  EXPECT_CALL(*hwsec_ptr_, PrepareSpace(kNVSpaceSize))
+      .WillOnce(ReturnOk<hwsec::TPMError>());
 
   EXPECT_EQ(nvspace_utility_->DefineNVSpace(),
             NVSpaceState::kNVSpaceUninitialized);
 }
 
-TEST_F(TPMNVSpaceImplTest, DefineNVSpaceFail) {
-  EXPECT_CALL(mock_tpm_nvram_, DefineSpace(_, _, _, _))
-      .WillOnce(Invoke([](const tpm_manager::DefineSpaceRequest& request,
-                          tpm_manager::DefineSpaceReply* reply,
-                          brillo::ErrorPtr*, int) {
-        reply->set_result(tpm_manager::NVRAM_RESULT_IPC_ERROR);
-        return true;
-      }));
-  EXPECT_CALL(mock_tpm_owner_, GetTpmNonsensitiveStatus(_, _, _, _))
-      .WillOnce(
-          Invoke([](const tpm_manager::GetTpmNonsensitiveStatusRequest& request,
-                    tpm_manager::GetTpmNonsensitiveStatusReply* reply,
-                    brillo::ErrorPtr*, int) {
-            reply->set_is_enabled(true);
-            reply->set_is_owned(true);
-            reply->set_is_owner_password_present(true);
-            reply->set_status(tpm_manager::STATUS_SUCCESS);
-            return true;
-          }));
-  EXPECT_EQ(nvspace_utility_->DefineNVSpace(), NVSpaceState::kNVSpaceUndefined);
+TEST_F(TPMNVSpaceImplTest, DefineNVSpaceAlreadyDefined) {
+  EXPECT_CALL(*hwsec_ptr_, GetSpaceState())
+      .WillOnce(ReturnValue(hwsec::BootLockboxFrontend::StorageState::kReady));
+
+  EXPECT_EQ(nvspace_utility_->DefineNVSpace(),
+            NVSpaceState::kNVSpaceUninitialized);
 }
 
-TEST_F(TPMNVSpaceImplTest, DefineNVSpaceNotOwned) {
-  EXPECT_CALL(mock_tpm_owner_, GetTpmNonsensitiveStatus(_, _, _, _))
+TEST_F(TPMNVSpaceImplTest, DefineNVSpaceCannotPrepare) {
+  EXPECT_CALL(*hwsec_ptr_, GetSpaceState())
       .WillOnce(
-          Invoke([](const tpm_manager::GetTpmNonsensitiveStatusRequest& request,
-                    tpm_manager::GetTpmNonsensitiveStatusReply* reply,
-                    brillo::ErrorPtr*, int) {
-            reply->set_is_enabled(true);
-            reply->set_is_owned(false);
-            reply->set_is_owner_password_present(false);
-            reply->set_status(tpm_manager::STATUS_SUCCESS);
-            return true;
-          }));
+          ReturnValue(hwsec::BootLockboxFrontend::StorageState::kWriteLocked));
+
+  EXPECT_EQ(nvspace_utility_->DefineNVSpace(), NVSpaceState::kNVSpaceError);
+}
+
+TEST_F(TPMNVSpaceImplTest, DefineNVSpacePrepareFail) {
+  EXPECT_CALL(*hwsec_ptr_, GetSpaceState())
+      .WillOnce(
+          ReturnValue(hwsec::BootLockboxFrontend::StorageState::kPreparable));
+  EXPECT_CALL(*hwsec_ptr_, PrepareSpace(kNVSpaceSize))
+      .WillOnce(ReturnError<hwsec::TPMError>("Fake error",
+                                             hwsec::TPMRetryAction::kNoRetry));
+
   EXPECT_EQ(nvspace_utility_->DefineNVSpace(), NVSpaceState::kNVSpaceUndefined);
 }
 
 TEST_F(TPMNVSpaceImplTest, DefineNVSpacePowerWash) {
-  EXPECT_CALL(mock_tpm_owner_, GetTpmNonsensitiveStatus(_, _, _, _))
-      .WillOnce(
-          Invoke([](const tpm_manager::GetTpmNonsensitiveStatusRequest& request,
-                    tpm_manager::GetTpmNonsensitiveStatusReply* reply,
-                    brillo::ErrorPtr*, int) {
-            reply->set_is_enabled(true);
-            reply->set_is_owned(true);
-            reply->set_is_owner_password_present(false);
-            reply->set_status(tpm_manager::STATUS_SUCCESS);
-            return true;
-          }));
+  EXPECT_CALL(*hwsec_ptr_, GetSpaceState())
+      .WillOnce(ReturnError<hwsec::TPMError>("Fake error",
+                                             hwsec::TPMRetryAction::kNoRetry));
+
   EXPECT_EQ(nvspace_utility_->DefineNVSpace(),
             NVSpaceState::kNVSpaceNeedPowerwash);
 }
 
-TEST_F(TPMNVSpaceImplTest, ReadNVSpaceLengthFail) {
-  EXPECT_CALL(mock_tpm_nvram_, ReadSpace(_, _, _, _))
-      .WillOnce(Invoke([](const tpm_manager::ReadSpaceRequest& request,
-                          tpm_manager::ReadSpaceReply* reply, brillo::ErrorPtr*,
-                          int) {
-        std::string nvram_data = uint16_to_string(1) /* version */ +
-                                 uint16_to_string(0) /* flags */ +
-                                 std::string(3, '\x3');
-        // return success to trigger error.
-        reply->set_result(tpm_manager::NVRAM_RESULT_SUCCESS);
-        reply->set_data(nvram_data);
-        return true;
-      }));
+TEST_F(TPMNVSpaceImplTest, ReadNVSpaceReboot) {
+  EXPECT_CALL(*hwsec_ptr_, GetSpaceState())
+      .WillOnce(ReturnError<hwsec::TPMError>("Fake error",
+                                             hwsec::TPMRetryAction::kNoRetry));
+
   std::string data;
-  NVSpaceState state;
-  EXPECT_FALSE(nvspace_utility_->ReadNVSpace(&data, &state));
-  EXPECT_EQ(state, NVSpaceState::kNVSpaceError);
+  EXPECT_EQ(nvspace_utility_->ReadNVSpace(&data),
+            NVSpaceState::kNVSpaceNeedPowerwash);
+}
+
+TEST_F(TPMNVSpaceImplTest, ReadNVSpaceLengthFail) {
+  std::string nvram_data = uint16_to_string(1) /* version */ +
+                           uint16_to_string(0) /* flags */ +
+                           std::string(3, '\x3');
+  EXPECT_CALL(*hwsec_ptr_, GetSpaceState())
+      .WillOnce(ReturnValue(hwsec::BootLockboxFrontend::StorageState::kReady));
+  EXPECT_CALL(*hwsec_ptr_, LoadSpace())
+      .WillOnce(ReturnValue(brillo::BlobFromString(nvram_data)));
+
+  std::string data;
+  EXPECT_EQ(nvspace_utility_->ReadNVSpace(&data), NVSpaceState::kNVSpaceError);
 }
 
 TEST_F(TPMNVSpaceImplTest, ReadNVSpaceUninitializedFail) {
-  EXPECT_CALL(mock_tpm_nvram_, ReadSpace(_, _, _, _))
-      .WillOnce(Invoke([](const tpm_manager::ReadSpaceRequest& request,
-                          tpm_manager::ReadSpaceReply* reply, brillo::ErrorPtr*,
-                          int) {
-        std::string nvram_data = std::string(kNVSpaceSize, '\0');
-        // return success to trigger error.
-        reply->set_result(tpm_manager::NVRAM_RESULT_SUCCESS);
-        reply->set_data(nvram_data);
-        return true;
-      }));
-  EXPECT_CALL(mock_tpm_owner_, GetTpmNonsensitiveStatus(_, _, _, _))
-      .WillOnce(
-          Invoke([](const tpm_manager::GetTpmNonsensitiveStatusRequest& request,
-                    tpm_manager::GetTpmNonsensitiveStatusReply* reply,
-                    brillo::ErrorPtr*, int) {
-            reply->set_is_enabled(true);
-            reply->set_is_owned(true);
-            reply->set_is_owner_password_present(false);
-            reply->set_status(tpm_manager::STATUS_SUCCESS);
-            return true;
-          }));
+  std::string nvram_data = std::string(kNVSpaceSize, '\0');
+  EXPECT_CALL(*hwsec_ptr_, GetSpaceState())
+      .WillOnce(ReturnValue(hwsec::BootLockboxFrontend::StorageState::kReady));
+  EXPECT_CALL(*hwsec_ptr_, LoadSpace())
+      .WillOnce(ReturnValue(brillo::BlobFromString(nvram_data)));
+
   std::string data;
-  NVSpaceState state;
-  EXPECT_FALSE(nvspace_utility_->ReadNVSpace(&data, &state));
-  EXPECT_EQ(state, NVSpaceState::kNVSpaceUninitialized);
+  EXPECT_EQ(nvspace_utility_->ReadNVSpace(&data),
+            NVSpaceState::kNVSpaceUninitialized);
 }
 
 TEST_F(TPMNVSpaceImplTest, ReadNVSpaceVersionFail) {
-  EXPECT_CALL(mock_tpm_nvram_, ReadSpace(_, _, _, _))
-      .WillOnce(Invoke([](const tpm_manager::ReadSpaceRequest& request,
-                          tpm_manager::ReadSpaceReply* reply, brillo::ErrorPtr*,
-                          int) {
-        BootLockboxNVSpace data;
-        data.version = 2;
-        std::string nvram_data =
-            std::string(reinterpret_cast<char*>(&data), kNVSpaceSize);
-        // return success to trigger error.
-        reply->set_result(tpm_manager::NVRAM_RESULT_SUCCESS);
-        reply->set_data(nvram_data);
-        return true;
-      }));
-  EXPECT_CALL(mock_tpm_owner_, GetTpmNonsensitiveStatus(_, _, _, _))
-      .WillOnce(
-          Invoke([](const tpm_manager::GetTpmNonsensitiveStatusRequest& request,
-                    tpm_manager::GetTpmNonsensitiveStatusReply* reply,
-                    brillo::ErrorPtr*, int) {
-            reply->set_is_enabled(true);
-            reply->set_is_owned(true);
-            reply->set_is_owner_password_present(false);
-            reply->set_status(tpm_manager::STATUS_SUCCESS);
-            return true;
-          }));
+  BootLockboxNVSpace space{.version = 2};
+  std::string nvram_data =
+      std::string(reinterpret_cast<char*>(&space), kNVSpaceSize);
+  EXPECT_CALL(*hwsec_ptr_, GetSpaceState())
+      .WillOnce(ReturnValue(hwsec::BootLockboxFrontend::StorageState::kReady));
+  EXPECT_CALL(*hwsec_ptr_, LoadSpace())
+      .WillOnce(ReturnValue(brillo::BlobFromString(nvram_data)));
+
   std::string data;
-  NVSpaceState state;
-  EXPECT_FALSE(nvspace_utility_->ReadNVSpace(&data, &state));
-  EXPECT_EQ(state, NVSpaceState::kNVSpaceError);
+  EXPECT_EQ(nvspace_utility_->ReadNVSpace(&data), NVSpaceState::kNVSpaceError);
 }
 
 TEST_F(TPMNVSpaceImplTest, ReadNVSpaceSuccess) {
   std::string test_digest(SHA256_DIGEST_LENGTH, 'a');
-  EXPECT_CALL(mock_tpm_nvram_, ReadSpace(_, _, _, _))
-      .WillOnce(
-          Invoke([test_digest](const tpm_manager::ReadSpaceRequest& request,
-                               tpm_manager::ReadSpaceReply* reply,
-                               brillo::ErrorPtr*, int) {
-            BootLockboxNVSpace data;
-            data.version = 1;
-            data.flags = 0;
-            memcpy(data.digest, test_digest.c_str(), SHA256_DIGEST_LENGTH);
-            std::string nvram_data =
-                std::string(reinterpret_cast<char*>(&data), kNVSpaceSize);
-            // return success to trigger error.
-            reply->set_result(tpm_manager::NVRAM_RESULT_SUCCESS);
-            reply->set_data(nvram_data);
-            return true;
-          }));
-  EXPECT_CALL(mock_tpm_owner_, GetTpmNonsensitiveStatus(_, _, _, _))
-      .WillOnce(
-          Invoke([](const tpm_manager::GetTpmNonsensitiveStatusRequest& request,
-                    tpm_manager::GetTpmNonsensitiveStatusReply* reply,
-                    brillo::ErrorPtr*, int) {
-            reply->set_is_enabled(true);
-            reply->set_is_owned(true);
-            reply->set_is_owner_password_present(false);
-            reply->set_status(tpm_manager::STATUS_SUCCESS);
-            return true;
-          }));
-  std::string data;
-  NVSpaceState state;
-  EXPECT_TRUE(nvspace_utility_->ReadNVSpace(&data, &state));
-  EXPECT_EQ(state, NVSpaceState::kNVSpaceNormal);
-  EXPECT_EQ(data, test_digest);
-}
+  BootLockboxNVSpace space{
+      .version = 1,
+      .flags = 0,
+  };
+  memcpy(space.digest, test_digest.c_str(), SHA256_DIGEST_LENGTH);
+  std::string nvram_data =
+      std::string(reinterpret_cast<char*>(&space), kNVSpaceSize);
+  EXPECT_CALL(*hwsec_ptr_, GetSpaceState())
+      .WillOnce(ReturnValue(hwsec::BootLockboxFrontend::StorageState::kReady));
+  EXPECT_CALL(*hwsec_ptr_, LoadSpace())
+      .WillOnce(ReturnValue(brillo::BlobFromString(nvram_data)));
 
-TEST_F(TPMNVSpaceImplTest, ReadNVSpaceClearOwnerPassSuccess) {
-  std::string test_digest(SHA256_DIGEST_LENGTH, 'a');
-  EXPECT_CALL(mock_tpm_nvram_, ReadSpace(_, _, _, _))
-      .WillOnce(
-          Invoke([test_digest](const tpm_manager::ReadSpaceRequest& request,
-                               tpm_manager::ReadSpaceReply* reply,
-                               brillo::ErrorPtr*, int) {
-            BootLockboxNVSpace data;
-            data.version = 1;
-            data.flags = 0;
-            memcpy(data.digest, test_digest.c_str(), SHA256_DIGEST_LENGTH);
-            std::string nvram_data =
-                std::string(reinterpret_cast<char*>(&data), kNVSpaceSize);
-            // return success to trigger error.
-            reply->set_result(tpm_manager::NVRAM_RESULT_SUCCESS);
-            reply->set_data(nvram_data);
-            return true;
-          }));
-  EXPECT_CALL(mock_tpm_owner_, GetTpmNonsensitiveStatus(_, _, _, _))
-      .WillOnce(
-          Invoke([](const tpm_manager::GetTpmNonsensitiveStatusRequest& request,
-                    tpm_manager::GetTpmNonsensitiveStatusReply* reply,
-                    brillo::ErrorPtr*, int) {
-            reply->set_is_enabled(true);
-            reply->set_is_owned(true);
-            reply->set_is_owner_password_present(true);
-            reply->set_status(tpm_manager::STATUS_SUCCESS);
-            return true;
-          }));
-  EXPECT_CALL(mock_tpm_owner_, RemoveOwnerDependency(_, _, _, _))
-      .WillOnce(
-          Invoke([](const tpm_manager::RemoveOwnerDependencyRequest& request,
-                    tpm_manager::RemoveOwnerDependencyReply* reply,
-                    brillo::ErrorPtr*, int) {
-            EXPECT_EQ(tpm_manager::kTpmOwnerDependency_Bootlockbox,
-                      request.owner_dependency());
-            reply->set_status(tpm_manager::STATUS_SUCCESS);
-            return true;
-          }));
   std::string data;
-  NVSpaceState state;
-  EXPECT_TRUE(nvspace_utility_->ReadNVSpace(&data, &state));
-  EXPECT_EQ(state, NVSpaceState::kNVSpaceNormal);
-  EXPECT_EQ(data, test_digest);
-}
-
-TEST_F(TPMNVSpaceImplTest, ReadNVSpaceClearOwnerPassNotOwnedSuccess) {
-  std::string test_digest(SHA256_DIGEST_LENGTH, 'a');
-  EXPECT_CALL(mock_tpm_nvram_, ReadSpace(_, _, _, _))
-      .WillOnce(
-          Invoke([test_digest](const tpm_manager::ReadSpaceRequest& request,
-                               tpm_manager::ReadSpaceReply* reply,
-                               brillo::ErrorPtr*, int) {
-            BootLockboxNVSpace data;
-            data.version = 1;
-            data.flags = 0;
-            memcpy(data.digest, test_digest.c_str(), SHA256_DIGEST_LENGTH);
-            std::string nvram_data =
-                std::string(reinterpret_cast<char*>(&data), kNVSpaceSize);
-            // return success to trigger error.
-            reply->set_result(tpm_manager::NVRAM_RESULT_SUCCESS);
-            reply->set_data(nvram_data);
-            return true;
-          }));
-  EXPECT_CALL(mock_tpm_owner_, GetTpmNonsensitiveStatus(_, _, _, _))
-      .WillOnce(
-          Invoke([](const tpm_manager::GetTpmNonsensitiveStatusRequest& request,
-                    tpm_manager::GetTpmNonsensitiveStatusReply* reply,
-                    brillo::ErrorPtr*, int) {
-            reply->set_is_enabled(true);
-            reply->set_is_owned(false);
-            reply->set_is_owner_password_present(false);
-            reply->set_status(tpm_manager::STATUS_SUCCESS);
-            return true;
-          }));
-  EXPECT_CALL(mock_tpm_owner_, RemoveOwnerDependency(_, _, _, _))
-      .WillOnce(
-          Invoke([](const tpm_manager::RemoveOwnerDependencyRequest& request,
-                    tpm_manager::RemoveOwnerDependencyReply* reply,
-                    brillo::ErrorPtr*, int) {
-            EXPECT_EQ(tpm_manager::kTpmOwnerDependency_Bootlockbox,
-                      request.owner_dependency());
-            reply->set_status(tpm_manager::STATUS_SUCCESS);
-            return true;
-          }));
-
-  EXPECT_CALL(mock_tpm_owner_,
-              DoRegisterSignalOwnershipTakenSignalHandler(_, _))
-      .WillOnce([](auto&& signal_callback, auto&& connect_callback) {
-        std::move(*connect_callback).Run("", "", true);
-        signal_callback.Run(tpm_manager::OwnershipTakenSignal());
-      });
-  std::string data;
-  NVSpaceState state;
-  EXPECT_TRUE(nvspace_utility_->ReadNVSpace(&data, &state));
-  EXPECT_EQ(state, NVSpaceState::kNVSpaceNormal);
+  EXPECT_EQ(nvspace_utility_->ReadNVSpace(&data), NVSpaceState::kNVSpaceNormal);
   EXPECT_EQ(data, test_digest);
 }
 
 TEST_F(TPMNVSpaceImplTest, WriteNVSpaceSuccess) {
   std::string nvram_data(SHA256_DIGEST_LENGTH, 'a');
-  EXPECT_CALL(mock_tpm_nvram_, WriteSpace(_, _, _, _))
-      .WillOnce(
-          Invoke([nvram_data](const tpm_manager::WriteSpaceRequest& request,
-                              tpm_manager::WriteSpaceReply* reply,
-                              brillo::ErrorPtr*, int) {
-            std::string data = uint16_to_string(1) /* version */ +
-                               uint16_to_string(0) /* flags */ + nvram_data;
-            EXPECT_EQ(data, request.data());
-            EXPECT_FALSE(request.use_owner_authorization());
-            reply->set_result(tpm_manager::NVRAM_RESULT_SUCCESS);
-            return true;
-          }));
+  std::string data = uint16_to_string(1) /* version */ +
+                     uint16_to_string(0) /* flags */ + nvram_data;
+  EXPECT_CALL(*hwsec_ptr_, StoreSpace(brillo::BlobFromString(data)))
+      .WillOnce(ReturnOk<hwsec::TPMError>());
+
   EXPECT_TRUE(nvspace_utility_->WriteNVSpace(nvram_data));
 }
 
 TEST_F(TPMNVSpaceImplTest, WriteNVSpaceInvalidLength) {
   std::string nvram_data = "data of invalid length";
-  EXPECT_CALL(mock_tpm_nvram_, WriteSpace(_, _, _, _)).Times(0);
+  EXPECT_CALL(*hwsec_ptr_, StoreSpace(_)).Times(0);
+
   EXPECT_FALSE(nvspace_utility_->WriteNVSpace(nvram_data));
 }
 
 TEST_F(TPMNVSpaceImplTest, LockNVSpace) {
-  EXPECT_CALL(mock_tpm_nvram_, LockSpace(_, _, _, _))
-      .WillOnce(Invoke([](const tpm_manager::LockSpaceRequest& request,
-                          tpm_manager::LockSpaceReply* reply, brillo::ErrorPtr*,
-                          int) {
-        EXPECT_EQ(GetBootLockboxNVRamIndex(), request.index());
-        EXPECT_FALSE(request.lock_read());
-        EXPECT_TRUE(request.lock_write());
-        EXPECT_FALSE(request.use_owner_authorization());
-        reply->set_result(tpm_manager::NVRAM_RESULT_SUCCESS);
-        return true;
-      }));
-  EXPECT_TRUE(nvspace_utility_->LockNVSpace());
-}
+  EXPECT_CALL(*hwsec_ptr_, LockSpace()).WillOnce(ReturnOk<hwsec::TPMError>());
 
-TEST_F(TPMNVSpaceImplTest, LockNVSpaceAlreadyLocked) {
-  EXPECT_CALL(mock_tpm_nvram_, LockSpace(_, _, _, _))
-      .WillOnce(Invoke([](const tpm_manager::LockSpaceRequest& request,
-                          tpm_manager::LockSpaceReply* reply, brillo::ErrorPtr*,
-                          int) {
-        EXPECT_EQ(GetBootLockboxNVRamIndex(), request.index());
-        EXPECT_FALSE(request.lock_read());
-        EXPECT_TRUE(request.lock_write());
-        EXPECT_FALSE(request.use_owner_authorization());
-        reply->set_result(tpm_manager::NVRAM_RESULT_OPERATION_DISABLED);
-        return true;
-      }));
   EXPECT_TRUE(nvspace_utility_->LockNVSpace());
 }
 
 TEST_F(TPMNVSpaceImplTest, LockNVSpaceFail) {
-  EXPECT_CALL(mock_tpm_nvram_, LockSpace(_, _, _, _))
-      .WillOnce(Invoke([](const tpm_manager::LockSpaceRequest& request,
-                          tpm_manager::LockSpaceReply* reply, brillo::ErrorPtr*,
-                          int) {
-        reply->set_result(tpm_manager::NVRAM_RESULT_SPACE_DOES_NOT_EXIST);
-        return true;
-      }));
+  EXPECT_CALL(*hwsec_ptr_, LockSpace())
+      .WillOnce(ReturnError<hwsec::TPMError>("Fake error",
+                                             hwsec::TPMRetryAction::kNoRetry));
+
   EXPECT_FALSE(nvspace_utility_->LockNVSpace());
 }
 }  // namespace bootlockbox

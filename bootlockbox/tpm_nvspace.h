@@ -37,7 +37,7 @@ class TPMNVSpace {
   // Read nv space to nvram_data. If nvspace is defined and initialized,
   // digest contains the digest and returns true. Otherwise, returns false and
   // |state| contains the error information.
-  virtual bool ReadNVSpace(std::string* digest, NVSpaceState* state) = 0;
+  virtual NVSpaceState ReadNVSpace(std::string* digest) = 0;
 
   // Lock the bootlockbox nvspace for writing.
   virtual bool LockNVSpace() = 0;

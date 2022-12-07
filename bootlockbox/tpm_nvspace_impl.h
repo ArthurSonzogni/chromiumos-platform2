@@ -7,10 +7,12 @@
 
 #include <memory>
 #include <string>
+#include <utility>
 
 #include <openssl/sha.h>
 
 #include <brillo/dbus/dbus_connection.h>
+#include <libhwsec/frontend/bootlockbox/frontend.h>
 #include <tpm_manager/proto_bindings/tpm_manager.pb.h>
 #include <tpm_manager-client/tpm_manager/dbus-proxies.h>
 
@@ -37,16 +39,17 @@ inline constexpr char kWellKnownPassword[] = "";
 //   nvspace_utility.WriteNVSpace(...);
 class TPMNVSpaceImpl : public TPMNVSpace {
  public:
-  TPMNVSpaceImpl() = default;
+  explicit TPMNVSpaceImpl(std::unique_ptr<hwsec::BootLockboxFrontend> hwsec)
+      : hwsec_(std::move(hwsec)) {}
 
-  // Constructor that does not take ownership of tpm_nvram.
-  TPMNVSpaceImpl(org::chromium::TpmNvramProxyInterface* tpm_nvram,
-                 org::chromium::TpmManagerProxyInterface* tpm_owner);
+  explicit TPMNVSpaceImpl(std::unique_ptr<hwsec::BootLockboxFrontend> hwsec,
+                          org::chromium::TpmManagerProxyInterface* tpm_owner)
+      : hwsec_(std::move(hwsec)), tpm_owner_(tpm_owner) {}
 
   TPMNVSpaceImpl(const TPMNVSpaceImpl&) = delete;
   TPMNVSpaceImpl& operator=(const TPMNVSpaceImpl&) = delete;
 
-  ~TPMNVSpaceImpl() {}
+  ~TPMNVSpaceImpl() override = default;
 
   // Initializes tpm_nvram if necessary.
   // Must be called before issuing and calls to this utility.
@@ -60,7 +63,7 @@ class TPMNVSpaceImpl : public TPMNVSpace {
   bool WriteNVSpace(const std::string& digest) override;
 
   // Reads nvspace and extract |digest|.
-  bool ReadNVSpace(std::string* digest, NVSpaceState* state) override;
+  NVSpaceState ReadNVSpace(std::string* digest) override;
 
   // Locks the bootlockbox nvspace for writing.
   bool LockNVSpace() override;
@@ -71,23 +74,15 @@ class TPMNVSpaceImpl : public TPMNVSpace {
       const base::RepeatingClosure& callback) override;
 
  private:
-  // Get the TPM status from tpm_manager.
-  bool GetTPMStatus(bool* owned, bool* owner_password_present);
-
-  // This method removes owner dependency from tpm_manager.
-  bool RemoveNVSpaceOwnerDependency();
-
   // This method would be called when the ownership had been taken.
   void OnOwnershipTaken(const base::RepeatingClosure& callback,
                         const tpm_manager::OwnershipTakenSignal& signal);
 
-  brillo::DBusConnection connection_;
+  std::unique_ptr<hwsec::BootLockboxFrontend> hwsec_;
 
-  // Tpm manager interfaces that relays relays tpm request to tpm_managerd over
-  // DBus. It is used for defining nvspace on the first boot. This object is
-  // created in Initialize and should only be used in the same thread.
-  std::unique_ptr<org::chromium::TpmNvramProxyInterface> default_tpm_nvram_;
-  org::chromium::TpmNvramProxyInterface* tpm_nvram_;
+  // TODO(b/261693180): Remove these after we add the ready callback support in
+  // libhwsec.
+  brillo::DBusConnection connection_;
   std::unique_ptr<org::chromium::TpmManagerProxyInterface> default_tpm_owner_;
   org::chromium::TpmManagerProxyInterface* tpm_owner_;
 };

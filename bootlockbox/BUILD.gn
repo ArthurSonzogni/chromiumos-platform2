@@ -36,6 +36,7 @@ pkg_config("bootlockbox_dependent_config") {
     "USE_TPM2=${use.tpm2}",
     "USE_TPM_DYNAMIC=${use.tpm_dynamic}",
   ]
+  libs = [ "hwsec" ]
 }
 
 # Main programs.
@@ -83,7 +84,10 @@ if (use.test) {
       "nvram_boot_lockbox_test.cc",
       "tpm_nvspace_impl_test.cc",
     ]
-    libs = [ "tpm_manager" ]
+    libs = [
+      "hwsec_test",
+      "tpm_manager",
+    ]
     configs += [ "//common-mk:test" ]
 
     all_dependent_configs = [ ":bootlockbox_dependent_config" ]

@@ -21,10 +21,9 @@ bool FakeTpmNVSpace::WriteNVSpace(const std::string& digest) {
   return true;
 }
 
-bool FakeTpmNVSpace::ReadNVSpace(std::string* digest, NVSpaceState* state) {
+NVSpaceState FakeTpmNVSpace::ReadNVSpace(std::string* digest) {
   *digest = digest_;
-  *state = NVSpaceState::kNVSpaceNormal;
-  return true;
+  return NVSpaceState::kNVSpaceNormal;
 }
 
 bool FakeTpmNVSpace::LockNVSpace() {

@@ -4,10 +4,15 @@
 
 #include "bootlockbox/boot_lockbox_service.h"
 
+#include <memory>
+
 #include <sysexits.h>
 
 #include <base/logging.h>
 #include <dbus/dbus-protocol.h>
+#include <libhwsec/factory/factory_impl.h>
+#include <libhwsec/frontend/bootlockbox/frontend.h>
+#include <libhwsec/structures/threading_mode.h>
 
 #include "bootlockbox/tpm_nvspace.h"
 #include "bootlockbox/tpm_nvspace_impl.h"
@@ -15,12 +20,13 @@
 namespace bootlockbox {
 
 int BootLockboxService::OnInit() {
-  nvspace_utility_ = std::make_unique<TPMNVSpaceImpl>();
+  nvspace_utility_ =
+      std::make_unique<TPMNVSpaceImpl>(hwsec_factory_.GetBootLockboxFrontend());
   if (!nvspace_utility_->Initialize()) {
     LOG(ERROR) << "Failed to initialize nvspace utility";
     return EX_UNAVAILABLE;
   }
-  boot_lockbox_.reset(new NVRamBootLockbox(nvspace_utility_.get()));
+  boot_lockbox_ = std::make_unique<NVRamBootLockbox>(nvspace_utility_.get());
 
   if (!boot_lockbox_->Load() &&
       boot_lockbox_->GetState() == NVSpaceState::kNVSpaceUndefined) {
@@ -67,7 +73,8 @@ void BootLockboxService::RegisterDBusObjectsAsync(
 }
 
 BootLockboxService::BootLockboxService()
-    : brillo::DBusServiceDaemon("org.chromium.BootLockbox") {}
+    : brillo::DBusServiceDaemon("org.chromium.BootLockbox"),
+      hwsec_factory_(hwsec::ThreadingMode::kCurrentThread) {}
 
 BootLockboxService::~BootLockboxService() {}
 
