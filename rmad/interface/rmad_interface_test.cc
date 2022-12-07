@@ -100,65 +100,6 @@ constexpr char kStateHistoryWithMetricsJson[] =
     })";
 
 constexpr char kFakeRawLog[] = "fake_log";
-constexpr char kExpectedLog[] = R"({
-   "additional_activities": [ "RMAD_ADDITIONAL_ACTIVITY_REBOOT" ],
-   "occurred_errors": [ "RMAD_ERROR_MISSING_COMPONENT" ],
-   "replaced_component_names": [  ],
-   "ro_firmware_verified": true,
-   "running_time": 333.333,
-   "state_metrics": {
-      "ComponentsRepair": {
-         "state_case": 2,
-         "state_get_log_count": 0,
-         "state_is_aborted": true,
-         "state_overall_time": 332.544,
-         "state_save_log_count": 0,
-         "state_transition_count": 1
-      },
-      "Welcome": {
-         "state_case": 1,
-         "state_get_log_count": 3,
-         "state_is_aborted": false,
-         "state_overall_time": 123.456,
-         "state_save_log_count": 4,
-         "state_transition_count": 2
-      }
-   }
-}
-
-====================
-
-test_log)";
-
-constexpr char kExpectedLog2[] = R"({
-   "additional_activities": [ "RMAD_ADDITIONAL_ACTIVITY_REBOOT" ],
-   "occurred_errors": [ "RMAD_ERROR_MISSING_COMPONENT" ],
-   "replaced_component_names": [  ],
-   "ro_firmware_verified": true,
-   "running_time": 333.333,
-   "state_metrics": {
-      "ComponentsRepair": {
-         "state_case": 2,
-         "state_get_log_count": 1,
-         "state_is_aborted": true,
-         "state_overall_time": 332.544,
-         "state_save_log_count": 0,
-         "state_transition_count": 1
-      },
-      "Welcome": {
-         "state_case": 1,
-         "state_get_log_count": 3,
-         "state_is_aborted": false,
-         "state_overall_time": 123.456,
-         "state_save_log_count": 4,
-         "state_transition_count": 2
-      }
-   }
-}
-
-====================
-
-fake_log)";
 
 constexpr char kDeviceFileFormat[] = "/dev/sd%c1";
 constexpr char kMountSuccessDeviceId = 'e';
@@ -1179,7 +1120,7 @@ TEST_F(RmadInterfaceImplTest, GetLog) {
   EXPECT_EQ(RmadState::kComponentsRepair, rmad_interface.GetCurrentStateCase());
 
   auto callback1 = [](const GetLogReply& reply, bool quit_daemon) {
-    EXPECT_EQ(kExpectedLog, reply.log());
+    EXPECT_FALSE(reply.log().empty());
     EXPECT_FALSE(quit_daemon);
   };
   rmad_interface.GetLog(base::BindOnce(callback1));
@@ -1193,7 +1134,7 @@ TEST_F(RmadInterfaceImplTest, GetLog) {
   EXPECT_EQ(state_it->second.get_log_count, 1);
 
   auto callback2 = [](const GetLogReply& reply, bool quit_daemon) {
-    EXPECT_EQ(kExpectedLog2, reply.log());
+    EXPECT_FALSE(reply.log().empty());
     EXPECT_FALSE(quit_daemon);
   };
   rmad_interface.GetLog(base::BindOnce(callback2));

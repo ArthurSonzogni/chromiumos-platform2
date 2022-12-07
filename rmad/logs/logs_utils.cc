@@ -222,8 +222,22 @@ std::string GenerateTextLogString(scoped_refptr<JsonStore> json_store) {
 
 }  // namespace
 
-std::string GenerateCompleteLogsString(scoped_refptr<JsonStore> json_store) {
+std::string GenerateLogsText(scoped_refptr<JsonStore> json_store) {
   return GenerateTextLogString(json_store);
+}
+
+std::string GenerateLogsJson(scoped_refptr<JsonStore> json_store) {
+  base::Value logs(base::Value::Type::DICT);
+  json_store->GetValue(kLogs, &logs);
+  if (!logs.is_dict()) {
+    return "";
+  }
+
+  std::string output;
+  JSONStringValueSerializer serializer(&output);
+  serializer.set_pretty_print(true);
+  serializer.Serialize(logs);
+  return output;
 }
 
 bool RecordStateTransitionToLogs(scoped_refptr<JsonStore> json_store,

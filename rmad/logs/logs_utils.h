@@ -17,8 +17,11 @@
 
 namespace rmad {
 
+// Return detailed text of all log events.
+std::string GenerateLogsText(scoped_refptr<JsonStore> json_store);
+
 // Return a formatted JSON of all log events.
-std::string GenerateCompleteLogsString(scoped_refptr<JsonStore> json_store);
+std::string GenerateLogsJson(scoped_refptr<JsonStore> json_store);
 
 // Adds a state transition type event to `json_store`. Returns true if
 // successful.

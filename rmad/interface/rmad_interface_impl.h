@@ -79,7 +79,6 @@ class RmadInterfaceImpl final : public RmadInterface {
   bool WaitForServices();
   bool StartFromInitialState();
 
-  std::string GetLogSummary() const;
   bool GetLogString(std::string* log_string) const;
   void SaveLogToFirstMountableDevice(
       std::unique_ptr<std::list<std::string>> devices,

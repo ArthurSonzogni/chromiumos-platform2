@@ -11,6 +11,7 @@
 #include <base/containers/contains.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
+#include <base/json/json_writer.h>
 #include <base/memory/scoped_refptr.h>
 #include <base/values.h>
 #include <gmock/gmock.h>
@@ -453,7 +454,19 @@ TEST_F(LogsUtilsTest, RecordFirmwareUpdateStatus) {
 // Simulates generating a text log.
 TEST_F(LogsUtilsTest, GenerateTextLog) {
   EXPECT_TRUE(CreateInputFile(kSampleLogsJson, std::size(kSampleLogsJson) - 1));
-  EXPECT_EQ(kExpectedLogText, GenerateCompleteLogsString(json_store_));
+  EXPECT_EQ(kExpectedLogText, GenerateLogsText(json_store_));
+}
+
+// Simulates generating the logs JSON.
+TEST_F(LogsUtilsTest, GenerateLogsJson) {
+  EXPECT_TRUE(CreateInputFile(kSampleLogsJson, std::size(kSampleLogsJson) - 1));
+  base::Value logs(base::Value::Type::DICT);
+  json_store_->GetValue(kLogs, &logs);
+
+  std::string expected_logs_json;
+  base::JSONWriter::WriteWithOptions(
+      logs, base::JSONWriter::OPTIONS_PRETTY_PRINT, &expected_logs_json);
+  EXPECT_EQ(expected_logs_json, GenerateLogsJson(json_store_));
 }
 
 }  // namespace rmad

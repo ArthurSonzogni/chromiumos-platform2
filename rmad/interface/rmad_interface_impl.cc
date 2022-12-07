@@ -513,16 +513,13 @@ void RmadInterfaceImpl::AbortRma(AbortRmaCallback callback) {
   ReplyCallback(std::move(callback), reply);
 }
 
-std::string RmadInterfaceImpl::GetLogSummary() const {
-  return MetricsUtils::GetMetricsSummaryAsString(json_store_);
-}
-
 bool RmadInterfaceImpl::GetLogString(std::string* log_string) const {
   std::string raw_log;
   if (!cmd_utils_->GetOutput({kCroslogCmd, "--identifier=rmad"}, &raw_log)) {
     return false;
   }
-  *log_string = GetLogSummary() + kSummaryDivider + raw_log;
+  *log_string = GenerateLogsText(json_store_) + kSummaryDivider +
+                GenerateLogsJson(json_store_) + kSummaryDivider + raw_log;
   return true;
 }
 
