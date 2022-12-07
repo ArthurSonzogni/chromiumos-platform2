@@ -56,6 +56,10 @@ class MockWiFi : public WiFi {
   MOCK_METHOD(bool, IsConnectedViaTether, (), (const, override));
   MOCK_METHOD(int16_t, GetSignalLevelForActiveService, (), (override));
   MOCK_METHOD(bool, SupportAP, (), (const, override));
+  MOCK_METHOD(void,
+              EmitStationInfoRequestEvent,
+              (WiFiLinkStatistics::Trigger trigger),
+              (override));
 };
 
 }  // namespace shill

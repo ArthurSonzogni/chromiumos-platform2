@@ -250,6 +250,11 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // Process old_rtnl_link_stats64 information
   void OnReceivedRtnlLinkStatistics(const old_rtnl_link_stats64& stats);
 
+  // Send a structured event to notify that we've requested link statistics
+  // from the driver.
+  mockable void EmitStationInfoRequestEvent(
+      WiFiLinkStatistics::Trigger trigger);
+
  private:
   enum ScanMethod { kScanMethodNone, kScanMethodFull };
   enum ScanState {
@@ -625,10 +630,6 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   void OnWiFiDebugScopeChanged(bool enabled);
   // Enable or disable debugging for the current connection attempt.
   void SetConnectionDebugging(bool enabled);
-
-  // Send a structured event to notify that we've requested link statistics
-  // from the driver.
-  void EmitStationInfoRequestEvent(WiFiLinkStatistics::Trigger trigger);
 
   // Send a structured event with the link statistics that had been requested.
   void EmitStationInfoReceivedEvent(

@@ -162,6 +162,9 @@ TEST_F(WiFiCQMTest, OnCQMNotificationBeaconLoss) {
   EXPECT_CALL(*wifi(), GetSignalLevelForActiveService()).WillOnce(Return(-50));
   EXPECT_CALL(*metrics(), SendEnumToUMA(Metrics::kMetricWiFiCQMNotification,
                                         Metrics::kWiFiCQMBeaconLoss, _));
+  EXPECT_CALL(*wifi(), EmitStationInfoRequestEvent(
+                           WiFiLinkStatistics::Trigger::kCQMBeaconLoss))
+      .Times(1);
   OnCQMNotify(nl80211_msg);
   EXPECT_EQ(FwDumpCount(), 1);
 
@@ -169,11 +172,17 @@ TEST_F(WiFiCQMTest, OnCQMNotificationBeaconLoss) {
   Mock::VerifyAndClearExpectations(&log);
 
   // No Fw dump triggered for signal strength less than -80dBm.
+  EXPECT_CALL(log, Log(_, _, HasSubstr("Beacon loss observed")));
   EXPECT_CALL(
       log,
       Log(_, _,
           HasSubstr("CQM notification for signal strength less than -80 dBm")));
   EXPECT_CALL(*wifi(), GetSignalLevelForActiveService()).WillOnce(Return(-90));
+  EXPECT_CALL(*metrics(), SendEnumToUMA(Metrics::kMetricWiFiCQMNotification,
+                                        Metrics::kWiFiCQMBeaconLoss, _));
+  EXPECT_CALL(*wifi(), EmitStationInfoRequestEvent(
+                           WiFiLinkStatistics::Trigger::kCQMBeaconLoss))
+      .Times(1);
   OnCQMNotify(nl80211_msg);
   // FW dump count should not increase.
   EXPECT_EQ(FwDumpCount(), 1);
@@ -193,6 +202,9 @@ TEST_F(WiFiCQMTest, OnCQMNotificationLowRssiLevelBreach) {
   EXPECT_CALL(
       log, Log(_, _,
                HasSubstr("NL80211_ATTR_CQM_RSSI_THRESHOLD_EVENT event found")));
+  EXPECT_CALL(*wifi(), EmitStationInfoRequestEvent(
+                           WiFiLinkStatistics::Trigger::kCQMRSSILow))
+      .Times(1);
   OnCQMNotify(nl80211_msg);
   EXPECT_EQ(FwDumpCount(), 0);
   ScopeLogger::GetInstance()->set_verbose_level(0);
@@ -211,6 +223,9 @@ TEST_F(WiFiCQMTest, OnCQMNotificationHighRssiLevelBreach) {
   EXPECT_CALL(
       log, Log(_, _,
                HasSubstr("NL80211_ATTR_CQM_RSSI_THRESHOLD_EVENT event found")));
+  EXPECT_CALL(*wifi(), EmitStationInfoRequestEvent(
+                           WiFiLinkStatistics::Trigger::kCQMRSSIHigh))
+      .Times(1);
   OnCQMNotify(nl80211_msg);
   EXPECT_EQ(FwDumpCount(), 0);
   ScopeLogger::GetInstance()->set_verbose_level(0);
@@ -235,6 +250,9 @@ TEST_F(WiFiCQMTest, OnCQMNotificationPacketLoss) {
   EXPECT_CALL(*wifi(), GetSignalLevelForActiveService()).WillOnce(Return(-50));
   EXPECT_CALL(*metrics(), SendEnumToUMA(Metrics::kMetricWiFiCQMNotification,
                                         Metrics::kWiFiCQMPacketLoss, _));
+  EXPECT_CALL(*wifi(), EmitStationInfoRequestEvent(
+                           WiFiLinkStatistics::Trigger::kCQMPacketLoss))
+      .Times(1);
   OnCQMNotify(nl80211_msg);
   EXPECT_EQ(FwDumpCount(), 1);
 
@@ -242,11 +260,17 @@ TEST_F(WiFiCQMTest, OnCQMNotificationPacketLoss) {
   Mock::VerifyAndClearExpectations(&log);
 
   // No Fw dump triggered for signal strength less than -80dBm.
+  EXPECT_CALL(log, Log(_, _, HasSubstr("Packet loss event received")));
   EXPECT_CALL(
       log,
       Log(_, _,
           HasSubstr("CQM notification for signal strength less than -80 dBm")));
   EXPECT_CALL(*wifi(), GetSignalLevelForActiveService()).WillOnce(Return(-90));
+  EXPECT_CALL(*metrics(), SendEnumToUMA(Metrics::kMetricWiFiCQMNotification,
+                                        Metrics::kWiFiCQMPacketLoss, _));
+  EXPECT_CALL(*wifi(), EmitStationInfoRequestEvent(
+                           WiFiLinkStatistics::Trigger::kCQMPacketLoss))
+      .Times(1);
   OnCQMNotify(nl80211_msg);
   // FW dump count should not increase.
   EXPECT_EQ(FwDumpCount(), 1);

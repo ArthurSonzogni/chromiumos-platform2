@@ -76,6 +76,13 @@ WiFiCQM::WiFiCQM(Metrics* metrics, WiFi* wifi)
 WiFiCQM::~WiFiCQM() = default;
 
 void WiFiCQM::TriggerFwDump() {
+  if (wifi_ &&
+      wifi_->GetSignalLevelForActiveService() < kTriggerFwDumpThresholdDbm) {
+    SLOG(2) << "CQM notification for signal strength less than "
+            << kTriggerFwDumpThresholdDbm << " dBm, Ignore.";
+    return;
+  }
+
   if (fw_dump_path_.empty()) {
     SLOG(2) << "FW dump is not supported, cannot trigger FW dump.";
     return;
@@ -123,18 +130,13 @@ void WiFiCQM::OnCQMNotify(const Nl80211Message& nl80211_message) {
   if (cqm_attrs->GetU32AttributeValue(NL80211_ATTR_CQM_RSSI_THRESHOLD_EVENT,
                                       &trigger_state)) {
     SLOG(2) << "CQM NL80211_ATTR_CQM_RSSI_THRESHOLD_EVENT event found.";
-    return;
-  }
-
-  // NL80211_ATTR_CQM_RSSI_THRESHOLD_EVENT can be used to determine transition
-  // to RSSI high or RSSI low conditions. When feature to configure kernel CQM
-  // thresholds from Shill is completed, we can use transition to RSSI high and
-  // RSSI low conditions to process Beacon/Packet losses.
-  // TODO(b/197597374) : Feature to configure CQM thresholds.
-  if (wifi_ &&
-      wifi_->GetSignalLevelForActiveService() < kTriggerFwDumpThresholdDbm) {
-    SLOG(2) << "CQM notification for signal strength less than "
-            << kTriggerFwDumpThresholdDbm << " dBm, Ignore.";
+    if (trigger_state == NL80211_CQM_RSSI_THRESHOLD_EVENT_LOW) {
+      wifi_->EmitStationInfoRequestEvent(
+          WiFiLinkStatistics::Trigger::kCQMRSSILow);
+    } else {
+      wifi_->EmitStationInfoRequestEvent(
+          WiFiLinkStatistics::Trigger::kCQMRSSIHigh);
+    }
     return;
   }
 
@@ -145,6 +147,8 @@ void WiFiCQM::OnCQMNotify(const Nl80211Message& nl80211_message) {
             << packet_loss;
     metrics_->SendEnumToUMA(Metrics::kMetricWiFiCQMNotification,
                             Metrics::kWiFiCQMPacketLoss, Metrics::kWiFiCQMMax);
+    wifi_->EmitStationInfoRequestEvent(
+        WiFiLinkStatistics::Trigger::kCQMPacketLoss);
     TriggerFwDump();
     return;
   }
@@ -155,6 +159,8 @@ void WiFiCQM::OnCQMNotify(const Nl80211Message& nl80211_message) {
     SLOG(2) << "CQM notification for Beacon loss observed.";
     metrics_->SendEnumToUMA(Metrics::kMetricWiFiCQMNotification,
                             Metrics::kWiFiCQMBeaconLoss, Metrics::kWiFiCQMMax);
+    wifi_->EmitStationInfoRequestEvent(
+        WiFiLinkStatistics::Trigger::kCQMBeaconLoss);
     TriggerFwDump();
     return;
   }
