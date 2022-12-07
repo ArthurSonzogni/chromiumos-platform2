@@ -32,6 +32,7 @@ class MockPort : public Port {
   MOCK_METHOD(bool, IsCableDiscoveryComplete, (), (override));
   MOCK_METHOD(bool, CableLimitingUSBSpeed, (bool), (override));
   MOCK_METHOD(void, ReportMetrics, (Metrics*, bool), ());
+  MOCK_METHOD(void, AddRemovePartnerPowerProfile, (bool), (override));
 };
 
 }  // namespace typecd
