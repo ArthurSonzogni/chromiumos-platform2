@@ -1267,3 +1267,46 @@ Status message: Sensitive sensor routine passed.
 Errors:
 - `Sensitive sensor routine failed unexpectedly.`
 - `Sensitive sensor routine failed to pass all sensors.`
+
+## LED Routines
+
+### LED lit up
+
+Examines the functionality of an LED. This routine lights up the target LED in
+the specified color and requests the caller to verify the change.
+
+Requirement:
+- The LED name and color passed in the arguments must be valid. In other words,
+the target LED must be installed on the device and the specified color must be
+supported.
+
+Parameters:
+-   `--led_name` - The LED to be lit up. Type: `string`. Default: `""`. Allowable values: `[battery|power|adapter|left|right]`.
+-   `--led_color` - The color to be lit up. Type: `string`. Default: `""`. Allowable values: `[red|green|blue|yellow|white|amber]`.
+
+To examines the battery LED can be lit up in red:
+
+From crosh:
+```bash
+crosh> diag led_lit_up --led_name=battery --led_color=red
+```
+
+From cros-health-tool:
+```bash
+$ cros-health-tool diag --action=run_routine --routine=led_lit_up --led_name=battery --led_color=red
+```
+
+Sample output:
+```bash
+Progress: 25
+Is the LED lit up in the specified color? Input y/n then press ENTER to continue.
+y
+Progress: 100
+Status: Passed
+Status message: Routine passed.
+```
+
+Errors:
+- `Not lit up in the specified color.`
+- `Replier disconnected.`
+- `Failed to set the LED color`
