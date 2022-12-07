@@ -21,6 +21,7 @@
 
 namespace typecd {
 
+constexpr char kPartnerRegex[] = R"(port(\d+)-partner)";
 constexpr char kTypeCSubsystem[] = "typec";
 constexpr char kUdevMonitorName[] = "udev";
 constexpr char kUsbPdSubsystem[] = "usb_power_delivery";

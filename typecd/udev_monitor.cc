@@ -13,7 +13,6 @@
 namespace {
 
 constexpr char kPartnerAltModeRegex[] = R"(port(\d+)-partner.(\d+))";
-constexpr char kPartnerRegex[] = R"(port(\d+)-partner)";
 constexpr char kCableRegex[] = R"(port(\d+)-cable)";
 constexpr char kPortRegex[] = R"(port(\d+))";
 // TODO(pmalani): Add SOP'' support when the kernel also supports it.
