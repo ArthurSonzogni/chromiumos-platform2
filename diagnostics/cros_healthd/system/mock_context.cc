@@ -17,6 +17,7 @@
 #include <gmock/gmock.h>
 
 #include "diagnostics/cros_healthd/system/fake_mojo_service.h"
+#include "diagnostics/cros_healthd/utils/resource_queue.h"
 
 namespace diagnostics {
 
@@ -49,6 +50,8 @@ MockContext::MockContext() {
 
   CHECK(temp_dir_.CreateUniqueTempDir());
   root_dir_ = temp_dir_.GetPath();
+
+  memory_cpu_resource_queue_ = std::make_unique<ResourceQueue>();
 }
 
 std::unique_ptr<LibdrmUtil> MockContext::CreateLibdrmUtil() {

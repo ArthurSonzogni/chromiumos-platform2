@@ -27,6 +27,7 @@
 #include "diagnostics/cros_healthd/system/pci_util.h"
 #include "diagnostics/cros_healthd/system/system_config_interface.h"
 #include "diagnostics/cros_healthd/system/system_utilities.h"
+#include "diagnostics/cros_healthd/utils/resource_queue.h"
 
 namespace brillo {
 class Udev;
@@ -165,6 +166,10 @@ class Context {
   brillo::Udev* udev() const { return udev_.get(); }
   // Get MojoService to access external mojo services.
   MojoService* mojo_service() const { return mojo_service_.get(); }
+  // Get a job queue for memory and cpu resource-intensive routines.
+  ResourceQueue* memory_cpu_resource_queue() const {
+    return memory_cpu_resource_queue_.get();
+  }
 
  private:
   Context();
@@ -206,6 +211,10 @@ class Context {
   std::unique_ptr<base::TickClock> tick_clock_;
   std::unique_ptr<org::chromium::TpmManagerProxyInterface> tpm_manager_proxy_;
   std::unique_ptr<brillo::Udev> udev_;
+
+  // The resource queue for jobs using either cpu or memory resources.
+  std::unique_ptr<ResourceQueue> memory_cpu_resource_queue_;
+
   base::FilePath root_dir_;
 };
 

@@ -32,6 +32,7 @@
 #include "diagnostics/cros_healthd/system/pci_util_impl.h"
 #include "diagnostics/cros_healthd/system/system_config.h"
 #include "diagnostics/cros_healthd/system/system_utilities_impl.h"
+#include "diagnostics/cros_healthd/utils/resource_queue.h"
 
 namespace diagnostics {
 
@@ -121,7 +122,6 @@ std::unique_ptr<Context> Context::Create(
 
   // Create others.
   context->cros_config_ = std::make_unique<brillo::CrosConfig>();
-
   context->system_config_ = std::make_unique<SystemConfig>(
       context->cros_config_.get(), context->debugd_proxy_.get());
   context->system_utils_ = std::make_unique<SystemUtilitiesImpl>();
@@ -131,6 +131,7 @@ std::unique_ptr<Context> Context::Create(
       std::make_unique<BluetoothEventHub>(context->bluez_proxy_.get());
   context->tick_clock_ = std::make_unique<base::DefaultTickClock>();
   context->udev_ = brillo::Udev::Create();
+  context->memory_cpu_resource_queue_ = std::make_unique<ResourceQueue>();
 
   return context;
 }
