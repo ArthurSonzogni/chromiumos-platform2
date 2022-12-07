@@ -1,0 +1,105 @@
+// Copyright 2021 The Chromium OS Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+syntax = "proto3";
+
+option cc_enable_arenas = true;
+
+// Common definitions used by both host and guest messages.
+package resourced_bridge;
+
+// Requested turbo ratio MSR value.  This value will be directly written to the
+// MSR register.
+message RequestedCpuFrequency {
+  int64 freq_val = 1;
+}
+
+// Requested CpuInfoUpdate interval in ms.  Resourced will enforce a minimum
+// allowable.
+message RequestedInterval {
+  int64 interval_ms = 1;
+}
+
+// Return from host inbound requests.
+message ReturnCode {
+  enum Status {
+    // Write executed successfully.  Verified by readback.
+    SUCCESS = 0;
+
+    // Requested range is out of bounds.  E.g: Polling frequency too high.
+    FAIL_OUT_OF_BOUNDS = 1;
+
+    // Was not able to set value (readback verification failed).
+    // Possible permission issue.
+    FAIL_UNABLE_TO_SET = 2;
+
+    // Attmepting to set caused a cirtical error (i.e: resourced crash).
+    FAIL_CRITICAL = 3;
+  }
+
+  // The status enum returned.
+  Status status = 1;
+}
+
+// CPU power data.
+message CpuRaplPowerData {
+  // Long-term rapl power in uW.
+  int64 power_limit_0 = 1;
+
+  // Short-term rapl power in uW.
+  int64 power_limit_1 = 2;
+
+  // CPU enegy reported by sysfs in uj.
+  int64 cpu_energy = 3;
+}
+
+// Battery data.
+message BatteryData {
+  enum BatteryStatus {
+    // Device is pluggd in.
+    CHARGING = 0;
+
+    // Device is unplugged.
+    DISCHARGING = 1;
+  }
+
+  enum DNotifierPowerState {
+    DNOTIFIER_POWER_STATE_D1 = 0;
+    DNOTIFIER_POWER_STATE_D2 = 1;
+    DNOTIFIER_POWER_STATE_D3 = 2;
+    DNOTIFIER_POWER_STATE_D4 = 3;
+    DNOTIFIER_POWER_STATE_D5 = 4;
+  }
+  // Charging/discharging status.
+  BatteryStatus status = 1;
+
+  DNotifierPowerState power_state = 2;
+}
+
+message InitData {
+  // Default frequency for all the cores.
+  repeated int64 cpu_default_frequency = 1;
+
+  // Initial battey status.
+  BatteryData battery_init = 2;
+}
+
+// gRPC requires that every RPC has an argument and a return value.  This empty
+// message is used when an argument or return value is not required.
+message EmptyMessage {}
+
+// Inbound Requests from borealis.
+service ResourcedCommListener {
+  rpc StartCpuUpdates(RequestedInterval) returns (ReturnCode);
+  rpc StopCpuUpdates(EmptyMessage) returns (ReturnCode);
+  rpc SetCpuFrequency(RequestedCpuFrequency) returns (ReturnCode);
+}
+
+// Outbound requests to borealis.
+
+service ResourcedComm {
+  rpc VmInitData(InitData) returns (EmptyMessage);
+  rpc CpuPowerUpdate(CpuRaplPowerData) returns (EmptyMessage);
+  rpc BatteryUpdate(BatteryData) returns (EmptyMessage);
+}
