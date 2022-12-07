@@ -60,7 +60,6 @@ executable("bootlockboxd") {
 
   all_dependent_configs = [ ":bootlockbox_dependent_config" ]
   pkg_deps = [
-    "libecryptfs",
     "libmetrics",
     "vboot_host",
   ]
