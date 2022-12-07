@@ -14,10 +14,11 @@
 #include <gtest/gtest.h>
 
 #include "power_manager/powerd/system/udev_stub.h"
+#include "power_manager/powerd/testing/test_environment.h"
 
 namespace power_manager::policy {
 
-class BluetoothControllerTest : public ::testing::Test {
+class BluetoothControllerTest : public TestEnvironment {
  public:
   BluetoothControllerTest() = default;
   BluetoothControllerTest(const BluetoothControllerTest&) = delete;

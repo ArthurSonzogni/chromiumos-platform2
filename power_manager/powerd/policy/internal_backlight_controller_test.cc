@@ -22,6 +22,7 @@
 #include "power_manager/powerd/system/backlight_stub.h"
 #include "power_manager/powerd/system/dbus_wrapper_stub.h"
 #include "power_manager/powerd/system/display/display_power_setter_stub.h"
+#include "power_manager/powerd/testing/test_environment.h"
 #include "power_manager/proto_bindings/backlight.pb.h"
 #include "power_manager/proto_bindings/policy.pb.h"
 
@@ -35,7 +36,7 @@ const int kAlsSamplesToTriggerAdjustment = 2;
 
 }  // namespace
 
-class InternalBacklightControllerTest : public ::testing::Test {
+class InternalBacklightControllerTest : public TestEnvironment {
  public:
   InternalBacklightControllerTest()
       : backlight_(max_backlight_level_,

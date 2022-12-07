@@ -10,6 +10,7 @@
 #include "power_manager/common/fake_prefs.h"
 #include "power_manager/common/power_constants.h"
 #include "power_manager/powerd/system/dbus_wrapper_stub.h"
+#include "power_manager/powerd/testing/test_environment.h"
 
 namespace power_manager::policy {
 namespace {
@@ -64,7 +65,7 @@ class TestCellularControllerDelegate : public CellularController::Delegate {
 
 }  // namespace
 
-class CellularControllerTest : public ::testing::Test {
+class CellularControllerTest : public TestEnvironment {
  public:
   CellularControllerTest() = default;
   CellularControllerTest(const CellularControllerTest&) = delete;

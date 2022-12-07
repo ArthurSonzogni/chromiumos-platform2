@@ -16,11 +16,12 @@
 #include "power_manager/powerd/system/thermal/device_thermal_state.h"
 #include "power_manager/powerd/system/thermal/thermal_device.h"
 #include "power_manager/powerd/system/thermal/thermal_device_stub.h"
+#include "power_manager/powerd/testing/test_environment.h"
 #include "power_manager/proto_bindings/thermal.pb.h"
 
 namespace power_manager::policy {
 
-class ThermalEventHandlerTest : public ::testing::Test {
+class ThermalEventHandlerTest : public TestEnvironment {
  public:
   ThermalEventHandlerTest()
       : handler_(std::vector<system::ThermalDeviceInterface*>(

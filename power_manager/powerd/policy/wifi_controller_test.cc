@@ -10,6 +10,7 @@
 #include "power_manager/common/fake_prefs.h"
 #include "power_manager/common/power_constants.h"
 #include "power_manager/powerd/system/udev_stub.h"
+#include "power_manager/powerd/testing/test_environment.h"
 
 namespace power_manager::policy {
 namespace {
@@ -64,7 +65,7 @@ class TestWifiControllerDelegate : public WifiController::Delegate {
 
 }  // namespace
 
-class WifiControllerTest : public ::testing::Test {
+class WifiControllerTest : public TestEnvironment {
  public:
   WifiControllerTest() = default;
   WifiControllerTest(const WifiControllerTest&) = delete;

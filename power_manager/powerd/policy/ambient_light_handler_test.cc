@@ -10,6 +10,7 @@
 #include <gtest/gtest.h>
 
 #include "power_manager/powerd/system/ambient_light_sensor_stub.h"
+#include "power_manager/powerd/testing/test_environment.h"
 #include "power_manager/proto_bindings/backlight.pb.h"
 
 namespace power_manager::policy {
@@ -50,7 +51,7 @@ class TestDelegate : public AmbientLightHandler::Delegate {
   int resume_lux_ = 0;
 };
 
-class AmbientLightHandlerTest : public ::testing::Test {
+class AmbientLightHandlerTest : public TestEnvironment {
  public:
   AmbientLightHandlerTest()
       : light_sensor_(0), handler_(&light_sensor_, &delegate_) {}

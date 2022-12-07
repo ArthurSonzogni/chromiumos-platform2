@@ -20,6 +20,7 @@
 #include "hps/proto_bindings/hps_service.pb.h"
 #include "power_manager/powerd/policy/state_controller.h"
 #include "power_manager/powerd/system/dbus_wrapper_stub.h"
+#include "power_manager/powerd/testing/test_environment.h"
 
 namespace power_manager::policy {
 
@@ -31,7 +32,7 @@ class MockStateController : public StateController {
   MOCK_METHOD(void, HandleHpsResultChange, (HpsResult hps_result));
 };
 
-class DimAdvisorTest : public ::testing::Test {
+class DimAdvisorTest : public TestEnvironment {
  public:
   DimAdvisorTest() = default;
   void SetUp() override {

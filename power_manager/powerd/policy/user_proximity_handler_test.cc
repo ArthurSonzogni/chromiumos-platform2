@@ -15,6 +15,7 @@
 #include "power_manager/powerd/policy/user_proximity_handler.h"
 #include "power_manager/powerd/system/user_proximity_observer.h"
 #include "power_manager/powerd/system/user_proximity_watcher_stub.h"
+#include "power_manager/powerd/testing/test_environment.h"
 
 namespace power_manager::policy {
 
@@ -60,7 +61,7 @@ class LteDelegate : public UserProximityHandler::Delegate,
   }
 };
 
-class UserProximityHandlerTest : public ::testing::Test {
+class UserProximityHandlerTest : public TestEnvironment {
  public:
   UserProximityHandlerTest() = default;
   UserProximityHandlerTest(const UserProximityHandlerTest&) = delete;

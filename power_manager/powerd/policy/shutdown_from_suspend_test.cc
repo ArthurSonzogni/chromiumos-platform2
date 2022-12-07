@@ -12,6 +12,7 @@
 #include "power_manager/powerd/system/power_supply_stub.h"
 #include "power_manager/powerd/system/suspend_configurator_stub.h"
 #include "power_manager/powerd/system/wakeup_timer.h"
+#include "power_manager/powerd/testing/test_environment.h"
 
 namespace power_manager::policy {
 
@@ -21,7 +22,7 @@ constexpr int kShutdownAfterSecs = 1;
 constexpr auto kShutdownAfter = base::Seconds(kShutdownAfterSecs);
 }  // namespace
 
-class ShutdownFromSuspendTest : public ::testing::Test {
+class ShutdownFromSuspendTest : public TestEnvironment {
  public:
   ShutdownFromSuspendTest()
       : shutdown_from_suspend_(

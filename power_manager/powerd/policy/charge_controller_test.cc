@@ -19,6 +19,7 @@
 
 #include "power_manager/common/battery_percentage_converter.h"
 #include "power_manager/powerd/system/charge_controller_helper_stub.h"
+#include "power_manager/powerd/testing/test_environment.h"
 #include "power_manager/proto_bindings/policy.pb.h"
 
 namespace power_manager::policy {
@@ -67,7 +68,7 @@ void MakeAdvancedBatteryChargeModeDayConfig(
 
 }  // namespace
 
-class ChargeControllerTest : public ::testing::Test {
+class ChargeControllerTest : public TestEnvironment {
  public:
   ChargeControllerTest() {
     controller_.Init(&helper_, &battery_percentage_converter_);
@@ -430,7 +431,7 @@ struct CustomChargeThresholdsTestData {
 };
 
 class CustomChargeThresholdsChargeControllerTest
-    : public ::testing::Test,
+    : public TestEnvironment,
       public testing::WithParamInterface<CustomChargeThresholdsTestData> {
  public:
   int input_start_threshold() const { return GetParam().input.first; }
@@ -544,7 +545,7 @@ INSTANTIATE_TEST_SUITE_P(
              ChargeController::kCustomChargeModeEndMax}}));
 
 class PeakShiftThresholdChargeControllerTest
-    : public ::testing::Test,
+    : public TestEnvironment,
       public testing::WithParamInterface<std::tuple<int, int>> {
  public:
   int input_threshold() const { return std::get<0>(GetParam()); }

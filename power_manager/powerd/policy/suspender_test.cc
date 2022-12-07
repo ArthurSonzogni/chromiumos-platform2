@@ -23,6 +23,7 @@
 #include "power_manager/powerd/system/display/display_watcher_stub.h"
 #include "power_manager/powerd/system/suspend_configurator_stub.h"
 #include "power_manager/powerd/system/wakeup_source_identifier_stub.h"
+#include "power_manager/powerd/testing/test_environment.h"
 #include "power_manager/proto_bindings/suspend.pb.h"
 
 namespace power_manager::policy {
@@ -223,7 +224,7 @@ class TestDelegate : public Suspender::Delegate, public ActionRecorder {
 
 }  // namespace
 
-class SuspenderTest : public testing::Test {
+class SuspenderTest : public TestEnvironment {
  public:
   SuspenderTest() : test_api_(&suspender_) {}
   SuspenderTest(const SuspenderTest&) = delete;

@@ -27,6 +27,7 @@
 #include "power_manager/common/metrics_constants.h"
 #include "power_manager/common/power_constants.h"
 #include "power_manager/powerd/system/dbus_wrapper_stub.h"
+#include "power_manager/powerd/testing/test_environment.h"
 #include "power_manager/proto_bindings/idle.pb.h"
 #include "power_manager/proto_bindings/policy.pb.h"
 
@@ -208,7 +209,7 @@ std::string GetScreenIdleStateChangedString(bool dimmed, bool off) {
 
 }  // namespace
 
-class StateControllerTest : public testing::Test {
+class StateControllerTest : public TestEnvironment {
  public:
   StateControllerTest()
       : test_api_(&controller_),

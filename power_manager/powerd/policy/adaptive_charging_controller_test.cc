@@ -2,12 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "power_manager/common/fake_prefs.h"
 #include "power_manager/powerd/policy/adaptive_charging_controller.h"
-#include "power_manager/powerd/policy/backlight_controller_stub.h"
-#include "power_manager/powerd/system/dbus_wrapper_stub.h"
-#include "power_manager/powerd/system/input_watcher_stub.h"
-#include "power_manager/powerd/system/power_supply_stub.h"
 
 #include <algorithm>
 #include <functional>
@@ -26,6 +21,13 @@
 #include <dbus/bus.h>
 #include <dbus/message.h>
 #include <gtest/gtest.h>
+
+#include "power_manager/common/fake_prefs.h"
+#include "power_manager/powerd/policy/backlight_controller_stub.h"
+#include "power_manager/powerd/system/dbus_wrapper_stub.h"
+#include "power_manager/powerd/system/input_watcher_stub.h"
+#include "power_manager/powerd/system/power_supply_stub.h"
+#include "power_manager/powerd/testing/test_environment.h"
 
 namespace power_manager::policy {
 
@@ -70,7 +72,7 @@ class FakeDelegate : public AdaptiveChargingControllerInterface::Delegate {
 
 }  // namespace
 
-class AdaptiveChargingControllerTest : public ::testing::Test {
+class AdaptiveChargingControllerTest : public TestEnvironment {
  public:
   AdaptiveChargingControllerTest() {
     auto recheck_alarm = brillo::timers::SimpleAlarmTimer::CreateForTesting();

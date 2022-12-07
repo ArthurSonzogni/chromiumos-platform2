@@ -523,7 +523,6 @@ if (use.test) {
 
   executable("power_manager_policy_test") {
     sources = [
-      "common/testrunner.cc",
       "powerd/policy/adaptive_charging_controller_test.cc",
       "powerd/policy/ambient_light_handler_test.cc",
       "powerd/policy/backlight_controller_test_util.cc",
@@ -544,6 +543,7 @@ if (use.test) {
       "powerd/policy/user_proximity_handler_test.cc",
       "powerd/policy/user_proximity_voting_test.cc",
       "powerd/policy/wifi_controller_test.cc",
+      "powerd/testing/test_environment.cc",
     ]
     configs += [
       "//common-mk:test",
@@ -557,6 +557,7 @@ if (use.test) {
       ":libsystem_stub",
       ":libutil",
       ":libutil_test",
+      "//common-mk/testrunner",
     ]
   }
 

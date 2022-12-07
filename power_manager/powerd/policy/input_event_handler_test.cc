@@ -24,6 +24,7 @@
 #include "power_manager/powerd/system/display/display_info.h"
 #include "power_manager/powerd/system/display/display_watcher_stub.h"
 #include "power_manager/powerd/system/input_watcher_stub.h"
+#include "power_manager/powerd/testing/test_environment.h"
 #include "power_manager/proto_bindings/input_event.pb.h"
 #include "power_manager/proto_bindings/switch_states.pb.h"
 
@@ -111,7 +112,7 @@ class TestInputEventHandlerDelegate : public InputEventHandler::Delegate,
 
 }  // namespace
 
-class InputEventHandlerTest : public ::testing::Test {
+class InputEventHandlerTest : public TestEnvironment {
  public:
   InputEventHandlerTest() {
     handler_.clock_for_testing()->set_current_time_for_testing(

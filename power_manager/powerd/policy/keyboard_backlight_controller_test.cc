@@ -21,12 +21,13 @@
 #include "power_manager/powerd/system/ambient_light_sensor_stub.h"
 #include "power_manager/powerd/system/backlight_stub.h"
 #include "power_manager/powerd/system/dbus_wrapper_stub.h"
+#include "power_manager/powerd/testing/test_environment.h"
 #include "power_manager/proto_bindings/backlight.pb.h"
 #include "power_manager/proto_bindings/policy.pb.h"
 
 namespace power_manager::policy {
 
-class KeyboardBacklightControllerTest : public ::testing::Test {
+class KeyboardBacklightControllerTest : public TestEnvironment {
  public:
   KeyboardBacklightControllerTest()
       : backlight_(max_backlight_level_,

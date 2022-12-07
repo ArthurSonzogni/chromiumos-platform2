@@ -14,6 +14,7 @@
 #include "power_manager/powerd/system/acpi_wakeup_helper_stub.h"
 #include "power_manager/powerd/system/cros_ec_helper_stub.h"
 #include "power_manager/powerd/system/udev_stub.h"
+#include "power_manager/powerd/testing/test_environment.h"
 #include "power_manager/proto_bindings/backlight.pb.h"
 
 namespace power_manager::policy {
@@ -47,7 +48,7 @@ const char* const kTSCR = InputDeviceController::kTSCR;
 
 }  // namespace
 
-class InputDeviceControllerTest : public ::testing::Test {
+class InputDeviceControllerTest : public TestEnvironment {
  public:
   InputDeviceControllerTest() = default;
   InputDeviceControllerTest(const InputDeviceControllerTest&) = delete;
