@@ -21,9 +21,12 @@ message ActiveStatus {
   // The use case of ChromeOS device active Private Computing device active.
   optional PrivateComputingUseCase use_case = 1;
 
+  // This field is deprecated and for migration to PDT dates.
+  optional string last_ping_utc_date = 2 [deprecated = true];
+
   // The last ping date for current use case.
-  // UTC date: YYYYMMDD
-  optional string last_ping_utc_date = 2;
+  // PDT date: YYYYMMDD
+  optional string last_ping_date = 3;
 }
 
 message SaveStatusRequest {
