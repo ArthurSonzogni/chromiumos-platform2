@@ -4507,6 +4507,16 @@ CryptohomeStatus UserDataAuth::PreparePersistentVaultImpl(
         .Wrap(std::move(auth_session_status).status());
   }
 
+  if (auth_session_status.value()->ephemeral_user()) {
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(
+            kLocUserDataAuthEphemeralAuthSessionAttemptPreparePersistentVault),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState,
+                        ErrorAction::kDeleteVault, ErrorAction::kReboot,
+                        ErrorAction::kPowerwash}),
+        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
+  }
+
   const std::string& obfuscated_username =
       auth_session_status.value()->obfuscated_username();
   if (!homedirs_->Exists(obfuscated_username)) {

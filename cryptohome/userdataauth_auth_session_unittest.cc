@@ -645,6 +645,22 @@ TEST_F(AuthSessionInterfaceTest,
             user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
 }
 
+// Test for checking if PreparePersistentVaultImpl will proceed with
+// ephemeral auth session.
+TEST_F(AuthSessionInterfaceTest,
+       PreparePersistentVaultWithEphemeralAuthSession) {
+  CryptohomeStatusOr<AuthSession*> auth_session_status =
+      auth_session_manager_->CreateAuthSession(
+          kUsername, AUTH_SESSION_FLAGS_EPHEMERAL_USER, AuthIntent::kDecrypt);
+  EXPECT_TRUE(auth_session_status.ok());
+  AuthSession* auth_session = auth_session_status.value();
+  CryptohomeStatus status =
+      PreparePersistentVaultImpl(auth_session->serialized_token(), {});
+  ASSERT_FALSE(status.ok());
+  ASSERT_EQ(status->local_legacy_error(),
+            user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
+}
+
 // Test to check if PreparePersistentVaultImpl will succeed if user is not
 // created.
 TEST_F(AuthSessionInterfaceTest, PreparePersistentVaultNoShadowDir) {
