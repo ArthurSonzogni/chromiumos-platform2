@@ -14,19 +14,6 @@ struct ImageFrame {
   uint32_t stride;
 };
 
-class ImageObserver : public cros::ProcessedFrameObserver {
- public:
-  explicit ImageObserver(ImageFrame* frame) : frame_(frame) {}
-  virtual void OnFrameProcessed(int64_t timestamp,
-                                const uint8_t* frame_data,
-                                uint32_t frame_width,
-                                uint32_t frame_height,
-                                uint32_t stride);
-
- private:
-  ImageFrame* frame_;
-};
-
 bool FuzzyBufferComparison(uint8_t* left,
                            uint8_t* right,
                            uint64_t buf_len,

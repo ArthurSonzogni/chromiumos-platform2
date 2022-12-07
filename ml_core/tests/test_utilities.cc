@@ -6,17 +6,6 @@
 #include <cstdlib>
 #include <iostream>
 
-void ImageObserver::OnFrameProcessed(int64_t timestamp,
-                                     const uint8_t* frame_data,
-                                     uint32_t frame_width,
-                                     uint32_t frame_height,
-                                     uint32_t stride) {
-  frame_->stride = stride;
-  frame_->frame_width = frame_width;
-  frame_->frame_height = frame_height;
-  memcpy(frame_->frame_data, frame_data, stride * frame_height);
-}
-
 bool FuzzyBufferComparison(uint8_t* left,
                            uint8_t* right,
                            uint64_t buf_len,
