@@ -39,7 +39,7 @@ void PopulateMuteInfo(Context* context, mojom::AudioResultPtr& res) {
   info->input_mute = input_mute;
 }
 
-void PopulateActiveNodeInfo(Context* context, mojom::AudioResultPtr& res) {
+void PopulateNodeInfo(Context* context, mojom::AudioResultPtr& res) {
   mojom::AudioInfoPtr& info = res->get_audio_info();
   std::vector<brillo::VariantDictionary> nodes;
   brillo::ErrorPtr error;
@@ -58,35 +58,56 @@ void PopulateActiveNodeInfo(Context* context, mojom::AudioResultPtr& res) {
   info->underruns = 0;
   info->severe_underruns = 0;
 
+  std::vector<mojom::AudioNodeInfoPtr> output_nodes;
+  std::vector<mojom::AudioNodeInfoPtr> input_nodes;
   for (const auto& node : nodes) {
-    // Skip inactive node, or important fields are missing.
+    // Important fields are missing.
     if (node.find(cras::kIsInputProperty) == node.end() ||
-        node.find(cras::kActiveProperty) == node.end() ||
-        !brillo::GetVariantValueOrDefault<bool>(node, cras::kActiveProperty)) {
+        node.find(cras::kActiveProperty) == node.end()) {
       continue;
     }
+
+    auto node_info = mojom::AudioNodeInfo::New();
+    node_info->id =
+        brillo::GetVariantValueOrDefault<uint64_t>(node, cras::kIdProperty);
+    node_info->name = brillo::GetVariantValueOrDefault<std::string>(
+        node, cras::kNameProperty);
+    node_info->device_name = brillo::GetVariantValueOrDefault<std::string>(
+        node, cras::kDeviceNameProperty);
+    node_info->active =
+        brillo::GetVariantValueOrDefault<bool>(node, cras::kActiveProperty);
+    node_info->node_volume = brillo::GetVariantValueOrDefault<uint64_t>(
+        node, cras::kNodeVolumeProperty);
+    node_info->input_node_gain = brillo::GetVariantValueOrDefault<uint32_t>(
+        node, cras::kInputNodeGainProperty);
+
     if (!brillo::GetVariantValueOrDefault<bool>(node, cras::kIsInputProperty)) {
-      // Output node
-      info->output_device_name = brillo::GetVariantValueOrDefault<std::string>(
-          node, cras::kNameProperty);
-      info->output_volume = brillo::GetVariantValueOrDefault<uint64_t>(
-          node, cras::kNodeVolumeProperty);
-      if (node.find(cras::kNumberOfUnderrunsProperty) != node.end()) {
-        info->underruns = brillo::GetVariantValueOrDefault<uint32_t>(
-            node, cras::kNumberOfUnderrunsProperty);
+      if (node_info->active) {
+        // Active output node.
+        info->output_device_name = node_info->name;
+        info->output_volume = node_info->node_volume;
+        if (node.find(cras::kNumberOfUnderrunsProperty) != node.end()) {
+          info->underruns = brillo::GetVariantValueOrDefault<uint32_t>(
+              node, cras::kNumberOfUnderrunsProperty);
+        }
+        if (node.find(cras::kNumberOfSevereUnderrunsProperty) != node.end()) {
+          info->severe_underruns = brillo::GetVariantValueOrDefault<uint32_t>(
+              node, cras::kNumberOfSevereUnderrunsProperty);
+        }
       }
-      if (node.find(cras::kNumberOfSevereUnderrunsProperty) != node.end()) {
-        info->severe_underruns = brillo::GetVariantValueOrDefault<uint32_t>(
-            node, cras::kNumberOfSevereUnderrunsProperty);
-      }
+      output_nodes.push_back(std::move(node_info));
     } else {
-      // Input node
-      info->input_device_name = brillo::GetVariantValueOrDefault<std::string>(
-          node, cras::kNameProperty);
-      info->input_gain = brillo::GetVariantValueOrDefault<uint32_t>(
-          node, cras::kInputNodeGainProperty);
+      if (node_info->active) {
+        // Active input node.
+        info->input_device_name = node_info->name;
+        info->input_gain = node_info->input_node_gain;
+      }
+      input_nodes.push_back(std::move(node_info));
     }
   }
+
+  info->output_nodes = std::move(output_nodes);
+  info->input_nodes = std::move(input_nodes);
 }
 
 mojom::AudioResultPtr FetchAudioInfoInner(Context* context) {
@@ -96,7 +117,7 @@ mojom::AudioResultPtr FetchAudioInfoInner(Context* context) {
   if (res->is_error())
     return res;
 
-  PopulateActiveNodeInfo(context, res);
+  PopulateNodeInfo(context, res);
   return res;
 }
 

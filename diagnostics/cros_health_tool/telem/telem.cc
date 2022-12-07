@@ -702,6 +702,35 @@ void DisplayAudioInfo(const mojom::AudioResultPtr& audio_result) {
   output.SetIntKey("severe_underruns", audio->severe_underruns);
   output.SetIntKey("underruns", audio->underruns);
 
+  auto* output_nodes =
+      output.SetKey("output_nodes", base::Value{base::Value::Type::LIST});
+  if (audio->output_nodes.has_value()) {
+    for (const auto& node : audio->output_nodes.value()) {
+      base::Value node_info{base::Value::Type::DICTIONARY};
+      SET_DICT(id, node, &node_info);
+      SET_DICT(name, node, &node_info);
+      SET_DICT(device_name, node, &node_info);
+      SET_DICT(active, node, &node_info);
+      SET_DICT(node_volume, node, &node_info);
+      output_nodes->Append(std::move(node_info));
+    }
+  }
+
+  auto* input_nodes =
+      output.SetKey("input_nodes", base::Value{base::Value::Type::LIST});
+  if (audio->input_nodes.has_value()) {
+    for (const auto& node : audio->input_nodes.value()) {
+      base::Value node_info{base::Value::Type::DICTIONARY};
+      SET_DICT(id, node, &node_info);
+      SET_DICT(name, node, &node_info);
+      SET_DICT(device_name, node, &node_info);
+      SET_DICT(active, node, &node_info);
+      SET_DICT(node_volume, node, &node_info);
+      SET_DICT(input_node_gain, node, &node_info);
+      input_nodes->Append(std::move(node_info));
+    }
+  }
+
   OutputJson(output);
 }
 
