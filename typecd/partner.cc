@@ -112,6 +112,10 @@ void Partner::AddPowerProfile() {
     power_profile_ = std::make_unique<PowerProfile>(path);
 }
 
+void Partner::RemovePowerProfile() {
+  power_profile_.reset();
+}
+
 void Partner::UpdatePDInfoFromSysfs() {
   if (GetNumAltModes() == -1)
     SetNumAltModes(ParseNumAltModes());

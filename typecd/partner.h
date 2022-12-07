@@ -48,6 +48,9 @@ class Partner : public Peripheral {
   // if one doesn't already exist.
   void AddPowerProfile();
 
+  // Delete a PowerProfile if one was created for this partner.
+  void RemovePowerProfile();
+
   // Return the total number of AltModes supported by the partner. If this value
   // hasn't been populated yet, the default value is -1, signifying that
   // discovery is not yet complete.

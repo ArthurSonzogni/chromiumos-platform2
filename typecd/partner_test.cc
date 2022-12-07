@@ -194,7 +194,8 @@ TEST_F(PartnerTest, SupportsPD) {
   EXPECT_FALSE(p.GetSupportsPD());
 }
 
-// Test that a PowerProfile gets successfully created for a partner.
+// Test that a PowerProfile gets successfully created, and then removed
+// for a partner.
 TEST_F(PartnerTest, PowerProfile) {
   // Set up fake sysfs paths.
   auto partner_path = temp_dir_.Append(std::string("port0-partner"));
@@ -214,6 +215,9 @@ TEST_F(PartnerTest, PowerProfile) {
 
   partner = std::make_unique<Partner>(partner_path);
   EXPECT_TRUE(partner->power_profile_);
+
+  partner->RemovePowerProfile();
+  EXPECT_TRUE(!partner->power_profile_);
 }
 
 }  // namespace typecd
