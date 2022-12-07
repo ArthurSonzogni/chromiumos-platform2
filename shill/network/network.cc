@@ -353,6 +353,10 @@ void Network::OnDHCPFailure() {
     //    provided. We continue to use this configuration, because
     //    the only configuration element that is leased to us (IP
     //    address) will be overridden by a static parameter.
+    //
+    // TODO(b/261681299): When this function is triggered by a renew failure,
+    // the current IPConfig can be a mix of DHCP and static IP. We need to
+    // revert the DHCP part.
     return;
   }
 
@@ -362,7 +366,13 @@ void Network::OnDHCPFailure() {
   // Fallback to IPv6 if possible.
   if (ip6config() && ip6config()->properties().HasIPAddressAndDNS()) {
     if (!connection_ || !connection_->IsIPv6()) {
-      // Setup IPv6 connection is there isn's one.
+      // Destroy the IPv4 connection (if exists) to clear the state in kernel at
+      // first. It is possible that this function is called when we have a valid
+      // DHCP lease now (e.g., triggered by a renew failure). We need to
+      // withdraw the effect of the previous IPv4 lease at first. Static IP is
+      // handled above so it's guaranteed that there is no valid IPv4 lease.
+      // Also see b/261681299.
+      connection_ = nullptr;
       SetupConnection(ip6config());
     }
     return;

@@ -828,8 +828,9 @@ TEST_F(NetworkStartTest, DualStackDHCPFailureAfterDHCPConnected) {
   TriggerDHCPUpdateCallback();
   TriggerSLAACUpdate();
 
-  // Connection should be reconfigured with IPv6 on IPv4 failure.
-  ExpectConnectionUpdateFromIPConfig(IPConfigType::kIPv6SLAAC);
+  // Connection should be reconfigured with IPv6 on IPv4 failure. Connection
+  // should be reset.
+  ExpectCreateConnectionWithIPConfig(IPConfigType::kIPv6SLAAC);
   EXPECT_EQ(network_->state(), Network::State::kConnected);
   TriggerDHCPFailureCallback();
   // TODO(b/232177767): We do not verify IPConfigs here, since currently we only
