@@ -42,7 +42,7 @@ Partner::Partner(const base::FilePath& syspath)
   // This needs to be called explicitly since it's not in the base Peripheral
   // class.
   UpdateSupportsPD();
-  UpdatePowerProfile();
+  AddPowerProfile();
   for (auto path = iter.Next(); !path.empty(); path = iter.Next())
     AddAltMode(path);
 
@@ -103,7 +103,7 @@ bool Partner::IsAltModePresent(int index) {
   return false;
 }
 
-void Partner::UpdatePowerProfile() {
+void Partner::AddPowerProfile() {
   if (power_profile_ || !supports_pd_)
     return;
   auto path = GetSysPath().Append("usb_power_delivery");
@@ -118,7 +118,7 @@ void Partner::UpdatePDInfoFromSysfs() {
   UpdatePDIdentityVDOs();
   UpdatePDRevision();
   UpdateSupportsPD();
-  UpdatePowerProfile();
+  AddPowerProfile();
 }
 
 int Partner::ParseNumAltModes() {

@@ -46,7 +46,7 @@ class Partner : public Peripheral {
 
   // Parse the registered PDOs from sysfs and create an object to hold them,
   // if one doesn't already exist.
-  void UpdatePowerProfile();
+  void AddPowerProfile();
 
   // Return the total number of AltModes supported by the partner. If this value
   // hasn't been populated yet, the default value is -1, signifying that
