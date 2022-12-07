@@ -4,7 +4,7 @@
 
 use futures_util::future::{FutureExt as _, TryFutureExt as _};
 use grpcio::{ChannelBuilder, Environment, ResourceQuota, RpcContext, ServerBuilder, UnarySink};
-use std::sync::atomic::{AtomicI64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicI64, Ordering};
 use std::sync::Arc;
 
 use crate::vm_grpc::proto::resourced_bridge::{RequestedInterval, ReturnCode, ReturnCode_Status};
@@ -62,15 +62,12 @@ impl VmGrpcServer {
         root: &Path,
         pkt_tx_freq: Arc<AtomicI64>,
     ) -> Result<VmGrpcServer> {
-        static mut SERVER_RUNNING: bool = false;
+        static SERVER_RUNNING: AtomicBool = AtomicBool::new(false);
 
-        // No other access to this address, functionally safe.
-        unsafe {
-            if !SERVER_RUNNING {
-                SERVER_RUNNING = true;
-            } else {
-                bail!("Server was already started, ignoring run request");
-            }
+        if !SERVER_RUNNING.load(Ordering::Relaxed) {
+            SERVER_RUNNING.store(true, Ordering::Relaxed)
+        } else {
+            bail!("Server was already started, ignoring run request");
         }
 
         let cpu_dev = DeviceCpuStatus::new(root.to_path_buf())?;
@@ -217,5 +214,110 @@ impl ResourcedCommListener for ResourcedCommListenerService {
             .map_err(move |e| error!("failed to reply {:?}: {:?}", req, e))
             .map(|_| ());
         ctx.spawn(f)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+    use std::path::{Path, PathBuf};
+    use tempfile::tempdir;
+
+    #[test]
+    fn test_service_create() {
+        // Unit Testing is limited in this module without bringing up a full server.
+        // Only checking init sequence.
+        let root = tempdir().unwrap();
+
+        setup_mock_cpu_dev_dirs(root.path());
+        setup_mock_files(root.path());
+        for cpu in 0..MOCK_NUM_CPU {
+            write_mock_cpu(root.path(), cpu, 3200000, 3000000, 400000, 1000000);
+        }
+
+        let pkt_tx_freq = std::sync::Arc::new(AtomicI64::new(-2));
+        let pkt_tx_freq_clone = pkt_tx_freq.clone();
+        let s = VmGrpcServer::run(32, 5555, Path::new(root.path()), pkt_tx_freq);
+
+        // Test that server is attempted, and the Arc<i64> is set to init value of -1.
+        // The internal thread likely failed since it can't bind the socket port.
+        assert_eq!(pkt_tx_freq_clone.load(Ordering::Relaxed), -1);
+        assert_eq!(s.is_ok(), true);
+
+        // Test that second invoke fails
+        let s2 = VmGrpcServer::run(32, 5555, Path::new(root.path()), pkt_tx_freq_clone);
+        assert_eq!(s2.is_err(), true);
+    }
+
+    /// Base path for power_limit relative to rootdir.
+    const DEVICE_POWER_LIMIT_PATH: &str = "sys/class/powercap/intel-rapl:0";
+
+    /// Base path for cpufreq relative to rootdir.
+    const DEVICE_CPUFREQ_PATH: &str = "sys/devices/system/cpu/cpufreq";
+
+    const MOCK_NUM_CPU: i32 = 8;
+
+    fn write_mock_cpu(
+        root: &Path,
+        cpu_num: i32,
+        baseline_max: u64,
+        curr_max: u64,
+        baseline_min: u64,
+        curr_min: u64,
+    ) {
+        let policy_path = root
+            .join(DEVICE_CPUFREQ_PATH)
+            .join(format!("policy{cpu_num}"));
+        std::fs::write(
+            policy_path.join("cpuinfo_max_freq"),
+            baseline_max.to_string(),
+        )
+        .expect("Failed to write to file!");
+        std::fs::write(
+            policy_path.join("cpuinfo_min_freq"),
+            baseline_min.to_string(),
+        )
+        .expect("Failed to write to file!");
+
+        std::fs::write(policy_path.join("scaling_max_freq"), curr_max.to_string()).unwrap();
+        std::fs::write(policy_path.join("scaling_min_freq"), curr_min.to_string()).unwrap();
+    }
+
+    fn setup_mock_cpu_dev_dirs(root: &Path) {
+        fs::create_dir_all(root.join(DEVICE_POWER_LIMIT_PATH)).unwrap();
+        for i in 0..MOCK_NUM_CPU {
+            fs::create_dir_all(root.join(DEVICE_CPUFREQ_PATH).join(format!("policy{i}"))).unwrap();
+        }
+    }
+
+    fn setup_mock_files(root: &Path) {
+        let pl_files: Vec<&str> = vec![
+            "constraint_0_power_limit_uw",
+            "constraint_0_max_power_uw",
+            "constraint_1_power_limit_uw",
+            "constraint_1_max_power_uw",
+            "energy_uj",
+            "max_energy_range_uj",
+        ];
+
+        let cpufreq_files: Vec<&str> = vec!["scaling_max_freq", "cpuinfo_max_freq"];
+
+        for pl_file in &pl_files {
+            std::fs::write(
+                root.join(DEVICE_POWER_LIMIT_PATH)
+                    .join(PathBuf::from(pl_file)),
+                "0",
+            )
+            .unwrap();
+        }
+
+        for i in 0..MOCK_NUM_CPU {
+            let policy_path = root.join(DEVICE_CPUFREQ_PATH).join(format!("policy{i}"));
+
+            for cpufreq_file in &cpufreq_files {
+                std::fs::write(policy_path.join(PathBuf::from(cpufreq_file)), "0").unwrap();
+            }
+        }
     }
 }

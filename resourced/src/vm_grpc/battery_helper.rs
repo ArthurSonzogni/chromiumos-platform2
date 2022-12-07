@@ -93,3 +93,70 @@ impl DeviceBatteryStatus {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+    use std::path::Path;
+    use tempfile::tempdir;
+
+    fn write_mock_battery(root: &Path, status: &str, charge_now: u64, charge_full: u64) {
+        let batt_path = root.join(super::DEVICE_BATTERY_PATH);
+        std::fs::write(batt_path.join("status"), status.to_string()).unwrap();
+        std::fs::write(batt_path.join("charge_now"), charge_now.to_string()).unwrap();
+        std::fs::write(batt_path.join("charge_full"), charge_full.to_string()).unwrap();
+    }
+
+    fn setup_mock_battery_files(root: &Path) {
+        fs::create_dir_all(root.join(super::DEVICE_BATTERY_PATH)).unwrap();
+        std::fs::write(root.join(super::DEVICE_BATTERY_PATH).join("status"), "Full").unwrap();
+        std::fs::write(
+            root.join(super::DEVICE_BATTERY_PATH).join("charge_now"),
+            "100",
+        )
+        .unwrap();
+        std::fs::write(
+            root.join(super::DEVICE_BATTERY_PATH).join("charge_full"),
+            "100",
+        )
+        .unwrap();
+    }
+
+    #[test]
+    fn test_sysfs_files_missing_gives_error() {
+        let root = tempdir().unwrap();
+        assert!(DeviceBatteryStatus::new(PathBuf::from(root.path())).is_err());
+    }
+
+    #[test]
+    fn test_battery_functions() {
+        let root = tempdir().unwrap();
+
+        setup_mock_battery_files(root.path());
+        let mock_batt = DeviceBatteryStatus::new(PathBuf::from(root.path()));
+        assert!(mock_batt.is_ok());
+
+        // Test 100% Full
+        let mock_batt = mock_batt.unwrap();
+        assert_eq!(mock_batt.is_charging().unwrap(), true);
+        assert_eq!(
+            DeviceBatteryStatus::get_notifier_level(mock_batt.get_percent().unwrap()).unwrap(),
+            BatteryData_DNotifierPowerState::DNOTIFIER_POWER_STATE_D1
+        );
+
+        // Test 80% Discharging
+        write_mock_battery(root.path(), "Discharging", 82, 100);
+        assert_eq!(mock_batt.is_charging().unwrap(), false);
+        assert_eq!(mock_batt.get_percent().unwrap(), 82f32);
+
+        assert_eq!(
+            DeviceBatteryStatus::get_notifier_level(mock_batt.get_percent().unwrap()).unwrap(),
+            BatteryData_DNotifierPowerState::DNOTIFIER_POWER_STATE_D2
+        );
+
+        //Test div by 0
+        write_mock_battery(root.path(), "Discharging", 82, 0);
+        assert_eq!(mock_batt.get_percent().is_err(), true);
+    }
+}

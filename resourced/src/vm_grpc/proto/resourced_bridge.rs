@@ -27,7 +27,8 @@
 /// of protobuf runtime.
 // const _PROTOBUF_VERSION_CHECK: () = ::protobuf::VERSION_2_28_0;
 
-#[derive(PartialEq,Clone,Default)]
+
+#[derive(PartialEq, Clone, Default)]
 pub struct RequestedCpuFrequency {
     // message fields
     pub freq_val: i64,
@@ -49,7 +50,6 @@ impl RequestedCpuFrequency {
 
     // int64 freq_val = 1;
 
-
     pub fn get_freq_val(&self) -> i64 {
         self.freq_val
     }
@@ -68,20 +68,30 @@ impl ::protobuf::Message for RequestedCpuFrequency {
         true
     }
 
-    fn merge_from(&mut self, is: &mut ::protobuf::CodedInputStream<'_>) -> ::protobuf::ProtobufResult<()> {
+    fn merge_from(
+        &mut self,
+        is: &mut ::protobuf::CodedInputStream<'_>,
+    ) -> ::protobuf::ProtobufResult<()> {
         while !is.eof()? {
             let (field_number, wire_type) = is.read_tag_unpack()?;
             match field_number {
                 1 => {
                     if wire_type != ::protobuf::wire_format::WireTypeVarint {
-                        return ::std::result::Result::Err(::protobuf::rt::unexpected_wire_type(wire_type));
+                        return ::std::result::Result::Err(::protobuf::rt::unexpected_wire_type(
+                            wire_type,
+                        ));
                     }
                     let tmp = is.read_int64()?;
                     self.freq_val = tmp;
-                },
+                }
                 _ => {
-                    ::protobuf::rt::read_unknown_or_skip_group(field_number, wire_type, is, self.mut_unknown_fields())?;
-                },
+                    ::protobuf::rt::read_unknown_or_skip_group(
+                        field_number,
+                        wire_type,
+                        is,
+                        self.mut_unknown_fields(),
+                    )?;
+                }
             };
         }
         ::std::result::Result::Ok(())
@@ -92,14 +102,21 @@ impl ::protobuf::Message for RequestedCpuFrequency {
     fn compute_size(&self) -> u32 {
         let mut my_size = 0;
         if self.freq_val != 0 {
-            my_size += ::protobuf::rt::value_size(1, self.freq_val, ::protobuf::wire_format::WireTypeVarint);
+            my_size += ::protobuf::rt::value_size(
+                1,
+                self.freq_val,
+                ::protobuf::wire_format::WireTypeVarint,
+            );
         }
         my_size += ::protobuf::rt::unknown_fields_size(self.get_unknown_fields());
         self.cached_size.set(my_size);
         my_size
     }
 
-    fn write_to_with_cached_sizes(&self, os: &mut ::protobuf::CodedOutputStream<'_>) -> ::protobuf::ProtobufResult<()> {
+    fn write_to_with_cached_sizes(
+        &self,
+        os: &mut ::protobuf::CodedOutputStream<'_>,
+    ) -> ::protobuf::ProtobufResult<()> {
         if self.freq_val != 0 {
             os.write_int64(1, self.freq_val)?;
         }
@@ -138,24 +155,29 @@ impl ::protobuf::Message for RequestedCpuFrequency {
     }
 
     fn descriptor_static() -> &'static ::protobuf::reflect::MessageDescriptor {
-        static descriptor: ::protobuf::rt::LazyV2<::protobuf::reflect::MessageDescriptor> = ::protobuf::rt::LazyV2::INIT;
+        static descriptor: ::protobuf::rt::LazyV2<::protobuf::reflect::MessageDescriptor> =
+            ::protobuf::rt::LazyV2::INIT;
         descriptor.get(|| {
             let mut fields = ::std::vec::Vec::new();
-            fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeInt64>(
+            fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<
+                _,
+                ::protobuf::types::ProtobufTypeInt64,
+            >(
                 "freq_val",
-                |m: &RequestedCpuFrequency| { &m.freq_val },
-                |m: &mut RequestedCpuFrequency| { &mut m.freq_val },
+                |m: &RequestedCpuFrequency| &m.freq_val,
+                |m: &mut RequestedCpuFrequency| &mut m.freq_val,
             ));
             ::protobuf::reflect::MessageDescriptor::new_pb_name::<RequestedCpuFrequency>(
                 "RequestedCpuFrequency",
                 fields,
-                file_descriptor_proto()
+                file_descriptor_proto(),
             )
         })
     }
 
     fn default_instance() -> &'static RequestedCpuFrequency {
-        static instance: ::protobuf::rt::LazyV2<RequestedCpuFrequency> = ::protobuf::rt::LazyV2::INIT;
+        static instance: ::protobuf::rt::LazyV2<RequestedCpuFrequency> =
+            ::protobuf::rt::LazyV2::INIT;
         instance.get(RequestedCpuFrequency::new)
     }
 }
@@ -179,7 +201,7 @@ impl ::protobuf::reflect::ProtobufValue for RequestedCpuFrequency {
     }
 }
 
-#[derive(PartialEq,Clone,Default)]
+#[derive(PartialEq, Clone, Default)]
 pub struct RequestedInterval {
     // message fields
     pub interval_ms: i64,
@@ -201,7 +223,6 @@ impl RequestedInterval {
 
     // int64 interval_ms = 1;
 
-
     pub fn get_interval_ms(&self) -> i64 {
         self.interval_ms
     }
@@ -220,20 +241,30 @@ impl ::protobuf::Message for RequestedInterval {
         true
     }
 
-    fn merge_from(&mut self, is: &mut ::protobuf::CodedInputStream<'_>) -> ::protobuf::ProtobufResult<()> {
+    fn merge_from(
+        &mut self,
+        is: &mut ::protobuf::CodedInputStream<'_>,
+    ) -> ::protobuf::ProtobufResult<()> {
         while !is.eof()? {
             let (field_number, wire_type) = is.read_tag_unpack()?;
             match field_number {
                 1 => {
                     if wire_type != ::protobuf::wire_format::WireTypeVarint {
-                        return ::std::result::Result::Err(::protobuf::rt::unexpected_wire_type(wire_type));
+                        return ::std::result::Result::Err(::protobuf::rt::unexpected_wire_type(
+                            wire_type,
+                        ));
                     }
                     let tmp = is.read_int64()?;
                     self.interval_ms = tmp;
-                },
+                }
                 _ => {
-                    ::protobuf::rt::read_unknown_or_skip_group(field_number, wire_type, is, self.mut_unknown_fields())?;
-                },
+                    ::protobuf::rt::read_unknown_or_skip_group(
+                        field_number,
+                        wire_type,
+                        is,
+                        self.mut_unknown_fields(),
+                    )?;
+                }
             };
         }
         ::std::result::Result::Ok(())
@@ -244,14 +275,21 @@ impl ::protobuf::Message for RequestedInterval {
     fn compute_size(&self) -> u32 {
         let mut my_size = 0;
         if self.interval_ms != 0 {
-            my_size += ::protobuf::rt::value_size(1, self.interval_ms, ::protobuf::wire_format::WireTypeVarint);
+            my_size += ::protobuf::rt::value_size(
+                1,
+                self.interval_ms,
+                ::protobuf::wire_format::WireTypeVarint,
+            );
         }
         my_size += ::protobuf::rt::unknown_fields_size(self.get_unknown_fields());
         self.cached_size.set(my_size);
         my_size
     }
 
-    fn write_to_with_cached_sizes(&self, os: &mut ::protobuf::CodedOutputStream<'_>) -> ::protobuf::ProtobufResult<()> {
+    fn write_to_with_cached_sizes(
+        &self,
+        os: &mut ::protobuf::CodedOutputStream<'_>,
+    ) -> ::protobuf::ProtobufResult<()> {
         if self.interval_ms != 0 {
             os.write_int64(1, self.interval_ms)?;
         }
@@ -290,18 +328,22 @@ impl ::protobuf::Message for RequestedInterval {
     }
 
     fn descriptor_static() -> &'static ::protobuf::reflect::MessageDescriptor {
-        static descriptor: ::protobuf::rt::LazyV2<::protobuf::reflect::MessageDescriptor> = ::protobuf::rt::LazyV2::INIT;
+        static descriptor: ::protobuf::rt::LazyV2<::protobuf::reflect::MessageDescriptor> =
+            ::protobuf::rt::LazyV2::INIT;
         descriptor.get(|| {
             let mut fields = ::std::vec::Vec::new();
-            fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeInt64>(
+            fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<
+                _,
+                ::protobuf::types::ProtobufTypeInt64,
+            >(
                 "interval_ms",
-                |m: &RequestedInterval| { &m.interval_ms },
-                |m: &mut RequestedInterval| { &mut m.interval_ms },
+                |m: &RequestedInterval| &m.interval_ms,
+                |m: &mut RequestedInterval| &mut m.interval_ms,
             ));
             ::protobuf::reflect::MessageDescriptor::new_pb_name::<RequestedInterval>(
                 "RequestedInterval",
                 fields,
-                file_descriptor_proto()
+                file_descriptor_proto(),
             )
         })
     }
@@ -331,7 +373,7 @@ impl ::protobuf::reflect::ProtobufValue for RequestedInterval {
     }
 }
 
-#[derive(PartialEq,Clone,Default)]
+#[derive(PartialEq, Clone, Default)]
 pub struct ReturnCode {
     // message fields
     pub status: ReturnCode_Status,
@@ -353,7 +395,6 @@ impl ReturnCode {
 
     // .resourced_bridge.ReturnCode.Status status = 1;
 
-
     pub fn get_status(&self) -> ReturnCode_Status {
         self.status
     }
@@ -372,16 +413,28 @@ impl ::protobuf::Message for ReturnCode {
         true
     }
 
-    fn merge_from(&mut self, is: &mut ::protobuf::CodedInputStream<'_>) -> ::protobuf::ProtobufResult<()> {
+    fn merge_from(
+        &mut self,
+        is: &mut ::protobuf::CodedInputStream<'_>,
+    ) -> ::protobuf::ProtobufResult<()> {
         while !is.eof()? {
             let (field_number, wire_type) = is.read_tag_unpack()?;
             match field_number {
-                1 => {
-                    ::protobuf::rt::read_proto3_enum_with_unknown_fields_into(wire_type, is, &mut self.status, 1, &mut self.unknown_fields)?
-                },
+                1 => ::protobuf::rt::read_proto3_enum_with_unknown_fields_into(
+                    wire_type,
+                    is,
+                    &mut self.status,
+                    1,
+                    &mut self.unknown_fields,
+                )?,
                 _ => {
-                    ::protobuf::rt::read_unknown_or_skip_group(field_number, wire_type, is, self.mut_unknown_fields())?;
-                },
+                    ::protobuf::rt::read_unknown_or_skip_group(
+                        field_number,
+                        wire_type,
+                        is,
+                        self.mut_unknown_fields(),
+                    )?;
+                }
             };
         }
         ::std::result::Result::Ok(())
@@ -399,7 +452,10 @@ impl ::protobuf::Message for ReturnCode {
         my_size
     }
 
-    fn write_to_with_cached_sizes(&self, os: &mut ::protobuf::CodedOutputStream<'_>) -> ::protobuf::ProtobufResult<()> {
+    fn write_to_with_cached_sizes(
+        &self,
+        os: &mut ::protobuf::CodedOutputStream<'_>,
+    ) -> ::protobuf::ProtobufResult<()> {
         if self.status != ReturnCode_Status::SUCCESS {
             os.write_enum(1, ::protobuf::ProtobufEnum::value(&self.status))?;
         }
@@ -438,18 +494,22 @@ impl ::protobuf::Message for ReturnCode {
     }
 
     fn descriptor_static() -> &'static ::protobuf::reflect::MessageDescriptor {
-        static descriptor: ::protobuf::rt::LazyV2<::protobuf::reflect::MessageDescriptor> = ::protobuf::rt::LazyV2::INIT;
+        static descriptor: ::protobuf::rt::LazyV2<::protobuf::reflect::MessageDescriptor> =
+            ::protobuf::rt::LazyV2::INIT;
         descriptor.get(|| {
             let mut fields = ::std::vec::Vec::new();
-            fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeEnum<ReturnCode_Status>>(
+            fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<
+                _,
+                ::protobuf::types::ProtobufTypeEnum<ReturnCode_Status>,
+            >(
                 "status",
-                |m: &ReturnCode| { &m.status },
-                |m: &mut ReturnCode| { &mut m.status },
+                |m: &ReturnCode| &m.status,
+                |m: &mut ReturnCode| &mut m.status,
             ));
             ::protobuf::reflect::MessageDescriptor::new_pb_name::<ReturnCode>(
                 "ReturnCode",
                 fields,
-                file_descriptor_proto()
+                file_descriptor_proto(),
             )
         })
     }
@@ -479,7 +539,7 @@ impl ::protobuf::reflect::ProtobufValue for ReturnCode {
     }
 }
 
-#[derive(Clone,PartialEq,Eq,Debug,Hash)]
+#[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub enum ReturnCode_Status {
     SUCCESS = 0,
     FAIL_OUT_OF_BOUNDS = 1,
@@ -498,7 +558,7 @@ impl ::protobuf::ProtobufEnum for ReturnCode_Status {
             1 => ::std::option::Option::Some(ReturnCode_Status::FAIL_OUT_OF_BOUNDS),
             2 => ::std::option::Option::Some(ReturnCode_Status::FAIL_UNABLE_TO_SET),
             3 => ::std::option::Option::Some(ReturnCode_Status::FAIL_CRITICAL),
-            _ => ::std::option::Option::None
+            _ => ::std::option::Option::None,
         }
     }
 
@@ -513,15 +573,18 @@ impl ::protobuf::ProtobufEnum for ReturnCode_Status {
     }
 
     fn enum_descriptor_static() -> &'static ::protobuf::reflect::EnumDescriptor {
-        static descriptor: ::protobuf::rt::LazyV2<::protobuf::reflect::EnumDescriptor> = ::protobuf::rt::LazyV2::INIT;
+        static descriptor: ::protobuf::rt::LazyV2<::protobuf::reflect::EnumDescriptor> =
+            ::protobuf::rt::LazyV2::INIT;
         descriptor.get(|| {
-            ::protobuf::reflect::EnumDescriptor::new_pb_name::<ReturnCode_Status>("ReturnCode.Status", file_descriptor_proto())
+            ::protobuf::reflect::EnumDescriptor::new_pb_name::<ReturnCode_Status>(
+                "ReturnCode.Status",
+                file_descriptor_proto(),
+            )
         })
     }
 }
 
-impl ::std::marker::Copy for ReturnCode_Status {
-}
+impl ::std::marker::Copy for ReturnCode_Status {}
 
 impl ::std::default::Default for ReturnCode_Status {
     fn default() -> Self {
@@ -535,7 +598,7 @@ impl ::protobuf::reflect::ProtobufValue for ReturnCode_Status {
     }
 }
 
-#[derive(PartialEq,Clone,Default)]
+#[derive(PartialEq, Clone, Default)]
 pub struct CpuRaplPowerData {
     // message fields
     pub power_limit_0: i64,
@@ -559,7 +622,6 @@ impl CpuRaplPowerData {
 
     // int64 power_limit_0 = 1;
 
-
     pub fn get_power_limit_0(&self) -> i64 {
         self.power_limit_0
     }
@@ -574,7 +636,6 @@ impl CpuRaplPowerData {
 
     // int64 power_limit_1 = 2;
 
-
     pub fn get_power_limit_1(&self) -> i64 {
         self.power_limit_1
     }
@@ -588,7 +649,6 @@ impl CpuRaplPowerData {
     }
 
     // int64 cpu_energy = 3;
-
 
     pub fn get_cpu_energy(&self) -> i64 {
         self.cpu_energy
@@ -608,34 +668,48 @@ impl ::protobuf::Message for CpuRaplPowerData {
         true
     }
 
-    fn merge_from(&mut self, is: &mut ::protobuf::CodedInputStream<'_>) -> ::protobuf::ProtobufResult<()> {
+    fn merge_from(
+        &mut self,
+        is: &mut ::protobuf::CodedInputStream<'_>,
+    ) -> ::protobuf::ProtobufResult<()> {
         while !is.eof()? {
             let (field_number, wire_type) = is.read_tag_unpack()?;
             match field_number {
                 1 => {
                     if wire_type != ::protobuf::wire_format::WireTypeVarint {
-                        return ::std::result::Result::Err(::protobuf::rt::unexpected_wire_type(wire_type));
+                        return ::std::result::Result::Err(::protobuf::rt::unexpected_wire_type(
+                            wire_type,
+                        ));
                     }
                     let tmp = is.read_int64()?;
                     self.power_limit_0 = tmp;
-                },
+                }
                 2 => {
                     if wire_type != ::protobuf::wire_format::WireTypeVarint {
-                        return ::std::result::Result::Err(::protobuf::rt::unexpected_wire_type(wire_type));
+                        return ::std::result::Result::Err(::protobuf::rt::unexpected_wire_type(
+                            wire_type,
+                        ));
                     }
                     let tmp = is.read_int64()?;
                     self.power_limit_1 = tmp;
-                },
+                }
                 3 => {
                     if wire_type != ::protobuf::wire_format::WireTypeVarint {
-                        return ::std::result::Result::Err(::protobuf::rt::unexpected_wire_type(wire_type));
+                        return ::std::result::Result::Err(::protobuf::rt::unexpected_wire_type(
+                            wire_type,
+                        ));
                     }
                     let tmp = is.read_int64()?;
                     self.cpu_energy = tmp;
-                },
+                }
                 _ => {
-                    ::protobuf::rt::read_unknown_or_skip_group(field_number, wire_type, is, self.mut_unknown_fields())?;
-                },
+                    ::protobuf::rt::read_unknown_or_skip_group(
+                        field_number,
+                        wire_type,
+                        is,
+                        self.mut_unknown_fields(),
+                    )?;
+                }
             };
         }
         ::std::result::Result::Ok(())
@@ -646,20 +720,35 @@ impl ::protobuf::Message for CpuRaplPowerData {
     fn compute_size(&self) -> u32 {
         let mut my_size = 0;
         if self.power_limit_0 != 0 {
-            my_size += ::protobuf::rt::value_size(1, self.power_limit_0, ::protobuf::wire_format::WireTypeVarint);
+            my_size += ::protobuf::rt::value_size(
+                1,
+                self.power_limit_0,
+                ::protobuf::wire_format::WireTypeVarint,
+            );
         }
         if self.power_limit_1 != 0 {
-            my_size += ::protobuf::rt::value_size(2, self.power_limit_1, ::protobuf::wire_format::WireTypeVarint);
+            my_size += ::protobuf::rt::value_size(
+                2,
+                self.power_limit_1,
+                ::protobuf::wire_format::WireTypeVarint,
+            );
         }
         if self.cpu_energy != 0 {
-            my_size += ::protobuf::rt::value_size(3, self.cpu_energy, ::protobuf::wire_format::WireTypeVarint);
+            my_size += ::protobuf::rt::value_size(
+                3,
+                self.cpu_energy,
+                ::protobuf::wire_format::WireTypeVarint,
+            );
         }
         my_size += ::protobuf::rt::unknown_fields_size(self.get_unknown_fields());
         self.cached_size.set(my_size);
         my_size
     }
 
-    fn write_to_with_cached_sizes(&self, os: &mut ::protobuf::CodedOutputStream<'_>) -> ::protobuf::ProtobufResult<()> {
+    fn write_to_with_cached_sizes(
+        &self,
+        os: &mut ::protobuf::CodedOutputStream<'_>,
+    ) -> ::protobuf::ProtobufResult<()> {
         if self.power_limit_0 != 0 {
             os.write_int64(1, self.power_limit_0)?;
         }
@@ -704,28 +793,38 @@ impl ::protobuf::Message for CpuRaplPowerData {
     }
 
     fn descriptor_static() -> &'static ::protobuf::reflect::MessageDescriptor {
-        static descriptor: ::protobuf::rt::LazyV2<::protobuf::reflect::MessageDescriptor> = ::protobuf::rt::LazyV2::INIT;
+        static descriptor: ::protobuf::rt::LazyV2<::protobuf::reflect::MessageDescriptor> =
+            ::protobuf::rt::LazyV2::INIT;
         descriptor.get(|| {
             let mut fields = ::std::vec::Vec::new();
-            fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeInt64>(
+            fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<
+                _,
+                ::protobuf::types::ProtobufTypeInt64,
+            >(
                 "power_limit_0",
-                |m: &CpuRaplPowerData| { &m.power_limit_0 },
-                |m: &mut CpuRaplPowerData| { &mut m.power_limit_0 },
+                |m: &CpuRaplPowerData| &m.power_limit_0,
+                |m: &mut CpuRaplPowerData| &mut m.power_limit_0,
             ));
-            fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeInt64>(
+            fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<
+                _,
+                ::protobuf::types::ProtobufTypeInt64,
+            >(
                 "power_limit_1",
-                |m: &CpuRaplPowerData| { &m.power_limit_1 },
-                |m: &mut CpuRaplPowerData| { &mut m.power_limit_1 },
+                |m: &CpuRaplPowerData| &m.power_limit_1,
+                |m: &mut CpuRaplPowerData| &mut m.power_limit_1,
             ));
-            fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeInt64>(
+            fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<
+                _,
+                ::protobuf::types::ProtobufTypeInt64,
+            >(
                 "cpu_energy",
-                |m: &CpuRaplPowerData| { &m.cpu_energy },
-                |m: &mut CpuRaplPowerData| { &mut m.cpu_energy },
+                |m: &CpuRaplPowerData| &m.cpu_energy,
+                |m: &mut CpuRaplPowerData| &mut m.cpu_energy,
             ));
             ::protobuf::reflect::MessageDescriptor::new_pb_name::<CpuRaplPowerData>(
                 "CpuRaplPowerData",
                 fields,
-                file_descriptor_proto()
+                file_descriptor_proto(),
             )
         })
     }
@@ -757,7 +856,7 @@ impl ::protobuf::reflect::ProtobufValue for CpuRaplPowerData {
     }
 }
 
-#[derive(PartialEq,Clone,Default)]
+#[derive(PartialEq, Clone, Default)]
 pub struct BatteryData {
     // message fields
     pub status: BatteryData_BatteryStatus,
@@ -780,7 +879,6 @@ impl BatteryData {
 
     // .resourced_bridge.BatteryData.BatteryStatus status = 1;
 
-
     pub fn get_status(&self) -> BatteryData_BatteryStatus {
         self.status
     }
@@ -794,7 +892,6 @@ impl BatteryData {
     }
 
     // .resourced_bridge.BatteryData.DNotifierPowerState power_state = 2;
-
 
     pub fn get_power_state(&self) -> BatteryData_DNotifierPowerState {
         self.power_state
@@ -814,19 +911,35 @@ impl ::protobuf::Message for BatteryData {
         true
     }
 
-    fn merge_from(&mut self, is: &mut ::protobuf::CodedInputStream<'_>) -> ::protobuf::ProtobufResult<()> {
+    fn merge_from(
+        &mut self,
+        is: &mut ::protobuf::CodedInputStream<'_>,
+    ) -> ::protobuf::ProtobufResult<()> {
         while !is.eof()? {
             let (field_number, wire_type) = is.read_tag_unpack()?;
             match field_number {
-                1 => {
-                    ::protobuf::rt::read_proto3_enum_with_unknown_fields_into(wire_type, is, &mut self.status, 1, &mut self.unknown_fields)?
-                },
-                2 => {
-                    ::protobuf::rt::read_proto3_enum_with_unknown_fields_into(wire_type, is, &mut self.power_state, 2, &mut self.unknown_fields)?
-                },
+                1 => ::protobuf::rt::read_proto3_enum_with_unknown_fields_into(
+                    wire_type,
+                    is,
+                    &mut self.status,
+                    1,
+                    &mut self.unknown_fields,
+                )?,
+                2 => ::protobuf::rt::read_proto3_enum_with_unknown_fields_into(
+                    wire_type,
+                    is,
+                    &mut self.power_state,
+                    2,
+                    &mut self.unknown_fields,
+                )?,
                 _ => {
-                    ::protobuf::rt::read_unknown_or_skip_group(field_number, wire_type, is, self.mut_unknown_fields())?;
-                },
+                    ::protobuf::rt::read_unknown_or_skip_group(
+                        field_number,
+                        wire_type,
+                        is,
+                        self.mut_unknown_fields(),
+                    )?;
+                }
             };
         }
         ::std::result::Result::Ok(())
@@ -847,7 +960,10 @@ impl ::protobuf::Message for BatteryData {
         my_size
     }
 
-    fn write_to_with_cached_sizes(&self, os: &mut ::protobuf::CodedOutputStream<'_>) -> ::protobuf::ProtobufResult<()> {
+    fn write_to_with_cached_sizes(
+        &self,
+        os: &mut ::protobuf::CodedOutputStream<'_>,
+    ) -> ::protobuf::ProtobufResult<()> {
         if self.status != BatteryData_BatteryStatus::CHARGING {
             os.write_enum(1, ::protobuf::ProtobufEnum::value(&self.status))?;
         }
@@ -889,23 +1005,30 @@ impl ::protobuf::Message for BatteryData {
     }
 
     fn descriptor_static() -> &'static ::protobuf::reflect::MessageDescriptor {
-        static descriptor: ::protobuf::rt::LazyV2<::protobuf::reflect::MessageDescriptor> = ::protobuf::rt::LazyV2::INIT;
+        static descriptor: ::protobuf::rt::LazyV2<::protobuf::reflect::MessageDescriptor> =
+            ::protobuf::rt::LazyV2::INIT;
         descriptor.get(|| {
             let mut fields = ::std::vec::Vec::new();
-            fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeEnum<BatteryData_BatteryStatus>>(
+            fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<
+                _,
+                ::protobuf::types::ProtobufTypeEnum<BatteryData_BatteryStatus>,
+            >(
                 "status",
-                |m: &BatteryData| { &m.status },
-                |m: &mut BatteryData| { &mut m.status },
+                |m: &BatteryData| &m.status,
+                |m: &mut BatteryData| &mut m.status,
             ));
-            fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeEnum<BatteryData_DNotifierPowerState>>(
+            fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<
+                _,
+                ::protobuf::types::ProtobufTypeEnum<BatteryData_DNotifierPowerState>,
+            >(
                 "power_state",
-                |m: &BatteryData| { &m.power_state },
-                |m: &mut BatteryData| { &mut m.power_state },
+                |m: &BatteryData| &m.power_state,
+                |m: &mut BatteryData| &mut m.power_state,
             ));
             ::protobuf::reflect::MessageDescriptor::new_pb_name::<BatteryData>(
                 "BatteryData",
                 fields,
-                file_descriptor_proto()
+                file_descriptor_proto(),
             )
         })
     }
@@ -936,7 +1059,7 @@ impl ::protobuf::reflect::ProtobufValue for BatteryData {
     }
 }
 
-#[derive(Clone,PartialEq,Eq,Debug,Hash)]
+#[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub enum BatteryData_BatteryStatus {
     CHARGING = 0,
     DISCHARGING = 1,
@@ -951,7 +1074,7 @@ impl ::protobuf::ProtobufEnum for BatteryData_BatteryStatus {
         match value {
             0 => ::std::option::Option::Some(BatteryData_BatteryStatus::CHARGING),
             1 => ::std::option::Option::Some(BatteryData_BatteryStatus::DISCHARGING),
-            _ => ::std::option::Option::None
+            _ => ::std::option::Option::None,
         }
     }
 
@@ -964,15 +1087,18 @@ impl ::protobuf::ProtobufEnum for BatteryData_BatteryStatus {
     }
 
     fn enum_descriptor_static() -> &'static ::protobuf::reflect::EnumDescriptor {
-        static descriptor: ::protobuf::rt::LazyV2<::protobuf::reflect::EnumDescriptor> = ::protobuf::rt::LazyV2::INIT;
+        static descriptor: ::protobuf::rt::LazyV2<::protobuf::reflect::EnumDescriptor> =
+            ::protobuf::rt::LazyV2::INIT;
         descriptor.get(|| {
-            ::protobuf::reflect::EnumDescriptor::new_pb_name::<BatteryData_BatteryStatus>("BatteryData.BatteryStatus", file_descriptor_proto())
+            ::protobuf::reflect::EnumDescriptor::new_pb_name::<BatteryData_BatteryStatus>(
+                "BatteryData.BatteryStatus",
+                file_descriptor_proto(),
+            )
         })
     }
 }
 
-impl ::std::marker::Copy for BatteryData_BatteryStatus {
-}
+impl ::std::marker::Copy for BatteryData_BatteryStatus {}
 
 impl ::std::default::Default for BatteryData_BatteryStatus {
     fn default() -> Self {
@@ -986,7 +1112,7 @@ impl ::protobuf::reflect::ProtobufValue for BatteryData_BatteryStatus {
     }
 }
 
-#[derive(Clone,PartialEq,Eq,Debug,Hash)]
+#[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub enum BatteryData_DNotifierPowerState {
     DNOTIFIER_POWER_STATE_D1 = 0,
     DNOTIFIER_POWER_STATE_D2 = 1,
@@ -1002,12 +1128,22 @@ impl ::protobuf::ProtobufEnum for BatteryData_DNotifierPowerState {
 
     fn from_i32(value: i32) -> ::std::option::Option<BatteryData_DNotifierPowerState> {
         match value {
-            0 => ::std::option::Option::Some(BatteryData_DNotifierPowerState::DNOTIFIER_POWER_STATE_D1),
-            1 => ::std::option::Option::Some(BatteryData_DNotifierPowerState::DNOTIFIER_POWER_STATE_D2),
-            2 => ::std::option::Option::Some(BatteryData_DNotifierPowerState::DNOTIFIER_POWER_STATE_D3),
-            3 => ::std::option::Option::Some(BatteryData_DNotifierPowerState::DNOTIFIER_POWER_STATE_D4),
-            4 => ::std::option::Option::Some(BatteryData_DNotifierPowerState::DNOTIFIER_POWER_STATE_D5),
-            _ => ::std::option::Option::None
+            0 => ::std::option::Option::Some(
+                BatteryData_DNotifierPowerState::DNOTIFIER_POWER_STATE_D1,
+            ),
+            1 => ::std::option::Option::Some(
+                BatteryData_DNotifierPowerState::DNOTIFIER_POWER_STATE_D2,
+            ),
+            2 => ::std::option::Option::Some(
+                BatteryData_DNotifierPowerState::DNOTIFIER_POWER_STATE_D3,
+            ),
+            3 => ::std::option::Option::Some(
+                BatteryData_DNotifierPowerState::DNOTIFIER_POWER_STATE_D4,
+            ),
+            4 => ::std::option::Option::Some(
+                BatteryData_DNotifierPowerState::DNOTIFIER_POWER_STATE_D5,
+            ),
+            _ => ::std::option::Option::None,
         }
     }
 
@@ -1023,15 +1159,18 @@ impl ::protobuf::ProtobufEnum for BatteryData_DNotifierPowerState {
     }
 
     fn enum_descriptor_static() -> &'static ::protobuf::reflect::EnumDescriptor {
-        static descriptor: ::protobuf::rt::LazyV2<::protobuf::reflect::EnumDescriptor> = ::protobuf::rt::LazyV2::INIT;
+        static descriptor: ::protobuf::rt::LazyV2<::protobuf::reflect::EnumDescriptor> =
+            ::protobuf::rt::LazyV2::INIT;
         descriptor.get(|| {
-            ::protobuf::reflect::EnumDescriptor::new_pb_name::<BatteryData_DNotifierPowerState>("BatteryData.DNotifierPowerState", file_descriptor_proto())
+            ::protobuf::reflect::EnumDescriptor::new_pb_name::<BatteryData_DNotifierPowerState>(
+                "BatteryData.DNotifierPowerState",
+                file_descriptor_proto(),
+            )
         })
     }
 }
 
-impl ::std::marker::Copy for BatteryData_DNotifierPowerState {
-}
+impl ::std::marker::Copy for BatteryData_DNotifierPowerState {}
 
 impl ::std::default::Default for BatteryData_DNotifierPowerState {
     fn default() -> Self {
@@ -1045,7 +1184,7 @@ impl ::protobuf::reflect::ProtobufValue for BatteryData_DNotifierPowerState {
     }
 }
 
-#[derive(PartialEq,Clone,Default)]
+#[derive(PartialEq, Clone, Default)]
 pub struct InitData {
     // message fields
     pub cpu_default_frequency: ::std::vec::Vec<i64>,
@@ -1067,7 +1206,6 @@ impl InitData {
     }
 
     // repeated int64 cpu_default_frequency = 1;
-
 
     pub fn get_cpu_default_frequency(&self) -> &[i64] {
         &self.cpu_default_frequency
@@ -1093,9 +1231,10 @@ impl InitData {
 
     // .resourced_bridge.BatteryData battery_init = 2;
 
-
     pub fn get_battery_init(&self) -> &BatteryData {
-        self.battery_init.as_ref().unwrap_or_else(|| <BatteryData as ::protobuf::Message>::default_instance())
+        self.battery_init
+            .as_ref()
+            .unwrap_or_else(|| <BatteryData as ::protobuf::Message>::default_instance())
     }
     pub fn clear_battery_init(&mut self) {
         self.battery_init.clear();
@@ -1121,7 +1260,9 @@ impl InitData {
 
     // Take field
     pub fn take_battery_init(&mut self) -> BatteryData {
-        self.battery_init.take().unwrap_or_else(|| BatteryData::new())
+        self.battery_init
+            .take()
+            .unwrap_or_else(|| BatteryData::new())
     }
 }
 
@@ -1131,23 +1272,39 @@ impl ::protobuf::Message for InitData {
             if !v.is_initialized() {
                 return false;
             }
-        };
+        }
         true
     }
 
-    fn merge_from(&mut self, is: &mut ::protobuf::CodedInputStream<'_>) -> ::protobuf::ProtobufResult<()> {
+    fn merge_from(
+        &mut self,
+        is: &mut ::protobuf::CodedInputStream<'_>,
+    ) -> ::protobuf::ProtobufResult<()> {
         while !is.eof()? {
             let (field_number, wire_type) = is.read_tag_unpack()?;
             match field_number {
                 1 => {
-                    ::protobuf::rt::read_repeated_int64_into(wire_type, is, &mut self.cpu_default_frequency)?;
-                },
+                    ::protobuf::rt::read_repeated_int64_into(
+                        wire_type,
+                        is,
+                        &mut self.cpu_default_frequency,
+                    )?;
+                }
                 2 => {
-                    ::protobuf::rt::read_singular_message_into(wire_type, is, &mut self.battery_init)?;
-                },
+                    ::protobuf::rt::read_singular_message_into(
+                        wire_type,
+                        is,
+                        &mut self.battery_init,
+                    )?;
+                }
                 _ => {
-                    ::protobuf::rt::read_unknown_or_skip_group(field_number, wire_type, is, self.mut_unknown_fields())?;
-                },
+                    ::protobuf::rt::read_unknown_or_skip_group(
+                        field_number,
+                        wire_type,
+                        is,
+                        self.mut_unknown_fields(),
+                    )?;
+                }
             };
         }
         ::std::result::Result::Ok(())
@@ -1158,8 +1315,9 @@ impl ::protobuf::Message for InitData {
     fn compute_size(&self) -> u32 {
         let mut my_size = 0;
         for value in &self.cpu_default_frequency {
-            my_size += ::protobuf::rt::value_size(1, *value, ::protobuf::wire_format::WireTypeVarint);
-        };
+            my_size +=
+                ::protobuf::rt::value_size(1, *value, ::protobuf::wire_format::WireTypeVarint);
+        }
         if let Some(ref v) = self.battery_init.as_ref() {
             let len = v.compute_size();
             my_size += 1 + ::protobuf::rt::compute_raw_varint32_size(len) + len;
@@ -1169,10 +1327,13 @@ impl ::protobuf::Message for InitData {
         my_size
     }
 
-    fn write_to_with_cached_sizes(&self, os: &mut ::protobuf::CodedOutputStream<'_>) -> ::protobuf::ProtobufResult<()> {
+    fn write_to_with_cached_sizes(
+        &self,
+        os: &mut ::protobuf::CodedOutputStream<'_>,
+    ) -> ::protobuf::ProtobufResult<()> {
         for v in &self.cpu_default_frequency {
             os.write_int64(1, *v)?;
-        };
+        }
         if let Some(ref v) = self.battery_init.as_ref() {
             os.write_tag(2, ::protobuf::wire_format::WireTypeLengthDelimited)?;
             os.write_raw_varint32(v.get_cached_size())?;
@@ -1213,23 +1374,32 @@ impl ::protobuf::Message for InitData {
     }
 
     fn descriptor_static() -> &'static ::protobuf::reflect::MessageDescriptor {
-        static descriptor: ::protobuf::rt::LazyV2<::protobuf::reflect::MessageDescriptor> = ::protobuf::rt::LazyV2::INIT;
+        static descriptor: ::protobuf::rt::LazyV2<::protobuf::reflect::MessageDescriptor> =
+            ::protobuf::rt::LazyV2::INIT;
         descriptor.get(|| {
             let mut fields = ::std::vec::Vec::new();
-            fields.push(::protobuf::reflect::accessor::make_vec_accessor::<_, ::protobuf::types::ProtobufTypeInt64>(
+            fields.push(::protobuf::reflect::accessor::make_vec_accessor::<
+                _,
+                ::protobuf::types::ProtobufTypeInt64,
+            >(
                 "cpu_default_frequency",
-                |m: &InitData| { &m.cpu_default_frequency },
-                |m: &mut InitData| { &mut m.cpu_default_frequency },
+                |m: &InitData| &m.cpu_default_frequency,
+                |m: &mut InitData| &mut m.cpu_default_frequency,
             ));
-            fields.push(::protobuf::reflect::accessor::make_singular_ptr_field_accessor::<_, ::protobuf::types::ProtobufTypeMessage<BatteryData>>(
-                "battery_init",
-                |m: &InitData| { &m.battery_init },
-                |m: &mut InitData| { &mut m.battery_init },
-            ));
+            fields.push(
+                ::protobuf::reflect::accessor::make_singular_ptr_field_accessor::<
+                    _,
+                    ::protobuf::types::ProtobufTypeMessage<BatteryData>,
+                >(
+                    "battery_init",
+                    |m: &InitData| &m.battery_init,
+                    |m: &mut InitData| &mut m.battery_init,
+                ),
+            );
             ::protobuf::reflect::MessageDescriptor::new_pb_name::<InitData>(
                 "InitData",
                 fields,
-                file_descriptor_proto()
+                file_descriptor_proto(),
             )
         })
     }
@@ -1260,7 +1430,7 @@ impl ::protobuf::reflect::ProtobufValue for InitData {
     }
 }
 
-#[derive(PartialEq,Clone,Default)]
+#[derive(PartialEq, Clone, Default)]
 pub struct EmptyMessage {
     // special fields
     pub unknown_fields: ::protobuf::UnknownFields,
@@ -1284,13 +1454,21 @@ impl ::protobuf::Message for EmptyMessage {
         true
     }
 
-    fn merge_from(&mut self, is: &mut ::protobuf::CodedInputStream<'_>) -> ::protobuf::ProtobufResult<()> {
+    fn merge_from(
+        &mut self,
+        is: &mut ::protobuf::CodedInputStream<'_>,
+    ) -> ::protobuf::ProtobufResult<()> {
         while !is.eof()? {
             let (field_number, wire_type) = is.read_tag_unpack()?;
             match field_number {
                 _ => {
-                    ::protobuf::rt::read_unknown_or_skip_group(field_number, wire_type, is, self.mut_unknown_fields())?;
-                },
+                    ::protobuf::rt::read_unknown_or_skip_group(
+                        field_number,
+                        wire_type,
+                        is,
+                        self.mut_unknown_fields(),
+                    )?;
+                }
             };
         }
         ::std::result::Result::Ok(())
@@ -1305,7 +1483,10 @@ impl ::protobuf::Message for EmptyMessage {
         my_size
     }
 
-    fn write_to_with_cached_sizes(&self, os: &mut ::protobuf::CodedOutputStream<'_>) -> ::protobuf::ProtobufResult<()> {
+    fn write_to_with_cached_sizes(
+        &self,
+        os: &mut ::protobuf::CodedOutputStream<'_>,
+    ) -> ::protobuf::ProtobufResult<()> {
         os.write_unknown_fields(self.get_unknown_fields())?;
         ::std::result::Result::Ok(())
     }
@@ -1341,13 +1522,14 @@ impl ::protobuf::Message for EmptyMessage {
     }
 
     fn descriptor_static() -> &'static ::protobuf::reflect::MessageDescriptor {
-        static descriptor: ::protobuf::rt::LazyV2<::protobuf::reflect::MessageDescriptor> = ::protobuf::rt::LazyV2::INIT;
+        static descriptor: ::protobuf::rt::LazyV2<::protobuf::reflect::MessageDescriptor> =
+            ::protobuf::rt::LazyV2::INIT;
         descriptor.get(|| {
             let fields = ::std::vec::Vec::new();
             ::protobuf::reflect::MessageDescriptor::new_pb_name::<EmptyMessage>(
                 "EmptyMessage",
                 fields,
-                file_descriptor_proto()
+                file_descriptor_proto(),
             )
         })
     }
@@ -1410,14 +1592,14 @@ static file_descriptor_proto_data: &'static [u8] = b"\
     \xf8\x01\x01b\x06proto3\
 ";
 
-static file_descriptor_proto_lazy: ::protobuf::rt::LazyV2<::protobuf::descriptor::FileDescriptorProto> = ::protobuf::rt::LazyV2::INIT;
+static file_descriptor_proto_lazy: ::protobuf::rt::LazyV2<
+    ::protobuf::descriptor::FileDescriptorProto,
+> = ::protobuf::rt::LazyV2::INIT;
 
 fn parse_descriptor_proto() -> ::protobuf::descriptor::FileDescriptorProto {
     ::protobuf::Message::parse_from_bytes(file_descriptor_proto_data).unwrap()
 }
 
 pub fn file_descriptor_proto() -> &'static ::protobuf::descriptor::FileDescriptorProto {
-    file_descriptor_proto_lazy.get(|| {
-        parse_descriptor_proto()
-    })
+    file_descriptor_proto_lazy.get(|| parse_descriptor_proto())
 }
