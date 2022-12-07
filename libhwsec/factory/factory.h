@@ -8,6 +8,7 @@
 #include <memory>
 #include <utility>
 
+#include "libhwsec/frontend/bootlockbox/frontend.h"
 #include "libhwsec/frontend/chaps/frontend.h"
 #include "libhwsec/frontend/client/frontend.h"
 #include "libhwsec/frontend/cryptohome/frontend.h"
@@ -35,6 +36,7 @@ class Factory {
   virtual std::unique_ptr<U2fFrontend> GetU2fFrontend() = 0;
   virtual std::unique_ptr<U2fVendorFrontend> GetU2fVendorFrontend() = 0;
   virtual std::unique_ptr<OpteePluginFrontend> GetOpteePluginFrontend() = 0;
+  virtual std::unique_ptr<BootLockboxFrontend> GetBootLockboxFrontend() = 0;
 };
 
 }  // namespace hwsec

@@ -47,6 +47,10 @@ class MockFactory : public Factory {
               GetOpteePluginFrontend,
               (),
               (override));
+  MOCK_METHOD(std::unique_ptr<BootLockboxFrontend>,
+              GetBootLockboxFrontend,
+              (),
+              (override));
 };
 
 }  // namespace hwsec

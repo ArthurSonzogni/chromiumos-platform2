@@ -8,6 +8,7 @@
 #include <utility>
 
 #include "libhwsec/backend/backend.h"
+#include "libhwsec/frontend/bootlockbox/frontend_impl.h"
 #include "libhwsec/frontend/chaps/frontend_impl.h"
 #include "libhwsec/frontend/client/frontend_impl.h"
 #include "libhwsec/frontend/cryptohome/frontend_impl.h"
@@ -61,6 +62,10 @@ std::unique_ptr<U2fVendorFrontend> FactoryImpl::GetU2fVendorFrontend() {
 
 std::unique_ptr<OpteePluginFrontend> FactoryImpl::GetOpteePluginFrontend() {
   return std::make_unique<OpteePluginFrontendImpl>(middleware_.Derive());
+}
+
+std::unique_ptr<BootLockboxFrontend> FactoryImpl::GetBootLockboxFrontend() {
+  return std::make_unique<BootLockboxFrontendImpl>(middleware_.Derive());
 }
 
 }  // namespace hwsec

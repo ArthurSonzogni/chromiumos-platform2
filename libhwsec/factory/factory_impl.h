@@ -9,6 +9,7 @@
 #include <utility>
 
 #include "libhwsec/factory/factory.h"
+#include "libhwsec/frontend/bootlockbox/frontend.h"
 #include "libhwsec/frontend/chaps/frontend.h"
 #include "libhwsec/frontend/client/frontend.h"
 #include "libhwsec/frontend/cryptohome/frontend.h"
@@ -42,6 +43,7 @@ class HWSEC_EXPORT FactoryImpl : public Factory {
   std::unique_ptr<U2fFrontend> GetU2fFrontend() override;
   std::unique_ptr<U2fVendorFrontend> GetU2fVendorFrontend() override;
   std::unique_ptr<OpteePluginFrontend> GetOpteePluginFrontend() override;
+  std::unique_ptr<BootLockboxFrontend> GetBootLockboxFrontend() override;
 
  protected:
   std::unique_ptr<MiddlewareOwner> default_middleware_;
