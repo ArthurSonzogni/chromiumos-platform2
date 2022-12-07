@@ -74,6 +74,7 @@ class PortManager : public UdevMonitor::TypecObserver,
   FRIEND_TEST(PortManagerTest, MetricsReportingWaitsForPD);
   FRIEND_TEST(PortManagerTest, MetricsReportingOnMultiplePorts);
   FRIEND_TEST(PortManagerTest, MetricsReportingCancelled);
+  FRIEND_TEST(PortManagerTest, PartnerPdDeviceAddRemove);
   FRIEND_TEST(PortManagerNotificationTest, ModeEntryUSB4NotifyThunderboltDp);
   FRIEND_TEST(PortManagerNotificationTest, ModeEntryTBTNotifyThunderboltOnly);
   FRIEND_TEST(PortManagerNotificationTest, ModeEntryDpAltModeNoNotifications);

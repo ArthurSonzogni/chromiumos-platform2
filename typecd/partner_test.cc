@@ -214,6 +214,7 @@ TEST_F(PartnerTest, PowerProfile) {
   ASSERT_TRUE(base::WriteFile(supports_path, val.c_str(), val.length()));
 
   partner = std::make_unique<Partner>(partner_path);
+  partner->AddPowerProfile();
   EXPECT_TRUE(partner->power_profile_);
 
   partner->RemovePowerProfile();

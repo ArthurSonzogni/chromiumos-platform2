@@ -135,8 +135,27 @@ void PortManager::OnCableAddedOrRemoved(const base::FilePath& path,
 
 void PortManager::OnPdDeviceAddedOrRemoved(const base::FilePath& path,
                                            bool added) {
-  LOG(INFO) << "PD device event at: " << path;
-  // TODO(b/236280430): Invoke PD profile creation/deletion from here.
+  auto device_path = path.Append("device");
+  base::FilePath target;
+  if (!base::ReadSymbolicLink(device_path, &target)) {
+    PLOG(ERROR) << "Failed to read symlink at path: " << device_path;
+    return;
+  }
+
+  int port_num;
+  if (!RE2::FullMatch(target.BaseName().value(), kPartnerRegex, &port_num))
+    return;
+
+  auto it = ports_.find(port_num);
+  if (it == ports_.end()) {
+    LOG(WARNING)
+        << "Partner PD device modification attempted for non-existent port "
+        << port_num;
+    return;
+  }
+
+  auto port = it->second.get();
+  port->AddRemovePartnerPowerProfile(added);
 }
 
 void PortManager::OnCablePlugAdded(const base::FilePath& path, int port_num) {

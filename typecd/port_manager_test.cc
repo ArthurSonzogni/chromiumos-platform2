@@ -6,6 +6,7 @@
 
 #include <string>
 
+#include <base/files/scoped_temp_dir.h>
 #include <base/test/task_environment.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -17,6 +18,10 @@ using ::testing::_;
 using ::testing::Assign;
 using ::testing::Return;
 using ::testing::Sequence;
+
+namespace {
+constexpr char kInvalidPdPath[] = "asdfsadv98))&&%%%";
+}  // namespace
 
 namespace typecd {
 
@@ -763,6 +768,46 @@ TEST_F(PortManagerTest, MetricsReportingCancelled) {
   task_environment.FastForwardBy(base::Seconds(5));
   EXPECT_TRUE(port0_metrics_called);
   EXPECT_FALSE(port1_metrics_called);
+}
+
+// Test that a Port's Partner PD device addition and removal functions
+// get called (or not) appropriately.
+TEST_F(PortManagerTest, PartnerPdDeviceAddRemove) {
+  // Set up the fake sysfs paths for the PD object and it's symlink.
+  base::ScopedTempDir temp_dir;
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+  auto temp_dir_path = temp_dir.GetPath();
+
+  auto pd_path = temp_dir_path.Append("pd0");
+  ASSERT_TRUE(base::CreateDirectory(pd_path));
+
+  // Create the partner object directory.
+  auto partner_path = temp_dir_path.Append("port0-partner");
+  ASSERT_TRUE(base::CreateDirectory(pd_path));
+
+  // Create the device symlink from PD object to partner.
+  auto pd_symlink_path = pd_path.Append("device");
+  ASSERT_TRUE(base::CreateSymbolicLink(partner_path, pd_symlink_path));
+
+  auto port_manager = std::make_unique<PortManager>();
+  // Set the MockPort index to 0, since that's what we're going to link the
+  // Partner PD object to.
+  auto port = std::make_unique<MockPort>(base::FilePath("port0"), 0);
+  Sequence s1;
+  EXPECT_CALL(*port, AddRemovePartnerPowerProfile(true))
+      .Times(1)
+      .InSequence(s1);
+  EXPECT_CALL(*port, AddRemovePartnerPowerProfile(false))
+      .Times(1)
+      .InSequence(s1);
+  port_manager->ports_.insert(
+      std::pair<int, std::unique_ptr<Port>>(0, std::move(port)));
+
+  port_manager->OnPdDeviceAddedOrRemoved(pd_path, true);
+  port_manager->OnPdDeviceAddedOrRemoved(pd_path, false);
+
+  // Add a call with an invalid file path.
+  port_manager->OnPdDeviceAddedOrRemoved(base::FilePath(kInvalidPdPath), true);
 }
 
 }  // namespace typecd

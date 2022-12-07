@@ -42,7 +42,6 @@ Partner::Partner(const base::FilePath& syspath)
   // This needs to be called explicitly since it's not in the base Peripheral
   // class.
   UpdateSupportsPD();
-  AddPowerProfile();
   for (auto path = iter.Next(); !path.empty(); path = iter.Next())
     AddAltMode(path);
 
