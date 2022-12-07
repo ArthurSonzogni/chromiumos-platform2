@@ -15,9 +15,7 @@ namespace rmad {
 
 class MockSensorCalibrationUtils : public SensorCalibrationUtils {
  public:
-  explicit MockSensorCalibrationUtils(const std::string& location,
-                                      const std::string& name)
-      : SensorCalibrationUtils(location, name) {}
+  MockSensorCalibrationUtils() = default;
   ~MockSensorCalibrationUtils() override = default;
 
   MOCK_METHOD(void,

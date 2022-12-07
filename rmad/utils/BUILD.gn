@@ -22,7 +22,6 @@ pkg_config("target_defaults") {
 
 source_set("libutils") {
   sources = [
-    "accelerometer_calibration_utils_impl.cc",
     "calibration_utils.cc",
     "cbi_utils_impl.cc",
     "cmd_utils_impl.cc",
@@ -34,12 +33,12 @@ source_set("libutils") {
     "dbus_utils.cc",
     "ec_utils_impl.cc",
     "flashrom_utils_impl.cc",
-    "gyroscope_calibration_utils_impl.cc",
     "iio_ec_sensor_utils_impl.cc",
     "iio_sensor_probe_utils_impl.cc",
     "json_store.cc",
     "mojo_service_utils_impl.cc",
     "regions_utils_impl.cc",
+    "sensor_calibration_utils_impl.cc",
     "ssfc_utils_impl.cc",
     "sys_utils_impl.cc",
     "type_conversions.cc",
@@ -60,7 +59,6 @@ if (use.test) {
 
   source_set("libutils_test") {
     sources = [
-      "accelerometer_calibration_utils_test.cc",
       "cbi_utils_test.cc",
       "cmd_utils_test.cc",
       "component_utils_test.cc",
@@ -68,12 +66,12 @@ if (use.test) {
       "cros_config_utils_test.cc",
       "dbus_utils_test.cc",
       "flashrom_utils_test.cc",
-      "gyroscope_calibration_utils_test.cc",
       "iio_ec_sensor_utils_test.cc",
       "iio_sensor_probe_utils_test.cc",
       "json_store_test.cc",
       "mojo_service_utils_test.cc",
       "regions_utils_test.cc",
+      "sensor_calibration_utils_test.cc",
       "ssfc_utils_test.cc",
       "sys_utils_test.cc",
       "type_conversions_test.cc",

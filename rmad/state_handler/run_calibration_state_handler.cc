@@ -13,10 +13,9 @@
 #include <base/task/thread_pool.h>
 #include <base/threading/thread_task_runner_handle.h>
 
-#include "rmad/utils/accelerometer_calibration_utils_impl.h"
 #include "rmad/utils/calibration_utils.h"
-#include "rmad/utils/gyroscope_calibration_utils_impl.h"
 #include "rmad/utils/mojo_service_utils.h"
+#include "rmad/utils/sensor_calibration_utils_impl.h"
 
 namespace rmad {
 
@@ -29,14 +28,21 @@ RunCalibrationStateHandler::RunCalibrationStateHandler(
   mojo_service_ = base::MakeRefCounted<MojoServiceUtilsImpl>();
   vpd_utils_ = std::make_unique<VpdUtilsImpl>();
   sensor_calibration_utils_map_[RMAD_COMPONENT_BASE_ACCELEROMETER] =
-      std::make_unique<AccelerometerCalibrationUtilsImpl>(mojo_service_,
-                                                          "base");
+      std::make_unique<SensorCalibrationUtilsImpl>(
+          mojo_service_, SensorCalibrationUtilsImpl::kBaseLocationName,
+          SensorCalibrationUtilsImpl::kAccelSensorName);
   sensor_calibration_utils_map_[RMAD_COMPONENT_LID_ACCELEROMETER] =
-      std::make_unique<AccelerometerCalibrationUtilsImpl>(mojo_service_, "lid");
+      std::make_unique<SensorCalibrationUtilsImpl>(
+          mojo_service_, SensorCalibrationUtilsImpl::kLidLocationName,
+          SensorCalibrationUtilsImpl::kAccelSensorName);
   sensor_calibration_utils_map_[RMAD_COMPONENT_BASE_GYROSCOPE] =
-      std::make_unique<GyroscopeCalibrationUtilsImpl>(mojo_service_, "base");
+      std::make_unique<SensorCalibrationUtilsImpl>(
+          mojo_service_, SensorCalibrationUtilsImpl::kBaseLocationName,
+          SensorCalibrationUtilsImpl::kGyroSensorName);
   sensor_calibration_utils_map_[RMAD_COMPONENT_LID_GYROSCOPE] =
-      std::make_unique<GyroscopeCalibrationUtilsImpl>(mojo_service_, "lid");
+      std::make_unique<SensorCalibrationUtilsImpl>(
+          mojo_service_, SensorCalibrationUtilsImpl::kLidLocationName,
+          SensorCalibrationUtilsImpl::kGyroSensorName);
 }
 
 RunCalibrationStateHandler::RunCalibrationStateHandler(

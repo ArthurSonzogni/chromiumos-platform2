@@ -15,7 +15,6 @@
 #include <gtest/gtest.h>
 
 #include "rmad/state_handler/state_handler_test_common.h"
-#include "rmad/utils/calibration_utils.h"
 #include "rmad/utils/mock_sensor_calibration_utils.h"
 #include "rmad/utils/mock_vpd_utils.h"
 
@@ -74,14 +73,13 @@ class RunCalibrationStateHandlerTest : public StateHandlerTest {
       const std::vector<double>& lid_gyro_progress) {
     // Mock |SensorCalibrationUtils|.
     std::unique_ptr<StrictMock<MockSensorCalibrationUtils>> base_acc_utils =
-        std::make_unique<StrictMock<MockSensorCalibrationUtils>>("base", "acc");
+        std::make_unique<StrictMock<MockSensorCalibrationUtils>>();
     std::unique_ptr<StrictMock<MockSensorCalibrationUtils>> lid_acc_utils =
-        std::make_unique<StrictMock<MockSensorCalibrationUtils>>("lid", "acc");
+        std::make_unique<StrictMock<MockSensorCalibrationUtils>>();
     std::unique_ptr<StrictMock<MockSensorCalibrationUtils>> base_gyro_utils =
-        std::make_unique<StrictMock<MockSensorCalibrationUtils>>("base",
-                                                                 "gyro");
+        std::make_unique<StrictMock<MockSensorCalibrationUtils>>();
     std::unique_ptr<StrictMock<MockSensorCalibrationUtils>> lid_gyro_utils =
-        std::make_unique<StrictMock<MockSensorCalibrationUtils>>("lid", "gyro");
+        std::make_unique<StrictMock<MockSensorCalibrationUtils>>();
 
     expected_progresses_[RMAD_COMPONENT_BASE_ACCELEROMETER] = base_acc_progress;
     expected_progresses_[RMAD_COMPONENT_LID_ACCELEROMETER] = lid_acc_progress;
