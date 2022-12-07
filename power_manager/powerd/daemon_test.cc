@@ -55,6 +55,7 @@
 #include "power_manager/powerd/system/thermal/thermal_device.h"
 #include "power_manager/powerd/system/udev_stub.h"
 #include "power_manager/powerd/system/user_proximity_watcher_stub.h"
+#include "power_manager/powerd/testing/test_environment.h"
 #include "power_manager/proto_bindings/backlight.pb.h"
 #include "power_manager/proto_bindings/switch_states.pb.h"
 
@@ -70,7 +71,7 @@ class MockChargeControlSetCommand : public ec::ChargeControlSetCommand {
   MOCK_METHOD(bool, Run, (int fd));
 };
 
-class DaemonTest : public ::testing::Test, public DaemonDelegate {
+class DaemonTest : public TestEnvironment, public DaemonDelegate {
  public:
   // The hardcoded constants here are arbitrary and not used by Daemon.
   DaemonTest()

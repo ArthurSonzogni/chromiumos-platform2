@@ -563,9 +563,9 @@ if (use.test) {
 
   executable("power_manager_daemon_test") {
     sources = [
-      "common/testrunner.cc",
       "powerd/daemon_test.cc",
       "powerd/metrics_collector_test.cc",
+      "powerd/testing/test_environment.cc",
     ]
     configs += [
       "//common-mk:test",
@@ -580,6 +580,7 @@ if (use.test) {
       ":libsystem_stub",
       ":libutil",
       ":libutil_test",
+      "//common-mk/testrunner",
     ]
   }
 }

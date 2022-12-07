@@ -34,17 +34,17 @@
 #include "power_manager/powerd/policy/backlight_controller_stub.h"
 #include "power_manager/powerd/policy/suspender.h"
 #include "power_manager/powerd/system/power_supply.h"
+#include "power_manager/powerd/testing/test_environment.h"
 
 using ::testing::_;
 using ::testing::AnyNumber;
 using ::testing::Mock;
 using ::testing::Return;
 using ::testing::StrictMock;
-using ::testing::Test;
 
 namespace power_manager::metrics {
 
-class MetricsCollectorTest : public Test {
+class MetricsCollectorTest : public TestEnvironment {
  public:
   MetricsCollectorTest()
       : metrics_lib_(new StrictMock<MetricsLibraryMock>),
