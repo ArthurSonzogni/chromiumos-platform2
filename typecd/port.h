@@ -77,6 +77,9 @@ class Port {
   // Add/remove an alternate mode for the partner.
   void AddRemovePartnerAltMode(const base::FilePath& path, bool added);
 
+  // Add/remove an alternate mode for the partner.
+  void AddRemovePartnerPowerProfile(bool added);
+
   void AddCableAltMode(const base::FilePath& path);
 
   void PartnerChanged();

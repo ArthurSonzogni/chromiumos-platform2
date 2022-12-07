@@ -115,6 +115,20 @@ void Port::AddRemovePartnerAltMode(const base::FilePath& path, bool added) {
   }
 }
 
+void Port::AddRemovePartnerPowerProfile(bool added) {
+  if (!partner_) {
+    LOG(WARNING)
+        << "Trying to modify power profile for non-existent partner on port "
+        << port_num_;
+    return;
+  }
+
+  if (added)
+    partner_->AddPowerProfile();
+  else
+    partner_->RemovePowerProfile();
+}
+
 void Port::AddCableAltMode(const base::FilePath& path) {
   if (!cable_) {
     LOG(WARNING) << "Trying to add alt mode for non-existent cable on port "
