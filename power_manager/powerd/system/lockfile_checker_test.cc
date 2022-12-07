@@ -15,6 +15,7 @@
 #include <gtest/gtest.h>
 
 #include "power_manager/common/util.h"
+#include "power_manager/powerd/testing/test_environment.h"
 
 namespace power_manager::system {
 
@@ -29,7 +30,7 @@ std::string JoinPaths(const std::vector<base::FilePath>& paths) {
 
 }  // namespace
 
-class LockfileCheckerTest : public ::testing::Test {
+class LockfileCheckerTest : public TestEnvironment {
  public:
   LockfileCheckerTest() {
     CHECK(temp_dir_.CreateUniqueTempDir());

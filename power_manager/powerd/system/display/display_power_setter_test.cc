@@ -19,12 +19,13 @@
 #include <gmock/gmock.h>
 
 #include "power_manager/powerd/system/dbus_wrapper_stub.h"
+#include "power_manager/powerd/testing/test_environment.h"
 
 namespace power_manager {
 namespace system {
 namespace {
 
-class DisplayPowerSetterTest : public testing::Test {
+class DisplayPowerSetterTest : public TestEnvironment {
  public:
   DisplayPowerSetterTest() {
     display_service_proxy_ = dbus_wrapper_.GetObjectProxy(

@@ -9,6 +9,7 @@
 #include "gtest/gtest.h"
 
 #include "power_manager/powerd/system/fake_acpi_wakeup_file.h"
+#include "power_manager/powerd/testing/test_environment.h"
 
 namespace power_manager::system {
 
@@ -35,7 +36,7 @@ const char* const kFileContents[] = {
 
 }  // namespace
 
-class AcpiWakeupHelperTest : public ::testing::Test {
+class AcpiWakeupHelperTest : public TestEnvironment {
  protected:
   void SetUp() override {
     auto file = std::make_unique<FakeAcpiWakeupFile>();

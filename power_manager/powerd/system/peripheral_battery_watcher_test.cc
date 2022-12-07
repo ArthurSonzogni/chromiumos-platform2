@@ -19,6 +19,7 @@
 #include "power_manager/powerd/system/dbus_wrapper_stub.h"
 #include "power_manager/powerd/system/mock_bluez_battery_provider.h"
 #include "power_manager/powerd/system/udev_stub.h"
+#include "power_manager/powerd/testing/test_environment.h"
 #include "power_manager/proto_bindings/peripheral_battery_status.pb.h"
 
 namespace power_manager::system {
@@ -78,7 +79,7 @@ class TestWrapper : public DBusWrapperStub {
 
 }  // namespace
 
-class PeripheralBatteryWatcherTest : public ::testing::Test {
+class PeripheralBatteryWatcherTest : public TestEnvironment {
  public:
   PeripheralBatteryWatcherTest() = default;
   PeripheralBatteryWatcherTest(const PeripheralBatteryWatcherTest&) = delete;

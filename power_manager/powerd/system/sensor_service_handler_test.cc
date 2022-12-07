@@ -15,6 +15,7 @@
 
 #include "power_manager/powerd/system/fake_light.h"
 #include "power_manager/powerd/system/fake_sensor_service.h"
+#include "power_manager/powerd/testing/test_environment.h"
 
 namespace power_manager::system {
 
@@ -45,7 +46,7 @@ class FakeObserver : public SensorServiceHandlerObserver {
 
 }  // namespace
 
-class SensorServiceHandlerTest : public ::testing::Test {
+class SensorServiceHandlerTest : public TestEnvironment {
  public:
   SensorServiceHandlerTest(const SensorServiceHandlerTest&) = delete;
   SensorServiceHandlerTest& operator=(const SensorServiceHandlerTest&) = delete;

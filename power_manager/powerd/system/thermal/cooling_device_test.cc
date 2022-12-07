@@ -21,6 +21,7 @@
 #include "power_manager/common/test_main_loop_runner.h"
 #include "power_manager/powerd/system/thermal/device_thermal_state.h"
 #include "power_manager/powerd/system/thermal/thermal_device_observer.h"
+#include "power_manager/powerd/testing/test_environment.h"
 
 namespace power_manager::system {
 
@@ -57,7 +58,7 @@ class TestObserver : public ThermalDeviceObserver {
 
 }  // namespace
 
-class CoolingDeviceTest : public ::testing::Test {
+class CoolingDeviceTest : public TestEnvironment {
  public:
   CoolingDeviceTest() = default;
   CoolingDeviceTest(const CoolingDeviceTest&) = delete;

@@ -20,6 +20,7 @@
 
 #include "power_manager/common/metrics_constants.h"
 #include "power_manager/common/metrics_sender_stub.h"
+#include "power_manager/powerd/testing/test_environment.h"
 
 namespace power_manager::system {
 
@@ -123,7 +124,7 @@ class TestDelegate : public ExternalDisplay::Delegate {
 
 }  // namespace
 
-class ExternalDisplayTest : public testing::Test {
+class ExternalDisplayTest : public TestEnvironment {
  public:
   ExternalDisplayTest()
       : delegate_(new TestDelegate),

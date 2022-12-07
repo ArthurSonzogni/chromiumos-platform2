@@ -17,6 +17,7 @@
 #include <gtest/gtest.h>
 
 #include "power_manager/common/power_constants.h"
+#include "power_manager/powerd/testing/test_environment.h"
 
 namespace power_manager::system {
 namespace {
@@ -30,7 +31,8 @@ void CreateDirectoryAndWriteFile(const base::FilePath& sys_path,
 }
 
 }  // namespace
-class WakeupDeviceTest : public testing::Test {
+
+class WakeupDeviceTest : public TestEnvironment {
  public:
   WakeupDeviceTest() {
     CHECK(temp_dir_.CreateUniqueTempDir());

@@ -6,6 +6,7 @@
 #define POWER_MANAGER_POWERD_TESTING_TEST_ENVIRONMENT_H_
 
 #include <base/test/task_environment.h>
+#include <mojo/core/embedder/scoped_ipc_support.h>
 
 #include <gtest/gtest.h>
 
@@ -26,6 +27,15 @@ class TestEnvironment : public ::testing::Test {
 
  private:
   base::test::SingleThreadTaskEnvironment task_environment_;
+};
+
+// A test fixture that provides a task environment and support for Mojo.
+class MojoTestEnvironment : public TestEnvironment {
+ public:
+  MojoTestEnvironment();
+
+ private:
+  std::optional<mojo::core::ScopedIPCSupport> ipc_support_;
 };
 
 }  // namespace power_manager

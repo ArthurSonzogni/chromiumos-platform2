@@ -18,6 +18,7 @@
 
 #include "power_manager/powerd/system/audio_observer.h"
 #include "power_manager/powerd/system/dbus_wrapper_stub.h"
+#include "power_manager/powerd/testing/test_environment.h"
 
 namespace power_manager::system {
 namespace {
@@ -51,7 +52,7 @@ class TestObserver : public AudioObserver {
 
 }  // namespace
 
-class AudioClientTest : public testing::Test {
+class AudioClientTest : public TestEnvironment {
  public:
   AudioClientTest() {
     cras_proxy_ = dbus_wrapper_.GetObjectProxy(cras::kCrasServiceName,

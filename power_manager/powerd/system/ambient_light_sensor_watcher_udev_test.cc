@@ -10,6 +10,7 @@
 
 #include "power_manager/powerd/system/ambient_light_sensor_watcher_observer_stub.h"
 #include "power_manager/powerd/system/udev_stub.h"
+#include "power_manager/powerd/testing/test_environment.h"
 
 namespace power_manager::system {
 
@@ -21,7 +22,7 @@ constexpr char kGoodSyspath[] =
 
 }  // namespace
 
-class AmbientLightSensorWatcherUdevTest : public testing::Test {
+class AmbientLightSensorWatcherUdevTest : public TestEnvironment {
  public:
   AmbientLightSensorWatcherUdevTest() = default;
   ~AmbientLightSensorWatcherUdevTest() override = default;

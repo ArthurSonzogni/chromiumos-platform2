@@ -18,6 +18,7 @@
 #include "power_manager/powerd/system/backlight_observer.h"
 #include "power_manager/powerd/system/internal_backlight.h"
 #include "power_manager/powerd/system/udev_stub.h"
+#include "power_manager/powerd/testing/test_environment.h"
 
 namespace power_manager::system {
 
@@ -56,7 +57,7 @@ class TestObserver : public BacklightObserver {
 
 }  // namespace
 
-class PluggableInternalBacklightTest : public ::testing::Test {
+class PluggableInternalBacklightTest : public TestEnvironment {
  public:
   PluggableInternalBacklightTest() {
     CHECK(temp_dir_.CreateUniqueTempDir());

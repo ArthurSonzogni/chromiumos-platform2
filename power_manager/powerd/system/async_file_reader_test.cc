@@ -16,6 +16,7 @@
 #include <gtest/gtest.h>
 
 #include "power_manager/common/test_main_loop_runner.h"
+#include "power_manager/powerd/testing/test_environment.h"
 
 namespace power_manager::system {
 
@@ -65,7 +66,7 @@ constexpr base::TimeDelta kMaxFileReadTime = base::Minutes(1);
 
 }  // namespace
 
-class AsyncFileReaderTest : public ::testing::Test {
+class AsyncFileReaderTest : public TestEnvironment {
  public:
   AsyncFileReaderTest()
       : temp_dir_(new base::ScopedTempDir()),

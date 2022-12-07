@@ -25,6 +25,7 @@
 #include "power_manager/common/test_main_loop_runner.h"
 #include "power_manager/powerd/system/dbus_wrapper_stub.h"
 #include "power_manager/powerd/system/udev_stub.h"
+#include "power_manager/powerd/testing/test_environment.h"
 #include "power_manager/proto_bindings/power_supply_properties.pb.h"
 
 namespace power_manager::system {
@@ -114,7 +115,7 @@ class TestObserver : public PowerSupplyObserver {
 
 }  // namespace
 
-class PowerSupplyTest : public ::testing::Test {
+class PowerSupplyTest : public TestEnvironment {
  public:
   PowerSupplyTest() = default;
 

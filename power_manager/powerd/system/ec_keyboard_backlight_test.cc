@@ -10,6 +10,7 @@
 #include <libec/pwm_command.h>
 #include <memory>
 #include <utility>
+#include "power_manager/powerd/testing/test_environment.h"
 
 using ::testing::Ref;
 using ::testing::Return;
@@ -23,7 +24,7 @@ class MockGetKeyboardBacklightCommand : public ec::GetKeyboardBacklightCommand {
   MOCK_METHOD(uint8_t, Brightness, (), (const, override));
 };
 
-class EcKeyboardBacklightTest : public ::testing::Test {
+class EcKeyboardBacklightTest : public TestEnvironment {
  protected:
   ec::EcUsbEndpointStub endpoint_;
   std::unique_ptr<MockGetKeyboardBacklightCommand> mock =

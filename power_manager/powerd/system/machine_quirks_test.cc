@@ -13,6 +13,7 @@
 #include "power_manager/common/fake_prefs.h"
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/util.h"
+#include "power_manager/powerd/testing/test_environment.h"
 
 namespace power_manager::system {
 
@@ -35,7 +36,7 @@ const char sti_models[] =
     "Surface Pro 3\n";
 }  // namespace
 
-class MachineQuirksTest : public ::testing::Test {
+class MachineQuirksTest : public TestEnvironment {
  public:
   MachineQuirksTest() {
     // Create mock directories

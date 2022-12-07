@@ -22,6 +22,7 @@
 #include "power_manager/powerd/system/event_device_stub.h"
 #include "power_manager/powerd/system/input_observer.h"
 #include "power_manager/powerd/system/udev_stub.h"
+#include "power_manager/powerd/testing/test_environment.h"
 
 namespace power_manager::system {
 namespace {
@@ -112,7 +113,7 @@ class TestObserver : public InputObserver, public ActionRecorder {
 
 }  // namespace
 
-class InputWatcherTest : public testing::Test {
+class InputWatcherTest : public TestEnvironment {
  public:
   InputWatcherTest()
       : scoped_event_device_factory_(new EventDeviceFactoryStub()),

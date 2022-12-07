@@ -13,10 +13,13 @@
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <gtest/gtest.h>
+#include "power_manager/powerd/testing/test_environment.h"
 
 namespace power_manager::system {
 
-TEST(ThermalDeviceFactory, CreateThermalDevices) {
+class ThermalDeviceFactoryTest : public TestEnvironment {};
+
+TEST_F(ThermalDeviceFactoryTest, CreateThermalDevices) {
   base::ScopedTempDir scoped_temp_dir;
 
   CHECK(scoped_temp_dir.CreateUniqueTempDir());

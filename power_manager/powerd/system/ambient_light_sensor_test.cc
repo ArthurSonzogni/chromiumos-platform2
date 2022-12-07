@@ -11,6 +11,7 @@
 #include <gtest/gtest.h>
 
 #include "power_manager/powerd/system/ambient_light_observer.h"
+#include "power_manager/powerd/testing/test_environment.h"
 
 namespace power_manager::system {
 
@@ -63,7 +64,7 @@ class TestDelegate : public AmbientLightSensorDelegate {
 
 }  // namespace
 
-class AmbientLightSensorTest : public ::testing::Test {
+class AmbientLightSensorTest : public TestEnvironment {
  public:
   AmbientLightSensorTest() = default;
   AmbientLightSensorTest(const AmbientLightSensorTest&) = delete;

@@ -468,7 +468,6 @@ if (use.test) {
 
   executable("power_manager_system_test") {
     sources = [
-      "common/testrunner.cc",
       "powerd/system/acpi_wakeup_helper_test.cc",
       "powerd/system/ambient_light_sensor_delegate_file_test.cc",
       "powerd/system/ambient_light_sensor_delegate_mojo_test.cc",
@@ -506,6 +505,7 @@ if (use.test) {
       "powerd/system/user_proximity_watcher_test.cc",
       "powerd/system/wakeup_device_test.cc",
       "powerd/system/wakeup_source_identifier_test.cc",
+      "powerd/testing/test_environment.cc",
     ]
     configs += [
       "//common-mk:test",
@@ -518,6 +518,7 @@ if (use.test) {
       ":libsystem_stub",
       ":libutil",
       ":libutil_test",
+      "//common-mk/testrunner",
     ]
   }
 

@@ -19,10 +19,11 @@
 
 #include "power_manager/common/clock.h"
 #include "power_manager/common/util.h"
+#include "power_manager/powerd/testing/test_environment.h"
 
 namespace power_manager::system {
 
-class InternalBacklightTest : public ::testing::Test {
+class InternalBacklightTest : public TestEnvironment {
  public:
   InternalBacklightTest() = default;
   ~InternalBacklightTest() override = default;

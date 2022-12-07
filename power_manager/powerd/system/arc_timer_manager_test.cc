@@ -22,6 +22,7 @@
 
 #include "power_manager/common/test_main_loop_runner.h"
 #include "power_manager/powerd/system/dbus_wrapper_stub.h"
+#include "power_manager/powerd/testing/test_environment.h"
 
 namespace power_manager::system {
 
@@ -114,7 +115,7 @@ bool AreTimerIdsIdenticalSizeButDistinct(
 
 }  // namespace
 
-class ArcTimerManagerTest : public ::testing::Test {
+class ArcTimerManagerTest : public TestEnvironment {
  public:
   ArcTimerManagerTest() {
     arc_timer_manager_.set_for_testing_(true);
@@ -229,26 +230,21 @@ class ArcTimerManagerTest : public ::testing::Test {
       return false;
     }
 
-    TestMainLoopRunner runner;
-    // Set up a watcher to watch for the timer's read fd to become readable.
+    // Run the loop until the timer's read fd to becomes readable.
+    base::RunLoop loop;
     std::unique_ptr<base::FileDescriptorWatcher::Controller> watcher;
     watcher = base::FileDescriptorWatcher::WatchReadable(
         timer_read_fd,
         base::BindRepeating(
-            [](TestMainLoopRunner* runner,
+            [](base::RunLoop* loop,
                std::unique_ptr<base::FileDescriptorWatcher::Controller>*
                    watcher) {
               VLOG(1) << "Fd readable";
               *watcher = nullptr;
-              runner->StopLoop();
+              loop->Quit();
             },
-            &runner, &watcher));
-
-    // Start run loop and error out if the fd isn't readable after a timeout.
-    if (!runner.StartLoop(base::Seconds(30))) {
-      LOG(ERROR) << "Timed out waiting for expiration";
-      return false;
-    }
+            &loop, &watcher));
+    loop.Run();
 
     // The timer expects 8 bytes to be written from the host upon expiration.
     // The read data signifies the number of expirations. The powerd

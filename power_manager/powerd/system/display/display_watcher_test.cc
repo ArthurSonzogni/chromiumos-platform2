@@ -15,6 +15,7 @@
 #include <gtest/gtest.h>
 
 #include "power_manager/powerd/system/udev_stub.h"
+#include "power_manager/powerd/testing/test_environment.h"
 
 namespace power_manager::system {
 
@@ -43,7 +44,7 @@ class TestObserver : public DisplayWatcherObserver {
 
 }  // namespace
 
-class DisplayWatcherTest : public testing::Test {
+class DisplayWatcherTest : public TestEnvironment {
  public:
   DisplayWatcherTest() {
     CHECK(drm_dir_.CreateUniqueTempDir());

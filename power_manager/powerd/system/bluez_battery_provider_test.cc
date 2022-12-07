@@ -12,6 +12,7 @@
 #include <dbus/mock_object_manager.h>
 #include <dbus/mock_object_proxy.h>
 #include <gtest/gtest.h>
+#include "power_manager/powerd/testing/test_environment.h"
 
 using ::testing::_;
 using ::testing::AnyNumber;
@@ -30,7 +31,7 @@ constexpr char kTestAddressPath[] = "12_34_56_AB_CD_EF";
 
 }  // namespace
 
-class BluezBatteryProviderTest : public ::testing::Test {
+class BluezBatteryProviderTest : public TestEnvironment {
  public:
   BluezBatteryProviderTest() = default;
   BluezBatteryProviderTest(const BluezBatteryProviderTest&) = delete;

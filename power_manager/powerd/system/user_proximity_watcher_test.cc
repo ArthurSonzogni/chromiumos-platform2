@@ -29,6 +29,7 @@
 #include "power_manager/powerd/system/udev_stub.h"
 #include "power_manager/powerd/system/user_proximity_observer.h"
 #include "power_manager/powerd/system/user_proximity_watcher.h"
+#include "power_manager/powerd/testing/test_environment.h"
 
 namespace power_manager::system {
 
@@ -63,7 +64,7 @@ class TestObserver : public UserProximityObserver, public ActionRecorder {
   TestMainLoopRunner* loop_runner_;  // Not owned.
 };
 
-class UserProximityWatcherTest : public testing::Test {
+class UserProximityWatcherTest : public TestEnvironment {
  public:
   UserProximityWatcherTest()
       : user_proximity_watcher_(std::make_unique<UserProximityWatcher>()) {

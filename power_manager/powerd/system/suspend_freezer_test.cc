@@ -15,6 +15,7 @@
 #include <base/containers/contains.h>
 #include <base/files/file_util.h>
 #include <gtest/gtest.h>
+#include "power_manager/powerd/testing/test_environment.h"
 
 namespace power_manager::system {
 
@@ -67,7 +68,7 @@ class MockSystemUtils : public SuspendFreezer::SystemUtilsInterface {
 
 }  // namespace
 
-class SuspendFreezerTest : public ::testing::Test {
+class SuspendFreezerTest : public TestEnvironment {
  public:
   SuspendFreezerTest()
       : mock_sys_utils_(new MockSystemUtils),

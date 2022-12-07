@@ -17,6 +17,7 @@
 #include "power_manager/powerd/system/fake_light.h"
 #include "power_manager/powerd/system/fake_sensor_service.h"
 #include "power_manager/powerd/system/sensor_service_handler.h"
+#include "power_manager/powerd/testing/test_environment.h"
 
 namespace power_manager::system {
 
@@ -33,7 +34,7 @@ constexpr char kGoodSyspath2[] =
 
 }  // namespace
 
-class AmbientLightSensorWatcherMojoTest : public testing::Test {
+class AmbientLightSensorWatcherMojoTest : public MojoTestEnvironment {
  public:
   AmbientLightSensorWatcherMojoTest() = default;
   ~AmbientLightSensorWatcherMojoTest() override = default;

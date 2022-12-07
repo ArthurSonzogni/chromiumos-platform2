@@ -16,6 +16,7 @@
 
 #include "power_manager/common/fake_prefs.h"
 #include "power_manager/common/power_constants.h"
+#include "power_manager/powerd/testing/test_environment.h"
 
 namespace power_manager::system {
 
@@ -229,7 +230,7 @@ void CreateSysfsFileInTempRootDir(const base::FilePath& temp_root_dir,
 }
 }  // namespace
 
-class SuspendConfiguratorTest : public ::testing::Test {
+class SuspendConfiguratorTest : public TestEnvironment {
  public:
   SuspendConfiguratorTest() {
     // Temporary directory mimicking a root directory.

@@ -19,6 +19,7 @@
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/test_main_loop_runner.h"
 #include "power_manager/powerd/system/ambient_light_observer.h"
+#include "power_manager/powerd/testing/test_environment.h"
 
 namespace power_manager::system {
 
@@ -57,7 +58,7 @@ class TestObserver : public AmbientLightObserver {
 
 }  // namespace
 
-class AmbientLightSensorManagerFileTest : public ::testing::Test {
+class AmbientLightSensorManagerFileTest : public TestEnvironment {
  public:
   AmbientLightSensorManagerFileTest() = default;
   AmbientLightSensorManagerFileTest(const AmbientLightSensorManagerFileTest&) =

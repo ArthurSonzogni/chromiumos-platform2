@@ -19,6 +19,7 @@
 #include "power_manager/powerd/system/ambient_light_sensor.h"
 #include "power_manager/powerd/system/ambient_light_sensor_interface.h"
 #include "power_manager/powerd/system/fake_light.h"
+#include "power_manager/powerd/testing/test_environment.h"
 
 namespace power_manager::system {
 
@@ -62,7 +63,7 @@ class TestObserver : public AmbientLightObserver {
 
 }  // namespace
 
-class AmbientLightSensorDelegateMojoTest : public ::testing::Test {
+class AmbientLightSensorDelegateMojoTest : public MojoTestEnvironment {
  public:
   AmbientLightSensorDelegateMojoTest(
       const AmbientLightSensorDelegateMojoTest&) = delete;
