@@ -9,6 +9,7 @@
 #include <string>
 #include <vector>
 
+#include <base/files/file.h>
 #include <base/files/file_path.h>
 #include <base/time/clock.h>
 #include <base/time/time.h>
@@ -177,6 +178,9 @@ int GetRecoveryFailureWeight();
 
 // Read the content binding to fd to stream.
 bool ReadFdToStream(unsigned int fd, std::stringstream* stream);
+
+// Read a line from a file to out_str and return size of the read line.
+int GetNextLine(base::File& file, std::string& out_str);
 
 #if USE_DIRENCRYPTION
 // Joins the session key if the kernel supports ext4 directory encryption.

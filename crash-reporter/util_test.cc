@@ -17,6 +17,7 @@
 #include <base/files/scoped_temp_dir.h>
 #include <base/logging.h>
 #include <base/rand_util.h>
+#include <base/strings/strcat.h>
 #include <base/test/simple_test_clock.h>
 #include <base/time/time.h>
 #include <libcrossystem/crossystem_fake.h>
@@ -460,6 +461,29 @@ TEST_F(CrashCommonUtilTest, ReadFdToStream) {
   std::stringstream stream;
   EXPECT_TRUE(ReadFdToStream(fd_, &stream));
   EXPECT_EQ(kReadFdToStreamContents, stream.str());
+}
+
+TEST_F(CrashCommonUtilTest, GetNextLine) {
+  std::string test_line_1 = "test line 1";
+  std::string test_line_2 = "line 2";
+  base::FilePath test_file_path = test_dir_.Append("testfile");
+
+  ASSERT_TRUE(test_util::CreateFile(
+      test_file_path, base::StrCat({test_line_1, "\n", test_line_2})));
+
+  base::File test_file(test_file_path,
+                       base::File::FLAG_OPEN | base::File::FLAG_READ);
+  ASSERT_TRUE(test_file.IsValid());
+
+  std::string line;
+  // Read a line and verify correct data is read.
+  EXPECT_EQ(util::GetNextLine(test_file, line), test_line_1.length());
+  EXPECT_EQ(line, test_line_1);
+  // Read last line which may not end with a '\n', so read till EOF.
+  EXPECT_EQ(util::GetNextLine(test_file, line), test_line_2.length());
+  EXPECT_EQ(line, test_line_2);
+  // Verify that nothing is read once EOF is reached.
+  EXPECT_EQ(util::GetNextLine(test_file, line), 0);
 }
 
 TEST_F(CrashCommonUtilTest, IsFeedbackAllowedMock) {

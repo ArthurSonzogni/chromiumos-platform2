@@ -20,6 +20,7 @@
 #endif  // USE_DIRENCRYPTION
 
 #include <base/command_line.h>
+#include <base/files/file.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/json/json_reader.h>
@@ -626,6 +627,17 @@ bool ReadFdToStream(unsigned int fd, std::stringstream* stream) {
 
     stream->write(buffer, count);
   }
+}
+
+int GetNextLine(base::File& file, std::string& out_str) {
+  char ch;
+
+  out_str.clear();
+  while (file.ReadAtCurrentPos(&ch, sizeof(ch)) > 0 && ch != '\n') {
+    out_str.push_back(ch);
+  }
+
+  return out_str.size();
 }
 
 #if USE_DIRENCRYPTION

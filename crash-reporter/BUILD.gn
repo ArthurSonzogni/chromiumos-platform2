@@ -18,9 +18,11 @@ shared_defines = [
 group("all") {
   deps = [
     ":anomaly_detector",
+    ":bluetooth_devcd_parser",
     ":crash_reporter",
     ":crash_sender",
     ":crash_serializer_main",
+    ":libbluetooth_devcd_parser",
     ":libcrash",
     ":libcrash_reporter",
   ]
@@ -38,6 +40,7 @@ group("all") {
   if (use.fuzzer) {
     deps += [
       ":anomaly_detector_fuzzer",
+      ":bluetooth_devcd_parser_fuzzer",
       ":chrome_collector_fuzzer",
       ":crash_sender_base_fuzzer",
       ":crash_sender_fuzzer",
@@ -45,6 +48,28 @@ group("all") {
       ":missed_crash_collector_fuzzer",
     ]
   }
+}
+
+pkg_config("libbluetooth_devcd_parser_config") {
+  pkg_deps = [
+    "libbrillo",
+    "libchrome",
+  ]
+}
+
+static_library("libbluetooth_devcd_parser") {
+  sources = [ "bluetooth_devcd_parser_util.cc" ]
+  all_dependent_configs = [ ":libbluetooth_devcd_parser_config" ]
+  defines = shared_defines
+  deps = [
+    ":libcrash",
+    ":libcrash_reporter",
+  ]
+}
+
+executable("bluetooth_devcd_parser") {
+  sources = [ "bluetooth_devcd_parser.cc" ]
+  deps = [ ":libbluetooth_devcd_parser" ]
 }
 
 pkg_config("libcrash_config") {
@@ -99,6 +124,7 @@ static_library("libcrash_reporter") {
     "mount_failure_collector.cc",
     "security_anomaly_collector.cc",
     "selinux_violation_collector.cc",
+    "udev_bluetooth_util.cc",
     "udev_collector.cc",
     "unclean_shutdown_collector.cc",
     "user_collector.cc",
@@ -158,6 +184,7 @@ executable("crash_reporter") {
   configs += [ ":crash_reporter_config" ]
   defines = shared_defines
   deps = [
+    ":bluetooth_devcd_parser",
     ":crash_reporter_proto",
     ":libcrash",
     ":libcrash_reporter",
@@ -369,6 +396,7 @@ if (use.test) {
   executable("crash_reporter_test") {
     sources = [
       "bert_collector_test.cc",
+      "bluetooth_devcd_parser_util_test.cc",
       "chrome_collector_test.cc",
       "clobber_state_collector_test.cc",
       "crash_collector_test.cc",
@@ -391,6 +419,7 @@ if (use.test) {
       "security_anomaly_collector_test.cc",
       "selinux_violation_collector_test.cc",
       "testrunner.cc",
+      "udev_bluetooth_util_test.cc",
       "udev_collector_test.cc",
       "unclean_shutdown_collector_test.cc",
       "user_collector_test.cc",
@@ -403,9 +432,11 @@ if (use.test) {
     ]
     defines = shared_defines
     deps = [
+      ":bluetooth_devcd_parser",
       ":crash_reporter_proto",
       ":crash_serializer_proto",
       ":hold_lock_file",
+      ":libbluetooth_devcd_parser",
       ":libcrash",
       ":libcrash_reporter",
       ":libcrash_sender",
@@ -568,6 +599,20 @@ if (use.fuzzer) {
     ]
     libs = [ "system_api-anomaly_detector-protos" ]
     deps = [
+      ":libcrash",
+      ":libcrash_reporter",
+      ":libcrash_test_util",
+    ]
+  }
+
+  executable("bluetooth_devcd_parser_fuzzer") {
+    sources = [ "bluetooth_devcd_parser_util_fuzzer.cc" ]
+    configs += [
+      "//common-mk/common_fuzzer:common_fuzzer",
+      ":crash_reporter_test_config",
+    ]
+    deps = [
+      ":libbluetooth_devcd_parser",
       ":libcrash",
       ":libcrash_reporter",
       ":libcrash_test_util",

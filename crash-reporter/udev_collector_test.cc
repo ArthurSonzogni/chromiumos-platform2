@@ -4,10 +4,13 @@
 
 #include "crash-reporter/udev_collector.h"
 
+#include <vector>
+
 #include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/strings/stringprintf.h>
+#include <brillo/strings/string_utils.h>
 #include <brillo/syslog_logging.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -18,6 +21,11 @@
 using base::FilePath;
 
 namespace {
+
+// Bluetooth devcoredump feature flag path
+// TODO(b/203034370): Remove this once the feature is fully launched and the
+// feature flag is removed.
+constexpr char kBluetoothDumpFlagPath[] = "/run/bluetooth/coredump_disabled";
 
 // Dummy log config file name.
 const char kLogConfigFileName[] = "log_config_file";
@@ -30,10 +38,12 @@ const char kLogConfigFileContents[] =
     "crash_reporter-udev-collection-change-card0-drm=echo change card0 drm\n"
     "crash_reporter-udev-collection-add-state0-cpu=echo change state0 cpu\n"
     "crash_reporter-udev-collection-devcoredump-iwlwifi=echo devcoredump\n"
-    "cros_installer=echo not for udev";
+    "cros_installer=echo not for udev\n"
+    "bt_firmware=echo bluetooth devcoredump\n";
 
 const char kCrashLogFilePattern[] = "*.log.gz";
 const char kDevCoredumpFilePattern[] = "*.devcore.gz";
+const char kBluetoothCoredumpFilePattern[] = "bt_firmware.*";
 
 // Dummy content for device coredump data file.
 const char kDevCoredumpDataContents[] = "coredump";
@@ -184,6 +194,69 @@ TEST_F(UdevCollectorTest, TestCollectedDevCoredump) {
   std::string expected_sig = "sig=crash_reporter-udev-collection-devcoredump-";
   expected_sig += kCollectedDriverName;
   EXPECT_THAT(meta_contents, testing::HasSubstr(expected_sig));
+}
+
+TEST_F(UdevCollectorTest, RunAsRoot_TestValidBluetoothDevCoredump) {
+  std::string device_name = "devcd0";
+  GenerateDevCoredump(device_name, kNoCollectDriverName);
+
+  FilePath data_path =
+      FilePath(base::StringPrintf("%s/%s/data",
+                                  temp_dir_generator_.GetPath()
+                                      .Append(kDevCoredumpDirectory)
+                                      .value()
+                                      .c_str(),
+                                  device_name.c_str()));
+
+  std::vector<std::string> data = {
+      "Bluetooth devcoredump",
+      "State: 2",
+      "Driver: TestDrv",
+      "Vendor: TestVen",
+      "Controller Name: TestCon",
+      "--- Start dump ---",
+      "TestData",
+  };
+  std::string data_str = brillo::string_utils::Join("\n", data);
+  ASSERT_EQ(base::WriteFile(data_path, data_str.c_str(), data_str.length()),
+            data_str.length());
+
+  ASSERT_TRUE(test_util::CreateFile(paths::Get(kBluetoothDumpFlagPath), "0"));
+
+  HandleCrash("ACTION=add:KERNEL_NUMBER=0:SUBSYSTEM=devcoredump");
+  EXPECT_EQ(3, GetNumFiles(temp_dir_generator_.GetPath(),
+                           kBluetoothCoredumpFilePattern));
+}
+
+TEST_F(UdevCollectorTest, RunAsRoot_TestInvalidBluetoothDevCoredump) {
+  std::string device_name = "devcd1";
+  GenerateDevCoredump(device_name, kNoCollectDriverName);
+
+  FilePath data_path =
+      FilePath(base::StringPrintf("%s/%s/data",
+                                  temp_dir_generator_.GetPath()
+                                      .Append(kDevCoredumpDirectory)
+                                      .value()
+                                      .c_str(),
+                                  device_name.c_str()));
+
+  // Incomplete bluetooth devcoredump header, parsing should fail and no output
+  // files should get generated.
+  std::vector<std::string> data = {
+      "Bluetooth devcoredump",
+      "State: 2",
+      "Driver: TestDrv",
+      "Vendor: TestVen",
+  };
+  std::string data_str = brillo::string_utils::Join("\n", data);
+  ASSERT_EQ(base::WriteFile(data_path, data_str.c_str(), data_str.length()),
+            data_str.length());
+
+  ASSERT_TRUE(test_util::CreateFile(paths::Get(kBluetoothDumpFlagPath), "0"));
+
+  HandleCrash("ACTION=add:KERNEL_NUMBER=1:SUBSYSTEM=devcoredump");
+  EXPECT_EQ(0, GetNumFiles(temp_dir_generator_.GetPath(),
+                           kBluetoothCoredumpFilePattern));
 }
 
 // TODO(sque, crosbug.com/32238) - test wildcard cases, multiple identical udev

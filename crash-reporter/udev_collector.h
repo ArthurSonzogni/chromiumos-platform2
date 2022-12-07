@@ -60,6 +60,11 @@ class UdevCollector : public CrashCollector {
   // coredump instance.
   bool ProcessDevCoredump(const base::FilePath& crash_directory,
                           int instance_number);
+  // Copy bluetooth device coredump file to crash directory, and perform
+  // necessary coredump file management.
+  bool AppendBluetoothCoredump(const base::FilePath& crash_directory,
+                               const base::FilePath& coredump_path,
+                               int instance_number);
   // Copy device coredump file to crash directory, and perform necessary
   // coredump file management.
   bool AppendDevCoredump(const base::FilePath& crash_directory,

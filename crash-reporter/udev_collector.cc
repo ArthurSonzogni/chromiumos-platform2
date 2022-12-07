@@ -22,6 +22,7 @@
 #include <base/strings/stringprintf.h>
 #include <brillo/process/process.h>
 
+#include "crash-reporter/udev_bluetooth_util.h"
 #include "crash-reporter/util.h"
 
 using base::FilePath;
@@ -77,15 +78,19 @@ bool UdevCollector::HandleCrash(const std::string& udev_event) {
     udev_event_map[key_value.first] = key_value.second;
   }
 
-  if (UdevCollector::IsSafeDevCoredump(udev_event_map)) {
+  FilePath coredump_path = FilePath(
+      base::StringPrintf("%s/devcd%s/data", dev_coredump_directory_.c_str(),
+                         udev_event_map["KERNEL_NUMBER"].c_str()));
+
+  if (bluetooth_util::IsCoredumpEnabled() &&
+      bluetooth_util::IsBluetoothCoredump(coredump_path)) {
+    LOG(INFO) << "Process bluetooth devcoredump.";
+  } else if (UdevCollector::IsSafeDevCoredump(udev_event_map)) {
     LOG(INFO) << "Safe device coredumps are always processed";
   } else if (util::IsDeveloperImage()) {
     LOG(INFO) << "developer image - collect udev crash info.";
   } else if (udev_event_map["SUBSYSTEM"] == kUdevSubsystemDevCoredump) {
     LOG(INFO) << "Device coredumps are not processed on non-developer images.";
-    FilePath coredump_path = FilePath(
-        base::StringPrintf("%s/devcd%s/data", dev_coredump_directory_.c_str(),
-                           udev_event_map["KERNEL_NUMBER"].c_str()));
     // Clear devcoredump memory before returning.
     ClearDevCoredump(coredump_path);
     return false;
@@ -157,6 +162,16 @@ bool UdevCollector::ProcessDevCoredump(const FilePath& crash_directory,
     return false;
   }
 
+  if (bluetooth_util::IsCoredumpEnabled() &&
+      bluetooth_util::IsBluetoothCoredump(coredump_path)) {
+    if (!AppendBluetoothCoredump(crash_directory, coredump_path,
+                                 instance_number)) {
+      ClearDevCoredump(coredump_path);
+      return false;
+    }
+    return ClearDevCoredump(coredump_path);
+  }
+
   // Add coredump file to the crash directory.
   if (!AppendDevCoredump(crash_directory, coredump_path, instance_number)) {
     ClearDevCoredump(coredump_path);
@@ -166,6 +181,33 @@ bool UdevCollector::ProcessDevCoredump(const FilePath& crash_directory,
   // Clear the coredump data to allow generation of future device coredumps
   // without having to wait for the 5-minutes timeout.
   return ClearDevCoredump(coredump_path);
+}
+
+bool UdevCollector::AppendBluetoothCoredump(const FilePath& crash_directory,
+                                            const FilePath& coredump_path,
+                                            int instance_number) {
+  std::string coredump_prefix = bluetooth_util::kBluetoothDevCoredumpExecName;
+  std::string dump_basename =
+      FormatDumpBasename(coredump_prefix, time(nullptr), instance_number);
+  FilePath target_path = GetCrashPath(crash_directory, dump_basename, "txt");
+  FilePath log_path = GetCrashPath(crash_directory, dump_basename, "log");
+  FilePath meta_path = GetCrashPath(crash_directory, dump_basename, "meta");
+  std::string crash_sig;
+
+  if (!bluetooth_util::ProcessBluetoothCoredump(coredump_path, target_path,
+                                                &crash_sig)) {
+    LOG(ERROR) << "Failed to parse bluetooth devcoredump.";
+    return false;
+  }
+
+  if (GetLogContents(log_config_path_, coredump_prefix, log_path)) {
+    AddCrashMetaUploadFile("logs", log_path.BaseName().value());
+  }
+
+  AddCrashMetaData(kUdevSignatureKey, crash_sig);
+  FinishCrash(meta_path, coredump_prefix, target_path.BaseName().value());
+
+  return true;
 }
 
 bool UdevCollector::AppendDevCoredump(const FilePath& crash_directory,
