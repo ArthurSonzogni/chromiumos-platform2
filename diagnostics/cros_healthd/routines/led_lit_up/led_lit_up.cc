@@ -54,7 +54,7 @@ void LedLitUpRoutine::Cancel() {
     context_->executor()->ResetLedColor(name_,
                                         base::BindOnce(&LogResetColorError));
     status_ = mojom::DiagnosticRoutineStatusEnum::kCancelled;
-    status_message_ = "Canceled";
+    status_message_ = "Canceled.";
   }
 }
 
@@ -89,7 +89,7 @@ void LedLitUpRoutine::ReplierDisconnectHandler() {
   context_->executor()->ResetLedColor(name_,
                                       base::BindOnce(&LogResetColorError));
   status_ = mojom::DiagnosticRoutineStatusEnum::kFailed;
-  status_message_ = "Replier disconnected";
+  status_message_ = "Replier disconnected.";
 }
 
 void LedLitUpRoutine::SetLedColorCallback(
@@ -127,7 +127,7 @@ void LedLitUpRoutine::RunNextStep() {
   switch (step_) {
     case TestStep::kInitialize:
       status_ = mojom::DiagnosticRoutineStatusEnum::kError;
-      status_message_ = "Unexpected LED lit up diagnostic flow";
+      status_message_ = "Unexpected LED lit up diagnostic flow.";
       break;
     case TestStep::kSetColor:
       status_ = mojom::DiagnosticRoutineStatusEnum::kRunning;
@@ -160,9 +160,10 @@ void LedLitUpRoutine::RunNextStep() {
     case TestStep::kComplete:
       if (color_matched_response_) {
         status_ = mojom::DiagnosticRoutineStatusEnum::kPassed;
+        status_message_ = "Routine passed.";
       } else {
         status_ = mojom::DiagnosticRoutineStatusEnum::kFailed;
-        status_message_ = "Not lit up in the specified color";
+        status_message_ = "Not lit up in the specified color.";
       }
       break;
   }
