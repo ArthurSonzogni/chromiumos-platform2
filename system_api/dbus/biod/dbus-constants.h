@@ -18,8 +18,14 @@ const char kEnrollSessionInterface[] =
     "org.chromium.BiometricsDaemon.EnrollSession";
 const char kRecordInterface[] = "org.chromium.BiometricsDaemon.Record";
 
+const char kAuthStackManagerInterface[] =
+    "org.chromium.BiometricsDaemon.AuthStackManager";
+
 // List of all BiometricsManagers
 const char kCrosFpBiometricsManagerName[] = "CrosFpBiometricsManager";
+
+// List of all AuthStackManagers
+const char kCrosFpAuthStackManagerName[] = "CrosFpAuthStackManager";
 
 // Methods
 const char kBiometricsManagerStartEnrollSessionMethod[] = "StartEnrollSession";
@@ -30,6 +36,12 @@ const char kAuthSessionEndMethod[] = "End";
 const char kEnrollSessionCancelMethod[] = "Cancel";
 const char kRecordRemoveMethod[] = "Remove";
 const char kRecordSetLabelMethod[] = "SetLabel";
+
+const char kAuthStackManagerStartEnrollSessionMethod[] = "StartEnrollSession";
+const char kAuthStackManagerStartAuthSessionMethod[] = "StartAuthSession";
+const char kAuthStackManagerCreateCredentialMethod[] = "CreateCredential";
+const char kAuthStackManagerAuthenticateCredentialMethod[] =
+    "AuthenticateCredential";
 
 // Signals
 const char kBiometricsManagerEnrollScanDoneSignal[] = "EnrollScanDone";
