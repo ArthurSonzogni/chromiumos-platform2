@@ -86,17 +86,18 @@ class DlcClientImpl : public cros::DlcClient {
     }
   }
 
+  // TODO(b/262167400): Move to use dlc_service_client.Install over InstallDlc
+  // TODO(b/262166553): In the event that certain error states are detected
+  // retry call to Install
   void InstallDlc() override {
     if (!bus_->IsConnected()) {
       InvokeErrorCb("Error calling dlcservice: DBus not connected");
       return;
     }
 
-    dlcservice::DlcState dlc_state;
     brillo::ErrorPtr error;
 
-    // Gets current dlc state.
-    if (!dlcservice_client_->GetDlcState(kDlcId, &dlc_state, &error)) {
+    if (!dlcservice_client_->InstallDlc(kDlcId, &error)) {
       if (error != nullptr) {
         InvokeErrorCb(
             base::StrCat({"Error calling dlcservice (code=", error->GetCode(),
@@ -105,27 +106,6 @@ class DlcClientImpl : public cros::DlcClient {
         InvokeErrorCb("Error calling dlcservice: unknown");
       }
       return;
-    }
-
-    if (dlc_state.state() == dlcservice::DlcState::INSTALLED) {
-      LOG(INFO) << "dlc " << kDlcId << " already installed at "
-                << dlc_state.root_path();
-      InvokeSuccessCb(base::FilePath(dlc_state.root_path()));
-    } else {
-      LOG(INFO) << "dlc " << kDlcId
-                << " isn't installed, call dlc service to install it";
-
-      if (!dlcservice_client_->InstallDlc(kDlcId, &error)) {
-        if (error != nullptr) {
-          InvokeErrorCb(
-              base::StrCat({"Error calling dlcservice (code=", error->GetCode(),
-                            "): ", error->GetMessage()}));
-        } else {
-          InvokeErrorCb("Error calling dlcservice: unknown");
-        }
-        // Return now in case more code follows later.
-        return;
-      }
     }
   }
 
