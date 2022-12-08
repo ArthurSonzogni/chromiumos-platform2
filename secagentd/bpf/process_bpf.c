@@ -144,9 +144,12 @@ int BPF_PROG(handle_sched_process_exit, struct task_struct* current) {
   if (is_kthread(current)) {
     return 0;
   }
-  if (BPF_CORE_READ(current, pid) != BPF_CORE_READ(current, tgid)) {
-    // We didn't report an exec event for this task since it's not a
-    // thread group leader. So avoid reporting a terminate event for it.
+  if ((BPF_CORE_READ(current, pid) != BPF_CORE_READ(current, tgid)) ||
+      (BPF_CORE_READ(current, self_exec_id) ==
+       BPF_CORE_READ(current, parent, self_exec_id))) {
+    // We didn't report an exec event for this task since it's either not a
+    // thread group leader or it's a !CLONE_THREAD clone that hasn't exec'd
+    // anything. So avoid reporting a terminate event for it.
     return 0;
   }
   struct cros_event* event =
