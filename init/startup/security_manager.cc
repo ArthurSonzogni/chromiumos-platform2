@@ -18,7 +18,11 @@
 #include <base/logging.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
+#include <crypto/random.h>
 #include <linux/loadpin.h>
+#include <openssl/sha.h>
+
+#include "init/startup/platform_impl.h"
 
 namespace {
 
@@ -46,6 +50,11 @@ constexpr char kSafeSetIDProcessMgmtPolicies[] = "safesetid";
 
 constexpr char kLsmInodePolicies[] =
     "sys/kernel/security/chromiumos/inode_security_policies";
+
+constexpr char kSysKeyLogFile[] = "run/create_system_key.log";
+constexpr char kNoEarlyKeyFile[] = ".no_early_system_key";
+constexpr char kSysKeyBackupFile[] = "unencrypted/preserve/system.key";
+constexpr int kKeySize = SHA256_DIGEST_LENGTH;
 
 }  // namespace
 
@@ -225,6 +234,59 @@ bool BlockSymlinkAndFifo(const base::FilePath& root, const std::string& path) {
     ret = false;
   }
   return ret;
+}
+
+// Generates a system key in test images, before the normal mount-encrypted.
+// This allows us to soft-clear the TPM in integration tests w/o accidentally
+// wiping encstateful after a reboot.
+void CreateSystemKey(const base::FilePath& root,
+                     const base::FilePath& stateful,
+                     Platform* platform) {
+  base::FilePath log_file = root.Append(kSysKeyLogFile);
+  base::FilePath no_early = stateful.Append(kNoEarlyKeyFile);
+  base::FilePath backup = stateful.Append(kSysKeyBackupFile);
+  base::FilePath empty;
+
+  base::WriteFile(log_file, "");
+
+  if (base::PathExists(no_early)) {
+    bool status;
+    status = base::AppendToFile(log_file,
+                                "Opt not to create a system key in advance.");
+    return;
+  }
+
+  base::AppendToFile(log_file,
+                     "Checking if a system key already exists in NVRAM...\n");
+  std::string output;
+  int status = platform->MountEncrypted("info", &output);
+  if (status == 0) {
+    base::AppendToFile(log_file, output.append("\n"));
+    if (output.find("NVRAM: available.") != std::string::npos) {
+      base::AppendToFile(log_file, "There is already a system key in NVRAM.\n");
+      return;
+    }
+  }
+
+  base::AppendToFile(log_file,
+                     "No system key found in NVRAM. Start creating one.\n");
+
+  // Generates 32-byte random key material and backs it up.
+  unsigned char buf[kKeySize];
+  crypto::RandBytes(buf, kKeySize);
+  const char* buf_ptr = reinterpret_cast<const char*>(&buf);
+  if (base::WriteFile(backup, buf_ptr, kKeySize) < kKeySize) {
+    base::AppendToFile(log_file,
+                       "Failed to generate or back up system key material.\n");
+    return;
+  }
+
+  // Persists system key.
+  status = platform->MountEncrypted("set", &output);
+  if (status == 0) {
+    base::AppendToFile(log_file, output);
+    base::AppendToFile(log_file, "Successfully created a system key.");
+  }
 }
 
 }  // namespace startup

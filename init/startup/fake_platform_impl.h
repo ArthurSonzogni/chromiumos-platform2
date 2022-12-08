@@ -27,6 +27,9 @@ class FakePlatform : public Platform {
 
   void SetStatResultForPath(const base::FilePath& path, const struct stat& st);
 
+  void SetMountEncOutputForArg(const std::string& arg,
+                               const std::string& output);
+
   void SetMountResultForPath(const base::FilePath& path,
                              const std::string& output);
 
@@ -55,6 +58,9 @@ class FakePlatform : public Platform {
   // NOLINTNEXTLINE(runtime/int)
   int Ioctl(int fd, unsigned long request, int* arg1) override;
 
+  int MountEncrypted(const std::string& arg,
+                     std::string* const output) override;
+
   void BootAlert(const std::string& arg) override;
 
   bool VpdSlow(const std::vector<std::string>& args,
@@ -70,6 +76,7 @@ class FakePlatform : public Platform {
   std::vector<std::string> umount_vector_;
   int open_ret_ = -1;
   int ioctl_ret_ = 0;
+  std::unordered_map<std::string, std::string> mount_enc_result_map_;
   std::unordered_map<std::string, int> alert_result_map_;
   int vpd_result_;
   base::FilePath clobber_log_;

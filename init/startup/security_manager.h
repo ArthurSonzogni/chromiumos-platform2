@@ -31,6 +31,10 @@ bool SetupLoadPinVerityDigests(const base::FilePath& root, Platform* platform);
 // Block symlink and FIFO access on the given path.
 bool BlockSymlinkAndFifo(const base::FilePath& root, const std::string& path);
 
+void CreateSystemKey(const base::FilePath& root,
+                     const base::FilePath& stateful,
+                     Platform* platform);
+
 }  // namespace startup
 
 #endif  // INIT_STARTUP_SECURITY_MANAGER_H_

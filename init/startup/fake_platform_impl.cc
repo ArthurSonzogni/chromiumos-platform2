@@ -9,6 +9,7 @@
 #include <vector>
 
 #include <base/files/file_util.h>
+#include <base/logging.h>
 
 #include "init/startup/fake_platform_impl.h"
 
@@ -28,6 +29,11 @@ void FakePlatform::SetMountResultForPath(const base::FilePath& path,
 
 void FakePlatform::SetIoctlReturnValue(int ret) {
   ioctl_ret_ = ret;
+}
+
+void FakePlatform::SetMountEncOutputForArg(const std::string& arg,
+                                           const std::string& output) {
+  mount_enc_result_map_[arg] = output;
 }
 
 int FakePlatform::GetBootAlertForArg(const std::string& arg) {
@@ -60,6 +66,7 @@ bool FakePlatform::Mount(const base::FilePath& src,
                          const std::string& data) {
   std::unordered_map<std::string, std::string>::iterator it;
   it = mount_result_map_.find(dst.value());
+
   if (it == mount_result_map_.end()) {
     return false;
   }
@@ -93,6 +100,15 @@ base::ScopedFD FakePlatform::Open(const base::FilePath& pathname, int flags) {
 // NOLINTNEXTLINE(runtime/int)
 int FakePlatform::Ioctl(int fd, unsigned long request, int* arg1) {
   return ioctl_ret_;
+}
+
+int FakePlatform::MountEncrypted(const std::string& arg, std::string* output) {
+  if (mount_enc_result_map_.count(arg) == 0) {
+    return -1;
+  }
+
+  *output = mount_enc_result_map_[arg];
+  return 0;
 }
 
 void FakePlatform::BootAlert(const std::string& arg) {
