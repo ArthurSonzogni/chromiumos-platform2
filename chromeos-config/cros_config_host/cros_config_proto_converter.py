@@ -151,7 +151,7 @@ def _build_arc(config, config_files):
         "device": "%s_cheets" % config.program.name.lower(),
         "first-api-level": "28",
         "marketing-name": config.device_brand.brand_name,
-        "metrics-tag": config.hw_design.name.lower(),
+        "metrics-tag": _get_model_name(config.hw_design.id),
         "product": config.program.name.lower(),
     }
     if config.oem:
@@ -1320,7 +1320,7 @@ def _build_proximity(config, config_files):
     Returns:
         proximity sensors configuration.
     """
-    design_name = config.hw_design.name.lower()
+    design_name = _get_name_for_config(config.hw_design.id)
     design_config_id = config.hw_design_config.id.value.lower()
     return config_files.proximity_map.get((design_name, design_config_id))
 
@@ -1440,6 +1440,20 @@ def _fw_build_target(payload):
         return payload.build_target_name
 
     return None
+
+
+def _get_name_for_config(design_id):
+    """Returns the name to use for config naming for a given design ID."""
+    if design_id.HasField("config_design_id_override"):
+        return design_id.config_design_id_override.value.lower()
+    return design_id.value.lower()
+
+
+def _get_model_name(design_id):
+    """Returns the model name to use for a given design ID."""
+    if design_id.HasField("model_name_design_id_override"):
+        return design_id.model_name_design_id_override.value.lower()
+    return design_id.value.lower()
 
 
 def _calculate_image_name_suffix(hw_design_config):
@@ -1615,10 +1629,7 @@ class _AudioConfigBuilder:
 
     @property
     def _design_name(self):
-        design_id = self._config.hw_design.id
-        if design_id.HasField("config_design_id_override"):
-            return design_id.config_design_id_override.value.lower()
-        return design_id.value.lower()
+        return _get_name_for_config(self._config.hw_design.id)
 
     @property
     def _hw_features(self):
@@ -2272,7 +2283,7 @@ def _transform_build_config(config, config_files, whitelabel):
     """
     result = {
         "identity": _build_identity(config),
-        "name": config.hw_design.name.lower(),
+        "name": _get_model_name(config.hw_design.id),
     }
 
     _upsert(_build_arc(config, config_files), result, "arc")
@@ -2312,7 +2323,7 @@ def _transform_build_config(config, config_files, whitelabel):
         # Prefer design_config level (sku)
         # Then design level
         # If neither, fall back to project wide config (mapped to empty string)
-        design_name = config.hw_design.name.lower()
+        design_name = _get_name_for_config(config.hw_design.id)
         design_config_id = config.hw_design_config.id.value.lower()
         design_config_id_path = os.path.join(design_name, design_config_id)
         if design_name in design_config_id:
@@ -2915,7 +2926,7 @@ def _proximity_map(configs, project_name, output_dir, build_root_dir):
     result = {}
     prox_config = proximity_config_pb2.ProximityConfig
     for hw_design in configs.design_list:
-        design_name = hw_design.name.lower()
+        design_name = _get_name_for_config(hw_design.id)
         for hw_design_config in hw_design.configs:
             design_config_id = hw_design_config.id.value.lower()
             for (
