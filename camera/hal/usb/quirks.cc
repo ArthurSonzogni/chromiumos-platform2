@@ -48,6 +48,8 @@ const QuirksMap& GetQuirksMap() {
       {{"05c8", "0609"}, kQuirkPreferLargePreviewResolution},
       // Chicony Integrated IR Camera (b/223587315)
       {{"04f2", "b615"}, kQuirkInfrared},
+      // Rapoo C260 Webcam (b/245461023)
+      {{"0c45", "636b"}, kQuirkPreferLargePreviewResolution},
   });
   return *kQuirksMap;
 }
