@@ -5,12 +5,7 @@
 #ifndef LIBHWSEC_BACKEND_TPM2_STATE_H_
 #define LIBHWSEC_BACKEND_TPM2_STATE_H_
 
-#include <cstdint>
-#include <map>
-#include <memory>
-#include <string>
-#include <utility>
-#include <variant>
+#include <optional>
 #include <vector>
 
 #include "libhwsec/backend/backend.h"
@@ -27,6 +22,21 @@ class StateTpm2 : public Backend::State,
   StatusOr<bool> IsEnabled() override;
   StatusOr<bool> IsReady() override;
   Status Prepare() override;
+  void WaitUntilReady(base::OnceCallback<void(Status)> callback) override;
+
+ private:
+  void OnReady();
+
+  // Receive the ready signal or not, this will be std::nullopt if we didn't
+  // register the signal.
+  std::optional<bool> received_ready_signal_;
+
+  std::vector<base::OnceCallback<void(Status)>> ready_callbacks_;
+
+  // Member variables should appear before the WeakPtrFactory, to ensure
+  // that any WeakPtrs to Controller are invalidated before its members
+  // variable's destructors are executed, rendering them invalid.
+  base::WeakPtrFactory<StateTpm2> weak_factory_{this};
 };
 
 }  // namespace hwsec

@@ -24,11 +24,17 @@ class MockState : public State {
         .WillByDefault(Invoke(default_, &State::IsEnabled));
     ON_CALL(*this, IsReady).WillByDefault(Invoke(default_, &State::IsReady));
     ON_CALL(*this, Prepare).WillByDefault(Invoke(default_, &State::Prepare));
+    ON_CALL(*this, WaitUntilReady)
+        .WillByDefault(Invoke(default_, &State::WaitUntilReady));
   }
 
   MOCK_METHOD(StatusOr<bool>, IsEnabled, (), (override));
   MOCK_METHOD(StatusOr<bool>, IsReady, (), (override));
   MOCK_METHOD(Status, Prepare, (), (override));
+  MOCK_METHOD(void,
+              WaitUntilReady,
+              (base::OnceCallback<void(Status)> callback),
+              (override));
 
  private:
   State* default_;

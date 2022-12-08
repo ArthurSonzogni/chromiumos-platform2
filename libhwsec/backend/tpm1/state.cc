@@ -12,6 +12,7 @@
 
 #include "libhwsec/backend/tpm1/backend.h"
 #include "libhwsec/error/tpm_manager_error.h"
+#include "libhwsec/status.h"
 
 using hwsec_foundation::status::MakeStatus;
 
@@ -60,6 +61,42 @@ Status StateTpm1::Prepare() {
   }
 
   return MakeStatus<TPMManagerError>(reply.status());
+}
+
+void StateTpm1::WaitUntilReady(base::OnceCallback<void(Status)> callback) {
+  if (!received_ready_signal_.has_value()) {
+    received_ready_signal_ = false;
+    backend_.GetProxy()
+        .GetTpmManager()
+        .RegisterSignalOwnershipTakenSignalHandler(
+            base::IgnoreArgs<const tpm_manager::OwnershipTakenSignal&>(
+                base::BindRepeating(&StateTpm1::OnReady,
+                                    weak_factory_.GetWeakPtr())),
+            base::DoNothing());
+  }
+
+  if (received_ready_signal_.value() == false) {
+    received_ready_signal_ = IsReady().value_or(false);
+  }
+
+  if (received_ready_signal_.value() == true) {
+    std::move(callback).Run(OkStatus());
+    return;
+  }
+
+  ready_callbacks_.push_back(std::move(callback));
+}
+
+void StateTpm1::OnReady() {
+  received_ready_signal_ = true;
+
+  std::vector<base::OnceCallback<void(Status)>> callbacks =
+      std::move(ready_callbacks_);
+  ready_callbacks_.clear();
+
+  for (base::OnceCallback<void(Status)>& callback : callbacks) {
+    std::move(callback).Run(OkStatus());
+  }
 }
 
 }  // namespace hwsec

@@ -5,6 +5,8 @@
 #ifndef LIBHWSEC_BACKEND_STATE_H_
 #define LIBHWSEC_BACKEND_STATE_H_
 
+#include <base/callback.h>
+
 #include "libhwsec/status.h"
 
 namespace hwsec {
@@ -20,6 +22,9 @@ class State {
 
   // Tries to make the security module become ready.
   virtual Status Prepare() = 0;
+
+  // Waits until the security module is ready.
+  virtual void WaitUntilReady(base::OnceCallback<void(Status)> callback) = 0;
 
  protected:
   State() = default;
