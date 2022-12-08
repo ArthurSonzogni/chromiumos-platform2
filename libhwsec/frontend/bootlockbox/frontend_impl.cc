@@ -48,4 +48,9 @@ StatusOr<bool> BootLockboxFrontendImpl::IsSpaceWriteLocked() {
       Space::kBootlockbox);
 }
 
+void BootLockboxFrontendImpl::WaitUntilReady(
+    base::OnceCallback<void(Status)> callback) {
+  middleware_.CallAsync<&Backend::State::WaitUntilReady>(std::move(callback));
+}
+
 }  // namespace hwsec

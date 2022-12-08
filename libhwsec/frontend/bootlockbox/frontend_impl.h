@@ -28,6 +28,7 @@ class BootLockboxFrontendImpl : public BootLockboxFrontend,
   Status StoreSpace(const brillo::Blob& blob) override;
   Status LockSpace() override;
   StatusOr<bool> IsSpaceWriteLocked() override;
+  void WaitUntilReady(base::OnceCallback<void(Status)> callback) override;
 };
 
 }  // namespace hwsec

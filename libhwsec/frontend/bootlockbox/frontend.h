@@ -8,6 +8,7 @@
 #include <optional>
 #include <vector>
 
+#include <base/callback.h>
 #include <brillo/secure_blob.h>
 
 #include "libhwsec/backend/storage.h"
@@ -21,6 +22,9 @@ class BootLockboxFrontend : public Frontend {
   using StorageState = Storage::ReadyState;
 
   ~BootLockboxFrontend() override = default;
+
+  // Add a callback to wait until the space related functions are ready to use.
+  virtual void WaitUntilReady(base::OnceCallback<void(Status)> callback) = 0;
 
   // Gets the state of bootlockbox space.
   virtual StatusOr<StorageState> GetSpaceState() = 0;
