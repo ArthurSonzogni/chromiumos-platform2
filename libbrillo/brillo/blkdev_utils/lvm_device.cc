@@ -26,6 +26,7 @@
 #include <base/strings/string_split.h>
 #include <base/values.h>
 #include <brillo/process/process.h>
+#include <brillo/scoped_umask.h>
 
 namespace brillo {
 namespace {
@@ -311,6 +312,12 @@ bool LvmCommandRunner::RunCommand(const std::vector<std::string>& cmd) {
   // lvm2_run() does not exec/fork a separate process, instead it parses the
   // command line and calls the relevant functions within liblvm2cmd directly.
   std::string lvm_cmd = base::JoinString(cmd, " ");
+
+  // liblvm2cmd sets a global umask() but doesn't reset it.
+  // Instead add a scoped umask here to reset the umask once we are done
+  // executing.
+  brillo::ScopedUmask lvm_umask(0);
+
   int rc = lvm2_run(nullptr, lvm_cmd.c_str());
   LogLvmError(rc, lvm_cmd);
 
