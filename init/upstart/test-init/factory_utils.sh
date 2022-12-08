@@ -19,30 +19,3 @@ is_factory_installer_mode() {
 is_factory_mode() {
   is_factory_test_mode || is_factory_installer_mode
 }
-
-factory_mount_var_and_home_chronos() {
-  local option_file="${FACTORY_DIR}/init/encstateful_mount_option"
-  local option=""
-
-  if [ -f "${option_file}" ]; then
-    option="$(cat "${option_file}")"
-  fi
-
-  if [ "${option}" = "tmpfs" ]; then
-    # Mount tmpfs to /var/.  When booting from USB disk, writing to /var/
-    # slows down system performance dramatically.  Since there is no need to
-    # really write to stateful partition, using option 'tmpfs' will mount
-    # tmpfs on /var to improve performance.  (especially when running tests
-    # like touchpad, touchscreen).
-    mount -n -t tmpfs tmpfs_var /var || return 1
-    mount -n --bind /mnt/stateful_partition/home/chronos /home/chronos || \
-      return 1
-  else
-    # Mount /var and /home/chronos in the unencrypted mode.
-    # This should be same as platform2/init/unencrypted/startup_utils.sh
-    mkdir -p /mnt/stateful_partition/var || return 1
-    mount -n --bind /mnt/stateful_partition/var /var || return 1
-    mount -n --bind /mnt/stateful_partition/home/chronos /home/chronos || \
-      return 1
-  fi
-}
