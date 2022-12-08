@@ -18,7 +18,6 @@
 #include "missive/dbus/mock_upload_client.h"
 #include "missive/proto/interface.pb.h"
 #include "missive/proto/record.pb.h"
-#include "missive/resources/memory_resource_impl.h"
 #include "missive/resources/resource_interface.h"
 #include "missive/util/test_support_callbacks.h"
 #include "missive/util/test_util.h"
@@ -86,7 +85,7 @@ class UploadJobTest : public ::testing::Test {
  protected:
   void SetUp() override {
     upload_client_ = base::MakeRefCounted<test::MockUploadClient>();
-    memory_resource_ = base::MakeRefCounted<MemoryResourceImpl>(
+    memory_resource_ = base::MakeRefCounted<ResourceInterface>(
         4u * 1024LLu * 1024LLu);  // 4 MiB
   }
 

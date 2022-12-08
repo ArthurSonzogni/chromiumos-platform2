@@ -26,7 +26,6 @@
 #include <snappy.h>
 
 #include "missive/proto/record.pb.h"
-#include "missive/resources/memory_resource_impl.h"
 #include "missive/resources/resource_interface.h"
 #include "missive/util/test_support_callbacks.h"
 
@@ -42,7 +41,7 @@ constexpr char kPoorlyCompressibleTestString[] = "AAAAA11111";
 class CompressionModuleTest : public ::testing::Test {
  protected:
   CompressionModuleTest()
-      : memory_resource_(base::MakeRefCounted<MemoryResourceImpl>(
+      : memory_resource_(base::MakeRefCounted<ResourceInterface>(
             4u * 1024LLu * 1024LLu))  // 4 MiB
   {}
 
@@ -64,9 +63,9 @@ class CompressionModuleTest : public ::testing::Test {
         {}, {CompressionModule::kCompressReportingFeature});
   }
 
+  base::test::TaskEnvironment task_environment_;
   scoped_refptr<ResourceInterface> memory_resource_;
   scoped_refptr<CompressionModule> compression_module_;
-  base::test::TaskEnvironment task_environment_{};
 
  private:
   base::test::ScopedFeatureList scoped_feature_list_;

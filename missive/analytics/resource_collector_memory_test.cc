@@ -14,7 +14,6 @@
 #include <gtest/gtest.h>
 
 #include "missive/analytics/metrics_test_util.h"
-#include "missive/resources/memory_resource_impl.h"
 #include "missive/resources/resource_interface.h"
 
 using ::testing::Eq;
@@ -38,7 +37,7 @@ class ResourceCollectorMemoryTest : public ::testing::TestWithParam<uint64_t> {
   // The time interval that resource collector is expected to collect resources
   const base::TimeDelta kInterval{base::Seconds(20)};
   const scoped_refptr<ResourceInterface> resource_{
-      base::MakeRefCounted<MemoryResourceImpl>(4 * 1024U * 1024U)};
+      base::MakeRefCounted<ResourceInterface>(4 * 1024U * 1024U)};
   Metrics::TestEnvironment metrics_test_environment_;
   ResourceCollectorMemory resource_collector_{kInterval, resource_};
 };

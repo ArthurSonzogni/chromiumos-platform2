@@ -1,5 +1,5 @@
 # Copyright 2021 The ChromiumOS Authors
-# Use of this source code is governed by a BSD - style license that can be
+# Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
 import("//common-mk/pkg_config.gni")
@@ -20,12 +20,8 @@ pkg_config("target_defaults") {
 
 static_library("resource_interface") {
   sources = [
-    "disk_resource_impl.cc",
-    "disk_resource_impl.h",
     "enqueuing_record_tallier.cc",
     "enqueuing_record_tallier.h",
-    "memory_resource_impl.cc",
-    "memory_resource_impl.h",
     "resource_interface.cc",
     "resource_interface.h",
   ]

@@ -34,8 +34,6 @@
 #include "missive/encryption/primitives.h"
 #include "missive/encryption/verification.h"
 #include "missive/proto/record.pb.h"
-#include "missive/resources/disk_resource_impl.h"
-#include "missive/resources/memory_resource_impl.h"
 #include "missive/resources/resource_interface.h"
 #include "missive/storage/storage_configuration.h"
 #include "missive/storage/storage_queue.h"
