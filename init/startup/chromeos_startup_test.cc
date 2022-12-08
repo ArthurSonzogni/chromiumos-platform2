@@ -37,6 +37,7 @@ using testing::_;
 using testing::AnyNumber;
 using testing::ByMove;
 using testing::Return;
+using testing::StrictMock;
 
 namespace startup {
 
@@ -220,6 +221,76 @@ TEST_F(DevCheckBlockTest, ReadVpdSlowPass) {
   startup_->DevCheckBlockDevMode(dev_mode_file);
   EXPECT_EQ(PathExists(dev_mode_file), true);
   EXPECT_EQ(platform_->GetBootAlertForArg("block_devmode"), 1);
+}
+
+class MaybeMountEfivarfsTest : public ::testing::Test {
+ protected:
+  MaybeMountEfivarfsTest() : cros_system_(new CrosSystemFake()) {}
+
+  void SetUp() override {
+    ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
+    base_dir_ = temp_dir_.GetPath();
+    efivars_dir_ = base_dir_.Append("sys/firmware/efi/efivars");
+    filesystems_file_ = base_dir_.Append("proc/filesystems");
+    mock_platform_ = std::make_unique<StrictMock<startup::MockPlatform>>();
+  }
+
+  // Extra layer of safety to ensure all tests call `MakeStartup`.
+  void TearDown() override { startup_.reset(); }
+
+  // Move `ChromeosStartup` creation out of SetUp to give access to the
+  // `MockPlatform`. After calling this function `mock_platform_` will no longer
+  // be usable.
+  void MakeStartup() {
+    startup_ = std::make_unique<startup::ChromeosStartup>(
+        std::unique_ptr<CrosSystem>(cros_system_), flags_, base_dir_, base_dir_,
+        base_dir_, base_dir_, std::move(mock_platform_),
+        std::make_unique<startup::StandardMountHelper>(
+            std::make_unique<startup::FakePlatform>(), flags_, base_dir_,
+            base_dir_, true));
+  }
+
+  CrosSystemFake* cros_system_;
+  startup::Flags flags_;
+  std::unique_ptr<startup::MockPlatform> mock_platform_;
+  std::unique_ptr<startup::ChromeosStartup> startup_;
+  base::ScopedTempDir temp_dir_;
+  base::FilePath base_dir_;
+  base::FilePath efivars_dir_;
+  base::FilePath filesystems_file_;
+};
+
+TEST_F(MaybeMountEfivarfsTest, Supported) {
+  ASSERT_TRUE(CreateDirAndWriteFile(filesystems_file_, ("nodev\tsysfs\n"
+                                                        "nodev\tefivarfs\n"
+                                                        "\text4\n")));
+
+  EXPECT_CALL(*mock_platform_, Mount("efivarfs", efivars_dir_, "efivarfs",
+                                     kCommonMountFlags, _));
+
+  MakeStartup();
+
+  startup_->MaybeMountEfivarfs();
+}
+
+TEST_F(MaybeMountEfivarfsTest, NotSupported) {
+  ASSERT_TRUE(CreateDirAndWriteFile(filesystems_file_, ("nodev\tsysfs\n"
+                                                        "\text4\n")));
+
+  // Expect that we mount nothing.
+  // Typed Matcher supplied to disambiguate between Mount calls for complier.
+  // Somewhat brittle, as a new version of the mount call could be introduced
+  // and used without breaking this, but seems like the best gTest gives us?
+  EXPECT_CALL(*mock_platform_,
+              Mount(testing::Matcher<const std::string&>(_), _, _, _, _))
+      .Times(0);
+  EXPECT_CALL(*mock_platform_,
+              Mount(testing::Matcher<const base::FilePath&>(_), _, _, _, _))
+      .Times(0);
+
+  MakeStartup();
+
+  startup_->MaybeMountEfivarfs();
 }
 
 class TPMTest : public ::testing::Test {

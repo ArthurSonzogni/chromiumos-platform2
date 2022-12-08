@@ -67,6 +67,9 @@ class ChromeosStartup {
 
   void TmpfilesConfiguration(const std::vector<std::string>& dirs);
 
+  // Mount efivarfs if it's supported.
+  void MaybeMountEfivarfs();
+
   // Run the chromeos startup routine.
   int Run();
 

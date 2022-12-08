@@ -30,6 +30,12 @@ bool IsFactoryInstallMode(const base::FilePath& base_dir);
 // installer mode.
 bool IsFactoryMode(CrosSystem* cros_system, const base::FilePath& base_dir);
 
+// Determines if a filesystem is supported.
+// False if there's an error checking or if the filesystem isn't supported,
+// true if the filesystem is supported.
+bool IsSupportedFilesystem(const std::string& filesystem,
+                           const base::FilePath& base_dir);
+
 // Platform defines functions that interface with the filesystem and
 // other utilities that we want to override for testing. That includes
 // wrappers functions for syscalls.

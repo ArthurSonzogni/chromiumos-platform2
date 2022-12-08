@@ -233,12 +233,6 @@ needs_clobber_without_devmode_file() {
   [ -O "${INSTALL_ATTRIBUTES_FILE}" ]
 }
 
-# If we support efivarfs, mount the efivarfs interface for accessing
-# EFI variables.
-if grep -q efivarfs /proc/filesystems; then
-  mount -t efivarfs -o nodev,noexec,nosuid efivarfs /sys/firmware/efi/efivars
-fi
-
 # /run is now tmpfs used for runtime data. Make sure /var/run and /var/lock are
 # bind-mounted to /run and /run/lock respectively for backwards compatibility.
 # tmpfiles.d recreates these each boot in case they were corrupted to point

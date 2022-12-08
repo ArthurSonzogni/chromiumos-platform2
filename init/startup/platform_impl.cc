@@ -14,6 +14,7 @@
 #include <string>
 #include <vector>
 
+#include <base/containers/contains.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
@@ -33,6 +34,8 @@ namespace {
 
 constexpr char kProcCmdLine[] = "proc/cmdline";
 constexpr char kFactoryDir[] = "mnt/stateful_partition/dev_image/factory";
+constexpr char kProcFilesystems[] = "proc/filesystems";
+
 const size_t kMaxReadSize = 4 * 1024;
 
 }  // namespace
@@ -315,6 +318,27 @@ bool IsFactoryInstallerMode(const base::FilePath& base_dir) {
 bool IsFactoryMode(CrosSystem* cros_system, const base::FilePath& base_dir) {
   return (IsFactoryTestMode(cros_system, base_dir) ||
           IsFactoryInstallerMode(base_dir));
+}
+
+// Determines if a filesystem is supported.
+// False if there's an error checking or if the filesystem isn't supported,
+// true if the filesystem is supported.
+bool IsSupportedFilesystem(const std::string& filesystem,
+                           const base::FilePath& base_dir) {
+  // List of supported filesystems, along with indicators like "nodev".
+  // See /proc/filesystems under `man 5 proc`.
+  const base::FilePath filesystems = base_dir.Append(kProcFilesystems);
+
+  std::string filesystems_content;
+  if (!base::ReadFileToString(filesystems, &filesystems_content)) {
+    PLOG(ERROR) << "Failed to read " << kProcFilesystems;
+    return false;
+  }
+  const auto supported_filesystems =
+      base::SplitStringPiece(filesystems_content, base::kWhitespaceASCII,
+                             base::KEEP_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
+
+  return base::Contains(supported_filesystems, filesystem);
 }
 
 }  // namespace startup

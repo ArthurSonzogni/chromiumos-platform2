@@ -54,6 +54,11 @@ constexpr char kSysKernelDebug[] = "sys/kernel/debug";
 constexpr char kSysKernelSecurity[] = "sys/kernel/security";
 constexpr char kSysKernelTracing[] = "sys/kernel/tracing";
 
+// The name of the filesystem for accessing UEFI variables.
+constexpr char kEfivarfs[] = "efivarfs";
+// Where the filesystem for accessing UEFI variables is mounted.
+constexpr char kSysFirmwareEfiEfivars[] = "sys/firmware/efi/efivars";
+
 constexpr char kTpmSimulator[] = "etc/init/tpm2-simulator.conf";
 
 // This file is created by clobber-state after the transition to dev mode.
@@ -505,6 +510,20 @@ void ChromeosStartup::MoveToLibDeviceSettings() {
   }
 }
 
+// Mount /sys/firmware/efi/efivarfs, if supported.
+void ChromeosStartup::MaybeMountEfivarfs() {
+  // If we're sure this is a supported filesystem (failure to check is
+  // interpreted as "unsupported").
+  if (IsSupportedFilesystem(kEfivarfs, root_)) {
+    const base::FilePath efivars = root_.Append(kSysFirmwareEfiEfivars);
+    if (!platform_->Mount(kEfivarfs, efivars, kEfivarfs, kCommonMountFlags,
+                          "")) {
+      // TODO(b/232901639): Improve failure reporting.
+      PLOG(WARNING) << "Unable to mount " << efivars.value();
+    }
+  }
+}
+
 // Main function to run chromeos_startup.
 int ChromeosStartup::Run() {
   dev_mode_ = platform_->InDevMode(cros_system_.get());
@@ -611,6 +630,8 @@ int ChromeosStartup::Run() {
   TmpfilesConfiguration(tmpfile_args);
 
   MoveToLibDeviceSettings();
+
+  MaybeMountEfivarfs();
 
   int ret = RunChromeosStartupScript();
   if (ret) {
