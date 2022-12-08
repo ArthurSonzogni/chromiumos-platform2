@@ -52,13 +52,19 @@ void Daemon::RegisterDBusObjectsAsync(
 }
 
 void Daemon::OnShutdown(int* return_code) {
+  LOG(INFO) << "Shutting down";
   manager_.reset();
   brillo::DBusServiceDaemon::OnShutdown(return_code);
 }
 
+void Daemon::OnTimeout() {
+  LOG(INFO) << "Exiting after timeout";
+  Quit();
+}
+
 void Daemon::PostponeShutdown(base::TimeDelta delay) {
   shutdown_callback_.Reset(
-      base::BindOnce(&brillo::Daemon::Quit, weak_factory_.GetWeakPtr()));
+      base::BindOnce(&Daemon::OnTimeout, weak_factory_.GetWeakPtr()));
   base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
       FROM_HERE, shutdown_callback_.callback(), delay);
 }

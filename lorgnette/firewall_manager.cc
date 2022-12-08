@@ -95,7 +95,7 @@ bool FirewallManager::SetupLifelinePipe() {
 }
 
 void FirewallManager::OnServiceAvailable(bool service_available) {
-  LOG(INFO) << "FirewallManager::OnServiceAvailabe " << service_available;
+  LOG(INFO) << "FirewallManager::OnServiceAvailable " << service_available;
   // Nothing to be done if proxy service is not available.
   if (!service_available) {
     return;

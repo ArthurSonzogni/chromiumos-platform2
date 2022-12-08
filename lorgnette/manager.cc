@@ -347,6 +347,9 @@ bool Manager::ListScanners(brillo::ErrorPtr* error,
   serialized.resize(response.ByteSizeLong());
   response.SerializeToArray(serialized.data(), serialized.size());
 
+  if (!activity_callback_.is_null())
+    activity_callback_.Run(Daemon::kNormalShutdownTimeout);
+
   *scanner_list_out = std::move(serialized);
   return true;
 }
@@ -414,6 +417,9 @@ bool Manager::GetScannerCapabilities(brillo::ErrorPtr* error,
   std::vector<uint8_t> serialized;
   serialized.resize(capabilities.ByteSizeLong());
   capabilities.SerializeToArray(serialized.data(), serialized.size());
+
+  if (!activity_callback_.is_null())
+    activity_callback_.Run(Daemon::kNormalShutdownTimeout);
 
   *capabilities_out = std::move(serialized);
   return true;
@@ -596,6 +602,9 @@ std::vector<uint8_t> Manager::CancelScan(
       active_scans_.erase(uuid);
     }
   }
+
+  if (!activity_callback_.is_null())
+    activity_callback_.Run(Daemon::kNormalShutdownTimeout);
 
   response.set_success(true);
   return impl::SerializeProto(response);
