@@ -26,7 +26,6 @@
 #include <chromeos/dbus/debugd/dbus-constants.h>
 
 #include "debugd/src/constants.h"
-#include "debugd/src/helper_utils.h"
 #include "debugd/src/process_with_output.h"
 #include "debugd/src/sandboxed_process.h"
 
@@ -49,23 +48,24 @@ startxref
 
 constexpr char kGzipCommand[] = "/bin/gzip";
 constexpr char kFoomaticCommand[] = "/usr/bin/foomatic-rip";
-constexpr char kTestPPDCommand[] = "/usr/bin/cupstestppd";
-constexpr char kTestPPDSeccompPolicy[] =
-    "/usr/share/policy/cupstestppd-seccomp.policy";
 
 constexpr char kLpadminUser[] = "lpadmin";
 constexpr char kLpadminGroup[] = "lpadmin";
 
-constexpr char kUriHelperBasename[] = "cups_uri_helper";
-constexpr char kUriHelperSeccompPolicy[] =
-    "/usr/share/policy/cups-uri-helper.policy";
-
 constexpr base::StringPiece kLpstatInterfaceLinePrefix("Interface: ");
+
+// Minimum size of a plausible PPD.  Determined by gzipping a minimal PPD
+// accepted by cupstestppd and rounding down.
+constexpr size_t kMinimumPPDSize = 200;
 
 // Runs cupstestppd on |ppd_content| returns the result code.  0 is the expected
 // success code. Verify the foomatic command is valid if the PPD uses the
 // foomatic-rip filter.
-int TestPPD(const std::vector<uint8_t>& ppd_data) {
+int TestPPD(const LpTools& lp_tools, const std::vector<uint8_t>& ppd_data) {
+  if (ppd_data.size() < kMinimumPPDSize) {
+    LOG(ERROR) << "PPD is too small";
+    return 1;
+  }
   std::vector<uint8_t> ppd_content = ppd_data;
   if (ppd_content[0] == 0x1f && ppd_content[1] == 0x8b) {  // gzip header
     std::string out;
@@ -77,9 +77,7 @@ int TestPPD(const std::vector<uint8_t>& ppd_data) {
     }
     ppd_content.assign(out.begin(), out.end());
   }
-  int ret = LpTools::RunAsUser(
-      kLpadminUser, kLpadminGroup, kTestPPDCommand, kTestPPDSeccompPolicy,
-      {"-W", "translations", "-W", "constraints", "-"}, &ppd_content);
+  int ret = lp_tools.CupsTestPpd(ppd_content);
   // Check if the foomatic-rip cups filter is present in the PPD file.
   constexpr uint8_t kFoomaticRip[] = "foomatic-rip\"";
   // Subtract 1 to exclude the null terminator.
@@ -182,6 +180,11 @@ int32_t CupsTool::AddAutoConfiguredPrinter(const std::string& name,
     return CupsResult::CUPS_BAD_URI;
   }
 
+  if (name.empty()) {
+    LOG(WARNING) << "Missing printer name";
+    return CupsResult::CUPS_FATAL;
+  }
+
   const bool is_ippusb =
       base::StartsWith(uri, "ippusb://", base::CompareCase::INSENSITIVE_ASCII);
   LOG(INFO) << "Adding auto-configured printer " << name << " at " << uri;
@@ -194,7 +197,7 @@ int32_t CupsTool::AddManuallyConfiguredPrinter(
     const std::string& name,
     const std::string& uri,
     const std::vector<uint8_t>& ppd_contents) {
-  if (TestPPD(ppd_contents) != EXIT_SUCCESS) {
+  if (TestPPD(*lp_tools_.get(), ppd_contents) != EXIT_SUCCESS) {
     LOG(ERROR) << "PPD failed validation";
     return CupsResult::CUPS_INVALID_PPD;
   }
@@ -202,6 +205,11 @@ int32_t CupsTool::AddManuallyConfiguredPrinter(
   if (!CupsTool::UriSeemsReasonable(uri)) {
     LOG(WARNING) << "Invalid URI: " << uri;
     return CupsResult::CUPS_BAD_URI;
+  }
+
+  if (name.empty()) {
+    LOG(WARNING) << "Missing printer name";
+    return CupsResult::CUPS_FATAL;
   }
 
   LOG(INFO) << "Adding manual printer " << name << " at " << uri;
@@ -291,17 +299,11 @@ bool CupsTool::RunLpstat(std::string* output) {
 // This function observes a subset of RFC 3986 but is _not_ meant to serve
 // as a general-purpose URI validator (prefer Chromium's GURL).
 bool CupsTool::UriSeemsReasonable(const std::string& uri) {
-  ProcessWithOutput::ArgList args = {uri};
-  std::string helper_path;
-
-  if (!GetHelperPath(kUriHelperBasename, &helper_path)) {
-    DCHECK(false) << "GetHelperPath() failed to return the CUPS URI helper!";
+  if (uri.empty()) {
     return false;
   }
 
-  int cups_uri_helper_exit_code = LpTools::RunAsUser(
-      SandboxedProcess::kDefaultUser, SandboxedProcess::kDefaultGroup,
-      helper_path, kUriHelperSeccompPolicy, args);
+  int cups_uri_helper_exit_code = lp_tools_->CupsUriHelper(uri);
   if (cups_uri_helper_exit_code == 0) {
     return true;
   }

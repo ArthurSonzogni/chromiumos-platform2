@@ -13,6 +13,8 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 
+#include "debugd/src/helper_utils.h"
+
 namespace debugd {
 
 namespace {
@@ -23,8 +25,15 @@ constexpr char kLpadminSeccompPolicy[] =
 constexpr char kLpstatCommand[] = "/usr/bin/lpstat";
 constexpr char kLpstatSeccompPolicy[] =
     "/usr/share/policy/lpstat-seccomp.policy";
+constexpr char kTestPPDCommand[] = "/usr/bin/cupstestppd";
+constexpr char kTestPPDSeccompPolicy[] =
+    "/usr/share/policy/cupstestppd-seccomp.policy";
+constexpr char kUriHelperBasename[] = "cups_uri_helper";
+constexpr char kUriHelperSeccompPolicy[] =
+    "/usr/share/policy/cups-uri-helper.policy";
 
 constexpr char kLpadminUser[] = "lpadmin";
+constexpr char kLpadminGroup[] = "lpadmin";
 constexpr char kLpGroup[] = "lp";
 
 }  // namespace
@@ -123,6 +132,25 @@ int LpToolsImpl::Lpstat(const ProcessWithOutput::ArgList& arg_list,
                    arg_list,
                    /*std_input=*/nullptr,
                    /*inherit_usergroups=*/false, output);
+}
+
+int LpToolsImpl::CupsTestPpd(const std::vector<uint8_t>& ppd_content) const {
+  return RunAsUser(
+      kLpadminUser, kLpadminGroup, kTestPPDCommand, kTestPPDSeccompPolicy,
+      {"-W", "translations", "-W", "constraints", "-"}, &ppd_content);
+}
+
+int LpToolsImpl::CupsUriHelper(const std::string& uri) const {
+  std::string helper_path;
+  if (!GetHelperPath(kUriHelperBasename, &helper_path)) {
+    DCHECK(false) << "GetHelperPath() failed to return the CUPS URI helper!";
+    return 127;  // Shell exit code for command not found.
+  }
+
+  ProcessWithOutput::ArgList args = {uri};
+  return RunAsUser(SandboxedProcess::kDefaultUser,
+                   SandboxedProcess::kDefaultGroup, helper_path,
+                   kUriHelperSeccompPolicy, args);
 }
 
 const base::FilePath& LpToolsImpl::GetCupsPpdDir() const {

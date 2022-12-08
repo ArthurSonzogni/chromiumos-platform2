@@ -11,10 +11,41 @@
 #include <base/files/file_util.h>
 #include <base/files/file_path.h>
 #include <base/strings/stringprintf.h>
+#include <chromeos/dbus/debugd/dbus-constants.h>
 
 #include "debugd/src/cups_tool.h"
 
 namespace debugd {
+
+namespace {
+
+constexpr base::StringPiece kMinimalPPDContent(R"PPD(*PPD-Adobe: "4.3"
+*FormatVersion: "4.3"
+*FileVersion: "1.0"
+*LanguageVersion: English
+*LanguageEncoding: ISOLatin1
+*PCFileName: "SAMPLE.PPD"
+*Product: "(Sample)"
+*PSVersion: "(1) 1"
+*ModelName: "Sample"
+*ShortNickName: "Sample"
+*NickName: "Sample"
+*Manufacturer: "Sample"
+*OpenUI *PageSize: PickOne
+*DefaultPageSize: A4
+*PageSize A4/A4: "<</PageSize[595.20 841.68]>>setpagedevice"
+*CloseUI: *PageSize
+*OpenUI *PageRegion: PickOne
+*DefaultPageRegion: A4
+*PageRegion A4/A4: "<</PageRegion[595.20 841.68]>>setpagedevice"
+*CloseUI: *PageRegion
+*DefaultImageableArea: A4
+*ImageableArea A4/A4: "8.40 8.40 586.80 833.28"
+*DefaultPaperDimension: A4
+*PaperDimension A4/A4: "595.20 841.68"
+)PPD");
+
+}  // namespace
 
 class FakeLpTools : public LpTools {
  public:
@@ -41,6 +72,14 @@ class FakeLpTools : public LpTools {
     return 0;
   }
 
+  int CupsTestPpd(const std::vector<uint8_t>&) const override {
+    return cupstestppd_result_;
+  }
+
+  int CupsUriHelper(const std::string& uri) const override {
+    return urihelper_result_;
+  }
+
   const base::FilePath& GetCupsPpdDir() const override {
     return ppd_dir_.GetPath();
   }
@@ -49,6 +88,10 @@ class FakeLpTools : public LpTools {
   // desired results.
 
   void SetLpstatOutput(const std::string& data) { lpstat_output_ = data; }
+
+  void SetCupsTestPPDResult(int result) { cupstestppd_result_ = result; }
+
+  void SetCupsUriHelperResult(int result) { urihelper_result_ = result; }
 
   // Create some valid output for lpstat based on printerName
   void CreateValidLpstatOutput(const std::string& printerName) {
@@ -83,6 +126,8 @@ class FakeLpTools : public LpTools {
  private:
   std::string lpstat_output_;
   base::ScopedTempDir ppd_dir_;
+  int cupstestppd_result_{0};
+  int urihelper_result_{0};
 };
 
 TEST(CupsToolTest, RetrievePpd) {
@@ -180,6 +225,90 @@ TEST(CupsToolTest, LpstatNoPrinter) {
   const std::vector<uint8_t> retrievedPpd = cupsTool.RetrievePpd(printerName);
 
   EXPECT_TRUE(retrievedPpd.empty());
+}
+
+TEST(CupsToolTest, InvalidPPDTooSmall) {
+  std::vector<uint8_t> empty_ppd;
+
+  CupsTool cups;
+  EXPECT_EQ(cups.AddManuallyConfiguredPrinter("test", "ipp://", empty_ppd),
+            CupsResult::CUPS_INVALID_PPD);
+}
+
+TEST(CupsToolTest, InvalidPPDBadGzip) {
+  // Make the PPD look like it's gzipped.
+  std::vector<uint8_t> bad_ppd(kMinimalPPDContent.begin(),
+                               kMinimalPPDContent.end());
+  bad_ppd[0] = 0x1f;
+  bad_ppd[1] = 0x8b;
+
+  CupsTool cups;
+  EXPECT_EQ(cups.AddManuallyConfiguredPrinter("test", "ipp://", bad_ppd),
+            CupsResult::CUPS_INVALID_PPD);
+}
+
+TEST(CupsToolTest, InvalidPPDBadContents) {
+  // Corrupt a valid PPD so it won't validate.
+  std::vector<uint8_t> bad_ppd(kMinimalPPDContent.begin(),
+                               kMinimalPPDContent.end());
+  bad_ppd[0] = 'X';
+  bad_ppd[1] = 'Y';
+  bad_ppd[2] = 'Z';
+
+  std::unique_ptr<FakeLpTools> lptools = std::make_unique<FakeLpTools>();
+  lptools->SetCupsTestPPDResult(4);  // Typical failure exit code.
+
+  CupsTool cups;
+  cups.SetLpToolsForTesting(std::move(lptools));
+
+  EXPECT_EQ(cups.AddManuallyConfiguredPrinter("test", "ipp://", bad_ppd),
+            CupsResult::CUPS_INVALID_PPD);
+}
+
+TEST(CupsToolTest, ManualMissingURI) {
+  std::vector<uint8_t> good_ppd(kMinimalPPDContent.begin(),
+                                kMinimalPPDContent.end());
+
+  std::unique_ptr<FakeLpTools> lptools = std::make_unique<FakeLpTools>();
+  lptools->SetCupsTestPPDResult(0);  // Successful validation.
+
+  CupsTool cups;
+  cups.SetLpToolsForTesting(std::move(lptools));
+
+  EXPECT_EQ(cups.AddManuallyConfiguredPrinter("test", "", good_ppd),
+            CupsResult::CUPS_BAD_URI);
+}
+
+TEST(CupsToolTest, ManualMissingName) {
+  std::vector<uint8_t> good_ppd(kMinimalPPDContent.begin(),
+                                kMinimalPPDContent.end());
+
+  std::unique_ptr<FakeLpTools> lptools = std::make_unique<FakeLpTools>();
+  lptools->SetCupsTestPPDResult(0);    // Successful validation.
+  lptools->SetCupsUriHelperResult(0);  // URI validated.
+
+  CupsTool cups;
+  cups.SetLpToolsForTesting(std::move(lptools));
+
+  EXPECT_EQ(cups.AddManuallyConfiguredPrinter(
+                "", "ipp://127.0.0.1:631/ipp/print", good_ppd),
+            CupsResult::CUPS_FATAL);
+}
+
+TEST(CupsToolTest, AutoMissingURI) {
+  CupsTool cups;
+  EXPECT_EQ(cups.AddAutoConfiguredPrinter("test", ""), CupsResult::CUPS_FATAL);
+}
+
+TEST(CupsToolTest, AutoMissingName) {
+  std::unique_ptr<FakeLpTools> lptools = std::make_unique<FakeLpTools>();
+  lptools->SetCupsUriHelperResult(0);  // URI validated.
+
+  CupsTool cups;
+  cups.SetLpToolsForTesting(std::move(lptools));
+
+  EXPECT_EQ(cups.AddAutoConfiguredPrinter("", "ipp://127.0.0.1:631/ipp/print"),
+            CupsResult::CUPS_FATAL);
 }
 
 }  // namespace debugd

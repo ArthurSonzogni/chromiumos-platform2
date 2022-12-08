@@ -27,6 +27,12 @@ class LpTools {
   virtual int Lpstat(const ProcessWithOutput::ArgList& arg_list,
                      std::string* output) = 0;
 
+  // Runs cupstestppd with |ppd_content| and returns the exit code.
+  virtual int CupsTestPpd(const std::vector<uint8_t>& ppd_content) const = 0;
+
+  // Runs the cups_uri_helper on |uri| and returns the exit code.
+  virtual int CupsUriHelper(const std::string& uri) const = 0;
+
   virtual const base::FilePath& GetCupsPpdDir() const = 0;
 
   // Returns the exit code for the executed process.
@@ -50,6 +56,10 @@ class LpToolsImpl : public LpTools {
 
   int Lpstat(const ProcessWithOutput::ArgList& arg_list,
              std::string* output) override;
+
+  int CupsTestPpd(const std::vector<uint8_t>& ppd_content) const override;
+
+  int CupsUriHelper(const std::string& uri) const override;
 
   const base::FilePath& GetCupsPpdDir() const override;
 };
