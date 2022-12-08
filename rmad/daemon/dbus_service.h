@@ -60,7 +60,9 @@ class DBusService : public brillo::DBusServiceDaemon {
   void SendExternalDiskSignal(bool detected);
   void ExecuteMountAndWriteLog(
       uint8_t device_id,
-      const std::string& log_string,
+      const std::string& text_log,
+      const std::string& json_log,
+      const std::string& system_log,
       base::OnceCallback<void(const std::optional<std::string>&)> callback);
   void ExecuteMountAndCopyFirmwareUpdater(
       uint8_t device_id, base::OnceCallback<void(bool)> callback);

@@ -29,7 +29,9 @@ class Executor final : public chromeos::rmad::mojom::Executor {
 
   // chromeos::rmad::mojom::Executor overrides.
   void MountAndWriteLog(uint8_t device_id,
-                        const std::string& log_string,
+                        const std::string& text_log,
+                        const std::string& json_log,
+                        const std::string& system_log,
                         MountAndWriteLogCallback callback) override;
   void MountAndCopyFirmwareUpdater(
       uint8_t device_id, MountAndCopyFirmwareUpdaterCallback callback) override;

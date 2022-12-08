@@ -15,12 +15,15 @@ interface Executor {
   // Input:
   // * |device_id| - a char between 'a' and 'z' indicating the device path is
   //                 "/dev/sd${device_id}1".
-  // * |log_string| - a string containing the logs to save.
+  // * |text_log| - a string containing the formatted logs to save.
+  // * |json_log| - a string containing the JSON formatted logs.
+  // * |system_log| - a string containing the raw system logs.
   //
   // Response:
   // * |file_name| - the file name of the saved log if successfully writes the
   //                 log, or null if failed to save the log.
-  MountAndWriteLog(uint8 device_id, string log_string) => (string? file_name);
+  MountAndWriteLog(uint8 device_id, string text_log, string json_log,
+      string system_log) => (string? file_name);
 
   // Mount a ChromeOS rootfs partition and copy the firmware updater to a
   // fixed path /usr/lib/rmad/chromeos-firmwareupdate.

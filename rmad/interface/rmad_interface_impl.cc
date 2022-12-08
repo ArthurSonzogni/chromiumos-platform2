@@ -513,13 +513,19 @@ void RmadInterfaceImpl::AbortRma(AbortRmaCallback callback) {
   ReplyCallback(std::move(callback), reply);
 }
 
-bool RmadInterfaceImpl::GetLogString(std::string* log_string) const {
-  std::string raw_log;
-  if (!cmd_utils_->GetOutput({kCroslogCmd, "--identifier=rmad"}, &raw_log)) {
-    return false;
+std::string RmadInterfaceImpl::GetSystemLog() const {
+  std::string system_log;
+  if (!cmd_utils_->GetOutput({kCroslogCmd, "--identifier=rmad"}, &system_log)) {
+    return "";
   }
+
+  return system_log;
+}
+
+bool RmadInterfaceImpl::GetLogString(std::string* log_string) const {
   *log_string = GenerateLogsText(json_store_) + kSummaryDivider +
-                GenerateLogsJson(json_store_) + kSummaryDivider + raw_log;
+                GenerateLogsJson(json_store_) + kSummaryDivider +
+                GetSystemLog();
   return true;
 }
 
@@ -543,8 +549,10 @@ void RmadInterfaceImpl::GetLog(GetLogCallback callback) {
 }
 
 void RmadInterfaceImpl::SaveLog(SaveLogCallback callback) {
-  std::string log_string;
-  if (!GetLogString(&log_string)) {
+  const std::string text_log = GenerateLogsText(json_store_);
+  const std::string json_log = GenerateLogsJson(json_store_);
+  const std::string system_log = GetSystemLog();
+  if (text_log.empty() || json_log.empty() || system_log.empty()) {
     // Failed to generate logs.
     SaveLogReply reply;
     reply.set_error(RMAD_ERROR_CANNOT_GET_LOG);
@@ -563,13 +571,15 @@ void RmadInterfaceImpl::SaveLog(SaveLogCallback callback) {
     return;
   }
 
-  SaveLogToFirstMountableDevice(std::move(device_list), log_string,
-                                std::move(callback));
+  SaveLogToFirstMountableDevice(std::move(device_list), text_log, json_log,
+                                system_log, std::move(callback));
 }
 
 void RmadInterfaceImpl::SaveLogToFirstMountableDevice(
     std::unique_ptr<std::list<std::string>> devices,
-    const std::string& log_string,
+    const std::string& text_log,
+    const std::string& json_log,
+    const std::string& system_log,
     SaveLogCallback callback) {
   if (devices->empty()) {
     // No devices left to try.
@@ -580,21 +590,23 @@ void RmadInterfaceImpl::SaveLogToFirstMountableDevice(
   }
   if (char device_id; GetDeviceIdFromDeviceFile(devices->front(), &device_id)) {
     daemon_callback_->GetExecuteMountAndWriteLogCallback().Run(
-        static_cast<uint8_t>(device_id), log_string,
+        static_cast<uint8_t>(device_id), text_log, json_log, system_log,
         base::BindOnce(&RmadInterfaceImpl::SaveLogExecutorCompleteCallback,
-                       base::Unretained(this), std::move(devices), log_string,
-                       std::move(callback)));
+                       base::Unretained(this), std::move(devices), text_log,
+                       json_log, system_log, std::move(callback)));
   } else {
     // Try next device.
     devices->pop_front();
-    SaveLogToFirstMountableDevice(std::move(devices), log_string,
-                                  std::move(callback));
+    SaveLogToFirstMountableDevice(std::move(devices), text_log, json_log,
+                                  system_log, std::move(callback));
   }
 }
 
 void RmadInterfaceImpl::SaveLogExecutorCompleteCallback(
     std::unique_ptr<std::list<std::string>> devices,
-    const std::string& log_string,
+    const std::string& text_log,
+    const std::string& json_log,
+    const std::string& system_log,
     SaveLogCallback callback,
     const std::optional<std::string>& file_name) {
   CHECK(!devices->empty());
@@ -613,8 +625,8 @@ void RmadInterfaceImpl::SaveLogExecutorCompleteCallback(
   } else {
     // Failed to save file. Try next device.
     devices->pop_front();
-    SaveLogToFirstMountableDevice(std::move(devices), log_string,
-                                  std::move(callback));
+    SaveLogToFirstMountableDevice(std::move(devices), text_log, json_log,
+                                  system_log, std::move(callback));
   }
 }
 

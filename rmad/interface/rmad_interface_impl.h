@@ -79,14 +79,19 @@ class RmadInterfaceImpl final : public RmadInterface {
   bool WaitForServices();
   bool StartFromInitialState();
 
+  std::string GetSystemLog() const;
   bool GetLogString(std::string* log_string) const;
   void SaveLogToFirstMountableDevice(
       std::unique_ptr<std::list<std::string>> devices,
-      const std::string& log_string,
+      const std::string& text_log,
+      const std::string& json_log,
+      const std::string& system_log,
       SaveLogCallback callback);
   void SaveLogExecutorCompleteCallback(
       std::unique_ptr<std::list<std::string>> devices,
-      const std::string& log_string,
+      const std::string& text_log,
+      const std::string& json_log,
+      const std::string& system_log,
       SaveLogCallback callback,
       const std::optional<std::string>& file_name);
   std::vector<std::string> GetRemovableBlockDevicePaths() const;

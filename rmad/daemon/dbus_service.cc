@@ -345,9 +345,12 @@ void DBusService::SendExternalDiskSignal(bool detected) {
 
 void DBusService::ExecuteMountAndWriteLog(
     uint8_t device_id,
-    const std::string& log_string,
+    const std::string& text_log,
+    const std::string& json_log,
+    const std::string& system_log,
     base::OnceCallback<void(const std::optional<std::string>&)> callback) {
-  executor_->MountAndWriteLog(device_id, log_string, std::move(callback));
+  executor_->MountAndWriteLog(device_id, text_log, json_log, system_log,
+                              std::move(callback));
 }
 
 void DBusService::ExecuteMountAndCopyFirmwareUpdater(
