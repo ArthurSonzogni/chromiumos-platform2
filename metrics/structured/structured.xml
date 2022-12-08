@@ -1436,6 +1436,32 @@
         TX HE DCM, dual carrier modulation (NL80211_RATE_INFO_HE_DCM).
       </summary>
     </metric>
+    <metric name="BTEnabled" type="int">
+      <summary>
+        Boolean. Is Bluetooth enabled?
+      </summary>
+    </metric>
+    <metric name="BTStack" type="int">
+      <summary>
+        Enum describing which BT stack (BlueZ, Floss, ...) is in use.
+        shill: Metrics::BTStack enum
+      </summary>
+    </metric>
+    <metric name="BTHFP" type="int">
+      <summary>
+        Boolean. Is Bluetooth performing HFP?
+      </summary>
+    </metric>
+    <metric name="BTA2DP" type="int">
+      <summary>
+        Boolean. Is Bluetooth performing A2DP?
+      </summary>
+    </metric>
+    <metric name="BTActivelyScanning" type="int">
+      <summary>
+        Boolean. Is Bluetooth scanning actively?
+      </summary>
+    </metric>
   </event>
 
 </project>
