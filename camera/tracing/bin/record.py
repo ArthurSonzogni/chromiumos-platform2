@@ -1,20 +1,18 @@
-#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 # Copyright 2022 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-"""A tool to instrument tracing (remotely) on a DUT."""
+"""Implementation of the `record` subcommand."""
 
-import argparse
 import logging
-import shlex
 import signal
 import subprocess
-import sys
 import tempfile
-from typing import Optional
+
+# pylint: disable=import-error
+from cros_camera_tracing import utils
 
 
 def generate_trace_config(
@@ -131,15 +129,6 @@ data_sources: {{
 """
 
 
-def Cmd(cmd: list, remote: Optional[str]) -> list:
-    """Helper function to quote args when needed."""
-    ret = cmd
-    if remote:
-        ret = ["ssh", remote] + [shlex.quote(c) for c in cmd]
-    logging.debug("Command: %s", ret)
-    return ret
-
-
 class PerfettoSession:
     """PerfettoSession represents a tracing session."""
 
@@ -175,7 +164,7 @@ class PerfettoSession:
         self.pid = None
         self.interrupted = False
 
-    def Start(self):
+    def start(self):
         """Starts the Perfetto tracing session.
 
         Generates the trace configs and starts the Perfetto process (remotely).
@@ -200,12 +189,12 @@ class PerfettoSession:
 
         # pylint: disable=R1732
         self.proc = subprocess.Popen(
-            Cmd(perfetto_cmd, self.remote), start_new_session=True
+            utils.wrap_cmd(perfetto_cmd, self.remote), start_new_session=True
         )
 
         try:
             output = subprocess.run(
-                Cmd(
+                utils.wrap_cmd(
                     ["pgrep", "-f", " ".join(perfetto_cmd)],
                     remote=self.remote,
                 ),
@@ -223,7 +212,7 @@ class PerfettoSession:
             self.pid,
         )
 
-    def Wait(self):
+    def wait(self):
         """Waits for the Perfetto process to end.
 
         The function waits until either SIGINT is received or after
@@ -239,9 +228,9 @@ class PerfettoSession:
                 logging.info("Will record for %f second(s)", self.duration_sec)
             self.proc.wait(self.duration_sec)
         except subprocess.TimeoutExpired:
-            self.Interrupt()
+            self.interrupt()
 
-    def Interrupt(self):
+    def interrupt(self):
         """Stops the Perfetto process.
 
         Gracefully terminates the Perfetto process through SIGINT.
@@ -249,10 +238,11 @@ class PerfettoSession:
 
         logging.info("Stopped recording trace")
         subprocess.run(
-            Cmd(["kill", "-SIGINT", self.pid], self.remote), check=True
+            utils.wrap_cmd(["kill", "-SIGINT", self.pid], self.remote),
+            check=True,
         )
 
-    def CleanUp(self):
+    def clean_up(self):
         """Cleans up temp files and syncs the trace output."""
 
         if self.proc is None:
@@ -276,7 +266,7 @@ class PerfettoSession:
             )
             # Clean up all the temp files on the DUT.
             subprocess.run(
-                Cmd(
+                utils.wrap_cmd(
                     [
                         "rm",
                         "-f",
@@ -297,22 +287,16 @@ class PerfettoSession:
         self.tmp_out_file.close()
 
     def __enter__(self):
-        self.Start()
+        self.start()
         return self
 
     def __exit__(self, *_):
-        self.CleanUp()
+        self.clean_up()
 
 
-def main(argv: list):
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--debug", action="store_true", help="Enable debug logs"
-    )
+def set_up_subcommand_parser(subparsers):
+    """Sets up subcommand parser for the `record` subcommand."""
 
-    subparsers = parser.add_subparsers(title="subcommands", dest="subcmd")
-
-    # `Record` subcommand.
     record_parser = subparsers.add_parser(
         "record",
         description=(
@@ -371,23 +355,11 @@ def main(argv: list):
         ),
     )
 
-    args = parser.parse_args(argv)
 
-    log_level = logging.INFO
-    if args.debug:
-        log_level = logging.DEBUG
-    logging.basicConfig(
-        level=log_level, format="%(asctime)s %(levelname)s: %(message)s"
-    )
+def execute_subcommand(args):
+    """Executes the `record` subcommand."""
 
-    if args.subcmd == "record":
-        with PerfettoSession(args) as s:
-            # Capture SIGINT (KeyboardInterrupt from Ctrl+C).
-            signal.signal(signal.SIGINT, lambda _, __: s.Interrupt())
-            s.Wait()
-
-    # TODO: Generate metrics with trace processor
-
-
-if __name__ == "__main__":
-    sys.exit(main(sys.argv[1:]))
+    with PerfettoSession(args) as s:
+        # Capture SIGINT (KeyboardInterrupt from Ctrl+C).
+        signal.signal(signal.SIGINT, lambda _, __: s.interrupt())
+        s.wait()

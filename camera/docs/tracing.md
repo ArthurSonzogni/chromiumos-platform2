@@ -10,12 +10,12 @@ camera.
 
 **Step 1**:
 
-You can use the [trace tool](../tools/tracing/trace.py) to automate trace
+You can use the [trace tool](../tracing/bin/trace.py) to automate trace
 recording on a remote DUT and sync the trace output to the host. For example,
 to record a 20 seconds trace on a remote DUT:
 
 ```shell
-(host) $ tools/tracing/trace.py record -r <DUT> -t 20 -o /tmp/perfetto-trace
+(host) $ tracing/bin/trace.py record -r <DUT> -t 20 -o /tmp/perfetto-trace
 ```
 
 The output trace file will be stored in `/tmp/perfetto-trace` on the host. You
@@ -125,19 +125,32 @@ EOF
 
 **Step 2**:
 
-While perfetto command is recording, open up a camera application and manipulate
-the flow you are interested in. (e.g. Taking a picture or recording a video).
-Wait until perfetto flushes all the trace events when the tracing ends.
+While perfetto command is recording, open up a camera application and exercise
+the camera function you are interested in. (e.g. Taking a picture or recording
+a video). Wait until perfetto flushes all the trace events when the tracing
+ends.
 
 **Step 3**:
 
 Go to [Perfetto UI](https://ui.perfetto.dev/), click "Open trace file" and
-select the trace output file (in our example it's `/tmp/perfetto-trace`).
-
-The details of the tracing results should be shown on the UI.
+select the trace output file (in our example it's `/tmp/perfetto-trace`). The
+details of the tracing results should be shown on the UI.
 
 <!---
 TODO(b/212231270): Add instructions about how to use Perfett UI directly to
 collect camera traces sent from each platforms once Perfetto UI supports
 custom configuration.
 -->
+
+The trace tool has a `report` subcommand that can be used to compute metrics
+from a recorded trace. To view the list of available metrics:
+
+```shell
+(host) $ tracing/bin/trace.py report --list_metrics
+```
+
+To compute metrics from a recorded trace stored in `/tmp/perfetto-trace`:
+
+```shell
+(host) $ tracing/bin/trace.py report -i /tmp/perfetto-trace --metrics <metric_names>
+```
