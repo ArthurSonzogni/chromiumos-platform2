@@ -5569,6 +5569,18 @@ class UserDataAuthApiTest : public UserDataAuthTest {
     return reply_future.Get();
   }
 
+  std::optional<user_data_auth::PreparePersistentVaultReply>
+  PreparePersistentVaultSync(
+      const user_data_auth::PreparePersistentVaultRequest& in_request) {
+    TestFuture<user_data_auth::PreparePersistentVaultReply> reply_future;
+    userdataauth_->PreparePersistentVault(
+        in_request,
+        reply_future
+            .GetCallback<const user_data_auth::PreparePersistentVaultReply&>());
+    RunUntilIdle();
+    return reply_future.Get();
+  }
+
  protected:
   // Mock mount factory for mocking Mount objects.
   MockMountFactory mount_factory_;
@@ -5580,6 +5592,7 @@ class UserDataAuthApiTest : public UserDataAuthTest {
   static constexpr char kPassword1[] = "MyP@ssW0rd!!";
   static constexpr char kPasswordLabel[] = "Password1";
   static constexpr char kSmartCardLabel[] = "SmartCard1";
+  static constexpr char kTestErrorString[] = "ErrorForTestingOnly";
 
   hwsec::Tpm2SimulatorFactoryForTest sim_factory_;
 };
@@ -5709,6 +5722,44 @@ TEST_F(UserDataAuthApiTest, ChalCredBadSRKROCA) {
   ASSERT_TRUE(add_factor_reply.has_value());
   EXPECT_EQ(add_factor_reply->error_info().primary_action(),
             user_data_auth::PrimaryAction::PRIMARY_TPM_UDPATE_REQUIRED);
+}
+
+TEST_F(UserDataAuthApiTest, MountFailed) {
+  // Prepare an account.
+  ASSERT_TRUE(CreateTestUser());
+  std::optional<std::string> session_id = GetTestAuthedAuthSession();
+  ASSERT_TRUE(session_id.has_value());
+
+  // Ensure that the mount fails.
+  scoped_refptr<MockMount> mount = new MockMount();
+  EXPECT_CALL(*mount, MountCryptohome(_, _, _))
+      .WillOnce(ReturnError<StorageError>(FROM_HERE, kTestErrorString,
+                                          MOUNT_ERROR_FATAL, false));
+  new_mounts_.push_back(mount.get());
+
+  EXPECT_CALL(homedirs_, Exists(_)).WillOnce(Return(true));
+  EXPECT_CALL(disk_cleanup_, FreeDiskSpaceDuringLogin(_))
+      .WillRepeatedly(Return(true));
+
+  // Make the call to check that the result is correct.
+  user_data_auth::PreparePersistentVaultRequest prepare_req;
+  prepare_req.set_auth_session_id(session_id.value());
+  std::optional<user_data_auth::PreparePersistentVaultReply> prepare_reply =
+      PreparePersistentVaultSync(prepare_req);
+
+  ASSERT_TRUE(prepare_reply.has_value());
+  EXPECT_THAT(
+      prepare_reply->error_info(),
+      HasPossibleAction(user_data_auth::PossibleAction::POSSIBLY_RETRY));
+  EXPECT_THAT(
+      prepare_reply->error_info(),
+      HasPossibleAction(user_data_auth::PossibleAction::POSSIBLY_REBOOT));
+  EXPECT_THAT(
+      prepare_reply->error_info(),
+      HasPossibleAction(user_data_auth::PossibleAction::POSSIBLY_DELETE_VAULT));
+  EXPECT_THAT(
+      prepare_reply->error_info(),
+      HasPossibleAction(user_data_auth::PossibleAction::POSSIBLY_POWERWASH));
 }
 
 }  // namespace cryptohome
