@@ -284,48 +284,49 @@ CryptohomeStatus AuthSession::Initialize() {
   bool user_is_active = user_session && user_session->IsActive();
   user_exists_ = persistent_user_exists || user_is_active;
 
-  // Decide on USS vs VaultKeyset based on what is on the disk for the user.
-  // If at least one non-backup VK exists, don't take USS path even if the
-  // experiment is enabled.
-  // After USS is enabled there will be backup VKs in disk. They are used for
-  // authentication only if USS is disabled after once being enabled.
-  std::map<std::string, std::unique_ptr<AuthFactor>> backup_factor_map;
-  if (persistent_user_exists) {
-    std::map<std::string, std::unique_ptr<AuthFactor>> factor_map;
-    converter_->VaultKeysetsToAuthFactorsAndKeyLabelData(
-        username_, factor_map, backup_factor_map, &key_label_data_);
-    for (auto& [unused, factor] : factor_map) {
-      auth_factor_map_.Add(std::move(factor),
-                           AuthFactorStorageType::kVaultKeyset);
-    }
+  if (!persistent_user_exists) {
+    RecordAuthSessionStart();
+    return OkStatus<CryptohomeCryptoError>();
   }
 
-  // Before IsUserSecretStashExperimentEnabled() there are no backup
-  // VaultKeysets in disk, hence label_to_auth_factor_for_backup_vks is empty.
-  // After IsUserSecretStashExperimentEnabled() is enabled UserSecretStash
-  // will be created only for new users (those who don't have VaultKeysets).
-  // Backup VaultKeysets will be generated together with UserSecretStash (USS).
-  // If for some reason UserSecretStashExperiment is disabled after being
-  // enabled USS users will have backup VaultKeysets in disk. Other users, for
-  // whom USS is never created will have regular non-backup VaultKeysets.
-  // Therefore we don't expect to have both regular and backup VaultKeysets in
-  // disk at the same time. This logic is going to change only after
-  // USSMigration is enabled.
-  if (!IsUserSecretStashExperimentEnabled(platform_) &&
-      auth_factor_map_.empty() && !backup_factor_map.empty()) {
+  // Load all the VaultKeysets and backup VaultKeysets in disk and convert
+  // them to AuthFactor format.
+  std::map<std::string, std::unique_ptr<AuthFactor>> backup_factor_map;
+  std::map<std::string, std::unique_ptr<AuthFactor>> vk_factor_map;
+  converter_->VaultKeysetsToAuthFactorsAndKeyLabelData(
+      username_, vk_factor_map, backup_factor_map, &key_label_data_);
+  // Load the USS AuthFactors.
+  std::map<std::string, std::unique_ptr<AuthFactor>> uss_factor_map =
+      auth_factor_manager_->LoadAllAuthFactors(obfuscated_username_);
+
+  // UserSecretStash is enabled: merge VaultKeyset-AuthFactors with
+  // USS-AuthFactors
+  if (IsUserSecretStashExperimentEnabled(platform_)) {
+    for (auto& [unused, factor] : uss_factor_map) {
+      auth_factor_map_.Add(std::move(factor),
+                           AuthFactorStorageType::kUserSecretStash);
+    }
+  } else {
+    // UserSecretStash is disabled: merge VaultKeyset-AuthFactors with
+    // backup-VaultKeyset-AuthFactors.
     for (auto& [unused, factor] : backup_factor_map) {
       auth_factor_map_.Add(std::move(factor),
                            AuthFactorStorageType::kVaultKeyset);
     }
   }
 
-  if (auth_factor_map_.empty()) {
-    std::map<std::string, std::unique_ptr<AuthFactor>> factor_map =
-        auth_factor_manager_->LoadAllAuthFactors(obfuscated_username_);
-    for (auto& [unused, factor] : factor_map) {
-      auth_factor_map_.Add(std::move(factor),
-                           AuthFactorStorageType::kUserSecretStash);
+  // Duplicate labels are not expected on any use case. However in very rare
+  // edge cases where an interrupted USS migration results in having both
+  // regular VaultKeyset and USS factor in disk it is safer to use the original
+  // VaultKeyset. In that case regular VaultKeyset overrides the existing
+  // label in the map.
+  for (auto& [unused, factor] : vk_factor_map) {
+    if (auth_factor_map_.Find(factor->label())) {
+      LOG(WARNING) << "Unexpected duplication of label: " << factor->label()
+                   << ". Regular VaultKeyset will override the AuthFactor.";
     }
+    auth_factor_map_.Add(std::move(factor),
+                         AuthFactorStorageType::kVaultKeyset);
   }
 
   auth_factor_map_.ReportAuthFactorBackingStoreMetrics();

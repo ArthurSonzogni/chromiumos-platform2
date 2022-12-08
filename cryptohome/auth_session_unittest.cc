@@ -4121,6 +4121,8 @@ TEST_F(AuthSessionWithUssExperimentTest, UpdateAuthFactor) {
     // will be destroyed when the session is.
     FindOrCreateUserSession(kFakeUsername);
   }
+  // Setting the expectation that the user exists.
+  EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(true));
 
   CryptohomeStatusOr<AuthSession*> new_auth_session_status =
       auth_session_manager_.CreateAuthSession(kFakeUsername, flags,
