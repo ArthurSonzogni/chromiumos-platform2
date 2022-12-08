@@ -90,7 +90,7 @@ int Daemon::OnInit() {
       base::ThreadTaskRunnerHandle::Get(),
       mojo::core::ScopedIPCSupport::ShutdownPolicy::FAST);
 
-  CHECK(mojo_handler_.StartThread());
+  CHECK(mojo_handler_.CreateTaskRunner());
 
   InitDBus();
 

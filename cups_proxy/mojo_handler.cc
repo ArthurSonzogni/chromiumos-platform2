@@ -9,6 +9,8 @@
 
 #include <base/check.h>
 #include <base/strings/string_util.h>
+#include <base/synchronization/waitable_event.h>
+#include <base/task/thread_pool.h>
 #include <chromeos/dbus/service_constants.h>
 
 namespace cups_proxy {
@@ -49,24 +51,20 @@ IppHeaders ConvertHeadersToMojom(
 
 }  // namespace
 
-MojoHandler::MojoHandler() : mojo_thread_("cups_proxy_mojo_thread") {}
+MojoHandler::MojoHandler() = default;
 
 MojoHandler::~MojoHandler() {
-  // The message pipe is bound on the mojo thread, and it has to be closed on
-  // the same thread which it is bound, so we close the message pipe by calling
-  // .reset() on the mojo thread.
+  // The message pipe is bound on the mojo task runner, and it has to be closed
+  // on the same task runner which it is bound, so we close the message pipe by
+  // calling .reset() on the mojo task runner.
   mojo_task_runner_->PostTask(
       FROM_HERE, base::BindOnce(&mojo::Remote<mojom::CupsProxier>::reset,
                                 base::Unretained(&chrome_proxy_)));
-  mojo_thread_.Stop();
 }
 
-bool MojoHandler::StartThread() {
-  if (!mojo_thread_.Start()) {
-    return false;
-  }
-  mojo_task_runner_ = mojo_thread_.task_runner();
-  return true;
+bool MojoHandler::CreateTaskRunner() {
+  mojo_task_runner_ = base::ThreadPool::CreateSingleThreadTaskRunner({});
+  return mojo_task_runner_ != nullptr;
 }
 
 void MojoHandler::SetupMojoPipe(base::ScopedFD fd,
