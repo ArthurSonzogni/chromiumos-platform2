@@ -139,7 +139,7 @@ bool EcUsbEndpoint::Init(uint16_t vid, uint16_t pid) {
   vid_ = vid;
   pid_ = pid;
 
-  int retries = max_retries_;
+  int retries = kDefaultInitRetries;
   bool success = AttemptInit(vid, pid);
   while (!success && retries--) {
     CleanUp();

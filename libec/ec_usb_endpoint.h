@@ -17,8 +17,10 @@ namespace ec {
 constexpr uint16_t kUsbVidGoogle = 0x18d1;
 constexpr uint16_t kUsbPidCrosEc = 0x5022;
 
-constexpr uint32_t kDefaultMaxRetries = 20;
+constexpr uint32_t kDefaultMaxRetries = 1;
 constexpr uint32_t kDefaultTimeoutMs = 100;
+
+constexpr uint32_t kDefaultInitRetries = 0;
 
 struct usb_endpoint {
   struct libusb_device_handle* dev_handle = nullptr;
