@@ -71,7 +71,7 @@ static inline __attribute__((always_inline)) void fill_image_info(
 
 static inline __attribute__((always_inline)) void fill_task_info(
     struct cros_process_task_info* task_info, const struct task_struct* t) {
-  task_info->ppid = BPF_CORE_READ(t, real_parent, tgid);
+  task_info->ppid = BPF_CORE_READ(t, real_parent, group_leader, tgid);
   task_info->start_time = BPF_CORE_READ(t, group_leader, start_boottime);
   task_info->parent_start_time =
       BPF_CORE_READ(t, real_parent, group_leader, start_boottime);
