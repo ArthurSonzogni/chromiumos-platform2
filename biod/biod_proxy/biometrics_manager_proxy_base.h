@@ -13,14 +13,12 @@
 #include <dbus/bus.h>
 #include <dbus/object_manager.h>
 
+#include "biod/biod_proxy/util.h"
 #include "biod/proto_bindings/constants.pb.h"
 #include "biod/proto_bindings/messages.pb.h"
 
 namespace biod {
 
-BRILLO_EXPORT const char* ScanResultToString(ScanResult result);
-BRILLO_EXPORT const char* FingerprintErrorToString(
-    const FingerprintError& error);
 BRILLO_EXPORT const char* BiometricsManagerStatusToString(
     const BiometricsManagerStatus& status);
 

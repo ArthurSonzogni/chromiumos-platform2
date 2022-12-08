@@ -33,15 +33,22 @@ pkg_config("target_defaults") {
 
 # A shared library for clients
 shared_library("libbiod_proxy") {
-  sources = [ "biometrics_manager_proxy_base.cc" ]
+  sources = [
+    "auth_stack_manager_proxy_base.cc",
+    "biometrics_manager_proxy_base.cc",
+    "util.cc",
+  ]
   configs += [ ":target_defaults" ]
   install_path = "lib"
 }
 
 install_config("install_headers") {
   sources = [
+    "auth_stack_manager_proxy_base.h",
     "biometrics_manager_proxy_base.h",
+    "mock_auth_stack_manager_proxy_base.h",
     "mock_biometrics_manager_proxy_base.h",
+    "util.h",
   ]
   install_path = "/usr/include/biod/biod_proxy/"
 }
@@ -51,7 +58,10 @@ if (use.test) {
     pkg_deps = [ "libchrome-test" ]
   }
   executable("biod_proxy_test_runner") {
-    sources = [ "biometrics_manager_proxy_base_test.cc" ]
+    sources = [
+      "auth_stack_manager_proxy_base_test.cc",
+      "biometrics_manager_proxy_base_test.cc",
+    ]
     configs += [
       "//common-mk:test",
       ":libchrome_test_config",
