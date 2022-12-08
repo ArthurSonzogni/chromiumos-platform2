@@ -91,9 +91,11 @@ class NssUtilImpl : public NssUtil {
 
   bool CheckPublicKeyBlob(const std::vector<uint8_t>& blob) override;
 
-  bool Verify(const std::vector<uint8_t>& signature,
-              const std::vector<uint8_t>& data,
-              const std::vector<uint8_t>& public_key) override;
+  bool Verify(
+      const std::vector<uint8_t>& signature,
+      const std::vector<uint8_t>& data,
+      const std::vector<uint8_t>& public_key,
+      const crypto::SignatureVerifier::SignatureAlgorithm algorithm) override;
 
   bool Sign(const std::vector<uint8_t>& data,
             crypto::RSAPrivateKey* key,
@@ -271,13 +273,14 @@ bool NssUtilImpl::CheckPublicKeyBlob(const std::vector<uint8_t>& blob) {
 
 // This is pretty much just a blind passthrough, so I won't test it
 // in the NssUtil unit tests.  I'll test it from a class that uses this API.
-bool NssUtilImpl::Verify(const std::vector<uint8_t>& signature,
-                         const std::vector<uint8_t>& data,
-                         const std::vector<uint8_t>& public_key) {
+bool NssUtilImpl::Verify(
+    const std::vector<uint8_t>& signature,
+    const std::vector<uint8_t>& data,
+    const std::vector<uint8_t>& public_key,
+    const crypto::SignatureVerifier::SignatureAlgorithm algorithm) {
   crypto::SignatureVerifier verifier;
 
-  if (!verifier.VerifyInit(crypto::SignatureVerifier::RSA_PKCS1_SHA1,
-                           signature.data(), signature.size(),
+  if (!verifier.VerifyInit(algorithm, signature.data(), signature.size(),
                            public_key.data(), public_key.size())) {
     LOG(ERROR) << "Could not initialize verifier";
     return false;

@@ -26,6 +26,7 @@
 
 #include "bindings/chrome_device_policy.pb.h"
 #include "bindings/device_management_backend.pb.h"
+#include "crypto/signature_verifier.h"
 #include "login_manager/blob_util.h"
 #include "login_manager/crossystem.h"
 #include "login_manager/dbus_util.h"
@@ -641,7 +642,8 @@ bool DevicePolicyService::ValidateRemoteDeviceWipeCommand(
 
   // Verify the command signature.
   if (!key()->Verify(StringToBlob(signed_data.data()),
-                     StringToBlob(signed_data.signature()))) {
+                     StringToBlob(signed_data.signature()),
+                     crypto::SignatureVerifier::RSA_PKCS1_SHA1)) {
     LOG(ERROR) << "Invalid command signature.";
     return false;
   }

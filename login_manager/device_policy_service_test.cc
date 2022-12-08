@@ -189,7 +189,7 @@ class DevicePolicyServiceTest : public ::testing::Test {
       EXPECT_CALL(key_, IsPopulated()).WillRepeatedly(Return(false));
     else
       EXPECT_CALL(key_, IsPopulated()).Times(0);
-    EXPECT_CALL(key_, Verify(_, _)).WillRepeatedly(Return(true));
+    EXPECT_CALL(key_, Verify(_, _, _)).WillRepeatedly(Return(true));
 
     EXPECT_CALL(*store, Persist()).WillRepeatedly(Return(true));
     EXPECT_CALL(*store, Set(_)).Times(AnyNumber());
@@ -1313,7 +1313,7 @@ TEST_F(DevicePolicyServiceTest, ValidateRemoteDeviceWipeCommand_Success) {
   MockNssUtil nss;
   InitService(&nss, false);
 
-  EXPECT_CALL(key_, Verify(_, _)).WillOnce(Return(true));
+  EXPECT_CALL(key_, Verify(_, _, _)).WillOnce(Return(true));
   em::RemoteCommand command = CreatePowerwashCommand();
   em::PolicyData policy_data = CreatePolicydata(command);
   em::SignedData data = CreateSignedCommand(policy_data);
@@ -1337,7 +1337,7 @@ TEST_F(DevicePolicyServiceTest, ValidateRemoteDeviceWipeCommand_BadSignature) {
   InitService(&nss, false);
 
   // Set the signature verification call to fail.
-  EXPECT_CALL(key_, Verify(_, _)).WillOnce(Return(false));
+  EXPECT_CALL(key_, Verify(_, _, _)).WillOnce(Return(false));
   em::RemoteCommand command = CreatePowerwashCommand();
   em::PolicyData policy_data = CreatePolicydata(command);
   em::SignedData data = CreateSignedCommand(policy_data);
@@ -1350,7 +1350,7 @@ TEST_F(DevicePolicyServiceTest, ValidateRemoteDeviceWipeCommand_BadPolicyData) {
   MockNssUtil nss;
   InitService(&nss, false);
 
-  EXPECT_CALL(key_, Verify(_, _)).WillOnce(Return(true));
+  EXPECT_CALL(key_, Verify(_, _, _)).WillOnce(Return(true));
   em::RemoteCommand command = CreatePowerwashCommand();
   em::PolicyData policy_data = CreatePolicydata(command);
   em::SignedData data = CreateSignedCommand(policy_data);
@@ -1366,7 +1366,7 @@ TEST_F(DevicePolicyServiceTest,
   MockNssUtil nss;
   InitService(&nss, false);
 
-  EXPECT_CALL(key_, Verify(_, _)).WillOnce(Return(true));
+  EXPECT_CALL(key_, Verify(_, _, _)).WillOnce(Return(true));
   em::RemoteCommand command = CreatePowerwashCommand();
   em::PolicyData policy_data = CreatePolicydata(command);
   // Corrupt the policy type.
@@ -1382,7 +1382,7 @@ TEST_F(DevicePolicyServiceTest,
   MockNssUtil nss;
   InitService(&nss, false);
 
-  EXPECT_CALL(key_, Verify(_, _)).WillOnce(Return(true));
+  EXPECT_CALL(key_, Verify(_, _, _)).WillOnce(Return(true));
   em::RemoteCommand command = CreatePowerwashCommand();
   em::PolicyData policy_data = CreatePolicydata(command);
   // Corrupt RemoteCommand proto data by removing one byte.
@@ -1399,7 +1399,7 @@ TEST_F(DevicePolicyServiceTest,
   MockNssUtil nss;
   InitService(&nss, false);
 
-  EXPECT_CALL(key_, Verify(_, _)).WillOnce(Return(true));
+  EXPECT_CALL(key_, Verify(_, _, _)).WillOnce(Return(true));
   em::RemoteCommand command = CreatePowerwashCommand();
   // Set the command type here to reboot, that should fail.
   command.set_type(em::RemoteCommand_Type_DEVICE_REBOOT);
@@ -1414,7 +1414,7 @@ TEST_F(DevicePolicyServiceTest, ValidateRemoteDeviceWipeCommand_BadDeviceId) {
   MockNssUtil nss;
   InitService(&nss, true);
 
-  EXPECT_CALL(key_, Verify(_, _)).WillOnce(Return(true));
+  EXPECT_CALL(key_, Verify(_, _, _)).WillOnce(Return(true));
   em::RemoteCommand command = CreatePowerwashCommand();
   // Set bogus target device id.
   command.set_target_device_id("acme-device");

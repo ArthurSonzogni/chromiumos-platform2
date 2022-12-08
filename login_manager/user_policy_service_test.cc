@@ -121,7 +121,7 @@ TEST_F(UserPolicyServiceTest, StoreSignedPolicy) {
   InitPolicy(em::PolicyData::ACTIVE, fake_signature_);
 
   Sequence s1;
-  EXPECT_CALL(*key_, Verify(_, _)).InSequence(s1).WillOnce(Return(true));
+  EXPECT_CALL(*key_, Verify(_, _, _)).InSequence(s1).WillOnce(Return(true));
   ExpectStorePolicy(s1);
 
   EXPECT_TRUE(service_->Store(
@@ -135,7 +135,7 @@ TEST_F(UserPolicyServiceTest, StoreUnmanagedSigned) {
   InitPolicy(em::PolicyData::UNMANAGED, fake_signature_);
 
   Sequence s1;
-  EXPECT_CALL(*key_, Verify(_, _)).InSequence(s1).WillOnce(Return(true));
+  EXPECT_CALL(*key_, Verify(_, _, _)).InSequence(s1).WillOnce(Return(true));
   ExpectStorePolicy(s1);
 
   EXPECT_TRUE(service_->Store(
@@ -194,7 +194,7 @@ TEST_F(UserPolicyServiceTest, StoreInvalidSignature) {
   InitPolicy(em::PolicyData::ACTIVE, fake_signature_);
 
   InSequence s;
-  EXPECT_CALL(*key_, Verify(_, _)).WillOnce(Return(false));
+  EXPECT_CALL(*key_, Verify(_, _, _)).WillOnce(Return(false));
 
   EXPECT_FALSE(service_->Store(
       MakeChromePolicyNamespace(), SerializeAsBlob(policy_proto_),
@@ -240,7 +240,7 @@ TEST_F(UserPolicyServiceTest, PersistPolicyMultipleNamespaces) {
                               fake_signature_, &extension_policy_proto));
 
   // Store user policy.
-  EXPECT_CALL(*key_, Verify(_, _)).WillOnce(Return(true));
+  EXPECT_CALL(*key_, Verify(_, _, _)).WillOnce(Return(true));
   EXPECT_CALL(*store_, Set(ProtoEq(policy_proto_)));
   EXPECT_CALL(*store_, Persist()).WillOnce(Return(true));
   EXPECT_TRUE(service_->Store(
@@ -252,7 +252,7 @@ TEST_F(UserPolicyServiceTest, PersistPolicyMultipleNamespaces) {
   testing::Mock::VerifyAndClearExpectations(store_);
 
   // Store extension policy.
-  EXPECT_CALL(*key_, Verify(_, _)).WillOnce(Return(true));
+  EXPECT_CALL(*key_, Verify(_, _, _)).WillOnce(Return(true));
   EXPECT_CALL(*extension_store, Set(ProtoEq(extension_policy_proto)));
   EXPECT_CALL(*extension_store, Persist()).WillOnce(Return(true));
   EXPECT_TRUE(service_->Store(

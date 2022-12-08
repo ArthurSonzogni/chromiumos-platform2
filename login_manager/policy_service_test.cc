@@ -78,7 +78,7 @@ class PolicyServiceTest : public testing::Test {
   }
 
   void ExpectVerifyAndSetPolicy(Sequence* sequence) {
-    EXPECT_CALL(key_, Verify(fake_data_, fake_sig_))
+    EXPECT_CALL(key_, Verify(fake_data_, fake_sig_, _))
         .InSequence(*sequence)
         .WillOnce(Return(true));
     EXPECT_CALL(*store_, Set(ProtoEq(policy_proto_)))
@@ -166,7 +166,7 @@ TEST_F(PolicyServiceTest, Store) {
   Sequence s1, s2;
   ExpectKeyEqualsFalse(&s1);
   ExpectKeyPopulated(&s2, true);
-  EXPECT_CALL(key_, Verify(fake_data_, fake_sig_))
+  EXPECT_CALL(key_, Verify(fake_data_, fake_sig_, _))
       .InSequence(s1, s2)
       .WillRepeatedly(Return(true));
   ExpectKeyPopulated(&s1, true);
@@ -202,7 +202,7 @@ TEST_F(PolicyServiceTest, StoreWrongSignature) {
   Sequence s1, s2;
   ExpectKeyEqualsFalse(&s1);
   ExpectKeyPopulated(&s2, true);
-  EXPECT_CALL(key_, Verify(fake_data_, fake_sig_))
+  EXPECT_CALL(key_, Verify(fake_data_, fake_sig_, _))
       .InSequence(s1, s2)
       .WillRepeatedly(Return(false));
 
@@ -220,7 +220,7 @@ TEST_F(PolicyServiceTest, StoreNoData) {
 TEST_F(PolicyServiceTest, StoreNoSignature) {
   InitPolicy(fake_data_, empty_blob_, empty_blob_, empty_blob_);
 
-  EXPECT_CALL(key_, Verify(fake_data_, std::vector<uint8_t>()))
+  EXPECT_CALL(key_, Verify(fake_data_, std::vector<uint8_t>(), _))
       .WillOnce(Return(false));
 
   ExpectStoreFail(kAllKeyFlags, SignatureCheck::kEnabled,
@@ -233,7 +233,7 @@ TEST_F(PolicyServiceTest, StoreNoKey) {
   Sequence s1, s2;
   ExpectKeyEqualsFalse(&s1);
   ExpectKeyPopulated(&s2, false);
-  EXPECT_CALL(key_, Verify(fake_data_, fake_sig_))
+  EXPECT_CALL(key_, Verify(fake_data_, fake_sig_, _))
       .InSequence(s1, s2)
       .WillRepeatedly(Return(false));
 
@@ -321,7 +321,7 @@ TEST_F(PolicyServiceTest, StoreRotation) {
   Sequence s1, s2;
   ExpectKeyEqualsFalse(&s1);
   ExpectKeyPopulated(&s2, true);
-  EXPECT_CALL(key_, Rotate(VectorEq(fake_key_), VectorEq(fake_key_sig_)))
+  EXPECT_CALL(key_, Rotate(VectorEq(fake_key_), VectorEq(fake_key_sig_), _))
       .InSequence(s1, s2)
       .WillOnce(Return(true));
   ExpectKeyPopulated(&s1, true);
@@ -376,7 +376,7 @@ TEST_F(PolicyServiceTest, StoreRotationBadSignature) {
   Sequence s1, s2;
   ExpectKeyEqualsFalse(&s1);
   ExpectKeyPopulated(&s2, true);
-  EXPECT_CALL(key_, Rotate(VectorEq(fake_key_), VectorEq(fake_key_sig_)))
+  EXPECT_CALL(key_, Rotate(VectorEq(fake_key_), VectorEq(fake_key_sig_), _))
       .InSequence(s1, s2)
       .WillOnce(Return(false));
 

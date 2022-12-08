@@ -23,6 +23,7 @@
 #include <chromeos/dbus/service_constants.h>
 
 #include "bindings/device_management_backend.pb.h"
+#include "crypto/signature_verifier.h"
 #include "login_manager/blob_util.h"
 #include "login_manager/dbus_util.h"
 #include "login_manager/nss_util.h"
@@ -230,7 +231,8 @@ bool PolicyService::StorePolicy(const PolicyNamespace& ns,
         // Graceful key rotation.
         LOG(INFO) << "Attempting policy key rotation.";
         installed =
-            key()->Rotate(der, StringToBlob(policy.new_public_key_signature()));
+            key()->Rotate(der, StringToBlob(policy.new_public_key_signature()),
+                          crypto::SignatureVerifier::RSA_PKCS1_SHA1);
       }
     } else if (key_flags & KEY_INSTALL_NEW) {
       LOG(INFO) << "Attempting to install new policy key.";
@@ -254,7 +256,8 @@ bool PolicyService::StorePolicy(const PolicyNamespace& ns,
 
   // Validate signature on policy and persist to disk.
   if (!key()->Verify(StringToBlob(policy.policy_data()),
-                     StringToBlob(policy.policy_data_signature()))) {
+                     StringToBlob(policy.policy_data_signature()),
+                     crypto::SignatureVerifier::RSA_PKCS1_SHA1)) {
     std::move(completion)
         .Run(CREATE_ERROR_AND_LOG(dbus_error::kVerifyFail,
                                   "Signature could not be verified."));

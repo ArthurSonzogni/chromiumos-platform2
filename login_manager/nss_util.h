@@ -14,6 +14,7 @@
 
 #include <base/files/file_path.h>
 #include <crypto/scoped_nss_types.h>
+#include <crypto/signature_verifier.h>
 
 namespace crypto {
 class RSAPrivateKey;
@@ -77,9 +78,11 @@ class NssUtil {
   // Returns true if |blob| is a validly encoded NSS SubjectPublicKeyInfo.
   virtual bool CheckPublicKeyBlob(const std::vector<uint8_t>& blob) = 0;
 
-  virtual bool Verify(const std::vector<uint8_t>& signature,
-                      const std::vector<uint8_t>& data,
-                      const std::vector<uint8_t>& public_key) = 0;
+  virtual bool Verify(
+      const std::vector<uint8_t>& signature,
+      const std::vector<uint8_t>& data,
+      const std::vector<uint8_t>& public_key,
+      const crypto::SignatureVerifier::SignatureAlgorithm algorithm) = 0;
 
   virtual bool Sign(const std::vector<uint8_t>& data,
                     crypto::RSAPrivateKey* key,

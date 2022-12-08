@@ -77,7 +77,7 @@ class DeviceLocalAccountManagerTest : public ::testing::Test {
   void SetupKey() {
     EXPECT_CALL(key_, PopulateFromDiskIfPossible()).Times(0);
     EXPECT_CALL(key_, IsPopulated()).WillRepeatedly(Return(true));
-    EXPECT_CALL(key_, Verify(_, _)).WillRepeatedly(Return(true));
+    EXPECT_CALL(key_, Verify(_, _, _)).WillRepeatedly(Return(true));
   }
 
  protected:

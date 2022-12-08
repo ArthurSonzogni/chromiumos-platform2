@@ -12,6 +12,7 @@
 #include <vector>
 
 #include <base/files/file_path.h>
+#include <crypto/signature_verifier.h>
 
 namespace crypto {
 class RSAPrivateKey;
@@ -67,11 +68,13 @@ class PolicyKey {
   virtual bool Persist();
 
   // Load key material from |public_key_der|, as long as |sig| is a valid
-  // signature over |public_key_der| with |key_|.
+  // signature over |public_key_der| with |key_| signed with |algorithm|.
   // We will _deny_ such an attempt if we do not have a key loaded.
   // If you're trying to set a key for the first time, use PopulateFromBuffer()
-  virtual bool Rotate(const std::vector<uint8_t>& public_key_der,
-                      const std::vector<uint8_t>& signature);
+  virtual bool Rotate(
+      const std::vector<uint8_t>& public_key_der,
+      const std::vector<uint8_t>& signature,
+      const crypto::SignatureVerifier::SignatureAlgorithm algorithm);
 
   // THIS IS ONLY INTENDED TO BE USED WHEN THE CURRENTLY REGISTERED KEY HAS BEEN
   // COMPROMISED OR LOST AND WE ARE RECOVERING.
@@ -79,11 +82,13 @@ class PolicyKey {
   virtual bool ClobberCompromisedKey(
       const std::vector<uint8_t>& public_key_der);
 
-  // Verify that |signature| is a valid sha1 w/ RSA signature over the data in
-  // |data| with |key_|.
+  // Verify that |signature| is a valid signature over the data in
+  // |data| with |key_| signed with |algorithm|.
   // Returns false if the sig is invalid, or there's an error.
-  virtual bool Verify(const std::vector<uint8_t>& data,
-                      const std::vector<uint8_t>& signature);
+  virtual bool Verify(
+      const std::vector<uint8_t>& data,
+      const std::vector<uint8_t>& signature,
+      const crypto::SignatureVerifier::SignatureAlgorithm algorithm);
 
   // Returned reference will be empty if we haven't populated |key_| yet.
   virtual const std::vector<uint8_t>& public_key_der() const { return key_; }

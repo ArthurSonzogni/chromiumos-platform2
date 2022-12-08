@@ -1876,7 +1876,7 @@ TEST_F(SessionManagerImplTest, StoreDeviceLocalAccountPolicySuccess) {
   base::FilePath policy_path = GetDeviceLocalAccountPolicyPath(kSaneEmail);
   SetupDeviceLocalAccount(kSaneEmail);
   EXPECT_FALSE(base::PathExists(policy_path));
-  EXPECT_CALL(owner_key_, Verify(_, _)).WillOnce(Return(true));
+  EXPECT_CALL(owner_key_, Verify(_, _, _)).WillOnce(Return(true));
 
   brillo::FakeMessageLoop io_loop(nullptr);
   io_loop.SetAsCurrent();

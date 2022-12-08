@@ -60,7 +60,8 @@ class MockNssUtil : public NssUtil {
               Verify,
               (const std::vector<uint8_t>&,
                const std::vector<uint8_t>&,
-               const std::vector<uint8_t>&),
+               const std::vector<uint8_t>&,
+               const crypto::SignatureVerifier::SignatureAlgorithm),
               (override));
   MOCK_METHOD(bool,
               Sign,

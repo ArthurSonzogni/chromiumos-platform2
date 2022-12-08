@@ -206,7 +206,8 @@ TEST_F(PolicyKeyTest, SignVerify) {
   const std::vector<uint8_t> data = StringToBlob("whatever");
   std::vector<uint8_t> signature;
   EXPECT_TRUE(nss->Sign(data, pair.get(), &signature));
-  EXPECT_TRUE(key.Verify(data, signature));
+  EXPECT_TRUE(
+      key.Verify(data, signature, crypto::SignatureVerifier::RSA_PKCS1_SHA1));
 }
 
 TEST_F(PolicyKeyTest, RotateKey) {
@@ -245,7 +246,8 @@ TEST_F(PolicyKeyTest, RotateKey) {
 
   std::vector<uint8_t> signature;
   ASSERT_TRUE(nss->Sign(new_export, pair.get(), &signature));
-  ASSERT_TRUE(key2.Rotate(new_export, signature));
+  ASSERT_TRUE(key2.Rotate(new_export, signature,
+                          crypto::SignatureVerifier::RSA_PKCS1_SHA1));
   ASSERT_TRUE(key2.Persist());
 }
 
