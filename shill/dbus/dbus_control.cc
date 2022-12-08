@@ -11,6 +11,9 @@
 #include <brillo/dbus/async_event_sequencer.h>
 #include <chromeos/dbus/service_constants.h>
 
+#if !defined(DISABLE_FLOSS)
+#include "shill/dbus/bluetooth_manager_proxy.h"
+#endif  // DISABLE_FLOSS
 #include "shill/dbus/dbus_objectmanager_proxy.h"
 #include "shill/dbus/dbus_properties_proxy.h"
 #include "shill/dbus/dbus_service_watcher.h"
@@ -249,5 +252,12 @@ std::unique_ptr<mm1::SimProxyInterface> DBusControl::CreateMM1SimProxy(
     const RpcIdentifier& path, const std::string& service) {
   return std::make_unique<mm1::SimProxy>(proxy_bus_, path, service);
 }
+
+#if !defined(DISABLE_FLOSS)
+std::unique_ptr<BluetoothManagerProxyInterface>
+DBusControl::CreateBluetoothManagerProxy() {
+  return std::make_unique<BluetoothManagerProxy>(proxy_bus_);
+}
+#endif  // DISABLE_FLOSS
 
 }  // namespace shill

@@ -77,6 +77,7 @@ _IUSE = [
     "factory_runtime_probe",
     "fake_drivefs_launcher",
     "feedback",
+    "floss",
     "force_breakpad",
     "fp_on_power_button",
     "fsverity",

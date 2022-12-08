@@ -73,6 +73,10 @@ pkg_config("target_defaults") {
     "SHIMDIR=\"${libdir}/shill/shims\"",
   ]
 
+  if (!use.floss) {
+    defines += [ "DISABLE_FLOSS" ]
+  }
+
   if (use.test || use.fuzzer) {
     # For the "mockable" keyword.
     defines += [ "TEST_BUILD" ]
@@ -213,6 +217,11 @@ generate_dbus_proxies("generate_supplicant_proxies") {
     "dbus_bindings/supplicant-network.dbus-xml",
     "dbus_bindings/supplicant-process.dbus-xml",
   ]
+}
+
+generate_dbus_proxies("generate_bluetooth_proxies") {
+  proxy_output_file = "include/bluetooth/dbus-proxies.h"
+  sources = [ "dbus_bindings/bluetooth_manager.dbus-xml" ]
 }
 
 static_library("libshill") {
@@ -383,6 +392,14 @@ static_library("libshill") {
     ":shill-chromeos-dbus-adaptors",
     "//metrics/structured:libstructuredmetrics",
   ]
+
+  if (use.floss) {
+    sources += [
+      "bluetooth_manager.cc",
+      "dbus/bluetooth_manager_proxy.cc",
+    ]
+    deps += [ ":generate_bluetooth_proxies" ]
+  }
 
   if (use.vpn) {
     sources += [

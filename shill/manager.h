@@ -42,6 +42,9 @@
 
 namespace shill {
 
+#if !defined(DISABLE_FLOSS)
+class BluetoothManager;
+#endif  // DISABLE_FLOSS
 class CellularServiceProvider;
 class ControlInterface;
 class DefaultProfile;
@@ -525,6 +528,12 @@ class Manager {
     return tethering_manager_.get();
   }
 
+#if !defined(DISABLE_FLOSS)
+  BluetoothManager* bluetooth_manager() const {
+    return bluetooth_manager_.get();
+  }
+#endif  // DISABLE_FLOSS
+
  private:
   friend class ArcVpnDriverTest;
   friend class CellularTest;
@@ -821,6 +830,9 @@ class Manager {
   ProfileRefPtr ephemeral_profile_;
   std::unique_ptr<PowerManager> power_manager_;
   std::unique_ptr<Upstart> upstart_;
+#if !defined(DISABLE_FLOSS)
+  std::unique_ptr<BluetoothManager> bluetooth_manager_;
+#endif  // DISABLE_FLOSS
 
   // The priority order of technologies
   std::vector<Technology> technology_order_;

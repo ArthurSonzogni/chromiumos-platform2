@@ -11,6 +11,9 @@
 #include <base/callback.h>
 #include <gmock/gmock.h>
 
+#if !defined(DISABLE_FLOSS)
+#include "shill/bluetooth_manager_proxy_interface.h"
+#endif  // DISABLE_FLOSS
 #include "shill/cellular/dbus_objectmanager_proxy_interface.h"
 #include "shill/cellular/mm1_modem_location_proxy_interface.h"
 #include "shill/cellular/mm1_modem_modem3gpp_profile_manager_proxy_interface.h"
@@ -141,6 +144,12 @@ class MockControl : public ControlInterface {
               CreateMM1SimProxy,
               (const RpcIdentifier&, const std::string&),
               (override));
+#if !defined(DISABLE_FLOSS)
+  MOCK_METHOD(std::unique_ptr<BluetoothManagerProxyInterface>,
+              CreateBluetoothManagerProxy,
+              (),
+              (override));
+#endif  // DISABLE_FLOSS
 
  private:
   RpcIdentifier null_identifier_;

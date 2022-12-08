@@ -36,6 +36,9 @@
 #include <chromeos/patchpanel/dbus/client.h>
 
 #include "shill/adaptor_interfaces.h"
+#if !defined(DISABLE_FLOSS)
+#include "shill/bluetooth_manager.h"
+#endif  // DISABLE_FLOSS
 #include "shill/callbacks.h"
 #include "shill/cellular/cellular_service_provider.h"
 #include "shill/cellular/modem_info.h"
@@ -315,6 +318,10 @@ void Manager::Start() {
       base::Bind(&Manager::OnSuspendDone, weak_factory_.GetWeakPtr()),
       base::Bind(&Manager::OnDarkSuspendImminent, weak_factory_.GetWeakPtr()));
   upstart_.reset(new Upstart(control_interface_));
+#if !defined(DISABLE_FLOSS)
+  bluetooth_manager_.reset(new BluetoothManager(control_interface_));
+  bluetooth_manager_->Start();
+#endif  // DISABLE_FLOSS
 
   CHECK(base::CreateDirectory(run_path_)) << run_path_.value();
   const auto filepath = run_path_.Append("resolv.conf");
@@ -380,6 +387,12 @@ void Manager::Stop() {
   if (metrics_) {
     RemoveDefaultServiceObserver(metrics_);
   }
+#if !defined(DISABLE_FLOSS)
+  if (bluetooth_manager_) {
+    bluetooth_manager_->Stop();
+    bluetooth_manager_.reset();
+  }
+#endif  // DISABLE_FLOSS
   power_manager_->Stop();
   power_manager_.reset();
   patchpanel_client_.reset();
