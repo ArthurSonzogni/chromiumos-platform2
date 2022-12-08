@@ -20,16 +20,6 @@
 
 namespace bootlockbox {
 
-bool HwsecSpaceImpl::Initialize() {
-  if (!tpm_owner_) {
-    scoped_refptr<dbus::Bus> bus = connection_.Connect();
-    CHECK(bus) << "Failed to connect to system D-Bus";
-    default_tpm_owner_ = std::make_unique<org::chromium::TpmManagerProxy>(bus);
-    tpm_owner_ = default_tpm_owner_.get();
-  }
-  return true;
-}
-
 SpaceState HwsecSpaceImpl::DefineSpace() {
   ASSIGN_OR_RETURN(hwsec::BootLockboxFrontend::StorageState state,
                    hwsec_->GetSpaceState(),
@@ -127,18 +117,8 @@ bool HwsecSpaceImpl::LockSpace() {
 }
 
 void HwsecSpaceImpl::RegisterOwnershipTakenCallback(
-    const base::RepeatingClosure& callback) {
-  tpm_owner_->RegisterSignalOwnershipTakenSignalHandler(
-      base::BindRepeating(&HwsecSpaceImpl::OnOwnershipTaken,
-                          base::Unretained(this), callback),
-      base::DoNothing());
-}
-
-void HwsecSpaceImpl::OnOwnershipTaken(
-    const base::RepeatingClosure& callback,
-    const tpm_manager::OwnershipTakenSignal& signal) {
-  LOG(INFO) << __func__ << ": Received |OwnershipTakenSignal|.";
-  callback.Run();
+    base::OnceClosure callback) {
+  hwsec_->WaitUntilReady(base::IgnoreArgs<hwsec::Status>(std::move(callback)));
 }
 
 }  // namespace bootlockbox

@@ -22,10 +22,6 @@ namespace bootlockbox {
 int BootLockboxService::OnInit() {
   nvspace_utility_ =
       std::make_unique<HwsecSpaceImpl>(hwsec_factory_.GetBootLockboxFrontend());
-  if (!nvspace_utility_->Initialize()) {
-    LOG(ERROR) << "Failed to initialize nvspace utility";
-    return EX_UNAVAILABLE;
-  }
   boot_lockbox_ = std::make_unique<NVRamBootLockbox>(nvspace_utility_.get());
 
   if (!boot_lockbox_->Load() &&

@@ -13,8 +13,6 @@
 
 #include <brillo/dbus/dbus_connection.h>
 #include <libhwsec/frontend/bootlockbox/frontend.h>
-#include <tpm_manager/proto_bindings/tpm_manager.pb.h>
-#include <tpm_manager-client/tpm_manager/dbus-proxies.h>
 
 #include "bootlockbox/hwsec_space.h"
 
@@ -42,21 +40,12 @@ class HwsecSpaceImpl : public HwsecSpace {
   explicit HwsecSpaceImpl(std::unique_ptr<hwsec::BootLockboxFrontend> hwsec)
       : hwsec_(std::move(hwsec)) {}
 
-  explicit HwsecSpaceImpl(std::unique_ptr<hwsec::BootLockboxFrontend> hwsec,
-                          org::chromium::TpmManagerProxyInterface* tpm_owner)
-      : hwsec_(std::move(hwsec)), tpm_owner_(tpm_owner) {}
-
   HwsecSpaceImpl(const HwsecSpaceImpl&) = delete;
   HwsecSpaceImpl& operator=(const HwsecSpaceImpl&) = delete;
 
   ~HwsecSpaceImpl() override = default;
 
-  // Initializes hwsec_nvram if necessary.
-  // Must be called before issuing and calls to this utility.
-  bool Initialize() override;
-
-  // This method defines a non-volatile storage area in Hwsec for bootlockboxd
-  // via tpm_managerd.
+  // This method defines a non-volatile storage area in Hwsec for bootlockboxd.
   SpaceState DefineSpace() override;
 
   // This method writes |digest| to nvram space for bootlockboxd.
@@ -70,21 +59,10 @@ class HwsecSpaceImpl : public HwsecSpace {
 
   // Register the callback that would be called when Hwsec ownership had been
   // taken.
-  void RegisterOwnershipTakenCallback(
-      const base::RepeatingClosure& callback) override;
+  void RegisterOwnershipTakenCallback(base::OnceClosure callback) override;
 
  private:
-  // This method would be called when the ownership had been taken.
-  void OnOwnershipTaken(const base::RepeatingClosure& callback,
-                        const tpm_manager::OwnershipTakenSignal& signal);
-
   std::unique_ptr<hwsec::BootLockboxFrontend> hwsec_;
-
-  // TODO(b/261693180): Remove these after we add the ready callback support in
-  // libhwsec.
-  brillo::DBusConnection connection_;
-  std::unique_ptr<org::chromium::TpmManagerProxyInterface> default_tpm_owner_;
-  org::chromium::TpmManagerProxyInterface* tpm_owner_;
 };
 
 }  // namespace bootlockbox

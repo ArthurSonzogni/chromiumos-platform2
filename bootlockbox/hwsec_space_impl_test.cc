@@ -14,8 +14,6 @@
 #include <libhwsec/error/tpm_retry_action.h>
 #include <libhwsec/frontend/bootlockbox/mock_frontend.h>
 #include <libhwsec-foundation/error/testing_helper.h>
-#include <tpm_manager-client-test/tpm_manager/dbus-proxy-mocks.h>
-#include <tpm_manager-client/tpm_manager/dbus-constants.h>
 
 using hwsec_foundation::error::testing::IsOk;
 using hwsec_foundation::error::testing::ReturnError;
@@ -43,13 +41,11 @@ class HwsecSpaceImplTest : public testing::Test {
   void SetUp() override {
     auto hwsec = std::make_unique<hwsec::MockBootLockboxFrontend>();
     hwsec_ptr_ = hwsec.get();
-    space_utility_ =
-        std::make_unique<HwsecSpaceImpl>(std::move(hwsec), &mock_tpm_owner_);
+    space_utility_ = std::make_unique<HwsecSpaceImpl>(std::move(hwsec));
   }
 
  protected:
   hwsec::MockBootLockboxFrontend* hwsec_ptr_;
-  NiceMock<org::chromium::TpmManagerProxyMock> mock_tpm_owner_;
   std::unique_ptr<HwsecSpaceImpl> space_utility_;
 };
 

@@ -59,10 +59,7 @@ executable("bootlockboxd") {
     "libmetrics",
     "vboot_host",
   ]
-  libs = [
-    "hwsec-profiling",
-    "tpm_manager",
-  ]
+  libs = [ "hwsec-profiling" ]
   deps = [
     ":bootlockbox-adaptors",
     ":libnvram-boot-lockbox",
@@ -79,18 +76,13 @@ if (use.test) {
       "hwsec_space_impl_test.cc",
       "nvram_boot_lockbox_test.cc",
     ]
-    libs = [
-      "hwsec_test",
-      "tpm_manager",
-    ]
+    libs = [ "hwsec_test" ]
     configs += [ "//common-mk:test" ]
 
     all_dependent_configs = [ ":bootlockbox_dependent_config" ]
     pkg_deps = [
       "libbrillo-test",
       "libchrome-test",
-      "libtpm_manager-client",
-      "libtpm_manager-client-test",
     ]
     deps = [
       ":libnvram-boot-lockbox",

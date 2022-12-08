@@ -8,10 +8,6 @@
 
 namespace bootlockbox {
 
-bool FakeTpmSpace::Initialize() {
-  return true;
-}
-
 SpaceState FakeTpmSpace::DefineSpace() {
   return SpaceState::kSpaceUninitialized;
 }
@@ -30,8 +26,7 @@ bool FakeTpmSpace::LockSpace() {
   return true;
 }
 
-void FakeTpmSpace::RegisterOwnershipTakenCallback(
-    const base::RepeatingClosure& callback) {
+void FakeTpmSpace::RegisterOwnershipTakenCallback(base::OnceClosure callback) {
   std::move(callback).Run();
 }
 

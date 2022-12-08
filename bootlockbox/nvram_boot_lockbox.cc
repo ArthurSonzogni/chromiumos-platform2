@@ -146,7 +146,7 @@ bool NVRamBootLockbox::RegisterOwnershipCallback() {
   // NVRamBootLockbox and HwsecSpace would be destructed in the same time and
   // this callback would disappear after HwsecSpace be destructed, so it is safe
   // to pass `this` into this callback.
-  base::RepeatingClosure callback =
+  base::OnceClosure callback =
       base::BindRepeating(base::IgnoreResult(&NVRamBootLockbox::DefineSpace),
                           base::Unretained(this));
 

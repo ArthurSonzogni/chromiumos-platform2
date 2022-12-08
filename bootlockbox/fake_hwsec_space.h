@@ -15,8 +15,6 @@ class FakeTpmSpace : public HwsecSpace {
  public:
   FakeTpmSpace() {}
 
-  bool Initialize() override;
-
   SpaceState DefineSpace() override;
 
   bool WriteSpace(const std::string& digest) override;
@@ -25,8 +23,7 @@ class FakeTpmSpace : public HwsecSpace {
 
   bool LockSpace() override;
 
-  void RegisterOwnershipTakenCallback(
-      const base::RepeatingClosure& callback) override;
+  void RegisterOwnershipTakenCallback(base::OnceClosure callback) override;
 
   void SetDigest(const std::string& digest);
 

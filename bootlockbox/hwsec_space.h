@@ -24,10 +24,6 @@ class HwsecSpace {
  public:
   virtual ~HwsecSpace() = default;
 
-  // Override to perform initialization work. This must be called successfully
-  // before calling any other methods.
-  virtual bool Initialize() = 0;
-
   // This method defines a non-volatile storage area in Hwsec for bootlocboxd.
   virtual SpaceState DefineSpace() = 0;
 
@@ -44,8 +40,7 @@ class HwsecSpace {
 
   // Register the callback that would be called when Hwsec ownership had been
   // taken.
-  virtual void RegisterOwnershipTakenCallback(
-      const base::RepeatingClosure& callback) = 0;
+  virtual void RegisterOwnershipTakenCallback(base::OnceClosure callback) = 0;
 };
 
 }  // namespace bootlockbox
