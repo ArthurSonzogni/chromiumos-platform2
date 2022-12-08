@@ -541,10 +541,6 @@
 		"altSyscall": "android",
 		"coreSched": true,
 		"cgroupsPath": "/session_manager_containers",
-		"cpu": {
-			"realtimeRuntime": 300000,
-			"realtimePeriod": 1000000
-		},
 		"skipSecurebits": [
 			"KEEP_CAPS",
 			"KEEP_CAPS_LOCKED"

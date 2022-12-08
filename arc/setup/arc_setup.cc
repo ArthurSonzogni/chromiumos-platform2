@@ -711,34 +711,6 @@ void ArcSetup::DeleteExecutableFilesInData(
   }
 }
 
-void ArcSetup::WaitForRtLimitsJob() {
-  constexpr base::TimeDelta kWaitForRtLimitsJobTimeOut = base::Seconds(10);
-  constexpr base::TimeDelta kSleepInterval = base::Milliseconds(100);
-  constexpr char kCgroupFilePath[] =
-      "/sys/fs/cgroup/cpu/session_manager_containers/cpu.rt_runtime_us";
-
-  base::ElapsedTimer timer;
-  const base::FilePath cgroup_file(kCgroupFilePath);
-  while (true) {
-    if (base::PathExists(cgroup_file)) {
-      std::string rt_runtime_us_str;
-      EXIT_IF(!base::ReadFileToString(cgroup_file, &rt_runtime_us_str));
-      int rt_runtime_us = 0;
-      base::StringToInt(rt_runtime_us_str, &rt_runtime_us);
-      if (rt_runtime_us > 0) {
-        LOG(INFO) << cgroup_file.value() << " is set to " << rt_runtime_us;
-        break;
-      }
-    }
-    base::PlatformThread::Sleep(kSleepInterval);
-    CHECK_GE(kWaitForRtLimitsJobTimeOut, timer.Elapsed())
-        << ": rt-limits job didn't start in " << kWaitForRtLimitsJobTimeOut;
-  }
-
-  LOG(INFO) << "rt-limits job is ready in "
-            << timer.Elapsed().InMillisecondsRoundedUp() << " ms";
-}
-
 ArcBinaryTranslationType ArcSetup::IdentifyBinaryTranslationType() {
   bool is_houdini_available = kUseHoudini || kUseHoudini64;
   bool is_ndk_translation_available = kUseNdkTranslation;
@@ -2275,11 +2247,6 @@ void ArcSetup::OnSetup() {
   MakeMountPointsReadOnly();
   SetUpCameraProperty(base::FilePath(kBuildPropFile));
   SetUpSharedApkDirectory();
-
-  // These should be the last thing OnSetup() does because the job and
-  // directories are not needed for arc-setup. Only the container's startup code
-  // (in session_manager side) requires the job and directories.
-  WaitForRtLimitsJob();
 }
 
 void ArcSetup::OnBootContinue() {
