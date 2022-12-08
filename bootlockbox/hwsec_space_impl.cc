@@ -14,13 +14,13 @@
 #include <libhwsec/frontend/bootlockbox/frontend.h>
 #include <libhwsec-foundation/status/status_chain_macros.h>
 
-#include "bootlockbox/tpm_nvspace.h"
-#include "bootlockbox/tpm_nvspace_impl.h"
+#include "bootlockbox/hwsec_space.h"
+#include "bootlockbox/hwsec_space_impl.h"
 #include "libhwsec/error/tpm_error.h"
 
 namespace bootlockbox {
 
-bool TPMNVSpaceImpl::Initialize() {
+bool HwsecSpaceImpl::Initialize() {
   if (!tpm_owner_) {
     scoped_refptr<dbus::Bus> bus = connection_.Connect();
     CHECK(bus) << "Failed to connect to system D-Bus";
@@ -30,44 +30,44 @@ bool TPMNVSpaceImpl::Initialize() {
   return true;
 }
 
-NVSpaceState TPMNVSpaceImpl::DefineNVSpace() {
+SpaceState HwsecSpaceImpl::DefineSpace() {
   ASSIGN_OR_RETURN(hwsec::BootLockboxFrontend::StorageState state,
                    hwsec_->GetSpaceState(),
                    _.WithStatus<hwsec::TPMError>("Failed to get space state")
                        .LogError()
-                       .As(NVSpaceState::kNVSpaceNeedPowerwash));
+                       .As(SpaceState::kSpaceNeedPowerwash));
 
   if (state == hwsec::BootLockboxFrontend::StorageState::kReady) {
-    return NVSpaceState::kNVSpaceUninitialized;
+    return SpaceState::kSpaceUninitialized;
   }
 
   if (state != hwsec::BootLockboxFrontend::StorageState::kPreparable) {
     LOG(ERROR) << "Cannot prepare space with unprepareable state: "
                << static_cast<int>(state);
-    return NVSpaceState::kNVSpaceError;
+    return SpaceState::kSpaceError;
   }
 
-  RETURN_IF_ERROR(hwsec_->PrepareSpace(kNVSpaceSize))
+  RETURN_IF_ERROR(hwsec_->PrepareSpace(kSpaceSize))
       .WithStatus<hwsec::TPMError>("Failed to prepare space")
       .LogError()
-      .As(NVSpaceState::kNVSpaceUndefined);
+      .As(SpaceState::kSpaceUndefined);
 
-  return NVSpaceState::kNVSpaceUninitialized;
+  return SpaceState::kSpaceUninitialized;
 }
 
-bool TPMNVSpaceImpl::WriteNVSpace(const std::string& digest) {
+bool HwsecSpaceImpl::WriteSpace(const std::string& digest) {
   if (digest.size() != SHA256_DIGEST_LENGTH) {
     LOG(ERROR) << "Wrong digest size, expected: " << SHA256_DIGEST_LENGTH
                << " got: " << digest.size();
     return false;
   }
 
-  BootLockboxNVSpace space;
-  space.version = kNVSpaceVersion;
+  BootLockboxSpace space;
+  space.version = kSpaceVersion;
   space.flags = 0;
   memcpy(space.digest, digest.data(), SHA256_DIGEST_LENGTH);
-  brillo::Blob nvram_data(kNVSpaceSize);
-  memcpy(nvram_data.data(), &space, kNVSpaceSize);
+  brillo::Blob nvram_data(kSpaceSize);
+  memcpy(nvram_data.data(), &space, kSpaceSize);
 
   RETURN_IF_ERROR(hwsec_->StoreSpace(nvram_data))
       .WithStatus<hwsec::TPMError>("Failed to store space")
@@ -77,47 +77,47 @@ bool TPMNVSpaceImpl::WriteNVSpace(const std::string& digest) {
   return true;
 }
 
-NVSpaceState TPMNVSpaceImpl::ReadNVSpace(std::string* digest) {
+SpaceState HwsecSpaceImpl::ReadSpace(std::string* digest) {
   ASSIGN_OR_RETURN(hwsec::BootLockboxFrontend::StorageState state,
                    hwsec_->GetSpaceState(),
                    _.WithStatus<hwsec::TPMError>("Failed to get space state")
                        .LogError()
-                       .As(NVSpaceState::kNVSpaceNeedPowerwash));
+                       .As(SpaceState::kSpaceNeedPowerwash));
 
   if (state == hwsec::BootLockboxFrontend::StorageState::kPreparable) {
-    return NVSpaceState::kNVSpaceUndefined;
+    return SpaceState::kSpaceUndefined;
   }
 
   ASSIGN_OR_RETURN(brillo::Blob nvram_data, hwsec_->LoadSpace(),
                    _.WithStatus<hwsec::TPMError>("Failed to read space")
                        .LogError()
-                       .As(NVSpaceState::kNVSpaceError));
+                       .As(SpaceState::kSpaceError));
 
-  if (nvram_data.size() != kNVSpaceSize) {
+  if (nvram_data.size() != kSpaceSize) {
     LOG(ERROR) << "Error reading nvram space, invalid data length, expected:"
-               << kNVSpaceSize << ", got " << nvram_data.size();
-    return NVSpaceState::kNVSpaceError;
+               << kSpaceSize << ", got " << nvram_data.size();
+    return SpaceState::kSpaceError;
   }
 
   std::string nvram_data_str = brillo::BlobToString(nvram_data);
-  if (nvram_data_str == std::string(kNVSpaceSize, '\0') ||
-      nvram_data_str == std::string(kNVSpaceSize, 0xff)) {
+  if (nvram_data_str == std::string(kSpaceSize, '\0') ||
+      nvram_data_str == std::string(kSpaceSize, 0xff)) {
     LOG(ERROR) << "Empty nvram data.";
-    return NVSpaceState::kNVSpaceUninitialized;
+    return SpaceState::kSpaceUninitialized;
   }
 
-  BootLockboxNVSpace space;
-  memcpy(&space, nvram_data.data(), kNVSpaceSize);
-  if (space.version != kNVSpaceVersion) {
+  BootLockboxSpace space;
+  memcpy(&space, nvram_data.data(), kSpaceSize);
+  if (space.version != kSpaceVersion) {
     LOG(ERROR) << "Error reading nvram space, invalid version";
-    return NVSpaceState::kNVSpaceError;
+    return SpaceState::kSpaceError;
   }
   digest->assign(reinterpret_cast<const char*>(space.digest),
                  SHA256_DIGEST_LENGTH);
-  return NVSpaceState::kNVSpaceNormal;
+  return SpaceState::kSpaceNormal;
 }
 
-bool TPMNVSpaceImpl::LockNVSpace() {
+bool HwsecSpaceImpl::LockSpace() {
   RETURN_IF_ERROR(hwsec_->LockSpace())
       .WithStatus<hwsec::TPMError>("Failed to lock space")
       .LogError()
@@ -126,15 +126,15 @@ bool TPMNVSpaceImpl::LockNVSpace() {
   return true;
 }
 
-void TPMNVSpaceImpl::RegisterOwnershipTakenCallback(
+void HwsecSpaceImpl::RegisterOwnershipTakenCallback(
     const base::RepeatingClosure& callback) {
   tpm_owner_->RegisterSignalOwnershipTakenSignalHandler(
-      base::BindRepeating(&TPMNVSpaceImpl::OnOwnershipTaken,
+      base::BindRepeating(&HwsecSpaceImpl::OnOwnershipTaken,
                           base::Unretained(this), callback),
       base::DoNothing());
 }
 
-void TPMNVSpaceImpl::OnOwnershipTaken(
+void HwsecSpaceImpl::OnOwnershipTaken(
     const base::RepeatingClosure& callback,
     const tpm_manager::OwnershipTakenSignal& signal) {
   LOG(INFO) << __func__ << ": Received |OwnershipTakenSignal|.";

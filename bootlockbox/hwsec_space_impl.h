@@ -1,9 +1,9 @@
-// Copyright 2018 The ChromiumOS Authors
+// Copyright 2022 The ChromiumOS Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef BOOTLOCKBOX_TPM_NVSPACE_IMPL_H_
-#define BOOTLOCKBOX_TPM_NVSPACE_IMPL_H_
+#ifndef BOOTLOCKBOX_HWSEC_SPACE_IMPL_H_
+#define BOOTLOCKBOX_HWSEC_SPACE_IMPL_H_
 
 #include <memory>
 #include <string>
@@ -16,59 +16,59 @@
 #include <tpm_manager/proto_bindings/tpm_manager.pb.h>
 #include <tpm_manager-client/tpm_manager/dbus-proxies.h>
 
-#include "bootlockbox/tpm_nvspace.h"
+#include "bootlockbox/hwsec_space.h"
 
 namespace bootlockbox {
 
-struct BootLockboxNVSpace {
+struct BootLockboxSpace {
   uint16_t version;
   uint16_t flags;
   uint8_t digest[SHA256_DIGEST_LENGTH];
 } __attribute__((packed));
-inline constexpr uint8_t kNVSpaceVersion = 1;
-inline constexpr uint32_t kNVSpaceSize = sizeof(BootLockboxNVSpace);
+inline constexpr uint8_t kSpaceVersion = 1;
+inline constexpr uint32_t kSpaceSize = sizeof(BootLockboxSpace);
 
-// Empty password is used for bootlockbox nvspace. Confidentiality
-// is not required and the nvspace is write locked after user logs in.
+// Empty password is used for bootlockbox space. Confidentiality
+// is not required and the space is write locked after user logs in.
 inline constexpr char kWellKnownPassword[] = "";
 
-// This class handles tpm operations to read, write, lock and define nv spaces.
-// Usage:
-//   auto nvspace_utility = TPMNVSpaceImpl();
-//   nvspace_utility.Initialize();
-//   nvspace_utility.WriteNVSpace(...);
-class TPMNVSpaceImpl : public TPMNVSpace {
+// This class handles hwsec operations to read, write, lock and define nv
+// spaces. Usage:
+//   auto space_utility = HwsecSpaceImpl();
+//   space_utility.Initialize();
+//   space_utility.WriteSpace(...);
+class HwsecSpaceImpl : public HwsecSpace {
  public:
-  explicit TPMNVSpaceImpl(std::unique_ptr<hwsec::BootLockboxFrontend> hwsec)
+  explicit HwsecSpaceImpl(std::unique_ptr<hwsec::BootLockboxFrontend> hwsec)
       : hwsec_(std::move(hwsec)) {}
 
-  explicit TPMNVSpaceImpl(std::unique_ptr<hwsec::BootLockboxFrontend> hwsec,
+  explicit HwsecSpaceImpl(std::unique_ptr<hwsec::BootLockboxFrontend> hwsec,
                           org::chromium::TpmManagerProxyInterface* tpm_owner)
       : hwsec_(std::move(hwsec)), tpm_owner_(tpm_owner) {}
 
-  TPMNVSpaceImpl(const TPMNVSpaceImpl&) = delete;
-  TPMNVSpaceImpl& operator=(const TPMNVSpaceImpl&) = delete;
+  HwsecSpaceImpl(const HwsecSpaceImpl&) = delete;
+  HwsecSpaceImpl& operator=(const HwsecSpaceImpl&) = delete;
 
-  ~TPMNVSpaceImpl() override = default;
+  ~HwsecSpaceImpl() override = default;
 
-  // Initializes tpm_nvram if necessary.
+  // Initializes hwsec_nvram if necessary.
   // Must be called before issuing and calls to this utility.
   bool Initialize() override;
 
-  // This method defines a non-volatile storage area in TPM for bootlockboxd
+  // This method defines a non-volatile storage area in Hwsec for bootlockboxd
   // via tpm_managerd.
-  NVSpaceState DefineNVSpace() override;
+  SpaceState DefineSpace() override;
 
   // This method writes |digest| to nvram space for bootlockboxd.
-  bool WriteNVSpace(const std::string& digest) override;
+  bool WriteSpace(const std::string& digest) override;
 
-  // Reads nvspace and extract |digest|.
-  NVSpaceState ReadNVSpace(std::string* digest) override;
+  // Reads space and extract |digest|.
+  SpaceState ReadSpace(std::string* digest) override;
 
-  // Locks the bootlockbox nvspace for writing.
-  bool LockNVSpace() override;
+  // Locks the bootlockbox space for writing.
+  bool LockSpace() override;
 
-  // Register the callback that would be called when TPM ownership had been
+  // Register the callback that would be called when Hwsec ownership had been
   // taken.
   void RegisterOwnershipTakenCallback(
       const base::RepeatingClosure& callback) override;
@@ -89,4 +89,4 @@ class TPMNVSpaceImpl : public TPMNVSpace {
 
 }  // namespace bootlockbox
 
-#endif  // BOOTLOCKBOX_TPM_NVSPACE_IMPL_H_
+#endif  // BOOTLOCKBOX_HWSEC_SPACE_IMPL_H_

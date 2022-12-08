@@ -12,9 +12,9 @@
 #include <brillo/secure_blob.h>
 #include <gtest/gtest_prod.h>
 
-#include "bootlockbox/proto_bindings/boot_lockbox_rpc.pb.h"
+#include "bootlockbox/hwsec_space.h"
 #include "bootlockbox/key_value_map.pb.h"
-#include "bootlockbox/tpm_nvspace.h"
+#include "bootlockbox/proto_bindings/boot_lockbox_rpc.pb.h"
 
 namespace bootlockbox {
 
@@ -35,9 +35,9 @@ inline constexpr uint32_t kVersion = 1;
 // TPM and can only be updated before a user logs in after boot.
 class NVRamBootLockbox {
  public:
-  // Does not take ownership of |tpm_nvspace|.
-  explicit NVRamBootLockbox(TPMNVSpace* tpm_nvspace);
-  NVRamBootLockbox(TPMNVSpace* tpm_nvspace,
+  // Does not take ownership of |hwsec_space|.
+  explicit NVRamBootLockbox(HwsecSpace* hwsec_space);
+  NVRamBootLockbox(HwsecSpace* hwsec_space,
                    const base::FilePath& bootlockbox_file_path);
   virtual ~NVRamBootLockbox();
 
@@ -55,15 +55,15 @@ class NVRamBootLockbox {
   virtual bool Finalize();
 
   // Gets BootLockbox state.
-  virtual NVSpaceState GetState();
+  virtual SpaceState GetState();
 
   // Defines NVRAM space. This function may change nvspace_state_ to
-  // kNVSpaceUninitialized.
+  // kSpaceUninitialized.
   virtual bool DefineSpace();
 
   // Registers a callback to defines NVRAM space after the TPM ownership had
   // been taken. This function may change nvspace_state_ to
-  // kNVSpaceUninitialized.
+  // kSpaceUninitialized.
   virtual bool RegisterOwnershipCallback();
 
   // Reads the key value map from disk and verifies the digest against the
@@ -72,7 +72,7 @@ class NVRamBootLockbox {
 
  protected:
   // Set BootLockbox state.
-  virtual void SetState(const NVSpaceState state);
+  virtual void SetState(const SpaceState state);
 
  private:
   // Writes to file, updates the digest in NVRAM space and updates local
@@ -88,12 +88,12 @@ class NVRamBootLockbox {
   // space and locked for writing after users logs in.
   std::string root_digest_;
 
-  TPMNVSpace* tpm_nvspace_;
+  HwsecSpace* hwsec_space_;
 
   bool ownership_callback_registered_ = false;
 
   // The state of nvspace. This is not the state of the service.
-  NVSpaceState nvspace_state_{NVSpaceState::kNVSpaceError};
+  SpaceState nvspace_state_{SpaceState::kSpaceError};
 
   FRIEND_TEST(NVRamBootLockboxTest, DefineSpace);
   FRIEND_TEST(NVRamBootLockboxTest, LoadFailDigestMisMatch);

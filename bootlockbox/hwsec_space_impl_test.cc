@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "bootlockbox/tpm_nvspace_impl.h"
+#include "bootlockbox/hwsec_space_impl.h"
 
 #include <memory>
 #include <utility>
@@ -38,79 +38,75 @@ std::string uint16_to_string(uint16_t value) {
 
 namespace bootlockbox {
 
-class TPMNVSpaceImplTest : public testing::Test {
+class HwsecSpaceImplTest : public testing::Test {
  public:
   void SetUp() override {
     auto hwsec = std::make_unique<hwsec::MockBootLockboxFrontend>();
     hwsec_ptr_ = hwsec.get();
-    nvspace_utility_ =
-        std::make_unique<TPMNVSpaceImpl>(std::move(hwsec), &mock_tpm_owner_);
+    space_utility_ =
+        std::make_unique<HwsecSpaceImpl>(std::move(hwsec), &mock_tpm_owner_);
   }
 
  protected:
   hwsec::MockBootLockboxFrontend* hwsec_ptr_;
   NiceMock<org::chromium::TpmManagerProxyMock> mock_tpm_owner_;
-  std::unique_ptr<TPMNVSpaceImpl> nvspace_utility_;
+  std::unique_ptr<HwsecSpaceImpl> space_utility_;
 };
 
-TEST_F(TPMNVSpaceImplTest, DefineNVSpaceSuccess) {
+TEST_F(HwsecSpaceImplTest, DefineSpaceSuccess) {
   EXPECT_CALL(*hwsec_ptr_, GetSpaceState())
       .WillOnce(
           ReturnValue(hwsec::BootLockboxFrontend::StorageState::kPreparable));
-  EXPECT_CALL(*hwsec_ptr_, PrepareSpace(kNVSpaceSize))
+  EXPECT_CALL(*hwsec_ptr_, PrepareSpace(kSpaceSize))
       .WillOnce(ReturnOk<hwsec::TPMError>());
 
-  EXPECT_EQ(nvspace_utility_->DefineNVSpace(),
-            NVSpaceState::kNVSpaceUninitialized);
+  EXPECT_EQ(space_utility_->DefineSpace(), SpaceState::kSpaceUninitialized);
 }
 
-TEST_F(TPMNVSpaceImplTest, DefineNVSpaceAlreadyDefined) {
+TEST_F(HwsecSpaceImplTest, DefineSpaceAlreadyDefined) {
   EXPECT_CALL(*hwsec_ptr_, GetSpaceState())
       .WillOnce(ReturnValue(hwsec::BootLockboxFrontend::StorageState::kReady));
 
-  EXPECT_EQ(nvspace_utility_->DefineNVSpace(),
-            NVSpaceState::kNVSpaceUninitialized);
+  EXPECT_EQ(space_utility_->DefineSpace(), SpaceState::kSpaceUninitialized);
 }
 
-TEST_F(TPMNVSpaceImplTest, DefineNVSpaceCannotPrepare) {
+TEST_F(HwsecSpaceImplTest, DefineSpaceCannotPrepare) {
   EXPECT_CALL(*hwsec_ptr_, GetSpaceState())
       .WillOnce(
           ReturnValue(hwsec::BootLockboxFrontend::StorageState::kWriteLocked));
 
-  EXPECT_EQ(nvspace_utility_->DefineNVSpace(), NVSpaceState::kNVSpaceError);
+  EXPECT_EQ(space_utility_->DefineSpace(), SpaceState::kSpaceError);
 }
 
-TEST_F(TPMNVSpaceImplTest, DefineNVSpacePrepareFail) {
+TEST_F(HwsecSpaceImplTest, DefineSpacePrepareFail) {
   EXPECT_CALL(*hwsec_ptr_, GetSpaceState())
       .WillOnce(
           ReturnValue(hwsec::BootLockboxFrontend::StorageState::kPreparable));
-  EXPECT_CALL(*hwsec_ptr_, PrepareSpace(kNVSpaceSize))
+  EXPECT_CALL(*hwsec_ptr_, PrepareSpace(kSpaceSize))
       .WillOnce(ReturnError<hwsec::TPMError>("Fake error",
                                              hwsec::TPMRetryAction::kNoRetry));
 
-  EXPECT_EQ(nvspace_utility_->DefineNVSpace(), NVSpaceState::kNVSpaceUndefined);
+  EXPECT_EQ(space_utility_->DefineSpace(), SpaceState::kSpaceUndefined);
 }
 
-TEST_F(TPMNVSpaceImplTest, DefineNVSpacePowerWash) {
+TEST_F(HwsecSpaceImplTest, DefineSpacePowerWash) {
   EXPECT_CALL(*hwsec_ptr_, GetSpaceState())
       .WillOnce(ReturnError<hwsec::TPMError>("Fake error",
                                              hwsec::TPMRetryAction::kNoRetry));
 
-  EXPECT_EQ(nvspace_utility_->DefineNVSpace(),
-            NVSpaceState::kNVSpaceNeedPowerwash);
+  EXPECT_EQ(space_utility_->DefineSpace(), SpaceState::kSpaceNeedPowerwash);
 }
 
-TEST_F(TPMNVSpaceImplTest, ReadNVSpaceReboot) {
+TEST_F(HwsecSpaceImplTest, ReadSpaceReboot) {
   EXPECT_CALL(*hwsec_ptr_, GetSpaceState())
       .WillOnce(ReturnError<hwsec::TPMError>("Fake error",
                                              hwsec::TPMRetryAction::kNoRetry));
 
   std::string data;
-  EXPECT_EQ(nvspace_utility_->ReadNVSpace(&data),
-            NVSpaceState::kNVSpaceNeedPowerwash);
+  EXPECT_EQ(space_utility_->ReadSpace(&data), SpaceState::kSpaceNeedPowerwash);
 }
 
-TEST_F(TPMNVSpaceImplTest, ReadNVSpaceLengthFail) {
+TEST_F(HwsecSpaceImplTest, ReadSpaceLengthFail) {
   std::string nvram_data = uint16_to_string(1) /* version */ +
                            uint16_to_string(0) /* flags */ +
                            std::string(3, '\x3');
@@ -120,81 +116,80 @@ TEST_F(TPMNVSpaceImplTest, ReadNVSpaceLengthFail) {
       .WillOnce(ReturnValue(brillo::BlobFromString(nvram_data)));
 
   std::string data;
-  EXPECT_EQ(nvspace_utility_->ReadNVSpace(&data), NVSpaceState::kNVSpaceError);
+  EXPECT_EQ(space_utility_->ReadSpace(&data), SpaceState::kSpaceError);
 }
 
-TEST_F(TPMNVSpaceImplTest, ReadNVSpaceUninitializedFail) {
-  std::string nvram_data = std::string(kNVSpaceSize, '\0');
+TEST_F(HwsecSpaceImplTest, ReadSpaceUninitializedFail) {
+  std::string nvram_data = std::string(kSpaceSize, '\0');
   EXPECT_CALL(*hwsec_ptr_, GetSpaceState())
       .WillOnce(ReturnValue(hwsec::BootLockboxFrontend::StorageState::kReady));
   EXPECT_CALL(*hwsec_ptr_, LoadSpace())
       .WillOnce(ReturnValue(brillo::BlobFromString(nvram_data)));
 
   std::string data;
-  EXPECT_EQ(nvspace_utility_->ReadNVSpace(&data),
-            NVSpaceState::kNVSpaceUninitialized);
+  EXPECT_EQ(space_utility_->ReadSpace(&data), SpaceState::kSpaceUninitialized);
 }
 
-TEST_F(TPMNVSpaceImplTest, ReadNVSpaceVersionFail) {
-  BootLockboxNVSpace space{.version = 2};
+TEST_F(HwsecSpaceImplTest, ReadSpaceVersionFail) {
+  BootLockboxSpace space{.version = 2};
   std::string nvram_data =
-      std::string(reinterpret_cast<char*>(&space), kNVSpaceSize);
+      std::string(reinterpret_cast<char*>(&space), kSpaceSize);
   EXPECT_CALL(*hwsec_ptr_, GetSpaceState())
       .WillOnce(ReturnValue(hwsec::BootLockboxFrontend::StorageState::kReady));
   EXPECT_CALL(*hwsec_ptr_, LoadSpace())
       .WillOnce(ReturnValue(brillo::BlobFromString(nvram_data)));
 
   std::string data;
-  EXPECT_EQ(nvspace_utility_->ReadNVSpace(&data), NVSpaceState::kNVSpaceError);
+  EXPECT_EQ(space_utility_->ReadSpace(&data), SpaceState::kSpaceError);
 }
 
-TEST_F(TPMNVSpaceImplTest, ReadNVSpaceSuccess) {
+TEST_F(HwsecSpaceImplTest, ReadSpaceSuccess) {
   std::string test_digest(SHA256_DIGEST_LENGTH, 'a');
-  BootLockboxNVSpace space{
+  BootLockboxSpace space{
       .version = 1,
       .flags = 0,
   };
   memcpy(space.digest, test_digest.c_str(), SHA256_DIGEST_LENGTH);
   std::string nvram_data =
-      std::string(reinterpret_cast<char*>(&space), kNVSpaceSize);
+      std::string(reinterpret_cast<char*>(&space), kSpaceSize);
   EXPECT_CALL(*hwsec_ptr_, GetSpaceState())
       .WillOnce(ReturnValue(hwsec::BootLockboxFrontend::StorageState::kReady));
   EXPECT_CALL(*hwsec_ptr_, LoadSpace())
       .WillOnce(ReturnValue(brillo::BlobFromString(nvram_data)));
 
   std::string data;
-  EXPECT_EQ(nvspace_utility_->ReadNVSpace(&data), NVSpaceState::kNVSpaceNormal);
+  EXPECT_EQ(space_utility_->ReadSpace(&data), SpaceState::kSpaceNormal);
   EXPECT_EQ(data, test_digest);
 }
 
-TEST_F(TPMNVSpaceImplTest, WriteNVSpaceSuccess) {
+TEST_F(HwsecSpaceImplTest, WriteSpaceSuccess) {
   std::string nvram_data(SHA256_DIGEST_LENGTH, 'a');
   std::string data = uint16_to_string(1) /* version */ +
                      uint16_to_string(0) /* flags */ + nvram_data;
   EXPECT_CALL(*hwsec_ptr_, StoreSpace(brillo::BlobFromString(data)))
       .WillOnce(ReturnOk<hwsec::TPMError>());
 
-  EXPECT_TRUE(nvspace_utility_->WriteNVSpace(nvram_data));
+  EXPECT_TRUE(space_utility_->WriteSpace(nvram_data));
 }
 
-TEST_F(TPMNVSpaceImplTest, WriteNVSpaceInvalidLength) {
+TEST_F(HwsecSpaceImplTest, WriteSpaceInvalidLength) {
   std::string nvram_data = "data of invalid length";
   EXPECT_CALL(*hwsec_ptr_, StoreSpace(_)).Times(0);
 
-  EXPECT_FALSE(nvspace_utility_->WriteNVSpace(nvram_data));
+  EXPECT_FALSE(space_utility_->WriteSpace(nvram_data));
 }
 
-TEST_F(TPMNVSpaceImplTest, LockNVSpace) {
+TEST_F(HwsecSpaceImplTest, LockSpace) {
   EXPECT_CALL(*hwsec_ptr_, LockSpace()).WillOnce(ReturnOk<hwsec::TPMError>());
 
-  EXPECT_TRUE(nvspace_utility_->LockNVSpace());
+  EXPECT_TRUE(space_utility_->LockSpace());
 }
 
-TEST_F(TPMNVSpaceImplTest, LockNVSpaceFail) {
+TEST_F(HwsecSpaceImplTest, LockSpaceFail) {
   EXPECT_CALL(*hwsec_ptr_, LockSpace())
       .WillOnce(ReturnError<hwsec::TPMError>("Fake error",
                                              hwsec::TPMRetryAction::kNoRetry));
 
-  EXPECT_FALSE(nvspace_utility_->LockNVSpace());
+  EXPECT_FALSE(space_utility_->LockSpace());
 }
 }  // namespace bootlockbox

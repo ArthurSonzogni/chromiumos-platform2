@@ -2,28 +2,28 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef BOOTLOCKBOX_FAKE_TPM_NVSPACE_H_
-#define BOOTLOCKBOX_FAKE_TPM_NVSPACE_H_
+#ifndef BOOTLOCKBOX_FAKE_HWSEC_SPACE_H_
+#define BOOTLOCKBOX_FAKE_HWSEC_SPACE_H_
 
 #include <string>
 
-#include "bootlockbox/tpm_nvspace.h"
+#include "bootlockbox/hwsec_space.h"
 
 namespace bootlockbox {
 
-class FakeTpmNVSpace : public TPMNVSpace {
+class FakeTpmSpace : public HwsecSpace {
  public:
-  FakeTpmNVSpace() {}
+  FakeTpmSpace() {}
 
   bool Initialize() override;
 
-  NVSpaceState DefineNVSpace() override;
+  SpaceState DefineSpace() override;
 
-  bool WriteNVSpace(const std::string& digest) override;
+  bool WriteSpace(const std::string& digest) override;
 
-  NVSpaceState ReadNVSpace(std::string* digest) override;
+  SpaceState ReadSpace(std::string* digest) override;
 
-  bool LockNVSpace() override;
+  bool LockSpace() override;
 
   void RegisterOwnershipTakenCallback(
       const base::RepeatingClosure& callback) override;
@@ -36,4 +36,4 @@ class FakeTpmNVSpace : public TPMNVSpace {
 
 }  // namespace bootlockbox
 
-#endif  // BOOTLOCKBOX_FAKE_TPM_NVSPACE_H_
+#endif  // BOOTLOCKBOX_FAKE_HWSEC_SPACE_H_

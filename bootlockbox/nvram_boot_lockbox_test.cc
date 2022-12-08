@@ -12,7 +12,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "bootlockbox/fake_tpm_nvspace.h"
+#include "bootlockbox/fake_hwsec_space.h"
 #include "bootlockbox/proto_bindings/boot_lockbox_rpc.pb.h"
 
 namespace {
@@ -28,25 +28,24 @@ class NVRamBootLockboxTest : public testing::Test {
     ASSERT_TRUE(temp_directory.CreateUniqueTempDir());
     file_path_ = temp_directory.GetPath().Append(kTestFilePath);
     nvram_boot_lockbox_ =
-        std::make_unique<NVRamBootLockbox>(&fake_tpm_nvspace_, file_path_);
+        std::make_unique<NVRamBootLockbox>(&fake_hwsec_space_, file_path_);
   }
 
  protected:
-  FakeTpmNVSpace fake_tpm_nvspace_;
+  FakeTpmSpace fake_hwsec_space_;
   std::unique_ptr<NVRamBootLockbox> nvram_boot_lockbox_;
   base::FilePath file_path_;
 };
 
 TEST_F(NVRamBootLockboxTest, Finalize) {
   EXPECT_TRUE(nvram_boot_lockbox_->Finalize());
-  EXPECT_EQ(nvram_boot_lockbox_->GetState(), NVSpaceState::kNVSpaceWriteLocked);
+  EXPECT_EQ(nvram_boot_lockbox_->GetState(), SpaceState::kSpaceWriteLocked);
 }
 
 TEST_F(NVRamBootLockboxTest, DefineSpace) {
-  nvram_boot_lockbox_->SetState(NVSpaceState::kNVSpaceUndefined);
+  nvram_boot_lockbox_->SetState(SpaceState::kSpaceUndefined);
   EXPECT_TRUE(nvram_boot_lockbox_->DefineSpace());
-  EXPECT_EQ(nvram_boot_lockbox_->GetState(),
-            NVSpaceState::kNVSpaceUninitialized);
+  EXPECT_EQ(nvram_boot_lockbox_->GetState(), SpaceState::kSpaceUninitialized);
 }
 
 TEST_F(NVRamBootLockboxTest, StoreFail) {
@@ -63,7 +62,7 @@ TEST_F(NVRamBootLockboxTest, LoadFailDigestMisMatch) {
   std::string value = "test_value";
   BootLockboxErrorCode error;
   // avoid early failure.
-  nvram_boot_lockbox_->SetState(NVSpaceState::kNVSpaceNormal);
+  nvram_boot_lockbox_->SetState(SpaceState::kSpaceNormal);
   EXPECT_TRUE(nvram_boot_lockbox_->Store(key, value, &error));
   // modify the proto file.
   std::string invalid_proto = "aaa";
@@ -75,7 +74,7 @@ TEST_F(NVRamBootLockboxTest, StoreLoadReadSuccess) {
   std::string key = "test_key";
   std::string value = "test_value_digest";
   BootLockboxErrorCode error;
-  nvram_boot_lockbox_->SetState(NVSpaceState::kNVSpaceNormal);
+  nvram_boot_lockbox_->SetState(SpaceState::kSpaceNormal);
   EXPECT_TRUE(nvram_boot_lockbox_->Store(key, value, &error));
   EXPECT_TRUE(nvram_boot_lockbox_->Load());
   std::string stored_value;
@@ -91,7 +90,7 @@ TEST_F(NVRamBootLockboxTest, FirstStoreReadSuccess) {
   std::string key = "test_key";
   std::string value = "test_value_digest";
   BootLockboxErrorCode error;
-  nvram_boot_lockbox_->SetState(NVSpaceState::kNVSpaceUninitialized);
+  nvram_boot_lockbox_->SetState(SpaceState::kSpaceUninitialized);
   EXPECT_TRUE(nvram_boot_lockbox_->Store(key, value, &error));
   EXPECT_EQ(error, BootLockboxErrorCode::BOOTLOCKBOX_ERROR_NOT_SET);
   std::string stored_value;

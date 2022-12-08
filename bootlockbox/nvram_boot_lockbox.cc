@@ -15,21 +15,21 @@
 #include <crypto/sha2.h>
 #include <libhwsec-foundation/crypto/sha.h>
 
-#include "bootlockbox/tpm_nvspace.h"
-#include "bootlockbox/tpm_nvspace_impl.h"
+#include "bootlockbox/hwsec_space.h"
+#include "bootlockbox/hwsec_space_impl.h"
 
 using ::hwsec_foundation::Sha256;
 
 namespace bootlockbox {
 
-NVRamBootLockbox::NVRamBootLockbox(TPMNVSpace* tpm_nvspace)
+NVRamBootLockbox::NVRamBootLockbox(HwsecSpace* hwsec_space)
     : boot_lockbox_filepath_(base::FilePath(kNVRamBootLockboxFilePath)),
-      tpm_nvspace_(tpm_nvspace) {}
+      hwsec_space_(hwsec_space) {}
 
-NVRamBootLockbox::NVRamBootLockbox(TPMNVSpace* tpm_nvspace,
+NVRamBootLockbox::NVRamBootLockbox(HwsecSpace* hwsec_space,
                                    const base::FilePath& bootlockbox_file_path)
     : boot_lockbox_filepath_(bootlockbox_file_path),
-      tpm_nvspace_(tpm_nvspace) {}
+      hwsec_space_(hwsec_space) {}
 
 NVRamBootLockbox::~NVRamBootLockbox() {}
 
@@ -38,19 +38,19 @@ bool NVRamBootLockbox::Store(const std::string& key,
                              BootLockboxErrorCode* error) {
   // Returns nvspace state to client.
   *error = BootLockboxErrorCode::BOOTLOCKBOX_ERROR_NOT_SET;
-  if (nvspace_state_ == NVSpaceState::kNVSpaceWriteLocked) {
+  if (nvspace_state_ == SpaceState::kSpaceWriteLocked) {
     *error = BootLockboxErrorCode::BOOTLOCKBOX_ERROR_WRITE_LOCKED;
     return false;
   }
-  if (nvspace_state_ == NVSpaceState::kNVSpaceNeedPowerwash) {
+  if (nvspace_state_ == SpaceState::kSpaceNeedPowerwash) {
     *error = BootLockboxErrorCode::BOOTLOCKBOX_ERROR_NEED_POWERWASH;
     return false;
   }
-  if (nvspace_state_ == NVSpaceState::kNVSpaceUndefined) {
+  if (nvspace_state_ == SpaceState::kSpaceUndefined) {
     *error = BootLockboxErrorCode::BOOTLOCKBOX_ERROR_NVSPACE_UNDEFINED;
     return false;
   }
-  if (nvspace_state_ == NVSpaceState::kNVSpaceError) {
+  if (nvspace_state_ == SpaceState::kSpaceError) {
     *error = BootLockboxErrorCode::BOOTLOCKBOX_ERROR_NVSPACE_OTHER;
     return false;
   }
@@ -71,19 +71,19 @@ bool NVRamBootLockbox::Read(const std::string& key,
                             BootLockboxErrorCode* error) {
   // Returns nvspace state to client.
   *error = BootLockboxErrorCode::BOOTLOCKBOX_ERROR_NOT_SET;
-  if (nvspace_state_ == NVSpaceState::kNVSpaceUndefined) {
+  if (nvspace_state_ == SpaceState::kSpaceUndefined) {
     *error = BootLockboxErrorCode::BOOTLOCKBOX_ERROR_NVSPACE_UNDEFINED;
     return false;
   }
-  if (nvspace_state_ == NVSpaceState::kNVSpaceUninitialized) {
+  if (nvspace_state_ == SpaceState::kSpaceUninitialized) {
     *error = BootLockboxErrorCode::BOOTLOCKBOX_ERROR_NVSPACE_UNINITIALIZED;
     return false;
   }
-  if (nvspace_state_ == NVSpaceState::kNVSpaceNeedPowerwash) {
+  if (nvspace_state_ == SpaceState::kSpaceNeedPowerwash) {
     *error = BootLockboxErrorCode::BOOTLOCKBOX_ERROR_NEED_POWERWASH;
     return false;
   }
-  if (nvspace_state_ == NVSpaceState::kNVSpaceError) {
+  if (nvspace_state_ == SpaceState::kSpaceError) {
     *error = BootLockboxErrorCode::BOOTLOCKBOX_ERROR_NVSPACE_OTHER;
     return false;
   }
@@ -98,29 +98,29 @@ bool NVRamBootLockbox::Read(const std::string& key,
 }
 
 bool NVRamBootLockbox::Finalize() {
-  if (nvspace_state_ == NVSpaceState::kNVSpaceUndefined) {
+  if (nvspace_state_ == SpaceState::kSpaceUndefined) {
     return false;
   }
-  if (nvspace_state_ == NVSpaceState::kNVSpaceNeedPowerwash) {
+  if (nvspace_state_ == SpaceState::kSpaceNeedPowerwash) {
     return false;
   }
-  if (tpm_nvspace_->LockNVSpace()) {
-    nvspace_state_ = NVSpaceState::kNVSpaceWriteLocked;
+  if (hwsec_space_->LockSpace()) {
+    nvspace_state_ = SpaceState::kSpaceWriteLocked;
     return true;
   }
-  nvspace_state_ = NVSpaceState::kNVSpaceError;
+  nvspace_state_ = SpaceState::kSpaceError;
   return false;
 }
 
 bool NVRamBootLockbox::DefineSpace() {
-  if (nvspace_state_ != NVSpaceState::kNVSpaceUndefined) {
+  if (nvspace_state_ != SpaceState::kSpaceUndefined) {
     LOG(ERROR)
         << "Trying to define the nvspace, but the nvspace isn't undefined.";
     return false;
   }
 
-  nvspace_state_ = tpm_nvspace_->DefineNVSpace();
-  if (nvspace_state_ != NVSpaceState::kNVSpaceUninitialized) {
+  nvspace_state_ = hwsec_space_->DefineSpace();
+  if (nvspace_state_ != SpaceState::kSpaceUninitialized) {
     return false;
   }
 
@@ -130,7 +130,7 @@ bool NVRamBootLockbox::DefineSpace() {
 }
 
 bool NVRamBootLockbox::RegisterOwnershipCallback() {
-  if (nvspace_state_ != NVSpaceState::kNVSpaceUndefined) {
+  if (nvspace_state_ != SpaceState::kSpaceUndefined) {
     LOG(ERROR) << "Trying to register the ownership callback, but the nvspace "
                   "isn't undefined.";
     return false;
@@ -143,21 +143,21 @@ bool NVRamBootLockbox::RegisterOwnershipCallback() {
 
   ownership_callback_registered_ = true;
 
-  // NVRamBootLockbox and TPMNVSpace would be destructed in the same time and
-  // this callback would disappear after TPMNVSpace be destructed, so it is safe
+  // NVRamBootLockbox and HwsecSpace would be destructed in the same time and
+  // this callback would disappear after HwsecSpace be destructed, so it is safe
   // to pass `this` into this callback.
   base::RepeatingClosure callback =
       base::BindRepeating(base::IgnoreResult(&NVRamBootLockbox::DefineSpace),
                           base::Unretained(this));
 
-  tpm_nvspace_->RegisterOwnershipTakenCallback(std::move(callback));
+  hwsec_space_->RegisterOwnershipTakenCallback(std::move(callback));
 
   return true;
 }
 
 bool NVRamBootLockbox::Load() {
-  nvspace_state_ = tpm_nvspace_->ReadNVSpace(&root_digest_);
-  if (nvspace_state_ != NVSpaceState::kNVSpaceNormal) {
+  nvspace_state_ = hwsec_space_->ReadSpace(&root_digest_);
+  if (nvspace_state_ != SpaceState::kSpaceNormal) {
     LOG(ERROR) << "Failed to read NVRAM space.";
     return false;
   }
@@ -171,20 +171,20 @@ bool NVRamBootLockbox::Load() {
   std::string digest = crypto::SHA256HashString(contents);
   if (digest != root_digest_) {
     LOG(ERROR) << "The nvram boot lockbox file verification failed.";
-    nvspace_state_ = NVSpaceState::kNVSpaceUninitialized;
+    nvspace_state_ = SpaceState::kSpaceUninitialized;
     return false;
   }
 
   SerializedKeyValueMap message;
   if (!message.ParseFromString(contents)) {
     LOG(ERROR) << "Failed to parse boot lockbox file.";
-    nvspace_state_ = NVSpaceState::kNVSpaceUninitialized;
+    nvspace_state_ = SpaceState::kSpaceUninitialized;
     return false;
   }
 
   if (!message.has_version() || message.version() != kVersion) {
     LOG(ERROR) << "Unsupported version " << message.version();
-    nvspace_state_ = NVSpaceState::kNVSpaceUninitialized;
+    nvspace_state_ = SpaceState::kSpaceUninitialized;
     return false;
   }
 
@@ -216,8 +216,8 @@ bool NVRamBootLockbox::FlushAndUpdate(const KeyValueMap& keyvals) {
     LOG(ERROR) << "Failed to write to boot lockbox file";
     return false;
   }
-  // Update tpm_nvram.
-  if (!tpm_nvspace_->WriteNVSpace(digest)) {
+  // Update nvram.
+  if (!hwsec_space_->WriteSpace(digest)) {
     LOG(ERROR) << "Failed to write boot lockbox NVRAM space";
     return false;
   }
@@ -227,15 +227,15 @@ bool NVRamBootLockbox::FlushAndUpdate(const KeyValueMap& keyvals) {
   // Update in memory information.
   key_value_store_ = keyvals;
   root_digest_ = digest;
-  nvspace_state_ = NVSpaceState::kNVSpaceNormal;
+  nvspace_state_ = SpaceState::kSpaceNormal;
   return true;
 }
 
-NVSpaceState NVRamBootLockbox::GetState() {
+SpaceState NVRamBootLockbox::GetState() {
   return nvspace_state_;
 }
 
-void NVRamBootLockbox::SetState(const NVSpaceState state) {
+void NVRamBootLockbox::SetState(const SpaceState state) {
   nvspace_state_ = state;
 }
 

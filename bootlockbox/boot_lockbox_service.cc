@@ -14,14 +14,14 @@
 #include <libhwsec/frontend/bootlockbox/frontend.h>
 #include <libhwsec/structures/threading_mode.h>
 
-#include "bootlockbox/tpm_nvspace.h"
-#include "bootlockbox/tpm_nvspace_impl.h"
+#include "bootlockbox/hwsec_space.h"
+#include "bootlockbox/hwsec_space_impl.h"
 
 namespace bootlockbox {
 
 int BootLockboxService::OnInit() {
   nvspace_utility_ =
-      std::make_unique<TPMNVSpaceImpl>(hwsec_factory_.GetBootLockboxFrontend());
+      std::make_unique<HwsecSpaceImpl>(hwsec_factory_.GetBootLockboxFrontend());
   if (!nvspace_utility_->Initialize()) {
     LOG(ERROR) << "Failed to initialize nvspace utility";
     return EX_UNAVAILABLE;
@@ -29,8 +29,8 @@ int BootLockboxService::OnInit() {
   boot_lockbox_ = std::make_unique<NVRamBootLockbox>(nvspace_utility_.get());
 
   if (!boot_lockbox_->Load() &&
-      boot_lockbox_->GetState() == NVSpaceState::kNVSpaceUndefined) {
-    LOG(INFO) << "NVSpace is not defined, define it now";
+      boot_lockbox_->GetState() == SpaceState::kSpaceUndefined) {
+    LOG(INFO) << "Space is not defined, define it now";
 
     // Register the ownership callback before defining the space could prevent
     // the race condition.

@@ -31,11 +31,6 @@ pkg_config("bootlockbox_dependent_config") {
   } else {
     pkg_deps += [ "protobuf-lite" ]
   }
-  defines = [
-    "USE_TPM1=${use.tpm}",
-    "USE_TPM2=${use.tpm2}",
-    "USE_TPM_DYNAMIC=${use.tpm_dynamic}",
-  ]
   libs = [ "hwsec" ]
 }
 
@@ -80,9 +75,9 @@ if (use.test) {
     sources = [
       "boot_lockbox_dbus_adaptor.cc",
       "boot_lockbox_service_test.cc",
-      "fake_tpm_nvspace.cc",
+      "fake_hwsec_space.cc",
+      "hwsec_space_impl_test.cc",
       "nvram_boot_lockbox_test.cc",
-      "tpm_nvspace_impl_test.cc",
     ]
     libs = [
       "hwsec_test",
@@ -112,8 +107,8 @@ generate_dbus_adaptors("bootlockbox-adaptors") {
 
 static_library("libnvram-boot-lockbox") {
   sources = [
+    "hwsec_space_impl.cc",
     "nvram_boot_lockbox.cc",
-    "tpm_nvspace_impl.cc",
   ]
   all_dependent_configs = [ ":bootlockbox_dependent_config" ]
   pkg_deps = [ "libbootlockbox-client" ]
