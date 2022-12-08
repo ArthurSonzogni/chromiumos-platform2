@@ -5381,10 +5381,13 @@ class UserDataAuthApiTest : public UserDataAuthTest {
   // unsuccessful.
   std::optional<std::string> GetTestUnauthedAuthSession(
       user_data_auth::AuthIntent intent =
-          user_data_auth::AuthIntent::AUTH_INTENT_DECRYPT) {
+          user_data_auth::AuthIntent::AUTH_INTENT_DECRYPT,
+      uint32_t flags =
+          user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE) {
     user_data_auth::StartAuthSessionRequest req;
     req.mutable_account_id()->set_account_id(kUsername1);
     req.set_intent(intent);
+    req.set_flags(flags);
     std::optional<user_data_auth::StartAuthSessionReply> reply =
         StartAuthSessionSync(req);
     if (!reply.has_value()) {
@@ -5581,6 +5584,18 @@ class UserDataAuthApiTest : public UserDataAuthTest {
     return reply_future.Get();
   }
 
+  std::optional<user_data_auth::PrepareEphemeralVaultReply>
+  PrepareEphemeralVaultSync(
+      const user_data_auth::PrepareEphemeralVaultRequest& in_request) {
+    TestFuture<user_data_auth::PrepareEphemeralVaultReply> reply_future;
+    userdataauth_->PrepareEphemeralVault(
+        in_request,
+        reply_future
+            .GetCallback<const user_data_auth::PrepareEphemeralVaultReply&>());
+    RunUntilIdle();
+    return reply_future.Get();
+  }
+
  protected:
   // Mock mount factory for mocking Mount objects.
   MockMountFactory mount_factory_;
@@ -5589,6 +5604,7 @@ class UserDataAuthApiTest : public UserDataAuthTest {
   std::deque<Mount*> new_mounts_;
 
   static constexpr char kUsername1[] = "foo@gmail.com";
+  static constexpr char kUsername2[] = "bar@gmail.com";
   static constexpr char kPassword1[] = "MyP@ssW0rd!!";
   static constexpr char kPasswordLabel[] = "Password1";
   static constexpr char kSmartCardLabel[] = "SmartCard1";
@@ -5757,6 +5773,40 @@ TEST_F(UserDataAuthApiTest, MountFailed) {
   EXPECT_THAT(
       prepare_reply->error_info(),
       HasPossibleAction(user_data_auth::PossibleAction::POSSIBLY_DELETE_VAULT));
+  EXPECT_THAT(
+      prepare_reply->error_info(),
+      HasPossibleAction(user_data_auth::PossibleAction::POSSIBLY_POWERWASH));
+}
+
+TEST_F(UserDataAuthApiTest, EphemeralMountFailed) {
+  // Prepare an auth session for ephemeral mount.
+  std::optional<std::string> session_id = GetTestUnauthedAuthSession(
+      user_data_auth::AuthIntent::AUTH_INTENT_DECRYPT,
+      user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_EPHEMERAL_USER);
+  ASSERT_TRUE(session_id.has_value());
+
+  // Ensure that the mount fails.
+  scoped_refptr<MockMount> mount = new MockMount();
+  EXPECT_CALL(*mount, MountEphemeralCryptohome(_))
+      .WillOnce(ReturnError<StorageError>(FROM_HERE, kTestErrorString,
+                                          MOUNT_ERROR_FATAL, false));
+  new_mounts_.push_back(mount.get());
+  EXPECT_CALL(homedirs_, GetPlainOwner(_))
+      .WillRepeatedly(DoAll(SetArgPointee<0>(kUsername2), Return(true)));
+
+  // Make the call to check that the result is correct.
+  user_data_auth::PrepareEphemeralVaultRequest prepare_req;
+  prepare_req.set_auth_session_id(session_id.value());
+  std::optional<user_data_auth::PrepareEphemeralVaultReply> prepare_reply =
+      PrepareEphemeralVaultSync(prepare_req);
+
+  ASSERT_TRUE(prepare_reply.has_value());
+  EXPECT_THAT(
+      prepare_reply->error_info(),
+      HasPossibleAction(user_data_auth::PossibleAction::POSSIBLY_RETRY));
+  EXPECT_THAT(
+      prepare_reply->error_info(),
+      HasPossibleAction(user_data_auth::PossibleAction::POSSIBLY_REBOOT));
   EXPECT_THAT(
       prepare_reply->error_info(),
       HasPossibleAction(user_data_auth::PossibleAction::POSSIBLY_POWERWASH));
