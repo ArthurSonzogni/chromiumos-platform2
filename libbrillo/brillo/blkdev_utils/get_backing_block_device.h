@@ -37,6 +37,11 @@ BRILLO_EXPORT base::FilePath GetBackingPhysicalDeviceForBlock(
 BRILLO_EXPORT base::FilePath GetBackingPhysicalDeviceForFile(
     const base::FilePath& path);
 
+// Finds logical backing device for a file. Logical backing device can be a
+// partition or a logical volume.
+BRILLO_EXPORT base::FilePath GetBackingLogicalDeviceForFile(
+    const base::FilePath& path);
+
 }  // namespace brillo
 
 #endif  // LIBBRILLO_BRILLO_BLKDEV_UTILS_GET_BACKING_BLOCK_DEVICE_H_

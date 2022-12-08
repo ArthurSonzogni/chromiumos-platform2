@@ -66,6 +66,7 @@
 #include <base/time/time.h>
 #include <base/unguessable_token.h>
 #include <brillo/blkdev_utils/device_mapper.h>
+#include <brillo/blkdev_utils/get_backing_block_device.h>
 #include <brillo/blkdev_utils/loop_device.h>
 #include <brillo/blkdev_utils/lvm.h>
 #include <brillo/file_utils.h>
@@ -1171,37 +1172,15 @@ bool Platform::FindFilesystemDevice(const FilePath& filesystem_in,
   /* Clear device to indicate failure case. */
   device->clear();
 
-  /* Removing trailing slashes. */
-  FilePath filesystem = filesystem_in.StripTrailingSeparators();
+  base::FilePath result = brillo::GetBackingLogicalDeviceForFile(filesystem_in);
 
-  char fs_device[PATH_MAX];
-  dev_t dev;
-
-  // TODO(sarthakkukreti@): Move to rootdev, create a separate helper to get
-  // the device.
-  struct stat fs_stat;
-  if (stat(filesystem.value().c_str(), &fs_stat)) {
-    LOG(WARNING) << "Failed to stat filesystem path";
+  if (result.empty()) {
     return false;
   }
 
-  dev = static_cast<dev_t>(fs_stat.st_dev);
+  *device = result.value();
 
-  int ret = rootdev_wrapper(fs_device, sizeof(fs_device),
-                            false,  // Do full resolution.
-                            false,  // Remove partition number.
-                            &dev,   // Device.
-                            filesystem.value().c_str(),  // Mount point.
-                            nullptr,   // Use default search path.
-                            nullptr);  // Use default /dev path.
-  if (ret != 0) {
-    LOG(WARNING) << "rootdev failed with error code " << ret;
-    return false;
-  }
-
-  *device = std::string(fs_device);
-
-  return (device->length() > 0);
+  return true;
 }
 
 bool Platform::ReportFilesystemDetails(const FilePath& filesystem,

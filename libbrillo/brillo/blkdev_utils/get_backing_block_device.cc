@@ -69,4 +69,37 @@ base::FilePath GetBackingPhysicalDeviceForFile(const base::FilePath& path) {
   return GetBackingPhysicalDeviceForBlock(stat_buf.st_dev);
 }
 
+base::FilePath GetBackingLogicalDeviceForFile(const base::FilePath& path) {
+  DCHECK(path.IsAbsolute()) << "path=" << path;
+
+  base::FilePath fixed_path = path.StripTrailingSeparators();
+
+  // TODO(sarthakkukreti@): Move to rootdev, create a separate helper to get
+  // the device.
+  struct stat fs_stat;
+  if (stat(fixed_path.value().c_str(), &fs_stat)) {
+    LOG(WARNING) << "Failed to stat filesystem path" << path;
+    return base::FilePath();
+  }
+
+  char fs_device[PATH_MAX];
+  dev_t dev = fs_stat.st_dev;
+
+  int ret = rootdev_wrapper(fs_device, sizeof(fs_device),
+                            false,  // Do full resolution.
+                            false,  // Remove partition number.
+                            &dev,   // Device.
+                                    // Path within mountpoint.
+                            fixed_path.value().c_str(),
+                            nullptr,   // Use default search path.
+                            nullptr);  // Use default /dev path.
+
+  if (ret != 0) {
+    LOG(WARNING) << "Failed to find backing device, error code: " << ret;
+    return base::FilePath();
+  }
+
+  return base::FilePath(fs_device);
+}
+
 }  // namespace brillo
