@@ -12,6 +12,9 @@
 #include <brillo/syslog_logging.h>
 
 int main(int argc, const char* const argv[]) {
+  DEFINE_bool(zero_out, false,
+              "Use WRITEZERO instead of BLKSECDISCARD, which is more widely "
+              "supported but less secure.");
   brillo::FlagHelper::Init(argc, argv, "Secure erase tool.");
 
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderr |
@@ -30,7 +33,11 @@ int main(int argc, const char* const argv[]) {
   // scripts can react accordingly.
   bool ok = true;
   for (const auto& file : files) {
-    ok &= secure_erase_file::SecureErase(base::FilePath(file));
+    if (FLAGS_zero_out) {
+      ok &= secure_erase_file::ZeroFile(base::FilePath(file));
+    } else {
+      ok &= secure_erase_file::SecureErase(base::FilePath(file));
+    }
   }
   ok &= secure_erase_file::DropCaches();
   return ok ? 0 : EX_IOERR;

@@ -33,6 +33,18 @@ BRILLO_EXPORT bool IsSupported(const base::FilePath& path);
 // range to ensure that it reads all 0s or 1s.
 BRILLO_EXPORT bool SecureErase(const base::FilePath& path);
 
+// Zeroouts the file, returning true on success and false on failure.
+//
+// Requires that:
+//   - the file is a regular file.
+//   - the file is stored on a filesystem that supports FS_IOC_FIEMAP.
+//   - the file does not span more than 32 extents.
+//   - the underlying block point is not "anonymous", as with btrfs.
+//
+// After unlink() and zeroout, this function reads from the file's original LBA
+// range to ensure that it reads all 0s.
+BRILLO_EXPORT bool ZeroFile(const base::FilePath& path);
+
 // Drop all filesystem caches.
 //
 // This must be called after securely erasing files to ensure that cached data
