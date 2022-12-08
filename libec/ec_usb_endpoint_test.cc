@@ -243,7 +243,7 @@ TEST_F(EcUsbEndpointTest, ClaimInterface_NotInitialized) {
 
 TEST_F(EcUsbEndpointTest, ReleaseInterface_NotInitialized) {
   EcUsbEndpoint uep(std::move(mock), /*max_retries=*/0);
-  EXPECT_FALSE(uep.ReleaseInterface());
+  EXPECT_TRUE(uep.ReleaseInterface());
 }
 
 }  // namespace

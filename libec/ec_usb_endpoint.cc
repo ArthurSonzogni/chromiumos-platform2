@@ -206,8 +206,9 @@ bool EcUsbEndpoint::ClaimInterface() {
 
 bool EcUsbEndpoint::ReleaseInterface() {
   if (endpoint_.dev_handle == nullptr || endpoint_.interface_number == 0) {
-    LOG(ERROR) << "Device handle or interface number are not set.";
-    return false;
+    // We haven't claimed the interface.
+    LOG(INFO) << "No need to release interface which is not claimed.";
+    return true;
   }
 
   int r = libusb_->release_interface(endpoint_.dev_handle,
@@ -225,7 +226,8 @@ void EcUsbEndpoint::CleanUp() {
     return;
 
   if (endpoint_.dev_handle) {
-    ReleaseInterface();
+    if (endpoint_.interface_number)
+      ReleaseInterface();
 
     libusb_->close(endpoint_.dev_handle);
     endpoint_.dev_handle = nullptr;
