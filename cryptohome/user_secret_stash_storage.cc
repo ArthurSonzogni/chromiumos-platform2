@@ -73,8 +73,6 @@ CryptohomeStatusOr<brillo::Blob> UserSecretStashStorage::LoadPersisted(
   ReportTimerStop(kUSSLoadPersistedTimer);
 
   if (file_read_failure) {
-    LOG(ERROR) << "Failed to load the UserSecretStash file for "
-               << obfuscated_username;
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocUSSStorageReadFailedInLoadPersisted),
         ErrorActionSet({ErrorAction::kReboot, ErrorAction::kDeleteVault,
