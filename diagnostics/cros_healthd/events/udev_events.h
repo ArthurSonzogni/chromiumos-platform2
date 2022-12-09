@@ -24,6 +24,16 @@ class UdevEvents {
   virtual bool Initialize() = 0;
   // Adds a new observer to be notified when thunderbolt related events occur.
   virtual void AddThunderboltObserver(
+      mojo::PendingRemote<ash::cros_healthd::mojom::EventObserver>
+          observer) = 0;
+  // Adds a new observer to be notified when USB related events occur.
+  virtual void AddUsbObserver(
+      mojo::PendingRemote<ash::cros_healthd::mojom::EventObserver>
+          observer) = 0;
+
+  // Old interfaces that are going to be deprecated.
+  // Adds a new observer to be notified when thunderbolt related events occur.
+  virtual void AddThunderboltObserver(
       mojo::PendingRemote<
           ash::cros_healthd::mojom::CrosHealthdThunderboltObserver>
           observer) = 0;

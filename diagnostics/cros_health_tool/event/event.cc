@@ -20,12 +20,13 @@
 #include <brillo/syslog_logging.h>
 
 #include "diagnostics/cros_health_tool/event/event_subscriber.h"
+#include "diagnostics/mojom/public/cros_healthd_events.mojom.h"
 
 namespace diagnostics {
 
 namespace {
 
-namespace mojo_ipc = ::ash::cros_healthd::mojom;
+namespace mojom = ::ash::cros_healthd::mojom;
 
 enum class EventCategory {
   kLid,
@@ -111,10 +112,12 @@ int event_main(int argc, char** argv) {
       success = event_subscriber.SubscribeToAudioEvents();
       break;
     case EventCategory::kThunderbolt:
-      success = event_subscriber.SubscribeToThunderboltEvents();
+      success = event_subscriber.SubscribeToEvents(
+          mojom::EventCategoryEnum::kThunderbolt);
       break;
     case EventCategory::kUsb:
-      success = event_subscriber.SubscribeToUsbEvents();
+      success =
+          event_subscriber.SubscribeToEvents(mojom::EventCategoryEnum::kUsb);
       break;
   }
 

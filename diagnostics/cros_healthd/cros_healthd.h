@@ -24,7 +24,6 @@
 #include "diagnostics/cros_healthd/events/bluetooth_events.h"
 #include "diagnostics/cros_healthd/events/lid_events.h"
 #include "diagnostics/cros_healthd/events/power_events.h"
-#include "diagnostics/cros_healthd/events/udev_events.h"
 #include "diagnostics/cros_healthd/fetch_aggregator.h"
 #include "diagnostics/mojom/public/cros_healthd.mojom.h"
 
@@ -117,8 +116,6 @@ class CrosHealthd final
   std::unique_ptr<PowerEvents> power_events_;
   // Provides support for audio-related events.
   std::unique_ptr<AudioEvents> audio_events_;
-  // Provides support for udev-related events.
-  std::unique_ptr<UdevEvents> udev_events_;
 
   // |diagnostics_service_| delegates routine creation to |routine_factory_|.
   std::unique_ptr<CrosHealthdRoutineFactory> routine_factory_;

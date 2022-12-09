@@ -5,8 +5,11 @@
 #ifndef DIAGNOSTICS_CROS_HEALTHD_EVENT_AGGREGATOR_H_
 #define DIAGNOSTICS_CROS_HEALTHD_EVENT_AGGREGATOR_H_
 
+#include <memory>
+
 #include <mojo/public/cpp/bindings/pending_remote.h>
 
+#include "diagnostics/cros_healthd/events/udev_events.h"
 #include "diagnostics/cros_healthd/system/context.h"
 #include "diagnostics/mojom/public/cros_healthd_events.mojom.h"
 
@@ -24,9 +27,21 @@ class EventAggregator final {
       ash::cros_healthd::mojom::EventCategoryEnum category,
       mojo::PendingRemote<ash::cros_healthd::mojom::EventObserver> observer);
 
+  // Deprecated interface. Only for backward compatibility.
+  void AddObserver(
+      mojo::PendingRemote<ash::cros_healthd::mojom::CrosHealthdUsbObserver>
+          observer);
+
+  // Deprecated interface. Only for backward compatibility.
+  void AddObserver(
+      mojo::PendingRemote<
+          ash::cros_healthd::mojom::CrosHealthdThunderboltObserver> observer);
+
  private:
   // The pointer to the Context object for accessing system utilities.
-  [[maybe_unused]] Context* const context_;
+  Context* const context_;
+
+  std::unique_ptr<UdevEvents> udev_events_;
 };
 
 }  // namespace diagnostics

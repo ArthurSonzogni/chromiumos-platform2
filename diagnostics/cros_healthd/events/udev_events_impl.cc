@@ -26,7 +26,7 @@ namespace diagnostics {
 
 namespace {
 
-namespace mojo_ipc = ::ash::cros_healthd::mojom;
+namespace mojom = ::ash::cros_healthd::mojom;
 
 std::string GetString(const char* str) {
   if (str) {
@@ -37,7 +37,7 @@ std::string GetString(const char* str) {
 }
 
 void FillUsbCategory(const std::unique_ptr<brillo::UdevDevice>& device,
-                     mojo_ipc::UsbEventInfo* info) {
+                     mojom::UsbEventInfo* info) {
   auto sys_path = GetString(device->GetSysPath());
   uint32_t class_code = 0;
   std::set<std::string> categories;
@@ -65,7 +65,7 @@ void FillUsbCategory(const std::unique_ptr<brillo::UdevDevice>& device,
 }
 
 void FillUsbEventInfo(const std::unique_ptr<brillo::UdevDevice>& device,
-                      mojo_ipc::UsbEventInfo* info) {
+                      mojom::UsbEventInfo* info) {
   info->vendor = GetUsbVendorName(device);
   info->name = GetUsbProductName(device);
   std::tie(info->vid, info->pid) = GetUsbVidPid(device);
@@ -139,48 +139,82 @@ void UdevEventsImpl::OnUdevEvent() {
 }
 
 void UdevEventsImpl::AddThunderboltObserver(
-    mojo::PendingRemote<mojo_ipc::CrosHealthdThunderboltObserver> observer) {
+    mojo::PendingRemote<mojom::EventObserver> observer) {
   thunderbolt_observers_.Add(std::move(observer));
 }
 
+void UdevEventsImpl::AddThunderboltObserver(
+    mojo::PendingRemote<mojom::CrosHealthdThunderboltObserver> observer) {
+  deprecated_thunderbolt_observers_.Add(std::move(observer));
+}
+
 void UdevEventsImpl::OnThunderboltAddEvent() {
+  mojom::ThunderboltEventInfo info;
+  info.state = mojom::ThunderboltEventInfo::State::kAdd;
   for (auto& observer : thunderbolt_observers_)
+    observer->OnEvent(mojom::EventInfo::NewThunderboltEventInfo(info.Clone()));
+  for (auto& observer : deprecated_thunderbolt_observers_)
     observer->OnAdd();
 }
 
 void UdevEventsImpl::OnThunderboltRemoveEvent() {
+  mojom::ThunderboltEventInfo info;
+  info.state = mojom::ThunderboltEventInfo::State::kRemove;
   for (auto& observer : thunderbolt_observers_)
+    observer->OnEvent(mojom::EventInfo::NewThunderboltEventInfo(info.Clone()));
+  for (auto& observer : deprecated_thunderbolt_observers_)
     observer->OnRemove();
 }
 
 void UdevEventsImpl::OnThunderboltAuthorizedEvent() {
+  mojom::ThunderboltEventInfo info;
+  info.state = mojom::ThunderboltEventInfo::State::kAuthorized;
   for (auto& observer : thunderbolt_observers_)
+    observer->OnEvent(mojom::EventInfo::NewThunderboltEventInfo(info.Clone()));
+  for (auto& observer : deprecated_thunderbolt_observers_)
     observer->OnAuthorized();
 }
 
 void UdevEventsImpl::OnThunderboltUnAuthorizedEvent() {
+  mojom::ThunderboltEventInfo info;
+  info.state = mojom::ThunderboltEventInfo::State::kUnAuthorized;
   for (auto& observer : thunderbolt_observers_)
+    observer->OnEvent(mojom::EventInfo::NewThunderboltEventInfo(info.Clone()));
+  for (auto& observer : deprecated_thunderbolt_observers_)
     observer->OnUnAuthorized();
 }
 
 void UdevEventsImpl::AddUsbObserver(
-    mojo::PendingRemote<mojo_ipc::CrosHealthdUsbObserver> observer) {
+    mojo::PendingRemote<mojom::CrosHealthdUsbObserver> observer) {
+  deprecated_usb_observers_.Add(std::move(observer));
+}
+
+void UdevEventsImpl::AddUsbObserver(
+    mojo::PendingRemote<mojom::EventObserver> observer) {
   usb_observers_.Add(std::move(observer));
 }
 
 void UdevEventsImpl::OnUsbAdd(
     const std::unique_ptr<brillo::UdevDevice>& device) {
-  mojo_ipc::UsbEventInfo info;
+  mojom::UsbEventInfo info;
   FillUsbEventInfo(device, &info);
+  info.state = mojom::UsbEventInfo::State::kAdd;
+
   for (auto& observer : usb_observers_)
+    observer->OnEvent(mojom::EventInfo::NewUsbEventInfo(info.Clone()));
+  for (auto& observer : deprecated_usb_observers_)
     observer->OnAdd(info.Clone());
 }
 
 void UdevEventsImpl::OnUsbRemove(
     const std::unique_ptr<brillo::UdevDevice>& device) {
-  mojo_ipc::UsbEventInfo info;
+  mojom::UsbEventInfo info;
   FillUsbEventInfo(device, &info);
+  info.state = mojom::UsbEventInfo::State::kRemove;
+
   for (auto& observer : usb_observers_)
+    observer->OnEvent(mojom::EventInfo::NewUsbEventInfo(info.Clone()));
+  for (auto& observer : deprecated_usb_observers_)
     observer->OnRemove(info.Clone());
 }
 

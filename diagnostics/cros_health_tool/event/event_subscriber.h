@@ -14,8 +14,6 @@
 #include "diagnostics/cros_health_tool/event/lid_subscriber.h"
 #include "diagnostics/cros_health_tool/event/network_subscriber.h"
 #include "diagnostics/cros_health_tool/event/power_subscriber.h"
-#include "diagnostics/cros_health_tool/event/thunderbolt_subscriber.h"
-#include "diagnostics/cros_health_tool/event/usb_subscriber.h"
 #include "diagnostics/cros_healthd_mojo_adapter/cros_healthd_mojo_adapter.h"
 #include "diagnostics/mojom/public/cros_healthd_events.mojom.h"
 
@@ -53,12 +51,6 @@ class EventSubscriber final : public ash::cros_healthd::mojom::EventObserver {
   // false on failure.
   bool SubscribeToAudioEvents();
 
-  bool SubscribeToThunderboltEvents();
-
-  // Subscribes to cros_healthd's USB events. Returns true on success and
-  // false on failure.
-  bool SubscribeToUsbEvents();
-
   // Subscribes to cros_healthd's events. Returns true on success and false on
   // failure.
   bool SubscribeToEvents(ash::cros_healthd::mojom::EventCategoryEnum category);
@@ -79,10 +71,6 @@ class EventSubscriber final : public ash::cros_healthd::mojom::EventObserver {
   std::unique_ptr<PowerSubscriber> power_subscriber_;
   // Used to subscribe to audio events.
   std::unique_ptr<AudioSubscriber> audio_subscriber_;
-  // Used to subscribe to thunderbolt events.
-  std::unique_ptr<ThunderboltSubscriber> thunderbolt_subscriber_;
-  // Used to subscribe to USB events.
-  std::unique_ptr<UsbSubscriber> usb_subscriber_;
 };
 
 }  // namespace diagnostics
