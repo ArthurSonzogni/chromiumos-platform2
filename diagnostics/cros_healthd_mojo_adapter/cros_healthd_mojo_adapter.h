@@ -91,6 +91,12 @@ class CrosHealthdMojoAdapter {
   virtual bool AddUsbObserver(
       mojo::PendingRemote<ash::cros_healthd::mojom::CrosHealthdUsbObserver>
           observer) = 0;
+
+  // Subscribes the client to events according to |category|.
+  virtual bool AddEventObserver(
+      ash::cros_healthd::mojom::EventCategoryEnum category,
+      mojo::PendingRemote<ash::cros_healthd::mojom::EventObserver>
+          observer) = 0;
 };
 
 }  // namespace diagnostics

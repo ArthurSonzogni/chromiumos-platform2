@@ -93,6 +93,12 @@ class CrosHealthdMojoAdapterImpl final : public CrosHealthdMojoAdapter {
       mojo::PendingRemote<ash::cros_healthd::mojom::CrosHealthdUsbObserver>
           observer) override;
 
+  // Subscribes the client to events according to |category|.
+  bool AddEventObserver(
+      ash::cros_healthd::mojom::EventCategoryEnum category,
+      mojo::PendingRemote<ash::cros_healthd::mojom::EventObserver> observer)
+      override;
+
  private:
   // Establishes a mojo connection with cros_healthd.
   bool Connect();
@@ -289,6 +295,16 @@ bool CrosHealthdMojoAdapterImpl::AddUsbObserver(
     return false;
 
   cros_healthd_event_service_->AddUsbObserver(std::move(observer));
+  return true;
+}
+
+bool CrosHealthdMojoAdapterImpl::AddEventObserver(
+    ash::cros_healthd::mojom::EventCategoryEnum category,
+    mojo::PendingRemote<ash::cros_healthd::mojom::EventObserver> observer) {
+  if (!cros_healthd_service_factory_.is_bound() && !Connect())
+    return false;
+
+  cros_healthd_event_service_->AddEventObserver(category, std::move(observer));
   return true;
 }
 
