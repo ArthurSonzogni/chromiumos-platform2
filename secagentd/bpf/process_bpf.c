@@ -82,15 +82,15 @@ static inline __attribute__((always_inline)) void fill_task_info(
   task_info->gid = BPF_CORE_READ(t, real_cred, gid.val);
 
   // Read argv from user memory.
-  unsigned long arg_start = BPF_CORE_READ(t, mm, arg_start);
-  unsigned long arg_end = BPF_CORE_READ(t, mm, arg_end);
+  const uintptr_t arg_start = (uintptr_t)BPF_CORE_READ(t, mm, arg_start);
+  const uintptr_t arg_end = (uintptr_t)BPF_CORE_READ(t, mm, arg_end);
   if ((arg_end - arg_start) > sizeof(task_info->commandline)) {
     task_info->commandline_len = sizeof(task_info->commandline);
   } else {
     task_info->commandline_len = (uint32_t)(arg_end - arg_start);
   }
   bpf_probe_read_user(task_info->commandline, task_info->commandline_len,
-                      arg_start);
+                      (const void*)arg_start);
   if (task_info->commandline_len == sizeof(task_info->commandline)) {
     task_info->commandline[task_info->commandline_len - 1] = '\0';
   }
