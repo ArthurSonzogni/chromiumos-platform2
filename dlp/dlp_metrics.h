@@ -19,6 +19,7 @@ constexpr char kDlpFanotifyMarkFilesystemSupport[] =
 constexpr char kDlpFanotifyErrorHistogram[] = "Enterprise.Dlp.Errors.Fanotify";
 constexpr char kDlpFileDatabaseErrorHistogram[] =
     "Enterprise.Dlp.Errors.FileDatabase";
+constexpr char kDlpAdaptorErrorHistogram[] = "Enterprise.Dlp.Errors.Adaptor";
 
 // Type of errors triggered by fanotify usage in the DLP daemon.
 enum class FanotifyError {
@@ -71,6 +72,30 @@ enum class DatabaseError {
   kMaxValue = kSetOwnershipError,
 };
 
+// Type of errors triggered by the DLP adaptor.
+enum class AdaptorError {
+  kUnknownError = 0,
+  // Error triggered when parsing a invalid proto.
+  kInvalidProtoError = 1,
+  // Error triggered when the file database is unexpectedly not ready.
+  kDatabaseNotReadyError = 2,
+  // Error while connecting to the file database.
+  kDatabaseConnectionError = 3,
+  // Error while getting a file inode.
+  kInodeRetrievalError = 4,
+  // Error while creating a pipe.
+  kCreatePipeError = 5,
+  // Error triggered when it is not possible to check file restrictions.
+  kRestrictionDetectionError = 6,
+  // Error while adding a file.
+  kAddFileError = 7,
+  // Error while executing dup on a FD.
+  kFileDescriptorDupError = 8,
+  // Error while executing close on a FD.
+  kFileDescriptorCloseError = 9,
+  kMaxValue = kFileDescriptorCloseError,
+};
+
 // Sends UMAs related to the DLP daemon.
 class DlpMetrics {
  public:
@@ -85,6 +110,9 @@ class DlpMetrics {
 
   // Records whether an error occurs while executing database procedures.
   void SendDatabaseError(DatabaseError error) const;
+
+  // Records whether an error occurs while executing adaptor procedures.
+  void SendAdaptorError(AdaptorError error) const;
 
  private:
   std::unique_ptr<MetricsLibraryInterface> metrics_lib_;

@@ -124,6 +124,7 @@ std::vector<uint8_t> DlpAdaptor::SetDlpFilesPolicy(
   SetDlpFilesPolicyResponse response;
   if (!error_message.empty()) {
     response.set_error_message(error_message);
+    dlp_metrics_->SendAdaptorError(AdaptorError::kInvalidProtoError);
     return SerializeProto(response);
   }
 
@@ -149,18 +150,21 @@ void DlpAdaptor::AddFile(
   if (!parse_error.empty()) {
     ReplyOnAddFile(std::move(response),
                    "Failed to parse AddFile request: " + parse_error);
+    dlp_metrics_->SendAdaptorError(AdaptorError::kInvalidProtoError);
     return;
   }
 
   LOG(INFO) << "Adding file to the database: " << request.file_path();
   if (!db_) {
     ReplyOnAddFile(std::move(response), "Database is not ready");
+    dlp_metrics_->SendAdaptorError(AdaptorError::kDatabaseNotReadyError);
     return;
   }
 
   const ino_t inode = GetInodeValue(request.file_path());
   if (!inode) {
     ReplyOnAddFile(std::move(response), "Failed to get inode");
+    dlp_metrics_->SendAdaptorError(AdaptorError::kInodeRetrievalError);
     return;
   }
 
@@ -180,6 +184,7 @@ void DlpAdaptor::RequestFileAccess(
   base::ScopedFD local_fd, remote_fd;
   if (!base::CreatePipe(&local_fd, &remote_fd, /*non_blocking=*/true)) {
     PLOG(ERROR) << "Failed to create lifeline pipe";
+    dlp_metrics_->SendAdaptorError(AdaptorError::kCreatePipeError);
     std::move(response)->ReplyWithError(
         FROM_HERE, brillo::errors::dbus::kDomain, dlp::kErrorFailedToCreatePipe,
         "Failed to create lifeline pipe");
@@ -190,6 +195,7 @@ void DlpAdaptor::RequestFileAccess(
   const std::string parse_error = ParseProto(FROM_HERE, &request, request_blob);
   if (!parse_error.empty()) {
     LOG(ERROR) << "Failed to parse RequestFileAccess request: " << parse_error;
+    dlp_metrics_->SendAdaptorError(AdaptorError::kInvalidProtoError);
     ReplyOnRequestFileAccess(std::move(response), std::move(remote_fd),
                              /*allowed=*/false, parse_error);
     return;
@@ -289,12 +295,14 @@ void DlpAdaptor::GetFilesSources(
   const std::string parse_error = ParseProto(FROM_HERE, &request, request_blob);
   if (!parse_error.empty()) {
     LOG(ERROR) << "Failed to parse GetFilesSources request: " << parse_error;
+    dlp_metrics_->SendAdaptorError(AdaptorError::kInvalidProtoError);
     response_proto.set_error_message(parse_error);
     response->Return(SerializeProto(response_proto));
     return;
   }
 
   if (!db_) {
+    dlp_metrics_->SendAdaptorError(AdaptorError::kDatabaseNotReadyError);
     response_proto.set_error_message("Database not ready");
     response->Return(SerializeProto(response_proto));
     return;
@@ -318,12 +326,14 @@ void DlpAdaptor::CheckFilesTransfer(
   const std::string parse_error = ParseProto(FROM_HERE, &request, request_blob);
   if (!parse_error.empty()) {
     LOG(ERROR) << "Failed to parse CheckFilesTransfer request: " << parse_error;
+    dlp_metrics_->SendAdaptorError(AdaptorError::kInvalidProtoError);
     response_proto.set_error_message(parse_error);
     response->Return(SerializeProto(response_proto));
     return;
   }
 
   if (!db_) {
+    dlp_metrics_->SendAdaptorError(AdaptorError::kDatabaseNotReadyError);
     response_proto.set_error_message("Database is not ready");
     response->Return(SerializeProto(response_proto));
     return;
@@ -378,6 +388,7 @@ void DlpAdaptor::OnDatabaseInitialized(base::OnceClosure init_callback,
                                        int db_status) {
   if (db_status != SQLITE_OK) {
     LOG(ERROR) << "Cannot connect to database " << database_path;
+    dlp_metrics_->SendAdaptorError(AdaptorError::kDatabaseConnectionError);
     std::move(init_callback).Run();
     return;
   }
@@ -423,7 +434,7 @@ void DlpAdaptor::EnsureFanotifyWatcherStarted() {
 
   fanotify_watcher_->SetActive(true);
 
-  // If the database is not initalized yet, we delay adding per file watch
+  // If the database is not initialized yet, we delay adding per file watch
   // till it'll be created.
   if (db_) {
     base::ThreadTaskRunnerHandle::Get()->PostTaskAndReplyWithResult(
@@ -444,6 +455,7 @@ void DlpAdaptor::ProcessFileOpenRequest(
 
   if (!db_) {
     LOG(WARNING) << "DLP database is not ready yet. Allowing the file request";
+    dlp_metrics_->SendAdaptorError(AdaptorError::kDatabaseNotReadyError);
     std::move(callback).Run(/*allowed=*/true);
     return;
   }
@@ -497,6 +509,7 @@ void DlpAdaptor::ProcessFileOpenRequestWithData(
 void DlpAdaptor::OnFileDeleted(ino_t inode) {
   if (!db_) {
     LOG(WARNING) << "DLP database is not ready yet.";
+    dlp_metrics_->SendAdaptorError(AdaptorError::kDatabaseNotReadyError);
     return;
   }
 
@@ -519,6 +532,7 @@ void DlpAdaptor::OnDlpPolicyMatched(base::OnceCallback<void(bool)> callback,
   if (!parse_error.empty()) {
     LOG(ERROR) << "Failed to parse IsDlpPolicyMatched response: "
                << parse_error;
+    dlp_metrics_->SendAdaptorError(AdaptorError::kInvalidProtoError);
     std::move(callback).Run(/*allowed=*/false);
     return;
   }
@@ -528,6 +542,7 @@ void DlpAdaptor::OnDlpPolicyMatched(base::OnceCallback<void(bool)> callback,
 void DlpAdaptor::OnDlpPolicyMatchedError(
     base::OnceCallback<void(bool)> callback, brillo::Error* error) {
   LOG(ERROR) << "Failed to check whether file could be restricted";
+  dlp_metrics_->SendAdaptorError(AdaptorError::kRestrictionDetectionError);
   std::move(callback).Run(/*allowed=*/false);
 }
 
@@ -542,6 +557,7 @@ void DlpAdaptor::OnRequestFileAccess(
   if (!parse_error.empty()) {
     LOG(ERROR) << "Failed to parse IsFilesTransferRestrictedResponse response: "
                << parse_error;
+    dlp_metrics_->SendAdaptorError(AdaptorError::kInvalidProtoError);
     std::move(callback).Run(
         /*allowed=*/false, parse_error);
     return;
@@ -560,6 +576,7 @@ void DlpAdaptor::OnRequestFileAccess(
 void DlpAdaptor::OnRequestFileAccessError(RequestFileAccessCallback callback,
                                           brillo::Error* error) {
   LOG(ERROR) << "Failed to check whether file could be restricted";
+  dlp_metrics_->SendAdaptorError(AdaptorError::kRestrictionDetectionError);
   std::move(callback).Run(/*allowed=*/false, error->GetMessage());
 }
 
@@ -598,6 +615,7 @@ void DlpAdaptor::ReplyOnAddFile(
   AddFileResponse response_proto;
   if (!error_message.empty()) {
     LOG(ERROR) << "Error while adding file: " << error_message;
+    dlp_metrics_->SendAdaptorError(AdaptorError::kAddFileError);
     response_proto.set_error_message(error_message);
   }
   response->Return(SerializeProto(response_proto));
@@ -663,6 +681,7 @@ void DlpAdaptor::OnIsFilesTransferRestricted(
   if (!parse_error.empty()) {
     LOG(ERROR) << "Failed to parse IsFilesTransferRestricted response: "
                << parse_error;
+    dlp_metrics_->SendAdaptorError(AdaptorError::kInvalidProtoError);
     std::move(callback).Run(std::vector<std::string>(), parse_error);
     return;
   }
@@ -680,6 +699,7 @@ void DlpAdaptor::OnIsFilesTransferRestricted(
 void DlpAdaptor::OnIsFilesTransferRestrictedError(
     CheckFilesTransferCallback callback, brillo::Error* error) {
   LOG(ERROR) << "Failed to check which file should be restricted";
+  dlp_metrics_->SendAdaptorError(AdaptorError::kRestrictionDetectionError);
   std::move(callback).Run(std::vector<std::string>(), error->GetMessage());
 }
 
@@ -719,6 +739,7 @@ int DlpAdaptor::AddLifelineFd(int dbus_fd) {
   int fd = dup(dbus_fd);
   if (fd < 0) {
     PLOG(ERROR) << "dup failed";
+    dlp_metrics_->SendAdaptorError(AdaptorError::kFileDescriptorDupError);
     return -1;
   }
 
@@ -743,6 +764,7 @@ bool DlpAdaptor::DeleteLifelineFd(int fd) {
   // has been destructed.
   if (IGNORE_EINTR(close(fd)) < 0) {
     PLOG(ERROR) << "close failed";
+    dlp_metrics_->SendAdaptorError(AdaptorError::kFileDescriptorCloseError);
   }
 
   return true;

@@ -22,4 +22,8 @@ void DlpMetrics::SendDatabaseError(DatabaseError error) const {
   metrics_lib_->SendEnumToUMA(kDlpFileDatabaseErrorHistogram, error);
 }
 
+void DlpMetrics::SendAdaptorError(AdaptorError error) const {
+  metrics_lib_->SendEnumToUMA(kDlpAdaptorErrorHistogram, error);
+}
+
 };  // namespace dlp
