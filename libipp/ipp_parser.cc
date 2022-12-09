@@ -7,7 +7,6 @@
 
 #include "libipp/frame.h"
 #include "libipp/ipp_encoding.h"
-#include "libipp/ipp_package.h"
 
 namespace ipp {
 
@@ -17,9 +16,6 @@ namespace {
 // A collection placed directly in attributes group has level 1, each
 // sub-collection belonging directly to it has level 2 etc..
 constexpr int kMaxCollectionLevel = 16;
-
-// This parameters defines maximum number of attribute groups in single package.
-constexpr int kMaxCountOfAttributeGroups = 20 * 1024;
 
 // Converts the least significant 4 bits to hexadecimal digit (ASCII char).
 char ToHexDigit(uint8_t v) {
@@ -267,16 +263,6 @@ void Parser::LogParserWarning(const std::string& message) {
   errors_->push_back(l);
 }
 
-void Parser::LogParserNewElement() {
-  const size_t path_size = parser_context_.size();
-  if (path_size < 2 || parser_context_[path_size - 2].second) {
-    Log l;
-    l.message = "Parser notice: this element is not known (outside the schema)";
-    l.parser_context = PathAsString(parser_context_);
-    errors_->push_back(l);
-  }
-}
-
 // Temporary representation of an attribute's value parsed from TNVs.
 struct RawValue {
   // original tag - verified
@@ -474,45 +460,26 @@ std::vector<ParserCode> LoadAttrValues(Collection* coll,
   return errors;
 }
 
-bool Parser::SaveFrameToPackage(bool log_unknown_values, Package* package) {
-  std::set<GroupTag> processed_single_groups;
+bool Parser::SaveFrameToPackage(bool log_unknown_values, Frame* package) {
   for (size_t i = 0; i < frame_->groups_tags_.size(); ++i) {
     GroupTag gn = static_cast<GroupTag>(frame_->groups_tags_[i]);
-    bool report_unknowns =
-        log_unknown_values && (gn != GroupTag::unsupported_attributes);
     std::string grp_name = ToString(gn);
     if (grp_name.empty())
       grp_name = "(" + ToHexByte(frame_->groups_tags_[i]) + ")";
-    Group* grp = package->GetGroup(gn);
-    ContextPathGuard path_update(&parser_context_, grp_name,
-                                 report_unknowns && (grp != nullptr));
-    if (grp == nullptr) {
-      grp = package->AddUnknownGroup(gn, true);
-      if (report_unknowns)
-        LogParserNewElement();
-    }
+    ContextPathGuard path_update(&parser_context_, grp_name);
     Collection* coll = nullptr;
-    if (grp->IsASet()) {
-      const size_t index = grp->GetSize();
-      grp->Resize(index + 1);
-      coll = grp->GetCollection(index);
-    } else {
-      // single group - save it <=> it is the first occurrence
-      if (processed_single_groups.insert(gn).second) {
-        grp->Resize(1);
-        coll = grp->GetCollection();
-      } else {
-        LogParserError("Duplicated group " + grp_name + " was found",
-                       "The group was omitted");
-        continue;
-      }
+    Code err = package->AddGroup(gn, &coll);
+    if (err != Code::kOK) {
+      LogParserError("Cannot create group " + grp_name,
+                     "The group was omitted");
+      continue;
     }
     RawCollection raw_coll;
     if (!ParseRawGroup(&(frame_->groups_content_[i]), &raw_coll))
       return false;
     DecodeCollection(&raw_coll, coll);
   }
-  package->Data() = frame_->data_;
+  package->SetData(std::move(frame_->data_));
   return true;
 }
 
@@ -545,7 +512,7 @@ bool Parser::ReadFrameFromBuffer(const uint8_t* ptr,
       LogScannerError(
           "The package has too many attribute groups; the maximum allowed "
           "number is " +
-              ToString(kMaxCountOfAttributeGroups),
+              ToString(static_cast<int>(kMaxCountOfAttributeGroups)),
           ptr);
       return false;
     }
@@ -813,8 +780,6 @@ void Parser::DecodeCollection(RawCollection* raw_coll, Collection* coll) {
     for (auto& raw_val : raw_attr.values)
       if (IsConvertibleTo(detected_type, raw_val.tag))
         detected_type = raw_val.tag;
-
-    LogParserNewElement();
 
     // It is a collection?
     if (detected_type == ValueTag::collection) {

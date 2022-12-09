@@ -167,10 +167,6 @@ void* CreateValue(const AttrDef& def) {
     return 0;
   return new Type();
 }
-template <>
-void* CreateValue<Collection*>(const AttrDef& def) {
-  return def.constructor();
-}
 
 // Deletes value saved as void*.
 template <typename Type>
@@ -178,10 +174,6 @@ void DeleteValue(void* value) {
   if (sizeof(Type) <= sizeof(void*) && alignof(Type) <= alignof(void*))
     return;
   delete reinterpret_cast<Type*>(value);
-}
-template <>
-void DeleteValue<Collection*>(void* value) {
-  delete reinterpret_cast<Collection*>(value);
 }
 
 // Returns pointer to a value stored as void*.
@@ -214,7 +206,7 @@ void ResizeVector<Collection*>(const AttrDef& def,
     delete v->at(i);
   v->resize(new_size);
   for (size_t i = old_size; i < new_size; ++i)
-    (*v)[i] = def.constructor();
+    (*v)[i] = new Collection;
 }
 
 // Deletes whole attribute |name|,|def| from |values|.
@@ -225,13 +217,9 @@ void DeleteAttrTyped(std::map<AttrName, void*>* values,
   auto it = values->find(name);
   if (it == values->end())
     return;
-  if (def.is_a_set) {
-    auto pv = reinterpret_cast<std::vector<Type>*>(it->second);
-    ResizeVector<Type>(def, pv, 0);
-    delete pv;
-  } else {
-    DeleteValue<Type>(it->second);
-  }
+  auto pv = reinterpret_cast<std::vector<Type>*>(it->second);
+  ResizeVector<Type>(def, pv, 0);
+  delete pv;
   values->erase(it);
 }
 
@@ -276,27 +264,17 @@ Type* ResizeAttrGetValuePtr(std::map<AttrName, void*>* values,
                             const AttrDef& def,
                             size_t index,
                             bool cut_if_longer) {
-  if (!def.is_a_set && index > 0)
-    return nullptr;
   // Get an entry from |values|, add new if not exists.
   auto it_inserted = values->insert({name, nullptr});
   std::map<AttrName, void*>::iterator it = it_inserted.first;
   if (it_inserted.second) {
-    if (def.is_a_set) {
-      it->second = new std::vector<Type>();
-    } else {
-      it->second = CreateValue<Type>(def);
-    }
+    it->second = new std::vector<Type>();
   }
   // Returns the pointer, resize the attribute when needed.
-  if (def.is_a_set) {
-    std::vector<Type>* v = reinterpret_cast<std::vector<Type>*>(it->second);
-    if (cut_if_longer || v->size() <= index)
-      ResizeVector<Type>(def, v, index + 1);
-    return (v->data() + index);
-  } else {
-    return ReadValuePtr<Type>(&it->second);
-  }
+  std::vector<Type>* v = reinterpret_cast<std::vector<Type>*>(it->second);
+  if (cut_if_longer || v->size() <= index)
+    ResizeVector<Type>(def, v, index + 1);
+  return (v->data() + index);
 }
 
 // Resizes an attribute |name|,|def| to |new_size| values. The parameter
@@ -355,16 +333,10 @@ bool ReadConvertValueTyped(const std::map<AttrName, void*>& values,
   if (it == values.end())
     return false;
   const InternalType* internal_value = nullptr;
-  if (def.is_a_set) {
-    auto v = ReadValueConstPtr<std::vector<InternalType>>(&it->second);
-    if (v->size() <= index)
-      return false;
-    internal_value = v->data() + index;
-  } else {
-    if (index != 0)
-      return false;
-    internal_value = ReadValueConstPtr<InternalType>(&it->second);
-  }
+  auto v = ReadValueConstPtr<std::vector<InternalType>>(&it->second);
+  if (v->size() <= index)
+    return false;
+  internal_value = v->data() + index;
   return Converter<InternalType, ApiType>::Convert(name, def, *internal_value,
                                                    value);
 }
@@ -461,7 +433,7 @@ Code AddAttributeToCollection(Collection* coll,
 
   // Create a new attribute. For Out-Of-Band tags set the state.
   // For other tags set the values.
-  auto attr = coll->AddUnknownAttribute(name, true, attrType);
+  auto attr = coll->AddUnknownAttribute(name, attrType);
   if (attr == nullptr) {
     return Code::kTooManyAttributes;
   }
@@ -690,28 +662,12 @@ bool FromString(const std::string& s, int* out) {
   return true;
 }
 
-// Final class for Attribute represents unknown attribute, i.e.: an attribute
-// defined during runtime.
-class UnknownAttribute : public Attribute {
- public:
-  UnknownAttribute(Collection* owner, AttrName name)
-      : Attribute(nullptr, name), owner_(owner) {}
-  Collection* const owner_;
-};
-
-Collection* Attribute::GetOwner() const {
-  if (offset_ == std::numeric_limits<int16_t>::min())
-    return static_cast<const UnknownAttribute*>(this)->owner_;
-  return reinterpret_cast<Collection*>(reinterpret_cast<std::intptr_t>(this) -
-                                       offset_);
-}
-
 AttrType Attribute::GetType() const {
-  return GetOwner()->GetAttributeDefinition(name_).ipp_type;
+  return owner_->GetAttributeDefinition(name_).ipp_type;
 }
 
 AttrState Attribute::GetState() const {
-  Collection* coll = GetOwner();
+  Collection* coll = owner_;
   if (coll->values_.count(name_))
     return AttrState::set;
   auto it = coll->states_.find(name_);
@@ -729,7 +685,7 @@ ValueTag Attribute::Tag() const {
 }
 
 void Attribute::SetState(AttrState status) {
-  Collection* coll = GetOwner();
+  Collection* coll = owner_;
   const AttrDef def = coll->GetAttributeDefinition(name_);
   if (status == AttrState::set) {
     ResizeAttr(&coll->values_, name_, def, 1, false);
@@ -742,12 +698,8 @@ void Attribute::SetState(AttrState status) {
 }
 
 Attribute::Attribute(Collection* owner, AttrName name)
-    : offset_((owner == nullptr) ? (std::numeric_limits<int16_t>::min())
-                                 : (reinterpret_cast<std::intptr_t>(this) -
-                                    reinterpret_cast<std::intptr_t>(owner))),
-      name_(name) {
-  if (owner != nullptr)
-    assert(GetOwner() == owner);
+    : owner_(owner), name_(name) {
+  assert(owner != nullptr);
 }
 
 std::string_view Attribute::Name() const {
@@ -755,18 +707,16 @@ std::string_view Attribute::Name() const {
   if (!s.empty()) {
     return s;
   }
-  const Collection* coll = GetOwner();
+  const Collection* coll = owner_;
   return std::string_view(coll->unknown_names.at(name_));
 }
 
 size_t Attribute::GetSize() const {
-  Collection* coll = GetOwner();
+  Collection* coll = owner_;
   const AttrDef def = coll->GetAttributeDefinition(name_);
   auto it = coll->values_.find(name_);
   if (it == coll->values_.end())
     return 0;
-  if (!def.is_a_set)
-    return 1;
   switch (def.cc_type) {
     case InternalType::kInteger:
       return ReadValueConstPtr<std::vector<int32_t>>(&it->second)->size();
@@ -793,7 +743,7 @@ size_t Attribute::Size() const {
 }
 
 void Attribute::Resize(size_t new_size) {
-  Collection* coll = GetOwner();
+  Collection* coll = owner_;
   const AttrDef def = coll->GetAttributeDefinition(name_);
   if (ResizeAttr(&coll->values_, name_, def, new_size, true)) {
     if (new_size > 0)
@@ -802,73 +752,73 @@ void Attribute::Resize(size_t new_size) {
 }
 
 bool Attribute::GetValue(std::string* val, size_t index) const {
-  Collection* coll = GetOwner();
+  Collection* coll = owner_;
   const AttrDef def = coll->GetAttributeDefinition(name_);
   return ReadConvertValue(coll->values_, name_, def, index, val);
 }
 
 bool Attribute::GetValue(StringWithLanguage* val, size_t index) const {
-  Collection* coll = GetOwner();
+  Collection* coll = owner_;
   const AttrDef def = coll->GetAttributeDefinition(name_);
   return ReadConvertValue(coll->values_, name_, def, index, val);
 }
 
 bool Attribute::GetValue(int* val, size_t index) const {
-  Collection* coll = GetOwner();
+  Collection* coll = owner_;
   const AttrDef def = coll->GetAttributeDefinition(name_);
   return ReadConvertValue(coll->values_, name_, def, index, val);
 }
 
 bool Attribute::GetValue(Resolution* val, size_t index) const {
-  Collection* coll = GetOwner();
+  Collection* coll = owner_;
   const AttrDef def = coll->GetAttributeDefinition(name_);
   return ReadConvertValue(coll->values_, name_, def, index, val);
 }
 
 bool Attribute::GetValue(RangeOfInteger* val, size_t index) const {
-  Collection* coll = GetOwner();
+  Collection* coll = owner_;
   const AttrDef def = coll->GetAttributeDefinition(name_);
   return ReadConvertValue(coll->values_, name_, def, index, val);
 }
 
 bool Attribute::GetValue(DateTime* val, size_t index) const {
-  Collection* coll = GetOwner();
+  Collection* coll = owner_;
   const AttrDef def = coll->GetAttributeDefinition(name_);
   return ReadConvertValue(coll->values_, name_, def, index, val);
 }
 
 bool Attribute::SetValue(const std::string& val, size_t index) {
-  Collection* coll = GetOwner();
+  Collection* coll = owner_;
   return coll->SaveValue(name_, index, val);
 }
 
 bool Attribute::SetValue(const StringWithLanguage& val, size_t index) {
-  Collection* coll = GetOwner();
+  Collection* coll = owner_;
   return coll->SaveValue(name_, index, val);
 }
 
 bool Attribute::SetValue(const int& val, size_t index) {
-  Collection* coll = GetOwner();
+  Collection* coll = owner_;
   return coll->SaveValue(name_, index, val);
 }
 
 bool Attribute::SetValue(const Resolution& val, size_t index) {
-  Collection* coll = GetOwner();
+  Collection* coll = owner_;
   return coll->SaveValue(name_, index, val);
 }
 
 bool Attribute::SetValue(const RangeOfInteger& val, size_t index) {
-  Collection* coll = GetOwner();
+  Collection* coll = owner_;
   return coll->SaveValue(name_, index, val);
 }
 
 bool Attribute::SetValue(const DateTime& val, size_t index) {
-  Collection* coll = GetOwner();
+  Collection* coll = owner_;
   return coll->SaveValue(name_, index, val);
 }
 
 Collection* Attribute::GetCollection(size_t index) {
-  Collection* coll = GetOwner();
+  Collection* coll = owner_;
   const AttrDef def = coll->GetAttributeDefinition(name_);
   if (def.cc_type != InternalType::kCollection)
     return nullptr;
@@ -876,18 +826,14 @@ Collection* Attribute::GetCollection(size_t index) {
   if (it == coll->values_.end())
     return nullptr;
   Collection* p = nullptr;
-  if (def.is_a_set) {
-    auto v = ReadValuePtr<std::vector<Collection*>>(&it->second);
-    if (v->size() > index)
-      p = *(v->data() + index);
-  } else {
-    p = *(ReadValuePtr<Collection*>(&it->second));
-  }
+  auto v = ReadValuePtr<std::vector<Collection*>>(&it->second);
+  if (v->size() > index)
+    p = *(v->data() + index);
   return p;
 }
 
 const Collection* Attribute::GetCollection(size_t index) const {
-  Collection* coll = GetOwner();
+  Collection* coll = owner_;
   const AttrDef def = coll->GetAttributeDefinition(name_);
   if (def.cc_type != InternalType::kCollection)
     return nullptr;
@@ -895,15 +841,13 @@ const Collection* Attribute::GetCollection(size_t index) const {
   if (it == coll->values_.end())
     return nullptr;
   const Collection* p = nullptr;
-  if (def.is_a_set) {
-    auto v = ReadValueConstPtr<std::vector<Collection*>>(&it->second);
-    if (v->size() > index)
-      p = *(v->data() + index);
-  } else {
-    p = *(ReadValueConstPtr<Collection*>(&it->second));
-  }
+  auto v = ReadValueConstPtr<std::vector<Collection*>>(&it->second);
+  if (v->size() > index)
+    p = *(v->data() + index);
   return p;
 }
+
+Collection::Collection() = default;
 
 Collection::~Collection() {
   std::vector<AttrName> names;
@@ -914,7 +858,7 @@ Collection::~Collection() {
     DeleteAttr(&values_, name, def);
   }
   for (auto& name_attr : unknown_attributes) {
-    delete static_cast<UnknownAttribute*>(name_attr.second.object);
+    delete name_attr.second.object;
   }
 }
 
@@ -922,17 +866,10 @@ AttrDef Collection::GetAttributeDefinition(AttrName name) const {
   auto it2 = unknown_attributes.find(name);
   if (it2 != unknown_attributes.end())
     return it2->second.def;
-  auto it = definitions_->find(name);
-  if (it != definitions_->end())
-    return it->second;
-  return {AttrType::integer, InternalType::kInteger, false};
+  return {AttrType::integer, InternalType::kInteger};
 }
 
 Attribute* Collection::GetAttribute(AttrName an) {
-  const std::vector<Attribute*> known_attr = GetKnownAttributes();
-  for (auto a : known_attr)
-    if (a->GetNameAsEnum() == an)
-      return a;
   auto it2 = unknown_attributes.find(an);
   if (it2 != unknown_attributes.end())
     return it2->second.object;
@@ -940,10 +877,6 @@ Attribute* Collection::GetAttribute(AttrName an) {
 }
 
 const Attribute* Collection::GetAttribute(AttrName an) const {
-  const std::vector<const Attribute*> known_attr = GetKnownAttributes();
-  for (auto a : known_attr)
-    if (a->GetNameAsEnum() == an)
-      return a;
   auto it2 = unknown_attributes.find(an);
   if (it2 != unknown_attributes.end())
     return it2->second.object;
@@ -977,7 +910,6 @@ const Attribute* Collection::GetAttribute(const std::string& name) const {
 }
 
 Attribute* Collection::AddUnknownAttribute(const std::string& name,
-                                           bool is_a_set,
                                            AttrType type) {
   // name cannot be empty
   if (name.empty())
@@ -1003,15 +935,9 @@ Attribute* Collection::AddUnknownAttribute(const std::string& name,
     return nullptr;
   }
   unknown_attributes[an].def.ipp_type = type;
-  unknown_attributes[an].def.is_a_set = is_a_set;
   unknown_attributes[an].def.cc_type = InternalTypeForUnknownAttribute(type);
-  unknown_attributes[an].object = new UnknownAttribute(this, an);
+  unknown_attributes[an].object = new Attribute(this, an);
   unknown_attributes_order_.push_back(an);
-  if (type == AttrType::collection) {
-    unknown_attributes[an].def.constructor = []() -> Collection* {
-      return new EmptyCollection();
-    };
-  }
   return unknown_attributes[an].object;
 }
 
@@ -1196,7 +1122,7 @@ Code Collection::AddAttr(const std::string& name,
   }
 
   // Create the attribute and retrieve the pointers.
-  auto attr = AddUnknownAttribute(name, true, AttrType::collection);
+  auto attr = AddUnknownAttribute(name, AttrType::collection);
   if (attr == nullptr) {
     return Code::kTooManyAttributes;
   }
@@ -1209,20 +1135,16 @@ Code Collection::AddAttr(const std::string& name,
 }
 
 std::vector<Attribute*> Collection::GetAllAttributes() {
-  const std::vector<Attribute*> known_attr = GetKnownAttributes();
   std::vector<Attribute*> v;
-  v.reserve(known_attr.size() + unknown_attributes.size());
-  v.insert(v.end(), known_attr.begin(), known_attr.end());
+  v.reserve(unknown_attributes.size());
   for (const auto an : unknown_attributes_order_)
     v.push_back(unknown_attributes.at(an).object);
   return v;
 }
 
 std::vector<const Attribute*> Collection::GetAllAttributes() const {
-  const std::vector<const Attribute*> known_attr = GetKnownAttributes();
   std::vector<const Attribute*> v;
-  v.reserve(known_attr.size() + unknown_attributes.size());
-  v.insert(v.end(), known_attr.begin(), known_attr.end());
+  v.reserve(unknown_attributes.size());
   for (const auto an : unknown_attributes_order_)
     v.push_back(unknown_attributes.at(an).object);
   return v;
@@ -1270,7 +1192,5 @@ bool Collection::SaveValue(AttrName name, size_t index, const ApiType& value) {
     states_.erase(name);
   return result;
 }
-
-const std::map<AttrName, AttrDef> EmptyCollection::defs_;
 
 }  // namespace ipp

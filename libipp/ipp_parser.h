@@ -20,7 +20,7 @@ namespace ipp {
 
 // forward declarations
 class Collection;
-class Package;
+class Frame;
 struct RawAttribute;
 struct RawCollection;
 
@@ -53,7 +53,7 @@ class Parser {
   // Interpret the content from internal buffer and store it in |package|.
   // If |log_unknown_values| is set then all attributes unknown in |package|
   // are reported to the log.
-  bool SaveFrameToPackage(bool log_unknown_values, Package* package);
+  bool SaveFrameToPackage(bool log_unknown_values, Frame* package);
 
   // Resets the state of the object to initial state. It does not modify
   // objects provided in the constructor (|frame| and |log|).
@@ -73,7 +73,6 @@ class Parser {
       std::string action = "This is critical error, parsing was cancelled.");
   void LogParserErrors(const std::vector<ParserCode>& errors);
   void LogParserWarning(const std::string& message);
-  void LogParserNewElement();
 
   // Reads single tag_name_value from the buffer (ptr is updated) and append it
   // to the parameter. Returns false <=> error occurred.

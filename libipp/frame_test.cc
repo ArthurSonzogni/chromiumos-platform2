@@ -8,6 +8,7 @@
 #include <string>
 #include <vector>
 
+#include "attribute.h"
 #include <gtest/gtest.h>
 
 namespace ipp {

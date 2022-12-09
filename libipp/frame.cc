@@ -15,11 +15,6 @@
 
 namespace ipp {
 
-// Min and max valid value of GroupTag. Keep in mind that in this range includes
-// also invalid value 0x03.
-constexpr GroupTag kMinGroupTag = static_cast<GroupTag>(0x01);
-constexpr GroupTag kMaxGroupTag = static_cast<GroupTag>(0x0f);
-
 constexpr size_t kMaxPayloadSize = 256 * 1024 * 1024;
 
 namespace {
@@ -39,7 +34,7 @@ struct Converter {
   Converter(Version version,
             uint16_t operation_id_or_status_code,
             int32_t request_id,
-            const Package* package) {
+            const Frame* package) {
     frame_data.major_version_number_ = (static_cast<uint16_t>(version) >> 8);
     frame_data.minor_version_number_ = (static_cast<uint16_t>(version) & 0xffu);
     frame_data.operation_id_or_status_code_ = operation_id_or_status_code;
@@ -97,7 +92,7 @@ Frame::Frame(const uint8_t* buffer, size_t size, ParsingResults* result) {
   FrameData frame_data;
   Parser parser(&frame_data, &log);
   const bool completed1 = parser.ReadFrameFromBuffer(buffer, buffer + size);
-  const bool completed2 = parser.SaveFrameToPackage(false, &package_);
+  const bool completed2 = parser.SaveFrameToPackage(false, this);
   if (result) {
     result->whole_buffer_was_parsed = completed1 && completed2;
     result->errors.swap(log);
@@ -134,17 +129,23 @@ Frame::Frame(Version ver,
   }
 }
 
+Frame::~Frame() {
+  for (std::pair<GroupTag, Collection*>& group : groups_) {
+    delete group.second;
+  }
+}
+
 size_t Frame::GetLength() const {
   std::vector<Log> log;
   FrameData frame_data;
   FrameBuilder builder(&frame_data, &log);
-  builder.BuildFrameFromPackage(&package_);
+  builder.BuildFrameFromPackage(this);
   return builder.GetFrameLength();
 }
 
 size_t Frame::SaveToBuffer(uint8_t* buffer, size_t buffer_length) const {
   Converter converter(version_, operation_id_or_status_code_, request_id_,
-                      &package_);
+                      this);
   const size_t length = converter.builder.GetFrameLength();
   if (length > buffer_length) {
     return 0;
@@ -155,7 +156,7 @@ size_t Frame::SaveToBuffer(uint8_t* buffer, size_t buffer_length) const {
 
 std::vector<uint8_t> Frame::SaveToBuffer() const {
   Converter converter(version_, operation_id_or_status_code_, request_id_,
-                      &package_);
+                      this);
   std::vector<uint8_t> out(converter.builder.GetFrameLength());
   converter.builder.WriteFrameToBuffer(out.data());
   return out;
@@ -190,12 +191,12 @@ int32_t Frame::RequestId() const {
 }
 
 const std::vector<uint8_t>& Frame::Data() const {
-  return package_.Data();
+  return data_;
 }
 
 std::vector<uint8_t> Frame::TakeData() {
   std::vector<uint8_t> data;
-  data.swap(package_.Data());
+  data.swap(data_);
   return data;
 }
 
@@ -203,68 +204,64 @@ Code Frame::SetData(std::vector<uint8_t>&& data) {
   if (data.size() > kMaxPayloadSize) {
     return Code::kDataTooLong;
   }
-  std::vector<uint8_t> data2;
-  data2.swap(data);
-  package_.Data() = std::move(data2);
+  data_ = std::move(data);
   return Code::kOK;
 }
 
+std::vector<std::pair<GroupTag, Collection*>> Frame::GetGroups() {
+  return groups_;
+}
+
+std::vector<std::pair<GroupTag, const Collection*>> Frame::GetGroups() const {
+  return std::vector<std::pair<GroupTag, const Collection*>>(groups_.begin(),
+                                                             groups_.end());
+}
+
 std::vector<Collection*> Frame::GetGroups(GroupTag tag) {
-  std::vector<Collection*> out;
-  Group* grp = package_.GetGroup(tag);
-  if (grp != nullptr) {
-    out.resize(grp->GetSize());
-    for (size_t i = 0; i < out.size(); ++i) {
-      out[i] = grp->GetCollection(i);
-    }
-  }
-  return out;
+  const size_t group_tag = static_cast<size_t>(tag);
+  if (group_tag >= groups_by_tag_.size())
+    return {};
+  return groups_by_tag_[group_tag];
 }
 
 std::vector<const Collection*> Frame::GetGroups(GroupTag tag) const {
-  std::vector<const Collection*> out;
-  const Group* grp = package_.GetGroup(tag);
-  if (grp != nullptr) {
-    out.resize(grp->GetSize());
-    for (size_t i = 0; i < out.size(); ++i) {
-      out[i] = grp->GetCollection(i);
-    }
-  }
-  return out;
+  const size_t group_tag = static_cast<size_t>(tag);
+  if (group_tag >= groups_by_tag_.size())
+    return {};
+  return std::vector<const Collection*>(groups_by_tag_[group_tag].cbegin(),
+                                        groups_by_tag_[group_tag].cend());
 }
 
 Collection* Frame::GetGroup(GroupTag tag, size_t index) {
-  Group* grp = package_.GetGroup(tag);
-  if (grp != nullptr) {
-    return grp->GetCollection(index);
-  }
-  return nullptr;
+  const size_t group_tag = static_cast<size_t>(tag);
+  if (group_tag >= groups_by_tag_.size())
+    return nullptr;
+  if (index >= groups_by_tag_[group_tag].size())
+    return nullptr;
+  return groups_by_tag_[group_tag][index];
 }
 
 const Collection* Frame::GetGroup(GroupTag tag, size_t index) const {
-  const Group* grp = package_.GetGroup(tag);
-  if (grp != nullptr) {
-    return grp->GetCollection(index);
-  }
-  return nullptr;
+  const size_t group_tag = static_cast<size_t>(tag);
+  if (group_tag >= groups_by_tag_.size())
+    return nullptr;
+  if (index >= groups_by_tag_[group_tag].size())
+    return nullptr;
+  return groups_by_tag_[group_tag][index];
 }
 
 Code Frame::AddGroup(GroupTag tag, Collection** new_group) {
-  if (tag < kMinGroupTag || tag > kMaxGroupTag ||
-      static_cast<int>(tag) == 0x03) {
+  if (!IsValid(tag)) {
     return Code::kInvalidGroupTag;
   }
-  auto grp = package_.AddUnknownGroup(tag, true);
-  if (grp == nullptr) {
-    grp = package_.GetGroup(tag);
-    if (grp == nullptr) {
-      return Code::kTooManyGroups;
-    }
+  if (groups_.size() >= kMaxCountOfAttributeGroups) {
+    return Code::kTooManyGroups;
   }
-  auto size = grp->GetSize();
-  grp->Resize(size + 1);
+  Collection* coll = new Collection;
+  groups_.emplace_back(tag, coll);
+  groups_by_tag_[static_cast<size_t>(tag)].push_back(coll);
   if (new_group) {
-    *new_group = grp->GetCollection(size);
+    *new_group = coll;
   }
   return Code::kOK;
 }

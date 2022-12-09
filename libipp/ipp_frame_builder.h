@@ -18,7 +18,7 @@ namespace ipp {
 // forward declarations
 class Attribute;
 class Collection;
-class Package;
+class Frame;
 
 class FrameBuilder {
  public:
@@ -28,8 +28,8 @@ class FrameBuilder {
   FrameBuilder(FrameData* frame, std::vector<Log>* log)
       : frame_(frame), errors_(log) {}
 
-  // Build a content of the frame from the given Package.
-  void BuildFrameFromPackage(const Package* package);
+  // Build a content of the frame from the given object.
+  void BuildFrameFromPackage(const Frame* package);
 
   // Returns the current frame size in bytes. Call it after
   // BuildFrameFromPackage(...) to get the size of the output buffer.

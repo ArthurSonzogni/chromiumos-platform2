@@ -6,13 +6,15 @@
 
 #include <algorithm>
 #include <cstdint>
+#include <list>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
+#include "frame.h"
 #include "libipp/ipp_attribute.h"
 #include "libipp/ipp_encoding.h"
-#include "libipp/ipp_package.h"
 
 namespace ipp {
 
@@ -280,25 +282,16 @@ void FrameBuilder::SaveGroup(const Collection* coll,
   }
 }
 
-void FrameBuilder::BuildFrameFromPackage(const Package* package) {
+void FrameBuilder::BuildFrameFromPackage(const Frame* package) {
   frame_->groups_tags_.clear();
   frame_->groups_content_.clear();
   // save frame data
-  std::vector<const Group*> groups = package->GetAllGroups();
-  for (const Group* grp : groups) {
-    for (size_t i = 0; true; ++i) {
-      const Collection* coll = grp->GetCollection(i);
-      if (coll == nullptr)
-        break;
-      frame_->groups_tags_.push_back(static_cast<uint8_t>(grp->GetName()));
-      frame_->groups_content_.resize(frame_->groups_tags_.size());
-      SaveGroup(coll, &(frame_->groups_content_.back()));
-      // skip if it this is a single empty group
-      if (frame_->groups_content_.back().empty() && !grp->IsASet()) {
-        frame_->groups_tags_.pop_back();
-        frame_->groups_content_.pop_back();
-      }
-    }
+  std::vector<std::pair<GroupTag, const Collection*>> groups =
+      package->GetGroups();
+  for (std::pair<GroupTag, const Collection*> grp : groups) {
+    frame_->groups_tags_.push_back(static_cast<uint8_t>(grp.first));
+    frame_->groups_content_.resize(frame_->groups_tags_.size());
+    SaveGroup(grp.second, &(frame_->groups_content_.back()));
   }
   frame_->data_ = package->Data();
 }

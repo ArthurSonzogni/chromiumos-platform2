@@ -10,10 +10,10 @@
 #include <utility>
 #include <vector>
 
+#include "attribute.h"
 #include "ipp_enums.h"
 #include "ipp_export.h"
 #include "ipp_log.h"
-#include "ipp_package.h"
 
 namespace ipp {
 
@@ -45,8 +45,16 @@ enum class Code {
   kValueOutOfRange     // given C++ value is out of range (invalid)
 };
 
-// The correct values of GroupTag are 0x01, 0x02, 0x04-0x0f. This array
-// contains all allowed GroupTag values and may be used in loops like
+// The correct values of GroupTag are 0x01, 0x02, 0x04-0x0f. This function
+// checks if given GroupTag is valid.
+constexpr bool IsValid(GroupTag tag) {
+  if (tag > static_cast<GroupTag>(0x0f))
+    return false;
+  if (tag < static_cast<GroupTag>(0x01))
+    return false;
+  return (tag != static_cast<GroupTag>(0x03));
+}
+// This array contains all valid GroupTag values and may be used in loops like
 //   for (GroupTag gt: kGroupTags) ...
 constexpr std::array<GroupTag, 14> kGroupTags{
     static_cast<GroupTag>(0x01), static_cast<GroupTag>(0x02),
@@ -56,6 +64,11 @@ constexpr std::array<GroupTag, 14> kGroupTags{
     static_cast<GroupTag>(0x0a), static_cast<GroupTag>(0x0b),
     static_cast<GroupTag>(0x0c), static_cast<GroupTag>(0x0d),
     static_cast<GroupTag>(0x0e), static_cast<GroupTag>(0x0f)};
+
+// TODO(pawliczek) - move all limits to separate header, this one was moved here
+//                   from ipp_parser.cc
+// This parameters defines maximum number of attribute groups in single package.
+constexpr size_t kMaxCountOfAttributeGroups = 20 * 1024;
 
 struct ParsingResults {
   std::vector<Log> errors;
@@ -121,9 +134,10 @@ class IPP_EXPORT Frame {
         int32_t request_id = 1,
         bool set_charset = true);
 
-  // Not copyable.
   Frame(const Frame&) = delete;
   Frame& operator=(const Frame&) = delete;
+
+  virtual ~Frame();
 
   // Return the size of the binary representation of the frame in bytes.
   size_t GetLength() const;
@@ -158,6 +172,11 @@ class IPP_EXPORT Frame {
   //  * Code::kDataTooLong
   Code SetData(std::vector<uint8_t>&& data);
 
+  // Return all groups of attributes in the frame in the order they were added.
+  // The returned vector never contains nullptr values.
+  std::vector<std::pair<GroupTag, Collection*>> GetGroups();
+  std::vector<std::pair<GroupTag, const Collection*>> GetGroups() const;
+
   // Return all groups of attributes in the frame with given Group Tag. The
   // returned vector never contains nullptr values. If the given GroupTag is
   // invalid or there is no groups with given `tag` in the frame an empty vector
@@ -185,7 +204,12 @@ class IPP_EXPORT Frame {
   Version version_;
   uint16_t operation_id_or_status_code_;
   int32_t request_id_;
-  Package package_;
+  // Groups stored in the order they appear in the binary representation.
+  std::vector<std::pair<GroupTag, Collection*>> groups_;
+  // Content of `group_` sorted by GroupTag. The largest valid value of GroupTag
+  // is 0x0f (see kGroupTags above).
+  std::array<std::vector<Collection*>, 16> groups_by_tag_;
+  std::vector<uint8_t> data_;
 };
 
 }  // namespace ipp

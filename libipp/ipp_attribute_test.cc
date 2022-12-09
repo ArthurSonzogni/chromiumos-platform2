@@ -11,11 +11,6 @@
 
 namespace ipp {
 
-static bool operator==(const ipp::RangeOfInteger& a,
-                       const ipp::RangeOfInteger& b) {
-  return (a.min_value == b.min_value && a.max_value == b.max_value);
-}
-
 namespace {
 
 void TestNewAttribute(Attribute* attr, std::string_view name, ValueTag tag) {
@@ -26,107 +21,9 @@ void TestNewAttribute(Attribute* attr, std::string_view name, ValueTag tag) {
   EXPECT_EQ(attr->Size(), 0);
 }
 
-class TestSubcollection : public Collection {
- public:
-  SingleValue<bool> hi{this, AttrName::job_id};
-  TestSubcollection() : Collection(&defs_) {}
-
- private:
-  std::vector<Attribute*> GetKnownAttributes() override { return {&hi}; }
-  std::vector<const Attribute*> GetKnownAttributes() const override {
-    return {&hi};
-  }
-  static const std::map<AttrName, AttrDef> defs_;
-};
-const std::map<AttrName, AttrDef> TestSubcollection::defs_ = {
-    {AttrName::job_id, {AttrType::boolean, InternalType::kInteger, false}}};
-
-struct TestCollection : public Collection {
-  SingleValue<int> attr1{this, AttrName::attributes_charset};
-  SetOfValues<RangeOfInteger> attr2{this, AttrName::auth_info};
-  OpenSetOfValues<int> attr3{this, AttrName::baling};
-  SingleCollection<TestSubcollection> attr4{
-      this, AttrName::printer_supply_description};
-  SetOfCollections<TestSubcollection> attr5{this, AttrName::punching_locations};
-  std::vector<Attribute*> GetKnownAttributes() override {
-    return {&attr1, &attr2, &attr3, &attr4, &attr5};
-  }
-  std::vector<const Attribute*> GetKnownAttributes() const override {
-    return {&attr1, &attr2, &attr3, &attr4, &attr5};
-  }
-  static const std::map<AttrName, AttrDef> defs_;
-  TestCollection() : Collection(&defs_) {}
-};
-const std::map<AttrName, AttrDef> TestCollection::defs_ = {
-    {AttrName::attributes_charset,
-     {AttrType::integer, InternalType::kInteger, false}},
-    {AttrName::auth_info,
-     {AttrType::rangeOfInteger, InternalType::kRangeOfInteger, true}},
-    {AttrName::baling, {AttrType::integer, InternalType::kString, true}},
-    {AttrName::printer_supply_description,
-     {AttrType::collection, InternalType::kCollection, false,
-      []() -> Collection* { return new TestSubcollection(); }}},
-    {AttrName::punching_locations,
-     {AttrType::collection, InternalType::kCollection, true,
-      []() -> Collection* { return new TestSubcollection(); }}}};
-
-TEST(attribute, SingleValue) {
-  TestCollection coll;
-  TestNewAttribute(&coll.attr1, "attributes-charset", ValueTag::integer);
-  coll.attr1.Set(123);
-  EXPECT_EQ(coll.attr1.Get(), 123);
-}
-
-TEST(attribute, SetOfValues) {
-  TestCollection coll;
-  TestNewAttribute(&coll.attr2, "auth-info", ValueTag::rangeOfInteger);
-  RangeOfInteger r1{123, 234};
-  RangeOfInteger r2{123, 234};
-  RangeOfInteger r3{123, 234};
-  coll.attr2.Set({r1, r2, r3});
-  EXPECT_EQ(coll.attr2.Get(), std::vector<RangeOfInteger>({r1, r2, r3}));
-  EXPECT_EQ(coll.attr2.Size(), 3);
-  coll.attr2.Resize(2);
-  EXPECT_EQ(coll.attr2.Get(), std::vector<RangeOfInteger>({r1, r2}));
-  EXPECT_EQ(coll.attr2.Size(), 2);
-}
-
-TEST(attribute, OpenSetOfValues) {
-  TestCollection coll;
-  TestNewAttribute(&coll.attr3, "baling", ValueTag::integer);
-  coll.attr3.Set({11, 22, 33});
-  coll.attr3.Add(std::vector<std::string>({"aaa", "bbb"}));
-  coll.attr3.Add({44, 55});
-  EXPECT_EQ(coll.attr3.Get(), std::vector<std::string>({"11", "22", "33", "aaa",
-                                                        "bbb", "44", "55"}));
-  EXPECT_EQ(coll.attr3.Size(), 7);
-  coll.attr3.Resize(2);
-  EXPECT_EQ(coll.attr3.Get(), std::vector<std::string>({"11", "22"}));
-  EXPECT_EQ(coll.attr3.Size(), 2);
-  coll.attr3.Set(std::vector<std::string>({"xx", "yy", "zz"}));
-  EXPECT_EQ(coll.attr3.Size(), 3);
-  EXPECT_EQ(coll.attr3.Get(), std::vector<std::string>({"xx", "yy", "zz"}));
-}
-
-TEST(attribute, SingleCollection) {
-  TestCollection coll;
-  TestNewAttribute(&coll.attr4, "printer-supply-description",
-                   ValueTag::collection);
-  coll.attr4->hi.Set(false);
-  EXPECT_EQ(coll.attr4->hi.Get(), false);
-}
-
-TEST(attribute, SetOfCollections) {
-  TestCollection coll;
-  TestNewAttribute(&coll.attr5, "punching-locations", ValueTag::collection);
-  coll.attr5[3].hi.SetState(AttrState::not_settable);
-  EXPECT_EQ(coll.attr5.Size(), 4);
-  EXPECT_EQ(coll.attr5[3].hi.Tag(), ValueTag::not_settable);
-}
-
 TEST(attribute, UnknownValueAttribute) {
-  TestCollection coll;
-  Attribute* attr = coll.AddUnknownAttribute("abc", false, AttrType::name);
+  Collection coll;
+  Attribute* attr = coll.AddUnknownAttribute("abc", AttrType::name);
   TestNewAttribute(attr, "abc", ValueTag::nameWithLanguage);
   ASSERT_TRUE(attr->SetValue("val"));
   StringWithLanguage sl;
@@ -136,9 +33,8 @@ TEST(attribute, UnknownValueAttribute) {
 }
 
 TEST(attribute, UnknownCollectionAttribute) {
-  TestCollection coll;
-  Attribute* attr =
-      coll.AddUnknownAttribute("abcd", true, AttrType::collection);
+  Collection coll;
+  Attribute* attr = coll.AddUnknownAttribute("abcd", AttrType::collection);
   TestNewAttribute(attr, "abcd", ValueTag::collection);
   EXPECT_EQ(attr->GetCollection(), nullptr);
   attr->Resize(3);

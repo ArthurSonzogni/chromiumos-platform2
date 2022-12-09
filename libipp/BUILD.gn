@@ -34,8 +34,6 @@ shared_library("libipp") {
     "ipp_frame_builder.cc",
     "ipp_frame_builder.h",
     "ipp_log.h",
-    "ipp_package.cc",
-    "ipp_package.h",
     "ipp_parser.cc",
     "ipp_parser.h",
   ]
@@ -55,7 +53,6 @@ install_config("install_headers") {
     "ipp_enums.h",
     "ipp_export.h",
     "ipp_log.h",
-    "ipp_package.h",
   ]
   install_path = "/usr/include/chromeos/libipp"
 }
@@ -68,7 +65,6 @@ if (use.test) {
       "ipp_attribute_test.cc",
       "ipp_encoding_test.cc",
       "ipp_enums_test.cc",
-      "ipp_package_test.cc",
       "ipp_test.cc",
     ]
     configs += [ "//common-mk:test" ]
