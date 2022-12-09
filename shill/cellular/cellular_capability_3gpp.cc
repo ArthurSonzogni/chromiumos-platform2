@@ -894,6 +894,8 @@ KeyValueStore CellularCapability3gpp::ConnectionAttemptNextProperties(
   // Initialize generic properties
   properties.Set<bool>(CellularBearer::kMMAllowRoamingProperty,
                        cellular()->IsRoamingAllowed());
+  properties.Set<uint32_t>(CellularBearer::kMMMultiplexProperty,
+                           MM_BEARER_MULTIPLEX_SUPPORT_REQUESTED);
 
   // For now only DEFAULT and TETHERING expected
   if (apn_type == ApnList::ApnType::kDefault) {

@@ -31,6 +31,7 @@ const char CellularBearer::kMMPasswordProperty[] = "password";
 const char CellularBearer::kMMAllowedAuthProperty[] = "allowed-auth";
 const char CellularBearer::kMMAllowRoamingProperty[] = "allow-roaming";
 const char CellularBearer::kMMIpTypeProperty[] = "ip-type";
+const char CellularBearer::kMMMultiplexProperty[] = "multiplex";
 
 namespace {
 
