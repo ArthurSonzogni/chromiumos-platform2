@@ -333,7 +333,7 @@ class Daemon : public policy::AdaptiveChargingControllerInterface::Delegate,
   // Set fullscreen video with a timeout.
   void SetFullscreenVideoWithTimeout(bool active, int timeout_seconds);
 
-  DaemonDelegate* delegate_;  // weak
+  DaemonDelegate* delegate_;  // owned elsewhere
 
   std::unique_ptr<PrefsInterface> prefs_;
 

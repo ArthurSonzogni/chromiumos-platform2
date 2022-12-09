@@ -134,20 +134,20 @@ class InputWatcher : public InputWatcherInterface,
   // Factories for creating EventDevice and WakeupDevice objects.
   std::unique_ptr<EventDeviceFactoryInterface> event_device_factory_;
 
-  // Event devices reporting power button events. Weak pointers to elements in
-  // |event_devices_|.
+  // Event devices reporting power button events. Unowned pointers to elements
+  // in |event_devices_|.
   std::set<const EventDeviceInterface*> power_button_devices_;
 
-  // The event device exposing the lid switch. Weak pointer to an element in
+  // The event device exposing the lid switch. Unowned pointer to an element in
   // |event_devices_|, or null if no lid device was found.
   EventDeviceInterface* lid_device_ = nullptr;
 
-  // The event device exposing the tablet mode switch. Weak pointer to an
+  // The event device exposing the tablet mode switch. Unowned pointer to an
   // element in |event_devices_|, or null if no tablet mode switch device was
   // found.
   EventDeviceInterface* tablet_mode_device_ = nullptr;
 
-  // The event device reporting hover events. Weak pointer to an element in
+  // The event device reporting hover events. Unowned pointer to an element in
   // |event_devices_|, or null if no hover device was found.
   EventDeviceInterface* hover_device_ = nullptr;
 

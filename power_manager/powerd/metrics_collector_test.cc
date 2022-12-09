@@ -206,7 +206,7 @@ class MetricsCollectorTest : public Test {
   bool first_run_after_boot_ = false;
 
   // StrictMock turns all unexpected calls into hard failures.
-  StrictMock<MetricsLibraryMock>* metrics_lib_;  // Weak pointer.
+  StrictMock<MetricsLibraryMock>* metrics_lib_;  // Owned elsewhere.
   MetricsSender metrics_sender_;
 
   MetricsCollector collector_;

@@ -69,7 +69,7 @@ class TestPrefsObserver : public PrefsObserver {
   }
 
  private:
-  Prefs* prefs_;  // weak; owned by PrefsTest
+  Prefs* prefs_;  // owned by PrefsTest
 
   TestMainLoopRunner loop_runner_;
 
@@ -118,7 +118,7 @@ class PrefsTest : public testing::Test {
   std::unique_ptr<base::ScopedTempDir>
       temp_dir_generators_[kNumPrefDirectories];
 
-  brillo::FakeCrosConfig* cros_config_;  // weak
+  brillo::FakeCrosConfig* cros_config_;  // owned elsewhere
 
   Prefs prefs_;
   Prefs::TestApi test_api_;

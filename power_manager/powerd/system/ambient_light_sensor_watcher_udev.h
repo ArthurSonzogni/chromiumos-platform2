@@ -48,7 +48,7 @@ class AmbientLightSensorWatcherUdev : public AmbientLightSensorWatcherInterface,
   // sensor removes it from |ambient_light_sensors_| and notifies observers.
   void OnRemoveUdevDevice(const UdevDeviceInfo& device_info);
 
-  UdevInterface* udev_;  // weak pointer
+  UdevInterface* udev_;  // owned elsewhere
 };
 
 }  // namespace power_manager::system

@@ -213,7 +213,7 @@ class ExternalDisplayTest : public testing::Test {
 
   MetricsSenderStub metrics_sender_;
 
-  TestDelegate* delegate_;  // weak pointer
+  TestDelegate* delegate_;  // owned elsewhere
   ExternalDisplay display_;
   ExternalDisplay::TestApi test_api_;
 };

@@ -194,7 +194,7 @@ class ExternalDisplay {
     [[nodiscard]] bool TriggerTimeout();
 
    private:
-    ExternalDisplay* display_;  // weak pointer
+    ExternalDisplay* display_;  // owned elsewhere
   };
 
   explicit ExternalDisplay(std::unique_ptr<Delegate> delegate);

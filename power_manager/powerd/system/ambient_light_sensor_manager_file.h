@@ -48,7 +48,7 @@ class AmbientLightSensorManagerFile
   PrefsInterface* prefs_ = nullptr;  // non-owned
 
   std::vector<std::unique_ptr<system::AmbientLightSensor>> sensors_;
-  // Weak pointers into the relevant entries of |sensors_|.
+  // Unowned pointers into the relevant entries of |sensors_|.
   system::AmbientLightSensor* lid_sensor_ = nullptr;
   system::AmbientLightSensor* base_sensor_ = nullptr;
 

@@ -99,7 +99,8 @@ class AmbientLightSensorManagerMojo : public AmbientLightSensorManagerInterface,
 
   std::vector<std::unique_ptr<AmbientLightSensor>> sensors_;
 
-  // iio_device_ids and Weak pointers into the relevant entries of |sensors_|.
+  // iio_device_ids and unowned pointers into the relevant entries of
+  // |sensors_|.
   Sensor lid_sensor_;
   Sensor base_sensor_;
 
