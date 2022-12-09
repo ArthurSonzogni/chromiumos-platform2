@@ -144,6 +144,17 @@ message ReadDir2ResponseProto {
   repeated DirEntryProto entries = 3;
 }
 
+// Rename renames a file.
+
+message RenameRequestProto {
+  optional string src_file_system_url = 3;
+  optional string dst_file_system_url = 6;
+}
+
+message RenameResponseProto {
+  optional int32 posix_error_code = 1;
+}
+
 // RmDir truly deletes (it does not "move to trash", an undo-able operation)
 // and it is non-recursive (it's plain "rmdir", not "rmdir -p" or "rm -r").
 
