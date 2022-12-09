@@ -144,8 +144,12 @@ class FuseBoxClient : public FileSystem {
   template <typename Signature>
   void CallFuseBoxServerMethod(dbus::MethodCall* method_call,
                                base::OnceCallback<Signature> callback) {
-    constexpr auto timeout = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT;
-    dbus_proxy_->CallMethod(method_call, timeout, std::move(callback));
+    // Use a relatively long timeout (55 minutes in milliseconds), compared to
+    // the default of 25000 milliseconds (25 seconds). Fusebox D-Bus calls can
+    // lead to network I/O, possibly to "storage in the cloud". These can take
+    // a while to respond.
+    constexpr int timeout_ms = 3300000;
+    dbus_proxy_->CallMethod(method_call, timeout_ms, std::move(callback));
   }
 
   void Init(void* userdata, struct fuse_conn_info*) override {
