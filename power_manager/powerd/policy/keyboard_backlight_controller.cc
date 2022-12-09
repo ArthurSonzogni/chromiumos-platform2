@@ -24,6 +24,7 @@
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
+#include <dbus/power_manager/dbus-constants.h>
 
 #include "power_manager/common/clock.h"
 #include "power_manager/common/power_constants.h"
@@ -80,8 +81,6 @@ KeyboardBacklightController::KeyboardBacklightController()
     : clock_(std::make_unique<Clock>()), weak_ptr_factory_(this) {}
 
 KeyboardBacklightController::~KeyboardBacklightController() {
-  if (display_backlight_controller_)
-    display_backlight_controller_->RemoveObserver(this);
   if (backlight_)
     backlight_->RemoveObserver(this);
 }
@@ -91,7 +90,6 @@ void KeyboardBacklightController::Init(
     PrefsInterface* prefs,
     system::AmbientLightSensorInterface* sensor,
     system::DBusWrapperInterface* dbus_wrapper,
-    BacklightController* display_backlight_controller,
     LidState initial_lid_state,
     TabletMode initial_tablet_mode) {
   backlight_ = backlight;
@@ -128,10 +126,6 @@ void KeyboardBacklightController::Init(
           &KeyboardBacklightController::HandleToggleKeyboardBacklightRequest,
           weak_ptr_factory_.GetWeakPtr()));
 
-  display_backlight_controller_ = display_backlight_controller;
-  if (display_backlight_controller_)
-    display_backlight_controller_->AddObserver(this);
-
   if (sensor) {
     ambient_light_handler_ =
         std::make_unique<AmbientLightHandler>(sensor, this);
@@ -139,8 +133,6 @@ void KeyboardBacklightController::Init(
   }
 
   prefs_->GetBool(kDetectHoverPref, &supports_hover_);
-  prefs_->GetBool(kKeyboardBacklightTurnOnForUserActivityPref,
-                  &turn_on_for_user_activity_);
 
   int64_t delay_ms = 0;
   CHECK(prefs->GetInt64(kKeyboardBacklightKeepOnMsPref, &delay_ms));
@@ -198,11 +190,10 @@ void KeyboardBacklightController::Init(
         << "Failed to read pref " << kAlsSmoothingConstantPref;
     ambient_light_handler_->Init(pref_value, current_percent_,
                                  als_smoothing_constant);
-  } else {
-    // Slowly transition to the default brightness percent, or to
-    // off if we are using `turn_on_for_user_activity_`.
-    UpdateState(Transition::SLOW, BacklightBrightnessChange_Cause_OTHER);
   }
+
+  // Slowly turn off the backlight.
+  UpdateState(Transition::SLOW, BacklightBrightnessChange_Cause_OTHER);
 }
 
 void KeyboardBacklightController::AddObserver(
@@ -429,19 +420,6 @@ void KeyboardBacklightController::SetBrightnessPercentForAmbientLight(
 void KeyboardBacklightController::OnColorTemperatureChanged(
     int color_temperature) {}
 
-void KeyboardBacklightController::OnBrightnessChange(
-    double brightness_percent,
-    BacklightBrightnessChange_Cause cause,
-    BacklightController* source) {
-  DCHECK_EQ(source, display_backlight_controller_);
-
-  bool zero = brightness_percent <= kEpsilon;
-  if (zero != display_brightness_is_zero_) {
-    display_brightness_is_zero_ = zero;
-    UpdateState(Transition::SLOW, cause);
-  }
-}
-
 void KeyboardBacklightController::OnBacklightDeviceChanged(
     system::BacklightInterface* backlight) {
   DCHECK_EQ(backlight, backlight_);
@@ -523,9 +501,6 @@ void KeyboardBacklightController::UpdateUserBrightnessPercent(double percent) {
 }
 
 void KeyboardBacklightController::UpdateTurnOffTimer() {
-  if (!supports_hover_ && !turn_on_for_user_activity_)
-    return;
-
   turn_off_timer_.Stop();
 
   // The timer shouldn't start until hovering stops.
@@ -712,27 +687,8 @@ bool KeyboardBacklightController::UpdateState(
 
   // If requested, force the backlight on if the user is currently or was
   // recently active and off otherwise.
-  if (supports_hover_ || turn_on_for_user_activity_) {
-    double percent = RecentlyHoveringOrUserActive() ? automated_percent_ : 0.0;
-    return ApplyBrightnessPercent(percent, transition, cause, signal_behavior);
-  }
-
-  // Force the backlight off for several more lower-priority conditions.
-  // TODO(crbug.com/623404): Restructure this so the backlight is kept on for at
-  // least a short period after hovering stops while fullscreen video is
-  // playing.
-  if (fullscreen_video_playing_ || display_brightness_is_zero_ ||
-      off_for_inactivity_) {
-    return ApplyBrightnessPercent(0.0, transition, cause, signal_behavior);
-  }
-
-  if (dimmed_for_inactivity_) {
-    return ApplyBrightnessPercent(std::min(kDimPercent, automated_percent_),
-                                  transition, cause, signal_behavior);
-  }
-
-  return ApplyBrightnessPercent(automated_percent_, transition, cause,
-                                signal_behavior);
+  double percent = RecentlyHoveringOrUserActive() ? automated_percent_ : 0.0;
+  return ApplyBrightnessPercent(percent, transition, cause, signal_behavior);
 }
 
 bool KeyboardBacklightController::ApplyBrightnessPercent(

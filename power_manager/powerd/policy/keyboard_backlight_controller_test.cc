@@ -10,6 +10,8 @@
 
 #include <base/strings/stringprintf.h>
 #include <base/test/task_environment.h>
+#include <base/time/time.h>
+#include <dbus/power_manager/dbus-constants.h>
 #include <gtest/gtest.h>
 
 #include "power_manager/common/fake_prefs.h"
@@ -52,16 +54,13 @@ class KeyboardBacklightControllerTest : public ::testing::Test {
                      no_als_brightness_pref_);
     prefs_.SetDouble(kAlsSmoothingConstantPref, 1.0);
     prefs_.SetInt64(kDetectHoverPref, detect_hover_pref_);
-    prefs_.SetInt64(kKeyboardBacklightTurnOnForUserActivityPref,
-                    turn_on_for_user_activity_pref_);
     prefs_.SetInt64(kKeyboardBacklightKeepOnMsPref, keep_on_ms_pref_);
     prefs_.SetInt64(kKeyboardBacklightKeepOnDuringVideoMsPref,
                     keep_on_during_video_ms_pref_);
 
     controller_.Init(&backlight_, &prefs_,
                      pass_light_sensor_ ? &light_sensor_ : nullptr,
-                     &dbus_wrapper_, &display_backlight_controller_,
-                     initial_lid_state_, initial_tablet_mode_);
+                     &dbus_wrapper_, initial_lid_state_, initial_tablet_mode_);
   }
 
  protected:
@@ -136,8 +135,6 @@ class KeyboardBacklightControllerTest : public ::testing::Test {
       base::test::TaskEnvironment::MainThreadType::IO,
       base::test::TaskEnvironment::TimeSource::MOCK_TIME};
 
-  BacklightControllerStub display_backlight_controller_;
-
   // Max and initial brightness levels for |backlight_|.
   int64_t max_backlight_level_ = 100;
   int64_t initial_backlight_level_ = 50;
@@ -158,9 +155,8 @@ class KeyboardBacklightControllerTest : public ::testing::Test {
   std::string user_steps_pref_ = "0.0\n10.0\n40.0\n60.0\n100.0";
   double no_als_brightness_pref_ = 40.0;
   int64_t detect_hover_pref_ = 0;
-  int64_t turn_on_for_user_activity_pref_ = 0;
-  int64_t keep_on_ms_pref_ = 0;
-  int64_t keep_on_during_video_ms_pref_ = 0;
+  int64_t keep_on_ms_pref_ = 30'000;
+  int64_t keep_on_during_video_ms_pref_ = 3'000;
 
   FakePrefs prefs_;
   system::BacklightStub backlight_;
@@ -171,7 +167,9 @@ class KeyboardBacklightControllerTest : public ::testing::Test {
 };
 
 TEST_F(KeyboardBacklightControllerTest, GetBrightnessPercent) {
+  // Initialize the backlight, and simulate a button press to turn it on.
   Init();
+  controller_.HandleUserActivity(USER_ACTIVITY_OTHER);
 
   // GetKeyboardBrightnessPercent should initially return the backlight's
   // starting level.  (It's safe to compare levels and percents since we're
@@ -206,7 +204,6 @@ TEST_F(KeyboardBacklightControllerTest, GetBrightnessPercentWithScaling) {
 TEST_F(KeyboardBacklightControllerTest, TurnOffFasterForFullscreenVideo) {
   als_steps_pref_ = "20.0 -1 50\n50.0 35 75\n75.0 60 -1";
   user_steps_pref_ = "0.0\n100.0";
-  turn_on_for_user_activity_pref_ = 1;
   keep_on_ms_pref_ = 30'000;
   keep_on_during_video_ms_pref_ = 3'000;
   Init();
@@ -271,6 +268,9 @@ TEST_F(KeyboardBacklightControllerTest, OnAmbientLightUpdated) {
   initial_backlight_level_ = 20;
   als_steps_pref_ = "20.0 -1 50\n50.0 35 75\n75.0 60 -1";
   Init();
+
+  // Press a button. Expect the backlight comes on to its startup value.
+  controller_.HandleUserActivity(USER_ACTIVITY_OTHER);
   ASSERT_EQ(20, backlight_.current_level());
   EXPECT_EQ(0, controller_.GetNumAmbientLightSensorAdjustments());
 
@@ -313,14 +313,19 @@ TEST_F(KeyboardBacklightControllerTest, OnAmbientLightUpdated) {
   EXPECT_EQ(0, controller_.GetNumAmbientLightSensorAdjustments());
 }
 
-TEST_F(KeyboardBacklightControllerTest, ChangeStates) {
+TEST_F(KeyboardBacklightControllerTest, InactivityInManualMode) {
   // Configure a single step for ALS and three steps for user control.
   als_steps_pref_ = "50.0 -1 -1";
   user_steps_pref_ = "0.0\n10.0\n100.0";
   initial_backlight_level_ = 50;
   Init();
   light_sensor_.NotifyObservers();
-  ASSERT_EQ(50, backlight_.current_level());
+  controller_.HandleUserActivity(USER_ACTIVITY_OTHER);
+
+  // Send an increase request to switch to user control.
+  CallIncreaseKeyboardBrightness();
+  EXPECT_EQ(100, backlight_.current_level());
+  EXPECT_EQ(kFastBacklightTransition, backlight_.current_interval());
 
   // Requests to dim the backlight and turn it off should be honored, as
   // should changes to turn it back on and undim.
@@ -334,66 +339,36 @@ TEST_F(KeyboardBacklightControllerTest, ChangeStates) {
   EXPECT_EQ(GetDimmedLevel(), backlight_.current_level());
   EXPECT_EQ(kSlowBacklightTransition, backlight_.current_interval());
   controller_.SetDimmedForInactivity(false);
-  EXPECT_EQ(50, backlight_.current_level());
-  EXPECT_EQ(kSlowBacklightTransition, backlight_.current_interval());
-
-  // Send an increase request to switch to user control.
-  CallIncreaseKeyboardBrightness();
-  EXPECT_EQ(100, backlight_.current_level());
-  EXPECT_EQ(kFastBacklightTransition, backlight_.current_interval());
-
-  // Go through the same sequence of state changes and check that the
-  // user-control dimming level is used.
-  controller_.SetDimmedForInactivity(true);
-  EXPECT_EQ(GetDimmedLevel(), backlight_.current_level());
-  EXPECT_EQ(kSlowBacklightTransition, backlight_.current_interval());
-  controller_.SetOffForInactivity(true);
-  EXPECT_EQ(0, backlight_.current_level());
-  EXPECT_EQ(kSlowBacklightTransition, backlight_.current_interval());
-  controller_.SetOffForInactivity(false);
-  EXPECT_EQ(GetDimmedLevel(), backlight_.current_level());
-  EXPECT_EQ(kSlowBacklightTransition, backlight_.current_interval());
-  controller_.SetDimmedForInactivity(false);
   EXPECT_EQ(100, backlight_.current_level());
   EXPECT_EQ(kSlowBacklightTransition, backlight_.current_interval());
 }
 
-TEST_F(KeyboardBacklightControllerTest, DontBrightenToDim) {
-  // Set the bottom ALS step to 2%.
-  als_steps_pref_ = "2.0 -1 60\n80.0 40 -1";
-  initial_als_lux_ = 2;
-  Init();
-  ASSERT_LT(initial_als_lux_, GetDimmedLevel());
-
-  light_sensor_.NotifyObservers();
-  ASSERT_EQ(initial_als_lux_, backlight_.current_level());
-
-  // The controller should never increase the brightness level when dimming.
-  controller_.SetDimmedForInactivity(true);
-  EXPECT_EQ(initial_als_lux_, backlight_.current_level());
-}
-
-TEST_F(KeyboardBacklightControllerTest, DeferChangesWhileDimmed) {
+TEST_F(KeyboardBacklightControllerTest, DeferChangesWhileOffForInactivty) {
   als_steps_pref_ = "20.0 -1 60\n80.0 40 -1";
   initial_als_lux_ = 20;
+  keep_on_ms_pref_ = 30'000;
   Init();
 
+  // Ensure we use the correct initial value after user activity.
+  controller_.HandleUserActivity(USER_ACTIVITY_OTHER);
   light_sensor_.NotifyObservers();
   ASSERT_EQ(initial_als_lux_, backlight_.current_level());
 
-  controller_.SetDimmedForInactivity(true);
-  EXPECT_EQ(GetDimmedLevel(), backlight_.current_level());
+  // Turn off due to time passing.
+  AdvanceTime(base::Milliseconds(keep_on_ms_pref_));
+  EXPECT_EQ(backlight_.current_level(), 0);
 
-  // ALS-driven changes shouldn't be applied while the screen is dimmed.
+  // ALS-driven changes shouldn't be applied while the keyboard backlight
+  // is off.
   light_sensor_.set_lux(80);
   light_sensor_.NotifyObservers();
   light_sensor_.NotifyObservers();
-  EXPECT_EQ(GetDimmedLevel(), backlight_.current_level());
+  EXPECT_EQ(backlight_.current_level(), 0);
 
-  // The new ALS level should be used immediately after undimming, though.
-  controller_.SetDimmedForInactivity(false);
+  // The new ALS level should be used immediately after user activity, though.
+  controller_.HandleUserActivity(USER_ACTIVITY_OTHER);
   EXPECT_EQ(80, backlight_.current_level());
-  EXPECT_EQ(kSlowBacklightTransition, backlight_.current_interval());
+  EXPECT_EQ(backlight_.current_interval(), kFastBacklightTransition);
 }
 
 TEST_F(KeyboardBacklightControllerTest, InitialUserLevelDownFirst) {
@@ -402,6 +377,7 @@ TEST_F(KeyboardBacklightControllerTest, InitialUserLevelDownFirst) {
   user_steps_pref_ = "0.0\n10.0\n40.0\n60.0\n100.0";
   initial_backlight_level_ = 15;
   Init();
+  controller_.HandleUserActivity(USER_ACTIVITY_OTHER);
   EXPECT_EQ(15, backlight_.current_level());
 
   // After an increase request switches to user control of the brightness
@@ -418,6 +394,7 @@ TEST_F(KeyboardBacklightControllerTest, InitialUserLevelUpFirst) {
   user_steps_pref_ = "0.0\n10.0\n40.0\n60.0\n100.0";
   initial_backlight_level_ = 30;
   Init();
+  controller_.HandleUserActivity(USER_ACTIVITY_OTHER);
   EXPECT_EQ(30, backlight_.current_level());
 
   // After an increase request switches to user control of the brightness
@@ -435,6 +412,7 @@ TEST_F(KeyboardBacklightControllerTest, InitialAlsLevel) {
   initial_backlight_level_ = 55;
   initial_als_lux_ = 85;
   Init();
+  controller_.HandleUserActivity(USER_ACTIVITY_OTHER);
   EXPECT_EQ(55, backlight_.current_level());
 
   // After an ambient light reading, the controller should slowly
@@ -447,8 +425,6 @@ TEST_F(KeyboardBacklightControllerTest, InitialAlsLevel) {
 TEST_F(KeyboardBacklightControllerTest, InitialAlsLevelWithUserActivity) {
   als_steps_pref_ = "20.0 -1 60\n80.0 40 -1";
   initial_backlight_level_ = 55;
-  turn_on_for_user_activity_pref_ = 1;
-  keep_on_ms_pref_ = 30'000;
   Init();
 
   // Have the controller receiver user activity before the first sensor
@@ -510,6 +486,7 @@ TEST_F(KeyboardBacklightControllerTest, DecreaseBrightness) {
   user_steps_pref_ = "0.0\n10.0\n40.0\n60.0\n100.0";
   initial_backlight_level_ = 100;
   Init();
+  controller_.HandleUserActivity(USER_ACTIVITY_OTHER);
 
   EXPECT_EQ(100, backlight_.current_level());
 
@@ -554,6 +531,7 @@ TEST_F(KeyboardBacklightControllerTest, TurnOffWhenSuspended) {
   no_als_brightness_pref_ = 50;
   pass_light_sensor_ = false;
   Init();
+  controller_.HandleUserActivity(USER_ACTIVITY_OTHER);
   controller_.SetSuspended(true);
   EXPECT_EQ(0, backlight_.current_level());
   EXPECT_EQ(0, backlight_.current_interval().InMilliseconds());
@@ -564,6 +542,8 @@ TEST_F(KeyboardBacklightControllerTest, TurnOffWhenSuspended) {
 
 TEST_F(KeyboardBacklightControllerTest, TurnOffWhenShuttingDown) {
   Init();
+  controller_.HandleUserActivity(USER_ACTIVITY_OTHER);
+
   controller_.SetShuttingDown(true);
   EXPECT_EQ(0, backlight_.current_level());
   EXPECT_EQ(0, backlight_.current_interval().InMilliseconds());
@@ -572,6 +552,7 @@ TEST_F(KeyboardBacklightControllerTest, TurnOffWhenShuttingDown) {
 TEST_F(KeyboardBacklightControllerTest, TurnOffWhenLidClosed) {
   initial_lid_state_ = LidState::OPEN;
   Init();
+  controller_.HandleUserActivity(USER_ACTIVITY_OTHER);
   ASSERT_EQ(initial_backlight_level_, backlight_.current_level());
 
   controller_.HandleLidStateChange(LidState::CLOSED);
@@ -583,46 +564,13 @@ TEST_F(KeyboardBacklightControllerTest, TurnOffWhenLidClosed) {
   EXPECT_EQ(0, backlight_.current_level());
 }
 
-TEST_F(KeyboardBacklightControllerTest, TurnOffWhenDisplayBacklightIsOff) {
-  als_steps_pref_ = "50.0 -1 -1";
-  user_steps_pref_ = "0.0\n100.0";
-  initial_backlight_level_ = 50;
-  Init();
-  light_sensor_.set_lux(100);
-  light_sensor_.NotifyObservers();
-
-  display_backlight_controller_.NotifyObservers(
-      10.0, BacklightBrightnessChange_Cause_USER_REQUEST);
-  EXPECT_EQ(50, backlight_.current_level());
-
-  // When the display backlight's brightness goes to zero while the
-  // keyboard backlight is using an ambient-light-derived brightness, the
-  // keyboard backlight should be turned off automatically.
-  display_backlight_controller_.NotifyObservers(
-      0.0, BacklightBrightnessChange_Cause_USER_REQUEST);
-  EXPECT_EQ(0, backlight_.current_level());
-  EXPECT_EQ(kSlowBacklightTransition, backlight_.current_interval());
-
-  display_backlight_controller_.NotifyObservers(
-      20.0, BacklightBrightnessChange_Cause_USER_REQUEST);
-  EXPECT_EQ(50, backlight_.current_level());
-  EXPECT_EQ(kSlowBacklightTransition, backlight_.current_interval());
-
-  // After switching to user control of the brightness, the keyboard
-  // backlight shouldn't be turned off automatically.
-  CallIncreaseKeyboardBrightness();
-  EXPECT_EQ(100, backlight_.current_level());
-  display_backlight_controller_.NotifyObservers(
-      0.0, BacklightBrightnessChange_Cause_USER_REQUEST);
-  EXPECT_EQ(100, backlight_.current_level());
-}
-
 TEST_F(KeyboardBacklightControllerTest, Hover) {
   als_steps_pref_ = "50.0 -1 -1";
   user_steps_pref_ = "0.0\n100.0";
   detect_hover_pref_ = 1;
   keep_on_ms_pref_ = 30000;
   keep_on_during_video_ms_pref_ = 3000;
+  initial_backlight_level_ = 0;
   Init();
   controller_.HandleSessionStateChange(SessionState::STARTED);
   light_sensor_.NotifyObservers();
@@ -706,9 +654,10 @@ TEST_F(KeyboardBacklightControllerTest, NoAmbientLightSensor) {
   pass_light_sensor_ = false;
   Init();
 
-  // The brightness should immediately transition to the level from the pref.
+  // The brightness should start at the level from the pref.
+  controller_.HandleUserActivity(USER_ACTIVITY_OTHER);
   EXPECT_EQ(40, backlight_.current_level());
-  EXPECT_EQ(kSlowBacklightTransition, backlight_.current_interval());
+  EXPECT_EQ(kFastBacklightTransition, backlight_.current_interval());
 
   // Subsequent adjustments should move between the user steps.
   CallIncreaseKeyboardBrightness();
@@ -721,7 +670,6 @@ TEST_F(KeyboardBacklightControllerTest, EnableForUserActivity) {
   initial_backlight_level_ = 50;
   no_als_brightness_pref_ = 40.0;
   user_steps_pref_ = "0.0\n100.0";
-  turn_on_for_user_activity_pref_ = 1;
   keep_on_ms_pref_ = 30000;
   pass_light_sensor_ = false;
   Init();
@@ -751,7 +699,6 @@ TEST_F(KeyboardBacklightControllerTest, EnableForPowerSourceChange) {
   initial_backlight_level_ = 50;
   no_als_brightness_pref_ = 40.0;
   user_steps_pref_ = "0.0\n100.0";
-  turn_on_for_user_activity_pref_ = 1;
   keep_on_ms_pref_ = 30'000;
   pass_light_sensor_ = false;
   Init();
@@ -793,12 +740,12 @@ TEST_F(KeyboardBacklightControllerTest, EnableForPowerSourceChange) {
 
 TEST_F(KeyboardBacklightControllerTest, PreemptTransitionForShutdown) {
   initial_backlight_level_ = 50;
+  keep_on_ms_pref_ = 30'000;
   Init();
+  controller_.HandleUserActivity(USER_ACTIVITY_OTHER);
 
-  // Notify the keyboard controller that the display has been turned off (as
-  // happens when shutting down).
-  display_backlight_controller_.NotifyObservers(
-      0.0, BacklightBrightnessChange_Cause_OTHER);
+  // Wait 30 seconds to start fading for user inactivty.
+  AdvanceTime(base::Milliseconds(keep_on_ms_pref_));
   EXPECT_EQ(0, backlight_.current_level());
   EXPECT_EQ(kSlowBacklightTransition, backlight_.current_interval());
 
@@ -819,6 +766,7 @@ TEST_F(KeyboardBacklightControllerTest, TurnOffWhenInTabletMode) {
   pass_light_sensor_ = false;
   initial_tablet_mode_ = TabletMode::ON;
   Init();
+  controller_.HandleUserActivity(USER_ACTIVITY_OTHER);
   EXPECT_EQ(0, backlight_.current_level());
   EXPECT_EQ(kSlowBacklightTransition, backlight_.current_interval());
 
@@ -836,6 +784,7 @@ TEST_F(KeyboardBacklightControllerTest, TurnOffWhenInTabletMode) {
 TEST_F(KeyboardBacklightControllerTest, ForcedOff) {
   initial_backlight_level_ = 50;
   Init();
+  controller_.HandleUserActivity(USER_ACTIVITY_OTHER);
   ASSERT_GT(backlight_.current_level(), 0);
 
   controller_.SetForcedOff(true);
@@ -893,7 +842,6 @@ TEST_F(KeyboardBacklightControllerTest, ToggleBacklightAfterInactivity) {
   user_steps_pref_ = "0.0\n10.0\n40.0\n60.0\n100.0";
   pass_light_sensor_ = false;
   no_als_brightness_pref_ = 40.0;
-  turn_on_for_user_activity_pref_ = 1;
   keep_on_ms_pref_ = 30'000;  // 30 seconds
   initial_backlight_level_ = 40.0;
   Init();
@@ -923,7 +871,6 @@ TEST_F(KeyboardBacklightControllerTest, ToggleBacklightAfterUserActivity) {
   user_steps_pref_ = "0.0\n10.0\n40.0\n60.0\n100.0";
   pass_light_sensor_ = false;
   no_als_brightness_pref_ = 40.0;
-  turn_on_for_user_activity_pref_ = 1;
   keep_on_ms_pref_ = 30'000;  // 30 seconds
   initial_backlight_level_ = 40.0;
   Init();
@@ -1024,7 +971,6 @@ TEST_F(KeyboardBacklightControllerTest,
   user_steps_pref_ = "0.0\n10.0\n40.0\n60.0\n100.0";
   pass_light_sensor_ = false;
   no_als_brightness_pref_ = 40.0;
-  turn_on_for_user_activity_pref_ = 1;
   keep_on_ms_pref_ = 30'000;  // 30 seconds
   initial_backlight_level_ = 40.0;
   Init();

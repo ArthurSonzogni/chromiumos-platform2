@@ -145,14 +145,12 @@ class DaemonDelegate {
       LidState initial_lid_state) = 0;
 
   virtual std::unique_ptr<policy::BacklightController>
-  CreateKeyboardBacklightController(
-      system::BacklightInterface* backlight,
-      PrefsInterface* prefs,
-      system::AmbientLightSensorInterface* sensor,
-      system::DBusWrapperInterface* dbus_wrapper,
-      policy::BacklightController* display_backlight_controller,
-      LidState initial_lid_state,
-      TabletMode initial_tablet_mode) = 0;
+  CreateKeyboardBacklightController(system::BacklightInterface* backlight,
+                                    PrefsInterface* prefs,
+                                    system::AmbientLightSensorInterface* sensor,
+                                    system::DBusWrapperInterface* dbus_wrapper,
+                                    LidState initial_lid_state,
+                                    TabletMode initial_tablet_mode) = 0;
 
   virtual std::unique_ptr<system::InputWatcherInterface> CreateInputWatcher(
       PrefsInterface* prefs, system::UdevInterface* udev) = 0;

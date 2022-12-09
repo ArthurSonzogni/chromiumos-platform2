@@ -40,7 +40,6 @@ class KeyboardBacklightControllerTest;
 // Controls the keyboard backlight for devices with such a backlight.
 class KeyboardBacklightController : public BacklightController,
                                     public AmbientLightHandler::Delegate,
-                                    public BacklightControllerObserver,
                                     public system::BacklightObserver {
  public:
   KeyboardBacklightController();
@@ -51,12 +50,11 @@ class KeyboardBacklightController : public BacklightController,
   ~KeyboardBacklightController() override;
 
   // Initializes the object. Ownership of passed-in pointers remains with the
-  // caller. |sensor| and |display_backlight_controller| may be NULL.
+  // caller. |sensor| may be NULL.
   void Init(system::BacklightInterface* backlight,
             PrefsInterface* prefs,
             system::AmbientLightSensorInterface* sensor,
             system::DBusWrapperInterface* dbus_wrapper,
-            BacklightController* display_backlight_controller,
             LidState initial_lid_state,
             TabletMode initial_tablet_mode);
 
@@ -92,11 +90,6 @@ class KeyboardBacklightController : public BacklightController,
       double brightness_percent,
       AmbientLightHandler::BrightnessChangeCause cause) override;
   void OnColorTemperatureChanged(int color_temperature) override;
-
-  // BacklightControllerObserver implementation:
-  void OnBrightnessChange(double brightness_percent,
-                          BacklightBrightnessChange_Cause cause,
-                          BacklightController* source) override;
 
   // system::BacklightObserver implementation:
   void OnBacklightDeviceChanged(system::BacklightInterface* backlight) override;
@@ -212,9 +205,6 @@ class KeyboardBacklightController : public BacklightController,
   PrefsInterface* prefs_ = nullptr;
   system::DBusWrapperInterface* dbus_wrapper_ = nullptr;
 
-  // Controller responsible for the display's brightness. Unowned pointer.
-  BacklightController* display_backlight_controller_ = nullptr;
-
   // May be NULL if no ambient light sensor is present.
   std::unique_ptr<AmbientLightHandler> ambient_light_handler_;
 
@@ -224,10 +214,6 @@ class KeyboardBacklightController : public BacklightController,
   // True if the system is capable of detecting whether the user's hands are
   // hovering over the touchpad.
   bool supports_hover_ = false;
-
-  // True if the keyboard should be turned on for user activity but kept off
-  // otherwise. This has no effect if |supports_hover_| is set.
-  bool turn_on_for_user_activity_ = false;
 
   SessionState session_state_ = SessionState::STOPPED;
   LidState lid_state_ = LidState::NOT_PRESENT;
@@ -287,8 +273,7 @@ class KeyboardBacklightController : public BacklightController,
   base::TimeTicks last_user_activity_time_;
 
   // Duration the backlight should remain on after hovering stops (on systems
-  // that support hover detection) or after user activity (if
-  // |turn_on_for_user_activity_| is set).
+  // that support hover detection) or after user activity (otherwise).
   base::TimeDelta keep_on_delay_;
 
   // Like |keep_on_delay_|, but used while fullscreen video is playing.
@@ -296,7 +281,7 @@ class KeyboardBacklightController : public BacklightController,
 
   // Runs UpdateState() |keep_on_delay_| or |keep_on_during_video_delay_| after
   // the user's hands stop hovering over the touchpad (or after user activity is
-  // last observed, if |turn_on_for_user_activity_| is true).
+  // last observed, if hover is not supported).
   base::OneShotTimer turn_off_timer_;
 
   // Runs HandleVideoTimeout().
@@ -305,10 +290,6 @@ class KeyboardBacklightController : public BacklightController,
   // Counters for stat tracking.
   int num_als_adjustments_ = 0;
   int num_user_adjustments_ = 0;
-
-  // Did |display_backlight_controller_| indicate that the display
-  // backlight brightness is currently zero?
-  bool display_brightness_is_zero_ = false;
 
   base::WeakPtrFactory<KeyboardBacklightController> weak_ptr_factory_;
 };

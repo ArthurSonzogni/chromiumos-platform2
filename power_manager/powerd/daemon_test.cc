@@ -335,14 +335,12 @@ class DaemonTest : public TestEnvironment, public DaemonDelegate {
     return std::move(passed_internal_backlight_controller_);
   }
   std::unique_ptr<policy::BacklightController>
-  CreateKeyboardBacklightController(
-      system::BacklightInterface* backlight,
-      PrefsInterface* prefs,
-      system::AmbientLightSensorInterface* sensor,
-      system::DBusWrapperInterface* dbus_wrapper,
-      policy::BacklightController* display_backlight_controller,
-      LidState initial_lid_state,
-      TabletMode initial_tablet_mode) override {
+  CreateKeyboardBacklightController(system::BacklightInterface* backlight,
+                                    PrefsInterface* prefs,
+                                    system::AmbientLightSensorInterface* sensor,
+                                    system::DBusWrapperInterface* dbus_wrapper,
+                                    LidState initial_lid_state,
+                                    TabletMode initial_tablet_mode) override {
     if (ec_keyboard_backlight_enabled_) {
       EXPECT_EQ(ec_keyboard_backlight_, backlight);
     } else {
@@ -354,7 +352,6 @@ class DaemonTest : public TestEnvironment, public DaemonDelegate {
         sensor ==
             ambient_light_sensor_manager_->GetSensorForKeyboardBacklight());
     EXPECT_EQ(dbus_wrapper_, dbus_wrapper);
-    EXPECT_EQ(internal_backlight_controller_, display_backlight_controller);
     EXPECT_EQ(input_watcher_->QueryLidState(), initial_lid_state);
     EXPECT_EQ(input_watcher_->GetTabletMode(), initial_tablet_mode);
     return std::move(passed_keyboard_backlight_controller_);

@@ -112,9 +112,8 @@ class Converter {
     if (keyboard) {
       auto controller = std::make_unique<KeyboardBacklightController>();
       controller->Init(&backlight_, &prefs_, light_sensor_.get(),
-                       &dbus_wrapper_,
-                       nullptr /* display_backlight_controller */,
-                       LidState::NOT_PRESENT, TabletMode::UNSUPPORTED);
+                       &dbus_wrapper_, LidState::NOT_PRESENT,
+                       TabletMode::UNSUPPORTED);
       controller->HandleHoverStateChange(true /* hovering */);
       controller_ = std::move(controller);
     } else {

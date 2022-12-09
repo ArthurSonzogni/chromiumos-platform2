@@ -490,8 +490,7 @@ void Daemon::Init() {
           delegate_->CreateKeyboardBacklightController(
               keyboard_backlight_.get(), prefs_.get(),
               light_sensor_manager_->GetSensorForKeyboardBacklight(),
-              dbus_wrapper_.get(), display_backlight_controller_.get(),
-              lid_state, tablet_mode);
+              dbus_wrapper_.get(), lid_state, tablet_mode);
       all_backlight_controllers_.push_back(
           keyboard_backlight_controller_.get());
     }
