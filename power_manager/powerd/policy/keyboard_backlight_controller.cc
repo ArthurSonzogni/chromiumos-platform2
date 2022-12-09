@@ -254,6 +254,7 @@ void KeyboardBacklightController::HandleVideoActivity(bool is_fullscreen) {
     VLOG(1) << "Fullscreen video "
             << (is_fullscreen ? "started" : "went non-fullscreen");
     fullscreen_video_playing_ = is_fullscreen;
+    UpdateTurnOffTimer();
     UpdateState(Transition::SLOW,
                 BacklightBrightnessChange_Cause_USER_ACTIVITY);
   }

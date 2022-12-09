@@ -203,24 +203,36 @@ TEST_F(KeyboardBacklightControllerTest, GetBrightnessPercentWithScaling) {
   }
 }
 
-TEST_F(KeyboardBacklightControllerTest, TurnOffForFullscreenVideo) {
+TEST_F(KeyboardBacklightControllerTest, TurnOffFasterForFullscreenVideo) {
   als_steps_pref_ = "20.0 -1 50\n50.0 35 75\n75.0 60 -1";
   user_steps_pref_ = "0.0\n100.0";
+  turn_on_for_user_activity_pref_ = 1;
+  keep_on_ms_pref_ = 30'000;
+  keep_on_during_video_ms_pref_ = 3'000;
   Init();
   controller_.HandleSessionStateChange(SessionState::STARTED);
   light_sensor_.NotifyObservers();
-  ASSERT_EQ(20, backlight_.current_level());
 
-  // Non-fullscreen video shouldn't turn off the backlight.
+  // Non-fullscreen video shouldn't affect when the backlight is turned off.
+  controller_.HandleUserActivity(USER_ACTIVITY_OTHER);
   controller_.HandleVideoActivity(false);
   EXPECT_EQ(20, backlight_.current_level());
-
-  // Fullscreen video should turn it off.
-  controller_.HandleVideoActivity(true);
+  AdvanceTime(base::Milliseconds(keep_on_ms_pref_ / 2));
+  EXPECT_EQ(20, backlight_.current_level());
+  AdvanceTime(base::Milliseconds(keep_on_ms_pref_ / 2));
   EXPECT_EQ(0, backlight_.current_level());
   EXPECT_EQ(kSlowBacklightTransition, backlight_.current_interval());
 
-  // If the video switches to non-fullscreen, the backlight should be turned on.
+  // When fullscreen video is playing, turn off the video after 3 seconds.
+  controller_.HandleUserActivity(USER_ACTIVITY_OTHER);
+  controller_.HandleVideoActivity(true);
+  EXPECT_EQ(20, backlight_.current_level());
+  AdvanceTime(base::Milliseconds(keep_on_during_video_ms_pref_));
+  EXPECT_EQ(0, backlight_.current_level());
+  EXPECT_EQ(kSlowBacklightTransition, backlight_.current_interval());
+
+  // If the video switches to non-fullscreen, the backlight should be turned on
+  // again.
   controller_.HandleVideoActivity(false);
   EXPECT_EQ(20, backlight_.current_level());
   EXPECT_EQ(kSlowBacklightTransition, backlight_.current_interval());
