@@ -42,29 +42,6 @@ class KeyboardBacklightController : public BacklightController,
                                     public BacklightControllerObserver,
                                     public system::BacklightObserver {
  public:
-  // Helper class for tests that need to access internal state.
-  class TestApi {
-   public:
-    explicit TestApi(KeyboardBacklightController* controller);
-    TestApi(const TestApi&) = delete;
-    TestApi& operator=(const TestApi&) = delete;
-
-    ~TestApi() = default;
-
-    Clock* clock() { return controller_->clock_.get(); }
-
-    // Triggers |turn_off_timer_| or |video_timer_| and returns true. Returns
-    // false if the timer wasn't running.
-    [[nodiscard]] bool TriggerTurnOffTimeout();
-    [[nodiscard]] bool TriggerVideoTimeout();
-
-   private:
-    KeyboardBacklightController* controller_;  // unowned
-  };
-
-  // Backlight brightness percent to use when the screen is dimmed.
-  static const double kDimPercent;
-
   KeyboardBacklightController();
   KeyboardBacklightController(const KeyboardBacklightController&) = delete;
   KeyboardBacklightController& operator=(const KeyboardBacklightController&) =
@@ -122,6 +99,15 @@ class KeyboardBacklightController : public BacklightController,
 
   // system::BacklightObserver implementation:
   void OnBacklightDeviceChanged(system::BacklightInterface* backlight) override;
+
+  // Backlight brightness percent to use when the screen is dimmed.
+  static constexpr double kDimPercent = 10.0;
+
+  // This is how long after a video playing message is received we should wait
+  // until reverting to the not playing state. If another message is received in
+  // this interval the timeout is reset. The browser should be sending these
+  // messages ~5 seconds when video is playing.
+  static constexpr base::TimeDelta kVideoTimeoutInterval = base::Seconds(7);
 
  private:
   // Indicates when certain functions should send signals about brightness

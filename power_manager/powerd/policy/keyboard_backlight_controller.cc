@@ -36,12 +36,6 @@ namespace power_manager::policy {
 
 namespace {
 
-// This is how long after a video playing message is received we should wait
-// until reverting to the not playing state. If another message is received in
-// this interval the timeout is reset. The browser should be sending these
-// messages ~5 seconds when video is playing.
-constexpr base::TimeDelta kVideoTimeoutInterval = base::Seconds(7);
-
 // Maximum valid value for scaled percentages.
 const double kMaxPercent = 100.0;
 
@@ -81,31 +75,6 @@ BacklightBrightnessChange_Cause ToBacklightBrightnessChangeCause(
 }
 
 }  // namespace
-
-KeyboardBacklightController::TestApi::TestApi(
-    KeyboardBacklightController* controller)
-    : controller_(controller) {}
-
-bool KeyboardBacklightController::TestApi::TriggerTurnOffTimeout() {
-  if (!controller_->turn_off_timer_.IsRunning())
-    return false;
-
-  controller_->turn_off_timer_.Stop();
-  controller_->UpdateState(Transition::SLOW,
-                           BacklightBrightnessChange_Cause_OTHER);
-  return true;
-}
-
-bool KeyboardBacklightController::TestApi::TriggerVideoTimeout() {
-  if (!controller_->video_timer_.IsRunning())
-    return false;
-
-  controller_->video_timer_.Stop();
-  controller_->HandleVideoTimeout();
-  return true;
-}
-
-const double KeyboardBacklightController::kDimPercent = 10.0;
 
 KeyboardBacklightController::KeyboardBacklightController()
     : clock_(std::make_unique<Clock>()), weak_ptr_factory_(this) {}
@@ -307,9 +276,7 @@ void KeyboardBacklightController::HandleHoverStateChange(bool hovering) {
   turn_off_timer_.Stop();
   if (!hovering_) {
     // If the user stopped hovering, start a timer to turn the backlight off in
-    // a little while. If this is updated to do something else instead of
-    // calling UpdateState(), TestApi::TriggerTurnOffTimeout() must also be
-    // updated.
+    // a little while.
     last_hover_time_ = clock_->GetCurrentTime();
     UpdateTurnOffTimer();
   } else {
