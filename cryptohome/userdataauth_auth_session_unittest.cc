@@ -44,6 +44,7 @@
 #include "cryptohome/storage/error.h"
 #include "cryptohome/storage/mock_homedirs.h"
 #include "cryptohome/storage/mock_mount.h"
+#include "cryptohome/user_secret_stash.h"
 #include "cryptohome/user_secret_stash_storage.h"
 #include "cryptohome/user_session/mock_user_session.h"
 #include "cryptohome/user_session/mock_user_session_factory.h"
@@ -458,6 +459,24 @@ class AuthSessionInterfaceTest : public AuthSessionInterfaceTestBase {
   }
 
   std::unique_ptr<AuthBlockUtilityImpl> auth_block_utility_impl_;
+};
+
+// Parameterized version of `AuthSessionInterfaceTest`. The parameter specifies
+// whether the UserSecretStash experiment should be enabled during the test.
+class AuthSessionInterfaceUssExperimentParamTest
+    : public AuthSessionInterfaceTest,
+      public ::testing::WithParamInterface<bool> {
+ public:
+  AuthSessionInterfaceUssExperimentParamTest() {
+    SetUserSecretStashExperimentForTesting(is_uss_experiment_enabled());
+  }
+
+  ~AuthSessionInterfaceUssExperimentParamTest() override {
+    // Reset this global variable to avoid affecting unrelated test cases.
+    SetUserSecretStashExperimentForTesting(/*enabled=*/std::nullopt);
+  }
+
+  static bool is_uss_experiment_enabled() { return GetParam(); }
 };
 
 namespace {
@@ -1119,7 +1138,8 @@ TEST_F(AuthSessionInterfaceTest, CreatePersistentUserRegular) {
   ASSERT_THAT(reply.error(), Eq(user_data_auth::CRYPTOHOME_ERROR_NOT_SET));
 }
 
-TEST_F(AuthSessionInterfaceTest, CreatePersistentUserRepeatCall) {
+TEST_P(AuthSessionInterfaceUssExperimentParamTest,
+       CreatePersistentUserRepeatCall) {
   EXPECT_CALL(keyset_management_, UserExists(SanitizeUserName(kUsername)))
       .WillOnce(ReturnValue(false));
   CryptohomeStatusOr<AuthSession*> auth_session_status =
@@ -1141,9 +1161,8 @@ TEST_F(AuthSessionInterfaceTest, CreatePersistentUserRepeatCall) {
   // Called again. User exists, vault should not be created again.
   EXPECT_CALL(homedirs_, CryptohomeExists(SanitizeUserName(kUsername)))
       .WillOnce(ReturnValue(false));
-  EXPECT_CALL(homedirs_, Exists(SanitizeUserName(kUsername)))
-      .WillOnce(Return(true));
-  ASSERT_TRUE(CreatePersistentUserImpl(auth_session->serialized_token()).ok());
+  EXPECT_THAT(CreatePersistentUserImpl(auth_session->serialized_token()),
+              NotOk());
 }
 
 TEST_F(AuthSessionInterfaceTest, AuthenticateAuthSessionNoLabel) {
@@ -2316,6 +2335,13 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorWebAuthnIntent) {
               UnorderedElementsAre(AUTH_INTENT_DECRYPT, AUTH_INTENT_VERIFY_ONLY,
                                    AUTH_INTENT_WEBAUTHN));
 }
+
+INSTANTIATE_TEST_SUITE_P(All,
+                         AuthSessionInterfaceUssExperimentParamTest,
+                         testing::Bool(),
+                         [](const ::testing::TestParamInfo<bool>& info) {
+                           return info.param ? "UssOn" : "UssOff";
+                         });
 
 }  // namespace
 

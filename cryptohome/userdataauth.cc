@@ -4647,6 +4647,18 @@ CryptohomeStatus UserDataAuth::CreatePersistentUserImpl(
         mount_error, MountErrorToCryptohomeError(mount_error));
   }
 
+  // This check seems superfluous after the `HomeDirs::CryptohomeExists()` check
+  // above, but it can happen that the user directory exists without any vault
+  // in it. We perform both checks for completeness and also to distinguish
+  // between these two error cases in metrics and logs.
+  if (auth_session->user_exists()) {
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocUserDataAuthUserDirExistsInCreatePersistentUser),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState,
+                        ErrorAction::kDeleteVault, ErrorAction::kPowerwash}),
+        user_data_auth::CRYPTOHOME_ERROR_MOUNT_MOUNT_POINT_BUSY);
+  }
+
   // This checks and creates if missing the user's directory in shadow root.
   // We need to disambiguate with vault presence, because it is possible that
   // we have an empty shadow root directory for the user left behind after
