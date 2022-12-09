@@ -12,6 +12,7 @@
 #include <base/files/scoped_temp_dir.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
+#include <base/test/task_environment.h>
 #include <base/time/time.h>
 #include <cros_config/fake_cros_config.h>
 #include <gmock/gmock.h>
@@ -113,6 +114,10 @@ class PrefsTest : public testing::Test {
     ASSERT_TRUE(
         prefs_.Init(std::make_unique<FilePrefsStore>(paths_[0]), GetSources()));
   }
+
+  base::test::SingleThreadTaskEnvironment task_environment_{
+      base::test::TaskEnvironment::MainThreadType::IO,
+      base::test::TaskEnvironment::TimeSource::SYSTEM_TIME};
 
   std::vector<base::FilePath> paths_;
   std::unique_ptr<base::ScopedTempDir>

@@ -6,6 +6,7 @@
 
 #include <base/check.h>
 #include <base/memory/ptr_util.h>
+#include <base/test/task_environment.h>
 #include <gtest/gtest.h>
 
 #include "power_manager/common/clock.h"
@@ -42,6 +43,10 @@ class ActivityLoggerTest : public testing::Test {
   }
 
  protected:
+  base::test::SingleThreadTaskEnvironment task_environment_{
+      base::test::TaskEnvironment::MainThreadType::IO,
+      base::test::TaskEnvironment::TimeSource::MOCK_TIME};
+
   const std::string kName;
 
   BaseActivityLogger* logger_;  // Not owned.

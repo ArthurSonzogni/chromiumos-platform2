@@ -447,7 +447,6 @@ if (use.test) {
       "common/activity_logger_test.cc",
       "common/battery_percentage_converter_test.cc",
       "common/prefs_test.cc",
-      "common/testrunner.cc",
       "common/util_test.cc",
     ]
     configs += [
@@ -458,6 +457,7 @@ if (use.test) {
     deps = [
       ":libutil",
       ":libutil_test",
+      "//common-mk/testrunner",
     ]
   }
 
