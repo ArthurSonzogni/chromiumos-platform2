@@ -945,10 +945,17 @@ bool Platform::DeleteFileDurable(const FilePath& path) {
 }
 
 bool Platform::DeleteFileSecurely(const FilePath& path) {
-  DCHECK(path.IsAbsolute()) << "path=" << path;
+  bool ok = false;
 
-  return secure_erase_file::SecureErase(path) &&
-         secure_erase_file::DropCaches();
+  if (secure_erase_file::IsSupported(path)) {
+    ok = secure_erase_file::SecureErase(path);
+  }
+
+  if (!ok) {
+    ok = secure_erase_file::ZeroFile(path);
+  }
+
+  return ok && secure_erase_file::DropCaches();
 }
 
 bool Platform::EnumerateDirectoryEntries(const FilePath& path,
