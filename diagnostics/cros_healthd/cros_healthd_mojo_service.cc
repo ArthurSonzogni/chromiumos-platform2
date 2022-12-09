@@ -4,17 +4,19 @@
 
 #include "diagnostics/cros_healthd/cros_healthd_mojo_service.h"
 
+#include <memory>
 #include <sys/types.h>
-
 #include <utility>
 
 #include <base/check.h>
 #include <base/logging.h>
+#include <base/notreached.h>
 #include <chromeos/mojo/service_constants.h>
+#include <mojo/public/cpp/bindings/receiver_set.h>
 
-#include "base/notreached.h"
 #include "diagnostics/cros_healthd/fetchers/process_fetcher.h"
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
+#include "diagnostics/mojom/public/cros_healthd_routines.mojom.h"
 
 namespace diagnostics {
 
@@ -105,7 +107,23 @@ void CrosHealthdMojoService::ProbeMultipleProcessInfo(
 void CrosHealthdMojoService::CreateRoutine(
     mojom::RoutineArgumentPtr routine_arg,
     mojo::PendingReceiver<mojom::RoutineControl> routine_receiver) {
-  NOTIMPLEMENTED();
+  switch (routine_arg->which()) {
+    case mojom::RoutineArgument::Tag::kMemory:
+      NOTIMPLEMENTED();
+      break;
+    case mojom::RoutineArgument::Tag::kUnrecognizedArgument:
+      LOG(ERROR) << "Routine Argument not recognized/supported";
+  }
+}
+
+void CrosHealthdMojoService::OnRoutineException(mojo::ReceiverId receiver_id,
+                                                uint32_t error,
+                                                const std::string& reason) {
+  if (!receiver_set_.HasReceiver(receiver_id)) {
+    LOG(ERROR) << "Receiver ID not found in receiver set: " << receiver_id;
+    return;
+  }
+  receiver_set_.RemoveWithReason(receiver_id, error, reason);
 }
 
 }  // namespace diagnostics

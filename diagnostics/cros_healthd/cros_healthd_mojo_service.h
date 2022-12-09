@@ -6,11 +6,14 @@
 #define DIAGNOSTICS_CROS_HEALTHD_CROS_HEALTHD_MOJO_SERVICE_H_
 
 #include <cstdint>
+#include <string>
 #include <vector>
 
+#include <base/memory/weak_ptr.h>
 #include <mojo/public/cpp/bindings/pending_receiver.h>
 #include <mojo/public/cpp/bindings/pending_remote.h>
 #include <mojo/public/cpp/bindings/receiver_set.h>
+#include <mojo/public/cpp/bindings/unique_receiver_set.h>
 
 #include "diagnostics/cros_healthd/event_aggregator.h"
 #include "diagnostics/cros_healthd/fetch_aggregator.h"
@@ -87,6 +90,12 @@ class CrosHealthdMojoService final
           routine_receiver) override;
 
  private:
+  // A function to be run by Routines in CrosHealthdRoutineService. When routine
+  // encounters an exception, this function should be able to disconnect its
+  // mojo connection.
+  void OnRoutineException(mojo::ReceiverId receiver_id,
+                          uint32_t error,
+                          const std::string& reason);
   // Mojo service providers to provide services to mojo service manager.
   MojoServiceProvider<ash::cros_healthd::mojom::CrosHealthdProbeService>
       probe_provider_{this};
@@ -99,6 +108,13 @@ class CrosHealthdMojoService final
   Context* const context_ = nullptr;
   FetchAggregator* const fetch_aggregator_ = nullptr;
   EventAggregator* const event_aggregator_ = nullptr;
+  // A unique receiver set will hold both the mojo receiver and the routine
+  // implementation for lifecycle management.
+  mojo::UniqueReceiverSet<ash::cros_healthd::mojom::RoutineControl>
+      receiver_set_;
+
+  // Must be the last class member.
+  base::WeakPtrFactory<CrosHealthdMojoService> weak_ptr_factory_{this};
 };
 
 }  // namespace diagnostics

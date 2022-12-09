@@ -32,10 +32,15 @@ interface CrosHealthdRoutinesService {
 
 // Possible routines the RoutineControl API can create.
 //
-// NextMinVersion: 1, NextIndex: 1
+// NextMinVersion: 2, NextIndex: 2
+[Extensible]
 union RoutineArgument {
+  // Default field is required by extensible unions for backward compatibility.
+  // Any unrecognized Mojo field will deserialize to this field. Don't use this.
+  [Default, MinVersion=1] bool unrecognizedArgument @0;
+
   // Arguments to create a memory routine.
-  MemoryRoutineArgument memory@0;
+  MemoryRoutineArgument memory@1;
 };
 
 // This routine checks whether there is any memory problem by
