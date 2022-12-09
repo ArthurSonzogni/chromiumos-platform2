@@ -6,6 +6,7 @@
 
 #include <base/files/file_util.h>
 #include <brillo/dbus/dbus_object.h>
+#include <chromeos/dbus/service_constants.h>
 #include <dbus/dlp/dbus-constants.h>
 #include <dbus/login_manager/dbus-constants.h>
 #include <dbus/object_path.h>
@@ -14,6 +15,7 @@
 #include "dlp/dlp_adaptor.h"
 
 using testing::_;
+using testing::Invoke;
 using testing::Return;
 
 namespace dlp {
@@ -33,6 +35,8 @@ DlpAdaptorTestHelper::DlpAdaptorTestHelper() {
   EXPECT_CALL(*bus_, GetExportedObject(_))
       .WillRepeatedly(Return(mock_exported_object_.get()));
 
+  EXPECT_CALL(*bus_, HasDBusThread()).WillRepeatedly(Return(false));
+
   EXPECT_CALL(*mock_exported_object_, ExportMethod(_, _, _, _))
       .Times(testing::AnyNumber());
 
@@ -50,6 +54,16 @@ DlpAdaptorTestHelper::DlpAdaptorTestHelper() {
               GetObjectProxy(login_manager::kSessionManagerServiceName, _))
       .WillRepeatedly(Return(mock_session_manager_proxy_.get()));
 
+  mock_chrome_features_service_proxy_ =
+      base::MakeRefCounted<dbus::MockObjectProxy>(
+          bus_.get(), chromeos::kChromeFeaturesServiceName,
+          dbus::ObjectPath(chromeos::kChromeFeaturesServicePath));
+  EXPECT_CALL(*bus_, GetObjectProxy(chromeos::kChromeFeaturesServiceName, _))
+      .WillRepeatedly(Return(mock_chrome_features_service_proxy_.get()));
+  EXPECT_CALL(*mock_chrome_features_service_proxy_, CallMethodAndBlock(_, _))
+      .WillRepeatedly(
+          Invoke(this, &DlpAdaptorTestHelper::ChromeFeaturesIsEnabledResponse));
+
   EXPECT_TRUE(home_dir_.CreateUniqueTempDir());
 
   base::ScopedFD fd_1, fd_2;
@@ -62,5 +76,14 @@ DlpAdaptorTestHelper::DlpAdaptorTestHelper() {
 }
 
 DlpAdaptorTestHelper::~DlpAdaptorTestHelper() = default;
+
+std::unique_ptr<dbus::Response>
+DlpAdaptorTestHelper::ChromeFeaturesIsEnabledResponse(
+    dbus::MethodCall* method_call, int timeout_ms) {
+  auto response = dbus::Response::CreateEmpty();
+  dbus::MessageWriter writer(response.get());
+  writer.AppendBool(database_cleanup_feature_enabled_);
+  return response;
+}
 
 }  // namespace dlp

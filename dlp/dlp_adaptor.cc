@@ -29,6 +29,7 @@
 #include <brillo/dbus/file_descriptor.h>
 #include <brillo/errors/error.h>
 #include <dbus/dlp/dbus-constants.h>
+#include <featured/feature_library.h>
 #include <google/protobuf/message_lite.h>
 #include <session_manager/dbus-proxies.h>
 #include <sqlite3.h>
@@ -88,6 +89,11 @@ std::set<std::pair<base::FilePath, ino64_t>> EnumerateFiles(
 }
 
 }  // namespace
+
+const struct VariationsFeature kCrOSLateBootDlpDatabaseCleanupFeature = {
+    .name = "CrOSLateBootDlpDatabaseCleanupFeature",
+    .default_state = FEATURE_DISABLED_BY_DEFAULT,
+};
 
 DlpAdaptor::DlpAdaptor(
     std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object,
@@ -392,10 +398,25 @@ void DlpAdaptor::OnDatabaseInitialized(base::OnceClosure init_callback,
     std::move(init_callback).Run();
     return;
   }
-  base::ThreadTaskRunnerHandle::Get()->PostTaskAndReplyWithResult(
-      FROM_HERE, base::BindOnce(&EnumerateFiles, home_path_),
-      base::BindOnce(&DlpAdaptor::CleanupAndSetDatabase, base::Unretained(this),
-                     std::move(db), std::move(init_callback)));
+
+  // Check whether cleanup of deleted files should happen when database is
+  // initialized.
+  // This could be disabled because for now the daemon can't traverse some
+  // of the home directory folders due to inconsistent access permissions.
+  std::unique_ptr<feature::PlatformFeatures> feature_lib =
+      feature::PlatformFeatures::New(dbus_object_->GetBus());
+  if (feature_lib &&
+      feature_lib->IsEnabledBlocking(kCrOSLateBootDlpDatabaseCleanupFeature)) {
+    base::ThreadTaskRunnerHandle::Get()->PostTaskAndReplyWithResult(
+        FROM_HERE, base::BindOnce(&EnumerateFiles, home_path_),
+        base::BindOnce(&DlpAdaptor::CleanupAndSetDatabase,
+                       base::Unretained(this), std::move(db),
+                       std::move(init_callback)));
+
+  } else {
+    OnDatabaseCleaned(std::move(db), std::move(init_callback),
+                      /*success=*/true);
+  }
 }
 
 void DlpAdaptor::AddPerFileWatch(

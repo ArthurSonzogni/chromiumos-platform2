@@ -94,7 +94,9 @@ class DlpAdaptor : public org::chromium::DlpAdaptor,
   FRIEND_TEST(DlpAdaptorTest, RequestAllowedWithoutDatabase);
   FRIEND_TEST(DlpAdaptorTest, GetFilesSources);
   FRIEND_TEST(DlpAdaptorTest, GetFilesSourcesWithoutDatabase);
-  FRIEND_TEST(DlpAdaptorTest, GetFilesSourcesFileDeletedDBReopened);
+  FRIEND_TEST(DlpAdaptorTest, GetFilesSourcesFileDeletedDBReopenedWithCleanup);
+  FRIEND_TEST(DlpAdaptorTest,
+              GetFilesSourcesFileDeletedDBReopenedWithoutCleanup);
   FRIEND_TEST(DlpAdaptorTest, GetFilesSourcesFileDeletedInFlight);
   FRIEND_TEST(DlpAdaptorTest, SetDlpFilesPolicy);
   FRIEND_TEST(DlpAdaptorTest, CheckFilesTransfer);

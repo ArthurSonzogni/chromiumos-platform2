@@ -75,6 +75,7 @@ static_library("libdlp_static") {
     "kernel_version_tools.cc",
   ]
   configs += [ ":target_defaults" ]
+  deps = [ "//featured:libfeatures" ]
 }
 
 executable("dlp_init") {
