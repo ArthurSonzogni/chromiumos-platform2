@@ -299,10 +299,13 @@ void DlpAdaptor::GetFilesSources(
     return;
   }
 
+  const std::vector<ino64_t> inodes = {request.files_inodes().begin(),
+                                       request.files_inodes().end()};
+
   db_->GetFileEntriesByInodes(
-      {request.files_inodes().begin(), request.files_inodes().end()},
+      inodes,
       base::BindOnce(&DlpAdaptor::ProcessGetFilesSourcesWithData,
-                     base::Unretained(this), std::move(response)));
+                     base::Unretained(this), std::move(response), inodes));
 }
 
 void DlpAdaptor::CheckFilesTransfer(
@@ -687,12 +690,17 @@ void DlpAdaptor::ReplyOnCheckFilesTransfer(
 void DlpAdaptor::ProcessGetFilesSourcesWithData(
     std::unique_ptr<
         brillo::dbus_utils::DBusMethodResponse<std::vector<uint8_t>>> response,
+    const std::vector<ino64_t>& requested_inodes,
     std::map<ino64_t, FileEntry> file_entries) {
   GetFilesSourcesResponse response_proto;
-  for (const auto& [inode, entry] : file_entries) {
+  for (const auto& inode : requested_inodes) {
+    auto it = file_entries.find(inode);
+    if (it == std::end(file_entries)) {
+      continue;
+    }
     FileMetadata* file_metadata = response_proto.add_files_metadata();
-    file_metadata->set_inode(entry.inode);
-    file_metadata->set_source_url(entry.source_url);
+    file_metadata->set_inode(inode);
+    file_metadata->set_source_url(it->second.source_url);
   }
 
   response->Return(SerializeProto(response_proto));
