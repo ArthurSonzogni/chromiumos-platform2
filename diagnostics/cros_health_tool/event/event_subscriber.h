@@ -7,6 +7,8 @@
 
 #include <memory>
 
+#include <mojo/public/cpp/bindings/receiver.h>
+
 #include "diagnostics/cros_health_tool/event/audio_subscriber.h"
 #include "diagnostics/cros_health_tool/event/bluetooth_subscriber.h"
 #include "diagnostics/cros_health_tool/event/lid_subscriber.h"
@@ -15,17 +17,21 @@
 #include "diagnostics/cros_health_tool/event/thunderbolt_subscriber.h"
 #include "diagnostics/cros_health_tool/event/usb_subscriber.h"
 #include "diagnostics/cros_healthd_mojo_adapter/cros_healthd_mojo_adapter.h"
+#include "diagnostics/mojom/public/cros_healthd_events.mojom.h"
 
 namespace diagnostics {
 
 // This class connects all category-specific event subscribers to cros_healthd.
-class EventSubscriber final {
+class EventSubscriber final : public ash::cros_healthd::mojom::EventObserver {
  public:
   // Creates an instance, initially not subscribed to any events.
   EventSubscriber();
   EventSubscriber(const EventSubscriber&) = delete;
   EventSubscriber& operator=(const EventSubscriber&) = delete;
   ~EventSubscriber();
+
+  // ash::cros_healthd::mojom::EventObserver overrides:
+  void OnEvent(const ash::cros_healthd::mojom::EventInfoPtr info) override;
 
   // Subscribes to cros_healthd's Bluetooth events. Returns true on success and
   // false on failure.
@@ -53,9 +59,15 @@ class EventSubscriber final {
   // false on failure.
   bool SubscribeToUsbEvents();
 
+  // Subscribes to cros_healthd's events. Returns true on success and false on
+  // failure.
+  bool SubscribeToEvents(ash::cros_healthd::mojom::EventCategoryEnum category);
+
  private:
   // Allows mojo communication with cros_healthd.
   std::unique_ptr<CrosHealthdMojoAdapter> mojo_adapter_;
+
+  mojo::Receiver<ash::cros_healthd::mojom::EventObserver> receiver_;
 
   // Used to subscribe to Bluetooth events.
   std::unique_ptr<BluetoothSubscriber> bluetooth_subscriber_;

@@ -15,32 +15,36 @@
 
 namespace diagnostics {
 
-namespace mojo_ipc = ::ash::cros_healthd::mojom;
+namespace {
+
+namespace mojom = ::ash::cros_healthd::mojom;
 namespace network_health_ipc = ::chromeos::network_health::mojom;
 
+}  // namespace
+
 EventSubscriber::EventSubscriber()
-    : mojo_adapter_(CrosHealthdMojoAdapter::Create()) {
+    : mojo_adapter_(CrosHealthdMojoAdapter::Create()), receiver_{this} {
   DCHECK(mojo_adapter_);
 }
 
 EventSubscriber::~EventSubscriber() = default;
 
 bool EventSubscriber::SubscribeToBluetoothEvents() {
-  mojo::PendingRemote<mojo_ipc::CrosHealthdBluetoothObserver> remote;
+  mojo::PendingRemote<mojom::CrosHealthdBluetoothObserver> remote;
   bluetooth_subscriber_ = std::make_unique<BluetoothSubscriber>(
       remote.InitWithNewPipeAndPassReceiver());
   return mojo_adapter_->AddBluetoothObserver(std::move(remote));
 }
 
 bool EventSubscriber::SubscribeToLidEvents() {
-  mojo::PendingRemote<mojo_ipc::CrosHealthdLidObserver> remote;
+  mojo::PendingRemote<mojom::CrosHealthdLidObserver> remote;
   lid_subscriber_ =
       std::make_unique<LidSubscriber>(remote.InitWithNewPipeAndPassReceiver());
   return mojo_adapter_->AddLidObserver(std::move(remote));
 }
 
 bool EventSubscriber::SubscribeToPowerEvents() {
-  mojo::PendingRemote<mojo_ipc::CrosHealthdPowerObserver> remote;
+  mojo::PendingRemote<mojom::CrosHealthdPowerObserver> remote;
   power_subscriber_ = std::make_unique<PowerSubscriber>(
       remote.InitWithNewPipeAndPassReceiver());
   return mojo_adapter_->AddPowerObserver(std::move(remote));
@@ -54,24 +58,33 @@ bool EventSubscriber::SubscribeToNetworkEvents() {
 }
 
 bool EventSubscriber::SubscribeToAudioEvents() {
-  mojo::PendingRemote<mojo_ipc::CrosHealthdAudioObserver> remote;
+  mojo::PendingRemote<mojom::CrosHealthdAudioObserver> remote;
   audio_subscriber_ = std::make_unique<AudioSubscriber>(
       remote.InitWithNewPipeAndPassReceiver());
   return mojo_adapter_->AddAudioObserver(std::move(remote));
 }
 
 bool EventSubscriber::SubscribeToThunderboltEvents() {
-  mojo::PendingRemote<mojo_ipc::CrosHealthdThunderboltObserver> remote;
+  mojo::PendingRemote<mojom::CrosHealthdThunderboltObserver> remote;
   thunderbolt_subscriber_ = std::make_unique<ThunderboltSubscriber>(
       remote.InitWithNewPipeAndPassReceiver());
   return mojo_adapter_->AddThunderboltObserver(std::move(remote));
 }
 
 bool EventSubscriber::SubscribeToUsbEvents() {
-  mojo::PendingRemote<mojo_ipc::CrosHealthdUsbObserver> remote;
+  mojo::PendingRemote<mojom::CrosHealthdUsbObserver> remote;
   usb_subscriber_ =
       std::make_unique<UsbSubscriber>(remote.InitWithNewPipeAndPassReceiver());
   return mojo_adapter_->AddUsbObserver(std::move(remote));
+}
+
+bool EventSubscriber::SubscribeToEvents(mojom::EventCategoryEnum category) {
+  return mojo_adapter_->AddEventObserver(category,
+                                         receiver_.BindNewPipeAndPassRemote());
+}
+
+void EventSubscriber::OnEvent(const mojom::EventInfoPtr info) {
+  NOTIMPLEMENTED();
 }
 
 }  // namespace diagnostics
