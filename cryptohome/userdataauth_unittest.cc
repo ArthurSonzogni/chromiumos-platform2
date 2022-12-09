@@ -1357,6 +1357,30 @@ TEST_F(UserDataAuthTestNotInitialized, GetCurrentSpaceForArcProjectId) {
             userdataauth_->GetCurrentSpaceForArcProjectId(kProjectId));
 }
 
+TEST_F(UserDataAuthTestNotInitialized,
+       StartFingerprintAuthSessionFailNoManager) {
+  constexpr char kUsername[] = "foo@gmail.com";
+
+  // Setup.
+  // Undo the injection of a mock manager. This turns on the logic in
+  // `UserDataAuth` that attempts to create the manager - which fails in this
+  // test.
+  userdataauth_->set_fingerprint_manager(nullptr);
+  InitializeUserDataAuth();
+
+  // Test.
+  user_data_auth::StartFingerprintAuthSessionRequest req;
+  req.mutable_account_id()->set_account_id(kUsername);
+  TestFuture<user_data_auth::StartFingerprintAuthSessionReply> reply_future;
+  userdataauth_->StartFingerprintAuthSession(
+      req, reply_future.GetCallback<
+               const user_data_auth::StartFingerprintAuthSessionReply&>());
+
+  // Verify.
+  EXPECT_EQ(reply_future.Get().error(),
+            user_data_auth::CRYPTOHOME_ERROR_FINGERPRINT_ERROR_INTERNAL);
+}
+
 TEST_F(UserDataAuthTestNotInitialized, EndFingerprintAuthSessionFailNoManager) {
   // Undo the injection of a mock manager. This turns on the logic in
   // `UserDataAuth` that attempts to create the manager - which fails in this

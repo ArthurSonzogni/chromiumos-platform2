@@ -3500,6 +3500,15 @@ void UserDataAuth::StartFingerprintAuthSession(
     return;
   }
 
+  if (!fingerprint_manager_) {
+    // Fingerprint manager failed to initialize, or the device may not support
+    // fingerprint auth at all.
+    reply.set_error(
+        user_data_auth::CRYPTOHOME_ERROR_FINGERPRINT_ERROR_INTERNAL);
+    std::move(on_done).Run(reply);
+    return;
+  }
+
   const std::string obfuscated_username = SanitizeUserName(account_id);
   if (!homedirs_->Exists(obfuscated_username)) {
     reply.set_error(user_data_auth::CRYPTOHOME_ERROR_ACCOUNT_NOT_FOUND);
