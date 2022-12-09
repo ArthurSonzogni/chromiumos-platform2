@@ -127,6 +127,9 @@ get_s0ix_count() {
   elif [ -e /sys/kernel/debug/telemetry/s0ix_residency_usec ]; then
     # Apollolake Systems.
     cat /sys/kernel/debug/telemetry/s0ix_residency_usec
+  elif [ -e /sys/kernel/debug/amd_pmc/s0ix_stats ]; then
+    # AMD Systems.
+    awk '/Residency/ {print $3}' < /sys/kernel/debug/amd_pmc/s0ix_stats
   else
     echo 0
   fi
@@ -183,7 +186,8 @@ check_s0ix_errors=0
 check_s2idle_errors=0
 if check_powerd_config --suspend_to_idle; then
   if [ -e /sys/kernel/debug/pmc_core/slp_s0_residency_usec ] || \
-     [ -e /sys/kernel/debug/telemetry/s0ix_residency_usec ]; then
+     [ -e /sys/kernel/debug/telemetry/s0ix_residency_usec ] || \
+     [ -e /sys/kernel/debug/amd_pmc/s0ix_stats ]; then
     check_s0ix_errors=1
   elif has_s2idle; then
     check_s2idle_errors=1
