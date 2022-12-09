@@ -153,6 +153,15 @@ void RgbKeyboardControllerImpl::SetZoneColor(int zone,
   }
 }
 
+void RgbKeyboardControllerImpl::SetStaticZoneColor(int zone,
+                                                   uint8_t r,
+                                                   uint8_t g,
+                                                   uint8_t b) {
+  background_type_ = BackgroundType::kStaticZones;
+  zone_colors_.insert_or_assign(zone, Color(r, g, b));
+  SetZoneColor(zone, r, g, b);
+}
+
 void RgbKeyboardControllerImpl::SetRainbowMode() {
   DCHECK(capabilities_.has_value());
 
@@ -242,6 +251,11 @@ void RgbKeyboardControllerImpl::ReinitializeOnDeviceReconnected() {
     case BackgroundType::kStaticRainbow:
       SetRainbowMode();
       break;
+    case BackgroundType::kStaticZones:
+      for (auto const& [zone, color] : zone_colors_) {
+        SetStaticZoneColor(zone, color.r, color.g, color.b);
+      }
+      break;
     case BackgroundType::kNone:
       break;
   }
@@ -249,7 +263,6 @@ void RgbKeyboardControllerImpl::ReinitializeOnDeviceReconnected() {
 
 void RgbKeyboardControllerImpl::SetKeyboardCapabilityAsIndividualKey() {
   capabilities_ = RgbKeyboardCapabilities::kIndividualKey;
-  PopulateRainbowModeMap();
 }
 
 void RgbKeyboardControllerImpl::OnUsbDeviceAdded(const std::string& sys_path,

@@ -25,6 +25,7 @@ enum class BackgroundType {
   kNone,
   kStaticSingleColor,
   kStaticRainbow,
+  kStaticZones,
 };
 
 class RgbKeyboardControllerImpl : public RgbKeyboardController,
@@ -39,7 +40,7 @@ class RgbKeyboardControllerImpl : public RgbKeyboardController,
   uint32_t GetRgbKeyboardCapabilities() override;
   void SetCapsLockState(bool enabled) override;
   void SetStaticBackgroundColor(uint8_t r, uint8_t g, uint8_t b) override;
-  void SetZoneColor(int zone, uint8_t r, uint8_t g, uint8_t b) override;
+  void SetStaticZoneColor(int zone, uint8_t r, uint8_t g, uint8_t b) override;
   void SetRainbowMode() override;
   void SetAnimationMode(RgbAnimationMode mode) override;
   void SetKeyboardClient(RgbKeyboard* keyboard) override;
@@ -67,6 +68,7 @@ class RgbKeyboardControllerImpl : public RgbKeyboardController,
  private:
   void SetKeyColor(const KeyColor& key_color);
   void SetAllKeyColors(const Color& color);
+  void SetZoneColor(int zone, uint8_t r, uint8_t g, uint8_t b);
 
   bool IsShiftKey(uint32_t key) const {
     return key == kLeftShiftKey || key == kRightShiftKey;
@@ -86,6 +88,7 @@ class RgbKeyboardControllerImpl : public RgbKeyboardController,
   std::optional<RgbKeyboardCapabilities> capabilities_;
   RgbKeyboard* keyboard_;
   Color background_color_;
+  base::flat_map<int, Color> zone_colors_;
   bool caps_lock_enabled_ = false;
   // Helps determine which color to highlight the caps locks keys when
   // disabling caps lock.

@@ -268,24 +268,25 @@ TEST_F(RgbKeyboardControllerTest, SetStaticZoneColor) {
   const Color expected_color(/*r=*/100, /*g=*/150, /*b=*/200);
   const int expected_zone = 2;
 
-  controller_->SetZoneColor(expected_zone, expected_color.r, expected_color.g,
-                            expected_color.b);
+  controller_->SetStaticZoneColor(expected_zone, expected_color.r,
+                                  expected_color.g, expected_color.b);
 
   const std::string expected_log =
       CreateIndividualKeyZoneColorLogEntry(expected_zone, expected_color);
   ValidateLog(expected_log);
 }
 
-TEST_F(RgbKeyboardControllerTest, SetZoneColorDoesNotPermitOutOfBoundsAccess) {
+TEST_F(RgbKeyboardControllerTest,
+       SetStaticZoneColorDoesNotPermitOutOfBoundsAccess) {
   controller_->SetKeyboardCapabilityForTesting(
       RgbKeyboardCapabilities::kIndividualKey);
 
   const Color expected_color(/*r=*/100, /*g=*/150, /*b=*/200);
 
-  controller_->SetZoneColor(-1, expected_color.r, expected_color.g,
-                            expected_color.b);
-  controller_->SetZoneColor(5, expected_color.r, expected_color.g,
-                            expected_color.b);
+  controller_->SetStaticZoneColor(-1, expected_color.r, expected_color.g,
+                                  expected_color.b);
+  controller_->SetStaticZoneColor(5, expected_color.r, expected_color.g,
+                                  expected_color.b);
 
   // The log should be empty.
   ValidateLog("");
@@ -537,4 +538,79 @@ TEST_F(RgbKeyboardControllerTest, DoNotReinitializeWhenNonPrismUsbConnected) {
   ValidateLog(std::string());
 }
 
+TEST_F(RgbKeyboardControllerTest, ReinitializeZonesCapsLockOff) {
+  controller_->SetKeyboardCapabilityForTesting(
+      RgbKeyboardCapabilities::kIndividualKey);
+
+  const Color expected_color_1 = Color(/*r=*/100, /*g=*/150, /*b=*/200);
+  const int expected_zone_1 = 2;
+
+  const Color expected_color_2 = Color(/*r=*/200, /*g=*/250, /*b=*/100);
+  const int expected_zone_2 = 3;
+
+  const Color expected_color_3 = Color(/*r=*/20, /*g=*/25, /*b=*/10);
+
+  // Set the first zone color twice to make sure that the color can be
+  // overwritten correctly.
+  controller_->SetStaticZoneColor(expected_zone_1, expected_color_3.r,
+                                  expected_color_3.g, expected_color_3.b);
+  controller_->SetStaticZoneColor(expected_zone_1, expected_color_1.r,
+                                  expected_color_1.g, expected_color_1.b);
+  controller_->SetStaticZoneColor(expected_zone_2, expected_color_2.r,
+                                  expected_color_2.g, expected_color_2.b);
+
+  EXPECT_TRUE(logger_->ResetLog());
+
+  controller_->ReinitializeOnDeviceReconnected();
+
+  // Expect the colors of zone 2 to be set + default color Shifts after
+  // reinitialization.
+  const std::string shift_key_logs =
+      CreateSetKeyColorLogEntry({kLeftShiftKey, kWhiteBackgroundColor}) +
+      CreateSetKeyColorLogEntry({kRightShiftKey, kWhiteBackgroundColor});
+  ValidateLog(
+      shift_key_logs +
+      CreateIndividualKeyZoneColorLogEntry(expected_zone_1, expected_color_1) +
+      CreateIndividualKeyZoneColorLogEntry(expected_zone_2, expected_color_2));
+}
+
+TEST_F(RgbKeyboardControllerTest, ReinitializeZonesCapsLockOn) {
+  controller_->SetKeyboardCapabilityForTesting(
+      RgbKeyboardCapabilities::kIndividualKey);
+
+  const Color expected_color_1 = Color(/*r=*/100, /*g=*/150, /*b=*/200);
+  const int expected_zone_1 = 2;
+
+  const Color expected_color_2 = Color(/*r=*/200, /*g=*/250, /*b=*/100);
+  const int expected_zone_2 = 3;
+
+  const Color expected_color_3 = Color(/*r=*/20, /*g=*/25, /*b=*/10);
+
+  // Set the first zone color twice to make sure that the color can be
+  // overwritten correctly.
+  controller_->SetStaticZoneColor(expected_zone_1, expected_color_3.r,
+                                  expected_color_3.g, expected_color_3.b);
+  controller_->SetStaticZoneColor(expected_zone_1, expected_color_1.r,
+                                  expected_color_1.g, expected_color_1.b);
+  controller_->SetStaticZoneColor(expected_zone_2, expected_color_2.r,
+                                  expected_color_2.g, expected_color_2.b);
+
+  // Simulate enabling Capslock.
+  controller_->SetCapsLockState(/*enabled=*/true);
+  EXPECT_TRUE(controller_->IsCapsLockEnabledForTesting());
+
+  EXPECT_TRUE(logger_->ResetLog());
+
+  controller_->ReinitializeOnDeviceReconnected();
+
+  // Expect the colors of zone 2 to be set + default color Shifts after
+  // reinitialization.
+  const std::string shift_key_logs =
+      CreateSetKeyColorLogEntry({kLeftShiftKey, kCapsLockHighlightAlternate}) +
+      CreateSetKeyColorLogEntry({kRightShiftKey, kCapsLockHighlightAlternate});
+  ValidateLog(
+      shift_key_logs +
+      CreateIndividualKeyZoneColorLogEntry(expected_zone_1, expected_color_1) +
+      CreateIndividualKeyZoneColorLogEntry(expected_zone_2, expected_color_2));
+}
 }  // namespace rgbkbd
