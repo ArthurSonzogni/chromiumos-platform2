@@ -444,6 +444,21 @@ TEST_F(KeyboardBacklightControllerTest, InitialAlsLevel) {
   EXPECT_EQ(kSlowBacklightTransition, backlight_.current_interval());
 }
 
+TEST_F(KeyboardBacklightControllerTest, InitialAlsLevelWithUserActivity) {
+  als_steps_pref_ = "20.0 -1 60\n80.0 40 -1";
+  initial_backlight_level_ = 55;
+  turn_on_for_user_activity_pref_ = 1;
+  keep_on_ms_pref_ = 30'000;
+  Init();
+
+  // Have the controller receiver user activity before the first sensor
+  // reading is received.
+  //
+  // Expect that the backlight is turned on to its default level.
+  controller_.HandleUserActivity(USER_ACTIVITY_OTHER);
+  EXPECT_EQ(55, backlight_.current_level());
+}
+
 TEST_F(KeyboardBacklightControllerTest, IncreaseBrightness) {
   user_steps_pref_ = "0.0\n10.0\n40.0\n60.0\n100.0";
   initial_backlight_level_ = 0;

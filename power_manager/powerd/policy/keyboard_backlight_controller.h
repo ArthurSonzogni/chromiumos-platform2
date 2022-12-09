@@ -191,7 +191,7 @@ class KeyboardBacklightController : public BacklightController,
   // powerd started.
   //
   // Guaranteed to be strictly positive (i.e., not off).
-  double DefaultUserBrightnessPercent(double startup_brightness_percent) const;
+  double DefaultBrightnessPercent(double startup_brightness_percent) const;
 
   // Set the backlight brightness to the given percentage value in the range
   // [0, 100].
