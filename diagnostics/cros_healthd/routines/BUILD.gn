@@ -83,6 +83,7 @@ source_set("libdiag_routine") {
     "floating_point/floating_point_accuracy.cc",
     "led_lit_up/led_lit_up.cc",
     "memory/memory.cc",
+    "memory/memory_v2.cc",
     "network/captive_portal.cc",
     "network/dns_latency.cc",
     "network/dns_resolution.cc",
