@@ -123,6 +123,22 @@ TEST_F(WriteProtectDisableRsuStateHandlerTest,
   EXPECT_EQ(handler->GetState().wp_disable_rsu().hwid(), kTestHwid);
   EXPECT_EQ(handler->GetState().wp_disable_rsu().challenge_url(), kTestUrl);
 
+  // Verify the challenge code is not recorded to logs when factory mode is
+  // already enabled.
+  base::Value logs(base::Value::Type::DICT);
+  EXPECT_FALSE(json_store_->GetValue(kLogs, &logs));
+}
+
+TEST_F(WriteProtectDisableRsuStateHandlerTest,
+       InitializeState_FactoryModeDisabled) {
+  auto handler = CreateStateHandler(false, true);
+  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+  EXPECT_EQ(handler->GetState().wp_disable_rsu().rsu_done(), false);
+  EXPECT_EQ(handler->GetState().wp_disable_rsu().challenge_code(),
+            kTestChallengeCode);
+  EXPECT_EQ(handler->GetState().wp_disable_rsu().hwid(), kTestHwid);
+  EXPECT_EQ(handler->GetState().wp_disable_rsu().challenge_url(), kTestUrl);
+
   // Verify the challenge code was recorded to logs.
   base::Value logs(base::Value::Type::DICT);
   json_store_->GetValue(kLogs, &logs);
@@ -135,17 +151,6 @@ TEST_F(WriteProtectDisableRsuStateHandlerTest,
             *event.FindDict(kDetails)->FindString(kLogRsuChallengeCode));
   EXPECT_EQ(handler->GetState().wp_disable_rsu().hwid(),
             *event.FindDict(kDetails)->FindString(kLogRsuHwid));
-}
-
-TEST_F(WriteProtectDisableRsuStateHandlerTest,
-       InitializeState_FactoryModeDisabled) {
-  auto handler = CreateStateHandler(false, true);
-  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
-  EXPECT_EQ(handler->GetState().wp_disable_rsu().rsu_done(), false);
-  EXPECT_EQ(handler->GetState().wp_disable_rsu().challenge_code(),
-            kTestChallengeCode);
-  EXPECT_EQ(handler->GetState().wp_disable_rsu().hwid(), kTestHwid);
-  EXPECT_EQ(handler->GetState().wp_disable_rsu().challenge_url(), kTestUrl);
 }
 
 TEST_F(WriteProtectDisableRsuStateHandlerTest,

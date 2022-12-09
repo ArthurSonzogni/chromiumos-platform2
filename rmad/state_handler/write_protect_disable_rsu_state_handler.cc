@@ -63,7 +63,8 @@ RmadErrorCode WriteProtectDisableRsuStateHandler::InitializeState() {
   if (!state_.has_wp_disable_rsu()) {
     auto wp_disable_rsu = std::make_unique<WriteProtectDisableRsuState>();
 
-    wp_disable_rsu->set_rsu_done(IsFactoryModeEnabled());
+    const bool is_rsu_done = IsFactoryModeEnabled();
+    wp_disable_rsu->set_rsu_done(is_rsu_done);
 
     std::string challenge_code;
     if (cr50_utils_->GetRsuChallengeCode(&challenge_code)) {
@@ -92,7 +93,9 @@ RmadErrorCode WriteProtectDisableRsuStateHandler::InitializeState() {
     wp_disable_rsu->set_challenge_url(url_string);
     state_.set_allocated_wp_disable_rsu(wp_disable_rsu.release());
 
-    RecordRsuChallengeCodeToLogs(json_store_, challenge_code, hwid);
+    if (!is_rsu_done) {
+      RecordRsuChallengeCodeToLogs(json_store_, challenge_code, hwid);
+    }
   }
   return RMAD_ERROR_OK;
 }
