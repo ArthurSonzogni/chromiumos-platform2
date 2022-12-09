@@ -777,7 +777,6 @@ void AuthSession::UpdateVaultKeyset(
               CRYPTOHOME_ERROR_NOT_IMPLEMENTED);
     }
     LOG(ERROR) << "KeyBlobs derivation failed before updating keyset.";
-    CryptohomeStatus cryptohome_error = std::move(callback_error);
     std::move(on_done).Run(
         MakeStatus<CryptohomeError>(
             CRYPTOHOME_ERR_LOC(kLocAuthSessionCreateFailedInUpdateKeyset))

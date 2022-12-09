@@ -4307,6 +4307,94 @@ TEST_F(AuthSessionWithUssExperimentTest,
                   IsVerifierPtrWithLabelAndPassword(kFakeLabel, kFakePass)));
 }
 
+// Test that `UpdateAuthFactor` fails when the auth block derivation fails (but
+// doesn't crash).
+TEST_F(AuthSessionTest, UpdateAuthFactorFailsInAuthBlock) {
+  // Setup.
+  // Setting the expectation that the user does not exist.
+  EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(false));
+  // Setting the expectation that the user does not exist.
+  CryptohomeStatusOr<AuthSession*> auth_session_status =
+      auth_session_manager_.CreateAuthSession(
+          kFakeUsername, user_data_auth::AUTH_SESSION_FLAGS_NONE,
+          AuthIntent::kDecrypt);
+  EXPECT_TRUE(auth_session_status.ok());
+  AuthSession& auth_session = *auth_session_status.value();
+  // Creating the user.
+  EXPECT_THAT(auth_session.OnUserCreated(), IsOk());
+  // Adding the password VK.
+  EXPECT_CALL(auth_block_utility_,
+              GetAuthBlockTypeForCreation(false, false, false))
+      .WillRepeatedly(ReturnValue(AuthBlockType::kTpmBoundToPcr));
+  EXPECT_CALL(auth_block_utility_, CreateKeyBlobsWithAuthBlockAsync(_, _, _))
+      .WillOnce([](auto, auto, AuthBlock::CreateCallback create_callback) {
+        // Make an arbitrary auth block state type can be used in this test.
+        auto key_blobs = std::make_unique<KeyBlobs>();
+        auto auth_block_state = std::make_unique<AuthBlockState>();
+        auth_block_state->state = TpmBoundToPcrAuthBlockState();
+        std::move(create_callback)
+            .Run(OkStatus<CryptohomeCryptoError>(), std::move(key_blobs),
+                 std::move(auth_block_state));
+        return true;
+      })
+      .RetiresOnSaturation();
+  EXPECT_CALL(keyset_management_,
+              AddInitialKeysetWithKeyBlobs(_, _, _, _, _, _, _))
+      .WillOnce(
+          [](auto, auto, const KeyData& key_data, auto, auto, auto, auto) {
+            auto vk = std::make_unique<VaultKeyset>();
+            vk->SetKeyData(key_data);
+            return vk;
+          });
+  EXPECT_CALL(keyset_management_, GetVaultKeyset(_, kFakeLabel))
+      .WillOnce([](auto, auto) {
+        auto vk = std::make_unique<VaultKeyset>();
+        vk->InitializeFromSerialized(CreateFakePasswordVk(kFakeLabel));
+        return vk;
+      });
+  user_data_auth::AddAuthFactorRequest add_request;
+  add_request.mutable_auth_factor()->set_type(
+      user_data_auth::AUTH_FACTOR_TYPE_PASSWORD);
+  add_request.mutable_auth_factor()->set_label(kFakeLabel);
+  add_request.mutable_auth_factor()->mutable_password_metadata();
+  add_request.mutable_auth_input()->mutable_password_input()->set_secret(
+      kFakePass);
+  add_request.set_auth_session_id(auth_session.serialized_token());
+  TestFuture<CryptohomeStatus> add_future;
+  auth_session.AddAuthFactor(add_request, add_future.GetCallback());
+  EXPECT_THAT(add_future.Get(), IsOk());
+  // Setting the expectations for the new auth block creation. The mock is set
+  // to fail.
+  EXPECT_CALL(auth_block_utility_, CreateKeyBlobsWithAuthBlockAsync(_, _, _))
+      .WillOnce([](auto, auto, AuthBlock::CreateCallback create_callback) {
+        std::move(create_callback)
+            .Run(MakeStatus<CryptohomeCryptoError>(
+                     kErrorLocationForTestingAuthSession,
+                     error::ErrorActionSet(
+                         {error::ErrorAction::kDevCheckUnexpectedState}),
+                     CryptoError::CE_OTHER_CRYPTO),
+                 nullptr, nullptr);
+      });
+
+  // Test.
+  // Preparing UpdateAuthFactor parameters.
+  user_data_auth::UpdateAuthFactorRequest update_request;
+  update_request.set_auth_session_id(auth_session.serialized_token());
+  update_request.set_auth_factor_label(kFakeLabel);
+  update_request.mutable_auth_factor()->set_type(
+      user_data_auth::AUTH_FACTOR_TYPE_PASSWORD);
+  update_request.mutable_auth_factor()->set_label(kFakeLabel);
+  update_request.mutable_auth_factor()->mutable_password_metadata();
+  update_request.mutable_auth_input()->mutable_password_input()->set_secret(
+      kFakePass);
+  // Calling UpdateAuthFactor.
+  TestFuture<CryptohomeStatus> update_future;
+  auth_session.UpdateAuthFactor(update_request, update_future.GetCallback());
+
+  // Verify.
+  EXPECT_THAT(update_future.Get(), NotOk());
+}
+
 // Test that AuthenticateAuthFactor succeeds for the `AuthIntent::kWebAuthn`
 // scenario, using the legacy fingerprint.
 TEST_F(AuthSessionWithUssExperimentTest, FingerprintAuthenticationForWebAuthn) {
