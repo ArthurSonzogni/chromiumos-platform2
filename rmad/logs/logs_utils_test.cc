@@ -435,6 +435,8 @@ TEST_F(LogsUtilsTest, RecordFirmwareUpdateStatus) {
 
   EXPECT_TRUE(RecordFirmwareUpdateStatusToLogs(json_store_, status1));
   EXPECT_TRUE(RecordFirmwareUpdateStatusToLogs(json_store_, status2));
+  // Adding a duplicate `kFirmwareComplete` should not be recorded to logs.
+  EXPECT_FALSE(RecordFirmwareUpdateStatusToLogs(json_store_, status2));
   base::Value logs(base::Value::Type::DICT);
   json_store_->GetValue(kLogs, &logs);
 

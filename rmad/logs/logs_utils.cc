@@ -348,6 +348,25 @@ bool RecordComponentCalibrationStatusToLogs(
 
 bool RecordFirmwareUpdateStatusToLogs(scoped_refptr<JsonStore> json_store,
                                       FirmwareUpdateStatus status) {
+  // Check to make sure the firmware complete was not already recorded.
+  if (status == FirmwareUpdateStatus::kFirmwareComplete) {
+    base::Value logs(base::Value::Type::DICT);
+    json_store->GetValue(kLogs, &logs);
+    const base::Value::List* events = logs.GetDict().FindList(kEvents);
+    if (events) {
+      for (const base::Value& value : *events) {
+        const base::Value::Dict& event = value.GetDict();
+        if (event.FindInt(kType) == static_cast<int>(LogEventType::kData) &&
+            event.FindInt(kStateId) ==
+                static_cast<int>(RmadState::kUpdateRoFirmware) &&
+            event.FindDict(kDetails)->FindInt(kFirmwareStatus) ==
+                static_cast<int>(FirmwareUpdateStatus::kFirmwareComplete)) {
+          return false;
+        }
+      }
+    }
+  }
+
   base::Value::Dict details;
   details.Set(kFirmwareStatus, static_cast<int>(status));
 

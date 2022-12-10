@@ -71,8 +71,9 @@ bool RecordComponentCalibrationStatusToLogs(
     const std::vector<std::pair<std::string, LogCalibrationStatus>>&
         component_statuses);
 
-// Adds the firmware update status updates to `json_store`. Returns true if
-// successful.
+// Adds the firmware update status updates to `json_store`. Checks to see if the
+// firmware update complete was already recorded to avoid duplication. Returns
+// true if successful.
 bool RecordFirmwareUpdateStatusToLogs(scoped_refptr<JsonStore> json_store,
                                       FirmwareUpdateStatus status);
 
