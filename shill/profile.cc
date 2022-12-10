@@ -123,8 +123,6 @@ bool Profile::InitStorage(InitStorageOption storage_option, Error* error) {
       // this file.  Move this file out of the way so a future open attempt
       // will succeed, assuming the failure reason was the former.
       storage->MarkAsCorrupted();
-      metrics()->SendEnumToUMA(Metrics::kMetricCorruptedProfile,
-                               Metrics::kCorruptedProfile);
     }
     return false;
   }

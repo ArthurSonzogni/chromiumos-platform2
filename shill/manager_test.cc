@@ -2095,37 +2095,6 @@ TEST_F(ManagerTest, TechnologyOrder) {
             manager()->GetTechnologyOrder());
 }
 
-TEST_F(ManagerTest, ConnectionStatusCheck) {
-  // Setup mock service.
-  MockServiceRefPtr mock_service(new NiceMock<MockService>(manager()));
-  manager()->RegisterService(mock_service);
-
-  // Device not connected.
-  EXPECT_CALL(*mock_service, IsConnected(nullptr)).WillOnce(Return(false));
-  EXPECT_CALL(*metrics(), SendEnumToUMA(Metrics::kMetricDeviceConnectionStatus,
-                                        Metrics::kConnectionStatusOffline));
-  manager()->ConnectionStatusCheck();
-
-  // Device connected, but not online.
-  EXPECT_CALL(*mock_service, IsConnected(nullptr)).WillOnce(Return(true));
-  EXPECT_CALL(*mock_service, IsOnline()).WillOnce(Return(false));
-  EXPECT_CALL(*metrics(), SendEnumToUMA(Metrics::kMetricDeviceConnectionStatus,
-                                        Metrics::kConnectionStatusOnline))
-      .Times(0);
-  EXPECT_CALL(*metrics(), SendEnumToUMA(Metrics::kMetricDeviceConnectionStatus,
-                                        Metrics::kConnectionStatusConnected));
-  manager()->ConnectionStatusCheck();
-
-  // Device connected and online.
-  EXPECT_CALL(*mock_service, IsConnected(nullptr)).WillOnce(Return(true));
-  EXPECT_CALL(*mock_service, IsOnline()).WillOnce(Return(true));
-  EXPECT_CALL(*metrics(), SendEnumToUMA(Metrics::kMetricDeviceConnectionStatus,
-                                        Metrics::kConnectionStatusOnline));
-  EXPECT_CALL(*metrics(), SendEnumToUMA(Metrics::kMetricDeviceConnectionStatus,
-                                        Metrics::kConnectionStatusConnected));
-  manager()->ConnectionStatusCheck();
-}
-
 TEST_F(ManagerTest, DevicePresenceStatusCheck) {
   SetMockDevices(
       {Technology::kEthernet, Technology::kWiFi, Technology::kEthernet});

@@ -1977,26 +1977,10 @@ bool Manager::IsServiceAlwaysOnVpn(const ServiceConstRefPtr& service) const {
 void Manager::DeviceStatusCheckTask() {
   SLOG(4) << "In " << __func__;
 
-  ConnectionStatusCheck();
   DevicePresenceStatusCheck();
 
   dispatcher_->PostDelayedTask(FROM_HERE, device_status_check_task_.callback(),
                                kDeviceStatusCheckInterval);
-}
-
-void Manager::ConnectionStatusCheck() {
-  SLOG(4) << "In " << __func__;
-  // Report current connection status.
-  Metrics::ConnectionStatus status = Metrics::kConnectionStatusOffline;
-  if (IsConnected()) {
-    status = Metrics::kConnectionStatusConnected;
-    // Check if device is online as well.
-    if (IsOnline()) {
-      metrics_->SendEnumToUMA(Metrics::kMetricDeviceConnectionStatus,
-                              Metrics::kConnectionStatusOnline);
-    }
-  }
-  metrics_->SendEnumToUMA(Metrics::kMetricDeviceConnectionStatus, status);
 }
 
 void Manager::DevicePresenceStatusCheck() {

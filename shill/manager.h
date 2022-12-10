@@ -546,7 +546,6 @@ class Manager {
   FRIEND_TEST(ManagerTest, ClaimBlockedDevice);
   FRIEND_TEST(ManagerTest, ClaimDeviceWithoutClaimer);
   FRIEND_TEST(ManagerTest, ConnectedTechnologies);
-  FRIEND_TEST(ManagerTest, ConnectionStatusCheck);
   FRIEND_TEST(ManagerTest, ConnectToBestServices);
   FRIEND_TEST(ManagerTest, CreateConnectivityReport);
   FRIEND_TEST(ManagerTest, DefaultTechnology);
@@ -683,7 +682,6 @@ class Manager {
 
   void SortServicesTask();
   void DeviceStatusCheckTask();
-  void ConnectionStatusCheck();
   void DevicePresenceStatusCheck();
 
   // Sets the profile of |service| to |profile|, without notifying its

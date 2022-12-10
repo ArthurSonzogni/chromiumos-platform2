@@ -565,10 +565,6 @@ void Metrics::NotifySuspendActionsCompleted(bool success) {
   time_suspend_actions_timer->GetElapsedTime(&elapsed_time);
   time_suspend_actions_timer->Reset();
   SendToUMA(kMetricSuspendActionTimeTaken, elapsed_time.InMilliseconds());
-
-  SuspendActionResult result =
-      success ? kSuspendActionResultSuccess : kSuspendActionResultFailure;
-  SendEnumToUMA(kMetricSuspendActionResult, result);
 }
 
 void Metrics::NotifyNeighborLinkMonitorFailure(

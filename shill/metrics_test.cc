@@ -692,10 +692,6 @@ TEST_F(MetricsTest, NotifySuspendActionsCompleted_Success) {
                                   Metrics::kMetricSuspendActionTimeTaken.min,
                                   Metrics::kMetricSuspendActionTimeTaken.max,
                                   Metrics::kTimerHistogramNumBuckets));
-  EXPECT_CALL(library_,
-              SendEnumToUMA(Metrics::kMetricSuspendActionResult.n.name,
-                            Metrics::kSuspendActionResultSuccess,
-                            Metrics::kSuspendActionResultMax));
   metrics_.NotifySuspendActionsCompleted(true);
 }
 
@@ -713,10 +709,6 @@ TEST_F(MetricsTest, NotifySuspendActionsCompleted_Failure) {
                                   Metrics::kMetricSuspendActionTimeTaken.min,
                                   Metrics::kMetricSuspendActionTimeTaken.max,
                                   Metrics::kTimerHistogramNumBuckets));
-  EXPECT_CALL(library_,
-              SendEnumToUMA(Metrics::kMetricSuspendActionResult.n.name,
-                            Metrics::kSuspendActionResultFailure,
-                            Metrics::kSuspendActionResultMax));
   metrics_.NotifySuspendActionsCompleted(false);
 }
 

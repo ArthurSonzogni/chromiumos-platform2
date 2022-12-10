@@ -453,16 +453,6 @@ class Metrics : public DefaultServiceObserver {
       .max = kScanResultMax,
   };
 
-  enum SuspendActionResult {
-    kSuspendActionResultSuccess,
-    kSuspendActionResultFailure,
-    kSuspendActionResultMax
-  };
-  static constexpr EnumMetric<FixedName> kMetricSuspendActionResult = {
-      .n = FixedName{"Network.Shill.SuspendActionResult"},
-      .max = kSuspendActionResultMax,
-  };
-
   enum Cellular3GPPRegistrationDelayedDrop {
     kCellular3GPPRegistrationDelayedDropPosted = 0,
     kCellular3GPPRegistrationDelayedDropCanceled = 1,
@@ -527,13 +517,6 @@ class Metrics : public DefaultServiceObserver {
     kCellularRoamingStateHome = 1,
     kCellularRoamingStateRoaming = 2,
     kCellularRoamingStateMax
-  };
-
-  // Profile statistics.
-  enum CorruptedProfile { kCorruptedProfile = 1, kCorruptedProfileMax };
-  static constexpr EnumMetric<FixedName> kMetricCorruptedProfile = {
-      .n = FixedName{"Network.Shill.CorruptedProfile"},
-      .max = kCorruptedProfileMax,
   };
 
   // Connection diagnostics issue produced by ConnectionDiagnostics.
@@ -797,18 +780,6 @@ class Metrics : public DefaultServiceObserver {
           .n = FixedName{"Network.Shill.WiFi.UserInitiatedConnectionResult"},
           .max = kUserInitiatedConnectionResultMax,
       };
-
-  // Device's connection status.
-  enum ConnectionStatus {
-    kConnectionStatusOffline = 0,
-    kConnectionStatusConnected = 1,
-    kConnectionStatusOnline = 2,
-    kConnectionStatusMax
-  };
-  static constexpr EnumMetric<FixedName> kMetricDeviceConnectionStatus = {
-      .n = FixedName{"Network.Shill.DeviceConnectionStatus"},
-      .max = kConnectionStatusMax,
-  };
 
   // Reason when a connection initiated by Service::UserInitiatedConnect fails.
   enum UserInitiatedConnectionFailureReason {
