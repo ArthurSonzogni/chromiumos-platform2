@@ -12,7 +12,6 @@
 
 #include "diagnostics/cros_health_tool/event/audio_subscriber.h"
 #include "diagnostics/cros_health_tool/event/bluetooth_subscriber.h"
-#include "diagnostics/cros_health_tool/event/lid_subscriber.h"
 #include "diagnostics/cros_health_tool/event/network_subscriber.h"
 #include "diagnostics/cros_health_tool/event/power_subscriber.h"
 #include "diagnostics/mojom/public/cros_healthd.mojom.h"
@@ -35,9 +34,6 @@ class EventSubscriber final : public ash::cros_healthd::mojom::EventObserver {
   // Subscribes to cros_healthd's Bluetooth events.
   void SubscribeToBluetoothEvents();
 
-  // Subscribes to cros_healthd's lid events.
-  void SubscribeToLidEvents();
-
   // Subscribes to cros_healthd's network events.
   void SubscribeToNetworkEvents();
 
@@ -59,8 +55,6 @@ class EventSubscriber final : public ash::cros_healthd::mojom::EventObserver {
 
   // Used to subscribe to Bluetooth events.
   std::unique_ptr<BluetoothSubscriber> bluetooth_subscriber_;
-  // Used to subscribe to lid events.
-  std::unique_ptr<LidSubscriber> lid_subscriber_;
   // Used to subscribe to network events.
   std::unique_ptr<NetworkSubscriber> network_subscriber_;
   // Used to subscribe to power events.

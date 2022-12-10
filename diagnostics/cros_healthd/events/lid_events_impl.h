@@ -23,20 +23,18 @@ class LidEventsImpl final : public LidEvents {
   ~LidEventsImpl() = default;
 
   // LidEvents overrides:
-  void AddObserver(
-      mojo::PendingRemote<ash::cros_healthd::mojom::CrosHealthdLidObserver>
-          observer) override;
+  void AddObserver(mojo::PendingRemote<ash::cros_healthd::mojom::EventObserver>
+                       observer) override;
 
  private:
   void OnLidClosedSignal();
   void OnLidOpenedSignal();
 
   // Each observer in |observers_| will be notified of any lid event in the
-  // ash::cros_healthd::mojom::CrosHealthdLidObserver interface. The
-  // RemoteSet manages the lifetime of the endpoints, which are
-  // automatically destroyed and removed when the pipe they are bound to is
-  // destroyed.
-  mojo::RemoteSet<ash::cros_healthd::mojom::CrosHealthdLidObserver> observers_;
+  // ash::cros_healthd::mojom::EventObserver interface. The RemoteSet manages
+  // the lifetime of the endpoints, which are automatically destroyed and
+  // removed when the pipe they are bound to is destroyed.
+  mojo::RemoteSet<ash::cros_healthd::mojom::EventObserver> observers_;
 
   // Unowned pointer. Should outlive this instance.
   Context* const context_ = nullptr;

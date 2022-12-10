@@ -13,6 +13,8 @@
 
 namespace {
 
+namespace mojom = ::ash::cros_healthd::mojom;
+
 // Handles the result of an attempt to connect to a D-Bus signal.
 void HandleSignalConnected(const std::string& interface,
                            const std::string& signal,
@@ -43,19 +45,24 @@ LidEventsImpl::LidEventsImpl(Context* context)
 }
 
 void LidEventsImpl::AddObserver(
-    mojo::PendingRemote<ash::cros_healthd::mojom::CrosHealthdLidObserver>
-        observer) {
+    mojo::PendingRemote<mojom::EventObserver> observer) {
   observers_.Add(std::move(observer));
 }
 
 void LidEventsImpl::OnLidClosedSignal() {
+  mojom::LidEventInfo info;
+  info.state = mojom::LidEventInfo::State::kClosed;
+
   for (auto& observer : observers_)
-    observer->OnLidClosed();
+    observer->OnEvent(mojom::EventInfo::NewLidEventInfo(info.Clone()));
 }
 
 void LidEventsImpl::OnLidOpenedSignal() {
+  mojom::LidEventInfo info;
+  info.state = mojom::LidEventInfo::State::kOpened;
+
   for (auto& observer : observers_)
-    observer->OnLidOpened();
+    observer->OnEvent(mojom::EventInfo::NewLidEventInfo(info.Clone()));
 }
 
 }  // namespace diagnostics

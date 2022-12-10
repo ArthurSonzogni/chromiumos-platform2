@@ -9,6 +9,7 @@
 
 #include <mojo/public/cpp/bindings/pending_remote.h>
 
+#include "diagnostics/cros_healthd/events/lid_events.h"
 #include "diagnostics/cros_healthd/events/udev_events.h"
 #include "diagnostics/cros_healthd/system/context.h"
 #include "diagnostics/mojom/public/cros_healthd_events.mojom.h"
@@ -42,6 +43,7 @@ class EventAggregator final {
   Context* const context_;
 
   std::unique_ptr<UdevEvents> udev_events_;
+  std::unique_ptr<LidEvents> lid_events_;
 };
 
 }  // namespace diagnostics

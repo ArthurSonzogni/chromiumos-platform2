@@ -10,7 +10,6 @@ source_set("libevent") {
     "bluetooth_subscriber.cc",
     "event.cc",
     "event_subscriber.cc",
-    "lid_subscriber.cc",
     "network_subscriber.cc",
     "power_subscriber.cc",
   ]

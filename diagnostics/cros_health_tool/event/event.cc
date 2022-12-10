@@ -88,7 +88,7 @@ int event_main(int argc, char** argv) {
   EventSubscriber event_subscriber;
   switch (iterator->second) {
     case EventCategory::kLid:
-      event_subscriber.SubscribeToLidEvents();
+      event_subscriber.SubscribeToEvents(mojom::EventCategoryEnum::kLid);
       break;
     case EventCategory::kPower:
       event_subscriber.SubscribeToPowerEvents();

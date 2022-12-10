@@ -53,17 +53,28 @@ std::string EnumToString(mojom::ThunderboltEventInfo::State state) {
   }
 }
 
+std::string EnumToString(mojom::LidEventInfo::State state) {
+  switch (state) {
+    case mojom::LidEventInfo::State::kUnmappedEnumField:
+      LOG(FATAL) << "Got UnmappedEnumField";
+      return "UnmappedEnumField";
+    case mojom::LidEventInfo::State::kClosed:
+      return "Lid closed";
+    case mojom::LidEventInfo::State::kOpened:
+      return "Lid opened";
+  }
+}
+
 void OutputUsbEventInfo(const mojom::UsbEventInfoPtr& info) {
-  base::Value output{base::Value::Type::DICTIONARY};
+  base::Value::Dict output;
 
-  output.SetStringKey("event", EnumToString(info->state));
-  output.SetStringKey("vendor", info->vendor);
-  output.SetStringKey("name", info->name);
-  output.SetKey("vid", base::Value(info->vid));
-  output.SetKey("pid", base::Value(info->pid));
+  output.Set("event", EnumToString(info->state));
+  output.Set("vendor", info->vendor);
+  output.Set("name", info->name);
+  output.Set("vid", base::Value(info->vid));
+  output.Set("pid", base::Value(info->pid));
 
-  auto* categories =
-      output.SetKey("categories", base::Value{base::Value::Type::LIST});
+  auto* categories = output.Set("categories", base::Value::List{});
   for (const auto& category : info->categories) {
     categories->Append(category);
   }
@@ -80,6 +91,10 @@ void OutputThunderboltEventInfo(const mojom::ThunderboltEventInfoPtr& info) {
             << std::endl;
 }
 
+void OutputLidEventInfo(const mojom::LidEventInfoPtr& info) {
+  std::cout << "Lid event received: " << EnumToString(info->state) << std::endl;
+}
+
 }  // namespace
 
 EventSubscriber::EventSubscriber() {
@@ -94,13 +109,6 @@ void EventSubscriber::SubscribeToBluetoothEvents() {
   bluetooth_subscriber_ = std::make_unique<BluetoothSubscriber>(
       remote.InitWithNewPipeAndPassReceiver());
   event_service_->AddBluetoothObserver(std::move(remote));
-}
-
-void EventSubscriber::SubscribeToLidEvents() {
-  mojo::PendingRemote<mojom::CrosHealthdLidObserver> remote;
-  lid_subscriber_ =
-      std::make_unique<LidSubscriber>(remote.InitWithNewPipeAndPassReceiver());
-  event_service_->AddLidObserver(std::move(remote));
 }
 
 void EventSubscriber::SubscribeToPowerEvents() {
@@ -141,7 +149,7 @@ void EventSubscriber::OnEvent(const mojom::EventInfoPtr info) {
       OutputThunderboltEventInfo(info->get_thunderbolt_event_info());
       break;
     case mojom::EventInfo::Tag::kLidEventInfo:
-      NOTIMPLEMENTED();
+      OutputLidEventInfo(info->get_lid_event_info());
       break;
     case mojom::EventInfo::Tag::kBluetoothEventInfo:
       NOTIMPLEMENTED();
