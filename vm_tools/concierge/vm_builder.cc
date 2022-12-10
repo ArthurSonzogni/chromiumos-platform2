@@ -238,6 +238,11 @@ VmBuilder& VmBuilder::EnableVirtgpuNativeContext(bool enable) {
   return *this;
 }
 
+VmBuilder& VmBuilder::EnableCrossDomainContext(bool enable) {
+  enable_cross_domain_context_ = enable;
+  return *this;
+}
+
 VmBuilder& VmBuilder::EnableBigGl(bool enable) {
 #if USE_BIG_GL
   enable_big_gl_ = enable;
@@ -422,8 +427,14 @@ base::StringPairs VmBuilder::BuildVmArgs() const {
   if (enable_gpu_) {
     std::string gpu_arg = "vulkan=";
     gpu_arg += enable_vulkan_ ? "true" : "false";
-    if (enable_virtgpu_native_context_) {
-      gpu_arg += ",context-types=drm:venus:cross-domain";
+    if (enable_virtgpu_native_context_ || enable_cross_domain_context_) {
+      gpu_arg += ",context-types=cross-domain";
+      if (enable_vulkan_) {
+        gpu_arg += ":venus";
+      }
+      if (enable_virtgpu_native_context_) {
+        gpu_arg += ":drm";
+      }
     }
     if (enable_big_gl_) {
       gpu_arg += ",gles=false";

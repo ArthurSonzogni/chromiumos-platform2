@@ -405,6 +405,10 @@ bool ArcVm::Start(base::FilePath kernel, VmBuilder vm_builder) {
     vm_builder.EnableVirtgpuNativeContext(true);
   }
 
+  if (USE_CROSVM_CROSS_DOMAIN_CONTEXT) {
+    vm_builder.EnableCrossDomainContext(true);
+  }
+
   CustomParametersForDev custom_parameters;
 
   const bool is_dev_mode = (VbGetSystemPropertyInt("cros_debug") == 1);
