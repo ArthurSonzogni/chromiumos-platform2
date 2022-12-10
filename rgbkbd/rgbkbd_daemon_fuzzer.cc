@@ -24,9 +24,10 @@ const int kEnumSizeInBytes = 1;
 static_assert(static_cast<uint8_t>(RgbKeyboardCapabilities::kMaxValue) <=
               std::numeric_limits<uint8_t>::max());
 
-// 1 byte for random (0-3) range for branch switch, 1 byte for random uint8_t
-// enum for capabilities, 3 bytes min for {r,g,b} (uint8_t).
-const int kMinBytes = 4 + kEnumSizeInBytes;
+// 1 byte for random (0-4) range for branch switch, 1 byte for random uint8_t
+// enum for capabilities, 3 bytes min for {r,g,b} (uint8_t), 4 bytes for branch
+// value (int).
+const int kMinBytes = 8 + kEnumSizeInBytes;
 }  // namespace
 
 class Environment {
@@ -57,7 +58,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
                            static_cast<uint32_t>(initial_capability));
 
   while (provider.remaining_bytes() >= kMinBytes) {
-    const int branch = provider.ConsumeIntegralInRange<int8_t>(0, 3);
+    const int branch = provider.ConsumeIntegralInRange<int8_t>(0, 4);
     switch (branch) {
       case 0: {
         adaptor_->SetCapsLockState(provider.ConsumeBool());
@@ -79,6 +80,14 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
             0, static_cast<uint8_t>(RgbKeyboardCapabilities::kMaxValue));
         adaptor_->SetTestingMode(/*enable_testing=*/true,
                                  static_cast<uint32_t>(capability));
+        break;
+      }
+      case 4: {
+        const int zone = provider.ConsumeIntegral<int>();
+        const uint8_t r = provider.ConsumeIntegral<uint8_t>();
+        const uint8_t g = provider.ConsumeIntegral<uint8_t>();
+        const uint8_t b = provider.ConsumeIntegral<uint8_t>();
+        adaptor_->SetZoneColor(zone, r, g, b);
         break;
       }
       default: {
