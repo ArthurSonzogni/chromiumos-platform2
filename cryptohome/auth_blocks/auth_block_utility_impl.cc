@@ -14,6 +14,7 @@
 #include <vector>
 
 #include <base/check.h>
+#include <base/check_op.h>
 #include <base/logging.h>
 #include <brillo/cryptohome.h>
 #include <chromeos/constants/cryptohome.h>
@@ -61,6 +62,47 @@ using hwsec_foundation::status::StatusChain;
 
 namespace cryptohome {
 
+namespace {
+
+// Returns candidate AuthBlock types that can be used for the specified factor.
+// The list is ordered from the most preferred options towards the least ones.
+std::vector<AuthBlockType> GetAuthBlockPriorityListForCreation(
+    bool is_le_credential, bool is_recovery, bool is_challenge_credential) {
+  DCHECK_LE(is_le_credential + is_recovery + is_challenge_credential, 1);
+
+  if (is_le_credential) {
+    return {AuthBlockType::kPinWeaver};
+  }
+
+  if (is_recovery) {
+    return {AuthBlockType::kCryptohomeRecovery};
+  }
+
+  if (is_challenge_credential) {
+    return {AuthBlockType::kChallengeCredential};
+  }
+
+  std::vector<AuthBlockType> password_types = {
+      // `kTpmEcc` comes first as the fastest auth block.
+      AuthBlockType::kTpmEcc,
+      // `kTpmBoundToPcr` and `kTpmNotBoundToPcr` are fallbacks when hardware
+      // doesn't support ECC. `kTpmBoundToPcr` comes first of the two, as
+      // binding to PCR is preferred (but it's unavailable on some old devices).
+      AuthBlockType::kTpmBoundToPcr,
+      AuthBlockType::kTpmNotBoundToPcr,
+  };
+  if (USE_TPM_INSECURE_FALLBACK) {
+    // On boards that allow this, use `kScrypt` as the last fallback option when
+    // TPM is unavailable. On other boards, we don't list it as a candidate, in
+    // order to let the error chain (that's taken from the last candidate on
+    // failure) contain relevant information about TPM error.
+    password_types.push_back(AuthBlockType::kScrypt);
+  }
+  return password_types;
+}
+
+}  // namespace
+
 AuthBlockUtilityImpl::AuthBlockUtilityImpl(
     KeysetManagement* keyset_management,
     Crypto* crypto,
@@ -99,20 +141,16 @@ bool AuthBlockUtilityImpl::IsAuthFactorSupported(
   switch (auth_factor_type) {
     case AuthFactorType::kPassword:
       return true;
-    case AuthFactorType::kPin: {
-      hwsec::StatusOr<bool> has_pinweaver =
-          crypto_->GetHwsec()->IsPinWeaverEnabled();
-      return has_pinweaver.ok() && *has_pinweaver;
-    }
+    case AuthFactorType::kPin:
+      return PinWeaverAuthBlock::IsSupported(*crypto_).ok();
     case AuthFactorType::kCryptohomeRecovery:
-      return auth_factor_storage_type ==
-             AuthFactorStorageType::kUserSecretStash;
+      return (auth_factor_storage_type ==
+              AuthFactorStorageType::kUserSecretStash) &&
+             CryptohomeRecoveryAuthBlock::IsSupported(*crypto_).ok();
     case AuthFactorType::kKiosk:
       return configured_factors.empty() || user_has_kiosk;
-    case AuthFactorType::kSmartCard: {
-      hwsec::StatusOr<bool> is_ready = crypto_->GetHwsec()->IsReady();
-      return is_ready.ok() && is_ready.value();
-    }
+    case AuthFactorType::kSmartCard:
+      return AsyncChallengeCredentialAuthBlock::IsSupported(*crypto_).ok();
     case AuthFactorType::kLegacyFingerprint:
       return false;
     case AuthFactorType::kFingerprint:
@@ -453,62 +491,67 @@ CryptoStatusOr<AuthBlockType> AuthBlockUtilityImpl::GetAuthBlockTypeForCreation(
     const bool is_recovery,
     const bool is_challenge_credential) const {
   DCHECK_LE(is_le_credential + is_recovery + is_challenge_credential, 1);
-  if (is_le_credential) {
-    return AuthBlockType::kPinWeaver;
+
+  CryptoStatus status;
+  for (AuthBlockType candidate_type : GetAuthBlockPriorityListForCreation(
+           is_le_credential, is_recovery, is_challenge_credential)) {
+    status = IsAuthBlockSupported(candidate_type);
+    if (status.ok()) {
+      return candidate_type;
+    }
   }
-
-  if (is_recovery) {
-    return AuthBlockType::kCryptohomeRecovery;
-  }
-
-  if (is_challenge_credential) {
-    return AuthBlockType::kChallengeCredential;
-  }
-
-  hwsec::StatusOr<bool> is_ready = crypto_->GetHwsec()->IsReady();
-  bool use_tpm = is_ready.ok() && is_ready.value();
-  bool with_user_auth = crypto_->CanUnsealWithUserAuth();
-  bool has_ecc_key = crypto_->cryptohome_keys_manager() &&
-                     crypto_->cryptohome_keys_manager()->HasCryptohomeKey(
-                         CryptohomeKeyType::kECC);
-
-  if (use_tpm && with_user_auth && has_ecc_key) {
-    return AuthBlockType::kTpmEcc;
-  }
-
-  if (use_tpm && with_user_auth && !has_ecc_key) {
-    return AuthBlockType::kTpmBoundToPcr;
-  }
-
-  if (use_tpm && !with_user_auth) {
-    return AuthBlockType::kTpmNotBoundToPcr;
-  }
-
-  if (USE_TPM_INSECURE_FALLBACK) {
-    return AuthBlockType::kScrypt;
-  }
-
-  LOG(WARNING) << "No available auth block for creation: TPM unavailable.";
+  // No suitable block was found. As we need to return only one error, take it
+  // from the last attempted candidate (it's likely the most permissive one).
   return MakeStatus<CryptohomeCryptoError>(
-      CRYPTOHOME_ERR_LOC(kLocAuthBlockUtilNoTpmInGetAuthBlockWithType),
-      ErrorActionSet(
-          {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kReboot}),
-      CryptoError::CE_OTHER_CRYPTO);
+             CRYPTOHOME_ERR_LOC(
+                 kLocAuthBlockUtilNoSupportedInGetAuthBlockWithType),
+             ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}))
+      .Wrap(std::move(status));
+}
+
+CryptoStatus AuthBlockUtilityImpl::IsAuthBlockSupported(
+    AuthBlockType auth_block_type) const {
+  switch (auth_block_type) {
+    case AuthBlockType::kPinWeaver:
+      return PinWeaverAuthBlock::IsSupported(*crypto_);
+    case AuthBlockType::kChallengeCredential:
+      return AsyncChallengeCredentialAuthBlock::IsSupported(*crypto_);
+    case AuthBlockType::kDoubleWrappedCompat:
+      return DoubleWrappedCompatAuthBlock::IsSupported(*crypto_);
+    case AuthBlockType::kTpmBoundToPcr:
+      return TpmBoundToPcrAuthBlock::IsSupported(*crypto_);
+    case AuthBlockType::kTpmNotBoundToPcr:
+      return TpmNotBoundToPcrAuthBlock::IsSupported(*crypto_);
+    case AuthBlockType::kScrypt:
+      // `ScryptAuthBlock` has no `IsSupported()` method. This AuthBlock is
+      // pruned in factor creation by `GetAuthBlockPriorityListForCreation()`.
+      return OkStatus<CryptohomeCryptoError>();
+    case AuthBlockType::kCryptohomeRecovery:
+      return CryptohomeRecoveryAuthBlock::IsSupported(*crypto_);
+    case AuthBlockType::kTpmEcc:
+      return TpmEccAuthBlock::IsSupported(*crypto_);
+    case AuthBlockType::kMaxValue:
+      return MakeStatus<CryptohomeCryptoError>(
+          CRYPTOHOME_ERR_LOC(
+              kLocAuthBlockUtilMaxValueUnsupportedInIsAuthBlockSupported),
+          ErrorActionSet(
+              {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kAuth}),
+          CryptoError::CE_OTHER_CRYPTO);
+  }
 }
 
 CryptoStatusOr<std::unique_ptr<SyncAuthBlock>>
 AuthBlockUtilityImpl::GetAuthBlockWithType(
     const AuthBlockType& auth_block_type) const {
+  if (auto status = IsAuthBlockSupported(auth_block_type); !status.ok()) {
+    return MakeStatus<CryptohomeCryptoError>(
+               CRYPTOHOME_ERR_LOC(
+                   kLocAuthBlockUtilNotSupportedInGetAuthBlockWithType))
+        .Wrap(std::move(status));
+  }
+
   switch (auth_block_type) {
     case AuthBlockType::kPinWeaver:
-      if (!crypto_->le_manager() || !crypto_->cryptohome_keys_manager()) {
-        return MakeStatus<CryptohomeCryptoError>(
-            CRYPTOHOME_ERR_LOC(
-                kLocAuthBlockUtilNullLeManagerInGetAuthBlockWithType),
-            ErrorActionSet(
-                {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kAuth}),
-            CryptoError::CE_OTHER_CRYPTO);
-      }
       return std::make_unique<PinWeaverAuthBlock>(
           crypto_->le_manager(), crypto_->cryptohome_keys_manager());
 
@@ -560,6 +603,13 @@ AuthBlockUtilityImpl::GetAuthBlockWithType(
 CryptoStatusOr<std::unique_ptr<AuthBlock>>
 AuthBlockUtilityImpl::GetAsyncAuthBlockWithType(
     const AuthBlockType& auth_block_type, const AuthInput& auth_input) {
+  if (auto status = IsAuthBlockSupported(auth_block_type); !status.ok()) {
+    return MakeStatus<CryptohomeCryptoError>(
+               CRYPTOHOME_ERR_LOC(
+                   kLocAuthBlockUtilNotSupportedInGetAsyncAuthBlockWithType))
+        .Wrap(std::move(status));
+  }
+
   switch (auth_block_type) {
     case AuthBlockType::kPinWeaver:
       return std::make_unique<SyncToAsyncAuthBlockAdapter>(

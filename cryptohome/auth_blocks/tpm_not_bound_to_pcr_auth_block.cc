@@ -12,6 +12,7 @@
 #include <base/check.h>
 #include <base/logging.h>
 #include <brillo/secure_blob.h>
+#include <libhwsec/frontend/cryptohome/frontend.h>
 #include <libhwsec/status.h>
 #include <libhwsec-foundation/crypto/aes.h>
 #include <libhwsec-foundation/crypto/rsa.h>
@@ -24,7 +25,10 @@
 #include "cryptohome/crypto_error.h"
 #include "cryptohome/cryptohome_keys_manager.h"
 #include "cryptohome/cryptohome_metrics.h"
+#include "cryptohome/error/action.h"
+#include "cryptohome/error/cryptohome_crypto_error.h"
 #include "cryptohome/error/location_utils.h"
+#include "cryptohome/error/locations.h"
 #include "cryptohome/vault_keyset.pb.h"
 
 using cryptohome::error::CryptohomeCryptoError;
@@ -46,6 +50,39 @@ using hwsec_foundation::status::OkStatus;
 using hwsec_foundation::status::StatusChain;
 
 namespace cryptohome {
+
+CryptoStatus TpmNotBoundToPcrAuthBlock::IsSupported(Crypto& crypto) {
+  DCHECK(crypto.GetHwsec());
+  hwsec::StatusOr<bool> is_ready = crypto.GetHwsec()->IsReady();
+  if (!is_ready.ok()) {
+    return MakeStatus<CryptohomeCryptoError>(
+               CRYPTOHOME_ERR_LOC(
+                   kLocTpmNotBoundToPcrAuthBlockHwsecReadyErrorInIsSupported),
+               ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}))
+        .Wrap(TpmAuthBlockUtils::TPMErrorToCryptohomeCryptoError(
+            std::move(is_ready).status()));
+  }
+  if (!is_ready.value()) {
+    return MakeStatus<CryptohomeCryptoError>(
+        CRYPTOHOME_ERR_LOC(
+            kLocTpmNotBoundToPcrAuthBlockHwsecNotReadyInIsSupported),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        CryptoError::CE_OTHER_CRYPTO);
+  }
+
+  DCHECK(crypto.cryptohome_keys_manager());
+  if (!crypto.cryptohome_keys_manager()->GetKeyLoader(
+          CryptohomeKeyType::kRSA)) {
+    return MakeStatus<CryptohomeCryptoError>(
+        CRYPTOHOME_ERR_LOC(
+            kLocTpmNotBoundToPcrAuthBlockNoKeyLoaderInIsSupported),
+        ErrorActionSet(
+            {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kAuth}),
+        CryptoError::CE_OTHER_CRYPTO);
+  }
+
+  return OkStatus<CryptohomeCryptoError>();
+}
 
 TpmNotBoundToPcrAuthBlock::TpmNotBoundToPcrAuthBlock(
     hwsec::CryptohomeFrontend* hwsec,

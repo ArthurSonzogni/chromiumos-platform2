@@ -20,12 +20,20 @@
 #include <base/check_op.h>
 #include <base/logging.h>
 #include <brillo/secure_blob.h>
+#include <libhwsec/frontend/cryptohome/frontend.h>
+#include <libhwsec/status.h>
 #include <libhwsec-foundation/crypto/aes.h>
 #include <libhwsec-foundation/crypto/hmac.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
 #include <libhwsec-foundation/crypto/sha.h>
 
+#include "cryptohome/auth_blocks/tpm_auth_block_utils.h"
+#include "cryptohome/crypto.h"
+#include "cryptohome/cryptohome_keys_manager.h"
+#include "cryptohome/error/action.h"
+#include "cryptohome/error/cryptohome_crypto_error.h"
 #include "cryptohome/error/location_utils.h"
+#include "cryptohome/error/locations.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/vault_keyset.pb.h"
 
@@ -80,6 +88,59 @@ constexpr struct {
 };
 
 }  // namespace
+
+CryptoStatus PinWeaverAuthBlock::IsSupported(Crypto& crypto) {
+  DCHECK(crypto.GetHwsec());
+  hwsec::StatusOr<bool> is_ready = crypto.GetHwsec()->IsReady();
+  if (!is_ready.ok()) {
+    return MakeStatus<CryptohomeCryptoError>(
+               CRYPTOHOME_ERR_LOC(
+                   kLocPinWeaverAuthBlockHwsecReadyErrorInIsSupported),
+               ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}))
+        .Wrap(TpmAuthBlockUtils::TPMErrorToCryptohomeCryptoError(
+            std::move(is_ready).status()));
+  }
+  if (!is_ready.value()) {
+    return MakeStatus<CryptohomeCryptoError>(
+        CRYPTOHOME_ERR_LOC(kLocPinWeaverAuthBlockHwsecNotReadyInIsSupported),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        CryptoError::CE_OTHER_CRYPTO);
+  }
+
+  hwsec::StatusOr<bool> has_pinweaver = crypto.GetHwsec()->IsPinWeaverEnabled();
+  if (!has_pinweaver.ok()) {
+    return MakeStatus<CryptohomeCryptoError>(
+               CRYPTOHOME_ERR_LOC(
+                   kLocPinWeaverAuthBlockPinWeaverCheckFailInIsSupported))
+        .Wrap(TpmAuthBlockUtils::TPMErrorToCryptohomeCryptoError(
+            std::move(has_pinweaver).status()));
+  }
+  if (!has_pinweaver.value()) {
+    return MakeStatus<CryptohomeCryptoError>(
+        CRYPTOHOME_ERR_LOC(kLocPinWeaverAuthBlockNoPinWeaverInIsSupported),
+        ErrorActionSet({ErrorAction::kAuth}), CryptoError::CE_OTHER_CRYPTO);
+  }
+
+  if (!crypto.le_manager()) {
+    return MakeStatus<CryptohomeCryptoError>(
+        CRYPTOHOME_ERR_LOC(kLocPinWeaverAuthBlockNullLeManagerInIsSupported),
+        ErrorActionSet(
+            {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kAuth}),
+        CryptoError::CE_OTHER_CRYPTO);
+  }
+
+  DCHECK(crypto.cryptohome_keys_manager());
+  if (!crypto.cryptohome_keys_manager()->GetKeyLoader(
+          CryptohomeKeyType::kRSA)) {
+    return MakeStatus<CryptohomeCryptoError>(
+        CRYPTOHOME_ERR_LOC(kLocPinWeaverAuthBlockNoKeyLoaderInIsSupported),
+        ErrorActionSet(
+            {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kAuth}),
+        CryptoError::CE_OTHER_CRYPTO);
+  }
+
+  return OkStatus<CryptohomeCryptoError>();
+}
 
 PinWeaverAuthBlock::PinWeaverAuthBlock(
     LECredentialManager* le_manager,

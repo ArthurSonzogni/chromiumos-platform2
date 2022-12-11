@@ -12,9 +12,12 @@
 
 #include "cryptohome/auth_blocks/scrypt_auth_block.h"
 #include "cryptohome/auth_blocks/tpm_not_bound_to_pcr_auth_block.h"
+#include "cryptohome/crypto.h"
 #include "cryptohome/cryptohome_keys_manager.h"
 #include "cryptohome/cryptohome_metrics.h"
+#include "cryptohome/error/action.h"
 #include "cryptohome/error/location_utils.h"
+#include "cryptohome/error/locations.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 
 using cryptohome::error::CryptohomeCryptoError;
@@ -25,6 +28,19 @@ using hwsec_foundation::status::OkStatus;
 using hwsec_foundation::status::StatusChain;
 
 namespace cryptohome {
+
+CryptoStatus DoubleWrappedCompatAuthBlock::IsSupported(Crypto& crypto) {
+  // Simply delegate to the encapsulated classes. Note that `ScryptAuthBlock`
+  // has no `IsSupported()` method - it's always supported for us.
+  CryptoStatus tpm_status = TpmNotBoundToPcrAuthBlock::IsSupported(crypto);
+  if (!tpm_status.ok()) {
+    return MakeStatus<CryptohomeCryptoError>(
+               CRYPTOHOME_ERR_LOC(
+                   kLocDoubleWrappedAuthBlockTpmBlockErrorInIsSupported))
+        .Wrap(std::move(tpm_status));
+  }
+  return OkStatus<CryptohomeCryptoError>();
+}
 
 DoubleWrappedCompatAuthBlock::DoubleWrappedCompatAuthBlock(
     hwsec::CryptohomeFrontend* hwsec,

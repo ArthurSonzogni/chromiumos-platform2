@@ -1269,7 +1269,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocUserDataAuthFactorExtendedInfoRecoveryIdFailure = 721,
   /* ./userdataauth.cc */
   kLocUserDataAuthRecoveryObjectFailureGetRecoveryId = 722,
-  /* ./auth_blocks/auth_block_utility_impl.cc */
+  /* =Obsolete= */
   kLocAuthBlockUtilNoTpmInGetAuthBlockWithType = 723,
   //////////////////////////////////////////////////
   //// This is a separator block at value 1500
@@ -1349,7 +1349,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   //// This is a separator block at value 2500
   //// See location_db.py for more info.
   //////////////////////////////////////////////////
-  /* ./auth_blocks/auth_block_utility_impl.cc */
+  /* =Obsolete= */
   kLocAuthBlockUtilNullLeManagerInGetAuthBlockWithType = 2500,
   /* ./userdataauth.cc */
   kLocUserDataAuthNonEphemeralAuthSessionInPrepareEphemeralVault = 2501,
@@ -1369,6 +1369,60 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   //////////////////////////////////////////////////
   /* ./userdataauth.cc */
   kLocUserDataAuthUserDirExistsInCreatePersistentUser = 2700,
+  /* ./auth_blocks/tpm_bound_to_pcr_auth_block.cc */
+  kLocTpmBoundToPcrAuthBlockHwsecReadyErrorInIsSupported = 2701,
+  /* ./auth_blocks/tpm_bound_to_pcr_auth_block.cc */
+  kLocTpmBoundToPcrAuthBlockHwsecNotReadyInIsSupported = 2702,
+  /* ./auth_blocks/tpm_bound_to_pcr_auth_block.cc */
+  kLocTpmBoundToPcrAuthBlockCannotUnsealWithUserAuthInIsSupported = 2703,
+  /* ./auth_blocks/tpm_bound_to_pcr_auth_block.cc */
+  kLocTpmBoundToPcrAuthBlockNoKeyLoaderInIsSupported = 2704,
+  /* ./auth_blocks/tpm_not_bound_to_pcr_auth_block.cc */
+  kLocTpmNotBoundToPcrAuthBlockHwsecReadyErrorInIsSupported = 2705,
+  /* ./auth_blocks/tpm_not_bound_to_pcr_auth_block.cc */
+  kLocTpmNotBoundToPcrAuthBlockHwsecNotReadyInIsSupported = 2706,
+  /* ./auth_blocks/tpm_not_bound_to_pcr_auth_block.cc */
+  kLocTpmNotBoundToPcrAuthBlockNoKeyLoaderInIsSupported = 2707,
+  /* ./auth_blocks/async_challenge_credential_auth_block.cc */
+  kLocAsyncChalCredAuthBlockHwsecReadyErrorInIsSupported = 2708,
+  /* ./auth_blocks/async_challenge_credential_auth_block.cc */
+  kLocAsyncChalCredAuthBlockHwsecNotReadyInIsSupported = 2709,
+  /* ./auth_blocks/tpm_ecc_auth_block.cc */
+  kLocTpmEccAuthBlockHwsecReadyErrorInIsSupported = 2710,
+  /* ./auth_blocks/tpm_ecc_auth_block.cc */
+  kLocTpmEccAuthBlockHwsecNotReadyInIsSupported = 2711,
+  /* ./auth_blocks/tpm_ecc_auth_block.cc */
+  kLocTpmEccAuthBlockCannotUnsealWithUserAuthInIsSupported = 2712,
+  /* ./auth_blocks/tpm_ecc_auth_block.cc */
+  kLocTpmEccAuthBlockNoKeyLoaderInIsSupported = 2713,
+  /* ./auth_blocks/cryptohome_recovery_auth_block.cc */
+  kLocRecoveryAuthBlockHwsecReadyErrorInIsSupported = 2714,
+  /* ./auth_blocks/cryptohome_recovery_auth_block.cc */
+  kLocRecoveryAuthBlockHwsecNotReadyInIsSupported = 2715,
+  /* ./auth_blocks/cryptohome_recovery_auth_block.cc */
+  kLocRecoveryAuthBlockHwsecNoCryptoInIsSupported = 2716,
+  /* ./auth_blocks/auth_block_utility_impl.cc */
+  kLocAuthBlockUtilNoSupportedInGetAuthBlockWithType = 2717,
+  /* ./auth_blocks/auth_block_utility_impl.cc */
+  kLocAuthBlockUtilMaxValueUnsupportedInIsAuthBlockSupported = 2718,
+  /* ./auth_blocks/auth_block_utility_impl.cc */
+  kLocAuthBlockUtilNotSupportedInGetAuthBlockWithType = 2719,
+  /* ./auth_blocks/auth_block_utility_impl.cc */
+  kLocAuthBlockUtilNotSupportedInGetAsyncAuthBlockWithType = 2720,
+  /* ./auth_blocks/double_wrapped_compat_auth_block.cc */
+  kLocDoubleWrappedAuthBlockTpmBlockErrorInIsSupported = 2721,
+  /* ./auth_blocks/pin_weaver_auth_block.cc */
+  kLocPinWeaverAuthBlockHwsecReadyErrorInIsSupported = 2722,
+  /* ./auth_blocks/pin_weaver_auth_block.cc */
+  kLocPinWeaverAuthBlockHwsecNotReadyInIsSupported = 2723,
+  /* ./auth_blocks/pin_weaver_auth_block.cc */
+  kLocPinWeaverAuthBlockPinWeaverCheckFailInIsSupported = 2724,
+  /* ./auth_blocks/pin_weaver_auth_block.cc */
+  kLocPinWeaverAuthBlockNoPinWeaverInIsSupported = 2725,
+  /* ./auth_blocks/pin_weaver_auth_block.cc */
+  kLocPinWeaverAuthBlockNullLeManagerInIsSupported = 2726,
+  /* ./auth_blocks/pin_weaver_auth_block.cc */
+  kLocPinWeaverAuthBlockNoKeyLoaderInIsSupported = 2727,
   //////////////////////////////////////////////////
   //// This is a separator block at value 2900
   //// See location_db.py for more info.

@@ -9,6 +9,7 @@
 
 #include "cryptohome/auth_blocks/auth_block.h"
 #include "cryptohome/crypto.h"
+#include "cryptohome/error/cryptohome_crypto_error.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/key_objects.h"
 #include "cryptohome/vault_keyset.h"
@@ -20,6 +21,10 @@ namespace cryptohome {
 // and by Recovery Mediator service.
 class CryptohomeRecoveryAuthBlock : public SyncAuthBlock {
  public:
+  // Returns success if the AuthBlock is supported on the current hardware and
+  // software environment.
+  static CryptoStatus IsSupported(Crypto& crypto);
+
   // the `tpm` pointer must outlive `this`
   explicit CryptohomeRecoveryAuthBlock(
       hwsec::CryptohomeFrontend* hwsec,

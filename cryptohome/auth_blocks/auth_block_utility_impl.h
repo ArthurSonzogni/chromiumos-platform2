@@ -145,6 +145,8 @@ class AuthBlockUtilityImpl final : public AuthBlockUtility {
       const AuthBlockType& auth_block_type, const AuthInput& auth_input);
 
  private:
+  CryptoStatus IsAuthBlockSupported(AuthBlockType auth_block_type) const;
+
   // Non-owned object used for the keyset management operations. Must be alive
   // for the entire lifecycle of the class.
   KeysetManagement* const keyset_management_;

@@ -13,13 +13,16 @@
 #include <base/logging.h>
 #include <base/notreached.h>
 #include <brillo/secure_blob.h>
+#include <libhwsec/frontend/cryptohome/frontend.h>
+#include <libhwsec/status.h>
 #include <libhwsec-foundation/crypto/aes.h>
 #include <libhwsec-foundation/crypto/hkdf.h>
 #include <libhwsec-foundation/crypto/scrypt.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
 
 #include "cryptohome/auth_blocks/revocation.h"
-#include "cryptohome/crypto_error.h"
+#include "cryptohome/auth_blocks/tpm_auth_block_utils.h"
+#include "cryptohome/crypto.h"
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_hsm_cbor_serialization.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_impl.h"
@@ -54,6 +57,35 @@ void LogDeriveFailure(CryptoError error) {
 }
 
 }  // namespace
+
+CryptoStatus CryptohomeRecoveryAuthBlock::IsSupported(Crypto& crypto) {
+  DCHECK(crypto.GetHwsec());
+  hwsec::StatusOr<bool> is_ready = crypto.GetHwsec()->IsReady();
+  if (!is_ready.ok()) {
+    return MakeStatus<CryptohomeCryptoError>(
+               CRYPTOHOME_ERR_LOC(
+                   kLocRecoveryAuthBlockHwsecReadyErrorInIsSupported),
+               ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}))
+        .Wrap(TpmAuthBlockUtils::TPMErrorToCryptohomeCryptoError(
+            std::move(is_ready).status()));
+  }
+  if (!is_ready.value()) {
+    return MakeStatus<CryptohomeCryptoError>(
+        CRYPTOHOME_ERR_LOC(kLocRecoveryAuthBlockHwsecNotReadyInIsSupported),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        CryptoError::CE_OTHER_CRYPTO);
+  }
+
+  if (!crypto.GetRecoveryCrypto()) {
+    return MakeStatus<CryptohomeCryptoError>(
+        CRYPTOHOME_ERR_LOC(kLocRecoveryAuthBlockHwsecNoCryptoInIsSupported),
+        ErrorActionSet(
+            {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kAuth}),
+        CryptoError::CE_OTHER_CRYPTO);
+  }
+
+  return OkStatus<CryptohomeCryptoError>();
+}
 
 CryptohomeRecoveryAuthBlock::CryptohomeRecoveryAuthBlock(
     hwsec::CryptohomeFrontend* hwsec,

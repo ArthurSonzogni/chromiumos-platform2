@@ -71,6 +71,7 @@ namespace cryptohome {
 namespace {
 
 using ::base::test::TestFuture;
+using ::brillo::cryptohome::home::SanitizeUserName;
 using ::cryptohome::error::CryptohomeCryptoError;
 using ::cryptohome::error::CryptohomeLECredError;
 using ::hwsec::TPMErrorBase;
@@ -188,19 +189,29 @@ TEST_F(AuthBlockUtilityImplTest, GetSupportedAuthFactors) {
   EXPECT_CALL(hwsec_, IsPinWeaverEnabled()).WillOnce(ReturnValue(false));
   EXPECT_FALSE(auth_block_utility_impl_->IsAuthFactorSupported(
       AuthFactorType::kPin, AuthFactorStorageType::kVaultKeyset, {}));
+
   EXPECT_CALL(hwsec_, IsPinWeaverEnabled()).WillOnce(ReturnValue(true));
+  crypto_.set_le_manager_for_testing(
+      std::make_unique<MockLECredentialManager>());
   EXPECT_TRUE(auth_block_utility_impl_->IsAuthFactorSupported(
       AuthFactorType::kPin, AuthFactorStorageType::kVaultKeyset, {}));
+
   EXPECT_CALL(hwsec_, IsPinWeaverEnabled()).WillOnce(ReturnValue(false));
+  crypto_.set_le_manager_for_testing(nullptr);
   EXPECT_FALSE(auth_block_utility_impl_->IsAuthFactorSupported(
       AuthFactorType::kPin, AuthFactorStorageType::kUserSecretStash, {}));
+
   EXPECT_CALL(hwsec_, IsPinWeaverEnabled()).WillOnce(ReturnValue(true));
+  crypto_.set_le_manager_for_testing(
+      std::make_unique<MockLECredentialManager>());
   EXPECT_TRUE(auth_block_utility_impl_->IsAuthFactorSupported(
       AuthFactorType::kPin, AuthFactorStorageType::kUserSecretStash, {}));
+
   EXPECT_CALL(hwsec_, IsPinWeaverEnabled()).WillOnce(ReturnValue(true));
   EXPECT_TRUE(auth_block_utility_impl_->IsAuthFactorSupported(
       AuthFactorType::kPin, AuthFactorStorageType::kUserSecretStash,
       {AuthFactorType::kPin}));
+
   EXPECT_FALSE(auth_block_utility_impl_->IsAuthFactorSupported(
       AuthFactorType::kPin, AuthFactorStorageType::kUserSecretStash,
       {AuthFactorType::kKiosk}));
@@ -479,8 +490,8 @@ TEST_F(AuthBlockUtilityImplTest, CreatePinweaverAuthBlockTest) {
   Credentials credentials(kUser, passkey);
   brillo::SecureBlob reset_secret(32, 'S');
 
+  EXPECT_CALL(hwsec_, IsPinWeaverEnabled()).WillRepeatedly(ReturnValue(true));
   MockLECredentialManager* le_cred_manager = new MockLECredentialManager();
-
   EXPECT_CALL(*le_cred_manager, InsertCredential(_, _, _, _, _, _, _))
       .WillOnce(ReturnError<CryptohomeLECredError>());
   crypto_.set_le_manager_for_testing(
@@ -515,8 +526,8 @@ TEST_F(AuthBlockUtilityImplTest, DerivePinWeaverAuthBlock) {
   brillo::SecureBlob fek_iv(16, 'X');
   brillo::SecureBlob salt(system_salt_);
 
+  EXPECT_CALL(hwsec_, IsPinWeaverEnabled()).WillRepeatedly(ReturnValue(true));
   MockLECredentialManager* le_cred_manager = new MockLECredentialManager();
-
   crypto_.set_le_manager_for_testing(
       std::unique_ptr<LECredentialManager>(le_cred_manager));
   crypto_.Init();
@@ -580,6 +591,28 @@ TEST_F(AuthBlockUtilityImplTest, CreateTpmBackedPcrBoundAuthBlock) {
   EXPECT_NE(out_key_blobs.chaps_iv, std::nullopt);
   auto& tpm_state = std::get<TpmBoundToPcrAuthBlockState>(out_state.state);
   EXPECT_TRUE(tpm_state.salt.has_value());
+}
+
+// Test that CreateKeyBlobsWithAuthBlock with TpmBoundToPcr returns error (but
+// doesn't crash) when the RSA key loader is unavailable.
+TEST_F(AuthBlockUtilityImplTest,
+       CreateTpmBackedPcrBoundAuthBlockErrorNoLoader) {
+  // Setup
+  brillo::SecureBlob passkey(20, 'A');
+  Credentials credentials(kUser, passkey);
+  EXPECT_CALL(cryptohome_keys_manager_, GetKeyLoader(CryptohomeKeyType::kRSA))
+      .WillRepeatedly(Return(nullptr));
+  MakeAuthBlockUtilityImpl();
+
+  // Test
+  KeyBlobs out_key_blobs;
+  AuthBlockState out_state;
+  CryptoStatus status = auth_block_utility_impl_->CreateKeyBlobsWithAuthBlock(
+      AuthBlockType::kTpmBoundToPcr, credentials, std::nullopt, out_state,
+      out_key_blobs);
+
+  // Verify
+  EXPECT_THAT(status, NotOk());
 }
 
 // Test that DeriveKeyBlobsWithAuthBlock derive KeyBlobs successfully with
@@ -648,6 +681,28 @@ TEST_F(AuthBlockUtilityImplTest, CreateTpmBackedNonPcrBoundAuthBlock) {
   EXPECT_NE(out_key_blobs.chaps_iv, std::nullopt);
   auto& tpm_state = std::get<TpmNotBoundToPcrAuthBlockState>(out_state.state);
   EXPECT_TRUE(tpm_state.salt.has_value());
+}
+
+// Test that CreateKeyBlobsWithAuthBlock with TpmNotBoundToPcr returns error
+// (but doesn't crash) when the RSA key loader is unavailable.
+TEST_F(AuthBlockUtilityImplTest,
+       CreateTpmBackedNonPcrBoundAuthBlockErrorNoLoader) {
+  // Setup
+  brillo::SecureBlob passkey(20, 'A');
+  Credentials credentials(kUser, passkey);
+  EXPECT_CALL(cryptohome_keys_manager_, GetKeyLoader(CryptohomeKeyType::kRSA))
+      .WillRepeatedly(Return(nullptr));
+  MakeAuthBlockUtilityImpl();
+
+  // Test
+  KeyBlobs out_key_blobs;
+  AuthBlockState out_state;
+  CryptoStatus status = auth_block_utility_impl_->CreateKeyBlobsWithAuthBlock(
+      AuthBlockType::kTpmNotBoundToPcr, credentials, std::nullopt, out_state,
+      out_key_blobs);
+
+  // Verify
+  EXPECT_THAT(status, NotOk());
 }
 
 // Test that DeriveKeyBlobsWithAuthBlock derive KeyBlobs successfully with
@@ -721,6 +776,27 @@ TEST_F(AuthBlockUtilityImplTest, CreateTpmBackedEccAuthBlock) {
   EXPECT_NE(out_key_blobs.chaps_iv, std::nullopt);
   auto& tpm_state = std::get<TpmEccAuthBlockState>(out_state.state);
   EXPECT_TRUE(tpm_state.salt.has_value());
+}
+
+// Test that CreateKeyBlobsWithAuthBlock with TpmEcc returns error (but doesn't
+// crash) when the ECC key loader is unavailable.
+TEST_F(AuthBlockUtilityImplTest, CreateTpmBackedEccAuthBlockErrorNoLoader) {
+  // Setup
+  brillo::SecureBlob passkey(20, 'A');
+  Credentials credentials(kUser, passkey);
+  EXPECT_CALL(cryptohome_keys_manager_, GetKeyLoader(CryptohomeKeyType::kECC))
+      .WillRepeatedly(Return(nullptr));
+  MakeAuthBlockUtilityImpl();
+
+  // Test
+  KeyBlobs out_key_blobs;
+  AuthBlockState out_state;
+  CryptoStatus status = auth_block_utility_impl_->CreateKeyBlobsWithAuthBlock(
+      AuthBlockType::kTpmEcc, credentials, std::nullopt, out_state,
+      out_key_blobs);
+
+  // Verify
+  EXPECT_THAT(status, NotOk());
 }
 
 // Test that DeriveKeyBlobsWithAuthBlock derives KeyBlobs successfully with
@@ -1677,10 +1753,15 @@ TEST_F(AuthBlockUtilityImplTest, MatchAuthBlockForCreation) {
     EXPECT_THAT(type_without_tpm, NotOk());
   }
 
+  // Test for Tpm backed AuthBlock types.
+  EXPECT_CALL(hwsec_, IsEnabled()).WillRepeatedly(ReturnValue(true));
+  EXPECT_CALL(hwsec_, IsReady()).WillRepeatedly(ReturnValue(true));
+
   // Test for kPinWeaver
   KeyData key_data;
   key_data.mutable_policy()->set_low_entropy_credential(true);
   credentials.set_key_data(key_data);
+  ON_CALL(hwsec_, IsPinWeaverEnabled()).WillByDefault(ReturnValue(true));
   EXPECT_THAT(auth_block_utility_impl_->GetAuthBlockTypeForCreation(
                   /*is_le_credential =*/true, /*is_recovery=*/false,
                   /*is_challenge_credential =*/false),
@@ -1695,9 +1776,6 @@ TEST_F(AuthBlockUtilityImplTest, MatchAuthBlockForCreation) {
                   /*is_challenge_credential =*/true),
               IsOkAndHolds(AuthBlockType::kChallengeCredential));
 
-  // Test for Tpm backed AuthBlock types.
-  EXPECT_CALL(hwsec_, IsEnabled()).WillRepeatedly(ReturnValue(true));
-  EXPECT_CALL(hwsec_, IsReady()).WillRepeatedly(ReturnValue(true));
   // credentials.key_data type shouldn't be challenge credential any more.
   KeyData key_data3;
   credentials.set_key_data(key_data3);
@@ -1709,16 +1787,19 @@ TEST_F(AuthBlockUtilityImplTest, MatchAuthBlockForCreation) {
               IsOkAndHolds(AuthBlockType::kTpmEcc));
 
   // Test for kTpmNotBoundToPcr (No TPM or no TPM2.0)
-  EXPECT_CALL(hwsec_, IsSealingSupported()).WillOnce(ReturnValue(false));
+  EXPECT_CALL(hwsec_, IsSealingSupported()).WillRepeatedly(ReturnValue(false));
   EXPECT_THAT(auth_block_utility_impl_->GetAuthBlockTypeForCreation(
                   /*is_le_credential =*/false, /*is_recovery=*/false,
                   /*is_challenge_credential =*/false),
               IsOkAndHolds(AuthBlockType::kTpmNotBoundToPcr));
 
   // Test for kTpmBoundToPcr (TPM2.0 but no support for ECC key)
-  EXPECT_CALL(hwsec_, IsSealingSupported()).WillOnce(ReturnValue(true));
+  EXPECT_CALL(hwsec_, IsSealingSupported()).WillRepeatedly(ReturnValue(true));
   EXPECT_CALL(cryptohome_keys_manager_, GetKeyLoader(CryptohomeKeyType::kECC))
       .WillOnce(Return(nullptr));
+  EXPECT_CALL(cryptohome_keys_manager_, GetKeyLoader(CryptohomeKeyType::kRSA))
+      .WillRepeatedly(
+          Return(cryptohome_keys_manager_.get_mock_cryptohome_key_loader()));
   EXPECT_THAT(auth_block_utility_impl_->GetAuthBlockTypeForCreation(
                   /*is_le_credential =*/false, /*is_recovery=*/false,
                   /*is_challenge_credential =*/false),
@@ -1731,7 +1812,56 @@ TEST_F(AuthBlockUtilityImplTest, MatchAuthBlockForCreation) {
               IsOkAndHolds(AuthBlockType::kCryptohomeRecovery));
 }
 
-TEST_F(AuthBlockUtilityImplTest, GetAsyncAuthBlockWithType) {
+// Test `GetAsyncAuthBlockWithType()` with the `kPinWeaver` type succeeds.
+TEST_F(AuthBlockUtilityImplTest, GetAsyncAuthBlockWithTypeTpmPinWeaver) {
+  // Setup.
+  EXPECT_CALL(hwsec_, IsPinWeaverEnabled()).WillRepeatedly(ReturnValue(true));
+  crypto_.Init();
+  MakeAuthBlockUtilityImpl();
+  AuthInput auth_input{
+      .user_input = brillo::SecureBlob("fake-passkey"),
+      .username = kUser,
+      .obfuscated_username = SanitizeUserName(kUser),
+      .reset_secret = brillo::SecureBlob("fake-reset-secret"),
+  };
+
+  // Test.
+  CryptoStatusOr<std::unique_ptr<AuthBlock>> auth_block =
+      auth_block_utility_impl_->GetAsyncAuthBlockWithType(
+          AuthBlockType::kPinWeaver, auth_input);
+
+  // Verify.
+  ASSERT_THAT(auth_block, IsOk());
+  EXPECT_NE(auth_block.value(), nullptr);
+}
+
+// Test `GetAsyncAuthBlockWithType()` with the `kPinWeaver` type fails when
+// there's no LE manager.
+TEST_F(AuthBlockUtilityImplTest,
+       GetAsyncAuthBlockWithTypeTpmPinWeaverFailNoManager) {
+  // Setup. Set the PinWeaver hwsec backend to disabled; this will lead to
+  // having no LE manager being created.
+  EXPECT_CALL(hwsec_, IsPinWeaverEnabled()).WillRepeatedly(ReturnValue(false));
+  EXPECT_CALL(pinweaver_, IsEnabled()).WillRepeatedly(ReturnValue(false));
+  crypto_.Init();
+  MakeAuthBlockUtilityImpl();
+  AuthInput auth_input{
+      .user_input = brillo::SecureBlob("fake-passkey"),
+      .username = kUser,
+      .obfuscated_username = SanitizeUserName(kUser),
+      .reset_secret = brillo::SecureBlob("fake-reset-secret"),
+  };
+
+  // Test.
+  CryptoStatusOr<std::unique_ptr<AuthBlock>> auth_block =
+      auth_block_utility_impl_->GetAsyncAuthBlockWithType(
+          AuthBlockType::kPinWeaver, auth_input);
+
+  // Verify.
+  EXPECT_THAT(auth_block, NotOk());
+}
+
+TEST_F(AuthBlockUtilityImplTest, GetAsyncAuthBlockWithTypeChallengeCredential) {
   crypto_.Init();
 
   MakeAuthBlockUtilityImpl();
@@ -1761,7 +1891,8 @@ TEST_F(AuthBlockUtilityImplTest, GetAsyncAuthBlockWithType) {
   EXPECT_NE(auth_block.value(), nullptr);
 }
 
-TEST_F(AuthBlockUtilityImplTest, GetAsyncAuthBlockWithTypeFail) {
+TEST_F(AuthBlockUtilityImplTest,
+       GetAsyncAuthBlockWithTypeChallengeCredentialFail) {
   crypto_.Init();
   // Test. No valid dbus_service_name or username.
   MakeAuthBlockUtilityImpl();
@@ -1771,6 +1902,141 @@ TEST_F(AuthBlockUtilityImplTest, GetAsyncAuthBlockWithTypeFail) {
       auth_block_utility_impl_->GetAsyncAuthBlockWithType(
           AuthBlockType::kChallengeCredential, auth_input);
   EXPECT_FALSE(auth_block.ok());
+}
+
+// Test `GetAsyncAuthBlockWithType()` with the `kDoubleWrappedCompat` type
+// succeeds.
+TEST_F(AuthBlockUtilityImplTest, GetAsyncAuthBlockWithTypeDoubleWrappedCompat) {
+  // Setup.
+  crypto_.Init();
+  MakeAuthBlockUtilityImpl();
+  AuthInput auth_input{
+      .user_input = brillo::SecureBlob("fake-passkey"),
+      .username = kUser,
+      .obfuscated_username = SanitizeUserName(kUser),
+  };
+
+  // Test.
+  CryptoStatusOr<std::unique_ptr<AuthBlock>> auth_block =
+      auth_block_utility_impl_->GetAsyncAuthBlockWithType(
+          AuthBlockType::kDoubleWrappedCompat, auth_input);
+
+  // Verify.
+  ASSERT_THAT(auth_block, IsOk());
+  EXPECT_NE(auth_block.value(), nullptr);
+}
+
+// Test `GetAsyncAuthBlockWithType()` with the `kDoubleWrappedCompat` type fails
+// when the RSA key loader is unavailable.
+TEST_F(AuthBlockUtilityImplTest,
+       GetAsyncAuthBlockWithTypeDoubleWrappedCompatFailNoLoader) {
+  // Setup.
+  EXPECT_CALL(cryptohome_keys_manager_, GetKeyLoader(CryptohomeKeyType::kRSA))
+      .WillRepeatedly(Return(nullptr));
+  crypto_.Init();
+  MakeAuthBlockUtilityImpl();
+  AuthInput auth_input{
+      .user_input = brillo::SecureBlob("fake-passkey"),
+      .username = kUser,
+      .obfuscated_username = SanitizeUserName(kUser),
+  };
+
+  // Test.
+  CryptoStatusOr<std::unique_ptr<AuthBlock>> auth_block =
+      auth_block_utility_impl_->GetAsyncAuthBlockWithType(
+          AuthBlockType::kDoubleWrappedCompat, auth_input);
+
+  // Verify.
+  EXPECT_THAT(auth_block, NotOk());
+}
+
+// Test `GetAsyncAuthBlockWithType()` with the `kTpmBoundToPcr` type succeeds.
+TEST_F(AuthBlockUtilityImplTest, GetAsyncAuthBlockWithTypeTpmBoundToPcr) {
+  // Setup.
+  crypto_.Init();
+  MakeAuthBlockUtilityImpl();
+  AuthInput auth_input{
+      .user_input = brillo::SecureBlob("fake-passkey"),
+      .username = kUser,
+      .obfuscated_username = SanitizeUserName(kUser),
+  };
+
+  // Test.
+  CryptoStatusOr<std::unique_ptr<AuthBlock>> auth_block =
+      auth_block_utility_impl_->GetAsyncAuthBlockWithType(
+          AuthBlockType::kTpmBoundToPcr, auth_input);
+
+  // Verify.
+  ASSERT_THAT(auth_block, IsOk());
+  EXPECT_NE(auth_block.value(), nullptr);
+}
+
+// Test `GetAsyncAuthBlockWithType()` with the `kTpmBoundToPcr` type fails when
+// the RSA key loader is unavailable.
+TEST_F(AuthBlockUtilityImplTest,
+       GetAsyncAuthBlockWithTypeTpmBoundToPcrFailNoLoader) {
+  // Setup.
+  EXPECT_CALL(cryptohome_keys_manager_, GetKeyLoader(CryptohomeKeyType::kRSA))
+      .WillRepeatedly(Return(nullptr));
+  crypto_.Init();
+  MakeAuthBlockUtilityImpl();
+  AuthInput auth_input{
+      .user_input = brillo::SecureBlob("fake-passkey"),
+      .username = kUser,
+      .obfuscated_username = SanitizeUserName(kUser),
+  };
+
+  // Test.
+  CryptoStatusOr<std::unique_ptr<AuthBlock>> auth_block =
+      auth_block_utility_impl_->GetAsyncAuthBlockWithType(
+          AuthBlockType::kTpmBoundToPcr, auth_input);
+
+  // Verify.
+  EXPECT_THAT(auth_block, NotOk());
+}
+
+// Test `GetAsyncAuthBlockWithType()` with the `kTpmEcc` type succeeds.
+TEST_F(AuthBlockUtilityImplTest, GetAsyncAuthBlockWithTypeTpmEcc) {
+  // Setup.
+  crypto_.Init();
+  MakeAuthBlockUtilityImpl();
+  AuthInput auth_input{
+      .user_input = brillo::SecureBlob("fake-passkey"),
+      .username = kUser,
+      .obfuscated_username = SanitizeUserName(kUser),
+  };
+
+  // Test.
+  CryptoStatusOr<std::unique_ptr<AuthBlock>> auth_block =
+      auth_block_utility_impl_->GetAsyncAuthBlockWithType(
+          AuthBlockType::kTpmEcc, auth_input);
+
+  // Verify.
+  ASSERT_THAT(auth_block, IsOk());
+  EXPECT_NE(auth_block.value(), nullptr);
+}
+
+// Test `GetAsyncAuthBlockWithType()` with the `kTpmEcc` type fails when the ECC
+// key loader is unavailable.
+TEST_F(AuthBlockUtilityImplTest, GetAsyncAuthBlockWithTypeTpmEccFailNoLoader) {
+  // Setup.
+  EXPECT_CALL(cryptohome_keys_manager_, GetKeyLoader(CryptohomeKeyType::kECC))
+      .WillRepeatedly(Return(nullptr));
+  crypto_.Init();
+  MakeAuthBlockUtilityImpl();
+  AuthInput auth_input{
+      .user_input = brillo::SecureBlob("fake-passkey"),
+      .username = kUser,
+      .obfuscated_username = SanitizeUserName(kUser),
+  };
+
+  // Test.
+  CryptoStatusOr<std::unique_ptr<AuthBlock>> auth_block =
+      auth_block_utility_impl_->GetAsyncAuthBlockWithType(
+          AuthBlockType::kTpmEcc, auth_input);
+
+  // Verify.
+  EXPECT_THAT(auth_block, NotOk());
 }
 
 // Test that PrepareAuthBlockForRemoval succeeds for

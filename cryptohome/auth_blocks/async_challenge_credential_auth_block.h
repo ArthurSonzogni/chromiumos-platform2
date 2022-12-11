@@ -15,6 +15,8 @@
 #include "cryptohome/auth_blocks/scrypt_auth_block.h"
 #include "cryptohome/challenge_credentials/challenge_credentials_helper.h"
 #include "cryptohome/credentials.h"
+#include "cryptohome/crypto.h"
+#include "cryptohome/error/cryptohome_crypto_error.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/key_challenge_service.h"
 
@@ -25,6 +27,10 @@ namespace cryptohome {
 // block.
 class AsyncChallengeCredentialAuthBlock : public AuthBlock {
  public:
+  // Returns success if the AuthBlock is supported on the current hardware and
+  // software environment.
+  static CryptoStatus IsSupported(Crypto& crypto);
+
   AsyncChallengeCredentialAuthBlock(
       ChallengeCredentialsHelper* challenge_credentials_helper,
       std::unique_ptr<KeyChallengeService> key_challenge_service,

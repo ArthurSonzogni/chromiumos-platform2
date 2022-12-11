@@ -16,6 +16,7 @@
 #include <base/check.h>
 #include <base/logging.h>
 #include <brillo/secure_blob.h>
+#include <libhwsec/frontend/cryptohome/frontend.h>
 #include <libhwsec/status.h>
 #include <libhwsec-foundation/crypto/aes.h>
 #include <libhwsec-foundation/crypto/scrypt.h>
@@ -27,7 +28,10 @@
 #include "cryptohome/crypto_error.h"
 #include "cryptohome/cryptohome_keys_manager.h"
 #include "cryptohome/cryptohome_metrics.h"
+#include "cryptohome/error/action.h"
+#include "cryptohome/error/cryptohome_crypto_error.h"
 #include "cryptohome/error/location_utils.h"
+#include "cryptohome/error/locations.h"
 #include "cryptohome/vault_keyset.pb.h"
 
 using cryptohome::error::CryptohomeCryptoError;
@@ -100,6 +104,44 @@ int CalcEccAuthValueRounds(hwsec::CryptohomeFrontend* hwsec) {
 }  // namespace
 
 namespace cryptohome {
+
+CryptoStatus TpmEccAuthBlock::IsSupported(Crypto& crypto) {
+  DCHECK(crypto.GetHwsec());
+  hwsec::StatusOr<bool> is_ready = crypto.GetHwsec()->IsReady();
+  if (!is_ready.ok()) {
+    return MakeStatus<CryptohomeCryptoError>(
+               CRYPTOHOME_ERR_LOC(
+                   kLocTpmEccAuthBlockHwsecReadyErrorInIsSupported),
+               ErrorActionSet(
+                   {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kAuth}))
+        .Wrap(TpmAuthBlockUtils::TPMErrorToCryptohomeCryptoError(
+            std::move(is_ready).status()));
+  }
+  if (!is_ready.value()) {
+    return MakeStatus<CryptohomeCryptoError>(
+        CRYPTOHOME_ERR_LOC(kLocTpmEccAuthBlockHwsecNotReadyInIsSupported),
+        ErrorActionSet(
+            {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kAuth}),
+        CryptoError::CE_OTHER_CRYPTO);
+  }
+
+  if (!crypto.CanUnsealWithUserAuth()) {
+    return MakeStatus<CryptohomeCryptoError>(
+        CRYPTOHOME_ERR_LOC(
+            kLocTpmEccAuthBlockCannotUnsealWithUserAuthInIsSupported),
+        ErrorActionSet({ErrorAction::kAuth}), CryptoError::CE_OTHER_CRYPTO);
+  }
+
+  DCHECK(crypto.cryptohome_keys_manager());
+  if (!crypto.cryptohome_keys_manager()->GetKeyLoader(
+          CryptohomeKeyType::kECC)) {
+    return MakeStatus<CryptohomeCryptoError>(
+        CRYPTOHOME_ERR_LOC(kLocTpmEccAuthBlockNoKeyLoaderInIsSupported),
+        ErrorActionSet({ErrorAction::kAuth}), CryptoError::CE_OTHER_CRYPTO);
+  }
+
+  return OkStatus<CryptohomeCryptoError>();
+}
 
 TpmEccAuthBlock::TpmEccAuthBlock(hwsec::CryptohomeFrontend* hwsec,
                                  CryptohomeKeysManager* cryptohome_keys_manager)

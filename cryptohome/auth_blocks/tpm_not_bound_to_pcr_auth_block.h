@@ -15,6 +15,7 @@
 #include "cryptohome/auth_blocks/tpm_auth_block_utils.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/cryptohome_keys_manager.h"
+#include "cryptohome/error/cryptohome_crypto_error.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/vault_keyset.pb.h"
 
@@ -22,6 +23,10 @@ namespace cryptohome {
 
 class TpmNotBoundToPcrAuthBlock : public SyncAuthBlock {
  public:
+  // Returns success if the AuthBlock is supported on the current hardware and
+  // software environment.
+  static CryptoStatus IsSupported(Crypto& crypto);
+
   TpmNotBoundToPcrAuthBlock(hwsec::CryptohomeFrontend* hwsec,
                             CryptohomeKeysManager* cryptohome_keys_manager);
   TpmNotBoundToPcrAuthBlock(const TpmNotBoundToPcrAuthBlock&) = delete;

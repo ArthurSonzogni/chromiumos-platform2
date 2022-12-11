@@ -11,11 +11,19 @@
 #include <base/check.h>
 #include <base/logging.h>
 #include <base/notreached.h>
+#include <libhwsec/frontend/cryptohome/frontend.h>
+#include <libhwsec/status.h>
 
 #include "cryptohome/auth_blocks/scrypt_auth_block.h"
+#include "cryptohome/auth_blocks/tpm_auth_block_utils.h"
 #include "cryptohome/challenge_credentials/challenge_credentials_helper_impl.h"
+#include "cryptohome/crypto.h"
+#include "cryptohome/crypto_error.h"
 #include "cryptohome/cryptohome_metrics.h"
+#include "cryptohome/error/action.h"
+#include "cryptohome/error/cryptohome_crypto_error.h"
 #include "cryptohome/error/location_utils.h"
+#include "cryptohome/error/locations.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/key_objects.h"
 
@@ -27,6 +35,30 @@ using hwsec_foundation::status::OkStatus;
 using hwsec_foundation::status::StatusChain;
 
 namespace cryptohome {
+
+CryptoStatus AsyncChallengeCredentialAuthBlock::IsSupported(Crypto& crypto) {
+  DCHECK(crypto.GetHwsec());
+  hwsec::StatusOr<bool> is_ready = crypto.GetHwsec()->IsReady();
+  if (!is_ready.ok()) {
+    return MakeStatus<CryptohomeCryptoError>(
+               CRYPTOHOME_ERR_LOC(
+                   kLocAsyncChalCredAuthBlockHwsecReadyErrorInIsSupported),
+               ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}))
+        .Wrap(TpmAuthBlockUtils::TPMErrorToCryptohomeCryptoError(
+            std::move(is_ready).status()));
+  }
+  if (!is_ready.value()) {
+    return MakeStatus<CryptohomeCryptoError>(
+        CRYPTOHOME_ERR_LOC(
+            kLocAsyncChalCredAuthBlockHwsecNotReadyInIsSupported),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        CryptoError::CE_OTHER_CRYPTO);
+  }
+
+  // TODO(b/262038957): Move checks from
+  // `ChallengeCredentialsHelperImpl::CheckTPMStatus()` here.
+  return OkStatus<CryptohomeCryptoError>();
+}
 
 AsyncChallengeCredentialAuthBlock::AsyncChallengeCredentialAuthBlock(
     ChallengeCredentialsHelper* challenge_credentials_helper,

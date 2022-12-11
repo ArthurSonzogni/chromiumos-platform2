@@ -6,14 +6,19 @@
 #define CRYPTOHOME_AUTH_BLOCKS_PIN_WEAVER_AUTH_BLOCK_H_
 
 #include "cryptohome/auth_blocks/auth_block.h"
+#include "cryptohome/crypto.h"
+#include "cryptohome/error/cryptohome_crypto_error.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
-
 #include "cryptohome/le_credential_manager.h"
 
 namespace cryptohome {
 
 class PinWeaverAuthBlock : public SyncAuthBlock {
  public:
+  // Returns success if the AuthBlock is supported on the current hardware and
+  // software environment.
+  static CryptoStatus IsSupported(Crypto& crypto);
+
   explicit PinWeaverAuthBlock(LECredentialManager* le_manager,
                               CryptohomeKeysManager* cryptohome_keys_manager);
   PinWeaverAuthBlock(const PinWeaverAuthBlock&) = delete;
