@@ -9,13 +9,6 @@
 # Expected to be used for mount-passthrough processes for files shared with
 # ARCVM using virtio-fs.
 
-set -e
-
-if [ $# -ne 4 ]; then
-  echo "Usage: $0 source dest fuse_umask fuse_uid"
-  exit 1
-fi
-
 # shellcheck source=mount-passthrough-jailed-utils.sh
 . /usr/share/arc/mount-passthrough-jailed-utils.sh
 
@@ -23,13 +16,10 @@ fi
 ANDROID_EXTERNAL_STORAGE_GID=1077
 
 # Set UID and GID in FUSE to Android's MediaProvider and external_storage, resp.
-set -- "$@" "${ANDROID_EXTERNAL_STORAGE_GID}"
-
-# Set Android app access type to full.
-set -- "$@" "full"
+set -- "$@" --fuse_gid="${ANDROID_EXTERNAL_STORAGE_GID}"
 
 # Enter the concierge namespace.
-set -- "$@" "true" # enter_concierge_namespace
+set -- "$@" --enter_concierge_namespace
 
 # Set the maximum number of open file descriptors to 262144.
 # The number is taken from vm_concierge.conf, which defines the maximum number
@@ -38,6 +28,6 @@ set -- "$@" "true" # enter_concierge_namespace
 # process are expected to be the ones opend by a virtio-fs device, and we'd like
 # to let virtio-fs devices open as many files as they like without imposing a
 # new restriction on the number of files they can open.
-set -- "$@" "262144" # max_number_of_open_fds
+set -- "$@" --max_number_of_open_fds=262144
 
 run_mount_passthrough_with_minijail0 "$@"

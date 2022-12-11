@@ -5,30 +5,40 @@
 
 # Defines a wrapper function to run mount-passthrough with minijail0.
 
+# This isn't the exact copy that will be used in production, but it's better
+# than pointing shellcheck at /dev/null.
+# shellcheck source=../../../scripts/lib/shflags/shflags
+. /usr/share/misc/shflags
+
+# Define command line flags.
+DEFINE_string source "" "Source path of FUSE mount (required)"
+DEFINE_string dest "" "Target path of FUSE mount (required)"
+DEFINE_string fuse_umask "" \
+  "Umask to set filesystem permissions in FUSE (required)"
+DEFINE_string fuse_uid "" "UID set as file owner in FUSE (required)"
+DEFINE_string fuse_gid "" "GID set as file group in FUSE (required)"
+DEFINE_string android_app_access_type "full" "Access type of Android apps"
+DEFINE_boolean enter_concierge_namespace "${FLAGS_FALSE}" \
+  "Enter concierge namespace"
+# This is larger than the default value 1024 because this process handles many
+# open files. See b/30236190 for more context.
+DEFINE_integer max_number_of_open_fds 8192 "Max number of open fds"
+
+FLAGS_HELP="Usage: $0 [flags]"
+
 run_mount_passthrough_with_minijail0() {
-  if [ $# -ne 8 ]; then
-    echo "Usage: $0 source dest fuse_umask fuse_uid fuse_gid"\
-      "android_app_access_type" "enter_concierge_namespace"\
-      "max_number_of_open_fds"
-    exit 1
-  fi
+  FLAGS "$@" || exit 1
+  eval set -- "${FLAGS_ARGV}"
 
-  local source="${1}"
-  local dest="${2}"
-  local fuse_umask="${3}"
-  local fuse_uid="${4}"
-  local fuse_gid="${5}"
-  local android_app_access_type="${6}"
-  local enter_concierge_namespace="${7}"
-  local max_number_of_open_fds="${8}"
+  set -e
 
-  # Specify the maximum number of file descriptors the process can open.
-  ulimit -n "${max_number_of_open_fds}"
+  local source="${FLAGS_source}"
+  local dest="${FLAGS_dest}"
 
   # Start constructing minijail0 args...
   set --
 
-  if [ "${enter_concierge_namespace}" = "true" ]; then
+  if [ "${FLAGS_enter_concierge_namespace}" = "${FLAGS_TRUE}" ]; then
     # Enter the concierge namespace.
     set -- "$@" -V /run/namespaces/mnt_concierge
   else
@@ -66,10 +76,13 @@ run_mount_passthrough_with_minijail0() {
   # share those mounts explicitly.
   set -- "$@" -K
 
+  # Specify the maximum number of file descriptors the process can open.
+  set -- "$@" -R "RLIMIT_NOFILE,1024,${FLAGS_max_number_of_open_fds}"
+
   local source_in_minijail="${source}"
   local dest_in_minijail="${dest}"
 
-  if [ "${enter_concierge_namespace}" != "true" ]; then
+  if [ "${FLAGS_enter_concierge_namespace}" != "${FLAGS_TRUE}" ]; then
     # Set up the source and destination under /mnt inside the new namespace.
     source_in_minijail=/mnt/source
     dest_in_minijail=/mnt/dest
@@ -102,9 +115,9 @@ run_mount_passthrough_with_minijail0() {
   # Finally, specify command line arguments.
   set -- "$@" -- /usr/bin/mount-passthrough
   set -- "$@" "--source=${source_in_minijail}" "--dest=${dest_in_minijail}" \
-      "--fuse_umask=${fuse_umask}" \
-      "--fuse_uid=${fuse_uid}" "--fuse_gid=${fuse_gid}" \
-      "--android_app_access_type=${android_app_access_type}"
+      "--fuse_umask=${FLAGS_fuse_umask}" \
+      "--fuse_uid=${FLAGS_fuse_uid}" "--fuse_gid=${FLAGS_fuse_gid}" \
+      "--android_app_access_type=${FLAGS_android_app_access_type}"
 
   exec minijail0 "$@"
 }

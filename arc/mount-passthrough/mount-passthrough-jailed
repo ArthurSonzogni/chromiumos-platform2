@@ -5,23 +5,7 @@
 
 # Runs mount-passthrough with minijail0 as chronos.
 
-set -e
-
-if [ $# -ne 6 ]; then
-  echo "Usage: $0 source dest fuse_umask fuse_uid fuse_gid"\
-    "android_app_access_type"
-  exit 1
-fi
-
 # shellcheck source=mount-passthrough-jailed-utils.sh
 . /usr/share/arc/mount-passthrough-jailed-utils.sh
-
-# Do not enter the concierge namespace.
-set -- "$@" "false" # enter_concierge_namespace
-
-# Set the maximum number of open file descriptors to 8192.
-# This is larger than the default value 1024 because this process handles many
-# open files. See b/30236190 for more context.
-set -- "$@" "8192" # max_number_of_open_fds
 
 run_mount_passthrough_with_minijail0 "$@"
