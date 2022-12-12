@@ -333,6 +333,29 @@ bool HostNotifier::UninstallShaderCache(uint64_t steam_app_id) {
   return true;
 }
 
+bool HostNotifier::UnmountShaderCache(uint64_t steam_app_id, bool wait) {
+  std::unique_ptr<vm_tools::container::ContainerListener::Stub> stub;
+  stub = std::make_unique<vm_tools::container::ContainerListener::Stub>(
+      grpc::CreateChannel(base::StringPrintf("vsock:%d:%u", VMADDR_CID_HOST,
+                                             vm_tools::kGarconPort),
+                          grpc::InsecureChannelCredentials()));
+  grpc::ClientContext ctx;
+
+  vm_tools::container::UnmountShaderCacheRequest request;
+  EmptyMessage response;
+  request.set_token(GetSecurityToken());
+  request.set_steam_app_id(steam_app_id);
+  request.set_wait(wait);
+
+  grpc::Status status = stub->UnmountShaderCache(&ctx, request, &response);
+  if (!status.ok()) {
+    LOG(ERROR) << "Failed to queue unmount shader cache: "
+               << status.error_message();
+    return false;
+  }
+  return true;
+}
+
 bool HostNotifier::ReleaseSpace(
     uint64_t space_to_release,
     vm_tools::container::ReleaseSpaceResponse* response) {

@@ -79,6 +79,9 @@ class HostNotifier : public PackageKitProxy::PackageKitObserver,
   // Unmount and uninstall shader cache DLC
   static bool UninstallShaderCache(uint64_t steam_app_id);
 
+  // Unmount shader cache DLC
+  static bool UnmountShaderCache(uint64_t steam_app_id, bool wait);
+
   // Sends a gRPC call to the host to request that sleep be inhibited.
   static bool InhibitScreensaver(
       vm_tools::container::InhibitScreensaverInfo info);

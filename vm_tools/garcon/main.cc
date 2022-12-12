@@ -77,6 +77,7 @@ constexpr char kShaderAppIDSwitch[] = "app-id";
 constexpr char kShaderInstallSwitch[] = "install";
 constexpr char kShaderUninstallSwitch[] = "uninstall";
 constexpr char kShaderMountSwitch[] = "mount";
+constexpr char kShaderUnmountSwitch[] = "unmount";
 constexpr char kShaderWaitSwitch[] = "wait";
 constexpr char kGetDiskInfoArg[] = "get_disk_info";
 constexpr char kRequestSpaceArg[] = "request_space";
@@ -266,9 +267,13 @@ void PrintUsage() {
             << "  --install: (optional) Install shader cache DLC\n"
             << "  --uninstall: (optional) Unmount and uninstall shader cache\n"
             << "               DLC\n"
-            << "  --mount: (optional) Upon shader cache DLC installation,\n"
-            << "           mount the DLC contents to VM's GPU cache\n"
-            << "  --wait: (optional) Wait for the operation to complete\n"
+            << "  --unmount: (optional) Unmount shader cache for this VM\n"
+            << "  --mount: (optional, use with --install) Upon shader cache\n"
+            << "           DLC installation, mount the DLC contents to VM's\n"
+            << "           GPU cache\n"
+            << "  --wait: (optional, use with --install or --unmount) Wait\n"
+            << "          for all the operations to complete, including DLC\n"
+            << "          download for --install\n"
             << "Select File Switches (only with --client --selectfile):\n"
             << "  --type: "
                "open-file|open-multi-file|saveas-file|folder|upload-folder\n"
@@ -421,7 +426,8 @@ int HandleShaderCacheArgs(base::CommandLine* cl) {
     return -1;
   }
 
-  auto flag_set = {kShaderInstallSwitch, kShaderUninstallSwitch};
+  auto flag_set = {kShaderInstallSwitch, kShaderUninstallSwitch,
+                   kShaderUnmountSwitch};
   int flag_count = 0;
   std::ostringstream flags_combined;
   for (auto flag : flag_set) {
@@ -444,9 +450,22 @@ int HandleShaderCacheArgs(base::CommandLine* cl) {
     if (cl->HasSwitch(kShaderMountSwitch)) {
       LOG(INFO) << "Upon successful installation, shader cache will be mounted";
     }
+    if (cl->HasSwitch(kShaderWaitSwitch)) {
+      LOG(INFO) << "Waiting for all operations to complete";
+    }
     success = vm_tools::garcon::HostNotifier::InstallShaderCache(
         app_id, cl->HasSwitch(kShaderMountSwitch),
         cl->HasSwitch(kShaderWaitSwitch));
+
+  } else if (cl->HasSwitch(kShaderUnmountSwitch)) {
+    LOG(INFO) << "Queuing unmount command for " << app_id_string
+              << " in the background. Shader cache will be unmounted once mesa"
+              << " stops using them.";
+    if (cl->HasSwitch(kShaderWaitSwitch)) {
+      LOG(INFO) << "Waiting for all operations to complete";
+    }
+    success = vm_tools::garcon::HostNotifier::UnmountShaderCache(
+        app_id, cl->HasSwitch(kShaderWaitSwitch));
 
   } else if (cl->HasSwitch(kShaderUninstallSwitch)) {
     if (cl->HasSwitch(kShaderMountSwitch)) {
@@ -457,9 +476,17 @@ int HandleShaderCacheArgs(base::CommandLine* cl) {
       LOG(WARNING) << "Shader cache uninstall always waits, --"
                    << kShaderWaitSwitch << " flag is redundant";
     }
+    if (cl->HasSwitch(kShaderUnmountSwitch)) {
+      LOG(WARNING) << "Shader cache uninstall always unmounts, --"
+                   << kShaderWaitSwitch << " flag is redundant";
+    }
     LOG(INFO) << "Unmounting and uninstalling shader cache for "
               << app_id_string;
     success = vm_tools::garcon::HostNotifier::UninstallShaderCache(app_id);
+  } else {
+    LOG(ERROR) << "No command specified, specify one of --"
+               << kShaderInstallSwitch << ", --" << kShaderUnmountSwitch
+               << ", --" << kShaderUninstallSwitch;
   }
 
   return success ? 0 : -1;
