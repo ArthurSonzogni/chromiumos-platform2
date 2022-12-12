@@ -378,23 +378,24 @@ PortalDetector::Status PortalDetector::GetPortalStatusForRequestResult(
   }
 }
 
-Service::ConnectState PortalDetector::Result::GetConnectionState() const {
+PortalDetector::ValidationState PortalDetector::Result::GetValidationState()
+    const {
   if (http_phase != PortalDetector::Phase::kContent) {
-    return Service::kStateNoConnectivity;
+    return ValidationState::kNoConnectivity;
   }
   if (http_status == PortalDetector::Status::kSuccess &&
       https_status == PortalDetector::Status::kSuccess) {
-    return Service::kStateOnline;
+    return ValidationState::kInternetConnectivity;
   }
   if (http_status == PortalDetector::Status::kRedirect) {
-    return redirect_url_string.empty() ? Service::kStatePortalSuspected
-                                       : Service::kStateRedirectFound;
+    return redirect_url_string.empty() ? ValidationState::kPartialConnectivity
+                                       : ValidationState::kPortalRedirect;
   }
   if (http_status == PortalDetector::Status::kTimeout &&
       https_status != PortalDetector::Status::kSuccess) {
-    return Service::kStateNoConnectivity;
+    return ValidationState::kNoConnectivity;
   }
-  return Service::kStatePortalSuspected;
+  return ValidationState::kPartialConnectivity;
 }
 
 std::string PortalDetector::LoggingTag() const {

@@ -23,7 +23,6 @@
 #include "shill/http_url.h"
 #include "shill/net/ip_address.h"
 #include "shill/net/sockets.h"
-#include "shill/service.h"
 
 namespace shill {
 
@@ -103,7 +102,20 @@ class PortalDetector {
 
   enum class Status { kFailure, kSuccess, kTimeout, kRedirect };
 
-  // Represents the result of a complete portal detection attempt (DNS
+  // Represents the possible outcomes of a portal detection attempt.
+  enum class ValidationState {
+    // All validation probes have succeeded with the expected
+    // result.
+    kInternetConnectivity,
+    // Validation probes have all failed or timed out.
+    kNoConnectivity,
+    // Some validation probes have failed or timed out.
+    kPartialConnectivity,
+    // The HTTP probe has been redirected to a different location.
+    kPortalRedirect,
+  };
+
+  // Represents the detailed result of a complete portal detection attempt (DNS
   // resolution, HTTP probe, HTTPS probe).
   struct Result {
     // Final Phase of the HTTP probe when the trial finished.
@@ -134,9 +146,9 @@ class PortalDetector {
     // or not.
     bool IsComplete() const;
 
-    // Returns the Service ConnectionState value inferred from this captive
-    // portal detection result.
-    Service::ConnectState GetConnectionState() const;
+    // Returns the ValidationState value inferred from this captive portal
+    // detection result.
+    ValidationState GetValidationState() const;
   };
 
   PortalDetector(EventDispatcher* dispatcher,

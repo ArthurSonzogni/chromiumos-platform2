@@ -114,6 +114,20 @@ int PortalResultToMetricsEnum(PortalDetector::Result portal_result) {
   }
 }
 
+Service::ConnectState PortalValidationStateToConnectionState(
+    PortalDetector::ValidationState validation_state) {
+  switch (validation_state) {
+    case PortalDetector::ValidationState::kInternetConnectivity:
+      return Service::kStateOnline;
+    case PortalDetector::ValidationState::kNoConnectivity:
+      return Service::kStateNoConnectivity;
+    case PortalDetector::ValidationState::kPartialConnectivity:
+      return Service::kStatePortalSuspected;
+    case PortalDetector::ValidationState::kPortalRedirect:
+      return Service::kStateRedirectFound;
+  }
+}
+
 }  // namespace
 
 const char Device::kStoragePowered[] = "Powered";
@@ -720,7 +734,8 @@ void Device::PortalDetectorCallback(const PortalDetector::Result& result) {
   // Set the probe URL. It should be empty if there is no redirect.
   selected_service_->SetProbeUrl(result.probe_url_string);
 
-  Service::ConnectState state = result.GetConnectionState();
+  Service::ConnectState state =
+      PortalValidationStateToConnectionState(result.GetValidationState());
   if (state == Service::kStateOnline) {
     OnNetworkValidationSuccess();
     StopPortalDetection();
