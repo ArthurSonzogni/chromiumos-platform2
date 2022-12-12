@@ -14,7 +14,7 @@
 
 #include "missive/compression/compression_module.h"
 #include "missive/proto/record.pb.h"
-#include "missive/resources/resource_interface.h"
+#include "missive/resources/resource_manager.h"
 #include "missive/util/statusor.h"
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -30,7 +30,7 @@ class TestCompressionModuleStrict : public CompressionModule {
   MOCK_METHOD(void,
               CompressRecord,
               (std::string record,
-               scoped_refptr<ResourceInterface> memory_resource,
+               scoped_refptr<Resourcemanager> memory_resource,
                base::OnceCallback<void(
                    std::string, std::optional<CompressionInformation>)> cb),
               (const override));

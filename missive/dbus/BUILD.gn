@@ -53,7 +53,7 @@ static_library("dbus_adaptor") {
     "//missive/proto:libmissiveprotointerface",
     "//missive/proto:libmissiveprotorecord",
     "//missive/proto:libmissiveprotorecordconstants",
-    "//missive/resources:resource_interface",
+    "//missive/resources:resource_manager",
     "//missive/util:status",
   ]
 }

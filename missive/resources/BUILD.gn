@@ -18,12 +18,12 @@ pkg_config("target_defaults") {
   }
 }
 
-static_library("resource_interface") {
+static_library("resource_manager") {
   sources = [
     "enqueuing_record_tallier.cc",
     "enqueuing_record_tallier.h",
-    "resource_interface.cc",
-    "resource_interface.h",
+    "resource_manager.cc",
+    "resource_manager.h",
   ]
 
   configs += [ ":target_defaults" ]

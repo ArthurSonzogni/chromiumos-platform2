@@ -1,5 +1,5 @@
 # Copyright 2021 The ChromiumOS Authors
-# Use of this source code is governed by a BSD - style license that can be
+# Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
 import("//common-mk/pkg_config.gni")
@@ -23,7 +23,7 @@ static_library("compression_module") {
   deps = [
     "//missive/proto:libmissiveprotorecord",
     "//missive/proto:libmissiveprotorecordconstants",
-    "//missive/resources:resource_interface",
+    "//missive/resources:resource_manager",
     "//missive/util:status",
   ]
 }

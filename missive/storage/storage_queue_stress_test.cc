@@ -30,7 +30,7 @@
 #include "missive/compression/test_compression_module.h"
 #include "missive/encryption/test_encryption_module.h"
 #include "missive/proto/record.pb.h"
-#include "missive/resources/resource_interface.h"
+#include "missive/resources/resource_manager.h"
 #include "missive/storage/storage_configuration.h"
 #include "missive/storage/storage_uploader_interface.h"
 #include "missive/util/status.h"

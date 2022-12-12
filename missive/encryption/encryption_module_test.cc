@@ -28,7 +28,7 @@
 #include "missive/encryption/primitives.h"
 #include "missive/encryption/testing_primitives.h"
 #include "missive/proto/record.pb.h"
-#include "missive/resources/resource_interface.h"
+#include "missive/resources/resource_manager.h"
 #include "missive/util/status.h"
 #include "missive/util/status_macros.h"
 #include "missive/util/statusor.h"

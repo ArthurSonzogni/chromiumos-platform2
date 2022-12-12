@@ -46,7 +46,7 @@
 #include "missive/compression/compression_module.h"
 #include "missive/encryption/encryption_module_interface.h"
 #include "missive/proto/record.pb.h"
-#include "missive/resources/resource_interface.h"
+#include "missive/resources/resource_manager.h"
 #include "missive/storage/storage_configuration.h"
 #include "missive/storage/storage_uploader_interface.h"
 #include "missive/util/file.h"
@@ -1913,8 +1913,8 @@ StatusOr<scoped_refptr<StorageQueue::SingleFile>>
 StorageQueue::SingleFile::Create(
     const base::FilePath& filename,
     int64_t size,
-    scoped_refptr<ResourceInterface> memory_resource,
-    scoped_refptr<ResourceInterface> disk_space_resource,
+    scoped_refptr<Resourcemanager> memory_resource,
+    scoped_refptr<Resourcemanager> disk_space_resource,
     scoped_refptr<RefCountedClosureList> completion_closure_list) {
   if (!disk_space_resource->Reserve(size)) {
     LOG(WARNING) << "Disk space exceeded adding file "
@@ -1934,8 +1934,8 @@ StorageQueue::SingleFile::Create(
 StorageQueue::SingleFile::SingleFile(
     const base::FilePath& filename,
     int64_t size,
-    scoped_refptr<ResourceInterface> memory_resource,
-    scoped_refptr<ResourceInterface> disk_space_resource,
+    scoped_refptr<Resourcemanager> memory_resource,
+    scoped_refptr<Resourcemanager> disk_space_resource,
     scoped_refptr<RefCountedClosureList> completion_closure_list)
     : completion_closure_list_(completion_closure_list),
       filename_(filename),

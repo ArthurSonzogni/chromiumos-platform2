@@ -13,18 +13,18 @@
 #include <gtest/gtest_prod.h>
 
 #include "missive/analytics/resource_collector.h"
-#include "missive/resources/resource_interface.h"
+#include "missive/resources/resource_manager.h"
 
 namespace reporting::analytics {
 
 class ResourceCollectorMemory : public ResourceCollector {
  public:
   // |interval| means the same as in |ResourceCollector::ResourceCollector|.
-  // |memory_resource| should point to the same |ResourceInterface| object
+  // |memory_resource| should point to the same |Resourcemanager| object
   // as the one in the |StorageOption| object that is passed to the
   // |Storage| instance.
   ResourceCollectorMemory(base::TimeDelta interval,
-                          scoped_refptr<ResourceInterface> memory_resource);
+                          scoped_refptr<Resourcemanager> memory_resource);
   virtual ~ResourceCollectorMemory();
 
  private:
@@ -47,7 +47,7 @@ class ResourceCollectorMemory : public ResourceCollector {
   bool SendMemorySizeToUma(int memory_size);
 
   // Memory resource interface.
-  scoped_refptr<ResourceInterface> memory_resource_
+  scoped_refptr<Resourcemanager> memory_resource_
       GUARDED_BY_CONTEXT(sequence_checker_);
 };
 

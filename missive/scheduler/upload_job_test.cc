@@ -18,7 +18,7 @@
 #include "missive/dbus/mock_upload_client.h"
 #include "missive/proto/interface.pb.h"
 #include "missive/proto/record.pb.h"
-#include "missive/resources/resource_interface.h"
+#include "missive/resources/resource_manager.h"
 #include "missive/util/test_support_callbacks.h"
 #include "missive/util/test_util.h"
 
@@ -34,7 +34,7 @@ namespace {
 class TestRecordUploader {
  public:
   TestRecordUploader(std::vector<EncryptedRecord> records,
-                     scoped_refptr<ResourceInterface> memory_resource)
+                     scoped_refptr<Resourcemanager> memory_resource)
       : records_(std::move(records)),
         memory_resource_(memory_resource),
         sequenced_task_runner_(base::ThreadPool::CreateSequencedTaskRunner(
@@ -73,7 +73,7 @@ class TestRecordUploader {
   }
 
   std::vector<EncryptedRecord> records_;
-  const scoped_refptr<ResourceInterface> memory_resource_;
+  const scoped_refptr<Resourcemanager> memory_resource_;
   std::unique_ptr<UploaderInterface> uploader_interface_;
 
   // To protect |records_| running uploads on sequence.
@@ -85,8 +85,8 @@ class UploadJobTest : public ::testing::Test {
  protected:
   void SetUp() override {
     upload_client_ = base::MakeRefCounted<test::MockUploadClient>();
-    memory_resource_ = base::MakeRefCounted<ResourceInterface>(
-        4u * 1024LLu * 1024LLu);  // 4 MiB
+    memory_resource_ =
+        base::MakeRefCounted<Resourcemanager>(4u * 1024LLu * 1024LLu);  // 4 MiB
   }
 
   void TearDown() override {
@@ -97,7 +97,7 @@ class UploadJobTest : public ::testing::Test {
 
   base::test::TaskEnvironment task_environment_;
 
-  scoped_refptr<ResourceInterface> memory_resource_;
+  scoped_refptr<Resourcemanager> memory_resource_;
   scoped_refptr<test::MockUploadClient> upload_client_;
 };
 

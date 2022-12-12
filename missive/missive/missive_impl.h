@@ -19,7 +19,7 @@
 #include "missive/missive/missive_service.h"
 #include "missive/proto/interface.pb.h"
 #include "missive/resources/enqueuing_record_tallier.h"
-#include "missive/resources/resource_interface.h"
+#include "missive/resources/resource_manager.h"
 #include "missive/scheduler/scheduler.h"
 #include "missive/storage/storage_module.h"
 #include "missive/storage/storage_uploader_interface.h"
@@ -119,7 +119,7 @@ class MissiveImpl : public MissiveService {
       GUARDED_BY_CONTEXT(sequence_checker_);
   scoped_refptr<StorageModule> storage_module_
       GUARDED_BY_CONTEXT(sequence_checker_);
-  scoped_refptr<const ResourceInterface> disk_space_resource_
+  scoped_refptr<const Resourcemanager> disk_space_resource_
       GUARDED_BY_CONTEXT(sequence_checker_);
   std::unique_ptr<EnqueuingRecordTallier> enqueuing_record_tallier_
       GUARDED_BY_CONTEXT(sequence_checker_);

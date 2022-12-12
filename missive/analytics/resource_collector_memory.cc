@@ -10,12 +10,12 @@
 #include <base/memory/scoped_refptr.h>
 #include <base/sequence_checker.h>
 
-#include "missive/resources/resource_interface.h"
+#include "missive/resources/resource_manager.h"
 
 namespace reporting::analytics {
 
 ResourceCollectorMemory::ResourceCollectorMemory(
-    base::TimeDelta interval, scoped_refptr<ResourceInterface> memory_resource)
+    base::TimeDelta interval, scoped_refptr<Resourcemanager> memory_resource)
     : ResourceCollector(interval),
       memory_resource_(std::move(memory_resource)) {
   DCHECK(memory_resource_);

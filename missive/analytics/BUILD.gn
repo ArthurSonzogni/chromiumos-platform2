@@ -31,7 +31,7 @@ static_library("libanalytics") {
   configs += [ ":target_defaults" ]
   public_deps = [
     "//missive/proto:libmissiveprotostatus",
-    "//missive/resources:resource_interface",
+    "//missive/resources:resource_manager",
     "//missive/util:time",
   ]
 }

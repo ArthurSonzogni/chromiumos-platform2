@@ -16,7 +16,7 @@
 #include <snappy.h>
 
 #include "missive/proto/record.pb.h"
-#include "missive/resources/resource_interface.h"
+#include "missive/resources/resource_manager.h"
 
 namespace reporting {
 
@@ -38,7 +38,7 @@ scoped_refptr<CompressionModule> CompressionModule::Create(
 
 void CompressionModule::CompressRecord(
     std::string record,
-    scoped_refptr<ResourceInterface> memory_resource,
+    scoped_refptr<Resourcemanager> memory_resource,
     base::OnceCallback<void(std::string, std::optional<CompressionInformation>)>
         cb) const {
   if (!is_enabled()) {
