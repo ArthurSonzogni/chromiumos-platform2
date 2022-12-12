@@ -66,7 +66,6 @@ std::string BooleanParameter(const char* parameter, bool value) {
 
 }  // namespace
 
-
 base::StringPairs Disk::GetCrosvmArgs() const {
   std::string first;
   if (writable)
@@ -74,15 +73,15 @@ base::StringPairs Disk::GetCrosvmArgs() const {
   else
     first = "--disk";
 
-  std::string sparse_arg{};
+  std::string sparse_arg;
   if (sparse) {
     sparse_arg = BooleanParameter(",sparse=", sparse.value());
   }
-  std::string o_direct_arg{};
+  std::string o_direct_arg;
   if (o_direct) {
     o_direct_arg = BooleanParameter(",o_direct=", o_direct.value());
   }
-  std::string block_size_arg{};
+  std::string block_size_arg;
   if (block_size) {
     block_size_arg =
         base::StringPrintf(",block_size=%" PRIuS, block_size.value());
