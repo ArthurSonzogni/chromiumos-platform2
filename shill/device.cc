@@ -633,8 +633,8 @@ bool Device::UpdatePortalDetector(bool restart) {
 }
 
 void Device::StopPortalDetection() {
-  SLOG(this, 2) << LoggingTag() << ": Portal detection stopping.";
   if (portal_detector_.get() && portal_detector_->IsInProgress()) {
+    LOG(INFO) << LoggingTag() << ": Portal detection finished";
     OnNetworkValidationStop();
   }
   portal_detector_.reset();
@@ -722,40 +722,32 @@ void Device::PortalDetectorCallback(const PortalDetector::Result& result) {
 
   Service::ConnectState state = result.GetConnectionState();
   if (state == Service::kStateOnline) {
-    LOG(INFO) << LoggingTag() << ": Portal detection finished";
     OnNetworkValidationSuccess();
     StopPortalDetection();
-    SetServiceState(state);
-    return;
-  }
+  } else if (Service::IsPortalledState(state)) {
+    OnNetworkValidationFailure();
+    selected_service_->SetPortalDetectionFailure(
+        PortalDetector::PhaseToString(result.http_phase),
+        PortalDetector::StatusToString(result.http_status),
+        result.http_status_code);
 
-  if (!Service::IsPortalledState(state)) {
+    if (portal_detector_->Restart(manager_->GetProperties(),
+                                  network_->interface_name(), network_->local(),
+                                  network_->dns_servers(), LoggingTag())) {
+      // TODO(b/216351118): this ignores the portal detection retry delay. The
+      // callback should be triggered when the next attempt starts, not when it
+      // is scheduled.
+      OnNetworkValidationStart();
+    } else {
+      state = Service::kStateOnline;
+      StopPortalDetection();
+    }
+  } else {
     LOG(ERROR) << LoggingTag() << ": unexpected Service state " << state
                << " from portal detection result";
+    state = Service::kStateOnline;
     StopPortalDetection();
-    SetServiceState(Service::kStateOnline);
-    return;
   }
-
-  // Set failure phase and status.
-  selected_service_->SetPortalDetectionFailure(
-      PortalDetector::PhaseToString(result.http_phase),
-      PortalDetector::StatusToString(result.http_status),
-      result.http_status_code);
-  OnNetworkValidationFailure();
-
-  if (!portal_detector_->Restart(manager_->GetProperties(),
-                                 network_->interface_name(), network_->local(),
-                                 network_->dns_servers(), LoggingTag())) {
-    StopPortalDetection();
-    SetServiceState(Service::kStateOnline);
-    return;
-  }
-
-  // TODO(b/216351118): this ignores the portal detection retry delay. The
-  // callback should be triggered when the next attempt starts, not when it
-  // is scheduled.
-  OnNetworkValidationStart();
 
   SetServiceState(state);
 
