@@ -779,4 +779,62 @@ IPAddress Network::gateway() const {
   return connection_->gateway();
 }
 
+bool Network::StartPortalDetection(const ManagerProperties& props) {
+  portal_detector_ = CreatePortalDetector();
+  if (!portal_detector_->Start(props, interface_name_, local(), dns_servers(),
+                               logging_tag_)) {
+    LOG(ERROR) << logging_tag_ << ": Portal detection failed to start.";
+    portal_detector_.reset();
+    return false;
+  }
+
+  LOG(INFO) << logging_tag_ << ": Portal detection started.";
+  event_handler_->OnNetworkValidationStart();
+  return true;
+}
+
+bool Network::RestartPortalDetection(const ManagerProperties& props) {
+  if (!portal_detector_) {
+    LOG(ERROR) << logging_tag_
+               << ": Portal detection was not started, cannot restart";
+    return false;
+  }
+
+  if (!portal_detector_->Restart(props, interface_name_, local(), dns_servers(),
+                                 logging_tag_)) {
+    LOG(ERROR) << logging_tag_ << ": Portal detection failed to restart.";
+    StopPortalDetection();
+    return false;
+  }
+
+  LOG(INFO) << logging_tag_ << ": Portal detection restarted.";
+  // TODO(b/216351118): this ignores the portal detection retry delay. The
+  // callback should be triggered when the next attempt starts, not when it
+  // is scheduled.
+  event_handler_->OnNetworkValidationStart();
+  return true;
+}
+
+void Network::StopPortalDetection() {
+  if (IsPortalDetectionInProgress()) {
+    LOG(INFO) << logging_tag_ << ": Portal detection stopped.";
+    event_handler_->OnNetworkValidationStop();
+  }
+  portal_detector_.reset();
+}
+
+bool Network::IsPortalDetectionInProgress() const {
+  return portal_detector_ && portal_detector_->IsInProgress();
+}
+
+std::unique_ptr<PortalDetector> Network::CreatePortalDetector() {
+  return std::make_unique<PortalDetector>(
+      dispatcher_,
+      base::BindRepeating(&Network::OnPortalDetectorResult, AsWeakPtr()));
+}
+
+void Network::OnPortalDetectorResult(const PortalDetector::Result& result) {
+  event_handler_->OnNetworkValidationResult(result);
+}
+
 }  // namespace shill

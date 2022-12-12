@@ -23,6 +23,7 @@
 #include "shill/network/dhcp_controller.h"
 #include "shill/network/dhcp_provider.h"
 #include "shill/network/slaac_controller.h"
+#include "shill/portal_detector.h"
 #include "shill/technology.h"
 
 namespace shill {
@@ -31,6 +32,7 @@ class EventDispatcher;
 class Metrics;
 class RoutingTable;
 class Service;
+struct ManagerProperties;
 
 // An object of Network class represents a network interface in the kernel, and
 // maintains the layer 3 configuration on this interface.
@@ -92,6 +94,19 @@ class Network {
         const IPAddress& ip_address,
         patchpanel::NeighborReachabilityEventSignal::Role role,
         patchpanel::NeighborReachabilityEventSignal::EventType event_type) = 0;
+
+    // Called every time PortalDetector finishes a network validation attempt
+    // starts. If network validation is used for this Service, PortalDetector
+    // starts the first attempt when OnConnected() is called. PortalDetector may
+    // run multiple times for the same network.
+    virtual void OnNetworkValidationStart() = 0;
+    // Called every time PortalDetector is stopped before completing a trial.
+    virtual void OnNetworkValidationStop() = 0;
+    // Called when a PortalDetector trial completes.
+    // Called every time a PortalDetector attempt finishes and Internet
+    // connectivity has been evaluated.
+    virtual void OnNetworkValidationResult(
+        const PortalDetector::Result& result) = 0;
   };
 
   // Options for starting a network.
@@ -234,6 +249,18 @@ class Network {
   mockable void OnNeighborReachabilityEvent(
       const patchpanel::NeighborReachabilityEventSignal& signal);
 
+  // Starts a new network validation cycle and starts a first portal detection
+  // attempt. Returns true if portal detection starts successfully.
+  mockable bool StartPortalDetection(const ManagerProperties& props);
+  // Schedules the next portal detection attempt for the current network
+  // validation cycle. Returns true if portal detection restarts successfully.
+  // If portal detection fails to restart, it is stopped.
+  mockable bool RestartPortalDetection(const ManagerProperties& props);
+  // Stops the current network validation cycle if it is still running.
+  mockable void StopPortalDetection();
+  // Returns true if portal detection is currently in progress.
+  mockable bool IsPortalDetectionInProgress() const;
+
   // Properties of the current IP config. Returns IPv4 properties if the Network
   // is dual-stack, and default (empty) values if the Network is not connected.
   mockable std::vector<std::string> dns_servers() const;
@@ -273,10 +300,13 @@ class Network {
     routing_table_ = routing_table;
   }
   void set_state_for_testing(State state) { state_ = state; }
+  EventHandler* event_handler() { return event_handler_; }
 
  private:
   // TODO(b/232177767): Refactor DeviceTest to remove this dependency.
   friend class DeviceTest;
+  // TODO(b/232177767): Refactor DeviceTest to remove this dependency.
+  friend class DevicePortalDetectorTest;
   // TODO(b/232177767): Refactor StaticIPParametersTest to remove this
   // dependency
   friend class StaticIPParametersTest;
@@ -294,6 +324,11 @@ class Network {
 
   // Creates a SLAACController object. Isolated for unit test mock injection.
   mockable std::unique_ptr<SLAACController> CreateSLAACController();
+
+  // Constructs and returns a PortalDetector instance. Isolate
+  // this function only for unit tests, so that we can inject a mock
+  // PortalDetector object easily.
+  mockable std::unique_ptr<PortalDetector> CreatePortalDetector();
 
   // Shuts down and clears all the running state of this network. If
   // |trigger_callback| is true and the Network is started, OnNetworkStopped()
@@ -321,6 +356,11 @@ class Network {
   void OnUpdateFromSLAAC(SLAACController::UpdateType update_type);
   void OnIPv6AddressChanged();
   void OnIPv6DnsServerAddressesChanged();
+
+  // Called by the Portal Detector whenever a trial completes.  Device
+  // subclasses that choose unique mappings from portal results to connected
+  // states can override this method in order to do so.
+  void OnPortalDetectorResult(const PortalDetector::Result& result);
 
   // Enable ARP filtering on the interface. Incoming ARP requests are responded
   // to only by the interface(s) owning the address. Outgoing ARP requests will
@@ -401,6 +441,8 @@ class Network {
   // Start().
   bool ipv4_gateway_found_ = false;
   bool ipv6_gateway_found_ = false;
+
+  std::unique_ptr<PortalDetector> portal_detector_;
 
   EventHandler* event_handler_;
 

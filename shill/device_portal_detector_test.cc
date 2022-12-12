@@ -9,20 +9,17 @@
 #include <vector>
 
 #include <base/bind.h>
-#include <base/callback.h>
-#include <base/time/time.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-
 #include "metrics/fake_metrics_library.h"
+
 #include "shill/event_dispatcher.h"
 #include "shill/metrics.h"
 #include "shill/mock_control.h"
 #include "shill/mock_device_info.h"
 #include "shill/mock_manager.h"
-#include "shill/network/mock_network.h"
+#include "shill/network/network.h"
 #include "shill/portal_detector.h"
-#include "shill/routing_table.h"
 #include "shill/service_under_test.h"
 #include "shill/technology.h"
 #include "shill/test_event_dispatcher.h"
@@ -37,9 +34,9 @@ using ::testing::ReturnRef;
 using ::testing::ReturnRefOfCopy;
 
 // This file contains Device unit tests focused on portal detection and
-// integration with the PortalDetector class. These tests minimize the use of
-// mocks, relying instead on a test PortalDetector implementation and a test
-// Device implementation to provide the test PortalDetector.
+// integration with the Network class. These tests minimize the use of
+// mocks, relying instead on a test Network implementation and a test
+// Device implementation to provide the test Network.
 
 // The primary advantage to this pattern, other than increased readability,
 // is that it is much easier to test the Device state machine from
@@ -51,111 +48,131 @@ namespace shill {
 
 namespace {
 
-const char kDeviceName[] = "testdevice";
-const char kDeviceAddress[] = "00:01:02:03:04:05";
-const int kDeviceInterfaceIndex = 1;
-const char kRedirectUrl[] = "http://www.redirect.com/signin";
-
+constexpr char kDeviceName[] = "testdevice";
+constexpr char kDeviceAddress[] = "00:01:02:03:04:05";
+constexpr int kDeviceInterfaceIndex = 1;
+constexpr char kRedirectUrl[] = "http://www.redirect.com/signin";
 // Portal detection is technology agnostic, use 'unknown'.
-const Technology kTestTechnology = Technology::kUnknown;
+constexpr Technology kTestTechnology = Technology::kUnknown;
 
-class TestPortalDetector : public PortalDetector {
+class TestNetwork : public Network {
  public:
-  TestPortalDetector(EventDispatcher* dispatcher,
-                     base::RepeatingCallback<void(const Result&)> callback)
-      : PortalDetector(dispatcher, callback) {}
-  ~TestPortalDetector() override = default;
-  TestPortalDetector(const TestPortalDetector&) = delete;
-  TestPortalDetector& operator=(const TestPortalDetector&) = delete;
+  explicit TestNetwork(Network::EventHandler* event_handler)
+      : Network(kDeviceInterfaceIndex,
+                kDeviceName,
+                kTestTechnology,
+                /*fixed_ip_params=*/false,
+                event_handler,
+                /*control_interface=*/nullptr,
+                /*dispatcher=*/nullptr,
+                /*metrics=*/nullptr) {}
+  ~TestNetwork() override = default;
+  TestNetwork(const TestNetwork&) = delete;
+  TestNetwork& operator=(const TestNetwork&) = delete;
 
-  // PortalDetector overrides
-  bool Start(const ManagerProperties& props,
-             const std::string& ifname,
-             const IPAddress& src_address,
-             const std::vector<std::string>& dns_list,
-             const std::string& logging_tag,
-             base::TimeDelta delay = base::TimeDelta()) override {
-    started_ = true;
-    num_attempts_++;
+  // Network overrides
+  bool IsConnected() const override { return true; }
+
+  bool StartPortalDetection(const ManagerProperties& props) override {
+    portal_detection_delayed_ = false;
+    portal_detection_started_ = true;
+    portal_detection_running_ = true;
+    portal_detection_num_attempts_++;
     return true;
   }
 
-  bool Restart(const ManagerProperties& props,
-               const std::string& ifname,
-               const IPAddress& src_address,
-               const std::vector<std::string>& dns_list,
-               const std::string& logging_tag) override {
-    delayed_ = true;
+  bool RestartPortalDetection(const ManagerProperties& props) override {
+    portal_detection_delayed_ = true;
+    portal_detection_running_ = false;
     return true;
   }
 
-  void Stop() override { started_ = false; }
+  void StopPortalDetection() override {
+    portal_detection_delayed_ = false;
+    portal_detection_started_ = false;
+    portal_detection_running_ = false;
+    portal_detection_num_attempts_ = 0;
+  }
 
-  bool IsInProgress() override { return started_; }
+  bool IsPortalDetectionInProgress() const override {
+    return portal_detection_started_;
+  }
+
+  // Check if a portal detection attempt is currently running.
+  // IsPortalDetectionInProgress returns a different result from
+  // IsPortalDetectionInProgress when an attempt has completed
+  // (Network::EventHandler::OnNetworkValidationResult has been called) and
+  // portal detection has not been restarted with
+  // Network::RestartPortalDetection().
+  bool IsPortalDetectionRunning() const { return portal_detection_running_; }
 
   void SetDNSResult(PortalDetector::Status status) {
-    result_ = PortalDetector::Result();
-    result_.http_phase = PortalDetector::Phase::kDNS;
-    result_.http_status = status;
-    result_.https_phase = PortalDetector::Phase::kDNS;
-    result_.https_status = status;
+    portal_detection_result_ = PortalDetector::Result();
+    portal_detection_result_.http_phase = PortalDetector::Phase::kDNS;
+    portal_detection_result_.http_status = status;
+    portal_detection_result_.https_phase = PortalDetector::Phase::kDNS;
+    portal_detection_result_.https_status = status;
   }
 
   void SetRedirectResult(const std::string& redirect_url) {
-    result_ = PortalDetector::Result();
-    result_.http_phase = PortalDetector::Phase::kContent;
-    result_.http_status = PortalDetector::Status::kRedirect;
-    result_.http_status_code = 302;
-    result_.redirect_url_string = redirect_url;
-    result_.https_phase = PortalDetector::Phase::kContent;
-    result_.https_status = PortalDetector::Status::kSuccess;
+    portal_detection_result_ = PortalDetector::Result();
+    portal_detection_result_.http_phase = PortalDetector::Phase::kContent;
+    portal_detection_result_.http_status = PortalDetector::Status::kRedirect;
+    portal_detection_result_.http_status_code = 302;
+    portal_detection_result_.redirect_url_string = redirect_url;
+    portal_detection_result_.https_phase = PortalDetector::Phase::kContent;
+    portal_detection_result_.https_status = PortalDetector::Status::kSuccess;
   }
 
   void SetHTTPSFailureResult() {
-    result_ = PortalDetector::Result();
-    result_.http_phase = PortalDetector::Phase::kContent;
-    result_.http_status = PortalDetector::Status::kSuccess;
-    result_.http_status_code = 204;
-    result_.https_phase = PortalDetector::Phase::kContent;
-    result_.https_status = PortalDetector::Status::kFailure;
+    portal_detection_result_ = PortalDetector::Result();
+    portal_detection_result_.http_phase = PortalDetector::Phase::kContent;
+    portal_detection_result_.http_status = PortalDetector::Status::kSuccess;
+    portal_detection_result_.http_status_code = 204;
+    portal_detection_result_.https_phase = PortalDetector::Phase::kContent;
+    portal_detection_result_.https_status = PortalDetector::Status::kFailure;
   }
 
   void SetOnlineResult() {
-    result_ = PortalDetector::Result();
-    result_.http_phase = PortalDetector::Phase::kContent;
-    result_.http_status = PortalDetector::Status::kSuccess;
-    result_.http_status_code = 204;
-    result_.https_phase = PortalDetector::Phase::kContent;
-    result_.https_status = PortalDetector::Status::kSuccess;
+    portal_detection_result_ = PortalDetector::Result();
+    portal_detection_result_.http_phase = PortalDetector::Phase::kContent;
+    portal_detection_result_.http_status = PortalDetector::Status::kSuccess;
+    portal_detection_result_.http_status_code = 204;
+    portal_detection_result_.https_phase = PortalDetector::Phase::kContent;
+    portal_detection_result_.https_status = PortalDetector::Status::kSuccess;
   }
 
-  void Continue() {
-    if (delayed_) {
-      started_ = true;
-      num_attempts_++;
-      delayed_ = false;
+  void ContinuePortalDetection() {
+    if (portal_detection_delayed_) {
+      portal_detection_running_ = true;
+      portal_detection_num_attempts_++;
+      portal_detection_delayed_ = false;
     }
   }
 
-  void Complete() {
-    if (delayed_)
-      Continue();
-    started_ = false;
-    // The callback might delete |this| so copy |result_|.
-    PortalDetector::Result result = result_;
-    result.num_attempts = num_attempts_;
-    portal_result_callback().Run(result);
+  void CompletePortalDetection() {
+    if (portal_detection_delayed_) {
+      ContinuePortalDetection();
+    }
+    portal_detection_running_ = false;
+    // The callback might delete |this| so copy |portal_detection_result_|.
+    PortalDetector::Result result = portal_detection_result_;
+    result.num_attempts = portal_detection_num_attempts_;
+    event_handler()->OnNetworkValidationResult(result);
   }
 
-  const PortalDetector::Result& result() const { return result_; }
-  int num_attempts() { return num_attempts_; }
+  const PortalDetector::Result& portal_detection_result() const {
+    return portal_detection_result_;
+  }
+  int portal_detection_num_attempts() { return portal_detection_num_attempts_; }
 
  private:
-  PortalDetector::Result result_;
-  bool started_ = false;
-  bool delayed_ = false;
-  int num_attempts_ = 0;
-  base::WeakPtrFactory<TestPortalDetector> test_weak_ptr_factory_{this};
+  PortalDetector::Result portal_detection_result_;
+  bool portal_detection_started_ = false;
+  bool portal_detection_running_ = false;
+  bool portal_detection_delayed_ = false;
+  int portal_detection_num_attempts_ = 0;
+  base::WeakPtrFactory<TestNetwork> test_weak_ptr_factory_{this};
 };
 
 class TestDevice : public Device {
@@ -179,21 +196,7 @@ class TestDevice : public Device {
 
   void StartConnectionDiagnosticsAfterPortalDetection() override {}
 
-  std::unique_ptr<PortalDetector> CreatePortalDetector() override {
-    return std::make_unique<TestPortalDetector>(
-        dispatcher(),
-        base::BindRepeating(&TestDevice::TestPortalDetectorCallback,
-                            test_weak_ptr_factory_.GetWeakPtr()));
-  }
-
-  // A protected Device method can not be bound directly so use a wrapper.
-  void TestPortalDetectorCallback(const PortalDetector::Result& result) {
-    PortalDetectorCallback(result);
-  }
-
-  TestPortalDetector* test_portal_detector() {
-    return static_cast<TestPortalDetector*>(portal_detector());
-  }
+  TestNetwork* test_network() { return static_cast<TestNetwork*>(network()); }
 
  private:
   base::WeakPtrFactory<TestDevice> test_weak_ptr_factory_{this};
@@ -229,19 +232,10 @@ class DevicePortalDetectorTest : public testing::Test {
   ~DevicePortalDetectorTest() override = default;
 
   void SetUp() override {
-    RoutingTable::GetInstance()->Start();
-
     ManagerProperties props = GetManagerPortalProperties();
     EXPECT_CALL(manager_, GetProperties()).WillRepeatedly(ReturnRef(props));
-
-    auto network = std::make_unique<NiceMock<MockNetwork>>(
-        kDeviceInterfaceIndex, kDeviceName, Technology::kUnknown);
-    ON_CALL(*network, local()).WillByDefault(Return(IPAddress("192.168.86.2")));
-    ON_CALL(*network, dns_servers())
-        .WillByDefault(Return(std::vector<std::string>{"8.8.8.8", "8.8.4.4"}));
-    ON_CALL(*network, IsConnected()).WillByDefault(Return(true));
-    device_->set_network_for_testing(std::move(network));
-
+    device_->set_network_for_testing(
+        std::make_unique<TestNetwork>(device_.get()));
     // Set up a connected test Service for the Device.
     service_ = new TestService(&manager_);
     service_->SetState(Service::kStateConnected);
@@ -249,19 +243,11 @@ class DevicePortalDetectorTest : public testing::Test {
     device_->SelectService(service_);
   }
 
-  void PortalDetectorCallback(const PortalDetector::Result& result) {
-    device_->PortalDetectorCallback(result);
-  }
-
-  TestPortalDetector* UpdatePortalDetector(bool restart = true) {
+  void UpdatePortalDetector(bool restart = true) {
     device_->UpdatePortalDetector(restart);
-    // This will be nullptr if UpdatePortalDetector() did not start detection.
-    return device_->test_portal_detector();
   }
 
-  TestPortalDetector* GetPortalDetector() {
-    return device_->test_portal_detector();
-  }
+  TestNetwork* GetTestNetwork() { return device_->test_network(); }
 
   void SetServiceCheckPortal(bool check_portal) {
     service_->SetCheckPortal(
@@ -316,20 +302,14 @@ class DevicePortalDetectorTest : public testing::Test {
   scoped_refptr<TestService> service_;
 };
 
-TEST_F(DevicePortalDetectorTest, Disabled) {
-  SetServiceCheckPortal(false);
-
-  TestPortalDetector* portal_detector = UpdatePortalDetector();
-  EXPECT_FALSE(portal_detector);
-}
-
 TEST_F(DevicePortalDetectorTest, DNSFailure) {
-  TestPortalDetector* portal_detector = UpdatePortalDetector();
-  ASSERT_TRUE(portal_detector);
-  EXPECT_TRUE(portal_detector->IsInProgress());
+  auto test_network = GetTestNetwork();
 
-  portal_detector->SetDNSResult(PortalDetector::Status::kFailure);
-  portal_detector->Complete();
+  UpdatePortalDetector();
+  EXPECT_TRUE(device_->network()->IsPortalDetectionInProgress());
+
+  test_network->SetDNSResult(PortalDetector::Status::kFailure);
+  test_network->CompletePortalDetection();
   EXPECT_EQ(service_->state(), Service::kStateNoConnectivity);
 
   EXPECT_THAT(MetricsEnumCalls(Metrics::kMetricPortalResult),
@@ -342,21 +322,22 @@ TEST_F(DevicePortalDetectorTest, DNSFailure) {
   EXPECT_EQ(NumHistogramCalls(Metrics::kPortalDetectorAttemptsToDisconnect), 0);
 
   // Portal detection should be started again.
-  portal_detector = GetPortalDetector();
-  ASSERT_TRUE(portal_detector);
-  EXPECT_FALSE(portal_detector->IsInProgress());
-  portal_detector->Continue();
-  EXPECT_TRUE(portal_detector->IsInProgress());
-  EXPECT_EQ(portal_detector->num_attempts(), 2);
+  EXPECT_TRUE(test_network->IsPortalDetectionInProgress());
+  EXPECT_FALSE(test_network->IsPortalDetectionRunning());
+  test_network->ContinuePortalDetection();
+  EXPECT_TRUE(test_network->IsPortalDetectionInProgress());
+  EXPECT_TRUE(test_network->IsPortalDetectionRunning());
+  EXPECT_EQ(test_network->portal_detection_num_attempts(), 2);
 }
 
 TEST_F(DevicePortalDetectorTest, DNSTimeout) {
-  TestPortalDetector* portal_detector = UpdatePortalDetector();
-  ASSERT_TRUE(portal_detector);
-  EXPECT_TRUE(portal_detector->IsInProgress());
+  auto test_network = GetTestNetwork();
 
-  portal_detector->SetDNSResult(PortalDetector::Status::kTimeout);
-  portal_detector->Complete();
+  UpdatePortalDetector();
+  EXPECT_TRUE(device_->network()->IsPortalDetectionInProgress());
+
+  test_network->SetDNSResult(PortalDetector::Status::kTimeout);
+  test_network->CompletePortalDetection();
   EXPECT_EQ(service_->state(), Service::kStateNoConnectivity);
 
   EXPECT_THAT(MetricsEnumCalls(Metrics::kMetricPortalResult),
@@ -369,19 +350,21 @@ TEST_F(DevicePortalDetectorTest, DNSTimeout) {
   EXPECT_EQ(NumHistogramCalls(Metrics::kPortalDetectorAttemptsToDisconnect), 0);
 
   // Portal detection should still be active.
-  EXPECT_TRUE(GetPortalDetector());
+  EXPECT_TRUE(test_network->IsPortalDetectionInProgress());
+  EXPECT_FALSE(test_network->IsPortalDetectionRunning());
 }
 
 TEST_F(DevicePortalDetectorTest, RedirectFound) {
-  TestPortalDetector* portal_detector = UpdatePortalDetector();
-  ASSERT_TRUE(portal_detector);
-  EXPECT_TRUE(portal_detector->IsInProgress());
+  auto test_network = GetTestNetwork();
 
-  portal_detector->SetRedirectResult(kRedirectUrl);
-  portal_detector->Complete();
+  UpdatePortalDetector();
+  EXPECT_TRUE(device_->network()->IsPortalDetectionInProgress());
+
+  test_network->SetRedirectResult(kRedirectUrl);
+  test_network->CompletePortalDetection();
   EXPECT_EQ(service_->state(), Service::kStateRedirectFound);
   EXPECT_EQ(GetServiceProbeUrlString(),
-            portal_detector->result().probe_url_string);
+            test_network->portal_detection_result().probe_url_string);
 
   EXPECT_THAT(MetricsEnumCalls(Metrics::kMetricPortalResult),
               ElementsAre(Metrics::kPortalResultContentRedirect));
@@ -396,17 +379,19 @@ TEST_F(DevicePortalDetectorTest, RedirectFound) {
   EXPECT_EQ(NumHistogramCalls(Metrics::kPortalDetectorAttemptsToDisconnect), 0);
 
   // Portal detection should still be active.
-  EXPECT_TRUE(GetPortalDetector());
+  EXPECT_TRUE(test_network->IsPortalDetectionInProgress());
+  EXPECT_FALSE(test_network->IsPortalDetectionRunning());
 }
 
 TEST_F(DevicePortalDetectorTest, RedirectFoundNoUrl) {
-  TestPortalDetector* portal_detector = UpdatePortalDetector();
-  ASSERT_TRUE(portal_detector);
-  EXPECT_TRUE(portal_detector->IsInProgress());
+  auto test_network = GetTestNetwork();
+
+  UpdatePortalDetector();
+  EXPECT_TRUE(device_->network()->IsPortalDetectionInProgress());
 
   // Redirect result with an empty redirect URL -> PortalSuspected state.
-  portal_detector->SetRedirectResult("");
-  portal_detector->Complete();
+  test_network->SetRedirectResult("");
+  test_network->CompletePortalDetection();
   EXPECT_EQ(service_->state(), Service::kStatePortalSuspected);
 
   EXPECT_THAT(MetricsEnumCalls(Metrics::kMetricPortalResult),
@@ -421,27 +406,27 @@ TEST_F(DevicePortalDetectorTest, RedirectFoundNoUrl) {
             0);
 
   // Portal detection should still be active.
-  EXPECT_TRUE(GetPortalDetector());
+  EXPECT_TRUE(test_network->IsPortalDetectionInProgress());
+  EXPECT_FALSE(test_network->IsPortalDetectionRunning());
 }
 
 TEST_F(DevicePortalDetectorTest, RedirectFoundThenOnline) {
-  TestPortalDetector* portal_detector = UpdatePortalDetector();
-  ASSERT_TRUE(portal_detector);
-  EXPECT_TRUE(portal_detector->IsInProgress());
+  auto test_network = GetTestNetwork();
 
-  portal_detector->SetRedirectResult(kRedirectUrl);
-  portal_detector->Complete();
+  UpdatePortalDetector();
+  EXPECT_TRUE(device_->network()->IsPortalDetectionInProgress());
+
+  test_network->SetRedirectResult(kRedirectUrl);
+  test_network->CompletePortalDetection();
   EXPECT_EQ(service_->state(), Service::kStateRedirectFound);
 
   // Portal detection should be started again.
-  portal_detector = GetPortalDetector();
-  ASSERT_TRUE(portal_detector);
-  portal_detector->Continue();
-  EXPECT_EQ(portal_detector->num_attempts(), 2);
+  test_network->ContinuePortalDetection();
+  EXPECT_EQ(test_network->portal_detection_num_attempts(), 2);
 
   // Completion with an 'online' result should set the Service state to online.
-  portal_detector->SetOnlineResult();
-  portal_detector->Complete();
+  test_network->SetOnlineResult();
+  test_network->CompletePortalDetection();
   EXPECT_EQ(service_->state(), Service::kStateOnline);
 
   EXPECT_THAT(MetricsEnumCalls(Metrics::kMetricPortalResult),
@@ -449,17 +434,19 @@ TEST_F(DevicePortalDetectorTest, RedirectFoundThenOnline) {
                           Metrics::kPortalResultSuccess));
   EXPECT_EQ(NumHistogramCalls(Metrics::kPortalDetectorAttemptsToDisconnect), 0);
 
-  // Portal detection should be completed and the PortalDetector destroyed.
-  EXPECT_FALSE(GetPortalDetector());
+  // Portal detection should be completed.
+  EXPECT_FALSE(test_network->IsPortalDetectionInProgress());
+  EXPECT_FALSE(test_network->IsPortalDetectionRunning());
 }
 
 TEST_F(DevicePortalDetectorTest, PortalSuspected) {
-  TestPortalDetector* portal_detector = UpdatePortalDetector();
-  ASSERT_TRUE(portal_detector);
-  EXPECT_TRUE(portal_detector->IsInProgress());
+  auto test_network = GetTestNetwork();
 
-  portal_detector->SetHTTPSFailureResult();
-  portal_detector->Complete();
+  UpdatePortalDetector();
+  EXPECT_TRUE(device_->network()->IsPortalDetectionInProgress());
+
+  test_network->SetHTTPSFailureResult();
+  test_network->CompletePortalDetection();
   EXPECT_EQ(service_->state(), Service::kStatePortalSuspected);
 
   // NOTE: Since we only report on the HTTP phase, a portal-suspected result
@@ -476,18 +463,20 @@ TEST_F(DevicePortalDetectorTest, PortalSuspected) {
             0);
 
   // Portal detection should still be active.
-  EXPECT_TRUE(GetPortalDetector());
+  EXPECT_TRUE(test_network->IsPortalDetectionInProgress());
+  EXPECT_FALSE(test_network->IsPortalDetectionRunning());
 }
 
 TEST_F(DevicePortalDetectorTest, PortalSuspectedThenRedirectFound) {
-  TestPortalDetector* portal_detector = UpdatePortalDetector();
-  ASSERT_TRUE(portal_detector);
-  EXPECT_TRUE(portal_detector->IsInProgress());
+  auto test_network = GetTestNetwork();
+
+  UpdatePortalDetector();
+  EXPECT_TRUE(device_->network()->IsPortalDetectionInProgress());
 
   // Multiple portal-suspected results.
-  portal_detector->SetHTTPSFailureResult();
-  portal_detector->Complete();
-  portal_detector->Complete();
+  test_network->SetHTTPSFailureResult();
+  test_network->CompletePortalDetection();
+  test_network->CompletePortalDetection();
   EXPECT_EQ(service_->state(), Service::kStatePortalSuspected);
   EXPECT_THAT(MetricsEnumCalls(Metrics::kMetricPortalResult),
               ElementsAre(Metrics::kPortalResultSuccess,
@@ -498,17 +487,17 @@ TEST_F(DevicePortalDetectorTest, PortalSuspectedThenRedirectFound) {
               ElementsAre(Metrics::kPortalDetectorResultHTTPSFailure));
 
   // Portal detection should be started again.
-  portal_detector = GetPortalDetector();
-  ASSERT_TRUE(portal_detector);
-  EXPECT_FALSE(portal_detector->IsInProgress());
-  portal_detector->Continue();
-  EXPECT_TRUE(portal_detector->IsInProgress());
-  EXPECT_EQ(portal_detector->num_attempts(), 3);
+  EXPECT_TRUE(test_network->IsPortalDetectionInProgress());
+  EXPECT_FALSE(test_network->IsPortalDetectionRunning());
+  test_network->ContinuePortalDetection();
+  EXPECT_TRUE(test_network->IsPortalDetectionInProgress());
+  EXPECT_TRUE(test_network->IsPortalDetectionRunning());
+  EXPECT_EQ(test_network->portal_detection_num_attempts(), 3);
 
   // Completion with a 'redirect-found' result should set the Service state
   // to redirect-found and record the number of attempts..
-  portal_detector->SetRedirectResult(kRedirectUrl);
-  portal_detector->Complete();
+  test_network->SetRedirectResult(kRedirectUrl);
+  test_network->CompletePortalDetection();
   EXPECT_EQ(service_->state(), Service::kStateRedirectFound);
 
   EXPECT_THAT(
@@ -528,30 +517,27 @@ TEST_F(DevicePortalDetectorTest, PortalSuspectedThenRedirectFound) {
       ElementsAre(3));
 
   // Portal detection should be started again.
-  portal_detector = GetPortalDetector();
-  ASSERT_TRUE(portal_detector);
-  portal_detector->Continue();
-  EXPECT_EQ(portal_detector->num_attempts(), 4);
+  test_network->ContinuePortalDetection();
+  EXPECT_EQ(test_network->portal_detection_num_attempts(), 4);
 }
 
 TEST_F(DevicePortalDetectorTest, PortalSuspectedThenOnline) {
-  TestPortalDetector* portal_detector = UpdatePortalDetector();
-  ASSERT_TRUE(portal_detector);
-  EXPECT_TRUE(portal_detector->IsInProgress());
+  auto test_network = GetTestNetwork();
 
-  portal_detector->SetHTTPSFailureResult();
-  portal_detector->Complete();
+  UpdatePortalDetector();
+  EXPECT_TRUE(device_->network()->IsPortalDetectionInProgress());
+
+  test_network->SetHTTPSFailureResult();
+  test_network->CompletePortalDetection();
   EXPECT_EQ(service_->state(), Service::kStatePortalSuspected);
 
   // Portal detection should be started again.
-  portal_detector = GetPortalDetector();
-  ASSERT_TRUE(portal_detector);
-  portal_detector->Continue();
-  EXPECT_EQ(portal_detector->num_attempts(), 2);
+  test_network->ContinuePortalDetection();
+  EXPECT_EQ(test_network->portal_detection_num_attempts(), 2);
 
   // Completion with an 'online' result should set the Service state to online.
-  portal_detector->SetOnlineResult();
-  portal_detector->Complete();
+  test_network->SetOnlineResult();
+  test_network->CompletePortalDetection();
   EXPECT_EQ(service_->state(), Service::kStateOnline);
 
   // NOTE: Since we only report on the HTTP phase, a portal-suspected result
@@ -568,30 +554,30 @@ TEST_F(DevicePortalDetectorTest, PortalSuspectedThenOnline) {
               ElementsAre(2));
   EXPECT_EQ(NumHistogramCalls(Metrics::kPortalDetectorAttemptsToDisconnect), 0);
 
-  // Portal detection should be completed and the PortalDetector destroyed.
-  EXPECT_FALSE(GetPortalDetector());
+  // Portal detection should be completed.
+  EXPECT_FALSE(test_network->IsPortalDetectionInProgress());
+  EXPECT_FALSE(test_network->IsPortalDetectionRunning());
 }
 
 TEST_F(DevicePortalDetectorTest, PortalSuspectedThenDisconnect) {
-  TestPortalDetector* portal_detector = UpdatePortalDetector();
-  ASSERT_TRUE(portal_detector);
-  EXPECT_TRUE(portal_detector->IsInProgress());
+  auto test_network = GetTestNetwork();
+
+  UpdatePortalDetector();
+  EXPECT_TRUE(device_->network()->IsPortalDetectionInProgress());
 
   // Multiple portal-suspected results
-  portal_detector->SetHTTPSFailureResult();
-  portal_detector->Complete();
-  portal_detector->Complete();
+  test_network->SetHTTPSFailureResult();
+  test_network->CompletePortalDetection();
+  test_network->CompletePortalDetection();
   EXPECT_EQ(service_->state(), Service::kStatePortalSuspected);
 
   // Portal detection should be started again.
-  portal_detector = GetPortalDetector();
-  ASSERT_TRUE(portal_detector);
-  portal_detector->Continue();
-  EXPECT_EQ(portal_detector->num_attempts(), 3);
+  test_network->ContinuePortalDetection();
+  EXPECT_EQ(test_network->portal_detection_num_attempts(), 3);
 
   // Disconnect should not record an UMA result.
-  service_->Disconnect(/*error=*/nullptr, /*reason=*/"test");
-  portal_detector->Complete();
+  service_->Disconnect(nullptr, "test");
+  test_network->CompletePortalDetection();
   EXPECT_EQ(service_->state(), Service::kStateIdle);
 
   EXPECT_THAT(
@@ -612,12 +598,13 @@ TEST_F(DevicePortalDetectorTest, PortalSuspectedThenDisconnect) {
 }
 
 TEST_F(DevicePortalDetectorTest, Online) {
-  TestPortalDetector* portal_detector = UpdatePortalDetector();
-  ASSERT_TRUE(portal_detector);
-  EXPECT_TRUE(portal_detector->IsInProgress());
+  auto test_network = GetTestNetwork();
 
-  portal_detector->SetOnlineResult();
-  portal_detector->Complete();
+  UpdatePortalDetector();
+  EXPECT_TRUE(device_->network()->IsPortalDetectionInProgress());
+
+  test_network->SetOnlineResult();
+  test_network->CompletePortalDetection();
   EXPECT_EQ(service_->state(), Service::kStateOnline);
 
   EXPECT_THAT(MetricsEnumCalls(Metrics::kMetricPortalResult),
@@ -630,38 +617,37 @@ TEST_F(DevicePortalDetectorTest, Online) {
               ElementsAre(1));
   EXPECT_EQ(NumHistogramCalls(Metrics::kPortalDetectorAttemptsToDisconnect), 0);
 
-  // Portal detection should be completed and the PortalDetector destroyed.
-  EXPECT_FALSE(GetPortalDetector());
+  // Portal detection should be completed.
+  EXPECT_FALSE(test_network->IsPortalDetectionInProgress());
+  EXPECT_FALSE(test_network->IsPortalDetectionRunning());
 }
 
 TEST_F(DevicePortalDetectorTest, RestartPortalDetection) {
-  TestPortalDetector* portal_detector = UpdatePortalDetector();
-  ASSERT_TRUE(portal_detector);
-  EXPECT_TRUE(portal_detector->IsInProgress());
+  auto test_network = GetTestNetwork();
+
+  UpdatePortalDetector();
+  EXPECT_TRUE(device_->network()->IsPortalDetectionInProgress());
 
   // Run portal detection 3 times.
-  portal_detector->SetHTTPSFailureResult();
-  portal_detector->Complete();
-  portal_detector->Complete();
-  portal_detector->Complete();
+  test_network->SetHTTPSFailureResult();
+  test_network->CompletePortalDetection();
+  test_network->CompletePortalDetection();
+  test_network->CompletePortalDetection();
   EXPECT_EQ(service_->state(), Service::kStatePortalSuspected);
 
   // Portal detection should be started again.
-  portal_detector = GetPortalDetector();
-  ASSERT_TRUE(portal_detector);
-  portal_detector->Continue();
-  EXPECT_TRUE(portal_detector->IsInProgress());
+  test_network->ContinuePortalDetection();
+  EXPECT_TRUE(test_network->IsPortalDetectionInProgress());
 
   // UpdatePortalDetector(true) will reset the current portal detector and
   // start a new one.
-  device_->UpdatePortalDetector(/*restart=*/true);
-  portal_detector = GetPortalDetector();
-  ASSERT_TRUE(portal_detector);
-  EXPECT_TRUE(portal_detector->IsInProgress());
+  device_->UpdatePortalDetector(true);
+  EXPECT_TRUE(test_network->IsPortalDetectionInProgress());
 
-  // Complete will run portal detection 1 more time with an 'online' result.
-  portal_detector->SetOnlineResult();
-  portal_detector->Complete();
+  // CompletePortalDetection will run portal detection 1 more time with an
+  // 'online' result.
+  test_network->SetOnlineResult();
+  test_network->CompletePortalDetection();
   EXPECT_EQ(service_->state(), Service::kStateOnline);
 
   // Old result metric gets called 4 times, with a final result of 'online'.
@@ -685,8 +671,9 @@ TEST_F(DevicePortalDetectorTest, RestartPortalDetection) {
   EXPECT_THAT(MetricsHistogramCalls(Metrics::kPortalDetectorAttemptsToOnline),
               ElementsAre(4));
 
-  // Portal detection should be completed and the PortalDetector destroyed.
-  EXPECT_FALSE(GetPortalDetector());
+  // Portal detection should be completed.
+  EXPECT_FALSE(test_network->IsPortalDetectionInProgress());
+  EXPECT_FALSE(test_network->IsPortalDetectionRunning());
 }
 
 }  // namespace shill

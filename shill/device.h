@@ -48,7 +48,7 @@ class RTNLHandler;
 
 // Device superclass.  Individual network interfaces types will inherit from
 // this class.
-class Device : public base::RefCounted<Device>, Network::EventHandler {
+class Device : public base::RefCounted<Device>, public Network::EventHandler {
  public:
   // A constructor for the Device object
   Device(Manager* manager,
@@ -286,6 +286,13 @@ class Device : public base::RefCounted<Device>, Network::EventHandler {
   // Derived class should implement this function to listen to this event. Base
   // class does nothing.
   void OnGetSLAACAddress() override;
+  // Derived class should implement this function to listen to this event. Base
+  // class does nothing.
+  void OnNetworkValidationStart() override;
+  // Derived class should implement this function to listen to this event. Base
+  // class does nothing.
+  void OnNetworkValidationStop() override;
+  void OnNetworkValidationResult(const PortalDetector::Result& result) override;
 
   void set_selected_service_for_testing(ServiceRefPtr service) {
     selected_service_ = service;
@@ -356,14 +363,7 @@ class Device : public base::RefCounted<Device>, Network::EventHandler {
   // connection, if any.
   virtual void DropConnection();
 
-  // Called every time PortalDetector finishes a network validation attempt
-  // starts. If network validation is used for this Service, PortalDetector
-  // starts the first attempt when OnConnected() is called. PortalDetector may
-  // run multiple times for the same network. Derived class should implement
-  // this function to listen to this event. Base class does nothing.
-  virtual void OnNetworkValidationStart();
-  // Called every time PortalDetector is stopped before completing a trial.
-  virtual void OnNetworkValidationStop();
+  // Called when a PortalDetector trial completes.
   // Called every time PortalDetector finishes and Internet connectivity is
   // validated.
   virtual void OnNetworkValidationSuccess();
@@ -403,11 +403,6 @@ class Device : public base::RefCounted<Device>, Network::EventHandler {
   // Avoids showing a failure mole in the UI.
   virtual void SetServiceFailureSilent(Service::ConnectFailure failure_state);
 
-  // Called by the Portal Detector whenever a trial completes.  Device
-  // subclasses that choose unique mappings from portal results to connected
-  // states can override this method in order to do so.
-  void PortalDetectorCallback(const PortalDetector::Result& result);
-
   void HelpRegisterConstDerivedString(const std::string& name,
                                       std::string (Device::*get)(Error*));
 
@@ -425,7 +420,6 @@ class Device : public base::RefCounted<Device>, Network::EventHandler {
   bool enabled_pending() const { return enabled_pending_; }
   Metrics* metrics() const;
   Manager* manager() const { return manager_; }
-  PortalDetector* portal_detector() { return portal_detector_.get(); }
 
   virtual void set_mac_address(const std::string& mac_address);
 
@@ -456,16 +450,9 @@ class Device : public base::RefCounted<Device>, Network::EventHandler {
   RpcIdentifier GetSelectedServiceRpcIdentifier(Error* error);
   RpcIdentifiers AvailableIPConfigs(Error* error);
 
-  // Stop portal detection if it is running.
-  void StopPortalDetection();
-
   // Initiate connection diagnostics with the |result| from a completed portal
   // detection attempt.
   virtual void StartConnectionDiagnosticsAfterPortalDetection();
-
-  // Constructs and returns a PortalDetector instance. May be overridden in
-  // test or mock implementations.
-  virtual std::unique_ptr<PortalDetector> CreatePortalDetector();
 
   // Stop connection diagnostics if it is running.
   void StopConnectionDiagnostics();
@@ -533,7 +520,6 @@ class Device : public base::RefCounted<Device>, Network::EventHandler {
   Manager* manager_;
   std::unique_ptr<Network> network_;
   std::unique_ptr<DeviceAdaptorInterface> adaptor_;
-  std::unique_ptr<PortalDetector> portal_detector_;
   Technology technology_;
 
   // Maintain a reference to the connected / connecting service

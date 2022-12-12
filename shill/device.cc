@@ -374,7 +374,7 @@ void Device::ResetConnection() {
 }
 
 void Device::StopAllActivities() {
-  StopPortalDetection();
+  network()->StopPortalDetection();
   StopConnectionDiagnostics();
 }
 
@@ -618,40 +618,22 @@ bool Device::UpdatePortalDetector(bool restart) {
   if (selected_service_->IsPortalDetectionDisabled()) {
     LOG(INFO) << LoggingTag()
               << ": Portal detection is disabled for this service";
-    StopPortalDetection();
+    network_->StopPortalDetection();
     SetServiceState(Service::kStateOnline);
     return false;
   }
 
-  if (!restart && portal_detector_.get() && portal_detector_->IsInProgress()) {
+  if (!restart && network_->IsPortalDetectionInProgress()) {
     LOG(INFO) << LoggingTag() << ": Portal detection is already running.";
     return true;
   }
 
-  portal_detector_ = CreatePortalDetector();
-  if (!portal_detector_->Start(manager_->GetProperties(),
-                               network_->interface_name(), network_->local(),
-                               network_->dns_servers(), LoggingTag())) {
-    LOG(ERROR) << LoggingTag() << ": Portal detection failed to start";
+  if (!network_->StartPortalDetection(manager_->GetProperties())) {
     SetServiceState(Service::kStateOnline);
-    // Avoid triggering OnNetworkValidationStop because OnNetworkValidationStart
-    // is not called.
-    portal_detector_.reset();
     return false;
   }
 
-  SLOG(this, 2) << LoggingTag() << ": Portal detection has started.";
-  OnNetworkValidationStart();
-
   return true;
-}
-
-void Device::StopPortalDetection() {
-  if (portal_detector_.get() && portal_detector_->IsInProgress()) {
-    LOG(INFO) << LoggingTag() << ": Portal detection finished";
-    OnNetworkValidationStop();
-  }
-  portal_detector_.reset();
 }
 
 void Device::StartConnectionDiagnosticsAfterPortalDetection() {
@@ -664,12 +646,6 @@ void Device::StartConnectionDiagnosticsAfterPortalDetection() {
           manager_->GetProperties().portal_http_url)) {
     connection_diagnostics_.reset();
   }
-}
-
-std::unique_ptr<PortalDetector> Device::CreatePortalDetector() {
-  return std::make_unique<PortalDetector>(
-      dispatcher(),
-      base::BindRepeating(&Device::PortalDetectorCallback, AsWeakPtr()));
 }
 
 void Device::StopConnectionDiagnostics() {
@@ -692,7 +668,7 @@ void Device::set_mac_address(const std::string& mac_address) {
   EmitMACAddress();
 }
 
-void Device::PortalDetectorCallback(const PortalDetector::Result& result) {
+void Device::OnNetworkValidationResult(const PortalDetector::Result& result) {
   LOG(INFO) << LoggingTag() << " Device: " << link_name()
             << " Service: " << GetSelectedServiceRpcIdentifier(nullptr).value()
             << " Received status: " << result.http_status;
@@ -738,30 +714,25 @@ void Device::PortalDetectorCallback(const PortalDetector::Result& result) {
       PortalValidationStateToConnectionState(result.GetValidationState());
   if (state == Service::kStateOnline) {
     OnNetworkValidationSuccess();
-    StopPortalDetection();
+    // TODO(b/248028325) Move StopPortalDetection inside Network and only
+    // process the new ConnectState in OnNetworkValidationResult.
+    network_->StopPortalDetection();
   } else if (Service::IsPortalledState(state)) {
     OnNetworkValidationFailure();
     selected_service_->SetPortalDetectionFailure(
         PortalDetector::PhaseToString(result.http_phase),
         PortalDetector::StatusToString(result.http_status),
         result.http_status_code);
-
-    if (portal_detector_->Restart(manager_->GetProperties(),
-                                  network_->interface_name(), network_->local(),
-                                  network_->dns_servers(), LoggingTag())) {
-      // TODO(b/216351118): this ignores the portal detection retry delay. The
-      // callback should be triggered when the next attempt starts, not when it
-      // is scheduled.
-      OnNetworkValidationStart();
-    } else {
+    if (!network_->RestartPortalDetection(manager_->GetProperties())) {
       state = Service::kStateOnline;
-      StopPortalDetection();
     }
   } else {
+    // TODO(b/248028325) Use PortalDetector::ValidationState directly to avoid
+    // this branch at compile time.
     LOG(ERROR) << LoggingTag() << ": unexpected Service state " << state
                << " from portal detection result";
     state = Service::kStateOnline;
-    StopPortalDetection();
+    network_->StopPortalDetection();
   }
 
   SetServiceState(state);
