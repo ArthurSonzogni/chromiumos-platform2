@@ -125,9 +125,9 @@ class PortalDetectorTest : public Test {
   void AssignHttpRequest() {
     http_request_ = new StrictMock<MockHttpRequest>();
     https_request_ = new StrictMock<MockHttpRequest>();
+    // Passes ownership.
     portal_detector_->http_request_.reset(http_request_);
-    portal_detector_->https_request_.reset(
-        https_request_);  // Passes ownership.
+    portal_detector_->https_request_.reset(https_request_);
   }
 
   static ManagerProperties MakePortalProperties() {
@@ -140,13 +140,21 @@ class PortalDetectorTest : public Test {
 
   bool StartPortalRequest(const ManagerProperties& props,
                           base::TimeDelta delay = base::TimeDelta()) {
-    bool ret =
-        portal_detector_->Start(props, kInterfaceName, kIpAddress,
-                                {kDNSServer0, kDNSServer1}, "tag", delay);
-    if (ret) {
-      AssignHttpRequest();
+    if (!portal_detector_->Start(props, kInterfaceName, kIpAddress,
+                                 {kDNSServer0, kDNSServer1}, "tag", delay)) {
+      return false;
     }
-    return ret;
+    AssignHttpRequest();
+    return true;
+  }
+
+  bool RestartPortalRequest(const ManagerProperties& props) {
+    if (!portal_detector_->Restart(props, kInterfaceName, kIpAddress,
+                                   {kDNSServer0, kDNSServer1}, "tag")) {
+      return false;
+    }
+    AssignHttpRequest();
+    return true;
   }
 
   void StartTrialTask() {
@@ -313,7 +321,7 @@ TEST_F(PortalDetectorTest, GetNextAttemptDelay) {
   EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, base::TimeDelta()));
   EXPECT_TRUE(StartPortalRequest(props));
 
-  EXPECT_TRUE(base::TimeDelta() < portal_detector()->GetNextAttemptDelay());
+  EXPECT_GT(portal_detector()->GetNextAttemptDelay(), base::TimeDelta());
 }
 
 TEST_F(PortalDetectorTest, DelayedAttempt) {
@@ -323,13 +331,36 @@ TEST_F(PortalDetectorTest, DelayedAttempt) {
   EXPECT_TRUE(StartPortalRequest(props, delay));
 }
 
+TEST_F(PortalDetectorTest, Restart) {
+  EXPECT_FALSE(portal_detector()->IsInProgress());
+  ManagerProperties props = MakePortalProperties();
+
+  EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, _)).Times(1);
+  EXPECT_EQ(portal_detector()->GetNextAttemptDelay(), base::TimeDelta());
+  EXPECT_EQ(0, portal_detector()->attempt_count());
+  EXPECT_TRUE(StartPortalRequest(props));
+  EXPECT_EQ(portal_detector()->http_url_string_, props.portal_http_url);
+  EXPECT_EQ(1, portal_detector()->attempt_count());
+  Mock::VerifyAndClearExpectations(&dispatcher_);
+
+  auto next_delay = portal_detector()->GetNextAttemptDelay();
+  EXPECT_GT(next_delay, base::TimeDelta());
+  EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, _)).Times(1);
+  EXPECT_TRUE(RestartPortalRequest(props));
+  EXPECT_EQ(2, portal_detector()->attempt_count());
+  Mock::VerifyAndClearExpectations(&dispatcher_);
+
+  portal_detector()->Stop();
+  ExpectReset();
+}
+
 TEST_F(PortalDetectorTest, AttemptCount) {
   EXPECT_FALSE(portal_detector()->IsInProgress());
-  // Expect the PortalDetector to immediately post a task for the each attempt.
-  EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, _)).Times(4);
+  EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, _)).Times(1);
   ManagerProperties props = MakePortalProperties();
   EXPECT_TRUE(StartPortalRequest(props));
   EXPECT_EQ(portal_detector()->http_url_string_, props.portal_http_url);
+  Mock::VerifyAndClearExpectations(&dispatcher_);
 
   PortalDetector::Result result;
   result.http_phase = PortalDetector::Phase::kDNS,
@@ -350,12 +381,13 @@ TEST_F(PortalDetectorTest, AttemptCount) {
   expected_retry_https_urls.insert(props.portal_https_url);
 
   auto last_delay = base::TimeDelta();
-  for (int i = 0; i < 3; i++) {
+  for (int i = 1; i < 4; i++) {
+    EXPECT_EQ(i, portal_detector()->attempt_count());
     const auto delay = portal_detector()->GetNextAttemptDelay();
-    EXPECT_TRUE(last_delay < delay);
+    EXPECT_GT(delay, last_delay);
+    EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, _)).Times(1);
     last_delay = delay;
-    portal_detector()->Start(props, kInterfaceName, kIpAddress,
-                             {kDNSServer0, kDNSServer1}, "tag");
+    EXPECT_TRUE(RestartPortalRequest(props));
 
     EXPECT_NE(
         expected_retry_http_urls.find(portal_detector()->http_url_string_),
@@ -365,6 +397,7 @@ TEST_F(PortalDetectorTest, AttemptCount) {
         expected_retry_https_urls.end());
 
     portal_detector()->CompleteTrial(result);
+    Mock::VerifyAndClearExpectations(&dispatcher_);
   }
   portal_detector()->Stop();
   ExpectReset();

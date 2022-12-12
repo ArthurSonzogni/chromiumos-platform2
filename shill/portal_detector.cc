@@ -72,6 +72,20 @@ const std::string& PortalDetector::PickProbeUrl(
   return index < fallback_urls.size() ? fallback_urls[index] : default_url;
 }
 
+bool PortalDetector::Restart(const ManagerProperties& props,
+                             const std::string& ifname,
+                             const IPAddress& src_address,
+                             const std::vector<std::string>& dns_list,
+                             const std::string& logging_tag) {
+  auto next_delay = GetNextAttemptDelay();
+  if (!Start(props, ifname, src_address, dns_list, logging_tag, next_delay)) {
+    LOG(ERROR) << logging_tag << ": Failed to restart";
+    return false;
+  }
+  LOG(INFO) << logging_tag << ": Retrying in " << next_delay;
+  return true;
+}
+
 bool PortalDetector::Start(const ManagerProperties& props,
                            const std::string& ifname,
                            const IPAddress& src_address,
@@ -267,7 +281,7 @@ bool PortalDetector::IsInProgress() {
   return is_active_;
 }
 
-base::TimeDelta PortalDetector::GetNextAttemptDelay() {
+base::TimeDelta PortalDetector::GetNextAttemptDelay() const {
   if (attempt_count_ == 0)
     return base::TimeDelta();
 

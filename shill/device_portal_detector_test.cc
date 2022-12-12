@@ -75,22 +75,23 @@ class TestPortalDetector : public PortalDetector {
              const std::vector<std::string>& dns_list,
              const std::string& logging_tag,
              base::TimeDelta delay = base::TimeDelta()) override {
-    if (delay == base::TimeDelta()) {
-      started_ = true;
-      num_attempts_++;
-    } else {
-      delayed_ = true;
-    }
+    started_ = true;
+    num_attempts_++;
+    return true;
+  }
+
+  bool Restart(const ManagerProperties& props,
+               const std::string& ifname,
+               const IPAddress& src_address,
+               const std::vector<std::string>& dns_list,
+               const std::string& logging_tag) override {
+    delayed_ = true;
     return true;
   }
 
   void Stop() override { started_ = false; }
 
-  bool IsInProgress() override { return started_; };
-
-  base::TimeDelta GetNextAttemptDelay() override {
-    return base::Milliseconds(1);
-  }
+  bool IsInProgress() override { return started_; }
 
   void SetDNSResult(PortalDetector::Status status) {
     result_ = PortalDetector::Result();

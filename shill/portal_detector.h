@@ -165,18 +165,25 @@ class PortalDetector {
   // this method returns Status::kFailure.
   static Status GetPortalStatusForRequestResult(HttpRequest::Result result);
 
-  // Start a portal detection test.  Returns true if url strings selected in
-  // |props| correctly parse as URLs.  Returns false (and does not start) if
-  // they fail to parse.
-  //
-  // As each attempt completes the callback handed to the constructor will
-  // be called.
+  // Starts a new portal detection cycle and starts a single detection attempt.
+  // Returns true if url strings selected in |props| correctly parse as URLs.
+  // Returns false (and does not start) if they fail to parse. As each attempt
+  // completes the callback handed to the constructor will be called.
   virtual bool Start(const ManagerProperties& props,
                      const std::string& ifname,
                      const IPAddress& src_address,
                      const std::vector<std::string>& dns_list,
                      const std::string& logging_tag,
                      base::TimeDelta delay = kZeroTimeDelta);
+
+  // Continues a portal detection cycle and schedules a new single detection
+  // attempt. Returns true if url strings selected in |props| correctly parse as
+  // URLs. Returns false (and does not start) if they fail to parse.
+  virtual bool Restart(const ManagerProperties& props,
+                       const std::string& ifname,
+                       const IPAddress& src_address,
+                       const std::vector<std::string>& dns_list,
+                       const std::string& logging_tag);
 
   // End the current portal detection process if one exists, and do not call
   // the callback.
@@ -185,12 +192,11 @@ class PortalDetector {
   // Returns whether portal request is "in progress".
   virtual bool IsInProgress();
 
-  // Returns the time delay for scheduling the next portal detection attempt
-  // with Start().
-  virtual base::TimeDelta GetNextAttemptDelay();
-
   // Return |logging_tag_| appended with the |attempt_count_|.
   std::string LoggingTag() const;
+
+  // Return the total number of detection attempts scheduled so far.
+  int attempt_count() const { return attempt_count_; }
 
  protected:
   base::RepeatingCallback<void(const Result&)>& portal_result_callback() {
@@ -202,15 +208,18 @@ class PortalDetector {
   FRIEND_TEST(PortalDetectorTest, AdjustStartDelayAfterDelay);
   FRIEND_TEST(PortalDetectorTest, AdjustStartDelayImmediate);
   FRIEND_TEST(PortalDetectorTest, AttemptCount);
-  FRIEND_TEST(PortalDetectorTest, IsInProgress);
-  FRIEND_TEST(PortalDetectorTest, PickProbeUrlTest);
-  FRIEND_TEST(PortalDetectorTest, RequestHTTPFailureHTTPSSuccess);
-  FRIEND_TEST(PortalDetectorTest, RequestFail);
-  FRIEND_TEST(PortalDetectorTest, RequestRedirect);
-  FRIEND_TEST(PortalDetectorTest, RequestTempRedirect);
-  FRIEND_TEST(PortalDetectorTest, RequestSuccess);
+  FRIEND_TEST(PortalDetectorTest, AttemptCount);
+  FRIEND_TEST(PortalDetectorTest, GetNextAttemptDelay);
   FRIEND_TEST(PortalDetectorTest, HttpStartAttemptFailed);
   FRIEND_TEST(PortalDetectorTest, HttpsStartAttemptFailed);
+  FRIEND_TEST(PortalDetectorTest, IsInProgress);
+  FRIEND_TEST(PortalDetectorTest, PickProbeUrlTest);
+  FRIEND_TEST(PortalDetectorTest, RequestFail);
+  FRIEND_TEST(PortalDetectorTest, RequestHTTPFailureHTTPSSuccess);
+  FRIEND_TEST(PortalDetectorTest, RequestRedirect);
+  FRIEND_TEST(PortalDetectorTest, RequestSuccess);
+  FRIEND_TEST(PortalDetectorTest, RequestTempRedirect);
+  FRIEND_TEST(PortalDetectorTest, Restart);
 
   static constexpr base::TimeDelta kZeroTimeDelta = base::TimeDelta();
 
@@ -220,6 +229,10 @@ class PortalDetector {
   const std::string& PickProbeUrl(
       const std::string& default_url,
       const std::vector<std::string>& fallback_urls) const;
+
+  // Returns the time delay for scheduling the next portal detection attempt
+  // with Restart().
+  base::TimeDelta GetNextAttemptDelay() const;
 
   // Internal method used to start the actual connectivity trial, called after
   // the start delay completes.

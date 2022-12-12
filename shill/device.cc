@@ -744,18 +744,14 @@ void Device::PortalDetectorCallback(const PortalDetector::Result& result) {
       result.http_status_code);
   OnNetworkValidationFailure();
 
-  const auto next_delay = portal_detector_->GetNextAttemptDelay();
-  if (!portal_detector_->Start(manager_->GetProperties(),
-                               network_->interface_name(), network_->local(),
-                               network_->dns_servers(), LoggingTag(),
-                               next_delay)) {
-    LOG(ERROR) << LoggingTag() << ": Portal detection failed to restart";
+  if (!portal_detector_->Restart(manager_->GetProperties(),
+                                 network_->interface_name(), network_->local(),
+                                 network_->dns_servers(), LoggingTag())) {
     StopPortalDetection();
     SetServiceState(Service::kStateOnline);
     return;
   }
 
-  LOG(INFO) << LoggingTag() << ": Portal detection retrying in " << next_delay;
   // TODO(b/216351118): this ignores the portal detection retry delay. The
   // callback should be triggered when the next attempt starts, not when it
   // is scheduled.
