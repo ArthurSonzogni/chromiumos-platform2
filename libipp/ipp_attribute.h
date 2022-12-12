@@ -333,12 +333,6 @@ class IPP_EXPORT Collection {
   // Helper function, an attribute |name| must belong to the collection.
   AttrDef GetAttributeDefinition(AttrName name) const;
 
-  // Helper template function.
-  template <typename ApiType>
-  bool SaveValue(AttrName name, size_t index, const ApiType& value);
-
-  // Stores values of the attributes.
-  std::map<AttrName, void*> values_;
   // Stores states of the attributes (see AttrState).
   std::map<AttrName, AttrState> states_;
 
@@ -363,6 +357,8 @@ class IPP_EXPORT Attribute {
   Attribute(Attribute&&) = delete;
   Attribute& operator=(const Attribute&) = delete;
   Attribute& operator=(Attribute&&) = delete;
+
+  virtual ~Attribute();
 
   // Returns tag of the attribute.
   ValueTag Tag() const;
@@ -442,8 +438,15 @@ class IPP_EXPORT Attribute {
   // (IsASet() == false) => always returns 0 or 1.
   size_t GetSize() const;
 
+  // Helper template function.
+  template <typename ApiType>
+  bool SaveValue(size_t index, const ApiType& value);
+
   Collection* const owner_;
   const AttrName name_;
+
+  // Stores values of the attribute.
+  void* values_ = nullptr;
 };
 
 }  // namespace ipp

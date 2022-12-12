@@ -209,131 +209,124 @@ void ResizeVector<Collection*>(const AttrDef& def,
     (*v)[i] = new Collection;
 }
 
-// Deletes whole attribute |name|,|def| from |values|.
+// Deletes the whole attribute's |values|.
 template <typename Type>
-void DeleteAttrTyped(std::map<AttrName, void*>* values,
-                     AttrName name,
-                     const AttrDef& def) {
-  auto it = values->find(name);
-  if (it == values->end())
+void DeleteAttrTyped(void*& values, const AttrDef& def) {
+  if (values == nullptr)
     return;
-  auto pv = reinterpret_cast<std::vector<Type>*>(it->second);
+  auto pv = reinterpret_cast<std::vector<Type>*>(values);
   ResizeVector<Type>(def, pv, 0);
   delete pv;
-  values->erase(it);
+  values = nullptr;
 }
 
 // The same as previous one, just chooses correct template instantiation.
-void DeleteAttr(std::map<AttrName, void*>* values,
-                AttrName name,
-                const AttrDef& def) {
+void DeleteAttr(void*& values, const AttrDef& def) {
   switch (def.cc_type) {
     case InternalType::kInteger:
-      DeleteAttrTyped<int32_t>(values, name, def);
+      DeleteAttrTyped<int32_t>(values, def);
       break;
     case InternalType::kString:
-      DeleteAttrTyped<std::string>(values, name, def);
+      DeleteAttrTyped<std::string>(values, def);
       break;
     case InternalType::kResolution:
-      DeleteAttrTyped<Resolution>(values, name, def);
+      DeleteAttrTyped<Resolution>(values, def);
       break;
     case InternalType::kRangeOfInteger:
-      DeleteAttrTyped<RangeOfInteger>(values, name, def);
+      DeleteAttrTyped<RangeOfInteger>(values, def);
       break;
     case InternalType::kDateTime:
-      DeleteAttrTyped<DateTime>(values, name, def);
+      DeleteAttrTyped<DateTime>(values, def);
       break;
     case InternalType::kStringWithLanguage:
-      DeleteAttrTyped<StringWithLanguage>(values, name, def);
+      DeleteAttrTyped<StringWithLanguage>(values, def);
       break;
     case InternalType::kCollection:
-      DeleteAttrTyped<Collection*>(values, name, def);
+      DeleteAttrTyped<Collection*>(values, def);
       break;
   }
 }
 
-// Returns a pointer to a value at position |index| in an attribute |name|.
+// Returns a pointer to a value at position |index| in an attribute's |values|.
 // If the attribute is too short, it is resized to (|index|+1) when possible.
 // When |cut_if_longer| is set, the attribute is shrunk to (|index|+1) values if
 // it is longer. If |cut_if_longer| equals false, the attribute is no
-// downsized. Returns nullptr <=> the attribute is too short and cannot be
-// resized to reach (|index|+1) values.
+// downsized. The function never returns nullptr.
 template <typename Type>
-Type* ResizeAttrGetValuePtr(std::map<AttrName, void*>* values,
-                            AttrName name,
+Type* ResizeAttrGetValuePtr(void*& values,
                             const AttrDef& def,
                             size_t index,
                             bool cut_if_longer) {
-  // Get an entry from |values|, add new if not exists.
-  auto it_inserted = values->insert({name, nullptr});
-  std::map<AttrName, void*>::iterator it = it_inserted.first;
-  if (it_inserted.second) {
-    it->second = new std::vector<Type>();
+  // Create |values| if not exists.
+  if (values == nullptr) {
+    values = new std::vector<Type>();
   }
   // Returns the pointer, resize the attribute when needed.
-  std::vector<Type>* v = reinterpret_cast<std::vector<Type>*>(it->second);
+  std::vector<Type>* v = reinterpret_cast<std::vector<Type>*>(values);
   if (cut_if_longer || v->size() <= index)
     ResizeVector<Type>(def, v, index + 1);
   return (v->data() + index);
 }
 
-// Resizes an attribute |name|,|def| to |new_size| values. The parameter
+// Resizes an attribute's |values| to |new_size| values. The parameter
 // |cut_if_longer| works in the same way as in the previous template function.
-// Returns false when the attribute is not a set and |new_size| > 1.
-bool ResizeAttr(std::map<AttrName, void*>* values,
-                AttrName name,
+void ResizeAttr(void*& values,
                 const AttrDef& def,
                 size_t new_size,
                 bool cut_if_longer) {
   if (new_size == 0) {
-    DeleteAttr(values, name, def);
-    return true;
+    DeleteAttr(values, def);
+    return;
   }
   switch (def.cc_type) {
     case InternalType::kInteger:
-      return ResizeAttrGetValuePtr<int32_t>(values, name, def, new_size - 1,
-                                            cut_if_longer) != nullptr;
+      ResizeAttrGetValuePtr<int32_t>(values, def, new_size - 1, cut_if_longer);
+      break;
     case InternalType::kString:
-      return ResizeAttrGetValuePtr<std::string>(values, name, def, new_size - 1,
-                                                cut_if_longer) != nullptr;
+      ResizeAttrGetValuePtr<std::string>(values, def, new_size - 1,
+                                         cut_if_longer);
+      break;
     case InternalType::kResolution:
-      return ResizeAttrGetValuePtr<Resolution>(values, name, def, new_size - 1,
-                                               cut_if_longer) != nullptr;
+      ResizeAttrGetValuePtr<Resolution>(values, def, new_size - 1,
+                                        cut_if_longer);
+      break;
     case InternalType::kRangeOfInteger:
-      return ResizeAttrGetValuePtr<RangeOfInteger>(
-                 values, name, def, new_size - 1, cut_if_longer) != nullptr;
+      ResizeAttrGetValuePtr<RangeOfInteger>(values, def, new_size - 1,
+                                            cut_if_longer);
+      break;
     case InternalType::kDateTime:
-      return ResizeAttrGetValuePtr<DateTime>(values, name, def, new_size - 1,
-                                             cut_if_longer) != nullptr;
+      ResizeAttrGetValuePtr<DateTime>(values, def, new_size - 1, cut_if_longer);
+      break;
     case InternalType::kStringWithLanguage:
-      return ResizeAttrGetValuePtr<StringWithLanguage>(
-                 values, name, def, new_size - 1, cut_if_longer) != nullptr;
+      ResizeAttrGetValuePtr<StringWithLanguage>(values, def, new_size - 1,
+                                                cut_if_longer);
+      break;
     case InternalType::kCollection:
-      return ResizeAttrGetValuePtr<Collection*>(values, name, def, new_size - 1,
-                                                cut_if_longer) != nullptr;
+      ResizeAttrGetValuePtr<Collection*>(values, def, new_size - 1,
+                                         cut_if_longer);
+      break;
   }
-  return false;
 }
 
-// Reads a value at position |index| in an attribute |name|,|def| and saves it
+// Reads a value at position |index| in an attribute's |values| and saves it
 // to |value|. Proper conversion is applied when needed. The function returns
 // true if succeeds and false when one of the following occurs:
 // * |value| is nullptr
 // * the attribute has less than |index|+1 values
 // * required conversion is not possible
 template <typename InternalType, typename ApiType>
-bool ReadConvertValueTyped(const std::map<AttrName, void*>& values,
+bool ReadConvertValueTyped(void* const& values,
                            AttrName name,
                            const AttrDef& def,
                            size_t index,
                            ApiType* value) {
   if (value == nullptr)
     return false;
-  auto it = values.find(name);
-  if (it == values.end())
+  if (values == nullptr)
     return false;
+
   const InternalType* internal_value = nullptr;
-  auto v = ReadValueConstPtr<std::vector<InternalType>>(&it->second);
+  auto v = ReadValueConstPtr<std::vector<InternalType>>(&values);
   if (v->size() <= index)
     return false;
   internal_value = v->data() + index;
@@ -343,7 +336,7 @@ bool ReadConvertValueTyped(const std::map<AttrName, void*>& values,
 
 // The same as previous one, just chooses correct template instantiation.
 template <typename ApiType>
-bool ReadConvertValue(const std::map<AttrName, void*>& values,
+bool ReadConvertValue(void* const& values,
                       AttrName name,
                       const AttrDef& def,
                       size_t index,
@@ -376,11 +369,9 @@ bool ReadConvertValue(const std::map<AttrName, void*>& values,
 // Saves |value| to position |index| in an attribute |name|,|def|. Proper
 // conversion is applied when needed. The attribute is also resized when |index|
 // is greater than the attribute's size. The function returns true if succeeds
-// and false when one of the following occurs:
-// * the attribute is not a set and |index| > 0
-// * required conversion is not possible (|value| is incorrect)
+// and false when the required conversion is not possible.
 template <typename InternalType, typename ApiType>
-bool SaveValueTyped(std::map<AttrName, void*>* values,
+bool SaveValueTyped(void*& values,
                     AttrName name,
                     const AttrDef& def,
                     size_t index,
@@ -390,9 +381,7 @@ bool SaveValueTyped(std::map<AttrName, void*>* values,
                                                  &internal_value))
     return false;
   InternalType* internal_ptr =
-      ResizeAttrGetValuePtr<InternalType>(values, name, def, index, false);
-  if (internal_ptr == nullptr)
-    return false;
+      ResizeAttrGetValuePtr<InternalType>(values, def, index, false);
   *internal_ptr = internal_value;
   return true;
 }
@@ -662,13 +651,18 @@ bool FromString(const std::string& s, int* out) {
   return true;
 }
 
+Attribute::~Attribute() {
+  const AttrDef def = owner_->GetAttributeDefinition(name_);
+  DeleteAttr(values_, def);
+}
+
 AttrType Attribute::GetType() const {
   return owner_->GetAttributeDefinition(name_).ipp_type;
 }
 
 AttrState Attribute::GetState() const {
   Collection* coll = owner_;
-  if (coll->values_.count(name_))
+  if (values_)
     return AttrState::set;
   auto it = coll->states_.find(name_);
   if (it != coll->states_.end())
@@ -688,10 +682,10 @@ void Attribute::SetState(AttrState status) {
   Collection* coll = owner_;
   const AttrDef def = coll->GetAttributeDefinition(name_);
   if (status == AttrState::set) {
-    ResizeAttr(&coll->values_, name_, def, 1, false);
+    ResizeAttr(values_, def, 1, false);
     return;
   }
-  DeleteAttr(&coll->values_, name_, def);
+  DeleteAttr(values_, def);
   if (status != AttrState::unset) {
     coll->states_[name_] = status;
   }
@@ -714,26 +708,24 @@ std::string_view Attribute::Name() const {
 size_t Attribute::GetSize() const {
   Collection* coll = owner_;
   const AttrDef def = coll->GetAttributeDefinition(name_);
-  auto it = coll->values_.find(name_);
-  if (it == coll->values_.end())
+  if (values_ == nullptr)
     return 0;
   switch (def.cc_type) {
     case InternalType::kInteger:
-      return ReadValueConstPtr<std::vector<int32_t>>(&it->second)->size();
+      return ReadValueConstPtr<std::vector<int32_t>>(&values_)->size();
     case InternalType::kString:
-      return ReadValueConstPtr<std::vector<std::string>>(&it->second)->size();
+      return ReadValueConstPtr<std::vector<std::string>>(&values_)->size();
     case InternalType::kResolution:
-      return ReadValueConstPtr<std::vector<Resolution>>(&it->second)->size();
+      return ReadValueConstPtr<std::vector<Resolution>>(&values_)->size();
     case InternalType::kRangeOfInteger:
-      return ReadValueConstPtr<std::vector<RangeOfInteger>>(&it->second)
-          ->size();
+      return ReadValueConstPtr<std::vector<RangeOfInteger>>(&values_)->size();
     case InternalType::kDateTime:
-      return ReadValueConstPtr<std::vector<DateTime>>(&it->second)->size();
+      return ReadValueConstPtr<std::vector<DateTime>>(&values_)->size();
     case InternalType::kStringWithLanguage:
-      return ReadValueConstPtr<std::vector<StringWithLanguage>>(&it->second)
+      return ReadValueConstPtr<std::vector<StringWithLanguage>>(&values_)
           ->size();
     case InternalType::kCollection:
-      return ReadValueConstPtr<std::vector<Collection*>>(&it->second)->size();
+      return ReadValueConstPtr<std::vector<Collection*>>(&values_)->size();
   }
   return 0;
 }
@@ -745,76 +737,69 @@ size_t Attribute::Size() const {
 void Attribute::Resize(size_t new_size) {
   Collection* coll = owner_;
   const AttrDef def = coll->GetAttributeDefinition(name_);
-  if (ResizeAttr(&coll->values_, name_, def, new_size, true)) {
-    if (new_size > 0)
-      coll->states_.erase(name_);
-  }
+  ResizeAttr(values_, def, new_size, true);
+  if (new_size > 0)
+    coll->states_.erase(name_);
 }
 
 bool Attribute::GetValue(std::string* val, size_t index) const {
   Collection* coll = owner_;
   const AttrDef def = coll->GetAttributeDefinition(name_);
-  return ReadConvertValue(coll->values_, name_, def, index, val);
+  return ReadConvertValue(values_, name_, def, index, val);
 }
 
 bool Attribute::GetValue(StringWithLanguage* val, size_t index) const {
   Collection* coll = owner_;
   const AttrDef def = coll->GetAttributeDefinition(name_);
-  return ReadConvertValue(coll->values_, name_, def, index, val);
+  return ReadConvertValue(values_, name_, def, index, val);
 }
 
 bool Attribute::GetValue(int* val, size_t index) const {
   Collection* coll = owner_;
   const AttrDef def = coll->GetAttributeDefinition(name_);
-  return ReadConvertValue(coll->values_, name_, def, index, val);
+  return ReadConvertValue(values_, name_, def, index, val);
 }
 
 bool Attribute::GetValue(Resolution* val, size_t index) const {
   Collection* coll = owner_;
   const AttrDef def = coll->GetAttributeDefinition(name_);
-  return ReadConvertValue(coll->values_, name_, def, index, val);
+  return ReadConvertValue(values_, name_, def, index, val);
 }
 
 bool Attribute::GetValue(RangeOfInteger* val, size_t index) const {
   Collection* coll = owner_;
   const AttrDef def = coll->GetAttributeDefinition(name_);
-  return ReadConvertValue(coll->values_, name_, def, index, val);
+  return ReadConvertValue(values_, name_, def, index, val);
 }
 
 bool Attribute::GetValue(DateTime* val, size_t index) const {
   Collection* coll = owner_;
   const AttrDef def = coll->GetAttributeDefinition(name_);
-  return ReadConvertValue(coll->values_, name_, def, index, val);
+  return ReadConvertValue(values_, name_, def, index, val);
 }
 
 bool Attribute::SetValue(const std::string& val, size_t index) {
-  Collection* coll = owner_;
-  return coll->SaveValue(name_, index, val);
+  return SaveValue(index, val);
 }
 
 bool Attribute::SetValue(const StringWithLanguage& val, size_t index) {
-  Collection* coll = owner_;
-  return coll->SaveValue(name_, index, val);
+  return SaveValue(index, val);
 }
 
 bool Attribute::SetValue(const int& val, size_t index) {
-  Collection* coll = owner_;
-  return coll->SaveValue(name_, index, val);
+  return SaveValue(index, val);
 }
 
 bool Attribute::SetValue(const Resolution& val, size_t index) {
-  Collection* coll = owner_;
-  return coll->SaveValue(name_, index, val);
+  return SaveValue(index, val);
 }
 
 bool Attribute::SetValue(const RangeOfInteger& val, size_t index) {
-  Collection* coll = owner_;
-  return coll->SaveValue(name_, index, val);
+  return SaveValue(index, val);
 }
 
 bool Attribute::SetValue(const DateTime& val, size_t index) {
-  Collection* coll = owner_;
-  return coll->SaveValue(name_, index, val);
+  return SaveValue(index, val);
 }
 
 Collection* Attribute::GetCollection(size_t index) {
@@ -822,11 +807,10 @@ Collection* Attribute::GetCollection(size_t index) {
   const AttrDef def = coll->GetAttributeDefinition(name_);
   if (def.cc_type != InternalType::kCollection)
     return nullptr;
-  auto it = coll->values_.find(name_);
-  if (it == coll->values_.end())
+  if (values_ == nullptr)
     return nullptr;
   Collection* p = nullptr;
-  auto v = ReadValuePtr<std::vector<Collection*>>(&it->second);
+  auto v = ReadValuePtr<std::vector<Collection*>>(&values_);
   if (v->size() > index)
     p = *(v->data() + index);
   return p;
@@ -837,11 +821,10 @@ const Collection* Attribute::GetCollection(size_t index) const {
   const AttrDef def = coll->GetAttributeDefinition(name_);
   if (def.cc_type != InternalType::kCollection)
     return nullptr;
-  auto it = coll->values_.find(name_);
-  if (it == coll->values_.end())
+  if (values_ == nullptr)
     return nullptr;
   const Collection* p = nullptr;
-  auto v = ReadValueConstPtr<std::vector<Collection*>>(&it->second);
+  auto v = ReadValueConstPtr<std::vector<Collection*>>(&values_);
   if (v->size() > index)
     p = *(v->data() + index);
   return p;
@@ -850,13 +833,6 @@ const Collection* Attribute::GetCollection(size_t index) const {
 Collection::Collection() = default;
 
 Collection::~Collection() {
-  std::vector<AttrName> names;
-  for (auto& name_value : values_)
-    names.push_back(name_value.first);
-  for (auto& name : names) {
-    const AttrDef def = GetAttributeDefinition(name);
-    DeleteAttr(&values_, name, def);
-  }
   for (auto& name_attr : unknown_attributes) {
     delete name_attr.second.object;
   }
@@ -1150,46 +1126,44 @@ std::vector<const Attribute*> Collection::GetAllAttributes() const {
   return v;
 }
 
-// Saves |value| to attribute |name| at position |index| in collection |coll|.
-// Proper conversion is applied when needed. The attribute is also resized when
-// |index| is greater than the attribute's size. |coll| cannot be nullptr. The
-// function returns true if succeeds and false when one of the following occurs:
-// * the attribute is not a set and |index| > 0
-// * required conversion is not possible (|value| is incorrect)
+// Saves |value| at position |index|. Proper conversion is applied when needed.
+// The attribute is also resized when |index| is greater than the attribute's
+// size. The function returns true if succeeds and false when the required
+// conversion is not possible (|value| is incorrect).
 template <typename ApiType>
-bool Collection::SaveValue(AttrName name, size_t index, const ApiType& value) {
-  const AttrDef def = GetAttributeDefinition(name);
+bool Attribute::SaveValue(size_t index, const ApiType& value) {
+  const AttrDef def = owner_->GetAttributeDefinition(name_);
   bool result = false;
   switch (def.cc_type) {
     case InternalType::kInteger:
       result =
-          SaveValueTyped<int32_t, ApiType>(&values_, name, def, index, value);
+          SaveValueTyped<int32_t, ApiType>(values_, name_, def, index, value);
       break;
     case InternalType::kString:
-      result = SaveValueTyped<std::string, ApiType>(&values_, name, def, index,
+      result = SaveValueTyped<std::string, ApiType>(values_, name_, def, index,
                                                     value);
       break;
     case InternalType::kResolution:
-      result = SaveValueTyped<Resolution, ApiType>(&values_, name, def, index,
+      result = SaveValueTyped<Resolution, ApiType>(values_, name_, def, index,
                                                    value);
       break;
     case InternalType::kRangeOfInteger:
-      result = SaveValueTyped<RangeOfInteger, ApiType>(&values_, name, def,
+      result = SaveValueTyped<RangeOfInteger, ApiType>(values_, name_, def,
                                                        index, value);
       break;
     case InternalType::kDateTime:
       result =
-          SaveValueTyped<DateTime, ApiType>(&values_, name, def, index, value);
+          SaveValueTyped<DateTime, ApiType>(values_, name_, def, index, value);
       break;
     case InternalType::kStringWithLanguage:
-      result = SaveValueTyped<StringWithLanguage, ApiType>(&values_, name, def,
+      result = SaveValueTyped<StringWithLanguage, ApiType>(values_, name_, def,
                                                            index, value);
       break;
     case InternalType::kCollection:
       return false;
   }
   if (result)
-    states_.erase(name);
+    owner_->states_.erase(name_);
   return result;
 }
 
