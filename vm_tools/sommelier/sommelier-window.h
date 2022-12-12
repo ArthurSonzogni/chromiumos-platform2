@@ -60,6 +60,10 @@ struct sl_window {
   int compositor_fullscreen = 0;
   int maximized = 0;
   int iconified = 0;
+  // True if there has been changes to the fullscreen/maximized state
+  // while this window is iconified.
+  bool pending_fullscreen_change = false;
+  bool pending_maximized_change = false;
   int allow_resize = 1;
   xcb_window_t transient_for = XCB_WINDOW_NONE;
   xcb_window_t client_leader = XCB_WINDOW_NONE;

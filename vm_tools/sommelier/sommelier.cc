@@ -1735,11 +1735,15 @@ void sl_handle_client_message(struct sl_context* ctx,
           window->fullscreen = 1;
           if (window->xdg_toplevel && !window->iconified) {
             xdg_toplevel_set_fullscreen(window->xdg_toplevel, NULL);
+          } else {
+            window->pending_fullscreen_change = true;
           }
         } else if (action == NET_WM_STATE_REMOVE) {
           window->fullscreen = 0;
           if (window->xdg_toplevel && !window->iconified) {
             xdg_toplevel_unset_fullscreen(window->xdg_toplevel);
+          } else {
+            window->pending_fullscreen_change = true;
           }
         }
       }
@@ -1755,11 +1759,15 @@ void sl_handle_client_message(struct sl_context* ctx,
           window->maximized = 1;
           if (window->xdg_toplevel && !window->iconified) {
             xdg_toplevel_set_maximized(window->xdg_toplevel);
+          } else {
+            window->pending_maximized_change = true;
           }
         } else if (action == NET_WM_STATE_REMOVE) {
           window->maximized = 0;
           if (window->xdg_toplevel && !window->iconified) {
             xdg_toplevel_unset_maximized(window->xdg_toplevel);
+          } else {
+            window->pending_maximized_change = true;
           }
         }
       }
@@ -1826,8 +1834,26 @@ void sl_handle_focus_in(struct sl_context* ctx, xcb_focus_in_event_t* event) {
     if (parent && parent->xdg_toplevel && window->xdg_toplevel)
       xdg_toplevel_set_parent(window->xdg_toplevel, parent->xdg_toplevel);
   }
-  if (window)
+  if (window) {
+    if (window->xdg_toplevel && window->pending_fullscreen_change) {
+      if (window->fullscreen) {
+        xdg_toplevel_set_fullscreen(window->xdg_toplevel, NULL);
+      } else {
+        xdg_toplevel_unset_fullscreen(window->xdg_toplevel);
+      }
+
+      window->pending_fullscreen_change = false;
+    }
+    if (window->xdg_toplevel && window->pending_maximized_change) {
+      if (window->maximized) {
+        xdg_toplevel_set_maximized(window->xdg_toplevel);
+      } else {
+        xdg_toplevel_unset_maximized(window->xdg_toplevel);
+      }
+      window->pending_maximized_change = false;
+    }
     window->iconified = 0;
+  }
 }
 
 static void sl_handle_focus_out(struct sl_context* ctx,

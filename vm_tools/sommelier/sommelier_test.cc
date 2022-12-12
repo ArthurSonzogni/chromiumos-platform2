@@ -560,7 +560,7 @@ TEST_F(X11Test, NonExistentWindowDoesNotCrash) {
 }
 
 #ifdef BLACK_SCREEN_FIX
-TEST_F(X11Test, IconifySuppressesStateChanges) {
+TEST_F(X11Test, IconifySuppressesFullscreen) {
   // Arrange: Create an xdg_toplevel surface. Initially it's not iconified.
   sl_window* window = CreateToplevelWindow();
   uint32_t xdg_toplevel_id = XdgToplevelId(window);
@@ -603,6 +603,75 @@ TEST_F(X11Test, IconifySuppressesStateChanges) {
 
   // Assert: The window is deiconified.
   EXPECT_EQ(window->iconified, 0);
+
+  // Assert: Sommelier should now send the fullscreen call.
+  EXPECT_CALL(
+      mock_wayland_channel_,
+      send((ExactlyOneMessage(xdg_toplevel_id, XDG_TOPLEVEL_SET_FULLSCREEN))))
+      .Times(1);
+  Pump();
+}
+
+TEST_F(X11Test, IconifySuppressesUnmaximize) {
+  // Arrange: Create an xdg_toplevel surface. Initially it's not iconified.
+  sl_window* window = CreateToplevelWindow();
+  uint32_t xdg_toplevel_id = XdgToplevelId(window);
+  EXPECT_EQ(window->iconified, 0);
+
+  // Arrange: Maximize it.
+  xcb_client_message_event_t event;
+  event.response_type = XCB_CLIENT_MESSAGE;
+  event.format = 32;
+  event.window = window->id;
+  event.type = ctx.atoms[ATOM_NET_WM_STATE].value;
+  event.data.data32[0] = NET_WM_STATE_ADD;
+  event.data.data32[1] = ctx.atoms[ATOM_NET_WM_STATE_MAXIMIZED_VERT].value;
+  event.data.data32[2] = ctx.atoms[ATOM_NET_WM_STATE_MAXIMIZED_HORZ].value;
+  event.data.data32[3] = 0;
+  event.data.data32[4] = 0;
+  sl_handle_client_message(&ctx, &event);
+  EXPECT_EQ(window->maximized, 1);
+
+  // Act: Pretend an X11 client owns the surface, and requests to iconify it.
+  event.type = ctx.atoms[ATOM_WM_CHANGE_STATE].value;
+  event.data.data32[0] = WM_STATE_ICONIC;
+  sl_handle_client_message(&ctx, &event);
+  Pump();
+
+  // Assert: Sommelier records the iconified state.
+  EXPECT_EQ(window->iconified, 1);
+
+  // Act: Pretend the surface is requested to be unmaximized.
+  event.type = ctx.atoms[ATOM_NET_WM_STATE].value;
+  event.data.data32[0] = NET_WM_STATE_REMOVE;
+  event.data.data32[1] = ctx.atoms[ATOM_NET_WM_STATE_MAXIMIZED_VERT].value;
+  event.data.data32[2] = ctx.atoms[ATOM_NET_WM_STATE_MAXIMIZED_HORZ].value;
+  event.data.data32[3] = 0;
+  event.data.data32[4] = 0;
+  sl_handle_client_message(&ctx, &event);
+
+  // Assert: Sommelier should not send the unmiximize call as we are iconified.
+  EXPECT_CALL(
+      mock_wayland_channel_,
+      send((ExactlyOneMessage(xdg_toplevel_id, XDG_TOPLEVEL_UNSET_MAXIMIZED))))
+      .Times(0);
+  Pump();
+
+  // Act: Pretend the surface receives focus.
+  xcb_focus_in_event_t focus_event;
+  focus_event.response_type = XCB_FOCUS_IN;
+  focus_event.event = window->id;
+  sl_handle_focus_in(&ctx, &focus_event);
+
+  // Assert: The window is deiconified.
+  EXPECT_EQ(window->iconified, 0);
+
+  // Assert: Sommelier should now send the unmiximize call.
+  EXPECT_CALL(
+      mock_wayland_channel_,
+      send((ExactlyOneMessage(xdg_toplevel_id, XDG_TOPLEVEL_UNSET_MAXIMIZED))))
+      .Times(1);
+  Pump();
 }
 #endif
 
