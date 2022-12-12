@@ -14,6 +14,7 @@
 #include <csignal>
 #include <cstdint>
 #include <cstdlib>
+#include <memory>
 #include <optional>
 #include <utility>
 
@@ -37,6 +38,7 @@
 #include "diagnostics/cros_healthd/process/process_with_output.h"
 #include "diagnostics/cros_healthd/routines/memory/memory_constants.h"
 #include "diagnostics/cros_healthd/utils/file_utils.h"
+#include "mojo/public/cpp/bindings/pending_receiver.h"
 
 namespace diagnostics {
 
@@ -269,8 +271,8 @@ void Executor::GetFanSpeed(GetFanSpeedCallback callback) {
       std::vector<base::FilePath>{base::FilePath(kCrosEcDevice)},
       /*writable_mount_points=*/std::vector<base::FilePath>{});
 
-  RunUntrackedBinary(std::move(process), std::move(callback),
-                     /*combine_stdout_and_stderr=*/false);
+  RunAndWaitProcess(std::move(process), std::move(callback),
+                    /*combine_stdout_and_stderr=*/false);
 }
 
 void Executor::GetInterfaces(GetInterfacesCallback callback) {
@@ -282,8 +284,8 @@ void Executor::GetInterfaces(GetInterfacesCallback callback) {
       /*writable_mount_points=*/
       std::vector<base::FilePath>{}, NO_ENTER_NETWORK_NAMESPACE);
 
-  RunUntrackedBinary(std::move(process), std::move(callback),
-                     /*combine_stdout_and_stderr=*/false);
+  RunAndWaitProcess(std::move(process), std::move(callback),
+                    /*combine_stdout_and_stderr=*/false);
 }
 
 void Executor::GetLink(const std::string& interface_name,
@@ -306,8 +308,8 @@ void Executor::GetLink(const std::string& interface_name,
       /*writable_mount_points=*/
       std::vector<base::FilePath>{}, NO_ENTER_NETWORK_NAMESPACE);
 
-  RunUntrackedBinary(std::move(process), std::move(callback),
-                     /*combine_stdout_and_stderr=*/false);
+  RunAndWaitProcess(std::move(process), std::move(callback),
+                    /*combine_stdout_and_stderr=*/false);
 }
 
 void Executor::GetInfo(const std::string& interface_name,
@@ -330,8 +332,8 @@ void Executor::GetInfo(const std::string& interface_name,
       /*writable_mount_points=*/
       std::vector<base::FilePath>{}, NO_ENTER_NETWORK_NAMESPACE);
 
-  RunUntrackedBinary(std::move(process), std::move(callback),
-                     /*combine_stdout_and_stderr=*/false);
+  RunAndWaitProcess(std::move(process), std::move(callback),
+                    /*combine_stdout_and_stderr=*/false);
 }
 
 void Executor::GetScanDump(const std::string& interface_name,
@@ -354,8 +356,8 @@ void Executor::GetScanDump(const std::string& interface_name,
       /*writable_mount_points=*/
       std::vector<base::FilePath>{}, NO_ENTER_NETWORK_NAMESPACE);
 
-  RunUntrackedBinary(std::move(process), std::move(callback),
-                     /*combine_stdout_and_stderr=*/false);
+  RunAndWaitProcess(std::move(process), std::move(callback),
+                    /*combine_stdout_and_stderr=*/false);
 }
 
 void Executor::RunMemtester(uint32_t test_mem_kib,
@@ -370,6 +372,22 @@ void Executor::RunMemtester(uint32_t test_mem_kib,
       /*writable_mount_points=*/std::vector<base::FilePath>{});
 
   RunTrackedBinary(std::move(process), std::move(callback), kMemtesterBinary);
+}
+
+void Executor::RunMemtesterV2(
+    uint32_t test_mem_kib,
+    mojo::PendingReceiver<mojom::ProcessControl> receiver) {
+  // Run with test_mem_kib memory and run for 1 loop.
+  std::vector<std::string> command = {
+      kMemtesterBinary, base::StringPrintf("%uK", test_mem_kib), "1"};
+  auto process = std::make_unique<SandboxedProcess>(
+      command, seccomp_file::kMemtester, kCrosHealthdSandboxUser,
+      CAP_TO_MASK(CAP_IPC_LOCK),
+      /*readonly_mount_points=*/std::vector<base::FilePath>{},
+      /*writable_mount_points=*/std::vector<base::FilePath>{});
+
+  RunLongRunningProcess(std::move(process), std::move(receiver),
+                        /*combine_stdout_and_stderr=*/true);
 }
 
 void Executor::KillMemtester() {
@@ -458,8 +476,8 @@ void Executor::GetLidAngle(GetLidAngleCallback callback) {
       std::vector<base::FilePath>{base::FilePath(kCrosEcDevice)},
       /*writable_mount_points=*/std::vector<base::FilePath>{});
 
-  RunUntrackedBinary(std::move(process), std::move(callback),
-                     /*combine_stdout_and_stderr=*/false);
+  RunAndWaitProcess(std::move(process), std::move(callback),
+                    /*combine_stdout_and_stderr=*/false);
 }
 
 void Executor::GetFingerprintFrame(mojom::FingerprintCaptureType type,
@@ -496,8 +514,8 @@ void Executor::GetHciDeviceConfig(GetHciDeviceConfigCallback callback) {
       std::vector<base::FilePath>{base::FilePath(kCrosEcDevice)},
       /*writable_mount_points=*/std::vector<base::FilePath>{});
 
-  RunUntrackedBinary(std::move(process), std::move(callback),
-                     /*combine_stdout_and_stderr=*/false);
+  RunAndWaitProcess(std::move(process), std::move(callback),
+                    /*combine_stdout_and_stderr=*/false);
 }
 
 void Executor::MonitorAudioJackTask(
@@ -524,7 +542,7 @@ void Executor::MonitorAudioJack(
                      std::move(observer), std::move(process_control)));
 }
 
-void Executor::RunUntrackedBinary(
+void Executor::RunAndWaitProcess(
     std::unique_ptr<brillo::Process> process,
     base::OnceCallback<void(mojom::ExecutedProcessResultPtr)> callback,
     bool combine_stdout_and_stderr) {
@@ -533,12 +551,12 @@ void Executor::RunUntrackedBinary(
 
   process_reaper_->WatchForChild(
       FROM_HERE, process->pid(),
-      base::BindOnce(&Executor::OnUntrackedBinaryFinished,
+      base::BindOnce(&Executor::OnRunAndWaitProcessFinished,
                      weak_factory_.GetWeakPtr(), std::move(callback),
                      std::move(process)));
 }
 
-void Executor::OnUntrackedBinaryFinished(
+void Executor::OnRunAndWaitProcessFinished(
     base::OnceCallback<void(mojom::ExecutedProcessResultPtr)> callback,
     std::unique_ptr<brillo::Process> process,
     const siginfo_t& siginfo) {
@@ -583,12 +601,16 @@ void Executor::OnTrackedBinaryFinished(
   result->out = tracked_processes_[binary_path]->GetOutputString(STDOUT_FILENO);
   result->err = tracked_processes_[binary_path]->GetOutputString(STDERR_FILENO);
   tracked_processes_[binary_path]->Release();
+}
 
-  base::AutoLock auto_lock(lock_);
-  auto itr = tracked_processes_.find(binary_path);
-  DCHECK(itr != tracked_processes_.end());
-  tracked_processes_.erase(itr);
-  std::move(callback).Run(std::move(result));
+void Executor::RunLongRunningProcess(
+    std::unique_ptr<brillo::Process> process,
+    mojo::PendingReceiver<ash::cros_healthd::mojom::ProcessControl> receiver,
+    bool combine_stdout_and_stderr) {
+  auto controller = std::make_unique<ProcessControl>(std::move(process));
+
+  controller->StartAndWait(process_reaper_, combine_stdout_and_stderr);
+  process_control_set_.Add(std::move(controller), std::move(receiver));
 }
 
 }  // namespace diagnostics

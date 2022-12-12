@@ -43,6 +43,12 @@ class MockExecutor final : public ash::cros_healthd::mojom::Executor {
               RunMemtester,
               (uint32_t test_mem_kib, RunMemtesterCallback),
               (override));
+  MOCK_METHOD(void,
+              RunMemtesterV2,
+              (uint32_t test_mem_kib,
+               mojo::PendingReceiver<ash::cros_healthd::mojom::ProcessControl>
+                   receiver),
+              (override));
   MOCK_METHOD(void, KillMemtester, (), (override));
   MOCK_METHOD(void,
               GetProcessIOContents,
