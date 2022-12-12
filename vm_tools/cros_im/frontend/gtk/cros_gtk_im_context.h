@@ -88,7 +88,6 @@ class CrosGtkIMContext : public GtkIMContext {
   // Ref counted
   GdkWindow* gdk_window_ = nullptr;
   GdkWindow* top_level_gdk_window_ = nullptr;
-  GtkWindow* top_level_gtk_window_ = nullptr;
 
   // Set if FocusIn() is called prior to SetClientWindow().
   bool pending_activation_ = false;
