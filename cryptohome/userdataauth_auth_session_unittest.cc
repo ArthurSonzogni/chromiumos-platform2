@@ -203,7 +203,6 @@ void MockKeysetDerivation(const std::string& obfuscated_username,
                            fake_error_location, error::ErrorActionSet(),
                            derivation_error),
                  std::make_unique<KeyBlobs>());
-        return true;
       });
 }
 
@@ -220,7 +219,6 @@ void MockKeysetCreation(MockAuthBlockUtility& auth_block_utility) {
             .Run(OkStatus<CryptohomeCryptoError>(),
                  std::make_unique<KeyBlobs>(),
                  std::make_unique<AuthBlockState>());
-        return true;
       })
       .RetiresOnSaturation();
 }

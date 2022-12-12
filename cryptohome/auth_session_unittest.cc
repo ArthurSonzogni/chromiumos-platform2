@@ -234,7 +234,6 @@ class AuthSessionTest : public ::testing::Test {
                          AuthBlock::DeriveCallback derive_callback) {
               std::move(derive_callback)
                   .Run(OkStatus<CryptohomeCryptoError>(), std::move(key_blobs));
-              return true;
             });
 
     user_data_auth::AuthenticateAuthFactorRequest request;
@@ -723,7 +722,6 @@ TEST_F(AuthSessionTest, AuthenticateExistingUser) {
                              AuthBlock::DeriveCallback derive_callback) {
         std::move(derive_callback)
             .Run(OkStatus<CryptohomeCryptoError>(), std::move(key_blobs));
-        return true;
       });
 
   TestFuture<CryptohomeStatus> authenticate_future;
@@ -803,7 +801,6 @@ TEST_F(AuthSessionTest, AuthenticateWithPIN) {
                              AuthBlock::DeriveCallback derive_callback) {
         std::move(derive_callback)
             .Run(OkStatus<CryptohomeCryptoError>(), std::move(key_blobs));
-        return true;
       });
 
   TestFuture<CryptohomeStatus> authenticate_future;
@@ -876,7 +873,6 @@ TEST_F(AuthSessionTest, AuthenticateFailsOnPINLock) {
 
         std::move(derive_callback)
             .Run(std::move(status), std::make_unique<KeyBlobs>());
-        return true;
       });
 
   TestFuture<CryptohomeStatus> authenticate_future;
@@ -927,7 +923,6 @@ TEST_F(AuthSessionTest, NoLightweightAuthForDecryption) {
         std::move(derive_callback)
             .Run(OkStatus<CryptohomeCryptoError>(),
                  std::make_unique<KeyBlobs>());
-        return true;
       });
   EXPECT_CALL(keyset_management_, GetValidKeysetWithKeyBlobs(_, _, _))
       .WillOnce([](const std::string&, KeyBlobs,
@@ -996,7 +991,6 @@ TEST_F(AuthSessionTest, AuthenticateFailsAfterPINLock) {
 
         std::move(derive_callback)
             .Run(std::move(status), std::make_unique<KeyBlobs>());
-        return true;
       });
 
   TestFuture<CryptohomeStatus> authenticate_future;
@@ -1058,7 +1052,6 @@ TEST_F(AuthSessionTest, AuthenticateExistingUserFailure) {
                          {error::ErrorAction::kDevCheckUnexpectedState}),
                      CryptoError::CE_TPM_FATAL),
                  std::move(key_blobs));
-        return true;
       });
 
   TestFuture<CryptohomeStatus> authenticate_future;
@@ -1393,7 +1386,6 @@ TEST_F(AuthSessionTest,
         std::move(create_callback)
             .Run(OkStatus<CryptohomeCryptoError>(), std::move(key_blobs),
                  std::move(auth_block_state2));
-        return true;
       });
 
   auto key_blobs2 = std::make_unique<KeyBlobs>();
@@ -1404,7 +1396,6 @@ TEST_F(AuthSessionTest,
                               AuthBlock::DeriveCallback derive_callback) {
         std::move(derive_callback)
             .Run(OkStatus<CryptohomeCryptoError>(), std::move(key_blobs2));
-        return true;
       });
 
   TestFuture<CryptohomeStatus> authenticate_future;
@@ -1495,7 +1486,6 @@ TEST_F(AuthSessionTest,
         std::move(create_callback)
             .Run(OkStatus<CryptohomeCryptoError>(), std::move(key_blobs),
                  std::move(auth_block_state2));
-        return true;
       });
 
   auto key_blobs2 = std::make_unique<KeyBlobs>();
@@ -1506,7 +1496,6 @@ TEST_F(AuthSessionTest,
                               AuthBlock::DeriveCallback derive_callback) {
         std::move(derive_callback)
             .Run(OkStatus<CryptohomeCryptoError>(), std::move(key_blobs2));
-        return true;
       });
 
   TestFuture<CryptohomeStatus> authenticate_future;
@@ -1593,7 +1582,6 @@ TEST_F(AuthSessionTest,
                               AuthBlock::DeriveCallback derive_callback) {
         std::move(derive_callback)
             .Run(OkStatus<CryptohomeCryptoError>(), std::move(key_blobs2));
-        return true;
       });
 
   TestFuture<CryptohomeStatus> authenticate_future;
@@ -1772,7 +1760,6 @@ TEST_F(AuthSessionTest, AddMultipleAuthFactor) {
             .Run(OkStatus<CryptohomeCryptoError>(),
                  std::make_unique<KeyBlobs>(),
                  std::make_unique<AuthBlockState>());
-        return true;
       });
   EXPECT_CALL(keyset_management_,
               AddInitialKeysetWithKeyBlobs(_, _, _, _, _, _, _))
@@ -1978,7 +1965,6 @@ TEST_F(AuthSessionTest, UpdateAuthFactorSucceedsForPasswordVK) {
             .Run(OkStatus<CryptohomeCryptoError>(),
                  std::make_unique<KeyBlobs>(),
                  std::make_unique<AuthBlockState>(auth_block_state));
-        return true;
       });
   EXPECT_CALL(keyset_management_, UpdateKeysetWithKeyBlobs(_, _, _, _, _, _))
       .WillOnce(Return(CRYPTOHOME_ERROR_NOT_SET));
@@ -2173,7 +2159,6 @@ TEST_F(AuthSessionTest, AuthenticateAuthFactorWebAuthnIntent) {
         std::move(derive_callback)
             .Run(OkStatus<CryptohomeCryptoError>(),
                  std::make_unique<KeyBlobs>());
-        return true;
       });
   EXPECT_CALL(keyset_management_, GetValidKeysetWithKeyBlobs(_, _, _))
       .WillOnce([](const std::string&, KeyBlobs,
@@ -2332,7 +2317,6 @@ class AuthSessionWithUssExperimentTest : public AuthSessionTest {
           std::move(create_callback)
               .Run(OkStatus<CryptohomeCryptoError>(), std::move(key_blobs),
                    std::move(auth_block_state));
-          return true;
         });
     // Setting the expectation that a backup VaultKeyset will be created.
     EXPECT_CALL(keyset_management_,
@@ -2379,7 +2363,6 @@ class AuthSessionWithUssExperimentTest : public AuthSessionTest {
               GetFakeDerivedSecret(auth_input.user_input.value());
           std::move(derive_callback)
               .Run(OkStatus<CryptohomeCryptoError>(), std::move(key_blobs));
-          return true;
         });
     // Setting the expectation that backup password VaultKeyset is decrypted.
     EXPECT_CALL(keyset_management_, GetValidKeysetWithKeyBlobs(_, _, _))
@@ -2427,7 +2410,6 @@ class AuthSessionWithUssExperimentTest : public AuthSessionTest {
           std::move(create_callback)
               .Run(OkStatus<CryptohomeCryptoError>(), std::move(key_blobs),
                    std::move(auth_block_state));
-          return true;
         });
 
     user_data_auth::UpdateAuthFactorRequest request;
@@ -2468,7 +2450,6 @@ class AuthSessionWithUssExperimentTest : public AuthSessionTest {
           std::move(create_callback)
               .Run(OkStatus<CryptohomeCryptoError>(), std::move(key_blobs),
                    std::move(auth_block_state));
-          return true;
         });
     // Setting the expectation that a backup VaultKeyset will be created.
     EXPECT_CALL(keyset_management_, AddKeysetWithKeyBlobs(_, _, _, _, _, _, _))
@@ -2576,7 +2557,6 @@ TEST_F(AuthSessionWithUssExperimentTest, AddPasswordAuthFactorViaUss) {
         std::move(create_callback)
             .Run(OkStatus<CryptohomeCryptoError>(), std::move(key_blobs),
                  std::move(auth_block_state));
-        return true;
       });
   // Setting the expectation that a backup VaultKeyset will be created.
   EXPECT_CALL(keyset_management_,
@@ -2652,7 +2632,6 @@ TEST_F(AuthSessionWithUssExperimentTest, AddPasswordAuthFactorViaAsyncUss) {
             base::BindOnce(std::move(create_callback),
                            OkStatus<CryptohomeCryptoError>(),
                            std::move(key_blobs), std::move(auth_block_state)));
-        return true;
       });
   // Setting the expectation that a backup VaultKeyset will be created.
   EXPECT_CALL(keyset_management_,
@@ -2729,7 +2708,6 @@ TEST_F(AuthSessionWithUssExperimentTest,
                         {error::ErrorAction::kDevCheckUnexpectedState}),
                     CryptoError::CE_OTHER_CRYPTO),
                 nullptr, nullptr));
-        return true;
       });
   // Calling AddAuthFactor.
   user_data_auth::AddAuthFactorRequest request;
@@ -2822,7 +2800,6 @@ TEST_F(AuthSessionWithUssExperimentTest, AddPasswordAndPinAuthFactorViaUss) {
         std::move(create_callback)
             .Run(OkStatus<CryptohomeCryptoError>(), std::move(key_blobs),
                  std::move(auth_block_state));
-        return true;
       });
   // Setting the expectation that a backup VaultKeyset will be created.
   EXPECT_CALL(keyset_management_,
@@ -2867,7 +2844,6 @@ TEST_F(AuthSessionWithUssExperimentTest, AddPasswordAndPinAuthFactorViaUss) {
         std::move(create_callback)
             .Run(OkStatus<CryptohomeCryptoError>(), std::move(key_blobs),
                  std::move(auth_block_state));
-        return true;
       });
   // Setting the expectation that a backup VaultKeyset will be created.
   EXPECT_CALL(keyset_management_, AddKeysetWithKeyBlobs(_, _, _, _, _, _, _))
@@ -2970,7 +2946,6 @@ TEST_F(AuthSessionWithUssExperimentTest, AuthenticatePasswordAuthFactorViaUss) {
         key_blobs->vkk_key = kFakePerCredentialSecret;
         std::move(derive_callback)
             .Run(OkStatus<CryptohomeCryptoError>(), std::move(key_blobs));
-        return true;
       });
   // Setting the expectation that backup password VaultKeyset is decrypted.
   EXPECT_CALL(keyset_management_, GetValidKeysetWithKeyBlobs(_, _, _))
@@ -3075,7 +3050,6 @@ TEST_F(AuthSessionWithUssExperimentTest,
                                base::BindOnce(std::move(derive_callback),
                                               OkStatus<CryptohomeCryptoError>(),
                                               std::move(key_blobs)));
-        return true;
       });
   // Setting the expectation that backup password VaultKeyset is decrypted.
   EXPECT_CALL(keyset_management_, GetValidKeysetWithKeyBlobs(_, _, _))
@@ -3184,7 +3158,6 @@ TEST_F(AuthSessionWithUssExperimentTest,
                         {error::ErrorAction::kDevCheckUnexpectedState}),
                     CryptoError::CE_OTHER_CRYPTO),
                 nullptr));
-        return true;
       });
 
   // Calling AuthenticateAuthFactor.
@@ -3272,7 +3245,6 @@ TEST_F(AuthSessionWithUssExperimentTest, AuthenticatePinAuthFactorViaUss) {
         key_blobs->vkk_key = kFakePerCredentialSecret;
         std::move(derive_callback)
             .Run(OkStatus<CryptohomeCryptoError>(), std::move(key_blobs));
-        return true;
       });
   // Calling AuthenticateAuthFactor.
   user_data_auth::AuthenticateAuthFactorRequest request;
@@ -3326,7 +3298,6 @@ TEST_F(AuthSessionWithUssExperimentTest, AddCryptohomeRecoveryAuthFactor) {
         std::move(create_callback)
             .Run(OkStatus<CryptohomeCryptoError>(), std::move(key_blobs),
                  std::move(auth_block_state));
-        return true;
       });
   // Calling AddAuthFactor.
   user_data_auth::AddAuthFactorRequest request;
@@ -3455,7 +3426,6 @@ TEST_F(AuthSessionWithUssExperimentTest,
         key_blobs->vkk_key = kFakePerCredentialSecret;
         std::move(derive_callback)
             .Run(OkStatus<CryptohomeCryptoError>(), std::move(key_blobs));
-        return true;
       });
 
   // Calling AuthenticateAuthFactor.
@@ -3557,7 +3527,6 @@ TEST_F(AuthSessionWithUssExperimentTest, AuthenticateSmartCardAuthFactor) {
         key_blobs->vkk_key = kFakePerCredentialSecret;
         std::move(derive_callback)
             .Run(OkStatus<CryptohomeCryptoError>(), std::move(key_blobs));
-        return true;
       });
 
   EXPECT_CALL(auth_block_utility_, CreateCredentialVerifier(_, kFakeLabel, _))
@@ -4336,7 +4305,6 @@ TEST_F(AuthSessionTest, UpdateAuthFactorFailsInAuthBlock) {
         std::move(create_callback)
             .Run(OkStatus<CryptohomeCryptoError>(), std::move(key_blobs),
                  std::move(auth_block_state));
-        return true;
       })
       .RetiresOnSaturation();
   EXPECT_CALL(keyset_management_,
