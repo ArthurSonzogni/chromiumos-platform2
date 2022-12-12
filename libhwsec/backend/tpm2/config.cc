@@ -159,7 +159,7 @@ StatusOr<ConfigTpm2::PcrMap> ConfigTpm2::ToSettingsPcrMap(
     const auto& mode = settings.boot_mode->mode;
     if (mode.has_value()) {
       char boot_modes[3] = {mode->developer_mode, mode->recovery_mode,
-                            mode->recovery_mode};
+                            mode->verified_firmware};
       std::string mode_str(std::begin(boot_modes), std::end(boot_modes));
       std::string mode_digest = base::SHA1HashString(mode_str);
       mode_digest.resize(SHA256_DIGEST_LENGTH);
