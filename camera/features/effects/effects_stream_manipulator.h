@@ -72,6 +72,8 @@ class EffectsStreamManipulator : public StreamManipulator {
   void RGBAToNV12(GLuint texture, uint32_t width, uint32_t height);
   void CreatePipeline(const base::FilePath& dlc_root_path);
   std::optional<int64_t> TryGetSensorTimestamp(Camera3CaptureDescriptor* desc);
+  camera3_stream_buffer_t* SelectEffectsBuffer(
+      base::span<camera3_stream_buffer_t> output_buffers);
 
   ReloadableConfigFile config_;
   Options options_;
@@ -80,7 +82,6 @@ class EffectsStreamManipulator : public StreamManipulator {
 
   EffectsConfig active_runtime_effects_config_ = EffectsConfig();
 
-  camera3_stream_t* yuv_stream_ = nullptr;
   std::unique_ptr<EffectsPipeline> pipeline_;
 
   // Buffer for input frame converted into RGBA.

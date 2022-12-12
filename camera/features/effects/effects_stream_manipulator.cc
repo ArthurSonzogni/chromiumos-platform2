@@ -118,44 +118,6 @@ bool EffectsStreamManipulator::Initialize(
 
 bool EffectsStreamManipulator::ConfigureStreams(
     Camera3StreamConfiguration* stream_config) {
-  yuv_stream_ = nullptr;
-
-  for (auto* s : stream_config->GetStreams()) {
-    if (s->stream_type != CAMERA3_STREAM_OUTPUT) {
-      continue;
-    }
-
-    if (s->format == HAL_PIXEL_FORMAT_YCbCr_420_888 ||
-        s->format == HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED) {
-      if (s->format == HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED &&
-          (s->usage & GRALLOC_USAGE_HW_CAMERA_ZSL) ==
-              GRALLOC_USAGE_HW_CAMERA_ZSL) {
-        // Ignore ZSL streams.
-        continue;
-      }
-      // TODO(b/244518466) Figure out how to handle many streams
-      // Currently selecting the widest stream to process as it satisfies
-      // the most initial VC situations. Want to expand this to handle
-      // many streams
-      if (!yuv_stream_ || s->width > yuv_stream_->width) {
-        yuv_stream_ = s;
-        if ((s->usage & GRALLOC_USAGE_HW_COMPOSER) !=
-            GRALLOC_USAGE_HW_COMPOSER) {
-          LOGF(WARNING) << "Stream doesn't support GRALLOC_USAGE_HW_COMPOSER";
-        }
-      }
-    }
-  }
-
-  if (yuv_stream_) {
-    LOGF(INFO) << "YUV stream for EffectsStreamManipulator: "
-               << GetDebugString(yuv_stream_);
-  } else {
-    LOGF(ERROR) << "No YUV stream for EffectsStreamManipulator.";
-    return false;
-  }
-  yuv_stream_->usage |= kBufferUsage;
-
   return true;
 }
 
@@ -182,6 +144,38 @@ std::optional<int64_t> EffectsStreamManipulator::TryGetSensorTimestamp(
                                : std::nullopt;
 }
 
+camera3_stream_buffer_t* EffectsStreamManipulator::SelectEffectsBuffer(
+    base::span<camera3_stream_buffer_t> output_buffers) {
+  camera3_stream_buffer_t* ret = nullptr;
+
+  for (auto& b : output_buffers) {
+    const auto* s = b.stream;
+    if (s->stream_type != CAMERA3_STREAM_OUTPUT) {
+      continue;
+    }
+
+    if (s->format == HAL_PIXEL_FORMAT_YCbCr_420_888 ||
+        s->format == HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED) {
+      if (s->format == HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED &&
+          (s->usage & GRALLOC_USAGE_HW_CAMERA_ZSL) ==
+              GRALLOC_USAGE_HW_CAMERA_ZSL) {
+        // Ignore ZSL streams.
+        continue;
+      }
+
+      // TODO(b/244518466) Figure out how to handle many streams
+      // Currently selecting the widest stream to process as it satisfies
+      // the most initial VC situations. Want to expand this to handle
+      // many streams
+      if (!ret || s->width >= ret->stream->width) {
+        ret = &b;
+      }
+    }
+  }
+
+  return ret;
+}
+
 bool EffectsStreamManipulator::ProcessCaptureResult(
     Camera3CaptureDescriptor result) {
   base::ScopedClosureRunner callback_action(base::BindOnce(
@@ -194,8 +188,6 @@ bool EffectsStreamManipulator::ProcessCaptureResult(
       mojom::CameraPrivacySwitchState::ON) {
     return true;
   }
-  if (!yuv_stream_)
-    return true;
 
   if (!pipeline_ && !runtime_options_->GetDlcRootPath().empty()) {
     CreatePipeline(base::FilePath(runtime_options_->GetDlcRootPath()));
@@ -203,28 +195,24 @@ bool EffectsStreamManipulator::ProcessCaptureResult(
   if (!pipeline_)
     return true;
 
-  camera3_stream_buffer_t yuv_buffer = {};
-  base::StackVector<camera3_stream_buffer_t, kMaxNumBuffers> result_buffers;
-  for (auto& b : result.GetOutputBuffers()) {
-    if (b.stream != yuv_stream_) {
-      result_buffers->push_back(b);
-    } else {
-      yuv_buffer = b;
-    }
-  }
-  if (yuv_buffer.status != CAMERA3_BUFFER_STATUS_OK) {
+  camera3_stream_buffer_t* result_buffer =
+      SelectEffectsBuffer(result.GetMutableOutputBuffers());
+  if (result_buffer == nullptr)
+    return true;
+
+  if (result_buffer->status != CAMERA3_BUFFER_STATUS_OK) {
     LOGF(ERROR) << "EffectsStreamManipulator received buffer with "
                    "error in result "
                 << result.frame_number();
     return false;
   }
 
-  if (!WaitOnAndClearReleaseFence(yuv_buffer, kSyncWaitTimeoutMs)) {
+  if (!WaitOnAndClearReleaseFence(*result_buffer, kSyncWaitTimeoutMs)) {
     LOGF(ERROR) << "Timed out waiting for input buffer";
     return false;
   }
 
-  buffer_handle_t buffer_handle = *yuv_buffer.buffer;
+  buffer_handle_t buffer_handle = *result_buffer->buffer;
 
   auto manager = CameraBufferManager::GetInstance();
   if (manager->Register(buffer_handle) != 0) {
@@ -286,8 +274,9 @@ bool EffectsStreamManipulator::ProcessCaptureResult(
     return false;
   }
 
-  yuv_buffer.status = CAMERA3_BUFFER_STATUS_OK;
-  result_buffers->push_back(yuv_buffer);
+  result_buffer->status = CAMERA3_BUFFER_STATUS_OK;
+  base::StackVector<camera3_stream_buffer_t, kMaxNumBuffers> result_buffers;
+  result_buffers->push_back(*result_buffer);
   result.SetOutputBuffers(base::span<camera3_stream_buffer_t>(
       result_buffers->begin(), result_buffers->end()));
 
