@@ -65,7 +65,6 @@ executable("bootlockboxd") {
   ]
   libs = [
     "hwsec-profiling",
-    "keyutils",
     "tpm_manager",
   ]
   deps = [
