@@ -18,6 +18,8 @@
 #include "dbus/message.h"
 #include "dbus/object_proxy.h"
 #include "featured/service.h"
+#include "featured/store_impl.h"
+#include "featured/store_interface.h"
 
 namespace {
 class FeatureDaemon : public brillo::Daemon {
@@ -41,8 +43,14 @@ int main(int argc, char** argv) {
   dbus::Bus::Options options;
   options.bus_type = dbus::Bus::SYSTEM;
   scoped_refptr<dbus::Bus> bus = new dbus::Bus(options);
+  std::unique_ptr<featured::StoreInterface> store =
+      featured::StoreImpl::Create();
+  if (!store) {
+    LOG(ERROR) << "Could not create StoreImpl instance";
+    return EX_UNAVAILABLE;
+  }
   std::shared_ptr<featured::DbusFeaturedService> service =
-      std::make_shared<featured::DbusFeaturedService>();
+      std::make_shared<featured::DbusFeaturedService>(std::move(store));
 
   CHECK(service->Start(bus.get(), service)) << "Failed to start featured!";
 

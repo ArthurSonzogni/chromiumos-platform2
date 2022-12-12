@@ -10,9 +10,20 @@
 #include <base/files/scoped_temp_dir.h>
 #include <base/logging.h>
 #include <chromeos/dbus/service_constants.h>
+#include <dbus/mock_bus.h>
+#include <dbus/mock_exported_object.h>
+#include <dbus/mock_object_proxy.h>
 #include <gtest/gtest.h>
 
 #include "featured/service.h"
+#include "featured/store_impl.h"
+#include "featured/store_impl_mock.h"
+#include "featured/store_interface.h"
+
+using ::testing::_;
+using ::testing::Invoke;
+using ::testing::Return;
+using ::testing::StrictMock;
 
 namespace featured {
 
@@ -58,4 +69,57 @@ TEST(FeatureCommand, MkdirTest) {
   }
 }
 
+class DbusFeaturedServiceTest : public testing::Test {
+ public:
+  DbusFeaturedServiceTest()
+      : mock_store_impl_(std::make_unique<StrictMock<MockStoreImpl>>()),
+        mock_bus_(base::MakeRefCounted<dbus::MockBus>(dbus::Bus::Options{})),
+        path_(chromeos::kChromeFeaturesServicePath),
+        mock_proxy_(base::MakeRefCounted<dbus::MockObjectProxy>(
+            mock_bus_.get(), chromeos::kChromeFeaturesServiceName, path_)),
+        mock_exported_object_(
+            base::MakeRefCounted<StrictMock<dbus::MockExportedObject>>(
+                mock_bus_.get(), path_)) {
+    ON_CALL(*mock_bus_, GetExportedObject(_))
+        .WillByDefault(Return(mock_exported_object_.get()));
+    ON_CALL(*mock_bus_, Connect()).WillByDefault(Return(true));
+    ON_CALL(*mock_bus_, GetObjectProxy(_, _))
+        .WillByDefault(Return(mock_proxy_.get()));
+    ON_CALL(*mock_bus_, RequestOwnershipAndBlock(_, _))
+        .WillByDefault(Return(true));
+  }
+
+ protected:
+  std::unique_ptr<MockStoreImpl> mock_store_impl_;
+  scoped_refptr<dbus::MockBus> mock_bus_;
+  dbus::ObjectPath path_;
+  scoped_refptr<dbus::MockObjectProxy> mock_proxy_;
+  scoped_refptr<dbus::MockExportedObject> mock_exported_object_;
+};
+
+// Checks that service start successfully increments the boot attempts counter
+// on boot.
+TEST_F(DbusFeaturedServiceTest, IncrementBootAttemptsOnStartup_Success) {
+  EXPECT_CALL(*mock_store_impl_, IncrementBootAttemptsSinceLastUpdate())
+      .WillOnce(Return(true));
+
+  std::shared_ptr<DbusFeaturedService> service =
+      std::make_shared<DbusFeaturedService>(std::move(mock_store_impl_));
+  ASSERT_NE(service, nullptr);
+
+  EXPECT_TRUE(service->Start(mock_bus_.get(), service));
+}
+
+// Checks that service start fails when incrementing the boot attempts counter
+// on boot fails.
+TEST_F(DbusFeaturedServiceTest, IncrementBootAttemptsOnStartup_Failure) {
+  EXPECT_CALL(*mock_store_impl_, IncrementBootAttemptsSinceLastUpdate())
+      .WillOnce(Return(false));
+
+  std::shared_ptr<DbusFeaturedService> service =
+      std::make_shared<DbusFeaturedService>(std::move(mock_store_impl_));
+  ASSERT_NE(service, nullptr);
+
+  EXPECT_FALSE(service->Start(mock_bus_.get(), service));
+}
 }  // namespace featured

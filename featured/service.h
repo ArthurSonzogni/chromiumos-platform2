@@ -29,6 +29,8 @@
 #include <utility>
 #include <vector>
 
+#include "featured/store_interface.h"
+
 namespace featured {
 class FeatureCommand {
  public:
@@ -153,7 +155,9 @@ class JsonFeatureParser : public FeatureParserBase {
 
 class DbusFeaturedService {
  public:
-  DbusFeaturedService() : parser_(std::make_unique<JsonFeatureParser>()) {}
+  explicit DbusFeaturedService(std::unique_ptr<StoreInterface> store)
+      : parser_(std::make_unique<JsonFeatureParser>()),
+        store_(std::move(store)) {}
   DbusFeaturedService(const DbusFeaturedService&) = delete;
   DbusFeaturedService& operator=(const DbusFeaturedService&) = delete;
 
@@ -173,6 +177,7 @@ class DbusFeaturedService {
 
   std::unique_ptr<FeatureParserBase> parser_;
   std::unique_ptr<feature::PlatformFeatures> library_;
+  std::unique_ptr<StoreInterface> store_;
   std::unique_ptr<org::chromium::SessionManagerInterfaceProxyInterface>
       session_manager_ = nullptr;
   bool evaluated_platform_features_json_ = false;
