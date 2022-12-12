@@ -1,7 +1,1 @@
-hywu@chromium.org
-jcliang@chromium.org
-shik@chromium.org
-wtlee@chromium.org
-kamesan@chromium.org
-hanlinchen@google.com
-okuji@chromium.org
+include chromiumos/owners:v1:/camera/OWNERS.hal_code
