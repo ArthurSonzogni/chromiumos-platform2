@@ -16,6 +16,14 @@
 
 namespace cros_disks {
 
+bool ArchiveMounter::IsValidEncoding(const base::StringPiece encoding) {
+  return !encoding.empty() &&
+         std::all_of(encoding.cbegin(), encoding.cend(), [](const char c) {
+           return base::IsAsciiAlphaNumeric(c) || c == '_' || c == '-' ||
+                  c == '.' || c == ':';
+         });
+}
+
 ArchiveMounter::ArchiveMounter(
     const Platform* platform,
     brillo::ProcessReaper* process_reaper,
@@ -127,6 +135,14 @@ std::unique_ptr<SandboxedProcess> ArchiveMounter::PrepareSandbox(
                                           kChronosUID, kChronosAccessGID));
 
   if (std::string encoding; GetParamValue(params, "encoding", &encoding)) {
+    // Validate the encoding string before passing it to the FUSE mounter
+    // (crbug.com/1398994).
+    if (!IsValidEncoding(encoding)) {
+      LOG(ERROR) << "Invalid encoding: " << quote(encoding);
+      *error = MountError::kInvalidArgument;
+      return nullptr;
+    }
+
     sandbox->AddArgument("-o");
     sandbox->AddArgument("encoding=" + encoding);
   }

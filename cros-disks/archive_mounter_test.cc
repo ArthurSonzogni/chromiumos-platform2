@@ -245,11 +245,22 @@ TEST_F(ArchiveMounterTest, IgnoredIfNotNeeded) {
   EXPECT_EQ("", sandbox->input());
 }
 
+TEST_F(ArchiveMounterTest, IsValidEncoding) {
+  EXPECT_FALSE(ArchiveMounter::IsValidEncoding(""));
+  EXPECT_FALSE(ArchiveMounter::IsValidEncoding("a,b"));
+  EXPECT_TRUE(ArchiveMounter::IsValidEncoding("UTF-8"));
+  EXPECT_TRUE(ArchiveMounter::IsValidEncoding("SJIS"));
+  EXPECT_TRUE(ArchiveMounter::IsValidEncoding("Shift_JIS"));
+  EXPECT_TRUE(ArchiveMounter::IsValidEncoding("ANSI_X3.4-1986"));
+  EXPECT_TRUE(ArchiveMounter::IsValidEncoding("ISO_646.IRV:1991"));
+  EXPECT_TRUE(ArchiveMounter::IsValidEncoding("a.z_A:Z-09"));
+}
+
 // Tests that the 'encoding' option is passed to the FUSE mounter.
 TEST_F(ArchiveMounterTest, EncodingOption) {
   const std::string encoding = "MyEncoding";
 
-  auto mounter = CreateMounter({});
+  const std::unique_ptr<ArchiveMounter> mounter = CreateMounter({});
   MountError error = MountError::kUnknownError;
   const std::unique_ptr<FakeSandboxedProcess> sandbox = PrepareSandbox(
       *mounter, kSomeSource,
@@ -257,6 +268,17 @@ TEST_F(ArchiveMounterTest, EncodingOption) {
   EXPECT_EQ(MountError::kSuccess, error);
   ASSERT_TRUE(sandbox);
   EXPECT_THAT(sandbox->arguments(), Contains("encoding=" + encoding));
+}
+
+// Tests that the 'encoding' option is rejected if it contains invalid
+// characters (crbug.com/1398994).
+TEST_F(ArchiveMounterTest, FailOnInvalidEncoding) {
+  const std::unique_ptr<ArchiveMounter> mounter = CreateMounter({});
+  MountError error = MountError::kUnknownError;
+  const std::unique_ptr<FakeSandboxedProcess> sandbox = PrepareSandbox(
+      *mounter, kSomeSource, {"encoding=ascii,fsname=exploit"}, &error);
+  EXPECT_EQ(MountError::kInvalidArgument, error);
+  EXPECT_FALSE(sandbox);
 }
 
 }  // namespace cros_disks

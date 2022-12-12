@@ -9,6 +9,8 @@
 #include <string>
 #include <vector>
 
+#include <base/strings/string_piece.h>
+
 #include "cros-disks/fuse_mounter.h"
 
 namespace cros_disks {
@@ -39,6 +41,11 @@ class ArchiveMounter : public FUSEMounter {
                 base::FilePath* suggested_dir_name) const override;
 
   OwnerUser GetDaemonUser() const;
+
+  // Checks if the given string might represent a realistic encoding. Allowed
+  // characters are uppercase and lowercase letters, numbers, '-', '_', '.' and
+  // ':'.
+  static bool IsValidEncoding(base::StringPiece encoding);
 
  protected:
   // FUSEMounter overrides:
