@@ -570,7 +570,12 @@ void ZslHelper::ProcessZslCaptureResult(Camera3CaptureDescriptor* result,
 
   if (result->partial_result() != 0) {  // Result has metadata. Merge it.
     const camera3_capture_result_t* locked_result = result->LockForResult();
-    it->metadata.append(locked_result->result);
+    if (locked_result->result) {
+      it->metadata.append(locked_result->result);
+    } else {
+      LOGF(ERROR) << "No result metadata although partial_result = "
+                  << result->partial_result();
+    }
     result->Unlock();
     if (result->partial_result() == partial_result_count_) {
       it->metadata_ready = true;

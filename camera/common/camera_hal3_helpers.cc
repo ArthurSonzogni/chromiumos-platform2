@@ -225,9 +225,7 @@ Camera3CaptureDescriptor& Camera3CaptureDescriptor::operator=(
 
     type_ = other.type_;
     frame_number_ = other.frame_number_;
-    if (!other.metadata_.isEmpty()) {
-      metadata_.acquire(other.metadata_.release());
-    }
+    metadata_.acquire(other.metadata_.release());
     input_buffer_ = std::move(other.input_buffer_);
     output_buffers_ = std::move(other.output_buffers_);
     partial_result_ = other.partial_result_;
