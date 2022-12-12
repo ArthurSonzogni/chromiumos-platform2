@@ -30,6 +30,10 @@ ChromeFeaturesServiceClient::ChromeFeaturesServiceClient(
     LOG(ERROR) << "Didn't get valid proxy.";
 }
 
+void ChromeFeaturesServiceClient::FetchPeripheralDataAccessEnabled() {
+  peripheral_data_access_en_ = IsPeripheralDataAccessEnabled();
+}
+
 bool ChromeFeaturesServiceClient::IsPeripheralDataAccessEnabled() {
   if (!proxy_) {
     LOG(ERROR)

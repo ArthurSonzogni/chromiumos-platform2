@@ -50,6 +50,7 @@ int Daemon::OnInit() {
   port_manager_->SetDBusManager(dbus_mgr_.get());
 
   features_client_ = std::make_unique<ChromeFeaturesServiceClient>(bus_);
+  features_client_->FetchPeripheralDataAccessEnabled();
   port_manager_->SetFeaturesClient(features_client_.get());
 
   // Stash whether mode entry is supported at init, instead of querying it
