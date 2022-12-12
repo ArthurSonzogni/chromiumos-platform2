@@ -11,6 +11,7 @@
 #include <memory>
 #include <set>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/check.h>
@@ -40,6 +41,7 @@
 #include "shill/wifi/passpoint_credentials.h"
 #include "shill/wifi/wifi_endpoint.h"
 #include "shill/wifi/wifi_phy.h"
+#include "shill/wifi/wifi_rf.h"
 #include "shill/wifi/wifi_security.h"
 #include "shill/wifi/wifi_service.h"
 
@@ -68,6 +70,10 @@ const char kManagerErrorInvalidServiceMode[] = "invalid service mode";
 // Special value that can be passed into GetPhyInfo() to request a dump of all
 // phys on the system.
 static constexpr uint32_t kAllPhys = UINT32_MAX;
+
+// Timeout for the completion of activities started by UpdateRegAndPhy()
+// function.
+static constexpr auto kPhyUpdateTimeout = base::Milliseconds(500);
 
 // Interface name prefix used in local connection interfaces
 const char kHotspotIfacePrefix[] = "ap";
@@ -1003,7 +1009,8 @@ void WiFiProvider::GetPhyInfo(uint32_t phy_index) {
       base::BindRepeating(&WiFiProvider::OnNewWiphy,
                           weak_ptr_factory_while_started_.GetWeakPtr()),
       base::BindRepeating(&NetlinkManager::OnAckDoNothing),
-      base::BindRepeating(&NetlinkManager::OnNetlinkMessageError));
+      base::BindRepeating(&WiFiProvider::OnGetPhyInfoAuxMessage,
+                          weak_ptr_factory_while_started_.GetWeakPtr()));
 }
 
 void WiFiProvider::OnNewWiphy(const Nl80211Message& nl80211_message) {
@@ -1167,11 +1174,11 @@ HotspotDeviceRefPtr WiFiProvider::CreateHotspotDevice(
     return nullptr;
   }
 
-  // TODO (b/257340615) Select capable WiFiPhy according to band and security
+  // TODO(b/257340615) Select capable WiFiPhy according to band and security
   // requirement.
   uint32_t phy_index = wifi_phys_.begin()->second->GetPhyIndex();
 
-  // TODO (b/269163735) Use WiFi device registered in WiFiPhy to get the primary
+  // TODO(b/269163735) Use WiFi device registered in WiFiPhy to get the primary
   // interface.
   const auto wifi_devices = manager_->FilterByTechnology(Technology::kWiFi);
   if (wifi_devices.empty()) {
@@ -1200,6 +1207,117 @@ void WiFiProvider::DeleteLocalDevice(LocalDeviceRefPtr device) {
 
   device->SetEnabled(false);
   DeregisterLocalDevice(device);
+}
+
+void WiFiProvider::NotifyCountry(const std::string& country,
+                                 RegulatorySource source) {
+  SLOG(2) << "Country notification: " << country
+          << " (source: " << static_cast<int>(source) << ")";
+  country_[source] = country;
+  if (source == RegulatorySource::kCurrent) {
+    if (!phy_update_timeout_cb_.IsCancelled()) {
+      // We requested regdom change - let's check if the result is what we
+      // expect to be.
+      if (country != country_[RegulatorySource::kCellular] &&
+          country != kCustomWorldRegDomain &&
+          country != kIntersectionRegDomain) {
+        LOG(WARNING) << "Unexpected regulatory domain: got '" << country
+                     << "', want '" << country_[RegulatorySource::kCellular]
+                     << "'";
+      }
+    }
+    return;
+  }
+  auto& curr_country = country_[RegulatorySource::kCurrent];
+  if (!curr_country.empty() && curr_country != country) {
+    SLOG(2) << "Country mismatch: " << curr_country << '/' << country
+            << " (current/country)";
+  }
+}
+
+void WiFiProvider::SetRegDomain(RegulatorySource source) {
+  std::string reg_alpha2 = country_[source];
+
+  if (reg_alpha2.empty()) {
+    LOG(WARNING) << "Country info (source: " << static_cast<int>(source)
+                 << ") not available";
+    return;
+  }
+
+  ReqSetRegMessage set_reg;
+  if (source == RegulatorySource::kCellular) {
+    set_reg.attributes()->SetU32AttributeValue(NL80211_ATTR_USER_REG_HINT_TYPE,
+                                               NL80211_USER_REG_HINT_CELL_BASE);
+  }
+  set_reg.attributes()->SetStringAttributeValue(NL80211_ATTR_REG_ALPHA2,
+                                                reg_alpha2);
+  LOG(INFO) << "Requesting region change to: " << reg_alpha2;
+  netlink_manager_->SendNl80211Message(
+      &set_reg,
+      base::RepeatingCallback<void(const Nl80211Message&)>(),  //  null handler
+      base::BindRepeating(&NetlinkManager::OnAckDoNothing),
+      base::BindRepeating(&NetlinkManager::OnNetlinkMessageError));
+}
+
+void WiFiProvider::ResetRegDomain() {
+  ReqSetRegMessage set_reg;
+  set_reg.attributes()->SetStringAttributeValue(NL80211_ATTR_REG_ALPHA2,
+                                                kWorldRegDomain);
+  LOG(INFO) << "Resetting regulatory to world domain.";
+  netlink_manager_->SendNl80211Message(
+      &set_reg,
+      base::RepeatingCallback<void(const Nl80211Message&)>(),  //  null handler
+      base::BindRepeating(&NetlinkManager::OnAckDoNothing),
+      base::BindRepeating(&NetlinkManager::OnNetlinkMessageError));
+}
+
+void WiFiProvider::UpdateRegAndPhyInfo(base::OnceClosure phy_ready_callback) {
+  if (!country_[RegulatorySource::kCellular].empty() &&
+      country_[RegulatorySource::kCellular] !=
+          country_[RegulatorySource::kCurrent]) {
+    phy_info_ready_cb_ = std::move(phy_ready_callback);
+    SetRegDomain(RegulatorySource::kCellular);
+    phy_update_timeout_cb_.Reset(
+        base::BindOnce(&WiFiProvider::PhyUpdateTimeout,
+                       weak_ptr_factory_while_started_.GetWeakPtr()));
+
+    manager_->dispatcher()->PostDelayedTask(
+        FROM_HERE, phy_update_timeout_cb_.callback(), kPhyUpdateTimeout);
+  } else {
+    std::move(phy_ready_callback).Run();
+  }
+}
+
+void WiFiProvider::PhyUpdateTimeout() {
+  LOG(WARNING) << "Timed out waiting for RegChange/PhyDump - proceeding with "
+                  "current info.";
+  std::move(phy_info_ready_cb_).Run();
+}
+
+void WiFiProvider::RegionChanged(const std::string& country) {
+  NotifyCountry(country, RegulatorySource::kCurrent);
+  // Update Phy info only when we have been asked directly to update region, we
+  // initiated its change and are waiting for the notification.
+  if (phy_update_timeout_cb_.IsCancelled()) {
+    return;
+  }
+
+  GetPhyInfo(kAllPhys);
+}
+
+void WiFiProvider::OnGetPhyInfoAuxMessage(
+    NetlinkManager::AuxiliaryMessageType type,
+    const NetlinkMessage* raw_message) {
+  if (type != NetlinkManager::kDone) {
+    NetlinkManager::OnNetlinkMessageError(type, raw_message);
+    return;
+  }
+  if (!phy_update_timeout_cb_.IsCancelled()) {
+    phy_update_timeout_cb_.Cancel();
+  }
+  if (phy_info_ready_cb_) {
+    manager_->dispatcher()->PostTask(FROM_HERE, std::move(phy_info_ready_cb_));
+  }
 }
 
 }  // namespace shill

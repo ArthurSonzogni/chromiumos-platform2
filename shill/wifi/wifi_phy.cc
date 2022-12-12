@@ -14,7 +14,8 @@ namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kWiFi;
 }  // namespace Logging
 
-WiFiPhy::WiFiPhy(uint32_t phy_index) : phy_index_(phy_index) {}
+WiFiPhy::WiFiPhy(uint32_t phy_index)
+    : phy_index_(phy_index), reg_self_managed_(false) {}
 
 WiFiPhy::~WiFiPhy() = default;
 
@@ -37,6 +38,10 @@ void WiFiPhy::DeleteWiFiLocalDevice(LocalDeviceConstRefPtr device) {
 // TODO(b/248103586): Move NL80211_CMD_NEW_WIPHY parsing out of WiFiPhy and into
 // WiFiProvider.
 void WiFiPhy::OnNewWiphy(const Nl80211Message& nl80211_message) {
+  if (nl80211_message.const_attributes()->IsFlagAttributeTrue(
+          NL80211_ATTR_WIPHY_SELF_MANAGED_REG)) {
+    reg_self_managed_ = true;
+  }
   ParseInterfaceTypes(nl80211_message);
   // TODO(b/244630773): Parse out the message and store phy information.
   ParseConcurrency(nl80211_message);

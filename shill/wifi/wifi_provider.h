@@ -37,6 +37,16 @@ class WiFiPhy;
 class WiFiService;
 class WiFiSecurity;
 
+// This enum indicates information source for the regulatory information:
+// - kCurrent - value currently set in WiFi core (obtained from Netlink
+//   notifications,
+// - kCellular - value indicated by the Cellular (based on country/MCC of the
+//   serving operator).
+enum class RegulatorySource {
+  kCurrent,
+  kCellular,
+};
+
 // The WiFi Provider is the holder of all WiFi Services.  It holds both
 // visible (created due to an Endpoint becoming visible) and invisible
 // (created due to user or storage configuration) Services.
@@ -212,6 +222,9 @@ class WiFiProvider : public ProviderInterface {
   // Handle a NL80211_CMD_NEW_WIPHY. Creates a WiFiPhy object if there isn't one
   // at the phy index, and forwards the message to the WiFiPhy.
   mockable void OnNewWiphy(const Nl80211Message& nl80211_message);
+  // Notification about regulatory region change (at the moment this is signaled
+  // by WiFi).
+  mockable void RegionChanged(const std::string& country);
 
   bool disable_vht() const { return disable_vht_; }
   void set_disable_vht(bool disable_vht) { disable_vht_ = disable_vht; }
@@ -230,10 +243,27 @@ class WiFiProvider : public ProviderInterface {
   // Delete the WiFi LocalDevice |device|.
   mockable void DeleteLocalDevice(LocalDeviceRefPtr device);
 
+  // Returns regulatory domain (country alpha 2 code).
+  const std::string& country(RegulatorySource source) {
+    return country_[source];
+  }
+  // This function should be called to pass information about current country
+  // (for regulatory purposes).  The |source| indicates source of the
+  // information (see RegulatorySource above).
+  void NotifyCountry(const std::string& country, RegulatorySource source);
+
+  // This is an explicit request to update regulatory region and refresh PHY
+  // information afterwards.
+  mockable void UpdateRegAndPhyInfo(base::OnceClosure callback);
+
+  // Sets the regulatory domain to the "world" domain.
+  mockable void ResetRegDomain();
+
  protected:
   FRIEND_TEST(WiFiProviderTest, DeregisterWiFiLocalDevice);
   FRIEND_TEST(WiFiProviderTest, GetUniqueLocalDeviceName);
   FRIEND_TEST(WiFiProviderTest, RegisterWiFiLocalDevice);
+  FRIEND_TEST(WiFiProviderTest2, UpdatePhyInfo_Success);
 
   // Register a WiFi local device object to WiFiProvider and a WiFiPhy object.
   // This method asserts that there is a WiFiPhy object at the given phy_index,
@@ -299,6 +329,16 @@ class WiFiProvider : public ProviderInterface {
   // we request phy info for that phy index.
   void HandleNetlinkBroadcast(const shill::NetlinkMessage& message);
 
+  // Set regulatory domain to the country based on information obtained from
+  // |source|.  See RegulatorySource above.
+  mockable void SetRegDomain(RegulatorySource source);
+  // Utility function handling timeout for setting of regulatory domain.
+  void PhyUpdateTimeout();
+  // Utility function used to detect the end of PHY info dump and responsible
+  // for calling the callback passed in UpdateRegAndPhy().
+  void OnGetPhyInfoAuxMessage(NetlinkManager::AuxiliaryMessageType type,
+                              const NetlinkMessage* raw_message);
+
   Metrics* metrics() const;
 
   // Sort the internal list of services.
@@ -317,6 +357,13 @@ class WiFiProvider : public ProviderInterface {
   // Holds reference pointers to all WiFi Local devices with the link name as
   // the map key.
   std::map<std::string, LocalDeviceRefPtr> local_devices_;
+  // Regulatory information: ISO 3166 alpha2 country code (e.g. "US") if known.
+  // Indexed by the source of information - see enum RegulatorySource.
+  std::map<RegulatorySource, std::string> country_;
+  // Callbacks used during process of region/phy update (initiated by
+  // a UpdateRegAndPhy() function).
+  base::CancelableOnceClosure phy_update_timeout_cb_;
+  base::OnceClosure phy_info_ready_cb_;
 
   bool running_;
 

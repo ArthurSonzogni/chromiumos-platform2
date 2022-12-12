@@ -152,7 +152,8 @@ class TetheringManagerTest : public testing::Test {
         hotspot_device_(new NiceMock<MockHotspotDevice>(
             &manager_, "wlan0", "ap0", "", 0, event_cb_.Get())),
         network_(new MockNetwork(
-            kTestInterfaceIndex, kTestInterfaceName, Technology::kCellular)) {
+            kTestInterfaceIndex, kTestInterfaceName, Technology::kCellular)),
+        wifi_phy_(hotspot_device_->phy_index()) {
     // Replace the Manager's WiFi provider with a mock.
     manager_.wifi_provider_.reset(wifi_provider_);
     // Replace the Manager's Ethernet provider with a mock.
@@ -186,6 +187,8 @@ class TetheringManagerTest : public testing::Test {
         .WillByDefault(Return());
     ON_CALL(*network_, HasInternetConnectivity()).WillByDefault(Return(true));
     ON_CALL(*network_, IsConnected()).WillByDefault(Return(true));
+    ON_CALL(*wifi_provider_, GetPhyAtIndex(hotspot_device_->phy_index()))
+        .WillByDefault(Return(&wifi_phy_));
   }
   ~TetheringManagerTest() override = default;
 
@@ -448,6 +451,7 @@ class TetheringManagerTest : public testing::Test {
   MockUpstart* upstart_;
   scoped_refptr<MockHotspotDevice> hotspot_device_;
   std::unique_ptr<MockNetwork> network_;
+  MockWiFiPhy wifi_phy_;
 };
 
 TEST_F(TetheringManagerTest, GetTetheringCapabilities) {

@@ -70,6 +70,7 @@
 #include "shill/wifi/wifi_metrics_utils.h"
 #include "shill/wifi/wifi_phy.h"
 #include "shill/wifi/wifi_provider.h"
+#include "shill/wifi/wifi_rf.h"
 #include "shill/wifi/wifi_service.h"
 #include "shill/wifi/wifi_state.h"
 
@@ -1824,20 +1825,12 @@ void WiFi::OnScanStarted(const Nl80211Message& scan_trigger_msg) {
 }
 
 void WiFi::OnGetReg(const Nl80211Message& nl80211_message) {
+  SLOG(2) << __func__;
   if (nl80211_message.command() != GetRegMessage::kCommand) {
     LOG(ERROR) << __func__
                << ": unexpected command: " << nl80211_message.command_string();
     return;
   }
-
-  // Extract country code.
-  std::string country_code;
-  if (!nl80211_message.const_attributes()->GetStringAttributeValue(
-          NL80211_ATTR_REG_ALPHA2, &country_code)) {
-    SLOG(this, 2) << "Regulatory message had no NL80211_ATTR_REG_ALPHA2";
-    return;  // If no alpha2 value present, ignore it.
-  }
-  HandleCountryChange(country_code);
 
   uint8_t region;
   if (!nl80211_message.const_attributes()->GetU8AttributeValue(
@@ -1861,25 +1854,61 @@ void WiFi::OnRegChange(const Nl80211Message& nl80211_message) {
     return;
   }
 
-  // Ignore regulatory domain CHANGE events initiated by user.
   uint32_t initiator;
   if (!nl80211_message.const_attributes()->GetU32AttributeValue(
           NL80211_ATTR_REG_INITIATOR, &initiator)) {
-    SLOG(this, 2) << "No NL80211_ATTR_REG_INITIATOR in command "
-                  << nl80211_message.command_string();
+    LOG(ERROR) << "No NL80211_ATTR_REG_INITIATOR in command "
+               << nl80211_message.command_string();
     return;
   }
+
+  uint8_t reg_type;
+  if (!nl80211_message.const_attributes()->GetU8AttributeValue(
+          NL80211_ATTR_REG_TYPE, &reg_type)) {
+    LOG(ERROR) << "Regulatory change message had no NL80211_ATTR_REG_TYPE";
+    return;
+  }
+
+  std::string country_code;
+  switch (reg_type) {
+    case NL80211_REGDOM_TYPE_WORLD:
+      country_code = kWorldRegDomain;
+      break;
+    case NL80211_REGDOM_TYPE_CUSTOM_WORLD:
+      country_code = kCustomWorldRegDomain;
+      break;
+    case NL80211_REGDOM_TYPE_INTERSECTION:
+      country_code = kIntersectionRegDomain;
+      break;
+    case NL80211_REGDOM_TYPE_COUNTRY:
+      if (!nl80211_message.const_attributes()->GetStringAttributeValue(
+              NL80211_ATTR_REG_ALPHA2, &country_code)) {
+        LOG(ERROR)
+            << "Regulatory change message had no NL80211_ATTR_REG_ALPHA2";
+        return;
+      }
+      break;
+    default:
+      LOG(ERROR) << "Invalid value of REG_TYPE attribute: " << reg_type;
+      return;
+  }
+
+  provider_->RegionChanged(country_code);
+
+  // Ignore regulatory domain CHANGE events initiated by user.
   if (initiator == NL80211_REGDOM_SET_BY_USER) {
-    SLOG(this, 2) << "Ignoring regulatory domain change initiated by user.";
+    SLOG(2) << "Ignoring regulatory domain change initiated by user.";
     return;
   }
+
+  HandleCountryChange(country_code);
 
   // CHANGE events don't have all the useful attributes (e.g.,
   // NL80211_ATTR_DFS_REGION); request the full info now.
   GetRegulatory();
 }
 
-void WiFi::HandleCountryChange(std::string country_code) {
+void WiFi::HandleCountryChange(const std::string& country_code) {
   // Variable to keep track of current regulatory domain to reduce noise in
   // reported "change" events.
   static int current_reg_dom_val = -1;
@@ -1890,9 +1919,8 @@ void WiFi::HandleCountryChange(std::string country_code) {
     LOG(WARNING) << "Unsupported NL80211_ATTR_REG_ALPHA2 attribute: "
                  << country_code;
   } else {
-    SLOG(this, 2) << base::StringPrintf(
-        "Regulatory domain change message received with alpha2 %s (metric val: "
-        "%d)",
+    SLOG(2) << base::StringPrintf(
+        "Regulatory domain change message with alpha2 %s (metric val: %d)",
         country_code.c_str(), reg_dom_val);
   }
 

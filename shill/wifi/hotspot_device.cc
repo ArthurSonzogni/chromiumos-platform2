@@ -4,16 +4,15 @@
 
 #include "shill/wifi/hotspot_device.h"
 
-#include <string.h>
+#include <memory>
+#include <utility>
 
 #include <base/containers/contains.h>
 #include <base/functional/bind.h>
 
+#include "shill/control_interface.h"
 #include "shill/device.h"
 #include "shill/event_dispatcher.h"
-#include "shill/control_interface.h"
-#include "shill/refptr_types.h"
-#include "shill/store/property_store.h"
 #include "shill/supplicant/supplicant_interface_proxy_interface.h"
 #include "shill/supplicant/supplicant_process_proxy_interface.h"
 #include "shill/supplicant/wpa_supplicant.h"

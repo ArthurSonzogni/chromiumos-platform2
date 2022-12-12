@@ -16,6 +16,7 @@
 #include "shill/wifi/wifi_endpoint.h"
 #include "shill/wifi/wifi_phy.h"
 #include "shill/wifi/wifi_provider.h"
+#include "shill/wifi/wifi_service.h"
 
 namespace shill {
 
@@ -103,6 +104,9 @@ class MockWiFiProvider : public WiFiProvider {
       (const std::string&, WiFiBand, WiFiSecurity, LocalDevice::EventCallback),
       (override));
   MOCK_METHOD(void, DeleteLocalDevice, (LocalDeviceRefPtr), (override));
+  MOCK_METHOD(void, UpdateRegAndPhyInfo, (base::OnceClosure), (override));
+  MOCK_METHOD(void, SetRegDomain, (RegulatorySource), (override));
+  MOCK_METHOD(void, ResetRegDomain, (), (override));
 };
 
 }  // namespace shill

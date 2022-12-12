@@ -213,6 +213,16 @@ class SHILL_EXPORT GetRegMessage : public Nl80211Message {
   GetRegMessage& operator=(const GetRegMessage&) = delete;
 };
 
+class SHILL_EXPORT ReqSetRegMessage : public Nl80211Message {
+ public:
+  static const uint8_t kCommand;
+  static const char kCommandString[];
+
+  ReqSetRegMessage();
+  ReqSetRegMessage(const ReqSetRegMessage&) = delete;
+  ReqSetRegMessage& operator=(const ReqSetRegMessage&) = delete;
+};
+
 class SHILL_EXPORT GetStationMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;

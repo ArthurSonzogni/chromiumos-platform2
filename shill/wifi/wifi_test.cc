@@ -1284,6 +1284,8 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
 
   void SetWiFiEnabled(bool enabled) { wifi_->enabled_ = enabled; }
 
+  void OnRegChange(const Nl80211Message& msg) { wifi_->OnRegChange(msg); }
+
   void OnGetReg(const Nl80211Message& msg) { wifi_->OnGetReg(msg); }
 
   void EnsureScanAndConnectToBestService() {
@@ -5499,50 +5501,118 @@ TEST_F(WiFiMainTest, RemoveNetlinkHandler) {
   EXPECT_CALL(netlink_manager_, RemoveBroadcastHandler(_)).Times(1);
 }
 
-TEST_F(WiFiMainTest, OnGetReg) {
-  GetRegMessage msg;
-  msg.attributes()->CreateStringAttribute(NL80211_ATTR_REG_ALPHA2, "alpha2");
-  msg.attributes()->CreateU8Attribute(NL80211_ATTR_DFS_REGION, "dfs-region");
+TEST_F(WiFiMainTest, OnRegChange) {
+  WiphyRegChangeMessage msg;
+  // Verify Metrics collection for the changes initiated not by the user.
+  msg.attributes()->CreateU32Attribute(NL80211_ATTR_REG_INITIATOR, "initiator");
+  msg.attributes()->SetU32AttributeValue(NL80211_ATTR_REG_INITIATOR,
+                                         NL80211_REGDOM_SET_BY_DRIVER);
 
-  // First Regulatory Domain enum enrty.
-  msg.attributes()->SetStringAttributeValue(NL80211_ATTR_REG_ALPHA2, "00");
+  msg.attributes()->CreateU8Attribute(NL80211_ATTR_REG_TYPE, "reg-type");
+  msg.attributes()->SetU8AttributeValue(NL80211_ATTR_REG_TYPE,
+                                        NL80211_REGDOM_TYPE_WORLD);
   EXPECT_CALL(*metrics(),
               SendEnumToUMA(Metrics::kMetricRegulatoryDomain,
                             Metrics::RegulatoryDomain::kRegDom00, _))
       .Times(1);
-  // Should call ChangeRegDomain with region UNSET when no dfs_region present.
-  EXPECT_CALL(*power_manager(), ChangeRegDomain(NL80211_DFS_UNSET)).Times(1);
-  OnGetReg(msg);
-  // Last Regulatory Domain enum entry. Zimbabwe = 674.
-  msg.attributes()->SetStringAttributeValue(NL80211_ATTR_REG_ALPHA2, "ZW");
+  OnRegChange(msg);
+
+  msg.attributes()->SetU8AttributeValue(NL80211_ATTR_REG_TYPE,
+                                        NL80211_REGDOM_TYPE_CUSTOM_WORLD);
   EXPECT_CALL(*metrics(),
-              SendEnumToUMA(Metrics::kMetricRegulatoryDomain, 674, _))
+              SendEnumToUMA(Metrics::kMetricRegulatoryDomain,
+                            Metrics::RegulatoryDomain::kRegDom99, _))
       .Times(1);
-  msg.attributes()->SetU8AttributeValue(NL80211_ATTR_DFS_REGION,
-                                        NL80211_DFS_FCC);
-  // Subsequent calls should all call ChangeRegDomain() with the current region.
-  EXPECT_CALL(*power_manager(), ChangeRegDomain(NL80211_DFS_FCC)).Times(4);
-  OnGetReg(msg);
-  // Second call with same country code should not trigger SendEnumToUMA() call.
-  OnGetReg(msg);
+  OnRegChange(msg);
+
+  msg.attributes()->SetU8AttributeValue(NL80211_ATTR_REG_TYPE,
+                                        NL80211_REGDOM_TYPE_INTERSECTION);
+  EXPECT_CALL(*metrics(),
+              SendEnumToUMA(Metrics::kMetricRegulatoryDomain,
+                            Metrics::RegulatoryDomain::kRegDom98, _))
+      .Times(1);
+  OnRegChange(msg);
+
+  msg.attributes()->SetU8AttributeValue(NL80211_ATTR_REG_TYPE,
+                                        NL80211_REGDOM_TYPE_COUNTRY);
+  msg.attributes()->CreateStringAttribute(NL80211_ATTR_REG_ALPHA2, "alpha2");
+  // First valid alpha2 country code Andorra = 5.
+  msg.attributes()->SetStringAttributeValue(NL80211_ATTR_REG_ALPHA2, "AD");
+  EXPECT_CALL(*metrics(), SendEnumToUMA(Metrics::kMetricRegulatoryDomain, 5, _))
+      .Times(1);
+  OnRegChange(msg);
+
   // Lower case valid country code. United States = 540.
   msg.attributes()->SetStringAttributeValue(NL80211_ATTR_REG_ALPHA2, "us");
   EXPECT_CALL(*metrics(),
               SendEnumToUMA(Metrics::kMetricRegulatoryDomain, 540, _))
       .Times(1);
-  OnGetReg(msg);
+  OnRegChange(msg);
+
   // Invalid country code.
   msg.attributes()->SetStringAttributeValue(NL80211_ATTR_REG_ALPHA2, "err");
   EXPECT_CALL(*metrics(),
               SendEnumToUMA(Metrics::kMetricRegulatoryDomain,
                             Metrics::RegulatoryDomain::kCountryCodeInvalid, _))
       .Times(1);
-  OnGetReg(msg);
-  // Message with no alpha2 attribute.
-  WiphyRegChangeMessage no_alpha2;
+  OnRegChange(msg);
+
+  // Last Regulatory Domain enum entry. Zimbabwe = 674.
+  msg.attributes()->SetStringAttributeValue(NL80211_ATTR_REG_ALPHA2, "ZW");
+  EXPECT_CALL(*metrics(),
+              SendEnumToUMA(Metrics::kMetricRegulatoryDomain, 674, _))
+      .Times(1);
+  OnRegChange(msg);
+  // Second call with same country code should not trigger SendEnumToUMA() call.
   EXPECT_CALL(*metrics(), SendEnumToUMA(Metrics::kMetricRegulatoryDomain, _, _))
       .Times(0);
-  OnGetReg(no_alpha2);
+  OnRegChange(msg);
+
+  // Now some messages that should not trigger metrics collection.
+  EXPECT_CALL(*metrics(), SendEnumToUMA(Metrics::kMetricRegulatoryDomain, _, _))
+      .Times(0);
+  // No initiator.
+  WiphyRegChangeMessage no_metrics_msg;
+  OnRegChange(no_metrics_msg);
+  // User initiated.
+  no_metrics_msg.attributes()->CreateU32Attribute(NL80211_ATTR_REG_INITIATOR,
+                                                  "initiator");
+  no_metrics_msg.attributes()->SetU32AttributeValue(NL80211_ATTR_REG_INITIATOR,
+                                                    NL80211_REGDOM_SET_BY_USER);
+  OnRegChange(no_metrics_msg);
+
+  // Missing country.
+  no_metrics_msg.attributes()->SetU32AttributeValue(
+      NL80211_ATTR_REG_INITIATOR, NL80211_REGDOM_SET_BY_DRIVER);
+  no_metrics_msg.attributes()->CreateU8Attribute(NL80211_ATTR_REG_TYPE,
+                                                 "reg-type");
+  no_metrics_msg.attributes()->SetU8AttributeValue(NL80211_ATTR_REG_TYPE,
+                                                   NL80211_REGDOM_TYPE_COUNTRY);
+  OnRegChange(no_metrics_msg);
+
+  // Invalid country.
+  no_metrics_msg.attributes()->SetStringAttributeValue(NL80211_ATTR_REG_ALPHA2,
+                                                       "err");
+  OnRegChange(no_metrics_msg);
+}
+
+TEST_F(WiFiMainTest, OnGetReg) {
+  GetRegMessage msg;
+  msg.attributes()->CreateStringAttribute(NL80211_ATTR_REG_ALPHA2, "alpha2");
+  msg.attributes()->CreateU8Attribute(NL80211_ATTR_DFS_REGION, "dfs-region");
+
+  // First Regulatory Domain enum entry.
+  msg.attributes()->SetStringAttributeValue(NL80211_ATTR_REG_ALPHA2, "00");
+  // Should call ChangeRegDomain with region UNSET when no dfs_region present.
+  EXPECT_CALL(*power_manager(), ChangeRegDomain(NL80211_DFS_UNSET)).Times(1);
+  OnGetReg(msg);
+  msg.attributes()->SetU8AttributeValue(NL80211_ATTR_DFS_REGION,
+                                        NL80211_DFS_FCC);
+  // Subsequent calls should all call ChangeRegDomain() with the current region.
+  EXPECT_CALL(*power_manager(), ChangeRegDomain(NL80211_DFS_FCC)).Times(2);
+  OnGetReg(msg);
+  OnGetReg(msg);
+
   msg.attributes()->SetU8AttributeValue(NL80211_ATTR_DFS_REGION,
                                         NL80211_DFS_ETSI);
   EXPECT_CALL(*power_manager(), ChangeRegDomain(NL80211_DFS_ETSI)).Times(2);

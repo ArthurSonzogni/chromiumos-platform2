@@ -2,19 +2,24 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <utility>
+
 #include "shill/wifi/mock_wifi_provider.h"
 
 // Needed for mock method instantiation.
 #include "shill/profile.h"
-#include "shill/wifi/passpoint_credentials.h"
-#include "shill/wifi/wifi_service.h"
 
+using testing::_;
+using testing::Invoke;
 using testing::Return;
+using testing::WithArg;
 
 namespace shill {
 
 MockWiFiProvider::MockWiFiProvider() : WiFiProvider(nullptr) {
   ON_CALL(*this, GetHiddenSSIDList()).WillByDefault(Return(ByteArrays()));
+  ON_CALL(*this, UpdateRegAndPhyInfo(_))
+      .WillByDefault(WithArg<0>(Invoke([](auto cb) { std::move(cb).Run(); })));
 }
 
 MockWiFiProvider::~MockWiFiProvider() = default;

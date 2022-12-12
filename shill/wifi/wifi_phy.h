@@ -65,6 +65,10 @@ class WiFiPhy {
   // Return true if the phy supports iftype, false otherwise.
   bool SupportsIftype(nl80211_iftype iftype) const;
 
+  // Returns true if the PHY handles 802.11d country notifications (for
+  // automatic changes of regulatory domains).
+  bool reg_self_managed() const { return reg_self_managed_; }
+
   std::vector<ConcurrencyCombination> ConcurrencyCombinations() {
     return concurrency_combs_;
   }
@@ -115,6 +119,7 @@ class WiFiPhy {
   void ParseFrequencies(const Nl80211Message& nl80211_message);
 
   uint32_t phy_index_;
+  bool reg_self_managed_;
   std::set<WiFiConstRefPtr> wifi_devices_;
   std::set<LocalDeviceConstRefPtr> wifi_local_devices_;
   std::set<nl80211_iftype> supported_ifaces_;

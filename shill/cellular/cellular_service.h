@@ -89,6 +89,12 @@ class CellularService : public Service {
   void SetServingOperator(const Stringmap& serving_operator);
   const Stringmap& serving_operator() const { return serving_operator_; }
 
+  // Utility function that can be used to convert MCC code (defined by the ITU
+  // in http://handle.itu.int/11.1002/pub/80f1788f-en) into ISO 3166-1 alpha-2.
+  // For example when called with "311" it should return "US".  On failure empty
+  // string is returned.
+  static std::string MCCToAlpha2(const std::string& mcc);
+
   // Sets network technology to |technology| and broadcasts the property change.
   void SetNetworkTechnology(const std::string& technology);
   const std::string& network_technology() const { return network_technology_; }

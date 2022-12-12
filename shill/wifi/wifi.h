@@ -738,7 +738,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   void OnRegChange(const Nl80211Message& nl80211_message);
 
   // Handles country change metric.
-  void HandleCountryChange(std::string country_code);
+  void HandleCountryChange(const std::string& country_code);
 
   // Helper function for setting supplicant_interface_proxy_ pointer.
   void SetSupplicantInterfaceProxy(

@@ -20,6 +20,7 @@
 #include <gtest/gtest.h>
 
 #include "shill/mock_control.h"
+#include "shill/mock_event_dispatcher.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
 #include "shill/mock_profile.h"
@@ -53,6 +54,7 @@ using ::testing::Return;
 using ::testing::SetArgPointee;
 using ::testing::StartsWith;
 using ::testing::StrictMock;
+using ::testing::WithArg;
 
 namespace shill {
 
@@ -370,8 +372,8 @@ const uint8_t kActiveScanTriggerNlMsg[] = {
 
 class WiFiProviderTest : public testing::Test {
  public:
-  WiFiProviderTest()
-      : manager_(&control_, &dispatcher_, &metrics_),
+  explicit WiFiProviderTest(EventDispatcher* dispatcher = nullptr)
+      : manager_(&control_, dispatcher ? dispatcher : &dispatcher_, &metrics_),
         provider_(&manager_),
         default_profile_(new NiceMock<MockProfile>(&manager_, "default")),
         user_profile_(new NiceMock<MockProfile>(&manager_, "user")),
@@ -690,8 +692,20 @@ class WiFiProviderTest : public testing::Test {
   int storage_entry_index_;  // shared across profiles
 };
 
+class WiFiProviderTest2 : public WiFiProviderTest {
+ public:
+  WiFiProviderTest2() : WiFiProviderTest(&dispatcher_) {}
+
+ protected:
+  MockEventDispatcher dispatcher_;
+};
+
 MATCHER_P(RefPtrMatch, ref, "") {
   return ref.get() == arg.get();
+}
+
+MATCHER_P(IsZeroTime, is_zero, "") {
+  return is_zero == arg.is_zero();
 }
 
 TEST_F(WiFiProviderTest, Start) {
@@ -2353,6 +2367,64 @@ TEST_F(WiFiProviderTest, GetUniqueLocalDeviceName) {
   provider_.DeregisterLocalDevice(device0);
   std::string link_name = provider_.GetUniqueLocalDeviceName(iface_prefix);
   EXPECT_EQ(link_name0, link_name);
+}
+
+TEST_F(WiFiProviderTest2, UpdatePhyInfo_NoChange) {
+  // With region domains set correctly the notification callback should be
+  // called immediately signaling no change ('false' as argument).
+  provider_.NotifyCountry("US", RegulatorySource::kCurrent);
+  provider_.NotifyCountry("US", RegulatorySource::kCellular);
+  EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, _)).Times(0);
+  int times_called = 0;
+  provider_.UpdateRegAndPhyInfo(
+      base::BindOnce([](int& cnt) { ++cnt; }, std::ref(times_called)));
+  EXPECT_EQ(times_called, 1);
+}
+
+TEST_F(WiFiProviderTest2, UpdatePhyInfo_Timeout) {
+  // With different region domains we expect to request domain and phy update,
+  // however our request might not get a reply, so we should time out and run
+  // the callback.
+  provider_.NotifyCountry("00", RegulatorySource::kCurrent);
+  provider_.NotifyCountry("US", RegulatorySource::kCellular);
+  int times_called = 0;
+  EXPECT_CALL(netlink_manager_,
+              SendNl80211Message(
+                  IsNl80211Command(kNl80211FamilyId, NL80211_CMD_REQ_SET_REG),
+                  _, _, _));
+  EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, _))
+      .WillOnce(WithArg<1>(Invoke([&](auto cb) { std::move(cb).Run(); })));
+  provider_.UpdateRegAndPhyInfo(
+      base::BindOnce([](int& cnt) { ++cnt; }, std::ref(times_called)));
+  EXPECT_EQ(times_called, 1);
+}
+
+TEST_F(WiFiProviderTest2, UpdatePhyInfo_Success) {
+  // With different region domains we expect to request domain and phy update.
+  provider_.NotifyCountry("00", RegulatorySource::kCurrent);
+  provider_.NotifyCountry("US", RegulatorySource::kCellular);
+  int times_called = 0;
+  EXPECT_CALL(netlink_manager_,
+              SendNl80211Message(
+                  IsNl80211Command(kNl80211FamilyId, NL80211_CMD_REQ_SET_REG),
+                  _, _, _));
+  EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, IsZeroTime(false))).Times(1);
+  provider_.UpdateRegAndPhyInfo(
+      base::BindOnce([](int& cnt) { ++cnt; }, std::ref(times_called)));
+
+  // Now simulate reception of region change, expect phy dump and simulate
+  // reception of "Done" message (signaling the end of "split messages" dump).
+  Mock::VerifyAndClearExpectations(&dispatcher_);
+  EXPECT_CALL(
+      netlink_manager_,
+      SendNl80211Message(
+          IsNl80211Command(kNl80211FamilyId, NL80211_CMD_GET_WIPHY), _, _, _));
+  EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, IsZeroTime(true)))
+      .WillOnce(WithArg<1>(Invoke([](auto cb) { std::move(cb).Run(); })));
+  provider_.RegionChanged("US");
+  provider_.OnGetPhyInfoAuxMessage(NetlinkManager::kDone, nullptr);
+  EXPECT_EQ(times_called, 1);
+  EXPECT_TRUE(provider_.phy_update_timeout_cb_.IsCancelled());
 }
 
 }  // namespace shill

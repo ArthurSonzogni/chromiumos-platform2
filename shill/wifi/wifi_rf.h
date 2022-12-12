@@ -9,6 +9,19 @@
 
 namespace shill {
 
+// These are special country codes for regulatory domain defined in
+// linux/include/net/regulatory.h.
+// "00" is a code for world/global regulatory domain.
+constexpr char kWorldRegDomain[] = "00";
+// "99" is a code for "custom world/global" regulatory domain used by some
+// drivers.
+constexpr char kCustomWorldRegDomain[] = "99";
+// "98" is a code for "intersection" regulatory domain - meaning that what is
+// being used is an intersection of what used to be set with what was requested.
+constexpr char kIntersectionRegDomain[] = "98";
+// "97" signals that regulatory domain has not yet been configured.
+constexpr char kUnconfiguredRegDomain[] = "97";
+
 // Enum and utility functions to handle WiFi RF parameters like band, bandwidth
 // and frequency.
 enum class WiFiBand {

@@ -249,6 +249,19 @@ GetRegMessage::GetRegMessage() : Nl80211Message(kCommand, kCommandString) {
                           NetlinkMessage::MessageContext()));
 }
 
+const uint8_t ReqSetRegMessage::kCommand = NL80211_CMD_REQ_SET_REG;
+const char ReqSetRegMessage::kCommandString[] = "NL80211_CMD_REQ_SET_REG";
+
+ReqSetRegMessage::ReqSetRegMessage()
+    : Nl80211Message(kCommand, kCommandString) {
+  attributes()->CreateU32Attribute(NL80211_ATTR_USER_REG_HINT_TYPE,
+                                   "NL80211_ATTR_USER_REG_HINT_TYPE");
+  attributes()->CreateAttribute(
+      NL80211_ATTR_REG_ALPHA2,
+      base::BindRepeating(&NetlinkAttribute::NewNl80211AttributeFromId,
+                          NetlinkMessage::MessageContext()));
+}
+
 const uint8_t GetStationMessage::kCommand = NL80211_CMD_GET_STATION;
 const char GetStationMessage::kCommandString[] = "NL80211_CMD_GET_STATION";
 

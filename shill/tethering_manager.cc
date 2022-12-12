@@ -559,14 +559,18 @@ void TetheringManager::StartTetheringSession() {
     return;
   }
 
-  // Prepare the downlink service.
-  std::unique_ptr<HotspotService> service = std::make_unique<HotspotService>(
-      hotspot_dev_, hex_ssid_, passphrase_, security_);
-  if (!hotspot_dev_->ConfigureService(std::move(service))) {
-    LOG(ERROR) << __func__ << ": failed to configure the hotspot service";
-    PostSetEnabledResult(SetEnabledResult::kDownstreamWiFiFailure);
-    StopTetheringSession(StopReason::kError);
-    return;
+  // Cellular as upstream might indicate country other than the one used in
+  // WiFi. Request WiFiProvider to update the region but do that only when the
+  // underlying PHY is not a self-managed one. OnPhyInfoReady is called when it
+  // is ready.
+  bool phy_is_self_managed = manager_->wifi_provider()
+                                 ->GetPhyAtIndex(hotspot_dev_->phy_index())
+                                 ->reg_self_managed();
+  if (upstream_technology_ == Technology::kCellular && !phy_is_self_managed) {
+    manager_->wifi_provider()->UpdateRegAndPhyInfo(base::BindOnce(
+        &TetheringManager::OnPhyInfoReady, base::Unretained(this)));
+  } else {
+    OnPhyInfoReady();
   }
 
   // Prepare the upstream network.
@@ -590,6 +594,19 @@ void TetheringManager::StartTetheringSession() {
                << " not supported as an upstream technology";
     PostSetEnabledResult(SetEnabledResult::kFailure);
     StopTetheringSession(StopReason::kError);
+  }
+}
+
+void TetheringManager::OnPhyInfoReady() {
+  // TODO(b/235760601): PHY information is up to date so use it to prepare the
+  // downlink service.
+  std::unique_ptr<HotspotService> service = std::make_unique<HotspotService>(
+      hotspot_dev_, hex_ssid_, passphrase_, security_);
+  if (!hotspot_dev_->ConfigureService(std::move(service))) {
+    LOG(ERROR) << __func__ << ": failed to configure the hotspot service";
+    PostSetEnabledResult(SetEnabledResult::kDownstreamWiFiFailure);
+    StopTetheringSession(StopReason::kError);
+    return;
   }
 }
 
@@ -619,10 +636,15 @@ void TetheringManager::StopTetheringSession(StopReason reason) {
   downstream_network_fd_.reset();
   downstream_network_started_ = false;
 
+  auto wifi_provider = manager_->wifi_provider();
   // Remove the downstream device if any.
   if (hotspot_dev_) {
+    if (!wifi_provider->GetPhyAtIndex(hotspot_dev_->phy_index())
+             ->reg_self_managed()) {
+      wifi_provider->ResetRegDomain();
+    }
     hotspot_dev_->DeconfigureService();
-    manager_->wifi_provider()->DeleteLocalDevice(hotspot_dev_);
+    wifi_provider->DeleteLocalDevice(hotspot_dev_);
     hotspot_dev_ = nullptr;
   }
   hotspot_service_up_ = false;
