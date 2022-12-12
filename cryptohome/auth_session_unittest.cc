@@ -420,6 +420,26 @@ TEST_F(AuthSessionTest, TokenFromString) {
   EXPECT_EQ(deserialized_token.value(), original_token);
 }
 
+// Test that `GetSerializedStringFromToken()` refuses a string containing only
+// zero bytes (but doesn't crash). Note: such a string would've corresponded to
+// `base::UnguessableToken::Null()` if the latter would be allowed.
+TEST_F(AuthSessionTest, TokenFromAllZeroesString) {
+  // Setup. To avoid hardcoding the length of the string in the test, first
+  // serialize an arbitrary token and then replace its contents with zeroes.
+  const base::UnguessableToken some_token = base::UnguessableToken::Create();
+  const std::optional<std::string> serialized_some_token =
+      AuthSession::GetSerializedStringFromToken(some_token);
+  ASSERT_TRUE(serialized_some_token.has_value());
+  const std::string all_zeroes_token(serialized_some_token->length(), '\0');
+
+  // Test.
+  std::optional<base::UnguessableToken> deserialized_token =
+      AuthSession::GetTokenFromSerializedString(all_zeroes_token);
+
+  // Verify.
+  EXPECT_EQ(deserialized_token, std::nullopt);
+}
+
 // This test check AuthSession::GetCredential function for a regular user and
 // ensures that the fields are set as they should be.
 TEST_F(AuthSessionTest, GetCredentialRegularUser) {

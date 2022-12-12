@@ -2187,6 +2187,10 @@ std::optional<base::UnguessableToken> AuthSession::GetTokenFromSerializedString(
   uint64_t high, low;
   memcpy(&high, &serialized_token[kHighTokenOffset], sizeof(high));
   memcpy(&low, &serialized_token[kLowTokenOffset], sizeof(low));
+  if (high == 0 && low == 0) {
+    LOG(ERROR) << "AuthSession: all-zeroes serialized token is invalid";
+    return std::nullopt;
+  }
   return base::UnguessableToken::Deserialize(high, low);
 }
 

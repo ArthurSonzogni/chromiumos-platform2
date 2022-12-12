@@ -987,6 +987,28 @@ TEST_F(AuthSessionInterfaceTest, CreatePersistentUserInvalidAuthSession) {
               Eq(user_data_auth::CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN));
 }
 
+// Test CreatePersistentUserImpl fails when a forbidden auth_session token
+// (all-zeroes) is specified.
+TEST_F(AuthSessionInterfaceTest,
+       CreatePersistentUserInvalidAllZeroesAuthSession) {
+  // Setup. To avoid hardcoding the length of the string in the test, first
+  // serialize an arbitrary token and then replace its contents with zeroes.
+  CryptohomeStatusOr<AuthSession*> auth_session_status =
+      auth_session_manager_->CreateAuthSession(kUsername, 0,
+                                               AuthIntent::kDecrypt);
+  ASSERT_THAT(auth_session_status, IsOk());
+  const std::string all_zeroes_token(
+      auth_session_status.value()->serialized_token().length(), '\0');
+
+  // Test.
+  CryptohomeStatus status = CreatePersistentUserImpl(all_zeroes_token);
+
+  // Verify.
+  ASSERT_THAT(status, NotOk());
+  EXPECT_EQ(status->local_legacy_error(),
+            user_data_auth::CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN);
+}
+
 // Test CreatePersistentUserImpl with valid auth_session but user fails to
 // create.
 TEST_F(AuthSessionInterfaceTest, CreatePersistentUserFailedCreate) {
