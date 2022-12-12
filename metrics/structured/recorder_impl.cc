@@ -1,8 +1,8 @@
-// Copyright 2021 The ChromiumOS Authors
+// Copyright 2022 The ChromiumOS Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "metrics/structured/recorder.h"
+#include "metrics/structured/recorder_impl.h"
 
 #include <memory>
 #include <sys/file.h>
@@ -21,10 +21,6 @@
 namespace metrics {
 namespace structured {
 namespace {
-
-constexpr char kEventsPath[] = "/var/lib/metrics/structured/events";
-
-constexpr char kKeysPath[] = "/var/lib/metrics/structured/keys";
 
 constexpr mode_t kFilePermissions = 0660;
 
@@ -61,19 +57,13 @@ bool WriteEventsProtoToDir(const std::string& directory,
 
 }  // namespace
 
-// static
-Recorder* Recorder::GetInstance() {
-  static base::NoDestructor<Recorder> recorder{kEventsPath, kKeysPath};
-  return recorder.get();
-}
-
-Recorder::Recorder(const std::string& events_directory,
-                   const std::string& keys_path)
+RecorderImpl::RecorderImpl(const std::string& events_directory,
+                           const std::string& keys_path)
     : events_directory_(events_directory), key_data_(keys_path) {}
 
-Recorder::~Recorder() = default;
+RecorderImpl::~RecorderImpl() = default;
 
-bool Recorder::Record(const EventBase& event) {
+bool RecorderImpl::Record(const EventBase& event) {
   // Do not record if the UMA consent is opted out, except for metrics for the
   // rmad project.
   //

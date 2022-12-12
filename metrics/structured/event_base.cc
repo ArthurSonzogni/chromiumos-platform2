@@ -4,7 +4,7 @@
 
 #include "metrics/structured/event_base.h"
 
-#include "metrics/structured/recorder.h"
+#include "metrics/structured/recorder_singleton.h"
 
 namespace metrics {
 namespace structured {
@@ -25,7 +25,7 @@ EventBase::Metric::Metric(uint64_t name_hash, MetricType type)
 EventBase::Metric::~Metric() = default;
 
 bool EventBase::Record() {
-  return Recorder::GetInstance()->Record(*this);
+  return RecorderSingleton::GetInstance()->GetRecorder()->Record(*this);
 }
 
 void EventBase::AddHmacMetric(uint64_t name_hash, const std::string& value) {

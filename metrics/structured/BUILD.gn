@@ -54,12 +54,17 @@ shared_library("libstructuredmetrics") {
     "c_structured_metrics.cc",
     "event_base.cc",
     "event_base.h",
+    "fake_recorder.cc",
+    "fake_recorder.h",
     "key_data.cc",
     "key_data.h",
     "persistent_proto.cc",
     "persistent_proto.h",
-    "recorder.cc",
     "recorder.h",
+    "recorder_impl.cc",
+    "recorder_impl.h",
+    "recorder_singleton.cc",
+    "recorder_singleton.h",
   ]
 
   # Also include the generated event files.
