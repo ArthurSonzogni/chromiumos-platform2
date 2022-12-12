@@ -701,6 +701,10 @@ void UserDataAuth::FetchMigrateToUserSecretStashFlag() {
   if (!feature_lib_) {
     default_feature_lib_ = feature::PlatformFeatures::New(mount_thread_bus_);
     feature_lib_ = default_feature_lib_.get();
+    if (!feature_lib_) {
+      LOG(WARNING) << "Failed to determine USS migration experiment flag";
+      return;
+    }
   }
   set_migrate_to_user_secret_stash(
       feature_lib_->IsEnabledBlocking(kCrOSLateBootMigrateToUserSecretStash));

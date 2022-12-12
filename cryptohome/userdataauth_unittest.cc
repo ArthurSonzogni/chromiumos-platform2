@@ -1171,6 +1171,21 @@ TEST_F(UserDataAuthTest, Pkcs11RestoreTpmTokensWaitingOnTPM) {
   EXPECT_TRUE(session_->GetPkcs11Token()->IsReady());
 }
 
+// Test the scenario when `kCrOSLateBootMigrateToUserSecretStash` feature cannot
+// be checked due to the feature lib unavailability. UDA should fall back to the
+// default value (and not crash).
+TEST_F(UserDataAuthTestNotInitialized, UssMigrationFlagCheckFailure) {
+  // Setup. Undo the injection of mock `PlatformFeatures`, and therefore enable
+  // the codepath that tries to create it - which will fail in this test.
+  userdataauth_->set_feature_lib(nullptr);
+
+  // Test.
+  InitializeUserDataAuth();
+
+  // Verify.
+  EXPECT_FALSE(userdataauth_->get_migrate_to_user_secret_stash());
+}
+
 TEST_F(UserDataAuthTestNotInitialized, InstallAttributesEnterpriseOwned) {
   EXPECT_CALL(*attrs_, Init()).WillOnce(Return(true));
 

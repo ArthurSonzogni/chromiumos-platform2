@@ -183,6 +183,9 @@ class UserDataAuth {
     enable_application_containers_ = value;
   }
 
+  bool get_migrate_to_user_secret_stash() const {
+    return migrate_to_user_secret_stash_;
+  }
   void set_migrate_to_user_secret_stash(bool enabled) {
     migrate_to_user_secret_stash_ = enabled;
   }
