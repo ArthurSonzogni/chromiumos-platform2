@@ -274,6 +274,11 @@ VmBuilder& VmBuilder::SetRenderServerCachePath(
   return *this;
 }
 
+VmBuilder& VmBuilder::SetFozDbListPath(base::FilePath foz_db_list_path) {
+  foz_db_list_path_ = std::move(foz_db_list_path);
+  return *this;
+}
+
 VmBuilder& VmBuilder::SetRenderServerCacheSize(
     std::string render_server_cache_size_str) {
   render_server_cache_size_str_ = std::move(render_server_cache_size_str);
@@ -485,6 +490,9 @@ base::StringPairs VmBuilder::BuildRunParams() const {
       }
       if (!render_server_cache_size_str_.empty()) {
         render_server_arg += ",cache-size=" + render_server_cache_size_str_;
+      }
+      if (!foz_db_list_path_.empty()) {
+        render_server_arg += ",foz-db-list-path=" + foz_db_list_path_.value();
       }
       args.emplace_back("--gpu-render-server", render_server_arg);
     }

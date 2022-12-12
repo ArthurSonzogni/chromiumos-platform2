@@ -94,6 +94,7 @@ class VmBuilder {
   VmBuilder& SetGpuCachePath(base::FilePath gpu_cache_path);
   VmBuilder& SetGpuCacheSize(std::string gpu_cache_size_str);
   VmBuilder& SetRenderServerCachePath(base::FilePath render_server_cache_path);
+  VmBuilder& SetFozDbListPath(base::FilePath foz_db_list_path);
   VmBuilder& SetRenderServerCacheSize(std::string render_server_cache_size_str);
 
   VmBuilder& EnableSoftwareTpm(bool enable);
@@ -165,6 +166,7 @@ class VmBuilder {
   base::FilePath gpu_cache_path_;
   std::string gpu_cache_size_str_;
   base::FilePath render_server_cache_path_;
+  base::FilePath foz_db_list_path_;
   std::string render_server_cache_size_str_;
 
   bool enable_software_tpm_ = false;

@@ -2051,11 +2051,15 @@ StartVmResponse Service::StartVm(StartVmRequest request,
 
   // Enable the render server for Vulkan.
   const bool enable_render_server = request.enable_vulkan();
+  // Enable foz db list (dynamic un/loading for RO mesa shader cache) only for
+  // Borealis, for now.
+  const bool enable_foz_db_list = classification == VmInfo::BOREALIS;
 
   VMGpuCacheSpec gpu_cache_spec;
   if (request.enable_gpu()) {
-    gpu_cache_spec = PrepareVmGpuCachePaths(request.owner_id(), request.name(),
-                                            enable_render_server);
+    gpu_cache_spec =
+        PrepareVmGpuCachePaths(request.owner_id(), request.name(),
+                               enable_render_server, enable_foz_db_list);
   }
 
   // Allocate resources for the VM.
@@ -2149,6 +2153,9 @@ StartVmResponse Service::StartVm(StartVmRequest request,
       .AppendCustomParam("--vcpu-cgroup-path",
                          base::FilePath(kTerminaVcpuCpuCgroup).value())
       .SetRenderServerCachePath(std::move(gpu_cache_spec.render_server));
+  if (enable_foz_db_list) {
+    vm_builder.SetFozDbListPath(std::move(gpu_cache_spec.foz_db_list));
+  }
   if (!image_spec.rootfs.empty()) {
     vm_builder.SetRootfs({.device = std::move(rootfs_device),
                           .path = std::move(image_spec.rootfs),
@@ -4983,7 +4990,8 @@ VMImageSpec Service::GetImageSpec(
 Service::VMGpuCacheSpec Service::PrepareVmGpuCachePaths(
     const std::string& owner_id,
     const std::string& vm_name,
-    bool enable_render_server) {
+    bool enable_render_server,
+    bool enable_foz_db_list) {
   base::FilePath cache_path = GetVmGpuCachePathInternal(owner_id, vm_name);
   // Cache ID is either boot id or OS build hash
   base::FilePath cache_id_path = cache_path.DirName();
@@ -4992,6 +5000,9 @@ Service::VMGpuCacheSpec Service::PrepareVmGpuCachePaths(
   base::FilePath cache_device_path = cache_path.Append("device");
   base::FilePath cache_render_server_path =
       enable_render_server ? cache_path.Append("render_server")
+                           : base::FilePath();
+  base::FilePath foz_db_list_file =
+      enable_render_server ? cache_render_server_path.Append("foz_db_list.txt")
                            : base::FilePath();
 
   const base::FilePath* cache_subdir_paths[] = {&cache_device_path,
@@ -5016,8 +5027,8 @@ Service::VMGpuCacheSpec Service::PrepareVmGpuCachePaths(
   if (!base::DirectoryExists(cache_id_path)) {
     LOG(INFO) << "GPU cache dir not found, deleting base directory";
     if (!base::DeletePathRecursively(base_path)) {
-      LOG(ERROR) << "Failed to delete gpu cache directory: " << base_path
-                 << " shader caching will be disabled.";
+      LOG(WARNING) << "Failed to delete gpu cache directory: " << base_path
+                   << " shader caching will be disabled.";
       return VMGpuCacheSpec{};
     }
   }
@@ -5030,8 +5041,8 @@ Service::VMGpuCacheSpec Service::PrepareVmGpuCachePaths(
     if (!base::DirectoryExists(*path)) {
       base::File::Error dir_error;
       if (!base::CreateDirectoryAndGetError(*path, &dir_error)) {
-        LOG(ERROR) << "Failed to create crosvm gpu cache directory in " << *path
-                   << ": " << base::File::ErrorToString(dir_error);
+        LOG(WARNING) << "Failed to create crosvm gpu cache directory in "
+                     << *path << ": " << base::File::ErrorToString(dir_error);
         base::DeletePathRecursively(cache_path);
         return VMGpuCacheSpec{};
       }
@@ -5048,8 +5059,30 @@ Service::VMGpuCacheSpec Service::PrepareVmGpuCachePaths(
     }
   }
 
+  if (!foz_db_list_file.empty()) {
+    bool file_exists = base::PathExists(foz_db_list_file);
+    if (enable_foz_db_list) {
+      // Initiate foz db file, if it already exists, continue using it
+      if (!file_exists) {
+        if (base::WriteFile(foz_db_list_file, "", 0) != 0) {
+          LOG(WARNING) << "Failed to create foz db list file";
+          return VMGpuCacheSpec{};
+        }
+      }
+      if (!base::SetPosixFilePermissions(foz_db_list_file, 0774)) {
+        LOG(WARNING) << "Failed to set file permissions for "
+                     << foz_db_list_file;
+        return VMGpuCacheSpec{};
+      }
+    } else if (file_exists) {
+      LOG(WARNING) << "Dynamic GPU RO cache loading is disabled but the "
+                      "feature management file exists";
+    }
+  }
+
   return VMGpuCacheSpec{.device = std::move(cache_device_path),
-                        .render_server = std::move(cache_render_server_path)};
+                        .render_server = std::move(cache_render_server_path),
+                        .foz_db_list = std::move(foz_db_list_file)};
 }
 
 void AddGroupPermissionChildren(const base::FilePath& path) {

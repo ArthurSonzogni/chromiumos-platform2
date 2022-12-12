@@ -73,6 +73,7 @@ class Service final {
   struct VMGpuCacheSpec {
     base::FilePath device;
     base::FilePath render_server;
+    base::FilePath foz_db_list;
 
     VMGpuCacheSpec() = default;
   };
@@ -386,7 +387,8 @@ class Service final {
   // old caches for all VMs. Returns the prepared paths.
   VMGpuCacheSpec PrepareVmGpuCachePaths(const std::string& owner_id,
                                         const std::string& vm_name,
-                                        bool enable_render_server);
+                                        bool enable_render_server,
+                                        bool enable_foz_db_list);
 
   // Handles necessary operations to the VM once boot is complete
   // Returns true on success or false if an error occurred
