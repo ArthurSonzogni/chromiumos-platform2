@@ -7,7 +7,10 @@ import("//common-mk/proto_library.gni")
 import("//secagentd/tools/bpf_gen.gni")
 
 group("all") {
-  deps = [ ":secagentd" ]
+  deps = [
+    ":install_upstart_conf",
+    ":secagentd",
+  ]
 
   if (use.test) {
     deps += [ ":secagentd_testrunner" ]
@@ -77,6 +80,12 @@ executable("secagentd") {
   libs = [ "policy" ]
   configs += [ ":target_defaults" ]
   deps = [ ":libsecagent" ]
+}
+
+# Install Upstart configuration.
+install_config("install_upstart_conf") {
+  sources = [ "secagentd.conf" ]
+  install_path = "/etc/init"
 }
 
 if (use.test) {
