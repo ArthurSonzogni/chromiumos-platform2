@@ -83,7 +83,6 @@ using ::hwsec_foundation::error::testing::ReturnValue;
 using ::hwsec_foundation::status::StatusChainOr;
 using ::testing::_;
 using ::testing::ByMove;
-using ::testing::DoAll;
 using ::testing::Eq;
 using ::testing::Exactly;
 using ::testing::IsNull;
@@ -91,8 +90,6 @@ using ::testing::Mock;
 using ::testing::NiceMock;
 using ::testing::NotNull;
 using ::testing::Return;
-using ::testing::SaveArg;
-using ::testing::SetArgPointee;
 
 constexpr char kUser[] = "Test User";
 constexpr const char* kKeyDelegateDBusService = "key-delegate-service";
@@ -481,13 +478,11 @@ TEST_F(AuthBlockUtilityImplTest, CreatePinweaverAuthBlockTest) {
   brillo::SecureBlob passkey(20, 'A');
   Credentials credentials(kUser, passkey);
   brillo::SecureBlob reset_secret(32, 'S');
-  brillo::SecureBlob le_secret;
 
   MockLECredentialManager* le_cred_manager = new MockLECredentialManager();
 
   EXPECT_CALL(*le_cred_manager, InsertCredential(_, _, _, _, _, _, _))
-      .WillOnce(
-          DoAll(SaveArg<1>(&le_secret), ReturnError<CryptohomeLECredError>()));
+      .WillOnce(ReturnError<CryptohomeLECredError>());
   crypto_.set_le_manager_for_testing(
       std::unique_ptr<LECredentialManager>(le_cred_manager));
   crypto_.Init();
@@ -558,13 +553,10 @@ TEST_F(AuthBlockUtilityImplTest, CreateTpmBackedPcrBoundAuthBlock) {
   brillo::SecureBlob passkey(20, 'A');
   Credentials credentials(kUser, passkey);
 
-  brillo::SecureBlob scrypt_derived_key;
   crypto_.Init();
 
   brillo::SecureBlob auth_value(256, 'a');
-  EXPECT_CALL(hwsec_, GetAuthValue(_, _))
-      .WillOnce(
-          DoAll(SaveArg<1>(&scrypt_derived_key), ReturnValue(auth_value)));
+  EXPECT_CALL(hwsec_, GetAuthValue(_, _)).WillOnce(ReturnValue(auth_value));
   EXPECT_CALL(hwsec_, SealWithCurrentUser(_, auth_value, _)).Times(Exactly(2));
   ON_CALL(hwsec_, SealWithCurrentUser(_, _, _))
       .WillByDefault(ReturnValue(brillo::Blob()));
@@ -702,12 +694,10 @@ TEST_F(AuthBlockUtilityImplTest, CreateTpmBackedEccAuthBlock) {
   Credentials credentials(kUser, passkey);
   crypto_.Init();
 
-  brillo::SecureBlob scrypt_derived_key;
   brillo::SecureBlob auth_value(32, 'a');
   EXPECT_CALL(hwsec_, GetManufacturer()).WillOnce(ReturnValue(0x43524f53));
   EXPECT_CALL(hwsec_, GetAuthValue(_, _))
       .Times(Exactly(5))
-      .WillOnce(DoAll(SaveArg<1>(&scrypt_derived_key), ReturnValue(auth_value)))
       .WillRepeatedly(ReturnValue(auth_value));
   EXPECT_CALL(hwsec_, SealWithCurrentUser(_, auth_value, _))
       .WillOnce(ReturnValue(brillo::Blob()))
@@ -1113,13 +1103,10 @@ TEST_F(AuthBlockUtilityImplTest, SyncToAsyncAdapterCreate) {
   brillo::SecureBlob passkey(20, 'A');
   Credentials credentials(kUser, passkey);
 
-  brillo::SecureBlob scrypt_derived_key;
   crypto_.Init();
 
   brillo::SecureBlob auth_value(256, 'a');
-  EXPECT_CALL(hwsec_, GetAuthValue(_, _))
-      .WillOnce(
-          DoAll(SaveArg<1>(&scrypt_derived_key), ReturnValue(auth_value)));
+  EXPECT_CALL(hwsec_, GetAuthValue(_, _)).WillOnce(ReturnValue(auth_value));
   EXPECT_CALL(hwsec_, SealWithCurrentUser(_, auth_value, _)).Times(Exactly(2));
   ON_CALL(hwsec_, SealWithCurrentUser(_, _, _))
       .WillByDefault(ReturnValue(brillo::Blob()));
@@ -1745,8 +1732,6 @@ TEST_F(AuthBlockUtilityImplTest, MatchAuthBlockForCreation) {
 }
 
 TEST_F(AuthBlockUtilityImplTest, GetAsyncAuthBlockWithType) {
-  brillo::SecureBlob passkey("passkey");
-  Credentials credentials(kUser, passkey);
   crypto_.Init();
 
   MakeAuthBlockUtilityImpl();
@@ -1777,8 +1762,6 @@ TEST_F(AuthBlockUtilityImplTest, GetAsyncAuthBlockWithType) {
 }
 
 TEST_F(AuthBlockUtilityImplTest, GetAsyncAuthBlockWithTypeFail) {
-  brillo::SecureBlob passkey("passkey");
-  Credentials credentials(kUser, passkey);
   crypto_.Init();
   // Test. No valid dbus_service_name or username.
   MakeAuthBlockUtilityImpl();
