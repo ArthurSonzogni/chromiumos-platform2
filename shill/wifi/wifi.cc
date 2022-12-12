@@ -33,6 +33,10 @@
 #include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
 
+#if !defined(DISABLE_FLOSS)
+#include "shill/bluetooth_manager.h"
+#include "shill/bluetooth_manager_proxy_interface.h"
+#endif  // DISABLE_FLOSS
 #include "shill/control_interface.h"
 #include "shill/dbus/dbus_control.h"
 #include "shill/device.h"
@@ -3768,8 +3772,26 @@ void WiFi::EmitStationInfoReceivedEvent(
                   << " without being connected.";
     return;
   }
-  current_service_->EmitLinkQualityReportEvent(
-      WiFiLinkStatistics::ConvertLinkStatsReport(stats));
+  Metrics::WiFiLinkQualityReport report =
+      WiFiLinkStatistics::ConvertLinkStatsReport(stats);
+#if !defined(DISABLE_FLOSS)
+  if (manager()->bluetooth_manager()) {
+    BluetoothManagerProxyInterface* bt_proxy =
+        manager()->bluetooth_manager()->proxy();
+    if (bt_proxy) {
+      bool floss = false;
+      if (bt_proxy->GetFlossEnabled(&floss)) {
+        report.bt_stack =
+            floss ? Metrics::kBTStackFloss : Metrics::kBTStackBlueZ;
+      }
+    } else {
+      LOG(ERROR) << link_name() << ": BT manager proxy is not ready";
+    }
+  } else {
+    LOG(ERROR) << link_name() << ": BT manager is not ready";
+  }
+#endif  // DISABLE_FLOSS
+  current_service_->EmitLinkQualityReportEvent(report);
 }
 
 void WiFi::HandleUpdatedLinkStatistics() {

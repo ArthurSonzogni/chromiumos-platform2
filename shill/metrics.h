@@ -1681,6 +1681,12 @@ class Metrics : public DefaultServiceObserver {
     }
   };
 
+  enum BTStack {
+    kBTStackUnknown = 0,
+    kBTStackBlueZ = 1,
+    kBTStackFloss = 2,
+  };
+
   struct WiFiLinkQualityReport {
     int64_t tx_retries = kWiFiStructuredMetricsErrorValue;
     int64_t tx_failures = kWiFiStructuredMetricsErrorValue;
@@ -1695,6 +1701,11 @@ class Metrics : public DefaultServiceObserver {
     int64_t expected_throughput = kWiFiStructuredMetricsErrorValue;
     WiFiRxTxStats rx;
     WiFiRxTxStats tx;
+    bool bt_enabled = false;
+    BTStack bt_stack = kBTStackUnknown;
+    bool bt_hfp = false;
+    bool bt_a2dp = false;
+    bool bt_active_scanning = false;
     bool operator==(const WiFiLinkQualityReport& other) const {
       if (tx_retries != other.tx_retries) {
         return false;
@@ -1733,6 +1744,21 @@ class Metrics : public DefaultServiceObserver {
         return false;
       }
       if (tx != other.tx) {
+        return false;
+      }
+      if (bt_enabled != other.bt_enabled) {
+        return false;
+      }
+      if (bt_stack != other.bt_stack) {
+        return false;
+      }
+      if (bt_hfp != other.bt_hfp) {
+        return false;
+      }
+      if (bt_a2dp != other.bt_a2dp) {
+        return false;
+      }
+      if (bt_active_scanning != other.bt_active_scanning) {
         return false;
       }
       return true;
