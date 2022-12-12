@@ -1558,6 +1558,38 @@ void Service::UninstallVmShaderCache(
       owner_id, vm_name, request, error_out, event, shadercached_proxy_);
 }
 
+void Service::UnmountVmShaderCache(
+    const uint32_t cid,
+    const vm_tools::container::UnmountShaderCacheRequest* request,
+    std::string* error_out,
+    base::WaitableEvent* event) {
+  VirtualMachine* vm;
+  std::string owner_id;
+  std::string vm_name;
+
+  if (!GetVirtualMachineForCidOrToken(cid, "", &vm, &owner_id, &vm_name)) {
+    *error_out =
+        base::StringPrintf("Could not get virtual machine for cid %du", cid);
+    event->Signal();
+    return;
+  }
+
+  if (!vm->GetContainerForToken(request->token())) {
+    *error_out = "Invalid container token: " + request->token();
+    event->Signal();
+    return;
+  }
+
+  if (vm->GetType() != VirtualMachine::VmType::BOREALIS) {
+    *error_out = "Only Borealis VM supported";
+    event->Signal();
+    return;
+  }
+
+  shadercached_helper_->UnmountShaderCache(
+      owner_id, vm_name, request, error_out, event, shadercached_proxy_);
+}
+
 void Service::InhibitScreensaver(const std::string& container_token,
                                  const uint32_t cid,
                                  InhibitScreensaverSignal* signal,

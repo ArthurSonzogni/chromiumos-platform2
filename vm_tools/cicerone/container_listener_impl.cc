@@ -19,6 +19,7 @@
 #include <base/threading/thread_task_runner_handle.h>
 #include <vm_applications/proto_bindings/apps.pb.h>
 #include <vm_cicerone/proto_bindings/cicerone_service.pb.h>
+#include <vm_protos/proto_bindings/container_host.pb.h>
 #include <re2/re2.h>
 
 #include "vm_tools/cicerone/service.h"
@@ -783,6 +784,27 @@ grpc::Status ContainerListenerImpl::UninstallShaderCache(
   task_runner_->PostTask(
       FROM_HERE,
       base::BindOnce(&vm_tools::cicerone::Service::UninstallVmShaderCache,
+                     service_, cid, request, &error, &event));
+  event.Wait();
+
+  if (error.empty()) {
+    return grpc::Status::OK;
+  }
+  return grpc::Status(grpc::INTERNAL, error);
+}
+
+grpc::Status ContainerListenerImpl::UnmountShaderCache(
+    grpc::ServerContext* ctx,
+    const vm_tools::container::UnmountShaderCacheRequest* request,
+    vm_tools::EmptyMessage* response) {
+  uint32_t cid = ExtractCidFromPeerAddress(ctx);
+  base::WaitableEvent event(base::WaitableEvent::ResetPolicy::AUTOMATIC,
+                            base::WaitableEvent::InitialState::NOT_SIGNALED);
+  std::string error = "";
+
+  task_runner_->PostTask(
+      FROM_HERE,
+      base::BindOnce(&vm_tools::cicerone::Service::UnmountVmShaderCache,
                      service_, cid, request, &error, &event));
   event.Wait();
 

@@ -14,6 +14,7 @@
 #include <base/time/time.h>
 #include <grpcpp/grpcpp.h>
 #include <vm_protos/proto_bindings/container_host.grpc.pb.h>
+#include <vm_protos/proto_bindings/container_host.pb.h>
 
 namespace vm_tools {
 namespace cicerone {
@@ -115,6 +116,10 @@ class ContainerListenerImpl final
   grpc::Status UninstallShaderCache(
       grpc::ServerContext* ctx,
       const vm_tools::container::UninstallShaderCacheRequest* request,
+      vm_tools::EmptyMessage* response) override;
+  grpc::Status UnmountShaderCache(
+      grpc::ServerContext* ctx,
+      const vm_tools::container::UnmountShaderCacheRequest* request,
       vm_tools::EmptyMessage* response) override;
   grpc::Status InhibitScreensaver(
       grpc::ServerContext* ctx,

@@ -15,6 +15,8 @@
 #include <dbus/shadercached/dbus-constants.h>
 #include <dbus/dlcservice/dbus-constants.h>
 #include <dlcservice/proto_bindings/dlcservice.pb.h>
+#include <shadercached/proto_bindings/shadercached.pb.h>
+#include <vm_protos/proto_bindings/container_host.pb.h>
 #include <vm_protos/proto_bindings/vm_host.pb.h>
 
 namespace vm_tools::cicerone {
@@ -83,7 +85,8 @@ void ShadercachedHelper::InstallShaderCache(
       .vm_name = vm_name,
       .owner_id = owner_id,
       .steam_app_id = request->steam_app_id()};
-  if (request->wait() && !AddCallback(condition, error_out, event)) {
+  if (request->wait() &&
+      !AddCallback(condition, /*expected_mount=*/true, error_out, event)) {
     event->Signal();
     return;
   }
@@ -164,7 +167,65 @@ void ShadercachedHelper::UninstallShaderCache(
   event->Signal();
 }
 
+void ShadercachedHelper::UnmountShaderCache(
+    const std::string& owner_id,
+    const std::string& vm_name,
+    const vm_tools::container::UnmountShaderCacheRequest* request,
+    std::string* error_out,
+    base::WaitableEvent* event,
+    dbus::ObjectProxy* shadercached_proxy) {
+  LOG(INFO) << "UnmountShaderCache called";
+
+  if (!connected_) {
+    *error_out = "Not connected to shadercached signals";
+    event->Signal();
+    return;
+  }
+
+  ShadercachedHelper::CallbackCondition condition{
+      .vm_name = vm_name,
+      .owner_id = owner_id,
+      .steam_app_id = request->steam_app_id()};
+  if (request->wait() &&
+      !AddCallback(condition, /*expected_mount=*/false, error_out, event)) {
+    event->Signal();
+    return;
+  }
+
+  dbus::MethodCall method_call(shadercached::kShaderCacheInterface,
+                               shadercached::kUnmountMethod);
+  dbus::MessageWriter shadercached_writer(&method_call);
+  shadercached::UnmountRequest shader_request;
+  shader_request.set_steam_app_id(request->steam_app_id());
+  shader_request.set_vm_name(vm_name);
+  shader_request.set_vm_owner_id(owner_id);
+  shadercached_writer.AppendProtoAsArrayOfBytes(shader_request);
+
+  dbus::ScopedDBusError error;
+  std::unique_ptr<dbus::Response> dbus_response =
+      shadercached_proxy->CallMethodAndBlockWithErrorDetails(
+          &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT, &error);
+  if (!dbus_response) {
+    *error_out =
+        base::StringPrintf("%s %s: %s", shadercached::kShaderCacheInterface,
+                           error.name(), error.message());
+    if (request->wait()) {
+      mount_callbacks_.erase(condition);
+    }
+    event->Signal();
+    return;
+  }
+
+  if (!request->wait()) {
+    // Only signal if we don't have to wait. If wait is set, signal will happen
+    // at ShaderCacheMountStatusChanged.
+    *error_out = "";
+    event->Signal();
+  }
+}
+
 bool ShadercachedHelper::AddCallback(const CallbackCondition& condition,
+                                     bool expected_mount,
                                      std::string* error_out,
                                      base::WaitableEvent* event_to_notify) {
   // If there is already a process waiting for the game to finish downloading,
@@ -189,8 +250,9 @@ bool ShadercachedHelper::AddCallback(const CallbackCondition& condition,
     std::move(mount_callbacks_[condition]).Run(unused_mount_status, true);
   }
 
-  mount_callbacks_[condition] = base::BindOnce(
-      &ShaderCacheMountStatusChanged, error_out, event_to_notify, true);
+  mount_callbacks_[condition] =
+      base::BindOnce(&ShaderCacheMountStatusChanged, error_out, event_to_notify,
+                     expected_mount);
   return true;
 }
 

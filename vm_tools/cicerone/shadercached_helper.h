@@ -39,6 +39,15 @@ class ShadercachedHelper {
       base::WaitableEvent* event,
       dbus::ObjectProxy* shadercached_proxy_);
 
+  // Uninstall shader cache per request for the specified VM.
+  void UnmountShaderCache(
+      const std::string& owner_id,
+      const std::string& vm_name,
+      const vm_tools::container::UnmountShaderCacheRequest* request,
+      std::string* error_out,
+      base::WaitableEvent* event,
+      dbus::ObjectProxy* shadercached_proxy_);
+
  private:
   struct CallbackCondition {
     std::string vm_name;
@@ -59,6 +68,7 @@ class ShadercachedHelper {
   // Add a callback with the condition. Returns false if callback already
   // exists for the condition and sets error_out.
   bool AddCallback(const CallbackCondition& condition,
+                   bool expected_mount,
                    std::string* error_out,
                    base::WaitableEvent* event_to_notify);
 

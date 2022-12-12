@@ -389,6 +389,15 @@ message UninstallShaderCacheRequest {
   uint64 steam_app_id = 2;
 }
 
+message UnmountShaderCacheRequest {
+  // The security token the container was given.
+  string token = 1;
+  // Steam application id
+  uint64 steam_app_id = 2;
+  // If true, wait for unmount to complete.
+  bool wait = 3;
+}
+
 // Response from ReportMetrics.
 // Notifying host that sleep should be inhibited
 message InhibitScreensaverInfo {
@@ -485,6 +494,9 @@ service ContainerListener {
 
   // Called by the VM to trigger Shader DLC uninstall.
   rpc UninstallShaderCache(UninstallShaderCacheRequest) returns (EmptyMessage);
+
+  // Called by the VM to trigger Shader DLC uninstall.
+  rpc UnmountShaderCache(UnmountShaderCacheRequest) returns (EmptyMessage);
 
   // Called by VM to inhibit sleep.
   rpc InhibitScreensaver(InhibitScreensaverInfo) returns (EmptyMessage);

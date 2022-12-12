@@ -469,6 +469,13 @@ class Service final {
       std::string* error_out,
       base::WaitableEvent* event);
 
+  // Uninstall shader cache, unmount the shader cache DLC for all VMs.
+  void UnmountVmShaderCache(
+      const uint32_t cid,
+      const vm_tools::container::UnmountShaderCacheRequest* request,
+      std::string* error_out,
+      base::WaitableEvent* event);
+
   // Sends a D-Bus message to request that sleep be inhibited.
   void InhibitScreensaver(const std::string& container_token,
                           const uint32_t cid,
