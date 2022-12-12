@@ -255,6 +255,30 @@
       <arg name="serialized_proto" direction="out" type="ay" />
     </method>
 
+    <!-- Battery Saver Mode -->
+    <method name="GetBatterySaverModeState">
+      <tp:docstring>
+        Get the current state of Battery Saver Mode. The |serialized_proto| arg
+        is a serialized |power_manager::BatterySaverModeState| protobuf.
+      </tp:docstring>
+      <arg name="serialized_proto" direction="out" type="ay" />
+    </method>
+    <method name="SetBatterySaverModeState">
+      <tp:docstring>
+        Update the state of Battery Saver Mode. The |serialized_proto| is a
+        serialized |power_manager::SetBatterySaverModeStateRequest| protobuf.
+      </tp:docstring>
+      <arg name="serialized_proto" direction="in" type="ay" />
+    </method>
+    <signal name="BatterySaverModeStateChanged">
+      <tp:docstring>
+        Called when the state of Battery Saver Mode has changed, and on
+        powerd startup. The |serialized_proto| is a serialized
+        |power_manager::BatterySaverModeState| protobuf.
+      </tp:docstring>
+      <arg name="serialized_proto" direction="out" type="ay" />
+    </signal>
+
     <!-- Signals -->
     <signal name="ScreenBrightnessChanged">
       <tp:docstring>
