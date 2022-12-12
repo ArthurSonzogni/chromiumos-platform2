@@ -15,7 +15,6 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "missive/client/mock_report_queue.h"
 #include "missive/client/mock_report_queue_provider.h"
 #include "missive/client/report_queue.h"
 #include "missive/client/report_queue_provider_test_helper.h"

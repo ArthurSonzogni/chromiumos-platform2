@@ -19,15 +19,13 @@
 #include <dbus/message.h>
 #include <dbus/object_proxy.h>
 
+#include "missive/analytics/metrics.h"
 #include "missive/client/missive_dbus_constants.h"
 #include "missive/proto/interface.pb.h"
 #include "missive/proto/record.pb.h"
 #include "missive/proto/record_constants.pb.h"
-#include "missive/storage/missive_storage_module.h"
-#include "missive/storage/missive_storage_module_delegate_impl.h"
 #include "missive/util/disconnectable_client.h"
 #include "missive/util/status.h"
-#include "missive/util/statusor.h"
 
 namespace reporting {
 namespace {
@@ -44,6 +42,8 @@ class MissiveClientImpl : public MissiveClient {
   void Init(dbus::Bus* const bus) {
     DCHECK(bus);
     origin_task_runner_ = bus->GetOriginTaskRunner();
+
+    analytics::Metrics::Initialize();
 
     DCHECK(!missive_service_proxy_);
     missive_service_proxy_ =
