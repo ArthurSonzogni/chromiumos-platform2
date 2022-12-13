@@ -21,22 +21,22 @@ pkg_config("target_defaults") {
 source_set("camera") {
   sources = [
     "camera_client.cc",
+    "cros_camera_manager.cc",
     "cros_camera_service.cc",
     "fake_camera_client.cc",
     "fake_camera_service.cc",
     "frame_utils.cc",
-    "cros_camera_manager.cc",
     "test_utils.cc",
   ]
   public = [
     "camera_client.h",
     "camera_manager.h",
     "camera_service.h",
+    "cros_camera_manager.h",
     "cros_camera_service.h",
     "fake_camera_client.h",
     "fake_camera_service.h",
     "frame_utils.h",
-    "cros_camera_manager.h",
     "test_utils.h",
   ]
   configs += [ ":target_defaults" ]
@@ -50,8 +50,8 @@ if (use.test) {
   executable("camera_unittests") {
     sources = [
       "camera_client_test.cc",
-      "fake_camera_client_test.cc",
       "cros_camera_manager_test.cc",
+      "fake_camera_client_test.cc",
     ]
     configs += [
       "//common-mk:test",

@@ -16,9 +16,7 @@ proto_library("patchpanel_ipc_protos") {
 }
 
 executable("ndproxyd") {
-  cflags = [
-    "-Wconversion",
-  ]
+  cflags = [ "-Wconversion" ]
   sources = [
     "../message_dispatcher.cc",
     "../minijailed_process_runner.cc",
