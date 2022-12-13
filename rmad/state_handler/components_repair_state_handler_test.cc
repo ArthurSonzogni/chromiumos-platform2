@@ -49,8 +49,8 @@ class ComponentsRepairStateHandlerTest : public StateHandlerTest {
     // Mock |RuntimeProbeClient|.
     auto mock_runtime_probe_client =
         std::make_unique<NiceMock<MockRuntimeProbeClient>>();
-    ON_CALL(*mock_runtime_probe_client, ProbeCategories(_, _))
-        .WillByDefault(DoAll(SetArgPointee<1>(probed_components),
+    ON_CALL(*mock_runtime_probe_client, ProbeCategories(_, _, _))
+        .WillByDefault(DoAll(SetArgPointee<2>(probed_components),
                              Return(runtime_probe_client_retval)));
     // Mock |CrosSystemUtils|.
     auto mock_crossystem_utils =

@@ -249,7 +249,7 @@ bool RmadInterfaceImpl::SetUp(scoped_refptr<DaemonCallback> daemon_callback) {
   //                 response time.
   if (current_state_case_ != RmadState::STATE_NOT_SET) {
     if (ComponentsWithIdentifier components;
-        runtime_probe_client_->ProbeCategories({RMAD_COMPONENT_CELLULAR},
+        runtime_probe_client_->ProbeCategories({RMAD_COMPONENT_CELLULAR}, false,
                                                &components) &&
         components.size() > 0) {
       LOG(INFO) << "Disabling cellular network";

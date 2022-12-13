@@ -35,6 +35,7 @@ class RuntimeProbeClientImpl : public RuntimeProbeClient {
   ~RuntimeProbeClientImpl() override;
 
   bool ProbeCategories(const std::vector<RmadComponent>& categories,
+                       bool use_customized_identifier,
                        ComponentsWithIdentifier* components) override;
 
  private:

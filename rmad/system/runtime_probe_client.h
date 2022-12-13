@@ -21,11 +21,24 @@ class RuntimeProbeClient {
   RuntimeProbeClient() = default;
   virtual ~RuntimeProbeClient() = default;
 
-  // Probe the components specified in |categories|, and set it in |components|
-  // if a component is probed. If |categories| is empty, the function probes all
-  // categories by default. Return true if the probing is successful. Return
-  // false if the probing fails, and in this case |components| is not modified.
+  // Probe the components specified in |categories|, and store their identifiers
+  // in |components|.
+  //
+  // Input parameters:
+  //   |categories| - A list of component categories to probe. If it is empty,
+  //                  the function probes all categories.
+  //   |use_customized_identifier| - Use customized identifier defined by rmad.
+  //                                 If the value is false, use the default
+  //                                 names in the runtime_probe probe config.
+  //
+  // Output parameters:
+  //   |components| - A list of components with their (category, identifier)
+  //                  pair.
+  //
+  // Returns True if the probing succeeds. Returns False if the probing fails,
+  // in this case |components| is not modified.
   virtual bool ProbeCategories(const std::vector<RmadComponent>& categories,
+                               bool use_customized_identifier,
                                ComponentsWithIdentifier* components) = 0;
 };
 

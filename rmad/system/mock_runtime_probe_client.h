@@ -22,7 +22,9 @@ class MockRuntimeProbeClient : public RuntimeProbeClient {
 
   MOCK_METHOD(bool,
               ProbeCategories,
-              (const std::vector<RmadComponent>&, ComponentsWithIdentifier*),
+              (const std::vector<RmadComponent>&,
+               bool,
+               ComponentsWithIdentifier*),
               (override));
 };
 

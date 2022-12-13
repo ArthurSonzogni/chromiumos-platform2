@@ -219,8 +219,8 @@ class RmadInterfaceImplTest : public testing::Test {
     if (has_cellular) {
       components.push_back(std::make_pair(RMAD_COMPONENT_CELLULAR, ""));
     }
-    ON_CALL(*mock_runtime_probe_client, ProbeCategories(_, _))
-        .WillByDefault(DoAll(SetArgPointee<1>(components), Return(true)));
+    ON_CALL(*mock_runtime_probe_client, ProbeCategories(_, _, _))
+        .WillByDefault(DoAll(SetArgPointee<2>(components), Return(true)));
     return mock_runtime_probe_client;
   }
 

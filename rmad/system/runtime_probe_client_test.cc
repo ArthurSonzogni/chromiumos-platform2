@@ -31,28 +31,32 @@ class RuntimeProbeClientTest : public testing::Test {
   ~RuntimeProbeClientTest() override = default;
 };
 
-TEST_F(RuntimeProbeClientTest, ProbeAllCategories_Success) {
+TEST_F(RuntimeProbeClientTest, ProbeAllCategories_CustomizedName_Success) {
   auto mock_runtime_probe_proxy =
       std::make_unique<StrictMock<org::chromium::RuntimeProbeProxyMock>>();
   runtime_probe::ProbeResult probe_result_proto;
   // Fixed USB camera.
   runtime_probe::Camera* camera1 = probe_result_proto.add_camera();
+  camera1->set_name("camera_1");
   camera1->mutable_values()->set_usb_vendor_id(0x0001);
   camera1->mutable_values()->set_usb_product_id(0x0002);
   camera1->mutable_values()->set_usb_removable(runtime_probe::FIXED);
   // Removable USB camera. Will be filtered.
   runtime_probe::Camera* camera2 = probe_result_proto.add_camera();
+  camera2->set_name("camera_2");
   camera2->mutable_values()->set_usb_vendor_id(0x0003);
   camera2->mutable_values()->set_usb_product_id(0x0004);
   camera2->mutable_values()->set_usb_removable(runtime_probe::REMOVABLE);
   // PCI network.
   runtime_probe::Network* ethernet1 = probe_result_proto.add_ethernet();
+  ethernet1->set_name("ethernet_1");
   ethernet1->mutable_values()->set_type("ethernet");
   ethernet1->mutable_values()->set_bus_type("pci");
   ethernet1->mutable_values()->set_pci_vendor_id(0x0005);
   ethernet1->mutable_values()->set_pci_device_id(0x0006);
   // USB network. Will be filtered.
   runtime_probe::Network* ethernet2 = probe_result_proto.add_ethernet();
+  ethernet2->set_name("ethernet_2");
   ethernet2->mutable_values()->set_type("ethernet");
   ethernet2->mutable_values()->set_bus_type("usb");
   ethernet2->mutable_values()->set_usb_vendor_id(0x0007);
@@ -63,12 +67,56 @@ TEST_F(RuntimeProbeClientTest, ProbeAllCategories_Success) {
   auto runtime_probe_client = std::make_unique<RuntimeProbeClientImpl>(
       std::move(mock_runtime_probe_proxy));
   ComponentsWithIdentifier components;
-  EXPECT_TRUE(runtime_probe_client->ProbeCategories({}, &components));
+  EXPECT_TRUE(runtime_probe_client->ProbeCategories({}, true, &components));
   EXPECT_EQ(2, components.size());
   EXPECT_EQ(components[0].first, RMAD_COMPONENT_CAMERA);
   EXPECT_EQ(components[0].second, "camera_0001_0002");
   EXPECT_EQ(components[1].first, RMAD_COMPONENT_ETHERNET);
   EXPECT_EQ(components[1].second, "network(ethernet:pci)_0005_0006");
+}
+
+TEST_F(RuntimeProbeClientTest, ProbeAllCategories_NativeName_Success) {
+  auto mock_runtime_probe_proxy =
+      std::make_unique<StrictMock<org::chromium::RuntimeProbeProxyMock>>();
+  runtime_probe::ProbeResult probe_result_proto;
+  // Fixed USB camera.
+  runtime_probe::Camera* camera1 = probe_result_proto.add_camera();
+  camera1->set_name("camera_1");
+  camera1->mutable_values()->set_usb_vendor_id(0x0001);
+  camera1->mutable_values()->set_usb_product_id(0x0002);
+  camera1->mutable_values()->set_usb_removable(runtime_probe::FIXED);
+  // Removable USB camera. Will be filtered.
+  runtime_probe::Camera* camera2 = probe_result_proto.add_camera();
+  camera2->set_name("camera_2");
+  camera2->mutable_values()->set_usb_vendor_id(0x0003);
+  camera2->mutable_values()->set_usb_product_id(0x0004);
+  camera2->mutable_values()->set_usb_removable(runtime_probe::REMOVABLE);
+  // PCI network.
+  runtime_probe::Network* ethernet1 = probe_result_proto.add_ethernet();
+  ethernet1->set_name("ethernet_1");
+  ethernet1->mutable_values()->set_type("ethernet");
+  ethernet1->mutable_values()->set_bus_type("pci");
+  ethernet1->mutable_values()->set_pci_vendor_id(0x0005);
+  ethernet1->mutable_values()->set_pci_device_id(0x0006);
+  // USB network. Will be filtered.
+  runtime_probe::Network* ethernet2 = probe_result_proto.add_ethernet();
+  ethernet2->set_name("ethernet_2");
+  ethernet2->mutable_values()->set_type("ethernet");
+  ethernet2->mutable_values()->set_bus_type("usb");
+  ethernet2->mutable_values()->set_usb_vendor_id(0x0007);
+  ethernet2->mutable_values()->set_usb_product_id(0x0008);
+  EXPECT_CALL(*mock_runtime_probe_proxy, ProbeCategories(_, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<1>(probe_result_proto), Return(true)));
+
+  auto runtime_probe_client = std::make_unique<RuntimeProbeClientImpl>(
+      std::move(mock_runtime_probe_proxy));
+  ComponentsWithIdentifier components;
+  EXPECT_TRUE(runtime_probe_client->ProbeCategories({}, false, &components));
+  EXPECT_EQ(2, components.size());
+  EXPECT_EQ(components[0].first, RMAD_COMPONENT_CAMERA);
+  EXPECT_EQ(components[0].second, "camera_1");
+  EXPECT_EQ(components[1].first, RMAD_COMPONENT_ETHERNET);
+  EXPECT_EQ(components[1].second, "ethernet_1");
 }
 
 TEST_F(RuntimeProbeClientTest, ProbeSingleCategory_Success) {
@@ -82,7 +130,7 @@ TEST_F(RuntimeProbeClientTest, ProbeSingleCategory_Success) {
   auto runtime_probe_client = std::make_unique<RuntimeProbeClientImpl>(
       std::move(mock_runtime_probe_proxy));
   ComponentsWithIdentifier components;
-  EXPECT_TRUE(runtime_probe_client->ProbeCategories({}, &components));
+  EXPECT_TRUE(runtime_probe_client->ProbeCategories({}, false, &components));
   EXPECT_EQ(1, components.size());
   EXPECT_EQ(components[0].first, RMAD_COMPONENT_BATTERY);
 }
@@ -101,7 +149,7 @@ TEST_F(RuntimeProbeClientTest, ProbeCategories_NoResponse) {
   auto runtime_probe_client = std::make_unique<RuntimeProbeClientImpl>(
       std::move(mock_runtime_probe_proxy));
   ComponentsWithIdentifier components;
-  EXPECT_FALSE(runtime_probe_client->ProbeCategories({}, &components));
+  EXPECT_FALSE(runtime_probe_client->ProbeCategories({}, false, &components));
 }
 
 TEST_F(RuntimeProbeClientTest, ProbeCategories_ErrorResponse) {
@@ -116,7 +164,7 @@ TEST_F(RuntimeProbeClientTest, ProbeCategories_ErrorResponse) {
   auto runtime_probe_client = std::make_unique<RuntimeProbeClientImpl>(
       std::move(mock_runtime_probe_proxy));
   ComponentsWithIdentifier components;
-  EXPECT_FALSE(runtime_probe_client->ProbeCategories({}, &components));
+  EXPECT_FALSE(runtime_probe_client->ProbeCategories({}, false, &components));
 }
 
 }  // namespace rmad
