@@ -13,15 +13,22 @@
 #include <map>
 #include <optional>
 #include <string>
+#include <utility>
 
 #include <base/logging.h>
+#include <base/run_loop.h>
 #include <base/time/time.h>
 #include <brillo/flag_helper.h>
+#include <mojo/service_constants.h>
 
 #include "diagnostics/cros_health_tool/diag/diag_actions.h"
 #include "diagnostics/cros_health_tool/diag/diag_constants.h"
+#include "diagnostics/cros_health_tool/diag/observers/routine_observer.h"
+#include "diagnostics/cros_health_tool/mojo_util.h"
 #include "diagnostics/cros_healthd/routines/memory_and_cpu/constants.h"
+#include "diagnostics/cros_healthd/routines/memory_and_cpu/urandom.h"
 #include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
+#include "diagnostics/mojom/public/cros_healthd_routines.mojom.h"
 
 namespace diagnostics {
 
@@ -70,6 +77,31 @@ mojo_ipc::LedColor LedColorFromString(const std::string& str) {
     }
   }
   return mojo_ipc::LedColor::kUnmappedEnumField;
+}
+
+int RunV2Routine(mojo_ipc::RoutineArgumentPtr argument) {
+  mojo::Remote<ash::cros_healthd::mojom::CrosHealthdRoutinesService>
+      cros_healthd_routines_service_;
+  RequestMojoServiceWithDisconnectHandler(
+      chromeos::mojo_services::kCrosHealthdRoutines,
+      cros_healthd_routines_service_);
+
+  base::RunLoop run_loop;
+  mojo::Remote<mojo_ipc::RoutineControl> routine_control;
+  mojo::PendingReceiver<mojo_ipc::RoutineControl> pending_receiver =
+      routine_control.BindNewPipeAndPassReceiver();
+  routine_control.set_disconnect_with_reason_handler(
+      base::BindOnce([](uint32_t error, const std::string& message) {
+        LOG(INFO) << "Connection dropped by routine control. Error: " << error
+                  << ", message: " << message << ". End Routine.";
+      }).Then(run_loop.QuitClosure()));
+  cros_healthd_routines_service_->CreateRoutine(std::move(argument),
+                                                std::move(pending_receiver));
+  RoutineObserver observer = RoutineObserver(run_loop.QuitClosure());
+  routine_control->AddObserver(observer.BindNewPipdAndPassRemote());
+  routine_control->Start();
+  run_loop.Run();
+  return EXIT_SUCCESS;
 }
 
 }  // namespace
@@ -173,6 +205,12 @@ int diag_main(int argc, char** argv) {
     return actions.ActionGetRoutines() ? EXIT_SUCCESS : EXIT_FAILURE;
 
   if (FLAGS_action == "run_routine") {
+    // This is the switch case for routines in CrosHealthdRoutineService
+    if (FLAGS_routine == "memory_v2") {
+      return RunV2Routine(mojo_ipc::RoutineArgument::NewMemory(
+          mojo_ipc::MemoryRoutineArgument::New()));
+    }
+
     std::map<std::string, mojo_ipc::DiagnosticRoutineEnum>
         switch_to_diagnostic_routine;
     for (const auto& item : kDiagnosticRoutineSwitches)
