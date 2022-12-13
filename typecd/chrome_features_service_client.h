@@ -28,6 +28,7 @@ class ChromeFeaturesServiceClient {
 
   bool IsPeripheralDataAccessEnabled();
 
+  bool GetPeripheralDataAccessEnabled() { return peripheral_data_access_en_; }
   void SetPeripheralDataAccessEnabled(bool enabled);
 
  private:
