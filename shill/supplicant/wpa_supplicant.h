@@ -55,6 +55,7 @@ class WPASupplicant {
   static const char kEnginePKCS11[];
   static const char kErrorNetworkUnknown[];
   static const char kErrorInterfaceExists[];
+  static const char kInterfacePropertyAddress[];
   static const char kInterfacePropertyAssocStatusCode[];
   static const char kInterfacePropertyAuthStatusCode[];
   static const char kInterfacePropertyCapabilities[];

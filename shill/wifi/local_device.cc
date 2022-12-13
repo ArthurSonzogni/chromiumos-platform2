@@ -30,10 +30,9 @@ LocalDevice::LocalDevice(Manager* manager,
       manager_(manager),
       iface_type_(type),
       link_name_(link_name),
+      mac_address_(mac_address),
       phy_index_(phy_index),
       callback_(std::move(callback)) {
-  mac_address_.Set(mac_address);
-
   SLOG(1) << "LocalDevice(): " << link_name_ << " type: " << iface_type_
           << " MAC address: " << mac_address_ << " Phy index: " << phy_index_;
 }

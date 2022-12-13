@@ -78,6 +78,7 @@ class LocalDevice : public base::RefCounted<LocalDevice> {
   const std::string& link_name() const { return link_name_; }
   uint32_t phy_index() const { return phy_index_; }
   IfaceType iface_type() const { return iface_type_; }
+  const std::string& mac_address() const { return mac_address_; }
 
  protected:
   FRIEND_TEST(LocalDeviceTest, PostDeviceEvent);
@@ -107,7 +108,8 @@ class LocalDevice : public base::RefCounted<LocalDevice> {
   Manager* manager_;
   IfaceType iface_type_;
   std::string link_name_;
-  MACAddress mac_address_;
+  // MAC address to be configured on the device.
+  std::string mac_address_;
   uint32_t phy_index_;
   EventCallback callback_;
   base::WeakPtrFactory<LocalDevice> weak_factory_{this};

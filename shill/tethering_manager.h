@@ -122,12 +122,16 @@ class TetheringManager : public Network::EventHandler {
   FRIEND_TEST(TetheringManagerTest, FromProperties);
   FRIEND_TEST(TetheringManagerTest, GetCapabilities);
   FRIEND_TEST(TetheringManagerTest, GetConfig);
+  FRIEND_TEST(TetheringManagerTest, TetheringConfigLoadAndUnload);
   FRIEND_TEST(TetheringManagerTest, GetTetheringCapabilities);
   FRIEND_TEST(TetheringManagerTest, SaveConfig);
   FRIEND_TEST(TetheringManagerTest, SetEnabled);
   FRIEND_TEST(TetheringManagerTest, SelectFrequency_Empty);
   FRIEND_TEST(TetheringManagerTest, SelectFrequency_NoValid5G);
   FRIEND_TEST(TetheringManagerTest, SelectFrequency);
+  FRIEND_TEST(TetheringManagerTest, MARWithSSIDChange);
+  FRIEND_TEST(TetheringManagerTest, MARWithTetheringRestart);
+  FRIEND_TEST(TetheringManagerTest, CheckMACStored);
 
   enum class StopReason {
     kInitial,             // Initial idle state.
@@ -276,6 +280,9 @@ class TetheringManager : public Network::EventHandler {
   // MAC address randomization. When it is true, AP will use a randomized MAC
   // each time it is started. If false, it will use the persisted MAC address.
   bool mar_;
+  // MAC address to be used when |mar_| is false (otherwise address will be
+  // randomized each time tethering session starts).
+  MACAddress stable_mac_addr_;
   // The hex-encoded tethering SSID name to be used in WiFi downstream.
   std::string hex_ssid_;
   // The passphrase to be used in WiFi downstream.

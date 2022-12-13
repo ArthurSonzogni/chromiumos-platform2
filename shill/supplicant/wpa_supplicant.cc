@@ -60,6 +60,7 @@ const char WPASupplicant::kErrorNetworkUnknown[] =
     "fi.w1.wpa_supplicant1.NetworkUnknown";
 const char WPASupplicant::kErrorInterfaceExists[] =
     "fi.w1.wpa_supplicant1.InterfaceExists";
+const char WPASupplicant::kInterfacePropertyAddress[] = "Address";
 const char WPASupplicant::kInterfacePropertyAssocStatusCode[] =
     "AssocStatusCode";
 const char WPASupplicant::kInterfacePropertyAuthStatusCode[] = "AuthStatusCode";

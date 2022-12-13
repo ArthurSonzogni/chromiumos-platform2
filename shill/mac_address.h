@@ -65,6 +65,7 @@ class MACAddress {
  private:
   static constexpr char kStorageMACAddress[] = "WiFi.MACAddress";
   static constexpr char kStorageMACAddressExpiry[] = "WiFi.MACAddress.Expiry";
+  friend bool operator==(const MACAddress& a1, const MACAddress& a2);
 
   std::array<uint8_t, ETH_ALEN> address_;
   bool is_set_ = false;
@@ -75,6 +76,11 @@ class MACAddress {
   MACAddress& operator=(const MACAddress&) = delete;
   MACAddress&& operator=(const MACAddress&&) = delete;
 };
+
+inline bool operator==(const MACAddress& a1, const MACAddress& a2) {
+  return a1.is_set_ == a2.is_set_ && a1.address_ == a2.address_ &&
+         a1.expiration_time_ == a2.expiration_time_;
+}
 
 }  // namespace shill
 

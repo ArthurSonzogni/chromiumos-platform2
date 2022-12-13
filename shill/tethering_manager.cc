@@ -23,6 +23,7 @@
 #include "shill/cellular/cellular_service_provider.h"
 #include "shill/device.h"
 #include "shill/error.h"
+#include "shill/mac_address.h"
 #include "shill/manager.h"
 #include "shill/profile.h"
 #include "shill/store/property_accessor.h"
@@ -123,6 +124,7 @@ void TetheringManager::ResetConfiguration() {
 
   security_ = WiFiSecurity(WiFiSecurity::kWpa2);
   mar_ = true;
+  stable_mac_addr_.Randomize();
   band_ = WiFiBand::kAllBands;
 }
 
@@ -280,10 +282,15 @@ bool TetheringManager::SetAndPersistConfig(const KeyValueStore& config,
     return false;
   }
 
+  auto old_ssid = hex_ssid_;
   if (!FromProperties(config)) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
                           "Invalid tethering configuration");
     return false;
+  }
+  // If the SSID changes then re-randomize the stable MAC.
+  if (hex_ssid_ != old_ssid) {
+    stable_mac_addr_.Randomize();
   }
 
   if (!Save(profile->GetStorage())) {
@@ -552,11 +559,18 @@ void TetheringManager::StartTetheringSession() {
       FROM_HERE, start_timer_callback_.callback(), kStartTimeout);
 
   // Prepare the downlink hotspot device.
-  // TODO(b/235760422) Generate random MAC address and pass it to
-  // WiFiProvider.
   hotspot_service_up_ = false;
+  std::string mac_address;
+  if (mar_) {
+    MACAddress mac;
+    mac.Randomize();
+    mac_address = mac.ToString();
+  } else {
+    CHECK(stable_mac_addr_.is_set());
+    mac_address = stable_mac_addr_.ToString();
+  }
   hotspot_dev_ = manager_->wifi_provider()->CreateHotspotDevice(
-      "", band_, security_,
+      mac_address, band_, security_,
       base::BindRepeating(&TetheringManager::OnDownstreamDeviceEvent,
                           base::Unretained(this)));
   if (!hotspot_dev_) {
@@ -1073,6 +1087,7 @@ bool TetheringManager::Save(StoreInterface* storage) {
   storage->SetBool(kStorageId, kTetheringConfAutoDisableProperty,
                    auto_disable_);
   storage->SetBool(kStorageId, kTetheringConfMARProperty, mar_);
+  stable_mac_addr_.Save(storage, kStorageId);
   storage->SetString(kStorageId, kTetheringConfSSIDProperty, hex_ssid_);
   storage->SetString(kStorageId, kTetheringConfPassphraseProperty, passphrase_);
   storage->SetString(kStorageId, kTetheringConfSecurityProperty,
@@ -1104,7 +1119,7 @@ bool TetheringManager::Load(const StoreInterface* storage) {
   if (valid && !FromProperties(config)) {
     valid = false;
   }
-  return valid;
+  return valid && stable_mac_addr_.Load(storage, kStorageId);
 }
 
 // static

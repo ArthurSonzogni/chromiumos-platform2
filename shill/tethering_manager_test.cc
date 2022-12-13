@@ -18,6 +18,7 @@
 #include <base/files/scoped_file.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/rand_util.h>
+#include <base/strings/string_number_conversions.h>
 #include <base/test/mock_callback.h>
 #include <chromeos/dbus/shill/dbus-constants.h>
 #include <chromeos/patchpanel/dbus/fake_client.h>
@@ -53,12 +54,17 @@
 #include "shill/wifi/mock_wifi_provider.h"
 
 using testing::_;
+using testing::DoAll;
 using testing::DoDefault;
+using testing::Eq;
+using testing::Invoke;
 using testing::Mock;
 using testing::NiceMock;
+using testing::Not;
 using testing::Return;
 using testing::StrictMock;
 using testing::Test;
+using testing::WithArg;
 
 namespace shill {
 namespace {
@@ -69,6 +75,10 @@ constexpr char kUserProfile[] = "~user/profile";
 constexpr uint32_t kPhyIndex = 5678;
 constexpr int kTestInterfaceIndex = 3;
 constexpr char kTestInterfaceName[] = "wwan0";
+
+// The value below is "testAP-0000" in hex;
+constexpr char kTestAPHexSSID[] = "7465737441502d30303030";
+constexpr char kTestPassword[] = "user_password";
 
 bool GetConfigMAR(const KeyValueStore& caps) {
   return caps.Get<bool>(kTetheringConfMARProperty);
@@ -301,6 +311,7 @@ class TetheringManagerTest : public testing::Test {
       TetheringManager* tethering_manager) {
     KeyValueStore caps = GetConfig(tethering_manager);
     EXPECT_TRUE(GetConfigMAR(caps));
+    EXPECT_TRUE(tethering_manager->stable_mac_addr_.is_set());
     EXPECT_TRUE(GetConfigAutoDisable(caps));
     std::string ssid = GetConfigSSID(caps);
     EXPECT_FALSE(ssid.empty());
@@ -521,9 +532,7 @@ TEST_F(TetheringManagerTest, TetheringConfig) {
   VerifyDefaultTetheringConfig(tethering_manager_);
 
   // Fake Tethering configuration.
-  std::string ssid = "757365725F73736964";  // "user_ssid" in hex
-  std::string passphrase = "user_password";
-  KeyValueStore args = GenerateFakeConfig(ssid, passphrase);
+  KeyValueStore args = GenerateFakeConfig(kTestAPHexSSID, kTestPassword);
 
   // Block SetAndPersistConfig when no user has logged in.
   EXPECT_FALSE(SetAndPersistConfig(tethering_manager_, args));
@@ -538,8 +547,8 @@ TEST_F(TetheringManagerTest, TetheringConfig) {
   KeyValueStore config = GetConfig(tethering_manager_);
   EXPECT_FALSE(GetConfigMAR(config));
   EXPECT_FALSE(GetConfigAutoDisable(config));
-  EXPECT_EQ(GetConfigSSID(config), ssid);
-  EXPECT_EQ(GetConfigPassphrase(config), passphrase);
+  EXPECT_EQ(GetConfigSSID(config), kTestAPHexSSID);
+  EXPECT_EQ(GetConfigPassphrase(config), kTestPassword);
   EXPECT_EQ(GetConfigSecurity(config), kSecurityWpa3);
   EXPECT_EQ(GetConfigBand(config), kBand2GHz);
   EXPECT_EQ(GetConfigUpstream(config), kTypeCellular);
@@ -547,16 +556,16 @@ TEST_F(TetheringManagerTest, TetheringConfig) {
   // Log out user and check user's tethering config is not present.
   EXPECT_EQ(Error::kSuccess, TestPopProfile(&manager_, kUserProfile));
   KeyValueStore default_config = GetConfig(tethering_manager_);
-  EXPECT_NE(GetConfigSSID(default_config), ssid);
-  EXPECT_NE(GetConfigPassphrase(default_config), passphrase);
+  EXPECT_NE(GetConfigSSID(default_config), kTestAPHexSSID);
+  EXPECT_NE(GetConfigPassphrase(default_config), kTestPassword);
 
   // Log in user and check tethering config again.
   EXPECT_EQ(Error::kSuccess, TestPushProfile(&manager_, kUserProfile));
   config = GetConfig(tethering_manager_);
   EXPECT_FALSE(GetConfigMAR(config));
   EXPECT_FALSE(GetConfigAutoDisable(config));
-  EXPECT_EQ(GetConfigSSID(config), ssid);
-  EXPECT_EQ(GetConfigPassphrase(config), passphrase);
+  EXPECT_EQ(GetConfigSSID(config), kTestAPHexSSID);
+  EXPECT_EQ(GetConfigPassphrase(config), kTestPassword);
   EXPECT_EQ(GetConfigSecurity(config), kSecurityWpa3);
   EXPECT_EQ(GetConfigBand(config), kBand2GHz);
   EXPECT_EQ(GetConfigUpstream(config), kTypeCellular);
@@ -592,9 +601,6 @@ TEST_F(TetheringManagerTest, DefaultConfigCheck) {
 }
 
 TEST_F(TetheringManagerTest, TetheringConfigLoadAndUnload) {
-  std::string ssid = "757365725F73736964";  // "user_ssid" in hex
-  std::string passphrase = "user_password";
-
   // Check properties of the default tethering configuration.
   VerifyDefaultTetheringConfig(tethering_manager_);
 
@@ -603,10 +609,13 @@ TEST_F(TetheringManagerTest, TetheringConfigLoadAndUnload) {
   store.SetBool(TetheringManager::kStorageId, kTetheringConfAutoDisableProperty,
                 true);
   store.SetBool(TetheringManager::kStorageId, kTetheringConfMARProperty, true);
+  MACAddress mac;
+  mac.Randomize();
+  mac.Save(&store, TetheringManager::kStorageId);
   store.SetString(TetheringManager::kStorageId, kTetheringConfSSIDProperty,
-                  ssid);
+                  kTestAPHexSSID);
   store.SetString(TetheringManager::kStorageId,
-                  kTetheringConfPassphraseProperty, passphrase);
+                  kTetheringConfPassphraseProperty, kTestPassword);
   store.SetString(TetheringManager::kStorageId, kTetheringConfSecurityProperty,
                   kSecurityWpa3);
   store.SetString(TetheringManager::kStorageId, kTetheringConfBandProperty,
@@ -621,9 +630,10 @@ TEST_F(TetheringManagerTest, TetheringConfigLoadAndUnload) {
   tethering_manager_->LoadConfigFromProfile(profile);
   KeyValueStore caps = GetConfig(tethering_manager_);
   EXPECT_TRUE(GetConfigMAR(caps));
+  EXPECT_EQ(tethering_manager_->stable_mac_addr_, mac);
   EXPECT_TRUE(GetConfigAutoDisable(caps));
-  EXPECT_EQ(ssid, GetConfigSSID(caps));
-  EXPECT_EQ(passphrase, GetConfigPassphrase(caps));
+  EXPECT_EQ(kTestAPHexSSID, GetConfigSSID(caps));
+  EXPECT_EQ(kTestPassword, GetConfigPassphrase(caps));
   EXPECT_EQ(kSecurityWpa3, GetConfigSecurity(caps));
   EXPECT_EQ(kBand5GHz, GetConfigBand(caps));
   EXPECT_EQ(kTypeCellular, GetConfigUpstream(caps));
@@ -632,15 +642,14 @@ TEST_F(TetheringManagerTest, TetheringConfigLoadAndUnload) {
   // the profile.
   tethering_manager_->UnloadConfigFromProfile();
   caps = VerifyDefaultTetheringConfig(tethering_manager_);
-  EXPECT_NE(ssid, caps.Get<std::string>(kTetheringConfSSIDProperty));
-  EXPECT_NE(passphrase,
+  EXPECT_NE(kTestAPHexSSID, caps.Get<std::string>(kTetheringConfSSIDProperty));
+  EXPECT_NE(kTestPassword,
             caps.Get<std::string>(kTetheringConfPassphraseProperty));
 }
 
 TEST_F(TetheringManagerTest, TetheringConfigSaveAndLoad) {
   // Load a fake tethering configuration.
-  KeyValueStore config1 =
-      GenerateFakeConfig("757365725F73736964", "user_password");
+  KeyValueStore config1 = GenerateFakeConfig(kTestAPHexSSID, kTestPassword);
   FromProperties(tethering_manager_, config1);
 
   // Save the fake tethering configuration
@@ -668,8 +677,7 @@ TEST_F(TetheringManagerTest, TetheringConfigSaveAndLoad) {
 
 TEST_F(TetheringManagerTest, TetheringIsNotAllowed) {
   // Fake Tethering configuration.
-  KeyValueStore config =
-      GenerateFakeConfig("757365725F73736964", "user_password");
+  KeyValueStore config = GenerateFakeConfig(kTestAPHexSSID, kTestPassword);
 
   // Push a user profile
   ASSERT_TRUE(base::CreateDirectory(temp_dir_.GetPath().Append("user")));
@@ -702,8 +710,7 @@ TEST_F(TetheringManagerTest, TetheringInDefaultProfile) {
 
 TEST_F(TetheringManagerTest, CheckReadinessNotAllowed) {
   base::MockOnceCallback<void(TetheringManager::EntitlementStatus)> cb;
-  KeyValueStore config =
-      GenerateFakeConfig("757365725F73736964", "user_password");
+  KeyValueStore config = GenerateFakeConfig(kTestAPHexSSID, kTestPassword);
 
   // Not allowed.
   tethering_manager_->CheckReadiness(cb.Get());
@@ -1474,6 +1481,84 @@ TEST_F(TetheringManagerTest, SelectFrequency) {
   EXPECT_GT(freq, 0);
   EXPECT_TRUE(base::Contains(frequencies[WiFiBandToNl(WiFiBand::kHighBand)],
                              uint32_t(freq), [](auto& f) { return f.value; }));
+}
+
+TEST_F(TetheringManagerTest, MARWithSSIDChange) {
+  TetheringPrerequisite(tethering_manager_);
+
+  // Upon initialization TetheringManager generates some config.  Let's take
+  // a snapshot of the SSID/MAC (to test if MAC changes upon SSID change).
+  std::string ini_ssid = tethering_manager_->hex_ssid_;
+  std::string ini_mac = tethering_manager_->stable_mac_addr_.ToString();
+
+  // Change SSID to cause regeneration of MAC address.
+  KeyValueStore args = GenerateFakeConfig(kTestAPHexSSID, kTestPassword);
+  // Turn off randomization.
+  SetConfigMAR(args, false);
+  EXPECT_TRUE(SetAndPersistConfig(tethering_manager_, args));
+  std::string mac = tethering_manager_->stable_mac_addr_.ToString();
+  ASSERT_NE(ini_ssid, kTestAPHexSSID);
+  EXPECT_NE(ini_mac, mac);
+
+  // Test 1st argument for CreateHotspotDevice (MAC as a hex-string).
+  EXPECT_CALL(*wifi_provider_, CreateHotspotDevice(Eq(mac), _, _, _))
+      .WillOnce(Return(hotspot_device_));
+  SetEnabled(tethering_manager_, true);
+}
+
+MATCHER_P(IsContained, container, "") {
+  return base::Contains(container, arg);
+}
+
+TEST_F(TetheringManagerTest, MARWithTetheringRestart) {
+  TetheringPrerequisite(tethering_manager_);
+  std::set<std::string> known_macs;
+  known_macs.insert(tethering_manager_->stable_mac_addr_.ToString());
+
+  auto tether_onoff = [&]() {
+    EXPECT_CALL(*wifi_provider_,
+                CreateHotspotDevice(Not(IsContained(known_macs)), _, _, _))
+        .WillOnce(
+            DoAll(WithArg<0>(Invoke([&](auto mac) { known_macs.insert(mac); })),
+                  Return(hotspot_device_)));
+    SetEnabledVerifyResult(tethering_manager_, true,
+                           TetheringManager::SetEnabledResult::kSuccess);
+    EXPECT_EQ(TetheringState(tethering_manager_),
+              TetheringManager::TetheringState::kTetheringActive);
+    SetEnabledVerifyResult(tethering_manager_, false,
+                           TetheringManager::SetEnabledResult::kSuccess);
+    CheckTetheringIdle(tethering_manager_, kTetheringIdleReasonClientStop);
+  };
+
+  for (int i = 0; i < 4; ++i) {
+    tether_onoff();
+  }
+}
+
+TEST_F(TetheringManagerTest, CheckMACStored) {
+  TetheringPrerequisite(tethering_manager_);
+
+  // Change SSID to cause regeneration of MAC address.
+  KeyValueStore args;
+  SetConfigSSID(args, kTestAPHexSSID);
+  // Turn off randomization to check the MAC is being used at the end.
+  SetConfigMAR(args, false);
+  EXPECT_TRUE(SetAndPersistConfig(tethering_manager_, args));
+
+  std::string ini_mac = tethering_manager_->stable_mac_addr_.ToString();
+
+  // Now PopProfile and check that MAC is different.
+  EXPECT_EQ(Error::kSuccess, TestPopProfile(&manager_, kUserProfile));
+  EXPECT_NE(ini_mac, tethering_manager_->stable_mac_addr_.ToString());
+
+  // Repush the profile and check that MAC returns to its original value.
+  EXPECT_EQ(Error::kSuccess, TestPushProfile(&manager_, kUserProfile));
+  EXPECT_EQ(ini_mac, tethering_manager_->stable_mac_addr_.ToString());
+
+  // And test that it is actually used.
+  EXPECT_CALL(*wifi_provider_, CreateHotspotDevice(Eq(ini_mac), _, _, _))
+      .WillOnce(Return(hotspot_device_));
+  SetEnabled(tethering_manager_, true);
 }
 
 }  // namespace shill

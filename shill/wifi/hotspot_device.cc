@@ -148,6 +148,10 @@ bool HotspotDevice::CreateInterface() {
   create_interface_args.Set<std::string>(
       WPASupplicant::kInterfacePropertyType,
       WPASupplicant::kInterfacePropertyTypeAP);
+  if (!mac_address().empty()) {
+    create_interface_args.Set<std::string>(
+        WPASupplicant::kInterfacePropertyAddress, mac_address());
+  }
 
   if (!SupplicantProcessProxy()->CreateInterface(create_interface_args,
                                                  &supplicant_interface_path_)) {
