@@ -138,6 +138,17 @@ bool KernelConfigToBiosType(const string& kernel_config, BiosType* type) {
 
 namespace {
 
+void SendBiosTypeUMA(BiosType bios_type) {
+  std::unique_ptr<MetricsInterface> metrics =
+      MetricsInterface::GetMetricsInstance();
+
+  // Send UMA for bios type.
+  // The reven board expands the variety of bios_types we expect to be in use.
+  // Watching usage distribution helps make educated decisions.
+  metrics->SendEnumMetric(kUMABiosType, static_cast<int>(bios_type),
+                          static_cast<int>(BiosType::kMaxValue));
+}
+
 // Send UMA for non-Chromebook postinst success.
 // The reven board expands the variety of bios_types we expect to be in use.
 // This helps us monitor failures for non-Chromebook bios types.
@@ -703,22 +714,20 @@ bool RunPostInstall(const string& install_dev,
                     BiosType bios_type,
                     DeferUpdateAction defer_update_action,
                     int* exit_code) {
-  std::unique_ptr<MetricsInterface> metrics =
-      MetricsInterface::GetMetricsInstance();
-
-  // Send UMA for bios type.
-  // The reven board expands the variety of bios_types we expect to be in use.
-  // Watching usage distribution helps make educated decisions.
-  metrics->SendEnumMetric(kUMABiosType, static_cast<int>(bios_type),
-                          static_cast<int>(BiosType::kMaxValue));
-
   InstallConfig install_config;
 
   if (!ConfigureInstall(install_dev, install_dir, bios_type,
                         defer_update_action, &install_config)) {
     LOG(ERROR) << "Configure failed.";
+    // In the failure case don't try to use `install_config.bios_type`, we don't
+    // want to rely on the implementation of `ConfigureInstall`.
+    SendBiosTypeUMA(bios_type);
     return false;
   }
+
+  // Bios type may only be detected in `ConfigureInstall`, so make sure to send
+  // the detected value.
+  SendBiosTypeUMA(install_config.bios_type);
 
   // Log how we are configured.
   LOG(INFO) << "PostInstall Configured: " << install_config.slot.c_str() << ", "
