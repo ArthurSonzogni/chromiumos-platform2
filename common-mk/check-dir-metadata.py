@@ -55,6 +55,7 @@ LEGACYLIST = {
     "bootid-logger",
     "bootstat",
     "camera",
+    "cecservice",
     "cfm-dfu-notification",
     "chromeos-common-script",
     "chromeos-dbus-bindings",

@@ -34,6 +34,7 @@ copies.
 | [bootlockbox](./bootlockbox/) | Daemon and client for boot lockbox service.|
 | [bootstat](./bootstat/) | Tools for tracking points in the overall boot process (for metrics) |
 | [camera](./camera/) | ChromeOS Camera daemon |
+| [cecservice](./cecservice/) | Service for switching CEC enabled TVs on and off |
 | [cfm-dfu-notification](./cfm-dfu-notification/) | CFM specific library for DFU notifications |
 | [chaps](./chaps/) | PKCS #11 implementation for TPM 1 devices |
 | [chargesplash](./chargesplash/) | Frecon-based charging indicator |
