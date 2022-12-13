@@ -60,7 +60,6 @@ LEGACYLIST = {
     "chromeos-common-script",
     "chromeos-dbus-bindings",
     "chromeos-nvt-tcon-updater",
-    "client_id",
     "codelab",
     "cronista",
     "crosdns",
@@ -76,7 +75,7 @@ LEGACYLIST = {
     "foomatic_shell",
     "glib-bridge",
     "goldfishd",
-    "hammerd",
+    "hammerd",  # TODO(b/262374654)
     "hardware_verifier",
     "hiberman",
     "iioservice",
@@ -118,7 +117,7 @@ LEGACYLIST = {
     "regions",
     "resourced",
     "run_oci",
-    "runtime_probe",
+    "runtime_probe",  # TODO(b/262377381)
     "screen-capture-utils",
     "secanomalyd",
     "secure_erase_file",
@@ -139,7 +138,6 @@ LEGACYLIST = {
     "usb_bouncer",
     "verity",
     "virtual_file_provider",
-    "vpn-manager",
     "wifi-testbed",
 }
 
@@ -230,6 +228,16 @@ def CheckSubdirs() -> int:
                     bug_component_found = True
         if not bug_component_found:
             logging.error("*** %s: Missing bug component information", project)
+
+    # Make sure the list doesn't get stale itself.
+    old_projects = LEGACYLIST - set(x.name for x in GetActiveProjects())
+    if old_projects:
+        logging.error(
+            "*** %s:LEGACYLIST contains old entries %s.  Please remove them.",
+            __file__,
+            old_projects,
+        )
+        ret = 1
 
     return ret
 

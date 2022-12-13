@@ -112,22 +112,19 @@ def CheckSubdirs():
     # Legacy projects that don't have a README.md file.
     # Someone should write some docs :D.
     LEGACYLIST = (
-        "attestation",
+        "attestation",  # TODO(b/262375413)
         "avtest_label_detect",
-        "cros-disks",
+        "cros-disks",  # TODO(b/262376624)
         "fitpicker",
         "image-burner",
         "init",
         "libchromeos-ui",
         "libcontainer",
         "modem-utilities",
-        "mtpd",
-        "salsa",
+        "mtpd",  # TODO(b/262376388)
         "timberslide",
-        "tpm_manager",
+        "tpm_manager",  # TODO(b/262375897)
         "trim",
-        "userspace_touchpad",
-        "vpn-manager",
     )
 
     ret = 0
@@ -145,6 +142,17 @@ def CheckSubdirs():
             if not proj in LEGACYLIST:
                 logging.error('*** Project "%s" needs a README.md file', proj)
                 ret = 1
+
+    # Make sure the list doesn't get stale itself.
+    old_projects = set(LEGACYLIST) - set(GetActiveProjects())
+    if old_projects:
+        logging.error(
+            "*** %s:LEGACYLIST contains old entries %s.  Please remove them.",
+            __file__,
+            old_projects,
+        )
+        ret = 1
+
     return ret
 
 
