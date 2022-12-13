@@ -330,16 +330,12 @@ class IPP_EXPORT Collection {
   Attribute* GetAttribute(AttrName);
   const Attribute* GetAttribute(AttrName) const;
 
-  // Helper function, an attribute |name| must belong to the collection.
-  AttrDef GetAttributeDefinition(AttrName name) const;
-
   // Stores states of the attributes (see AttrState).
   std::map<AttrName, AttrState> states_;
 
   // Internal structure, represent attributes defined in runtime.
   struct UnknownAttr {
     Attribute* object;
-    AttrDef def;
   };
   // Stores attributes defined in runtime.
   std::map<AttrName, UnknownAttr> unknown_attributes;
@@ -416,7 +412,7 @@ class IPP_EXPORT Attribute {
   friend class Collection;
 
   // Constructor is called from Collection only. `owner` cannot be nullptr.
-  Attribute(Collection* owner, AttrName name);
+  Attribute(Collection* owner, AttrName name, AttrDef def);
 
   // Returns a type of the attribute.
   AttrType GetType() const;
@@ -444,6 +440,9 @@ class IPP_EXPORT Attribute {
 
   Collection* const owner_;
   const AttrName name_;
+
+  // Defines the type of values stored in the attribute.
+  const AttrDef def_;
 
   // Stores values of the attribute.
   void* values_ = nullptr;

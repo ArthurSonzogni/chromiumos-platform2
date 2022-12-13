@@ -652,12 +652,11 @@ bool FromString(const std::string& s, int* out) {
 }
 
 Attribute::~Attribute() {
-  const AttrDef def = owner_->GetAttributeDefinition(name_);
-  DeleteAttr(values_, def);
+  DeleteAttr(values_, def_);
 }
 
 AttrType Attribute::GetType() const {
-  return owner_->GetAttributeDefinition(name_).ipp_type;
+  return def_.ipp_type;
 }
 
 AttrState Attribute::GetState() const {
@@ -680,19 +679,18 @@ ValueTag Attribute::Tag() const {
 
 void Attribute::SetState(AttrState status) {
   Collection* coll = owner_;
-  const AttrDef def = coll->GetAttributeDefinition(name_);
   if (status == AttrState::set) {
-    ResizeAttr(values_, def, 1, false);
+    ResizeAttr(values_, def_, 1, false);
     return;
   }
-  DeleteAttr(values_, def);
+  DeleteAttr(values_, def_);
   if (status != AttrState::unset) {
     coll->states_[name_] = status;
   }
 }
 
-Attribute::Attribute(Collection* owner, AttrName name)
-    : owner_(owner), name_(name) {
+Attribute::Attribute(Collection* owner, AttrName name, AttrDef def)
+    : owner_(owner), name_(name), def_(def) {
   assert(owner != nullptr);
 }
 
@@ -706,11 +704,9 @@ std::string_view Attribute::Name() const {
 }
 
 size_t Attribute::GetSize() const {
-  Collection* coll = owner_;
-  const AttrDef def = coll->GetAttributeDefinition(name_);
   if (values_ == nullptr)
     return 0;
-  switch (def.cc_type) {
+  switch (def_.cc_type) {
     case InternalType::kInteger:
       return ReadValueConstPtr<std::vector<int32_t>>(&values_)->size();
     case InternalType::kString:
@@ -736,46 +732,33 @@ size_t Attribute::Size() const {
 
 void Attribute::Resize(size_t new_size) {
   Collection* coll = owner_;
-  const AttrDef def = coll->GetAttributeDefinition(name_);
-  ResizeAttr(values_, def, new_size, true);
+  ResizeAttr(values_, def_, new_size, true);
   if (new_size > 0)
     coll->states_.erase(name_);
 }
 
 bool Attribute::GetValue(std::string* val, size_t index) const {
-  Collection* coll = owner_;
-  const AttrDef def = coll->GetAttributeDefinition(name_);
-  return ReadConvertValue(values_, name_, def, index, val);
+  return ReadConvertValue(values_, name_, def_, index, val);
 }
 
 bool Attribute::GetValue(StringWithLanguage* val, size_t index) const {
-  Collection* coll = owner_;
-  const AttrDef def = coll->GetAttributeDefinition(name_);
-  return ReadConvertValue(values_, name_, def, index, val);
+  return ReadConvertValue(values_, name_, def_, index, val);
 }
 
 bool Attribute::GetValue(int* val, size_t index) const {
-  Collection* coll = owner_;
-  const AttrDef def = coll->GetAttributeDefinition(name_);
-  return ReadConvertValue(values_, name_, def, index, val);
+  return ReadConvertValue(values_, name_, def_, index, val);
 }
 
 bool Attribute::GetValue(Resolution* val, size_t index) const {
-  Collection* coll = owner_;
-  const AttrDef def = coll->GetAttributeDefinition(name_);
-  return ReadConvertValue(values_, name_, def, index, val);
+  return ReadConvertValue(values_, name_, def_, index, val);
 }
 
 bool Attribute::GetValue(RangeOfInteger* val, size_t index) const {
-  Collection* coll = owner_;
-  const AttrDef def = coll->GetAttributeDefinition(name_);
-  return ReadConvertValue(values_, name_, def, index, val);
+  return ReadConvertValue(values_, name_, def_, index, val);
 }
 
 bool Attribute::GetValue(DateTime* val, size_t index) const {
-  Collection* coll = owner_;
-  const AttrDef def = coll->GetAttributeDefinition(name_);
-  return ReadConvertValue(values_, name_, def, index, val);
+  return ReadConvertValue(values_, name_, def_, index, val);
 }
 
 bool Attribute::SetValue(const std::string& val, size_t index) {
@@ -803,9 +786,7 @@ bool Attribute::SetValue(const DateTime& val, size_t index) {
 }
 
 Collection* Attribute::GetCollection(size_t index) {
-  Collection* coll = owner_;
-  const AttrDef def = coll->GetAttributeDefinition(name_);
-  if (def.cc_type != InternalType::kCollection)
+  if (def_.cc_type != InternalType::kCollection)
     return nullptr;
   if (values_ == nullptr)
     return nullptr;
@@ -817,9 +798,7 @@ Collection* Attribute::GetCollection(size_t index) {
 }
 
 const Collection* Attribute::GetCollection(size_t index) const {
-  Collection* coll = owner_;
-  const AttrDef def = coll->GetAttributeDefinition(name_);
-  if (def.cc_type != InternalType::kCollection)
+  if (def_.cc_type != InternalType::kCollection)
     return nullptr;
   if (values_ == nullptr)
     return nullptr;
@@ -836,13 +815,6 @@ Collection::~Collection() {
   for (auto& name_attr : unknown_attributes) {
     delete name_attr.second.object;
   }
-}
-
-AttrDef Collection::GetAttributeDefinition(AttrName name) const {
-  auto it2 = unknown_attributes.find(name);
-  if (it2 != unknown_attributes.end())
-    return it2->second.def;
-  return {AttrType::integer, InternalType::kInteger};
 }
 
 Attribute* Collection::GetAttribute(AttrName an) {
@@ -910,9 +882,10 @@ Attribute* Collection::AddUnknownAttribute(const std::string& name,
   } else if (GetAttribute(an) != nullptr) {
     return nullptr;
   }
-  unknown_attributes[an].def.ipp_type = type;
-  unknown_attributes[an].def.cc_type = InternalTypeForUnknownAttribute(type);
-  unknown_attributes[an].object = new Attribute(this, an);
+  AttrDef def;
+  def.ipp_type = type;
+  def.cc_type = InternalTypeForUnknownAttribute(type);
+  unknown_attributes[an].object = new Attribute(this, an, def);
   unknown_attributes_order_.push_back(an);
   return unknown_attributes[an].object;
 }
@@ -1132,31 +1105,30 @@ std::vector<const Attribute*> Collection::GetAllAttributes() const {
 // conversion is not possible (|value| is incorrect).
 template <typename ApiType>
 bool Attribute::SaveValue(size_t index, const ApiType& value) {
-  const AttrDef def = owner_->GetAttributeDefinition(name_);
   bool result = false;
-  switch (def.cc_type) {
+  switch (def_.cc_type) {
     case InternalType::kInteger:
       result =
-          SaveValueTyped<int32_t, ApiType>(values_, name_, def, index, value);
+          SaveValueTyped<int32_t, ApiType>(values_, name_, def_, index, value);
       break;
     case InternalType::kString:
-      result = SaveValueTyped<std::string, ApiType>(values_, name_, def, index,
+      result = SaveValueTyped<std::string, ApiType>(values_, name_, def_, index,
                                                     value);
       break;
     case InternalType::kResolution:
-      result = SaveValueTyped<Resolution, ApiType>(values_, name_, def, index,
+      result = SaveValueTyped<Resolution, ApiType>(values_, name_, def_, index,
                                                    value);
       break;
     case InternalType::kRangeOfInteger:
-      result = SaveValueTyped<RangeOfInteger, ApiType>(values_, name_, def,
+      result = SaveValueTyped<RangeOfInteger, ApiType>(values_, name_, def_,
                                                        index, value);
       break;
     case InternalType::kDateTime:
       result =
-          SaveValueTyped<DateTime, ApiType>(values_, name_, def, index, value);
+          SaveValueTyped<DateTime, ApiType>(values_, name_, def_, index, value);
       break;
     case InternalType::kStringWithLanguage:
-      result = SaveValueTyped<StringWithLanguage, ApiType>(values_, name_, def,
+      result = SaveValueTyped<StringWithLanguage, ApiType>(values_, name_, def_,
                                                            index, value);
       break;
     case InternalType::kCollection:
