@@ -8,6 +8,8 @@ use std::time::Duration;
 
 pub type SteamAppId = u64;
 
+pub const BINARY_IDENTITY: &str = "shadercached";
+
 pub const DEFAULT_DBUS_TIMEOUT: Duration = Duration::from_secs(10);
 
 // TODO(b/247385169): get these from system_api c++ header instead

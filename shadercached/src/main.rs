@@ -14,14 +14,17 @@ use anyhow::Result;
 use dbus::channel::MatchingReceiver;
 use dbus::message::MatchRule;
 use dbus_crossroads::Crossroads;
-use libchromeos::sys::{debug, error, info, syslog};
+use libchromeos::sys::{debug, error, info};
+use libchromeos::syslog;
 use tokio::signal::unix::{signal, SignalKind};
 
 #[tokio::main]
 pub async fn main() -> Result<()> {
     libchromeos::panic_handler::install_memfd_handler();
 
-    if let Err(e) = syslog::init() {
+    let identity =
+        syslog::get_ident_from_process().unwrap_or_else(|| String::from(BINARY_IDENTITY));
+    if let Err(e) = syslog::init(identity, false) {
         panic!("Failed to initialize syslog: {}", e);
     }
 
