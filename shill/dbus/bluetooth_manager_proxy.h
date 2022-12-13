@@ -6,6 +6,7 @@
 #define SHILL_DBUS_BLUETOOTH_MANAGER_PROXY_H_
 
 #include <memory>
+#include <vector>
 
 #include "bluetooth/dbus-proxies.h"
 #include "shill/bluetooth_manager_proxy_interface.h"
@@ -24,6 +25,9 @@ class BluetoothManagerProxy : public BluetoothManagerProxyInterface {
   // was successful, false otherwise. If the query was successful, |enabled| is
   // set to true if the device is using Floss, false otherwise.
   bool GetFlossEnabled(bool* enabled) const override;
+
+  bool GetAvailableAdapters(
+      std::vector<BTAdapterWithEnabled>* adapters) const override;
 
  private:
   std::unique_ptr<org::chromium::bluetooth::ManagerProxy> manager_proxy_;

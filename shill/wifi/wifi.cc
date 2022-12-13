@@ -3784,6 +3784,17 @@ void WiFi::EmitStationInfoReceivedEvent(
         report.bt_stack =
             floss ? Metrics::kBTStackFloss : Metrics::kBTStackBlueZ;
       }
+      std::vector<BluetoothManagerProxyInterface::BTAdapterWithEnabled>
+          bt_adapters;
+      if (bt_proxy->GetAvailableAdapters(&bt_adapters)) {
+        report.bt_enabled = false;
+        for (auto adapter : bt_adapters) {
+          if (adapter.enabled) {
+            report.bt_enabled = true;
+            break;
+          }
+        }
+      }
     } else {
       LOG(ERROR) << link_name() << ": BT manager proxy is not ready";
     }

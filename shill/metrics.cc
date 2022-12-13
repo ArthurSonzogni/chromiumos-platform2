@@ -1380,8 +1380,9 @@ void Metrics::NotifyWiFiLinkQualityReport(const WiFiLinkQualityReport& report,
   SLOG(WiFiService::kSessionTagMinimumLogVerbosity)
       << __func__ << ": Session Tag 0x" << PseudonymizeTag(session_tag);
 
-  metrics::structured::events::wi_fi::WiFiLinkQualityReport()
-      .SetBootId(WiFiMetricsUtils::GetBootId())
+  metrics::structured::events::wi_fi::WiFiLinkQualityReport sm_report =
+      metrics::structured::events::wi_fi::WiFiLinkQualityReport();
+  sm_report.SetBootId(WiFiMetricsUtils::GetBootId())
       .SetSystemTime(usecs)
       .SetEventVersion(kWiFiStructuredMetricsVersion)
       .SetSessionTag(session_tag)
@@ -1413,13 +1414,23 @@ void Metrics::NotifyWiFiLinkQualityReport(const WiFiLinkQualityReport& report,
       .SetTXMode(report.tx.mode)
       .SetTXGuardInterval(report.tx.gi)
       .SetTXNSS(report.tx.nss)
-      .SetTXDCM(report.tx.dcm)
+      .SetTXDCM(report.tx.dcm);
 #if !defined(DISABLE_FLOSS)
-      .SetBTStack(report.bt_stack)
+  // btmanagerd only correctly reports the "enabled" state of WiFi if Floss
+  // is the BT stack currently in use. If BlueZ is in use instead,
+  // btmanagerd does not know the state of the BT adapters and always
+  // reports them as "disabled", even if they're actually enabled.
+  // To avoid reporting incorrect data, we only report the "enabled" state
+  // when we're using Floss.
+  if (report.bt_stack == kBTStackFloss) {
+    sm_report.SetBTEnabled(report.bt_enabled);
+  }
+  sm_report.SetBTStack(report.bt_stack);
 #else   // DISABLE_FLOSS
-      .SetBTStack(kBTStackBlueZ)
+  sm_report.SetBTStack(kBTStackBlueZ);
 #endif  // DISABLE_FLOSS
-      .Record();
+
+  sm_report.Record();
 }
 
 // static

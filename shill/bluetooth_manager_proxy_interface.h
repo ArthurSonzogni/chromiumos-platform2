@@ -5,6 +5,9 @@
 #ifndef SHILL_BLUETOOTH_MANAGER_PROXY_INTERFACE_H_
 #define SHILL_BLUETOOTH_MANAGER_PROXY_INTERFACE_H_
 
+#include <cstdint>
+#include <vector>
+
 namespace shill {
 
 class BluetoothManagerProxyInterface {
@@ -12,6 +15,14 @@ class BluetoothManagerProxyInterface {
   virtual ~BluetoothManagerProxyInterface() = default;
 
   virtual bool GetFlossEnabled(bool* enabled) const = 0;
+
+  struct BTAdapterWithEnabled {
+    int32_t hci_interface;
+    bool enabled;
+  };
+
+  virtual bool GetAvailableAdapters(
+      std::vector<BTAdapterWithEnabled>* adapters) const = 0;
 };
 
 }  // namespace shill
