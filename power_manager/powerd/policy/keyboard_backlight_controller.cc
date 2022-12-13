@@ -601,7 +601,7 @@ void KeyboardBacklightController::HandleDecreaseBrightnessRequest(
     UpdateUserBrightnessPercent(current_percent_);
   }
 
-  // Increase the brightness by one step.
+  // Decrease the brightness by one step.
   //
   // We select the user step closest to the current brightness, and then drop
   // one below that. See comment above in `HandleIncreaseBrightnessRequest` for
