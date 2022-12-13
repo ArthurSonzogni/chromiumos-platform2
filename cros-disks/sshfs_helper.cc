@@ -41,6 +41,10 @@ constexpr char kOptionPort[] = "Port";
 constexpr char kIdentityFile[] = "id";
 constexpr char kUserKnownHostsFile[] = "known_hosts";
 
+// 64KiB is the maximum packet size allowed by sshfs
+// and vsock vhost driver (VIRTIO_VSOCK_MAX_PKT_BUF_SIZE)
+constexpr char kSshfsVsockPacketSize[] = "65536";
+
 OwnerUser ResolveSshfsUser(const Platform* platform) {
   OwnerUser user;
   PCHECK(platform->GetUserAndGroupId(kUserName, &user.uid, &user.gid));
@@ -230,6 +234,9 @@ MountError SshfsHelper::ConfigureSandboxSftpVsock(
                                       "cache=no", "vsock=" + uri.path()};
   SetParamValue(&options, "uid", base::NumberToString(kChronosUID));
   SetParamValue(&options, "gid", base::NumberToString(kChronosAccessGID));
+  // Use the maximum packet size to improve file transfer performance
+  SetParamValue(&options, "max_read", kSshfsVsockPacketSize);
+  SetParamValue(&options, "max_write", kSshfsVsockPacketSize);
   std::string option_string;
   if (!JoinParamsIntoOptions(options, &option_string)) {
     return MountError::kInvalidMountOptions;
