@@ -155,6 +155,7 @@ int main(int /* argc */, char* /* argv */[]) {
   std::string sanitized_username;
   if (!RetrieveSanitizedPrimaryUsername(&sanitized_username)) {
     LOG(ERROR) << "Failed to get primary username";
+    dlp_metrics.SendInitError(dlp::InitError::kPrimaryUsernameRetrievalError);
     return 1;
   }
 

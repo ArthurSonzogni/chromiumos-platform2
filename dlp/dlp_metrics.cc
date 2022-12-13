@@ -14,6 +14,10 @@ void DlpMetrics::SendBooleanHistogram(const std::string& name,
   metrics_lib_->SendBoolToUMA(name, value);
 }
 
+void DlpMetrics::SendInitError(InitError error) const {
+  metrics_lib_->SendEnumToUMA(kDlpInitErrorHistogram, error);
+}
+
 void DlpMetrics::SendFanotifyError(FanotifyError error) const {
   metrics_lib_->SendEnumToUMA(kDlpFanotifyErrorHistogram, error);
 }

@@ -16,10 +16,20 @@ constexpr char kDlpFanotifyDeleteEventSupport[] =
 constexpr char kDlpFanotifyMarkFilesystemSupport[] =
     "Enterprise.Dlp.FanotifyMarkFilesystemSupport";
 
+constexpr char kDlpInitErrorHistogram[] = "Enterprise.Dlp.Errors.DaemonInit";
 constexpr char kDlpFanotifyErrorHistogram[] = "Enterprise.Dlp.Errors.Fanotify";
 constexpr char kDlpFileDatabaseErrorHistogram[] =
     "Enterprise.Dlp.Errors.FileDatabase";
 constexpr char kDlpAdaptorErrorHistogram[] = "Enterprise.Dlp.Errors.Adaptor";
+
+// Type of errors triggered during the initialization of the DLP daemon.
+enum class InitError {
+  kUnknownError = 0,
+  // Error while retrieving the primary username.
+  kPrimaryUsernameRetrievalError = 1,
+  // For SendEnumToUMA() usage.
+  kMaxValue = kPrimaryUsernameRetrievalError
+};
 
 // Type of errors triggered by fanotify usage in the DLP daemon.
 enum class FanotifyError {
@@ -104,6 +114,10 @@ class DlpMetrics {
 
   // Send a boolean to UMA.
   void SendBooleanHistogram(const std::string& name, bool value) const;
+
+  // Records whether there's an error happening during the daemon
+  // initialization.
+  void SendInitError(InitError error) const;
 
   // Records whether there's an error happening when using fanotify.
   void SendFanotifyError(FanotifyError error) const;
