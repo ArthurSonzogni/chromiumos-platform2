@@ -16,7 +16,8 @@ class MockSsfcProber : public SsfcProber {
   MockSsfcProber() = default;
   ~MockSsfcProber() override = default;
 
-  MOCK_METHOD(uint32_t, ProbeSSFC, (), (const, override));
+  MOCK_METHOD(bool, IsSsfcRequired, (), (const, override));
+  MOCK_METHOD(bool, ProbeSsfc, (uint32_t*), (const, override));
 };
 
 }  // namespace rmad
