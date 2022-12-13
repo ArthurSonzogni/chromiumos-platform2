@@ -325,12 +325,6 @@ void ReplyWithAuthenticationResult(
   ReplyWithError(std::move(on_done), std::move(reply), status);
 }
 
-// Control switch value for enabling backup VaultKeyset creation with USS.
-constexpr struct VariationsFeature kCrOSLateBootMigrateToUserSecretStash = {
-    .name = "CrOSLateBootMigrateToUserSecretStash",
-    .default_state = FEATURE_DISABLED_BY_DEFAULT,
-};
-
 }  // namespace
 
 UserDataAuth::UserDataAuth()
@@ -696,15 +690,14 @@ bool UserDataAuth::PostDBusInitialize() {
       FROM_HERE, base::BindOnce(&UserDataAuth::CreateUssExperimentConfigFetcher,
                                 base::Unretained(this)));
 
-  PostTaskToMountThread(
-      FROM_HERE,
-      base::BindOnce(&UserDataAuth::FetchMigrateToUserSecretStashFlag,
-                     base::Unretained(this)));
+  PostTaskToMountThread(FROM_HERE,
+                        base::BindOnce(&UserDataAuth::InitializeFeatureLibrary,
+                                       base::Unretained(this)));
 
   return true;
 }
 
-void UserDataAuth::FetchMigrateToUserSecretStashFlag() {
+void UserDataAuth::InitializeFeatureLibrary() {
   AssertOnMountThread();
   if (!feature_lib_) {
     default_feature_lib_ = feature::PlatformFeatures::New(mount_thread_bus_);
@@ -714,8 +707,7 @@ void UserDataAuth::FetchMigrateToUserSecretStashFlag() {
       return;
     }
   }
-  set_migrate_to_user_secret_stash(
-      feature_lib_->IsEnabledBlocking(kCrOSLateBootMigrateToUserSecretStash));
+  auth_session_manager_->set_feature_lib(feature_lib_);
 }
 
 void UserDataAuth::InitializeChallengeCredentialsHelper() {

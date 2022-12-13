@@ -45,6 +45,7 @@
 #include "cryptohome/user_secret_stash.h"
 #include "cryptohome/user_secret_stash_storage.h"
 #include "cryptohome/user_session/user_session_map.h"
+#include "featured/feature_library.h"
 
 namespace cryptohome {
 
@@ -89,7 +90,8 @@ class AuthSession final {
       KeysetManagement* keyset_management,
       AuthBlockUtility* auth_block_utility,
       AuthFactorManager* auth_factor_manager,
-      UserSecretStashStorage* user_secret_stash_storage);
+      UserSecretStashStorage* user_secret_stash_storage,
+      feature::PlatformFeaturesInterface* feature_lib);
 
   ~AuthSession();
 
@@ -268,8 +270,8 @@ class AuthSession final {
   std::unique_ptr<brillo::SecureBlob> GetHibernateSecret();
 
  private:
-  // Caller needs to ensure that the passed raw pointers outlive the instance of
-  // AuthSession.
+  // Caller needs to ensure that the passed raw pointers outlive the
+  // instance of AuthSession.
   AuthSession(
       std::string username,
       unsigned int flags,
@@ -281,7 +283,8 @@ class AuthSession final {
       KeysetManagement* keyset_management,
       AuthBlockUtility* auth_block_utility,
       AuthFactorManager* auth_factor_manager,
-      UserSecretStashStorage* user_secret_stash_storage);
+      UserSecretStashStorage* user_secret_stash_storage,
+      feature::PlatformFeaturesInterface* feature_lib);
 
   AuthSession() = delete;
 
@@ -649,6 +652,8 @@ class AuthSession final {
   AuthFactorManager* const auth_factor_manager_;
   // Unowned pointer.
   UserSecretStashStorage* const user_secret_stash_storage_;
+  // Unowned pointer.
+  feature::PlatformFeaturesInterface* feature_lib_;
 
   const base::UnguessableToken token_;
   const std::string serialized_token_;
@@ -676,6 +681,8 @@ class AuthSession final {
   // Tokens from active auth factors, keyed off of the token's auth factor type.
   std::map<AuthFactorType, std::unique_ptr<PreparedAuthFactorToken>>
       active_auth_factor_tokens_;
+  // Flag fetched from feature_lib_.
+  bool migrate_to_user_secret_stash_ = false;
 
   // Should be the last member.
   base::WeakPtrFactory<AuthSession> weak_factory_{this};
@@ -692,10 +699,8 @@ class AuthSession final {
   FRIEND_TEST(AuthSessionTest, AuthenticateWithPIN);
   FRIEND_TEST(AuthSessionTest, AuthenticateExistingUserFailure);
   FRIEND_TEST(AuthSessionTest, ExtensionTest);
-  FRIEND_TEST(AuthSessionTest, InitiallyNotAuthenticated);
-  FRIEND_TEST(AuthSessionTest, InitiallyNotAuthenticatedForExistingUser);
   FRIEND_TEST(AuthSessionTest, Username);
-  FRIEND_TEST(AuthSessionTest, Intent);
+  FRIEND_TEST(AuthSessionTest, UssMigrationFlagCheckFailure);
   FRIEND_TEST(AuthSessionTest, TimeoutTest);
   FRIEND_TEST(AuthSessionTest, GetCredentialRegularUser);
   FRIEND_TEST(AuthSessionTest, GetCredentialKioskUser);

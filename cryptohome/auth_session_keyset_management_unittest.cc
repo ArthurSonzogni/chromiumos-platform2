@@ -548,11 +548,11 @@ TEST_F(AuthSessionTestWithKeysetManagement, USSEnabledRemovesBackupVKs) {
 
   int flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE;
 
-  AuthSession auth_session(kUsername, flags, AuthIntent::kDecrypt,
-                           /*on_timeout=*/base::DoNothing(), &crypto_,
-                           &platform_, &user_session_map_,
-                           keyset_management_.get(), auth_block_utility_.get(),
-                           &auth_factor_manager_, &user_secret_stash_storage_);
+  AuthSession auth_session(
+      kUsername, flags, AuthIntent::kDecrypt,
+      /*on_timeout=*/base::DoNothing(), &crypto_, &platform_,
+      &user_session_map_, keyset_management_.get(), auth_block_utility_.get(),
+      &auth_factor_manager_, &user_secret_stash_storage_, nullptr);
 
   EXPECT_THAT(AuthStatus::kAuthStatusFurtherFactorRequired,
               auth_session.GetStatus());
@@ -600,7 +600,8 @@ TEST_F(AuthSessionTestWithKeysetManagement, USSEnabledUpdateBackupVKs) {
                            /*on_timeout=*/base::DoNothing(), &crypto_,
                            &platform_, &user_session_map_,
                            keyset_management_.get(), auth_block_utility_.get(),
-                           &auth_factor_manager_, &user_secret_stash_storage_);
+                           &auth_factor_manager_, &user_secret_stash_storage_,
+                           /*feature_lib=*/nullptr);
 
   EXPECT_THAT(AuthStatus::kAuthStatusFurtherFactorRequired,
               auth_session.GetStatus());
@@ -798,7 +799,8 @@ TEST_F(AuthSessionTestWithKeysetManagement,
                            /*on_timeout=*/base::DoNothing(), &crypto_,
                            &platform_, &user_session_map_,
                            keyset_management_.get(), &mock_auth_block_utility_,
-                           &auth_factor_manager_, &user_secret_stash_storage_);
+                           &auth_factor_manager_, &user_secret_stash_storage_,
+                           /*feature_lib=*/nullptr);
 
   EXPECT_THAT(AuthStatus::kAuthStatusFurtherFactorRequired,
               auth_session.GetStatus());

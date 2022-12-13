@@ -192,6 +192,12 @@ CryptohomeStatus RemoveKeysetByLabel(KeysetManagement& keyset_management,
   }
   return OkStatus<CryptohomeError>();
 }
+
+// Control switch value for enabling backup VaultKeyset creation with USS.
+constexpr struct VariationsFeature kCrOSLateBootMigrateToUserSecretStash = {
+    .name = "CrOSLateBootMigrateToUserSecretStash",
+    .default_state = FEATURE_DISABLED_BY_DEFAULT,
+};
 }  // namespace
 
 CryptohomeStatusOr<std::unique_ptr<AuthSession>> AuthSession::Create(
@@ -205,12 +211,13 @@ CryptohomeStatusOr<std::unique_ptr<AuthSession>> AuthSession::Create(
     KeysetManagement* keyset_management,
     AuthBlockUtility* auth_block_utility,
     AuthFactorManager* auth_factor_manager,
-    UserSecretStashStorage* user_secret_stash_storage) {
+    UserSecretStashStorage* user_secret_stash_storage,
+    feature::PlatformFeaturesInterface* feature_lib) {
   // Assumption here is that keyset_management_ will outlive this AuthSession.
   auto auth_session = base::WrapUnique(new AuthSession(
       account_id, flags, intent, std::move(on_timeout), crypto, platform,
       user_session_map, keyset_management, auth_block_utility,
-      auth_factor_manager, user_secret_stash_storage));
+      auth_factor_manager, user_secret_stash_storage, feature_lib));
 
   if (!auth_session->Initialize().ok()) {
     LOG(ERROR) << "AuthSession could not be initialized.";
@@ -234,7 +241,8 @@ AuthSession::AuthSession(
     KeysetManagement* keyset_management,
     AuthBlockUtility* auth_block_utility,
     AuthFactorManager* auth_factor_manager,
-    UserSecretStashStorage* user_secret_stash_storage)
+    UserSecretStashStorage* user_secret_stash_storage,
+    feature::PlatformFeaturesInterface* feature_lib)
     : username_(std::move(username)),
       obfuscated_username_(SanitizeUserName(username_)),
       is_ephemeral_user_(flags & AUTH_SESSION_FLAGS_EPHEMERAL_USER),
@@ -248,6 +256,7 @@ AuthSession::AuthSession(
       auth_block_utility_(auth_block_utility),
       auth_factor_manager_(auth_factor_manager),
       user_secret_stash_storage_(user_secret_stash_storage),
+      feature_lib_(feature_lib),
       token_(platform_->CreateUnguessableToken()),
       serialized_token_(GetSerializedStringFromToken(token_).value_or("")) {
   // Preconditions.
@@ -327,6 +336,11 @@ CryptohomeStatus AuthSession::Initialize() {
     }
     auth_factor_map_.Add(std::move(factor),
                          AuthFactorStorageType::kVaultKeyset);
+  }
+
+  if (feature_lib_) {
+    migrate_to_user_secret_stash_ =
+        feature_lib_->IsEnabledBlocking(kCrOSLateBootMigrateToUserSecretStash);
   }
 
   auth_factor_map_.ReportAuthFactorBackingStoreMetrics();
@@ -1011,7 +1025,7 @@ void AuthSession::LoadVaultKeysetAndFsKeys(
 
   ReportTimerDuration(auth_session_performance_timer.get());
 
-  if (ShouldMigrateToUss() &&
+  if ((migrate_to_user_secret_stash_ || ShouldMigrateToUss()) &&
       GetStatus() == AuthStatus::kAuthStatusAuthenticated &&
       IsUserSecretStashExperimentEnabled(platform_) && metadata.has_value()) {
     UssMigrator migrator(username_);

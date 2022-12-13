@@ -17,6 +17,7 @@
 
 #include "cryptohome/auth_blocks/auth_block_utility.h"
 #include "cryptohome/auth_factor/auth_factor_manager.h"
+#include "cryptohome/error/location_utils.h"
 #include "cryptohome/keyset_management.h"
 #include "cryptohome/platform.h"
 #include "cryptohome/user_secret_stash_storage.h"
@@ -43,7 +44,8 @@ AuthSessionManager::AuthSessionManager(
       keyset_management_(keyset_management),
       auth_block_utility_(auth_block_utility),
       auth_factor_manager_(auth_factor_manager),
-      user_secret_stash_storage_(user_secret_stash_storage) {
+      user_secret_stash_storage_(user_secret_stash_storage),
+      feature_lib_(nullptr) {
   // Preconditions
   DCHECK(crypto_);
   DCHECK(platform_);
@@ -62,10 +64,10 @@ CryptohomeStatusOr<AuthSession*> AuthSessionManager::CreateAuthSession(
                                    base::Unretained(this));
   // Assumption here is that keyset_management_ will outlive this AuthSession.
   CryptohomeStatusOr<std::unique_ptr<AuthSession>> auth_session =
-      AuthSession::Create(account_id, flags, auth_intent, std::move(on_timeout),
-                          crypto_, platform_, user_session_map_,
-                          keyset_management_, auth_block_utility_,
-                          auth_factor_manager_, user_secret_stash_storage_);
+      AuthSession::Create(
+          account_id, flags, auth_intent, std::move(on_timeout), crypto_,
+          platform_, user_session_map_, keyset_management_, auth_block_utility_,
+          auth_factor_manager_, user_secret_stash_storage_, feature_lib_);
 
   if (!auth_session.ok()) {
     return MakeStatus<CryptohomeError>(

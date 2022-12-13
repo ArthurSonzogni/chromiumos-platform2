@@ -183,13 +183,6 @@ class UserDataAuth {
     enable_application_containers_ = value;
   }
 
-  bool get_migrate_to_user_secret_stash() const {
-    return migrate_to_user_secret_stash_;
-  }
-  void set_migrate_to_user_secret_stash(bool enabled) {
-    migrate_to_user_secret_stash_ = enabled;
-  }
-
   // Set the |legacy_mount_| variable. For more information on legacy_mount_,
   // see comment of Mount::MountLegacyHome(). Note that this is usually used in
   // main() because there's a command line switch for selecting this.
@@ -1168,8 +1161,9 @@ class UserDataAuth {
   // network is ready.
   void CreateUssExperimentConfigFetcher();
 
-  // Called on Mount thread. This fetches the finch flag for USS Migration.
-  void FetchMigrateToUserSecretStashFlag();
+  // Called on Mount thread. This initializes feature library and sets it's
+  // value in AuthSession manager.
+  void InitializeFeatureLibrary();
 
   // =============== PinWeaver Related Methods ===============
 
