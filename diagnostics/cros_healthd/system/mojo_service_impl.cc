@@ -124,6 +124,18 @@ void MojoServiceImpl::RequestService(const std::string& service_name,
   remote.set_disconnect_with_reason_handler(base::BindOnce(
       &MojoServiceImpl::OnServiceDisconnect<InterfaceType>,
       weak_ptr_factory_.GetWeakPtr(), service_name, std::ref(remote)));
+}
+
+template <typename InterfaceType>
+void MojoServiceImpl::SendServiceRequest(
+    const std::string& service_name,
+    mojo::PendingReceiver<InterfaceType> pending_receiver) {
+  // When shutdowning, the service manager could be disconnected. Don't call the
+  // interface to prevent crashing during shutdown.
+  if (!service_manager_.is_connected())
+    return;
+  service_manager_->Request(service_name, std::nullopt,
+                            pending_receiver.PassPipe());
 
   // Bind an additional connection to network adapters. TODO(b/237239654):
   // Remove this after we remove these network adapters.
@@ -146,18 +158,6 @@ void MojoServiceImpl::RequestService(const std::string& service_name,
     network_diagnostics_adapter_->SetNetworkDiagnosticsRoutines(
         std::move(pending_remote));
   }
-}
-
-template <typename InterfaceType>
-void MojoServiceImpl::SendServiceRequest(
-    const std::string& service_name,
-    mojo::PendingReceiver<InterfaceType> pending_receiver) {
-  // When shutdowning, the service manager could be disconnected. Don't call the
-  // interface to prevent crashing during shutdonw.
-  if (!service_manager_.is_connected())
-    return;
-  service_manager_->Request(service_name, std::nullopt,
-                            pending_receiver.PassPipe());
 }
 
 template <typename InterfaceType>
