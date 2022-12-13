@@ -140,6 +140,11 @@
 			<arg type="s" direction="out"/>
 			<annotation name="org.chromium.DBus.Method.Kind" value="async"/>
 		</method>
+		<method name="SetLOHSEnabled">
+			<arg type="b" direction="in"/>
+			<arg type="s" direction="out"/>
+			<annotation name="org.chromium.DBus.Method.Kind" value="async"/>
+		</method>
 	</interface>
 	<node name="device"/>
 	<node name="profile"/>

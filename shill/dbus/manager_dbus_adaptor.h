@@ -144,6 +144,8 @@ class ManagerDBusAdaptor : public org::chromium::flimflam::ManagerAdaptor,
                            bool enabled) override;
   void CheckTetheringReadiness(
       DBusMethodResponsePtr<std::string> response) override;
+  void SetLOHSEnabled(DBusMethodResponsePtr<std::string> response,
+                      bool enabled) override;
 
  private:
   friend class ManagerDBusAdaptorTest;

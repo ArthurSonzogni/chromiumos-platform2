@@ -254,6 +254,9 @@ Manager::Manager(ControlInterface* control_interface,
 
   tethering_manager_->InitPropertyStore(&store_);
 
+  HelpRegisterDerivedKeyValueStore(kLOHSConfigProperty, &Manager::GetLOHSConfig,
+                                   &Manager::SetLOHSConfig);
+
   UpdateProviderMapping();
 
   supported_vpn_ = vpn_provider_->GetSupportedType();
@@ -3130,5 +3133,21 @@ void Manager::ConnectivityTestCallback(const std::string& interface_name,
             << ". HTTPS probe phase=" << result.https_phase
             << ", status=" << result.https_status;
   connectivity_test_portal_detectors_.erase(interface_name);
+}
+
+void Manager::SetLOHSEnabled(
+    base::OnceCallback<void(std::string result)> callback, bool enabled) {
+  // TODO(b/257880335): Implement setting LOHS state.
+  std::move(callback).Run(kErrorResultNotImplemented);
+}
+
+KeyValueStore Manager::GetLOHSConfig(Error* /* error */) {
+  // TODO(b/257880335): Implement getting the LOHSconfig.
+  return KeyValueStore();
+}
+
+bool Manager::SetLOHSConfig(const KeyValueStore& properties, Error* error) {
+  // TODO(b/257880335): Implement setting the LOHS config.
+  return false;
 }
 }  // namespace shill

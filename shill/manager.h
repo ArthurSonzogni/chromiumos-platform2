@@ -512,6 +512,15 @@ class Manager {
                                   const KeyValueStore& properties,
                                   Error* error);
 
+  // Enable or disable a local only hotspot session.
+  void SetLOHSEnabled(base::OnceCallback<void(std::string result)> callback,
+                      bool enabled);
+
+  // Getter and setter for the |LOHSConfig| property to be used for a local only
+  // hotspot session.
+  KeyValueStore GetLOHSConfig(Error* error);
+  bool SetLOHSConfig(const KeyValueStore& properties, Error* error);
+
   TetheringManager* tethering_manager() const {
     return tethering_manager_.get();
   }

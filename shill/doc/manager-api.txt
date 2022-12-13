@@ -486,6 +486,13 @@ Methods		dict GetProperties()
 			Returns a status string indicating the readiness. Possible status:
 			"ready", "not_allowed", "upstream_network_not_available".
 
+		void SetLOHSEnabled(boolean enabled)
+
+			Enables or disables local only hotspot with the corresponding properties in
+			Manager.LOHSConfig. Returns a string through an asynchronous callback
+			indicating the result. This currently only returns "NotImplemented".
+
+
 Signals		PropertyChanged(string name, variant value)
 
 			This signal indicates a changed value of the given
@@ -593,6 +600,24 @@ Properties	object ActiveProfile [readonly]
 			parameters. This list will be consulted every time DHCP information
 			is updated (while connecting to a network, or when a DHCP lease is
 			renewed).
+
+		dict LOHSConfig [readwrite]
+
+			Dictionary that contains the following Local Only HotSpot (LOHS) related
+			properties. This intentionally mirrors the Manager.TetheringConfig and
+			reuses the same Manager.TetheringConfig property names.
+
+			string ssid
+				the hex-encoded tethering SSID name to be advertised
+			string band
+				the local only hotspot band preference. This should be one of
+				“2.4GHz”, “5GHz”, or “6GHz”. If absent, the band will be picked by
+				Shill.
+			string security
+				the tethering security to be used. This should be "wpa2"
+			string passphrase
+				the password to be used to authenticate to the local only hotspot
+				network
 
 		string NoAutoConnectTechnologies [readwrite]
 

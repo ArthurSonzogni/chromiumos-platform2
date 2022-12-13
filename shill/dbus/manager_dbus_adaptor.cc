@@ -518,4 +518,15 @@ void ManagerDBusAdaptor::CheckTetheringReadiness(
   manager_->tethering_manager()->CheckReadiness(
       base::BindOnce(on_result_fn, std::move(response)));
 }
+
+void ManagerDBusAdaptor::SetLOHSEnabled(
+    DBusMethodResponsePtr<std::string> response, bool enabled) {
+  SLOG(this, 2) << __func__ << ": " << enabled;
+  auto on_result_fn = [](shill::DBusMethodResponsePtr<std::string> response,
+                         std::string result) {
+    std::move(response)->Return(result);
+  };
+  manager_->SetLOHSEnabled(base::BindOnce(on_result_fn, std::move(response)),
+                           enabled);
+}
 }  // namespace shill
