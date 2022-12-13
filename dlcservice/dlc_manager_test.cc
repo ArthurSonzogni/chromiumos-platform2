@@ -120,12 +120,9 @@ TEST_F(DlcManagerTest, PreloadAllowedDlcLogicalVolumeTest) {
   // Any path here would work.
   auto image_path_a =
       GetDlcImagePath(content_path_, kFourthDlc, kPackage, BootSlot::Slot::A);
-  auto image_path_b =
-      GetDlcImagePath(content_path_, kFourthDlc, kPackage, BootSlot::Slot::B);
   base::CreateDirectory(image_path_a.DirName());
   EXPECT_CALL(*mock_lvmd_proxy_wrapper_ptr_, GetLogicalVolumePath(_))
-      .WillOnce(Return(image_path_a.value()))
-      .WillOnce(Return(image_path_b.value()));
+      .WillRepeatedly(Return(image_path_a.value()));
 
   bool external_install_needed = false;
   EXPECT_TRUE(dlc_manager_->Install(CreateInstallRequest(kFourthDlc),

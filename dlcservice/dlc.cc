@@ -226,10 +226,6 @@ FilePath DlcBase::GetImagePath(BootSlot::Slot slot) const {
                    kDlcImageFileName);
 }
 
-FilePath DlcBase::GetVirtualImagePath(BootSlot::Slot slot) const {
-  return GetImagePath(slot);
-}
-
 bool DlcBase::CreateDlc(ErrorPtr* err) {
   // Create content directories.
   for (const auto& path :
@@ -348,9 +344,10 @@ bool DlcBase::MarkUnverified() {
 
 bool DlcBase::Verify() {
   auto image_path = GetImagePath(SystemState::Get()->active_boot_slot());
+
   vector<uint8_t> image_sha256;
-  if (!HashFile(image_path, manifest_->size(), &image_sha256)) {
-    LOG(ERROR) << "Failed to hash image file: " << image_path.value();
+  if (!VerifyInternal(image_path, &image_sha256)) {
+    LOG(ERROR) << "Failed to verify DLC=" << id_;
     return false;
   }
 
@@ -369,6 +366,17 @@ bool DlcBase::Verify() {
     LOG(WARNING) << "Failed to mark the image as verified, but temporarily"
                  << " we assume the image is verified.";
   }
+
+  return true;
+}
+
+bool DlcBase::VerifyInternal(const base::FilePath& image_path,
+                             vector<uint8_t>* image_sha256) {
+  if (!HashFile(image_path, manifest_->size(), image_sha256)) {
+    LOG(ERROR) << "Failed to hash image file: " << image_path.value();
+    return false;
+  }
+
   return true;
 }
 
@@ -392,8 +400,7 @@ bool DlcBase::PreloadedCopier(ErrorPtr* err) {
   // Before touching the image, we need to mark it as unverified.
   MarkUnverified();
 
-  FilePath image_path =
-      GetVirtualImagePath(SystemState::Get()->active_boot_slot());
+  FilePath image_path = GetImagePath(SystemState::Get()->active_boot_slot());
   vector<uint8_t> image_sha256;
   if (!CopyAndHashFile(preloaded_image_path_, image_path, manifest_->size(),
                        &image_sha256)) {
@@ -442,8 +449,7 @@ bool DlcBase::FactoryInstallCopier() {
   // Before touching the image, we need to mark it as unverified.
   MarkUnverified();
 
-  FilePath image_path =
-      GetVirtualImagePath(SystemState::Get()->active_boot_slot());
+  FilePath image_path = GetImagePath(SystemState::Get()->active_boot_slot());
   vector<uint8_t> image_sha256;
   if (!CopyAndHashFile(factory_install_image_path_, image_path,
                        manifest_->size(), &image_sha256)) {

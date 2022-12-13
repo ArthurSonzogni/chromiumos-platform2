@@ -156,9 +156,6 @@ class DlcBase {
   // Returns the path to the DLC image given the slot.
   virtual base::FilePath GetImagePath(BootSlot::Slot slot) const;
 
-  // Returns the virtual path to the DLC image given the slot.
-  virtual base::FilePath GetVirtualImagePath(BootSlot::Slot slot) const;
-
   // Creates the DLC directories and files if they don't exist. This function
   // should be used as fall-through. We should call this even if we presumably
   // know the files are already there. This allows us to create any new DLC
@@ -174,6 +171,8 @@ class DlcBase {
   // Returns true if the DLC image in the current active slot matches the hash
   // of that in the rootfs manifest for the DLC.
   bool Verify();
+  virtual bool VerifyInternal(const base::FilePath& image_path,
+                              std::vector<uint8_t>* image_sha256);
 
   // Helper used to load in (copy + cleanup) preloadable files for the DLC.
   bool PreloadedCopier(brillo::ErrorPtr* err);

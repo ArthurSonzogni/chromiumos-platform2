@@ -228,7 +228,8 @@ bool CreateFile(const base::FilePath& path, int64_t size) {
 
 bool HashFile(const base::FilePath& path,
               int64_t size,
-              vector<uint8_t>* sha256) {
+              vector<uint8_t>* sha256,
+              bool skip_size_check) {
   base::File f(path, base::File::FLAG_OPEN | base::File::FLAG_READ);
   if (!f.IsValid()) {
     PLOG(ERROR) << "Failed to read file at " << path.value()
@@ -236,15 +237,17 @@ bool HashFile(const base::FilePath& path,
     return false;
   }
 
-  auto length = f.GetLength();
-  if (length < 0) {
-    LOG(ERROR) << "Failed to get length for file at " << path.value();
-    return false;
-  }
-  if (length < size) {
-    LOG(ERROR) << "File size " << length
-               << " is smaller than intended file size " << size;
-    return false;
+  if (!skip_size_check) {
+    auto length = f.GetLength();
+    if (length < 0) {
+      LOG(ERROR) << "Failed to get length for file at " << path.value();
+      return false;
+    }
+    if (length < size) {
+      LOG(ERROR) << "File size " << length
+                 << " is smaller than intended file size " << size;
+      return false;
+    }
   }
 
   constexpr int64_t kMaxBufSize = 4096;

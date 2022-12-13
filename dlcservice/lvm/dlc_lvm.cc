@@ -15,6 +15,7 @@
 
 #include "dlcservice/lvm/lvm_utils.h"
 #include "dlcservice/system_state.h"
+#include "dlcservice/utils.h"
 
 namespace dlcservice {
 
@@ -95,7 +96,7 @@ bool DlcLvm::MountInternal(std::string* mount_point, brillo::ErrorPtr* err) {
   imageloader::LoadDlcRequest request;
   request.set_id(id_);
   request.set_path(
-      GetVirtualImagePath(SystemState::Get()->active_boot_slot()).value());
+      GetImagePath(SystemState::Get()->active_boot_slot()).value());
   request.set_package(package_);
   if (!SystemState::Get()->image_loader()->LoadDlc(request, mount_point,
                                                    nullptr,
@@ -131,9 +132,25 @@ bool DlcLvm::MakeReadyForUpdateInternal() const {
   return true;
 }
 
-base::FilePath DlcLvm::GetVirtualImagePath(BootSlot::Slot slot) const {
+bool DlcLvm::VerifyInternal(const base::FilePath& image_path,
+                            std::vector<uint8_t>* image_sha256) {
   if (!manifest_->use_logical_volume()) {
-    return DlcBase::GetVirtualImagePath(slot);
+    LOG(INFO) << "Skipping verification of logical voluems for DLC=" << id_;
+    return DlcBase::VerifyInternal(image_path, image_sha256);
+  }
+
+  if (!HashFile(image_path, manifest_->size(), image_sha256,
+                /*skip_size_check=*/true)) {
+    LOG(ERROR) << "Failed to hash logical volume: " << image_path.value();
+    return false;
+  }
+
+  return true;
+}
+
+base::FilePath DlcLvm::GetImagePath(BootSlot::Slot slot) const {
+  if (!manifest_->use_logical_volume()) {
+    return DlcBase::GetImagePath(slot);
   }
   auto lv_name = LogicalVolumeName(id_, slot);
   return base::FilePath(

@@ -129,6 +129,12 @@ TEST_F(DlcServiceTest, GetExistingDlcs) {
   Install(kFirstDlc);
 
   SetUpDlcWithSlots(kSecondDlc);
+
+#if USE_LVM_STATEFUL_PARTITION
+  EXPECT_CALL(*mock_lvmd_proxy_wrapper_ptr_, GetLogicalVolumePath(_))
+      .WillRepeatedly(Return(""));
+#endif  // USE_LVM_STATEFUL_PARTITION
+
   const auto& dlcs = dlc_service_->GetExistingDlcs();
 
   EXPECT_THAT(dlcs, ElementsAre(kFirstDlc, kSecondDlc));
