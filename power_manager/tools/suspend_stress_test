@@ -111,7 +111,7 @@ dump_stats_and_exit() {
 
 has_s2idle() {
   if ls /sys/devices/system/cpu/cpu[0-9]*/cpuidle/state[0-9]/s2idle \
-	> /dev/null 2>&1; then
+      > /dev/null 2>&1; then
     return 0
   else
     return 1
