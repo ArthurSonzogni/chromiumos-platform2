@@ -8,6 +8,7 @@
 #include <unistd.h>
 
 #include <array>
+#include <memory>
 #include <set>
 #include <utility>
 
@@ -25,6 +26,9 @@
 #include <base/strings/stringprintf.h>
 #include <base/system/sys_info.h>
 #include <base/values.h>
+#include <brillo/udev/udev.h>
+#include <brillo/udev/udev_device.h>
+#include <brillo/udev/udev_enumerate.h>
 #include <brillo/userdb_utils.h>
 #include <chromeos-config/libcros_config/cros_config_interface.h>
 #include <chromeos/constants/vm_tools.h>
@@ -126,6 +130,8 @@ const char* kChromeboxForMeetingAppIdHashes[] = {
     "4AC2B6C63C6480D150DFDA13E4A5956EB1D0DDBB",
     "81986D4F846CEDDDB962643FA501D1780DD441BB",
 };
+
+constexpr char kDmiProductNameFile[] = "/sys/class/dmi/id/product_name";
 
 namespace {
 
@@ -516,6 +522,57 @@ void AddSystemFlags(ChromiumCommandBuilder* builder,
   SetUpSchedulerFlags(builder, cros_config);
 }
 
+std::string ConvertNullToEmptyString(const char* str) {
+  return str ? str : std::string();
+}
+
+void SetUpHPEngageOneProAIOSystem(ChromiumCommandBuilder* builder) {
+  std::string dmi_product_name;
+  if (!base::ReadFileToString(base::FilePath(kDmiProductNameFile),
+                              &dmi_product_name)) {
+    LOG(ERROR) << "failed to load product_name dmi id file";
+    return;
+  }
+  base::TrimWhitespaceASCII(dmi_product_name, base::TRIM_TRAILING,
+                            &dmi_product_name);
+  if (dmi_product_name != std::string("HP Engage One Pro AIO System")) {
+    return;
+  }
+
+  auto udev = brillo::Udev::Create();
+  auto enumerate = udev->CreateEnumerate();
+
+  if (!enumerate->AddMatchSubsystem("input") || !enumerate->ScanDevices())
+    return;
+
+  for (std::unique_ptr<brillo::UdevListEntry> list_entry =
+           enumerate->GetListEntry();
+       list_entry; list_entry = list_entry->GetNext()) {
+    std::string sys_path = ConvertNullToEmptyString(list_entry->GetName());
+
+    std::unique_ptr<brillo::UdevDevice> device =
+        udev->CreateDeviceFromSysPath(sys_path.c_str());
+    if (!device)
+      continue;
+
+    double touch_slop_distance = 0;
+
+    std::string touch_slop_distance_string = ConvertNullToEmptyString(
+        device->GetPropertyValue("CROS_TOUCH_SLOP_DISTANCE"));
+
+    if (!base::StringToDouble(touch_slop_distance_string,
+                              &touch_slop_distance)) {
+      if (touch_slop_distance_string != "")
+        LOG(WARNING) << "Invalid touch-slop-distance: '"
+                     << touch_slop_distance_string << "'.";
+      continue;
+    }
+    builder->AddArg(
+        base::StringPrintf("--touch-slop-distance=%f", touch_slop_distance));
+    break;
+  }
+}
+
 // Adds UI-related flags to the command line.
 void AddUiFlags(ChromiumCommandBuilder* builder,
                 brillo::CrosConfigInterface* cros_config) {
@@ -625,6 +682,7 @@ void AddUiFlags(ChromiumCommandBuilder* builder,
   SetUpHibernateFlag(builder, cros_config);
   SetUpInstantTetheringFlag(builder, cros_config);
   SetUpModemFlag(builder, cros_config);
+  SetUpHPEngageOneProAIOSystem(builder);
 }
 
 // Adds enterprise-related flags to the command line.
