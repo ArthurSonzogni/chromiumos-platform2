@@ -13,7 +13,7 @@
 
 namespace runtime_probe {
 
-class UfsStorageFunction final : public StorageFunction {
+class UfsStorageFunction : public StorageFunction {
   using StorageFunction::StorageFunction;
 
  public:
