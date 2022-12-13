@@ -9,6 +9,7 @@
 
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
+#include <base/strings/string_number_conversions.h>
 #include <chromeos-config/libcros_config/fake_cros_config.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -25,27 +26,28 @@ namespace rmad {
 constexpr char kCrosRootPath[] = "/";
 constexpr char kCrosModelNameKey[] = "name";
 
+constexpr char kModelName[] = "TestModelName";
+
 // cros_config identity path.
-constexpr char kCrosIdentityPath[] = "identity";
+constexpr char kCrosIdentityPath[] = "/identity";
 constexpr char kCrosIdentitySkuKey[] = "sku-id";
 constexpr char kCrosIdentityCustomLabelTagKey[] = "custom-label-tag";
 
+constexpr int kSkuId = 1234567890;
+constexpr char kCustomLabelTag[] = "TestCustomLabelTag";
+
 // cros_config rmad path.
-constexpr char kCrosRmadPath[] = "rmad";
+constexpr char kCrosRmadPath[] = "/rmad";
 constexpr char kCrosRmadEnabledKey[] = "enabled";
 constexpr char kCrosRmadHasCbiKey[] = "has-cbi";
 
-constexpr char kModelName[] = "TestModelName";
-
-constexpr int kSkuId = 1234567890;
-constexpr char kSkuIdStr[] = "1234567890";
-
-constexpr char kCustomLabelTag[] = "TestCustomLabelTag";
-
 constexpr char kTrueStr[] = "true";
 
+// cros_config config.json file.
 constexpr char kJsonStoreFileName[] = "json_store_file";
-constexpr char kCrosConfigJson[] =
+
+// Model "TestModelName" has custom label.
+constexpr char kCrosConfigJsonWithCustomLabel[] =
     R"({
       "chromeos": {
         "configs": [
@@ -80,7 +82,8 @@ constexpr char kCrosConfigJson[] =
       }
     })";
 
-constexpr char kCrosConfigJson2[] =
+// Model "TestModelName" doesn't have custom label.
+constexpr char kCrosConfigJsonWithoutCustomLabel[] =
     R"({
       "chromeos": {
         "configs": [
@@ -133,46 +136,32 @@ class CrosConfigUtilsImplTest : public testing::Test {
   }
 
   std::unique_ptr<CrosConfigUtils> CreateCrosConfigUtils(
-      bool enable_rmad = true) {
-    auto cros_config_path = CreateInputFile(kJsonStoreFileName, kCrosConfigJson,
-                                            std::size(kCrosConfigJson) - 1);
+      bool custom_label = true, bool enable_rmad = true) {
     auto fake_cros_config = std::make_unique<brillo::FakeCrosConfig>();
     fake_cros_config->SetString(kCrosRootPath, kCrosModelNameKey, kModelName);
-    fake_cros_config->SetString(
-        std::string(kCrosRootPath) + std::string(kCrosIdentityPath),
-        kCrosIdentitySkuKey, kSkuIdStr);
-    fake_cros_config->SetString(
-        std::string(kCrosRootPath) + std::string(kCrosIdentityPath),
-        kCrosIdentityCustomLabelTagKey, kCustomLabelTag);
-    if (enable_rmad) {
-      fake_cros_config->SetString(
-          std::string(kCrosRootPath) + std::string(kCrosRmadPath),
-          kCrosRmadEnabledKey, kTrueStr);
-      fake_cros_config->SetString(
-          std::string(kCrosRootPath) + std::string(kCrosRmadPath),
-          kCrosRmadHasCbiKey, kTrueStr);
+    fake_cros_config->SetString(std::string(kCrosIdentityPath),
+                                kCrosIdentitySkuKey,
+                                base::NumberToString(kSkuId));
+
+    base::FilePath cros_config_path;
+    if (custom_label) {
+      cros_config_path =
+          CreateInputFile(kJsonStoreFileName, kCrosConfigJsonWithCustomLabel,
+                          std::size(kCrosConfigJsonWithCustomLabel) - 1);
+      fake_cros_config->SetString(std::string(kCrosIdentityPath),
+                                  kCrosIdentityCustomLabelTagKey,
+                                  kCustomLabelTag);
+    } else {
+      cros_config_path =
+          CreateInputFile(kJsonStoreFileName, kCrosConfigJsonWithoutCustomLabel,
+                          std::size(kCrosConfigJsonWithoutCustomLabel) - 1);
     }
 
-    return std::make_unique<CrosConfigUtilsImpl>(
-        cros_config_path.MaybeAsASCII(), std::move(fake_cros_config));
-  }
-
-  std::unique_ptr<CrosConfigUtils> CreateCrosConfigUtilsWithoutCustomLabel(
-      bool enable_rmad = true) {
-    auto cros_config_path = CreateInputFile(
-        kJsonStoreFileName, kCrosConfigJson2, std::size(kCrosConfigJson2) - 1);
-    auto fake_cros_config = std::make_unique<brillo::FakeCrosConfig>();
-    fake_cros_config->SetString(kCrosRootPath, kCrosModelNameKey, kModelName);
-    fake_cros_config->SetString(
-        std::string(kCrosRootPath) + std::string(kCrosIdentityPath),
-        kCrosIdentitySkuKey, kSkuIdStr);
     if (enable_rmad) {
-      fake_cros_config->SetString(
-          std::string(kCrosRootPath) + std::string(kCrosRmadPath),
-          kCrosRmadEnabledKey, kTrueStr);
-      fake_cros_config->SetString(
-          std::string(kCrosRootPath) + std::string(kCrosRmadPath),
-          kCrosRmadHasCbiKey, kTrueStr);
+      fake_cros_config->SetString(std::string(kCrosRmadPath),
+                                  kCrosRmadEnabledKey, kTrueStr);
+      fake_cros_config->SetString(std::string(kCrosRmadPath),
+                                  kCrosRmadHasCbiKey, kTrueStr);
     }
 
     return std::make_unique<CrosConfigUtilsImpl>(
@@ -186,7 +175,7 @@ class CrosConfigUtilsImplTest : public testing::Test {
 };
 
 TEST_F(CrosConfigUtilsImplTest, GetRmadConfig_Enabled) {
-  auto cros_config_utils = CreateCrosConfigUtils();
+  auto cros_config_utils = CreateCrosConfigUtils(true, true);
 
   RmadConfig config;
   EXPECT_TRUE(cros_config_utils->GetRmadConfig(&config));
@@ -195,7 +184,7 @@ TEST_F(CrosConfigUtilsImplTest, GetRmadConfig_Enabled) {
 }
 
 TEST_F(CrosConfigUtilsImplTest, GetRmadConfig_Disabled) {
-  auto cros_config_utils = CreateCrosConfigUtils(false);
+  auto cros_config_utils = CreateCrosConfigUtils(true, false);
 
   RmadConfig config;
   EXPECT_TRUE(cros_config_utils->GetRmadConfig(&config));
@@ -244,7 +233,7 @@ TEST_F(CrosConfigUtilsImplTest, GetCustomLabelTagList_Success) {
 }
 
 TEST_F(CrosConfigUtilsImplTest, GetEmptyCustomLabelTagList_Success) {
-  auto cros_config_utils = CreateCrosConfigUtilsWithoutCustomLabel();
+  auto cros_config_utils = CreateCrosConfigUtils(false);
 
   std::vector<std::string> custom_label_tag_list;
   EXPECT_TRUE(cros_config_utils->GetCustomLabelTagList(&custom_label_tag_list));
@@ -258,7 +247,7 @@ TEST_F(CrosConfigUtilsImplTest, IsCustomLabel_True) {
 }
 
 TEST_F(CrosConfigUtilsImplTest, IsCustomLabel_False) {
-  auto cros_config_utils = CreateCrosConfigUtilsWithoutCustomLabel();
+  auto cros_config_utils = CreateCrosConfigUtils(false);
 
   EXPECT_FALSE(cros_config_utils->IsCustomLabel());
 }

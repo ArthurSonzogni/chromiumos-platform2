@@ -40,7 +40,7 @@ constexpr char kCrosIdentitySkuKey[] = "sku-id";
 constexpr char kCrosIdentityCustomLabelTagKey[] = "custom-label-tag";
 
 // cros_config rmad path.
-constexpr char kCrosRmadPath[] = "rmad";
+constexpr char kCrosRmadPath[] = "/rmad";
 constexpr char kCrosRmadEnabledKey[] = "enabled";
 constexpr char kCrosRmadHasCbiKey[] = "has-cbi";
 
@@ -62,12 +62,10 @@ CrosConfigUtilsImpl::CrosConfigUtilsImpl(
 bool CrosConfigUtilsImpl::GetRmadConfig(RmadConfig* config) const {
   DCHECK(config);
 
-  config->enabled = GetBooleanWithDefault(
-      std::string(kCrosRootPath) + std::string(kCrosRmadPath),
-      kCrosRmadEnabledKey, false);
-  config->has_cbi = GetBooleanWithDefault(
-      std::string(kCrosRootPath) + std::string(kCrosRmadPath),
-      kCrosRmadHasCbiKey, false);
+  config->enabled = GetBooleanWithDefault(std::string(kCrosRmadPath),
+                                          kCrosRmadEnabledKey, false);
+  config->has_cbi = GetBooleanWithDefault(std::string(kCrosRmadPath),
+                                          kCrosRmadHasCbiKey, false);
 
   return true;
 }
