@@ -706,50 +706,36 @@ const Collection* Attribute::GetCollection(size_t index) const {
 
 Collection::Collection() = default;
 
-Collection::~Collection() {
-  for (auto& name_attr : unknown_attributes) {
-    delete name_attr.second.object;
-  }
-}
+Collection::~Collection() = default;
 
 Attribute* Collection::GetAttribute(AttrName an) {
-  auto it2 = unknown_attributes.find(an);
-  if (it2 != unknown_attributes.end())
-    return it2->second.object;
+  std::string_view name = ToStrView(an);
+  auto it = attributes_index_.find(name);
+  if (it != attributes_index_.end())
+    return attributes_[it->second].get();
   return nullptr;
 }
 
 const Attribute* Collection::GetAttribute(AttrName an) const {
-  auto it2 = unknown_attributes.find(an);
-  if (it2 != unknown_attributes.end())
-    return it2->second.object;
+  std::string_view name = ToStrView(an);
+  auto it = attributes_index_.find(name);
+  if (it != attributes_index_.end())
+    return attributes_[it->second].get();
   return nullptr;
 }
 
 Attribute* Collection::GetAttribute(const std::string& name) {
-  AttrName an = AttrName::_unknown;
-  if (!FromString(name, &an)) {
-    for (const auto& e : unknown_names) {
-      if (e.second == name) {
-        an = e.first;
-        break;
-      }
-    }
-  }
-  return GetAttribute(an);
+  auto it = attributes_index_.find(name);
+  if (it != attributes_index_.end())
+    return attributes_[it->second].get();
+  return nullptr;
 }
 
 const Attribute* Collection::GetAttribute(const std::string& name) const {
-  AttrName an = AttrName::_unknown;
-  if (!FromString(name, &an)) {
-    for (const auto& e : unknown_names) {
-      if (e.second == name) {
-        an = e.first;
-        break;
-      }
-    }
-  }
-  return GetAttribute(an);
+  auto it = attributes_index_.find(name);
+  if (it != attributes_index_.end())
+    return attributes_[it->second].get();
+  return nullptr;
 }
 
 Attribute* Collection::AddUnknownAttribute(const std::string& name,
@@ -780,9 +766,9 @@ Attribute* Collection::AddUnknownAttribute(const std::string& name,
   AttrDef def;
   def.ipp_type = type;
   def.cc_type = InternalTypeForUnknownAttribute(type);
-  unknown_attributes[an].object = new Attribute(this, an, def);
-  unknown_attributes_order_.push_back(an);
-  return unknown_attributes[an].object;
+  attributes_.emplace_back(new Attribute(this, an, def));
+  attributes_index_[attributes_.back()->Name()] = attributes_.size() - 1;
+  return attributes_.back().get();
 }
 
 Code Collection::AddAttr(const std::string& name, ValueTag tag) {
@@ -980,17 +966,17 @@ Code Collection::AddAttr(const std::string& name,
 
 std::vector<Attribute*> Collection::GetAllAttributes() {
   std::vector<Attribute*> v;
-  v.reserve(unknown_attributes.size());
-  for (const auto an : unknown_attributes_order_)
-    v.push_back(unknown_attributes.at(an).object);
+  v.reserve(attributes_.size());
+  for (std::unique_ptr<Attribute>& attr : attributes_)
+    v.push_back(attr.get());
   return v;
 }
 
 std::vector<const Attribute*> Collection::GetAllAttributes() const {
   std::vector<const Attribute*> v;
-  v.reserve(unknown_attributes.size());
-  for (const auto an : unknown_attributes_order_)
-    v.push_back(unknown_attributes.at(an).object);
+  v.reserve(attributes_.size());
+  for (const std::unique_ptr<Attribute>& attr : attributes_)
+    v.push_back(attr.get());
   return v;
 }
 

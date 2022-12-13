@@ -11,6 +11,7 @@
 #include <memory>
 #include <string>
 #include <string_view>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -291,17 +292,15 @@ class IPP_EXPORT Collection {
   Attribute* GetAttribute(AttrName);
   const Attribute* GetAttribute(AttrName) const;
 
-  // Internal structure, represent attributes defined in runtime.
-  struct UnknownAttr {
-    Attribute* object;
-  };
-  // Stores attributes defined in runtime.
-  std::map<AttrName, UnknownAttr> unknown_attributes;
   // Mapping between temporary AttrName created for unknown attributes and
   // their real names.
   std::map<AttrName, std::string> unknown_names;
-  // Stores the order of the unknown attributes.
-  std::vector<AttrName> unknown_attributes_order_;
+
+  // Stores attributes in the order they are saved in the frame.
+  std::vector<std::unique_ptr<Attribute>> attributes_;
+
+  // Indexes attributes by name. Values are indices from `attributes_`.
+  std::unordered_map<std::string_view, size_t> attributes_index_;
 };
 
 // Base class representing Attribute, contains general API for Attribute.
