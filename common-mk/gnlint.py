@@ -669,6 +669,37 @@ def GnLintPkgConfigs(gndata):
     return ret
 
 
+# List libs we don't want people using, and the suggested replacement.
+KNOWN_BAD_PC_LIBS = {
+    "libpcre": "re2",
+    "libpcrecpp": "re2",
+    "libpcreposix": "re2",
+}
+
+
+def GnLintLibraries(gndata):
+    """Flag libraries that people shouldn't be using."""
+    ret = []
+
+    def CheckNode(node):
+        # detect addition to libraries.
+        # ldflags is already detected as errors by GnLintLibFlags.
+        for n in ExtractLiteralAssignment(node, ["pkg_deps"]):
+            lib = GetNodeValue(n)
+            if lib not in KNOWN_BAD_PC_LIBS:
+                continue
+            alt = KNOWN_BAD_PC_LIBS[lib]
+            ret.append(
+                Issue(
+                    n.get("location"),
+                    f'CrOS uses the library "{alt}" instead of "{lib}"',
+                )
+            )
+
+    WalkGn(CheckNode, gndata)
+    return ret
+
+
 # Helper functions for GnLintOrderingWithinTarget.
 def IsBinaryNode(node):
     """Returns True if the node type is BINARY."""
@@ -916,6 +947,7 @@ _ALL_LINTERS = {
     "GnLintDefineFlags": GnLintDefineFlags,
     "GnLintDefines": GnLintDefines,
     "GnLintCommonTesting": GnLintCommonTesting,
+    "GnLintLibraries": GnLintLibraries,
     "GnLintStaticSharedLibMixing": GnLintStaticSharedLibMixing,
     "GnLintSourceFileNames": GnLintSourceFileNames,
     "GnLintPkgConfigs": GnLintPkgConfigs,
