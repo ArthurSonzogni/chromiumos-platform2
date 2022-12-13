@@ -526,10 +526,13 @@ enum class AuthFactorBackingStoreConfig {
 // These values are persisted to logs. Entries should not be renumbered and
 // numeric values should never be reused.
 enum class VkToUssMigrationStatus {
-  kSuccess = 0,        // Migration succeeded with no errors.
-  kFailedPersist = 1,  // Migration failed when persisting to USS.
-  kFailedInput = 2,    // Migration unable to construct an AuthInput.
-  kMaxValue = kFailedInput,
+  kSuccess = 0,                      // Migration succeeded with no errors.
+  kFailedPersist = 1,                // Migration failed when persisting to USS.
+  kFailedInput = 2,                  // Unable to construct an AuthInput.
+  kFailedUssCreation = 3,            // Unable to construct USS.
+  kFailedAddingMigrationSecret = 4,  // Unable to construct a migration secret.
+  kFailedUssDecrypt = 5,             // Unable to decrypt USS.
+  kMaxValue = kFailedUssDecrypt,
 };
 
 // Initializes cryptohome metrics. If this is not called, all calls to Report*

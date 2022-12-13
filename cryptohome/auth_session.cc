@@ -1040,6 +1040,9 @@ void AuthSession::OnMigrationUssCreated(
   if (!user_secret_stash || uss_main_key.empty()) {
     LOG(ERROR) << "Uss migration failed for VaultKeyset with label: "
                << key_data_.label();
+    // We don't report VK to USS migration status here because it is expected
+    // that the actual migration will have already reported a more precise error
+    // directly.
     std::move(on_done).Run(std::move(pre_migration_status));
     return;
   }
@@ -1054,7 +1057,7 @@ void AuthSession::OnMigrationUssCreated(
       CreateAuthInputForMigration(auth_input, auth_factor_type);
   if (!migration_auth_input_status.ok()) {
     LOG(ERROR) << "Failed to create migration AuthInput.";
-    // TODO(b:258711982): Create a new success metric and report the failure.
+    ReportVkToUssMigrationStatus(VkToUssMigrationStatus::kFailedInput);
     std::move(on_done).Run(std::move(pre_migration_status));
   }
 
@@ -2287,10 +2290,12 @@ void AuthSession::PersistAuthFactorToUserSecretStashOnMigration(
       std::move(callback_error), std::move(key_blobs),
       std::move(auth_block_state));
 
-  if (!status.ok()) {
+  if (status.ok()) {
+    ReportVkToUssMigrationStatus(VkToUssMigrationStatus::kSuccess);
+  } else {
     LOG(ERROR) << "Failed to migrate VaultKeyset with label: "
                << auth_factor_label;
-    // TODO(b/258711982): Report the failure in the migration success metrics.
+    ReportVkToUssMigrationStatus(VkToUssMigrationStatus::kFailedPersist);
   }
 
   std::move(on_done).Run(std::move(pre_migration_status));

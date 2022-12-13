@@ -68,8 +68,7 @@ void UssMigrator::MigrateVaultKeysetToUss(
       LOG(ERROR) << "UserSecretStash creation failed during migration of "
                     "VaultKeyset with label: "
                  << vault_keyset.GetLabel();
-      // TODO(b/258711982): Report the failure the the migration success
-      // metrics.
+      ReportVkToUssMigrationStatus(VkToUssMigrationStatus::kFailedUssCreation);
       std::move(completion_callback)
           .Run(/*user_secret_stash=*/nullptr,
                /*uss_main_key=*/brillo::SecureBlob());
@@ -78,7 +77,8 @@ void UssMigrator::MigrateVaultKeysetToUss(
     user_secret_stash = std::move(uss_status).value();
     uss_main_key = UserSecretStash::CreateRandomMainKey();
     if (!AddMigrationSecretToUss(uss_main_key, *user_secret_stash)) {
-      // TODO(b/258711982): Report the failure in the migration success metrics.
+      ReportVkToUssMigrationStatus(
+          VkToUssMigrationStatus::kFailedAddingMigrationSecret);
       std::move(completion_callback)
           .Run(/*user_secret_stash=*/nullptr,
                /*uss_main_key=*/brillo::SecureBlob());
@@ -93,7 +93,7 @@ void UssMigrator::MigrateVaultKeysetToUss(
         /*wrapping_key=*/*migration_secret_, &uss_main_key);
     if (!uss_status.ok()) {
       LOG(ERROR) << "Failed to decrypt the UserSecretStash during migration.";
-      // TODO(b/258711982): Report the failure in the migration success metrics.
+      ReportVkToUssMigrationStatus(VkToUssMigrationStatus::kFailedUssDecrypt);
       std::move(completion_callback)
           .Run(/*user_secret_stash=*/nullptr,
                /*uss_main_key=*/brillo::SecureBlob());
