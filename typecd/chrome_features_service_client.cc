@@ -31,14 +31,11 @@ ChromeFeaturesServiceClient::ChromeFeaturesServiceClient(
 }
 
 void ChromeFeaturesServiceClient::FetchPeripheralDataAccessEnabled() {
-  peripheral_data_access_en_ = IsPeripheralDataAccessEnabled();
-}
-
-bool ChromeFeaturesServiceClient::IsPeripheralDataAccessEnabled() {
   if (!proxy_) {
     LOG(ERROR)
         << "No Chrome proxy created, can't fetch peripheral data setting.";
-    return false;
+    SetPeripheralDataAccessEnabled(false);
+    return;
   }
 
   int retries = 10;
@@ -53,7 +50,8 @@ bool ChromeFeaturesServiceClient::IsPeripheralDataAccessEnabled() {
       bool enabled;
       dbus::MessageReader reader(dbus_response.get());
       reader.PopBool(&enabled);
-      return enabled;
+      SetPeripheralDataAccessEnabled(enabled);
+      return;
     }
 
     LOG(WARNING) << "Chrome features D-Bus retries remaining: " << retries;
@@ -62,7 +60,7 @@ bool ChromeFeaturesServiceClient::IsPeripheralDataAccessEnabled() {
 
   LOG(ERROR)
       << "Failed to get Chrome feature: DevicePciPeripheralDataAccessEnabled.";
-  return false;
+  SetPeripheralDataAccessEnabled(false);
 }
 
 void ChromeFeaturesServiceClient::SetPeripheralDataAccessEnabled(bool enabled) {

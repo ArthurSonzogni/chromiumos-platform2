@@ -26,8 +26,6 @@ class ChromeFeaturesServiceClient {
   // Retrieve the Peripheral Data Access setting state from Chrome.
   void FetchPeripheralDataAccessEnabled();
 
-  bool IsPeripheralDataAccessEnabled();
-
   bool GetPeripheralDataAccessEnabled() { return peripheral_data_access_en_; }
   void SetPeripheralDataAccessEnabled(bool enabled);
 
