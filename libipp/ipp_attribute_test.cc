@@ -23,7 +23,7 @@ void TestNewAttribute(Attribute* attr, std::string_view name, ValueTag tag) {
 
 TEST(attribute, UnknownValueAttribute) {
   Collection coll;
-  Attribute* attr = coll.AddUnknownAttribute("abc", AttrType::name);
+  Attribute* attr = coll.AddUnknownAttribute("abc", ValueTag::nameWithLanguage);
   TestNewAttribute(attr, "abc", ValueTag::nameWithLanguage);
   ASSERT_TRUE(attr->SetValue("val"));
   StringWithLanguage sl;
@@ -34,7 +34,7 @@ TEST(attribute, UnknownValueAttribute) {
 
 TEST(attribute, UnknownCollectionAttribute) {
   Collection coll;
-  Attribute* attr = coll.AddUnknownAttribute("abcd", AttrType::collection);
+  Attribute* attr = coll.AddUnknownAttribute("abcd", ValueTag::collection);
   TestNewAttribute(attr, "abcd", ValueTag::collection);
   EXPECT_EQ(attr->GetCollection(), nullptr);
   attr->Resize(3);

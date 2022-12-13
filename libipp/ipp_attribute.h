@@ -37,28 +37,6 @@ enum class AttrState : uint8_t {
   admin_define = 0x17       // [rfc3380]
 };
 
-// Represents types of values hold by attributes (see [rfc8010]).
-// "collection" means that the attribute has Collection object as a value.
-// It is DEPRECATED. Use ValueTag instead.
-enum class AttrType : uint8_t {
-  integer = 0x21,
-  boolean = 0x22,
-  enum_ = 0x23,
-  octetString = 0x30,
-  dateTime = 0x31,
-  resolution = 0x32,
-  rangeOfInteger = 0x33,
-  collection = 0x34,  // use begCollection tag value [rfc8010]
-  text = 0x35,        // use textWithLanguage tag value [rfc8010]
-  name = 0x36,        // use nameWithLanguage tag value [rfc8010]
-  keyword = 0x44,
-  uri = 0x45,
-  uriScheme = 0x46,
-  charset = 0x47,
-  naturalLanguage = 0x48,
-  mimeMediaType = 0x49
-};
-
 // Values of ValueTag enum are copied from IPP specification; this is why
 // they do not follow the standard naming rule.
 // ValueTag defines type of an attribute. It is also called as `syntax` in the
@@ -178,7 +156,6 @@ struct DateTime {
 // Functions converting basic types to string. For enums it returns empty
 // string if given value is not defined.
 IPP_EXPORT std::string ToString(AttrState value);
-IPP_EXPORT std::string ToString(AttrType value);
 IPP_EXPORT std::string_view ToStrView(ValueTag tag);
 IPP_EXPORT std::string ToString(bool value);
 IPP_EXPORT std::string ToString(int value);
@@ -209,7 +186,7 @@ class Collection;
 
 // Helper structure
 struct AttrDef {
-  AttrType ipp_type;
+  ValueTag ipp_type;
   InternalType cc_type;
 };
 
@@ -239,7 +216,7 @@ class IPP_EXPORT Collection {
   // Adds new attribute to the collection. Returns nullptr <=> an attribute
   // with this name already exists in the collection or given name/type are
   // incorrect.
-  Attribute* AddUnknownAttribute(const std::string& name, AttrType type);
+  Attribute* AddUnknownAttribute(const std::string& name, ValueTag type);
 
   // Add a new attribute without values. `tag` must be Out-Of-Band (see ValueTag
   // definition). Possible errors:
@@ -413,9 +390,6 @@ class IPP_EXPORT Attribute {
 
   // Constructor is called from Collection only. `owner` cannot be nullptr.
   Attribute(Collection* owner, AttrName name, AttrDef def);
-
-  // Returns a type of the attribute.
-  AttrType GetType() const;
 
   // Returns a state of an attribute. Default state is always AttrState::unset,
   // setting any value with SetValues(...) switches the state to AttrState::set.

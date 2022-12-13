@@ -14,22 +14,22 @@
 
 namespace {
 
-ipp::InternalType InternalTypeForUnknownAttribute(ipp::AttrType type) {
+ipp::InternalType InternalTypeForUnknownAttribute(ipp::ValueTag type) {
   switch (type) {
-    case ipp::AttrType::collection:
+    case ipp::ValueTag::collection:
       return ipp::InternalType::kCollection;
-    case ipp::AttrType::boolean:
-    case ipp::AttrType::integer:
-    case ipp::AttrType::enum_:
+    case ipp::ValueTag::boolean:
+    case ipp::ValueTag::integer:
+    case ipp::ValueTag::enum_:
       return ipp::InternalType::kInteger;
-    case ipp::AttrType::dateTime:
+    case ipp::ValueTag::dateTime:
       return ipp::InternalType::kDateTime;
-    case ipp::AttrType::resolution:
+    case ipp::ValueTag::resolution:
       return ipp::InternalType::kResolution;
-    case ipp::AttrType::rangeOfInteger:
+    case ipp::ValueTag::rangeOfInteger:
       return ipp::InternalType::kRangeOfInteger;
-    case ipp::AttrType::name:
-    case ipp::AttrType::text:
+    case ipp::ValueTag::nameWithLanguage:
+    case ipp::ValueTag::textWithLanguage:
       return ipp::InternalType::kStringWithLanguage;
     default:
       return ipp::InternalType::kString;
@@ -99,12 +99,12 @@ struct Converter<int32_t, std::string> {
                       const AttrDef& def,
                       int32_t in_val,
                       std::string* out_val) {
-    if (def.ipp_type == AttrType::boolean) {
+    if (def.ipp_type == ValueTag::boolean) {
       *out_val = ToString(static_cast<bool>(in_val));
-    } else if (def.ipp_type == AttrType::enum_ ||
-               def.ipp_type == AttrType::keyword) {
+    } else if (def.ipp_type == ValueTag::enum_ ||
+               def.ipp_type == ValueTag::keyword) {
       *out_val = ToString(name, in_val);
-    } else if (def.ipp_type == AttrType::integer) {
+    } else if (def.ipp_type == ValueTag::integer) {
       *out_val = ToString(in_val);
     } else {
       return false;
@@ -128,18 +128,18 @@ struct Converter<std::string, int32_t> {
                       const std::string& in_val,
                       int32_t* out_val) {
     bool result = false;
-    if (def.ipp_type == AttrType::boolean) {
+    if (def.ipp_type == ValueTag::boolean) {
       bool out;
       result = FromString(in_val, &out);
       if (result)
         *out_val = out;
-    } else if (def.ipp_type == AttrType::enum_ ||
-               def.ipp_type == AttrType::keyword) {
+    } else if (def.ipp_type == ValueTag::enum_ ||
+               def.ipp_type == ValueTag::keyword) {
       int out;
       result = FromString(in_val, name, &out);
       if (result)
         *out_val = out;
-    } else if (def.ipp_type == AttrType::integer) {
+    } else if (def.ipp_type == ValueTag::integer) {
       int out;
       result = FromString(in_val, &out);
       if (result)
@@ -406,29 +406,13 @@ Code AddAttributeToCollection(Collection* coll,
     return Code::kValueOutOfRange;
   }
 
-  // Translate ValueTag to AttrType (enum class used in the old API).
-  AttrType attrType;
-  if (IsOutOfBand(tag)) {
-    // In the old API, Out-Of-Band tags are stored as AttrState.
-    // Value of AttrType does not matter.
-    attrType = AttrType::integer;
-  } else if (tag == ValueTag::nameWithoutLanguage) {
-    attrType = AttrType::name;
-  } else if (tag == ValueTag::textWithoutLanguage) {
-    attrType = AttrType::text;
-  } else {
-    attrType = static_cast<AttrType>(tag);
-  }
-
   // Create a new attribute. For Out-Of-Band tags set the state.
   // For other tags set the values.
-  auto attr = coll->AddUnknownAttribute(name, attrType);
+  auto attr = coll->AddUnknownAttribute(name, tag);
   if (attr == nullptr) {
     return Code::kTooManyAttributes;
   }
-  if (IsOutOfBand(tag)) {
-    attr->SetState(static_cast<AttrState>(tag));
-  } else {
+  if (!IsOutOfBand(tag)) {
     attr->Resize(values.size());
     for (size_t i = 0; i < values.size(); ++i)
       attr->SetValue(values[i], i);
@@ -457,44 +441,6 @@ std::string ToString(AttrState s) {
       return "delete-attribute";
     case AttrState::admin_define:
       return "admin-define";
-  }
-  return "";
-}
-
-std::string ToString(AttrType at) {
-  switch (at) {
-    case AttrType::integer:
-      return "integer";
-    case AttrType::boolean:
-      return "boolean";
-    case AttrType::enum_:
-      return "enum";
-    case AttrType::octetString:
-      return "octetString";
-    case AttrType::dateTime:
-      return "dateTime";
-    case AttrType::resolution:
-      return "resolution";
-    case AttrType::rangeOfInteger:
-      return "rangeOfInteger";
-    case AttrType::collection:
-      return "collection";
-    case AttrType::text:
-      return "text";
-    case AttrType::name:
-      return "name";
-    case AttrType::keyword:
-      return "keyword";
-    case AttrType::uri:
-      return "uri";
-    case AttrType::uriScheme:
-      return "uriScheme";
-    case AttrType::charset:
-      return "charset";
-    case AttrType::naturalLanguage:
-      return "naturalLanguage";
-    case AttrType::mimeMediaType:
-      return "mimeMediaType";
   }
   return "";
 }
@@ -655,10 +601,6 @@ Attribute::~Attribute() {
   DeleteAttr(values_, def_);
 }
 
-AttrType Attribute::GetType() const {
-  return def_.ipp_type;
-}
-
 AttrState Attribute::GetState() const {
   Collection* coll = owner_;
   if (values_)
@@ -674,7 +616,7 @@ ValueTag Attribute::Tag() const {
   if (state >= static_cast<AttrState>(0x10)) {
     return static_cast<ValueTag>(state);
   }
-  return static_cast<ValueTag>(GetType());
+  return def_.ipp_type;
 }
 
 void Attribute::SetState(AttrState status) {
@@ -858,12 +800,12 @@ const Attribute* Collection::GetAttribute(const std::string& name) const {
 }
 
 Attribute* Collection::AddUnknownAttribute(const std::string& name,
-                                           AttrType type) {
+                                           ValueTag type) {
   // name cannot be empty
   if (name.empty())
     return nullptr;
   // type must be correct
-  if (ToString(type) == "")
+  if (!IsValid(type))
     return nullptr;
   //
   AttrName an = AttrName::_unknown;
@@ -887,6 +829,9 @@ Attribute* Collection::AddUnknownAttribute(const std::string& name,
   def.cc_type = InternalTypeForUnknownAttribute(type);
   unknown_attributes[an].object = new Attribute(this, an, def);
   unknown_attributes_order_.push_back(an);
+  if (IsOutOfBand(type)) {
+    states_[an] = static_cast<AttrState>(type);
+  }
   return unknown_attributes[an].object;
 }
 
@@ -1071,7 +1016,7 @@ Code Collection::AddAttr(const std::string& name,
   }
 
   // Create the attribute and retrieve the pointers.
-  auto attr = AddUnknownAttribute(name, AttrType::collection);
+  auto attr = AddUnknownAttribute(name, ValueTag::collection);
   if (attr == nullptr) {
     return Code::kTooManyAttributes;
   }
