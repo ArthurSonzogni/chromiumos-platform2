@@ -18,7 +18,11 @@ void TestNewAttribute(Attribute* attr, std::string_view name, ValueTag tag) {
   EXPECT_EQ(attr->Name(), name);
   EXPECT_EQ(attr->Tag(), tag);
   // default state after creation
-  EXPECT_EQ(attr->Size(), 0);
+  if (IsOutOfBand(tag)) {
+    EXPECT_EQ(attr->Size(), 0);
+  } else {
+    EXPECT_EQ(attr->Size(), 1);
+  }
 }
 
 TEST(attribute, UnknownValueAttribute) {
@@ -36,7 +40,8 @@ TEST(attribute, UnknownCollectionAttribute) {
   Collection coll;
   Attribute* attr = coll.AddUnknownAttribute("abcd", ValueTag::collection);
   TestNewAttribute(attr, "abcd", ValueTag::collection);
-  EXPECT_EQ(attr->GetCollection(), nullptr);
+  EXPECT_NE(attr->GetCollection(), nullptr);
+  EXPECT_EQ(attr->GetCollection(1), nullptr);
   attr->Resize(3);
   EXPECT_NE(attr->GetCollection(), nullptr);
   EXPECT_NE(attr->GetCollection(2), nullptr);

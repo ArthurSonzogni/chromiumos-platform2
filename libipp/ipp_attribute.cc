@@ -322,8 +322,6 @@ bool ReadConvertValueTyped(void* const& values,
                            ApiType* value) {
   if (value == nullptr)
     return false;
-  if (values == nullptr)
-    return false;
 
   const InternalType* internal_value = nullptr;
   auto v = ReadValueConstPtr<std::vector<InternalType>>(&values);
@@ -422,28 +420,6 @@ Code AddAttributeToCollection(Collection* coll,
 }
 
 }  // end of namespace
-
-std::string ToString(AttrState s) {
-  switch (s) {
-    case AttrState::unset:
-      return "unset";
-    case AttrState::set:
-      return "set";
-    case AttrState::unsupported:
-      return "unsupported";
-    case AttrState::unknown:
-      return "unknown";
-    case AttrState::novalue_:
-      return "novalue";
-    case AttrState::not_settable:
-      return "not-settable";
-    case AttrState::delete_attribute:
-      return "delete-attribute";
-    case AttrState::admin_define:
-      return "admin-define";
-  }
-  return "";
-}
 
 std::string_view ToStrView(ValueTag tag) {
   switch (tag) {
@@ -601,39 +577,17 @@ Attribute::~Attribute() {
   DeleteAttr(values_, def_);
 }
 
-AttrState Attribute::GetState() const {
-  Collection* coll = owner_;
-  if (values_)
-    return AttrState::set;
-  auto it = coll->states_.find(name_);
-  if (it != coll->states_.end())
-    return it->second;
-  return AttrState::unset;
-}
-
 ValueTag Attribute::Tag() const {
-  const AttrState state = GetState();
-  if (state >= static_cast<AttrState>(0x10)) {
-    return static_cast<ValueTag>(state);
-  }
   return def_.ipp_type;
-}
-
-void Attribute::SetState(AttrState status) {
-  Collection* coll = owner_;
-  if (status == AttrState::set) {
-    ResizeAttr(values_, def_, 1, false);
-    return;
-  }
-  DeleteAttr(values_, def_);
-  if (status != AttrState::unset) {
-    coll->states_[name_] = status;
-  }
 }
 
 Attribute::Attribute(Collection* owner, AttrName name, AttrDef def)
     : owner_(owner), name_(name), def_(def) {
   assert(owner != nullptr);
+  // Attributes with non-out-of-band tag must have at least one value.
+  if (!IsOutOfBand(def.ipp_type)) {
+    ResizeAttr(values_, def_, 1, false);
+  }
 }
 
 std::string_view Attribute::Name() const {
@@ -673,10 +627,9 @@ size_t Attribute::Size() const {
 }
 
 void Attribute::Resize(size_t new_size) {
-  Collection* coll = owner_;
+  if (IsOutOfBand(def_.ipp_type) || new_size == 0)
+    return;
   ResizeAttr(values_, def_, new_size, true);
-  if (new_size > 0)
-    coll->states_.erase(name_);
 }
 
 bool Attribute::GetValue(std::string* val, size_t index) const {
@@ -829,9 +782,6 @@ Attribute* Collection::AddUnknownAttribute(const std::string& name,
   def.cc_type = InternalTypeForUnknownAttribute(type);
   unknown_attributes[an].object = new Attribute(this, an, def);
   unknown_attributes_order_.push_back(an);
-  if (IsOutOfBand(type)) {
-    states_[an] = static_cast<AttrState>(type);
-  }
   return unknown_attributes[an].object;
 }
 
@@ -1050,6 +1000,8 @@ std::vector<const Attribute*> Collection::GetAllAttributes() const {
 // conversion is not possible (|value| is incorrect).
 template <typename ApiType>
 bool Attribute::SaveValue(size_t index, const ApiType& value) {
+  if (IsOutOfBand(def_.ipp_type))
+    return false;
   bool result = false;
   switch (def_.cc_type) {
     case InternalType::kInteger:
@@ -1079,8 +1031,6 @@ bool Attribute::SaveValue(size_t index, const ApiType& value) {
     case InternalType::kCollection:
       return false;
   }
-  if (result)
-    owner_->states_.erase(name_);
   return result;
 }
 

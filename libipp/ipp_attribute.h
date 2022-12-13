@@ -22,21 +22,6 @@ namespace ipp {
 // Forward declaration
 enum class Code;
 
-// Represents the current state of the attribute:
-// set/unset or one of the out-of-band values.
-// "unset" means that the attribute is not included in a IPP frame.
-// It is DEPRECATED. Use ValueTag instead.
-enum class AttrState : uint8_t {
-  unset = 0x00,             // internal
-  set = 0x01,               // internal
-  unsupported = 0x10,       // [rfc8010]
-  unknown = 0x12,           // [rfc8010]
-  novalue_ = 0x13,          // [rfc8010]
-  not_settable = 0x15,      // [rfc3380]
-  delete_attribute = 0x16,  // [rfc3380]
-  admin_define = 0x17       // [rfc3380]
-};
-
 // Values of ValueTag enum are copied from IPP specification; this is why
 // they do not follow the standard naming rule.
 // ValueTag defines type of an attribute. It is also called as `syntax` in the
@@ -155,7 +140,6 @@ struct DateTime {
 
 // Functions converting basic types to string. For enums it returns empty
 // string if given value is not defined.
-IPP_EXPORT std::string ToString(AttrState value);
 IPP_EXPORT std::string_view ToStrView(ValueTag tag);
 IPP_EXPORT std::string ToString(bool value);
 IPP_EXPORT std::string ToString(int value);
@@ -307,9 +291,6 @@ class IPP_EXPORT Collection {
   Attribute* GetAttribute(AttrName);
   const Attribute* GetAttribute(AttrName) const;
 
-  // Stores states of the attributes (see AttrState).
-  std::map<AttrName, AttrState> states_;
-
   // Internal structure, represent attributes defined in runtime.
   struct UnknownAttr {
     Attribute* object;
@@ -336,11 +317,6 @@ class IPP_EXPORT Attribute {
   // Returns tag of the attribute.
   ValueTag Tag() const;
 
-  // Sets state of the attribute (set, unset or one of the out-of-band values).
-  // * If (new_state != set), it deletes all values stored in the attribute.
-  // * If (new_state == set), it adds single value if the attribute is empty.
-  void SetState(AttrState new_state);
-
   // Returns an attribute's name. It is always a non-empty string.
   std::string_view Name() const;
 
@@ -349,9 +325,7 @@ class IPP_EXPORT Attribute {
   size_t Size() const;
 
   // Resizes the attribute (changes the number of stored values/collections).
-  // (IsASet() == false) and (new_size > 1) => does nothing.
-  // (Size() > 0) and (|new_size| == 0) => the attribute's state is changed
-  // to AttrState::unset.
+  // When (IsOutOfBand(Tag()) or `new_size` equals 0 this method does nothing.
   void Resize(size_t new_size);
 
   // Retrieves a value from an attribute, returns true for success and
@@ -359,7 +333,7 @@ class IPP_EXPORT Attribute {
   // to given variable (in this case, the given variable is not modified).
   // For attributes with collections use GetCollection().
   // (val == nullptr) => does nothing and returns false.
-  // (GetType() == collection) => does nothing and returns false.
+  // (Tag() == collection) => does nothing and returns false.
   bool GetValue(std::string* val, size_t index = 0) const;
   bool GetValue(StringWithLanguage* val, size_t index = 0) const;
   bool GetValue(int* val, size_t index = 0) const;
@@ -367,12 +341,12 @@ class IPP_EXPORT Attribute {
   bool GetValue(RangeOfInteger* val, size_t index = 0) const;
   bool GetValue(DateTime* val, size_t index = 0) const;
 
-  // Stores a value in given attribute's element. If the attribute is a set
-  // and given index is out of range, the underlying container is resized.
+  // Stores a value in given attribute's element. If given index is out of
+  // range, the underlying container is resized.
   // Returns true for success and false if given value cannot be converted
   // to internal variable or one of the following conditions are met:
-  // * (GetType() == collection)
-  // * (IsASet() == false && index != 0).
+  // * Tag() == collection
+  // * IsOutOfBand(Tag())
   bool SetValue(const std::string& val, size_t index = 0);
   bool SetValue(const StringWithLanguage& val, size_t index = 0);
   bool SetValue(const int& val, size_t index = 0);
@@ -381,7 +355,7 @@ class IPP_EXPORT Attribute {
   bool SetValue(const DateTime& val, size_t index = 0);
 
   // Returns a pointer to Collection.
-  // (GetType() != collection || index >= Size()) <=> returns nullptr.
+  // (Tag() != collection || index >= Size()) <=> returns nullptr.
   Collection* GetCollection(size_t index = 0);
   const Collection* GetCollection(size_t index = 0) const;
 
@@ -390,11 +364,6 @@ class IPP_EXPORT Attribute {
 
   // Constructor is called from Collection only. `owner` cannot be nullptr.
   Attribute(Collection* owner, AttrName name, AttrDef def);
-
-  // Returns a state of an attribute. Default state is always AttrState::unset,
-  // setting any value with SetValues(...) switches the state to AttrState::set.
-  // State can be also set by hand with SetState() method.
-  AttrState GetState() const;
 
   // Returns enum value corresponding to attributes name. If the name has
   // no corresponding AttrName value, it returns AttrName::_unknown.
