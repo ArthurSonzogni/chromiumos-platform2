@@ -36,8 +36,8 @@ class ResourceCollectorMemoryTest : public ::testing::TestWithParam<uint64_t> {
       base::test::TaskEnvironment::TimeSource::MOCK_TIME};
   // The time interval that resource collector is expected to collect resources
   const base::TimeDelta kInterval{base::Seconds(20)};
-  const scoped_refptr<Resourcemanager> resource_{
-      base::MakeRefCounted<Resourcemanager>(4 * 1024U * 1024U)};
+  const scoped_refptr<ResourceManager> resource_{
+      base::MakeRefCounted<ResourceManager>(4 * 1024U * 1024U)};
   Metrics::TestEnvironment metrics_test_environment_;
   ResourceCollectorMemory resource_collector_{kInterval, resource_};
 };

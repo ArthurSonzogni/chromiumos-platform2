@@ -30,7 +30,7 @@ TestCompressionModuleStrict::TestCompressionModuleStrict()
   ON_CALL(*this, CompressRecord)
       .WillByDefault(Invoke(
           [](std::string record,
-             scoped_refptr<Resourcemanager> resource_manager,
+             scoped_refptr<ResourceManager> resource_manager,
              base::OnceCallback<void(
                  std::string, std::optional<CompressionInformation>)> cb) {
             // compression_info is not set.

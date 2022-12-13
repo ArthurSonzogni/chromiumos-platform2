@@ -59,12 +59,12 @@ class StorageOptions {
   }
   StorageOptions& set_max_total_files_size(uint64_t max_total_files_size) {
     disk_space_resource_ =
-        base::MakeRefCounted<Resourcemanager>(max_total_files_size);
+        base::MakeRefCounted<ResourceManager>(max_total_files_size);
     return *this;
   }
   StorageOptions& set_max_total_memory_size(uint64_t max_total_memory_size) {
     memory_resource_ =
-        base::MakeRefCounted<Resourcemanager>(max_total_memory_size);
+        base::MakeRefCounted<ResourceManager>(max_total_memory_size);
     return *this;
   }
   const base::FilePath& directory() const { return directory_; }
@@ -79,10 +79,10 @@ class StorageOptions {
     return memory_resource_->GetTotal();
   }
 
-  scoped_refptr<Resourcemanager> disk_space_resource() const {
+  scoped_refptr<ResourceManager> disk_space_resource() const {
     return disk_space_resource_.get();
   }
-  scoped_refptr<Resourcemanager> memory_resource() const {
+  scoped_refptr<ResourceManager> memory_resource() const {
     return memory_resource_;
   }
 
@@ -98,8 +98,8 @@ class StorageOptions {
   size_t max_record_size_ = 1U * 1024UL * 1024UL;  // 1 MiB
 
   // Resources managements.
-  scoped_refptr<Resourcemanager> memory_resource_;
-  scoped_refptr<Resourcemanager> disk_space_resource_;
+  scoped_refptr<ResourceManager> memory_resource_;
+  scoped_refptr<ResourceManager> disk_space_resource_;
 };
 
 // Single queue options class allowing to set parameters individually, e.g.:
@@ -145,10 +145,10 @@ class QueueOptions {
   uint64_t max_single_file_size() const { return max_single_file_size_; }
   base::TimeDelta upload_period() const { return upload_period_; }
   base::TimeDelta upload_retry_delay() const { return upload_retry_delay_; }
-  scoped_refptr<Resourcemanager> disk_space_resource() const {
+  scoped_refptr<ResourceManager> disk_space_resource() const {
     return storage_options_.disk_space_resource();
   }
-  scoped_refptr<Resourcemanager> memory_resource() const {
+  scoped_refptr<ResourceManager> memory_resource() const {
     return storage_options_.memory_resource();
   }
 

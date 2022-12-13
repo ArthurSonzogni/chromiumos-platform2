@@ -1913,8 +1913,8 @@ StatusOr<scoped_refptr<StorageQueue::SingleFile>>
 StorageQueue::SingleFile::Create(
     const base::FilePath& filename,
     int64_t size,
-    scoped_refptr<Resourcemanager> memory_resource,
-    scoped_refptr<Resourcemanager> disk_space_resource,
+    scoped_refptr<ResourceManager> memory_resource,
+    scoped_refptr<ResourceManager> disk_space_resource,
     scoped_refptr<RefCountedClosureList> completion_closure_list) {
   if (!disk_space_resource->Reserve(size)) {
     LOG(WARNING) << "Disk space exceeded adding file "
@@ -1934,8 +1934,8 @@ StorageQueue::SingleFile::Create(
 StorageQueue::SingleFile::SingleFile(
     const base::FilePath& filename,
     int64_t size,
-    scoped_refptr<Resourcemanager> memory_resource,
-    scoped_refptr<Resourcemanager> disk_space_resource,
+    scoped_refptr<ResourceManager> memory_resource,
+    scoped_refptr<ResourceManager> disk_space_resource,
     scoped_refptr<RefCountedClosureList> completion_closure_list)
     : completion_closure_list_(completion_closure_list),
       filename_(filename),

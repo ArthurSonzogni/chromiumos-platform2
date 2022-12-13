@@ -20,11 +20,11 @@ namespace reporting::analytics {
 class ResourceCollectorMemory : public ResourceCollector {
  public:
   // |interval| means the same as in |ResourceCollector::ResourceCollector|.
-  // |memory_resource| should point to the same |Resourcemanager| object
+  // |memory_resource| should point to the same |ResourceManager| object
   // as the one in the |StorageOption| object that is passed to the
   // |Storage| instance.
   ResourceCollectorMemory(base::TimeDelta interval,
-                          scoped_refptr<Resourcemanager> memory_resource);
+                          scoped_refptr<ResourceManager> memory_resource);
   virtual ~ResourceCollectorMemory();
 
  private:
@@ -47,7 +47,7 @@ class ResourceCollectorMemory : public ResourceCollector {
   bool SendMemorySizeToUma(int memory_size);
 
   // Memory resource interface.
-  scoped_refptr<Resourcemanager> memory_resource_
+  scoped_refptr<ResourceManager> memory_resource_
       GUARDED_BY_CONTEXT(sequence_checker_);
 };
 

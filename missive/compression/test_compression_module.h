@@ -30,7 +30,7 @@ class TestCompressionModuleStrict : public CompressionModule {
   MOCK_METHOD(void,
               CompressRecord,
               (std::string record,
-               scoped_refptr<Resourcemanager> memory_resource,
+               scoped_refptr<ResourceManager> memory_resource,
                base::OnceCallback<void(
                    std::string, std::optional<CompressionInformation>)> cb),
               (const override));

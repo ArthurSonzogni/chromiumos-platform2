@@ -119,7 +119,7 @@ class MissiveImpl : public MissiveService {
       GUARDED_BY_CONTEXT(sequence_checker_);
   scoped_refptr<StorageModule> storage_module_
       GUARDED_BY_CONTEXT(sequence_checker_);
-  scoped_refptr<const Resourcemanager> disk_space_resource_
+  scoped_refptr<const ResourceManager> disk_space_resource_
       GUARDED_BY_CONTEXT(sequence_checker_);
   std::unique_ptr<EnqueuingRecordTallier> enqueuing_record_tallier_
       GUARDED_BY_CONTEXT(sequence_checker_);

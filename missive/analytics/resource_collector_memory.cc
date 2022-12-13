@@ -15,7 +15,7 @@
 namespace reporting::analytics {
 
 ResourceCollectorMemory::ResourceCollectorMemory(
-    base::TimeDelta interval, scoped_refptr<Resourcemanager> memory_resource)
+    base::TimeDelta interval, scoped_refptr<ResourceManager> memory_resource)
     : ResourceCollector(interval),
       memory_resource_(std::move(memory_resource)) {
   DCHECK(memory_resource_);

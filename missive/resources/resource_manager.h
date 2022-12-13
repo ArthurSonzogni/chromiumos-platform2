@@ -22,9 +22,9 @@ namespace reporting {
 // Resource management class. The class is thread-safe.
 // Each resource instance is created with its own total size; the rest of the
 // functionality is identical. All APIs are non-blocking.
-class Resourcemanager : public base::RefCountedThreadSafe<Resourcemanager> {
+class ResourceManager : public base::RefCountedThreadSafe<ResourceManager> {
  public:
-  explicit Resourcemanager(uint64_t total_size);
+  explicit ResourceManager(uint64_t total_size);
 
   // Needs to be called before attempting to allocate specified size.
   // Returns true if requested amount can be allocated.
@@ -54,9 +54,9 @@ class Resourcemanager : public base::RefCountedThreadSafe<Resourcemanager> {
   void Test_SetTotal(uint64_t test_total);
 
  private:
-  friend class base::RefCountedThreadSafe<Resourcemanager>;
+  friend class base::RefCountedThreadSafe<ResourceManager>;
 
-  ~Resourcemanager();
+  ~ResourceManager();
 
   // Flushes as many callbacks as possible given the current resource
   // availability. Callbacks only signal that resource may be available,
@@ -109,7 +109,7 @@ class ScopedReservation {
   ScopedReservation() noexcept;
   // Specified reservation, must have resource interface attached.
   ScopedReservation(uint64_t size,
-                    scoped_refptr<Resourcemanager> resource_manager) noexcept;
+                    scoped_refptr<ResourceManager> resource_manager) noexcept;
   // New reservation on the same resource interface as |other_reservation|.
   ScopedReservation(uint64_t size,
                     const ScopedReservation& other_reservation) noexcept;
@@ -132,7 +132,7 @@ class ScopedReservation {
   void HandOver(ScopedReservation& other);
 
  private:
-  scoped_refptr<Resourcemanager> resource_manager_;
+  scoped_refptr<ResourceManager> resource_manager_;
   std::optional<uint64_t> size_;
 };
 

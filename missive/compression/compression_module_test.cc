@@ -41,7 +41,7 @@ constexpr char kPoorlyCompressibleTestString[] = "AAAAA11111";
 class CompressionModuleTest : public ::testing::Test {
  protected:
   CompressionModuleTest()
-      : memory_resource_(base::MakeRefCounted<Resourcemanager>(
+      : memory_resource_(base::MakeRefCounted<ResourceManager>(
             4u * 1024LLu * 1024LLu))  // 4 MiB
   {}
 
@@ -64,7 +64,7 @@ class CompressionModuleTest : public ::testing::Test {
   }
 
   base::test::TaskEnvironment task_environment_;
-  scoped_refptr<Resourcemanager> memory_resource_;
+  scoped_refptr<ResourceManager> memory_resource_;
   scoped_refptr<CompressionModule> compression_module_;
 
  private:

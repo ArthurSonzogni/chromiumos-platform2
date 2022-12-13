@@ -34,7 +34,7 @@ namespace {
 class TestRecordUploader {
  public:
   TestRecordUploader(std::vector<EncryptedRecord> records,
-                     scoped_refptr<Resourcemanager> memory_resource)
+                     scoped_refptr<ResourceManager> memory_resource)
       : records_(std::move(records)),
         memory_resource_(memory_resource),
         sequenced_task_runner_(base::ThreadPool::CreateSequencedTaskRunner(
@@ -73,7 +73,7 @@ class TestRecordUploader {
   }
 
   std::vector<EncryptedRecord> records_;
-  const scoped_refptr<Resourcemanager> memory_resource_;
+  const scoped_refptr<ResourceManager> memory_resource_;
   std::unique_ptr<UploaderInterface> uploader_interface_;
 
   // To protect |records_| running uploads on sequence.
@@ -86,7 +86,7 @@ class UploadJobTest : public ::testing::Test {
   void SetUp() override {
     upload_client_ = base::MakeRefCounted<test::MockUploadClient>();
     memory_resource_ =
-        base::MakeRefCounted<Resourcemanager>(4u * 1024LLu * 1024LLu);  // 4 MiB
+        base::MakeRefCounted<ResourceManager>(4u * 1024LLu * 1024LLu);  // 4 MiB
   }
 
   void TearDown() override {
@@ -97,7 +97,7 @@ class UploadJobTest : public ::testing::Test {
 
   base::test::TaskEnvironment task_environment_;
 
-  scoped_refptr<Resourcemanager> memory_resource_;
+  scoped_refptr<ResourceManager> memory_resource_;
   scoped_refptr<test::MockUploadClient> upload_client_;
 };
 

@@ -20,16 +20,16 @@
 
 namespace reporting {
 
-Resourcemanager::Resourcemanager(uint64_t total_size)
+ResourceManager::ResourceManager(uint64_t total_size)
     : total_(total_size),
       sequenced_task_runner_(base::ThreadPool::CreateSequencedTaskRunner(
           {base::TaskPriority::BEST_EFFORT})) {
   DETACH_FROM_SEQUENCE(sequence_checker_);
 }
 
-Resourcemanager::~Resourcemanager() = default;
+ResourceManager::~ResourceManager() = default;
 
-bool Resourcemanager::Reserve(uint64_t size) {
+bool ResourceManager::Reserve(uint64_t size) {
   uint64_t old_used = used_.fetch_add(size);
   if (old_used + size > total_) {
     used_.fetch_sub(size);
@@ -38,32 +38,32 @@ bool Resourcemanager::Reserve(uint64_t size) {
   return true;
 }
 
-void Resourcemanager::Discard(uint64_t size) {
+void ResourceManager::Discard(uint64_t size) {
   DCHECK_LE(size, used_.load());
   used_.fetch_sub(size);
 
   sequenced_task_runner_->PostTask(
-      FROM_HERE, base::BindOnce(&Resourcemanager::FlushCallbacks,
+      FROM_HERE, base::BindOnce(&ResourceManager::FlushCallbacks,
                                 base::WrapRefCounted(this)));
 }
 
-uint64_t Resourcemanager::GetTotal() const {
+uint64_t ResourceManager::GetTotal() const {
   return total_;
 }
 
-uint64_t Resourcemanager::GetUsed() const {
+uint64_t ResourceManager::GetUsed() const {
   return used_.load();
 }
 
-void Resourcemanager::Test_SetTotal(uint64_t test_total) {
+void ResourceManager::Test_SetTotal(uint64_t test_total) {
   total_ = test_total;
 }
 
-void Resourcemanager::RegisterCallback(uint64_t size, base::OnceClosure cb) {
+void ResourceManager::RegisterCallback(uint64_t size, base::OnceClosure cb) {
   sequenced_task_runner_->PostTask(
       FROM_HERE,
       base::BindOnce(
-          [](scoped_refptr<Resourcemanager> self, uint64_t size,
+          [](scoped_refptr<ResourceManager> self, uint64_t size,
              base::OnceClosure cb) {
             DCHECK_CALLED_ON_VALID_SEQUENCE(self->sequence_checker_);
             self->resource_callbacks_.emplace(size, std::move(cb));
@@ -79,7 +79,7 @@ void Resourcemanager::RegisterCallback(uint64_t size, base::OnceClosure cb) {
                              std::move(cb))));
 }
 
-void Resourcemanager::FlushCallbacks() {
+void ResourceManager::FlushCallbacks() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   int64_t remained = GetTotal() - GetUsed();  // No synchronization whatsoever.
   while (remained > 0 && !resource_callbacks_.empty()) {
@@ -96,7 +96,7 @@ void Resourcemanager::FlushCallbacks() {
 ScopedReservation::ScopedReservation() noexcept = default;
 
 ScopedReservation::ScopedReservation(
-    uint64_t size, scoped_refptr<Resourcemanager> resource_manager) noexcept
+    uint64_t size, scoped_refptr<ResourceManager> resource_manager) noexcept
     : resource_manager_(resource_manager) {
   if (size == 0uL || !resource_manager->Reserve(size)) {
     return;

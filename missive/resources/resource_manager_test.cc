@@ -24,10 +24,10 @@ using ::testing::Eq;
 namespace reporting {
 namespace {
 
-class ResourcemanagerTest : public ::testing::TestWithParam<uint64_t> {
+class ResourceManagerTest : public ::testing::TestWithParam<uint64_t> {
  protected:
   void SetUp() override {
-    resource_ = base::MakeRefCounted<Resourcemanager>(GetParam());
+    resource_ = base::MakeRefCounted<ResourceManager>(GetParam());
     // Make sure parameters define reasonably large total resource size.
     ASSERT_GE(resource_->GetTotal(), 1u * 1024LLu * 1024LLu);
   }
@@ -37,10 +37,10 @@ class ResourcemanagerTest : public ::testing::TestWithParam<uint64_t> {
   base::test::TaskEnvironment task_environment_{
       base::test::TaskEnvironment::TimeSource::MOCK_TIME};
 
-  scoped_refptr<Resourcemanager> resource_;
+  scoped_refptr<ResourceManager> resource_;
 };
 
-TEST_P(ResourcemanagerTest, NestedReservationTest) {
+TEST_P(ResourceManagerTest, NestedReservationTest) {
   uint64_t size = resource_->GetTotal();
   while ((size / 2) > 0u) {
     size /= 2;
@@ -52,7 +52,7 @@ TEST_P(ResourcemanagerTest, NestedReservationTest) {
   }
 }
 
-TEST_P(ResourcemanagerTest, SimultaneousReservationTest) {
+TEST_P(ResourceManagerTest, SimultaneousReservationTest) {
   uint64_t size = resource_->GetTotal();
 
   // Schedule reservations.
@@ -63,7 +63,7 @@ TEST_P(ResourcemanagerTest, SimultaneousReservationTest) {
     base::ThreadPool::PostTask(
         FROM_HERE, {base::TaskPriority::BEST_EFFORT},
         base::BindOnce(
-            [](size_t size, scoped_refptr<Resourcemanager> resource_manager,
+            [](size_t size, scoped_refptr<ResourceManager> resource_manager,
                test::TestCallbackWaiter* waiter) {
               EXPECT_TRUE(resource_manager->Reserve(size));
               waiter->Signal();
@@ -79,7 +79,7 @@ TEST_P(ResourcemanagerTest, SimultaneousReservationTest) {
     base::ThreadPool::PostTask(
         FROM_HERE, {base::TaskPriority::BEST_EFFORT},
         base::BindOnce(
-            [](size_t size, scoped_refptr<Resourcemanager> resource_manager,
+            [](size_t size, scoped_refptr<ResourceManager> resource_manager,
                test::TestCallbackWaiter* waiter) {
               resource_manager->Discard(size);
               waiter->Signal();
@@ -89,7 +89,7 @@ TEST_P(ResourcemanagerTest, SimultaneousReservationTest) {
   discard_waiter.Wait();
 }
 
-TEST_P(ResourcemanagerTest, SimultaneousScopedReservationTest) {
+TEST_P(ResourceManagerTest, SimultaneousScopedReservationTest) {
   uint64_t size = resource_->GetTotal();
   test::TestCallbackWaiter waiter;
   while ((size / 2) > 0u) {
@@ -98,7 +98,7 @@ TEST_P(ResourcemanagerTest, SimultaneousScopedReservationTest) {
     base::ThreadPool::PostTask(
         FROM_HERE, {base::TaskPriority::BEST_EFFORT},
         base::BindOnce(
-            [](size_t size, scoped_refptr<Resourcemanager> resource_manager,
+            [](size_t size, scoped_refptr<ResourceManager> resource_manager,
                test::TestCallbackWaiter* waiter) {
               { ScopedReservation(size, resource_manager); }
               waiter->Signal();
@@ -108,7 +108,7 @@ TEST_P(ResourcemanagerTest, SimultaneousScopedReservationTest) {
   waiter.Wait();
 }
 
-TEST_P(ResourcemanagerTest, MoveScopedReservationTest) {
+TEST_P(ResourceManagerTest, MoveScopedReservationTest) {
   uint64_t size = resource_->GetTotal();
   ScopedReservation scoped_reservation(size / 2, resource_);
   EXPECT_TRUE(scoped_reservation.reserved());
@@ -120,28 +120,28 @@ TEST_P(ResourcemanagerTest, MoveScopedReservationTest) {
   EXPECT_FALSE(scoped_reservation.reserved());
 }
 
-TEST_P(ResourcemanagerTest, ScopedReservationBasicReduction) {
+TEST_P(ResourceManagerTest, ScopedReservationBasicReduction) {
   uint64_t size = resource_->GetTotal() / 2;
   ScopedReservation scoped_reservation(size, resource_);
   EXPECT_TRUE(scoped_reservation.reserved());
   EXPECT_TRUE(scoped_reservation.Reduce(size / 2));
 }
 
-TEST_P(ResourcemanagerTest, ScopedReservationReductionWithLargerNewSize) {
+TEST_P(ResourceManagerTest, ScopedReservationReductionWithLargerNewSize) {
   uint64_t size = resource_->GetTotal() / 2;
   ScopedReservation scoped_reservation(size, resource_);
   EXPECT_TRUE(scoped_reservation.reserved());
   EXPECT_FALSE(scoped_reservation.Reduce(size + 1));
 }
 
-TEST_P(ResourcemanagerTest, ScopedReservationReductionWithNegativeNewSize) {
+TEST_P(ResourceManagerTest, ScopedReservationReductionWithNegativeNewSize) {
   uint64_t size = resource_->GetTotal() / 2;
   ScopedReservation scoped_reservation(size, resource_);
   EXPECT_TRUE(scoped_reservation.reserved());
   EXPECT_FALSE(scoped_reservation.Reduce(-(size / 2)));
 }
 
-TEST_P(ResourcemanagerTest, ScopedReservationRepeatingReductions) {
+TEST_P(ResourceManagerTest, ScopedReservationRepeatingReductions) {
   uint64_t size = resource_->GetTotal() / 2;
   ScopedReservation scoped_reservation(size, resource_);
   EXPECT_TRUE(scoped_reservation.reserved());
@@ -153,7 +153,7 @@ TEST_P(ResourcemanagerTest, ScopedReservationRepeatingReductions) {
   EXPECT_FALSE(scoped_reservation.reserved());
 }
 
-TEST_P(ResourcemanagerTest, ScopedReservationBasicHandOver) {
+TEST_P(ResourceManagerTest, ScopedReservationBasicHandOver) {
   uint64_t size = resource_->GetTotal() / 2;
   ScopedReservation scoped_reservation(size, resource_);
   ASSERT_TRUE(scoped_reservation.reserved());
@@ -170,7 +170,7 @@ TEST_P(ResourcemanagerTest, ScopedReservationBasicHandOver) {
   EXPECT_THAT(resource_->GetUsed(), Eq(resource_->GetTotal() - 1));
 }
 
-TEST_P(ResourcemanagerTest, ScopedReservationRepeatingHandOvers) {
+TEST_P(ResourceManagerTest, ScopedReservationRepeatingHandOvers) {
   uint64_t size = resource_->GetTotal() / 2;
   ScopedReservation scoped_reservation(size, resource_);
   EXPECT_TRUE(scoped_reservation.reserved());
@@ -182,7 +182,7 @@ TEST_P(ResourcemanagerTest, ScopedReservationRepeatingHandOvers) {
   EXPECT_THAT(resource_->GetUsed(), Eq(resource_->GetTotal() - 1));
 }
 
-TEST_P(ResourcemanagerTest, ScopedReservationRepeatingCopyHandOvers) {
+TEST_P(ResourceManagerTest, ScopedReservationRepeatingCopyHandOvers) {
   uint64_t size = resource_->GetTotal() / 2;
   ScopedReservation scoped_reservation(size, resource_);
   EXPECT_TRUE(scoped_reservation.reserved());
@@ -195,14 +195,14 @@ TEST_P(ResourcemanagerTest, ScopedReservationRepeatingCopyHandOvers) {
   EXPECT_THAT(resource_->GetUsed(), Eq(resource_->GetTotal() - 1));
 }
 
-TEST_P(ResourcemanagerTest, ScopedReservationFailureToCopyFromEmpty) {
+TEST_P(ResourceManagerTest, ScopedReservationFailureToCopyFromEmpty) {
   ScopedReservation scoped_reservation;
   uint64_t size = resource_->GetTotal() / 2;
   ScopedReservation another_reservation(size, scoped_reservation);
   EXPECT_FALSE(scoped_reservation.reserved());
 }
 
-TEST_P(ResourcemanagerTest, ScopedReservationRepeatingHandOversToEmpty) {
+TEST_P(ResourceManagerTest, ScopedReservationRepeatingHandOversToEmpty) {
   ScopedReservation scoped_reservation;
   EXPECT_FALSE(scoped_reservation.reserved());
 
@@ -214,7 +214,7 @@ TEST_P(ResourcemanagerTest, ScopedReservationRepeatingHandOversToEmpty) {
   EXPECT_THAT(resource_->GetUsed(), Eq(resource_->GetTotal() - 1));
 }
 
-TEST_P(ResourcemanagerTest, ScopedReservationEmptyHandOver) {
+TEST_P(ResourceManagerTest, ScopedReservationEmptyHandOver) {
   uint64_t size = resource_->GetTotal() / 2;
   ScopedReservation scoped_reservation(size, resource_);
 
@@ -237,7 +237,7 @@ TEST_P(ResourcemanagerTest, ScopedReservationEmptyHandOver) {
   EXPECT_THAT(resource_->GetUsed(), Eq(size));
 }
 
-TEST_P(ResourcemanagerTest, ReservationOverMaxTest) {
+TEST_P(ResourceManagerTest, ReservationOverMaxTest) {
   EXPECT_FALSE(resource_->Reserve(resource_->GetTotal() + 1));
   EXPECT_TRUE(resource_->Reserve(resource_->GetTotal()));
   resource_->Discard(resource_->GetTotal());
@@ -252,7 +252,7 @@ class Actor {
  public:
   Actor(uint64_t size,
         base::OnceClosure done,
-        scoped_refptr<Resourcemanager> resource_manager)
+        scoped_refptr<ResourceManager> resource_manager)
       : size_(size),
         done_(std::move(done)),
         resource_manager_(resource_manager) {
@@ -302,14 +302,14 @@ class Actor {
  private:
   const uint64_t size_;
   base::OnceClosure done_;
-  scoped_refptr<Resourcemanager> resource_manager_;
+  scoped_refptr<ResourceManager> resource_manager_;
   const scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner_{
       base::ThreadPool::CreateSequencedTaskRunner(
           {base::TaskPriority::BEST_EFFORT})};
   SEQUENCE_CHECKER(sequence_checker_);
 };
 
-TEST_P(ResourcemanagerTest, ReservationWithWaits) {
+TEST_P(ResourceManagerTest, ReservationWithWaits) {
   static constexpr size_t kActorsCount = 64;
 
   // Occupy whole resource.
@@ -335,7 +335,7 @@ TEST_P(ResourcemanagerTest, ReservationWithWaits) {
   task_environment_.FastForwardUntilNoTasksRemain();
 }
 
-TEST_P(ResourcemanagerTest, ReservationWithWaitsOnEmptyReservation) {
+TEST_P(ResourceManagerTest, ReservationWithWaitsOnEmptyReservation) {
   // Similar to the previous test, but with no reservation other than
   // the Actors.
   static constexpr size_t kActorsCount = 64;
@@ -358,7 +358,7 @@ TEST_P(ResourcemanagerTest, ReservationWithWaitsOnEmptyReservation) {
 }
 
 INSTANTIATE_TEST_SUITE_P(VariousResources,
-                         ResourcemanagerTest,
+                         ResourceManagerTest,
                          testing::Values(16u * 1024LLu * 1024LLu,
                                          4u * 1024LLu * 1024LLu));
 }  // namespace
