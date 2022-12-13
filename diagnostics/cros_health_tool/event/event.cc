@@ -35,6 +35,7 @@ enum class EventCategory {
   kAudio,
   kThunderbolt,
   kUsb,
+  kAudioJack,
 };
 
 constexpr std::pair<const char*, EventCategory> kCategorySwitches[] = {
@@ -45,6 +46,7 @@ constexpr std::pair<const char*, EventCategory> kCategorySwitches[] = {
     {"audio", EventCategory::kAudio},
     {"thunderbolt", EventCategory::kThunderbolt},
     {"usb", EventCategory::kUsb},
+    {"audio_jack", EventCategory::kAudioJack},
 };
 
 // Create a stringified list of the category names for use in help.
@@ -85,10 +87,12 @@ int event_main(int argc, char** argv) {
   }
 
   // Subscribe to the specified category.
+  base::RunLoop run_loop;
   EventSubscriber event_subscriber;
   switch (iterator->second) {
     case EventCategory::kLid:
-      event_subscriber.SubscribeToEvents(mojom::EventCategoryEnum::kLid);
+      event_subscriber.SubscribeToEvents(run_loop.QuitClosure(),
+                                         mojom::EventCategoryEnum::kLid);
       break;
     case EventCategory::kPower:
       event_subscriber.SubscribeToPowerEvents();
@@ -104,17 +108,21 @@ int event_main(int argc, char** argv) {
       break;
     case EventCategory::kThunderbolt:
       event_subscriber.SubscribeToEvents(
-          mojom::EventCategoryEnum::kThunderbolt);
+          run_loop.QuitClosure(), mojom::EventCategoryEnum::kThunderbolt);
       break;
     case EventCategory::kUsb:
-      event_subscriber.SubscribeToEvents(mojom::EventCategoryEnum::kUsb);
+      event_subscriber.SubscribeToEvents(run_loop.QuitClosure(),
+                                         mojom::EventCategoryEnum::kUsb);
+      break;
+    case EventCategory::kAudioJack:
+      event_subscriber.SubscribeToEvents(run_loop.QuitClosure(),
+                                         mojom::EventCategoryEnum::kAudioJack);
       break;
   }
 
   std::cout << "Subscribe to " << FLAGS_category << " events successfully."
             << std::endl;
 
-  base::RunLoop run_loop;
   // Schedule an exit after |FLAGS_length_seconds|.
   base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
       FROM_HERE, run_loop.QuitClosure(), base::Seconds(FLAGS_length_seconds));

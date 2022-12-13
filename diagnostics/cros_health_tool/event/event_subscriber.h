@@ -44,7 +44,12 @@ class EventSubscriber final : public ash::cros_healthd::mojom::EventObserver {
   void SubscribeToAudioEvents();
 
   // Subscribes to cros_healthd's events.
-  void SubscribeToEvents(ash::cros_healthd::mojom::EventCategoryEnum category);
+  //
+  // |on_subscription_disconnect| - This will be called when the mojo connection
+  //                                between cros-health-tool and healthd is
+  //                                disconnected.
+  void SubscribeToEvents(base::OnceClosure on_subscription_disconnect,
+                         ash::cros_healthd::mojom::EventCategoryEnum category);
 
  private:
   // Allows mojo communication with cros_healthd event service.

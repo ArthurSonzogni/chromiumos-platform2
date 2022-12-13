@@ -65,6 +65,18 @@ std::string EnumToString(mojom::LidEventInfo::State state) {
   }
 }
 
+std::string EnumToString(mojom::AudioJackEventInfo::State state) {
+  switch (state) {
+    case mojom::AudioJackEventInfo::State::kUnmappedEnumField:
+      LOG(FATAL) << "Got UnmappedEnumField";
+      return "UnmappedEnumField";
+    case mojom::AudioJackEventInfo::State::kAdd:
+      return "Add";
+    case mojom::AudioJackEventInfo::State::kRemove:
+      return "Remove";
+  }
+}
+
 void OutputUsbEventInfo(const mojom::UsbEventInfoPtr& info) {
   base::Value::Dict output;
 
@@ -93,6 +105,11 @@ void OutputThunderboltEventInfo(const mojom::ThunderboltEventInfoPtr& info) {
 
 void OutputLidEventInfo(const mojom::LidEventInfoPtr& info) {
   std::cout << "Lid event received: " << EnumToString(info->state) << std::endl;
+}
+
+void OutputAudioJackEventInfo(const mojom::AudioJackEventInfoPtr& info) {
+  std::cout << "Audio jack event received: " << EnumToString(info->state)
+            << std::endl;
 }
 
 }  // namespace
@@ -132,9 +149,12 @@ void EventSubscriber::SubscribeToAudioEvents() {
   event_service_->AddAudioObserver(std::move(remote));
 }
 
-void EventSubscriber::SubscribeToEvents(mojom::EventCategoryEnum category) {
+void EventSubscriber::SubscribeToEvents(
+    base::OnceClosure on_subscription_disconnect,
+    mojom::EventCategoryEnum category) {
   event_service_->AddEventObserver(category,
                                    receiver_.BindNewPipeAndPassRemote());
+  receiver_.set_disconnect_handler(std::move(on_subscription_disconnect));
 }
 
 void EventSubscriber::OnEvent(const mojom::EventInfoPtr info) {
@@ -159,6 +179,9 @@ void EventSubscriber::OnEvent(const mojom::EventInfoPtr info) {
       break;
     case mojom::EventInfo::Tag::kAudioEventInfo:
       NOTIMPLEMENTED();
+      break;
+    case mojom::EventInfo::Tag::kAudioJackEventInfo:
+      OutputAudioJackEventInfo(info->get_audio_jack_event_info());
       break;
   }
 }

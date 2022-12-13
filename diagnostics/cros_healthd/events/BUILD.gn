@@ -26,6 +26,7 @@ source_set("libcros_healthd_events") {
   ]
   sources = [
     "audio_events_impl.cc",
+    "audio_jack_events_impl.cc",
     "bluetooth_events_impl.cc",
     "lid_events_impl.cc",
     "power_events_impl.cc",
@@ -47,6 +48,7 @@ if (use.test) {
   source_set("libcros_healthd_events_test") {
     sources = [
       "audio_events_impl_test.cc",
+      "audio_jack_events_impl_test.cc",
       "bluetooth_events_impl_test.cc",
       "lid_events_impl_test.cc",
       "power_events_impl_test.cc",

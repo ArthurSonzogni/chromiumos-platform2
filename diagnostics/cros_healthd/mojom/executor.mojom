@@ -189,6 +189,7 @@ interface Executor {
   //
   // The request:
   // * |observer| - The observer to notify client.
+  // * |process_control| - Used to stop the monitor process.
   MonitorAudioJack(pending_remote<AudioJackObserver> observer,
                    pending_receiver<ProcessControl> process_control);
 };
