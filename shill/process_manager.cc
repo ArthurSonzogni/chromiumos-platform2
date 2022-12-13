@@ -85,6 +85,18 @@ void ProcessManager::Stop() {
   CHECK(async_signal_handler_);
   process_reaper_.Unregister();
   async_signal_handler_.reset();
+
+  // Kill the pending termination processes (which we have already sent SIGTERM
+  // to). Note that currently the process started by minijail will not be killed
+  // automatically when shill quits, so we need to do this manually. See
+  // b/261666421 for an issue in the test which caused by this.
+  for (const auto& [pid, callback] : pending_termination_processes_) {
+    LOG(WARNING) << __func__ << ": send SIGKILL to " << pid;
+    bool not_used;
+    // Error will be logged in KillProcess().
+    KillProcess(pid, SIGKILL, &not_used);
+  }
+  pending_termination_processes_.clear();
 }
 
 pid_t ProcessManager::StartProcess(
