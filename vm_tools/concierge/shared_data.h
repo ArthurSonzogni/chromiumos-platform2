@@ -57,6 +57,10 @@ bool GetPluginIsoDirectory(const std::string& vm_id,
                            bool create,
                            base::FilePath* path_out);
 
+bool IsValidOwnerId(const std::string& owner_id);
+
+bool IsValidVmName(const std::string& vm_name);
+
 void SendDbusResponse(dbus::ExportedObject::ResponseSender response_sender,
                       dbus::MethodCall* method_call,
                       const vm_tools::concierge::StartVmResponse& response);
@@ -84,18 +88,24 @@ void Service::StartVmHelper(
     return;
   }
 
-  // Check the CPU count.
-  if (request.cpus() > base::SysInfo::NumberOfProcessors()) {
-    LOG(ERROR) << "Invalid number of CPUs: " << request.cpus();
-    response.set_failure_reason("Invalid CPU count");
+  if (!IsValidOwnerId(request.owner_id())) {
+    LOG(ERROR) << "Empty or malformed owner ID";
+    response.set_failure_reason("Empty or malformed owner ID");
     SendDbusResponse(std::move(response_sender), method_call, response);
     return;
   }
 
-  // Make sure the VM has a name.
-  if (request.name().empty()) {
-    LOG(ERROR) << "Ignoring request with empty name";
-    response.set_failure_reason("Missing VM name");
+  if (!IsValidVmName(request.name())) {
+    LOG(ERROR) << "Empty or malformed VM name";
+    response.set_failure_reason("Empty or malformed VM name");
+    SendDbusResponse(std::move(response_sender), method_call, response);
+    return;
+  }
+
+  // Check the CPU count.
+  if (request.cpus() > base::SysInfo::NumberOfProcessors()) {
+    LOG(ERROR) << "Invalid number of CPUs: " << request.cpus();
+    response.set_failure_reason("Invalid CPU count");
     SendDbusResponse(std::move(response_sender), method_call, response);
     return;
   }

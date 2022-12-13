@@ -8,6 +8,7 @@
 
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <base/strings/string_number_conversions.h>
 
 #include "vm_tools/common/naming.h"
 
@@ -20,7 +21,7 @@ std::optional<base::FilePath> GetFilePathFromName(
     StorageLocation storage_location,
     const std::string& extension,
     bool create_parent_dir) {
-  if (!base::ContainsOnlyChars(cryptohome_id, kValidCryptoHomeCharacters)) {
+  if (!IsValidOwnerId(cryptohome_id)) {
     LOG(ERROR) << "Invalid cryptohome_id specified";
     return std::nullopt;
   }
@@ -98,6 +99,20 @@ bool GetPluginIsoDirectory(const std::string& vm_id,
                                 .Append(kPluginVmDir)
                                 .Append(cryptohome_id),
                             "iso", vm_id, create, path_out);
+}
+
+// Valid owner/cryptohome ID is a hexadecimal string.
+bool IsValidOwnerId(const std::string& owner_id) {
+  if (owner_id.empty())
+    return false;
+
+  return base::ContainsOnlyChars(owner_id, kValidCryptoHomeCharacters);
+}
+
+// Currently the only requirement for VM name to be non-empty because we
+// encode them as base64 when creating on-disk representations.
+bool IsValidVmName(const std::string& vm_name) {
+  return !vm_name.empty();
 }
 
 void SendDbusResponse(dbus::ExportedObject::ResponseSender response_sender,
