@@ -1063,17 +1063,6 @@ class Metrics : public DefaultServiceObserver {
   static constexpr int kTimerHistogramMillisecondsMax = 45 * 1000;
   static constexpr int kTimerHistogramMillisecondsMin = 1;
 
-  // The total number of portal detections attempted between the Connected
-  // state and the Online state.  This includes both failure/timeout attempts
-  // and the final successful attempt. TODO(b/236388757): Deprecate post M108.
-  static constexpr HistogramMetric<NameByTechnology>
-      kMetricPortalAttemptsToOnline = {
-          .n = NameByTechnology{"PortalAttemptsToOnline"},
-          .min = 1,
-          .max = 100,
-          .num_buckets = 10,
-      };
-
   // Called with the number of detection attempts when the PortalDetector
   // completes and the result is 'online'.
   static constexpr HistogramMetric<NameByTechnology>

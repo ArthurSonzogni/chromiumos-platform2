@@ -726,9 +726,6 @@ void Device::PortalDetectorCallback(const PortalDetector::Result& result) {
     OnNetworkValidationSuccess();
     StopPortalDetection();
     SetServiceState(state);
-    // TODO(b/236388757): Deprecate post M108.
-    metrics()->SendToUMA(Metrics::kMetricPortalAttemptsToOnline, technology(),
-                         result.num_attempts);
     return;
   }
 

@@ -889,10 +889,6 @@ TEST_F(DevicePortalDetectionTest, PortalRetryAfterDetectionFailure) {
               SendEnumToUMA(Metrics::kMetricPortalResult,
                             Technology(Technology::kUnknown),
                             Metrics::kPortalResultConnectionFailure));
-  EXPECT_CALL(
-      *metrics(),
-      SendToUMA("Network.Shill.Unknown.PortalAttemptsToOnline", _, _, _, _))
-      .Times(0);
   EXPECT_CALL(*network_, local()).WillRepeatedly(Return(ip_addr));
   EXPECT_CALL(*network_, dns_servers()).WillRepeatedly(Return(dns_list));
   EXPECT_CALL(*device_, StartConnectionDiagnosticsAfterPortalDetection());
@@ -915,9 +911,6 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionSuccess) {
   EXPECT_CALL(*metrics(), SendEnumToUMA(Metrics::kMetricPortalResult,
                                         Technology(Technology::kUnknown),
                                         Metrics::kPortalResultSuccess));
-  EXPECT_CALL(*metrics(),
-              SendToUMA(Metrics::kMetricPortalAttemptsToOnline,
-                        Technology(Technology::kUnknown), kPortalAttempts));
   PortalDetector::Result result;
   result.http_phase = PortalDetector::Phase::kContent;
   result.http_status = PortalDetector::Status::kSuccess;
