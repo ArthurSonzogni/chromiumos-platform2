@@ -424,6 +424,16 @@ void CrosHealthdDiagnosticsService::RunAudioSetVolumeRoutine(
       mojo_ipc::DiagnosticRoutineEnum::kAudioSetVolume, std::move(callback));
 }
 
+void CrosHealthdDiagnosticsService::RunAudioSetGainRoutine(
+    uint64_t node_id,
+    uint8_t gain,
+    bool mute_on,
+    RunAudioSetGainRoutineCallback callback) {
+  RunRoutine(routine_factory_->MakeAudioSetGainRoutine(node_id, gain, mute_on),
+             mojo_ipc::DiagnosticRoutineEnum::kAudioSetGain,
+             std::move(callback));
+}
+
 void CrosHealthdDiagnosticsService::RunRoutine(
     std::unique_ptr<DiagnosticRoutine> routine,
     mojo_ipc::DiagnosticRoutineEnum routine_enum,
@@ -507,7 +517,9 @@ void CrosHealthdDiagnosticsService::PopulateAvailableRoutines(
       mojo_ipc::DiagnosticRoutineEnum::kArcDnsResolution,
       mojo_ipc::DiagnosticRoutineEnum::kSensitiveSensor,
       mojo_ipc::DiagnosticRoutineEnum::kLedLitUp,
-      mojo_ipc::DiagnosticRoutineEnum::kAudioSetVolume};
+      mojo_ipc::DiagnosticRoutineEnum::kAudioSetVolume,
+      mojo_ipc::DiagnosticRoutineEnum::kAudioSetGain,
+  };
 
   if (context_->system_config()->HasBattery()) {
     available_routines_.insert(

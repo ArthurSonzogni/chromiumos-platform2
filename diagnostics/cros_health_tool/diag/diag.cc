@@ -143,9 +143,10 @@ int diag_main(int argc, char** argv) {
                 "The target color for the LED routine. Options are:"
                 "\n\tred, green, blue, yellow, white, amber.");
 
-  // Flag for the audio set volume routine.
+  // Flag for the audio set volume/gain routine.
   DEFINE_uint64(node_id, 0, "Target node id.");
   DEFINE_uint32(volume, 100, "Target volume. [0-100]");
+  DEFINE_uint32(gain, 100, "Target gain. [0-100]");
   DEFINE_bool(mute_on, false, "Mute or not.");
 
   brillo::FlagHelper::Init(argc, argv, "diag - Device diagnostic tool.");
@@ -360,6 +361,10 @@ int diag_main(int argc, char** argv) {
       case mojo_ipc::DiagnosticRoutineEnum::kAudioSetVolume:
         routine_result = actions.ActionRunAudioSetVolumeRoutine(
             FLAGS_node_id, FLAGS_volume, FLAGS_mute_on);
+        break;
+      case mojo_ipc::DiagnosticRoutineEnum::kAudioSetGain:
+        routine_result = actions.ActionRunAudioSetGainRoutine(
+            FLAGS_node_id, FLAGS_gain, FLAGS_mute_on);
         break;
       case mojo_ipc::DiagnosticRoutineEnum::kUnknown:
         // Never map FLAGS_routine to kUnknown field.

@@ -679,6 +679,21 @@ bool DiagActions::ActionRunAudioSetVolumeRoutine(uint64_t node_id,
   return ProcessRoutineResponse(response);
 }
 
+bool DiagActions::ActionRunAudioSetGainRoutine(uint64_t node_id,
+                                               uint8_t gain,
+                                               bool mute_on) {
+  mojom::RunRoutineResponsePtr response;
+  base::RunLoop run_loop;
+
+  cros_healthd_diagnostics_service_->RunAudioSetGainRoutine(
+      node_id, gain, mute_on,
+      base::BindOnce(&OnMojoResponseReceived<mojom::RunRoutineResponsePtr>,
+                     &response, run_loop.QuitClosure()));
+  run_loop.Run();
+
+  return ProcessRoutineResponse(response);
+}
+
 void DiagActions::ForceCancelAtPercent(uint32_t percent) {
   CHECK_LE(percent, 100) << "Percent must be <= 100.";
   force_cancel_ = true;

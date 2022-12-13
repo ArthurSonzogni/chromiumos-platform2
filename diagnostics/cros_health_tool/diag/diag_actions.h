@@ -106,6 +106,9 @@ class DiagActions final {
   bool ActionRunAudioSetVolumeRoutine(uint64_t node_id,
                                       uint8_t volume,
                                       bool mute_on);
+  bool ActionRunAudioSetGainRoutine(uint64_t node_id,
+                                    uint8_t volume,
+                                    bool mute_on);
 
   // Cancels the next routine run, when that routine reports a progress percent
   // greater than or equal to |percent|. Should be called before running the

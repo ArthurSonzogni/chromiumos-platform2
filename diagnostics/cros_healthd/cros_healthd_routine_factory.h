@@ -175,6 +175,11 @@ class CrosHealthdRoutineFactory {
   // itself.
   virtual std::unique_ptr<DiagnosticRoutine> MakeAudioSetVolumeRoutine(
       uint64_t node_id, uint8_t volume, bool mute_on) = 0;
+  // Constructs a new instance of the audio set gain routine. See
+  // diagnostics/routines/audio/audio_set_gain.cc for details on the routine
+  // itself.
+  virtual std::unique_ptr<DiagnosticRoutine> MakeAudioSetGainRoutine(
+      uint64_t node_id, uint8_t gain, bool mute_on) = 0;
 };
 
 }  // namespace diagnostics

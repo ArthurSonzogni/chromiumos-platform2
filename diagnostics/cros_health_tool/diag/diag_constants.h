@@ -82,6 +82,8 @@ constexpr struct {
      ash::cros_healthd::mojom::DiagnosticRoutineEnum::kEmmcLifetime},
     {"audio_set_volume",
      ash::cros_healthd::mojom::DiagnosticRoutineEnum::kAudioSetVolume},
+    {"audio_set_gain",
+     ash::cros_healthd::mojom::DiagnosticRoutineEnum::kAudioSetGain},
 };
 
 }  // namespace diagnostics

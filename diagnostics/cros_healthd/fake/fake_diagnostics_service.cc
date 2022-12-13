@@ -245,4 +245,12 @@ void FakeDiagnosticsService::RunAudioSetVolumeRoutine(
   NOTIMPLEMENTED();
 }
 
+void FakeDiagnosticsService::RunAudioSetGainRoutine(
+    uint64_t node_id,
+    uint8_t gain,
+    bool mute_on,
+    RunAudioSetGainRoutineCallback callback) {
+  NOTIMPLEMENTED();
+}
+
 }  // namespace diagnostics

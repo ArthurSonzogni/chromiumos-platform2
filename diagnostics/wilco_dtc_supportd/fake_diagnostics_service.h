@@ -130,6 +130,10 @@ class FakeDiagnosticsService final
                                 uint8_t volume,
                                 bool mute_on,
                                 RunAudioSetVolumeRoutineCallback) override;
+  void RunAudioSetGainRoutine(uint64_t node_id,
+                              uint8_t gain,
+                              bool mute_on,
+                              RunAudioSetGainRoutineCallback) override;
 
   // Overrides the default behavior of GetCrosHealthdDiagnosticsService to test
   // situations where mojo methods were called prior to wilco_dtc_supportd's

@@ -141,6 +141,10 @@ class CrosHealthdDiagnosticsService final
       uint8_t volume,
       bool mute_on,
       RunAudioSetVolumeRoutineCallback callback) override;
+  void RunAudioSetGainRoutine(uint64_t node_id,
+                              uint8_t gain,
+                              bool mute_on,
+                              RunAudioSetGainRoutineCallback callback) override;
 
  private:
   void RunRoutine(
