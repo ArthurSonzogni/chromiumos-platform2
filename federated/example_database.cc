@@ -143,7 +143,7 @@ ExampleDatabase::Iterator::Iterator(sqlite3* const db,
       limit > 0 ? base::StringPrintf("LIMIT %zu", limit) : std::string();
 
   const std::string sql_code = base::StringPrintf(
-      "SELECT id, example, timestamp FROM %s %s ORDER BY id %s %s;",
+      "SELECT id, example, timestamp FROM '%s' %s ORDER BY id %s %s;",
       client_name.c_str(), MaybeWhereClause(start_time, end_time).c_str(),
       order.c_str(), limit_clause.c_str());
   const int result =
@@ -344,7 +344,7 @@ bool ExampleDatabase::DeleteOutdatedExamples(
       continue;
 
     const ExecResult result = ExecSql(
-        base::StringPrintf("DELETE FROM %s WHERE timestamp < %" PRId64 ";",
+        base::StringPrintf("DELETE FROM '%s' WHERE timestamp < %" PRId64 ";",
                            table_name.c_str(), expired_timestamp.ToJavaTime()));
     if (result.code != SQLITE_OK) {
       error_count++;
@@ -371,7 +371,7 @@ std::optional<MetaRecord> ExampleDatabase::GetMetaRecord(
   sqlite3_stmt* stmt = nullptr;
   const std::string sql = base::StringPrintf(
       "SELECT last_used_example_id, last_used_example_timestamp, timestamp "
-      "FROM %s WHERE identifier = '%s';",
+      "FROM '%s' WHERE identifier = '%s';",
       kMetaTableName, identifier.c_str());
   int sqlite_code =
       sqlite3_prepare_v2(db_.get(), sql.c_str(), -1, &stmt, nullptr);
@@ -411,7 +411,7 @@ bool ExampleDatabase::UpdateMetaRecord(
   DCHECK_GE(new_meta_record.timestamp, base::Time::UnixEpoch());
 
   const std::string sql = base::StringPrintf(
-      "INSERT INTO %s (identifier, last_used_example_id, "
+      "INSERT INTO '%s' (identifier, last_used_example_id, "
       "last_used_example_timestamp, timestamp) VALUES("
       "'%s', %" PRId64 ", %" PRId64 ", %" PRId64
       ") ON CONFLICT(identifier) DO UPDATE SET "
@@ -457,7 +457,7 @@ bool ExampleDatabase::InsertExample(const std::string& client_name,
   // Compile the insertion statement.
   sqlite3_stmt* stmt = nullptr;
   const std::string sql_code =
-      base::StringPrintf("INSERT INTO %s (example, timestamp) VALUES (?, ?);",
+      base::StringPrintf("INSERT INTO '%s' (example, timestamp) VALUES (?, ?);",
                          client_name.c_str());
   const int result =
       sqlite3_prepare_v2(db_.get(), sql_code.c_str(), -1, &stmt, nullptr);
@@ -491,7 +491,7 @@ void ExampleDatabase::DeleteAllExamples(const std::string& client_name) {
   }
 
   const ExecResult result =
-      ExecSql(base::StringPrintf("DELETE FROM %s;", client_name.c_str()));
+      ExecSql(base::StringPrintf("DELETE FROM '%s';", client_name.c_str()));
   if (result.code != SQLITE_OK) {
     LOG(ERROR) << "Failed to delete examples: " << result.error_msg;
   }
@@ -531,7 +531,7 @@ bool ExampleDatabase::CreateClientTable(const std::string& client_name) {
   }
 
   const std::string sql = base::StringPrintf(R"(
-      CREATE TABLE %s (
+      CREATE TABLE '%s' (
         id         INTEGER PRIMARY KEY AUTOINCREMENT
                            NOT NULL,
         example    BLOB    NOT NULL,
@@ -557,7 +557,7 @@ bool ExampleDatabase::CreateMetaTable() {
   }
 
   const std::string sql = base::StringPrintf(
-      "CREATE TABLE %s ("
+      "CREATE TABLE '%s' ("
       " identifier                    TEXT PRIMARY KEY NOT NULL,"
       " last_used_example_id          INTEGER NOT NULL,"
       " last_used_example_timestamp   INTEGER NOT NULL,"
@@ -596,7 +596,7 @@ int ExampleDatabase::ExampleCountInternal(
 
   int count = 0;
   const ExecResult result =
-      ExecSql(base::StringPrintf("SELECT COUNT(*) FROM %s %s;",
+      ExecSql(base::StringPrintf("SELECT COUNT(*) FROM '%s' %s;",
                                  client_name.c_str(), where_clause.c_str()),
               ExampleCountCallback, &count);
 

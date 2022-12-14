@@ -30,7 +30,7 @@ namespace {
 using ::testing::Test;
 
 constexpr std::array<const char*, 2> kTestClients = {{
-    "test_client_1",
+    "chromeos/test_client_1",  // table names are allowed to contain '/'.
     "test_client_2",
 }};
 
@@ -39,7 +39,7 @@ constexpr std::array<const char*, 2> kTestClients = {{
 int CreateExampleTableForTesting(const base::FilePath& db_path,
                                  const std::string& table) {
   constexpr char kCreateDatabaseSql[] = R"(
-      CREATE TABLE %s (
+      CREATE TABLE '%s' (
         id         INTEGER PRIMARY KEY AUTOINCREMENT
                            NOT NULL,
         example    BLOB    NOT NULL,
@@ -68,7 +68,7 @@ int PopulateTableForTesting(sqlite3* const db,
                             const int count) {
   for (int i = 1; i <= count; i++) {
     const std::string sql = base::StringPrintf(
-        "INSERT INTO %s (example, timestamp) VALUES ('example_%d', "
+        "INSERT INTO '%s' (example, timestamp) VALUES ('example_%d', "
         "%" PRId64 ")",
         table.c_str(), i, SecondsAfterEpoch(i).ToJavaTime());
     const int result = sqlite3_exec(db, sql.c_str(), nullptr, nullptr, nullptr);
@@ -94,12 +94,13 @@ class ExampleDatabaseTest : public Test {
 
   const base::FilePath& temp_path() const { return temp_dir_.GetPath(); }
 
-  // Prepares a database, table test_client_1 has 100 examples (id from 1
-  // to 100), table test_client_2 is created by db_->Init() and is empty.
+  // Prepares a database, table chromeos/test_client_1 has 100 examples (id from
+  // 1 to 100), table test_client_2 is created by db_->Init() and is empty.
   bool CreateExampleDatabaseAndInitialize() {
     const base::FilePath db_path =
         temp_dir_.GetPath().Append(kDatabaseFileName);
-    if (CreateExampleTableForTesting(db_path, "test_client_1") != SQLITE_OK ||
+    if (CreateExampleTableForTesting(db_path, "chromeos/test_client_1") !=
+            SQLITE_OK ||
         !base::PathExists(db_path)) {
       LOG(ERROR) << "Failed to create initial database";
       return false;
@@ -109,8 +110,8 @@ class ExampleDatabaseTest : public Test {
                                                   kTestClients.end());
     db_ = std::make_unique<ExampleDatabase>(db_path);
     if (!db_->Init(clients) || !db_->IsOpen() || !db_->CheckIntegrity() ||
-        PopulateTableForTesting(db_->sqlite3_for_testing(), "test_client_1",
-                                100) != SQLITE_OK) {
+        PopulateTableForTesting(db_->sqlite3_for_testing(),
+                                "chromeos/test_client_1", 100) != SQLITE_OK) {
       LOG(ERROR) << "Failed to initialize or check integrity of db_";
       return false;
     }
@@ -134,7 +135,8 @@ class ExampleDatabaseTest : public Test {
 TEST_F(ExampleDatabaseTest, CreateDatabase) {
   // Prepares a database file.
   const base::FilePath db_path = temp_path().Append(kDatabaseFileName);
-  ASSERT_EQ(CreateExampleTableForTesting(db_path, "test_client_1"), SQLITE_OK);
+  ASSERT_EQ(CreateExampleTableForTesting(db_path, "chromeos/test_client_1"),
+            SQLITE_OK);
   EXPECT_TRUE(base::PathExists(db_path));
 
   // Initializes the db and checks integrity.
@@ -146,9 +148,9 @@ TEST_F(ExampleDatabaseTest, CreateDatabase) {
   EXPECT_TRUE(db.CheckIntegrity());
 
   // Populates examples.
-  EXPECT_EQ(
-      PopulateTableForTesting(db.sqlite3_for_testing(), "test_client_1", 100),
-      SQLITE_OK);
+  EXPECT_EQ(PopulateTableForTesting(db.sqlite3_for_testing(),
+                                    "chromeos/test_client_1", 100),
+            SQLITE_OK);
 
   // Closes it.
   EXPECT_TRUE(db.Close());
@@ -160,12 +162,13 @@ TEST_F(ExampleDatabaseTest, CreateDatabaseMalformed) {
   const base::FilePath db_path = temp_path().Append(kDatabaseFileName);
   ExampleDatabase db(db_path);
 
-  // Inject broken SQL statement.
-  EXPECT_FALSE(db.Init({"test_client_1\""}));
+  // Inject broken SQL statement. Table names starting with "sqlite_" are
+  // reserved and not allowed.
+  EXPECT_FALSE(db.Init({"sqlite_chromeos/test_client_1"}));
 
   EXPECT_FALSE(db.IsOpen());
   EXPECT_FALSE(db.CheckIntegrity());
-  EXPECT_FALSE(db.InsertExample("test_client_1\"",
+  EXPECT_FALSE(db.InsertExample("sqlite_chromeos/test_client_1",
                                 {-1, "example_1", SecondsAfterEpoch(1)}));
 
   EXPECT_TRUE(db.Close());
@@ -175,7 +178,8 @@ TEST_F(ExampleDatabaseTest, DatabaseReadNonEmpty) {
   ASSERT_TRUE(CreateExampleDatabaseAndInitialize());
 
   int count = 0;
-  ExampleDatabase::Iterator it = db_->GetIteratorForTesting("test_client_1");
+  ExampleDatabase::Iterator it =
+      db_->GetIteratorForTesting("chromeos/test_client_1");
   while (true) {
     const absl::StatusOr<ExampleRecord> record = it.Next();
     if (!record.ok()) {
@@ -202,7 +206,7 @@ TEST_F(ExampleDatabaseTest, DatabaseReadNonEmptyWithTimeRange) {
   // Start_timestamp is not included, therefore expected_id starts from 11
   // rather than 10;
   ExampleDatabase::Iterator it = db_->GetIterator(
-      "test_client_1", SecondsAfterEpoch(10), SecondsAfterEpoch(30));
+      "chromeos/test_client_1", SecondsAfterEpoch(10), SecondsAfterEpoch(30));
   while (true) {
     const absl::StatusOr<ExampleRecord> record = it.Next();
     if (!record.ok()) {
@@ -230,7 +234,7 @@ TEST_F(ExampleDatabaseTest, DatabaseReadWithLimit) {
   // Start_timestamp is not included, therefore expected_id starts from 11
   // rather than 10;
   ExampleDatabase::Iterator it = db_->GetIterator(
-      "test_client_1", SecondsAfterEpoch(10), SecondsAfterEpoch(30),
+      "chromeos/test_client_1", SecondsAfterEpoch(10), SecondsAfterEpoch(30),
       /*descending=*/false, /*limit=*/10);
   while (true) {
     const absl::StatusOr<ExampleRecord> record = it.Next();
@@ -259,7 +263,7 @@ TEST_F(ExampleDatabaseTest, DatabaseReadOrderDesc) {
   // Start_timestamp is not included, therefore expected_id starts from 11
   // rather than 10;
   ExampleDatabase::Iterator it = db_->GetIterator(
-      "test_client_1", SecondsAfterEpoch(10), SecondsAfterEpoch(30),
+      "chromeos/test_client_1", SecondsAfterEpoch(10), SecondsAfterEpoch(30),
       /*descending=*/true);
   while (true) {
     const absl::StatusOr<ExampleRecord> record = it.Next();
@@ -282,7 +286,8 @@ TEST_F(ExampleDatabaseTest, DatabaseReadOrderDesc) {
 
 TEST_F(ExampleDatabaseTest, DatabaseReadDangle) {
   ASSERT_TRUE(CreateExampleDatabaseAndInitialize());
-  ExampleDatabase::Iterator it = db_->GetIteratorForTesting("test_client_1");
+  ExampleDatabase::Iterator it =
+      db_->GetIteratorForTesting("chromeos/test_client_1");
 
   // The iterator sqlite query is ongoing.
   EXPECT_FALSE(db_->Close());
@@ -290,7 +295,8 @@ TEST_F(ExampleDatabaseTest, DatabaseReadDangle) {
 
 TEST_F(ExampleDatabaseTest, DatabaseReadAbort) {
   ASSERT_TRUE(CreateExampleDatabaseAndInitialize());
-  ExampleDatabase::Iterator it = db_->GetIteratorForTesting("test_client_1");
+  ExampleDatabase::Iterator it =
+      db_->GetIteratorForTesting("chromeos/test_client_1");
 
   // Iterate through 3 of the 100 examples.
   for (int i = 1; i <= 3; ++i) {
@@ -325,7 +331,7 @@ TEST_F(ExampleDatabaseTest, DatabaseReadCallback) {
           EXPECT_EQ(record->timestamp, SecondsAfterEpoch(i));
         },
         base::Owned(new ExampleDatabase::Iterator(
-            db_->GetIteratorForTesting("test_client_1"))));
+            db_->GetIteratorForTesting("chromeos/test_client_1"))));
 
     // Run the callback to test sequential use works.
     for (int i = 1; i <= 3; ++i) {
@@ -348,8 +354,8 @@ TEST_F(ExampleDatabaseTest, DatabaseReadConcurrent) {
       SQLITE_OK);
 
   ExampleDatabase::Iterator it[] = {
-      db_->GetIteratorForTesting("test_client_1"),
-      db_->GetIteratorForTesting("test_client_1"),
+      db_->GetIteratorForTesting("chromeos/test_client_1"),
+      db_->GetIteratorForTesting("chromeos/test_client_1"),
       db_->GetIteratorForTesting("test_client_2"),
   };
   int count[] = {0, 0, 0};
@@ -392,9 +398,9 @@ TEST_F(ExampleDatabaseTest, DatabaseReadAndWriteConcurrentWithTimeRange) {
       SQLITE_OK);
 
   ExampleDatabase::Iterator it[] = {
-      db_->GetIterator("test_client_1", SecondsAfterEpoch(0),
+      db_->GetIterator("chromeos/test_client_1", SecondsAfterEpoch(0),
                        SecondsAfterEpoch(30)),
-      db_->GetIterator("test_client_1", SecondsAfterEpoch(50),
+      db_->GetIterator("chromeos/test_client_1", SecondsAfterEpoch(50),
                        SecondsAfterEpoch(90)),
       db_->GetIterator("test_client_2", SecondsAfterEpoch(0),
                        SecondsAfterEpoch(50)),
@@ -426,7 +432,8 @@ TEST_F(ExampleDatabaseTest, DatabaseReadAndWriteConcurrentWithTimeRange) {
       ExampleRecord record_to_insert = {-1, "manual_example",
                                         SecondsAfterEpoch(current_timestamp++)};
 
-      EXPECT_TRUE(db_->InsertExample("test_client_1", record_to_insert));
+      EXPECT_TRUE(
+          db_->InsertExample("chromeos/test_client_1", record_to_insert));
       // {-1, "manual_example", SecondsAfterEpoch(current_timestamp++)}));
       EXPECT_TRUE(db_->InsertExample("test_client_2", record_to_insert));
       // {-1, "manual_example", SecondsAfterEpoch(current_timestamp++)}));
@@ -451,24 +458,25 @@ TEST_F(ExampleDatabaseTest, DatabaseReadAndWriteConcurrentMultipleThread) {
       PopulateTableForTesting(db_->sqlite3_for_testing(), "test_client_2", 50),
       SQLITE_OK);
 
-  std::string client_names[] = {"test_client_1", "test_client_1",
-                                "test_client_2"};
+  std::string client_names[] = {"chromeos/test_client_1",
+                                "chromeos/test_client_1", "test_client_2"};
   int count[] = {0, 0, 0};
   int start_second[] = {1, 51, 1};
   int end_second[] = {30, 90, 50};
 
   base::RepeatingCallback<void()> insert_cb = base::BindRepeating(
       [](ExampleDatabase* const db) {
-        EXPECT_TRUE(db->InsertExample(
-            "test_client_1", {-1, "manual_example", SecondsAfterEpoch(500)}));
+        EXPECT_TRUE(
+            db->InsertExample("chromeos/test_client_1",
+                              {-1, "manual_example", SecondsAfterEpoch(500)}));
         EXPECT_TRUE(db->InsertExample(
             "test_client_2", {-1, "manual_example", SecondsAfterEpoch(500)}));
       },
       db_.get());
 
-  // Starts 3 iterators, 2 for test_client_1, 1 for test_client_2 on different
-  // threads and reads examples from them. Meanwhile posts several insert tasks
-  // to multiple threads.
+  // Starts 3 iterators, 2 for chromeos/test_client_1, 1 for test_client_2 on
+  // different threads and reads examples from them. Meanwhile posts several
+  // insert tasks to multiple threads.
   for (int i = 0; i < 3; i++) {
     base::ThreadPool::PostTask(
         FROM_HERE,
@@ -510,7 +518,7 @@ TEST_F(ExampleDatabaseTest, DatabaseReadAndWriteConcurrentMultipleThread) {
   EXPECT_EQ(count[2], 50);
 
   // All insert requests should succeed, hence new example counts.
-  EXPECT_EQ(db_->ExampleCountForTesting("test_client_1"), 130);
+  EXPECT_EQ(db_->ExampleCountForTesting("chromeos/test_client_1"), 130);
   EXPECT_EQ(db_->ExampleCountForTesting("test_client_2"), 80);
 
   EXPECT_TRUE(db_->Close());
@@ -521,12 +529,12 @@ TEST_F(ExampleDatabaseTest, DatabaseReadMalformed) {
 
   // Inject malformed SQL code.
   ExampleDatabase::Iterator it_invalid =
-      db_->GetIteratorForTesting("test_client_1\"");
+      db_->GetIteratorForTesting("chromeos/test_client_1\"");
   EXPECT_TRUE(absl::IsInvalidArgument(it_invalid.Next().status()));
 
   // Now try a valid read.
   ExampleDatabase::Iterator it_valid =
-      db_->GetIteratorForTesting("test_client_1");
+      db_->GetIteratorForTesting("chromeos/test_client_1");
   const absl::StatusOr<ExampleRecord> record = it_valid.Next();
   EXPECT_TRUE(record.ok());
   EXPECT_EQ(record->id, 1);
@@ -571,7 +579,7 @@ TEST_F(ExampleDatabaseTest, InsertExampleMalformed) {
   ASSERT_TRUE(CreateExampleDatabaseAndInitialize());
 
   // Inject malformed SQL code.
-  EXPECT_FALSE(db_->InsertExample("test_client_1\"",
+  EXPECT_FALSE(db_->InsertExample("chromeos/test_client_1\"",
                                   {-1, "example_1", SecondsAfterEpoch(1)}));
 
   // Now try a valid insertion.
@@ -591,7 +599,7 @@ TEST_F(ExampleDatabaseTest, InsertExampleMalformed) {
 TEST_F(ExampleDatabaseTest, CountExamples) {
   ASSERT_TRUE(CreateExampleDatabaseAndInitialize());
 
-  EXPECT_EQ(db_->ExampleCountForTesting("test_client_1"), 100);
+  EXPECT_EQ(db_->ExampleCountForTesting("chromeos/test_client_1"), 100);
   EXPECT_EQ(db_->ExampleCountForTesting("test_client_2"), 0);
 
   // Client table 3 doesn't exist.
@@ -602,14 +610,14 @@ TEST_F(ExampleDatabaseTest, CountExamplesWithTimeRange) {
   ASSERT_TRUE(CreateExampleDatabaseAndInitialize());
 
   // Start_timestamp is not included.
-  EXPECT_EQ(db_->ExampleCount("test_client_1", SecondsAfterEpoch(0),
+  EXPECT_EQ(db_->ExampleCount("chromeos/test_client_1", SecondsAfterEpoch(0),
                               SecondsAfterEpoch(30)),
             30);
-  EXPECT_EQ(db_->ExampleCount("test_client_1", SecondsAfterEpoch(10),
+  EXPECT_EQ(db_->ExampleCount("chromeos/test_client_1", SecondsAfterEpoch(10),
                               SecondsAfterEpoch(30)),
             20);
   // The max timestamp in table is 100.
-  EXPECT_EQ(db_->ExampleCount("test_client_1", SecondsAfterEpoch(10),
+  EXPECT_EQ(db_->ExampleCount("chromeos/test_client_1", SecondsAfterEpoch(10),
                               SecondsAfterEpoch(200)),
             90);
 }
@@ -618,19 +626,19 @@ TEST_F(ExampleDatabaseTest, CountExamplesMalformed) {
   ASSERT_TRUE(CreateExampleDatabaseAndInitialize());
 
   // Inject invalid SQL code.
-  EXPECT_EQ(db_->ExampleCountForTesting("test_client_1\""), 0);
+  EXPECT_EQ(db_->ExampleCountForTesting("chromeos/test_client_1\""), 0);
 
   // Now try a valid read.
-  EXPECT_EQ(db_->ExampleCountForTesting("test_client_1"), 100);
+  EXPECT_EQ(db_->ExampleCountForTesting("chromeos/test_client_1"), 100);
 }
 
 TEST_F(ExampleDatabaseTest, DeleteExamples) {
   ASSERT_TRUE(CreateExampleDatabaseAndInitialize());
 
   // Populated table.
-  EXPECT_EQ(db_->ExampleCountForTesting("test_client_1"), 100);
-  db_->DeleteAllExamples("test_client_1");
-  EXPECT_EQ(db_->ExampleCountForTesting("test_client_1"), 0);
+  EXPECT_EQ(db_->ExampleCountForTesting("chromeos/test_client_1"), 100);
+  db_->DeleteAllExamples("chromeos/test_client_1");
+  EXPECT_EQ(db_->ExampleCountForTesting("chromeos/test_client_1"), 0);
 
   // Unpopulated table.
   EXPECT_EQ(db_->ExampleCountForTesting("test_client_2"), 0);
@@ -660,22 +668,22 @@ TEST_F(ExampleDatabaseTest, DeleteExamplesMalformed) {
   ASSERT_TRUE(CreateExampleDatabaseAndInitialize());
 
   // Inject invalid SQL code.
-  db_->DeleteAllExamples("test_client_1\"");
+  db_->DeleteAllExamples("chromeos/test_client_1\"");
 
   // Now test valid deletion still works.
-  EXPECT_EQ(db_->ExampleCountForTesting("test_client_1"), 100);
-  db_->DeleteAllExamples("test_client_1");
-  EXPECT_EQ(db_->ExampleCountForTesting("test_client_1"), 0);
+  EXPECT_EQ(db_->ExampleCountForTesting("chromeos/test_client_1"), 100);
+  db_->DeleteAllExamples("chromeos/test_client_1");
+  EXPECT_EQ(db_->ExampleCountForTesting("chromeos/test_client_1"), 0);
 
   EXPECT_TRUE(db_->Close());
 }
 
 TEST_F(ExampleDatabaseTest, DeleteOutdatedExamples) {
-  // Prepares the db file, in table test_client_1 there are 100 outdated
-  // examples with timestamp = SecondsAfterEpoch(*), and one example with
-  // timestamp = Now();
+  // Prepares the db file, in table chromeos/test_client_1 there are 100
+  // outdated examples with timestamp = SecondsAfterEpoch(*), and one example
+  // with timestamp = Now();
   ASSERT_TRUE(CreateExampleDatabaseAndInitialize());
-  ASSERT_TRUE(db_->InsertExample("test_client_1",
+  ASSERT_TRUE(db_->InsertExample("chromeos/test_client_1",
                                  {-1, "manual_example", base::Time::Now()}));
   ASSERT_TRUE(db_->Close());
 
@@ -694,8 +702,9 @@ TEST_F(ExampleDatabaseTest, DeleteOutdatedExamples) {
   EXPECT_TRUE(db.DeleteOutdatedExamples(base::Days(10)));
 
   // Now only the manual example remains in the table.
-  EXPECT_EQ(1, db.ExampleCountForTesting("test_client_1"));
-  ExampleDatabase::Iterator it = db.GetIteratorForTesting("test_client_1");
+  EXPECT_EQ(1, db.ExampleCountForTesting("chromeos/test_client_1"));
+  ExampleDatabase::Iterator it =
+      db.GetIteratorForTesting("chromeos/test_client_1");
   auto record = it.Next();
   EXPECT_TRUE(record.ok());
   EXPECT_EQ(record->id, 101);
