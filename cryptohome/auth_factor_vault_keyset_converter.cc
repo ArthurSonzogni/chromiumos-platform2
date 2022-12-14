@@ -271,6 +271,9 @@ AuthFactorVaultKeysetConverter::AuthFactorToKeyData(
     case AuthFactorType::kLegacyFingerprint:
       LOG(ERROR) << "Verify-only fingerprints do not have key data";
       return user_data_auth::CRYPTOHOME_ERROR_NOT_IMPLEMENTED;
+    case AuthFactorType::kFingerprint:
+      LOG(ERROR) << "Fingerprint auth factor do not have key data";
+      return user_data_auth::CRYPTOHOME_ERROR_NOT_IMPLEMENTED;
     case AuthFactorType::kUnspecified:
       LOG(ERROR) << "Unimplemented AuthFactorType.";
       return user_data_auth::CRYPTOHOME_ERROR_NOT_IMPLEMENTED;

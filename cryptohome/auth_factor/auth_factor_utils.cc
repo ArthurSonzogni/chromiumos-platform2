@@ -57,6 +57,11 @@ void GetSmartCardMetadata(const user_data_auth::AuthFactor& auth_factor,
           auth_factor.smart_card_metadata().public_key_spki_der())};
 }
 
+void GetFingerprintMetadata(const user_data_auth::AuthFactor& auth_factor,
+                            AuthFactorMetadata& out_auth_factor_metadata) {
+  out_auth_factor_metadata.metadata = FingerprintAuthFactorMetadata();
+}
+
 // Creates a D-Bus proto for a password auth factor.
 std::optional<user_data_auth::AuthFactor> ToPasswordProto(
     const PasswordAuthFactorMetadata& metadata) {
@@ -113,6 +118,13 @@ std::optional<user_data_auth::AuthFactor> ToLegacyFingerprintProto() {
   return proto;
 }
 
+// Creates a D-Bus proto for a fingerprint auth factor.
+std::optional<user_data_auth::AuthFactor> ToFingerprintProto() {
+  user_data_auth::AuthFactor proto;
+  proto.set_type(user_data_auth::AUTH_FACTOR_TYPE_FINGERPRINT);
+  return proto;
+}
+
 }  // namespace
 
 user_data_auth::AuthFactorType AuthFactorTypeToProto(AuthFactorType type) {
@@ -129,6 +141,8 @@ user_data_auth::AuthFactorType AuthFactorTypeToProto(AuthFactorType type) {
       return user_data_auth::AUTH_FACTOR_TYPE_SMART_CARD;
     case AuthFactorType::kLegacyFingerprint:
       return user_data_auth::AUTH_FACTOR_TYPE_LEGACY_FINGERPRINT;
+    case AuthFactorType::kFingerprint:
+      return user_data_auth::AUTH_FACTOR_TYPE_FINGERPRINT;
     case AuthFactorType::kUnspecified:
       return user_data_auth::AUTH_FACTOR_TYPE_UNSPECIFIED;
   }
@@ -151,6 +165,8 @@ std::optional<AuthFactorType> AuthFactorTypeFromProto(
       return AuthFactorType::kSmartCard;
     case user_data_auth::AUTH_FACTOR_TYPE_LEGACY_FINGERPRINT:
       return AuthFactorType::kLegacyFingerprint;
+    case user_data_auth::AUTH_FACTOR_TYPE_FINGERPRINT:
+      return AuthFactorType::kFingerprint;
     default:
       return std::nullopt;
   }
@@ -204,6 +220,17 @@ bool GetAuthFactorMetadata(const user_data_auth::AuthFactor& auth_factor,
       DCHECK(auth_factor.has_smart_card_metadata());
       GetSmartCardMetadata(auth_factor, out_auth_factor_metadata);
       out_auth_factor_type = AuthFactorType::kSmartCard;
+      break;
+    case user_data_auth::AUTH_FACTOR_TYPE_LEGACY_FINGERPRINT:
+      DCHECK(auth_factor.has_legacy_fingerprint_metadata());
+      // Legacy fingerprint factor has empty metadata, skip the metadata
+      // extraction.
+      out_auth_factor_type = AuthFactorType::kLegacyFingerprint;
+      break;
+    case user_data_auth::AUTH_FACTOR_TYPE_FINGERPRINT:
+      DCHECK(auth_factor.has_fingerprint_metadata());
+      GetFingerprintMetadata(auth_factor, out_auth_factor_metadata);
+      out_auth_factor_type = AuthFactorType::kFingerprint;
       break;
     default:
       LOG(ERROR) << "Unknown auth factor type " << auth_factor.type();
@@ -264,6 +291,10 @@ std::optional<user_data_auth::AuthFactor> GetAuthFactorProto(
     }
     case AuthFactorType::kLegacyFingerprint: {
       proto = ToLegacyFingerprintProto();
+      break;
+    }
+    case AuthFactorType::kFingerprint: {
+      proto = ToFingerprintProto();
       break;
     }
     case AuthFactorType::kUnspecified: {

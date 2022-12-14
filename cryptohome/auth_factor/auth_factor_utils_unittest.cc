@@ -105,6 +105,12 @@ TEST(AuthFactorUtilsTest, AuthFactorTypeConversionIsInvertable) {
   EXPECT_EQ(AuthFactorTypeToProto(*AuthFactorTypeFromProto(
                 user_data_auth::AUTH_FACTOR_TYPE_SMART_CARD)),
             user_data_auth::AUTH_FACTOR_TYPE_SMART_CARD);
+  EXPECT_EQ(AuthFactorTypeToProto(*AuthFactorTypeFromProto(
+                user_data_auth::AUTH_FACTOR_TYPE_LEGACY_FINGERPRINT)),
+            user_data_auth::AUTH_FACTOR_TYPE_LEGACY_FINGERPRINT);
+  EXPECT_EQ(AuthFactorTypeToProto(*AuthFactorTypeFromProto(
+                user_data_auth::AUTH_FACTOR_TYPE_FINGERPRINT)),
+            user_data_auth::AUTH_FACTOR_TYPE_FINGERPRINT);
 
   // These proto types are known to not be supported
   EXPECT_EQ(
@@ -439,8 +445,9 @@ TEST(AuthFactorUtilsTest, NeedsResetSecret) {
   EXPECT_FALSE(NeedsResetSecret(AuthFactorType::kCryptohomeRecovery));
   EXPECT_FALSE(NeedsResetSecret(AuthFactorType::kSmartCard));
   EXPECT_FALSE(NeedsResetSecret(AuthFactorType::kLegacyFingerprint));
+  EXPECT_FALSE(NeedsResetSecret(AuthFactorType::kFingerprint));
   EXPECT_FALSE(NeedsResetSecret(AuthFactorType::kUnspecified));
-  static_assert(static_cast<int>(AuthFactorType::kUnspecified) == 6,
+  static_assert(static_cast<int>(AuthFactorType::kUnspecified) == 7,
                 "All types of AuthFactorType are not all included here");
 }
 

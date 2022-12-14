@@ -110,6 +110,11 @@ AuthInput FromLegacyFingerprintAuthInput(
   return AuthInput{};
 }
 
+AuthInput FromFingerprintAuthInput(
+    const user_data_auth::FingerprintAuthInput& proto) {
+  return AuthInput{};
+}
+
 }  // namespace
 
 std::optional<AuthInput> CreateAuthInput(
@@ -158,6 +163,10 @@ std::optional<AuthInput> CreateAuthInput(
       auth_input = FromLegacyFingerprintAuthInput(
           auth_input_proto.legacy_fingerprint_input());
       break;
+    case user_data_auth::AuthInput::kFingerprintInput:
+      auth_input =
+          FromFingerprintAuthInput(auth_input_proto.fingerprint_input());
+      break;
     case user_data_auth::AuthInput::INPUT_NOT_SET:
       break;
   }
@@ -190,6 +199,8 @@ std::optional<AuthFactorType> DetermineFactorTypeFromAuthInput(
       return AuthFactorType::kSmartCard;
     case user_data_auth::AuthInput::kLegacyFingerprintInput:
       return AuthFactorType::kLegacyFingerprint;
+    case user_data_auth::AuthInput::kFingerprintInput:
+      return AuthFactorType::kFingerprint;
     case user_data_auth::AuthInput::INPUT_NOT_SET:
       return std::nullopt;
   }

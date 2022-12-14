@@ -115,6 +115,10 @@ bool AuthBlockUtilityImpl::IsAuthFactorSupported(
     }
     case AuthFactorType::kLegacyFingerprint:
       return false;
+    case AuthFactorType::kFingerprint:
+      // TODO(b/262309920): Should depend on PinWeaver enabled or not
+      // once the fingerprint auth block is implemented.
+      return false;
     case AuthFactorType::kUnspecified:
       return false;
   }
@@ -124,6 +128,7 @@ bool AuthBlockUtilityImpl::IsPrepareAuthFactorRequired(
     AuthFactorType auth_factor_type) const {
   switch (auth_factor_type) {
     case AuthFactorType::kLegacyFingerprint:
+    case AuthFactorType::kFingerprint:
       return true;
     case AuthFactorType::kPassword:
     case AuthFactorType::kPin:
@@ -156,6 +161,7 @@ bool AuthBlockUtilityImpl::IsVerifyWithAuthFactorSupported(
     case AuthFactorType::kPin:
     case AuthFactorType::kCryptohomeRecovery:
     case AuthFactorType::kKiosk:
+    case AuthFactorType::kFingerprint:
     case AuthFactorType::kUnspecified:
       return false;
   }
@@ -212,6 +218,7 @@ AuthBlockUtilityImpl::CreateCredentialVerifier(
     case AuthFactorType::kPin:
     case AuthFactorType::kCryptohomeRecovery:
     case AuthFactorType::kKiosk:
+    case AuthFactorType::kFingerprint:
     case AuthFactorType::kUnspecified: {
       return nullptr;
     }
@@ -229,6 +236,18 @@ void AuthBlockUtilityImpl::PrepareAuthFactorForAuth(
   switch (auth_factor_type) {
     case AuthFactorType::kLegacyFingerprint: {
       fp_service_->Start(username, std::move(callback));
+      return;
+    }
+    case AuthFactorType::kFingerprint: {
+      // TODO(b/262308692): Not implemented for now.
+      CryptohomeStatus status = MakeStatus<CryptohomeError>(
+          CRYPTOHOME_ERR_LOC(
+              kLocAuthBlockUtilUnimplementedPrepareForAuthFingerprint),
+          ErrorActionSet(
+              {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kAuth}),
+          user_data_auth::CryptohomeErrorCode::
+              CRYPTOHOME_ERROR_NOT_IMPLEMENTED);
+      std::move(callback).Run(std::move(status));
       return;
     }
     case AuthFactorType::kPassword:

@@ -30,6 +30,8 @@ struct SmartCardAuthFactorMetadata {
   hwsec::NoDefault<brillo::Blob> public_key_spki_der;
 };
 
+struct FingerprintAuthFactorMetadata {};
+
 struct AuthFactorMetadata {
   CommonAuthFactorMetadata common;
 
@@ -40,7 +42,8 @@ struct AuthFactorMetadata {
                PinAuthFactorMetadata,
                CryptohomeRecoveryAuthFactorMetadata,
                KioskAuthFactorMetadata,
-               SmartCardAuthFactorMetadata>
+               SmartCardAuthFactorMetadata,
+               FingerprintAuthFactorMetadata>
       metadata;
 };
 

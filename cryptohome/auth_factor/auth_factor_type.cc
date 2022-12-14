@@ -16,7 +16,9 @@ constexpr std::pair<AuthFactorType, const char*> kAuthFactorTypeStrings[] = {
     {AuthFactorType::kSmartCard, "smart_card"},
     {AuthFactorType::kCryptohomeRecovery, "cryptohome_recovery"},
     {AuthFactorType::kLegacyFingerprint, "legacy_fingerprint"},
-    {AuthFactorType::kKiosk, "kiosk"}};
+    {AuthFactorType::kKiosk, "kiosk"},
+    {AuthFactorType::kFingerprint, "fingerprint"},
+};
 
 // Converts the auth factor type enum into a string.
 std::string AuthFactorTypeToString(AuthFactorType type) {

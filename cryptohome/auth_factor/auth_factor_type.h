@@ -17,6 +17,7 @@ enum class AuthFactorType {
   kKiosk,
   kSmartCard,
   kLegacyFingerprint,
+  kFingerprint,
   kUnspecified,
 };
 
