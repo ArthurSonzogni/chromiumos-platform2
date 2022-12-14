@@ -24,7 +24,9 @@
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <dbus/mock_bus.h>
 #include <featured/fake_platform_features.h>
+#include <libhwsec/backend/mock_backend.h>
 #include <libhwsec/factory/mock_factory.h>
+#include <libhwsec/factory/tpm2_simulator_factory_for_test.h>
 #include <libhwsec/frontend/cryptohome/mock_frontend.h>
 #include <libhwsec/frontend/pinweaver/mock_frontend.h>
 #include <libhwsec/frontend/recovery_crypto/mock_frontend.h>
@@ -151,6 +153,31 @@ class UserDataAuthTestBase : public ::testing::Test {
   ~UserDataAuthTestBase() override = default;
 
   void SetUp() override {
+    // Note: If anything is modified/added here, we might need to adjust
+    // UserDataAuthApiTest::SetUp() as well.
+
+    SetupDefaultUserDataAuth();
+    SetupHwsec();
+  }
+
+  void SetupHwsec() {
+    userdataauth_->set_auth_block_utility(&auth_block_utility_);
+    userdataauth_->set_keyset_management(&keyset_management_);
+    userdataauth_->set_crypto(&crypto_);
+    userdataauth_->set_hwsec_factory(&hwsec_factory_);
+    userdataauth_->set_hwsec(&hwsec_);
+    userdataauth_->set_cryptohome_keys_manager(&cryptohome_keys_manager_);
+    userdataauth_->set_challenge_credentials_helper(
+        &challenge_credentials_helper_);
+
+    // It doesnt matter what key it returns for the purposes of the
+    // UserDataAuth test.
+    ON_CALL(keyset_management_, GetPublicMountPassKey(_))
+        .WillByDefault(
+            Return(CreateSecureRandomBlob(CRYPTOHOME_DEFAULT_SALT_LENGTH)));
+  }
+
+  void SetupDefaultUserDataAuth() {
     SET_DEFAULT_TPM_FOR_TESTING;
     attrs_ = std::make_unique<NiceMock<MockInstallAttributes>>();
     dbus::Bus::Options options;
@@ -172,18 +199,13 @@ class UserDataAuthTestBase : public ::testing::Test {
       // |userdataauth_| before calling UserDataAuthTestBase::SetUp().
       userdataauth_.reset(new UserDataAuth());
     }
-    userdataauth_->set_crypto(&crypto_);
-    userdataauth_->set_keyset_management(&keyset_management_);
-    userdataauth_->set_auth_block_utility(&auth_block_utility_);
+
     userdataauth_->set_user_activity_timestamp_manager(
         &user_activity_timestamp_manager_);
-    userdataauth_->set_homedirs(&homedirs_);
     userdataauth_->set_install_attrs(attrs_.get());
-    userdataauth_->set_hwsec_factory(&hwsec_factory_);
-    userdataauth_->set_hwsec(&hwsec_);
+    userdataauth_->set_homedirs(&homedirs_);
     userdataauth_->set_pinweaver(&pinweaver_);
     userdataauth_->set_recovery_crypto(&recovery_crypto_);
-    userdataauth_->set_cryptohome_keys_manager(&cryptohome_keys_manager_);
     userdataauth_->set_tpm_manager_util_(&tpm_manager_utility_);
     userdataauth_->set_platform(&platform_);
     userdataauth_->set_chaps_client(&chaps_client_);
@@ -195,8 +217,6 @@ class UserDataAuthTestBase : public ::testing::Test {
     userdataauth_->set_pkcs11_init(&pkcs11_init_);
     userdataauth_->set_pkcs11_token_factory(&pkcs11_token_factory_);
     userdataauth_->set_user_session_factory(&user_session_factory_);
-    userdataauth_->set_challenge_credentials_helper(
-        &challenge_credentials_helper_);
     userdataauth_->set_key_challenge_service_factory(
         &key_challenge_service_factory_);
     userdataauth_->set_low_disk_space_handler(&low_disk_space_handler_);
@@ -211,11 +231,6 @@ class UserDataAuthTestBase : public ::testing::Test {
     // Skip CleanUpStaleMounts by default.
     ON_CALL(platform_, GetMountsBySourcePrefix(_, _))
         .WillByDefault(Return(false));
-    // It doesnt matter what key it returns for the purposes of the UserDataAuth
-    // test.
-    ON_CALL(keyset_management_, GetPublicMountPassKey(_))
-        .WillByDefault(
-            Return(CreateSecureRandomBlob(CRYPTOHOME_DEFAULT_SALT_LENGTH)));
     // ARC Disk Quota initialization will do nothing.
     ON_CALL(arc_disk_quota_, Initialize()).WillByDefault(Return());
     // Low Disk space handler initialization will do nothing.
@@ -404,9 +419,15 @@ class UserDataAuthTestTasked : public UserDataAuthTestBase {
   ~UserDataAuthTestTasked() override = default;
 
   void SetUp() override {
+    // Note: If anything is modified/added here, we might need to adjust
+    // UserDataAuthApiTest::SetUp() as well.
+
     // Setup the usual stuff
     UserDataAuthTestBase::SetUp();
+    SetupTasks();
+  }
 
+  void SetupTasks() {
     // We do the task runner stuff for this test fixture.
     userdataauth_->set_origin_task_runner(origin_task_runner_);
     userdataauth_->set_mount_task_runner(mount_task_runner_);
@@ -514,6 +535,9 @@ class UserDataAuthTest : public UserDataAuthTestNotInitialized {
   ~UserDataAuthTest() override = default;
 
   void SetUp() override {
+    // Note: If anything is modified/added here, we might need to adjust
+    // UserDataAuthApiTest::SetUp() as well.
+
     UserDataAuthTestNotInitialized::SetUp();
     InitializeUserDataAuth();
   }
@@ -5312,6 +5336,25 @@ class UserDataAuthApiTest : public UserDataAuthTest {
  public:
   UserDataAuthApiTest() = default;
 
+  void SetUp() override {
+    // We need to simulate manufacturer to allow ECC auth blocks.
+    ON_CALL(sim_factory_.GetMockBackend().GetMock().vendor, GetManufacturer)
+        .WillByDefault(ReturnValue(0x43524F53));
+    // Assume that TPM is ready.
+    ON_CALL(sim_factory_.GetMockBackend().GetMock().state, IsReady)
+        .WillByDefault(ReturnValue(true));
+    // Sealing is supported.
+    ON_CALL(sim_factory_.GetMockBackend().GetMock().sealing, IsSupported)
+        .WillByDefault(ReturnValue(true));
+    userdataauth_ = std::make_unique<UserDataAuth>();
+    userdataauth_->set_hwsec_factory(&sim_factory_);
+
+    SetupDefaultUserDataAuth();
+    // Note: We skip SetupHwsec() because we use the simulated libhwsec layer.
+    SetupTasks();
+    InitializeUserDataAuth();
+  }
+
   // Simply the Sync() version of StartAuthSession(). Caller should check that
   // the returned value is not nullopt, which indicates that the call did not
   // finish.
@@ -5389,8 +5432,10 @@ class UserDataAuthApiTest : public UserDataAuthTest {
     return out_reply;
   }
 
- private:
+ protected:
   static constexpr char kUsername1[] = "foo@gmail.com";
+
+  hwsec::Tpm2SimulatorFactoryForTest sim_factory_;
 };
 
 // Matches against user_data_auth::CryptohomeErrorInfo to see if it contains an
