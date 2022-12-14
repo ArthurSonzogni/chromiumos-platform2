@@ -1431,16 +1431,7 @@ void Metrics::NotifyWiFiLinkQualityReport(const WiFiLinkQualityReport& report,
       .SetTXNSS(report.tx.nss)
       .SetTXDCM(report.tx.dcm);
 #if !defined(DISABLE_FLOSS)
-  // btmanagerd only correctly reports the "enabled" state of BT if Floss
-  // is the BT stack currently in use. If BlueZ is in use instead,
-  // btmanagerd does not know the state of the BT adapters and always
-  // reports them as "disabled", even if they're actually enabled.
-  // To avoid reporting incorrect data, we only report the "enabled" state
-  // when we're using Floss.
-  if (report.bt_stack == kBTStackFloss) {
-    sm_report.SetBTEnabled(report.bt_enabled);
-  }
-  sm_report.SetBTStack(report.bt_stack);
+  sm_report.SetBTEnabled(report.bt_enabled).SetBTStack(report.bt_stack);
 #else   // DISABLE_FLOSS
   sm_report.SetBTStack(kBTStackBlueZ);
 #endif  // DISABLE_FLOSS

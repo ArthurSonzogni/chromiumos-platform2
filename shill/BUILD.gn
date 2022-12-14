@@ -223,7 +223,10 @@ generate_dbus_proxies("generate_supplicant_proxies") {
 
 generate_dbus_proxies("generate_bluetooth_proxies") {
   proxy_output_file = "include/bluetooth/dbus-proxies.h"
-  sources = [ "dbus_bindings/bluetooth_manager.dbus-xml" ]
+  sources = [
+    "dbus_bindings/bluetooth_bluez.dbus-xml",
+    "dbus_bindings/bluetooth_manager.dbus-xml",
+  ]
 }
 
 static_library("libshill") {
@@ -398,6 +401,7 @@ static_library("libshill") {
   if (use.floss) {
     sources += [
       "bluetooth/bluetooth_manager.cc",
+      "dbus/bluetooth_bluez_proxy.cc",
       "dbus/bluetooth_manager_proxy.cc",
     ]
     deps += [ ":generate_bluetooth_proxies" ]

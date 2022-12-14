@@ -8,21 +8,18 @@
 #include <cstdint>
 #include <vector>
 
+#include "shill/bluetooth/bluetooth_manager_interface.h"
+
 namespace shill {
 
 class BluetoothManagerProxyInterface {
  public:
   virtual ~BluetoothManagerProxyInterface() = default;
 
-  virtual bool GetFlossEnabled(bool* enabled) const = 0;
-
-  struct BTAdapterWithEnabled {
-    int32_t hci_interface;
-    bool enabled;
-  };
-
   virtual bool GetAvailableAdapters(
-      std::vector<BTAdapterWithEnabled>* adapters) const = 0;
+      bool* is_floss,
+      std::vector<BluetoothManagerInterface::BTAdapterWithEnabled>* adapters)
+      const = 0;
 };
 
 }  // namespace shill

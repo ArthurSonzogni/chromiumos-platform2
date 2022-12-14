@@ -17,6 +17,7 @@
 namespace shill {
 
 #if !defined(DISABLE_FLOSS)
+class BluetoothBlueZProxyInterface;
 class BluetoothManagerProxyInterface;
 #endif  // DISABLE_FLOSS
 class DBusObjectManagerProxyInterface;
@@ -154,6 +155,9 @@ class ControlInterface {
 #if !defined(DISABLE_FLOSS)
   virtual std::unique_ptr<BluetoothManagerProxyInterface>
   CreateBluetoothManagerProxy() = 0;
+
+  virtual std::unique_ptr<BluetoothBlueZProxyInterface>
+  CreateBluetoothBlueZProxy() = 0;
 #endif  // DISABLE_FLOSS
 };
 

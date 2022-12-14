@@ -9,6 +9,7 @@
 #include <brillo/variant_dictionary.h>
 
 #include "bluetooth/dbus-proxies.h"
+#include "shill/bluetooth/bluetooth_manager_interface.h"
 
 namespace shill {
 
@@ -32,7 +33,18 @@ bool BluetoothManagerProxy::GetFlossEnabled(bool* enabled) const {
 }
 
 bool BluetoothManagerProxy::GetAvailableAdapters(
-    std::vector<BTAdapterWithEnabled>* adapters) const {
+    bool* is_floss,
+    std::vector<BluetoothManagerInterface::BTAdapterWithEnabled>* adapters)
+    const {
+  if (!GetFlossEnabled(is_floss)) {
+    return false;
+  }
+  if (!*is_floss) {
+    // The device is not using Floss at the moment. Return immediately since
+    // Floss won't know if the BT adapters are enabled or not in that case.
+    // Callers may choose to fallback to BlueZ.
+    return true;
+  }
   std::vector<brillo::VariantDictionary> bt_adapters;
   brillo::ErrorPtr error;
   if (!manager_proxy_->GetAvailableAdapters(&bt_adapters, &error)) {
@@ -41,7 +53,7 @@ bool BluetoothManagerProxy::GetAvailableAdapters(
     return false;
   }
   for (auto bt_adapter : bt_adapters) {
-    BTAdapterWithEnabled adapter{
+    BluetoothManagerInterface::BTAdapterWithEnabled adapter{
         .hci_interface = brillo::GetVariantValueOrDefault<int32_t>(
             bt_adapter, "hci_interface"),
         .enabled =
@@ -50,4 +62,5 @@ bool BluetoothManagerProxy::GetAvailableAdapters(
   }
   return true;
 }
+
 }  // namespace shill

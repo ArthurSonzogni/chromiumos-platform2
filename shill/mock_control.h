@@ -12,6 +12,7 @@
 #include <gmock/gmock.h>
 
 #if !defined(DISABLE_FLOSS)
+#include "shill/bluetooth/bluetooth_bluez_proxy_interface.h"
 #include "shill/bluetooth/bluetooth_manager_proxy_interface.h"
 #endif  // DISABLE_FLOSS
 #include "shill/cellular/dbus_objectmanager_proxy_interface.h"
@@ -147,6 +148,10 @@ class MockControl : public ControlInterface {
 #if !defined(DISABLE_FLOSS)
   MOCK_METHOD(std::unique_ptr<BluetoothManagerProxyInterface>,
               CreateBluetoothManagerProxy,
+              (),
+              (override));
+  MOCK_METHOD(std::unique_ptr<BluetoothBlueZProxyInterface>,
+              CreateBluetoothBlueZProxy,
               (),
               (override));
 #endif  // DISABLE_FLOSS

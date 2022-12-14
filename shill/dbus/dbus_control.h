@@ -109,6 +109,9 @@ class DBusControl : public ControlInterface {
 #if !defined(DISABLE_FLOSS)
   std::unique_ptr<BluetoothManagerProxyInterface> CreateBluetoothManagerProxy()
       override;
+
+  std::unique_ptr<BluetoothBlueZProxyInterface> CreateBluetoothBlueZProxy()
+      override;
 #endif  // DISABLE_FLOSS
 
  private:

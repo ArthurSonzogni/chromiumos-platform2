@@ -34,8 +34,7 @@
 #include <chromeos/dbus/service_constants.h>
 
 #if !defined(DISABLE_FLOSS)
-#include "shill/bluetooth/bluetooth_manager.h"
-#include "shill/bluetooth/bluetooth_manager_proxy_interface.h"
+#include "shill/bluetooth/bluetooth_manager_interface.h"
 #endif  // DISABLE_FLOSS
 #include "shill/control_interface.h"
 #include "shill/dbus/dbus_control.h"
@@ -3776,28 +3775,19 @@ void WiFi::EmitStationInfoReceivedEvent(
   Metrics::WiFiLinkQualityReport report =
       WiFiLinkStatistics::ConvertLinkStatsReport(stats);
 #if !defined(DISABLE_FLOSS)
-  if (manager()->bluetooth_manager()) {
-    BluetoothManagerProxyInterface* bt_proxy =
-        manager()->bluetooth_manager()->proxy();
-    if (bt_proxy) {
-      bool floss = false;
-      if (bt_proxy->GetFlossEnabled(&floss)) {
-        report.bt_stack =
-            floss ? Metrics::kBTStackFloss : Metrics::kBTStackBlueZ;
-      }
-      std::vector<BluetoothManagerProxyInterface::BTAdapterWithEnabled>
-          bt_adapters;
-      if (bt_proxy->GetAvailableAdapters(&bt_adapters)) {
-        report.bt_enabled = false;
-        for (auto adapter : bt_adapters) {
-          if (adapter.enabled) {
-            report.bt_enabled = true;
-            break;
-          }
+  BluetoothManagerInterface* bt_manager = manager()->bluetooth_manager();
+  if (bt_manager) {
+    bool floss = false;
+    std::vector<BluetoothManagerInterface::BTAdapterWithEnabled> bt_adapters;
+    if (bt_manager->GetAvailableAdapters(&floss, &bt_adapters)) {
+      report.bt_stack = floss ? Metrics::kBTStackFloss : Metrics::kBTStackBlueZ;
+      report.bt_enabled = false;
+      for (auto adapter : bt_adapters) {
+        if (adapter.enabled) {
+          report.bt_enabled = true;
+          break;
         }
       }
-    } else {
-      LOG(ERROR) << link_name() << ": BT manager proxy is not ready";
     }
   } else {
     LOG(ERROR) << link_name() << ": BT manager is not ready";

@@ -43,7 +43,7 @@
 namespace shill {
 
 #if !defined(DISABLE_FLOSS)
-class BluetoothManager;
+class BluetoothManagerInterface;
 #endif  // DISABLE_FLOSS
 class CellularServiceProvider;
 class ControlInterface;
@@ -529,7 +529,7 @@ class Manager {
   }
 
 #if !defined(DISABLE_FLOSS)
-  BluetoothManager* bluetooth_manager() const {
+  BluetoothManagerInterface* bluetooth_manager() const {
     return bluetooth_manager_.get();
   }
 #endif  // DISABLE_FLOSS
@@ -831,7 +831,7 @@ class Manager {
   std::unique_ptr<PowerManager> power_manager_;
   std::unique_ptr<Upstart> upstart_;
 #if !defined(DISABLE_FLOSS)
-  std::unique_ptr<BluetoothManager> bluetooth_manager_;
+  std::unique_ptr<BluetoothManagerInterface> bluetooth_manager_;
 #endif  // DISABLE_FLOSS
 
   // The priority order of technologies
