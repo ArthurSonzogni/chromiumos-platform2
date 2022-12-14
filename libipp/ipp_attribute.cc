@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <cassert>
+#include <iterator>
 #include <limits>
 #include <string>
 #include <vector>
@@ -672,6 +673,24 @@ const Collection* Attribute::GetCollection(size_t index) const {
 Collection::Collection() = default;
 
 Collection::~Collection() = default;
+
+Collection::iterator Collection::GetAttr(std::string_view name) {
+  auto it = attributes_index_.find(name);
+  if (it == attributes_index_.end())
+    return iterator(attributes_.end());
+  auto it2 = attributes_.begin();
+  std::advance(it2, it->second);
+  return iterator(it2);
+}
+
+Collection::const_iterator Collection::GetAttr(std::string_view name) const {
+  auto it = attributes_index_.find(name);
+  if (it == attributes_index_.end())
+    return const_iterator(attributes_.end());
+  auto it2 = attributes_.begin();
+  std::advance(it2, it->second);
+  return const_iterator(it2);
+}
 
 Attribute* Collection::GetAttribute(AttrName an) {
   std::string_view name = ToStrView(an);

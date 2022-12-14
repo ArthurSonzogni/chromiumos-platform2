@@ -4,7 +4,10 @@
 
 #include "attribute.h"
 
+#include <iterator>
 #include <string>
+#include <type_traits>
+#include <vector>
 
 #include "frame.h"
 #include <gtest/gtest.h>
@@ -193,6 +196,92 @@ TEST_F(CollectionTest, AttributesOrder) {
   EXPECT_EQ(attrs[2]->Name(), "a5");
   EXPECT_EQ(attrs[3]->Name(), "a4");
   EXPECT_EQ(attrs[4]->Name(), "a2");
+}
+
+TEST_F(CollectionTest, GetAttrFail) {
+  Collection::iterator it = coll_->GetAttr("abc");
+  EXPECT_EQ(it, coll_->end());
+  Collection::const_iterator itc =
+      static_cast<Collection::const_iterator>(coll_->GetAttr("abc"));
+  EXPECT_EQ(itc, coll_->end());
+  const Collection* coll_const = coll_;
+  EXPECT_EQ(coll_const->GetAttr("abc"), coll_->end());
+}
+
+TEST_F(CollectionTest, GetAttrSuccess) {
+  coll_->AddAttr("abc", std::vector{true, false});
+  Collection::iterator it = coll_->GetAttr("abc");
+  ASSERT_NE(it, coll_->end());
+  EXPECT_EQ(it->Name(), "abc");
+  EXPECT_EQ(it->Tag(), ValueTag::boolean);
+  EXPECT_EQ(it->Size(), 2);
+}
+
+TEST_F(CollectionTest, GetAttrSuccessConst) {
+  coll_->AddAttr("abc", std::vector{true, false});
+  Collection::const_iterator it;
+  it = coll_->GetAttr("abc");
+  ASSERT_NE(it, coll_->end());
+  EXPECT_EQ(it->Name(), "abc");
+  EXPECT_EQ(it->Tag(), ValueTag::boolean);
+  EXPECT_EQ(it->Size(), 2);
+}
+
+TEST_F(CollectionTest, IteratorsForEmptyCollection) {
+  EXPECT_EQ(coll_->begin(), coll_->end());
+  EXPECT_EQ(coll_->cbegin(), coll_->cend());
+  const Collection* coll_const = coll_;
+  EXPECT_EQ(coll_const->begin(), coll_const->end());
+}
+
+TEST_F(CollectionTest, IteratorsTwoElements) {
+  coll_->AddAttr("test", ValueTag::not_settable);
+  coll_->AddAttr("test2", ValueTag::keyword,
+                 std::vector<std::string>{"ala", "ma", "kota"});
+  std::vector<Collection::iterator> v;
+  v.push_back(coll_->GetAttr("test"));
+  v.push_back(coll_->GetAttr("test2"));
+  size_t index = 0;
+  for (Attribute& attr : *coll_) {
+    ASSERT_LE(index, v.size());
+    EXPECT_EQ(&attr, &*v[index]);
+    ++index;
+  }
+  EXPECT_EQ(index, v.size());
+}
+
+TEST_F(CollectionTest, IteratorsTwoElementsConst) {
+  coll_->AddAttr("test", ValueTag::not_settable);
+  coll_->AddAttr("test2", ValueTag::keyword,
+                 std::vector<std::string>{"ala", "ma", "kota"});
+  const Collection& coll_const = *coll_;
+  std::vector<Collection::const_iterator> v;
+  v.push_back(coll_const.GetAttr("test"));
+  v.push_back(coll_const.GetAttr("test2"));
+  size_t index = 0;
+  for (const Attribute& attr : coll_const) {
+    ASSERT_LE(index, v.size());
+    EXPECT_EQ(&attr, &*v[index]);
+    ++index;
+  }
+  EXPECT_EQ(index, v.size());
+}
+
+TEST_F(CollectionTest, IteratorTraits) {
+  using it_traits = std::iterator_traits<Collection::iterator>;
+  EXPECT_TRUE((std::is_same<it_traits::iterator_category,
+                            std::bidirectional_iterator_tag>::value));
+  EXPECT_TRUE((std::is_same<it_traits::value_type, Attribute>::value));
+  EXPECT_TRUE((std::is_same<it_traits::difference_type, int>::value));
+  EXPECT_TRUE((std::is_same<it_traits::pointer, Attribute*>::value));
+  EXPECT_TRUE((std::is_same<it_traits::reference, Attribute&>::value));
+  using itc_traits = std::iterator_traits<Collection::const_iterator>;
+  EXPECT_TRUE((std::is_same<itc_traits::iterator_category,
+                            std::bidirectional_iterator_tag>::value));
+  EXPECT_TRUE((std::is_same<itc_traits::value_type, const Attribute>::value));
+  EXPECT_TRUE((std::is_same<itc_traits::difference_type, int>::value));
+  EXPECT_TRUE((std::is_same<itc_traits::pointer, const Attribute*>::value));
+  EXPECT_TRUE((std::is_same<itc_traits::reference, const Attribute&>::value));
 }
 
 TEST(ToStrView, ValueTag) {

@@ -6,6 +6,7 @@
 #define LIBIPP_IPP_ATTRIBUTE_H_
 
 #include <cstdint>
+#include <iterator>
 #include <limits>
 #include <map>
 #include <memory>
@@ -176,9 +177,91 @@ struct AttrDef {
 };
 
 // Base class for all IPP collections. Collections is like struct filled with
-// Attributes. Each attribute in Collection must have unique name.
+// Attributes. Each attribute in Collection must have unique non-empty name.
+// Use AddAttr() methods to add new attributes to the collection and GetAttr()
+// to get access to the attribute by its name. To iterate over all attributes in
+// the collection use iterators, e.g.:
+//
+//    for (Attribute& attr: collection) { ... }
+//    for (const Attribute& attr: collection) { ... }
+//
+// Attributes inside the collection are always in the same order they were added
+// to it. They will also appear in the same order in the resultant frame.
 class IPP_EXPORT Collection {
  public:
+  class const_iterator;
+  class iterator {
+   public:
+    using iterator_category = std::bidirectional_iterator_tag;
+    using value_type = Attribute;
+    using difference_type = int;
+    using pointer = Attribute*;
+    using reference = Attribute&;
+
+    iterator() = default;
+    iterator& operator++() {
+      ++iter_;
+      return *this;
+    }
+    iterator& operator--() {
+      --iter_;
+      return *this;
+    }
+    iterator operator++(int) { return iterator(iter_++); }
+    iterator operator--(int) { return iterator(iter_--); }
+    Attribute& operator*() { return *(iter_->get()); }
+    Attribute* operator->() { return iter_->get(); }
+    bool operator==(const iterator& i) const { return iter_ == i.iter_; }
+    bool operator!=(const iterator& i) const { return iter_ != i.iter_; }
+    bool operator==(const const_iterator& i) const { return iter_ == i.iter_; }
+    bool operator!=(const const_iterator& i) const { return iter_ != i.iter_; }
+
+   private:
+    friend class Collection;
+    explicit iterator(std::vector<std::unique_ptr<Attribute>>::iterator iter)
+        : iter_(iter) {}
+    std::vector<std::unique_ptr<Attribute>>::iterator iter_;
+  };
+
+  class const_iterator {
+   public:
+    using iterator_category = std::bidirectional_iterator_tag;
+    using value_type = const Attribute;
+    using difference_type = int;
+    using pointer = const Attribute*;
+    using reference = const Attribute&;
+
+    const_iterator() = default;
+    explicit const_iterator(iterator it) : iter_(it.iter_) {}
+    const_iterator& operator=(iterator it) {
+      iter_ = it.iter_;
+      return *this;
+    }
+    const_iterator& operator++() {
+      ++iter_;
+      return *this;
+    }
+    const_iterator& operator--() {
+      --iter_;
+      return *this;
+    }
+    const_iterator operator++(int) { return const_iterator(iter_++); }
+    const_iterator operator--(int) { return const_iterator(iter_--); }
+    const Attribute& operator*() { return *(iter_->get()); }
+    const Attribute* operator->() { return iter_->get(); }
+    bool operator==(const iterator& i) const { return iter_ == i.iter_; }
+    bool operator!=(const iterator& i) const { return iter_ != i.iter_; }
+    bool operator==(const const_iterator& i) const { return iter_ == i.iter_; }
+    bool operator!=(const const_iterator& i) const { return iter_ != i.iter_; }
+
+   private:
+    friend class Collection;
+    explicit const_iterator(
+        std::vector<std::unique_ptr<Attribute>>::const_iterator iter)
+        : iter_(iter) {}
+    std::vector<std::unique_ptr<Attribute>>::const_iterator iter_;
+  };
+
   Collection();
   Collection(const Collection&) = delete;
   Collection(Collection&&) = delete;
@@ -186,6 +269,23 @@ class IPP_EXPORT Collection {
   Collection& operator=(Collection&&) = delete;
   virtual ~Collection();
 
+  // Standard methods returning iterators.
+  iterator begin() { return iterator(attributes_.begin()); }
+  iterator end() { return iterator(attributes_.end()); }
+  const_iterator cbegin() const { return const_iterator(attributes_.cbegin()); }
+  const_iterator cend() const { return const_iterator(attributes_.cend()); }
+  const_iterator begin() const { return cbegin(); }
+  const_iterator end() const { return cend(); }
+
+  // Methods return attribute by name. Methods return an iterator end() <=> the
+  // collection has no attributes with this name.
+  iterator GetAttr(std::string_view name);
+  const_iterator GetAttr(std::string_view name) const;
+
+  // DEPRECATED. Use iterators instead, e.g:
+  //    for (Attribute& attr: collection) { ... }
+  //    for (const Attribute& attr: collection) { ... }
+  //
   // Returns all attributes in the collection.
   // Returned vector = GetKnownAttributes() + unknown attributes.
   // Unknown attributes are in the order they were added to the collection.
@@ -193,6 +293,8 @@ class IPP_EXPORT Collection {
   std::vector<Attribute*> GetAllAttributes();
   std::vector<const Attribute*> GetAllAttributes() const;
 
+  // DEPRECATED. Use methods GetAttr() instead.
+  //
   // Methods return attribute by name. Methods return nullptr <=> the collection
   // has no attribute with this name.
   Attribute* GetAttribute(const std::string& name);
