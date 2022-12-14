@@ -49,6 +49,7 @@ ppoll: 1
 prctl: arg0 == PR_SET_NAME
 pread64: 1
 prlimit64: 1
+process_vm_readv: 1
 read: 1
 readlinkat: 1
 recvmsg: 1
