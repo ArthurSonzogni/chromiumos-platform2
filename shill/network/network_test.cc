@@ -24,6 +24,7 @@
 #include "shill/network/mock_dhcp_controller.h"
 #include "shill/network/mock_dhcp_provider.h"
 #include "shill/network/mock_network.h"
+#include "shill/network/mock_slaac_controller.h"
 #include "shill/technology.h"
 #include "shill/test_event_dispatcher.h"
 
@@ -134,6 +135,10 @@ class NetworkInTest : public Network {
               CreateConnection,
               (),
               (const override));
+  MOCK_METHOD(std::unique_ptr<SLAACController>,
+              CreateSLAACController,
+              (),
+              (override));
 };
 
 class NetworkTest : public ::testing::Test {
@@ -151,6 +156,11 @@ class NetworkTest : public ::testing::Test {
     ON_CALL(*network_, CreateConnection()).WillByDefault([this]() {
       auto ret = std::make_unique<NiceMock<MockConnection>>(&device_info_);
       connection_ = ret.get();
+      return ret;
+    });
+    ON_CALL(*network_, CreateSLAACController()).WillByDefault([this]() {
+      auto ret = std::make_unique<NiceMock<MockSLAACController>>();
+      slaac_controller_ = ret.get();
       return ret;
     });
   }
@@ -186,6 +196,7 @@ class NetworkTest : public ::testing::Test {
 
   // Variables owned by |network_|. Not guaranteed valid even if it's not null.
   MockDHCPController* dhcp_controller_ = nullptr;
+  MockSLAACController* slaac_controller_ = nullptr;
   MockConnection* connection_ = nullptr;
 };
 
@@ -433,9 +444,9 @@ class NetworkStartTest : public NetworkTest {
 
   void TriggerSLAACNameServersUpdate(const std::vector<IPAddress>& dns_list,
                                      uint32_t lifetime) {
-    EXPECT_CALL(device_info_, GetIPv6DnsServerAddresses(kTestIfindex, _, _))
-        .WillRepeatedly(DoAll(SetArgPointee<1>(dns_list),
-                              SetArgPointee<2>(lifetime), Return(true)));
+    EXPECT_CALL(*slaac_controller_, GetIPv6DNSServerAddresses(_, _))
+        .WillRepeatedly(DoAll(SetArgPointee<0>(dns_list),
+                              SetArgPointee<1>(lifetime), Return(true)));
     network_->OnIPv6DnsServerAddressesChanged();
     dispatcher_.task_environment().RunUntilIdle();
   }

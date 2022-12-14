@@ -21,6 +21,7 @@
 #include "shill/net/rtnl_handler.h"
 #include "shill/network/dhcp_controller.h"
 #include "shill/network/dhcp_provider.h"
+#include "shill/network/slaac_controller.h"
 #include "shill/technology.h"
 
 namespace shill {
@@ -275,6 +276,9 @@ class Network {
   // object easily.
   mockable std::unique_ptr<Connection> CreateConnection() const;
 
+  // Creates a SLAACController object. Isolated for unit test mock injection.
+  mockable std::unique_ptr<SLAACController> CreateSLAACController();
+
   // Shuts down and clears all the running state of this network. If
   // |trigger_callback| is true and the Network is started, OnNetworkStopped()
   // will be invoked with |is_failure|.
@@ -327,6 +331,7 @@ class Network {
   std::unique_ptr<Connection> connection_;
 
   std::unique_ptr<DHCPController> dhcp_controller_;
+  std::unique_ptr<SLAACController> slaac_controller_;
   std::unique_ptr<IPConfig> ipconfig_;
   std::unique_ptr<IPConfig> ip6config_;
 

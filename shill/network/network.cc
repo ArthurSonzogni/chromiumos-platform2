@@ -19,6 +19,7 @@
 #include "shill/logging.h"
 #include "shill/net/ndisc.h"
 #include "shill/net/rtnl_handler.h"
+#include "shill/network/slaac_controller.h"
 #include "shill/routing_table.h"
 #include "shill/routing_table_entry.h"
 #include "shill/service.h"
@@ -93,6 +94,10 @@ void Network::Start(const Network::StartOptions& opts) {
   // turn the state to kIdle.
   state_ = State::kConfiguring;
 
+  // TODO(b/227563210): Initialize slaac_controller_ only when slaac is enabled
+  // in start option.
+  slaac_controller_ = CreateSLAACController();
+
   bool ipv6_started = false;
   if (opts.accept_ra) {
     StartIPv6();
@@ -154,6 +159,13 @@ void Network::Start(const Network::StartOptions& opts) {
         base::BindOnce(&Network::StopInternal, AsWeakPtr(),
                        /*is_failure=*/true, /*trigger_callback=*/true));
   }
+}
+
+std::unique_ptr<SLAACController> Network::CreateSLAACController() {
+  auto slaac_controller =
+      std::make_unique<SLAACController>(interface_index_, this, rtnl_handler_);
+  slaac_controller->StartRTNL();
+  return slaac_controller;
 }
 
 void Network::SetupConnection(IPConfig* ipconfig) {
@@ -551,8 +563,8 @@ void Network::OnIPv6DnsServerAddressesChanged() {
   // Stop any existing timer.
   StopIPv6DNSServerTimer();
 
-  if (!device_info_->GetIPv6DnsServerAddresses(interface_index_,
-                                               &server_addresses, &lifetime) ||
+  if (!slaac_controller_->GetIPv6DNSServerAddresses(&server_addresses,
+                                                    &lifetime) ||
       lifetime == 0) {
     IPv6DNSServerExpired();
     return;

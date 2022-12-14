@@ -111,18 +111,6 @@ class DeviceInfo {
   virtual bool HasOtherAddress(int interface_index,
                                const IPAddress& this_address) const;
 
-  // Get the IPv6 DNS server addresses for |interface_index|. This method
-  // returns true and sets |address_list| and |life_time_seconds| if the IPv6
-  // DNS server addresses exists. Otherwise, it returns false and leave
-  // |address_list| and |life_time_seconds| unmodified. |life_time_seconds|
-  // indicates the number of the seconds the DNS server is still valid for at
-  // the time of this function call. Value of 0 means the DNS server is not
-  // valid anymore, and value of 0xFFFFFFFF means the DNS server is valid
-  // forever.
-  virtual bool GetIPv6DnsServerAddresses(int interface_index,
-                                         std::vector<IPAddress>* address_list,
-                                         uint32_t* life_time_seconds);
-
   virtual bool CreateTunnelInterface(LinkReadyCallback callback);
   virtual int OpenTunnelInterface(const std::string& interface_name) const;
 
@@ -182,7 +170,6 @@ class DeviceInfo {
   FRIEND_TEST(DeviceInfoTest, HasSubdir);           // For HasSubdir.
   FRIEND_TEST(DeviceInfoTest, IPv6AddressChanged);  // For infos_.
   FRIEND_TEST(DeviceInfoTest, StartStop);
-  FRIEND_TEST(DeviceInfoTest, IPv6DnsServerAddressesChanged);  // For infos_.
   FRIEND_TEST(DeviceInfoMockedGetUserId,
               AddRemoveAllowedInterface);  // For rtnl_handler_, routing_table_.
   FRIEND_TEST(DeviceInfoTest, CreateDeviceTunnel);  // For pending_links_.
@@ -205,9 +192,6 @@ class DeviceInfo {
     std::string name;
     ByteString mac_address;
     std::vector<AddressData> ip_addresses;
-    std::vector<IPAddress> ipv6_dns_server_addresses;
-    uint32_t ipv6_dns_server_lifetime_seconds;
-    time_t ipv6_dns_server_received_time_seconds;
     unsigned int flags;
     uint64_t rx_bytes;
     uint64_t tx_bytes;
@@ -293,7 +277,6 @@ class DeviceInfo {
   void DelLinkMsgHandler(const RTNLMessage& msg);
   void LinkMsgHandler(const RTNLMessage& msg);
   void AddressMsgHandler(const RTNLMessage& msg);
-  void RdnssMsgHandler(const RTNLMessage& msg);
 
   const Info* GetInfo(int interface_index) const;
   void DelayDeviceCreation(int interface_index);
@@ -332,7 +315,6 @@ class DeviceInfo {
 
   std::unique_ptr<RTNLListener> link_listener_;
   std::unique_ptr<RTNLListener> address_listener_;
-  std::unique_ptr<RTNLListener> rdnss_listener_;
   std::set<std::string> blocked_list_;
   base::FilePath device_info_root_;
 

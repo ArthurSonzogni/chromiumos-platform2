@@ -52,10 +52,6 @@ class MockDeviceInfo : public DeviceInfo {
               HasOtherAddress,
               (int, const IPAddress&),
               (const, override));
-  MOCK_METHOD(bool,
-              GetIPv6DnsServerAddresses,
-              (int, std::vector<IPAddress>*, uint32_t*),
-              (override));
   MOCK_METHOD(bool, CreateTunnelInterface, (LinkReadyCallback), (override));
 
   MOCK_METHOD(bool,
