@@ -57,6 +57,26 @@ enum class Panel {
   kMaxValue = kUnknown,
 };
 
+// Horizontal position of the port on its panel. This enum order is based on the
+// physical_location kernel driver.
+enum class HorizontalPosition {
+  kLeft = 0,
+  kCenter = 1,
+  kRight = 2,
+  kUnknown = 3,
+  kMaxValue = kUnknown,
+};
+
+// Vertical position of the port on its panel. This enum order is based on the
+// physical_location kernel driver.
+enum class VerticalPosition {
+  kUpper = 0,
+  kCenter = 1,
+  kLower = 2,
+  kUnknown = 3,
+  kMaxValue = kUnknown,
+};
+
 // This class is used to represent a Type C Port. It can be used to access PD
 // state associated with the port, and will also contain handles to the object
 // representing a peripheral (i.e "Partner") if one is connected to the port.
@@ -103,6 +123,12 @@ class Port {
 
   // Returns the panel that the port is located at.
   virtual Panel GetPanel();
+
+  // Returns horizontal position on the panel the port is located at.
+  virtual HorizontalPosition GetHorizontalPosition();
+
+  // Returns vertical position on the panel the port is located at.
+  virtual VerticalPosition GetVerticalPosition();
 
   // Configure whether the port supports USB4 (and by extension, TBT Compat)
   // mode.
@@ -222,8 +248,7 @@ class Port {
   // |power_role_|.
   void ParsePowerRole();
 
-  // Reads port physical location from sysfs and stores its fields. Currently
-  // only stores |panel_|.
+  // Reads port physical location from sysfs and stores its fields.
   void ParsePhysicalLocation();
 
   // Calls the |partner_|'s metrics reporting function, if a |partner_| is
@@ -258,6 +283,8 @@ class Port {
   PowerRole power_role_;
   // Physical location of the port.
   Panel panel_;
+  HorizontalPosition horizontal_position_;
+  VerticalPosition vertical_position_;
 
   // Cancelable callback for metrics reporting.
   base::CancelableOnceClosure report_metrics_callback_;

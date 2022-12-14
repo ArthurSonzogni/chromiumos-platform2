@@ -36,7 +36,9 @@ Port::Port(const base::FilePath& syspath, int port_num)
       supports_usb4_(true),
       data_role_(DataRole::kNone),
       power_role_(PowerRole::kNone),
-      panel_(Panel::kUnknown) {
+      panel_(Panel::kUnknown),
+      horizontal_position_(HorizontalPosition::kUnknown),
+      vertical_position_(VerticalPosition::kUnknown) {
   PortChanged();
   ParsePhysicalLocation();
   LOG(INFO) << "Port " << port_num_ << " enumerated.";
@@ -167,6 +169,14 @@ PowerRole Port::GetPowerRole() {
 
 Panel Port::GetPanel() {
   return panel_;
+}
+
+HorizontalPosition Port::GetHorizontalPosition() {
+  return horizontal_position_;
+}
+
+VerticalPosition Port::GetVerticalPosition() {
+  return vertical_position_;
 }
 
 bool Port::CanEnterDPAltMode(bool* invalid_dpalt_cable_ptr) {
@@ -406,10 +416,17 @@ end:
 
 void Port::ParsePhysicalLocation() {
   Panel panel = Panel::kUnknown;
-  std::string panel_str;
-  auto path = syspath_.Append("physical_location/panel");
+  HorizontalPosition hpos = HorizontalPosition::kUnknown;
+  VerticalPosition vpos = VerticalPosition::kUnknown;
 
-  if (!base::ReadFileToString(path, &panel_str)) {
+  std::string panel_str, hpos_str, vpos_str;
+  auto panel_path = syspath_.Append("physical_location/panel");
+  auto hpos_path = syspath_.Append("physical_location/horizontal_position");
+  auto vpos_path = syspath_.Append("physical_location/vertical_position");
+
+  if (!base::ReadFileToString(panel_path, &panel_str) ||
+      !base::ReadFileToString(hpos_path, &hpos_str) ||
+      !base::ReadFileToString(vpos_path, &vpos_str)) {
     // No error logged since kernel v5.4 or older does not expose
     // physical_location to sysfs.
     goto end;
@@ -429,8 +446,26 @@ void Port::ParsePhysicalLocation() {
   else if (panel_str == "back")
     panel = Panel::kBack;
 
+  base::TrimWhitespaceASCII(hpos_str, base::TRIM_ALL, &hpos_str);
+  if (hpos_str == "left")
+    hpos = HorizontalPosition::kLeft;
+  else if (hpos_str == "center")
+    hpos = HorizontalPosition::kCenter;
+  else if (hpos_str == "right")
+    hpos = HorizontalPosition::kRight;
+
+  base::TrimWhitespaceASCII(vpos_str, base::TRIM_ALL, &vpos_str);
+  if (vpos_str == "upper")
+    vpos = VerticalPosition::kUpper;
+  else if (vpos_str == "center")
+    vpos = VerticalPosition::kCenter;
+  else if (vpos_str == "lower")
+    vpos = VerticalPosition::kLower;
+
 end:
   panel_ = panel;
+  horizontal_position_ = hpos;
+  vertical_position_ = vpos;
 }
 
 bool Port::CableLimitingUSBSpeed(bool tbt3_alt_mode) {

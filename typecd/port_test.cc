@@ -27,6 +27,10 @@ constexpr char kInvalidPowerRole1[] = "asdf#//%sxdfa";
 
 constexpr char kValidPanel[] = "left";
 constexpr char kInvalidPanel[] = "asdf";
+constexpr char kValidHorizontalPosition[] = "right";
+constexpr char kInvalidHorizontalPosition[] = "fdas";
+constexpr char kValidVerticalPosition[] = "upper";
+constexpr char kInvalidVerticalPosition[] = "dsaf";
 }  // namespace
 
 namespace typecd {
@@ -605,8 +609,9 @@ TEST_F(PortTest, TBTCableLimitingSpeedTBT3DockFalseTBT3Cable) {
   EXPECT_FALSE(port->CableLimitingUSBSpeed(true));
 }
 
-// Check GetPanel() for valid panel value.
-TEST_F(PortTest, GetPanelValid) {
+// Check the physical location functions GetPanel(), GetHorizontalLocation() and
+// GetVerticalLocation() for a valid physical_location.
+TEST_F(PortTest, GetPhysicalLocationValid) {
   // Set up fake sysfs directory for the ports.
   auto port_path = temp_dir_.Append("port0");
   ASSERT_TRUE(base::CreateDirectory(port_path));
@@ -617,16 +622,29 @@ TEST_F(PortTest, GetPanelValid) {
   auto port_panel_path = port_physical_location_path.Append("panel");
   ASSERT_TRUE(
       base::WriteFile(port_panel_path, kValidPanel, strlen(kValidPanel)));
+  auto port_horizontal_position_path =
+      port_physical_location_path.Append("horizontal_position");
+  ASSERT_TRUE(base::WriteFile(port_horizontal_position_path,
+                              kValidHorizontalPosition,
+                              strlen(kValidHorizontalPosition)));
+  auto port_vertical_position_path =
+      port_physical_location_path.Append("vertical_position");
+  ASSERT_TRUE(base::WriteFile(port_vertical_position_path,
+                              kValidVerticalPosition,
+                              strlen(kValidVerticalPosition)));
 
   // Create ports.
   auto port = std::make_unique<Port>(base::FilePath(port_path), 0);
   ASSERT_NE(nullptr, port);
 
   EXPECT_EQ(Panel::kLeft, port->GetPanel());
+  EXPECT_EQ(HorizontalPosition::kRight, port->GetHorizontalPosition());
+  EXPECT_EQ(VerticalPosition::kUpper, port->GetVerticalPosition());
 }
 
-// Check GetPanel() for invalid panel value.
-TEST_F(PortTest, GetPanelInvalid) {
+// Check the physical location functions GetPanel(), GetHorizontalLocation() and
+// GetVerticalLocation() for an invalid physical_location.
+TEST_F(PortTest, GetPhysicalLocationInvalid) {
   // Set up fake sysfs directory for the ports.
   auto port_path = temp_dir_.Append("port0");
   ASSERT_TRUE(base::CreateDirectory(port_path));
@@ -637,16 +655,29 @@ TEST_F(PortTest, GetPanelInvalid) {
   auto port_panel_path = port_physical_location_path.Append("panel");
   ASSERT_TRUE(
       base::WriteFile(port_panel_path, kInvalidPanel, strlen(kInvalidPanel)));
+  auto port_horizontal_position_path =
+      port_physical_location_path.Append("horizontal_position");
+  ASSERT_TRUE(base::WriteFile(port_horizontal_position_path,
+                              kInvalidHorizontalPosition,
+                              strlen(kInvalidHorizontalPosition)));
+  auto port_vertical_position_path =
+      port_physical_location_path.Append("vertical_position");
+  ASSERT_TRUE(base::WriteFile(port_vertical_position_path,
+                              kInvalidVerticalPosition,
+                              strlen(kInvalidVerticalPosition)));
 
   // Create ports.
   auto port = std::make_unique<Port>(base::FilePath(port_path), 0);
   ASSERT_NE(nullptr, port);
 
   EXPECT_EQ(Panel::kUnknown, port->GetPanel());
+  EXPECT_EQ(HorizontalPosition::kUnknown, port->GetHorizontalPosition());
+  EXPECT_EQ(VerticalPosition::kUnknown, port->GetVerticalPosition());
 }
 
-// Check GetPanel() with no physical_location exposed in sysfs.
-TEST_F(PortTest, GetPanelNoValue) {
+// Check the physical location functions GetPanel(), GetHorizontalLocation() and
+// GetVerticalLocation() when there is no physical_location data available.
+TEST_F(PortTest, GetPhysicalLocationNoValue) {
   // Set up fake sysfs directory for the ports.
   auto port_path = temp_dir_.Append("port0");
   ASSERT_TRUE(base::CreateDirectory(port_path));
@@ -656,6 +687,8 @@ TEST_F(PortTest, GetPanelNoValue) {
   ASSERT_NE(nullptr, port);
 
   EXPECT_EQ(Panel::kUnknown, port->GetPanel());
+  EXPECT_EQ(HorizontalPosition::kUnknown, port->GetHorizontalPosition());
+  EXPECT_EQ(VerticalPosition::kUnknown, port->GetVerticalPosition());
 }
 
 }  // namespace typecd
