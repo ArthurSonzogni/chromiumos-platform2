@@ -73,6 +73,8 @@ pkg_config("target_defaults") {
     "SHIMDIR=\"${libdir}/shill/shims\"",
   ]
 
+  # TODO(b/262602479): Remove the 'floss' USE flag once all boards have migrated
+  # to Floss.
   if (!use.floss) {
     defines += [ "DISABLE_FLOSS" ]
   }
