@@ -2,14 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef OOBE_CONFIG_METRICS_H_
-#define OOBE_CONFIG_METRICS_H_
+#ifndef OOBE_CONFIG_METRICS_METRICS_UMA_H_
+#define OOBE_CONFIG_METRICS_METRICS_UMA_H_
 
 #include <metrics/metrics_library.h>
 
 namespace oobe_config {
 
-class Metrics {
+class MetricsUMA {
  public:
   enum class OobeRestoreResult {
     kSuccess = 0,
@@ -26,9 +26,9 @@ class Metrics {
     kCount,
   };
 
-  Metrics();
-  Metrics(const Metrics&) = delete;
-  Metrics& operator=(const Metrics&) = delete;
+  MetricsUMA();
+  MetricsUMA(const MetricsUMA&) = delete;
+  MetricsUMA& operator=(const MetricsUMA&) = delete;
 
   void RecordRestoreResult(OobeRestoreResult result);
 
@@ -40,4 +40,4 @@ class Metrics {
 
 }  // namespace oobe_config
 
-#endif  // OOBE_CONFIG_METRICS_H_
+#endif  // OOBE_CONFIG_METRICS_METRICS_UMA_H_

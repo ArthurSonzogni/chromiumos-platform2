@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "oobe_config/metrics.h"
+#include "oobe_config/metrics/metrics_uma.h"
 
 namespace {
 
@@ -14,15 +14,15 @@ constexpr char kRollbackSaveResultMetricName[] = "Rollback.RollbackSaveResult";
 
 namespace oobe_config {
 
-Metrics::Metrics() {}
+MetricsUMA::MetricsUMA() {}
 
-void Metrics::RecordRestoreResult(OobeRestoreResult result) {
+void MetricsUMA::RecordRestoreResult(OobeRestoreResult result) {
   metrics_library_.SendEnumToUMA(kOobeRestoreResultMetricName,
                                  static_cast<int>(result),
                                  static_cast<int>(OobeRestoreResult::kCount));
 }
 
-void Metrics::RecordSaveResult(RollbackSaveResult result) {
+void MetricsUMA::RecordSaveResult(RollbackSaveResult result) {
   metrics_library_.SendEnumToUMA(kRollbackSaveResultMetricName,
                                  static_cast<int>(result),
                                  static_cast<int>(RollbackSaveResult::kCount));

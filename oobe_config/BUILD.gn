@@ -68,7 +68,7 @@ static_library("liboobeconfig") {
     "encryption/pstore_storage.cc",
     "filesystem/file_handler.cc",
     "load_oobe_config_rollback.cc",
-    "metrics.cc",
+    "metrics/metrics_uma.cc",
     "network_exporter.cc",
     "oobe_config.cc",
   ]

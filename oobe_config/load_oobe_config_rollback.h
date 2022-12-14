@@ -12,7 +12,7 @@
 
 #include <base/files/file_path.h>
 
-#include "oobe_config/metrics.h"
+#include "oobe_config/metrics/metrics_uma.h"
 
 namespace oobe_config {
 
@@ -42,7 +42,7 @@ class LoadOobeConfigRollback : public LoadOobeConfigInterface {
 
   FileHandler file_handler_;
   OobeConfig* oobe_config_;
-  Metrics metrics_;  // For UMA metrics logging.
+  MetricsUMA metrics_uma_;  // For UMA metrics logging.
 };
 
 }  // namespace oobe_config

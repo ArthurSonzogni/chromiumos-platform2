@@ -45,7 +45,8 @@ bool LoadOobeConfigRollback::GetOobeConfigJson(string* config,
       LOG(ERROR)
           << "Failed to decrypt rollback data. This is expected in rare cases, "
              "e.g. when the TPM was cleared again during rollback OOBE.";
-      metrics_.RecordRestoreResult(Metrics::OobeRestoreResult::kStage1Failure);
+      metrics_uma_.RecordRestoreResult(
+          MetricsUMA::OobeRestoreResult::kStage1Failure);
       return false;
     }
   }
@@ -54,24 +55,27 @@ bool LoadOobeConfigRollback::GetOobeConfigJson(string* config,
     string rollback_data_str;
     if (!file_handler_.ReadDecryptedRollbackData(&rollback_data_str)) {
       LOG(ERROR) << "Could not read decrypted rollback data file.";
-      metrics_.RecordRestoreResult(Metrics::OobeRestoreResult::kStage3Failure);
+      metrics_uma_.RecordRestoreResult(
+          MetricsUMA::OobeRestoreResult::kStage3Failure);
       return false;
     }
     RollbackData rollback_data;
     if (!rollback_data.ParseFromString(rollback_data_str)) {
       LOG(ERROR) << "Couldn't parse proto.";
-      metrics_.RecordRestoreResult(Metrics::OobeRestoreResult::kStage3Failure);
+      metrics_uma_.RecordRestoreResult(
+          MetricsUMA::OobeRestoreResult::kStage3Failure);
       return false;
     }
     // We get the data for Chrome and assemble the config.
     if (!AssembleConfig(rollback_data, config)) {
       LOG(ERROR) << "Failed to assemble config.";
-      metrics_.RecordRestoreResult(Metrics::OobeRestoreResult::kStage3Failure);
+      metrics_uma_.RecordRestoreResult(
+          MetricsUMA::OobeRestoreResult::kStage3Failure);
       return false;
     }
 
     LOG(INFO) << "Rollback restore completed successfully.";
-    metrics_.RecordRestoreResult(Metrics::OobeRestoreResult::kSuccess);
+    metrics_uma_.RecordRestoreResult(MetricsUMA::OobeRestoreResult::kSuccess);
     return true;
   }
 
