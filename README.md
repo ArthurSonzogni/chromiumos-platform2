@@ -135,6 +135,7 @@ copies.
 | [power_manager](./power_manager/) | Userspace power management daemon and associated tools |
 | [print_tools](./print_tools/) | Various tools related to the native printing system |
 | [private_computing](./private_computing/) | Daemon to save and retrieve device active date status into and from preserved file.
+| [pwgtocanonij](./pwgtocanonij/) | CUPS filter for certain Canon printers |
 | [regions](./regions/) ||
 | [resourced](./resourced/) | Resource Management Daemon |
 | [rgbkbd](./rgbkbd/) | ChromeOS RGB Keyboard Daemon |
