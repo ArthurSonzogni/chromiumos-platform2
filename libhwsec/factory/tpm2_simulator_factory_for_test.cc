@@ -15,12 +15,6 @@
 namespace hwsec {
 namespace {
 
-std::unique_ptr<Proxy> GetAndInitProxy() {
-  auto proxy = std::make_unique<Tpm2SimulatorProxyForTest>();
-  CHECK(proxy->Init());
-  return proxy;
-}
-
 std::unique_ptr<MiddlewareOwner> GetAndInitMiddlewareOwner(
     ThreadingMode mode, Proxy& proxy, MockBackend*& mock_backend_ptr) {
   auto backend = std::make_unique<BackendTpm2>(proxy, MiddlewareDerivative{});
@@ -35,17 +29,32 @@ std::unique_ptr<MiddlewareOwner> GetAndInitMiddlewareOwner(
 
 }  // namespace
 
-Tpm2SimulatorFactoryForTestData::Tpm2SimulatorFactoryForTestData(
-    std::unique_ptr<Proxy> proxy)
-    : proxy_(std::move(proxy)), mock_backend_ptr_(nullptr) {}
+Tpm2SimulatorFactoryForTestData::Tpm2SimulatorFactoryForTestData()
+    : mock_backend_ptr_(nullptr) {
+  auto proxy = std::make_unique<Tpm2SimulatorProxyForTest>();
+  CHECK(proxy->Init());
+  proxy_ = std::move(proxy);
+}
 
 Tpm2SimulatorFactoryForTestData::~Tpm2SimulatorFactoryForTestData() = default;
 
 Tpm2SimulatorFactoryForTest::Tpm2SimulatorFactoryForTest(ThreadingMode mode)
-    : Tpm2SimulatorFactoryForTestData(GetAndInitProxy()),
-      FactoryImpl(GetAndInitMiddlewareOwner(mode, *proxy_, mock_backend_ptr_)) {
+    : FactoryImpl(GetAndInitMiddlewareOwner(mode, *proxy_, mock_backend_ptr_)) {
 }
 
 Tpm2SimulatorFactoryForTest::~Tpm2SimulatorFactoryForTest() = default;
+
+MockBackend& Tpm2SimulatorFactoryForTest::GetMockBackend() {
+  return *mock_backend_ptr_;
+}
+
+FakeTpmNvramForTest& Tpm2SimulatorFactoryForTest::GetFakeTpmNvramForTest() {
+  return proxy_->GetFakeTpmNvramForTest();
+}
+
+bool Tpm2SimulatorFactoryForTest::ExtendPCR(uint32_t index,
+                                            const std::string& data) {
+  return proxy_->ExtendPCR(index, data);
+}
 
 }  // namespace hwsec

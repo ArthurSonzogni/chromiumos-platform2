@@ -38,51 +38,62 @@ namespace hwsec {
 class MockBackend : public Backend {
  public:
   struct MockBackendData {
-    MockState state;
-    MockDAMitigation da_mitigation;
-    MockStorage storage;
-    MockRoData ro_data;
-    MockSealing sealing;
-    MockSignatureSealing signature_sealing;
-    MockDeriving deriving;
-    MockEncryption encryption;
-    MockSigning signing;
-    MockKeyManagement key_management;
-    MockSessionManagement session_management;
-    MockConfig config;
-    MockRandom random;
-    MockPinWeaver pinweaver;
-    MockVendor vendor;
-    MockRecoveryCrypto recovery_crypto;
-    MockU2f u2f;
+    testing::NiceMock<MockState> state;
+    testing::NiceMock<MockDAMitigation> da_mitigation;
+    testing::NiceMock<MockStorage> storage;
+    testing::NiceMock<MockRoData> ro_data;
+    testing::NiceMock<MockSealing> sealing;
+    testing::NiceMock<MockSignatureSealing> signature_sealing;
+    testing::NiceMock<MockDeriving> deriving;
+    testing::NiceMock<MockEncryption> encryption;
+    testing::NiceMock<MockSigning> signing;
+    testing::NiceMock<MockKeyManagement> key_management;
+    testing::NiceMock<MockSessionManagement> session_management;
+    testing::NiceMock<MockConfig> config;
+    testing::NiceMock<MockRandom> random;
+    testing::NiceMock<MockPinWeaver> pinweaver;
+    testing::NiceMock<MockVendor> vendor;
+    testing::NiceMock<MockRecoveryCrypto> recovery_crypto;
+    testing::NiceMock<MockU2f> u2f;
   };
 
   MockBackend() = default;
   explicit MockBackend(std::unique_ptr<Backend> backend)
       : default_backend_(std::move(backend)),
         mock_data_(MockBackendData{
-            .state = MockState(default_backend_->Get<State>()),
-            .da_mitigation =
-                MockDAMitigation(default_backend_->Get<DAMitigation>()),
-            .storage = MockStorage(default_backend_->Get<Storage>()),
-            .ro_data = MockRoData(default_backend_->Get<RoData>()),
-            .sealing = MockSealing(default_backend_->Get<Sealing>()),
-            .signature_sealing =
-                MockSignatureSealing(default_backend_->Get<SignatureSealing>()),
-            .deriving = MockDeriving(default_backend_->Get<Deriving>()),
-            .encryption = MockEncryption(default_backend_->Get<Encryption>()),
-            .signing = MockSigning(default_backend_->Get<Signing>()),
-            .key_management =
-                MockKeyManagement(default_backend_->Get<KeyManagement>()),
-            .session_management = MockSessionManagement(
+            .state =
+                testing::NiceMock<MockState>(default_backend_->Get<State>()),
+            .da_mitigation = testing::NiceMock<MockDAMitigation>(
+                default_backend_->Get<DAMitigation>()),
+            .storage = testing::NiceMock<MockStorage>(
+                default_backend_->Get<Storage>()),
+            .ro_data =
+                testing::NiceMock<MockRoData>(default_backend_->Get<RoData>()),
+            .sealing = testing::NiceMock<MockSealing>(
+                default_backend_->Get<Sealing>()),
+            .signature_sealing = testing::NiceMock<MockSignatureSealing>(
+                default_backend_->Get<SignatureSealing>()),
+            .deriving = testing::NiceMock<MockDeriving>(
+                default_backend_->Get<Deriving>()),
+            .encryption = testing::NiceMock<MockEncryption>(
+                default_backend_->Get<Encryption>()),
+            .signing = testing::NiceMock<MockSigning>(
+                default_backend_->Get<Signing>()),
+            .key_management = testing::NiceMock<MockKeyManagement>(
+                default_backend_->Get<KeyManagement>()),
+            .session_management = testing::NiceMock<MockSessionManagement>(
                 default_backend_->Get<SessionManagement>()),
-            .config = MockConfig(default_backend_->Get<Config>()),
-            .random = MockRandom(default_backend_->Get<Random>()),
-            .pinweaver = MockPinWeaver(default_backend_->Get<PinWeaver>()),
-            .vendor = MockVendor(default_backend_->Get<Vendor>()),
-            .recovery_crypto =
-                MockRecoveryCrypto(default_backend_->Get<RecoveryCrypto>()),
-            .u2f = MockU2f(default_backend_->Get<U2f>()),
+            .config =
+                testing::NiceMock<MockConfig>(default_backend_->Get<Config>()),
+            .random =
+                testing::NiceMock<MockRandom>(default_backend_->Get<Random>()),
+            .pinweaver = testing::NiceMock<MockPinWeaver>(
+                default_backend_->Get<PinWeaver>()),
+            .vendor =
+                testing::NiceMock<MockVendor>(default_backend_->Get<Vendor>()),
+            .recovery_crypto = testing::NiceMock<MockRecoveryCrypto>(
+                default_backend_->Get<RecoveryCrypto>()),
+            .u2f = testing::NiceMock<MockU2f>(default_backend_->Get<U2f>()),
         }) {}
 
   ~MockBackend() override = default;

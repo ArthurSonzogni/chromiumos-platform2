@@ -6,18 +6,20 @@
 #define LIBHWSEC_FACTORY_TPM2_SIMULATOR_FACTORY_FOR_TEST_H_
 
 #include <memory>
+#include <string>
 #include <utility>
 
 #include "libhwsec/factory/factory_impl.h"
 #include "libhwsec/hwsec_export.h"
 #include "libhwsec/structures/threading_mode.h"
+#include "libhwsec/test_utils/fake_tpm_nvram_for_test.h"
 
 namespace hwsec {
 
 // Forward declarations
 class MiddlewareOwner;
 class MockBackend;
-class Proxy;
+class Tpm2SimulatorProxyForTest;
 
 // A TPM2 simulator factory implementation for testing.
 //
@@ -30,10 +32,10 @@ class Proxy;
 
 class HWSEC_EXPORT Tpm2SimulatorFactoryForTestData {
  protected:
-  explicit Tpm2SimulatorFactoryForTestData(std::unique_ptr<Proxy> proxy);
+  Tpm2SimulatorFactoryForTestData();
   ~Tpm2SimulatorFactoryForTestData();
 
-  std::unique_ptr<Proxy> proxy_;
+  std::unique_ptr<Tpm2SimulatorProxyForTest> proxy_;
   MockBackend* mock_backend_ptr_;
 };
 
@@ -45,7 +47,9 @@ class HWSEC_EXPORT Tpm2SimulatorFactoryForTest
       ThreadingMode mode = ThreadingMode::kCurrentThread);
   ~Tpm2SimulatorFactoryForTest() override;
 
-  MockBackend& GetMockBackend() { return *mock_backend_ptr_; }
+  MockBackend& GetMockBackend();
+  FakeTpmNvramForTest& GetFakeTpmNvramForTest();
+  bool ExtendPCR(uint32_t index, const std::string& data);
 };
 
 }  // namespace hwsec

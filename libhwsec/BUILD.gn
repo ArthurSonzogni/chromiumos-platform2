@@ -106,6 +106,7 @@ shared_library("libhwsec_test") {
   sources = [
     "factory/tpm2_simulator_factory_for_test.cc",
     "proxy/tpm2_simulator_proxy_for_test.cc",
+    "test_utils/fake_tpm_nvram_for_test.cc",
   ]
   if (use.tpm) {
     sources += [ "test_utils/tpm1/test_fixture.cc" ]

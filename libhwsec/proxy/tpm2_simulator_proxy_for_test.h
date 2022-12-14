@@ -6,6 +6,7 @@
 #define LIBHWSEC_PROXY_TPM2_SIMULATOR_PROXY_FOR_TEST_H_
 
 #include <memory>
+#include <string>
 
 #include <base/files/scoped_temp_dir.h>
 #include <tpm_manager/proto_bindings/tpm_manager.pb.h>
@@ -17,6 +18,7 @@
 #include <trunks/trunks_factory_impl.h>
 
 #include "libhwsec/proxy/proxy.h"
+#include "libhwsec/test_utils/fake_tpm_nvram_for_test.h"
 
 namespace hwsec {
 
@@ -28,7 +30,12 @@ class Tpm2SimulatorProxyForTest : public Proxy {
   ~Tpm2SimulatorProxyForTest() override;
 
   // Initialize the proxy data. Returns true on success.
-  virtual bool Init();
+  bool Init();
+
+  // Extend the PCR value for the different use case. (e.g. boot mode.)
+  bool ExtendPCR(uint32_t index, const std::string& data);
+
+  FakeTpmNvramForTest& GetFakeTpmNvramForTest() { return tpm_nvram_; }
 
  private:
   base::ScopedTempDir tmp_tpm_dir_;
@@ -37,7 +44,7 @@ class Tpm2SimulatorProxyForTest : public Proxy {
   std::unique_ptr<trunks::ResourceManager> resource_manager_;
   std::unique_ptr<trunks::TrunksFactoryImpl> trunks_factory_;
   testing::NiceMock<org::chromium::TpmManagerProxyMock> tpm_manager_;
-  testing::NiceMock<org::chromium::TpmNvramProxyMock> tpm_nvram_;
+  FakeTpmNvramForTest tpm_nvram_;
   bool initialized_ = false;
 };
 

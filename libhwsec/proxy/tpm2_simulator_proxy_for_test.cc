@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "libhwsec/proxy/tpm2_simulator_proxy_for_test.h"
+
 #include <memory>
 #include <string>
 #include <utility>
@@ -11,6 +13,7 @@
 #include <base/logging.h>
 #include <base/time/time.h>
 #include <brillo/dbus/dbus_connection.h>
+#include <gmock/gmock-spec-builders.h>
 #include <libhwsec-foundation/tpm/tpm_version.h>
 #include <tpm_manager/proto_bindings/tpm_manager.pb.h>
 #include <tpm_manager-client/tpm_manager/dbus-proxies.h>
@@ -18,7 +21,9 @@
 #include <trunks/trunks_dbus_proxy.h>
 #include <trunks/trunks_factory_impl.h>
 
-#include "libhwsec/proxy/tpm2_simulator_proxy_for_test.h"
+#include "libhwsec/test_utils/fake_tpm_nvram_for_test.h"
+
+using testing::_;
 
 namespace {
 
@@ -72,7 +77,7 @@ class Tpm2SimulatorCommandTransceiver : public trunks::CommandTransceiver {
 
 namespace hwsec {
 
-Tpm2SimulatorProxyForTest::Tpm2SimulatorProxyForTest() {}
+Tpm2SimulatorProxyForTest::Tpm2SimulatorProxyForTest() = default;
 
 Tpm2SimulatorProxyForTest::~Tpm2SimulatorProxyForTest() {
   if (initialized_) {
@@ -134,12 +139,53 @@ bool Tpm2SimulatorProxyForTest::Init() {
     return false;
   }
 
+  if (!tpm_nvram_.Init()) {
+    LOG(ERROR) << "Failed to init fake TPM nvram.";
+    return false;
+  }
+
+  ON_CALL(tpm_manager_, GetTpmNonsensitiveStatus(_, _, _, _))
+      .WillByDefault([](auto&&,
+                        tpm_manager::GetTpmNonsensitiveStatusReply* reply,
+                        auto&&, auto&&) {
+        reply->set_status(tpm_manager::STATUS_SUCCESS);
+        reply->set_is_enabled(true);
+        reply->set_is_owned(true);
+        reply->set_has_reset_lock_permissions(true);
+        reply->set_is_srk_default_auth(true);
+        return true;
+      });
+
+  ON_CALL(tpm_manager_, GetTpmStatus(_, _, _, _))
+      .WillByDefault(
+          [](auto&&, tpm_manager::GetTpmStatusReply* reply, auto&&, auto&&) {
+            reply->set_status(tpm_manager::STATUS_SUCCESS);
+            reply->set_enabled(true);
+            reply->set_owned(true);
+            reply->mutable_local_data()->set_owner_password(kOwnerPassword);
+            reply->mutable_local_data()->set_endorsement_password(
+                kEndorsementPassword);
+            reply->mutable_local_data()->set_lockout_password(kLockoutPassword);
+            return true;
+          });
+
   Proxy::SetTrunksCommandTransceiver(low_level_transceiver_.get());
   Proxy::SetTrunksFactory(trunks_factory_.get());
   Proxy::SetTpmManager(&tpm_manager_);
-  Proxy::SetTpmNvram(&tpm_nvram_);
+  Proxy::SetTpmNvram(tpm_nvram_.GetMock());
 
   initialized_ = true;
+  return true;
+}
+
+bool Tpm2SimulatorProxyForTest::ExtendPCR(uint32_t index,
+                                          const std::string& data) {
+  if (low_level_factory_->GetTpmUtility()->ExtendPCR(index, data,
+                                                     /*delegate*/ nullptr)) {
+    LOG(ERROR) << "Failed to init TPM.";
+    return false;
+  }
+
   return true;
 }
 
