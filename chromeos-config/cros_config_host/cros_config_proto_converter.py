@@ -1418,6 +1418,27 @@ def _build_hardware_properties(hw_topology):
     return result
 
 
+def _build_storage(hw_topology):
+    storage_type = (
+        hw_topology.non_volatile_storage.hardware_feature.storage.storage_type
+    )
+
+    storage_type_names = {
+        component_pb2.Component.Storage.StorageType.STORAGE_TYPE_UNKNOWN: (
+            "STORAGE_TYPE_UNKNOWN"
+        ),
+        component_pb2.Component.Storage.StorageType.EMMC: "EMMC",
+        component_pb2.Component.Storage.StorageType.NVME: "NVME",
+        component_pb2.Component.Storage.StorageType.SATA: "SATA",
+        component_pb2.Component.Storage.StorageType.UFS: "UFS",
+    }
+    result = {}
+    if storage_type in storage_type_names:
+        result["storage-type"] = storage_type_names[storage_type]
+
+    return result
+
+
 def _fw_bcs_path(payload, ap_fw_suffix=""):
     if payload and payload.firmware_image_name:
         return "bcs://%s%s.%d.%d.%d.tbz2" % (
@@ -2358,6 +2379,11 @@ def _transform_build_config(config, config_files, whitelabel):
     )
     _upsert(
         _build_poe(config.hw_design_config.hardware_topology),
+        result,
+        "hardware-properties",
+    )
+    _upsert(
+        _build_storage(config.hw_design_config.hardware_topology),
         result,
         "hardware-properties",
     )
