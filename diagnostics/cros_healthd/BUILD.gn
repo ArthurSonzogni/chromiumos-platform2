@@ -35,6 +35,7 @@ source_set("libcros_healthd") {
     "cros_healthd_diagnostics_service.cc",
     "cros_healthd_mojo_service.cc",
     "cros_healthd_routine_factory_impl.cc",
+    "event_aggregator.cc",
     "fetch_aggregator.cc",
     "routine_parameter_fetcher.cc",
   ]

@@ -23,6 +23,7 @@ namespace network_health_mojom = ::chromeos::network_health::mojom;
 CrosHealthdMojoService::CrosHealthdMojoService(
     Context* context,
     FetchAggregator* fetch_aggregator,
+    EventAggregator* event_aggregator,
     BluetoothEvents* bluetooth_events,
     LidEvents* lid_events,
     PowerEvents* power_events,
@@ -33,6 +34,7 @@ CrosHealthdMojoService::CrosHealthdMojoService(
       system_provider_(this),
       context_(context),
       fetch_aggregator_(fetch_aggregator),
+      event_aggregator_(event_aggregator),
       bluetooth_events_(bluetooth_events),
       lid_events_(lid_events),
       power_events_(power_events),
@@ -40,6 +42,7 @@ CrosHealthdMojoService::CrosHealthdMojoService(
       udev_events_(udev_events) {
   DCHECK(context_);
   DCHECK(fetch_aggregator_);
+  DCHECK(event_aggregator_);
   DCHECK(bluetooth_events_);
   DCHECK(lid_events_);
   DCHECK(power_events_);
@@ -93,7 +96,7 @@ void CrosHealthdMojoService::AddUsbObserver(
 void CrosHealthdMojoService::AddEventObserver(
     mojom::EventCategoryEnum category,
     mojo::PendingRemote<mojom::EventObserver> observer) {
-  NOTIMPLEMENTED();
+  event_aggregator_->AddObserver(category, std::move(observer));
 }
 
 void CrosHealthdMojoService::ProbeProcessInfo(

@@ -12,6 +12,7 @@
 #include <mojo/public/cpp/bindings/pending_remote.h>
 #include <mojo/public/cpp/bindings/receiver_set.h>
 
+#include "diagnostics/cros_healthd/event_aggregator.h"
 #include "diagnostics/cros_healthd/events/audio_events.h"
 #include "diagnostics/cros_healthd/events/bluetooth_events.h"
 #include "diagnostics/cros_healthd/events/lid_events.h"
@@ -34,6 +35,7 @@ class CrosHealthdMojoService final
   using ProbeCategoryEnum = ::ash::cros_healthd::mojom::ProbeCategoryEnum;
 
   // |fetch_aggregator| - responsible for fulfilling probe requests.
+  // |event_aggregator| - responsible for fulfilling event requests.
   // |bluetooth_events| - BluetoothEvents implementation.
   // |lid_events| - LidEvents implementation.
   // |power_events| - PowerEvents implementation.
@@ -41,6 +43,7 @@ class CrosHealthdMojoService final
   // |udev_events| - UdevEvents implementation.
   CrosHealthdMojoService(Context* context,
                          FetchAggregator* fetch_aggregator,
+                         EventAggregator* event_aggregator,
                          BluetoothEvents* bluetooth_events,
                          LidEvents* lid_events,
                          PowerEvents* power_events,
@@ -124,6 +127,7 @@ class CrosHealthdMojoService final
   // Unowned. The following instances should outlive this instance.
   Context* const context_ = nullptr;
   FetchAggregator* fetch_aggregator_;
+  EventAggregator* event_aggregator_;
   BluetoothEvents* const bluetooth_events_ = nullptr;
   LidEvents* const lid_events_ = nullptr;
   PowerEvents* const power_events_ = nullptr;

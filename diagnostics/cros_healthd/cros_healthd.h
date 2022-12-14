@@ -19,6 +19,7 @@
 #include "diagnostics/cros_healthd/cros_healthd_diagnostics_service.h"
 #include "diagnostics/cros_healthd/cros_healthd_mojo_service.h"
 #include "diagnostics/cros_healthd/cros_healthd_routine_factory.h"
+#include "diagnostics/cros_healthd/event_aggregator.h"
 #include "diagnostics/cros_healthd/events/audio_events.h"
 #include "diagnostics/cros_healthd/events/bluetooth_events.h"
 #include "diagnostics/cros_healthd/events/lid_events.h"
@@ -103,6 +104,10 @@ class CrosHealthd final
   // |fetch_aggregator_| is responsible for fulfulling all ProbeTelemetryInfo
   // requests.
   std::unique_ptr<FetchAggregator> fetch_aggregator_;
+
+  // |event_aggregator_| is responsible for fulfulling all event requests from
+  // CrosHealthdEventService.
+  std::unique_ptr<EventAggregator> event_aggregator_;
 
   // Provides support for Bluetooth-related events.
   std::unique_ptr<BluetoothEvents> bluetooth_events_;

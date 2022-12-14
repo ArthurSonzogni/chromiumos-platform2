@@ -44,6 +44,8 @@ CrosHealthd::CrosHealthd(mojo::PlatformChannelEndpoint endpoint,
 
   fetch_aggregator_ = std::make_unique<FetchAggregator>(context_.get());
 
+  event_aggregator_ = std::make_unique<EventAggregator>(context_.get());
+
   bluetooth_events_ = std::make_unique<BluetoothEventsImpl>(context_.get());
 
   lid_events_ = std::make_unique<LidEventsImpl>(context_.get());
@@ -64,9 +66,9 @@ CrosHealthd::CrosHealthd(mojo::PlatformChannelEndpoint endpoint,
       context_.get(), routine_factory_.get());
 
   mojo_service_ = std::make_unique<CrosHealthdMojoService>(
-      context_.get(), fetch_aggregator_.get(), bluetooth_events_.get(),
-      lid_events_.get(), power_events_.get(), audio_events_.get(),
-      udev_events_.get());
+      context_.get(), fetch_aggregator_.get(), event_aggregator_.get(),
+      bluetooth_events_.get(), lid_events_.get(), power_events_.get(),
+      audio_events_.get(), udev_events_.get());
 
   service_factory_receiver_set_.set_disconnect_handler(
       base::BindRepeating(&CrosHealthd::OnDisconnect, base::Unretained(this)));
