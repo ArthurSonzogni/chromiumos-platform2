@@ -15,7 +15,7 @@ use dbus::channel::Sender;
 use dbus::message::{MatchRule, Message};
 use dbus_crossroads::{Crossroads, IfaceBuilder, IfaceToken, MethodErr};
 use dbus_tokio::connection;
-use libchromeos::sys::{error, warn};
+use libchromeos::sys::error;
 
 use crate::common;
 use crate::config;
@@ -322,14 +322,11 @@ pub async fn service_main() -> Result<()> {
 
     conn.start_receive(
         MatchRule::new_method_call(),
-        Box::new(move |msg, conn| {
-            warn!("handle dbus message: {:?}", msg);
-            match cr.handle_message(msg, conn) {
-                Ok(()) => true,
-                Err(()) => {
-                    error!("error handling D-Bus message");
-                    false
-                }
+        Box::new(move |msg, conn| match cr.handle_message(msg, conn) {
+            Ok(()) => true,
+            Err(()) => {
+                error!("error handling D-Bus message");
+                false
             }
         }),
     );
