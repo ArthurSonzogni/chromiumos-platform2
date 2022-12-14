@@ -2167,13 +2167,47 @@ TEST_P(StorageQueueTest, CreateStorageQueueInvalidOptionsPath) {
   EXPECT_EQ(queue_result.status().error_code(), error::UNAVAILABLE);
 }
 
-TEST_P(StorageQueueTest, WriteRecordWithInsufficientDiskSpace) {
+TEST_P(StorageQueueTest, WriteRecordDataWithInsufficientDiskSpaceFailure) {
   CreateTestStorageQueueOrDie(BuildStorageQueueOptionsOnlyManual());
 
-  // Update total disk space and reset after running the write operation so it
-  // does not affect other tests
-  const auto original_disk_space = options_.disk_space_resource()->GetTotal();
-  options_.disk_space_resource()->Test_SetTotal(0);
+  // Inject simulated failures.
+  auto inject = InjectFailures();
+  EXPECT_CALL(*inject,
+              Call(Eq(test::StorageQueueOperationKind::kWriteLowDiskSpace),
+                   Eq(1)))  // seq_id already bumped up for data!
+      .WillRepeatedly(WithArg<1>(Invoke([](int64_t seq_id) {
+        return Status(error::INTERNAL,
+                      base::StrCat({"Simulated data write low disk space, seq=",
+                                    base::NumberToString(seq_id)}));
+      })));
+
+  EXPECT_CALL(
+      analytics::Metrics::TestEnvironment::GetMockMetricsLibrary(),
+      SendLinearToUMA(StrEq(StorageQueue::kResourceExhaustedCaseUmaName),
+                      Eq(StorageQueue::ResourceExhaustedCase::NO_DISK_SPACE),
+                      Eq(StorageQueue::ResourceExhaustedCase::kMaxValue)))
+      .WillOnce(Return(true));
+  Status write_result = WriteString(kData[0]);
+  EXPECT_FALSE(write_result.ok());
+  EXPECT_EQ(write_result.error_code(), error::RESOURCE_EXHAUSTED);
+  task_environment_.RunUntilIdle();  // For asynchronous UMA upload.
+}
+
+TEST_P(StorageQueueTest, WriteRecordMetadataWithInsufficientDiskSpaceFailure) {
+  CreateTestStorageQueueOrDie(BuildStorageQueueOptionsOnlyManual());
+
+  // Inject simulated failures.
+  auto inject = InjectFailures();
+  EXPECT_CALL(
+      *inject,
+      Call(Eq(test::StorageQueueOperationKind::kWriteLowDiskSpace), Eq(0)))
+      .WillRepeatedly(WithArg<1>(Invoke([](int64_t seq_id) {
+        return Status(
+            error::INTERNAL,
+            base::StrCat({"Simulated metadata write low disk space, seq=",
+                          base::NumberToString(seq_id)}));
+      })));
+
   EXPECT_CALL(
       analytics::Metrics::TestEnvironment::GetMockMetricsLibrary(),
       SendLinearToUMA(
@@ -2182,19 +2216,25 @@ TEST_P(StorageQueueTest, WriteRecordWithInsufficientDiskSpace) {
           Eq(StorageQueue::ResourceExhaustedCase::kMaxValue)))
       .WillOnce(Return(true));
   Status write_result = WriteString(kData[0]);
-  options_.disk_space_resource()->Test_SetTotal(original_disk_space);
   EXPECT_FALSE(write_result.ok());
   EXPECT_EQ(write_result.error_code(), error::RESOURCE_EXHAUSTED);
   task_environment_.RunUntilIdle();  // For asynchronous UMA upload.
 }
 
-TEST_P(StorageQueueTest, WriteRecordWithInsufficientMemory) {
+TEST_P(StorageQueueTest, WrappedRecordWithInsufficientMemoryWithFailure) {
   CreateTestStorageQueueOrDie(BuildStorageQueueOptionsOnlyManual());
 
-  // Update total memory and reset after running the write operation so it does
-  // not affect other tests
-  const auto original_total_memory = options_.memory_resource()->GetTotal();
-  options_.memory_resource()->Test_SetTotal(0);
+  // Inject "low memory" error multiple times, then retire and return success.
+  auto inject = InjectFailures();
+  EXPECT_CALL(
+      *inject,
+      Call(Eq(test::StorageQueueOperationKind::kWrappedRecordLowMemory), Eq(0)))
+      .WillRepeatedly(WithArg<1>(Invoke([](int64_t seq_id) {
+        return Status(error::RESOURCE_EXHAUSTED,
+                      base::StrCat({"Not enough memory for WrappedRecord, seq=",
+                                    base::NumberToString(seq_id)}));
+      })))
+      .RetiresOnSaturation();
   EXPECT_CALL(
       analytics::Metrics::TestEnvironment::GetMockMetricsLibrary(),
       SendLinearToUMA(
@@ -2202,8 +2242,54 @@ TEST_P(StorageQueueTest, WriteRecordWithInsufficientMemory) {
           Eq(StorageQueue::ResourceExhaustedCase::NO_MEMORY_FOR_WRITE_BUFFER),
           Eq(StorageQueue::ResourceExhaustedCase::kMaxValue)))
       .WillOnce(Return(true));
-  Status write_result = WriteString(kData[0]);
-  options_.memory_resource()->Test_SetTotal(original_total_memory);
+  Record record;
+  record.set_data(std::string(kData[0]));
+  record.set_destination(UPLOAD_EVENTS);
+  if (!dm_token_.empty()) {
+    record.set_dm_token(dm_token_);
+  }
+  test::TestEvent<Status> write_event;
+  LOG(ERROR) << "Write data='" << record.data() << "'";
+  storage_queue_->Write(std::move(record), write_event.cb());
+  Status write_result = write_event.result();
+  EXPECT_FALSE(write_result.ok());
+  EXPECT_EQ(write_result.error_code(), error::RESOURCE_EXHAUSTED);
+  task_environment_.RunUntilIdle();  // For asynchronous UMA upload.
+}
+
+TEST_P(StorageQueueTest, EncryptedRecordWithInsufficientMemoryWithFailure) {
+  CreateTestStorageQueueOrDie(BuildStorageQueueOptionsOnlyManual());
+
+  // Inject "low memory" error multiple times, then retire and return success.
+  auto inject = InjectFailures();
+  EXPECT_CALL(
+      *inject,
+      Call(Eq(test::StorageQueueOperationKind::kEncryptedRecordLowMemory),
+           Eq(0)))
+      .WillRepeatedly(WithArg<1>(Invoke([](int64_t seq_id) {
+        return Status(
+            error::RESOURCE_EXHAUSTED,
+            base::StrCat({"Not enough memory for EncryptedRecord, seq=",
+                          base::NumberToString(seq_id)}));
+      })))
+      .RetiresOnSaturation();
+  EXPECT_CALL(
+      analytics::Metrics::TestEnvironment::GetMockMetricsLibrary(),
+      SendLinearToUMA(StrEq(StorageQueue::kResourceExhaustedCaseUmaName),
+                      Eq(StorageQueue::ResourceExhaustedCase::
+                             NO_MEMORY_FOR_ENCRYPTED_RECORD),
+                      Eq(StorageQueue::ResourceExhaustedCase::kMaxValue)))
+      .WillOnce(Return(true));
+  Record record;
+  record.set_data(std::string(kData[0]));
+  record.set_destination(UPLOAD_EVENTS);
+  if (!dm_token_.empty()) {
+    record.set_dm_token(dm_token_);
+  }
+  test::TestEvent<Status> write_event;
+  LOG(ERROR) << "Write data='" << record.data() << "'";
+  storage_queue_->Write(std::move(record), write_event.cb());
+  Status write_result = write_event.result();
   EXPECT_FALSE(write_result.ok());
   EXPECT_EQ(write_result.error_code(), error::RESOURCE_EXHAUSTED);
   task_environment_.RunUntilIdle();  // For asynchronous UMA upload.

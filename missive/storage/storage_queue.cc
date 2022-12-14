@@ -596,7 +596,13 @@ Status StorageQueue::WriteHeaderAndBlock(
                   base::StrCat({"Cannot open file=", file->name(),
                                 " status=", open_status.ToString()}));
   }
-  if (!options_.disk_space_resource()->Reserve(total_size)) {
+
+  if ((test_injection_handler_ &&  // Test only: Simulate failure if requested
+       !test_injection_handler_
+            .Run(test::StorageQueueOperationKind::kWriteLowDiskSpace,
+                 next_sequencing_id_)
+            .ok()) ||
+      !options_.disk_space_resource()->Reserve(total_size)) {
     SendResExCaseToUma(ResourceExhaustedCase::NO_DISK_SPACE);
     return Status(
         error::RESOURCE_EXHAUSTED,
@@ -655,13 +661,19 @@ Status StorageQueue::WriteMetadata(base::StringPiece current_record_digest) {
           /*size=*/0, options_.memory_resource(),
           options_.disk_space_resource(), completion_closure_list_));
   RETURN_IF_ERROR(meta_file->Open(/*read_only=*/false));
+
   // Account for the metadata file size.
-  if (!options_.disk_space_resource()->Reserve(sizeof(generation_id_) +
+  if ((test_injection_handler_ &&  // Test only: Simulate failure if requested
+       !test_injection_handler_
+            .Run(test::StorageQueueOperationKind::kWriteLowDiskSpace,
+                 next_sequencing_id_)
+            .ok()) ||
+      !options_.disk_space_resource()->Reserve(sizeof(generation_id_) +
                                                current_record_digest.size())) {
     SendResExCaseToUma(ResourceExhaustedCase::NO_DISK_SPACE_METADATA);
     return Status(
         error::RESOURCE_EXHAUSTED,
-        base::StrCat({"Not enough disk space available to write into file=",
+        base::StrCat({"Not enough disk space available to write into metafile=",
                       meta_file->name()}));
   }
   // Metadata file format is:
@@ -1526,6 +1538,14 @@ class StorageQueue::WriteContext : public TaskRunnerContext<Status> {
     ScopedReservation scoped_reservation(
         wrapped_record.ByteSizeLong(),
         storage_queue_->options().memory_resource());
+    // Inject "memory unavailable" failure, if requested.
+    if (storage_queue_->test_injection_handler_ &&
+        !storage_queue_->test_injection_handler_
+             .Run(test::StorageQueueOperationKind::kWrappedRecordLowMemory,
+                  storage_queue_->next_sequencing_id_)
+             .ok()) {
+      scoped_reservation.Reduce(0);
+    }
     if (!scoped_reservation.reserved()) {
       SendResExCaseToUma(ResourceExhaustedCase::NO_MEMORY_FOR_WRITE_BUFFER);
       Schedule(&ReadContext::Response, base::Unretained(this),
@@ -1602,6 +1622,14 @@ class StorageQueue::WriteContext : public TaskRunnerContext<Status> {
     ScopedReservation scoped_reservation(
         encrypted_record_result.ValueOrDie().ByteSizeLong(),
         storage_queue_->options().memory_resource());
+    // Inject "memory unavailable" failure, if requested.
+    if (storage_queue_->test_injection_handler_ &&
+        !storage_queue_->test_injection_handler_
+             .Run(test::StorageQueueOperationKind::kEncryptedRecordLowMemory,
+                  storage_queue_->next_sequencing_id_)
+             .ok()) {
+      scoped_reservation.Reduce(0);
+    }
     if (!scoped_reservation.reserved()) {
       SendResExCaseToUma(ResourceExhaustedCase::NO_MEMORY_FOR_ENCRYPTED_RECORD);
       Schedule(&ReadContext::Response, base::Unretained(this),
@@ -1903,6 +1931,7 @@ StorageQueue::SingleFile::Create(
     scoped_refptr<ResourceManager> memory_resource,
     scoped_refptr<ResourceManager> disk_space_resource,
     scoped_refptr<RefCountedClosureList> completion_closure_list) {
+  // Reserve specified disk space for the file.
   if (!disk_space_resource->Reserve(size)) {
     LOG(WARNING) << "Disk space exceeded adding file "
                  << filename.MaybeAsASCII();
@@ -1912,6 +1941,7 @@ StorageQueue::SingleFile::Create(
         base::StrCat({"Not enough disk space available to include file=",
                       filename.MaybeAsASCII()}));
   }
+
   // Cannot use base::MakeRefCounted, since the constructor is private.
   return scoped_refptr<StorageQueue::SingleFile>(
       new SingleFile(filename, size, memory_resource, disk_space_resource,
