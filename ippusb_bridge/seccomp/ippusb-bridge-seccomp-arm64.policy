@@ -88,7 +88,6 @@ set_tid_address: 1
 shutdown: 1
 sigaltstack: 1
 socket: arg0 == AF_UNIX || arg0 == AF_NETLINK || arg0 == AF_INET
-statfs64: 1
 tgkill: 1
 timerfd_create: 1
 timerfd_settime: 1
