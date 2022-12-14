@@ -1493,7 +1493,7 @@ message AuthenticateAuthFactorReply {
   // which field to use and the process on the migration, see comment in
   // CryptohomeErrorInfo.
   CryptohomeErrorInfo error_info = 2;
-  // Returns if the Auth Session is authenticated.
+  // DEPRECATED. Use |authorized_for| instead.
   bool authenticated = 3;
   // The intents that the Auth Session has been authorized for. This starts from
   // an empty set when the session is created, and is updated when a factor is
