@@ -195,6 +195,15 @@ bool EffectsStreamManipulator::ProcessCaptureResult(
   if (!pipeline_)
     return true;
 
+  auto new_config = runtime_options_->GetEffectsConfig();
+  if (active_runtime_effects_config_ != new_config) {
+    active_runtime_effects_config_ = new_config;
+    SetEffect(&new_config, nullptr);
+  }
+
+  if (!effects_enabled_)
+    return true;
+
   camera3_stream_buffer_t* result_buffer =
       SelectEffectsBuffer(result.GetMutableOutputBuffers());
   if (result_buffer == nullptr)
@@ -248,11 +257,6 @@ bool EffectsStreamManipulator::ProcessCaptureResult(
     return false;
   }
 
-  auto new_config = runtime_options_->GetEffectsConfig();
-  if (active_runtime_effects_config_ != new_config) {
-    active_runtime_effects_config_ = new_config;
-    SetEffect(&new_config, nullptr);
-  }
   auto timestamp = TryGetSensorTimestamp(&result);
   timestamp_ = timestamp.has_value() ? *timestamp : timestamp_ + 1;
 
@@ -352,6 +356,8 @@ void EffectsStreamManipulator::SetEffect(EffectsConfig* new_config,
                                          void (*callback)(bool)) {
   if (pipeline_) {
     pipeline_->SetEffect(new_config, callback);
+    effects_enabled_ =
+        new_config->effect != mojom::CameraEffect::kNone ? true : false;
   } else {
     LOGF(WARNING) << "SetEffect called, but pipeline not ready.";
   }
