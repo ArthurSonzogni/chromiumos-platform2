@@ -285,6 +285,47 @@
       </summary>
     </metric>
   </event>
+
+  <event name="BluetoothA2dpAudioOverrun">
+    <summary>
+      Records the A2DP overrun event.
+    </summary>
+    <metric name="BootId" type="hmac-string">
+      <summary>
+        Random ID generated at boot time to detect reboots.
+      </summary>
+    </metric>
+    <metric name="SystemTime" type="int">
+      <summary>
+        The time elapsed since boot, in microseconds.
+      </summary>
+    </metric>
+    <metric name="DeviceId" type="hmac-string">
+      <summary>
+        The bluetooth device id.
+      </summary>
+    </metric>
+    <metric name="EncodingInterval" type="int">
+      <summary>
+        A2DP packet encoding interval in milliseconds.
+      </summary>
+    </metric>
+    <metric name="DroppedBuffers" type="int">
+      <summary>
+        Number of encoded buffers dropped from Tx queue.
+      </summary>
+    </metric>
+    <metric name="DroppedFrames" type="int">
+      <summary>
+        Number of encoded frames dropped from Tx queue.
+      </summary>
+    </metric>
+    <metric name="DroppedBytes" type="int">
+      <summary>
+        Number of encoded bytes dropped from Tx queue.
+      </summary>
+    </metric>
+  </event>
 </project>
 
 <project name="BluetoothDevice">
