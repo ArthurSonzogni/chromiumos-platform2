@@ -2,10 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "libipp/ipp_attribute.h"
+#include "ipp_attribute.h"
+#include "frame.h"
 
 #include <limits>
 #include <string_view>
+#include <vector>
 
 #include <gtest/gtest.h>
 
@@ -27,9 +29,10 @@ void TestNewAttribute(Attribute* attr, std::string_view name, ValueTag tag) {
 
 TEST(attribute, UnknownValueAttribute) {
   Collection coll;
-  Attribute* attr = coll.AddUnknownAttribute("abc", ValueTag::nameWithLanguage);
+  EXPECT_EQ(Code::kOK, coll.AddAttr("abc", ValueTag::nameWithLanguage,
+                                    StringWithLanguage("val")));
+  Attribute* attr = coll.GetAttribute("abc");
   TestNewAttribute(attr, "abc", ValueTag::nameWithLanguage);
-  ASSERT_TRUE(attr->SetValue("val"));
   StringWithLanguage sl;
   ASSERT_TRUE(attr->GetValue(&sl));
   EXPECT_EQ(sl.language, "");
@@ -38,7 +41,10 @@ TEST(attribute, UnknownValueAttribute) {
 
 TEST(attribute, UnknownCollectionAttribute) {
   Collection coll;
-  Attribute* attr = coll.AddUnknownAttribute("abcd", ValueTag::collection);
+  Collection* new_coll = nullptr;
+  EXPECT_EQ(Code::kOK, coll.AddAttr("abcd", new_coll));
+  EXPECT_TRUE(new_coll);
+  Attribute* attr = coll.GetAttribute("abcd");
   TestNewAttribute(attr, "abcd", ValueTag::collection);
   EXPECT_NE(attr->GetCollection(), nullptr);
   EXPECT_EQ(attr->GetCollection(1), nullptr);

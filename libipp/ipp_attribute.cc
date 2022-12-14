@@ -390,41 +390,6 @@ bool SaveValueTyped(void*& values,
   return true;
 }
 
-// Tries to add a new attribute to `coll`. `coll` must not be nullptr. This
-// function does not check validity of `tag`. All other constraints are
-// enforced. If `tag` is Out-Of-Band the parameter `values` is ignored.
-template <typename ApiType>
-Code AddAttributeToCollection(Collection* coll,
-                              const std::string& name,
-                              ValueTag tag,
-                              const std::vector<ApiType>& values) {
-  // Check all constraints.
-  if (name.empty() ||
-      name.size() > static_cast<size_t>(std::numeric_limits<int16_t>::max())) {
-    return Code::kInvalidName;
-  }
-  if (coll->GetAttribute(name) != nullptr) {
-    return Code::kNameConflict;
-  }
-  if (values.empty() && !IsOutOfBand(tag)) {
-    return Code::kValueOutOfRange;
-  }
-
-  // Create a new attribute. For Out-Of-Band tags set the state.
-  // For other tags set the values.
-  auto attr = coll->AddUnknownAttribute(name, tag);
-  if (attr == nullptr) {
-    return Code::kTooManyAttributes;
-  }
-  if (!IsOutOfBand(tag)) {
-    attr->Resize(values.size());
-    for (size_t i = 0; i < values.size(); ++i)
-      attr->SetValue(values[i], i);
-  }
-
-  return Code::kOK;
-}
-
 }  // end of namespace
 
 std::string_view ToStrView(ValueTag tag) {
@@ -738,29 +703,53 @@ const Attribute* Collection::GetAttribute(const std::string& name) const {
   return nullptr;
 }
 
-Attribute* Collection::AddUnknownAttribute(const std::string& name,
-                                           ValueTag type) {
-  // name cannot be empty
-  if (name.empty())
-    return nullptr;
-  // type must be correct
-  if (!IsValid(type))
-    return nullptr;
-  // `name` cannot exist in this collection.
-  if (attributes_index_.count(name)) {
-    return nullptr;
+Code Collection::CreateNewAttribute(const std::string& name,
+                                    ValueTag type,
+                                    Attribute*& new_attr) {
+  // Check all constraints.
+  if (name.empty() ||
+      name.size() > static_cast<size_t>(std::numeric_limits<int16_t>::max())) {
+    return Code::kInvalidName;
   }
+  if (attributes_index_.count(name)) {
+    return Code::kNameConflict;
+  }
+  if (!IsValid(type))
+    return Code::kInvalidValueTag;
+  // Create new attribute.
   AttrDef def;
   def.ipp_type = type;
   def.cc_type = InternalTypeForUnknownAttribute(type);
-  attributes_.emplace_back(new Attribute(name, def));
-  attributes_index_[attributes_.back()->Name()] = attributes_.size() - 1;
-  return attributes_.back().get();
+  new_attr = attributes_.emplace_back(new Attribute(name, def)).get();
+  attributes_index_[new_attr->Name()] = attributes_.size() - 1;
+  return Code::kOK;
+}
+
+template <typename ApiType>
+Code Collection::AddAttributeToCollection(const std::string& name,
+                                          ValueTag tag,
+                                          const std::vector<ApiType>& values) {
+  if (values.empty() && !IsOutOfBand(tag)) {
+    return Code::kValueOutOfRange;
+  }
+
+  // Create a new attribute. For non-Out-Of-Band tags set the values.
+  Attribute* attr = nullptr;
+  if (Code result = CreateNewAttribute(name, tag, attr); result != Code::kOK) {
+    return result;
+  }
+  if (!IsOutOfBand(tag)) {
+    attr->Resize(values.size());
+    for (size_t i = 0; i < values.size(); ++i)
+      attr->SetValue(values[i], i);
+  }
+
+  return Code::kOK;
 }
 
 Code Collection::AddAttr(const std::string& name, ValueTag tag) {
   if (IsOutOfBand(tag)) {
-    return AddAttributeToCollection(this, name, tag, std::vector<int32_t>());
+    return AddAttributeToCollection(name, tag, std::vector<int32_t>());
   }
   return IsValid(tag) ? Code::kIncompatibleType : Code::kInvalidValueTag;
 }
@@ -842,14 +831,14 @@ Code Collection::AddAttr(const std::string& name,
     default:
       return IsValid(tag) ? Code::kIncompatibleType : Code::kInvalidValueTag;
   }
-  return AddAttributeToCollection(this, name, tag, values);
+  return AddAttributeToCollection(name, tag, values);
 }
 
 Code Collection::AddAttr(const std::string& name,
                          ValueTag tag,
                          const std::vector<std::string>& values) {
   if (tag == ValueTag::octetString || IsString(tag)) {
-    return AddAttributeToCollection(this, name, tag, values);
+    return AddAttributeToCollection(name, tag, values);
   }
   return IsValid(tag) ? Code::kIncompatibleType : Code::kInvalidValueTag;
 }
@@ -858,7 +847,7 @@ Code Collection::AddAttr(const std::string& name,
                          ValueTag tag,
                          const std::vector<StringWithLanguage>& values) {
   if (tag == ValueTag::nameWithLanguage || tag == ValueTag::textWithLanguage) {
-    return AddAttributeToCollection(this, name, tag, values);
+    return AddAttributeToCollection(name, tag, values);
   }
   return IsValid(tag) ? Code::kIncompatibleType : Code::kInvalidValueTag;
 }
@@ -867,7 +856,7 @@ Code Collection::AddAttr(const std::string& name,
                          ValueTag tag,
                          const std::vector<DateTime>& values) {
   if (tag == ValueTag::dateTime) {
-    return AddAttributeToCollection(this, name, tag, values);
+    return AddAttributeToCollection(name, tag, values);
   }
   return IsValid(tag) ? Code::kIncompatibleType : Code::kInvalidValueTag;
 }
@@ -876,7 +865,7 @@ Code Collection::AddAttr(const std::string& name,
                          ValueTag tag,
                          const std::vector<Resolution>& values) {
   if (tag == ValueTag::resolution) {
-    return AddAttributeToCollection(this, name, tag, values);
+    return AddAttributeToCollection(name, tag, values);
   }
   return IsValid(tag) ? Code::kIncompatibleType : Code::kInvalidValueTag;
 }
@@ -885,34 +874,34 @@ Code Collection::AddAttr(const std::string& name,
                          ValueTag tag,
                          const std::vector<RangeOfInteger>& values) {
   if (tag == ValueTag::rangeOfInteger) {
-    return AddAttributeToCollection(this, name, tag, values);
+    return AddAttributeToCollection(name, tag, values);
   }
   return IsValid(tag) ? Code::kIncompatibleType : Code::kInvalidValueTag;
 }
 
 Code Collection::AddAttr(const std::string& name,
                          const std::vector<bool>& values) {
-  return AddAttributeToCollection(this, name, ValueTag::boolean, values);
+  return AddAttributeToCollection(name, ValueTag::boolean, values);
 }
 
 Code Collection::AddAttr(const std::string& name,
                          const std::vector<int32_t>& values) {
-  return AddAttributeToCollection(this, name, ValueTag::integer, values);
+  return AddAttributeToCollection(name, ValueTag::integer, values);
 }
 
 Code Collection::AddAttr(const std::string& name,
                          const std::vector<DateTime>& values) {
-  return AddAttributeToCollection(this, name, ValueTag::dateTime, values);
+  return AddAttributeToCollection(name, ValueTag::dateTime, values);
 }
 
 Code Collection::AddAttr(const std::string& name,
                          const std::vector<Resolution>& values) {
-  return AddAttributeToCollection(this, name, ValueTag::resolution, values);
+  return AddAttributeToCollection(name, ValueTag::resolution, values);
 }
 
 Code Collection::AddAttr(const std::string& name,
                          const std::vector<RangeOfInteger>& values) {
-  return AddAttributeToCollection(this, name, ValueTag::rangeOfInteger, values);
+  return AddAttributeToCollection(name, ValueTag::rangeOfInteger, values);
 }
 
 Code Collection::AddAttr(const std::string& name, Collection*& value) {
@@ -926,22 +915,14 @@ Code Collection::AddAttr(const std::string& name, Collection*& value) {
 
 Code Collection::AddAttr(const std::string& name,
                          std::vector<Collection*>& values) {
-  // Check all constraints.
-  if (name.empty() ||
-      name.size() > static_cast<size_t>(std::numeric_limits<int16_t>::max())) {
-    return Code::kInvalidName;
-  }
-  if (GetAttribute(name) != nullptr) {
-    return Code::kNameConflict;
-  }
   if (values.empty()) {
     return Code::kValueOutOfRange;
   }
-
   // Create the attribute and retrieve the pointers.
-  auto attr = AddUnknownAttribute(name, ValueTag::collection);
-  if (attr == nullptr) {
-    return Code::kTooManyAttributes;
+  Attribute* attr = nullptr;
+  if (Code result = CreateNewAttribute(name, ValueTag::collection, attr);
+      result != Code::kOK) {
+    return result;
   }
   attr->Resize(values.size());
   for (size_t i = 0; i < values.size(); ++i) {

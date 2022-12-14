@@ -198,11 +198,6 @@ class IPP_EXPORT Collection {
   Attribute* GetAttribute(const std::string& name);
   const Attribute* GetAttribute(const std::string& name) const;
 
-  // Adds new attribute to the collection. Returns nullptr <=> an attribute
-  // with this name already exists in the collection or given name/type are
-  // incorrect.
-  Attribute* AddUnknownAttribute(const std::string& name, ValueTag type);
-
   // Add a new attribute without values. `tag` must be Out-Of-Band (see ValueTag
   // definition). Possible errors:
   //  * kInvalidName
@@ -286,6 +281,21 @@ class IPP_EXPORT Collection {
 
  private:
   friend class Attribute;
+
+  // Adds new attribute to the collection. Returns Code::OK <=> an attribute
+  // was created. A pointer to the new attribute is saved to `new_attr`.
+  Code CreateNewAttribute(const std::string& name,
+                          ValueTag type,
+                          Attribute*& new_attr);
+
+  // Tries to add a new attribute to the collection and set initial values for
+  // it. This function does not check compatibility of `tag` and ApiType. All
+  // other constraints are enforced. If `tag` is Out-Of-Band the parameter
+  // `values` is ignored.
+  template <typename ApiType>
+  Code AddAttributeToCollection(const std::string& name,
+                                ValueTag tag,
+                                const std::vector<ApiType>& values);
 
   // Methods return attribute by name. Methods return nullptr <=> the collection
   // has no attribute with this name.
