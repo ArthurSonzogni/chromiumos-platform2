@@ -87,12 +87,15 @@ constexpr char kJemallocHighMemDeviceConfig[] =
 #if defined(__x86_64__) || defined(__aarch64__)
 constexpr char kLibSharedDir[] = "/lib64";
 constexpr char kUsrLibSharedDir[] = "/usr/lib64";
+constexpr char kUsrLocalLibSharedDir[] = "/usr/local/lib64";
 #else
 constexpr char kLibSharedDir[] = "/lib";
 constexpr char kUsrLibSharedDir[] = "/usr/lib";
+constexpr char kUsrLocalLibSharedDir[] = "/usr/local/lib";
 #endif
 constexpr char kLibSharedDirTag[] = "lib";
 constexpr char kUsrLibSharedDirTag[] = "usr_lib";
+constexpr char kUsrLocalLibSharedDirTag[] = "usr_local_lib";
 
 constexpr char kSbinSharedDir[] = "/sbin";
 constexpr char kSbinSharedDirTag[] = "sbin";
@@ -363,6 +366,9 @@ bool ArcVm::Start(base::FilePath kernel, VmBuilder vm_builder) {
   const base::FilePath usr_local_bin_dir(kUsrLocalBinSharedDir);
   std::string shared_usr_local_bin = CreateSharedDataParam(
       usr_local_bin_dir, kUsrLocalBinSharedDirTag, true, false, true, {});
+  const base::FilePath usr_local_lib_dir(kUsrLocalLibSharedDir);
+  std::string shared_usr_local_lib = CreateSharedDataParam(
+      usr_local_lib_dir, kUsrLocalLibSharedDirTag, true, false, true, {});
 
   vm_builder
       // Bias tuned on 4/8G hatch devices with multivm.Lifecycle tests.
@@ -435,6 +441,7 @@ bool ArcVm::Start(base::FilePath kernel, VmBuilder vm_builder) {
   if (is_test_image) {
     if (base::PathExists(usr_local_bin_dir)) {
       vm_builder.AppendSharedDir(shared_usr_local_bin);
+      vm_builder.AppendSharedDir(shared_usr_local_lib);
     } else {
       // Powerwashing etc can delete the directory from test image device.
       // We shouldn't abort ARCVM boot even under such an environment.
