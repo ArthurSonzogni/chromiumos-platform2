@@ -318,6 +318,10 @@ bool WiFiEndpoint::mbo_support() const {
   return supported_features_.mbo_support;
 }
 
+const WiFiEndpoint::QosSupport& WiFiEndpoint::qos_support() const {
+  return supported_features_.qos_support;
+}
+
 // static
 WiFiEndpointRefPtr WiFiEndpoint::MakeOpenEndpoint(
     ControlInterface* control_interface,
@@ -563,8 +567,7 @@ bool WiFiEndpoint::ParseIEs(const KeyValueStore& properties,
         found_erp = true;
         break;
       case IEEE_80211::kElemIdExtendedCap:
-        ParseExtendedCapabilities(it + 2, it + ie_len,
-                                  &supported_features->krv_support);
+        ParseExtendedCapabilities(it + 2, it + ie_len, supported_features);
         break;
       case IEEE_80211::kElemIdHTCap:
       case IEEE_80211::kElemIdHTInfo:
@@ -657,7 +660,7 @@ void WiFiEndpoint::ParseMobilityDomainElement(
 void WiFiEndpoint::ParseExtendedCapabilities(
     std::vector<uint8_t>::const_iterator ie,
     std::vector<uint8_t>::const_iterator end,
-    Ap80211krvSupport* krv_support) {
+    SupportedFeatures* supported_features) {
   // Format of an Extended Capabilities Element:
   //        n
   // +--------------+
@@ -667,14 +670,33 @@ void WiFiEndpoint::ParseExtendedCapabilities(
   // advertised by the STA transmitting the element. See section 8.4.2.29 of
   // the IEEE 802.11-2012 for a list of capabilities and their corresponding
   // bit positions.
-  if (std::distance(ie, end) < IEEE_80211::kExtendedCapOctetMax) {
-    return;
+  supported_features->krv_support.bss_transition_supported =
+      GetExtendedCapability(ie, end, IEEE_80211::kExtendedCapOctet2,
+                            IEEE_80211::kExtendedCapBit3);
+  supported_features->krv_support.dms_supported = GetExtendedCapability(
+      ie, end, IEEE_80211::kExtendedCapOctet3, IEEE_80211::kExtendedCapBit2);
+  supported_features->qos_support.scs_supported = GetExtendedCapability(
+      ie, end, IEEE_80211::kExtendedCapOctet6, IEEE_80211::kExtendedCapBit6);
+  supported_features->qos_support.alternate_edca_supported =
+      GetExtendedCapability(ie, end, IEEE_80211::kExtendedCapOctet7,
+                            IEEE_80211::kExtendedCapBit0);
+  supported_features->qos_support.mscs_supported = GetExtendedCapability(
+      ie, end, IEEE_80211::kExtendedCapOctet10, IEEE_80211::kExtendedCapBit5);
+}
+
+// static
+bool WiFiEndpoint::GetExtendedCapability(
+    std::vector<uint8_t>::const_iterator ie,
+    std::vector<uint8_t>::const_iterator end,
+    IEEE_80211::ExtendedCapOctet octet,
+    uint8_t bit) {
+  // According to IEEE802.11-2020 (section 9.4.2.26) if fewer bits are received
+  // in an Extended Capabilities field, the rest of the Extended Capabilities
+  // field bits are assumed to be zero.
+  if (std::distance(ie, end) < octet + 1) {
+    return false;
   }
-  krv_support->bss_transition_supported =
-      (*(ie + IEEE_80211::kExtendedCapOctet2) & IEEE_80211::kExtendedCapBit3) !=
-      0;
-  krv_support->dms_supported = (*(ie + IEEE_80211::kExtendedCapOctet3) &
-                                IEEE_80211::kExtendedCapBit2) != 0;
+  return (*(ie + octet) & bit) != 0;
 }
 
 // static

@@ -423,6 +423,9 @@ TEST_F(WiFiEndpointTest, ParseIEs) {
     EXPECT_FALSE(supported_features.krv_support.dms_supported);
     EXPECT_FALSE(supported_features.krv_support.bss_max_idle_period_supported);
     EXPECT_FALSE(supported_features.krv_support.bss_transition_supported);
+    EXPECT_FALSE(supported_features.qos_support.scs_supported);
+    EXPECT_FALSE(supported_features.qos_support.mscs_supported);
+    EXPECT_FALSE(supported_features.qos_support.alternate_edca_supported);
   }
   {
     std::vector<uint8_t> ies;
@@ -568,7 +571,8 @@ TEST_F(WiFiEndpointTest, ParseIEs) {
   }
   {
     std::vector<uint8_t> ies;
-    const std::vector<uint8_t> kExtendedCapabilities{0x00, 0x00, 0x08, 0x04};
+    const std::vector<uint8_t> kExtendedCapabilities{
+        0x00, 0x00, 0x08, 0x04, 0x0, 0x0, 0x40, 0x1, 0x0, 0x0, 0x20};
     AddIEWithData(IEEE_80211::kElemIdExtendedCap, kExtendedCapabilities, &ies);
     Metrics::WiFiNetworkPhyMode phy_mode = Metrics::kWiFiNetworkPhyModeUndef;
     WiFiEndpoint::VendorInformation vendor_information;
@@ -577,6 +581,9 @@ TEST_F(WiFiEndpointTest, ParseIEs) {
              nullptr, &supported_features);
     EXPECT_TRUE(supported_features.krv_support.dms_supported);
     EXPECT_TRUE(supported_features.krv_support.bss_transition_supported);
+    EXPECT_TRUE(supported_features.qos_support.scs_supported);
+    EXPECT_TRUE(supported_features.qos_support.mscs_supported);
+    EXPECT_TRUE(supported_features.qos_support.alternate_edca_supported);
   }
   {
     std::vector<uint8_t> ies;

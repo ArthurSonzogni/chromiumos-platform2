@@ -56,10 +56,16 @@ class WiFiEndpoint : public base::RefCounted<WiFiEndpoint> {
     bool supported = false;
     int version = 0;
   };
+  struct QosSupport {
+    bool scs_supported = false;
+    bool mscs_supported = false;
+    bool alternate_edca_supported = false;
+  };
   struct SupportedFeatures {
     Ap80211krvSupport krv_support;
     HS20Information hs20_information;
     bool mbo_support = false;
+    QosSupport qos_support;
   };
   WiFiEndpoint(ControlInterface* control_interface,
                const WiFiRefPtr& device,
@@ -111,6 +117,7 @@ class WiFiEndpoint : public base::RefCounted<WiFiEndpoint> {
   const Ap80211krvSupport& krv_support() const;
   const HS20Information& hs20_information() const;
   bool mbo_support() const;
+  const QosSupport& qos_support() const;
 
  private:
   friend class WiFiEndpointTest;
@@ -199,7 +206,13 @@ class WiFiEndpoint : public base::RefCounted<WiFiEndpoint> {
   static void ParseExtendedCapabilities(
       std::vector<uint8_t>::const_iterator ie,
       std::vector<uint8_t>::const_iterator end,
-      Ap80211krvSupport* krv_support);
+      SupportedFeatures* supported_features);
+  // Get the value of the extended capability identified by |octet| and |bit|.
+  // Returns false if the information element is not long enough.
+  static bool GetExtendedCapability(std::vector<uint8_t>::const_iterator ie,
+                                    std::vector<uint8_t>::const_iterator end,
+                                    IEEE_80211::ExtendedCapOctet octet,
+                                    uint8_t bit);
   // Parse a WPA information element.
   static void ParseWPACapabilities(std::vector<uint8_t>::const_iterator ie,
                                    std::vector<uint8_t>::const_iterator end,

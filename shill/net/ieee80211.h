@@ -95,8 +95,11 @@ const int kMDEIDLen = 2;
 const uint8_t kMDEOTDSCapability = 0x01;
 
 // Extended Capabilities element masks.
+const uint8_t kExtendedCapBit6 = 0x40;
+const uint8_t kExtendedCapBit5 = 0x20;
 const uint8_t kExtendedCapBit3 = 0x08;
 const uint8_t kExtendedCapBit2 = 0x04;
+const uint8_t kExtendedCapBit0 = 0x01;
 
 /* 802.11n HT capabilities masks (for cap_info) */
 const uint16_t kHTCapMaskLdpcCoding = 0x0001;
@@ -163,10 +166,13 @@ struct ieee80211_frame {
   };
 } __attribute__((packed));
 
-// Enum for the Capabilites bit field of the Extended Capabilities element.
+// Enum for the Capabilities bit field of the Extended Capabilities element.
 enum ExtendedCapOctet {
   kExtendedCapOctet2 = 2,
   kExtendedCapOctet3 = 3,
+  kExtendedCapOctet6 = 6,
+  kExtendedCapOctet7 = 7,
+  kExtendedCapOctet10 = 10,
 
   kExtendedCapOctetMax
 };
