@@ -6,16 +6,9 @@ import("//common-mk/pkg_config.gni")
 import("//common-mk/proto_library.gni")
 
 group("all") {
-  deps = [
-    ":g2ftool",
-    ":u2fd",
-    ":webauthntool",
-  ]
+  deps = [ ":u2fd" ]
   if (use.test) {
-    deps += [
-      ":g2f_client_test",
-      ":u2fd_test_runner",
-    ]
+    deps += [ ":u2fd_test_runner" ]
   }
   if (use.fuzzer) {
     deps += [
@@ -91,62 +84,7 @@ executable("u2fd") {
   deps = [ ":libu2fd" ]
 }
 
-executable("g2ftool") {
-  sources = [ "g2f_tools/g2ftool.cc" ]
-  configs += [ ":target_defaults" ]
-  install_path = "bin"
-  deps = [ ":libg2fclient" ]
-}
-
-pkg_config("webauthntool_config") {
-  # NOSORT
-  pkg_deps = [
-    # system_api depends on protobuf (or protobuf-lite). It must appear
-    # before protobuf here or the linker flags won't be in the right
-    # order.
-    "system_api",
-  ]
-  if (use.fuzzer) {
-    pkg_deps += [ "protobuf" ]
-  } else {
-    pkg_deps += [ "protobuf-lite" ]
-  }
-}
-
-executable("webauthntool") {
-  sources = [ "g2f_tools/webauthntool.cc" ]
-  configs += [
-    ":target_defaults",
-    ":webauthntool_config",
-  ]
-  install_path = "bin"
-}
-
-static_library("libg2fclient") {
-  sources = [ "g2f_tools/g2f_client.cc" ]
-  configs += [ ":target_defaults" ]
-  libs = [ "hidapi-hidraw" ]
-}
-
 if (use.test) {
-  pkg_config("g2f_client_test_config") {
-    pkg_deps = [ "libchrome-test" ]
-  }
-
-  executable("g2f_client_test") {
-    sources = [
-      "g2f_tools/g2f_client.cc",
-      "g2f_tools/g2f_client_test.cc",
-    ]
-    configs += [
-      "//common-mk:test",
-      ":target_defaults",
-      ":g2f_client_test_config",
-    ]
-    run_test = true
-    deps = [ "//common-mk/testrunner" ]
-  }
-
   pkg_config("u2fd_test_config") {
     pkg_deps = [
       "libbrillo-test",
