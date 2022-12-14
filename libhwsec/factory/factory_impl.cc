@@ -12,6 +12,7 @@
 #include "libhwsec/frontend/chaps/frontend_impl.h"
 #include "libhwsec/frontend/client/frontend_impl.h"
 #include "libhwsec/frontend/cryptohome/frontend_impl.h"
+#include "libhwsec/frontend/oobe_config/frontend_impl.h"
 #include "libhwsec/frontend/optee-plugin/frontend_impl.h"
 #include "libhwsec/frontend/pinweaver/frontend_impl.h"
 #include "libhwsec/frontend/recovery_crypto/frontend_impl.h"
@@ -66,6 +67,10 @@ std::unique_ptr<OpteePluginFrontend> FactoryImpl::GetOpteePluginFrontend() {
 
 std::unique_ptr<BootLockboxFrontend> FactoryImpl::GetBootLockboxFrontend() {
   return std::make_unique<BootLockboxFrontendImpl>(middleware_.Derive());
+}
+
+std::unique_ptr<OobeConfigFrontend> FactoryImpl::GetOobeConfigFrontend() {
+  return std::make_unique<OobeConfigFrontendImpl>(middleware_.Derive());
 }
 
 }  // namespace hwsec
