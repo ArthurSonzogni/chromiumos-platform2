@@ -101,6 +101,11 @@ constexpr ssize_t kLvmSignatureOffset = 512;
 constexpr ssize_t kLvmSignatureSize = 8;
 constexpr char kLvmSignature[] = "LABELONE";
 
+constexpr char kProcDir[] = "/proc";
+constexpr char kMountInfoFile[] = "mountinfo";
+constexpr char kPathTune2fs[] = "/sbin/tune2fs";
+constexpr char kEcryptFS[] = "ecryptfs";
+
 bool IsDirectory(const base::stat_wrapper_t& file_info) {
   return !!S_ISDIR(file_info.st_mode);
 }
@@ -139,26 +144,7 @@ bool DecodeProcInfoLine(const std::string& line,
 
 namespace cryptohome {
 
-const uint32_t kDefaultMountFlags = MS_NOEXEC | MS_NOSUID | MS_NODEV;
-const int kDefaultUmask =
-    S_IRGRP | S_IWGRP | S_IXGRP | S_IROTH | S_IWOTH | S_IXOTH;
-const char kProcDir[] = "/proc";
-const char kMountInfoFile[] = "mountinfo";
-const char kPathTune2fs[] = "/sbin/tune2fs";
-const char kEcryptFS[] = "ecryptfs";
 const char kLoopPrefix[] = "/dev/loop";
-const std::vector<std::string> kDefaultExt4FormatOpts(
-    {// Always use 'default' configuration.
-     "-T", "default",
-     // reserved-blocks-percentage = 0%
-     "-m", "0",
-     // ^huge_file: Do not allow files larger than 2TB.
-     // ^flex_bg: Do not allow per-block group metadata to be placed anywhere.
-     // ^has_journal: Do not create journal.
-     "-O", "^huge_file,^flex_bg,^has_journal",
-     // Attempt to discard blocks at mkfs time.
-     // Assume that the storage device is already zeroed out.
-     "-E", "discard,assume_storage_prezeroed=1"});
 
 void DcheckIsNonemptyAbsolutePath(const base::FilePath& path) {
   DCHECK(!path.empty());

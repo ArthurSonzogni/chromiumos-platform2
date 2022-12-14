@@ -34,6 +34,7 @@
 
 extern "C" {
 #include <keyutils.h>
+#include <linux/fs.h>
 }
 
 #include "cryptohome/dircrypto_util.h"
@@ -46,13 +47,12 @@ class Time;
 namespace cryptohome {
 
 // Default umask
-BRILLO_EXPORT extern const int kDefaultUmask;
+inline constexpr const int kDefaultUmask =
+    S_IRGRP | S_IWGRP | S_IXGRP | S_IROTH | S_IWOTH | S_IXOTH;
 
 // Default mount flags for Platform::Mount.
-BRILLO_EXPORT extern const uint32_t kDefaultMountFlags;
-
-// Default ext4 format opts.
-BRILLO_EXPORT extern const std::vector<std::string> kDefaultExt4FormatOpts;
+inline constexpr const uint32_t kDefaultMountFlags =
+    MS_NOEXEC | MS_NOSUID | MS_NODEV;
 
 // Loop devices prefix.
 BRILLO_EXPORT extern const char kLoopPrefix[];

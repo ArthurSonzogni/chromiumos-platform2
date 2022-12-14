@@ -49,6 +49,10 @@ constexpr uint64_t kFreeSpaceBuffer = kErasureBlockSize;
 // The maximum size of job list.
 constexpr size_t kDefaultMaxJobListSize = 100000;
 
+// TODO(dspaid): Determine performance impact so we can potentially increase
+// frequency.
+constexpr base::TimeDelta kStatusSignalInterval = base::Seconds(1);
+
 // Sends the UMA stat for the start/end status of migration respectively in the
 // constructor/destructor. By default the "generic error" end status is set, so
 // to report other status, call an appropriate method to overwrite it.
@@ -111,16 +115,12 @@ class MigrationStartAndEndStatusReporter {
 
 // A file to store a list of files skipped during migration.  This lives in
 // root/ of the destination directory so that it is encrypted.
-constexpr char kSkippedFileListFileName[] =
-    "root/crypto-migration.files-skipped";
-// TODO(dspaid): Determine performance impact so we can potentially increase
-// frequency.
-constexpr base::TimeDelta kStatusSignalInterval = base::Seconds(1);
+const char kSkippedFileListFileName[] = "root/crypto-migration.files-skipped";
 // {Source,Referrer}URL xattrs are from chrome downloads and are not used on
 // ChromeOS.  They may be very large though, potentially preventing the
 // migration of other attributes.
-constexpr char kSourceURLXattrName[] = "user.xdg.origin.url";
-constexpr char kReferrerURLXattrName[] = "user.xdg.referrer.url";
+const char kSourceURLXattrName[] = "user.xdg.origin.url";
+const char kReferrerURLXattrName[] = "user.xdg.referrer.url";
 
 // Job represents a job to migrate a file or a symlink.
 struct MigrationHelper::Job {

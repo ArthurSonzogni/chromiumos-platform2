@@ -139,45 +139,43 @@ MountError CryptoErrorToMountError(CryptoError crypto_error) {
 
 user_data_auth::CryptohomeErrorCode MountErrorToCryptohomeError(
     const MountError code) {
-  static const std::unordered_map<MountError,
-                                  user_data_auth::CryptohomeErrorCode>
-      error_code_lut = {
-          {MOUNT_ERROR_NONE, user_data_auth::CRYPTOHOME_ERROR_NOT_SET},
-          {MOUNT_ERROR_FATAL, user_data_auth::CRYPTOHOME_ERROR_MOUNT_FATAL},
-          {MOUNT_ERROR_KEY_FAILURE,
-           user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED},
-          {MOUNT_ERROR_MOUNT_POINT_BUSY,
-           user_data_auth::CRYPTOHOME_ERROR_MOUNT_MOUNT_POINT_BUSY},
-          {MOUNT_ERROR_TPM_COMM_ERROR,
-           user_data_auth::CRYPTOHOME_ERROR_TPM_COMM_ERROR},
-          {MOUNT_ERROR_UNPRIVILEGED_KEY,
-           user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_DENIED},
-          {MOUNT_ERROR_TPM_DEFEND_LOCK,
-           user_data_auth::CRYPTOHOME_ERROR_TPM_DEFEND_LOCK},
-          {MOUNT_ERROR_TPM_UPDATE_REQUIRED,
-           user_data_auth::CRYPTOHOME_ERROR_TPM_UPDATE_REQUIRED},
-          {MOUNT_ERROR_USER_DOES_NOT_EXIST,
-           user_data_auth::CRYPTOHOME_ERROR_ACCOUNT_NOT_FOUND},
-          {MOUNT_ERROR_TPM_NEEDS_REBOOT,
-           user_data_auth::CRYPTOHOME_ERROR_TPM_NEEDS_REBOOT},
-          {MOUNT_ERROR_OLD_ENCRYPTION,
-           user_data_auth::CRYPTOHOME_ERROR_MOUNT_OLD_ENCRYPTION},
-          {MOUNT_ERROR_PREVIOUS_MIGRATION_INCOMPLETE,
-           user_data_auth::
-               CRYPTOHOME_ERROR_MOUNT_PREVIOUS_MIGRATION_INCOMPLETE},
-          {MOUNT_ERROR_RECREATED, user_data_auth::CRYPTOHOME_ERROR_NOT_SET},
-          {MOUNT_ERROR_VAULT_UNRECOVERABLE,
-           user_data_auth::CRYPTOHOME_ERROR_VAULT_UNRECOVERABLE},
-          {MOUNT_ERROR_RECOVERY_TRANSIENT,
-           user_data_auth::CRYPTOHOME_ERROR_RECOVERY_TRANSIENT},
-          {MOUNT_ERROR_RECOVERY_FATAL,
-           user_data_auth::CRYPTOHOME_ERROR_RECOVERY_FATAL}};
-
-  if (error_code_lut.count(code) != 0) {
-    return error_code_lut.at(code);
+  switch (code) {
+    case MOUNT_ERROR_NONE:
+      return user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
+    case MOUNT_ERROR_FATAL:
+      return user_data_auth::CRYPTOHOME_ERROR_MOUNT_FATAL;
+    case MOUNT_ERROR_KEY_FAILURE:
+      return user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED;
+    case MOUNT_ERROR_MOUNT_POINT_BUSY:
+      return user_data_auth::CRYPTOHOME_ERROR_MOUNT_MOUNT_POINT_BUSY;
+    case MOUNT_ERROR_TPM_COMM_ERROR:
+      return user_data_auth::CRYPTOHOME_ERROR_TPM_COMM_ERROR;
+    case MOUNT_ERROR_UNPRIVILEGED_KEY:
+      return user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_DENIED;
+    case MOUNT_ERROR_TPM_DEFEND_LOCK:
+      return user_data_auth::CRYPTOHOME_ERROR_TPM_DEFEND_LOCK;
+    case MOUNT_ERROR_TPM_UPDATE_REQUIRED:
+      return user_data_auth::CRYPTOHOME_ERROR_TPM_UPDATE_REQUIRED;
+    case MOUNT_ERROR_USER_DOES_NOT_EXIST:
+      return user_data_auth::CRYPTOHOME_ERROR_ACCOUNT_NOT_FOUND;
+    case MOUNT_ERROR_TPM_NEEDS_REBOOT:
+      return user_data_auth::CRYPTOHOME_ERROR_TPM_NEEDS_REBOOT;
+    case MOUNT_ERROR_OLD_ENCRYPTION:
+      return user_data_auth::CRYPTOHOME_ERROR_MOUNT_OLD_ENCRYPTION;
+    case MOUNT_ERROR_PREVIOUS_MIGRATION_INCOMPLETE:
+      return user_data_auth::
+          CRYPTOHOME_ERROR_MOUNT_PREVIOUS_MIGRATION_INCOMPLETE;
+    case MOUNT_ERROR_RECREATED:
+      return user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
+    case MOUNT_ERROR_VAULT_UNRECOVERABLE:
+      return user_data_auth::CRYPTOHOME_ERROR_VAULT_UNRECOVERABLE;
+    case MOUNT_ERROR_RECOVERY_TRANSIENT:
+      return user_data_auth::CRYPTOHOME_ERROR_RECOVERY_TRANSIENT;
+    case MOUNT_ERROR_RECOVERY_FATAL:
+      return user_data_auth::CRYPTOHOME_ERROR_RECOVERY_FATAL;
+    default:
+      return user_data_auth::CRYPTOHOME_ERROR_MOUNT_FATAL;
   }
-
-  return user_data_auth::CRYPTOHOME_ERROR_MOUNT_FATAL;
 }
 
 }  // namespace cryptohome
