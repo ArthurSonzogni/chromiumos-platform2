@@ -181,6 +181,14 @@ void GroupDmcryptDeviceMounts(
 
     base::FilePath device_group(
         match->first.value().substr(0, last_component_index));
+    if (device_group.ReferencesParent()) {
+      // This should probably never occur in practice, but seems useful from the
+      // security hygiene perspective to explicitly prevent transforming stuff
+      // like "/foo/..-" into "/foo/..".
+      LOG(WARNING) << "Skipping malformed dm-crypt mount point: "
+                   << match->first;
+      continue;
+    }
     grouped_mounts->insert({device_group, match->second});
   }
 }
