@@ -4,6 +4,7 @@
 
 import("//common-mk/flatbuffer.gni")
 import("//common-mk/pkg_config.gni")
+import("//common-mk/proto_library.gni")
 
 group("all") {
   deps = [
@@ -237,6 +238,12 @@ source_set("hardware_abstraction_external_library") {
   deps = [ ":signature-sealed-data-flatbuffers-binding-generate" ]
 }
 
+proto_library("oobe_config_encrypted_data_proto") {
+  proto_in_dir = "."
+  proto_out_dir = "include/libhwsec/"
+  sources = [ "${proto_in_dir}/frontend/oobe_config/encrypted_data.proto" ]
+}
+
 # The sources that don't contain HWSEC_EXPORT.
 # This can be linked to multiple shared library.
 source_set("hardware_abstraction_internal_library") {
@@ -313,6 +320,7 @@ source_set("hardware_abstraction_internal_library") {
   }
 
   public_deps = [ ":signature-sealed-data-flatbuffers-binding-generate" ]
+  deps = [ ":oobe_config_encrypted_data_proto" ]
 }
 
 shared_library("libhwsec") {
@@ -385,6 +393,7 @@ if (use.test) {
       "error/tpm_error_test.cc",
       "error/tpm_manager_error_test.cc",
       "error/tpm_nvram_error_test.cc",
+      "frontend/oobe_config/frontend_impl_test.cc",
       "middleware/function_name_test.cc",
     ]
     configs += [
