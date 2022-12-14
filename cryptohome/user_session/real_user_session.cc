@@ -78,7 +78,7 @@ MountStatus RealUserSession::MountVault(
   if (!status.ok()) {
     return MakeStatus<CryptohomeMountError>(
         CRYPTOHOME_ERR_LOC(kLocUserSessionMountFailedInMountVault),
-        ErrorActionSet({ErrorAction::kRetry, ErrorAction::kAuth,
+        ErrorActionSet({ErrorAction::kRetry, ErrorAction::kReboot,
                         ErrorAction::kDeleteVault, ErrorAction::kPowerwash}),
         status->error());
   }
