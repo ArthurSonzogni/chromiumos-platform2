@@ -225,6 +225,12 @@ class MockTpmUtility : public TpmUtility {
   MOCK_METHOD4(SetDictionaryAttackParameters,
                TPM_RC(uint32_t, uint32_t, uint32_t, AuthorizationDelegate*));
   MOCK_METHOD1(ResetDictionaryAttackLock, TPM_RC(AuthorizationDelegate*));
+  MOCK_METHOD5(GetAuthPolicyEndorsementKey,
+               TPM_RC(TPM_ALG_ID,
+                      const std::string&,
+                      AuthorizationDelegate*,
+                      TPM_HANDLE*,
+                      TPM2B_NAME*));
   MOCK_METHOD4(GetEndorsementKey,
                TPM_RC(TPM_ALG_ID,
                       AuthorizationDelegate*,

@@ -534,12 +534,23 @@ class TRUNKS_EXPORT TpmUtility {
   // Reset dictionary attack lockout. Requires lockout authorization.
   virtual TPM_RC ResetDictionaryAttackLock(AuthorizationDelegate* delegate) = 0;
 
-  // Gets the endorsement key of a given |key_type|, creating the key as needed
-  // If the |key_type| is RSA, the key will be made persistent. On success
-  // returns TPM_RC_SUCCESS and populates |key_handle|. Requires endorsement
-  // authorization to create the key and owner authorization to make the key
-  // persistent (RSA only). The |owner_delegate| is ignored if |key_type| is not
-  // RSA or if the key is already persistent.
+  // Gets the endorsement key of a given |key_type| and |auth_policy|. On
+  // success returns TPM_RC_SUCCESS and populates |key_handle|. Requires
+  // endorsement authorization to create the key.
+  virtual TPM_RC GetAuthPolicyEndorsementKey(
+      TPM_ALG_ID key_type,
+      const std::string& auth_policy,
+      AuthorizationDelegate* endorsement_delegate,
+      TPM_HANDLE* key_handle,
+      TPM2B_NAME* key_name) = 0;
+
+  // Gets the endorsement key  of a given |key_type| and use the default EK
+  // template, creating the key as needed If the |key_type| is RSA, the key will
+  // be made persistent. On success returns TPM_RC_SUCCESS and populates
+  // |key_handle|. Requires endorsement authorization to create the key and
+  // owner authorization to make the key persistent (RSA only). The
+  // |owner_delegate| is ignored if |key_type| is not RSA or if the key is
+  // already persistent.
   virtual TPM_RC GetEndorsementKey(TPM_ALG_ID key_type,
                                    AuthorizationDelegate* endorsement_delegate,
                                    AuthorizationDelegate* owner_delegate,

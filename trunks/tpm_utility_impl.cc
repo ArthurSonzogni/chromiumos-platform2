@@ -2167,11 +2167,12 @@ TPM_RC TpmUtilityImpl::ResetDictionaryAttackLock(
       TPM_RH_LOCKOUT, NameFromHandle(TPM_RH_LOCKOUT), delegate);
 }
 
-TPM_RC TpmUtilityImpl::GetEndorsementKey(
+TPM_RC TpmUtilityImpl::GetAuthPolicyEndorsementKey(
     TPM_ALG_ID key_type,
+    const std::string& auth_policy,
     AuthorizationDelegate* endorsement_delegate,
-    AuthorizationDelegate* owner_delegate,
-    TPM_HANDLE* key_handle) {
+    TPM_HANDLE* key_handle,
+    TPM2B_NAME* key_name) {
   if (key_type != TPM_ALG_RSA && key_type != TPM_ALG_ECC) {
     return SAPI_RC_BAD_PARAMETER;
   }
@@ -2201,49 +2202,75 @@ TPM_RC TpmUtilityImpl::GetEndorsementKey(
   TPM2B_CREATION_DATA creation_data;
   TPM2B_DIGEST creation_digest;
   TPMT_TK_CREATION creation_ticket;
-  TPM2B_NAME object_name;
-  object_name.size = 0;
   TPMT_PUBLIC public_area = CreateDefaultPublicArea(key_type);
   public_area.object_attributes = kFixedTPM | kFixedParent |
                                   kSensitiveDataOrigin | kAdminWithPolicy |
-                                  kRestricted | kDecrypt;
-  public_area.auth_policy =
-      Make_TPM2B_DIGEST(std::string(GetEkTemplateAuthPolicy()));
-  if (key_type == TPM_ALG_RSA) {
-    public_area.parameters.rsa_detail.symmetric.algorithm = TPM_ALG_AES;
-    public_area.parameters.rsa_detail.symmetric.key_bits.aes = 128;
-    public_area.parameters.rsa_detail.symmetric.mode.aes = TPM_ALG_CFB;
-    public_area.parameters.rsa_detail.scheme.scheme = TPM_ALG_NULL;
-    public_area.parameters.rsa_detail.key_bits = 2048;
-    public_area.parameters.rsa_detail.exponent = 0;
-    public_area.unique.rsa = Make_TPM2B_PUBLIC_KEY_RSA(std::string(256, 0));
-  } else {
-    public_area.parameters.ecc_detail.symmetric.algorithm = TPM_ALG_AES;
-    public_area.parameters.ecc_detail.symmetric.key_bits.aes = 128;
-    public_area.parameters.ecc_detail.symmetric.mode.aes = TPM_ALG_CFB;
-    public_area.parameters.ecc_detail.scheme.scheme = TPM_ALG_NULL;
-    public_area.parameters.ecc_detail.curve_id = TPM_ECC_NIST_P256;
-    public_area.parameters.ecc_detail.kdf.scheme = TPM_ALG_NULL;
-    public_area.unique.ecc.x = Make_TPM2B_ECC_PARAMETER(std::string(32, 0));
-    public_area.unique.ecc.y = Make_TPM2B_ECC_PARAMETER(std::string(32, 0));
+                                  kDecrypt | kNoDA;
+  public_area.auth_policy = Make_TPM2B_DIGEST(auth_policy);
+
+  // Fix the public area to match the template if we are using the default EK
+  // template.
+  if (auth_policy == std::string(GetEkTemplateAuthPolicy())) {
+    public_area.object_attributes = kFixedTPM | kFixedParent |
+                                    kSensitiveDataOrigin | kAdminWithPolicy |
+                                    kRestricted | kDecrypt;
+    if (key_type == TPM_ALG_RSA) {
+      public_area.parameters.rsa_detail.symmetric.algorithm = TPM_ALG_AES;
+      public_area.parameters.rsa_detail.symmetric.key_bits.aes = 128;
+      public_area.parameters.rsa_detail.symmetric.mode.aes = TPM_ALG_CFB;
+      public_area.parameters.rsa_detail.scheme.scheme = TPM_ALG_NULL;
+      public_area.parameters.rsa_detail.key_bits = 2048;
+      public_area.parameters.rsa_detail.exponent = 0;
+      public_area.unique.rsa = Make_TPM2B_PUBLIC_KEY_RSA(std::string(256, 0));
+    } else if (key_type == TPM_ALG_ECC) {
+      public_area.parameters.ecc_detail.symmetric.algorithm = TPM_ALG_AES;
+      public_area.parameters.ecc_detail.symmetric.key_bits.aes = 128;
+      public_area.parameters.ecc_detail.symmetric.mode.aes = TPM_ALG_CFB;
+      public_area.parameters.ecc_detail.scheme.scheme = TPM_ALG_NULL;
+      public_area.parameters.ecc_detail.curve_id = TPM_ECC_NIST_P256;
+      public_area.parameters.ecc_detail.kdf.scheme = TPM_ALG_NULL;
+      public_area.unique.ecc.x = Make_TPM2B_ECC_PARAMETER(std::string(32, 0));
+      public_area.unique.ecc.y = Make_TPM2B_ECC_PARAMETER(std::string(32, 0));
+    }
   }
-  TPM2B_PUBLIC rsa_public_area = Make_TPM2B_PUBLIC(public_area);
+
+  TPM2B_PUBLIC public_data = Make_TPM2B_PUBLIC(public_area);
   TPM_RC result = tpm->CreatePrimarySync(
       TPM_RH_ENDORSEMENT, NameFromHandle(TPM_RH_ENDORSEMENT),
-      Make_TPM2B_SENSITIVE_CREATE(sensitive), rsa_public_area,
-      Make_TPM2B_DATA(""), creation_pcrs, &object_handle, &rsa_public_area,
-      &creation_data, &creation_digest, &creation_ticket, &object_name,
-      endorsement_delegate);
+      Make_TPM2B_SENSITIVE_CREATE(sensitive), public_data, Make_TPM2B_DATA(""),
+      creation_pcrs, &object_handle, &public_data, &creation_data,
+      &creation_digest, &creation_ticket, key_name, endorsement_delegate);
   if (result) {
     LOG(ERROR) << __func__
                << ": CreatePrimarySync failed: " << GetErrorString(result);
     return result;
   }
 
+  *key_handle = object_handle;
+  return TPM_RC_SUCCESS;
+}
+
+TPM_RC TpmUtilityImpl::GetEndorsementKey(
+    TPM_ALG_ID key_type,
+    AuthorizationDelegate* endorsement_delegate,
+    AuthorizationDelegate* owner_delegate,
+    TPM_HANDLE* key_handle) {
+  TPM_HANDLE object_handle;
+  TPM2B_NAME object_name;
+
+  TPM_RC result = GetAuthPolicyEndorsementKey(
+      key_type, std::string(GetEkTemplateAuthPolicy()), endorsement_delegate,
+      &object_handle, &object_name);
+  if (result) {
+    LOG(ERROR) << __func__
+               << ": Get auth policy EK failed: " << GetErrorString(result);
+    return result;
+  }
+
   // Only make RSA key persistent.
   if (key_type == TPM_ALG_RSA) {
     ScopedKeyHandle rsa_key(factory_, object_handle);
-    result = tpm->EvictControlSync(
+    result = factory_.GetTpm()->EvictControlSync(
         TPM_RH_OWNER, NameFromHandle(TPM_RH_OWNER), object_handle,
         StringFrom_TPM2B_NAME(object_name), kRSAEndorsementKey, owner_delegate);
     if (result != TPM_RC_SUCCESS) {

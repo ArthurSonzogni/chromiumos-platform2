@@ -499,6 +499,16 @@ class TpmUtilityForwarder : public TpmUtility {
     return target_->ResetDictionaryAttackLock(delegate);
   }
 
+  TPM_RC GetAuthPolicyEndorsementKey(
+      TPM_ALG_ID key_type,
+      const std::string& auth_policy,
+      AuthorizationDelegate* endorsement_delegate,
+      TPM_HANDLE* key_handle,
+      TPM2B_NAME* key_name) override {
+    return target_->GetAuthPolicyEndorsementKey(
+        key_type, auth_policy, endorsement_delegate, key_handle, key_name);
+  }
+
   TPM_RC GetEndorsementKey(TPM_ALG_ID key_type,
                            AuthorizationDelegate* endorsement_delegate,
                            AuthorizationDelegate* owner_delegate,
