@@ -292,10 +292,6 @@ class IPP_EXPORT Collection {
   Attribute* GetAttribute(AttrName);
   const Attribute* GetAttribute(AttrName) const;
 
-  // Mapping between temporary AttrName created for unknown attributes and
-  // their real names.
-  std::map<AttrName, std::string> unknown_names;
-
   // Stores attributes in the order they are saved in the frame.
   std::vector<std::unique_ptr<Attribute>> attributes_;
 
@@ -361,16 +357,8 @@ class IPP_EXPORT Attribute {
  private:
   friend class Collection;
 
-  // Constructor is called from Collection only. `owner` cannot be nullptr.
-  Attribute(Collection* owner, AttrName name, AttrDef def);
-
-  // Returns enum value corresponding to attributes name. If the name has
-  // no corresponding AttrName value, it returns AttrName::_unknown.
-  AttrName GetNameAsEnum() const {
-    if (ToString(name_) == "")
-      return AttrName::_unknown;
-    return name_;
-  }
+  // Constructor is called from Collection only.
+  Attribute(std::string_view name, AttrDef def);
 
   // Returns the current number of elements (values or Collections).
   // (IsASet() == false) => always returns 0 or 1.
@@ -380,8 +368,8 @@ class IPP_EXPORT Attribute {
   template <typename ApiType>
   bool SaveValue(size_t index, const ApiType& value);
 
-  Collection* const owner_;
-  const AttrName name_;
+  // The name of the attribute.
+  std::string name_;
 
   // Defines the type of values stored in the attribute.
   const AttrDef def_;

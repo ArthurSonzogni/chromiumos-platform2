@@ -56,7 +56,7 @@ namespace {
 // |out_val| cannot be nullptr.
 template <typename InputType, typename OutputType>
 struct Converter {
-  static bool Convert(AttrName name,
+  static bool Convert(const std::string& name,
                       const AttrDef& def,
                       const InputType& in_val,
                       OutputType* out_val) {
@@ -65,7 +65,7 @@ struct Converter {
 };
 template <typename Type>
 struct Converter<Type, Type> {
-  static bool Convert(AttrName name,
+  static bool Convert(const std::string& name,
                       const AttrDef& def,
                       const Type& in_val,
                       Type* out_val) {
@@ -75,7 +75,7 @@ struct Converter<Type, Type> {
 };
 template <>
 struct Converter<std::string, std::string> {
-  static bool Convert(AttrName name,
+  static bool Convert(const std::string& name,
                       const AttrDef& def,
                       const std::string& in_val,
                       std::string* out_val) {
@@ -85,7 +85,7 @@ struct Converter<std::string, std::string> {
 };
 template <typename InputType>
 struct Converter<InputType, std::string> {
-  static bool Convert(AttrName name,
+  static bool Convert(const std::string& name,
                       const AttrDef& def,
                       const InputType& in_val,
                       std::string* out_val) {
@@ -95,7 +95,7 @@ struct Converter<InputType, std::string> {
 };
 template <>
 struct Converter<int32_t, std::string> {
-  static bool Convert(AttrName name,
+  static bool Convert(const std::string& name,
                       const AttrDef& def,
                       int32_t in_val,
                       std::string* out_val) {
@@ -103,7 +103,10 @@ struct Converter<int32_t, std::string> {
       *out_val = ToString(static_cast<bool>(in_val));
     } else if (def.ipp_type == ValueTag::enum_ ||
                def.ipp_type == ValueTag::keyword) {
-      *out_val = ToString(name, in_val);
+      AttrName attr_name;
+      if (!FromString(name, &attr_name))
+        return false;
+      *out_val = ToString(attr_name, in_val);
     } else if (def.ipp_type == ValueTag::integer) {
       *out_val = ToString(in_val);
     } else {
@@ -114,7 +117,7 @@ struct Converter<int32_t, std::string> {
 };
 template <>
 struct Converter<std::string, bool> {
-  static bool Convert(AttrName name,
+  static bool Convert(const std::string& name,
                       const AttrDef& def,
                       const std::string& in_val,
                       bool* out_val) {
@@ -123,7 +126,7 @@ struct Converter<std::string, bool> {
 };
 template <>
 struct Converter<std::string, int32_t> {
-  static bool Convert(AttrName name,
+  static bool Convert(const std::string& name,
                       const AttrDef& def,
                       const std::string& in_val,
                       int32_t* out_val) {
@@ -135,8 +138,11 @@ struct Converter<std::string, int32_t> {
         *out_val = out;
     } else if (def.ipp_type == ValueTag::enum_ ||
                def.ipp_type == ValueTag::keyword) {
+      AttrName attr_name;
+      if (!FromString(name, &attr_name))
+        return false;
       int out;
-      result = FromString(in_val, name, &out);
+      result = FromString(in_val, attr_name, &out);
       if (result)
         *out_val = out;
     } else if (def.ipp_type == ValueTag::integer) {
@@ -150,7 +156,7 @@ struct Converter<std::string, int32_t> {
 };
 template <>
 struct Converter<std::string, StringWithLanguage> {
-  static bool Convert(AttrName name,
+  static bool Convert(const std::string& name,
                       const AttrDef& def,
                       const std::string& in_val,
                       StringWithLanguage* out_val) {
@@ -316,7 +322,7 @@ void ResizeAttr(void*& values,
 // * required conversion is not possible
 template <typename InternalType, typename ApiType>
 bool ReadConvertValueTyped(void* const& values,
-                           AttrName name,
+                           const std::string& name,
                            const AttrDef& def,
                            size_t index,
                            ApiType* value) {
@@ -335,7 +341,7 @@ bool ReadConvertValueTyped(void* const& values,
 // The same as previous one, just chooses correct template instantiation.
 template <typename ApiType>
 bool ReadConvertValue(void* const& values,
-                      AttrName name,
+                      const std::string& name,
                       const AttrDef& def,
                       size_t index,
                       ApiType* value) {
@@ -370,7 +376,7 @@ bool ReadConvertValue(void* const& values,
 // and false when the required conversion is not possible.
 template <typename InternalType, typename ApiType>
 bool SaveValueTyped(void*& values,
-                    AttrName name,
+                    const std::string& name,
                     const AttrDef& def,
                     size_t index,
                     const ApiType& value) {
@@ -581,9 +587,8 @@ ValueTag Attribute::Tag() const {
   return def_.ipp_type;
 }
 
-Attribute::Attribute(Collection* owner, AttrName name, AttrDef def)
-    : owner_(owner), name_(name), def_(def) {
-  assert(owner != nullptr);
+Attribute::Attribute(std::string_view name, AttrDef def)
+    : name_(name), def_(def) {
   // Attributes with non-out-of-band tag must have at least one value.
   if (!IsOutOfBand(def.ipp_type)) {
     ResizeAttr(values_, def_, 1, false);
@@ -591,12 +596,7 @@ Attribute::Attribute(Collection* owner, AttrName name, AttrDef def)
 }
 
 std::string_view Attribute::Name() const {
-  std::string_view s = ToStrView(name_);
-  if (!s.empty()) {
-    return s;
-  }
-  const Collection* coll = owner_;
-  return std::string_view(coll->unknown_names.at(name_));
+  return name_;
 }
 
 size_t Attribute::GetSize() const {
@@ -746,27 +746,14 @@ Attribute* Collection::AddUnknownAttribute(const std::string& name,
   // type must be correct
   if (!IsValid(type))
     return nullptr;
-  //
-  AttrName an = AttrName::_unknown;
-  if (!FromString(name, &an)) {
-    for (const auto& e : unknown_names) {
-      if (e.second == name)
-        return nullptr;
-    }
-    if (unknown_names.empty()) {
-      an = static_cast<AttrName>(std::numeric_limits<uint16_t>::max());
-    } else {
-      an = static_cast<AttrName>(
-          static_cast<uint16_t>(unknown_names.begin()->first) - 1);
-    }
-    unknown_names[an] = name;
-  } else if (GetAttribute(an) != nullptr) {
+  // `name` cannot exist in this collection.
+  if (attributes_index_.count(name)) {
     return nullptr;
   }
   AttrDef def;
   def.ipp_type = type;
   def.cc_type = InternalTypeForUnknownAttribute(type);
-  attributes_.emplace_back(new Attribute(this, an, def));
+  attributes_.emplace_back(new Attribute(name, def));
   attributes_index_[attributes_.back()->Name()] = attributes_.size() - 1;
   return attributes_.back().get();
 }
