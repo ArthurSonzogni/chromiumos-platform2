@@ -1360,6 +1360,8 @@ class UserDataAuth {
   // overridden for testing.
   ChallengeCredentialsHelper* challenge_credentials_helper_ = nullptr;
 
+  bool challenge_credentials_helper_initialized_ = false;
+
   // The repeating callback to send FingerprintScanResult signal.
   base::RepeatingCallback<void(user_data_auth::FingerprintScanResult)>
       fingerprint_scan_result_callback_;

@@ -1712,9 +1712,17 @@ void UserDataAuth::DoMount(
 
 CryptohomeStatus UserDataAuth::InitForChallengeResponseAuth() {
   AssertOnMountThread();
-  if (challenge_credentials_helper_) {
+  if (challenge_credentials_helper_initialized_) {
     // Already successfully initialized.
     return OkStatus<CryptohomeError>();
+  }
+
+  if (!challenge_credentials_helper_) {
+    // Lazily create the helper object that manages generation/decryption of
+    // credentials for challenge-protected vaults.
+    default_challenge_credentials_helper_ =
+        std::make_unique<ChallengeCredentialsHelperImpl>(hwsec_);
+    challenge_credentials_helper_ = default_challenge_credentials_helper_.get();
   }
 
   if (!mount_thread_bus_) {
@@ -1727,14 +1735,10 @@ CryptohomeStatus UserDataAuth::InitForChallengeResponseAuth() {
   }
   key_challenge_service_factory_->SetMountThreadBus(mount_thread_bus_);
 
-  // Lazily create the helper object that manages generation/decryption of
-  // credentials for challenge-protected vaults.
-  default_challenge_credentials_helper_ =
-      std::make_unique<ChallengeCredentialsHelperImpl>(hwsec_);
-  challenge_credentials_helper_ = default_challenge_credentials_helper_.get();
-
   auth_block_utility_->InitializeChallengeCredentialsHelper(
       challenge_credentials_helper_, key_challenge_service_factory_);
+
+  challenge_credentials_helper_initialized_ = true;
   return OkStatus<CryptohomeError>();
 }
 
