@@ -5,6 +5,7 @@
 #include "cryptohome/userdataauth.h"
 
 #include <algorithm>
+#include <deque>
 #include <memory>
 #include <optional>
 #include <set>
@@ -71,6 +72,8 @@
 #include "cryptohome/storage/homedirs.h"
 #include "cryptohome/storage/mock_arc_disk_quota.h"
 #include "cryptohome/storage/mock_homedirs.h"
+#include "cryptohome/storage/mock_mount.h"
+#include "cryptohome/storage/mock_mount_factory.h"
 #include "cryptohome/user_session/mock_user_session.h"
 #include "cryptohome/user_session/mock_user_session_factory.h"
 
@@ -170,6 +173,7 @@ class UserDataAuthTestBase : public ::testing::Test {
     userdataauth_->set_cryptohome_keys_manager(&cryptohome_keys_manager_);
     userdataauth_->set_challenge_credentials_helper(
         &challenge_credentials_helper_);
+    userdataauth_->set_user_session_factory(&user_session_factory_);
 
     // It doesnt matter what key it returns for the purposes of the
     // UserDataAuth test.
@@ -217,7 +221,6 @@ class UserDataAuthTestBase : public ::testing::Test {
     userdataauth_->set_arc_disk_quota(&arc_disk_quota_);
     userdataauth_->set_pkcs11_init(&pkcs11_init_);
     userdataauth_->set_pkcs11_token_factory(&pkcs11_token_factory_);
-    userdataauth_->set_user_session_factory(&user_session_factory_);
     userdataauth_->set_key_challenge_service_factory(
         &key_challenge_service_factory_);
     userdataauth_->set_low_disk_space_handler(&low_disk_space_handler_);
@@ -5336,9 +5339,28 @@ class UserDataAuthApiTest : public UserDataAuthTest {
     userdataauth_->set_hwsec_factory(&sim_factory_);
 
     SetupDefaultUserDataAuth();
+    SetupMountFactory();
     // Note: We skip SetupHwsec() because we use the simulated libhwsec layer.
     SetupTasks();
     InitializeUserDataAuth();
+  }
+
+  void SetupMountFactory() {
+    userdataauth_->set_mount_factory_for_testing(&mount_factory_);
+
+    ON_CALL(mount_factory_, New(_, _, _, _, _))
+        .WillByDefault(
+            Invoke([this](Platform* platform, HomeDirs* homedirs,
+                          bool legacy_mount, bool bind_mount_downloads,
+                          bool use_local_mounter) -> Mount* {
+              if (new_mounts_.empty()) {
+                ADD_FAILURE() << "Not enough objects in new_mounts_";
+                return nullptr;
+              }
+              Mount* result = new_mounts_[0];
+              new_mounts_.pop_front();
+              return result;
+            }));
   }
 
   // Simply the Sync() version of StartAuthSession(). Caller should check that
@@ -5548,6 +5570,12 @@ class UserDataAuthApiTest : public UserDataAuthTest {
   }
 
  protected:
+  // Mock mount factory for mocking Mount objects.
+  MockMountFactory mount_factory_;
+  // Any elements added to this queue will be returned when mount_factory_.New()
+  // is called.
+  std::deque<Mount*> new_mounts_;
+
   static constexpr char kUsername1[] = "foo@gmail.com";
   static constexpr char kPassword1[] = "MyP@ssW0rd!!";
   static constexpr char kPasswordLabel[] = "Password1";
