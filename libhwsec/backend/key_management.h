@@ -71,6 +71,12 @@ class KeyManagement {
       const brillo::Blob& key_blob,
       const LoadKeyOptions& load_key_options) = 0;
 
+  // Gets the endorsement key that is protected by the policy.
+  // Note: The resulting key is different to the EK that was created by the the
+  // EK template.
+  virtual StatusOr<ScopedKey> GetPolicyEndorsementKey(
+      const OperationPolicySetting& policy, KeyAlgoType key_algo) = 0;
+
   // Loads the persistent key with specific |key_type|.
   virtual StatusOr<ScopedKey> GetPersistentKey(PersistentKeyType key_type) = 0;
 

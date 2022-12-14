@@ -68,6 +68,8 @@ class KeyManagementTpm2 : public Backend::KeyManagement,
   StatusOr<ScopedKey> LoadKey(const OperationPolicy& policy,
                               const brillo::Blob& key_blob,
                               const LoadKeyOptions& load_key_options) override;
+  StatusOr<ScopedKey> GetPolicyEndorsementKey(
+      const OperationPolicySetting& policy, KeyAlgoType key_algo) override;
   StatusOr<ScopedKey> GetPersistentKey(PersistentKeyType key_type) override;
   StatusOr<brillo::Blob> GetPubkeyHash(Key key) override;
   Status Flush(Key key) override;

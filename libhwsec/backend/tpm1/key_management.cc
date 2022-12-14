@@ -577,6 +577,12 @@ StatusOr<KeyManagementTpm1::KeyPolicyPair> KeyManagementTpm1::LoadKeyBlob(
   };
 }
 
+StatusOr<ScopedKey> KeyManagementTpm1::GetPolicyEndorsementKey(
+    const OperationPolicySetting& policy, KeyAlgoType key_algo) {
+  return MakeStatus<TPMError>("Unsupported policy endorsement key",
+                              TPMRetryAction::kNoRetry);
+}
+
 StatusOr<ScopedKey> KeyManagementTpm1::GetPersistentKey(
     PersistentKeyType key_type) {
   auto it = persistent_key_map_.find(key_type);

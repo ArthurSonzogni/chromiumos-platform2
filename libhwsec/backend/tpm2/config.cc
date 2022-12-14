@@ -19,6 +19,7 @@
 #include "libhwsec/backend/tpm2/backend.h"
 #include "libhwsec/error/tpm2_error.h"
 #include "libhwsec/status.h"
+#include "libhwsec/structures/operation_policy.h"
 
 using brillo::BlobFromString;
 using brillo::BlobToString;
@@ -50,6 +51,38 @@ StatusOr<int> DeviceConfigToPcr(DeviceConfig config) {
   }
   return MakeStatus<TPMError>("Unknown device config",
                               TPMRetryAction::kNoRetry);
+}
+
+Status AddToPolicySession(trunks::PolicySession& policy_session,
+                          const ConfigTpm2::PcrMap& pcr_map,
+                          const Permission& permission) {
+  if (permission.auth_value.has_value()) {
+    if (permission.type == PermissionType::kAuthValue) {
+      RETURN_IF_ERROR(MakeStatus<TPM2Error>(policy_session.PolicyAuthValue()))
+          .WithStatus<TPMError>("Failed to create auth value policy");
+    } else if (permission.type == PermissionType::kPolicyOR) {
+      // Doing the PolicyOR with the zero digest and auth_value.
+      // The initaial policy digest is zero, so we will always match the first
+      // section. But we still need the correct auth_value to generate correct
+      // the final policy digest.
+      std::vector<std::string> policy_or_digests = {
+          std::string(SHA256_DIGEST_LENGTH, 0),
+          Sha256(permission.auth_value.value()).to_string()};
+      RETURN_IF_ERROR(
+          MakeStatus<TPM2Error>(policy_session.PolicyOR(policy_or_digests)))
+          .WithStatus<TPMError>("Failed to call PolicyOR");
+    } else {
+      return MakeStatus<TPMError>("Unknown policy permission type",
+                                  TPMRetryAction::kNoRetry);
+    }
+  }
+
+  if (!pcr_map.empty()) {
+    RETURN_IF_ERROR(MakeStatus<TPM2Error>(policy_session.PolicyPCR(pcr_map)))
+        .WithStatus<TPMError>("Failed to create PCR policy");
+  }
+
+  return OkStatus();
 }
 
 }  // namespace
@@ -181,16 +214,12 @@ ConfigTpm2::GetTrunksPolicySession(
                       salted, enable_encryption)))
       .WithStatus<TPMError>("Failed to start policy session");
 
-  if (policy.permission.auth_value.has_value()) {
-    RETURN_IF_ERROR(MakeStatus<TPM2Error>(policy_session->PolicyAuthValue()))
-        .WithStatus<TPMError>("Failed to create auth value policy");
-  }
-
   ASSIGN_OR_RETURN(const PcrMap& pcr_map, ToPcrMap(policy.device_configs),
                    _.WithStatus<TPMError>("Failed to get PCR map"));
 
-  RETURN_IF_ERROR(MakeStatus<TPM2Error>(policy_session->PolicyPCR(pcr_map)))
-      .WithStatus<TPMError>("Failed to create PCR policy");
+  RETURN_IF_ERROR(
+      AddToPolicySession(*policy_session, pcr_map, policy.permission))
+      .WithStatus<TPMError>("Failed to add policy to policy session");
 
   if (!extra_policy_digests.empty()) {
     RETURN_IF_ERROR(
@@ -198,7 +227,8 @@ ConfigTpm2::GetTrunksPolicySession(
         .WithStatus<TPMError>("Failed to call PolicyOR");
   }
 
-  if (policy.permission.auth_value.has_value()) {
+  if (policy.permission.auth_value.has_value() &&
+      policy.permission.type == PermissionType::kAuthValue) {
     std::string auth_value = policy.permission.auth_value.value().to_string();
     policy_session->SetEntityAuthorizationValue(auth_value);
     brillo::SecureClearContainer(auth_value);
@@ -209,7 +239,8 @@ ConfigTpm2::GetTrunksPolicySession(
 
 StatusOr<ConfigTpm2::TrunksSession> ConfigTpm2::GetTrunksSession(
     const OperationPolicy& policy, SessionSecuritySetting setting) {
-  if (policy.device_configs.any()) {
+  if (policy.device_configs.any() ||
+      policy.permission.type != PermissionType::kAuthValue) {
     SessionSecurityDetail detail = ToSessionSecurityDetail(setting);
     std::vector<std::string> no_extra_policy_digest = {};
     ASSIGN_OR_RETURN(
@@ -295,6 +326,39 @@ StatusOr<std::string> ConfigTpm2::ToPolicyDigest(
       .WithStatus<TPMError>("Failed to get policy digest");
 
   return pcr_policy_digest;
+}
+
+StatusOr<std::string> ConfigTpm2::GetPolicyDigest(
+    const OperationPolicySetting& policy) {
+  ASSIGN_OR_RETURN(const PcrMap& pcr_map,
+                   ToSettingsPcrMap(policy.device_config_settings),
+                   _.WithStatus<TPMError>("Failed to get PCR map"));
+
+  if (pcr_map.empty() && policy.permission.type == PermissionType::kAuthValue) {
+    // We will use hmac session, no policy digest for this case.
+    return std::string();
+  }
+
+  BackendTpm2::TrunksClientContext& context = backend_.GetTrunksContext();
+
+  // Start a trial policy session.
+  std::unique_ptr<trunks::PolicySession> policy_session =
+      context.factory.GetTrialSession();
+
+  RETURN_IF_ERROR(
+      MakeStatus<TPM2Error>(policy_session->StartUnboundSession(false, false)))
+      .WithStatus<TPMError>("Failed to start trial session");
+
+  RETURN_IF_ERROR(
+      AddToPolicySession(*policy_session, pcr_map, policy.permission))
+      .WithStatus<TPMError>("Failed to add policy to policy session");
+
+  std::string policy_digest;
+  RETURN_IF_ERROR(
+      MakeStatus<TPM2Error>(policy_session->GetDigest(&policy_digest)))
+      .WithStatus<TPMError>("Failed to get policy digest");
+
+  return policy_digest;
 }
 
 }  // namespace hwsec

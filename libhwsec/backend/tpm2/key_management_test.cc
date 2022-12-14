@@ -9,6 +9,7 @@
 #include <base/test/task_environment.h>
 #include <brillo/secure_blob.h>
 #include <crypto/scoped_openssl_types.h>
+#include <gmock/gmock-matchers.h>
 #include <gtest/gtest.h>
 #include <libhwsec-foundation/crypto/sha.h>
 #include <libhwsec-foundation/error/testing_helper.h>
@@ -19,6 +20,7 @@
 #include "libhwsec/backend/tpm2/backend_test_base.h"
 #include "libhwsec/structures/key.h"
 #include "libhwsec/structures/permission.h"
+#include "trunks/tpm_generated.h"
 
 // Prevent the conflict definition from tss.h
 #undef TPM_ALG_RSA
@@ -33,6 +35,7 @@ using hwsec_foundation::error::testing::ReturnError;
 using hwsec_foundation::error::testing::ReturnValue;
 using testing::_;
 using testing::DoAll;
+using testing::Mock;
 using testing::NiceMock;
 using testing::Return;
 using testing::SaveArg;
@@ -1417,6 +1420,95 @@ TEST_F(BackendKeyManagementTpm2Test, LoadReloadKeyWithWrongAuth) {
       });
 
   EXPECT_THAT(result2, NotOk());
+}
+
+TEST_F(BackendKeyManagementTpm2Test, PolicyEndorsementKey) {
+  for (auto [hwsec_algo, trunks_algo] :
+       {std::pair(KeyAlgoType::kRsa, trunks::TPM_ALG_RSA),
+        std::pair(KeyAlgoType::kEcc, trunks::TPM_ALG_ECC)}) {
+    const std::string kFakeAuthValue = "fake_auth_value";
+    const OperationPolicySetting kFakePolicy{
+        .device_config_settings =
+            DeviceConfigSettings{
+                .boot_mode =
+                    DeviceConfigSettings::BootModeSetting{
+                        .mode = std::nullopt,
+                    },
+            },
+        .permission =
+            Permission{
+                .type = PermissionType::kPolicyOR,
+                .auth_value = brillo::SecureBlob(kFakeAuthValue),
+            },
+    };
+    const std::string kFakeKeyBlob = "fake_key_blob";
+    const std::string kFakePolicyDigest = "fake_policy_digest";
+    const std::string kFakeEndorsementPass = "fake_endorsement_pass";
+    const uint32_t kFakeKeyHandle = 0x1337;
+
+    tpm_manager::GetTpmStatusReply reply;
+    reply.set_status(TpmManagerStatus::STATUS_SUCCESS);
+    reply.set_enabled(true);
+    reply.set_owned(true);
+    reply.mutable_local_data()->set_endorsement_password(kFakeEndorsementPass);
+    EXPECT_CALL(proxy_->GetMock().tpm_manager, GetTpmStatus(_, _, _, _))
+        .WillOnce(DoAll(SetArgPointee<1>(reply), Return(true)));
+
+    EXPECT_CALL(proxy_->GetMock().trial_session, GetDigest(_))
+        .WillOnce(DoAll(SetArgPointee<0>(kFakePolicyDigest),
+                        Return(trunks::TPM_RC_SUCCESS)));
+
+    EXPECT_CALL(
+        proxy_->GetMock().tpm_utility,
+        GetAuthPolicyEndorsementKey(trunks_algo, kFakePolicyDigest, _, _, _))
+        .WillOnce(DoAll(SetArgPointee<3>(kFakeKeyHandle),
+                        Return(trunks::TPM_RC_SUCCESS)));
+
+    EXPECT_CALL(proxy_->GetMock().tpm_utility,
+                GetKeyPublicArea(kFakeKeyHandle, _))
+        .WillOnce(Return(trunks::TPM_RC_SUCCESS));
+
+    auto result =
+        middleware_->CallSync<&Backend::KeyManagement::GetPolicyEndorsementKey>(
+            kFakePolicy, hwsec_algo);
+
+    ASSERT_OK(result);
+
+    EXPECT_CALL(proxy_->GetMock().tpm, FlushContextSync(kFakeKeyHandle, _))
+        .WillOnce(Return(trunks::TPM_RC_SUCCESS));
+
+    {
+      // Move out the key and drop it.
+      ScopedKey drop_key = std::move(result).value();
+    }
+
+    task_environment_.RunUntilIdle();
+    Mock::VerifyAndClearExpectations(&proxy_->GetMock().tpm);
+  }
+}
+
+TEST_F(BackendKeyManagementTpm2Test, PolicyEndorsementKeyWrongPermissionType) {
+  const std::string kFakeAuthValue = "fake_auth_value";
+  const OperationPolicySetting kFakePolicy{
+      .device_config_settings =
+          DeviceConfigSettings{
+              .boot_mode =
+                  DeviceConfigSettings::BootModeSetting{
+                      .mode = std::nullopt,
+                  },
+          },
+      .permission =
+          Permission{
+              .type = PermissionType::kAuthValue,
+              .auth_value = brillo::SecureBlob(kFakeAuthValue),
+          },
+  };
+
+  auto result =
+      middleware_->CallSync<&Backend::KeyManagement::GetPolicyEndorsementKey>(
+          kFakePolicy, KeyAlgoType::kEcc);
+
+  EXPECT_THAT(result, NotOk());
 }
 
 }  // namespace hwsec

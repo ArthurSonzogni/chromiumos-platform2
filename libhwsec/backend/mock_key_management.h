@@ -36,6 +36,9 @@ class MockKeyManagement : public KeyManagement {
         .WillByDefault(Invoke(default_, &KeyManagement::CreateKey));
     ON_CALL(*this, LoadKey)
         .WillByDefault(Invoke(default_, &KeyManagement::LoadKey));
+    ON_CALL(*this, GetPolicyEndorsementKey)
+        .WillByDefault(
+            Invoke(default_, &KeyManagement::GetPolicyEndorsementKey));
     ON_CALL(*this, GetPersistentKey)
         .WillByDefault(Invoke(default_, &KeyManagement::GetPersistentKey));
     ON_CALL(*this, GetPubkeyHash)
@@ -78,6 +81,10 @@ class MockKeyManagement : public KeyManagement {
               (const OperationPolicy& policy,
                const brillo::Blob& key_blob,
                const LoadKeyOptions& load_key_options),
+              (override));
+  MOCK_METHOD(StatusOr<ScopedKey>,
+              GetPolicyEndorsementKey,
+              (const OperationPolicySetting& policy, KeyAlgoType key_algo),
               (override));
   MOCK_METHOD(StatusOr<ScopedKey>,
               GetPersistentKey,
