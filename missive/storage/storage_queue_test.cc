@@ -2180,7 +2180,6 @@ TEST_P(StorageQueueTest, WriteRecordDataWithInsufficientDiskSpaceFailure) {
                       base::StrCat({"Simulated data write low disk space, seq=",
                                     base::NumberToString(seq_id)}));
       })));
-
   EXPECT_CALL(
       analytics::Metrics::TestEnvironment::GetMockMetricsLibrary(),
       SendLinearToUMA(StrEq(StorageQueue::kResourceExhaustedCaseUmaName),
@@ -2207,7 +2206,6 @@ TEST_P(StorageQueueTest, WriteRecordMetadataWithInsufficientDiskSpaceFailure) {
             base::StrCat({"Simulated metadata write low disk space, seq=",
                           base::NumberToString(seq_id)}));
       })));
-
   EXPECT_CALL(
       analytics::Metrics::TestEnvironment::GetMockMetricsLibrary(),
       SendLinearToUMA(
@@ -2218,6 +2216,46 @@ TEST_P(StorageQueueTest, WriteRecordMetadataWithInsufficientDiskSpaceFailure) {
   Status write_result = WriteString(kData[0]);
   EXPECT_FALSE(write_result.ok());
   EXPECT_EQ(write_result.error_code(), error::RESOURCE_EXHAUSTED);
+  task_environment_.RunUntilIdle();  // For asynchronous UMA upload.
+}
+
+TEST_P(StorageQueueTest, WrappedRecordWithInsufficientMemoryWithRetry) {
+  CreateTestStorageQueueOrDie(BuildStorageQueueOptionsOnlyManual());
+
+  // Inject "low memory" error multiple times, then retire and return success.
+  auto inject = InjectFailures();
+  static constexpr size_t kAttempts = 3;
+  size_t attempts = 0;
+  EXPECT_CALL(
+      *inject,
+      Call(Eq(test::StorageQueueOperationKind::kWrappedRecordLowMemory), Eq(0)))
+      .Times(kAttempts)
+      .WillRepeatedly(WithArg<1>(Invoke([&attempts](int64_t seq_id) {
+        return Status(error::RESOURCE_EXHAUSTED,
+                      base::StrCat({"Not enough memory for WrappedRecord, seq=",
+                                    base::NumberToString(seq_id), " attempt=",
+                                    base::NumberToString(attempts++)}));
+      })))
+      .RetiresOnSaturation();
+  EXPECT_CALL(
+      analytics::Metrics::TestEnvironment::GetMockMetricsLibrary(),
+      SendLinearToUMA(
+          StrEq(StorageQueue::kResourceExhaustedCaseUmaName),
+          Eq(StorageQueue::ResourceExhaustedCase::NO_MEMORY_FOR_WRITE_BUFFER),
+          Eq(StorageQueue::ResourceExhaustedCase::kMaxValue)))
+      .Times(0);  // No UMA call!
+  Record record;
+  record.set_data(std::string(kData[0]));
+  record.set_destination(UPLOAD_EVENTS);
+  if (!dm_token_.empty()) {
+    record.set_dm_token(dm_token_);
+  }
+  test::TestEvent<Status> write_event;
+  LOG(ERROR) << "Write data='" << record.data() << "'";
+  storage_queue_->Write(std::move(record), write_event.cb());
+  Status write_result = write_event.result();
+  EXPECT_OK(write_result) << write_result;
+  EXPECT_THAT(attempts, Eq(kAttempts));
   task_environment_.RunUntilIdle();  // For asynchronous UMA upload.
 }
 
@@ -2254,6 +2292,48 @@ TEST_P(StorageQueueTest, WrappedRecordWithInsufficientMemoryWithFailure) {
   Status write_result = write_event.result();
   EXPECT_FALSE(write_result.ok());
   EXPECT_EQ(write_result.error_code(), error::RESOURCE_EXHAUSTED);
+  task_environment_.RunUntilIdle();  // For asynchronous UMA upload.
+}
+
+TEST_P(StorageQueueTest, EncryptedRecordWithInsufficientMemoryWithRetry) {
+  CreateTestStorageQueueOrDie(BuildStorageQueueOptionsOnlyManual());
+
+  // Inject "low memory" error multiple times, then retire and return success.
+  auto inject = InjectFailures();
+  static constexpr size_t kAttempts = 3;
+  size_t attempts = 0;
+  EXPECT_CALL(
+      *inject,
+      Call(Eq(test::StorageQueueOperationKind::kEncryptedRecordLowMemory),
+           Eq(0)))
+      .Times(kAttempts)
+      .WillRepeatedly(WithArg<1>(Invoke([&attempts](int64_t seq_id) {
+        return Status(
+            error::RESOURCE_EXHAUSTED,
+            base::StrCat({"Not enough memory for EncryptedRecord, seq=",
+                          base::NumberToString(seq_id),
+                          " attempt=", base::NumberToString(attempts++)}));
+      })))
+      .RetiresOnSaturation();
+  EXPECT_CALL(
+      analytics::Metrics::TestEnvironment::GetMockMetricsLibrary(),
+      SendLinearToUMA(StrEq(StorageQueue::kResourceExhaustedCaseUmaName),
+                      Eq(StorageQueue::ResourceExhaustedCase::
+                             NO_MEMORY_FOR_ENCRYPTED_RECORD),
+                      Eq(StorageQueue::ResourceExhaustedCase::kMaxValue)))
+      .Times(0);  // No UMA call!
+  Record record;
+  record.set_data(std::string(kData[0]));
+  record.set_destination(UPLOAD_EVENTS);
+  if (!dm_token_.empty()) {
+    record.set_dm_token(dm_token_);
+  }
+  test::TestEvent<Status> write_event;
+  LOG(ERROR) << "Write data='" << record.data() << "'";
+  storage_queue_->Write(std::move(record), write_event.cb());
+  Status write_result = write_event.result();
+  EXPECT_OK(write_result) << write_result;
+  EXPECT_THAT(attempts, Eq(kAttempts));
   task_environment_.RunUntilIdle();  // For asynchronous UMA upload.
 }
 
