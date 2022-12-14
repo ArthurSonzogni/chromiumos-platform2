@@ -85,6 +85,8 @@ class CrosQtIMContext : public QPlatformInputContext {
 
   void Activate();
 
+  IMContextBackend::ContentType GetUpdatedHints();
+
   std::string preedit_;
   QList<QInputMethodEvent::Attribute> preedit_attributes_;
   bool inited_ = false;
