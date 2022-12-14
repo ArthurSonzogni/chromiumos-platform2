@@ -134,14 +134,18 @@ StatusOr<SecureBlob> DerivingTpm2::DeriveRsaKey(const KeyTpm2& key_data,
   base::ScopedClosureRunner cleanup_value_to_decrypt(base::BindOnce(
       brillo::SecureClearContainer<std::string>, std::ref(value_to_decrypt)));
 
+  ASSIGN_OR_RETURN(
+      ConfigTpm2::TrunksSession session,
+      backend_.GetConfigTpm2().GetTrunksSession(
+          key_data.cache.policy, SessionSecuritySetting::kNoEncrypted),
+      _.WithStatus<TPMError>("Failed to get session for policy"));
+
   std::string decrypted_value;
-  std::unique_ptr<trunks::AuthorizationDelegate> delegate =
-      context.factory.GetPasswordAuthorization("");
 
   RETURN_IF_ERROR(
       MakeStatus<TPM2Error>(context.tpm_utility->AsymmetricDecrypt(
           key_data.key_handle, trunks::TPM_ALG_NULL, trunks::TPM_ALG_NULL,
-          value_to_decrypt, delegate.get(), &decrypted_value)))
+          value_to_decrypt, session.delegate, &decrypted_value)))
       .WithStatus<TPMError>("Failed to decrypt blob");
 
   return Sha256(SecureBlob(decrypted_value));
@@ -164,11 +168,15 @@ StatusOr<SecureBlob> DerivingTpm2::DeriveEccKey(const KeyTpm2& key_data,
   trunks::TPM2B_ECC_POINT in_point = trunks::Make_TPM2B_ECC_POINT(ecc_point);
   trunks::TPM2B_ECC_POINT z_point;
 
-  std::unique_ptr<trunks::AuthorizationDelegate> delegate =
-      context.factory.GetPasswordAuthorization("");
+  ASSIGN_OR_RETURN(
+      ConfigTpm2::TrunksSession session,
+      backend_.GetConfigTpm2().GetTrunksSession(
+          key_data.cache.policy, SessionSecuritySetting::kNoEncrypted),
+      _.WithStatus<TPMError>("Failed to get session for policy"));
 
-  RETURN_IF_ERROR(MakeStatus<TPM2Error>(context.tpm_utility->ECDHZGen(
-                      key_data.key_handle, in_point, delegate.get(), &z_point)))
+  RETURN_IF_ERROR(
+      MakeStatus<TPM2Error>(context.tpm_utility->ECDHZGen(
+          key_data.key_handle, in_point, session.delegate, &z_point)))
       .WithStatus<TPMError>("Failed to ECDH ZGen");
 
   return Sha256(SecureBlob(StringFrom_TPM2B_ECC_PARAMETER(z_point.point.x)));
