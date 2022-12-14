@@ -1,4 +1,4 @@
-# Copyright 2022 The Chromium Authors
+# Copyright 2022 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -37,7 +37,7 @@ static_library("feature_usage_static") {
   ]
   configs += [ ":target_defaults" ]
 
-  # Generate a standalone static library
+  # Generate a standalone static library.
   configs -= [ "//common-mk:use_thin_archive" ]
   configs += [ "//common-mk:nouse_thin_archive" ]
 }
@@ -48,7 +48,7 @@ if (use.test) {
   }
 
   executable("unit_tests") {
-    sources = [ "feature_usage_metrics_unittest.cc" ]
+    sources = [ "feature_usage_metrics_test.cc" ]
     configs += [
       ":target_defaults",
       ":test_config",
