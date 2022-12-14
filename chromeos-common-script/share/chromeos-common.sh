@@ -348,9 +348,18 @@ get_largest_nvme_namespace() {
 # Find the drive to install based on the build write_cgpt.sh
 # script. If not found, return ""
 get_fixed_dst_drive() {
-  local dev rootdev
+  local dev rootdev rootdev_type exp_rootdev_type
 
   if [ -n "${DEFAULT_ROOTDEV}" ]; then
+    exp_rootdev_type="$(cros_config /hardware-properties storage-type || :)"
+    case "${exp_rootdev_type}" in
+     "EMMC")
+       exp_rootdev_type="MMC"
+       ;;
+     "SATA")
+       exp_rootdev_type="ATA"
+       ;;
+    esac
     # No " here, the variable may contain wildcards.
     for rootdev in ${DEFAULT_ROOTDEV}; do
       dev="/dev/$(basename "${rootdev}")"
@@ -360,10 +369,17 @@ get_fixed_dst_drive() {
             dev="/dev/$(get_largest_nvme_namespace "${dev}")"
             ;;
         esac
-        break
-      else
-        dev=""
+        # Check the device type match the type given by cros_config, if any.
+        rootdev_type="$(get_device_type "${dev}")"
+        if [ -z "${exp_rootdev_type}" ] || \
+           [ "${exp_rootdev_type}" = "STORAGE_TYPE_UNKNOWN" ] || \
+           [ "${exp_rootdev_type}" = "${rootdev_type}" ]; then
+          # We have valid block device and it matches the expected
+          # storage type when specified. Return the device.
+          break
+        fi
       fi
+      dev=""
     done
   else
     dev=""
