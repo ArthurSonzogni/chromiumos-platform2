@@ -31,6 +31,7 @@ constexpr uint32_t kFwmpIndex = 0x100a;
 constexpr uint32_t kInstallAttributesIndex =
     USE_TPM_DYNAMIC ? 0x9da5b0 : 0x800004;
 constexpr uint32_t kBootlockboxIndex = USE_TPM_DYNAMIC ? 0x9da5b2 : 0x800006;
+constexpr uint32_t kEnterpriseRollbackIndex = 0x100e;
 
 using Attributes = std::bitset<tpm_manager::NvramSpaceAttribute_ARRAYSIZE>;
 
@@ -74,6 +75,11 @@ constexpr Attributes kInstallAttributesInitAttributes =
 constexpr Attributes kBootlockboxInitAttributes =
     (1ULL << tpm_manager::NVRAM_READ_AUTHORIZATION) |
     (1ULL << tpm_manager::NVRAM_BOOT_WRITE_LOCK) |
+    (1ULL << tpm_manager::NVRAM_WRITE_AUTHORIZATION);
+
+constexpr Attributes kEnterpriseRollbackRequireAttributes =
+    (1ULL << tpm_manager::NVRAM_PLATFORM_CREATE) |
+    (1ULL << tpm_manager::NVRAM_READ_AUTHORIZATION) |
     (1ULL << tpm_manager::NVRAM_WRITE_AUTHORIZATION);
 
 bool CheckAttributes(const Attributes& require_attributes,
@@ -132,6 +138,15 @@ StatusOr<SpaceInfo> GetSpaceInfo(Space space) {
           .prepare_if_write_locked = false,
           .init_attributes = kBootlockboxInitAttributes,
           .owner_dependency = tpm_manager::kTpmOwnerDependency_Bootlockbox,
+      };
+    case Space::kEnterpriseRollback:
+      return SpaceInfo{
+          .index = kEnterpriseRollbackIndex,
+          .write_with_owner_auth = false,
+          .read_with_owner_auth = false,
+          .lock_after_write = false,
+          .prepare_if_write_locked = false,
+          .require_attributes = kEnterpriseRollbackRequireAttributes,
       };
     default:
       return MakeStatus<TPMError>("Unknown space", TPMRetryAction::kNoRetry);

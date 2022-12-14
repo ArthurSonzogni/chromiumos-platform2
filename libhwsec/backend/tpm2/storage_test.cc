@@ -30,6 +30,7 @@ namespace {
 constexpr uint32_t kFwmpIndex = 0x100a;
 constexpr uint32_t kInstallAttributesIndex =
     USE_TPM_DYNAMIC ? 0x9da5b0 : 0x800004;
+constexpr uint32_t kEnterpriseRollbackIndex = 0x100e;
 }  // namespace
 
 namespace hwsec {
@@ -274,6 +275,41 @@ TEST_F(BackendStorageTpm2Test, IsWriteLocked) {
   EXPECT_THAT(middleware_->CallSync<&Backend::Storage::IsWriteLocked>(
                   Space::kInstallAttributes),
               IsOkAndHolds(true));
+}
+
+TEST_F(BackendStorageTpm2Test, EnterpriseRollbackReady) {
+  const uint32_t kFakeSize = 32;
+  tpm_manager::ListSpacesReply list_reply;
+  list_reply.set_result(NvramResult::NVRAM_RESULT_SUCCESS);
+  list_reply.add_index_list(kEnterpriseRollbackIndex);
+  EXPECT_CALL(proxy_->GetMock().tpm_nvram, ListSpaces(_, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<1>(list_reply), Return(true)));
+
+  tpm_manager::GetSpaceInfoReply info_reply;
+  info_reply.set_result(NvramResult::NVRAM_RESULT_SUCCESS);
+  info_reply.set_size(kFakeSize);
+  info_reply.set_is_read_locked(false);
+  info_reply.set_is_write_locked(false);
+  info_reply.add_attributes(NvramSpaceAttribute::NVRAM_PLATFORM_CREATE);
+  info_reply.add_attributes(NvramSpaceAttribute::NVRAM_READ_AUTHORIZATION);
+  info_reply.add_attributes(NvramSpaceAttribute::NVRAM_WRITE_AUTHORIZATION);
+  EXPECT_CALL(proxy_->GetMock().tpm_nvram, GetSpaceInfo(_, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<1>(info_reply), Return(true)));
+
+  EXPECT_THAT(middleware_->CallSync<&Backend::Storage::IsReady>(
+                  Space::kEnterpriseRollback),
+              IsOkAndHolds(Storage::ReadyState::kReady));
+}
+
+TEST_F(BackendStorageTpm2Test, EnterpriseRollbackNotReady) {
+  tpm_manager::ListSpacesReply list_reply;
+  list_reply.set_result(NvramResult::NVRAM_RESULT_SUCCESS);
+  EXPECT_CALL(proxy_->GetMock().tpm_nvram, ListSpaces(_, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<1>(list_reply), Return(true)));
+
+  EXPECT_THAT(middleware_->CallSync<&Backend::Storage::IsReady>(
+                  Space::kEnterpriseRollback),
+              NotOk());
 }
 
 }  // namespace hwsec

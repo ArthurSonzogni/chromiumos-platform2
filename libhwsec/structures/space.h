@@ -12,6 +12,7 @@ enum class Space {
   kPlatformFirmwareManagementParameters,
   kInstallAttributes,
   kBootlockbox,
+  kEnterpriseRollback,
 };
 
 enum class RoSpace {
