@@ -18,7 +18,6 @@
 #include <base/check.h>
 #include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
-#include <base/task/task_runner_util.h>
 
 #include "arc/vm/mojo_proxy/file_descriptor_util.h"
 
@@ -80,8 +79,8 @@ bool LocalFile::Write(std::string blob, std::vector<base::ScopedFD> fds) {
 }
 
 void LocalFile::Pread(uint64_t count, uint64_t offset, PreadCallback callback) {
-  base::PostTaskAndReplyWithResult(
-      blocking_task_runner_.get(), FROM_HERE,
+  blocking_task_runner_.get()->PostTaskAndReplyWithResult(
+      FROM_HERE,
       base::BindOnce(
           [](int fd, uint64_t count, uint64_t offset) {
             arc_proxy::PreadResponse response;
@@ -104,8 +103,8 @@ void LocalFile::Pread(uint64_t count, uint64_t offset, PreadCallback callback) {
 void LocalFile::Pwrite(std::string blob,
                        uint64_t offset,
                        PwriteCallback callback) {
-  base::PostTaskAndReplyWithResult(
-      blocking_task_runner_.get(), FROM_HERE,
+  blocking_task_runner_.get()->PostTaskAndReplyWithResult(
+      FROM_HERE,
       base::BindOnce(
           [](int fd, std::string blob, uint64_t offset) {
             arc_proxy::PwriteResponse response;
@@ -123,27 +122,28 @@ void LocalFile::Pwrite(std::string blob,
 }
 
 void LocalFile::Fstat(FstatCallback callback) {
-  base::PostTaskAndReplyWithResult(blocking_task_runner_.get(), FROM_HERE,
-                                   base::BindOnce(
-                                       [](int fd) {
-                                         arc_proxy::FstatResponse response;
-                                         struct stat st;
-                                         int result = fstat(fd, &st);
-                                         if (result < 0) {
-                                           response.set_error_code(errno);
-                                         } else {
-                                           response.set_error_code(0);
-                                           response.set_size(st.st_size);
-                                         }
-                                         return response;
-                                       },
-                                       fd_.get()),
-                                   std::move(callback));
+  blocking_task_runner_.get()->PostTaskAndReplyWithResult(
+      FROM_HERE,
+      base::BindOnce(
+          [](int fd) {
+            arc_proxy::FstatResponse response;
+            struct stat st;
+            int result = fstat(fd, &st);
+            if (result < 0) {
+              response.set_error_code(errno);
+            } else {
+              response.set_error_code(0);
+              response.set_size(st.st_size);
+            }
+            return response;
+          },
+          fd_.get()),
+      std::move(callback));
 }
 
 void LocalFile::Ftruncate(int64_t length, FtruncateCallback callback) {
-  base::PostTaskAndReplyWithResult(
-      blocking_task_runner_.get(), FROM_HERE,
+  blocking_task_runner_.get()->PostTaskAndReplyWithResult(
+      FROM_HERE,
       base::BindOnce(
           [](int fd, int64_t length) {
             arc_proxy::FtruncateResponse response;
