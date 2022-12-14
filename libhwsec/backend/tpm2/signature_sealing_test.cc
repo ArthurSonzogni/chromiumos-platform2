@@ -103,7 +103,7 @@ class BackendSignatureSealingTpm2Test : public BackendTpm2TestBase {
   }
 
   StatusOr<SignatureSealedData> SetupSealing() {
-    // ConfigTpm2::ToPolicyDigest twice for two policy settings.
+    // ConfigTpm2::GetPolicyDigest twice for two policy settings.
     EXPECT_CALL(proxy_->GetMock().trial_session,
                 StartUnboundSession(false, false))
         .WillOnce(Return(trunks::TPM_RC_SUCCESS))
@@ -373,7 +373,7 @@ TEST_F(BackendSignatureSealingTpm2Test, SealWrongSetting) {
 TEST_F(BackendSignatureSealingTpm2Test, SealWrongDigestLength) {
   std::string fake_digests3 = "";
 
-  // ConfigTpm2::ToPolicyDigest twice for two policy settings.
+  // ConfigTpm2::GetPolicyDigest twice for two policy settings.
   EXPECT_CALL(proxy_->GetMock().trial_session,
               StartUnboundSession(false, false))
       .WillOnce(Return(trunks::TPM_RC_SUCCESS))

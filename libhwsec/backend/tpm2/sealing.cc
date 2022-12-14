@@ -17,6 +17,7 @@
 #include "libhwsec/backend/tpm2/backend.h"
 #include "libhwsec/error/tpm2_error.h"
 #include "libhwsec/status.h"
+#include "libhwsec/structures/permission.h"
 
 using brillo::BlobFromString;
 using brillo::BlobToString;
@@ -33,29 +34,22 @@ StatusOr<brillo::Blob> SealingTpm2::Seal(
     const brillo::SecureBlob& unsealed_data) {
   BackendTpm2::TrunksClientContext& context = backend_.GetTrunksContext();
 
-  std::string policy_digest;
   bool use_only_policy_authorization = false;
 
-  ASSIGN_OR_RETURN(
-      const ConfigTpm2::PcrMap& settings,
-      backend_.GetConfigTpm2().ToSettingsPcrMap(policy.device_config_settings),
-      _.WithStatus<TPMError>("Failed to convert setting to PCR map"));
+  ASSIGN_OR_RETURN(const std::string& policy_digest,
+                   backend_.GetConfigTpm2().GetPolicyDigest(policy),
+                   _.WithStatus<TPMError>("Failed to get policy digest"));
 
-  if (!policy.permission.auth_value.has_value() && settings.empty()) {
-    return MakeStatus<TPMError>("Seal without any useful policy",
-                                TPMRetryAction::kNoRetry);
-  }
-
-  if (settings.size()) {
-    RETURN_IF_ERROR(
-        MakeStatus<TPM2Error>(context.tpm_utility->GetPolicyDigestForPcrValues(
-            settings, policy.permission.auth_value.has_value(),
-            &policy_digest)))
-        .WithStatus<TPMError>("Failed to get policy digest");
-
+  if (!policy_digest.empty()) {
     // We should not allow using the key without policy when the policy had been
     // set.
     use_only_policy_authorization = true;
+  }
+
+  if (!policy.permission.auth_value.has_value() &&
+      use_only_policy_authorization) {
+    return MakeStatus<TPMError>("Seal without any useful policy",
+                                TPMRetryAction::kNoRetry);
   }
 
   ASSIGN_OR_RETURN(trunks::HmacSession & hmac_session,
@@ -64,7 +58,8 @@ StatusOr<brillo::Blob> SealingTpm2::Seal(
                    _.WithStatus<TPMError>("Failed to start hmac session"));
 
   std::string auth_value;
-  if (policy.permission.auth_value.has_value()) {
+  if (policy.permission.type == PermissionType::kAuthValue &&
+      policy.permission.auth_value.has_value()) {
     auth_value = policy.permission.auth_value.value().to_string();
   }
 

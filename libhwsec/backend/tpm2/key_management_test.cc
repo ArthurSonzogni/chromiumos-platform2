@@ -547,9 +547,8 @@ TEST_F(BackendKeyManagementTpm2Test, PolicyRsaKey) {
   const std::string kFakePolicyDigest = "fake_policy_digest";
   const uint32_t kFakeKeyHandle = 0x1337;
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility,
-              GetPolicyDigestForPcrValues(_, _, _))
-      .WillOnce(DoAll(SetArgPointee<2>(kFakePolicyDigest),
+  EXPECT_CALL(proxy_->GetMock().trial_session, GetDigest(_))
+      .WillOnce(DoAll(SetArgPointee<0>(kFakePolicyDigest),
                       Return(trunks::TPM_RC_SUCCESS)));
 
   EXPECT_CALL(
@@ -602,9 +601,8 @@ TEST_F(BackendKeyManagementTpm2Test, PolicyEccKey) {
   const std::string kFakePolicyDigest = "fake_policy_digest";
   const uint32_t kFakeKeyHandle = 0x1337;
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility,
-              GetPolicyDigestForPcrValues(_, _, _))
-      .WillOnce(DoAll(SetArgPointee<2>(kFakePolicyDigest),
+  EXPECT_CALL(proxy_->GetMock().trial_session, GetDigest(_))
+      .WillOnce(DoAll(SetArgPointee<0>(kFakePolicyDigest),
                       Return(trunks::TPM_RC_SUCCESS)));
 
   EXPECT_CALL(

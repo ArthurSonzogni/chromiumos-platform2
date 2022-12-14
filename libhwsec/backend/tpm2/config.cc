@@ -303,31 +303,6 @@ StatusOr<ConfigTpm2::PcrValue> ConfigTpm2::ToPcrValue(
   return pcr_value;
 }
 
-StatusOr<std::string> ConfigTpm2::ToPolicyDigest(
-    const DeviceConfigSettings& settings) {
-  BackendTpm2::TrunksClientContext& context = backend_.GetTrunksContext();
-
-  ASSIGN_OR_RETURN(const PcrMap& pcr_map, ToSettingsPcrMap(settings));
-
-  // Start a trial policy session.
-  std::unique_ptr<trunks::PolicySession> policy_session =
-      context.factory.GetTrialSession();
-
-  RETURN_IF_ERROR(
-      MakeStatus<TPM2Error>(policy_session->StartUnboundSession(false, false)))
-      .WithStatus<TPMError>("Failed to start trial session");
-
-  RETURN_IF_ERROR(MakeStatus<TPM2Error>(policy_session->PolicyPCR(pcr_map)))
-      .WithStatus<TPMError>("Failed to create PCR policy");
-
-  std::string pcr_policy_digest;
-  RETURN_IF_ERROR(
-      MakeStatus<TPM2Error>(policy_session->GetDigest(&pcr_policy_digest)))
-      .WithStatus<TPMError>("Failed to get policy digest");
-
-  return pcr_policy_digest;
-}
-
 StatusOr<std::string> ConfigTpm2::GetPolicyDigest(
     const OperationPolicySetting& policy) {
   ASSIGN_OR_RETURN(const PcrMap& pcr_map,

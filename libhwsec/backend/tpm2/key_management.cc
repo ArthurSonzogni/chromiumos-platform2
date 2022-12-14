@@ -288,12 +288,11 @@ StatusOr<KeyManagementTpm2::CreateKeyResult> KeyManagementTpm2::CreateRsaKey(
     const OperationPolicySetting& policy,
     const CreateKeyOptions& options,
     const LoadKeyOptions& load_key_options) {
-  ASSIGN_OR_RETURN(
-      const ConfigTpm2::PcrMap& setting,
-      backend_.GetConfigTpm2().ToSettingsPcrMap(policy.device_config_settings),
-      _.WithStatus<TPMError>("Failed to convert setting to PCR map"));
+  ASSIGN_OR_RETURN(const std::string& policy_digest,
+                   backend_.GetConfigTpm2().GetPolicyDigest(policy),
+                   _.WithStatus<TPMError>("Failed to get policy digest"));
 
-  if (options.allow_software_gen && setting.empty()) {
+  if (options.allow_software_gen && policy_digest.empty()) {
     return CreateSoftwareGenRsaKey(policy, options, load_key_options);
   }
 
@@ -303,20 +302,9 @@ StatusOr<KeyManagementTpm2::CreateKeyResult> KeyManagementTpm2::CreateRsaKey(
                    GetKeyUsage(options),
                    _.WithStatus<TPMError>("Failed to get key usage"));
 
-  std::string policy_digest;
-  std::vector<uint32_t> pcr_list;
   bool use_only_policy_authorization = false;
 
-  if (!setting.empty()) {
-    RETURN_IF_ERROR(
-        MakeStatus<TPM2Error>(context.tpm_utility->GetPolicyDigestForPcrValues(
-            setting, policy.permission.auth_value.has_value(), &policy_digest)))
-        .WithStatus<TPMError>("Failed to get policy digest");
-
-    for (const auto& map_pair : setting) {
-      pcr_list.push_back(map_pair.first);
-    }
-
+  if (!policy_digest.empty()) {
     // We should not allow using the key without policy when the policy had been
     // set.
     use_only_policy_authorization = true;
@@ -329,7 +317,8 @@ StatusOr<KeyManagementTpm2::CreateKeyResult> KeyManagementTpm2::CreateRsaKey(
   }
 
   std::string auth_value;
-  if (policy.permission.auth_value.has_value()) {
+  if (policy.permission.type == PermissionType::kAuthValue &&
+      policy.permission.auth_value.has_value()) {
     auth_value = policy.permission.auth_value.value().to_string();
   }
 
@@ -346,8 +335,8 @@ StatusOr<KeyManagementTpm2::CreateKeyResult> KeyManagementTpm2::CreateRsaKey(
       MakeStatus<TPM2Error>(context.tpm_utility->CreateRSAKeyPair(
           usage, options.rsa_modulus_bits.value_or(kDefaultTpmRsaKeyBits),
           exponent, auth_value, policy_digest, use_only_policy_authorization,
-          pcr_list, delegate.get(), &tpm_key_blob,
-          nullptr /* No creation_blob */)))
+          /*creation_pcr_indexes=*/{}, delegate.get(), &tpm_key_blob,
+          /*creation_blob=*/nullptr)))
       .WithStatus<TPMError>("Failed to create RSA key");
 
   brillo::Blob key_blob = BlobFromString(tpm_key_blob);
@@ -531,32 +520,21 @@ StatusOr<KeyManagementTpm2::CreateKeyResult> KeyManagementTpm2::CreateEccKey(
                    GetKeyUsage(options),
                    _.WithStatus<TPMError>("Failed to get key usage"));
 
-  std::string policy_digest;
-  std::vector<uint32_t> pcr_list;
   bool use_only_policy_authorization = false;
 
-  ASSIGN_OR_RETURN(
-      const ConfigTpm2::PcrMap& setting,
-      backend_.GetConfigTpm2().ToSettingsPcrMap(policy.device_config_settings),
-      _.WithStatus<TPMError>("Failed to convert setting to PCR map"));
+  ASSIGN_OR_RETURN(const std::string& policy_digest,
+                   backend_.GetConfigTpm2().GetPolicyDigest(policy),
+                   _.WithStatus<TPMError>("Failed to get policy digest"));
 
-  if (!setting.empty()) {
-    RETURN_IF_ERROR(
-        MakeStatus<TPM2Error>(context.tpm_utility->GetPolicyDigestForPcrValues(
-            setting, policy.permission.auth_value.has_value(), &policy_digest)))
-        .WithStatus<TPMError>("Failed to get policy digest");
-
-    for (const auto& map_pair : setting) {
-      pcr_list.push_back(map_pair.first);
-    }
-
+  if (!policy_digest.empty()) {
     // We should not allow using the key without policy when the policy had been
     // set.
     use_only_policy_authorization = true;
   }
 
   std::string auth_value;
-  if (policy.permission.auth_value.has_value()) {
+  if (policy.permission.type == PermissionType::kAuthValue &&
+      policy.permission.auth_value.has_value()) {
     auth_value = policy.permission.auth_value.value().to_string();
   }
 
@@ -575,10 +553,11 @@ StatusOr<KeyManagementTpm2::CreateKeyResult> KeyManagementTpm2::CreateEccKey(
 
   std::string tpm_key_blob;
 
-  RETURN_IF_ERROR(MakeStatus<TPM2Error>(context.tpm_utility->CreateECCKeyPair(
-                      usage, curve, auth_value, policy_digest,
-                      use_only_policy_authorization, pcr_list, delegate.get(),
-                      &tpm_key_blob, /*creation_blob=*/nullptr)))
+  RETURN_IF_ERROR(
+      MakeStatus<TPM2Error>(context.tpm_utility->CreateECCKeyPair(
+          usage, curve, auth_value, policy_digest,
+          use_only_policy_authorization, /*creation_pcr_indexes=*/{},
+          delegate.get(), &tpm_key_blob, /*creation_blob=*/nullptr)))
       .WithStatus<TPMError>("Failed to create ECC key");
 
   brillo::Blob key_blob = BlobFromString(tpm_key_blob);

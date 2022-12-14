@@ -49,9 +49,8 @@ TEST_F(BackendSealingTpm2Test, Seal) {
   const std::string kFakeData = "fake_data";
   const std::string kFakeSealedData = "fake_sealed_data";
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility,
-              GetPolicyDigestForPcrValues(_, _, _))
-      .WillOnce(DoAll(SetArgPointee<2>(kFakePolicyDigest),
+  EXPECT_CALL(proxy_->GetMock().trial_session, GetDigest(_))
+      .WillOnce(DoAll(SetArgPointee<0>(kFakePolicyDigest),
                       Return(trunks::TPM_RC_SUCCESS)));
 
   EXPECT_CALL(

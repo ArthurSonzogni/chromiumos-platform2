@@ -122,7 +122,7 @@ StatusOr<SignatureSealedData> SignatureSealingTpm2::Seal(
 
     ASSIGN_OR_RETURN(
         const std::string& digest,
-        backend_.GetConfigTpm2().ToPolicyDigest(policy.device_config_settings),
+        backend_.GetConfigTpm2().GetPolicyDigest(policy),
         _.WithStatus<TPMError>("Failed to convert setting to PCR value"));
 
     policy_digests.push_back(digest);

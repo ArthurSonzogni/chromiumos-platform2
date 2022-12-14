@@ -23,6 +23,7 @@
 #include "libhwsec/backend/tpm2/backend.h"
 #include "libhwsec/error/tpm2_error.h"
 #include "libhwsec/status.h"
+#include "libhwsec/structures/operation_policy.h"
 
 using hwsec_foundation::BigNumToSecureBlob;
 using hwsec_foundation::CreateBigNum;
@@ -39,23 +40,27 @@ StatusOr<std::vector<std::string>> GetCurrentUserPolicyDigests(
     ConfigTpm2& config, const std::string& current_user) {
   ASSIGN_OR_RETURN(
       const std::string& digest,
-      config.ToPolicyDigest(DeviceConfigSettings{
-          .current_user =
-              DeviceConfigSettings::CurrentUserSetting{
-                  .username = std::nullopt,
-              },
-      }),
+      config.GetPolicyDigest(OperationPolicySetting{
+          .device_config_settings =
+              DeviceConfigSettings{
+                  .current_user =
+                      DeviceConfigSettings::CurrentUserSetting{
+                          .username = std::nullopt,
+                      },
+              }}),
       _.WithStatus<TPMError>(
           "Failed to convert prior login setting to policy digest"));
 
   ASSIGN_OR_RETURN(
       const std::string& extend_digest,
-      config.ToPolicyDigest(DeviceConfigSettings{
-          .current_user =
-              DeviceConfigSettings::CurrentUserSetting{
-                  .username = current_user,
-              },
-      }),
+      config.GetPolicyDigest(OperationPolicySetting{
+          .device_config_settings =
+              DeviceConfigSettings{
+                  .current_user =
+                      DeviceConfigSettings::CurrentUserSetting{
+                          .username = current_user,
+                      },
+              }}),
       _.WithStatus<TPMError>(
           "Failed to convert current user setting to policy digest"));
 
