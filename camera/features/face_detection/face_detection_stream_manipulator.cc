@@ -77,8 +77,8 @@ FaceDetectionStreamManipulator::FaceDetectionStreamManipulator(
 
 bool FaceDetectionStreamManipulator::Initialize(
     const camera_metadata_t* static_info,
-    CaptureResultCallback result_callback) {
-  result_callback_ = std::move(result_callback);
+    StreamManipulator::Callbacks callbacks) {
+  callbacks_ = std::move(callbacks);
   base::span<const int32_t> active_array_size = GetRoMetadataAsSpan<int32_t>(
       static_info, ANDROID_SENSOR_INFO_ACTIVE_ARRAY_SIZE);
   DCHECK_EQ(active_array_size.size(), 4);
@@ -143,7 +143,7 @@ bool FaceDetectionStreamManipulator::ProcessCaptureRequest(
 bool FaceDetectionStreamManipulator::ProcessCaptureResult(
     Camera3CaptureDescriptor result) {
   if (!options_.enable) {
-    result_callback_.Run(std::move(result));
+    callbacks_.result_callback.Run(std::move(result));
     return true;
   }
 
@@ -154,7 +154,7 @@ bool FaceDetectionStreamManipulator::ProcessCaptureResult(
     if (buffer) {
       if (!WaitOnAndClearReleaseFence(*buffer, kSyncWaitTimeoutMs)) {
         LOGF(ERROR) << "Timed out waiting for detection buffer";
-        result_callback_.Run(std::move(result));
+        callbacks_.result_callback.Run(std::move(result));
         return false;
       }
       face_detector_->DetectAsync(
@@ -204,12 +204,12 @@ bool FaceDetectionStreamManipulator::ProcessCaptureResult(
   SetResultAeMetadata(&result);
   RestoreClientRequestSettings(&result);
 
-  result_callback_.Run(std::move(result));
+  callbacks_.result_callback.Run(std::move(result));
   return true;
 }
 
-bool FaceDetectionStreamManipulator::Notify(camera3_notify_msg_t* msg) {
-  return true;
+void FaceDetectionStreamManipulator::Notify(camera3_notify_msg_t msg) {
+  callbacks_.notify_callback.Run(std::move(msg));
 }
 
 bool FaceDetectionStreamManipulator::Flush() {

@@ -189,9 +189,9 @@ StreamManipulatorManager::StreamManipulatorManager(
 
 bool StreamManipulatorManager::Initialize(
     const camera_metadata_t* static_info,
-    StreamManipulator::CaptureResultCallback result_callback) {
+    StreamManipulator::Callbacks callbacks) {
   TRACE_COMMON();
-  result_callback_ = result_callback;
+  callbacks_ = std::move(callbacks);
 
   int partial_result_count = [&]() {
     camera_metadata_ro_entry entry;
@@ -209,15 +209,22 @@ bool StreamManipulatorManager::Initialize(
   }
 
   stream_manipulators_[0]->Initialize(
-      static_info,
-      base::BindRepeating(&StreamManipulatorManager::ReturnResultToClient,
-                          base::Unretained(this)));
+      static_info, StreamManipulator::Callbacks{
+                       .result_callback = base::BindRepeating(
+                           &StreamManipulatorManager::ReturnResultToClient,
+                           base::Unretained(this)),
+                       .notify_callback = callbacks_.notify_callback});
   for (int i = 1; i < stream_manipulators_.size(); ++i) {
     stream_manipulators_[i]->Initialize(
         static_info,
-        base::BindRepeating(
-            &StreamManipulatorManager::ProcessCaptureResultOnStreamManipulator,
-            base::Unretained(this), i - 1));
+        StreamManipulator::Callbacks{
+            .result_callback =
+                base::BindRepeating(&StreamManipulatorManager::
+                                        ProcessCaptureResultOnStreamManipulator,
+                                    base::Unretained(this), i - 1),
+            .notify_callback = base::BindRepeating(
+                &StreamManipulator::Notify,
+                base::Unretained(stream_manipulators_[i - 1].get()))});
   }
   return true;
 }
@@ -317,13 +324,14 @@ void StreamManipulatorManager::ProcessCaptureResult(
                                           std::move(result));
 }
 
-bool StreamManipulatorManager::Notify(camera3_notify_msg_t* msg) {
+void StreamManipulatorManager::Notify(camera3_notify_msg_t msg) {
   TRACE_COMMON();
-  for (auto it = stream_manipulators_.rbegin();
-       it < stream_manipulators_.rend(); ++it) {
-    (*it)->Notify(msg);
+
+  if (stream_manipulators_.empty()) {
+    callbacks_.notify_callback.Run(std::move(msg));
+  } else {
+    stream_manipulators_.back()->Notify(std::move(msg));
   }
-  return true;
 }
 
 void StreamManipulatorManager::ProcessCaptureResultOnStreamManipulator(
@@ -351,9 +359,9 @@ void StreamManipulatorManager::ReturnResultToClient(
     Camera3CaptureDescriptor result) {
   TRACE_COMMON(kCameraTraceKeyFrameNumber, result.frame_number(),
                kCameraTraceKeyCaptureInfo, result.ToJsonString());
-  DCHECK(!result_callback_.is_null());
+  DCHECK(!callbacks_.result_callback.is_null());
   InspectResult(0, result);
-  result_callback_.Run(std::move(result));
+  callbacks_.result_callback.Run(std::move(result));
 }
 
 void StreamManipulatorManager::InspectResult(int position,

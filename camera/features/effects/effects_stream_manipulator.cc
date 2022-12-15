@@ -111,8 +111,8 @@ EffectsStreamManipulator::EffectsStreamManipulator(
 
 bool EffectsStreamManipulator::Initialize(
     const camera_metadata_t* static_info,
-    CaptureResultCallback result_callback) {
-  result_callback_ = std::move(result_callback);
+    StreamManipulator::Callbacks callbacks) {
+  callbacks_ = std::move(callbacks);
   return true;
 }
 
@@ -183,7 +183,7 @@ bool EffectsStreamManipulator::ProcessCaptureResult(
          CaptureResultCallback& result_callback) {
         result_callback.Run(std::move(result));
       },
-      std::ref(result), std::ref(result_callback_)));
+      std::ref(result), std::ref(callbacks_.result_callback)));
   if (runtime_options_->sw_privacy_switch_state() ==
       mojom::CameraPrivacySwitchState::ON) {
     return true;
@@ -283,8 +283,8 @@ bool EffectsStreamManipulator::ProcessCaptureResult(
   return true;
 }
 
-bool EffectsStreamManipulator::Notify(camera3_notify_msg_t* msg) {
-  return true;
+void EffectsStreamManipulator::Notify(camera3_notify_msg_t msg) {
+  callbacks_.notify_callback.Run(std::move(msg));
 }
 
 bool EffectsStreamManipulator::Flush() {

@@ -38,8 +38,8 @@ class FakeStreamManipulator : public StreamManipulator {
   // Implementations of StreamManipulator.
 
   bool Initialize(const camera_metadata_t* static_info,
-                  CaptureResultCallback result_callback) override {
-    result_callback_ = std::move(result_callback);
+                  Callbacks callbacks) override {
+    callbacks_ = std::move(callbacks);
     return true;
   }
 
@@ -63,11 +63,13 @@ class FakeStreamManipulator : public StreamManipulator {
   bool ProcessCaptureResult(Camera3CaptureDescriptor result) override {
     EXPECT_EQ(thread_.task_runner()->BelongsToCurrentThread(), use_thread_);
     ++process_capture_result_call_counts_;
-    result_callback_.Run(std::move(result));
+    callbacks_.result_callback.Run(std::move(result));
     return true;
   }
 
-  bool Notify(camera3_notify_msg_t* msg) override { return true; }
+  void Notify(camera3_notify_msg_t msg) override {
+    callbacks_.notify_callback.Run(std::move(msg));
+  }
 
   bool Flush() override { return true; }
 
@@ -86,7 +88,7 @@ class FakeStreamManipulator : public StreamManipulator {
  private:
   bool use_thread_;
   base::Thread thread_;
-  CaptureResultCallback result_callback_;
+  Callbacks callbacks_;
   int process_capture_result_call_counts_ = 0;
 };
 
@@ -111,6 +113,25 @@ StreamManipulator::CaptureResultCallback CreateCaptureResultCallback(
       returned_result, capture_result_returned);
 }
 
+StreamManipulator::NofifyCallback CreateNotifyCallback(
+    camera3_notify_msg_t* returned_msg) {
+  return base::BindRepeating(
+      [](camera3_notify_msg_t* returned_msg, camera3_notify_msg_t msg) {
+        *returned_msg = msg;
+      },
+      returned_msg);
+}
+
+StreamManipulator::Callbacks CreateCallbacks(
+    Camera3CaptureDescriptor* returned_result,
+    base::WaitableEvent* capture_result_returned,
+    camera3_notify_msg_t* returned_msg) {
+  return StreamManipulator::Callbacks{
+      .result_callback =
+          CreateCaptureResultCallback(returned_result, capture_result_returned),
+      .notify_callback = CreateNotifyCallback(returned_msg)};
+}
+
 }  // namespace
 
 TEST(StreamManipulatorManagerTest, NoStreamManipulatorTest) {
@@ -118,10 +139,11 @@ TEST(StreamManipulatorManagerTest, NoStreamManipulatorTest) {
 
   Camera3CaptureDescriptor returned_result;
   base::WaitableEvent capture_result_returned;
-  auto callback =
-      CreateCaptureResultCallback(&returned_result, &capture_result_returned);
+  camera3_notify_msg_t returned_msg;
   android::CameraMetadata metadata;
-  manager.Initialize(metadata.getAndLock(), callback);
+  manager.Initialize(metadata.getAndLock(),
+                     CreateCallbacks(&returned_result, &capture_result_returned,
+                                     &returned_msg));
 
   Camera3StreamConfiguration stream_config;
   manager.ConfigureStreams(&stream_config);
@@ -136,8 +158,9 @@ TEST(StreamManipulatorManagerTest, NoStreamManipulatorTest) {
   ASSERT_TRUE(capture_result_returned.TimedWait(base::Milliseconds(100)));
   EXPECT_EQ(returned_result.frame_number(), 1);
 
-  camera3_notify_msg_t message;
-  manager.Notify(&message);
+  manager.Notify(camera3_notify_msg_t{.type = CAMERA3_MSG_SHUTTER});
+  EXPECT_EQ(returned_msg.type, CAMERA3_MSG_SHUTTER);
+
   manager.Flush();
 }
 
@@ -151,10 +174,11 @@ TEST(StreamManipulatorManagerTest, SingleStreamManipulatorTest) {
 
   Camera3CaptureDescriptor returned_result;
   base::WaitableEvent capture_result_returned;
-  auto callback =
-      CreateCaptureResultCallback(&returned_result, &capture_result_returned);
+  camera3_notify_msg_t returned_msg;
   android::CameraMetadata metadata;
-  manager.Initialize(metadata.getAndLock(), callback);
+  manager.Initialize(metadata.getAndLock(),
+                     CreateCallbacks(&returned_result, &capture_result_returned,
+                                     &returned_msg));
 
   Camera3StreamConfiguration stream_config;
   manager.ConfigureStreams(&stream_config);
@@ -170,8 +194,9 @@ TEST(StreamManipulatorManagerTest, SingleStreamManipulatorTest) {
   EXPECT_EQ(returned_result.frame_number(), 1);
   EXPECT_EQ(stream_manipulator->process_capture_result_call_counts(), 1);
 
-  camera3_notify_msg_t message;
-  manager.Notify(&message);
+  manager.Notify(camera3_notify_msg_t{.type = CAMERA3_MSG_SHUTTER});
+  EXPECT_EQ(returned_msg.type, CAMERA3_MSG_SHUTTER);
+
   manager.Flush();
 }
 
@@ -189,10 +214,11 @@ TEST(StreamManipulatorManagerTest, MultipleStreamManipulatorsTest) {
 
   Camera3CaptureDescriptor returned_result;
   base::WaitableEvent capture_result_returned;
-  auto callback =
-      CreateCaptureResultCallback(&returned_result, &capture_result_returned);
+  camera3_notify_msg_t returned_msg;
   android::CameraMetadata metadata;
-  manager.Initialize(metadata.getAndLock(), callback);
+  manager.Initialize(metadata.getAndLock(),
+                     CreateCallbacks(&returned_result, &capture_result_returned,
+                                     &returned_msg));
 
   Camera3StreamConfiguration stream_config;
   manager.ConfigureStreams(&stream_config);
@@ -209,8 +235,9 @@ TEST(StreamManipulatorManagerTest, MultipleStreamManipulatorsTest) {
   EXPECT_EQ(stream_manipulator_1->process_capture_result_call_counts(), 1);
   EXPECT_EQ(stream_manipulator_2->process_capture_result_call_counts(), 1);
 
-  camera3_notify_msg_t message;
-  manager.Notify(&message);
+  manager.Notify(camera3_notify_msg_t{.type = CAMERA3_MSG_SHUTTER});
+  EXPECT_EQ(returned_msg.type, CAMERA3_MSG_SHUTTER);
+
   manager.Flush();
 }
 

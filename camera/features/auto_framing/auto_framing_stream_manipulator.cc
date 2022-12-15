@@ -299,13 +299,12 @@ AutoFramingStreamManipulator::~AutoFramingStreamManipulator() {
 
 bool AutoFramingStreamManipulator::Initialize(
     const camera_metadata_t* static_info,
-    CaptureResultCallback result_callback) {
+    StreamManipulator::Callbacks callbacks) {
   bool ret;
   gpu_resources_->PostGpuTaskSync(
       FROM_HERE,
       base::BindOnce(&AutoFramingStreamManipulator::InitializeOnThread,
-                     base::Unretained(this), static_info,
-                     std::move(result_callback)),
+                     base::Unretained(this), static_info, std::move(callbacks)),
       &ret);
   return ret;
 }
@@ -359,12 +358,12 @@ bool AutoFramingStreamManipulator::ProcessCaptureResult(
           &AutoFramingStreamManipulator::ProcessCaptureResultOnThread,
           base::Unretained(this), &result),
       &ret);
-  result_callback_.Run(std::move(result));
+  callbacks_.result_callback.Run(std::move(result));
   return ret;
 }
 
-bool AutoFramingStreamManipulator::Notify(camera3_notify_msg_t* msg) {
-  return true;
+void AutoFramingStreamManipulator::Notify(camera3_notify_msg_t msg) {
+  callbacks_.notify_callback.Run(std::move(msg));
 }
 
 bool AutoFramingStreamManipulator::Flush() {
@@ -373,12 +372,12 @@ bool AutoFramingStreamManipulator::Flush() {
 
 bool AutoFramingStreamManipulator::InitializeOnThread(
     const camera_metadata_t* static_info,
-    CaptureResultCallback result_callback) {
+    StreamManipulator::Callbacks callbacks) {
   DCHECK(gpu_resources_->gpu_task_runner()->BelongsToCurrentThread());
-  DCHECK(!result_callback.is_null());
+  DCHECK(!callbacks.result_callback.is_null());
   TRACE_AUTO_FRAMING();
 
-  result_callback_ = std::move(result_callback);
+  callbacks_ = std::move(callbacks);
   setup_failed_ = false;
 
   std::optional<int32_t> partial_result_count =
@@ -1010,7 +1009,7 @@ void AutoFramingStreamManipulator::ReturnStillCaptureResultOnThread(
     RemoveCaptureContext(result.frame_number());
   }
 
-  result_callback_.Run(std::move(result));
+  callbacks_.result_callback.Run(std::move(result));
 }
 
 bool AutoFramingStreamManipulator::SetUpPipelineOnThread(

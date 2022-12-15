@@ -233,7 +233,7 @@ HdrNetStreamManipulator::~HdrNetStreamManipulator() {
 
 bool HdrNetStreamManipulator::Initialize(
     const camera_metadata_t* static_info,
-    CaptureResultCallback result_callback) {
+    StreamManipulator::Callbacks callbacks) {
   DCHECK(gpu_resources_);
 
   bool ret;
@@ -241,7 +241,7 @@ bool HdrNetStreamManipulator::Initialize(
       FROM_HERE,
       base::BindOnce(&HdrNetStreamManipulator::InitializeOnGpuThread,
                      base::Unretained(this), base::Unretained(static_info),
-                     std::move(result_callback)),
+                     std::move(callbacks)),
       &ret);
   return ret;
 }
@@ -300,20 +300,20 @@ bool HdrNetStreamManipulator::ProcessCaptureResult(
       base::BindOnce(&HdrNetStreamManipulator::ProcessCaptureResultOnGpuThread,
                      base::Unretained(this), base::Unretained(&result)),
       &ret);
-  result_callback_.Run(std::move(result));
+  callbacks_.result_callback.Run(std::move(result));
   return ret;
 }
 
-bool HdrNetStreamManipulator::Notify(camera3_notify_msg_t* msg) {
+void HdrNetStreamManipulator::Notify(camera3_notify_msg_t msg) {
   DCHECK(gpu_resources_);
 
   bool ret;
   gpu_resources_->PostGpuTaskSync(
       FROM_HERE,
       base::BindOnce(&HdrNetStreamManipulator::NotifyOnGpuThread,
-                     base::Unretained(this), base::Unretained(msg)),
+                     base::Unretained(this), base::Unretained(&msg)),
       &ret);
-  return ret;
+  callbacks_.notify_callback.Run(std::move(msg));
 }
 
 bool HdrNetStreamManipulator::Flush() {
@@ -358,12 +358,12 @@ HdrNetStreamManipulator::GetBufferInfoWithPendingBlobStream(
 
 bool HdrNetStreamManipulator::InitializeOnGpuThread(
     const camera_metadata_t* static_info,
-    CaptureResultCallback result_callback) {
+    StreamManipulator::Callbacks callbacks) {
   DCHECK(gpu_resources_->gpu_task_runner()->BelongsToCurrentThread());
   TRACE_HDRNET();
 
   static_info_.acquire(clone_camera_metadata(static_info));
-  result_callback_ = std::move(result_callback);
+  callbacks_ = std::move(callbacks);
   return true;
 }
 
@@ -427,7 +427,7 @@ bool HdrNetStreamManipulator::ConfigureStreamsOnGpuThread(
 
         case HdrNetStreamContext::Mode::kAppendWithBlob:
           DCHECK_EQ(s->format, HAL_PIXEL_FORMAT_BLOB);
-          still_capture_processor_->Initialize(s, result_callback_);
+          still_capture_processor_->Initialize(s, callbacks_.result_callback);
           modified_streams.push_back(s);
           modified_streams.push_back(context->hdrnet_stream.get());
           ++num_blob_streams;

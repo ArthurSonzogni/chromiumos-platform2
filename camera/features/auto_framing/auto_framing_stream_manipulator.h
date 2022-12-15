@@ -73,14 +73,14 @@ class AutoFramingStreamManipulator : public StreamManipulator {
 
   // Implementations of StreamManipulator.
   bool Initialize(const camera_metadata_t* static_info,
-                  CaptureResultCallback result_callback) override;
+                  StreamManipulator::Callbacks callbacks) override;
   bool ConfigureStreams(Camera3StreamConfiguration* stream_config) override;
   bool OnConfiguredStreams(Camera3StreamConfiguration* stream_config) override;
   bool ConstructDefaultRequestSettings(
       android::CameraMetadata* default_request_settings, int type) override;
   bool ProcessCaptureRequest(Camera3CaptureDescriptor* request) override;
   bool ProcessCaptureResult(Camera3CaptureDescriptor result) override;
-  bool Notify(camera3_notify_msg_t* msg) override;
+  void Notify(camera3_notify_msg_t msg) override;
   bool Flush() override;
 
   // For testing.
@@ -113,7 +113,7 @@ class AutoFramingStreamManipulator : public StreamManipulator {
   };
 
   bool InitializeOnThread(const camera_metadata_t* static_info,
-                          CaptureResultCallback result_callback);
+                          StreamManipulator::Callbacks callbacks);
   bool ConfigureStreamsOnThread(Camera3StreamConfiguration* stream_config);
   bool OnConfiguredStreamsOnThread(Camera3StreamConfiguration* stream_config);
   bool ProcessCaptureRequestOnThread(Camera3CaptureDescriptor* request);
@@ -158,7 +158,7 @@ class AutoFramingStreamManipulator : public StreamManipulator {
   RuntimeOptions* runtime_options_;
   GpuResources* gpu_resources_ = nullptr;
   std::unique_ptr<StillCaptureProcessor> still_capture_processor_;
-  CaptureResultCallback result_callback_;
+  StreamManipulator::Callbacks callbacks_;
 
   std::unique_ptr<CameraMetrics> camera_metrics_;
 

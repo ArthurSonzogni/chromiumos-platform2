@@ -57,8 +57,8 @@ SWPrivacySwitchStreamManipulator::SWPrivacySwitchStreamManipulator(
 
 bool SWPrivacySwitchStreamManipulator::Initialize(
     const camera_metadata_t* static_info,
-    CaptureResultCallback result_callback) {
-  result_callback_ = std::move(result_callback);
+    StreamManipulator::Callbacks callbacks) {
+  callbacks_ = std::move(callbacks);
   return true;
 }
 
@@ -87,7 +87,7 @@ bool SWPrivacySwitchStreamManipulator::ProcessCaptureResult(
   TRACE_COMMON(kCameraTraceKeyFrameNumber, result.frame_number());
   if (runtime_options_->sw_privacy_switch_state() !=
       mojom::CameraPrivacySwitchState::ON) {
-    result_callback_.Run(std::move(result));
+    callbacks_.result_callback.Run(std::move(result));
     return true;
   }
 
@@ -127,12 +127,12 @@ bool SWPrivacySwitchStreamManipulator::ProcessCaptureResult(
     }
   }
 
-  result_callback_.Run(std::move(result));
+  callbacks_.result_callback.Run(std::move(result));
   return true;
 }
 
-bool SWPrivacySwitchStreamManipulator::Notify(camera3_notify_msg_t* msg) {
-  return true;
+void SWPrivacySwitchStreamManipulator::Notify(camera3_notify_msg_t msg) {
+  callbacks_.notify_callback.Run(std::move(msg));
 }
 
 bool SWPrivacySwitchStreamManipulator::Flush() {

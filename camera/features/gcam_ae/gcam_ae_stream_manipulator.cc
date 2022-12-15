@@ -49,9 +49,9 @@ GcamAeStreamManipulator::GcamAeStreamManipulator(
 
 bool GcamAeStreamManipulator::Initialize(
     const camera_metadata_t* static_info,
-    CaptureResultCallback result_callback) {
+    StreamManipulator::Callbacks callbacks) {
   TRACE_GCAM_AE();
-  result_callback_ = std::move(result_callback);
+  callbacks_ = std::move(callbacks);
 
   static_info_.acquire(clone_camera_metadata(static_info));
   {
@@ -166,7 +166,7 @@ bool GcamAeStreamManipulator::ProcessCaptureResult(
       ae_controller_->GetCalculatedHdrRatio(result.frame_number());
 
   if (result.num_output_buffers() == 0) {
-    result_callback_.Run(std::move(result));
+    callbacks_.result_callback.Run(std::move(result));
     return true;
   }
 
@@ -177,13 +177,13 @@ bool GcamAeStreamManipulator::ProcessCaptureResult(
     }
   }
 
-  result_callback_.Run(std::move(result));
+  callbacks_.result_callback.Run(std::move(result));
   return true;
 }
 
-bool GcamAeStreamManipulator::Notify(camera3_notify_msg_t* msg) {
+void GcamAeStreamManipulator::Notify(camera3_notify_msg_t msg) {
   TRACE_GCAM_AE();
-  return true;
+  callbacks_.notify_callback.Run(std::move(msg));
 }
 
 bool GcamAeStreamManipulator::Flush() {

@@ -49,7 +49,7 @@ class CROS_CAMERA_EXPORT StreamManipulatorManager {
   ~StreamManipulatorManager() = default;
 
   bool Initialize(const camera_metadata_t* static_info,
-                  StreamManipulator::CaptureResultCallback result_callback);
+                  StreamManipulator::Callbacks callbacks);
   bool ConfigureStreams(Camera3StreamConfiguration* stream_config);
   bool OnConfiguredStreams(Camera3StreamConfiguration* stream_config);
   bool ConstructDefaultRequestSettings(
@@ -57,17 +57,15 @@ class CROS_CAMERA_EXPORT StreamManipulatorManager {
   bool ProcessCaptureRequest(Camera3CaptureDescriptor* request);
   bool Flush();
   void ProcessCaptureResult(Camera3CaptureDescriptor result);
-  bool Notify(camera3_notify_msg_t* msg);
+  void Notify(camera3_notify_msg_t msg);
 
  private:
   std::vector<std::unique_ptr<StreamManipulator>> stream_manipulators_;
+  StreamManipulator::Callbacks callbacks_;
 
   // The metadata inspector to dump capture requests / results in realtime
   // for debugging if enabled.
   std::unique_ptr<CameraMetadataInspector> camera_metadata_inspector_;
-
-  // A callback to return the capture result to the framework.
-  StreamManipulator::CaptureResultCallback result_callback_;
 
   // A thread where StreamManipulator::ProcessCaptureResult() runs if
   // StreamManipulator does not specify a thread for the task via

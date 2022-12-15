@@ -38,8 +38,8 @@ bool ZslStreamManipulator::UpdateStaticMetadata(
 }
 
 bool ZslStreamManipulator::Initialize(const camera_metadata_t* static_info,
-                                      CaptureResultCallback result_callback) {
-  result_callback_ = std::move(result_callback);
+                                      StreamManipulator::Callbacks callbacks) {
+  callbacks_ = std::move(callbacks);
   std::optional<uint8_t> vendor_tag =
       GetRoMetadata<uint8_t>(static_info, kCrosZslVendorTagCanAttempt);
   can_attempt_zsl_ = vendor_tag.has_value() && *vendor_tag == 1;
@@ -124,7 +124,7 @@ bool ZslStreamManipulator::ProcessCaptureRequest(
 bool ZslStreamManipulator::ProcessCaptureResult(
     Camera3CaptureDescriptor result) {
   if (!can_attempt_zsl_) {
-    result_callback_.Run(std::move(result));
+    callbacks_.result_callback.Run(std::move(result));
     return true;
   }
   bool is_input_transformed = false;
@@ -139,18 +139,19 @@ bool ZslStreamManipulator::ProcessCaptureResult(
         std::array<uint8_t, 1>{ANDROID_CONTROL_ENABLE_ZSL_TRUE});
   }
 
-  result_callback_.Run(std::move(result));
+  callbacks_.result_callback.Run(std::move(result));
   return true;
 }
 
-bool ZslStreamManipulator::Notify(camera3_notify_msg_t* msg) {
+void ZslStreamManipulator::Notify(camera3_notify_msg_t msg) {
   if (!can_attempt_zsl_) {
-    return true;
+    callbacks_.notify_callback.Run(std::move(msg));
+    return;
   }
-  if (msg->type == CAMERA3_MSG_ERROR) {
-    zsl_helper_->OnNotifyError(msg->message.error);
+  if (msg.type == CAMERA3_MSG_ERROR) {
+    zsl_helper_->OnNotifyError(msg.message.error);
   }
-  return true;
+  callbacks_.notify_callback.Run(std::move(msg));
 }
 
 bool ZslStreamManipulator::Flush() {

@@ -186,9 +186,11 @@ class HdrNetStreamManipulatorTest : public Test {
         std::make_unique<tests::FakeStillCaptureProcessor>(),
         base::BindRepeating(CreateMockHdrNetProcessorInstance), &test_options);
     stream_manipulator_->Initialize(
-        nullptr,
-        base::BindRepeating(&HdrNetStreamManipulatorTest::ProcessCaptureResult,
-                            base::Unretained(this)));
+        nullptr, StreamManipulator::Callbacks{
+                     .result_callback = base::BindRepeating(
+                         &HdrNetStreamManipulatorTest::ProcessCaptureResult,
+                         base::Unretained(this)),
+                     .notify_callback = base::DoNothing()});
   }
 
   void SetImpl720pStreamInConfig() {
@@ -707,7 +709,7 @@ TEST_F(HdrNetStreamManipulatorTest, NotifyBufferErrorTest) {
       .message = {error_msg},
   };
 
-  ASSERT_TRUE(stream_manipulator_->Notify(&notify_msg));
+  stream_manipulator_->Notify(std::move(notify_msg));
 
   // The buffer error notification should free up one HDRnet internal buffer, so
   // we should be able to submit one more request.

@@ -46,14 +46,14 @@ class HdrNetStreamManipulator : public StreamManipulator {
   // all the actual tasks are carried out and sequenced on the |gpu_thread_|
   // with the internal implementations below.
   bool Initialize(const camera_metadata_t* static_info,
-                  CaptureResultCallback result_callback) override;
+                  StreamManipulator::Callbacks callbacks) override;
   bool ConfigureStreams(Camera3StreamConfiguration* stream_config) override;
   bool OnConfiguredStreams(Camera3StreamConfiguration* stream_config) override;
   bool ConstructDefaultRequestSettings(
       android::CameraMetadata* default_request_settings, int type) override;
   bool ProcessCaptureRequest(Camera3CaptureDescriptor* request) override;
   bool ProcessCaptureResult(Camera3CaptureDescriptor result) override;
-  bool Notify(camera3_notify_msg_t* msg) override;
+  void Notify(camera3_notify_msg_t msg) override;
   bool Flush() override;
 
  private:
@@ -154,7 +154,7 @@ class HdrNetStreamManipulator : public StreamManipulator {
   // Internal implementations of StreamManipulator.  All these methods are
   // sequenced on the |gpu_thread_|.
   bool InitializeOnGpuThread(const camera_metadata_t* static_info,
-                             CaptureResultCallback result_callback);
+                             StreamManipulator::Callbacks callbacks);
   bool ConfigureStreamsOnGpuThread(Camera3StreamConfiguration* stream_config);
   bool OnConfiguredStreamsOnGpuThread(
       Camera3StreamConfiguration* stream_config);
@@ -216,7 +216,7 @@ class HdrNetStreamManipulator : public StreamManipulator {
   android::CameraMetadata static_info_;
 
   std::unique_ptr<StillCaptureProcessor> still_capture_processor_;
-  CaptureResultCallback result_callback_;
+  StreamManipulator::Callbacks callbacks_;
 
   // The mapping between original and replacement buffers for in-flight
   // requests.

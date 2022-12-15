@@ -27,14 +27,14 @@ class SWPrivacySwitchStreamManipulator : public StreamManipulator {
 
   // Implementations of StreamManipulator.
   bool Initialize(const camera_metadata_t* static_info,
-                  CaptureResultCallback result_callback) override;
+                  StreamManipulator::Callbacks callbacks) override;
   bool ConfigureStreams(Camera3StreamConfiguration* stream_config) override;
   bool OnConfiguredStreams(Camera3StreamConfiguration* stream_config) override;
   bool ConstructDefaultRequestSettings(
       android::CameraMetadata* default_request_settings, int type) override;
   bool ProcessCaptureRequest(Camera3CaptureDescriptor* request) override;
   bool ProcessCaptureResult(Camera3CaptureDescriptor result) override;
-  bool Notify(camera3_notify_msg_t* msg) override;
+  void Notify(camera3_notify_msg_t msg) override;
   bool Flush() override;
 
  private:
@@ -54,7 +54,7 @@ class SWPrivacySwitchStreamManipulator : public StreamManipulator {
   // JPEG compressor instance.
   std::unique_ptr<JpegCompressor> jpeg_compressor_;
 
-  CaptureResultCallback result_callback_;
+  StreamManipulator::Callbacks callbacks_;
 };
 
 }  // namespace cros

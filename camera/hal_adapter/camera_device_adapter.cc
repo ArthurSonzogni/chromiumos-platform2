@@ -265,8 +265,11 @@ int32_t CameraDeviceAdapter::Initialize(
   }
 
   stream_manipulator_manager_->Initialize(
-      static_info_,
-      base::BindRepeating(CameraDeviceAdapter::ReturnResultToClient, this));
+      static_info_, StreamManipulator::Callbacks{
+                        .result_callback = base::BindRepeating(
+                            CameraDeviceAdapter::ReturnResultToClient, this),
+                        .notify_callback = base::BindRepeating(
+                            CameraDeviceAdapter::NotifyClient, this)});
 
   base::AutoLock l(callback_ops_delegate_lock_);
   // Unlike the camera module, only one peer is allowed to access a camera
@@ -804,10 +807,18 @@ void CameraDeviceAdapter::Notify(const camera3_callback_ops_t* ops,
     }
   }
 
-  camera3_notify_msg_t* mutable_msg = const_cast<camera3_notify_msg_t*>(msg);
-  self->stream_manipulator_manager_->Notify(mutable_msg);
+  self->stream_manipulator_manager_->Notify(*msg);
+}
 
-  mojom::Camera3NotifyMsgPtr msg_ptr = self->PrepareNotifyMsg(mutable_msg);
+// static
+void CameraDeviceAdapter::NotifyClient(const camera3_callback_ops_t* ops,
+                                       camera3_notify_msg_t msg) {
+  VLOGF_ENTER();
+  TRACE_HAL_ADAPTER();
+
+  CameraDeviceAdapter* self = const_cast<CameraDeviceAdapter*>(
+      static_cast<const CameraDeviceAdapter*>(ops));
+  mojom::Camera3NotifyMsgPtr msg_ptr = self->PrepareNotifyMsg(&msg);
   base::AutoLock l(self->callback_ops_delegate_lock_);
   if (self->callback_ops_delegate_) {
     self->callback_ops_delegate_->Notify(std::move(msg_ptr));

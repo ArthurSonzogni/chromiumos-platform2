@@ -98,12 +98,15 @@ class SWPrivacySwitchTest : public ::testing::Test {
       : runtime_options_(StreamManipulator::RuntimeOptions()),
         stream_manipulator_(&runtime_options_,
                             g_env->mojo_manager_token_.get()) {
+    auto result_callback = base::BindRepeating(
+        [](SWPrivacySwitchTest* self, Camera3CaptureDescriptor result) {
+          self->returned_result_ = std::move(result);
+        },
+        base::Unretained(this));
     stream_manipulator_.Initialize(
-        {}, base::BindRepeating(
-                [](SWPrivacySwitchTest* self, Camera3CaptureDescriptor result) {
-                  self->returned_result_ = std::move(result);
-                },
-                base::Unretained(this)));
+        {}, StreamManipulator::Callbacks{
+                .result_callback = std::move(result_callback),
+                .notify_callback = base::DoNothing()});
   }
 
   Camera3CaptureDescriptor WrapWithCamera3CaptureDescriptorResult(

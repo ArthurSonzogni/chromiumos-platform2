@@ -46,6 +46,16 @@ namespace cros {
 // hook is mainly used to log the status for each StreamManipulator.
 class CROS_CAMERA_EXPORT StreamManipulator {
  public:
+  // Callback for the StreamManipulator to pass on capture results to upstream
+  // StreamManipulators or the framework.
+  using CaptureResultCallback =
+      base::RepeatingCallback<void(Camera3CaptureDescriptor result)>;
+
+  // Callback for the StreamManipulator to pass on messages to upstream
+  // StreamManipulators or the framework.
+  using NofifyCallback =
+      base::RepeatingCallback<void(camera3_notify_msg_t msg)>;
+
   class RuntimeOptions {
    public:
     RuntimeOptions();
@@ -84,10 +94,10 @@ class CROS_CAMERA_EXPORT StreamManipulator {
     base::FilePath dlc_root_path GUARDED_BY(lock_);
   };
 
-  // Callback for the StreamManipulator to return capture results to the client
-  // asynchronously.
-  using CaptureResultCallback =
-      base::RepeatingCallback<void(Camera3CaptureDescriptor result)>;
+  struct Callbacks {
+    CaptureResultCallback result_callback;
+    NofifyCallback notify_callback;
+  };
 
   // A one-time initialization hook called by CameraHalAdapter for updating the
   // vendor tag information from stream manipulators.
@@ -105,10 +115,9 @@ class CROS_CAMERA_EXPORT StreamManipulator {
 
   // A hook to the camera3_device_ops::initialize(). Will be called by
   // StreamManipulatorManager with the camera device static metadata
-  // |static_info|. |result_callback| must be saved to pass on the processed
-  // capture result in ProcessCaptureResult().
+  // |static_info|. |callbacks| must be saved for later use.
   virtual bool Initialize(const camera_metadata_t* static_info,
-                          CaptureResultCallback result_callback) = 0;
+                          Callbacks callbacks) = 0;
 
   // A hook to the upper part of camera3_device_ops::configure_streams(). Will
   // be called by StreamManipulatorManager with the stream configuration
@@ -141,14 +150,18 @@ class CROS_CAMERA_EXPORT StreamManipulator {
 
   // A hook to the camera3_callback_ops::process_capture_result(). Will be
   // called by StreamManipulatorManager for each capture result |result|
-  // produced by the camera HAL implementation. |result_callback| passed in by
-  // Initialize() must be called to pass on the processed capture result.
+  // produced by the camera HAL implementation. |Callbacks.result_callback|
+  // passed in by Initialize() must be called to pass on the processed capture
+  // result.
   virtual bool ProcessCaptureResult(Camera3CaptureDescriptor result) = 0;
 
   // A hook to the camera3_callback_ops::notify(). Will be called by
   // StreamManipulatorManager for each notify message |msg| produced by the
-  // camera HAL implemnetation.
-  virtual bool Notify(camera3_notify_msg_t* msg) = 0;
+  // camera HAL implemnetation. Also can be called by StreamManipulator with
+  // |msg| created by the StreamManipulator. |Callbacks.notify_callback| passed
+  // in by Initialize() must be called to pass on messages. This method call
+  // must be synchronous.
+  virtual void Notify(camera3_notify_msg_t msg) = 0;
 
   // Override this method to use StreamManipulator's own thread to run
   // ProcessCaptureResult().

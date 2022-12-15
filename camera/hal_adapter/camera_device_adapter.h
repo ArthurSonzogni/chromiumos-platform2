@@ -184,6 +184,8 @@ class CameraDeviceAdapter : public camera3_callback_ops_t {
 
   static void Notify(const camera3_callback_ops_t* ops,
                      const camera3_notify_msg_t* msg);
+  static void NotifyClient(const camera3_callback_ops_t* ops,
+                           camera3_notify_msg_t msg);
 
   // Allocates buffers for given |streams|. Returns true and the allocated
   // buffers will be put in |allocated_buffers| if the allocation succeeds.

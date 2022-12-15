@@ -236,22 +236,24 @@ bool AutoFramingTestFixture::SetUp(
     LOGF(ERROR) << "Failed to lock static info";
     return false;
   }
+  auto result_callback = base::BindRepeating(
+      [](base::WaitableEvent* event, Camera3CaptureDescriptor result) {
+        for (auto& b : result.GetMutableOutputBuffers()) {
+          constexpr int kSyncWaitTimeoutMs = 300;
+          if (!WaitOnAndClearReleaseFence(b, kSyncWaitTimeoutMs)) {
+            LOGF(WARNING) << "Failed to wait on release fence";
+          }
+          if (b.stream->format == HAL_PIXEL_FORMAT_BLOB) {
+            DCHECK(!event->IsSignaled());
+            event->Signal();
+          }
+        }
+      },
+      &still_capture_result_received_);
   if (!auto_framing_stream_manipulator_->Initialize(
-          locked_static_info,
-          base::BindRepeating(
-              [](base::WaitableEvent* event, Camera3CaptureDescriptor result) {
-                for (auto& b : result.GetMutableOutputBuffers()) {
-                  constexpr int kSyncWaitTimeoutMs = 300;
-                  if (!WaitOnAndClearReleaseFence(b, kSyncWaitTimeoutMs)) {
-                    LOGF(WARNING) << "Failed to wait on release fence";
-                  }
-                  if (b.stream->format == HAL_PIXEL_FORMAT_BLOB) {
-                    DCHECK(!event->IsSignaled());
-                    event->Signal();
-                  }
-                }
-              },
-              &still_capture_result_received_))) {
+          locked_static_info, StreamManipulator::Callbacks{
+                                  .result_callback = std::move(result_callback),
+                                  .notify_callback = base::DoNothing()})) {
     LOGF(ERROR) << "Failed to initialize AutoFramingStreamManipulator";
     return false;
   }
