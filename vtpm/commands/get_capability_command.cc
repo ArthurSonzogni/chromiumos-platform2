@@ -139,8 +139,12 @@ trunks::TPM_RC GetCapabilityCommand::GetCapabilityTpmHandles(
     trunks::TPMI_YES_NO& has_more,
     trunks::TPML_HANDLE& handles) {
   if (!tpm_handle_manager_->IsHandleTypeSuppoerted(property)) {
-    return trunks::TPM_RC_HANDLE;
+    // Return empty handles if the handle type is not supporeted.
+    has_more = NO;
+    handles.count = 0;
+    return trunks::TPM_RC_SUCCESS;
   }
+
   std::vector<trunks::TPM_HANDLE> found_handles;
   trunks::TPM_RC rc =
       tpm_handle_manager_->GetHandleList(property, &found_handles);

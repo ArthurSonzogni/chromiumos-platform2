@@ -333,8 +333,8 @@ TEST_F(GetCapabilityCommandTest, FailureUnsupportedHandleType) {
       .WillOnce(Return(false));
 
   EXPECT_CALL(mock_resp_serializer_,
-              SerializeHeaderOnlyResponse(trunks::TPM_RC_HANDLE, _))
-      .WillOnce(SetArgPointee<1>(kTestResponse));
+              SerializeResponseGetCapability(NO, IsPropertyCountOf(0), _))
+      .WillOnce(SetArgPointee<2>(kTestResponse));
 
   command_.Run(kFakeRequest, std::move(callback));
   EXPECT_EQ(response, kTestResponse);
