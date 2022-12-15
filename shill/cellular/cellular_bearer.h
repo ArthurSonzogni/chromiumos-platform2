@@ -26,6 +26,7 @@ class CellularBearer {
  public:
   // ModemManager Bearer Properties.
   static const char kMMApnProperty[];
+  static const char kMMApnTypeProperty[];
   static const char kMMUserProperty[];
   static const char kMMPasswordProperty[];
   static const char kMMAllowedAuthProperty[];

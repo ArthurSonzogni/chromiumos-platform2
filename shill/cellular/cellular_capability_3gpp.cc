@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <memory>
+#include <set>
 #include <utility>
 
 #include <base/bind.h>
@@ -175,6 +176,21 @@ std::string MMBearerAllowedAuthToApnAuthentication(
     default:
       return "";
   }
+}
+
+std::set<std::string> MMBearerApnTypeToApnTypes(MMBearerApnType apn_type) {
+  std::set<std::string> apn_types;
+  if (apn_type & MM_BEARER_APN_TYPE_INITIAL)
+    apn_types.insert(kApnTypeIA);
+  if (apn_type & MM_BEARER_APN_TYPE_DEFAULT)
+    apn_types.insert(kApnTypeDefault);
+  if (apn_type & MM_BEARER_APN_TYPE_TETHERING)
+    apn_types.insert(kApnTypeDun);
+
+  if (apn_types.empty())
+    LOG(WARNING) << "Unknown apn_type mask:" << apn_type;
+
+  return apn_types;
 }
 
 std::string MMBearerIpFamilyToIpType(MMBearerIpFamily ip_type) {
@@ -1870,6 +1886,12 @@ void CellularCapability3gpp::OnProfilesChanged(const Profiles& profiles) {
       apn_info.ip_type = MMBearerIpFamilyToIpType(static_cast<MMBearerIpFamily>(
           brillo::GetVariantValueOrDefault<uint32_t>(
               profile, CellularBearer::kMMIpTypeProperty)));
+    }
+    if (base::Contains(profile, CellularBearer::kMMApnTypeProperty)) {
+      apn_info.apn_types =
+          MMBearerApnTypeToApnTypes(static_cast<MMBearerApnType>(
+              brillo::GetVariantValueOrDefault<uint32_t>(
+                  profile, CellularBearer::kMMApnTypeProperty)));
     }
     // If the APN doesn't have an APN type, assume it's a DEFAULT APN.
     if (apn_info.apn_types.empty())

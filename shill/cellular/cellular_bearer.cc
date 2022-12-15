@@ -25,6 +25,7 @@ static auto kModuleLogScope = ScopeLogger::kCellular;
 // These bearer properties have to match the ones in
 // org.freedesktop.ModemManager1.Bearer.xml
 const char CellularBearer::kMMApnProperty[] = "apn";
+const char CellularBearer::kMMApnTypeProperty[] = "apn-type";
 const char CellularBearer::kMMUserProperty[] = "user";
 const char CellularBearer::kMMPasswordProperty[] = "password";
 const char CellularBearer::kMMAllowedAuthProperty[] = "allowed-auth";
