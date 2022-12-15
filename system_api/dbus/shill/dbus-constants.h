@@ -461,19 +461,19 @@ const char kVendorWPSModelNumberProperty[] = "ModelNumber";
 
 // Flimflam state options.
 const char kStateIdle[] = "idle";
-const char kStateCarrier[] = "carrier";
 const char kStateAssociation[] = "association";
 const char kStateConfiguration[] = "configuration";
 const char kStateReady[] = "ready";
-const char kStatePortal[] = "portal";
 const char kStateNoConnectivity[] = "no-connectivity";
 const char kStateRedirectFound[] = "redirect-found";
 const char kStatePortalSuspected[] = "portal-suspected";
+// TODO(b/260792466): This state is only used in the State property of Manager.
+// Consider changing the to kStateIdle too, or removing the State property
+// altogether if nothing depends on it.
 const char kStateOffline[] = "offline";
 const char kStateOnline[] = "online";
 const char kStateDisconnect[] = "disconnecting";
 const char kStateFailure[] = "failure";
-const char kStateActivationFailure[] = "activation-failure";
 
 // Shill WiFi roam state options.
 const char kRoamStateIdle[] = "idle";
