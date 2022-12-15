@@ -63,10 +63,12 @@ TPMRetryAction TPMNvramError::ToTPMRetryAction() const {
     // Communications failure.
     case NvramResult::NVRAM_RESULT_IPC_ERROR:
       return TPMRetryAction::kCommunication;
+    // Space not fount.
+    case NvramResult::NVRAM_RESULT_SPACE_DOES_NOT_EXIST:
+      return TPMRetryAction::kSpaceNotFound;
     // Retrying will not help.
     case NvramResult::NVRAM_RESULT_ACCESS_DENIED:
     case NvramResult::NVRAM_RESULT_INVALID_PARAMETER:
-    case NvramResult::NVRAM_RESULT_SPACE_DOES_NOT_EXIST:
     case NvramResult::NVRAM_RESULT_SPACE_ALREADY_EXISTS:
     case NvramResult::NVRAM_RESULT_OPERATION_DISABLED:
     default:

@@ -116,7 +116,8 @@ StatusOr<SpaceInfo> GetSpaceInfo(Space space) {
           .owner_dependency = tpm_manager::kTpmOwnerDependency_Bootlockbox,
       };
     default:
-      return MakeStatus<TPMError>("Unknown space", TPMRetryAction::kNoRetry);
+      return MakeStatus<TPMError>("Unknown space",
+                                  TPMRetryAction::kSpaceNotFound);
   }
 }
 
@@ -233,7 +234,8 @@ StatusOr<StorageTpm1::ReadyState> StorageTpm1::IsReady(Space space) {
 
   DetailSpaceInfo detail_info;
   bool ready = false;
-  if (space_list.find(space_info.index) != space_list.end()) {
+  bool space_exists = space_list.count(space_info.index);
+  if (space_exists) {
     ASSIGN_OR_RETURN(
         detail_info,
         GetDetailSpaceInfo(backend_.GetProxy().GetTpmNvram(), space_info),
@@ -246,7 +248,9 @@ StatusOr<StorageTpm1::ReadyState> StorageTpm1::IsReady(Space space) {
   if (!ready) {
     if (!space_info.init_attributes.has_value()) {
       return MakeStatus<TPMError>("This space is not preparable",
-                                  TPMRetryAction::kNoRetry);
+                                  space_exists
+                                      ? TPMRetryAction::kNoRetry
+                                      : TPMRetryAction::kSpaceNotFound);
     }
 
     ASSIGN_OR_RETURN(
@@ -255,8 +259,9 @@ StatusOr<StorageTpm1::ReadyState> StorageTpm1::IsReady(Space space) {
         _.WithStatus<TPMError>("Failed to get owner password status"));
 
     if (!has_owner_pass) {
-      return MakeStatus<TPMError>("No owner password",
-                                  TPMRetryAction::kNoRetry);
+      return MakeStatus<TPMError>(
+          "No owner password", space_exists ? TPMRetryAction::kNoRetry
+                                            : TPMRetryAction::kSpaceNotFound);
     }
 
     return ReadyState::kPreparable;

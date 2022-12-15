@@ -19,6 +19,7 @@
 #include "libhwsec/backend/tpm2/backend.h"
 #include "libhwsec/error/tpm_manager_error.h"
 #include "libhwsec/error/tpm_nvram_error.h"
+#include "libhwsec/error/tpm_retry_action.h"
 #include "libhwsec/structures/no_default_init.h"
 
 using hwsec_foundation::status::MakeStatus;
@@ -149,7 +150,8 @@ StatusOr<SpaceInfo> GetSpaceInfo(Space space) {
           .require_attributes = kEnterpriseRollbackRequireAttributes,
       };
     default:
-      return MakeStatus<TPMError>("Unknown space", TPMRetryAction::kNoRetry);
+      return MakeStatus<TPMError>("Unknown space",
+                                  TPMRetryAction::kSpaceNotFound);
   }
 }
 
@@ -265,7 +267,8 @@ StatusOr<StorageTpm2::ReadyState> StorageTpm2::IsReady(Space space) {
 
   DetailSpaceInfo detail_info;
   bool ready = false;
-  if (space_list.find(space_info.index) != space_list.end()) {
+  bool space_exists = space_list.count(space_info.index);
+  if (space_exists) {
     ASSIGN_OR_RETURN(
         detail_info,
         GetDetailSpaceInfo(backend_.GetProxy().GetTpmNvram(), space_info),
@@ -278,7 +281,9 @@ StatusOr<StorageTpm2::ReadyState> StorageTpm2::IsReady(Space space) {
   if (!ready) {
     if (!space_info.init_attributes.has_value()) {
       return MakeStatus<TPMError>("This space is not preparable",
-                                  TPMRetryAction::kNoRetry);
+                                  space_exists
+                                      ? TPMRetryAction::kNoRetry
+                                      : TPMRetryAction::kSpaceNotFound);
     }
 
     ASSIGN_OR_RETURN(
@@ -287,8 +292,9 @@ StatusOr<StorageTpm2::ReadyState> StorageTpm2::IsReady(Space space) {
         _.WithStatus<TPMError>("Failed to get owner password status"));
 
     if (!has_owner_pass) {
-      return MakeStatus<TPMError>("No owner password",
-                                  TPMRetryAction::kNoRetry);
+      return MakeStatus<TPMError>(
+          "No owner password", space_exists ? TPMRetryAction::kNoRetry
+                                            : TPMRetryAction::kSpaceNotFound);
     }
 
     return ReadyState::kPreparable;

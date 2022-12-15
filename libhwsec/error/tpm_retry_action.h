@@ -54,8 +54,13 @@ enum class TPMRetryAction {
   // presence.
   kUserPresence,
 
+  // Action failed - The space for this operation is not found.
+  // Recommended action: The upper layer should know what to do. And handles it
+  // correctly.
+  kSpaceNotFound,
+
   // The max value should equal to the last item.
-  kMaxValue = kUserPresence,
+  kMaxValue = kSpaceNotFound,
 };
 
 }  // namespace hwsec

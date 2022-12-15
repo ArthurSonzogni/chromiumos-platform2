@@ -25,6 +25,7 @@ using hwsec_foundation::Sha256;
 using hwsec_foundation::error::testing::IsOk;
 using hwsec_foundation::error::testing::IsOkAndHolds;
 using hwsec_foundation::error::testing::NotOk;
+using hwsec_foundation::error::testing::NotOkAnd;
 using hwsec_foundation::error::testing::NotOkWith;
 using hwsec_foundation::error::testing::ReturnError;
 using hwsec_foundation::error::testing::ReturnValue;
@@ -42,6 +43,13 @@ constexpr uint32_t kRollbackSpaceSize = 32;
 constexpr uint32_t kEnterpriseRollbackIndex = 0x100e;
 constexpr uint32_t kBootModePcr = 0;
 constexpr char kWrongPcrValue[] = "wrong_pcr_value";
+
+std::function<bool(const Status&)> RetryActionIs(TPMRetryAction action) {
+  return [action](const Status& status [[clang::param_typestate(unconsumed)]]) {
+    return status->ToTPMRetryAction() == action;
+  };
+}
+
 }  // namespace
 
 class OobeConfigFrontendImplTpm2SimTest : public testing::Test {
@@ -56,7 +64,8 @@ class OobeConfigFrontendImplTpm2SimTest : public testing::Test {
 };
 
 TEST_F(OobeConfigFrontendImplTpm2SimTest, RollbackSpaceNotReady) {
-  EXPECT_THAT(hwsec_oobe_config_->IsRollbackSpaceReady(), NotOk());
+  EXPECT_THAT(hwsec_oobe_config_->IsRollbackSpaceReady(),
+              NotOkAnd(RetryActionIs(TPMRetryAction::kSpaceNotFound)));
 }
 
 TEST_F(OobeConfigFrontendImplTpm2SimTest, RollbackSpaceReady) {
