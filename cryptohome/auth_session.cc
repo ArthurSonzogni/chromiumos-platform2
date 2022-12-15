@@ -514,12 +514,7 @@ void AuthSession::CreateAndPersistVaultKeyset(
     LOG(WARNING) << "Failed to convert added keyset to AuthFactor.";
   }
 
-  // Flip the flag, so that our future invocations go through AddKeyset() and
-  // not AddInitialKeyset(). Create a verifier if applicable.
-  if (auth_factor_map_.size() <= 1 && vault_keyset_) {
-    AddCredentialVerifier(auth_factor_type, vault_keyset_->GetLabel(),
-                          auth_input);
-  }
+  AddCredentialVerifier(auth_factor_type, key_data.label(), auth_input);
 
   // Report timer for how long AuthSession operation takes.
   ReportTimerDuration(auth_session_performance_timer.get());
@@ -1415,6 +1410,7 @@ void AuthSession::RemoveAuthFactor(
 
   // Remove the AuthFactor from the map.
   auth_factor_map_.Remove(auth_factor_label);
+  verifier_forwarder_.RemoveVerifier(auth_factor_label);
 
   // Report time taken for a successful remove.
   if (remove_using_uss) {
@@ -2455,10 +2451,7 @@ CryptohomeStatus AuthSession::PersistAuthFactorToUserSecretStashImpl(
     }
   }
 
-  // Create the credential verifier if applicable.
-  if (auth_factor_map_.empty()) {
-    AddCredentialVerifier(auth_factor_type, auth_factor->label(), auth_input);
-  }
+  AddCredentialVerifier(auth_factor_type, auth_factor->label(), auth_input);
 
   LOG(INFO) << "AuthSession: added auth factor " << auth_factor->label()
             << " into USS.";
