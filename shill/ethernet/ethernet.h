@@ -9,6 +9,8 @@
 #include <memory>
 #include <string>
 
+#include <linux/if.h>
+
 #include <base/cancelable_callback.h>
 #include <base/files/file_path.h>
 #include <base/memory/weak_ptr.h>
@@ -92,6 +94,7 @@ class Ethernet : public Device, public SupplicantEventDelegateInterface {
   FRIEND_TEST(EthernetProviderTest, MultipleServices);
   FRIEND_TEST(EthernetProviderTest, UpdateLinkSpeed);
   FRIEND_TEST(EthernetProviderTest, UpdateLinkSpeedNoSelectedService);
+  FRIEND_TEST(EthernetTest, RunEthtoolCmd);
 
   // Return a pointer to the EthernetProvider for Ethernet devices.
   EthernetProvider* GetProvider();
@@ -163,6 +166,13 @@ class Ethernet : public Device, public SupplicantEventDelegateInterface {
   std::string GetDeviceBusType() const;
 
   void UpdateLinkSpeed();
+
+  // Runs ethtool command and returns true when command is successfully
+  // run otherwise returns false. Note that |ifr_data| field of
+  // |interface_command| should already be set when passed in.
+  // |ifr_name| is always set to the name of the interface associated
+  // with that Device.
+  bool RunEthtoolCmd(ifreq* interface_command);
 
   EthernetServiceRefPtr service_;
   bool link_up_;

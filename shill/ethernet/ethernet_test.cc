@@ -4,6 +4,7 @@
 
 #include "shill/ethernet/ethernet.h"
 
+#include <linux/ethtool.h>
 #include <linux/if.h>  // NOLINT - Needs definitions from netinet/ether.h
 #include <linux/sockios.h>
 #include <netinet/ether.h>
@@ -691,6 +692,22 @@ TEST_F(EthernetTest, UpdateLinkSpeedNoSelectedService) {
 
   SelectService(nullptr);
   UpdateLinkSpeed();
+}
+
+TEST_F(EthernetTest, RunEthtoolCmd) {
+  constexpr int kFakeFd = 789;
+  EXPECT_CALL(*mock_sockets_, Socket(_, _, _)).WillOnce(Return(kFakeFd));
+  EXPECT_CALL(*mock_sockets_, Ioctl(kFakeFd, SIOCETHTOOL, _));
+  EXPECT_CALL(*mock_sockets_, Close(kFakeFd));
+
+  struct ethtool_cmd ecmd;
+  struct ifreq ifr;
+
+  memset(&ecmd, 0, sizeof(ecmd));
+  ecmd.cmd = ETHTOOL_GSET;
+  ifr.ifr_data = &ecmd;
+
+  ethernet_->RunEthtoolCmd(&ifr);
 }
 
 }  // namespace shill

@@ -513,24 +513,8 @@ SupplicantProcessProxyInterface* Ethernet::supplicant_process_proxy() const {
 }
 
 void Ethernet::SetupWakeOnLan() {
-  int sock;
-  struct ifreq interface_command;
   struct ethtool_wolinfo wake_on_lan_command;
-
-  if (link_name().length() >= sizeof(interface_command.ifr_name)) {
-    LOG(WARNING) << "Interface name " << link_name()
-                 << " too long: " << link_name().size()
-                 << " >= " << sizeof(interface_command.ifr_name);
-    return;
-  }
-
-  sock = sockets_->Socket(PF_INET, SOCK_DGRAM | SOCK_CLOEXEC, IPPROTO_IP);
-  if (sock < 0) {
-    LOG(WARNING) << "Failed to allocate socket: " << sockets_->ErrorString()
-                 << ".";
-    return;
-  }
-  ScopedSocketCloser socket_closer(sockets_.get(), sock);
+  struct ifreq interface_command;
 
   memset(&interface_command, 0, sizeof(interface_command));
   memset(&wake_on_lan_command, 0, sizeof(wake_on_lan_command));
@@ -539,33 +523,18 @@ void Ethernet::SetupWakeOnLan() {
     wake_on_lan_command.wolopts = WAKE_MAGIC;
   }
   interface_command.ifr_data = &wake_on_lan_command;
-  memcpy(interface_command.ifr_name, link_name().data(), link_name().length());
 
-  int res = sockets_->Ioctl(sock, SIOCETHTOOL, &interface_command);
-  if (res < 0) {
-    LOG(WARNING) << "Failed to enable wake-on-lan: " << sockets_->ErrorString()
-                 << ".";
+  if (!RunEthtoolCmd(&interface_command)) {
+    LOG(WARNING) << "Failed to enable wake-on-lan ";
     return;
   }
 }
 
 bool Ethernet::DisableOffloadFeatures() {
-  int sock;
   struct ifreq interface_command;
+  memset(&interface_command, 0, sizeof(interface_command));
 
   LOG(INFO) << "Disabling offloading features for " << link_name();
-
-  memset(&interface_command, 0, sizeof(interface_command));
-  strncpy(interface_command.ifr_name, link_name().c_str(),
-          sizeof(interface_command.ifr_name) - 1);
-
-  sock = sockets_->Socket(PF_INET, SOCK_DGRAM | SOCK_CLOEXEC, IPPROTO_IP);
-  if (sock < 0) {
-    PLOG(ERROR) << "Failed to allocate socket: " << sockets_->ErrorString();
-    return false;
-  }
-  ScopedSocketCloser socket_closer(sockets_.get(), sock);
-
   // Prepare and send a ETHTOOL_GSSET_INFO(ETH_SS_FEATURES) command to
   // get number of features.
   struct {
@@ -578,10 +547,9 @@ bool Ethernet::DisableOffloadFeatures() {
   sset_info->reserved = 0;
   sset_info->sset_mask = 1ULL << ETH_SS_FEATURES;
   interface_command.ifr_data = sset_info;
-  int res = sockets_->Ioctl(sock, SIOCETHTOOL, &interface_command);
-  if (res < 0 || !sset_info->sset_mask || !sset_info_buf.num_features) {
-    PLOG(ERROR) << "ETHTOOL_GSSET_INFO(ETH_SS_FEATURES) failed "
-                << sockets_->ErrorString();
+  bool res = RunEthtoolCmd(&interface_command);
+  if (!res || !sset_info->sset_mask || !sset_info_buf.num_features) {
+    PLOG(ERROR) << "ETHTOOL_GSSET_INFO(ETH_SS_FEATURES) failed ";
     return false;
   }
 
@@ -602,8 +570,7 @@ bool Ethernet::DisableOffloadFeatures() {
   gstrings->string_set = ETH_SS_FEATURES;
   gstrings->len = num_features;
   interface_command.ifr_data = gstrings;
-  res = sockets_->Ioctl(sock, SIOCETHTOOL, &interface_command);
-  if (res < 0) {
+  if (!RunEthtoolCmd(&interface_command)) {
     PLOG(ERROR) << "ETHTOOL_GSTRINGS(ETH_SS_FEATURES) failed "
                 << sockets_->ErrorString();
     return false;
@@ -625,10 +592,8 @@ bool Ethernet::DisableOffloadFeatures() {
   gfeatures->cmd = ETHTOOL_GFEATURES;
   gfeatures->size = num_feature_blocks;
   interface_command.ifr_data = gfeatures;
-  res = sockets_->Ioctl(sock, SIOCETHTOOL, &interface_command);
-  if (res < 0) {
-    PLOG(ERROR) << "ETHTOOL_GFEATURES command failed: "
-                << sockets_->ErrorString();
+  if (!RunEthtoolCmd(&interface_command)) {
+    PLOG(ERROR) << "ETHTOOL_GFEATURES command failed: ";
     return false;
   }
 
@@ -682,10 +647,8 @@ bool Ethernet::DisableOffloadFeatures() {
     LOG(INFO) << "[No Such Feature] Skipped disabling: " << feature;
 
   interface_command.ifr_data = sfeatures;
-  res = sockets_->Ioctl(sock, SIOCETHTOOL, &interface_command);
-  if (res < 0) {
-    PLOG(ERROR) << "Failed to disable offloading features: "
-                << sockets_->ErrorString();
+  if (!RunEthtoolCmd(&interface_command)) {
+    PLOG(ERROR) << "Failed to disable offloading features: ";
     return false;
   }
   LOG(INFO) << link_name() << ": Disabled offloading features successfully";
@@ -838,15 +801,7 @@ void Ethernet::set_mac_address(const std::string& new_mac_address) {
 
 std::string Ethernet::GetPermanentMacAddressFromKernel() {
   struct ifreq ifr;
-  if (link_name().length() >= sizeof(ifr.ifr_name)) {
-    LOG(WARNING) << "Interface name " << link_name()
-                 << " too long: " << link_name().size()
-                 << " >= " << sizeof(ifr.ifr_name);
-    return std::string();
-  }
-
   memset(&ifr, 0, sizeof(ifr));
-  memcpy(ifr.ifr_name, link_name().data(), link_name().length());
 
   constexpr int kPermAddrBufferSize =
       sizeof(struct ethtool_perm_addr) + MAX_ADDR_LEN;
@@ -859,15 +814,7 @@ std::string Ethernet::GetPermanentMacAddressFromKernel() {
 
   ifr.ifr_data = perm_addr;
 
-  const int fd = sockets_->Socket(PF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0);
-  if (fd < 0) {
-    PLOG(WARNING) << "Failed to allocate socket";
-    return std::string();
-  }
-
-  ScopedSocketCloser socket_closer(sockets_.get(), fd);
-  int err = sockets_->Ioctl(fd, SIOCETHTOOL, &ifr);
-  if (err < 0) {
+  if (!RunEthtoolCmd(&ifr)) {
     PLOG(WARNING) << "Failed to read permanent MAC address";
     return std::string();
   }
@@ -914,29 +861,18 @@ void Ethernet::UpdateLinkSpeed() {
     return;
   }
 
-  // TODO(b/262817724): Refactor the ioctl(SIOCETHTOOL) code into a common
-  // function so that it can be reused in several functions.
   struct ethtool_cmd ecmd;
   struct ifreq ifr;
-  int fd;
 
   memset(&ecmd, 0, sizeof(ecmd));
   memset(&ifr, 0, sizeof(ifr));
-  fd = sockets_->Socket(PF_INET, SOCK_DGRAM | SOCK_CLOEXEC, IPPROTO_IP);
-  if (fd < 0) {
-    PLOG(ERROR) << LoggingTag() << " " << __func__
-                << " Failed to allocate socket";
-    return;
-  }
-  ScopedSocketCloser socket_closer(sockets_.get(), fd);
-
   ecmd.cmd = ETHTOOL_GSET;
   ifr.ifr_data = &ecmd;
-  strncpy(ifr.ifr_name, link_name().c_str(), sizeof(ifr.ifr_name));
 
-  if (sockets_->Ioctl(fd, SIOCETHTOOL, &ifr) != 0) {
+  if (!RunEthtoolCmd(&ifr)) {
     PLOG(ERROR) << LoggingTag() << " " << __func__
                 << " ETHTOOL_GSET command failed ";
+    return;
   }
   // Value we get from ecmd is mbps, convert it to kbps to keep
   // with other technologies.
@@ -944,6 +880,20 @@ void Ethernet::UpdateLinkSpeed() {
                                          kMbpsToKbpsFactor);
   selected_service()->SetDownlinkSpeedKbps(ethtool_cmd_speed(&ecmd) *
                                            kMbpsToKbpsFactor);
+}
+
+bool Ethernet::RunEthtoolCmd(ifreq* interface_command) {
+  int sock = sockets_->Socket(PF_INET, SOCK_DGRAM | SOCK_CLOEXEC, IPPROTO_IP);
+  if (sock < 0) {
+    PLOG(ERROR) << "Failed to allocate socket ";
+    return false;
+  }
+  ScopedSocketCloser socket_closer(sockets_.get(), sock);
+
+  strncpy(interface_command->ifr_name, link_name().c_str(),
+          sizeof(interface_command->ifr_name));
+
+  return sockets_->Ioctl(sock, SIOCETHTOOL, &interface_command) > 0;
 }
 
 }  // namespace shill
