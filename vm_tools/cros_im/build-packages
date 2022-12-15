@@ -104,7 +104,9 @@ main() {
       mkdir -p "/var/cache/pbuilder/aptcache/debian-${dist}-${arch}"
 
       basetgz="/var/cache/pbuilder/base-${arch}.tgz"
-      if [ ! -f "${basetgz}" ]; then
+      if [ -f "${basetgz}" ]; then
+          pbuilder update --basetgz "${basetgz}"
+      else
           make_chroot "${dist}" "${arch}"
       fi
 
