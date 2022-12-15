@@ -215,10 +215,7 @@ class DaemonDelegateImpl : public DaemonDelegate {
   std::unique_ptr<system::BacklightInterface> CreateEcKeyboardBacklight(
       ec::EcUsbEndpointInterface* endpoint) override {
     auto backlight = std::make_unique<system::EcKeyboardBacklight>();
-    return backlight->Init(endpoint)
-               ? std::move(backlight)
-               // Return nullptr
-               : std::unique_ptr<system::BacklightInterface>();
+    return backlight->Init(endpoint) ? std::move(backlight) : nullptr;
   }
 
   std::unique_ptr<policy::BacklightController>
