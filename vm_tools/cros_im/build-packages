@@ -22,19 +22,22 @@ END
 }
 
 create_changelog() {
-  # Set environment variables for the dch tool
-  export DEBFULLNAME="The ChromiumOS Authors"
-  export DEBEMAIL="chromium-os-dev@chromium.org"
-
-  # Set version number to number of commits in main
+  # Set version number to number of commits in main.
   local version
   version="$(git rev-list --count HEAD)"
 
-  # Use dch to update version number and time in debian/changelog
-  dch --package cros-im \
-    -v "${version}" \
-    --check-dirname-regex=cros_im \
-    ""
+  # Use the timestamp of the last commit so the build is reproducible.
+  local timestamp
+  timestamp="$(git show -s --format=%cD HEAD)"
+
+  cat > debian/changelog <<END
+cros-im (${version}) UNRELEASED; urgency=medium
+
+  * Please view commit history at
+    https://chromium.googlesource.com/chromiumos/platform2/+log/main/vm_tools/cros_im
+
+ -- The ChromiumOS Authors <chromium-os-dev@chromium.org>  ${timestamp}
+END
 }
 
 setup_deps() {
