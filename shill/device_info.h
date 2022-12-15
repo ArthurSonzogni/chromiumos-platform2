@@ -99,17 +99,6 @@ class DeviceInfo {
                              uint64_t* rx_bytes,
                              uint64_t* tx_bytes) const;
 
-  // Flushes all addresses associated with |interface_index|. If |family| is
-  // either kFamilyIPv4 or kFamilyIPv6, only the addresses with that family will
-  // be removed. kFamilyUnknown means to remove all addresses.
-  virtual void FlushAddresses(
-      int interface_index,
-      IPAddress::Family family = IPAddress::kFamilyUnknown) const;
-  // Returns whether this interface does not have |this_address|
-  // but has another non-temporary address of the same family.
-  virtual bool HasOtherAddress(int interface_index,
-                               const IPAddress& this_address) const;
-
   virtual bool CreateTunnelInterface(LinkReadyCallback callback);
   virtual int OpenTunnelInterface(const std::string& interface_name) const;
 
@@ -172,24 +161,12 @@ class DeviceInfo {
               AddRemoveAllowedInterface);  // For rtnl_handler_, routing_table_.
   FRIEND_TEST(DeviceInfoTest, CreateDeviceTunnel);  // For pending_links_.
 
-  struct AddressData {
-    AddressData() : address(IPAddress::kFamilyUnknown), flags(0), scope(0) {}
-    AddressData(const IPAddress& address_in,
-                unsigned char flags_in,
-                unsigned char scope_in)
-        : address(address_in), flags(flags_in), scope(scope_in) {}
-    IPAddress address;
-    unsigned char flags;
-    unsigned char scope;
-  };
-
   struct Info {
     Info();
 
     DeviceRefPtr device;
     std::string name;
     ByteString mac_address;
-    std::vector<AddressData> ip_addresses;
     unsigned int flags;
     uint64_t rx_bytes;
     uint64_t tx_bytes;
@@ -271,7 +248,6 @@ class DeviceInfo {
   void AddLinkMsgHandler(const RTNLMessage& msg);
   void DelLinkMsgHandler(const RTNLMessage& msg);
   void LinkMsgHandler(const RTNLMessage& msg);
-  void AddressMsgHandler(const RTNLMessage& msg);
 
   const Info* GetInfo(int interface_index) const;
   void DelayDeviceCreation(int interface_index);
@@ -309,7 +285,6 @@ class DeviceInfo {
   std::map<std::string, int> indices_;  // Maps interface name to index.
 
   std::unique_ptr<RTNLListener> link_listener_;
-  std::unique_ptr<RTNLListener> address_listener_;
   std::set<std::string> blocked_list_;
   base::FilePath device_info_root_;
 

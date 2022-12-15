@@ -268,7 +268,9 @@ class Network {
   friend class StaticIPParametersTest;
 
   // Configures (or reconfigures) the associated Connection object with the
-  // given IPConfig.
+  // given IPConfig. When configuration is from SLAAC, set
+  // |ipconfig->properties.method| to kTypeIPv6so that Connection skips address
+  // configuration and only does routing policy setup.
   void SetupConnection(IPConfig* ipconfig);
 
   // Creates a Connection object can be used in this Network object. Isolate

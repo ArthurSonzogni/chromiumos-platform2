@@ -5,6 +5,7 @@
 #ifndef SHILL_CONNECTION_H_
 #define SHILL_CONNECTION_H_
 
+#include <map>
 #include <string>
 #include <vector>
 
@@ -16,7 +17,6 @@
 
 namespace shill {
 
-class DeviceInfo;
 class RTNLHandler;
 class Resolver;
 class RoutingTable;
@@ -46,14 +46,16 @@ class Connection {
   Connection(int interface_index,
              const std::string& interface_name,
              bool fixed_ip_params,
-             Technology technology,
-             const DeviceInfo* device_info);
+             Technology technology);
   Connection(const Connection&) = delete;
   Connection& operator=(const Connection&) = delete;
   virtual ~Connection();
 
   // Add the contents of an IPConfig::Properties to the list of managed state.
-  // This will replace all previous state for this address family.
+  // This will replace all previous state for this address family. When
+  // properties.method == kTypeIPv6, that means that the address is fronm SLAAC
+  // therefore address configuration is skipped and Connection only do routing
+  // policy setup.
   virtual void UpdateFromIPConfig(const IPConfig::Properties& properties);
 
   // Routing policy rules have priorities, which establishes the order in which
@@ -146,6 +148,10 @@ class Connection {
   std::vector<std::string> dns_domain_search_;
   std::string dns_domain_name_;
 
+  // Cache for the addresses added earlier by Connection. Note that current
+  // Connection implementation only supports adding at most one IPv4 and one
+  // IPv6 address.
+  std::map<IPAddress::Family, IPAddress> added_addresses_;
   // All global addresseses on the link (IPv4 address from link protocol, or
   // from DHCPv4, or from static IPv4 configuration; and IPv6 address from SLAAC
   // and/or from link protocol). Cached from Network and is only used for
@@ -164,7 +170,6 @@ class Connection {
   IPAddress gateway_;
 
   // Store cached copies of singletons for speed/ease of testing
-  const DeviceInfo* device_info_;
   Resolver* resolver_;
   RoutingTable* routing_table_;
   RTNLHandler* rtnl_handler_;

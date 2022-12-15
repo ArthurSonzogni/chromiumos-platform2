@@ -50,7 +50,6 @@
 #include "shill/logging.h"
 #include "shill/manager.h"
 #include "shill/metrics.h"
-#include "shill/net/ndisc.h"
 #include "shill/net/netlink_manager.h"
 #include "shill/net/nl80211_message.h"
 #include "shill/net/rtnl_handler.h"
@@ -268,12 +267,7 @@ void DeviceInfo::Start() {
       new RTNLListener(RTNLHandler::kRequestLink,
                        base::BindRepeating(&DeviceInfo::LinkMsgHandler,
                                            base::Unretained(this))));
-  address_listener_.reset(
-      new RTNLListener(RTNLHandler::kRequestAddr,
-                       base::BindRepeating(&DeviceInfo::AddressMsgHandler,
-                                           base::Unretained(this))));
-  rtnl_handler_->RequestDump(RTNLHandler::kRequestLink |
-                             RTNLHandler::kRequestAddr);
+  rtnl_handler_->RequestDump(RTNLHandler::kRequestLink);
   request_link_statistics_callback_.Reset(base::Bind(
       &DeviceInfo::RequestLinkStatistics, weak_factory_.GetWeakPtr()));
   dispatcher_->PostDelayedTask(FROM_HERE,
@@ -283,7 +277,6 @@ void DeviceInfo::Start() {
 
 void DeviceInfo::Stop() {
   link_listener_.reset();
-  address_listener_.reset();
   infos_.clear();
   request_link_statistics_callback_.Cancel();
   delayed_devices_callback_.Cancel();
@@ -723,7 +716,6 @@ DeviceRefPtr DeviceInfo::CreateDevice(const std::string& link_name,
   if (flush) {
     // Reset the routing table and addresses.
     routing_table_->FlushRoutes(interface_index);
-    FlushAddresses(interface_index, IPAddress::kFamilyUnknown);
   }
 
   manager_->UpdateUninitializedTechnologies();
@@ -960,56 +952,6 @@ bool DeviceInfo::GetMacAddressOfPeer(int interface_index,
   CHECK(mac_address);
   *mac_address = peer_address;
   return true;
-}
-
-void DeviceInfo::FlushAddresses(int interface_index,
-                                IPAddress::Family family) const {
-  SLOG(2) << __func__ << ": if_index=" << interface_index
-          << ", family=" << family;
-  const Info* info = GetInfo(interface_index);
-  if (!info) {
-    return;
-  }
-  for (const auto& address_info : info->ip_addresses) {
-    // Skip if family is specified and not matched.
-    if (family != IPAddress::kFamilyUnknown &&
-        family != address_info.address.family()) {
-      continue;
-    }
-    if (address_info.address.family() == IPAddress::kFamilyIPv4 ||
-        (address_info.scope == RT_SCOPE_UNIVERSE &&
-         (address_info.flags & ~IFA_F_TEMPORARY) == 0)) {
-      LOG(INFO) << __func__ << ": removing address "
-                << address_info.address.ToString() << " from interface "
-                << interface_index;
-      rtnl_handler_->RemoveInterfaceAddress(interface_index,
-                                            address_info.address);
-    }
-  }
-}
-
-bool DeviceInfo::HasOtherAddress(int interface_index,
-                                 const IPAddress& this_address) const {
-  const Info* info = GetInfo(interface_index);
-  if (!info) {
-    return false;
-  }
-  bool has_other_address = false;
-  bool has_this_address = false;
-  for (const auto& local_address : info->ip_addresses) {
-    if (local_address.address.family() != this_address.family()) {
-      continue;
-    }
-    if (local_address.address.address().Equals(this_address.address())) {
-      has_this_address = true;
-    } else if (this_address.family() == IPAddress::kFamilyIPv4) {
-      has_other_address = true;
-    } else if ((local_address.scope == RT_SCOPE_UNIVERSE &&
-                (local_address.flags & IFA_F_TEMPORARY) == 0)) {
-      has_other_address = true;
-    }
-  }
-  return has_other_address && !has_this_address;
 }
 
 bool DeviceInfo::GetIntegratedWiFiHardwareIds(const std::string& iface_name,
@@ -1277,46 +1219,6 @@ void DeviceInfo::LinkMsgHandler(const RTNLMessage& msg) {
   } else {
     NOTREACHED();
   }
-}
-
-void DeviceInfo::AddressMsgHandler(const RTNLMessage& msg) {
-  SLOG(2) << __func__;
-  DCHECK(msg.type() == RTNLMessage::kTypeAddress);
-  const RTNLMessage::AddressStatus& status = msg.address_status();
-  IPAddress address(msg.family(),
-                    msg.HasAttribute(IFA_LOCAL) ? msg.GetAttribute(IFA_LOCAL)
-                                                : msg.GetAttribute(IFA_ADDRESS),
-                    status.prefix_len);
-
-  int interface_index = msg.interface_index();
-  SLOG_IF(Device, 2, msg.HasAttribute(IFA_LOCAL))
-      << "Found local address attribute for interface " << interface_index;
-
-  auto& address_list = infos_[interface_index].ip_addresses;
-  std::vector<AddressData>::iterator iter;
-  for (iter = address_list.begin(); iter != address_list.end(); ++iter) {
-    if (address.Equals(iter->address)) {
-      break;
-    }
-  }
-  if (iter != address_list.end()) {
-    if (msg.mode() == RTNLMessage::kModeDelete) {
-      LOG(INFO) << "DeviceInfo cache: Delete address " << address.ToString()
-                << " for interface " << interface_index;
-      address_list.erase(iter);
-    } else {
-      iter->flags = status.flags;
-      iter->scope = status.scope;
-    }
-  } else if (msg.mode() == RTNLMessage::kModeAdd) {
-    address_list.push_back(AddressData(address, status.flags, status.scope));
-    LOG(INFO) << "DeviceInfo cache: Add address " << address.ToString()
-              << " for interface " << interface_index;
-  }
-
-  DeviceRefPtr device = GetDevice(interface_index);
-  if (!device)
-    return;
 }
 
 void DeviceInfo::DelayDeviceCreation(int interface_index) {

@@ -16,7 +16,7 @@ namespace shill {
 
 class MockConnection : public Connection {
  public:
-  explicit MockConnection(const DeviceInfo* device_info);
+  MockConnection();
   MockConnection(const MockConnection&) = delete;
   MockConnection& operator=(const MockConnection&) = delete;
 

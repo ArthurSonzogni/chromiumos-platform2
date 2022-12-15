@@ -157,7 +157,7 @@ class NetworkTest : public ::testing::Test {
     network_->set_routing_table_for_testing(&routing_table_);
     EXPECT_CALL(dhcp_provider_, CreateController(_, _, _)).Times(0);
     ON_CALL(*network_, CreateConnection()).WillByDefault([this]() {
-      auto ret = std::make_unique<NiceMock<MockConnection>>(&device_info_);
+      auto ret = std::make_unique<NiceMock<MockConnection>>();
       connection_ = ret.get();
       return ret;
     });
@@ -463,7 +463,7 @@ class NetworkStartTest : public NetworkTest {
   void ExpectCreateConnectionWithIPConfig(IPConfigType ipconfig_type) {
     EXPECT_CALL(*network_, CreateConnection())
         .WillOnce([this, ipconfig_type]() {
-          auto ret = std::make_unique<NiceMock<MockConnection>>(&device_info_);
+          auto ret = std::make_unique<NiceMock<MockConnection>>();
           connection_ = ret.get();
           ExpectConnectionUpdateFromIPConfig(ipconfig_type);
           return ret;
@@ -900,7 +900,7 @@ TEST_F(NetworkStartTest, DualStackLinkProtocol) {
   // Need to set two expectations in the lambda so cannot use
   // ExpectCreateConnectionWithIPConfig() directly.
   EXPECT_CALL(*network_, CreateConnection()).WillOnce([this]() {
-    auto ret = std::make_unique<NiceMock<MockConnection>>(&device_info_);
+    auto ret = std::make_unique<NiceMock<MockConnection>>();
     connection_ = ret.get();
     ExpectConnectionUpdateFromIPConfig(IPConfigType::kIPv6LinkProtocol);
     ExpectConnectionUpdateFromIPConfig(IPConfigType::kIPv4LinkProtocol);

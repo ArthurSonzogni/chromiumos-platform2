@@ -31,8 +31,6 @@
 #include <gtest/gtest.h>
 
 #include "shill/cellular/mock_modem_info.h"
-#include "shill/ethernet/mock_ethernet_provider.h"
-#include "shill/logging.h"
 #include "shill/manager.h"
 #include "shill/mock_control.h"
 #include "shill/mock_device.h"
@@ -45,11 +43,9 @@
 #include "shill/net/mock_rtnl_handler.h"
 #include "shill/net/mock_sockets.h"
 #include "shill/net/mock_time.h"
-#include "shill/net/netlink_attribute.h"
 #include "shill/net/nl80211_message.h"
 #include "shill/net/rtnl_link_stats.h"
 #include "shill/net/rtnl_message.h"
-#include "shill/network/mock_network.h"
 #include "shill/test_event_dispatcher.h"
 #include "shill/vpn/mock_vpn_provider.h"
 
@@ -85,19 +81,6 @@ class DeviceInfoTest : public Test {
     patchpanel_client_ = new patchpanel::FakeClient();
     manager_.patchpanel_client_.reset(patchpanel_client_);
     CreateSysfsRoot();
-  }
-
-  IPAddress CreateInterfaceAddress() {
-    // Create an IP address entry (as if left-over from a previous connection
-    // manager).
-    IPAddress address(IPAddress::kFamilyIPv4);
-    EXPECT_TRUE(address.SetAddressFromString(kTestIPAddress0));
-    address.set_prefix(kTestIPAddressPrefix0);
-    std::vector<DeviceInfo::AddressData>& addresses =
-        device_info_.infos_[kTestDeviceIndex].ip_addresses;
-    addresses.push_back(DeviceInfo::AddressData(address, 0, RT_SCOPE_UNIVERSE));
-    EXPECT_EQ(1, addresses.size());
-    return address;
   }
 
   DeviceRefPtr CreateDevice(const std::string& link_name,
@@ -248,25 +231,9 @@ std::unique_ptr<RTNLMessage> DeviceInfoTest::BuildLinkMessage(
   return BuildLinkMessageWithInterfaceName(mode, kTestDeviceName);
 }
 
-std::unique_ptr<RTNLMessage> DeviceInfoTest::BuildAddressMessage(
-    RTNLMessage::Mode mode,
-    const IPAddress& address,
-    unsigned char flags,
-    unsigned char scope) {
-  auto message =
-      std::make_unique<RTNLMessage>(RTNLMessage::kTypeAddress, mode, 0, 0, 0,
-                                    kTestDeviceIndex, address.family());
-  message->SetAttribute(IFA_ADDRESS, address.address());
-  message->set_address_status(
-      RTNLMessage::AddressStatus(address.prefix(), flags, scope));
-  return message;
-}
-
 void DeviceInfoTest::SendMessageToDeviceInfo(const RTNLMessage& message) {
   if (message.type() == RTNLMessage::kTypeLink) {
     device_info_.LinkMsgHandler(message);
-  } else if (message.type() == RTNLMessage::kTypeAddress) {
-    device_info_.AddressMsgHandler(message);
   } else {
     NOTREACHED();
   }
@@ -294,14 +261,11 @@ MATCHER_P(IsIPAddress, address, "") {
 TEST_F(DeviceInfoTest, StartStop) {
   auto& task_environment = dispatcher_.task_environment();
   EXPECT_EQ(nullptr, device_info_.link_listener_);
-  EXPECT_EQ(nullptr, device_info_.address_listener_);
   EXPECT_TRUE(device_info_.infos_.empty());
 
-  EXPECT_CALL(rtnl_handler_, RequestDump(RTNLHandler::kRequestLink |
-                                         RTNLHandler::kRequestAddr));
+  EXPECT_CALL(rtnl_handler_, RequestDump(RTNLHandler::kRequestLink));
   device_info_.Start();
   EXPECT_NE(nullptr, device_info_.link_listener_);
-  EXPECT_NE(nullptr, device_info_.address_listener_);
   EXPECT_TRUE(device_info_.infos_.empty());
   Mock::VerifyAndClearExpectations(&rtnl_handler_);
 
@@ -315,12 +279,8 @@ TEST_F(DeviceInfoTest, StartStop) {
   task_environment.FastForwardBy(
       task_environment.NextMainThreadPendingTaskDelay());
 
-  CreateInterfaceAddress();
-  EXPECT_FALSE(device_info_.infos_.empty());
-
   device_info_.Stop();
   EXPECT_EQ(nullptr, device_info_.link_listener_);
-  EXPECT_EQ(nullptr, device_info_.address_listener_);
   EXPECT_TRUE(device_info_.infos_.empty());
 }
 
@@ -472,26 +432,18 @@ TEST_F(DeviceInfoTest, GetByteCounts) {
 }
 
 TEST_F(DeviceInfoTest, CreateDeviceCellular) {
-  IPAddress address = CreateInterfaceAddress();
-
   // A cellular device should be offered to ModemInfo.
   StrictMock<MockModemInfo> modem_info(nullptr, nullptr);
   EXPECT_CALL(manager_, modem_info()).WillOnce(Return(&modem_info));
   EXPECT_CALL(modem_info, OnDeviceInfoAvailable(kTestDeviceName)).Times(1);
   EXPECT_CALL(routing_table_, FlushRoutes(kTestDeviceIndex)).Times(1);
-  EXPECT_CALL(rtnl_handler_,
-              RemoveInterfaceAddress(kTestDeviceIndex, IsIPAddress(address)));
   EXPECT_FALSE(CreateDevice(kTestDeviceName, "address", kTestDeviceIndex,
                             Technology::kCellular));
 }
 
 TEST_F(DeviceInfoTest, CreateDeviceEthernet) {
-  IPAddress address = CreateInterfaceAddress();
-
   // An Ethernet device should cause routes and addresses to be flushed.
   EXPECT_CALL(routing_table_, FlushRoutes(kTestDeviceIndex)).Times(1);
-  EXPECT_CALL(rtnl_handler_,
-              RemoveInterfaceAddress(kTestDeviceIndex, IsIPAddress(address)));
   DeviceRefPtr device = CreateDevice(kTestDeviceName, "address",
                                      kTestDeviceIndex, Technology::kEthernet);
   EXPECT_NE(nullptr, device);
@@ -506,12 +458,8 @@ TEST_F(DeviceInfoTest, CreateDeviceEthernet) {
 }
 
 TEST_F(DeviceInfoTest, CreateDeviceVirtioEthernet) {
-  IPAddress address = CreateInterfaceAddress();
-
   // VirtioEthernet is identical to Ethernet from the perspective of this test.
   EXPECT_CALL(routing_table_, FlushRoutes(kTestDeviceIndex)).Times(1);
-  EXPECT_CALL(rtnl_handler_,
-              RemoveInterfaceAddress(kTestDeviceIndex, IsIPAddress(address)));
   DeviceRefPtr device =
       CreateDevice(kTestDeviceName, "address", kTestDeviceIndex,
                    Technology::kVirtioEthernet);
@@ -540,12 +488,8 @@ MATCHER_P(IsGetInterfaceMessage, index, "") {
 }
 
 TEST_F(DeviceInfoTest, CreateDeviceWiFi) {
-  IPAddress address = CreateInterfaceAddress();
-
   // WiFi looks a lot like Ethernet too.
   EXPECT_CALL(routing_table_, FlushRoutes(kTestDeviceIndex));
-  EXPECT_CALL(rtnl_handler_,
-              RemoveInterfaceAddress(kTestDeviceIndex, IsIPAddress(address)));
 
   // Set the nl80211 message type to some non-default value.
   Nl80211Message::SetMessageType(1234);
@@ -571,11 +515,7 @@ class MockLinkReadyListener {
 };
 
 TEST_F(DeviceInfoTest, CreateDeviceTunnel) {
-  IPAddress address = CreateInterfaceAddress();
-
   EXPECT_CALL(routing_table_, FlushRoutes(kTestDeviceIndex)).Times(1);
-  EXPECT_CALL(rtnl_handler_,
-              RemoveInterfaceAddress(kTestDeviceIndex, IsIPAddress(address)));
   // Since the device was not expected, DeviceInfo will remove the interface.
   EXPECT_CALL(rtnl_handler_, RemoveInterface(kTestDeviceIndex)).Times(1);
   EXPECT_FALSE(CreateDevice(kTestDeviceName, "address", kTestDeviceIndex,
@@ -587,19 +527,13 @@ TEST_F(DeviceInfoTest, CreateDeviceTunnel) {
   EXPECT_CALL(listener, LinkReadyCallback(kTestDeviceName, kTestDeviceIndex))
       .Times(1);
   EXPECT_CALL(routing_table_, FlushRoutes(kTestDeviceIndex)).Times(1);
-  EXPECT_CALL(rtnl_handler_,
-              RemoveInterfaceAddress(kTestDeviceIndex, IsIPAddress(address)));
   EXPECT_CALL(rtnl_handler_, RemoveInterface(_)).Times(0);
   EXPECT_FALSE(CreateDevice(kTestDeviceName, "address", kTestDeviceIndex,
                             Technology::kTunnel));
 }
 
 TEST_F(DeviceInfoTest, CreateDevicePPP) {
-  IPAddress address = CreateInterfaceAddress();
-
   EXPECT_CALL(routing_table_, FlushRoutes(kTestDeviceIndex)).Times(1);
-  EXPECT_CALL(rtnl_handler_,
-              RemoveInterfaceAddress(kTestDeviceIndex, IsIPAddress(address)));
   // We do not remove PPP interfaces even if the provider does not accept it.
   EXPECT_CALL(rtnl_handler_, RemoveInterface(_)).Times(0);
   EXPECT_FALSE(CreateDevice(kTestDeviceName, "address", kTestDeviceIndex,
@@ -632,8 +566,6 @@ TEST_F(DeviceInfoTest, CreateDeviceCDCEthernet) {
 }
 
 TEST_F(DeviceInfoTest, CreateDeviceUnknown) {
-  IPAddress address = CreateInterfaceAddress();
-
   // An unknown (blocked, unhandled, etc) device won't be flushed or
   // registered.
   EXPECT_CALL(routing_table_, FlushRoutes(_)).Times(0);
@@ -725,133 +657,6 @@ TEST_F(DeviceInfoTest, RenamedNonBlockedDevice) {
   // Device entry to be created if the initial device was not blocked.
   EXPECT_EQ(initial_device, renamed_device);
   EXPECT_TRUE(initial_device->technology() == Technology::kUnknown);
-}
-
-TEST_F(DeviceInfoTest, FlushAddressList) {
-  auto message = BuildLinkMessage(RTNLMessage::kModeAdd);
-  SendMessageToDeviceInfo(*message);
-
-  IPAddress address1(IPAddress::kFamilyIPv6);
-  EXPECT_TRUE(address1.SetAddressFromString(kTestIPAddress1));
-  address1.set_prefix(kTestIPAddressPrefix1);
-  message = BuildAddressMessage(RTNLMessage::kModeAdd, address1, 0,
-                                RT_SCOPE_UNIVERSE);
-  SendMessageToDeviceInfo(*message);
-  IPAddress address2(IPAddress::kFamilyIPv6);
-  EXPECT_TRUE(address2.SetAddressFromString(kTestIPAddress2));
-  message = BuildAddressMessage(RTNLMessage::kModeAdd, address2,
-                                IFA_F_TEMPORARY, RT_SCOPE_UNIVERSE);
-  SendMessageToDeviceInfo(*message);
-  IPAddress address3(IPAddress::kFamilyIPv6);
-  EXPECT_TRUE(address3.SetAddressFromString(kTestIPAddress3));
-  message =
-      BuildAddressMessage(RTNLMessage::kModeAdd, address3, 0, RT_SCOPE_LINK);
-  SendMessageToDeviceInfo(*message);
-  IPAddress address4(IPAddress::kFamilyIPv6);
-  EXPECT_TRUE(address4.SetAddressFromString(kTestIPAddress4));
-  message = BuildAddressMessage(RTNLMessage::kModeAdd, address4,
-                                IFA_F_PERMANENT, RT_SCOPE_UNIVERSE);
-  SendMessageToDeviceInfo(*message);
-  IPAddress address5(IPAddress::kFamilyIPv4);
-  EXPECT_TRUE(address5.SetAddressFromString(kTestIPAddress5));
-  message = BuildAddressMessage(RTNLMessage::kModeAdd, address5,
-                                IFA_F_PERMANENT, RT_SCOPE_UNIVERSE);
-  SendMessageToDeviceInfo(*message);
-
-  // Remove all.
-  EXPECT_CALL(rtnl_handler_,
-              RemoveInterfaceAddress(kTestDeviceIndex, IsIPAddress(address1)));
-  EXPECT_CALL(rtnl_handler_,
-              RemoveInterfaceAddress(kTestDeviceIndex, IsIPAddress(address2)));
-  EXPECT_CALL(rtnl_handler_,
-              RemoveInterfaceAddress(kTestDeviceIndex, IsIPAddress(address5)));
-  device_info_.FlushAddresses(kTestDeviceIndex, IPAddress::kFamilyUnknown);
-
-  // Remove IPv4.
-  EXPECT_CALL(rtnl_handler_,
-              RemoveInterfaceAddress(kTestDeviceIndex, IsIPAddress(address5)));
-  device_info_.FlushAddresses(kTestDeviceIndex, IPAddress::kFamilyIPv4);
-
-  // Remove IPv6.
-  EXPECT_CALL(rtnl_handler_,
-              RemoveInterfaceAddress(kTestDeviceIndex, IsIPAddress(address1)));
-  EXPECT_CALL(rtnl_handler_,
-              RemoveInterfaceAddress(kTestDeviceIndex, IsIPAddress(address2)));
-  device_info_.FlushAddresses(kTestDeviceIndex, IPAddress::kFamilyIPv6);
-}
-
-TEST_F(DeviceInfoTest, HasOtherAddress) {
-  auto message = BuildLinkMessage(RTNLMessage::kModeAdd);
-  SendMessageToDeviceInfo(*message);
-
-  IPAddress address0(IPAddress::kFamilyIPv4);
-  EXPECT_TRUE(address0.SetAddressFromString(kTestIPAddress0));
-
-  // There are no addresses on this interface.
-  EXPECT_FALSE(device_info_.HasOtherAddress(kTestDeviceIndex, address0));
-
-  message = BuildAddressMessage(RTNLMessage::kModeAdd, address0, 0,
-                                RT_SCOPE_UNIVERSE);
-  SendMessageToDeviceInfo(*message);
-
-  IPAddress address1(IPAddress::kFamilyIPv6);
-  EXPECT_TRUE(address1.SetAddressFromString(kTestIPAddress1));
-  address1.set_prefix(kTestIPAddressPrefix1);
-  message =
-      BuildAddressMessage(RTNLMessage::kModeAdd, address1, 0, RT_SCOPE_LINK);
-  SendMessageToDeviceInfo(*message);
-
-  IPAddress address2(IPAddress::kFamilyIPv6);
-  EXPECT_TRUE(address2.SetAddressFromString(kTestIPAddress2));
-  message = BuildAddressMessage(RTNLMessage::kModeAdd, address2,
-                                IFA_F_TEMPORARY, RT_SCOPE_UNIVERSE);
-  SendMessageToDeviceInfo(*message);
-
-  IPAddress address3(IPAddress::kFamilyIPv6);
-  EXPECT_TRUE(address3.SetAddressFromString(kTestIPAddress3));
-
-  // The only IPv6 addresses on this interface are either flagged as
-  // temporary, or they are not universally scoped.
-  EXPECT_FALSE(device_info_.HasOtherAddress(kTestDeviceIndex, address3));
-
-  message = BuildAddressMessage(RTNLMessage::kModeAdd, address3, 0,
-                                RT_SCOPE_UNIVERSE);
-  SendMessageToDeviceInfo(*message);
-
-  // address0 is on this interface.
-  EXPECT_FALSE(device_info_.HasOtherAddress(kTestDeviceIndex, address0));
-  // address1 is on this interface.
-  EXPECT_FALSE(device_info_.HasOtherAddress(kTestDeviceIndex, address1));
-  // address2 is on this interface.
-  EXPECT_FALSE(device_info_.HasOtherAddress(kTestDeviceIndex, address2));
-  // address3 is on this interface.
-  EXPECT_FALSE(device_info_.HasOtherAddress(kTestDeviceIndex, address3));
-
-  IPAddress address4(IPAddress::kFamilyIPv6);
-  EXPECT_TRUE(address4.SetAddressFromString(kTestIPAddress4));
-
-  // address4 is not on this interface, but address3 is, and is a qualified
-  // IPv6 address.
-  EXPECT_TRUE(device_info_.HasOtherAddress(kTestDeviceIndex, address4));
-
-  message = BuildAddressMessage(RTNLMessage::kModeAdd, address4,
-                                IFA_F_PERMANENT, RT_SCOPE_UNIVERSE);
-  SendMessageToDeviceInfo(*message);
-
-  // address4 is now on this interface.
-  EXPECT_FALSE(device_info_.HasOtherAddress(kTestDeviceIndex, address4));
-
-  IPAddress address5(IPAddress::kFamilyIPv4);
-  EXPECT_TRUE(address5.SetAddressFromString(kTestIPAddress5));
-  // address5 is not on this interface, but address0 is.
-  EXPECT_TRUE(device_info_.HasOtherAddress(kTestDeviceIndex, address5));
-
-  message = BuildAddressMessage(RTNLMessage::kModeAdd, address5,
-                                IFA_F_PERMANENT, RT_SCOPE_UNIVERSE);
-  SendMessageToDeviceInfo(*message);
-
-  // address5 is now on this interface.
-  EXPECT_FALSE(device_info_.HasOtherAddress(kTestDeviceIndex, address5));
 }
 
 TEST_F(DeviceInfoTest, HasSubdir) {

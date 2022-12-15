@@ -73,8 +73,7 @@ class StaticIPParametersTest : public Test {
     network_ = std::make_unique<Network>(
         1, ifname, Technology::kEthernet, false, &network_handler_,
         &control_interface_, device_info_.get(), &dispatcher_, &metrics_);
-    network_->set_connection_for_testing(
-        std::make_unique<MockConnection>(device_info_.get()));
+    network_->set_connection_for_testing(std::make_unique<MockConnection>());
     network_->set_ipconfig(
         std::make_unique<IPConfig>(&control_interface_, ifname));
     // Call SetupConnection() explicitly to make this IPConfig object being

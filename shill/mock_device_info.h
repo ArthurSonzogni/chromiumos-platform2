@@ -43,14 +43,6 @@ class MockDeviceInfo : public DeviceInfo {
               (int, uint64_t*, uint64_t*),
               (const, override));
   MOCK_METHOD(bool, GetFlags, (int, unsigned int*), (const, override));
-  MOCK_METHOD(void,
-              FlushAddresses,
-              (int, IPAddress::Family),
-              (const, override));
-  MOCK_METHOD(bool,
-              HasOtherAddress,
-              (int, const IPAddress&),
-              (const, override));
   MOCK_METHOD(bool, CreateTunnelInterface, (LinkReadyCallback), (override));
 
   MOCK_METHOD(bool,

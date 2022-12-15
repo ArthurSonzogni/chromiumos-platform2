@@ -16,11 +16,10 @@
 #include <base/logging.h>
 #include <base/stl_util.h>
 #include <base/strings/stringprintf.h>
+#include <chromeos/dbus/shill/dbus-constants.h>
 
-#include "shill/control_interface.h"
-#include "shill/device_info.h"
 #include "shill/logging.h"
-#include "shill/manager.h"
+#include "shill/net/ip_address.h"
 #include "shill/net/rtnl_handler.h"
 #include "shill/resolver.h"
 #include "shill/routing_table.h"
@@ -72,8 +71,7 @@ const uint32_t Connection::kPriorityStep = 10;
 Connection::Connection(int interface_index,
                        const std::string& interface_name,
                        bool fixed_ip_params,
-                       Technology technology,
-                       const DeviceInfo* device_info)
+                       Technology technology)
     : use_dns_(false),
       priority_(kLeastPriority),
       is_primary_physical_(false),
@@ -85,7 +83,6 @@ Connection::Connection(int interface_index,
       table_id_(RoutingTable::GetInterfaceTableId(interface_index)),
       local_(IPAddress::kFamilyUnknown),
       gateway_(IPAddress::kFamilyUnknown),
-      device_info_(device_info),
       resolver_(Resolver::GetInstance()),
       routing_table_(RoutingTable::GetInstance()),
       rtnl_handler_(RTNLHandler::GetInstance()) {
@@ -99,7 +96,11 @@ Connection::~Connection() {
   routing_table_->FlushRoutes(interface_index_);
   routing_table_->FlushRoutesWithTag(interface_index_);
   if (!fixed_ip_params_) {
-    device_info_->FlushAddresses(interface_index_, IPAddress::kFamilyUnknown);
+    for (const auto& kv : added_addresses_) {
+      if (kv.second.IsValid()) {
+        rtnl_handler_->RemoveInterfaceAddress(interface_index_, kv.second);
+      }
+    }
   }
   routing_table_->FlushRules(interface_index_);
 }
@@ -258,8 +259,13 @@ void Connection::UpdateFromIPConfig(const IPConfig::Properties& properties) {
     gateway.SetAddressToDefault();
   }
 
-  if (!fixed_ip_params_) {
-    if (device_info_->HasOtherAddress(interface_index_, local)) {
+  // Skip address configuration if the address is from SLAAC. Note that IPv6 VPN
+  // uses kTypeVPN as method, so kTypeIPv6 is always SLAAC.
+  const bool skip_ip_configuration = properties.method == kTypeIPv6;
+  if (!fixed_ip_params_ && !skip_ip_configuration) {
+    if (added_addresses_.count(local.family()) > 0 &&
+        added_addresses_[local.family()].IsValid() &&
+        added_addresses_[local.family()] != local) {
       // The address has changed for this interface.  We need to flush
       // everything and start over.
       LOG(INFO) << __func__ << ": Flushing old addresses and routes.";
@@ -267,7 +273,8 @@ void Connection::UpdateFromIPConfig(const IPConfig::Properties& properties) {
       // managed by the kernel so this will not cause any problem now. Revisit
       // this part later.
       routing_table_->FlushRoutesWithTag(interface_index_);
-      device_info_->FlushAddresses(interface_index_, local.family());
+      rtnl_handler_->RemoveInterfaceAddress(interface_index_,
+                                            added_addresses_[local.family()]);
     }
 
     LOG(INFO) << __func__ << ": Installing with parameters:"
@@ -279,6 +286,8 @@ void Connection::UpdateFromIPConfig(const IPConfig::Properties& properties) {
 
     rtnl_handler_->AddInterfaceAddress(interface_index_, local, broadcast,
                                        peer);
+    added_addresses_[local.family()] = local;
+
     SetMTU(properties.mtu);
   }
 

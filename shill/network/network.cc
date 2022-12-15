@@ -191,8 +191,7 @@ void Network::SetupConnection(IPConfig* ipconfig) {
 
 std::unique_ptr<Connection> Network::CreateConnection() const {
   return std::make_unique<Connection>(interface_index_, interface_name_,
-                                      fixed_ip_params_, technology_,
-                                      device_info_);
+                                      fixed_ip_params_, technology_);
 }
 
 void Network::Stop() {
