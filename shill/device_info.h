@@ -167,8 +167,7 @@ class DeviceInfo {
   FRIEND_TEST(CellularTest, StartLinked);
   FRIEND_TEST(DeviceInfoTest, DeviceRemovedEvent);
   FRIEND_TEST(DeviceInfoTest, GetUninitializedTechnologies);
-  FRIEND_TEST(DeviceInfoTest, HasSubdir);           // For HasSubdir.
-  FRIEND_TEST(DeviceInfoTest, IPv6AddressChanged);  // For infos_.
+  FRIEND_TEST(DeviceInfoTest, HasSubdir);  // For HasSubdir.
   FRIEND_TEST(DeviceInfoTest, StartStop);
   FRIEND_TEST(DeviceInfoMockedGetUserId,
               AddRemoveAllowedInterface);  // For rtnl_handler_, routing_table_.
@@ -220,9 +219,6 @@ class DeviceInfo {
   // a specific interface |iface_name|.
   base::FilePath GetDeviceInfoPath(const std::string& iface_name,
                                    const std::string& path_name) const;
-  // Return the preferred globally scoped IPv6 address for |interface_index|.
-  // If no primary IPv6 address exists, return nullptr.
-  const IPAddress* GetPrimaryIPv6Address(int interface_index);
   // Return the contents of the device info file |path_name| for interface
   // |iface_name| in output parameter |contents_out|.  Returns true if file
   // read succeeded, false otherwise.

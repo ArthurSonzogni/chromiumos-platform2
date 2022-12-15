@@ -332,13 +332,6 @@ void DeviceInfo::RegisterDevice(const DeviceRefPtr& device) {
   if (IsPrimaryConnectivityTechnology(device->technology())) {
     manager_->RegisterDevice(device);
   }
-
-  // Provide |device| with any information that was received prior to its
-  // construction/registration.
-  const auto& address = GetPrimaryIPv6Address(device->interface_index());
-  if (address) {
-    device->network()->OnIPv6AddressChanged(address);
-  }
 }
 
 base::FilePath DeviceInfo::GetDeviceInfoPath(
@@ -1040,42 +1033,6 @@ bool DeviceInfo::HasOtherAddress(int interface_index,
   return has_other_address && !has_this_address;
 }
 
-const IPAddress* DeviceInfo::GetPrimaryIPv6Address(int interface_index) {
-  const Info* info = GetInfo(interface_index);
-  if (!info) {
-    return nullptr;
-  }
-  bool has_temporary_address = false;
-  bool has_current_address = false;
-  const IPAddress* address = nullptr;
-  for (const auto& local_address : info->ip_addresses) {
-    if (local_address.address.family() != IPAddress::kFamilyIPv6 ||
-        local_address.scope != RT_SCOPE_UNIVERSE) {
-      continue;
-    }
-
-    // Prefer non-deprecated addresses to deprecated addresses to match the
-    // kernel's preference.
-    bool is_current_address = ((local_address.flags & IFA_F_DEPRECATED) == 0);
-    if (has_current_address && !is_current_address) {
-      continue;
-    }
-
-    // Prefer temporary addresses to non-temporary addresses to match the
-    // kernel's preference.
-    bool is_temporary_address = ((local_address.flags & IFA_F_TEMPORARY) != 0);
-    if (has_temporary_address && !is_temporary_address) {
-      continue;
-    }
-
-    address = &local_address.address;
-    has_temporary_address = is_temporary_address;
-    has_current_address = is_current_address;
-  }
-
-  return address;
-}
-
 bool DeviceInfo::GetIntegratedWiFiHardwareIds(const std::string& iface_name,
                                               int* vendor_id,
                                               int* product_id,
@@ -1381,12 +1338,6 @@ void DeviceInfo::AddressMsgHandler(const RTNLMessage& msg) {
   DeviceRefPtr device = GetDevice(interface_index);
   if (!device)
     return;
-
-  if (address.family() == IPAddress::kFamilyIPv6 &&
-      status.scope == RT_SCOPE_UNIVERSE && !(status.flags & IFA_F_PERMANENT)) {
-    device->network()->OnIPv6AddressChanged(
-        GetPrimaryIPv6Address(interface_index));
-  }
 
   if (device->network()->IsConnected()) {
     // Connection::UpdateRoutingPolicy uses DeviceInfo::GetAddresses to

@@ -43,11 +43,32 @@ class SLAACController {
   // TODO(b/227563210): Refactor to remove friend declaration after moving all
   // SLAAC functionality from DeviceInfo and Network to SLAACController.
   friend class SLAACControllerTest;
+  FRIEND_TEST(SLAACControllerTest,
+              IPv6AddressChanged);  // For GetPrimaryIPv6Address.
+
+  // The data struct to store IP address received from RTNL together with its
+  // flags and scope information.
+  struct AddressData {
+    AddressData() : address(IPAddress::kFamilyUnknown), flags(0), scope(0) {}
+    AddressData(const IPAddress& address_in,
+                unsigned char flags_in,
+                unsigned char scope_in)
+        : address(address_in), flags(flags_in), scope(scope_in) {}
+    IPAddress address;
+    unsigned char flags;
+    unsigned char scope;
+  };
 
   void AddressMsgHandler(const RTNLMessage& msg);
   void RDNSSMsgHandler(const RTNLMessage& msg);
 
+  // Return the preferred globally scoped IPv6 address.
+  // If no primary IPv6 address exists, return nullptr.
+  const IPAddress* GetPrimaryIPv6Address();
+
   const int interface_index_;
+
+  std::vector<AddressData> slaac_addresses_;
   std::vector<IPAddress> ipv6_dns_server_addresses_;
   uint32_t ipv6_dns_server_lifetime_seconds_;
   time_t ipv6_dns_server_received_time_seconds_;

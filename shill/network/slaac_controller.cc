@@ -5,6 +5,7 @@
 #include "shill/network/slaac_controller.h"
 
 #include <memory>
+#include <utility>
 
 #include <base/logging.h>
 
@@ -39,7 +40,81 @@ void SLAACController::StartRTNL() {
   rtnl_handler_->RequestDump(RTNLHandler::kRequestAddr);
 }
 
-void SLAACController::AddressMsgHandler(const RTNLMessage& msg) {}
+void SLAACController::AddressMsgHandler(const RTNLMessage& msg) {
+  DCHECK(msg.type() == RTNLMessage::kTypeAddress);
+  if (msg.interface_index() != interface_index_) {
+    return;
+  }
+  const RTNLMessage::AddressStatus& status = msg.address_status();
+  IPAddress address(msg.family(),
+                    msg.HasAttribute(IFA_LOCAL) ? msg.GetAttribute(IFA_LOCAL)
+                                                : msg.GetAttribute(IFA_ADDRESS),
+                    status.prefix_len);
+
+  if (address.family() != IPAddress::kFamilyIPv6 ||
+      status.scope != RT_SCOPE_UNIVERSE || (status.flags & IFA_F_PERMANENT)) {
+    // SLAACController only monitors IPv6 global address that is not PERMANENT.
+    return;
+  }
+
+  std::vector<AddressData>::iterator iter;
+  for (iter = slaac_addresses_.begin(); iter != slaac_addresses_.end();
+       ++iter) {
+    if (address.Equals(iter->address)) {
+      break;
+    }
+  }
+  if (iter != slaac_addresses_.end()) {
+    if (msg.mode() == RTNLMessage::kModeDelete) {
+      LOG(INFO) << "RTNL cache: Delete address " << address.ToString()
+                << " for interface " << interface_index_;
+      slaac_addresses_.erase(iter);
+    } else {
+      iter->flags = status.flags;
+      iter->scope = status.scope;
+    }
+  } else {
+    if (msg.mode() == RTNLMessage::kModeAdd) {
+      LOG(INFO) << "RTNL cache: Add address " << address.ToString()
+                << " for interface " << interface_index_;
+      slaac_addresses_.emplace_back(std::move(address), status.flags,
+                                    status.scope);
+    } else if (msg.mode() == RTNLMessage::kModeDelete) {
+      LOG(WARNING) << "RTNL cache: Deleting non-cached address "
+                   << address.ToString() << " for interface "
+                   << interface_index_;
+    }
+  }
+
+  network_->OnIPv6AddressChanged(GetPrimaryIPv6Address());
+}
+
+const IPAddress* SLAACController::GetPrimaryIPv6Address() {
+  bool has_temporary_address = false;
+  bool has_current_address = false;
+  const IPAddress* address = nullptr;
+  for (const auto& local_address : slaac_addresses_) {
+    // Prefer non-deprecated addresses to deprecated addresses to match the
+    // kernel's preference.
+    bool is_current_address = ((local_address.flags & IFA_F_DEPRECATED) == 0);
+    if (has_current_address && !is_current_address) {
+      continue;
+    }
+
+    // Prefer temporary addresses to non-temporary addresses to match the
+    // kernel's preference.
+    bool is_temporary_address = ((local_address.flags & IFA_F_TEMPORARY) != 0);
+    if (has_temporary_address && !is_temporary_address) {
+      continue;
+    }
+
+    address = &local_address.address;
+    has_temporary_address = is_temporary_address;
+    has_current_address = is_current_address;
+  }
+
+  return address;
+}
 
 void SLAACController::RDNSSMsgHandler(const RTNLMessage& msg) {
   DCHECK(msg.type() == RTNLMessage::kTypeRdnss);
