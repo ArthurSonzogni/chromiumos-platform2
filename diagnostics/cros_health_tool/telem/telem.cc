@@ -1688,52 +1688,36 @@ int telem_main(int argc, char** argv) {
   std::unique_ptr<CrosHealthdMojoAdapter> adapter =
       CrosHealthdMojoAdapter::Create();
 
-  // Make sure at least one flag is specified.
-  if (FLAGS_category == "" && FLAGS_process == "") {
-    return EXIT_FAILURE;
-  }
-
   // Probe single or multiple processes, if requested.
   if (FLAGS_process != "") {
-    std::vector<std::string> process_ids_string;
-    bool ignore_single_process_info = false;
-    if (FLAGS_ignore == true) {
-      ignore_single_process_info = true;
-    }
-
     // Probe all processes if "all" is specified.
     if (FLAGS_process == "all") {
-      DisplayMultipleProcessInfo(adapter->GetMultipleProcessInfo(
-          std::nullopt, ignore_single_process_info));
-    } else {
-      process_ids_string = base::SplitString(
-          FLAGS_process, ",", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
-      if (process_ids_string.size() == 1) {
-        // Use original ProcessFetcher for single process telemetry.
-        uint32_t process_id;
-        if (!base::StringToUint(process_ids_string.at(0), &process_id)) {
-          LOG(ERROR) << "Invalid process id: " << process_ids_string.at(0);
-          return EXIT_FAILURE;
-        } else {
-          DisplayProcessInfo(
-              adapter->GetProcessInfo(static_cast<pid_t>(process_id)));
-        }
-      } else {
-        std::vector<uint32_t> process_ids;
-        for (const auto& process_id_string : process_ids_string) {
-          uint32_t process_id;
-          if (!base::StringToUint(process_id_string, &process_id)) {
-            LOG(ERROR) << "One of the provided process ids is invalid: "
-                       << process_id_string;
-            return EXIT_FAILURE;
-          } else {
-            process_ids.push_back(process_id);
-          }
-        }
-        DisplayMultipleProcessInfo(adapter->GetMultipleProcessInfo(
-            process_ids, ignore_single_process_info));
-      }
+      DisplayMultipleProcessInfo(
+          adapter->GetMultipleProcessInfo(std::nullopt, FLAGS_ignore));
+      return EXIT_SUCCESS;
     }
+
+    std::vector<uint32_t> process_ids;
+    for (const auto& process_id_string :
+         base::SplitString(FLAGS_process, ",", base::TRIM_WHITESPACE,
+                           base::SPLIT_WANT_NONEMPTY)) {
+      uint32_t process_id;
+      if (!base::StringToUint(process_id_string, &process_id)) {
+        LOG(ERROR) << "One of the provided process ids is invalid: "
+                   << process_id_string;
+        return EXIT_FAILURE;
+      }
+      process_ids.push_back(process_id);
+    }
+    if (process_ids.size() == 1) {
+      // Use original ProcessFetcher for single process telemetry.
+      DisplayProcessInfo(
+          adapter->GetProcessInfo(static_cast<pid_t>(process_ids[0])));
+    } else {
+      DisplayMultipleProcessInfo(
+          adapter->GetMultipleProcessInfo(process_ids, FLAGS_ignore));
+    }
+    return EXIT_SUCCESS;
   }
 
   // Probe category info, if requested.
@@ -1761,9 +1745,11 @@ int telem_main(int argc, char** argv) {
     }
 
     DisplayTelemetryInfo(result);
+    return EXIT_SUCCESS;
   }
 
-  return EXIT_SUCCESS;
+  LOG(ERROR) << "Specify at least one of --category or --process.";
+  return EXIT_FAILURE;
 }
 
 }  // namespace diagnostics
