@@ -10,6 +10,7 @@ group("all") {
     ":install_init",
     ":install_services",
     ":install_tmpfiles_config",
+    ":install_udev_rule",
     ":swap_management",
   ]
 }
@@ -69,4 +70,9 @@ install_config("install_init") {
 install_config("install_tmpfiles_config") {
   sources = [ "tmpfiles.d/swap_management.conf" ]
   install_path = "/usr/lib/tmpfiles.d"
+}
+
+install_config("install_udev_rule") {
+  sources = [ "udev/12-zram-writeback.rules" ]
+  install_path = "/lib/udev/rules.d"
 }
