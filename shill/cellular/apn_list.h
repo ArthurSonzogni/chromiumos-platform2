@@ -35,8 +35,8 @@ class ApnList {
   static std::string JoinApnTypes(std::vector<std::string> apn_types);
 
  private:
-  using ApnIndexKey =
-      std::tuple<std::string, std::string, std::string, std::string>;
+  using ApnIndexKey = std::
+      tuple<std::string, std::string, std::string, std::string, std::string>;
   ApnIndexKey GetKey(const MobileOperatorInfo::MobileAPN& mobile_apn);
 
   void AddApn(const MobileOperatorInfo::MobileAPN& mobile_apn,

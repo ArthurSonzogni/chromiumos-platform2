@@ -33,7 +33,8 @@ void ApnList::AddApns(const std::vector<MobileOperatorInfo::MobileAPN>& apns,
 ApnList::ApnIndexKey ApnList::GetKey(
     const MobileOperatorInfo::MobileAPN& mobile_apn) {
   return std::make_tuple(mobile_apn.apn, mobile_apn.username,
-                         mobile_apn.password, mobile_apn.authentication);
+                         mobile_apn.password, mobile_apn.authentication,
+                         mobile_apn.ip_type);
 }
 
 void ApnList::AddApn(const MobileOperatorInfo::MobileAPN& mobile_apn,
