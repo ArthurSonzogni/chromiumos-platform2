@@ -699,11 +699,12 @@ void IPsecConnection::WriteSwanctlConfig() {
 void IPsecConnection::CheckPreviousCharonProcess(bool wait_if_alive) {
   std::optional<bool> is_charon_alive =
       process_manager_->IsTerminating(base::FilePath(kPIDPath));
-  if (!is_charon_alive) {
-    NotifyFailure(Service::kFailureInternal, "Failed to get the pid");
-    return;
-  }
-  if (!*is_charon_alive) {
+  if (!is_charon_alive || !*is_charon_alive) {
+    // If we failed to get pid of the previous charon process, we will also
+    // continue starting charon. It could be possible that charon process leaves
+    // the pid file into a weird state, e.g., file exists but it's empty. The
+    // charon will just exit itself if there is any problem and we can detect
+    // the issue there.
     ScheduleConnectTask(ConnectStep::kStartCharon);
     return;
   }
