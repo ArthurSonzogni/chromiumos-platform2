@@ -10,6 +10,8 @@
 
 #include <gmock/gmock.h>
 
+#include "shill/wifi/hotspot_device.h"
+#include "shill/wifi/local_device.h"
 #include "shill/wifi/passpoint_credentials.h"
 #include "shill/wifi/wifi_endpoint.h"
 #include "shill/wifi/wifi_phy.h"
@@ -94,6 +96,12 @@ class MockWiFiProvider : public WiFiProvider {
               DeregisterDeviceFromPhy,
               (WiFiConstRefPtr, uint32_t),
               (override));
+  MOCK_METHOD(
+      HotspotDeviceRefPtr,
+      CreateHotspotDevice,
+      (const std::string&, WiFiBand, WiFiSecurity, LocalDevice::EventCallback),
+      (override));
+  MOCK_METHOD(void, DeleteLocalDevice, (LocalDeviceRefPtr), (override));
 };
 
 }  // namespace shill

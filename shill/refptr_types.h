@@ -66,6 +66,10 @@ class LocalDevice;
 using LocalDeviceConstRefPtr = scoped_refptr<const LocalDevice>;
 using LocalDeviceRefPtr = scoped_refptr<LocalDevice>;
 
+class HotspotDevice;
+using HotspotDeviceConstRefPtr = scoped_refptr<const HotspotDevice>;
+using HotspotDeviceRefPtr = scoped_refptr<HotspotDevice>;
+
 }  // namespace shill
 
 #endif  // SHILL_REFPTR_TYPES_H_

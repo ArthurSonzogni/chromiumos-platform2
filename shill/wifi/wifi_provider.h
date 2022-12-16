@@ -192,19 +192,18 @@ class WiFiProvider : public ProviderInterface {
   void set_disable_vht(bool disable_vht) { disable_vht_ = disable_vht; }
   bool has_passpoint_credentials() const { return !credentials_by_id_.empty(); }
 
-  // Create a WiFi local interface with interface type |type|, MAC address
-  // |mac_address|. |callback| is called when interface event happens. The
-  // interface type |type|, required WiFi band |band| and security |security|
-  // are used in the WiFiPhy search to find the first WiFiPhy which meets all
-  // the criteria.
-  LocalDeviceRefPtr CreateLocalInterface(LocalDevice::IfaceType type,
-                                         const std::string& mac_address,
-                                         WiFiBand band,
-                                         WiFiSecurity security,
-                                         LocalDevice::EventCallback callback);
+  // Create a WiFi hotspot device with MAC address |mac_address|. |callback| is
+  // called when interface event happens. The required WiFi band |band| and
+  // security |security| are used in the WiFiPhy search to find the first
+  // WiFiPhy which meets all the criteria.
+  mockable HotspotDeviceRefPtr
+  CreateHotspotDevice(const std::string& mac_address,
+                      WiFiBand band,
+                      WiFiSecurity security,
+                      LocalDevice::EventCallback callback);
 
-  // Delete a WiFi local interface managed by |device|.
-  void DeleteLocalInterface(LocalDeviceRefPtr device);
+  // Delete a WiFi local device managed by |device|.
+  mockable void DeleteLocalDevice(LocalDeviceRefPtr device);
 
  protected:
   FRIEND_TEST(WiFiProviderTest, DeregisterWiFiLocalDevice);

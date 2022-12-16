@@ -9,6 +9,7 @@
 
 #include <base/memory/weak_ptr.h>
 
+#include "shill/refptr_types.h"
 #include "shill/store/key_value_store.h"
 #include "shill/supplicant/supplicant_event_delegate_interface.h"
 #include "shill/wifi/local_device.h"

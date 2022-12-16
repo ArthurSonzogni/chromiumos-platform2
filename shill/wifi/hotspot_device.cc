@@ -10,6 +10,7 @@
 
 #include "shill/event_dispatcher.h"
 #include "shill/control_interface.h"
+#include "shill/refptr_types.h"
 #include "shill/store/property_store.h"
 #include "shill/supplicant/supplicant_interface_proxy_interface.h"
 #include "shill/supplicant/supplicant_process_proxy_interface.h"

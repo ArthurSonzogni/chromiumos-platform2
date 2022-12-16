@@ -1117,14 +1117,11 @@ void WiFiProvider::DeregisterLocalDevice(LocalDeviceConstRefPtr device) {
   local_devices_.erase(link_name);
 }
 
-LocalDeviceRefPtr WiFiProvider::CreateLocalInterface(
-    LocalDevice::IfaceType type,
+HotspotDeviceRefPtr WiFiProvider::CreateHotspotDevice(
     const std::string& mac_address,
     WiFiBand band,
     WiFiSecurity security,
     LocalDevice::EventCallback callback) {
-  LocalDeviceRefPtr new_dev;
-  std::string link_name;
   // TODO (b/257340615) Select capable WiFiPhy according to band and security
   // requirement.
   if (wifi_phys_.empty()) {
@@ -1133,31 +1130,21 @@ LocalDeviceRefPtr WiFiProvider::CreateLocalInterface(
   }
   uint32_t phy_index = wifi_phys_.begin()->second->GetPhyIndex();
 
-  if (type == LocalDevice::IfaceType::kAP) {
-    link_name = GetUniqueLocalDeviceName(kHotspotIfacePrefix);
-    new_dev = new HotspotDevice(manager_, link_name, mac_address, phy_index,
-                                callback);
-  } else {
-    LOG(ERROR) << "Unsupported interface type: " << type;
-    return nullptr;
-  }
+  std::string link_name = GetUniqueLocalDeviceName(kHotspotIfacePrefix);
+  HotspotDeviceRefPtr dev =
+      new HotspotDevice(manager_, link_name, mac_address, phy_index, callback);
 
-  if (new_dev->SetEnabled(true)) {
-    RegisterLocalDevice(new_dev);
-    return new_dev;
+  if (dev->SetEnabled(true)) {
+    RegisterLocalDevice(dev);
+    return dev;
   } else {
     return nullptr;
   }
 }
 
-void WiFiProvider::DeleteLocalInterface(LocalDeviceRefPtr device) {
+void WiFiProvider::DeleteLocalDevice(LocalDeviceRefPtr device) {
   if (!base::Contains(local_devices_, device->link_name())) {
     LOG(ERROR) << "Unmanaged interface: " << device->link_name();
-    return;
-  }
-
-  if (device->iface_type() != LocalDevice::IfaceType::kAP) {
-    LOG(ERROR) << "Unsupported interface type: " << device->iface_type();
     return;
   }
 
