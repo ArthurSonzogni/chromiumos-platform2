@@ -8,9 +8,18 @@ import("//common-mk/pkg_config.gni")
 group("all") {
   deps = [
     ":cros-disks",
+    ":install_cros_disks_config",
+    ":install_dbus_config",
+    ":install_powerd_prefs",
+    ":install_setuid_restriction",
+    ":install_tmpfilesd",
+    ":install_usb_device_info",
     ":libdisks",
     ":libdisks-adaptors",
   ]
+  if (use.seccomp) {
+    deps += [ ":install_seccomp_policies" ]
+  }
   if (use.fuzzer) {
     deps += [
       ":cros-disks_filesystem_label_fuzzer",
@@ -18,7 +27,10 @@ group("all") {
     ]
   }
   if (use.test) {
-    deps += [ ":disks_testrunner" ]
+    deps += [
+      ":disks_testrunner",
+      ":disks_testrunner_root",
+    ]
   }
 }
 
@@ -91,6 +103,88 @@ executable("cros-disks") {
   sources = [ "main.cc" ]
   configs += [ ":target_defaults" ]
   deps = [ ":libdisks" ]
+  install_path = "bin"
+}
+
+install_config("install_usb_device_info") {
+  sources = [ "usb-device-info" ]
+  install_path = "/usr/share/cros-disks"
+}
+
+# We invoke systemd-tmpfiles explicitly from the upstart config
+# since it needs to run when /sys/fs/cgroup is available.
+install_config("install_tmpfilesd") {
+  sources = [ "tmpfiles.d/cros-disks.conf" ]
+  install_path = "/usr/lib/tmpfiles.d/on-demand"
+}
+
+install_config("install_dbus_config") {
+  sources = [ "org.chromium.CrosDisks.conf" ]
+  install_path = "/etc/dbus-1/system.d"
+}
+
+install_config("install_setuid_restriction") {
+  sources = [ "setuid_restrictions/cros_disks_uid_allowlist.txt" ]
+  install_path = "/usr/share/cros/startup/process_management_policies"
+}
+
+install_config("install_powerd_prefs") {
+  sources = [
+    "powerd_prefs/suspend_freezer_deps_fuse-archive",
+    "powerd_prefs/suspend_freezer_deps_mount-zip",
+    "powerd_prefs/suspend_freezer_deps_rar2fs",
+  ]
+  install_path = "/usr/share/power_manager"
+}
+
+if (use.chromeless_tty) {
+  # Insert the --no-session-manager flag.
+  action("install_cros_disks_config") {
+    sources = [ "cros-disks.conf" ]
+    script = "//common-mk/file_generator_wrapper.py"
+    outputs = [ "${target_gen_dir}/cros-disks.conf" ]
+    args = [
+      rebase_path("rewrite_disks_conf.sh"),
+      rebase_path("cros-disks.conf"),
+      "${target_gen_dir}/cros-disks.conf",
+    ]
+    install_configs = [
+      {
+        path = "/etc/init"
+      },
+    ]
+  }
+} else {
+  install_config("install_cros_disks_config") {
+    sources = [ "cros-disks.conf" ]
+    install_path = "/etc/init"
+  }
+}
+
+if (use.seccomp) {
+  install_config("install_seccomp_policies") {
+    arch = getenv("ARCH")
+    sources = [
+      "seccomp_policy/archivemount-seccomp-$arch.policy",
+      "seccomp_policy/fusebox-seccomp-$arch.policy",
+      "seccomp_policy/mkfs-seccomp-$arch.policy",
+      "seccomp_policy/mount-zip-seccomp-$arch.policy",
+      "seccomp_policy/rar2fs-seccomp-$arch.policy",
+      "seccomp_policy/smbfs-seccomp-$arch.policy",
+    ]
+
+    # NOSORT
+    outputs = [
+      "archivemount-seccomp.policy",
+      "fusebox-seccomp.policy",
+      "mkfs-seccomp.policy",
+      "mount-zip-seccomp.policy",
+      "rar2fs-seccomp.policy",
+      "smbfs-seccomp.policy",
+    ]
+
+    install_path = "/usr/share/policy"
+  }
 }
 
 if (use.fuzzer) {
@@ -116,10 +210,7 @@ if (use.fuzzer) {
 }
 
 if (use.test) {
-  pkg_config("disks_test_config") {
-    pkg_deps = [ "libchrome-test" ]
-  }
-  executable("disks_testrunner") {
+  source_set("common_test_sources") {
     sources = [
       "archive_manager_test.cc",
       "archive_mounter_test.cc",
@@ -160,7 +251,51 @@ if (use.test) {
       ":disks_test_config",
       ":target_defaults",
     ]
+  }
+
+  COMMON_TEST_FILTER = ":DiskManagerTest.*"
+  COMMON_TEST_FILTER += ":ExternalMounterTest.*"
+  COMMON_TEST_FILTER += ":UdevDeviceTest.*"
+  COMMON_TEST_FILTER += ":MountInfoTest.RetrieveFromCurrentProcess"
+  COMMON_TEST_FILTER += ":GlibProcessTest.*"
+
+  pkg_config("disks_test_config") {
+    pkg_deps = [ "libchrome-test" ]
+  }
+
+  executable("disks_testrunner_root") {
+    run_test = true
+    gtest_filter_qemu = "*RunAsRoot*"
+    if (!use.x86 && !use.amd64) {
+      gtest_filter_qemu += COMMON_TEST_FILTER
+    }
+
+    test_config = {
+      run_as_root = true
+      gtest_filter = gtest_filter_qemu
+    }
+
     deps = [
+      ":common_test_sources",
+      ":libdisks",
+      "//common-mk/testrunner",
+    ]
+  }
+
+  executable("disks_testrunner") {
+    run_test = true
+    gtest_filter_qemu = "-*RunAsRoot*"
+    if (!use.x86 && !use.amd64) {
+      gtest_filter_qemu += COMMON_TEST_FILTER
+    }
+
+    test_config = {
+      run_as_root = false
+      gtest_filter = gtest_filter_qemu
+    }
+
+    deps = [
+      ":common_test_sources",
       ":libdisks",
       "//common-mk/testrunner",
     ]

@@ -172,6 +172,7 @@ _IUSE = [
     "wake_on_wifi",
     "wilco",
     "wpa3_sae",
+    "x86",
 ]
 
 # USE flags whose default values are true.
