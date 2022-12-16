@@ -57,6 +57,7 @@
 #include "shill/tethering_manager.h"
 #include "shill/upstart/mock_upstart.h"
 #include "shill/vpn/mock_vpn_service.h"
+#include "shill/wifi/mock_wake_on_wifi.h"
 #include "shill/wifi/mock_wifi_provider.h"
 #include "shill/wifi/mock_wifi_service.h"
 #include "shill/wifi/wifi_service.h"
@@ -365,6 +366,7 @@ class ManagerTest : public PropertyStoreTest {
 
  protected:
   using MockServiceRefPtr = scoped_refptr<MockService>;
+  using MockWiFiServiceRefPtr = scoped_refptr<MockWiFiService>;
 
   class ServiceWatcher : public DefaultServiceObserver {
    public:
@@ -479,6 +481,28 @@ class ManagerTest : public PropertyStoreTest {
         .WillRepeatedly(Return(kDNSServers));
     mock_device->set_network_for_testing(std::move(mock_network));
     return mock_network_ptr;
+  }
+
+  MockWiFiServiceRefPtr CreateWiFiService(
+      const WiFiRefPtr wifi,
+      const char* securityClass,
+      const WiFiSecurity::Mode mode,
+      const WiFiEndpoint::SecurityFlags flags,
+      const std::string& address) {
+    MockWiFiServiceRefPtr wifi_service(new NiceMock<MockWiFiService>(
+        manager(), wifi_provider_, std::vector<uint8_t>(), "", securityClass,
+        WiFiSecurity(mode), false));
+    WiFiEndpointRefPtr endpoint = WiFiEndpoint::MakeEndpoint(
+        nullptr, wifi, "", address, WPASupplicant::kNetworkModeInfrastructure,
+        0, 0, flags);
+    // MockWiFiServiceRefPtr wifi_service doesn't call
+    // WiFiService::AddEndpoint(), so the endpoint is added to wifi_service here
+    wifi_service->endpoints_.insert(endpoint);
+    wifi_service->current_endpoint_ = endpoint;
+    wifi_service->UpdateFromEndpoints();
+    wifi_service->SetConnectable(true);
+    wifi_service->SetAutoConnect(true);
+    return wifi_service;
   }
 
   std::unique_ptr<MockPowerManager> power_manager_;
@@ -3295,55 +3319,191 @@ TEST_F(ManagerTest, EnumerateServices) {
   manager()->DeregisterService(mock_service);
 }
 
+TEST_F(ManagerTest, ConnectToMostSecureWiFi) {
+  WiFiRefPtr wifi(new WiFi(manager(), "wifi", "", 0, 0,
+                           std::make_unique<MockWakeOnWiFi>()));
+
+  MockWiFiServiceRefPtr wifi_service_open =
+      CreateWiFiService(wifi, kSecurityClassNone, WiFiSecurity::kNone,
+                        WiFiEndpoint::SecurityFlags{}, "00:00:00:00:00:01");
+
+  MockWiFiServiceRefPtr wifi_service_wep = CreateWiFiService(
+      wifi, kSecurityClassWep, WiFiSecurity::kWep,
+      WiFiEndpoint::SecurityFlags{.privacy = true}, "00:00:00:00:00:02");
+
+  MockWiFiServiceRefPtr wifi_service_wpa_psk = CreateWiFiService(
+      wifi, kSecurityClassPsk, WiFiSecurity::kWpa,
+      WiFiEndpoint::SecurityFlags{.wpa_psk = true}, "00:00:00:00:00:03");
+
+  MockWiFiServiceRefPtr wifi_service_wep_8021x = CreateWiFiService(
+      wifi, kSecurityClassWep, WiFiSecurity::kWep,
+      WiFiEndpoint::SecurityFlags{.privacy = true}, "00:00:00:00:00:04");
+  // WiFiService::UpdateSecurity() updates the key_rotation and endpoint_auth of
+  // WEP to Is8021x(), which checks if the EAP key management is
+  // WPASupplicant::kKeyManagementIeee8021X.
+  wifi_service_wep_8021x->SetEAPKeyManagement(
+      WPASupplicant::kKeyManagementIeee8021X);
+  wifi_service_wep_8021x->UpdateSecurity();
+
+  MockWiFiServiceRefPtr wifi_service_wpa_8021x = CreateWiFiService(
+      wifi, kSecurityClass8021x, WiFiSecurity::kWpaEnterprise,
+      WiFiEndpoint::SecurityFlags{.wpa_8021x = true}, "00:00:00:00:00:05");
+
+  MockWiFiServiceRefPtr wifi_service_wpawpa2_psk = CreateWiFiService(
+      wifi, kSecurityClassPsk, WiFiSecurity::kWpaWpa2,
+      WiFiEndpoint::SecurityFlags{.rsn_psk = true, .wpa_psk = true},
+      "00:00:00:00:00:06");
+
+  MockWiFiServiceRefPtr wifi_service_wpa2_psk = CreateWiFiService(
+      wifi, kSecurityClassPsk, WiFiSecurity::kWpa2,
+      WiFiEndpoint::SecurityFlags{.rsn_psk = true}, "00:00:00:00:00:07");
+
+  MockWiFiServiceRefPtr wifi_service_wpa2wpa3_psk = CreateWiFiService(
+      wifi, kSecurityClassPsk, WiFiSecurity::kWpa2Wpa3,
+      WiFiEndpoint::SecurityFlags{.rsn_psk = true, .rsn_sae = true},
+      "00:00:00:00:00:08");
+
+  MockWiFiServiceRefPtr wifi_service_wpa3_sae = CreateWiFiService(
+      wifi, kSecurityClassPsk, WiFiSecurity::kWpa3,
+      WiFiEndpoint::SecurityFlags{.rsn_sae = true}, "00:00:00:00:00:09");
+
+  MockWiFiServiceRefPtr wifi_service_wpawpa2_8021x = CreateWiFiService(
+      wifi, kSecurityClass8021x, WiFiSecurity::kWpaWpa2Enterprise,
+      WiFiEndpoint::SecurityFlags{.rsn_8021x = true, .wpa_8021x = true},
+      "00:00:00:00:00:10");
+
+  MockWiFiServiceRefPtr wifi_service_wpa2_8021x = CreateWiFiService(
+      wifi, kSecurityClass8021x, WiFiSecurity::kWpa2Enterprise,
+      WiFiEndpoint::SecurityFlags{.rsn_8021x = true}, "00:00:00:00:00:11");
+
+  MockWiFiServiceRefPtr wifi_service_wpa2wpa3_8021x = CreateWiFiService(
+      wifi, kSecurityClass8021x, WiFiSecurity::kWpa2Wpa3Enterprise,
+      WiFiEndpoint::SecurityFlags{.rsn_8021x_wpa3 = true, .rsn_8021x = true},
+      "00:00:00:00:00:12");
+
+  MockWiFiServiceRefPtr wifi_service_wpa3_8021x = CreateWiFiService(
+      wifi, kSecurityClass8021x, WiFiSecurity::kWpa3Enterprise,
+      WiFiEndpoint::SecurityFlags{.rsn_8021x_wpa3 = true}, "00:00:00:00:00:13");
+
+  EXPECT_CALL(*wifi_service_open, Connect(_, _)).Times(0);
+  EXPECT_CALL(*wifi_service_wep, Connect(_, _)).Times(1);
+  EXPECT_CALL(*wifi_service_wpa_psk, Connect(_, _)).Times(1);
+  EXPECT_CALL(*wifi_service_wep_8021x, Connect(_, _)).Times(1);
+  EXPECT_CALL(*wifi_service_wpa_8021x, Connect(_, _)).Times(1);
+  EXPECT_CALL(*wifi_service_wpawpa2_psk, Connect(_, _)).Times(1);
+  EXPECT_CALL(*wifi_service_wpa2_psk, Connect(_, _)).Times(1);
+  EXPECT_CALL(*wifi_service_wpa2wpa3_psk, Connect(_, _)).Times(1);
+  EXPECT_CALL(*wifi_service_wpa3_sae, Connect(_, _)).Times(1);
+  EXPECT_CALL(*wifi_service_wpawpa2_8021x, Connect(_, _)).Times(1);
+  EXPECT_CALL(*wifi_service_wpa2_8021x, Connect(_, _)).Times(1);
+  EXPECT_CALL(*wifi_service_wpa2wpa3_8021x, Connect(_, _)).Times(1);
+  EXPECT_CALL(*wifi_service_wpa3_8021x, Connect(_, _)).Times(1);
+
+  ON_CALL(*wifi_service_open, HasEndpoints())
+      .WillByDefault(testing::Return(true));
+  ON_CALL(*wifi_service_wep, HasEndpoints())
+      .WillByDefault(testing::Return(true));
+  ON_CALL(*wifi_service_wpa_psk, HasEndpoints())
+      .WillByDefault(testing::Return(true));
+  ON_CALL(*wifi_service_wep_8021x, HasEndpoints())
+      .WillByDefault(testing::Return(true));
+  ON_CALL(*wifi_service_wpa_8021x, HasEndpoints())
+      .WillByDefault(testing::Return(true));
+  ON_CALL(*wifi_service_wpawpa2_psk, HasEndpoints())
+      .WillByDefault(testing::Return(true));
+  ON_CALL(*wifi_service_wpa2_psk, HasEndpoints())
+      .WillByDefault(testing::Return(true));
+  ON_CALL(*wifi_service_wpa2wpa3_psk, HasEndpoints())
+      .WillByDefault(testing::Return(true));
+  ON_CALL(*wifi_service_wpa3_sae, HasEndpoints())
+      .WillByDefault(testing::Return(true));
+  ON_CALL(*wifi_service_wpawpa2_8021x, HasEndpoints())
+      .WillByDefault(testing::Return(true));
+  ON_CALL(*wifi_service_wpa2_8021x, HasEndpoints())
+      .WillByDefault(testing::Return(true));
+  ON_CALL(*wifi_service_wpa2wpa3_8021x, HasEndpoints())
+      .WillByDefault(testing::Return(true));
+  ON_CALL(*wifi_service_wpa3_8021x, HasEndpoints())
+      .WillByDefault(testing::Return(true));
+
+  manager()->RegisterService(wifi_service_open);
+  manager()->RegisterService(wifi_service_wep);
+  manager()->ConnectToBestServices(nullptr);
+  dispatcher()->DispatchPendingEvents();
+
+  manager()->RegisterService(wifi_service_wpa_psk);
+  manager()->ConnectToBestServices(nullptr);
+  dispatcher()->DispatchPendingEvents();
+
+  manager()->RegisterService(wifi_service_wep_8021x);
+  manager()->ConnectToBestServices(nullptr);
+  dispatcher()->DispatchPendingEvents();
+  // wifi_service_wep_8021x and wifi_service_wpa_8021x have the same
+  // Service::SecurityLevel(), deregister wifi_service_wep_8021x first so that
+  // wifi_service_wpa_8021x can be connected, otherwise, wifi_service_wep_8021x
+  // is always before wifi_service_wpa_8021x as it has a smaller serial number,
+  // and wifi_service_wpa_8021x is never connected.
+  manager()->DeregisterService(wifi_service_wep_8021x);
+
+  manager()->RegisterService(wifi_service_wpa_8021x);
+  manager()->ConnectToBestServices(nullptr);
+  dispatcher()->DispatchPendingEvents();
+
+  manager()->RegisterService(wifi_service_wpawpa2_psk);
+  manager()->ConnectToBestServices(nullptr);
+  dispatcher()->DispatchPendingEvents();
+  manager()->DeregisterService(wifi_service_wpawpa2_psk);
+
+  manager()->RegisterService(wifi_service_wpa2_psk);
+  manager()->ConnectToBestServices(nullptr);
+  dispatcher()->DispatchPendingEvents();
+  manager()->DeregisterService(wifi_service_wpa2_psk);
+
+  manager()->RegisterService(wifi_service_wpa2wpa3_psk);
+  manager()->ConnectToBestServices(nullptr);
+  dispatcher()->DispatchPendingEvents();
+  manager()->DeregisterService(wifi_service_wpa2wpa3_psk);
+
+  manager()->RegisterService(wifi_service_wpa3_sae);
+  manager()->ConnectToBestServices(nullptr);
+  dispatcher()->DispatchPendingEvents();
+
+  manager()->RegisterService(wifi_service_wpawpa2_8021x);
+  manager()->ConnectToBestServices(nullptr);
+  dispatcher()->DispatchPendingEvents();
+  manager()->DeregisterService(wifi_service_wpawpa2_8021x);
+
+  manager()->RegisterService(wifi_service_wpa2_8021x);
+  manager()->ConnectToBestServices(nullptr);
+  dispatcher()->DispatchPendingEvents();
+  manager()->DeregisterService(wifi_service_wpa2_8021x);
+
+  manager()->RegisterService(wifi_service_wpa2wpa3_8021x);
+  manager()->ConnectToBestServices(nullptr);
+  dispatcher()->DispatchPendingEvents();
+  manager()->DeregisterService(wifi_service_wpa2wpa3_8021x);
+
+  manager()->RegisterService(wifi_service_wpa3_8021x);
+  manager()->ConnectToBestServices(nullptr);
+  dispatcher()->DispatchPendingEvents();
+}
+
 TEST_F(ManagerTest, ConnectToBestServices) {
   MockServiceRefPtr wifi_service0(new NiceMock<MockService>(manager()));
   EXPECT_CALL(*wifi_service0, state())
-      .WillRepeatedly(Return(Service::kStateIdle));
+      .WillRepeatedly(Return(Service::kStateConnected));
   EXPECT_CALL(*wifi_service0, IsConnected(nullptr))
-      .WillRepeatedly(Return(false));
-  wifi_service0->SetConnectable(true);
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*wifi_service0, IsVisible()).WillRepeatedly(Return(true));
   wifi_service0->SetAutoConnect(true);
-  wifi_service0->SetSecurity(Service::kCryptoAes, true, true);
+  wifi_service0->SetConnectable(true);
+  wifi_service0->SetSecurity(Service::kCryptoNone, false, false);
   EXPECT_CALL(*wifi_service0, technology())
       .WillRepeatedly(Return(Technology::kWiFi));
-  EXPECT_CALL(*wifi_service0, IsVisible()).WillRepeatedly(Return(false));
   EXPECT_CALL(*wifi_service0, explicitly_disconnected())
       .WillRepeatedly(Return(false));
 
-  MockServiceRefPtr wifi_service1(new NiceMock<MockService>(manager()));
-  EXPECT_CALL(*wifi_service1, state())
-      .WillRepeatedly(Return(Service::kStateIdle));
-  EXPECT_CALL(*wifi_service1, IsVisible()).WillRepeatedly(Return(true));
-  EXPECT_CALL(*wifi_service1, IsConnected(nullptr))
-      .WillRepeatedly(Return(false));
-  wifi_service1->SetAutoConnect(true);
-  wifi_service1->SetConnectable(true);
-  wifi_service1->SetSecurity(Service::kCryptoRc4, true, true);
-  EXPECT_CALL(*wifi_service1, technology())
-      .WillRepeatedly(Return(Technology::kWiFi));
-  EXPECT_CALL(*wifi_service1, explicitly_disconnected())
-      .WillRepeatedly(Return(false));
-
-  MockServiceRefPtr wifi_service2(new NiceMock<MockService>(manager()));
-  EXPECT_CALL(*wifi_service2, state())
-      .WillRepeatedly(Return(Service::kStateConnected));
-  EXPECT_CALL(*wifi_service2, IsConnected(nullptr))
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(*wifi_service2, IsVisible()).WillRepeatedly(Return(true));
-  wifi_service2->SetAutoConnect(true);
-  wifi_service2->SetConnectable(true);
-  wifi_service2->SetSecurity(Service::kCryptoNone, false, false);
-  EXPECT_CALL(*wifi_service2, technology())
-      .WillRepeatedly(Return(Technology::kWiFi));
-  EXPECT_CALL(*wifi_service2, explicitly_disconnected())
-      .WillRepeatedly(Return(false));
-
   manager()->RegisterService(wifi_service0);
-  manager()->RegisterService(wifi_service1);
-  manager()->RegisterService(wifi_service2);
-
-  CompleteServiceSort();
-  EXPECT_TRUE(ServiceOrderIs(wifi_service2, wifi_service0));
 
   MockServiceRefPtr cellular_service0(new NiceMock<MockService>(manager()));
   EXPECT_CALL(*cellular_service0, state())
@@ -3385,11 +3545,9 @@ TEST_F(ManagerTest, ConnectToBestServices) {
   manager()->RegisterService(vpn_service);
 
   // The connected services should be at the top.
-  EXPECT_TRUE(ServiceOrderIs(wifi_service2, cellular_service1));
+  EXPECT_TRUE(ServiceOrderIs(wifi_service0, cellular_service1));
 
-  EXPECT_CALL(*wifi_service0, Connect(_, _)).Times(0);  // Not visible.
-  EXPECT_CALL(*wifi_service1, Connect(_, _));
-  EXPECT_CALL(*wifi_service2, Connect(_, _)).Times(0);  // Lower prio.
+  EXPECT_CALL(*wifi_service0, Connect(_, _)).Times(0);  // Lower prio.
   EXPECT_CALL(*cellular_service0, Connect(_, _))
       .Times(0);  // Explicitly disconnected.
   EXPECT_CALL(*cellular_service1, Connect(_, _)).Times(0);  // Is connected.
@@ -3401,7 +3559,7 @@ TEST_F(ManagerTest, ConnectToBestServices) {
   // After this operation, since the Connect calls above are mocked and
   // no actual state changes have occurred, we should expect that the
   // service sorting order will not have changed.
-  EXPECT_TRUE(ServiceOrderIs(wifi_service2, cellular_service1));
+  EXPECT_TRUE(ServiceOrderIs(wifi_service0, cellular_service1));
 }
 
 TEST_F(ManagerTest, CreateConnectivityReport) {

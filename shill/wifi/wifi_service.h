@@ -323,10 +323,12 @@ class WiFiService : public Service {
                                  bool* decision) override;
 
  private:
+  friend class ManagerTest;  // Set current_endpoint_, endpoints_
   friend class WiFiServiceSecurityTest;
   friend class WiFiServiceTest;    // SetPassphrase, session_tag
   friend class WiFiServiceFuzzer;  // SetPassphrase
   friend class WiFiServiceUpdateFromEndpointsTest;  // SignalToStrength
+  FRIEND_TEST(ManagerTest, ConnectToMostSecureWiFi);
   FRIEND_TEST(MetricsTest, WiFiServicePostReady);
   FRIEND_TEST(MetricsTest, WiFiServicePostReadyEAP);
   FRIEND_TEST(WiFiMainTest, CurrentBSSChangedUpdateServiceEndpoint);

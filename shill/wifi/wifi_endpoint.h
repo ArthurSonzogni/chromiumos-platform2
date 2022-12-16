@@ -122,6 +122,7 @@ class WiFiEndpoint : public base::RefCounted<WiFiEndpoint> {
   const QosSupport& qos_support() const;
 
  private:
+  friend class ManagerTest;  // for MakeOpenEndpoint
   friend class WiFiEndpointTest;
   friend class WiFiIEsFuzz;
   friend class WiFiObjectTest;    // for MakeOpenEndpoint

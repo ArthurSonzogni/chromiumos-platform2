@@ -87,6 +87,7 @@ class MockWiFiService : public WiFiService {
               (const, override));
   MOCK_METHOD(void, SetUplinkSpeedKbps, (uint32_t), (override));
   MOCK_METHOD(void, SetDownlinkSpeedKbps, (uint32_t), (override));
+  MOCK_METHOD(void, Connect, (Error*, const char*), (override));
 };
 
 }  // namespace shill
