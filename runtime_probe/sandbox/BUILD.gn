@@ -30,7 +30,6 @@ install_seccomp_policy("install_sandbox_seccomp") {
       "${_arch}/ectool_i2cread-seccomp.policy",
       "${_arch}/gpu-seccomp.policy",
       "${_arch}/memory-seccomp.policy",
-      "${_arch}/mipi_camera-seccomp.policy",
       "${_arch}/ufs_storage-seccomp.policy",
       "${_arch}/vpd_cached-seccomp.policy",
     ]
@@ -39,6 +38,7 @@ install_seccomp_policy("install_sandbox_seccomp") {
     sources += [
       "${_arch}/cellular_network-seccomp.policy",
       "${_arch}/generic_network-seccomp.policy",
+      "${_arch}/mipi_camera-seccomp.policy",
       "${_arch}/wireless_network-seccomp.policy",
     ]
   }
