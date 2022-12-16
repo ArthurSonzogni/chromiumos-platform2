@@ -49,8 +49,8 @@ bool PreExecSettings(const std::map<std::string, std::string>& vars) {
     }
   }
 
-  // Set soft/hard limit for CPU usage (300 sec / 330 sec).
-  const rlimit cpu_limit = {300, 330};
+  // Set soft/hard limit for CPU usage (900 sec / 950 sec).
+  const rlimit cpu_limit = {900, 950};
   if (setrlimit(RLIMIT_CPU, &cpu_limit)) {
     perror("setrlimit(RLIMIT_CPU,...) failed");
     return false;
@@ -245,6 +245,11 @@ int ProcessLauncher::RunPipeline(const Pipeline& pipeline,
         PrintMessage(source_, sp.position, "Process failed");
         return kShellError;
       }
+      // The process reached the CPU time limit.
+      if (exit_code == kProcTimeLimitError) {
+        PrintMessage(source_, sp.position, "CPU time limit was reached");
+        return kProcTimeLimitError;
+      }
     } else {
       if (waitpid(sp.script_pid, &exit_code, 0) == (pid_t)-1) {
         PrintMessage(source_, sp.position, "waitpid(...) failed",
@@ -254,10 +259,14 @@ int ProcessLauncher::RunPipeline(const Pipeline& pipeline,
       // (|exit_code| == kShellError) means that the subshell failed.
       if (exit_code == kShellError)
         return kShellError;
+      // One of children processes reached the CPU time limit.
+      if (exit_code == kProcTimeLimitError)
+        return kProcTimeLimitError;
     }
-    // We ignore the exit_code different than kShellError, because the Linux
-    // shell behaves this way. The exit code from the last pipeline segment is
-    // reported as the exit code for the whole pipeline.
+    // We ignore the exit_code different than kShellError and
+    // kProcTimeLimitError, because the Linux shell behaves this way. The exit
+    // code from the last pipeline segment is reported as the exit code for the
+    // whole pipeline.
   }
 
   if (verbose_)

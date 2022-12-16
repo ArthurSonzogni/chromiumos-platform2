@@ -21,6 +21,9 @@ namespace foomatic_shell {
 
 // Exit code reported when an error occurs of the shell side.
 constexpr int kShellError = 127;
+// Exit code reported when ghostscript caught SIGXPU signal (CPU time limit was
+// reached).
+constexpr int kProcTimeLimitError = 126;
 
 // This class is responsible for executing given Script object. It launches
 // all commands and subshells from the Script in a correct order and join them

@@ -7,10 +7,20 @@
 
 #include <string>
 
+#include <metrics/metrics_library.h>
+
 namespace foomatic_shell {
 
 // The maximum size of single script is 16KB.
 constexpr size_t kMaxSourceSize = 16 * 1024;
+
+// Parameters of the histogram for the metrics:
+//  * ChromeOS.Printing.TimeCostOfSuccessfulFoomaticShell,
+//  * ChromeOS.Printing.TimeCostOfFailedFoomaticShell.
+// Min and max values are in seconds.
+constexpr int kUmaHistogramMin = 1;
+constexpr int kUmaHistogramMax = 1000;
+constexpr int kUmaHistogramNumBuckets = 20;
 
 // Parse and execute a shell script in |source|. Generated output is saved to
 // the file descriptor |output_fd|. When necessary, input data is read from the
@@ -20,13 +30,23 @@ constexpr size_t kMaxSourceSize = 16 * 1024;
 // level - all logs are dumped to stderr. |verify_mode| is used to disable
 // execution of the shell script. |recursion_level| is used to control
 // maximum recursion depth and should be set to the default value. The function
-// returns exit code returned by executed script or value 127 in case of an
-// shell error.
+// returns exit code returned by executed script or values:
+//  * 127 in case of a shell error,
+//  * 126 when a child ghostscript process reached CPU time limit.
 int ExecuteShellScript(const std::string& source,
                        const int output_fd,
                        const bool verbose_mode,
                        const bool verify_mode,
                        const int recursion_level = 0);
+
+// Wrapper around ExecuteShellScript() that reports CPU time to `metrics` at
+// the end.
+int ExecuteShellScriptAndReportCpuTime(const std::string& source,
+                                       const int output_fd,
+                                       const bool verbose_mode,
+                                       const bool verify_mode,
+                                       MetricsLibraryInterface& metrics,
+                                       const int recursion_level = 0);
 
 }  // namespace foomatic_shell
 

@@ -6,6 +6,7 @@
 
 #include <stdio.h>
 #include <sys/mman.h>
+#include <sys/resource.h>
 #include <sys/types.h>
 #include <unistd.h>
 
@@ -19,6 +20,7 @@
 #include <base/files/scoped_file.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
+#include <metrics/metrics_library.h>
 
 #include "foomatic_shell/parser.h"
 #include "foomatic_shell/process_launcher.h"
@@ -70,45 +72,46 @@ bool ReadFromTheBeginning(int fd, std::string* out) {
 // Parse and execute a shell script in |source|. This routine works in the
 // similar way as ExecuteShellScript(...) from shell.h. The only differences
 // are that the output is saved to the given string |output| instead of a file
-// descriptor and that the return value is bool instead of int. In case of an
-// error, the function returns false and |output| is set to an error message.
-bool ExecuteEmbeddedShellScript(const std::string& source,
-                                const bool verbose_mode,
-                                const bool verify_mode,
-                                const int recursion_level,
-                                std::string* output) {
+// descriptor. In case of an error, the function returns non-zero value and
+// |output| is set to an error message.
+int ExecuteEmbeddedShellScript(const std::string& source,
+                               const bool verbose_mode,
+                               const bool verify_mode,
+                               const int recursion_level,
+                               std::string* output) {
   DCHECK(output != nullptr);
 
   // This limits the number of recursive `...` (backticks).
   if (recursion_level > 2) {
     *output = "Too many recursive executions of `...` operator";
-    return false;
+    return kShellError;
   }
 
   // Generate temporary file descriptor to store data.
   base::FilePath temp_dir;
   if (!base::GetTempDir(&temp_dir)) {
     *output = "GetTempDir(...) failed";
-    return false;
+    return kShellError;
   }
   base::FilePath temp_file;
   base::ScopedFD temp_fd;
   temp_fd = CreateAndOpenFdForTemporaryFileInDir(temp_dir, &temp_file);
   if (!temp_fd.is_valid()) {
     *output = "Error when executing CreateAndOpenFdForTemporaryFileInDir(...)";
-    return false;
+    return kShellError;
   }
 
   // Execute the script.
-  if (ExecuteShellScript(source, temp_fd.get(), verbose_mode, verify_mode,
-                         recursion_level + 1)) {
+  const int exit_code = ExecuteShellScript(source, temp_fd.get(), verbose_mode,
+                                           verify_mode, recursion_level + 1);
+  if (exit_code) {
     *output = "Error when executing `...` operator";
-    return false;
+    return exit_code;
   }
 
   // Read the generated output to |out|.
   if (!ReadFromTheBeginning(temp_fd.get(), output))
-    return false;
+    return kShellError;
 
   // Delete the temporary file.
   temp_fd.reset();
@@ -120,7 +123,7 @@ bool ExecuteEmbeddedShellScript(const std::string& source,
     output->pop_back();
 
   // Success!
-  return true;
+  return 0;
 }
 
 }  // namespace
@@ -152,10 +155,13 @@ int ExecuteShellScript(const std::string& source,
 
     // Execute the script inside `...` (backticks) operator.
     std::string out;
-    if (!ExecuteEmbeddedShellScript(token.value, verbose_mode, verify_mode,
-                                    recursion_level, &out)) {
+    int subshell_exit_code = ExecuteEmbeddedShellScript(
+        token.value, verbose_mode, verify_mode, recursion_level, &out);
+    if (subshell_exit_code != 0) {
       PrintErrorMessage(token.value, token.begin, out);
-      return kShellError;
+      if (subshell_exit_code != kProcTimeLimitError)
+        subshell_exit_code = kShellError;
+      return subshell_exit_code;
     }
 
     // Replace the token value (content of `...`) with the generated output.
@@ -192,6 +198,41 @@ int ExecuteShellScript(const std::string& source,
       fprintf(stderr, "SCRIPT FAILED WITH EXIT CODE %d\n", exit_code);
     }
   }
+  return exit_code;
+}
+
+int ExecuteShellScriptAndReportCpuTime(const std::string& source,
+                                       const int output_fd,
+                                       const bool verbose_mode,
+                                       const bool verify_mode,
+                                       MetricsLibraryInterface& metrics,
+                                       const int recursion_level) {
+  const int exit_code = ExecuteShellScript(source, output_fd, verbose_mode,
+                                           verify_mode, recursion_level);
+
+  // Get total CPU time used by children processes and report it.
+  rusage usage;
+  if (getrusage(RUSAGE_CHILDREN, &usage)) {
+    fprintf(stderr, "getrusage(...) failed, the CPU time was not reported");
+    return exit_code;
+  }
+  const int cpu_time = static_cast<int>(usage.ru_stime.tv_sec) +
+                       static_cast<int>(usage.ru_utime.tv_sec);
+
+  bool metrics_result;
+  if (exit_code) {
+    metrics_result = metrics.SendToUMA(
+        "ChromeOS.Printing.TimeCostOfFailedFoomaticShell", cpu_time,
+        kUmaHistogramMin, kUmaHistogramMax, kUmaHistogramNumBuckets);
+  } else {
+    metrics_result = metrics.SendToUMA(
+        "ChromeOS.Printing.TimeCostOfSuccessfulFoomaticShell", cpu_time,
+        kUmaHistogramMin, kUmaHistogramMax, kUmaHistogramNumBuckets);
+  }
+  if (!metrics_result) {
+    fprintf(stderr, "SendToUMA(...) failed, the CPU time was not reported");
+  }
+
   return exit_code;
 }
 

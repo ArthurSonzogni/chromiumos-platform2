@@ -6,6 +6,7 @@
 #include <string>
 
 #include <base/environment.h>
+#include <metrics/metrics_library.h>
 
 #include "foomatic_shell/shell.h"
 
@@ -69,6 +70,7 @@ int main(int argc, char** argv) {
     PrintErrorMessage("The script provided with -c parameter is too large");
     return -1;
   }
-  return (foomatic_shell::ExecuteShellScript(std::string(script), 1, verbose,
-                                             verify));
+  MetricsLibrary metrics;
+  return foomatic_shell::ExecuteShellScriptAndReportCpuTime(
+      std::string(script), 1, verbose, verify, metrics);
 }
