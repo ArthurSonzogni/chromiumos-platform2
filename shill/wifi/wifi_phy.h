@@ -6,6 +6,7 @@
 #define SHILL_WIFI_WIFI_PHY_H_
 
 #include <set>
+#include <vector>
 
 #include "shill/mockable.h"
 #include "shill/net/nl80211_message.h"
@@ -13,6 +14,17 @@
 #include "shill/wifi/wifi_provider.h"
 
 namespace shill {
+
+struct IfaceLimit {
+  std::vector<nl80211_iftype> iftypes;
+  uint32_t max;
+};
+
+struct ConcurrencyCombination {
+  std::vector<IfaceLimit> limits;
+  uint32_t max_num;
+  uint32_t num_channels;
+};
 
 // A WiFiPhy object represents a wireless physical layer device. Objects of this
 // class map 1:1 with an NL80211 "wiphy". WiFiPhy objects are created and owned
@@ -52,6 +64,10 @@ class WiFiPhy {
   // Return true if the phy supports iftype, false otherwise.
   bool SupportsIftype(nl80211_iftype iftype);
 
+  std::vector<ConcurrencyCombination> ConcurrencyCombinations() {
+    return concurrency_combs_;
+  }
+
  private:
   friend class WiFiPhyTest;
   uint32_t phy_index_;
@@ -59,6 +75,11 @@ class WiFiPhy {
   std::set<LocalDeviceConstRefPtr> wifi_local_devices_;
   std::set<nl80211_iftype> supported_ifaces_;
   void ParseInterfaceTypes(const Nl80211Message& nl80211_message);
+
+  // Parse the NL80211_ATTR_INTERFACE_COMBINATIONS from a new wiphy message and
+  // store the contents in concurrency_combs_.
+  void ParseConcurrency(const Nl80211Message& nl80211_message);
+  std::vector<ConcurrencyCombination> concurrency_combs_;
 };
 
 }  // namespace shill

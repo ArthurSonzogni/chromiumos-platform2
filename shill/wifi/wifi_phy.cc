@@ -49,6 +49,7 @@ void WiFiPhy::OnNewWiphy(const Nl80211Message& nl80211_message) {
   }
   ParseInterfaceTypes(nl80211_message);
   // TODO(b/244630773): Parse out the message and store phy information.
+  ParseConcurrency(nl80211_message);
 }
 
 bool WiFiPhy::SupportsIftype(nl80211_iftype iftype) {
@@ -79,6 +80,74 @@ void WiFiPhy::ParseInterfaceTypes(const Nl80211Message& nl80211_message) {
       }
       supported_ifaces_.insert(nl80211_iftype(iface));
     }
+  }
+}
+
+void WiFiPhy::ParseConcurrency(const Nl80211Message& nl80211_message) {
+  // Verify NL80211_CMD_NEW_WIPHY.
+  if (nl80211_message.command() != NewWiphyMessage::kCommand) {
+    LOG(ERROR) << "Received unexpected command: " << nl80211_message.command();
+    return;
+  }
+
+  // Check that the message contains concurrency combinations.
+  AttributeListConstRefPtr interface_combinations_attr;
+  if (!nl80211_message.const_attributes()->ConstGetNestedAttributeList(
+          NL80211_ATTR_INTERFACE_COMBINATIONS, &interface_combinations_attr)) {
+    return;
+  }
+  // Iterate over the combinations in the message.
+  concurrency_combs_.clear();
+  AttributeIdIterator comb_iter(*interface_combinations_attr);
+  for (; !comb_iter.AtEnd(); comb_iter.Advance()) {
+    struct ConcurrencyCombination comb;
+    AttributeListConstRefPtr iface_comb_attr;
+    if (!interface_combinations_attr->ConstGetNestedAttributeList(
+            comb_iter.GetId(), &iface_comb_attr)) {
+      continue;  // Next combination.
+    }
+
+    // Check that the combination has limits.
+    AttributeListConstRefPtr iface_limits_attr;
+    if (!iface_comb_attr->ConstGetNestedAttributeList(NL80211_IFACE_COMB_LIMITS,
+                                                      &iface_limits_attr)) {
+      continue;  // Next combination.
+    }
+
+    iface_comb_attr->GetU32AttributeValue(NL80211_IFACE_COMB_MAXNUM,
+                                          &comb.max_num);
+    iface_comb_attr->GetU32AttributeValue(NL80211_IFACE_COMB_NUM_CHANNELS,
+                                          &comb.num_channels);
+
+    AttributeIdIterator limit_iter(*iface_limits_attr);
+    for (; !limit_iter.AtEnd(); limit_iter.Advance()) {
+      struct IfaceLimit limit;
+      AttributeListConstRefPtr limit_attr;
+      if (!iface_limits_attr->ConstGetNestedAttributeList(limit_iter.GetId(),
+                                                          &limit_attr)) {
+        LOG(WARNING) << "Interface combination limit " << limit_iter.GetId()
+                     << " not found";
+        // If we reach this line then the message is malformed and we should
+        // stop parsing it.
+        return;
+      }
+      limit_attr->GetU32AttributeValue(NL80211_IFACE_LIMIT_MAX, &limit.max);
+
+      // Check that the limit contains interface types.
+      AttributeListConstRefPtr iface_types_attr;
+      if (!limit_attr->ConstGetNestedAttributeList(NL80211_IFACE_LIMIT_TYPES,
+                                                   &iface_types_attr)) {
+        continue;
+      }
+      for (uint32_t iftype = NL80211_IFTYPE_UNSPECIFIED;
+           iftype < NUM_NL80211_IFTYPES; iftype++) {
+        if (iface_types_attr->GetFlagAttributeValue(iftype, nullptr)) {
+          limit.iftypes.push_back(nl80211_iftype(iftype));
+        }
+      }
+      comb.limits.push_back(limit);
+    }
+    concurrency_combs_.push_back(comb);
   }
 }
 
