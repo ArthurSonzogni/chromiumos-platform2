@@ -60,7 +60,7 @@ class RequestHandler {
   void HandleAbortedRequest(CaptureRequest& request);
 
   // Notify shutter event.
-  void NotifyShutter(uint32_t frame_number);
+  void NotifyShutter(uint32_t frame_number, uint64_t timestamp);
 
   // Notify request error event.
   void NotifyRequestError(uint32_t frame_number);
@@ -88,6 +88,9 @@ class RequestHandler {
 
   // Spec for the camera.
   CameraSpec spec_;
+
+  // Timestamp for last response.
+  uint64_t last_response_timestamp_ = 0;
 
   // Used to notify that flush is called from framework.
   bool flush_started_ GUARDED_BY(flush_lock_) = false;
