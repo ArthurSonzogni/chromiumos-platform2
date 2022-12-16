@@ -15,13 +15,10 @@
 #include <metrics/bootstat.h>
 
 #include "init/crossystem.h"
-#include "init/startup/factory_mode_mount_helper.h"
 #include "init/startup/flags.h"
 #include "init/startup/mount_helper.h"
 #include "init/startup/platform_impl.h"
-#include "init/startup/standard_mount_helper.h"
 #include "init/startup/stateful_mount.h"
-#include "init/startup/test_mode_mount_helper.h"
 
 namespace startup {
 

@@ -23,15 +23,11 @@
 #include "init/file_attrs_cleaner.h"
 #include "init/startup/chromeos_startup.h"
 #include "init/startup/constants.h"
-#include "init/startup/factory_mode_mount_helper.h"
 #include "init/startup/flags.h"
 #include "init/startup/mount_helper.h"
-#include "init/startup/mount_helper_factory.h"
 #include "init/startup/platform_impl.h"
 #include "init/startup/security_manager.h"
-#include "init/startup/standard_mount_helper.h"
 #include "init/startup/stateful_mount.h"
-#include "init/startup/test_mode_mount_helper.h"
 #include "init/utils.h"
 
 namespace {
@@ -66,13 +62,6 @@ constexpr char kInstallAttributesFile[] = "home/.shadow/install_attributes.pb";
 // operate by creating this file with the necessary arguments and then
 // rebooting.
 constexpr char kResetFile[] = "factory_install_reset";
-// Flag file indicating that mount encrypted stateful failed last time.
-// If the file is present and mount_encrypted failed again, machine would
-// enter self-repair mode.
-constexpr char kMountEncryptedFailedFile[] = "mount_encrypted_failed";
-// kEncryptedStatefulMnt stores the path to the initial mount point for
-// the encrypted stateful partition
-constexpr char kEncryptedStatefulMnt[] = "encrypted";
 
 constexpr char kDisableStatefulSecurityHard[] =
     "usr/share/cros/startup/disable_stateful_security_hardening";
@@ -505,24 +494,6 @@ int ChromeosStartup::Run() {
   StartTpm2Simulator();
 
   CleanupTpm();
-
-  base::FilePath encrypted_failed = stateful_.Append(kMountEncryptedFailedFile);
-  struct stat stbuf;
-  if (!mount_helper_->DoMountVarAndHomeChronos()) {
-    if (!platform_->Stat(encrypted_failed, &stbuf) ||
-        stbuf.st_uid != getuid()) {
-      base::WriteFile(encrypted_failed, "");
-    } else {
-      cros_system_->SetInt("recovery_request", 1);
-    }
-
-    utils::Reboot();
-    return 0;
-  }
-
-  base::DeleteFile(encrypted_failed);
-  base::FilePath encrypted_state_mnt = stateful_.Append(kEncryptedStatefulMnt);
-  mount_helper_->RememberMount(encrypted_state_mnt);
 
   int ret = RunChromeosStartupScript();
   if (ret) {

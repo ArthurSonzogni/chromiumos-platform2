@@ -18,25 +18,14 @@
 
 namespace startup {
 
-// An enum to specify what type of MountHelper is being used.
-enum class MountHelperType {
-  kStandardMode,
-  kTestMode,
-  kFactoryMode,
-};
-
 // MountHelper contains the functionality for maintaining the mount stack
 // and the mounting and umounting of /var and /home/chronos.
-// This is the base class for the MountHelper classes. The pure virtual
-// functions are defined within the StandardMountHelper, FactoryMountHelper,
-// and StandardMountHelper classes.
 class MountHelper {
  public:
   MountHelper(std::unique_ptr<Platform> platform,
               const Flags& flags,
               const base::FilePath& root,
-              const base::FilePath& stateful,
-              const bool dev_mode);
+              const base::FilePath& stateful);
   virtual ~MountHelper() = default;
 
   // Add mount to mount stack.
@@ -60,34 +49,18 @@ class MountHelper {
   bool UmountVarAndHomeChronosEncrypted();
   // Unmount bind mounts for /var and /home/chronos when unencrypted.
   bool UmountVarAndHomeChronosUnencrypted();
-  bool MountVarAndHomeChronosEncrypted();
-  bool MountVarAndHomeChronosUnencrypted();
-  bool MountVarAndHomeChronos();
 
   Flags GetFlags();
-  base::FilePath GetRoot();
-  base::FilePath GetStateful();
-  Platform* GetPlatform();
 
   // Checks for encstateful flag, then calls the appropriate
   // UmountVarAndHomeChronos function.
   bool DoUmountVarAndHomeChronos();
-
-  // Bind mount the /var and /home/chronos mounts. The implementation
-  // is different for test images and when in factory mode. It also
-  // changes depending on the encrypted stateful USE flag.
-  virtual bool DoMountVarAndHomeChronos() = 0;
-
-  // Returns a string representation of the MountHelper derived class
-  // used, for test purposes.
-  virtual MountHelperType GetMountHelperType() const = 0;
 
  protected:
   std::unique_ptr<Platform> platform_;
   const startup::Flags flags_;
   const base::FilePath root_;
   const base::FilePath stateful_;
-  const bool dev_mode_;
   std::stack<base::FilePath> mount_stack_;
 };
 

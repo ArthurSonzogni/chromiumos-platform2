@@ -125,6 +125,7 @@ dev_update_stateful_partition() { true; }
 
 # do_* are wrapper functions that may be redefined in developer mode or test
 # images. Find more implementation in {dev,test,factory}_utils.sh.
+do_mount_var_and_home_chronos() { mount_var_and_home_chronos; }
 do_umount_var_and_home_chronos() { umount_var_and_home_chronos; }
 
 if [ "${CROS_DEBUG}" -eq 1 ]; then
@@ -267,6 +268,18 @@ force_clean_file_attrs() {
     exec clobber-state "keepimg"
   fi
 }
+
+if ! do_mount_var_and_home_chronos; then
+  if [ ! -O "${MOUNT_ENCRYPTED_FAILED_FILE}" ]; then
+    touch "${MOUNT_ENCRYPTED_FAILED_FILE}"
+  else
+    crossystem recovery_request=1
+  fi
+  reboot
+  exit 0
+fi
+rm -f "${MOUNT_ENCRYPTED_FAILED_FILE}"
+remember_mount "${ENCRYPTED_STATEFUL_MNT}"
 
 # Setup the encrypted reboot vault once the encrypted stateful partition
 # is available. If unlocking the encrypted reboot vault failed (due to power

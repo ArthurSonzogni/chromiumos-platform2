@@ -5,7 +5,6 @@
 #include <sys/mount.h>
 
 #include <memory>
-#include <optional>
 #include <stack>
 #include <string>
 #include <utility>
@@ -27,7 +26,6 @@ namespace {
 
 constexpr char kVar[] = "var";
 constexpr char kHomeChronos[] = "home/chronos";
-constexpr char kMountEncryptedLog[] = "run/mount_encrypted/mount-encrypted.log";
 
 }  // namespace
 
@@ -36,13 +34,11 @@ namespace startup {
 MountHelper::MountHelper(std::unique_ptr<Platform> platform,
                          const Flags& flags,
                          const base::FilePath& root,
-                         const base::FilePath& stateful,
-                         const bool dev_mode)
+                         const base::FilePath& stateful)
     : platform_(std::move(platform)),
       flags_(flags),
       root_(root),
-      stateful_(stateful),
-      dev_mode_(dev_mode) {}
+      stateful_(stateful) {}
 
 // Adds mounts to undo_mount stack.
 void MountHelper::RememberMount(const base::FilePath& mount) {
@@ -122,24 +118,6 @@ void MountHelper::MountOrFail(const base::FilePath& source,
   CleanupMounts(msg);
 }
 
-// Create, possibly migrate from, the unencrypted stateful partition, and bind
-// mount the /var and /home/chronos mounts from the encrypted filesystem
-// /mnt/stateful_partition/encrypted, all managed by the "mount-encrypted"
-// helper. Takes the same arguments as mount-encrypted. Since /var is managed by
-// mount-encrypted, it should not be created in the unencrypted stateful
-// partition. Its mount point in the root filesystem exists already from the
-// rootfs image. Since /home is still mounted from the unencrypted stateful
-// partition, having /home/chronos already doesn't matter. It will be created by
-// mount-encrypted if it is missing. These mounts inherit nodev,noexec,nosuid
-// from the encrypted filesystem /mnt/stateful_partition/encrypted.
-bool MountHelper::MountVarAndHomeChronosEncrypted() {
-  base::FilePath mount_enc_log = root_.Append(kMountEncryptedLog);
-  std::string output;
-  int status = platform_->MountEncrypted("", &output);
-  base::AppendToFile(mount_enc_log, output);
-  return status == 0;
-}
-
 // Give mount-encrypted umount 10 times to retry, otherwise
 // it will fail with "device is busy" because lazy umount does not finish
 // clearing all reference points yet. Check crbug.com/p/21345.
@@ -171,24 +149,6 @@ bool MountHelper::UmountVarAndHomeChronosEncrypted() {
   return !ret;
 }
 
-// Bind mount /var and /home/chronos. All function arguments are ignored.
-bool MountHelper::MountVarAndHomeChronosUnencrypted() {
-  if (!base::CreateDirectory(stateful_.Append(kVar))) {
-    return false;
-  }
-
-  if (!platform_->Mount(stateful_.Append("var"), root_.Append(kVar), "",
-                        MS_BIND, "")) {
-    return false;
-  }
-  if (!platform_->Mount(stateful_.Append(kHomeChronos),
-                        root_.Append(kHomeChronos), "", MS_BIND, "")) {
-    platform_->Umount(root_.Append(kVar));
-    return false;
-  }
-  return true;
-}
-
 // Unmount bind mounts for /var and /home/chronos.
 bool MountHelper::UmountVarAndHomeChronosUnencrypted() {
   bool ret = false;
@@ -199,15 +159,6 @@ bool MountHelper::UmountVarAndHomeChronosUnencrypted() {
     ret = true;
   }
   return ret;
-}
-
-bool MountHelper::MountVarAndHomeChronos() {
-  std::optional<bool> encrypted = flags_.encstateful;
-  bool encrypted_state = encrypted.value_or(false);
-  if (encrypted_state) {
-    return MountVarAndHomeChronosEncrypted();
-  }
-  return MountVarAndHomeChronosUnencrypted();
 }
 
 bool MountHelper::DoUmountVarAndHomeChronos() {
@@ -226,18 +177,6 @@ void MountHelper::SetMountStackForTest(
 
 Flags MountHelper::GetFlags() {
   return flags_;
-}
-
-base::FilePath MountHelper::GetRoot() {
-  return root_;
-}
-
-base::FilePath MountHelper::GetStateful() {
-  return stateful_;
-}
-
-Platform* MountHelper::GetPlatform() {
-  return platform_.get();
 }
 
 }  // namespace startup

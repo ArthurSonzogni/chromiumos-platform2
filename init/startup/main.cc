@@ -15,9 +15,7 @@
 #include "init/crossystem.h"
 #include "init/crossystem_impl.h"
 #include "init/startup/chromeos_startup.h"
-#include "init/startup/flags.h"
 #include "init/startup/mount_helper.h"
-#include "init/startup/mount_helper_factory.h"
 #include "init/startup/platform_impl.h"
 
 namespace {
@@ -42,16 +40,13 @@ int main(int argc, char* argv[]) {
   startup::Flags flags;
   startup::ChromeosStartup::ParseFlags(&flags);
   CrosSystemImpl* cros_system = new CrosSystemImpl();
-  startup::MountHelperFactory mount_helper_factory(
-      std::make_unique<startup::Platform>(), cros_system, flags,
-      base::FilePath("/"), base::FilePath(kStatefulPartition),
-      base::FilePath(kLsbRelease));
-  auto mount_helper = mount_helper_factory.Generate();
   auto startup = std::make_unique<startup::ChromeosStartup>(
       std::unique_ptr<CrosSystemImpl>(cros_system), flags, base::FilePath("/"),
       base::FilePath(kStatefulPartition), base::FilePath(kLsbRelease),
       base::FilePath(kProcPath), std::make_unique<startup::Platform>(),
-      std::move(mount_helper));
+      std::make_unique<startup::MountHelper>(
+          std::make_unique<startup::Platform>(), flags, base::FilePath("/"),
+          base::FilePath(kStatefulPartition)));
 
   return startup->Run();
 }

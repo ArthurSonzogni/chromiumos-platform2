@@ -16,10 +16,6 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
-#include <base/strings/string_split.h>
-#include <base/strings/string_util.h>
-#include <brillo/blkdev_utils/lvm.h>
-#include <brillo/key_value_store.h>
 #include <brillo/process/process.h>
 
 #include "init/clobber_state.h"
@@ -27,14 +23,6 @@
 #include "init/crossystem_impl.h"
 #include "init/startup/platform_impl.h"
 #include "init/utils.h"
-
-namespace {
-
-constexpr char kProcCmdLine[] = "proc/cmdline";
-constexpr char kFactoryDir[] = "mnt/stateful_partition/dev_image/factory";
-const size_t kMaxReadSize = 4 * 1024;
-
-}  // namespace
 
 namespace startup {
 
@@ -71,23 +59,6 @@ base::ScopedFD Platform::Open(const base::FilePath& pathname, int flags) {
 // NOLINTNEXTLINE(runtime/int)
 int Platform::Ioctl(int fd, unsigned long request, int* arg1) {
   return ioctl(fd, request, arg1);
-}
-
-int Platform::MountEncrypted(const std::string& arg, std::string* output) {
-  brillo::ProcessImpl mount_enc;
-  base::FilePath file;
-  base::CreateTemporaryFile(&file);
-  mount_enc.AddArg("/usr/sbin/mount-encrypted");
-  if (!arg.empty()) {
-    mount_enc.AddArg(arg);
-  }
-  mount_enc.RedirectOutput(file.value());
-  int status = mount_enc.Run();
-  if (status == 0) {
-    base::ReadFileToString(file, output);
-  }
-  base::DeleteFile(file);
-  return status;
 }
 
 void Platform::BootAlert(const std::string& arg) {
@@ -247,68 +218,6 @@ bool Platform::InDevMode(CrosSystem* cros_system) {
   // a developer image.
   int debug;
   return (cros_system->GetInt("cros_debug", &debug) && debug == 1);
-}
-
-// Determine if the device is using a test image.
-bool IsTestImage(const base::FilePath& lsb_file) {
-  brillo::KeyValueStore store;
-  if (!store.Load(lsb_file)) {
-    PLOG(ERROR) << "Problem parsing " << lsb_file.value();
-    return false;
-  }
-  std::string value;
-  if (!store.GetString("CHROMEOS_RELEASE_TRACK", &value)) {
-    PLOG(ERROR) << "CHROMEOS_RELEASE_TRACK not found in " << lsb_file.value();
-    return false;
-  }
-  return base::StartsWith(value, "test", base::CompareCase::SENSITIVE);
-}
-
-// Return if the device is in factory test mode.
-bool IsFactoryTestMode(CrosSystem* cros_system,
-                       const base::FilePath& base_dir) {
-  // The path to factory enabled tag. If this path exists in a debug build,
-  // we assume factory test mode.
-  base::FilePath factory_dir = base_dir.Append(kFactoryDir);
-  base::FilePath factory_tag = factory_dir.Append("enabled");
-  struct stat statbuf;
-  int res;
-  if (cros_system->GetInt("debug_build", &res) && res == 1 &&
-      stat(factory_tag.value().c_str(), &statbuf) == 0 &&
-      S_ISREG(statbuf.st_mode)) {
-    return true;
-  }
-  return false;
-}
-
-// Return if the device is in factory installer mode.
-bool IsFactoryInstallerMode(const base::FilePath& base_dir) {
-  std::string cmdline;
-
-  if (!base::ReadFileToStringWithMaxSize(base_dir.Append(kProcCmdLine),
-                                         &cmdline, kMaxReadSize)) {
-    PLOG(ERROR) << "Failed to read proc command line";
-    return false;
-  }
-
-  if (cmdline.find("cros_factory_install") != std::string::npos) {
-    return true;
-  }
-
-  struct stat statbuf;
-  base::FilePath installer = base_dir.Append("root/.factory_installer");
-  if (stat(installer.value().c_str(), &statbuf) == 0 &&
-      S_ISREG(statbuf.st_mode)) {
-    return true;
-  }
-  return false;
-}
-
-// Return if the device is in either in factory test mode or in factory
-// installer mode.
-bool IsFactoryMode(CrosSystem* cros_system, const base::FilePath& base_dir) {
-  return (IsFactoryTestMode(cros_system, base_dir) ||
-          IsFactoryInstallerMode(base_dir));
 }
 
 }  // namespace startup

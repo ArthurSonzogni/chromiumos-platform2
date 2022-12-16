@@ -15,19 +15,6 @@
 
 namespace startup {
 
-// Determine if the device is using a test image.
-bool IsTestImage(const base::FilePath& lsb_file);
-
-// Determines if the device is in factory test mode.
-bool IsFactoryTestMode(CrosSystem* cros_system, const base::FilePath& base_dir);
-
-// Determines if the device is in factory installer mode.
-bool IsFactoryInstallMode(const base::FilePath& base_dir);
-
-// Determines if the device is in either factory test mode or in factory
-// installer mode.
-bool IsFactoryMode(CrosSystem* cros_system, const base::FilePath& base_dir);
-
 // Platform defines functions that interface with the filesystem and
 // other utilities that we want to override for testing. That includes
 // wrappers functions for syscalls.
@@ -62,9 +49,6 @@ class Platform {
   // NOLINTNEXTLINE(runtime/int)
   virtual int Ioctl(int fd, unsigned long request, int* arg1);
 
-  // Runs mount-encrypted with the given arg.
-  virtual int MountEncrypted(const std::string& arg, std::string* output);
-
   // Runs chromeos-boot-alert with the given arg.
   virtual void BootAlert(const std::string& arg);
 
@@ -93,7 +77,7 @@ class Platform {
   virtual void RunProcess(const base::FilePath& cmd_path);
 
   // Runs crash_reporter with the given args.
-  virtual void AddClobberCrashReport(const std::vector<std::string> args);
+  void AddClobberCrashReport(const std::vector<std::string> args);
 
   // Runs e2fsck for the given device.
   void ReplayExt4Journal(const base::FilePath& dev);
