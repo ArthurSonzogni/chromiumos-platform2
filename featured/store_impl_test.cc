@@ -12,7 +12,7 @@
 
 #include "bootlockbox-client/bootlockbox/boot_lockbox_client.h"
 // Note that boot_lockbox_rpc.pb.h have to be included before
-// dbus_adaptors/org.chromium.BootLockboxInterface.h because it is used in
+// bootlockbox-client/bootlockbox/dbus-proxies.h because it is used in
 // there.
 #include "bootlockbox/proto_bindings/boot_lockbox_rpc.pb.h"
 #include "featured/featured.pb.h"
