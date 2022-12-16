@@ -45,6 +45,10 @@ class SWPrivacySwitchStreamManipulator : public StreamManipulator {
                                      int width,
                                      int height);
 
+  // Used to notify an error to the framework when failing to fill the frame
+  // with black.
+  void NotifyBufferError(uint32_t frame_number, camera3_stream_t* stream);
+
   // Contains the current software privacy switch state.
   RuntimeOptions* runtime_options_;
 

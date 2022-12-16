@@ -96,6 +96,7 @@ bool SWPrivacySwitchStreamManipulator::ProcessCaptureResult(
     if (!WaitOnAndClearReleaseFence(buffer, kSyncWaitTimeoutMs)) {
       LOGF(ERROR) << "Timed out waiting for acquiring output buffer";
       buffer.status = CAMERA3_BUFFER_STATUS_ERROR;
+      NotifyBufferError(result.frame_number(), buffer.stream);
       continue;
     }
     buffer_handle_t handle = *buffer.buffer;
@@ -124,6 +125,7 @@ bool SWPrivacySwitchStreamManipulator::ProcessCaptureResult(
                   << ", width = " << buffer.stream->width
                   << ", height = " << buffer.stream->height;
       buffer.status = CAMERA3_BUFFER_STATUS_ERROR;
+      NotifyBufferError(result.frame_number(), buffer.stream);
     }
   }
 
@@ -187,6 +189,23 @@ bool SWPrivacySwitchStreamManipulator::FillInFrameWithBlackJpegImage(
   memcpy(plane.addr + plane.size - sizeof(blob), &blob, sizeof(blob));
 
   return true;
+}
+
+void SWPrivacySwitchStreamManipulator::NotifyBufferError(
+    uint32_t frame_number, camera3_stream_t* stream) {
+  camera3_notify_msg_t msg = {
+      .type = CAMERA3_MSG_ERROR,
+      .message =
+          {
+              .error =
+                  {
+                      .frame_number = frame_number,
+                      .error_stream = stream,
+                      .error_code = CAMERA3_MSG_ERROR_BUFFER,
+                  },
+          },
+  };
+  Notify(std::move(msg));
 }
 
 }  // namespace cros
