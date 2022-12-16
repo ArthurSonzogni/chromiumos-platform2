@@ -2547,8 +2547,11 @@ void Cellular::UpdateHomeProvider(const MobileOperatorInfo* operator_info) {
     home_provider_ = home_provider;
     adaptor()->EmitStringmapChanged(kHomeProviderProperty, home_provider_);
   }
-
-  ApnList apn_list;
+  // On the new APN UI revamp, modem and modb APNs are not shown to
+  // the user and the behavior of modem APNs should not be altered.
+  bool merge_similar_apns =
+      !(service_ && service_->user_apn_list().has_value());
+  ApnList apn_list(merge_similar_apns);
   // TODO(b:180004055): remove this when we have captive portal checks that
   // mark APNs as bad and can skip the null APN for data connections
   if (manufacturer_ != kQ6V5ModemManufacturerName)

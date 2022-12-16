@@ -24,6 +24,9 @@ namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kCellular;
 }  // namespace Logging
 
+ApnList::ApnList(bool merge_similar_apns)
+    : merge_similar_apns_(merge_similar_apns) {}
+
 void ApnList::AddApns(const std::vector<MobileOperatorInfo::MobileAPN>& apns,
                       ApnSource source) {
   for (const auto& mobile_apn : apns)
@@ -39,43 +42,52 @@ ApnList::ApnIndexKey ApnList::GetKey(
 
 void ApnList::AddApn(const MobileOperatorInfo::MobileAPN& mobile_apn,
                      ApnSource source) {
-  ApnList::ApnIndexKey index = GetKey(mobile_apn);
-  if (!base::Contains(apn_index_, index)) {
+  // TODO(b/251512775): Remove the ApnIndexKey when the revamp UI APN
+  // logic becomes default. The key will no longer be needed at that
+  // point since the modem and modb APNs will be treated as different
+  // in every case.
+  Stringmap* props;
+  if (merge_similar_apns_) {
+    ApnList::ApnIndexKey index = GetKey(mobile_apn);
+    if (!base::Contains(apn_index_, index)) {
+      apn_dict_list_.emplace_back();
+      apn_index_[index] = apn_dict_list_.size() - 1;
+    }
+    props = &apn_dict_list_.at(apn_index_[index]);
+  } else {
     apn_dict_list_.emplace_back();
-    apn_index_[index] = apn_dict_list_.size() - 1;
+    props = &apn_dict_list_.back();
   }
-
-  Stringmap& props = apn_dict_list_.at(apn_index_[index]);
   if (!mobile_apn.apn.empty())
-    props[kApnProperty] = mobile_apn.apn;
+    (*props)[kApnProperty] = mobile_apn.apn;
   if (!mobile_apn.username.empty())
-    props[kApnUsernameProperty] = mobile_apn.username;
+    (*props)[kApnUsernameProperty] = mobile_apn.username;
   if (!mobile_apn.password.empty())
-    props[kApnPasswordProperty] = mobile_apn.password;
+    (*props)[kApnPasswordProperty] = mobile_apn.password;
   if (!mobile_apn.authentication.empty())
-    props[kApnAuthenticationProperty] = mobile_apn.authentication;
+    (*props)[kApnAuthenticationProperty] = mobile_apn.authentication;
   if (!mobile_apn.ip_type.empty())
-    props[kApnIpTypeProperty] = mobile_apn.ip_type;
+    (*props)[kApnIpTypeProperty] = mobile_apn.ip_type;
 
-  props[cellular::kApnVersionProperty] =
+  (*props)[cellular::kApnVersionProperty] =
       base::NumberToString(cellular::kCurrentApnCacheVersion);
   // Find the first localized and non-localized name, if any.
   if (!mobile_apn.operator_name_list.empty())
-    props[kApnNameProperty] = mobile_apn.operator_name_list[0].name;
+    (*props)[kApnNameProperty] = mobile_apn.operator_name_list[0].name;
 
-  props[kApnTypesProperty] = ApnList::JoinApnTypes(
+  (*props)[kApnTypesProperty] = ApnList::JoinApnTypes(
       {mobile_apn.apn_types.begin(), mobile_apn.apn_types.end()});
   switch (source) {
     case ApnSource::kModb:
-      props[kApnSourceProperty] = cellular::kApnSourceMoDb;
+      (*props)[kApnSourceProperty] = cellular::kApnSourceMoDb;
       break;
     case ApnSource::kModem:
-      props[kApnSourceProperty] = cellular::kApnSourceModem;
+      (*props)[kApnSourceProperty] = cellular::kApnSourceModem;
       break;
   }
   for (const auto& lname : mobile_apn.operator_name_list) {
     if (!lname.language.empty())
-      props[kApnLocalizedNameProperty] = lname.name;
+      (*props)[kApnLocalizedNameProperty] = lname.name;
   }
 }
 

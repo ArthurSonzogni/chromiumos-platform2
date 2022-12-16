@@ -18,7 +18,7 @@ namespace shill {
 
 class ApnList {
  public:
-  ApnList() = default;
+  explicit ApnList(bool merge_similar_apns);
   ~ApnList() = default;
 
   enum class ApnSource { kModb, kModem };
@@ -45,6 +45,7 @@ class ApnList {
   static std::string GetApnTypeString(enum ApnType apn_type);
   Stringmaps apn_dict_list_;
   std::map<ApnIndexKey, int> apn_index_;
+  bool merge_similar_apns_;
 
   ApnList(const ApnList&) = delete;
   ApnList& operator=(const ApnList&) = delete;
