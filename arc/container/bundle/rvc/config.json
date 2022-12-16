@@ -624,6 +624,15 @@
 				"gid": 0
 			},
 			{
+				"path": "/dev/fuse",
+				"type": "c",
+				"major": 10,
+				"dynamicMinor": true,
+				"fileMode": 438,
+				"uid": 0,
+				"gid": 0
+			},
+			{
 				"path": "/dev/hwbinder",
 				"type": "c",
 				"major": 10,
