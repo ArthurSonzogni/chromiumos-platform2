@@ -8,6 +8,7 @@
 #include "vtpm/backends/nv_space_manager.h"
 
 #include <string>
+#include <vector>
 
 #include <trunks/tpm_generated.h>
 
@@ -32,6 +33,8 @@ class VekCertManager : public NvSpaceManager {
 
   trunks::TPM_RC GetNameAlgorithm(trunks::TPM_NV_INDEX nv_index,
                                   trunks::TPMI_ALG_HASH& algorithm) override;
+
+  trunks::TPM_RC ListHandles(std::vector<trunks::TPM_HANDLE>& handles) override;
 
  private:
   const trunks::TPM_NV_INDEX nv_index_;

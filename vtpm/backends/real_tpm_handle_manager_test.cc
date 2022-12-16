@@ -8,6 +8,8 @@
 #include <string>
 #include <utility>
 
+#include <gmock/gmock-actions.h>
+#include <gmock/gmock-more-actions.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <trunks/mock_response_serializer.h>
@@ -19,6 +21,7 @@
 #include <base/logging.h>
 
 #include "vtpm/backends/fake_blob.h"
+#include "vtpm/backends/mock_nv_space_manager.h"
 #include "vtpm/backends/scoped_host_key_handle.h"
 
 namespace vtpm {
@@ -26,6 +29,7 @@ namespace vtpm {
 namespace {
 
 using ::testing::_;
+using ::testing::DoAll;
 using ::testing::ElementsAre;
 using ::testing::Invoke;
 using ::testing::Return;
@@ -52,7 +56,8 @@ class RealTpmHandleManagerTest : public testing::Test {
         {kFakeHandle2, &mock_blob_2_},
         {kFakeHandle3, &mock_blob_3_},
     };
-    manager_ = std::make_unique<RealTpmHandleManager>(&trunks_factory_, table);
+    manager_ = std::make_unique<RealTpmHandleManager>(
+        &trunks_factory_, &mock_nv_space_manager_, table);
 
     trunks_factory_.set_tpm_utility(&mock_tpm_utility_);
     trunks_factory_.set_tpm(&mock_tpm_);
@@ -95,6 +100,7 @@ class RealTpmHandleManagerTest : public testing::Test {
   trunks::TrunksFactoryForTest trunks_factory_;
   trunks::MockTpmUtility mock_tpm_utility_;
   trunks::MockTpm mock_tpm_;
+  MockNvSpaceManager mock_nv_space_manager_;
   std::unique_ptr<RealTpmHandleManager> manager_;
 };
 
@@ -106,6 +112,7 @@ TEST_F(RealTpmHandleManagerTest, IsHandleTypeSuppoerted) {
   EXPECT_TRUE(manager_->IsHandleTypeSuppoerted(trunks::TRANSIENT_FIRST));
   EXPECT_TRUE(manager_->IsHandleTypeSuppoerted(trunks::PERMANENT_FIRST));
   EXPECT_TRUE(manager_->IsHandleTypeSuppoerted(trunks::POLICY_SESSION_FIRST));
+  EXPECT_TRUE(manager_->IsHandleTypeSuppoerted(trunks::NV_INDEX_FIRST));
   EXPECT_FALSE(manager_->IsHandleTypeSuppoerted(trunks::PCR_FIRST));
 }
 
@@ -189,6 +196,19 @@ TEST_F(RealTpmHandleManagerTest,
   EXPECT_EQ(
       manager_->GetHandleList(trunks::POLICY_SESSION_FIRST, &found_handles),
       trunks::TPM_RC_HANDLE);
+}
+
+TEST_F(RealTpmHandleManagerTest, GetHandleListNvramHandles) {
+  std::vector<trunks::TPM_HANDLE> expect_result{kFakeHandle1, kFakeHandle3};
+
+  EXPECT_CALL(mock_nv_space_manager_, ListHandles(_))
+      .WillOnce(DoAll(testing::SetArgReferee<0>(expect_result),
+                      Return(trunks::TPM_RC_SUCCESS)));
+
+  std::vector<trunks::TPM_HANDLE> found_handles;
+  EXPECT_EQ(manager_->GetHandleList(trunks::NV_INDEX_FIRST, &found_handles),
+            trunks::TPM_RC_SUCCESS);
+  EXPECT_THAT(found_handles, ElementsAre(kFakeHandle1, kFakeHandle3));
 }
 
 TEST_F(RealTpmHandleManagerTest, TranslateHandleSuccessPersistentHandles) {

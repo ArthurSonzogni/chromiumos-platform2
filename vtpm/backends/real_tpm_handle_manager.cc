@@ -35,12 +35,19 @@ bool IsPolicy(trunks::TPM_HANDLE handle) {
   return (handle & trunks::HR_RANGE_MASK) == (trunks::HR_POLICY_SESSION);
 }
 
+bool IsNvram(trunks::TPM_HANDLE handle) {
+  return (handle & trunks::HR_RANGE_MASK) == (trunks::HR_NV_INDEX);
+}
+
 }  // namespace
 
 RealTpmHandleManager::RealTpmHandleManager(
     trunks::TrunksFactory* trunks_factory,
+    NvSpaceManager* nv_space_manager,
     std::map<trunks::TPM_HANDLE, Blob*> table)
-    : trunks_factory_(trunks_factory), handle_mapping_table_(table) {
+    : trunks_factory_(trunks_factory),
+      nv_space_manager_(nv_space_manager),
+      handle_mapping_table_(table) {
   CHECK(trunks_factory_);
   for (const auto& entry : handle_mapping_table_) {
     DCHECK(IsPersistent(entry.first))
@@ -50,7 +57,7 @@ RealTpmHandleManager::RealTpmHandleManager(
 
 bool RealTpmHandleManager::IsHandleTypeSuppoerted(trunks::TPM_HANDLE handle) {
   return IsTransient(handle) || IsPersistent(handle) || IsPermanent(handle) ||
-         IsPolicy(handle);
+         IsPolicy(handle) || IsNvram(handle);
 }
 
 trunks::TPM_RC RealTpmHandleManager::GetHandleList(
@@ -77,6 +84,8 @@ trunks::TPM_RC RealTpmHandleManager::GetHandleList(
          iter != child_parent_table_.end(); ++iter) {
       found_handles->push_back(iter->first);
     }
+  } else if (IsNvram(starting_handle)) {
+    nv_space_manager_->ListHandles(*found_handles);
   } else {
     return trunks::TPM_RC_HANDLE;
   }

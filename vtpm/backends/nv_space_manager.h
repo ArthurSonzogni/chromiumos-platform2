@@ -6,6 +6,7 @@
 #define VTPM_BACKENDS_NV_SPACE_MANAGER_H_
 
 #include <string>
+#include <vector>
 
 #include <trunks/tpm_generated.h>
 
@@ -41,6 +42,10 @@ class NvSpaceManager {
   // code.
   virtual trunks::TPM_RC GetNameAlgorithm(trunks::TPM_NV_INDEX nv_index,
                                           trunks::TPMI_ALG_HASH& algorithm) = 0;
+
+  // List the managed TPM NV index handles.
+  virtual trunks::TPM_RC ListHandles(
+      std::vector<trunks::TPM_HANDLE>& handles) = 0;
 };
 
 }  // namespace vtpm

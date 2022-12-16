@@ -15,6 +15,7 @@
 #include <trunks/trunks_factory.h>
 
 #include "vtpm/backends/blob.h"
+#include "vtpm/backends/nv_space_manager.h"
 
 namespace vtpm {
 
@@ -24,6 +25,7 @@ class RealTpmHandleManager : public TpmHandleManager {
  public:
   // Constructs an instance. `blob_` is set to table`.
   RealTpmHandleManager(trunks::TrunksFactory* trunks_factory,
+                       NvSpaceManager* nv_space_manager,
                        std::map<trunks::TPM_HANDLE, Blob*> table);
   ~RealTpmHandleManager() override = default;
 
@@ -51,6 +53,9 @@ class RealTpmHandleManager : public TpmHandleManager {
 
  private:
   trunks::TrunksFactory* const trunks_factory_;
+
+  NvSpaceManager* const nv_space_manager_;
+
   // Stores virtual handles and their getter of corresponding data on/from the
   // host TPM.
   std::map<trunks::TPM_HANDLE, Blob*> handle_mapping_table_;

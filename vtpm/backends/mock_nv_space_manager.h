@@ -6,9 +6,12 @@
 #define VTPM_BACKENDS_MOCK_NV_SPACE_MANAGER_H_
 
 #include <string>
+#include <vector>
 
 #include <gmock/gmock.h>
 #include <trunks/tpm_generated.h>
+
+#include "vtpm/backends/nv_space_manager.h"
 
 namespace vtpm {
 
@@ -34,6 +37,11 @@ class MockNvSpaceManager : public NvSpaceManager {
   MOCK_METHOD(trunks::TPM_RC,
               GetNameAlgorithm,
               (trunks::TPM_NV_INDEX, trunks::TPMI_ALG_HASH&),
+              (override));
+
+  MOCK_METHOD(trunks::TPM_RC,
+              ListHandles,
+              (std::vector<trunks::TPM_HANDLE>&),
               (override));
 };
 

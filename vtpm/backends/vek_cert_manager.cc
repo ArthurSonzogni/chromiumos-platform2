@@ -5,6 +5,7 @@
 #include "vtpm/backends/vek_cert_manager.h"
 
 #include <string>
+#include <vector>
 
 #include <base/check.h>
 #include <trunks/tpm_constants.h>
@@ -69,6 +70,12 @@ trunks::TPM_RC VekCertManager::GetNameAlgorithm(
     return trunks::TPM_RC_NV_SPACE;
   }
   algorithm = kNameAlgorithm;
+  return trunks::TPM_RC_SUCCESS;
+}
+
+trunks::TPM_RC VekCertManager::ListHandles(
+    std::vector<trunks::TPM_HANDLE>& handles) {
+  handles.push_back(nv_index_);
   return trunks::TPM_RC_SUCCESS;
 }
 

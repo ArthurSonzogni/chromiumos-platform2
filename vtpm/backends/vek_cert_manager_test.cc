@@ -5,6 +5,7 @@
 #include "vtpm/backends/vek_cert_manager.h"
 
 #include <string>
+#include <vector>
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -21,6 +22,7 @@ constexpr trunks::TPM_NV_INDEX kFakeIndex = 0x00806449;
 
 using ::testing::_;
 using ::testing::DoAll;
+using ::testing::ElementsAre;
 using ::testing::Return;
 using ::testing::SetArgReferee;
 using ::testing::StrictMock;
@@ -107,6 +109,12 @@ TEST_F(VekCertManagerTest, GetNameAlgorithmFailureWrongIndex) {
   trunks::TPMI_ALG_HASH name_algorithm = 0;
   EXPECT_EQ(manager_.GetNameAlgorithm(kFakeIndex + 1, name_algorithm),
             trunks::TPM_RC_NV_SPACE);
+}
+
+TEST_F(VekCertManagerTest, ListHandles) {
+  std::vector<trunks::TPM_HANDLE> handles;
+  EXPECT_EQ(manager_.ListHandles(handles), trunks::TPM_RC_SUCCESS);
+  EXPECT_THAT(handles, ElementsAre(kFakeIndex));
 }
 
 }  // namespace

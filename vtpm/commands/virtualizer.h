@@ -93,8 +93,8 @@ class Virtualizer : public Command {
   std::unique_ptr<CacheableBlob> cacheable_vsrk_;
   std::unique_ptr<CacheableBlob> cacheable_vek_;
   std::unique_ptr<CacheableBlob> cacheable_vek_cert_;
-  std::unique_ptr<RealTpmHandleManager> real_tpm_handle_manager_;
   std::unique_ptr<VekCertManager> vek_cert_manager_;
+  std::unique_ptr<RealTpmHandleManager> real_tpm_handle_manager_;
 
   std::vector<std::unique_ptr<Command>> commands_;
 
