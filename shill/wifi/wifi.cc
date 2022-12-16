@@ -712,6 +712,7 @@ void WiFi::ConnectTo(WiFiService* service, Error* error) {
   SetPendingService(service);
   CHECK(current_service_.get() != pending_service_.get());
 
+  network()->Stop();
   // SelectService here (instead of in LinkEvent, like Ethernet), so
   // that, if we fail to bring up L2, we can attribute failure correctly.
   //

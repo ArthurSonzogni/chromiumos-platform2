@@ -5656,4 +5656,13 @@ TEST_F(WiFiMainTest, GetWiFiPhy) {
   EXPECT_EQ(phy, GetWiFiPhy());
 }
 
+TEST_F(WiFiMainTest, ConnectStopsNetwork) {
+  StartWiFi();
+  SetupConnectedService(RpcIdentifier(""), nullptr, nullptr);
+  EXPECT_CALL(*network(), Stop());
+  MockWiFiServiceRefPtr service = MakeMockService(WiFiSecurity::kNone);
+  InitiateConnect(service);
+  Mock::VerifyAndClearExpectations(network());
+}
+
 }  // namespace shill
