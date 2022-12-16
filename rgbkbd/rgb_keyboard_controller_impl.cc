@@ -23,9 +23,6 @@ RgbKeyboardControllerImpl::~RgbKeyboardControllerImpl() = default;
 uint32_t RgbKeyboardControllerImpl::GetRgbKeyboardCapabilities() {
   if (!capabilities_.has_value()) {
     capabilities_ = keyboard_->GetRgbKeyboardCapabilities();
-    if (capabilities_.value() == RgbKeyboardCapabilities::kIndividualKey) {
-      PopulateRainbowModeMap();
-    }
   }
 
   return static_cast<uint32_t>(capabilities_.value());
@@ -75,11 +72,6 @@ void RgbKeyboardControllerImpl::SetKeyboardClient(RgbKeyboard* keyboard) {
 void RgbKeyboardControllerImpl::SetKeyboardCapabilityForTesting(
     RgbKeyboardCapabilities capability) {
   capabilities_ = capability;
-  if (capabilities_.value() == RgbKeyboardCapabilities::kIndividualKey) {
-    PopulateRainbowModeMap();
-  } else {
-    individual_key_rainbow_mode_map_.clear();
-  }
 }
 
 const std::vector<uint32_t>& RgbKeyboardControllerImpl::GetZone(
@@ -141,8 +133,11 @@ void RgbKeyboardControllerImpl::SetZoneColor(int zone,
     LOG(ERROR) << "Attempted to set color for invalid zone: " << zone;
     return;
   }
-  // TODO(swifton): fix Caps Lock handling.
+
   for (uint32_t led : GetZone(zone)) {
+    if (capabilities_ == RgbKeyboardCapabilities::kIndividualKey) {
+      individual_key_background_map_.insert_or_assign(led, Color(r, g, b));
+    }
     // Check if caps lock is enabled to avoid overriding the caps lock
     // highlight keys.
     if (caps_lock_enabled_ && IsShiftKey(led)) {
@@ -197,39 +192,36 @@ std::vector<KeyColor> RgbKeyboardControllerImpl::
   return vec;
 }
 
-Color RgbKeyboardControllerImpl::GetCurrentCapsLockColor(
-    uint32_t key_idx) const {
+Color RgbKeyboardControllerImpl::GetCurrentCapsLockColor(uint32_t key) const {
   if (caps_lock_enabled_) {
     return GetCapsLockHighlightColor();
   }
 
-  if (background_type_ == BackgroundType::kStaticRainbow) {
-    return GetRainbowColorForKey(key_idx);
+  if (background_type_ == BackgroundType::kStaticRainbow ||
+      background_type_ == BackgroundType::kStaticZones) {
+    return GetBackgroundColorForKey(key);
   }
 
   return background_color_;
 }
 
+// TODO(swifton): fix the case when the left zone is white, the right zone is
+// blue, and we can't use either of these colors to highlight Shift.
 Color RgbKeyboardControllerImpl::GetCapsLockHighlightColor() const {
   return (background_color_ == kWhiteBackgroundColor)
              ? kCapsLockHighlightAlternate
              : kCapsLockHighlightDefault;
 }
 
-Color RgbKeyboardControllerImpl::GetRainbowColorForKey(uint32_t key_idx) const {
+Color RgbKeyboardControllerImpl::GetBackgroundColorForKey(uint32_t key) const {
   DCHECK(capabilities_ == RgbKeyboardCapabilities::kIndividualKey);
-  return individual_key_rainbow_mode_map_.at(key_idx);
-}
-
-void RgbKeyboardControllerImpl::PopulateRainbowModeMap() {
-  std::vector<std::pair<uint32_t, Color>> vec;
-  vec.reserve(std::size(kRainbowModeIndividualKey));
-  for (auto i = 0; i < std::size(kRainbowModeIndividualKey); i++) {
-    vec.push_back(std::make_pair(kRainbowModeIndividualKey[i].key,
-                                 kRainbowModeIndividualKey[i].color));
+  auto entry = individual_key_background_map_.find(key);
+  if (entry == individual_key_background_map_.end()) {
+    LOG(ERROR) << "The background color for key " << key << " wasn't set.";
+    return kWhiteBackgroundColor;
   }
-  individual_key_rainbow_mode_map_ =
-      base::flat_map<uint32_t, Color>(std::move(vec));
+
+  return entry->second;
 }
 
 bool RgbKeyboardControllerImpl::IsZonedKeyboard() const {
