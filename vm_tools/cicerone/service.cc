@@ -3931,11 +3931,13 @@ std::unique_ptr<dbus::Response> Service::ListRunningContainers(
     if (vm.first.first != request.owner_id()) {
       continue;
     }
-    for (const auto& container_name : vm.second->GetContainerNames()) {
+    for (const auto& container_entry : vm.second->GetContainers()) {
       auto* info = response.add_containers();
       info->set_vm_name(vm.first.second);
-      info->set_container_name(container_name);
-      auto* os_release = vm.second->GetOsReleaseForContainer(container_name);
+      info->set_container_name(container_entry.second->name());
+      info->set_container_token(container_entry.second->token());
+      auto* os_release =
+          vm.second->GetOsReleaseForContainer(container_entry.second->name());
       if (os_release) {
         info->mutable_os_release()->MergeFrom(*os_release);
       }

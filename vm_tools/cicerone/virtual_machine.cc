@@ -268,6 +268,11 @@ std::vector<std::string> VirtualMachine::GetContainerNames() {
   return retval;
 }
 
+const std::map<std::string, std::unique_ptr<Container>>&
+VirtualMachine::GetContainers() {
+  return containers_;
+}
+
 VirtualMachine::CreateLxdContainerStatus VirtualMachine::CreateLxdContainer(
     const std::string& container_name,
     const std::string& image_server,

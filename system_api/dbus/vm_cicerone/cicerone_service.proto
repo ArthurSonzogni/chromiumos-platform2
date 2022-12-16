@@ -1830,6 +1830,9 @@ message ContainerInfo {
 
   // OPTIONAL: If using LXD, information about the OS.
   OsRelease os_release = 3;
+
+  // The token for the container. An empty string if not available.
+  string container_token = 4;
 }
 
 // Sent by chrome to query the list of containers and VMs that Cicerone knows

@@ -378,6 +378,9 @@ class VirtualMachine {
   // Gets a list of all the active container names in this VM.
   std::vector<std::string> GetContainerNames();
 
+  // Gets a reference to the mapping of tokens to active containers in this VM.
+  const std::map<std::string, std::unique_ptr<Container>>& GetContainers();
+
   bool GetTremplinDebugInfo(std::string* out);
 
  private:
