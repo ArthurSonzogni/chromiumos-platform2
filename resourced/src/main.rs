@@ -25,6 +25,9 @@ const IDENT: &str = "resourced";
 
 fn main() -> Result<()> {
     install_memfd_handler();
+
+    // Initialize syslog. The default log level is info (debug! and trace! are ignored).
+    // You can change the log level with log::set_max_level().
     if let Err(e) = syslog::init(IDENT.to_string(), false /* log_to_stderr */) {
         bail!("Failed to initiailize syslog: {}", e);
     }

@@ -17,6 +17,7 @@ use dbus::nonblock::{Proxy, SyncConnection};
 use dbus_crossroads::{Crossroads, IfaceBuilder, IfaceToken, MethodErr};
 use dbus_tokio::connection;
 use libchromeos::sys::error;
+use log::LevelFilter;
 
 use crate::common;
 use crate::config;
@@ -320,6 +321,24 @@ fn register_interface(cr: &mut Crossroads, conn: Arc<SyncConnection>) -> IfaceTo
                 }
             }
         });
+        b.method(
+            "SetLogLevel",
+            ("level",),
+            (),
+            move |_, _, (level_raw,): (u8,)| {
+                let level = match level_raw {
+                    0 => LevelFilter::Off,
+                    1 => LevelFilter::Error,
+                    2 => LevelFilter::Warn,
+                    3 => LevelFilter::Info,
+                    4 => LevelFilter::Debug,
+                    5 => LevelFilter::Trace,
+                    _ => return Err(MethodErr::failed("Unsupported log level value")),
+                };
+                log::set_max_level(level);
+                Ok(())
+            },
+        );
 
         // Advertise the signals.
         b.signal::<(u8, u64), _>(
