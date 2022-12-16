@@ -76,7 +76,6 @@ class RgbKeyboardControllerImpl : public RgbKeyboardController,
   Color GetRainbowZoneColor(int zone) const;
 
   Color GetCurrentCapsLockColor(uint32_t key) const;
-  Color GetCapsLockHighlightColor() const;
   Color GetBackgroundColorForKey(uint32_t key) const;
   void PopulateRainbowModeMap();
   bool IsZonedKeyboard() const;

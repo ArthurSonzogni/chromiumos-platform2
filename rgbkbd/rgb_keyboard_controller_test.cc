@@ -122,12 +122,11 @@ TEST_F(RgbKeyboardControllerTest, SetCapabilityFourZoneFortyLed) {
             controller_->GetRgbKeyboardCapabilities());
 }
 
-TEST_F(RgbKeyboardControllerTest, SetCapsLockStateWithDefaultHighlight) {
+TEST_F(RgbKeyboardControllerTest, SetCapsLockState) {
   controller_->SetKeyboardCapabilityForTesting(
       RgbKeyboardCapabilities::kIndividualKey);
   EXPECT_FALSE(controller_->IsCapsLockEnabledForTesting());
-  // Set the background color to something other than |kWhiteBackgroundColor|
-  // to ensure the default caps lock highlight color is selected.
+  // Set the background color.
   const Color expected_color(/*r=*/100, /*g=*/150, /*b=*/200);
   controller_->SetStaticBackgroundColor(expected_color.r, expected_color.g,
                                         expected_color.b);
@@ -135,8 +134,8 @@ TEST_F(RgbKeyboardControllerTest, SetCapsLockStateWithDefaultHighlight) {
   controller_->SetCapsLockState(/*enabled=*/true);
   EXPECT_TRUE(controller_->IsCapsLockEnabledForTesting());
   const std::vector<KeyColor> caps_lock_colors = {
-      {kLeftShiftKey, kCapsLockHighlightDefault},
-      {kRightShiftKey, kCapsLockHighlightDefault}};
+      {kLeftShiftKey, kCapsLockHighlight},
+      {kRightShiftKey, kCapsLockHighlight}};
   ValidateLog(std::move(caps_lock_colors));
 
   // Disable caps lock and verify that the background color is restored.
@@ -147,21 +146,6 @@ TEST_F(RgbKeyboardControllerTest, SetCapsLockStateWithDefaultHighlight) {
 
   EXPECT_FALSE(controller_->IsCapsLockEnabledForTesting());
   ValidateLog(std::move(default_colors));
-}
-
-TEST_F(RgbKeyboardControllerTest, SetCapsLockStateWithAlternateHighlight) {
-  controller_->SetKeyboardCapabilityForTesting(
-      RgbKeyboardCapabilities::kIndividualKey);
-  EXPECT_FALSE(controller_->IsCapsLockEnabledForTesting());
-  EXPECT_TRUE(logger_->ResetLog());
-  controller_->SetCapsLockState(/*enabled=*/true);
-  EXPECT_TRUE(controller_->IsCapsLockEnabledForTesting());
-  // Background color defaults to kWhiteBackgroundColor so expect the alternate
-  // caps lock highlight color to be used.
-  const std::vector<KeyColor> caps_lock_colors = {
-      {kLeftShiftKey, kCapsLockHighlightAlternate},
-      {kRightShiftKey, kCapsLockHighlightAlternate}};
-  ValidateLog(std::move(caps_lock_colors));
 }
 
 TEST_F(RgbKeyboardControllerTest, SetRainbowModeFourZoneFortyLed) {
@@ -233,8 +217,8 @@ TEST_F(RgbKeyboardControllerTest, SetStaticBackgroundColorWithCapsLock) {
   EXPECT_TRUE(controller_->IsCapsLockEnabledForTesting());
 
   std::string shift_key_logs =
-      CreateSetKeyColorLogEntry({kLeftShiftKey, kCapsLockHighlightAlternate}) +
-      CreateSetKeyColorLogEntry({kRightShiftKey, kCapsLockHighlightAlternate});
+      CreateSetKeyColorLogEntry({kLeftShiftKey, kCapsLockHighlight}) +
+      CreateSetKeyColorLogEntry({kRightShiftKey, kCapsLockHighlight});
 
   ValidateLog(shift_key_logs);
   EXPECT_TRUE(logger_->ResetLog());
@@ -245,11 +229,10 @@ TEST_F(RgbKeyboardControllerTest, SetStaticBackgroundColorWithCapsLock) {
                                         expected_color.b);
 
   // Since Capslock was enabled, it is re-highlighted when the background is
-  // set. Capslock is not set to the default highlight color since the
-  // background is no longer the default white color.
+  // set.
   shift_key_logs =
-      CreateSetKeyColorLogEntry({kLeftShiftKey, kCapsLockHighlightDefault}) +
-      CreateSetKeyColorLogEntry({kRightShiftKey, kCapsLockHighlightDefault});
+      CreateSetKeyColorLogEntry({kLeftShiftKey, kCapsLockHighlight}) +
+      CreateSetKeyColorLogEntry({kRightShiftKey, kCapsLockHighlight});
   const std::string background_log =
       CreateSetAllKeyColorsLogEntry(expected_color);
   ValidateLog(background_log + shift_key_logs);
@@ -372,8 +355,8 @@ TEST_F(RgbKeyboardControllerTest, ReinitializeSingleColorCapsLockOn) {
   // Expect the colors to be set to solid color + highlighted Shifts after
   // reinitialization.
   const std::string shift_key_logs =
-      CreateSetKeyColorLogEntry({kLeftShiftKey, kCapsLockHighlightDefault}) +
-      CreateSetKeyColorLogEntry({kRightShiftKey, kCapsLockHighlightDefault});
+      CreateSetKeyColorLogEntry({kLeftShiftKey, kCapsLockHighlight}) +
+      CreateSetKeyColorLogEntry({kRightShiftKey, kCapsLockHighlight});
   const std::string background_log =
       CreateSetAllKeyColorsLogEntry(expected_color);
   ValidateLog(shift_key_logs + background_log + shift_key_logs);
@@ -636,11 +619,11 @@ TEST_F(RgbKeyboardControllerTest, ReinitializeZonesCapsLockOn) {
 
   controller_->ReinitializeOnDeviceReconnected();
 
-  // Expect the colors of zone 2 to be set + default color Shifts after
+  // Expect the colors of zone 2 to be set + highlighted Shifts after
   // reinitialization.
   const std::string shift_key_logs =
-      CreateSetKeyColorLogEntry({kLeftShiftKey, kCapsLockHighlightAlternate}) +
-      CreateSetKeyColorLogEntry({kRightShiftKey, kCapsLockHighlightAlternate});
+      CreateSetKeyColorLogEntry({kLeftShiftKey, kCapsLockHighlight}) +
+      CreateSetKeyColorLogEntry({kRightShiftKey, kCapsLockHighlight});
   ValidateLog(
       shift_key_logs +
       CreateIndividualKeyZoneColorLogEntry(expected_zone_1, expected_color_1,
