@@ -420,24 +420,7 @@ Status StorageTpm2::Lock(Space space, LockOptions options) {
         .Wrap(std::move(err));
   }
 
-  RETURN_IF_ERROR(MakeStatus<TPMNvramError>(reply.result()));
-
-  ASSIGN_OR_RETURN(
-      const DetailSpaceInfo& detail_info,
-      GetDetailSpaceInfo(backend_.GetProxy().GetTpmNvram(), space_info),
-      _.WithStatus<TPMError>("Failed to get detail space info"));
-
-  if (options.read_lock && !detail_info.is_read_locked) {
-    return MakeStatus<TPMError>("Space did not read lock as expected",
-                                TPMRetryAction::kNoRetry);
-  }
-
-  if (options.write_lock && !detail_info.is_write_locked) {
-    return MakeStatus<TPMError>("Space did not write lock as expected",
-                                TPMRetryAction::kNoRetry);
-  }
-
-  return OkStatus();
+  return MakeStatus<TPMNvramError>(reply.result());
 }
 
 Status StorageTpm2::Destroy(Space space) {

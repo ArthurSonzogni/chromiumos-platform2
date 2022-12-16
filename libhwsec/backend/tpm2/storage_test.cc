@@ -222,15 +222,6 @@ TEST_F(BackendStorageTpm2Test, Store) {
   EXPECT_CALL(proxy_->GetMock().tpm_nvram, LockSpace(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(lock_reply), Return(true)));
 
-  tpm_manager::GetSpaceInfoReply info_reply;
-  info_reply.set_result(NvramResult::NVRAM_RESULT_SUCCESS);
-  info_reply.set_size(10);
-  info_reply.set_is_read_locked(false);
-  info_reply.set_is_write_locked(true);
-  info_reply.add_attributes(NvramSpaceAttribute::NVRAM_PERSISTENT_WRITE_LOCK);
-  EXPECT_CALL(proxy_->GetMock().tpm_nvram, GetSpaceInfo(_, _, _, _))
-      .WillOnce(DoAll(SetArgPointee<1>(info_reply), Return(true)));
-
   EXPECT_THAT(middleware_->CallSync<&Backend::Storage::Store>(
                   Space::kInstallAttributes, brillo::BlobFromString(kFakeData)),
               IsOk());
@@ -241,17 +232,6 @@ TEST_F(BackendStorageTpm2Test, Lock) {
   lock_reply.set_result(NvramResult::NVRAM_RESULT_SUCCESS);
   EXPECT_CALL(proxy_->GetMock().tpm_nvram, LockSpace(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(lock_reply), Return(true)));
-
-  tpm_manager::GetSpaceInfoReply info_reply;
-  info_reply.set_result(NvramResult::NVRAM_RESULT_SUCCESS);
-  info_reply.set_size(10);
-  info_reply.set_is_read_locked(false);
-  info_reply.set_is_write_locked(true);
-  info_reply.add_attributes(NvramSpaceAttribute::NVRAM_READ_AUTHORIZATION);
-  info_reply.add_attributes(NvramSpaceAttribute::NVRAM_BOOT_WRITE_LOCK);
-  info_reply.add_attributes(NvramSpaceAttribute::NVRAM_WRITE_AUTHORIZATION);
-  EXPECT_CALL(proxy_->GetMock().tpm_nvram, GetSpaceInfo(_, _, _, _))
-      .WillOnce(DoAll(SetArgPointee<1>(info_reply), Return(true)));
 
   EXPECT_THAT(middleware_->CallSync<&Backend::Storage::Lock>(
                   Space::kBootlockbox,
