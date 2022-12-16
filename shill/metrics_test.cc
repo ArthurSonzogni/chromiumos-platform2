@@ -1195,6 +1195,62 @@ TEST_F(MetricsTest, WiFiLinkQualityReportComparison) {
   EXPECT_EQ(r1, r2);
   r2.tx.bitrate = 18000;
   EXPECT_NE(r1, r2);
+
+  r1 = {};
+  EXPECT_EQ(r1.bt_enabled, false);
+  r2 = {};
+  r1.bt_enabled = true;
+  r2.bt_enabled = true;
+  EXPECT_EQ(r1, r2);
+  r2.bt_enabled = false;
+  EXPECT_NE(r1, r2);
+
+  r1 = {};
+  EXPECT_EQ(r1.bt_stack, Metrics::kBTStackUnknown);
+  r2 = {};
+  r1.bt_stack = Metrics::kBTStackFloss;
+  r2.bt_stack = Metrics::kBTStackFloss;
+  EXPECT_EQ(r1, r2);
+  r2.bt_stack = Metrics::kBTStackBlueZ;
+  EXPECT_NE(r1, r2);
+
+  r1 = {};
+  EXPECT_EQ(r1.bt_hfp, Metrics::kBTProfileConnectionStateInvalid);
+  r2 = {};
+  r1.bt_hfp = Metrics::kBTProfileConnectionStateConnected;
+  r2.bt_hfp = Metrics::kBTProfileConnectionStateConnected;
+  EXPECT_EQ(r1, r2);
+  r2.bt_hfp = Metrics::kBTProfileConnectionStateDisconnecting;
+  EXPECT_NE(r1, r2);
+
+  r1 = {};
+  EXPECT_EQ(r1.bt_a2dp, Metrics::kBTProfileConnectionStateInvalid);
+  r2 = {};
+  r1.bt_a2dp = Metrics::kBTProfileConnectionStateConnecting;
+  r2.bt_a2dp = Metrics::kBTProfileConnectionStateConnecting;
+  EXPECT_EQ(r1, r2);
+  r2.bt_a2dp = Metrics::kBTProfileConnectionStateConnected;
+  EXPECT_NE(r1, r2);
+
+  r1 = {};
+  EXPECT_EQ(r1.bt_active_scanning, false);
+  r2 = {};
+  r1.bt_active_scanning = true;
+  r2.bt_active_scanning = true;
+  EXPECT_EQ(r1, r2);
+  r2.bt_active_scanning = false;
+  EXPECT_NE(r1, r2);
+}
+
+TEST_F(MetricsTest, BTProfileConnectionStateIntegerValues) {
+  // Integer values are interpreted by the server-side pipeline, ensure that
+  // they are not changed over time.
+  EXPECT_EQ(Metrics::kBTProfileConnectionStateInvalid, 0x7FFFFFFE);
+  EXPECT_EQ(Metrics::kBTProfileConnectionStateDisconnected, 0);
+  EXPECT_EQ(Metrics::kBTProfileConnectionStateDisconnecting, 1);
+  EXPECT_EQ(Metrics::kBTProfileConnectionStateConnecting, 2);
+  EXPECT_EQ(Metrics::kBTProfileConnectionStateConnected, 3);
+  EXPECT_EQ(Metrics::kBTProfileConnectionStateActive, 4);
 }
 
 #ifndef NDEBUG

@@ -12,7 +12,10 @@
 #include <chromeos/dbus/service_constants.h>
 
 #if !defined(DISABLE_FLOSS)
+#include "shill/bluetooth/bluetooth_adapter_proxy_interface.h"
 #include "shill/bluetooth/bluetooth_bluez_proxy_interface.h"
+#include "shill/bluetooth/bluetooth_manager_proxy_interface.h"
+#include "shill/dbus/bluetooth_adapter_proxy.h"
 #include "shill/dbus/bluetooth_bluez_proxy.h"
 #include "shill/dbus/bluetooth_manager_proxy.h"
 #endif  // DISABLE_FLOSS
@@ -259,6 +262,11 @@ std::unique_ptr<mm1::SimProxyInterface> DBusControl::CreateMM1SimProxy(
 std::unique_ptr<BluetoothManagerProxyInterface>
 DBusControl::CreateBluetoothManagerProxy() {
   return std::make_unique<BluetoothManagerProxy>(proxy_bus_);
+}
+
+std::unique_ptr<BluetoothAdapterProxyInterface>
+DBusControl::CreateBluetoothAdapterProxy(int32_t hci) {
+  return std::make_unique<BluetoothAdapterProxy>(proxy_bus_, hci);
 }
 
 std::unique_ptr<BluetoothBlueZProxyInterface>

@@ -4,6 +4,8 @@
 
 #include "shill/wifi/wifi_metrics_utils.h"
 
+#include <vector>
+
 #include <gtest/gtest.h>
 
 #include "shill/metrics.h"
@@ -37,6 +39,31 @@ TEST(WiFiMetricsUtilsTest, CanNotReportAdapterMAX3) {
   // That device is not a network adapter, won't ever be in the allowlist.
   EXPECT_FALSE(WiFiMetricsUtils::CanReportAdapterInfo(
       Metrics::WiFiAdapterInfo{0x1bbf, 0x0003, -1}));
+}
+
+TEST(WiFiMetricsUtilsTest, BTProfileConversion) {
+  std::vector<enum Metrics::BTProfileConnectionState> converted{
+      WiFiMetricsUtils::ConvertBTProfileConnectionState(
+          BluetoothManagerInterface::BTProfileConnectionState::kDisconnected),
+      WiFiMetricsUtils::ConvertBTProfileConnectionState(
+          BluetoothManagerInterface::BTProfileConnectionState::kDisconnecting),
+      WiFiMetricsUtils::ConvertBTProfileConnectionState(
+          BluetoothManagerInterface::BTProfileConnectionState::kConnecting),
+      WiFiMetricsUtils::ConvertBTProfileConnectionState(
+          BluetoothManagerInterface::BTProfileConnectionState::kConnected),
+      WiFiMetricsUtils::ConvertBTProfileConnectionState(
+          BluetoothManagerInterface::BTProfileConnectionState::kActive),
+      WiFiMetricsUtils::ConvertBTProfileConnectionState(
+          BluetoothManagerInterface::BTProfileConnectionState::kInvalid),
+  };
+  std::vector<enum Metrics::BTProfileConnectionState> expected{
+      Metrics::kBTProfileConnectionStateDisconnected,
+      Metrics::kBTProfileConnectionStateDisconnecting,
+      Metrics::kBTProfileConnectionStateConnecting,
+      Metrics::kBTProfileConnectionStateConnected,
+      Metrics::kBTProfileConnectionStateActive,
+      Metrics::kBTProfileConnectionStateInvalid};
+  EXPECT_EQ(converted, expected);
 }
 
 }  // namespace shill

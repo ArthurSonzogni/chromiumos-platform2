@@ -5,9 +5,11 @@
 #ifndef SHILL_DBUS_BLUETOOTH_MANAGER_PROXY_H_
 #define SHILL_DBUS_BLUETOOTH_MANAGER_PROXY_H_
 
+#include <cstdint>
 #include <memory>
-#include <string>
 #include <vector>
+
+#include <dbus/dbus.h>
 
 #include "bluetooth/dbus-proxies.h"
 #include "shill/bluetooth/bluetooth_manager_interface.h"
@@ -24,9 +26,12 @@ class BluetoothManagerProxy : public BluetoothManagerProxyInterface {
   ~BluetoothManagerProxy() override = default;
 
   bool GetAvailableAdapters(
+      bool force_query,
       bool* is_floss,
       std::vector<BluetoothManagerInterface::BTAdapterWithEnabled>* adapters)
       const override;
+
+  bool GetDefaultAdapter(int32_t* hci) const override;
 
  private:
   // Query BT manager to know if BT uses Floss or not. Returns true if the query

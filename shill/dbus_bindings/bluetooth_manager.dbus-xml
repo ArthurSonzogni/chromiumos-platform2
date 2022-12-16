@@ -10,5 +10,8 @@
     <method name="GetAvailableAdapters">
       <arg name="AdapterWithEnabled" direction="out" type="aa{sv}"/>
     </method>
+    <method name="GetDefaultAdapter">
+      <arg name="hci" direction="out" type="i"/>
+    </method>
   </interface>
 </node>

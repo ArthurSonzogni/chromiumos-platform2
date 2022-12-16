@@ -67,6 +67,7 @@
 #include "shill/wifi/wifi_cqm.h"
 #include "shill/wifi/wifi_endpoint.h"
 #include "shill/wifi/wifi_link_statistics.h"
+#include "shill/wifi/wifi_metrics_utils.h"
 #include "shill/wifi/wifi_phy.h"
 #include "shill/wifi/wifi_provider.h"
 #include "shill/wifi/wifi_service.h"
@@ -3769,6 +3770,56 @@ void WiFi::RequestStationInfo(WiFiLinkStatistics::Trigger trigger) {
                                 kRequestStationInfoPeriod);
 }
 
+void WiFi::AddBTStateToLinkQualityReport(
+    Metrics::WiFiLinkQualityReport& report) const {
+#if !defined(DISABLE_FLOSS)
+  BluetoothManagerInterface* bt_manager = manager()->bluetooth_manager();
+  if (!bt_manager) {
+    LOG(ERROR) << link_name() << ": BT manager is not ready";
+    return;
+  }
+
+  bool floss = false;
+  bool bt_enabled = false;
+  int32_t hci = BluetoothManagerInterface::kInvalidHCI;
+  std::vector<BluetoothManagerInterface::BTAdapterWithEnabled> bt_adapters;
+  if (!bt_manager->GetAvailableAdapters(&floss, &bt_adapters)) {
+    LOG(ERROR) << link_name() << ": Failed to query available BT adapters";
+    return;
+  }
+  report.bt_stack = floss ? Metrics::kBTStackFloss : Metrics::kBTStackBlueZ;
+  for (auto adapter : bt_adapters) {
+    if (adapter.enabled) {
+      bt_enabled = true;
+      hci = adapter.hci_interface;
+      break;
+    }
+  }
+  report.bt_enabled = bt_enabled;
+
+  if (!(floss && bt_enabled)) {
+    // Querying the state of BT adapters is only possible if both:
+    // - the device is using Floss
+    // - BT is enabled
+    return;
+  }
+  BluetoothManagerInterface::BTProfileConnectionState profile_state;
+  if (bt_manager->GetProfileConnectionState(
+          hci, BluetoothManagerInterface::BTProfile::kHFP, &profile_state)) {
+    report.bt_hfp =
+        WiFiMetricsUtils::ConvertBTProfileConnectionState(profile_state);
+  }
+  if (bt_manager->GetProfileConnectionState(
+          hci, BluetoothManagerInterface::BTProfile::kA2DPSink,
+          &profile_state)) {
+    report.bt_a2dp =
+        WiFiMetricsUtils::ConvertBTProfileConnectionState(profile_state);
+  }
+#else   // DISABLE_FLOSS
+  (void)report;
+#endif  // DISABLE_FLOSS
+}
+
 void WiFi::EmitStationInfoReceivedEvent(
     const WiFiLinkStatistics::StationStats& stats) {
   if (!current_service_.get()) {
@@ -3779,25 +3830,7 @@ void WiFi::EmitStationInfoReceivedEvent(
   }
   Metrics::WiFiLinkQualityReport report =
       WiFiLinkStatistics::ConvertLinkStatsReport(stats);
-#if !defined(DISABLE_FLOSS)
-  BluetoothManagerInterface* bt_manager = manager()->bluetooth_manager();
-  if (bt_manager) {
-    bool floss = false;
-    std::vector<BluetoothManagerInterface::BTAdapterWithEnabled> bt_adapters;
-    if (bt_manager->GetAvailableAdapters(&floss, &bt_adapters)) {
-      report.bt_stack = floss ? Metrics::kBTStackFloss : Metrics::kBTStackBlueZ;
-      report.bt_enabled = false;
-      for (auto adapter : bt_adapters) {
-        if (adapter.enabled) {
-          report.bt_enabled = true;
-          break;
-        }
-      }
-    }
-  } else {
-    LOG(ERROR) << link_name() << ": BT manager is not ready";
-  }
-#endif  // DISABLE_FLOSS
+  AddBTStateToLinkQualityReport(report);
   current_service_->EmitLinkQualityReportEvent(report);
 }
 

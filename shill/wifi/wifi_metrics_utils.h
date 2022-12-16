@@ -7,6 +7,7 @@
 
 #include <string>
 
+#include "shill/bluetooth/bluetooth_manager_interface.h"
 #include "shill/metrics.h"
 
 namespace shill::WiFiMetricsUtils {
@@ -24,6 +25,9 @@ std::string GetBootId();
 // This is only used by tests. It returns an AP OUI that is in the allowlist of
 // OUIs that can be reported. go/totw/135.
 int AllowlistedOUIForTesting();
+
+Metrics::BTProfileConnectionState ConvertBTProfileConnectionState(
+    BluetoothManagerInterface::BTProfileConnectionState state);
 
 }  // namespace shill::WiFiMetricsUtils
 

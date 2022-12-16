@@ -8,12 +8,20 @@
 #include <string>
 
 #include <chromeos/dbus/bluetooth/dbus-constants.h>
+#include <dbus/object_path.h>
+
+#include "shill/logging.h"
+#include "shill/scope_logger.h"
 
 namespace shill {
 
 namespace {
 constexpr char kBlueZObjectPath[] = "/org/bluez/hci0";
 }
+
+namespace Logging {
+static auto kModuleLogScope = ScopeLogger::kDBus;
+}  // namespace Logging
 
 BluetoothBlueZProxy::BluetoothBlueZProxy(const scoped_refptr<dbus::Bus>& bus)
     : bluez_proxy_(new org::bluez::Adapter1Proxy(
@@ -35,6 +43,9 @@ bool BluetoothBlueZProxy::GetAdapterPowered(bool* powered) const {
     return false;
   }
   *powered = bluez_proxy_->powered();
+  SLOG(3) << __func__ << ": " << bluez_proxy_->GetObjectPath().value()
+          << ": BlueZ BT adapter is "
+          << (bluez_proxy_->powered() ? "enabled" : "disabled");
   return true;
 }
 

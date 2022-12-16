@@ -12,6 +12,7 @@
 #include <algorithm>
 #include <iterator>
 #include <map>
+#include <memory>
 #include <set>
 #include <string>
 #include <utility>
@@ -319,8 +320,10 @@ void Manager::Start() {
       base::Bind(&Manager::OnDarkSuspendImminent, weak_factory_.GetWeakPtr()));
   upstart_.reset(new Upstart(control_interface_));
 #if !defined(DISABLE_FLOSS)
-  bluetooth_manager_.reset(new BluetoothManager(control_interface_));
-  bluetooth_manager_->Start();
+  bluetooth_manager_ = std::make_unique<BluetoothManager>(control_interface_);
+  if (!bluetooth_manager_->Start()) {
+    bluetooth_manager_.reset();
+  }
 #endif  // DISABLE_FLOSS
 
   CHECK(base::CreateDirectory(run_path_)) << run_path_.value();

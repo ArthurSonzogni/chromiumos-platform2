@@ -1717,6 +1717,17 @@ class Metrics : public DefaultServiceObserver {
     kBTStackFloss = 2,
   };
 
+  // For consistency, use the same integer values as Floss
+  // https://android.googlesource.com/platform/packages/modules/Bluetooth/+/ac69da6c45771293530338709ee6e9599065ca5d/system/gd/rust/topshim/src/profiles/mod.rs#7
+  enum BTProfileConnectionState {
+    kBTProfileConnectionStateDisconnected = 0,
+    kBTProfileConnectionStateDisconnecting = 1,
+    kBTProfileConnectionStateConnecting = 2,
+    kBTProfileConnectionStateConnected = 3,
+    kBTProfileConnectionStateActive = 4,
+    kBTProfileConnectionStateInvalid = 0x7FFFFFFE,
+  };
+
   struct WiFiLinkQualityReport {
     int64_t tx_retries = kWiFiStructuredMetricsErrorValue;
     int64_t tx_failures = kWiFiStructuredMetricsErrorValue;
@@ -1734,8 +1745,8 @@ class Metrics : public DefaultServiceObserver {
     WiFiRxTxStats tx;
     bool bt_enabled = false;
     BTStack bt_stack = kBTStackUnknown;
-    bool bt_hfp = false;
-    bool bt_a2dp = false;
+    BTProfileConnectionState bt_hfp = kBTProfileConnectionStateInvalid;
+    BTProfileConnectionState bt_a2dp = kBTProfileConnectionStateInvalid;
     bool bt_active_scanning = false;
     bool operator==(const WiFiLinkQualityReport& other) const {
       if (tx_retries != other.tx_retries) {
