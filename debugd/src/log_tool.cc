@@ -563,7 +563,6 @@ const std::array kVarLogFileLogs {
   Log{kFile, "powerd.PREVIOUS", "/var/log/power_manager/powerd.PREVIOUS"},
   Log{kFile, "powerd.out", "/var/log/powerd.out"},
   Log{kFile, "powerwash_count", "/var/log/powerwash_count"},
-  Log{kCommand, "secagentd", "tail -n 300 /var/log/secagentd.log"},
   Log{kFile, "storage_info", "/var/log/storage_info.txt"},
   Log{kCommand, "syslog",
     "/usr/share/userfeedback/scripts/getmsgs /var/log/messages"},
