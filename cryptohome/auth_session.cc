@@ -1392,20 +1392,22 @@ void AuthSession::RemoveAuthFactor(
     }
   }
 
-  // At this point either USS is not enabled or removal of the USS AuthFactor
-  // succeeded & rollback enabled. Remove the VaultKeyset with the given label
-  // from disk regardless of its purpose, i.e backup, regular or migrated.
-  CryptohomeStatus remove_status = RemoveKeysetByLabel(
-      *keyset_management_, obfuscated_username_, auth_factor_label);
-  if (!remove_status.ok() && stored_auth_factor->auth_factor().type() !=
-                                 AuthFactorType::kCryptohomeRecovery) {
-    LOG(ERROR) << "AuthSession: Failed to remove the backup VaultKeyset.";
-    std::move(on_done).Run(MakeStatus<CryptohomeError>(
-        CRYPTOHOME_ERR_LOC(kLocAuthSessionRemoveVKFailedInRemoveAuthFactor),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
-        user_data_auth::CryptohomeErrorCode::
-            CRYPTOHOME_REMOVE_CREDENTIALS_FAILED));
-    return;
+  if (!remove_using_uss || enable_create_backup_vk_with_uss_) {
+    // At this point either USS is not enabled or removal of the USS AuthFactor
+    // succeeded & rollback enabled. Remove the VaultKeyset with the given label
+    // from disk regardless of its purpose, i.e backup, regular or migrated.
+    CryptohomeStatus remove_status = RemoveKeysetByLabel(
+        *keyset_management_, obfuscated_username_, auth_factor_label);
+    if (!remove_status.ok() && stored_auth_factor->auth_factor().type() !=
+                                   AuthFactorType::kCryptohomeRecovery) {
+      LOG(ERROR) << "AuthSession: Failed to remove VaultKeyset.";
+      std::move(on_done).Run(MakeStatus<CryptohomeError>(
+          CRYPTOHOME_ERR_LOC(kLocAuthSessionRemoveVKFailedInRemoveAuthFactor),
+          ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+          user_data_auth::CryptohomeErrorCode::
+              CRYPTOHOME_REMOVE_CREDENTIALS_FAILED));
+      return;
+    }
   }
 
   // Remove the AuthFactor from the map.
@@ -1744,7 +1746,8 @@ void AuthSession::UpdateAuthFactorViaUserSecretStash(
   }
 
   // Update and persist the backup VaultKeyset.
-  if ((IsFactorTypeSupportedByBothUssAndVk(auth_factor_type))) {
+  if (enable_create_backup_vk_with_uss_ &&
+      IsFactorTypeSupportedByBothUssAndVk(auth_factor_type)) {
     user_data_auth::CryptohomeErrorCode error_code =
         static_cast<user_data_auth::CryptohomeErrorCode>(
             keyset_management_->UpdateKeysetWithKeyBlobs(
@@ -2422,7 +2425,8 @@ CryptohomeStatus AuthSession::PersistAuthFactorToUserSecretStashImpl(
   }
 
   // Generate and persist the backup (or migrated) VaultKeyset.
-  if ((IsFactorTypeSupportedByBothUssAndVk(auth_factor_type))) {
+  if (enable_create_backup_vk_with_uss_ &&
+      IsFactorTypeSupportedByBothUssAndVk(auth_factor_type)) {
     // Clobbering is on by default, so if USS&AuthFactor is added for migration
     // this will convert a regular VaultKeyset to a backup VaultKeyset.
     status = AddVaultKeyset(key_data, /*is_initial_keyset=*/
@@ -2842,7 +2846,8 @@ void AuthSession::LoadUSSMainKeyAndFsKeyset(
   // Set the credential verifier for this credential.
   AddCredentialVerifier(auth_factor_type, auth_factor_label, auth_input);
 
-  if (auth_factor_type == AuthFactorType::kPassword) {
+  if (enable_create_backup_vk_with_uss_ &&
+      auth_factor_type == AuthFactorType::kPassword) {
     // Authentication with UserSecretStash just finished. Now load the decrypted
     // backup VaultKeyset from disk so that adding a PIN backup VaultKeyset will
     // be possible when/if needed.
