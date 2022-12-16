@@ -304,7 +304,7 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /var/lib/dlcservice(/.*)?       u:object_r:cros_var_lib_dlcservice:s0
 /var/lib/dbus(/.*)?             u:object_r:cros_var_lib_dbus:s0
 /var/lib/dhcpcd(/.*)?           u:object_r:cros_var_lib_shill:s0
-/var/lib/featured(/.*)?         u:object_r_cros_var_lib_featured:s0
+/var/lib/featured(/.*)?         u:object_r:cros_var_lib_featured:s0
 /var/lib/fwupd                  u:object_r:cros_var_lib_fwupd:s0
 /var/lib/fwupd/pending          u:object_r:cros_var_lib_fwupd_pending:s0
 /var/lib/imageloader(/.*)?      u:object_r:cros_var_lib_imageloader:s0

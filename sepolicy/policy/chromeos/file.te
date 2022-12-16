@@ -415,6 +415,7 @@ type cros_var_lib_cras, file_type, cros_file_type, cros_var_file_type;
 type cros_var_lib_crash_reporter, file_type, cros_file_type, cros_var_file_type;
 type cros_var_lib_dlcservice, file_type, cros_file_type, cros_var_file_type;
 type cros_var_lib_dbus, file_type, cros_file_type, cros_var_file_type;
+type cros_var_lib_featured, file_type, cros_file_type, cros_var_file_type;
 type cros_var_lib_fwupd, file_type, cros_file_type, cros_var_file_type;
 type cros_var_lib_fwupd_pending, file_type, cros_file_type, cros_var_file_type;
 type cros_var_lib_imageloader, file_type, cros_file_type, cros_var_file_type;

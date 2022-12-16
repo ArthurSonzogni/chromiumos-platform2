@@ -345,6 +345,11 @@ bool DbusFeaturedService::Start(dbus::Bus* bus,
 
   library_ = feature::PlatformFeatures::New(bus);
 
+  if (!store_->IncrementBootAttemptsSinceLastUpdate()) {
+    LOG(ERROR) << "Failed to increment boot attempts";
+    return false;
+  }
+
   dbus::ObjectPath path(featured::kFeaturedServicePath);
   dbus::ExportedObject* object = bus->GetExportedObject(path);
   if (!object) {
