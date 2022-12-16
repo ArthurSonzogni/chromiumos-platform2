@@ -79,6 +79,8 @@ void StreamManipulator::RuntimeOptions::SetSWPrivacySwitchState(
     mojom::CameraPrivacySwitchState state) {
   {
     base::AutoLock lock(lock_);
+    LOGF(INFO) << "SW privacy switch state changed from "
+               << sw_privacy_switch_state_ << " to " << state;
     sw_privacy_switch_state_ = state;
   }
   const char* str = state == mojom::CameraPrivacySwitchState::ON
