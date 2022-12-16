@@ -43,7 +43,6 @@ Client::Device::Type ParseDeviceType(const std::string& type_str) {
 Client::Device::ConnectionState ParseConnectionState(const std::string& s) {
   static const std::map<std::string, Client::Device::ConnectionState> m{
       {shill::kStateIdle, Client::Device::ConnectionState::kIdle},
-      {shill::kStateCarrier, Client::Device::ConnectionState::kCarrier},
       {shill::kStateAssociation, Client::Device::ConnectionState::kAssociation},
       {shill::kStateConfiguration,
        Client::Device::ConnectionState::kConfiguration},
@@ -58,8 +57,6 @@ Client::Device::ConnectionState ParseConnectionState(const std::string& s) {
       {shill::kStateOffline, Client::Device::ConnectionState::kOffline},
       {shill::kStateFailure, Client::Device::ConnectionState::kFailure},
       {shill::kStateDisconnect, Client::Device::ConnectionState::kDisconnect},
-      {shill::kStateActivationFailure,
-       Client::Device::ConnectionState::kActivationFailure},
   };
   const auto it = m.find(s);
   return it != m.end() ? it->second : Client::Device::ConnectionState::kUnknown;
@@ -68,7 +65,6 @@ Client::Device::ConnectionState ParseConnectionState(const std::string& s) {
 const char* ToString(Client::Device::ConnectionState state) {
   static const std::map<Client::Device::ConnectionState, const char*> m{
       {Client::Device::ConnectionState::kIdle, shill::kStateIdle},
-      {Client::Device::ConnectionState::kCarrier, shill::kStateCarrier},
       {Client::Device::ConnectionState::kAssociation, shill::kStateAssociation},
       {Client::Device::ConnectionState::kConfiguration,
        shill::kStateConfiguration},
@@ -83,8 +79,6 @@ const char* ToString(Client::Device::ConnectionState state) {
       {Client::Device::ConnectionState::kOffline, shill::kStateOffline},
       {Client::Device::ConnectionState::kFailure, shill::kStateFailure},
       {Client::Device::ConnectionState::kDisconnect, shill::kStateDisconnect},
-      {Client::Device::ConnectionState::kActivationFailure,
-       shill::kStateActivationFailure},
   };
   const auto it = m.find(state);
   return it != m.end() ? it->second : "unknown";

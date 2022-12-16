@@ -89,7 +89,6 @@ class BRILLO_EXPORT Client {
     enum class ConnectionState {
       kUnknown,
       kIdle,
-      kCarrier,
       kAssociation,
       kConfiguration,
       kReady,
@@ -100,7 +99,6 @@ class BRILLO_EXPORT Client {
       kOffline,
       kFailure,
       kDisconnect,
-      kActivationFailure,
     };
 
     bool operator==(const Device& that) const {
