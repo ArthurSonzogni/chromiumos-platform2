@@ -243,6 +243,34 @@ TEST_F(UserSessionMapTest, AddVerifiersAfterSession) {
   EXPECT_THAT(user2->GetCredentialVerifiers(), UnorderedElementsAre(ptr3));
 }
 
+// Use VerifierForwarder to add multiple verifiers for the same user after the
+// session ends. In particular, this test checks that forwarders don't have
+// dangling pointers on the session.
+TEST_F(UserSessionMapTest, AddVerifiersAfterSessionEndViaCoincidingForwarders) {
+  constexpr char kLabel1[] = "primary-pass";
+  constexpr char kLabel2[] = "secondary-pass";
+
+  // Arrange: create session, forwarders and then destroy the session.
+  EXPECT_THAT(session_map_.Add(kUsername1, std::make_unique<MockUserSession>()),
+              IsTrue());
+  UserSessionMap::VerifierForwarder forwarder1(kUsername1, &session_map_);
+  UserSessionMap::VerifierForwarder forwarder2(kUsername1, &session_map_);
+  EXPECT_THAT(session_map_.Remove(kUsername1), IsTrue());
+
+  // Act: add verifiers and then create new session.
+  auto [verifier1, ptr1] = MakeTestVerifier(kLabel1);
+  forwarder1.AddVerifier(std::move(verifier1));
+  auto [verifier2, ptr2] = MakeTestVerifier(kLabel2);
+  forwarder2.AddVerifier(std::move(verifier2));
+  EXPECT_THAT(session_map_.Add(kUsername1, std::make_unique<MockUserSession>()),
+              IsTrue());
+
+  // Assert: the session should have verifiers from both forwarders.
+  auto* user = session_map_.Find(kUsername1);
+  ASSERT_THAT(user, Not(IsNull()));
+  EXPECT_THAT(user->GetCredentialVerifiers(), UnorderedElementsAre(ptr1, ptr2));
+}
+
 // Use VerifierForwarder to add verifiers both before and after a session is
 // created.
 TEST_F(UserSessionMapTest, AddVerifiersBeforeAndAfterSession) {

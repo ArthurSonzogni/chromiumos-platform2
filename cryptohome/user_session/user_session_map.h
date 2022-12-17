@@ -13,6 +13,8 @@
 #include <string>
 #include <utility>
 
+#include <base/containers/flat_set.h>
+
 #include "cryptohome/credential_verifier.h"
 #include "cryptohome/user_session/user_session.h"
 
@@ -154,7 +156,8 @@ class UserSessionMap final {
 
   // Track any live verifier forwarders. The forwarders will add themselves to
   // this map on construction and remove themselves upon destruction.
-  std::map<std::string, VerifierForwarder*> verifier_forwarders_;
+  std::map<std::string, base::flat_set<VerifierForwarder*>>
+      verifier_forwarders_;
 };
 
 }  // namespace cryptohome

@@ -42,11 +42,15 @@ UserSessionMap::VerifierForwarder::VerifierForwarder(
       user_session_map_(user_session_map),
       forwarding_destination_(
           MakeForwarderVariant(account_id_, user_session_map_)) {
-  user_session_map_->verifier_forwarders_[account_id_] = this;
+  user_session_map_->verifier_forwarders_[account_id_].insert(this);
 }
 
 UserSessionMap::VerifierForwarder::~VerifierForwarder() {
-  user_session_map_->verifier_forwarders_.erase(account_id_);
+  auto iter = user_session_map_->verifier_forwarders_.find(account_id_);
+  CHECK(iter->second.erase(this));
+  if (iter->second.empty()) {
+    user_session_map_->verifier_forwarders_.erase(iter);
+  }
 }
 
 bool UserSessionMap::VerifierForwarder::HasVerifier(const std::string& label) {
@@ -126,7 +130,9 @@ bool UserSessionMap::Add(const std::string& account_id,
       storage_.insert({account_id, std::move(session)});
   auto forwarder_iter = verifier_forwarders_.find(account_id);
   if (forwarder_iter != verifier_forwarders_.end()) {
-    forwarder_iter->second->Resolve(storage_iter->second.get());
+    for (VerifierForwarder* forwarder : forwarder_iter->second) {
+      forwarder->Resolve(storage_iter->second.get());
+    }
   }
   return was_inserted;
 }
@@ -134,7 +140,9 @@ bool UserSessionMap::Add(const std::string& account_id,
 bool UserSessionMap::Remove(const std::string& account_id) {
   auto forwarder_iter = verifier_forwarders_.find(account_id);
   if (forwarder_iter != verifier_forwarders_.end()) {
-    forwarder_iter->second->Detach();
+    for (VerifierForwarder* forwarder : forwarder_iter->second) {
+      forwarder->Detach();
+    }
   }
   return storage_.erase(account_id) != 0;
 }
