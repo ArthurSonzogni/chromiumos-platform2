@@ -23,6 +23,9 @@ class BluetoothAdapterProxyInterface {
   virtual bool GetProfileConnectionState(
       BluetoothManagerInterface::BTProfile profile,
       BluetoothManagerInterface::BTProfileConnectionState* state) const = 0;
+
+  // See BluetoothManagerInterface::IsDiscovering()
+  virtual bool IsDiscovering(bool* discovering) const = 0;
 };
 
 }  // namespace shill

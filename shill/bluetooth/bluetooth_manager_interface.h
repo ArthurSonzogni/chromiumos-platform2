@@ -72,6 +72,14 @@ class BluetoothManagerInterface {
       int32_t hci,
       BTProfile profile,
       BTProfileConnectionState* state) const = 0;
+
+  // Query the BT stack to know if the adapter is currently scanning.
+  // This is only supported on Floss. The function will return false if the
+  // device is not using Floss or if BT is not enabled. Before using this
+  // function, callers must:
+  // - ensure that the device is using Floss rather than BlueZ
+  // - ensure that the BT adapter is enabled.
+  virtual bool IsDiscovering(int32_t hci, bool* discovering) const = 0;
 };
 
 }  // namespace shill

@@ -3815,6 +3815,10 @@ void WiFi::AddBTStateToLinkQualityReport(
     report.bt_a2dp =
         WiFiMetricsUtils::ConvertBTProfileConnectionState(profile_state);
   }
+  bool discovering;
+  if (bt_manager->IsDiscovering(hci, &discovering)) {
+    report.bt_active_scanning = discovering;
+  }
 #else   // DISABLE_FLOSS
   (void)report;
 #endif  // DISABLE_FLOSS

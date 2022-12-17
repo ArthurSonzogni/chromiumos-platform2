@@ -42,6 +42,8 @@ class BluetoothManager : public BluetoothManagerInterface {
       BTProfile profile,
       BTProfileConnectionState* state) const override;
 
+  bool IsDiscovering(int32_t hci, bool* discovering) const override;
+
  private:
   // Tear-down D-Bus proxies to the BT stack.
   void TearDown();

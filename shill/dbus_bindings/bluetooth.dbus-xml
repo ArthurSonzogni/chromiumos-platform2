@@ -8,5 +8,8 @@
       <arg name="profile" direction="in" type="ay"/>
       <arg name="state" direction="out" type="u"/>
     </method>
+    <method name="IsDiscovering">
+      <arg name="discovering" direction="out" type="b"/>
+    </method>
   </interface>
 </node>

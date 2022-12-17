@@ -28,6 +28,8 @@ class BluetoothAdapterProxy : public BluetoothAdapterProxyInterface {
       BluetoothManagerInterface::BTProfileConnectionState* state)
       const override;
 
+  bool IsDiscovering(bool* discovering) const override;
+
  private:
   std::unique_ptr<org::chromium::bluetooth::BluetoothProxy> proxy_;
 };

@@ -112,4 +112,16 @@ bool BluetoothAdapterProxy::GetProfileConnectionState(
   return true;
 }
 
+bool BluetoothAdapterProxy::IsDiscovering(bool* discovering) const {
+  brillo::ErrorPtr error;
+  if (!proxy_->IsDiscovering(discovering, &error)) {
+    LOG(ERROR) << "Failed to query BT discovering state: " << error->GetCode()
+               << " " << error->GetMessage();
+    return false;
+  }
+  SLOG(3) << __func__ << ": " << proxy_->GetObjectPath().value()
+          << ": BT is discovering: " << *discovering;
+  return true;
+}
+
 }  // namespace shill
