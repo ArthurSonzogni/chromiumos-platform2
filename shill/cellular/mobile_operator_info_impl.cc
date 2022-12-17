@@ -269,8 +269,11 @@ void MobileOperatorInfoImpl::UpdateIMSI(const std::string& imsi) {
     }
   } else {
     // Attempt to determine the MNO from IMSI since MCCMNC is absent.
-    AppendToCandidatesByMCCMNC(imsi.substr(0, kMCCMNCMinLen));
-    AppendToCandidatesByMCCMNC(imsi.substr(0, kMCCMNCMinLen + 1));
+    if (!(AppendToCandidatesByMCCMNC(imsi.substr(0, kMCCMNCMinLen)) ||
+          AppendToCandidatesByMCCMNC(imsi.substr(0, kMCCMNCMinLen + 1))))
+      LOG(WARNING) << "Unknown MCCMNC values [" << imsi.substr(0, kMCCMNCMinLen)
+                   << "] [" << imsi.substr(0, kMCCMNCMinLen + 1) << "].";
+
     if (!candidates_by_operator_code_.empty()) {
       // We found some candidates using IMSI.
       operator_changed |= UpdateMNO();
@@ -315,7 +318,9 @@ void MobileOperatorInfoImpl::UpdateMCCMNC(const std::string& mccmnc) {
   user_mccmnc_ = mccmnc;
   HandleMCCMNCUpdate();
   candidates_by_operator_code_.clear();
-  AppendToCandidatesByMCCMNC(mccmnc);
+  if (!AppendToCandidatesByMCCMNC(mccmnc))
+    LOG(WARNING) << "Unknown MCCMNC value [" << mccmnc << "].";
+
   if (raw_apn_filters_types_.count(
           mobile_operator_db::Filter_Type::Filter_Type_MCCMNC))
     HandleAPNListUpdate();
@@ -478,7 +483,6 @@ bool MobileOperatorInfoImpl::AppendToCandidatesByMCCMNC(
   operator_code_type_ = OperatorCodeType::kMCCMNC;
   StringToMNOListMap::const_iterator cit = mccmnc_to_mnos_.find(mccmnc);
   if (cit == mccmnc_to_mnos_.end()) {
-    LOG(WARNING) << "Unknown MCCMNC value [" << mccmnc << "].";
     return false;
   }
 
