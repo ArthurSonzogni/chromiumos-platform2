@@ -9,7 +9,7 @@
 #include <vector>
 
 #include "bluetooth/dbus-proxies.h"
-#include "shill/bluetooth_manager_proxy_interface.h"
+#include "shill/bluetooth/bluetooth_manager_proxy_interface.h"
 
 namespace shill {
 

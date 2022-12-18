@@ -397,7 +397,7 @@ static_library("libshill") {
 
   if (use.floss) {
     sources += [
-      "bluetooth_manager.cc",
+      "bluetooth/bluetooth_manager.cc",
       "dbus/bluetooth_manager_proxy.cc",
     ]
     deps += [ ":generate_bluetooth_proxies" ]

@@ -37,7 +37,7 @@
 
 #include "shill/adaptor_interfaces.h"
 #if !defined(DISABLE_FLOSS)
-#include "shill/bluetooth_manager.h"
+#include "shill/bluetooth/bluetooth_manager.h"
 #endif  // DISABLE_FLOSS
 #include "shill/callbacks.h"
 #include "shill/cellular/cellular_service_provider.h"

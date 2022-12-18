@@ -2,12 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_BLUETOOTH_MANAGER_H_
-#define SHILL_BLUETOOTH_MANAGER_H_
+#ifndef SHILL_BLUETOOTH_BLUETOOTH_MANAGER_H_
+#define SHILL_BLUETOOTH_BLUETOOTH_MANAGER_H_
 
 #include <memory>
 
-#include "shill/bluetooth_manager_proxy_interface.h"
+#include "shill/bluetooth/bluetooth_manager_proxy_interface.h"
 
 namespace shill {
 class ControlInterface;
@@ -36,4 +36,4 @@ class BluetoothManager {
 
 }  // namespace shill
 
-#endif  // SHILL_BLUETOOTH_MANAGER_H_
+#endif  // SHILL_BLUETOOTH_BLUETOOTH_MANAGER_H_

@@ -12,7 +12,7 @@
 #include <gmock/gmock.h>
 
 #if !defined(DISABLE_FLOSS)
-#include "shill/bluetooth_manager_proxy_interface.h"
+#include "shill/bluetooth/bluetooth_manager_proxy_interface.h"
 #endif  // DISABLE_FLOSS
 #include "shill/cellular/dbus_objectmanager_proxy_interface.h"
 #include "shill/cellular/mm1_modem_location_proxy_interface.h"

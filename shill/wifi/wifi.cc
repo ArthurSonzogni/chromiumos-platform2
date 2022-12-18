@@ -34,8 +34,8 @@
 #include <chromeos/dbus/service_constants.h>
 
 #if !defined(DISABLE_FLOSS)
-#include "shill/bluetooth_manager.h"
-#include "shill/bluetooth_manager_proxy_interface.h"
+#include "shill/bluetooth/bluetooth_manager.h"
+#include "shill/bluetooth/bluetooth_manager_proxy_interface.h"
 #endif  // DISABLE_FLOSS
 #include "shill/control_interface.h"
 #include "shill/dbus/dbus_control.h"
