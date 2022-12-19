@@ -7,7 +7,7 @@ use crate::shader_cache_mount::*;
 
 use anyhow::{anyhow, Result};
 use dbus::{channel::Sender, nonblock::SyncConnection};
-use libchromeos::sys::{debug, error, info};
+use libchromeos::sys::{debug, info};
 use std::{
     fs,
     process::{Command, Stdio},
@@ -219,39 +219,4 @@ pub async fn unmount_dlc(
     } else {
         Err(anyhow!("Unmount failure: {:?}", errors))
     }
-}
-
-pub async fn unmount_all(mount_map: ShaderCacheMountMap) -> Result<()> {
-    // TODO(b/262657000): Queue unmount for all, on Borealis VM exit and Purge
-    // Best-effort unmount-everything function.
-    // This does not queue unmount then wait.
-    // This function is called on shadercached exit. During exit, best-effort
-    // unmounting is good enough and fast process exit is prioritized.
-    let mut mount_map = mount_map.write().await;
-    let mut failed_unmounts: Vec<VmId> = Vec::new();
-
-    for (cache_id, cache_metadata) in mount_map.iter_mut() {
-        if let Err(e) = cache_metadata.clear_game_db_list() {
-            error!("Failed to clear foz db list for {:?}: {}", cache_id, e);
-            continue;
-        }
-        if cache_metadata.mounted {
-            debug!("Unmounting: {:?}", cache_id);
-            if let Err(e) = unmount(cache_metadata, cache_metadata.target_steam_app_id) {
-                failed_unmounts.push(cache_id.clone());
-                error!("Failed to unmount {:?}: {}", cache_id, e);
-            }
-            for &steam_app_id in &cache_metadata.unmount_queue {
-                if let Err(e) = unmount(cache_metadata, steam_app_id) {
-                    failed_unmounts.push(cache_id.clone());
-                    error!("Failed to unmount {:?}: {}", cache_id, e);
-                }
-            }
-        }
-    }
-
-    if failed_unmounts.is_empty() {
-        return Ok(());
-    }
-    Err(anyhow!("Failed to unmount {:?}", failed_unmounts))
 }

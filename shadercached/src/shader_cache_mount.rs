@@ -6,7 +6,7 @@ use crate::common::*;
 
 use anyhow::{anyhow, Result};
 use dbus::nonblock::SyncConnection;
-use libchromeos::sys::{debug, error, info};
+use libchromeos::sys::{debug, error, info, warn};
 use std::collections::{HashMap, HashSet};
 use std::ffi::OsString;
 use std::fs;
@@ -119,11 +119,49 @@ impl ShaderCacheMount {
         Ok(())
     }
 
-    pub fn clear_game_db_list(&self) -> Result<()> {
+    pub fn queue_unmount_all(&mut self) -> Result<()> {
         if !self.foz_blob_db_list_path.exists() {
+            warn!(
+                "Nothing to unmount, specified path does not exist: {:?}",
+                self.foz_blob_db_list_path
+            );
             return Ok(());
         }
+
+        let mut cleared_games: HashSet<SteamAppId> = HashSet::new();
+        let list_string = fs::read_to_string(&self.foz_blob_db_list_path)?;
+        // Example foz db list file contents:
+        // 620/foz_cache
+        // 570/foz_cache
+        //
+        for relative_path in list_string.split('\n') {
+            // first entry in the relative path is the steam app id
+            if let Some(app_id_string) = relative_path.split('/').next() {
+                cleared_games.insert(app_id_string.parse::<SteamAppId>()?);
+            }
+        }
+
+        for entry in fs::read_dir(&self.absolute_mount_destination_path)? {
+            let entry = entry?;
+            if entry.path().is_dir() {
+                if let Ok(str_entry) = entry.file_name().into_string() {
+                    let found_id = str_entry.parse::<SteamAppId>()?;
+                    if !cleared_games.contains(&found_id) {
+                        debug!(
+                            "Found unexpected precompiled cache mount for app {}, ignoring",
+                            found_id
+                        );
+                    }
+                }
+            }
+        }
+
         fs::write(&self.foz_blob_db_list_path, "")?;
+
+        for game in cleared_games {
+            self.queue_unmount(game)?;
+        }
+
         Ok(())
     }
 

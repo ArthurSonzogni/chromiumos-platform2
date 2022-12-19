@@ -39,11 +39,14 @@ pub async fn main() -> Result<()> {
     let (resource, c) = dbus_tokio::connection::new_system_sync()?;
     // If D-Bus connection drops unexpectedly, cleanup the mount points then
     // exit.
-    let mount_points_clone1 = mount_points.clone();
+    let mount_points_resource = new_mount_map();
     tokio::spawn(async {
         let err = resource.await;
-        // Unmount all mount points
-        clean_up(mount_points_clone1).await;
+        match mount_map_queue_unmount_all(mount_points_resource, None).await {
+            // TODO(b/264614608): wait for unmounts to be complete
+            Ok(_) => tokio::time::sleep(UNMOUNTER_INTERVAL * 2).await,
+            Err(e) => error!("Failed to queue unmounts: {}", e),
+        }
         error!("Lost connection to D-Bus: {}", err);
         panic!("Lost connection to D-Bus: {}", err);
     });
@@ -170,12 +173,16 @@ pub async fn main() -> Result<()> {
 
     // We need to create a new connection to receive signals explicitly.
     // Reusing existing connection rejects the D-Bus signals.
+    let listen_mount_points = mount_points.clone();
     let (resource_listen, c_listen) = dbus_tokio::connection::new_system_sync()?;
-    let mount_points_clone2 = mount_points.clone();
     tokio::spawn(async {
         let err = resource_listen.await;
-        // Unmount all mount points
-        clean_up(mount_points_clone2).await;
+        match mount_map_queue_unmount_all(listen_mount_points, None).await {
+            // TODO(b/264614608): wait for unmounts to be complete
+            Ok(_) => tokio::time::sleep(UNMOUNTER_INTERVAL * 2).await,
+            Err(e) => error!("Failed to queue unmounts: {}", e),
+        }
+
         error!("Lost connection to D-Bus: {}", err);
         panic!("Lost connection to D-Bus: {}", err);
     });
@@ -211,11 +218,14 @@ pub async fn main() -> Result<()> {
     signal(SignalKind::terminate()).unwrap().recv().await;
 
     info!("Cleaning up...");
-    // Drop connections and unmount all
+    // Stop receiving connections
     c.stop_receive(receive_token);
     // Delete |msg_match| to stop listening to DlcService signals
     drop(msg_match);
-    clean_up(mount_points).await;
+
+    mount_map_queue_unmount_all(mount_points, None).await?;
+    // TODO(b/264614608): wait for unmounts to be complete instead of sleeping
+    tokio::time::sleep(UNMOUNTER_INTERVAL * 2).await;
 
     info!("Exiting!");
     Ok(())

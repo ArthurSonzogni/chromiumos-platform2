@@ -12,6 +12,7 @@ use anyhow::{anyhow, Result};
 use dbus::nonblock::SyncConnection;
 use dbus::MethodErr;
 use libchromeos::sys::{debug, error, info, warn};
+use std::collections::HashSet;
 use std::path::Path;
 use std::sync::Arc;
 use system_api::concierge_service::{GetVmGpuCachePathRequest, GetVmGpuCachePathResponse};
@@ -207,7 +208,11 @@ pub async fn handle_purge(
     mount_map: ShaderCacheMountMap,
     conn: Arc<SyncConnection>,
 ) -> Result<(), MethodErr> {
-    unmount_all(mount_map).await.map_err(to_method_err)?;
+    mount_map_queue_unmount_all(mount_map, None)
+        .await
+        .map_err(to_method_err)?;
+    // TODO(b/264614608): wait for unmounts to be complete instead of sleeping
+    tokio::time::sleep(UNMOUNTER_INTERVAL * 2).await;
     let dlcservice_proxy = dbus::nonblock::Proxy::new(
         dlc_service::SERVICE_NAME,
         dlc_service::PATH_NAME,
@@ -315,8 +320,41 @@ pub fn process_unmount_queue(
     Err(anyhow!("{:?}", errors))
 }
 
-pub async fn clean_up(mount_map: ShaderCacheMountMap) {
-    debug!("Unmounting all");
-    // Ignore unmount_all errors here, clean_up is only called on exit.
-    let _ = unmount_all(mount_map).await;
+pub async fn mount_map_queue_unmount_all(
+    mount_map: ShaderCacheMountMap,
+    vm_id: Option<VmId>,
+) -> Result<()> {
+    // Queue unmount-everything function.
+    // This function is called on Purge (vm_id is None) and on Borealis exit
+    // (vm_id is set).
+    let mut mount_map = mount_map.write().await;
+    let mut failed_unmounts: HashSet<VmId> = HashSet::new();
+
+    if let Some(vm_id) = vm_id {
+        if let Some(cache_metadata) = mount_map.get_mut(&vm_id) {
+            cache_metadata.target_steam_app_id = 0;
+            if let Err(e) = cache_metadata.queue_unmount_all() {
+                error!("Failed to queue unmount all for {:?}: {}", vm_id, e);
+                failed_unmounts.insert(vm_id);
+            }
+        } else {
+            failed_unmounts.insert(vm_id);
+        }
+    } else {
+        for (vm_id, cache_metadata) in mount_map.iter_mut() {
+            cache_metadata.target_steam_app_id = 0;
+            if let Err(e) = cache_metadata.queue_unmount_all() {
+                error!("Failed to queue unmount all for {:?}: {}", vm_id, e);
+                failed_unmounts.insert(vm_id.clone());
+            }
+        }
+    }
+
+    if failed_unmounts.is_empty() {
+        return Ok(());
+    }
+    Err(anyhow!(
+        "Failed to queue unmount for all: {:?}",
+        failed_unmounts
+    ))
 }
