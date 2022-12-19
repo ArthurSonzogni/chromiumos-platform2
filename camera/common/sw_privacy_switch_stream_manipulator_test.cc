@@ -109,8 +109,7 @@ class SWPrivacySwitchTest : public ::testing::Test {
                 .notify_callback = base::DoNothing()});
   }
 
-  Camera3CaptureDescriptor WrapWithCamera3CaptureDescriptorResult(
-      buffer_handle_t* handle) const {
+  bool ProcessCaptureResult(buffer_handle_t* handle) {
     auto stream = camera3_stream_t{
         .width = g_env->camera_buffer_manager_->GetWidth(*handle),
         .height = g_env->camera_buffer_manager_->GetHeight(*handle),
@@ -122,10 +121,10 @@ class SWPrivacySwitchTest : public ::testing::Test {
                                 .status = CAMERA3_BUFFER_STATUS_OK,
                                 .acquire_fence = -1,
                                 .release_fence = -1};
-    return Camera3CaptureDescriptor(
+    return stream_manipulator_.ProcessCaptureResult(Camera3CaptureDescriptor(
         camera3_capture_result_t{.frame_number = 0,
                                  .num_output_buffers = 1,
-                                 .output_buffers = &stream_buffer});
+                                 .output_buffers = &stream_buffer}));
   }
 
   StreamManipulator::RuntimeOptions runtime_options_;
@@ -133,15 +132,15 @@ class SWPrivacySwitchTest : public ::testing::Test {
   Camera3CaptureDescriptor returned_result_;
 };
 
-TEST_F(SWPrivacySwitchTest, NV12Output) {
+TEST_F(SWPrivacySwitchTest, PrivacyOffNV12Output) {
   ScopedBufferHandle handle =
       g_env->camera_buffer_manager_->AllocateScopedBuffer(
           kWidth, kHeight, HAL_PIXEL_FORMAT_YCbCr_420_888, kBufferUsage);
   FillInFrameWithNonBlackColor(*handle);
 
-  // When |sw_privacy_switch_state| is OFF.
-  auto result = WrapWithCamera3CaptureDescriptorResult(handle.get());
-  ASSERT_TRUE(stream_manipulator_.ProcessCaptureResult(std::move(result)))
+  runtime_options_.SetSWPrivacySwitchState(
+      mojom::CameraPrivacySwitchState::OFF);
+  ASSERT_TRUE(ProcessCaptureResult(handle.get()))
       << "SWPrivacySwitchStreamManipulator::ProcessCaptureResult failed when"
          "|sw_privacy_switch_state| is OFF";
   WaitForReleaseFence(
@@ -152,11 +151,16 @@ TEST_F(SWPrivacySwitchTest, NV12Output) {
     EXPECT_FALSE(IsBlackFrameNV12(mapping))
         << "The result frame shoud not be black, but is black";
   }
+}
 
-  // When |sw_privacy_switch_state| is ON.
+TEST_F(SWPrivacySwitchTest, PrivacyOnNV12Output) {
+  ScopedBufferHandle handle =
+      g_env->camera_buffer_manager_->AllocateScopedBuffer(
+          kWidth, kHeight, HAL_PIXEL_FORMAT_YCbCr_420_888, kBufferUsage);
+  FillInFrameWithNonBlackColor(*handle);
+
   runtime_options_.SetSWPrivacySwitchState(mojom::CameraPrivacySwitchState::ON);
-  result = WrapWithCamera3CaptureDescriptorResult(handle.get());
-  ASSERT_TRUE(stream_manipulator_.ProcessCaptureResult(std::move(result)))
+  ASSERT_TRUE(ProcessCaptureResult(handle.get()))
       << "SWPrivacySwitchStreamManipulator::ProcessCaptureResult failed when"
          "|sw_privacy_switch_state| was ON";
   WaitForReleaseFence(
@@ -169,7 +173,7 @@ TEST_F(SWPrivacySwitchTest, NV12Output) {
   }
 }
 
-TEST_F(SWPrivacySwitchTest, JpegOutput) {
+TEST_F(SWPrivacySwitchTest, PrivacyOffJpegOutput) {
   // There is no need to initialize the JPEG frame for the testing purpose,
   // because SWPrivacySwitchStreamManipulator will ignore it. Without
   // initialization, the JPEG frame will be invalid.
@@ -185,8 +189,9 @@ TEST_F(SWPrivacySwitchTest, JpegOutput) {
   // SWPrivacySwitchStreamManipulator::ProcessCaptureResult, the JPEG frame
   // should be still invalid and libyuv::MJPGToNV12 should fail, because
   // SWPrivacySwitchStreamManipulator should not change the frame.
-  auto result = WrapWithCamera3CaptureDescriptorResult(jpeg_handle.get());
-  ASSERT_TRUE(stream_manipulator_.ProcessCaptureResult(std::move(result)))
+  runtime_options_.SetSWPrivacySwitchState(
+      mojom::CameraPrivacySwitchState::OFF);
+  ASSERT_TRUE(ProcessCaptureResult(jpeg_handle.get()))
       << "SWPrivacySwitchStreamManipulator::ProcessCaptureResult failed"
          "when |sw_privacy_switch_state| was OFF";
   WaitForReleaseFence(
@@ -202,14 +207,26 @@ TEST_F(SWPrivacySwitchTest, JpegOutput) {
               0)
         << "Decoding of the result JPEG frame should fail, but succeeded";
   }
+}
+
+TEST_F(SWPrivacySwitchTest, PrivacyOnJpegOutput) {
+  // There is no need to initialize the JPEG frame for the testing purpose,
+  // because SWPrivacySwitchStreamManipulator will ignore it. Without
+  // initialization, the JPEG frame will be invalid.
+  ScopedBufferHandle jpeg_handle =
+      g_env->camera_buffer_manager_->AllocateScopedBuffer(
+          kWidth, kHeight, HAL_PIXEL_FORMAT_BLOB, kBufferUsage);
+  ScopedBufferHandle nv12_handle =
+      g_env->camera_buffer_manager_->AllocateScopedBuffer(
+          kWidth, kHeight, HAL_PIXEL_FORMAT_YCbCr_420_888, kBufferUsage);
+  auto nv12_mapping = ScopedMapping(*nv12_handle);
 
   // When |sw_privacy_switch_state| is ON, after
   // SWPrivacySwitchStreamManipulator::ProcessCaptureResult, the JPEG frame
   // should be valid, libyuv::MJPGToNV12 should succeed, and the resulting NV12
   // frame should be black.
   runtime_options_.SetSWPrivacySwitchState(mojom::CameraPrivacySwitchState::ON);
-  result = WrapWithCamera3CaptureDescriptorResult(jpeg_handle.get());
-  ASSERT_TRUE(stream_manipulator_.ProcessCaptureResult(std::move(result)))
+  ASSERT_TRUE(ProcessCaptureResult(jpeg_handle.get()))
       << "SWPrivacySwitchStreamManipulator::ProcessCaptureResult failed"
          "when |sw_privacy_switch_state| was ON";
   WaitForReleaseFence(

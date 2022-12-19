@@ -162,7 +162,13 @@ bool SWPrivacySwitchStreamManipulator::FillInFrameWithBlackJpegImage(
       GRALLOC_USAGE_SW_WRITE_OFTEN | GRALLOC_USAGE_HW_VIDEO_ENCODER;
   auto in_handle = camera_buffer_manager_->AllocateScopedBuffer(
       width, height, HAL_PIXEL_FORMAT_YCbCr_420_888, kBufferUsage);
+  if (in_handle == nullptr) {
+    return false;
+  }
   auto in_mapping = ScopedMapping(*in_handle);
+  if (!in_mapping.is_valid()) {
+    return false;
+  }
   FillInFrameWithBlackPixelsNV12(in_mapping);
 
   std::vector<uint8_t> empty_thumbnail;
