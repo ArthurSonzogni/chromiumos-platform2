@@ -5632,6 +5632,32 @@ MATCHER_P(HasPossibleAction, action, "") {
   return false;
 }
 
+// Same as multiple invocation of HasPossibleAction. This matcher checks that
+// the CryptohomeErrorInfo contains a correct PrimaryAction and the list of
+// recommended PossibleAction(s) contains the specified actions. |actions|
+// should be set<user_data_auth::PossibleAction>.
+MATCHER_P(HasPossibleActions, actions, "") {
+  // We need to copy the actions to strip off the constness.
+  std::set<user_data_auth::PossibleAction> to_match = actions;
+  if (arg.primary_action() != user_data_auth::PrimaryAction::PRIMARY_NONE) {
+    *result_listener
+        << "Invalid PrimaryAction when checking for PossibleAction: "
+        << user_data_auth::PrimaryAction_Name(arg.primary_action());
+    return false;
+  }
+  for (int i = 0; i < arg.possible_actions_size(); i++) {
+    const auto current_action = arg.possible_actions(i);
+    if (to_match.count(current_action) != 0) {
+      to_match.erase(current_action);
+    }
+  }
+  for (const auto& action : to_match) {
+    *result_listener << "Action " << user_data_auth::PossibleAction_Name(action)
+                     << " not found";
+  }
+  return to_match.size() == 0;
+}
+
 TEST_F(UserDataAuthApiTest, RemoveStillMounted) {
   // If a home directory is mounted it'll return false for Remove().
   EXPECT_CALL(homedirs_, Remove(_)).WillOnce(Return(false));
@@ -5647,12 +5673,10 @@ TEST_F(UserDataAuthApiTest, RemoveStillMounted) {
 
   // Failure to Remove() due to still mounted vault should result in Reboot and
   // Powerwash recommendation.
-  EXPECT_THAT(
-      reply.error_info(),
-      HasPossibleAction(user_data_auth::PossibleAction::POSSIBLY_REBOOT));
-  EXPECT_THAT(
-      reply.error_info(),
-      HasPossibleAction(user_data_auth::PossibleAction::POSSIBLY_POWERWASH));
+  EXPECT_THAT(reply.error_info(),
+              HasPossibleActions(std::set(
+                  {user_data_auth::PossibleAction::POSSIBLY_REBOOT,
+                   user_data_auth::PossibleAction::POSSIBLY_POWERWASH})));
 }
 
 TEST_F(UserDataAuthApiTest, RemoveNoID) {
@@ -5764,18 +5788,12 @@ TEST_F(UserDataAuthApiTest, MountFailed) {
       PreparePersistentVaultSync(prepare_req);
 
   ASSERT_TRUE(prepare_reply.has_value());
-  EXPECT_THAT(
-      prepare_reply->error_info(),
-      HasPossibleAction(user_data_auth::PossibleAction::POSSIBLY_RETRY));
-  EXPECT_THAT(
-      prepare_reply->error_info(),
-      HasPossibleAction(user_data_auth::PossibleAction::POSSIBLY_REBOOT));
-  EXPECT_THAT(
-      prepare_reply->error_info(),
-      HasPossibleAction(user_data_auth::PossibleAction::POSSIBLY_DELETE_VAULT));
-  EXPECT_THAT(
-      prepare_reply->error_info(),
-      HasPossibleAction(user_data_auth::PossibleAction::POSSIBLY_POWERWASH));
+  EXPECT_THAT(prepare_reply->error_info(),
+              HasPossibleActions(std::set(
+                  {user_data_auth::PossibleAction::POSSIBLY_RETRY,
+                   user_data_auth::PossibleAction::POSSIBLY_REBOOT,
+                   user_data_auth::PossibleAction::POSSIBLY_DELETE_VAULT,
+                   user_data_auth::PossibleAction::POSSIBLY_POWERWASH})));
 }
 
 TEST_F(UserDataAuthApiTest, EphemeralMountFailed) {
@@ -5801,15 +5819,11 @@ TEST_F(UserDataAuthApiTest, EphemeralMountFailed) {
       PrepareEphemeralVaultSync(prepare_req);
 
   ASSERT_TRUE(prepare_reply.has_value());
-  EXPECT_THAT(
-      prepare_reply->error_info(),
-      HasPossibleAction(user_data_auth::PossibleAction::POSSIBLY_RETRY));
-  EXPECT_THAT(
-      prepare_reply->error_info(),
-      HasPossibleAction(user_data_auth::PossibleAction::POSSIBLY_REBOOT));
-  EXPECT_THAT(
-      prepare_reply->error_info(),
-      HasPossibleAction(user_data_auth::PossibleAction::POSSIBLY_POWERWASH));
+  EXPECT_THAT(prepare_reply->error_info(),
+              HasPossibleActions(std::set(
+                  {user_data_auth::PossibleAction::POSSIBLY_RETRY,
+                   user_data_auth::PossibleAction::POSSIBLY_REBOOT,
+                   user_data_auth::PossibleAction::POSSIBLY_POWERWASH})));
 }
 
 }  // namespace cryptohome
