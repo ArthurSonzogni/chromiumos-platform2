@@ -214,6 +214,15 @@ TEST_F(BackendStorageTpm1Test, Store) {
   EXPECT_CALL(proxy_->GetMock().tpm_nvram, WriteSpace(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(write_reply), Return(true)));
 
+  tpm_manager::GetSpaceInfoReply info_reply;
+  info_reply.set_result(NvramResult::NVRAM_RESULT_SUCCESS);
+  info_reply.set_size(10);
+  info_reply.set_is_read_locked(false);
+  info_reply.set_is_write_locked(false);
+  info_reply.add_attributes(NvramSpaceAttribute::NVRAM_PERSISTENT_WRITE_LOCK);
+  EXPECT_CALL(proxy_->GetMock().tpm_nvram, GetSpaceInfo(_, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<1>(info_reply), Return(true)));
+
   tpm_manager::LockSpaceReply lock_reply;
   lock_reply.set_result(NvramResult::NVRAM_RESULT_SUCCESS);
   EXPECT_CALL(proxy_->GetMock().tpm_nvram, LockSpace(_, _, _, _))
@@ -225,10 +234,48 @@ TEST_F(BackendStorageTpm1Test, Store) {
 }
 
 TEST_F(BackendStorageTpm1Test, Lock) {
+  tpm_manager::GetSpaceInfoReply info_reply;
+  info_reply.set_result(NvramResult::NVRAM_RESULT_SUCCESS);
+  info_reply.set_size(10);
+  info_reply.set_is_read_locked(false);
+  info_reply.set_is_write_locked(false);
+  info_reply.add_attributes(NvramSpaceAttribute::NVRAM_READ_AUTHORIZATION);
+  info_reply.add_attributes(NvramSpaceAttribute::NVRAM_BOOT_WRITE_LOCK);
+  info_reply.add_attributes(NvramSpaceAttribute::NVRAM_WRITE_AUTHORIZATION);
+  EXPECT_CALL(proxy_->GetMock().tpm_nvram, GetSpaceInfo(_, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<1>(info_reply), Return(true)));
+
   tpm_manager::LockSpaceReply lock_reply;
   lock_reply.set_result(NvramResult::NVRAM_RESULT_SUCCESS);
   EXPECT_CALL(proxy_->GetMock().tpm_nvram, LockSpace(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(lock_reply), Return(true)));
+
+  EXPECT_THAT(middleware_->CallSync<&Backend::Storage::Lock>(
+                  Space::kBootlockbox,
+                  Backend::Storage::LockOptions{
+                      .read_lock = false,
+                      .write_lock = true,
+                  }),
+              IsOk());
+}
+
+TEST_F(BackendStorageTpm1Test, LockNoOp) {
+  tpm_manager::GetSpaceInfoReply info_reply;
+  info_reply.set_result(NvramResult::NVRAM_RESULT_SUCCESS);
+  info_reply.set_size(10);
+  info_reply.set_is_read_locked(false);
+  info_reply.set_is_write_locked(true);
+  info_reply.add_attributes(NvramSpaceAttribute::NVRAM_READ_AUTHORIZATION);
+  info_reply.add_attributes(NvramSpaceAttribute::NVRAM_BOOT_WRITE_LOCK);
+  info_reply.add_attributes(NvramSpaceAttribute::NVRAM_WRITE_AUTHORIZATION);
+  EXPECT_CALL(proxy_->GetMock().tpm_nvram, GetSpaceInfo(_, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<1>(info_reply), Return(true)));
+
+  tpm_manager::LockSpaceReply lock_reply;
+  lock_reply.set_result(NvramResult::NVRAM_RESULT_SUCCESS);
+  // Space is already locked as requested, so no need to send the LockSpace
+  // command again.
+  EXPECT_CALL(proxy_->GetMock().tpm_nvram, LockSpace).Times(0);
 
   EXPECT_THAT(middleware_->CallSync<&Backend::Storage::Lock>(
                   Space::kBootlockbox,

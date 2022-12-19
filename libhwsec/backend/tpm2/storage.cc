@@ -408,6 +408,23 @@ Status StorageTpm2::Store(Space space, const brillo::Blob& blob) {
 Status StorageTpm2::Lock(Space space, LockOptions options) {
   ASSIGN_OR_RETURN(const SpaceInfo& space_info, GetSpaceInfo(space));
 
+  ASSIGN_OR_RETURN(
+      const DetailSpaceInfo& detail_info,
+      GetDetailSpaceInfo(backend_.GetProxy().GetTpmNvram(), space_info),
+      _.WithStatus<TPMError>("Failed to get detail space info"));
+  // If the space is already read-locked we don't have to read-lock it again.
+  if (detail_info.is_read_locked) {
+    options.read_lock = false;
+  }
+  // If the space is already write-locked we don't have to write-lock it again.
+  if (detail_info.is_write_locked) {
+    options.write_lock = false;
+  }
+  // This case will result in a no-op lock command, returning early instead.
+  if (!options.read_lock && !options.write_lock) {
+    return OkStatus();
+  }
+
   tpm_manager::LockSpaceRequest request;
   request.set_index(space_info.index);
   request.set_lock_write(options.write_lock);
