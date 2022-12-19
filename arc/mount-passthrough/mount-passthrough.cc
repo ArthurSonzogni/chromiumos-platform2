@@ -39,9 +39,6 @@
 #define USER_NS_SHIFT 655360
 #define CHRONOS_UID 1000
 #define CHRONOS_GID 1000
-// Android's media_rw UID and GID shifted by USER_NS_SHIFT.
-#define AID_MEDIA_RW_UID 656383
-#define AID_MEDIA_RW_GID 656383
 
 #define WRAP_FS_CALL(res) ((res) < 0 ? -errno : 0)
 
@@ -56,7 +53,6 @@ constexpr char kMediaRwDataFileContext[] = "u:object_r:media_rw_data_file:s0";
 
 struct FusePrivateData {
   std::string android_app_access_type;
-  bool force_group_permission = false;
   base::FilePath root;
 };
 
@@ -147,14 +143,9 @@ int passthrough_create(const char* path,
     return check_allowed_result;
   }
 
-  const bool force_group_permission =
-      static_cast<FusePrivateData*>(fuse_get_context()->private_data)
-          ->force_group_permission;
-
   // Ignore specified |mode| and always use a fixed mode since we do not allow
   // chmod anyway. Note that we explicitly set the umask in main().
-  int fd = open(GetAbsolutePath(path).value().c_str(), fi->flags,
-                force_group_permission ? 0664 : 0644);
+  int fd = open(GetAbsolutePath(path).value().c_str(), fi->flags, 0644);
   if (fd < 0) {
     return -errno;
   }
@@ -234,13 +225,6 @@ int passthrough_mkdir(const char* path, mode_t mode) {
   int check_allowed_result = check_allowed();
   if (check_allowed_result < 0) {
     return check_allowed_result;
-  }
-
-  // When |force_group_permission| is true, forcefully grant full group access
-  // permission so that Android's MediaProvider can access the new directory.
-  if (static_cast<FusePrivateData*>(fuse_get_context()->private_data)
-          ->force_group_permission) {
-    mode |= S_IRWXG;
   }
 
   return WRAP_FS_CALL(mkdir(GetAbsolutePath(path).value().c_str(), mode));
@@ -456,13 +440,6 @@ int main(int argc, char** argv) {
       "What type of permission checks should be done for Android apps."
       " Must be either full, read, or write (required)");
 
-  // TODO(b/123669632): Remove the argument |force_group_permission| and related
-  // logic once we start to run the daemon as MediaProvider UID and GID from
-  // mount-passthrough-jailed-play.
-  DEFINE_bool(force_group_permission, false,
-              "Forcefully grant full group access permission for newly created"
-              " directories (optional)");
-
   // Use "arc-" prefix so that the log is recorded in /var/log/arc.log.
   brillo::OpenLog("arc-mount-passthrough", true /*log_pid*/);
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogHeader |
@@ -503,16 +480,13 @@ int main(int argc, char** argv) {
     return 1;
   }
 
-  const uid_t daemon_uid = getuid();
-  if (daemon_uid != CHRONOS_UID && daemon_uid != AID_MEDIA_RW_UID) {
-    LOG(ERROR) << "This daemon must run as chronos or Android's media_rw user.";
+  if (getuid() != CHRONOS_UID) {
+    LOG(ERROR) << "This daemon must run as chronos user.";
     return 1;
   }
 
-  const gid_t daemon_gid = getgid();
-  if (daemon_gid != CHRONOS_GID && daemon_gid != AID_MEDIA_RW_GID) {
-    LOG(ERROR) << "This daemon must run as chronos or Android's media_rw"
-               << " group.";
+  if (getgid() != CHRONOS_GID) {
+    LOG(ERROR) << "This daemon must run as chronos group.";
     return 1;
   }
 
@@ -522,12 +496,7 @@ int main(int argc, char** argv) {
   // NOTE: Commas are escaped by "\\" to avoid being processed by lifuse's
   // option parsing code.
   std::string security_context;
-  if (daemon_uid != CHRONOS_UID) {
-    // If this process is not running as chronos, that means this file system is
-    // to allow chrome to access Android files, not to be accessed by Android.
-    // In that case, just use kMediaRwDataFileContext as the security context.
-    security_context = kMediaRwDataFileContext;
-  } else if (USE_ARCPP) {
+  if (USE_ARCPP) {
     // In Android P, the security context of directories under /data/media/0 is
     // "u:object_r:media_rw_data_file:s0:c512,c768".
     security_context = std::string(kMediaRwDataFileContext) + ":c512\\,c768";
@@ -602,12 +571,10 @@ int main(int argc, char** argv) {
   };
   int fuse_argc = sizeof(fuse_argv) / sizeof(fuse_argv[0]);
 
-  const mode_t daemon_umask = FLAGS_force_group_permission ? 0002 : 0022;
-  umask(daemon_umask);
+  umask(0022);
 
   FusePrivateData private_data;
   private_data.android_app_access_type = FLAGS_android_app_access_type;
-  private_data.force_group_permission = FLAGS_force_group_permission;
   private_data.root = base::FilePath(FLAGS_source);
 
   // The code below does the same thing as fuse_main() except that it ignores

@@ -32,7 +32,6 @@ install_config("install_bin") {
   sources = [
     "mount-passthrough-jailed",
     "mount-passthrough-jailed-media",
-    "mount-passthrough-jailed-play",
   ]
   install_path = "/usr/bin"
   type = "executable"

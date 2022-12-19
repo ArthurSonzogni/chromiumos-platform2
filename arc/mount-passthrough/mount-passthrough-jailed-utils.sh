@@ -5,15 +5,10 @@
 
 # Defines a wrapper function to run mount-passthrough with minijail0.
 
-# TODO(b/123669632): Remove the argument |force_group_permission| and related
-# logic once we start to run the daemon as MediaProvider UID and GID from
-# mount-passthrough-jailed-play.
 run_mount_passthrough_with_minijail0() {
-  if [ $# -ne 13 ]; then
+  if [ $# -ne 8 ]; then
     echo "Usage: $0 source dest fuse_umask fuse_uid fuse_gid"\
-      "android_app_access_type daemon_uid daemon_gid"\
-      "inherit_supplementary_groups grant_cap_dac_override"\
-      "force_group_permission" "enter_concierge_namespace" \
+      "android_app_access_type" "enter_concierge_namespace"\
       "max_number_of_open_fds"
     exit 1
   fi
@@ -24,13 +19,8 @@ run_mount_passthrough_with_minijail0() {
   local fuse_uid="${4}"
   local fuse_gid="${5}"
   local android_app_access_type="${6}"
-  local daemon_uid="${7}"
-  local daemon_gid="${8}"
-  local inherit_supplementary_groups="${9}"
-  local grant_cap_dac_override="${10}"
-  local force_group_permission="${11}"
-  local enter_concierge_namespace="${12}"
-  local max_number_of_open_fds="${13}"
+  local enter_concierge_namespace="${7}"
+  local max_number_of_open_fds="${8}"
 
   # Specify the maximum number of file descriptors the process can open.
   ulimit -n "${max_number_of_open_fds}"
@@ -62,21 +52,13 @@ run_mount_passthrough_with_minijail0() {
   set -- "$@" -l
 
   # Grant CAP_SYS_ADMIN needed to mount FUSE filesystem.
-  # Also, additionally grant CAP_DAC_OVERRIDE when specified so in order to
-  # access all files in the source regardless of the daemon's UID and GID.
-  if [ "${grant_cap_dac_override}" = "true" ]; then
-    set -- "$@" -c 'cap_dac_override,cap_sys_admin+eip'
-  else
-    set -- "$@" -c 'cap_sys_admin+eip'
-  fi
+  set -- "$@" -c 'cap_sys_admin+eip'
 
-  # Set uid and gid of the daemon.
-  set -- "$@" -u "${daemon_uid}" -g "${daemon_gid}"
+  # Set uid and gid of the daemon as chronos.
+  set -- "$@" -u chronos -g chronos
 
-  # Inherit supplementary groups if specified so.
-  if [ "${inherit_supplementary_groups}" = "true" ]; then
-    set -- "$@" -G
-  fi
+  # Inherit supplementary groups.
+  set -- "$@" -G
 
   # Allow sharing mounts between CrOS and Android.
   # WARNING: BE CAREFUL not to unexpectedly expose shared mounts in following
@@ -123,10 +105,6 @@ run_mount_passthrough_with_minijail0() {
       "--fuse_umask=${fuse_umask}" \
       "--fuse_uid=${fuse_uid}" "--fuse_gid=${fuse_gid}" \
       "--android_app_access_type=${android_app_access_type}"
-
-  if [ "${force_group_permission}" = "true" ]; then
-    set -- "$@" "--force_group_permission"
-  fi
 
   exec minijail0 "$@"
 }

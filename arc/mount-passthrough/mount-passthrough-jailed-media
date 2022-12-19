@@ -28,21 +28,6 @@ set -- "$@" "${ANDROID_EXTERNAL_STORAGE_GID}"
 # Set Android app access type to full.
 set -- "$@" "full"
 
-# Run mount-passthrough as chronos.
-set -- "$@" chronos chronos
-
-# Inherit supplementary groups.
-set -- "$@" "true" # inherit_supplementary_groups
-
-# Do not grant CAP_DAC_OVERRIDE.
-set -- "$@" "false" # grant_cap_dac_override
-
-# Do not force group access permission.
-# TODO(b/123669632): Remove the argument |force_group_permission| and related
-# logic once we start to run the daemon as MediaProvider UID and GID from
-# mount-passthrough-jailed-play.
-set -- "$@" "false" # force_group_permission
-
 # Enter the concierge namespace.
 set -- "$@" "true" # enter_concierge_namespace
 
