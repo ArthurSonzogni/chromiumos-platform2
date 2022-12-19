@@ -38,7 +38,7 @@ struct SpaceInfo {
   NoDefault<bool> write_with_owner_auth;
   NoDefault<bool> read_with_owner_auth;
   NoDefault<bool> lock_after_write;
-  NoDefault<bool> prepare_if_write_locked;
+  NoDefault<bool> prepare_if_not_writable;
   std::optional<Attributes> init_attributes;
   Attributes require_attributes;
   Attributes deny_attributes;
@@ -89,7 +89,7 @@ StatusOr<SpaceInfo> GetSpaceInfo(Space space) {
           .write_with_owner_auth = false,
           .read_with_owner_auth = false,
           .lock_after_write = true,
-          .prepare_if_write_locked = true,
+          .prepare_if_not_writable = true,
           .init_attributes = kFwmpInitAttributes,
           .require_attributes = kFwmpRequireAttributes,
       };
@@ -99,7 +99,7 @@ StatusOr<SpaceInfo> GetSpaceInfo(Space space) {
           .write_with_owner_auth = false,
           .read_with_owner_auth = false,
           .lock_after_write = true,
-          .prepare_if_write_locked = true,
+          .prepare_if_not_writable = true,
           .init_attributes = kInstallAttributesInitAttributes,
           .require_attributes = kInstallAttributesRequireAttributes,
           .bind_to_prc0 = true,
@@ -111,7 +111,7 @@ StatusOr<SpaceInfo> GetSpaceInfo(Space space) {
           .write_with_owner_auth = false,
           .read_with_owner_auth = false,
           .lock_after_write = false,
-          .prepare_if_write_locked = false,
+          .prepare_if_not_writable = false,
           .init_attributes = kBootlockboxInitAttributes,
           .owner_dependency = tpm_manager::kTpmOwnerDependency_Bootlockbox,
       };
@@ -269,13 +269,13 @@ StatusOr<StorageTpm1::ReadyState> StorageTpm1::IsReady(Space space) {
 
   if (detail_info.is_write_locked) {
     // We don't need to remove the dependency for locked space.
-    return ReadyState::kWriteLocked;
+    return ReadyState::kReadable;
   }
 
   RETURN_IF_ERROR(
       CheckAndRemoveDependency(backend_.GetProxy().GetTpmManager(), space_info))
       .WithStatus<TPMError>("Failed to check and remove dependency");
-  return ReadyState::kReady;
+  return ReadyState::kReadableAndWritable;
 }
 
 Status StorageTpm1::Prepare(Space space, uint32_t size) {
@@ -284,12 +284,12 @@ Status StorageTpm1::Prepare(Space space, uint32_t size) {
 
   ASSIGN_OR_RETURN(const SpaceInfo& space_info, GetSpaceInfo(space));
 
-  if (ready_state == ReadyState::kReady) {
+  if (ready_state == ReadyState::kReadableAndWritable) {
     return OkStatus();
   }
 
-  if (ready_state == ReadyState::kWriteLocked &&
-      !space_info.prepare_if_write_locked) {
+  if (ready_state == ReadyState::kReadable &&
+      !space_info.prepare_if_not_writable) {
     return OkStatus();
   }
 

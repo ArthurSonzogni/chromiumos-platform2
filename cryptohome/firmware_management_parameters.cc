@@ -127,8 +127,9 @@ bool FirmwareManagementParameters::Load(void) {
     return false;
   }
 
-  if (state.value() != hwsec::CryptohomeFrontend::StorageState::kReady &&
-      state.value() != hwsec::CryptohomeFrontend::StorageState::kWriteLocked) {
+  if (state.value() !=
+          hwsec::CryptohomeFrontend::StorageState::kReadableAndWritable &&
+      state.value() != hwsec::CryptohomeFrontend::StorageState::kReadable) {
     LOG(INFO) << "Load() called with unexpected FWMP state: "
               << static_cast<int>(state.value());
     return false;
@@ -189,7 +190,8 @@ bool FirmwareManagementParameters::Store(
     return false;
   }
 
-  if (state.value() != hwsec::CryptohomeFrontend::StorageState::kReady) {
+  if (state.value() !=
+      hwsec::CryptohomeFrontend::StorageState::kReadableAndWritable) {
     LOG(INFO) << "Store() called with unexpected FWMP state: "
               << static_cast<int>(state.value());
     return false;

@@ -18,11 +18,11 @@ namespace hwsec {
 class Storage {
  public:
   enum class ReadyState {
-    // Ready to use.
-    kReady,
-    // Write locked.
-    kWriteLocked,
-    // Can be prepared.
+    // Ready to use, and both read and write are allowed.
+    kReadableAndWritable,
+    // Ready to use, but write locked.
+    kReadable,
+    // Not ready to use, should be prepared before using it.
     kPreparable,
   };
 

@@ -58,7 +58,7 @@ TEST_F(BackendStorageTpm1Test, IsReady) {
 
   EXPECT_THAT(middleware_->CallSync<&Backend::Storage::IsReady>(
                   Space::kInstallAttributes),
-              IsOkAndHolds(Backend::Storage::ReadyState::kReady));
+              IsOkAndHolds(Backend::Storage::ReadyState::kReadableAndWritable));
 }
 
 TEST_F(BackendStorageTpm1Test, IsReadyPreparable) {

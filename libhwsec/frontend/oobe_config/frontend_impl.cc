@@ -58,7 +58,7 @@ Status OobeConfigFrontendImpl::IsRollbackSpaceReady() {
           Space::kEnterpriseRollback),
       _.WithStatus<TPMError>("Failed to get enterprise rollback space state"));
 
-  if (state != Storage::ReadyState::kReady) {
+  if (state != Storage::ReadyState::kReadableAndWritable) {
     return MakeStatus<TPMError>("Not ready", TPMRetryAction::kNoRetry);
   }
 

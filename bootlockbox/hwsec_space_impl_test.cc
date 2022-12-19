@@ -61,7 +61,8 @@ TEST_F(HwsecSpaceImplTest, DefineSpaceSuccess) {
 
 TEST_F(HwsecSpaceImplTest, DefineSpaceAlreadyDefined) {
   EXPECT_CALL(*hwsec_ptr_, GetSpaceState())
-      .WillOnce(ReturnValue(hwsec::BootLockboxFrontend::StorageState::kReady));
+      .WillOnce(ReturnValue(
+          hwsec::BootLockboxFrontend::StorageState::kReadableAndWritable));
 
   EXPECT_EQ(space_utility_->DefineSpace(), SpaceState::kSpaceUninitialized);
 }
@@ -69,7 +70,7 @@ TEST_F(HwsecSpaceImplTest, DefineSpaceAlreadyDefined) {
 TEST_F(HwsecSpaceImplTest, DefineSpaceCannotPrepare) {
   EXPECT_CALL(*hwsec_ptr_, GetSpaceState())
       .WillOnce(
-          ReturnValue(hwsec::BootLockboxFrontend::StorageState::kWriteLocked));
+          ReturnValue(hwsec::BootLockboxFrontend::StorageState::kReadable));
 
   EXPECT_EQ(space_utility_->DefineSpace(), SpaceState::kSpaceError);
 }
@@ -107,7 +108,8 @@ TEST_F(HwsecSpaceImplTest, ReadSpaceLengthFail) {
                            uint16_to_string(0) /* flags */ +
                            std::string(3, '\x3');
   EXPECT_CALL(*hwsec_ptr_, GetSpaceState())
-      .WillOnce(ReturnValue(hwsec::BootLockboxFrontend::StorageState::kReady));
+      .WillOnce(ReturnValue(
+          hwsec::BootLockboxFrontend::StorageState::kReadableAndWritable));
   EXPECT_CALL(*hwsec_ptr_, LoadSpace())
       .WillOnce(ReturnValue(brillo::BlobFromString(nvram_data)));
 
@@ -118,7 +120,8 @@ TEST_F(HwsecSpaceImplTest, ReadSpaceLengthFail) {
 TEST_F(HwsecSpaceImplTest, ReadSpaceUninitializedFail) {
   std::string nvram_data = std::string(kSpaceSize, '\0');
   EXPECT_CALL(*hwsec_ptr_, GetSpaceState())
-      .WillOnce(ReturnValue(hwsec::BootLockboxFrontend::StorageState::kReady));
+      .WillOnce(ReturnValue(
+          hwsec::BootLockboxFrontend::StorageState::kReadableAndWritable));
   EXPECT_CALL(*hwsec_ptr_, LoadSpace())
       .WillOnce(ReturnValue(brillo::BlobFromString(nvram_data)));
 
@@ -131,7 +134,8 @@ TEST_F(HwsecSpaceImplTest, ReadSpaceVersionFail) {
   std::string nvram_data =
       std::string(reinterpret_cast<char*>(&space), kSpaceSize);
   EXPECT_CALL(*hwsec_ptr_, GetSpaceState())
-      .WillOnce(ReturnValue(hwsec::BootLockboxFrontend::StorageState::kReady));
+      .WillOnce(ReturnValue(
+          hwsec::BootLockboxFrontend::StorageState::kReadableAndWritable));
   EXPECT_CALL(*hwsec_ptr_, LoadSpace())
       .WillOnce(ReturnValue(brillo::BlobFromString(nvram_data)));
 
@@ -149,7 +153,8 @@ TEST_F(HwsecSpaceImplTest, ReadSpaceSuccess) {
   std::string nvram_data =
       std::string(reinterpret_cast<char*>(&space), kSpaceSize);
   EXPECT_CALL(*hwsec_ptr_, GetSpaceState())
-      .WillOnce(ReturnValue(hwsec::BootLockboxFrontend::StorageState::kReady));
+      .WillOnce(ReturnValue(
+          hwsec::BootLockboxFrontend::StorageState::kReadableAndWritable));
   EXPECT_CALL(*hwsec_ptr_, LoadSpace())
       .WillOnce(ReturnValue(brillo::BlobFromString(nvram_data)));
 

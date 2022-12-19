@@ -60,7 +60,7 @@ TEST_F(BackendStorageTpm2Test, IsReady) {
 
   EXPECT_THAT(middleware_->CallSync<&Backend::Storage::IsReady>(
                   Space::kInstallAttributes),
-              IsOkAndHolds(Backend::Storage::ReadyState::kReady));
+              IsOkAndHolds(Backend::Storage::ReadyState::kReadableAndWritable));
 }
 
 TEST_F(BackendStorageTpm2Test, IsReadyPreparable) {
@@ -325,7 +325,7 @@ TEST_F(BackendStorageTpm2Test, EnterpriseRollbackReady) {
 
   EXPECT_THAT(middleware_->CallSync<&Backend::Storage::IsReady>(
                   Space::kEnterpriseRollback),
-              IsOkAndHolds(Storage::ReadyState::kReady));
+              IsOkAndHolds(Storage::ReadyState::kReadableAndWritable));
 }
 
 TEST_F(BackendStorageTpm2Test, EnterpriseRollbackNotReady) {

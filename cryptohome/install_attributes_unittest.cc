@@ -193,7 +193,7 @@ TEST_F(InstallAttributesTest, NormalBootWithTpm) {
 
   EXPECT_CALL(hwsec_, GetSpaceState(hwsec::Space::kInstallAttributes))
       .WillRepeatedly(
-          ReturnValue(hwsec::CryptohomeFrontend::StorageState::kWriteLocked));
+          ReturnValue(hwsec::CryptohomeFrontend::StorageState::kReadable));
 
   brillo::Blob serialized_data = GenerateTestDataFileContents();
   EXPECT_CALL(platform_,

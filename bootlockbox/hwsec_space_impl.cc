@@ -27,7 +27,7 @@ SpaceState HwsecSpaceImpl::DefineSpace() {
                        .LogError()
                        .As(SpaceState::kSpaceNeedPowerwash));
 
-  if (state == hwsec::BootLockboxFrontend::StorageState::kReady) {
+  if (state == hwsec::BootLockboxFrontend::StorageState::kReadableAndWritable) {
     return SpaceState::kSpaceUninitialized;
   }
 
