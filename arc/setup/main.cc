@@ -51,6 +51,9 @@ arc::Mode GetMode(const std::string& mode) {
 int main(int argc, char** argv) {
   DEFINE_string(log_tag, "", "Tag to be used in syslog");
   DEFINE_string(mode, "", "arc-setup mode of operation");
+  DEFINE_bool(create_tagged_ashmem, false,
+              "creates /dev/ashmem{boot_id} with device type equal to the "
+              "host's /dev/ashmem (only valid in pre-chroot mode)");
 
   base::ElapsedTimer timer;
   base::AtExitManager at_exit;
@@ -69,6 +72,7 @@ int main(int argc, char** argv) {
   {
     arc::ArcSetup setup(GetMode(FLAGS_mode),
                         base::FilePath(arc::kContainerConfigJson));
+    setup.set_create_tagged_ashmem(FLAGS_create_tagged_ashmem);
     setup.Run();
   }
   LOG(INFO) << command_line << " took "

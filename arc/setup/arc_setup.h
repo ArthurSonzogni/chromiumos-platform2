@@ -107,6 +107,12 @@ class COMPONENT_EXPORT(LIBARC_SETUP) ArcSetup {
   void MountOnOnetimeSetupForTesting();
   void UnmountOnOnetimeStopForTesting();
 
+  void set_create_tagged_ashmem(bool create_tagged_ashmem) {
+    if (create_tagged_ashmem)
+      CHECK_EQ(mode_, Mode::PRE_CHROOT);
+    create_tagged_ashmem_ = create_tagged_ashmem;
+  }
+
  private:
   enum class PlayStoreAutoUpdate { kDefault, kOn, kOff };
 
@@ -245,6 +251,14 @@ class COMPONENT_EXPORT(LIBARC_SETUP) ArcSetup {
 
   // Sets up a default apps.
   void SetUpDefaultApps();
+
+  // Creates an ashmem device file with the boot ID appended to its basename.
+  // This is needed for container only. Otherwise, the file is created in
+  // DeviceHandler::HandleAshmemUevent in init:
+  // http://cs/rvc-arc/system/core/init/devices.cpp;l=444;rcl=e87d4841a777e35ee6f7e15d5ce8357a7e47dc3f
+  // We don't do this for P, as P has not historically done so, so it is not
+  // tested, and P doesn't require this in its Selinux policy. See b/260273725
+  void CreateTaggedAshmem(const base::FilePath& rootfs);
 
   // Cleans up binfmt_misc handlers that run arm binaries on x86.
   void CleanUpBinFmtMiscSetUp();
@@ -413,6 +427,9 @@ class COMPONENT_EXPORT(LIBARC_SETUP) ArcSetup {
   // read, it's content is stored here. If map is empty this indicates that
   // properties file was never read.
   std::map<std::string, std::string> system_properties_;
+
+  // Whether to create an ashmem file suffixed with the current boot ID.
+  bool create_tagged_ashmem_{false};
 };
 
 }  // namespace arc

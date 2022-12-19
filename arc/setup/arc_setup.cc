@@ -103,6 +103,7 @@ constexpr char kApkCacheDir[] = "/mnt/stateful_partition/unencrypted/apkcache";
 constexpr char kArcBridgeSocketContext[] = "u:object_r:arc_bridge_socket:s0";
 constexpr char kArcBridgeSocketPath[] = "/run/chrome/arc_bridge.sock";
 constexpr char kBinFmtMiscDirectory[] = "/proc/sys/fs/binfmt_misc";
+constexpr char kBootIdFile[] = "/proc/sys/kernel/random/boot_id";
 constexpr char kBuildPropFile[] = "/usr/share/arc/properties/build.prop";
 constexpr char kBuildPropFileVm[] = "/usr/share/arcvm/properties/build.prop";
 constexpr char kCameraProfileDir[] =
@@ -2357,8 +2358,36 @@ void ArcSetup::OnPreChroot() {
       << "Failed to enter the container mount namespace";
 
   BindMountInContainerNamespaceOnPreChroot(rootfs, binary_translation_type);
+  if (create_tagged_ashmem_)
+    CreateTaggedAshmem(rootfs);
   RestoreContextOnPreChroot(rootfs);
   CreateDevColdbootDoneOnPreChroot(rootfs);
+}
+
+void ArcSetup::CreateTaggedAshmem(const base::FilePath& rootfs) {
+  std::string boot_id;
+  EXIT_IF(!base::ReadFileToString(base::FilePath(kBootIdFile), &boot_id));
+
+  CHECK(!boot_id.empty());
+  if (boot_id.back() == '\n')
+    boot_id.pop_back();
+
+  // Inherit device type from host's ashmem file.
+  struct stat st_buf;
+  if (stat("/dev/ashmem", &st_buf) != 0)
+    PLOG(FATAL) << "Failed to stat ashmem on host";
+
+  const base::FilePath guest_ashmem = rootfs.Append("dev/ashmem" + boot_id);
+  // Don't bother specifying G and O bits since umask will just clobber them.
+  if (mknod(guest_ashmem.value().c_str(), S_IFCHR | 0600, st_buf.st_rdev) != 0)
+    PLOG(FATAL) << "Failed to mknod " << guest_ashmem;
+
+  // Since the file is world-rw-able, this is an optional adjustment.
+  if (chown(guest_ashmem.value().c_str(), kRootUid, kRootGid) != 0)
+    PLOG(WARNING) << "Failed to chown to android root: " << guest_ashmem;
+
+  if (chmod(guest_ashmem.value().c_str(), 0666) != 0)
+    PLOG(FATAL) << "Failed to chmod " << guest_ashmem;
 }
 
 void ArcSetup::OnRemoveData() {

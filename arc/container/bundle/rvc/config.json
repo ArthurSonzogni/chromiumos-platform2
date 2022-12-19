@@ -567,6 +567,7 @@
 				"args": [
 					"arc-setup",
 					"--log_tag=arc-setup-prechroot",
+					"--create_tagged_ashmem",
 					"--mode=pre-chroot"
 				],
 				"timeout": 8
