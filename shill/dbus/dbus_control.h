@@ -107,8 +107,8 @@ class DBusControl : public ControlInterface {
       const RpcIdentifier& path, const std::string& service) override;
 
 #if !defined(DISABLE_FLOSS)
-  std::unique_ptr<BluetoothManagerProxyInterface> CreateBluetoothManagerProxy()
-      override;
+  std::unique_ptr<BluetoothManagerProxyInterface> CreateBluetoothManagerProxy(
+      const base::RepeatingClosure& service_appeared_callback) override;
 
   std::unique_ptr<BluetoothAdapterProxyInterface> CreateBluetoothAdapterProxy(
       int32_t hci) override;

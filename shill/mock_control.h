@@ -147,10 +147,11 @@ class MockControl : public ControlInterface {
               (const RpcIdentifier&, const std::string&),
               (override));
 #if !defined(DISABLE_FLOSS)
-  MOCK_METHOD(std::unique_ptr<BluetoothManagerProxyInterface>,
-              CreateBluetoothManagerProxy,
-              (),
-              (override));
+  std::unique_ptr<BluetoothManagerProxyInterface> CreateBluetoothManagerProxy(
+      const base::RepeatingClosure& service_appeared_callback) override;
+
+  const base::RepeatingClosure& bluetooth_manager_appear() const;
+
   MOCK_METHOD(std::unique_ptr<BluetoothAdapterProxyInterface>,
               CreateBluetoothAdapterProxy,
               (int32_t),
@@ -165,6 +166,7 @@ class MockControl : public ControlInterface {
   RpcIdentifier null_identifier_;
   base::RepeatingClosure supplicant_appear_;
   base::RepeatingClosure supplicant_vanish_;
+  base::RepeatingClosure bt_manager_appear_;
 };
 
 }  // namespace shill

@@ -10,6 +10,8 @@
 #include <memory>
 #include <vector>
 
+#include <base/memory/weak_ptr.h>
+
 #include "shill/bluetooth/bluetooth_adapter_proxy_interface.h"
 #include "shill/bluetooth/bluetooth_bluez_proxy_interface.h"
 #include "shill/bluetooth/bluetooth_manager_interface.h"
@@ -42,10 +44,24 @@ class BluetoothManager : public BluetoothManagerInterface {
 
  private:
   // Tear-down D-Bus proxies to the BT stack.
-  void TearDownProxies();
+  void TearDown();
 
-  // Check if the D-Bus proxies are all in a valid state.
-  bool ValidProxies() const;
+  // Callback called by |BluetoothManagerProxy| to signal that btmanagerd has
+  // registered its D-Bus interface and that the proxy is ready to be used.
+  // It's either called immediately if btmanagerd is already up and running, or
+  // it's called once later if btmanagerd starts after shill.
+  void OnBTManagerAvailable();
+
+  // When the btmanagerd service becomes available on D-Bus, complete the setup
+  // of the various D-Bus proxies (btmanagerd, BlueZ, Floss adapters).
+  // Note that it will complete the initialization of all the D-Bus proxies for
+  // Floss. It will auto start the initialization of the BlueZ proxy, but the
+  // completion of the initialization of the BlueZ proxy is owned by
+  // |BluetoothBlueZProxy|.
+  void CompleteInitialization();
+
+  // Flipped to true once the D-Bus proxies for btmanagerd are up and running.
+  bool init_complete_;
 
   ControlInterface* control_interface_;
 
@@ -58,6 +74,8 @@ class BluetoothManager : public BluetoothManagerInterface {
       adapter_proxies_;
 
   std::unique_ptr<BluetoothBlueZProxyInterface> bluez_proxy_;
+
+  base::WeakPtrFactory<BluetoothManager> weak_factory_{this};
 };
 
 }  // namespace shill

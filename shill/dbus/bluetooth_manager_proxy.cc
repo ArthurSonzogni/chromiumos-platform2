@@ -21,6 +21,8 @@ namespace {
 // TOOD(b/262931830): Use constants defined in system_api once they've been
 // added.
 constexpr char kBTManagerServiceName[] = "org.chromium.bluetooth.Manager";
+
+constexpr base::TimeDelta kDBusInitializationDelay = base::Seconds(1);
 }
 
 namespace Logging {
@@ -28,9 +30,17 @@ static auto kModuleLogScope = ScopeLogger::kDBus;
 }  // namespace Logging
 
 BluetoothManagerProxy::BluetoothManagerProxy(
-    const scoped_refptr<dbus::Bus>& bus)
+    const scoped_refptr<dbus::Bus>& bus,
+    EventDispatcher* dispatcher,
+    const base::RepeatingClosure& service_appeared_callback)
     : manager_proxy_(new org::chromium::bluetooth::ManagerProxy(
-          bus, kBTManagerServiceName)) {}
+          bus, kBTManagerServiceName)),
+      dispatcher_(dispatcher),
+      service_appeared_callback_(service_appeared_callback) {
+  // One time callback when service becomes available.
+  manager_proxy_->GetObjectProxy()->WaitForServiceToBeAvailable(base::BindOnce(
+      &BluetoothManagerProxy::OnServiceAvailable, weak_factory_.GetWeakPtr()));
+}
 
 bool BluetoothManagerProxy::GetFlossEnabled(bool* enabled) const {
   brillo::ErrorPtr error;
@@ -42,6 +52,32 @@ bool BluetoothManagerProxy::GetFlossEnabled(bool* enabled) const {
   SLOG(3) << __func__ << ": " << manager_proxy_->GetObjectPath().value()
           << ": BT uses " << (*enabled ? "Floss" : "BlueZ");
   return true;
+}
+
+void BluetoothManagerProxy::OnServiceAvailable(bool /* available */) const {
+  SLOG(2) << __func__ << ": " << manager_proxy_->GetObjectPath().value()
+          << ": BT manager service is available";
+  // |service_appeared_callback_| might invoke calls to the ObjectProxy, so
+  // defer the callback to the event loop.
+  // Note:
+  // Race condition in btmanagerd/D-Bus: btmanagerd's D-Bus interface reports
+  // that it's available before all the methods have been registered. Wait a
+  // little bit before querying.
+  // TODO(b/263432564): remove the delay once the race condition has been fixed,
+  // but keep deferring the callback to the event loop.
+  dispatcher_->PostDelayedTask(
+      FROM_HERE,
+      base::BindOnce(&BluetoothManagerProxy::OnServiceReady,
+                     weak_factory_.GetWeakPtr()),
+      kDBusInitializationDelay);
+}
+
+void BluetoothManagerProxy::OnServiceReady() const {
+  SLOG(2) << __func__ << ": " << manager_proxy_->GetObjectPath().value()
+          << ": BT manager service ready";
+  if (!service_appeared_callback_.is_null()) {
+    service_appeared_callback_.Run();
+  }
 }
 
 bool BluetoothManagerProxy::GetAvailableAdapters(

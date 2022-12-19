@@ -179,6 +179,9 @@ Manager::Manager(ControlInterface* control_interface,
       always_on_vpn_service_(nullptr),
       always_on_vpn_connect_attempts_(0u),
       ephemeral_profile_(new EphemeralProfile(this)),
+#if !defined(DISABLE_FLOSS)
+      bluetooth_manager_(new BluetoothManager(control_interface)),
+#endif  // DISABLE_FLOSS
       use_startup_portal_list_(false),
       device_status_check_task_(
           base::Bind(&Manager::DeviceStatusCheckTask, base::Unretained(this))),
@@ -320,9 +323,8 @@ void Manager::Start() {
       base::Bind(&Manager::OnDarkSuspendImminent, weak_factory_.GetWeakPtr()));
   upstart_.reset(new Upstart(control_interface_));
 #if !defined(DISABLE_FLOSS)
-  bluetooth_manager_ = std::make_unique<BluetoothManager>(control_interface_);
   if (!bluetooth_manager_->Start()) {
-    bluetooth_manager_.reset();
+    LOG(ERROR) << "Failed to start BT manager interface.";
   }
 #endif  // DISABLE_FLOSS
 
@@ -391,10 +393,7 @@ void Manager::Stop() {
     RemoveDefaultServiceObserver(metrics_);
   }
 #if !defined(DISABLE_FLOSS)
-  if (bluetooth_manager_) {
-    bluetooth_manager_->Stop();
-    bluetooth_manager_.reset();
-  }
+  bluetooth_manager_->Stop();
 #endif  // DISABLE_FLOSS
   power_manager_->Stop();
   power_manager_.reset();

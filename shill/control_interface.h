@@ -155,7 +155,8 @@ class ControlInterface {
 
 #if !defined(DISABLE_FLOSS)
   virtual std::unique_ptr<BluetoothManagerProxyInterface>
-  CreateBluetoothManagerProxy() = 0;
+  CreateBluetoothManagerProxy(
+      const base::RepeatingClosure& service_appeared_callback) = 0;
 
   virtual std::unique_ptr<BluetoothAdapterProxyInterface>
   CreateBluetoothAdapterProxy(int32_t hci) = 0;

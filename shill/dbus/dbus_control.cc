@@ -260,8 +260,10 @@ std::unique_ptr<mm1::SimProxyInterface> DBusControl::CreateMM1SimProxy(
 
 #if !defined(DISABLE_FLOSS)
 std::unique_ptr<BluetoothManagerProxyInterface>
-DBusControl::CreateBluetoothManagerProxy() {
-  return std::make_unique<BluetoothManagerProxy>(proxy_bus_);
+DBusControl::CreateBluetoothManagerProxy(
+    const base::RepeatingClosure& service_appeared_callback) {
+  return std::make_unique<BluetoothManagerProxy>(proxy_bus_, dispatcher_,
+                                                 service_appeared_callback);
 }
 
 std::unique_ptr<BluetoothAdapterProxyInterface>
@@ -271,7 +273,7 @@ DBusControl::CreateBluetoothAdapterProxy(int32_t hci) {
 
 std::unique_ptr<BluetoothBlueZProxyInterface>
 DBusControl::CreateBluetoothBlueZProxy() {
-  return std::make_unique<BluetoothBlueZProxy>(proxy_bus_);
+  return std::make_unique<BluetoothBlueZProxy>(proxy_bus_, dispatcher_);
 }
 #endif  // DISABLE_FLOSS
 

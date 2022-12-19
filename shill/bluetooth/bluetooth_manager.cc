@@ -8,6 +8,8 @@
 #include <utility>
 #include <vector>
 
+#include <base/bind.h>
+
 #include "shill/control_interface.h"
 #include "shill/logging.h"
 
@@ -18,21 +20,39 @@ static auto kModuleLogScope = ScopeLogger::kDBus;
 }  // namespace Logging
 
 BluetoothManager::BluetoothManager(ControlInterface* control_interface)
-    : control_interface_(control_interface) {}
+    : init_complete_(false), control_interface_(control_interface) {}
 
 bool BluetoothManager::Start() {
-  bluetooth_manager_proxy_ = control_interface_->CreateBluetoothManagerProxy();
+  bluetooth_manager_proxy_ =
+      control_interface_->CreateBluetoothManagerProxy(base::BindRepeating(
+          &BluetoothManager::OnBTManagerAvailable, weak_factory_.GetWeakPtr()));
   if (!bluetooth_manager_proxy_) {
     LOG(ERROR) << "Failed to initialize BT manager proxy";
-    TearDownProxies();
+    TearDown();
     return false;
   }
   bluez_proxy_ = control_interface_->CreateBluetoothBlueZProxy();
   if (!bluez_proxy_) {
     LOG(ERROR) << "Failed to initialize BlueZ proxy";
-    TearDownProxies();
+    TearDown();
     return false;
   }
+  return true;
+}
+
+void BluetoothManager::Stop() {
+  TearDown();
+}
+
+void BluetoothManager::TearDown() {
+  init_complete_ = false;
+  bluez_proxy_.reset();
+  adapter_proxies_.clear();
+  bluetooth_manager_proxy_.reset();
+}
+
+void BluetoothManager::CompleteInitialization() {
+  LOG(INFO) << "Completing initialization of BT manager";
 
   // On startup we want to know the list of adapters that are present on the
   // device even if we can't get all the information we would like (are they
@@ -43,43 +63,36 @@ bool BluetoothManager::Start() {
   if (!bluetooth_manager_proxy_->GetAvailableAdapters(/*force_query=*/true,
                                                       &floss, &adapters)) {
     LOG(ERROR) << __func__ << ": Failed to query available BT adapters";
-    TearDownProxies();
-    return false;
+    TearDown();
+    return;
   }
+  LOG(INFO) << "BT manager found " << adapters.size() << " adapters";
   for (auto adapter : adapters) {
     auto proxy =
         control_interface_->CreateBluetoothAdapterProxy(adapter.hci_interface);
     if (!proxy) {
       LOG(ERROR) << "Failed to initialize BT adapter proxy "
                  << adapter.hci_interface;
-      TearDownProxies();
-      return false;
+      TearDown();
+      return;
     }
     SLOG(3) << __func__ << ": adding BT adapter " << adapter.hci_interface;
     adapter_proxies_.emplace(adapter.hci_interface, std::move(proxy));
   }
-  return true;
+  init_complete_ = true;
+  LOG(INFO) << "Completed initialization of BT manager";
 }
 
-void BluetoothManager::Stop() {
-  TearDownProxies();
-}
-
-void BluetoothManager::TearDownProxies() {
-  bluetooth_manager_proxy_.reset();
-  bluez_proxy_.reset();
-  adapter_proxies_.clear();
-}
-
-bool BluetoothManager::ValidProxies() const {
-  return bluetooth_manager_proxy_ && bluez_proxy_ && !adapter_proxies_.empty();
+void BluetoothManager::OnBTManagerAvailable() {
+  LOG(INFO) << __func__ << ": BT manager is available";
+  CompleteInitialization();
 }
 
 bool BluetoothManager::GetAvailableAdapters(
     bool* is_floss,
     std::vector<BluetoothManagerInterface::BTAdapterWithEnabled>* adapters)
     const {
-  if (!ValidProxies()) {
+  if (!init_complete_) {
     LOG(ERROR) << __func__ << "BT manager is not ready";
     return false;
   }
@@ -107,7 +120,7 @@ bool BluetoothManager::GetAvailableAdapters(
 
 bool BluetoothManager::GetProfileConnectionState(
     int32_t hci, BTProfile profile, BTProfileConnectionState* state) const {
-  if (!ValidProxies()) {
+  if (!init_complete_) {
     LOG(ERROR) << __func__ << "BT manager is not ready";
     return false;
   }
