@@ -78,6 +78,21 @@ class LibmbimImpl : public LibmbimInterface {
       guint32* out_slot_index,
       MbimUiccSlotState* out_state,
       GError** error) override;
+  gboolean MbimMessageMsUiccLowLevelAccessOpenChannelResponseParse(
+      const MbimMessage* message,
+      guint32* out_status,
+      guint32* out_channel,
+      guint32* out_response_size,
+      const guint8** out_response,
+      GError** error) override;
+  gboolean MbimMessageMsUiccLowLevelAccessApduResponseParse(
+      const MbimMessage* message,
+      guint32* out_status,
+      guint32* out_response_size,
+      const guint8** out_response,
+      GError** error) override;
+  gboolean MbimMessageMsUiccLowLevelAccessCloseChannelResponseParse(
+      const MbimMessage* message, guint32* out_status, GError** error) override;
 };
 }  // namespace hermes
 

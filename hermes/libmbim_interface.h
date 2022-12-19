@@ -76,6 +76,21 @@ class LibmbimInterface {
       guint32* out_slot_index,
       MbimUiccSlotState* out_state,
       GError** error) = 0;
+  virtual gboolean MbimMessageMsUiccLowLevelAccessOpenChannelResponseParse(
+      const MbimMessage* message,
+      guint32* out_status,
+      guint32* out_channel,
+      guint32* out_response_size,
+      const guint8** out_response,
+      GError** error) = 0;
+  virtual gboolean MbimMessageMsUiccLowLevelAccessApduResponseParse(
+      const MbimMessage* message,
+      guint32* out_status,
+      guint32* out_response_size,
+      const guint8** out_response,
+      GError** error) = 0;
+  virtual gboolean MbimMessageMsUiccLowLevelAccessCloseChannelResponseParse(
+      const MbimMessage* message, guint32* out_status, GError** error) = 0;
   virtual ~LibmbimInterface() = default;
 };
 

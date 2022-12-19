@@ -19,7 +19,6 @@
 namespace {
 const int kExecutorIndex = 0;
 const guint kMbimTimeoutSeconds = 30;
-constexpr int kMbimMessageSuccess = 144;
 constexpr auto kSlotInfoDelay = base::Seconds(5);
 // Application identifier for the eUICC's SIM EID
 const std::array<uint8_t, 12> kMbimEidReqApdu = {
@@ -55,7 +54,7 @@ ModemMbim::ModemMbim(
     : Modem<MbimCmd>(logger, executor, std::move(modem_manager_proxy)),
       libmbim_(std::move(libmbim)),
       channel_(kInvalidChannel),
-      is_ready_state_valid(false),
+      is_ready_state_valid_(false),
       ready_state_(MBIM_SUBSCRIBER_READY_STATE_NOT_INITIALIZED),
       slot_info_(),
       weak_factory_(this) {}
@@ -649,8 +648,9 @@ void ModemMbim::UiccLowLevelAccessCloseChannelSetCb(MbimDevice* device,
   if (response &&
       modem_mbim->libmbim_->MbimMessageResponseGetResult(
           response, MBIM_MESSAGE_TYPE_COMMAND_DONE, &error) &&
-      mbim_message_ms_uicc_low_level_access_close_channel_response_parse(
-          response, &status, &error)) {
+      modem_mbim->libmbim_
+          ->MbimMessageMsUiccLowLevelAccessCloseChannelResponseParse(
+              response, &status, &error)) {
     modem_mbim->channel_ = kInvalidChannel;
     modem_mbim->ProcessMbimResult(kModemSuccess);
     return;
@@ -679,8 +679,9 @@ void ModemMbim::UiccLowLevelAccessOpenChannelSetCb(MbimDevice* device,
   if (response &&
       modem_mbim->libmbim_->MbimMessageResponseGetResult(
           response, MBIM_MESSAGE_TYPE_COMMAND_DONE, &error) &&
-      mbim_message_ms_uicc_low_level_access_open_channel_response_parse(
-          response, &status, &chl, &rsp_size, &rsp, &error)) {
+      modem_mbim->libmbim_
+          ->MbimMessageMsUiccLowLevelAccessOpenChannelResponseParse(
+              response, &status, &chl, &rsp_size, &rsp, &error)) {
     if (status != kMbimMessageSuccess) {
       LOG(INFO) << "Could not open channel:" << error->message
                 << ". Inserted sim may not be an eSIM.";
@@ -737,7 +738,7 @@ bool ModemMbim::ParseEidApduResponse(const MbimMessage* response,
     }
     return false;
   }
-  if (!mbim_message_ms_uicc_low_level_access_apdu_response_parse(
+  if (!modem_mbim->libmbim_->MbimMessageMsUiccLowLevelAccessApduResponseParse(
           response, &status, &response_size, &out_response, &error)) {
     LOG(ERROR) << "Could not parse EID: " << error->message;
     return false;
@@ -809,7 +810,7 @@ void ModemMbim::UiccLowLevelAccessApduResponseParse(MbimDevice* device,
   if (response &&
       modem_mbim->libmbim_->MbimMessageResponseGetResult(
           response, MBIM_MESSAGE_TYPE_COMMAND_DONE, &error) &&
-      mbim_message_ms_uicc_low_level_access_apdu_response_parse(
+      modem_mbim->libmbim_->MbimMessageMsUiccLowLevelAccessApduResponseParse(
           response, &status, &response_size, &out_response, &error)) {
     LOG(INFO) << "Adding to payload from APDU response (" << response_size
               << " bytes)";
@@ -941,8 +942,9 @@ void ModemMbim::SetDeviceSlotMappingsRspCb(MbimDevice* device,
   if (!response ||
       !modem_mbim->libmbim_->MbimMessageResponseGetResult(
           response, MBIM_MESSAGE_TYPE_COMMAND_DONE, &error) ||
-      !mbim_message_ms_basic_connect_extensions_device_slot_mappings_response_parse(
-          response, &map_count, &slot_mappings, &error)) {
+      !modem_mbim->libmbim_
+           ->MbimMessageMsBasicConnectExtensionsDeviceSlotMappingsResponseParse(
+               response, &map_count, &slot_mappings, &error)) {
     LOG(ERROR) << "Sim slot switch to " << physical_switch_slot << " failed";
     modem_mbim->ProcessMbimResult(kModemMessageProcessingError);
     return;
@@ -996,7 +998,7 @@ void ModemMbim::ClientIndicationCb(MbimDevice* device,
     case MBIM_SERVICE_BASIC_CONNECT:
       if (mbim_message_indicate_status_get_cid(notification) ==
           MBIM_CID_BASIC_CONNECT_SUBSCRIBER_READY_STATUS) {
-        modem_mbim->is_ready_state_valid = modem_mbim->libmbim_->GetReadyState(
+        modem_mbim->is_ready_state_valid_ = modem_mbim->libmbim_->GetReadyState(
             device, true /*is_notification*/, notification,
             &modem_mbim->ready_state_);
         LOG(INFO) << "Current sim status:" << modem_mbim->ready_state_;
@@ -1270,7 +1272,7 @@ void ModemMbim::ProcessEuiccEvent(EuiccEvent event, ResultCallback cb) {
 void ModemMbim::AcquireChannelAfterCardReady(EuiccEvent event,
                                              ResultCallback cb) {
   const guint MBIM_SUBSCRIBER_READY_STATE_NO_ESIM_PROFILE = 7;
-  if (!is_ready_state_valid ||
+  if (!is_ready_state_valid_ ||
       !(ready_state_ == MBIM_SUBSCRIBER_READY_STATE_NOT_INITIALIZED ||
         ready_state_ == MBIM_SUBSCRIBER_READY_STATE_INITIALIZED ||
         ready_state_ == MBIM_SUBSCRIBER_READY_STATE_DEVICE_LOCKED ||
@@ -1278,7 +1280,7 @@ void ModemMbim::AcquireChannelAfterCardReady(EuiccEvent event,
     if (retry_count_ > kMaxRetries) {
       LOG(ERROR) << "Could not finish profile operation,ready_state_="
                  << ready_state_
-                 << ", is_ready_state_valid=" << is_ready_state_valid;
+                 << ", is_ready_state_valid=" << is_ready_state_valid_;
       std::move(cb).Run(kModemMessageProcessingError);
       return;
     }

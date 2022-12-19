@@ -142,4 +142,31 @@ LibmbimImpl::MbimMessageMsBasicConnectExtensionsSlotInfoStatusResponseParse(
           message, out_slot_index, out_state, error);
 }
 
+gboolean LibmbimImpl::MbimMessageMsUiccLowLevelAccessOpenChannelResponseParse(
+    const MbimMessage* message,
+    guint32* out_status,
+    guint32* out_channel,
+    guint32* out_response_size,
+    const guint8** out_response,
+    GError** error) {
+  return ::mbim_message_ms_uicc_low_level_access_open_channel_response_parse(
+      message, out_status, out_channel, out_response_size, out_response, error);
+}
+
+gboolean LibmbimImpl::MbimMessageMsUiccLowLevelAccessApduResponseParse(
+    const MbimMessage* message,
+    guint32* out_status,
+    guint32* out_response_size,
+    const guint8** out_response,
+    GError** error) {
+  return ::mbim_message_ms_uicc_low_level_access_apdu_response_parse(
+      message, out_status, out_response_size, out_response, error);
+}
+
+gboolean LibmbimImpl::MbimMessageMsUiccLowLevelAccessCloseChannelResponseParse(
+    const MbimMessage* message, guint32* out_status, GError** error) {
+  return ::mbim_message_ms_uicc_low_level_access_close_channel_response_parse(
+      message, out_status, error);
+}
+
 }  // namespace hermes

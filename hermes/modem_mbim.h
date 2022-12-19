@@ -33,6 +33,7 @@ namespace hermes {
 // messages.
 class ModemMbim : public Modem<MbimCmd> {
  public:
+  static constexpr int kMbimMessageSuccess = 144;
   static std::unique_ptr<ModemMbim> Create(
       Logger* logger,
       Executor* executor,
@@ -53,6 +54,9 @@ class ModemMbim : public Modem<MbimCmd> {
       const MbimMessage* response,
       std::string* eid,
       std::unique_ptr<LibmbimInterface> libmbim);
+  void SetIsReadyStateValidForTesting(bool is_ready_state_valid) {
+    is_ready_state_valid_ = is_ready_state_valid;
+  }
 
  private:
   struct SwitchSlotTxInfo : public TxInfo {
@@ -216,7 +220,7 @@ class ModemMbim : public Modem<MbimCmd> {
   guint32 channel_;
   glib_bridge::ScopedGObject<MbimDevice> device_;
   uint8_t indication_id_;
-  bool is_ready_state_valid;
+  bool is_ready_state_valid_;
   MbimSubscriberReadyState ready_state_;
   GFile* file_ = NULL;
   struct SlotInfo {
