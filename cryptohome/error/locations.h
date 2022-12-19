@@ -1279,6 +1279,16 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocChalCredHelperROCAVulnerableInCheckSrkRocaStatus = 1500,
   /* ./challenge_credentials/challenge_credentials_helper_impl.cc */
   kLocChalCredHelperCantQueryROCAVulnInCheckSrkRocaStatus = 1501,
+  /* ./le_credential_manager_impl.cc */
+  kLocLECredManInvalidLESecretInConvertTpmError = 1502,
+  /* ./le_credential_manager_impl.cc */
+  kLocLECredManInvalidResetSecretInConvertTpmError = 1503,
+  /* ./le_credential_manager_impl.cc */
+  kLocLECredManTooManyAttemptsInConvertTpmError = 1504,
+  /* ./le_credential_manager_impl.cc */
+  kLocLECredManPCRNotMatchInConvertTpmError = 1505,
+  /* ./le_credential_manager_impl.cc */
+  kLocLECredManHashTreeInConvertTpmError = 1506,
   //////////////////////////////////////////////////
   //// This is a separator block at value 1700
   //// See location_db.py for more info.

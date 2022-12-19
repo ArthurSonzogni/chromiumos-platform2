@@ -6,8 +6,8 @@
 
 #include <fcntl.h>
 
-#include <string>
 #include <optional>
+#include <string>
 #include <utility>
 
 #include <base/check.h>
@@ -698,16 +698,63 @@ std::vector<brillo::Blob> LECredentialManagerImpl::GetAuxHashes(
 LECredStatus LECredentialManagerImpl::ConvertTpmError(
     CredentialTreeResult::ErrorCode err) {
   LECredError conv_err = BackendErrorToCredError(err);
-  if (conv_err == LE_CRED_SUCCESS)
-    return OkStatus<CryptohomeLECredError>();
 
-  ErrorActionSet action_set;
-  if (conv_err == LE_CRED_ERROR_TOO_MANY_ATTEMPTS)
-    action_set.insert(ErrorAction::kTpmLockout);
+  // We want to split out various cases of LE Credential errors so that their
+  // statistics are tallied separately from the other LECredential errors.
+  switch (conv_err) {
+    case LE_CRED_SUCCESS:
+      return OkStatus<CryptohomeLECredError>();
 
-  return MakeStatus<CryptohomeLECredError>(
-      CRYPTOHOME_ERR_LOC(kLocLECredManConvertTpmError), std::move(action_set),
-      conv_err);
+    case LE_CRED_ERROR_INVALID_LE_SECRET:
+      // Incorrect password.
+      return MakeStatus<CryptohomeLECredError>(
+          CRYPTOHOME_ERR_LOC(kLocLECredManInvalidLESecretInConvertTpmError),
+          ErrorActionSet({ErrorAction::kIncorrectAuth}), conv_err);
+
+    case LE_CRED_ERROR_INVALID_RESET_SECRET:
+      // The reset secret is invalid. We don't expect this to occur so
+      // kDevCheckUnexpectedState is specified. The user can always try to use
+      // non-LE auth methods to get around this, so kAuth is specified.
+      return MakeStatus<CryptohomeLECredError>(
+          CRYPTOHOME_ERR_LOC(kLocLECredManInvalidResetSecretInConvertTpmError),
+          ErrorActionSet(
+              {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kAuth}),
+          conv_err);
+    case LE_CRED_ERROR_TOO_MANY_ATTEMPTS:
+      // Too many attempts.
+      return MakeStatus<CryptohomeLECredError>(
+          CRYPTOHOME_ERR_LOC(kLocLECredManTooManyAttemptsInConvertTpmError),
+          ErrorActionSet({ErrorAction::kTpmLockout}), conv_err);
+    case LE_CRED_ERROR_PCR_NOT_MATCH:
+      // In usual operation, we don't expect PCR to be incorrect, so
+      // kDevCheckUnexpectedState is specified. If the PCR is incorrect, a
+      // reboot might fix it. Alternatively, the user can try a different auth
+      // that doesn't require a correct PCR value. If all else fails, powerwash
+      // might allow us to restart from a correct PCR value.
+      return MakeStatus<CryptohomeLECredError>(
+          CRYPTOHOME_ERR_LOC(kLocLECredManPCRNotMatchInConvertTpmError),
+          ErrorActionSet({ErrorAction::kDevCheckUnexpectedState,
+                          ErrorAction::kAuth, ErrorAction::kReboot,
+                          ErrorAction::kPowerwash}),
+          conv_err);
+
+    case LE_CRED_ERROR_HASH_TREE:
+      // In usual operation, we don't expect the hash tree to go bad, so
+      // kDevCheckUnexpectedState is specified. The user can always try to use
+      // non-LE auth methods to get around this, so kAuth is specified. User can
+      // delete the vault start fresh so kDeleteVault is specified.
+      return MakeStatus<CryptohomeLECredError>(
+          CRYPTOHOME_ERR_LOC(kLocLECredManHashTreeInConvertTpmError),
+          ErrorActionSet({ErrorAction::kDevCheckUnexpectedState,
+                          ErrorAction::kAuth, ErrorAction::kDeleteVault}),
+          conv_err);
+
+    default:
+      ErrorActionSet action_set;
+      return MakeStatus<CryptohomeLECredError>(
+          CRYPTOHOME_ERR_LOC(kLocLECredManConvertTpmError),
+          std::move(action_set), conv_err);
+  }
 }
 
 LECredError LECredentialManagerImpl::BackendErrorToCredError(
