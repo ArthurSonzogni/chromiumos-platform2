@@ -25,6 +25,7 @@
 #include "diagnostics/cros_healthd/system/fake_pci_util.h"
 #include "diagnostics/cros_healthd/system/fake_system_config.h"
 #include "diagnostics/cros_healthd/system/fake_system_utilities.h"
+#include "diagnostics/cros_healthd/system/mock_bluetooth_info_manager.h"
 
 namespace org {
 namespace chromium {
@@ -75,6 +76,7 @@ class MockContext final : public Context {
   FakeSystemUtilities* fake_system_utils() const;
   FakeBluetoothEventHub* fake_bluetooth_event_hub() const;
   FakeLibdrmUtil* fake_libdrm_util();
+  MockBluetoothInfoManager* mock_bluetooth_info_manager() const;
   MockExecutor* mock_executor();
   base::SimpleTestTickClock* mock_tick_clock() const;
   org::chromium::TpmManagerProxyMock* mock_tpm_manager_proxy() const;

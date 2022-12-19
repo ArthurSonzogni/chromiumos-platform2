@@ -40,6 +40,7 @@ MockContext::MockContext() {
   system_config_ = std::make_unique<FakeSystemConfig>();
   system_utils_ = std::make_unique<FakeSystemUtilities>();
   bluetooth_event_hub_ = std::make_unique<FakeBluetoothEventHub>();
+  bluetooth_info_manager_ = std::make_unique<MockBluetoothInfoManager>();
   tick_clock_ = std::make_unique<base::SimpleTestTickClock>();
   tpm_manager_proxy_ = std::make_unique<
       testing::StrictMock<org::chromium::TpmManagerProxyMock>>();
@@ -127,6 +128,10 @@ FakeBluetoothEventHub* MockContext::fake_bluetooth_event_hub() const {
 
 FakeLibdrmUtil* MockContext::fake_libdrm_util() {
   return &fake_libdrm_util_;
+}
+
+MockBluetoothInfoManager* MockContext::mock_bluetooth_info_manager() const {
+  return static_cast<MockBluetoothInfoManager*>(bluetooth_info_manager_.get());
 }
 
 MockExecutor* MockContext::mock_executor() {

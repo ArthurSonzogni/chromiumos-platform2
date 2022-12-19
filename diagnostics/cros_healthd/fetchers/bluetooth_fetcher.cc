@@ -4,9 +4,7 @@
 
 #include "diagnostics/cros_healthd/fetchers/bluetooth_fetcher.h"
 
-#include <cstdint>
 #include <map>
-#include <memory>
 #include <string>
 #include <utility>
 #include <vector>
@@ -14,11 +12,14 @@
 #include <base/check.h>
 #include <dbus/object_path.h>
 
+#include "diagnostics/cros_healthd/system/bluetooth_info_manager.h"
+#include "diagnostics/dbus_bindings/bluetooth/dbus-proxies.h"
+
 namespace diagnostics {
 
 namespace {
 
-namespace mojo_ipc = ::ash::cros_healthd::mojom;
+namespace mojom = ::ash::cros_healthd::mojom;
 
 constexpr char kBluetoothTypeBrEdrName[] = "BR/EDR";
 constexpr char kBluetoothTypeLeName[] = "LE";
@@ -29,70 +30,140 @@ constexpr char kSupportedCapabilitiesMaxScnRspLenKey[] = "MaxScnRspLen";
 constexpr char kSupportedCapabilitiesMinTxPowerKey[] = "MinTxPower";
 constexpr char kSupportedCapabilitiesMaxTxPowerKey[] = "MaxTxPower";
 
+// Convert std::string to |BluetoothDeviceType| enum.
+mojom::BluetoothDeviceType GetDeviceType(const std::string& type) {
+  if (type == kBluetoothTypeBrEdrName)
+    return mojom::BluetoothDeviceType::kBrEdr;
+  else if (type == kBluetoothTypeLeName)
+    return mojom::BluetoothDeviceType::kLe;
+  else if (type == kBluetoothTypeDualName)
+    return mojom::BluetoothDeviceType::kDual;
+  return mojom::BluetoothDeviceType::kUnfound;
+}
+
+// Parse Bluetooth info from AdminPolicyStatus1 interface and store in the map.
+void ParseServiceAllowList(
+    std::vector<org::bluez::AdminPolicyStatus1ProxyInterface*> admin_policies,
+    std::map<dbus::ObjectPath, std::vector<std::string>>&
+        out_service_allow_list) {
+  for (const auto& policy : admin_policies) {
+    out_service_allow_list[policy->GetObjectPath()] =
+        policy->service_allow_list();
+  }
+}
+
+// Parse Bluetooth info from LEAdvertisingManager1 interface and store in the
+// map.
+void ParseSupportedCapabilities(
+    std::vector<org::bluez::LEAdvertisingManager1ProxyInterface*> advertisings,
+    std::map<dbus::ObjectPath, mojom::SupportedCapabilitiesPtr>&
+        out_supported_capabilities) {
+  for (const auto& advertising : advertisings) {
+    auto data = advertising->supported_capabilities();
+    // Drop data if missing any element.
+    if (data.find(kSupportedCapabilitiesMaxAdvLenKey) == data.end() ||
+        data.find(kSupportedCapabilitiesMaxScnRspLenKey) == data.end() ||
+        data.find(kSupportedCapabilitiesMinTxPowerKey) == data.end() ||
+        data.find(kSupportedCapabilitiesMaxTxPowerKey) == data.end()) {
+      continue;
+    }
+    mojom::SupportedCapabilities info;
+    info.max_adv_len = brillo::GetVariantValueOrDefault<uint8_t>(
+        data, kSupportedCapabilitiesMaxAdvLenKey);
+    info.max_scn_rsp_len = brillo::GetVariantValueOrDefault<uint8_t>(
+        data, kSupportedCapabilitiesMaxScnRspLenKey);
+    info.min_tx_power = brillo::GetVariantValueOrDefault<int16_t>(
+        data, kSupportedCapabilitiesMinTxPowerKey);
+    info.max_tx_power = brillo::GetVariantValueOrDefault<int16_t>(
+        data, kSupportedCapabilitiesMaxTxPowerKey);
+    out_supported_capabilities[advertising->GetObjectPath()] = info.Clone();
+  }
+}
+
+// Parse Bluetooth info from Battery1 interface and store in the map.
+void ParseBatteryPercentage(
+    std::vector<org::bluez::Battery1ProxyInterface*> batteries,
+    std::map<dbus::ObjectPath, uint8_t>& out_battery_percentage) {
+  for (const auto& battery : batteries) {
+    out_battery_percentage[battery->GetObjectPath()] = battery->percentage();
+  }
+}
+
+// Parse Bluetooth info from Device1 interface and store in the map.
+void ParseDevicesInfo(
+    std::vector<org::bluez::Device1ProxyInterface*> devices,
+    std::vector<org::bluez::Battery1ProxyInterface*> batteries,
+    std::map<dbus::ObjectPath, std::vector<mojom::BluetoothDeviceInfoPtr>>&
+        out_connected_devices) {
+  // Map from the device's ObjectPath to the battery percentage.
+  std::map<dbus::ObjectPath, uint8_t> battery_percentage;
+  ParseBatteryPercentage(batteries, battery_percentage);
+
+  for (const auto& device : devices) {
+    if (!device || !device->connected())
+      continue;
+
+    mojom::BluetoothDeviceInfo info;
+    info.address = device->address();
+
+    // The following are optional device properties.
+    if (device->is_name_valid())
+      info.name = device->name();
+    if (device->is_type_valid())
+      info.type = GetDeviceType(device->type());
+    else
+      info.type = mojom::BluetoothDeviceType::kUnfound;
+    if (device->is_appearance_valid())
+      info.appearance = mojom::NullableUint16::New(device->appearance());
+    if (device->is_modalias_valid())
+      info.modalias = device->modalias();
+    if (device->is_rssi_valid())
+      info.rssi = mojom::NullableInt16::New(device->rssi());
+    if (device->is_mtu_valid())
+      info.mtu = mojom::NullableUint16::New(device->mtu());
+    if (device->is_uuids_valid())
+      info.uuids = device->uuids();
+    if (device->is_bluetooth_class_valid())
+      info.bluetooth_class =
+          mojom::NullableUint32::New(device->bluetooth_class());
+
+    const auto it = battery_percentage.find(device->GetObjectPath());
+    if (it != battery_percentage.end()) {
+      info.battery_percentage = mojom::NullableUint8::New(it->second);
+    }
+
+    out_connected_devices[device->adapter()].push_back(info.Clone());
+  }
+}
+
 }  // namespace
 
-mojo_ipc::BluetoothResultPtr BluetoothFetcher::FetchBluetoothInfo(
-    std::unique_ptr<BluezInfoManager> bluez_manager) {
-  if (!bluez_manager) {
-    bluez_manager = BluezInfoManager::Create(context_->bluetooth_proxy());
-  }
-  return bluez_manager->ParseBluetoothInstance();
-}
-
-std::unique_ptr<BluezInfoManager> BluezInfoManager::Create(
-    org::bluezProxy* bluetooth_proxy) {
-  std::unique_ptr<BluezInfoManager> bluez_manager(new BluezInfoManager());
-
-  bluez_manager->adapters_ = bluetooth_proxy->GetAdapter1Instances();
-  bluez_manager->devices_ = bluetooth_proxy->GetDevice1Instances();
-  bluez_manager->admin_policies_ =
-      bluetooth_proxy->GetAdminPolicyStatus1Instances();
-  bluez_manager->advertisings_ =
-      bluetooth_proxy->GetLEAdvertisingManager1Instances();
-  bluez_manager->batteries_ = bluetooth_proxy->GetBattery1Instances();
-  return bluez_manager;
-}
-
-std::vector<org::bluez::Adapter1ProxyInterface*> BluezInfoManager::adapters() {
-  return adapters_;
-}
-std::vector<org::bluez::Device1ProxyInterface*> BluezInfoManager::devices() {
-  return devices_;
-}
-std::vector<org::bluez::AdminPolicyStatus1ProxyInterface*>
-BluezInfoManager::admin_policies() {
-  return admin_policies_;
-}
-std::vector<org::bluez::LEAdvertisingManager1ProxyInterface*>
-BluezInfoManager::advertisings() {
-  return advertisings_;
-}
-std::vector<org::bluez::Battery1ProxyInterface*> BluezInfoManager::batteries() {
-  return batteries_;
-}
-
-mojo_ipc::BluetoothResultPtr BluezInfoManager::ParseBluetoothInstance() {
-  std::vector<mojo_ipc::BluetoothAdapterInfoPtr> adapter_infos;
+mojom::BluetoothResultPtr FetchBluetoothInfo(Context* context) {
+  const auto bluetooth_info_manager = context->bluetooth_info_manager();
+  std::vector<mojom::BluetoothAdapterInfoPtr> adapter_infos;
 
   // Map from the adapter's ObjectPath to the service allow list.
   std::map<dbus::ObjectPath, std::vector<std::string>> service_allow_list;
-  ParseServiceAllowList(service_allow_list);
+  ParseServiceAllowList(bluetooth_info_manager->GetAdminPolicies(),
+                        service_allow_list);
 
   // Map from the adapter's ObjectPath to the supported capabilities.
-  std::map<dbus::ObjectPath, mojo_ipc::SupportedCapabilitiesPtr>
+  std::map<dbus::ObjectPath, mojom::SupportedCapabilitiesPtr>
       supported_capabilities;
-  ParseSupportedCapabilities(supported_capabilities);
+  ParseSupportedCapabilities(bluetooth_info_manager->GetAdvertisings(),
+                             supported_capabilities);
 
   // Map from the adapter's ObjectPath to the connected devices.
-  std::map<dbus::ObjectPath, std::vector<mojo_ipc::BluetoothDeviceInfoPtr>>
+  std::map<dbus::ObjectPath, std::vector<mojom::BluetoothDeviceInfoPtr>>
       connected_devices;
-  ParseDevicesInfo(connected_devices);
+  ParseDevicesInfo(bluetooth_info_manager->GetDevices(),
+                   bluetooth_info_manager->GetBatteries(), connected_devices);
 
   // Fetch adapters' info.
-  for (const auto& adapter : adapters()) {
+  for (const auto& adapter : bluetooth_info_manager->GetAdapters()) {
     if (!adapter)
       continue;
-    mojo_ipc::BluetoothAdapterInfo info;
+    mojom::BluetoothAdapterInfo info;
 
     info.name = adapter->name();
     info.address = adapter->address();
@@ -121,103 +192,8 @@ mojo_ipc::BluetoothResultPtr BluezInfoManager::ParseBluetoothInstance() {
     adapter_infos.push_back(info.Clone());
   }
 
-  return mojo_ipc::BluetoothResult::NewBluetoothAdapterInfo(
+  return mojom::BluetoothResult::NewBluetoothAdapterInfo(
       std::move(adapter_infos));
 }
 
-void BluezInfoManager::ParseDevicesInfo(
-    std::map<dbus::ObjectPath, std::vector<mojo_ipc::BluetoothDeviceInfoPtr>>&
-        out_connected_devices) {
-  // Map from the device's ObjectPath to the battery percentage.
-  std::map<dbus::ObjectPath, uint8_t> battery_percentage;
-  ParseBatteryPercentage(battery_percentage);
-
-  for (const auto& device : devices()) {
-    if (!device || !device->connected())
-      continue;
-
-    mojo_ipc::BluetoothDeviceInfo info;
-    info.address = device->address();
-
-    // The following are optional device properties.
-    if (device->is_name_valid())
-      info.name = device->name();
-    if (device->is_type_valid())
-      info.type = GetDeviceType(device->type());
-    else
-      info.type = mojo_ipc::BluetoothDeviceType::kUnfound;
-    if (device->is_appearance_valid())
-      info.appearance = mojo_ipc::NullableUint16::New(device->appearance());
-    if (device->is_modalias_valid())
-      info.modalias = device->modalias();
-    if (device->is_rssi_valid())
-      info.rssi = mojo_ipc::NullableInt16::New(device->rssi());
-    if (device->is_mtu_valid())
-      info.mtu = mojo_ipc::NullableUint16::New(device->mtu());
-    if (device->is_uuids_valid())
-      info.uuids = device->uuids();
-    if (device->is_bluetooth_class_valid())
-      info.bluetooth_class =
-          mojo_ipc::NullableUint32::New(device->bluetooth_class());
-
-    const auto it = battery_percentage.find(device->GetObjectPath());
-    if (it != battery_percentage.end()) {
-      info.battery_percentage = mojo_ipc::NullableUint8::New(it->second);
-    }
-
-    out_connected_devices[device->adapter()].push_back(info.Clone());
-  }
-}
-
-mojo_ipc::BluetoothDeviceType BluezInfoManager::GetDeviceType(
-    const std::string& type) {
-  if (type == kBluetoothTypeBrEdrName)
-    return mojo_ipc::BluetoothDeviceType::kBrEdr;
-  else if (type == kBluetoothTypeLeName)
-    return mojo_ipc::BluetoothDeviceType::kLe;
-  else if (type == kBluetoothTypeDualName)
-    return mojo_ipc::BluetoothDeviceType::kDual;
-  return mojo_ipc::BluetoothDeviceType::kUnfound;
-}
-
-void BluezInfoManager::ParseServiceAllowList(
-    std::map<dbus::ObjectPath, std::vector<std::string>>&
-        out_service_allow_list) {
-  for (const auto& policy : admin_policies()) {
-    out_service_allow_list[policy->GetObjectPath()] =
-        policy->service_allow_list();
-  }
-}
-
-void BluezInfoManager::ParseSupportedCapabilities(
-    std::map<dbus::ObjectPath, mojo_ipc::SupportedCapabilitiesPtr>&
-        out_supported_capabilities) {
-  for (const auto& advertising : advertisings()) {
-    auto data = advertising->supported_capabilities();
-    // Drop data if missing any element.
-    if (data.find(kSupportedCapabilitiesMaxAdvLenKey) == data.end() ||
-        data.find(kSupportedCapabilitiesMaxScnRspLenKey) == data.end() ||
-        data.find(kSupportedCapabilitiesMinTxPowerKey) == data.end() ||
-        data.find(kSupportedCapabilitiesMaxTxPowerKey) == data.end()) {
-      continue;
-    }
-    mojo_ipc::SupportedCapabilities info;
-    info.max_adv_len = brillo::GetVariantValueOrDefault<uint8_t>(
-        data, kSupportedCapabilitiesMaxAdvLenKey);
-    info.max_scn_rsp_len = brillo::GetVariantValueOrDefault<uint8_t>(
-        data, kSupportedCapabilitiesMaxScnRspLenKey);
-    info.min_tx_power = brillo::GetVariantValueOrDefault<int16_t>(
-        data, kSupportedCapabilitiesMinTxPowerKey);
-    info.max_tx_power = brillo::GetVariantValueOrDefault<int16_t>(
-        data, kSupportedCapabilitiesMaxTxPowerKey);
-    out_supported_capabilities[advertising->GetObjectPath()] = info.Clone();
-  }
-}
-
-void BluezInfoManager::ParseBatteryPercentage(
-    std::map<dbus::ObjectPath, uint8_t>& out_battery_percentage) {
-  for (const auto& battery : batteries()) {
-    out_battery_percentage[battery->GetObjectPath()] = battery->percentage();
-  }
-}
 }  // namespace diagnostics

@@ -14,7 +14,11 @@
 
 #include "diagnostics/cros_healthd/fetchers/audio_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/audio_hardware_fetcher.h"
+#include "diagnostics/cros_healthd/fetchers/bluetooth_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/bus_fetcher.h"
+#include "diagnostics/cros_healthd/fetchers/cpu_fetcher.h"
+#include "diagnostics/cros_healthd/fetchers/sensor_fetcher.h"
+#include "diagnostics/cros_healthd/fetchers/system_fetcher.h"
 #include "diagnostics/cros_healthd/utils/callback_barrier.h"
 
 namespace diagnostics {
@@ -44,7 +48,6 @@ void OnFinish(
 FetchAggregator::FetchAggregator(Context* context)
     : backlight_fetcher_(context),
       battery_fetcher_(context),
-      bluetooth_fetcher_(context),
       boot_performance_fetcher_(context),
       disk_fetcher_(context),
       display_fetcher_(context),
@@ -123,7 +126,7 @@ void FetchAggregator::Run(
         break;
       }
       case mojom::ProbeCategoryEnum::kBluetooth: {
-        info->bluetooth_result = bluetooth_fetcher_.FetchBluetoothInfo();
+        info->bluetooth_result = FetchBluetoothInfo(context_);
         break;
       }
       case mojom::ProbeCategoryEnum::kSystem: {

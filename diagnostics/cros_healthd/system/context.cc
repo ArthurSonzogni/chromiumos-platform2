@@ -26,6 +26,7 @@
 #include "diagnostics/cros_healthd/network/network_health_adapter_impl.h"
 #include "diagnostics/cros_healthd/network_diagnostics/network_diagnostics_adapter_impl.h"
 #include "diagnostics/cros_healthd/system/bluetooth_event_hub.h"
+#include "diagnostics/cros_healthd/system/bluetooth_info_manager.h"
 #include "diagnostics/cros_healthd/system/libdrm_util_impl.h"
 #include "diagnostics/cros_healthd/system/mojo_service_impl.h"
 #include "diagnostics/cros_healthd/system/pci_util_impl.h"
@@ -80,7 +81,7 @@ std::unique_ptr<Context> Context::Create(
   // Create D-Bus clients:
   context->attestation_proxy_ =
       std::make_unique<org::chromium::AttestationProxy>(dbus_bus);
-  context->bluetooth_proxy_ = std::make_unique<org::bluezProxy>(dbus_bus);
+  context->bluez_proxy_ = std::make_unique<org::bluezProxy>(dbus_bus);
   context->cras_proxy_ = std::make_unique<org::chromium::cras::ControlProxy>(
       dbus_bus, cras::kCrasServiceName,
       dbus::ObjectPath(cras::kCrasServicePath));
@@ -124,8 +125,10 @@ std::unique_ptr<Context> Context::Create(
   context->system_config_ = std::make_unique<SystemConfig>(
       context->cros_config_.get(), context->debugd_proxy_.get());
   context->system_utils_ = std::make_unique<SystemUtilitiesImpl>();
+  context->bluetooth_info_manager_ =
+      std::make_unique<BluetoothInfoManager>(context->bluez_proxy_.get());
   context->bluetooth_event_hub_ =
-      std::make_unique<BluetoothEventHub>(context->bluetooth_proxy_.get());
+      std::make_unique<BluetoothEventHub>(context->bluez_proxy_.get());
   context->tick_clock_ = std::make_unique<base::DefaultTickClock>();
   context->udev_ = brillo::Udev::Create();
 
@@ -142,10 +145,6 @@ std::unique_ptr<PciUtil> Context::CreatePciUtil() {
 
 org::chromium::AttestationProxyInterface* Context::attestation_proxy() const {
   return attestation_proxy_.get();
-}
-
-org::bluezProxy* Context::bluetooth_proxy() const {
-  return bluetooth_proxy_.get();
 }
 
 brillo::CrosConfigInterface* Context::cros_config() const {
@@ -207,6 +206,10 @@ SystemUtilities* Context::system_utils() const {
 
 BluetoothEventHub* Context::bluetooth_event_hub() const {
   return bluetooth_event_hub_.get();
+}
+
+BluetoothInfoManager* Context::bluetooth_info_manager() const {
+  return bluetooth_info_manager_.get();
 }
 
 base::TickClock* Context::tick_clock() const {

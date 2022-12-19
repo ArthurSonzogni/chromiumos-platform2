@@ -4,15 +4,14 @@
 
 #include <memory>
 #include <string>
-#include <utility>
 #include <vector>
 
-#include <base/bind.h>
 #include <dbus/object_path.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include "diagnostics/cros_healthd/fetchers/bluetooth_fetcher.h"
+#include "diagnostics/cros_healthd/system/mock_bluetooth_info_manager.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
 #include "diagnostics/dbus_bindings/bluetooth/dbus-proxy-mocks.h"
 
@@ -95,34 +94,21 @@ GetDeviceBatteryProperties() {
   return properties;
 }
 
-class MockBluezInfoManager final : public BluezInfoManager {
- public:
-  MockBluezInfoManager() = default;
-  MockBluezInfoManager(const MockBluezInfoManager&) = delete;
-  MockBluezInfoManager& operator=(const MockBluezInfoManager&) = delete;
-  ~MockBluezInfoManager() = default;
-
-  MOCK_METHOD(std::vector<org::bluez::Adapter1ProxyInterface*>,
-              adapters,
-              (),
-              (override));
-  MOCK_METHOD(std::vector<org::bluez::Device1ProxyInterface*>,
-              devices,
-              (),
-              (override));
-  MOCK_METHOD(std::vector<org::bluez::AdminPolicyStatus1ProxyInterface*>,
-              admin_policies,
-              (),
-              (override));
-  MOCK_METHOD(std::vector<org::bluez::LEAdvertisingManager1ProxyInterface*>,
-              advertisings,
-              (),
-              (override));
-  MOCK_METHOD(std::vector<org::bluez::Battery1ProxyInterface*>,
-              batteries,
-              (),
-              (override));
-};
+// Convert |BluetoothDeviceType| enum to string.
+std::string ConvertDeviceType(mojom::BluetoothDeviceType type) {
+  switch (type) {
+    case mojom::BluetoothDeviceType::kBrEdr:
+      return "BR/EDR";
+    case mojom::BluetoothDeviceType::kLe:
+      return "LE";
+    case mojom::BluetoothDeviceType::kDual:
+      return "DUAL";
+    case mojom::BluetoothDeviceType::kUnfound:
+    case mojom::BluetoothDeviceType::kUnmappedEnumField:
+      NOTREACHED();
+      return "";
+  }
+}
 
 class BluetoothFetcherTest : public ::testing::Test {
  protected:
@@ -131,31 +117,33 @@ class BluetoothFetcherTest : public ::testing::Test {
   BluetoothFetcherTest& operator=(const BluetoothFetcherTest&) = delete;
   ~BluetoothFetcherTest() = default;
 
-  BluetoothFetcher* bluetooth_fetcher() { return &bluetooth_fetcher_; }
   const dbus::ObjectPath& adapter_path() { return adapter_path_; }
   const dbus::ObjectPath& device_path() { return device_path_; }
 
+  MockContext* mock_context() { return &mock_context_; }
+  MockBluetoothInfoManager* mock_bluetooth_info_manager() {
+    return mock_context_.mock_bluetooth_info_manager();
+  }
+
   // Getter of mock proxy.
   org::bluez::Adapter1ProxyMock* mock_adapter_proxy() const {
-    return static_cast<testing::StrictMock<org::bluez::Adapter1ProxyMock>*>(
+    return static_cast<StrictMock<org::bluez::Adapter1ProxyMock>*>(
         adapter_proxy_.get());
   }
   org::bluez::Device1ProxyMock* mock_device_proxy() const {
-    return static_cast<testing::StrictMock<org::bluez::Device1ProxyMock>*>(
+    return static_cast<StrictMock<org::bluez::Device1ProxyMock>*>(
         device_proxy_.get());
   }
   org::bluez::AdminPolicyStatus1ProxyMock* mock_admin_policy_proxy() const {
-    return static_cast<
-        testing::StrictMock<org::bluez::AdminPolicyStatus1ProxyMock>*>(
+    return static_cast<StrictMock<org::bluez::AdminPolicyStatus1ProxyMock>*>(
         admin_policy_proxy_.get());
   }
   org::bluez::LEAdvertisingManager1ProxyMock* mock_advertising_proxy() const {
-    return static_cast<
-        testing::StrictMock<org::bluez::LEAdvertisingManager1ProxyMock>*>(
+    return static_cast<StrictMock<org::bluez::LEAdvertisingManager1ProxyMock>*>(
         advertising_proxy_.get());
   }
   org::bluez::Battery1ProxyMock* mock_battery_proxy() const {
-    return static_cast<testing::StrictMock<org::bluez::Battery1ProxyMock>*>(
+    return static_cast<StrictMock<org::bluez::Battery1ProxyMock>*>(
         battery_proxy_.get());
   }
 
@@ -297,20 +285,18 @@ class BluetoothFetcherTest : public ::testing::Test {
 
  private:
   MockContext mock_context_;
-  BluetoothFetcher bluetooth_fetcher_{&mock_context_};
   // Mock proxy.
   std::unique_ptr<org::bluez::Adapter1ProxyMock> adapter_proxy_ =
-      std::make_unique<testing::StrictMock<org::bluez::Adapter1ProxyMock>>();
+      std::make_unique<StrictMock<org::bluez::Adapter1ProxyMock>>();
   std::unique_ptr<org::bluez::Device1ProxyMock> device_proxy_ =
-      std::make_unique<testing::StrictMock<org::bluez::Device1ProxyMock>>();
+      std::make_unique<StrictMock<org::bluez::Device1ProxyMock>>();
   std::unique_ptr<org::bluez::AdminPolicyStatus1ProxyMock> admin_policy_proxy_ =
-      std::make_unique<
-          testing::StrictMock<org::bluez::AdminPolicyStatus1ProxyMock>>();
+      std::make_unique<StrictMock<org::bluez::AdminPolicyStatus1ProxyMock>>();
   std::unique_ptr<org::bluez::LEAdvertisingManager1ProxyMock>
       advertising_proxy_ = std::make_unique<
-          testing::StrictMock<org::bluez::LEAdvertisingManager1ProxyMock>>();
+          StrictMock<org::bluez::LEAdvertisingManager1ProxyMock>>();
   std::unique_ptr<org::bluez::Battery1ProxyMock> battery_proxy_ =
-      std::make_unique<testing::StrictMock<org::bluez::Battery1ProxyMock>>();
+      std::make_unique<StrictMock<org::bluez::Battery1ProxyMock>>();
   // Mock object path for Bluetooth adapter and device.
   const dbus::ObjectPath adapter_path_ = dbus::ObjectPath("/org/bluez/hci0");
   const dbus::ObjectPath device_path_ =
@@ -330,26 +316,24 @@ TEST_F(BluetoothFetcherTest, FetchBluetoothInfo) {
   SetMockOtherProxyCall(admin_policy_properties, advertising_properties,
                         battery_properties);
 
-  auto mock_bluez_manager = std::make_unique<MockBluezInfoManager>();
-  EXPECT_CALL(*mock_bluez_manager, adapters())
+  EXPECT_CALL(*mock_bluetooth_info_manager(), GetAdapters())
       .WillOnce(Return(std::vector<org::bluez::Adapter1ProxyInterface*>{
           mock_adapter_proxy()}));
-  EXPECT_CALL(*mock_bluez_manager, devices())
+  EXPECT_CALL(*mock_bluetooth_info_manager(), GetDevices())
       .WillOnce(Return(std::vector<org::bluez::Device1ProxyInterface*>{
           mock_device_proxy()}));
-  EXPECT_CALL(*mock_bluez_manager, admin_policies())
+  EXPECT_CALL(*mock_bluetooth_info_manager(), GetAdminPolicies())
       .WillOnce(
           Return(std::vector<org::bluez::AdminPolicyStatus1ProxyInterface*>{
               mock_admin_policy_proxy()}));
-  EXPECT_CALL(*mock_bluez_manager, advertisings())
+  EXPECT_CALL(*mock_bluetooth_info_manager(), GetAdvertisings())
       .WillOnce(
           Return(std::vector<org::bluez::LEAdvertisingManager1ProxyInterface*>{
               mock_advertising_proxy()}));
-  EXPECT_CALL(*mock_bluez_manager, batteries())
+  EXPECT_CALL(*mock_bluetooth_info_manager(), GetBatteries())
       .WillOnce(Return(std::vector<org::bluez::Battery1ProxyInterface*>{
           mock_battery_proxy()}));
-  auto bluetooth_result =
-      bluetooth_fetcher()->FetchBluetoothInfo(std::move(mock_bluez_manager));
+  auto bluetooth_result = FetchBluetoothInfo(mock_context());
 
   // Evaluate whether the information is correct or not.
   ASSERT_TRUE(bluetooth_result->is_bluetooth_adapter_info());
@@ -384,8 +368,8 @@ TEST_F(BluetoothFetcherTest, FetchBluetoothInfo) {
   const auto& device_info = adapter_info[0]->connected_devices.value()[0];
   EXPECT_EQ(device_info->address, device_properties->address.value());
   EXPECT_EQ(device_info->name, device_properties->name.value());
-  EXPECT_EQ(device_info->type,
-            mock_bluez_manager->GetDeviceType(device_properties->type.value()));
+  EXPECT_EQ(ConvertDeviceType(device_info->type),
+            device_properties->type.value());
   EXPECT_EQ(device_info->appearance->value,
             device_properties->appearance.value());
   EXPECT_EQ(device_info->modalias, device_properties->modalias.value());
@@ -400,9 +384,7 @@ TEST_F(BluetoothFetcherTest, FetchBluetoothInfo) {
 
 // Test that getting no adapter and device objects is handled gracefully.
 TEST_F(BluetoothFetcherTest, NoObjects) {
-  auto mock_bluez_manager = std::make_unique<MockBluezInfoManager>();
-  auto bluetooth_result =
-      bluetooth_fetcher()->FetchBluetoothInfo(std::move(mock_bluez_manager));
+  auto bluetooth_result = FetchBluetoothInfo(mock_context());
   ASSERT_TRUE(bluetooth_result->is_bluetooth_adapter_info());
   const auto& adapter_info = bluetooth_result->get_bluetooth_adapter_info();
   EXPECT_EQ(adapter_info.size(), 0);
@@ -415,16 +397,13 @@ TEST_F(BluetoothFetcherTest, NumConnectedDevices) {
   SetMockAdapterProxyCall(adapter_properties);
   SetMockDeviceProxyCall(device_properties, 2);
 
-  auto mock_bluez_manager = std::make_unique<MockBluezInfoManager>();
-  EXPECT_CALL(*mock_bluez_manager, adapters())
+  EXPECT_CALL(*mock_bluetooth_info_manager(), GetAdapters())
       .WillOnce(Return(std::vector<org::bluez::Adapter1ProxyInterface*>{
           mock_adapter_proxy()}));
-  EXPECT_CALL(*mock_bluez_manager, devices())
+  EXPECT_CALL(*mock_bluetooth_info_manager(), GetDevices())
       .WillOnce(Return(std::vector<org::bluez::Device1ProxyInterface*>{
           mock_device_proxy(), mock_device_proxy()}));
-  auto bluetooth_result =
-      bluetooth_fetcher()->FetchBluetoothInfo(std::move(mock_bluez_manager));
-
+  auto bluetooth_result = FetchBluetoothInfo(mock_context());
   ASSERT_TRUE(bluetooth_result->is_bluetooth_adapter_info());
   const auto& adapter_info = bluetooth_result->get_bluetooth_adapter_info();
   ASSERT_EQ(adapter_info.size(), 1);
@@ -441,15 +420,13 @@ TEST_F(BluetoothFetcherTest, DisconnectedDevice) {
   // Set as disconnected device.
   EXPECT_CALL(*mock_device_proxy(), connected()).WillOnce(Return(false));
 
-  auto mock_bluez_manager = std::make_unique<MockBluezInfoManager>();
-  EXPECT_CALL(*mock_bluez_manager, adapters())
+  EXPECT_CALL(*mock_bluetooth_info_manager(), GetAdapters())
       .WillOnce(Return(std::vector<org::bluez::Adapter1ProxyInterface*>{
           mock_adapter_proxy()}));
-  EXPECT_CALL(*mock_bluez_manager, devices())
+  EXPECT_CALL(*mock_bluetooth_info_manager(), GetDevices())
       .WillOnce(Return(std::vector<org::bluez::Device1ProxyInterface*>{
           mock_device_proxy()}));
-  auto bluetooth_result =
-      bluetooth_fetcher()->FetchBluetoothInfo(std::move(mock_bluez_manager));
+  auto bluetooth_result = FetchBluetoothInfo(mock_context());
   ASSERT_TRUE(bluetooth_result->is_bluetooth_adapter_info());
   const auto& adapter_info = bluetooth_result->get_bluetooth_adapter_info();
   ASSERT_EQ(adapter_info.size(), 1);
@@ -464,16 +441,13 @@ TEST_F(BluetoothFetcherTest, DeviceWithInvalidProperties) {
   SetMockAdapterProxyCall(adapter_properties);
   SetMockDeviceProxyCallWithInvalidProperties(device_properties);
 
-  auto mock_bluez_manager = std::make_unique<MockBluezInfoManager>();
-  EXPECT_CALL(*mock_bluez_manager, adapters())
+  EXPECT_CALL(*mock_bluetooth_info_manager(), GetAdapters())
       .WillOnce(Return(std::vector<org::bluez::Adapter1ProxyInterface*>{
           mock_adapter_proxy()}));
-  EXPECT_CALL(*mock_bluez_manager, devices())
+  EXPECT_CALL(*mock_bluetooth_info_manager(), GetDevices())
       .WillOnce(Return(std::vector<org::bluez::Device1ProxyInterface*>{
           mock_device_proxy()}));
-  auto bluetooth_result =
-      bluetooth_fetcher()->FetchBluetoothInfo(std::move(mock_bluez_manager));
-
+  auto bluetooth_result = FetchBluetoothInfo(mock_context());
   ASSERT_TRUE(bluetooth_result->is_bluetooth_adapter_info());
   const auto& adapter_info = bluetooth_result->get_bluetooth_adapter_info();
   ASSERT_EQ(adapter_info.size(), 1);

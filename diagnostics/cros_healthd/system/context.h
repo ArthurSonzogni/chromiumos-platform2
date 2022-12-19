@@ -53,6 +53,7 @@ class bluezProxy;
 
 namespace diagnostics {
 class BluetoothEventHub;
+class BluetoothInfoManager;
 
 // A context class for holding the helper objects used in cros_healthd, which
 // simplifies the passing of the helper objects to other objects. For instance,
@@ -81,9 +82,6 @@ class Context {
   // Use the object returned by attestation_proxy() to get the attestation
   // information from attestation service.
   org::chromium::AttestationProxyInterface* attestation_proxy() const;
-  // Use the object returned by bluetooth_proxy() to subscribe to notifications
-  // for D-Bus objects representing Bluetooth adapters and devices.
-  org::bluezProxy* bluetooth_proxy() const;
   // Use the object returned by cros_config() to query the device's
   // configuration file.
   brillo::CrosConfigInterface* cros_config() const;
@@ -125,6 +123,9 @@ class Context {
   virtual ash::cros_healthd::mojom::Executor* executor();
   // Use the object returned by system_utils() to access system utilities.
   SystemUtilities* system_utils() const;
+  // Use the object returned by bluetooth_info_manager() to access Bluetooth
+  // adapter and device information from the Bluetooth proxy.
+  BluetoothInfoManager* bluetooth_info_manager() const;
   // Use the object returned by bluetooth_event_hub() to subscribe Bluetooth
   // events.
   BluetoothEventHub* bluetooth_event_hub() const;
@@ -159,9 +160,11 @@ class Context {
   // Used to watch udev events.
   std::unique_ptr<brillo::UdevMonitor> udev_monitor_;
 
+  // Used to access Bluetooth info and watch Bluetooth events.
+  std::unique_ptr<org::bluezProxy> bluez_proxy_;
+
   // Members accessed via the accessor functions defined above.
   std::unique_ptr<org::chromium::AttestationProxyInterface> attestation_proxy_;
-  std::unique_ptr<org::bluezProxy> bluetooth_proxy_;
   std::unique_ptr<org::chromium::cras::ControlProxyInterface> cras_proxy_;
   std::unique_ptr<org::chromium::debugdProxyInterface> debugd_proxy_;
   std::unique_ptr<org::freedesktop::fwupdProxyInterface> fwupd_proxy_;
@@ -175,6 +178,7 @@ class Context {
   mojo::Remote<ash::cros_healthd::mojom::Executor> executor_;
   std::unique_ptr<SystemUtilities> system_utils_;
   std::unique_ptr<BluetoothEventHub> bluetooth_event_hub_;
+  std::unique_ptr<BluetoothInfoManager> bluetooth_info_manager_;
   std::unique_ptr<base::TickClock> tick_clock_;
   std::unique_ptr<org::chromium::TpmManagerProxyInterface> tpm_manager_proxy_;
   std::unique_ptr<brillo::Udev> udev_;
