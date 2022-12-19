@@ -1265,7 +1265,7 @@ union BusInfo {
 
 // The info related to pci.
 //
-// NextMinVersion: 1, NextIndex: 6
+// NextMinVersion: 2, NextIndex: 8
 [Stable]
 struct PciBusInfo {
   // These fields can be used to classify / identify the pci devices. See the
@@ -1279,6 +1279,11 @@ struct PciBusInfo {
   // is registered in the kernel. See "{kernel root}/drivers/". for the list of
   // the built in drivers.
   string? driver@5;
+  // These fields can be used to classify / identify the pci subsystem devices.
+  // See the pci.ids database for the values. (https://github.com/gentoo/hwids)
+  // Note that not every device has these fields.
+  [MinVersion=1] NullableUint16? sub_vendor_id@6;
+  [MinVersion=1] NullableUint16? sub_device_id@7;
 };
 
 // The info related to usb.

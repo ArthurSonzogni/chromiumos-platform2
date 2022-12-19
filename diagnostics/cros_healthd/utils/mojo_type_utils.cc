@@ -146,6 +146,13 @@ std::string GetDiffString<mojo_ipc::NullableUint64>(
 }
 
 template <>
+std::string GetDiffString<mojo_ipc::NullableUint16>(
+    const mojo_ipc::NullableUint16& a, const mojo_ipc::NullableUint16& b) {
+  return GetDiffString(base::NumberToString(a.value),
+                       base::NumberToString(b.value));
+}
+
+template <>
 std::string GetDiffString<mojo_ipc::VpdInfo>(const mojo_ipc::VpdInfo& a,
                                              const mojo_ipc::VpdInfo& b) {
   return CompareHelper(a, b)
@@ -241,6 +248,8 @@ std::string GetDiffString<mojo_ipc::PciBusInfo>(const mojo_ipc::PciBusInfo& a,
       .FIELD(prog_if_id)
       .FIELD(device_id)
       .FIELD(vendor_id)
+      .FIELD(sub_device_id)
+      .FIELD(sub_vendor_id)
       .FIELD(driver)
       .GetResult();
 }

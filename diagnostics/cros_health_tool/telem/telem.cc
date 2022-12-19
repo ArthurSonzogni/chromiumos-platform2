@@ -1316,6 +1316,8 @@ base::Value::Dict GetBusDeviceJson(const mojom::BusDevicePtr& device) {
       SET_DICT(vendor_id, pci_info, &out_pci_info);
       SET_DICT(device_id, pci_info, &out_pci_info);
       SET_DICT(driver, pci_info, &out_pci_info);
+      SET_DICT(sub_vendor_id, pci_info, &out_pci_info);
+      SET_DICT(sub_device_id, pci_info, &out_pci_info);
       out_bus_info.Set("pci_bus_info", std::move(out_pci_info));
       break;
     }

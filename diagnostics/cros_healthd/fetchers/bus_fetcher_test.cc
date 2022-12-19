@@ -50,6 +50,8 @@ constexpr uint8_t kFakeProg = 0x2c;
 constexpr uint8_t kFakeProtocol = kFakeProg;
 constexpr uint16_t kFakeVendor = 0x12ab;
 constexpr uint16_t kFakeDevice = 0x34cd;
+constexpr uint16_t kFakeSubVendor = 0x23ab;
+constexpr uint16_t kFakeSubDevice = 0x45cd;
 constexpr char kFakeDriver[] = "driver";
 constexpr char kFakeUsbFWVer[] = "3.14";
 constexpr mojom::FwupdVersionFormat kFakeUsbFwVerFmtMojoEnum =
@@ -152,6 +154,8 @@ class BusFetcherTest : public BaseFileTest {
     pci_info->prog_if_id = kFakeProg;
     pci_info->vendor_id = kFakeVendor;
     pci_info->device_id = kFakeDevice;
+    pci_info->sub_vendor_id = mojom::NullableUint16::New(kFakeSubVendor);
+    pci_info->sub_device_id = mojom::NullableUint16::New(kFakeSubDevice);
     pci_info->driver = kFakeDriver;
 
     device->bus_info = mojom::BusInfo::NewPciBusInfo(std::move(pci_info));
@@ -253,6 +257,14 @@ class BusFetcherTest : public BaseFileTest {
             "0x" + ToFixHexStr(pci_info->vendor_id));
     SetFile({dir, dev, kFilePciDevice},
             "0x" + ToFixHexStr(pci_info->device_id));
+    if (pci_info->sub_vendor_id) {
+      SetFile({dir, dev, kFilePciSubVendor},
+              "0x" + ToFixHexStr(pci_info->sub_vendor_id->value));
+    }
+    if (pci_info->sub_device_id) {
+      SetFile({dir, dev, kFilePciSubDevice},
+              "0x" + ToFixHexStr(pci_info->sub_device_id->value));
+    }
     if (pci_info->driver) {
       SetSymbolicLink({kLinkPciDriver, pci_info->driver.value()},
                       {dir, dev, kFileDriver});

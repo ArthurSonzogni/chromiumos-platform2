@@ -47,6 +47,14 @@ bool HexToUInt(base::StringPiece in, T* out) {
 const auto& HexToU8 = HexToUInt<uint8_t>;
 const auto& HexToU16 = HexToUInt<uint16_t>;
 
+bool HexToNullableUint16(base::StringPiece in, mojom::NullableUint16Ptr* out) {
+  uint16_t raw;
+  if (!HexToU16(in, &raw))
+    return false;
+  *out = mojom::NullableUint16::New(raw);
+  return true;
+}
+
 std::vector<base::FilePath> ListDirectory(const base::FilePath& path) {
   std::vector<base::FilePath> res;
   base::FileEnumerator file_enum(
@@ -74,10 +82,13 @@ mojom::PciBusInfoPtr FetchPciInfo(const base::FilePath& path) {
       !ReadInteger(path, kFilePciDevice, &HexToU16, &info->device_id) ||
       !ReadInteger(path, kFilePciVendor, &HexToU16, &info->vendor_id))
     return nullptr;
+  ReadInteger(path, kFilePciSubVendor, &HexToNullableUint16,
+              &info->sub_vendor_id);
+  ReadInteger(path, kFilePciSubDevice, &HexToNullableUint16,
+              &info->sub_device_id);
   info->class_id = GET_PCI_CLASS(class_raw);
   info->subclass_id = GET_PCI_SUBCLASS(class_raw);
   info->prog_if_id = GET_PCI_PROG_IF(class_raw);
-
   info->driver = GetDriver(path);
   return info;
 }

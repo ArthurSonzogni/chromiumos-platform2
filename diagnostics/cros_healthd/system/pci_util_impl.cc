@@ -28,7 +28,7 @@ jmp_buf error_handle_env;
 // HandleError is a error handler for pcilib. It is similar to the default one
 // in pcilib but replace |exit()| with |longjmp()| to prevent exiting the whole
 // process.
-void HandleError(char* msg, ...) {
+void PCI_NONRET HandleError(char* msg, ...) {
   va_list args;
   char buf[kErrorBufferSize];
 

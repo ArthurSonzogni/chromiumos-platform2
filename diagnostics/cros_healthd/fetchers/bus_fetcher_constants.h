@@ -16,6 +16,8 @@ inline constexpr char kFileDriver[] = "driver";
 inline constexpr char kFilePciClass[] = "class";
 inline constexpr char kFilePciDevice[] = "device";
 inline constexpr char kFilePciVendor[] = "vendor";
+inline constexpr char kFilePciSubDevice[] = "subsystem_device";
+inline constexpr char kFilePciSubVendor[] = "subsystem_vendor";
 
 #define GET_BYTE_(val, id) ((val >> (id * 8)) & 0xFF)
 #define GET_PCI_CLASS(val) GET_BYTE_(val, 2)
