@@ -7,16 +7,55 @@
 #define CAMERA_HAL_FAKE_METADATA_HANDLER_H_
 
 #include <absl/status/status.h>
+#include <absl/status/statusor.h>
 #include <camera/camera_metadata.h>
 
 #include "hal/fake/hal_spec.h"
+#include "hardware/camera3.h"
 
 namespace cros {
+
 absl::Status FillDefaultMetadata(android::CameraMetadata* static_metadata,
                                  android::CameraMetadata* request_metadata,
                                  const CameraSpec& spec);
 
 absl::Status FillResultMetadata(android::CameraMetadata* metadata);
-}
+
+// MetadataHandler is used for saving metadata states of CameraClient.
+class MetadataHandler {
+ public:
+  MetadataHandler(const android::CameraMetadata& request_template,
+                  const CameraSpec& spec);
+
+  const camera_metadata_t* GetDefaultRequestSettings(int template_type);
+
+ private:
+  android::CameraMetadata CreateDefaultRequestSettings(int template_type);
+
+  absl::Status FillDefaultPreviewSettings(android::CameraMetadata* metadata);
+
+  absl::Status FillDefaultStillCaptureSettings(
+      android::CameraMetadata* metadata);
+
+  absl::Status FillDefaultVideoRecordSettings(
+      android::CameraMetadata* metadata);
+
+  absl::Status FillDefaultVideoSnapshotSettings(
+      android::CameraMetadata* metadata);
+
+  absl::Status FillDefaultZeroShutterLagSettings(
+      android::CameraMetadata* metadata);
+
+  absl::Status FillDefaultManualSettings(android::CameraMetadata* metadata);
+
+  const android::CameraMetadata& request_template_;
+
+  const CameraSpec& spec_;
+
+  // Static array of standard camera settings templates.
+  android::CameraMetadata template_settings_[CAMERA3_TEMPLATE_COUNT];
+};
+
+}  // namespace cros
 
 #endif  // CAMERA_HAL_FAKE_METADATA_HANDLER_H_

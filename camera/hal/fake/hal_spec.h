@@ -7,6 +7,7 @@
 #define CAMERA_HAL_FAKE_HAL_SPEC_H_
 
 #include <optional>
+#include <utility>
 #include <variant>
 #include <vector>
 
@@ -18,9 +19,11 @@ namespace cros {
 struct SupportedFormatSpec {
   int width = 0;
   int height = 0;
+  std::vector<std::pair<int, int>> fps_ranges;
 
   bool operator==(const SupportedFormatSpec& rhs) const {
-    return width == rhs.width && height == rhs.height;
+    return width == rhs.width && height == rhs.height &&
+           fps_ranges == rhs.fps_ranges;
   }
   bool operator!=(const SupportedFormatSpec& rhs) const {
     return !(*this == rhs);

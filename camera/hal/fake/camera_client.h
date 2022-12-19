@@ -9,6 +9,7 @@
 #include <memory>
 #include <vector>
 
+#include "hal/fake/metadata_handler.h"
 #include "hal/fake/request_handler.h"
 
 #include <absl/status/status.h>
@@ -104,6 +105,9 @@ class CameraClient {
 
   // Spec for the camera client.
   CameraSpec spec_;
+
+  // Metadata handler to save states about metadata.
+  MetadataHandler metadata_handler_;
 
   // Use to check the constructor and OpenDevice are called on the same thread.
   SEQUENCE_CHECKER(sequence_checker_);

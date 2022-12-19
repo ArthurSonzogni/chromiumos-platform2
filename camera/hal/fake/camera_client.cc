@@ -17,6 +17,7 @@
 
 #include "hal/fake/camera_hal.h"
 #include "hal/fake/camera_hal_device_ops.h"
+#include "hal/fake/metadata_handler.h"
 
 namespace cros {
 
@@ -31,7 +32,8 @@ CameraClient::CameraClient(int id,
       static_metadata_(static_metadata),
       request_template_(request_template),
       request_thread_("FakeRequestThread"),
-      spec_(spec) {
+      spec_(spec),
+      metadata_handler_(request_template_, spec_) {
   camera3_device_ = {
       .common =
           {
@@ -166,8 +168,7 @@ const camera_metadata_t* CameraClient::ConstructDefaultRequestSettings(
     int type) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(ops_sequence_checker_);
 
-  // TODO(pihsun): override part of metadata based on type.
-  return request_template_.getAndLock();
+  return metadata_handler_.GetDefaultRequestSettings(type);
 }
 
 int CameraClient::ProcessCaptureRequest(camera3_capture_request_t* request) {
