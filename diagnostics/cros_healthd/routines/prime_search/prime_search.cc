@@ -34,6 +34,6 @@ std::unique_ptr<DiagnosticRoutine> CreatePrimeSearchRoutine(
           "--max_num=" +
               std::to_string(max_num.value_or(kPrimeSearchDefaultMaxNum))}),
       duration);
-}  // namespace diagnostics
+}
 
 }  // namespace diagnostics
