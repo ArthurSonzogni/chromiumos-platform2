@@ -28,7 +28,7 @@ void BacklightStub::RemoveObserver(BacklightObserver* observer) {
   observers_.RemoveObserver(observer);
 }
 
-bool BacklightStub::DeviceExists() {
+bool BacklightStub::DeviceExists() const {
   return device_exists_;
 }
 

@@ -35,7 +35,7 @@ class BacklightInterface {
 
   // Returns true iff the underlying backlight device is present.
   // If not, other methods may report failure.
-  virtual bool DeviceExists() = 0;
+  virtual bool DeviceExists() const = 0;
 
   // Gets the maximum brightness level (in an an arbitrary device-specific
   // range; note that 0 is always the minimum allowable value, though).

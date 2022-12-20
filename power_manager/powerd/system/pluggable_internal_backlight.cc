@@ -44,7 +44,7 @@ void PluggableInternalBacklight::RemoveObserver(BacklightObserver* observer) {
   observers_.RemoveObserver(observer);
 }
 
-bool PluggableInternalBacklight::DeviceExists() {
+bool PluggableInternalBacklight::DeviceExists() const {
   return device_ != nullptr;
 }
 

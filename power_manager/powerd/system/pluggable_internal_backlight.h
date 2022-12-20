@@ -42,7 +42,7 @@ class PluggableInternalBacklight : public BacklightInterface,
   // BacklightInterface:
   void AddObserver(BacklightObserver* observer) override;
   void RemoveObserver(BacklightObserver* observer) override;
-  bool DeviceExists() override;
+  bool DeviceExists() const override;
   int64_t GetMaxBrightnessLevel() override;
   int64_t GetCurrentBrightnessLevel() override;
   bool SetBrightnessLevel(int64_t level, base::TimeDelta interval) override;
