@@ -13,7 +13,7 @@
 #include <QInputMethodEvent>
 #include <QtDebug>
 #include <QtGlobal>
-#include <QtGui/QWindow>
+#include <QtGui/private/qhighdpiscaling_p.h>
 #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
 #include <QtGui/private/qxkbcommon_p.h>
 #else
@@ -155,45 +155,40 @@ void CrosQtIMContext::cursorRectangleChanged() {
   QRect rect = qApp->inputMethod()->cursorRectangle().toRect();
   if (!rect.isValid())
     return;
-  if (is_x11_) {
-    backend_->SetCursorLocation(rect.x(), rect.y(), rect.width(),
-                                rect.height());
-  } else {
-    // Qt Wayland has complicated logic around window title bar handling
-    //
-    // Under wayland, we can have client / server side decoration for title bar.
-    // In total, we have 4 title bar situations: server side decoration, client
-    // side decoration drawn by Qt, client side decoration drawn by application,
-    // and no title bar.
-    //
-    // I haven't seen any situation where a double title bar was drawn, so I
-    // can safely assume all the collaboration between objects around which
-    // is drawing the title bar is functioning correctly.
-    //
-    // When the title bar is drawn by server side decoration, QWindow's top left
-    // corner is the top left corner of wl_surface, we don't need to have any
-    // offset here.
-    // When title bar is drawn by Qt at the client side, QWindow's origin starts
-    // below the title bar, but wl_surface's origin will be at Qt's decoration's
-    // top left corner, we need to add an offset to compensate.
-    // When title bar is drawn by the app, entire wl_surface is exposed to the
-    // app as QWindow, and wl_surface origin matches QWindow origin, so no
-    // offset is needed.
-    // When there's no title bar (app is borderless), wl_surface origin matches
-    // QWindow origin, no offset is needed.
 
-    if (window->flags().testFlag(Qt::FramelessWindowHint)) {
-      // When Qt::FramelessWindowHint is set, neither server nor Qt should do
-      // the decoration work, so won't need margin calculation
-      backend_->SetCursorLocation(rect.x(), rect.y(), rect.width(),
-                                  rect.height());
-    } else {
-      QMargins margin = window->frameMargins();
-      backend_->SetCursorLocation(rect.x() + margin.left(),
-                                  rect.y() + margin.top(), rect.width(),
-                                  rect.height());
-    }
+  // In some HiDPI situations, crOS will let Qt handle integer scaling and (if
+  // needed) do its fractional scaling based on already-scaled windows. We need
+  // to handle cursor location scaling for the window scaling step done by Qt.
+
+  // Qt Wayland has complicated logic around window title bar handling:
+  //
+  // Under wayland, we can have client / server side decoration for titlebar.
+  // In total, we have 4 title bar situations: server side decoration,client
+  // side decoration drawn by Qt, client side decoration drawn by application,
+  // and no title bar. Backend want the cursor location relative to wl_surface
+  // origin.
+  //
+  // I haven't seen any situation where a double title bar was drawn, so I
+  // can safely assume all the collaboration between objects around which
+  // is drawing the title bar is functioning correctly.
+  //
+  // When the title bar is drawn by server side decoration, QWindow's top left
+  // corner is the top left corner of wl_surface, we don't need to have any
+  // offset here.
+  // When title bar is drawn by Qt at the client side, QWindow's origin starts
+  // below the title bar, but wl_surface's origin will be at Qt's decoration's
+  // top left corner, we need to add an offset to compensate.
+  // When title bar is drawn by the app, entire wl_surface is exposed to the
+  // app as QWindow, and wl_surface origin matches QWindow origin, so no
+  // offset is needed.
+  // When there's no title bar (app is borderless), wl_surface origin matches
+  // QWindow origin, no offset is needed.
+  if (!is_x11_ && !window->flags().testFlag(Qt::FramelessWindowHint)) {
+    QMargins margin = window->frameMargins();
+    rect.translate(margin.left(), margin.top());
   }
+  rect = QHighDpi::toNativePixels(rect, window);
+  backend_->SetCursorLocation(rect.x(), rect.y(), rect.width(), rect.height());
 }
 
 bool CrosQtIMContext::init() {
