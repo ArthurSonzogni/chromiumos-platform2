@@ -294,6 +294,7 @@ CryptohomeStatus AuthSession::Initialize() {
   user_exists_ = persistent_user_exists || user_is_active;
 
   if (!persistent_user_exists) {
+    auth_factor_map_.ReportAuthFactorBackingStoreMetrics();
     RecordAuthSessionStart();
     return OkStatus<CryptohomeCryptoError>();
   }
