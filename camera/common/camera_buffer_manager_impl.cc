@@ -151,7 +151,7 @@ uint8_t* GetPlaneAddr(const android_ycbcr& ycbcr,
 void BufferHandleDeleter::operator()(buffer_handle_t* handle) {
   if (handle) {
     auto* buf_mgr = cros::CameraBufferManager::GetInstance();
-    if (buf_mgr) {
+    if (buf_mgr && *handle != nullptr) {
       buf_mgr->Free(*handle);
     }
     delete handle;
@@ -599,7 +599,7 @@ ScopedBufferHandle CameraBufferManager::AllocateScopedBuffer(size_t width,
                                                              uint32_t format,
                                                              uint32_t usage) {
   auto* buf_mgr = CameraBufferManager::GetInstance();
-  ScopedBufferHandle buffer(new buffer_handle_t);
+  ScopedBufferHandle buffer(new buffer_handle_t(nullptr));
   uint32_t stride;
   if (buf_mgr->Allocate(width, height, format, usage, buffer.get(), &stride) !=
       0) {
