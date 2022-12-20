@@ -131,6 +131,10 @@ message SerializedVaultKeyset {
   // storage.
   optional bool backup_vk = 22;
 
+  // Used to determine whether the VaultKeyset is migrated to the new key
+  // storage.
+  optional bool migrated_vk = 23;
+
   // Deprecated fields that were removed.
   reserved 7, 19;
 }

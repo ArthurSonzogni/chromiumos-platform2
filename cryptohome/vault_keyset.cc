@@ -79,6 +79,7 @@ VaultKeyset::VaultKeyset()
       encrypted_(false),
       flags_(0),
       backup_vk_(false),
+      migrated_vk_(false),
       legacy_index_(-1),
       auth_locked_(false) {}
 
@@ -279,6 +280,15 @@ CryptohomeStatus VaultKeyset::EncryptEx(const KeyBlobs& key_blobs,
 
   encrypted_ = return_status.ok();
   return return_status;
+}
+
+bool VaultKeyset::MarkMigrated(bool migrated) {
+  migrated_vk_ = migrated;
+  if (migrated) {
+    backup_vk_ = true;
+  }
+
+  return Save(GetSourceFile());
 }
 
 CryptoStatus VaultKeyset::DecryptEx(const KeyBlobs& key_blobs) {
@@ -1615,12 +1625,15 @@ SerializedVaultKeyset VaultKeyset::ToSerialized() const {
 
   serialized.set_backup_vk(backup_vk_);
 
+  serialized.set_migrated_vk(migrated_vk_);
+
   return serialized;
 }
 
 void VaultKeyset::ResetVaultKeyset() {
   flags_ = -1;
   backup_vk_ = false;
+  migrated_vk_ = false;
   auth_salt_.clear();
   legacy_index_ = -1;
   tpm_public_key_hash_.reset();
@@ -1749,6 +1762,7 @@ void VaultKeyset::InitializeFromSerialized(
   }
 
   backup_vk_ = serialized.backup_vk();
+  migrated_vk_ = serialized.migrated_vk();
 }
 
 const base::FilePath& VaultKeyset::GetSourceFile() const {
