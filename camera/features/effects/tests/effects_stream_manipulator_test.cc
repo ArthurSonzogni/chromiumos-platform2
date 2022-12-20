@@ -29,18 +29,29 @@ const base::FilePath kSampleImagePath = base::FilePath(
     "/usr/local/share/ml-core-effects-test-assets/tom_sample_720.yuv");
 const base::FilePath kBlurImagePath = base::FilePath(
     "/usr/local/share/ml-core-effects-test-assets/tom_blur_720.yuv");
+const base::FilePath kMaxBlurImagePath = base::FilePath(
+    "/usr/local/share/ml-core-effects-test-assets/tom_max_blur_720.yuv");
 const base::FilePath kRelightImagePath = base::FilePath(
     "/usr/local/share/ml-core-effects-test-assets/tom_relight_720.yuv");
 const base::FilePath kReplaceImagePath = base::FilePath(
     "/usr/local/share/ml-core-effects-test-assets/tom_replace_720.yuv");
 
-const int kNumFrames = 1000;
+const int kNumFrames = 5;
 
 base::FilePath dlc_path;
 
 namespace cros {
 
 namespace effects_tests {
+
+std::atomic<bool> effect_set_success = false;
+std::unique_ptr<base::RunLoop> loop;
+
+void SetEffectCallback(bool success) {
+  if (success)
+    effect_set_success = true;
+  loop->Quit();
+}
 
 camera3_stream_t yuv_720_stream = {
     .stream_type = CAMERA3_STREAM_OUTPUT,
@@ -65,9 +76,6 @@ class EffectsStreamManipulatorTest : public ::testing::Test {
     if (!base::CreateTemporaryFile(&config_path_)) {
       FAIL() << "Failed to create temporary file";
     }
-    if (!base::WriteFile(config_path_, "{ \"effect\": \"none\" }")) {
-      FAIL() << "Failed to write to temporary file";
-    }
 
     egl_context_ = EglContext::GetSurfacelessContext();
     if (!egl_context_->IsValid()) {
@@ -77,6 +85,9 @@ class EffectsStreamManipulatorTest : public ::testing::Test {
       FAIL() << "Failed to make EGL context current";
     }
     image_processor_ = std::make_unique<GpuImageProcessor>();
+
+    effect_set_success = false;
+    loop = std::make_unique<base::RunLoop>();
   }
 
   void TearDown() override {
@@ -100,11 +111,20 @@ class EffectsStreamManipulatorTest : public ::testing::Test {
   bool CompareFrames(ScopedBufferHandle& ref_buffer,
                      ScopedBufferHandle& output_buffer);
 
+  void WaitForEffectSetAndReset();
+
   std::unique_ptr<EglContext> egl_context_;
   std::unique_ptr<GpuImageProcessor> image_processor_;
 
   base::test::TaskEnvironment task_environment_;
 };
+
+void EffectsStreamManipulatorTest::WaitForEffectSetAndReset() {
+  loop->Run();
+  ASSERT_TRUE(effect_set_success);
+  effect_set_success = false;
+  loop = std::make_unique<base::RunLoop>();
+}
 
 void EffectsStreamManipulatorTest::ConfigureStreams(camera3_stream_t* stream) {
   // Create output buffer.
@@ -122,8 +142,6 @@ void EffectsStreamManipulatorTest::ConfigureStreams(camera3_stream_t* stream) {
 void EffectsStreamManipulatorTest::ProcessFileThroughStreamManipulator(
     base::FilePath infile, base::FilePath outfile, int num_repeats) {
   for (uint32_t i = 0; i < num_repeats; ++i) {
-    task_environment_.RunUntilIdle();
-
     // read input file into buffer
     ReadFileIntoBuffer(*output_buffer_, infile);
     Camera3CaptureDescriptor result(
@@ -202,16 +220,19 @@ bool EffectsStreamManipulatorTest::CompareFrames(
                                1000);
 }
 
-TEST_F(EffectsStreamManipulatorTest, OverrideConfigFileToChangeEffect) {
+TEST_F(EffectsStreamManipulatorTest, OverrideConfigFileToSetBackgroundReplace) {
   ASSERT_TRUE(base::WriteFile(
       base::FilePath(EffectsStreamManipulator::kOverrideEffectsConfigFile),
-      "{ \"effect\": \"replace\" }"));
+      "{ \"replace_enabled\": true }"));
 
   stream_manipulator_ = std::make_unique<EffectsStreamManipulator>(
-      config_path_, &runtime_options_);
-  stream_manipulator_->Initialize(nullptr, base::DoNothing());
-
+      config_path_, &runtime_options_, SetEffectCallback);
+  stream_manipulator_->Initialize(
+      nullptr,
+      StreamManipulator::Callbacks{.result_callback = base::DoNothing(),
+                                   .notify_callback = base::DoNothing()});
   ConfigureStreams(&yuv_720_stream);
+  WaitForEffectSetAndReset();
   ProcessFileThroughStreamManipulator(kSampleImagePath, base::FilePath(""),
                                       kNumFrames);
 
@@ -225,12 +246,16 @@ TEST_F(EffectsStreamManipulatorTest, OverrideConfigFileToChangeEffect) {
 
 TEST_F(EffectsStreamManipulatorTest,
        ConfigFileConfiguresEffectsOnInitialisation) {
-  ASSERT_TRUE(base::WriteFile(config_path_, "{ \"effect\": \"blur\" }"));
+  ASSERT_TRUE(base::WriteFile(config_path_, "{ \"blur_enabled\": true }"));
 
   stream_manipulator_ = std::make_unique<EffectsStreamManipulator>(
-      config_path_, &runtime_options_);
-  stream_manipulator_->Initialize(nullptr, base::DoNothing());
+      config_path_, &runtime_options_, SetEffectCallback);
+  stream_manipulator_->Initialize(
+      nullptr,
+      StreamManipulator::Callbacks{.result_callback = base::DoNothing(),
+                                   .notify_callback = base::DoNothing()});
   ConfigureStreams(&yuv_720_stream);
+  WaitForEffectSetAndReset();
   ProcessFileThroughStreamManipulator(kSampleImagePath, base::FilePath(""),
                                       kNumFrames);
 
@@ -248,10 +273,14 @@ TEST_F(EffectsStreamManipulatorTest, ReplaceEffectAppliedUsingEnableFlag) {
   runtime_options_.SetEffectsConfig(std::move(config));
 
   stream_manipulator_ = std::make_unique<EffectsStreamManipulator>(
-      config_path_, &runtime_options_);
-  stream_manipulator_->Initialize(nullptr, base::DoNothing());
-
+      config_path_, &runtime_options_, SetEffectCallback);
+  stream_manipulator_->Initialize(
+      nullptr,
+      StreamManipulator::Callbacks{.result_callback = base::DoNothing(),
+                                   .notify_callback = base::DoNothing()});
   ConfigureStreams(&yuv_720_stream);
+  ProcessFileThroughStreamManipulator(kSampleImagePath, base::FilePath(""), 1);
+  WaitForEffectSetAndReset();
   ProcessFileThroughStreamManipulator(kSampleImagePath, base::FilePath(""),
                                       kNumFrames);
 
@@ -263,17 +292,46 @@ TEST_F(EffectsStreamManipulatorTest, ReplaceEffectAppliedUsingEnableFlag) {
   EXPECT_TRUE(CompareFrames(ref_buffer, output_buffer_));
 }
 
-TEST_F(EffectsStreamManipulatorTest, RelightEffectAppliedUsingEffectField) {
+TEST_F(EffectsStreamManipulatorTest, BlurEffectWithExtraBlurLevel) {
   mojom::EffectsConfigPtr config = mojom::EffectsConfig::New();
-  config->effect = mojom::CameraEffect::kPortraitRelight;
-  // config->relight_enabled = true;
+  config->blur_enabled = true;
+  config->blur_level = mojom::BlurLevel::kMaximum;
   runtime_options_.SetEffectsConfig(std::move(config));
 
   stream_manipulator_ = std::make_unique<EffectsStreamManipulator>(
-      config_path_, &runtime_options_);
-  stream_manipulator_->Initialize(nullptr, base::DoNothing());
-
+      config_path_, &runtime_options_, SetEffectCallback);
+  stream_manipulator_->Initialize(
+      nullptr,
+      StreamManipulator::Callbacks{.result_callback = base::DoNothing(),
+                                   .notify_callback = base::DoNothing()});
   ConfigureStreams(&yuv_720_stream);
+  ProcessFileThroughStreamManipulator(kSampleImagePath, base::FilePath(""), 1);
+  WaitForEffectSetAndReset();
+  ProcessFileThroughStreamManipulator(kSampleImagePath, base::FilePath(""),
+                                      kNumFrames);
+
+  ScopedBufferHandle ref_buffer = CameraBufferManager::AllocateScopedBuffer(
+      yuv_720_stream.width, yuv_720_stream.height, yuv_720_stream.format,
+      yuv_720_stream.usage);
+  ReadFileIntoBuffer(*ref_buffer, kMaxBlurImagePath);
+
+  EXPECT_TRUE(CompareFrames(ref_buffer, output_buffer_));
+}
+
+TEST_F(EffectsStreamManipulatorTest, RelightEffectAppliedUsingEnableFlag) {
+  mojom::EffectsConfigPtr config = mojom::EffectsConfig::New();
+  config->relight_enabled = true;
+  runtime_options_.SetEffectsConfig(std::move(config));
+
+  stream_manipulator_ = std::make_unique<EffectsStreamManipulator>(
+      config_path_, &runtime_options_, SetEffectCallback);
+  stream_manipulator_->Initialize(
+      nullptr,
+      StreamManipulator::Callbacks{.result_callback = base::DoNothing(),
+                                   .notify_callback = base::DoNothing()});
+  ConfigureStreams(&yuv_720_stream);
+  ProcessFileThroughStreamManipulator(kSampleImagePath, base::FilePath(""), 1);
+  WaitForEffectSetAndReset();
   ProcessFileThroughStreamManipulator(kSampleImagePath, base::FilePath(""),
                                       kNumFrames);
 
@@ -287,9 +345,11 @@ TEST_F(EffectsStreamManipulatorTest, RelightEffectAppliedUsingEffectField) {
 
 TEST_F(EffectsStreamManipulatorTest, NoneEffectApplied) {
   stream_manipulator_ = std::make_unique<EffectsStreamManipulator>(
-      config_path_, &runtime_options_);
-  stream_manipulator_->Initialize(nullptr, base::DoNothing());
-
+      config_path_, &runtime_options_, SetEffectCallback);
+  stream_manipulator_->Initialize(
+      nullptr,
+      StreamManipulator::Callbacks{.result_callback = base::DoNothing(),
+                                   .notify_callback = base::DoNothing()});
   ConfigureStreams(&yuv_720_stream);
   ProcessFileThroughStreamManipulator(kSampleImagePath, base::FilePath(""),
                                       kNumFrames);
@@ -303,24 +363,36 @@ TEST_F(EffectsStreamManipulatorTest, NoneEffectApplied) {
 }
 
 TEST_F(EffectsStreamManipulatorTest, RotateThroughEffectsUsingOverrideFile) {
-  std::vector<std::pair<std::string, base::FilePath>> override_effects{
-      {"{ \"effect\": \"blur\" }", kBlurImagePath},
-      {"{ \"effect\": \"relight\" }", kRelightImagePath},
-      {"{ \"effect\": \"replace\" }", kReplaceImagePath},
-      {"{ \"effect\": \"none\" }", kSampleImagePath}};
+  ASSERT_TRUE(base::WriteFile(
+      base::FilePath(EffectsStreamManipulator::kOverrideEffectsConfigFile),
+      "{ \"blur_enabled\": false, \"relight_enabled\": false, "
+      "\"replace_enabled\": false }"));
 
   stream_manipulator_ = std::make_unique<EffectsStreamManipulator>(
-      config_path_, &runtime_options_);
-  stream_manipulator_->Initialize(nullptr, base::DoNothing());
+      config_path_, &runtime_options_, SetEffectCallback);
+  stream_manipulator_->Initialize(
+      nullptr,
+      StreamManipulator::Callbacks{.result_callback = base::DoNothing(),
+                                   .notify_callback = base::DoNothing()});
   ConfigureStreams(&yuv_720_stream);
+  WaitForEffectSetAndReset();
+
   ScopedBufferHandle ref_buffer = CameraBufferManager::AllocateScopedBuffer(
       yuv_720_stream.width, yuv_720_stream.height, yuv_720_stream.format,
       yuv_720_stream.usage);
 
+  std::vector<std::pair<std::string, base::FilePath>> override_effects{
+      {"{ \"blur_enabled\": true }", kBlurImagePath},
+      {"{ \"blur_enabled\": false, \"relight_enabled\": true }",
+       kRelightImagePath},
+      {"{ \"relight_enabled\": false, \"replace_enabled\": true }",
+       kReplaceImagePath},
+      {"{ \"replace_enabled\": false }", kSampleImagePath}};
   for (auto effect : override_effects) {
     ASSERT_TRUE(base::WriteFile(
         base::FilePath(EffectsStreamManipulator::kOverrideEffectsConfigFile),
         effect.first));
+    WaitForEffectSetAndReset();
     ProcessFileThroughStreamManipulator(kSampleImagePath, base::FilePath(""),
                                         kNumFrames);
     ReadFileIntoBuffer(*ref_buffer, effect.second);
@@ -331,13 +403,12 @@ TEST_F(EffectsStreamManipulatorTest, RotateThroughEffectsUsingOverrideFile) {
 
 TEST_F(EffectsStreamManipulatorTest,
        RotateThroughEffectsWhileProcessingFrames) {
-  base::DeleteFile(
-      base::FilePath(EffectsStreamManipulator::kOverrideEffectsConfigFile));
-
   stream_manipulator_ = std::make_unique<EffectsStreamManipulator>(
-      config_path_, &runtime_options_);
-  stream_manipulator_->Initialize(nullptr, base::DoNothing());
-
+      config_path_, &runtime_options_, SetEffectCallback);
+  stream_manipulator_->Initialize(
+      nullptr,
+      StreamManipulator::Callbacks{.result_callback = base::DoNothing(),
+                                   .notify_callback = base::DoNothing()});
   ConfigureStreams(&yuv_720_stream);
   ScopedBufferHandle ref_buffer = CameraBufferManager::AllocateScopedBuffer(
       yuv_720_stream.width, yuv_720_stream.height, yuv_720_stream.format,
@@ -346,6 +417,8 @@ TEST_F(EffectsStreamManipulatorTest,
   mojom::EffectsConfigPtr config1 = mojom::EffectsConfig::New();
   config1->blur_enabled = true;
   runtime_options_.SetEffectsConfig(std::move(config1));
+  ProcessFileThroughStreamManipulator(kSampleImagePath, base::FilePath(""), 1);
+  WaitForEffectSetAndReset();
   ProcessFileThroughStreamManipulator(kSampleImagePath, base::FilePath(""),
                                       kNumFrames);
   ReadFileIntoBuffer(*ref_buffer, kBlurImagePath);
@@ -354,6 +427,8 @@ TEST_F(EffectsStreamManipulatorTest,
   mojom::EffectsConfigPtr config2 = mojom::EffectsConfig::New();
   config2->relight_enabled = true;
   runtime_options_.SetEffectsConfig(std::move(config2));
+  ProcessFileThroughStreamManipulator(kSampleImagePath, base::FilePath(""), 1);
+  WaitForEffectSetAndReset();
   ProcessFileThroughStreamManipulator(kSampleImagePath, base::FilePath(""),
                                       kNumFrames);
   ReadFileIntoBuffer(*ref_buffer, kRelightImagePath);
@@ -362,6 +437,8 @@ TEST_F(EffectsStreamManipulatorTest,
   mojom::EffectsConfigPtr config3 = mojom::EffectsConfig::New();
   config3->replace_enabled = true;
   runtime_options_.SetEffectsConfig(std::move(config3));
+  ProcessFileThroughStreamManipulator(kSampleImagePath, base::FilePath(""), 1);
+  WaitForEffectSetAndReset();
   ProcessFileThroughStreamManipulator(kSampleImagePath, base::FilePath(""),
                                       kNumFrames);
   ReadFileIntoBuffer(*ref_buffer, kReplaceImagePath);
@@ -369,6 +446,8 @@ TEST_F(EffectsStreamManipulatorTest,
 
   mojom::EffectsConfigPtr config4 = mojom::EffectsConfig::New();
   runtime_options_.SetEffectsConfig(std::move(config4));
+  ProcessFileThroughStreamManipulator(kSampleImagePath, base::FilePath(""), 1);
+  WaitForEffectSetAndReset();
   ProcessFileThroughStreamManipulator(kSampleImagePath, base::FilePath(""),
                                       kNumFrames);
   ReadFileIntoBuffer(*ref_buffer, kSampleImagePath);

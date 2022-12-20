@@ -42,8 +42,13 @@ class EffectsStreamManipulator : public StreamManipulator {
     EffectsConfig effects_config;
   };
 
+  // callback used to signal that an effect has taken effect.
+  // Once the callback is fired it is guaranteed that all subsequent
+  // frames will have the effect applied.
+  // TODO(b:263440749): update callback type
   explicit EffectsStreamManipulator(base::FilePath config_file_path,
-                                    RuntimeOptions* runtime_options);
+                                    RuntimeOptions* runtime_options,
+                                    void (*callback)(bool) = nullptr);
   ~EffectsStreamManipulator() override = default;
 
   // Implementations of StreamManipulator.
@@ -65,7 +70,7 @@ class EffectsStreamManipulator : public StreamManipulator {
  private:
   void OnOptionsUpdated(const base::Value::Dict& json_values);
 
-  void SetEffect(EffectsConfig* new_config, void (*callback)(bool));
+  void SetEffect(EffectsConfig* new_config);
   bool SetupGlThread();
   bool EnsureImages(buffer_handle_t buffer_handle);
   bool NV12ToRGBA();
@@ -101,6 +106,7 @@ class EffectsStreamManipulator : public StreamManipulator {
   CameraThread gl_thread_;
 
   bool effects_enabled_ = true;
+  void (*set_effect_callback_)(bool);
 };
 
 }  // namespace cros

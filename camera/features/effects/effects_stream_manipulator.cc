@@ -81,11 +81,14 @@ class RenderedImageObserver : public ProcessedFrameObserver {
 }  // namespace
 
 EffectsStreamManipulator::EffectsStreamManipulator(
-    base::FilePath config_file_path, RuntimeOptions* runtime_options)
+    base::FilePath config_file_path,
+    RuntimeOptions* runtime_options,
+    void (*callback)(bool))
     : config_(ReloadableConfigFile::Options{
           config_file_path, base::FilePath(kOverrideEffectsConfigFile)}),
       runtime_options_(runtime_options),
-      gl_thread_("EffectsGlThread") {
+      gl_thread_("EffectsGlThread"),
+      set_effect_callback_(callback) {
   if (!config_.IsValid()) {
     LOGF(ERROR) << "Cannot load valid config. Turning off feature by default";
     options_.enable = false;
@@ -198,11 +201,12 @@ bool EffectsStreamManipulator::ProcessCaptureResult(
   auto new_config = runtime_options_->GetEffectsConfig();
   if (active_runtime_effects_config_ != new_config) {
     active_runtime_effects_config_ = new_config;
-    SetEffect(&new_config, nullptr);
+    SetEffect(&new_config);
   }
 
-  if (!effects_enabled_)
+  if (!effects_enabled_) {
     return true;
+  }
 
   camera3_stream_buffer_t* result_buffer =
       SelectEffectsBuffer(result.GetMutableOutputBuffers());
@@ -311,6 +315,7 @@ void EffectsStreamManipulator::OnOptionsUpdated(
     LOGF(WARNING) << "OnOptionsUpdated called, but pipeline not ready.";
     return;
   }
+  LOGF(INFO) << "Reloadable Options update detected";
   EffectsConfig new_config;
   std::string tmp;
   if (GetStringFromKey(json_values, kEffectKey, &tmp)) {
@@ -333,12 +338,13 @@ void EffectsStreamManipulator::OnOptionsUpdated(
       LOGF(WARNING) << "Unknown Effect: " << tmp;
       return;
     }
-    LoadIfExist(json_values, kBlurEnabled, &new_config.blur_enabled);
-    LoadIfExist(json_values, kReplaceEnabled, &new_config.replace_enabled);
-    LoadIfExist(json_values, kRelightEnabled, &new_config.relight_enabled);
+  }
+  LoadIfExist(json_values, kBlurEnabled, &new_config.blur_enabled);
+  LoadIfExist(json_values, kReplaceEnabled, &new_config.replace_enabled);
+  LoadIfExist(json_values, kRelightEnabled, &new_config.relight_enabled);
 
-    std::string blur_level;
-    GetStringFromKey(json_values, kBlurLevelKey, &blur_level);
+  std::string blur_level;
+  if (GetStringFromKey(json_values, kBlurLevelKey, &blur_level)) {
     if (blur_level == "lowest") {
       new_config.blur_level = mojom::BlurLevel::kLowest;
     } else if (blur_level == "light") {
@@ -350,17 +356,14 @@ void EffectsStreamManipulator::OnOptionsUpdated(
     } else if (blur_level == "maximum") {
       new_config.blur_level = mojom::BlurLevel::kMaximum;
     }
-
-    LOGF(INFO) << "Effect Updated: " << tmp;
-
-    SetEffect(&new_config, nullptr);
   }
+  LOGF(INFO) << "Effect Updated: " << tmp;
+  SetEffect(&new_config);
 }
 
-void EffectsStreamManipulator::SetEffect(EffectsConfig* new_config,
-                                         void (*callback)(bool)) {
+void EffectsStreamManipulator::SetEffect(EffectsConfig* new_config) {
   if (pipeline_) {
-    pipeline_->SetEffect(new_config, callback);
+    pipeline_->SetEffect(new_config, set_effect_callback_);
     effects_enabled_ = new_config->HasEnabledEffects();
   } else {
     LOGF(WARNING) << "SetEffect called, but pipeline not ready.";
