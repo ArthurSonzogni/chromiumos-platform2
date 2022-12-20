@@ -2,10 +2,20 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import("//common-mk/install_seccomp_policy.gni")
 import("//common-mk/pkg_config.gni")
 
 group("all") {
-  deps = [ ":cros_camera_service" ]
+  deps = [
+    ":cros_camera_service",
+    ":install_cros_camera_conf",
+    ":install_cros_camera_policy",
+    ":install_dbus_cros_camera_conf",
+  ]
+
+  if (use.cheets && !use.arc_camera1) {
+    deps += [ ":install_init_camera_rc" ]
+  }
 }
 
 pkg_config("target_defaults") {
@@ -45,9 +55,38 @@ executable("cros_camera_service") {
     "vendor_tag_ops_delegate.cc",
   ]
   configs += [ ":target_defaults" ]
+  install_path = "bin"
   libs = [
     "dl",
     "rt",
   ]
   deps = [ "//ml_core/dlc:dlc_client" ]
+}
+
+install_config("install_cros_camera_conf") {
+  sources = [
+    "init/cros-camera-failsafe.conf",
+    "init/cros-camera.conf",
+  ]
+
+  install_path = "/etc/init"
+}
+
+install_config("install_dbus_cros_camera_conf") {
+  sources = [ "dbus/CrosCamera.conf" ]
+  install_path = "/etc/dbus-1/system.d"
+}
+
+install_seccomp_policy("install_cros_camera_policy") {
+  arch = getenv("ARCH")
+  sources = [ "seccomp_filter/cros-camera-${arch}.policy" ]
+  outputs = [ "cros-camera-seccomp.policy" ]
+  install_path = "/usr/share/policy"
+}
+
+if (use.cheets && !use.arc_camera1) {
+  install_config("install_init_camera_rc") {
+    sources = [ "init/init.camera.rc" ]
+    install_path = "/build/rootfs/opt/google/containers/android/vendor/etc/init"
+  }
 }

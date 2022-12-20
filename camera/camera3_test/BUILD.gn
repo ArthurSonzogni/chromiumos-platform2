@@ -30,6 +30,7 @@ shared_library("libfake_date_time") {
   output_name = "libfake_date_time"
   sources = [ "utils/fake_date_time.cc" ]
   configs += [ ":target_defaults" ]
+  install_path = "lib"
   libs = [ "dl" ]
 }
 
@@ -60,6 +61,7 @@ executable("cros_camera_test") {
     "//common-mk:test",
     ":target_defaults",
   ]
+  install_path = "bin"
   libs = [
     "dl",
     "jpeg",

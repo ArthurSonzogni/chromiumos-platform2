@@ -17,6 +17,7 @@ pkg_config("target_defaults") {
 shared_library("libcam_algo_test") {
   sources = [ "//camera/common/fake_libcam_algo.cc" ]
   configs += [ ":target_defaults" ]
+  install_path = "lib"
 }
 
 executable("libcab_test") {
@@ -25,6 +26,7 @@ executable("libcab_test") {
     ":target_defaults",
     "//common-mk:test",
   ]
+  install_path = "bin"
   pkg_deps = [ "libbrillo" ]
   libs = [ "rt" ]
 }

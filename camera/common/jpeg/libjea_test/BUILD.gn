@@ -12,6 +12,7 @@ executable("libjea_test") {
     "//camera/build:cros_camera_common",
     "//common-mk:test",
   ]
+  install_path = "bin"
   pkg_deps = [
     "libbrillo",
     "libcros_camera",

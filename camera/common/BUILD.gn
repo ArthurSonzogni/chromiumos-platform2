@@ -3,17 +3,31 @@
 # found in the LICENSE file.
 
 import("//camera/build/cc_embed_data.gni")
+import("//common-mk/install_seccomp_policy.gni")
 import("//common-mk/mojom_bindings_generator.gni")
 import("//common-mk/pkg_config.gni")
 
 group("all") {
   deps = [
     ":cros_camera_algo",
+    ":install_cros_camera_algo_conf",
+    ":install_cros_camera_algo_policy",
+    ":install_dbus_cros_camera_algo_conf",
+    ":install_gen_include_iioservice_mojo",
+    ":install_include_cros_camera",
+    ":install_libcamera_connector_so",
     ":libcros_camera",
     ":libcros_camera_device_config",
     ":libcros_camera_device_config_pkg_config",
     ":libcros_camera_pkg_config",
   ]
+
+  if (use.camera_feature_portrait_mode || use.ipu6se || use.qualcomm_camx) {
+    deps += [
+      ":install_cros_camera_gpu_algo_conf",
+      ":install_cros_camera_gpu_algo_policy",
+    ]
+  }
 
   if (use.test) {
     deps += [
@@ -24,8 +38,13 @@ group("all") {
       ":embed_file_toc_test",
       ":future_test",
       ":stream_manipulator_manager_test",
-      "//camera/features:feature_profile_test",
-      "//camera/features/zsl:zsl_helper_test",
+
+      # TODO(b/262337896): Change back to use
+      # //camera/features/zsl:zsl_helper_test and
+      # //camera/features:feature_profile_test after the issue is
+      # resolved.
+      ":feature_profile_test",
+      ":zsl_helper_test",
     ]
   }
 
@@ -43,6 +62,7 @@ pkg_config("target_defaults") {
 }
 
 generate_mojom_bindings("libcros_camera_mojom") {
+  install_path = "lib"
   deps = [ "//iioservice/libiioservice_ipc:libiioservice_ipc_mojom" ]
   sources = [
     "//camera/mojo/algorithm/camera_algorithm.mojom",
@@ -61,6 +81,7 @@ generate_mojom_bindings("libcros_camera_mojom") {
   mojo_root = "${platform2_root}"
   use_pic = true
   standalone = true
+  install_package = "cros-camera/mojo"
 }
 
 pkg_config("pkg_config_base") {
@@ -83,6 +104,7 @@ shared_library("libcros_camera_device_config") {
     ":target_defaults",
     ":pkg_config_base",
   ]
+  install_path = "lib"
 }
 
 generate_pkg_config("libcros_camera_device_config_pkg_config") {
@@ -90,8 +112,8 @@ generate_pkg_config("libcros_camera_device_config_pkg_config") {
   description = "cros-camera device config library"
   version = getenv("PV")
   requires_private = [ "libchrome" ]
-
   libs = [ "-lcros_camera_device_config" ]
+  install = true
 }
 
 source_set("base") {
@@ -286,6 +308,7 @@ source_set("stream_manipulator") {
 shared_library("libcros_camera") {
   output_name = "libcros_camera"
   configs += [ ":target_defaults" ]
+  install_path = "lib"
   deps = [
     ":base",
     ":camera_algo_bridge",
@@ -319,6 +342,7 @@ generate_pkg_config("libcros_camera_pkg_config") {
     "-lcros_camera",
     "-lcros_camera_mojom",
   ]
+  install = true
 }
 
 executable("cros_camera_algo") {
@@ -330,6 +354,7 @@ executable("cros_camera_algo") {
   ]
   configs += [ ":target_defaults" ]
   libs = [ "dl" ]
+  install_path = "bin"
   pkg_deps = [
     "libbrillo",
     "libmojo",
@@ -359,6 +384,7 @@ if (use.test) {
       "//camera/common/camera_buffer_pool_test.cc",
     ]
     configs += [ ":target_defaults_test" ]
+    run_test = true
   }
 
   executable("camera_face_detection_test") {
@@ -367,6 +393,7 @@ if (use.test) {
       "//camera/common/camera_face_detection_test.cc",
     ]
     configs += [ ":target_defaults_test" ]
+    run_test = true
   }
 
   executable("camera_hal3_helpers_test") {
@@ -375,6 +402,7 @@ if (use.test) {
       "//camera/common/camera_hal3_helpers_test.cc",
     ]
     configs += [ ":target_defaults_test" ]
+    run_test = true
   }
 
   executable("cbm_test") {
@@ -383,6 +411,7 @@ if (use.test) {
       "//camera/common/camera_buffer_manager_impl_test.cc",
     ]
     configs += [ ":target_defaults_test" ]
+    run_test = true
   }
 
   executable("future_test") {
@@ -391,6 +420,7 @@ if (use.test) {
       "//camera/common/future_test.cc",
     ]
     configs += [ ":target_defaults_test" ]
+    run_test = true
   }
 
   cc_embed_data("embed_file_toc_test_files") {
@@ -406,13 +436,45 @@ if (use.test) {
       "//camera/common/embed_file_toc_test.cc",
     ]
     configs += [ ":target_defaults_test" ]
+    run_test = true
     deps = [ ":embed_file_toc_test_files" ]
   }
 
   executable("stream_manipulator_manager_test") {
     sources = [ "//camera/common/stream_manipulator_manager_test.cc" ]
     configs += [ ":target_defaults_test" ]
+    run_test = true
     deps = [ ":stream_manipulator" ]
+  }
+
+  executable("zsl_helper_test") {
+    sources = [
+      "//camera/features/zsl/zsl_helper.cc",
+      "//camera/features/zsl/zsl_helper_test.cc",
+    ]
+    configs += [
+      "//common-mk:test",
+      "//camera/features/zsl:target_defaults",
+    ]
+    run_test = true
+    pkg_deps = [
+      "gbm",
+      "libdrm",
+    ]
+    deps = [ "//camera/common:base" ]
+  }
+
+  executable("feature_profile_test") {
+    sources = [
+      "//camera/features/feature_profile.cc",
+      "//camera/features/feature_profile_test.cc",
+    ]
+    configs += [ "//camera/features:test_target_defaults" ]
+    run_test = true
+    deps = [
+      "//camera/common:base",
+      "//camera/common:libcros_camera_device_config",
+    ]
   }
 }
 
@@ -430,4 +492,59 @@ if (use.fuzzer) {
       "//camera/features/zsl",
     ]
   }
+}
+
+install_config("install_cros_camera_algo_conf") {
+  sources = [ "init/cros-camera-algo.conf" ]
+  install_path = "/etc/init"
+}
+
+install_config("install_dbus_cros_camera_algo_conf") {
+  sources = [ "dbus/CrosCameraAlgo.conf" ]
+  install_path = "/etc/dbus-1/system.d"
+}
+
+install_seccomp_policy("install_cros_camera_algo_policy") {
+  arch = getenv("ARCH")
+  sources = [ "seccomp_filter/cros-camera-algo-${arch}.policy" ]
+  outputs = [ "cros-camera-algo-seccomp.policy" ]
+  install_path = "/usr/share/policy"
+}
+
+# The sandboxed GPU service is used by Portrait Mode feature, IPU6SE
+# and Qualcomm Camx camera HAL.
+if (use.camera_feature_portrait_mode || use.ipu6se || use.qualcomm_camx) {
+  install_config("install_cros_camera_gpu_algo_conf") {
+    sources = [ "init/cros-camera-gpu-algo.conf" ]
+    install_path = "/etc/init"
+  }
+
+  install_seccomp_policy("install_cros_camera_gpu_algo_policy") {
+    arch = getenv("ARCH")
+    sources = [ "seccomp_filter/cros-camera-gpu-algo-${arch}.policy" ]
+    outputs = [ "cros-camera-gpu-algo-seccomp.policy" ]
+    install_path = "/usr/share/policy"
+  }
+}
+
+# Install libcros_camera required by the camera HAL implementations.
+install_config("install_include_cros_camera") {
+  sources = [ "../include/cros-camera" ]
+  recursive = true
+  install_path = "/usr/include/"
+}
+
+install_config("install_gen_include_iioservice_mojo") {
+  sources = [ "${root_gen_dir}/include/iioservice/mojo" ]
+  recursive = true
+  install_path = "/usr/include/cros-camera/mojo/iioservice"
+  deps = [ "//iioservice/libiioservice_ipc:libiioservice_ipc_mojom" ]
+}
+
+# Project Pita libraries need libcamera_connector.so to run.
+install_config("install_libcamera_connector_so") {
+  sources = [ "${libdir}/libcros_camera.so" ]
+  install_path = "${libdir}"
+  symlinks = [ "libcamera_connector.so" ]
+  deps = [ ":libcros_camera" ]
 }

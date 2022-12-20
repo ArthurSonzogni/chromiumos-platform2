@@ -20,18 +20,3 @@ pkg_config("test_target_defaults") {
   ]
   pkg_deps = [ "libchrome-test" ]
 }
-
-if (use.test) {
-  executable("feature_profile_test") {
-    sources = [
-      "//camera/features/feature_profile.cc",
-      "//camera/features/feature_profile_test.cc",
-    ]
-    configs += [ ":test_target_defaults" ]
-    deps = [
-      "//camera/common:base",
-      "//camera/common:libcros_camera_device_config",
-    ]
-    run_test = true
-  }
-}

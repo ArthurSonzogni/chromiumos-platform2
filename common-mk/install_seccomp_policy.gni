@@ -15,6 +15,7 @@ template("install_seccomp_policy") {
     forward_variables_from(invoker,
                            [
                              "install_path",
+                             "outputs",
                              "sources",
                            ])
     deps = [ ":${_check_seccomp_target}" ]

@@ -5,7 +5,10 @@
 import("//common-mk/pkg_config.gni")
 
 group("all") {
-  deps = [ ":libcamera_hal" ]
+  deps = [
+    ":install_fake_so",
+    ":libcamera_hal",
+  ]
 }
 
 pkg_config("target_defaults") {
@@ -32,4 +35,11 @@ shared_library("libcamera_hal") {
     "value_util.cc",
   ]
   configs += [ ":target_defaults" ]
+}
+
+install_config("install_fake_so") {
+  sources = [ "${root_out_dir}/lib/libcamera_hal.so" ]
+  outputs = [ "fake.so" ]
+  install_path = "${libdir}/camera_hal"
+  deps = [ ":libcamera_hal" ]
 }

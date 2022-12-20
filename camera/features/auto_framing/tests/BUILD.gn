@@ -35,5 +35,6 @@ source_set("base") {
 executable("auto_framing_test") {
   sources = [ "//camera/features/auto_framing/tests/auto_framing_test.cc" ]
   configs += [ ":target_defaults" ]
+  install_path = "bin"
   deps = [ ":base" ]
 }

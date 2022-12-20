@@ -6,7 +6,10 @@ import("//common-mk/generate-dbus-proxies.gni")
 import("//common-mk/mojom_bindings_generator.gni")
 
 group("all") {
-  deps = [ ":libcamera_hal" ]
+  deps = [
+    ":install_ip_so",
+    ":libcamera_hal",
+  ]
   if (use.test) {
     deps += [ ":request_queue_test" ]
   }
@@ -55,6 +58,7 @@ if (use.test) {
       "//camera/build:cros_camera_common",
       "//common-mk:test",
     ]
+    run_test = true
     pkg_deps = [
       "libcros_camera_android_deps",
       "libsync",
@@ -64,4 +68,11 @@ if (use.test) {
       "//common-mk/testrunner",
     ]
   }
+}
+
+install_config("install_ip_so") {
+  sources = [ "${root_out_dir}/lib/libcamera_hal.so" ]
+  outputs = [ "ip.so" ]
+  install_path = "${libdir}/camera_hal"
+  deps = [ ":libcamera_hal" ]
 }

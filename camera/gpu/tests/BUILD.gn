@@ -20,6 +20,7 @@ pkg_config("target_defaults") {
 executable("image_processor_test") {
   sources = [ "//camera/gpu/tests/image_processor_test.cc" ]
   configs += [ ":target_defaults" ]
+  install_path = "bin"
   deps = [
     "//camera/gpu:gpu_test_support",
     "//camera/gpu:image_processor",

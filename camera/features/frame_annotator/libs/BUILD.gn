@@ -29,6 +29,7 @@ shared_library("libcros_camera_frame_annotator") {
   ]
 
   public_configs = [ ":target_defaults" ]
+  install_path = "lib"
   public_deps = [ "//camera/gpu" ]
 
   deps = [ "//camera/common:libcros_camera_mojom" ]

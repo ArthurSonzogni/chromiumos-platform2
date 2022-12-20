@@ -21,6 +21,7 @@ executable("camera_characteristics_test") {
     "//common-mk:test",
     "//camera/build:cros_camera_common",
   ]
+  install_path = "bin"
   pkg_deps = [
     "libbrillo",
     "libchrome",
@@ -37,6 +38,7 @@ executable("camera_dfu_test") {
     "//common-mk:test",
     "//camera/build:cros_camera_common",
   ]
+  install_path = "bin"
   pkg_deps = [
     "libbrillo",
     "libchrome",
@@ -59,7 +61,7 @@ executable("media_v4l2_test") {
     "//common-mk:test",
     "//camera/build:cros_camera_common",
   ]
-
+  install_path = "bin"
   pkg_deps = [
     "libbrillo",
     "libchrome",

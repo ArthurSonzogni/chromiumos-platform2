@@ -5,9 +5,12 @@
 import("//common-mk/pkg_config.gni")
 
 group("all") {
-  deps = [ ":libcamera_hal" ]
+  deps = [
+    ":install_usb_so",
+    ":libcamera_hal",
+  ]
 
-  if (use.test) {
+  if (use.test && !use.asan) {
     deps += [ ":image_processor_test" ]
   }
 }
@@ -46,7 +49,9 @@ shared_library("libcamera_hal") {
   configs += [ ":target_defaults" ]
 }
 
-if (use.test) {
+# TODO(b/193747946): Remove the condition once we solve the camera
+# libraries missing when running with asan enabled issue.
+if (use.test && !use.asan) {
   executable("image_processor_test") {
     sources = [
       "frame_buffer.cc",
@@ -57,5 +62,13 @@ if (use.test) {
       "//common-mk:test",
       ":target_defaults",
     ]
+    run_test = true
   }
+}
+
+install_config("install_usb_so") {
+  sources = [ "${root_out_dir}/lib/libcamera_hal.so" ]
+  outputs = [ "usb.so" ]
+  install_path = "${libdir}/camera_hal"
+  deps = [ ":libcamera_hal" ]
 }

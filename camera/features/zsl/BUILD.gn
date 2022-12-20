@@ -22,21 +22,3 @@ source_set("zsl") {
 
   deps = [ "//camera/common:libcros_camera_mojom" ]
 }
-
-if (use.test) {
-  executable("zsl_helper_test") {
-    sources = [
-      "//camera/features/zsl/zsl_helper.cc",
-      "//camera/features/zsl/zsl_helper_test.cc",
-    ]
-    configs += [
-      "//common-mk:test",
-      ":target_defaults",
-    ]
-    pkg_deps = [
-      "gbm",
-      "libdrm",
-    ]
-    deps = [ "//camera/common:base" ]
-  }
-}

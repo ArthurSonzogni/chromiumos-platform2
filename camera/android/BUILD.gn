@@ -6,6 +6,9 @@ import("//common-mk/pkg_config.gni")
 
 group("all") {
   deps = [
+    ":install_header_files_include",
+    ":install_libcamera_client_include_camera",
+    ":install_libcamera_metadata_include_system",
     ":libcros_camera_android_deps",
     ":libcros_camera_android_deps_pkg_config",
   ]
@@ -30,6 +33,7 @@ shared_library("libcros_camera_android_deps") {
     # gnlint: disable=GnLintVisibilityFlags
     "//common-mk:visibility_default",
   ]
+  install_path = "lib"
 }
 
 generate_pkg_config("libcros_camera_android_deps_pkg_config") {
@@ -44,4 +48,31 @@ generate_pkg_config("libcros_camera_android_deps_pkg_config") {
     "-I/usr/include/android/system/core/include",
   ]
   libs = [ "-lcros_camera_android_deps" ]
+  install = true
+}
+
+install_config("install_header_files_include") {
+  sources = [
+    "header_files/include/hardware",
+    "header_files/include/system",
+  ]
+  recursive = true
+  install_path = "/usr/include/android/"
+}
+
+install_config("install_libcamera_metadata_include_system") {
+  sources = [
+    # Install into the system folder to avoid cros lint complaint of
+    # "include the directory when naming .h files"
+    "libcamera_metadata/include/camera_metadata_hidden.h",
+    "libcamera_metadata/include/system/camera_metadata.h",
+    "libcamera_metadata/include/system/camera_metadata_tags.h",
+    "libcamera_metadata/include/system/camera_vendor_tags.h",
+  ]
+  install_path = "/usr/include/android/system"
+}
+
+install_config("install_libcamera_client_include_camera") {
+  sources = [ "libcamera_client/include/camera/camera_metadata.h" ]
+  install_path = "/usr/include/android/camera"
 }
