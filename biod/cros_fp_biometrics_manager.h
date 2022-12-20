@@ -179,6 +179,8 @@ class CrosFpBiometricsManager : public BiometricsManager {
   std::unique_ptr<CrosFpRecordManagerInterface> record_manager_;
 
   std::unique_ptr<base::RepeatingTimer> maintenance_timer_;
+
+  uint8_t num_enrollment_captures_ = 0;
 };
 
 }  // namespace biod

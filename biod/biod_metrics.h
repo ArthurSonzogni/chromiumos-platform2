@@ -21,6 +21,8 @@ namespace metrics {
 inline constexpr char kFpUnlockEnabled[] = "Fingerprint.UnlockEnabled";
 inline constexpr char kFpEnrolledFingerCount[] =
     "Fingerprint.Unlock.EnrolledFingerCount";
+inline constexpr char kFpEnrollmentCapturesCount[] =
+    "Fingerprint.Enroll.NumCaptures";
 inline constexpr char kFpMatchDurationCapture[] =
     "Fingerprint.Unlock.Match.Duration.Capture";
 inline constexpr char kFpMatchDurationMatcher[] =
@@ -96,6 +98,7 @@ class BiodMetricsInterface {
   };
 
   virtual bool SendEnrolledFingerCount(int finger_count) = 0;
+  virtual bool SendEnrollmentCapturesCount(int captures_count) = 0;
   virtual bool SendFpUnlockEnabled(bool enabled) = 0;
   virtual bool SendFpLatencyStats(
       bool matched, const ec::CrosFpDeviceInterface::FpStats& stats) = 0;
@@ -129,6 +132,9 @@ class BiodMetrics : public BiodMetricsInterface {
 
   // Send number of fingers enrolled.
   bool SendEnrolledFingerCount(int finger_count) override;
+
+  // Send number of enrollment captures.
+  bool SendEnrollmentCapturesCount(int captures_count) override;
 
   // Is unlocking with FP enabled or not?
   bool SendFpUnlockEnabled(bool enabled) override;

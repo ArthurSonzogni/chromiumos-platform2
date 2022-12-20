@@ -159,6 +159,7 @@ BiometricsManager::EnrollSession CrosFpBiometricsManager::StartEnrollSession(
           std::move(user_id), std::move(label), std::move(validation_val)}))
     return BiometricsManager::EnrollSession();
 
+  num_enrollment_captures_ = 0;
   return BiometricsManager::EnrollSession(session_weak_factory_.GetWeakPtr());
 }
 
@@ -478,6 +479,7 @@ void CrosFpBiometricsManager::DoEnrollImageEvent(
   }
 
   int percent = EC_MKBP_FP_ENROLL_PROGRESS(event);
+  ++num_enrollment_captures_;
 
   if (percent < 100) {
     BiometricsManager::EnrollStatus enroll_status = {false, percent};
@@ -491,8 +493,9 @@ void CrosFpBiometricsManager::DoEnrollImageEvent(
     return;
   }
 
-  // we are done with captures, save the template.
+  // we are done with captures, send metrics and save the template.
   OnTaskComplete();
+  biod_metrics_->SendEnrollmentCapturesCount(num_enrollment_captures_);
 
   std::unique_ptr<VendorTemplate> tmpl =
       cros_dev_->GetTemplate(CrosFpDevice::kLastTemplate);

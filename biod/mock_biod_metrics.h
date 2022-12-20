@@ -18,6 +18,10 @@ class MockBiodMetrics : public BiodMetricsInterface {
   ~MockBiodMetrics() override = default;
 
   MOCK_METHOD(bool, SendEnrolledFingerCount, (int finger_count), (override));
+  MOCK_METHOD(bool,
+              SendEnrollmentCapturesCount,
+              (int captures_count),
+              (override));
   MOCK_METHOD(bool, SendFpUnlockEnabled, (bool enabled), (override));
   MOCK_METHOD(bool,
               SendFpLatencyStats,

@@ -22,6 +22,7 @@
 #include "biod/mock_cros_fp_biometrics_manager.h"
 #include "biod/mock_cros_fp_device.h"
 #include "biod/mock_cros_fp_record_manager.h"
+#include "ec/ec_commands.h"
 
 namespace biod {
 
@@ -362,6 +363,31 @@ TEST_F(CrosFpBiometricsManagerTest, TestAuthSessionMatchModeFailed) {
   // Auth session should fail to start when FPMCU refuses to set match mode.
   auth_session = cros_fp_biometrics_manager_->StartAuthSession();
   EXPECT_FALSE(auth_session);
+}
+
+TEST_F(CrosFpBiometricsManagerTest, TestDoEnrollImageEventSuccess) {
+  // Start an enrollment sessions without performing all checks since this is
+  // already tested by TestStartEnrollSessionSuccess.
+  BiometricsManager::EnrollSession enroll_session;
+  EXPECT_CALL(*mock_cros_dev_, MaxTemplateCount).WillOnce(Return(1));
+  EXPECT_CALL(*mock_cros_dev_, SetFpMode(_)).WillRepeatedly(Return(true));
+  enroll_session = cros_fp_biometrics_manager_->StartEnrollSession("0", "0");
+  ASSERT_TRUE(enroll_session);
+
+  // Simulate 4 finger touches and expect UMA to be sent with correct value.
+  EXPECT_CALL(*mock_metrics_, SendEnrollmentCapturesCount(4)).Times(1);
+
+  on_mkbp_event_.Run(EC_MKBP_FP_ENROLL | EC_MKBP_FP_ERR_ENROLL_IMMOBILE |
+                     25 << EC_MKBP_FP_ENROLL_PROGRESS_OFFSET);
+  on_mkbp_event_.Run(EC_MKBP_FP_FINGER_UP);
+  on_mkbp_event_.Run(EC_MKBP_FP_ENROLL | EC_MKBP_FP_ERR_ENROLL_LOW_COVERAGE |
+                     50 << EC_MKBP_FP_ENROLL_PROGRESS_OFFSET);
+  on_mkbp_event_.Run(EC_MKBP_FP_FINGER_UP);
+  on_mkbp_event_.Run(EC_MKBP_FP_ENROLL | EC_MKBP_FP_ERR_ENROLL_LOW_QUALITY |
+                     75 << EC_MKBP_FP_ENROLL_PROGRESS_OFFSET);
+  on_mkbp_event_.Run(EC_MKBP_FP_FINGER_UP);
+  on_mkbp_event_.Run(EC_MKBP_FP_ENROLL | EC_MKBP_FP_ERR_ENROLL_OK |
+                     100 << EC_MKBP_FP_ENROLL_PROGRESS_OFFSET);
 }
 
 TEST_F(CrosFpBiometricsManagerTest, TestAuthSessionRequestsFingerUp) {

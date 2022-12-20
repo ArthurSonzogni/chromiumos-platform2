@@ -34,6 +34,11 @@ bool BiodMetrics::SendEnrolledFingerCount(int finger_count) {
                                      finger_count, 10);
 }
 
+bool BiodMetrics::SendEnrollmentCapturesCount(int captures_count) {
+  return metrics_lib_->SendEnumToUMA(metrics::kFpEnrollmentCapturesCount,
+                                     captures_count, 20);
+}
+
 bool BiodMetrics::SendFpUnlockEnabled(bool enabled) {
   return metrics_lib_->SendBoolToUMA(metrics::kFpUnlockEnabled, enabled);
 }

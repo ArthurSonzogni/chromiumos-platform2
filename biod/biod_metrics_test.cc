@@ -45,6 +45,13 @@ TEST_F(BiodMetricsTest, SendEnrolledFingerCount) {
   biod_metrics_.SendEnrolledFingerCount(finger_count);
 }
 
+TEST_F(BiodMetricsTest, SendEnrollmentCapturesCount) {
+  const int captures_count = 2;
+  EXPECT_CALL(*GetMetricsLibraryMock(), SendEnumToUMA(_, captures_count, _))
+      .Times(1);
+  biod_metrics_.SendEnrolledFingerCount(captures_count);
+}
+
 TEST_F(BiodMetricsTest, SendFpUnlockEnabled) {
   EXPECT_CALL(*GetMetricsLibraryMock(), SendBoolToUMA(_, true)).Times(1);
   EXPECT_CALL(*GetMetricsLibraryMock(), SendBoolToUMA(_, false)).Times(1);
