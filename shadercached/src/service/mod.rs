@@ -94,7 +94,7 @@ pub async fn handle_uninstall(
     // Instead of queueing unmount, we attempt to unmount directly here.
     // Uninstall should only succeed if umounting succeeds immediately
     // (ie. nothing is using this game's shader cache DLC).
-    unmount_dlc(request.steam_app_id, mount_map, conn.clone())
+    unmount_dlc(request.steam_app_id, mount_map)
         .await
         .map_err(to_method_err)?;
     uninstall_shader_cache_dlc(request.steam_app_id, conn.clone())
@@ -257,16 +257,20 @@ pub async fn handle_unmount(
         // with success code.
         // (note: --wait flag probably only needed for tasts and manual
         // debugging).
-        shader_cache_mount
+        let found = shader_cache_mount
             .remove_game_from_db_list(request.steam_app_id)
             .map_err(to_method_err)?;
-        shader_cache_mount
-            .queue_unmount(request.steam_app_id)
-            .map_err(to_method_err)?;
-        debug!(
-            "Unmount queue for {:?}: {:?}",
-            vm_id, shader_cache_mount.unmount_queue
-        );
+        if found {
+            shader_cache_mount
+                .queue_unmount(request.steam_app_id)
+                .map_err(to_method_err)?;
+            debug!(
+                "Unmount queue for {:?}: {:?}",
+                vm_id, shader_cache_mount.unmount_queue
+            );
+        } else {
+            debug!("{:?} has not mounted {}", vm_id, request.steam_app_id);
+        }
     } else {
         return Err(MethodErr::failed("VM had never mounted shader cache"));
     }

@@ -90,7 +90,7 @@ impl ShaderCacheMount {
         Ok(())
     }
 
-    pub fn remove_game_from_db_list(&self, steam_app_id: SteamAppId) -> Result<()> {
+    pub fn remove_game_from_db_list(&self, steam_app_id: SteamAppId) -> Result<bool> {
         // Remove game from foz_db_list so that mesa stops using the precompiled
         // cache in it. Removing the game from list must happen before
         // unmounting and removing the directory.
@@ -106,17 +106,25 @@ impl ShaderCacheMount {
         let contents = read_result.unwrap();
         let mut write_contents = String::new();
 
+        let mut found = false;
         let entry_to_remove = format!("{}/{}", steam_app_id, PRECOMPILED_CACHE_FILE_NAME);
         for line in contents.split('\n') {
-            if line != entry_to_remove && !line.is_empty() {
+            // Even the final entry in foz blob db list file has new line, so
+            // the last line in contents.split('\n') is empty string
+            if line.is_empty() {
+                continue;
+            }
+            if line != entry_to_remove {
                 write_contents += line;
                 write_contents += "\n";
+            } else {
+                found = true
             }
         }
 
         fs::write(&self.foz_blob_db_list_path, write_contents)?;
 
-        Ok(())
+        Ok(found)
     }
 
     pub fn queue_unmount_all(&mut self) -> Result<()> {

@@ -8,6 +8,7 @@ use crate::shader_cache_mount::*;
 use anyhow::{anyhow, Result};
 use dbus::{channel::Sender, nonblock::SyncConnection};
 use libchromeos::sys::{debug, info};
+use std::path::Path;
 use std::{
     fs,
     process::{Command, Stdio},
@@ -166,53 +167,64 @@ pub async fn mount_dlc(
 pub async fn unmount_dlc(
     steam_app_id_to_unmount: SteamAppId,
     mount_map: ShaderCacheMountMap,
-    conn: Arc<SyncConnection>,
 ) -> Result<()> {
-    // Iterate through all mount points then attempt to unmount shader cache if
-    // |target_steam_app_id| matches |steam_app_id_to_unmount|
-    let mut mount_map = mount_map.write().await;
+    // Iterate through all mount points then queue unmount for
+    // |steam_app_id_to_unmount|
     let mut errors: Vec<String> = vec![];
 
-    mount_map.retain(|vm_id, shader_cache_mount| {
-        if shader_cache_mount.target_steam_app_id == steam_app_id_to_unmount
-            && shader_cache_mount.mounted
-        {
-            debug!("Unmounting: {:?}", vm_id);
-
-            if let Err(e) = shader_cache_mount.remove_game_from_db_list(steam_app_id_to_unmount) {
-                errors.push(format!("Failed to update db list: {}", e));
-                return true;
+    {
+        // |mount_map| with write mutex needs to go out of scope after this
+        // loop so that background unmounter can take the mutex
+        let mut mount_map = mount_map.write().await;
+        for (vm_id, shader_cache_mount) in mount_map.iter_mut() {
+            if shader_cache_mount.target_steam_app_id == steam_app_id_to_unmount {
+                shader_cache_mount.target_steam_app_id = 0;
             }
-
-            // TODO(b/263044332): This call may fail if precompiled cache was
-            // not unmounted correctly or was not attempted.
-            let unmount_result = unmount(shader_cache_mount, steam_app_id_to_unmount);
-            // Retain if unmount failed, delete the entry otherwise
-            let still_mounted = unmount_result.is_err();
-            shader_cache_mount.mounted = still_mounted;
-
-            if let Err(ref e) = unmount_result {
-                errors.push(format!("Failed to unmount, {:?}\n", e));
-            } else {
-                debug!("Deleting mount point: {:?}", vm_id);
+            let found = shader_cache_mount.remove_game_from_db_list(steam_app_id_to_unmount)?;
+            if found {
+                debug!(
+                    "Queuing unmount {} for {:?}",
+                    steam_app_id_to_unmount, vm_id
+                );
+                if let Err(e) = shader_cache_mount.queue_unmount(steam_app_id_to_unmount) {
+                    errors.push(format!("Failed to queue unmount: {:?}\n", e));
+                }
             }
-
-            if let Err(e) = signal_mount_status(
-                still_mounted,
-                vm_id,
-                steam_app_id_to_unmount,
-                &unmount_result,
-                &conn,
-            ) {
-                errors.push(format!("Failed to send unmount signal, {:?}\n", e));
-            }
-
-            return still_mounted;
         }
+    }
 
-        // Retain entries that should not be unmounted
-        true
-    });
+    // Wait for unmount to be complete for all
+    let mut success = false;
+    for _ in 0..10 {
+        tokio::time::sleep(UNMOUNTER_INTERVAL).await;
+        let mut still_mounted = false;
+        {
+            // |mount_map| read mutex not required for background unmounter, but
+            // given |unmount_dlc| depends on other threads working on
+            // |mount_map|, it is safer to be conservative with mutex lifetimes.
+            let mount_map = mount_map.read().await;
+            for (vm_id, shader_cache_mount) in mount_map.iter() {
+                let str_path = shader_cache_mount
+                    .get_str_absolute_mount_destination_path(steam_app_id_to_unmount)?;
+                info!("checking if {} exists..", str_path);
+                let path = Path::new(&str_path);
+                if path.exists() {
+                    debug!("{:?} has {} still mounted", vm_id, steam_app_id_to_unmount);
+                    still_mounted = true;
+                    break;
+                }
+            }
+        }
+        if !still_mounted {
+            info!("{} has been unmounted for all VMs", steam_app_id_to_unmount);
+            success = true;
+            break;
+        }
+    }
+
+    if !success {
+        errors.push("DLC contents still mounted".into());
+    }
 
     if errors.is_empty() {
         Ok(())
