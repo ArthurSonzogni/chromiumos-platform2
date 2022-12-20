@@ -39,6 +39,7 @@ TEST_F(ScopeLoggerTest, DefaultConstruction) {
 
 TEST_F(ScopeLoggerTest, GetAllScopeNames) {
   EXPECT_EQ(
+      "bluetooth+"
       "cellular+"
       "connection+"
       "crypto+"
