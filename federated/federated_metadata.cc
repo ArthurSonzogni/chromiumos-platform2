@@ -11,14 +11,18 @@
 namespace federated {
 namespace {
 
+// All registered client configs. Users of federated service need to add their
+// client configs here. Each client has its own table in example database.
 constexpr std::array<const char* [3], 2> kClientMetadata = {{
     {
         /*name=*/"analytics_test_population",
         /*retry_token=*/"",
+        /*launch_stage=*/"",  // empty launch_stage means disabled.
     },
     {
-        "timezone_code_population",
+        "timezone_code_phh",
         "",
+        "dev",
     },
 }};
 
@@ -30,7 +34,7 @@ std::unordered_map<std::string, ClientConfigMetadata> GetClientConfig() {
       client_config_map([] {
         std::unordered_map<std::string, ClientConfigMetadata> map;
         for (const auto& data : kClientMetadata) {
-          const ClientConfigMetadata meta{data[0], data[1]};
+          const ClientConfigMetadata meta{data[0], data[1], data[2]};
           map[meta.name] = meta;
         }
         return map;

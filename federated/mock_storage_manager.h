@@ -30,6 +30,7 @@ class MockStorageManager : public StorageManager {
   MOCK_METHOD(std::optional<ExampleDatabase::Iterator>,
               GetExampleIterator,
               (const std::string&,
+               const std::string&,
                const fcp::client::CrosExampleSelectorCriteria&),
               (const, override));
 };

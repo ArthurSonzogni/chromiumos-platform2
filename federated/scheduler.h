@@ -29,9 +29,7 @@ class Scheduler {
             dbus::Bus* bus);
   Scheduler(const Scheduler&) = delete;
   Scheduler& operator=(const Scheduler&) = delete;
-  // TODO(alanlxl): create a destructor or finalize method that deletes examples
-  // from the database.
-  virtual ~Scheduler() = default;
+  virtual ~Scheduler();
 
   // virtual for mocking.
   // Tries to schedule tasks if the library dlc is already installed, otherwise

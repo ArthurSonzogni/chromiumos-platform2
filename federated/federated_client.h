@@ -52,6 +52,7 @@ class FederatedClient {
   class Context {
    public:
     Context(const std::string& client_name,
+            const std::string& population_name,
             const DeviceStatusMonitor* device_status_monitor,
             const StorageManager* storage_manager);
     Context(const Context&) = delete;
@@ -84,7 +85,16 @@ class FederatedClient {
                              void* const context);
 
    private:
+    // `client_name_` represents a federated client. It collects examples with
+    // certain schema for its goal. `client_name_` is used as the table name in
+    // example storage. e.g. client_name = "timezone_code_phh".
     const std::string client_name_;
+    // `population_name_` on the other hand, is an identifier that can be
+    // recognized by the server side when the device checks in. It consists of a
+    // fixed prefix "chromeos", the client name, and the launch stage, separated
+    // by "/". The launch stage can be "dev", "dogfood", "internal", "prod",
+    // etc. e.g. population_name = "chromeos/timezone_code_phh/dev".
+    const std::string population_name_;
     // New meta record that will be updated to Metatable if contribution
     // succeeds.
     MetaRecord new_meta_record_;

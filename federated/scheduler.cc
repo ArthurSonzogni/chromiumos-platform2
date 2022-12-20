@@ -27,7 +27,12 @@
 namespace federated {
 namespace {
 
+#if USE_LOCAL_FEDERATED_SERVER
 constexpr char kServiceUri[] = "https://127.0.0.1:8791";
+#else
+constexpr char kServiceUri[] = "";
+#endif
+
 constexpr char kApiKey[] = "";
 constexpr char kDlcId[] = "fcp";
 constexpr char kFederatedComputationLibraryName[] = "libfcp.so";
@@ -57,6 +62,8 @@ std::optional<std::string> GetClientVersion() {
 }
 
 }  // namespace
+
+Scheduler::~Scheduler() = default;
 
 Scheduler::Scheduler(StorageManager* storage_manager,
                      std::unique_ptr<DeviceStatusMonitor> device_status_monitor,
@@ -156,8 +163,14 @@ void Scheduler::ScheduleInternal(const std::string& dlc_root_path) {
   }
 
   for (const auto& kv : client_configs) {
+    const ClientConfigMetadata& client_config = kv.second;
+    // TODO(b/263210684): alter the launch stage of client config if provided.
+    if (client_config.launch_stage.empty()) {
+      DVLOG(1) << "client " << kv.first << " has no valid launch_stage, skip.";
+      continue;
+    }
     clients_.push_back(federated_library->CreateClient(
-        kServiceUri, kApiKey, client_version.value(), kv.second,
+        kServiceUri, kApiKey, client_version.value(), client_config,
         device_status_monitor_.get()));
     KeepSchedulingJobForClient(&clients_.back());
   }

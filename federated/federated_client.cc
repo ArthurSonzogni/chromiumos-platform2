@@ -99,9 +99,11 @@ void LogCrosSecAggEvent(const fcp::client::CrosSecAggEvent& cros_secagg_event) {
 
 FederatedClient::Context::Context(
     const std::string& client_name,
+    const std::string& population_name,
     const DeviceStatusMonitor* const device_status_monitor,
     const StorageManager* const storage_manager)
     : client_name_(client_name),
+      population_name_(population_name),
       device_status_monitor_(device_status_monitor),
       storage_manager_(storage_manager) {}
 
@@ -138,15 +140,20 @@ bool FederatedClient::Context::PrepareExamples(const char* const criteria_data,
   // there may be new examples received during a computation and with timestamp
   // in between last_used_example_timestamp and last_contribution_time. Such
   // examples will never be used.
-  typed_context->new_meta_record_.identifier = base::StringPrintf(
-      "%s#%s", client_name.c_str(), criteria.task_name().c_str());
+  // Note: The identifier contains population_name instead of client name, so
+  // that when a client's launch stage changes, e.g. from "dev" to "dogfood",
+  // the examples in this client's table used in dev stage can be used in
+  // dogfood again.
+  typed_context->new_meta_record_.identifier =
+      base::StringPrintf("%s#%s", typed_context->population_name_.c_str(),
+                         criteria.task_name().c_str());
   typed_context->new_meta_record_.last_used_example_id = -1;
   typed_context->new_meta_record_.last_used_example_timestamp =
       base::Time::UnixEpoch();
 
   std::optional<ExampleDatabase::Iterator> example_iterator =
-      typed_context->storage_manager_->GetExampleIterator(client_name,
-                                                          criteria);
+      typed_context->storage_manager_->GetExampleIterator(
+          client_name, typed_context->new_meta_record_.identifier, criteria);
   if (!example_iterator.has_value()) {
     DVLOG(1) << "Client " << client_name << " failed to prepare examples.";
     Metrics::GetInstance()->LogClientEvent(
@@ -271,8 +278,12 @@ void FederatedClient::RunPlan(const StorageManager* const storage_manager) {
   DCHECK(!storage_manager->sanitized_username().empty())
       << "storage_manager->sanitized_username() is unexpectedly empty!";
 
-  FederatedClient::Context context(client_config_.name, device_status_monitor_,
-                                   storage_manager);
+  // Compose a unique population name from the client name and the launch stage.
+  const std::string population_name =
+      base::StringPrintf("chromeos/%s/%s", client_config_.name.c_str(),
+                         client_config_.launch_stage.c_str());
+  FederatedClient::Context context(client_config_.name, population_name,
+                                   device_status_monitor_, storage_manager);
 
   const std::string base_dir_in_cryptohome =
       GetBaseDir(storage_manager->sanitized_username(), client_config_.name)
@@ -290,8 +301,7 @@ void FederatedClient::RunPlan(const StorageManager* const storage_manager) {
       Metrics::GetInstance()->CreateScopedMetricsRecorder(client_config_.name);
   FlRunPlanResult result = (*run_plan_)(
       env, service_uri_.c_str(), api_key_.c_str(), client_version_.c_str(),
-      /*population_name=*/client_config_.name.c_str(),
-      client_config_.retry_token.c_str());
+      population_name.c_str(), client_config_.retry_token.c_str());
 
   // TODO(b/251378482): maybe log the event to UMA
   if (result.status == CONTRIBUTED || result.status == REJECTED_BY_SERVER) {

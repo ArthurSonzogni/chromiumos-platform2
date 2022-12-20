@@ -20,8 +20,8 @@
 namespace federated {
 
 // MetaRecord objects stored in the metatable. It records the last used example
-// in the latest successful round of a task (identifier composed of  client_name
-// and task_name).
+// in the latest successful round of a task (identifier composed of
+// population_name and task_name).
 struct MetaRecord {
   std::string identifier;
   int64_t last_used_example_id;

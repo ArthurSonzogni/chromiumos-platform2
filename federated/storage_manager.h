@@ -46,6 +46,7 @@ class StorageManager : public SessionManagerObserverInterface {
   // `criteria`.
   virtual std::optional<ExampleDatabase::Iterator> GetExampleIterator(
       const std::string& client_name,
+      const std::string& task_identifier,
       const fcp::client::CrosExampleSelectorCriteria& criteria) const;
   // Updates the new meta_record into meta table, called when a task finishes
   // successfully.

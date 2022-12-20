@@ -100,6 +100,7 @@ bool StorageManager::OnExampleReceived(const std::string& client_name,
 
 std::optional<ExampleDatabase::Iterator> StorageManager::GetExampleIterator(
     const std::string& client_name,
+    const std::string& task_identifier,
     const fcp::client::CrosExampleSelectorCriteria& criteria) const {
   DCHECK(!criteria.task_name().empty());
 
@@ -110,8 +111,6 @@ std::optional<ExampleDatabase::Iterator> StorageManager::GetExampleIterator(
     return std::nullopt;
   }
 
-  const std::string task_identifier = base::StringPrintf(
-      "%s#%s", client_name.c_str(), criteria.task_name().c_str());
   bool descending =
       criteria.order() ==
       fcp::client::CrosExampleSelectorCriteria::INSERTION_DESCENDING;
@@ -143,8 +142,13 @@ std::optional<ExampleDatabase::Iterator> StorageManager::GetExampleIterator(
 
   const size_t min_example_count =
       criteria.min_examples() > 0 ? criteria.min_examples() : kMinExampleCount;
-  if (example_database_->ExampleCount(client_name, start_timestamp,
-                                      end_timestamp) < min_example_count) {
+  const size_t example_count = example_database_->ExampleCount(
+      client_name, start_timestamp, end_timestamp);
+
+  DVLOG(1) << "For task_identifier = " << task_identifier
+           << ", got valid example_count = " << example_count;
+
+  if (example_count < min_example_count) {
     DVLOG(1) << "Client " << client_name << " "
              << "doesn't meet the minimum example count requirement";
     return std::nullopt;
@@ -160,6 +164,10 @@ bool StorageManager::UpdateMetaRecord(const MetaRecord& meta_record) const {
     return false;
   }
   DCHECK(!meta_record.identifier.empty());
+  DVLOG(1) << "UpdateMetaRecord: identifier = " << meta_record.identifier
+           << ", last_used_example_id = " << meta_record.last_used_example_id
+           << ", last_used_example_timestamp is "
+           << meta_record.last_used_example_timestamp;
   return example_database_->UpdateMetaRecord(meta_record.identifier,
                                              meta_record);
 }

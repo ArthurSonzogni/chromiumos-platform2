@@ -93,10 +93,12 @@ TEST_F(StorageManagerTest, ExampleStreaming) {
       .WillOnce(Return(ByMove(std::move(std::get<1>(db_and_it)))));
 
   // Fails due to !example_database_->IsOpen.
-  EXPECT_EQ(storage_manager_->GetExampleIterator("fake_client", criteria_),
+  EXPECT_EQ(storage_manager_->GetExampleIterator(
+                "fake_client", "fake_task_identifier", criteria_),
             std::nullopt);
   std::optional<ExampleDatabase::Iterator> it =
-      storage_manager_->GetExampleIterator("fake_client", criteria_);
+      storage_manager_->GetExampleIterator("fake_client",
+                                           "fake_task_identifier", criteria_);
   ASSERT_TRUE(it.has_value());
 
   // Expects the examples we specified.
@@ -128,12 +130,14 @@ TEST_F(StorageManagerTest, ExampleStreamingMinimum) {
       .WillOnce(Return(100));
 
   // Uses default kMinExampleCount
-  EXPECT_EQ(storage_manager_->GetExampleIterator("fake_client", criteria_),
+  EXPECT_EQ(storage_manager_->GetExampleIterator(
+                "fake_client", "fake_task_identifier", criteria_),
             std::nullopt);
 
   // Uses `min_examples`
   criteria_.set_min_examples(101);
-  EXPECT_EQ(storage_manager_->GetExampleIterator("fake_client", criteria_),
+  EXPECT_EQ(storage_manager_->GetExampleIterator(
+                "fake_client", "fake_task_identifier", criteria_),
             std::nullopt);
 }
 
@@ -147,7 +151,7 @@ TEST_F(StorageManagerTest, CriteriaRejectUsedExamples) {
   base::Time last_used_example_timestamp = base::Time::Now() - base::Hours(10);
   const MetaRecord meta_record = {"", 1, last_used_example_timestamp,
                                   base::Time::Now()};
-  EXPECT_CALL(*example_database_, GetMetaRecord("fake_client#test_task_name"))
+  EXPECT_CALL(*example_database_, GetMetaRecord("fake_task_identifier"))
       .WillOnce(Return(std::nullopt))
       .WillOnce(Return(meta_record));
 
@@ -163,8 +167,10 @@ TEST_F(StorageManagerTest, CriteriaRejectUsedExamples) {
                           false, 0))
       .WillOnce(Return(ByMove(ExampleDatabase::Iterator())));
 
-  EXPECT_TRUE(storage_manager_->GetExampleIterator("fake_client", criteria_)
-                  .has_value());
+  EXPECT_TRUE(
+      storage_manager_
+          ->GetExampleIterator("fake_client", "fake_task_identifier", criteria_)
+          .has_value());
 
   EXPECT_CALL(
       *example_database_,
@@ -176,8 +182,10 @@ TEST_F(StorageManagerTest, CriteriaRejectUsedExamples) {
                           end_timestamp, false, 0))
       .WillOnce(Return(ByMove(ExampleDatabase::Iterator())));
 
-  EXPECT_TRUE(storage_manager_->GetExampleIterator("fake_client", criteria_)
-                  .has_value());
+  EXPECT_TRUE(
+      storage_manager_
+          ->GetExampleIterator("fake_client", "fake_task_identifier", criteria_)
+          .has_value());
 }
 
 TEST_F(StorageManagerTest, CriteriaOrderAndLimit) {
@@ -190,8 +198,10 @@ TEST_F(StorageManagerTest, CriteriaOrderAndLimit) {
               GetIterator("fake_client", _, _,
                           /*descending=*/false, /*limit=*/0))
       .WillOnce(Return(ByMove(ExampleDatabase::Iterator())));
-  EXPECT_TRUE(storage_manager_->GetExampleIterator("fake_client", criteria_)
-                  .has_value());
+  EXPECT_TRUE(
+      storage_manager_
+          ->GetExampleIterator("fake_client", "fake_task_identifier", criteria_)
+          .has_value());
 
   // Respects the order setting.
   criteria_.set_order(
@@ -199,8 +209,10 @@ TEST_F(StorageManagerTest, CriteriaOrderAndLimit) {
   EXPECT_CALL(*example_database_, GetIterator("fake_client", _, _,
                                               /*descending=*/true, /*limit=*/0))
       .WillOnce(Return(ByMove(ExampleDatabase::Iterator())));
-  EXPECT_TRUE(storage_manager_->GetExampleIterator("fake_client", criteria_)
-                  .has_value());
+  EXPECT_TRUE(
+      storage_manager_
+          ->GetExampleIterator("fake_client", "fake_task_identifier", criteria_)
+          .has_value());
 
   // Respects the limit (max_examples) setting.
   criteria_.set_max_examples(100);
@@ -208,16 +220,20 @@ TEST_F(StorageManagerTest, CriteriaOrderAndLimit) {
               GetIterator("fake_client", _, _,
                           /*descending=*/true, /*limit=*/100))
       .WillOnce(Return(ByMove(ExampleDatabase::Iterator())));
-  EXPECT_TRUE(storage_manager_->GetExampleIterator("fake_client", criteria_)
-                  .has_value());
+  EXPECT_TRUE(
+      storage_manager_
+          ->GetExampleIterator("fake_client", "fake_task_identifier", criteria_)
+          .has_value());
 
   // Invalid limit setting is ignored.
   criteria_.set_max_examples(-1);
   EXPECT_CALL(*example_database_, GetIterator("fake_client", _, _,
                                               /*descending=*/true, /*limit=*/0))
       .WillOnce(Return(ByMove(ExampleDatabase::Iterator())));
-  EXPECT_TRUE(storage_manager_->GetExampleIterator("fake_client", criteria_)
-                  .has_value());
+  EXPECT_TRUE(
+      storage_manager_
+          ->GetExampleIterator("fake_client", "fake_task_identifier", criteria_)
+          .has_value());
 }
 
 }  // namespace federated
