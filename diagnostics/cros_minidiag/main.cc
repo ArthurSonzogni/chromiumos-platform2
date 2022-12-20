@@ -15,10 +15,12 @@
 #include <brillo/syslog_logging.h>
 
 #include "diagnostics/cros_minidiag/elog_manager.h"
+#include "diagnostics/cros_minidiag/utils.h"
 
 namespace {
 constexpr const char kElogTool[] = "elogtool";
 constexpr const char kList[] = "list";
+constexpr const char kFileLastLine[] = "/var/lib/metrics/elog-last-line";
 
 int GetElogtoolString(std::string& output) {
   brillo::ProcessImpl elogtool;
@@ -36,7 +38,22 @@ int GetElogtoolString(std::string& output) {
 }  // namespace
 
 int main(int argc, char* argv[]) {
+  DEFINE_bool(last_report, false, "Only dump the new events since last report");
+  DEFINE_bool(update_last_report, false,
+              "Update the records of elog last report");
   brillo::FlagHelper::Init(argc, argv, "Cros MiniDiag Tool");
+
+  const base::CommandLine* cl = base::CommandLine::ForCurrentProcess();
+  if (cl->GetArgs().size() > 0) {
+    LOG(ERROR) << "Unknown extra command line arguments; exiting";
+    return EXIT_FAILURE;
+  }
+
+  if (!FLAGS_update_last_report) {
+    LOG(ERROR) << "cros-minidiag-tool cannot be run without updating or "
+                  "reporting metrics; exiting";
+    return EXIT_FAILURE;
+  }
 
   // Dump the full elogtool list result.
   std::string elogtool_output;
@@ -45,7 +62,26 @@ int main(int argc, char* argv[]) {
     return EXIT_FAILURE;
   }
 
-  cros_minidiag::ElogManager elog_manager(elogtool_output);
+  std::string previous_last_line = "";
+  base::FilePath file_last_line(kFileLastLine);
+  // Try to get the last line of previous upload.
+  if (FLAGS_last_report) {
+    if (!cros_minidiag::GetPrevElogLastLine(file_last_line,
+                                            previous_last_line)) {
+      LOG(WARNING) << "Could not read from " << kFileLastLine
+                   << "; fallback to count full elog instead";
+    }
+  }
+
+  cros_minidiag::ElogManager elog_manager(elogtool_output, previous_last_line);
+
+  // Get the last line of elog and update /var/lib/metrics/elog-last-line.
+  if (FLAGS_update_last_report) {
+    LOG(INFO) << "Update the saved last line of elog at: " << kFileLastLine;
+    if (!base::WriteFile(file_last_line, elog_manager.last_line())) {
+      PLOG(ERROR) << "Could not update " << kFileLastLine;
+    }
+  }
 
   return EXIT_SUCCESS;
 }

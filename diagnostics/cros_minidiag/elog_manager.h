@@ -31,13 +31,18 @@ class ElogEvent {
 };
 
 // ElogManager get the raw output generated from elogtool and parse it line by
-// line.
+// line. If the `previous_last_line` is not empty, only new events that are
+// detected after the `previous_last_line` are processed. If the
+// `previous_last_line` is empty, all of the events are considered.
 class ElogManager {
  public:
-  explicit ElogManager(const std::string& elog_string);
+  explicit ElogManager(const std::string& elog_string,
+                       const std::string& previous_last_line);
   ~ElogManager();
   // The accessor of last_line_.
   const std::string& last_line() const { return last_line_; }
+  // Retrieves the number of events.
+  int GetEventNum() const;
 
   // TODO(roccochen) Add report metrics related helper
 

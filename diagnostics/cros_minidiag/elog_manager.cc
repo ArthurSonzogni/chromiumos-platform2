@@ -36,19 +36,36 @@ std::string ElogEvent::GetType() const {
   return data_[kTypeIndex];
 }
 
-ElogManager::ElogManager(const std::string& elog_string) {
+ElogManager::ElogManager(const std::string& elog_string,
+                         const std::string& previous_last_line) {
   base::StringPiece last_line_piece;
+
+  // We only want to store the new events which appear after
+  // `previous_last_line`. If `previous_last_line` is empty or the elog_string
+  // does not contains it, store the full events instead.
+  bool is_new_event = false;
+  if (previous_last_line.empty() ||
+      elog_string.find(previous_last_line) == std::string::npos) {
+    is_new_event = true;
+  }
 
   for (const auto& line :
        base::SplitStringPiece(elog_string, "\n", base::TRIM_WHITESPACE,
                               base::SPLIT_WANT_NONEMPTY)) {
-    elog_events_.emplace_back(std::forward<const base::StringPiece&>(line));
+    if (is_new_event) {
+      elog_events_.emplace_back(std::forward<const base::StringPiece&>(line));
+    } else if (line.compare(previous_last_line) == 0) {
+      is_new_event = true;
+    }
     last_line_piece = line;
   }
   last_line_ = std::string(last_line_piece);
-  LOG(INFO) << "Parse elogtool output with last line: " << last_line_;
 }
 
 ElogManager::~ElogManager() = default;
+
+int ElogManager::GetEventNum() const {
+  return elog_events_.size();
+}
 
 }  // namespace cros_minidiag
