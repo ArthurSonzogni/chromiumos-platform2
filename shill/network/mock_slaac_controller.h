@@ -17,17 +17,34 @@ namespace shill {
 
 class MockSLAACController : public SLAACController {
  public:
-  MockSLAACController() : SLAACController(0, nullptr, nullptr) {}
+  MockSLAACController() : SLAACController(0, nullptr) {}
   MockSLAACController(const MockSLAACController&) = delete;
   MockSLAACController& operator=(const MockSLAACController&) = delete;
 
   ~MockSLAACController() override = default;
+
+  MOCK_METHOD(void, StartRTNL, (), (override));
+
+  MOCK_METHOD(const IPAddress*, GetPrimaryIPv6Address, (), (override));
+
+  MOCK_METHOD(std::vector<IPAddress>, GetAddresses, (), (const override));
 
   MOCK_METHOD(bool,
               GetIPv6DNSServerAddresses,
               (std::vector<IPAddress> * address_list,
                uint32_t* life_time_seconds),
               (override));
+
+  void RegisterCallback(UpdateCallback update_callback) override {
+    update_callback_ = update_callback;
+  }
+
+  void TriggerCallback(UpdateType update_callback) {
+    update_callback_.Run(update_callback);
+  }
+
+ private:
+  UpdateCallback update_callback_;
 };
 
 }  // namespace shill

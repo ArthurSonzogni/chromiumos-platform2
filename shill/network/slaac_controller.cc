@@ -4,6 +4,8 @@
 
 #include "shill/network/slaac_controller.h"
 
+#include <linux/rtnetlink.h>
+
 #include <memory>
 #include <utility>
 
@@ -13,15 +15,11 @@
 #include "shill/net/ndisc.h"
 #include "shill/net/rtnl_handler.h"
 #include "shill/net/shill_time.h"
-#include "shill/network/network.h"
 
 namespace shill {
 
-SLAACController::SLAACController(int interface_index,
-                                 Network* network,
-                                 RTNLHandler* rtnl_handler)
+SLAACController::SLAACController(int interface_index, RTNLHandler* rtnl_handler)
     : interface_index_(interface_index),
-      network_(network),
       time_(Time::GetInstance()),
       rtnl_handler_(rtnl_handler) {}
 
@@ -39,6 +37,10 @@ void SLAACController::StartRTNL() {
                           weak_factory_.GetWeakPtr()),
       rtnl_handler_);
   rtnl_handler_->RequestDump(RTNLHandler::kRequestAddr);
+}
+
+void SLAACController::RegisterCallback(UpdateCallback update_callback) {
+  update_callback_ = update_callback;
 }
 
 void SLAACController::AddressMsgHandler(const RTNLMessage& msg) {
@@ -87,7 +89,9 @@ void SLAACController::AddressMsgHandler(const RTNLMessage& msg) {
     }
   }
 
-  network_->OnIPv6AddressChanged(GetPrimaryIPv6Address());
+  if (update_callback_) {
+    update_callback_.Run(UpdateType::kAddress);
+  }
 }
 
 const IPAddress* SLAACController::GetPrimaryIPv6Address() {
@@ -131,8 +135,9 @@ void SLAACController::RDNSSMsgHandler(const RTNLMessage& msg) {
     return;
   }
 
-  // Notify device of the IPv6 DNS server addresses update.
-  network_->OnIPv6DnsServerAddressesChanged();
+  if (update_callback_) {
+    update_callback_.Run(UpdateType::kRDNSS);
+  }
 }
 
 bool SLAACController::GetIPv6DNSServerAddresses(

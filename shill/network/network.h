@@ -189,12 +189,6 @@ class Network {
   }
   // Called by DeviceInfo.
   void EnableIPv6Privacy();
-  // Called by DeviceInfo when the kernel adds or removes a globally-scoped
-  // IPv6 address from this interface.
-  mockable void OnIPv6AddressChanged(const IPAddress* address);
-  // Called by DeviceInfo when the kernel receives a update for IPv6 DNS server
-  // addresses from this interface.
-  mockable void OnIPv6DnsServerAddressesChanged();
 
   // Returns a WeakPtr of the Network.
   base::WeakPtr<Network> AsWeakPtr() { return weak_factory_.GetWeakPtr(); }
@@ -304,6 +298,12 @@ class Network {
   void ConfigureStaticIPv6Address();
   // Called when IPv6 configuration changes.
   void OnIPv6ConfigUpdated();
+
+  // Callback registered with SLAACController. |update_type| indicates the
+  // update type (see comment in SLAACController declaration for detail).
+  void OnUpdateFromSLAAC(SLAACController::UpdateType update_type);
+  void OnIPv6AddressChanged(const IPAddress* address);
+  void OnIPv6DnsServerAddressesChanged();
 
   // Enable ARP filtering on the interface. Incoming ARP requests are responded
   // to only by the interface(s) owning the address. Outgoing ARP requests will

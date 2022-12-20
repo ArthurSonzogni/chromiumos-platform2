@@ -435,8 +435,10 @@ class NetworkStartTest : public NetworkTest {
           entry->gateway = IPAddress(kIPv6SLAACGateway);
           return true;
         }));
-    IPAddress addr(kIPv6SLAACAddress, kIPv6SLAACPrefix);
-    network_->OnIPv6AddressChanged(&addr);
+    static IPAddress addr(kIPv6SLAACAddress, kIPv6SLAACPrefix);
+    EXPECT_CALL(*slaac_controller_, GetPrimaryIPv6Address())
+        .WillRepeatedly(Return(&addr));
+    slaac_controller_->TriggerCallback(SLAACController::UpdateType::kAddress);
     dispatcher_.task_environment().RunUntilIdle();
   }
 
@@ -445,7 +447,7 @@ class NetworkStartTest : public NetworkTest {
     EXPECT_CALL(*slaac_controller_, GetIPv6DNSServerAddresses(_, _))
         .WillRepeatedly(DoAll(SetArgPointee<0>(dns_list),
                               SetArgPointee<1>(lifetime), Return(true)));
-    network_->OnIPv6DnsServerAddressesChanged();
+    slaac_controller_->TriggerCallback(SLAACController::UpdateType::kRDNSS);
     dispatcher_.task_environment().RunUntilIdle();
   }
 
@@ -722,14 +724,16 @@ TEST_F(NetworkStartTest, IPv6OnlySLAACAddressChangeEvent) {
 
   // Changing the address should trigger the connection update.
   IPAddress new_addr("fe80::1aa9:5ff:abcd:1234");
+  EXPECT_CALL(*slaac_controller_, GetPrimaryIPv6Address())
+      .WillRepeatedly(Return(&new_addr));
   EXPECT_CALL(event_handler_, OnConnectionUpdated());
   EXPECT_CALL(event_handler_, OnIPConfigsPropertyUpdated());
-  network_->OnIPv6AddressChanged(&new_addr);
+  slaac_controller_->TriggerCallback(SLAACController::UpdateType::kAddress);
   dispatcher_.task_environment().RunUntilIdle();
   Mock::VerifyAndClearExpectations(&event_handler_);
 
   // If the IPv6 address does not change, no signal is emitted.
-  network_->OnIPv6AddressChanged(&new_addr);
+  slaac_controller_->TriggerCallback(SLAACController::UpdateType::kAddress);
   dispatcher_.task_environment().RunUntilIdle();
   Mock::VerifyAndClearExpectations(&event_handler_);
 
@@ -737,7 +741,7 @@ TEST_F(NetworkStartTest, IPv6OnlySLAACAddressChangeEvent) {
   new_addr.set_prefix(64);
   EXPECT_CALL(event_handler_, OnConnectionUpdated());
   EXPECT_CALL(event_handler_, OnIPConfigsPropertyUpdated());
-  network_->OnIPv6AddressChanged(&new_addr);
+  slaac_controller_->TriggerCallback(SLAACController::UpdateType::kAddress);
   dispatcher_.task_environment().RunUntilIdle();
   Mock::VerifyAndClearExpectations(&event_handler_);
 }

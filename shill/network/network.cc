@@ -98,6 +98,9 @@ void Network::Start(const Network::StartOptions& opts) {
   // TODO(b/227563210): Initialize slaac_controller_ only when slaac is enabled
   // in start option.
   slaac_controller_ = CreateSLAACController();
+  slaac_controller_->RegisterCallback(
+      base::BindRepeating(&Network::OnUpdateFromSLAAC, AsWeakPtr()));
+  slaac_controller_->StartRTNL();
 
   bool ipv6_started = false;
   if (opts.accept_ra) {
@@ -164,8 +167,7 @@ void Network::Start(const Network::StartOptions& opts) {
 
 std::unique_ptr<SLAACController> Network::CreateSLAACController() {
   auto slaac_controller =
-      std::make_unique<SLAACController>(interface_index_, this, rtnl_handler_);
-  slaac_controller->StartRTNL();
+      std::make_unique<SLAACController>(interface_index_, rtnl_handler_);
   return slaac_controller;
 }
 
@@ -469,6 +471,14 @@ void Network::ConfigureStaticIPv6Address() {
                                      IPAddress(IPAddress::kFamilyIPv6));
 }
 
+void Network::OnUpdateFromSLAAC(SLAACController::UpdateType update_type) {
+  if (update_type == SLAACController::UpdateType::kAddress) {
+    OnIPv6AddressChanged(slaac_controller_->GetPrimaryIPv6Address());
+  } else if (update_type == SLAACController::UpdateType::kRDNSS) {
+    OnIPv6DnsServerAddressesChanged();
+  }
+}
+
 void Network::OnIPv6AddressChanged(const IPAddress* address) {
   if (!address) {
     if (ip6config()) {
@@ -506,8 +516,8 @@ void Network::OnIPv6AddressChanged(const IPAddress* address) {
                  << properties.address;
   }
 
-  // No matter whether the primary address changes, any address change will need
-  // to trigger address-based routing rule to be updated.
+  // No matter whether the primary address changes, any address change will
+  // need to trigger address-based routing rule to be updated.
   if (connection_) {
     connection_->UpdateRoutingPolicy(GetAddresses());
   }

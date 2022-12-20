@@ -31,11 +31,16 @@ constexpr char kTestIPAddress7[] = "fe80::1aa9:5ff:abcd:1238";
 class SLAACControllerTest : public testing::Test {
  public:
   SLAACControllerTest()
-      : slaac_controller_(kTestIfindex, &network_, &rtnl_handler_),
+      : slaac_controller_(kTestIfindex, &rtnl_handler_),
         network_(kTestIfindex, kTestIfname, kTestTechnology) {
     slaac_controller_.time_ = &time_;
   }
   ~SLAACControllerTest() override = default;
+
+  void SetUp() override {
+    slaac_controller_.RegisterCallback(base::BindRepeating(
+        &SLAACControllerTest::UpdateCallback, base::Unretained(this)));
+  }
 
   void SendRTNLMessage(const RTNLMessage& message);
   std::unique_ptr<RTNLMessage> BuildRdnssMessage(
@@ -46,6 +51,8 @@ class SLAACControllerTest : public testing::Test {
                                                    const IPAddress& address,
                                                    unsigned char flags,
                                                    unsigned char scope);
+
+  MOCK_METHOD(void, UpdateCallback, (SLAACController::UpdateType));
 
   SLAACController slaac_controller_;
   MockRTNLHandler rtnl_handler_;
@@ -109,7 +116,8 @@ TEST_F(SLAACControllerTest, IPv6DnsServerAddressesChanged) {
                                    dns_server_addresses_in);
   EXPECT_CALL(time_, GetSecondsBoottime(_))
       .WillOnce(DoAll(SetArgPointee<0>(0), Return(true)));
-  EXPECT_CALL(network_, OnIPv6DnsServerAddressesChanged()).Times(1);
+  EXPECT_CALL(*this, UpdateCallback(SLAACController::UpdateType::kRDNSS))
+      .Times(1);
   SendRTNLMessage(*message);
   EXPECT_CALL(time_, GetSecondsBoottime(_)).Times(0);
   EXPECT_TRUE(slaac_controller_.GetIPv6DNSServerAddresses(
@@ -127,7 +135,8 @@ TEST_F(SLAACControllerTest, IPv6DnsServerAddressesChanged) {
                                     dns_server_addresses_in);
   EXPECT_CALL(time_, GetSecondsBoottime(_))
       .WillOnce(DoAll(SetArgPointee<0>(0), Return(true)));
-  EXPECT_CALL(network_, OnIPv6DnsServerAddressesChanged()).Times(1);
+  EXPECT_CALL(*this, UpdateCallback(SLAACController::UpdateType::kRDNSS))
+      .Times(1);
   SendRTNLMessage(*message1);
   // 10 seconds passed when GetIPv6DnsServerAddresses is called.
   EXPECT_CALL(time_, GetSecondsBoottime(_))
@@ -143,7 +152,8 @@ TEST_F(SLAACControllerTest, IPv6DnsServerAddressesChanged) {
   // Lifetime of 120, retrieve DNS server addresses after lifetime expired.
   EXPECT_CALL(time_, GetSecondsBoottime(_))
       .WillOnce(DoAll(SetArgPointee<0>(0), Return(true)));
-  EXPECT_CALL(network_, OnIPv6DnsServerAddressesChanged()).Times(1);
+  EXPECT_CALL(*this, UpdateCallback(SLAACController::UpdateType::kRDNSS))
+      .Times(1);
   SendRTNLMessage(*message1);
   // 120 seconds passed when GetIPv6DnsServerAddresses is called.
   EXPECT_CALL(time_, GetSecondsBoottime(_))
@@ -165,7 +175,8 @@ TEST_F(SLAACControllerTest, IPv6AddressChanged) {
   EXPECT_TRUE(ipv4_address.SetAddressFromString(kTestIPAddress0));
   auto message = BuildAddressMessage(RTNLMessage::kModeAdd, ipv4_address, 0, 0);
 
-  EXPECT_CALL(network_, OnIPv6AddressChanged(_)).Times(0);
+  EXPECT_CALL(*this, UpdateCallback(SLAACController::UpdateType::kAddress))
+      .Times(0);
 
   // We should ignore IPv4 addresses.
   SendRTNLMessage(*message);
@@ -186,7 +197,8 @@ TEST_F(SLAACControllerTest, IPv6AddressChanged) {
                                 IFA_F_TEMPORARY, RT_SCOPE_UNIVERSE);
 
   // Add a temporary address.
-  EXPECT_CALL(network_, OnIPv6AddressChanged(_));
+  EXPECT_CALL(*this, UpdateCallback(SLAACController::UpdateType::kAddress))
+      .Times(1);
   SendRTNLMessage(*message);
   EXPECT_EQ(*slaac_controller_.GetPrimaryIPv6Address(), ipv6_address2);
 
@@ -197,7 +209,8 @@ TEST_F(SLAACControllerTest, IPv6AddressChanged) {
 
   // Adding a non-temporary address alerts the Device, but does not override
   // the primary address since the previous one was temporary.
-  EXPECT_CALL(network_, OnIPv6AddressChanged(_));
+  EXPECT_CALL(*this, UpdateCallback(SLAACController::UpdateType::kAddress))
+      .Times(1);
   SendRTNLMessage(*message);
   EXPECT_EQ(*slaac_controller_.GetPrimaryIPv6Address(), ipv6_address2);
 
@@ -209,7 +222,8 @@ TEST_F(SLAACControllerTest, IPv6AddressChanged) {
 
   // Adding a temporary deprecated address alerts the Device, but does not
   // override the primary address since the previous one was non-deprecated.
-  EXPECT_CALL(network_, OnIPv6AddressChanged(_));
+  EXPECT_CALL(*this, UpdateCallback(SLAACController::UpdateType::kAddress))
+      .Times(1);
   SendRTNLMessage(*message);
   EXPECT_EQ(*slaac_controller_.GetPrimaryIPv6Address(), ipv6_address2);
 
@@ -220,7 +234,8 @@ TEST_F(SLAACControllerTest, IPv6AddressChanged) {
 
   // Another temporary (non-deprecated) address alerts the Device, and will
   // override the previous primary address.
-  EXPECT_CALL(network_, OnIPv6AddressChanged(_));
+  EXPECT_CALL(*this, UpdateCallback(SLAACController::UpdateType::kAddress))
+      .Times(1);
   SendRTNLMessage(*message);
   EXPECT_EQ(*slaac_controller_.GetPrimaryIPv6Address(), ipv6_address7);
 }

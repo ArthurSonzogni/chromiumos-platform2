@@ -10,6 +10,7 @@
 
 #include <base/memory/weak_ptr.h>
 
+#include "shill/mockable.h"
 #include "shill/net/ip_address.h"
 #include "shill/net/rtnl_handler.h"
 #include "shill/net/rtnl_listener.h"
@@ -17,18 +18,26 @@
 
 namespace shill {
 
-class Network;
-
 class SLAACController {
  public:
-  SLAACController(int interface_index,
-                  Network* network,
-                  RTNLHandler* rtnl_handler);
+  // Event type for Network callback.
+  enum class UpdateType {
+    kAddress = 1,
+    kRDNSS = 2,
+  };
+  using UpdateCallback = base::RepeatingCallback<void(UpdateType)>;
+
+  SLAACController(int interface_index, RTNLHandler* rtnl_handler);
   virtual ~SLAACController();
 
-  void StartRTNL();
+  mockable void StartRTNL();
+  mockable void RegisterCallback(UpdateCallback update_callback);
 
-  std::vector<IPAddress> GetAddresses() const;
+  // Return the preferred globally scoped IPv6 address.
+  // If no primary IPv6 address exists, return nullptr.
+  mockable const IPAddress* GetPrimaryIPv6Address();
+
+  mockable std::vector<IPAddress> GetAddresses() const;
 
   // Get the IPv6 DNS server addresses received from RDNSS. This method
   // returns true and sets |address_list| and |life_time_seconds| if the IPv6
@@ -38,8 +47,8 @@ class SLAACController {
   // the time of this function call. Value of 0 means the DNS server is not
   // valid anymore, and value of 0xFFFFFFFF means the DNS server is valid
   // forever.
-  virtual bool GetIPv6DNSServerAddresses(std::vector<IPAddress>* address_list,
-                                         uint32_t* life_time_seconds);
+  mockable bool GetIPv6DNSServerAddresses(std::vector<IPAddress>* address_list,
+                                          uint32_t* life_time_seconds);
 
  private:
   // TODO(b/227563210): Refactor to remove friend declaration after moving all
@@ -64,10 +73,6 @@ class SLAACController {
   void AddressMsgHandler(const RTNLMessage& msg);
   void RDNSSMsgHandler(const RTNLMessage& msg);
 
-  // Return the preferred globally scoped IPv6 address.
-  // If no primary IPv6 address exists, return nullptr.
-  const IPAddress* GetPrimaryIPv6Address();
-
   const int interface_index_;
 
   std::vector<AddressData> slaac_addresses_;
@@ -75,9 +80,8 @@ class SLAACController {
   uint32_t ipv6_dns_server_lifetime_seconds_;
   time_t ipv6_dns_server_received_time_seconds_;
 
-  // Pointer back to Network is only temporary during SLAAC refactor. Will be
-  // removed (and replaced by event callbacks) when refactor is finished.
-  Network* network_;
+  // Callbacks registered by RegisterCallbacks().
+  UpdateCallback update_callback_;
 
   Time* time_;
   RTNLHandler* rtnl_handler_;
