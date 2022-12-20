@@ -225,7 +225,15 @@ Camera3CaptureDescriptor& Camera3CaptureDescriptor::operator=(
 
     type_ = other.type_;
     frame_number_ = other.frame_number_;
-    metadata_.acquire(other.metadata_.release());
+
+    // metadata_.isEmpty() doesn't differentiate a nullptr metadata from a
+    // valid metadata with zero entry count. We want to move the latter while
+    // avoid copying the former to avoid the log spams in metadata_.acquire().
+    camera_metadata_t* m = other.metadata_.release();
+    if (m) {
+      metadata_.acquire(m);
+    }
+
     input_buffer_ = std::move(other.input_buffer_);
     output_buffers_ = std::move(other.output_buffers_);
     partial_result_ = other.partial_result_;
