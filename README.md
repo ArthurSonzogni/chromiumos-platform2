@@ -79,6 +79,7 @@ copies.
 | [hps](./hps/) | ChromeOS HPS daemon and utilities |
 | [hwsec-host-utils](./hwsec-host-utils/) | Hwsec-related host-only utilities |
 | [hwsec-optee-plugin](./hwsec-optee-plugin/) | Hwsec-related optee plugin |
+| [hwsec-optee-ta](./hwsec-optee-ta/) | Hwsec-related optee plugin trusted application |
 | [hwsec-test-utils](./hwsec-test-utils/) | Hwsec-related test-only features |
 | [hwsec-utils](./hwsec-utils/) | Hwsec-related features |
 | [iioservice](./iioservice/) | Daemon and libraries that provide sensor data to all processes |
