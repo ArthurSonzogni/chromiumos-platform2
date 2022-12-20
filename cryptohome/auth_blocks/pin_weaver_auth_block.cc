@@ -190,11 +190,15 @@ CryptoStatus PinWeaverAuthBlock::Create(const AuthInput& auth_input,
   if (auth_input.reset_secret.has_value()) {
     // This case be used for USS as we do not have the concept of reset seed and
     // salt there.
+    LOG(INFO) << "PinWeaverAuthBlock: ResetSecret from the AuthInput is passed "
+                 "to KeyBlobs.";
     reset_secret = auth_input.reset_secret.value();
   } else {
     // At this point we know auth_input reset_seed is set. The expectation is
     // that this branch of code would be deprecated once we move fully to USS
     // world.
+    LOG(INFO) << "PinWeaverAuthBlock: ResetSecret is derived from the "
+                 "reset_seed and passed to KeyBlobs.";
     reset_secret = HmacSha256(pin_auth_state.reset_salt.value(),
                               auth_input.reset_seed.value());
   }
@@ -235,7 +239,7 @@ CryptoStatus PinWeaverAuthBlock::Create(const AuthInput& auth_input,
   key_blobs->vkk_key = vkk_key;
   key_blobs->vkk_iv = fek_iv;
   key_blobs->chaps_iv = chaps_iv;
-
+  key_blobs->reset_secret = reset_secret;
   // Once we are able to correctly set up the VaultKeyset encryption,
   // store the Low Entropy and High Entropy credential in the
   // LECredentialManager.

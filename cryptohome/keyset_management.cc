@@ -585,7 +585,7 @@ CryptohomeErrorCode KeysetManagement::AddKeysetImpl(
       GetVaultKeyset(obfuscated_username_new, key_data_new.label());
   base::FilePath vk_path;
   if (match.get()) {
-    LOG(INFO) << "Label already exists.";
+    LOG(INFO) << "Label already exists, clobbering the existing Keyset.";
     if (!clobber) {
       return CRYPTOHOME_ERROR_KEY_LABEL_EXISTS;
     }

@@ -554,7 +554,7 @@ CryptohomeStatus AuthFactorManager::RemoveAuthFactor(
                         ErrorAction::kRetry, ErrorAction::kReboot}),
         user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
   }
-
+  LOG(INFO) << "Deleted from disk auth factor label: " << auth_factor.label();
   return OkStatus<CryptohomeError>();
 }
 

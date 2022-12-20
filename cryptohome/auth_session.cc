@@ -2312,7 +2312,8 @@ void AuthSession::PersistAuthFactorToUserSecretStashOnMigration(
                << auth_factor_label;
     ReportVkToUssMigrationStatus(VkToUssMigrationStatus::kFailedPersist);
   }
-
+  LOG(INFO) << "USS migration completed for VaultKeyset with label: "
+            << auth_factor_label;
   std::move(on_done).Run(std::move(pre_migration_status));
 }
 
