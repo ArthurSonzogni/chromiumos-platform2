@@ -162,6 +162,8 @@ void EnterHealthdMinijail() {
 
   // Create a new tmpfs filesystem for /var and mount necessary files.
   minijail_mount_with_data(jail.get(), "tmpfs", "/var", "tmpfs", 0, "");
+  // For metrics library.
+  minijail_bind(jail.get(), "/var/lib/metrics", "/var/lib/metrics", 1);
   minijail_bind(jail.get(), "/var/lib/timezone", "/var/lib/timezone",
                 0);  // Symlink for reading the timezone file.
   minijail_bind(jail.get(), "/var/cache/diagnostics", "/var/cache/diagnostics",
