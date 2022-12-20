@@ -10,7 +10,8 @@
 
 set_verbose_logging_on_reboot_all() {
   CACHE_PATH=/var/cache/modem-utilities
-  for file_name in log_shill_verbose3 log_modemfwd_debug log_mm_debug; do
+  for file_name in log_shill_verbose3 log_modemfwd_debug log_mm_debug \
+    log_hermes_debug; do
     file_path="${CACHE_PATH}/${file_name}"
     case "${1}" in
       true)
@@ -38,8 +39,9 @@ set_verbose_logging_on_reboot_all() {
 usage() {
   echo "Usage: $(basename "$0") <command> [args...]"
   echo "  set-verbose-logging-on-reboot-all <true/false>   Enable or " \
-    "disable sticky verbose logging. ModemManager will be set to DEBUG, " \
-    "shill to verbose level -3, and modemfwd to DEBUG. This configuration " \
+    "disable sticky verbose logging. ModemManager, " \
+    "Hermes, ModemFwd will be set to DEBUG, and " \
+    "shill to verbose level -3. This configuration " \
     "will survive reboots."
   exit 0
 }
