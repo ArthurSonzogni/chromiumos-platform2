@@ -627,7 +627,8 @@ void ModemMbim::DeviceCapsQueryReady(MbimDevice* device,
           NULL,                  /* custom_data_class */
           &caps_device_id, NULL, /* firmware_info */
           NULL,                  /* hardware_info */
-          &error)) {
+          &error) ||
+      !caps_device_id) {
     modem_mbim->ProcessMbimResult(kModemMessageProcessingError);
     return;
   }
