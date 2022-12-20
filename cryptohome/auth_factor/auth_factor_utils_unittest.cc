@@ -6,6 +6,8 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <utility>
+#include <vector>
 
 #include <absl/types/variant.h>
 #include <base/test/scoped_chromeos_version_info.h>
@@ -21,24 +23,133 @@
 #include "cryptohome/auth_factor/auth_factor_prepare_purpose.h"
 #include "cryptohome/auth_factor/auth_factor_type.h"
 #include "cryptohome/auth_factor/auth_factor_utils.h"
+#include "cryptohome/mock_keyset_management.h"
 #include "cryptohome/mock_platform.h"
+#include "cryptohome/user_secret_stash.h"
 
 namespace cryptohome {
-
 namespace {
 
 using ::brillo::SecureBlob;
+using ::brillo::cryptohome::home::SanitizeUserName;
 using ::hwsec_foundation::error::testing::IsOk;
 using ::testing::_;
+using ::testing::DoAll;
 using ::testing::IsEmpty;
 using ::testing::NiceMock;
 using ::testing::Return;
+using ::testing::StrictMock;
 
 constexpr char kLabel[] = "some-label";
 constexpr char kPinLabel[] = "some-pin-label";
 constexpr char kObfuscatedUsername[] = "obfuscated";
 constexpr char kChromeosVersion[] = "1.2.3_a_b_c";
 constexpr char kChromeVersion[] = "1.2.3.4";
+
+// A matcher for an AuthFactorMap element. This will check the type, label and
+// storage type of the item. You generally want to combine this with
+// UnorderedElementsAre to compare it against an entire AuthFactorMap, but you
+// can also use it directly with individual elements in the map.
+class AuthFactorMapItemMatcher
+    : public ::testing::MatcherInterface<AuthFactorMap::ValueView> {
+ public:
+  AuthFactorMapItemMatcher(AuthFactorType type,
+                           std::string label,
+                           AuthFactorStorageType storage_type)
+      : type_(type), label_(std::move(label)), storage_type_(storage_type) {}
+
+  bool MatchAndExplain(
+      AuthFactorMap::ValueView value,
+      ::testing::MatchResultListener* listener) const override {
+    bool matches = true;
+    if (value.auth_factor().type() != type_) {
+      matches = false;
+      *listener << "type is: "
+                << AuthFactorTypeToString(value.auth_factor().type()) << "\n";
+    }
+    if (value.auth_factor().label() != label_) {
+      matches = false;
+      *listener << "label is: " << value.auth_factor().label() << "\n";
+    }
+    if (value.storage_type() != storage_type_) {
+      matches = false;
+      *listener << "label is: "
+                << AuthFactorStorageTypeToDebugString(value.storage_type())
+                << "\n";
+    }
+    return matches;
+  }
+
+  void DescribeTo(std::ostream* os) const override {
+    *os << "has type " << AuthFactorTypeToString(type_) << ", label " << label_
+        << " and storage type "
+        << AuthFactorStorageTypeToDebugString(storage_type_);
+  }
+
+  void DescribeNegationTo(std::ostream* os) const override {
+    *os << "does not have type " << AuthFactorTypeToString(type_)
+        << " or does not have label " << label_
+        << " or does not have storage type "
+        << AuthFactorStorageTypeToDebugString(storage_type_);
+  }
+
+ private:
+  AuthFactorType type_;
+  std::string label_;
+  AuthFactorStorageType storage_type_;
+};
+::testing::Matcher<AuthFactorMap::ValueView> AuthFactorMapItem(
+    AuthFactorType type,
+    std::string label,
+    AuthFactorStorageType storage_type) {
+  return ::testing::MakeMatcher<AuthFactorMap::ValueView>(
+      new AuthFactorMapItemMatcher(type, std::move(label), storage_type));
+}
+
+// A matcher for a KeyData that checks the type and label.
+class KeyDataMatcher : public ::testing::MatcherInterface<const KeyData&> {
+ public:
+  KeyDataMatcher(KeyData::KeyType type, std::string label)
+      : type_(type), label_(std::move(label)) {}
+
+  bool MatchAndExplain(
+      const KeyData& key_data,
+      ::testing::MatchResultListener* listener) const override {
+    bool matches = true;
+    if (!key_data.has_type()) {
+      matches = false;
+      *listener << "type is not set\n";
+    } else if (key_data.type() != type_) {
+      matches = false;
+      *listener << "type is: " << KeyData::KeyType_Name(key_data.type())
+                << "\n";
+    }
+    if (key_data.label() != label_) {
+      matches = false;
+      *listener << "label is: " << key_data.label() << "\n";
+    }
+    return matches;
+  }
+
+  void DescribeTo(std::ostream* os) const override {
+    *os << "has type " << KeyData::KeyType_Name(type_) << "and label "
+        << label_;
+  }
+
+  void DescribeNegationTo(std::ostream* os) const override {
+    *os << "does not have type " << KeyData::KeyType_Name(type_)
+        << " or does not have label " << label_;
+  }
+
+ private:
+  KeyData::KeyType type_;
+  std::string label_;
+};
+::testing::Matcher<const KeyData&> KeyDataIs(KeyData::KeyType type,
+                                             std::string label) {
+  return ::testing::MakeMatcher<const KeyData&>(
+      new KeyDataMatcher(type, std::move(label)));
+}
 
 // Create a generic metadata with the given factor-specific subtype using
 // version information from the test constants above.
@@ -77,7 +188,31 @@ std::unique_ptr<AuthFactor> CreatePinAuthFactor() {
                      }});
 }
 
-}  // namespace
+std::unique_ptr<VaultKeyset> CreatePasswordVaultKeyset(
+    const std::string& label) {
+  SerializedVaultKeyset serialized_vk;
+  serialized_vk.set_flags(SerializedVaultKeyset::TPM_WRAPPED |
+                          SerializedVaultKeyset::SCRYPT_DERIVED |
+                          SerializedVaultKeyset::PCR_BOUND |
+                          SerializedVaultKeyset::ECC);
+  serialized_vk.set_password_rounds(1);
+  serialized_vk.set_tpm_key("tpm-key");
+  serialized_vk.set_extended_tpm_key("tpm-extended-key");
+  serialized_vk.set_vkk_iv("iv");
+  serialized_vk.mutable_key_data()->set_type(KeyData::KEY_TYPE_PASSWORD);
+  serialized_vk.mutable_key_data()->set_label(label);
+  auto vk = std::make_unique<VaultKeyset>();
+  vk->InitializeFromSerialized(serialized_vk);
+  return vk;
+}
+
+std::unique_ptr<VaultKeyset> CreateBackupVaultKeyset(const std::string& label) {
+  auto backup_vk = CreatePasswordVaultKeyset(label);
+  backup_vk->set_backup_vk_for_testing(true);
+  backup_vk->SetResetSeed(brillo::SecureBlob(32, 'A'));
+  backup_vk->SetWrappedResetSeed(brillo::SecureBlob(32, 'B'));
+  return backup_vk;
+}
 
 TEST(AuthFactorUtilsTest, AuthFactorTypeConversionIsInvertable) {
   // Test a round trip of conversion gets back the original types.
@@ -463,4 +598,167 @@ TEST(AuthSessionProtoUtils, AuthFactorPreparePurposeFromProto) {
       std::nullopt);
 }
 
+class LoadAuthFactorMapTest : public ::testing::Test {
+ public:
+  LoadAuthFactorMapTest() : kObfuscatedUsername(SanitizeUserName(kUsername)) {}
+
+ protected:
+  // Install mocks to set up vault keysets for testing. Expects a map of VK
+  // labels to factory functions that will construct a VaultKeyset object.
+  void InstallVaultKeysets(
+      std::map<std::string,
+               std::unique_ptr<VaultKeyset> (*)(const std::string&)>
+          vk_factory_map) {
+    std::vector<int> key_indicies;
+    for (const auto& [label, factory] : vk_factory_map) {
+      int index = key_indicies.size();
+      key_indicies.push_back(index);
+      EXPECT_CALL(keyset_management_,
+                  LoadVaultKeysetForUser(kObfuscatedUsername, index))
+          .WillRepeatedly([label = label, factory = factory](auto...) {
+            return factory(label);
+          });
+    }
+    EXPECT_CALL(keyset_management_, GetVaultKeysets(kObfuscatedUsername, _))
+        .WillRepeatedly(DoAll(SetArgPointee<1>(key_indicies), Return(true)));
+  }
+
+  // Install a single USS auth factor. If you want to set up multiple factors
+  // for your test, call this multiple times.
+  void InstallUssFactor(AuthFactor factor) {
+    EXPECT_THAT(manager_.SaveAuthFactor(kObfuscatedUsername, factor), IsOk());
+  }
+
+  FakePlatform platform_;
+
+  // Username used for all tests.
+  static constexpr char kUsername[] = "user@testing.com";
+  // Computing the obfuscated name requires the system salt from FakePlatform
+  // and so this must be defined after it and not before.
+  const std::string kObfuscatedUsername;
+
+  StrictMock<MockKeysetManagement> keyset_management_;
+  AuthFactorVaultKeysetConverter converter_{&keyset_management_};
+  AuthFactorManager manager_{&platform_};
+};
+
+// Test that if nothing is set up, no factors are loaded (with or without USS).
+TEST_F(LoadAuthFactorMapTest, NoFactors) {
+  InstallVaultKeysets({});
+
+  {
+    auto no_uss = DisableUssExperiment();
+    auto [af_map, kd_map] =
+        LoadAuthFactorMap(kObfuscatedUsername, platform_, converter_, manager_);
+
+    EXPECT_THAT(af_map, IsEmpty());
+    EXPECT_THAT(kd_map, IsEmpty());
+  }
+
+  {
+    auto uss = EnableUssExperiment();
+    auto [af_map, kd_map] =
+        LoadAuthFactorMap(kObfuscatedUsername, platform_, converter_, manager_);
+
+    EXPECT_THAT(af_map, IsEmpty());
+    EXPECT_THAT(kd_map, IsEmpty());
+  }
+}
+
+TEST_F(LoadAuthFactorMapTest, LoadWithOnlyVaultKeysets) {
+  auto no_uss = DisableUssExperiment();
+  InstallVaultKeysets({{"primary", &CreatePasswordVaultKeyset},
+                       {"secondary", &CreatePasswordVaultKeyset}});
+
+  auto [af_map, kd_map] =
+      LoadAuthFactorMap(kObfuscatedUsername, platform_, converter_, manager_);
+
+  EXPECT_THAT(af_map,
+              UnorderedElementsAre(
+                  AuthFactorMapItem(AuthFactorType::kPassword, "primary",
+                                    AuthFactorStorageType::kVaultKeyset),
+                  AuthFactorMapItem(AuthFactorType::kPassword, "secondary",
+                                    AuthFactorStorageType::kVaultKeyset)));
+  EXPECT_THAT(
+      kd_map,
+      UnorderedElementsAre(
+          Pair("primary", KeyDataIs(KeyData::KEY_TYPE_PASSWORD, "primary")),
+          Pair("secondary",
+               KeyDataIs(KeyData::KEY_TYPE_PASSWORD, "secondary"))));
+}
+
+TEST_F(LoadAuthFactorMapTest, LoadWithOnlyUss) {
+  auto uss = EnableUssExperiment();
+  InstallVaultKeysets({});
+  InstallUssFactor(AuthFactor(AuthFactorType::kPassword, "primary",
+                              {.metadata = PasswordAuthFactorMetadata()},
+                              {.state = TpmBoundToPcrAuthBlockState()}));
+  InstallUssFactor(AuthFactor(AuthFactorType::kPin, "secondary",
+                              {.metadata = PinAuthFactorMetadata()},
+                              {.state = PinWeaverAuthBlockState()}));
+
+  auto [af_map, kd_map] =
+      LoadAuthFactorMap(kObfuscatedUsername, platform_, converter_, manager_);
+
+  EXPECT_THAT(af_map,
+              UnorderedElementsAre(
+                  AuthFactorMapItem(AuthFactorType::kPassword, "primary",
+                                    AuthFactorStorageType::kUserSecretStash),
+                  AuthFactorMapItem(AuthFactorType::kPin, "secondary",
+                                    AuthFactorStorageType::kUserSecretStash)));
+  EXPECT_THAT(kd_map, IsEmpty());
+}
+
+// Test that, given a mix of regular VKs, backup VKs, and USS factors, the
+// correct ones are loaded depending on whether USS is enabled or disabled.
+TEST_F(LoadAuthFactorMapTest, LoadWithMixUsesUssAndVk) {
+  InstallVaultKeysets({{"tertiary", &CreatePasswordVaultKeyset},
+                       {"quaternary", &CreateBackupVaultKeyset}});
+  InstallUssFactor(AuthFactor(AuthFactorType::kPassword, "primary",
+                              {.metadata = PasswordAuthFactorMetadata()},
+                              {.state = TpmBoundToPcrAuthBlockState()}));
+  InstallUssFactor(AuthFactor(AuthFactorType::kPin, "secondary",
+                              {.metadata = PinAuthFactorMetadata()},
+                              {.state = PinWeaverAuthBlockState()}));
+
+  // Without USS, only the regular and backup VKs should be loaded.
+  {
+    auto no_uss = DisableUssExperiment();
+    auto [af_map, kd_map] =
+        LoadAuthFactorMap(kObfuscatedUsername, platform_, converter_, manager_);
+
+    EXPECT_THAT(af_map,
+                UnorderedElementsAre(
+                    AuthFactorMapItem(AuthFactorType::kPassword, "tertiary",
+                                      AuthFactorStorageType::kVaultKeyset),
+                    AuthFactorMapItem(AuthFactorType::kPassword, "quaternary",
+                                      AuthFactorStorageType::kVaultKeyset)));
+    EXPECT_THAT(
+        kd_map,
+        UnorderedElementsAre(Pair(
+            "tertiary", KeyDataIs(KeyData::KEY_TYPE_PASSWORD, "tertiary"))));
+  }
+
+  // With USS, the USS factors should be loaded along with the non-backup VKs.
+  {
+    auto uss = EnableUssExperiment();
+    auto [af_map, kd_map] =
+        LoadAuthFactorMap(kObfuscatedUsername, platform_, converter_, manager_);
+
+    EXPECT_THAT(af_map,
+                UnorderedElementsAre(
+                    AuthFactorMapItem(AuthFactorType::kPassword, "primary",
+                                      AuthFactorStorageType::kUserSecretStash),
+                    AuthFactorMapItem(AuthFactorType::kPin, "secondary",
+                                      AuthFactorStorageType::kUserSecretStash),
+                    AuthFactorMapItem(AuthFactorType::kPassword, "tertiary",
+                                      AuthFactorStorageType::kVaultKeyset)));
+    EXPECT_THAT(
+        kd_map,
+        UnorderedElementsAre(Pair(
+            "tertiary", KeyDataIs(KeyData::KEY_TYPE_PASSWORD, "tertiary"))));
+  }
+}
+
+}  // namespace
 }  // namespace cryptohome

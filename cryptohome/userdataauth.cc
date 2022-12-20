@@ -4844,7 +4844,7 @@ void UserDataAuth::ListAuthFactors(
   // After USS is enabled there will be backup VKs in disk. They are used for
   // authentication only if USS is disabled after once being enabled.
   if (converter.VaultKeysetsToAuthFactorsAndKeyLabelData(
-          username, auth_factor_map, auth_factor_map_for_backup_vks,
+          obfuscated_username, auth_factor_map, auth_factor_map_for_backup_vks,
           nullptr /*key_label_data*/) !=
       user_data_auth::CRYPTOHOME_ERROR_NOT_SET) {
     LOG(WARNING) << "Failure in listing the available VaultKeyset factors.";

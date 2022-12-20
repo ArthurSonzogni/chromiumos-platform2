@@ -42,7 +42,7 @@ class AuthFactorVaultKeysetConverter {
   // Returns all the existing VaultKeyset data on disk mapped to their labels
   // and converted into AuthFactor format.
   user_data_auth::CryptohomeErrorCode VaultKeysetsToAuthFactorsAndKeyLabelData(
-      const std::string& username,
+      const std::string& obfuscated_username,
       std::map<std::string, std::unique_ptr<AuthFactor>>&
           out_label_to_auth_factor,
       std::map<std::string, std::unique_ptr<AuthFactor>>&

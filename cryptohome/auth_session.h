@@ -654,15 +654,15 @@ class AuthSession final {
   UserSecretStashStorage* const user_secret_stash_storage_;
   // Unowned pointer.
   feature::PlatformFeaturesInterface* feature_lib_;
+  // A stateless object to convert AuthFactor API to VaultKeyset KeyData and
+  // VaultKeysets to AuthFactor API.
+  AuthFactorVaultKeysetConverter converter_;
 
   const base::UnguessableToken token_;
   const std::string serialized_token_;
 
   // Used to decrypt/ encrypt & store credentials.
   std::unique_ptr<VaultKeyset> vault_keyset_;
-  // A stateless object to convert AuthFactor API to VaultKeyset KeyData and
-  // VaultKeysets to AuthFactor API.
-  std::unique_ptr<AuthFactorVaultKeysetConverter> converter_;
   // Used to store key meta data.
   KeyData key_data_;
   // FileSystemKeyset is needed by cryptohome to mount a user.

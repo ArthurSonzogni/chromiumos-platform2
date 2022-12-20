@@ -145,6 +145,40 @@ TEST_F(AuthFactorMapTest, AddDuplicate) {
   EXPECT_THAT(const_factor_map().Find(kLabel2), Eq(std::nullopt));
 }
 
+TEST_F(AuthFactorMapTest, ElementsAreMoved) {
+  auto [factor1, ptr1] = MakeFactor(kLabel1);
+  auto [factor2, ptr2] = MakeFactor(kLabel2);
+  factor_map_.Add(std::move(factor1), AuthFactorStorageType::kVaultKeyset);
+  factor_map_.Add(std::move(factor2), AuthFactorStorageType::kUserSecretStash);
+  AuthFactorMap move_constructed_map = std::move(factor_map_);
+  const AuthFactorMap& const_move_constructed_map = move_constructed_map;
+
+  // Everything that should've been in factor_map_ should now be in
+  // move_constructed_map.
+  EXPECT_THAT(move_constructed_map.empty(), IsFalse());
+  EXPECT_THAT(move_constructed_map.size(), Eq(2));
+  EXPECT_THAT(move_constructed_map.HasFactorWithStorage(
+                  AuthFactorStorageType::kVaultKeyset),
+              IsTrue());
+  EXPECT_THAT(move_constructed_map.HasFactorWithStorage(
+                  AuthFactorStorageType::kUserSecretStash),
+              IsTrue());
+  EXPECT_THAT(move_constructed_map.Find(kLabel1)->auth_factor(), Ref(*ptr1));
+  EXPECT_THAT(move_constructed_map.Find(kLabel1)->storage_type(),
+              Eq(AuthFactorStorageType::kVaultKeyset));
+  EXPECT_THAT(move_constructed_map.Find(kLabel2)->auth_factor(), Ref(*ptr2));
+  EXPECT_THAT(move_constructed_map.Find(kLabel2)->storage_type(),
+              Eq(AuthFactorStorageType::kUserSecretStash));
+  EXPECT_THAT(const_move_constructed_map.Find(kLabel1)->auth_factor(),
+              Ref(*ptr1));
+  EXPECT_THAT(const_move_constructed_map.Find(kLabel1)->storage_type(),
+              Eq(AuthFactorStorageType::kVaultKeyset));
+  EXPECT_THAT(const_move_constructed_map.Find(kLabel2)->auth_factor(),
+              Ref(*ptr2));
+  EXPECT_THAT(const_move_constructed_map.Find(kLabel2)->storage_type(),
+              Eq(AuthFactorStorageType::kUserSecretStash));
+}
+
 TEST_F(AuthFactorMapTest, ReportMetricsEmpty) {
   ASSERT_THAT(factor_map_.size(), Eq(0));
 

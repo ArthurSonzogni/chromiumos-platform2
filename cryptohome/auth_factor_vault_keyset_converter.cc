@@ -153,7 +153,7 @@ AuthFactorVaultKeysetConverter::VaultKeysetToAuthFactor(
 
 user_data_auth::CryptohomeErrorCode
 AuthFactorVaultKeysetConverter::VaultKeysetsToAuthFactorsAndKeyLabelData(
-    const std::string& username,
+    const std::string& obfuscated_username,
     std::map<std::string, std::unique_ptr<AuthFactor>>&
         out_label_to_auth_factor,
     std::map<std::string, std::unique_ptr<AuthFactor>>&
@@ -162,8 +162,6 @@ AuthFactorVaultKeysetConverter::VaultKeysetsToAuthFactorsAndKeyLabelData(
   DCHECK(out_label_to_auth_factor.empty());
   DCHECK(out_label_to_auth_factor_backup_vks.empty());
 
-  std::string obfuscated_username =
-      brillo::cryptohome::home::SanitizeUserName(username);
   std::vector<int> keyset_indices;
   if (!keyset_management_->GetVaultKeysets(obfuscated_username,
                                            &keyset_indices)) {
@@ -223,7 +221,7 @@ AuthFactorVaultKeysetConverter::PopulateKeyDataForVK(
   std::unique_ptr<VaultKeyset> vk = keyset_management_->GetVaultKeyset(
       obfuscated_username, auth_factor_label);
   if (!vk) {
-    LOG(ERROR) << "No keyset found for the label " << obfuscated_username;
+    LOG(ERROR) << "No keyset found for the label " << auth_factor_label;
     return user_data_auth::CRYPTOHOME_ERROR_KEY_NOT_FOUND;
   }
   out_vk_key_data = vk->GetKeyDataOrDefault();

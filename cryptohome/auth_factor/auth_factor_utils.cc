@@ -21,8 +21,8 @@
 #include "cryptohome/auth_session_proto_utils.h"
 
 namespace cryptohome {
-
 namespace {
+
 // Set password metadata here, which happens to be empty. For other types of
 // factors, there will be more computations involved.
 void GetPasswordMetadata(const user_data_auth::AuthFactor& auth_factor,
@@ -395,6 +395,56 @@ std::optional<AuthFactorPreparePurpose> AuthFactorPreparePurposeFromProto(
     default:
       return std::nullopt;
   }
+}
+
+std::tuple<AuthFactorMap, std::map<std::string, KeyData>> LoadAuthFactorMap(
+    const std::string& obfuscated_username,
+    Platform& platform,
+    AuthFactorVaultKeysetConverter& converter,
+    AuthFactorManager& manager) {
+  AuthFactorMap auth_factor_map;
+  std::map<std::string, KeyData> key_data_map;
+
+  // Load all the VaultKeysets and backup VaultKeysets in disk and convert
+  // them to AuthFactor format.
+  std::map<std::string, std::unique_ptr<AuthFactor>> backup_factor_map;
+  std::map<std::string, std::unique_ptr<AuthFactor>> vk_factor_map;
+  converter.VaultKeysetsToAuthFactorsAndKeyLabelData(
+      obfuscated_username, vk_factor_map, backup_factor_map, &key_data_map);
+  // Load the USS AuthFactors.
+  std::map<std::string, std::unique_ptr<AuthFactor>> uss_factor_map =
+      manager.LoadAllAuthFactors(obfuscated_username);
+
+  // UserSecretStash is enabled: merge VaultKeyset-AuthFactors with
+  // USS-AuthFactors
+  if (IsUserSecretStashExperimentEnabled(&platform)) {
+    for (auto& [unused, factor] : uss_factor_map) {
+      auth_factor_map.Add(std::move(factor),
+                          AuthFactorStorageType::kUserSecretStash);
+    }
+  } else {
+    // UserSecretStash is disabled: merge VaultKeyset-AuthFactors with
+    // backup-VaultKeyset-AuthFactors.
+    for (auto& [unused, factor] : backup_factor_map) {
+      auth_factor_map.Add(std::move(factor),
+                          AuthFactorStorageType::kVaultKeyset);
+    }
+  }
+
+  // Duplicate labels are not expected on any use case. However in very rare
+  // edge cases where an interrupted USS migration results in having both
+  // regular VaultKeyset and USS factor in disk it is safer to use the original
+  // VaultKeyset. In that case regular VaultKeyset overrides the existing
+  // label in the map.
+  for (auto& [unused, factor] : vk_factor_map) {
+    if (auth_factor_map.Find(factor->label())) {
+      LOG(WARNING) << "Unexpected duplication of label: " << factor->label()
+                   << ". Regular VaultKeyset will override the AuthFactor.";
+    }
+    auth_factor_map.Add(std::move(factor), AuthFactorStorageType::kVaultKeyset);
+  }
+
+  return std::tuple(std::move(auth_factor_map), std::move(key_data_map));
 }
 
 }  // namespace cryptohome

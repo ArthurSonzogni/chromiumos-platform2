@@ -5,17 +5,21 @@
 #ifndef CRYPTOHOME_AUTH_FACTOR_AUTH_FACTOR_UTILS_H_
 #define CRYPTOHOME_AUTH_FACTOR_AUTH_FACTOR_UTILS_H_
 
+#include <map>
 #include <memory>
 #include <optional>
 #include <string>
+#include <tuple>
 
 #include <cryptohome/proto_bindings/auth_factor.pb.h>
 #include <google/protobuf/repeated_field.h>
 
 #include "cryptohome/auth_factor/auth_factor_manager.h"
+#include "cryptohome/auth_factor/auth_factor_map.h"
 #include "cryptohome/auth_factor/auth_factor_metadata.h"
 #include "cryptohome/auth_factor/auth_factor_prepare_purpose.h"
 #include "cryptohome/auth_factor/auth_factor_type.h"
+#include "cryptohome/auth_factor_vault_keyset_converter.h"
 #include "cryptohome/crypto.h"
 
 namespace cryptohome {
@@ -73,6 +77,14 @@ bool NeedsResetSecret(AuthFactorType auth_factor_type);
 // Converts to AuthFactorPreparePurpose from the proto enum.
 std::optional<AuthFactorPreparePurpose> AuthFactorPreparePurposeFromProto(
     user_data_auth::AuthFactorPreparePurpose purpose);
+
+// Given a keyset converter, factor manager, and platform, load all of the auth
+// factors for the given user into an auth factor and key data map.
+std::tuple<AuthFactorMap, std::map<std::string, KeyData>> LoadAuthFactorMap(
+    const std::string& obfuscated_username,
+    Platform& platform,
+    AuthFactorVaultKeysetConverter& converter,
+    AuthFactorManager& manager);
 
 }  // namespace cryptohome
 #endif  // CRYPTOHOME_AUTH_FACTOR_AUTH_FACTOR_UTILS_H_

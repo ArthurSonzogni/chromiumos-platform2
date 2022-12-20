@@ -53,6 +53,9 @@
 #include "cryptohome/uss_migrator.h"
 #include "cryptohome/vault_keyset.h"
 
+namespace cryptohome {
+namespace {
+
 using brillo::cryptohome::home::SanitizeUserName;
 using cryptohome::error::CryptohomeCryptoError;
 using cryptohome::error::CryptohomeError;
@@ -65,8 +68,7 @@ using hwsec_foundation::kAesBlockSize;
 using hwsec_foundation::status::MakeStatus;
 using hwsec_foundation::status::OkStatus;
 using hwsec_foundation::status::StatusChain;
-
-namespace cryptohome {
+using user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_EPHEMERAL_USER;
 
 // Size of the values used serialization of UnguessableToken.
 constexpr int kSizeOfSerializedValueInToken = sizeof(uint64_t);
@@ -80,10 +82,6 @@ constexpr int kLowTokenOffset = kSizeOfSerializedValueInToken;
 constexpr base::TimeDelta kAuthSessionTimeout = base::Minutes(5);
 // Message to use when generating a secret for hibernate.
 constexpr char kHibernateSecretHmacMessage[] = "AuthTimeHibernateSecret";
-
-using user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_EPHEMERAL_USER;
-
-namespace {
 
 constexpr bool IsFactorTypeSupportedByBothUssAndVk(
     AuthFactorType auth_factor_type) {
@@ -209,6 +207,7 @@ constexpr struct VariationsFeature kCrOSLateBootMigrateToUserSecretStash = {
     .name = "CrOSLateBootMigrateToUserSecretStash",
     .default_state = FEATURE_DISABLED_BY_DEFAULT,
 };
+
 }  // namespace
 
 CryptohomeStatusOr<std::unique_ptr<AuthSession>> AuthSession::Create(
@@ -268,6 +267,7 @@ AuthSession::AuthSession(
       auth_factor_manager_(auth_factor_manager),
       user_secret_stash_storage_(user_secret_stash_storage),
       feature_lib_(feature_lib),
+      converter_(keyset_management_),
       token_(platform_->CreateUnguessableToken()),
       serialized_token_(GetSerializedStringFromToken(token_).value_or("")) {
   // Preconditions.
@@ -291,8 +291,6 @@ AuthSession::~AuthSession() {
 
 CryptohomeStatus AuthSession::Initialize() {
   auth_session_creation_time_ = base::TimeTicks::Now();
-  converter_ =
-      std::make_unique<AuthFactorVaultKeysetConverter>(keyset_management_);
 
   // Try to determine if a user exists in two ways: they have a persistent
   // homedir, or they have an active mount. The latter can happen if the user is
@@ -310,45 +308,9 @@ CryptohomeStatus AuthSession::Initialize() {
     return OkStatus<CryptohomeCryptoError>();
   }
 
-  // Load all the VaultKeysets and backup VaultKeysets in disk and convert
-  // them to AuthFactor format.
-  std::map<std::string, std::unique_ptr<AuthFactor>> backup_factor_map;
-  std::map<std::string, std::unique_ptr<AuthFactor>> vk_factor_map;
-  converter_->VaultKeysetsToAuthFactorsAndKeyLabelData(
-      username_, vk_factor_map, backup_factor_map, &key_label_data_);
-  // Load the USS AuthFactors.
-  std::map<std::string, std::unique_ptr<AuthFactor>> uss_factor_map =
-      auth_factor_manager_->LoadAllAuthFactors(obfuscated_username_);
-
-  // UserSecretStash is enabled: merge VaultKeyset-AuthFactors with
-  // USS-AuthFactors
-  if (IsUserSecretStashExperimentEnabled(platform_)) {
-    for (auto& [unused, factor] : uss_factor_map) {
-      auth_factor_map_.Add(std::move(factor),
-                           AuthFactorStorageType::kUserSecretStash);
-    }
-  } else {
-    // UserSecretStash is disabled: merge VaultKeyset-AuthFactors with
-    // backup-VaultKeyset-AuthFactors.
-    for (auto& [unused, factor] : backup_factor_map) {
-      auth_factor_map_.Add(std::move(factor),
-                           AuthFactorStorageType::kVaultKeyset);
-    }
-  }
-
-  // Duplicate labels are not expected on any use case. However in very rare
-  // edge cases where an interrupted USS migration results in having both
-  // regular VaultKeyset and USS factor in disk it is safer to use the original
-  // VaultKeyset. In that case regular VaultKeyset overrides the existing
-  // label in the map.
-  for (auto& [unused, factor] : vk_factor_map) {
-    if (auth_factor_map_.Find(factor->label())) {
-      LOG(WARNING) << "Unexpected duplication of label: " << factor->label()
-                   << ". Regular VaultKeyset will override the AuthFactor.";
-    }
-    auth_factor_map_.Add(std::move(factor),
-                         AuthFactorStorageType::kVaultKeyset);
-  }
+  // Populate auth_factor_map_ and key_label_data_.
+  std::tie(auth_factor_map_, key_label_data_) = LoadAuthFactorMap(
+      obfuscated_username_, *platform_, converter_, *auth_factor_manager_);
 
   if (feature_lib_) {
     migrate_to_user_secret_stash_ =
@@ -520,7 +482,7 @@ void AuthSession::CreateAndPersistVaultKeyset(
   }
 
   std::unique_ptr<AuthFactor> added_auth_factor =
-      converter_->VaultKeysetToAuthFactor(username_, key_data.label());
+      converter_.VaultKeysetToAuthFactor(username_, key_data.label());
   // Initialize auth_factor_type with kPassword for CredentailVerifier.
   AuthFactorType auth_factor_type = AuthFactorType::kPassword;
   if (added_auth_factor) {
@@ -1316,7 +1278,7 @@ void AuthSession::AuthenticateAuthFactor(
 
   // If user does not have USS AuthFactors, then we switch to authentication
   // with Vaultkeyset. Status is flipped on the successful authentication.
-  user_data_auth::CryptohomeErrorCode error = converter_->PopulateKeyDataForVK(
+  user_data_auth::CryptohomeErrorCode error = converter_.PopulateKeyDataForVK(
       username_, request.auth_factor_label(), key_data_);
   if (error != user_data_auth::CRYPTOHOME_ERROR_NOT_SET) {
     LOG(ERROR) << "Failed to authenticate auth session via vk-factor "
@@ -1623,7 +1585,7 @@ void AuthSession::UpdateAuthFactor(
   // AuthFactorMetadata is needed for only smartcards. Since
   // UpdateAuthFactor doesn't operate on smartcards pass an empty metadata,
   // which is not going to be used.
-  user_data_auth::CryptohomeErrorCode error = converter_->AuthFactorToKeyData(
+  user_data_auth::CryptohomeErrorCode error = converter_.AuthFactorToKeyData(
       auth_factor_label, auth_factor_type, auth_factor_metadata, key_data);
   if (error != user_data_auth::CRYPTOHOME_ERROR_NOT_SET && !is_recovery) {
     std::move(on_done).Run(MakeStatus<CryptohomeError>(
@@ -2645,7 +2607,7 @@ void AuthSession::AddAuthFactorImpl(
   auth_session_performance_timer->auth_block_type = auth_block_type.value();
 
   KeyData key_data;
-  user_data_auth::CryptohomeErrorCode error = converter_->AuthFactorToKeyData(
+  user_data_auth::CryptohomeErrorCode error = converter_.AuthFactorToKeyData(
       auth_factor_label, auth_factor_type, auth_factor_metadata, key_data);
   if (error != user_data_auth::CRYPTOHOME_ERROR_NOT_SET && !is_recovery) {
     std::move(on_done).Run(MakeStatus<CryptohomeError>(

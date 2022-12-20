@@ -122,9 +122,10 @@ std::string GetCurrentOsVersion() {
 // Returns the UserSecretStash experiment flag value.
 UssExperimentFlag UserSecretStashExperimentResult(Platform* platform) {
   // 1. If the state is overridden by unit tests, return this value.
-  if (GetUserSecretStashExperimentOverride().has_value() &&
-      GetUserSecretStashExperimentOverride().value()) {
-    return UssExperimentFlag::kEnabled;
+  if (GetUserSecretStashExperimentOverride().has_value()) {
+    return GetUserSecretStashExperimentOverride().value()
+               ? UssExperimentFlag::kEnabled
+               : UssExperimentFlag::kDisabled;
   }
   // 2. If no unittest override defer to checking the feature test file
   // existence. The disable file precedes the enable file.
@@ -501,8 +502,11 @@ void ResetUserSecretStashExperimentFlagForTesting() {
   GetUserSecretStashExperimentFlag().reset();
 }
 
-void SetUserSecretStashExperimentForTesting(std::optional<bool> enabled) {
+std::optional<bool> SetUserSecretStashExperimentForTesting(
+    std::optional<bool> enabled) {
+  std::optional<bool> original = enabled;
   GetUserSecretStashExperimentOverride() = enabled;
+  return original;
 }
 
 // static

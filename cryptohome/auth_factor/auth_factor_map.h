@@ -50,6 +50,7 @@ class AuthFactorMap final {
    protected:
     const StoredAuthFactor* storage_;
   };
+  using value_type = ValueView;
 
   // Implementation of an iterator that exposes the underlying stored values in
   // the map as a ValueView. Note that the iterator exposes the map as a
@@ -88,10 +89,16 @@ class AuthFactorMap final {
 
     Storage::const_iterator iter_;
   };
+  using const_iterator = iterator;
 
   AuthFactorMap() = default;
+
+  // An auth factor map can be moved but not copied as the underlying stored
+  // values cannot be copied.
   AuthFactorMap(const AuthFactorMap&) = delete;
   AuthFactorMap& operator=(const AuthFactorMap&) = delete;
+  AuthFactorMap(AuthFactorMap&&) = default;
+  AuthFactorMap& operator=(AuthFactorMap&&) = default;
 
   bool empty() const { return storage_.empty(); }
   size_t size() const { return storage_.size(); }

@@ -127,7 +127,8 @@ Matcher<const AuthBlockState&> AuthBlockStateTypeIs() {
   return Field(&AuthBlockState::state, VariantWith<StateType>(_));
 }
 
-SerializedVaultKeyset CreateFakePasswordVk(const std::string& label) {
+std::unique_ptr<VaultKeyset> CreatePasswordVaultKeyset(
+    const std::string& label) {
   SerializedVaultKeyset serialized_vk;
   serialized_vk.set_flags(SerializedVaultKeyset::TPM_WRAPPED |
                           SerializedVaultKeyset::SCRYPT_DERIVED |
@@ -139,13 +140,13 @@ SerializedVaultKeyset CreateFakePasswordVk(const std::string& label) {
   serialized_vk.set_vkk_iv("iv");
   serialized_vk.mutable_key_data()->set_type(KeyData::KEY_TYPE_PASSWORD);
   serialized_vk.mutable_key_data()->set_label(label);
-  return serialized_vk;
+  auto vk = std::make_unique<VaultKeyset>();
+  vk->InitializeFromSerialized(serialized_vk);
+  return vk;
 }
 
 std::unique_ptr<VaultKeyset> CreateBackupVaultKeyset(const std::string& label) {
-  auto backup_vk = std::make_unique<VaultKeyset>();
-  auto serialized = CreateFakePasswordVk(label);
-  backup_vk->InitializeFromSerialized(serialized);
+  auto backup_vk = CreatePasswordVaultKeyset(label);
   backup_vk->set_backup_vk_for_testing(true);
   backup_vk->SetResetSeed(brillo::SecureBlob(32, 'A'));
   backup_vk->SetWrappedResetSeed(brillo::SecureBlob(32, 'B'));
@@ -590,9 +591,7 @@ TEST_F(AuthSessionTest, AddCredentialNewUser) {
           });
   EXPECT_CALL(keyset_management_, GetVaultKeyset(_, kFakeLabel))
       .WillOnce([](const std::string&, const std::string&) {
-        auto vk = std::make_unique<VaultKeyset>();
-        vk->InitializeFromSerialized(CreateFakePasswordVk(kFakeLabel));
-        return vk;
+        return CreatePasswordVaultKeyset(kFakeLabel);
       });
 
   EXPECT_EQ(auth_session->GetStatus(), AuthStatus::kAuthStatusAuthenticated);
@@ -671,9 +670,7 @@ TEST_F(AuthSessionTest, AddCredentialNewUserTwice) {
           });
   EXPECT_CALL(keyset_management_, GetVaultKeyset(_, _))
       .WillRepeatedly([](const std::string&, const std::string& label) {
-        auto vk = std::make_unique<VaultKeyset>();
-        vk->InitializeFromSerialized(CreateFakePasswordVk(label));
-        return vk;
+        return CreatePasswordVaultKeyset(label);
       });
 
   EXPECT_TRUE(auth_session->OnUserCreated().ok());
@@ -1752,9 +1749,7 @@ TEST_F(AuthSessionTest, AddAuthFactorNewUser) {
           });
   EXPECT_CALL(keyset_management_, GetVaultKeyset(_, kFakeLabel))
       .WillOnce([](const std::string&, const std::string&) {
-        auto vk = std::make_unique<VaultKeyset>();
-        vk->InitializeFromSerialized(CreateFakePasswordVk(kFakeLabel));
-        return vk;
+        return CreatePasswordVaultKeyset(kFakeLabel);
       });
 
   // Test.
@@ -1829,9 +1824,7 @@ TEST_F(AuthSessionTest, AddMultipleAuthFactor) {
           });
   EXPECT_CALL(keyset_management_, GetVaultKeyset(_, _))
       .WillRepeatedly([](const std::string&, const std::string& label) {
-        auto vk = std::make_unique<VaultKeyset>();
-        vk->InitializeFromSerialized(CreateFakePasswordVk(label));
-        return vk;
+        return CreatePasswordVaultKeyset(label);
       });
 
   // Test.
@@ -4587,11 +4580,8 @@ TEST_F(AuthSessionTest, UpdateAuthFactorFailsInAuthBlock) {
             return vk;
           });
   EXPECT_CALL(keyset_management_, GetVaultKeyset(_, kFakeLabel))
-      .WillOnce([](auto, auto) {
-        auto vk = std::make_unique<VaultKeyset>();
-        vk->InitializeFromSerialized(CreateFakePasswordVk(kFakeLabel));
-        return vk;
-      });
+      .WillOnce(
+          [](auto, auto) { return CreatePasswordVaultKeyset(kFakeLabel); });
   user_data_auth::AddAuthFactorRequest add_request;
   add_request.mutable_auth_factor()->set_type(
       user_data_auth::AUTH_FACTOR_TYPE_PASSWORD);

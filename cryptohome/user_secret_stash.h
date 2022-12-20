@@ -47,12 +47,46 @@ bool IsUserSecretStashExperimentEnabled(Platform* platform);
 void ReportUserSecretStashExperimentState(Platform* platform);
 
 // Allows to toggle the experiment state in tests. Passing nullopt reverts to
-// the default behavior.
-void SetUserSecretStashExperimentForTesting(std::optional<bool> enabled);
+// the default behavior. Returns the original contents before setting to allow
+// tests to restore the original value.
+std::optional<bool> SetUserSecretStashExperimentForTesting(
+    std::optional<bool> enabled);
 
 // This resets the static |uss_experiment_enabled| flag to simulate
 // restarting cryptohomed process in the unittests.
 void ResetUserSecretStashExperimentFlagForTesting();
+
+// RAII-style object that allows you to set the USS experiment flag (enabling or
+// disabling it) in tests. The setting you apply will be cleared on destruction.
+// You can use it both within individual tests by creating it on the stack, or
+// in an entire fixture as a member variable.
+class [[nodiscard]] SetUssExperimentOverride {
+ public:
+  explicit SetUssExperimentOverride(bool enabled) {
+    original_value_ = SetUserSecretStashExperimentForTesting(enabled);
+  }
+  SetUssExperimentOverride(const SetUssExperimentOverride&) = delete;
+  SetUssExperimentOverride& operator=(const SetUssExperimentOverride&) = delete;
+  ~SetUssExperimentOverride() {
+    SetUserSecretStashExperimentForTesting(original_value_);
+  }
+
+ private:
+  std::optional<bool> original_value_;
+};
+// Helper that construct a SetUssExperimentOverride with the appropriate
+// boolean. Generally more readable than manually constructing one with a
+// boolean flag. Normally invoked by using one of:
+//
+//   auto uss = EnableUssExperiment();
+//   auto no_uss = DisableUssExperiment();
+//
+inline SetUssExperimentOverride EnableUssExperiment() {
+  return SetUssExperimentOverride(true);
+}
+inline SetUssExperimentOverride DisableUssExperiment() {
+  return SetUssExperimentOverride(false);
+}
 
 // This wraps the UserSecretStash flatbuffer message, and is the only way that
 // the UserSecretStash is accessed. Don't pass the raw flatbuffer around.

@@ -203,8 +203,8 @@ TEST_F(AuthFactorVaultKeysetConverterTest,
        ConvertToAuthFactorFailWhenListEmpty) {
   EXPECT_EQ(user_data_auth::CRYPTOHOME_ERROR_KEY_NOT_FOUND,
             converter_->VaultKeysetsToAuthFactorsAndKeyLabelData(
-                kUsername, label_to_auth_factor_, label_to_auth_factor_backup_,
-                &key_label_data_));
+                user.obfuscated, label_to_auth_factor_,
+                label_to_auth_factor_backup_, &key_label_data_));
   EXPECT_TRUE(label_to_auth_factor_.empty());
   EXPECT_TRUE(label_to_auth_factor_backup_.empty());
   EXPECT_TRUE(label_to_auth_factor_.empty());
@@ -217,8 +217,8 @@ TEST_F(AuthFactorVaultKeysetConverterTest, ConvertToAuthFactorListSuccess) {
   KeysetSetUpWithKeyData(SetKeyData(kLabel0), kFirstIndex);
   EXPECT_EQ(user_data_auth::CRYPTOHOME_ERROR_NOT_SET,
             converter_->VaultKeysetsToAuthFactorsAndKeyLabelData(
-                kUsername, label_to_auth_factor_, label_to_auth_factor_backup_,
-                &key_label_data_));
+                user.obfuscated, label_to_auth_factor_,
+                label_to_auth_factor_backup_, &key_label_data_));
 
   EXPECT_FALSE(label_to_auth_factor_.empty());
   EXPECT_EQ(kLabel0, label_to_auth_factor_[kLabel0]->label());
@@ -239,8 +239,8 @@ TEST_F(AuthFactorVaultKeysetConverterTest,
 
   EXPECT_EQ(user_data_auth::CRYPTOHOME_ERROR_NOT_SET,
             converter_->VaultKeysetsToAuthFactorsAndKeyLabelData(
-                kUsername, label_to_auth_factor_, label_to_auth_factor_backup_,
-                &key_label_data_));
+                user.obfuscated, label_to_auth_factor_,
+                label_to_auth_factor_backup_, &key_label_data_));
 
   EXPECT_EQ(3, label_to_auth_factor_.size());
 
@@ -355,8 +355,8 @@ TEST_F(AuthFactorVaultKeysetConverterTest, ConvertToAuthFactorListKiosk) {
   KeysetSetUpWithKeyData(SetKioskKeyData(kLabel0), kFirstIndex);
   EXPECT_EQ(user_data_auth::CRYPTOHOME_ERROR_NOT_SET,
             converter_->VaultKeysetsToAuthFactorsAndKeyLabelData(
-                kUsername, label_to_auth_factor_, label_to_auth_factor_backup_,
-                &key_label_data_));
+                user.obfuscated, label_to_auth_factor_,
+                label_to_auth_factor_backup_, &key_label_data_));
 
   EXPECT_EQ(1, label_to_auth_factor_.size());
 
@@ -381,8 +381,8 @@ TEST_F(AuthFactorVaultKeysetConverterTest,
 
   EXPECT_EQ(user_data_auth::CRYPTOHOME_ERROR_NOT_SET,
             converter_->VaultKeysetsToAuthFactorsAndKeyLabelData(
-                kUsername, label_to_auth_factor_, label_to_auth_factor_backup_,
-                nullptr));
+                user.obfuscated, label_to_auth_factor_,
+                label_to_auth_factor_backup_, nullptr));
 
   EXPECT_TRUE(label_to_auth_factor_.empty());
   EXPECT_EQ(3, label_to_auth_factor_backup_.size());
@@ -410,8 +410,8 @@ TEST_F(AuthFactorVaultKeysetConverterTest,
 
   EXPECT_EQ(user_data_auth::CRYPTOHOME_ERROR_NOT_SET,
             converter_->VaultKeysetsToAuthFactorsAndKeyLabelData(
-                kUsername, label_to_auth_factor_, label_to_auth_factor_backup_,
-                nullptr));
+                user.obfuscated, label_to_auth_factor_,
+                label_to_auth_factor_backup_, nullptr));
   EXPECT_EQ(1, label_to_auth_factor_.size());
   EXPECT_EQ(2, label_to_auth_factor_backup_.size());
 
