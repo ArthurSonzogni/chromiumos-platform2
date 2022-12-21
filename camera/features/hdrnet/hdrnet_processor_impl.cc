@@ -19,6 +19,7 @@
 #include "cros-camera/camera_metadata_utils.h"
 #include "cros-camera/common.h"
 #include "cros-camera/texture_2d_descriptor.h"
+#include "cros-camera/tracing.h"
 #include "features/hdrnet/tracing.h"
 #include "gpu/egl/egl_fence.h"
 
@@ -205,6 +206,8 @@ base::ScopedFD HdrNetProcessorImpl::Run(
         } while (false);
       }
       {
+        TRACE_EVENT(kCameraTraceCategoryHdrnet, kEventPreprocess,
+                    "frame_number", frame_number);
         base::ElapsedTimer t;
         // Run the HDRnet pipeline.
         success = processor_device_adapter_->Preprocess(options, input_yuv,
@@ -226,6 +229,8 @@ base::ScopedFD HdrNetProcessorImpl::Run(
         break;
       }
       {
+        TRACE_EVENT(kCameraTraceCategoryHdrnet, kEventLinearRgbPipeline,
+                    "frame_number", frame_number);
         base::ElapsedTimer t;
         success =
             RunLinearRgbPipeline(options, intermediates_[0], intermediates_[1]);
@@ -249,6 +254,8 @@ base::ScopedFD HdrNetProcessorImpl::Run(
         // Here we assume all the streams have the same aspect ratio, so no
         // cropping is done.
         {
+          TRACE_EVENT(kCameraTraceCategoryHdrnet, kEventPostprocess,
+                      "frame_number", frame_number);
           base::ElapsedTimer t;
           success = processor_device_adapter_->Postprocess(
               options, intermediates_[1], output_nv12);
@@ -290,8 +297,11 @@ base::ScopedFD HdrNetProcessorImpl::Run(
       }
     }
   }
-  EglFence fence;
-  return fence.GetNativeFd();
+  {
+    TRACE_EVENT(kCameraTraceCategoryHdrnet, "HdrNetProcessorImpl::CreateFence");
+    EglFence fence;
+    return fence.GetNativeFd();
+  }
 }
 
 void HdrNetProcessorImpl::YUVToNV12(const SharedImage& input_yuv,
@@ -345,7 +355,7 @@ bool HdrNetProcessorImpl::RunLinearRgbPipeline(
 void HdrNetProcessorImpl::DumpGpuTextureSharedImage(
     const SharedImage& image, base::FilePath output_file_path) {
   DCHECK(task_runner_->BelongsToCurrentThread());
-  TRACE_HDRNET();
+  TRACE_HDRNET_DEBUG();
 
   uint32_t kDumpBufferUsage = GRALLOC_USAGE_SW_WRITE_OFTEN |
                               GRALLOC_USAGE_SW_READ_OFTEN |

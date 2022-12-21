@@ -34,6 +34,7 @@ constexpr char kCameraTraceCategoryCommon[] = "camera.common";
 constexpr char kCameraTraceCategoryGcamAe[] = "camera.gcam_ae";
 constexpr char kCameraTraceCategoryGpu[] = "camera.gpu";
 constexpr char kCameraTraceCategoryHalAdapter[] = "camera.hal_adapter";
+constexpr char kCameraTraceCategoryHdrnetDebug[] = "camera.hdrnet.debug";
 constexpr char kCameraTraceCategoryHdrnet[] = "camera.hdrnet";
 constexpr char kCameraTraceCategoryZsl[] = "camera.zsl";
 
@@ -68,6 +69,9 @@ PERFETTO_DEFINE_CATEGORIES(
         .SetDescription("Events from CrOS Camera GPU operations"),
     perfetto::Category(cros::kCameraTraceCategoryHalAdapter)
         .SetDescription("Events from CrOS Camera HAL adapter"),
+    perfetto::Category(cros::kCameraTraceCategoryHdrnetDebug)
+        .SetDescription("Events from CrOS HDRnet pipeline (debug)")
+        .SetTags("debug"),
     perfetto::Category(cros::kCameraTraceCategoryHdrnet)
         .SetDescription("Events from CrOS HDRnet pipeline"),
     perfetto::Category(cros::kCameraTraceCategoryZsl)

@@ -48,7 +48,7 @@ HdrNetProcessorDeviceAdapterIpu6::HdrNetProcessorDeviceAdapterIpu6(
 
 bool HdrNetProcessorDeviceAdapterIpu6::Initialize() {
   DCHECK(task_runner_->BelongsToCurrentThread());
-  TRACE_HDRNET();
+  TRACE_HDRNET_DEBUG();
 
   rect_ = std::make_unique<ScreenSpaceRect>();
   nearest_clamp_to_edge_ = Sampler(NearestClampToEdge());
@@ -98,13 +98,13 @@ bool HdrNetProcessorDeviceAdapterIpu6::Initialize() {
 
 void HdrNetProcessorDeviceAdapterIpu6::TearDown() {
   DCHECK(task_runner_->BelongsToCurrentThread());
-  TRACE_HDRNET();
+  TRACE_HDRNET_DEBUG();
 }
 
 bool HdrNetProcessorDeviceAdapterIpu6::WriteRequestParameters(
     Camera3CaptureDescriptor* request, MetadataLogger* metadata_logger) {
   DCHECK(task_runner_->BelongsToCurrentThread());
-  TRACE_HDRNET();
+  TRACE_HDRNET_DEBUG();
 
   std::array<uint8_t, 1> tonemap_curve_enable = {
       INTEL_VENDOR_CAMERA_CALLBACK_TM_CURVE_TRUE};
@@ -120,7 +120,7 @@ bool HdrNetProcessorDeviceAdapterIpu6::WriteRequestParameters(
 void HdrNetProcessorDeviceAdapterIpu6::ProcessResultMetadata(
     Camera3CaptureDescriptor* result, MetadataLogger* metadata_logger) {
   DCHECK(task_runner_->BelongsToCurrentThread());
-  TRACE_HDRNET();
+  TRACE_HDRNET_DEBUG();
 
   // TODO(jcliang): Theoretically metadata can come after the buffer as well.
   // Currently the pipeline would break if the metadata come after the buffers.
@@ -149,7 +149,7 @@ bool HdrNetProcessorDeviceAdapterIpu6::Preprocess(
     const SharedImage& input_yuv,
     const SharedImage& output_rgba) {
   DCHECK(task_runner_->BelongsToCurrentThread());
-  TRACE_HDRNET();
+  TRACE_HDRNET_DEBUG();
 
   if (!inverse_gtm_lut_.IsValid()) {
     LOGF(ERROR) << "Invalid GTM curve textures";
@@ -234,7 +234,7 @@ bool HdrNetProcessorDeviceAdapterIpu6::Postprocess(
     const SharedImage& input_rgba,
     const SharedImage& output_nv12) {
   DCHECK(task_runner_->BelongsToCurrentThread());
-  TRACE_HDRNET();
+  TRACE_HDRNET_DEBUG();
 
   if (!gtm_lut_.IsValid()) {
     return false;
@@ -319,7 +319,7 @@ bool HdrNetProcessorDeviceAdapterIpu6::Postprocess(
 
 Texture2D HdrNetProcessorDeviceAdapterIpu6::CreateGainLutTexture(
     base::span<const float> tonemap_curve, bool inverse) {
-  TRACE_HDRNET();
+  TRACE_HDRNET_DEBUG();
 
   auto interpolate = [](float i, float x0, float y0, float x1,
                         float y1) -> float {

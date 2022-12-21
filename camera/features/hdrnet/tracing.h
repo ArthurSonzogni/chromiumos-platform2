@@ -12,9 +12,16 @@
 #define TRACE_HDRNET(...) \
   TRACE_EVENT_AUTOGEN(kCameraTraceCategoryHdrnet, ##__VA_ARGS__)
 
+#define TRACE_HDRNET_DEBUG(...) \
+  TRACE_EVENT_AUTOGEN(kCameraTraceCategoryHdrnetDebug, ##__VA_ARGS__)
+
 #define TRACE_HDRNET_BEGIN(...) \
   TRACE_EVENT_BEGIN(kCameraTraceCategoryHdrnet, ##__VA_ARGS__)
 
 #define TRACE_HDRNET_END() TRACE_EVENT_END(kCameraTraceCategoryHdrnet)
+
+constexpr char kEventLinearRgbPipeline[] = "HdrNetProcessor::LinearRgbPipeline";
+constexpr char kEventPostprocess[] = "HdrNetProcessor::Postprocess";
+constexpr char kEventPreprocess[] = "HdrNetProcessor::Preprocess";
 
 #endif  // CAMERA_FEATURES_HDRNET_TRACING_H_
