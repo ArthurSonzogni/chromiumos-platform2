@@ -315,6 +315,7 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
                    std::move(auth_block_state));
           return true;
         });
+
     user_data_auth::AuthenticateAuthFactorRequest request;
     request.set_auth_factor_label(label);
     request.mutable_auth_input()->mutable_password_input()->set_secret(secret);
@@ -1079,10 +1080,12 @@ TEST_F(AuthSessionTestWithKeysetManagement, MigrationEnabledMigratesToUss) {
       keyset_management_->GetVaultKeyset(users_[0].obfuscated, kPasswordLabel);
   EXPECT_NE(vk1, nullptr);
   EXPECT_TRUE(vk1->IsForBackup());
+  EXPECT_TRUE(vk1->IsMigrated());
   std::unique_ptr<VaultKeyset> vk2 =
       keyset_management_->GetVaultKeyset(users_[0].obfuscated, kPasswordLabel2);
   EXPECT_NE(vk2, nullptr);
   EXPECT_TRUE(vk2->IsForBackup());
+  EXPECT_TRUE(vk2->IsMigrated());
 }
 
 // Test that AuthSession's auth factor map lists the factor from right backing

@@ -2273,15 +2273,31 @@ void AuthSession::PersistAuthFactorToUserSecretStashOnMigration(
       std::move(callback_error), std::move(key_blobs),
       std::move(auth_block_state));
 
-  if (status.ok()) {
-    ReportVkToUssMigrationStatus(VkToUssMigrationStatus::kSuccess);
-  } else {
-    LOG(ERROR) << "Failed to migrate VaultKeyset with label: "
-               << auth_factor_label;
+  if (!status.ok()) {
+    LOG(ERROR) << "USS migration of VaultKeyset with label "
+               << auth_factor_label
+               << " is failed in PersistAuthFactorToUserSecretStashImpl";
     ReportVkToUssMigrationStatus(VkToUssMigrationStatus::kFailedPersist);
+    std::move(on_done).Run(std::move(pre_migration_status));
   }
   LOG(INFO) << "USS migration completed for VaultKeyset with label: "
             << auth_factor_label;
+  // Migration completed with success. Now mark the VaultKeyset migrated.
+  std::unique_ptr<VaultKeyset> vk = keyset_management_->GetVaultKeyset(
+      obfuscated_username_, key_data.label());
+  if (!vk || !vk->MarkMigrated(/*migrated=*/true)) {
+    LOG(ERROR)
+        << "USS migration of VaultKeyset with label " << auth_factor_label
+        << " is completed, but failed persisting the migrated state in the "
+           "backup VaultKeyset.";
+    ReportVkToUssMigrationStatus(
+        VkToUssMigrationStatus::kFailedRecordingMigrated);
+    std::move(on_done).Run(std::move(pre_migration_status));
+  }
+
+  LOG(INFO) << "USS migration completed for VaultKeyset with label: "
+            << auth_factor_label;
+  ReportVkToUssMigrationStatus(VkToUssMigrationStatus::kSuccess);
   std::move(on_done).Run(std::move(pre_migration_status));
 }
 

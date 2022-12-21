@@ -368,7 +368,8 @@ enum class VkToUssMigrationStatus {
   kFailedUssCreation = 3,            // Unable to construct USS.
   kFailedAddingMigrationSecret = 4,  // Unable to construct a migration secret.
   kFailedUssDecrypt = 5,             // Unable to decrypt USS.
-  kMaxValue = kFailedUssDecrypt,
+  kFailedRecordingMigrated = 6,      // Unable to store migrated state.
+  kMaxValue = kFailedRecordingMigrated,
 };
 
 // Initializes cryptohome metrics. If this is not called, all calls to Report*
