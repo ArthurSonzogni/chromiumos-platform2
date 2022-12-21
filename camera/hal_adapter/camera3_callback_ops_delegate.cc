@@ -27,7 +27,6 @@ Camera3CallbackOpsDelegate::Camera3CallbackOpsDelegate(
 
 void Camera3CallbackOpsDelegate::ProcessCaptureResult(
     mojom::Camera3CaptureResultPtr result) {
-  VLOGF_ENTER();
   task_runner_->PostTask(
       FROM_HERE,
       base::BindOnce(&Camera3CallbackOpsDelegate::ProcessCaptureResultOnThread,
@@ -35,7 +34,6 @@ void Camera3CallbackOpsDelegate::ProcessCaptureResult(
 }
 
 void Camera3CallbackOpsDelegate::Notify(mojom::Camera3NotifyMsgPtr msg) {
-  VLOGF_ENTER();
   task_runner_->PostTask(
       FROM_HERE, base::BindOnce(&Camera3CallbackOpsDelegate::NotifyOnThread,
                                 base::AsWeakPtr(this), std::move(msg)));
@@ -43,7 +41,6 @@ void Camera3CallbackOpsDelegate::Notify(mojom::Camera3NotifyMsgPtr msg) {
 
 void Camera3CallbackOpsDelegate::ProcessCaptureResultOnThread(
     mojom::Camera3CaptureResultPtr result) {
-  VLOGF_ENTER();
   DCHECK(task_runner_->BelongsToCurrentThread());
   TRACE_HAL_ADAPTER("frame_number", result->frame_number);
 
@@ -66,7 +63,6 @@ void Camera3CallbackOpsDelegate::ProcessCaptureResultOnThread(
 
 void Camera3CallbackOpsDelegate::NotifyOnThread(
     mojom::Camera3NotifyMsgPtr msg) {
-  VLOGF_ENTER();
   DCHECK(task_runner_->BelongsToCurrentThread());
   TRACE_HAL_ADAPTER();
 

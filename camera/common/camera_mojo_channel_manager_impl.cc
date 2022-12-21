@@ -135,7 +135,6 @@ void CameraMojoChannelManagerImpl::RegisterServer(
         on_construct_callback,
     Callback on_error_callback) {
   DCHECK(ipc_thread_.task_runner()->BelongsToCurrentThread());
-  VLOGF_ENTER();
 
   camera_hal_server_task_ = {
       .pendingReceiverOrRemote = std::move(server),
@@ -152,7 +151,6 @@ void CameraMojoChannelManagerImpl::CreateMjpegDecodeAccelerator(
     Callback on_construct_callback,
     Callback on_error_callback) {
   DCHECK(ipc_thread_.task_runner()->BelongsToCurrentThread());
-  VLOGF_ENTER();
 
   JpegPendingMojoTask<mojo::PendingReceiver<mojom::MjpegDecodeAccelerator>>
       pending_task = {.pendingReceiverOrRemote = std::move(receiver),
@@ -170,7 +168,6 @@ void CameraMojoChannelManagerImpl::CreateJpegEncodeAccelerator(
     Callback on_construct_callback,
     Callback on_error_callback) {
   DCHECK(ipc_thread_.task_runner()->BelongsToCurrentThread());
-  VLOGF_ENTER();
 
   JpegPendingMojoTask<mojo::PendingReceiver<mojom::JpegEncodeAccelerator>>
       pending_task = {.pendingReceiverOrRemote = std::move(receiver),
@@ -186,8 +183,6 @@ void CameraMojoChannelManagerImpl::CreateJpegEncodeAccelerator(
 mojo::Remote<mojom::CameraAlgorithmOps>
 CameraMojoChannelManagerImpl::CreateCameraAlgorithmOpsRemote(
     const std::string& socket_path, const std::string& pipe_name) {
-  VLOGF_ENTER();
-
   mojo::ScopedMessagePipeHandle parent_pipe;
   mojo::Remote<mojom::CameraAlgorithmOps> algorithm_ops;
 
@@ -205,7 +200,6 @@ CameraMojoChannelManagerImpl::CreateCameraAlgorithmOpsRemote(
 
   LOGF(INFO) << "Connected to CameraAlgorithmOps";
 
-  VLOGF_EXIT();
   return algorithm_ops;
 }
 
@@ -248,7 +242,6 @@ void CameraMojoChannelManagerImpl::OnSocketFileStatusChange(
 
 void CameraMojoChannelManagerImpl::OnSocketFileStatusChangeOnIpcThread() {
   DCHECK(ipc_thread_.task_runner()->BelongsToCurrentThread());
-  VLOGF_ENTER();
 
   base::FilePath socket_path(constants::kCrosCameraSocketPathString);
   if (dispatcher_.is_bound()) {
@@ -273,7 +266,6 @@ void CameraMojoChannelManagerImpl::OnSocketFileStatusChangeOnIpcThread() {
 
 void CameraMojoChannelManagerImpl::TryConnectToDispatcher() {
   DCHECK(ipc_thread_.task_runner()->BelongsToCurrentThread());
-  VLOGF_ENTER();
 
   if (dispatcher_.is_bound()) {
     TryConsumePendingMojoTasks();
@@ -307,7 +299,6 @@ void CameraMojoChannelManagerImpl::TryConnectToDispatcher() {
 
 void CameraMojoChannelManagerImpl::TryConsumePendingMojoTasks() {
   DCHECK(ipc_thread_.task_runner()->BelongsToCurrentThread());
-  VLOGF_ENTER();
 
   if (camera_hal_server_task_.pendingReceiverOrRemote) {
     auto server_token = ReadToken(kServerTokenPath);
@@ -361,7 +352,6 @@ void CameraMojoChannelManagerImpl::TryConsumePendingMojoTasks() {
 
 void CameraMojoChannelManagerImpl::TearDownMojoEnvOnIpcThread() {
   DCHECK(ipc_thread_.task_runner()->BelongsToCurrentThread());
-  VLOGF_ENTER();
 
   ResetDispatcherPtr();
   ipc_support_.reset();
@@ -369,7 +359,6 @@ void CameraMojoChannelManagerImpl::TearDownMojoEnvOnIpcThread() {
 
 void CameraMojoChannelManagerImpl::ResetDispatcherPtr() {
   DCHECK(ipc_thread_.task_runner()->BelongsToCurrentThread());
-  VLOGF_ENTER();
 
   if (camera_hal_server_task_.on_error_callback) {
     std::move(camera_hal_server_task_.on_error_callback).Run();

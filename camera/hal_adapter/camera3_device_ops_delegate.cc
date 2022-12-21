@@ -56,7 +56,6 @@ Camera3DeviceOpsDelegate::~Camera3DeviceOpsDelegate() = default;
 void Camera3DeviceOpsDelegate::Initialize(
     mojo::PendingRemote<mojom::Camera3CallbackOps> callback_ops,
     InitializeCallback callback) {
-  VLOGF_ENTER();
   DCHECK(task_runner_->BelongsToCurrentThread());
   TRACE_HAL_ADAPTER();
 
@@ -67,7 +66,6 @@ void Camera3DeviceOpsDelegate::Initialize(
 void Camera3DeviceOpsDelegate::ConfigureStreams(
     mojom::Camera3StreamConfigurationPtr config,
     ConfigureStreamsCallback callback) {
-  VLOGF_ENTER();
   DCHECK(task_runner_->BelongsToCurrentThread());
   TRACE_HAL_ADAPTER("stream_configurations", ConvertToJsonString(config));
 
@@ -80,7 +78,6 @@ void Camera3DeviceOpsDelegate::ConfigureStreams(
 void Camera3DeviceOpsDelegate::ConstructDefaultRequestSettings(
     mojom::Camera3RequestTemplate type,
     ConstructDefaultRequestSettingsCallback callback) {
-  VLOGF_ENTER();
   DCHECK(task_runner_->BelongsToCurrentThread());
   TRACE_HAL_ADAPTER();
 
@@ -91,7 +88,6 @@ void Camera3DeviceOpsDelegate::ConstructDefaultRequestSettings(
 void Camera3DeviceOpsDelegate::ProcessCaptureRequest(
     mojom::Camera3CaptureRequestPtr request,
     ProcessCaptureRequestCallback callback) {
-  VLOGF_ENTER();
   DCHECK(task_runner_->BelongsToCurrentThread());
   for (const auto& output_buffer : request->output_buffers) {
     TRACE_HAL_ADAPTER_BEGIN(
@@ -106,7 +102,6 @@ void Camera3DeviceOpsDelegate::ProcessCaptureRequest(
 }
 
 void Camera3DeviceOpsDelegate::Dump(mojo::ScopedHandle fd) {
-  VLOGF_ENTER();
   DCHECK(task_runner_->BelongsToCurrentThread());
   TRACE_HAL_ADAPTER();
 
@@ -114,7 +109,6 @@ void Camera3DeviceOpsDelegate::Dump(mojo::ScopedHandle fd) {
 }
 
 void Camera3DeviceOpsDelegate::Flush(FlushCallback callback) {
-  VLOGF_ENTER();
   DCHECK(task_runner_->BelongsToCurrentThread());
   TRACE_HAL_ADAPTER();
 
@@ -132,7 +126,6 @@ void Camera3DeviceOpsDelegate::RegisterBuffer(
     const std::vector<uint32_t>& strides,
     const std::vector<uint32_t>& offsets,
     RegisterBufferCallback callback) {
-  VLOGF_ENTER();
   DCHECK(task_runner_->BelongsToCurrentThread());
   TRACE_HAL_ADAPTER("buffer_id", buffer_id);
 
@@ -142,7 +135,6 @@ void Camera3DeviceOpsDelegate::RegisterBuffer(
 }
 
 void Camera3DeviceOpsDelegate::Close(CloseCallback callback) {
-  VLOGF_ENTER();
   DCHECK(task_runner_->BelongsToCurrentThread());
   TRACE_HAL_ADAPTER();
 
@@ -152,7 +144,6 @@ void Camera3DeviceOpsDelegate::Close(CloseCallback callback) {
 void Camera3DeviceOpsDelegate::ConfigureStreamsAndGetAllocatedBuffers(
     mojom::Camera3StreamConfigurationPtr config,
     ConfigureStreamsAndGetAllocatedBuffersCallback callback) {
-  VLOGF_ENTER();
   DCHECK(task_runner_->BelongsToCurrentThread());
   TRACE_HAL_ADAPTER("stream_configurations", ConvertToJsonString(config));
 

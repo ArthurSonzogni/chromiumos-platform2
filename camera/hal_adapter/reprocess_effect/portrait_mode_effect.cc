@@ -60,7 +60,6 @@ int32_t PortraitModeEffect::InitializeAndGetVendorTags(
     std::vector<VendorTagInfo>* request_vendor_tags,
     std::vector<VendorTagInfo>* result_vendor_tags,
     CameraMojoChannelManagerToken* token) {
-  VLOGF_ENTER();
   if (!request_vendor_tags || !result_vendor_tags) {
     return -EINVAL;
   }
@@ -98,8 +97,6 @@ int32_t PortraitModeEffect::ReprocessRequest(
     uint32_t orientation,
     android::CameraMetadata* result_metadata,
     buffer_handle_t output_buffer) {
-  VLOGF_ENTER();
-
   constexpr base::TimeDelta kPortraitProcessorTimeout = base::Seconds(15);
   if (!input_buffer || !output_buffer) {
     return -EINVAL;
@@ -280,7 +277,6 @@ void PortraitModeEffect::UpdateResultMetadata(
 
 void PortraitModeEffect::ReturnCallback(uint32_t status,
                                         int32_t buffer_handle) {
-  VLOGF_ENTER();
   base::AutoLock auto_lock(lock_);
   return_status_ = -status;
   condvar_.Signal();

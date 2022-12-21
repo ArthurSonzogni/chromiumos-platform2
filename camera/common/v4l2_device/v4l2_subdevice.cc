@@ -27,12 +27,9 @@
 namespace cros {
 
 V4L2Subdevice::V4L2Subdevice(const std::string name)
-    : V4L2Device(name), state_(SubdevState::CLOSED) {
-  VLOGF_ENTER();
-}
+    : V4L2Device(name), state_(SubdevState::CLOSED) {}
 
 V4L2Subdevice::~V4L2Subdevice() {
-  VLOGF_ENTER();
   {
     base::AutoLock l(state_lock_);
     if (state_ == SubdevState::CLOSED) {
@@ -43,7 +40,6 @@ V4L2Subdevice::~V4L2Subdevice() {
 }
 
 int V4L2Subdevice::Open(int flags) {
-  VLOGF_ENTER();
   base::AutoLock l(state_lock_);
   int status = V4L2Device::Open(flags);
   if (status == 0)
@@ -52,7 +48,6 @@ int V4L2Subdevice::Open(int flags) {
 }
 
 int V4L2Subdevice::Close() {
-  VLOGF_ENTER();
   base::AutoLock l(state_lock_);
   int status = V4L2Device::Close();
   state_ = (status == 0) ? SubdevState::CLOSED : SubdevState::ERROR;
@@ -60,7 +55,6 @@ int V4L2Subdevice::Close() {
 }
 
 int V4L2Subdevice::SetFormat(const struct v4l2_subdev_format& format) {
-  VLOGF_ENTER();
   base::AutoLock l(state_lock_);
   if ((state_ != SubdevState::OPEN) && (state_ != SubdevState::CONFIGURED)) {
     LOGF(ERROR) << "Invalid device state " << static_cast<int>(state_);
@@ -94,7 +88,6 @@ int V4L2Subdevice::SetFormat(const struct v4l2_subdev_format& format) {
 }
 
 int V4L2Subdevice::GetFormat(struct v4l2_subdev_format* format) {
-  VLOGF_ENTER();
   base::AutoLock l(state_lock_);
   if ((state_ != SubdevState::OPEN) && (state_ != SubdevState::CONFIGURED)) {
     LOGF(ERROR) << "Invalid device state " << static_cast<int>(state_);
@@ -122,7 +115,6 @@ int V4L2Subdevice::GetPadFormat(int pad_index,
                                 int* width,
                                 int* height,
                                 int* code) {
-  VLOGF_ENTER();
   if (!width || !height || !code) {
     return -EINVAL;
   }
@@ -140,7 +132,6 @@ int V4L2Subdevice::GetPadFormat(int pad_index,
 }
 
 int V4L2Subdevice::SetSelection(const struct v4l2_subdev_selection& selection) {
-  VLOGF_ENTER();
   base::AutoLock l(state_lock_);
   if ((state_ != SubdevState::OPEN) && (state_ != SubdevState::CONFIGURED)) {
     LOGF(ERROR) << "Invalid device state " << static_cast<int>(state_);

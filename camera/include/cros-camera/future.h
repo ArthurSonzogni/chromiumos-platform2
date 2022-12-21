@@ -63,14 +63,12 @@ class Future : public base::RefCountedThreadSafe<Future<T>> {
   /* Waits until the value to be ready and then return the value through
    * std::move(). */
   T Get() {
-    VLOGF_ENTER();
     lock_.Wait(-1);  // Wait indefinitely until the value is set.
     return std::move(value_);
   }
 
   /* Sets the value and then wake up the waiter. */
   void Set(T value) {
-    VLOGF_ENTER();
     value_ = std::move(value);
     lock_.Signal();
   }
@@ -79,7 +77,6 @@ class Future : public base::RefCountedThreadSafe<Future<T>> {
    * than or equal to 0 will wait indefinitely until the value is set.
    */
   bool Wait(int timeout_ms = 5000) {
-    VLOGF_ENTER();
     return lock_.Wait(timeout_ms);
   }
 
@@ -107,7 +104,6 @@ class Future<void> : public base::RefCountedThreadSafe<Future<void>> {
 
   /* Wakes up the waiter. */
   void Set() {
-    VLOGF_ENTER();
     lock_.Signal();
   }
 
@@ -115,7 +111,6 @@ class Future<void> : public base::RefCountedThreadSafe<Future<void>> {
    * than or equal to 0 will wait indefinitely until the value is set.
    */
   bool Wait(int timeout_ms = 5000) {
-    VLOGF_ENTER();
     return lock_.Wait(timeout_ms);
   }
 

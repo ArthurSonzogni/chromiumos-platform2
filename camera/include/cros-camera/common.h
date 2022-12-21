@@ -50,8 +50,6 @@ inline bool IsLogThrottled(timespec* last_ts, int interval_seconds) {
 #define VLOGFID(level, id) \
   VLOG(level) << __FUNCTION__ << "(): id: " << id << ": "
 
-#define VLOGF_ENTER() VLOGF(1) << "enter"
-#define VLOGF_EXIT() VLOGF(1) << "exit"
 #define ERRNO_OR_RET(ret) (errno ? -errno : (ret))
 
 // To keep compatibility with the existing code paths enabled by NDEBUG or

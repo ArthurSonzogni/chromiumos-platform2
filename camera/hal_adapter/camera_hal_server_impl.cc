@@ -49,18 +49,14 @@ CameraHalServerImpl::CameraHalServerImpl()
     : mojo_manager_(CameraMojoChannelManager::FromToken(
           CameraMojoChannelManagerToken::CreateInstance())),
       ipc_bridge_(new IPCBridge(this, mojo_manager_.get())) {
-  VLOGF_ENTER();
   InitializeCameraTrace();
 }
 
 CameraHalServerImpl::~CameraHalServerImpl() {
-  VLOGF_ENTER();
-
   ExitOnMainThread(0);
 }
 
 void CameraHalServerImpl::Start() {
-  VLOGF_ENTER();
   DCHECK_CALLED_ON_VALID_THREAD(thread_checker_);
 
   if (GpuResources::IsSupported()) {
@@ -114,7 +110,6 @@ CameraHalServerImpl::IPCBridge::~IPCBridge() {
 void CameraHalServerImpl::IPCBridge::Start(
     CameraHalAdapter* camera_hal_adapter,
     SetPrivacySwitchCallback set_privacy_switch_callback) {
-  VLOGF_ENTER();
   DCHECK(ipc_task_runner_->BelongsToCurrentThread());
 
   if (receiver_.is_bound()) {
@@ -139,7 +134,6 @@ void CameraHalServerImpl::IPCBridge::Start(
 void CameraHalServerImpl::IPCBridge::CreateChannel(
     mojo::PendingReceiver<mojom::CameraModule> camera_module_receiver,
     mojom::CameraClientType camera_client_type) {
-  VLOGF_ENTER();
   DCHECK(ipc_task_runner_->BelongsToCurrentThread());
 
   camera_hal_adapter_->OpenCameraHal(std::move(camera_module_receiver),
@@ -201,7 +195,6 @@ void CameraHalServerImpl::IPCBridge::GetAutoFramingSupported(
 
 void CameraHalServerImpl::IPCBridge::NotifyCameraActivityChange(
     int32_t camera_id, bool opened, mojom::CameraClientType type) {
-  VLOGF_ENTER();
   DCHECK(ipc_task_runner_->BelongsToCurrentThread());
   DCHECK(callbacks_.is_bound());
 
@@ -217,7 +210,6 @@ void CameraHalServerImpl::IPCBridge::OnServerRegistered(
     SetPrivacySwitchCallback set_privacy_switch_callback,
     int32_t result,
     mojo::PendingRemote<mojom::CameraHalServerCallbacks> callbacks) {
-  VLOGF_ENTER();
   DCHECK(ipc_task_runner_->BelongsToCurrentThread());
 
   if (result != 0) {
@@ -242,7 +234,6 @@ void CameraHalServerImpl::IPCBridge::OnServerRegistered(
 }
 
 void CameraHalServerImpl::IPCBridge::OnServiceMojoChannelError() {
-  VLOGF_ENTER();
   DCHECK(ipc_task_runner_->BelongsToCurrentThread());
 
   // The CameraHalDispatcher Mojo parent is probably dead. We need to restart
@@ -258,7 +249,6 @@ void CameraHalServerImpl::IPCBridge::OnServiceMojoChannelError() {
 
 void CameraHalServerImpl::IPCBridge::OnPrivacySwitchStatusChanged(
     int camera_id, PrivacySwitchState state) {
-  VLOGF_ENTER();
   DCHECK(ipc_task_runner_->BelongsToCurrentThread());
   DCHECK(callbacks_.is_bound());
 
@@ -274,7 +264,6 @@ void CameraHalServerImpl::IPCBridge::OnPrivacySwitchStatusChanged(
 }
 
 int CameraHalServerImpl::LoadCameraHal() {
-  VLOGF_ENTER();
   DCHECK(!camera_hal_adapter_);
   DCHECK_EQ(cros_camera_hals_.size(), 0);
   DCHECK_CALLED_ON_VALID_THREAD(thread_checker_);
@@ -358,7 +347,6 @@ int CameraHalServerImpl::LoadCameraHal() {
 }
 
 void CameraHalServerImpl::ExitOnMainThread(int exit_status) {
-  VLOGF_ENTER();
   DCHECK_CALLED_ON_VALID_THREAD(thread_checker_);
 
   for (auto* cros_camera_hal : cros_camera_hals_) {

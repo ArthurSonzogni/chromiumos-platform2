@@ -109,7 +109,6 @@ class CameraAlgorithmImpl {
   }
 
   void UpdateReturn(uint32_t upd_id, uint32_t status, int buffer_fd) {
-    VLOGF_ENTER();
     if (buffer_fd != platform_shm_.GetPlatformHandle().fd) {
       LOGF(ERROR) << "Wrong buffer returned from update";
       return;
@@ -133,7 +132,6 @@ class CameraAlgorithmImpl {
   void Update(uint32_t upd_id) {
     const size_t kShmBufferSize = 2048;
 
-    VLOGF_ENTER();
     std::vector<uint8_t> upd_header(sizeof(uint32_t));
     base::WritableSharedMemoryRegion shm_region =
         base::WritableSharedMemoryRegion::Create(kShmBufferSize);
@@ -162,7 +160,6 @@ class CameraAlgorithmImpl {
     (*callback_ops_->update)(callback_ops_, upd_id, upd_header.data(),
                              upd_header.size(),
                              platform_shm_.GetPlatformHandle().fd);
-    VLOGF_EXIT();
   }
 
   base::Thread thread_;

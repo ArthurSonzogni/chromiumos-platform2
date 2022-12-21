@@ -80,7 +80,6 @@ void HalDeviceConnector::InitializeOnThread(
 
 int HalDeviceConnector::ConfigureStreams(
     camera3_stream_configuration_t* stream_list) {
-  VLOGF_ENTER();
   int32_t result = -EIO;
   dev_thread_.PostTaskSync(
       FROM_HERE, base::BindOnce(&HalDeviceConnector::ConfigureStreamsOnThread,
@@ -100,7 +99,6 @@ void HalDeviceConnector::ConfigureStreamsOnThread(
 
 const camera_metadata_t* HalDeviceConnector::ConstructDefaultRequestSettings(
     int type) {
-  VLOGF_ENTER();
   const camera_metadata_t* metadata = nullptr;
   dev_thread_.PostTaskSync(
       FROM_HERE,
@@ -121,7 +119,6 @@ void HalDeviceConnector::ConstructDefaultRequestSettingsOnThread(
 
 int HalDeviceConnector::ProcessCaptureRequest(
     camera3_capture_request_t* capture_request) {
-  VLOGF_ENTER();
   int32_t result = -EIO;
   dev_thread_.PostTaskSync(
       FROM_HERE,
@@ -133,7 +130,7 @@ int HalDeviceConnector::ProcessCaptureRequest(
 void HalDeviceConnector::ProcessCaptureRequestOnThread(
     camera3_capture_request_t* request, int* result) {
   DCHECK_CALLED_ON_VALID_THREAD(thread_checker_);
-  VLOGF_ENTER();
+
   if (!cam_device_) {
     *result = -ENODEV;
     return;
@@ -142,7 +139,6 @@ void HalDeviceConnector::ProcessCaptureRequestOnThread(
 }
 
 int HalDeviceConnector::Flush() {
-  VLOGF_ENTER();
   if (!cam_device_) {
     return -ENODEV;
   }
@@ -220,7 +216,6 @@ void ClientDeviceConnector::InitializeOnThread(
     const camera3_callback_ops_t* callback_ops,
     uint32_t device_api_version,
     base::OnceCallback<void(int32_t)> cb) {
-  VLOGF_ENTER();
   device_api_version_ = device_api_version;
   dev_ops_->Initialize(mojo_callback_ops_.BindNewPipeAndPassRemote(),
                        std::move(cb));
@@ -293,7 +288,6 @@ void ClientDeviceConnector::OnConfiguredStreams(
     base::OnceCallback<void(int32_t)> cb,
     int32_t result,
     cros::mojom::Camera3StreamConfigurationPtr updated_config) {
-  VLOGF_ENTER();
   if (result == 0) {
     for (const auto& s : updated_config->streams) {
       camera3_stream_t* ptr = reinterpret_cast<camera3_stream_t*>(s->id);
@@ -307,7 +301,6 @@ void ClientDeviceConnector::OnConfiguredStreams(
 
 const camera_metadata_t* ClientDeviceConnector::ConstructDefaultRequestSettings(
     int type) {
-  VLOGF_ENTER();
   auto future = cros::Future<const camera_metadata_t*>::Create(nullptr);
   dev_thread_.PostTaskAsync(
       FROM_HERE,
@@ -337,7 +330,6 @@ void ClientDeviceConnector::OnConstructedDefaultRequestSettings(
     int type,
     base::OnceCallback<void(const camera_metadata_t*)> cb,
     cros::mojom::CameraMetadataPtr settings) {
-  VLOGF_ENTER();
   if (!base::Contains(default_req_settings_map_, type)) {
     default_req_settings_map_[type] =
         cros::internal::DeserializeCameraMetadata(settings);
@@ -347,7 +339,6 @@ void ClientDeviceConnector::OnConstructedDefaultRequestSettings(
 
 int ClientDeviceConnector::ProcessCaptureRequest(
     camera3_capture_request_t* capture_request) {
-  VLOGF_ENTER();
   if (!capture_request) {
     return -EINVAL;
   }
@@ -401,7 +392,6 @@ void ClientDeviceConnector::ProcessCaptureRequestOnThread(
 cros::mojom::Camera3StreamBufferPtr
 ClientDeviceConnector::PrepareStreamBufferPtr(
     const camera3_stream_buffer_t* buffer) {
-  VLOGF_ENTER();
   uint32_t drm_format = 0;
   switch (cros::CameraBufferManager::GetV4L2PixelFormat(*buffer->buffer)) {
     case V4L2_PIX_FMT_JPEG:
@@ -471,7 +461,6 @@ ClientDeviceConnector::PrepareStreamBufferPtr(
 }
 
 int ClientDeviceConnector::Flush() {
-  VLOGF_ENTER();
   auto future = cros::Future<int32_t>::Create(nullptr);
   dev_ops_->Flush(cros::GetFutureCallback(future));
   if (!future->Wait()) {
@@ -481,7 +470,6 @@ int ClientDeviceConnector::Flush() {
 }
 
 void ClientDeviceConnector::Notify(cros::mojom::Camera3NotifyMsgPtr message) {
-  VLOGF_ENTER();
   camera3_notify_msg_t notify_msg;
   notify_msg.type = static_cast<int32_t>(message->type);
   if (message->type == cros::mojom::Camera3MsgType::CAMERA3_MSG_ERROR) {
@@ -506,7 +494,6 @@ void ClientDeviceConnector::Notify(cros::mojom::Camera3NotifyMsgPtr message) {
 
 void ClientDeviceConnector::ProcessCaptureResult(
     cros::mojom::Camera3CaptureResultPtr result) {
-  VLOGF_ENTER();
   camera3_capture_result_t capture_result;
 
   capture_result.frame_number = result->frame_number;

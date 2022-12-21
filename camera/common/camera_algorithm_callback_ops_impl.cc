@@ -28,9 +28,8 @@ void CameraAlgorithmCallbackOpsImpl::Return(uint32_t req_id,
   DCHECK(ipc_task_runner_->BelongsToCurrentThread());
   DCHECK(callback_ops_);
   DCHECK(callback_ops_->return_callback);
-  VLOGF_ENTER();
+
   callback_ops_->return_callback(callback_ops_, req_id, status, buffer_handle);
-  VLOGF_EXIT();
 }
 
 void CameraAlgorithmCallbackOpsImpl::Update(
@@ -39,7 +38,7 @@ void CameraAlgorithmCallbackOpsImpl::Update(
     mojo::ScopedHandle buffer_fd) {
   DCHECK(ipc_task_runner_->BelongsToCurrentThread());
   DCHECK(callback_ops_);
-  VLOGF_ENTER();
+
   if (callback_ops_->update == nullptr) {
     LOGF(FATAL) << "Algorithm calls unregistered update callback";
     return;
@@ -52,7 +51,6 @@ void CameraAlgorithmCallbackOpsImpl::Update(
   }
   callback_ops_->update(callback_ops_, upd_id, upd_header.data(),
                         upd_header.size(), fd.release());
-  VLOGF_EXIT();
 }
 
 mojo::PendingRemote<mojom::CameraAlgorithmCallbackOps>

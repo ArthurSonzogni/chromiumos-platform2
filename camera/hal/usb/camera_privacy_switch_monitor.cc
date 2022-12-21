@@ -49,13 +49,9 @@ bool IsControlAvailable(int device_fd) {
 }  // namespace
 
 CameraPrivacySwitchMonitor::CameraPrivacySwitchMonitor()
-    : state_(PrivacySwitchState::kUnknown), event_thread_("V4L2Event") {
-  VLOGF_ENTER();
-}
+    : state_(PrivacySwitchState::kUnknown), event_thread_("V4L2Event") {}
 
 CameraPrivacySwitchMonitor::~CameraPrivacySwitchMonitor() {
-  VLOGF_ENTER();
-
   UnsubscribeEvents();
 }
 

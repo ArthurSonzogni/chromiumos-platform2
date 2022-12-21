@@ -64,7 +64,6 @@ void GPUAlgoManager::ReturnCallbackForwarder(
     uint32_t req_id,
     uint32_t status,
     int32_t buffer_handle) {
-  VLOGF_ENTER();
   if (callback_ops) {
     auto self = const_cast<GPUAlgoManager*>(
         static_cast<const GPUAlgoManager*>(callback_ops));

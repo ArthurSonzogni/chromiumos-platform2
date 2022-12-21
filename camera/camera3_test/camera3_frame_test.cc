@@ -690,7 +690,6 @@ void Camera3FlushRequestsTest::CheckAllResultReceived(uint32_t frame_number) {
 
 void Camera3FlushRequestsTest::ProcessCaptureResult(
     const camera3_capture_result* result) {
-  VLOGF_ENTER();
   ASSERT_NE(nullptr, result) << "Capture result is null";
 
   EXPECT_EQ(result->result != nullptr, result->partial_result != 0)
@@ -711,7 +710,6 @@ void Camera3FlushRequestsTest::ProcessCaptureResult(
 void Camera3FlushRequestsTest::Notify(const camera3_notify_msg* msg) {
   // TODO(shik): support the partial failure cases
 
-  VLOGF_ENTER();
   if (msg->type == CAMERA3_MSG_ERROR) {
     const camera3_error_msg_t& error = msg->message.error;
     if (error.error_code == CAMERA3_MSG_ERROR_REQUEST ||
@@ -1247,7 +1245,6 @@ void Camera3ResultTimestampsTest::SetUp() {
 }
 
 void Camera3ResultTimestampsTest::Notify(const camera3_notify_msg* msg) {
-  VLOGF_ENTER();
   EXPECT_EQ(CAMERA3_MSG_SHUTTER, msg->type)
       << "Shutter error = " << msg->message.error.error_code;
 
@@ -1260,7 +1257,6 @@ void Camera3ResultTimestampsTest::ProcessResultMetadataOutputBuffers(
     uint32_t frame_number,
     ScopedCameraMetadata metadata,
     std::vector<cros::ScopedBufferHandle> buffers) {
-  VLOGF_ENTER();
   result_metadata_.push_back(std::move(metadata));
 }
 
@@ -1347,7 +1343,6 @@ void Camera3InvalidBufferTest::SetUp() {
 
 void Camera3InvalidBufferTest::ProcessCaptureResult(
     const camera3_capture_result* result) {
-  VLOGF_ENTER();
   ASSERT_NE(nullptr, result) << "Capture result is null";
   for (uint32_t i = 0; i < result->num_output_buffers; i++) {
     EXPECT_EQ(CAMERA3_BUFFER_STATUS_ERROR, result->output_buffers[i].status)

@@ -201,7 +201,6 @@ ZslHelper::ZslHelper(const camera_metadata_t* static_info)
     : zsl_buffer_manager_(new ZslBufferManager),
       fence_sync_thread_("FenceSyncThread"),
       override_current_timestamp_for_testing_(kOverrideCurrentTimestampNotSet) {
-  VLOGF_ENTER();
   if (!IsCapabilitySupported(
           static_info,
           ANDROID_REQUEST_AVAILABLE_CAPABILITIES_PRIVATE_REPROCESSING)) {
@@ -460,8 +459,6 @@ bool ZslHelper::ProcessZslCaptureRequest(Camera3CaptureDescriptor* request,
 }
 
 void ZslHelper::AttachRequest(Camera3CaptureDescriptor* request) {
-  VLOGF_ENTER();
-
   base::AutoLock l(ring_buffer_lock_);
   TryReleaseBuffer();
   auto* buffer = zsl_buffer_manager_->GetBuffer();
@@ -485,7 +482,6 @@ void ZslHelper::AttachRequest(Camera3CaptureDescriptor* request) {
 
 bool ZslHelper::TransformRequest(Camera3CaptureDescriptor* request,
                                  SelectionStrategy strategy) {
-  VLOGF_ENTER();
   base::AutoLock l(ring_buffer_lock_);
 
   const int32_t jpeg_orientation = [&]() {
@@ -538,7 +534,6 @@ bool ZslHelper::TransformRequest(Camera3CaptureDescriptor* request,
 
 void ZslHelper::ProcessZslCaptureResult(Camera3CaptureDescriptor* result,
                                         bool* is_input_transformed) {
-  VLOGF_ENTER();
   std::vector<camera3_stream_buffer_t> zsl_detached_output_buffers;
   for (const auto& buffer : result->GetOutputBuffers()) {
     if (buffer.stream == bi_stream_.get()) {
@@ -660,8 +655,6 @@ bool ZslHelper::SelectZslStreamSize(const camera_metadata_t* static_info,
                                     uint32_t* bi_width,
                                     uint32_t* bi_height,
                                     int64_t* min_frame_duration) {
-  VLOGF_ENTER();
-
   *bi_width = 0;
   *bi_height = 0;
   camera_metadata_ro_entry entry;

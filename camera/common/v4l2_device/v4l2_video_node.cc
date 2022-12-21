@@ -48,7 +48,6 @@ namespace cros {
 #define ARRAY_SIZE(array) (sizeof(array) / sizeof((array)[0]))
 
 V4L2Buffer::V4L2Buffer() : v4l2_buf_{} {
-  VLOGF_ENTER();
   v4l2_buf_.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
   planes_.resize(VIDEO_MAX_PLANES);
   v4l2_buf_.m.planes = planes_.data();
@@ -56,7 +55,6 @@ V4L2Buffer::V4L2Buffer() : v4l2_buf_{} {
 }
 
 V4L2Buffer::V4L2Buffer(const V4L2Buffer& buf) : v4l2_buf_(buf.v4l2_buf_) {
-  VLOGF_ENTER();
   if (V4L2_TYPE_IS_MULTIPLANAR(v4l2_buf_.type)) {
     planes_ = buf.planes_;
     v4l2_buf_.m.planes = planes_.data();
@@ -386,12 +384,9 @@ v4l2_format* V4L2Format::Get() {
 }
 
 V4L2VideoNode::V4L2VideoNode(const std::string name)
-    : V4L2Device(name), state_(VideoNodeState::CLOSED) {
-  VLOGF_ENTER();
-}
+    : V4L2Device(name), state_(VideoNodeState::CLOSED) {}
 
 V4L2VideoNode::~V4L2VideoNode() {
-  VLOGF_ENTER();
   {
     base::AutoLock l(state_lock_);
     if (state_ == VideoNodeState::CLOSED) {
@@ -522,7 +517,6 @@ int V4L2VideoNode::Start() {
 }
 
 int V4L2VideoNode::SetFormat(const V4L2Format& format) {
-  VLOGF_ENTER();
   base::AutoLock l(state_lock_);
   if ((state_ != VideoNodeState::OPEN) &&
       (state_ != VideoNodeState::CONFIGURED) &&
@@ -574,7 +568,6 @@ int V4L2VideoNode::SetFormat(const V4L2Format& format) {
 }
 
 int V4L2VideoNode::SetSelection(const struct v4l2_selection& selection) {
-  VLOGF_ENTER();
   base::AutoLock l(state_lock_);
   if ((state_ != VideoNodeState::OPEN) &&
       (state_ != VideoNodeState::CONFIGURED)) {
@@ -603,7 +596,6 @@ int V4L2VideoNode::MapMemory(unsigned int index,
                              int prot,
                              int flags,
                              std::vector<void*>* mapped) {
-  VLOGF_ENTER();
   base::AutoLock l(state_lock_);
   if ((state_ != VideoNodeState::OPEN) &&
       (state_ != VideoNodeState::CONFIGURED) &&
@@ -641,7 +633,6 @@ int V4L2VideoNode::MapMemory(unsigned int index,
 }
 
 int V4L2VideoNode::GrabFrame(V4L2Buffer* buf) {
-  VLOGF_ENTER();
   base::AutoLock l(state_lock_);
   if (state_ != VideoNodeState::STARTED) {
     LOGF(ERROR) << name_ << " invalid device state "
@@ -662,8 +653,6 @@ int V4L2VideoNode::GrabFrame(V4L2Buffer* buf) {
 }
 
 int V4L2VideoNode::PutFrame(V4L2Buffer* buf) {
-  VLOGF_ENTER();
-
   int ret = Qbuf(buf);
   PrintBufferInfo(__FUNCTION__, *buf);
 
@@ -710,7 +699,6 @@ int V4L2VideoNode::SetupBuffers(size_t num_buffers,
                                 bool is_cached,
                                 enum v4l2_memory memory_type,
                                 std::vector<V4L2Buffer>* buffers) {
-  VLOGF_ENTER();
   if (num_buffers == 0 || !buffers || !buffers->empty()) {
     return -EINVAL;
   }
@@ -752,8 +740,6 @@ int V4L2VideoNode::SetupBuffers(size_t num_buffers,
 }
 
 int V4L2VideoNode::QueryCap(struct v4l2_capability* cap) {
-  VLOGF_ENTER();
-
   int ret = ::ioctl(fd_, VIDIOC_QUERYCAP, cap);
 
   if (ret < 0) {
@@ -775,7 +761,6 @@ int V4L2VideoNode::QueryCap(struct v4l2_capability* cap) {
 int V4L2VideoNode::RequestBuffers(size_t num_buffers,
                                   enum v4l2_memory memory_type,
                                   unsigned int flags) {
-  VLOGF_ENTER();
   if (state_ == VideoNodeState::CLOSED)
     return 0;
 
@@ -825,8 +810,6 @@ void V4L2VideoNode::PrintBufferInfo(const std::string func,
 }
 
 int V4L2VideoNode::Qbuf(V4L2Buffer* buf) {
-  VLOGF_ENTER();
-
   int ret = ::ioctl(fd_, VIDIOC_QBUF, buf->Get());
   if (ret < 0) {
     PLOGF(ERROR) << name_ << " VIDIOC_QBUF failed";
@@ -835,7 +818,6 @@ int V4L2VideoNode::Qbuf(V4L2Buffer* buf) {
 }
 
 int V4L2VideoNode::Dqbuf(V4L2Buffer* buf) {
-  VLOGF_ENTER();
   buf->SetMemory(memory_type_);
   buf->SetType(buffer_type_);
 
@@ -849,7 +831,6 @@ int V4L2VideoNode::Dqbuf(V4L2Buffer* buf) {
 int V4L2VideoNode::QueryBuffer(int index,
                                enum v4l2_memory memory_type,
                                V4L2Buffer* buf) {
-  VLOGF_ENTER();
   buf->SetFlags(0x0);
   buf->SetMemory(memory_type);
   buf->SetType(buffer_type_);
@@ -876,7 +857,6 @@ int V4L2VideoNode::QueryBuffer(int index,
 }
 
 int V4L2VideoNode::GetFormat(V4L2Format* format) {
-  VLOGF_ENTER();
   if (!format) {
     return -EINVAL;
   }

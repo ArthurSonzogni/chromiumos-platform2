@@ -33,8 +33,6 @@ CameraClientOps::CameraClientOps() : camera3_callback_ops_(this) {}
 
 mojo::PendingReceiver<mojom::Camera3DeviceOps> CameraClientOps::Init(
     uint32_t device_api_version, CaptureResultCallback result_callback) {
-  VLOGF_ENTER();
-
   ops_runner_ = base::SequencedTaskRunnerHandle::Get();
   capturing_ = false;
   device_api_version_ = device_api_version;
@@ -46,7 +44,6 @@ mojo::PendingReceiver<mojom::Camera3DeviceOps> CameraClientOps::Init(
 void CameraClientOps::StartCapture(int32_t camera_id,
                                    const cros_cam_format_info_t* format,
                                    int32_t jpeg_max_size) {
-  VLOGF_ENTER();
   DCHECK(ops_runner_->RunsTasksInCurrentSequence());
 
   capturing_ = true;
@@ -58,7 +55,6 @@ void CameraClientOps::StartCapture(int32_t camera_id,
 }
 
 void CameraClientOps::StopCapture(IntOnceCallback close_callback) {
-  VLOGF_ENTER();
   DCHECK(ops_runner_->RunsTasksInCurrentSequence());
 
   capturing_ = false;
@@ -68,7 +64,6 @@ void CameraClientOps::StopCapture(IntOnceCallback close_callback) {
 }
 
 void CameraClientOps::Reset() {
-  VLOGF_ENTER();
   DCHECK(ops_runner_->RunsTasksInCurrentSequence());
 
   capturing_ = false;
@@ -78,7 +73,6 @@ void CameraClientOps::Reset() {
 
 void CameraClientOps::ProcessCaptureResult(
     mojom::Camera3CaptureResultPtr result) {
-  VLOGF_ENTER();
   DCHECK(ops_runner_->RunsTasksInCurrentSequence());
 
   if (!capturing_) {
@@ -180,7 +174,6 @@ void CameraClientOps::ProcessCaptureResult(
 }
 
 void CameraClientOps::Notify(mojom::Camera3NotifyMsgPtr msg) {
-  VLOGF_ENTER();
   DCHECK(ops_runner_->RunsTasksInCurrentSequence());
 
   // We only need to handle error messages for libcamera_connector.
@@ -195,7 +188,6 @@ void CameraClientOps::Notify(mojom::Camera3NotifyMsgPtr msg) {
 }
 
 void CameraClientOps::InitializeDevice() {
-  VLOGF_ENTER();
   DCHECK(ops_runner_->RunsTasksInCurrentSequence());
 
   device_ops_->Initialize(camera3_callback_ops_.BindNewPipeAndPassRemote(),
@@ -204,7 +196,6 @@ void CameraClientOps::InitializeDevice() {
 }
 
 void CameraClientOps::OnInitializedDevice(int32_t result) {
-  VLOGF_ENTER();
   DCHECK(ops_runner_->RunsTasksInCurrentSequence());
 
   if (result != 0) {
@@ -218,7 +209,6 @@ void CameraClientOps::OnInitializedDevice(int32_t result) {
 }
 
 void CameraClientOps::ConfigureStreams() {
-  VLOGF_ENTER();
   DCHECK(ops_runner_->RunsTasksInCurrentSequence());
   if (!capturing_) {
     return;
@@ -259,7 +249,6 @@ void CameraClientOps::OnConfiguredStreams(
     cros::mojom::Camera3StreamConfigurationPtr updated_config,
     base::flat_map<uint64_t, std::vector<mojom::Camera3StreamBufferPtr>>
         allocated_buffers) {
-  VLOGF_ENTER();
   DCHECK(ops_runner_->RunsTasksInCurrentSequence());
 
   if (result != 0) {
@@ -276,7 +265,6 @@ void CameraClientOps::OnConfiguredStreams(
 }
 
 void CameraClientOps::ConstructDefaultRequestSettings() {
-  VLOGF_ENTER();
   DCHECK(ops_runner_->RunsTasksInCurrentSequence());
   if (!capturing_) {
     return;
@@ -293,7 +281,6 @@ void CameraClientOps::ConstructDefaultRequestSettings() {
 
 void CameraClientOps::OnConstructedDefaultRequestSettings(
     mojom::CameraMetadataPtr settings) {
-  VLOGF_ENTER();
   DCHECK(ops_runner_->RunsTasksInCurrentSequence());
 
   if (settings.is_null()) {
@@ -309,7 +296,6 @@ void CameraClientOps::OnConstructedDefaultRequestSettings(
 }
 
 void CameraClientOps::ConstructCaptureRequest() {
-  VLOGF_ENTER();
   ops_runner_->PostTask(
       FROM_HERE,
       base::BindOnce(&CameraClientOps::ConstructCaptureRequestOnThread,
@@ -317,7 +303,6 @@ void CameraClientOps::ConstructCaptureRequest() {
 }
 
 void CameraClientOps::ConstructCaptureRequestOnThread() {
-  VLOGF_ENTER();
   DCHECK(ops_runner_->RunsTasksInCurrentSequence());
 
   if (!buffer_manager_.HasFreeBuffers()) {
@@ -343,7 +328,6 @@ void CameraClientOps::ConstructCaptureRequestOnThread() {
 
 void CameraClientOps::ProcessCaptureRequest(
     mojom::Camera3CaptureRequestPtr request) {
-  VLOGF_ENTER();
   DCHECK(ops_runner_->RunsTasksInCurrentSequence());
   if (!capturing_) {
     return;
@@ -356,7 +340,6 @@ void CameraClientOps::ProcessCaptureRequest(
 }
 
 void CameraClientOps::OnProcessedCaptureRequest(int32_t result) {
-  VLOGF_ENTER();
   DCHECK(ops_runner_->RunsTasksInCurrentSequence());
 
   if (result != 0) {
@@ -369,7 +352,6 @@ void CameraClientOps::OnProcessedCaptureRequest(int32_t result) {
 }
 
 void CameraClientOps::SendCaptureResult(int status, cros_cam_frame_t* frame) {
-  VLOGF_ENTER();
   DCHECK(ops_runner_->RunsTasksInCurrentSequence());
 
   cros_cam_capture_result_t result = {.status = status, .frame = frame};
@@ -378,7 +360,6 @@ void CameraClientOps::SendCaptureResult(int status, cros_cam_frame_t* frame) {
 
 void CameraClientOps::OnClosedDevice(IntOnceCallback close_callback,
                                      int32_t result) {
-  VLOGF_ENTER();
   DCHECK(ops_runner_->RunsTasksInCurrentSequence());
 
   device_ops_.reset();

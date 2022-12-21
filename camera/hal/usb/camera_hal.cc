@@ -790,7 +790,6 @@ static int camera_device_open_ext(const hw_module_t* module,
                                   const char* name,
                                   hw_device_t** device,
                                   ClientType client_type) {
-  VLOGF_ENTER();
   // Make sure hal adapter loads the correct symbol.
   if (module != &HAL_MODULE_INFO_SYM.common) {
     LOGF(ERROR) << std::hex << "Invalid module 0x" << module << " expected 0x"

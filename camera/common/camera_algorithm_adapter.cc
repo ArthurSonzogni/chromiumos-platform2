@@ -58,7 +58,6 @@ CameraAlgorithmAdapter::~CameraAlgorithmAdapter() = default;
 
 void CameraAlgorithmAdapter::Run(std::string pipe_name,
                                  base::ScopedFD channel) {
-  VLOGF_ENTER();
   auto future = cros::Future<void>::Create(&relay_);
   ipc_lost_cb_ = cros::GetFutureCallback(future);
   ipc_thread_.StartWithOptions(
@@ -84,7 +83,6 @@ void CameraAlgorithmAdapter::InitializeOnIpcThread(std::string pipe_name,
   mojo::PendingReceiver<mojom::CameraAlgorithmOps> pending_receiver(
       invitation.ExtractMessagePipe(pipe_name));
 
-  VLOGF_ENTER();
   const char* algo_lib_name = GetAlgorithmLibraryName(pipe_name);
   algo_dll_handle_ = dlopen(algo_lib_name, RTLD_NOW);
   if (!algo_dll_handle_) {
@@ -110,12 +108,11 @@ void CameraAlgorithmAdapter::InitializeOnIpcThread(std::string pipe_name,
     return;
   }
   is_algo_impl_bound_ = true;
-  VLOGF_EXIT();
 }
 
 void CameraAlgorithmAdapter::DestroyOnIpcThread() {
   DCHECK(ipc_thread_.task_runner()->BelongsToCurrentThread());
-  VLOGF_ENTER();
+
   if (is_algo_impl_bound_) {
     algo_impl_->Deinitialize();
     algo_impl_->Unbind();
@@ -126,7 +123,6 @@ void CameraAlgorithmAdapter::DestroyOnIpcThread() {
     dlclose(algo_dll_handle_);
   }
   std::move(ipc_lost_cb_).Run();
-  VLOGF_EXIT();
 }
 
 }  // namespace cros

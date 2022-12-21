@@ -25,7 +25,6 @@ Camera3PerfLog* Camera3PerfLog::GetInstance() {
 }
 
 Camera3PerfLog::~Camera3PerfLog() {
-  VLOGF_ENTER();
   if (!base::CommandLine::ForCurrentProcess()->HasSwitch("output_log"))
     return;
 

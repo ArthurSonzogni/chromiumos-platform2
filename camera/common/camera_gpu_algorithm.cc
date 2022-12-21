@@ -105,19 +105,16 @@ CameraGPUAlgorithm::CameraGPUAlgorithm()
       is_initialized_(false) {}
 
 void CameraGPUAlgorithm::InitializeOnThread() {
-  VLOGF_ENTER();
   if (!portrait_processor_.Init()) {
     LOGF(ERROR) << "Failed to initialize portrait processor";
     return;
   }
   is_initialized_ = true;
-  VLOGF_EXIT();
 }
 
 void CameraGPUAlgorithm::RequestOnThread(uint32_t req_id,
                                          std::vector<uint8_t> req_header,
                                          int32_t buffer_handle) {
-  VLOGF_ENTER();
   auto* header =
       reinterpret_cast<const CameraGPUAlgoCmdHeader*>(req_header.data());
   auto callback = [&](uint32_t status) {
@@ -174,7 +171,6 @@ void CameraGPUAlgorithm::RequestOnThread(uint32_t req_id,
                        header->command);
     callback(EINVAL);
   }
-  VLOGF_EXIT();
 }
 
 static int32_t Initialize(const camera_algorithm_callback_ops_t* callback_ops) {

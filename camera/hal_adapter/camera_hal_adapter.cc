@@ -73,12 +73,9 @@ CameraHalAdapter::CameraHalAdapter(
       vendor_tag_ops_id_(0),
       camera_metrics_(CameraMetrics::New()),
       mojo_manager_token_(token),
-      activity_callback_(activity_callback) {
-  VLOGF_ENTER();
-}
+      activity_callback_(activity_callback) {}
 
 CameraHalAdapter::~CameraHalAdapter() {
-  VLOGF_ENTER();
   camera_module_thread_.task_runner()->PostTask(
       FROM_HERE, base::BindOnce(&CameraHalAdapter::ResetModuleDelegateOnThread,
                                 base::Unretained(this), kIdAll));
@@ -103,7 +100,6 @@ CameraHalAdapter::~CameraHalAdapter() {
 }
 
 bool CameraHalAdapter::Start(GpuResources* gpu_resources) {
-  VLOGF_ENTER();
   TRACE_HAL_ADAPTER();
 
   gpu_resources_ = gpu_resources;
@@ -141,7 +137,6 @@ bool CameraHalAdapter::Start(GpuResources* gpu_resources) {
 void CameraHalAdapter::OpenCameraHal(
     mojo::PendingReceiver<mojom::CameraModule> camera_module_receiver,
     mojom::CameraClientType camera_client_type) {
-  VLOGF_ENTER();
   TRACE_HAL_ADAPTER("client_type", camera_client_type);
 
   auto module_delegate = std::make_unique<CameraModuleDelegate>(
@@ -162,7 +157,6 @@ int32_t CameraHalAdapter::OpenDevice(
     int32_t camera_id,
     mojo::PendingReceiver<mojom::Camera3DeviceOps> device_ops_receiver,
     mojom::CameraClientType camera_client_type) {
-  VLOGF_ENTER();
   DCHECK(camera_module_thread_.task_runner()->BelongsToCurrentThread());
   TRACE_HAL_ADAPTER("client_type", camera_client_type, "camera_id", camera_id);
 
@@ -321,7 +315,6 @@ mojom::SetEffectResult CameraHalAdapter::SetCameraEffect(
 }
 
 int32_t CameraHalAdapter::GetNumberOfCameras() {
-  VLOGF_ENTER();
   DCHECK(camera_module_thread_.task_runner()->BelongsToCurrentThread());
   TRACE_HAL_ADAPTER();
   return num_builtin_cameras_;
@@ -331,7 +324,6 @@ int32_t CameraHalAdapter::GetCameraInfo(
     int32_t camera_id,
     mojom::CameraInfoPtr* camera_info,
     mojom::CameraClientType camera_client_type) {
-  VLOGF_ENTER();
   DCHECK(camera_module_thread_.task_runner()->BelongsToCurrentThread());
   TRACE_HAL_ADAPTER("client_type", camera_client_type, "camera_id", camera_id);
 
@@ -393,7 +385,6 @@ int32_t CameraHalAdapter::GetCameraInfo(
 }
 
 int32_t CameraHalAdapter::SetTorchMode(int32_t camera_id, bool enabled) {
-  VLOGF_ENTER();
   DCHECK(camera_module_thread_.task_runner()->BelongsToCurrentThread());
   TRACE_HAL_ADAPTER("camera_id", camera_id);
 
@@ -414,7 +405,6 @@ int32_t CameraHalAdapter::SetTorchMode(int32_t camera_id, bool enabled) {
 }
 
 int32_t CameraHalAdapter::Init() {
-  VLOGF_ENTER();
   DCHECK(camera_module_thread_.task_runner()->BelongsToCurrentThread());
   TRACE_HAL_ADAPTER();
 
@@ -423,7 +413,6 @@ int32_t CameraHalAdapter::Init() {
 
 void CameraHalAdapter::GetVendorTagOps(
     mojo::PendingReceiver<mojom::VendorTagOps> vendor_tag_ops_receiver) {
-  VLOGF_ENTER();
   DCHECK(camera_module_thread_.task_runner()->BelongsToCurrentThread());
   TRACE_HAL_ADAPTER();
 
@@ -463,8 +452,6 @@ void CameraHalAdapter::camera_device_status_change(
     const camera_module_callbacks_t* callbacks,
     int internal_camera_id,
     int new_status) {
-  VLOGF_ENTER();
-
   auto* aux = static_cast<const CameraModuleCallbacksAux*>(callbacks);
   CameraHalAdapter* self = aux->adapter;
   self->camera_module_thread_.task_runner()->PostTask(
@@ -479,8 +466,6 @@ void CameraHalAdapter::torch_mode_status_change(
     const camera_module_callbacks_t* callbacks,
     const char* internal_camera_id,
     int new_status) {
-  VLOGF_ENTER();
-
   auto* aux = static_cast<const CameraModuleCallbacksAux*>(callbacks);
   CameraHalAdapter* self = aux->adapter;
   self->camera_module_thread_.task_runner()->PostTask(
@@ -531,7 +516,6 @@ void CameraHalAdapter::CameraDeviceStatusChange(
     const CameraModuleCallbacksAux* aux,
     int internal_camera_id,
     camera_device_status_t new_status) {
-  VLOGF_ENTER();
   DCHECK(camera_module_thread_.task_runner()->BelongsToCurrentThread());
   TRACE_HAL_ADAPTER("camera_id", internal_camera_id, "device_status",
                     new_status);
@@ -596,7 +580,6 @@ void CameraHalAdapter::TorchModeStatusChange(
     const CameraModuleCallbacksAux* aux,
     int internal_camera_id,
     torch_mode_status_t new_status) {
-  VLOGF_ENTER();
   DCHECK(camera_module_thread_.task_runner()->BelongsToCurrentThread());
   TRACE_HAL_ADAPTER("camera_id", internal_camera_id);
 
@@ -617,7 +600,6 @@ void CameraHalAdapter::TorchModeStatusChange(
 }
 
 void CameraHalAdapter::StartOnThread(base::OnceCallback<void(bool)> callback) {
-  VLOGF_ENTER();
   DCHECK(camera_module_thread_.task_runner()->BelongsToCurrentThread());
 
   if (reprocess_effect_manager_.Initialize(mojo_manager_token_) != 0) {
@@ -914,7 +896,6 @@ int CameraHalAdapter::GetPublicId(int module_id, int camera_id) {
 
 void CameraHalAdapter::CloseDevice(int32_t camera_id,
                                    mojom::CameraClientType camera_client_type) {
-  VLOGF_ENTER();
   DCHECK(camera_module_thread_.task_runner()->BelongsToCurrentThread());
   TRACE_HAL_ADAPTER("client_type", camera_client_type, "camera_id", camera_id);
 
@@ -942,7 +923,6 @@ void CameraHalAdapter::CloseDevice(int32_t camera_id,
 }
 
 void CameraHalAdapter::ResetModuleDelegateOnThread(uint32_t module_id) {
-  VLOGF_ENTER();
   DCHECK(camera_module_thread_.task_runner()->BelongsToCurrentThread());
   base::AutoLock l(module_delegates_lock_);
   if (module_id == kIdAll) {
@@ -953,7 +933,6 @@ void CameraHalAdapter::ResetModuleDelegateOnThread(uint32_t module_id) {
 }
 
 void CameraHalAdapter::ResetCallbacksDelegateOnThread(uint32_t callbacks_id) {
-  VLOGF_ENTER();
   DCHECK(
       camera_module_callbacks_thread_.task_runner()->BelongsToCurrentThread());
   base::AutoLock l(callbacks_delegates_lock_);
@@ -966,7 +945,6 @@ void CameraHalAdapter::ResetCallbacksDelegateOnThread(uint32_t callbacks_id) {
 
 void CameraHalAdapter::ResetVendorTagOpsDelegateOnThread(
     uint32_t vendor_tag_ops_id) {
-  VLOGF_ENTER();
   DCHECK(camera_module_thread_.task_runner()->BelongsToCurrentThread());
   base::AutoLock l(module_delegates_lock_);
   if (vendor_tag_ops_id == kIdAll) {
@@ -978,7 +956,6 @@ void CameraHalAdapter::ResetVendorTagOpsDelegateOnThread(
 
 int32_t CameraHalAdapter::SetCallbacks(
     mojo::PendingAssociatedRemote<mojom::CameraModuleCallbacks> callbacks) {
-  VLOGF_ENTER();
   DCHECK(camera_module_thread_.task_runner()->BelongsToCurrentThread());
   TRACE_HAL_ADAPTER();
 

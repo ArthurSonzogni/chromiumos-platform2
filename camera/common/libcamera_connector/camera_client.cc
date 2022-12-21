@@ -115,7 +115,6 @@ void CameraClient::Init(RegisterClientCallback register_client_callback,
 }
 
 int CameraClient::Exit() {
-  VLOGF_ENTER();
   auto future = cros::Future<int>::Create(nullptr);
   StopCurrentCapture(cros::GetFutureCallback(future));
   int ret = future->Get();
@@ -129,7 +128,6 @@ int CameraClient::Exit() {
 
 int CameraClient::SetCameraInfoCallback(cros_cam_get_cam_info_cb_t callback,
                                         void* context) {
-  VLOGF_ENTER();
   base::AutoLock l(camera_info_lock_);
 
   cam_info_callback_ = callback;
@@ -141,8 +139,6 @@ int CameraClient::SetCameraInfoCallback(cros_cam_get_cam_info_cb_t callback,
 int CameraClient::StartCapture(const cros_cam_capture_request_t* request,
                                cros_cam_capture_cb_t callback,
                                void* context) {
-  VLOGF_ENTER();
-
   auto future = cros::Future<int>::Create(nullptr);
   SessionRequest session_request = {
       .type = SessionRequestType::kStart,
@@ -156,8 +152,6 @@ int CameraClient::StartCapture(const cros_cam_capture_request_t* request,
 }
 
 int CameraClient::StopCapture(int id) {
-  VLOGF_ENTER();
-
   auto future = cros::Future<int>::Create(nullptr);
   SessionRequest session_request = {
       .type = SessionRequestType::kStop,
@@ -169,7 +163,6 @@ int CameraClient::StopCapture(int id) {
 
 void CameraClient::SetUpChannel(
     mojo::PendingRemote<mojom::CameraModule> camera_module) {
-  VLOGF_ENTER();
   DCHECK(ipc_thread_.task_runner()->BelongsToCurrentThread());
 
   LOGF(INFO) << "Received camera module from camera HAL dispatcher";
@@ -182,7 +175,6 @@ void CameraClient::SetUpChannel(
 
 void CameraClient::RegisterClient(
     RegisterClientCallback register_client_callback) {
-  VLOGF_ENTER();
   DCHECK(ipc_thread_.task_runner()->BelongsToCurrentThread());
 
   std::move(register_client_callback)
@@ -201,14 +193,12 @@ void CameraClient::OnRegisteredClient(int32_t result) {
 }
 
 void CameraClient::ResetOnIpcThread() {
-  VLOGF_ENTER();
   DCHECK(ipc_thread_.task_runner()->BelongsToCurrentThread());
 
   camera_hal_client_.reset();
 }
 
 void CameraClient::ResetClientState() {
-  VLOGF_ENTER();
   DCHECK(ipc_thread_.task_runner()->BelongsToCurrentThread());
   base::AutoLock l(camera_info_lock_);
 
@@ -252,7 +242,6 @@ void CameraClient::ResetClientState() {
 }
 
 void CameraClient::GetAllCameraInfo() {
-  VLOGF_ENTER();
   DCHECK(ipc_thread_.task_runner()->BelongsToCurrentThread());
 
   camera_module_->GetNumberOfCameras(base::BindOnce(
@@ -260,7 +249,6 @@ void CameraClient::GetAllCameraInfo() {
 }
 
 void CameraClient::OnGotNumberOfCameras(int32_t num_builtin_cameras) {
-  VLOGF_ENTER();
   DCHECK(ipc_thread_.task_runner()->BelongsToCurrentThread());
   base::AutoLock l(camera_info_lock_);
 
@@ -273,7 +261,6 @@ void CameraClient::OnGotNumberOfCameras(int32_t num_builtin_cameras) {
 }
 
 void CameraClient::SetCallbacks() {
-  VLOGF_ENTER();
   DCHECK(ipc_thread_.task_runner()->BelongsToCurrentThread());
 
   camera_module_->SetCallbacksAssociated(
@@ -282,7 +269,6 @@ void CameraClient::SetCallbacks() {
 }
 
 void CameraClient::OnSetCallbacks(int32_t result) {
-  VLOGF_ENTER();
   DCHECK(ipc_thread_.task_runner()->BelongsToCurrentThread());
 
   if (result != 0) {
@@ -307,7 +293,6 @@ void CameraClient::OnSetCallbacks(int32_t result) {
 }
 
 void CameraClient::GetCameraInfo() {
-  VLOGF_ENTER();
   DCHECK(ipc_thread_.task_runner()->BelongsToCurrentThread());
 
   for (auto it = pending_camera_id_set_.begin();
@@ -324,7 +309,6 @@ void CameraClient::GetCameraInfo() {
 void CameraClient::OnGotCameraInfo(int32_t camera_id,
                                    int32_t result,
                                    mojom::CameraInfoPtr info) {
-  VLOGF_ENTER();
   DCHECK(ipc_thread_.task_runner()->BelongsToCurrentThread());
   base::AutoLock l(camera_info_lock_);
 
@@ -398,7 +382,6 @@ void CameraClient::OnGotCameraInfo(int32_t camera_id,
 
 void CameraClient::SendCameraInfo(const std::set<int32_t>& camera_id_set,
                                   int is_removed) {
-  VLOGF_ENTER();
   camera_info_lock_.AssertAcquired();
 
   for (auto& camera_id : camera_id_set) {
@@ -408,8 +391,6 @@ void CameraClient::SendCameraInfo(const std::set<int32_t>& camera_id_set,
 
 void CameraClient::SendCameraInfoAsync(const std::set<int32_t>& camera_id_set,
                                        int is_removed) {
-  VLOGF_ENTER();
-
   info_thread_.task_runner()->PostTask(
       FROM_HERE,
       base::BindOnce(&CameraClient::SendCameraInfoAsyncOnInfoThread,
@@ -418,7 +399,6 @@ void CameraClient::SendCameraInfoAsync(const std::set<int32_t>& camera_id_set,
 
 void CameraClient::SendCameraInfoAsyncOnInfoThread(
     std::set<int32_t> camera_id_set, int is_removed) {
-  VLOGF_ENTER();
   DCHECK(info_thread_.task_runner()->BelongsToCurrentThread());
   base::AutoLock l(camera_info_lock_);
 
@@ -429,7 +409,6 @@ void CameraClient::SendCameraInfoAsyncOnInfoThread(
 
 void CameraClient::GenerateAndSendCameraInfo(int32_t camera_id,
                                              int is_removed) {
-  VLOGF_ENTER();
   camera_info_lock_.AssertAcquired();
 
   // Generate camera info
@@ -464,15 +443,12 @@ void CameraClient::GenerateAndSendCameraInfo(int32_t camera_id,
 }
 
 void CameraClient::PushSessionRequest(SessionRequest request) {
-  VLOGF_ENTER();
-
   ipc_thread_.task_runner()->PostTask(
       FROM_HERE, base::BindOnce(&CameraClient::PushSessionRequestOnIpcThread,
                                 base::Unretained(this), std::move(request)));
 }
 
 void CameraClient::PushSessionRequestOnIpcThread(SessionRequest request) {
-  VLOGF_ENTER();
   DCHECK(ipc_thread_.task_runner()->BelongsToCurrentThread());
 
   pending_session_requests_.push(std::move(request));
@@ -480,7 +456,6 @@ void CameraClient::PushSessionRequestOnIpcThread(SessionRequest request) {
 }
 
 void CameraClient::TryProcessSessionRequests() {
-  VLOGF_ENTER();
   DCHECK(ipc_thread_.task_runner()->BelongsToCurrentThread());
 
   while (!pending_session_requests_.empty() &&
@@ -490,7 +465,6 @@ void CameraClient::TryProcessSessionRequests() {
 }
 
 int CameraClient::ProcessSessionRequest(SessionRequest* request) {
-  VLOGF_ENTER();
   DCHECK(ipc_thread_.task_runner()->BelongsToCurrentThread());
 
   switch (request->type) {
@@ -506,7 +480,6 @@ int CameraClient::ProcessSessionRequest(SessionRequest* request) {
 }
 
 void CameraClient::FlushInflightSessionRequests(int error) {
-  VLOGF_ENTER();
   DCHECK(ipc_thread_.task_runner()->BelongsToCurrentThread());
 
   while (!pending_session_requests_.empty()) {
@@ -517,7 +490,6 @@ void CameraClient::FlushInflightSessionRequests(int error) {
 }
 
 int CameraClient::StartCaptureOnIpcThread(SessionRequest* request) {
-  VLOGF_ENTER();
   DCHECK(ipc_thread_.task_runner()->BelongsToCurrentThread());
 
   if (!IsDeviceActive(request->info.camera_id)) {
@@ -560,7 +532,6 @@ int CameraClient::StartCaptureOnIpcThread(SessionRequest* request) {
 }
 
 void CameraClient::OnOpenedDevice(int32_t result) {
-  VLOGF_ENTER();
   DCHECK(ipc_thread_.task_runner()->BelongsToCurrentThread());
   CHECK_EQ(context_.state, SessionState::kStarting);
 
@@ -583,7 +554,6 @@ void CameraClient::OnOpenedDevice(int32_t result) {
 }
 
 int CameraClient::StopCaptureOnIpcThread(SessionRequest* request) {
-  VLOGF_ENTER();
   DCHECK(ipc_thread_.task_runner()->BelongsToCurrentThread());
 
   if (!IsDeviceActive(request->info.camera_id)) {
@@ -623,7 +593,6 @@ int CameraClient::StopCaptureOnIpcThread(SessionRequest* request) {
 }
 
 void CameraClient::OnClosedDevice(int32_t result) {
-  VLOGF_ENTER();
   DCHECK(ipc_thread_.task_runner()->BelongsToCurrentThread());
   CHECK_EQ(context_.state, SessionState::kStopping);
 
@@ -645,7 +614,6 @@ void CameraClient::OnClosedDevice(int32_t result) {
 }
 
 bool CameraClient::IsDeviceActive(int device) {
-  VLOGF_ENTER();
   DCHECK(ipc_thread_.task_runner()->BelongsToCurrentThread());
   base::AutoLock l(camera_info_lock_);
 
@@ -653,7 +621,6 @@ bool CameraClient::IsDeviceActive(int device) {
 }
 
 void CameraClient::OnDeviceStatusChange(int32_t camera_id, bool is_present) {
-  VLOGF_ENTER();
   DCHECK(ipc_thread_.task_runner()->BelongsToCurrentThread());
 
   LOGF(INFO) << camera_id << " is " << (is_present ? "present" : "absent");
@@ -668,7 +635,6 @@ void CameraClient::OnDeviceStatusChange(int32_t camera_id, bool is_present) {
 }
 
 void CameraClient::SendCaptureResult(const cros_cam_capture_result_t& result) {
-  VLOGF_ENTER();
   DCHECK(ipc_thread_.task_runner()->BelongsToCurrentThread());
 
   // Only permissible states here are |SessionState::kCapturing| and
@@ -707,7 +673,6 @@ void CameraClient::SendCaptureResult(const cros_cam_capture_result_t& result) {
 }
 
 void CameraClient::OnStoppedCaptureFromCallback(int result) {
-  VLOGF_ENTER();
   DCHECK(ipc_thread_.task_runner()->BelongsToCurrentThread());
 
   if (result != 0) {
@@ -716,14 +681,12 @@ void CameraClient::OnStoppedCaptureFromCallback(int result) {
 }
 
 void CameraClient::StopCurrentCapture(IntOnceCallback callback) {
-  VLOGF_ENTER();
   ipc_thread_.task_runner()->PostTask(
       FROM_HERE, base::BindOnce(&CameraClient::StopCurrentCaptureOnIpcThread,
                                 base::Unretained(this), std::move(callback)));
 }
 
 void CameraClient::StopCurrentCaptureOnIpcThread(IntOnceCallback callback) {
-  VLOGF_ENTER();
   DCHECK(ipc_thread_.task_runner()->BelongsToCurrentThread());
 
   // Flush all inflight session requests to stop the capture immediately.

@@ -176,7 +176,6 @@ int CameraHal::OpenDevice(int id,
     return -ENODEV;
   }
 
-  VLOGF_EXIT();
   return 0;
 }
 

@@ -73,7 +73,6 @@ void Camera3FaceDetectionTest::SetUp() {
 
 void Camera3FaceDetectionTest::ProcessPreviewResult(
     int cam_id, uint32_t /*frame_number*/, ScopedCameraMetadata metadata) {
-  VLOGF_ENTER();
   result_metadata_ = std::move(metadata);
 }
 
@@ -287,7 +286,6 @@ void Camera3FaceAutoExposureTest::TearDown() {
 
 void Camera3FaceAutoExposureTest::ProcessPreviewResult(
     int cam_id, uint32_t /*frame_number*/, ScopedCameraMetadata metadata) {
-  VLOGF_ENTER();
   preview_result_metadata_ = std::move(metadata);
 }
 

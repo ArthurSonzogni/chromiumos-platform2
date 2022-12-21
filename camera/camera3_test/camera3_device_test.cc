@@ -1122,7 +1122,6 @@ void Camera3AlgoSandboxIPCErrorTest::SetUp() {
 }
 
 void Camera3AlgoSandboxIPCErrorTest::Notify(const camera3_notify_msg* msg) {
-  VLOGF_ENTER();
   EXPECT_EQ(CAMERA3_MSG_ERROR, msg->type)
       << "Unexpected message type " << msg->type << " is notified";
   EXPECT_EQ(CAMERA3_MSG_ERROR_DEVICE, msg->message.error.error_code)

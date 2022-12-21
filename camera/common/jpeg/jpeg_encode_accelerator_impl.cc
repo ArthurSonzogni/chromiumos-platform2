@@ -122,6 +122,7 @@ int JpegEncodeAcceleratorImpl::EncodeSync(int input_fd,
     LOGF(WARNING) << "There is no encode response from JEA mojo channel.";
     return NO_ENCODE_RESPONSE;
   }
+
   return future->Get();
 }
 
@@ -163,6 +164,7 @@ int JpegEncodeAcceleratorImpl::EncodeSync(
     LOGF(WARNING) << "There is no encode response from JEA mojo channel.";
     return NO_ENCODE_RESPONSE;
   }
+
   return future->Get();
 }
 
@@ -209,6 +211,7 @@ void JpegEncodeAcceleratorImpl::IPCBridge::Start(
 void JpegEncodeAcceleratorImpl::IPCBridge::Destroy() {
   DCHECK(ipc_task_runner_->BelongsToCurrentThread());
   TRACE_JPEG_DEBUG();
+
   jea_.reset();
 }
 

@@ -54,7 +54,6 @@ class CROS_CAMERA_EXPORT CameraThread {
   int PostTaskSync(const base::Location& from_here,
                    base::OnceCallback<T()> task,
                    T* result) {
-    VLOGF_ENTER();
     if (!thread_.task_runner()) {
       LOG(ERROR) << "Thread is not started";
       return -EIO;
@@ -78,7 +77,6 @@ class CROS_CAMERA_EXPORT CameraThread {
   template <typename T>
   int PostTaskAsync(const base::Location& from_here,
                     base::OnceCallback<T()> task) {
-    VLOGF_ENTER();
     if (!thread_.task_runner()) {
       LOG(ERROR) << "Thread is not started";
       return -EIO;
@@ -97,7 +95,6 @@ class CROS_CAMERA_EXPORT CameraThread {
   // Posts the given task to be run and wait till it is finished.
   // Return 0 if succeed. Otherwise return -EIO.
   int PostTaskSync(const base::Location& from_here, base::OnceClosure task) {
-    VLOGF_ENTER();
     if (!thread_.task_runner()) {
       LOG(ERROR) << "Thread is not started";
       return -EIO;
@@ -124,19 +121,16 @@ class CROS_CAMERA_EXPORT CameraThread {
   template <typename T>
   void ProcessSyncTaskOnThread(base::OnceCallback<T()> task,
                                scoped_refptr<cros::Future<T>> future) {
-    VLOGF_ENTER();
     future->Set(std::move(task).Run());
   }
 
   template <typename T>
   void ProcessAsyncTaskOnThread(base::OnceCallback<T()> task) {
-    VLOGF_ENTER();
     std::move(task).Run();
   }
 
   void ProcessClosureSyncTaskOnThread(
       base::OnceClosure task, scoped_refptr<cros::Future<void>> future) {
-    VLOGF_ENTER();
     std::move(task).Run();
     future->Set();
   }

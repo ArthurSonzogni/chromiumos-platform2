@@ -35,7 +35,6 @@ void Camera3StillCaptureFixture::ProcessStillCaptureResult(
     uint32_t frame_number,
     ScopedCameraMetadata metadata,
     cros::ScopedBufferHandle buffer) {
-  VLOGF_ENTER();
   StillCaptureResult* result = &still_capture_results_[cam_id];
   result->result_metadatas.emplace_back(std::move(metadata));
   result->buffer_handles.emplace_back(std::move(buffer));

@@ -258,7 +258,6 @@ int Camera3Service::Camera3DeviceService::StartPreview(
     const ResolutionInfo& preview_resolution,
     const ResolutionInfo& still_capture_resolution,
     const ResolutionInfo& recording_resolution) {
-  VLOGF_ENTER();
   int result = -EIO;
   service_thread_.PostTaskSync(
       FROM_HERE,
@@ -270,7 +269,6 @@ int Camera3Service::Camera3DeviceService::StartPreview(
 }
 
 void Camera3Service::Camera3DeviceService::StopPreview() {
-  VLOGF_ENTER();
   auto future = cros::Future<void>::Create(nullptr);
   service_thread_.PostTaskAsync(
       FROM_HERE,
@@ -291,7 +289,6 @@ void Camera3Service::Camera3DeviceService::StartAutoFocus() {
 }
 
 int Camera3Service::Camera3DeviceService::WaitForAutoFocusDone() {
-  VLOGF_ENTER();
   auto future = cros::Future<void>::Create(nullptr);
   int32_t result;
   service_thread_.PostTaskAsync(
@@ -321,7 +318,6 @@ int Camera3Service::Camera3DeviceService::WaitForAutoFocusDone() {
 }
 
 int Camera3Service::Camera3DeviceService::WaitForAWBConvergedAndLock() {
-  VLOGF_ENTER();
   auto future = cros::Future<void>::Create(nullptr);
   service_thread_.PostTaskAsync(
       FROM_HERE,
@@ -353,7 +349,6 @@ int Camera3Service::Camera3DeviceService::WaitForAWBConvergedAndLock() {
 }
 
 void Camera3Service::Camera3DeviceService::StartAEPrecapture() {
-  VLOGF_ENTER();
   service_thread_.PostTaskAsync(
       FROM_HERE, base::BindOnce(&Camera3Service::Camera3DeviceService::
                                     StartAEPrecaptureOnServiceThread,
@@ -361,7 +356,6 @@ void Camera3Service::Camera3DeviceService::StartAEPrecapture() {
 }
 
 int Camera3Service::Camera3DeviceService::WaitForAEStable() {
-  VLOGF_ENTER();
   auto future = cros::Future<void>::Create(nullptr);
   int32_t result;
   service_thread_.PostTaskAsync(
@@ -391,7 +385,6 @@ int Camera3Service::Camera3DeviceService::WaitForAEStable() {
 }
 
 void Camera3Service::Camera3DeviceService::StartFaceDetection() {
-  VLOGF_ENTER();
   service_thread_.PostTaskAsync(
       FROM_HERE, base::BindOnce(&Camera3Service::Camera3DeviceService::
                                     StartFaceDetectionOnServiceThread,
@@ -399,7 +392,6 @@ void Camera3Service::Camera3DeviceService::StartFaceDetection() {
 }
 
 void Camera3Service::Camera3DeviceService::StopFaceDetection() {
-  VLOGF_ENTER();
   service_thread_.PostTaskAsync(
       FROM_HERE, base::BindOnce(&Camera3Service::Camera3DeviceService::
                                     StopFaceDetectionOnServiceThread,
@@ -408,7 +400,6 @@ void Camera3Service::Camera3DeviceService::StopFaceDetection() {
 
 void Camera3Service::Camera3DeviceService::TakeStillCapture(
     const camera_metadata_t* metadata) {
-  VLOGF_ENTER();
   auto future = cros::Future<void>::Create(nullptr);
   service_thread_.PostTaskAsync(
       FROM_HERE, base::BindOnce(&Camera3Service::Camera3DeviceService::
@@ -422,7 +413,6 @@ void Camera3Service::Camera3DeviceService::TakeStillCapture(
 
 int Camera3Service::Camera3DeviceService::StartRecording(
     const camera_metadata_t* metadata) {
-  VLOGF_ENTER();
   auto future = cros::Future<int>::Create(nullptr);
   service_thread_.PostTaskSync(
       FROM_HERE,
@@ -433,7 +423,6 @@ int Camera3Service::Camera3DeviceService::StartRecording(
 }
 
 void Camera3Service::Camera3DeviceService::StopRecording() {
-  VLOGF_ENTER();
   auto future = cros::Future<void>::Create(nullptr);
   service_thread_.PostTaskAsync(
       FROM_HERE,
@@ -447,7 +436,6 @@ void Camera3Service::Camera3DeviceService::StopRecording() {
 
 int Camera3Service::Camera3DeviceService::WaitForPreviewFrames(
     uint32_t num_frames, uint32_t timeout_ms) {
-  VLOGF_ENTER();
   while (sem_trywait(&preview_frame_sem_) == 0) {
   }
   for (uint32_t i = 0; i < num_frames; ++i) {
@@ -480,7 +468,6 @@ void Camera3Service::Camera3DeviceService::ProcessResultMetadataOutputBuffers(
     uint32_t frame_number,
     ScopedCameraMetadata metadata,
     std::vector<cros::ScopedBufferHandle> buffers) {
-  VLOGF_ENTER();
   service_thread_.PostTaskAsync(
       FROM_HERE,
       base::BindOnce(&Camera3Service::Camera3DeviceService::
@@ -495,7 +482,7 @@ void Camera3Service::Camera3DeviceService::StartPreviewOnServiceThread(
     const ResolutionInfo recording_resolution,
     int* result) {
   DCHECK(service_thread_.IsCurrentThread());
-  VLOGF_ENTER();
+
   if (preview_state_ != PREVIEW_STOPPED) {
     LOGF(ERROR) << "Failed to start preview because it is not stopped";
     *result = -EAGAIN;
@@ -578,7 +565,7 @@ void Camera3Service::Camera3DeviceService::StartPreviewOnServiceThread(
 void Camera3Service::Camera3DeviceService::StopPreviewOnServiceThread(
     base::Callback<void()> cb) {
   DCHECK(service_thread_.IsCurrentThread());
-  VLOGF_ENTER();
+
   if (preview_state_ != PREVIEW_STARTED && preview_state_ != PREVIEW_STARTING) {
     return;
   }
@@ -664,7 +651,7 @@ void Camera3Service::Camera3DeviceService::TakeStillCaptureOnServiceThread(
 void Camera3Service::Camera3DeviceService::StartRecordingOnServiceThread(
     const camera_metadata_t* metadata, base::Callback<void(int)> cb) {
   DCHECK(service_thread_.IsCurrentThread());
-  VLOGF_ENTER();
+
   if (!metadata) {
     LOGF(ERROR) << "Invalid metadata settings";
     cb.Run(-EINVAL);
@@ -708,7 +695,6 @@ void Camera3Service::Camera3DeviceService::StartRecordingOnServiceThread(
 
 void Camera3Service::Camera3DeviceService::StopRecordingOnServiceThread(
     base::Callback<void()> cb) {
-  VLOGF_ENTER();
   recording_metadata_ = nullptr;
   stop_recording_cb_ = cb;
 }

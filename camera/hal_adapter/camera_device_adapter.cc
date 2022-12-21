@@ -195,7 +195,6 @@ CameraDeviceAdapter::CameraDeviceAdapter(
       camera_metrics_(CameraMetrics::New()),
       stream_manipulator_manager_(std::move(stream_manipulator_manager)),
       inflight_requests_empty_cv_(&inflight_requests_lock_) {
-  VLOGF_ENTER() << ":" << camera_device_;
   camera3_callback_ops_t::process_capture_result = ProcessCaptureResult;
   camera3_callback_ops_t::notify = Notify;
 
@@ -206,8 +205,6 @@ CameraDeviceAdapter::CameraDeviceAdapter(
 }
 
 CameraDeviceAdapter::~CameraDeviceAdapter() {
-  VLOGF_ENTER() << ":" << camera_device_;
-
   // Make sure that the camera is closed when the device adapter is destructed.
   camera_device_ops_thread_.task_runner()->PostTask(
       FROM_HERE, base::BindOnce(base::IgnoreResult(&CameraDeviceAdapter::Close),
@@ -256,7 +253,6 @@ void CameraDeviceAdapter::Bind(
 
 int32_t CameraDeviceAdapter::Initialize(
     mojo::PendingRemote<mojom::Camera3CallbackOps> callback_ops) {
-  VLOGF_ENTER();
   TRACE_HAL_ADAPTER();
   DCHECK(camera_device_ops_thread_.task_runner()->BelongsToCurrentThread());
 
@@ -298,7 +294,6 @@ int32_t CameraDeviceAdapter::Initialize(
 int32_t CameraDeviceAdapter::ConfigureStreams(
     mojom::Camera3StreamConfigurationPtr config,
     mojom::Camera3StreamConfigurationPtr* updated_config) {
-  VLOGF_ENTER();
   TRACE_HAL_ADAPTER();
   DCHECK(camera_device_ops_thread_.task_runner()->BelongsToCurrentThread());
 
@@ -463,7 +458,6 @@ int32_t CameraDeviceAdapter::ConfigureStreams(
 
 mojom::CameraMetadataPtr CameraDeviceAdapter::ConstructDefaultRequestSettings(
     mojom::Camera3RequestTemplate type) {
-  VLOGF_ENTER();
   TRACE_HAL_ADAPTER();
   DCHECK(camera_device_ops_thread_.task_runner()->BelongsToCurrentThread());
 
@@ -486,7 +480,6 @@ mojom::CameraMetadataPtr CameraDeviceAdapter::ConstructDefaultRequestSettings(
 
 int32_t CameraDeviceAdapter::ProcessCaptureRequest(
     mojom::Camera3CaptureRequestPtr request) {
-  VLOGF_ENTER();
   DCHECK(camera_device_ops_thread_.task_runner()->BelongsToCurrentThread());
   TRACE_HAL_ADAPTER("frame_number", request->frame_number);
 
@@ -646,7 +639,6 @@ int32_t CameraDeviceAdapter::ProcessCaptureRequest(
 }
 
 void CameraDeviceAdapter::Dump(mojo::ScopedHandle fd) {
-  VLOGF_ENTER();
   TRACE_HAL_ADAPTER();
   DCHECK(camera_device_ops_thread_.task_runner()->BelongsToCurrentThread());
 
@@ -655,7 +647,6 @@ void CameraDeviceAdapter::Dump(mojo::ScopedHandle fd) {
 }
 
 int32_t CameraDeviceAdapter::Flush() {
-  VLOGF_ENTER();
   TRACE_HAL_ADAPTER();
   DCHECK(camera_device_ops_thread_.task_runner()->BelongsToCurrentThread());
 
@@ -703,7 +694,6 @@ int32_t CameraDeviceAdapter::RegisterBuffer(
 }
 
 int32_t CameraDeviceAdapter::Close() {
-  VLOGF_ENTER();
   DCHECK(camera_device_ops_thread_.task_runner()->BelongsToCurrentThread());
   TRACE_HAL_ADAPTER();
 
@@ -738,7 +728,6 @@ int32_t CameraDeviceAdapter::ConfigureStreamsAndGetAllocatedBuffers(
     mojom::Camera3StreamConfigurationPtr config,
     mojom::Camera3StreamConfigurationPtr* updated_config,
     AllocatedBuffers* allocated_buffers) {
-  VLOGF_ENTER();
   DCHECK(camera_device_ops_thread_.task_runner()->BelongsToCurrentThread());
   TRACE_HAL_ADAPTER();
 
@@ -769,7 +758,6 @@ bool CameraDeviceAdapter::IsRequestOrResultStalling() {
 // static
 void CameraDeviceAdapter::ProcessCaptureResult(
     const camera3_callback_ops_t* ops, const camera3_capture_result_t* result) {
-  VLOGF_ENTER();
   TRACE_HAL_ADAPTER("frame_number", result->frame_number);
 
   CameraDeviceAdapter* self = const_cast<CameraDeviceAdapter*>(
@@ -785,7 +773,6 @@ void CameraDeviceAdapter::ProcessCaptureResult(
 void CameraDeviceAdapter::ReturnResultToClient(
     const camera3_callback_ops_t* ops,
     Camera3CaptureDescriptor result_descriptor) {
-  VLOGF_ENTER();
   TRACE_HAL_ADAPTER();
 
   if (!result_descriptor.has_metadata() &&
@@ -869,7 +856,6 @@ void CameraDeviceAdapter::ReturnResultToClient(
 // static
 void CameraDeviceAdapter::Notify(const camera3_callback_ops_t* ops,
                                  const camera3_notify_msg_t* msg) {
-  VLOGF_ENTER();
   TRACE_HAL_ADAPTER();
 
   CameraDeviceAdapter* self = const_cast<CameraDeviceAdapter*>(
@@ -889,7 +875,6 @@ void CameraDeviceAdapter::Notify(const camera3_callback_ops_t* ops,
 // static
 void CameraDeviceAdapter::NotifyClient(const camera3_callback_ops_t* ops,
                                        camera3_notify_msg_t msg) {
-  VLOGF_ENTER();
   TRACE_HAL_ADAPTER();
 
   CameraDeviceAdapter* self = const_cast<CameraDeviceAdapter*>(
@@ -1236,7 +1221,6 @@ void CameraDeviceAdapter::RemoveBufferOnFenceSyncThread(
 
 void CameraDeviceAdapter::ReprocessEffectsOnReprocessEffectThread(
     std::unique_ptr<Camera3CaptureDescriptor> desc) {
-  VLOGF_ENTER();
   TRACE_HAL_ADAPTER();
 
   DCHECK(desc->GetInputBuffer());
@@ -1367,7 +1351,6 @@ void CameraDeviceAdapter::ReprocessEffectsOnReprocessEffectThread(
 void CameraDeviceAdapter::ProcessReprocessRequestOnDeviceOpsThread(
     std::unique_ptr<Camera3CaptureDescriptor> desc,
     base::OnceCallback<void(int32_t)> callback) {
-  VLOGF_ENTER();
   DCHECK(camera_device_ops_thread_.task_runner()->BelongsToCurrentThread());
   int ret = camera_device_->ops->process_capture_request(
       camera_device_, desc->LockForRequest());

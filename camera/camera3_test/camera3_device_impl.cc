@@ -39,7 +39,6 @@ Camera3DeviceImpl::Camera3DeviceImpl(int cam_id)
 }
 
 int Camera3DeviceImpl::Initialize(Camera3Module* cam_module) {
-  VLOGF_ENTER();
   if (!cam_module || !hal_thread_.Start()) {
     return -EINVAL;
   }
@@ -51,7 +50,6 @@ int Camera3DeviceImpl::Initialize(Camera3Module* cam_module) {
 }
 
 void Camera3DeviceImpl::Destroy() {
-  VLOGF_ENTER();
   int result = -EIO;
   hal_thread_.PostTaskSync(FROM_HERE,
                            base::BindOnce(&Camera3DeviceImpl::DestroyOnThread,
@@ -121,7 +119,6 @@ void Camera3DeviceImpl::AddStream(int format,
                                   int height,
                                   int crop_rotate_scale_degrees,
                                   camera3_stream_type_t type) {
-  VLOGF_ENTER();
   hal_thread_.PostTaskSync(
       FROM_HERE, base::BindOnce(&Camera3DeviceImpl::AddStreamOnThread,
                                 base::Unretained(this), format, width, height,
@@ -130,7 +127,6 @@ void Camera3DeviceImpl::AddStream(int format,
 
 int Camera3DeviceImpl::ConfigureStreams(
     std::vector<const camera3_stream_t*>* streams) {
-  VLOGF_ENTER();
   int32_t result = -EIO;
   hal_thread_.PostTaskSync(
       FROM_HERE, base::BindOnce(&Camera3DeviceImpl::ConfigureStreamsOnThread,
@@ -140,7 +136,6 @@ int Camera3DeviceImpl::ConfigureStreams(
 
 int Camera3DeviceImpl::AllocateOutputStreamBuffers(
     std::vector<camera3_stream_buffer_t>* output_buffers) {
-  VLOGF_ENTER();
   int32_t result = -EIO;
   hal_thread_.PostTaskSync(
       FROM_HERE,
@@ -152,7 +147,6 @@ int Camera3DeviceImpl::AllocateOutputStreamBuffers(
 int Camera3DeviceImpl::AllocateOutputBuffersByStreams(
     const std::vector<const camera3_stream_t*>& streams,
     std::vector<camera3_stream_buffer_t>* output_buffers) {
-  VLOGF_ENTER();
   int32_t result = -EIO;
   hal_thread_.PostTaskSync(
       FROM_HERE,
@@ -164,7 +158,6 @@ int Camera3DeviceImpl::AllocateOutputBuffersByStreams(
 
 int Camera3DeviceImpl::RegisterOutputBuffer(
     const camera3_stream_t& stream, cros::ScopedBufferHandle unique_buffer) {
-  VLOGF_ENTER();
   int32_t result = -EIO;
   hal_thread_.PostTaskSync(
       FROM_HERE,
@@ -176,7 +169,6 @@ int Camera3DeviceImpl::RegisterOutputBuffer(
 
 int Camera3DeviceImpl::ProcessCaptureRequest(
     camera3_capture_request_t* capture_request) {
-  VLOGF_ENTER();
   int32_t result = -EIO;
   hal_thread_.PostTaskSync(
       FROM_HERE,
@@ -215,7 +207,7 @@ int Camera3DeviceImpl::WaitCaptureResult(const struct timespec& timeout) {
 
 int Camera3DeviceImpl::Flush() {
   DCHECK(dev_connector_);
-  VLOGF_ENTER();
+
   return dev_connector_->Flush();
 }
 
@@ -453,7 +445,7 @@ void Camera3DeviceImpl::RegisterOutputBufferOnThread(
     cros::ScopedBufferHandle unique_buffer,
     int32_t* result) {
   DCHECK_CALLED_ON_VALID_THREAD(thread_checker_);
-  VLOGF_ENTER();
+
   if (!initialized_) {
     *result = -ENODEV;
     return;
@@ -469,7 +461,7 @@ void Camera3DeviceImpl::RegisterOutputBufferOnThread(
 void Camera3DeviceImpl::ProcessCaptureRequestOnThread(
     camera3_capture_request_t* request, int* result) {
   DCHECK_CALLED_ON_VALID_THREAD(thread_checker_);
-  VLOGF_ENTER();
+
   if (!initialized_) {
     *result = -ENODEV;
     return;
@@ -510,7 +502,6 @@ Camera3DeviceImpl::CaptureResult::CaptureResult(
 
 void Camera3DeviceImpl::ProcessCaptureResultOnThread(
     std::unique_ptr<CaptureResult> result) {
-  VLOGF_ENTER();
   DCHECK_CALLED_ON_VALID_THREAD(thread_checker_);
   ASSERT_NE(nullptr, result) << "Capture result is null";
   // At least one of metadata or output buffers or input buffer should be
@@ -670,7 +661,6 @@ void Camera3DeviceImpl::NotifyForwarder(const camera3_callback_ops* cb,
 
 void Camera3DeviceImpl::ProcessCaptureResult(
     const camera3_capture_result_t* result) {
-  VLOGF_ENTER();
   if (!process_capture_result_cb_.is_null()) {
     process_capture_result_cb_.Run(result);
     return;
@@ -683,7 +673,6 @@ void Camera3DeviceImpl::ProcessCaptureResult(
 }
 
 void Camera3DeviceImpl::Notify(const camera3_notify_msg_t* msg) {
-  VLOGF_ENTER();
   if (!notify_cb_.is_null()) {
     notify_cb_.Run(msg);
     return;
@@ -697,7 +686,6 @@ int Camera3DeviceImpl::GetOutputStreamBufferHandles(
     const std::vector<StreamBuffer>& output_buffers,
     std::vector<cros::ScopedBufferHandle>* unique_buffers) {
   DCHECK_CALLED_ON_VALID_THREAD(thread_checker_);
-  VLOGF_ENTER();
 
   for (const auto& output_buffer : output_buffers) {
     if (!output_buffer.buffer ||

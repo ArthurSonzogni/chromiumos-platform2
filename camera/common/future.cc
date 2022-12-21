@@ -14,14 +14,12 @@ namespace internal {
 
 FutureLock::FutureLock(CancellationRelay* relay)
     : cond_(&lock_), cancelled_(false), signalled_(false), relay_(relay) {
-  VLOGF_ENTER();
   if (relay_ && !relay_->AddObserver(this)) {
     cancelled_ = true;
   }
 }
 
 FutureLock::~FutureLock() {
-  VLOGF_ENTER();
   base::AutoLock l(lock_);
   if (relay_) {
     relay_->RemoveObserver(this);
@@ -29,14 +27,12 @@ FutureLock::~FutureLock() {
 }
 
 void FutureLock::Signal() {
-  VLOGF_ENTER();
   base::AutoLock l(lock_);
   signalled_ = true;
   cond_.Signal();
 }
 
 bool FutureLock::Wait(int timeout_ms) {
-  VLOGF_ENTER();
   base::AutoLock l(lock_);
 
   base::TimeTicks end_time =
@@ -64,7 +60,6 @@ bool FutureLock::Wait(int timeout_ms) {
 }
 
 void FutureLock::Cancel() {
-  VLOGF_ENTER();
   base::AutoLock l(lock_);
   cancelled_ = true;
   relay_ = nullptr;
@@ -85,7 +80,6 @@ CancellationRelay::~CancellationRelay() {
 }
 
 bool CancellationRelay::AddObserver(internal::FutureLock* future_lock) {
-  VLOGF_ENTER();
   base::AutoLock l(lock_);
   if (cancelled_) {
     return false;
@@ -95,7 +89,6 @@ bool CancellationRelay::AddObserver(internal::FutureLock* future_lock) {
 }
 
 void CancellationRelay::RemoveObserver(internal::FutureLock* future_lock) {
-  VLOGF_ENTER();
   base::AutoLock l(lock_);
   auto it = observers_.find(future_lock);
   if (it != observers_.end()) {
@@ -104,7 +97,6 @@ void CancellationRelay::RemoveObserver(internal::FutureLock* future_lock) {
 }
 
 void CancellationRelay::CancelAllFutures() {
-  VLOGF_ENTER();
   base::AutoLock l(lock_);
   cancelled_ = true;
   for (auto it : observers_) {

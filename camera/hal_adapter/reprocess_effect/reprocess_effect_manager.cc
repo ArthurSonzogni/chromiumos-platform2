@@ -30,7 +30,6 @@ ReprocessEffectManager::ReprocessEffectManager()
 
 int32_t ReprocessEffectManager::Initialize(
     CameraMojoChannelManagerToken* token) {
-  VLOGF_ENTER();
   portrait_mode_ = std::make_unique<PortraitModeEffect>();
   std::vector<VendorTagInfo> request_vendor_tags;
   std::vector<VendorTagInfo> result_vendor_tags;
@@ -75,7 +74,6 @@ int32_t ReprocessEffectManager::Initialize(
 
 bool ReprocessEffectManager::HasReprocessEffectVendorTag(
     const camera_metadata_t& settings) {
-  VLOGF_ENTER();
   for (uint32_t tag = kReprocessEffectVendorTagStart; tag < next_vendor_tag_;
        tag++) {
     camera_metadata_ro_entry_t entry;
@@ -156,7 +154,6 @@ int32_t ReprocessEffectManager::ReprocessRequest(
     buffer_handle_t input_buffer,
     android::CameraMetadata* result_metadata,
     buffer_handle_t output_buffer) {
-  VLOGF_ENTER();
   if (!input_buffer || !output_buffer) {
     return -EINVAL;
   }

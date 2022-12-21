@@ -71,9 +71,7 @@ class MojoRemoteBase
   using Self = MojoRemoteBase<RemoteType>;
   explicit MojoRemoteBase(
       scoped_refptr<base::SingleThreadTaskRunner> task_runner)
-      : task_runner_(task_runner) {
-    VLOGF_ENTER();
-  }
+      : task_runner_(task_runner) {}
 
   // Move-only class.
   MojoRemoteBase(MojoRemoteBase<RemoteType>&& other) = default;
@@ -83,7 +81,6 @@ class MojoRemoteBase
 
   void Bind(typename RemoteType::PendingType pending_remote,
             base::OnceClosure disconnect_handler) {
-    VLOGF_ENTER();
     task_runner_->PostTask(
         FROM_HERE, base::BindOnce(&Self::BindOnThread, base::AsWeakPtr(this),
                                   std::move(pending_remote),
@@ -91,7 +88,6 @@ class MojoRemoteBase
   }
 
   ~MojoRemoteBase() {
-    VLOGF_ENTER();
     // We need to wait for ResetRemoteOnThread to finish before return
     // otherwise it would cause race condition in destruction of
     // |remote_| and may CHECK.
@@ -119,7 +115,6 @@ class MojoRemoteBase
  private:
   void BindOnThread(typename RemoteType::PendingType pending_remote,
                     base::OnceClosure disconnect_handler) {
-    VLOGF_ENTER();
     DCHECK(task_runner_->BelongsToCurrentThread());
     remote_.Bind(std::move(pending_remote));
     if (!remote_.is_bound()) {
@@ -131,7 +126,6 @@ class MojoRemoteBase
   }
 
   void ResetRemoteOnThread(base::OnceClosure callback) {
-    VLOGF_ENTER();
     DCHECK(task_runner_->BelongsToCurrentThread());
     remote_.reset();
     std::move(callback).Run();
@@ -150,9 +144,7 @@ template <typename T>
 class MojoReceiver : public T {
  public:
   explicit MojoReceiver(scoped_refptr<base::SingleThreadTaskRunner> task_runner)
-      : task_runner_(task_runner), receiver_(this), weak_ptr_factory_(this) {
-    VLOGF_ENTER();
-  }
+      : task_runner_(task_runner), receiver_(this), weak_ptr_factory_(this) {}
 
   // Move-only class.
   MojoReceiver(MojoReceiver<T>&& other) = default;
@@ -161,7 +153,6 @@ class MojoReceiver : public T {
   MojoReceiver& operator=(const MojoReceiver<T>& other) = delete;
 
   ~MojoReceiver() {
-    VLOGF_ENTER();
     // We need to wait for ResetReceiverOnThread to finish before return
     // otherwise it would cause race condition in destruction of |receiver_| and
     // may CHECK.
@@ -178,7 +169,6 @@ class MojoReceiver : public T {
   }
 
   mojo::Remote<T> CreateRemote(base::OnceClosure disconnect_handler) {
-    VLOGF_ENTER();
     auto future = cros::Future<mojo::Remote<T>>::Create(nullptr);
     if (task_runner_->BelongsToCurrentThread()) {
       CreateRemoteOnThread(std::move(disconnect_handler),
@@ -195,7 +185,6 @@ class MojoReceiver : public T {
 
   void Bind(mojo::PendingReceiver<T> pending_receiver,
             base::OnceClosure disconnect_handler) {
-    VLOGF_ENTER();
     task_runner_->PostTask(FROM_HERE,
                            base::BindOnce(&MojoReceiver<T>::BindOnThread,
                                           weak_ptr_factory_.GetWeakPtr(),
@@ -209,7 +198,6 @@ class MojoReceiver : public T {
 
  private:
   void ResetReceiverOnThread(base::OnceClosure callback) {
-    VLOGF_ENTER();
     DCHECK(task_runner_->BelongsToCurrentThread());
     if (receiver_.is_bound()) {
       receiver_.reset();
@@ -220,7 +208,7 @@ class MojoReceiver : public T {
   void CreateRemoteOnThread(base::OnceClosure disconnect_handler,
                             base::OnceCallback<void(mojo::Remote<T>)> cb) {
     // Call BindNewPipeAndPassRemote() on thread_ to serve the mojo IPC.
-    VLOGF_ENTER();
+
     DCHECK(task_runner_->BelongsToCurrentThread());
     mojo::Remote<T> remote = receiver_.BindNewPipeAndPassRemote();
     receiver_.set_disconnect_handler(std::move(disconnect_handler));
@@ -229,7 +217,6 @@ class MojoReceiver : public T {
 
   void BindOnThread(mojo::PendingReceiver<T> pending_receiver,
                     base::OnceClosure disconnect_handler) {
-    VLOGF_ENTER();
     DCHECK(task_runner_->BelongsToCurrentThread());
     receiver_.Bind(std::move(pending_receiver));
     receiver_.set_disconnect_handler(std::move(disconnect_handler));

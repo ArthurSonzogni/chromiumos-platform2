@@ -34,7 +34,6 @@ CameraServiceConnector* CameraServiceConnector::GetInstance() {
 }
 
 int CameraServiceConnector::Init(const cros_cam_init_option_t* option) {
-  VLOGF_ENTER();
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
   if (initialized_.IsSet()) {
@@ -76,7 +75,6 @@ int CameraServiceConnector::Init(const cros_cam_init_option_t* option) {
 }
 
 int CameraServiceConnector::Exit() {
-  VLOGF_ENTER();
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
   if (!initialized_.IsSet()) {
@@ -127,7 +125,6 @@ int CameraServiceConnector::StopCapture(int id) {
 void CameraServiceConnector::RegisterClient(
     mojo::PendingRemote<mojom::CameraHalClient> camera_hal_client,
     IntOnceCallback on_registered_callback) {
-  VLOGF_ENTER();
   // This may be called from a different thread than the main thread,
   // (for example here it is called from CameraClient thread),
   // but mojo operations have to run on the same thread that bound
@@ -142,7 +139,6 @@ void CameraServiceConnector::RegisterClient(
 void CameraServiceConnector::RegisterClientOnThread(
     mojo::PendingRemote<mojom::CameraHalClient> camera_hal_client,
     IntOnceCallback on_registered_callback) {
-  VLOGF_ENTER();
   DCHECK(ipc_thread_.task_runner()->BelongsToCurrentThread());
   DCHECK(!token_.is_empty());
 
@@ -159,7 +155,6 @@ void CameraServiceConnector::RegisterClientOnThread(
 
 void CameraServiceConnector::OnRegisteredClient(
     IntOnceCallback on_registered_callback, int32_t result) {
-  VLOGF_ENTER();
   DCHECK(ipc_thread_.task_runner()->BelongsToCurrentThread());
 
   if (result != 0) {
@@ -169,7 +164,6 @@ void CameraServiceConnector::OnRegisteredClient(
 }
 
 void CameraServiceConnector::InitOnThread(IntOnceCallback init_callback) {
-  VLOGF_ENTER();
   DCHECK(ipc_thread_.task_runner()->BelongsToCurrentThread());
 
   mojo::ScopedMessagePipeHandle child_pipe;
@@ -202,7 +196,6 @@ void CameraServiceConnector::InitOnThread(IntOnceCallback init_callback) {
 }
 
 void CameraServiceConnector::OnDispatcherError() {
-  VLOGF_ENTER();
   // TODO(b/151047930): Attempt to reconnect on dispatcher error.
   LOGF(FATAL) << "Connection to camera dispatcher lost";
   dispatcher_.reset();

@@ -36,7 +36,6 @@ namespace cros {
 V4L2Device::V4L2Device(const std::string name) : name_(name), fd_(-1) {}
 
 V4L2Device::~V4L2Device() {
-  VLOGF_ENTER();
   if (IsOpened()) {
     LOGF(WARNING) << "Destroying a device object not closed, closing first";
     Close();
@@ -44,7 +43,6 @@ V4L2Device::~V4L2Device() {
 }
 
 int V4L2Device::Open(int flags) {
-  VLOGF_ENTER();
   if (IsOpened()) {
     LOGF(WARNING) << "Device is already opened";
     return 0;
@@ -72,8 +70,6 @@ int V4L2Device::Open(int flags) {
 }
 
 int V4L2Device::Close() {
-  VLOGF_ENTER();
-
   if (!IsOpened()) {
     LOGF(WARNING) << "Device is not opened!";
     return -EINVAL;
@@ -90,7 +86,6 @@ int V4L2Device::Close() {
 }
 
 int V4L2Device::SubscribeEvent(int event) {
-  VLOGF_ENTER();
   if (!IsOpened()) {
     LOGF(ERROR) << "Device " << descriptive_name_
                 << " already closed. Do nothing.";
@@ -109,8 +104,6 @@ int V4L2Device::SubscribeEvent(int event) {
 }
 
 int V4L2Device::UnsubscribeEvent(int event) {
-  VLOGF_ENTER();
-
   if (!IsOpened()) {
     LOGF(ERROR) << "Device " << name_ << " already closed. Do nothing.";
     return -1;
@@ -129,7 +122,6 @@ int V4L2Device::UnsubscribeEvent(int event) {
 }
 
 int V4L2Device::DequeueEvent(struct v4l2_event* event) {
-  VLOGF_ENTER();
   if (!event) {
     return -EINVAL;
   }
@@ -177,7 +169,6 @@ int V4L2Device::SetControl(struct v4l2_ext_control* ext_control) {
 }
 
 int V4L2Device::SetControl(int id, int32_t value) {
-  VLOGF_ENTER();
   VLOGF(2) << "Setting attribute " << id << " to " << value;
   int ret = 0;
 
@@ -193,7 +184,6 @@ int V4L2Device::SetControl(int id, int32_t value) {
 }
 
 int V4L2Device::SetControl(int id, int64_t value) {
-  VLOGF_ENTER();
   VLOGF(2) << "Setting attribute " << id << " to " << value;
   struct v4l2_ext_control ext_control = {};
   ext_control.id = id;
@@ -207,7 +197,6 @@ int V4L2Device::SetControl(int id, int64_t value) {
 }
 
 int V4L2Device::SetControl(int id, const std::string value) {
-  VLOGF_ENTER();
   VLOGF(2) << "Setting attribute " << id << " to " << value;
   struct v4l2_ext_control ext_control = {};
   ext_control.id = id;
@@ -240,7 +229,6 @@ int V4L2Device::GetControl(struct v4l2_ext_control* ext_control) {
 }
 
 int V4L2Device::GetControl(int id, int32_t* value) {
-  VLOGF_ENTER();
   if (!value) {
     return -EINVAL;
   }
@@ -254,7 +242,6 @@ int V4L2Device::GetControl(int id, int32_t* value) {
 }
 
 int V4L2Device::GetControl(int id, int64_t* value) {
-  VLOGF_ENTER();
   if (!value) {
     return -EINVAL;
   }
@@ -268,7 +255,6 @@ int V4L2Device::GetControl(int id, int64_t* value) {
 }
 
 int V4L2Device::GetControl(int id, std::string* value) {
-  VLOGF_ENTER();
   if (!value) {
     return -EINVAL;
   }
@@ -282,7 +268,6 @@ int V4L2Device::GetControl(int id, std::string* value) {
 }
 
 int V4L2Device::QueryMenu(v4l2_querymenu* menu) {
-  VLOGF_ENTER();
   if (!menu) {
     return -EINVAL;
   }
@@ -301,7 +286,6 @@ int V4L2Device::QueryMenu(v4l2_querymenu* menu) {
 }
 
 int V4L2Device::QueryControl(v4l2_queryctrl* control) {
-  VLOGF_ENTER();
   if (!control) {
     return -EINVAL;
   }
@@ -360,7 +344,6 @@ void V4L2Device::GetDescriptiveName() {
 }
 
 int V4L2Device::Poll(int timeout) {
-  VLOGF_ENTER();
   struct pollfd pfd = {0};
   int ret(0);
 
@@ -411,7 +394,6 @@ V4L2DevicePoller::V4L2DevicePoller(std::vector<V4L2Device*> devices,
 int V4L2DevicePoller::Poll(int timeout_ms,
                            int events,
                            std::vector<V4L2Device*>* ready_devices) {
-  VLOGF_ENTER();
   if (poll_fds_.empty()) {
     return -EINVAL;
   }

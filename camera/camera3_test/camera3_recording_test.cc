@@ -18,7 +18,6 @@ void Camera3RecordingFixture::SetUp() {
 
 void Camera3RecordingFixture::ProcessRecordingResult(
     int cam_id, uint32_t /*frame_number*/, ScopedCameraMetadata metadata) {
-  VLOGF_ENTER();
   camera_metadata_ro_entry_t entry;
   ASSERT_EQ(0, find_camera_metadata_ro_entry(metadata.get(),
                                              ANDROID_SENSOR_TIMESTAMP, &entry))

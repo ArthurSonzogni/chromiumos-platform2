@@ -189,7 +189,6 @@ CameraHalClient::CameraHalClient()
 int CameraHalClient::Start(camera_module_callbacks_t* callbacks) {
   static constexpr ::base::TimeDelta kIpcTimeout = ::base::Seconds(3);
 
-  VLOGF_ENTER();
   if (!callbacks) {
     return -EINVAL;
   }
@@ -225,7 +224,6 @@ int CameraHalClient::Start(camera_module_callbacks_t* callbacks) {
 
 void CameraHalClient::ConnectToDispatcher(
     base::OnceCallback<void(int)> callback) {
-  VLOGF_ENTER();
   ASSERT_TRUE(ipc_thread_.task_runner()->BelongsToCurrentThread());
   mojo::ScopedMessagePipeHandle child_pipe;
   base::FilePath socket_path(cros::constants::kCrosCameraSocketPathString);
@@ -262,7 +260,6 @@ void CameraHalClient::ConnectToDispatcher(
 
 void CameraHalClient::SetUpChannel(
     mojo::PendingRemote<cros::mojom::CameraModule> camera_module) {
-  VLOGF_ENTER();
   ASSERT_TRUE(ipc_thread_.task_runner()->BelongsToCurrentThread());
   camera_module_.Bind(std::move(camera_module));
   camera_module_.set_disconnect_handler(base::BindOnce(
@@ -274,7 +271,6 @@ void CameraHalClient::SetUpChannel(
 }
 
 void CameraHalClient::OnSetCallbacks(int32_t result) {
-  VLOGF_ENTER();
   ASSERT_TRUE(ipc_thread_.task_runner()->BelongsToCurrentThread());
   if (result != 0) {
     LOGF(ERROR) << "Failed to set callbacks";
@@ -288,13 +284,11 @@ void CameraHalClient::OnSetCallbacks(int32_t result) {
 }
 
 void CameraHalClient::OnGotVendorTagOps() {
-  VLOGF_ENTER();
   vendor_tag_ops_->GetAllTags(
       base::BindOnce(&CameraHalClient::OnGotAllTags, base::Unretained(this)));
 }
 
 void CameraHalClient::OnGotAllTags(const std::vector<uint32_t>& tag_array) {
-  VLOGF_ENTER();
   if (tag_array.empty()) {
     ipc_initialized_.Signal();
     return;
@@ -309,7 +303,6 @@ void CameraHalClient::OnGotAllTags(const std::vector<uint32_t>& tag_array) {
 
 void CameraHalClient::OnGotSectionName(uint32_t tag,
                                        const std::optional<std::string>& name) {
-  VLOGF_ENTER();
   ASSERT_NE(std::nullopt, name);
   vendor_tag_map_[tag].section_name = *name;
 
@@ -320,7 +313,6 @@ void CameraHalClient::OnGotSectionName(uint32_t tag,
 
 void CameraHalClient::OnGotTagName(uint32_t tag,
                                    const std::optional<std::string>& name) {
-  VLOGF_ENTER();
   ASSERT_NE(std::nullopt, name);
   vendor_tag_map_[tag].tag_name = *name;
 
@@ -330,7 +322,6 @@ void CameraHalClient::OnGotTagName(uint32_t tag,
 }
 
 void CameraHalClient::OnGotTagType(uint32_t tag, int32_t type) {
-  VLOGF_ENTER();
   vendor_tag_map_[tag].type = type;
 
   if ((--vendor_tag_count_) == 0) {
@@ -348,7 +339,6 @@ void CameraHalClient::OnGotTagType(uint32_t tag, int32_t type) {
 }
 
 int CameraHalClient::GetNumberOfCameras() {
-  VLOGF_ENTER();
   auto future = cros::Future<int32_t>::Create(nullptr);
   ipc_thread_.task_runner()->PostTask(
       FROM_HERE,
@@ -363,7 +353,6 @@ int CameraHalClient::GetNumberOfCameras() {
 
 void CameraHalClient::GetNumberOfCamerasOnIpcThread(
     base::OnceCallback<void(int32_t)> cb) {
-  VLOGF_ENTER();
   if (!ipc_initialized_.IsSignaled()) {
     std::move(cb).Run(-ENODEV);
     return;
@@ -372,7 +361,6 @@ void CameraHalClient::GetNumberOfCamerasOnIpcThread(
 }
 
 int CameraHalClient::GetCameraInfo(int cam_id, camera_info* info) {
-  VLOGF_ENTER();
   if (!info) {
     return -EINVAL;
   }
@@ -390,7 +378,6 @@ int CameraHalClient::GetCameraInfo(int cam_id, camera_info* info) {
 
 void CameraHalClient::GetCameraInfoOnIpcThread(
     int cam_id, camera_info* info, base::OnceCallback<void(int32_t)> cb) {
-  VLOGF_ENTER();
   if (!ipc_initialized_.IsSignaled()) {
     std::move(cb).Run(-ENODEV);
     return;
@@ -406,7 +393,6 @@ void CameraHalClient::OnGotCameraInfo(int cam_id,
                                       base::OnceCallback<void(int32_t)> cb,
                                       int32_t result,
                                       cros::mojom::CameraInfoPtr info_ptr) {
-  VLOGF_ENTER();
   if (result == 0) {
     memset(info, 0, sizeof(*info));
     info->facing = static_cast<int>(info_ptr->facing);
@@ -437,7 +423,6 @@ void CameraHalClient::OnGotCameraInfo(int cam_id,
 
 void CameraHalClient::OpenDevice(
     int cam_id, mojo::PendingReceiver<cros::mojom::Camera3DeviceOps> dev_ops) {
-  VLOGF_ENTER();
   auto future = cros::Future<int32_t>::Create(nullptr);
   ipc_thread_.task_runner()->PostTask(
       FROM_HERE,
@@ -453,7 +438,6 @@ void CameraHalClient::OpenDeviceOnIpcThread(
     int cam_id,
     mojo::PendingReceiver<cros::mojom::Camera3DeviceOps> dev_ops,
     base::OnceCallback<void(int32_t)> cb) {
-  VLOGF_ENTER();
   if (!ipc_initialized_.IsSignaled()) {
     std::move(cb).Run(-ENODEV);
     return;
@@ -479,7 +463,6 @@ bool CameraHalClient::GetVendorTagByName(const std::string name,
 
 void CameraHalClient::CameraDeviceStatusChange(
     int32_t camera_id, cros::mojom::CameraDeviceStatus new_status) {
-  VLOGF_ENTER();
   ASSERT_TRUE(ipc_thread_.task_runner()->BelongsToCurrentThread());
   camera_module_callbacks_->camera_device_status_change(
       camera_module_callbacks_, camera_id,
@@ -488,7 +471,6 @@ void CameraHalClient::CameraDeviceStatusChange(
 
 void CameraHalClient::TorchModeStatusChange(
     int32_t camera_id, cros::mojom::TorchModeStatus new_status) {
-  VLOGF_ENTER();
   ASSERT_TRUE(ipc_thread_.task_runner()->BelongsToCurrentThread());
   std::stringstream ss;
   ss << camera_id;
@@ -498,7 +480,6 @@ void CameraHalClient::TorchModeStatusChange(
 }
 
 void CameraHalClient::onIpcConnectionLost() {
-  VLOGF_ENTER();
   camera_module_.reset();
   ipc_initialized_.Reset();
   static_characteristics_map_.clear();
