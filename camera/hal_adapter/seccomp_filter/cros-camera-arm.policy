@@ -51,6 +51,7 @@ gettimeofday: 1
 getuid32: 1
 inotify_add_watch: 1
 inotify_init: 1
+inotify_rm_watch: 1
 ioctl: 1
 lstat64: 1
 madvise: 1

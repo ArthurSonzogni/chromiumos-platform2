@@ -54,6 +54,7 @@ gettimeofday: 1
 getuid: 1
 inotify_add_watch: 1
 inotify_init: 1
+inotify_rm_watch: 1
 ioctl: 1
 # kcmp is specific to AMD GPUs.
 kcmp: 1
