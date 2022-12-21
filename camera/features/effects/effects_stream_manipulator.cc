@@ -13,6 +13,7 @@
 
 #include <unistd.h>
 #include <algorithm>
+#include <deque>
 #include <numeric>
 #include <optional>
 #include <string>
@@ -22,6 +23,7 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/functional/callback_helpers.h>
+#include <base/no_destructor.h>
 #include <base/time/time.h>
 
 #include "common/camera_hal3_helpers.h"
@@ -35,7 +37,6 @@
 namespace cros {
 
 namespace {
-
 const int kSyncWaitTimeoutMs = 8;
 const base::TimeDelta kMaximumMetricsSessionDuration = base::Seconds(3600);
 
@@ -49,6 +50,17 @@ bool GetStringFromKey(const base::Value::Dict& obj,
 
   *value = *val;
   return true;
+}
+
+void LogAverageLatency(base::TimeDelta latency) {
+  static base::NoDestructor<std::deque<float>> latencies;
+  auto const count = static_cast<float>(latencies->size());
+  if (count > 60) {
+    auto avg = std::reduce(latencies->begin(), latencies->end()) / count;
+    VLOGF(1) << "Avg frame latency: " << avg;
+    latencies->clear();
+  }
+  latencies->push_back(latency.InMillisecondsF());
 }
 
 constexpr char kEffectKey[] = "effect";
@@ -336,6 +348,10 @@ bool EffectsStreamManipulator::ProcessCaptureResult(
 
   result_buffer->mutable_raw_buffer().status = CAMERA3_BUFFER_STATUS_OK;
   result.AppendOutputBuffer(std::move(result_buffer.value()));
+
+  if (VLOG_IS_ON(1)) {
+    LogAverageLatency(base::TimeTicks::Now() - processing_time_start);
+  }
 
   return true;
 }
