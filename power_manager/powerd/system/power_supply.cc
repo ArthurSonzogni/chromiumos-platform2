@@ -1515,7 +1515,7 @@ void PowerSupply::SchedulePoll() {
         "*");
     for (base::FilePath name = it.Next(); !name.empty(); name = it.Next()) {
       if (base::ReadSymbolicLink(name, &fdpath)) {
-        LOG(ERROR) << "b/207716926: " << fdpath.BaseName().value();
+        LOG(ERROR) << "b/207716926: " << fdpath.value();
       }
     }
   }
