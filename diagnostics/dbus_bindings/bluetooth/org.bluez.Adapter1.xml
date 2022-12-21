@@ -19,7 +19,7 @@
         The Bluetooth system name, e.g. hci0.
       </tp:docstring>
     </property>
-    <property name="Powered" type="b" access="read">
+    <property name="Powered" type="b" access="readwrite">
       <tp:docstring>
         Whether the adapter radio is powered.
       </tp:docstring>
