@@ -62,7 +62,6 @@ static_library("libfeatured") {
   deps = [
     ":featured-adaptors",
     ":libfeatures",
-    ":libstore_impl",
   ]
 }
 
@@ -172,7 +171,6 @@ if (use.test) {
       ":target_defaults",
     ]
     deps = [
-      ":featured_proto",
       ":libfeatured",
       "//common-mk/testrunner:testrunner",
     ]
