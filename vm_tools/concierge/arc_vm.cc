@@ -472,13 +472,13 @@ bool ArcVm::Start(base::FilePath kernel, VmBuilder vm_builder) {
     vm_builder.SetBlockAsyncExecutor(executor_enum.value());
   }
 
-  auto args = vm_builder.BuildVmArgs(&custom_parameters);
-
-  // Finally list the path to the kernel.
+  // Finally set the path to the kernel.
   const std::string kernel_path =
       custom_parameters.ObtainSpecialParameter(kKeyToOverrideKernelPath)
           .value_or(kernel.value());
-  args.emplace_back(kernel_path, "");
+  vm_builder.SetKernel(base::FilePath(kernel_path));
+
+  auto args = vm_builder.BuildVmArgs(&custom_parameters);
 
   // Change the process group before exec so that crosvm sending SIGKILL to the
   // whole process group doesn't kill us as well. The function also changes the
