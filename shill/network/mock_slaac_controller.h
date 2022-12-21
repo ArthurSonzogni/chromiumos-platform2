@@ -17,7 +17,7 @@ namespace shill {
 
 class MockSLAACController : public SLAACController {
  public:
-  MockSLAACController() : SLAACController(0, nullptr) {}
+  MockSLAACController() : SLAACController(0, nullptr, nullptr) {}
   MockSLAACController(const MockSLAACController&) = delete;
   MockSLAACController& operator=(const MockSLAACController&) = delete;
 
@@ -27,11 +27,7 @@ class MockSLAACController : public SLAACController {
 
   MOCK_METHOD(std::vector<IPAddress>, GetAddresses, (), (const override));
 
-  MOCK_METHOD(bool,
-              GetIPv6DNSServerAddresses,
-              (std::vector<IPAddress> * address_list,
-               uint32_t* life_time_seconds),
-              (override));
+  MOCK_METHOD(std::vector<IPAddress>, GetRDNSSAddresses, (), (const override));
 
   void RegisterCallback(UpdateCallback update_callback) override {
     update_callback_ = update_callback;

@@ -14,14 +14,15 @@
 #include "shill/net/ip_address.h"
 #include "shill/net/ndisc.h"
 #include "shill/net/rtnl_handler.h"
-#include "shill/net/shill_time.h"
 
 namespace shill {
 
-SLAACController::SLAACController(int interface_index, RTNLHandler* rtnl_handler)
+SLAACController::SLAACController(int interface_index,
+                                 RTNLHandler* rtnl_handler,
+                                 EventDispatcher* dispatcher)
     : interface_index_(interface_index),
-      time_(Time::GetInstance()),
-      rtnl_handler_(rtnl_handler) {}
+      rtnl_handler_(rtnl_handler),
+      dispatcher_(dispatcher) {}
 
 SLAACController::~SLAACController() = default;
 
@@ -41,6 +42,13 @@ void SLAACController::StartRTNL() {
 
 void SLAACController::RegisterCallback(UpdateCallback update_callback) {
   update_callback_ = update_callback;
+}
+
+void SLAACController::Stop() {
+  // TODO(b/227563210): this functions does not actually stop SLAAC but just
+  // invalid RDNSS timer in the current version. To be revised to correctly
+  // reflect its name in a follow-up patch.
+  StopRDNSSTimer();
 }
 
 void SLAACController::AddressMsgHandler(const RTNLMessage& msg) {
@@ -129,11 +137,18 @@ void SLAACController::RDNSSMsgHandler(const RTNLMessage& msg) {
   }
 
   const RTNLMessage::RdnssOption& rdnss_option = msg.rdnss_option();
-  ipv6_dns_server_lifetime_seconds_ = rdnss_option.lifetime;
-  ipv6_dns_server_addresses_ = rdnss_option.addresses;
-  if (!time_->GetSecondsBoottime(&ipv6_dns_server_received_time_seconds_)) {
-    LOG(DFATAL) << "GetSecondsBoottime failed.";
-    return;
+  uint32_t rdnss_lifetime_seconds = rdnss_option.lifetime;
+  rdnss_addresses_ = rdnss_option.addresses;
+
+  // Stop any existing timer.
+  StopRDNSSTimer();
+
+  if (rdnss_lifetime_seconds == 0) {
+    rdnss_addresses_.clear();
+  } else if (rdnss_lifetime_seconds != ND_OPT_LIFETIME_INFINITY) {
+    // Setup timer to monitor DNS server lifetime if not infinite lifetime.
+    base::TimeDelta delay = base::Seconds(rdnss_lifetime_seconds);
+    StartRDNSSTimer(delay);
   }
 
   if (update_callback_) {
@@ -141,31 +156,22 @@ void SLAACController::RDNSSMsgHandler(const RTNLMessage& msg) {
   }
 }
 
-bool SLAACController::GetIPv6DNSServerAddresses(
-    std::vector<IPAddress>* address_list, uint32_t* life_time_seconds) {
-  if (ipv6_dns_server_addresses_.empty()) {
-    return false;
-  }
+void SLAACController::StartRDNSSTimer(base::TimeDelta delay) {
+  rdnss_expired_callback_.Reset(base::BindOnce(&SLAACController::RDNSSExpired,
+                                               weak_factory_.GetWeakPtr()));
+  dispatcher_->PostDelayedTask(FROM_HERE, rdnss_expired_callback_.callback(),
+                               delay);
+}
 
-  // Determine the remaining DNS server life time.
-  if (ipv6_dns_server_lifetime_seconds_ == ND_OPT_LIFETIME_INFINITY) {
-    *life_time_seconds = ND_OPT_LIFETIME_INFINITY;
-  } else {
-    time_t cur_time;
-    if (!time_->GetSecondsBoottime(&cur_time)) {
-      LOG(DFATAL) << "GetSecondsBoottime failed.";
-      return false;
-    }
-    uint32_t time_elapsed = static_cast<uint32_t>(
-        cur_time - ipv6_dns_server_received_time_seconds_);
-    if (time_elapsed >= ipv6_dns_server_lifetime_seconds_) {
-      *life_time_seconds = 0;
-    } else {
-      *life_time_seconds = ipv6_dns_server_lifetime_seconds_ - time_elapsed;
-    }
+void SLAACController::StopRDNSSTimer() {
+  rdnss_expired_callback_.Cancel();
+}
+
+void SLAACController::RDNSSExpired() {
+  rdnss_addresses_.clear();
+  if (update_callback_) {
+    update_callback_.Run(UpdateType::kRDNSS);
   }
-  *address_list = ipv6_dns_server_addresses_;
-  return true;
 }
 
 std::vector<IPAddress> SLAACController::GetAddresses() const {
@@ -174,6 +180,10 @@ std::vector<IPAddress> SLAACController::GetAddresses() const {
     result.push_back(address_data.address);
   }
   return result;
+}
+
+std::vector<IPAddress> SLAACController::GetRDNSSAddresses() const {
+  return rdnss_addresses_;
 }
 
 }  // namespace shill

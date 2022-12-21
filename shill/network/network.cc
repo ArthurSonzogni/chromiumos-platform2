@@ -18,7 +18,6 @@
 #include "shill/logging.h"
 #include "shill/metrics.h"
 #include "shill/net/ip_address.h"
-#include "shill/net/ndisc.h"
 #include "shill/net/rtnl_handler.h"
 #include "shill/network/slaac_controller.h"
 #include "shill/routing_table.h"
@@ -166,8 +165,8 @@ void Network::Start(const Network::StartOptions& opts) {
 }
 
 std::unique_ptr<SLAACController> Network::CreateSLAACController() {
-  auto slaac_controller =
-      std::make_unique<SLAACController>(interface_index_, rtnl_handler_);
+  auto slaac_controller = std::make_unique<SLAACController>(
+      interface_index_, rtnl_handler_, dispatcher_);
   return slaac_controller;
 }
 
@@ -211,9 +210,9 @@ void Network::StopInternal(bool is_failure, bool trigger_callback) {
     link_protocol_ipv4_properties_ = {};
     ipconfig_changed = true;
   }
-  // Make sure the timer is stopped regardless of the ip6config state. Just in
-  // case that they are not synced.
-  StopIPv6DNSServerTimer();
+  if (slaac_controller_) {
+    slaac_controller_->Stop();
+  }
   if (ip6config()) {
     set_ip6config(nullptr);
     link_protocol_ipv6_properties_ = {};
@@ -243,9 +242,12 @@ void Network::InvalidateIPv6Config() {
   }
 
   SLOG(this, 2) << interface_name_ << "Waiting for new IPv6 configuration";
-  // Invalidate the old IPv6 configuration, will receive notifications
-  // from kernel for new IPv6 configuration if there is one.
-  StopIPv6DNSServerTimer();
+  if (slaac_controller_) {
+    // TODO(b/227563210): currently only invalid the RDNSS timer. What we should
+    // real do is to force kernel to redo SLAAC here.
+    slaac_controller_->Stop();
+  }
+
   set_ip6config(nullptr);
   event_handler_->OnIPConfigsPropertyUpdated();
 }
@@ -436,25 +438,6 @@ void Network::EnableIPv6Privacy() {
             kIPFlagUseTempAddrUsedAndDefault);
 }
 
-void Network::StartIPv6DNSServerTimer(base::TimeDelta delay) {
-  ipv6_dns_server_expired_callback_.Reset(base::BindOnce(
-      &Network::IPv6DNSServerExpired, weak_factory_.GetWeakPtr()));
-  dispatcher_->PostDelayedTask(
-      FROM_HERE, ipv6_dns_server_expired_callback_.callback(), delay);
-}
-
-void Network::StopIPv6DNSServerTimer() {
-  ipv6_dns_server_expired_callback_.Cancel();
-}
-
-void Network::IPv6DNSServerExpired() {
-  if (!ip6config()) {
-    return;
-  }
-  ip6config()->UpdateDNSServers(std::vector<std::string>());
-  event_handler_->OnIPConfigsPropertyUpdated();
-}
-
 void Network::ConfigureStaticIPv6Address() {
   if (!ipv6_static_properties_ || ipv6_static_properties_->address.empty()) {
     return;
@@ -575,29 +558,14 @@ void Network::OnIPv6ConfigUpdated() {
 }
 
 void Network::OnIPv6DnsServerAddressesChanged() {
-  std::vector<IPAddress> server_addresses;
-  uint32_t lifetime = 0;
-
-  // Stop any existing timer.
-  StopIPv6DNSServerTimer();
-
-  if (!slaac_controller_->GetIPv6DNSServerAddresses(&server_addresses,
-                                                    &lifetime) ||
-      lifetime == 0) {
-    IPv6DNSServerExpired();
-    return;
-  }
-
-  std::vector<std::string> addresses_str;
-  for (const auto& ip : server_addresses) {
-    std::string address_str;
-    if (!ip.IntoString(&address_str)) {
-      LOG(ERROR) << interface_name_
-                 << ": Unable to convert IPv6 address into a string!";
-      IPv6DNSServerExpired();
+  std::vector<IPAddress> rdnss = slaac_controller_->GetRDNSSAddresses();
+  if (rdnss.size() == 0) {
+    if (!ip6config()) {
       return;
     }
-    addresses_str.push_back(address_str);
+    ip6config()->UpdateDNSServers(std::vector<std::string>());
+    event_handler_->OnIPConfigsPropertyUpdated();
+    return;
   }
 
   if (!ip6config()) {
@@ -605,10 +573,15 @@ void Network::OnIPv6DnsServerAddressesChanged() {
         std::make_unique<IPConfig>(control_interface_, interface_name_));
   }
 
-  if (lifetime != ND_OPT_LIFETIME_INFINITY) {
-    // Setup timer to monitor DNS server lifetime if not infinite lifetime.
-    base::TimeDelta delay = base::Seconds(lifetime);
-    StartIPv6DNSServerTimer(delay);
+  std::vector<std::string> addresses_str;
+  for (const auto& ip : rdnss) {
+    std::string address_str;
+    if (!ip.IntoString(&address_str)) {
+      LOG(ERROR) << interface_name_
+                 << ": Unable to convert IPv6 address into a string!";
+      continue;
+    }
+    addresses_str.push_back(address_str);
   }
 
   // Done if no change in server addresses.

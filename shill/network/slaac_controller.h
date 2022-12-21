@@ -8,13 +8,15 @@
 #include <memory>
 #include <vector>
 
+#include <base/cancelable_callback.h>
 #include <base/memory/weak_ptr.h>
+#include <base/time/time.h>
 
+#include "shill/event_dispatcher.h"
 #include "shill/mockable.h"
 #include "shill/net/ip_address.h"
 #include "shill/net/rtnl_handler.h"
 #include "shill/net/rtnl_listener.h"
-#include "shill/net/shill_time.h"
 
 namespace shill {
 
@@ -27,27 +29,22 @@ class SLAACController {
   };
   using UpdateCallback = base::RepeatingCallback<void(UpdateType)>;
 
-  SLAACController(int interface_index, RTNLHandler* rtnl_handler);
+  SLAACController(int interface_index,
+                  RTNLHandler* rtnl_handler,
+                  EventDispatcher* dispatcher);
   virtual ~SLAACController();
 
   mockable void StartRTNL();
   mockable void RegisterCallback(UpdateCallback update_callback);
+  mockable void Stop();
 
   // Return the list of all SLAAC-configured addresses. The order is guaranteed
   // to match kernel preference so that the first element is always the
   // preferred address.
   mockable std::vector<IPAddress> GetAddresses() const;
 
-  // Get the IPv6 DNS server addresses received from RDNSS. This method
-  // returns true and sets |address_list| and |life_time_seconds| if the IPv6
-  // DNS server addresses exists. Otherwise, it returns false and leave
-  // |address_list| and |life_time_seconds| unmodified. |life_time_seconds|
-  // indicates the number of the seconds the DNS server is still valid for at
-  // the time of this function call. Value of 0 means the DNS server is not
-  // valid anymore, and value of 0xFFFFFFFF means the DNS server is valid
-  // forever.
-  mockable bool GetIPv6DNSServerAddresses(std::vector<IPAddress>* address_list,
-                                          uint32_t* life_time_seconds);
+  // Get the IPv6 DNS server addresses received from RDNSS.
+  mockable std::vector<IPAddress> GetRDNSSAddresses() const;
 
  private:
   // TODO(b/227563210): Refactor to remove friend declaration after moving all
@@ -70,20 +67,31 @@ class SLAACController {
   void AddressMsgHandler(const RTNLMessage& msg);
   void RDNSSMsgHandler(const RTNLMessage& msg);
 
+  // Timer function for monitoring RDNSS's lifetime.
+  void StartRDNSSTimer(base::TimeDelta lifetime);
+  void StopRDNSSTimer();
+  // Called when the lifetime for RDNSS expires.
+  void RDNSSExpired();
+
+  // Return the preferred globally scoped IPv6 address.
+  // If no primary IPv6 address exists, return nullptr.
+  const IPAddress* GetPrimaryIPv6Address();
+
   const int interface_index_;
 
   std::vector<AddressData> slaac_addresses_;
-  std::vector<IPAddress> ipv6_dns_server_addresses_;
-  uint32_t ipv6_dns_server_lifetime_seconds_;
-  time_t ipv6_dns_server_received_time_seconds_;
+
+  std::vector<IPAddress> rdnss_addresses_;
+  base::CancelableOnceClosure rdnss_expired_callback_;
 
   // Callbacks registered by RegisterCallbacks().
   UpdateCallback update_callback_;
 
-  Time* time_;
   RTNLHandler* rtnl_handler_;
   std::unique_ptr<RTNLListener> address_listener_;
   std::unique_ptr<RTNLListener> rdnss_listener_;
+
+  EventDispatcher* dispatcher_;
 
   base::WeakPtrFactory<SLAACController> weak_factory_{this};
 };

@@ -5,8 +5,8 @@
 #include "shill/network/slaac_controller.h"
 
 #include "shill/net/mock_rtnl_handler.h"
-#include "shill/net/mock_time.h"
 #include "shill/network/mock_network.h"
+#include "shill/test_event_dispatcher.h"
 
 using testing::_;
 using testing::DoAll;
@@ -31,10 +31,8 @@ constexpr char kTestIPAddress7[] = "fe80::1aa9:5ff:abcd:1238";
 class SLAACControllerTest : public testing::Test {
  public:
   SLAACControllerTest()
-      : slaac_controller_(kTestIfindex, &rtnl_handler_),
-        network_(kTestIfindex, kTestIfname, kTestTechnology) {
-    slaac_controller_.time_ = &time_;
-  }
+      : slaac_controller_(kTestIfindex, &rtnl_handler_, &dispatcher_),
+        network_(kTestIfindex, kTestIfname, kTestTechnology) {}
   ~SLAACControllerTest() override = default;
 
   void SetUp() override {
@@ -57,7 +55,7 @@ class SLAACControllerTest : public testing::Test {
   SLAACController slaac_controller_;
   MockRTNLHandler rtnl_handler_;
   MockNetwork network_;
-  MockTime time_;
+  EventDispatcherForTest dispatcher_;
 };
 
 void SLAACControllerTest::SendRTNLMessage(const RTNLMessage& message) {
@@ -96,11 +94,10 @@ std::unique_ptr<RTNLMessage> SLAACControllerTest::BuildAddressMessage(
 
 TEST_F(SLAACControllerTest, IPv6DnsServerAddressesChanged) {
   std::vector<IPAddress> dns_server_addresses_out;
-  uint32_t lifetime_out;
 
   // No IPv6 dns server addresses.
-  EXPECT_FALSE(slaac_controller_.GetIPv6DNSServerAddresses(
-      &dns_server_addresses_out, &lifetime_out));
+  dns_server_addresses_out = slaac_controller_.GetRDNSSAddresses();
+  EXPECT_EQ(0, dns_server_addresses_out.size());
 
   // Setup IPv6 dns server addresses.
   IPAddress ipv6_address1(IPAddress::kFamilyIPv6);
@@ -114,57 +111,42 @@ TEST_F(SLAACControllerTest, IPv6DnsServerAddressesChanged) {
   const uint32_t kInfiniteLifetime = 0xffffffff;
   auto message = BuildRdnssMessage(RTNLMessage::kModeAdd, kInfiniteLifetime,
                                    dns_server_addresses_in);
-  EXPECT_CALL(time_, GetSecondsBoottime(_))
-      .WillOnce(DoAll(SetArgPointee<0>(0), Return(true)));
+
   EXPECT_CALL(*this, UpdateCallback(SLAACController::UpdateType::kRDNSS))
       .Times(1);
   SendRTNLMessage(*message);
-  EXPECT_CALL(time_, GetSecondsBoottime(_)).Times(0);
-  EXPECT_TRUE(slaac_controller_.GetIPv6DNSServerAddresses(
-      &dns_server_addresses_out, &lifetime_out));
-  // Verify addresses and lifetime.
-  EXPECT_EQ(kInfiniteLifetime, lifetime_out);
+  dns_server_addresses_out = slaac_controller_.GetRDNSSAddresses();
+  // Verify addresses.
   EXPECT_EQ(2, dns_server_addresses_out.size());
   EXPECT_EQ(kTestIPAddress1, dns_server_addresses_out.at(0).ToString());
   EXPECT_EQ(kTestIPAddress2, dns_server_addresses_out.at(1).ToString());
 
-  // Lifetime of 120, retrieve DNS server addresses after 10 seconds.
+  // Lifetime of 120
   const uint32_t kLifetime120 = 120;
-  const uint32_t kElapseTime10 = 10;
   auto message1 = BuildRdnssMessage(RTNLMessage::kModeAdd, kLifetime120,
                                     dns_server_addresses_in);
-  EXPECT_CALL(time_, GetSecondsBoottime(_))
-      .WillOnce(DoAll(SetArgPointee<0>(0), Return(true)));
-  EXPECT_CALL(*this, UpdateCallback(SLAACController::UpdateType::kRDNSS))
+  EXPECT_CALL(*this, UpdateCallback(
+                         SLAACController::SLAACController::UpdateType::kRDNSS))
       .Times(1);
   SendRTNLMessage(*message1);
-  // 10 seconds passed when GetIPv6DnsServerAddresses is called.
-  EXPECT_CALL(time_, GetSecondsBoottime(_))
-      .WillOnce(DoAll(SetArgPointee<0>(kElapseTime10), Return(true)));
-  EXPECT_TRUE(slaac_controller_.GetIPv6DNSServerAddresses(
-      &dns_server_addresses_out, &lifetime_out));
-  // Verify addresses and lifetime.
-  EXPECT_EQ(kLifetime120 - kElapseTime10, lifetime_out);
+
+  dns_server_addresses_out = slaac_controller_.GetRDNSSAddresses();
+  // Verify addresses.
   EXPECT_EQ(2, dns_server_addresses_out.size());
   EXPECT_EQ(kTestIPAddress1, dns_server_addresses_out.at(0).ToString());
   EXPECT_EQ(kTestIPAddress2, dns_server_addresses_out.at(1).ToString());
 
-  // Lifetime of 120, retrieve DNS server addresses after lifetime expired.
-  EXPECT_CALL(time_, GetSecondsBoottime(_))
-      .WillOnce(DoAll(SetArgPointee<0>(0), Return(true)));
+  // Lifetime of 0
+  const uint32_t kLifetime0 = 0;
+  auto message2 = BuildRdnssMessage(RTNLMessage::kModeAdd, kLifetime0,
+                                    dns_server_addresses_in);
   EXPECT_CALL(*this, UpdateCallback(SLAACController::UpdateType::kRDNSS))
       .Times(1);
-  SendRTNLMessage(*message1);
-  // 120 seconds passed when GetIPv6DnsServerAddresses is called.
-  EXPECT_CALL(time_, GetSecondsBoottime(_))
-      .WillOnce(DoAll(SetArgPointee<0>(kLifetime120), Return(true)));
-  EXPECT_TRUE(slaac_controller_.GetIPv6DNSServerAddresses(
-      &dns_server_addresses_out, &lifetime_out));
-  // Verify addresses and lifetime.
-  EXPECT_EQ(0, lifetime_out);
-  EXPECT_EQ(2, dns_server_addresses_out.size());
-  EXPECT_EQ(kTestIPAddress1, dns_server_addresses_out.at(0).ToString());
-  EXPECT_EQ(kTestIPAddress2, dns_server_addresses_out.at(1).ToString());
+  SendRTNLMessage(*message2);
+
+  dns_server_addresses_out = slaac_controller_.GetRDNSSAddresses();
+  // Verify addresses.
+  EXPECT_EQ(0, dns_server_addresses_out.size());
 }
 
 TEST_F(SLAACControllerTest, IPv6AddressChanged) {

@@ -19,7 +19,6 @@
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
 #include "shill/mock_routing_table.h"
-#include "shill/net/ndisc.h"
 #include "shill/network/dhcp_controller.h"
 #include "shill/network/mock_dhcp_controller.h"
 #include "shill/network/mock_dhcp_provider.h"
@@ -424,8 +423,7 @@ class NetworkStartTest : public NetworkTest {
   }
 
   void TriggerSLAACUpdate() {
-    TriggerSLAACNameServersUpdate({IPAddress(kIPv6SLAACNameserver)},
-                                  ND_OPT_LIFETIME_INFINITY);
+    TriggerSLAACNameServersUpdate({IPAddress(kIPv6SLAACNameserver)});
     TriggerSLAACAddressUpdate();
   }
 
@@ -442,11 +440,9 @@ class NetworkStartTest : public NetworkTest {
     dispatcher_.task_environment().RunUntilIdle();
   }
 
-  void TriggerSLAACNameServersUpdate(const std::vector<IPAddress>& dns_list,
-                                     uint32_t lifetime) {
-    EXPECT_CALL(*slaac_controller_, GetIPv6DNSServerAddresses(_, _))
-        .WillRepeatedly(DoAll(SetArgPointee<0>(dns_list),
-                              SetArgPointee<1>(lifetime), Return(true)));
+  void TriggerSLAACNameServersUpdate(const std::vector<IPAddress>& dns_list) {
+    EXPECT_CALL(*slaac_controller_, GetRDNSSAddresses())
+        .WillRepeatedly(Return(dns_list));
     slaac_controller_->TriggerCallback(SLAACController::UpdateType::kRDNSS);
     dispatcher_.task_environment().RunUntilIdle();
   }
@@ -753,7 +749,7 @@ TEST_F(NetworkStartTest, IPv6OnlySLAACDNSServerChangeEvent) {
   InvokeStart(test_opts);
 
   // The Network should not be set up if there is no valid DNS.
-  TriggerSLAACNameServersUpdate({}, 0);
+  TriggerSLAACNameServersUpdate({});
   TriggerSLAACAddressUpdate();
   EXPECT_EQ(network_->state(), Network::State::kConfiguring);
 
@@ -763,26 +759,26 @@ TEST_F(NetworkStartTest, IPv6OnlySLAACDNSServerChangeEvent) {
   ExpectCreateConnectionWithIPConfig(IPConfigType::kIPv6SLAAC);
   EXPECT_CALL(event_handler_, OnConnectionUpdated());
   EXPECT_CALL(event_handler_, OnIPConfigsPropertyUpdated());
-  TriggerSLAACNameServersUpdate({dns_server}, 3600);
+  TriggerSLAACNameServersUpdate({dns_server});
   Mock::VerifyAndClearExpectations(&event_handler_);
   Mock::VerifyAndClearExpectations(connection_);
 
   ON_CALL(*connection_, IsIPv6()).WillByDefault(Return(true));
 
   // If the IPv6 DNS server addresses does not change, no signal is emitted.
-  TriggerSLAACNameServersUpdate({dns_server}, 3600);
+  TriggerSLAACNameServersUpdate({dns_server});
   Mock::VerifyAndClearExpectations(&event_handler_);
 
-  // Setting lifetime to 0 should expire and clear out the DNS server.
+  // Clear out the DNS server.
   EXPECT_CALL(event_handler_, OnIPConfigsPropertyUpdated());
-  TriggerSLAACNameServersUpdate({dns_server}, 0);
+  TriggerSLAACNameServersUpdate({});
   EXPECT_TRUE(network_->ip6config()->properties().dns_servers.empty());
   Mock::VerifyAndClearExpectations(&event_handler_);
 
-  // Reset lifetime to 3600.
+  // Reset the DNS server.
   EXPECT_CALL(event_handler_, OnConnectionUpdated());
   EXPECT_CALL(event_handler_, OnIPConfigsPropertyUpdated());
-  TriggerSLAACNameServersUpdate({dns_server}, 3600);
+  TriggerSLAACNameServersUpdate({dns_server});
   EXPECT_EQ(network_->ip6config()->properties().dns_servers.size(), 1);
   Mock::VerifyAndClearExpectations(&event_handler_);
 }

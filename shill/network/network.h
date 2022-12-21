@@ -289,11 +289,6 @@ class Network {
   void OnDHCPFailure();
 
   // Functions for IPv6.
-  // Timer function for monitoring IPv6 DNS server's lifetime.
-  void StartIPv6DNSServerTimer(base::TimeDelta lifetime);
-  void StopIPv6DNSServerTimer();
-  // Called when the lifetime for IPv6 DNS server expires.
-  void IPv6DNSServerExpired();
   // Configures static IP address received from cellular bearer.
   void ConfigureStaticIPv6Address();
   // Called when IPv6 configuration changes.
@@ -365,9 +360,6 @@ class Network {
   // able to restore the config to the previous state and 2) being exposed as a
   // Service property via D-Bus.
   NetworkConfig saved_network_config_;
-
-  // Callback to invoke when IPv6 DNS servers lifetime expired.
-  base::CancelableOnceClosure ipv6_dns_server_expired_callback_;
 
   // Track the current same-net multi-home state.
   bool is_multi_homed_ = false;
