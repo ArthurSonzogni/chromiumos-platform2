@@ -77,6 +77,7 @@ void FetchAggregator::Run(
         LOG(ERROR) << "Some async fetchers didn't call the callback.";
       })};
 
+  // Use a set to eliminate duplicate categories.
   for (const auto category : std::set<mojom::ProbeCategoryEnum>(
            categories_to_probe.begin(), categories_to_probe.end())) {
     switch (category) {
