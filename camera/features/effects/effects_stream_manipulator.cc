@@ -89,9 +89,11 @@ EffectsStreamManipulator::EffectsStreamManipulator(
           config_file_path, base::FilePath(kOverrideEffectsConfigFile)}),
       runtime_options_(runtime_options),
       gl_thread_("EffectsGlThread"),
-      set_effect_callback_(callback) {
+      set_effect_callback_(callback),
+      metrics_helper_(CameraMetrics::New()) {
   DETACH_FROM_SEQUENCE(sequence_checker_);
   DETACH_FROM_THREAD(gl_thread_checker_);
+
   if (!config_.IsValid()) {
     LOGF(ERROR) << "Cannot load valid config. Turning off feature by default";
   }
@@ -113,6 +115,16 @@ EffectsStreamManipulator::EffectsStreamManipulator(
   }
 }
 
+EffectsStreamManipulator::~EffectsStreamManipulator() {
+  // Post Sync so that this actually gets done before
+  // the destructor cleans things up.
+  gl_thread_.PostTaskSync(
+      FROM_HERE,
+      base::BindOnce(&EffectsStreamManipulator::UploadAndResetMetricsOnThread,
+                     base::Unretained(this)));
+  gl_thread_.Stop();
+}
+
 bool EffectsStreamManipulator::Initialize(
     const camera_metadata_t* static_info,
     StreamManipulator::Callbacks callbacks) {
@@ -122,6 +134,13 @@ bool EffectsStreamManipulator::Initialize(
 
 bool EffectsStreamManipulator::ConfigureStreams(
     Camera3StreamConfiguration* stream_config) {
+  // This is the signal that a new session has started. We can offload
+  // it to the GPU thread, since the session is not yet live and any
+  // small delay there will not be perceived by the user.
+  gl_thread_.PostTaskAsync(
+      FROM_HERE,
+      base::BindOnce(&EffectsStreamManipulator::UploadAndResetMetricsOnThread,
+                     base::Unretained(this)));
   return true;
 }
 
@@ -380,6 +399,12 @@ void EffectsStreamManipulator::SetEffect(EffectsConfig new_config) {
   if (pipeline_) {
     pipeline_->SetEffect(&new_config, set_effect_callback_);
     effects_enabled_ = new_config.HasEnabledEffects();
+
+    gl_thread_.PostTaskAsync(
+        FROM_HERE,
+        base::BindOnce(
+            &EffectsStreamManipulator::AddSelectedEffectMetricOnThread,
+            base::Unretained(this), new_config));
   } else {
     LOGF(WARNING) << "SetEffect called, but pipeline not ready.";
   }
@@ -468,6 +493,28 @@ void EffectsStreamManipulator::CreatePipeline(
   pipeline_->SetRenderedImageObserver(std::make_unique<RenderedImageObserver>(
       base::BindRepeating(&EffectsStreamManipulator::OnFrameProcessed,
                           base::Unretained(this))));
+}
+
+void EffectsStreamManipulator::AddSelectedEffectMetricOnThread(
+    EffectsConfig config) {
+  DCHECK(gl_thread_.task_runner()->BelongsToCurrentThread());
+  if (config.blur_enabled && config.relight_enabled) {
+    metrics_.selected_effects.insert(CameraEffect::kBlurAndRelight);
+  } else if (config.blur_enabled) {
+    metrics_.selected_effects.insert(CameraEffect::kBlur);
+  } else if (config.relight_enabled) {
+    metrics_.selected_effects.insert(CameraEffect::kRelight);
+  }
+}
+
+void EffectsStreamManipulator::UploadAndResetMetricsOnThread() {
+  DCHECK(gl_thread_.task_runner()->BelongsToCurrentThread());
+  for (CameraEffect effect : metrics_.selected_effects) {
+    metrics_helper_->SendEffectsSelectedEffect(effect);
+  }
+
+  // Clear metrics after upload.
+  metrics_ = EffectsStreamManipulator::Metrics();
 }
 
 }  // namespace cros

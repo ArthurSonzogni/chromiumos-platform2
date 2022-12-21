@@ -16,7 +16,7 @@
 
 #undef Status
 #include <absl/status/status.h>
-#include <base/memory/weak_ptr.h>
+#include <base/containers/flat_set.h>
 
 #include "base/sequence_checker.h"
 #include "base/threading/thread_checker.h"
@@ -24,6 +24,7 @@
 #include "common/camera_hal3_helpers.h"
 #include "common/metadata_logger.h"
 #include "common/reloadable_config_file.h"
+#include "cros-camera/camera_metrics.h"
 #include "cros-camera/camera_thread.h"
 #include "cros-camera/common_types.h"
 #include "gpu/image_processor.h"
@@ -53,7 +54,7 @@ class EffectsStreamManipulator : public StreamManipulator {
   explicit EffectsStreamManipulator(base::FilePath config_file_path,
                                     RuntimeOptions* runtime_options,
                                     void (*callback)(bool) = nullptr);
-  ~EffectsStreamManipulator() override = default;
+  ~EffectsStreamManipulator() override;
 
   // Implementations of StreamManipulator.
   bool Initialize(const camera_metadata_t* static_info,
@@ -83,6 +84,10 @@ class EffectsStreamManipulator : public StreamManipulator {
   std::optional<int64_t> TryGetSensorTimestamp(Camera3CaptureDescriptor* desc);
   std::optional<Camera3StreamBuffer> SelectEffectsBuffer(
       Camera3CaptureDescriptor& result);
+
+  // Metrics helper methods
+  void AddSelectedEffectMetricOnThread(EffectsConfig config);
+  void UploadAndResetMetricsOnThread();
 
   ReloadableConfigFile config_;
   RuntimeOptions* runtime_options_;
@@ -119,6 +124,12 @@ class EffectsStreamManipulator : public StreamManipulator {
 
   SEQUENCE_CHECKER(sequence_checker_);
   THREAD_CHECKER(gl_thread_checker_);
+
+  struct Metrics {
+    base::flat_set<CameraEffect> selected_effects;
+  };
+  Metrics metrics_;
+  std::unique_ptr<CameraMetrics> metrics_helper_;
 };
 
 }  // namespace cros

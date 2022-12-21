@@ -157,6 +157,11 @@ constexpr int kZoomRatioBuckets = 30;
 
 constexpr char kCameraAutoFramingError[] = "ChromeOS.Camera.AutoFraming.Error";
 
+// *** Effects metrics ***
+
+constexpr char kCameraEffectSelected[] =
+    "ChromeOS.Camera.Effects.SelectedEffect";
+
 }  // namespace
 
 // static
@@ -397,6 +402,10 @@ void CameraMetricsImpl::SendAutoFramingMedianZoomRatio(int zoom_ratio_tenths) {
 
 void CameraMetricsImpl::SendAutoFramingError(AutoFramingError error) {
   metrics_lib_->SendEnumToUMA(kCameraAutoFramingError, error);
+}
+
+void CameraMetricsImpl::SendEffectsSelectedEffect(CameraEffect effect) {
+  metrics_lib_->SendEnumToUMA(kCameraEffectSelected, effect);
 }
 
 }  // namespace cros

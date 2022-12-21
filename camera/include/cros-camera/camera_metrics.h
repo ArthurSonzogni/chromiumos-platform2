@@ -98,6 +98,14 @@ enum class AutoFramingError {
   kMaxValue = kPipelineOutputError,
 };
 
+enum class CameraEffect {
+  kNone = 0,  // Not used, but kept for consistency
+  kBlur = 1,
+  kRelight = 2,
+  kBlurAndRelight = 3,
+  kMaxValue = kBlurAndRelight,
+};
+
 class CROS_CAMERA_EXPORT CameraMetrics {
  public:
   static std::unique_ptr<CameraMetrics> New();
@@ -207,6 +215,11 @@ class CROS_CAMERA_EXPORT CameraMetrics {
 
   // Records auto-framing average zoom ratio per session.
   virtual void SendAutoFramingError(AutoFramingError error) = 0;
+
+  // *** Effects metrics ***
+
+  // Records the user selecting an effect during the session.
+  virtual void SendEffectsSelectedEffect(CameraEffect effect) = 0;
 };
 
 }  // namespace cros

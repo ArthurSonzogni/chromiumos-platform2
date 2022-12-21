@@ -64,6 +64,8 @@ class CameraMetricsImpl : public CameraMetrics {
   void SendAutoFramingMedianZoomRatio(int zoom_ratio_tenths) override;
   void SendAutoFramingError(AutoFramingError error) override;
 
+  void SendEffectsSelectedEffect(CameraEffect effect) override;
+
  private:
   std::unique_ptr<MetricsLibraryInterface> metrics_lib_;
 };
