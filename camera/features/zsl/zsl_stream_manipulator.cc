@@ -11,6 +11,7 @@
 
 #include "cros-camera/camera_metadata_utils.h"
 #include "cros-camera/common.h"
+#include "features/zsl/tracing.h"
 #include "features/zsl/zsl_helper.h"
 
 namespace cros {
@@ -39,6 +40,8 @@ bool ZslStreamManipulator::UpdateStaticMetadata(
 
 bool ZslStreamManipulator::Initialize(const camera_metadata_t* static_info,
                                       StreamManipulator::Callbacks callbacks) {
+  TRACE_ZSL();
+
   callbacks_ = std::move(callbacks);
   std::optional<uint8_t> vendor_tag =
       GetRoMetadata<uint8_t>(static_info, kCrosZslVendorTagCanAttempt);
@@ -58,6 +61,8 @@ bool ZslStreamManipulator::Initialize(const camera_metadata_t* static_info,
 
 bool ZslStreamManipulator::ConfigureStreams(
     Camera3StreamConfiguration* stream_config) {
+  TRACE_ZSL("stream_configurations", stream_config->ToJsonString());
+
   if (!can_attempt_zsl_) {
     return true;
   }
@@ -71,6 +76,8 @@ bool ZslStreamManipulator::ConfigureStreams(
 
 bool ZslStreamManipulator::OnConfiguredStreams(
     Camera3StreamConfiguration* stream_config) {
+  TRACE_ZSL("stream_configurations", stream_config->ToJsonString());
+
   if (!can_attempt_zsl_) {
     return true;
   }
@@ -88,6 +95,8 @@ bool ZslStreamManipulator::OnConfiguredStreams(
 
 bool ZslStreamManipulator::ConstructDefaultRequestSettings(
     android::CameraMetadata* default_request_settings, int type) {
+  TRACE_ZSL();
+
   if (!can_attempt_zsl_) {
     return true;
   }
@@ -106,6 +115,8 @@ bool ZslStreamManipulator::ConstructDefaultRequestSettings(
 
 bool ZslStreamManipulator::ProcessCaptureRequest(
     Camera3CaptureDescriptor* request) {
+  TRACE_ZSL("frame_number", request->frame_number());
+
   if (!can_attempt_zsl_) {
     return true;
   }
@@ -123,6 +134,8 @@ bool ZslStreamManipulator::ProcessCaptureRequest(
 
 bool ZslStreamManipulator::ProcessCaptureResult(
     Camera3CaptureDescriptor result) {
+  TRACE_ZSL("frame_number", result.frame_number());
+
   if (!can_attempt_zsl_) {
     callbacks_.result_callback.Run(std::move(result));
     return true;
@@ -144,6 +157,8 @@ bool ZslStreamManipulator::ProcessCaptureResult(
 }
 
 void ZslStreamManipulator::Notify(camera3_notify_msg_t msg) {
+  TRACE_ZSL();
+
   if (!can_attempt_zsl_) {
     callbacks_.notify_callback.Run(std::move(msg));
     return;
@@ -155,6 +170,7 @@ void ZslStreamManipulator::Notify(camera3_notify_msg_t msg) {
 }
 
 bool ZslStreamManipulator::Flush() {
+  TRACE_ZSL();
   return true;
 }
 

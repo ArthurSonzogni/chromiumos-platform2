@@ -35,6 +35,7 @@ constexpr char kCameraTraceCategoryGcamAe[] = "camera.gcam_ae";
 constexpr char kCameraTraceCategoryGpu[] = "camera.gpu";
 constexpr char kCameraTraceCategoryHalAdapter[] = "camera.hal_adapter";
 constexpr char kCameraTraceCategoryHdrnet[] = "camera.hdrnet";
+constexpr char kCameraTraceCategoryZsl[] = "camera.zsl";
 
 }  // namespace cros
 
@@ -68,6 +69,8 @@ PERFETTO_DEFINE_CATEGORIES(
     perfetto::Category(cros::kCameraTraceCategoryHalAdapter)
         .SetDescription("Events from CrOS Camera HAL adapter"),
     perfetto::Category(cros::kCameraTraceCategoryHdrnet)
-        .SetDescription("Events from CrOS HDRnet pipeline"));
+        .SetDescription("Events from CrOS HDRnet pipeline"),
+    perfetto::Category(cros::kCameraTraceCategoryZsl)
+        .SetDescription("Events from CrOS ZSL pipeline"));
 
 #endif  // CAMERA_INCLUDE_CROS_CAMERA_TRACING_H_
