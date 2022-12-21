@@ -302,7 +302,7 @@ class Network {
   // Callback registered with SLAACController. |update_type| indicates the
   // update type (see comment in SLAACController declaration for detail).
   void OnUpdateFromSLAAC(SLAACController::UpdateType update_type);
-  void OnIPv6AddressChanged(const IPAddress* address);
+  void OnIPv6AddressChanged();
   void OnIPv6DnsServerAddressesChanged();
 
   // Enable ARP filtering on the interface. Incoming ARP requests are responded

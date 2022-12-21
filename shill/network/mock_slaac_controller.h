@@ -25,8 +25,6 @@ class MockSLAACController : public SLAACController {
 
   MOCK_METHOD(void, StartRTNL, (), (override));
 
-  MOCK_METHOD(const IPAddress*, GetPrimaryIPv6Address, (), (override));
-
   MOCK_METHOD(std::vector<IPAddress>, GetAddresses, (), (const override));
 
   MOCK_METHOD(bool,

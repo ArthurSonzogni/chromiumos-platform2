@@ -80,8 +80,9 @@ void SLAACController::AddressMsgHandler(const RTNLMessage& msg) {
     if (msg.mode() == RTNLMessage::kModeAdd) {
       LOG(INFO) << "RTNL cache: Add address " << address.ToString()
                 << " for interface " << interface_index_;
-      slaac_addresses_.emplace_back(std::move(address), status.flags,
-                                    status.scope);
+      slaac_addresses_.insert(
+          slaac_addresses_.begin(),
+          AddressData(std::move(address), status.flags, status.scope));
     } else if (msg.mode() == RTNLMessage::kModeDelete) {
       LOG(WARNING) << "RTNL cache: Deleting non-cached address "
                    << address.ToString() << " for interface "
@@ -89,36 +90,36 @@ void SLAACController::AddressMsgHandler(const RTNLMessage& msg) {
     }
   }
 
+  // Sort slaac_addresses_ to match the kernel's preference so the primary
+  // address always comes at top. Note that this order is based on the premise
+  // that we set net.ipv6.conf.use_tempaddr = 2.
+  static struct {
+    bool operator()(const AddressData& a, const AddressData& b) const {
+      // Prefer non-deprecated addresses to deprecated addresses to match the
+      // kernel's preference.
+      if (!(a.flags & IFA_F_DEPRECATED) && (b.flags & IFA_F_DEPRECATED)) {
+        return true;
+      }
+      if (!(b.flags & IFA_F_DEPRECATED) && (a.flags & IFA_F_DEPRECATED)) {
+        return false;
+      }
+      // Prefer temporary addresses to non-temporary addresses to match the
+      // kernel's preference.
+      if ((a.flags & IFA_F_TEMPORARY) && !(b.flags & IFA_F_TEMPORARY)) {
+        return true;
+      }
+      if ((b.flags & IFA_F_TEMPORARY) && !(a.flags & IFA_F_TEMPORARY)) {
+        return false;
+      }
+      return false;
+    }
+  } address_preference;
+  std::stable_sort(slaac_addresses_.begin(), slaac_addresses_.end(),
+                   address_preference);
+
   if (update_callback_) {
     update_callback_.Run(UpdateType::kAddress);
   }
-}
-
-const IPAddress* SLAACController::GetPrimaryIPv6Address() {
-  bool has_temporary_address = false;
-  bool has_current_address = false;
-  const IPAddress* address = nullptr;
-  for (const auto& local_address : slaac_addresses_) {
-    // Prefer non-deprecated addresses to deprecated addresses to match the
-    // kernel's preference.
-    bool is_current_address = ((local_address.flags & IFA_F_DEPRECATED) == 0);
-    if (has_current_address && !is_current_address) {
-      continue;
-    }
-
-    // Prefer temporary addresses to non-temporary addresses to match the
-    // kernel's preference.
-    bool is_temporary_address = ((local_address.flags & IFA_F_TEMPORARY) != 0);
-    if (has_temporary_address && !is_temporary_address) {
-      continue;
-    }
-
-    address = &local_address.address;
-    has_temporary_address = is_temporary_address;
-    has_current_address = is_current_address;
-  }
-
-  return address;
 }
 
 void SLAACController::RDNSSMsgHandler(const RTNLMessage& msg) {

@@ -473,14 +473,15 @@ void Network::ConfigureStaticIPv6Address() {
 
 void Network::OnUpdateFromSLAAC(SLAACController::UpdateType update_type) {
   if (update_type == SLAACController::UpdateType::kAddress) {
-    OnIPv6AddressChanged(slaac_controller_->GetPrimaryIPv6Address());
+    OnIPv6AddressChanged();
   } else if (update_type == SLAACController::UpdateType::kRDNSS) {
     OnIPv6DnsServerAddressesChanged();
   }
 }
 
-void Network::OnIPv6AddressChanged(const IPAddress* address) {
-  if (!address) {
+void Network::OnIPv6AddressChanged() {
+  auto slaac_addresses = slaac_controller_->GetAddresses();
+  if (slaac_addresses.size() == 0) {
     if (ip6config()) {
       set_ip6config(nullptr);
       event_handler_->OnIPConfigsPropertyUpdated();
@@ -490,14 +491,15 @@ void Network::OnIPv6AddressChanged(const IPAddress* address) {
     return;
   }
 
-  CHECK_EQ(address->family(), IPAddress::kFamilyIPv6);
+  const auto& primary_address = slaac_addresses[0];
+  CHECK_EQ(primary_address.family(), IPAddress::kFamilyIPv6);
   IPConfig::Properties properties;
-  if (!address->IntoString(&properties.address)) {
+  if (!primary_address.IntoString(&properties.address)) {
     LOG(ERROR) << interface_name_
                << ": Unable to convert IPv6 address into a string";
     return;
   }
-  properties.subnet_prefix = address->prefix();
+  properties.subnet_prefix = primary_address.prefix();
 
   RoutingTableEntry default_route;
   if (routing_table_->GetDefaultRouteFromKernel(interface_index_,

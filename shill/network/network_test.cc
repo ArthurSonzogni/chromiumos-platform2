@@ -436,8 +436,8 @@ class NetworkStartTest : public NetworkTest {
           return true;
         }));
     static IPAddress addr(kIPv6SLAACAddress, kIPv6SLAACPrefix);
-    EXPECT_CALL(*slaac_controller_, GetPrimaryIPv6Address())
-        .WillRepeatedly(Return(&addr));
+    EXPECT_CALL(*slaac_controller_, GetAddresses())
+        .WillRepeatedly(Return(std::vector<IPAddress>{addr}));
     slaac_controller_->TriggerCallback(SLAACController::UpdateType::kAddress);
     dispatcher_.task_environment().RunUntilIdle();
   }
@@ -724,8 +724,8 @@ TEST_F(NetworkStartTest, IPv6OnlySLAACAddressChangeEvent) {
 
   // Changing the address should trigger the connection update.
   IPAddress new_addr("fe80::1aa9:5ff:abcd:1234");
-  EXPECT_CALL(*slaac_controller_, GetPrimaryIPv6Address())
-      .WillRepeatedly(Return(&new_addr));
+  EXPECT_CALL(*slaac_controller_, GetAddresses())
+      .WillRepeatedly(Return(std::vector<IPAddress>{new_addr}));
   EXPECT_CALL(event_handler_, OnConnectionUpdated());
   EXPECT_CALL(event_handler_, OnIPConfigsPropertyUpdated());
   slaac_controller_->TriggerCallback(SLAACController::UpdateType::kAddress);
@@ -739,6 +739,8 @@ TEST_F(NetworkStartTest, IPv6OnlySLAACAddressChangeEvent) {
 
   // If the IPv6 prefix changes, a signal is emitted.
   new_addr.set_prefix(64);
+  EXPECT_CALL(*slaac_controller_, GetAddresses())
+      .WillRepeatedly(Return(std::vector<IPAddress>{new_addr}));
   EXPECT_CALL(event_handler_, OnConnectionUpdated());
   EXPECT_CALL(event_handler_, OnIPConfigsPropertyUpdated());
   slaac_controller_->TriggerCallback(SLAACController::UpdateType::kAddress);

@@ -33,10 +33,9 @@ class SLAACController {
   mockable void StartRTNL();
   mockable void RegisterCallback(UpdateCallback update_callback);
 
-  // Return the preferred globally scoped IPv6 address.
-  // If no primary IPv6 address exists, return nullptr.
-  mockable const IPAddress* GetPrimaryIPv6Address();
-
+  // Return the list of all SLAAC-configured addresses. The order is guaranteed
+  // to match kernel preference so that the first element is always the
+  // preferred address.
   mockable std::vector<IPAddress> GetAddresses() const;
 
   // Get the IPv6 DNS server addresses received from RDNSS. This method
@@ -54,8 +53,6 @@ class SLAACController {
   // TODO(b/227563210): Refactor to remove friend declaration after moving all
   // SLAAC functionality from DeviceInfo and Network to SLAACController.
   friend class SLAACControllerTest;
-  FRIEND_TEST(SLAACControllerTest,
-              IPv6AddressChanged);  // For GetPrimaryIPv6Address.
 
   // The data struct to store IP address received from RTNL together with its
   // flags and scope information.

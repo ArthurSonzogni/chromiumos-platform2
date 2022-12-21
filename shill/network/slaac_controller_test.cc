@@ -169,7 +169,7 @@ TEST_F(SLAACControllerTest, IPv6DnsServerAddressesChanged) {
 
 TEST_F(SLAACControllerTest, IPv6AddressChanged) {
   // Contains no addresses.
-  EXPECT_EQ(slaac_controller_.GetPrimaryIPv6Address(), nullptr);
+  EXPECT_EQ(slaac_controller_.GetAddresses(), std::vector<IPAddress>{});
 
   IPAddress ipv4_address(IPAddress::kFamilyIPv4);
   EXPECT_TRUE(ipv4_address.SetAddressFromString(kTestIPAddress0));
@@ -180,7 +180,7 @@ TEST_F(SLAACControllerTest, IPv6AddressChanged) {
 
   // We should ignore IPv4 addresses.
   SendRTNLMessage(*message);
-  EXPECT_EQ(slaac_controller_.GetPrimaryIPv6Address(), nullptr);
+  EXPECT_EQ(slaac_controller_.GetAddresses(), std::vector<IPAddress>{});
 
   IPAddress ipv6_address1(IPAddress::kFamilyIPv6);
   EXPECT_TRUE(ipv6_address1.SetAddressFromString(kTestIPAddress1));
@@ -189,7 +189,7 @@ TEST_F(SLAACControllerTest, IPv6AddressChanged) {
 
   // We should ignore non-SCOPE_UNIVERSE messages for IPv6.
   SendRTNLMessage(*message);
-  EXPECT_EQ(slaac_controller_.GetPrimaryIPv6Address(), nullptr);
+  EXPECT_EQ(slaac_controller_.GetAddresses(), std::vector<IPAddress>{});
 
   IPAddress ipv6_address2(IPAddress::kFamilyIPv6);
   EXPECT_TRUE(ipv6_address2.SetAddressFromString(kTestIPAddress2));
@@ -200,7 +200,8 @@ TEST_F(SLAACControllerTest, IPv6AddressChanged) {
   EXPECT_CALL(*this, UpdateCallback(SLAACController::UpdateType::kAddress))
       .Times(1);
   SendRTNLMessage(*message);
-  EXPECT_EQ(*slaac_controller_.GetPrimaryIPv6Address(), ipv6_address2);
+  EXPECT_EQ(slaac_controller_.GetAddresses(),
+            std::vector<IPAddress>{ipv6_address2});
 
   IPAddress ipv6_address3(IPAddress::kFamilyIPv6);
   EXPECT_TRUE(ipv6_address3.SetAddressFromString(kTestIPAddress3));
@@ -212,7 +213,8 @@ TEST_F(SLAACControllerTest, IPv6AddressChanged) {
   EXPECT_CALL(*this, UpdateCallback(SLAACController::UpdateType::kAddress))
       .Times(1);
   SendRTNLMessage(*message);
-  EXPECT_EQ(*slaac_controller_.GetPrimaryIPv6Address(), ipv6_address2);
+  EXPECT_EQ(slaac_controller_.GetAddresses(),
+            std::vector<IPAddress>({ipv6_address2, ipv6_address3}));
 
   IPAddress ipv6_address4(IPAddress::kFamilyIPv6);
   EXPECT_TRUE(ipv6_address4.SetAddressFromString(kTestIPAddress4));
@@ -225,7 +227,9 @@ TEST_F(SLAACControllerTest, IPv6AddressChanged) {
   EXPECT_CALL(*this, UpdateCallback(SLAACController::UpdateType::kAddress))
       .Times(1);
   SendRTNLMessage(*message);
-  EXPECT_EQ(*slaac_controller_.GetPrimaryIPv6Address(), ipv6_address2);
+  EXPECT_EQ(
+      slaac_controller_.GetAddresses(),
+      std::vector<IPAddress>({ipv6_address2, ipv6_address3, ipv6_address4}));
 
   IPAddress ipv6_address7(IPAddress::kFamilyIPv6);
   EXPECT_TRUE(ipv6_address7.SetAddressFromString(kTestIPAddress7));
@@ -237,7 +241,9 @@ TEST_F(SLAACControllerTest, IPv6AddressChanged) {
   EXPECT_CALL(*this, UpdateCallback(SLAACController::UpdateType::kAddress))
       .Times(1);
   SendRTNLMessage(*message);
-  EXPECT_EQ(*slaac_controller_.GetPrimaryIPv6Address(), ipv6_address7);
+  EXPECT_EQ(slaac_controller_.GetAddresses(),
+            std::vector<IPAddress>(
+                {ipv6_address7, ipv6_address2, ipv6_address3, ipv6_address4}));
 }
 
 }  // namespace shill
