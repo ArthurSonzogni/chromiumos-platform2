@@ -12,6 +12,6 @@ namespace power_manager {
 
 TestEnvironment::TestEnvironment()
     : task_environment_(base::test::TaskEnvironment::MainThreadType::IO,
-                        base::test::TaskEnvironment::TimeSource::MOCK_TIME) {}
+                        base::test::TaskEnvironment::TimeSource::SYSTEM_TIME) {}
 
 }  // namespace power_manager
