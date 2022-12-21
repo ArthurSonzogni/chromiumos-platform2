@@ -11,6 +11,7 @@
 #include "common/camera_hal3_helpers.h"
 
 #include "cros-camera/cros_camera_hal.h"
+#include "features/face_detection/tracing.h"
 
 namespace cros {
 
@@ -78,6 +79,8 @@ FaceDetectionStreamManipulator::FaceDetectionStreamManipulator(
 bool FaceDetectionStreamManipulator::Initialize(
     const camera_metadata_t* static_info,
     StreamManipulator::Callbacks callbacks) {
+  TRACE_FACE_DETECTION();
+
   callbacks_ = std::move(callbacks);
   base::span<const int32_t> active_array_size = GetRoMetadataAsSpan<int32_t>(
       static_info, ANDROID_SENSOR_INFO_ACTIVE_ARRAY_SIZE);
@@ -91,21 +94,29 @@ bool FaceDetectionStreamManipulator::Initialize(
 
 bool FaceDetectionStreamManipulator::ConfigureStreams(
     Camera3StreamConfiguration* stream_config) {
+  TRACE_FACE_DETECTION("stream_configurations", stream_config->ToJsonString());
+
   return true;
 }
 
 bool FaceDetectionStreamManipulator::OnConfiguredStreams(
     Camera3StreamConfiguration* stream_config) {
+  TRACE_FACE_DETECTION();
+
   return true;
 }
 
 bool FaceDetectionStreamManipulator::ConstructDefaultRequestSettings(
     android::CameraMetadata* default_request_settings, int type) {
+  TRACE_FACE_DETECTION();
+
   return true;
 }
 
 bool FaceDetectionStreamManipulator::ProcessCaptureRequest(
     Camera3CaptureDescriptor* request) {
+  TRACE_FACE_DETECTION("frame_number", request->frame_number());
+
   if (!options_.enable) {
     return true;
   }
@@ -142,6 +153,8 @@ bool FaceDetectionStreamManipulator::ProcessCaptureRequest(
 
 bool FaceDetectionStreamManipulator::ProcessCaptureResult(
     Camera3CaptureDescriptor result) {
+  TRACE_FACE_DETECTION("frame_number", result.frame_number());
+
   if (!options_.enable) {
     callbacks_.result_callback.Run(std::move(result));
     return true;
@@ -219,6 +232,8 @@ bool FaceDetectionStreamManipulator::Flush() {
 camera3_stream_buffer_t*
 FaceDetectionStreamManipulator::SelectFaceDetectionBuffer(
     base::span<camera3_stream_buffer_t> output_buffers) {
+  TRACE_FACE_DETECTION();
+
   auto is_larger_or_closer_to_native_aspect_ratio =
       [&](const camera3_stream_t* lhs, const camera3_stream_t* rhs) -> bool {
     if (lhs->width >= rhs->width && lhs->height >= rhs->height) {
