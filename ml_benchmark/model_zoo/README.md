@@ -10,6 +10,8 @@ DUT via the `chromeos-base/ml-test-assets` package:
 
 `emerge-${BOARD} ml-test-assets && cros deploy <DUT> ml-test-assets`
 
+The models can be downloaded directly [here](https://commondatastorage.googleapis.com/chromeos-localmirror/distfiles/ml-test-assets-0.0.2.tar.xz)
+
 ## Tools
 
 ### Latency, Max Memory
@@ -45,3 +47,12 @@ Example usage:
 | selfie_segmentation_landscape_256x256     |          <= 6 |                                  TBD |         TBD |    <=100MB |
 | convolution_benchmark_1_144x256           |          <= 4 | avg_err <=0.0003<br/>std_dev <=5e-06 |         TBD |    <=100MB |
 | convolution_benchmark_2_144x256           |          <= 4 | avg_err <=0.0003<br/>std_dev <=5e-06 |         TBD |    <=100MB |
+
+### Image Search
+
+**Note: These models are CNN based.**
+
+| Model                      | Latency (ms)  | Accuracy                               | Power Usage | Max Memory |
+|----------------------------|--------------:|---------------------------------------:|-------------|------------|
+| mobilenet_v2_1.0_224       |          <= 5 | avg_err <=0.00005<br/>std_dev <=6e-06  |         TBD |    <=150MB |
+| mobilenet_v2_1.0_224_quant |          <= 5 | avg_err <=1.5<br/>std_dev <=0.2        |         TBD |    <=150MB |
