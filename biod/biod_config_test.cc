@@ -29,4 +29,18 @@ TEST(FingerprintSupportedTest, FingerprintLocationSetNone) {
   EXPECT_FALSE(FingerprintSupported(&cros_config));
 }
 
+TEST(FingerprintBoardTest, FingerprintBoardUnset) {
+  // Given a device that does not indicate fingerprint board
+  brillo::FakeCrosConfig cros_config;
+  // expect FingerprintBoard to report false.
+  EXPECT_FALSE(FingerprintBoard(&cros_config));
+}
+
+TEST(FingerprintBoardTest, FingerprintBoardSet) {
+  brillo::FakeCrosConfig cros_config;
+  cros_config.SetString(kCrosConfigFPPath, kCrosConfigFPBoard,
+                        kFpBoardDartmonkey);
+  EXPECT_EQ(FingerprintBoard(&cros_config), kFpBoardDartmonkey);
+}
+
 }  // namespace biod
