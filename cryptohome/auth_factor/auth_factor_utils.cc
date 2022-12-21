@@ -397,20 +397,18 @@ std::optional<AuthFactorPreparePurpose> AuthFactorPreparePurposeFromProto(
   }
 }
 
-std::tuple<AuthFactorMap, std::map<std::string, KeyData>> LoadAuthFactorMap(
-    const std::string& obfuscated_username,
-    Platform& platform,
-    AuthFactorVaultKeysetConverter& converter,
-    AuthFactorManager& manager) {
+AuthFactorMap LoadAuthFactorMap(const std::string& obfuscated_username,
+                                Platform& platform,
+                                AuthFactorVaultKeysetConverter& converter,
+                                AuthFactorManager& manager) {
   AuthFactorMap auth_factor_map;
-  std::map<std::string, KeyData> key_data_map;
 
   // Load all the VaultKeysets and backup VaultKeysets in disk and convert
   // them to AuthFactor format.
   std::map<std::string, std::unique_ptr<AuthFactor>> backup_factor_map;
   std::map<std::string, std::unique_ptr<AuthFactor>> vk_factor_map;
   converter.VaultKeysetsToAuthFactorsAndKeyLabelData(
-      obfuscated_username, vk_factor_map, backup_factor_map, &key_data_map);
+      obfuscated_username, vk_factor_map, backup_factor_map);
   // Load the USS AuthFactors.
   std::map<std::string, std::unique_ptr<AuthFactor>> uss_factor_map =
       manager.LoadAllAuthFactors(obfuscated_username);
@@ -444,7 +442,7 @@ std::tuple<AuthFactorMap, std::map<std::string, KeyData>> LoadAuthFactorMap(
     auth_factor_map.Add(std::move(factor), AuthFactorStorageType::kVaultKeyset);
   }
 
-  return std::tuple(std::move(auth_factor_map), std::move(key_data_map));
+  return auth_factor_map;
 }
 
 }  // namespace cryptohome

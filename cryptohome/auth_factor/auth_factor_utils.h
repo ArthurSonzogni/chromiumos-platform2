@@ -9,7 +9,6 @@
 #include <memory>
 #include <optional>
 #include <string>
-#include <tuple>
 
 #include <cryptohome/proto_bindings/auth_factor.pb.h>
 #include <google/protobuf/repeated_field.h>
@@ -79,12 +78,11 @@ std::optional<AuthFactorPreparePurpose> AuthFactorPreparePurposeFromProto(
     user_data_auth::AuthFactorPreparePurpose purpose);
 
 // Given a keyset converter, factor manager, and platform, load all of the auth
-// factors for the given user into an auth factor and key data map.
-std::tuple<AuthFactorMap, std::map<std::string, KeyData>> LoadAuthFactorMap(
-    const std::string& obfuscated_username,
-    Platform& platform,
-    AuthFactorVaultKeysetConverter& converter,
-    AuthFactorManager& manager);
+// factors for the given user into an auth factor.
+AuthFactorMap LoadAuthFactorMap(const std::string& obfuscated_username,
+                                Platform& platform,
+                                AuthFactorVaultKeysetConverter& converter,
+                                AuthFactorManager& manager);
 
 }  // namespace cryptohome
 #endif  // CRYPTOHOME_AUTH_FACTOR_AUTH_FACTOR_UTILS_H_

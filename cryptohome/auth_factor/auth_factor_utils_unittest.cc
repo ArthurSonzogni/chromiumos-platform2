@@ -106,51 +106,6 @@ class AuthFactorMapItemMatcher
       new AuthFactorMapItemMatcher(type, std::move(label), storage_type));
 }
 
-// A matcher for a KeyData that checks the type and label.
-class KeyDataMatcher : public ::testing::MatcherInterface<const KeyData&> {
- public:
-  KeyDataMatcher(KeyData::KeyType type, std::string label)
-      : type_(type), label_(std::move(label)) {}
-
-  bool MatchAndExplain(
-      const KeyData& key_data,
-      ::testing::MatchResultListener* listener) const override {
-    bool matches = true;
-    if (!key_data.has_type()) {
-      matches = false;
-      *listener << "type is not set\n";
-    } else if (key_data.type() != type_) {
-      matches = false;
-      *listener << "type is: " << KeyData::KeyType_Name(key_data.type())
-                << "\n";
-    }
-    if (key_data.label() != label_) {
-      matches = false;
-      *listener << "label is: " << key_data.label() << "\n";
-    }
-    return matches;
-  }
-
-  void DescribeTo(std::ostream* os) const override {
-    *os << "has type " << KeyData::KeyType_Name(type_) << "and label "
-        << label_;
-  }
-
-  void DescribeNegationTo(std::ostream* os) const override {
-    *os << "does not have type " << KeyData::KeyType_Name(type_)
-        << " or does not have label " << label_;
-  }
-
- private:
-  KeyData::KeyType type_;
-  std::string label_;
-};
-::testing::Matcher<const KeyData&> KeyDataIs(KeyData::KeyType type,
-                                             std::string label) {
-  return ::testing::MakeMatcher<const KeyData&>(
-      new KeyDataMatcher(type, std::move(label)));
-}
-
 // Create a generic metadata with the given factor-specific subtype using
 // version information from the test constants above.
 template <typename MetadataType>
@@ -648,20 +603,18 @@ TEST_F(LoadAuthFactorMapTest, NoFactors) {
 
   {
     auto no_uss = DisableUssExperiment();
-    auto [af_map, kd_map] =
+    auto af_map =
         LoadAuthFactorMap(kObfuscatedUsername, platform_, converter_, manager_);
 
     EXPECT_THAT(af_map, IsEmpty());
-    EXPECT_THAT(kd_map, IsEmpty());
   }
 
   {
     auto uss = EnableUssExperiment();
-    auto [af_map, kd_map] =
+    auto af_map =
         LoadAuthFactorMap(kObfuscatedUsername, platform_, converter_, manager_);
 
     EXPECT_THAT(af_map, IsEmpty());
-    EXPECT_THAT(kd_map, IsEmpty());
   }
 }
 
@@ -670,7 +623,7 @@ TEST_F(LoadAuthFactorMapTest, LoadWithOnlyVaultKeysets) {
   InstallVaultKeysets({{"primary", &CreatePasswordVaultKeyset},
                        {"secondary", &CreatePasswordVaultKeyset}});
 
-  auto [af_map, kd_map] =
+  auto af_map =
       LoadAuthFactorMap(kObfuscatedUsername, platform_, converter_, manager_);
 
   EXPECT_THAT(af_map,
@@ -679,12 +632,6 @@ TEST_F(LoadAuthFactorMapTest, LoadWithOnlyVaultKeysets) {
                                     AuthFactorStorageType::kVaultKeyset),
                   AuthFactorMapItem(AuthFactorType::kPassword, "secondary",
                                     AuthFactorStorageType::kVaultKeyset)));
-  EXPECT_THAT(
-      kd_map,
-      UnorderedElementsAre(
-          Pair("primary", KeyDataIs(KeyData::KEY_TYPE_PASSWORD, "primary")),
-          Pair("secondary",
-               KeyDataIs(KeyData::KEY_TYPE_PASSWORD, "secondary"))));
 }
 
 TEST_F(LoadAuthFactorMapTest, LoadWithOnlyUss) {
@@ -697,7 +644,7 @@ TEST_F(LoadAuthFactorMapTest, LoadWithOnlyUss) {
                               {.metadata = PinAuthFactorMetadata()},
                               {.state = PinWeaverAuthBlockState()}));
 
-  auto [af_map, kd_map] =
+  auto af_map =
       LoadAuthFactorMap(kObfuscatedUsername, platform_, converter_, manager_);
 
   EXPECT_THAT(af_map,
@@ -706,7 +653,6 @@ TEST_F(LoadAuthFactorMapTest, LoadWithOnlyUss) {
                                     AuthFactorStorageType::kUserSecretStash),
                   AuthFactorMapItem(AuthFactorType::kPin, "secondary",
                                     AuthFactorStorageType::kUserSecretStash)));
-  EXPECT_THAT(kd_map, IsEmpty());
 }
 
 // Test that, given a mix of regular VKs, backup VKs, and USS factors, the
@@ -724,7 +670,7 @@ TEST_F(LoadAuthFactorMapTest, LoadWithMixUsesUssAndVk) {
   // Without USS, only the regular and backup VKs should be loaded.
   {
     auto no_uss = DisableUssExperiment();
-    auto [af_map, kd_map] =
+    auto af_map =
         LoadAuthFactorMap(kObfuscatedUsername, platform_, converter_, manager_);
 
     EXPECT_THAT(af_map,
@@ -733,16 +679,12 @@ TEST_F(LoadAuthFactorMapTest, LoadWithMixUsesUssAndVk) {
                                       AuthFactorStorageType::kVaultKeyset),
                     AuthFactorMapItem(AuthFactorType::kPassword, "quaternary",
                                       AuthFactorStorageType::kVaultKeyset)));
-    EXPECT_THAT(
-        kd_map,
-        UnorderedElementsAre(Pair(
-            "tertiary", KeyDataIs(KeyData::KEY_TYPE_PASSWORD, "tertiary"))));
   }
 
   // With USS, the USS factors should be loaded along with the non-backup VKs.
   {
     auto uss = EnableUssExperiment();
-    auto [af_map, kd_map] =
+    auto af_map =
         LoadAuthFactorMap(kObfuscatedUsername, platform_, converter_, manager_);
 
     EXPECT_THAT(af_map,
@@ -753,10 +695,6 @@ TEST_F(LoadAuthFactorMapTest, LoadWithMixUsesUssAndVk) {
                                       AuthFactorStorageType::kUserSecretStash),
                     AuthFactorMapItem(AuthFactorType::kPassword, "tertiary",
                                       AuthFactorStorageType::kVaultKeyset)));
-    EXPECT_THAT(
-        kd_map,
-        UnorderedElementsAre(Pair(
-            "tertiary", KeyDataIs(KeyData::KEY_TYPE_PASSWORD, "tertiary"))));
   }
 }
 

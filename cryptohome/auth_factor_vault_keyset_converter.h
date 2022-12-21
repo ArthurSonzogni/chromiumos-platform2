@@ -46,8 +46,7 @@ class AuthFactorVaultKeysetConverter {
       std::map<std::string, std::unique_ptr<AuthFactor>>&
           out_label_to_auth_factor,
       std::map<std::string, std::unique_ptr<AuthFactor>>&
-          out_label_to_auth_factor_backup_vks,
-      std::map<std::string, KeyData>* key_label_data);
+          out_label_to_auth_factor_backup_vks);
 
   // Takes a label, which was sent from an AuthFactor API, find the VaultKeyset
   // identified with that label and returns its KeyData.

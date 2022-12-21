@@ -4243,10 +4243,6 @@ TEST_F(UserDataAuthExTest, StartAuthSessionReplyCheck) {
   const user_data_auth::StartAuthSessionReply& start_auth_session_reply =
       start_auth_session_reply_future.Get();
 
-  EXPECT_THAT(start_auth_session_reply.key_label_data().at(kFakeLabel).label(),
-              kFakeLabel);
-  EXPECT_THAT(start_auth_session_reply.key_label_data().at(kFakeLabel).type(),
-              KeyData::KEY_TYPE_PASSWORD);
   EXPECT_THAT(start_auth_session_reply.auth_factors().size(), 1);
   EXPECT_THAT(start_auth_session_reply.auth_factors().at(0).label(),
               kFakeLabel);

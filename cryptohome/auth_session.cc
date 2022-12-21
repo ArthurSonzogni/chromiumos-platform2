@@ -297,9 +297,9 @@ CryptohomeStatus AuthSession::Initialize() {
     return OkStatus<CryptohomeCryptoError>();
   }
 
-  // Populate auth_factor_map_ and key_label_data_.
-  std::tie(auth_factor_map_, key_label_data_) = LoadAuthFactorMap(
-      obfuscated_username_, *platform_, converter_, *auth_factor_manager_);
+  // Populate auth_factor_map_ with factors.
+  auth_factor_map_ = LoadAuthFactorMap(obfuscated_username_, *platform_,
+                                       converter_, *auth_factor_manager_);
 
   if (feature_lib_) {
     migrate_to_user_secret_stash_ =

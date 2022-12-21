@@ -434,11 +434,6 @@ TEST_F(AuthSessionTestWithKeysetManagement, StartAuthSessionWithoutKeyData) {
   EXPECT_THAT(userdataauth_.auth_session_manager_->FindAuthSession(
                   auth_session_id.value()),
               NotNull());
-  EXPECT_FALSE(auth_session_reply.key_label_data().empty());
-
-  const auto& key_label_data = auth_session_reply.key_label_data();
-  ASSERT_THAT(key_label_data, testing::SizeIs(1));
-  EXPECT_THAT(key_label_data.begin()->first, "legacy-0");
 }
 
 // Test that creating user with USS and adding AuthFactors adds backup

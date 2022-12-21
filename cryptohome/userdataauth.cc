@@ -3901,11 +3901,6 @@ void UserDataAuth::StartAuthSession(
     return;
   }
 
-  google::protobuf::Map<std::string, KeyData> proto_key_map(
-      auth_session->key_label_data().begin(),
-      auth_session->key_label_data().end());
-  *(reply.mutable_key_label_data()) = proto_key_map;
-
   // Discover any available auth factors from the AuthSession.
   std::set<std::string> listed_auth_factor_labels;
   for (AuthFactorMap::ValueView stored_auth_factor :
@@ -4844,8 +4839,8 @@ void UserDataAuth::ListAuthFactors(
   // After USS is enabled there will be backup VKs in disk. They are used for
   // authentication only if USS is disabled after once being enabled.
   if (converter.VaultKeysetsToAuthFactorsAndKeyLabelData(
-          obfuscated_username, auth_factor_map, auth_factor_map_for_backup_vks,
-          nullptr /*key_label_data*/) !=
+          obfuscated_username, auth_factor_map,
+          auth_factor_map_for_backup_vks) !=
       user_data_auth::CRYPTOHOME_ERROR_NOT_SET) {
     LOG(WARNING) << "Failure in listing the available VaultKeyset factors.";
   }

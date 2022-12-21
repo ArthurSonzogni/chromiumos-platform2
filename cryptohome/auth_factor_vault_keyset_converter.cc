@@ -155,8 +155,7 @@ AuthFactorVaultKeysetConverter::VaultKeysetsToAuthFactorsAndKeyLabelData(
     std::map<std::string, std::unique_ptr<AuthFactor>>&
         out_label_to_auth_factor,
     std::map<std::string, std::unique_ptr<AuthFactor>>&
-        out_label_to_auth_factor_backup_vks,
-    std::map<std::string, KeyData>* out_key_label_data) {
+        out_label_to_auth_factor_backup_vks) {
   DCHECK(out_label_to_auth_factor.empty());
   DCHECK(out_label_to_auth_factor_backup_vks.empty());
 
@@ -179,23 +178,18 @@ AuthFactorVaultKeysetConverter::VaultKeysetsToAuthFactorsAndKeyLabelData(
       continue;
     }
 
-    if (!vk->IsForBackup()) {
-      out_label_to_auth_factor.emplace(vk->GetLabel(), std::move(auth_factor));
+    // Select map to write the auth factor into.
+    std::map<std::string, std::unique_ptr<AuthFactor>>& out_map =
+        vk->IsForBackup() ? out_label_to_auth_factor_backup_vks
+                          : out_label_to_auth_factor;
 
-      if (out_key_label_data) {
-        if (out_key_label_data->find(vk->GetLabel()) !=
-            out_key_label_data->end()) {
-          // This is a confirmation check, we do not expect to hit this.
-          LOG(ERROR) << "Found a duplicate label, skipping it: "
-                     << vk->GetLabel();
-          continue;
-        }
-        out_key_label_data->emplace(
-            std::make_pair(vk->GetLabel(), vk->GetKeyDataOrDefault()));
-      }
-    } else {
-      out_label_to_auth_factor_backup_vks.emplace(vk->GetLabel(),
-                                                  std::move(auth_factor));
+    auto [unused, was_inserted] =
+        out_map.emplace(vk->GetLabel(), std::move(auth_factor));
+    if (!was_inserted) {
+      // This should not happen, but if somehow it does log it.
+      const char* label_type = vk->IsForBackup() ? "backup " : "";
+      LOG(ERROR) << "Found a duplicate " << label_type
+                 << "label, skipping it: " << vk->GetLabel();
     }
   }
 

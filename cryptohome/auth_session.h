@@ -206,12 +206,6 @@ class AuthSession final {
   // Returns the key data with which this AuthSession is authenticated with.
   KeyData current_key_data() const { return key_data_; }
 
-  // Returns the map of Key label and KeyData that will be used as a result of
-  // StartAuthSession request.
-  const std::map<std::string, KeyData>& key_label_data() const {
-    return key_label_data_;
-  }
-
   // Returns the map from the label to the auth factor.
   const AuthFactorMap& auth_factor_map() const { return auth_factor_map_; }
 
@@ -669,9 +663,6 @@ class AuthSession final {
   std::optional<FileSystemKeyset> file_system_keyset_ = std::nullopt;
   // Whether the user existed at the time this object was constructed.
   bool user_exists_ = false;
-  // Map to store the label and public KeyData.
-  // TODO(crbug.com/1171024): Change this to AuthFactor
-  std::map<std::string, KeyData> key_label_data_;
   // Map containing the auth factors already configured for this user.
   AuthFactorMap auth_factor_map_;
   // Key used by AuthenticateAuthFactor for cryptohome recovery AuthFactor.
