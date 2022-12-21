@@ -49,8 +49,6 @@ namespace cryptohome::data_migrator {
 namespace {
 
 constexpr uint64_t kDefaultChunkSize = 128;
-constexpr char kMtimeXattrName[] = "user.mtime";
-constexpr char kAtimeXattrName[] = "user.atime";
 
 constexpr char kStatusFilesDir[] = "/home/.shadow/deadbeef/status_dir";
 constexpr char kFromDir[] = "/home/.shadow/deadbeef/temporary_mount";
@@ -92,8 +90,6 @@ class MigrationHelperTest : public ::testing::Test {
 TEST_F(MigrationHelperTest, EmptyTest) {
   MigrationHelper helper(&platform_, &delegate_, from_dir_, to_dir_,
                          status_files_dir_, kDefaultChunkSize);
-  helper.set_namespaced_mtime_xattr_name_for_testing(kMtimeXattrName);
-  helper.set_namespaced_atime_xattr_name_for_testing(kAtimeXattrName);
 
   ASSERT_TRUE(platform_.IsDirectoryEmpty(from_dir_));
   ASSERT_TRUE(platform_.IsDirectoryEmpty(to_dir_));
@@ -107,8 +103,6 @@ TEST_F(MigrationHelperTest, CopyAttributesDirectory) {
   // more extensive mocking and is covered in CopyOwnership test.
   MigrationHelper helper(&platform_, &delegate_, from_dir_, to_dir_,
                          status_files_dir_, kDefaultChunkSize);
-  helper.set_namespaced_mtime_xattr_name_for_testing(kMtimeXattrName);
-  helper.set_namespaced_atime_xattr_name_for_testing(kAtimeXattrName);
 
   constexpr char kDirectory[] = "directory";
   const FilePath kFromDirPath = from_dir_.Append(kDirectory);
@@ -175,8 +169,6 @@ TEST_F(MigrationHelperTest, CopyAttributesDirectory) {
 TEST_F(MigrationHelperTest, DirectoryPartiallyMigrated) {
   MigrationHelper helper(&platform_, &delegate_, from_dir_, to_dir_,
                          status_files_dir_, kDefaultChunkSize);
-  helper.set_namespaced_mtime_xattr_name_for_testing(kMtimeXattrName);
-  helper.set_namespaced_atime_xattr_name_for_testing(kAtimeXattrName);
 
   constexpr char kDirectory[] = "directory";
   const FilePath kFromDirPath = from_dir_.Append(kDirectory);
@@ -184,11 +176,11 @@ TEST_F(MigrationHelperTest, DirectoryPartiallyMigrated) {
   constexpr struct timespec kMtime = {123, 456};
   constexpr struct timespec kAtime = {234, 567};
   ASSERT_TRUE(platform_.SetExtendedFileAttribute(
-      to_dir_, kMtimeXattrName, reinterpret_cast<const char*>(&kMtime),
-      sizeof(kMtime)));
+      to_dir_, delegate_.GetMtimeXattrName(),
+      reinterpret_cast<const char*>(&kMtime), sizeof(kMtime)));
   ASSERT_TRUE(platform_.SetExtendedFileAttribute(
-      to_dir_, kAtimeXattrName, reinterpret_cast<const char*>(&kAtime),
-      sizeof(kAtime)));
+      to_dir_, delegate_.GetAtimeXattrName(),
+      reinterpret_cast<const char*>(&kAtime), sizeof(kAtime)));
 
   EXPECT_TRUE(helper.Migrate(base::BindRepeating(
       &MigrationHelperTest::ProgressCaptor, base::Unretained(this))));
@@ -212,8 +204,6 @@ TEST_F(MigrationHelperTest, CopySymlink) {
   // CopyOwnership test.
   MigrationHelper helper(&platform_, &delegate_, from_dir_, to_dir_,
                          status_files_dir_, kDefaultChunkSize);
-  helper.set_namespaced_mtime_xattr_name_for_testing(kMtimeXattrName);
-  helper.set_namespaced_atime_xattr_name_for_testing(kAtimeXattrName);
   FilePath target;
 
   constexpr char kFileName[] = "file";
@@ -267,8 +257,6 @@ TEST_F(MigrationHelperTest, CopySymlink) {
 TEST_F(MigrationHelperTest, OneEmptyFile) {
   MigrationHelper helper(&platform_, &delegate_, from_dir_, to_dir_,
                          status_files_dir_, kDefaultChunkSize);
-  helper.set_namespaced_mtime_xattr_name_for_testing(kMtimeXattrName);
-  helper.set_namespaced_atime_xattr_name_for_testing(kAtimeXattrName);
 
   constexpr char kFileName[] = "empty_file";
 
@@ -286,8 +274,6 @@ TEST_F(MigrationHelperTest, OneEmptyFile) {
 TEST_F(MigrationHelperTest, OneEmptyFileInNestedDirectory) {
   MigrationHelper helper(&platform_, &delegate_, from_dir_, to_dir_,
                          status_files_dir_, kDefaultChunkSize);
-  helper.set_namespaced_mtime_xattr_name_for_testing(kMtimeXattrName);
-  helper.set_namespaced_atime_xattr_name_for_testing(kAtimeXattrName);
 
   constexpr char kDir1[] = "directory1";
   constexpr char kDir2[] = "directory2";
@@ -313,8 +299,6 @@ TEST_F(MigrationHelperTest, OneEmptyFileInNestedDirectory) {
 TEST_F(MigrationHelperTest, UnreadableFile) {
   MigrationHelper helper(&platform_, &delegate_, from_dir_, to_dir_,
                          status_files_dir_, kDefaultChunkSize);
-  helper.set_namespaced_mtime_xattr_name_for_testing(kMtimeXattrName);
-  helper.set_namespaced_atime_xattr_name_for_testing(kAtimeXattrName);
 
   constexpr char kDir1[] = "directory1";
   constexpr char kDir2[] = "directory2";
@@ -343,8 +327,6 @@ TEST_F(MigrationHelperTest, CopyAttributesFile) {
   // CopyOwnership test.
   MigrationHelper helper(&platform_, &delegate_, from_dir_, to_dir_,
                          status_files_dir_, kDefaultChunkSize);
-  helper.set_namespaced_mtime_xattr_name_for_testing(kMtimeXattrName);
-  helper.set_namespaced_atime_xattr_name_for_testing(kAtimeXattrName);
 
   constexpr char kFileName[] = "file";
   const FilePath kFromFilePath = from_dir_.Append(kFileName);
@@ -402,11 +384,11 @@ TEST_F(MigrationHelperTest, CopyAttributesFile) {
   EXPECT_STREQ(kValue, value);
 
   // The temporary xatttrs for storing mtime/atime should be removed.
-  ASSERT_FALSE(platform_.GetExtendedFileAttribute(kToFilePath, kMtimeXattrName,
-                                                  nullptr, 0));
+  ASSERT_FALSE(platform_.GetExtendedFileAttribute(
+      kToFilePath, delegate_.GetMtimeXattrName(), nullptr, 0));
   ASSERT_EQ(ENODATA, errno);
-  ASSERT_FALSE(platform_.GetExtendedFileAttribute(kToFilePath, kAtimeXattrName,
-                                                  nullptr, 0));
+  ASSERT_FALSE(platform_.GetExtendedFileAttribute(
+      kToFilePath, delegate_.GetAtimeXattrName(), nullptr, 0));
   ASSERT_EQ(ENODATA, errno);
 
   // Quarantine xattrs storing the origin and referrer of downloaded files
@@ -431,8 +413,6 @@ TEST_F(MigrationHelperTest, CopyAttributesFile) {
 TEST_F(MigrationHelperTest, CopyOwnership) {
   MigrationHelper helper(&platform_, &delegate_, from_dir_, to_dir_,
                          status_files_dir_, kDefaultChunkSize);
-  helper.set_namespaced_mtime_xattr_name_for_testing(kMtimeXattrName);
-  helper.set_namespaced_atime_xattr_name_for_testing(kAtimeXattrName);
 
   const base::FilePath kLinkTarget = base::FilePath("foo");
   const base::FilePath kLink("link");
@@ -489,8 +469,6 @@ TEST_F(MigrationHelperTest, MigrateInProgress) {
   // only present in one or the other)
   MigrationHelper helper(&platform_, &delegate_, from_dir_, to_dir_,
                          status_files_dir_, kDefaultChunkSize);
-  helper.set_namespaced_mtime_xattr_name_for_testing(kMtimeXattrName);
-  helper.set_namespaced_atime_xattr_name_for_testing(kAtimeXattrName);
 
   constexpr char kFile1[] = "kFile1";
   constexpr char kFile2[] = "kFile2";
@@ -512,8 +490,6 @@ TEST_F(MigrationHelperTest, MigrateInProgressDuplicateFile) {
   // yet removed from the source.
   MigrationHelper helper(&platform_, &delegate_, from_dir_, to_dir_,
                          status_files_dir_, kDefaultChunkSize);
-  helper.set_namespaced_mtime_xattr_name_for_testing(kMtimeXattrName);
-  helper.set_namespaced_atime_xattr_name_for_testing(kAtimeXattrName);
 
   constexpr char kFile1[] = "kFile1";
   constexpr char kFile2[] = "kFile2";
@@ -535,8 +511,6 @@ TEST_F(MigrationHelperTest, MigrateInProgressPartialFile) {
   // file having been partially copied to the destination but not fully.
   MigrationHelper helper(&platform_, &delegate_, from_dir_, to_dir_,
                          status_files_dir_, kDefaultChunkSize);
-  helper.set_namespaced_mtime_xattr_name_for_testing(kMtimeXattrName);
-  helper.set_namespaced_atime_xattr_name_for_testing(kAtimeXattrName);
 
   constexpr char kFileName[] = "file";
   const FilePath kFromFilePath = from_dir_.Append(kFileName);
@@ -578,8 +552,6 @@ TEST_F(MigrationHelperTest, MigrateInProgressPartialFileDuplicateData) {
   // not yet having been truncated to reflect that.
   MigrationHelper helper(&platform_, &delegate_, from_dir_, to_dir_,
                          status_files_dir_, kDefaultChunkSize);
-  helper.set_namespaced_mtime_xattr_name_for_testing(kMtimeXattrName);
-  helper.set_namespaced_atime_xattr_name_for_testing(kAtimeXattrName);
 
   constexpr char kFileName[] = "file";
   const FilePath kFromFilePath = from_dir_.Append(kFileName);
@@ -618,8 +590,6 @@ TEST_F(MigrationHelperTest, MigrateInProgressPartialFileDuplicateData) {
 TEST_F(MigrationHelperTest, ProgressCallback) {
   MigrationHelper helper(&platform_, &delegate_, from_dir_, to_dir_,
                          status_files_dir_, kDefaultChunkSize);
-  helper.set_namespaced_mtime_xattr_name_for_testing(kMtimeXattrName);
-  helper.set_namespaced_atime_xattr_name_for_testing(kAtimeXattrName);
 
   constexpr char kFileName[] = "file";
   constexpr char kLinkName[] = "link";
@@ -682,8 +652,6 @@ TEST_F(MigrationHelperTest, ForceSmallerChunkSize) {
   constexpr int kNumJobThreads = 2;
   MigrationHelper helper(&platform_, &delegate_, from_dir_, to_dir_,
                          status_files_dir_, kMaxChunkSize);
-  helper.set_namespaced_mtime_xattr_name_for_testing(kMtimeXattrName);
-  helper.set_namespaced_atime_xattr_name_for_testing(kAtimeXattrName);
   helper.set_num_job_threads_for_testing(kNumJobThreads);
 
   constexpr int kFreeSpace = 13 << 20;
@@ -713,8 +681,6 @@ TEST_F(MigrationHelperTest, ForceSmallerChunkSize) {
 TEST_F(MigrationHelperTest, SkipInvalidSQLiteFiles) {
   MigrationHelper helper(&platform_, &delegate_, from_dir_, to_dir_,
                          status_files_dir_, kDefaultChunkSize);
-  helper.set_namespaced_mtime_xattr_name_for_testing(kMtimeXattrName);
-  helper.set_namespaced_atime_xattr_name_for_testing(kAtimeXattrName);
   const char kCorruptedFilePath[] =
       "root/android-data/data/user/0/com.google.android.gms/"
       "databases/playlog.db-shm";
@@ -744,8 +710,6 @@ TEST_F(MigrationHelperTest, SkipInvalidSQLiteFiles) {
 TEST_F(MigrationHelperTest, AllJobThreadsFailing) {
   MigrationHelper helper(&platform_, &delegate_, from_dir_, to_dir_,
                          status_files_dir_, kDefaultChunkSize);
-  helper.set_namespaced_mtime_xattr_name_for_testing(kMtimeXattrName);
-  helper.set_namespaced_atime_xattr_name_for_testing(kAtimeXattrName);
 
   constexpr int kNumJobThreads = 2;
   helper.set_num_job_threads_for_testing(kNumJobThreads);
@@ -768,8 +732,6 @@ TEST_F(MigrationHelperTest, AllJobThreadsFailing) {
 TEST_F(MigrationHelperTest, CheckSkippedFiles) {
   MigrationHelper helper(&platform_, &delegate_, from_dir_, to_dir_,
                          status_files_dir_, kDefaultChunkSize);
-  helper.set_namespaced_mtime_xattr_name_for_testing(kMtimeXattrName);
-  helper.set_namespaced_atime_xattr_name_for_testing(kAtimeXattrName);
 
   // Structure:
   //   dir/             -> not skipped
@@ -818,8 +780,6 @@ TEST_F(MigrationHelperTest, CheckSkippedFiles) {
 TEST_F(MigrationHelperTest, CancelMigrationBeforeStart) {
   MigrationHelper helper(&platform_, &delegate_, from_dir_, to_dir_,
                          status_files_dir_, kDefaultChunkSize);
-  helper.set_namespaced_mtime_xattr_name_for_testing(kMtimeXattrName);
-  helper.set_namespaced_atime_xattr_name_for_testing(kAtimeXattrName);
 
   // Cancel migration before starting, and migration just fails.
   helper.Cancel();
@@ -830,8 +790,6 @@ TEST_F(MigrationHelperTest, CancelMigrationBeforeStart) {
 TEST_F(MigrationHelperTest, CancelMigrationOnAnotherThread) {
   MigrationHelper helper(&platform_, &delegate_, from_dir_, to_dir_,
                          status_files_dir_, kDefaultChunkSize);
-  helper.set_namespaced_mtime_xattr_name_for_testing(kMtimeXattrName);
-  helper.set_namespaced_atime_xattr_name_for_testing(kAtimeXattrName);
 
   // One empty file to migrate.
   constexpr char kFileName[] = "empty_file";
@@ -874,8 +832,6 @@ class DataMigrationTest : public MigrationHelperTest,
 TEST_P(DataMigrationTest, CopyFileData) {
   MigrationHelper helper(&platform_, &delegate_, from_dir_, to_dir_,
                          status_files_dir_, kDefaultChunkSize);
-  helper.set_namespaced_mtime_xattr_name_for_testing(kMtimeXattrName);
-  helper.set_namespaced_atime_xattr_name_for_testing(kAtimeXattrName);
 
   constexpr char kFileName[] = "file";
   const FilePath kFromFile = from_dir_.Append(kFileName);
@@ -916,8 +872,6 @@ class MigrationHelperJobListTest
 TEST_P(MigrationHelperJobListTest, ProcessJobs) {
   MigrationHelper helper(&platform_, &delegate_, from_dir_, to_dir_,
                          status_files_dir_, kDefaultChunkSize);
-  helper.set_namespaced_mtime_xattr_name_for_testing(kMtimeXattrName);
-  helper.set_namespaced_atime_xattr_name_for_testing(kAtimeXattrName);
   helper.set_max_job_list_size_for_testing(GetParam());
 
   // Prepare many files and directories.

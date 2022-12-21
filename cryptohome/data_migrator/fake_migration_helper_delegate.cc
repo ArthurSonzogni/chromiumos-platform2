@@ -4,9 +4,18 @@
 
 #include "cryptohome/data_migrator/fake_migration_helper_delegate.h"
 
+#include <string>
+
 #include <base/containers/contains.h>
 
 namespace cryptohome::data_migrator {
+
+namespace {
+
+constexpr char kMtimeXattrName[] = "user.mtime";
+constexpr char kAtimeXattrName[] = "user.atime";
+
+}  // namespace
 
 FakeMigrationHelperDelegate::FakeMigrationHelperDelegate() = default;
 
@@ -28,6 +37,14 @@ bool FakeMigrationHelperDelegate::ShouldMigrateFile(
 
 bool FakeMigrationHelperDelegate::ShouldCopyQuotaProjectId() {
   return true;
+}
+
+std::string FakeMigrationHelperDelegate::GetMtimeXattrName() {
+  return kMtimeXattrName;
+}
+
+std::string FakeMigrationHelperDelegate::GetAtimeXattrName() {
+  return kAtimeXattrName;
 }
 
 }  // namespace cryptohome::data_migrator

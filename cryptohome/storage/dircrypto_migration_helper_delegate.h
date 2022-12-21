@@ -5,6 +5,7 @@
 #ifndef CRYPTOHOME_STORAGE_DIRCRYPTO_MIGRATION_HELPER_DELEGATE_H_
 #define CRYPTOHOME_STORAGE_DIRCRYPTO_MIGRATION_HELPER_DELEGATE_H_
 
+#include <string>
 #include <vector>
 
 #include <base/files/file_path.h>
@@ -32,6 +33,8 @@ class DircryptoMigrationHelperDelegate
   bool ShouldReportProgress() override;
   bool ShouldMigrateFile(const base::FilePath& child) override;
   bool ShouldCopyQuotaProjectId() override;
+  std::string GetMtimeXattrName() override;
+  std::string GetAtimeXattrName() override;
   void ReportStartTime() override;
   void ReportEndTime() override;
   void ReportStartStatus(data_migrator::MigrationStartStatus status) override;

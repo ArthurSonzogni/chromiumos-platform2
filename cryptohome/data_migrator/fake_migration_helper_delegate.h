@@ -5,6 +5,7 @@
 #ifndef CRYPTOHOME_DATA_MIGRATOR_FAKE_MIGRATION_HELPER_DELEGATE_H_
 #define CRYPTOHOME_DATA_MIGRATOR_FAKE_MIGRATION_HELPER_DELEGATE_H_
 
+#include <string>
 #include <unordered_set>
 
 #include <base/files/file_path.h>
@@ -34,6 +35,8 @@ class FakeMigrationHelperDelegate : public MigrationHelperDelegate {
   // dircrypto_data_migrator::MigrationHelperDelegate overrides:
   bool ShouldMigrateFile(const base::FilePath& child) override;
   bool ShouldCopyQuotaProjectId() override;
+  std::string GetMtimeXattrName() override;
+  std::string GetAtimeXattrName() override;
 
  private:
   std::unordered_set<base::FilePath> denylisted_paths_;

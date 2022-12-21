@@ -5,6 +5,8 @@
 #ifndef ARC_VM_DATA_MIGRATOR_ARCVM_DATA_MIGRATION_HELPER_DELEGATE_H_
 #define ARC_VM_DATA_MIGRATOR_ARCVM_DATA_MIGRATION_HELPER_DELEGATE_H_
 
+#include <string>
+
 #include <cryptohome/data_migrator/migration_helper_delegate.h>
 
 namespace arc {
@@ -24,6 +26,8 @@ class ArcVmDataMigrationHelperDelegate
 
   // cryptohome::data_migrator::MigrationHelperDelegate overrides:
   bool ShouldCopyQuotaProjectId() override;
+  std::string GetMtimeXattrName() override;
+  std::string GetAtimeXattrName() override;
 };
 
 }  // namespace arc

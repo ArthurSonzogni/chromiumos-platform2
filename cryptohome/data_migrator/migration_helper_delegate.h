@@ -5,6 +5,8 @@
 #ifndef CRYPTOHOME_DATA_MIGRATOR_MIGRATION_HELPER_DELEGATE_H_
 #define CRYPTOHOME_DATA_MIGRATOR_MIGRATION_HELPER_DELEGATE_H_
 
+#include <string>
+
 #include <base/files/file.h>
 #include <base/files/file_path.h>
 #include <brillo/brillo_export.h>
@@ -35,6 +37,11 @@ class BRILLO_EXPORT MigrationHelperDelegate {
 
   // Returns whether MigrationHelper should copy quota project ID.
   virtual bool ShouldCopyQuotaProjectId() = 0;
+
+  // Returns names of xattr to temporarily store mtime/atime of the files during
+  // the migration.
+  virtual std::string GetMtimeXattrName() = 0;
+  virtual std::string GetAtimeXattrName() = 0;
 
   // Reports the current time as the migration start time.
   virtual void ReportStartTime() {}

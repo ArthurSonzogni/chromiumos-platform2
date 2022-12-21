@@ -38,8 +38,6 @@ namespace cryptohome::data_migrator {
 namespace {
 
 constexpr char kMigrationStartedFileName[] = "crypto-migration.started";
-constexpr char kMtimeXattrName[] = "trusted.CrosDirCryptoMigrationMtime";
-constexpr char kAtimeXattrName[] = "trusted.CrosDirCryptoMigrationAtime";
 // Expected maximum erasure block size on devices (4MB).
 constexpr uint64_t kErasureBlockSize = 4 << 20;
 // Free space required for migration overhead (FS metadata, duplicated
@@ -283,8 +281,6 @@ MigrationHelper::MigrationHelper(Platform* platform,
       n_dirs_(0),
       n_symlinks_(0),
       migrated_byte_count_(0),
-      namespaced_mtime_xattr_name_(kMtimeXattrName),
-      namespaced_atime_xattr_name_(kAtimeXattrName),
       failed_operation_type_(kMigrationFailedAtOtherOperation),
       failed_error_type_(base::File::FILE_OK),
       num_job_threads_(0),
@@ -722,12 +718,12 @@ bool MigrationHelper::CopyAttributes(const base::FilePath& child,
 
   const auto& mtime = info.stat().st_mtim;
   const auto& atime = info.stat().st_atim;
-  if (!SetExtendedAttributeIfNotPresent(child, namespaced_mtime_xattr_name_,
+  if (!SetExtendedAttributeIfNotPresent(child, delegate_->GetMtimeXattrName(),
                                         reinterpret_cast<const char*>(&mtime),
                                         sizeof(mtime))) {
     return false;
   }
-  if (!SetExtendedAttributeIfNotPresent(child, namespaced_atime_xattr_name_,
+  if (!SetExtendedAttributeIfNotPresent(child, delegate_->GetAtimeXattrName(),
                                         reinterpret_cast<const char*>(&atime),
                                         sizeof(atime))) {
     return false;
@@ -759,14 +755,14 @@ bool MigrationHelper::FixTimes(const base::FilePath& child) {
   const base::FilePath file = to_base_path_.Append(child);
 
   struct timespec mtime;
-  if (!platform_->GetExtendedFileAttribute(file, namespaced_mtime_xattr_name_,
+  if (!platform_->GetExtendedFileAttribute(file, delegate_->GetMtimeXattrName(),
                                            reinterpret_cast<char*>(&mtime),
                                            sizeof(mtime))) {
     RecordFileErrorWithCurrentErrno(kMigrationFailedAtGetAttribute, child);
     return false;
   }
   struct timespec atime;
-  if (!platform_->GetExtendedFileAttribute(file, namespaced_atime_xattr_name_,
+  if (!platform_->GetExtendedFileAttribute(file, delegate_->GetAtimeXattrName(),
                                            reinterpret_cast<char*>(&atime),
                                            sizeof(atime))) {
     RecordFileErrorWithCurrentErrno(kMigrationFailedAtGetAttribute, child);
@@ -785,7 +781,7 @@ bool MigrationHelper::RemoveTimeXattrs(const base::FilePath& child) {
   const base::FilePath file = to_base_path_.Append(child);
 
   if (!platform_->RemoveExtendedFileAttribute(file,
-                                              namespaced_mtime_xattr_name_)) {
+                                              delegate_->GetMtimeXattrName())) {
     PLOG(ERROR) << "Failed to remove mtime extended attribute from "
                 << file.value();
     RecordFileErrorWithCurrentErrno(kMigrationFailedAtRemoveAttribute, child);
@@ -793,7 +789,7 @@ bool MigrationHelper::RemoveTimeXattrs(const base::FilePath& child) {
   }
 
   if (!platform_->RemoveExtendedFileAttribute(file,
-                                              namespaced_atime_xattr_name_)) {
+                                              delegate_->GetAtimeXattrName())) {
     PLOG(ERROR) << "Failed to remove atime extended attribute from "
                 << file.value();
     RecordFileErrorWithCurrentErrno(kMigrationFailedAtRemoveAttribute, child);
@@ -813,8 +809,8 @@ bool MigrationHelper::CopyExtendedAttributes(const base::FilePath& child) {
   }
 
   for (const std::string& name : xattr_names) {
-    if (name == namespaced_mtime_xattr_name_ ||
-        name == namespaced_atime_xattr_name_ || name == kSourceURLXattrName ||
+    if (name == delegate_->GetMtimeXattrName() ||
+        name == delegate_->GetAtimeXattrName() || name == kSourceURLXattrName ||
         name == kReferrerURLXattrName) {
       continue;
     }

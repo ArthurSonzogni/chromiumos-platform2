@@ -73,12 +73,6 @@ class BRILLO_EXPORT MigrationHelper {
 
   virtual ~MigrationHelper();
 
-  void set_namespaced_mtime_xattr_name_for_testing(const std::string& name) {
-    namespaced_mtime_xattr_name_ = name;
-  }
-  void set_namespaced_atime_xattr_name_for_testing(const std::string& name) {
-    namespaced_atime_xattr_name_ = name;
-  }
   void set_num_job_threads_for_testing(size_t num_job_threads) {
     num_job_threads_ = num_job_threads;
   }
@@ -203,8 +197,6 @@ class BRILLO_EXPORT MigrationHelper {
   // Lock for migrated_byte_count_ and next_report_.
   base::Lock migrated_byte_count_lock_;
 
-  std::string namespaced_mtime_xattr_name_;
-  std::string namespaced_atime_xattr_name_;
   base::FilePath skipped_file_list_path_;
 
   MigrationFailedOperationType failed_operation_type_;

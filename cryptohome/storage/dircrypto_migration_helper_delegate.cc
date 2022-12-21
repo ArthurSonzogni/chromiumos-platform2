@@ -14,6 +14,9 @@ namespace cryptohome {
 
 namespace {
 
+constexpr char kMtimeXattrName[] = "trusted.CrosDirCryptoMigrationMtime";
+constexpr char kAtimeXattrName[] = "trusted.CrosDirCryptoMigrationAtime";
+
 // List of paths in the root part of the user home to be migrated when minimal
 // migration is performed.
 const char* const kMinimalMigrationRootPathsAllowlist[] = {
@@ -118,6 +121,14 @@ bool DircryptoMigrationHelperDelegate::ShouldMigrateFile(
 
 bool DircryptoMigrationHelperDelegate::ShouldCopyQuotaProjectId() {
   return false;
+}
+
+std::string DircryptoMigrationHelperDelegate::GetMtimeXattrName() {
+  return kMtimeXattrName;
+}
+
+std::string DircryptoMigrationHelperDelegate::GetAtimeXattrName() {
+  return kAtimeXattrName;
 }
 
 void DircryptoMigrationHelperDelegate::ReportStartTime() {
