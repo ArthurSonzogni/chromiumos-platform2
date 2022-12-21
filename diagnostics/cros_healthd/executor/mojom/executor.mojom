@@ -171,4 +171,11 @@ interface Executor {
   // The response:
   // * |err| - Error message if existed.
   ResetLedColor(LedName name) => (string? err);
+
+  // Obtains HCI device configuration of hci0 by running hciconfig and returns
+  // the result.
+  //
+  // The response:
+  // * |result| - contains information of hci0 received from running the tool.
+  GetHciDeviceConfig() => (ExecutedProcessResult result);
 };

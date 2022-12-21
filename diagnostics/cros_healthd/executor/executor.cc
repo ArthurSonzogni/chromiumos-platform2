@@ -104,6 +104,10 @@ constexpr char kUEFIPlatformSizeFile[] = "/sys/firmware/efi/fw_platform_size";
 // Error message when failing to launch delegate.
 constexpr char kFailToLaunchDelegate[] = "Failed to launch delegate";
 
+// SECCOMP policy for hciconfig:
+constexpr char kHciconfigSeccompPolicyPath[] = "hciconfig-seccomp.policy";
+constexpr char kHciconfigBinary[] = "/usr/bin/hciconfig";
+
 // All Mojo callbacks need to be ran by the Mojo task runner, so this provides a
 // convenient wrapper that can be bound and ran by that specific task runner.
 void RunMojoProcessResultCallback(
@@ -570,6 +574,27 @@ void Executor::ResetLedColor(ash::cros_healthd::mojom::LedName name,
                              ResetLedColorCallback callback) {
   base::SequencedTaskRunnerHandle::Get()->PostTask(
       FROM_HERE, base::BindOnce(&ResetLedColorTask, name, std::move(callback)));
+}
+
+void Executor::GetHciDeviceConfig(GetHciDeviceConfigCallback callback) {
+  mojom::ExecutedProcessResult result;
+
+  const auto seccomp_policy_path =
+      base::FilePath(kSandboxDirPath).Append(kHciconfigSeccompPolicyPath);
+
+  // Minijail setup for ectool.
+  std::vector<std::string> sandboxing_args;
+  sandboxing_args.push_back("-G");
+
+  std::vector<std::string> binary_args = {"hci0"};
+  base::FilePath binary_path = base::FilePath(kHciconfigBinary);
+
+  base::OnceClosure closure = base::BindOnce(
+      &Executor::RunUntrackedBinary, weak_factory_.GetWeakPtr(),
+      seccomp_policy_path, sandboxing_args, kEcUserAndGroup, binary_path,
+      binary_args, std::move(result), std::move(callback));
+
+  base::ThreadPool::PostTask(FROM_HERE, {base::MayBlock()}, std::move(closure));
 }
 
 void Executor::RunUntrackedBinary(

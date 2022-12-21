@@ -79,6 +79,10 @@ class MockExecutor final : public ash::cros_healthd::mojom::Executor {
               (ash::cros_healthd::mojom::LedName name,
                ResetLedColorCallback callback),
               (override));
+  MOCK_METHOD(void,
+              GetHciDeviceConfig,
+              (GetHciDeviceConfigCallback),
+              (override));
 };
 
 }  // namespace diagnostics
