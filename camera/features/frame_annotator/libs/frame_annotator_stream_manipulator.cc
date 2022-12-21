@@ -25,6 +25,7 @@
 #include "cros-camera/camera_metadata_utils.h"
 #include "features/frame_annotator/libs/face_rectangles_frame_annotator.h"
 #include "features/frame_annotator/libs/metadata_previewer_frame_annotator.h"
+#include "features/frame_annotator/tracing.h"
 #include "gpu/gles/texture_2d.h"
 #include "gpu/shared_image.h"
 
@@ -195,6 +196,8 @@ bool FrameAnnotatorStreamManipulator::ProcessCaptureResult(
 }
 
 void FrameAnnotatorStreamManipulator::Notify(camera3_notify_msg_t msg) {
+  TRACE_FRAME_ANNOTATOR();
+
   callbacks_.notify_callback.Run(std::move(msg));
 }
 

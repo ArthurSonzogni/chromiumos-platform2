@@ -13,6 +13,7 @@
 #include <base/files/file_util.h>
 
 #include "features/frame_annotator/libs/utils.h"
+#include "features/frame_annotator/tracing.h"
 
 namespace cros {
 
@@ -114,6 +115,8 @@ bool FrameAnnotatorLoaderStreamManipulator::ProcessCaptureResult(
 }
 
 void FrameAnnotatorLoaderStreamManipulator::Notify(camera3_notify_msg_t msg) {
+  TRACE_FRAME_ANNOTATOR();
+
   if (stream_manipulator_) {
     stream_manipulator_->Notify(std::move(msg));
     return;

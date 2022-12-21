@@ -853,10 +853,35 @@ void CameraDeviceAdapter::ReturnResultToClient(
   }
 }
 
+// Asserts that the offset and size of the |frame_number| member are the same in
+// both the shutter and error message, so that we can access the |frame_number|
+// using either member in the |camera3_notify_msg_t::message| union regardless
+// of the type of the notify message.
+static_assert(offsetof(camera3_shutter_msg_t, frame_number) ==
+              offsetof(camera3_error_msg_t, frame_number));
+static_assert(sizeof(camera3_shutter_msg_t::frame_number) ==
+              sizeof(camera3_error_msg_t::frame_number));
+
 // static
 void CameraDeviceAdapter::Notify(const camera3_callback_ops_t* ops,
                                  const camera3_notify_msg_t* msg) {
-  TRACE_HAL_ADAPTER();
+  CHECK(msg);
+  TRACE_HAL_ADAPTER([&](perfetto::EventContext ctx) {
+    ctx.AddDebugAnnotation("frame_number", msg->message.shutter.frame_number);
+    ctx.AddDebugAnnotation("type", msg->type);
+    switch (msg->type) {
+      case CAMERA3_MSG_SHUTTER:
+        ctx.AddDebugAnnotation("shutter_timestamp",
+                               msg->message.shutter.timestamp);
+        break;
+      case CAMERA3_MSG_ERROR:
+        ctx.AddDebugAnnotation(
+            "error_stream",
+            reinterpret_cast<uintptr_t>(msg->message.error.error_stream));
+        ctx.AddDebugAnnotation("error_code", msg->message.error.error_code);
+        break;
+    }
+  });
 
   CameraDeviceAdapter* self = const_cast<CameraDeviceAdapter*>(
       static_cast<const CameraDeviceAdapter*>(ops));
@@ -875,7 +900,7 @@ void CameraDeviceAdapter::Notify(const camera3_callback_ops_t* ops,
 // static
 void CameraDeviceAdapter::NotifyClient(const camera3_callback_ops_t* ops,
                                        camera3_notify_msg_t msg) {
-  TRACE_HAL_ADAPTER();
+  TRACE_HAL_ADAPTER("frame_number", msg.message.shutter.frame_number);
 
   CameraDeviceAdapter* self = const_cast<CameraDeviceAdapter*>(
       static_cast<const CameraDeviceAdapter*>(ops));

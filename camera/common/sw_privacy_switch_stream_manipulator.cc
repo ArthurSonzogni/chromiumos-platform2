@@ -162,6 +162,7 @@ bool SWPrivacySwitchStreamManipulator::ProcessCaptureResult(
 }
 
 void SWPrivacySwitchStreamManipulator::Notify(camera3_notify_msg_t msg) {
+  TRACE_COMMON();
   callbacks_.notify_callback.Run(std::move(msg));
 }
 
