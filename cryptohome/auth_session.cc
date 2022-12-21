@@ -966,6 +966,11 @@ void AuthSession::LoadVaultKeysetAndFsKeys(
     keyset_management_->ResetLECredentialsWithValidatedVK(*vault_keyset_,
                                                           obfuscated_username_);
   }
+  // During the migration of the VaultKeysets to UserSecretStash user may have a
+  // mixed configuration of both backing stores. Reset LE credentials over
+  // UserSecretStash as well because we don't know which key backing store is
+  // active for a given piweaver node.
+  ResetLECredentials();
 
   // If there is a change in the AuthBlock type during resave operation it'll be
   // updated.
@@ -2840,6 +2845,12 @@ void AuthSession::LoadUSSMainKeyAndFsKeyset(
             auth_factor_label);
     if (vk_status.ok()) {
       vault_keyset_ = std::move(vk_status).value();
+      // During the migration of the VaultKeysets to UserSecretStash user may
+      // have a mixed configuration of both backing stores. Reset LE credentials
+      // over KeysetManagement as well because we don't know which key backing
+      // store is active for a given piweaver node.
+      keyset_management_->ResetLECredentialsWithValidatedVK(
+          *vault_keyset_, obfuscated_username_);
 
     } else {
       // Don't abort the authentication if obtaining backup VaultKeyset fails.
@@ -2852,6 +2863,10 @@ void AuthSession::LoadUSSMainKeyAndFsKeyset(
 }
 
 void AuthSession::ResetLECredentials() {
+  if (!user_secret_stash_) {
+    return;
+  }
+
   CryptoError error;
   // Loop through all the AuthFactors.
   for (AuthFactorMap::ValueView stored_auth_factor : auth_factor_map_) {
