@@ -152,10 +152,7 @@ class PeripheralBatteryWatcher : public UdevSubsystemObserver {
   base::FilePath peripheral_battery_path_;
 
   // Calls ReadBatteryStatuses().
-  base::OneShotTimer poll_timer_;
-
-  // Time between polls of the peripheral battery reading.
-  base::TimeDelta poll_interval_;
+  base::RepeatingTimer poll_timer_;
 
   // AsyncFileReaders for different peripheral batteries.
   std::vector<std::unique_ptr<AsyncFileReader>> battery_readers_;

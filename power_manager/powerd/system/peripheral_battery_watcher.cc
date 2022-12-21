@@ -98,7 +98,6 @@ const char PeripheralBatteryWatcher::kUdevSubsystem[] = "power_supply";
 
 PeripheralBatteryWatcher::PeripheralBatteryWatcher()
     : peripheral_battery_path_(kDefaultPeripheralBatteryPath),
-      poll_interval_(kDefaultPollInterval),
       bluez_battery_provider_(std::make_unique<BluezBatteryProvider>()),
       weak_ptr_factory_(this) {}
 
@@ -273,8 +272,10 @@ void PeripheralBatteryWatcher::ReadBatteryStatuses() {
 void PeripheralBatteryWatcher::ReadBatteryStatusesTimer() {
   ReadBatteryStatuses();
 
-  poll_timer_.Start(FROM_HERE, poll_interval_, this,
-                    &PeripheralBatteryWatcher::ReadBatteryStatuses);
+  poll_timer_.Start(
+      FROM_HERE, kDefaultPollInterval,
+      base::BindRepeating(&PeripheralBatteryWatcher::ReadBatteryStatuses,
+                          weak_ptr_factory_.GetWeakPtr()));
 }
 
 void PeripheralBatteryWatcher::SendBatteryStatus(
