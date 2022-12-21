@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "hwsec-host-utils/tpm2_decode.h"
+#include "hwsec-host-utils/tpm_command_response_decoder/tpm2_decode.h"
 
 #include <cstdint>
 #include <string>

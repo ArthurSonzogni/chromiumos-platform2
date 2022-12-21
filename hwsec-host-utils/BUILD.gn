@@ -26,9 +26,9 @@ config("target_defaults") {
 
 executable("tpm_command_response_decoder") {
   sources = [
-    "tpm1_decode.cc",
-    "tpm2_decode.cc",
-    "tpm_command_response_decoder.cc",
+    "tpm_command_response_decoder/main.cc",
+    "tpm_command_response_decoder/tpm1_decode.cc",
+    "tpm_command_response_decoder/tpm2_decode.cc",
   ]
   install_path = "bin"
   configs += [ ":target_defaults" ]

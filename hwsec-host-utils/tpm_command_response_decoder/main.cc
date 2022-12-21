@@ -10,8 +10,8 @@
 #include <base/command_line.h>
 #include <base/strings/string_number_conversions.h>
 
-#include "hwsec-host-utils/tpm1_decode.h"
-#include "hwsec-host-utils/tpm2_decode.h"
+#include "hwsec-host-utils/tpm_command_response_decoder/tpm1_decode.h"
+#include "hwsec-host-utils/tpm_command_response_decoder/tpm2_decode.h"
 
 namespace {
 
