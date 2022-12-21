@@ -116,7 +116,8 @@ class VmBuilder {
 
   // Builds the command line required to start a VM. Returns an empty list if
   // the vm args are invalid.
-  base::StringPairs BuildVmArgs() const;
+  base::StringPairs BuildVmArgs(
+      CustomParametersForDev* dev_params = nullptr) const;
 
   // Given the VVU device info and the runtime directory which VVU device
   // processes should use, returns the command line arguments to start a sibling
@@ -136,6 +137,10 @@ class VmBuilder {
   bool AddGpuSiblingCmd(const VvuDeviceInfo& vvu_device_info,
                         const std::vector<std::string>& resource_bridges,
                         SiblingStartCommands* cmds) const;
+
+  // Builds the parameters for `crosvm run` to start a VM based on this
+  // VmBuilder's settings.
+  base::StringPairs BuildRunParams() const;
 
   base::FilePath kernel_;
   base::FilePath initrd_;

@@ -472,9 +472,7 @@ bool ArcVm::Start(base::FilePath kernel, VmBuilder vm_builder) {
     vm_builder.SetBlockAsyncExecutor(executor_enum.value());
   }
 
-  auto args = vm_builder.BuildVmArgs();
-
-  custom_parameters.Apply(&args);
+  auto args = vm_builder.BuildVmArgs(&custom_parameters);
 
   // Finally list the path to the kernel.
   const std::string kernel_path =

@@ -185,9 +185,11 @@ class CustomParametersForDev {
       const std::string& key);
 
  private:
-  // Command line parameter prefix to crosvm to remove.
+  // Command line parameter prefix to 'crosvm run' to remove.
   std::vector<std::string> prefix_to_remove_{};
-  // Command line parameters to crosvm to add.
+  // Command line parameters for 'crosvm run' to prepend.
+  base::StringPairs params_to_prepend_{};
+  // Command line parameters to 'crosvm run' to add.
   base::StringPairs params_to_add_{};
   // Other special handling.
   std::map<std::string, std::string> special_parameters_{};

@@ -85,6 +85,21 @@ TEST(VMUtilTest, LoadCustomParametersSupportsKeyWithoutValue) {
   EXPECT_THAT(args, testing::ContainerEq(expected));
 }
 
+TEST(VMUtilTest, LoadCustomParametersSupportsPrepend) {
+  base::StringPairs args = {{"--KeyToBeSecond", "Value1"},
+                            {"--KeyToBeThird", "Value2"}};
+  LoadCustomParameters(
+      R"(--AppendKey=Value3
+^--PrependKey=Value0
+)",
+      &args);
+  base::StringPairs expected{{"--PrependKey", "Value0"},
+                             {"--KeyToBeSecond", "Value1"},
+                             {"--KeyToBeThird", "Value2"},
+                             {"--AppendKey", "Value3"}};
+  EXPECT_THAT(args, testing::ContainerEq(expected));
+}
+
 TEST(VMUtilTest, LoadCustomParametersSupportsRemoving) {
   base::StringPairs args = {{"--KeyToBeReplaced", "OldValue"},
                             {"--KeyToBeKept", "ValueToBeKept"}};
@@ -92,12 +107,14 @@ TEST(VMUtilTest, LoadCustomParametersSupportsRemoving) {
       R"(--Key1=Value1
 --Key2=Value2
 !--KeyToBeReplaced
---KeyToBeReplaced=NewValue)",
+--KeyToBeReplaced=NewValue1
+^--KeyToBeReplaced=NewValue2)",
       &args);
-  base::StringPairs expected{{"--KeyToBeKept", "ValueToBeKept"},
+  base::StringPairs expected{{"--KeyToBeReplaced", "NewValue2"},
+                             {"--KeyToBeKept", "ValueToBeKept"},
                              {"--Key1", "Value1"},
                              {"--Key2", "Value2"},
-                             {"--KeyToBeReplaced", "NewValue"}};
+                             {"--KeyToBeReplaced", "NewValue1"}};
   EXPECT_THAT(args, testing::ContainerEq(expected));
 }
 

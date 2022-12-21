@@ -346,10 +346,28 @@ VmBuilder& VmBuilder::SetVmMemoryId(VmMemoryId vm_memory_id) {
   return *this;
 }
 
-base::StringPairs VmBuilder::BuildVmArgs() const {
-  base::StringPairs args = {{kCrosvmBin, "run"}};
+base::StringPairs VmBuilder::BuildVmArgs(
+    CustomParametersForDev* devparams) const {
+  base::StringPairs args = BuildRunParams();
 
-  args.emplace_back("--cpus", std::to_string(cpus_));
+  // Early-return when BuildRunParams() failed.
+  if (args.empty())
+    return args;
+
+  if (devparams)
+    devparams->Apply(&args);
+
+  args.emplace(args.begin(), kCrosvmBin, "run");
+
+  // Kernel should be at the end.
+  if (!kernel_.empty())
+    args.emplace_back(kernel_.value(), "");
+
+  return args;
+}
+
+base::StringPairs VmBuilder::BuildRunParams() const {
+  base::StringPairs args = {{"--cpus", std::to_string(cpus_)}};
 
   if (!memory_in_mib_.empty())
     args.emplace_back("--mem", memory_in_mib_);
@@ -503,10 +521,6 @@ base::StringPairs VmBuilder::BuildVmArgs() const {
     mms_control_socket += ".sock";
     args.emplace_back("--balloon-control", mms_control_socket);
   }
-
-  // Kernel should be at the end.
-  if (!kernel_.empty())
-    args.emplace_back(kernel_.value(), "");
 
   return args;
 }

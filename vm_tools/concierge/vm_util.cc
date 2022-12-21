@@ -485,9 +485,15 @@ CustomParametersForDev::CustomParametersForDev(const std::string& data) {
       continue;
     }
 
-    // Line contains a key only. Append the whole line.
+    // Line contains a key only. Append or prepend the whole line.
     base::StringPairs pairs;
-    if (!base::SplitStringIntoKeyValuePairs(line, '=', '\n', &pairs)) {
+    if (line[0] == '^' && line.size() > 1) {
+      const base::StringPiece param = line.substr(1, line.size() - 1);
+      if (!base::SplitStringIntoKeyValuePairs(param, '=', '\n', &pairs)) {
+        params_to_prepend_.emplace_back(param, "");
+        continue;
+      }
+    } else if (!base::SplitStringIntoKeyValuePairs(line, '=', '\n', &pairs)) {
       params_to_add_.emplace_back(std::move(line), "");
       continue;
     }
@@ -496,12 +502,19 @@ CustomParametersForDev::CustomParametersForDev(const std::string& data) {
     base::TrimWhitespaceASCII(pairs[0].first, base::TRIM_ALL, &pairs[0].first);
     base::TrimWhitespaceASCII(pairs[0].second, base::TRIM_ALL,
                               &pairs[0].second);
-    if (pairs[0].first[0] == '-') {
-      params_to_add_.emplace_back(std::move(pairs[0].first),
-                                  std::move(pairs[0].second));
-    } else {
-      special_parameters_.emplace(std::move(pairs[0].first),
-                                  std::move(pairs[0].second));
+    switch (line[0]) {
+      case '^':
+        params_to_prepend_.emplace_back(std::move(pairs[0].first),
+                                        std::move(pairs[0].second));
+        break;
+      case '-':
+        params_to_add_.emplace_back(std::move(pairs[0].first),
+                                    std::move(pairs[0].second));
+        break;
+      default:
+        special_parameters_.emplace(std::move(pairs[0].first),
+                                    std::move(pairs[0].second));
+        break;
     }
   }
   initialized_ = true;
@@ -514,6 +527,9 @@ void CustomParametersForDev::Apply(base::StringPairs* args) {
     base::EraseIf(*args, [&prefix](const auto& pair) {
       return base::StartsWith(pair.first, prefix);
     });
+  }
+  for (const auto& param : params_to_prepend_) {
+    args->emplace(args->begin(), param.first, param.second);
   }
   for (const auto& param : params_to_add_) {
     args->emplace_back(param.first, param.second);
