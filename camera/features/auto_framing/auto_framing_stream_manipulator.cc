@@ -277,6 +277,7 @@ AutoFramingStreamManipulator::AutoFramingStreamManipulator(
       camera_metrics_(CameraMetrics::New()) {
   DCHECK_NE(runtime_options_, nullptr);
   DCHECK(gpu_resources_);
+  TRACE_AUTO_FRAMING();
 
   if (options_override_for_testing) {
     options_ = *options_override_for_testing;
@@ -292,6 +293,8 @@ AutoFramingStreamManipulator::AutoFramingStreamManipulator(
 }
 
 AutoFramingStreamManipulator::~AutoFramingStreamManipulator() {
+  TRACE_AUTO_FRAMING();
+
   gpu_resources_->PostGpuTaskSync(
       FROM_HERE, base::BindOnce(&AutoFramingStreamManipulator::ResetOnThread,
                                 base::Unretained(this)));
@@ -363,10 +366,14 @@ bool AutoFramingStreamManipulator::ProcessCaptureResult(
 }
 
 void AutoFramingStreamManipulator::Notify(camera3_notify_msg_t msg) {
+  TRACE_AUTO_FRAMING();
+
   callbacks_.notify_callback.Run(std::move(msg));
 }
 
 bool AutoFramingStreamManipulator::Flush() {
+  TRACE_AUTO_FRAMING();
+
   return true;
 }
 
@@ -828,6 +835,7 @@ bool AutoFramingStreamManipulator::ProcessFullFrameOnThread(
   DCHECK(gpu_resources_->gpu_task_runner()->BelongsToCurrentThread());
   DCHECK_NE(ctx, nullptr);
   DCHECK_NE(full_frame_buffer, nullptr);
+  TRACE_AUTO_FRAMING("frame_number", frame_number);
 
   if (full_frame_buffer->status != CAMERA3_BUFFER_STATUS_OK) {
     VLOGF(1) << "Received full frame buffer with error in result "
@@ -943,6 +951,7 @@ bool AutoFramingStreamManipulator::ProcessStillYuvOnThread(
   DCHECK(gpu_resources_->gpu_task_runner()->BelongsToCurrentThread());
   DCHECK_NE(ctx, nullptr);
   DCHECK_NE(still_yuv_buffer, nullptr);
+  TRACE_AUTO_FRAMING("frame_number", frame_number);
 
   if (still_yuv_buffer->status != CAMERA3_BUFFER_STATUS_OK) {
     VLOGF(1) << "Received still YUV buffer with error in result "
@@ -1013,6 +1022,7 @@ void AutoFramingStreamManipulator::ReturnStillCaptureResultOnThread(
 bool AutoFramingStreamManipulator::SetUpPipelineOnThread(
     uint32_t target_aspect_ratio_x, uint32_t target_aspect_ratio_y) {
   DCHECK(gpu_resources_->gpu_task_runner()->BelongsToCurrentThread());
+  TRACE_AUTO_FRAMING();
 
   return auto_framing_client_.SetUp(AutoFramingClient::Options{
       .input_size = full_frame_size_,
@@ -1026,6 +1036,7 @@ bool AutoFramingStreamManipulator::SetUpPipelineOnThread(
 void AutoFramingStreamManipulator::UpdateFaceRectangleMetadataOnThread(
     Camera3CaptureDescriptor* result) {
   DCHECK(gpu_resources_->gpu_task_runner()->BelongsToCurrentThread());
+  TRACE_AUTO_FRAMING();
 
   if (!result->has_metadata()) {
     return;
@@ -1155,6 +1166,7 @@ void AutoFramingStreamManipulator::UpdateFaceRectangleMetadataOnThread(
 
 void AutoFramingStreamManipulator::ResetOnThread() {
   DCHECK(gpu_resources_->gpu_task_runner()->BelongsToCurrentThread());
+  TRACE_AUTO_FRAMING();
 
   UploadMetricsOnThread();
 
@@ -1304,6 +1316,7 @@ std::pair<AutoFramingStreamManipulator::State,
           AutoFramingStreamManipulator::State>
 AutoFramingStreamManipulator::StateTransitionOnThread() {
   DCHECK(gpu_resources_->gpu_task_runner()->BelongsToCurrentThread());
+  TRACE_AUTO_FRAMING();
 
   // State transition graph:
   //
@@ -1389,6 +1402,7 @@ std::optional<base::ScopedFD> AutoFramingStreamManipulator::CropBufferOnThread(
     base::ScopedFD output_acquire_fence,
     const Rect<float>& crop_region) {
   DCHECK(gpu_resources_->gpu_task_runner()->BelongsToCurrentThread());
+  TRACE_AUTO_FRAMING();
 
   if (input_release_fence.is_valid() &&
       sync_wait(input_release_fence.get(), kSyncWaitTimeoutMs) != 0) {
