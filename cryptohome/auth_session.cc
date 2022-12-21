@@ -482,7 +482,8 @@ void AuthSession::CreateAndPersistVaultKeyset(
   }
 
   std::unique_ptr<AuthFactor> added_auth_factor =
-      converter_.VaultKeysetToAuthFactor(username_, key_data.label());
+      converter_.VaultKeysetToAuthFactor(obfuscated_username_,
+                                         key_data.label());
   // Initialize auth_factor_type with kPassword for CredentailVerifier.
   AuthFactorType auth_factor_type = AuthFactorType::kPassword;
   if (added_auth_factor) {
@@ -1279,7 +1280,7 @@ void AuthSession::AuthenticateAuthFactor(
   // If user does not have USS AuthFactors, then we switch to authentication
   // with Vaultkeyset. Status is flipped on the successful authentication.
   user_data_auth::CryptohomeErrorCode error = converter_.PopulateKeyDataForVK(
-      username_, request.auth_factor_label(), key_data_);
+      obfuscated_username_, request.auth_factor_label(), key_data_);
   if (error != user_data_auth::CRYPTOHOME_ERROR_NOT_SET) {
     LOG(ERROR) << "Failed to authenticate auth session via vk-factor "
                << request.auth_factor_label();

@@ -5,7 +5,7 @@
 #include "cryptohome/auth_factor_vault_keyset_converter.h"
 
 #include <base/check.h>
-#include <brillo/cryptohome.h>
+#include <brillo/secure_blob.h>
 #include <cryptohome/proto_bindings/auth_factor.pb.h>
 #include <cryptohome/proto_bindings/key.pb.h>
 #include <cryptohome/proto_bindings/rpc.pb.h>
@@ -139,9 +139,7 @@ AuthFactorVaultKeysetConverter::~AuthFactorVaultKeysetConverter() = default;
 
 std::unique_ptr<AuthFactor>
 AuthFactorVaultKeysetConverter::VaultKeysetToAuthFactor(
-    const std::string& username, const std::string& label) {
-  std::string obfuscated_username =
-      brillo::cryptohome::home::SanitizeUserName(username);
+    const std::string& obfuscated_username, const std::string& label) {
   std::unique_ptr<VaultKeyset> vk =
       keyset_management_->GetVaultKeyset(obfuscated_username, label);
   if (!vk) {
@@ -213,11 +211,9 @@ AuthFactorVaultKeysetConverter::VaultKeysetsToAuthFactorsAndKeyLabelData(
 
 user_data_auth::CryptohomeErrorCode
 AuthFactorVaultKeysetConverter::PopulateKeyDataForVK(
-    const std::string& username,
+    const std::string& obfuscated_username,
     const std::string& auth_factor_label,
     KeyData& out_vk_key_data) {
-  std::string obfuscated_username =
-      brillo::cryptohome::home::SanitizeUserName(username);
   std::unique_ptr<VaultKeyset> vk = keyset_management_->GetVaultKeyset(
       obfuscated_username, auth_factor_label);
   if (!vk) {
