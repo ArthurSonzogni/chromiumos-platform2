@@ -125,7 +125,7 @@ class AeStateMachine {
     //
     // Transitions to:
     // * kInitializing: on receiving the first set of AE parameters.
-    kInactive,
+    kInactive = 0,
 
     // The AE algorithm is searching for a stable TET.
     //
@@ -140,7 +140,7 @@ class AeStateMachine {
     // * Run SearchTargetTet()
     //   * kSearching: if |target_tet| is not set
     //   * kConverging: if |target_tet| is set
-    kSearching,
+    kSearching = 1,
 
     // The AE algorithm is converging the TET towards the target TET the
     // state machine has settled to through the SearchTargetTet() procedure.
@@ -161,7 +161,7 @@ class AeStateMachine {
     //         ms.
     //   * kConverged: if |converged_tet| is set and is stabilized for more than
     //         tet_converge_stabilize_duration_ms ms.
-    kConverging,
+    kConverging = 2,
 
     // The AE algorithm has stabilized the TET to the stable TET the algorithm
     // has converged to.
@@ -186,7 +186,7 @@ class AeStateMachine {
     // When transitioning out of the kConverged state, select the
     // |tet_step_log2| value based on the log scene brightness of the current
     // and the target exposure settings.
-    kConverged,
+    kConverged = 3,
 
     // The exposure is locked and |next_tet_to_set| will remain unchanged. Any
     // state can transition to the locked state when the ANDROID_CONTROL_AE_LOCK
@@ -203,7 +203,7 @@ class AeStateMachine {
     // When transitioning out of the kLocked state, select the |tet_step_log2|
     // value based on the log scene brightness of the current
     // and the target exposure settings.
-    kLocked,
+    kLocked = 4,
   };
 
   AeStateMachine();

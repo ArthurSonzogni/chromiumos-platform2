@@ -18,6 +18,8 @@
 #include "cros-camera/camera_buffer_manager.h"
 #include "cros-camera/camera_metadata_utils.h"
 #include "cros-camera/common.h"
+#include "cros-camera/tracing.h"
+#include "features/gcam_ae/tracing.h"
 
 #if USE_CAMERA_FEATURE_FACE_DETECTION
 #include "cros-camera/face_detector_client_cros_wrapper.h"
@@ -562,6 +564,7 @@ void GcamAeControllerImpl::MaybeRunAE(int frame_number) {
     return;
   }
 
+  TRACE_GCAM_AE_BEGIN(kEventRun, "frame_number", frame_number);
   float max_hdr_ratio =
       LookUpHdrRatio(options_.max_hdr_ratio,
                      frame_info->analog_gain * frame_info->digital_gain);
@@ -581,6 +584,7 @@ void GcamAeControllerImpl::MaybeRunAE(int frame_number) {
                                        .ae_parameters = ae_parameters,
                                        .tet_range = ae_parameters.tet_range},
                                       metadata_logger_);
+  TRACE_GCAM_AE_END();
 
   if (metadata_logger_) {
     metadata_logger_->Log(

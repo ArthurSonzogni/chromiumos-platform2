@@ -12,6 +12,8 @@
 
 #include "common/reloadable_config_file.h"
 #include "cros-camera/common.h"
+#include "cros-camera/tracing.h"
+#include "features/gcam_ae/tracing.h"
 
 namespace cros {
 
@@ -81,6 +83,21 @@ int ElapsedTimeMs(base::TimeTicks since) {
   return (base::TimeTicks::Now() - since).InMilliseconds();
 }
 
+perfetto::StaticString GetAeStateString(AeStateMachine::State state) {
+  switch (state) {
+    case AeStateMachine::State::kInactive:
+      return kAeStateInactive;
+    case AeStateMachine::State::kSearching:
+      return kAeStateSearching;
+    case AeStateMachine::State::kConverging:
+      return kAeStateConverging;
+    case AeStateMachine::State::kConverged:
+      return kAeStateConverged;
+    case AeStateMachine::State::kLocked:
+      return kAeStateLocked;
+  }
+}
+
 }  // namespace
 
 std::string AeStateMachine::ExposureDescriptor::ToString() const {
@@ -90,10 +107,16 @@ std::string AeStateMachine::ExposureDescriptor::ToString() const {
 
 AeStateMachine::AeStateMachine()
     : tet_step_log2_(tuning_parameters_.large_step_log2),
-      camera_metrics_(CameraMetrics::New()) {}
+      camera_metrics_(CameraMetrics::New()) {
+  perfetto::Track ae_state_track(kAeStateTrack);
+  auto desc = ae_state_track.Serialize();
+  desc.set_name("AE state");
+  cros_camera::TrackEvent::SetTrackDescriptor(ae_state_track, desc);
+}
 
 AeStateMachine::~AeStateMachine() {
   UploadMetrics();
+  TRACE_GCAM_AE_TRACK_END(perfetto::Track(kAeStateTrack));
 }
 
 void AeStateMachine::OnNewAeParameters(InputParameters inputs,
@@ -292,6 +315,13 @@ void AeStateMachine::OnNewAeParameters(InputParameters inputs,
   VLOGFID(1, frame_info.frame_number)
       << "state=" << current_state_ << " next_state=" << next_state
       << " actual_tet_set=" << actual_tet_set;
+  if (current_state_ != next_state) {
+    TRACE_GCAM_AE_TRACK_END(perfetto::Track(kAeStateTrack));
+    TRACE_GCAM_AE_TRACK_BEGIN(GetAeStateString(next_state),
+                              perfetto::Track(kAeStateTrack), "frame_number",
+                              frame_info.frame_number, "from", current_state_,
+                              "to", next_state);
+  }
 
   // Execute state entry actions.
   switch (next_state) {
