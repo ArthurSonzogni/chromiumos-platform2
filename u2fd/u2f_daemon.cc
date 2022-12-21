@@ -270,6 +270,11 @@ void U2fDaemon::RegisterDBusObjectsAsync(
                                         base::Unretained(&webauthn_handler_),
                                         &WebAuthnHandler::Cancel);
 
+  u2f_interface->AddSimpleMethodHandler(
+      kU2FIsPlatformAuthenticatorInitialized,
+      base::Unretained(&webauthn_handler_),
+      &WebAuthnHandler::IsPlatformAuthenticatorInitialized);
+
   u2f_interface->AddMethodHandler(kU2FIsUvpaa,
                                   base::Unretained(&webauthn_handler_),
                                   &WebAuthnHandler::IsUvpaa);

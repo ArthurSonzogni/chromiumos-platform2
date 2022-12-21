@@ -1058,6 +1058,14 @@ HasCredentialsResponse WebAuthnHandler::HasLegacyCredentials(
   return response;
 }
 
+IsPlatformAuthenticatorInitializedResponse
+WebAuthnHandler::IsPlatformAuthenticatorInitialized(
+    const IsPlatformAuthenticatorInitializedRequest& request) {
+  IsPlatformAuthenticatorInitializedResponse response;
+  response.set_initialized(Initialized());
+  return response;
+}
+
 IsU2fEnabledResponse WebAuthnHandler::IsU2fEnabled(
     const IsU2fEnabledRequest& request) {
   IsU2fEnabledResponse response;

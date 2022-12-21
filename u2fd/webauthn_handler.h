@@ -125,6 +125,11 @@ class WebAuthnHandler {
   // themselves will timeout after ~5 seconds.
   CancelWebAuthnFlowResponse Cancel(const CancelWebAuthnFlowRequest& request);
 
+  // Checks whether the platform authenticator is initialized. Before
+  // initialized, most operations will directly return an error.
+  IsPlatformAuthenticatorInitializedResponse IsPlatformAuthenticatorInitialized(
+      const IsPlatformAuthenticatorInitializedRequest& request);
+
   // Checks whether user-verifying platform authenticator is available.
   void IsUvpaa(std::unique_ptr<IsUvpaaMethodResponse> method_response,
                const IsUvpaaRequest& request);
