@@ -193,7 +193,7 @@ class CellularTest : public testing::Test {
 
   void TearDown() override {
     metrics_.DeregisterDevice(device_->interface_index());
-    device_->network()->Stop();
+    device_->GetPrimaryNetwork()->Stop();
     device_->set_state_for_testing(Cellular::State::kDisabled);
     GetCapability3gpp()->ReleaseProxies();
     // Break cycle between Cellular and CellularService.

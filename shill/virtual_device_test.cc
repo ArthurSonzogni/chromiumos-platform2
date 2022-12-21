@@ -97,7 +97,8 @@ TEST_F(VirtualDeviceTest, ResetConnection) {
   EXPECT_EQ(nullptr, device_->selected_service_);
   device_->SetServiceState(Service::kStateAssociating);
   scoped_refptr<MockService> service(new StrictMock<MockService>(&manager_));
-  EXPECT_CALL(*service, SetAttachedNetwork(IsWeakPtrTo(device_->network())));
+  EXPECT_CALL(*service,
+              SetAttachedNetwork(IsWeakPtrTo(device_->GetPrimaryNetwork())));
   device_->SelectService(service);
   EXPECT_EQ(device_->selected_service_, service);
 

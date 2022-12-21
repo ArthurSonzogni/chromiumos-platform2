@@ -145,10 +145,12 @@ class DeviceTest : public testing::Test {
   static const char kDeviceAddress[];
   static const int kDeviceInterfaceIndex;
 
-  void OnIPv4ConfigUpdated() { device_->network()->OnIPv4ConfigUpdated(); }
+  void OnIPv4ConfigUpdated() {
+    device_->GetPrimaryNetwork()->OnIPv4ConfigUpdated();
+  }
 
   void OnDHCPFailure() {
-    device_->network()->OnDHCPDrop(/*is_voluntary=*/false);
+    device_->GetPrimaryNetwork()->OnDHCPDrop(/*is_voluntary=*/false);
   }
 
   patchpanel::Client::TrafficCounter CreateCounter(
@@ -168,8 +170,8 @@ class DeviceTest : public testing::Test {
 
   void SelectService(scoped_refptr<MockService> service) {
     if (service) {
-      EXPECT_CALL(*service,
-                  SetAttachedNetwork(IsWeakPtrTo(device_->network())));
+      EXPECT_CALL(*service, SetAttachedNetwork(
+                                IsWeakPtrTo(device_->GetPrimaryNetwork())));
     }
     device_->SelectService(service);
   }
@@ -479,7 +481,7 @@ TEST_F(DeviceTest, Stop) {
 }
 
 TEST_F(DeviceTest, StopWithFixedIpParams) {
-  device_->network()->set_fixed_ip_params_for_testing(true);
+  device_->GetPrimaryNetwork()->set_fixed_ip_params_for_testing(true);
   device_->enabled_ = true;
   device_->enabled_pending_ = true;
   scoped_refptr<MockService> service(new NiceMock<MockService>(manager()));

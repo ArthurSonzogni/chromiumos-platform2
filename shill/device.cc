@@ -146,13 +146,6 @@ Device::Device(Manager* manager,
       interface_index_(interface_index),
       link_name_(link_name),
       manager_(manager),
-      network_(new Network(interface_index,
-                           link_name,
-                           technology,
-                           fixed_ip_params,
-                           manager->control_interface(),
-                           manager->dispatcher(),
-                           manager->metrics())),
       adaptor_(manager->control_interface()->CreateDeviceAdaptor(this)),
       technology_(technology),
       rtnl_handler_(RTNLHandler::GetInstance()),
@@ -193,7 +186,7 @@ Device::Device(Manager* manager,
   store_.RegisterConstBool(kPoweredProperty, &enabled_);
   HelpRegisterConstDerivedString(kTypeProperty, &Device::GetTechnologyString);
 
-  network_->RegisterEventHandler(this);
+  CreateImplicitNetwork(fixed_ip_params);
 
   // kScanningProperty: Registered in WiFi, Cellular
   // kScanIntervalProperty: Registered in WiFi, Cellular
@@ -204,7 +197,17 @@ Device::Device(Manager* manager,
 
 Device::~Device() {
   LOG(INFO) << "~Device(): " << link_name_ << " index: " << interface_index_;
-  network_->UnregisterEventHandler(this);
+  if (implicit_network_) {
+    implicit_network_->UnregisterEventHandler(this);
+  }
+}
+
+void Device::CreateImplicitNetwork(bool fixed_ip_params) {
+  implicit_network_ =
+      std::make_unique<Network>(interface_index_, link_name_, technology_,
+                                fixed_ip_params, manager_->control_interface(),
+                                manager_->dispatcher(), manager_->metrics());
+  implicit_network_->RegisterEventHandler(this);
 }
 
 void Device::Initialize() {
@@ -313,6 +316,15 @@ const std::string& Device::UniqueName() const {
   return link_name_;
 }
 
+Network* Device::GetPrimaryNetwork() const {
+  // Return the implicit Network. The implementation of GetPrimaryNetwork() in
+  // the base Device class always expects that the implicit Network exists.
+  // Subclasses not using the implicit network should provide their own
+  // GetPrimaryNetwork() override as well.
+  CHECK(implicit_network_);
+  return implicit_network_.get();
+}
+
 bool Device::Load(const StoreInterface* storage) {
   const auto id = GetStorageIdentifier();
   if (!storage->ContainsGroup(id)) {
@@ -345,8 +357,13 @@ void Device::OnDarkResume(ResultCallback callback) {
 }
 
 void Device::DropConnection() {
+  // The implementation of DropConnection() in the base Device class
+  // always stops the implicit network associated to the device.
+  // Subclasses not using the implicit network should provide their own
+  // DropConnection() override as well.
   SLOG(this, 2) << __func__;
-  network_->Stop();
+  CHECK(implicit_network_);
+  implicit_network_->Stop();
   SelectService(nullptr);
 }
 
@@ -365,9 +382,11 @@ void Device::ForceIPConfigUpdate() {
   if (!IsConnected()) {
     return;
   }
+  // When already connected, a Network must exist.
+  CHECK(GetPrimaryNetwork());
   LOG(INFO) << LoggingTag() << ": forced IP config update";
-  network()->RenewDHCPLease();
-  network()->InvalidateIPv6Config();
+  GetPrimaryNetwork()->RenewDHCPLease();
+  GetPrimaryNetwork()->InvalidateIPv6Config();
 }
 
 void Device::FetchTrafficCounters(const ServiceRefPtr& old_service,
@@ -531,6 +550,11 @@ void Device::SelectService(const ServiceRefPtr& service,
     return;
   }
 
+  // Selecting a service can only be done if the primary network has already
+  // been set initialized.
+  auto primary_network = GetPrimaryNetwork();
+  CHECK(!service || primary_network);
+
   ServiceRefPtr old_service;
   if (selected_service_) {
     old_service = selected_service_;
@@ -542,9 +566,13 @@ void Device::SelectService(const ServiceRefPtr& service,
   }
 
   selected_service_ = service;
-  network_->set_logging_tag(LoggingTag());
+
+  if (primary_network) {
+    primary_network->set_logging_tag(LoggingTag());
+  }
+
   if (selected_service_) {
-    selected_service_->SetAttachedNetwork(network_->AsWeakPtr());
+    selected_service_->SetAttachedNetwork(primary_network->AsWeakPtr());
   }
   OnSelectedServiceChanged(old_service);
   FetchTrafficCounters(old_service, selected_service_);
@@ -586,18 +614,21 @@ bool Device::UpdatePortalDetector(bool restart) {
     return false;
   }
 
+  // When already connected, a Network must exist.
+  DCHECK(GetPrimaryNetwork());
+
   // If portal detection is disabled for this technology, immediately set
   // the service state to "Online" and stop portal detection if it was
   // running.
   if (selected_service_->IsPortalDetectionDisabled()) {
     LOG(INFO) << LoggingTag()
               << ": Portal detection is disabled for this service";
-    network_->StopPortalDetection();
+    GetPrimaryNetwork()->StopPortalDetection();
     SetServiceState(Service::kStateOnline);
     return false;
   }
 
-  if (!network_->StartPortalDetection(restart)) {
+  if (!GetPrimaryNetwork()->StartPortalDetection(restart)) {
     SetServiceState(Service::kStateOnline);
     return false;
   }
@@ -640,6 +671,9 @@ void Device::OnNetworkValidationResult(int interface_index,
     return;
   }
 
+  // When already connected, a Network must exist.
+  DCHECK(GetPrimaryNetwork());
+
   selected_service_->increment_portal_detection_count();
   int portal_detection_count = selected_service_->portal_detection_count();
   int portal_result = PortalResultToMetricsEnum(result);
@@ -657,14 +691,14 @@ void Device::OnNetworkValidationResult(int interface_index,
     OnNetworkValidationSuccess();
     // TODO(b/248028325) Move StopPortalDetection inside Network and only
     // process the new ConnectState in OnNetworkValidationResult.
-    network_->StopPortalDetection();
+    GetPrimaryNetwork()->StopPortalDetection();
   } else if (Service::IsPortalledState(state)) {
     OnNetworkValidationFailure();
     selected_service_->SetPortalDetectionFailure(
         PortalDetector::PhaseToString(result.http_phase),
         PortalDetector::StatusToString(result.http_status),
         result.http_status_code);
-    if (!network_->RestartPortalDetection()) {
+    if (!GetPrimaryNetwork()->RestartPortalDetection()) {
       state = Service::kStateOnline;
     }
   } else {
@@ -673,7 +707,7 @@ void Device::OnNetworkValidationResult(int interface_index,
     LOG(ERROR) << LoggingTag() << ": unexpected Service state " << state
                << " from portal detection result";
     state = Service::kStateOnline;
-    network_->StopPortalDetection();
+    GetPrimaryNetwork()->StopPortalDetection();
   }
 
   SetServiceState(state);
@@ -688,11 +722,32 @@ RpcIdentifier Device::GetSelectedServiceRpcIdentifier(Error* /*error*/) {
 
 RpcIdentifiers Device::AvailableIPConfigs(Error* /*error*/) {
   RpcIdentifiers identifiers;
-  if (network_->ipconfig()) {
-    identifiers.push_back(network_->ipconfig()->GetRpcIdentifier());
-  }
-  if (network_->ip6config()) {
-    identifiers.push_back(network_->ip6config()->GetRpcIdentifier());
+
+  // These available IPConfigs are the ones exposed in the Device DBus object.
+  //
+  // The usual case will be a Device object associated to a single given Network
+  // where both Device and Network refer to the same network interface in the
+  // system; in this case, the IPConfig exposed by the Device applies to the
+  // same network interface as the Device references.
+  //
+  // In other cases, a Device object will have multiple associated Network
+  // objects (e.g. Cellular multiplexing), where only one of them is assumed to
+  // be "primary". This list will contain the IPConfig of the primary Network
+  // exclusively. Also note, this IPConfig for the primary Network may actually
+  // refer to a totally different network interface than the one referenced by
+  // the Device object, so even if the IPConfig is exposed in DBus by the Device
+  // object, it does not mean the IP settings shown in IPConfig will be set in
+  // same network interface that the Device references. Ideally IPConfig would
+  // also expose the interface name or index in DBus.
+  //
+  auto primary_network = GetPrimaryNetwork();
+  if (primary_network) {
+    if (primary_network->ipconfig()) {
+      identifiers.push_back(primary_network->ipconfig()->GetRpcIdentifier());
+    }
+    if (primary_network->ip6config()) {
+      identifiers.push_back(primary_network->ip6config()->GetRpcIdentifier());
+    }
   }
   return identifiers;
 }
@@ -858,6 +913,12 @@ bool Device::ShouldBringNetworkInterfaceDownAfterDisabled() const {
 }
 
 void Device::BringNetworkInterfaceDown() {
+  // The implementation of BringNetworkInterfaceDown() in the base Device class
+  // always brings down the main network interface associated to the device.
+  // Subclasses not using the implicit network should provide their own
+  // BringNetworkInterfaceDown() override as well.
+  DCHECK(implicit_network_);
+  DCHECK(implicit_network_->interface_index() == interface_index());
   rtnl_handler_->SetInterfaceFlags(interface_index(), 0, IFF_UP);
 }
 

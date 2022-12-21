@@ -2121,13 +2121,15 @@ void Manager::CreateConnectivityReport(Error* /*error*/) {
   LOG(INFO) << "Creating Connectivity Report";
 
   for (const auto& device : devices_) {
-    if (!device->network()->IsConnected()) {
-      LOG(INFO) << device->LoggingTag()
-                << ": Skipping connectivity test: no Network connection";
-      return;
+    auto network = device->GetPrimaryNetwork();
+    if (network) {
+      if (!network->IsConnected()) {
+        LOG(INFO) << device->LoggingTag()
+                  << ": Skipping connectivity test: no Network connection";
+        return;
+      }
+      network->StartConnectivityTest(GetPortalDetectorProbingConfiguration());
     }
-    device->network()->StartConnectivityTest(
-        GetPortalDetectorProbingConfiguration());
   }
 }
 
@@ -2578,10 +2580,14 @@ Network* Manager::FindActiveNetworkFromService(
     return nullptr;
   }
   auto device = FindDeviceFromService(service);
-  if (!device || !device->network()->IsConnected()) {
+  if (!device) {
     return nullptr;
   }
-  return device->network();
+  auto primary_network = device->GetPrimaryNetwork();
+  if (!primary_network || !primary_network->IsConnected()) {
+    return nullptr;
+  }
+  return primary_network;
 }
 
 ServiceRefPtr Manager::GetPrimaryPhysicalService() {

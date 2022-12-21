@@ -105,7 +105,8 @@ class EthernetTest : public testing::Test {
     ethernet_->rtnl_handler_ = &rtnl_handler_;
     ethernet_->sockets_.reset(mock_sockets_);  // Transfers ownership.
 
-    ethernet_->network()->set_dhcp_provider_for_testing(&dhcp_provider_);
+    ethernet_->GetPrimaryNetwork()->set_dhcp_provider_for_testing(
+        &dhcp_provider_);
     ON_CALL(manager_, device_info()).WillByDefault(Return(&device_info_));
     EXPECT_CALL(manager_, UpdateEnabledTechnologies()).Times(AnyNumber());
 
@@ -126,7 +127,7 @@ class EthernetTest : public testing::Test {
   void TearDown() override {
     ethernet_eap_provider_.set_service(nullptr);
     ethernet_->eap_listener_.reset();
-    ethernet_->network()->set_dhcp_provider_for_testing(nullptr);
+    ethernet_->GetPrimaryNetwork()->set_dhcp_provider_for_testing(nullptr);
     ethernet_->sockets_.reset();
     Mock::VerifyAndClearExpectations(&manager_);
   }

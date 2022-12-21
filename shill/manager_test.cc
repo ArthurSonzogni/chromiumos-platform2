@@ -355,7 +355,7 @@ class ManagerTest : public PropertyStoreTest {
     device->set_selected_service_for_testing(service);
     if (service) {
       EXPECT_CALL(*service, IsConnected(_))
-          .WillRepeatedly(Return(device->network()->IsConnected()));
+          .WillRepeatedly(Return(device->GetPrimaryNetwork()->IsConnected()));
     }
   }
 

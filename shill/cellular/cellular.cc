@@ -589,9 +589,11 @@ void Cellular::DestroySockets() {
   if (!socket_destroyer_)
     return;
 
-  for (const auto& address : network()->GetAddresses()) {
+  auto primary_network = GetPrimaryNetwork();
+  for (const auto& address : primary_network->GetAddresses()) {
     SLOG(2) << LoggingTag() << ": Destroy all sockets of address:" << address;
-    rtnl_handler()->RemoveInterfaceAddress(interface_index(), address);
+    rtnl_handler()->RemoveInterfaceAddress(primary_network->interface_index(),
+                                           address);
     if (!socket_destroyer_->DestroySockets(IPPROTO_TCP, address))
       SLOG(2) << LoggingTag() << ": no tcp sockets found for " << address;
     // Chrome sometimes binds to UDP sockets, so lets destroy them.
@@ -1574,7 +1576,7 @@ void Cellular::LinkUp(int data_interface_index) {
     if (!local.has_value()) {
       LOG(ERROR) << "IPv6 address is not valid: " << ipv6_props.address;
     } else if (link_local_mask->CanReachAddress(*local)) {
-      network()->set_ipv6_static_properties(
+      GetPrimaryNetwork()->set_ipv6_static_properties(
           std::make_unique<IPConfig::Properties>(ipv6_props));
     }
     ipv6_configured = true;
@@ -1624,8 +1626,9 @@ void Cellular::LinkUp(int data_interface_index) {
   };
   SelectService(service_);
   SetServiceState(Service::kStateConfiguring);
-  network()->set_link_protocol_ipv4_properties(std::move(static_ipv4_props));
-  network()->Start(opts);
+  GetPrimaryNetwork()->set_link_protocol_ipv4_properties(
+      std::move(static_ipv4_props));
+  GetPrimaryNetwork()->Start(opts);
 }
 
 void Cellular::LinkDown(int data_interface_index) {
@@ -1872,9 +1875,8 @@ bool Cellular::DisconnectCleanup() {
   SetState(State::kRegistered);
   SetServiceFailureSilent(Service::kFailureNone);
   SetPrimaryMultiplexedInterface("");
-  network()->Stop();
+  GetPrimaryNetwork()->Stop();
   ResetCarrierEntitlement();
-
   return true;
 }
 
@@ -1966,7 +1968,7 @@ void Cellular::StartPPP(const std::string& serial_device) {
     service_->SetState(original_state);
   } else {
     // Network shouldn't be connected without selected_service().
-    DCHECK(!network()->IsConnected());
+    DCHECK(!GetPrimaryNetwork()->IsConnected());
   }
 
   PPPDaemon::DeathCallback death_callback(
@@ -3099,7 +3101,7 @@ void Cellular::EntitlementCheck(
     return;
   }
 
-  auto network_addresses = network()->GetAddresses();
+  auto network_addresses = GetPrimaryNetwork()->GetAddresses();
   if (network_addresses.empty()) {
     LOG(ERROR) << kEntitlementCheckAnomalyDetectorPrefix << "no IP address.";
     metrics()->NotifyCellularEntitlementCheckResult(
@@ -3113,8 +3115,9 @@ void Cellular::EntitlementCheck(
 
   entitlement_check_callback_ = std::move(callback);
   // TODO(b/285242955): Use all available addresses instead of only primary one.
-  carrier_entitlement_->Check(network_addresses[0], network()->GetDNSServers(),
-                              network()->interface_name(),
+  carrier_entitlement_->Check(network_addresses[0],
+                              GetPrimaryNetwork()->GetDNSServers(),
+                              GetPrimaryNetwork()->interface_name(),
                               mobile_operator_info_->entitlement_config());
 }
 

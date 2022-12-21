@@ -48,7 +48,7 @@ bool VirtualDevice::Save(StoreInterface* /*storage*/) {
 }
 
 void VirtualDevice::Start(EnabledStateChangedCallback callback) {
-  if (!network()->fixed_ip_params()) {
+  if (!GetPrimaryNetwork()->fixed_ip_params()) {
     rtnl_handler()->SetInterfaceFlags(interface_index(), IFF_UP, IFF_UP);
   }
   std::move(callback).Run(Error(Error::kSuccess));
@@ -61,9 +61,11 @@ void VirtualDevice::Stop(EnabledStateChangedCallback callback) {
 void VirtualDevice::UpdateIPConfig(
     std::unique_ptr<IPConfig::Properties> ipv4_properties,
     std::unique_ptr<IPConfig::Properties> ipv6_properties) {
-  network()->set_link_protocol_ipv4_properties(std::move(ipv4_properties));
-  network()->set_link_protocol_ipv6_properties(std::move(ipv6_properties));
-  network()->Start(Network::StartOptions{
+  GetPrimaryNetwork()->set_link_protocol_ipv4_properties(
+      std::move(ipv4_properties));
+  GetPrimaryNetwork()->set_link_protocol_ipv6_properties(
+      std::move(ipv6_properties));
+  GetPrimaryNetwork()->Start(Network::StartOptions{
       .dhcp = std::nullopt,
       .accept_ra = false,
       .probing_configuration =
@@ -72,7 +74,7 @@ void VirtualDevice::UpdateIPConfig(
 }
 
 void VirtualDevice::ResetConnection() {
-  network()->Stop();
+  GetPrimaryNetwork()->Stop();
   Device::SelectService(/*service=*/nullptr, /*reset_old_service_state=*/false);
 }
 

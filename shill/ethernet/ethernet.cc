@@ -270,7 +270,7 @@ void Ethernet::ConnectTo(EthernetService* service) {
       .probing_configuration =
           manager()->GetPortalDetectorProbingConfiguration(),
   };
-  network()->Start(opts);
+  GetPrimaryNetwork()->Start(opts);
   SetServiceState(Service::kStateConfiguring);
 
   // Update link speeds. link speeds are expected to be constant during the L2

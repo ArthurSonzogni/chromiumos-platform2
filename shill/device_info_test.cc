@@ -790,13 +790,14 @@ TEST_F(DeviceInfoTest, OnNeighborReachabilityEvent) {
       /*dispatcher=*/&dispatcher_,
       /*metrics=*/&metrics_));
   MockNetworkEventHandler event_handler0;
-  device0->network()->set_state_for_testing(Network::State::kConnected);
-  device0->network()->RegisterEventHandler(&event_handler0);
+  device0->GetPrimaryNetwork()->set_state_for_testing(
+      Network::State::kConnected);
+  device0->GetPrimaryNetwork()->RegisterEventHandler(&event_handler0);
   IPConfig::Properties props0 = {};
   props0.gateway = kTestIPAddress0;
-  device0->network()->set_ipconfig(
+  device0->GetPrimaryNetwork()->set_ipconfig(
       std::make_unique<IPConfig>(&control_interface_, "null0"));
-  device0->network()->ipconfig()->UpdateProperties(props0);
+  device0->GetPrimaryNetwork()->ipconfig()->UpdateProperties(props0);
 
   scoped_refptr<MockDevice> device1(
       new MockDevice(&manager_, "null1", "addr1", kTestDeviceIndex + 1));
@@ -808,13 +809,14 @@ TEST_F(DeviceInfoTest, OnNeighborReachabilityEvent) {
       /*dispatcher=*/&dispatcher_,
       /*metrics=*/&metrics_));
   device_info_.RegisterDevice(device1);
-  device1->network()->set_state_for_testing(Network::State::kConnected);
-  device1->network()->RegisterEventHandler(&event_handler1);
+  device1->GetPrimaryNetwork()->set_state_for_testing(
+      Network::State::kConnected);
+  device1->GetPrimaryNetwork()->RegisterEventHandler(&event_handler1);
   IPConfig::Properties props1 = {};
   props1.gateway = kTestIPAddress2;
-  device1->network()->set_ip6config(
+  device1->GetPrimaryNetwork()->set_ip6config(
       std::make_unique<IPConfig>(&control_interface_, "null1"));
-  device1->network()->ip6config()->UpdateProperties(props1);
+  device1->GetPrimaryNetwork()->ip6config()->UpdateProperties(props1);
 
   using Role = patchpanel::Client::NeighborRole;
   using Status = patchpanel::Client::NeighborStatus;
@@ -824,10 +826,11 @@ TEST_F(DeviceInfoTest, OnNeighborReachabilityEvent) {
   event0.ip_addr = kTestIPAddress0;
   event0.role = Role::kGateway;
   event0.status = Status::kFailed;
-  EXPECT_CALL(event_handler0, OnNeighborReachabilityEvent(
-                                  device0->network()->interface_index(),
-                                  *IPAddress::CreateFromString(kTestIPAddress0),
-                                  Role::kGateway, Status::kFailed));
+  EXPECT_CALL(event_handler0,
+              OnNeighborReachabilityEvent(
+                  device0->GetPrimaryNetwork()->interface_index(),
+                  *IPAddress::CreateFromString(kTestIPAddress0), Role::kGateway,
+                  Status::kFailed));
   patchpanel_client_->TriggerNeighborReachabilityEvent(event0);
   Mock::VerifyAndClearExpectations(&event_handler0);
 
@@ -836,10 +839,11 @@ TEST_F(DeviceInfoTest, OnNeighborReachabilityEvent) {
   event1.ip_addr = kTestIPAddress1;
   event1.role = Role::kDnsServer;
   event1.status = Status::kFailed;
-  EXPECT_CALL(event_handler0, OnNeighborReachabilityEvent(
-                                  device0->network()->interface_index(),
-                                  *IPAddress::CreateFromString(kTestIPAddress1),
-                                  Role::kDnsServer, Status::kFailed));
+  EXPECT_CALL(event_handler0,
+              OnNeighborReachabilityEvent(
+                  device0->GetPrimaryNetwork()->interface_index(),
+                  *IPAddress::CreateFromString(kTestIPAddress1),
+                  Role::kDnsServer, Status::kFailed));
   patchpanel_client_->TriggerNeighborReachabilityEvent(event1);
   Mock::VerifyAndClearExpectations(&event_handler0);
 
@@ -850,16 +854,17 @@ TEST_F(DeviceInfoTest, OnNeighborReachabilityEvent) {
   event2.status = Status::kReachable;
   EXPECT_CALL(event_handler1,
               OnNeighborReachabilityEvent(
-                  device1->network()->interface_index(),
+                  device1->GetPrimaryNetwork()->interface_index(),
                   *IPAddress::CreateFromString(kTestIPAddress2),
                   Role::kGatewayAndDnsServer, Status::kReachable));
   patchpanel_client_->TriggerNeighborReachabilityEvent(event2);
+
   Mock::VerifyAndClearExpectations(&event_handler1);
 
-  device0->network()->set_ipconfig(nullptr);
-  device0->network()->UnregisterEventHandler(&event_handler0);
-  device1->network()->set_ip6config(nullptr);
-  device1->network()->UnregisterEventHandler(&event_handler1);
+  device0->GetPrimaryNetwork()->set_ipconfig(nullptr);
+  device0->GetPrimaryNetwork()->UnregisterEventHandler(&event_handler0);
+  device1->GetPrimaryNetwork()->set_ip6config(nullptr);
+  device1->GetPrimaryNetwork()->UnregisterEventHandler(&event_handler1);
 }
 
 TEST_F(DeviceInfoTest, CreateWireGuardInterface) {

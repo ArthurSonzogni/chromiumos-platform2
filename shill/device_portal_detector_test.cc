@@ -194,7 +194,9 @@ class TestDevice : public Device {
     std::move(callback).Run(Error(Error::kSuccess));
   }
 
-  TestNetwork* test_network() { return static_cast<TestNetwork*>(network()); }
+  TestNetwork* test_network() {
+    return static_cast<TestNetwork*>(GetPrimaryNetwork());
+  }
 
  private:
   base::WeakPtrFactory<TestDevice> test_weak_ptr_factory_{this};
@@ -231,7 +233,7 @@ class DevicePortalDetectorTest : public testing::Test {
 
   void SetUp() override {
     device_->set_network_for_testing(std::make_unique<TestNetwork>(&metrics_));
-    device_->network()->RegisterEventHandler(device_.get());
+    device_->GetPrimaryNetwork()->RegisterEventHandler(device_.get());
     // Set up a connected test Service for the Device.
     service_ = new TestService(&manager_);
     service_->SetState(Service::kStateConnected);
@@ -292,7 +294,7 @@ TEST_F(DevicePortalDetectorTest, DNSFailure) {
   auto test_network = GetTestNetwork();
 
   UpdatePortalDetector();
-  EXPECT_TRUE(device_->network()->IsPortalDetectionInProgress());
+  EXPECT_TRUE(device_->GetPrimaryNetwork()->IsPortalDetectionInProgress());
 
   test_network->SetDNSResult(PortalDetector::Status::kFailure);
   test_network->CompletePortalDetection();
@@ -320,7 +322,7 @@ TEST_F(DevicePortalDetectorTest, DNSTimeout) {
   auto test_network = GetTestNetwork();
 
   UpdatePortalDetector();
-  EXPECT_TRUE(device_->network()->IsPortalDetectionInProgress());
+  EXPECT_TRUE(device_->GetPrimaryNetwork()->IsPortalDetectionInProgress());
 
   test_network->SetDNSResult(PortalDetector::Status::kTimeout);
   test_network->CompletePortalDetection();
@@ -344,7 +346,7 @@ TEST_F(DevicePortalDetectorTest, RedirectFound) {
   auto test_network = GetTestNetwork();
 
   UpdatePortalDetector();
-  EXPECT_TRUE(device_->network()->IsPortalDetectionInProgress());
+  EXPECT_TRUE(device_->GetPrimaryNetwork()->IsPortalDetectionInProgress());
 
   test_network->SetRedirectResult(kRedirectUrl);
   test_network->CompletePortalDetection();
@@ -373,7 +375,7 @@ TEST_F(DevicePortalDetectorTest, RedirectFoundNoUrl) {
   auto test_network = GetTestNetwork();
 
   UpdatePortalDetector();
-  EXPECT_TRUE(device_->network()->IsPortalDetectionInProgress());
+  EXPECT_TRUE(device_->GetPrimaryNetwork()->IsPortalDetectionInProgress());
 
   // Redirect result with an empty redirect URL -> PortalSuspected state.
   test_network->SetRedirectResult("");
@@ -400,7 +402,7 @@ TEST_F(DevicePortalDetectorTest, RedirectFoundThenOnline) {
   auto test_network = GetTestNetwork();
 
   UpdatePortalDetector();
-  EXPECT_TRUE(device_->network()->IsPortalDetectionInProgress());
+  EXPECT_TRUE(device_->GetPrimaryNetwork()->IsPortalDetectionInProgress());
 
   test_network->SetRedirectResult(kRedirectUrl);
   test_network->CompletePortalDetection();
@@ -429,7 +431,7 @@ TEST_F(DevicePortalDetectorTest, PortalSuspected) {
   auto test_network = GetTestNetwork();
 
   UpdatePortalDetector();
-  EXPECT_TRUE(device_->network()->IsPortalDetectionInProgress());
+  EXPECT_TRUE(device_->GetPrimaryNetwork()->IsPortalDetectionInProgress());
 
   test_network->SetHTTPSFailureResult();
   test_network->CompletePortalDetection();
@@ -457,7 +459,7 @@ TEST_F(DevicePortalDetectorTest, PortalSuspectedThenRedirectFound) {
   auto test_network = GetTestNetwork();
 
   UpdatePortalDetector();
-  EXPECT_TRUE(device_->network()->IsPortalDetectionInProgress());
+  EXPECT_TRUE(device_->GetPrimaryNetwork()->IsPortalDetectionInProgress());
 
   // Multiple portal-suspected results.
   test_network->SetHTTPSFailureResult();
@@ -511,7 +513,7 @@ TEST_F(DevicePortalDetectorTest, PortalSuspectedThenOnline) {
   auto test_network = GetTestNetwork();
 
   UpdatePortalDetector();
-  EXPECT_TRUE(device_->network()->IsPortalDetectionInProgress());
+  EXPECT_TRUE(device_->GetPrimaryNetwork()->IsPortalDetectionInProgress());
 
   test_network->SetHTTPSFailureResult();
   test_network->CompletePortalDetection();
@@ -549,7 +551,7 @@ TEST_F(DevicePortalDetectorTest, PortalSuspectedThenDisconnect) {
   auto test_network = GetTestNetwork();
 
   UpdatePortalDetector();
-  EXPECT_TRUE(device_->network()->IsPortalDetectionInProgress());
+  EXPECT_TRUE(device_->GetPrimaryNetwork()->IsPortalDetectionInProgress());
 
   // Multiple portal-suspected results
   test_network->SetHTTPSFailureResult();
@@ -587,7 +589,7 @@ TEST_F(DevicePortalDetectorTest, Online) {
   auto test_network = GetTestNetwork();
 
   UpdatePortalDetector();
-  EXPECT_TRUE(device_->network()->IsPortalDetectionInProgress());
+  EXPECT_TRUE(device_->GetPrimaryNetwork()->IsPortalDetectionInProgress());
 
   test_network->SetOnlineResult();
   test_network->CompletePortalDetection();
@@ -612,7 +614,7 @@ TEST_F(DevicePortalDetectorTest, RestartPortalDetection) {
   auto test_network = GetTestNetwork();
 
   UpdatePortalDetector();
-  EXPECT_TRUE(device_->network()->IsPortalDetectionInProgress());
+  EXPECT_TRUE(device_->GetPrimaryNetwork()->IsPortalDetectionInProgress());
 
   // Run portal detection 3 times.
   test_network->SetHTTPSFailureResult();

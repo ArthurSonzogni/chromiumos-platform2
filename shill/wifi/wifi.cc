@@ -726,7 +726,7 @@ void WiFi::ConnectTo(WiFiService* service, Error* error) {
   SetPendingService(service);
   CHECK(current_service_.get() != pending_service_.get());
 
-  network()->Stop();
+  GetPrimaryNetwork()->Stop();
   // SelectService here (instead of in LinkEvent, like Ethernet), so
   // that, if we fail to bring up L2, we can attribute failure correctly.
   //
@@ -2450,7 +2450,7 @@ const WiFiEndpointConstRefPtr WiFi::GetCurrentEndpoint() const {
 }
 
 void WiFi::DestroyServiceLease(const WiFiService& service) {
-  network()->DestroyDHCPLease(GetServiceLeaseName(service));
+  GetPrimaryNetwork()->DestroyDHCPLease(GetServiceLeaseName(service));
 }
 
 void WiFi::StateChanged(const std::string& new_state) {
@@ -2505,10 +2505,10 @@ void WiFi::StateChanged(const std::string& new_state) {
         // AP is on a different subnet than where we started.
         // TODO(matthewmwang): Handle the IPv6 roam case.
         is_roaming_in_progress_ = false;
-        if (network()->TimeToNextDHCPLeaseRenewal() != std::nullopt) {
+        if (GetPrimaryNetwork()->TimeToNextDHCPLeaseRenewal() != std::nullopt) {
           LOG(INFO) << link_name() << " renewing L3 configuration after roam.";
           RetrieveLinkStatistics(WiFiLinkStatistics::Trigger::kDHCPRenewOnRoam);
-          network()->RenewDHCPLease();
+          GetPrimaryNetwork()->RenewDHCPLease();
           affected_service->SetRoamState(Service::kRoamStateConfiguring);
         }
       } else if (affected_service->is_rekey_in_progress()) {
@@ -2528,7 +2528,7 @@ void WiFi::StateChanged(const std::string& new_state) {
           .probing_configuration =
               manager()->GetPortalDetectorProbingConfiguration(),
       };
-      network()->Start(opts);
+      GetPrimaryNetwork()->Start(opts);
       LOG(INFO) << link_name() << " is up; started L3 configuration.";
       RetrieveLinkStatistics(
           WiFiLinkStatistics::Trigger::kIPConfigurationStart);
@@ -2682,8 +2682,10 @@ void WiFi::OnLinkMonitorFailure(IPAddress::Family family) {
 
   // If we have never found the gateway, let's be conservative and not
   // do anything, in case this network topology does not have a gateway.
-  if ((family == IPAddress::kFamilyIPv4 && !network()->ipv4_gateway_found()) ||
-      (family == IPAddress::kFamilyIPv6 && !network()->ipv6_gateway_found())) {
+  if ((family == IPAddress::kFamilyIPv4 &&
+       !GetPrimaryNetwork()->ipv4_gateway_found()) ||
+      (family == IPAddress::kFamilyIPv6 &&
+       !GetPrimaryNetwork()->ipv6_gateway_found())) {
     LOG(INFO) << "In " << __func__ << "(): "
               << "Skipping reassociate since gateway was never found.";
     return;
@@ -2854,7 +2856,7 @@ void WiFi::OnBeforeSuspend(ResultCallback callback) {
                      weak_ptr_factory_while_started_.GetWeakPtr()),
       base::BindOnce(&WiFi::RemoveSupplicantNetworks,
                      weak_ptr_factory_while_started_.GetWeakPtr()),
-      network()->TimeToNextDHCPLeaseRenewal());
+      GetPrimaryNetwork()->TimeToNextDHCPLeaseRenewal());
 }
 
 void WiFi::OnDarkResume(ResultCallback callback) {
@@ -3991,7 +3993,7 @@ void WiFi::OnIPv4ConfiguredWithDHCPLease(int net_interface_index) {
   SLOG(this, 2) << __func__ << ": "
                 << "IPv4 DHCP lease obtained";
   wake_on_wifi_->OnConnectedAndReachable(
-      network()->TimeToNextDHCPLeaseRenewal());
+      GetPrimaryNetwork()->TimeToNextDHCPLeaseRenewal());
 }
 
 void WiFi::OnIPv6ConfiguredWithSLAACAddress(int net_interface_index) {

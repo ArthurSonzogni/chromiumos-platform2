@@ -1379,7 +1379,11 @@ void DeviceInfo::OnNeighborReachabilityEvent(
     LOG(ERROR) << __func__ << " " << event << ": device not found";
     return;
   }
-  device->network()->OnNeighborReachabilityEvent(event);
+
+  // Neighbor reachability events never expected in Cellular, so the primary
+  // network will always exist.
+  CHECK(device->GetPrimaryNetwork());
+  device->GetPrimaryNetwork()->OnNeighborReachabilityEvent(event);
 }
 
 bool DeviceInfo::GetUserId(const std::string& user_name, uid_t* uid) const {

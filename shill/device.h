@@ -169,9 +169,15 @@ class Device : public base::RefCounted<Device>, public Network::EventHandler {
   mockable Technology technology() const { return technology_; }
   std::string GetTechnologyName() const;
 
-  // Currently, Network object has the same lifetime as Device, and thus this
-  // getter should never return nullptr.
-  Network* network() const { return network_.get(); }
+  // In WiFi, Ethernet and all other device types except for Cellular, this
+  // method is guaranteed to return always a valid Network, so it is safe to
+  // dereference the returned value.
+  //
+  // In Cellular devices, where ephemeral multiplexed network interfaces are
+  // supported, this method is not guaranteed to always return a valid Network.
+  // The Network lifecycle will be bound to the connection state of the device,
+  // and therefore this method will return nullptr when disconnected.
+  virtual Network* GetPrimaryNetwork() const;
 
   // Returns a string that is guaranteed to uniquely identify this Device
   // instance.
@@ -290,7 +296,7 @@ class Device : public base::RefCounted<Device>, public Network::EventHandler {
   }
 
   void set_network_for_testing(std::unique_ptr<Network> network) {
-    network_ = std::move(network);
+    implicit_network_ = std::move(network);
   }
 
  protected:
@@ -350,9 +356,19 @@ class Device : public base::RefCounted<Device>, public Network::EventHandler {
   // Update the device state to the pending state.
   void UpdateEnabledState();
 
+  // Create the implicit Network object. Must be reimplemented by classes that
+  // don't require it (e.g. Cellular) so that it's a no-op.
+  virtual void CreateImplicitNetwork(bool fixed_ip_params);
+
   // Drops the currently selected service along with its IP configuration and
-  // connection, if any.
+  // implicit Network connection, if any. Must be reimplemented by classes (e.g.
+  // Cellular) that don't require the implicit network.
   virtual void DropConnection();
+
+  // Brings the network interface associated to the implicit Network down. Must
+  /// be reimplemented by classes (e.g. Cellular) that don't require the
+  // implicit network.
+  virtual void BringNetworkInterfaceDown();
 
   // Called when a PortalDetector trial completes.
   // Called every time PortalDetector finishes and Internet connectivity is
@@ -433,9 +449,6 @@ class Device : public base::RefCounted<Device>, public Network::EventHandler {
 
   static const char kStoragePowered[];
 
-  // Brings the associated network interface down.
-  void BringNetworkInterfaceDown();
-
   RpcIdentifier GetSelectedServiceRpcIdentifier(Error* error);
   RpcIdentifiers AvailableIPConfigs(Error* error);
 
@@ -497,7 +510,7 @@ class Device : public base::RefCounted<Device>, public Network::EventHandler {
   const int interface_index_;
   const std::string link_name_;
   Manager* manager_;
-  std::unique_ptr<Network> network_;
+  std::unique_ptr<Network> implicit_network_;
   std::unique_ptr<DeviceAdaptorInterface> adaptor_;
   Technology technology_;
 
