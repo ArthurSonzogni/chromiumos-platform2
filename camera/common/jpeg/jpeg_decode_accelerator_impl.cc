@@ -25,6 +25,7 @@
 #include <mojo/public/cpp/system/platform_handle.h>
 
 #include "camera/mojo/gpu/dmabuf.mojom.h"
+#include "common/jpeg/tracing.h"
 #include "cros-camera/camera_buffer_manager.h"
 #include "cros-camera/common.h"
 #include "cros-camera/future.h"
@@ -82,22 +83,20 @@ JpegDecodeAcceleratorImpl::JpegDecodeAcceleratorImpl(
       cancellation_relay_(new CancellationRelay),
       ipc_bridge_(new IPCBridge(mojo_manager, cancellation_relay_.get())),
       camera_metrics_(CameraMetrics::New()) {
-  VLOGF_ENTER();
+  TRACE_JPEG_DEBUG();
 }
 
 JpegDecodeAcceleratorImpl::~JpegDecodeAcceleratorImpl() {
-  VLOGF_ENTER();
+  TRACE_JPEG_DEBUG();
 
   bool result = mojo_manager_->GetIpcTaskRunner()->DeleteSoon(
       FROM_HERE, std::move(ipc_bridge_));
   DCHECK(result);
   cancellation_relay_ = nullptr;
-
-  VLOGF_EXIT();
 }
 
 bool JpegDecodeAcceleratorImpl::Start() {
-  VLOGF_ENTER();
+  TRACE_JPEG();
 
   auto is_initialized = cros::Future<bool>::Create(cancellation_relay_.get());
 
@@ -109,8 +108,6 @@ bool JpegDecodeAcceleratorImpl::Start() {
     return false;
   }
 
-  VLOGF_EXIT();
-
   return is_initialized->Get();
 }
 
@@ -119,6 +116,10 @@ JpegDecodeAccelerator::Error JpegDecodeAcceleratorImpl::DecodeSync(
     uint32_t input_buffer_size,
     uint32_t input_buffer_offset,
     buffer_handle_t output_buffer) {
+  CameraBufferManager* buffer_manager = CameraBufferManager::GetInstance();
+  TRACE_JPEG("width", buffer_manager->GetWidth(output_buffer), "height",
+             buffer_manager->GetHeight(output_buffer));
+
   auto future = cros::Future<int>::Create(cancellation_relay_.get());
 
   Decode(input_fd, input_buffer_size, input_buffer_offset, output_buffer,
@@ -134,7 +135,6 @@ JpegDecodeAccelerator::Error JpegDecodeAcceleratorImpl::DecodeSync(
     LOGF(WARNING) << "There is no decode response from JDA mojo channel.";
     return Error::NO_DECODE_RESPONSE;
   }
-  VLOGF_EXIT();
   return static_cast<Error>(future->Get());
 }
 
@@ -143,6 +143,10 @@ int32_t JpegDecodeAcceleratorImpl::Decode(int input_fd,
                                           uint32_t input_buffer_offset,
                                           buffer_handle_t output_buffer,
                                           DecodeCallback callback) {
+  CameraBufferManager* buffer_manager = CameraBufferManager::GetInstance();
+  TRACE_JPEG("width", buffer_manager->GetWidth(output_buffer), "height",
+             buffer_manager->GetHeight(output_buffer));
+
   int32_t buffer_id = buffer_id_;
 
   // Mask against 30 bits, to avoid (undefined) wraparound on signed integer.
@@ -161,11 +165,13 @@ JpegDecodeAcceleratorImpl::IPCBridge::IPCBridge(
     CancellationRelay* cancellation_relay)
     : mojo_manager_(mojo_manager),
       cancellation_relay_(cancellation_relay),
-      ipc_task_runner_(mojo_manager_->GetIpcTaskRunner()) {}
+      ipc_task_runner_(mojo_manager_->GetIpcTaskRunner()) {
+  TRACE_JPEG_DEBUG();
+}
 
 JpegDecodeAcceleratorImpl::IPCBridge::~IPCBridge() {
   DCHECK(ipc_task_runner_->BelongsToCurrentThread());
-  VLOGF_ENTER();
+  TRACE_JPEG_DEBUG();
 
   Destroy();
 }
@@ -173,7 +179,7 @@ JpegDecodeAcceleratorImpl::IPCBridge::~IPCBridge() {
 void JpegDecodeAcceleratorImpl::IPCBridge::Start(
     base::OnceCallback<void(bool)> callback) {
   DCHECK(ipc_task_runner_->BelongsToCurrentThread());
-  VLOGF_ENTER();
+  TRACE_JPEG_DEBUG();
 
   if (jda_.is_bound()) {
     std::move(callback).Run(true);
@@ -192,12 +198,12 @@ void JpegDecodeAcceleratorImpl::IPCBridge::Start(
       base::BindOnce(
           &JpegDecodeAcceleratorImpl::IPCBridge::OnJpegDecodeAcceleratorError,
           GetWeakPtr()));
-  VLOGF_EXIT();
 }
 
 void JpegDecodeAcceleratorImpl::IPCBridge::Destroy() {
   DCHECK(ipc_task_runner_->BelongsToCurrentThread());
-  VLOGF_ENTER();
+  TRACE_JPEG_DEBUG();
+
   jda_.reset();
   inflight_buffer_ids_.clear();
 }
@@ -211,6 +217,10 @@ void JpegDecodeAcceleratorImpl::IPCBridge::Decode(int32_t buffer_id,
   DCHECK(ipc_task_runner_->BelongsToCurrentThread());
   DCHECK(!base::Contains(inflight_buffer_ids_, buffer_id));
 
+  CameraBufferManager* buffer_manager = CameraBufferManager::GetInstance();
+  TRACE_JPEG_DEBUG("width", buffer_manager->GetWidth(output_buffer), "height",
+                   buffer_manager->GetHeight(output_buffer));
+
   if (!jda_.is_bound()) {
     std::move(callback).Run(buffer_id,
                             static_cast<int>(Error::TRY_START_AGAIN));
@@ -218,7 +228,6 @@ void JpegDecodeAcceleratorImpl::IPCBridge::Decode(int32_t buffer_id,
   }
 
   // Wrap output buffer into mojom::DmaBufVideoFrame.
-  CameraBufferManager* buffer_manager = CameraBufferManager::GetInstance();
   mojom::VideoPixelFormat mojo_format = V4L2PixelFormatToMojoFormat(
       buffer_manager->GetV4L2PixelFormat(output_buffer));
   if (mojo_format == mojom::VideoPixelFormat::PIXEL_FORMAT_UNKNOWN) {
@@ -280,18 +289,18 @@ bool JpegDecodeAcceleratorImpl::IPCBridge::IsReady() {
 void JpegDecodeAcceleratorImpl::IPCBridge::Initialize(
     base::OnceCallback<void(bool)> callback) {
   DCHECK(ipc_task_runner_->BelongsToCurrentThread());
-  VLOGF_ENTER();
+  TRACE_JPEG_DEBUG();
 
   jda_->Initialize(std::move(callback));
 }
 
 void JpegDecodeAcceleratorImpl::IPCBridge::OnJpegDecodeAcceleratorError() {
   DCHECK(ipc_task_runner_->BelongsToCurrentThread());
-  VLOGF_ENTER();
+  TRACE_JPEG();
+
   LOGF(ERROR) << "There is a mojo error for JpegDecodeAccelerator";
   cancellation_relay_->CancelAllFutures();
   Destroy();
-  VLOGF_EXIT();
 }
 
 void JpegDecodeAcceleratorImpl::IPCBridge::OnDecodeAck(
@@ -300,6 +309,8 @@ void JpegDecodeAcceleratorImpl::IPCBridge::OnDecodeAck(
     cros::mojom::DecodeError error) {
   DCHECK(ipc_task_runner_->BelongsToCurrentThread());
   DCHECK(base::Contains(inflight_buffer_ids_, buffer_id));
+  TRACE_JPEG_DEBUG();
+
   inflight_buffer_ids_.erase(buffer_id);
   std::move(callback).Run(buffer_id, static_cast<int>(error));
 }

@@ -23,6 +23,7 @@
 #include <mojo/public/cpp/system/platform_handle.h>
 
 #include "camera/mojo/gpu/dmabuf.mojom.h"
+#include "common/jpeg/tracing.h"
 #include "cros-camera/common.h"
 #include "cros-camera/future.h"
 #include "cros-camera/ipc_util.h"
@@ -55,22 +56,20 @@ JpegEncodeAcceleratorImpl::JpegEncodeAcceleratorImpl(
       mojo_manager_(mojo_manager),
       cancellation_relay_(new CancellationRelay),
       ipc_bridge_(new IPCBridge(mojo_manager, cancellation_relay_.get())) {
-  VLOGF_ENTER();
+  TRACE_JPEG_DEBUG();
 }
 
 JpegEncodeAcceleratorImpl::~JpegEncodeAcceleratorImpl() {
-  VLOGF_ENTER();
+  TRACE_JPEG_DEBUG();
 
   bool result = mojo_manager_->GetIpcTaskRunner()->DeleteSoon(
       FROM_HERE, std::move(ipc_bridge_));
   DCHECK(result);
   cancellation_relay_ = nullptr;
-
-  VLOGF_EXIT();
 }
 
 bool JpegEncodeAcceleratorImpl::Start() {
-  VLOGF_ENTER();
+  TRACE_JPEG();
 
   auto is_initialized = Future<bool>::Create(cancellation_relay_.get());
 
@@ -81,8 +80,6 @@ bool JpegEncodeAcceleratorImpl::Start() {
   if (!is_initialized->Wait()) {
     return false;
   }
-
-  VLOGF_EXIT();
 
   return is_initialized->Get();
 }
@@ -97,6 +94,8 @@ int JpegEncodeAcceleratorImpl::EncodeSync(int input_fd,
                                           int output_fd,
                                           uint32_t output_buffer_size,
                                           uint32_t* output_data_size) {
+  TRACE_JPEG("width", coded_size_width, "height", coded_size_height);
+
   int32_t task_id = task_id_;
   // Mask against 30 bits, to avoid (undefined) wraparound on signed integer.
   task_id_ = (task_id_ + 1) & 0x3FFFFFFF;
@@ -123,7 +122,6 @@ int JpegEncodeAcceleratorImpl::EncodeSync(int input_fd,
     LOGF(WARNING) << "There is no encode response from JEA mojo channel.";
     return NO_ENCODE_RESPONSE;
   }
-  VLOGF_EXIT();
   return future->Get();
 }
 
@@ -137,6 +135,8 @@ int JpegEncodeAcceleratorImpl::EncodeSync(
     int coded_size_height,
     int quality,
     uint32_t* output_data_size) {
+  TRACE_JPEG("width", coded_size_width, "height", coded_size_height);
+
   int32_t task_id = task_id_;
   // Mask against 30 bits, to avoid (undefined) wraparound on signed integer.
   task_id_ = (task_id_ + 1) & 0x3FFFFFFF;
@@ -163,7 +163,6 @@ int JpegEncodeAcceleratorImpl::EncodeSync(
     LOGF(WARNING) << "There is no encode response from JEA mojo channel.";
     return NO_ENCODE_RESPONSE;
   }
-  VLOGF_EXIT();
   return future->Get();
 }
 
@@ -172,11 +171,13 @@ JpegEncodeAcceleratorImpl::IPCBridge::IPCBridge(
     CancellationRelay* cancellation_relay)
     : mojo_manager_(mojo_manager),
       cancellation_relay_(cancellation_relay),
-      ipc_task_runner_(mojo_manager_->GetIpcTaskRunner()) {}
+      ipc_task_runner_(mojo_manager_->GetIpcTaskRunner()) {
+  TRACE_JPEG_DEBUG();
+}
 
 JpegEncodeAcceleratorImpl::IPCBridge::~IPCBridge() {
   DCHECK(ipc_task_runner_->BelongsToCurrentThread());
-  VLOGF_ENTER();
+  TRACE_JPEG_DEBUG();
 
   Destroy();
 }
@@ -184,7 +185,7 @@ JpegEncodeAcceleratorImpl::IPCBridge::~IPCBridge() {
 void JpegEncodeAcceleratorImpl::IPCBridge::Start(
     base::OnceCallback<void(bool)> callback) {
   DCHECK(ipc_task_runner_->BelongsToCurrentThread());
-  VLOGF_ENTER();
+  TRACE_JPEG_DEBUG();
 
   if (jea_.is_bound()) {
     std::move(callback).Run(true);
@@ -203,12 +204,11 @@ void JpegEncodeAcceleratorImpl::IPCBridge::Start(
       base::BindOnce(
           &JpegEncodeAcceleratorImpl::IPCBridge::OnJpegEncodeAcceleratorError,
           GetWeakPtr()));
-  VLOGF_EXIT();
 }
 
 void JpegEncodeAcceleratorImpl::IPCBridge::Destroy() {
   DCHECK(ipc_task_runner_->BelongsToCurrentThread());
-  VLOGF_ENTER();
+  TRACE_JPEG_DEBUG();
   jea_.reset();
 }
 
@@ -225,6 +225,7 @@ void JpegEncodeAcceleratorImpl::IPCBridge::EncodeLegacy(
     uint32_t output_buffer_size,
     EncodeWithFDCallback callback) {
   DCHECK(ipc_task_runner_->BelongsToCurrentThread());
+  TRACE_JPEG_DEBUG("width", coded_size_width, "height", coded_size_height);
 
   if (!jea_.is_bound()) {
     std::move(callback).Run(0, TRY_START_AGAIN);
@@ -315,6 +316,7 @@ void JpegEncodeAcceleratorImpl::IPCBridge::Encode(
     int quality,
     EncodeWithDmaBufCallback callback) {
   DCHECK(ipc_task_runner_->BelongsToCurrentThread());
+  TRACE_JPEG_DEBUG("width", coded_size_width, "height", coded_size_height);
 
   if (!jea_.is_bound()) {
     std::move(callback).Run(0, TRY_START_AGAIN);
@@ -399,19 +401,19 @@ bool JpegEncodeAcceleratorImpl::IPCBridge::IsReady() {
 void JpegEncodeAcceleratorImpl::IPCBridge::Initialize(
     base::OnceCallback<void(bool)> callback) {
   DCHECK(ipc_task_runner_->BelongsToCurrentThread());
-  VLOGF_ENTER();
+  TRACE_JPEG_DEBUG();
 
   jea_->Initialize(std::move(callback));
 }
 
 void JpegEncodeAcceleratorImpl::IPCBridge::OnJpegEncodeAcceleratorError() {
   DCHECK(ipc_task_runner_->BelongsToCurrentThread());
-  VLOGF_ENTER();
+  TRACE_JPEG();
+
   LOGF(ERROR) << "There is a mojo error for JpegEncodeAccelerator";
   jea_.reset();
   cancellation_relay_->CancelAllFutures();
   Destroy();
-  VLOGF_EXIT();
 }
 
 void JpegEncodeAcceleratorImpl::IPCBridge::OnEncodeAck(
