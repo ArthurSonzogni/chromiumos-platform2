@@ -12,9 +12,7 @@
 #define TRACE_GPU(...) \
   TRACE_EVENT_AUTOGEN(kCameraTraceCategoryGpu, ##__VA_ARGS__)
 
-#define TRACE_COMMON_BEGIN(...) \
-  TRACE_EVENT_BEGIN(kCameraTraceCategoryGpu, ##__VA_ARGS__)
-
-#define TRACE_COMMON_END() TRACE_EVENT_END(kCameraTraceCategoryGpu)
+#define TRACE_GPU_DEBUG(...) \
+  TRACE_EVENT_AUTOGEN(kCameraTraceCategoryGpuDebug, ##__VA_ARGS__)
 
 #endif  // CAMERA_GPU_TRACING_H_

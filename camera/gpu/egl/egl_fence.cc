@@ -11,6 +11,7 @@
 #include <GLES3/gl3.h>
 
 #include "cros-camera/common.h"
+#include "gpu/tracing.h"
 
 namespace {
 
@@ -40,6 +41,8 @@ bool EglFence::IsSupported() {
 }
 
 EglFence::EglFence() {
+  TRACE_GPU_DEBUG();
+
   if (!IsSupported()) {
     LOGF(ERROR) << "Creating EGLSyncKHR isn't supported";
     return;
@@ -76,6 +79,8 @@ EglFence::~EglFence() {
 }
 
 base::ScopedFD EglFence::GetNativeFd() {
+  TRACE_GPU_DEBUG();
+
   if (!IsValid()) {
     return base::ScopedFD();
   }
@@ -87,6 +92,8 @@ base::ScopedFD EglFence::GetNativeFd() {
 }
 
 void EglFence::Invalidate() {
+  TRACE_GPU_DEBUG();
+
   if (IsValid()) {
     g_eglDestroySyncKHR(display_, sync_);
     display_ = EGL_NO_DISPLAY;

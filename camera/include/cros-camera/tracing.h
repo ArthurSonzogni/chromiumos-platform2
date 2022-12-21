@@ -32,6 +32,7 @@ void CROS_CAMERA_EXPORT InitializeCameraTrace();
 constexpr char kCameraTraceCategoryAutoFraming[] = "camera.auto_framing";
 constexpr char kCameraTraceCategoryCommon[] = "camera.common";
 constexpr char kCameraTraceCategoryGcamAe[] = "camera.gcam_ae";
+constexpr char kCameraTraceCategoryGpuDebug[] = "camera.gpu.debug";
 constexpr char kCameraTraceCategoryGpu[] = "camera.gpu";
 constexpr char kCameraTraceCategoryHalAdapter[] = "camera.hal_adapter";
 constexpr char kCameraTraceCategoryHdrnetDebug[] = "camera.hdrnet.debug";
@@ -65,6 +66,9 @@ PERFETTO_DEFINE_CATEGORIES(
         .SetDescription("Events from common CrOS Camera library"),
     perfetto::Category(cros::kCameraTraceCategoryGcamAe)
         .SetDescription("Events from CrOS Gcam AE pipeline"),
+    perfetto::Category(cros::kCameraTraceCategoryGpuDebug)
+        .SetDescription("Events from CrOS Camera GPU operations (debug)")
+        .SetTags("debug"),
     perfetto::Category(cros::kCameraTraceCategoryGpu)
         .SetDescription("Events from CrOS Camera GPU operations"),
     perfetto::Category(cros::kCameraTraceCategoryHalAdapter)
