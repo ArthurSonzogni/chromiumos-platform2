@@ -80,6 +80,7 @@ sched_getaffinity: 1
 sched_getattr: 1
 sched_setaffinity: 1
 sched_setattr: 1
+sched_setscheduler: 1
 sched_yield: 1
 send: 1
 setgroups32: 1
@@ -88,6 +89,7 @@ setresgid32: 1
 setresuid32: 1
 set_robust_list: 1
 set_tid_address: 1
+shutdown: 1
 sigaltstack: 1
 socket: arg0 == AF_UNIX
 stat64: 1
