@@ -5,6 +5,7 @@
 #include "arc/setup/xml/android_binary_xml_tokenizer.h"
 
 #include <base/logging.h>
+#include <endian.h>
 
 namespace arc {
 
