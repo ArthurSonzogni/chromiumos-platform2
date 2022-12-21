@@ -59,6 +59,7 @@ _IUSE = [
     "coverage",
     "cr50_onboard",
     "cros_arm64",
+    "cros_debug",
     "cros_host",
     "cros_i686",
     "cross_domain_context",

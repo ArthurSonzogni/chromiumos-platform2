@@ -95,6 +95,11 @@ config("compiler_defaults") {
   if (use.cros_host) {
     defines += [ "NDEBUG" ]
   }
+  if (use.cros_debug) {
+    # Initialize stack variables with values that will likely transform
+    # logic bugs into crashes.
+    cflags += [ "-ftrivial-auto-var-init=pattern" ]
+  }
   if (enable_lfs) {
     defines += [
       # Enable support for new LFS funcs (ftello/etc...).
