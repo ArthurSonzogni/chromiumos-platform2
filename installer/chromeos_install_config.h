@@ -79,6 +79,7 @@ struct InstallConfig {
 
   BiosType bios_type;
   DeferUpdateAction defer_update_action;
+  bool force_update_firmware{false};
 };
 
 #endif  // INSTALLER_CHROMEOS_INSTALL_CONFIG_H_

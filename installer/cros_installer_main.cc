@@ -18,6 +18,8 @@ int main(int argc, char* argv[]) {
   DEFINE_string(defer_update_action, "",
                 "Defers(holds)/applies final FW + OS updates, "
                 "one of: '' (Default: empty), 'hold', and 'apply'.");
+  DEFINE_bool(force_update_firmware, false,
+              "Forces a fw update with OS update.");
 
   brillo::FlagHelper::Init(argc, argv, "cros_installer");
 
@@ -46,7 +48,8 @@ int main(int argc, char* argv[]) {
 
     int exit_code = 0;
     if (!RunPostInstall(FLAGS_install_dev, FLAGS_install_dir, bios_type,
-                        defer_update_action, &exit_code)) {
+                        defer_update_action, FLAGS_force_update_firmware,
+                        &exit_code)) {
       return exit_code ? exit_code : 1;
     }
   } else {

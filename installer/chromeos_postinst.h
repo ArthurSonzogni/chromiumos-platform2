@@ -14,6 +14,7 @@ bool ConfigureInstall(const std::string& install_dev,
                       const std::string& install_dir,
                       BiosType bios_type,
                       DeferUpdateAction defer_update_action,
+                      bool force_update_firmware,
                       InstallConfig* install_config);
 
 // Find the current kernel command line and use it to find the
@@ -32,6 +33,7 @@ bool RunPostInstall(const std::string& install_dev,
                     const std::string& install_dir,
                     BiosType bios_type,
                     DeferUpdateAction defer_update_action,
+                    bool force_update_firmware,
                     int* exit_code);
 
 #endif  // INSTALLER_CHROMEOS_POSTINST_H_

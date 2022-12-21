@@ -60,6 +60,7 @@ bool ConfigureInstall(const string& install_dev,
                       const string& install_dir,
                       BiosType bios_type,
                       DeferUpdateAction defer_update_action,
+                      bool force_update_firmware,
                       InstallConfig* install_config) {
   Partition root = Partition(install_dev, install_dir);
 
@@ -93,6 +94,7 @@ bool ConfigureInstall(const string& install_dev,
   install_config->boot = Partition(boot_dev, "/tmp/boot_mnt");
   install_config->bios_type = bios_type;
   install_config->defer_update_action = defer_update_action;
+  install_config->force_update_firmware = force_update_firmware;
 
   return true;
 }
@@ -626,12 +628,21 @@ bool ChromeosChrootPostinst(const InstallConfig& install_config,
       break;
   }
 
-  // In postinst in future, we may provide an option (ex, --update_firmware).
+  // Use `--force_update_firmware` to bypass this tag check.
   string firmware_tag_file =
       (install_config.root.mount() + "/root/.force_update_firmware");
 
   bool attempt_firmware_update =
       (!is_factory_install && (access(firmware_tag_file.c_str(), 0) == 0));
+
+  if (install_config.force_update_firmware) {
+    if (attempt_firmware_update) {
+      LOG(INFO) << "Firmware update is already set to be attempted.";
+    } else {
+      LOG(INFO) << "Forcing the firmware update.";
+    }
+    attempt_firmware_update = true;
+  }
 
   // In factory process, firmware is either pre-flashed or assigned by
   // mini-omaha server, and we don't want to try updates inside postinst.
@@ -713,11 +724,13 @@ bool RunPostInstall(const string& install_dev,
                     const string& install_dir,
                     BiosType bios_type,
                     DeferUpdateAction defer_update_action,
+                    bool force_update_firmware,
                     int* exit_code) {
   InstallConfig install_config;
 
   if (!ConfigureInstall(install_dev, install_dir, bios_type,
-                        defer_update_action, &install_config)) {
+                        defer_update_action, force_update_firmware,
+                        &install_config)) {
     LOG(ERROR) << "Configure failed.";
     // In the failure case don't try to use `install_config.bios_type`, we don't
     // want to rely on the implementation of `ConfigureInstall`.
