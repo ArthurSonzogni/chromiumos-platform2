@@ -12,6 +12,9 @@
 #define TRACE_HDRNET(...) \
   TRACE_EVENT_AUTOGEN(kCameraTraceCategoryHdrnet, ##__VA_ARGS__)
 
+#define TRACE_HDRNET_EVENT(event, ...) \
+  TRACE_EVENT(kCameraTraceCategoryHdrnet, event, ##__VA_ARGS__)
+
 #define TRACE_HDRNET_DEBUG(...) \
   TRACE_EVENT_AUTOGEN(kCameraTraceCategoryHdrnetDebug, ##__VA_ARGS__)
 

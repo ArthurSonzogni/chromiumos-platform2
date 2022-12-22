@@ -143,8 +143,9 @@ StreamManipulatorManager::StreamManipulatorManager(
     GpuResources* gpu_resources,
     CameraMojoChannelManagerToken* mojo_manager_token)
     : default_capture_result_thread_("DefaultCaptureResultThread") {
-  TRACE_COMMON();
   CHECK(default_capture_result_thread_.Start());
+  TRACE_COMMON();
+
   FeatureProfile feature_profile;
 
 #if USE_CAMERA_FEATURE_FRAME_ANNOTATOR
@@ -182,8 +183,9 @@ StreamManipulatorManager::StreamManipulatorManager(
 StreamManipulatorManager::StreamManipulatorManager(
     std::vector<std::unique_ptr<StreamManipulator>> stream_manipulators)
     : default_capture_result_thread_("DefaultCaptureResultThread") {
-  TRACE_COMMON();
   CHECK(default_capture_result_thread_.Start());
+  TRACE_COMMON();
+
   stream_manipulators_ = std::move(stream_manipulators);
 }
 
@@ -191,6 +193,7 @@ bool StreamManipulatorManager::Initialize(
     const camera_metadata_t* static_info,
     StreamManipulator::Callbacks callbacks) {
   TRACE_COMMON();
+
   callbacks_ = std::move(callbacks);
 
   int partial_result_count = [&]() {
@@ -232,6 +235,7 @@ bool StreamManipulatorManager::Initialize(
 bool StreamManipulatorManager::ConfigureStreams(
     Camera3StreamConfiguration* stream_config) {
   TRACE_COMMON();
+
   for (auto& stream_manipulator : stream_manipulators_) {
     stream_manipulator->ConfigureStreams(stream_config);
   }
@@ -241,6 +245,7 @@ bool StreamManipulatorManager::ConfigureStreams(
 bool StreamManipulatorManager::OnConfiguredStreams(
     Camera3StreamConfiguration* stream_config) {
   TRACE_COMMON();
+
   // Call OnConfiguredStreams in reverse order so the stream manipulators can
   // unwind the stream modifications.
   for (auto it = stream_manipulators_.rbegin();
@@ -253,6 +258,7 @@ bool StreamManipulatorManager::OnConfiguredStreams(
 bool StreamManipulatorManager::ConstructDefaultRequestSettings(
     android::CameraMetadata* default_request_settings, int type) {
   TRACE_COMMON();
+
   for (auto& stream_manipulator : stream_manipulators_) {
     stream_manipulator->ConstructDefaultRequestSettings(
         default_request_settings, type);
@@ -262,19 +268,19 @@ bool StreamManipulatorManager::ConstructDefaultRequestSettings(
 
 bool StreamManipulatorManager::ProcessCaptureRequest(
     Camera3CaptureDescriptor* request) {
-  TRACE_COMMON();
+  TRACE_COMMON("frame_number", request->frame_number());
+
   for (size_t i = 0; i < stream_manipulators_.size(); ++i) {
     if (camera_metadata_inspector_ &&
         camera_metadata_inspector_->IsPositionInspected(i)) {
       camera_metadata_inspector_->InspectRequest(request->LockForRequest(), i);
       request->Unlock();
     }
-    {
-      TRACE_EVENT(kCameraTraceCategoryCommon,
-                  "StreamManipulator::ProcessCaptureRequest", "frame_number",
-                  request->frame_number());
-      stream_manipulators_[i]->ProcessCaptureRequest(request);
-    }
+    TRACE_COMMON_EVENT("SM::ProcessCaptureRequest",
+                       [&](perfetto::EventContext ctx) {
+                         request->PopulateEventAnnotation(ctx);
+                       });
+    stream_manipulators_[i]->ProcessCaptureRequest(request);
   }
   if (camera_metadata_inspector_ &&
       camera_metadata_inspector_->IsPositionInspected(
@@ -288,6 +294,7 @@ bool StreamManipulatorManager::ProcessCaptureRequest(
 
 bool StreamManipulatorManager::Flush() {
   TRACE_COMMON();
+
   for (auto& stream_manipulator : stream_manipulators_) {
     stream_manipulator->Flush();
   }
@@ -296,7 +303,8 @@ bool StreamManipulatorManager::Flush() {
 
 void StreamManipulatorManager::ProcessCaptureResult(
     Camera3CaptureDescriptor result) {
-  TRACE_COMMON();
+  TRACE_COMMON("frame_number", result.frame_number());
+
   // Some camera HAL may use their own storage to hold |buffer_handle_t*|s in
   // the |result|, and it doesn't out-live this |process_capture_result| call.
   // Fix them to our maintained storage so we can send |result| safely.
@@ -336,7 +344,9 @@ void StreamManipulatorManager::Notify(camera3_notify_msg_t msg) {
 
 void StreamManipulatorManager::ProcessCaptureResultOnStreamManipulator(
     int stream_manipulator_index, Camera3CaptureDescriptor result) {
-  TRACE_COMMON("frame_number", result.frame_number());
+  TRACE_COMMON(
+      [&](perfetto::EventContext ctx) { result.PopulateEventAnnotation(ctx); });
+
   DCHECK(0 <= stream_manipulator_index &&
          stream_manipulator_index < stream_manipulators_.size());
   InspectResult(stream_manipulator_index + 1, result);
@@ -357,8 +367,9 @@ void StreamManipulatorManager::ProcessCaptureResultOnStreamManipulator(
 
 void StreamManipulatorManager::ReturnResultToClient(
     Camera3CaptureDescriptor result) {
-  TRACE_COMMON("frame_number", result.frame_number(), "capture_info",
-               result.ToJsonString());
+  TRACE_COMMON(
+      [&](perfetto::EventContext ctx) { result.PopulateEventAnnotation(ctx); });
+
   DCHECK(!callbacks_.result_callback.is_null());
   InspectResult(0, result);
   callbacks_.result_callback.Run(std::move(result));

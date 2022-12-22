@@ -61,7 +61,9 @@ bool ZslStreamManipulator::Initialize(const camera_metadata_t* static_info,
 
 bool ZslStreamManipulator::ConfigureStreams(
     Camera3StreamConfiguration* stream_config) {
-  TRACE_ZSL("stream_configurations", stream_config->ToJsonString());
+  TRACE_ZSL([&](perfetto::EventContext ctx) {
+    stream_config->PopulateEventAnnotation(ctx);
+  });
 
   if (!can_attempt_zsl_) {
     return true;
@@ -76,7 +78,9 @@ bool ZslStreamManipulator::ConfigureStreams(
 
 bool ZslStreamManipulator::OnConfiguredStreams(
     Camera3StreamConfiguration* stream_config) {
-  TRACE_ZSL("stream_configurations", stream_config->ToJsonString());
+  TRACE_ZSL([&](perfetto::EventContext ctx) {
+    stream_config->PopulateEventAnnotation(ctx);
+  });
 
   if (!can_attempt_zsl_) {
     return true;

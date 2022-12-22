@@ -429,7 +429,9 @@ bool AutoFramingStreamManipulator::InitializeOnThread(
 bool AutoFramingStreamManipulator::ConfigureStreamsOnThread(
     Camera3StreamConfiguration* stream_config) {
   DCHECK(gpu_resources_->gpu_task_runner()->BelongsToCurrentThread());
-  TRACE_AUTO_FRAMING("stream_configurations", stream_config->ToJsonString());
+  TRACE_AUTO_FRAMING([&](perfetto::EventContext ctx) {
+    stream_config->PopulateEventAnnotation(ctx);
+  });
 
   if (setup_failed_) {
     return false;
@@ -536,7 +538,9 @@ bool AutoFramingStreamManipulator::ConfigureStreamsOnThread(
 bool AutoFramingStreamManipulator::OnConfiguredStreamsOnThread(
     Camera3StreamConfiguration* stream_config) {
   DCHECK(gpu_resources_->gpu_task_runner()->BelongsToCurrentThread());
-  TRACE_AUTO_FRAMING("stream_configurations", stream_config->ToJsonString());
+  TRACE_AUTO_FRAMING([&](perfetto::EventContext ctx) {
+    stream_config->PopulateEventAnnotation(ctx);
+  });
 
   if (setup_failed_) {
     return false;

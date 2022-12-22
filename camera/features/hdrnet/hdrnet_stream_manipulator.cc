@@ -370,7 +370,9 @@ bool HdrNetStreamManipulator::InitializeOnGpuThread(
 bool HdrNetStreamManipulator::ConfigureStreamsOnGpuThread(
     Camera3StreamConfiguration* stream_config) {
   DCHECK(gpu_resources_->gpu_task_runner()->BelongsToCurrentThread());
-  TRACE_HDRNET("stream_configurations", stream_config->ToJsonString());
+  TRACE_HDRNET([&](perfetto::EventContext ctx) {
+    stream_config->PopulateEventAnnotation(ctx);
+  });
 
   // Clear the stream configuration from the previous session.
   ResetStateOnGpuThread();
@@ -488,7 +490,9 @@ bool HdrNetStreamManipulator::ConfigureStreamsOnGpuThread(
 bool HdrNetStreamManipulator::OnConfiguredStreamsOnGpuThread(
     Camera3StreamConfiguration* stream_config) {
   DCHECK(gpu_resources_->gpu_task_runner()->BelongsToCurrentThread());
-  TRACE_HDRNET("stream_configurations", stream_config->ToJsonString());
+  TRACE_HDRNET([&](perfetto::EventContext ctx) {
+    stream_config->PopulateEventAnnotation(ctx);
+  });
 
   // Restore HDRnet streams to the original streams.
   if (VLOG_IS_ON(1)) {
@@ -768,11 +772,10 @@ bool HdrNetStreamManipulator::ProcessCaptureResultOnGpuThread(
   // Process each HDRnet buffer in this capture result and produce the client
   // requested output buffers associated with each HDRnet buffer.
   for (auto& hdrnet_buffer : hdrnet_buffer_to_process) {
-    TRACE_EVENT(kCameraTraceCategoryHdrnet,
-                "HdrNetStreamManipulator::ProcessHdrnetBuffer", "frame_number",
-                result->frame_number(), "width", hdrnet_buffer.stream->width,
-                "height", hdrnet_buffer.stream->height, "format",
-                hdrnet_buffer.stream->format);
+    TRACE_HDRNET_EVENT(
+        "HdrNetStreamManipulator::ProcessHdrnetBuffer", "frame_number",
+        result->frame_number(), "width", hdrnet_buffer.stream->width, "height",
+        hdrnet_buffer.stream->height, "format", hdrnet_buffer.stream->format);
     HdrNetStreamContext* stream_context =
         GetHdrNetContextFromHdrNetStream(hdrnet_buffer.stream);
     auto request_buffer_info =
@@ -780,8 +783,7 @@ bool HdrNetStreamManipulator::ProcessCaptureResultOnGpuThread(
     DCHECK(request_buffer_info != pending_request_buffers.end());
 
     if (options_.denoiser_enable) {
-      TRACE_EVENT(kCameraTraceCategoryHdrnet,
-                  "HdrNetStreamManipulator::RunIirDenoise");
+      TRACE_HDRNET_EVENT("HdrNetStreamManipulator::RunIirDenoise");
       // Run the denoiser.
       SharedImage& input_img =
           stream_context->shared_images[request_buffer_info->buffer_index];
@@ -1094,9 +1096,8 @@ bool HdrNetStreamManipulator::SetUpPipelineOnGpuThread() {
   const camera_metadata_t* locked_static_info = static_info_.getAndLock();
   for (const auto& context : hdrnet_stream_context_) {
     camera3_stream_t* stream = context->hdrnet_stream.get();
-    TRACE_EVENT(kCameraTraceCategoryHdrnet,
-                "HdrNetStreamManipulator::SetUpContextResources", "width",
-                stream->width, "height", stream->height);
+    TRACE_HDRNET_EVENT("HdrNetStreamManipulator::SetUpContextResources",
+                       "width", stream->width, "height", stream->height);
     Size stream_size(stream->width, stream->height);
     std::vector<Size> viable_output_sizes;
     for (const auto& s : all_output_sizes) {
@@ -1106,8 +1107,7 @@ bool HdrNetStreamManipulator::SetUpPipelineOnGpuThread() {
     }
 
     {
-      TRACE_EVENT(kCameraTraceCategoryHdrnet,
-                  "HdrNetStreamManipulator::CreateHdrnetProcessor");
+      TRACE_HDRNET_EVENT("HdrNetStreamManipulator::CreateHdrnetProcessor");
       context->processor = cache->GetProcessor(stream_size);
       if (!context->processor) {
         cache->PutProcessor(
@@ -1126,8 +1126,7 @@ bool HdrNetStreamManipulator::SetUpPipelineOnGpuThread() {
     }
 
     {
-      TRACE_EVENT(kCameraTraceCategoryHdrnet,
-                  "HdrNetStreamManipulator::CreateDenoiser");
+      TRACE_HDRNET_EVENT("HdrNetStreamManipulator::CreateDenoiser");
       context->denoiser = cache->GetDenoiser(stream_size);
       if (!context->denoiser) {
         cache->PutDenoiser(

@@ -12,6 +12,9 @@
 #define TRACE_COMMON(...) \
   TRACE_EVENT_AUTOGEN(kCameraTraceCategoryCommon, ##__VA_ARGS__)
 
+#define TRACE_COMMON_EVENT(event, ...) \
+  TRACE_EVENT(kCameraTraceCategoryCommon, event, ##__VA_ARGS__)
+
 #define TRACE_COMMON_BEGIN(...) \
   TRACE_EVENT_BEGIN(kCameraTraceCategoryCommon, ##__VA_ARGS__)
 

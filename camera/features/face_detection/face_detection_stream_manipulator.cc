@@ -94,7 +94,7 @@ bool FaceDetectionStreamManipulator::Initialize(
 
 bool FaceDetectionStreamManipulator::ConfigureStreams(
     Camera3StreamConfiguration* stream_config) {
-  TRACE_FACE_DETECTION("stream_configurations", stream_config->ToJsonString());
+  TRACE_FACE_DETECTION();
 
   return true;
 }

@@ -282,7 +282,7 @@ int32_t CameraDeviceAdapter::Initialize(
       base::BindOnce(&CameraDeviceAdapter::ResetCallbackOpsDelegateOnThread,
                      base::Unretained(this)));
   {
-    TRACE_EVENT(kCameraTraceCategoryHalAdapter, "HAL::Initialize");
+    TRACE_HAL_ADAPTER_EVENT("HAL::Initialize");
     return camera_device_->ops->initialize(camera_device_, this);
   }
 }
@@ -379,7 +379,7 @@ int32_t CameraDeviceAdapter::ConfigureStreams(
 
   int32_t result = 0;
   {
-    TRACE_EVENT(kCameraTraceCategoryHalAdapter, "HAL::ConfigureStreams");
+    TRACE_HAL_ADAPTER_EVENT("HAL::ConfigureStreams");
     camera3_stream_configuration_t* raw_config = stream_config.Lock();
     result = camera_device_->ops->configure_streams(camera_device_, raw_config);
     stream_config.Unlock();
@@ -612,9 +612,10 @@ int32_t CameraDeviceAdapter::ProcessCaptureRequest(
   stream_manipulator_manager_->ProcessCaptureRequest(&request_descriptor);
 
   {
-    TRACE_EVENT(kCameraTraceCategoryHalAdapter, "HAL::ProcessCaptureRequest",
-                "frame_number", request_descriptor.frame_number(),
-                "capture_info", request_descriptor.ToJsonString());
+    TRACE_HAL_ADAPTER_EVENT("HAL::ProcessCaptureRequest",
+                            [&](perfetto::EventContext ctx) {
+                              request_descriptor.PopulateEventAnnotation(ctx);
+                            });
     return camera_device_->ops->process_capture_request(
         camera_device_, request_descriptor.LockForRequest());
   }
@@ -672,7 +673,7 @@ int32_t CameraDeviceAdapter::Close() {
   reprocess_effect_thread_.Stop();
   int32_t ret = 0;
   {
-    TRACE_EVENT(kCameraTraceCategoryHalAdapter, "HAL::Close");
+    TRACE_HAL_ADAPTER_EVENT("HAL::Close");
     ret = camera_device_->common.close(&camera_device_->common);
     DCHECK_EQ(ret, 0);
   }

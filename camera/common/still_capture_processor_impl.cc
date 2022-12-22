@@ -392,10 +392,9 @@ void StillCaptureProcessorImpl::QueuePendingYuvImageOnThread(
 
   RequestContext& context = request_contexts_[frame_number];
   {
-    TRACE_EVENT(kCameraTraceCategoryCommon,
-                "StillCaptureProcessorImpl::QueuePendingYuvImageOnThread::"
-                "EncodeJPEG",
-                "frame_number", frame_number);
+    TRACE_COMMON_EVENT(
+        "StillCaptureProcessorImpl::QueuePendingYuvImageOnThread::EncodeJPEG",
+        "frame_number", frame_number);
 
     if (release_fence.is_valid() && sync_wait(release_fence.get(), 1000) != 0) {
       LOGF(ERROR) << "sync_wait timeout on YUV buffer";
@@ -413,10 +412,10 @@ void StillCaptureProcessorImpl::QueuePendingYuvImageOnThread(
   }
   context.has_jpeg = true;
   if (context.thumbnail_size.area() > 0) {
-    TRACE_EVENT(kCameraTraceCategoryCommon,
-                "StillCaptureProcessorImpl::QueuePendingYuvImageOnThread::"
-                "GenerateThumbnail",
-                "frame_number", frame_number);
+    TRACE_COMMON_EVENT(
+        "StillCaptureProcessorImpl::QueuePendingYuvImageOnThread::"
+        "GenerateThumbnail",
+        "frame_number", frame_number);
 
     // Scale down the YUV image and produce JPEG thumbnail.
     ScopedMapping mapping(yuv_buffer);

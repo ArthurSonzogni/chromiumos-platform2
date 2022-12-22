@@ -22,6 +22,9 @@ enum class HalAdapterTraceEvent {
 #define TRACE_HAL_ADAPTER(...) \
   TRACE_EVENT_AUTOGEN(kCameraTraceCategoryHalAdapter, ##__VA_ARGS__);
 
+#define TRACE_HAL_ADAPTER_EVENT(event, ...) \
+  TRACE_EVENT(kCameraTraceCategoryHalAdapter, event, ##__VA_ARGS__);
+
 #define TRACE_HAL_ADAPTER_BEGIN(event, track, ...)                \
   TRACE_EVENT_BEGIN(kCameraTraceCategoryHalAdapter, event, track, \
                     ##__VA_ARGS__);

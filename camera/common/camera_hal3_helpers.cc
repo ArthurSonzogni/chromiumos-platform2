@@ -159,6 +159,11 @@ std::string Camera3StreamConfiguration::ToJsonString() const {
   return json_string;
 }
 
+void Camera3StreamConfiguration::PopulateEventAnnotation(
+    perfetto::EventContext& ctx) const {
+  ctx.AddDebugAnnotation("stream_configurations", ToJsonString());
+}
+
 void Camera3StreamConfiguration::Unlock() {
   raw_configuration_.reset();
 }
@@ -488,6 +493,40 @@ std::string Camera3CaptureDescriptor::ToJsonString() const {
     return std::string();
   }
   return json_string;
+}
+
+void Camera3CaptureDescriptor::PopulateEventAnnotation(
+    perfetto::EventContext& ctx) const {
+  if (!is_valid()) {
+    return;
+  }
+
+  ctx.AddDebugAnnotation("capture_type",
+                         type_ == Type::kCaptureRequest ? "Request" : "Result");
+  ctx.AddDebugAnnotation("frame_number",
+                         base::checked_cast<int>(frame_number_));
+
+  std::string input_buffer;
+  if (base::JSONWriter::WriteWithOptions(ToValueDict(GetInputBuffer()),
+                                         base::JSONWriter::OPTIONS_PRETTY_PRINT,
+                                         &input_buffer)) {
+    ctx.AddDebugAnnotation("input_buffer", input_buffer);
+  }
+
+  base::Value::List out_bufs;
+  for (const auto& b : GetOutputBuffers()) {
+    out_bufs.Append(ToValueDict(&b));
+  }
+  std::string output_buffers;
+  if (base::JSONWriter::WriteWithOptions(
+          out_bufs, base::JSONWriter::OPTIONS_PRETTY_PRINT, &output_buffers)) {
+    ctx.AddDebugAnnotation("output_buffers", output_buffers);
+  }
+
+  if (type_ == Type::kCaptureResult) {
+    ctx.AddDebugAnnotation("partial_result",
+                           base::checked_cast<int>(partial_result_));
+  }
 }
 
 void Camera3CaptureDescriptor::Invalidate() {
