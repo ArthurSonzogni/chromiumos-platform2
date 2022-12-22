@@ -47,7 +47,6 @@ constexpr char kSysKernelDebug[] = "sys/kernel/debug";
 constexpr char kSysKernelSecurity[] = "sys/kernel/security";
 constexpr char kSysKernelTracing[] = "sys/kernel/tracing";
 
-constexpr char kTPMOwnedPath[] = "sys/class/tpm/tmp0/device/owned";
 constexpr char kTpmSimulator[] = "etc/init/tpm2-simulator.conf";
 
 // This file is created by clobber-state after the transition to dev mode.

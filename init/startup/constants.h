@@ -23,6 +23,9 @@ constexpr uint64_t kBaseSecs = (kYear - 1970) * (365 * 24 * 60 * 60);
 // needed.
 constexpr int kCommonMountFlags = MS_NOSUID | MS_NODEV | MS_NOEXEC;
 
+// TPM Owned path, used to determine whether the TPM is owned.
+constexpr char kTPMOwnedPath[] = "sys/class/tpm/tpm0/device/owned";
+
 }  // namespace startup
 
 #endif  // INIT_STARTUP_CONSTANTS_H_
