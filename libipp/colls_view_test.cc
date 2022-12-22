@@ -97,5 +97,23 @@ TEST(CollectionsViewTest, FrameGroupsReverseIteration) {
   EXPECT_EQ(itc, frame.Groups(GroupTag::job_attributes).cbegin());
 }
 
+TEST(CollectionsViewTest, FrameGroupsReverseIterationConst) {
+  Frame frame = Frame(Operation::Cancel_Job);
+  Collection* colls[3];
+  frame.AddGroup(GroupTag::job_attributes, &colls[0]);
+  frame.AddGroup(GroupTag::job_attributes, &colls[1]);
+  frame.AddGroup(GroupTag::job_attributes, &colls[2]);
+  const Frame& frame2 = frame;
+  ConstCollectionsView::const_iterator itc =
+      frame2.Groups(GroupTag::job_attributes).end();
+  int index = 3;
+  while (itc != frame.Groups(GroupTag::job_attributes).begin()) {
+    --index;
+    EXPECT_EQ(colls[index], &*(--itc));
+  }
+  EXPECT_EQ(index, 0);
+  EXPECT_EQ(itc, frame.Groups(GroupTag::job_attributes).cbegin());
+}
+
 }  // namespace
 }  // namespace ipp

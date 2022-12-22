@@ -214,6 +214,17 @@ class LIBIPP_EXPORT Frame {
   Collection* GetGroup(GroupTag tag, size_t index = 0);
   const Collection* GetGroup(GroupTag tag, size_t index = 0) const;
 
+  // Add a new group of attributes to the frame. The iterator to the new group
+  // is saved in `new_group`. The returned iterator is valid in the range
+  // returned by Groups(tag).
+  // The returned value is one of the following:
+  //  * Code::kOK
+  //  * Code::kInvalidGroupTag
+  //  * Code::kTooManyGroups
+  // If the returned value != Code::kOK then `new_group` is not modified.
+  Code AddGroup(GroupTag tag, CollectionsView::iterator& new_group);
+
+  // DEPRECATED. Use AddGroup(tag, CollectionsView::iterator&) instead.
   // Add a new group of attributes to the frame. The pointer to the new group
   // (Collection*) is saved in `new_group` if `new_group` != nullptr.
   // The returned value is one of the following:

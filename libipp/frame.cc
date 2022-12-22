@@ -237,7 +237,7 @@ const Collection* Frame::GetGroup(GroupTag tag, size_t index) const {
   return groups_by_tag_[group_tag][index];
 }
 
-Code Frame::AddGroup(GroupTag tag, Collection** new_group) {
+Code Frame::AddGroup(GroupTag tag, CollectionsView::iterator& new_group) {
   if (!IsValid(tag)) {
     return Code::kInvalidGroupTag;
   }
@@ -246,11 +246,18 @@ Code Frame::AddGroup(GroupTag tag, Collection** new_group) {
   }
   Collection* coll = new Collection;
   groups_.emplace_back(tag, coll);
-  groups_by_tag_[static_cast<size_t>(tag)].push_back(coll);
-  if (new_group) {
-    *new_group = coll;
-  }
+  std::vector<ipp::Collection*>& vg = groups_by_tag_[static_cast<size_t>(tag)];
+  new_group = CollectionsView::iterator(vg.insert(vg.end(), coll));
   return Code::kOK;
+}
+
+Code Frame::AddGroup(GroupTag tag, Collection** new_group) {
+  CollectionsView::iterator it;
+  Code code = AddGroup(tag, it);
+  if (new_group != nullptr && code == Code::kOK) {
+    *new_group = &*it;
+  }
+  return code;
 }
 
 }  // namespace ipp

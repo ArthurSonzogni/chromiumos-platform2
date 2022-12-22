@@ -52,6 +52,7 @@ class CollectionsView {
 
    private:
     friend class CollectionsView;
+    friend class Frame;
     explicit iterator(std::vector<Collection*>::iterator iter) : iter_(iter) {}
     std::vector<Collection*>::iterator iter_;
   };
@@ -92,6 +93,7 @@ class CollectionsView {
    private:
     friend class CollectionsView;
     friend class ConstCollectionsView;
+    friend class Frame;
     explicit const_iterator(std::vector<Collection*>::const_iterator iter)
         : iter_(iter) {}
     std::vector<Collection*>::const_iterator iter_;
