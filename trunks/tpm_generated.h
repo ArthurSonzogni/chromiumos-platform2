@@ -975,8 +975,8 @@ constexpr TPM_HC PERMANENT_FIRST = TPM_RH_FIRST;
 constexpr TPM_HC PERMANENT_LAST = TPM_RH_LAST;
 
 struct TPMS_ALGORITHM_DESCRIPTION {
-  TPM_ALG_ID alg;
-  TPMA_ALGORITHM attributes;
+  TPM_ALG_ID alg = {};
+  TPMA_ALGORITHM attributes = {};
 };
 
 union TPMU_HA {
@@ -988,43 +988,43 @@ union TPMU_HA {
 };
 
 struct TPMT_HA {
-  TPMI_ALG_HASH hash_alg;
-  TPMU_HA digest;
+  TPMI_ALG_HASH hash_alg = {};
+  TPMU_HA digest = {};
 };
 
 struct TPM2B_DIGEST {
-  UINT16 size;
-  BYTE buffer[sizeof(TPMU_HA)];
+  UINT16 size = {};
+  BYTE buffer[sizeof(TPMU_HA)] = {};
 };
 
 struct TPM2B_DATA {
-  UINT16 size;
-  BYTE buffer[sizeof(TPMT_HA)];
+  UINT16 size = {};
+  BYTE buffer[sizeof(TPMT_HA)] = {};
 };
 
 struct TPM2B_EVENT {
-  UINT16 size;
-  BYTE buffer[1024];
+  UINT16 size = {};
+  BYTE buffer[1024] = {};
 };
 
 struct TPM2B_MAX_BUFFER {
-  UINT16 size;
-  BYTE buffer[MAX_DIGEST_BUFFER];
+  UINT16 size = {};
+  BYTE buffer[MAX_DIGEST_BUFFER] = {};
 };
 
 struct TPM2B_MAX_NV_BUFFER {
-  UINT16 size;
-  BYTE buffer[MAX_NV_BUFFER_SIZE];
+  UINT16 size = {};
+  BYTE buffer[MAX_NV_BUFFER_SIZE] = {};
 };
 
 struct TPM2B_TIMEOUT {
-  UINT16 size;
-  BYTE buffer[sizeof(UINT64)];
+  UINT16 size = {};
+  BYTE buffer[sizeof(UINT64)] = {};
 };
 
 struct TPM2B_IV {
-  UINT16 size;
-  BYTE buffer[MAX_SYM_BLOCK_SIZE];
+  UINT16 size = {};
+  BYTE buffer[MAX_SYM_BLOCK_SIZE] = {};
 };
 
 union TPMU_NAME {
@@ -1033,119 +1033,119 @@ union TPMU_NAME {
 };
 
 struct TPM2B_NAME {
-  UINT16 size;
-  BYTE name[sizeof(TPMU_NAME)];
+  UINT16 size = {};
+  BYTE name[sizeof(TPMU_NAME)] = {};
 };
 
 struct TPMS_PCR_SELECT {
-  UINT8 sizeof_select;
-  BYTE pcr_select[PCR_SELECT_MAX];
+  UINT8 sizeof_select = {};
+  BYTE pcr_select[PCR_SELECT_MAX] = {};
 };
 
 struct TPMS_PCR_SELECTION {
-  TPMI_ALG_HASH hash;
-  UINT8 sizeof_select;
-  BYTE pcr_select[PCR_SELECT_MAX];
+  TPMI_ALG_HASH hash = {};
+  UINT8 sizeof_select = {};
+  BYTE pcr_select[PCR_SELECT_MAX] = {};
 };
 
 struct TPMT_TK_CREATION {
-  TPM_ST tag;
-  TPMI_RH_HIERARCHY hierarchy;
-  TPM2B_DIGEST digest;
+  TPM_ST tag = {};
+  TPMI_RH_HIERARCHY hierarchy = {};
+  TPM2B_DIGEST digest = {};
 };
 
 struct TPMT_TK_VERIFIED {
-  TPM_ST tag;
-  TPMI_RH_HIERARCHY hierarchy;
-  TPM2B_DIGEST digest;
+  TPM_ST tag = {};
+  TPMI_RH_HIERARCHY hierarchy = {};
+  TPM2B_DIGEST digest = {};
 };
 
 struct TPMT_TK_AUTH {
-  TPM_ST tag;
-  TPMI_RH_HIERARCHY hierarchy;
-  TPM2B_DIGEST digest;
+  TPM_ST tag = {};
+  TPMI_RH_HIERARCHY hierarchy = {};
+  TPM2B_DIGEST digest = {};
 };
 
 struct TPMT_TK_HASHCHECK {
-  TPM_ST tag;
-  TPMI_RH_HIERARCHY hierarchy;
-  TPM2B_DIGEST digest;
+  TPM_ST tag = {};
+  TPMI_RH_HIERARCHY hierarchy = {};
+  TPM2B_DIGEST digest = {};
 };
 
 struct TPMS_ALG_PROPERTY {
-  TPM_ALG_ID alg;
-  TPMA_ALGORITHM alg_properties;
+  TPM_ALG_ID alg = {};
+  TPMA_ALGORITHM alg_properties = {};
 };
 
 struct TPMS_TAGGED_PROPERTY {
-  TPM_PT property;
-  UINT32 value;
+  TPM_PT property = {};
+  UINT32 value = {};
 };
 
 struct TPMS_TAGGED_PCR_SELECT {
-  TPM_PT tag;
-  UINT8 sizeof_select;
-  BYTE pcr_select[PCR_SELECT_MAX];
+  TPM_PT tag = {};
+  UINT8 sizeof_select = {};
+  BYTE pcr_select[PCR_SELECT_MAX] = {};
 };
 
 struct TPML_CC {
-  UINT32 count;
-  TPM_CC command_codes[MAX_CAP_CC_ALL];
+  UINT32 count = {};
+  TPM_CC command_codes[MAX_CAP_CC_ALL] = {};
 };
 
 struct TPML_CCA {
-  UINT32 count;
-  TPMA_CC command_attributes[MAX_CAP_CC_ALL];
+  UINT32 count = {};
+  TPMA_CC command_attributes[MAX_CAP_CC_ALL] = {};
 };
 
 struct TPML_ALG {
-  UINT32 count;
-  TPM_ALG_ID algorithms[MAX_ALG_LIST_SIZE];
+  UINT32 count = {};
+  TPM_ALG_ID algorithms[MAX_ALG_LIST_SIZE] = {};
 };
 
 struct TPML_HANDLE {
-  UINT32 count;
-  TPM_HANDLE handle[MAX_CAP_HANDLES];
+  UINT32 count = {};
+  TPM_HANDLE handle[MAX_CAP_HANDLES] = {};
 };
 
 struct TPML_DIGEST {
-  UINT32 count;
-  TPM2B_DIGEST digests[8];
+  UINT32 count = {};
+  TPM2B_DIGEST digests[8] = {};
 };
 
 struct TPML_DIGEST_VALUES {
-  UINT32 count;
-  TPMT_HA digests[HASH_COUNT];
+  UINT32 count = {};
+  TPMT_HA digests[HASH_COUNT] = {};
 };
 
 struct TPM2B_DIGEST_VALUES {
-  UINT16 size;
-  BYTE buffer[sizeof(TPML_DIGEST_VALUES)];
+  UINT16 size = {};
+  BYTE buffer[sizeof(TPML_DIGEST_VALUES)] = {};
 };
 
 struct TPML_PCR_SELECTION {
-  UINT32 count;
-  TPMS_PCR_SELECTION pcr_selections[HASH_COUNT];
+  UINT32 count = {};
+  TPMS_PCR_SELECTION pcr_selections[HASH_COUNT] = {};
 };
 
 struct TPML_ALG_PROPERTY {
-  UINT32 count;
-  TPMS_ALG_PROPERTY alg_properties[MAX_CAP_ALGS];
+  UINT32 count = {};
+  TPMS_ALG_PROPERTY alg_properties[MAX_CAP_ALGS] = {};
 };
 
 struct TPML_TAGGED_TPM_PROPERTY {
-  UINT32 count;
-  TPMS_TAGGED_PROPERTY tpm_property[MAX_TPM_PROPERTIES];
+  UINT32 count = {};
+  TPMS_TAGGED_PROPERTY tpm_property[MAX_TPM_PROPERTIES] = {};
 };
 
 struct TPML_TAGGED_PCR_PROPERTY {
-  UINT32 count;
-  TPMS_TAGGED_PCR_SELECT pcr_property[MAX_PCR_PROPERTIES];
+  UINT32 count = {};
+  TPMS_TAGGED_PCR_SELECT pcr_property[MAX_PCR_PROPERTIES] = {};
 };
 
 struct TPML_ECC_CURVE {
-  UINT32 count;
-  TPM_ECC_CURVE ecc_curves[MAX_ECC_CURVES];
+  UINT32 count = {};
+  TPM_ECC_CURVE ecc_curves[MAX_ECC_CURVES] = {};
 };
 
 union TPMU_CAPABILITIES {
@@ -1161,58 +1161,58 @@ union TPMU_CAPABILITIES {
 };
 
 struct TPMS_CAPABILITY_DATA {
-  TPM_CAP capability;
-  TPMU_CAPABILITIES data;
+  TPM_CAP capability = {};
+  TPMU_CAPABILITIES data = {};
 };
 
 struct TPMS_CLOCK_INFO {
-  UINT64 clock;
-  UINT32 reset_count;
-  UINT32 restart_count;
-  TPMI_YES_NO safe;
+  UINT64 clock = {};
+  UINT32 reset_count = {};
+  UINT32 restart_count = {};
+  TPMI_YES_NO safe = {};
 };
 
 struct TPMS_TIME_INFO {
-  UINT64 time;
-  TPMS_CLOCK_INFO clock_info;
+  UINT64 time = {};
+  TPMS_CLOCK_INFO clock_info = {};
 };
 
 struct TPMS_TIME_ATTEST_INFO {
-  TPMS_TIME_INFO time;
-  UINT64 firmware_version;
+  TPMS_TIME_INFO time = {};
+  UINT64 firmware_version = {};
 };
 
 struct TPMS_CERTIFY_INFO {
-  TPM2B_NAME name;
-  TPM2B_NAME qualified_name;
+  TPM2B_NAME name = {};
+  TPM2B_NAME qualified_name = {};
 };
 
 struct TPMS_QUOTE_INFO {
-  TPML_PCR_SELECTION pcr_select;
-  TPM2B_DIGEST pcr_digest;
+  TPML_PCR_SELECTION pcr_select = {};
+  TPM2B_DIGEST pcr_digest = {};
 };
 
 struct TPMS_COMMAND_AUDIT_INFO {
-  UINT64 audit_counter;
-  TPM_ALG_ID digest_alg;
-  TPM2B_DIGEST audit_digest;
-  TPM2B_DIGEST command_digest;
+  UINT64 audit_counter = {};
+  TPM_ALG_ID digest_alg = {};
+  TPM2B_DIGEST audit_digest = {};
+  TPM2B_DIGEST command_digest = {};
 };
 
 struct TPMS_SESSION_AUDIT_INFO {
-  TPMI_YES_NO exclusive_session;
-  TPM2B_DIGEST session_digest;
+  TPMI_YES_NO exclusive_session = {};
+  TPM2B_DIGEST session_digest = {};
 };
 
 struct TPMS_CREATION_INFO {
-  TPM2B_NAME object_name;
-  TPM2B_DIGEST creation_hash;
+  TPM2B_NAME object_name = {};
+  TPM2B_DIGEST creation_hash = {};
 };
 
 struct TPMS_NV_CERTIFY_INFO {
-  TPM2B_NAME index_name;
-  UINT16 offset;
-  TPM2B_MAX_NV_BUFFER nv_contents;
+  TPM2B_NAME index_name = {};
+  UINT16 offset = {};
+  TPM2B_MAX_NV_BUFFER nv_contents = {};
 };
 
 union TPMU_ATTEST {
@@ -1226,31 +1226,31 @@ union TPMU_ATTEST {
 };
 
 struct TPMS_ATTEST {
-  TPM_GENERATED magic;
-  TPMI_ST_ATTEST type;
-  TPM2B_NAME qualified_signer;
-  TPM2B_DATA extra_data;
-  TPMS_CLOCK_INFO clock_info;
-  UINT64 firmware_version;
-  TPMU_ATTEST attested;
+  TPM_GENERATED magic = {};
+  TPMI_ST_ATTEST type = {};
+  TPM2B_NAME qualified_signer = {};
+  TPM2B_DATA extra_data = {};
+  TPMS_CLOCK_INFO clock_info = {};
+  UINT64 firmware_version = {};
+  TPMU_ATTEST attested = {};
 };
 
 struct TPM2B_ATTEST {
-  UINT16 size;
-  BYTE attestation_data[sizeof(TPMS_ATTEST)];
+  UINT16 size = {};
+  BYTE attestation_data[sizeof(TPMS_ATTEST)] = {};
 };
 
 struct TPMS_AUTH_COMMAND {
-  TPMI_SH_AUTH_SESSION session_handle;
-  TPM2B_NONCE nonce;
-  TPMA_SESSION session_attributes;
-  TPM2B_AUTH hmac;
+  TPMI_SH_AUTH_SESSION session_handle = {};
+  TPM2B_NONCE nonce = {};
+  TPMA_SESSION session_attributes = {};
+  TPM2B_AUTH hmac = {};
 };
 
 struct TPMS_AUTH_RESPONSE {
-  TPM2B_NONCE nonce;
-  TPMA_SESSION session_attributes;
-  TPM2B_AUTH hmac;
+  TPM2B_NONCE nonce = {};
+  TPMA_SESSION session_attributes = {};
+  TPM2B_AUTH hmac = {};
 };
 
 union TPMU_SYM_KEY_BITS {
@@ -1269,50 +1269,50 @@ union TPMU_SYM_MODE {
 union TPMU_SYM_DETAILS {};
 
 struct TPMT_SYM_DEF {
-  TPMI_ALG_SYM algorithm;
-  TPMU_SYM_KEY_BITS key_bits;
-  TPMU_SYM_MODE mode;
-  TPMU_SYM_DETAILS details;
+  TPMI_ALG_SYM algorithm = {};
+  TPMU_SYM_KEY_BITS key_bits = {};
+  TPMU_SYM_MODE mode = {};
+  TPMU_SYM_DETAILS details = {};
 };
 
 struct TPMT_SYM_DEF_OBJECT {
-  TPMI_ALG_SYM_OBJECT algorithm;
-  TPMU_SYM_KEY_BITS key_bits;
-  TPMU_SYM_MODE mode;
-  TPMU_SYM_DETAILS details;
+  TPMI_ALG_SYM_OBJECT algorithm = {};
+  TPMU_SYM_KEY_BITS key_bits = {};
+  TPMU_SYM_MODE mode = {};
+  TPMU_SYM_DETAILS details = {};
 };
 
 struct TPM2B_SYM_KEY {
-  UINT16 size;
-  BYTE buffer[MAX_SYM_KEY_BYTES];
+  UINT16 size = {};
+  BYTE buffer[MAX_SYM_KEY_BYTES] = {};
 };
 
 struct TPMS_SYMCIPHER_PARMS {
-  TPMT_SYM_DEF_OBJECT sym;
+  TPMT_SYM_DEF_OBJECT sym = {};
 };
 
 struct TPM2B_SENSITIVE_DATA {
-  UINT16 size;
-  BYTE buffer[MAX_SYM_DATA];
+  UINT16 size = {};
+  BYTE buffer[MAX_SYM_DATA] = {};
 };
 
 struct TPMS_SENSITIVE_CREATE {
-  TPM2B_AUTH user_auth;
-  TPM2B_SENSITIVE_DATA data;
+  TPM2B_AUTH user_auth = {};
+  TPM2B_SENSITIVE_DATA data = {};
 };
 
 struct TPM2B_SENSITIVE_CREATE {
-  UINT16 size;
-  TPMS_SENSITIVE_CREATE sensitive;
+  UINT16 size = {};
+  TPMS_SENSITIVE_CREATE sensitive = {};
 };
 
 struct TPMS_SCHEME_SIGHASH {
-  TPMI_ALG_HASH hash_alg;
+  TPMI_ALG_HASH hash_alg = {};
 };
 
 struct TPMS_SCHEME_XOR {
-  TPMI_ALG_HASH hash_alg;
-  TPMI_ALG_KDF kdf;
+  TPMI_ALG_HASH hash_alg = {};
+  TPMI_ALG_KDF kdf = {};
 };
 
 union TPMU_SCHEME_KEYEDHASH {
@@ -1321,13 +1321,13 @@ union TPMU_SCHEME_KEYEDHASH {
 };
 
 struct TPMT_KEYEDHASH_SCHEME {
-  TPMI_ALG_KEYEDHASH_SCHEME scheme;
-  TPMU_SCHEME_KEYEDHASH details;
+  TPMI_ALG_KEYEDHASH_SCHEME scheme = {};
+  TPMU_SCHEME_KEYEDHASH details = {};
 };
 
 struct TPMS_SCHEME_ECDAA {
-  TPMI_ALG_HASH hash_alg;
-  UINT16 count;
+  TPMI_ALG_HASH hash_alg = {};
+  UINT16 count = {};
 };
 
 union TPMU_SIG_SCHEME {
@@ -1342,32 +1342,32 @@ union TPMU_SIG_SCHEME {
 };
 
 struct TPMT_SIG_SCHEME {
-  TPMI_ALG_SIG_SCHEME scheme;
-  TPMU_SIG_SCHEME details;
+  TPMI_ALG_SIG_SCHEME scheme = {};
+  TPMU_SIG_SCHEME details = {};
 };
 
 struct TPMS_SCHEME_OAEP {
-  TPMI_ALG_HASH hash_alg;
+  TPMI_ALG_HASH hash_alg = {};
 };
 
 struct TPMS_SCHEME_ECDH {
-  TPMI_ALG_HASH hash_alg;
+  TPMI_ALG_HASH hash_alg = {};
 };
 
 struct TPMS_SCHEME_MGF1 {
-  TPMI_ALG_HASH hash_alg;
+  TPMI_ALG_HASH hash_alg = {};
 };
 
 struct TPMS_SCHEME_KDF1_SP800_56a {
-  TPMI_ALG_HASH hash_alg;
+  TPMI_ALG_HASH hash_alg = {};
 };
 
 struct TPMS_SCHEME_KDF2 {
-  TPMI_ALG_HASH hash_alg;
+  TPMI_ALG_HASH hash_alg = {};
 };
 
 struct TPMS_SCHEME_KDF1_SP800_108 {
-  TPMI_ALG_HASH hash_alg;
+  TPMI_ALG_HASH hash_alg = {};
 };
 
 union TPMU_KDF_SCHEME {
@@ -1378,8 +1378,8 @@ union TPMU_KDF_SCHEME {
 };
 
 struct TPMT_KDF_SCHEME {
-  TPMI_ALG_KDF scheme;
-  TPMU_KDF_SCHEME details;
+  TPMI_ALG_KDF scheme = {};
+  TPMU_KDF_SCHEME details = {};
 };
 
 union TPMU_ASYM_SCHEME {
@@ -1395,78 +1395,78 @@ union TPMU_ASYM_SCHEME {
 };
 
 struct TPMT_ASYM_SCHEME {
-  TPMI_ALG_ASYM_SCHEME scheme;
-  TPMU_ASYM_SCHEME details;
+  TPMI_ALG_ASYM_SCHEME scheme = {};
+  TPMU_ASYM_SCHEME details = {};
 };
 
 struct TPMT_RSA_SCHEME {
-  TPMI_ALG_RSA_SCHEME scheme;
-  TPMU_ASYM_SCHEME details;
+  TPMI_ALG_RSA_SCHEME scheme = {};
+  TPMU_ASYM_SCHEME details = {};
 };
 
 struct TPMT_RSA_DECRYPT {
-  TPMI_ALG_RSA_DECRYPT scheme;
-  TPMU_ASYM_SCHEME details;
+  TPMI_ALG_RSA_DECRYPT scheme = {};
+  TPMU_ASYM_SCHEME details = {};
 };
 
 struct TPM2B_PUBLIC_KEY_RSA {
-  UINT16 size;
-  BYTE buffer[MAX_RSA_KEY_BYTES];
+  UINT16 size = {};
+  BYTE buffer[MAX_RSA_KEY_BYTES] = {};
 };
 
 struct TPM2B_PRIVATE_KEY_RSA {
-  UINT16 size;
-  BYTE buffer[MAX_RSA_KEY_BYTES / 2];
+  UINT16 size = {};
+  BYTE buffer[MAX_RSA_KEY_BYTES / 2] = {};
 };
 
 struct TPM2B_ECC_PARAMETER {
-  UINT16 size;
-  BYTE buffer[MAX_ECC_KEY_BYTES];
+  UINT16 size = {};
+  BYTE buffer[MAX_ECC_KEY_BYTES] = {};
 };
 
 struct TPMS_ECC_POINT {
-  TPM2B_ECC_PARAMETER x;
-  TPM2B_ECC_PARAMETER y;
+  TPM2B_ECC_PARAMETER x = {};
+  TPM2B_ECC_PARAMETER y = {};
 };
 
 struct TPM2B_ECC_POINT {
-  UINT16 size;
-  TPMS_ECC_POINT point;
+  UINT16 size = {};
+  TPMS_ECC_POINT point = {};
 };
 
 struct TPMT_ECC_SCHEME {
-  TPMI_ALG_ECC_SCHEME scheme;
-  TPMU_SIG_SCHEME details;
+  TPMI_ALG_ECC_SCHEME scheme = {};
+  TPMU_SIG_SCHEME details = {};
 };
 
 struct TPMS_ALGORITHM_DETAIL_ECC {
-  TPM_ECC_CURVE curve_id;
-  UINT16 key_size;
-  TPMT_KDF_SCHEME kdf;
-  TPMT_ECC_SCHEME sign;
-  TPM2B_ECC_PARAMETER p;
-  TPM2B_ECC_PARAMETER a;
-  TPM2B_ECC_PARAMETER b;
-  TPM2B_ECC_PARAMETER g_x;
-  TPM2B_ECC_PARAMETER g_y;
-  TPM2B_ECC_PARAMETER n;
-  TPM2B_ECC_PARAMETER h;
+  TPM_ECC_CURVE curve_id = {};
+  UINT16 key_size = {};
+  TPMT_KDF_SCHEME kdf = {};
+  TPMT_ECC_SCHEME sign = {};
+  TPM2B_ECC_PARAMETER p = {};
+  TPM2B_ECC_PARAMETER a = {};
+  TPM2B_ECC_PARAMETER b = {};
+  TPM2B_ECC_PARAMETER g_x = {};
+  TPM2B_ECC_PARAMETER g_y = {};
+  TPM2B_ECC_PARAMETER n = {};
+  TPM2B_ECC_PARAMETER h = {};
 };
 
 struct TPMS_SIGNATURE_RSASSA {
-  TPMI_ALG_HASH hash;
-  TPM2B_PUBLIC_KEY_RSA sig;
+  TPMI_ALG_HASH hash = {};
+  TPM2B_PUBLIC_KEY_RSA sig = {};
 };
 
 struct TPMS_SIGNATURE_RSAPSS {
-  TPMI_ALG_HASH hash;
-  TPM2B_PUBLIC_KEY_RSA sig;
+  TPMI_ALG_HASH hash = {};
+  TPM2B_PUBLIC_KEY_RSA sig = {};
 };
 
 struct TPMS_SIGNATURE_ECDSA {
-  TPMI_ALG_HASH hash;
-  TPM2B_ECC_PARAMETER signature_r;
-  TPM2B_ECC_PARAMETER signature_s;
+  TPMI_ALG_HASH hash = {};
+  TPM2B_ECC_PARAMETER signature_r = {};
+  TPM2B_ECC_PARAMETER signature_s = {};
 };
 
 union TPMU_SIGNATURE {
@@ -1481,8 +1481,8 @@ union TPMU_SIGNATURE {
 };
 
 struct TPMT_SIGNATURE {
-  TPMI_ALG_SIG_SCHEME sig_alg;
-  TPMU_SIGNATURE signature;
+  TPMI_ALG_SIG_SCHEME sig_alg = {};
+  TPMU_SIGNATURE signature = {};
 };
 
 union TPMU_ENCRYPTED_SECRET {
@@ -1493,31 +1493,31 @@ union TPMU_ENCRYPTED_SECRET {
 };
 
 struct TPM2B_ENCRYPTED_SECRET {
-  UINT16 size;
-  BYTE secret[sizeof(TPMU_ENCRYPTED_SECRET)];
+  UINT16 size = {};
+  BYTE secret[sizeof(TPMU_ENCRYPTED_SECRET)] = {};
 };
 
 struct TPMS_KEYEDHASH_PARMS {
-  TPMT_KEYEDHASH_SCHEME scheme;
+  TPMT_KEYEDHASH_SCHEME scheme = {};
 };
 
 struct TPMS_ASYM_PARMS {
-  TPMT_SYM_DEF_OBJECT symmetric;
-  TPMT_ASYM_SCHEME scheme;
+  TPMT_SYM_DEF_OBJECT symmetric = {};
+  TPMT_ASYM_SCHEME scheme = {};
 };
 
 struct TPMS_RSA_PARMS {
-  TPMT_SYM_DEF_OBJECT symmetric;
-  TPMT_RSA_SCHEME scheme;
-  TPMI_RSA_KEY_BITS key_bits;
-  UINT32 exponent;
+  TPMT_SYM_DEF_OBJECT symmetric = {};
+  TPMT_RSA_SCHEME scheme = {};
+  TPMI_RSA_KEY_BITS key_bits = {};
+  UINT32 exponent = {};
 };
 
 struct TPMS_ECC_PARMS {
-  TPMT_SYM_DEF_OBJECT symmetric;
-  TPMT_ECC_SCHEME scheme;
-  TPMI_ECC_CURVE curve_id;
-  TPMT_KDF_SCHEME kdf;
+  TPMT_SYM_DEF_OBJECT symmetric = {};
+  TPMT_ECC_SCHEME scheme = {};
+  TPMI_ECC_CURVE curve_id = {};
+  TPMT_KDF_SCHEME kdf = {};
 };
 
 union TPMU_PUBLIC_PARMS {
@@ -1529,8 +1529,8 @@ union TPMU_PUBLIC_PARMS {
 };
 
 struct TPMT_PUBLIC_PARMS {
-  TPMI_ALG_PUBLIC type;
-  TPMU_PUBLIC_PARMS parameters;
+  TPMI_ALG_PUBLIC type = {};
+  TPMU_PUBLIC_PARMS parameters = {};
 };
 
 union TPMU_PUBLIC_ID {
@@ -1541,22 +1541,22 @@ union TPMU_PUBLIC_ID {
 };
 
 struct TPMT_PUBLIC {
-  TPMI_ALG_PUBLIC type;
-  TPMI_ALG_HASH name_alg;
-  TPMA_OBJECT object_attributes;
-  TPM2B_DIGEST auth_policy;
-  TPMU_PUBLIC_PARMS parameters;
-  TPMU_PUBLIC_ID unique;
+  TPMI_ALG_PUBLIC type = {};
+  TPMI_ALG_HASH name_alg = {};
+  TPMA_OBJECT object_attributes = {};
+  TPM2B_DIGEST auth_policy = {};
+  TPMU_PUBLIC_PARMS parameters = {};
+  TPMU_PUBLIC_ID unique = {};
 };
 
 struct TPM2B_PUBLIC {
-  UINT16 size;
-  TPMT_PUBLIC public_area;
+  UINT16 size = {};
+  TPMT_PUBLIC public_area = {};
 };
 
 struct TPM2B_PRIVATE_VENDOR_SPECIFIC {
-  UINT16 size;
-  BYTE buffer[PRIVATE_VENDOR_SPECIFIC_BYTES];
+  UINT16 size = {};
+  BYTE buffer[PRIVATE_VENDOR_SPECIFIC_BYTES] = {};
 };
 
 union TPMU_SENSITIVE_COMPOSITE {
@@ -1568,91 +1568,91 @@ union TPMU_SENSITIVE_COMPOSITE {
 };
 
 struct TPMT_SENSITIVE {
-  TPMI_ALG_PUBLIC sensitive_type;
-  TPM2B_AUTH auth_value;
-  TPM2B_DIGEST seed_value;
-  TPMU_SENSITIVE_COMPOSITE sensitive;
+  TPMI_ALG_PUBLIC sensitive_type = {};
+  TPM2B_AUTH auth_value = {};
+  TPM2B_DIGEST seed_value = {};
+  TPMU_SENSITIVE_COMPOSITE sensitive = {};
 };
 
 struct TPM2B_SENSITIVE {
-  UINT16 size;
-  TPMT_SENSITIVE sensitive_area;
+  UINT16 size = {};
+  TPMT_SENSITIVE sensitive_area = {};
 };
 
 struct _PRIVATE {
-  TPM2B_DIGEST integrity_outer;
-  TPM2B_DIGEST integrity_inner;
-  TPMT_SENSITIVE sensitive;
+  TPM2B_DIGEST integrity_outer = {};
+  TPM2B_DIGEST integrity_inner = {};
+  TPMT_SENSITIVE sensitive = {};
 };
 
 struct TPM2B_PRIVATE {
-  UINT16 size;
-  BYTE buffer[sizeof(_PRIVATE)];
+  UINT16 size = {};
+  BYTE buffer[sizeof(_PRIVATE)] = {};
 };
 
 struct _ID_OBJECT {
-  TPM2B_DIGEST integrity_hmac;
-  TPM2B_DIGEST enc_identity;
+  TPM2B_DIGEST integrity_hmac = {};
+  TPM2B_DIGEST enc_identity = {};
 };
 
 struct TPM2B_ID_OBJECT {
-  UINT16 size;
-  BYTE credential[sizeof(_ID_OBJECT)];
+  UINT16 size = {};
+  BYTE credential[sizeof(_ID_OBJECT)] = {};
 };
 
 struct TPMS_NV_PUBLIC {
-  TPMI_RH_NV_INDEX nv_index;
-  TPMI_ALG_HASH name_alg;
-  TPMA_NV attributes;
-  TPM2B_DIGEST auth_policy;
-  UINT16 data_size;
+  TPMI_RH_NV_INDEX nv_index = {};
+  TPMI_ALG_HASH name_alg = {};
+  TPMA_NV attributes = {};
+  TPM2B_DIGEST auth_policy = {};
+  UINT16 data_size = {};
 };
 
 struct TPM2B_NV_PUBLIC {
-  UINT16 size;
-  TPMS_NV_PUBLIC nv_public;
+  UINT16 size = {};
+  TPMS_NV_PUBLIC nv_public = {};
 };
 
 struct TPM2B_CONTEXT_SENSITIVE {
-  UINT16 size;
-  BYTE buffer[MAX_CONTEXT_SIZE];
+  UINT16 size = {};
+  BYTE buffer[MAX_CONTEXT_SIZE] = {};
 };
 
 struct TPMS_CONTEXT_DATA {
-  TPM2B_DIGEST integrity;
-  TPM2B_CONTEXT_SENSITIVE encrypted;
+  TPM2B_DIGEST integrity = {};
+  TPM2B_CONTEXT_SENSITIVE encrypted = {};
 };
 
 struct TPM2B_CONTEXT_DATA {
-  UINT16 size;
-  BYTE buffer[sizeof(TPMS_CONTEXT_DATA)];
+  UINT16 size = {};
+  BYTE buffer[sizeof(TPMS_CONTEXT_DATA)] = {};
 };
 
 struct TPMS_CONTEXT {
-  UINT64 sequence;
-  TPMI_DH_CONTEXT saved_handle;
-  TPMI_RH_HIERARCHY hierarchy;
-  TPM2B_CONTEXT_DATA context_blob;
+  UINT64 sequence = {};
+  TPMI_DH_CONTEXT saved_handle = {};
+  TPMI_RH_HIERARCHY hierarchy = {};
+  TPM2B_CONTEXT_DATA context_blob = {};
 };
 
 struct TPMS_CREATION_DATA {
-  TPML_PCR_SELECTION pcr_select;
-  TPM2B_DIGEST pcr_digest;
-  TPMA_LOCALITY locality;
-  TPM_ALG_ID parent_name_alg;
-  TPM2B_NAME parent_name;
-  TPM2B_NAME parent_qualified_name;
-  TPM2B_DATA outside_info;
+  TPML_PCR_SELECTION pcr_select = {};
+  TPM2B_DIGEST pcr_digest = {};
+  TPMA_LOCALITY locality = {};
+  TPM_ALG_ID parent_name_alg = {};
+  TPM2B_NAME parent_name = {};
+  TPM2B_NAME parent_qualified_name = {};
+  TPM2B_DATA outside_info = {};
 };
 
 struct TPM2B_CREATION_DATA {
-  UINT16 size;
-  TPMS_CREATION_DATA creation_data;
+  UINT16 size = {};
+  TPMS_CREATION_DATA creation_data = {};
 };
 
 struct FIDO_DATA_RANGE {
-  UINT16 offset;
-  UINT16 size;
+  UINT16 offset = {};
+  UINT16 size = {};
 };
 
 TRUNKS_EXPORT size_t GetNumberOfRequestHandles(TPM_CC command_code);

@@ -60,11 +60,12 @@ _END
 from __future__ import print_function
 
 import argparse
+from collections import OrderedDict
 import re
 import subprocess
-from collections import OrderedDict
 
 import union_selectors
+
 
 _BASIC_TYPES = [
     "uint8_t",
@@ -422,7 +423,7 @@ class Structure(object):
     _UNION = "union %(name)s {\n"
     _UNION_FORWARD = "union %(name)s;\n"
     _STRUCTURE_END = "};\n\n"
-    _STRUCTURE_FIELD = "  %(type)s %(name)s;\n"
+    _STRUCTURE_FIELD = "  %(type)s %(name)s%(default_value)s;\n"
     _SERIALIZE_FUNCTION_START = """
 TPM_RC Serialize_%(type)s(
     const %(type)s& value,
@@ -726,13 +727,20 @@ std::string StringFrom_%(type)s(
         for required_type in self.depends_on:
             if required_type not in defined_types:
                 typemap[required_type].Output(out_file, defined_types, typemap)
+        default_value = ""
         if self.is_union:
             out_file.write(self._UNION % {"name": self.name})
         else:
             out_file.write(self._STRUCTURE % {"name": self.name})
+            default_value = " = {}"
         for field in self.fields:
             out_file.write(
-                self._STRUCTURE_FIELD % {"type": field[0], "name": field[1]}
+                self._STRUCTURE_FIELD
+                % {
+                    "type": field[0],
+                    "name": field[1],
+                    "default_value": default_value,
+                }
             )
         out_file.write(self._STRUCTURE_END)
         defined_types.add(self.name)

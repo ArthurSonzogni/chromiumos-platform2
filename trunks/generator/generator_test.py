@@ -80,7 +80,7 @@ class TestGenerators(unittest.TestCase):
         union.OutputForward(out_file, defined_types, typemap)
         union.Output(out_file, defined_types, typemap)
         output_re = r"union UNION;\s+struct DEPEND {\s+};\s+"
-        output_re += r"struct STRUCT {\s+int i;\s+};\s+"
+        output_re += r"struct STRUCT {\s+int i = {};\s+};\s+"
         output_re += r"union UNION {\s+STRUCT inner;\s+};\s+"
         self.assertRegex(out_file.getvalue(), output_re)
         for t in ("STRUCT", "DEPEND", "UNION"):
