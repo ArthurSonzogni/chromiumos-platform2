@@ -7,6 +7,7 @@
 #ifndef CAMERA_COMMON_PRIVACY_SHUTTER_DETECTOR_IMPL_H_
 #define CAMERA_COMMON_PRIVACY_SHUTTER_DETECTOR_IMPL_H_
 
+#include "cros-camera/camera_buffer_manager.h"
 #include "cros-camera/privacy_shutter_detector.h"
 
 namespace cros {
@@ -18,15 +19,10 @@ class PrivacyShutterDetectorImpl : public PrivacyShutterDetector {
   ~PrivacyShutterDetectorImpl() override;
 
   bool DetectPrivacyShutterFromHandle(buffer_handle_t input,
-                                      int width,
-                                      int height,
                                       bool* isShutterClosed) override;
 
  private:
-  bool DetectPrivacyShutterFromHandleInternal(uint8_t* yData,
-                                              uint32_t yStride,
-                                              int width,
-                                              int height);
+  bool DetectPrivacyShutterFromHandleInternal(const ScopedMapping& mapping);
 };
 
 }  // namespace cros

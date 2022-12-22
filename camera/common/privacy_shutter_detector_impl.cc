@@ -6,9 +6,10 @@
 
 #include "common/privacy_shutter_detector_impl.h"
 
+#include <linux/videodev2.h>
+
 #include <memory>
 
-#include "cros-camera/camera_buffer_manager.h"
 #include "cros-camera/common.h"
 
 namespace cros {
@@ -26,33 +27,27 @@ PrivacyShutterDetectorImpl::PrivacyShutterDetectorImpl() = default;
 PrivacyShutterDetectorImpl::~PrivacyShutterDetectorImpl() = default;
 
 bool PrivacyShutterDetectorImpl::DetectPrivacyShutterFromHandle(
-    buffer_handle_t input, int width, int height, bool* isShutterClosed) {
-  cros::CameraBufferManager* buffer_manager =
-      cros::CameraBufferManager::GetInstance();
-
-  struct android_ycbcr mapped_input;
-  auto status = buffer_manager->LockYCbCr(input, 0, 0, 0, 0, 0, &mapped_input);
-  if (status != 0) {
-    LOGF(ERROR) << "Failed to lock buffer handle to detect privacy shutter.";
+    buffer_handle_t input, bool* isShutterClosed) {
+  auto mapping = ScopedMapping(input);
+  if (!mapping.is_valid()) {
+    LOGF(ERROR) << "Failed to map the buffer to detect privacy shutter.";
+    return false;
+  } else if (mapping.v4l2_format() != V4L2_PIX_FMT_NV12) {
+    LOGF(ERROR) << "The input is not NV12 format.";
     return false;
   }
-  auto* yData = static_cast<uint8_t*>(mapped_input.y);
-  uint32_t yStride = mapped_input.ystride / sizeof(*yData);
 
-  *isShutterClosed =
-      DetectPrivacyShutterFromHandleInternal(yData, yStride, width, height);
-
-  status = buffer_manager->Unlock(input);
-  if (status != 0) {
-    LOGF(WARNING)
-        << "Failed to unlock buffer handle to detect privacy shutter.";
-  }
-
+  *isShutterClosed = DetectPrivacyShutterFromHandleInternal(mapping);
   return true;
 }
 
 bool PrivacyShutterDetectorImpl::DetectPrivacyShutterFromHandleInternal(
-    uint8_t* yData, uint32_t yStride, int width, int height) {
+    const ScopedMapping& mapping) {
+  uint8_t* yData = mapping.plane(0).addr;
+  uint32_t yStride = mapping.plane(0).stride;
+  int width = mapping.width();
+  int height = mapping.height();
+
   double ySum = 0;
   for (uint32_t y = 0; y < height; y++) {
     for (uint32_t x = 0; x < width; x++) {

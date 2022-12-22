@@ -24,8 +24,6 @@ class CROS_CAMERA_EXPORT PrivacyShutterDetector {
 
   // Detect Privacy Shutter from YUV image via buffer handles.
   virtual bool DetectPrivacyShutterFromHandle(buffer_handle_t input,
-                                              int width,
-                                              int height,
                                               bool* isShutterClosed) = 0;
 };
 
