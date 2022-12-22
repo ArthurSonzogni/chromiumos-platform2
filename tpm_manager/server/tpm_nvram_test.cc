@@ -326,7 +326,8 @@ TEST_F(TpmNvramTest, GetSpaceInfoData) {
   constexpr bool kIsReadLocked = false;
   constexpr bool kIsWriteLocked = true;
   const std::vector<NvramSpaceAttribute> kAttributes = {
-      NVRAM_READ_AUTHORIZATION, NVRAM_PLATFORM_WRITE, NVRAM_OWNER_READ};
+      NVRAM_BOOT_WRITE_LOCK, NVRAM_BOOT_READ_LOCK, NVRAM_READ_AUTHORIZATION,
+      NVRAM_PLATFORM_WRITE, NVRAM_OWNER_READ};
   constexpr NvramSpacePolicy kPolicy = NVRAM_POLICY_PCR0;
 
   std::vector<uint8_t> pcrSelect = {1};
@@ -344,7 +345,8 @@ TEST_F(TpmNvramTest, GetSpaceInfoData) {
       .permission =
           TPM_NV_ATTRIBUTES{
               .attributes = TPM_NV_PER_AUTHREAD | TPM_NV_PER_PPWRITE |
-                            TPM_NV_PER_OWNERREAD,
+                            TPM_NV_PER_OWNERREAD | TPM_NV_PER_WRITE_STCLEAR |
+                            TPM_NV_PER_READ_STCLEAR,
           },
       .bReadSTClear = kIsReadLocked,
       .bWriteSTClear = kIsWriteLocked,

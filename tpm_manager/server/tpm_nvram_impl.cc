@@ -394,10 +394,19 @@ NvramResult TpmNvramImpl::GetSpaceInfo(
     *size = info.dataSize;
   }
   if (is_read_locked) {
-    *is_read_locked = info.bReadSTClear;
+    bool boot_read_lock =
+        (info.permission.attributes & TPM_NV_PER_READ_STCLEAR) &&
+        info.bReadSTClear;
+    *is_read_locked = boot_read_lock;
   }
   if (is_write_locked) {
-    *is_write_locked = info.bWriteSTClear || info.bWriteDefine;
+    bool boot_write_lock =
+        (info.permission.attributes & TPM_NV_PER_WRITE_STCLEAR) &&
+        info.bWriteSTClear;
+    bool persistent_write_lock =
+        (info.permission.attributes & TPM_NV_PER_WRITEDEFINE) &&
+        info.bWriteDefine;
+    *is_write_locked = boot_write_lock || persistent_write_lock;
   }
   if (attributes) {
     MapAttributesFromTpm(info.permission.attributes, attributes);
