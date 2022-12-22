@@ -1016,29 +1016,28 @@ bool TpmLiveTest::RecoveryTpmBackendTest() {
     return false;
   }
 
-  // Test case that are only applicable for TPM 1.2.
+  // Call key loading/unsealing with the wrong auth value.
+  hwsec::GenerateDhSharedSecretRequest
+      decrypt_request_destination_share_wrong_auth_value =
+          CloneDhSharedSecretRequest(decrypt_request_destination_share);
+  decrypt_request_destination_share_wrong_auth_value.auth_value =
+      brillo::SecureBlob("wrong_auth_value");
+  hwsec::StatusOr<crypto::ScopedEC_POINT> point_dh_wrong_auth_value =
+      recovery_crypto_->GenerateDiffieHellmanSharedSecret(
+          std::move(decrypt_request_destination_share_wrong_auth_value));
+  if (point_dh_wrong_auth_value.ok()) {
+    LOG(ERROR) << "Generated DH shared secret successfully without the correct "
+                  "auth value.";
+    return false;
+  }
+
+  // Test case that are only applicable for TPM 2.0.
   hwsec::StatusOr<uint32_t> family = hwsec_->GetFamily();
   if (!family.ok()) {
     LOG(ERROR) << "Failed to get the TPM family: " << family.status();
     return false;
   }
-  if (family.value() == kTpm12Family) {
-    // Call key loading/unsealing with the wrong auth value.
-    hwsec::GenerateDhSharedSecretRequest
-        decrypt_request_destination_share_wrong_auth_value =
-            CloneDhSharedSecretRequest(decrypt_request_destination_share);
-    decrypt_request_destination_share_wrong_auth_value.auth_value =
-        brillo::SecureBlob("wrong_auth_value");
-    hwsec::StatusOr<crypto::ScopedEC_POINT> point_dh_wrong_auth_value =
-        recovery_crypto_->GenerateDiffieHellmanSharedSecret(
-            std::move(decrypt_request_destination_share_wrong_auth_value));
-    if (point_dh_wrong_auth_value.ok()) {
-      LOG(ERROR)
-          << "Generated DH shared secret successfully without the correct "
-             "auth value.";
-      return false;
-    }
-
+  if (family.value() == kTpm20Family) {
     // Call key loading/unsealing with the wrong obfuscated username.
     hwsec::GenerateDhSharedSecretRequest
         decrypt_request_destination_share_wrong_username =
