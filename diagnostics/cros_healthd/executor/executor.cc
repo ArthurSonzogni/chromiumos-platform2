@@ -4,7 +4,12 @@
 
 #include "diagnostics/cros_healthd/executor/executor.h"
 
+#include <bits/types/siginfo_t.h>
 #include <inttypes.h>
+#include <linux/capability.h>
+#include <sys/capability.h>
+#include <sys/types.h>
+#include <unistd.h>
 
 #include <csignal>
 #include <cstdint>
@@ -25,6 +30,7 @@
 #include <mojo/public/cpp/bindings/callback_helpers.h>
 #include <re2/re2.h>
 
+#include "diagnostics/cros_healthd/executor/constants.h"
 #include "diagnostics/cros_healthd/executor/mojom/executor.mojom.h"
 #include "diagnostics/cros_healthd/executor/utils/delegate_process.h"
 #include "diagnostics/cros_healthd/executor/utils/process_control.h"
@@ -38,58 +44,69 @@ namespace {
 
 namespace mojom = ::ash::cros_healthd::mojom;
 
+namespace seccomp_file {
+
+// SECCOMP policy for evdev related routines.
+constexpr char kEvdev[] = "evdev-seccomp.policy";
+// SECCOMP policy for ectool pwmgetfanrpm.
+constexpr char kFanSpeed[] = "ectool_pwmgetfanrpm-seccomp.policy";
+// SECCOMP policy for fingerprint related routines.
+constexpr char kFingerprint[] = "fingerprint-seccomp.policy";
+// SECCOMP policy for hciconfig.
+constexpr char kHciconfig[] = "hciconfig-seccomp.policy";
+// SECCOMP policy for IW related routines.
+constexpr char kIw[] = "iw-seccomp.policy";
+// SECCOMP policy for LED related routines.
+constexpr char kLed[] = "ec_led-seccomp.policy";
+// SECCOMP policy for ectool motionsense lid_angle.
+constexpr char kLidAngle[] = "ectool_motionsense_lid_angle-seccomp.policy";
+// SECCOMP policy for memtester.
+constexpr char kMemtester[] = "memtester-seccomp.policy";
+
+}  // namespace seccomp_file
+
 // Amount of time we wait for a process to respond to SIGTERM before killing it.
 constexpr base::TimeDelta kTerminationTimeout = base::Seconds(2);
 
 // Null capability for delegate process.
 constexpr uint64_t kNullCapability = 0;
 
-// All SECCOMP policies should live in this directory.
-constexpr char kSandboxDirPath[] = "/usr/share/policy/";
-
-// SECCOMP policy for fingerprint related routines.
-constexpr char kFingerprintSeccompPolicyPath[] = "fingerprint-seccomp.policy";
+// The user and group for accessing fingerprint.
 constexpr char kFingerprintUserAndGroup[] = "healthd_fp";
 
-// SECCOMP policy for LED related routines.
-constexpr char kLedSeccompPolicyPath[] = "ec_led-seccomp.policy";
-
-// SECCOMP policy for evdev related routines.
-constexpr char kEvdevSeccompPolicyPath[] = "evdev-seccomp.policy";
+// The user and group for accessing Evdev.
 constexpr char kEvdevUserAndGroup[] = "healthd_evdev";
 
 // The user and group for accessing EC.
 constexpr char kEcUserAndGroup[] = "healthd_ec";
 
-// SECCOMP policy for ectool pwmgetfanrpm:
-constexpr char kFanSpeedSeccompPolicyPath[] =
-    "ectool_pwmgetfanrpm-seccomp.policy";
+// The path to ectool binary.
 constexpr char kEctoolBinary[] = "/usr/sbin/ectool";
 // The ectool command used to collect fan speed in RPM.
 constexpr char kGetFanRpmCommand[] = "pwmgetfanrpm";
-
-// SECCOMP policy for ectool motionsense lid_angle:
-constexpr char kLidAngleSeccompPolicyPath[] =
-    "ectool_motionsense_lid_angle-seccomp.policy";
 // The ectool commands used to collect lid angle.
 constexpr char kMotionSenseCommand[] = "motionsense";
 constexpr char kLidAngleCommand[] = "lid_angle";
 
 // The iw command used to collect different wireless data.
-constexpr char kIwSeccompPolicyPath[] = "iw-seccomp.policy";
-// constexpr char kIwUserAndGroup[] = "healthd_iw";
 constexpr char kIwBinary[] = "/usr/sbin/iw";
 constexpr char kIwInterfaceCommand[] = "dev";
 constexpr char kIwInfoCommand[] = "info";
 constexpr char kIwLinkCommand[] = "link";
-constexpr std::array<const char*, 2> kIwScanDumpCommand{"scan", "dump"};
+constexpr char kIwScanCommand[] = "scan";
+constexpr char kIwDumpCommand[] = "dump";
 // wireless interface name start with "wl" or "ml" and end it with a number. All
 // characters are in lowercase.  Max length is 16 characters.
 constexpr auto kWirelessInterfaceRegex = R"(([wm]l[a-z][a-z0-9]{1,12}[0-9]))";
 
-// SECCOMP policy for memtester, relative to kSandboxDirPath.
-constexpr char kMemtesterSeccompPolicyPath[] = "memtester-seccomp.policy";
+// The path to memtester binary.
 constexpr char kMemtesterBinary[] = "/usr/sbin/memtester";
+
+// The path to hciconfig binary.
+constexpr char kHciconfigBinary[] = "/usr/bin/hciconfig";
+
+// A read-only mount point for cros_ec.
+constexpr char kCrosEcDevice[] = "/dev/cros_ec";
 
 // Whitelist of msr registers that can be read by the ReadMsr call.
 constexpr uint32_t kMsrAccessAllowList[] = {
@@ -108,18 +125,6 @@ constexpr char kUEFIPlatformSizeFile[] = "/sys/firmware/efi/fw_platform_size";
 
 // Error message when failing to launch delegate.
 constexpr char kFailToLaunchDelegate[] = "Failed to launch delegate";
-
-// SECCOMP policy for hciconfig:
-constexpr char kHciconfigSeccompPolicyPath[] = "hciconfig-seccomp.policy";
-constexpr char kHciconfigBinary[] = "/usr/bin/hciconfig";
-
-// All Mojo callbacks need to be ran by the Mojo task runner, so this provides a
-// convenient wrapper that can be bound and ran by that specific task runner.
-void RunMojoProcessResultCallback(
-    mojom::ExecutedProcessResult mojo_result,
-    base::OnceCallback<void(mojom::ExecutedProcessResultPtr)> callback) {
-  std::move(callback).Run(mojo_result.Clone());
-}
 
 // Reads file and reply the result to a callback. Will reply empty string if
 // cannot read the file.
@@ -155,7 +160,7 @@ void GetFingerprintFrameTask(
     mojom::FingerprintCaptureType type,
     mojom::Executor::GetFingerprintFrameCallback callback) {
   auto delegate = std::make_unique<DelegateProcess>(
-      kFingerprintSeccompPolicyPath, kFingerprintUserAndGroup, kNullCapability,
+      seccomp_file::kFingerprint, kFingerprintUserAndGroup, kNullCapability,
       /*readonly_mount_points=*/std::vector<base::FilePath>{},
       /*writable_mount_points=*/
       std::vector<base::FilePath>{base::FilePath{fingerprint::kCrosFpPath}});
@@ -180,7 +185,7 @@ void GetFingerprintInfoCallback(
 void GetFingerprintInfoTask(
     mojom::Executor::GetFingerprintInfoCallback callback) {
   auto delegate = std::make_unique<DelegateProcess>(
-      kFingerprintSeccompPolicyPath, kFingerprintUserAndGroup, kNullCapability,
+      seccomp_file::kFingerprint, kFingerprintUserAndGroup, kNullCapability,
       /*readonly_mount_points=*/std::vector<base::FilePath>{},
       /*writable_mount_points=*/
       std::vector<base::FilePath>{base::FilePath{fingerprint::kCrosFpPath}});
@@ -203,10 +208,10 @@ void SetLedColorTask(mojom::LedName name,
                      mojom::LedColor color,
                      mojom::Executor::SetLedColorCallback callback) {
   auto delegate = std::make_unique<DelegateProcess>(
-      kLedSeccompPolicyPath, kEcUserAndGroup, kNullCapability,
+      seccomp_file::kLed, kEcUserAndGroup, kNullCapability,
       /*readonly_mount_points=*/std::vector<base::FilePath>{},
       /*writable_mount_points=*/
-      std::vector<base::FilePath>{base::FilePath{"/dev/cros_ec"}});
+      std::vector<base::FilePath>{base::FilePath{kCrosEcDevice}});
 
   auto cb = mojo::WrapCallbackWithDefaultInvokeIfNotRun(std::move(callback),
                                                         kFailToLaunchDelegate);
@@ -225,10 +230,10 @@ void ResetLedColorCallback(mojom::Executor::ResetLedColorCallback callback,
 void ResetLedColorTask(mojom::LedName name,
                        mojom::Executor::ResetLedColorCallback callback) {
   auto delegate = std::make_unique<DelegateProcess>(
-      kLedSeccompPolicyPath, kEcUserAndGroup, kNullCapability,
+      seccomp_file::kLed, kEcUserAndGroup, kNullCapability,
       /*readonly_mount_points=*/std::vector<base::FilePath>{},
       /*writable_mount_points=*/
-      std::vector<base::FilePath>{base::FilePath{"/dev/cros_ec"}});
+      std::vector<base::FilePath>{base::FilePath{kCrosEcDevice}});
 
   auto cb = mojo::WrapCallbackWithDefaultInvokeIfNotRun(std::move(callback),
                                                         kFailToLaunchDelegate);
@@ -247,217 +252,130 @@ bool IsValidWirelessInterfaceName(const std::string& interface_name) {
 Executor::Executor(
     const scoped_refptr<base::SingleThreadTaskRunner> mojo_task_runner,
     mojo::PendingReceiver<mojom::Executor> receiver,
+    brillo::ProcessReaper* process_reaper,
     base::OnceClosure on_disconnect)
     : mojo_task_runner_(mojo_task_runner),
-      receiver_{this /* impl */, std::move(receiver)} {
+      receiver_{this /* impl */, std::move(receiver)},
+      process_reaper_(process_reaper) {
   receiver_.set_disconnect_handler(std::move(on_disconnect));
 }
 
 void Executor::GetFanSpeed(GetFanSpeedCallback callback) {
-  mojom::ExecutedProcessResult result;
+  std::vector<std::string> command = {kEctoolBinary, kGetFanRpmCommand};
+  auto process = std::make_unique<SandboxedProcess>(
+      command, seccomp_file::kFanSpeed, kEcUserAndGroup,
+      CAP_TO_MASK(CAP_SYS_RAWIO),
+      /*readonly_mount_points=*/
+      std::vector<base::FilePath>{base::FilePath(kCrosEcDevice)},
+      /*writable_mount_points=*/std::vector<base::FilePath>{});
 
-  const auto seccomp_policy_path =
-      base::FilePath(kSandboxDirPath).Append(kFanSpeedSeccompPolicyPath);
-
-  // Minijail setup for ectool.
-  std::vector<std::string> sandboxing_args;
-  sandboxing_args.push_back("-G");
-  sandboxing_args.push_back("-c");
-  sandboxing_args.push_back("cap_sys_rawio=e");
-  sandboxing_args.push_back("-b");
-  sandboxing_args.push_back("/dev/cros_ec");
-
-  std::vector<std::string> binary_args = {kGetFanRpmCommand};
-  base::FilePath binary_path = base::FilePath(kEctoolBinary);
-
-  base::OnceClosure closure = base::BindOnce(
-      &Executor::RunUntrackedBinary, weak_factory_.GetWeakPtr(),
-      seccomp_policy_path, sandboxing_args, kEcUserAndGroup, binary_path,
-      binary_args, std::move(result), std::move(callback));
-
-  base::ThreadPool::PostTask(FROM_HERE, {base::MayBlock()}, std::move(closure));
+  RunUntrackedBinary(std::move(process), std::move(callback),
+                     /*combine_stdout_and_stderr=*/false);
 }
 
 void Executor::GetInterfaces(GetInterfacesCallback callback) {
-  mojom::ExecutedProcessResult result;
+  std::vector<std::string> command = {kIwBinary, kIwInterfaceCommand};
+  auto process = std::make_unique<SandboxedProcess>(
+      command, seccomp_file::kIw, kCrosHealthdSandboxUser, kNullCapability,
+      /*readonly_mount_points=*/
+      std::vector<base::FilePath>{base::FilePath(kIwBinary)},
+      /*writable_mount_points=*/
+      std::vector<base::FilePath>{}, NO_ENTER_NETWORK_NAMESPACE);
 
-  const auto seccomp_policy_path =
-      base::FilePath(kSandboxDirPath).Append(kIwSeccompPolicyPath);
-
-  // Minijail setup for iw.
-  std::vector<std::string> sandboxing_args;
-  sandboxing_args.push_back("-G");
-  sandboxing_args.push_back("-b");
-  sandboxing_args.push_back("/usr/sbin/iw");
-
-  std::vector<std::string> binary_args = {kIwInterfaceCommand};
-  base::FilePath binary_path = base::FilePath(kIwBinary);
-
-  // Since no user:group is specified, this will run with the default
-  // cros_healthd:cros_healthd user and group.
-  base::OnceClosure closure = base::BindOnce(
-      &Executor::RunUntrackedBinary, weak_factory_.GetWeakPtr(),
-      seccomp_policy_path, sandboxing_args, std::nullopt, binary_path,
-      binary_args, std::move(result), std::move(callback));
-
-  base::ThreadPool::PostTask(FROM_HERE, {base::MayBlock()}, std::move(closure));
+  RunUntrackedBinary(std::move(process), std::move(callback),
+                     /*combine_stdout_and_stderr=*/false);
 }
 
 void Executor::GetLink(const std::string& interface_name,
                        GetLinkCallback callback) {
-  mojom::ExecutedProcessResult result;
   // Sanitize against interface_name.
   if (!IsValidWirelessInterfaceName(interface_name)) {
-    result.err = "Illegal interface name: " + interface_name;
-    result.return_code = EXIT_FAILURE;
-    std::move(callback).Run(result.Clone());
+    auto result = mojom::ExecutedProcessResult::New();
+    result->err = "Illegal interface name: " + interface_name;
+    result->return_code = EXIT_FAILURE;
+    std::move(callback).Run(std::move(result));
     return;
   }
 
-  const auto seccomp_policy_path =
-      base::FilePath(kSandboxDirPath).Append(kIwSeccompPolicyPath);
+  std::vector<std::string> command = {kIwBinary, interface_name,
+                                      kIwLinkCommand};
+  auto process = std::make_unique<SandboxedProcess>(
+      command, seccomp_file::kIw, kCrosHealthdSandboxUser, kNullCapability,
+      /*readonly_mount_points=*/
+      std::vector<base::FilePath>{base::FilePath(kIwBinary)},
+      /*writable_mount_points=*/
+      std::vector<base::FilePath>{}, NO_ENTER_NETWORK_NAMESPACE);
 
-  // Minijail setup for iw.
-  std::vector<std::string> sandboxing_args;
-  sandboxing_args.push_back("-G");
-  sandboxing_args.push_back("-b");
-  sandboxing_args.push_back("/usr/sbin/iw");
-
-  std::vector<std::string> binary_args;
-  binary_args.push_back(interface_name);
-  binary_args.push_back(kIwLinkCommand);
-
-  base::FilePath binary_path = base::FilePath(kIwBinary);
-
-  // Since no user:group is specified, this will run with the default
-  // cros_healthd:cros_healthd user and group.
-  base::OnceClosure closure = base::BindOnce(
-      &Executor::RunUntrackedBinary, weak_factory_.GetWeakPtr(),
-      seccomp_policy_path, sandboxing_args, std::nullopt, binary_path,
-      binary_args, std::move(result), std::move(callback));
-
-  base::ThreadPool::PostTask(FROM_HERE, {base::MayBlock()}, std::move(closure));
+  RunUntrackedBinary(std::move(process), std::move(callback),
+                     /*combine_stdout_and_stderr=*/false);
 }
 
 void Executor::GetInfo(const std::string& interface_name,
                        GetInfoCallback callback) {
-  mojom::ExecutedProcessResult result;
   // Sanitize against interface_name.
   if (!IsValidWirelessInterfaceName(interface_name)) {
-    result.err = "Illegal interface name: " + interface_name;
-    result.return_code = EXIT_FAILURE;
-    std::move(callback).Run(result.Clone());
+    auto result = mojom::ExecutedProcessResult::New();
+    result->err = "Illegal interface name: " + interface_name;
+    result->return_code = EXIT_FAILURE;
+    std::move(callback).Run(std::move(result));
     return;
   }
 
-  const auto seccomp_policy_path =
-      base::FilePath(kSandboxDirPath).Append(kIwSeccompPolicyPath);
+  std::vector<std::string> command = {kIwBinary, interface_name,
+                                      kIwInfoCommand};
+  auto process = std::make_unique<SandboxedProcess>(
+      command, seccomp_file::kIw, kCrosHealthdSandboxUser, kNullCapability,
+      /*readonly_mount_points=*/
+      std::vector<base::FilePath>{base::FilePath(kIwBinary)},
+      /*writable_mount_points=*/
+      std::vector<base::FilePath>{}, NO_ENTER_NETWORK_NAMESPACE);
 
-  // Minijail setup for iw.
-  std::vector<std::string> sandboxing_args;
-  sandboxing_args.push_back("-G");
-  sandboxing_args.push_back("-b");
-  sandboxing_args.push_back("/usr/sbin/iw");
-
-  std::vector<std::string> binary_args;
-  binary_args.push_back(interface_name);
-  binary_args.push_back(kIwInfoCommand);
-
-  base::FilePath binary_path = base::FilePath(kIwBinary);
-
-  // Since no user:group is specified, this will run with the default
-  // cros_healthd:cros_healthd user and group.
-  base::OnceClosure closure = base::BindOnce(
-      &Executor::RunUntrackedBinary, weak_factory_.GetWeakPtr(),
-      seccomp_policy_path, sandboxing_args, std::nullopt, binary_path,
-      binary_args, std::move(result), std::move(callback));
-
-  base::ThreadPool::PostTask(FROM_HERE, {base::MayBlock()}, std::move(closure));
+  RunUntrackedBinary(std::move(process), std::move(callback),
+                     /*combine_stdout_and_stderr=*/false);
 }
 
 void Executor::GetScanDump(const std::string& interface_name,
                            GetScanDumpCallback callback) {
-  mojom::ExecutedProcessResult result;
   // Sanitize against interface_name.
   if (!IsValidWirelessInterfaceName(interface_name)) {
-    result.err = "Illegal interface name: " + interface_name;
-    result.return_code = EXIT_FAILURE;
-    std::move(callback).Run(result.Clone());
+    auto result = mojom::ExecutedProcessResult::New();
+    result->err = "Illegal interface name: " + interface_name;
+    result->return_code = EXIT_FAILURE;
+    std::move(callback).Run(std::move(result));
     return;
   }
 
-  const auto seccomp_policy_path =
-      base::FilePath(kSandboxDirPath).Append(kIwSeccompPolicyPath);
+  std::vector<std::string> command = {kIwBinary, interface_name, kIwScanCommand,
+                                      kIwDumpCommand};
+  auto process = std::make_unique<SandboxedProcess>(
+      command, seccomp_file::kIw, kCrosHealthdSandboxUser, kNullCapability,
+      /*readonly_mount_points=*/
+      std::vector<base::FilePath>{base::FilePath(kIwBinary)},
+      /*writable_mount_points=*/
+      std::vector<base::FilePath>{}, NO_ENTER_NETWORK_NAMESPACE);
 
-  // Minijail setup for iw.
-  std::vector<std::string> sandboxing_args;
-  sandboxing_args.push_back("-G");
-  sandboxing_args.push_back("-b");
-  sandboxing_args.push_back("/usr/sbin/iw");
-
-  std::vector<std::string> binary_args;
-  binary_args.push_back(interface_name);
-  binary_args.insert(binary_args.end(), kIwScanDumpCommand.begin(),
-                     kIwScanDumpCommand.end());
-
-  base::FilePath binary_path = base::FilePath(kIwBinary);
-
-  // Since no user:group is specified, this will run with the default
-  // cros_healthd:cros_healthd user and group.
-  base::OnceClosure closure = base::BindOnce(
-      &Executor::RunUntrackedBinary, weak_factory_.GetWeakPtr(),
-      seccomp_policy_path, sandboxing_args, std::nullopt, binary_path,
-      binary_args, std::move(result), std::move(callback));
-
-  base::ThreadPool::PostTask(FROM_HERE, {base::MayBlock()}, std::move(closure));
+  RunUntrackedBinary(std::move(process), std::move(callback),
+                     /*combine_stdout_and_stderr=*/false);
 }
 
 void Executor::RunMemtester(uint32_t test_mem_kib,
                             RunMemtesterCallback callback) {
-  mojom::ExecutedProcessResult result;
+  // Run with test_mem_kib memory and run for one loop.
+  std::vector<std::string> command = {
+      kMemtesterBinary, base::StringPrintf("%uK", test_mem_kib), "1"};
+  auto process = std::make_unique<SandboxedProcess>(
+      command, seccomp_file::kMemtester, kCrosHealthdSandboxUser,
+      CAP_TO_MASK(CAP_IPC_LOCK),
+      /*readonly_mount_points=*/std::vector<base::FilePath>{},
+      /*writable_mount_points=*/std::vector<base::FilePath>{});
 
-  // TODO(b/193211343): Design a mechanism for multiple resource intensive task.
-  // Only allow one instance of memtester at a time. This is reasonable, because
-  // memtester mlocks almost the entirety of the device's memory, and a second
-  // memtester process wouldn't have any memory to test.
-  auto itr = processes_.find(kMemtesterBinary);
-  if (itr != processes_.end()) {
-    result.return_code = MemtesterErrorCodes::kAllocatingLockingInvokingError;
-    result.err = kMemoryRoutineMemtesterAlreadyRunningMessage;
-    std::move(callback).Run(result.Clone());
-    return;
-  }
-
-  // Minijail setup for memtester.
-  std::vector<std::string> sandboxing_args;
-  sandboxing_args.push_back("-c");
-  sandboxing_args.push_back("cap_ipc_lock=e");
-
-  // Additional args for memtester.
-  std::vector<std::string> memtester_args;
-  // Run with all free memory, except that which we left to the operating system
-  // above.
-  memtester_args.push_back(base::StringPrintf("%uK", test_mem_kib));
-  // Run for one loop.
-  memtester_args.push_back("1");
-
-  const auto kSeccompPolicyPath =
-      base::FilePath(kSandboxDirPath).Append(kMemtesterSeccompPolicyPath);
-
-  // Since no user:group is specified, this will run with the default
-  // cros_healthd:cros_healthd user and group.
-  base::ThreadPool::PostTask(
-      FROM_HERE, {base::MayBlock()},
-      base::BindOnce(&Executor::RunTrackedBinary, weak_factory_.GetWeakPtr(),
-                     kSeccompPolicyPath, sandboxing_args, std::nullopt,
-                     base::FilePath(kMemtesterBinary), memtester_args,
-                     std::move(result), std::move(callback)));
+  RunTrackedBinary(std::move(process), std::move(callback), kMemtesterBinary);
 }
 
 void Executor::KillMemtester() {
   base::AutoLock auto_lock(lock_);
-  auto itr = processes_.find(kMemtesterBinary);
-  if (itr == processes_.end())
+  auto itr = tracked_processes_.find(kMemtesterBinary);
+  if (itr == tracked_processes_.end())
     return;
 
   brillo::Process* process = itr->second.get();
@@ -532,27 +450,16 @@ void Executor::GetUEFIPlatformSizeContent(
 }
 
 void Executor::GetLidAngle(GetLidAngleCallback callback) {
-  mojom::ExecutedProcessResult result;
+  std::vector<std::string> command = {kEctoolBinary, kMotionSenseCommand,
+                                      kLidAngleCommand};
+  auto process = std::make_unique<SandboxedProcess>(
+      command, seccomp_file::kLidAngle, kEcUserAndGroup, kNullCapability,
+      /*readonly_mount_points=*/
+      std::vector<base::FilePath>{base::FilePath(kCrosEcDevice)},
+      /*writable_mount_points=*/std::vector<base::FilePath>{});
 
-  const auto seccomp_policy_path =
-      base::FilePath(kSandboxDirPath).Append(kLidAngleSeccompPolicyPath);
-
-  // Minijail setup for ectool.
-  std::vector<std::string> sandboxing_args;
-  sandboxing_args.push_back("-G");
-  sandboxing_args.push_back("-b");
-  sandboxing_args.push_back("/dev/cros_ec");
-
-  std::vector<std::string> binary_args = {kMotionSenseCommand,
-                                          kLidAngleCommand};
-  base::FilePath binary_path = base::FilePath(kEctoolBinary);
-
-  base::OnceClosure closure = base::BindOnce(
-      &Executor::RunUntrackedBinary, weak_factory_.GetWeakPtr(),
-      seccomp_policy_path, sandboxing_args, kEcUserAndGroup, binary_path,
-      binary_args, std::move(result), std::move(callback));
-
-  base::ThreadPool::PostTask(FROM_HERE, {base::MayBlock()}, std::move(closure));
+  RunUntrackedBinary(std::move(process), std::move(callback),
+                     /*combine_stdout_and_stderr=*/false);
 }
 
 void Executor::GetFingerprintFrame(mojom::FingerprintCaptureType type,
@@ -582,31 +489,22 @@ void Executor::ResetLedColor(ash::cros_healthd::mojom::LedName name,
 }
 
 void Executor::GetHciDeviceConfig(GetHciDeviceConfigCallback callback) {
-  mojom::ExecutedProcessResult result;
+  std::vector<std::string> command = {kHciconfigBinary, "hci0"};
+  auto process = std::make_unique<SandboxedProcess>(
+      command, seccomp_file::kHciconfig, kEcUserAndGroup, kNullCapability,
+      /*readonly_mount_points=*/
+      std::vector<base::FilePath>{base::FilePath(kCrosEcDevice)},
+      /*writable_mount_points=*/std::vector<base::FilePath>{});
 
-  const auto seccomp_policy_path =
-      base::FilePath(kSandboxDirPath).Append(kHciconfigSeccompPolicyPath);
-
-  // Minijail setup for ectool.
-  std::vector<std::string> sandboxing_args;
-  sandboxing_args.push_back("-G");
-
-  std::vector<std::string> binary_args = {"hci0"};
-  base::FilePath binary_path = base::FilePath(kHciconfigBinary);
-
-  base::OnceClosure closure = base::BindOnce(
-      &Executor::RunUntrackedBinary, weak_factory_.GetWeakPtr(),
-      seccomp_policy_path, sandboxing_args, kEcUserAndGroup, binary_path,
-      binary_args, std::move(result), std::move(callback));
-
-  base::ThreadPool::PostTask(FROM_HERE, {base::MayBlock()}, std::move(closure));
+  RunUntrackedBinary(std::move(process), std::move(callback),
+                     /*combine_stdout_and_stderr=*/false);
 }
 
 void Executor::MonitorAudioJackTask(
     mojo::PendingRemote<mojom::AudioJackObserver> observer,
     mojo::PendingReceiver<mojom::ProcessControl> process_control) {
   auto delegate = std::make_unique<DelegateProcess>(
-      kEvdevSeccompPolicyPath, kEvdevUserAndGroup, kNullCapability,
+      seccomp_file::kEvdev, kEvdevUserAndGroup, kNullCapability,
       /*readonly_mount_points=*/
       std::vector<base::FilePath>{base::FilePath{"/dev/input"}},
       /*writable_mount_points=*/
@@ -627,93 +525,70 @@ void Executor::MonitorAudioJack(
 }
 
 void Executor::RunUntrackedBinary(
-    const base::FilePath& seccomp_policy_path,
-    const std::vector<std::string>& sandboxing_args,
-    const std::optional<std::string>& user,
-    const base::FilePath& binary_path,
-    const std::vector<std::string>& binary_args,
-    mojom::ExecutedProcessResult result,
-    base::OnceCallback<void(mojom::ExecutedProcessResultPtr)> callback) {
-  auto process = std::make_unique<ProcessWithOutput>();
-  result.return_code =
-      RunBinaryInternal(seccomp_policy_path, sandboxing_args, user, binary_path,
-                        binary_args, &result, process.get());
-  mojo_task_runner_->PostTask(
-      FROM_HERE, base::BindOnce(&RunMojoProcessResultCallback,
-                                std::move(result), std::move(callback)));
+    std::unique_ptr<brillo::Process> process,
+    base::OnceCallback<void(mojom::ExecutedProcessResultPtr)> callback,
+    bool combine_stdout_and_stderr) {
+  process->RedirectOutputToMemory(combine_stdout_and_stderr);
+  process->Start();
+
+  process_reaper_->WatchForChild(
+      FROM_HERE, process->pid(),
+      base::BindOnce(&Executor::OnUntrackedBinaryFinished,
+                     weak_factory_.GetWeakPtr(), std::move(callback),
+                     std::move(process)));
+}
+
+void Executor::OnUntrackedBinaryFinished(
+    base::OnceCallback<void(mojom::ExecutedProcessResultPtr)> callback,
+    std::unique_ptr<brillo::Process> process,
+    const siginfo_t& siginfo) {
+  auto result = mojom::ExecutedProcessResult::New();
+
+  result->return_code = siginfo.si_status;
+  result->out = process->GetOutputString(STDOUT_FILENO);
+  result->err = process->GetOutputString(STDERR_FILENO);
+
+  process->Release();
+  std::move(callback).Run(std::move(result));
 }
 
 void Executor::RunTrackedBinary(
-    const base::FilePath& seccomp_policy_path,
-    const std::vector<std::string>& sandboxing_args,
-    const std::optional<std::string>& user,
-    const base::FilePath& binary_path,
-    const std::vector<std::string>& binary_args,
-    mojom::ExecutedProcessResult result,
-    base::OnceCallback<void(mojom::ExecutedProcessResultPtr)> callback) {
-  std::string binary_path_str = binary_path.value();
-  DCHECK(!processes_.count(binary_path_str));
+    std::unique_ptr<brillo::Process> process,
+    base::OnceCallback<void(ash::cros_healthd::mojom::ExecutedProcessResultPtr)>
+        callback,
+    const std::string& binary_path) {
+  DCHECK(!tracked_processes_.count(binary_path));
 
-  {
-    auto process = std::make_unique<ProcessWithOutput>();
-    base::AutoLock auto_lock(lock_);
-    processes_[binary_path_str] = std::move(process);
-  }
-
-  result.return_code = RunBinaryInternal(
-      seccomp_policy_path, sandboxing_args, user, binary_path, binary_args,
-      &result, processes_[binary_path_str].get());
-
-  // Get rid of the process.
   base::AutoLock auto_lock(lock_);
-  auto itr = processes_.find(binary_path_str);
-  DCHECK(itr != processes_.end());
-  processes_.erase(itr);
-  mojo_task_runner_->PostTask(
-      FROM_HERE, base::BindOnce(&RunMojoProcessResultCallback,
-                                std::move(result), std::move(callback)));
+
+  process->RedirectOutputToMemory(false);
+  process->Start();
+  pid_t pid = process->pid();
+
+  tracked_processes_[binary_path] = std::move(process);
+  process_reaper_->WatchForChild(
+      FROM_HERE, pid,
+      base::BindOnce(&Executor::OnTrackedBinaryFinished,
+                     weak_factory_.GetWeakPtr(), std::move(callback),
+                     binary_path));
 }
 
-int Executor::RunBinaryInternal(const base::FilePath& seccomp_policy_path,
-                                const std::vector<std::string>& sandboxing_args,
-                                const std::optional<std::string>& user,
-                                const base::FilePath& binary_path,
-                                const std::vector<std::string>& binary_args,
-                                mojom::ExecutedProcessResult* result,
-                                ProcessWithOutput* process) {
-  DCHECK(result);
-  DCHECK(process);
+void Executor::OnTrackedBinaryFinished(
+    base::OnceCallback<void(mojom::ExecutedProcessResultPtr)> callback,
+    const std::string& binary_path,
+    const siginfo_t& siginfo) {
+  auto result = mojom::ExecutedProcessResult::New();
 
-  if (!base::PathExists(seccomp_policy_path)) {
-    result->err = "Sandbox info is missing for this architecture.";
-    return EXIT_FAILURE;
-  }
+  result->return_code = siginfo.si_status;
+  result->out = tracked_processes_[binary_path]->GetOutputString(STDOUT_FILENO);
+  result->err = tracked_processes_[binary_path]->GetOutputString(STDERR_FILENO);
+  tracked_processes_[binary_path]->Release();
 
-  // Sandboxing setup for the process.
-  if (user.has_value())
-    process->SandboxAs(user.value(), user.value());
-  process->SetSeccompFilterPolicyFile(seccomp_policy_path.MaybeAsASCII());
-  process->set_separate_stderr(true);
-  if (!process->Init(sandboxing_args)) {
-    result->err = "Process initialization failure.";
-    return EXIT_FAILURE;
-  }
-
-  process->AddArg(binary_path.MaybeAsASCII());
-  for (const auto& arg : binary_args)
-    process->AddArg(arg);
-  int exit_code = process->Run();
-  if (exit_code != EXIT_SUCCESS) {
-    process->GetError(&result->err);
-    return exit_code;
-  }
-
-  if (!process->GetOutput(&result->out)) {
-    result->err = "Failed to get output from process.";
-    return EXIT_FAILURE;
-  }
-
-  return EXIT_SUCCESS;
+  base::AutoLock auto_lock(lock_);
+  auto itr = tracked_processes_.find(binary_path);
+  DCHECK(itr != tracked_processes_.end());
+  tracked_processes_.erase(itr);
+  std::move(callback).Run(std::move(result));
 }
 
 }  // namespace diagnostics
