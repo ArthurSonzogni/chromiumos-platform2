@@ -150,6 +150,7 @@ install_config("install_init") {
     "init/imageloader-init.conf",
     "init/imageloader-shutdown.conf",
     "init/imageloader.conf",
+    "init/widevine-cdm.conf",
   ]
   install_path = "/etc/init"
 }
