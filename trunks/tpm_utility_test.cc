@@ -3402,9 +3402,11 @@ TEST_F(TpmUtilityTest, ResetDictionaryAttackLockFailure) {
 }
 
 TEST_F(TpmUtilityTest, GetEndorsementKey) {
+  TPM2B_NAME key_name = {};
   EXPECT_CALL(mock_tpm_, CreatePrimarySyncShort(TPM_RH_ENDORSEMENT, _, _, _, _,
                                                 _, _, _, _, _))
-      .WillRepeatedly(Return(TPM_RC_SUCCESS));
+      .WillRepeatedly(
+          DoAll(SetArgPointee<8>(key_name), Return(TPM_RC_SUCCESS)));
   TPM_HANDLE key_handle;
   EXPECT_EQ(TPM_RC_SUCCESS, utility_.GetEndorsementKey(TPM_ALG_RSA, nullptr,
                                                        nullptr, &key_handle));
