@@ -17,13 +17,6 @@
 namespace shill {
 namespace {
 
-static constexpr char kChannelWidth20MHznoHT[] = "20 MHz (no HT)";
-static constexpr char kChannelWidth20MHz[] = "20 MHz";
-static constexpr char kChannelWidth40MHz[] = "40 MHz";
-static constexpr char kChannelWidth80MHz[] = "80 MHz";
-static constexpr char kChannelWidth80p80MHz[] = "80+80 MHz";
-static constexpr char kChannelWidth160MHz[] = "160 MHz";
-
 static const std::map<std::string, WiFiLinkStatistics::LinkMode>
     kLinkModeTranslationMap = {
         {WPASupplicant::kSignalChangePropertyRxHEMCS,
@@ -44,18 +37,32 @@ static const std::map<std::string, WiFiLinkStatistics::LinkMode>
 // https://source.chromium.org/chromiumos/chromiumos/codesearch/+/main:src/third_party/wpa_supplicant-cros/next/src/drivers/driver_common.c;l=100
 static const std::map<std::string, WiFiLinkStatistics::ChannelWidth>
     kChannelWidthTranslationMap = {
-        {kChannelWidth20MHznoHT,
+        {WPASupplicant::kChannelWidth20MHznoHT,
          WiFiLinkStatistics::ChannelWidth::kChannelWidth20MHz},
-        {kChannelWidth20MHz,
+        {WPASupplicant::kChannelWidth20MHz,
          WiFiLinkStatistics::ChannelWidth::kChannelWidth20MHz},
-        {kChannelWidth40MHz,
+        {WPASupplicant::kChannelWidth40MHz,
          WiFiLinkStatistics::ChannelWidth::kChannelWidth40MHz},
-        {kChannelWidth80MHz,
+        {WPASupplicant::kChannelWidth80MHz,
          WiFiLinkStatistics::ChannelWidth::kChannelWidth80MHz},
-        {kChannelWidth80p80MHz,
+        {WPASupplicant::kChannelWidth80p80MHz,
          WiFiLinkStatistics::ChannelWidth::kChannelWidth80p80MHz},
-        {kChannelWidth160MHz,
+        {WPASupplicant::kChannelWidth160MHz,
          WiFiLinkStatistics::ChannelWidth::kChannelWidth160MHz},
+};
+
+// See guard_interval at:
+// https://source.chromium.org/chromiumos/chromiumos/codesearch/+/main:src/third_party/wpa_supplicant-cros/next/src/drivers/driver.h
+static const std::map<uint32_t, WiFiLinkStatistics::GuardInterval>
+    kGuardIntervalTranslationMap = {
+        {WPASupplicant::kGuardInterval_0_4,
+         WiFiLinkStatistics::GuardInterval::kLinkStatsGI_0_4},
+        {WPASupplicant::kGuardInterval_0_8,
+         WiFiLinkStatistics::GuardInterval::kLinkStatsGI_0_8},
+        {WPASupplicant::kGuardInterval_1_6,
+         WiFiLinkStatistics::GuardInterval::kLinkStatsGI_1_6},
+        {WPASupplicant::kGuardInterval_3_2,
+         WiFiLinkStatistics::GuardInterval::kLinkStatsGI_3_2},
 };
 
 bool IsNetworkEvent(WiFiLinkStatistics::Trigger trigger) {
@@ -312,8 +319,8 @@ Metrics::WiFiRxTxStats ConvertRxTxStats(
       link_stats.gi = Metrics::kWiFiGuardIntervalUnknown;
       break;
   }
-  // TODO(b/239864299): Handle DCM.
   link_stats.nss = stats.nss;
+  link_stats.dcm = stats.dcm;
   return link_stats;
 }
 
@@ -417,6 +424,7 @@ WiFiLinkStatistics::StationStatsFromSupplicantKV(
       {WPASupplicant::kSignalChangePropertyTxPackets, &stats.tx.packets},
       {WPASupplicant::kSignalChangePropertyRxSpeed, &stats.rx.bitrate},
       {WPASupplicant::kSignalChangePropertyTxSpeed, &stats.tx.bitrate},
+      {WPASupplicant::kSignalChangePropertyInactiveTime, &stats.inactive_time},
   };
 
   for (const auto& kv : signal_properties_u32) {
@@ -437,6 +445,8 @@ WiFiLinkStatistics::StationStatsFromSupplicantKV(
       {WPASupplicant::kSignalChangePropertyTxHENSS, &stats.tx.nss},
       {WPASupplicant::kSignalChangePropertyRxVHTNSS, &stats.rx.nss},
       {WPASupplicant::kSignalChangePropertyTxVHTNSS, &stats.tx.nss},
+      {WPASupplicant::kSignalChangePropertyRxDCM, &stats.rx.dcm},
+      {WPASupplicant::kSignalChangePropertyTxDCM, &stats.tx.dcm},
   };
 
   for (const auto& kv : signal_properties_u8) {
@@ -487,6 +497,28 @@ WiFiLinkStatistics::StationStatsFromSupplicantKV(
       stats.width = ChannelWidth::kChannelWidthUnknown;
     } else {
       stats.width = it->second;
+    }
+  }
+
+  if (properties.Contains<uint32_t>(WPASupplicant::kSignalChangePropertyRxGI)) {
+    uint32_t gi =
+        properties.Get<uint32_t>(WPASupplicant::kSignalChangePropertyRxGI);
+    const auto it = kGuardIntervalTranslationMap.find(gi);
+    if (it == kGuardIntervalTranslationMap.end()) {
+      stats.rx.gi = GuardInterval::kLinkStatsGIUnknown;
+    } else {
+      stats.rx.gi = it->second;
+    }
+  }
+
+  if (properties.Contains<uint32_t>(WPASupplicant::kSignalChangePropertyTxGI)) {
+    uint32_t gi =
+        properties.Get<uint32_t>(WPASupplicant::kSignalChangePropertyTxGI);
+    const auto it = kGuardIntervalTranslationMap.find(gi);
+    if (it == kGuardIntervalTranslationMap.end()) {
+      stats.tx.gi = GuardInterval::kLinkStatsGIUnknown;
+    } else {
+      stats.tx.gi = it->second;
     }
   }
   return stats;

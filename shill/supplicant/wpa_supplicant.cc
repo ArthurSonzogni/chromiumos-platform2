@@ -215,6 +215,11 @@ const char WPASupplicant::kSignalChangePropertyAverageBeaconRSSI[] =
     "avg-beacon-rssi";
 const char WPASupplicant::kSignalChangePropertyAverageAckRSSI[] =
     "avg-ack-rssi";
+const char WPASupplicant::kSignalChangePropertyInactiveTime[] = "inactive-time";
+const char WPASupplicant::kSignalChangePropertyRxGI[] = "rx-guard-interval";
+const char WPASupplicant::kSignalChangePropertyTxGI[] = "tx-guard-interval";
+const char WPASupplicant::kSignalChangePropertyRxDCM[] = "rx-dcm";
+const char WPASupplicant::kSignalChangePropertyTxDCM[] = "tx-dcm";
 
 const char WPASupplicant::kCredentialsPropertyDomain[] = "domain";
 const char WPASupplicant::kCredentialsPropertyPassword[] = "password";
@@ -259,6 +264,18 @@ const int32_t WPASupplicant::kMACAddrPolicyHardware = 0;
 const int32_t WPASupplicant::kMACAddrPolicyFullRandom = 1;
 const int32_t WPASupplicant::kMACAddrPolicyOUIRandom = 2;
 const int32_t WPASupplicant::kMACAddrPolicyPersistentRandom = 3;
+
+const char WPASupplicant::kChannelWidth20MHznoHT[] = "20 MHz (no HT)";
+const char WPASupplicant::kChannelWidth20MHz[] = "20 MHz";
+const char WPASupplicant::kChannelWidth40MHz[] = "40 MHz";
+const char WPASupplicant::kChannelWidth80MHz[] = "80 MHz";
+const char WPASupplicant::kChannelWidth80p80MHz[] = "80+80 MHz";
+const char WPASupplicant::kChannelWidth160MHz[] = "160 MHz";
+
+const uint32_t WPASupplicant::kGuardInterval_0_4 = 1u;
+const uint32_t WPASupplicant::kGuardInterval_0_8 = 2u;
+const uint32_t WPASupplicant::kGuardInterval_1_6 = 3u;
+const uint32_t WPASupplicant::kGuardInterval_3_2 = 4u;
 
 // static
 bool WPASupplicant::ExtractRemoteCertification(const KeyValueStore& properties,

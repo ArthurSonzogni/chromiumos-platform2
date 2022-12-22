@@ -168,7 +168,6 @@ class WPASupplicant {
   static const char kStationPropertyAddress[];
   static const char kStationPropertyAID[];
 
-  // TODO(b/230525092): Add support for NL80211_STA_INFO_INACTIVE_TIME
   static const char kSignalChangeProperty[];
   static const char kSignalChangePropertyRSSI[];
   static const char kSignalChangePropertyNoise[];
@@ -204,6 +203,11 @@ class WPASupplicant {
   static const char kSignalChangePropertyTxVHTNSS[];
   static const char kSignalChangePropertyAverageBeaconRSSI[];
   static const char kSignalChangePropertyAverageAckRSSI[];
+  static const char kSignalChangePropertyInactiveTime[];
+  static const char kSignalChangePropertyRxGI[];
+  static const char kSignalChangePropertyTxGI[];
+  static const char kSignalChangePropertyRxDCM[];
+  static const char kSignalChangePropertyTxDCM[];
 
   static const char kCredentialsPropertyDomain[];
   static const char kCredentialsPropertyPassword[];
@@ -243,6 +247,18 @@ class WPASupplicant {
   static const int32_t kMACAddrPolicyFullRandom;
   static const int32_t kMACAddrPolicyOUIRandom;
   static const int32_t kMACAddrPolicyPersistentRandom;
+
+  static const char kChannelWidth20MHznoHT[];
+  static const char kChannelWidth20MHz[];
+  static const char kChannelWidth40MHz[];
+  static const char kChannelWidth80MHz[];
+  static const char kChannelWidth80p80MHz[];
+  static const char kChannelWidth160MHz[];
+
+  static const uint32_t kGuardInterval_0_4;
+  static const uint32_t kGuardInterval_0_8;
+  static const uint32_t kGuardInterval_1_6;
+  static const uint32_t kGuardInterval_3_2;
 
   // Retrieve the |subject| and |depth| of an a remote certifying entity,
   // as contained the the |properties| to a Certification event from

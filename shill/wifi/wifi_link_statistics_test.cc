@@ -358,7 +358,7 @@ TEST_F(WiFiLinkStatisticsTest, StationInfoReportConvert) {
               .bitrate = 100,
               .mcs = 9,
               .nss = 2,
-              .dcm = kNotHandledYet,
+              .dcm = 0,
           },
       .tx =
           {
@@ -367,7 +367,7 @@ TEST_F(WiFiLinkStatisticsTest, StationInfoReportConvert) {
               .bitrate = 200,
               .mcs = 7,
               .nss = 2,
-              .dcm = kNotHandledYet,
+              .dcm = 1,
           },
   };
 
@@ -382,6 +382,7 @@ TEST_F(WiFiLinkStatisticsTest, StationInfoReportConvert) {
               .bitrate = 100,
               .mcs = 9,
               .nss = 2,
+              .dcm = 0,
           },
       .tx =
           {
@@ -390,6 +391,7 @@ TEST_F(WiFiLinkStatisticsTest, StationInfoReportConvert) {
               .bitrate = 200,
               .mcs = 7,
               .nss = 2,
+              .dcm = 1,
           },
   };
 
@@ -504,6 +506,10 @@ TEST_F(WiFiLinkStatisticsTest, StationStatsFromKVHE) {
                            10000ULL);
   properties.Set<std::string>(WPASupplicant::kSignalChangePropertyChannelWidth,
                               "160 MHz");
+  properties.Set<uint32_t>(WPASupplicant::kSignalChangePropertyRxDCM, 0);
+  properties.Set<uint32_t>(WPASupplicant::kSignalChangePropertyTxDCM, 1);
+  properties.Set<uint32_t>(WPASupplicant::kSignalChangePropertyRxGI, 3);
+  properties.Set<uint32_t>(WPASupplicant::kSignalChangePropertyTxGI, 4);
 
   WiFiLinkStatistics::StationStats expected = {
       .tx_retries = 400UL,
@@ -519,7 +525,9 @@ TEST_F(WiFiLinkStatisticsTest, StationStatsFromKVHE) {
               .bitrate = 866UL,
               .mcs = 15,
               .mode = WiFiLinkStatistics::LinkMode::kLinkModeHE,
+              .gi = WiFiLinkStatistics::GuardInterval::kLinkStatsGI_1_6,
               .nss = 8,
+              .dcm = 0,
           },
       .tx = {
           .packets = 1500UL,
@@ -527,7 +535,9 @@ TEST_F(WiFiLinkStatisticsTest, StationStatsFromKVHE) {
           .bitrate = 500UL,
           .mcs = 12,
           .mode = WiFiLinkStatistics::LinkMode::kLinkModeHE,
+          .gi = WiFiLinkStatistics::GuardInterval::kLinkStatsGI_3_2,
           .nss = 6,
+          .dcm = 1,
       }};
 
   WiFiLinkStatistics::StationStats stats =
@@ -563,8 +573,13 @@ TEST_F(WiFiLinkStatisticsTest, StationStatsFromKVVHT) {
                            10000ULL);
   properties.Set<std::string>(WPASupplicant::kSignalChangePropertyChannelWidth,
                               "80 MHz");
+  properties.Set<uint32_t>(WPASupplicant::kSignalChangePropertyRxGI, 0);
+  properties.Set<uint32_t>(WPASupplicant::kSignalChangePropertyTxGI, 1);
+  properties.Set<uint32_t>(WPASupplicant::kSignalChangePropertyInactiveTime,
+                           2000UL);
 
   WiFiLinkStatistics::StationStats expected = {
+      .inactive_time = 2000UL,
       .tx_retries = 400UL,
       .tx_failed = 10UL,
       .rx_drop_misc = 40ULL,
@@ -578,6 +593,7 @@ TEST_F(WiFiLinkStatisticsTest, StationStatsFromKVVHT) {
               .bitrate = 866UL,
               .mcs = 15,
               .mode = WiFiLinkStatistics::LinkMode::kLinkModeVHT,
+              .gi = WiFiLinkStatistics::GuardInterval::kLinkStatsGIUnknown,
               .nss = 8,
           },
       .tx = {
@@ -586,6 +602,7 @@ TEST_F(WiFiLinkStatisticsTest, StationStatsFromKVVHT) {
           .bitrate = 500UL,
           .mcs = 12,
           .mode = WiFiLinkStatistics::LinkMode::kLinkModeVHT,
+          .gi = WiFiLinkStatistics::GuardInterval::kLinkStatsGI_0_4,
           .nss = 6,
       }};
 
