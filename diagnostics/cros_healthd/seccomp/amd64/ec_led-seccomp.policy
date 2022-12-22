@@ -31,3 +31,4 @@ epoll_wait: 1
 socket: arg0 == AF_UNIX
 connect: 1
 exit_group: 1
+getrandom: 1

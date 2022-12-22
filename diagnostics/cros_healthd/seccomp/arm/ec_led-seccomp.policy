@@ -31,3 +31,6 @@ send: 1
 socket: arg0 == AF_UNIX
 connect: 1
 exit_group: 1
+clock_gettime64: 1
+clock_gettime: 1
+getrandom: 1
