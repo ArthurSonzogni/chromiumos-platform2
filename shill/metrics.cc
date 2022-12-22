@@ -1197,6 +1197,23 @@ void Metrics::NotifyMBOSupport(bool mbo_support) {
   SendBoolToUMA(kMetricMBOSupport, mbo_support);
 }
 
+void Metrics::NotifyStreamClassificationSupport(bool scs_supported,
+                                                bool mscs_supported) {
+  int sc_support = kWiFiApSCUnsupported;
+  if (scs_supported && mscs_supported) {
+    sc_support = kWiFiApSCBoth;
+  } else if (scs_supported) {
+    sc_support = kWiFiApSCS;
+  } else if (mscs_supported) {
+    sc_support = kWiFiApMSCS;
+  }
+  SendEnumToUMA(kMetricApSCSupport, sc_support);
+}
+
+void Metrics::NotifyAlternateEDCASupport(bool alternate_edca_supported) {
+  SendBoolToUMA(kMetricApAlternateEDCASupport, alternate_edca_supported);
+}
+
 void Metrics::NotifyWiFiServiceFailureAfterRekey(int seconds) {
   SendToUMA(kMetricTimeFromRekeyToFailureSeconds, seconds);
 }

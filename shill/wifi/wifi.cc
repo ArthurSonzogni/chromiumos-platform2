@@ -1494,6 +1494,11 @@ void WiFi::HandleRoam(const RpcIdentifier& new_bss,
   metrics()->NotifyHS20Support(endpoint->hs20_information().supported,
                                endpoint->hs20_information().version);
   metrics()->NotifyMBOSupport(endpoint->mbo_support());
+  metrics()->NotifyStreamClassificationSupport(
+      endpoint->qos_support().scs_supported,
+      endpoint->qos_support().mscs_supported);
+  metrics()->NotifyAlternateEDCASupport(
+      endpoint->qos_support().alternate_edca_supported);
 
   SLOG(this, 2) << "WiFi " << link_name() << " roamed to Endpoint "
                 << endpoint->bssid_string() << " "

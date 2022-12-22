@@ -405,6 +405,24 @@ class Metrics : public DefaultServiceObserver {
       .max = kWiFiAp80211rMax,
   };
 
+  // AP stream classification support metric.
+  enum WiFiApSCSupport {
+    kWiFiApSCUnsupported = 0,
+    kWiFiApSCS = 1,
+    kWiFiApMSCS = 2,
+    kWiFiApSCBoth = 3,
+
+    kWiFiApSCMax
+  };
+  static constexpr EnumMetric<FixedName> kMetricApSCSupport = {
+      .n = FixedName{"Network.Shill.WiFi.ApSCSupport"},
+      .max = kWiFiApSCMax,
+  };
+
+  // Alternate EDCA support metric.
+  static constexpr char kMetricApAlternateEDCASupport[] =
+      "Network.Shill.WiFi.ApAlternateEDCASupport";
+
   enum WiFiRoamComplete {
     kWiFiRoamSuccess = 0,
     kWiFiRoamFailure = 1,
@@ -1520,6 +1538,15 @@ class Metrics : public DefaultServiceObserver {
   // Notifies this object of the MBO support of the access point that has been
   // connected to.
   void NotifyMBOSupport(bool mbo_support);
+
+  // Notifies this object that of the stream classification support of an access
+  // point that has been connected to.
+  void NotifyStreamClassificationSupport(bool scs_supported,
+                                         bool mscs_supported);
+
+  // Notifies this object that of the alternate EDCA support of an access point
+  // that has been connected to.
+  void NotifyAlternateEDCASupport(bool alternate_edca_supported);
 
   // Emits the |WiFiAdapterStateChanged| structured event that notifies that
   // the WiFi adapter has been enabled or disabled. Includes the IDs describing
