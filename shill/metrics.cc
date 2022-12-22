@@ -992,6 +992,9 @@ void Metrics::NotifyDetailedCellularConnectionResult(
   if (ApnList::IsAttachApn(result.apn_info)) {
     apn_types |= static_cast<uint32_t>(CellularApnType::kCellularApnTypeIA);
   }
+  if (ApnList::IsTetheringApn(result.apn_info)) {
+    apn_types |= static_cast<uint32_t>(CellularApnType::kCellularApnTypeDun);
+  }
 
   if (device_metrics != nullptr) {
     base::TimeDelta elapsed_time;

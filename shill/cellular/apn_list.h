@@ -22,7 +22,7 @@ class ApnList {
   ~ApnList() = default;
 
   enum class ApnSource { kModb, kModem };
-  enum class ApnType { kDefault, kAttach };
+  enum class ApnType { kDefault, kAttach, kDun };
   void AddApns(const std::vector<MobileOperatorInfo::MobileAPN>& apns,
                ApnSource source);
 
@@ -31,6 +31,7 @@ class ApnList {
   static bool IsApnType(const Stringmap& apn_info, enum ApnType apn_type);
   static bool IsAttachApn(const Stringmap& apn_info);
   static bool IsDefaultApn(const Stringmap& apn_info);
+  static bool IsTetheringApn(const Stringmap& apn_info);
 
   static std::string JoinApnTypes(std::vector<std::string> apn_types);
 

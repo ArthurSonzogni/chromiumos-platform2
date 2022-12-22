@@ -92,6 +92,9 @@ std::set<std::string> GetApnTypes(
       case mobile_operator_db::MobileAPN_ApnType_IA:
         apn_types.insert(kApnTypeIA);
         break;
+      case mobile_operator_db::MobileAPN_ApnType_DUN:
+        apn_types.insert(kApnTypeDun);
+        break;
     }
   }
   return apn_types;

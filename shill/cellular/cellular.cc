@@ -2139,6 +2139,11 @@ std::deque<Stringmap> Cellular::BuildDefaultApnTryList() const {
   return BuildApnTryList(ApnList::ApnType::kDefault);
 }
 
+std::deque<Stringmap> Cellular::BuildTetheringApnTryList() const {
+  // TODO(b/249376151): Handle special cases for tethering based on modb flags
+  return BuildApnTryList(ApnList::ApnType::kDun);
+}
+
 std::deque<Stringmap> Cellular::BuildApnTryList(
     ApnList::ApnType apn_type) const {
   std::deque<Stringmap> apn_try_list;

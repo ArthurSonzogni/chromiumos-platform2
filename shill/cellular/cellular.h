@@ -275,6 +275,8 @@ class Cellular : public Device,
   std::deque<Stringmap> BuildAttachApnTryList() const;
   // Same as BuildApnTryList, but it only returns DEFAULT APNs.
   std::deque<Stringmap> BuildDefaultApnTryList() const;
+  // Same as BuildApnTryList, but it only returns DUN APNs.
+  std::deque<Stringmap> BuildTetheringApnTryList() const;
 
   // Update the home provider from the information in |operator_info|. This
   // information may be from the SIM / received OTA.

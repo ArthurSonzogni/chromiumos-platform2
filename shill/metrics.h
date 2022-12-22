@@ -541,6 +541,7 @@ class Metrics : public DefaultServiceObserver {
   enum class CellularApnType {
     kCellularApnTypeDefault = 1,
     kCellularApnTypeIA = 2,
+    kCellularApnTypeDun = 4,
   };
 
   // Connection diagnostics issue produced by ConnectionDiagnostics.

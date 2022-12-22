@@ -77,6 +77,7 @@ message MobileAPN {
   enum ApnType {
     DEFAULT = 0;  // internet data
     IA = 1;       // Initial Attach
+    DUN = 2;      // tethering
   }
   // At least one type has to be set.
   repeated ApnType type = 12;

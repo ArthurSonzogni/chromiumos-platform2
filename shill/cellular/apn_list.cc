@@ -97,6 +97,8 @@ std::string ApnList::GetApnTypeString(enum ApnType apn_type) {
       return kApnTypeDefault;
     case ApnType::kAttach:
       return kApnTypeIA;
+    case ApnType::kDun:
+      return kApnTypeDun;
   }
 }
 
@@ -122,6 +124,10 @@ bool ApnList::IsDefaultApn(const Stringmap& apn_info) {
   return IsApnType(apn_info, ApnType::kDefault);
 }
 
+bool ApnList::IsTetheringApn(const Stringmap& apn_info) {
+  return IsApnType(apn_info, ApnType::kDun);
+}
+
 std::string ApnList::JoinApnTypes(std::vector<std::string> apn_types) {
   std::set<std::string> types(apn_types.begin(), apn_types.end());
   std::string joined_apn_types = base::JoinString(
@@ -129,6 +135,7 @@ std::string ApnList::JoinApnTypes(std::vector<std::string> apn_types) {
   // Validate APN types
   types.erase(kApnTypeDefault);
   types.erase(kApnTypeIA);
+  types.erase(kApnTypeDun);
   if (!types.empty()) {
     LOG(ERROR) << "Invalid APN type: " << *types.begin();
     DCHECK(false);
