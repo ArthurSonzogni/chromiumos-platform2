@@ -16,7 +16,6 @@
 
 #include "shill/mock_connection.h"
 #include "shill/mock_control.h"
-#include "shill/mock_device_info.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
 #include "shill/mock_routing_table.h"
@@ -115,7 +114,6 @@ class NetworkInTest : public Network {
                 bool fixed_ip_params,
                 EventHandler* event_handler,
                 ControlInterface* control_interface,
-                DeviceInfo* device_info,
                 EventDispatcher* dispatcher,
                 Metrics* metrics)
       : Network(interface_index,
@@ -124,7 +122,6 @@ class NetworkInTest : public Network {
                 fixed_ip_params,
                 event_handler,
                 control_interface,
-                device_info,
                 dispatcher,
                 metrics) {
     ON_CALL(*this, SetIPFlag(_, _, _)).WillByDefault(Return(true));
@@ -146,13 +143,11 @@ class NetworkInTest : public Network {
 
 class NetworkTest : public ::testing::Test {
  public:
-  NetworkTest()
-      : manager_(&control_interface_, &dispatcher_, nullptr),
-        device_info_(&manager_) {
+  NetworkTest() : manager_(&control_interface_, &dispatcher_, nullptr) {
     network_ = std::make_unique<NiceMock<NetworkInTest>>(
         kTestIfindex, kTestIfname, kTestTechnology,
         /*fixed_ip_params=*/false, &event_handler_, &control_interface_,
-        &device_info_, &dispatcher_, &metrics_);
+        &dispatcher_, &metrics_);
     network_->set_dhcp_provider_for_testing(&dhcp_provider_);
     network_->set_routing_table_for_testing(&routing_table_);
     EXPECT_CALL(dhcp_provider_, CreateController(_, _, _)).Times(0);
@@ -189,7 +184,6 @@ class NetworkTest : public ::testing::Test {
   NiceMock<MockControl> control_interface_;
   EventDispatcherForTest dispatcher_;
   MockManager manager_;
-  NiceMock<MockDeviceInfo> device_info_;
   NiceMock<MockMetrics> metrics_;
 
   MockDHCPProvider dhcp_provider_;

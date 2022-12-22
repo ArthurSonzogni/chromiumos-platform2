@@ -6,7 +6,6 @@
 
 #include <string>
 
-#include "shill/mock_connection.h"
 #include "shill/network/network.h"
 #include "shill/technology.h"
 
@@ -21,7 +20,6 @@ MockNetwork::MockNetwork(int interface_index,
               /*fixed_ip_params=*/false,
               /*event_handler=*/nullptr,
               /*control_interface=*/nullptr,
-              /*device_info=*/nullptr,
               /*dispatcher=*/nullptr,
               /*metrics=*/nullptr) {}
 

@@ -14,7 +14,6 @@
 #include <chromeos/dbus/service_constants.h>
 
 #include "shill/connection.h"
-#include "shill/device_info.h"
 #include "shill/event_dispatcher.h"
 #include "shill/logging.h"
 #include "shill/metrics.h"
@@ -62,7 +61,6 @@ Network::Network(int interface_index,
                  bool fixed_ip_params,
                  EventHandler* event_handler,
                  ControlInterface* control_interface,
-                 DeviceInfo* device_info,
                  EventDispatcher* dispatcher,
                  Metrics* metrics)
     : interface_index_(interface_index),
@@ -71,7 +69,6 @@ Network::Network(int interface_index,
       fixed_ip_params_(fixed_ip_params),
       event_handler_(event_handler),
       control_interface_(control_interface),
-      device_info_(device_info),
       dispatcher_(dispatcher),
       metrics_(metrics),
       dhcp_provider_(DHCPProvider::GetInstance()),

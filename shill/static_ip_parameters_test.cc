@@ -66,13 +66,12 @@ class StaticIPParametersTest : public Test {
   StaticIPParametersTest() {
     manager_ = std::make_unique<MockManager>(&control_interface_, &dispatcher_,
                                              &metrics_);
-    device_info_ = std::make_unique<MockDeviceInfo>(manager_.get());
     service_ = new ServiceUnderTest(manager_.get());
 
     const std::string ifname = "eth1";
     network_ = std::make_unique<Network>(
         1, ifname, Technology::kEthernet, false, &network_handler_,
-        &control_interface_, device_info_.get(), &dispatcher_, &metrics_);
+        &control_interface_, &dispatcher_, &metrics_);
     network_->set_connection_for_testing(std::make_unique<MockConnection>());
     network_->set_ipconfig(
         std::make_unique<IPConfig>(&control_interface_, ifname));
@@ -84,7 +83,6 @@ class StaticIPParametersTest : public Test {
   ~StaticIPParametersTest() {
     service_ = nullptr;
     network_ = nullptr;
-    device_info_ = nullptr;
     manager_ = nullptr;
   }
 
@@ -261,7 +259,6 @@ class StaticIPParametersTest : public Test {
   EventDispatcherForTest dispatcher_;
   MockMetrics metrics_;
   std::unique_ptr<MockManager> manager_;
-  std::unique_ptr<MockDeviceInfo> device_info_;
 
   MockNetworkEventHandler network_handler_;
 

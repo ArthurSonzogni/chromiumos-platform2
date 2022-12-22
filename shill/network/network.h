@@ -26,7 +26,6 @@
 
 namespace shill {
 
-class DeviceInfo;
 class EventDispatcher;
 class Metrics;
 class RoutingTable;
@@ -117,7 +116,6 @@ class Network {
                    bool fixed_ip_params,
                    EventHandler* event_handler,
                    ControlInterface* control_interface,
-                   DeviceInfo* device_info,
                    EventDispatcher* dispatcher,
                    Metrics* metrics);
   Network(const Network&) = delete;
@@ -382,7 +380,6 @@ class Network {
 
   // Other dependencies.
   ControlInterface* control_interface_;
-  DeviceInfo* device_info_;
   EventDispatcher* dispatcher_;
   Metrics* metrics_;
 
