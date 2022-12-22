@@ -3788,11 +3788,22 @@ void WiFi::AddBTStateToLinkQualityReport(
     return;
   }
   report.bt_stack = floss ? Metrics::kBTStackFloss : Metrics::kBTStackBlueZ;
+
   for (auto adapter : bt_adapters) {
     if (adapter.enabled) {
       bt_enabled = true;
-      hci = adapter.hci_interface;
-      break;
+      if (hci == BluetoothManagerInterface::kInvalidHCI) {
+        // If this is the first adapter that is enabled, store its HCI and query
+        // that adapter directly. That saves a D-Bus roundtrip to find out which
+        // adapter is the default one.
+        hci = adapter.hci_interface;
+      } else {
+        // At least 2 adapters are enabled. Reset the HCI and query the BT stack
+        // to know which adapter is the default one. Only then will we be able
+        // to query the state of that particular adapter.
+        hci = BluetoothManagerInterface::kInvalidHCI;
+        break;
+      }
     }
   }
   report.bt_enabled = bt_enabled;
@@ -3803,6 +3814,16 @@ void WiFi::AddBTStateToLinkQualityReport(
     // - BT is enabled
     return;
   }
+  if (hci == BluetoothManagerInterface::kInvalidHCI) {
+    // More than 1 adapter is enabled, find out the HCI of the default one and
+    // then query that adapter directly.
+    if (!bt_manager->GetDefaultAdapter(&hci)) {
+      LOG(ERROR) << link_name() << ": Failed to query default BT adapter";
+      return;
+    }
+  }
+  SLOG(this, 3) << __func__ << ": WiFi " << link_name()
+                << ": Default BT adapter HCI " << hci;
   BluetoothManagerInterface::BTProfileConnectionState profile_state;
   if (bt_manager->GetProfileConnectionState(
           hci, BluetoothManagerInterface::BTProfile::kHFP, &profile_state)) {

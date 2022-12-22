@@ -55,16 +55,27 @@ class BluetoothManagerInterface {
   virtual bool GetAvailableAdapters(
       bool* is_floss, std::vector<BTAdapterWithEnabled>* adapters) const = 0;
 
+  // Query the BT stack to know which of the BT adapters present on the system
+  // is the default one.
+  // This is only supported on Floss. Before using this function, callers must:
+  // - ensure that the device is using Floss rather than BlueZ
+  // - ensure that the BT adapter is enabled
+  //
+  // Returns true if the query was successful, false otherwise.
+  // If the query was successful, |hci| is set to the index of the default
+  // adapter.
+  virtual bool GetDefaultAdapter(int32_t* hci) const = 0;
+
   // Query the BT stack to know the connection state of a particular BT profile
   // (HFP, A2DP, ...).
   // This is only supported on Floss. Before using this function, callers must:
   // - ensure that the device is using Floss rather than BlueZ
   // - ensure that the BT adapter is enabled
   //
-  // If the caller sets |hci| to |kInvalidHCI|, we will query the BT stack to
-  // find out which BT adapter is the default one and query that one. If the
-  // caller has specified a valid HCI, we'll bypass that query to avoid a
-  // relatively costly roundtrip to/from btmanagerd.
+  // |hci| is the index of the BT adapter that will be queried. It must
+  // correspond to the default adapter that is currently enabled. To find out
+  // the correct HCI, use |GetAvailableAdapters()|. If more than 1 adapter is
+  // enabled, use |GetDefaultAdapter()|.
   //
   // On success, |state| will be populated with the connection state of the
   // profile.
@@ -79,6 +90,11 @@ class BluetoothManagerInterface {
   // function, callers must:
   // - ensure that the device is using Floss rather than BlueZ
   // - ensure that the BT adapter is enabled.
+  //
+  // |hci| is the index of the BT adapter that will be queried. It must
+  // correspond to the default adapter that is currently enabled. To find out
+  // the correct HCI, use |GetAvailableAdapters()|. If more than 1 adapter is
+  // enabled, use |GetDefaultAdapter()|.
   virtual bool IsDiscovering(int32_t hci, bool* discovering) const = 0;
 };
 

@@ -37,6 +37,8 @@ class BluetoothManager : public BluetoothManagerInterface {
       std::vector<BluetoothManagerInterface::BTAdapterWithEnabled>* adapters)
       const override;
 
+  bool GetDefaultAdapter(int32_t* hci) const override;
+
   bool GetProfileConnectionState(
       int32_t hci,
       BTProfile profile,

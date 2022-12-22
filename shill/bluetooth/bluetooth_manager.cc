@@ -118,22 +118,27 @@ bool BluetoothManager::GetAvailableAdapters(
   return true;
 }
 
+bool BluetoothManager::GetDefaultAdapter(int32_t* hci) const {
+  if (!init_complete_) {
+    LOG(ERROR) << __func__ << "BT manager is not ready";
+    return false;
+  }
+  if (!bluetooth_manager_proxy_->GetDefaultAdapter(hci)) {
+    LOG(ERROR) << __func__ << "Failed to query the default BT adapter";
+    return false;
+  }
+  return true;
+}
+
 bool BluetoothManager::GetProfileConnectionState(
     int32_t hci, BTProfile profile, BTProfileConnectionState* state) const {
   if (!init_complete_) {
     LOG(ERROR) << __func__ << "BT manager is not ready";
     return false;
   }
-  int32_t index = hci;
-  if (index == kInvalidHCI) {
-    if (!bluetooth_manager_proxy_->GetDefaultAdapter(&index)) {
-      LOG(ERROR) << __func__ << "Failed to query the default BT adapter";
-      return false;
-    }
-  }
-  auto it = adapter_proxies_.find(index);
+  auto it = adapter_proxies_.find(hci);
   if (it == adapter_proxies_.end()) {
-    LOG(ERROR) << "Adapter " << index << " not found";
+    LOG(ERROR) << "Adapter " << hci << " not found";
     return false;
   }
   if (!it->second->GetProfileConnectionState(profile, state)) {
@@ -148,16 +153,9 @@ bool BluetoothManager::IsDiscovering(int32_t hci, bool* discovering) const {
     LOG(ERROR) << __func__ << "BT manager is not ready";
     return false;
   }
-  int32_t index = hci;
-  if (index == kInvalidHCI) {
-    if (!bluetooth_manager_proxy_->GetDefaultAdapter(&index)) {
-      LOG(ERROR) << __func__ << "Failed to query the default BT adapter";
-      return false;
-    }
-  }
-  auto it = adapter_proxies_.find(index);
+  auto it = adapter_proxies_.find(hci);
   if (it == adapter_proxies_.end()) {
-    LOG(ERROR) << "Adapter " << index << " not found";
+    LOG(ERROR) << "Adapter " << hci << " not found";
     return false;
   }
   if (!it->second->IsDiscovering(discovering)) {
