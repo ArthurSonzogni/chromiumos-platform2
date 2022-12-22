@@ -4,6 +4,7 @@
 
 #include <brillo/errors/error.h>
 
+#include <cstdarg>
 #include <utility>
 
 #include <base/logging.h>

@@ -13,6 +13,7 @@
 #include <termios.h>
 #include <unistd.h>
 
+#include <cstdarg>
 #include <iostream>
 #include <iterator>
 #include <memory>

@@ -3,6 +3,7 @@
  * found in the LICENSE file.
  */
 
+#include <stdarg.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
