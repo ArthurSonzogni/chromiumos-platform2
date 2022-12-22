@@ -5,12 +5,14 @@
 #ifndef DIAGNOSTICS_CROS_HEALTHD_ROUTINES_BLUETOOTH_BLUETOOTH_BASE_H_
 #define DIAGNOSTICS_CROS_HEALTHD_ROUTINES_BLUETOOTH_BLUETOOTH_BASE_H_
 
+#include <string>
 #include <vector>
 
 #include <base/time/tick_clock.h>
 
 #include "diagnostics/cros_healthd/system/context.h"
 #include "diagnostics/dbus_bindings/bluetooth/dbus-proxies.h"
+#include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
 
 namespace diagnostics {
 
@@ -25,8 +27,17 @@ class BluetoothRoutineBase {
   // Getter of the main Bluetooth adapter.
   org::bluez::Adapter1ProxyInterface* GetAdapter() const;
 
-  // Ensure the adapter is powered on.
-  void EnsureAdapterPoweredOn(base::OnceCallback<void(bool)> on_finish);
+  // Ensure the adapter powered state is |powered|.
+  void EnsureAdapterPoweredState(bool powered,
+                                 base::OnceCallback<void(bool)> on_finish);
+
+  // Run the pre-check for the Bluetooth routine. Bluetooth routines should not
+  // be run when the adapter is already in discovery mode.
+  void RunPreCheck(
+      base::OnceClosure on_passed,
+      base::OnceCallback<
+          void(ash::cros_healthd::mojom::DiagnosticRoutineStatusEnum status,
+               std::string error_message)> on_failed);
 
  protected:
   // Unowned pointer that should outlive this instance.

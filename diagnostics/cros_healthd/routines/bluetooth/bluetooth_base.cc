@@ -4,13 +4,20 @@
 
 #include "diagnostics/cros_healthd/routines/bluetooth/bluetooth_base.h"
 
+#include <string>
 #include <utility>
 
 #include <base/bind.h>
 
+#include "diagnostics/cros_healthd/routines/bluetooth/bluetooth_constants.h"
 #include "diagnostics/cros_healthd/system/bluetooth_info_manager.h"
 
 namespace diagnostics {
+namespace {
+
+namespace mojom = ::ash::cros_healthd::mojom;
+
+}  // namespace
 
 BluetoothRoutineBase::BluetoothRoutineBase(Context* context)
     : context_(context) {
@@ -26,18 +33,39 @@ org::bluez::Adapter1ProxyInterface* BluetoothRoutineBase::GetAdapter() const {
   return adapters_[0];
 }
 
-void BluetoothRoutineBase::EnsureAdapterPoweredOn(
-    base::OnceCallback<void(bool)> on_finish) {
+void BluetoothRoutineBase::EnsureAdapterPoweredState(
+    bool powered, base::OnceCallback<void(bool)> on_finish) {
   if (!GetAdapter()) {
     std::move(on_finish).Run(false);
     return;
   }
-  // Already on.
-  if (GetAdapter()->powered()) {
+  // Already on or off.
+  if (powered == GetAdapter()->powered()) {
     std::move(on_finish).Run(true);
     return;
   }
-  GetAdapter()->set_powered(true, std::move(on_finish));
+  GetAdapter()->set_powered(powered, std::move(on_finish));
+}
+
+void BluetoothRoutineBase::RunPreCheck(
+    base::OnceClosure on_passed,
+    base::OnceCallback<void(mojom::DiagnosticRoutineStatusEnum status,
+                            std::string error_message)> on_failed) {
+  if (!GetAdapter()) {
+    std::move(on_failed).Run(mojom::DiagnosticRoutineStatusEnum::kError,
+                             kBluetoothRoutineFailedGetAdapter);
+    return;
+  }
+
+  // Ensure the adapter is not in discovery mode. We should avoid running
+  // Bluetooth routines when the adapter is actively scaninng or pairing.
+  if (GetAdapter()->powered() && GetAdapter()->discovering()) {
+    std::move(on_failed).Run(mojom::DiagnosticRoutineStatusEnum::kFailed,
+                             kBluetoothRoutineFailedDiscoveryMode);
+    return;
+  }
+
+  std::move(on_passed).Run();
 }
 
 }  // namespace diagnostics
