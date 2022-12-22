@@ -17,6 +17,13 @@ inline constexpr char kCrosHealthdSandboxUser[] = "cros_healthd";
 inline constexpr char kMinijailBinary[] = "/sbin/minijail0";
 inline constexpr char kSeccompPolicyDirectory[] = "/usr/share/policy/";
 
+// SandboxOption is used to customized minijail configuration. Default to
+// passing without option for highest security.
+enum SandboxOption {
+  // Do not enter a new network namespace for minijail.
+  NO_ENTER_NETWORK_NAMESPACE = 1 << 0,
+};
+
 // Runs a command under minijail.
 //
 // The arguments:
@@ -30,6 +37,8 @@ inline constexpr char kSeccompPolicyDirectory[] = "/usr/share/policy/";
 //     doesn't exist it is ignored. Default to |{}|.
 // * |writable_mount_points|: The paths to be mounted writable. All the paths
 //     must exist, otherwise the process will fail to be run. Default to |{}|.
+// * |sandbox_option|: Open sandbox without certain flags, use bit-wise options
+//     from SandboxOption to customize. Default to 0 for maximum security.
 class SandboxedProcess : public brillo::ProcessImpl {
  public:
   SandboxedProcess(const std::vector<std::string>& command,
@@ -37,7 +46,8 @@ class SandboxedProcess : public brillo::ProcessImpl {
                    const std::string& user,
                    uint64_t capabilities_mask,
                    const std::vector<base::FilePath>& readonly_mount_points,
-                   const std::vector<base::FilePath>& writable_mount_points);
+                   const std::vector<base::FilePath>& writable_mount_points,
+                   uint32_t sandbox_option = 0);
   SandboxedProcess(
       const std::vector<std::string>& command,
       const std::string& seccomp_filename,

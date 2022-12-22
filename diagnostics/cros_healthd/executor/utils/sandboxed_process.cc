@@ -64,9 +64,10 @@ SandboxedProcess::SandboxedProcess(
     const std::string& user,
     uint64_t capabilities_mask,
     const std::vector<base::FilePath>& readonly_mount_points,
-    const std::vector<base::FilePath>& writable_mount_points)
+    const std::vector<base::FilePath>& writable_mount_points,
+    uint32_t sandbox_option)
     : command_(command), readonly_mount_points_(readonly_mount_points) {
-  auto seccompe_file =
+  auto seccomp_file =
       base::FilePath(kSeccompPolicyDirectory).Append(seccomp_filename);
   sandbox_arguments_ = {
       // Enter a new VFS mount namespace.
@@ -75,8 +76,6 @@ SandboxedProcess::SandboxedProcess(
       "-r",
       // Run inside a new IPC namespace.
       "-l",
-      // Enter a new network namespace.
-      "-e",
       // Create a new UTS/hostname namespace.
       "--uts",
       // Set user.
@@ -92,10 +91,15 @@ SandboxedProcess::SandboxedProcess(
       base::StringPrintf("0x%" PRIx64, capabilities_mask),
       // Set seccomp policy file.
       "-S",
-      seccompe_file.value(),
+      seccomp_file.value(),
       // Set the process’s no_new_privs bit.
       "-n",
   };
+
+  if ((sandbox_option & NO_ENTER_NETWORK_NAMESPACE) == 0) {
+    // Enter a new network namespace.
+    sandbox_arguments_.push_back("-e");
+  }
   for (const base::FilePath& f : writable_mount_points) {
     sandbox_arguments_.push_back("-b");
     sandbox_arguments_.push_back(f.value() + "," + f.value() + ",1");
