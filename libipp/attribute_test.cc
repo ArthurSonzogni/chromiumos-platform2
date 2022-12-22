@@ -284,6 +284,18 @@ TEST_F(CollectionTest, IteratorTraits) {
   EXPECT_TRUE((std::is_same<itc_traits::reference, const Attribute&>::value));
 }
 
+TEST(AttributeTest, CollsWrongType) {
+  Frame frame = Frame(Operation::Activate_Printer);
+  Collection& coll = frame.Groups(GroupTag::operation_attributes)[0];
+  coll.AddAttr("out-of-band", ValueTag::not_settable);
+  Attribute& attr = *coll.GetAttribute("out-of-band");
+  EXPECT_TRUE(attr.Colls().empty());
+  EXPECT_EQ(attr.Colls().size(), 0);
+  const Attribute& attr_const = attr;
+  EXPECT_TRUE(attr_const.Colls().empty());
+  EXPECT_EQ(attr_const.Colls().size(), 0);
+}
+
 TEST(ToStrView, ValueTag) {
   EXPECT_EQ(ToStrView(ValueTag::keyword), "keyword");
   EXPECT_EQ(ToStrView(ValueTag::delete_attribute), "delete-attribute");

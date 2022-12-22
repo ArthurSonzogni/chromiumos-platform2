@@ -11,6 +11,7 @@
 #include <vector>
 
 #include "attribute.h"
+#include "colls_view.h"
 #include "ipp_enums.h"
 #include "ipp_export.h"
 #include "ipp_log.h"
@@ -172,11 +173,26 @@ class IPP_EXPORT Frame {
   //  * Code::kDataTooLong
   Code SetData(std::vector<uint8_t>&& data);
 
+  // Provides access to groups with the given GroupTag. You can iterate over
+  // these groups in the following way:
+  //   for (Collection& coll: frame.Groups(GroupTag::job_attributes)) {
+  //     ...
+  //   }
+  // or
+  //   for (size_t i = 0; i < frame.Groups(GroupTag::job_attributes).size(); ) {
+  //     Collection& coll = frame.Groups(GroupTag::job_attributes)[i++];
+  //     ...
+  //   }
+  // The groups are in the same order as they occur in the frame.
+  CollectionsView Groups(GroupTag tag);
+  ConstCollectionsView Groups(GroupTag tag) const;
+
   // Return all groups of attributes in the frame in the order they were added.
   // The returned vector never contains nullptr values.
   std::vector<std::pair<GroupTag, Collection*>> GetGroups();
   std::vector<std::pair<GroupTag, const Collection*>> GetGroups() const;
 
+  // DEPRECATED. Use Groups(tag) instead (see above).
   // Return all groups of attributes in the frame with given Group Tag. The
   // returned vector never contains nullptr values. If the given GroupTag is
   // invalid or there is no groups with given `tag` in the frame an empty vector
@@ -184,6 +200,7 @@ class IPP_EXPORT Frame {
   std::vector<Collection*> GetGroups(GroupTag tag);
   std::vector<const Collection*> GetGroups(GroupTag tag) const;
 
+  // DEPRECATED. Use Groups(tag)[index] instead (see above).
   // Return a group of attributes with given Group Tag at position `index`.
   // The position is always the same as in the corresponding vector returned
   // by the GetGroups() method. Returns nullptr if the frame does not have such

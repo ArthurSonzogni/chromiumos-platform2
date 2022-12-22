@@ -16,6 +16,7 @@
 #include <utility>
 #include <vector>
 
+#include "colls_view.h"
 #include "ipp_enums.h"
 #include "ipp_export.h"
 
@@ -461,6 +462,21 @@ class IPP_EXPORT Attribute {
   bool SetValue(const RangeOfInteger& val, size_t index = 0);
   bool SetValue(const DateTime& val, size_t index = 0);
 
+  // Provides access to Collection objects. You can iterate over them in the
+  // following ways:
+  //   for (Collection& coll: attr.Colls()) {
+  //     ...
+  //   }
+  // or
+  //   for (size_t i = 0; i < attr.Colls().size(); ) {
+  //     Collection& coll = attr.Colls()[i++];
+  //     ...
+  //   }
+  // (Tag() != collection) <=> attr.Colls().empty()
+  CollectionsView Colls();
+  ConstCollectionsView Colls() const;
+
+  // DEPRECATED. Use Colls()[index] instead.
   // Returns a pointer to Collection.
   // (Tag() != collection || index >= Size()) <=> returns nullptr.
   Collection* GetCollection(size_t index = 0);

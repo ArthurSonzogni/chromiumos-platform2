@@ -21,6 +21,7 @@ group("all") {
 shared_library("libipp") {
   sources = [
     "attribute.h",
+    "colls_view.h",
     "errors.cc",
     "errors.h",
     "frame.cc",
@@ -52,6 +53,7 @@ install_config("install_pkgconfig") {
 install_config("install_headers") {
   sources = [
     "attribute.h",
+    "colls_view.h",
     "errors.h",
     "frame.h",
     "ipp_attribute.h",
@@ -67,6 +69,7 @@ if (use.test) {
   executable("libipp_test") {
     sources = [
       "attribute_test.cc",
+      "colls_view_test.cc",
       "errors_test.cc",
       "frame_test.cc",
       "ipp_attribute_test.cc",
