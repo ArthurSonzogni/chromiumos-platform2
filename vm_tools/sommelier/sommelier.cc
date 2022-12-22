@@ -628,8 +628,8 @@ void sl_registry_handler(void* data,
     assert(!ctx->xdg_shell);
     ctx->xdg_shell = xdg_shell;
     if (ctx->xwayland) {
-      xdg_shell->internal = static_cast<xdg_wm_base*>(
-          wl_registry_bind(registry, id, &xdg_wm_base_interface, 1));
+      xdg_shell->internal = static_cast<xdg_wm_base*>(wl_registry_bind(
+          registry, id, &xdg_wm_base_interface, XDG_SHELL_VERSION));
       xdg_wm_base_add_listener(xdg_shell->internal,
                                &sl_internal_xdg_shell_listener, NULL);
     } else {

@@ -21,6 +21,7 @@
 #include "weak-resource-ptr.h"  // NOLINT(build/include_directory)
 
 #define SOMMELIER_VERSION "0.20"
+#define XDG_SHELL_VERSION 3u
 
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof(a[0]))
 

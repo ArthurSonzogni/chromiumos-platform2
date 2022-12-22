@@ -106,7 +106,10 @@ static const struct xdg_positioner_interface sl_xdg_positioner_implementation =
      ForwardRequest<xdg_positioner_set_anchor>,
      ForwardRequest<xdg_positioner_set_gravity>,
      ForwardRequest<xdg_positioner_set_constraint_adjustment>,
-     sl_xdg_positioner_set_offset};
+     sl_xdg_positioner_set_offset,
+     ForwardRequest<xdg_positioner_set_reactive>,
+     ForwardRequest<xdg_positioner_set_parent_size>,
+     ForwardRequest<xdg_positioner_set_parent_configure>};
 
 static void sl_destroy_host_xdg_positioner(struct wl_resource* resource) {
   struct sl_host_xdg_positioner* host =
@@ -123,7 +126,8 @@ static void sl_xdg_popup_destroy(struct wl_client* client,
 }
 
 static const struct xdg_popup_interface sl_xdg_popup_implementation = {
-    sl_xdg_popup_destroy, ForwardRequest<xdg_popup_grab>};
+    sl_xdg_popup_destroy, ForwardRequest<xdg_popup_grab>,
+    ForwardRequest<xdg_popup_reposition>};
 
 static struct sl_host_surface* get_host_surface(
     struct sl_host_xdg_surface* xdg) {
@@ -164,8 +168,16 @@ static void sl_xdg_popup_popup_done(void* data, struct xdg_popup* xdg_popup) {
   xdg_popup_send_popup_done(host->resource);
 }
 
+static void sl_xdg_popup_repositioned(void* data,
+                                      struct xdg_popup* xdg_popup,
+                                      uint32_t token) {
+  struct sl_host_xdg_popup* host =
+      static_cast<sl_host_xdg_popup*>(xdg_popup_get_user_data(xdg_popup));
+  xdg_popup_send_repositioned(host->resource, token);
+}
+
 static const struct xdg_popup_listener sl_xdg_popup_listener = {
-    sl_xdg_popup_configure, sl_xdg_popup_popup_done};
+    sl_xdg_popup_configure, sl_xdg_popup_popup_done, sl_xdg_popup_repositioned};
 
 static void sl_destroy_host_xdg_popup(struct wl_resource* resource) {
   struct sl_host_xdg_popup* host =
@@ -267,8 +279,8 @@ static void sl_xdg_surface_get_toplevel(struct wl_client* client,
   struct sl_host_xdg_toplevel* host_xdg_toplevel = new sl_host_xdg_toplevel();
 
   host_xdg_toplevel->ctx = host->ctx;
-  host_xdg_toplevel->resource =
-      wl_resource_create(client, &xdg_toplevel_interface, 1, id);
+  host_xdg_toplevel->resource = wl_resource_create(
+      client, &xdg_toplevel_interface, wl_resource_get_version(resource), id);
   wl_resource_set_implementation(
       host_xdg_toplevel->resource, &sl_xdg_toplevel_implementation,
       host_xdg_toplevel, sl_destroy_host_xdg_toplevel);
@@ -296,8 +308,8 @@ static void sl_xdg_surface_get_popup(struct wl_client* client,
   struct sl_host_xdg_popup* host_xdg_popup = new sl_host_xdg_popup();
 
   host_xdg_popup->ctx = host->ctx;
-  host_xdg_popup->resource =
-      wl_resource_create(client, &xdg_popup_interface, 1, id);
+  host_xdg_popup->resource = wl_resource_create(
+      client, &xdg_popup_interface, wl_resource_get_version(resource), id);
   wl_resource_set_implementation(host_xdg_popup->resource,
                                  &sl_xdg_popup_implementation, host_xdg_popup,
                                  sl_destroy_host_xdg_popup);
@@ -369,8 +381,8 @@ static void sl_xdg_shell_create_positioner(struct wl_client* client,
       new sl_host_xdg_positioner();
 
   host_xdg_positioner->ctx = host->ctx;
-  host_xdg_positioner->resource =
-      wl_resource_create(client, &xdg_positioner_interface, 1, id);
+  host_xdg_positioner->resource = wl_resource_create(
+      client, &xdg_positioner_interface, wl_resource_get_version(resource), id);
   wl_resource_set_implementation(
       host_xdg_positioner->resource, &sl_xdg_positioner_implementation,
       host_xdg_positioner, sl_destroy_host_xdg_positioner);
@@ -389,8 +401,8 @@ static void sl_xdg_shell_get_xdg_surface(struct wl_client* client,
   struct sl_host_xdg_surface* host_xdg_surface = new sl_host_xdg_surface();
 
   host_xdg_surface->ctx = host->ctx;
-  host_xdg_surface->resource =
-      wl_resource_create(client, &xdg_surface_interface, 1, id);
+  host_xdg_surface->resource = wl_resource_create(
+      client, &xdg_surface_interface, wl_resource_get_version(resource), id);
   wl_resource_set_implementation(host_xdg_surface->resource,
                                  &sl_xdg_surface_implementation,
                                  host_xdg_surface, sl_destroy_host_xdg_surface);
@@ -435,16 +447,17 @@ static void sl_bind_host_xdg_shell(struct wl_client* client,
   struct sl_context* ctx = (struct sl_context*)data;
   struct sl_host_xdg_shell* host = new sl_host_xdg_shell();
   host->ctx = ctx;
-  host->resource = wl_resource_create(client, &xdg_wm_base_interface, 1, id);
+  host->resource = wl_resource_create(client, &xdg_wm_base_interface,
+                                      std::min(version, XDG_SHELL_VERSION), id);
   wl_resource_set_implementation(host->resource, &sl_xdg_shell_implementation,
                                  host, sl_destroy_host_xdg_shell);
-  host->proxy = static_cast<xdg_wm_base*>(
-      wl_registry_bind(wl_display_get_registry(ctx->display),
-                       ctx->xdg_shell->id, &xdg_wm_base_interface, 1));
+  host->proxy = static_cast<xdg_wm_base*>(wl_registry_bind(
+      wl_display_get_registry(ctx->display), ctx->xdg_shell->id,
+      &xdg_wm_base_interface, std::min(version, XDG_SHELL_VERSION)));
   xdg_wm_base_add_listener(host->proxy, &sl_xdg_shell_listener, host);
 }
 
 struct sl_global* sl_xdg_shell_global_create(struct sl_context* ctx) {
-  return sl_global_create(ctx, &xdg_wm_base_interface, 1, ctx,
+  return sl_global_create(ctx, &xdg_wm_base_interface, XDG_SHELL_VERSION, ctx,
                           sl_bind_host_xdg_shell);
 }
