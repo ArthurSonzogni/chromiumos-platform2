@@ -10,6 +10,7 @@
 #include <base/memory/scoped_refptr.h>
 #include <base/task/single_thread_task_runner.h>
 #include <brillo/daemons/daemon.h>
+#include <brillo/process/process_reaper.h>
 #include <mojo/core/embedder/scoped_ipc_support.h>
 #include <mojo/public/cpp/platform/platform_channel_endpoint.h>
 
@@ -32,6 +33,8 @@ class ExecutorDaemon final : public brillo::Daemon {
   std::unique_ptr<mojo::core::ScopedIPCSupport> ipc_support_;
   // Implements the executor's Mojo methods.
   std::unique_ptr<Executor> mojo_service_;
+  // Used to monitor child process status.
+  brillo::ProcessReaper process_reaper_;
 };
 
 }  // namespace diagnostics
