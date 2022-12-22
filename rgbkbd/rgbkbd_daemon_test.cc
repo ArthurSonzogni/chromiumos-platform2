@@ -3,10 +3,12 @@
 // found in the LICENSE file.
 
 #include <stdint.h>
+#include <memory>
 #include <utility>
 
 #include <base/test/task_environment.h>
 #include <brillo/dbus/dbus_object_test_helpers.h>
+#include <chromeos-config/libcros_config/fake_cros_config.h>
 #include <dbus/bus.h>
 #include <dbus/mock_bus.h>
 #include <dbus/mock_exported_object.h>
@@ -35,6 +37,8 @@ const int kDBusSerial = 24;
 class RgbkbdDaemonTest : public testing::Test {
  public:
   RgbkbdDaemonTest() {
+    cros_config_ = std::make_unique<brillo::FakeCrosConfig>();
+
     dbus::Bus::Options options;
     mock_bus_ = base::MakeRefCounted<NiceMock<dbus::MockBus>>(options);
     dbus::ObjectPath path(rgbkbd::kRgbkbdServicePath);
@@ -54,7 +58,8 @@ class RgbkbdDaemonTest : public testing::Test {
 
     EXPECT_CALL(*mock_exported_object_, ExportMethod(_, _, _, _))
         .Times(testing::AnyNumber());
-    adaptor_.reset(new DBusAdaptor(mock_bus_, /*daemon=*/nullptr));
+    adaptor_.reset(
+        new DBusAdaptor(mock_bus_, cros_config_.get(), /*daemon=*/nullptr));
   }
 
   RgbkbdDaemonTest(const RgbkbdDaemonTest&) = delete;
@@ -68,6 +73,7 @@ class RgbkbdDaemonTest : public testing::Test {
   scoped_refptr<dbus::MockObjectProxy> mock_object_proxy_;
   scoped_refptr<dbus::MockExportedObject> mock_exported_object_;
   std::unique_ptr<rgbkbd::DBusAdaptor> adaptor_;
+  std::unique_ptr<brillo::FakeCrosConfig> cros_config_;
 };
 
 void OnGetRgbKeyboardCapabilities(RgbKeyboardCapabilities expected,

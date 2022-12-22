@@ -10,6 +10,10 @@
 
 #include <brillo/daemons/dbus_daemon.h>
 #include <brillo/dbus/dbus_method_response.h>
+#include <brillo/udev/udev.h>
+#include <brillo/usb/usb_device_event_notifier.h>
+#include <chromeos-config/libcros_config/cros_config.h>
+#include <chromeos-config/libcros_config/cros_config_interface.h>
 #include <dbus/rgbkbd/dbus-constants.h>
 #include <libec/ec_usb_device_monitor.h>
 
@@ -23,14 +27,14 @@ namespace rgbkbd {
 class RgbkbdDaemon;
 
 class DBusAdaptor : public org::chromium::RgbkbdInterface,
-                    public org::chromium::RgbkbdAdaptor,
-                    public ec::EcUsbDeviceMonitor::Observer {
+                    public org::chromium::RgbkbdAdaptor {
  public:
-  explicit DBusAdaptor(scoped_refptr<dbus::Bus> bus, RgbkbdDaemon* daemon);
+  DBusAdaptor(scoped_refptr<dbus::Bus> bus,
+              brillo::CrosConfigInterface* cros_config,
+              RgbkbdDaemon* daemon);
   DBusAdaptor(const DBusAdaptor&) = delete;
   DBusAdaptor& operator=(const DBusAdaptor&) = delete;
-
-  ~DBusAdaptor() override = default;
+  ~DBusAdaptor() override;
 
   void RegisterAsync(
       brillo::dbus_utils::AsyncEventSequencer::CompletionAction cb);
@@ -45,15 +49,21 @@ class DBusAdaptor : public org::chromium::RgbkbdInterface,
   void SetTestingMode(bool enable_testing, uint32_t capability) override;
   void SetAnimationMode(uint32_t mode) override;
 
-  // From ec::EcUsbDeviceMonitor::Observer
-  void OnDeviceReconnected() override;
+  // Queries CrosConfig to check if device has prism keyboard and initializes
+  // USB device observing if it does.
+  void InitializeForPrismUsbKeyboard();
 
  private:
   brillo::dbus_utils::DBusObject dbus_object_;
+  std::unique_ptr<brillo::UsbDeviceEventNotifier> usb_device_event_notifier_;
+  std::unique_ptr<brillo::Udev> udev_;
   std::unique_ptr<InternalRgbKeyboard> internal_keyboard_;
   std::unique_ptr<KeyboardBacklightLogger> logger_keyboard_;
   RgbKeyboardControllerImpl rgb_keyboard_controller_;
-  RgbkbdDaemon* daemon_;
+
+  // Non-owning
+  raw_ptr<brillo::CrosConfigInterface> cros_config_;
+  raw_ptr<RgbkbdDaemon> daemon_;
 };
 
 class RgbkbdDaemon : public brillo::DBusServiceDaemon {
@@ -61,17 +71,15 @@ class RgbkbdDaemon : public brillo::DBusServiceDaemon {
   RgbkbdDaemon();
   RgbkbdDaemon(const RgbkbdDaemon&) = delete;
   RgbkbdDaemon& operator=(const RgbkbdDaemon&) = delete;
-  ~RgbkbdDaemon() override;
-
-  void RegisterUsbDeviceMonitor();
+  ~RgbkbdDaemon() override = default;
 
  protected:
   void RegisterDBusObjectsAsync(
       brillo::dbus_utils::AsyncEventSequencer* sequencer) override;
 
  private:
-  std::unique_ptr<ec::EcUsbDeviceMonitor> ec_usb_device_monitor_;
   std::unique_ptr<DBusAdaptor> adaptor_;
+  brillo::CrosConfig cros_config_;
 };
 
 }  // namespace rgbkbd

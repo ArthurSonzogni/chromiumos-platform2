@@ -27,10 +27,14 @@ class KeyboardBacklightLogger : public RgbKeyboard {
   bool SetKeyColor(uint32_t key, uint8_t r, uint8_t g, uint8_t b) override;
   bool SetAllKeyColors(uint8_t r, uint8_t g, uint8_t b) override;
   RgbKeyboardCapabilities GetRgbKeyboardCapabilities() override;
-
+  void ResetUsbKeyboard() override { reset_called_ = true; }
+  void InitializeUsbKeyboard() override { init_called_ = true; }
   // Clears log.
   bool ResetLog();
   bool IsLogEmpty();
+
+  bool init_called() const { return init_called_; }
+  bool reset_called() const { return reset_called_; }
 
  private:
   bool InitializeFile();
@@ -39,6 +43,8 @@ class KeyboardBacklightLogger : public RgbKeyboard {
   std::unique_ptr<base::File> file_;
   base::FilePath log_path_;
   RgbKeyboardCapabilities capabilities_;
+  bool init_called_ = false;
+  bool reset_called_ = false;
 };
 
 }  // namespace rgbkbd

@@ -4,12 +4,15 @@
 
 #include "rgbkbd/rgb_keyboard_controller_impl.h"
 
+#include <cstdint>
+#include <string>
 #include <utility>
 #include <vector>
 
 #include "base/check.h"
 #include "base/logging.h"
 #include "base/notreached.h"
+#include "rgbkbd/constants.h"
 
 namespace rgbkbd {
 
@@ -226,8 +229,10 @@ bool RgbKeyboardControllerImpl::IsZonedKeyboard() const {
 }
 
 void RgbKeyboardControllerImpl::ReinitializeOnDeviceReconnected() {
-  SetKeyColor({kLeftShiftKey, GetCurrentCapsLockColor(kLeftShiftKey)});
-  SetKeyColor({kRightShiftKey, GetCurrentCapsLockColor(kRightShiftKey)});
+  if (background_type_ != BackgroundType::kNone) {
+    SetKeyColor({kLeftShiftKey, GetCurrentCapsLockColor(kLeftShiftKey)});
+    SetKeyColor({kRightShiftKey, GetCurrentCapsLockColor(kRightShiftKey)});
+  }
 
   switch (background_type_) {
     case BackgroundType::kStaticSingleColor:
@@ -237,6 +242,37 @@ void RgbKeyboardControllerImpl::ReinitializeOnDeviceReconnected() {
     case BackgroundType::kStaticRainbow:
       SetRainbowMode();
       break;
+    case BackgroundType::kNone:
+      break;
+  }
+}
+
+void RgbKeyboardControllerImpl::SetKeyboardCapabilityAsIndividualKey() {
+  capabilities_ = RgbKeyboardCapabilities::kIndividualKey;
+  PopulateRainbowModeMap();
+}
+
+void RgbKeyboardControllerImpl::OnUsbDeviceAdded(const std::string& sys_path,
+                                                 uint8_t bus_number,
+                                                 uint8_t device_address,
+                                                 uint16_t vendor_id,
+                                                 uint16_t product_id) {
+  if (vendor_id == kPrismVendorId && product_id == kPrismProductId) {
+    LOG(INFO) << "Detected the Prism device reconnecting to the system.";
+    // Save prism usb sys_path to know when it disconnects.
+    prism_usb_sys_path_ = sys_path;
+    keyboard_->InitializeUsbKeyboard();
+    ReinitializeOnDeviceReconnected();
+  }
+}
+
+// Invoked when a USB device is removed from the system.
+void RgbKeyboardControllerImpl::OnUsbDeviceRemoved(
+    const std::string& sys_path) {
+  if (sys_path == prism_usb_sys_path_) {
+    LOG(INFO) << "Detected the Prism device being removed from the system.";
+    prism_usb_sys_path_.clear();
+    keyboard_->ResetUsbKeyboard();
   }
 }
 

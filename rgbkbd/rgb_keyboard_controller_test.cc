@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <cstdint>
 #include <memory>
 #include <stdint.h>
 #include <string>
@@ -23,6 +24,10 @@
 
 namespace rgbkbd {
 namespace {
+
+const char kPrismUsbSysPath[] = "/sys/prism_path";
+const uint8_t kPrismUsbBusNumber = 1;
+const uint8_t kPrismDeviceAddress = 2;
 
 // Path to the temporary log file created by `keyboard_backlight_logger`.
 const base::FilePath kTempLogFilePath("/tmp/rgbkbd_log");
@@ -60,8 +65,8 @@ const std::string CreateSetAllKeyColorsLogEntry(const Color& color) {
 
 void ValidateLog(const std::string& expected) {
   std::string file_contents;
-  EXPECT_TRUE(base::ReadFileToString(kTempLogFilePath, &file_contents) &&
-              expected == file_contents);
+  ASSERT_TRUE(base::ReadFileToString(kTempLogFilePath, &file_contents));
+  EXPECT_EQ(expected, file_contents);
 }
 
 void ValidateLog(base::span<const KeyColor> expected) {
@@ -364,6 +369,17 @@ TEST_F(RgbKeyboardControllerTest, ReinitializeSingleColorCapsLockOff) {
   ValidateLog(shift_key_logs + CreateSetAllKeyColorsLogEntry(expected_color));
 }
 
+TEST_F(RgbKeyboardControllerTest,
+       ReinitializeWhenColorNotInitializedDoesNothing) {
+  controller_->SetKeyboardCapabilityForTesting(
+      RgbKeyboardCapabilities::kIndividualKey);
+
+  EXPECT_TRUE(logger_->ResetLog());
+
+  controller_->ReinitializeOnDeviceReconnected();
+  ValidateLog(std::string());
+}
+
 TEST_F(RgbKeyboardControllerTest, ReinitializeRainbowCapsLockOn) {
   controller_->SetKeyboardCapabilityForTesting(
       RgbKeyboardCapabilities::kIndividualKey);
@@ -401,4 +417,124 @@ TEST_F(RgbKeyboardControllerTest, ReinitializeRainbowCapsLockOff) {
       CreateSetKeyColorLogEntry({kRightShiftKey, kRainbowPurple});
   ValidateLog(shift_key_logs + CreateRainbowLogEntry());
 }
+
+TEST_F(RgbKeyboardControllerTest, InitializeWhenPrismUsbConnected) {
+  controller_->OnUsbDeviceAdded(kPrismUsbSysPath, kPrismUsbBusNumber,
+                                kPrismDeviceAddress, kPrismVendorId,
+                                kPrismProductId);
+  EXPECT_TRUE(logger_->init_called());
+  ValidateLog(std::string());
+}
+
+TEST_F(RgbKeyboardControllerTest, ResetWhenPrismUsbRemoved) {
+  controller_->OnUsbDeviceAdded(kPrismUsbSysPath, kPrismUsbBusNumber,
+                                kPrismDeviceAddress, kPrismVendorId,
+                                kPrismProductId);
+
+  controller_->OnUsbDeviceRemoved(kPrismUsbSysPath);
+  EXPECT_TRUE(logger_->reset_called());
+  ValidateLog(std::string());
+}
+
+TEST_F(RgbKeyboardControllerTest, DoNotResetWhenNonPrismUsbRemoved) {
+  controller_->OnUsbDeviceAdded(kPrismUsbSysPath, kPrismUsbBusNumber,
+                                kPrismDeviceAddress, kPrismVendorId,
+                                kPrismProductId);
+
+  controller_->OnUsbDeviceRemoved("/random-path");
+  EXPECT_FALSE(logger_->reset_called());
+  ValidateLog(std::string());
+}
+
+TEST_F(RgbKeyboardControllerTest, DoNotInitializeWhenNonPrismUsbConnected) {
+  controller_->OnUsbDeviceAdded(kPrismUsbSysPath, kPrismUsbBusNumber,
+                                kPrismDeviceAddress, 0x1111, 0x2222);
+
+  EXPECT_FALSE(logger_->init_called());
+  ValidateLog(std::string());
+}
+
+TEST_F(RgbKeyboardControllerTest, ReinitializeWhenPrismUsbConnected) {
+  controller_->SetKeyboardCapabilityForTesting(
+      RgbKeyboardCapabilities::kIndividualKey);
+  // Set static background color.
+  const Color expected_color(/*r=*/100, /*g=*/150, /*b=*/200);
+  controller_->SetStaticBackgroundColor(expected_color.r, expected_color.g,
+                                        expected_color.b);
+
+  EXPECT_TRUE(logger_->ResetLog());
+
+  controller_->OnUsbDeviceAdded(kPrismUsbSysPath, kPrismUsbBusNumber,
+                                kPrismDeviceAddress, kPrismVendorId,
+                                kPrismProductId);
+  EXPECT_TRUE(logger_->init_called());
+
+  // Expect the colors to be set to solid color + unhighlighted Shifts after
+  // reinitialization.
+  const std::string shift_key_logs =
+      CreateSetKeyColorLogEntry({kLeftShiftKey, expected_color}) +
+      CreateSetKeyColorLogEntry({kRightShiftKey, expected_color});
+  ValidateLog(shift_key_logs + CreateSetAllKeyColorsLogEntry(expected_color));
+}
+
+TEST_F(RgbKeyboardControllerTest,
+       ReinitializeRainbowWithCapsLockWhenPrismUsbConnected) {
+  controller_->SetKeyboardCapabilityForTesting(
+      RgbKeyboardCapabilities::kIndividualKey);
+  // Set rainbow mode.
+  controller_->SetRainbowMode();
+
+  // Simulate enabling Capslock.
+  controller_->SetCapsLockState(/*enabled=*/true);
+  EXPECT_TRUE(controller_->IsCapsLockEnabledForTesting());
+  EXPECT_TRUE(logger_->ResetLog());
+
+  controller_->OnUsbDeviceAdded(kPrismUsbSysPath, kPrismUsbBusNumber,
+                                kPrismDeviceAddress, kPrismVendorId,
+                                kPrismProductId);
+  EXPECT_TRUE(logger_->init_called());
+
+  // Expect the colors to be set to rainbow + highlighted Shifts after
+  // reinitialization.
+  ValidateLog(
+      controller_->GetRainbowModeColorsWithShiftKeysHighlightedForTesting());
+}
+
+TEST_F(RgbKeyboardControllerTest,
+       ReinitializeRainbowWithoutCapsLockWhenPrismUsbConnected) {
+  controller_->SetKeyboardCapabilityForTesting(
+      RgbKeyboardCapabilities::kIndividualKey);
+  // Set rainbow mode.
+  controller_->SetRainbowMode();
+  EXPECT_TRUE(logger_->ResetLog());
+
+  controller_->OnUsbDeviceAdded(kPrismUsbSysPath, kPrismUsbBusNumber,
+                                kPrismDeviceAddress, kPrismVendorId,
+                                kPrismProductId);
+  EXPECT_TRUE(logger_->init_called());
+
+  // Expect the colors to be set to rainbow + unhighlighted Shifts after
+  // reinitialization.
+  const std::string shift_key_logs =
+      CreateSetKeyColorLogEntry({kLeftShiftKey, kRainbowRed}) +
+      CreateSetKeyColorLogEntry({kRightShiftKey, kRainbowPurple});
+  ValidateLog(shift_key_logs + CreateRainbowLogEntry());
+}
+
+TEST_F(RgbKeyboardControllerTest, DoNotReinitializeWhenNonPrismUsbConnected) {
+  controller_->SetKeyboardCapabilityForTesting(
+      RgbKeyboardCapabilities::kIndividualKey);
+  // Set static background color.
+  const Color expected_color(/*r=*/100, /*g=*/150, /*b=*/200);
+  controller_->SetStaticBackgroundColor(expected_color.r, expected_color.g,
+                                        expected_color.b);
+
+  EXPECT_TRUE(logger_->ResetLog());
+
+  controller_->OnUsbDeviceAdded(kPrismUsbSysPath, kPrismUsbBusNumber,
+                                kPrismDeviceAddress, 0x1111, 0x2222);
+  EXPECT_FALSE(logger_->init_called());
+  ValidateLog(std::string());
+}
+
 }  // namespace rgbkbd

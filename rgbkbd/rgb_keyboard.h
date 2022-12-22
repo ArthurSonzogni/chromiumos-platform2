@@ -19,6 +19,8 @@ class RgbKeyboard {
   virtual bool SetKeyColor(uint32_t key, uint8_t r, uint8_t g, uint8_t b) = 0;
   virtual bool SetAllKeyColors(uint8_t r, uint8_t g, uint8_t b) = 0;
   virtual RgbKeyboardCapabilities GetRgbKeyboardCapabilities() = 0;
+  virtual void ResetUsbKeyboard() = 0;
+  virtual void InitializeUsbKeyboard() = 0;
 };
 
 }  // namespace rgbkbd

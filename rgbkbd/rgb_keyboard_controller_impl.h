@@ -8,10 +8,12 @@
 #include <cstdint>
 #include <memory>
 #include <optional>
+#include <string>
 #include <vector>
 
 #include <base/containers/flat_map.h>
 #include <base/containers/span.h>
+#include <brillo/usb/usb_device_event_observer.h>
 #include <dbus/rgbkbd/dbus-constants.h>
 
 #include "rgbkbd/constants.h"
@@ -20,11 +22,13 @@
 
 namespace rgbkbd {
 enum class BackgroundType {
+  kNone,
   kStaticSingleColor,
   kStaticRainbow,
 };
 
-class RgbKeyboardControllerImpl : public RgbKeyboardController {
+class RgbKeyboardControllerImpl : public RgbKeyboardController,
+                                  public brillo::UsbDeviceEventObserver {
  public:
   explicit RgbKeyboardControllerImpl(RgbKeyboard* keyboard);
   ~RgbKeyboardControllerImpl();
@@ -49,6 +53,16 @@ class RgbKeyboardControllerImpl : public RgbKeyboardController {
   const base::flat_map<uint32_t, Color>& GetRainbowModeMapForTesting() const {
     return individual_key_rainbow_mode_map_;
   }
+
+  void SetKeyboardCapabilityAsIndividualKey();
+
+  // brillo::UsbDeviceEventObserver:
+  void OnUsbDeviceAdded(const std::string& sys_path,
+                        uint8_t bus_number,
+                        uint8_t device_address,
+                        uint16_t vendor_id,
+                        uint16_t product_id) override;
+  void OnUsbDeviceRemoved(const std::string& sys_path) override;
 
  private:
   void SetKeyColor(const KeyColor& key_color);
@@ -75,7 +89,8 @@ class RgbKeyboardControllerImpl : public RgbKeyboardController {
   bool caps_lock_enabled_ = false;
   // Helps determine which color to highlight the caps locks keys when
   // disabling caps lock.
-  BackgroundType background_type_ = BackgroundType::kStaticSingleColor;
+  BackgroundType background_type_ = BackgroundType::kNone;
+  std::string prism_usb_sys_path_;
 };
 
 }  // namespace rgbkbd

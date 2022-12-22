@@ -5,10 +5,12 @@
 #include "rgbkbd/rgbkbd_daemon.h"
 
 #include <memory>
+#include <string>
 #include <utility>
 
 #include <base/threading/thread_task_runner_handle.h>
 #include <chromeos/dbus/service_constants.h>
+#include <chromeos-config/libcros_config/cros_config_interface.h>
 #include <dbus/bus.h>
 #include <dbus/rgbkbd/dbus-constants.h>
 
@@ -24,21 +26,67 @@ constexpr char kLogFilePathForTesting[] = "/run/rgbkbd/log";
 }  // namespace
 
 namespace rgbkbd {
-DBusAdaptor::DBusAdaptor(scoped_refptr<dbus::Bus> bus, RgbkbdDaemon* daemon)
+DBusAdaptor::DBusAdaptor(scoped_refptr<dbus::Bus> bus,
+                         brillo::CrosConfigInterface* cros_config,
+                         RgbkbdDaemon* daemon)
     : org::chromium::RgbkbdAdaptor(this),
       dbus_object_(nullptr, bus, dbus::ObjectPath(kRgbkbdServicePath)),
       internal_keyboard_(std::make_unique<InternalRgbKeyboard>()),
       rgb_keyboard_controller_(internal_keyboard_.get()),
+      cros_config_(cros_config),
       daemon_(daemon) {}
 
-void DBusAdaptor::OnDeviceReconnected() {
-  rgb_keyboard_controller_.ReinitializeOnDeviceReconnected();
+DBusAdaptor::~DBusAdaptor() {
+  if (usb_device_event_notifier_) {
+    usb_device_event_notifier_->RemoveObserver(&rgb_keyboard_controller_);
+  }
 }
 
 void DBusAdaptor::RegisterAsync(
     brillo::dbus_utils::AsyncEventSequencer::CompletionAction cb) {
   RegisterWithDBusObject(&dbus_object_);
   dbus_object_.RegisterAsync(std::move(cb));
+}
+
+void DBusAdaptor::InitializeForPrismUsbKeyboard() {
+  DCHECK(!udev_);
+  DCHECK(!usb_device_event_notifier_);
+
+  // A null cros_config is valid for testing.
+  if (!cros_config_) {
+    return;
+  }
+
+  std::string value;
+  const bool has_prism_usb_controller =
+      cros_config_->GetString("/keyboard", "mcutype", &value) &&
+      value == "prism_rgb_controller";
+
+  if (has_prism_usb_controller) {
+    LOG(INFO) << "Detected we are running with a prism kbmcu. Starting USB "
+                 "event observing...";
+    udev_ = brillo::Udev::Create();
+    if (!udev_) {
+      LOG(ERROR) << "Could not create udev library context.";
+      return;
+    }
+
+    usb_device_event_notifier_ =
+        std::make_unique<brillo::UsbDeviceEventNotifier>(udev_.get());
+    if (!usb_device_event_notifier_->Initialize()) {
+      LOG(ERROR) << "Could not initialize USB device event notification.";
+      udev_.reset();
+      usb_device_event_notifier_.reset();
+      return;
+    }
+
+    rgb_keyboard_controller_.SetKeyboardCapabilityAsIndividualKey();
+
+    // Add the rgb controller as an observer and scan all connected devices to
+    // the system to properly initialize it.
+    usb_device_event_notifier_->AddObserver(&rgb_keyboard_controller_);
+    usb_device_event_notifier_->ScanExistingDevices();
+  }
 }
 
 void DBusAdaptor::GetRgbKeyboardCapabilities(
@@ -58,14 +106,6 @@ void DBusAdaptor::GetRgbKeyboardCapabilities(
     base::SequencedTaskRunnerHandle::Get()->PostTask(
         FROM_HERE,
         base::BindOnce(&RgbkbdDaemon::Quit, base::Unretained(daemon_)));
-  }
-
-  // kIndividualKey keyboard needs to reinitialized in certain cases (ex
-  // suspend). This registers a monitor for these cases so we know when to
-  // reinitialize device state.
-  if (daemon_ && capabilities == static_cast<uint32_t>(
-                                     RgbKeyboardCapabilities::kIndividualKey)) {
-    daemon_->RegisterUsbDeviceMonitor();
   }
 }
 
@@ -120,23 +160,10 @@ RgbkbdDaemon::RgbkbdDaemon() : DBusServiceDaemon(kRgbkbdServiceName) {}
 
 void RgbkbdDaemon::RegisterDBusObjectsAsync(
     brillo::dbus_utils::AsyncEventSequencer* sequencer) {
-  adaptor_.reset(new DBusAdaptor(bus_, this));
+  adaptor_.reset(new DBusAdaptor(bus_, &cros_config_, this));
   adaptor_->RegisterAsync(
       sequencer->GetHandler("RegisterAsync() failed", true));
-}
 
-void RgbkbdDaemon::RegisterUsbDeviceMonitor() {
-  if (ec_usb_device_monitor_) {
-    return;
-  }
-
-  ec_usb_device_monitor_ = std::make_unique<ec::EcUsbDeviceMonitor>(bus_);
-  ec_usb_device_monitor_->AddObserver(adaptor_.get());
-}
-
-RgbkbdDaemon::~RgbkbdDaemon() {
-  if (ec_usb_device_monitor_) {
-    ec_usb_device_monitor_->RemoveObserver(adaptor_.get());
-  }
+  adaptor_->InitializeForPrismUsbKeyboard();
 }
 }  // namespace rgbkbd

@@ -29,6 +29,9 @@ class InternalRgbKeyboard : public RgbKeyboard {
   bool SetAllKeyColors(uint8_t r, uint8_t g, uint8_t b) override;
   RgbKeyboardCapabilities GetRgbKeyboardCapabilities() override;
 
+  void ResetUsbKeyboard() override;
+  void InitializeUsbKeyboard() override;
+
  private:
   enum class CommunicationType {
     kUsb = 0,

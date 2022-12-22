@@ -164,6 +164,26 @@ bool InternalRgbKeyboard::SetCommunicationType(ec::EcCommand<T, U>& command) {
   return false;
 }
 
+void InternalRgbKeyboard::ResetUsbKeyboard() {
+  LOG(INFO) << "Resetting USB Endpoint.";
+  communication_type_.reset();
+  usb_endpoint_.reset();
+}
+
+void InternalRgbKeyboard::InitializeUsbKeyboard() {
+  if (!usb_endpoint_ || !communication_type_) {
+    LOG(INFO) << "Initializing USB endpoint.";
+    usb_endpoint_ = CreateEcUsbEndpoint();
+    communication_type_ =
+        usb_endpoint_ ? std::optional(CommunicationType::kUsb) : std::nullopt;
+    if (communication_type_) {
+      LOG(INFO) << "Successfully initialized USB endpoint.";
+    } else {
+      LOG(INFO) << "Failed to initialize USB endpoint.";
+    }
+  }
+}
+
 template <typename T, typename U>
 bool InternalRgbKeyboard::RunEcCommand(ec::EcCommand<T, U>& command) {
   if (!communication_type_) {

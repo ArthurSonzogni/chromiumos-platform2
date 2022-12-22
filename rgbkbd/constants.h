@@ -27,6 +27,10 @@ struct KeyColor {
   Color color;
 };
 
+// Prism USB Vendor/Product ids.
+constexpr uint16_t kPrismVendorId = 0x18d1;
+constexpr uint16_t kPrismProductId = 0x5022;
+
 // Default color for caps lock highlight color.
 static constexpr Color kCapsLockHighlightDefault =
     Color(/*r=*/255, /*g=*/255, /*b=*/210);
