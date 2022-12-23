@@ -35,6 +35,8 @@ class ApnList {
 
   static std::string JoinApnTypes(std::vector<std::string> apn_types);
 
+  static std::string GetApnTypeString(enum ApnType apn_type);
+
  private:
   using ApnIndexKey = std::
       tuple<std::string, std::string, std::string, std::string, std::string>;
@@ -43,7 +45,6 @@ class ApnList {
   void AddApn(const MobileOperatorInfo::MobileAPN& mobile_apn,
               ApnSource source);
 
-  static std::string GetApnTypeString(enum ApnType apn_type);
   Stringmaps apn_dict_list_;
   std::map<ApnIndexKey, int> apn_index_;
   bool merge_similar_apns_;
