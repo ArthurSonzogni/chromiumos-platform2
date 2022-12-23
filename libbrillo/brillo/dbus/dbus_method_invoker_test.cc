@@ -4,9 +4,13 @@
 
 #include <brillo/dbus/dbus_method_invoker.h>
 
+#include <stdio.h>
+#include <unistd.h>
+
 #include <string>
 
 #include <base/bind.h>
+#include <base/files/scoped_file.h>
 #include <base/logging.h>
 #include <dbus/mock_bus.h>
 #include <dbus/mock_object_proxy.h>
@@ -163,11 +167,11 @@ class DBusMethodInvokerTest : public testing::Test {
 
   // Sends a file descriptor received over D-Bus back to the caller using the
   // new types.
-  base::ScopedFD EchoFD(int fd_in) {
+  base::ScopedFD EchoFD(base::ScopedFD fd_in) {
     std::unique_ptr<dbus::Response> response =
         brillo::dbus_utils::CallMethodAndBlock(
             mock_object_proxy_.get(), kTestInterface, kTestMethod4, nullptr,
-            brillo::dbus_utils::FileDescriptor{fd_in});
+            brillo::dbus_utils::FileDescriptor(std::move(fd_in)));
     EXPECT_NE(nullptr, response.get());
     base::ScopedFD fd_out;
     using brillo::dbus_utils::ExtractMethodCallResults;
@@ -207,21 +211,14 @@ TEST_F(DBusMethodInvokerTest, TestProtobuf) {
 }
 
 TEST_F(DBusMethodInvokerTest, TestFileDescriptors) {
-  // Passing a file descriptor over D-Bus would effectively duplicate the fd.
-  // So the resulting file descriptor value would be different but it still
-  // should be valid.
-  int fd_stdin = 0;
-  base::ScopedFD out_fd = EchoFD(fd_stdin);
-  EXPECT_NE(fd_stdin, out_fd.get());
-  EXPECT_TRUE(out_fd.is_valid());
-  int fd_stdout = 1;
-  out_fd = EchoFD(fd_stdout);
-  EXPECT_NE(fd_stdout, out_fd.get());
-  EXPECT_TRUE(out_fd.is_valid());
-  int fd_stderr = 2;
-  out_fd = EchoFD(fd_stderr);
-  EXPECT_NE(fd_stderr, out_fd.get());
-  EXPECT_TRUE(out_fd.is_valid());
+  {
+    base::ScopedFD out_fd = EchoFD(base::ScopedFD(dup(STDIN_FILENO)));
+    ASSERT_TRUE(out_fd.is_valid());
+  }
+  {
+    base::ScopedFD out_fd = EchoFD(base::ScopedFD(dup(STDOUT_FILENO)));
+    ASSERT_TRUE(out_fd.is_valid());
+  }
 }
 
 //////////////////////////////////////////////////////////////////////////////

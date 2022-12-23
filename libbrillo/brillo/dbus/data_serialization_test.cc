@@ -4,9 +4,12 @@
 
 #include <brillo/dbus/data_serialization.h>
 
+#include <unistd.h>
+
 #include <limits>
 #include <tuple>
 
+#include <base/files/scoped_file.h>
 #include <base/logging.h>
 #include <brillo/variant_dictionary.h>
 #include <gtest/gtest.h>
@@ -242,7 +245,7 @@ TEST(DBusUtils, AppendAndPopFileDescriptor) {
   MessageWriter writer(message.get());
 
   // Append stdout.
-  FileDescriptor temp = 1;
+  FileDescriptor temp(base::ScopedFD(dup(1)));
   AppendValueToWriter(&writer, temp);
 
   EXPECT_EQ("h", message->GetSignature());

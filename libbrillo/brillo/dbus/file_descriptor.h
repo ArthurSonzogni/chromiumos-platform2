@@ -5,8 +5,6 @@
 #ifndef LIBBRILLO_BRILLO_DBUS_FILE_DESCRIPTOR_H_
 #define LIBBRILLO_BRILLO_DBUS_FILE_DESCRIPTOR_H_
 
-#include <unistd.h>
-
 #include <utility>
 
 #include <base/files/scoped_file.h>
@@ -14,27 +12,14 @@
 namespace brillo {
 namespace dbus_utils {
 
+// TODO(crbug.com/1330447): Repalce this by base::ScopedFD.
 // This struct wraps file descriptors to give them a type other than int.
-// Implicit conversions are provided because this should be as transparent
-// a wrapper as possible to match the libchrome bindings below when this
-// class is used by chromeos-dbus-bindings.
-//
-// Because we might pass these around and the calling code neither passes
-// ownership nor knows when this will be destroyed, it actually dups the FD
-// so that the calling code and binding code both have a clear handle on the
-// lifetimes of their respective copies of the FD.
 struct FileDescriptor {
   FileDescriptor() = default;
-  FileDescriptor(int fd) : fd(dup(fd)) {}  // NOLINT(runtime/explicit)
   FileDescriptor(FileDescriptor&& other) : fd(std::move(other.fd)) {}
   FileDescriptor(base::ScopedFD&& other) : fd(std::move(other)) {}  // NOLINT
   FileDescriptor(const FileDescriptor&) = delete;
   FileDescriptor& operator=(const FileDescriptor&) = delete;
-
-  inline FileDescriptor& operator=(int new_fd) {
-    fd.reset(dup(new_fd));
-    return *this;
-  }
 
   FileDescriptor& operator=(FileDescriptor&& other) {
     fd = std::move(other.fd);
