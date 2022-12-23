@@ -199,12 +199,23 @@ void DelegateImpl::SetLedColor(mojom::LedName name,
 
   auto cros_fd = base::ScopedFD(open(ec::kCrosEcPath, O_RDWR));
 
-  // Set brightness to 255 for the highest brightness level.
-  std::array<uint8_t, EC_LED_COLOR_COUNT> brightness = {};
-  brightness[ec_led_color] = 255;
+  ec::LedControlQueryCommand query_cmd(ec_led_id);
+  if (!query_cmd.Run(cros_fd.get())) {
+    std::move(callback).Run("Failed to query the LED brightness range");
+    return;
+  }
 
-  ec::LedControlSetCommand cmd(ec_led_id, brightness);
-  if (!cmd.Run(cros_fd.get())) {
+  uint8_t max_brightness = query_cmd.BrightnessRange()[ec_led_color];
+  if (max_brightness == 0) {
+    std::move(callback).Run("Unsupported color");
+    return;
+  }
+
+  std::array<uint8_t, EC_LED_COLOR_COUNT> brightness = {};
+  brightness[ec_led_color] = max_brightness;
+
+  ec::LedControlSetCommand set_cmd(ec_led_id, brightness);
+  if (!set_cmd.Run(cros_fd.get())) {
     std::move(callback).Run("Failed to set the LED color");
     return;
   }
