@@ -22,6 +22,7 @@
 #include "hal/usb/camera_hal_device_ops.h"
 #include "hal/usb/quirks.h"
 #include "hal/usb/stream_format.h"
+#include "hal/usb/tracing.h"
 
 namespace cros {
 
@@ -1040,6 +1041,7 @@ int CameraClient::RequestHandler::WriteStreamBuffers(
     const android::CameraMetadata& request_metadata,
     camera3_capture_result_t* capture_result) {
   DCHECK(task_runner_->BelongsToCurrentThread());
+  TRACE_USB_HAL("frame_number", capture_result->frame_number);
 
   std::vector<std::unique_ptr<FrameBuffer>> output_frames;
   for (size_t i = 0; i < capture_result->num_output_buffers; i++) {
