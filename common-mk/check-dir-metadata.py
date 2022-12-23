@@ -75,7 +75,6 @@ LEGACYLIST = {
     "foomatic_shell",
     "glib-bridge",
     "goldfishd",
-    "hammerd",  # TODO(b/262374654)
     "hardware_verifier",
     "hiberman",
     "iioservice",
