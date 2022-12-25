@@ -30,6 +30,7 @@ fallocate: 1
 fchdir: 1
 fchownat: 1
 fcntl: 1
+flock: 1
 fstat: 1
 fstatfs: 1
 ftruncate: 1

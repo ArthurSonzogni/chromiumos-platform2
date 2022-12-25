@@ -10,6 +10,7 @@ pkg_config("libcros_healthd_utils_pkg_deps") {
     "fwupd",
     "libbrillo",
     "libchrome",
+    "libmetrics",
     "libudev",
     "libusb-1.0",
   ]
@@ -24,6 +25,7 @@ source_set("libcros_healthd_utils") {
     "file_utils.cc",
     "fwupd_utils.cc",
     "memory_info.cc",
+    "metrics_utils.cc",
     "procfs_utils.cc",
     "resource_queue.cc",
     "usb_utils.cc",

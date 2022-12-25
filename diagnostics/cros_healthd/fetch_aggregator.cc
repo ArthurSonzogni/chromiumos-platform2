@@ -20,6 +20,7 @@
 #include "diagnostics/cros_healthd/fetchers/sensor_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/system_fetcher.h"
 #include "diagnostics/cros_healthd/utils/callback_barrier.h"
+#include "diagnostics/cros_healthd/utils/metrics_utils.h"
 
 namespace diagnostics {
 
@@ -38,8 +39,10 @@ base::OnceCallback<void(T)> CreateFetchCallback(CallbackBarrier* barrier,
 }
 
 void OnFinish(
+    std::set<mojom::ProbeCategoryEnum> categories,
     mojom::CrosHealthdProbeService::ProbeTelemetryInfoCallback callback,
     std::unique_ptr<mojom::TelemetryInfoPtr> result) {
+  SendTelemetryResultToUMA(categories, *result);
   std::move(callback).Run(std::move(*result));
 }
 
@@ -67,22 +70,24 @@ FetchAggregator::~FetchAggregator() = default;
 void FetchAggregator::Run(
     const std::vector<mojom::ProbeCategoryEnum>& categories_to_probe,
     mojom::CrosHealthdProbeService::ProbeTelemetryInfoCallback callback) {
+  // Use a set to eliminate duplicate categories.
+  std::set<mojom::ProbeCategoryEnum> category_set(categories_to_probe.begin(),
+                                                  categories_to_probe.end());
+
   // Use unique_ptr so the pointer |info| remains valid after std::move.
   auto result =
       std::make_unique<mojom::TelemetryInfoPtr>(mojom::TelemetryInfo::New());
   mojom::TelemetryInfo* info = result->get();
   // Let the on_success callback take the |result| so it remains valid until all
   // the async fetch completes.
-  auto on_success =
-      base::BindOnce(&OnFinish, std::move(callback), std::move(result));
+  auto on_success = base::BindOnce(&OnFinish, category_set, std::move(callback),
+                                   std::move(result));
   CallbackBarrier barrier{
       std::move(on_success), /*on_error=*/base::BindOnce([]() {
         LOG(ERROR) << "Some async fetchers didn't call the callback.";
       })};
 
-  // Use a set to eliminate duplicate categories.
-  for (const auto category : std::set<mojom::ProbeCategoryEnum>(
-           categories_to_probe.begin(), categories_to_probe.end())) {
+  for (const auto category : category_set) {
     switch (category) {
       case mojom::ProbeCategoryEnum::kUnknown: {
         // For interface backward compatibility.
