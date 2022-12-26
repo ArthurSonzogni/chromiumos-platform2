@@ -4466,7 +4466,8 @@ CryptohomeStatus UserDataAuth::CreatePersistentUserImpl(
     // TODO(b/208898186, dlunev): replace with a more appropriate error
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocUserDataAuthUserExistsInCreatePersistentUser),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        ErrorActionSet(
+            {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kDeleteVault}),
         user_data_auth::CryptohomeErrorCode::
             CRYPTOHOME_ERROR_MOUNT_MOUNT_POINT_BUSY);
   }
