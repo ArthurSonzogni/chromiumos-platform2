@@ -45,6 +45,11 @@ class FakeDelegate : public AdaptiveChargingControllerInterface::Delegate {
     return true;
   }
 
+  bool SetBatteryChargeLimit(uint32_t limit_mA) override {
+    fake_limit = limit_mA;
+    return true;
+  }
+
   void GetAdaptiveChargingPrediction(const assist_ranker::RankerExample& proto,
                                      bool async) override {
     adaptive_charging_controller_->OnPredictionResponse(true, fake_result);
@@ -67,6 +72,7 @@ class FakeDelegate : public AdaptiveChargingControllerInterface::Delegate {
   std::vector<double> fake_result;
   int fake_lower;
   int fake_upper;
+  uint32_t fake_limit;
   metrics::AdaptiveChargingState adaptive_state;
 };
 

@@ -50,6 +50,11 @@ class AdaptiveChargingControllerInterface : public system::PowerSupplyObserver {
     // Returns true upon success and false otherwise.
     virtual bool SetBatterySustain(int lower, int upper) = 0;
 
+    // Set the battery charge current limit to `limit_mA` in milliamps which
+    // will be the charge current used to charge the battery during the slow
+    // charging phase of adaptive charging.
+    virtual bool SetBatteryChargeLimit(uint32_t limit_mA) = 0;
+
     // Get the prediction for the next X hours on whether the charger will be
     // connected. If a value in `result` is >= `min_probability_` and larger
     // than any other value in `result`, the charger is predicted to be
@@ -497,6 +502,10 @@ class AdaptiveChargingController : public AdaptiveChargingControllerInterface {
   // Sets battery sustain via the `Delegate::SetBatterySustain` callback.
   // Returns true on success and false otherwise.
   bool SetSustain(int64_t lower, int64_t upper);
+
+  // Sets battery charge current limit via the 'Delegate::SetBatteryChargeLimit'
+  // callback. Returns true on success and false otherwise.
+  bool SetChargeLimit(uint32_t limit_mA);
 
   // Initiates Adaptive Charging logic, which fetches predictions from the
   // Adaptive Charging ml-service, and delays charging if

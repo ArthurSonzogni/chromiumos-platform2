@@ -71,6 +71,15 @@ class MockChargeControlSetCommand : public ec::ChargeControlSetCommand {
   MOCK_METHOD(bool, Run, (int fd));
 };
 
+class MockChargeCurrentLimitSetCommand
+    : public ec::ChargeCurrentLimitSetCommand {
+ public:
+  MockChargeCurrentLimitSetCommand()
+      : ec::ChargeCurrentLimitSetCommand(/*limit=*/-1) {}
+
+  MOCK_METHOD(bool, Run, (int fd));
+};
+
 class DaemonTest : public TestEnvironment, public DaemonDelegate {
  public:
   // The hardcoded constants here are arbitrary and not used by Daemon.
@@ -118,6 +127,8 @@ class DaemonTest : public TestEnvironment, public DaemonDelegate {
         passed_suspend_configurator_(new system::SuspendConfiguratorStub()),
         passed_suspend_freezer_(new system::SuspendFreezerStub()),
         passed_charge_control_set_command_(new MockChargeControlSetCommand()),
+        passed_charge_current_limit_set_command_(
+            std::make_unique<MockChargeCurrentLimitSetCommand>()),
         prefs_(passed_prefs_.get()),
         dbus_wrapper_(passed_dbus_wrapper_.get()),
         udev_(passed_udev_.get()),
@@ -151,7 +162,9 @@ class DaemonTest : public TestEnvironment, public DaemonDelegate {
         adaptive_charging_controller_(
             passed_adaptive_charging_controller_.get()),
         adaptive_charging_proxy_(passed_adaptive_charging_proxy_.get()),
-        charge_control_set_command_(passed_charge_control_set_command_.get()) {
+        charge_control_set_command_(passed_charge_control_set_command_.get()),
+        charge_current_limit_set_command_(
+            passed_charge_current_limit_set_command_.get()) {
     CHECK(run_dir_.CreateUniqueTempDir());
     CHECK(run_dir_.IsValid());
 
@@ -469,6 +482,11 @@ class DaemonTest : public TestEnvironment, public DaemonDelegate {
       uint32_t mode, uint8_t lower, uint8_t upper) override {
     return std::move(passed_charge_control_set_command_);
   }
+  std::unique_ptr<ec::ChargeCurrentLimitSetCommand>
+  CreateChargeCurrentLimitSetCommand(uint32_t limit_mA) override {
+    passed_charge_current_limit_set_command_->Req()->limit = limit_mA;
+    return std::move(passed_charge_current_limit_set_command_);
+  }
 
   pid_t GetPid() override { return pid_; }
   void Launch(const std::string& command) override {
@@ -580,6 +598,8 @@ class DaemonTest : public TestEnvironment, public DaemonDelegate {
   std::unique_ptr<system::SuspendFreezerInterface> passed_suspend_freezer_;
   std::unique_ptr<MockChargeControlSetCommand>
       passed_charge_control_set_command_;
+  std::unique_ptr<MockChargeCurrentLimitSetCommand>
+      passed_charge_current_limit_set_command_;
 
   // Pointers to objects originally stored in |passed_*| members. These
   // allow continued access by tests even after the corresponding Create*
@@ -613,6 +633,7 @@ class DaemonTest : public TestEnvironment, public DaemonDelegate {
   org::chromium::MachineLearning::AdaptiveChargingProxyMock*
       adaptive_charging_proxy_;
   MockChargeControlSetCommand* charge_control_set_command_;
+  MockChargeCurrentLimitSetCommand* charge_current_limit_set_command_;
 
   // Run directory passed to |daemon_|.
   base::ScopedTempDir run_dir_;
@@ -1144,6 +1165,24 @@ TEST_F(DaemonTest, SetBatterySustain) {
   // Verify that the ChargeControlSetCommand is Run once.
   EXPECT_CALL(*charge_control_set_command_, Run(_)).WillOnce(Return(true));
   EXPECT_TRUE(daemon_->SetBatterySustain(70, 80));
+}
+
+TEST_F(DaemonTest, SetBatteryChargeLimit) {
+  Init();
+
+  // `Daemon::SetBatteryChargeLimit` expects `cros_ec_path_` to already exist.
+  EXPECT_EQ(0, base::WriteFile(cros_ec_path_, "", 0));
+
+  // Verify that the ChargeCurrentLimitSetCommand is Run once.
+  EXPECT_CALL(*charge_current_limit_set_command_, Run(_))
+      .WillOnce([this](int fd) {
+        // Ensure the limit was correctly set.
+        EXPECT_EQ(charge_current_limit_set_command_->Req()->limit, 1000);
+
+        // Indicate the command was executed successfully.
+        return true;
+      });
+  EXPECT_TRUE(daemon_->SetBatteryChargeLimit(1000));
 }
 
 TEST_F(DaemonTest, PrepareToSuspendAndResume) {

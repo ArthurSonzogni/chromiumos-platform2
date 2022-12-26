@@ -20,6 +20,7 @@
 #include <base/files/file_path.h>
 #include <dbus/bus.h>
 #include <libec/charge_control_set_command.h>
+#include <libec/charge_current_limit_set_command.h>
 #include <libec/ec_usb_endpoint.h>
 #include <ml/dbus-proxies.h>
 
@@ -221,6 +222,9 @@ class DaemonDelegate {
   CreateChargeControlSetCommand(uint32_t mode,
                                 uint8_t lower,
                                 uint8_t upper) = 0;
+
+  virtual std::unique_ptr<ec::ChargeCurrentLimitSetCommand>
+  CreateChargeCurrentLimitSetCommand(uint32_t limit_mA) = 0;
 
   // Returns the process's PID.
   virtual pid_t GetPid() = 0;

@@ -32,7 +32,9 @@
 #include <chromeos/ec/ec_commands.h>
 #include <dbus/bus.h>
 #include <dbus/message.h>
+#include <libec/ec_command.h>
 #include <libec/charge_control_set_command.h>
+#include <libec/charge_current_limit_set_command.h>
 
 #include "power_manager/common/activity_logger.h"
 #include "power_manager/common/battery_percentage_converter.h"
@@ -1103,7 +1105,7 @@ void Daemon::SetCellularTransmitPower(RadioTransmitPower power,
   RunSetuidHelper("set_cellular_transmit_power", args, false);
 }
 
-bool Daemon::SetBatterySustain(int lower, int upper) {
+bool Daemon::RunEcCommand(ec::EcCommandInterface& cmd) {
   base::ScopedFD ec_fd =
       base::ScopedFD(open(cros_ec_path_.value().c_str(), O_RDWR));
 
@@ -1112,17 +1114,40 @@ bool Daemon::SetBatterySustain(int lower, int upper) {
     return false;
   }
 
-  std::unique_ptr<ec::ChargeControlSetCommand> cmd =
-      delegate_->CreateChargeControlSetCommand(CHARGE_CONTROL_NORMAL, lower,
-                                               upper);
-  if (!cmd->Run(ec_fd.get())) {
-    // This is expected if the EC doesn't support battery sustainer.
-    LOG(INFO) << "Setting battery sustain with lower = " << lower
-              << "% and upper = " << upper << "%  failed";
+  if (!cmd.Run(ec_fd.get())) {
     return false;
   }
 
   return true;
+}
+
+bool Daemon::SetBatterySustain(int lower, int upper) {
+  std::unique_ptr<ec::ChargeControlSetCommand> cmd =
+      delegate_->CreateChargeControlSetCommand(CHARGE_CONTROL_NORMAL, lower,
+                                               upper);
+
+  bool success = RunEcCommand(*cmd);
+  if (!success) {
+    // This is expected if the EC doesn't support battery sustainer.
+    LOG(INFO) << "Setting battery sustain with lower = " << lower
+              << "% and upper = " << upper << "%  failed";
+  }
+
+  return success;
+}
+
+bool Daemon::SetBatteryChargeLimit(uint32_t limit_mA) {
+  std::unique_ptr<ec::ChargeCurrentLimitSetCommand> cmd =
+      delegate_->CreateChargeCurrentLimitSetCommand(limit_mA);
+
+  bool success = RunEcCommand(*cmd);
+  if (!success) {
+    // This is expected if the EC doesn't support setting a charge current
+    // limit.
+    LOG(INFO) << "Setting charge limit = " << limit_mA << "mA failed";
+  }
+
+  return success;
 }
 
 void Daemon::GetAdaptiveChargingPrediction(

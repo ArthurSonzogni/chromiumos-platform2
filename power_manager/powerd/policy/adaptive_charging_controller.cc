@@ -1152,6 +1152,16 @@ bool AdaptiveChargingController::SetSustain(int64_t lower, int64_t upper) {
   return success;
 }
 
+bool AdaptiveChargingController::SetChargeLimit(uint32_t limit_mA) {
+  bool success = delegate_->SetBatteryChargeLimit(limit_mA);
+  if (!success) {
+    LOG(ERROR) << "Failed to set battery charge current limit: " << limit_mA
+               << "mA";
+  }
+
+  return success;
+}
+
 bool AdaptiveChargingController::StartAdaptiveCharging(
     const UserChargingEvent::Event::Reason& reason) {
   // Keep the current value of `started_` just in case AC unplug happens right

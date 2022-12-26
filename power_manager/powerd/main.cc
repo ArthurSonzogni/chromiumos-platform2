@@ -29,6 +29,7 @@
 #include <brillo/flag_helper.h>
 #include <brillo/vcsid.h>
 #include <cros_config/cros_config.h>
+#include <libec/charge_current_limit_set_command.h>
 #include <libec/ec_usb_endpoint.h>
 #include <metrics/metrics_library.h>
 #include <ml/dbus-proxies.h>
@@ -382,6 +383,11 @@ class DaemonDelegateImpl : public DaemonDelegate {
   std::unique_ptr<ec::ChargeControlSetCommand> CreateChargeControlSetCommand(
       uint32_t mode, uint8_t lower, uint8_t upper) override {
     return std::make_unique<ec::ChargeControlSetCommand>(mode, lower, upper);
+  }
+
+  std::unique_ptr<ec::ChargeCurrentLimitSetCommand>
+  CreateChargeCurrentLimitSetCommand(uint32_t limit_mA) override {
+    return std::make_unique<ec::ChargeCurrentLimitSetCommand>(limit_mA);
   }
 
   pid_t GetPid() override { return getpid(); }

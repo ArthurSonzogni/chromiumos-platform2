@@ -20,6 +20,7 @@
 #if USE_IIOSERVICE
 #include <mojo_service_manager/lib/connect.h>
 #endif  // USE_IIOSERVICE
+#include <libec/ec_command.h>
 #include <libec/ec_usb_endpoint.h>
 #include <ml/dbus-proxies.h>
 #include "ml/proto_bindings/ranker_example.pb.h"
@@ -193,6 +194,7 @@ class Daemon : public policy::AdaptiveChargingControllerInterface::Delegate,
 
   // Overridden from policy::AdaptiveChargingControllerInterface::Delegate:
   bool SetBatterySustain(int lower, int upper) override;
+  bool SetBatteryChargeLimit(uint32_t limit_mA) override;
   void GetAdaptiveChargingPrediction(const assist_ranker::RankerExample& proto,
                                      bool async) override;
   void GenerateAdaptiveChargingUnplugMetrics(
@@ -311,6 +313,10 @@ class Daemon : public policy::AdaptiveChargingControllerInterface::Delegate,
   // Asynchronously asks |tpm_manager_proxy_| (which must be non-null) to
   // return the TPM status, which is handled by HandleGetTpmStatusResponse().
   void RequestTpmStatus();
+
+  // Opens a file for communicating with the Embedded Controller (EC) to run the
+  // EC command passed to it.
+  bool RunEcCommand(ec::EcCommandInterface& cmd);
 
   // Shuts the system down immediately.
   void ShutDown(ShutdownMode mode, ShutdownReason reason);
