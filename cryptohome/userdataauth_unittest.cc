@@ -5853,4 +5853,32 @@ TEST_F(UserDataAuthApiTest, VaultWithoutAuth) {
       HasPossibleAction(user_data_auth::PossibleAction::POSSIBLY_DELETE_VAULT));
 }
 
+// This is designed to trigger FailureReason::COULD_NOT_MOUNT_CRYPTOHOME on
+// Chromium side for AuthenticateAuthFactor().
+TEST_F(UserDataAuthApiTest, AuthAuthFactorWithoutLabel) {
+  // Prepare an account.
+  ASSERT_TRUE(CreateTestUser());
+
+  // Call AuthenticateAuthFactor with an empty label.
+  std::optional<std::string> session_id = GetTestUnauthedAuthSession();
+  ASSERT_TRUE(session_id.has_value());
+
+  user_data_auth::AuthenticateAuthFactorRequest auth_request;
+  auth_request.set_auth_session_id(session_id.value());
+  // Intentionally set empty label.
+  auth_request.set_auth_factor_label("");
+  auth_request.mutable_auth_input()->mutable_password_input()->set_secret(
+      kPassword1);
+
+  std::optional<user_data_auth::AuthenticateAuthFactorReply> auth_reply =
+      AuthenticateAuthFactorSync(auth_request);
+
+  // Should result is POSSIBLY_DEV_CHECK_UNEXPECTED_STATE.
+  ASSERT_TRUE(auth_reply.has_value());
+  EXPECT_THAT(
+      auth_reply->error_info(),
+      HasPossibleAction(
+          user_data_auth::PossibleAction::POSSIBLY_DEV_CHECK_UNEXPECTED_STATE));
+}
+
 }  // namespace cryptohome
