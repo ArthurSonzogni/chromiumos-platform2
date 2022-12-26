@@ -1,0 +1,16 @@
+# Copyright 2022 The ChromiumOS Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+group("all") {
+  deps = [ ":cros-minidiag-tool" ]
+}
+
+executable("cros-minidiag-tool") {
+  sources = [ "main.cc" ]
+  pkg_deps = [
+    "libbrillo",
+    "libchrome",
+  ]
+  install_path = "bin"
+}
