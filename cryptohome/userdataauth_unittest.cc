@@ -5589,6 +5589,17 @@ class UserDataAuthApiTest : public UserDataAuthTest {
     return reply_future.Get();
   }
 
+  std::optional<user_data_auth::PrepareGuestVaultReply> PrepareGuestVaultSync(
+      const user_data_auth::PrepareGuestVaultRequest& in_request) {
+    TestFuture<user_data_auth::PrepareGuestVaultReply> reply_future;
+    userdataauth_->PrepareGuestVault(
+        in_request,
+        reply_future
+            .GetCallback<const user_data_auth::PrepareGuestVaultReply&>());
+    RunUntilIdle();
+    return reply_future.Get();
+  }
+
  protected:
   // Mock mount factory for mocking Mount objects.
   MockMountFactory mount_factory_;
@@ -5768,6 +5779,26 @@ TEST_F(UserDataAuthApiTest, MountFailed) {
                   {user_data_auth::PossibleAction::POSSIBLY_RETRY,
                    user_data_auth::PossibleAction::POSSIBLY_REBOOT,
                    user_data_auth::PossibleAction::POSSIBLY_DELETE_VAULT,
+                   user_data_auth::PossibleAction::POSSIBLY_POWERWASH})));
+}
+
+TEST_F(UserDataAuthApiTest, GuestMountFailed) {
+  // Ensure that the guest mount fails.
+  scoped_refptr<MockMount> mount = new MockMount();
+  EXPECT_CALL(*mount, MountEphemeralCryptohome(_))
+      .WillOnce(ReturnError<StorageError>(FROM_HERE, kTestErrorString,
+                                          MOUNT_ERROR_FATAL, false));
+  new_mounts_.push_back(mount.get());
+
+  // Make the call to check that it failed correctly.
+  user_data_auth::PrepareGuestVaultRequest prepare_req;
+  std::optional<user_data_auth::PrepareGuestVaultReply> prepare_reply =
+      PrepareGuestVaultSync(prepare_req);
+  ASSERT_TRUE(prepare_reply.has_value());
+  EXPECT_THAT(prepare_reply->error_info(),
+              HasPossibleActions(std::set(
+                  {user_data_auth::PossibleAction::POSSIBLY_RETRY,
+                   user_data_auth::PossibleAction::POSSIBLY_REBOOT,
                    user_data_auth::PossibleAction::POSSIBLY_POWERWASH})));
 }
 
