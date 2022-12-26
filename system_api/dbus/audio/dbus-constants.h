@@ -99,6 +99,7 @@ const char kOutputNodeVolumeChanged[] = "OutputNodeVolumeChanged";
 const char kNodeLeftRightSwappedChanged[] = "NodeLeftRightSwappedChanged";
 const char kInputGainChanged[] = "InputGainChanged";
 const char kInputMuteChanged[] = "InputMuteChanged";
+const char kInputNodeGainChanged[] = "InputNodeGainChanged";
 const char kNodesChanged[] = "NodesChanged";
 const char kActiveOutputNodeChanged[] = "ActiveOutputNodeChanged";
 const char kActiveInputNodeChanged[] = "ActiveInputNodeChanged";
