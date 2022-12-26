@@ -4,13 +4,35 @@
 
 group("all") {
   deps = [ ":cros-minidiag-tool" ]
+  if (use.test) {
+    deps += [ ":cros_minidiag_test" ]
+  }
 }
 
 executable("cros-minidiag-tool") {
-  sources = [ "main.cc" ]
+  sources = [
+    "elog_manager.cc",
+    "main.cc",
+  ]
   pkg_deps = [
     "libbrillo",
     "libchrome",
   ]
   install_path = "bin"
+}
+
+if (use.test) {
+  executable("cros_minidiag_test") {
+    sources = [
+      "elog_manager.cc",
+      "elog_manager_test.cc",
+    ]
+    configs += [ "//common-mk:test" ]
+    run_test = true
+    deps = [ "//common-mk/testrunner" ]
+    pkg_deps = [
+      "libchrome",
+      "libchrome-test",
+    ]
+  }
 }

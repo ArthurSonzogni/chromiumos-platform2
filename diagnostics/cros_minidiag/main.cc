@@ -2,17 +2,19 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <unistd.h>
+
 #include <iostream>
 #include <string>
-#include <unistd.h>
 #include <utility>
 
 #include <base/files/file_util.h>
 #include <base/logging.h>
-
 #include <brillo/flag_helper.h>
 #include <brillo/process/process.h>
 #include <brillo/syslog_logging.h>
+
+#include "diagnostics/cros_minidiag/elog_manager.h"
 
 namespace {
 constexpr const char kElogTool[] = "elogtool";
@@ -43,8 +45,7 @@ int main(int argc, char* argv[]) {
     return EXIT_FAILURE;
   }
 
-  // TODO(roccochen): Parse the elogtool output
-  LOG(INFO) << "The size of elogtool output is " << elogtool_output.size();
+  cros_minidiag::ElogManager elog_manager(elogtool_output);
 
   return EXIT_SUCCESS;
 }
