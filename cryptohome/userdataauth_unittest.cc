@@ -5881,4 +5881,26 @@ TEST_F(UserDataAuthApiTest, AuthAuthFactorWithoutLabel) {
           user_data_auth::PossibleAction::POSSIBLY_DEV_CHECK_UNEXPECTED_STATE));
 }
 
+// This is designed to trigger FailureReason::COULD_NOT_MOUNT_CRYPTOHOME on
+// Chromium side for CreatePersistentUserAlreadyExist().
+TEST_F(UserDataAuthApiTest, CreatePeristentUserAlreadyExist) {
+  // Setup auth session.
+  std::optional<std::string> session_id = GetTestUnauthedAuthSession();
+  ASSERT_TRUE(session_id.has_value());
+
+  // Call CreatePersistentUser() while the user already exists.
+  EXPECT_CALL(homedirs_, CryptohomeExists(_)).WillOnce(ReturnValue(true));
+  user_data_auth::CreatePersistentUserRequest create_request;
+  create_request.set_auth_session_id(session_id.value());
+
+  std::optional<user_data_auth::CreatePersistentUserReply> create_reply =
+      CreatePersistentUserSync(create_request);
+  ASSERT_TRUE(create_reply.has_value());
+  EXPECT_THAT(
+      create_reply->error_info(),
+      HasPossibleActions(std::set(
+          {user_data_auth::PossibleAction::POSSIBLY_DEV_CHECK_UNEXPECTED_STATE,
+           user_data_auth::PossibleAction::POSSIBLY_DELETE_VAULT})));
+}
+
 }  // namespace cryptohome
