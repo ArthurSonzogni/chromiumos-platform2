@@ -52,6 +52,7 @@
 #include "cryptohome/credentials_test_util.h"
 #include "cryptohome/cryptohome_common.h"
 #include "cryptohome/error/cryptohome_mount_error.h"
+#include "cryptohome/filesystem_layout.h"
 #include "cryptohome/mock_credential_verifier.h"
 #include "cryptohome/mock_cryptohome_keys_manager.h"
 #include "cryptohome/mock_fingerprint_manager.h"
@@ -5830,6 +5831,26 @@ TEST_F(UserDataAuthApiTest, EphemeralMountFailed) {
                   {user_data_auth::PossibleAction::POSSIBLY_RETRY,
                    user_data_auth::PossibleAction::POSSIBLY_REBOOT,
                    user_data_auth::PossibleAction::POSSIBLY_POWERWASH})));
+}
+
+// This is designed to trigger the unrecoverable vault flow.
+TEST_F(UserDataAuthApiTest, VaultWithoutAuth) {
+  // Mock that the user exists.
+  base::FilePath upath = UserPath(SanitizeUserName(kUsername1));
+  EXPECT_CALL(platform_, DirectoryExists(upath)).WillOnce(Return(true));
+
+  // Call StartAuthSession and it should fail.
+  user_data_auth::StartAuthSessionRequest req;
+  req.mutable_account_id()->set_account_id(kUsername1);
+  req.set_intent(user_data_auth::AuthIntent::AUTH_INTENT_DECRYPT);
+  req.set_flags(user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE);
+  std::optional<user_data_auth::StartAuthSessionReply> reply =
+      StartAuthSessionSync(req);
+  ASSERT_TRUE(reply.has_value());
+
+  EXPECT_THAT(
+      reply->error_info(),
+      HasPossibleAction(user_data_auth::PossibleAction::POSSIBLY_DELETE_VAULT));
 }
 
 }  // namespace cryptohome
