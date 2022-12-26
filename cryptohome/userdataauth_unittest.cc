@@ -5903,4 +5903,31 @@ TEST_F(UserDataAuthApiTest, CreatePeristentUserAlreadyExist) {
            user_data_auth::PossibleAction::POSSIBLY_DELETE_VAULT})));
 }
 
+// This is designed to trigger FailureReason::COULD_NOT_MOUNT_CRYPTOHOME on
+// Chromium side for PreparePersistentVault().
+TEST_F(UserDataAuthApiTest, PreparePersistentVaultWithoutUser) {
+  // Prepare an account.
+  ASSERT_TRUE(CreateTestUser());
+  std::optional<std::string> session_id = GetTestAuthedAuthSession();
+  ASSERT_TRUE(session_id.has_value());
+
+  // Vault doesn't exist.
+  EXPECT_CALL(homedirs_, Exists(_)).WillOnce(Return(false));
+
+  // Make the call to check that the result is correct.
+  user_data_auth::PreparePersistentVaultRequest prepare_req;
+  prepare_req.set_auth_session_id(session_id.value());
+  std::optional<user_data_auth::PreparePersistentVaultReply> prepare_reply =
+      PreparePersistentVaultSync(prepare_req);
+
+  ASSERT_TRUE(prepare_reply.has_value());
+  EXPECT_THAT(
+      prepare_reply->error_info(),
+      HasPossibleActions(std::set(
+          {user_data_auth::PossibleAction::POSSIBLY_DEV_CHECK_UNEXPECTED_STATE,
+           user_data_auth::PossibleAction::POSSIBLY_REBOOT,
+           user_data_auth::PossibleAction::POSSIBLY_DELETE_VAULT,
+           user_data_auth::PossibleAction::POSSIBLY_POWERWASH})));
+}
+
 }  // namespace cryptohome
