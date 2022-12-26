@@ -5930,4 +5930,30 @@ TEST_F(UserDataAuthApiTest, PreparePersistentVaultWithoutUser) {
            user_data_auth::PossibleAction::POSSIBLY_POWERWASH})));
 }
 
+// This is designed to trigger FailureReason::COULD_NOT_MOUNT_CRYPTOHOME on
+// Chromium side for PrepareEphemeralVault().
+TEST_F(UserDataAuthApiTest, EphemeralMountWithRegularSession) {
+  // Prepare an auth session for ephemeral mount, note that we intentionally
+  // does not specify it as ephemeral.
+  std::optional<std::string> session_id = GetTestUnauthedAuthSession(
+      user_data_auth::AuthIntent::AUTH_INTENT_DECRYPT,
+      user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE);
+  ASSERT_TRUE(session_id.has_value());
+
+  // Make the call to check that it fails due to the session not being
+  // ephemeral.
+  user_data_auth::PrepareEphemeralVaultRequest prepare_req;
+  prepare_req.set_auth_session_id(session_id.value());
+  std::optional<user_data_auth::PrepareEphemeralVaultReply> prepare_reply =
+      PrepareEphemeralVaultSync(prepare_req);
+
+  ASSERT_TRUE(prepare_reply.has_value());
+  EXPECT_THAT(
+      prepare_reply->error_info(),
+      HasPossibleActions(std::set(
+          {user_data_auth::PossibleAction::POSSIBLY_DEV_CHECK_UNEXPECTED_STATE,
+           user_data_auth::PossibleAction::POSSIBLY_REBOOT,
+           user_data_auth::PossibleAction::POSSIBLY_POWERWASH})));
+}
+
 }  // namespace cryptohome
