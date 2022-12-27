@@ -78,16 +78,12 @@ void Network::Start(const Network::StartOptions& opts) {
   // turn the state to kIdle.
   state_ = State::kConfiguring;
 
-  // TODO(b/227563210): Initialize slaac_controller_ only when slaac is enabled
-  // in start option.
-  slaac_controller_ = CreateSLAACController();
-  slaac_controller_->RegisterCallback(
-      base::BindRepeating(&Network::OnUpdateFromSLAAC, AsWeakPtr()));
-  slaac_controller_->StartRTNL();
-
   bool ipv6_started = false;
   if (opts.accept_ra) {
-    StartIPv6();
+    slaac_controller_ = CreateSLAACController();
+    slaac_controller_->RegisterCallback(
+        base::BindRepeating(&Network::OnUpdateFromSLAAC, AsWeakPtr()));
+    slaac_controller_->Start();
     ipv6_started = true;
   }
   if (ipv6_static_properties_) {
@@ -97,7 +93,8 @@ void Network::Start(const Network::StartOptions& opts) {
     ipv6_started = true;
   }
   if (link_protocol_ipv6_properties_) {
-    StartIPv6();
+    proc_fs_->SetIPFlag(IPAddress::kFamilyIPv6, ProcFsStub::kIPFlagDisableIPv6,
+                        "0");
     set_ip6config(
         std::make_unique<IPConfig>(control_interface_, interface_name_));
     ip6config_->set_properties(*link_protocol_ipv6_properties_);
@@ -184,7 +181,6 @@ void Network::Stop() {
 void Network::StopInternal(bool is_failure, bool trigger_callback) {
   const bool should_trigger_callback =
       state_ != State::kIdle && trigger_callback;
-  StopIPv6();
   bool ipconfig_changed = false;
   if (dhcp_controller_) {
     dhcp_controller_->ReleaseIP(DHCPController::kReleaseReasonDisconnect);
@@ -197,6 +193,7 @@ void Network::StopInternal(bool is_failure, bool trigger_callback) {
   }
   if (slaac_controller_) {
     slaac_controller_->Stop();
+    slaac_controller_ = nullptr;
   }
   if (ip6config()) {
     set_ip6config(nullptr);
@@ -228,9 +225,8 @@ void Network::InvalidateIPv6Config() {
 
   SLOG(2) << logging_tag_ << "Waiting for new IPv6 configuration";
   if (slaac_controller_) {
-    // TODO(b/227563210): currently only invalid the RDNSS timer. What we should
-    // real do is to force kernel to redo SLAAC here.
     slaac_controller_->Stop();
+    slaac_controller_->Start();
   }
 
   set_ip6config(nullptr);
@@ -400,32 +396,6 @@ std::optional<base::TimeDelta> Network::TimeToNextDHCPLeaseRenewal() {
     return std::nullopt;
   }
   return dhcp_controller_->TimeToLeaseExpiry();
-}
-
-void Network::StopIPv6() {
-  proc_fs_->SetIPFlag(IPAddress::kFamilyIPv6, ProcFsStub::kIPFlagDisableIPv6,
-                      "1");
-}
-
-void Network::StartIPv6() {
-  proc_fs_->SetIPFlag(IPAddress::kFamilyIPv6, ProcFsStub::kIPFlagDisableIPv6,
-                      "0");
-
-  proc_fs_->SetIPFlag(
-      IPAddress::kFamilyIPv6,
-      ProcFsStub::kIPFlagAcceptDuplicateAddressDetection,
-      ProcFsStub::kIPFlagAcceptDuplicateAddressDetectionEnabled);
-
-  // Force the kernel to accept RAs even when global IPv6 forwarding is
-  // enabled.  Unfortunately this needs to be set on a per-interface basis.
-  proc_fs_->SetIPFlag(IPAddress::kFamilyIPv6,
-                      ProcFsStub::kIPFlagAcceptRouterAdvertisements,
-                      ProcFsStub::kIPFlagAcceptRouterAdvertisementsAlways);
-}
-
-void Network::EnableIPv6Privacy() {
-  proc_fs_->SetIPFlag(IPAddress::kFamilyIPv6, ProcFsStub::kIPFlagUseTempAddr,
-                      ProcFsStub::kIPFlagUseTempAddrUsedAndDefault);
 }
 
 void Network::ConfigureStaticIPv6Address() {

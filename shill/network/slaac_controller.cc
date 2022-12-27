@@ -28,7 +28,7 @@ SLAACController::SLAACController(int interface_index,
 
 SLAACController::~SLAACController() = default;
 
-void SLAACController::StartRTNL() {
+void SLAACController::Start() {
   address_listener_ = std::make_unique<RTNLListener>(
       RTNLHandler::kRequestAddr,
       base::BindRepeating(&SLAACController::AddressMsgHandler,
@@ -39,7 +39,21 @@ void SLAACController::StartRTNL() {
       base::BindRepeating(&SLAACController::RDNSSMsgHandler,
                           weak_factory_.GetWeakPtr()),
       rtnl_handler_);
-  rtnl_handler_->RequestDump(RTNLHandler::kRequestAddr);
+
+  proc_fs_->SetIPFlag(IPAddress::kFamilyIPv6, ProcFsStub::kIPFlagDisableIPv6,
+                      "1");
+  proc_fs_->SetIPFlag(IPAddress::kFamilyIPv6, ProcFsStub::kIPFlagDisableIPv6,
+                      "0");
+
+  proc_fs_->SetIPFlag(
+      IPAddress::kFamilyIPv6,
+      ProcFsStub::kIPFlagAcceptDuplicateAddressDetection,
+      ProcFsStub::kIPFlagAcceptDuplicateAddressDetectionEnabled);
+  proc_fs_->SetIPFlag(IPAddress::kFamilyIPv6,
+                      ProcFsStub::kIPFlagAcceptRouterAdvertisements,
+                      ProcFsStub::kIPFlagAcceptRouterAdvertisementsAlways);
+  proc_fs_->SetIPFlag(IPAddress::kFamilyIPv6, ProcFsStub::kIPFlagUseTempAddr,
+                      ProcFsStub::kIPFlagUseTempAddrUsedAndDefault);
 }
 
 void SLAACController::RegisterCallback(UpdateCallback update_callback) {
@@ -47,10 +61,9 @@ void SLAACController::RegisterCallback(UpdateCallback update_callback) {
 }
 
 void SLAACController::Stop() {
-  // TODO(b/227563210): this functions does not actually stop SLAAC but just
-  // invalid RDNSS timer in the current version. To be revised to correctly
-  // reflect its name in a follow-up patch.
   StopRDNSSTimer();
+  address_listener_.reset();
+  rdnss_listener_.reset();
 }
 
 void SLAACController::AddressMsgHandler(const RTNLMessage& msg) {

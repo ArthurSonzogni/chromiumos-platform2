@@ -232,4 +232,19 @@ TEST_F(SLAACControllerTest, IPv6AddressChanged) {
                 {ipv6_address7, ipv6_address2, ipv6_address3, ipv6_address4}));
 }
 
+TEST_F(SLAACControllerTest, StartIPv6Flags) {
+  EXPECT_CALL(proc_fs_, SetIPFlag(IPAddress::kFamilyIPv6, "disable_ipv6", "1"))
+      .WillOnce(Return(true));
+  EXPECT_CALL(proc_fs_, SetIPFlag(IPAddress::kFamilyIPv6, "disable_ipv6", "0"))
+      .WillOnce(Return(true));
+  EXPECT_CALL(proc_fs_, SetIPFlag(IPAddress::kFamilyIPv6, "accept_dad", "1"))
+      .WillOnce(Return(true));
+  EXPECT_CALL(proc_fs_, SetIPFlag(IPAddress::kFamilyIPv6, "accept_ra", "2"))
+      .WillOnce(Return(true));
+  EXPECT_CALL(proc_fs_, SetIPFlag(IPAddress::kFamilyIPv6, "use_tempaddr", "2"))
+      .WillOnce(Return(true));
+
+  slaac_controller_.Start();
+}
+
 }  // namespace shill

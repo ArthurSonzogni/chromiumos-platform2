@@ -479,7 +479,6 @@ void Cellular::DestroySockets() {
   if (!socket_destroyer_)
     return;
 
-  network()->StopIPv6();
   for (const auto& address : network()->GetAddresses()) {
     rtnl_handler()->RemoveInterfaceAddress(interface_index(), address);
     socket_destroyer_->DestroySockets(IPPROTO_TCP, address);
@@ -689,9 +688,6 @@ void Cellular::OnAfterResume() {
     // TODO(b/216847428): replace this with a real toggle
     SetEnabledUnchecked(true, base::BindRepeating(LogRestartModemResult));
   }
-
-  // Re-enable IPv6 so we can renegotiate an IP address.
-  network()->StartIPv6();
 
   // TODO(quiche): Consider if this should be conditional. If, e.g.,
   // the device was still disabling when we suspended, will trying to

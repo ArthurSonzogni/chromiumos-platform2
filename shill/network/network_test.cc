@@ -250,30 +250,12 @@ TEST_F(NetworkTest, EnableARPFilteringOnStart) {
   network_->Start(Network::StartOptions{.dhcp = DHCPProvider::Options{}});
 }
 
-TEST_F(NetworkTest, EnableIPv6FlagsSLAAC) {
-  // Not interested in IPv4 flags in this test.
-  EXPECT_CALL(*proc_fs_, SetIPFlag(IPAddress::kFamilyIPv4, _, _))
-      .WillRepeatedly(Return(true));
-
-  EXPECT_CALL(*proc_fs_, SetIPFlag(IPAddress::kFamilyIPv6, "disable_ipv6", "0"))
-      .WillOnce(Return(true));
-  EXPECT_CALL(*proc_fs_, SetIPFlag(IPAddress::kFamilyIPv6, "accept_dad", "1"))
-      .WillOnce(Return(true));
-  EXPECT_CALL(*proc_fs_, SetIPFlag(IPAddress::kFamilyIPv6, "accept_ra", "2"))
-      .WillOnce(Return(true));
-  network_->Start(Network::StartOptions{.accept_ra = true});
-}
-
 TEST_F(NetworkTest, EnableIPv6FlagsLinkProtocol) {
   // Not interested in IPv4 flags in this test.
   EXPECT_CALL(*proc_fs_, SetIPFlag(IPAddress::kFamilyIPv4, _, _))
       .WillRepeatedly(Return(true));
 
   EXPECT_CALL(*proc_fs_, SetIPFlag(IPAddress::kFamilyIPv6, "disable_ipv6", "0"))
-      .WillOnce(Return(true));
-  EXPECT_CALL(*proc_fs_, SetIPFlag(IPAddress::kFamilyIPv6, "accept_dad", "1"))
-      .WillOnce(Return(true));
-  EXPECT_CALL(*proc_fs_, SetIPFlag(IPAddress::kFamilyIPv6, "accept_ra", "2"))
       .WillOnce(Return(true));
   network_->set_link_protocol_ipv6_properties(
       std::make_unique<IPConfig::Properties>());

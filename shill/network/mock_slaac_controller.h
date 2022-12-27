@@ -23,7 +23,8 @@ class MockSLAACController : public SLAACController {
 
   ~MockSLAACController() override = default;
 
-  MOCK_METHOD(void, StartRTNL, (), (override));
+  MOCK_METHOD(void, Start, (), (override));
+  MOCK_METHOD(void, Stop, (), (override));
 
   MOCK_METHOD(std::vector<IPAddress>, GetAddresses, (), (const override));
 

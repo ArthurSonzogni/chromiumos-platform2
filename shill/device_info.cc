@@ -643,12 +643,10 @@ DeviceRefPtr DeviceInfo::CreateDevice(const std::string& link_name,
       break;
     case Technology::kEthernet:
       device = new Ethernet(manager_, link_name, address, interface_index);
-      device->network()->EnableIPv6Privacy();
       break;
     case Technology::kVirtioEthernet:
       device =
           new VirtioEthernet(manager_, link_name, address, interface_index);
-      device->network()->EnableIPv6Privacy();
       break;
     case Technology::kWiFi:
       // Defer creating this device until we get information about the
@@ -1390,7 +1388,6 @@ void DeviceInfo::OnWiFiInterfaceInfoReceived(const Nl80211Message& msg) {
 #endif  // DISABLE_WAKE_ON_WIFI
   DeviceRefPtr device = new WiFi(manager_, info->name, address, interface_index,
                                  phy_index, std::move(wake_on_wifi));
-  device->network()->EnableIPv6Privacy();
   RegisterDevice(device);
 }
 

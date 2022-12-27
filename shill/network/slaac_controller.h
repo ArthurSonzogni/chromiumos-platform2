@@ -36,8 +36,13 @@ class SLAACController {
                   EventDispatcher* dispatcher);
   virtual ~SLAACController();
 
-  mockable void StartRTNL();
   mockable void RegisterCallback(UpdateCallback update_callback);
+
+  // Start monitoring SLAAC RTNL from kernel. Note that we force flap
+  // disable-IPv6 state on this call so that netdevice IPv6 state are refreshed.
+  mockable void Start();
+  // Stop monitoring SLAAC address on the netdevice and stop the DNS timer. The
+  // SLAAC process itself in the kernel is not stopped.
   mockable void Stop();
 
   // Return the list of all SLAAC-configured addresses. The order is guaranteed

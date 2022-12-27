@@ -201,20 +201,12 @@ class Network {
   // lease renewal, base::TimeDelta wrapped in std::optional otherwise.
   mockable std::optional<base::TimeDelta> TimeToNextDHCPLeaseRenewal();
 
-  // Functions for IPv6.
-  // TODO(b/232177767): Move StartIPv6() and StopIPv6() into private section.
-  // Currently these two functions are only used in cellular.cc, and those
-  // usages will not affect the logical state of Network.
-  void StopIPv6();
-  void StartIPv6();
   // Invalidate the IPv6 config kept in shill and wait for the new config from
   // the kernel.
   mockable void InvalidateIPv6Config();
   void set_ipv6_static_properties(std::unique_ptr<IPConfig::Properties> props) {
     ipv6_static_properties_ = std::move(props);
   }
-  // Called by DeviceInfo.
-  void EnableIPv6Privacy();
 
   // Returns a WeakPtr of the Network.
   base::WeakPtr<Network> AsWeakPtr() { return weak_factory_.GetWeakPtr(); }
