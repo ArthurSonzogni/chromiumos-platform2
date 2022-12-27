@@ -143,85 +143,8 @@ std::unique_ptr<PciUtil> Context::CreatePciUtil() {
   return std::unique_ptr<PciUtil>(new PciUtilImpl());
 }
 
-org::chromium::AttestationProxyInterface* Context::attestation_proxy() const {
-  return attestation_proxy_.get();
-}
-
-brillo::CrosConfigInterface* Context::cros_config() const {
-  return cros_config_.get();
-}
-
-org::chromium::debugdProxyInterface* Context::debugd_proxy() const {
-  return debugd_proxy_.get();
-}
-
-org::chromium::PowerManagerProxyInterface* Context::power_manager_proxy()
-    const {
-  return power_manager_proxy_.get();
-}
-
-org::chromium::cras::ControlProxyInterface* Context::cras_proxy() const {
-  return cras_proxy_.get();
-}
-
-org::freedesktop::fwupdProxyInterface* Context::fwupd_proxy() const {
-  return fwupd_proxy_.get();
-}
-
-NetworkHealthAdapter* Context::network_health_adapter() const {
-  return network_health_adapter_.get();
-}
-
-NetworkDiagnosticsAdapter* Context::network_diagnostics_adapter() const {
-  return network_diagnostics_adapter_.get();
-}
-
-PowerdAdapter* Context::powerd_adapter() const {
-  return powerd_adapter_.get();
-}
-
-const base::FilePath& Context::root_dir() const {
-  return root_dir_;
-}
-
-const std::unique_ptr<brillo::UdevMonitor>& Context::udev_monitor() const {
-  return udev_monitor_;
-}
-
 const base::Time Context::time() const {
   return base::Time().Now();
-}
-
-SystemConfigInterface* Context::system_config() const {
-  return system_config_.get();
-}
-
-mojom::Executor* Context::executor() {
-  return executor_.get();
-}
-
-SystemUtilities* Context::system_utils() const {
-  return system_utils_.get();
-}
-
-BluetoothEventHub* Context::bluetooth_event_hub() const {
-  return bluetooth_event_hub_.get();
-}
-
-BluetoothInfoManager* Context::bluetooth_info_manager() const {
-  return bluetooth_info_manager_.get();
-}
-
-base::TickClock* Context::tick_clock() const {
-  return tick_clock_.get();
-}
-
-org::chromium::TpmManagerProxyInterface* Context::tpm_manager_proxy() const {
-  return tpm_manager_proxy_.get();
-}
-
-brillo::Udev* Context::udev() const {
-  return udev_.get();
 }
 
 }  // namespace diagnostics

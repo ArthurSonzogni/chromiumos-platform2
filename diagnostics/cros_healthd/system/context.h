@@ -76,69 +76,93 @@ class Context {
   // Creates an object for accessing |PciUtil| interface.
   virtual std::unique_ptr<PciUtil> CreatePciUtil();
 
-  // Accessors for the various helper objects:
-  // TODO(b/232198240): Make these getters inline.
+  // Return current time.
+  virtual const base::Time time() const;
 
+  // Accessors for the various helper objects:
   // Use the object returned by attestation_proxy() to get the attestation
   // information from attestation service.
-  org::chromium::AttestationProxyInterface* attestation_proxy() const;
+  org::chromium::AttestationProxyInterface* attestation_proxy() const {
+    return attestation_proxy_.get();
+  }
   // Use the object returned by cros_config() to query the device's
   // configuration file.
-  brillo::CrosConfigInterface* cros_config() const;
+  brillo::CrosConfigInterface* cros_config() const {
+    return cros_config_.get();
+  }
   // Use the object returned by debugd_proxy() to make calls to debugd. Example:
   // cros_healthd calls out to debugd when it needs to collect smart battery
   // metrics like manufacture_date_smart and temperature_smart.
-  org::chromium::debugdProxyInterface* debugd_proxy() const;
+  org::chromium::debugdProxyInterface* debugd_proxy() const {
+    return debugd_proxy_.get();
+  }
   // Use the object returned by power_manager_proxy() to communicate with power
   // manager daemon through dbus.
-  org::chromium::PowerManagerProxyInterface* power_manager_proxy() const;
+  org::chromium::PowerManagerProxyInterface* power_manager_proxy() const {
+    return power_manager_proxy_.get();
+  }
   // Use the object returned by cras_proxy() to communicate with cras daemon
   // through dbus.
-  org::chromium::cras::ControlProxyInterface* cras_proxy() const;
+  org::chromium::cras::ControlProxyInterface* cras_proxy() const {
+    return cras_proxy_.get();
+  }
   // Use the object returned by fwupd_proxy() to communicate with fwupd through
   // dbus.
-  org::freedesktop::fwupdProxyInterface* fwupd_proxy() const;
+  org::freedesktop::fwupdProxyInterface* fwupd_proxy() const {
+    return fwupd_proxy_.get();
+  }
   // Use the object returned by network_health_adapter() to make requests to the
   // NetworkHealthService. Example: cros_healthd calls out to the
   // NetworkHealthService to get network telemetry data.
-  NetworkHealthAdapter* network_health_adapter() const;
+  NetworkHealthAdapter* network_health_adapter() const {
+    return network_health_adapter_.get();
+  }
   // Use the object returned by network_diagnostics_adapter() to make calls to
   // the NetworkDiagnosticsRoutines interface implemented by the browser.
   // Example: cros_healthd calls out to the NetworkDiagnosticsRoutines interface
   // with async callbacks when it needs to run network diagnostics.
-  NetworkDiagnosticsAdapter* network_diagnostics_adapter() const;
+  NetworkDiagnosticsAdapter* network_diagnostics_adapter() const {
+    return network_diagnostics_adapter_.get();
+  }
   // Use the object returned by powerd_adapter() to subscribe to notifications
   // from powerd.
-  PowerdAdapter* powerd_adapter() const;
+  PowerdAdapter* powerd_adapter() const { return powerd_adapter_.get(); }
   // Use the object returned by root_dir() to determine the root directory of
   // the system.
-  const base::FilePath& root_dir() const;
+  const base::FilePath& root_dir() const { return root_dir_; }
   // Use the object returned by udev_monitor() to receive udev events.
-  const std::unique_ptr<brillo::UdevMonitor>& udev_monitor() const;
+  const std::unique_ptr<brillo::UdevMonitor>& udev_monitor() const {
+    return udev_monitor_;
+  }
   // Use the object returned by system_config() to determine which conditional
   // features a device supports.
-  SystemConfigInterface* system_config() const;
+  SystemConfigInterface* system_config() const { return system_config_.get(); }
   // Use the interface returned by executor() to make calls to the root-level
   // executor.
-  virtual ash::cros_healthd::mojom::Executor* executor();
+  virtual ash::cros_healthd::mojom::Executor* executor() {
+    return executor_.get();
+  }
   // Use the object returned by system_utils() to access system utilities.
-  SystemUtilities* system_utils() const;
+  SystemUtilities* system_utils() const { return system_utils_.get(); }
   // Use the object returned by bluetooth_info_manager() to access Bluetooth
   // adapter and device information from the Bluetooth proxy.
-  BluetoothInfoManager* bluetooth_info_manager() const;
+  BluetoothInfoManager* bluetooth_info_manager() const {
+    return bluetooth_info_manager_.get();
+  }
   // Use the object returned by bluetooth_event_hub() to subscribe Bluetooth
   // events.
-  BluetoothEventHub* bluetooth_event_hub() const;
+  BluetoothEventHub* bluetooth_event_hub() const {
+    return bluetooth_event_hub_.get();
+  }
   // Use the object returned by tick_clock() to track the passage of time.
-  base::TickClock* tick_clock() const;
-  // Return current time.
-  virtual const base::Time time() const;
+  base::TickClock* tick_clock() const { return tick_clock_.get(); }
   // Use the object returned by tpm_manager_proxy() to get the tpm information
   // from tpm manager.
-  org::chromium::TpmManagerProxyInterface* tpm_manager_proxy() const;
+  org::chromium::TpmManagerProxyInterface* tpm_manager_proxy() const {
+    return tpm_manager_proxy_.get();
+  }
   // Use the object returned by udev() to access udev related interfaces.
-  brillo::Udev* udev() const;
-
+  brillo::Udev* udev() const { return udev_.get(); }
   // Get MojoService to access external mojo services.
   MojoService* mojo_service() const { return mojo_service_.get(); }
 
