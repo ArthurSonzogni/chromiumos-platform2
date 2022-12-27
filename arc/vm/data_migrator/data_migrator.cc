@@ -153,12 +153,13 @@ class DBusAdaptor : public org::chromium::ArcVmDataMigratorAdaptor,
 
   void MigrationHelperCallback(uint64_t current_bytes, uint64_t total_bytes) {
     arc::data_migrator::DataMigrationProgress progress_to_send;
-    if (total_bytes != 0) {
-      progress_to_send.set_status(
-          arc::data_migrator::DATA_MIGRATION_IN_PROGRESS);
-      progress_to_send.set_current_bytes(current_bytes);
-      progress_to_send.set_total_bytes(total_bytes);
+    if (total_bytes == 0) {
+      // Ignore the callback when MigrationHelper is still initializing.
+      return;
     }
+    progress_to_send.set_status(arc::data_migrator::DATA_MIGRATION_IN_PROGRESS);
+    progress_to_send.set_current_bytes(current_bytes);
+    progress_to_send.set_total_bytes(total_bytes);
     SendMigrationProgressSignal(progress_to_send);
   }
 
