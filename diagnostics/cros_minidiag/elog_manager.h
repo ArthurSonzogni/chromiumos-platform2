@@ -5,10 +5,13 @@
 #ifndef DIAGNOSTICS_CROS_MINIDIAG_ELOG_MANAGER_H_
 #define DIAGNOSTICS_CROS_MINIDIAG_ELOG_MANAGER_H_
 
+#include <optional>
 #include <string>
 #include <vector>
 
 #include <base/strings/string_piece.h>
+
+#include "diagnostics/cros_minidiag/minidiag_metrics.h"
 
 namespace cros_minidiag {
 
@@ -21,13 +24,20 @@ class ElogEvent {
   ~ElogEvent();
   // Retrieves the [type] of the event. The [type] is a mandatory field and
   // always the 3rd column in the event string.
-  // Return the [type] string, or an empty string if an error occurs.
-  std::string GetType() const;
+  // Return the [type] string, or std::nullopt if an error occurs.
+  std::optional<std::string> GetType() const;
+  // Retrieves the [subtype] of the event. The [subtype] is an optional field
+  // and the 4th column in the event string. Return the [subtype] string, or
+  // std::nullopt if the subtype does not exist or an error occurs.
+  std::optional<std::string> GetSubType() const;
   // The accessor of data_.
   const std::vector<std::string>& data() const { return data_; }
 
  private:
   std::vector<std::string> data_;
+  // Retrieves the data of the column with specified index.
+  // Returns std::nullopt if the data does not exist or an error occurs.
+  std::optional<std::string> GetColumn(int idx) const;
 };
 
 // ElogManager get the raw output generated from elogtool and parse it line by
@@ -38,17 +48,26 @@ class ElogManager {
  public:
   explicit ElogManager(const std::string& elog_string,
                        const std::string& previous_last_line);
+  ElogManager(const std::string& elog_string,
+              const std::string& previous_last_line,
+              MiniDiagMetrics* minidiag_metrics);
+
   ~ElogManager();
   // The accessor of last_line_.
   const std::string& last_line() const { return last_line_; }
   // Retrieves the number of events.
   int GetEventNum() const;
 
+  // Counts the number of MiniDiag launch events and report via UMA library.
+  void ReportMiniDiagLaunch() const;
   // TODO(roccochen) Add report metrics related helper
 
  private:
   std::string last_line_;
   std::vector<ElogEvent> elog_events_;
+
+  MiniDiagMetrics default_minidiag_metrics_;
+  MiniDiagMetrics* metrics_{nullptr};
 };
 
 }  // namespace cros_minidiag

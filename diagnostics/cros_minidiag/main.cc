@@ -41,6 +41,8 @@ int main(int argc, char* argv[]) {
   DEFINE_bool(last_report, false, "Only dump the new events since last report");
   DEFINE_bool(update_last_report, false,
               "Update the records of elog last report");
+  DEFINE_bool(metrics_launch_count, false,
+              "Count and report the metrics of MiniDiag launch count");
   brillo::FlagHelper::Init(argc, argv, "Cros MiniDiag Tool");
 
   const base::CommandLine* cl = base::CommandLine::ForCurrentProcess();
@@ -49,7 +51,7 @@ int main(int argc, char* argv[]) {
     return EXIT_FAILURE;
   }
 
-  if (!FLAGS_update_last_report) {
+  if (!FLAGS_update_last_report && !FLAGS_metrics_launch_count) {
     LOG(ERROR) << "cros-minidiag-tool cannot be run without updating or "
                   "reporting metrics; exiting";
     return EXIT_FAILURE;
@@ -64,8 +66,10 @@ int main(int argc, char* argv[]) {
 
   std::string previous_last_line = "";
   base::FilePath file_last_line(kFileLastLine);
+  std::string elog_start_str = "";
   // Try to get the last line of previous upload.
   if (FLAGS_last_report) {
+    elog_start_str = " since last report";
     if (!cros_minidiag::GetPrevElogLastLine(file_last_line,
                                             previous_last_line)) {
       LOG(WARNING) << "Could not read from " << kFileLastLine
@@ -74,6 +78,12 @@ int main(int argc, char* argv[]) {
   }
 
   cros_minidiag::ElogManager elog_manager(elogtool_output, previous_last_line);
+
+  // Count and report the metrics of MiniDiag launch count.
+  if (FLAGS_metrics_launch_count) {
+    LOG(INFO) << "Count and report MiniDiag launch count" << elog_start_str;
+    elog_manager.ReportMiniDiagLaunch();
+  }
 
   // Get the last line of elog and update /var/lib/metrics/elog-last-line.
   if (FLAGS_update_last_report) {

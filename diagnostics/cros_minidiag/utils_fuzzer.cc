@@ -9,8 +9,10 @@
 #include <base/logging.h>
 #include <base/strings/string_util.h>
 #include <fuzzer/FuzzedDataProvider.h>
+#include <metrics/metrics_library_mock.h>
 
 #include "diagnostics/cros_minidiag/elog_manager.h"
+#include "diagnostics/cros_minidiag/minidiag_metrics.h"
 #include "diagnostics/cros_minidiag/utils.h"
 
 namespace cros_minidiag {
@@ -24,10 +26,13 @@ class UtilsFuzzer {
   UtilsFuzzer() {
     CHECK(scoped_temp_dir_.CreateUniqueTempDir());
     path_ = scoped_temp_dir_.GetPath().Append(kMockFileName);
+    minidiag_metrics_.SetMetricsLibraryForTesting(&mock_metrics_library_);
   }
 
   base::ScopedTempDir scoped_temp_dir_;
   base::FilePath path_;
+  testing::StrictMock<MetricsLibraryMock> mock_metrics_library_;
+  MiniDiagMetrics minidiag_metrics_;
 };
 
 }  // namespace cros_minidiag
@@ -65,7 +70,9 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
 
   // Fuzz test of ElogManager ctor.
   auto elog_manager = std::make_unique<cros_minidiag::ElogManager>(
-      data_provider.ConsumeRandomLengthString(), previous_last_line);
+      data_provider.ConsumeRandomLengthString(), previous_last_line,
+      &fuzzer.minidiag_metrics_);
+  elog_manager->ReportMiniDiagLaunch();
 
   return 0;
 }

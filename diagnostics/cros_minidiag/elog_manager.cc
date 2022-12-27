@@ -5,6 +5,7 @@
 #include "diagnostics/cros_minidiag/elog_manager.h"
 
 #include <algorithm>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -17,7 +18,15 @@ namespace cros_minidiag {
 
 namespace {
 // The index of [type] field in a valid elog event.
-const int kTypeIndex = 2;
+constexpr int kTypeIndex = 2;
+constexpr int kSubTypeIndex = 3;
+
+// The format of a legacy MiniDiag launch event:
+// idx | time | Diagnostics Mode | Launch Diagnostics
+constexpr const char kDataLaunchDiagnostics[] = "Launch Diagnostics";
+// The format of a MiniDiag launch event:
+// idx | time | Firmware vboot info | boot_mode=Diagnostic | fw_tried=...
+constexpr const char kDataBootModeDiagnostic[] = "boot_mode=Diagnostic";
 }  // namespace
 
 ElogEvent::ElogEvent(const base::StringPiece& event_string)
@@ -28,16 +37,32 @@ ElogEvent::ElogEvent(const base::StringPiece& event_string)
 
 ElogEvent::~ElogEvent() = default;
 
-std::string ElogEvent::GetType() const {
-  if (data_.size() < kTypeIndex + 1) {
-    LOG(ERROR) << "Invalid event. Too few columns: " << data_.size();
-    return "";
+std::optional<std::string> ElogEvent::GetColumn(int idx) const {
+  if (data_.size() < idx + 1) {
+    return std::nullopt;
   }
-  return data_[kTypeIndex];
+  return data_[idx];
+}
+
+std::optional<std::string> ElogEvent::GetType() const {
+  const auto result = GetColumn(kTypeIndex);
+  LOG_IF(ERROR, !result) << "Invalid event. Too few columns: " << data_.size();
+  return result;
+}
+
+std::optional<std::string> ElogEvent::GetSubType() const {
+  return GetColumn(kSubTypeIndex);
 }
 
 ElogManager::ElogManager(const std::string& elog_string,
-                         const std::string& previous_last_line) {
+                         const std::string& previous_last_line)
+    : ElogManager(elog_string, previous_last_line, &default_minidiag_metrics_) {
+}
+
+ElogManager::ElogManager(const std::string& elog_string,
+                         const std::string& previous_last_line,
+                         MiniDiagMetrics* minidiag_metrics)
+    : metrics_(minidiag_metrics) {
   base::StringPiece last_line_piece;
 
   // We only want to store the new events which appear after
@@ -66,6 +91,19 @@ ElogManager::~ElogManager() = default;
 
 int ElogManager::GetEventNum() const {
   return elog_events_.size();
+}
+
+void ElogManager::ReportMiniDiagLaunch() const {
+  int count = 0;
+  for (const auto& elog_event : elog_events_) {
+    const auto subtype = elog_event.GetSubType();
+    if (subtype && (*subtype == kDataLaunchDiagnostics ||
+                    *subtype == kDataBootModeDiagnostic)) {
+      count++;
+    }
+  }
+  LOG(INFO) << "Record Launch Count: " << count;
+  metrics_->RecordLaunch(count);
 }
 
 }  // namespace cros_minidiag

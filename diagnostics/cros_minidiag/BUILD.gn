@@ -16,12 +16,14 @@ pkg_config("libcros-minidiag-tool-pkg-deps") {
   pkg_deps = [
     "libbrillo",
     "libchrome",
+    "libmetrics",
   ]
 }
 
 source_set("libcros-minidiag-tool") {
   sources = [
     "elog_manager.cc",
+    "minidiag_metrics.cc",
     "utils.cc",
   ]
   configs += [ ":libcros-minidiag-tool-pkg-deps" ]
@@ -59,6 +61,7 @@ if (use.fuzzer) {
     configs += [
       ":libcros-minidiag-tool-pkg-deps",
       "//common-mk/common_fuzzer:common_fuzzer",
+      "//common-mk:test",
     ]
     deps = [ ":libcros-minidiag-tool" ]
   }
