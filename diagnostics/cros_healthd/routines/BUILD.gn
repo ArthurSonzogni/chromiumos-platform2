@@ -151,6 +151,7 @@ if (use.test) {
       "fingerprint_alive/fingerprint_alive_test.cc",
       "led_lit_up/led_lit_up_test.cc",
       "memory_and_cpu/memory_test.cc",
+      "memory_and_cpu/memory_v2_test.cc",
       "memory_and_cpu/prime_number_search.cc",
       "memory_and_cpu/prime_number_search_test.cc",
       "network/captive_portal_test.cc",

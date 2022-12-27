@@ -17,7 +17,10 @@
 namespace diagnostics {
 
 FakeProcessControl::FakeProcessControl() {
-  temp_dir_ = base::ScopedTempDir();
+  if (!temp_dir_.CreateUniqueTempDir()) {
+    CHECK(false) << "Failed to create unique temporary directory";
+    return;
+  }
   base::FilePath stdout_filepath;
   stdout_fd_ = base::CreateAndOpenFdForTemporaryFileInDir(temp_dir_.GetPath(),
                                                           &stdout_filepath);
