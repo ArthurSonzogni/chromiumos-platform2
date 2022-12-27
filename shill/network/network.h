@@ -5,6 +5,7 @@
 #ifndef SHILL_NETWORK_NETWORK_H_
 #define SHILL_NETWORK_NETWORK_H_
 
+#include <algorithm>
 #include <memory>
 #include <set>
 #include <string>
@@ -22,6 +23,7 @@
 #include "shill/net/rtnl_handler.h"
 #include "shill/network/dhcp_controller.h"
 #include "shill/network/dhcp_provider.h"
+#include "shill/network/proc_fs_stub.h"
 #include "shill/network/slaac_controller.h"
 #include "shill/portal_detector.h"
 #include "shill/technology.h"
@@ -301,6 +303,12 @@ class Network {
   }
   void set_state_for_testing(State state) { state_ = state; }
   EventHandler* event_handler() { return event_handler_; }
+  // Take ownership of an external created ProcFsStub and return the point to
+  // internal proc_fs_ after move.
+  ProcFsStub* set_proc_fs_for_testing(std::unique_ptr<ProcFsStub> proc_fs) {
+    proc_fs_ = std::move(proc_fs);
+    return proc_fs_.get();
+  }
 
  private:
   // TODO(b/232177767): Refactor DeviceTest to remove this dependency.
@@ -367,14 +375,6 @@ class Network {
   // contain the best local address for the target.
   void EnableARPFiltering();
 
-  // Set an IP configuration flag on the device. |family| should be "ipv6" or
-  // "ipv4". |flag| should be the name of the flag to be set and |value| is
-  // what this flag should be set to. Overridden by unit tests to pretend
-  // writing to procfs.
-  mockable bool SetIPFlag(IPAddress::Family family,
-                          const std::string& flag,
-                          const std::string& value);
-
   const int interface_index_;
   const std::string interface_name_;
   const Technology technology_;
@@ -389,6 +389,7 @@ class Network {
   State state_ = State::kIdle;
 
   std::unique_ptr<Connection> connection_;
+  std::unique_ptr<ProcFsStub> proc_fs_;
 
   std::unique_ptr<DHCPController> dhcp_controller_;
   std::unique_ptr<SLAACController> slaac_controller_;

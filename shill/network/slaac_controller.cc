@@ -18,9 +18,11 @@
 namespace shill {
 
 SLAACController::SLAACController(int interface_index,
+                                 ProcFsStub* proc_fs,
                                  RTNLHandler* rtnl_handler,
                                  EventDispatcher* dispatcher)
     : interface_index_(interface_index),
+      proc_fs_(proc_fs),
       rtnl_handler_(rtnl_handler),
       dispatcher_(dispatcher) {}
 

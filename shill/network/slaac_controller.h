@@ -17,6 +17,7 @@
 #include "shill/net/ip_address.h"
 #include "shill/net/rtnl_handler.h"
 #include "shill/net/rtnl_listener.h"
+#include "shill/network/proc_fs_stub.h"
 
 namespace shill {
 
@@ -30,6 +31,7 @@ class SLAACController {
   using UpdateCallback = base::RepeatingCallback<void(UpdateType)>;
 
   SLAACController(int interface_index,
+                  ProcFsStub* proc_fs,
                   RTNLHandler* rtnl_handler,
                   EventDispatcher* dispatcher);
   virtual ~SLAACController();
@@ -86,6 +88,9 @@ class SLAACController {
 
   // Callbacks registered by RegisterCallbacks().
   UpdateCallback update_callback_;
+
+  // Owned by Network
+  ProcFsStub* proc_fs_;
 
   RTNLHandler* rtnl_handler_;
   std::unique_ptr<RTNLListener> address_listener_;

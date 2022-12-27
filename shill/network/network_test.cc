@@ -4,6 +4,7 @@
 
 #include "shill/network/network.h"
 
+#include <memory>
 #include <optional>
 #include <string>
 #include <vector>
@@ -25,6 +26,7 @@
 #include "shill/network/mock_dhcp_controller.h"
 #include "shill/network/mock_dhcp_provider.h"
 #include "shill/network/mock_network.h"
+#include "shill/network/mock_proc_fs_stub.h"
 #include "shill/network/mock_slaac_controller.h"
 #include "shill/portal_detector.h"
 #include "shill/technology.h"
@@ -125,14 +127,8 @@ class NetworkInTest : public Network {
                 event_handler,
                 control_interface,
                 dispatcher,
-                metrics) {
-    ON_CALL(*this, SetIPFlag(_, _, _)).WillByDefault(Return(true));
-  }
+                metrics) {}
 
-  MOCK_METHOD(bool,
-              SetIPFlag,
-              (IPAddress::Family, const std::string&, const std::string&),
-              (override));
   MOCK_METHOD(std::unique_ptr<Connection>,
               CreateConnection,
               (),
@@ -156,6 +152,8 @@ class NetworkTest : public ::testing::Test {
         &dispatcher_, &metrics_);
     network_->set_dhcp_provider_for_testing(&dhcp_provider_);
     network_->set_routing_table_for_testing(&routing_table_);
+    proc_fs_ = dynamic_cast<MockProcFsStub*>(network_->set_proc_fs_for_testing(
+        std::make_unique<NiceMock<MockProcFsStub>>(kTestIfname)));
     EXPECT_CALL(dhcp_provider_, CreateController(_, _, _)).Times(0);
     ON_CALL(*network_, CreateConnection()).WillByDefault([this]() {
       auto ret = std::make_unique<NiceMock<MockConnection>>();
@@ -202,6 +200,7 @@ class NetworkTest : public ::testing::Test {
   MockDHCPController* dhcp_controller_ = nullptr;
   MockSLAACController* slaac_controller_ = nullptr;
   MockConnection* connection_ = nullptr;
+  MockProcFsStub* proc_fs_ = nullptr;
 };
 
 TEST_F(NetworkTest, OnNetworkStoppedCalledOnStopAfterStart) {
@@ -244,37 +243,37 @@ TEST_F(NetworkTest, OnNetworkStoppedCalledOnDHCPFailure) {
 
 TEST_F(NetworkTest, EnableARPFilteringOnStart) {
   ExpectCreateDHCPController(true);
-  EXPECT_CALL(*network_, SetIPFlag(IPAddress::kFamilyIPv4, "arp_announce", "2"))
+  EXPECT_CALL(*proc_fs_, SetIPFlag(IPAddress::kFamilyIPv4, "arp_announce", "2"))
       .WillOnce(Return(true));
-  EXPECT_CALL(*network_, SetIPFlag(IPAddress::kFamilyIPv4, "arp_ignore", "1"))
+  EXPECT_CALL(*proc_fs_, SetIPFlag(IPAddress::kFamilyIPv4, "arp_ignore", "1"))
       .WillOnce(Return(true));
   network_->Start(Network::StartOptions{.dhcp = DHCPProvider::Options{}});
 }
 
 TEST_F(NetworkTest, EnableIPv6FlagsSLAAC) {
   // Not interested in IPv4 flags in this test.
-  EXPECT_CALL(*network_, SetIPFlag(IPAddress::kFamilyIPv4, _, _))
+  EXPECT_CALL(*proc_fs_, SetIPFlag(IPAddress::kFamilyIPv4, _, _))
       .WillRepeatedly(Return(true));
 
-  EXPECT_CALL(*network_, SetIPFlag(IPAddress::kFamilyIPv6, "disable_ipv6", "0"))
+  EXPECT_CALL(*proc_fs_, SetIPFlag(IPAddress::kFamilyIPv6, "disable_ipv6", "0"))
       .WillOnce(Return(true));
-  EXPECT_CALL(*network_, SetIPFlag(IPAddress::kFamilyIPv6, "accept_dad", "1"))
+  EXPECT_CALL(*proc_fs_, SetIPFlag(IPAddress::kFamilyIPv6, "accept_dad", "1"))
       .WillOnce(Return(true));
-  EXPECT_CALL(*network_, SetIPFlag(IPAddress::kFamilyIPv6, "accept_ra", "2"))
+  EXPECT_CALL(*proc_fs_, SetIPFlag(IPAddress::kFamilyIPv6, "accept_ra", "2"))
       .WillOnce(Return(true));
   network_->Start(Network::StartOptions{.accept_ra = true});
 }
 
 TEST_F(NetworkTest, EnableIPv6FlagsLinkProtocol) {
   // Not interested in IPv4 flags in this test.
-  EXPECT_CALL(*network_, SetIPFlag(IPAddress::kFamilyIPv4, _, _))
+  EXPECT_CALL(*proc_fs_, SetIPFlag(IPAddress::kFamilyIPv4, _, _))
       .WillRepeatedly(Return(true));
 
-  EXPECT_CALL(*network_, SetIPFlag(IPAddress::kFamilyIPv6, "disable_ipv6", "0"))
+  EXPECT_CALL(*proc_fs_, SetIPFlag(IPAddress::kFamilyIPv6, "disable_ipv6", "0"))
       .WillOnce(Return(true));
-  EXPECT_CALL(*network_, SetIPFlag(IPAddress::kFamilyIPv6, "accept_dad", "1"))
+  EXPECT_CALL(*proc_fs_, SetIPFlag(IPAddress::kFamilyIPv6, "accept_dad", "1"))
       .WillOnce(Return(true));
-  EXPECT_CALL(*network_, SetIPFlag(IPAddress::kFamilyIPv6, "accept_ra", "2"))
+  EXPECT_CALL(*proc_fs_, SetIPFlag(IPAddress::kFamilyIPv6, "accept_ra", "2"))
       .WillOnce(Return(true));
   network_->set_link_protocol_ipv6_properties(
       std::make_unique<IPConfig::Properties>());

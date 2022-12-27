@@ -63,11 +63,6 @@ class MockNetwork : public Network {
 
   MOCK_METHOD(void, InvalidateIPv6Config, (), (override));
 
-  MOCK_METHOD(bool,
-              SetIPFlag,
-              (IPAddress::Family, const std::string&, const std::string&),
-              (override));
-
   MOCK_METHOD(bool, IsDefault, (), (const, override));
   MOCK_METHOD(void, SetPriority, (uint32_t, bool), (override));
   MOCK_METHOD(void, SetUseDNS, (bool), (override));

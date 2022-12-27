@@ -17,7 +17,7 @@ namespace shill {
 
 class MockSLAACController : public SLAACController {
  public:
-  MockSLAACController() : SLAACController(0, nullptr, nullptr) {}
+  MockSLAACController() : SLAACController(0, nullptr, nullptr, nullptr) {}
   MockSLAACController(const MockSLAACController&) = delete;
   MockSLAACController& operator=(const MockSLAACController&) = delete;
 

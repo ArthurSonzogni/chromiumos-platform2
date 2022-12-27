@@ -4,10 +4,10 @@
 
 #include "shill/network/network.h"
 
+#include <memory>
 #include <string>
 #include <vector>
 
-#include <base/containers/contains.h>
 #include <base/files/file_util.h>
 #include <base/notreached.h>
 #include <base/strings/stringprintf.h>
@@ -20,6 +20,7 @@
 #include "shill/metrics.h"
 #include "shill/net/ip_address.h"
 #include "shill/net/rtnl_handler.h"
+#include "shill/network/proc_fs_stub.h"
 #include "shill/network/slaac_controller.h"
 #include "shill/routing_table.h"
 #include "shill/routing_table_entry.h"
@@ -30,27 +31,6 @@ namespace shill {
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kDevice;
 }  // namespace Logging
-
-namespace {
-
-constexpr char kIPFlagTemplate[] = "/proc/sys/net/%s/conf/%s/%s";
-constexpr char kIPFlagVersion4[] = "ipv4";
-constexpr char kIPFlagVersion6[] = "ipv6";
-
-constexpr char kIPFlagAcceptDuplicateAddressDetection[] = "accept_dad";
-constexpr char kIPFlagAcceptDuplicateAddressDetectionEnabled[] = "1";
-constexpr char kIPFlagAcceptRouterAdvertisements[] = "accept_ra";
-constexpr char kIPFlagAcceptRouterAdvertisementsAlways[] = "2";
-constexpr char kIPFlagDisableIPv6[] = "disable_ipv6";
-constexpr char kIPFlagUseTempAddr[] = "use_tempaddr";
-constexpr char kIPFlagUseTempAddrUsedAndDefault[] = "2";
-
-constexpr char kIPFlagArpAnnounce[] = "arp_announce";
-constexpr char kIPFlagArpAnnounceBestLocal[] = "2";
-constexpr char kIPFlagArpIgnore[] = "arp_ignore";
-constexpr char kIPFlagArpIgnoreLocalOnly[] = "1";
-
-}  // namespace
 
 Network::Network(int interface_index,
                  const std::string& interface_name,
@@ -65,6 +45,7 @@ Network::Network(int interface_index,
       technology_(technology),
       logging_tag_(interface_name),
       fixed_ip_params_(fixed_ip_params),
+      proc_fs_(std::make_unique<ProcFsStub>(interface_name_)),
       event_handler_(event_handler),
       control_interface_(control_interface),
       dispatcher_(dispatcher),
@@ -169,7 +150,7 @@ void Network::Start(const Network::StartOptions& opts) {
 
 std::unique_ptr<SLAACController> Network::CreateSLAACController() {
   auto slaac_controller = std::make_unique<SLAACController>(
-      interface_index_, rtnl_handler_, dispatcher_);
+      interface_index_, proc_fs_.get(), rtnl_handler_, dispatcher_);
   return slaac_controller;
 }
 
@@ -422,24 +403,29 @@ std::optional<base::TimeDelta> Network::TimeToNextDHCPLeaseRenewal() {
 }
 
 void Network::StopIPv6() {
-  SetIPFlag(IPAddress::kFamilyIPv6, kIPFlagDisableIPv6, "1");
+  proc_fs_->SetIPFlag(IPAddress::kFamilyIPv6, ProcFsStub::kIPFlagDisableIPv6,
+                      "1");
 }
 
 void Network::StartIPv6() {
-  SetIPFlag(IPAddress::kFamilyIPv6, kIPFlagDisableIPv6, "0");
+  proc_fs_->SetIPFlag(IPAddress::kFamilyIPv6, ProcFsStub::kIPFlagDisableIPv6,
+                      "0");
 
-  SetIPFlag(IPAddress::kFamilyIPv6, kIPFlagAcceptDuplicateAddressDetection,
-            kIPFlagAcceptDuplicateAddressDetectionEnabled);
+  proc_fs_->SetIPFlag(
+      IPAddress::kFamilyIPv6,
+      ProcFsStub::kIPFlagAcceptDuplicateAddressDetection,
+      ProcFsStub::kIPFlagAcceptDuplicateAddressDetectionEnabled);
 
   // Force the kernel to accept RAs even when global IPv6 forwarding is
   // enabled.  Unfortunately this needs to be set on a per-interface basis.
-  SetIPFlag(IPAddress::kFamilyIPv6, kIPFlagAcceptRouterAdvertisements,
-            kIPFlagAcceptRouterAdvertisementsAlways);
+  proc_fs_->SetIPFlag(IPAddress::kFamilyIPv6,
+                      ProcFsStub::kIPFlagAcceptRouterAdvertisements,
+                      ProcFsStub::kIPFlagAcceptRouterAdvertisementsAlways);
 }
 
 void Network::EnableIPv6Privacy() {
-  SetIPFlag(IPAddress::kFamilyIPv6, kIPFlagUseTempAddr,
-            kIPFlagUseTempAddrUsedAndDefault);
+  proc_fs_->SetIPFlag(IPAddress::kFamilyIPv6, ProcFsStub::kIPFlagUseTempAddr,
+                      ProcFsStub::kIPFlagUseTempAddrUsedAndDefault);
 }
 
 void Network::ConfigureStaticIPv6Address() {
@@ -616,41 +602,10 @@ void Network::OnIPv6DnsServerAddressesChanged() {
 }
 
 void Network::EnableARPFiltering() {
-  SetIPFlag(IPAddress::kFamilyIPv4, kIPFlagArpAnnounce,
-            kIPFlagArpAnnounceBestLocal);
-  SetIPFlag(IPAddress::kFamilyIPv4, kIPFlagArpIgnore,
-            kIPFlagArpIgnoreLocalOnly);
-}
-
-bool Network::SetIPFlag(IPAddress::Family family,
-                        const std::string& flag,
-                        const std::string& value) {
-  std::string ip_version;
-  if (family == IPAddress::kFamilyIPv4) {
-    ip_version = kIPFlagVersion4;
-  } else if (family == IPAddress::kFamilyIPv6) {
-    ip_version = kIPFlagVersion6;
-  } else {
-    NOTIMPLEMENTED();
-  }
-  base::FilePath flag_file(
-      base::StringPrintf(kIPFlagTemplate, ip_version.c_str(),
-                         interface_name_.c_str(), flag.c_str()));
-  if (base::WriteFile(flag_file, value.c_str(), value.length()) != 1) {
-    const auto message =
-        base::StringPrintf("IP flag write failed: %s to %s", value.c_str(),
-                           flag_file.value().c_str());
-    if (base::PathExists(flag_file) ||
-        !base::Contains(written_flags_, flag_file.value())) {
-      // Leave a log if the file is there or this is the first time we try to
-      // write it on a failure.
-      LOG(ERROR) << logging_tag_ << ": " << message;
-    }
-    return false;
-  } else {
-    written_flags_.insert(flag_file.value());
-  }
-  return true;
+  proc_fs_->SetIPFlag(IPAddress::kFamilyIPv4, ProcFsStub::kIPFlagArpAnnounce,
+                      ProcFsStub::kIPFlagArpAnnounceBestLocal);
+  proc_fs_->SetIPFlag(IPAddress::kFamilyIPv4, ProcFsStub::kIPFlagArpIgnore,
+                      ProcFsStub::kIPFlagArpIgnoreLocalOnly);
 }
 
 void Network::SetPriority(uint32_t priority, bool is_primary_physical) {

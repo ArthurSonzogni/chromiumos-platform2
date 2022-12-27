@@ -6,6 +6,7 @@
 
 #include "shill/net/mock_rtnl_handler.h"
 #include "shill/network/mock_network.h"
+#include "shill/network/mock_proc_fs_stub.h"
 #include "shill/test_event_dispatcher.h"
 
 using testing::_;
@@ -31,7 +32,9 @@ constexpr char kTestIPAddress7[] = "fe80::1aa9:5ff:abcd:1238";
 class SLAACControllerTest : public testing::Test {
  public:
   SLAACControllerTest()
-      : slaac_controller_(kTestIfindex, &rtnl_handler_, &dispatcher_),
+      : slaac_controller_(
+            kTestIfindex, &proc_fs_, &rtnl_handler_, &dispatcher_),
+        proc_fs_(kTestIfname),
         network_(kTestIfindex, kTestIfname, kTestTechnology) {}
   ~SLAACControllerTest() override = default;
 
@@ -53,6 +56,7 @@ class SLAACControllerTest : public testing::Test {
   MOCK_METHOD(void, UpdateCallback, (SLAACController::UpdateType));
 
   SLAACController slaac_controller_;
+  MockProcFsStub proc_fs_;
   MockRTNLHandler rtnl_handler_;
   MockNetwork network_;
   EventDispatcherForTest dispatcher_;
