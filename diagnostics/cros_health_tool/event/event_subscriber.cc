@@ -12,8 +12,9 @@
 #include <base/json/json_writer.h>
 #include <base/values.h>
 #include <mojo/public/cpp/bindings/pending_remote.h>
+#include <mojo/service_constants.h>
 
-#include "diagnostics/cros_healthd_mojo_adapter/cros_healthd_mojo_adapter.h"
+#include "diagnostics/cros_health_tool/mojo_util.h"
 #include "diagnostics/mojom/external/network_health.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_events.mojom.h"
 
@@ -81,51 +82,51 @@ void OutputThunderboltEventInfo(const mojom::ThunderboltEventInfoPtr& info) {
 
 }  // namespace
 
-EventSubscriber::EventSubscriber()
-    : mojo_adapter_(CrosHealthdMojoAdapter::Create()), receiver_{this} {
-  DCHECK(mojo_adapter_);
+EventSubscriber::EventSubscriber() {
+  RequestMojoServiceWithDisconnectHandler(
+      chromeos::mojo_services::kCrosHealthdEvent, event_service_);
 }
 
 EventSubscriber::~EventSubscriber() = default;
 
-bool EventSubscriber::SubscribeToBluetoothEvents() {
+void EventSubscriber::SubscribeToBluetoothEvents() {
   mojo::PendingRemote<mojom::CrosHealthdBluetoothObserver> remote;
   bluetooth_subscriber_ = std::make_unique<BluetoothSubscriber>(
       remote.InitWithNewPipeAndPassReceiver());
-  return mojo_adapter_->AddBluetoothObserver(std::move(remote));
+  event_service_->AddBluetoothObserver(std::move(remote));
 }
 
-bool EventSubscriber::SubscribeToLidEvents() {
+void EventSubscriber::SubscribeToLidEvents() {
   mojo::PendingRemote<mojom::CrosHealthdLidObserver> remote;
   lid_subscriber_ =
       std::make_unique<LidSubscriber>(remote.InitWithNewPipeAndPassReceiver());
-  return mojo_adapter_->AddLidObserver(std::move(remote));
+  event_service_->AddLidObserver(std::move(remote));
 }
 
-bool EventSubscriber::SubscribeToPowerEvents() {
+void EventSubscriber::SubscribeToPowerEvents() {
   mojo::PendingRemote<mojom::CrosHealthdPowerObserver> remote;
   power_subscriber_ = std::make_unique<PowerSubscriber>(
       remote.InitWithNewPipeAndPassReceiver());
-  return mojo_adapter_->AddPowerObserver(std::move(remote));
+  event_service_->AddPowerObserver(std::move(remote));
 }
 
-bool EventSubscriber::SubscribeToNetworkEvents() {
+void EventSubscriber::SubscribeToNetworkEvents() {
   mojo::PendingRemote<network_health_ipc::NetworkEventsObserver> remote;
   network_subscriber_ = std::make_unique<NetworkSubscriber>(
       remote.InitWithNewPipeAndPassReceiver());
-  return mojo_adapter_->AddNetworkObserver(std::move(remote));
+  event_service_->AddNetworkObserver(std::move(remote));
 }
 
-bool EventSubscriber::SubscribeToAudioEvents() {
+void EventSubscriber::SubscribeToAudioEvents() {
   mojo::PendingRemote<mojom::CrosHealthdAudioObserver> remote;
   audio_subscriber_ = std::make_unique<AudioSubscriber>(
       remote.InitWithNewPipeAndPassReceiver());
-  return mojo_adapter_->AddAudioObserver(std::move(remote));
+  event_service_->AddAudioObserver(std::move(remote));
 }
 
-bool EventSubscriber::SubscribeToEvents(mojom::EventCategoryEnum category) {
-  return mojo_adapter_->AddEventObserver(category,
-                                         receiver_.BindNewPipeAndPassRemote());
+void EventSubscriber::SubscribeToEvents(mojom::EventCategoryEnum category) {
+  event_service_->AddEventObserver(category,
+                                   receiver_.BindNewPipeAndPassRemote());
 }
 
 void EventSubscriber::OnEvent(const mojom::EventInfoPtr info) {

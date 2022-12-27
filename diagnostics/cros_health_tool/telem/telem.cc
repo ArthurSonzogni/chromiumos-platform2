@@ -18,21 +18,21 @@
 #include <utility>
 #include <vector>
 
-#include <base/at_exit.h>
 #include <base/json/json_writer.h>
 #include <base/logging.h>
-#include <base/strings/stringprintf.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
-#include <base/task/single_thread_task_executor.h>
+#include <base/strings/stringprintf.h>
 #include <base/values.h>
 #include <brillo/flag_helper.h>
-#include <brillo/syslog_logging.h>
+#include <mojo/public/cpp/bindings/remote.h>
+#include <mojo/service_constants.h>
 
-#include "diagnostics/cros_healthd_mojo_adapter/cros_healthd_mojo_adapter.h"
+#include "diagnostics/cros_health_tool/mojo_util.h"
 #include "diagnostics/mojom/external/network_health.mojom.h"
 #include "diagnostics/mojom/external/network_types.mojom.h"
+#include "diagnostics/mojom/public/cros_healthd.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
 
 namespace diagnostics {
@@ -1674,26 +1674,22 @@ int telem_main(int argc, char** argv) {
   DEFINE_string(process, "", "Process IDs to probe.");
   DEFINE_bool(ignore, false, "Set to true to ignore single process errors.");
   brillo::FlagHelper::Init(argc, argv, "telem - Device telemetry tool.");
-  brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderrIfTty);
-
-  base::AtExitManager at_exit_manager;
 
   std::map<std::string, mojom::ProbeCategoryEnum> switch_to_category(
       std::begin(kCategorySwitches), std::end(kCategorySwitches));
 
-  logging::InitLogging(logging::LoggingSettings());
-
-  base::SingleThreadTaskExecutor task_executor(base::MessagePumpType::IO);
-
-  std::unique_ptr<CrosHealthdMojoAdapter> adapter =
-      CrosHealthdMojoAdapter::Create();
+  mojo::Remote<mojom::CrosHealthdProbeService> remote;
+  RequestMojoServiceWithDisconnectHandler(
+      chromeos::mojo_services::kCrosHealthdProbe, remote);
 
   // Probe single or multiple processes, if requested.
   if (FLAGS_process != "") {
     // Probe all processes if "all" is specified.
     if (FLAGS_process == "all") {
-      DisplayMultipleProcessInfo(
-          adapter->GetMultipleProcessInfo(std::nullopt, FLAGS_ignore));
+      MojoResponseWaiter<mojom::MultipleProcessResultPtr> waiter;
+      remote->ProbeMultipleProcessInfo(std::nullopt, FLAGS_ignore,
+                                       waiter.CreateCallback());
+      DisplayMultipleProcessInfo(waiter.WaitForResponse());
       return EXIT_SUCCESS;
     }
 
@@ -1711,11 +1707,14 @@ int telem_main(int argc, char** argv) {
     }
     if (process_ids.size() == 1) {
       // Use original ProcessFetcher for single process telemetry.
-      DisplayProcessInfo(
-          adapter->GetProcessInfo(static_cast<pid_t>(process_ids[0])));
+      MojoResponseWaiter<mojom::ProcessResultPtr> waiter;
+      remote->ProbeProcessInfo(process_ids[0], waiter.CreateCallback());
+      DisplayProcessInfo(waiter.WaitForResponse());
     } else {
-      DisplayMultipleProcessInfo(
-          adapter->GetMultipleProcessInfo(process_ids, FLAGS_ignore));
+      MojoResponseWaiter<mojom::MultipleProcessResultPtr> waiter;
+      remote->ProbeMultipleProcessInfo(process_ids, FLAGS_ignore,
+                                       waiter.CreateCallback());
+      DisplayMultipleProcessInfo(waiter.WaitForResponse());
     }
     return EXIT_SUCCESS;
   }
@@ -1736,15 +1735,9 @@ int telem_main(int argc, char** argv) {
     }
 
     // Probe and display the category or categories.
-    mojom::TelemetryInfoPtr result =
-        adapter->GetTelemetryInfo(categories_to_probe);
-
-    if (!result) {
-      LOG(ERROR) << "Unable to probe telemetry info";
-      return EXIT_FAILURE;
-    }
-
-    DisplayTelemetryInfo(result);
+    MojoResponseWaiter<mojom::TelemetryInfoPtr> waiter;
+    remote->ProbeTelemetryInfo(categories_to_probe, waiter.CreateCallback());
+    DisplayTelemetryInfo(waiter.WaitForResponse());
     return EXIT_SUCCESS;
   }
 

@@ -19,14 +19,14 @@
 #include <base/logging.h>
 #include <base/no_destructor.h>
 #include <base/run_loop.h>
-#include <base/threading/thread_task_runner_handle.h>
 #include <base/time/time.h>
-#include <mojo_service_manager/lib/connect.h>
+#include <mojo/service_constants.h>
 
 #include "diagnostics/common/mojo_utils.h"
 #include "diagnostics/cros_health_tool/diag/diag_constants.h"
-#include "diagnostics/cros_healthd_mojo_adapter/cros_healthd_mojo_adapter.h"
+#include "diagnostics/cros_health_tool/mojo_util.h"
 #include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
+#include "diagnostics/mojom/public/nullable_primitives.mojom.h"
 
 namespace diagnostics {
 
@@ -100,6 +100,7 @@ void HandleGetLedColorMatchedInvocation(
 }
 
 // Saves |response| to |response_destination|.
+// TODO(b/262814572): Migrate this to MojoResponseWaiter.
 template <class T>
 void OnMojoResponseReceived(T* response_destination,
                             base::OnceClosure quit_closure,
@@ -115,22 +116,10 @@ DiagActions::DiagActions(base::TimeDelta polling_interval,
                          const base::TickClock* tick_clock)
     : kPollingInterval(polling_interval),
       kMaximumExecutionTime(maximum_execution_time) {
-  // Initialize mojo.
-  mojo::core::Init();
-  ipc_support_ = std::make_unique<mojo::core::ScopedIPCSupport>(
-      base::ThreadTaskRunnerHandle::Get() /* io_thread_task_runner */,
-      mojo::core::ScopedIPCSupport::ShutdownPolicy::
-          CLEAN /* blocking shutdown */);
-
-  // Connect to the Mojo Service Manager.
-  service_manager_.Bind(
-      chromeos::mojo_service_manager::ConnectToMojoServiceManager());
-
   // Bind the Diagnostics Service.
-  service_manager_->Request(
-      chromeos::mojo_services::kCrosHealthdDiagnostics, std::nullopt,
-      cros_healthd_diagnostics_service_.BindNewPipeAndPassReceiver()
-          .PassPipe());
+  RequestMojoServiceWithDisconnectHandler(
+      chromeos::mojo_services::kCrosHealthdDiagnostics,
+      cros_healthd_diagnostics_service_);
 
   if (tick_clock) {
     tick_clock_ = tick_clock;

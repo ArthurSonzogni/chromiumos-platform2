@@ -4,26 +4,16 @@
 
 import("//common-mk/pkg_config.gni")
 
-# Library that provides helpers for the diag tool.
-pkg_config("libdiag_pkg_deps") {
-  pkg_deps = [
-    "libbrillo",
-    "libchrome",
-    "mojo_service_manager",
-  ]
-}
-
 source_set("libdiag") {
-  configs += [ ":libdiag_pkg_deps" ]
-  deps = [
-    "//diagnostics/common:libcommon",
-    "//diagnostics/cros_healthd/routines:libdiag_routine",
-    "//diagnostics/cros_healthd_mojo_adapter:libcros_healthd_mojo_adapter",
-    "//diagnostics/mojom/public:cros_healthd_mojo_bindings",
-  ]
   sources = [
     "diag.cc",
     "diag_actions.cc",
     "repliers/led_lit_up_routine_replier.cc",
+  ]
+  configs += [ "//diagnostics/cros_health_tool:cros_health_tool_pkg_deps" ]
+  deps = [
+    "//diagnostics/common:libcommon",
+    "//diagnostics/cros_healthd/routines:libdiag_routine",
+    "//diagnostics/mojom/public:cros_healthd_mojo_bindings",
   ]
 }

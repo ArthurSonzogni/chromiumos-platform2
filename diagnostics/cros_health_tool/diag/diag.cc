@@ -14,9 +14,7 @@
 #include <optional>
 #include <string>
 
-#include <base/at_exit.h>
 #include <base/logging.h>
-#include <base/task/single_thread_task_executor.h>
 #include <base/time/time.h>
 #include <brillo/flag_helper.h>
 
@@ -150,12 +148,6 @@ int diag_main(int argc, char** argv) {
   DEFINE_bool(mute_on, false, "Mute or not.");
 
   brillo::FlagHelper::Init(argc, argv, "diag - Device diagnostic tool.");
-
-  logging::InitLogging(logging::LoggingSettings());
-
-  base::AtExitManager at_exit_manager;
-
-  base::SingleThreadTaskExecutor task_executor(base::MessagePumpType::IO);
 
   base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
 

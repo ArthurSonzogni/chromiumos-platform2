@@ -7,6 +7,13 @@
 #include <iostream>
 #include <string>
 
+#include <base/at_exit.h>
+#include <base/task/single_thread_task_executor.h>
+#include <base/threading/thread_task_runner_handle.h>
+#include <brillo/syslog_logging.h>
+#include <mojo/core/embedder/embedder.h>
+#include <mojo/core/embedder/scoped_ipc_support.h>
+
 #include "diagnostics/cros_health_tool/diag/diag.h"
 #include "diagnostics/cros_health_tool/event/event.h"
 #include "diagnostics/cros_health_tool/status/status.h"
@@ -28,6 +35,17 @@ int main(int argc, char* argv[]) {
     PrintHelp();
     return EXIT_FAILURE;
   }
+
+  brillo::InitLog(brillo::kLogToStderr);
+
+  // Initialize the mojo environment.
+  base::AtExitManager at_exit_manager;
+  base::SingleThreadTaskExecutor task_executor(base::MessagePumpType::IO);
+  mojo::core::Init();
+  mojo::core::ScopedIPCSupport ipc_support(
+      base::ThreadTaskRunnerHandle::Get() /* io_thread_task_runner */,
+      mojo::core::ScopedIPCSupport::ShutdownPolicy::
+          CLEAN /* blocking shutdown */);
 
   // Shift input parameters so they can be forwarded directly to the subtool.
   int subtool_argc = argc - 1;

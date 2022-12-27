@@ -14,11 +14,7 @@
 #include <base/time/default_tick_clock.h>
 #include <base/time/tick_clock.h>
 #include <base/time/time.h>
-#include <mojo/core/embedder/embedder.h>
-#include <mojo/core/embedder/scoped_ipc_support.h>
 #include <mojo/public/cpp/bindings/remote.h>
-#include <mojo/service_constants.h>
-#include <mojo_service_manager/lib/mojom/service_manager.mojom.h>
 
 #include "diagnostics/cros_health_tool/diag/repliers/led_lit_up_routine_replier.h"
 #include "diagnostics/mojom/public/cros_healthd.mojom.h"
@@ -150,12 +146,6 @@ class DiagActions final {
   std::optional<std::vector<ash::cros_healthd::mojom::DiagnosticRoutineEnum>>
   GetAvailableRoutines();
 
-  // Necessary to establish Mojo communication with cros_healthd.
-  std::unique_ptr<mojo::core::ScopedIPCSupport> ipc_support_;
-
-  // Mojo service manager to request for mojo services.
-  mojo::Remote<chromeos::mojo_service_manager::mojom::ServiceManager>
-      service_manager_;
   // Diagnostics Service used to run routines from diag tool.
   mojo::Remote<ash::cros_healthd::mojom::CrosHealthdDiagnosticsService>
       cros_healthd_diagnostics_service_;

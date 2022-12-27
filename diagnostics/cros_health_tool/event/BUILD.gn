@@ -4,21 +4,7 @@
 
 import("//common-mk/pkg_config.gni")
 
-# Library that provides helpers for cros-health-event.
-pkg_config("libevent_pkg_deps") {
-  pkg_deps = [
-    "libbrillo",
-    "libchrome",
-    "libmojo",
-  ]
-}
-
 source_set("libevent") {
-  configs += [ ":libevent_pkg_deps" ]
-  deps = [
-    "//diagnostics/cros_healthd_mojo_adapter:libcros_healthd_mojo_adapter",
-    "//diagnostics/mojom/public:cros_healthd_mojo_bindings",
-  ]
   sources = [
     "audio_subscriber.cc",
     "bluetooth_subscriber.cc",
@@ -28,4 +14,6 @@ source_set("libevent") {
     "network_subscriber.cc",
     "power_subscriber.cc",
   ]
+  configs += [ "//diagnostics/cros_health_tool:cros_health_tool_pkg_deps" ]
+  deps = [ "//diagnostics/mojom/public:cros_healthd_mojo_bindings" ]
 }

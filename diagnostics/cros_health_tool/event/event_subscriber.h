@@ -8,13 +8,14 @@
 #include <memory>
 
 #include <mojo/public/cpp/bindings/receiver.h>
+#include <mojo/public/cpp/bindings/remote.h>
 
 #include "diagnostics/cros_health_tool/event/audio_subscriber.h"
 #include "diagnostics/cros_health_tool/event/bluetooth_subscriber.h"
 #include "diagnostics/cros_health_tool/event/lid_subscriber.h"
 #include "diagnostics/cros_health_tool/event/network_subscriber.h"
 #include "diagnostics/cros_health_tool/event/power_subscriber.h"
-#include "diagnostics/cros_healthd_mojo_adapter/cros_healthd_mojo_adapter.h"
+#include "diagnostics/mojom/public/cros_healthd.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_events.mojom.h"
 
 namespace diagnostics {
@@ -31,35 +32,30 @@ class EventSubscriber final : public ash::cros_healthd::mojom::EventObserver {
   // ash::cros_healthd::mojom::EventObserver overrides:
   void OnEvent(const ash::cros_healthd::mojom::EventInfoPtr info) override;
 
-  // Subscribes to cros_healthd's Bluetooth events. Returns true on success and
-  // false on failure.
-  bool SubscribeToBluetoothEvents();
+  // Subscribes to cros_healthd's Bluetooth events.
+  void SubscribeToBluetoothEvents();
 
-  // Subscribes to cros_healthd's lid events. Returns true on success and false
-  // on failure.
-  bool SubscribeToLidEvents();
+  // Subscribes to cros_healthd's lid events.
+  void SubscribeToLidEvents();
 
-  // Subscribes to cros_healthd's network events. Returns true on success and
-  // false on failure.
-  bool SubscribeToNetworkEvents();
+  // Subscribes to cros_healthd's network events.
+  void SubscribeToNetworkEvents();
 
-  // Subscribes to cros_healthd's power events. Returns true on success and
-  // false on failure.
-  bool SubscribeToPowerEvents();
+  // Subscribes to cros_healthd's power events.
+  void SubscribeToPowerEvents();
 
-  // Subscribes to cros_healthd's audio events. Returns true on success and
-  // false on failure.
-  bool SubscribeToAudioEvents();
+  // Subscribes to cros_healthd's audio events.
+  void SubscribeToAudioEvents();
 
-  // Subscribes to cros_healthd's events. Returns true on success and false on
-  // failure.
-  bool SubscribeToEvents(ash::cros_healthd::mojom::EventCategoryEnum category);
+  // Subscribes to cros_healthd's events.
+  void SubscribeToEvents(ash::cros_healthd::mojom::EventCategoryEnum category);
 
  private:
-  // Allows mojo communication with cros_healthd.
-  std::unique_ptr<CrosHealthdMojoAdapter> mojo_adapter_;
+  // Allows mojo communication with cros_healthd event service.
+  mojo::Remote<ash::cros_healthd::mojom::CrosHealthdEventService>
+      event_service_;
 
-  mojo::Receiver<ash::cros_healthd::mojom::EventObserver> receiver_;
+  mojo::Receiver<ash::cros_healthd::mojom::EventObserver> receiver_{this};
 
   // Used to subscribe to Bluetooth events.
   std::unique_ptr<BluetoothSubscriber> bluetooth_subscriber_;
