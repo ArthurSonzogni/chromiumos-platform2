@@ -43,6 +43,8 @@ int main(int argc, char* argv[]) {
               "Update the records of elog last report");
   DEFINE_bool(metrics_launch_count, false,
               "Count and report the metrics of MiniDiag launch count");
+  DEFINE_bool(metrics_test_report, false,
+              "Count and report the metrics of MiniDiag test report");
   brillo::FlagHelper::Init(argc, argv, "Cros MiniDiag Tool");
 
   const base::CommandLine* cl = base::CommandLine::ForCurrentProcess();
@@ -51,7 +53,8 @@ int main(int argc, char* argv[]) {
     return EXIT_FAILURE;
   }
 
-  if (!FLAGS_update_last_report && !FLAGS_metrics_launch_count) {
+  if (!FLAGS_update_last_report && !FLAGS_metrics_launch_count &&
+      !FLAGS_metrics_test_report) {
     LOG(ERROR) << "cros-minidiag-tool cannot be run without updating or "
                   "reporting metrics; exiting";
     return EXIT_FAILURE;
@@ -83,6 +86,12 @@ int main(int argc, char* argv[]) {
   if (FLAGS_metrics_launch_count) {
     LOG(INFO) << "Count and report MiniDiag launch count" << elog_start_str;
     elog_manager.ReportMiniDiagLaunch();
+  }
+
+  // Count and report the metrics of MiniDiag test report.
+  if (FLAGS_metrics_test_report) {
+    LOG(INFO) << "Count and report MiniDiag test report" << elog_start_str;
+    elog_manager.ReportMiniDiagTestReport();
   }
 
   // Get the last line of elog and update /var/lib/metrics/elog-last-line.

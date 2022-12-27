@@ -13,6 +13,8 @@
 #include <base/logging.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
+#include <base/time/time.h>
+#include <re2/re2.h>
 
 namespace cros_minidiag {
 
@@ -27,6 +29,13 @@ constexpr const char kDataLaunchDiagnostics[] = "Launch Diagnostics";
 // The format of a MiniDiag launch event:
 // idx | time | Firmware vboot info | boot_mode=Diagnostic | fw_tried=...
 constexpr const char kDataBootModeDiagnostic[] = "boot_mode=Diagnostic";
+// The format of a MiniDiag test report:
+// idx | time | Diagnostics Mode | Diagnostics Logs |
+// type=[type1], result=[result1], time=[m]m[s]s |
+// type=[type2], result=[result2], time=[m]m[s]s ...
+constexpr const char kDataDiagnosticsLogs[] = "Diagnostics Logs";
+constexpr const char kReMatchLogs[] =
+    "type=([^,]+),\\s*result=([^,]+),\\s*time=(\\d+)m(\\d+)s";
 }  // namespace
 
 ElogEvent::ElogEvent(const base::StringPiece& event_string)
@@ -104,6 +113,35 @@ void ElogManager::ReportMiniDiagLaunch() const {
   }
   LOG(INFO) << "Record Launch Count: " << count;
   metrics_->RecordLaunch(count);
+}
+
+void ElogManager::ReportMiniDiagTestReport() const {
+  for (const auto& elog_event : elog_events_) {
+    const auto subtype = elog_event.GetSubType();
+    // A test report has the subtype "Diagnostics Logs".
+    if (subtype == kDataDiagnosticsLogs) {
+      const auto& data = elog_event.data();
+      base::TimeDelta total_time = base::Seconds(0);
+      int total_valid_tests = 0;
+      for (auto i = kTypeIndex + 2; i < data.size(); i++) {
+        std::string type_name, result;
+        int m, s;
+        if (RE2::FullMatch(data[i], kReMatchLogs, &type_name, &result, &m,
+                           &s)) {
+          // Convert MmSs to seconds.
+          base::TimeDelta test_time(base::Minutes(m) + base::Seconds(s));
+          total_time += test_time;
+          metrics_->RecordTestReport(type_name, result, test_time);
+          total_valid_tests++;
+        }
+      }
+      if (total_valid_tests > 0) {
+        LOG(INFO) << "Record " << total_valid_tests
+                  << " test items with total time: " << total_time.InSeconds();
+        metrics_->RecordOpenDuration(total_time);
+      }
+    }
+  }
 }
 
 }  // namespace cros_minidiag

@@ -7,12 +7,15 @@
 #include <array>
 #include <memory>
 #include <optional>
+#include <string>
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <metrics/metrics_library_mock.h>
 
 #include "diagnostics/cros_minidiag/minidiag_metrics.h"
+
+using cros_minidiag::metrics::MiniDiagResultType;
 
 namespace cros_minidiag {
 
@@ -42,6 +45,30 @@ class ElogManagerTest : public testing::Test {
       full_elog_.append("\n");
     }
     size_ = N;
+  }
+  void ExpectUMA(std::string test_name,
+                 MiniDiagResultType result,
+                 int duration) {
+    // Expect the result UMA
+    EXPECT_CALL(
+        mock_metrics_library_,
+        SendEnumToUMA(test_name + metrics::kSuffixResult,
+                      static_cast<int>(result),
+                      static_cast<int>(metrics::MiniDiagResultType::kMaxValue)))
+        .WillOnce(testing::Return(true));
+    // Expect the open duration UMA
+    EXPECT_CALL(mock_metrics_library_,
+                SendToUMA(test_name + metrics::kSuffixOpenDuration, duration,
+                          metrics::kOpenDurationMin, metrics::kOpenDurationMax,
+                          metrics::kOpenDurationBucket))
+        .WillOnce(testing::Return(true));
+  }
+  void ExpectOpenDurationUMA(int duration) {
+    EXPECT_CALL(mock_metrics_library_,
+                SendToUMA(metrics::kOpenDurationHistogram, duration,
+                          metrics::kOpenDurationMin, metrics::kOpenDurationMax,
+                          metrics::kOpenDurationBucket))
+        .WillOnce(testing::Return(true));
   }
 
   std::string full_elog_;
@@ -97,6 +124,48 @@ TEST_F(ElogManagerTest, BasicReportMiniDiagLaunch) {
   EXPECT_EQ(elog_manager->last_line(), kElogLines[size_ - 1]);
   EXPECT_EQ(elog_manager->GetEventNum(), size_);
   elog_manager->ReportMiniDiagLaunch();
+}
+
+TEST_F(ElogManagerTest, BasicTestReport) {
+  SetUpElog(std::array<const char*, 4>({
+      "1 | 2022-01-01 00:00:01 | Diagnostics Mode | Launch Diagnostics",
+      "2 | 2022-01-01 00:01:01 | Diagnostics Mode | Diagnostics Logs | "
+      "type=Memory check (quick), result=Passed, time=0m20s | "
+      "type=Memory check (full), result=Aborted, time=0m0s | "
+      "type=Memory check (quick), result=Aborted, time=0m0s | "
+      "type=Storage health info, result=Passed, time=0m0s",
+      "3 | 2022-01-01 01:01:01 | Diagnostics Mode | Diagnostics Logs | "
+      "type=Storage self-test (short), result=Error, time=10m20s | "
+      "type=Storage self-test (extended), result=Failed, time=1m1s | "
+      "type=Storage self-test (extended), result=Passed, time=2m0s",
+      // Bad event; ignored
+      "4 | 2022-01-01 02:01:01 | Diagnostics Mode | Diagnostics Logs | "
+      "type=Mock ",
+  }));
+  ExpectUMA(metrics::kMemoryCheckQuick, MiniDiagResultType::kPassed, 20);
+  ExpectUMA(metrics::kMemoryCheckFull, MiniDiagResultType::kAborted, 0);
+  ExpectUMA(metrics::kMemoryCheckQuick, MiniDiagResultType::kAborted, 0);
+  ExpectUMA(metrics::kStorageHealthInfo, MiniDiagResultType::kPassed, 0);
+  ExpectOpenDurationUMA(20);
+  ExpectUMA(metrics::kStorageSelfTestShort, MiniDiagResultType::kError, 620);
+  ExpectUMA(metrics::kStorageSelfTestExtended, MiniDiagResultType::kFailed, 61);
+  ExpectUMA(metrics::kStorageSelfTestExtended, MiniDiagResultType::kPassed,
+            120);
+  ExpectOpenDurationUMA(801);
+  auto elog_manager =
+      std::make_unique<ElogManager>(full_elog_, "", &minidiag_metrics_);
+  elog_manager->ReportMiniDiagTestReport();
+}
+
+TEST_F(ElogManagerTest, TestReportCaseInsensitive) {
+  SetUpElog(std::array<const char*, 1>(
+      {"2 | 2022-01-01 00:01:01 | Diagnostics Mode | Diagnostics Logs | "
+       "type=mEmorY CHECK (quicK), result=paSSEd, time=0m20s "}));
+  ExpectUMA(metrics::kMemoryCheckQuick, MiniDiagResultType::kPassed, 20);
+  ExpectOpenDurationUMA(20);
+  auto elog_manager =
+      std::make_unique<ElogManager>(full_elog_, "", &minidiag_metrics_);
+  elog_manager->ReportMiniDiagTestReport();
 }
 
 TEST(ElogEventTest, BasicEvent) {

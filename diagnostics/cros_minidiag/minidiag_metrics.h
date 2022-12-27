@@ -5,6 +5,9 @@
 #ifndef DIAGNOSTICS_CROS_MINIDIAG_MINIDIAG_METRICS_H_
 #define DIAGNOSTICS_CROS_MINIDIAG_MINIDIAG_METRICS_H_
 
+#include <string>
+
+#include <base/time/time.h>
 #include <metrics/metrics_library.h>
 
 #include "diagnostics/cros_minidiag/minidiag_metrics_names.h"
@@ -22,6 +25,13 @@ class MiniDiagMetrics : private MetricsLibrary {
 
   // Report Platform.MiniDiag.Launch event.
   void RecordLaunch(int count) const;
+  // Report Platform.MiniDiag.[Type].Result and
+  // Platform.MiniDiag.[Type].OpenDuration events.
+  void RecordTestReport(const std::string& type,
+                        const std::string& result,
+                        const base::TimeDelta& time) const;
+  // Report Platform.MiniDiag.OpenDuration.
+  void RecordOpenDuration(const base::TimeDelta& time) const;
 
   void SetMetricsLibraryForTesting(MetricsLibraryInterface* metrics_library) {
     metrics_library_ = metrics_library;
@@ -29,6 +39,8 @@ class MiniDiagMetrics : private MetricsLibrary {
 
  private:
   MetricsLibraryInterface* metrics_library_{this};
+  // UMA accepts int, not int64_t, so we need to check before casting.
+  bool IsTimeValid(const base::TimeDelta& time) const;
 };
 }  // namespace cros_minidiag
 

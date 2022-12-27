@@ -60,7 +60,7 @@ class ElogManager {
 
   // Counts the number of MiniDiag launch events and report via UMA library.
   void ReportMiniDiagLaunch() const;
-  // TODO(roccochen) Add report metrics related helper
+  void ReportMiniDiagTestReport() const;
 
  private:
   std::string last_line_;
