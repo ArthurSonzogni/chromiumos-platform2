@@ -43,9 +43,10 @@ constexpr int kWriteLogPartitionIndex = 1;
 constexpr int kRootfsPartitionIndex = 3;
 
 // Log file format.
-constexpr char kTextLogFilenameFormat[] = "rma-text-log-%s.txt";
-constexpr char kJsonLogFilenameFormat[] = "rma-json-log-%s.json";
-constexpr char kSystemLogFilenameFormat[] = "rma-system-log-%s.log";
+constexpr char kDirectoryNameFormat[] = "rma-logs-%s";
+constexpr char kTextLogFilename[] = "text-log.txt";
+constexpr char kJsonLogFilename[] = "json-log.json";
+constexpr char kSystemLogFilename[] = "system-log.txt";
 // Supported file systems for saving logs.
 const std::vector<std::string> kLogFileSystems = {"vfat", "ext4", "ext3",
                                                   "ext2"};
@@ -113,12 +114,16 @@ void Executor::MountAndWriteLog(uint8_t device_id,
   const Mount mount =
       TryMount(device_path, mount_point, kLogFileSystems, false);
   if (mount.IsValid()) {
-    const std::string now_timestamp = FormatTime(base::Time::Now());
+    const std::string directory_name = base::StringPrintf(
+        kDirectoryNameFormat, FormatTime(base::Time::Now()).c_str());
+    const base::FilePath directory_filepath =
+        mount_point.Append(directory_name);
+    if (!base::CreateDirectory(directory_filepath)) {
+      return;
+    }
 
-    const std::string system_log_filename =
-        base::StringPrintf(kSystemLogFilenameFormat, now_timestamp.c_str());
     const base::FilePath system_log_path =
-        mount_point.Append(system_log_filename);
+        directory_filepath.Append(kSystemLogFilename);
     if (base::WriteFile(system_log_path, system_log.c_str())) {
       brillo::SyncFileOrDirectory(system_log_path, false, true);
     } else {
@@ -126,9 +131,8 @@ void Executor::MountAndWriteLog(uint8_t device_id,
       return;
     }
 
-    const std::string json_log_filename =
-        base::StringPrintf(kJsonLogFilenameFormat, now_timestamp.c_str());
-    const base::FilePath json_log_path = mount_point.Append(json_log_filename);
+    const base::FilePath json_log_path =
+        directory_filepath.Append(kJsonLogFilename);
     if (base::WriteFile(json_log_path, json_log.c_str())) {
       brillo::SyncFileOrDirectory(json_log_path, false, true);
     } else {
@@ -136,9 +140,8 @@ void Executor::MountAndWriteLog(uint8_t device_id,
       return;
     }
 
-    const std::string text_log_filename =
-        base::StringPrintf(kTextLogFilenameFormat, now_timestamp.c_str());
-    const base::FilePath text_log_path = mount_point.Append(text_log_filename);
+    const base::FilePath text_log_path =
+        directory_filepath.Append(kTextLogFilename);
     if (base::WriteFile(text_log_path, text_log.c_str())) {
       brillo::SyncFileOrDirectory(text_log_path, false, true);
     } else {
@@ -147,8 +150,8 @@ void Executor::MountAndWriteLog(uint8_t device_id,
     }
 
     // The full log path is not useful because the mount point is a temporary
-    // directory. Returning the filename is enough.
-    std::move(callback).Run(text_log_filename);
+    // directory. Returning the directory containing the logs is enough.
+    std::move(callback).Run(directory_name);
     return;
   }
   std::move(callback).Run(std::nullopt);
