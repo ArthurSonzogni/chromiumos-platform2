@@ -16,17 +16,19 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "shill/cellular/cellular_service_provider.h"
 #include "shill/error.h"
 #include "shill/ethernet/mock_ethernet_provider.h"
 #include "shill/manager.h"
-#include "shill/technology.h"
 #include "shill/mock_control.h"
 #include "shill/mock_device.h"
+#include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
 #include "shill/mock_profile.h"
 #include "shill/mock_service.h"
 #include "shill/store/fake_store.h"
 #include "shill/store/property_store.h"
+#include "shill/technology.h"
 #include "shill/test_event_dispatcher.h"
 #include "shill/upstart/mock_upstart.h"
 #include "shill/wifi/local_device.h"
@@ -121,6 +123,8 @@ class TetheringManagerTest : public testing::Test {
     manager_.UpdateProviderMapping();
     // Replace the manager's upstart instance with mock.
     manager_.upstart_.reset(upstart_);
+    ON_CALL(manager_, cellular_service_provider())
+        .WillByDefault(Return(&cellular_service_provider_));
   }
   ~TetheringManagerTest() override = default;
 
@@ -278,6 +282,10 @@ class TetheringManagerTest : public testing::Test {
               TetheringManager::TetheringState::kTetheringIdle);
   }
 
+  KeyValueStore GetStatus(TetheringManager* tethering_manager) {
+    return tethering_manager->GetStatus();
+  }
+
  protected:
   StrictMock<base::MockRepeatingCallback<void(LocalDevice::DeviceEvent,
                                               const LocalDevice*)>>
@@ -285,15 +293,16 @@ class TetheringManagerTest : public testing::Test {
   StrictMock<base::MockOnceCallback<void(TetheringManager::SetEnabledResult)>>
       result_cb_;
 
-  MockControl control_interface_;
+  NiceMock<MockControl> control_interface_;
   EventDispatcherForTest dispatcher_;
   NiceMock<MockMetrics> metrics_;
   base::ScopedTempDir temp_dir_;
   std::string path_;
-  Manager manager_;
+  MockManager manager_;
   TetheringManager* tethering_manager_;
   MockWiFiProvider* wifi_provider_;
   MockEthernetProvider* ethernet_provider_;
+  CellularServiceProvider cellular_service_provider_{&manager_};
   MockUpstart* upstart_;
   scoped_refptr<MockHotspotDevice> hotspot_device_;
 };
@@ -301,9 +310,10 @@ class TetheringManagerTest : public testing::Test {
 TEST_F(TetheringManagerTest, GetTetheringCapabilities) {
   scoped_refptr<MockWiFi> wifi = MakeWiFi("wlan0", "0a:0b:0c:0d:0e:0f");
   ON_CALL(*wifi, SupportAP()).WillByDefault(Return(true));
-  manager_.RegisterDevice(wifi);
+  const std::vector<DeviceRefPtr> devices = {wifi};
+  ON_CALL(manager_, FilterByTechnology(Technology::kWiFi))
+      .WillByDefault(Return(devices));
   SetAllowed(tethering_manager_, true);
-
   KeyValueStore caps = GetCapabilities(tethering_manager_);
 
   auto upstream_technologies =
@@ -326,6 +336,9 @@ TEST_F(TetheringManagerTest, GetTetheringCapabilities) {
 }
 
 TEST_F(TetheringManagerTest, GetTetheringCapabilitiesWithoutWiFi) {
+  const std::vector<DeviceRefPtr> devices;
+  ON_CALL(manager_, FilterByTechnology(Technology::kWiFi))
+      .WillByDefault(Return(devices));
   SetAllowed(tethering_manager_, true);
 
   KeyValueStore caps = GetCapabilities(tethering_manager_);
@@ -566,8 +579,12 @@ TEST_F(TetheringManagerTest, CheckReadiness) {
       new NiceMock<MockDevice>(&manager_, "wwan0", "a0:b0:c0:d0:e0:f0", 2);
   ON_CALL(*eth, technology()).WillByDefault(Return(Technology::kEthernet));
   ON_CALL(*cell, technology()).WillByDefault(Return(Technology::kCellular));
-  manager_.RegisterDevice(eth);
-  manager_.RegisterDevice(cell);
+  const std::vector<DeviceRefPtr> eth_devices = {eth};
+  const std::vector<DeviceRefPtr> cell_devices = {cell};
+  ON_CALL(manager_, FilterByTechnology(Technology::kEthernet))
+      .WillByDefault(Return(eth_devices));
+  ON_CALL(manager_, FilterByTechnology(Technology::kCellular))
+      .WillByDefault(Return(cell_devices));
 
   // No Service connected on Ethernet.
   tethering_manager_->CheckReadiness(cb.Get());
@@ -629,12 +646,14 @@ TEST_F(TetheringManagerTest, StartTetheringSession) {
       .WillOnce(Return(hotspot_device_));
   EXPECT_CALL(*hotspot_device_.get(), ConfigureService(_))
       .WillOnce(Return(true));
+  EXPECT_CALL(manager_, TetheringStatusChanged(_)).Times(1);
   SetEnabled(tethering_manager_, true);
   EXPECT_EQ(TetheringState(tethering_manager_),
             TetheringManager::TetheringState::kTetheringStarting);
 
   // On service up with device event.
   SetDownstream(tethering_manager_);
+  EXPECT_CALL(manager_, TetheringStatusChanged(_)).Times(1);
   DownStreamDeviceEvent(tethering_manager_,
                         LocalDevice::DeviceEvent::kServiceUp,
                         hotspot_device_.get());
@@ -676,6 +695,7 @@ TEST_F(TetheringManagerTest, StopTetheringSession) {
   EXPECT_CALL(*hotspot_device_.get(), DeconfigureService())
       .WillOnce(Return(true));
   EXPECT_CALL(*wifi_provider_, DeleteLocalDevice(_)).Times(1);
+  EXPECT_CALL(manager_, TetheringStatusChanged(_)).Times(1);
   SetEnabledVerifyResult(tethering_manager_, false,
                          TetheringManager::SetEnabledResult::kSuccess);
   CheckTetheringIdle(tethering_manager_);
@@ -690,6 +710,7 @@ TEST_F(TetheringManagerTest, DeviceEventInterfaceDisabled) {
   EXPECT_CALL(*hotspot_device_.get(), DeconfigureService())
       .WillOnce(Return(true));
   EXPECT_CALL(*wifi_provider_, DeleteLocalDevice(_)).Times(1);
+  EXPECT_CALL(manager_, TetheringStatusChanged(_)).Times(1);
   DownStreamDeviceEvent(tethering_manager_,
                         LocalDevice::DeviceEvent::kInterfaceDisabled,
                         hotspot_device_.get());
@@ -706,6 +727,7 @@ TEST_F(TetheringManagerTest, DeviceEventServiceDown) {
   EXPECT_CALL(*hotspot_device_.get(), DeconfigureService())
       .WillOnce(Return(true));
   EXPECT_CALL(*wifi_provider_, DeleteLocalDevice(_)).Times(1);
+  EXPECT_CALL(manager_, TetheringStatusChanged(_)).Times(1);
   DownStreamDeviceEvent(tethering_manager_,
                         LocalDevice::DeviceEvent::kServiceDown,
                         hotspot_device_.get());
@@ -733,6 +755,71 @@ TEST_F(TetheringManagerTest, InterfaceDisabledWhenTetheringIsStarting) {
                         hotspot_device_.get());
   VerifyResult(TetheringManager::SetEnabledResult::kFailure);
   CheckTetheringIdle(tethering_manager_);
+}
+
+TEST_F(TetheringManagerTest, DeviceEventPeerConnectedDisconnected) {
+  TetheringPrerequisite(tethering_manager_);
+  SetDownstream(tethering_manager_);
+  SetEnabledVerifyResult(tethering_manager_, true,
+                         TetheringManager::SetEnabledResult::kSuccess);
+
+  EXPECT_CALL(manager_, TetheringStatusChanged(_)).Times(1);
+  DownStreamDeviceEvent(tethering_manager_,
+                        LocalDevice::DeviceEvent::kPeerConnected,
+                        hotspot_device_.get());
+
+  EXPECT_CALL(manager_, TetheringStatusChanged(_)).Times(1);
+  DownStreamDeviceEvent(tethering_manager_,
+                        LocalDevice::DeviceEvent::kPeerDisconnected,
+                        hotspot_device_.get());
+}
+
+TEST_F(TetheringManagerTest, GetStatus) {
+  // Check tethering status when idle.
+  auto status = GetStatus(tethering_manager_);
+  EXPECT_EQ(status.Get<std::string>(kTetheringStatusStateProperty),
+            kTetheringStateIdle);
+  EXPECT_FALSE(
+      status.Contains<std::string>(kTetheringStatusUpstreamTechProperty));
+  EXPECT_FALSE(
+      status.Contains<std::string>(kTetheringStatusDownstreamTechProperty));
+  EXPECT_FALSE(status.Contains<Stringmaps>(kTetheringStatusClientsProperty));
+
+  // Enabled tethering.
+  TetheringPrerequisite(tethering_manager_);
+  SetDownstream(tethering_manager_);
+  SetEnabledVerifyResult(tethering_manager_, true,
+                         TetheringManager::SetEnabledResult::kSuccess);
+  status = GetStatus(tethering_manager_);
+  EXPECT_EQ(status.Get<std::string>(kTetheringStatusStateProperty),
+            kTetheringStateActive);
+  EXPECT_EQ(status.Get<std::string>(kTetheringStatusUpstreamTechProperty),
+            kTypeCellular);
+  EXPECT_EQ(status.Get<std::string>(kTetheringStatusDownstreamTechProperty),
+            kTypeWifi);
+  EXPECT_EQ(status.Get<Stringmaps>(kTetheringStatusClientsProperty).size(), 0);
+
+  // Connect 2 clients.
+  std::vector<std::vector<uint8_t>> clients;
+  clients.push_back({00, 11, 22, 33, 44, 55});
+  clients.push_back({00, 11, 22, 33, 44, 66});
+  EXPECT_CALL(*hotspot_device_.get(), GetStations()).WillOnce(Return(clients));
+  status = GetStatus(tethering_manager_);
+  EXPECT_EQ(status.Get<Stringmaps>(kTetheringStatusClientsProperty).size(), 2);
+
+  // Stop tethering.
+  ON_CALL(*hotspot_device_.get(), DeconfigureService())
+      .WillByDefault(Return(true));
+  SetEnabledVerifyResult(tethering_manager_, false,
+                         TetheringManager::SetEnabledResult::kSuccess);
+  status = GetStatus(tethering_manager_);
+  EXPECT_EQ(status.Get<std::string>(kTetheringStatusStateProperty),
+            kTetheringStateIdle);
+  EXPECT_FALSE(
+      status.Contains<std::string>(kTetheringStatusUpstreamTechProperty));
+  EXPECT_FALSE(
+      status.Contains<std::string>(kTetheringStatusDownstreamTechProperty));
+  EXPECT_FALSE(status.Contains<Stringmaps>(kTetheringStatusClientsProperty));
 }
 
 }  // namespace shill

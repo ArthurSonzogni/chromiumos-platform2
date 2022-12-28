@@ -32,6 +32,19 @@ MockManager::MockManager(ControlInterface* control_interface,
       .WillByDefault(Return(kSuspendDurationUsecs));
 }
 
+MockManager::MockManager(ControlInterface* control_interface,
+                         EventDispatcher* dispatcher,
+                         Metrics* metrics,
+                         const std::string& run_directory,
+                         const std::string& storage_directory,
+                         const std::string& user_storage_directory)
+    : Manager(control_interface,
+              dispatcher,
+              metrics,
+              run_directory,
+              storage_directory,
+              user_storage_directory) {}
+
 MockManager::~MockManager() = default;
 
 }  // namespace shill

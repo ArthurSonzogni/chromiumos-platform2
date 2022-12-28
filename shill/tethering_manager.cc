@@ -18,6 +18,7 @@
 #include <chromeos/dbus/shill/dbus-constants.h>
 
 #include "shill/cellular/cellular_service_provider.h"
+#include "shill/device.h"
 #include "shill/error.h"
 #include "shill/manager.h"
 #include "shill/profile.h"
@@ -311,6 +312,28 @@ KeyValueStore TetheringManager::GetStatus() {
   KeyValueStore status;
   status.Set<std::string>(kTetheringStatusStateProperty,
                           TetheringStateName(state_));
+
+  if (state_ != TetheringState::kTetheringActive) {
+    return status;
+  }
+
+  status.Set<std::string>(kTetheringStatusUpstreamTechProperty,
+                          TechnologyName(upstream_technology_));
+  status.Set<std::string>(kTetheringStatusDownstreamTechProperty, kTypeWifi);
+  // TODO(b/235762295): Get channel information from HotspotDevice
+
+  // Get stations information.
+  Stringmaps clients;
+  auto stations = hotspot_dev_->GetStations();
+  for (auto const& station : stations) {
+    Stringmap client;
+    client.insert({kTetheringStatusClientMACProperty,
+                   Device::MakeStringFromHardwareAddress(station)});
+    // TODO(b/235763170): Get IP address and hostname from patchpanel
+    clients.push_back(client);
+  }
+  status.Set<Stringmaps>(kTetheringStatusClientsProperty, clients);
+
   return status;
 }
 
@@ -459,6 +482,11 @@ void TetheringManager::OnDownstreamDeviceEvent(LocalDevice::DeviceEvent event,
   } else if (event == LocalDevice::DeviceEvent::kServiceUp) {
     hotspot_service_up_ = true;
     CheckAndPostTetheringResult();
+  } else if (event == LocalDevice::DeviceEvent::kPeerConnected ||
+             event == LocalDevice::DeviceEvent::kPeerDisconnected) {
+    if (state_ == TetheringState::kTetheringActive) {
+      manager_->TetheringStatusChanged(GetStatus());
+    }
   }
 }
 

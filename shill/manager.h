@@ -29,6 +29,7 @@
 #include "shill/geolocation_info.h"
 #include "shill/hook_table.h"
 #include "shill/metrics.h"
+#include "shill/mockable.h"
 #include "shill/network/network.h"
 #include "shill/portal_detector.h"
 #include "shill/power_manager.h"
@@ -535,7 +536,7 @@ class Manager {
 #endif  // DISABLE_FLOSS
 
   // Emit TetheringStatus dbus property change signal.
-  void TetheringStatusChanged(const KeyValueStore& status);
+  mockable void TetheringStatusChanged(const KeyValueStore& status);
 
  private:
   friend class ArcVpnDriverTest;

@@ -22,6 +22,12 @@ class MockManager : public Manager {
   MockManager(ControlInterface* control_interface,
               EventDispatcher* dispatcher,
               Metrics* metrics);
+  MockManager(ControlInterface* control_interface,
+              EventDispatcher* dispatcher,
+              Metrics* metrics,
+              const std::string& run_directory,
+              const std::string& storage_directory,
+              const std::string& user_storage_directory);
   MockManager(const MockManager&) = delete;
   MockManager& operator=(const MockManager&) = delete;
 
@@ -129,7 +135,6 @@ class MockManager : public Manager {
               GetDeviceInterfaceNames,
               (),
               (override));
-  MOCK_METHOD(const ProfileRefPtr&, ActiveProfile, (), (const, override));
   MOCK_METHOD(ServiceRefPtr, GetFirstEthernetService, (), (override));
   MOCK_METHOD(DeviceRefPtr,
               FindDeviceFromService,
@@ -142,6 +147,7 @@ class MockManager : public Manager {
               FilterByTechnology,
               (Technology tech),
               (const, override));
+  MOCK_METHOD(void, TetheringStatusChanged, (const KeyValueStore& status), ());
 
   // Getter and setter for a mocked device info instance.
   DeviceInfo* mock_device_info() { return mock_device_info_; }
