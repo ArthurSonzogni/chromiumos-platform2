@@ -46,7 +46,9 @@ const std::vector<std::string> kWaitServices = {"system-services"};
 const int kWaitServicesPollInterval = 1;  // 1 second.
 const int kWaitServicesRetries = 10;
 
-constexpr char kSummaryDivider[] = "\n====================\n\n";
+constexpr char kSummaryDivider[] =
+    "\n========================================="
+    "=================================\n\n";
 
 bool GetDeviceIdFromDeviceFile(const std::string& device_file,
                                char* device_id) {

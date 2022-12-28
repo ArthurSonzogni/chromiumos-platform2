@@ -14,6 +14,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "rmad/logs/logs_constants.h"
 #include "rmad/state_handler/state_handler_test_common.h"
 #include "rmad/utils/calibration_utils.h"
 
@@ -132,6 +133,20 @@ TEST_F(SetupCalibrationStateHandlerTest, GetNextStateCase_Success) {
   auto [error, state_case] = handler->GetNextStateCase(state);
   EXPECT_EQ(error, RMAD_ERROR_OK);
   EXPECT_EQ(state_case, RmadState::StateCase::kRunCalibration);
+
+  // Verify the setup instruction was recorded to logs.
+  base::Value logs(base::Value::Type::DICT);
+  json_store_->GetValue(kLogs, &logs);
+
+  const base::Value::List* events = logs.GetDict().FindList(kEvents);
+  EXPECT_EQ(1, events->size());
+  const base::Value::Dict& event = (*events)[0].GetDict();
+  EXPECT_EQ(static_cast<int>(RmadState::kSetupCalibration),
+            event.FindInt(kStateId));
+  EXPECT_EQ(static_cast<int>(LogEventType::kData), event.FindInt(kType));
+  EXPECT_EQ(
+      static_cast<int>(RMAD_CALIBRATION_INSTRUCTION_PLACE_BASE_ON_FLAT_SURFACE),
+      *event.FindDict(kDetails)->FindInt(kLogCalibrationSetupInstruction));
 }
 
 TEST_F(SetupCalibrationStateHandlerTest,
@@ -155,6 +170,10 @@ TEST_F(SetupCalibrationStateHandlerTest,
   auto [error, state_case] = handler->GetNextStateCase(state);
   EXPECT_EQ(error, RMAD_ERROR_OK);
   EXPECT_EQ(state_case, RmadState::StateCase::kFinalize);
+
+  // Verify no setup instruction was recorded to logs.
+  base::Value logs(base::Value::Type::DICT);
+  EXPECT_FALSE(json_store_->GetValue(kLogs, &logs));
 }
 
 TEST_F(SetupCalibrationStateHandlerTest,

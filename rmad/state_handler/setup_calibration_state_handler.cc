@@ -6,6 +6,7 @@
 
 #include <base/logging.h>
 
+#include "rmad/logs/logs_utils.h"
 #include "rmad/utils/calibration_utils.h"
 
 namespace rmad {
@@ -91,6 +92,8 @@ SetupCalibrationStateHandler::GetNextStateCase(const RmadState& state) {
   json_store_->SetValue(
       kCalibrationInstruction,
       CalibrationSetupInstruction_Name(running_setup_instruction_));
+  RecordCalibrationSetupInstructionToLogs(json_store_,
+                                          running_setup_instruction_);
   return NextStateCaseWrapper(RmadState::StateCase::kRunCalibration);
 }
 

@@ -136,6 +136,14 @@ constexpr char kSampleLogsJson[] = R"(
         "state_id": 12,
         "timestamp": 1668813225.410572,
         "type": 1
+      },
+      {
+        "details": {
+          "calibration_instruction": 2
+        },
+        "state_id": 13,
+        "timestamp": 1668813225.410572,
+        "type": 1
       }
     ]
   }
@@ -155,7 +163,8 @@ constexpr char kExpectedLogText[] =
     "[2022-11-18 23:09:44] Restock: Continuing\n"
     "[2022-11-18 23:13:45] CheckCalibration: Calibration for"
     " RMAD_COMPONENT_BASE_ACCELEROMETER - Failed, RMAD_COMPONENT_BASE_GYROSCOPE"
-    " - Skipped, RMAD_COMPONENT_LID_ACCELEROMETER - Retried\n";
+    " - Skipped, RMAD_COMPONENT_LID_ACCELEROMETER - Retried\n"
+    "[2022-11-18 23:13:45] SetupCalibration: Place lid on flat surface\n";
 
 }  // namespace
 
@@ -425,6 +434,30 @@ TEST_F(LogsUtilsTest, RecordComponentCalibrationStatus) {
   EXPECT_EQ(component3, *(*components)[2].GetDict().FindString(kLogComponent));
   EXPECT_EQ(static_cast<int>(status3),
             (*components)[2].GetDict().FindInt(kLogCalibrationStatus));
+}
+
+// Simulates adding component calibration setup instruction to an empty `logs`
+// json.
+TEST_F(LogsUtilsTest, RecordComponentCalibrationSetupInstruction) {
+  EXPECT_TRUE(CreateInputFile(kDefaultJson, std::size(kDefaultJson) - 1));
+
+  const CalibrationSetupInstruction calibration_instruction =
+      RMAD_CALIBRATION_INSTRUCTION_PLACE_BASE_ON_FLAT_SURFACE;
+
+  EXPECT_TRUE(RecordCalibrationSetupInstructionToLogs(json_store_,
+                                                      calibration_instruction));
+  base::Value logs(base::Value::Type::DICT);
+  json_store_->GetValue(kLogs, &logs);
+
+  const base::Value::List* events = logs.GetDict().FindList(kEvents);
+  EXPECT_EQ(1, events->size());
+  const base::Value::Dict& event = (*events)[0].GetDict();
+  EXPECT_EQ(static_cast<int>(RmadState::kSetupCalibration),
+            event.FindInt(kStateId));
+  EXPECT_EQ(static_cast<int>(LogEventType::kData), event.FindInt(kType));
+  EXPECT_EQ(
+      static_cast<int>(calibration_instruction),
+      *event.FindDict(kDetails)->FindInt(kLogCalibrationSetupInstruction));
 }
 
 // Simulates adding the firmware update status updates to an empty `logs` json.

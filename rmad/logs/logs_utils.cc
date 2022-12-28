@@ -187,6 +187,28 @@ std::string GenerateTextLogString(scoped_refptr<JsonStore> json_store) {
                     : kLogRestockContinueString);
             break;
           }
+          case RmadState::kSetupCalibration: {
+            std::string instruction_string;
+            const CalibrationSetupInstruction setup_instruction =
+                static_cast<CalibrationSetupInstruction>(
+                    details->FindInt(kLogCalibrationSetupInstruction).value());
+            switch (setup_instruction) {
+              case RMAD_CALIBRATION_INSTRUCTION_PLACE_BASE_ON_FLAT_SURFACE: {
+                instruction_string = kLogCalibrationSetupBaseString;
+                break;
+              }
+              case RMAD_CALIBRATION_INSTRUCTION_PLACE_LID_ON_FLAT_SURFACE: {
+                instruction_string = kLogCalibrationSetupLidString;
+                break;
+              }
+              default: {
+                instruction_string = kLogCalibrationSetupUnknownString;
+                break;
+              }
+            }
+            generated_text_log.append(instruction_string);
+            break;
+          }
           case RmadState::kCheckCalibration: {
             const base::Value::List* components =
                 details->FindList(kLogCalibrationComponents);
@@ -338,6 +360,16 @@ bool RecordRestockOptionToLogs(scoped_refptr<JsonStore> json_store,
 
   return AddEventToJson(json_store, RmadState::kRestock, LogEventType::kData,
                         std::move(details));
+}
+
+bool RecordCalibrationSetupInstructionToLogs(
+    scoped_refptr<JsonStore> json_store,
+    CalibrationSetupInstruction instruction) {
+  base::Value::Dict details;
+  details.Set(kLogCalibrationSetupInstruction, static_cast<int>(instruction));
+
+  return AddEventToJson(json_store, RmadState::kSetupCalibration,
+                        LogEventType::kData, std::move(details));
 }
 
 bool RecordComponentCalibrationStatusToLogs(

@@ -67,6 +67,12 @@ bool RecordRsuChallengeCodeToLogs(scoped_refptr<JsonStore> json_store,
 bool RecordRestockOptionToLogs(scoped_refptr<JsonStore> json_store,
                                bool restock);
 
+// Adds the calibration setup instruction to `json_store`. Returns true if
+// successful.
+bool RecordCalibrationSetupInstructionToLogs(
+    scoped_refptr<JsonStore> json_store,
+    CalibrationSetupInstruction instruction);
+
 // Adds the components calibration statuses to `json_store`. Returns true if
 // successful.
 bool RecordComponentCalibrationStatusToLogs(
