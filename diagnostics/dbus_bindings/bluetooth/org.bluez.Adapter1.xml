@@ -44,5 +44,16 @@
         Local Device ID information.
       </tp:docstring>
     </property>
+    <!-- Methods -->
+    <method name="StartDiscovery">
+      <tp:docstring>
+        This method starts the device discovery session.
+      </tp:docstring>
+    </method>
+    <method name="StopDiscovery">
+      <tp:docstring>
+        This method will cancel any previous StartDiscovery transaction.
+      </tp:docstring>
+    </method>
   </interface>
 </node>

@@ -8,6 +8,7 @@
 #include <string>
 #include <vector>
 
+#include <base/callback_list.h>
 #include <base/time/tick_clock.h>
 
 #include "diagnostics/cros_healthd/system/context.h"
@@ -44,6 +45,8 @@ class BluetoothRoutineBase {
   Context* const context_;
   // Routine start time, used to calculate the progress percentage and timeout.
   base::TimeTicks start_ticks_;
+  // The callback will be unregistered when the subscription is destructured.
+  std::vector<base::CallbackListSubscription> event_subscriptions_;
 
  private:
   // The adapters from Bluetooth proxy.
