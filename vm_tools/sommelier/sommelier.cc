@@ -1,4 +1,4 @@
-// Copyright 2017 The ChromiumOS Authors
+// Copyright 2017 The ChromiumOS Authors.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -563,7 +563,6 @@ void sl_registry_handler(void* data,
     output->id = id;
     output->version = MIN(3, version);
     output->host_global = sl_output_global_create(output);
-    output->host_output = NULL;
     wl_list_insert(&ctx->outputs, &output->link);
   } else if (strcmp(interface, "wl_seat") == 0) {
     struct sl_seat* seat =
@@ -881,8 +880,6 @@ static void sl_registry_remover(void* data,
   wl_list_for_each(output, &ctx->outputs, link) {
     if (output->id == id) {
       sl_global_destroy(output->host_global);
-      if (output->host_output)
-        wl_resource_destroy(output->host_output->resource);
       wl_list_remove(&output->link);
       free(output);
       return;
