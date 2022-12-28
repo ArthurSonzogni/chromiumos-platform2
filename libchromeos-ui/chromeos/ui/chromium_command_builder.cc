@@ -561,6 +561,10 @@ void ChromiumCommandBuilder::AddUiFlags() {
   if (UseFlagIsSet("disable_spectre_variant2_mitigation"))
     AddFeatureDisableOverride("SpectreVariant2Mitigation");
 
+  // Disable Floss if the Floss USE flag was not set.
+  if (!UseFlagIsSet("floss"))
+    AddFeatureDisableOverride("Floss");
+
   // Allow Chrome to access GPU memory information despite /sys/kernel/debug
   // being owned by debugd. This limits the security attack surface versus
   // leaving the whole debug directory world-readable: http://crbug.com/175828

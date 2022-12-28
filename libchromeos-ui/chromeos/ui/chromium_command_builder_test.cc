@@ -174,6 +174,8 @@ TEST_F(ChromiumCommandBuilderTest, BasicEnvironment) {
 }
 
 TEST_F(ChromiumCommandBuilderTest, ValueListFlags) {
+  use_flags_data_ = "floss";
+
   ASSERT_TRUE(Init());
   ASSERT_TRUE(builder_.SetUpChromium());
 
