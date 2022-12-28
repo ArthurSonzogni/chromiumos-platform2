@@ -10,24 +10,42 @@ import logging
 import signal
 import subprocess
 import tempfile
+import time
 
 # pylint: disable=import-error
 from cros_camera_tracing import utils
 
 
-def generate_trace_config(
-    enabled_categories: str,
-    disabled_categories: str,
-    enabled_tags: str,
-    buffer_size_kb: int,
-    fill_policy: str,
-) -> str:
+def generate_trace_config(args) -> str:
     """Generates the trace config."""
 
-    return f"""
+    fill_policy = "RING_BUFFER"
+    if args.duration_sec is not None:
+        fill_policy = "DISCARD"
+
+    # Prepare track_event config strings. The spaces are indents for pretty
+    # output.
+    INDENT = " " * 12
+    enabled_categories = args.enabled_categories.split(",")
+    if args.with_gpu:
+        enabled_categories += ["mesa.*"]
+    enabled_categories_str = "\n".join(
+        INDENT + f'enabled_categories: "{c}"' for c in enabled_categories
+    )
+
+    disabled_categories_str = "\n".join(
+        INDENT + f'disabled_categories: "{c}"'
+        for c in args.disabled_categories.split(",")
+    )
+
+    enabled_tags_str = "\n".join(
+        INDENT + f'enabled_tags: "{c}"' for c in args.enabled_tags.split(",")
+    )
+
+    trace_config = f"""
 # Buffer 0
 buffers: {{
-    size_kb: {buffer_size_kb}
+    size_kb: {args.buffer_size_kb}
     fill_policy: {fill_policy}
 }}
 
@@ -42,9 +60,9 @@ data_sources: {{
         name: "track_event"
         target_buffer: 0
         track_event_config {{
-            enabled_categories: "{enabled_categories}"
-            disabled_categories: "{disabled_categories}"
-            enabled_tags: "{enabled_tags}"
+{enabled_categories_str}
+{disabled_categories_str}
+{enabled_tags_str}
         }}
     }}
 }}
@@ -128,22 +146,57 @@ data_sources: {{
 }}
 """
 
+    if args.with_gpu:
+        # Reference: http://shortn/_qCI224ZcLZ
+        trace_config += f"""
+data_sources {{
+    config {{
+        name: "gpu.counters.i915"
+        target_buffer: 0
+        gpu_counter_config {{
+            counter_period_ns: {args.gpu_counter_period_ns}
+        }}
+    }}
+}}
+data_sources {{
+    config {{
+        name: "gpu.renderstages.intel"
+        target_buffer: 0
+    }}
+}}
+data_sources {{
+    config {{
+        name: "gpu.counters.msm"
+        target_buffer: 0
+        gpu_counter_config {{
+            counter_period_ns: {args.gpu_counter_period_ns}
+        }}
+    }}
+}}
+data_sources {{
+    config {{
+        name: "gpu.renderstages.msm"
+        target_buffer: 0
+    }}
+}}
+data_sources {{
+    config {{
+        name: "gpu.counters.panfrost"
+        target_buffer: 0
+        gpu_counter_config {{
+            counter_period_ns: {args.gpu_counter_period_ns}
+        }}
+    }}
+}}
+"""
+    return trace_config
+
 
 class PerfettoSession:
     """PerfettoSession represents a tracing session."""
 
     def __init__(self, args):
-        fill_policy = "RING_BUFFER"
-        if args.duration_sec is not None:
-            fill_policy = "DISCARD"
-
-        self.trace_config = generate_trace_config(
-            args.enabled_categories,
-            args.disabled_categories,
-            args.enabled_tags,
-            args.buffer_size_kb,
-            fill_policy,
-        )
+        self.trace_config = generate_trace_config(args)
         self.output_file = args.output_file
         self.remote = args.remote or None
         self.duration_sec = args.duration_sec or None
@@ -160,18 +213,45 @@ class PerfettoSession:
         # pylint: disable=R1732
         self.tmp_out_file = tempfile.NamedTemporaryFile(prefix="trace-")
 
-        self.proc = None
-        self.pid = None
+        self.perfetto_proc = None
+        self.perfetto_pid = None
         self.interrupted = False
+        self.enable_gpu_events = args.with_gpu
+        self.pps_producer_proc = None
+        self.pps_producer_pid = None
+
+    def poll_process_pid(self, pgrep_str: str):
+        POLL_TIMEOUT_SECS = 5
+        POLL_RETRY_INTERVAL_SECS = 0.5
+
+        start = time.monotonic()
+        while time.monotonic() - start < POLL_TIMEOUT_SECS:
+            try:
+                output = subprocess.run(
+                    utils.wrap_cmd(
+                        ["/usr/bin/pgrep", "-f", pgrep_str],
+                        remote=self.remote,
+                    ),
+                    check=True,
+                    encoding="utf-8",
+                    stdout=subprocess.PIPE,
+                )
+                return output.stdout.strip()
+            except subprocess.CalledProcessError:
+                logging.debug("Process not started yet")
+                time.sleep(POLL_RETRY_INTERVAL_SECS)
+
+        return None
 
     def start(self):
         """Starts the Perfetto tracing session.
 
         Generates the trace configs and starts the Perfetto process (remotely).
         """
+
         # Create trace config file
         perfetto_cmd = [
-            "perfetto",
+            "/usr/bin/perfetto",
             "-c",
             self.tmp_cfg_file.name,
             "--txt",
@@ -187,29 +267,36 @@ class PerfettoSession:
             )
         logging.debug("Trace config file: %s", self.tmp_cfg_file.name)
 
+        if self.enable_gpu_events:
+            pps_producer_cmd = ["/usr/bin/pps-producer"]
+            # pylint: disable=R1732
+            self.pps_producer_proc = subprocess.Popen(
+                utils.wrap_cmd(pps_producer_cmd, self.remote),
+                start_new_session=True,
+            )
+            self.pps_producer_pid = self.poll_process_pid(
+                " ".join(pps_producer_cmd)
+            )
+            if self.pps_producer_pid is None:
+                raise TimeoutError("pps-producer process failed to start")
+            logging.info(
+                "Started pps-producer (REMOTE=%s, PID=%s)...",
+                self.remote,
+                self.pps_producer_pid,
+            )
+
         # pylint: disable=R1732
-        self.proc = subprocess.Popen(
+        self.perfetto_proc = subprocess.Popen(
             utils.wrap_cmd(perfetto_cmd, self.remote), start_new_session=True
         )
-
-        try:
-            output = subprocess.run(
-                utils.wrap_cmd(
-                    ["pgrep", "-f", " ".join(perfetto_cmd)],
-                    remote=self.remote,
-                ),
-                check=True,
-                encoding="utf-8",
-                stdout=subprocess.PIPE,
-            )
-        except subprocess.CalledProcessError:
-            raise ProcessLookupError("Cannot find perfetto pid")
-        self.pid = output.stdout.strip()
+        self.perfetto_pid = self.poll_process_pid(" ".join(perfetto_cmd))
+        if self.perfetto_pid is None:
+            raise TimeoutError("Perfetto process failed to start")
 
         logging.info(
             "Started recording new trace (REMOTE=%s, PID=%s)...",
             self.remote,
-            self.pid,
+            self.perfetto_pid,
         )
 
     def wait(self):
@@ -219,39 +306,75 @@ class PerfettoSession:
         collecting trace for |self.duration_sec| seconds.
         """
 
-        if self.proc is None:
+        if self.perfetto_proc is None:
             raise RuntimeError("Perfetto process not started yet")
         try:
             if self.duration_sec is None:
                 logging.info("Ctrl+C to stop tracing")
             else:
                 logging.info("Will record for %f second(s)", self.duration_sec)
-            self.proc.wait(self.duration_sec)
+            self.perfetto_proc.wait(self.duration_sec)
         except subprocess.TimeoutExpired:
-            self.interrupt()
+            self.terminate()
 
-    def interrupt(self):
-        """Stops the Perfetto process.
+    def terminate(self):
+        """Stops the Perfetto and pps-producer processes.
 
-        Gracefully terminates the Perfetto process through SIGINT.
+        Gracefully terminates the Perfetto and pps-producer processes through
+        SIGINT.
         """
 
+        if self.perfetto_pid is not None:
+            subprocess.run(
+                utils.wrap_cmd(
+                    ["kill", "-SIGINT", self.perfetto_pid], self.remote
+                ),
+                check=True,
+            )
+
+        if self.pps_producer_pid is not None:
+            subprocess.run(
+                utils.wrap_cmd(
+                    ["kill", "-SIGINT", self.pps_producer_pid], self.remote
+                ),
+                check=True,
+            )
+
         logging.info("Stopped recording trace")
-        subprocess.run(
-            utils.wrap_cmd(["kill", "-SIGINT", self.pid], self.remote),
-            check=True,
-        )
 
     def clean_up(self):
         """Cleans up temp files and syncs the trace output."""
 
-        if self.proc is None:
+        PROCESS_WAIT_TIMEOUT = 10
+
+        if self.perfetto_proc is None:
             raise RuntimeError("Perfetto process not started yet")
 
-        self.proc.wait()
-        logging.debug(
-            "Perfetto process terminated with code %d", self.proc.returncode
-        )
+        try:
+            self.perfetto_proc.wait(PROCESS_WAIT_TIMEOUT)
+            logging.debug(
+                "Perfetto process terminated with code %d",
+                self.perfetto_proc.returncode,
+            )
+        except subprocess.TimeoutExpired:
+            # We still want to copy the trace output.
+            logging.warning(
+                "Perfetto process (PID=%d) did not terminate", self.perfetto_pid
+            )
+
+        if self.pps_producer_proc is not None:
+            try:
+                self.pps_producer_proc.wait(PROCESS_WAIT_TIMEOUT)
+                logging.debug(
+                    "pps-producer process terminated with code %d",
+                    self.pps_producer_proc.returncode,
+                )
+            except subprocess.TimeoutExpired:
+                # We still want to copy the trace output.
+                logging.warning(
+                    "pps-producer process (PID=%d) did not terminate",
+                    self.pps_producer_pid,
+                )
 
         logging.info("Syncing trace output file...")
         if self.remote:
@@ -287,7 +410,11 @@ class PerfettoSession:
         self.tmp_out_file.close()
 
     def __enter__(self):
-        self.start()
+        try:
+            self.start()
+        except Exception:
+            # Reap the started processes if anything goes wrong.
+            self.terminate()
         return self
 
     def __exit__(self, *_):
@@ -330,29 +457,50 @@ def set_up_subcommand_parser(subparsers):
         "-b",
         "--buffer_size_kb",
         type=int,
-        default=65536,
-        help="Size of trace buffer in KB",
+        default=100000,
+        help="Size of trace buffer in KB (default=%(default)s)",
     )
     record_parser.add_argument(
         "--enabled_categories",
         type=str,
         default="camera.*",
-        help="Track event categories to enable (default='%(default)s')",
+        help=(
+            "Comma-separated track event categories to enable "
+            "(default='%(default)s')"
+        ),
     )
     record_parser.add_argument(
         "--disabled_categories",
         type=str,
         default="*",
-        help="Track event categories to disable (default='%(default)s')",
+        help=(
+            "Comma-separated track event categories to disable "
+            "(default='%(default)s')"
+        ),
     )
     record_parser.add_argument(
         "--enabled_tags",
         type=str,
         default="",
         help=(
-            "Track event tags to enable; events tagged as `debug` and `slow` "
-            "are disabled by default (default='%(default)s')"
+            "Comma-separated track event tags to enable; events tagged as "
+            "`debug` and `slow` are disabled by default (default='%(default)s')"
         ),
+    )
+    record_parser.add_argument(
+        "--with_gpu",
+        action="store_true",
+        help=(
+            "Record trace with GPU events enabled; a larger buffer size or "
+            "reduced GPU counter sampling period may be needed to avoid event "
+            "drops"
+        ),
+    )
+    record_parser.add_argument(
+        "--gpu_counter_period_ns",
+        type=int,
+        default=100000,
+        help="GPU counter sampling period in ns (default=%(default)s)",
     )
 
 
@@ -361,5 +509,5 @@ def execute_subcommand(args):
 
     with PerfettoSession(args) as s:
         # Capture SIGINT (KeyboardInterrupt from Ctrl+C).
-        signal.signal(signal.SIGINT, lambda _, __: s.interrupt())
+        signal.signal(signal.SIGINT, lambda _, __: s.terminate())
         s.wait()
