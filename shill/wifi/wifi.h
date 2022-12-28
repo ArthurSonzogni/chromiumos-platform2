@@ -161,12 +161,15 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   void Certification(const KeyValueStore& properties) override;
   void EAPEvent(const std::string& status,
                 const std::string& parameter) override;
-  void PropertiesChanged(const KeyValueStore& properties) override;
-  void ScanDone(const bool& success) override;
   void InterworkingAPAdded(const RpcIdentifier& BSS,
                            const RpcIdentifier& cred,
                            const KeyValueStore& properties) override;
   void InterworkingSelectDone() override;
+  void PropertiesChanged(const KeyValueStore& properties) override;
+  void ScanDone(const bool& success) override;
+  void StationAdded(const RpcIdentifier& Station,
+                    const KeyValueStore& properties) override{};
+  void StationRemoved(const RpcIdentifier& Station) override{};
 
   // Called by WiFiService.
   virtual void ConnectTo(WiFiService* service, Error* error);

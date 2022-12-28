@@ -115,6 +115,14 @@ SupplicantInterfaceProxy::SupplicantInterfaceProxy(
       base::BindRepeating(&SupplicantInterfaceProxy::InterworkingSelectDone,
                           weak_factory_.GetWeakPtr()),
       on_connected_callback);
+  interface_proxy_->RegisterStationAddedSignalHandler(
+      base::BindRepeating(&SupplicantInterfaceProxy::StationAdded,
+                          weak_factory_.GetWeakPtr()),
+      on_connected_callback);
+  interface_proxy_->RegisterStationRemovedSignalHandler(
+      base::BindRepeating(&SupplicantInterfaceProxy::StationRemoved,
+                          weak_factory_.GetWeakPtr()),
+      on_connected_callback);
 
   // Connect property signals and initialize cached values. Based on
   // recommendations from src/dbus/property.h.
@@ -518,6 +526,19 @@ void SupplicantInterfaceProxy::InterworkingSelectDone() {
 void SupplicantInterfaceProxy::ScanDone(bool success) {
   SLOG(&interface_proxy_->GetObjectPath(), 2) << __func__ << ": " << success;
   delegate_->ScanDone(success);
+}
+
+void SupplicantInterfaceProxy::StationAdded(
+    const dbus::ObjectPath& station,
+    const brillo::VariantDictionary& properties) {
+  SLOG(&interface_proxy_->GetObjectPath(), 2) << __func__;
+  KeyValueStore store = KeyValueStore::ConvertFromVariantDictionary(properties);
+  delegate_->StationAdded(station, store);
+}
+
+void SupplicantInterfaceProxy::StationRemoved(const dbus::ObjectPath& station) {
+  SLOG(&interface_proxy_->GetObjectPath(), 2) << __func__;
+  delegate_->StationRemoved(station);
 }
 
 void SupplicantInterfaceProxy::OnPropertyChanged(

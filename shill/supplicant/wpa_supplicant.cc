@@ -173,6 +173,8 @@ const char WPASupplicant::kSecurityAuthAlg[] = "OPEN SHARED";
 const char WPASupplicant::kSecurityMethodPropertyKeyManagement[] = "KeyMgmt";
 const char WPASupplicant::kSecurityModeRSN[] = "RSN";
 const char WPASupplicant::kSecurityModeWPA[] = "WPA";
+const char WPASupplicant::kStationPropertyAddress[] = "Address";
+const char WPASupplicant::kStationPropertyAID[] = "AID";
 
 const char WPASupplicant::kSignalChangeProperty[] = "SignalChange";
 const char WPASupplicant::kSignalChangePropertyRSSI[] = "rssi";

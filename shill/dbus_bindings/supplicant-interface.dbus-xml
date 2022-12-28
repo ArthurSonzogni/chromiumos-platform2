@@ -121,6 +121,13 @@
     </signal>
     <signal name="InterworkingSelectDone">
     </signal>
+    <signal name="StationAdded">
+      <arg name="Station" type="o"/>
+      <arg name="properties" type="a{sv}"/>
+    </signal>
+    <signal name="StationRemoved">
+      <arg name="Station" type="o"/>
+    </signal>
   </interface>
 </node>
 

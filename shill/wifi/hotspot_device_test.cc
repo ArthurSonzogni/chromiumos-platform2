@@ -6,6 +6,7 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
 #include <base/memory/ref_counted.h>
 #include <base/test/mock_callback.h>
@@ -45,9 +46,14 @@ const char kDeviceName[] = "ap0";
 const char kDeviceAddress[] = "00:01:02:03:04:05";
 const char kHotspotSSID[] = "chromeOS-1234";
 const char kHotspotPassphrase[] = "test0000";
+const std::vector<uint8_t> kStationAddress1 = {00, 11, 22, 33, 44, 55};
+const std::vector<uint8_t> kStationAddress2 = {00, 11, 22, 33, 44, 66};
 const uint32_t kPhyIndex = 5678;
 const RpcIdentifier kIfacePath = RpcIdentifier("/interface/path");
 const RpcIdentifier kNetworkPath = RpcIdentifier("/network/path");
+const RpcIdentifier kStationPath1 = RpcIdentifier("/station/path/1");
+const RpcIdentifier kStationPath2 = RpcIdentifier("/station/path/2");
+const RpcIdentifier kStationPath3 = RpcIdentifier("/station/path/3");
 }  // namespace
 
 class HotspotDeviceTest : public testing::Test {
@@ -209,6 +215,78 @@ TEST_F(HotspotDeviceTest, ServiceEvent) {
   EXPECT_EQ(device_->supplicant_state_, WPASupplicant::kInterfaceStateInactive);
   DispatchPendingEvents();
   Mock::VerifyAndClearExpectations(&cb);
+}
+
+TEST_F(HotspotDeviceTest, StationAddedRemoved) {
+  // Station connects.
+  KeyValueStore props1;
+  props1.Set<std::vector<uint8_t>>(WPASupplicant::kStationPropertyAddress,
+                                   kStationAddress1);
+  props1.Set<uint16_t>(WPASupplicant::kStationPropertyAID, 0);
+  EXPECT_CALL(cb, Run(LocalDevice::DeviceEvent::kPeerConnected, _)).Times(1);
+  device_->StationAdded(kStationPath1, props1);
+  DispatchPendingEvents();
+  Mock::VerifyAndClearExpectations(&cb);
+
+  // Same station connect event should not generate device event.
+  EXPECT_CALL(cb, Run(LocalDevice::DeviceEvent::kPeerConnected, _)).Times(0);
+  device_->StationAdded(kStationPath1, props1);
+  DispatchPendingEvents();
+  Mock::VerifyAndClearExpectations(&cb);
+
+  // Remove station
+  EXPECT_CALL(cb, Run(LocalDevice::DeviceEvent::kPeerDisconnected, _)).Times(1);
+  device_->StationRemoved(kStationPath1);
+  DispatchPendingEvents();
+  Mock::VerifyAndClearExpectations(&cb);
+
+  // Same station remove event should not generate device event.
+  EXPECT_CALL(cb, Run(LocalDevice::DeviceEvent::kPeerDisconnected, _)).Times(0);
+  device_->StationRemoved(kStationPath1);
+  DispatchPendingEvents();
+  Mock::VerifyAndClearExpectations(&cb);
+}
+
+TEST_F(HotspotDeviceTest, GetStations) {
+  std::vector<std::vector<uint8_t>> mac;
+
+  // Station1 connects.
+  KeyValueStore props1;
+  props1.Set<std::vector<uint8_t>>(WPASupplicant::kStationPropertyAddress,
+                                   kStationAddress1);
+  props1.Set<uint16_t>(WPASupplicant::kStationPropertyAID, 0);
+  mac.push_back(kStationAddress1);
+  device_->StationAdded(kStationPath1, props1);
+  auto stations = device_->GetStations();
+  EXPECT_EQ(stations, mac);
+
+  // Station2 connects.
+  KeyValueStore props2;
+  props2.Set<std::vector<uint8_t>>(WPASupplicant::kStationPropertyAddress,
+                                   kStationAddress2);
+  props2.Set<uint16_t>(WPASupplicant::kStationPropertyAID, 1);
+  mac.push_back(kStationAddress2);
+  device_->StationAdded(kStationPath2, props2);
+  stations = device_->GetStations();
+  EXPECT_EQ(stations, mac);
+
+  // Remove station1
+  mac.erase(mac.begin());
+  device_->StationRemoved(kStationPath1);
+  stations = device_->GetStations();
+  EXPECT_EQ(stations, mac);
+
+  // Remove station2
+  mac.erase(mac.begin());
+  device_->StationRemoved(kStationPath2);
+  stations = device_->GetStations();
+  EXPECT_EQ(stations, mac);
+
+  // Station without properties connects.
+  KeyValueStore props3;
+  device_->StationAdded(kStationPath3, props3);
+  stations = device_->GetStations();
+  EXPECT_EQ(stations.size(), 1);
 }
 
 }  // namespace shill

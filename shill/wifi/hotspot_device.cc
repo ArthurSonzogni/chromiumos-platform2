@@ -7,7 +7,9 @@
 #include <string.h>
 
 #include <base/bind.h>
+#include <base/containers/contains.h>
 
+#include "shill/device.h"
 #include "shill/event_dispatcher.h"
 #include "shill/control_interface.h"
 #include "shill/refptr_types.h"
@@ -176,6 +178,57 @@ void HotspotDevice::PropertiesChanged(const KeyValueStore& properties) {
   Dispatcher()->PostTask(
       FROM_HERE, base::BindOnce(&HotspotDevice::PropertiesChangedTask,
                                 weak_ptr_factory_.GetWeakPtr(), properties));
+}
+
+void HotspotDevice::StationAdded(const RpcIdentifier& path,
+                                 const KeyValueStore& properties) {
+  if (base::Contains(stations_, path)) {
+    LOG(INFO) << "Receive StationAdded event for " << path.value()
+              << ", which is already in the list. Ignore.";
+    return;
+  }
+
+  stations_[path] = properties;
+
+  auto aid = properties.Contains<uint16_t>(WPASupplicant::kStationPropertyAID)
+                 ? properties.Get<uint16_t>(WPASupplicant::kStationPropertyAID)
+                 : -1;
+  LOG(INFO) << "Station [" << aid << "] connected to hotspot device "
+            << link_name() << ", total station count: " << stations_.size();
+  PostDeviceEvent(DeviceEvent::kPeerConnected);
+}
+
+void HotspotDevice::StationRemoved(const RpcIdentifier& path) {
+  if (!base::Contains(stations_, path)) {
+    LOG(INFO) << "Receive StationRemoved event for " << path.value()
+              << ", which is not in the list. Ignore.";
+    return;
+  }
+
+  auto aid =
+      stations_[path].Contains<uint16_t>(WPASupplicant::kStationPropertyAID)
+          ? stations_[path].Get<uint16_t>(WPASupplicant::kStationPropertyAID)
+          : -1;
+  stations_.erase(path);
+  LOG(INFO) << "Station [" << aid << "] disconnected from hotspot device "
+            << link_name() << ", total station count: " << stations_.size();
+  PostDeviceEvent(DeviceEvent::kPeerDisconnected);
+}
+
+std::vector<std::vector<uint8_t>> HotspotDevice::GetStations() {
+  std::vector<std::vector<uint8_t>> stations;
+
+  for (auto const& iter : stations_) {
+    std::vector<uint8_t> station;
+    if (iter.second.Contains<std::vector<uint8_t>>(
+            WPASupplicant::kStationPropertyAddress)) {
+      station = iter.second.Get<std::vector<uint8_t>>(
+          WPASupplicant::kStationPropertyAddress);
+    }
+    stations.push_back(station);
+  }
+
+  return stations;
 }
 
 }  // namespace shill

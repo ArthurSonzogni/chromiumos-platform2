@@ -5,7 +5,9 @@
 #ifndef SHILL_WIFI_HOTSPOT_DEVICE_H_
 #define SHILL_WIFI_HOTSPOT_DEVICE_H_
 
+#include <map>
 #include <string>
+#include <vector>
 
 #include <base/memory/weak_ptr.h>
 
@@ -54,6 +56,9 @@ class HotspotDevice : public LocalDevice,
   // Disconnect from and remove HotspotService.
   mockable bool DeconfigureService();
 
+  // Get the MAC addresses of the connected stations to this hotspot device.
+  mockable std::vector<std::vector<uint8_t>> GetStations();
+
   // Implementation of SupplicantEventDelegateInterface.  These methods
   // are called by SupplicantInterfaceProxy, in response to events from
   // wpa_supplicant.
@@ -64,11 +69,14 @@ class HotspotDevice : public LocalDevice,
   void Certification(const KeyValueStore& properties) override{};
   void EAPEvent(const std::string& status,
                 const std::string& parameter) override{};
-  void ScanDone(const bool& success) override{};
   void InterworkingAPAdded(const RpcIdentifier& BSS,
                            const RpcIdentifier& cred,
                            const KeyValueStore& properties) override{};
   void InterworkingSelectDone() override{};
+  void ScanDone(const bool& success) override{};
+  void StationAdded(const RpcIdentifier& Station,
+                    const KeyValueStore& properties) override;
+  void StationRemoved(const RpcIdentifier& Station) override;
 
  private:
   friend class HotspotDeviceTest;
@@ -92,7 +100,8 @@ class HotspotDevice : public LocalDevice,
   RpcIdentifier supplicant_network_path_;
   // Hotspot service configured on this device.
   std::unique_ptr<HotspotService> service_;
-
+  // wpa_supplicant's RPC paths and properties for the connected stations.
+  std::map<RpcIdentifier, KeyValueStore> stations_;
   std::string supplicant_state_;
   base::WeakPtrFactory<HotspotDevice> weak_ptr_factory_{this};
 };

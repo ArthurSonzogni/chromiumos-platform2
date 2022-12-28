@@ -28,6 +28,7 @@ class MockHotspotDevice : public HotspotDevice {
   MOCK_METHOD(bool, ConfigureService, (std::unique_ptr<HotspotService>), ());
   MOCK_METHOD(bool, DeconfigureService, (), ());
   MOCK_METHOD(bool, IsServiceUp, (), (const, override));
+  MOCK_METHOD(std::vector<std::vector<uint8_t>>, GetStations, (), ());
 };
 
 }  // namespace shill

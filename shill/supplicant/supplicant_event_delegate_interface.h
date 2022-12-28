@@ -31,13 +31,6 @@ class SupplicantEventDelegateInterface {
   virtual void EAPEvent(const std::string& status,
                         const std::string& parameter) = 0;
 
-  // The interface element in the supplicant has changed one or more
-  // properties.
-  virtual void PropertiesChanged(const KeyValueStore& properties) = 0;
-
-  // A scan has completed on this interface.
-  virtual void ScanDone(const bool& success) = 0;
-
   // Report a match between an endpoint |BSS| and a set of Passpoint credentials
   // referred by |cred|. A set of complementary information gathered by
   // supplicant (such as match types) are provided in |properties|.
@@ -47,6 +40,20 @@ class SupplicantEventDelegateInterface {
 
   // Interworking match between endpoint and Passpoint credentials is over.
   virtual void InterworkingSelectDone() = 0;
+
+  // The interface element in the supplicant has changed one or more
+  // properties.
+  virtual void PropertiesChanged(const KeyValueStore& properties) = 0;
+
+  // A scan has completed on this interface.
+  virtual void ScanDone(const bool& success) = 0;
+
+  // Supplicant has added a station to the interface.
+  virtual void StationAdded(const RpcIdentifier& Station,
+                            const KeyValueStore& properties) = 0;
+
+  // Supplicant has removed a station from the interface.
+  virtual void StationRemoved(const RpcIdentifier& Station) = 0;
 };
 
 }  // namespace shill

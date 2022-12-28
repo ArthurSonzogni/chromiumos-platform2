@@ -100,16 +100,19 @@ class SupplicantInterfaceProxy : public SupplicantInterfaceProxyInterface {
   void BSSRemoved(const dbus::ObjectPath& BSS);
   void Certification(const brillo::VariantDictionary& properties);
   void EAP(const std::string& status, const std::string& parameter);
+  void InterworkingAPAdded(const dbus::ObjectPath& BSS,
+                           const dbus::ObjectPath& cred,
+                           const brillo::VariantDictionary& properties);
+  void InterworkingSelectDone();
   void NetworkAdded(const dbus::ObjectPath& network,
                     const brillo::VariantDictionary& properties);
   void NetworkRemoved(const dbus::ObjectPath& network);
   void NetworkSelected(const dbus::ObjectPath& network);
   void PropertiesChanged(const brillo::VariantDictionary& properties);
   void ScanDone(bool success);
-  void InterworkingAPAdded(const dbus::ObjectPath& BSS,
-                           const dbus::ObjectPath& cred,
-                           const brillo::VariantDictionary& properties);
-  void InterworkingSelectDone();
+  void StationAdded(const dbus::ObjectPath& station,
+                    const brillo::VariantDictionary& properties);
+  void StationRemoved(const dbus::ObjectPath& station);
 
   // Callback invoked when the value of property |property_name| is changed.
   void OnPropertyChanged(const std::string& property_name);

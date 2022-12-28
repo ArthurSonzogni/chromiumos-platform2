@@ -165,6 +165,8 @@ class WPASupplicant {
   static const char kSecurityMethodPropertyKeyManagement[];
   static const char kSecurityModeRSN[];
   static const char kSecurityModeWPA[];
+  static const char kStationPropertyAddress[];
+  static const char kStationPropertyAID[];
 
   // TODO(b/230525092): Add support for NL80211_STA_INFO_INACTIVE_TIME
   static const char kSignalChangeProperty[];
