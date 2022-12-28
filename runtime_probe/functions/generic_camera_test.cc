@@ -38,7 +38,7 @@ class Fake1GenericCameraFunction : public GenericCameraFunction {
       [{
         "bus_type": "mipi",
         "mipi_module_id": "TC04d2",
-        "mipi_name": "ABC-00/ABC-1234",
+        "mipi_sysfs_name": "ABC-00/ABC-1234",
         "mipi_sensor_id": "OV10e1",
         "path": "/sys/devices/XXX/nvmem"
       },
@@ -112,7 +112,7 @@ TEST_F(GenericCameraFunctionTest, ProbeGenericCamera) {
     {
       "bus_type": "mipi",
       "mipi_module_id": "TC04d2",
-      "mipi_name": "ABC-00/ABC-1234",
+      "mipi_sysfs_name": "ABC-00/ABC-1234",
       "mipi_sensor_id": "OV10e1",
       "path": "/sys/devices/XXX/nvmem"
     },

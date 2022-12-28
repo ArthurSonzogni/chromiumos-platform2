@@ -307,7 +307,7 @@ message Camera {
     // The following are fields for MIPI.  Every field name must start with
     // prefix "mipi_".
 
-    // Entity name from sysfs path or V4L2.
+    // Entity name from V4L2.
     string mipi_name = 7;
     // Camera module vendor ID and product ID read from camera EEPROM.
     string mipi_module_id = 8;
