@@ -12,7 +12,7 @@ namespace startup {
 // These constants are used to check the clock. Since they need to be
 // updated, which can be done by a script in BUILD.gn, they are in a
 // separate file for ease of maintenance.
-constexpr int kYear = 2022;
+constexpr int kYear = 2023;
 // This isn't exactly correct as it doesn't handle leap years, but it's
 // good enough for our purposes (pulling clock to the ~last year).
 constexpr uint64_t kBaseSecs = (kYear - 1970) * (365 * 24 * 60 * 60);
