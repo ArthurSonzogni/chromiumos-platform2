@@ -134,7 +134,7 @@ bool GcamAeStreamManipulator::ProcessCaptureRequest(
     Camera3CaptureDescriptor* request) {
   TRACE_GCAM_AE();
 
-  if (request->GetInputBuffer() != nullptr) {
+  if (request->has_input_buffer()) {
     // Skip reprocessing requests.
     return true;
   }
@@ -154,7 +154,7 @@ bool GcamAeStreamManipulator::ProcessCaptureResult(
   if (VLOG_IS_ON(2)) {
     VLOGFID(2, result.frame_number()) << "Got result:";
     for (const auto& hal_result_buffer : result.GetOutputBuffers()) {
-      VLOGF(2) << "\t" << GetDebugString(hal_result_buffer.stream);
+      VLOGF(2) << "\t" << GetDebugString(hal_result_buffer.stream());
     }
   }
 
@@ -174,8 +174,8 @@ bool GcamAeStreamManipulator::ProcessCaptureResult(
   }
 
   for (auto& buffer : result.GetOutputBuffers()) {
-    if (buffer.stream == yuv_stream_) {
-      ae_controller_->RecordYuvBuffer(result.frame_number(), *buffer.buffer,
+    if (buffer.stream() == yuv_stream_) {
+      ae_controller_->RecordYuvBuffer(result.frame_number(), *buffer.buffer(),
                                       base::ScopedFD());
     }
   }

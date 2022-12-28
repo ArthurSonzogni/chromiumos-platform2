@@ -7,11 +7,13 @@
 #ifndef CAMERA_COMMON_CAMERA_HAL3_HELPERS_H_
 #define CAMERA_COMMON_CAMERA_HAL3_HELPERS_H_
 
+#include <functional>
 #include <memory>
 #include <optional>
 #include <string>
 #include <vector>
 
+#include <cutils/native_handle.h>
 #include <base/containers/span.h>
 #include <base/synchronization/lock.h>
 #include <camera/camera_metadata.h>
@@ -99,6 +101,112 @@ struct FeatureMetadata {
   // normalized with respect to the active sensor array size. The face ROIs are
   // consumed by GcamAeStreamManipulator as input metadata.
   std::optional<std::vector<human_sensing::CrosFace>> faces;
+};
+
+// A helper class that wraps a camera3_stream_buffer_t object to facilitate
+// event tracing and simplify data access.
+//
+// The class does not take ownership of any of the resources in the input
+// camera3_stream_buffer_t object. Specifically, the owner of the raw buffer
+// object is responsible for managing the acquire and release fence FDs, either
+// by passing on the ownership to the camera client or camera HAL, or closing
+// the fence FD before setting a new one.
+class CROS_CAMERA_EXPORT Camera3StreamBuffer {
+ public:
+  // The flow direction of the buffer. A buffer is either an input buffer from
+  // the upper layer, or an output buffer that needs to be filled by the lower
+  // layer.
+  enum class Direction {
+    kInvalidDirection = -1,
+    kInput = 0,
+    kOutput = 1,
+  };
+
+  // The type of the buffer. A buffer should either be associated with a capture
+  // request or a capture result.
+  enum class Type {
+    kInvalidType = -1,
+    kRequest = 0,
+    kResult = 1,
+  };
+
+  static constexpr camera3_stream_buffer_t kInvalidRawBuffer = {
+      .stream = nullptr,
+      .buffer = nullptr,
+      .status = CAMERA3_BUFFER_STATUS_ERROR,
+      .acquire_fence = -1,
+      .release_fence = -1,
+  };
+
+  static Camera3StreamBuffer MakeRequestInput(
+      const camera3_stream_buffer_t& stream_buffer);
+  static Camera3StreamBuffer MakeRequestOutput(
+      const camera3_stream_buffer_t& stream_buffer);
+  static Camera3StreamBuffer MakeResultInput(
+      const camera3_stream_buffer_t& stream_buffer);
+  static Camera3StreamBuffer MakeResultOutput(
+      const camera3_stream_buffer_t& stream_buffer);
+
+  // Default constructor creates an invalid buffer.
+  Camera3StreamBuffer() = default;
+  ~Camera3StreamBuffer();
+
+  Camera3StreamBuffer(Camera3StreamBuffer&& other);
+  Camera3StreamBuffer& operator=(Camera3StreamBuffer&& other);
+
+  Camera3StreamBuffer(const Camera3StreamBuffer& other) = delete;
+  Camera3StreamBuffer& operator=(const Camera3StreamBuffer& other) = delete;
+
+  // See the docstring of WaitOnAndClearReleaseFence above.
+  [[nodiscard]] bool WaitOnAndClearReleaseFence(int timeout_ms) {
+    return cros::WaitOnAndClearReleaseFence(raw_buffer_, timeout_ms);
+  }
+
+  // Starts and ends a trace slice that associates the buffer with
+  // |frame_number|.
+  void StartTracing(int frame_number);
+  void EndTracing();
+
+  bool is_valid() {
+    return raw_buffer_.stream != nullptr && raw_buffer_.buffer != nullptr &&
+           *raw_buffer_.buffer != nullptr;
+  }
+
+  const camera3_stream_t* stream() const { return raw_buffer_.stream; }
+  const buffer_handle_t* buffer() const { return raw_buffer_.buffer; }
+  int status() const { return raw_buffer_.status; }
+  int acquire_fence() const { return raw_buffer_.acquire_fence; }
+  int release_fence() const { return raw_buffer_.release_fence; }
+
+  int take_release_fence() {
+    int fence = raw_buffer_.release_fence;
+    raw_buffer_.release_fence = -1;
+    return fence;
+  }
+
+  const camera3_stream_buffer_t& raw_buffer() const { return raw_buffer_; }
+  camera3_stream_buffer_t& mutable_raw_buffer() { return raw_buffer_; }
+
+ protected:
+  // LockAndFill is called only by the Camera3CaptureDescriptor to expose the
+  // input and output buffers in raw capture requests/results. Since the raw
+  // buffer states can be modified, we sync |container| back to |raw_buffer_| in
+  // Unlock.
+  friend class Camera3CaptureDescriptor;
+  void LockAndFill(camera3_stream_buffer_t* container);
+  void Unlock();
+
+ private:
+  Camera3StreamBuffer(const camera3_stream_buffer_t& stream_buffer,
+                      Type type,
+                      Direction dir);
+  void Invalidate();
+
+  camera3_stream_buffer_t raw_buffer_ = kInvalidRawBuffer;
+  Type type_ = Type::kInvalidType;
+  Direction dir_ = Direction::kInvalidDirection;
+  camera3_stream_buffer_t* lock_container_ = nullptr;
+  bool trace_started_ = false;
 };
 
 // A helper class to make it easy to modify camera3_stream_configuration_t.
@@ -226,16 +334,16 @@ class CROS_CAMERA_EXPORT Camera3CaptureDescriptor {
   bool SetMetadata(const camera_metadata_t* metadata);
 
   // Getter and setter for the input buffer.
-  const camera3_stream_buffer_t* GetInputBuffer() const;
-  void SetInputBuffer(const camera3_stream_buffer_t& input_buffer);
-  void ResetInputBuffer();
+  const Camera3StreamBuffer* GetInputBuffer() const;
+  std::optional<Camera3StreamBuffer> AcquireInputBuffer();
+  void SetInputBuffer(Camera3StreamBuffer input_buffer);
 
   // Getter and setter for the output buffers.
-  base::span<const camera3_stream_buffer_t> GetOutputBuffers() const;
-  base::span<camera3_stream_buffer_t> GetMutableOutputBuffers();
-  void SetOutputBuffers(
-      base::span<const camera3_stream_buffer_t> output_buffers);
-  void AppendOutputBuffer(const camera3_stream_buffer_t& buffer);
+  base::span<const Camera3StreamBuffer> GetOutputBuffers() const;
+  base::span<Camera3StreamBuffer> GetMutableOutputBuffers();
+  std::vector<Camera3StreamBuffer> AcquireOutputBuffers();
+  void SetOutputBuffers(std::vector<Camera3StreamBuffer> output_buffers);
+  void AppendOutputBuffer(Camera3StreamBuffer buffer);
 
   // Locks the internal data and get the raw camera3_capture_request_t /
   // camera3_capture_result_t that can be consumed by the Android HAL3 API.
@@ -256,6 +364,7 @@ class CROS_CAMERA_EXPORT Camera3CaptureDescriptor {
   bool is_valid() const { return type_ != Type::kInvalidType; }
   uint32_t frame_number() const { return frame_number_; }
   bool has_metadata() const { return !metadata_.isEmpty(); }
+  bool has_input_buffer() const { return input_buffer_.has_value(); }
   uint32_t num_output_buffers() const { return output_buffers_.size(); }
   uint32_t partial_result() const { return partial_result_; }
 
@@ -271,8 +380,8 @@ class CROS_CAMERA_EXPORT Camera3CaptureDescriptor {
   // Flattened data for both kCaptureRequest and kCaptureResult.
   uint32_t frame_number_ = 0;
   android::CameraMetadata metadata_;
-  std::unique_ptr<camera3_stream_buffer_t> input_buffer_;
-  std::vector<camera3_stream_buffer_t> output_buffers_;
+  std::optional<Camera3StreamBuffer> input_buffer_;
+  std::vector<Camera3StreamBuffer> output_buffers_;
 
   // For kCaptureResult only.
   uint32_t partial_result_ = 0;
@@ -289,6 +398,7 @@ class CROS_CAMERA_EXPORT Camera3CaptureDescriptor {
     camera3_capture_request_t raw_request;
     camera3_capture_result_t raw_result;
   };
+  std::vector<camera3_stream_buffer_t> raw_output_buffers_;
   std::optional<RawDescriptor> raw_descriptor_;
 };
 

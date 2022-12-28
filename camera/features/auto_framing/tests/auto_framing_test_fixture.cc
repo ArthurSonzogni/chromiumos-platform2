@@ -240,10 +240,10 @@ bool AutoFramingTestFixture::SetUp(
       [](base::WaitableEvent* event, Camera3CaptureDescriptor result) {
         for (auto& b : result.GetMutableOutputBuffers()) {
           constexpr int kSyncWaitTimeoutMs = 300;
-          if (!WaitOnAndClearReleaseFence(b, kSyncWaitTimeoutMs)) {
+          if (!b.WaitOnAndClearReleaseFence(kSyncWaitTimeoutMs)) {
             LOGF(WARNING) << "Failed to wait on release fence";
           }
-          if (b.stream->format == HAL_PIXEL_FORMAT_BLOB) {
+          if (b.stream()->format == HAL_PIXEL_FORMAT_BLOB) {
             DCHECK(!event->IsSignaled());
             event->Signal();
           }
@@ -452,8 +452,8 @@ bool AutoFramingTestFixture::ProcessCaptureRequest(
     return false;
   }
 
-  for (auto& b : request.GetOutputBuffers()) {
-    requested_streams->push_back(b.stream);
+  for (auto& b : request.AcquireOutputBuffers()) {
+    requested_streams->push_back(b.mutable_raw_buffer().stream);
   }
 
   return true;

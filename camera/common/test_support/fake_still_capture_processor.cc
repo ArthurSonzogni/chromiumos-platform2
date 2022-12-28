@@ -8,6 +8,9 @@
 
 #include <utility>
 
+#include <hardware/camera3.h>
+
+#include "common/camera_hal3_helpers.h"
 #include "common/test_support/fake_still_capture_processor.h"
 
 namespace cros::tests {
@@ -26,7 +29,7 @@ void FakeStillCaptureProcessor::Reset() {}
 void FakeStillCaptureProcessor::QueuePendingOutputBuffer(
     int frame_number,
     camera3_stream_buffer_t output_buffer,
-    const camera_metadata_t* request_settings) {
+    const Camera3CaptureDescriptor& request) {
   EXPECT_EQ(result_descriptor_.count(frame_number), 0);
   result_descriptor_.insert({frame_number, ResultDescriptor()});
 }
@@ -59,7 +62,11 @@ void FakeStillCaptureProcessor::MaybeProduceCaptureResult(int frame_number) {
   if (result_descriptor_[frame_number].has_apps_segments &&
       result_descriptor_[frame_number].has_yuv_buffer) {
     camera3_stream_buffer_t stream_buffer = {
-        .stream = const_cast<camera3_stream_t*>(stream_), .release_fence = -1};
+        .stream = const_cast<camera3_stream_t*>(stream_),
+        .buffer = &fake_buffer_.self,
+        .status = CAMERA3_BUFFER_STATUS_OK,
+        .acquire_fence = -1,
+        .release_fence = -1};
     result_callback_.Run(Camera3CaptureDescriptor(camera3_capture_result_t{
         .frame_number = static_cast<uint32_t>(frame_number),
         .num_output_buffers = 1,

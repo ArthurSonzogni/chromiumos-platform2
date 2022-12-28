@@ -171,6 +171,9 @@ class CROS_CAMERA_EXPORT StreamManipulator {
   // Override this method to use StreamManipulator's own thread to run
   // ProcessCaptureResult().
   virtual scoped_refptr<base::SingleThreadTaskRunner> GetTaskRunner();
+
+  static base::ScopedClosureRunner CreateScopedResultCallback(
+      CaptureResultCallback& result_callback, Camera3CaptureDescriptor& result);
 };
 
 }  // namespace cros

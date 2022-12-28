@@ -95,9 +95,7 @@ class MockZslBufferManager : public cros::ZslBufferManager {
 
 }  // namespace
 
-namespace cros {
-
-namespace tests {
+namespace cros::tests {
 
 class ZslBufferManagerTest : public ::testing::Test {
  public:
@@ -286,7 +284,7 @@ class ZslHelperTest : public ::testing::Test {
     Camera3CaptureDescriptor request(
         camera3_capture_request_t{.frame_number = frame_number_iter++});
 
-    request.AppendOutputBuffer({
+    request.AppendOutputBuffer(Camera3StreamBuffer::MakeRequestOutput({
         .stream = capture_intent == ANDROID_CONTROL_CAPTURE_INTENT_STILL_CAPTURE
                       ? &still_capture_stream_
                       : &preview_stream_,
@@ -294,7 +292,7 @@ class ZslHelperTest : public ::testing::Test {
         .status = CAMERA3_BUFFER_STATUS_OK,
         .acquire_fence = -1,
         .release_fence = -1,
-    });
+    }));
 
     EXPECT_TRUE(request.UpdateMetadata<uint8_t>(
         ANDROID_CONTROL_CAPTURE_INTENT,
@@ -332,7 +330,8 @@ class ZslHelperTest : public ::testing::Test {
     uint32_t frame_number_iter = 1;
     // First fill some buffers whose buffer and metadata aren't ready.
     for (int i = 0; i < kZslBiStreamMaxBuffers; ++i) {
-      camera3_stream_buffer stream_buffer = {};
+      camera3_stream_buffer_t stream_buffer =
+          Camera3StreamBuffer::kInvalidRawBuffer;
       // Here we make an initial ZslBuffer, the metadata and buffer of which
       // aren't ready by default.
       ZslBuffer buffer(frame_number_iter++, stream_buffer);
@@ -348,7 +347,8 @@ class ZslHelperTest : public ::testing::Test {
         std::ceil(static_cast<double>(ZslHelper::kZslDefaultLookbackNs) /
                   kZslBiStreamMinFrameDuration);
     for (int i = 0; i < num_candidate_buffers; ++i) {
-      camera3_stream_buffer_t stream_buffer = {};
+      camera3_stream_buffer_t stream_buffer =
+          Camera3StreamBuffer::kInvalidRawBuffer;
       ZslBuffer buffer(frame_number_iter++, stream_buffer);
       // Set 3A metadata.
       Set3AState(&buffer.metadata, ANDROID_CONTROL_AE_MODE,
@@ -410,6 +410,7 @@ class ZslHelperTest : public ::testing::Test {
 
   camera3_stream_t preview_stream_;
   camera3_stream_t still_capture_stream_;
+  buffer_handle_t fake_buffer_handle_ = nullptr;
 };
 
 // Test that ENABLE_ZSL is added to the available request keys when the device
@@ -490,11 +491,10 @@ TEST_F(ZslHelperTest, ProcessZslCaptureRequestPreview) {
   FillZslRingBuffer(/*ring_buffer_3a_converged=*/true);
   Camera3CaptureDescriptor mock_request =
       GetMockCaptureRequest(ANDROID_CONTROL_CAPTURE_INTENT_PREVIEW);
-  // Intentionally initialize it in case someone accesses its content.
-  buffer_handle_t buffer = nullptr;
-  EXPECT_CALL(*zsl_buffer_manager_, GetBuffer).WillOnce(Return(&buffer));
+  EXPECT_CALL(*zsl_buffer_manager_, GetBuffer)
+      .WillOnce(Return(&fake_buffer_handle_));
   ASSERT_FALSE(zsl_helper_->ProcessZslCaptureRequest(&mock_request));
-  EXPECT_EQ(mock_request.GetOutputBuffers().back().stream, GetZslBiStream());
+  EXPECT_EQ(mock_request.GetOutputBuffers().back().stream(), GetZslBiStream());
 }
 
 // Test that |ZslHelper| transforms capture requests correctly.
@@ -515,7 +515,7 @@ TEST_F(ZslHelperTest, ProcessZslCaptureRequestStillCapture) {
                                                    kJpegThumbnailSize));
 
   EXPECT_TRUE(zsl_helper_->ProcessZslCaptureRequest(&mock_request));
-  EXPECT_NE(mock_request.GetInputBuffer(), nullptr);
+  EXPECT_TRUE(mock_request.has_input_buffer());
 
   base::span<const int32_t> entry =
       mock_request.GetMetadata<int32_t>(ANDROID_JPEG_ORIENTATION);
@@ -548,8 +548,16 @@ TEST_F(ZslHelperTest, ProcessZslCaptureRequestStillCapture) {
 // release/free the input buffer and there isn't a good way to mock it.
 TEST_F(ZslHelperTest, ProcessZslCaptureResultTest) {
   std::vector<camera3_stream_buffer_t> attached_output_buffers = {
-      {.stream = &preview_stream_, .release_fence = -1},
-      {.stream = GetZslBiStream(), .release_fence = -1}};
+      {.stream = &preview_stream_,
+       .buffer = nullptr,
+       .status = CAMERA3_BUFFER_STATUS_OK,
+       .acquire_fence = -1,
+       .release_fence = -1},
+      {.stream = GetZslBiStream(),
+       .buffer = nullptr,
+       .status = CAMERA3_BUFFER_STATUS_OK,
+       .acquire_fence = -1,
+       .release_fence = -1}};
   Camera3CaptureDescriptor result(camera3_capture_result_t{
       .frame_number = 1,
       .result = nullptr,
@@ -564,7 +572,7 @@ TEST_F(ZslHelperTest, ProcessZslCaptureResultTest) {
 
   EXPECT_FALSE(is_input_transformed);
   EXPECT_EQ(result.num_output_buffers(), 1);
-  EXPECT_EQ(result.GetOutputBuffers()[0].stream, &preview_stream_);
+  EXPECT_EQ(result.GetOutputBuffers()[0].stream(), &preview_stream_);
 }
 
 TEST_F(ZslHelperTest, CanEnableZslTest) {
@@ -635,9 +643,7 @@ TEST_F(ZslHelperTest, Is3AConvergedTest) {
   EXPECT_FALSE(DoIs3AConverged(metadata));
 }
 
-}  // namespace tests
-
-}  // namespace cros
+}  // namespace cros::tests
 
 int main(int argc, char** argv) {
   base::AtExitManager exit_manager;

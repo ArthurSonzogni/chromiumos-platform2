@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdlib>
+#include <functional>
 #include <utility>
 #include <vector>
 
@@ -99,7 +100,8 @@ ZslBuffer::ZslBuffer(uint32_t frame_number, camera3_stream_buffer_t buffer)
       selected(false) {}
 
 void ZslBuffer::AttachToRequest(Camera3CaptureDescriptor* capture_request) {
-  capture_request->AppendOutputBuffer(buffer);
+  capture_request->AppendOutputBuffer(
+      Camera3StreamBuffer::MakeRequestOutput(buffer));
 }
 
 ZslBufferManager::ZslBufferManager()
@@ -401,12 +403,8 @@ bool ZslHelper::IsZslRequested(const Camera3CaptureDescriptor* request) {
   return false;
 }
 
-bool ZslHelper::IsAttachedZslBuffer(const camera3_stream_buffer_t* buffer) {
-  return buffer && buffer->stream == bi_stream_.get();
-}
-
-bool ZslHelper::IsTransformedZslBuffer(const camera3_stream_buffer_t* buffer) {
-  return buffer && buffer->stream == bi_stream_.get();
+bool ZslHelper::IsTransformedZslBuffer(const Camera3StreamBuffer& buffer) {
+  return buffer.stream() == bi_stream_.get();
 }
 
 void ZslHelper::TryReleaseBuffer() {
@@ -443,7 +441,7 @@ void ZslHelper::TryReleaseBuffer() {
 
 bool ZslHelper::ProcessZslCaptureRequest(Camera3CaptureDescriptor* request,
                                          SelectionStrategy strategy) {
-  if (request->GetInputBuffer() != nullptr) {
+  if (request->has_input_buffer()) {
     return false;
   }
   bool transformed = false;
@@ -514,7 +512,8 @@ bool ZslHelper::TransformRequest(Camera3CaptureDescriptor* request,
   selected_buffer_it->buffer.stream = bi_stream_.get();
   selected_buffer_it->buffer.acquire_fence = -1;
   selected_buffer_it->buffer.acquire_fence = -1;
-  request->SetInputBuffer(selected_buffer_it->buffer);
+  request->SetInputBuffer(
+      Camera3StreamBuffer::MakeRequestInput(selected_buffer_it->buffer));
 
   // The result metadata for the RAW buffers come from the preview frames. We
   // need to add JPEG orientation back so that the resulting JPEG is of the
@@ -534,22 +533,19 @@ bool ZslHelper::TransformRequest(Camera3CaptureDescriptor* request,
 
 void ZslHelper::ProcessZslCaptureResult(Camera3CaptureDescriptor* result,
                                         bool* is_input_transformed) {
-  std::vector<camera3_stream_buffer_t> zsl_detached_output_buffers;
-  for (const auto& buffer : result->GetOutputBuffers()) {
-    if (buffer.stream == bi_stream_.get()) {
+  for (auto& buffer : result->AcquireOutputBuffers()) {
+    if (buffer.stream() == bi_stream_.get()) {
       WaitAttachedFrame(result->frame_number(),
-                        base::ScopedFD(buffer.release_fence));
+                        base::ScopedFD(buffer.take_release_fence()));
     } else {
-      zsl_detached_output_buffers.push_back(buffer);
+      result->AppendOutputBuffer(std::move(buffer));
     }
   }
-  result->SetOutputBuffers(zsl_detached_output_buffers);
 
-  const camera3_stream_buffer_t* input_buffer = result->GetInputBuffer();
-  if (input_buffer != nullptr && IsTransformedZslBuffer(input_buffer)) {
+  const Camera3StreamBuffer* input_buffer = result->GetInputBuffer();
+  if (input_buffer && IsTransformedZslBuffer(*input_buffer)) {
     *is_input_transformed = true;
-    ReleaseStreamBuffer(*input_buffer);
-    result->ResetInputBuffer();
+    ReleaseStreamBuffer(result->AcquireInputBuffer());
   } else {
     *is_input_transformed = false;
   }
@@ -615,19 +611,22 @@ void ZslHelper::WaitAttachedFrameOnFenceSyncThread(
                                 std::move(release_fence)));
 }
 
-void ZslHelper::ReleaseStreamBuffer(camera3_stream_buffer_t buffer) {
+void ZslHelper::ReleaseStreamBuffer(std::optional<Camera3StreamBuffer> buffer) {
+  if (!buffer) {
+    return;
+  }
   fence_sync_thread_.task_runner()->PostTask(
       FROM_HERE,
       base::BindOnce(&ZslHelper::ReleaseStreamBufferOnFenceSyncThread,
-                     base::Unretained(this), std::move(buffer)));
+                     base::Unretained(this), std::move(buffer.value())));
 }
 
 void ZslHelper::ReleaseStreamBufferOnFenceSyncThread(
-    camera3_stream_buffer_t buffer) {
-  if (!WaitOnAndClearReleaseFence(buffer, ZslHelper::kZslSyncWaitTimeoutMs)) {
+    Camera3StreamBuffer buffer) {
+  if (!buffer.WaitOnAndClearReleaseFence(ZslHelper::kZslSyncWaitTimeoutMs)) {
     LOGF(WARNING) << "Failed to wait for release fence on ZSL input buffer";
   } else {
-    if (!zsl_buffer_manager_->ReleaseBuffer(*buffer.buffer)) {
+    if (!zsl_buffer_manager_->ReleaseBuffer(*buffer.buffer())) {
       LOGF(ERROR) << "Failed to release this stream buffer";
     }
     // The above error should only happen when the mapping in buffer manager

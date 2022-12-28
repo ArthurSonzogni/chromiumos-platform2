@@ -19,6 +19,7 @@
 #include <base/files/scoped_file.h>
 #include <camera/camera_metadata.h>
 
+#include "common/camera_hal3_helpers.h"
 #include "common/reloadable_config_file.h"
 #include "common/still_capture_processor.h"
 #include "cros-camera/camera_buffer_manager.h"
@@ -163,15 +164,10 @@ class HdrNetStreamManipulator : public StreamManipulator {
   bool NotifyOnGpuThread(camera3_notify_msg_t* msg);
   bool FlushOnGpuThread();
 
-  // Check if |raw_result_buffers| has any HdrNet buffer that we need to
-  // process. |hdrnet_buffer_to_process| stored the HDRnet buffers that are
-  // pending further processing, and |output_buffers_to_client| stores the
-  // buffers that will be returned to the camera client as-is.
-  void ExtractHdrNetBuffersToProcess(
-      int frame_number,
-      base::span<const camera3_stream_buffer_t> raw_result_buffers,
-      std::vector<camera3_stream_buffer_t>* hdrnet_buffer_to_process,
-      std::vector<camera3_stream_buffer_t>* output_buffers_to_client);
+  // Check if |result| has any HDRnet buffer that we need to process and return
+  // the buffers that need processing.
+  std::vector<Camera3StreamBuffer> ExtractHdrNetBuffersToProcess(
+      Camera3CaptureDescriptor& result);
 
   // Prepare the set of client-requested buffers that will be rendered by the
   // HDRnet pipeline.
@@ -180,11 +176,9 @@ class HdrNetStreamManipulator : public StreamManipulator {
                           std::vector<buffer_handle_t>* buffers_to_write);
 
   // Callback for the buffers rendered by the HDRnet pipeline.
-  void OnBuffersRendered(
-      int frame_number,
-      HdrNetStreamContext* stream_context,
-      HdrNetRequestBufferInfo* request_buffer_info,
-      std::vector<camera3_stream_buffer_t>* output_buffers_to_client);
+  void OnBuffersRendered(Camera3CaptureDescriptor& result,
+                         HdrNetStreamContext* stream_context,
+                         HdrNetRequestBufferInfo* request_buffer_info);
 
   HdrNetConfig::Options PrepareProcessorConfig(
       Camera3CaptureDescriptor* result,
@@ -202,9 +196,9 @@ class HdrNetStreamManipulator : public StreamManipulator {
   HdrNetStreamContext* CreateHdrNetStreamContext(camera3_stream_t* requested,
                                                  uint32_t replace_format);
   HdrNetStreamContext* GetHdrNetContextFromRequestedStream(
-      camera3_stream_t* requested);
+      const camera3_stream_t* requested);
   HdrNetStreamContext* GetHdrNetContextFromHdrNetStream(
-      camera3_stream_t* hdrnet);
+      const camera3_stream_t* hdrnet);
 
   void OnOptionsUpdated(const base::Value::Dict& json_values);
   void UploadMetrics();
@@ -222,8 +216,10 @@ class HdrNetStreamManipulator : public StreamManipulator {
   // requests.
   std::vector<std::unique_ptr<HdrNetStreamContext>> hdrnet_stream_context_;
   std::map<uint32_t, HdrNetBufferInfoList> request_buffer_info_;
-  std::map<camera3_stream_t*, HdrNetStreamContext*> request_stream_mapping_;
-  std::map<camera3_stream_t*, HdrNetStreamContext*> result_stream_mapping_;
+  std::map<const camera3_stream_t*, HdrNetStreamContext*>
+      request_stream_mapping_;
+  std::map<const camera3_stream_t*, HdrNetStreamContext*>
+      result_stream_mapping_;
 
   HdrnetMetrics hdrnet_metrics_;
   std::unique_ptr<CameraMetrics> camera_metrics_;

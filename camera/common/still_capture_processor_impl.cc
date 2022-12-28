@@ -269,7 +269,7 @@ void StillCaptureProcessorImpl::Reset() {
 void StillCaptureProcessorImpl::QueuePendingOutputBuffer(
     int frame_number,
     camera3_stream_buffer_t output_buffer,
-    const camera_metadata_t* request_settings) {
+    const Camera3CaptureDescriptor& request) {
   auto buf_mgr = CameraBufferManager::GetInstance();
   RequestContext req = {
       .jpeg_blob = buf_mgr->AllocateScopedBuffer(
@@ -281,21 +281,21 @@ void StillCaptureProcessorImpl::QueuePendingOutputBuffer(
     LOGF(ERROR) << "Cannot allocated JPEG buffer";
     return;
   }
-  base::span<const int32_t> thumbnail_size = GetRoMetadataAsSpan<int32_t>(
-      request_settings, ANDROID_JPEG_THUMBNAIL_SIZE);
+  base::span<const int32_t> thumbnail_size =
+      request.GetMetadata<int32_t>(ANDROID_JPEG_THUMBNAIL_SIZE);
   if (thumbnail_size.size() == 2) {
     req.thumbnail_size = {static_cast<uint32_t>(thumbnail_size[0]),
                           static_cast<uint32_t>(thumbnail_size[1])};
   }
-  std::optional<uint8_t> thumbnail_quality =
-      GetRoMetadata<uint8_t>(request_settings, ANDROID_JPEG_THUMBNAIL_QUALITY);
-  if (thumbnail_quality) {
-    req.thumbnail_quality = *thumbnail_quality;
+  base::span<const uint8_t> thumbnail_quality =
+      request.GetMetadata<uint8_t>(ANDROID_JPEG_THUMBNAIL_QUALITY);
+  if (!thumbnail_quality.empty()) {
+    req.thumbnail_quality = thumbnail_quality[0];
   }
-  std::optional<uint8_t> jpeg_quality =
-      GetRoMetadata<uint8_t>(request_settings, ANDROID_JPEG_QUALITY);
-  if (jpeg_quality) {
-    req.jpeg_quality = *jpeg_quality;
+  base::span<const uint8_t> jpeg_quality =
+      request.GetMetadata<uint8_t>(ANDROID_JPEG_QUALITY);
+  if (!jpeg_quality.empty()) {
+    req.jpeg_quality = jpeg_quality[0];
   }
 
   VLOGFID(1, frame_number) << "Output buffer queued. thumbnail_size = "

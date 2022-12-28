@@ -6,13 +6,10 @@
 
 #include "common/sw_privacy_switch_stream_manipulator.h"
 
-#include <base/test/task_environment.h>
-#include <hardware/camera3.h>
-#include <libyuv.h>
-#include <sync/sync.h>
-#include <system/graphics.h>
 #include <utility>
+#include <vector>
 
+#include <base/test/task_environment.h>
 // gtest's internal typedef of None and Bool conflicts with the None and Bool
 // macros in X11/X.h (https://github.com/google/googletest/issues/371).
 // X11/X.h is pulled in by the GL headers we include.
@@ -23,6 +20,12 @@
 #include <gtest/gtest.h>
 #pragma pop_macro("None")
 #pragma pop_macro("Bool")
+#include <hardware/camera3.h>
+#include <libyuv.h>
+#include <sync/sync.h>
+#include <system/graphics.h>
+
+#include "common/camera_hal3_helpers.h"
 
 namespace cros {
 
@@ -152,8 +155,11 @@ TEST_F(SWPrivacySwitchTest, PrivacyOffNV12Output) {
   ASSERT_TRUE(ProcessCaptureResult(handle.get()))
       << "SWPrivacySwitchStreamManipulator::ProcessCaptureResult failed when"
          "|sw_privacy_switch_state| is OFF";
-  WaitForReleaseFence(
-      base::ScopedFD(returned_result_.GetOutputBuffers()[0].release_fence));
+  {
+    std::vector<Camera3StreamBuffer> result_buffers =
+        returned_result_.AcquireOutputBuffers();
+    WaitForReleaseFence(base::ScopedFD(result_buffers[0].take_release_fence()));
+  }
   {
     auto mapping = ScopedMapping(*handle);
     ASSERT_TRUE(mapping.is_valid()) << "Failed to map buffer";
@@ -172,8 +178,11 @@ TEST_F(SWPrivacySwitchTest, PrivacyOnNV12Output) {
   ASSERT_TRUE(ProcessCaptureResult(handle.get()))
       << "SWPrivacySwitchStreamManipulator::ProcessCaptureResult failed when"
          "|sw_privacy_switch_state| was ON";
-  WaitForReleaseFence(
-      base::ScopedFD(returned_result_.GetOutputBuffers()[0].release_fence));
+  {
+    std::vector<Camera3StreamBuffer> result_buffers =
+        returned_result_.AcquireOutputBuffers();
+    WaitForReleaseFence(base::ScopedFD(result_buffers[0].take_release_fence()));
+  }
   {
     auto mapping = ScopedMapping(*handle);
     ASSERT_TRUE(mapping.is_valid()) << "Failed to map buffer";
@@ -203,8 +212,11 @@ TEST_F(SWPrivacySwitchTest, PrivacyOffJpegOutput) {
   ASSERT_TRUE(ProcessCaptureResult(jpeg_handle.get()))
       << "SWPrivacySwitchStreamManipulator::ProcessCaptureResult failed"
          "when |sw_privacy_switch_state| was OFF";
-  WaitForReleaseFence(
-      base::ScopedFD(returned_result_.GetOutputBuffers()[0].release_fence));
+  {
+    std::vector<Camera3StreamBuffer> result_buffers =
+        returned_result_.AcquireOutputBuffers();
+    WaitForReleaseFence(base::ScopedFD(result_buffers[0].take_release_fence()));
+  }
   {
     auto jpeg_mapping = ScopedMapping(*jpeg_handle);
     ASSERT_TRUE(jpeg_mapping.is_valid()) << "Failed to map buffer";
@@ -238,8 +250,11 @@ TEST_F(SWPrivacySwitchTest, PrivacyOnJpegOutput) {
   ASSERT_TRUE(ProcessCaptureResult(jpeg_handle.get()))
       << "SWPrivacySwitchStreamManipulator::ProcessCaptureResult failed"
          "when |sw_privacy_switch_state| was ON";
-  WaitForReleaseFence(
-      base::ScopedFD(returned_result_.GetOutputBuffers()[0].release_fence));
+  {
+    std::vector<Camera3StreamBuffer> result_buffers =
+        returned_result_.AcquireOutputBuffers();
+    WaitForReleaseFence(base::ScopedFD(result_buffers[0].take_release_fence()));
+  }
   {
     auto jpeg_mapping = ScopedMapping(*jpeg_handle);
     ASSERT_TRUE(jpeg_mapping.is_valid()) << "Failed to map buffer";

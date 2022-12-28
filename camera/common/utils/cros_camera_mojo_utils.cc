@@ -8,6 +8,7 @@
 
 #include <vector>
 
+#include <hardware/camera3.h>
 #include <mojo/public/cpp/system/platform_handle.h>
 
 #include "cros-camera/ipc_util.h"
@@ -59,6 +60,7 @@ cros::mojom::Camera3StreamBufferPtr SerializeStreamBuffer(
   if (buffer->acquire_fence != -1) {
     ret->acquire_fence =
         mojo::WrapPlatformFile(base::ScopedPlatformFile(buffer->acquire_fence));
+    const_cast<camera3_stream_buffer_t*>(buffer)->acquire_fence = -1;
     if (!ret->acquire_fence.is_valid()) {
       LOGF(ERROR) << "Failed to wrap acquire_fence";
       ret.reset();
@@ -69,6 +71,7 @@ cros::mojom::Camera3StreamBufferPtr SerializeStreamBuffer(
   if (buffer->release_fence != -1) {
     ret->release_fence =
         mojo::WrapPlatformFile(base::ScopedPlatformFile(buffer->release_fence));
+    const_cast<camera3_stream_buffer_t*>(buffer)->release_fence = -1;
     if (!ret->release_fence.is_valid()) {
       LOGF(ERROR) << "Failed to wrap release_fence";
       ret.reset();

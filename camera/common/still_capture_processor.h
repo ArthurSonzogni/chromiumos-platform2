@@ -56,7 +56,7 @@ class StillCaptureProcessor {
   virtual void QueuePendingOutputBuffer(
       int frame_number,
       camera3_stream_buffer_t output_buffer,
-      const camera_metadata_t* request_settings) = 0;
+      const Camera3CaptureDescriptor& request) = 0;
 
   // Queues the pending APPs segments for result |frame_number|, in
   // |blob_buffer|.

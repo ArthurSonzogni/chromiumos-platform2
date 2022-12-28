@@ -7,6 +7,7 @@
 #ifndef CAMERA_COMMON_STILL_CAPTURE_PROCESSOR_IMPL_H_
 #define CAMERA_COMMON_STILL_CAPTURE_PROCESSOR_IMPL_H_
 
+#include "common/camera_hal3_helpers.h"
 #include "common/still_capture_processor.h"
 
 #include <stdint.h>
@@ -38,7 +39,7 @@ class StillCaptureProcessorImpl : public StillCaptureProcessor {
   void QueuePendingOutputBuffer(
       int frame_number,
       camera3_stream_buffer_t output_buffer,
-      const camera_metadata_t* request_settings) override;
+      const Camera3CaptureDescriptor& request) override;
   void QueuePendingAppsSegments(int frame_number,
                                 buffer_handle_t blob_buffer,
                                 base::ScopedFD release_fence) override;

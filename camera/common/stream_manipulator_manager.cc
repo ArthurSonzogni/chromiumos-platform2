@@ -335,24 +335,6 @@ void StreamManipulatorManager::ProcessCaptureResult(
     }
   }
 
-  // Some camera HAL may use their own storage to hold |buffer_handle_t*|s in
-  // the |result|, and it doesn't out-live this |process_capture_result| call.
-  // Fix them to our maintained storage so we can send |result| safely.
-  if (const auto* b = result.GetInputBuffer()) {
-    auto* handle = camera_buffer_handle_t::FromBufferHandle(*b->buffer);
-    CHECK(handle);
-    camera3_stream_buffer_t buffer = *b;
-    buffer.buffer = const_cast<buffer_handle_t*>(&handle->self);
-    result.SetInputBuffer(buffer);
-  }
-  base::span<camera3_stream_buffer_t> output_buffers =
-      result.GetMutableOutputBuffers();
-  for (auto& b : output_buffers) {
-    auto* handle = camera_buffer_handle_t::FromBufferHandle(*b.buffer);
-    CHECK(handle);
-    b.buffer = const_cast<buffer_handle_t*>(&handle->self);
-  }
-
   if (stream_manipulators_.empty()) {
     ReturnResultToClient(std::move(result));
     return;

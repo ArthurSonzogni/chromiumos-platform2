@@ -43,7 +43,7 @@ class FrameAnnotatorStreamManipulator : public StreamManipulator {
  private:
   bool SetUpContextsOnGpuThread();
   bool ProcessCaptureResultOnGpuThread(Camera3CaptureDescriptor* result);
-  bool PlotOnGpuThread(camera3_stream_buffer_t& buffer);
+  bool PlotOnGpuThread(Camera3StreamBuffer& buffer);
   void FlushSkSurfaceToBuffer(SkSurface* surface, buffer_handle_t yuv_buf);
 
   void OnOptionsUpdated(const base::Value::Dict& json_values);

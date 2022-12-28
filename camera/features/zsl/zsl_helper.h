@@ -185,11 +185,8 @@ class ZslHelper {
   // delete_entry is true.
   bool IsZslRequested(const Camera3CaptureDescriptor* settings);
 
-  // Whether this buffer belongs to an attached ZSL request.
-  bool IsAttachedZslBuffer(const camera3_stream_buffer_t* buffer);
-
   // Whether this buffer belongs to a transformed ZSL request.
-  bool IsTransformedZslBuffer(const camera3_stream_buffer_t* buffer);
+  bool IsTransformedZslBuffer(const Camera3StreamBuffer& buffer);
 
   // See if the oldest buffers can be released back to buffer pool.
   void TryReleaseBuffer();
@@ -210,8 +207,8 @@ class ZslHelper {
                                           base::ScopedFD release_fence);
 
   // Releases this stream buffer and the buffer handle underneath.
-  void ReleaseStreamBuffer(camera3_stream_buffer_t buffer);
-  void ReleaseStreamBufferOnFenceSyncThread(camera3_stream_buffer_t buffer);
+  void ReleaseStreamBuffer(std::optional<Camera3StreamBuffer> buffer);
+  void ReleaseStreamBufferOnFenceSyncThread(Camera3StreamBuffer buffer);
 
   // Whether capability is supported.
   bool IsCapabilitySupported(const camera_metadata_t* static_info,

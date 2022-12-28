@@ -136,7 +136,7 @@ std::pair<Size, Size> GetFullFrameResolutions(
   return std::make_pair(max_video_size, max_still_size);
 }
 
-bool IsStreamBypassed(camera3_stream_t* stream) {
+bool IsStreamBypassed(const camera3_stream_t* stream) {
   return stream->stream_type == CAMERA3_STREAM_INPUT ||
          (stream->format != HAL_PIXEL_FORMAT_YCbCr_420_888 &&
           stream->format != HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED &&
@@ -640,7 +640,7 @@ bool AutoFramingStreamManipulator::ProcessCaptureRequestOnThread(
     VLOGFID(2, request->frame_number())
         << "Request stream buffers from client:";
     for (auto& b : request->GetOutputBuffers()) {
-      VLOGF(2) << "  " << GetDebugString(b.stream);
+      VLOGF(2) << "  " << GetDebugString(b.stream());
     }
   }
 
@@ -649,7 +649,7 @@ bool AutoFramingStreamManipulator::ProcessCaptureRequestOnThread(
   const std::pair<State, State> state_transition = StateTransitionOnThread();
 
   // Bypass reprocessing requests and all requests when in |kDisabled| state.
-  if (request->GetInputBuffer() ||
+  if (request->has_input_buffer() ||
       state_transition.second == State::kDisabled) {
     return true;
   }
@@ -660,22 +660,18 @@ bool AutoFramingStreamManipulator::ProcessCaptureRequestOnThread(
   }
   ctx->state_transition = state_transition;
 
-  // Separate buffers into |hal_buffers| that will be requested to the HAL, and
-  // |ctx->client_buffers| that will be done by us.
-  std::vector<camera3_stream_buffer_t> hal_buffers;
-  for (auto& b : request->GetOutputBuffers()) {
-    if (IsStreamBypassed(b.stream)) {
-      hal_buffers.push_back(b);
-    } else if (b.stream == blob_stream_) {
-      hal_buffers.push_back(b);
+  // Separate the buffers that will be done by us into |ctx->client_buffers|
+  // from the ones that will be sent to the HAL.
+  for (auto& b : request->AcquireOutputBuffers()) {
+    if (IsStreamBypassed(b.stream())) {
+      request->AppendOutputBuffer(std::move(b));
+    } else if (b.stream() == blob_stream_) {
       ctx->has_pending_blob = true;
-      const camera3_capture_request_t* locked_request =
-          request->LockForRequest();
       still_capture_processor_->QueuePendingOutputBuffer(
-          request->frame_number(), b, locked_request->settings);
-      request->Unlock();
+          request->frame_number(), b.raw_buffer(), *request);
+      request->AppendOutputBuffer(std::move(b));
     } else {
-      ctx->client_buffers.push_back(b);
+      ctx->client_buffers.push_back(b.raw_buffer());
     }
   }
 
@@ -690,13 +686,13 @@ bool AutoFramingStreamManipulator::ProcessCaptureRequestOnThread(
       ++metrics_.errors[AutoFramingError::kProcessRequestError];
       return false;
     }
-    hal_buffers.push_back(camera3_stream_buffer_t{
+    request->AppendOutputBuffer(Camera3StreamBuffer::MakeRequestOutput({
         .stream = &full_frame_stream_,
         .buffer = ctx->full_frame_buffer->handle(),
         .status = CAMERA3_BUFFER_STATUS_OK,
         .acquire_fence = -1,
         .release_fence = -1,
-    });
+    }));
   }
 
   // Add still YUV output.
@@ -709,22 +705,21 @@ bool AutoFramingStreamManipulator::ProcessCaptureRequestOnThread(
       ++metrics_.errors[AutoFramingError::kProcessRequestError];
       return false;
     }
-    hal_buffers.push_back(camera3_stream_buffer_t{
+    request->AppendOutputBuffer(Camera3StreamBuffer::MakeRequestOutput({
         .stream = still_yuv_stream_.get(),
         .buffer = ctx->still_yuv_buffer->handle(),
         .status = CAMERA3_BUFFER_STATUS_OK,
         .acquire_fence = -1,
         .release_fence = -1,
-    });
+    }));
   }
 
-  request->SetOutputBuffers(hal_buffers);
   ctx->num_pending_buffers = request->num_output_buffers();
 
   if (VLOG_IS_ON(2)) {
     VLOGFID(2, request->frame_number()) << "Request stream buffers to HAL:";
     for (auto& b : request->GetOutputBuffers()) {
-      VLOGF(2) << "  " << GetDebugString(b.stream);
+      VLOGF(2) << "  " << GetDebugString(b.stream());
     }
   }
 
@@ -743,7 +738,7 @@ bool AutoFramingStreamManipulator::ProcessCaptureResultOnThread(
   if (VLOG_IS_ON(2)) {
     VLOGFID(2, result->frame_number()) << "Result stream buffers from HAL:";
     for (auto& b : result->GetOutputBuffers()) {
-      VLOGF(2) << "  " << GetDebugString(b.stream);
+      VLOGF(2) << "  " << GetDebugString(b.stream());
     }
   }
 
@@ -782,50 +777,50 @@ bool AutoFramingStreamManipulator::ProcessCaptureResultOnThread(
     }
   }
 
-  std::optional<camera3_stream_buffer_t> full_frame_buffer;
-  std::optional<camera3_stream_buffer_t> still_yuv_buffer;
-  std::optional<camera3_stream_buffer_t> blob_buffer;
-  for (auto& b : result->GetOutputBuffers()) {
-    if (b.stream == &full_frame_stream_) {
-      full_frame_buffer = b;
-    } else if (still_yuv_stream_ && b.stream == still_yuv_stream_.get()) {
-      still_yuv_buffer = b;
-    } else if (blob_stream_ && b.stream == &*blob_stream_) {
-      blob_buffer = b;
+  std::optional<Camera3StreamBuffer> full_frame_buffer;
+  std::optional<Camera3StreamBuffer> still_yuv_buffer;
+  std::optional<Camera3StreamBuffer> blob_buffer;
+  for (auto& b : result->AcquireOutputBuffers()) {
+    if (IsStreamBypassed(b.stream())) {
+      result->AppendOutputBuffer(std::move(b));
+      continue;
+    }
+
+    if (b.stream() == &full_frame_stream_) {
+      // Take the full frame buffer we inserted for processing.
+      full_frame_buffer = std::move(b);
+    } else if (still_yuv_stream_ && b.stream() == still_yuv_stream_.get()) {
+      // Take the still YUV buffer we inserted for processing.
+      still_yuv_buffer = std::move(b);
+    } else if (blob_stream_ && b.stream() == blob_stream_) {
+      // Intercept the output BLOB for still capture processing.
+      blob_buffer = std::move(b);
     }
   }
 
-  std::vector<camera3_stream_buffer_t> result_buffers;
-  for (auto& b : result->GetOutputBuffers()) {
-    if (IsStreamBypassed(b.stream)) {
-      result_buffers.push_back(b);
-    }
-  }
   if (full_frame_buffer) {
-    const bool ok = ProcessFullFrameOnThread(ctx, &*full_frame_buffer,
+    const bool ok = ProcessFullFrameOnThread(ctx, std::move(*full_frame_buffer),
                                              result->frame_number());
     for (auto& b : ctx->client_buffers) {
       b.status = ok ? CAMERA3_BUFFER_STATUS_OK : CAMERA3_BUFFER_STATUS_ERROR;
-      result_buffers.push_back(b);
+      result->AppendOutputBuffer(Camera3StreamBuffer::MakeResultOutput(b));
     }
   }
   if (still_yuv_buffer) {
     // TODO(kamesan): Fail the capture result if processing fails.
-    CHECK(ProcessStillYuvOnThread(ctx, &*still_yuv_buffer,
+    CHECK(ProcessStillYuvOnThread(ctx, std::move(*still_yuv_buffer),
                                   result->frame_number()));
   }
   if (blob_buffer) {
     still_capture_processor_->QueuePendingAppsSegments(
-        result->frame_number(), *blob_buffer->buffer,
-        base::ScopedFD(blob_buffer->release_fence));
-    blob_buffer->release_fence = -1;
+        result->frame_number(), *blob_buffer->buffer(),
+        base::ScopedFD(blob_buffer->take_release_fence()));
   }
-  result->SetOutputBuffers(result_buffers);
 
   if (VLOG_IS_ON(2)) {
     VLOGFID(2, result->frame_number()) << "Result stream buffers to client:";
     for (auto& b : result->GetOutputBuffers()) {
-      VLOGF(2) << "  " << GetDebugString(b.stream);
+      VLOGF(2) << "  " << GetDebugString(b.stream());
     }
   }
 
@@ -834,14 +829,13 @@ bool AutoFramingStreamManipulator::ProcessCaptureResultOnThread(
 
 bool AutoFramingStreamManipulator::ProcessFullFrameOnThread(
     CaptureContext* ctx,
-    camera3_stream_buffer_t* full_frame_buffer,
+    Camera3StreamBuffer full_frame_buffer,
     uint32_t frame_number) {
   DCHECK(gpu_resources_->gpu_task_runner()->BelongsToCurrentThread());
   DCHECK_NE(ctx, nullptr);
-  DCHECK_NE(full_frame_buffer, nullptr);
   TRACE_AUTO_FRAMING("frame_number", frame_number);
 
-  if (full_frame_buffer->status != CAMERA3_BUFFER_STATUS_OK) {
+  if (full_frame_buffer.status() != CAMERA3_BUFFER_STATUS_OK) {
     VLOGF(1) << "Received full frame buffer with error in result "
              << frame_number;
     return false;
@@ -854,7 +848,7 @@ bool AutoFramingStreamManipulator::ProcessFullFrameOnThread(
     last_timestamp_ = *ctx->timestamp;
   }
 
-  if (!WaitOnAndClearReleaseFence(*full_frame_buffer, kSyncWaitTimeoutMs)) {
+  if (!full_frame_buffer.WaitOnAndClearReleaseFence(kSyncWaitTimeoutMs)) {
     LOGF(ERROR) << "sync_wait() HAL buffer timed out on capture result "
                 << frame_number;
     ++metrics_.errors[AutoFramingError::kProcessResultError];
@@ -874,7 +868,7 @@ bool AutoFramingStreamManipulator::ProcessFullFrameOnThread(
   }
   if (!auto_framing_client_.ProcessFrame(
           *ctx->timestamp, ctx->state_transition.second == State::kOn
-                               ? *full_frame_buffer->buffer
+                               ? *full_frame_buffer.buffer()
                                : nullptr)) {
     LOGF(ERROR) << "Failed to process frame " << frame_number;
     return false;
@@ -904,7 +898,7 @@ bool AutoFramingStreamManipulator::ProcessFullFrameOnThread(
               static_cast<float>(full_frame_size_.width * b.stream->height));
     }
     std::optional<base::ScopedFD> release_fence = CropBufferOnThread(
-        *full_frame_buffer->buffer, base::ScopedFD(), *b.buffer,
+        *full_frame_buffer.buffer(), base::ScopedFD(), *b.buffer,
         base::ScopedFD(b.acquire_fence), adjusted_crop_region);
     if (!release_fence.has_value()) {
       LOGF(ERROR) << "Failed to crop buffer on result " << frame_number;
@@ -931,7 +925,7 @@ bool AutoFramingStreamManipulator::ProcessFullFrameOnThread(
         static_cast<float>(full_frame_size_.height * blob_stream_->width) /
             static_cast<float>(full_frame_size_.width * blob_stream_->height));
     std::optional<base::ScopedFD> release_fence =
-        CropBufferOnThread(*full_frame_buffer->buffer, base::ScopedFD(),
+        CropBufferOnThread(*full_frame_buffer.buffer(), base::ScopedFD(),
                            *ctx->cropped_still_yuv_buffer->handle(),
                            base::ScopedFD(), adjusted_crop_region);
     if (!release_fence.has_value()) {
@@ -950,14 +944,13 @@ bool AutoFramingStreamManipulator::ProcessFullFrameOnThread(
 
 bool AutoFramingStreamManipulator::ProcessStillYuvOnThread(
     CaptureContext* ctx,
-    camera3_stream_buffer_t* still_yuv_buffer,
+    Camera3StreamBuffer still_yuv_buffer,
     uint32_t frame_number) {
   DCHECK(gpu_resources_->gpu_task_runner()->BelongsToCurrentThread());
   DCHECK_NE(ctx, nullptr);
-  DCHECK_NE(still_yuv_buffer, nullptr);
   TRACE_AUTO_FRAMING("frame_number", frame_number);
 
-  if (still_yuv_buffer->status != CAMERA3_BUFFER_STATUS_OK) {
+  if (still_yuv_buffer.status() != CAMERA3_BUFFER_STATUS_OK) {
     VLOGF(1) << "Received still YUV buffer with error in result "
              << frame_number;
     return false;
@@ -982,8 +975,8 @@ bool AutoFramingStreamManipulator::ProcessStillYuvOnThread(
       static_cast<float>(full_frame_size_.height * blob_stream_->width) /
           static_cast<float>(full_frame_size_.width * blob_stream_->height));
   std::optional<base::ScopedFD> release_fence =
-      CropBufferOnThread(*still_yuv_buffer->buffer,
-                         base::ScopedFD(still_yuv_buffer->release_fence),
+      CropBufferOnThread(*still_yuv_buffer.buffer(),
+                         base::ScopedFD(still_yuv_buffer.take_release_fence()),
                          *ctx->cropped_still_yuv_buffer->handle(),
                          base::ScopedFD(), adjusted_crop_region);
   if (!release_fence.has_value()) {
@@ -991,7 +984,6 @@ bool AutoFramingStreamManipulator::ProcessStillYuvOnThread(
     ++metrics_.errors[AutoFramingError::kProcessResultError];
     return false;
   }
-  still_yuv_buffer->release_fence = -1;
   still_capture_processor_->QueuePendingYuvImage(
       frame_number, *ctx->cropped_still_yuv_buffer->handle(),
       *std::move(release_fence));
@@ -1007,7 +999,7 @@ void AutoFramingStreamManipulator::ReturnStillCaptureResultOnThread(
   if (VLOG_IS_ON(2)) {
     VLOGFID(2, result.frame_number()) << "Still capture result:";
     for (auto& b : result.GetOutputBuffers()) {
-      VLOGF(2) << "  " << GetDebugString(b.stream);
+      VLOGF(2) << "  " << GetDebugString(b.stream());
     }
   }
 

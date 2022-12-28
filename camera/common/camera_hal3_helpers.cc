@@ -7,12 +7,19 @@
 #include "common/camera_hal3_helpers.h"
 
 #include <algorithm>
+#include <cstdint>
+#include <functional>
+#include <optional>
 #include <utility>
 
 #include <base/json/json_writer.h>
+#include <base/notreached.h>
 #include <base/values.h>
+#include <hardware/camera3.h>
 #include <sync/sync.h>
 
+#include "common/camera_buffer_handle.h"
+#include "common/common_tracing.h"
 #include "cros-camera/tracing.h"
 
 namespace cros {
@@ -38,16 +45,36 @@ base::Value::Dict ToValueDict(const camera3_stream_t* stream) {
   return s;
 }
 
-base::Value::Dict ToValueDict(const camera3_stream_buffer_t* buffer) {
-  if (!buffer) {
-    return base::Value::Dict();
-  }
+base::Value::Dict ToValueDict(const Camera3StreamBuffer& buffer) {
   base::Value::Dict b;
-  b.Set("stream", ToValueDict(buffer->stream));
-  b.Set("status", buffer->status);
-  b.Set("acquire_fence", buffer->acquire_fence);
-  b.Set("release_fence", buffer->release_fence);
+  b.Set("stream", ToValueDict(buffer.stream()));
+  b.Set("status", buffer.status());
+  b.Set("acquire_fence", buffer.acquire_fence());
+  b.Set("release_fence", buffer.release_fence());
   return b;
+}
+
+perfetto::StaticString GetBufferDirectionStr(
+    Camera3StreamBuffer::Direction dir) {
+  switch (dir) {
+    case Camera3StreamBuffer::Direction::kInput:
+      return perfetto::StaticString("input");
+    case Camera3StreamBuffer::Direction::kOutput:
+      return perfetto::StaticString("output");
+    case Camera3StreamBuffer::Direction::kInvalidDirection:
+      return perfetto::StaticString("unknown");
+  }
+}
+
+perfetto::StaticString GetBufferEventStr(Camera3StreamBuffer::Type type) {
+  switch (type) {
+    case Camera3StreamBuffer::Type::kRequest:
+      return perfetto::StaticString("Request Buffer");
+    case Camera3StreamBuffer::Type::kResult:
+      return perfetto::StaticString("Result Buffer");
+    case Camera3StreamBuffer::Type::kInvalidType:
+      return perfetto::StaticString("Unknown Buffer");
+  }
 }
 
 }  // namespace
@@ -96,6 +123,124 @@ bool WaitOnAndClearReleaseFence(camera3_stream_buffer_t& buffer,
   close(buffer.release_fence);
   buffer.release_fence = -1;
   return true;
+}
+
+//
+// Camera3StreamBuffer implementations.
+//
+
+// static
+Camera3StreamBuffer Camera3StreamBuffer::MakeRequestInput(
+    const camera3_stream_buffer_t& stream_buffer) {
+  return Camera3StreamBuffer(stream_buffer, Camera3StreamBuffer::Type::kRequest,
+                             Camera3StreamBuffer::Direction::kInput);
+}
+
+// static
+Camera3StreamBuffer Camera3StreamBuffer::MakeRequestOutput(
+    const camera3_stream_buffer_t& stream_buffer) {
+  return Camera3StreamBuffer(stream_buffer, Camera3StreamBuffer::Type::kRequest,
+                             Camera3StreamBuffer::Direction::kOutput);
+}
+
+// static
+Camera3StreamBuffer Camera3StreamBuffer::MakeResultInput(
+    const camera3_stream_buffer_t& stream_buffer) {
+  return Camera3StreamBuffer(stream_buffer, Camera3StreamBuffer::Type::kResult,
+                             Camera3StreamBuffer::Direction::kInput);
+}
+
+// static
+Camera3StreamBuffer Camera3StreamBuffer::MakeResultOutput(
+    const camera3_stream_buffer_t& stream_buffer) {
+  return Camera3StreamBuffer(stream_buffer, Camera3StreamBuffer::Type::kResult,
+                             Camera3StreamBuffer::Direction::kOutput);
+}
+
+Camera3StreamBuffer::~Camera3StreamBuffer() {
+  Invalidate();
+}
+
+Camera3StreamBuffer::Camera3StreamBuffer(Camera3StreamBuffer&& other) {
+  *this = std::move(other);
+}
+
+Camera3StreamBuffer& Camera3StreamBuffer::operator=(
+    Camera3StreamBuffer&& other) {
+  if (this != &other) {
+    Invalidate();
+    type_ = other.type_;
+    dir_ = other.dir_;
+    raw_buffer_ = other.raw_buffer_;
+    lock_container_ = other.lock_container_;
+    trace_started_ = other.trace_started_;
+
+    other.type_ = Type::kInvalidType;
+    other.dir_ = Direction::kInvalidDirection;
+    other.raw_buffer_ = kInvalidRawBuffer;
+    other.lock_container_ = nullptr;
+    other.trace_started_ = false;
+  }
+  return *this;
+}
+
+void Camera3StreamBuffer::StartTracing(int frame_number) {
+  if (!is_valid() || trace_started_) {
+    return;
+  }
+  TRACE_COMMON_BEGIN(
+      GetBufferEventStr(type_),
+      perfetto::Track(reinterpret_cast<uintptr_t>(*raw_buffer_.buffer)),
+      "frame_number", frame_number, "direction", GetBufferDirectionStr(dir_),
+      "stream", reinterpret_cast<uintptr_t>(raw_buffer_.stream), "width",
+      raw_buffer_.stream->width, "height", raw_buffer_.stream->height, "format",
+      raw_buffer_.stream->format);
+  trace_started_ = true;
+}
+
+void Camera3StreamBuffer::EndTracing() {
+  if (!is_valid() || !trace_started_) {
+    return;
+  }
+  TRACE_COMMON_END(
+      perfetto::Track(reinterpret_cast<uintptr_t>(*raw_buffer_.buffer)));
+  trace_started_ = false;
+}
+
+void Camera3StreamBuffer::LockAndFill(camera3_stream_buffer_t* container) {
+  CHECK_EQ(lock_container_, nullptr);
+  CHECK(container);
+  *container = raw_buffer_;
+  lock_container_ = container;
+}
+
+void Camera3StreamBuffer::Unlock() {
+  CHECK(lock_container_);
+  raw_buffer_ = *lock_container_;
+  lock_container_ = nullptr;
+}
+
+Camera3StreamBuffer::Camera3StreamBuffer(
+    const camera3_stream_buffer_t& stream_buf, Type type, Direction dir)
+    : raw_buffer_(stream_buf), type_(type), dir_(dir) {
+  if (!is_valid()) {
+    return;
+  }
+
+  // Some camera HAL may use their own storage to hold |buffer_handle_t*|s in
+  // the capture results and it doesn't out-live the whole result callback
+  // sequence. Fix them to our maintained storage so we can pass on the buffer
+  // object safely.
+  auto* handle = camera_buffer_handle_t::FromBufferHandle(*raw_buffer_.buffer);
+  CHECK(handle);
+  raw_buffer_.buffer = const_cast<buffer_handle_t*>(&handle->self);
+}
+
+void Camera3StreamBuffer::Invalidate() {
+  EndTracing();
+  raw_buffer_ = kInvalidRawBuffer;
+  type_ = Type::kInvalidType;
+  dir_ = Direction::kInvalidDirection;
 }
 
 //
@@ -194,8 +339,6 @@ Camera3CaptureDescriptor::Camera3CaptureDescriptor(
     const camera3_capture_request_t& request)
     : type_(Type::kCaptureRequest),
       frame_number_(request.frame_number),
-      output_buffers_(request.output_buffers,
-                      request.output_buffers + request.num_output_buffers),
       num_physcam_metadata_(request.num_physcam_settings),
       physcam_ids_(request.physcam_id),
       physcam_metadata_(request.physcam_settings) {
@@ -203,8 +346,15 @@ Camera3CaptureDescriptor::Camera3CaptureDescriptor(
     metadata_.acquire(clone_camera_metadata(request.settings));
   }
   if (request.input_buffer) {
-    input_buffer_ =
-        std::make_unique<camera3_stream_buffer_t>(*request.input_buffer);
+    SetInputBuffer(
+        Camera3StreamBuffer::MakeRequestInput(*request.input_buffer));
+  }
+  if (request.num_output_buffers > 0) {
+    output_buffers_.reserve(request.num_output_buffers);
+    for (int i = 0; i < request.num_output_buffers; ++i) {
+      AppendOutputBuffer(Camera3StreamBuffer::MakeRequestOutput(
+          *(request.output_buffers + i)));
+    }
   }
 }
 
@@ -212,8 +362,6 @@ Camera3CaptureDescriptor::Camera3CaptureDescriptor(
     const camera3_capture_result_t& result)
     : type_(Type::kCaptureResult),
       frame_number_(result.frame_number),
-      output_buffers_(result.output_buffers,
-                      result.output_buffers + result.num_output_buffers),
       partial_result_(result.partial_result),
       num_physcam_metadata_(result.num_physcam_metadata),
       physcam_ids_(result.physcam_ids),
@@ -222,8 +370,14 @@ Camera3CaptureDescriptor::Camera3CaptureDescriptor(
     metadata_.acquire(clone_camera_metadata(result.result));
   }
   if (result.input_buffer) {
-    input_buffer_ =
-        std::make_unique<camera3_stream_buffer_t>(*result.input_buffer);
+    SetInputBuffer(Camera3StreamBuffer::MakeResultInput(*result.input_buffer));
+  }
+  if (result.num_output_buffers > 0) {
+    output_buffers_.reserve(result.num_output_buffers);
+    for (int i = 0; i < result.num_output_buffers; ++i) {
+      AppendOutputBuffer(
+          Camera3StreamBuffer::MakeResultOutput(*(result.output_buffers + i)));
+    }
   }
 }
 
@@ -364,41 +518,52 @@ bool Camera3CaptureDescriptor::HasMetadata(uint32_t tag) const {
   return metadata_.exists(tag);
 }
 
-const camera3_stream_buffer_t* Camera3CaptureDescriptor::GetInputBuffer()
-    const {
-  return input_buffer_.get();
+const Camera3StreamBuffer* Camera3CaptureDescriptor::GetInputBuffer() const {
+  if (input_buffer_) {
+    return &input_buffer_.value();
+  }
+  return nullptr;
+}
+
+std::optional<Camera3StreamBuffer>
+Camera3CaptureDescriptor::AcquireInputBuffer() {
+  std::optional<Camera3StreamBuffer> ret = std::move(input_buffer_);
+  input_buffer_.reset();
+  return ret;
 }
 
 void Camera3CaptureDescriptor::SetInputBuffer(
-    const camera3_stream_buffer_t& input_buffer) {
-  input_buffer_ = std::make_unique<camera3_stream_buffer_t>(input_buffer);
+    Camera3StreamBuffer input_buffer) {
+  input_buffer.StartTracing(frame_number_);
+  input_buffer_ = std::move(input_buffer);
 }
 
-void Camera3CaptureDescriptor::ResetInputBuffer() {
-  input_buffer_ = nullptr;
-}
-
-base::span<const camera3_stream_buffer_t>
+base::span<const Camera3StreamBuffer>
 Camera3CaptureDescriptor::GetOutputBuffers() const {
   return {output_buffers_.data(), output_buffers_.size()};
 }
 
-base::span<camera3_stream_buffer_t>
+base::span<Camera3StreamBuffer>
 Camera3CaptureDescriptor::GetMutableOutputBuffers() {
   return {output_buffers_.data(), output_buffers_.size()};
 }
 
-void Camera3CaptureDescriptor::SetOutputBuffers(
-    base::span<const camera3_stream_buffer_t> output_buffers) {
-  output_buffers_.clear();
-  output_buffers_.resize(output_buffers.size());
-  std::copy(output_buffers.begin(), output_buffers.end(),
-            output_buffers_.begin());
+std::vector<Camera3StreamBuffer>
+Camera3CaptureDescriptor::AcquireOutputBuffers() {
+  return std::move(output_buffers_);
 }
 
-void Camera3CaptureDescriptor::AppendOutputBuffer(
-    const camera3_stream_buffer_t& buffer) {
-  output_buffers_.push_back(buffer);
+void Camera3CaptureDescriptor::SetOutputBuffers(
+    std::vector<Camera3StreamBuffer> output_buffers) {
+  for (auto& b : output_buffers) {
+    b.StartTracing(frame_number_);
+  }
+  output_buffers_ = std::move(output_buffers);
+}
+
+void Camera3CaptureDescriptor::AppendOutputBuffer(Camera3StreamBuffer buffer) {
+  buffer.StartTracing(frame_number_);
+  output_buffers_.push_back(std::move(buffer));
 }
 
 camera3_capture_request* Camera3CaptureDescriptor::LockForRequest() {
@@ -410,9 +575,17 @@ camera3_capture_request* Camera3CaptureDescriptor::LockForRequest() {
   raw_descriptor_ = RawDescriptor();
   raw_descriptor_->raw_request.frame_number = frame_number_;
   raw_descriptor_->raw_request.settings = metadata_.getAndLock();
-  raw_descriptor_->raw_request.input_buffer = input_buffer_.get();
+
+  raw_descriptor_->raw_request.input_buffer =
+      input_buffer_ ? &input_buffer_->mutable_raw_buffer() : nullptr;
+
   raw_descriptor_->raw_request.num_output_buffers = output_buffers_.size();
-  raw_descriptor_->raw_request.output_buffers = output_buffers_.data();
+  raw_output_buffers_.resize(output_buffers_.size());
+  for (int i = 0; i < output_buffers_.size(); ++i) {
+    output_buffers_[i].LockAndFill(&raw_output_buffers_[i]);
+  }
+  raw_descriptor_->raw_request.output_buffers = raw_output_buffers_.data();
+
   raw_descriptor_->raw_request.num_physcam_settings = num_physcam_metadata_;
   raw_descriptor_->raw_request.physcam_id = physcam_ids_;
   raw_descriptor_->raw_request.physcam_settings = physcam_metadata_;
@@ -429,9 +602,17 @@ camera3_capture_result_t* Camera3CaptureDescriptor::LockForResult() {
   raw_descriptor_ = RawDescriptor();
   raw_descriptor_->raw_result.frame_number = frame_number_;
   raw_descriptor_->raw_result.result = metadata_.getAndLock();
+
   raw_descriptor_->raw_result.num_output_buffers = output_buffers_.size();
-  raw_descriptor_->raw_result.output_buffers = output_buffers_.data();
-  raw_descriptor_->raw_result.input_buffer = input_buffer_.get();
+  raw_output_buffers_.resize(output_buffers_.size());
+  for (int i = 0; i < output_buffers_.size(); ++i) {
+    output_buffers_[i].LockAndFill(&raw_output_buffers_[i]);
+  }
+  raw_descriptor_->raw_result.output_buffers = raw_output_buffers_.data();
+
+  raw_descriptor_->raw_result.input_buffer =
+      input_buffer_ ? &input_buffer_->mutable_raw_buffer() : nullptr;
+
   raw_descriptor_->raw_result.partial_result = partial_result_;
   raw_descriptor_->raw_result.num_physcam_metadata = num_physcam_metadata_;
   raw_descriptor_->raw_result.physcam_ids = physcam_ids_;
@@ -476,6 +657,9 @@ void Camera3CaptureDescriptor::Unlock() {
     case Type::kInvalidType:
       NOTREACHED() << "Cannot unlock invalid descriptor";
   }
+  for (auto& b : output_buffers_) {
+    b.Unlock();
+  }
   raw_descriptor_.reset();
 }
 
@@ -488,11 +672,13 @@ std::string Camera3CaptureDescriptor::ToJsonString() const {
   val.Set("capture_type",
           type_ == Type::kCaptureRequest ? "Request" : "Result");
   val.Set("frame_number", base::checked_cast<int>(frame_number_));
-  val.Set("input_buffer", ToValueDict(GetInputBuffer()));
+  if (input_buffer_) {
+    val.Set("input_buffer", ToValueDict(input_buffer_.value()));
+  }
 
   base::Value::List out_bufs;
   for (const auto& b : GetOutputBuffers()) {
-    out_bufs.Append(ToValueDict(&b));
+    out_bufs.Append(ToValueDict(b));
   }
   val.Set("output_buffers", std::move(out_bufs));
 
@@ -521,15 +707,17 @@ void Camera3CaptureDescriptor::PopulateEventAnnotation(
                          base::checked_cast<int>(frame_number_));
 
   std::string input_buffer;
-  if (base::JSONWriter::WriteWithOptions(ToValueDict(GetInputBuffer()),
-                                         base::JSONWriter::OPTIONS_PRETTY_PRINT,
-                                         &input_buffer)) {
-    ctx.AddDebugAnnotation("input_buffer", input_buffer);
+  if (input_buffer_) {
+    if (base::JSONWriter::WriteWithOptions(
+            ToValueDict(input_buffer_.value()),
+            base::JSONWriter::OPTIONS_PRETTY_PRINT, &input_buffer)) {
+      ctx.AddDebugAnnotation("input_buffer", input_buffer);
+    }
   }
 
   base::Value::List out_bufs;
   for (const auto& b : GetOutputBuffers()) {
-    out_bufs.Append(ToValueDict(&b));
+    out_bufs.Append(ToValueDict(b));
   }
   std::string output_buffers;
   if (base::JSONWriter::WriteWithOptions(
@@ -547,7 +735,7 @@ void Camera3CaptureDescriptor::Invalidate() {
   type_ = Type::kInvalidType;
   frame_number_ = 0;
   metadata_.clear();
-  input_buffer_ = nullptr;
+  input_buffer_.reset();
   output_buffers_.clear();
   partial_result_ = 0;
   num_physcam_metadata_ = 0;

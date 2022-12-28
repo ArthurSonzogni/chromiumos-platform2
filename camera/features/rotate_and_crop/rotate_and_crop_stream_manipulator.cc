@@ -399,14 +399,11 @@ bool RotateAndCropStreamManipulator::ProcessCaptureRequestOnThread(
   // Process still capture.
   bool has_yuv = false;
   for (const auto& b : request->GetOutputBuffers()) {
-    if (b.stream == blob_stream_) {
+    if (b.stream() == blob_stream_) {
       ctx.has_pending_blob = true;
-      const camera3_capture_request_t* locked_request =
-          request->LockForRequest();
       still_capture_processor_->QueuePendingOutputBuffer(
-          request->frame_number(), b, locked_request->settings);
-      request->Unlock();
-    } else if (b.stream == yuv_stream_for_blob_) {
+          request->frame_number(), b.raw_buffer(), *request);
+    } else if (b.stream() == yuv_stream_for_blob_) {
       has_yuv = true;
     }
   }
@@ -417,13 +414,13 @@ bool RotateAndCropStreamManipulator::ProcessCaptureRequestOnThread(
                   << request->frame_number();
       return false;
     }
-    request->AppendOutputBuffer(camera3_stream_buffer_t{
+    request->AppendOutputBuffer(Camera3StreamBuffer::MakeRequestOutput({
         .stream = yuv_stream_for_blob_,
         .buffer = ctx.yuv_buffer->handle(),
         .status = CAMERA3_BUFFER_STATUS_OK,
         .acquire_fence = -1,
         .release_fence = -1,
-    });
+    }));
     ++ctx.num_pending_buffers;
     ctx.yuv_stream_appended = true;
   }
@@ -461,38 +458,37 @@ bool RotateAndCropStreamManipulator::ProcessCaptureResultOnThread(
   DCHECK_EQ(ctx.hal_rc_mode, ANDROID_SCALER_ROTATE_AND_CROP_NONE);
 
   std::vector<camera3_stream_buffer_t> output_buffers;
-  for (auto b : result.GetOutputBuffers()) {
-    if (b.stream == blob_stream_) {
+  for (auto& b : result.AcquireOutputBuffers()) {
+    if (b.stream() == blob_stream_) {
       still_capture_processor_->QueuePendingAppsSegments(
-          result.frame_number(), *b.buffer, base::ScopedFD(b.release_fence));
-      b.release_fence = -1;
+          result.frame_number(), *b.buffer(),
+          base::ScopedFD(b.take_release_fence()));
       continue;
     }
-    if (b.stream->stream_type == CAMERA3_STREAM_OUTPUT &&
-        (b.stream->format == HAL_PIXEL_FORMAT_YCbCr_420_888 ||
-         b.stream->format == HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED)) {
-      if (b.status == CAMERA3_BUFFER_STATUS_OK) {
-        if (!RotateAndCropOnThread(*b.buffer, base::ScopedFD(b.release_fence),
+    if (b.stream()->stream_type == CAMERA3_STREAM_OUTPUT &&
+        (b.stream()->format == HAL_PIXEL_FORMAT_YCbCr_420_888 ||
+         b.stream()->format == HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED)) {
+      if (b.status() == CAMERA3_BUFFER_STATUS_OK) {
+        if (!RotateAndCropOnThread(*b.buffer(),
+                                   base::ScopedFD(b.take_release_fence()),
                                    ctx.client_rc_mode)) {
-          b.status = CAMERA3_BUFFER_STATUS_ERROR;
+          b.mutable_raw_buffer().status = CAMERA3_BUFFER_STATUS_ERROR;
         }
-        b.release_fence = -1;
       }
-      if (b.stream == yuv_stream_for_blob_) {
+      if (b.stream() == yuv_stream_for_blob_) {
         if (ctx.has_pending_blob) {
           // TODO(kamesan): Fail the still capture properly if YUV image fails.
-          CHECK_EQ(b.status, CAMERA3_BUFFER_STATUS_OK);
+          CHECK_EQ(b.status(), CAMERA3_BUFFER_STATUS_OK);
           still_capture_processor_->QueuePendingYuvImage(
-              result.frame_number(), *b.buffer, base::ScopedFD());
+              result.frame_number(), *b.buffer(), base::ScopedFD());
         }
         if (ctx.yuv_stream_appended) {
           continue;
         }
       }
     }
-    output_buffers.push_back(b);
+    result.AppendOutputBuffer(std::move(b));
   }
-  result.SetOutputBuffers(output_buffers);
 
   base::span<const uint8_t> rc_mode =
       result.GetMetadata<uint8_t>(ANDROID_SCALER_ROTATE_AND_CROP);

@@ -8,11 +8,13 @@
 
 #include <GLES3/gl3.h>
 
+#include <hardware/camera3.h>
 #include <sync/sync.h>
 
 #include <unistd.h>
 #include <algorithm>
 #include <numeric>
+#include <optional>
 #include <string>
 #include <utility>
 
@@ -54,8 +56,6 @@ constexpr char kBlurLevelKey[] = "blur_level";
 constexpr char kBlurEnabled[] = "blur_enabled";
 constexpr char kReplaceEnabled[] = "replace_enabled";
 constexpr char kRelightEnabled[] = "relight_enabled";
-
-constexpr uint8_t kMaxNumBuffers = 8;
 
 constexpr uint32_t kRGBAFormat = HAL_PIXEL_FORMAT_RGBX_8888;
 constexpr uint32_t kBufferUsage = GRALLOC_USAGE_HW_TEXTURE;
@@ -148,12 +148,18 @@ std::optional<int64_t> EffectsStreamManipulator::TryGetSensorTimestamp(
                                : std::nullopt;
 }
 
-camera3_stream_buffer_t* EffectsStreamManipulator::SelectEffectsBuffer(
-    base::span<camera3_stream_buffer_t> output_buffers) {
-  camera3_stream_buffer_t* ret = nullptr;
+std::optional<Camera3StreamBuffer>
+EffectsStreamManipulator::SelectEffectsBuffer(
+    Camera3CaptureDescriptor& result) {
+  // This removes all the output buffers in the capture result and picks one
+  // buffer suitable for effects processing. This works only if there's only one
+  // output buffer in the capture result.
+  std::vector<Camera3StreamBuffer> output_buffers =
+      result.AcquireOutputBuffers();
+  Camera3StreamBuffer* ret = nullptr;
 
   for (auto& b : output_buffers) {
-    const auto* s = b.stream;
+    const auto* s = b.stream();
     if (s->stream_type != CAMERA3_STREAM_OUTPUT) {
       continue;
     }
@@ -171,13 +177,17 @@ camera3_stream_buffer_t* EffectsStreamManipulator::SelectEffectsBuffer(
       // Currently selecting the widest stream to process as it satisfies
       // the most initial VC situations. Want to expand this to handle
       // many streams
-      if (!ret || s->width >= ret->stream->width) {
+      if (!ret || s->width >= ret->stream()->width) {
         ret = &b;
       }
     }
   }
 
-  return ret;
+  if (!ret) {
+    result.SetOutputBuffers(std::move(output_buffers));
+    return std::nullopt;
+  }
+  return std::make_optional(std::move(*ret));
 }
 
 bool EffectsStreamManipulator::ProcessCaptureResult(
@@ -206,24 +216,24 @@ bool EffectsStreamManipulator::ProcessCaptureResult(
     return true;
   }
 
-  camera3_stream_buffer_t* result_buffer =
-      SelectEffectsBuffer(result.GetMutableOutputBuffers());
-  if (result_buffer == nullptr)
+  std::optional<Camera3StreamBuffer> result_buffer =
+      SelectEffectsBuffer(result);
+  if (!result_buffer.has_value())
     return true;
 
-  if (result_buffer->status != CAMERA3_BUFFER_STATUS_OK) {
+  if (result_buffer->status() != CAMERA3_BUFFER_STATUS_OK) {
     LOGF(ERROR) << "EffectsStreamManipulator received buffer with "
                    "error in result "
                 << result.frame_number();
     return false;
   }
 
-  if (!WaitOnAndClearReleaseFence(*result_buffer, kSyncWaitTimeoutMs)) {
+  if (!result_buffer->WaitOnAndClearReleaseFence(kSyncWaitTimeoutMs)) {
     LOGF(ERROR) << "Timed out waiting for input buffer";
     return false;
   }
 
-  buffer_handle_t buffer_handle = *result_buffer->buffer;
+  buffer_handle_t buffer_handle = *result_buffer->buffer();
 
   auto manager = CameraBufferManager::GetInstance();
   if (manager->Register(buffer_handle) != 0) {
@@ -280,11 +290,8 @@ bool EffectsStreamManipulator::ProcessCaptureResult(
     return false;
   }
 
-  result_buffer->status = CAMERA3_BUFFER_STATUS_OK;
-  base::StackVector<camera3_stream_buffer_t, kMaxNumBuffers> result_buffers;
-  result_buffers->push_back(*result_buffer);
-  result.SetOutputBuffers(base::span<camera3_stream_buffer_t>(
-      result_buffers->begin(), result_buffers->end()));
+  result_buffer->mutable_raw_buffer().status = CAMERA3_BUFFER_STATUS_OK;
+  result.AppendOutputBuffer(std::move(result_buffer.value()));
 
   return true;
 }

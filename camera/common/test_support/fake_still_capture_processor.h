@@ -11,6 +11,8 @@
 
 #include <gtest/gtest.h>
 
+#include "common/camera_buffer_handle.h"
+#include "common/camera_hal3_helpers.h"
 #include "common/still_capture_processor.h"
 
 namespace cros::tests {
@@ -26,7 +28,7 @@ class FakeStillCaptureProcessor : public StillCaptureProcessor {
   void QueuePendingOutputBuffer(
       int frame_number,
       camera3_stream_buffer_t output_buffer,
-      const camera_metadata_t* request_settings) override;
+      const Camera3CaptureDescriptor& request) override;
   void QueuePendingAppsSegments(int frame_number,
                                 buffer_handle_t blob_buffer,
                                 base::ScopedFD release_fence) override;
@@ -38,6 +40,7 @@ class FakeStillCaptureProcessor : public StillCaptureProcessor {
   void MaybeProduceCaptureResult(int frame_number);
 
   const camera3_stream_t* stream_ = nullptr;
+  camera_buffer_handle_t fake_buffer_;
   CaptureResultCallback result_callback_;
 
   struct ResultDescriptor {

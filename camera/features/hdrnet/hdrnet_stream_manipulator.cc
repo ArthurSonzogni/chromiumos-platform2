@@ -14,10 +14,12 @@
 
 #include <base/containers/lru_cache.h>
 #include <base/files/file_util.h>
+#include <base/functional/bind.h>
 #include <cros-camera/spatiotemporal_denoiser.h>
 #include <sync/sync.h>
 #include <system/camera_metadata.h>
 
+#include "common/camera_hal3_helpers.h"
 #include "common/still_capture_processor_impl.h"
 #include "cros-camera/camera_buffer_manager.h"
 #include "cros-camera/camera_metadata_utils.h"
@@ -555,11 +557,11 @@ bool HdrNetStreamManipulator::ProcessCaptureRequestOnGpuThread(
 
   if (VLOG_IS_ON(2)) {
     VLOGFID(2, request->frame_number()) << " Got request:";
-    if (request->GetInputBuffer()) {
-      VLOGF(2) << "\t" << GetDebugString(request->GetInputBuffer()->stream);
+    if (request->has_input_buffer()) {
+      VLOGF(2) << "\t" << GetDebugString(request->GetInputBuffer()->stream());
     }
     for (const auto& request_buffer : request->GetOutputBuffers()) {
-      VLOGF(2) << "\t" << GetDebugString(request_buffer.stream);
+      VLOGF(2) << "\t" << GetDebugString(request_buffer.stream());
     }
   }
 
@@ -572,7 +574,7 @@ bool HdrNetStreamManipulator::ProcessCaptureRequestOnGpuThread(
     skip_hdrnet_processing = true;
   }
 
-  if (request->GetInputBuffer() != nullptr) {
+  if (request->has_input_buffer()) {
     // Skip reprocessing requests. We can't touch the output buffers of a
     // reprocessing request since they have to be produced from the given input
     // buffer.
@@ -586,16 +588,15 @@ bool HdrNetStreamManipulator::ProcessCaptureRequestOnGpuThread(
   }
 
   // First, pick the set of HDRnet stream that we will put into the request.
-  base::span<const camera3_stream_buffer_t> client_output_buffers =
-      request->GetOutputBuffers();
-  std::vector<camera3_stream_buffer_t> modified_output_buffers;
+  std::vector<Camera3StreamBuffer> client_output_buffers =
+      request->AcquireOutputBuffers();
   HdrNetBufferInfoList hdrnet_buf_to_add;
-  for (const auto& request_buffer : client_output_buffers) {
+  for (auto& request_buffer : client_output_buffers) {
     HdrNetStreamContext* stream_context =
-        GetHdrNetContextFromRequestedStream(request_buffer.stream);
+        GetHdrNetContextFromRequestedStream(request_buffer.stream());
     if (!stream_context) {
       // Not a stream that we care, so simply pass through to HAL.
-      modified_output_buffers.push_back(request_buffer);
+      request->AppendOutputBuffer(std::move(request_buffer));
       continue;
     }
 
@@ -626,9 +627,11 @@ bool HdrNetStreamManipulator::ProcessCaptureRequestOnGpuThread(
               it->stream_context->hdrnet_stream->width) {
             it->stream_context = stream_context;
           }
-          it->client_requested_yuv_buffers.push_back(request_buffer);
+          it->client_requested_yuv_buffers.push_back(
+              request_buffer.raw_buffer());
         } else {
-          HdrNetRequestBufferInfo buf_info(stream_context, {request_buffer});
+          HdrNetRequestBufferInfo buf_info(stream_context,
+                                           {request_buffer.raw_buffer()});
           buf_info.skip_hdrnet_processing = skip_hdrnet_processing;
           hdrnet_buf_to_add.emplace_back(std::move(buf_info));
         }
@@ -636,15 +639,13 @@ bool HdrNetStreamManipulator::ProcessCaptureRequestOnGpuThread(
       }
 
       case HdrNetStreamContext::Mode::kAppendWithBlob: {
-        DCHECK_EQ(request_buffer.stream->format, HAL_PIXEL_FORMAT_BLOB);
+        DCHECK_EQ(request_buffer.stream()->format, HAL_PIXEL_FORMAT_BLOB);
         // Defer the final BLOB buffer to the StillCaptureProcessor as we'll be
         // handling the BLOB metadata and YUV buffer asynchronously.
-        camera3_capture_request_t* locked_request = request->LockForRequest();
         still_capture_processor_->QueuePendingOutputBuffer(
-            request->frame_number(), request_buffer, locked_request->settings);
-        request->Unlock();
+            request->frame_number(), request_buffer.raw_buffer(), *request);
         // Still queue the BLOB buffer so that we can extract the metadata.
-        modified_output_buffers.push_back(request_buffer);
+        request->AppendOutputBuffer(std::move(request_buffer));
         // Finally queue the HDRnet YUV buffer that will be used to produce the
         // BLOB image.
         HdrNetRequestBufferInfo buf_info(stream_context, {});
@@ -667,26 +668,25 @@ bool HdrNetStreamManipulator::ProcessCaptureRequestOnGpuThread(
       return false;
     }
     info.buffer_index = *buffer_index;
-    modified_output_buffers.push_back(camera3_stream_buffer_t{
+    request->AppendOutputBuffer(Camera3StreamBuffer::MakeRequestOutput({
         .stream = info.stream_context->hdrnet_stream.get(),
         .buffer = const_cast<buffer_handle_t*>(
             &info.stream_context->shared_images[*buffer_index].buffer()),
         .status = CAMERA3_BUFFER_STATUS_OK,
         .acquire_fence = -1,
         .release_fence = -1,
-    });
+    }));
   }
 
   uint32_t frame_number = request->frame_number();
   request_buffer_info_.insert({frame_number, std::move(hdrnet_buf_to_add)});
-  request->SetOutputBuffers(modified_output_buffers);
 
   if (VLOG_IS_ON(2)) {
     VLOGFID(2, frame_number) << "Modified request:";
-    base::span<const camera3_stream_buffer_t> output_buffers =
+    base::span<const Camera3StreamBuffer> output_buffers =
         request->GetOutputBuffers();
     for (const auto& request_buffer : output_buffers) {
-      VLOGF(2) << "\t" << GetDebugString(request_buffer.stream);
+      VLOGF(2) << "\t" << GetDebugString(request_buffer.stream());
     }
   }
 
@@ -700,11 +700,11 @@ bool HdrNetStreamManipulator::ProcessCaptureResultOnGpuThread(
 
   if (VLOG_IS_ON(2)) {
     VLOGFID(2, result->frame_number()) << "Got result:";
-    if (result->GetInputBuffer()) {
-      VLOGF(2) << "\t" << GetDebugString(result->GetInputBuffer()->stream);
+    if (result->has_input_buffer()) {
+      VLOGF(2) << "\t" << GetDebugString(result->GetInputBuffer()->stream());
     }
     for (const auto& hal_result_buffer : result->GetOutputBuffers()) {
-      VLOGF(2) << "\t" << GetDebugString(hal_result_buffer.stream);
+      VLOGF(2) << "\t" << GetDebugString(hal_result_buffer.stream());
     }
   }
 
@@ -723,46 +723,43 @@ bool HdrNetStreamManipulator::ProcessCaptureResultOnGpuThread(
     return true;
   }
 
-  std::vector<camera3_stream_buffer_t> hdrnet_buffer_to_process;
-  std::vector<camera3_stream_buffer_t> output_buffers_to_client;
-  ExtractHdrNetBuffersToProcess(
-      result->frame_number(), result->GetOutputBuffers(),
-      &hdrnet_buffer_to_process, &output_buffers_to_client);
+  std::vector<Camera3StreamBuffer> hdrnet_buffer_to_process =
+      ExtractHdrNetBuffersToProcess(*result);
 
-  auto clean_up = [&]() {
-    // Send back the buffers with our buffer set.
-    result->SetOutputBuffers(output_buffers_to_client);
-    // Remove a pending request if the YUV buffers are done rendering and the
-    // pending BLOB buffer is received.
-    HdrNetBufferInfoList& pending_request_buffers =
-        request_buffer_info_[result->frame_number()];
-    for (auto it = pending_request_buffers.begin();
-         it != pending_request_buffers.end();) {
-      if (it->client_requested_yuv_buffers.empty() &&
-          !it->blob_result_pending && !it->blob_intermediate_yuv_pending) {
-        it = pending_request_buffers.erase(it);
-      } else {
-        ++it;
-      }
-    }
-    if (pending_request_buffers.empty()) {
-      VLOGFID(2, result->frame_number())
-          << "Done processing all pending buffers";
-      request_buffer_info_.erase(result->frame_number());
-    }
+  base::ScopedClosureRunner clean_up(base::BindOnce(
+      [](Camera3CaptureDescriptor* result,
+         std::map<uint32_t, HdrNetBufferInfoList>& request_buffer_info) {
+        // Remove a pending request if the YUV buffers are done rendering and
+        // the pending BLOB buffer is received.
+        HdrNetBufferInfoList& pending_request_buffers =
+            request_buffer_info[result->frame_number()];
+        for (auto it = pending_request_buffers.begin();
+             it != pending_request_buffers.end();) {
+          if (it->client_requested_yuv_buffers.empty() &&
+              !it->blob_result_pending && !it->blob_intermediate_yuv_pending) {
+            it = pending_request_buffers.erase(it);
+          } else {
+            ++it;
+          }
+        }
+        if (pending_request_buffers.empty()) {
+          VLOGFID(2, result->frame_number())
+              << "Done processing all pending buffers";
+          request_buffer_info.erase(result->frame_number());
+        }
 
-    if (VLOG_IS_ON(2)) {
-      VLOGFID(2, result->frame_number()) << "Modified result:";
-      base::span<const camera3_stream_buffer_t> output_buffers =
-          result->GetOutputBuffers();
-      for (const auto& buffer : output_buffers) {
-        VLOGF(2) << "\t" << GetDebugString(buffer.stream);
-      }
-    }
-  };
+        if (VLOG_IS_ON(2)) {
+          VLOGFID(2, result->frame_number()) << "Modified result:";
+          base::span<const Camera3StreamBuffer> output_buffers =
+              result->GetOutputBuffers();
+          for (const auto& buffer : output_buffers) {
+            VLOGF(2) << "\t" << GetDebugString(buffer.stream());
+          }
+        }
+      },
+      base::Unretained(result), std::ref(request_buffer_info_)));
 
   if (hdrnet_buffer_to_process.empty()) {
-    clean_up();
     return true;
   }
 
@@ -772,12 +769,13 @@ bool HdrNetStreamManipulator::ProcessCaptureResultOnGpuThread(
   // Process each HDRnet buffer in this capture result and produce the client
   // requested output buffers associated with each HDRnet buffer.
   for (auto& hdrnet_buffer : hdrnet_buffer_to_process) {
-    TRACE_HDRNET_EVENT(
-        "HdrNetStreamManipulator::ProcessHdrnetBuffer", "frame_number",
-        result->frame_number(), "width", hdrnet_buffer.stream->width, "height",
-        hdrnet_buffer.stream->height, "format", hdrnet_buffer.stream->format);
+    TRACE_HDRNET_EVENT("HdrNetStreamManipulator::ProcessHdrnetBuffer",
+                       "frame_number", result->frame_number(), "width",
+                       hdrnet_buffer.stream()->width, "height",
+                       hdrnet_buffer.stream()->height, "format",
+                       hdrnet_buffer.stream()->format);
     HdrNetStreamContext* stream_context =
-        GetHdrNetContextFromHdrNetStream(hdrnet_buffer.stream);
+        GetHdrNetContextFromHdrNetStream(hdrnet_buffer.stream());
     auto request_buffer_info =
         FindMatchingBufferInfo(&pending_request_buffers, stream_context);
     DCHECK(request_buffer_info != pending_request_buffers.end());
@@ -840,14 +838,12 @@ bool HdrNetStreamManipulator::ProcessCaptureResultOnGpuThread(
             : stream_context->shared_images[request_buffer_info->buffer_index];
     request_buffer_info->release_fence = stream_context->processor->Run(
         result->frame_number(), processor_config, image,
-        base::ScopedFD(hdrnet_buffer.release_fence), buffers_to_render,
+        base::ScopedFD(hdrnet_buffer.take_release_fence()), buffers_to_render,
         &hdrnet_metrics_);
 
-    OnBuffersRendered(result->frame_number(), stream_context,
-                      &(*request_buffer_info), &output_buffers_to_client);
+    OnBuffersRendered(*result, stream_context, &(*request_buffer_info));
   }
 
-  clean_up();
   return true;
 }
 
@@ -918,40 +914,33 @@ bool HdrNetStreamManipulator::FlushOnGpuThread() {
   return true;
 }
 
-void HdrNetStreamManipulator::ExtractHdrNetBuffersToProcess(
-    int frame_number,
-    base::span<const camera3_stream_buffer_t> raw_result_buffers,
-    std::vector<camera3_stream_buffer_t>* hdrnet_buffer_to_process,
-    std::vector<camera3_stream_buffer_t>* output_buffers_to_client) {
-  DCHECK(hdrnet_buffer_to_process);
-  DCHECK(output_buffers_to_client);
-  for (const auto& hal_result_buffer : raw_result_buffers) {
+std::vector<Camera3StreamBuffer>
+HdrNetStreamManipulator::ExtractHdrNetBuffersToProcess(
+    Camera3CaptureDescriptor& result) {
+  std::vector<Camera3StreamBuffer> hdrnet_buffer_to_process;
+
+  for (auto& hal_result_buffer : result.AcquireOutputBuffers()) {
     HdrNetStreamContext* hdrnet_stream_context =
-        GetHdrNetContextFromHdrNetStream(hal_result_buffer.stream);
+        GetHdrNetContextFromHdrNetStream(hal_result_buffer.stream());
     if (hdrnet_stream_context) {
-      hdrnet_buffer_to_process->push_back(hal_result_buffer);
+      hdrnet_buffer_to_process.push_back(std::move(hal_result_buffer));
       continue;
     }
 
     // The buffer is not a HDRnet buffer we added, but it may be a BLOB
     // buffer that a kAppendWithBlob HDRnet stream is associated with.
-    if (hal_result_buffer.stream->format == HAL_PIXEL_FORMAT_BLOB) {
+    if (hal_result_buffer.stream()->format == HAL_PIXEL_FORMAT_BLOB) {
       HdrNetStreamContext* associated_stream_context =
-          GetHdrNetContextFromRequestedStream(hal_result_buffer.stream);
+          GetHdrNetContextFromRequestedStream(hal_result_buffer.stream());
       HdrNetRequestBufferInfo* request_info =
-          GetBufferInfoWithPendingBlobStream(frame_number,
-                                             hal_result_buffer.stream);
+          GetBufferInfoWithPendingBlobStream(result.frame_number(),
+                                             hal_result_buffer.stream());
       if (associated_stream_context && request_info) {
         DCHECK_EQ(associated_stream_context->mode,
                   HdrNetStreamContext::Mode::kAppendWithBlob);
         still_capture_processor_->QueuePendingAppsSegments(
-            frame_number, *hal_result_buffer.buffer,
-            base::ScopedFD(hal_result_buffer.release_fence));
-        // TODO(kamesan): We have consumed |hal_result_buffer.release_fence|
-        // here but it's unclear to the caller of this function. Have a way to
-        // make it safer.
-        // This is safe now since we are not adding |hal_result_buffer| to
-        // |output_buffers_to_client| which will be set to the result.
+            result.frame_number(), *hal_result_buffer.buffer(),
+            base::ScopedFD(hal_result_buffer.take_release_fence()));
         request_info->blob_result_pending = false;
         continue;
       }
@@ -959,8 +948,10 @@ void HdrNetStreamManipulator::ExtractHdrNetBuffersToProcess(
 
     // Not a buffer that we added or depend on, so pass to the client
     // directly.
-    output_buffers_to_client->push_back(hal_result_buffer);
+    result.AppendOutputBuffer(std::move(hal_result_buffer));
   }
+
+  return hdrnet_buffer_to_process;
 }
 
 bool HdrNetStreamManipulator::GetBuffersToRender(
@@ -1037,13 +1028,11 @@ HdrNetConfig::Options HdrNetStreamManipulator::PrepareProcessorConfig(
 }
 
 void HdrNetStreamManipulator::OnBuffersRendered(
-    int frame_number,
+    Camera3CaptureDescriptor& result,
     HdrNetStreamContext* stream_context,
-    HdrNetRequestBufferInfo* request_buffer_info,
-    std::vector<camera3_stream_buffer_t>* output_buffers_to_client) {
+    HdrNetRequestBufferInfo* request_buffer_info) {
   DCHECK(stream_context);
   DCHECK(request_buffer_info);
-  DCHECK(output_buffers_to_client);
   switch (stream_context->mode) {
     case HdrNetStreamContext::Mode::kReplaceYuv:
       // Assign the release fence to all client-requested buffers the
@@ -1057,7 +1046,8 @@ void HdrNetStreamManipulator::OnBuffersRendered(
         }
         requested_buffer.release_fence =
             DupWithCloExec(request_buffer_info->release_fence.get()).release();
-        output_buffers_to_client->push_back(requested_buffer);
+        result.AppendOutputBuffer(
+            Camera3StreamBuffer::MakeResultOutput(requested_buffer));
       }
       request_buffer_info->client_requested_yuv_buffers.clear();
       break;
@@ -1066,7 +1056,7 @@ void HdrNetStreamManipulator::OnBuffersRendered(
       // The JPEG result buffer will be produced by
       // |still_capture_processor_| asynchronously.
       still_capture_processor_->QueuePendingYuvImage(
-          frame_number, *stream_context->still_capture_intermediate,
+          result.frame_number(), *stream_context->still_capture_intermediate,
           std::move(request_buffer_info->release_fence));
       request_buffer_info->blob_intermediate_yuv_pending = false;
       break;
@@ -1258,7 +1248,7 @@ HdrNetStreamManipulator::CreateHdrNetStreamContext(camera3_stream_t* requested,
 
 HdrNetStreamManipulator::HdrNetStreamContext*
 HdrNetStreamManipulator::GetHdrNetContextFromRequestedStream(
-    camera3_stream_t* requested) {
+    const camera3_stream_t* requested) {
   auto iter = request_stream_mapping_.find(requested);
   if (iter == request_stream_mapping_.end()) {
     return nullptr;
@@ -1268,7 +1258,7 @@ HdrNetStreamManipulator::GetHdrNetContextFromRequestedStream(
 
 HdrNetStreamManipulator::HdrNetStreamContext*
 HdrNetStreamManipulator::GetHdrNetContextFromHdrNetStream(
-    camera3_stream_t* hdrnet) {
+    const camera3_stream_t* hdrnet) {
   auto iter = result_stream_mapping_.find(hdrnet);
   if (iter == result_stream_mapping_.end()) {
     return nullptr;

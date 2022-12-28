@@ -19,6 +19,7 @@
 #include <base/timer/elapsed_timer.h>
 
 #include "common/camera_buffer_pool.h"
+#include "common/camera_hal3_helpers.h"
 #include "common/reloadable_config_file.h"
 #include "common/still_capture_processor.h"
 #include "cros-camera/camera_metrics.h"
@@ -122,10 +123,10 @@ class AutoFramingStreamManipulator : public StreamManipulator {
   bool SetUpPipelineOnThread(uint32_t target_aspect_ratio_x,
                              uint32_t target_aspect_ratio_y);
   bool ProcessFullFrameOnThread(CaptureContext* ctx,
-                                camera3_stream_buffer_t* full_frame_buffer,
+                                Camera3StreamBuffer full_frame_buffer,
                                 uint32_t frame_number);
   bool ProcessStillYuvOnThread(CaptureContext* ctx,
-                               camera3_stream_buffer_t* still_yuv_buffer,
+                               Camera3StreamBuffer still_yuv_buffer,
                                uint32_t frame_number);
   void ReturnStillCaptureResultOnThread(Camera3CaptureDescriptor result);
   void UpdateFaceRectangleMetadataOnThread(Camera3CaptureDescriptor* result);

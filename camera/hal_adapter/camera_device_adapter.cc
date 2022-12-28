@@ -10,6 +10,7 @@
 
 #include <algorithm>
 #include <cstring>
+#include <functional>
 #include <map>
 #include <memory>
 #include <set>
@@ -30,6 +31,7 @@
 #include <system/camera_metadata.h>
 
 #include "common/camera_buffer_handle.h"
+#include "common/camera_hal3_helpers.h"
 #include "cros-camera/camera_buffer_manager.h"
 #include "cros-camera/common.h"
 #include "cros-camera/future.h"
@@ -733,7 +735,7 @@ void CameraDeviceAdapter::ReturnResultToClient(
   TRACE_HAL_ADAPTER();
 
   if (!result_descriptor.has_metadata() &&
-      result_descriptor.GetInputBuffer() == nullptr &&
+      !result_descriptor.has_input_buffer() &&
       result_descriptor.num_output_buffers() == 0) {
     // Android camera framework doesn't accept empty capture results. Since ZSL
     // would remove the input buffer, output buffers and metadata it added, it's
@@ -744,23 +746,23 @@ void CameraDeviceAdapter::ReturnResultToClient(
 
   CameraDeviceAdapter* self = const_cast<CameraDeviceAdapter*>(
       static_cast<const CameraDeviceAdapter*>(ops));
-  camera3_stream_buffer_t in_buf = {};
   mojom::Camera3CaptureResultPtr result_ptr;
   {
     base::AutoLock reprocess_handles_lock(self->reprocess_handles_lock_);
-    const camera3_stream_buffer_t* input_buffer =
+    const Camera3StreamBuffer* input_buffer =
         result_descriptor.GetInputBuffer();
     if (input_buffer && !self->reprocess_handles_.empty() &&
-        *input_buffer->buffer == *self->reprocess_handles_.front()) {
-      in_buf = *input_buffer;
+        *(input_buffer->buffer()) == *self->reprocess_handles_.front()) {
+      std::optional<Camera3StreamBuffer> in_buf =
+          result_descriptor.AcquireInputBuffer();
       // Restore original input buffer
       base::AutoLock buffer_handles_lock(self->buffer_handles_lock_);
-      in_buf.buffer =
+      in_buf->mutable_raw_buffer().buffer =
           &self->buffer_handles_.at(self->input_buffer_handle_ids_.front())
                ->self;
+      result_descriptor.SetInputBuffer(std::move(in_buf.value()));
       self->reprocess_handles_.pop_front();
       self->input_buffer_handle_ids_.pop_front();
-      result_descriptor.SetInputBuffer(in_buf);
     }
   }
   {
@@ -773,7 +775,9 @@ void CameraDeviceAdapter::ReturnResultToClient(
       result_descriptor.AppendMetadata(it->second.getAndLock());
       self->reprocess_result_metadata_.erase(result_descriptor.frame_number());
     }
-    result_ptr = self->PrepareCaptureResult(result_descriptor.LockForResult());
+    camera3_capture_result_t* locked_result = result_descriptor.LockForResult();
+    result_ptr = self->PrepareCaptureResult(locked_result);
+    result_descriptor.Unlock();
   }
 
   base::AutoLock l(self->callback_ops_delegate_lock_);
@@ -1177,10 +1181,10 @@ void CameraDeviceAdapter::ReprocessEffectsOnReprocessEffectThread(
     std::unique_ptr<Camera3CaptureDescriptor> desc) {
   TRACE_HAL_ADAPTER();
 
-  DCHECK(desc->GetInputBuffer());
+  DCHECK(desc->has_input_buffer());
   DCHECK_GT(desc->num_output_buffers(), 0);
-  const camera3_stream_t* input_stream = desc->GetInputBuffer()->stream;
-  const camera3_stream_t* output_stream = desc->GetOutputBuffers()[0].stream;
+  const camera3_stream_t* input_stream = desc->GetInputBuffer()->stream();
+  const camera3_stream_t* output_stream = desc->GetOutputBuffers()[0].stream();
   // Here we assume reprocessing effects can provide only one output of the
   // same size and format as that of input. Invoke HAL reprocessing if more
   // outputs, scaling and/or format conversion are required since ISP

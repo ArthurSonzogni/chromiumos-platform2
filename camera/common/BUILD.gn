@@ -93,7 +93,6 @@ pkg_config("pkg_config_base") {
     "libsync",
     "libudev",
     "libyuv",
-    "perfetto",
   ]
 }
 
@@ -132,13 +131,29 @@ source_set("base") {
     "//camera/common/metadata_logger.cc",
     "//camera/common/reloadable_config_file.cc",
     "//camera/common/timezone.cc",
-    "//camera/common/tracing.cc",
     "//camera/common/udev_watcher.cc",
     "//camera/common/utils/camera_config_impl.cc",
     "//camera/common/vendor_tag_manager.cc",
   ]
   public_configs = [
     ":pkg_config_base",
+    ":target_defaults",
+  ]
+
+  deps = [ ":tracing" ]
+
+  # -fPIC needed by the libcros_camera.so shared library.
+  configs += [ "//common-mk:pic" ]
+}
+
+pkg_config("pkg_config_tracing") {
+  pkg_deps = [ "perfetto" ]
+}
+
+source_set("tracing") {
+  sources = [ "//camera/common/tracing.cc" ]
+  public_configs = [
+    ":pkg_config_tracing",
     ":target_defaults",
   ]
 
@@ -319,6 +334,7 @@ shared_library("libcros_camera") {
     ":mojo_base",
     ":privacy_shutter",
     ":stream_manipulator",
+    ":tracing",
     ":v4l2_device",
     "//camera/features",
     "//camera/features/rotate_and_crop",
@@ -403,6 +419,7 @@ if (use.test) {
       "//camera/common/camera_hal3_helpers_test.cc",
     ]
     configs += [ ":target_defaults_test" ]
+    deps = [ ":tracing" ]
     run_test = true
   }
 

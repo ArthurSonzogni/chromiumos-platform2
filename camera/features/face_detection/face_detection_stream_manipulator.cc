@@ -8,8 +8,11 @@
 
 #include <algorithm>
 #include <utility>
-#include "common/camera_hal3_helpers.h"
 
+#include <base/functional/callback_helpers.h>
+
+#include "common/camera_hal3_helpers.h"
+#include "common/stream_manipulator.h"
 #include "cros-camera/cros_camera_hal.h"
 #include "features/face_detection/tracing.h"
 
@@ -120,7 +123,7 @@ bool FaceDetectionStreamManipulator::ProcessCaptureRequest(
   if (!options_.enable) {
     return true;
   }
-  if (request->GetInputBuffer() != nullptr) {
+  if (request->has_input_buffer()) {
     // Skip reprocessing requests.
     return true;
   }
@@ -163,20 +166,16 @@ bool FaceDetectionStreamManipulator::ProcessCaptureResult(
     return true;
   }
 
-  auto output_buffers = result.GetMutableOutputBuffers();
   if (result.frame_number() % options_.fd_frame_interval == 0 &&
       result.num_output_buffers() > 0) {
-    auto* buffer = SelectFaceDetectionBuffer(output_buffers);
-    if (buffer) {
-      if (!WaitOnAndClearReleaseFence(*buffer, kSyncWaitTimeoutMs)) {
-        LOGF(ERROR) << "Timed out waiting for detection buffer";
-        return false;
-      }
-      face_detector_->DetectAsync(
-          *(buffer->buffer), active_array_dimension_,
-          base::BindOnce(&FaceDetectionStreamManipulator::OnFaceDetected,
-                         base::Unretained(this), result.frame_number()));
+    buffer_handle_t buffer = SelectFaceDetectionBuffer(result);
+    if (!buffer) {
+      return false;
     }
+    face_detector_->DetectAsync(
+        buffer, active_array_dimension_,
+        base::BindOnce(&FaceDetectionStreamManipulator::OnFaceDetected,
+                       base::Unretained(this), result.frame_number()));
   }
 
   base::AutoLock lock(lock_);
@@ -230,9 +229,8 @@ bool FaceDetectionStreamManipulator::Flush() {
   return true;
 }
 
-camera3_stream_buffer_t*
-FaceDetectionStreamManipulator::SelectFaceDetectionBuffer(
-    base::span<camera3_stream_buffer_t> output_buffers) {
+buffer_handle_t FaceDetectionStreamManipulator::SelectFaceDetectionBuffer(
+    Camera3CaptureDescriptor& result) {
   TRACE_FACE_DETECTION();
 
   auto is_larger_or_closer_to_native_aspect_ratio =
@@ -254,10 +252,11 @@ FaceDetectionStreamManipulator::SelectFaceDetectionBuffer(
            std::abs(rhs_aspect_ratio - active_aspect_ratio);
   };
 
-  camera3_stream_buffer_t* ret = nullptr;
+  Camera3StreamBuffer* fd_buf = nullptr;
+  auto output_buffers = result.GetMutableOutputBuffers();
 
   for (auto& b : output_buffers) {
-    const auto* s = b.stream;
+    const auto* s = b.stream();
     if (s->stream_type != CAMERA3_STREAM_OUTPUT) {
       continue;
     }
@@ -276,21 +275,26 @@ FaceDetectionStreamManipulator::SelectFaceDetectionBuffer(
       // Pick a buffer for AE controller. This is a heuristic and shouldn't
       // matter for the majority of the time, as for most cases the requested
       // streams would have the same aspect ratio.
-      if (!ret || is_larger_or_closer_to_native_aspect_ratio(s, ret->stream)) {
-        ret = &b;
+      if (!fd_buf ||
+          is_larger_or_closer_to_native_aspect_ratio(s, fd_buf->stream())) {
+        fd_buf = &b;
       }
     }
   }
 
-  if (ret) {
-    VLOGF(1) << "YUV stream for CrOS Face Detection processing: "
-             << GetDebugString(ret->stream);
-  } else {
+  if (!fd_buf) {
     LOGF(WARNING)
         << "No YUV stream suitable for CrOS Face Detection processing";
+    return nullptr;
   }
 
-  return ret;
+  VLOGF(1) << "YUV stream for CrOS Face Detection processing: "
+           << GetDebugString(fd_buf->stream());
+  if (!fd_buf->WaitOnAndClearReleaseFence(kSyncWaitTimeoutMs)) {
+    LOGF(ERROR) << "Timed out waiting for detection buffer";
+    return nullptr;
+  }
+  return *(fd_buf->buffer());
 }
 
 void FaceDetectionStreamManipulator::RecordClientRequestSettings(

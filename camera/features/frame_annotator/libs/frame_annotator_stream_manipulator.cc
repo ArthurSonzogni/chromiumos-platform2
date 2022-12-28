@@ -221,10 +221,10 @@ bool FrameAnnotatorStreamManipulator::ProcessCaptureResultOnGpuThread(
   }
 
   for (auto& b : result->GetMutableOutputBuffers()) {
-    if (b.stream != yuv_stream_) {
+    if (b.stream() != yuv_stream_) {
       continue;
     }
-    if (b.status == CAMERA3_BUFFER_STATUS_ERROR) {
+    if (b.status() == CAMERA3_BUFFER_STATUS_ERROR) {
       continue;
     }
     bool res = PlotOnGpuThread(b);
@@ -261,17 +261,17 @@ bool FrameAnnotatorStreamManipulator::SetUpContextsOnGpuThread() {
 }
 
 bool FrameAnnotatorStreamManipulator::PlotOnGpuThread(
-    camera3_stream_buffer_t& buffer) {
+    Camera3StreamBuffer& buffer) {
   DCHECK(gpu_thread_.IsCurrentThread());
 
-  if (!WaitOnAndClearReleaseFence(buffer, kSyncWaitTimeoutMs)) {
+  if (!buffer.WaitOnAndClearReleaseFence(kSyncWaitTimeoutMs)) {
     LOGF(ERROR) << "Timed out waiting for input buffer";
     return false;
   }
 
   // Convert SharedImage to SkImage and create a SkCanvas.
   auto image = SharedImage::CreateFromBuffer(
-      *buffer.buffer, Texture2D::Target::kTarget2D, true);
+      *buffer.buffer(), Texture2D::Target::kTarget2D, true);
   auto sk_image = SkImage::MakeFromYUVATextures(gr_context_.get(),
                                                 ConvertToGrTextures(image));
   auto surface = SkSurface::MakeRenderTarget(
@@ -287,11 +287,11 @@ bool FrameAnnotatorStreamManipulator::PlotOnGpuThread(
     }
   }
   if (surface_need_flush) {
-    FlushSkSurfaceToBuffer(surface.get(), *buffer.buffer);
+    FlushSkSurfaceToBuffer(surface.get(), *buffer.buffer());
   }
 
-  DCHECK_EQ(buffer.acquire_fence, -1);
-  buffer.status = CAMERA3_BUFFER_STATUS_OK;
+  DCHECK_EQ(buffer.acquire_fence(), -1);
+  buffer.mutable_raw_buffer().status = CAMERA3_BUFFER_STATUS_OK;
   return true;
 }
 

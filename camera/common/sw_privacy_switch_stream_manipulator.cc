@@ -106,28 +106,29 @@ bool SWPrivacySwitchStreamManipulator::ProcessCaptureResult(
 
   for (auto& buffer : result.GetMutableOutputBuffers()) {
     constexpr int kSyncWaitTimeoutMs = 300;
-    if (!WaitOnAndClearReleaseFence(buffer, kSyncWaitTimeoutMs)) {
+    if (!buffer.WaitOnAndClearReleaseFence(kSyncWaitTimeoutMs)) {
       LOGF(ERROR) << "Timed out waiting for acquiring output buffer";
-      buffer.status = CAMERA3_BUFFER_STATUS_ERROR;
-      NotifyBufferError(result.frame_number(), buffer.stream);
+      buffer.mutable_raw_buffer().status = CAMERA3_BUFFER_STATUS_ERROR;
+      NotifyBufferError(result.frame_number(),
+                        buffer.mutable_raw_buffer().stream);
       continue;
     }
     // Try GPU painting first, and fall back to CPU painting if failed.
     if (black_frame_image_.IsValid() &&
-        buffer.stream->format == HAL_PIXEL_FORMAT_YCbCr_420_888) {
+        buffer.stream()->format == HAL_PIXEL_FORMAT_YCbCr_420_888) {
       std::optional<base::ScopedFD> fence;
       gpu_resources_->PostGpuTaskSync(
           FROM_HERE,
           base::BindOnce(
               &SWPrivacySwitchStreamManipulator::RedactNV12FrameOnGpu,
-              base::Unretained(this), *buffer.buffer),
+              base::Unretained(this), *buffer.buffer()),
           &fence);
       if (fence.has_value()) {
-        buffer.release_fence = fence->release();
+        buffer.mutable_raw_buffer().release_fence = fence->release();
         continue;
       }
     }
-    buffer_handle_t handle = *buffer.buffer;
+    buffer_handle_t handle = *buffer.buffer();
     auto mapping = ScopedMapping(handle);
     bool buffer_cleared = false;
     if (mapping.is_valid()) {
@@ -138,7 +139,7 @@ bool SWPrivacySwitchStreamManipulator::ProcessCaptureResult(
           break;
         case DRM_FORMAT_R8:  // JPEG.
           buffer_cleared = RedactJpegFrame(
-              handle, mapping, buffer.stream->width, buffer.stream->height);
+              handle, mapping, buffer.stream()->width, buffer.stream()->height);
           break;
         default:
           FillInFrameWithZeros(mapping);
@@ -149,11 +150,12 @@ bool SWPrivacySwitchStreamManipulator::ProcessCaptureResult(
     }
     if (!buffer_cleared) {
       LOGF(ERROR) << "Failed to clear the buffer:"
-                  << " hal_pixel_format = " << buffer.stream->format
-                  << ", width = " << buffer.stream->width
-                  << ", height = " << buffer.stream->height;
-      buffer.status = CAMERA3_BUFFER_STATUS_ERROR;
-      NotifyBufferError(result.frame_number(), buffer.stream);
+                  << " hal_pixel_format = " << buffer.stream()->format
+                  << ", width = " << buffer.stream()->width
+                  << ", height = " << buffer.stream()->height;
+      buffer.mutable_raw_buffer().status = CAMERA3_BUFFER_STATUS_ERROR;
+      NotifyBufferError(result.frame_number(),
+                        buffer.mutable_raw_buffer().stream);
     }
   }
 

@@ -18,6 +18,7 @@
 #include <absl/status/status.h>
 
 #include "common/camera_buffer_pool.h"
+#include "common/camera_hal3_helpers.h"
 #include "common/metadata_logger.h"
 #include "common/reloadable_config_file.h"
 #include "cros-camera/camera_thread.h"
@@ -77,8 +78,8 @@ class EffectsStreamManipulator : public StreamManipulator {
   void RGBAToNV12(GLuint texture, uint32_t width, uint32_t height);
   void CreatePipeline(const base::FilePath& dlc_root_path);
   std::optional<int64_t> TryGetSensorTimestamp(Camera3CaptureDescriptor* desc);
-  camera3_stream_buffer_t* SelectEffectsBuffer(
-      base::span<camera3_stream_buffer_t> output_buffers);
+  std::optional<Camera3StreamBuffer> SelectEffectsBuffer(
+      Camera3CaptureDescriptor& result);
 
   ReloadableConfigFile config_;
   Options options_;

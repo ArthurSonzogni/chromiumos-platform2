@@ -6,10 +6,13 @@
 
 #include "common/camera_hal3_helpers.h"
 
+#include <utility>
+
 #include <base/at_exit.h>
 #include <base/json/json_reader.h>
 #include <camera/camera_metadata.h>
 #include <gtest/gtest.h>
+#include <optional>
 
 #include "cros-camera/common.h"
 #include "cros-camera/tracing.h"
@@ -230,22 +233,20 @@ TEST(Camera3CaptureDescriptor, BasicCaptureRequestCorrectnessTest) {
     // Use a fake stream pointer as cookie for test.
     camera3_stream_t* kFakeStreamPtr =
         reinterpret_cast<camera3_stream_t*>(0xbeef);
-    desc.SetInputBuffer(camera3_stream_buffer_t{.stream = kFakeStreamPtr});
-    EXPECT_EQ(desc.GetInputBuffer()->stream, kFakeStreamPtr);
+    desc.SetInputBuffer(
+        Camera3StreamBuffer::MakeRequestInput({.stream = kFakeStreamPtr}));
+    EXPECT_EQ(desc.GetInputBuffer()->stream(), kFakeStreamPtr);
   }
 
   // There should be two output buffers initially, and we should be able to add
   // a new output buffer.
   {
-    base::span<const camera3_stream_buffer_t> output_buffers =
-        desc.GetOutputBuffers();
+    std::vector<Camera3StreamBuffer> output_buffers =
+        desc.AcquireOutputBuffers();
     EXPECT_EQ(output_buffers.size(), 2);
-    std::vector<camera3_stream_buffer_t> modified_output_buffers{
-        output_buffers.begin(), output_buffers.end()};
-    modified_output_buffers.emplace_back();
-    desc.SetOutputBuffers(modified_output_buffers);
-    output_buffers = desc.GetOutputBuffers();
-    EXPECT_EQ(output_buffers.size(), 3);
+    output_buffers.emplace_back();
+    desc.SetOutputBuffers(std::move(output_buffers));
+    EXPECT_EQ(desc.GetOutputBuffers().size(), 3);
   }
 
   // There should exists faces array, but with zero size, and no landmarks are
@@ -346,22 +347,20 @@ TEST(Camera3CaptureDescriptor, BasicCaptureResultCorrectnessTest) {
   // an input buffer.
   {
     EXPECT_EQ(desc.GetInputBuffer(), nullptr);
-    desc.SetInputBuffer(camera3_stream_buffer_t());
+    desc.SetInputBuffer(
+        Camera3StreamBuffer::MakeResultInput(camera3_stream_buffer_t()));
     EXPECT_NE(desc.GetInputBuffer(), nullptr);
   }
 
   // There should be two output buffers initially, and we should be able to add
   // a new output buffer.
   {
-    base::span<const camera3_stream_buffer_t> output_buffers =
-        desc.GetOutputBuffers();
+    std::vector<Camera3StreamBuffer> output_buffers =
+        desc.AcquireOutputBuffers();
     EXPECT_EQ(output_buffers.size(), 2);
-    std::vector<camera3_stream_buffer_t> modified_output_buffers{
-        output_buffers.begin(), output_buffers.end()};
-    modified_output_buffers.emplace_back();
-    desc.SetOutputBuffers(modified_output_buffers);
-    output_buffers = desc.GetOutputBuffers();
-    EXPECT_EQ(output_buffers.size(), 3);
+    output_buffers.emplace_back();
+    desc.SetOutputBuffers(std::move(output_buffers));
+    EXPECT_EQ(desc.GetOutputBuffers().size(), 3);
   }
 
   // Finally the locked camera3_capture_result_t should reflect all the changes
@@ -428,7 +427,7 @@ TEST(Camera3CaptureDescriptor, ToJsonStringTest) {
   EXPECT_EQ(result.frame_number, dict_view.FindInt("frame_number").value());
   EXPECT_EQ(result.num_output_buffers,
             dict_view.FindList("output_buffers")->size());
-  EXPECT_TRUE(dict_view.FindDict("input_buffer")->empty());
+  EXPECT_EQ(dict_view.FindDict("input_buffer"), nullptr);
   EXPECT_EQ(result.partial_result, dict_view.FindInt("partial_result"));
 }
 
