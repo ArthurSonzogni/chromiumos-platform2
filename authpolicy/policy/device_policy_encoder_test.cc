@@ -782,6 +782,9 @@ TEST_F(DevicePolicyEncoderTest, TestEncoding) {
   EXPECT_EQ(em::KeyboardBacklightColorProto_BacklightColor_BACKLIGHT_RED,
             policy.keyboard_backlight_color().color());
 
+  EncodeBoolean(&policy, key::kDeviceHindiInscriptLayoutEnabled, kBool);
+  EXPECT_EQ(kBool, policy.device_hindi_inscript_layout_enabled().enabled());
+
   //
   // Check whether all device policies have been handled.
   //

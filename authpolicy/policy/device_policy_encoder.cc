@@ -1108,6 +1108,11 @@ void DevicePolicyEncoder::EncodeGenericPolicies(
     policy->mutable_keyboard_backlight_color()->set_color(
         static_cast<em::KeyboardBacklightColorProto::BacklightColor>(
             value.value()));
+
+  if (std::optional<bool> value =
+          EncodeBoolean(key::kDeviceHindiInscriptLayoutEnabled))
+    policy->mutable_device_hindi_inscript_layout_enabled()->set_enabled(
+        value.value());
 }
 
 std::optional<bool> DevicePolicyEncoder::EncodeBoolean(
