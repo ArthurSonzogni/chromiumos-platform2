@@ -26,7 +26,7 @@ constexpr base::TimeDelta kDBusInitializationDelay = base::Seconds(1);
 }
 
 namespace Logging {
-static auto kModuleLogScope = ScopeLogger::kDBus;
+static auto kModuleLogScope = ScopeLogger::kBluetooth;
 }  // namespace Logging
 
 BluetoothManagerProxy::BluetoothManagerProxy(

@@ -75,7 +75,7 @@ const char* BTProfiletoString(BluetoothManagerInterface::BTProfile profile) {
 }  // namespace
 
 namespace Logging {
-static auto kModuleLogScope = ScopeLogger::kDBus;
+static auto kModuleLogScope = ScopeLogger::kBluetooth;
 }  // namespace Logging
 
 BluetoothAdapterProxy::BluetoothAdapterProxy(

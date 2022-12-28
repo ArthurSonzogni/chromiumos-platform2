@@ -18,7 +18,7 @@
 namespace shill {
 
 namespace Logging {
-static auto kModuleLogScope = ScopeLogger::kDBus;
+static auto kModuleLogScope = ScopeLogger::kBluetooth;
 }  // namespace Logging
 
 namespace {
