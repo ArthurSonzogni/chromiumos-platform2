@@ -91,17 +91,6 @@ constexpr bool IsFactorTypeSupportedByBothUssAndVk(
          auth_factor_type == AuthFactorType::kKiosk;
 }
 
-bool AreAllFactorsSupportedByBothVkAndUss(
-    const AuthFactorMap& auth_factor_map) {
-  for (AuthFactorMap::ValueView stored_auth_factor : auth_factor_map) {
-    if (!IsFactorTypeSupportedByBothUssAndVk(
-            stored_auth_factor.auth_factor().type())) {
-      return false;
-    }
-  }
-  return true;
-}
-
 constexpr base::StringPiece IntentToDebugString(AuthIntent intent) {
   switch (intent) {
     case AuthIntent::kDecrypt:
@@ -316,12 +305,6 @@ CryptohomeStatus AuthSession::Initialize() {
     migrate_to_user_secret_stash_ =
         feature_lib_->IsEnabledBlocking(kCrOSLateBootMigrateToUserSecretStash);
   }
-
-  // As soon as the user has at least one USS-only factor, backup VKs shouldn't
-  // be created anymore (otherwise some operations, like updating a VK-supported
-  // factor after authenticating via a USS-only factor, would be impossible).
-  enable_create_backup_vk_with_uss_ =
-      AreAllFactorsSupportedByBothVkAndUss(auth_factor_map_);
 
   auth_factor_map_.ReportAuthFactorBackingStoreMetrics();
   RecordAuthSessionStart();
@@ -2409,12 +2392,9 @@ CryptohomeStatus AuthSession::PersistAuthFactorToUserSecretStashImpl(
         .Wrap(std::move(status));
   }
 
-  // Generate and persist the backup (or migrated) VaultKeyset. This is skipped
-  // if at least one factor (including the just-added one) is USS-only.
-  if (!IsFactorTypeSupportedByBothUssAndVk(auth_factor_type)) {
-    enable_create_backup_vk_with_uss_ = false;
-  }
-  if (enable_create_backup_vk_with_uss_) {
+  // Generate and persist the backup (or migrated) VaultKeyset.
+  if (enable_create_backup_vk_with_uss_ &&
+      IsFactorTypeSupportedByBothUssAndVk(auth_factor_type)) {
     // Clobbering is on by default, so if USS&AuthFactor is added for migration
     // this will convert a regular VaultKeyset to a backup VaultKeyset.
     status = AddVaultKeyset(key_data, /*is_initial_keyset=*/
