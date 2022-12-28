@@ -41,7 +41,7 @@ class CameraTool {
     for (const auto& camera : cameras) {
       base::Value::Dict node;
       if (camera.eeprom) {
-        node.Set("name", camera.sysfs_name);
+        node.Set("sysfs_name", camera.sysfs_name);
         node.Set("module_id", camera.module_id());
         node.Set("sensor_id", camera.sensor_id());
       } else {
