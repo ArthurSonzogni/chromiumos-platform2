@@ -245,8 +245,10 @@ std::unique_ptr<FirmwareIndex> ParseFirmwareManifestV2(
     const base::FilePath& manifest,
     std::map<std::string, Dlc>& dlc_per_variant) {
   FirmwareManifestV2 manifest_proto;
-  if (!brillo::ReadTextProtobuf(manifest, &manifest_proto))
+  if (!brillo::ReadTextProtobuf(manifest, &manifest_proto)) {
+    PLOG(ERROR) << "Failed to read manifest file";
     return nullptr;
+  }
 
   FirmwareIndex index;
   for (const Device& device : manifest_proto.device()) {
