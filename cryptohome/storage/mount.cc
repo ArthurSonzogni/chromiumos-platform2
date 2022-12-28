@@ -389,7 +389,8 @@ bool Mount::PerformMigration(const MigrationHelper::ProgressCallback& callback,
                              const base::FilePath& status_files_dir,
                              MigrationType migration_type) {
   constexpr uint64_t kMaxChunkSize = 128 * 1024 * 1024;
-  DircryptoMigrationHelperDelegate delegate(migration_type);
+  DircryptoMigrationHelperDelegate delegate(platform_, destination,
+                                            migration_type);
   MigrationHelper migrator(platform_, &delegate, source, destination,
                            status_files_dir, kMaxChunkSize);
 

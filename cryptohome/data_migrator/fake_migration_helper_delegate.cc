@@ -45,6 +45,10 @@ bool FakeMigrationHelperDelegate::ShouldCopyQuotaProjectId() {
   return true;
 }
 
+bool FakeMigrationHelperDelegate::ShouldSkipFileOnIOErrors() {
+  return true;
+}
+
 std::string FakeMigrationHelperDelegate::GetMtimeXattrName() {
   return kMtimeXattrName;
 }

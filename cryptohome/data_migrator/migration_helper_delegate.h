@@ -38,6 +38,13 @@ class BRILLO_EXPORT MigrationHelperDelegate {
   // Returns whether MigrationHelper should copy quota project ID.
   virtual bool ShouldCopyQuotaProjectId() = 0;
 
+  // Returns true if MigrationHelper should skip migrating a file when it
+  // encounters EIO on opening the file. If this returns true,
+  // RecordSkippedFile() is called with the name of the file that failed to open
+  // with EIO. Returning false means that the EIO failure causes the entire
+  // migration to fail.
+  virtual bool ShouldSkipFileOnIOErrors() { return false; }
+
   // Returns names of xattr to temporarily store mtime/atime of the files during
   // the migration.
   virtual std::string GetMtimeXattrName() = 0;
@@ -53,6 +60,10 @@ class BRILLO_EXPORT MigrationHelperDelegate {
   // Returns the name of xattr in the migration destination that corresponds to
   // the xattr |name| in the migration source.
   virtual std::string ConvertXattrName(const std::string& name) { return name; }
+
+  // Records the name of a file that is skipped during the migration due to file
+  // IO error on opening it. |path| is a relative path from migration source.
+  virtual void RecordSkippedFile(const base::FilePath& path) {}
 
   // Reports the current time as the migration start time.
   virtual void ReportStartTime() {}

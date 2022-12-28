@@ -8,24 +8,36 @@
 #include <gtest/gtest.h>
 
 #include "cryptohome/migration_type.h"
+#include "cryptohome/platform.h"
 
 using base::FilePath;
 
 namespace cryptohome {
 
+namespace {
+
+constexpr char kToDir[] = "/home/.shadow/deadbeef/mount";
+
+}  // namespace
+
 class DircryptoMigrationHelperDelegateTest : public ::testing::Test {
  public:
-  DircryptoMigrationHelperDelegateTest() = default;
+  DircryptoMigrationHelperDelegateTest() : to_dir_(kToDir) {}
   virtual ~DircryptoMigrationHelperDelegateTest() = default;
 
   DircryptoMigrationHelperDelegateTest(
       const DircryptoMigrationHelperDelegateTest&) = delete;
   DircryptoMigrationHelperDelegateTest& operator=(
       const DircryptoMigrationHelperDelegateTest&) = delete;
+
+ protected:
+  Platform platform_;
+  base::FilePath to_dir_;
 };
 
 TEST_F(DircryptoMigrationHelperDelegateTest, ShouldMigrateFile_FullMigration) {
-  DircryptoMigrationHelperDelegate delegate(MigrationType::FULL);
+  DircryptoMigrationHelperDelegate delegate(&platform_, to_dir_,
+                                            MigrationType::FULL);
 
   EXPECT_TRUE(delegate.ShouldMigrateFile(FilePath("user/GCache/v1")));
   EXPECT_FALSE(delegate.ShouldMigrateFile(FilePath("user/GCache/v1/tmp")));
@@ -33,7 +45,8 @@ TEST_F(DircryptoMigrationHelperDelegateTest, ShouldMigrateFile_FullMigration) {
 
 TEST_F(DircryptoMigrationHelperDelegateTest,
        ShouldMigrateFile_MinimalMigration) {
-  DircryptoMigrationHelperDelegate delegate(MigrationType::MINIMAL);
+  DircryptoMigrationHelperDelegate delegate(&platform_, to_dir_,
+                                            MigrationType::MINIMAL);
 
   // Parent path of allowlisted paths is migrated.
   EXPECT_TRUE(delegate.ShouldMigrateFile(FilePath("user")));

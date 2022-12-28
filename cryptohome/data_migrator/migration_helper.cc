@@ -37,6 +37,9 @@ namespace cryptohome::data_migrator {
 
 namespace {
 
+// The name of the file to be created to mark the start of the migration.
+// NOTE: The file name contains 'crypto' for a historical reason, while this
+// tool is used for for other types of migration (e.g., ARCVM /data migration).
 constexpr char kMigrationStartedFileName[] = "crypto-migration.started";
 // Expected maximum erasure block size on devices (4MB).
 constexpr uint64_t kErasureBlockSize = 4 << 20;
@@ -111,9 +114,6 @@ class MigrationStartAndEndStatusReporter {
 
 }  // namespace
 
-// A file to store a list of files skipped during migration.  This lives in
-// root/ of the destination directory so that it is encrypted.
-const char kSkippedFileListFileName[] = "root/crypto-migration.files-skipped";
 // {Source,Referrer}URL xattrs are from chrome downloads and are not used on
 // ChromeOS.  They may be very large though, potentially preventing the
 // migration of other attributes.
@@ -291,7 +291,6 @@ MigrationHelper::~MigrationHelper() {}
 
 bool MigrationHelper::Migrate(const ProgressCallback& progress_callback) {
   base::ElapsedTimer timer;
-  skipped_file_list_path_ = to_base_path_.Append(kSkippedFileListFileName);
   const bool resumed = IsMigrationStarted();
   MigrationStartAndEndStatusReporter status_reporter(delegate_, resumed,
                                                      is_cancelled_);
@@ -576,15 +575,13 @@ bool MigrationHelper::MigrateFile(const base::FilePath& child,
       &from_file, from_child,
       base::File::FLAG_OPEN | base::File::FLAG_READ | base::File::FLAG_WRITE);
   if (!from_file.IsValid()) {
-    if (from_file.error_details() == base::File::FILE_ERROR_IO) {
-      // b/37444422 causes IO errors when opening this file in some cases.  User
-      // had a unreadable file, skipping this file means user will no longer
-      // have a file but not worse off.
+    if (from_file.error_details() == base::File::FILE_ERROR_IO &&
+        delegate_->ShouldSkipFileOnIOErrors()) {
       LOG(WARNING) << "Found file that cannot be opened with EIO, skipping "
                    << from_child.value();
       RecordFileError(kMigrationFailedAtOpenSourceFileNonFatal, child,
                       from_file.error_details());
-      RecordSkippedFile(child);
+      delegate_->RecordSkippedFile(child);
       return true;
     }
     PLOG(ERROR) << "Failed to open file " << from_child.value();
@@ -903,44 +900,6 @@ void MigrationHelper::RecordFileError(MigrationFailedOperationType operation,
 void MigrationHelper::RecordFileErrorWithCurrentErrno(
     MigrationFailedOperationType operation, const base::FilePath& child) {
   RecordFileError(operation, child, base::File::OSErrorToFileError(errno));
-}
-
-void MigrationHelper::RecordSkippedFile(const base::FilePath& rel_path) {
-  base::File skipped_file_list;
-  platform_->InitializeFile(
-      &skipped_file_list, skipped_file_list_path_,
-      base::File::FLAG_OPEN_ALWAYS | base::File::FLAG_APPEND);
-  if (!skipped_file_list.IsValid()) {
-    PLOG(ERROR) << "Could not open list of skipped files at"
-                << skipped_file_list_path_.value() << ", " << rel_path.value()
-                << " not added";
-    return;
-  }
-  if (!platform_->LockFile(skipped_file_list.GetPlatformFile())) {
-    PLOG(ERROR) << "Failed to lock " << skipped_file_list_path_.value();
-    return;
-  }
-  std::string data = rel_path.value() + "\n";
-  int write_size = data.size();
-  // O_APPEND was used to open, so write is always done at the end of the file
-  // even without seek.
-  if (write_size !=
-      skipped_file_list.WriteAtCurrentPos(data.data(), write_size)) {
-    PLOG(ERROR) << "Failed to write " << rel_path.value()
-                << " to the list of skipped files";
-    return;
-  }
-  if (!skipped_file_list.Flush()) {
-    PLOG(ERROR) << "Failed to flush " << rel_path.value()
-                << " to the list of skipped files";
-  }
-  if (skipped_file_list.created()) {
-    // Sync the parent directory to persist the file.
-    if (!platform_->SyncDirectory(skipped_file_list_path_.DirName()))
-      PLOG(ERROR) << "Failed to sync parent directory when creating list of "
-                     "skipped files "
-                  << skipped_file_list_path_.value();
-  }
 }
 
 bool MigrationHelper::ProcessJob(const Job& job) {

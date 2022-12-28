@@ -155,8 +155,6 @@ class BRILLO_EXPORT MigrationHelper {
                        base::File::Error error);
   void RecordFileErrorWithCurrentErrno(MigrationFailedOperationType operation,
                                        const base::FilePath& child);
-  // Records the fact that the file at |rel_path| was skipped during migration.
-  void RecordSkippedFile(const base::FilePath& rel_path);
 
   // Processes the job.
   // Must be called on a job thread.
@@ -196,8 +194,6 @@ class BRILLO_EXPORT MigrationHelper {
   base::TimeTicks next_report_;
   // Lock for migrated_byte_count_ and next_report_.
   base::Lock migrated_byte_count_lock_;
-
-  base::FilePath skipped_file_list_path_;
 
   MigrationFailedOperationType failed_operation_type_;
   base::File::Error failed_error_type_;

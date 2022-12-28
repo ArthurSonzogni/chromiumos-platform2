@@ -847,7 +847,6 @@ TEST_F(MigrationHelperTest, SkipInvalidSQLiteFiles) {
       "databases/playlog.db-shm";
   const FilePath kFromSQLiteShm = from_dir_.Append(kCorruptedFilePath);
   const FilePath kToSQLiteShm = to_dir_.Append(kCorruptedFilePath);
-  const FilePath kSkippedFileLog = to_dir_.Append(kSkippedFileListFileName);
   ASSERT_TRUE(platform_.CreateDirectory(kFromSQLiteShm.DirName()));
   ASSERT_TRUE(platform_.TouchFileDurable(kFromSQLiteShm));
   EXPECT_CALL(platform_, InitializeFile(_, _, _)).WillRepeatedly(DoDefault());
@@ -862,10 +861,6 @@ TEST_F(MigrationHelperTest, SkipInvalidSQLiteFiles) {
   EXPECT_TRUE(platform_.DirectoryExists(kToSQLiteShm.DirName()));
   EXPECT_FALSE(platform_.FileExists(kToSQLiteShm));
   EXPECT_FALSE(platform_.FileExists(kFromSQLiteShm));
-  EXPECT_TRUE(platform_.FileExists(kSkippedFileLog));
-  std::string contents;
-  ASSERT_TRUE(platform_.ReadFileToString(kSkippedFileLog, &contents));
-  EXPECT_EQ(std::string(kCorruptedFilePath) + "\n", contents);
 }
 
 TEST_F(MigrationHelperTest, AllJobThreadsFailing) {
