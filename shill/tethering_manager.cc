@@ -80,7 +80,7 @@ TetheringManager::~TetheringManager() = default;
 
 void TetheringManager::ResetConfiguration() {
   auto_disable_ = true;
-  upstream_technology_ = Technology::kUnknown;
+  upstream_technology_ = Technology::kCellular;
   std::string hex_ssid;
   std::string passphrase;
 
@@ -140,10 +140,9 @@ bool TetheringManager::ToProperties(KeyValueStore* properties) const {
     properties->Set<std::string>(kTetheringConfBandProperty,
                                  WiFiBandName(band_));
   }
-  if (upstream_technology_ != Technology::kUnknown) {
-    properties->Set<std::string>(kTetheringConfUpstreamTechProperty,
-                                 TechnologyName(upstream_technology_));
-  }
+
+  properties->Set<std::string>(kTetheringConfUpstreamTechProperty,
+                               TechnologyName(upstream_technology_));
 
   return true;
 }
@@ -199,8 +198,7 @@ bool TetheringManager::FromProperties(const KeyValueStore& properties) {
     tech = TechnologyFromName(
         properties.Get<std::string>(kTetheringConfUpstreamTechProperty));
     // TODO(b/235762746) Add support for WiFi as an upstream technology.
-    if (tech != Technology::kUnknown && tech != Technology::kEthernet &&
-        tech != Technology::kCellular) {
+    if (tech != Technology::kEthernet && tech != Technology::kCellular) {
       LOG(ERROR) << "Invalid upstream technology provided in tethering config: "
                  << tech;
       return false;
@@ -541,15 +539,8 @@ void TetheringManager::CheckReadiness(
   // TODO(b/235762746) Add a selection mode for choosing the current default
   // network as the upstream network.
 
-  Technology upstream_technology = upstream_technology_;
-  // Select Cellular for the upstream network by default if the upstream
-  // technology has not been specified.
-  if (upstream_technology == Technology::kUnknown) {
-    upstream_technology = Technology::kCellular;
-  }
-
   // Validate the upstream technology.
-  switch (upstream_technology) {
+  switch (upstream_technology_) {
     // Valid upstream technologies
     case Technology::kCellular:
     case Technology::kEthernet:

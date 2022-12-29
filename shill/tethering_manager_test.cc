@@ -224,8 +224,7 @@ class TetheringManagerTest : public testing::Test {
     EXPECT_TRUE(std::all_of(passphrase.begin(), passphrase.end(), ::isxdigit));
     EXPECT_EQ(kSecurityWpa2, GetConfigSecurity(caps));
     EXPECT_FALSE(caps.Contains<std::string>(kTetheringConfBandProperty));
-    EXPECT_FALSE(
-        caps.Contains<std::string>(kTetheringConfUpstreamTechProperty));
+    EXPECT_TRUE(caps.Contains<std::string>(kTetheringConfUpstreamTechProperty));
     return caps;
   }
 
@@ -432,7 +431,7 @@ TEST_F(TetheringManagerTest, DefaultConfigCheck) {
   EXPECT_EQ(GetConfigSSID(config), GetConfigSSID(new_config));
   EXPECT_EQ(GetConfigPassphrase(config), GetConfigPassphrase(new_config));
   EXPECT_FALSE(new_config.Contains<std::string>(kTetheringConfBandProperty));
-  EXPECT_FALSE(
+  EXPECT_TRUE(
       new_config.Contains<std::string>(kTetheringConfUpstreamTechProperty));
 }
 
