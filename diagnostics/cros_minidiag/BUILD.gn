@@ -3,7 +3,10 @@
 # found in the LICENSE file.
 
 group("all") {
-  deps = [ ":cros-minidiag-tool" ]
+  deps = [
+    ":cros-minidiag-tool",
+    ":install_upstart_config",
+  ]
   if (use.test) {
     deps += [ ":cros_minidiag_test" ]
   }
@@ -34,6 +37,11 @@ executable("cros-minidiag-tool") {
   configs += [ ":libcros-minidiag-tool-pkg-deps" ]
   deps = [ ":libcros-minidiag-tool" ]
   install_path = "bin"
+}
+
+install_config("install_upstart_config") {
+  sources = [ "upstart/send-boot-elog-metrics.conf" ]
+  install_path = "/etc/init"
 }
 
 if (use.test) {
