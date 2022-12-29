@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef DIAGNOSTICS_CROS_HEALTHD_CROS_HEALTHD_H_
-#define DIAGNOSTICS_CROS_HEALTHD_CROS_HEALTHD_H_
+#ifndef DIAGNOSTICS_CROS_HEALTHD_CROS_HEALTHD_DAEMON_H_
+#define DIAGNOSTICS_CROS_HEALTHD_CROS_HEALTHD_DAEMON_H_
 
 #include <memory>
 
@@ -21,13 +21,14 @@
 namespace diagnostics {
 
 // Daemon class for cros_healthd.
-class CrosHealthd final : public brillo::Daemon {
+class CrosHealthdDaemon final : public brillo::Daemon {
  public:
-  explicit CrosHealthd(mojo::PlatformChannelEndpoint endpoint,
-                       std::unique_ptr<brillo::UdevMonitor>&& udev_monitor);
-  CrosHealthd(const CrosHealthd&) = delete;
-  CrosHealthd& operator=(const CrosHealthd&) = delete;
-  ~CrosHealthd() override;
+  explicit CrosHealthdDaemon(
+      mojo::PlatformChannelEndpoint endpoint,
+      std::unique_ptr<brillo::UdevMonitor>&& udev_monitor);
+  CrosHealthdDaemon(const CrosHealthdDaemon&) = delete;
+  CrosHealthdDaemon& operator=(const CrosHealthdDaemon&) = delete;
+  ~CrosHealthdDaemon() override;
 
  private:
   // For mojo thread initialization.
@@ -53,4 +54,4 @@ class CrosHealthd final : public brillo::Daemon {
 
 }  // namespace diagnostics
 
-#endif  // DIAGNOSTICS_CROS_HEALTHD_CROS_HEALTHD_H_
+#endif  // DIAGNOSTICS_CROS_HEALTHD_CROS_HEALTHD_DAEMON_H_

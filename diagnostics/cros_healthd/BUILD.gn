@@ -33,7 +33,7 @@ source_set("libcros_healthd") {
     "//diagnostics/mojom/public:cros_healthd_mojo_bindings",
   ]
   sources = [
-    "cros_healthd.cc",
+    "cros_healthd_daemon.cc",
     "cros_healthd_diagnostics_service.cc",
     "cros_healthd_mojo_service.cc",
     "cros_healthd_routine_factory_impl.cc",

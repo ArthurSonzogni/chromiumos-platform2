@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "diagnostics/cros_healthd/cros_healthd.h"
+#include "diagnostics/cros_healthd/cros_healthd_daemon.h"
 
 #include <memory>
 #include <utility>
@@ -13,15 +13,17 @@
 
 namespace diagnostics {
 
-CrosHealthd::CrosHealthd(mojo::PlatformChannelEndpoint endpoint,
-                         std::unique_ptr<brillo::UdevMonitor>&& udev_monitor)
+CrosHealthdDaemon::CrosHealthdDaemon(
+    mojo::PlatformChannelEndpoint endpoint,
+    std::unique_ptr<brillo::UdevMonitor>&& udev_monitor)
     : ipc_support_(base::ThreadTaskRunnerHandle::Get(),
                    mojo::core::ScopedIPCSupport::ShutdownPolicy::
                        CLEAN /* blocking shutdown */),
-      context_(std::move(endpoint),
-               std::move(udev_monitor),
-               base::BindOnce(&CrosHealthd::Quit, base::Unretained(this))) {}
+      context_(
+          std::move(endpoint),
+          std::move(udev_monitor),
+          base::BindOnce(&CrosHealthdDaemon::Quit, base::Unretained(this))) {}
 
-CrosHealthd::~CrosHealthd() = default;
+CrosHealthdDaemon::~CrosHealthdDaemon() = default;
 
 }  // namespace diagnostics

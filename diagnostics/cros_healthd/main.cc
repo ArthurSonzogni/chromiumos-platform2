@@ -17,7 +17,7 @@
 #include <mojo/core/embedder/embedder.h>
 #include <mojo/public/cpp/platform/platform_channel.h>
 
-#include "diagnostics/cros_healthd/cros_healthd.h"
+#include "diagnostics/cros_healthd/cros_healthd_daemon.h"
 #include "diagnostics/cros_healthd/executor/executor_daemon.h"
 #include "diagnostics/cros_healthd/minijail/minijail_configuration.h"
 
@@ -94,7 +94,7 @@ int main(int argc, char** argv) {
 
   // Run the cros_healthd daemon.
   executor_endpoint.reset();
-  auto service = diagnostics::CrosHealthd(std::move(healthd_endpoint),
-                                          std::move(udev_monitor));
+  auto service = diagnostics::CrosHealthdDaemon(std::move(healthd_endpoint),
+                                                std::move(udev_monitor));
   return service.Run();
 }
