@@ -8,6 +8,7 @@
 #include <string>
 #include <vector>
 
+#include <base/cancelable_callback.h>
 #include <base/containers/contains.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
@@ -284,6 +285,11 @@ class TetheringManagerTest : public testing::Test {
 
   KeyValueStore GetStatus(TetheringManager* tethering_manager) {
     return tethering_manager->GetStatus();
+  }
+
+  const base::CancelableOnceClosure& GetInactiveTimer(
+      TetheringManager* tethering_manager) {
+    return tethering_manager->inactive_timer_callback_;
   }
 
  protected:
@@ -820,6 +826,40 @@ TEST_F(TetheringManagerTest, GetStatus) {
   EXPECT_FALSE(
       status.Contains<std::string>(kTetheringStatusDownstreamTechProperty));
   EXPECT_FALSE(status.Contains<Stringmaps>(kTetheringStatusClientsProperty));
+}
+
+TEST_F(TetheringManagerTest, InactiveTimer) {
+  // Start tethering.
+  TetheringPrerequisite(tethering_manager_);
+  SetDownstream(tethering_manager_);
+  // Inactive timer is not triggered when tethering is not active.
+  EXPECT_TRUE(GetInactiveTimer(tethering_manager_).IsCancelled());
+  SetEnabledVerifyResult(tethering_manager_, true,
+                         TetheringManager::SetEnabledResult::kSuccess);
+  // Inactive timer should be armed when tethering is active and no client is
+  // connected.
+  EXPECT_FALSE(GetInactiveTimer(tethering_manager_).IsCancelled());
+
+  // Connect client to the hotspot.
+  std::vector<std::vector<uint8_t>> clients;
+  clients.push_back({00, 11, 22, 33, 44, 55});
+  EXPECT_CALL(*hotspot_device_.get(), GetStations()).WillOnce(Return(clients));
+  DownStreamDeviceEvent(tethering_manager_,
+                        LocalDevice::DeviceEvent::kPeerConnected,
+                        hotspot_device_.get());
+  DispatchPendingEvents();
+  // Inactive timer should be canceled if at least one client is connected.
+  EXPECT_TRUE(GetInactiveTimer(tethering_manager_).IsCancelled());
+
+  clients.clear();
+  EXPECT_CALL(*hotspot_device_.get(), GetStations()).WillOnce(Return(clients));
+  DownStreamDeviceEvent(tethering_manager_,
+                        LocalDevice::DeviceEvent::kPeerDisconnected,
+                        hotspot_device_.get());
+  DispatchPendingEvents();
+  // Inactive timer should be re-armed when tethering is active and the last
+  // client is gone.
+  EXPECT_FALSE(GetInactiveTimer(tethering_manager_).IsCancelled());
 }
 
 }  // namespace shill

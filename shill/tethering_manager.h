@@ -8,6 +8,8 @@
 #include <memory>
 #include <string>
 
+#include <base/cancelable_callback.h>
+
 #include "shill/refptr_types.h"
 #include "shill/store/property_store.h"
 #include "shill/technology.h"
@@ -123,6 +125,11 @@ class TetheringManager {
   bool Load(const StoreInterface* storage);
   // Set tethering state and emit dbus property changed signal.
   void SetState(TetheringState state);
+  // Peer assoc event handler.
+  void OnPeerAssoc();
+  // Peer disassoc event handler.
+  void OnPeerDisassoc();
+  // Downstream device event handler.
   void OnDownstreamDeviceEvent(LocalDevice::DeviceEvent event,
                                const LocalDevice* device);
   // Trigger callback function asynchronously to post SetTetheringEnabled dbus
@@ -135,6 +142,15 @@ class TetheringManager {
   void StartTetheringSession();
   // Stop and free tethering resources.
   void StopTetheringSession();
+  // Kick off the tethering inactive timer when auto_disable_ is true and
+  // TetheringState is kTetheringActive. Will not rearm the timer if it is
+  // already running. It will tear down tethering session after timer fires.
+  void StartInactiveTimer();
+  // Cancel the tethering inactive timer due to station associates or
+  // auto_disable_ is changed to false.
+  void StopInactiveTimer();
+  // Get the number of active clients.
+  size_t GetClientCount();
 
   // TetheringManager is created and owned by Manager.
   Manager* manager_;
@@ -142,6 +158,8 @@ class TetheringManager {
   bool allowed_;
   // Tethering state as listed in enum TetheringState.
   TetheringState state_;
+  // Executes when the inactive timer expires. Calls StopTetheringSession.
+  base::CancelableOnceClosure inactive_timer_callback_;
 
   // Automatically disable tethering if no devices have been associated for
   // |kAutoDisableMinute| minutes.

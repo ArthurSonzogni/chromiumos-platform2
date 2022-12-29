@@ -15,6 +15,7 @@
 #include <base/functional/bind.h>
 #include <base/rand_util.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/time/time.h>
 #include <chromeos/dbus/shill/dbus-constants.h>
 
 #include "shill/cellular/cellular_service_provider.h"
@@ -42,8 +43,8 @@ static constexpr size_t kSSIDSuffixLength = 4;
 static constexpr size_t kMaxWiFiHexSSIDLength = 32 * 2;
 static constexpr size_t kMinWiFiPassphraseLength = 8;
 static constexpr size_t kMaxWiFiPassphraseLength = 63;
-// Auto disable tethering if no clients for |kAutoDisableMinute| minutes.
-// static constexpr uint8_t kAutoDisableMinute = 10;
+// Auto disable tethering if no clients for |kAutoDisableDelay|.
+static constexpr base::TimeDelta kAutoDisableDelay = base::Minutes(5);
 
 bool StoreToConfigBool(const StoreInterface* storage,
                        const std::string& storage_id,
@@ -207,8 +208,12 @@ bool TetheringManager::FromProperties(const KeyValueStore& properties) {
   }
 
   // update tethering config in this.
-  if (properties.Contains<bool>(kTetheringConfAutoDisableProperty))
+  if (properties.Contains<bool>(kTetheringConfAutoDisableProperty) &&
+      auto_disable_ !=
+          properties.Get<bool>(kTetheringConfAutoDisableProperty)) {
     auto_disable_ = properties.Get<bool>(kTetheringConfAutoDisableProperty);
+    auto_disable_ ? StartInactiveTimer() : StopInactiveTimer();
+  }
 
   if (properties.Contains<bool>(kTetheringConfMARProperty))
     mar_ = properties.Get<bool>(kTetheringConfMARProperty);
@@ -337,6 +342,10 @@ KeyValueStore TetheringManager::GetStatus() {
   return status;
 }
 
+size_t TetheringManager::GetClientCount() {
+  return hotspot_dev_->GetStations().size();
+}
+
 void TetheringManager::SetState(TetheringState state) {
   if (state_ == state)
     return;
@@ -396,6 +405,11 @@ void TetheringManager::CheckAndPostTetheringResult() {
   // class).
 
   SetState(TetheringState::kTetheringActive);
+  if (hotspot_dev_->GetStations().size() == 0) {
+    // Kick off inactive timer when tethering session becomes active and no
+    // clients are connected.
+    StartInactiveTimer();
+  }
   PostSetEnabledResult(SetEnabledResult::kSuccess);
 }
 
@@ -457,9 +471,59 @@ void TetheringManager::StopTetheringSession() {
     hotspot_dev_ = nullptr;
   }
 
-  // TODO(b/235762439): Routine to disable other tethering modules.
   hotspot_service_up_ = false;
+  StopInactiveTimer();
+  // TODO(b/235762439): Routine to disable other tethering modules.
   SetState(TetheringState::kTetheringIdle);
+}
+
+void TetheringManager::StartInactiveTimer() {
+  if (!auto_disable_ || !inactive_timer_callback_.IsCancelled() ||
+      state_ != TetheringState::kTetheringActive) {
+    return;
+  }
+
+  LOG(INFO) << __func__ << ": timer fires in " << kAutoDisableDelay;
+
+  inactive_timer_callback_.Reset(base::BindOnce(
+      &TetheringManager::StopTetheringSession, base::Unretained(this)));
+  manager_->dispatcher()->PostDelayedTask(
+      FROM_HERE, inactive_timer_callback_.callback(), kAutoDisableDelay);
+}
+
+void TetheringManager::StopInactiveTimer() {
+  if (inactive_timer_callback_.IsCancelled()) {
+    return;
+  }
+
+  inactive_timer_callback_.Cancel();
+}
+
+void TetheringManager::OnPeerAssoc() {
+  if (state_ != TetheringState::kTetheringActive) {
+    return;
+  }
+
+  manager_->TetheringStatusChanged();
+
+  if (GetClientCount() != 0) {
+    // At least one station associated with this hotspot, cancel the inactive
+    // timer.
+    StopInactiveTimer();
+  }
+}
+
+void TetheringManager::OnPeerDisassoc() {
+  if (state_ != TetheringState::kTetheringActive) {
+    return;
+  }
+
+  manager_->TetheringStatusChanged();
+
+  if (GetClientCount() == 0) {
+    // No stations associated with this hotspot, start the inactive timer.
+    StartInactiveTimer();
+  }
 }
 
 void TetheringManager::OnDownstreamDeviceEvent(LocalDevice::DeviceEvent event,
@@ -482,11 +546,10 @@ void TetheringManager::OnDownstreamDeviceEvent(LocalDevice::DeviceEvent event,
   } else if (event == LocalDevice::DeviceEvent::kServiceUp) {
     hotspot_service_up_ = true;
     CheckAndPostTetheringResult();
-  } else if (event == LocalDevice::DeviceEvent::kPeerConnected ||
-             event == LocalDevice::DeviceEvent::kPeerDisconnected) {
-    if (state_ == TetheringState::kTetheringActive) {
-      manager_->TetheringStatusChanged();
-    }
+  } else if (event == LocalDevice::DeviceEvent::kPeerConnected) {
+    OnPeerAssoc();
+  } else if (event == LocalDevice::DeviceEvent::kPeerDisconnected) {
+    OnPeerDisassoc();
   }
 }
 
