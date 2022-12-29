@@ -20,7 +20,6 @@ executable("cros-health-tool") {
   deps = [
     "diag:libdiag",
     "event:libevent",
-    "status:libstatus",
     "telem:libtelem",
   ]
   install_path = "bin"
