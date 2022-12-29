@@ -17,9 +17,6 @@
 // itself; instead, it has the logs passed to it on a file descriptor.
 class MissedCrashCollector : public CrashCollector {
  public:
-  // Visible for testing only.
-  static constexpr int64_t kDefaultChunkSize = 1 << 16;
-
   MissedCrashCollector();
   ~MissedCrashCollector() override;
 
@@ -44,10 +41,6 @@ class MissedCrashCollector : public CrashCollector {
   // report. Default is stdin. Class does not own the FILE and will not close
   // it.
   FILE* input_file_;
-
-  // Read all the contents of the given FILE* to |contents| until either
-  // EOF or an error. Assumes |file| is at the start of the file.
-  static bool ReadFILEToString(FILE* file, std::string* contents);
 };
 
 #endif  // CRASH_REPORTER_MISSED_CRASH_COLLECTOR_H_

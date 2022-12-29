@@ -7,46 +7,16 @@
 #include <memory>
 
 #include <base/bind.h>
+#include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 
 #include "crash-reporter/constants.h"
 
-constexpr int64_t MissedCrashCollector::kDefaultChunkSize;
-
 MissedCrashCollector::MissedCrashCollector()
     : CrashCollector("missed_crash"), input_file_(stdin) {}
 
 MissedCrashCollector::~MissedCrashCollector() = default;
-
-// static
-bool MissedCrashCollector::ReadFILEToString(FILE* file, std::string* contents) {
-  // This is very much a rewording of base::ReadFileToString(), except that:
-  // a) We pass in a FILE* instead of opening one. We don't use
-  //    base::ReadFileToString() because we often in fd-exhaustion when a missed
-  //    crash occurs and we don't want to risk opening more file descriptors.
-  // b) We don't try to find a file size since stdin isn't going to give us a
-  //    file size.
-  size_t bytes_read_this_pass;
-  size_t bytes_read_so_far = 0;
-  clearerr(file);
-  contents->clear();
-  contents->resize(kDefaultChunkSize);
-
-  while ((bytes_read_this_pass = fread(&(*contents)[bytes_read_so_far], 1,
-                                       kDefaultChunkSize, file)) > 0) {
-    bytes_read_so_far += bytes_read_this_pass;
-    // Last fread syscall (after EOF) can be avoided via feof, which is just a
-    // flag check.
-    if (feof(file))
-      break;
-    contents->resize(bytes_read_so_far + kDefaultChunkSize);
-  }
-  bool read_status = !ferror(file);
-  contents->resize(bytes_read_so_far);
-
-  return read_status;
-}
 
 bool MissedCrashCollector::Collect(int pid,
                                    int recent_miss_count,
@@ -55,7 +25,7 @@ bool MissedCrashCollector::Collect(int pid,
   LOG(INFO) << "Processing missed crash for process " << pid;
 
   std::string logs;
-  if (!ReadFILEToString(input_file_, &logs)) {
+  if (!base::ReadStreamToString(input_file_, &logs)) {
     LOG(ERROR) << "Could not read input logs";
     logs += "<failed read>";
     // Keep going in hopes of getting some information.
