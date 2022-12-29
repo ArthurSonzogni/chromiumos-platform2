@@ -28,5 +28,11 @@
       "CrosHealthdSystem",
       "CrosHealthdRoutines"
     ]
+  },
+  {
+    "identity": "u:r:cros_update_engine:s0",
+    "request": [
+      "CrosHealthdProbe"
+    ]
   }
 ]
