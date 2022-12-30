@@ -152,12 +152,14 @@ AuthFactorVaultKeysetConverter::VaultKeysetToAuthFactor(
 user_data_auth::CryptohomeErrorCode
 AuthFactorVaultKeysetConverter::VaultKeysetsToAuthFactorsAndKeyLabelData(
     const std::string& obfuscated_username,
+    std::vector<std::string>& migrated_labels,
     std::map<std::string, std::unique_ptr<AuthFactor>>&
         out_label_to_auth_factor,
     std::map<std::string, std::unique_ptr<AuthFactor>>&
         out_label_to_auth_factor_backup_vks) {
   DCHECK(out_label_to_auth_factor.empty());
   DCHECK(out_label_to_auth_factor_backup_vks.empty());
+  DCHECK(migrated_labels.empty());
 
   std::vector<int> keyset_indices;
   if (!keyset_management_->GetVaultKeysets(obfuscated_username,
@@ -190,6 +192,10 @@ AuthFactorVaultKeysetConverter::VaultKeysetsToAuthFactorsAndKeyLabelData(
       const char* label_type = vk->IsForBackup() ? "backup " : "";
       LOG(ERROR) << "Found a duplicate " << label_type
                  << "label, skipping it: " << vk->GetLabel();
+    }
+
+    if (vk->IsMigrated()) {
+      migrated_labels.push_back(vk->GetLabel());
     }
   }
 

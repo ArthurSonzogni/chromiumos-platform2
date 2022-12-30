@@ -9,6 +9,7 @@
 #include <string>
 #include <utility>
 #include <variant>
+#include <vector>
 
 #include <base/system/sys_info.h>
 #include <cryptohome/proto_bindings/auth_factor.pb.h>
@@ -397,7 +398,8 @@ std::optional<AuthFactorPreparePurpose> AuthFactorPreparePurposeFromProto(
   }
 }
 
-AuthFactorMap LoadAuthFactorMap(const std::string& obfuscated_username,
+AuthFactorMap LoadAuthFactorMap(bool is_uss_migration_enabled,
+                                const std::string& obfuscated_username,
                                 Platform& platform,
                                 AuthFactorVaultKeysetConverter& converter,
                                 AuthFactorManager& manager) {
@@ -407,8 +409,10 @@ AuthFactorMap LoadAuthFactorMap(const std::string& obfuscated_username,
   // them to AuthFactor format.
   std::map<std::string, std::unique_ptr<AuthFactor>> backup_factor_map;
   std::map<std::string, std::unique_ptr<AuthFactor>> vk_factor_map;
+  std::vector<std::string> migrated_labels;
+
   converter.VaultKeysetsToAuthFactorsAndKeyLabelData(
-      obfuscated_username, vk_factor_map, backup_factor_map);
+      obfuscated_username, migrated_labels, vk_factor_map, backup_factor_map);
   // Load the USS AuthFactors.
   std::map<std::string, std::unique_ptr<AuthFactor>> uss_factor_map =
       manager.LoadAllAuthFactors(obfuscated_username);
@@ -419,6 +423,18 @@ AuthFactorMap LoadAuthFactorMap(const std::string& obfuscated_username,
     for (auto& [unused, factor] : uss_factor_map) {
       auth_factor_map.Add(std::move(factor),
                           AuthFactorStorageType::kUserSecretStash);
+    }
+    // If USS migration is disabled, but USS is still enabled only the migrated
+    // AuthFactors should be rolled back. Override the AuthFactor with the
+    // migrated VaultKeyset in this case.
+    if (!is_uss_migration_enabled) {
+      for (auto migrated_label : migrated_labels) {
+        auto backup_factor_iter = backup_factor_map.find(migrated_label);
+        if (backup_factor_iter != backup_factor_map.end()) {
+          auth_factor_map.Add(std::move(backup_factor_iter->second),
+                              AuthFactorStorageType::kVaultKeyset);
+        }
+      }
     }
   } else {
     // UserSecretStash is disabled: merge VaultKeyset-AuthFactors with

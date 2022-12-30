@@ -253,8 +253,11 @@ class VaultKeyset {
   // Setter for the |backup_vk_|.
   void set_backup_vk_for_testing(bool value) { backup_vk_ = value; }
 
-  // Marks the VaultKeyset migrated but doesn't persist. Every migrated
-  // VaultKeyset to USS should be set as a backup VaultKeyset for USS.
+  // Setter for the |migrated_vk_|.
+  void set_migrated_vk_for_testing(bool value) { migrated_vk_ = value; }
+
+  // Marks the VaultKeyset migrated. Every migrated VaultKeyset to USS should be
+  // set as a backup VaultKeyset for USS.
   void MarkMigrated(bool migrated);
 
   // The protected functions that can be override for the testing purpose.

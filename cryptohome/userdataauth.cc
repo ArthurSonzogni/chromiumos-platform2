@@ -4832,10 +4832,17 @@ void UserDataAuth::ListAuthFactors(
     // Prepare the response for configured AuthFactors (with status) with all of
     // the auth factors from the disk.
     // Load the AuthFactorMap.
+    bool migrate_to_user_secret_stash = false;
+    if (feature_lib_) {
+      migrate_to_user_secret_stash = feature_lib_->IsEnabledBlocking(
+          kCrOSLateBootMigrateToUserSecretStash);
+    }
     AuthFactorVaultKeysetConverter converter(keyset_management_);
     AuthFactorMap auth_factor_map;
-    auth_factor_map = LoadAuthFactorMap(obfuscated_username, *platform_,
-                                        converter, *auth_factor_manager_);
+    auth_factor_map =
+        LoadAuthFactorMap(migrate_to_user_secret_stash, obfuscated_username,
+                          *platform_, converter, *auth_factor_manager_);
+
     // Populate the response from the items in the AuthFactorMap.
     for (AuthFactorMap::ValueView item : auth_factor_map) {
       AuthFactor auth_factor = item.auth_factor();

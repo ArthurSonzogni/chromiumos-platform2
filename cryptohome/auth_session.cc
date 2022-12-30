@@ -202,12 +202,6 @@ CryptohomeStatus RemoveKeysetByLabel(KeysetManagement& keyset_management,
   return OkStatus<CryptohomeError>();
 }
 
-// Control switch value for enabling backup VaultKeyset creation with USS.
-constexpr struct VariationsFeature kCrOSLateBootMigrateToUserSecretStash = {
-    .name = "CrOSLateBootMigrateToUserSecretStash",
-    .default_state = FEATURE_DISABLED_BY_DEFAULT,
-};
-
 }  // namespace
 
 CryptohomeStatusOr<std::unique_ptr<AuthSession>> AuthSession::Create(
@@ -311,10 +305,6 @@ CryptohomeStatus AuthSession::Initialize() {
   // Report UserSecretStashExperiment status.
   ReportUserSecretStashExperimentState(platform_);
 
-  // Populate auth_factor_map_ with factors.
-  auth_factor_map_ = LoadAuthFactorMap(obfuscated_username_, *platform_,
-                                       converter_, *auth_factor_manager_);
-
   if (feature_lib_) {
     migrate_to_user_secret_stash_ =
         feature_lib_->IsEnabledBlocking(kCrOSLateBootMigrateToUserSecretStash);
@@ -325,6 +315,10 @@ CryptohomeStatus AuthSession::Initialize() {
   // factor after authenticating via a USS-only factor, would be impossible).
   enable_create_backup_vk_with_uss_ =
       AreAllFactorsSupportedByBothVkAndUss(auth_factor_map_);
+  // Populate auth_factor_map_ with factors.
+  auth_factor_map_ = LoadAuthFactorMap(
+      (ShouldMigrateToUss() || migrate_to_user_secret_stash_),
+      obfuscated_username_, *platform_, converter_, *auth_factor_manager_);
 
   auth_factor_map_.ReportAuthFactorBackingStoreMetrics();
   RecordAuthSessionStart();

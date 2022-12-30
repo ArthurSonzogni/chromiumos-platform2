@@ -115,6 +115,7 @@ class AuthFactorVaultKeysetConverterTest : public ::testing::Test {
   std::map<std::string, std::unique_ptr<AuthFactor>> label_to_auth_factor_;
   std::map<std::string, std::unique_ptr<AuthFactor>>
       label_to_auth_factor_backup_;
+  std::vector<std::string> migrated_labels_;
   struct UserInfo {
     std::string name;
     std::string obfuscated;
@@ -182,6 +183,20 @@ class AuthFactorVaultKeysetConverterTest : public ::testing::Test {
         vk.Save(user.homedir_path.Append(kKeyFile).AddExtension(index)));
   }
 
+  void MigratedKeysetSetUpWithKeyData(const KeyData& key_data,
+                                      const std::string& index) {
+    VaultKeyset vk;
+    vk.Initialize(&platform_, &crypto_);
+    vk.CreateFromFileSystemKeyset(file_system_keyset_);
+    vk.SetKeyData(key_data);
+    vk.set_backup_vk_for_testing(true);
+    vk.set_migrated_vk_for_testing(true);
+    user.credentials.set_key_data(key_data);
+    ASSERT_TRUE(vk.Encrypt(user.passkey, user.obfuscated).ok());
+    ASSERT_TRUE(
+        vk.Save(user.homedir_path.Append(kKeyFile).AddExtension(index)));
+  }
+
   void KeysetSetUpWithKeyData(const KeyData& key_data,
                               const std::string& index) {
     VaultKeyset vk;
@@ -201,7 +216,7 @@ TEST_F(AuthFactorVaultKeysetConverterTest,
        ConvertToAuthFactorFailWhenListEmpty) {
   EXPECT_EQ(user_data_auth::CRYPTOHOME_ERROR_KEY_NOT_FOUND,
             converter_->VaultKeysetsToAuthFactorsAndKeyLabelData(
-                user.obfuscated, label_to_auth_factor_,
+                user.obfuscated, migrated_labels_, label_to_auth_factor_,
                 label_to_auth_factor_backup_));
   EXPECT_TRUE(label_to_auth_factor_.empty());
   EXPECT_TRUE(label_to_auth_factor_backup_.empty());
@@ -214,7 +229,7 @@ TEST_F(AuthFactorVaultKeysetConverterTest, ConvertToAuthFactorListSuccess) {
   KeysetSetUpWithKeyData(SetKeyData(kLabel0), kFirstIndex);
   EXPECT_EQ(user_data_auth::CRYPTOHOME_ERROR_NOT_SET,
             converter_->VaultKeysetsToAuthFactorsAndKeyLabelData(
-                user.obfuscated, label_to_auth_factor_,
+                user.obfuscated, migrated_labels_, label_to_auth_factor_,
                 label_to_auth_factor_backup_));
 
   EXPECT_FALSE(label_to_auth_factor_.empty());
@@ -233,7 +248,7 @@ TEST_F(AuthFactorVaultKeysetConverterTest,
 
   EXPECT_EQ(user_data_auth::CRYPTOHOME_ERROR_NOT_SET,
             converter_->VaultKeysetsToAuthFactorsAndKeyLabelData(
-                user.obfuscated, label_to_auth_factor_,
+                user.obfuscated, migrated_labels_, label_to_auth_factor_,
                 label_to_auth_factor_backup_));
 
   EXPECT_EQ(3, label_to_auth_factor_.size());
@@ -336,7 +351,7 @@ TEST_F(AuthFactorVaultKeysetConverterTest, ConvertToAuthFactorListKiosk) {
   KeysetSetUpWithKeyData(SetKioskKeyData(kLabel0), kFirstIndex);
   EXPECT_EQ(user_data_auth::CRYPTOHOME_ERROR_NOT_SET,
             converter_->VaultKeysetsToAuthFactorsAndKeyLabelData(
-                user.obfuscated, label_to_auth_factor_,
+                user.obfuscated, migrated_labels_, label_to_auth_factor_,
                 label_to_auth_factor_backup_));
 
   EXPECT_EQ(1, label_to_auth_factor_.size());
@@ -356,7 +371,7 @@ TEST_F(AuthFactorVaultKeysetConverterTest,
 
   EXPECT_EQ(user_data_auth::CRYPTOHOME_ERROR_NOT_SET,
             converter_->VaultKeysetsToAuthFactorsAndKeyLabelData(
-                user.obfuscated, label_to_auth_factor_,
+                user.obfuscated, migrated_labels_, label_to_auth_factor_,
                 label_to_auth_factor_backup_));
 
   EXPECT_TRUE(label_to_auth_factor_.empty());
@@ -385,7 +400,7 @@ TEST_F(AuthFactorVaultKeysetConverterTest,
 
   EXPECT_EQ(user_data_auth::CRYPTOHOME_ERROR_NOT_SET,
             converter_->VaultKeysetsToAuthFactorsAndKeyLabelData(
-                user.obfuscated, label_to_auth_factor_,
+                user.obfuscated, migrated_labels_, label_to_auth_factor_,
                 label_to_auth_factor_backup_));
   EXPECT_EQ(1, label_to_auth_factor_.size());
   EXPECT_EQ(2, label_to_auth_factor_backup_.size());
@@ -400,6 +415,52 @@ TEST_F(AuthFactorVaultKeysetConverterTest,
   EXPECT_EQ(kLabel2, label_to_auth_factor_backup_[kLabel2]->label());
   EXPECT_EQ(AuthFactorType::kPin,
             label_to_auth_factor_backup_[kLabel2]->type());
+}
+
+// Test that VaultKeysetsToAuthFactors lists the labels for the migrated
+// VaultKeysets.
+TEST_F(AuthFactorVaultKeysetConverterTest,
+       ConvertToAuthFactorListMigratedLabels) {
+  MigratedKeysetSetUpWithKeyData(SetKeyData(kLabel0), kFirstIndex);
+  MigratedKeysetSetUpWithKeyData(SetKeyData(kLabel1), kSecondIndex);
+
+  EXPECT_EQ(user_data_auth::CRYPTOHOME_ERROR_NOT_SET,
+            converter_->VaultKeysetsToAuthFactorsAndKeyLabelData(
+                user.obfuscated, migrated_labels_, label_to_auth_factor_,
+                label_to_auth_factor_backup_));
+  EXPECT_EQ(2, migrated_labels_.size());
+  EXPECT_EQ(kLabel0, migrated_labels_[0]);
+  EXPECT_EQ(kLabel1, migrated_labels_[1]);
+}
+
+// Test that VaultKeysetsToAuthFactors includes migrated VaultKeysets in backup
+// lists.
+TEST_F(AuthFactorVaultKeysetConverterTest,
+       ConvertToAuthFactorIncludeMigratedKeysetsInBackupMap) {
+  KeysetSetUpWithKeyData(SetKeyData(kLabel0), kFirstIndex);
+  BackupKeysetSetUpWithKeyData(SetKeyData(kLabel1), kSecondIndex);
+  MigratedKeysetSetUpWithKeyData(SetPinKeyData(kLabel2), kThirdIndex);
+
+  EXPECT_EQ(user_data_auth::CRYPTOHOME_ERROR_NOT_SET,
+            converter_->VaultKeysetsToAuthFactorsAndKeyLabelData(
+                user.obfuscated, migrated_labels_, label_to_auth_factor_,
+                label_to_auth_factor_backup_));
+  EXPECT_EQ(1, label_to_auth_factor_.size());
+  EXPECT_EQ(2, label_to_auth_factor_backup_.size());
+
+  EXPECT_EQ(kLabel0, label_to_auth_factor_[kLabel0]->label());
+  EXPECT_EQ(AuthFactorType::kPassword, label_to_auth_factor_[kLabel0]->type());
+
+  EXPECT_EQ(kLabel1, label_to_auth_factor_backup_[kLabel1]->label());
+  EXPECT_EQ(AuthFactorType::kPassword,
+            label_to_auth_factor_backup_[kLabel1]->type());
+
+  EXPECT_EQ(kLabel2, label_to_auth_factor_backup_[kLabel2]->label());
+  EXPECT_EQ(AuthFactorType::kPin,
+            label_to_auth_factor_backup_[kLabel2]->type());
+
+  EXPECT_EQ(1, migrated_labels_.size());
+  EXPECT_EQ(kLabel2, migrated_labels_[0]);
 }
 
 }  // namespace

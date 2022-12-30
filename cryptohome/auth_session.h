@@ -65,6 +65,13 @@ enum class AuthStatus {
   // TODO(crbug.com/1154912): Complete the implementation of AuthStatus.
 };
 
+// Control switch value for enabling backup VaultKeyset creation with USS.
+inline constexpr struct VariationsFeature
+    kCrOSLateBootMigrateToUserSecretStash = {
+        .name = "CrOSLateBootMigrateToUserSecretStash",
+        .default_state = FEATURE_DISABLED_BY_DEFAULT,
+};
+
 // The list of all intents satisfied when the auth session is "fully
 // authenticated". Useful for places that want to set the "fully authenticated"
 // state.

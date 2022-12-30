@@ -79,7 +79,8 @@ std::optional<AuthFactorPreparePurpose> AuthFactorPreparePurposeFromProto(
 
 // Given a keyset converter, factor manager, and platform, load all of the auth
 // factors for the given user into an auth factor.
-AuthFactorMap LoadAuthFactorMap(const std::string& obfuscated_username,
+AuthFactorMap LoadAuthFactorMap(bool is_uss_migration_enabled,
+                                const std::string& obfuscated_username,
                                 Platform& platform,
                                 AuthFactorVaultKeysetConverter& converter,
                                 AuthFactorManager& manager);
