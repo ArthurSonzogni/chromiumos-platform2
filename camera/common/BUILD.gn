@@ -153,16 +153,9 @@ source_set("base") {
   configs += [ "//common-mk:pic" ]
 }
 
-pkg_config("pkg_config_tracing") {
-  pkg_deps = [ "perfetto" ]
-}
-
 source_set("tracing") {
   sources = [ "//camera/common/tracing.cc" ]
-  public_configs = [
-    ":pkg_config_tracing",
-    ":target_defaults",
-  ]
+  public_configs = [ ":target_defaults" ]
 
   # -fPIC needed by the libcros_camera.so shared library.
   configs += [ "//common-mk:pic" ]

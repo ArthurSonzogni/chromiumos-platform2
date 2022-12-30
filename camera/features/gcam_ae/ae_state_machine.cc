@@ -111,7 +111,7 @@ AeStateMachine::AeStateMachine()
   perfetto::Track ae_state_track(kAeStateTrack);
   auto desc = ae_state_track.Serialize();
   desc.set_name("AE state");
-  cros_camera::TrackEvent::SetTrackDescriptor(ae_state_track, desc);
+  TrackEvent::SetTrackDescriptor(ae_state_track, desc);
 }
 
 AeStateMachine::~AeStateMachine() {

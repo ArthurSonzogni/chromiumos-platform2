@@ -10,17 +10,10 @@
 #ifndef CAMERA_INCLUDE_CROS_CAMERA_TRACING_H_
 #define CAMERA_INCLUDE_CROS_CAMERA_TRACING_H_
 
+#include <perfetto/perfetto.h>
 #include <string>
 
 #include "cros-camera/export.h"
-
-// To export the Perfetto symbols (e.g. kCategoryRegistry).
-#define PERFETTO_COMPONENT_EXPORT CROS_CAMERA_EXPORT
-#define PERFETTO_EXPORT_COMPONENT CROS_CAMERA_EXPORT
-
-#define PERFETTO_TRACK_EVENT_NAMESPACE cros_camera
-
-#include <perfetto/perfetto.h>
 
 namespace cros {
 
@@ -66,7 +59,9 @@ constexpr std::string_view TraceCameraEventName(const char* pretty_function) {
   TRACE_EVENT(category, perfetto::StaticString(event_##__LINE__.c_str()), \
               ##__VA_ARGS__)
 
-PERFETTO_DEFINE_CATEGORIES(
+PERFETTO_DEFINE_CATEGORIES_IN_NAMESPACE_WITH_ATTRS(
+    cros,
+    CROS_CAMERA_EXPORT,
     perfetto::Category(cros::kCameraTraceCategoryAutoFraming)
         .SetDescription("Events from CrOS Auto Framing pipeline"),
     perfetto::Category(cros::kCameraTraceCategoryCommon)

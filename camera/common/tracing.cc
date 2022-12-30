@@ -6,15 +6,16 @@
 
 #include "cros-camera/tracing.h"
 
-PERFETTO_TRACK_EVENT_STATIC_STORAGE();
+#include <brillo/tracing.h>
+
+PERFETTO_TRACK_EVENT_STATIC_STORAGE_IN_NAMESPACE_WITH_ATTRS(cros,
+                                                            CROS_CAMERA_EXPORT);
 
 namespace cros {
 
 void InitializeCameraTrace() {
-  perfetto::TracingInitArgs args;
-  args.backends |= perfetto::kSystemBackend;
-  perfetto::Tracing::Initialize(args);
-  cros_camera::TrackEvent::Register();
+  brillo::InitPerfettoTracing();
+  TrackEvent::Register();
 }
 
 }  // namespace cros
