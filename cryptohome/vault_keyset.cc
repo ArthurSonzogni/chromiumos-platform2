@@ -121,6 +121,12 @@ void VaultKeyset::InitializeToAdd(const VaultKeyset& vault_keyset) {
   if (vault_keyset.HasFSCryptPolicyVersion()) {
     SetFSCryptPolicyVersion(vault_keyset.GetFSCryptPolicyVersion());
   }
+
+  // Mark migrated if copied from a migrated keyset.
+  if (vault_keyset.IsMigrated()) {
+    backup_vk_ = true;
+    migrated_vk_ = true;
+  }
 }
 
 void VaultKeyset::FromKeys(const VaultKeysetKeys& keys) {

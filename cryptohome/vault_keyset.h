@@ -246,9 +246,9 @@ class VaultKeyset {
   void SetTpmEccState(const TpmEccAuthBlockState& auth_state);
 
   // Returns whether the VaultKeyset is setup for backup purpose.
-  bool IsForBackup() { return backup_vk_; }
+  bool IsForBackup() const { return backup_vk_; }
   // Returns whether the VaultKeyset is setup for backup purpose.
-  bool IsMigrated() { return migrated_vk_; }
+  bool IsMigrated() const { return migrated_vk_; }
 
   // Setter for the |backup_vk_|.
   void set_backup_vk_for_testing(bool value) { backup_vk_ = value; }
