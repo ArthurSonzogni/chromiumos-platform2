@@ -26,7 +26,9 @@ gettid: 1
 gettimeofday: 1
 lseek: 1
 memfd_create: 1
+madvise: arg2 == MADV_DONTNEED
 mmap: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
+mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 newfstatat: 1
 openat: 1
 read: 1
