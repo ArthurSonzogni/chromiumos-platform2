@@ -125,12 +125,23 @@ TEST_F(SessionManagerTest, GetSessionHandleTest) {
 
 TEST_F(SessionManagerTest, StartRsaSessionSuccess) {
   TPM_SE session_type = TPM_SE_TRIAL;
-  TPMT_PUBLIC public_area;
-  public_area.object_attributes = trunks::kSensitiveDataOrigin |
-                                  trunks::kUserWithAuth | trunks::kNoDA |
-                                  trunks::kDecrypt;
-  public_area.type = TPM_ALG_RSA;
-  public_area.unique.rsa = GetValidRSAPublicKey();
+
+  TPMT_PUBLIC public_area{
+      .type = TPM_ALG_RSA,
+      .name_alg = TPM_ALG_SHA256,
+      .object_attributes = trunks::kSensitiveDataOrigin |
+                           trunks::kUserWithAuth | trunks::kNoDA |
+                           trunks::kDecrypt,
+      .parameters =
+          TPMU_PUBLIC_PARMS{
+              .rsa_detail = TPMS_RSA_PARMS{},
+          },
+      .unique =
+          TPMU_PUBLIC_ID{
+              .rsa = GetValidRSAPublicKey(),
+          },
+  };
+
   EXPECT_CALL(mock_tpm_cache_, GetSaltingKeyPublicArea(_))
       .WillOnce(DoAll(SetArgPointee<0>(public_area), Return(TPM_RC_SUCCESS)));
   EXPECT_CALL(mock_tpm_utility_, CreateSaltingKey(_, _)).Times(0);
@@ -147,13 +158,23 @@ TEST_F(SessionManagerTest, StartRsaSessionSuccess) {
 
 TEST_F(SessionManagerTest, StartEccSessionSuccess) {
   TPM_SE session_type = TPM_SE_TRIAL;
-  TPMT_PUBLIC public_area;
-  public_area.object_attributes = trunks::kSensitiveDataOrigin |
-                                  trunks::kUserWithAuth | trunks::kNoDA |
-                                  trunks::kDecrypt;
-  public_area.type = TPM_ALG_ECC;
-  public_area.name_alg = TPM_ALG_SHA256;
-  public_area.unique.ecc = GetValidEccPoint();
+
+  TPMT_PUBLIC public_area{
+      .type = TPM_ALG_ECC,
+      .name_alg = TPM_ALG_SHA256,
+      .object_attributes = trunks::kSensitiveDataOrigin |
+                           trunks::kUserWithAuth | trunks::kNoDA |
+                           trunks::kDecrypt,
+      .parameters =
+          TPMU_PUBLIC_PARMS{
+              .ecc_detail = TPMS_ECC_PARMS{},
+          },
+      .unique =
+          TPMU_PUBLIC_ID{
+              .ecc = GetValidEccPoint(),
+          },
+  };
+
   EXPECT_CALL(mock_tpm_cache_, GetSaltingKeyPublicArea(_))
       .WillOnce(DoAll(SetArgPointee<0>(public_area), Return(TPM_RC_SUCCESS)));
   EXPECT_CALL(mock_tpm_utility_, CreateSaltingKey(_, _)).Times(0);
@@ -184,10 +205,19 @@ TEST_F(SessionManagerTest, StartTempSaltingKeySession) {
   EXPECT_CALL(mock_tpm_utility_, CreateSaltingKey(_, _))
       .WillOnce(DoAll(SetArgPointee<0>(handle), Return(TPM_RC_SUCCESS)));
 
-  TPMT_PUBLIC public_area;
-  public_area.type = TPM_ALG_ECC;
-  public_area.name_alg = TPM_ALG_SHA256;
-  public_area.unique.ecc = GetValidEccPoint();
+  TPMT_PUBLIC public_area{
+      .type = TPM_ALG_ECC,
+      .name_alg = TPM_ALG_SHA256,
+      .parameters =
+          TPMU_PUBLIC_PARMS{
+              .ecc_detail = TPMS_ECC_PARMS{},
+          },
+      .unique =
+          TPMU_PUBLIC_ID{
+              .ecc = GetValidEccPoint(),
+          },
+  };
+
   TPM2B_PUBLIC public_data{.public_area = public_area};
 
   EXPECT_CALL(mock_tpm_, ReadPublicSync(handle, _, _, _, _, _))
@@ -213,10 +243,19 @@ TEST_F(SessionManagerTest, StartTempSaltingKeySessionFail) {
   EXPECT_CALL(mock_tpm_utility_, CreateSaltingKey(_, _))
       .WillOnce(DoAll(SetArgPointee<0>(handle), Return(TPM_RC_SUCCESS)));
 
-  TPMT_PUBLIC public_area;
-  public_area.type = TPM_ALG_ECC;
-  public_area.name_alg = TPM_ALG_SHA256;
-  public_area.unique.ecc = GetValidEccPoint();
+  TPMT_PUBLIC public_area{
+      .type = TPM_ALG_ECC,
+      .name_alg = TPM_ALG_SHA256,
+      .parameters =
+          TPMU_PUBLIC_PARMS{
+              .ecc_detail = TPMS_ECC_PARMS{},
+          },
+      .unique =
+          TPMU_PUBLIC_ID{
+              .ecc = GetValidEccPoint(),
+          },
+  };
+
   TPM2B_PUBLIC public_data{.public_area = public_area};
 
   EXPECT_CALL(mock_tpm_, ReadPublicSync(handle, _, _, _, _, _))
@@ -229,9 +268,20 @@ TEST_F(SessionManagerTest, StartTempSaltingKeySessionFail) {
 }
 
 TEST_F(SessionManagerTest, StartSessionBadSaltingKey) {
-  TPMT_PUBLIC public_area;
-  public_area.type = TPM_ALG_RSA;
-  public_area.unique.rsa.size = 32;
+  TPMT_PUBLIC public_area{
+      .type = TPM_ALG_RSA,
+      .parameters =
+          TPMU_PUBLIC_PARMS{
+              .rsa_detail = TPMS_RSA_PARMS{},
+          },
+      .unique =
+          TPMU_PUBLIC_ID{
+              .rsa =
+                  TPM2B_PUBLIC_KEY_RSA{
+                      .size = 32,
+                  },
+          },
+  };
   EXPECT_CALL(mock_tpm_cache_, GetSaltingKeyPublicArea(_))
       .WillOnce(DoAll(SetArgPointee<0>(public_area), Return(TPM_RC_SUCCESS)));
   EXPECT_EQ(TRUNKS_RC_SESSION_SETUP_ERROR,
@@ -249,9 +299,17 @@ TEST_F(SessionManagerTest, StartSessionBadSaltingKey) {
 }
 
 TEST_F(SessionManagerTest, StartSessionFailure) {
-  TPMT_PUBLIC public_area;
-  public_area.type = TPM_ALG_RSA;
-  public_area.unique.rsa = GetValidRSAPublicKey();
+  TPMT_PUBLIC public_area{
+      .type = TPM_ALG_RSA,
+      .parameters =
+          TPMU_PUBLIC_PARMS{
+              .rsa_detail = TPMS_RSA_PARMS{},
+          },
+      .unique =
+          TPMU_PUBLIC_ID{
+              .rsa = GetValidRSAPublicKey(),
+          },
+  };
   EXPECT_CALL(mock_tpm_cache_, GetSaltingKeyPublicArea(_))
       .WillOnce(DoAll(SetArgPointee<0>(public_area), Return(TPM_RC_SUCCESS)));
   EXPECT_CALL(mock_tpm_,
@@ -264,9 +322,17 @@ TEST_F(SessionManagerTest, StartSessionFailure) {
 
 TEST_F(SessionManagerTest, StartSessionBadNonce) {
   TPM_SE session_type = TPM_SE_TRIAL;
-  TPMT_PUBLIC public_area;
-  public_area.type = TPM_ALG_RSA;
-  public_area.unique.rsa = GetValidRSAPublicKey();
+  TPMT_PUBLIC public_area{
+      .type = TPM_ALG_RSA,
+      .parameters =
+          TPMU_PUBLIC_PARMS{
+              .rsa_detail = TPMS_RSA_PARMS{},
+          },
+      .unique =
+          TPMU_PUBLIC_ID{
+              .rsa = GetValidRSAPublicKey(),
+          },
+  };
   EXPECT_CALL(mock_tpm_cache_, GetSaltingKeyPublicArea(_))
       .WillOnce(DoAll(SetArgPointee<0>(public_area), Return(TPM_RC_SUCCESS)));
   TPM_HANDLE handle = TPM_RH_FIRST;
