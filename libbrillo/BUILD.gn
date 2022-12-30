@@ -94,6 +94,7 @@ libbrillo_sublibs = [
       "brillo/syslog_logging.cc",
       "brillo/timers/alarm_timer.cc",
       "brillo/timezone/tzif_parser.cc",
+      "brillo/tracing.cc",
       "brillo/type_name_undecorate.cc",
       "brillo/url_utils.cc",
       "brillo/userdb_utils.cc",
@@ -530,6 +531,7 @@ if (use.test) {
       "brillo/strings/string_utils_test.cc",
       "brillo/timers/alarm_timer_test.cc",
       "brillo/timezone/tzif_parser_test.cc",
+      "brillo/tracing_test.cc",
       "brillo/unittest_utils.cc",
       "brillo/url_utils_test.cc",
       "brillo/vcsid_set_test.cc",
@@ -581,7 +583,10 @@ if (use.test) {
       ":target_defaults",
     ]
     cflags = [ "-Wno-format-zero-length" ]
-    pkg_deps = [ "libchrome-test" ]
+    pkg_deps = [
+      "libchrome-test",
+      "perfetto",
+    ]
     deps = [
       ":libbrillo-test",
       ":libbrillo_static",
