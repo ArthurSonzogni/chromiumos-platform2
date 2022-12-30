@@ -176,6 +176,15 @@ TEST_F(SystemConfigTest, TestPrivacyScreenUnset) {
   EXPECT_FALSE(system_config()->HasPrivacyScreen());
 }
 
+TEST_F(SystemConfigTest, TestChromiumECTrue) {
+  WriteFileAndCreateParentDirs(GetTempPath().AppendASCII(kChromiumECPath), "");
+  EXPECT_TRUE(system_config()->HasChromiumEC());
+}
+
+TEST_F(SystemConfigTest, TestChromiumECFalse) {
+  EXPECT_FALSE(system_config()->HasChromiumEC());
+}
+
 TEST_F(SystemConfigTest, NvmeSupportedTrue) {
   WriteFileAndCreateParentDirs(GetTempPath().AppendASCII(kNvmeToolPath), "");
   WriteFileAndCreateParentDirs(

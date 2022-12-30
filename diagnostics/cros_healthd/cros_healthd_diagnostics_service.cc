@@ -516,7 +516,6 @@ void CrosHealthdDiagnosticsService::PopulateAvailableRoutines(
       mojo_ipc::DiagnosticRoutineEnum::kArcPing,
       mojo_ipc::DiagnosticRoutineEnum::kArcDnsResolution,
       mojo_ipc::DiagnosticRoutineEnum::kSensitiveSensor,
-      mojo_ipc::DiagnosticRoutineEnum::kLedLitUp,
       mojo_ipc::DiagnosticRoutineEnum::kAudioSetVolume,
       mojo_ipc::DiagnosticRoutineEnum::kAudioSetGain,
   };
@@ -564,6 +563,10 @@ void CrosHealthdDiagnosticsService::PopulateAvailableRoutines(
 
   if (context_->system_config()->MmcSupported()) {
     available_routines_.insert(mojo_ipc::DiagnosticRoutineEnum::kEmmcLifetime);
+  }
+
+  if (context_->system_config()->HasChromiumEC()) {
+    available_routines_.insert(mojo_ipc::DiagnosticRoutineEnum::kLedLitUp);
   }
 }
 

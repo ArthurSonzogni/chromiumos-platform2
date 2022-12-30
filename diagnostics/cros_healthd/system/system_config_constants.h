@@ -42,6 +42,8 @@ inline constexpr char kSmartctlToolPath[] = "usr/sbin/smartctl";
 inline constexpr char kMmcToolPath[] = "usr/bin/mmc";
 // Fio utility program path relative to the root directory.
 inline constexpr char kFioToolPath[] = "usr/bin/fio";
+// Chromium EC path relative to the root directory.
+inline constexpr char kChromiumECPath[] = "sys/class/chromeos/cros_ec";
 // The path to check a device's branding properties.
 inline constexpr char kBrandingPath[] = "/branding";
 // The master configuration property that specifies a device's marketing name.

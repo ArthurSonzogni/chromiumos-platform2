@@ -36,6 +36,10 @@ bool FakeSystemConfig::HasPrivacyScreen() {
   return has_privacy_screen_;
 }
 
+bool FakeSystemConfig::HasChromiumEC() {
+  return has_chromium_ec_;
+}
+
 bool FakeSystemConfig::NvmeSupported() {
   return nvme_supported_;
 }
@@ -87,6 +91,10 @@ void FakeSystemConfig::SetHasBattery(bool value) {
 
 void FakeSystemConfig::SetHasPrivacyScreen(bool value) {
   has_privacy_screen_ = value;
+}
+
+void FakeSystemConfig::SetHasChromiumEC(bool value) {
+  has_chromium_ec_ = value;
 }
 
 void FakeSystemConfig::SetHasSmartBattery(bool value) {

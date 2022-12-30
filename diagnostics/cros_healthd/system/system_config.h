@@ -40,6 +40,7 @@ class SystemConfig final : public SystemConfigInterface {
   bool HasSmartBattery() override;
   bool HasSkuNumber() override;
   bool HasPrivacyScreen() override;
+  bool HasChromiumEC() override;
   bool NvmeSupported() override;
   void NvmeSelfTestSupported(NvmeSelfTestSupportedCallback callback) override;
   bool SmartCtlSupported() override;
