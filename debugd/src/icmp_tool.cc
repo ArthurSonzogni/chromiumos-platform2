@@ -4,6 +4,7 @@
 
 #include "debugd/src/icmp_tool.h"
 
+#include <linux/capability.h>
 #include <stdlib.h>
 
 #include <base/strings/stringprintf.h>
@@ -15,6 +16,11 @@ using std::map;
 using std::string;
 
 namespace debugd {
+
+namespace {
+inline constexpr char kSeccompPolicy[] = "/usr/share/policy/icmp.policy";
+inline constexpr uint64_t kCapabilities = CAP_TO_MASK(CAP_NET_RAW);
+}  // namespace
 
 string ICMPTool::TestICMP(const string& host) {
   map<string, string> options;
@@ -28,7 +34,11 @@ string ICMPTool::TestICMPWithOptions(const string& host,
     return "<path too long>";
 
   ProcessWithOutput p;
-  if (!p.Init())
+  p.SetSeccompFilterPolicyFile(kSeccompPolicy);
+  p.SetCapabilities(kCapabilities);
+  // "--ambient" is required to allow the subprocess ("/bin/ping" in this case)
+  // to inherit capabilities.
+  if (!p.Init({"--ambient"}))
     return "<can't create process>";
   p.AddArg(path);
 
