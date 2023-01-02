@@ -65,10 +65,12 @@ class MockDevicePolicyService : public DevicePolicyService {
   MOCK_METHOD(bool, Initialize, (), (override));
   MOCK_METHOD(void, ReportPolicyFileMetrics, (bool, bool), (override));
   MOCK_METHOD(void, ClearBlockDevmode, (Completion), (override));
-  MOCK_METHOD(bool,
-              ValidateRemoteDeviceWipeCommand,
-              (const std::vector<uint8_t>&),
-              (override));
+  MOCK_METHOD(
+      bool,
+      ValidateRemoteDeviceWipeCommand,
+      (const std::vector<uint8_t>&,
+       enterprise_management::PolicyFetchRequest::SignatureType signature_type),
+      (override));
 
   void set_system_utils(SystemUtils* system) { system_ = system; }
   void set_crossystem(Crossystem* crossystem) { crossystem_ = crossystem; }

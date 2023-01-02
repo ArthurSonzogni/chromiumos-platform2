@@ -16,6 +16,7 @@
 #include <base/memory/ref_counted.h>
 #include <crypto/scoped_nss_types.h>
 
+#include "bindings/device_management_backend.pb.h"
 #include "login_manager/nss_util.h"
 #include "login_manager/policy_service.h"
 #include "login_manager/vpd_process.h"
@@ -115,9 +116,12 @@ class DevicePolicyService : public PolicyService {
   // |completion|; otherwise, the completion is run with an error.
   virtual void ClearBlockDevmode(Completion completion);
 
-  // Validates the remote device wipe command received from the server.
+  // Validates the remote device wipe command received from the server against
+  // |signature_type| algorithm.
+  // Does not allow em::PolicyFetchRequest::NONE signature type.
   virtual bool ValidateRemoteDeviceWipeCommand(
-      const std::vector<uint8_t>& in_signed_command);
+      const std::vector<uint8_t>& in_signed_command,
+      enterprise_management::PolicyFetchRequest::SignatureType signature_type);
 
   // PolicyService:
   bool Store(const PolicyNamespace& ns,

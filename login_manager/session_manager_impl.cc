@@ -1160,8 +1160,68 @@ bool SessionManagerImpl::StartDeviceWipe(brillo::ErrorPtr* error) {
   return true;
 }
 
-bool SessionManagerImpl::StartRemoteDeviceWipe(
-    brillo::ErrorPtr* error, const std::vector<uint8_t>& in_signed_command) {
+void SessionManagerImpl::StartRemoteDeviceWipe(
+    dbus::MethodCall* method_call,
+    dbus::ExportedObject::ResponseSender sender) {
+  dbus::MessageReader reader(method_call);
+
+  const uint8_t* output_bytes = nullptr;
+  size_t length = 0;
+
+  if (reader.GetDataSignature() != "ay" ||
+      !reader.PopArrayOfBytes(&output_bytes, &length) || length <= 0) {
+    std::unique_ptr<dbus::ErrorResponse> error_response =
+        dbus::ErrorResponse::FromMethodCall(
+            method_call, dbus_error::kInvalidArgs,
+            "First argument is required and should be a serialized remote "
+            "command.");
+    std::move(sender).Run(std::move(error_response));
+    return;
+  }
+
+  std::vector<uint8_t> in_signed_command(&output_bytes[0],
+                                         &output_bytes[length]);
+
+  uint8_t in_signature_type =
+      enterprise_management::PolicyFetchRequest::SHA1_RSA;
+
+  if (reader.HasMoreData()) {
+    if (reader.GetDataSignature() != "y") {
+      std::unique_ptr<dbus::ErrorResponse> error_response =
+          dbus::ErrorResponse::FromMethodCall(
+              method_call, dbus_error::kInvalidArgs,
+              "Signature type should be a byte type.");
+      std::move(sender).Run(std::move(error_response));
+      return;
+    }
+    if (!reader.PopByte(&in_signature_type)) {
+      std::unique_ptr<dbus::ErrorResponse> error_response =
+          dbus::ErrorResponse::FromMethodCall(
+              method_call, dbus_error::kInvalidArgs,
+              "Failed to parse a signature type.");
+      std::move(sender).Run(std::move(error_response));
+      return;
+    }
+  }
+
+  brillo::ErrorPtr error;
+  if (!StartRemoteDeviceWipeInternal(&error, in_signed_command,
+                                     in_signature_type)) {
+    std::unique_ptr<dbus::Response> response =
+        brillo::dbus_utils::GetDBusError(method_call, error.get());
+    std::move(sender).Run(std::move(response));
+    return;
+  }
+
+  std::unique_ptr<dbus::Response> response =
+      dbus::Response::FromMethodCall(method_call);
+  std::move(sender).Run(std::move(response));
+}
+
+bool SessionManagerImpl::StartRemoteDeviceWipeInternal(
+    brillo::ErrorPtr* error,
+    const std::vector<uint8_t>& in_signed_command,
+    uint8_t in_signature_type) {
   const bool is_active_directory =
       install_attributes_reader_->GetAttribute(
           InstallAttributesReader::kAttrMode) ==
@@ -1170,22 +1230,44 @@ bool SessionManagerImpl::StartRemoteDeviceWipe(
   // Unsigned remote powerwash D-Bus call is allowed only in enterprise_ad mode.
   // Unsigned requests will be sent from Ash Chrome only if the
   // `ChromadToCloudMigrationEnabled` policy is true.
-  if (!is_active_directory &&
-      !device_policy_->ValidateRemoteDeviceWipeCommand(in_signed_command)) {
-    *error = CreateError(dbus_error::kInvalidParameter,
-                         "Remote wipe command validation failed, aborting.");
-    return false;
-  }
-
+  //
   // As part of the AD to cloud management migration, a flag file is set,
   // indicating that some OOBE screens should be skipped after the powerwash.
   if (is_active_directory) {
     system_->AtomicFileWrite(
         base::FilePath(kChromadMigrationSkipOobePreservePath), "1");
     InitiateDeviceWipe(kChromadMigrationDeviceWipeReason);
-  } else {
-    InitiateDeviceWipe("remote_wipe_request");
+
+    return true;
   }
+
+  if (!enterprise_management::PolicyFetchRequest::SignatureType_IsValid(
+          in_signature_type)) {
+    *error = CreateError(dbus_error::kInvalidParameter,
+                         "Invalid remote device wipe command signature type.");
+
+    return false;
+  }
+
+  auto signature_type =
+      static_cast<enterprise_management::PolicyFetchRequest::SignatureType>(
+          in_signature_type);
+
+  if (signature_type == enterprise_management::PolicyFetchRequest::NONE) {
+    *error = CreateError(dbus_error::kInvalidParameter,
+                         "Invalid remote device wipe command signature type.");
+
+    return false;
+  }
+
+  if (!device_policy_->ValidateRemoteDeviceWipeCommand(in_signed_command,
+                                                       signature_type)) {
+    *error = CreateError(dbus_error::kInvalidParameter,
+                         "Remote wipe command validation failed, aborting.");
+    return false;
+  }
+
+  InitiateDeviceWipe("remote_wipe_request");
 
   return true;
 }
@@ -1918,8 +2000,7 @@ brillo::ErrorPtr SessionManagerImpl::VerifyUnsignedPolicyStore() {
 }
 
 PolicyService* SessionManagerImpl::GetPolicyService(
-    const PolicyDescriptor& descriptor,
-    brillo::ErrorPtr* error) {
+    const PolicyDescriptor& descriptor, brillo::ErrorPtr* error) {
   DCHECK(error);
   PolicyService* policy_service = nullptr;
   switch (descriptor.account_type()) {

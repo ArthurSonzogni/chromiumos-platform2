@@ -18,6 +18,7 @@
 #include <base/memory/ptr_util.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
+#include <base/types/expected.h>
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/switches/chrome_switches.h>
 #include <crypto/rsa_private_key.h>
@@ -36,6 +37,7 @@
 #include "login_manager/nss_util.h"
 #include "login_manager/owner_key_loss_mitigator.h"
 #include "login_manager/policy_key.h"
+#include "login_manager/policy_service_util.h"
 #include "login_manager/policy_store.h"
 #include "login_manager/session_manager_impl.h"
 #include "login_manager/system_utils.h"
@@ -627,7 +629,8 @@ void DevicePolicyService::ClearBlockDevmode(Completion completion) {
 }
 
 bool DevicePolicyService::ValidateRemoteDeviceWipeCommand(
-    const std::vector<uint8_t>& in_signed_command) {
+    const std::vector<uint8_t>& in_signed_command,
+    em::PolicyFetchRequest::SignatureType signature_type) {
   // Parse the SignedData that was sent over the DBus call.
   em::SignedData signed_data;
   if (!signed_data.ParseFromArray(in_signed_command.data(),
@@ -641,9 +644,16 @@ bool DevicePolicyService::ValidateRemoteDeviceWipeCommand(
   // uses (signature verification & policy_type checking).
 
   // Verify the command signature.
+  base::expected<crypto::SignatureVerifier::SignatureAlgorithm, std::string>
+      mapped_signature_type = MapSignatureType(signature_type);
+  if (!mapped_signature_type.has_value()) {
+    LOG(ERROR) << "Invalid command signature type: " << signature_type;
+    return false;
+  }
+
   if (!key()->Verify(StringToBlob(signed_data.data()),
                      StringToBlob(signed_data.signature()),
-                     crypto::SignatureVerifier::RSA_PKCS1_SHA1)) {
+                     mapped_signature_type.value())) {
     LOG(ERROR) << "Invalid command signature.";
     return false;
   }

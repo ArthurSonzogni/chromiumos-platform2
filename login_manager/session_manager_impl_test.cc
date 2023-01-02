@@ -40,6 +40,7 @@
 #include <base/task/single_thread_task_executor.h>
 #include <base/test/bind.h>
 #include <base/test/simple_test_tick_clock.h>
+#include <base/test/test_future.h>
 #include <brillo/cryptohome.h>
 #include <brillo/dbus/dbus_param_writer.h>
 #include <brillo/errors/error.h>
@@ -88,6 +89,7 @@
 #include "login_manager/secret_util.h"
 #include "login_manager/system_utils_impl.h"
 
+using ::base::test::TestFuture;
 using ::testing::_;
 using ::testing::AnyNumber;
 using ::testing::AtLeast;
@@ -832,7 +834,10 @@ class SessionManagerImplTest : public ::testing::Test,
 
   void ExpectLockScreen() { expected_locks_ = 1; }
 
-  void ExpectDeviceRestart() { expected_restarts_ = 1; }
+  // Since expected_restarts_ is 0 by default, ExpectDeviceRestart(0) initially
+  // is equivalent to no-op. In the tests ExpectDeviceRestart(0) is used
+  // to make the setup more explicit.
+  void ExpectDeviceRestart(uint32_t count) { expected_restarts_ = count; }
 
   void ExpectStorePolicy(MockDevicePolicyService* service,
                          const std::vector<uint8_t>& policy_blob,
@@ -2307,7 +2312,7 @@ TEST_F(SessionManagerImplTest, EndSessionDuringAndAfterSuspend) {
 TEST_F(SessionManagerImplTest, StartDeviceWipe) {
   // Just make sure the device is being restart as a basic check of
   // InitiateDeviceWipe() invocation.
-  ExpectDeviceRestart();
+  ExpectDeviceRestart(1);
 
   brillo::ErrorPtr error;
   EXPECT_TRUE(impl_->StartDeviceWipe(&error));
@@ -2324,57 +2329,188 @@ TEST_F(SessionManagerImplTest, StartDeviceWipe_AlreadyLoggedIn) {
   EXPECT_EQ(dbus_error::kSessionExists, error->GetCode());
 }
 
-// Signed commands should start a powerwash in cloud managed devices.
-TEST_F(SessionManagerImplTest, StartRemoteDeviceWipe_Enterprise) {
+class StartRemoteDeviceWipeTest : public SessionManagerImplTest,
+                                  public testing::WithParamInterface<
+                                      em::PolicyFetchRequest::SignatureType> {
+ public:
+  std::unique_ptr<dbus::MethodCall> ConstructMethodCall() {
+    constexpr uint32_t kSerial = 123;
+    auto method_call = std::make_unique<dbus::MethodCall>(
+        login_manager::kSessionManagerInterface,
+        login_manager::kSessionManagerStartRemoteDeviceWipe);
+    method_call->SetSerial(kSerial);
+
+    return method_call;
+  }
+};
+
+TEST_F(StartRemoteDeviceWipeTest, StartRemoteDeviceWipe_NoArgument) {
+  ExpectDeviceRestart(0);
+
+  std::unique_ptr<dbus::MethodCall> method_call = ConstructMethodCall();
+  TestFuture<std::unique_ptr<dbus::Response>> sender;
+
+  impl_->StartRemoteDeviceWipe(method_call.get(), sender.GetCallback());
+
+  EXPECT_EQ(dbus_error::kInvalidArgs, sender.Get()->GetErrorName());
+}
+
+TEST_F(StartRemoteDeviceWipeTest, StartRemoteDeviceWipe_ArgumentEmptyArray) {
+  ExpectDeviceRestart(0);
+
+  std::unique_ptr<dbus::MethodCall> method_call = ConstructMethodCall();
+  dbus::MessageWriter writer(method_call.get());
+  std::vector<uint8_t> in_signed_command;
+  writer.AppendArrayOfBytes(in_signed_command.data(), in_signed_command.size());
+
+  TestFuture<std::unique_ptr<dbus::Response>> sender;
+
+  impl_->StartRemoteDeviceWipe(method_call.get(), sender.GetCallback());
+
+  EXPECT_EQ(dbus_error::kInvalidArgs, sender.Get()->GetErrorName());
+}
+
+TEST_F(StartRemoteDeviceWipeTest, StartRemoteDeviceWipe_ArgumentNotArray) {
+  ExpectDeviceRestart(0);
+
+  std::unique_ptr<dbus::MethodCall> method_call = ConstructMethodCall();
+  dbus::MessageWriter writer(method_call.get());
+  writer.AppendByte(1);
+
+  TestFuture<std::unique_ptr<dbus::Response>> sender;
+
+  impl_->StartRemoteDeviceWipe(method_call.get(), sender.GetCallback());
+
+  EXPECT_EQ(dbus_error::kInvalidArgs, sender.Get()->GetErrorName());
+}
+
+TEST_F(StartRemoteDeviceWipeTest,
+       StartRemoteDeviceWipe_EnterpriseNoSignatureType) {
   SetDeviceMode("enterprise");
-  ExpectDeviceRestart();
-  EXPECT_CALL(*device_policy_service_, ValidateRemoteDeviceWipeCommand(_))
+  ExpectDeviceRestart(1);
+
+  std::unique_ptr<dbus::MethodCall> method_call = ConstructMethodCall();
+  dbus::MessageWriter writer(method_call.get());
+  std::vector<uint8_t> in_signed_command;
+  in_signed_command.push_back(1);
+  writer.AppendArrayOfBytes(in_signed_command.data(), in_signed_command.size());
+
+  TestFuture<std::unique_ptr<dbus::Response>> sender;
+
+  EXPECT_CALL(*device_policy_service_, ValidateRemoteDeviceWipeCommand(
+                                           _, em::PolicyFetchRequest::SHA1_RSA))
       .WillOnce(Return(true));
 
-  brillo::ErrorPtr error;
+  impl_->StartRemoteDeviceWipe(method_call.get(), sender.GetCallback());
+
+  // This file should NOT be set in cloud managed devices.
+  EXPECT_FALSE(utils_.Exists(kChromadMigrationFilePath));
+}
+
+TEST_F(StartRemoteDeviceWipeTest, StartRemoteDeviceWipe_BadSignatureType) {
+  ExpectDeviceRestart(0);
+
+  std::unique_ptr<dbus::MethodCall> method_call = ConstructMethodCall();
+  dbus::MessageWriter writer(method_call.get());
   std::vector<uint8_t> in_signed_command;
-  EXPECT_TRUE(impl_->StartRemoteDeviceWipe(&error, in_signed_command));
-  EXPECT_FALSE(error.get());
+  in_signed_command.push_back(1);
+  writer.AppendArrayOfBytes(in_signed_command.data(), in_signed_command.size());
+  writer.AppendByte(em::PolicyFetchRequest::NONE);
+
+  TestFuture<std::unique_ptr<dbus::Response>> sender;
+
+  EXPECT_CALL(*device_policy_service_, ValidateRemoteDeviceWipeCommand(_, _))
+      .Times(0);
+
+  impl_->StartRemoteDeviceWipe(method_call.get(), sender.GetCallback());
+}
+
+// Signed commands should start a powerwash in cloud managed devices.
+TEST_P(StartRemoteDeviceWipeTest, StartRemoteDeviceWipe_Enterprise) {
+  SetDeviceMode("enterprise");
+  ExpectDeviceRestart(1);
+
+  std::unique_ptr<dbus::MethodCall> method_call = ConstructMethodCall();
+  dbus::MessageWriter writer(method_call.get());
+  std::vector<uint8_t> in_signed_command;
+  in_signed_command.push_back(1);
+  const em::PolicyFetchRequest::SignatureType signature_type = GetParam();
+  writer.AppendArrayOfBytes(in_signed_command.data(), in_signed_command.size());
+  writer.AppendByte(signature_type);
+
+  TestFuture<std::unique_ptr<dbus::Response>> sender;
+
+  EXPECT_CALL(*device_policy_service_,
+              ValidateRemoteDeviceWipeCommand(_, signature_type))
+      .WillOnce(Return(true));
+
+  impl_->StartRemoteDeviceWipe(method_call.get(), sender.GetCallback());
 
   // This file should NOT be set in cloud managed devices.
   EXPECT_FALSE(utils_.Exists(kChromadMigrationFilePath));
 }
 
 // Unsigned commands should fail on cloud managed devices.
-TEST_F(SessionManagerImplTest, StartRemoteDeviceWipe_EnterpriseBadSignature) {
+TEST_F(StartRemoteDeviceWipeTest,
+       StartRemoteDeviceWipe_EnterpriseBadSignature) {
   SetDeviceMode("enterprise");
-  EXPECT_CALL(*device_policy_service_, ValidateRemoteDeviceWipeCommand(_))
+  ExpectDeviceRestart(0);
+
+  std::unique_ptr<dbus::MethodCall> method_call = ConstructMethodCall();
+  dbus::MessageWriter writer(method_call.get());
+  std::vector<uint8_t> in_signed_command;
+  in_signed_command.push_back(1);
+  writer.AppendArrayOfBytes(in_signed_command.data(), in_signed_command.size());
+  writer.AppendByte(em::PolicyFetchRequest::SHA1_RSA);
+
+  TestFuture<std::unique_ptr<dbus::Response>> sender;
+
+  EXPECT_CALL(*device_policy_service_, ValidateRemoteDeviceWipeCommand(
+                                           _, em::PolicyFetchRequest::SHA1_RSA))
       .WillOnce(Return(false));
 
-  brillo::ErrorPtr error;
-  std::vector<uint8_t> in_signed_command;
-  EXPECT_FALSE(impl_->StartRemoteDeviceWipe(&error, in_signed_command));
-  EXPECT_TRUE(error.get());
+  impl_->StartRemoteDeviceWipe(method_call.get(), sender.GetCallback());
 
+  EXPECT_EQ(dbus_error::kInvalidParameter, sender.Get()->GetErrorName());
   // This file should NOT be set in cloud managed devices.
   EXPECT_FALSE(utils_.Exists(kChromadMigrationFilePath));
 }
 
 // On AD managed devices, any command (signed or not) should succeed.
-TEST_F(SessionManagerImplTest, StartRemoteDeviceWipe_EnterpriseAD) {
+TEST_P(StartRemoteDeviceWipeTest, StartRemoteDeviceWipe_EnterpriseAD) {
   SetDeviceMode("enterprise_ad");
-  ExpectDeviceRestart();
-  EXPECT_CALL(*device_policy_service_, ValidateRemoteDeviceWipeCommand(_))
+  ExpectDeviceRestart(1);
+
+  std::unique_ptr<dbus::MethodCall> method_call = ConstructMethodCall();
+  dbus::MessageWriter writer(method_call.get());
+  std::vector<uint8_t> in_signed_command;
+  in_signed_command.push_back(1);
+  const em::PolicyFetchRequest::SignatureType signature_type = GetParam();
+  writer.AppendArrayOfBytes(in_signed_command.data(), in_signed_command.size());
+  writer.AppendByte(signature_type);
+
+  TestFuture<std::unique_ptr<dbus::Response>> sender;
+
+  EXPECT_CALL(*device_policy_service_, ValidateRemoteDeviceWipeCommand(_, _))
       .Times(0);
 
-  brillo::ErrorPtr error;
-  std::vector<uint8_t> in_signed_command;
-  EXPECT_TRUE(impl_->StartRemoteDeviceWipe(&error, in_signed_command));
-  EXPECT_FALSE(error.get());
+  impl_->StartRemoteDeviceWipe(method_call.get(), sender.GetCallback());
 
   // This file should be set in AD managed devices.
   EXPECT_TRUE(utils_.Exists(kChromadMigrationFilePath));
 }
 
+INSTANTIATE_TEST_SUITE_P(
+    SignatureAlgorithm,
+    StartRemoteDeviceWipeTest,
+    ::testing::ValuesIn<em::PolicyFetchRequest::SignatureType>(
+        {em::PolicyFetchRequest::SHA1_RSA,
+         em::PolicyFetchRequest::SHA256_RSA}));
+
 TEST_F(SessionManagerImplTest, InitiateDeviceWipe_TooLongReason) {
   ASSERT_TRUE(
       utils_.RemoveFile(base::FilePath(SessionManagerImpl::kLoggedInFlag)));
-  ExpectDeviceRestart();
+  ExpectDeviceRestart(1);
   impl_->InitiateDeviceWipe(
       "overly long test message with\nspecial/chars$\t\xa4\xd6 1234567890");
   std::string contents;
@@ -2390,7 +2526,7 @@ TEST_F(SessionManagerImplTest, InitiateDeviceWipe_TooLongReason) {
 TEST_F(SessionManagerImplTest, InitiateDeviceWipe_ChromadMigration) {
   ASSERT_TRUE(
       utils_.RemoveFile(base::FilePath(SessionManagerImpl::kLoggedInFlag)));
-  ExpectDeviceRestart();
+  ExpectDeviceRestart(1);
   impl_->InitiateDeviceWipe("ad_migration_wipe_request");
   std::string contents;
   base::FilePath reset_path = real_utils_.PutInsideBaseDirForTesting(
@@ -3764,7 +3900,7 @@ class StartTPMFirmwareUpdateTest : public SessionManagerImplTest {
 };
 
 TEST_F(StartTPMFirmwareUpdateTest, Success) {
-  ExpectDeviceRestart();
+  ExpectDeviceRestart(1);
 }
 
 TEST_F(StartTPMFirmwareUpdateTest, AlreadyLoggedIn) {
@@ -3788,7 +3924,7 @@ TEST_F(StartTPMFirmwareUpdateTest, EnterpriseFirstBootAllowed) {
   settings.mutable_tpm_firmware_update_settings()
       ->set_allow_user_initiated_powerwash(true);
   SetDevicePolicy(settings);
-  ExpectDeviceRestart();
+  ExpectDeviceRestart(1);
 }
 
 TEST_F(StartTPMFirmwareUpdateTest, EnterprisePreserveStatefulNotSet) {
@@ -3804,7 +3940,7 @@ TEST_F(StartTPMFirmwareUpdateTest, EnterprisePreserveStatefulAllowed) {
   settings.mutable_tpm_firmware_update_settings()
       ->set_allow_user_initiated_preserve_device_state(true);
   SetDevicePolicy(settings);
-  ExpectDeviceRestart();
+  ExpectDeviceRestart(1);
 }
 
 TEST_F(StartTPMFirmwareUpdateTest, EnterpriseCleanupDisallowed) {
@@ -3821,7 +3957,7 @@ TEST_F(StartTPMFirmwareUpdateTest, EnterpriseCleanupAllowed) {
   settings.mutable_tpm_firmware_update_settings()
       ->set_allow_user_initiated_preserve_device_state(true);
   SetDevicePolicy(settings);
-  ExpectDeviceRestart();
+  ExpectDeviceRestart(1);
 }
 
 TEST_F(StartTPMFirmwareUpdateTest, AvailabilityNotDecided) {
@@ -3852,7 +3988,7 @@ TEST_F(StartTPMFirmwareUpdateTest, RequestFileWriteFailure) {
 
 TEST_F(StartTPMFirmwareUpdateTest, PreserveStateful) {
   update_mode_ = "preserve_stateful";
-  ExpectDeviceRestart();
+  ExpectDeviceRestart(1);
 }
 
 }  // namespace login_manager
