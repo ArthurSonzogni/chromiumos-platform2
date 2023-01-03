@@ -253,14 +253,14 @@ FederatedClient::FederatedClient(
     const FlFreeRunPlanResultFn free_run_plan_result,
     const std::string& service_uri,
     const std::string& api_key,
-    const std::string& client_version,
+    const std::string& brella_lib_version,
     const ClientConfigMetadata client_config,
     const DeviceStatusMonitor* const device_status_monitor)
     : run_plan_(run_plan),
       free_run_plan_result_(free_run_plan_result),
       service_uri_(service_uri),
       api_key_(api_key),
-      client_version_(client_version),
+      brella_lib_version_(brella_lib_version),
       client_config_(client_config),
       next_retry_delay_(kDefaultRetryWindow),
       device_status_monitor_(device_status_monitor) {}
@@ -300,7 +300,7 @@ void FederatedClient::RunPlan(const StorageManager* const storage_manager) {
   auto scoped_metrics_recorder =
       Metrics::GetInstance()->CreateScopedMetricsRecorder(client_config_.name);
   FlRunPlanResult result = (*run_plan_)(
-      env, service_uri_.c_str(), api_key_.c_str(), client_version_.c_str(),
+      env, service_uri_.c_str(), api_key_.c_str(), brella_lib_version_.c_str(),
       population_name.c_str(), client_config_.retry_token.c_str());
 
   // TODO(b/251378482): maybe log the event to UMA

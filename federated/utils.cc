@@ -69,7 +69,7 @@ tensorflow::Example ConvertToTensorFlowExampleProto(const ExamplePtr& example) {
   return tf_example;
 }
 
-std::optional<std::string> ConvertClientVersion(
+std::optional<std::string> ConvertBrellaLibVersion(
     const std::string& release_version) {
   int major_version, minor_version, sub_version;
   if (!RE2::FullMatch(release_version, R"((\d{1,9})\.(\d{1,6})\.(\d{1,4}))",

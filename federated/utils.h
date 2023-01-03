@@ -51,7 +51,7 @@ tensorflow::Example ConvertToTensorFlowExampleProto(
 // be infinite, but given it's now 15xxx and we need to pack them in an int64,
 // let's allow up to 9 digits and not pad it.
 // Then 15217.123.2 => chromeos_152170001230002
-std::optional<std::string> ConvertClientVersion(
+std::optional<std::string> ConvertBrellaLibVersion(
     const std::string& release_version);
 
 }  // namespace federated

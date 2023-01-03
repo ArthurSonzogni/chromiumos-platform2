@@ -47,9 +47,9 @@ void OnDBusSignalConnected(const std::string& interface,
   }
 }
 
-// Gets release version from base::SysInfo and converts it to the client version
-// format, returns std::nullopt if any error.
-// See utils.cc::ConvertClientVersion for more details.
+// Gets release version from base::SysInfo and converts it to the brella lib
+// version format, returns std::nullopt if any error. See
+// utils.cc::ConvertBrellaLibVersion for more details.
 std::optional<std::string> GetClientVersion() {
   std::string release_version;
   if (!base::SysInfo::GetLsbReleaseValue(kLsbReleaseVersion,
@@ -58,7 +58,7 @@ std::optional<std::string> GetClientVersion() {
     return std::nullopt;
   }
 
-  return ConvertClientVersion(release_version);
+  return ConvertBrellaLibVersion(release_version);
 }
 
 }  // namespace
@@ -155,10 +155,10 @@ void Scheduler::ScheduleInternal(const std::string& dlc_root_path) {
   // `clients_` needs to be increased. Reserves the necessary capacity upfront.
   clients_.reserve(client_configs.size());
 
-  const auto client_version = GetClientVersion();
-  if (!client_version.has_value()) {
-    LOG(ERROR)
-        << "Failed to schedule the tasks because of no valid client version";
+  const auto brella_lib_version = GetClientVersion();
+  if (!brella_lib_version.has_value()) {
+    LOG(ERROR) << "Failed to schedule the tasks because of no valid brella lib "
+                  "version";
     return;
   }
 
@@ -170,7 +170,7 @@ void Scheduler::ScheduleInternal(const std::string& dlc_root_path) {
       continue;
     }
     clients_.push_back(federated_library->CreateClient(
-        kServiceUri, kApiKey, client_version.value(), client_config,
+        kServiceUri, kApiKey, brella_lib_version.value(), client_config,
         device_status_monitor_.get()));
     KeepSchedulingJobForClient(&clients_.back());
   }
