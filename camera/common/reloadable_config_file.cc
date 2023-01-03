@@ -42,8 +42,8 @@ void ReloadableConfigFile::SetCallback(OptionsUpdateCallback callback) {
 }
 
 void ReloadableConfigFile::UpdateOption(std::string key, base::Value value) {
-  CHECK(json_values_);
   base::AutoLock lock(options_lock_);
+  CHECK(json_values_);
   json_values_->Set(key, std::move(value));
   WriteConfigFileLocked(override_config_file_path_);
 }
@@ -106,7 +106,6 @@ void ReloadableConfigFile::WriteConfigFileLocked(
 
 void ReloadableConfigFile::OnConfigFileUpdated(const base::FilePath& file_path,
                                                bool error) {
-  CHECK(json_values_);
   base::AutoLock lock(options_lock_);
   ReadConfigFileLocked(override_config_file_path_);
   if (options_update_callback_) {
