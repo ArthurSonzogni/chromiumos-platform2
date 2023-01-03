@@ -5,7 +5,9 @@
 # rseq should be first due to frequency and purpose to decrease nptl latency
 rseq: 1
 
+access: 1
 brk: 1
+clock_gettime: 1
 clock_nanosleep: 1
 clock_getres: 1
 clone: 1
@@ -51,6 +53,7 @@ pread64: 1
 prlimit64: 1
 pwrite64: 1
 read: 1
+recvfrom: 1
 recvmsg: 1
 rename: 1
 restart_syscall: 1
