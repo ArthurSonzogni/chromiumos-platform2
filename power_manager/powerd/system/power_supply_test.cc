@@ -2325,7 +2325,7 @@ TEST_F(PowerSupplyTest, AdaptiveChargingTarget) {
   EXPECT_TRUE(status.adaptive_delaying_charge);
   EXPECT_TRUE(status.adaptive_charging_supported);
 
-  power_supply_->ClearAdaptiveCharging();
+  power_supply_->ClearAdaptiveChargingChargeDelay();
   ASSERT_TRUE(UpdateStatus(&status));
   EXPECT_DOUBLE_EQ((100.0 * actual_charge) / kFullFactor,
                    status.display_battery_percentage);

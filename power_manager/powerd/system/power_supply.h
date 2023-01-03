@@ -267,7 +267,7 @@ class PowerSupplyInterface {
   // Clears |adaptive_charging_hold_percent_|.
   // |power_status_.display_battery_percentage| is no longer held at
   // |adaptive_charging_hold_percent_|.
-  virtual void ClearAdaptiveCharging() = 0;
+  virtual void ClearAdaptiveChargingChargeDelay() = 0;
 };
 
 // Real implementation of PowerSupplyInterface that reads from sysfs.
@@ -387,7 +387,7 @@ class PowerSupply : public PowerSupplyInterface, public UdevSubsystemObserver {
   void SetAdaptiveChargingHeuristicEnabled(bool enabled) override;
   void SetAdaptiveCharging(const base::TimeTicks& target_time,
                            double hold_percent) override;
-  void ClearAdaptiveCharging() override;
+  void ClearAdaptiveChargingChargeDelay() override;
 
   // UdevSubsystemObserver implementation:
   void OnUdevEvent(const UdevEvent& event) override;

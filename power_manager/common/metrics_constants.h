@@ -233,6 +233,7 @@ enum class LockEvent { STANDARD_LOCK, QUICK_LOCK, MAX };
 // Values for unplug metrics for AdaptiveChargingController.
 enum class AdaptiveChargingState {
   ACTIVE,
+  SLOWCHARGE,
   INACTIVE,
   HEURISTIC_DISABLED,
   USER_CANCELED,

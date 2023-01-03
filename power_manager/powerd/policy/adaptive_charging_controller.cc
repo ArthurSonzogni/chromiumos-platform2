@@ -4,6 +4,8 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdint>
+#include <limits>
 #include <string>
 #include <vector>
 
@@ -44,6 +46,16 @@ const double kHeuristicMinFullOnACRatio = 0.5;
 const double kDefaultMaxDelayPercentile = 0.3;
 
 const int64_t kBatterySustainDisabled = -1;
+
+// Value passed to `SetChargeLimit` to disable the EC's charge limit logic.
+const uint32_t kSlowChargingDisabled = std::numeric_limits<uint32_t>::max();
+
+// Battery design-capacity multiplier used to calculate the battery charge
+// current limit to use when slow charging. 0.1 (10% of battery design-capacity)
+// is multiplied by 1000 as the `battery_charge_full_design` stored in
+// `PowerStatus` is in Amperes (A) while charge limit is in milliamperes (mA).
+const uint32_t kChargeLimitBatteryCapacityMultiplier = 0.1 * 1000;
+
 const base::TimeDelta kDefaultAlarmInterval = base::Minutes(30);
 const int64_t kDefaultHoldPercent = 80;
 const double kDefaultMinProbability = 0.35;
@@ -790,12 +802,14 @@ void AdaptiveChargingController::Init(
   hold_percent_ = kDefaultHoldPercent;
   hold_percent_start_time_ = base::TimeTicks();
   hold_delta_percent_ = 0;
+  time_spent_slow_charging_ = base::TimeDelta();
   display_percent_ = kDefaultHoldPercent;
   min_probability_ = kDefaultMinProbability;
   max_delay_percentile_ = kDefaultMaxDelayPercentile;
   cached_external_power_ = PowerSupplyProperties_ExternalPower_DISCONNECTED;
   is_sustain_set_ = false;
   adaptive_charging_enabled_ = false;
+  slow_charging_enabled_ = false;
 
   power_supply_->AddObserver(this);
 
@@ -821,6 +835,10 @@ void AdaptiveChargingController::Init(
   CHECK(hold_percent_ < 100 && hold_percent_ > 0);
   CHECK(hold_delta_percent_ < 100 && hold_delta_percent_ >= 0);
   CHECK(min_probability_ >= 0 && min_probability_ <= 1.0);
+
+  // Check if the EC supports setting a charge limit, and simultaneously remove
+  // any existing limit that may already be in place.
+  slow_charging_supported_ = SetChargeLimit(kSlowChargingDisabled);
 
   // Check if setting meaningless battery sustain values works. If the battery
   // sustain functionality is not supported on this system, we will still run ML
@@ -954,6 +972,7 @@ void AdaptiveChargingController::OnPredictionResponse(
   // model not having enough confidence in the prediction to delay charging.
   if (result[hour] < min_probability_) {
     StopAdaptiveCharging();
+
     // If charging was delayed already, treat this as an unplug prediction for
     // `kFinishChargingDelay` time from now.
     if (hold_percent_start_time_ != base::TimeTicks())
@@ -961,6 +980,28 @@ void AdaptiveChargingController::OnPredictionResponse(
           clock_.GetCurrentBootTime() + kFinishChargingDelay;
     else
       target_full_charge_time_ = clock_.GetCurrentBootTime();
+    return;
+  }
+
+  // If slow charging has commenced, check how long we have been slow-charging
+  // for as well as the total charging time we may get with the new prediction
+  // to determine whether to continue slow-charging or switch to default
+  // charging.
+  if (state_ == AdaptiveChargingState::SLOWCHARGE) {
+    base::TimeDelta total_predicted_charging_time =
+        clock_.GetCurrentBootTime() - hold_percent_end_time_ +
+        base::Hours(hour);
+
+    // If the new prediction determines there is insufficient time to continue
+    // slow charging, stop adaptive charging. A minimum total charge time of 2.5
+    // hours which is `kFinishChargingDelay + base::Minutes(30)` is necessary to
+    // finish charging using slow charging.
+    if (total_predicted_charging_time <
+        kFinishChargingDelay + base::Minutes(30)) {
+      StopAdaptiveCharging();
+    } else {
+      StartRecheckAlarm(recheck_alarm_interval_);
+    }
     return;
   }
 
@@ -994,6 +1035,20 @@ void AdaptiveChargingController::OnPredictionResponse(
     return;
   }
 
+  // If the prediction determines there may be sufficient time to perform slow
+  // charging and the hold period has been reached
+  // (`status.display_battery_percentage` is in the hold range or above), stop
+  // delaying and start slow charging. Continue running the `recheck_alarm_` to
+  // continue rechecking charger unplug predictions if we begin slow-charging.
+  if (slow_charging_enabled_ && target_delay <= kFinishSlowChargingDelay &&
+      hold_percent_start_time_ != base::TimeTicks()) {
+    StartRecheckAlarm(recheck_alarm_interval_);
+    StartSlowCharging();
+    target_full_charge_time_ =
+        clock_.GetCurrentBootTime() + kFinishSlowChargingDelay;
+    return;
+  }
+
   // Only continue running the `recheck_alarm_` if we plan to continue delaying
   // charge. The `recheck_alarm_` causes this code to be run again.
   StartRecheckAlarm(recheck_alarm_interval_);
@@ -1006,19 +1061,25 @@ void AdaptiveChargingController::OnPredictionResponse(
   // `recheck_alarm_` or a suspend attempt.
   if (target_delay != base::TimeDelta::Max()) {
     // Don't allow the time to start charging, which is
-    // `target_full_charge_time_` - `kFinishChargingDelay`, to be pushed out as
-    // long as `status.display_battery_percentage` is in the hold range or
-    // above. This will happen when the prediction via `result` is different
-    // from the last time this code ran. We do this because the prediction for
-    // when charging will finish (with the delay time accounted for) is shown to
-    // the user when the hold range is reached, and we don't want to subvert
-    // their expectations.
+    // `target_full_charge_time_` - `kFinishChargingDelay`,
+    // or `target_full_charge_time_` - `kFinishSlowChargingDelay` if slow
+    // charging is enabled, to be pushed out as long as
+    // `status.display_battery_percentage` is in the hold range or above. This
+    // will happen when the prediction via `result` is different from the last
+    // time this code ran. We do this because the prediction for when charging
+    // will finish (with the delay time accounted for) is shown to the user when
+    // the hold range is reached, and we don't want to subvert their
+    // expectations.
     if (charge_alarm_->IsRunning() &&
         AtHoldPercent(status.display_battery_percentage) &&
         target_time >= target_full_charge_time_)
       return;
 
-    StartChargeAlarm(target_delay - kFinishChargingDelay);
+    if (slow_charging_enabled_) {
+      StartChargeAlarm(target_delay - kFinishSlowChargingDelay);
+    } else {
+      StartChargeAlarm(target_delay - kFinishChargingDelay);
+    }
   } else {
     // Set the `target_full_charge_time_` to the Max() value, since we haven't
     // found a time that we'll start charging yet.
@@ -1082,6 +1143,7 @@ void AdaptiveChargingController::OnPowerStatusUpdate() {
       hold_percent_start_time_ = base::TimeTicks();
       hold_percent_end_time_ = base::TimeTicks();
       charge_finished_time_ = base::TimeTicks();
+      time_spent_slow_charging_ = base::TimeDelta();
       return;
     }
   }
@@ -1105,9 +1167,16 @@ void AdaptiveChargingController::OnPowerStatusUpdate() {
       hold_percent_start_time_ = clock_.GetCurrentBootTime();
   }
 
-  if (status.battery_state == PowerSupplyProperties_BatteryState_FULL &&
-      charge_finished_time_ == base::TimeTicks() && report_charge_time_)
-    charge_finished_time_ = clock_.GetCurrentBootTime();
+  if (status.battery_state == PowerSupplyProperties_BatteryState_FULL) {
+    if (charge_finished_time_ == base::TimeTicks() && report_charge_time_) {
+      charge_finished_time_ = clock_.GetCurrentBootTime();
+    }
+    // If we have been slow charging and battery is now fully charged, stop
+    // Adaptive Charging.
+    if (state_ == AdaptiveChargingState::SLOWCHARGE) {
+      StopAdaptiveCharging();
+    }
+  }
 }
 
 void AdaptiveChargingController::HandleChargeNow(
@@ -1157,6 +1226,8 @@ bool AdaptiveChargingController::SetChargeLimit(uint32_t limit_mA) {
   if (!success) {
     LOG(ERROR) << "Failed to set battery charge current limit: " << limit_mA
                << "mA";
+  } else {
+    LOG(INFO) << "Battery charge current limit set at " << limit_mA << "mA";
   }
 
   return success;
@@ -1202,6 +1273,16 @@ bool AdaptiveChargingController::StartAdaptiveCharging(
   } else {
     state_ = AdaptiveChargingState::USER_DISABLED;
   }
+
+  // Check if slow charging is enabled via pref and supported by the EC.
+  prefs_->GetBool(kSlowAdaptiveChargingEnabledPref, &slow_charging_enabled_);
+
+  if (!slow_charging_supported_)
+    slow_charging_enabled_ = false;
+
+  LOG(INFO) << "Slow charging is "
+            << (slow_charging_supported_ ? "supported" : "not supported")
+            << " and " << (slow_charging_enabled_ ? "enabled" : "disabled");
 
   UpdateAdaptiveCharging(reason, true /* async */);
   return true;
@@ -1269,17 +1350,43 @@ void AdaptiveChargingController::UpdateAdaptiveCharging(
   delegate_->GetAdaptiveChargingPrediction(proto, async);
 }
 
+void AdaptiveChargingController::StartSlowCharging() {
+  state_ = AdaptiveChargingState::SLOWCHARGE;
+  hold_percent_end_time_ = clock_.GetCurrentBootTime();
+  const system::PowerStatus status = power_supply_->GetPowerStatus();
+  LOG(INFO) << "Slow charging started.";
+  SetChargeLimit(status.battery_charge_full_design *
+                 kChargeLimitBatteryCapacityMultiplier);
+
+  charge_alarm_->Stop();
+  SetSustain(kBatterySustainDisabled, kBatterySustainDisabled);
+  is_sustain_set_ = false;
+  power_supply_->ClearAdaptiveChargingChargeDelay();
+}
+
 void AdaptiveChargingController::StopAdaptiveCharging() {
-  if (state_ == AdaptiveChargingState::ACTIVE) {
+  base::TimeTicks now = clock_.GetCurrentBootTime();
+
+  if (state_ == AdaptiveChargingState::SLOWCHARGE) {
+    time_spent_slow_charging_ = now - hold_percent_end_time_;
+  }
+
+  if (state_ == AdaptiveChargingState::ACTIVE ||
+      state_ == AdaptiveChargingState::SLOWCHARGE) {
     state_ = AdaptiveChargingState::INACTIVE;
-    hold_percent_end_time_ = clock_.GetCurrentBootTime();
+    LOG(INFO) << "Adaptive charging stopped.";
+    // Only set hold_percent_end_time if it hasn't been set when slow charging
+    // started.
+    if (hold_percent_end_time_ == base::TimeTicks())
+      hold_percent_end_time_ = now;
   }
 
   recheck_alarm_->Stop();
   charge_alarm_->Stop();
   SetSustain(kBatterySustainDisabled, kBatterySustainDisabled);
   is_sustain_set_ = false;
-  power_supply_->ClearAdaptiveCharging();
+  SetChargeLimit(kSlowChargingDisabled);
+  power_supply_->ClearAdaptiveChargingChargeDelay();
 }
 
 bool AdaptiveChargingController::IsRunning() {
@@ -1302,13 +1409,19 @@ void AdaptiveChargingController::StartRecheckAlarm(base::TimeDelta delay) {
                           base::Unretained(this)));
 }
 
+void AdaptiveChargingController::StartChargingToFull() {
+  slow_charging_enabled_ ? StartSlowCharging() : StopAdaptiveCharging();
+}
+
 void AdaptiveChargingController::StartChargeAlarm(base::TimeDelta delay) {
   charge_alarm_->Start(
       FROM_HERE, delay,
-      base::BindRepeating(&AdaptiveChargingController::StopAdaptiveCharging,
+      base::BindRepeating(&AdaptiveChargingController::StartChargingToFull,
                           base::Unretained(this)));
+  base::TimeDelta finish_charging_delay =
+      slow_charging_enabled_ ? kFinishSlowChargingDelay : kFinishChargingDelay;
   target_full_charge_time_ =
-      clock_.GetCurrentBootTime() + delay + kFinishChargingDelay;
+      clock_.GetCurrentBootTime() + delay + finish_charging_delay;
 }
 
 void AdaptiveChargingController::OnRecheckAlarmFired() {

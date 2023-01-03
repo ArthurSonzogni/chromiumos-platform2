@@ -42,6 +42,6 @@ void PowerSupplyStub::SetAdaptiveChargingHeuristicEnabled(bool enabled) {}
 void PowerSupplyStub::SetAdaptiveCharging(const base::TimeTicks& target_time,
                                           double hold_percent) {}
 
-void PowerSupplyStub::ClearAdaptiveCharging() {}
+void PowerSupplyStub::ClearAdaptiveChargingChargeDelay() {}
 
 }  // namespace power_manager::system

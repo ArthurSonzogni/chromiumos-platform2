@@ -431,6 +431,10 @@ class AdaptiveChargingController : public AdaptiveChargingControllerInterface {
  public:
   static constexpr base::TimeDelta kFinishChargingDelay = base::Hours(2);
 
+  // The duration needed to charge a battery from 80% to 100% using slow
+  // charging.
+  static constexpr base::TimeDelta kFinishSlowChargingDelay = base::Hours(3);
+
   AdaptiveChargingController();
   AdaptiveChargingController(const AdaptiveChargingController&) = delete;
   AdaptiveChargingController& operator=(const AdaptiveChargingController&) =
@@ -461,8 +465,11 @@ class AdaptiveChargingController : public AdaptiveChargingControllerInterface {
   }
 
   base::TimeDelta get_charge_delay_for_testing() {
+    base::TimeDelta finish_charging_delay = slow_charging_enabled_
+                                                ? kFinishSlowChargingDelay
+                                                : kFinishChargingDelay;
     return target_full_charge_time_ - base::TimeTicks::Now() -
-           kFinishChargingDelay;
+           finish_charging_delay;
   }
 
   base::TimeTicks get_target_full_charge_time_for_testing() {
@@ -471,6 +478,10 @@ class AdaptiveChargingController : public AdaptiveChargingControllerInterface {
 
   void set_recheck_delay_for_testing(base::TimeDelta delay) {
     StartRecheckAlarm(delay);
+  }
+
+  void set_slow_charging_for_testing(bool enabled) {
+    slow_charging_enabled_ = enabled;
   }
 
   ChargeHistory* get_charge_history_for_testing() { return &charge_history_; }
@@ -520,9 +531,18 @@ class AdaptiveChargingController : public AdaptiveChargingControllerInterface {
   void UpdateAdaptiveCharging(const UserChargingEvent::Event::Reason& reason,
                               bool async);
 
+  // Stops Adaptive Charging from delaying charge anymore. Starts the slow
+  // charging phase of Adaptive Charging from the set sustain percentage to 100%
+  // if the unplug time prediction allows sufficient time for slow charging.
+  // Sets the battery charge current limit to 0.1C (10% of battery design
+  // capacity).
+  void StartSlowCharging();
+
   // Stops Adaptive Charging from delaying charge anymore. The `recheck_alarm_`
   // and `charge_alarm_` will no longer run unless `StartAdaptiveCharging` is
-  // called.
+  // called. When slow charging is enabled, the battery charge current limit
+  // will also be reset so if the battery is not fully charged yet, it will now
+  // be charged as quickly as possible.
   void StopAdaptiveCharging();
 
   // Indicates that the prediction code will periodically run for re-evaluating
@@ -538,8 +558,15 @@ class AdaptiveChargingController : public AdaptiveChargingControllerInterface {
   // Schedule re-evaluation of the prediction code after `delay`.
   void StartRecheckAlarm(base::TimeDelta delay);
 
-  // Schedule stopping Adaptive Charging, which disables the battery sustainer
-  // and `recheck_alarm_` after `delay`.
+  // Determine the function that gets run when the `charge_alarm_` in
+  // `StartChargeAlarm` goes off. If slow charging is enabled,
+  // `StartSlowCharging` is run, otherwise `StopAdaptiveCharging` is run.
+  void StartChargingToFull();
+
+  // Schedule disabling the battery sustainer and starting charging of the
+  // battery again after a `delay`. If slow charging is enabled, the battery
+  // starts to charge with a limited charge current. Otherwise, Adaptive
+  // Charging is stopped and fast charging commences.
   void StartChargeAlarm(base::TimeDelta delay);
 
   // Callback for the `recheck_alarm_`. Re-evaluates the prediction.
@@ -589,26 +616,42 @@ class AdaptiveChargingController : public AdaptiveChargingControllerInterface {
   // The time when we reached fill charge. Used for reporting metrics.
   base::TimeTicks charge_finished_time_;
 
+  // The duration spent slow charging. Used for reporting metrics.
+  base::TimeDelta time_spent_slow_charging_;
+
   // Interval for rechecking the prediction, and modifying whether charging is
   // delayed based on that prediction.
   base::TimeDelta recheck_alarm_interval_;
 
   // Tracks the specific state of Adaptive Charging for determining what
   // functionality to perform, as well as reporting to UMA.
-  // ACTIVE - Adaptive Charging is running and is delaying charging or may delay
-  // charging in the future.
-  // INACTIVE - Adaptive Charging is enabled, but it stopped delaying charging
-  // or never started.
-  // HEURISTIC_DISABLED - Adaptive Charging's heuristic (separate from the ML
-  // model) determined that it should not delay charge.
-  // USER_CANCELED - User stopped Adaptive Charging by clicking the "Charge Now"
-  // button.
-  // USER_DISABLED - User does not have the Adaptive Charging feature enabled
-  // (but it is supported), but the heuristic check for enabling passes.
-  // SHUTDOWN - The system has initiated shutdown, so starting any new Adaptive
-  // Charging logic is prevented (metrics may still be reported on AC unplug).
-  // NOT_SUPPORTED - EC functionality required for Adaptive Charging does not
-  // exist on this platform, but the heuristic check for enabling passes.
+  //
+  // States are as follows:
+  //
+  // * ACTIVE - Adaptive Charging is running and is delaying charging or may
+  //   delay charging in the future.
+  //
+  // * SLOWCHARGE - Adaptive Charging is running and slow charging has
+  //   commenced.
+  //
+  // * INACTIVE - Adaptive Charging is enabled, but it stopped delaying
+  //   charging or never started.
+  //
+  // * HEURISTIC_DISABLED - Adaptive Charging's heuristic (separate from the ML
+  //   model) determined that it should not delay charge.
+  //
+  // * USER_CANCELED - User stopped Adaptive Charging by clicking the "Charge
+  //   Now" button.
+  //
+  // * USER_DISABLED - User does not have the Adaptive Charging feature enabled
+  //   (but it is supported), but the heuristic check for enabling passes.
+  //
+  // * SHUTDOWN - The system has initiated shutdown, so starting any new
+  //   Adaptive Charging logic is prevented (metrics may still be reported on AC
+  //   unplug).
+  //
+  // * NOT_SUPPORTED - EC functionality required for Adaptive Charging does not
+  //   exist on this platform, but the heuristic check for enabling passes.
   AdaptiveChargingState state_;
 
   // Whether we should report the AdaptiveChargingTimeToFull metric, which
@@ -660,7 +703,7 @@ class AdaptiveChargingController : public AdaptiveChargingControllerInterface {
   // table:
   // enabled | supported |
   // 1       | 1         | Evaluate predictions and delay charging.
-  //                       `state` is one of: ACTIVE, INACTIVE,
+  //                       `state` is one of: ACTIVE, SLOWCHARGING, INACTIVE,
   //                       HEURISTIC_DISABLED, or USER_CANCELED.
   // 1       | 0         | Scenario does not exist.
   // 0       | 1         | Evaluate predictions but do not delay charging.
@@ -676,6 +719,15 @@ class AdaptiveChargingController : public AdaptiveChargingControllerInterface {
   // Whether the system supports battery sustainer on the EC. Explicitly checked
   // for during `Init`. Adaptive Charging cannot be enabled unless this is true.
   bool adaptive_charging_supported_;
+
+  // Whether slow charging with a limited battery charge current will occur as a
+  // part of Adaptive Charging.
+  bool slow_charging_enabled_;
+
+  // Whether the system supports limiting the battery charge current on the EC.
+  // Explicitly checked for during `Init`. Slow charging in Adaptive Charging
+  // cannot be enabled unless this is true.
+  bool slow_charging_supported_;
 
   base::WeakPtrFactory<AdaptiveChargingController> weak_ptr_factory_;
 };

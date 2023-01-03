@@ -196,6 +196,9 @@ extern const char kAdaptiveChargingMinProbabilityPref[];
 // If true, Adaptive Charging will be enabled by default.
 extern const char kAdaptiveChargingEnabledPref[];
 
+// If true, slow charging in Adaptive Charging will be enabled.
+extern const char kSlowAdaptiveChargingEnabledPref[];
+
 // Milliseconds to wait after setting the backlight to 0 before asking Chrome to
 // turn off the display via DPMS.
 extern const char kTurnOffScreenTimeoutMsPref[];

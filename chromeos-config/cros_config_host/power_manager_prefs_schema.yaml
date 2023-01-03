@@ -137,6 +137,7 @@ powerd_prefs: &powerd_prefs
   adaptive-charging-hold-delta-percent: *powerd_prefs_default
   adaptive-charging-min-probability: *powerd_prefs_default
   adaptive-charging-enabled: *powerd_prefs_default
+  slow-adaptive-charging-enabled: *powerd_prefs_default
   turn-off-screen-timeout-ms:
     <<: *powerd_prefs_default
     default: "3000"

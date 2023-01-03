@@ -632,6 +632,7 @@ void MetricsCollector::GenerateAdaptiveChargingUnplugMetrics(
 
   switch (state) {
     case AdaptiveChargingState::ACTIVE:
+    case AdaptiveChargingState::SLOWCHARGE:
     case AdaptiveChargingState::INACTIVE:
       state_suffix = kAdaptiveChargingStateActiveSuffix;
       break;

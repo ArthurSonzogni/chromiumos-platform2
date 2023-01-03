@@ -1031,6 +1031,8 @@ TEST_F(AdaptiveChargingMetricsTest, AdaptiveChargingUnplugMetrics) {
   Init();
   TestMetricsForState(AdaptiveChargingState::ACTIVE,
                       kAdaptiveChargingStateActiveSuffix);
+  TestMetricsForState(AdaptiveChargingState::SLOWCHARGE,
+                      kAdaptiveChargingStateActiveSuffix);
   TestMetricsForState(AdaptiveChargingState::INACTIVE,
                       kAdaptiveChargingStateActiveSuffix);
   TestMetricsForState(AdaptiveChargingState::HEURISTIC_DISABLED,

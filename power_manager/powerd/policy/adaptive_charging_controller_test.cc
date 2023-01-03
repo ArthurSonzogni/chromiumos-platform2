@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <functional>
+#include <limits>
 #include <string>
 #include <utility>
 #include <vector>
@@ -33,6 +34,8 @@ namespace power_manager::policy {
 
 namespace {
 const int64_t kBatterySustainDisabled = -1;
+const uint32_t kSlowChargingDisabled = std::numeric_limits<uint32_t>::max();
+
 // Make this different from the default in adaptive_charging_controller.cc to
 // make sure the interface works correctly with other values.
 const int64_t kDefaultTestPercent = 70;
@@ -89,6 +92,7 @@ class AdaptiveChargingControllerTest : public TestEnvironment {
     delegate_.fake_result = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0};
     delegate_.fake_lower = kBatterySustainDisabled;
     delegate_.fake_upper = kBatterySustainDisabled;
+    delegate_.fake_limit = kSlowChargingDisabled;
     power_status_.external_power = PowerSupplyProperties_ExternalPower_AC;
     power_status_.display_battery_percentage = kDefaultTestPercent;
     power_status_.battery_state = PowerSupplyProperties_BatteryState_CHARGING;
@@ -283,6 +287,54 @@ class AdaptiveChargingControllerTest : public TestEnvironment {
     base::Value val = base::TimeToValue(FloorTime(start));
     std::optional<base::FilePath> opt_path = base::ValueToFilePath(val);
     return ReadTimeDeltaFromFile(dir.Append(opt_path.value()));
+  }
+
+  // Converts unplug time prediction into fake_result vector.
+  std::vector<double> ConvertUnplugTimeIntoPredictionBuckets(
+      double hour_to_unplug) {
+    std::vector<double> result(9, 0.0);
+    result.at(static_cast<int>(hour_to_unplug)) = 1.0;
+    return result;
+  }
+
+  // Simulate time passing with various predictions, and return how much time
+  // we spend slow charging before adaptive charging is stopped. The
+  // `predicted_times` vector contains the predicted time-until-unplug made by
+  // the ML model every half an hour.
+  base::TimeDelta ObtainPredictionOutcome(std::vector<double> predicted_times) {
+    prefs_.SetBool(kSlowAdaptiveChargingEnabledPref, true);
+    power_status_.battery_charge_full_design = 6.310;
+    power_supply_.set_status(power_status_);
+    Clock* clock = adaptive_charging_controller_.clock();
+    Init();
+    base::TimeDelta time_spent_slow_charging;
+
+    for (double time : predicted_times) {
+      // Update the fake_result vector to simulate a new prediction.
+      delegate_.fake_result = ConvertUnplugTimeIntoPredictionBuckets(time);
+
+      // Run the recheck alarm to obtain prediction response.
+      adaptive_charging_controller_.set_recheck_delay_for_testing(
+          base::TimeDelta());
+      base::RunLoop().RunUntilIdle();
+
+      // If slow adaptive charging has been stopped, return.
+      if (delegate_.fake_limit == kSlowChargingDisabled) {
+        break;
+      }
+
+      // Simulate time moving forward by 30 minutes.
+      clock->set_current_boot_time_for_testing(clock->GetCurrentBootTime() +
+                                               base::Minutes(30));
+
+      // Determine if we are slow charging and update the amount of time spent
+      // slow charging.
+      if (delegate_.fake_limit == 631) {
+        time_spent_slow_charging += base::Minutes(30);
+      }
+    }
+
+    return time_spent_slow_charging;
   }
 
  protected:
@@ -1108,6 +1160,276 @@ TEST_F(AdaptiveChargingControllerTest, TestMaxDelayHeuristic) {
       clock->GetCurrentBootTime() + base::Hours(10) +
           AdaptiveChargingController::kFinishChargingDelay,
       adaptive_charging_controller_.get_target_full_charge_time_for_testing());
+}
+
+// Test that if slow charging is disabled because the system does not support
+// slow charging in Adaptive Charging, `kFinishChargingDelay` is used as the
+// charging time from the battery sustain percentage to 100%.
+TEST_F(AdaptiveChargingControllerTest, ChargeDelayWhenSlowChargingDisabled) {
+  prefs_.SetBool(kSlowAdaptiveChargingEnabledPref, true);
+  delegate_.fake_result = {0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0};
+  Init();
+  adaptive_charging_controller_.set_slow_charging_for_testing(false);
+  adaptive_charging_controller_.set_recheck_delay_for_testing(
+      base::TimeDelta());
+  base::RunLoop().RunUntilIdle();
+
+  // We expect the charge delay to be 2 hours as the system is predicted to be
+  // unplugged in 4 hours, but check for 1.5 hours < `charge_delay` <= 2 hours
+  // due to timestamps being slightly off.
+  base::TimeDelta charge_delay =
+      adaptive_charging_controller_.get_charge_delay_for_testing();
+  EXPECT_LE(charge_delay, base::Hours(2));
+  EXPECT_GT(charge_delay, base::Hours(1.5));
+}
+
+// Test that if slow charging is enabled, `kFinishSlowChargingDelay` is used as
+// the charging time from the battery sustain percentage to 100%
+TEST_F(AdaptiveChargingControllerTest, ChargeDelayWhenSlowChargingEnabled) {
+  prefs_.SetBool(kSlowAdaptiveChargingEnabledPref, true);
+  delegate_.fake_result = {0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0};
+  Init();
+
+  // We expect the charge delay to be 1 hour as the system is predicted to be
+  // unplugged in 4 hours, but check for <= 1 hour due to timestamps being
+  // slightly off.
+  base::TimeDelta charge_delay =
+      adaptive_charging_controller_.get_charge_delay_for_testing();
+  EXPECT_LE(charge_delay, base::Hours(1));
+  EXPECT_GT(charge_delay, base::Hours(0.5));
+}
+
+// Test that Adaptive Charging is not stopped when slow charging is started so
+// new unplug predictions continue to be made after slow charging has commenced.
+TEST_F(AdaptiveChargingControllerTest,
+       AdaptiveChargingPersistsWhenSlowCharging) {
+  prefs_.SetBool(kSlowAdaptiveChargingEnabledPref, true);
+  power_status_.battery_charge_full_design = 6.310;
+  power_supply_.set_status(power_status_);
+  Init();
+
+  // Change prediction for system unplug time to trigger slow charging.
+  delegate_.fake_result = {0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+  adaptive_charging_controller_.set_recheck_delay_for_testing(
+      base::TimeDelta());
+  base::RunLoop().RunUntilIdle();
+
+  // Check that slow charging has commenced and the charge limit has been set.
+  EXPECT_FALSE(charge_alarm_->IsRunning());
+  EXPECT_EQ(delegate_.fake_limit, 631);
+  EXPECT_EQ(delegate_.fake_lower, kBatterySustainDisabled);
+  EXPECT_EQ(delegate_.fake_upper, kBatterySustainDisabled);
+
+  // Check that new unplug predictions continue to be made.
+  EXPECT_TRUE(recheck_alarm_->IsRunning());
+}
+
+// Test that when Adaptive Charging is stopped, slow charging is also stopped
+// and the charge limit is reset.
+TEST_F(AdaptiveChargingControllerTest,
+       StoppingAdaptiveChargingStopsSlowCharging) {
+  prefs_.SetBool(kSlowAdaptiveChargingEnabledPref, true);
+  power_status_.battery_charge_full_design = 6.310;
+  power_supply_.set_status(power_status_);
+  Init();
+
+  // Change prediction for system unplug time to trigger slow charging.
+  delegate_.fake_result = {0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+  adaptive_charging_controller_.set_recheck_delay_for_testing(
+      base::TimeDelta());
+  base::RunLoop().RunUntilIdle();
+
+  // Change the prediction for when the system would be unplugged to an earlier
+  // time to trigger the end of Adaptive Charging.
+  delegate_.fake_result[3] = 0.0;
+  delegate_.fake_result[1] = 1.0;
+  adaptive_charging_controller_.set_recheck_delay_for_testing(
+      base::TimeDelta());
+  base::RunLoop().RunUntilIdle();
+  EXPECT_FALSE(recheck_alarm_->IsRunning());
+  EXPECT_FALSE(charge_alarm_->IsRunning());
+  EXPECT_EQ(delegate_.fake_lower, kBatterySustainDisabled);
+  EXPECT_EQ(delegate_.fake_upper, kBatterySustainDisabled);
+  EXPECT_EQ(delegate_.fake_limit, kSlowChargingDisabled);
+}
+
+// Test that when the battery is full after slow charging, Adaptive Charging is
+// stopped.
+TEST_F(AdaptiveChargingControllerTest, BatteryFullStopsSlowAdaptiveCharging) {
+  prefs_.SetBool(kSlowAdaptiveChargingEnabledPref, true);
+  power_status_.battery_charge_full_design = 6.310;
+  power_supply_.set_status(power_status_);
+  Init();
+
+  // Change prediction for system unplug time to trigger slow charging.
+  delegate_.fake_result = {0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+  adaptive_charging_controller_.set_recheck_delay_for_testing(
+      base::TimeDelta());
+  base::RunLoop().RunUntilIdle();
+
+  // Check that when the battery is full, both slow charging and Adaptive
+  // Charging are stopped.
+  SetFullCharge();
+  EXPECT_FALSE(recheck_alarm_->IsRunning());
+  EXPECT_FALSE(charge_alarm_->IsRunning());
+  EXPECT_EQ(delegate_.fake_lower, kBatterySustainDisabled);
+  EXPECT_EQ(delegate_.fake_upper, kBatterySustainDisabled);
+  EXPECT_EQ(delegate_.fake_limit, kSlowChargingDisabled);
+}
+
+// Test that when slow charging is enabled and the battery is at the hold
+// percent, unplug predictions moving later should not extend the
+// target charge finish time.
+TEST_F(AdaptiveChargingControllerTest,
+       UnplugPredictionMovesLaterDuringBatterySustain) {
+  prefs_.SetBool(kSlowAdaptiveChargingEnabledPref, true);
+  delegate_.fake_result = {0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0};
+  Init();
+
+  base::TimeTicks initial_full_charge_time =
+      adaptive_charging_controller_.get_target_full_charge_time_for_testing();
+
+  // Extend the time prediction for when the system would be unplugged by two
+  // hours. We expect there to be no change to the target charge finish time.
+  delegate_.fake_result[4] = 0.0;
+  delegate_.fake_result[6] = 1.0;
+  adaptive_charging_controller_.set_recheck_delay_for_testing(
+      base::TimeDelta());
+  base::RunLoop().RunUntilIdle();
+  base::TimeTicks recheck_time =
+      adaptive_charging_controller_.get_target_full_charge_time_for_testing();
+  EXPECT_EQ(initial_full_charge_time, recheck_time);
+  EXPECT_TRUE(charge_alarm_->IsRunning());
+  EXPECT_TRUE(recheck_alarm_->IsRunning());
+  EXPECT_EQ(delegate_.fake_lower, kDefaultTestPercent);
+  EXPECT_EQ(delegate_.fake_upper, kDefaultTestPercent);
+}
+
+// Test that when slow charging is enabled and the battery is at the hold
+// percent, unplug predictions moving to `kFinishSlowChargingDelay` of 3 hours
+// results in slow charging being started.
+TEST_F(AdaptiveChargingControllerTest,
+       UnplugPredictionThreeHoursAwayDuringBatterySustain) {
+  prefs_.SetBool(kSlowAdaptiveChargingEnabledPref, true);
+  power_status_.battery_charge_full_design = 6.310;
+  power_supply_.set_status(power_status_);
+  delegate_.fake_result = {0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0};
+  Init();
+
+  // Move the time prediction to an earlier time such that the duration to
+  // unplug time is 3 hours.
+  delegate_.fake_result[4] = 0.0;
+  delegate_.fake_result[3] = 1.0;
+  adaptive_charging_controller_.set_recheck_delay_for_testing(
+      base::TimeDelta());
+  base::RunLoop().RunUntilIdle();
+  EXPECT_FALSE(charge_alarm_->IsRunning());
+  EXPECT_TRUE(recheck_alarm_->IsRunning());
+  EXPECT_EQ(delegate_.fake_limit, 631);
+  EXPECT_EQ(delegate_.fake_lower, kBatterySustainDisabled);
+  EXPECT_EQ(delegate_.fake_upper, kBatterySustainDisabled);
+}
+
+// Test that when slow charging is enabled and the battery is at the hold
+// percent, unplug predictions moving to <= `kFinishChargingDelay` of 2 hours
+// results in Adaptive Charging being stopped.
+TEST_F(AdaptiveChargingControllerTest,
+       UnplugPredictionTwoHoursAwayDuringBatterySustain) {
+  prefs_.SetBool(kSlowAdaptiveChargingEnabledPref, true);
+  power_status_.battery_charge_full_design = 6.310;
+  power_supply_.set_status(power_status_);
+  delegate_.fake_result = {0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0};
+  Init();
+
+  // Move the time prediction to an earlier time such that the duration to
+  // unplug time is 2 hours.
+  delegate_.fake_result[4] = 0.0;
+  delegate_.fake_result[2] = 1.0;
+  adaptive_charging_controller_.set_recheck_delay_for_testing(
+      base::TimeDelta());
+  base::RunLoop().RunUntilIdle();
+  EXPECT_FALSE(charge_alarm_->IsRunning());
+  EXPECT_FALSE(recheck_alarm_->IsRunning());
+  EXPECT_EQ(delegate_.fake_lower, kBatterySustainDisabled);
+  EXPECT_EQ(delegate_.fake_upper, kBatterySustainDisabled);
+  EXPECT_EQ(delegate_.fake_limit, kSlowChargingDisabled);
+}
+
+// Test that when slow charging has commenced, unplug predictions moving later
+// should not extend the target charge finish time.
+TEST_F(AdaptiveChargingControllerTest,
+       UnplugPredictionMovesLaterWhileSlowCharging) {
+  prefs_.SetBool(kSlowAdaptiveChargingEnabledPref, true);
+  power_status_.battery_charge_full_design = 6.310;
+  power_supply_.set_status(power_status_);
+  Init();
+
+  // Change prediction for system unplug time to trigger slow charging.
+  delegate_.fake_result = {0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+  adaptive_charging_controller_.set_recheck_delay_for_testing(
+      base::TimeDelta());
+  base::RunLoop().RunUntilIdle();
+
+  // Check that slow charging has commenced.
+  EXPECT_FALSE(charge_alarm_->IsRunning());
+  EXPECT_EQ(delegate_.fake_limit, 631);
+  EXPECT_EQ(delegate_.fake_lower, kBatterySustainDisabled);
+  EXPECT_EQ(delegate_.fake_upper, kBatterySustainDisabled);
+
+  // Record the initial target full charge time with `fake_result` as defined
+  // above.
+  base::TimeTicks initial_full_charge_time =
+      adaptive_charging_controller_.get_target_full_charge_time_for_testing();
+
+  // Extend the time prediction for when the system would be unplugged by two
+  // hours. We expect there to be no change to the target time for when charging
+  // will finish. We do not expect charging to be stopped once it has commenced.
+  delegate_.fake_result[3] = 0.0;
+  delegate_.fake_result[5] = 1.0;
+  adaptive_charging_controller_.set_recheck_delay_for_testing(
+      base::TimeDelta());
+  base::RunLoop().RunUntilIdle();
+  base::TimeTicks recheck_time =
+      adaptive_charging_controller_.get_target_full_charge_time_for_testing();
+  EXPECT_EQ(initial_full_charge_time, recheck_time);
+  EXPECT_TRUE(power_status_.battery_state =
+                  PowerSupplyProperties_BatteryState_CHARGING);
+  EXPECT_TRUE(recheck_alarm_->IsRunning());
+  EXPECT_EQ(delegate_.fake_limit, 631);
+  EXPECT_EQ(delegate_.fake_lower, kBatterySustainDisabled);
+  EXPECT_EQ(delegate_.fake_upper, kBatterySustainDisabled);
+}
+
+// The effects of unplug predictions being rounded down to the hour should not
+// cause slow charging to be stopped when there is actually sufficient time for
+// slow charging.
+TEST_F(AdaptiveChargingControllerTest, SlowChargingNotIncorrectlyStopped) {
+  base::TimeDelta time_spent_slow_charging =
+      ObtainPredictionOutcome({3.0, 2.5, 2.0, 1.5, 1.0, 0.5});
+  EXPECT_EQ(time_spent_slow_charging, base::TimeDelta(base::Hours(3)));
+}
+
+// Unplug predictions moving earlier should not cause slow charging to be
+// stopped provided total predicted charging time is sufficient for slow
+// charging.
+TEST_F(AdaptiveChargingControllerTest,
+       SlowChargingNotStoppedWhenTotalChargeTimeReducedButSufficient) {
+  // We reduce total predicted charging time by 0.5 hour after 0.5 hour of slow
+  // charging.
+  base::TimeDelta time_spent_slow_charging =
+      ObtainPredictionOutcome({3.5, 2.5, 2.0, 1.5, 1.0, 0.5});
+  EXPECT_EQ(time_spent_slow_charging, base::TimeDelta(base::Hours(3)));
+}
+
+// Unplug predictions moving earlier should cause slow charging to be stopped
+// once total predicted charging time is insufficient for slow charging.
+TEST_F(AdaptiveChargingControllerTest,
+       SlowChargingStoppedWhenTotalChargeTimeReducedAndInsufficient) {
+  // We reduce total predicted charging time by 0.5 hour after 0.5 hour of slow
+  // charging.
+  base::TimeDelta time_spent_slow_charging =
+      ObtainPredictionOutcome({3.0, 2.0, 1.5, 1.0, 0.5});
+  EXPECT_EQ(time_spent_slow_charging, base::TimeDelta(base::Hours(1)));
 }
 
 }  // namespace power_manager::policy

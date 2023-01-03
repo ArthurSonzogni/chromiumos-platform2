@@ -761,7 +761,7 @@ void PowerSupply::SetAdaptiveCharging(const base::TimeTicks& target_time,
   adaptive_delaying_charge_ = true;
 }
 
-void PowerSupply::ClearAdaptiveCharging() {
+void PowerSupply::ClearAdaptiveChargingChargeDelay() {
   adaptive_delaying_charge_ = false;
   adaptive_charging_heuristic_enabled_ = false;
   adaptive_charging_target_full_time_ = base::TimeTicks();

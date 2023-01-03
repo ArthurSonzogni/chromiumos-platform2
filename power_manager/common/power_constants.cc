@@ -82,6 +82,8 @@ const char kAdaptiveChargingHoldDeltaPercentPref[] =
 const char kAdaptiveChargingMinProbabilityPref[] =
     "adaptive_charging_min_probability";
 const char kAdaptiveChargingEnabledPref[] = "adaptive_charging_enabled";
+const char kSlowAdaptiveChargingEnabledPref[] =
+    "slow_adaptive_charging_enabled";
 const char kTurnOffScreenTimeoutMsPref[] = "turn_off_screen_timeout_ms";
 const char kDisableDarkResumePref[] = "disable_dark_resume";
 const char kDisableHibernatePref[] = "disable_hibernate";
