@@ -10,6 +10,7 @@
 #include <QtConcurrent>
 #include <QtDebug>
 #include <QtGlobal>
+#include <memory>
 
 #include "backend/wayland_manager.h"
 #include "frontend/qt/x11.h"
@@ -25,16 +26,13 @@ void DispatchEvents() {
   cros_im::WaylandManager::Get()->DispatchEvents();
 }
 
+void FlushRequests() {
+  cros_im::WaylandManager::Get()->FlushRequests();
+}
+
 void InitLoop(cros_im::qt::CrosQtIMContext* qt_im_context) {
   while (!application_quit && qApp && !qApp->closingDown() &&
          !qt_im_context->init()) {
-    QThread::yieldCurrentThread();
-  }
-}
-
-void FlushRequestsLoop() {
-  while (!application_quit && qApp && !qApp->closingDown()) {
-    cros_im::WaylandManager::Get()->FlushRequests();
     QThread::yieldCurrentThread();
   }
 }
@@ -85,14 +83,16 @@ cros_im::qt::CrosQtIMContext* QCrosPlatformInputContextPlugin::create(
       return nullptr;
     }
 
-    // Let event loop poll FlushRequests()
-    static_cast<void>(QtConcurrent::run(FlushRequestsLoop));
     connect(qGuiApp, &QGuiApplication::lastWindowClosed, QuitListener);
     // Monitor the Wayland socket for events from the host.
     wayland_watcher_ = std::make_unique<QSocketNotifier>(
         cros_im::WaylandManager::Get()->GetFd(), QSocketNotifier::Read);
     connect(wayland_watcher_.get(), &QSocketNotifier::activated,
             DispatchEvents);
+
+    // Flush requests after each main loop iteration.
+    connect(QAbstractEventDispatcher::instance(),
+            &QAbstractEventDispatcher::awake, FlushRequests);
 
     // Process any already-queued events immediately.
     cros_im::WaylandManager::Get()->DispatchEvents();
