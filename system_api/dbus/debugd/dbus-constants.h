@@ -150,6 +150,7 @@ enum FeedbackLogType {
   PERF_DATA = 7,
   OS_RELEASE_INFO = 8,
   VAR_LOG_FILES = 9,
+  PMT_DATA = 10,
 };
 
 // PrintscanDebugCategories flags. These values must align with those in
