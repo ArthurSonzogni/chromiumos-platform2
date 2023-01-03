@@ -288,13 +288,11 @@ CryptohomeStatus VaultKeyset::EncryptEx(const KeyBlobs& key_blobs,
   return return_status;
 }
 
-bool VaultKeyset::MarkMigrated(bool migrated) {
+void VaultKeyset::MarkMigrated(bool migrated) {
   migrated_vk_ = migrated;
   if (migrated) {
     backup_vk_ = true;
   }
-
-  return Save(GetSourceFile());
 }
 
 CryptoStatus VaultKeyset::DecryptEx(const KeyBlobs& key_blobs) {

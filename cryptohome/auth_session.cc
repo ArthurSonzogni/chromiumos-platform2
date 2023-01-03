@@ -2280,10 +2280,27 @@ void AuthSession::PersistAuthFactorToUserSecretStashOnMigration(
     ReportVkToUssMigrationStatus(VkToUssMigrationStatus::kFailedPersist);
     std::move(on_done).Run(std::move(pre_migration_status));
   }
-  LOG(INFO) << "USS migration completed for VaultKeyset with label: "
-            << auth_factor_label;
+
   // Migration completed with success. Now mark the VaultKeyset migrated.
-  if (!vault_keyset_ || !vault_keyset_->MarkMigrated(/*migrated=*/true)) {
+
+  // Mark the AuthSession's authenticated VautlKeyset `migrated`. Since
+  // |vault_keyset_| has decrypted fields persisting it directly may
+  // cause corruption in the fields.
+  if (vault_keyset_) {
+    vault_keyset_->MarkMigrated(/*migrated=*/true);
+  }
+
+  // Persist the migrated state in disk. This has to be through a
+  // non-authenticated (encrypted) VaultKeyset object since it is costly to
+  // create a new KeyBlob and encrypt the VaultKeyset again.
+  bool migration_persisted = false;
+  std::unique_ptr<VaultKeyset> vk = keyset_management_->GetVaultKeyset(
+      obfuscated_username_, auth_factor_label);
+  if (vk) {
+    vk->MarkMigrated(/*migrated=*/true);
+    migration_persisted = vk->Save(vk->GetSourceFile());
+  }
+  if (!migration_persisted) {
     LOG(ERROR)
         << "USS migration of VaultKeyset with label " << auth_factor_label
         << " is completed, but failed persisting the migrated state in the "
