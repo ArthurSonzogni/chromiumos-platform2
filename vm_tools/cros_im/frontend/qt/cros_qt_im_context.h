@@ -91,6 +91,7 @@ class CrosQtIMContext : public QPlatformInputContext {
   bool failed_init_ = false;
   bool is_x11_;
   bool is_in_focus_ = false;
+  bool is_activated_ = false;
 
   std::unique_ptr<BackendObserver> backend_observer_ = nullptr;
   std::unique_ptr<cros_im::IMContextBackend> backend_ = nullptr;

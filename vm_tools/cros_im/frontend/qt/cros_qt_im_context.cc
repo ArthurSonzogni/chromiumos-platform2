@@ -50,6 +50,7 @@ void CrosQtIMContext::setFocusObject(QObject* object) {
     Activate();
   } else {
     // focus out
+    is_activated_ = false;
     backend_->Deactivate();
   }
 }
@@ -57,6 +58,7 @@ void CrosQtIMContext::setFocusObject(QObject* object) {
 void CrosQtIMContext::Activate() {
   Q_ASSERT(inited_);
   qDebug() << "Activate()";
+  is_activated_ = true;
   if (!qApp)
     return;
   QWindow* window = qApp->focusWindow();
@@ -119,8 +121,10 @@ void CrosQtIMContext::commit() {
 }
 
 void CrosQtIMContext::update(Qt::InputMethodQueries) {
-  // Doing nothing at the moment, might need to do something here related to
-  // surrounding text
+  // We might also need to send surrounding text here.
+  if (!is_activated_ && inputMethodAccepted()) {
+    Activate();
+  }
 }
 
 bool CrosQtIMContext::filterEvent(const QEvent* event) {
