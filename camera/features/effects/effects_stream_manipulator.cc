@@ -316,12 +316,17 @@ void EffectsStreamManipulator::OnOptionsUpdated(
   if (GetStringFromKey(json_values, kEffectKey, &tmp)) {
     if (tmp == std::string("blur")) {
       new_config.effect = mojom::CameraEffect::kBackgroundBlur;
+      new_config.blur_enabled = true;
     } else if (tmp == std::string("replace")) {
       new_config.effect = mojom::CameraEffect::kBackgroundReplace;
+      new_config.replace_enabled = true;
     } else if (tmp == std::string("relight")) {
       new_config.effect = mojom::CameraEffect::kPortraitRelight;
+      new_config.relight_enabled = true;
     } else if (tmp == std::string("blur_relight")) {
       new_config.effect = mojom::CameraEffect::kBackgroundBlurPortraitRelight;
+      new_config.blur_enabled = true;
+      new_config.relight_enabled = true;
     } else if (tmp == std::string("none")) {
       new_config.effect = mojom::CameraEffect::kNone;
     } else {
@@ -356,8 +361,7 @@ void EffectsStreamManipulator::SetEffect(EffectsConfig* new_config,
                                          void (*callback)(bool)) {
   if (pipeline_) {
     pipeline_->SetEffect(new_config, callback);
-    effects_enabled_ =
-        new_config->effect != mojom::CameraEffect::kNone ? true : false;
+    effects_enabled_ = new_config->HasEnabledEffects();
   } else {
     LOGF(WARNING) << "SetEffect called, but pipeline not ready.";
   }

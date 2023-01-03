@@ -63,7 +63,6 @@ class CROS_CAMERA_EXPORT StreamManipulator {
     void SetAutoFramingState(mojom::CameraAutoFramingState state);
     void SetSWPrivacySwitchState(mojom::CameraPrivacySwitchState state);
     void SetEffectsConfig(mojom::EffectsConfigPtr config);
-    bool IsEffectEnabled(mojom::CameraEffect effect);
     EffectsConfig GetEffectsConfig();
     base::FilePath GetDlcRootPath();
     void SetDlcRootPath(const base::FilePath& path);

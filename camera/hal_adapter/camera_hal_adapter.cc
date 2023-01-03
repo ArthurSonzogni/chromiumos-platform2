@@ -311,7 +311,10 @@ void CameraHalAdapter::SetCameraSWPrivacySwitchState(
 
 mojom::SetEffectResult CameraHalAdapter::SetCameraEffect(
     mojom::EffectsConfigPtr config) {
-  LOG(INFO) << "CameraHalAdapter::SetCameraEffect: " << config->effect
+  LOG(INFO) << "CameraHalAdapter::SetCameraEffect:"
+            << " blur: " << config->blur_enabled
+            << " relight: " << config->relight_enabled
+            << " replace: " << config->replace_enabled
             << " blur_level: " << config->blur_level;
   stream_manipulator_runtime_options_.SetEffectsConfig(std::move(config));
   return mojom::SetEffectResult::kOk;

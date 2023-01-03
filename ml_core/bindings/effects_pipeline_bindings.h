@@ -33,6 +33,10 @@ struct BRILLO_EXPORT EffectsConfig {
   // Whether background replace should be enabled
   bool replace_enabled = false;
 
+  bool HasEnabledEffects() const {
+    return blur_enabled || relight_enabled || replace_enabled;
+  }
+
   // How much blur to apply for the background blur effect.
   mojom::BlurLevel blur_level = mojom::BlurLevel::kMedium;
 

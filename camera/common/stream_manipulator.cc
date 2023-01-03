@@ -98,12 +98,6 @@ void StreamManipulator::RuntimeOptions::SetEffectsConfig(
   effects_config_ = std::move(config);
 }
 
-bool StreamManipulator::RuntimeOptions::IsEffectEnabled(
-    mojom::CameraEffect effect) {
-  base::AutoLock lock(lock_);
-  return effects_config_->effect == effect;
-}
-
 EffectsConfig StreamManipulator::RuntimeOptions::GetEffectsConfig() {
   base::AutoLock lock(lock_);
   return EffectsConfig{
