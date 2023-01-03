@@ -16,6 +16,7 @@
 #include "cros-camera/camera_buffer_manager.h"
 #include "cros-camera/camera_mojo_channel_manager_token.h"
 #include "cros-camera/jpeg_compressor.h"
+#include "gpu/shared_image.h"
 
 namespace cros {
 
@@ -23,7 +24,8 @@ class SWPrivacySwitchStreamManipulator : public StreamManipulator {
  public:
   SWPrivacySwitchStreamManipulator(
       RuntimeOptions* runtime_options,
-      CameraMojoChannelManagerToken* mojo_manager_token);
+      CameraMojoChannelManagerToken* mojo_manager_token,
+      GpuResources* gpu_resources);
 
   // Implementations of StreamManipulator.
   bool Initialize(const camera_metadata_t* static_info,
@@ -38,12 +40,20 @@ class SWPrivacySwitchStreamManipulator : public StreamManipulator {
   bool Flush() override;
 
  private:
+  // Allocates |black_frame_|, fills it with black, and creates SharedImage for
+  // it. Must be called on the GPU thread.
+  bool InitializeBlackFrameOnGpuThread();
+
+  // Used to fill in NV12 buffer with black pixels on GPU. Must be called on
+  // the GPU thread.
+  std::optional<base::ScopedFD> RedactNV12FrameOnGpu(buffer_handle_t handle);
+
   // Used to fill in JPEG buffer with a black JPEG image. Returns true if
   // successful. Returns false otherwise.
-  bool FillInFrameWithBlackJpegImage(buffer_handle_t handle,
-                                     ScopedMapping& mapping,
-                                     int width,
-                                     int height);
+  bool RedactJpegFrame(buffer_handle_t handle,
+                       ScopedMapping& mapping,
+                       int width,
+                       int height);
 
   // Used to notify an error to the framework when failing to fill the frame
   // with black.
@@ -58,6 +68,13 @@ class SWPrivacySwitchStreamManipulator : public StreamManipulator {
   // JPEG compressor instance.
   std::unique_ptr<JpegCompressor> jpeg_compressor_;
 
+  // A black NV12 frame that is used to paint frames with black.
+  ScopedBufferHandle black_frame_ = nullptr;
+
+  // SharedImage created from |black_frame_|.
+  SharedImage black_frame_image_;
+
+  GpuResources* gpu_resources_;
   StreamManipulator::Callbacks callbacks_;
 };
 

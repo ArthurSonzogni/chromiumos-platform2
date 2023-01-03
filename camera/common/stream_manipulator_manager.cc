@@ -175,8 +175,8 @@ StreamManipulatorManager::StreamManipulatorManager(
   LOGF(INFO) << "ZslStreamManipulator enabled";
 
   stream_manipulators_.emplace_back(
-      std::make_unique<SWPrivacySwitchStreamManipulator>(runtime_options,
-                                                         mojo_manager_token));
+      std::make_unique<SWPrivacySwitchStreamManipulator>(
+          runtime_options, mojo_manager_token, gpu_resources));
   LOGF(INFO) << "SWPrivacySwitchStreamManipulator enabled";
 }
 

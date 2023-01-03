@@ -85,19 +85,28 @@ class SWPrivacySwitchTestEnvironment : public ::testing::Environment {
  public:
   SWPrivacySwitchTestEnvironment()
       : mojo_manager_token_(CameraMojoChannelManagerToken::CreateInstance()),
-        camera_buffer_manager_(CameraBufferManager::GetInstance()) {}
-
+        camera_buffer_manager_(CameraBufferManager::GetInstance()) {
+    if (GpuResources::IsSupported()) {
+      gpu_resources_ = std::make_unique<GpuResources>();
+      if (!gpu_resources_->Initialize()) {
+        LOGF(ERROR) << "Failed to initialize GPU resources";
+        gpu_resources_ = nullptr;
+      }
+      DCHECK(gpu_resources_);
+    }
+  }
   base::test::SingleThreadTaskEnvironment task_environment_;
   std::unique_ptr<CameraMojoChannelManagerToken> mojo_manager_token_;
   CameraBufferManager* camera_buffer_manager_;
+  std::unique_ptr<GpuResources> gpu_resources_;
 };
 
 class SWPrivacySwitchTest : public ::testing::Test {
  protected:
   SWPrivacySwitchTest()
-      : runtime_options_(StreamManipulator::RuntimeOptions()),
-        stream_manipulator_(&runtime_options_,
-                            g_env->mojo_manager_token_.get()) {
+      : stream_manipulator_(&runtime_options_,
+                            g_env->mojo_manager_token_.get(),
+                            g_env->gpu_resources_.get()) {
     auto result_callback = base::BindRepeating(
         [](SWPrivacySwitchTest* self, Camera3CaptureDescriptor result) {
           self->returned_result_ = std::move(result);
@@ -242,7 +251,7 @@ TEST_F(SWPrivacySwitchTest, PrivacyOnJpegOutput) {
               0)
         << "Decoding of the result JPEG frame should succeed, but failed";
     EXPECT_TRUE(IsBlackFrameNV12(nv12_mapping))
-        << "The result frame is not black when the SW privacy switch is"
+        << "The result frame is not black when the SW privacy switch is "
            "enabled";
   }
 }

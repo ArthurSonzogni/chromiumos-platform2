@@ -21,13 +21,14 @@
 #include "cros-camera/exif_utils.h"
 #include "cros-camera/jpeg_compressor.h"
 #include "cros-camera/tracing.h"
+#include "gpu/egl/egl_fence.h"
 
 namespace cros {
 
 namespace {
 
 // Used to fill in NV12 buffer with black pixels.
-void FillInFrameWithBlackPixelsNV12(ScopedMapping& mapping) {
+void RedactNV12Frame(ScopedMapping& mapping) {
   // TODO(b/231543984): Consider optimization by GPU.
   auto plane = mapping.plane(0);
   // Set 0 to Y values and padding.
@@ -50,15 +51,27 @@ void FillInFrameWithZeros(ScopedMapping& mapping) {
 
 SWPrivacySwitchStreamManipulator::SWPrivacySwitchStreamManipulator(
     RuntimeOptions* runtime_options,
-    CameraMojoChannelManagerToken* mojo_manager_token)
+    CameraMojoChannelManagerToken* mojo_manager_token,
+    GpuResources* gpu_resources)
     : runtime_options_(runtime_options),
       camera_buffer_manager_(CameraBufferManager::GetInstance()),
-      jpeg_compressor_(JpegCompressor::GetInstance(mojo_manager_token)) {}
+      jpeg_compressor_(JpegCompressor::GetInstance(mojo_manager_token)),
+      gpu_resources_(gpu_resources) {}
 
 bool SWPrivacySwitchStreamManipulator::Initialize(
     const camera_metadata_t* static_info,
     StreamManipulator::Callbacks callbacks) {
   callbacks_ = std::move(callbacks);
+  if (gpu_resources_) {
+    bool result = false;
+    gpu_resources_->PostGpuTaskSync(
+        FROM_HERE,
+        base::BindOnce(
+            &SWPrivacySwitchStreamManipulator::InitializeBlackFrameOnGpuThread,
+            base::Unretained(this)),
+        &result);
+    return result;
+  }
   return true;
 }
 
@@ -99,17 +112,32 @@ bool SWPrivacySwitchStreamManipulator::ProcessCaptureResult(
       NotifyBufferError(result.frame_number(), buffer.stream);
       continue;
     }
+    // Try GPU painting first, and fall back to CPU painting if failed.
+    if (black_frame_image_.IsValid() &&
+        buffer.stream->format == HAL_PIXEL_FORMAT_YCbCr_420_888) {
+      std::optional<base::ScopedFD> fence;
+      gpu_resources_->PostGpuTaskSync(
+          FROM_HERE,
+          base::BindOnce(
+              &SWPrivacySwitchStreamManipulator::RedactNV12FrameOnGpu,
+              base::Unretained(this), *buffer.buffer),
+          &fence);
+      if (fence.has_value()) {
+        buffer.release_fence = fence->release();
+        continue;
+      }
+    }
     buffer_handle_t handle = *buffer.buffer;
     auto mapping = ScopedMapping(handle);
     bool buffer_cleared = false;
     if (mapping.is_valid()) {
       switch (mapping.drm_format()) {
         case DRM_FORMAT_NV12:
-          FillInFrameWithBlackPixelsNV12(mapping);
+          RedactNV12Frame(mapping);
           buffer_cleared = true;
           break;
         case DRM_FORMAT_R8:  // JPEG.
-          buffer_cleared = FillInFrameWithBlackJpegImage(
+          buffer_cleared = RedactJpegFrame(
               handle, mapping, buffer.stream->width, buffer.stream->height);
           break;
         default:
@@ -141,11 +169,51 @@ bool SWPrivacySwitchStreamManipulator::Flush() {
   return true;
 }
 
-bool SWPrivacySwitchStreamManipulator::FillInFrameWithBlackJpegImage(
-    buffer_handle_t handle,
-    ScopedMapping& mapping,
-    const int width,
-    const int height) {
+bool SWPrivacySwitchStreamManipulator::InitializeBlackFrameOnGpuThread() {
+  DCHECK(gpu_resources_->gpu_task_runner()->BelongsToCurrentThread());
+  // Set width and height to meet horizontal/vertical alignment requirements in
+  // GPU.
+  black_frame_ = camera_buffer_manager_->AllocateScopedBuffer(
+      /*width=*/256, /*height=*/16, HAL_PIXEL_FORMAT_YCbCr_420_888,
+      GRALLOC_USAGE_HW_TEXTURE);
+  if (black_frame_ == nullptr) {
+    LOGF(WARNING) << "Failed to allocate a buffer for the black frame";
+    return false;
+  }
+  auto mapping = ScopedMapping(*black_frame_);
+  if (!mapping.is_valid()) {
+    LOGF(WARNING) << "Failed to map the black frame buffer";
+    return false;
+  }
+  RedactNV12Frame(mapping);
+  black_frame_image_ = SharedImage::CreateFromBuffer(
+      *black_frame_, Texture2D::Target::kTarget2D, true);
+  return true;
+}
+
+std::optional<base::ScopedFD>
+SWPrivacySwitchStreamManipulator::RedactNV12FrameOnGpu(buffer_handle_t handle) {
+  DCHECK(gpu_resources_->gpu_task_runner()->BelongsToCurrentThread());
+  auto output_image =
+      SharedImage::CreateFromBuffer(handle, Texture2D::Target::kTarget2D, true);
+  if (!output_image.IsValid()) {
+    LOGF(WARNING) << "Failed to create SharedImage";
+    return std::nullopt;
+  }
+  if (!gpu_resources_->image_processor()->YUVToYUV(
+          black_frame_image_.y_texture(), black_frame_image_.uv_texture(),
+          output_image.y_texture(), output_image.uv_texture())) {
+    LOGF(WARNING) << "Failed to paint frame with black on GPU";
+    return std::nullopt;
+  }
+  EglFence fence;
+  return fence.GetNativeFd();
+}
+
+bool SWPrivacySwitchStreamManipulator::RedactJpegFrame(buffer_handle_t handle,
+                                                       ScopedMapping& mapping,
+                                                       const int width,
+                                                       const int height) {
   // TODO(b/231543984): Consider optimization by directly filling in a black
   // JPEG image possibly by GPU.
   ExifUtils utils;
@@ -169,7 +237,7 @@ bool SWPrivacySwitchStreamManipulator::FillInFrameWithBlackJpegImage(
   if (!in_mapping.is_valid()) {
     return false;
   }
-  FillInFrameWithBlackPixelsNV12(in_mapping);
+  RedactNV12Frame(in_mapping);
 
   std::vector<uint8_t> empty_thumbnail;
   if (!utils.GenerateApp1(empty_thumbnail.data(), empty_thumbnail.size())) {

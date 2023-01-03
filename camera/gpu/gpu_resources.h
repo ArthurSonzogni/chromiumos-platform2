@@ -26,7 +26,7 @@ namespace cros {
 
 // GpuResources holds the resources required to perform GPU operations. A
 // GpuResources instance manages a GPU thread and the context running on the
-// thread. There's is only GpuResources instance in the whole camera process.
+// thread. There's only one GpuResources instance in the whole camera process.
 // It's guaranteed that the GpuResources is created before we load the camera
 // HAL adapter, and is destroyed only after the HAL adapter is destroyed.
 //
