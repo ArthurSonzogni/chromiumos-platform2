@@ -37,6 +37,7 @@ class FakeStillCaptureProcessor : public StillCaptureProcessor {
  private:
   void MaybeProduceCaptureResult(int frame_number);
 
+  const camera3_stream_t* stream_ = nullptr;
   CaptureResultCallback result_callback_;
 
   struct ResultDescriptor {

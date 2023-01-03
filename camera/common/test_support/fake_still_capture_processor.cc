@@ -15,6 +15,9 @@ namespace cros::tests {
 void FakeStillCaptureProcessor::Initialize(
     const camera3_stream_t* const still_capture_stream,
     CaptureResultCallback result_callback) {
+  ASSERT_NE(still_capture_stream, nullptr);
+  ASSERT_EQ(still_capture_stream->format, HAL_PIXEL_FORMAT_BLOB);
+  stream_ = still_capture_stream;
   result_callback_ = std::move(result_callback);
 }
 
@@ -55,9 +58,8 @@ void FakeStillCaptureProcessor::QueuePendingYuvImage(
 void FakeStillCaptureProcessor::MaybeProduceCaptureResult(int frame_number) {
   if (result_descriptor_[frame_number].has_apps_segments &&
       result_descriptor_[frame_number].has_yuv_buffer) {
-    camera3_stream_t stream = {.format = HAL_PIXEL_FORMAT_BLOB};
-    camera3_stream_buffer_t stream_buffer = {.stream = &stream,
-                                             .release_fence = -1};
+    camera3_stream_buffer_t stream_buffer = {
+        .stream = const_cast<camera3_stream_t*>(stream_), .release_fence = -1};
     result_callback_.Run(Camera3CaptureDescriptor(camera3_capture_result_t{
         .frame_number = static_cast<uint32_t>(frame_number),
         .num_output_buffers = 1,
