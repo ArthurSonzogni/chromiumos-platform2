@@ -26,52 +26,42 @@ typedef struct camera_buffer_handle {
   // The fds for each plane.
   int fds[kMaxPlanes];
   // Should be kCameraBufferMagic.  This is for basic consistency check.
-  uint32_t magic;
+  uint32_t magic = kCameraBufferMagic;
   // Used to identify the buffer object on the other end of the IPC channel
   // (e.g. the Android container or Chrome browser process.)
-  uint64_t buffer_id;
+  uint64_t buffer_id = kInvalidBufferId;
   // The DRM fourcc code of the buffer.
-  uint32_t drm_format;
+  uint32_t drm_format = 0;
   // The HAL pixel format of the buffer.
-  uint32_t hal_pixel_format;
+  uint32_t hal_pixel_format = 0;
   // The width of the buffer in pixels.
-  uint32_t width;
+  uint32_t width = 0;
   // The height of the buffer in pixels.
-  uint32_t height;
+  uint32_t height = 0;
   // The stride of each plane in bytes.
-  uint32_t strides[kMaxPlanes];
+  uint32_t strides[kMaxPlanes] = {};
   // The offset to the start of each plane in bytes.
-  uint32_t offsets[kMaxPlanes];
+  uint32_t offsets[kMaxPlanes] = {};
   // The state of the buffer; must be one of |BufferState|.
-  int state;
+  int state = kRegistered;
   // For passing the buffer handle in camera3_stream_buffer_t to the HAL since
   // it requires a buffer_handle_t*.
-  buffer_handle_t self;
+  buffer_handle_t self = reinterpret_cast<buffer_handle_t>(this);
 
-  camera_buffer_handle()
-      : magic(kCameraBufferMagic),
-        buffer_id(kInvalidBufferId),
-        drm_format(0),
-        hal_pixel_format(0),
-        width(0),
-        height(0),
-        strides{},
-        offsets{},
-        state(kRegistered),
-        self(reinterpret_cast<buffer_handle_t>(this)) {
-    for (size_t i = 0; i < kMaxPlanes; ++i) {
-      fds[i] = -1;
+  camera_buffer_handle() {
+    for (auto& fd : fds) {
+      fd = -1;
     }
   }
 
   ~camera_buffer_handle() {
-    for (size_t i = 0; i < kMaxPlanes; ++i) {
-      if (fds[i] == -1) {
+    for (auto& fd : fds) {
+      if (fd == -1) {
         continue;
       }
       // See the comments in base/files/scoped_file.cc in libchrome for why we
       // need to crash here when close fails.
-      int ret = IGNORE_EINTR(close(fds[i]));
+      int ret = IGNORE_EINTR(close(fd));
       if (ret != 0 && errno != EBADF) {
         ret = 0;
       }
