@@ -1,6 +1,1 @@
-ckclark@chromium.org
-itspeter@chromium.org
-jamesqaq@chromium.org
-kevinptt@chromium.org
-stimim@chromium.org
-yhong@chromium.org
+include /runtime_probe/OWNERS
