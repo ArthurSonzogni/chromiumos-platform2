@@ -93,7 +93,7 @@ void CrosQtIMContext::reset() {
   if (!inited_)
     return;
 
-  backend_.reset();
+  backend_->Reset();
 }
 
 void CrosQtIMContext::commit() {
