@@ -4,14 +4,23 @@
 
 #include "shill/metrics.h"
 
+#include <cstdint>
 #include <iterator>
+#include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/files/scoped_temp_dir.h>
 #include <chromeos/dbus/service_constants.h>
+#include <gmock/gmock-cardinalities.h>
+#include <gmock/gmock-matchers.h>
 #include <gtest/gtest.h>
 #include <metrics/metrics_library_mock.h>
+#include <metrics/structured/event_base.h>
+#include <metrics/structured/mock_recorder.h>
+#include <metrics/structured/recorder_singleton.h>
+#include <metrics/structured/structured_events.h>
 #include <metrics/timer_mock.h>
 
 #include "shill/mock_control.h"
@@ -19,10 +28,12 @@
 #include "shill/mock_log.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_service.h"
+#include "shill/net/ieee80211.h"
 #include "shill/test_event_dispatcher.h"
 #include "shill/wifi/mock_wifi_service.h"
 
 using testing::_;
+using testing::AnyNumber;
 using testing::DoAll;
 using testing::Ge;
 using testing::Mock;
@@ -36,6 +47,7 @@ class MetricsTest : public Test {
  public:
   MetricsTest()
       : manager_(&control_interface_, &dispatcher_, &metrics_),
+        recorder_(new metrics::structured::MockRecorder()),
         open_wifi_service_(new MockWiFiService(&manager_,
                                                manager_.wifi_provider(),
                                                ssid_,
@@ -58,14 +70,17 @@ class MetricsTest : public Test {
                                               WiFiSecurity::kWpa2Enterprise,
                                               false)),
         eap_(new MockEapCredentials()),
-        service_(new MockService(&manager_)) {
-  }
+        service_(new MockService(&manager_)) {}
 
   ~MetricsTest() override = default;
 
   void SetUp() override {
     metrics_.SetLibraryForTesting(&library_);
     eap_wifi_service_->eap_.reset(eap_);  // Passes ownership.
+    auto recorder =
+        std::unique_ptr<metrics::structured::MockRecorder>(recorder_);
+    metrics::structured::RecorderSingleton::GetInstance()->SetRecorderForTest(
+        std::move(recorder));
   }
 
  protected:
@@ -91,6 +106,7 @@ class MetricsTest : public Test {
   MockManager manager_;
   Metrics metrics_;  // This must be destroyed after all |service_|s.
   MetricsLibraryMock library_;
+  metrics::structured::MockRecorder* recorder_;
   const std::vector<uint8_t> ssid_;
   scoped_refptr<MockWiFiService> open_wifi_service_;
   scoped_refptr<MockWiFiService> wep_wifi_service_;
@@ -874,6 +890,129 @@ TEST_F(MetricsTest, NotifyNeighborLinkMonitorFailure) {
                     Metrics::kNeighborLinkMonitorFailureMax));
   metrics_.NotifyNeighborLinkMonitorFailure(
       IPAddress::kFamilyIPv6, NeighborSignal::GATEWAY_AND_DNS_SERVER);
+}
+
+TEST_F(MetricsTest, NotifyWiFiAdapterStateDisabledNoAllowlistUMA) {
+  EXPECT_CALL(library_, SendEnumToUMA(_, _, _)).Times(AnyNumber());
+  // Verify that we do not emit any "AdapterAllowlisted" UMA event if the
+  // adapter is disabled.
+  const std::string name = "Network.Shill.WiFi.AdapterAllowlisted";
+  EXPECT_CALL(library_, SendEnumToUMA(name, _, _)).Times(0);
+  metrics_.NotifyWiFiAdapterStateChanged(false /* enabled */,
+                                         Metrics::WiFiAdapterInfo());
+}
+
+TEST_F(MetricsTest, NotifyWiFiAdapterStateEnabledEmitsAllowlistUMA) {
+  EXPECT_CALL(library_, SendEnumToUMA(_, _, _)).Times(AnyNumber());
+  // Verify that we emit 1 "AdapterAllowlisted" UMA event if the adapter is
+  // enabled.
+  const std::string name = "Network.Shill.WiFi.AdapterAllowlisted";
+  EXPECT_CALL(library_, SendEnumToUMA(name, _, _)).Times(1);
+  metrics_.NotifyWiFiAdapterStateChanged(true /* enabled */,
+                                         Metrics::WiFiAdapterInfo());
+}
+
+TEST_F(MetricsTest, NotifyWiFiAdapterStateChangedEmitsChipsetInfoEvent) {
+  EXPECT_CALL(*recorder_, Record(_)).Times(AnyNumber());
+  // Verify that we emit 1 WiFiChipsetInfo event.
+  EXPECT_CALL(*recorder_, Record(testing::Property(
+                              &metrics::structured::EventBase::name_hash,
+                              metrics::structured::events::wi_fi_chipset::
+                                  WiFiChipsetInfo::kEventNameHash)))
+      .Times(1);
+
+  metrics_.NotifyWiFiAdapterStateChanged(bool(), Metrics::WiFiAdapterInfo());
+}
+
+TEST_F(MetricsTest, NotifyWiFiAdapterStateChangedEmitsAdapterInfoEvent) {
+  EXPECT_CALL(*recorder_, Record(_)).Times(AnyNumber());
+  // Verify that we emit 1 WiFiAdapterStateChanged event.
+  EXPECT_CALL(*recorder_, Record(testing::Property(
+                              &metrics::structured::EventBase::name_hash,
+                              metrics::structured::events::wi_fi::
+                                  WiFiAdapterStateChanged::kEventNameHash)))
+      .Times(1);
+
+  metrics_.NotifyWiFiAdapterStateChanged(bool(), Metrics::WiFiAdapterInfo());
+}
+
+TEST_F(MetricsTest, NotifyWiFiConnectionAttemptEmitsAPInfoEvent) {
+  EXPECT_CALL(*recorder_, Record(_)).Times(AnyNumber());
+  // Verify that we emit 1 WiFiAPInfo event.
+  EXPECT_CALL(
+      *recorder_,
+      Record(testing::Property(
+          &metrics::structured::EventBase::name_hash,
+          metrics::structured::events::wi_fi_ap::WiFiAPInfo::kEventNameHash)))
+      .Times(1);
+  constexpr uint64_t tag = 0x123456789;
+  metrics_.NotifyWiFiConnectionAttempt(Metrics::WiFiConnectionAttemptInfo(),
+                                       tag);
+}
+
+TEST_F(MetricsTest, NotifyWiFiConnectionAttemptEmitsConnectionAttemptEvent) {
+  EXPECT_CALL(*recorder_, Record(_)).Times(AnyNumber());
+  // Verify that we emit 1 WiFiConnectionAttempt event.
+  EXPECT_CALL(*recorder_, Record(testing::Property(
+                              &metrics::structured::EventBase::name_hash,
+                              metrics::structured::events::wi_fi::
+                                  WiFiConnectionAttempt::kEventNameHash)))
+      .Times(1);
+  constexpr uint64_t tag = 0x123456789;
+  metrics_.NotifyWiFiConnectionAttempt(Metrics::WiFiConnectionAttemptInfo(),
+                                       tag);
+}
+
+TEST_F(MetricsTest, NotifyWiFiConnectionAttemptResultEmitsAttemptResultEvent) {
+  EXPECT_CALL(*recorder_, Record(_)).Times(AnyNumber());
+  // Verify that we emit 1 WiFiConnectionAttemptResult event.
+  EXPECT_CALL(*recorder_, Record(testing::Property(
+                              &metrics::structured::EventBase::name_hash,
+                              metrics::structured::events::wi_fi::
+                                  WiFiConnectionAttemptResult::kEventNameHash)))
+      .Times(1);
+  constexpr uint64_t tag = 0x123456789;
+  metrics_.NotifyWiFiConnectionAttemptResult(
+      Metrics::kNetworkServiceErrorBadPassphrase, tag);
+}
+
+TEST_F(MetricsTest, NotifyWiFiConnectionDisconnectionEmitsConnectionEndEvent) {
+  EXPECT_CALL(*recorder_, Record(_)).Times(AnyNumber());
+  // Verify that we emit 1 WiFiConnectionEnd event.
+  EXPECT_CALL(*recorder_, Record(testing::Property(
+                              &metrics::structured::EventBase::name_hash,
+                              metrics::structured::events::wi_fi::
+                                  WiFiConnectionEnd::kEventNameHash)))
+      .Times(1);
+  constexpr uint64_t tag = 0x123456789;
+  metrics_.NotifyWiFiDisconnection(
+      Metrics::kWiFiDisconnectionTypeUnexpectedAPDisconnect,
+      IEEE_80211::kReasonCodeTooManySTAs, tag);
+}
+
+TEST_F(MetricsTest, NotifyWiFiLinkQualityTriggerEmitsTriggerEvent) {
+  EXPECT_CALL(*recorder_, Record(_)).Times(AnyNumber());
+  // Verify that we emit 1 WiFiLinkQualityTrigger event.
+  EXPECT_CALL(*recorder_, Record(testing::Property(
+                              &metrics::structured::EventBase::name_hash,
+                              metrics::structured::events::wi_fi::
+                                  WiFiLinkQualityTrigger::kEventNameHash)))
+      .Times(1);
+  constexpr uint64_t tag = 0x123456789;
+  metrics_.NotifyWiFiLinkQualityTrigger(
+      Metrics::kWiFiLinkQualityTriggerCQMBeaconLoss, tag);
+}
+
+TEST_F(MetricsTest, NotifyWiFiLinkQualityReportEmitsReportEvent) {
+  EXPECT_CALL(*recorder_, Record(_)).Times(AnyNumber());
+  // Verify that we emit 1 WiFiLinkQualityReport event.
+  EXPECT_CALL(*recorder_, Record(testing::Property(
+                              &metrics::structured::EventBase::name_hash,
+                              metrics::structured::events::wi_fi::
+                                  WiFiLinkQualityReport::kEventNameHash)))
+      .Times(1);
+  constexpr uint64_t tag = 0x123456789;
+  metrics_.NotifyWiFiLinkQualityReport(Metrics::WiFiLinkQualityReport(), tag);
 }
 
 TEST_F(MetricsTest, WiFiRxTxStatsComparison) {
