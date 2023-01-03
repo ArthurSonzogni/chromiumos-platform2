@@ -1,4 +1,4 @@
-// Copyright 2018 The ChromiumOS Authors.
+// Copyright 2018 The ChromiumOS Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -212,6 +212,7 @@ struct sl_output {
   uint32_t id;
   uint32_t version;
   struct sl_global* host_global;
+  struct sl_host_output* host_output;
   struct wl_list link;
 };
 
@@ -233,6 +234,10 @@ struct sl_host_output {
   int y;
   int physical_width;
   int physical_height;
+  // The physical width/height after being scaled by
+  // sl_output_get_dimensions_original.
+  int virt_physical_width;
+  int virt_physical_height;
   int subpixel;
   char* make;
   char* model;
@@ -240,6 +245,10 @@ struct sl_host_output {
   uint32_t flags;
   int width;
   int height;
+  // The width/height after being scaled by
+  // sl_output_get_dimensions_original.
+  int virt_width;
+  int virt_height;
   int refresh;
   int scale_factor;
   int current_scale;
@@ -264,6 +273,8 @@ struct sl_host_output {
   double virt_scale_y;
   double xdg_scale_x;
   double xdg_scale_y;
+  int virt_x;
+  int virt_y;
   int32_t logical_width;
   int32_t logical_height;
   int32_t logical_x;

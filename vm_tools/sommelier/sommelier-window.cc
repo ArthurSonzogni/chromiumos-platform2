@@ -257,10 +257,20 @@ static void sl_internal_xdg_toplevel_configure(
                                XCB_CONFIG_WINDOW_BORDER_WIDTH;
     if (!(window->size_flags & (US_POSITION | P_POSITION))) {
       window->next_config.mask |= XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y;
-      window->next_config.values[i++] =
-          window->ctx->screen->width_in_pixels / 2 - width_in_pixels / 2;
-      window->next_config.values[i++] =
-          window->ctx->screen->height_in_pixels / 2 - height_in_pixels / 2;
+      if (window->paired_surface && window->paired_surface->output) {
+        window->next_config.values[i++] =
+            window->paired_surface->output->virt_x +
+            (window->paired_surface->output->virt_width - width_in_pixels) / 2;
+        window->next_config.values[i++] =
+            window->paired_surface->output->virt_y +
+            (window->paired_surface->output->virt_height - height_in_pixels) /
+                2;
+      } else {
+        window->next_config.values[i++] =
+            window->ctx->screen->width_in_pixels / 2 - width_in_pixels / 2;
+        window->next_config.values[i++] =
+            window->ctx->screen->height_in_pixels / 2 - height_in_pixels / 2;
+      }
     }
     window->next_config.values[i++] = width_in_pixels;
     window->next_config.values[i++] = height_in_pixels;
