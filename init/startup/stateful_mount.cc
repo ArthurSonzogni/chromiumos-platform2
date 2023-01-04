@@ -502,17 +502,9 @@ bool StatefulMount::DevUpdateStatefulPartition(const std::string& args) {
 
       for (base::FilePath fd = enumerator.Next(); !fd.empty();
            fd = enumerator.Next()) {
-        if (base::DirectoryExists(fd)) {
-          if (!base::CopyDirectory(fd, path_target.Append(fd.BaseName()),
-                                   true)) {
-            PLOG(WARNING) << "Failed to copy directory " << fd.value() << " to "
-                          << path_target.value();
-          }
-        } else {
-          if (!base::CopyFile(fd, path_target.Append(fd.BaseName()))) {
-            PLOG(WARNING) << "Failed to copy " << path_new.value() << " to "
-                          << path_target.value();
-          }
+        if (!base::Move(fd, path_target.Append(fd.BaseName()))) {
+          PLOG(WARNING) << "Failed to copy " << fd.value() << " to "
+                        << path_target.value();
         }
       }
       paths_to_rm.push_back(path_new);
