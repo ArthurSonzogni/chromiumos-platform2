@@ -170,6 +170,8 @@ extern const int kDarkResumeWakeDurationMsMin;
 extern const int kDarkResumeWakeDurationMsMax;
 
 extern const char kS0ixResidencyRateName[];
+extern const char kPC10RuntimeResidencyRateName[];
+extern const char kPC10inS0ixRuntimeResidencyRateName[];
 
 extern const char kDimEvent[];
 extern const int kHpsEventDurationMin;

@@ -1235,11 +1235,13 @@ class IdleStateResidencyMetricsTest : public MetricsCollectorTest {
   };
 
   // Creates idle state residency files (if needed) rooted in |temp_root_dir_|.
-  // S0ix file type is determined by |residency_file_type|.
+  // S0ix file type is determined by |residency_file_type|, PC10 file is created
+  // if |pc10_residency_file_present| is true.
   // Also sets |kSuspendToIdlePref| pref to |suspend_to_idle| and initializes
   // |collector_|.
   void Init(S0ixResidencyFileType residency_file_type,
-            bool suspend_to_idle = true) {
+            bool suspend_to_idle = true,
+            bool pc10_residency_file_present = true) {
     if (suspend_to_idle)
       prefs_.SetInt64(kSuspendToIdlePref, 1);
 
@@ -1249,6 +1251,11 @@ class IdleStateResidencyMetricsTest : public MetricsCollectorTest {
     } else if (residency_file_type == S0ixResidencyFileType::SMALL_CORE) {
       residencies_[IdleState::S0ix].path_ = GetPath(
           base::FilePath(MetricsCollector::kSmallCoreS0ixResidencyPath));
+    }
+
+    if (pc10_residency_file_present) {
+      residencies_[IdleState::PC10].path_ =
+          GetPath(base::FilePath(MetricsCollector::kAcpiPC10ResidencyPath));
     }
 
     for (const auto& residency : residencies_) {
@@ -1295,6 +1302,19 @@ class IdleStateResidencyMetricsTest : public MetricsCollectorTest {
                      kMaxPercent);
   }
 
+  // Expect |kPC10RuntimeResidencyRateName| and
+  // |kPC10inS0ixRuntimeResidencyRateName| enum metrics will be
+  // generated.
+  void ExpectRuntimeResidencyRateMetricCall(int expected_pc10_percentage,
+                                            int expected_s0ix_percentage,
+                                            const bool expect_s0ix = true) {
+    ExpectEnumMetric(kPC10RuntimeResidencyRateName, expected_pc10_percentage,
+                     kMaxPercent);
+    if (expect_s0ix)
+      ExpectEnumMetric(kPC10inS0ixRuntimeResidencyRateName,
+                       expected_s0ix_percentage, kMaxPercent);
+  }
+
   // Writes |residency| to |residency_path_|.
   void WriteResidency(const Residency& residency,
                       const base::TimeDelta& value) {
@@ -1306,6 +1326,8 @@ class IdleStateResidencyMetricsTest : public MetricsCollectorTest {
 
   Residency residencies_[IdleState::COUNT] = {
       [IdleState::S0ix] = {.before_suspend_ = base::Minutes(50),
+                           .before_resume_ = base::Minutes(100)},
+      [IdleState::PC10] = {.before_suspend_ = base::Minutes(50),
                            .before_resume_ = base::Minutes(100)},
   };
   base::TimeDelta suspend_duration_ = base::Hours(1);
@@ -1396,6 +1418,210 @@ TEST_F(IdleStateResidencyMetricsTest, ResidencyCounterOverflow) {
 TEST_F(IdleStateResidencyMetricsTest, SuspendTimeMoreThanMaxResidency) {
   suspend_duration_ = base::Microseconds(100 * (int64_t)UINT32_MAX + 1);
   Init(S0ixResidencyFileType::BIG_CORE);
+  SuspendAndResume();
+  // |metrics_lib_| is strict Mock. Unexpected method call will fail this test.
+  Mock::VerifyAndClearExpectations(metrics_lib_);
+}
+
+// NOTE: The testing scenario for runtime idle state residency always involves
+// two suspend/resume cycles. The reason for this is to mimic the real-world
+// case, where HandleSuspend() only reports runtime metrics if a previous read
+// of PC10 and S0ix residency counters was successful. That may only happen in
+// HandleSuspend() which won't be called upon initial boot.
+
+// Test metrics are not reported without S0ix residency file.
+TEST_F(IdleStateResidencyMetricsTest, NoS0ixFileButPC10FileExists) {
+  Init(S0ixResidencyFileType::NONE);
+  SuspendAndResume();
+  SuspendAndResume();
+  // |metrics_lib_| is strict Mock. Unexpected method call will fail this test.
+  Mock::VerifyAndClearExpectations(metrics_lib_);
+}
+
+// Test runtime metrics are not reported without PC10 residency file.
+TEST_F(IdleStateResidencyMetricsTest, NoPC10ResidencyFile) {
+  Init(S0ixResidencyFileType::BIG_CORE, true,
+       false /*pc10_residency_file_present*/);
+  ExpectS2IdleResidencyRateMetricCall();
+  SuspendAndResume();
+  ExpectS2IdleResidencyRateMetricCall();
+  SuspendAndResume();
+  // |metrics_lib_| is strict Mock. Unexpected method call will fail this test.
+  Mock::VerifyAndClearExpectations(metrics_lib_);
+}
+
+// Test runtime metrics are reported when residency files exist.
+TEST_F(IdleStateResidencyMetricsTest, PC10ResidencyFileExists) {
+  const base::TimeDelta runtime_duration = base::Hours(1);
+  Residency& pc10 = residencies_[IdleState::PC10];
+  Residency& s0ix = residencies_[IdleState::S0ix];
+
+  Init(S0ixResidencyFileType::BIG_CORE);
+  ExpectS2IdleResidencyRateMetricCall();
+  SuspendAndResume();
+  AdvanceTime(runtime_duration);
+  // Device is suspending so increase runtime counters so that S0ix in PC10
+  // and PC10 residencies are at 50%.
+  pc10.before_suspend_ = pc10.before_resume_ + runtime_duration / 2;
+  s0ix.before_suspend_ = s0ix.before_resume_ + runtime_duration / 4;
+  ExpectRuntimeResidencyRateMetricCall(50, 50);
+  // Once runtime expects are prepared, update residencies for post-suspend.
+  pc10.before_resume_ = pc10.before_suspend_ + base::Minutes(10);
+  s0ix.before_resume_ = s0ix.before_suspend_ + base::Minutes(5);
+  ExpectS2IdleResidencyRateMetricCall();
+  SuspendAndResume();
+  // |metrics_lib_| is strict Mock. Unexpected method call will fail this test.
+  Mock::VerifyAndClearExpectations(metrics_lib_);
+}
+
+// Test runtime metrics are reported even when suspend to idle is not enabled.
+TEST_F(IdleStateResidencyMetricsTest, NoS2IdleReporting) {
+  const base::TimeDelta runtime_duration = base::Hours(1);
+  Residency& pc10 = residencies_[IdleState::PC10];
+  Residency& s0ix = residencies_[IdleState::S0ix];
+
+  Init(S0ixResidencyFileType::BIG_CORE, false /*suspend_to_idle*/);
+  SuspendAndResume();
+  AdvanceTime(runtime_duration);
+  // Device is suspending so increase runtime counters so that S0ix in PC10
+  // and PC10 residencies are at 50%.
+  pc10.before_suspend_ = pc10.before_resume_ + runtime_duration / 2;
+  s0ix.before_suspend_ = s0ix.before_resume_ + runtime_duration / 4;
+  ExpectRuntimeResidencyRateMetricCall(50, 50);
+  // Once runtime expects are prepared, update residencies for post-suspend.
+  pc10.before_resume_ = pc10.before_suspend_ + base::Minutes(10);
+  s0ix.before_resume_ = s0ix.before_suspend_ + base::Minutes(5);
+  SuspendAndResume();
+  // |metrics_lib_| is strict Mock. Unexpected method call will fail this test.
+  Mock::VerifyAndClearExpectations(metrics_lib_);
+}
+
+// Test runtime metrics are not reported when the PC10 residency counter
+// overflows.
+TEST_F(IdleStateResidencyMetricsTest, RuntimePC10CounterOverflow) {
+  const base::TimeDelta runtime_duration = base::Hours(1);
+  Residency& pc10 = residencies_[IdleState::PC10];
+  Residency& s0ix = residencies_[IdleState::S0ix];
+
+  Init(S0ixResidencyFileType::BIG_CORE);
+  ExpectS2IdleResidencyRateMetricCall();
+  SuspendAndResume();
+  AdvanceTime(runtime_duration);
+  // PC10 counter overflows in runtime, S0ix doesn't. Expect no runtime report.
+  pc10.before_suspend_ = pc10.before_resume_ - base::Minutes(1);
+  s0ix.before_suspend_ = s0ix.before_resume_ + runtime_duration / 4;
+  s0ix.before_resume_ = s0ix.before_suspend_ + base::Minutes(5);
+  ExpectS2IdleResidencyRateMetricCall();
+  SuspendAndResume();
+  // |metrics_lib_| is strict Mock. Unexpected method call will fail this test.
+  Mock::VerifyAndClearExpectations(metrics_lib_);
+}
+
+// Test runtime metrics are not reported when the S0ix residency counter
+// overflows.
+TEST_F(IdleStateResidencyMetricsTest, RuntimeS0ixCounterOverflow) {
+  const base::TimeDelta runtime_duration = base::Hours(1);
+  Residency& pc10 = residencies_[IdleState::PC10];
+  Residency& s0ix = residencies_[IdleState::S0ix];
+
+  Init(S0ixResidencyFileType::BIG_CORE);
+  ExpectS2IdleResidencyRateMetricCall();
+  SuspendAndResume();
+  AdvanceTime(runtime_duration);
+  // S0ix counter overflows in runtime, PC10 doesn't. Expect no runtime report.
+  pc10.before_suspend_ = pc10.before_resume_ + runtime_duration / 2;
+  s0ix.before_suspend_ = s0ix.before_resume_ - base::Minutes(1);
+  pc10.before_resume_ = pc10.before_suspend_ + base::Minutes(10);
+  ExpectS2IdleResidencyRateMetricCall();
+  SuspendAndResume();
+  // |metrics_lib_| is strict Mock. Unexpected method call will fail this test.
+  Mock::VerifyAndClearExpectations(metrics_lib_);
+}
+
+// Test runtime metrics are not reported when suspend time is less than the
+// overhead.
+TEST_F(IdleStateResidencyMetricsTest, RuntimeLessThanOverhead) {
+  const base::TimeDelta runtime_duration =
+      MetricsCollector::kRuntimeS0ixOverheadTime / 2;
+  Residency& pc10 = residencies_[IdleState::PC10];
+  Residency& s0ix = residencies_[IdleState::S0ix];
+
+  Init(S0ixResidencyFileType::BIG_CORE);
+  ExpectS2IdleResidencyRateMetricCall();
+  SuspendAndResume();
+  AdvanceTime(runtime_duration);
+  // Set counters to something reasonable.
+  pc10.before_suspend_ = pc10.before_resume_ + base::Minutes(10);
+  s0ix.before_suspend_ = s0ix.before_resume_ + base::Minutes(5);
+  SuspendAndResume();
+  // |metrics_lib_| is strict Mock. Unexpected method call will fail this test.
+  Mock::VerifyAndClearExpectations(metrics_lib_);
+}
+
+// Test overhead is taken into account in runtime metrics.
+TEST_F(IdleStateResidencyMetricsTest, RuntimeMoreThanOverhead) {
+  const base::TimeDelta runtime_duration =
+      MetricsCollector::kRuntimeS0ixOverheadTime * 3;
+  Residency& pc10 = residencies_[IdleState::PC10];
+  Residency& s0ix = residencies_[IdleState::S0ix];
+
+  Init(S0ixResidencyFileType::BIG_CORE);
+  ExpectS2IdleResidencyRateMetricCall();
+  SuspendAndResume();
+  AdvanceTime(runtime_duration);
+  // Set counters to something reasonable.
+  pc10.before_suspend_ =
+      pc10.before_resume_ + MetricsCollector::kRuntimeS0ixOverheadTime * 2;
+  s0ix.before_suspend_ =
+      s0ix.before_resume_ + MetricsCollector::kRuntimeS0ixOverheadTime * 1;
+  // For PC10 residency, overhead is subtracted from expected runtime, hence
+  // we get a 100% rate.
+  // For PC10 in S0ix residency no overhead should be applied (we want to round
+  // down). Hence it should be 50%.
+  ExpectRuntimeResidencyRateMetricCall(100, 50);
+  SuspendAndResume();
+  // |metrics_lib_| is strict Mock. Unexpected method call will fail this test.
+  Mock::VerifyAndClearExpectations(metrics_lib_);
+}
+
+// Test runtime metrics are not reported when suspend time is more than max
+// residency.
+TEST_F(IdleStateResidencyMetricsTest, RuntimeMoreThanMaxResidency) {
+  const base::TimeDelta runtime_duration =
+      base::Microseconds(100 * (int64_t)UINT32_MAX + 1);
+  Residency& pc10 = residencies_[IdleState::PC10];
+  Residency& s0ix = residencies_[IdleState::S0ix];
+
+  Init(S0ixResidencyFileType::BIG_CORE);
+  ExpectS2IdleResidencyRateMetricCall();
+  SuspendAndResume();
+  AdvanceTime(runtime_duration);
+  // Set counters to something reasonable.
+  pc10.before_suspend_ = pc10.before_resume_ + base::Minutes(10);
+  s0ix.before_suspend_ = s0ix.before_resume_ + base::Minutes(5);
+  SuspendAndResume();
+  // |metrics_lib_| is strict Mock. Unexpected method call will fail this test.
+  Mock::VerifyAndClearExpectations(metrics_lib_);
+}
+
+// Test runtime metrics are not reported for S0ix if PC10 residency is 0.
+TEST_F(IdleStateResidencyMetricsTest, RuntimePC10Residency0) {
+  const base::TimeDelta runtime_duration = base::Hours(1);
+  Residency& pc10 = residencies_[IdleState::PC10];
+  Residency& s0ix = residencies_[IdleState::S0ix];
+
+  Init(S0ixResidencyFileType::BIG_CORE);
+  ExpectS2IdleResidencyRateMetricCall();
+  SuspendAndResume();
+  AdvanceTime(runtime_duration);
+  // PC10 didn't advance. Set S0ix to something sane though not reported.
+  pc10.before_suspend_ = pc10.before_resume_;
+  s0ix.before_suspend_ = s0ix.before_resume_ + runtime_duration / 2;
+  ExpectRuntimeResidencyRateMetricCall(0, 0, false /*expect_s0ix*/);
+  // Once runtime expects are prepared, update residencies for post-suspend.
+  pc10.before_resume_ = pc10.before_suspend_ + base::Minutes(10);
+  s0ix.before_resume_ = s0ix.before_suspend_ + base::Minutes(5);
+  ExpectS2IdleResidencyRateMetricCall();
   SuspendAndResume();
   // |metrics_lib_| is strict Mock. Unexpected method call will fail this test.
   Mock::VerifyAndClearExpectations(metrics_lib_);

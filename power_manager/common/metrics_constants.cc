@@ -200,6 +200,10 @@ const int kDarkResumeWakeDurationMsMin = 0;
 const int kDarkResumeWakeDurationMsMax = 10 * 60 * 1000;
 
 const char kS0ixResidencyRateName[] = "Power.S0ixResidencyRate";  // %
+const char kPC10RuntimeResidencyRateName[] =
+    "Power.PC10RuntimeResidencyRate";  // %
+const char kPC10inS0ixRuntimeResidencyRateName[] =
+    "Power.PC10inS0ixRuntimeResidencyRate";  // %
 
 const char kDimEvent[] = "Power.DimEvent";
 const int kHpsEventDurationMin = 1;        // One second.

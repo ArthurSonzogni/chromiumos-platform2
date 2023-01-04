@@ -113,7 +113,7 @@ class IdleResidencyTracker {
 // The struct provides namespace isolation similar to "enum class" but with
 // implicit conversion to int without the need for static_cast<>.
 struct IdleState {
-  enum { S0ix = 0, COUNT };
+  enum { S0ix = 0, PC10, COUNT };
 };
 
 // Used by Daemon to report metrics by way of Chrome.
@@ -126,6 +126,10 @@ struct IdleState {
 // send metrics directly.
 class MetricsCollector {
  public:
+  // Path to the CPU Package C10 residency counter based on the ACPI LPIT table.
+  // This counter indicates the time spent by the CPU in PC10 (in microseconds).
+  static constexpr char kAcpiPC10ResidencyPath[] =
+      "/sys/devices/system/cpu/cpuidle/low_power_idle_cpu_residency_us";
   // Path to S0ix residency counter for big-core CPU. This counter indicates the
   // time spent by the cpus in S0ix (in microseconds).
   static constexpr char kBigCoreS0ixResidencyPath[] =
@@ -137,6 +141,13 @@ class MetricsCollector {
   // Expected overhead time to enter/exit S0ix after suspending. This is just an
   // approximation to prevent aggressive warnings.
   static constexpr base::TimeDelta KS0ixOverheadTime = base::Seconds(15);
+  // Expected overhead time for the runtime S0ix measurement which prevents
+  // overestimation of the residency due to reading the |time_before_suspend_|
+  // before |residency_trackers_| are updated. If more counters are added, this
+  // should be adjusted. Note that this value is just an empirical
+  // approximation.
+  static constexpr base::TimeDelta kRuntimeS0ixOverheadTime =
+      base::Microseconds(100);
 
   // Returns a copy of |enum_name| with a suffix describing |power_source|
   // appended to it. Public so it can be called by tests.
@@ -299,6 +310,23 @@ class MetricsCollector {
   // |suspend_to_idle_| is enabled.
   void GenerateS2IdleS0ixMetrics();
 
+  // Devices capable of low-power idle (S0ix) can utilize it in runtime. If the
+  // package enters PC10 state, connected devices enter their appropriate
+  // low-power states and there are no updates on the screen so that Panel Self
+  // Refresh (PSR) can be activated, system can enter one of the S0ix low-power
+  // states. However a malfunctioning driver/peripheral can keep the system
+  // busy, preventing entering S0ix.
+  //
+  // This function processes residency values recorded by |residency_trackers_|
+  // and generates two UMA metrics:
+  // 1. Power.PC10RuntimeResidencyRate - tracks how much of time is spent in
+  //    PC10 state in relation to the current runtime session length (in %).
+  // 2. Power.PC10inS0ixRuntimeResidencyRate - tracks how much time is spent
+  //    in S0ix in relation to the time spent in PC10 (in %) assuming that
+  //    PC10 residency was non-0.
+  // Called only pre-suspend.
+  void GenerateRuntimeS0ixMetrics();
+
   // Returns new FilePath after prepending |prefix_path_for_testing_| to
   // given file path.
   base::FilePath GetPrefixedFilePath(const base::FilePath& file_path) const;
@@ -353,6 +381,10 @@ class MetricsCollector {
   double battery_energy_before_suspend_ = 0.0;
   bool on_line_power_before_suspend_ = false;
   base::TimeTicks time_before_suspend_;
+
+  // Time recorded from the CLOCK_BOOTTIME source just after system
+  // resumes which is then used in S0ix runtime reporting.
+  base::TimeTicks time_after_resume_;
 
   // Set by HandleResume() to indicate that
   // GenerateBatteryDischargeRateWhileSuspendedMetric() should send a
