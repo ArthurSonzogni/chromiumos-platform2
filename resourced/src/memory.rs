@@ -375,7 +375,7 @@ pub fn get_component_margins_kb() -> ComponentMarginsKb {
     }
 }
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub enum PressureLevelChrome {
     // There is enough memory to use.
     None = 0,
@@ -386,7 +386,7 @@ pub enum PressureLevelChrome {
     Critical = 2,
 }
 
-#[derive(Clone, Copy, PartialEq, PartialOrd)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd)]
 pub enum PressureLevelArcvm {
     // There is enough memory to use.
     None = 0,

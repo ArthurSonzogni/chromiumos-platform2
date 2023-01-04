@@ -31,7 +31,7 @@ pub fn read_file_to_u64<P: AsRef<Path>>(filename: P) -> Result<u64> {
     parse_file_to_u64(reader)
 }
 
-#[derive(Clone, Copy, PartialEq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum GameMode {
     // Game mode is off.
     Off = 0,
@@ -100,7 +100,7 @@ pub fn get_game_mode() -> Result<GameMode> {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum RTCAudioActive {
     // RTC is not active.
     Inactive = 0,
@@ -122,7 +122,7 @@ impl TryFrom<u8> for RTCAudioActive {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum FullscreenVideo {
     // Full screen video is not active.
     Inactive = 0,

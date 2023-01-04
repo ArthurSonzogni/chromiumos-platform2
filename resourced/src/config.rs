@@ -21,7 +21,7 @@ pub trait ConfigProvider {
 
 /* TODO: Can we use `rust-protobuf` to generate all the structs? */
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Governor {
     Conservative,
     Ondemand {
@@ -50,7 +50,7 @@ impl Governor {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct PowerPreferences {
     pub governor: Option<Governor>,
     /* TODO: Add Intel EPP settings */
@@ -77,7 +77,7 @@ impl PowerPreferencesType {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum PowerSourceType {
     AC,
     DC,
