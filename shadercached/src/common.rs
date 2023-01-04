@@ -48,6 +48,7 @@ pub mod vm_concierge {
 
     pub const ADD_GROUP_PERMISSION_MESA_METHOD: &str = "AddGroupPermissionMesa";
     pub const GET_VM_GPU_CACHE_PATH_METHOD: &str = "GetVmGpuCachePath";
+    pub const VM_STOPPING_SIGNAL: &str = "VmStoppingSignal";
 }
 
 pub fn to_method_err<T: std::fmt::Display>(result: T) -> MethodErr {

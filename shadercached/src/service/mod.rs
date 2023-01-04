@@ -15,6 +15,7 @@ use libchromeos::sys::{debug, error, info, warn};
 use std::collections::HashSet;
 use std::path::Path;
 use std::sync::Arc;
+use system_api::concierge_service::VmStoppingSignal;
 use system_api::concierge_service::{GetVmGpuCachePathRequest, GetVmGpuCachePathResponse};
 use system_api::dlcservice::DlcState;
 use system_api::shadercached::{InstallRequest, UninstallRequest, UnmountRequest};
@@ -361,4 +362,22 @@ pub async fn mount_map_queue_unmount_all(
         "Failed to queue unmount for all: {:?}",
         failed_unmounts
     ))
+}
+
+pub async fn handle_vm_stopped(
+    raw_bytes: Vec<u8>,
+    mount_map: ShaderCacheMountMap,
+) -> Result<(), MethodErr> {
+    let stopping_signal: VmStoppingSignal = protobuf::Message::parse_from_bytes(&raw_bytes)
+        .map_err(|e| dbus::MethodErr::invalid_arg(&e))?;
+    let vm_id = VmId {
+        vm_name: stopping_signal.name,
+        vm_owner_id: stopping_signal.owner_id,
+    };
+
+    mount_map_queue_unmount_all(mount_map, Some(vm_id))
+        .await
+        .map_err(to_method_err)?;
+
+    Ok(())
 }

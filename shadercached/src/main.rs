@@ -164,13 +164,6 @@ pub async fn main() -> Result<()> {
         }
     });
 
-    // Listen to DlcService DlcStateChanged
-    let mr = MatchRule::new_signal(
-        dlc_service::INTERFACE_NAME,
-        dlc_service::DLC_STATE_CHANGED_SIGNAL,
-    );
-    debug!("Matching DlcService signal: {}", mr.match_str());
-
     // We need to create a new connection to receive signals explicitly.
     // Reusing existing connection rejects the D-Bus signals.
     let listen_mount_points = mount_points.clone();
@@ -187,13 +180,22 @@ pub async fn main() -> Result<()> {
         panic!("Lost connection to D-Bus: {}", err);
     });
 
+    // Listen to DlcService DlcStateChanged
+    let mr_dlc_service_dlc_state_changed = MatchRule::new_signal(
+        dlc_service::INTERFACE_NAME,
+        dlc_service::DLC_STATE_CHANGED_SIGNAL,
+    );
+    debug!(
+        "Matching DlcService signal: {}",
+        mr_dlc_service_dlc_state_changed.match_str()
+    );
     // For sending signals, we still have to use existing object with correct
     // service name.
     let c_send = c.clone();
     let mount_points_clone3 = mount_points.clone();
     // |msg_match| should remain in this scope to serve
-    let msg_match = c_listen
-        .add_match(mr)
+    let dlc_service_match = c_listen
+        .add_match(mr_dlc_service_dlc_state_changed)
         .await?
         .cb(move |_, (raw_bytes,): (Vec<u8>,)| {
             tokio::spawn(handle_dlc_state_changed(
@@ -204,6 +206,25 @@ pub async fn main() -> Result<()> {
             true
         });
 
+    // Listen to VM stopped signals
+    let mr_concierge_vm_stopping = MatchRule::new_signal(
+        vm_concierge::INTERFACE_NAME,
+        vm_concierge::VM_STOPPING_SIGNAL,
+    );
+    debug!(
+        "Matching Concierge signal: {}",
+        mr_concierge_vm_stopping.match_str()
+    );
+    let mount_points_clone4 = mount_points.clone();
+    // |msg_match| should remain in this scope to serve
+    let concierge_match = c_listen.add_match(mr_concierge_vm_stopping).await?.cb(
+        move |_, (raw_bytes,): (Vec<u8>,)| {
+            tokio::spawn(handle_vm_stopped(raw_bytes, mount_points_clone4.clone()));
+            true
+        },
+    );
+
+    // Start serving D-Bus methods
     let receive_token = c.start_receive(
         MatchRule::new_method_call(),
         Box::new(move |msg, conn| {
@@ -211,7 +232,6 @@ pub async fn main() -> Result<()> {
             true
         }),
     );
-
     info!("shadercached serving!");
 
     // Wait for process exit
@@ -221,7 +241,8 @@ pub async fn main() -> Result<()> {
     // Stop receiving connections
     c.stop_receive(receive_token);
     // Delete |msg_match| to stop listening to DlcService signals
-    drop(msg_match);
+    drop(dlc_service_match);
+    drop(concierge_match);
 
     mount_map_queue_unmount_all(mount_points, None).await?;
     // TODO(b/264614608): wait for unmounts to be complete instead of sleeping
