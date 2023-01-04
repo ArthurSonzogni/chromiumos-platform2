@@ -4,9 +4,9 @@ allow cros_spaced cros_dbus_daemon:unix_stream_socket connectto;
 allow cros_spaced cros_passwd_file:file  r_file_perms;
 allow cros_spaced cros_run_dbus:dir search;
 
-allow cros_spaced cros_run_lock:dir { add_name remove_name write };
+allow cros_spaced cros_run_lock:dir { add_name create remove_name write };
 allow cros_spaced cros_run_lock:file { append create getattr lock open read unlink };
-allow cros_spaced cros_var_lock:dir { getattr search };
+allow cros_spaced cros_var_lock:dir { getattr read search write };
 
 allow cros_spaced cros_run_udev:dir search;
 log_writer(cros_spaced)
@@ -48,6 +48,7 @@ dontaudit cros_spaced {
 
 dontaudit cros_spaced {
   cros_shm
+  proc_sys_kernel
   sysfs_zram
 }:file getattr;
 
@@ -57,10 +58,14 @@ dontaudit cros_spaced {
   cros_shm
   devpts
   input_device
+  sysfs_dm
   sysfs_loop
   sysfs_zram
   usb_device
 }:dir { getattr open read search };
+
+# "device" is devtmpfs.
+dontaudit cros_spaced device:lnk_file read;
 
 # Remove the arc_cts_fails_release macro for ARCVM devices so that
 # cros_spaced is not converted into a permissive domain after being
