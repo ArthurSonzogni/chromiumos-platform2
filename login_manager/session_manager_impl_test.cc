@@ -571,6 +571,11 @@ class SessionManagerImplTest : public ::testing::Test,
       return *this;
     }
 
+    StartArcInstanceExpectationsBuilder& SetHostUreadaheadGeneration(bool v) {
+      host_ureadahead_generation_ = v;
+      return *this;
+    }
+
     std::vector<std::string> Build() const {
       std::vector<std::string> result({
           "CHROMEOS_DEV_MODE=" + std::to_string(dev_mode_),
@@ -591,6 +596,8 @@ class SessionManagerImplTest : public ::testing::Test,
           "ENABLE_NOTIFICATIONS_REFRESH=" +
               std::to_string(enable_notification_refresh_),
           "ENABLE_TTS_CACHING=" + std::to_string(enable_tts_caching_),
+          "HOST_UREADAHEAD_GENERATION=" +
+              std::to_string(host_ureadahead_generation_),
       });
 
       if (arc_generate_pai_)
@@ -645,6 +652,7 @@ class SessionManagerImplTest : public ::testing::Test,
     bool enable_consumer_auto_update_toggle_ = false;
     bool enable_notification_refresh_ = false;
     bool enable_tts_caching_ = false;
+    bool host_ureadahead_generation_ = false;
     bool arc_generate_pai_ = false;
     arc::StartArcMiniInstanceRequest_PlayStoreAutoUpdate
         play_store_auto_update_ = arc::
@@ -2838,6 +2846,25 @@ TEST_F(SessionManagerImplTest, EnableTTSCaching) {
               TriggerImpulse(SessionManagerImpl::kStartArcInstanceImpulse,
                              StartArcInstanceExpectationsBuilder()
                                  .SetEnableTTSCaching(true)
+                                 .Build(),
+                             InitDaemonController::TriggerMode::ASYNC))
+      .WillOnce(Return(ByMove(dbus::Response::CreateEmpty())));
+
+  brillo::ErrorPtr error;
+  EXPECT_TRUE(impl_->StartArcMiniContainer(&error, SerializeAsBlob(request)));
+}
+
+TEST_F(SessionManagerImplTest, HostUreadaheadGeneration) {
+  ExpectAndRunStartSession(kSaneEmail);
+
+  arc::StartArcMiniInstanceRequest request;
+  request.set_host_ureadahead_generation(true);
+
+  // First, start ARC for login screen.
+  EXPECT_CALL(*init_controller_,
+              TriggerImpulse(SessionManagerImpl::kStartArcInstanceImpulse,
+                             StartArcInstanceExpectationsBuilder()
+                                 .SetHostUreadaheadGeneration(true)
                                  .Build(),
                              InitDaemonController::TriggerMode::ASYNC))
       .WillOnce(Return(ByMove(dbus::Response::CreateEmpty())));
