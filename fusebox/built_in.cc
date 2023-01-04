@@ -107,6 +107,7 @@ void BuiltInLookup(std::unique_ptr<EntryRequest> request,
   } else {
     errno = request->ReplyError(ENOENT);
     PLOG(ERROR) << "BuiltInLookup";
+    return;
   }
 
   fuse_entry_param entry = {0};
