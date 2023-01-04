@@ -20,13 +20,13 @@
 namespace cros {
 class FakeStream {
  public:
-  FakeStream(FakeStream&&);
-  FakeStream& operator=(FakeStream&&);
+  FakeStream(FakeStream&&) = delete;
+  FakeStream& operator=(FakeStream&&) = delete;
 
   FakeStream(const FakeStream&) = delete;
   FakeStream& operator=(const FakeStream&) = delete;
 
-  ~FakeStream();
+  virtual ~FakeStream();
 
   // Factory method to create a FakeStream, might return null on error.
   static std::unique_ptr<FakeStream> Create(
@@ -37,21 +37,14 @@ class FakeStream {
 
   // Fills the buffer with the next frame from the fake stream. The buffer
   // format should match the format specified in the constructor.
-  bool FillBuffer(buffer_handle_t buffer, Size size);
+  [[nodiscard]] virtual bool FillBuffer(buffer_handle_t buffer) = 0;
 
- private:
+ protected:
   FakeStream();
-
-  bool Initialize(const android::CameraMetadata& static_metadata,
-                  Size size,
-                  android_pixel_format_t format,
-                  const FramesSpec& spec);
 
   CameraBufferManager* buffer_manager_;
 
   uint32_t jpeg_max_size_ = 0;
-
-  std::unique_ptr<FrameBuffer> buffer_;
 
   // JPEG compressor instance
   std::unique_ptr<JpegCompressor> jpeg_compressor_;
@@ -59,6 +52,32 @@ class FakeStream {
   Size size_;
 
   android_pixel_format_t format_;
+
+  // Map and copy the content of the buffer to output buffer.
+  [[nodiscard]] bool CopyBuffer(FrameBuffer& buffer,
+                                buffer_handle_t output_buffer);
+
+  [[nodiscard]] virtual bool Initialize(
+      const android::CameraMetadata& static_metadata,
+      Size size,
+      android_pixel_format_t format,
+      const FramesSpec& spec);
+};
+
+class StaticFakeStream : public FakeStream {
+ protected:
+  friend class FakeStream;
+  explicit StaticFakeStream(std::unique_ptr<FrameBuffer> buffer);
+
+  [[nodiscard]] bool Initialize(const android::CameraMetadata& static_metadata,
+                                Size size,
+                                android_pixel_format_t format,
+                                const FramesSpec& spec) override;
+
+  [[nodiscard]] bool FillBuffer(buffer_handle_t buffer) override;
+
+ private:
+  std::unique_ptr<FrameBuffer> buffer_;
 };
 }  // namespace cros
 

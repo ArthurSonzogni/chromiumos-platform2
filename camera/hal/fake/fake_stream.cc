@@ -103,24 +103,7 @@ FakeStream::FakeStream()
       jpeg_compressor_(JpegCompressor::GetInstance(
           CameraHal::GetInstance().GetMojoManagerToken())) {}
 
-FakeStream::FakeStream(FakeStream&&) = default;
-
-FakeStream& FakeStream::operator=(FakeStream&&) = default;
-
 FakeStream::~FakeStream() = default;
-
-// static
-std::unique_ptr<FakeStream> FakeStream::Create(
-    const android::CameraMetadata& static_metadata,
-    Size size,
-    android_pixel_format_t format,
-    const FramesSpec& spec) {
-  auto fake_stream = base::WrapUnique(new FakeStream());
-  if (!fake_stream->Initialize(static_metadata, size, format, spec)) {
-    return nullptr;
-  }
-  return fake_stream;
-}
 
 template <class... Ts>
 struct Overloaded : Ts... {
@@ -128,6 +111,37 @@ struct Overloaded : Ts... {
 };
 template <class... Ts>
 Overloaded(Ts...) -> Overloaded<Ts...>;
+
+// static
+std::unique_ptr<FakeStream> FakeStream::Create(
+    const android::CameraMetadata& static_metadata,
+    Size size,
+    android_pixel_format_t format,
+    const FramesSpec& spec) {
+  std::unique_ptr<FakeStream> fake_stream = std::visit(
+      Overloaded{
+          [&size](const FramesTestPatternSpec& spec) {
+            auto input_buffer = GenerateTestPattern(
+                size, ANDROID_SENSOR_TEST_PATTERN_MODE_COLOR_BARS_FADE_TO_GRAY);
+            return base::WrapUnique(
+                new StaticFakeStream(std::move(input_buffer)));
+          },
+          [&size](const FramesFileSpec& spec) {
+            // TODO(pihsun): Handle different file type based on file
+            // extension.
+            // TODO(pihsun): This only reads a single frame now, read and
+            // convert the whole stream on fly.
+            auto input_buffer = ReadMJPGFromFile(spec.path, size);
+            return base::WrapUnique(
+                new StaticFakeStream(std::move(input_buffer)));
+          },
+      },
+      spec);
+  if (!fake_stream->Initialize(static_metadata, size, format, spec)) {
+    return nullptr;
+  }
+  return fake_stream;
+}
 
 bool FakeStream::Initialize(const android::CameraMetadata& static_metadata,
                             Size size,
@@ -143,22 +157,74 @@ bool FakeStream::Initialize(const android::CameraMetadata& static_metadata,
 
   size_ = size;
   format_ = format;
+  return true;
+}
 
-  std::unique_ptr<FrameBuffer> input_buffer = std::visit(
-      Overloaded{
-          [&size](const FramesTestPatternSpec& spec) {
-            return GenerateTestPattern(
-                size, ANDROID_SENSOR_TEST_PATTERN_MODE_COLOR_BARS_FADE_TO_GRAY);
-          },
-          [&size](const FramesFileSpec& spec) {
-            // TODO(pihsun): Handle different file type based on file
-            // extension.
-            // TODO(pihsun): This only reads a single frame now, read and
-            // convert the whole stream on fly.
-            return ReadMJPGFromFile(spec.path, size);
-          },
-      },
-      spec);
+bool FakeStream::CopyBuffer(FrameBuffer& buffer,
+                            buffer_handle_t output_buffer) {
+  auto frame_buffer = FrameBuffer::Wrap(output_buffer, size_);
+  if (!frame_buffer) {
+    LOGF(WARNING) << "failed to register the input buffer";
+    return false;
+  }
+
+  if (format_ == HAL_PIXEL_FORMAT_BLOB) {
+    DCHECK_EQ(frame_buffer->GetFourcc(), V4L2_PIX_FMT_JPEG);
+  } else if (format_ == HAL_PIXEL_FORMAT_YCBCR_420_888) {
+    // TODO(pihsun): For HAL_PIXEL_FORMAT_YCBCR_420_888 there should be libyuv
+    // conversion.
+    DCHECK_EQ(frame_buffer->GetFourcc(), V4L2_PIX_FMT_NV12);
+  } else {
+    NOTREACHED() << "unknown format " << format_;
+  }
+
+  auto mapped_buffer = buffer.Map();
+  if (!mapped_buffer.ok()) {
+    LOGF(WARNING) << "failed to map the fake stream buffer: "
+                  << mapped_buffer.status();
+    return false;
+  }
+
+  auto mapped_frame_buffer = frame_buffer->Map();
+  if (!mapped_frame_buffer.ok()) {
+    LOGF(WARNING) << "failed to map the input buffer: "
+                  << mapped_frame_buffer.status();
+    return false;
+  }
+
+  CHECK_EQ(mapped_buffer->num_planes(), mapped_frame_buffer->num_planes());
+  for (size_t i = 0; i < mapped_buffer->num_planes(); i++) {
+    // Since the camera3_jpeg_blob_t "header" is located at the end of the
+    // buffer, we requires the output to be the same size as the cached buffer.
+    // They should both be the size of jpeg_max_size_.
+    // TODO(pihsun): Only copy the JPEG part and append the camera3_jpeg_blob_t
+    // per frame?
+    auto src_plane = mapped_buffer->plane(i);
+    auto dst_plane = mapped_frame_buffer->plane(i);
+    CHECK_EQ(src_plane.size, dst_plane.size);
+    memcpy(dst_plane.addr, src_plane.addr, dst_plane.size);
+  }
+
+  return true;
+}
+
+StaticFakeStream::StaticFakeStream(std::unique_ptr<FrameBuffer> buffer)
+    : buffer_(std::move(buffer)) {}
+
+bool StaticFakeStream::FillBuffer(buffer_handle_t output_buffer) {
+  return CopyBuffer(*buffer_, output_buffer);
+}
+
+bool StaticFakeStream::Initialize(
+    const android::CameraMetadata& static_metadata,
+    Size size,
+    android_pixel_format_t format,
+    const FramesSpec& spec) {
+  if (!FakeStream::Initialize(static_metadata, size, format, spec)) {
+    return false;
+  }
+
+  auto input_buffer = std::move(buffer_);
   if (!input_buffer) {
     LOGF(WARNING) << "Failed to generate input buffer";
     return false;
@@ -201,58 +267,10 @@ bool FakeStream::Initialize(const android::CameraMetadata& static_metadata,
     CHECK(base::ClampAdd(out_data_size, sizeof(blob)) <= jpeg_max_size_);
     memcpy(data + jpeg_max_size_ - sizeof(blob), &blob, sizeof(blob));
   } else if (format == HAL_PIXEL_FORMAT_YCBCR_420_888) {
-    // TODO(pihsun): Fill buffer data for test pattern / image from spec.
     buffer_ = std::move(input_buffer);
   } else {
     NOTIMPLEMENTED() << "format = " << format << " is not supported";
     return false;
-  }
-
-  return true;
-}
-
-bool FakeStream::FillBuffer(buffer_handle_t buffer, Size size) {
-  auto frame_buffer = FrameBuffer::Wrap(buffer, size);
-  if (!frame_buffer) {
-    LOGF(WARNING) << "failed to register the input buffer";
-    return false;
-  }
-
-  if (format_ == HAL_PIXEL_FORMAT_BLOB) {
-    DCHECK_EQ(frame_buffer->GetFourcc(), V4L2_PIX_FMT_JPEG);
-  } else if (format_ == HAL_PIXEL_FORMAT_YCBCR_420_888) {
-    // TODO(pihsun): For HAL_PIXEL_FORMAT_YCBCR_420_888 there should be libyuv
-    // conversion.
-    DCHECK_EQ(frame_buffer->GetFourcc(), V4L2_PIX_FMT_NV12);
-  } else {
-    NOTREACHED() << "unknown format " << format_;
-  }
-
-  auto mapped_buffer = buffer_->Map();
-  if (!mapped_buffer.ok()) {
-    LOGF(WARNING) << "failed to map the fake stream buffer: "
-                  << mapped_buffer.status();
-    return false;
-  }
-
-  auto mapped_frame_buffer = frame_buffer->Map();
-  if (!mapped_frame_buffer.ok()) {
-    LOGF(WARNING) << "failed to map the input buffer: "
-                  << mapped_frame_buffer.status();
-    return false;
-  }
-
-  CHECK_EQ(mapped_buffer->num_planes(), mapped_frame_buffer->num_planes());
-  for (size_t i = 0; i < mapped_buffer->num_planes(); i++) {
-    // Since the camera3_jpeg_blob_t "header" is located at the end of the
-    // buffer, we requires the output to be the same size as the cached buffer.
-    // They should both be the size of jpeg_max_size_.
-    // TODO(pihsun): Only copy the JPEG part and append the camera3_jpeg_blob_t
-    // per frame?
-    auto src_plane = mapped_buffer->plane(i);
-    auto dst_plane = mapped_frame_buffer->plane(i);
-    CHECK_EQ(src_plane.size, dst_plane.size);
-    memcpy(dst_plane.addr, src_plane.addr, dst_plane.size);
   }
 
   return true;
