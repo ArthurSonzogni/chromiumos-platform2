@@ -879,10 +879,11 @@ TEST(ContainerListenerImplTest, ValidReportMetricsCallShouldAccumulateMetrics) {
   ASSERT_TRUE(status.ok()) << status.error_message();
 
   // Force a call to GuestMetrics::ReportDailyMetrics, which should report all
-  // four disk metrics to UMA.  The two which received data from the fake RPC
-  // above should contain the reported data, and the other two should be zero.
+  // eight disk metrics to UMA.  The two four which received data from the fake
+  // RPC above should contain the reported data, and the other six should be
+  // zero.
   EXPECT_CALL(*test_framework.GetMetricsLibraryMock(), SendToUMA(_, _, _, _, _))
-      .Times(4)
+      .Times(8)
       .WillRepeatedly([](const std::string& name, int sample, int min, int max,
                          int nbuckets) {
         if (name == "Borealis.Disk.SwapWritesDaily") {
@@ -890,7 +891,7 @@ TEST(ContainerListenerImplTest, ValidReportMetricsCallShouldAccumulateMetrics) {
         } else if (name == "Borealis.Disk.StatefulReadsDaily") {
           EXPECT_EQ(sample, 654321);
         } else {
-          // Borealis.Disk.{SwapReads,StatefulWrites}Daily
+          // {Borealis,Crostini}.Disk.{SwapReads,StatefulWrites}Daily
           EXPECT_EQ(sample, 0);
         }
         return true;

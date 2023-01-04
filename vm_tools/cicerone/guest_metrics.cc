@@ -64,6 +64,20 @@ constexpr char kBorealisDiskVMUsageToTotalSpacePercentageAtStartup[] =
 constexpr char kBorealisDiskVMUsageToTotalUsagePercentageAtStartup[] =
     "Borealis.Disk.VMUsageToTotalUsagePercentageAtStartup";
 
+// Crostini metric IDs
+constexpr char kCrostiniSwapBytesRead[] = "Crostini.Disk.SwapReadsDaily";
+constexpr char kCrostiniSwapBytesReadGuest[] = "crostini-swap-kb-read";
+
+constexpr char kCrostiniSwapBytesWritten[] = "Crostini.Disk.SwapWritesDaily";
+constexpr char kCrostiniSwapBytesWrittenGuest[] = "crostini-swap-kb-written";
+
+constexpr char kCrostiniDiskBytesRead[] = "Crostini.Disk.StatefulReadsDaily";
+constexpr char kCrostiniDiskBytesReadGuest[] = "crostini-disk-kb-read";
+
+constexpr char kCrostiniDiskBytesWritten[] =
+    "Crostini.Disk.StatefulWritesDaily";
+constexpr char kCrostiniDiskBytesWrittenGuest[] = "crostini-disk-kb-written";
+
 // Helper function that maps an fsck result to it's respective enum.
 BorealisFsckResult MapFsckResultToEnum(int fsck_result) {
   // See exit codes for fsck from: https://linux.die.net/man/8/fsck.
@@ -124,7 +138,9 @@ GuestMetrics::GuestMetrics(scoped_refptr<dbus::Bus> bus,
       daily_metrics_(cumulative_metrics_path,
                      {kBorealisSwapBytesRead, kBorealisSwapBytesWritten,
                       kBorealisDiskBytesRead, kBorealisDiskBytesWritten,
-                      kBorealisDiskHighestDirtyPagesDaily},
+                      kBorealisDiskHighestDirtyPagesDaily,
+                      kCrostiniSwapBytesRead, kCrostiniSwapBytesWritten,
+                      kCrostiniDiskBytesRead, kCrostiniDiskBytesWritten},
                      kDailyUpdatePeriod,
                      base::BindRepeating(&GuestMetrics::UpdateDailyMetrics,
                                          base::Unretained(this)),
@@ -250,6 +266,20 @@ bool GuestMetrics::HandleMetric(const std::string& owner_id,
       LOG(ERROR) << "Unknown Borealis metric " << name;
       return false;
     }
+  } else if (vm_name == "termina" && container_name == "penguin") {
+    // Metrics emitted by Crostini (AKA termina) VMs.
+    if (name == kCrostiniSwapBytesReadGuest) {
+      daily_metrics_.Add(kCrostiniSwapBytesRead, value);
+    } else if (name == kCrostiniSwapBytesWrittenGuest) {
+      daily_metrics_.Add(kCrostiniSwapBytesWritten, value);
+    } else if (name == kCrostiniDiskBytesReadGuest) {
+      daily_metrics_.Add(kCrostiniDiskBytesRead, value);
+    } else if (name == kCrostiniDiskBytesWrittenGuest) {
+      daily_metrics_.Add(kCrostiniDiskBytesWritten, value);
+    } else {
+      LOG(ERROR) << "Unknown Crostini metric " << name;
+      return false;
+    }
   } else {
     LOG(ERROR) << "No metrics are known for VM " << vm_name << " and container "
                << container_name;
@@ -283,6 +313,19 @@ void GuestMetrics::ReportDailyMetrics(chromeos_metrics::CumulativeMetrics* cm) {
     metrics_lib_->SendToUMA(kBorealisDiskHighestDirtyPagesDaily, highestpages,
                             1, 16777216, 50);
   }
+
+  // Crostini metrics
+  swapin = daily_metrics_.Get(kCrostiniSwapBytesRead);
+  swapout = daily_metrics_.Get(kCrostiniSwapBytesWritten);
+  blocksin = daily_metrics_.Get(kCrostiniDiskBytesRead);
+  blocksout = daily_metrics_.Get(kCrostiniDiskBytesWritten);
+
+  // Range chosen to match Platform.StatefulWritesDaily.
+  metrics_lib_->SendToUMA(kCrostiniSwapBytesRead, swapin, 0, 209715200, 50);
+  metrics_lib_->SendToUMA(kCrostiniSwapBytesWritten, swapout, 0, 209715200, 50);
+  metrics_lib_->SendToUMA(kCrostiniDiskBytesRead, blocksin, 0, 209715200, 50);
+  metrics_lib_->SendToUMA(kCrostiniDiskBytesWritten, blocksout, 0, 209715200,
+                          50);
 }
 
 }  // namespace cicerone
