@@ -41,7 +41,7 @@ constexpr int kSmallCanvasSize = 900;
 constexpr int kFreconNoOffset = 0;
 
 namespace {
-constexpr char kConsole0[] = "dev/pts/0";
+constexpr char kConsole0[] = "run/frecon/vt0";
 
 // Dimensions and spacing.
 constexpr int kNewLineChar = 10;

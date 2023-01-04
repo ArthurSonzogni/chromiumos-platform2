@@ -39,8 +39,8 @@ class DrawUtilsTest : public ::testing::Test {
 
     // Create directories.
     ASSERT_TRUE(
-        base::CreateDirectory(base::FilePath(test_root_).Append("dev/pts")));
-    console_ = base::FilePath(test_root_).Append("dev/pts/0");
+        base::CreateDirectory(base::FilePath(test_root_).Append("run/frecon")));
+    console_ = base::FilePath(test_root_).Append("run/frecon/vt0");
     ASSERT_TRUE(base::WriteFile(console_, ""));
     ASSERT_TRUE(CreateDirectory(
         base::FilePath(screens_path_).Append("glyphs").Append("white")));
