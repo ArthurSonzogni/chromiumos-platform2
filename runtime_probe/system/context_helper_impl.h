@@ -7,7 +7,9 @@
 
 #include <memory>
 
+#include <base/notreached.h>
 #include <brillo/dbus/dbus_connection.h>
+#include <libcrossystem/crossystem.h>
 #include <shill/dbus-proxies.h>
 
 #include "runtime_probe/system/context.h"
@@ -18,6 +20,8 @@ class ContextHelperImpl : public Context {
  public:
   ContextHelperImpl() = default;
   ~ContextHelperImpl() override = default;
+
+  crossystem::Crossystem* crossystem() override { return &crossystem_; }
 
   org::chromium::debugdProxyInterface* debugd_proxy() override {
     NOTREACHED() << "The helper should not call debugd.";
@@ -48,6 +52,8 @@ class ContextHelperImpl : public Context {
 
   // The object to hold the dbus connection.
   brillo::DBusConnection connection_;
+  // The object to access crossystem system properties.
+  crossystem::CrossystemImpl crossystem_;
   // The reference of the dbus connection.
   scoped_refptr<dbus::Bus> dbus_bus_;
   // The proxy object for shill manager.

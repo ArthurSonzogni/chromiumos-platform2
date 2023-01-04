@@ -11,6 +11,10 @@
 
 #include "runtime_probe/system/helper_invoker.h"
 
+namespace crossystem {
+class Crossystem;
+}
+
 namespace org {
 namespace chromium {
 class debugdProxyInterface;
@@ -41,6 +45,9 @@ class Context {
   // overridden by derived classes. Only one global instance is allowed at a
   // time.
   static Context* Get();
+
+  // The object to access crossystem system properties.
+  virtual crossystem::Crossystem* crossystem() = 0;
 
   // Use the object returned by debugd_proxy() to make calls to debugd.
   virtual org::chromium::debugdProxyInterface* debugd_proxy() = 0;

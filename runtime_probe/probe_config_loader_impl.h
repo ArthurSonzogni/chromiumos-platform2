@@ -17,8 +17,6 @@
 #include <chromeos-config/libcros_config/cros_config.h>
 #include <gtest/gtest.h>
 
-#include "runtime_probe/system_property.h"
-
 namespace runtime_probe {
 
 constexpr char kCrosConfigModelNamePath[] = "/";
@@ -57,13 +55,10 @@ class ProbeConfigLoaderImpl : public ProbeConfigLoader {
 
   void SetCrosConfigForTesting(
       std::unique_ptr<brillo::CrosConfigInterface> cros_config);
-  void SetSystemProertyForTesting(
-      std::unique_ptr<SystemProperty> system_property);
   void SetRootForTest(const base::FilePath& root);
 
  private:
   std::unique_ptr<brillo::CrosConfigInterface> cros_config_;
-  std::unique_ptr<SystemProperty> system_property_;
   base::FilePath root_;
 
   int GetCrosDebug() const;

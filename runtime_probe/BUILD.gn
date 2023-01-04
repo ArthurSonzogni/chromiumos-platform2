@@ -31,7 +31,6 @@ pkg_config("target_defaults") {
     "libshill-client",
     "protobuf",
     "system_api",
-    "vboot_host",
   ]
 }
 
@@ -46,7 +45,6 @@ source_set("lib") {
     "probe_function_argument.cc",
     "probe_result_checker.cc",
     "probe_statement.cc",
-    "system_property_impl.cc",
   ]
   configs += [ ":target_defaults" ]
   deps = [
@@ -100,6 +98,7 @@ if (use.test) {
       "//common-mk/testrunner",
       "//runtime_probe/function_templates:test",
       "//runtime_probe/functions:test",
+      "//runtime_probe/system:test_utils",
       "//runtime_probe/utils:test",
     ]
   }

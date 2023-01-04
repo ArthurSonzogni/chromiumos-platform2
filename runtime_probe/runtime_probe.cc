@@ -18,7 +18,6 @@
 #include "runtime_probe/probe_function.h"
 #include "runtime_probe/system/context_helper_impl.h"
 #include "runtime_probe/system/context_runtime_impl.h"
-#include "runtime_probe/system_property_impl.h"
 
 namespace {
 enum ExitStatus {

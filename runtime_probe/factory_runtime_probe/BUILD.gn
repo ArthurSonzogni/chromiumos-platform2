@@ -17,7 +17,6 @@ pkg_config("target_defaults") {
     "libshill-client",
     "protobuf",
     "system_api",
-    "vboot_host",
   ]
 }
 

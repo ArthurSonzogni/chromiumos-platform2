@@ -15,10 +15,10 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/system/sys_info.h>
 #include <chromeos-config/libcros_config/cros_config.h>
-#include <vboot/crossystem.h>
+#include <libcrossystem/crossystem.h>
 
 #include "runtime_probe/probe_config_loader_impl.h"
-#include "runtime_probe/system_property_impl.h"
+#include "runtime_probe/system/context.h"
 
 namespace runtime_probe {
 
@@ -59,7 +59,6 @@ std::optional<ProbeConfigData> LoadProbeConfig(
 
 ProbeConfigLoaderImpl::ProbeConfigLoaderImpl() : root_("/") {
   cros_config_ = std::make_unique<brillo::CrosConfig>();
-  system_property_ = std::make_unique<SystemPropertyImpl>();
 }
 
 std::optional<ProbeConfigData> ProbeConfigLoaderImpl::LoadDefault() const {
@@ -107,20 +106,15 @@ void ProbeConfigLoaderImpl::SetCrosConfigForTesting(
   cros_config_ = std::move(cros_config);
 }
 
-void ProbeConfigLoaderImpl::SetSystemProertyForTesting(
-    std::unique_ptr<SystemProperty> system_property) {
-  system_property_ = std::move(system_property);
-}
-
 void ProbeConfigLoaderImpl::SetRootForTest(const base::FilePath& root) {
   root_ = root;
 }
 
 int ProbeConfigLoaderImpl::GetCrosDebug() const {
-  int cros_config;
-
-  if (system_property_->GetInt("cros_debug", &cros_config))
-    return cros_config;
+  auto cros_debug =
+      Context::Get()->crossystem()->VbGetSystemPropertyInt("cros_debug");
+  if (cros_debug)
+    return *cros_debug;
 
   // Fallback to disabled cros_debug.
   return 0;

@@ -8,6 +8,7 @@ pkg_config("target_defaults") {
   pkg_deps = [
     "libbrillo",
     "libchrome",
+    "libcrossystem",
     "libdebugd-client",
     "libshill-client",
   ]
@@ -48,6 +49,7 @@ source_set("context_production") {
 if (use.test) {
   pkg_config("test_pkg_deps") {
     pkg_deps = [
+      "libcrossystem-test",
       "libdebugd-client-test",
       "libshill-client-test",
     ]

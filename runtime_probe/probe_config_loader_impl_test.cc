@@ -14,7 +14,7 @@
 #include <gtest/gtest.h>
 
 #include "runtime_probe/probe_config_loader_impl.h"
-#include "runtime_probe/system_property_impl.h"
+#include "runtime_probe/system/context_mock_impl.h"
 
 namespace runtime_probe {
 
@@ -29,38 +29,17 @@ base::FilePath GetTestDataPath() {
   return base::FilePath(src_env).Append("testdata");
 }
 
-class MockSystemProperty : public SystemProperty {
- public:
-  MOCK_METHOD(bool,
-              GetInt,
-              (const std::string& key, int* value_out),
-              (override));
-  MOCK_METHOD(bool, SetInt, (const std::string& key, int value), (override));
-  MOCK_METHOD(bool,
-              GetString,
-              (const std::string& key, std::string* value_out),
-              (override));
-  MOCK_METHOD(bool,
-              SetString,
-              (const std::string& key, const std::string& value),
-              (override));
-};
-
 class ProbeConfigLoaderImplTest : public ::testing::Test {
  protected:
   void SetUp() {
     PCHECK(scoped_temp_dir_.CreateUniqueTempDir());
 
     auto cros_config = std::make_unique<brillo::FakeCrosConfig>();
-    auto mock_system_property = std::make_unique<MockSystemProperty>();
     cros_config_ = cros_config.get();
-    mock_system_property_ = mock_system_property.get();
     testdata_root_ = GetTestDataPath();
 
     probe_config_loader_ = std::make_unique<ProbeConfigLoaderImpl>();
     probe_config_loader_->SetCrosConfigForTesting(std::move(cros_config));
-    probe_config_loader_->SetSystemProertyForTesting(
-        std::move(mock_system_property));
     probe_config_loader_->SetRootForTest(GetRootDir());
   }
 
@@ -72,10 +51,8 @@ class ProbeConfigLoaderImplTest : public ::testing::Test {
 
   // Sets cros_debug flag to the given value.
   void SetCrosDebugFlag(int value) {
-    EXPECT_CALL(*mock_system_property_,
-                GetInt(std::string("cros_debug"), ::testing::_))
-        .WillRepeatedly(::testing::DoAll(::testing::SetArgPointee<1>(value),
-                                         ::testing::Return(true)));
+    mock_context_.fake_crossystem()->VbSetSystemPropertyInt("cros_debug",
+                                                            value);
   }
 
   // Gets the root directory path used for unit test.
@@ -92,12 +69,12 @@ class ProbeConfigLoaderImplTest : public ::testing::Test {
   }
 
   std::unique_ptr<ProbeConfigLoaderImpl> probe_config_loader_;
-  MockSystemProperty* mock_system_property_;
   brillo::FakeCrosConfig* cros_config_;
   base::FilePath testdata_root_;
 
  private:
   base::ScopedTempDir scoped_temp_dir_;
+  ContextMockImpl mock_context_;
 };
 
 }  // namespace
