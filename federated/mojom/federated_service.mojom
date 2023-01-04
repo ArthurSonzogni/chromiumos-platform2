@@ -5,7 +5,7 @@
 // Top-level API of the Federated Service: report an example.
 
 // NOTE: This mojom should exist in two places and must be kept in sync:
-//       Chromium: //chromeos/services/federated/public/mojom
+//       Chromium: //chromeos/ash/services/federated/public/mojom
 //       Chrome OS: src/platform2/federated/mojom/
 
 module chromeos.federated.mojom;
@@ -15,6 +15,7 @@ module chromeos.federated.mojom;
 import "federated/mojom/example.mojom";
 
 // Top-level interface between Chromium and the Federated Service daemon.
+// Next MinVersion: 2
 // Next ordinal: 2
 interface FederatedService {
   // Binds another pipe to this instance.
@@ -31,5 +32,5 @@ interface FederatedService {
 
   // Starts scheduling federated training tasks if they are not scheduled yet,
   // otherwise does nothing.
-  StartScheduling@2();
+  StartScheduling@2([MinVersion=1] map<string, string>? client_launch_stage);
 };

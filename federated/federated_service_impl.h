@@ -5,9 +5,11 @@
 #ifndef FEDERATED_FEDERATED_SERVICE_IMPL_H_
 #define FEDERATED_FEDERATED_SERVICE_IMPL_H_
 
+#include <optional>
 #include <string>
 #include <unordered_set>
 
+#include <base/containers/flat_map.h>
 #include <mojo/public/cpp/bindings/pending_receiver.h>
 #include <mojo/public/cpp/bindings/receiver.h>
 #include <mojo/public/cpp/bindings/receiver_set.h>
@@ -39,7 +41,9 @@ class FederatedServiceImpl
                  receiver) override;
   void ReportExample(const std::string& client_name,
                      chromeos::federated::mojom::ExamplePtr example) override;
-  void StartScheduling() override;
+  void StartScheduling(
+      const std::optional<base::flat_map<std::string, std::string>>&
+          client_launch_stage) override;
 
   // Not owned.
   StorageManager* const storage_manager_;

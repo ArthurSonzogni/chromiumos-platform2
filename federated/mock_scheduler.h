@@ -5,6 +5,8 @@
 #ifndef FEDERATED_MOCK_SCHEDULER_H_
 #define FEDERATED_MOCK_SCHEDULER_H_
 
+#include <string>
+
 #include <gmock/gmock.h>
 
 #include "federated/scheduler.h"
@@ -20,7 +22,11 @@ class MockScheduler : public Scheduler {
 
   ~MockScheduler() override = default;
 
-  MOCK_METHOD(void, Schedule, (), (override));
+  MOCK_METHOD(
+      void,
+      Schedule,
+      ((const std::optional<base::flat_map<std::string, std::string>>&)),
+      (override));
 };
 
 }  // namespace federated

@@ -23,7 +23,7 @@ struct ClientConfigMetadata {
   std::string retry_token;
   // The launch stage used to compose a unique population name together with
   // `name`.
-  // Value can be overwritten by mojo call after b/263210684. Currently if this
+  // Value can be overwritten by mojo call. After overwriting if launch stage
   // is empty, scheduler will skip this client. (No federated tasks scheduled,
   // but examples reported to this client will still be stored.)
   std::string launch_stage;

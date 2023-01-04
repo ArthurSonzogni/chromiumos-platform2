@@ -76,10 +76,16 @@ Scheduler::Scheduler(StorageManager* storage_manager,
       scheduling_started_(false),
       weak_ptr_factory_(this) {}
 
-void Scheduler::Schedule() {
+void Scheduler::Schedule(
+    const std::optional<base::flat_map<std::string, std::string>>&
+        client_launch_stage) {
   if (scheduling_started_) {
     DVLOG(1) << "Scheduling already started, does nothing.";
     return;
+  }
+
+  if (client_launch_stage.has_value()) {
+    client_launch_stage_ = client_launch_stage.value();
   }
 
   dlcservice::DlcState dlc_state;
@@ -162,9 +168,15 @@ void Scheduler::ScheduleInternal(const std::string& dlc_root_path) {
     return;
   }
 
-  for (const auto& kv : client_configs) {
-    const ClientConfigMetadata& client_config = kv.second;
-    // TODO(b/263210684): alter the launch stage of client config if provided.
+  for (auto& kv : client_configs) {
+    ClientConfigMetadata& client_config = kv.second;
+
+    // Overwrites the launch_stage if provided by the caller of `Schedule()`.
+    const auto iter = client_launch_stage_.find(kv.first);
+    if (iter != client_launch_stage_.end()) {
+      client_config.launch_stage = iter->second;
+    }
+
     if (client_config.launch_stage.empty()) {
       DVLOG(1) << "client " << kv.first << " has no valid launch_stage, skip.";
       continue;

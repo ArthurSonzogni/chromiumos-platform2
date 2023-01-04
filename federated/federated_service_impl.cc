@@ -57,10 +57,12 @@ void FederatedServiceImpl::ReportExample(
   }
 }
 
-void FederatedServiceImpl::StartScheduling() {
+void FederatedServiceImpl::StartScheduling(
+    const std::optional<base::flat_map<std::string, std::string>>&
+        client_launch_stage) {
   // This is no-op if the scheduling already started.
   DVLOG(1) << "Received StartScheduling call.";
-  scheduler_->Schedule();
+  scheduler_->Schedule(client_launch_stage);
 }
 
 }  // namespace federated

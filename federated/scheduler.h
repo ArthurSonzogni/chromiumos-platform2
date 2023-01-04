@@ -6,9 +6,11 @@
 #define FEDERATED_SCHEDULER_H_
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
+#include <base/containers/flat_map.h>
 #include <base/memory/scoped_refptr.h>
 #include <base/task/sequenced_task_runner.h>
 #include <base/time/time.h>
@@ -35,7 +37,9 @@ class Scheduler {
   // Tries to schedule tasks if the library dlc is already installed, otherwise
   // triggers dlc install and schedules tasks when it receives a DlcStateChanged
   // signal indicating the library dlc is installed.
-  virtual void Schedule();
+  virtual void Schedule(
+      const std::optional<base::flat_map<std::string, std::string>>&
+          client_launch_stage);
 
  private:
   // Loads federated library from the given `dlc_root_path`, then for each
@@ -56,6 +60,10 @@ class Scheduler {
 
   // Registered clients.
   std::vector<FederatedClient> clients_;
+
+  // Clients' launch stage, provided by caller of `Schedule` and used for
+  // overwriting the hardcoded launch stage in federated_metadata.cc.
+  base::flat_map<std::string, std::string> client_launch_stage_;
 
   // Not owned
   StorageManager* const storage_manager_;

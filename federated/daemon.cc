@@ -7,6 +7,7 @@
 #include <sysexits.h>
 
 #include <memory>
+#include <optional>
 #include <utility>
 
 #include <base/bind.h>
@@ -44,7 +45,7 @@ int Daemon::OnInit() {
                                   std::move(device_status_monitor), bus_.get());
   // Starts the scheduling if it's initialized so.
   if (should_schedule_) {
-    scheduler_->Schedule();
+    scheduler_->Schedule(/*client_launch_stage=*/std::nullopt);
   }
 
   mojo::core::Init();

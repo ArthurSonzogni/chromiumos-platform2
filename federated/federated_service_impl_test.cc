@@ -91,8 +91,8 @@ TEST_F(FederatedServiceImplTest, TestClone) {
 }
 
 TEST_F(FederatedServiceImplTest, TestStartScheduling) {
-  EXPECT_CALL(*scheduler_, Schedule()).Times(1);
-  federated_service_->StartScheduling();
+  EXPECT_CALL(*scheduler_, Schedule(_)).Times(1);
+  federated_service_->StartScheduling(/*client_launch_stage=*/std::nullopt);
   base::RunLoop().RunUntilIdle();
 }
 
