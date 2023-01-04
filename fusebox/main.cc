@@ -511,15 +511,7 @@ class FuseBoxClient : public FileSystem {
       return;
     }
 
-    // As the fusebox.proto comment says, "The high bit (also known as the
-    // 1<<63 bit) is also always zero for valid [Fusebox server generated]
-    // values, so that the Fusebox client (which is itself a FUSE server) can
-    // re-purpose large uint64 values (e.g. for tracking FUSE requests that do
-    // not need a round-trip to the Fusebox server)".
-    static uint64_t next_fuse_handle = 0x8000'0000'0000'0000ul;
-    uint64_t fuse_handle = next_fuse_handle++;
-    DCHECK_EQ(fuse_handle >> 63, 1);
-    request->ReplyOpen(fuse_handle);
+    request->ReplyOpen(NextClientSideFuseHandle());
   }
 
   void ReadDir(std::unique_ptr<DirEntryRequest> request,
@@ -762,6 +754,14 @@ class FuseBoxClient : public FileSystem {
       errno = request->ReplyError(errno ? errno : EACCES);
       PLOG(ERROR) << "open";
       return;
+    } else if (node->parent == INO_BUILT_IN) {
+      if ((request->flags() & O_ACCMODE) != O_RDONLY) {
+        errno = request->ReplyError(EACCES);
+        PLOG(ERROR) << "open";
+        return;
+      }
+      request->ReplyOpen(NextClientSideFuseHandle());
+      return;
     }
 
     Open2RequestProto request_proto;
@@ -932,6 +932,9 @@ class FuseBoxClient : public FileSystem {
       errno = request->ReplyError(EBADF);
       PLOG(ERROR) << "release";
       return;
+    } else if (IsClientSideFuseHandle(fuse_handle)) {
+      request->ReplyOk();
+      return;
     }
 
     Close2RequestProto request_proto;
@@ -1081,6 +1084,22 @@ class FuseBoxClient : public FileSystem {
   }
 
  private:
+  static uint64_t NextClientSideFuseHandle() {
+    // As the fusebox.proto comment says, "The high bit (also known as the
+    // 1<<63 bit) is also always zero for valid [Fusebox server generated]
+    // values, so that the Fusebox client (which is itself a FUSE server) can
+    // re-purpose large uint64 values (e.g. for tracking FUSE requests that do
+    // not need a round-trip to the Fusebox server)".
+    static uint64_t next_fuse_handle = 0x8000'0000'0000'0000ul;
+    uint64_t fuse_handle = next_fuse_handle++;
+    DCHECK_EQ(fuse_handle >> 63, 1);
+    return fuse_handle;
+  }
+
+  static bool IsClientSideFuseHandle(uint64_t fuse_handle) {
+    return (fuse_handle >> 63) == 1;
+  }
+
   // Server D-Bus proxy.
   scoped_refptr<dbus::ObjectProxy> dbus_proxy_;
 
