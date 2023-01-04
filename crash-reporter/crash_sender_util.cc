@@ -109,7 +109,7 @@ void ParseCommandLine(int argc,
               "Send crash reports regardless of image/build type "
               "and upload them to the staging server instead.");
   DEFINE_bool(ignore_pause_file, false,
-              "Ignore the existence of the pause file and run anyways");
+              "Ignore the existence of the pause file and run anyways.");
   DEFINE_bool(test_mode, false,
               "Do not upload crashes; instead, touch a special file if the "
               "crash is valid. Used by tast test ChromeCrashLoop.");
@@ -122,6 +122,12 @@ void ParseCommandLine(int argc,
               "Indicates that crash_reporter already made a consent check "
               "before invoking crash_sender. Therefore, skip the consent "
               "check.");
+  DEFINE_bool(
+      dry_run, false,
+      "Indicates whether crash_sender is running in the dry run mode. "
+      "If set, does not upload crashes, delete crashes, or update uploads.log; "
+      "instead, writes the uploads.log content to standard output. "
+      "(To be implemented.)");
 
   brillo::FlagHelper::Init(argc, argv, "ChromiumOS Crash Sender");
   if (FLAGS_max_spread_time < 0) {
@@ -140,6 +146,7 @@ void ParseCommandLine(int argc,
   flags->force_upload_on_test_images = FLAGS_force_upload_on_test_images;
   flags->consent_already_checked_by_crash_reporter =
       FLAGS_consent_already_checked_by_crash_reporter;
+  flags->dry_run = FLAGS_dry_run;
   // We should only be skipping the consent check if we are sure it has been
   // checked prior to crash_sender being invoked. This only happens when the
   // flag is set via debugd, which also sets the crash_directory flag.
@@ -153,6 +160,25 @@ void ParseCommandLine(int argc,
     // tests, not the crash_sender invoked by the test code.
     flags->ignore_pause_file = true;
   }
+
+#ifndef CRASH_SENDER_DRY_RUN_DEV
+  // TODO(b/264307614): Remove the following block once the feature is
+  // implemented.
+  //
+  //   Use of CRASH_SENDER_DRY_RUN_DEV in the codebase should be extremely
+  //   confined to avoid complication. If you are developing the dry run mode
+  //   feature, avoid using this macro and try to use the dry_run flag instead.
+  if (flags->dry_run) {
+    LOG(ERROR) << R"msg(
+Dry run mode not implemented yet. This flag is currently reserved for
+development purposes only. To enable the executable with the dry run feature,
+build with
+
+    CXXFLAGS=-DCRASH_SENDER_DRY_RUN_DEV emerge-$BOARD crash-reporter
+)msg";
+    exit(EXIT_FAILURE);
+  }
+#endif  // CRASH_SENDER_DRY_RUN_DEV
 }
 
 bool DoesPauseFileExist() {
@@ -367,7 +393,8 @@ Sender::Sender(std::unique_ptr<MetricsLibraryInterface> metrics_lib,
       upload_old_reports_(options.upload_old_reports),
       force_upload_on_test_images_(options.force_upload_on_test_images),
       consent_already_checked_by_crash_reporter_(
-          options.consent_already_checked_by_crash_reporter) {}
+          options.consent_already_checked_by_crash_reporter),
+      dry_run_(options.dry_run) {}
 
 bool Sender::HasCrashUploadingConsent(const CrashInfo& info) {
   if (util::HasMockConsent()) {

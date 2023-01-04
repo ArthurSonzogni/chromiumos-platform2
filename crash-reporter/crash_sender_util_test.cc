@@ -619,9 +619,11 @@ TEST_F(CrashSenderUtilTest, ParseCommandLine_NoFlags) {
   EXPECT_FALSE(flags.ignore_hold_off_time);
   EXPECT_FALSE(flags.allow_dev_sending);
   EXPECT_FALSE(flags.ignore_pause_file);
+  EXPECT_FALSE(flags.test_mode);
   EXPECT_FALSE(flags.upload_old_reports);
   EXPECT_FALSE(flags.force_upload_on_test_images);
   EXPECT_FALSE(flags.consent_already_checked_by_crash_reporter);
+  EXPECT_FALSE(flags.dry_run);
 }
 
 TEST_F(CrashSenderUtilDeathTest, ParseCommandLine_InvalidMaxSpreadTime) {
@@ -647,9 +649,11 @@ TEST_F(CrashSenderUtilTest, ParseCommandLine_ValidMaxSpreadTime) {
   EXPECT_FALSE(flags.ignore_hold_off_time);
   EXPECT_FALSE(flags.allow_dev_sending);
   EXPECT_FALSE(flags.ignore_pause_file);
+  EXPECT_FALSE(flags.test_mode);
   EXPECT_FALSE(flags.upload_old_reports);
   EXPECT_FALSE(flags.force_upload_on_test_images);
   EXPECT_FALSE(flags.consent_already_checked_by_crash_reporter);
+  EXPECT_FALSE(flags.dry_run);
 }
 
 TEST_F(CrashSenderUtilTest, ParseCommandLine_IgnoreRateLimits) {
@@ -665,9 +669,11 @@ TEST_F(CrashSenderUtilTest, ParseCommandLine_IgnoreRateLimits) {
   EXPECT_FALSE(flags.ignore_hold_off_time);
   EXPECT_FALSE(flags.allow_dev_sending);
   EXPECT_FALSE(flags.ignore_pause_file);
+  EXPECT_FALSE(flags.test_mode);
   EXPECT_FALSE(flags.upload_old_reports);
   EXPECT_FALSE(flags.force_upload_on_test_images);
   EXPECT_FALSE(flags.consent_already_checked_by_crash_reporter);
+  EXPECT_FALSE(flags.dry_run);
 }
 
 TEST_F(CrashSenderUtilTest, ParseCommandLine_IgnoreHoldOffTime) {
@@ -683,9 +689,11 @@ TEST_F(CrashSenderUtilTest, ParseCommandLine_IgnoreHoldOffTime) {
   EXPECT_TRUE(flags.ignore_hold_off_time);
   EXPECT_FALSE(flags.allow_dev_sending);
   EXPECT_FALSE(flags.ignore_pause_file);
+  EXPECT_FALSE(flags.test_mode);
   EXPECT_FALSE(flags.upload_old_reports);
   EXPECT_FALSE(flags.force_upload_on_test_images);
   EXPECT_FALSE(flags.consent_already_checked_by_crash_reporter);
+  EXPECT_FALSE(flags.dry_run);
 }
 
 TEST_F(CrashSenderUtilTest, ParseCommandLine_CrashDirectory) {
@@ -701,9 +709,11 @@ TEST_F(CrashSenderUtilTest, ParseCommandLine_CrashDirectory) {
   EXPECT_FALSE(flags.ignore_hold_off_time);
   EXPECT_FALSE(flags.allow_dev_sending);
   EXPECT_FALSE(flags.ignore_pause_file);
+  EXPECT_FALSE(flags.test_mode);
   EXPECT_FALSE(flags.upload_old_reports);
   EXPECT_FALSE(flags.force_upload_on_test_images);
   EXPECT_FALSE(flags.consent_already_checked_by_crash_reporter);
+  EXPECT_FALSE(flags.dry_run);
 }
 
 TEST_F(CrashSenderUtilTest, ParseCommandLine_Dev) {
@@ -719,9 +729,11 @@ TEST_F(CrashSenderUtilTest, ParseCommandLine_Dev) {
   EXPECT_FALSE(flags.ignore_hold_off_time);
   EXPECT_TRUE(flags.allow_dev_sending);
   EXPECT_FALSE(flags.ignore_pause_file);
+  EXPECT_FALSE(flags.test_mode);
   EXPECT_FALSE(flags.upload_old_reports);
   EXPECT_FALSE(flags.force_upload_on_test_images);
   EXPECT_FALSE(flags.consent_already_checked_by_crash_reporter);
+  EXPECT_FALSE(flags.dry_run);
 }
 
 TEST_F(CrashSenderUtilTest, ParseCommandLine_IgnorePauseFile) {
@@ -737,9 +749,11 @@ TEST_F(CrashSenderUtilTest, ParseCommandLine_IgnorePauseFile) {
   EXPECT_FALSE(flags.ignore_hold_off_time);
   EXPECT_FALSE(flags.allow_dev_sending);
   EXPECT_TRUE(flags.ignore_pause_file);
+  EXPECT_FALSE(flags.test_mode);
   EXPECT_FALSE(flags.upload_old_reports);
   EXPECT_FALSE(flags.force_upload_on_test_images);
   EXPECT_FALSE(flags.consent_already_checked_by_crash_reporter);
+  EXPECT_FALSE(flags.dry_run);
 }
 
 TEST_F(CrashSenderUtilTest, ParseCommandLine_UploadOldReports) {
@@ -755,9 +769,11 @@ TEST_F(CrashSenderUtilTest, ParseCommandLine_UploadOldReports) {
   EXPECT_FALSE(flags.ignore_hold_off_time);
   EXPECT_FALSE(flags.allow_dev_sending);
   EXPECT_FALSE(flags.ignore_pause_file);
+  EXPECT_FALSE(flags.test_mode);
   EXPECT_TRUE(flags.upload_old_reports);
   EXPECT_FALSE(flags.force_upload_on_test_images);
   EXPECT_FALSE(flags.consent_already_checked_by_crash_reporter);
+  EXPECT_FALSE(flags.dry_run);
 }
 
 TEST_F(CrashSenderUtilTest, ParseCommandLine_ForceUploadOnTestImages) {
@@ -773,9 +789,11 @@ TEST_F(CrashSenderUtilTest, ParseCommandLine_ForceUploadOnTestImages) {
   EXPECT_FALSE(flags.ignore_hold_off_time);
   EXPECT_FALSE(flags.allow_dev_sending);
   EXPECT_FALSE(flags.ignore_pause_file);
+  EXPECT_FALSE(flags.test_mode);
   EXPECT_FALSE(flags.upload_old_reports);
   EXPECT_TRUE(flags.force_upload_on_test_images);
   EXPECT_FALSE(flags.consent_already_checked_by_crash_reporter);
+  EXPECT_FALSE(flags.dry_run);
 }
 
 TEST_F(CrashSenderUtilDeathTest,
@@ -805,9 +823,25 @@ TEST_F(CrashSenderUtilTest, ParseCommandLine_ConsentAlreadyCheckedWithDir) {
   EXPECT_FALSE(flags.ignore_hold_off_time);
   EXPECT_FALSE(flags.allow_dev_sending);
   EXPECT_FALSE(flags.ignore_pause_file);
+  EXPECT_FALSE(flags.test_mode);
   EXPECT_FALSE(flags.upload_old_reports);
   EXPECT_FALSE(flags.force_upload_on_test_images);
   EXPECT_TRUE(flags.consent_already_checked_by_crash_reporter);
+  EXPECT_FALSE(flags.dry_run);
+}
+
+// After the dry run mode has been implemented, replace the following test with
+// one that tests flags.
+TEST_F(CrashSenderUtilDeathTest, ParseCommandLine_DryRun) {
+  const char* argv[] = {"crash_sender", "--dry_run"};
+  base::CommandLine command_line(std::size(argv), argv);
+  brillo::FlagHelper::GetInstance()->set_command_line_for_testing(
+      &command_line);
+  CommandLineFlags flags;
+#ifndef CRASH_SENDER_DRY_RUN_DEV
+  EXPECT_DEATH(ParseCommandLine(std::size(argv), argv, &flags),
+               "Dry run mode not implemented yet");
+#endif  // CRASH_SENDER_DRY_RUN_DEV
 }
 
 TEST_F(CrashSenderUtilTest, DoesPauseFileExist) {

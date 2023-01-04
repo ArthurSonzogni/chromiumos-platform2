@@ -59,6 +59,7 @@ struct CommandLineFlags {
   bool upload_old_reports = false;
   bool force_upload_on_test_images = false;
   bool consent_already_checked_by_crash_reporter = false;
+  bool dry_run = false;
 };
 
 // Represents a metadata file name, and its parsed metadata.
@@ -169,6 +170,10 @@ class Sender : public SenderBase {
     // If true, the caller is asserting that it is crash_reporter and has
     // already checked for consent, so any additional checks are not needed.
     bool consent_already_checked_by_crash_reporter = false;
+
+    // If true, crash_sender will run under the dry run mode -- it will not
+    // upload any crashes and writes log content to stdout.
+    bool dry_run = false;
   };
 
   Sender(std::unique_ptr<MetricsLibraryInterface> metrics_lib,
@@ -259,6 +264,7 @@ class Sender : public SenderBase {
   const bool upload_old_reports_;
   const bool force_upload_on_test_images_;
   const bool consent_already_checked_by_crash_reporter_;
+  const bool dry_run_;
 };
 
 }  // namespace util
