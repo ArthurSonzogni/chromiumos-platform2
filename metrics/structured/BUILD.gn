@@ -86,3 +86,9 @@ generate_pkg_config("libstructuredmetrics_pkg_config") {
   cflags = [ "-I/usr/include/metrics" ]
   libs = [ "-lstructuredmetrics" ]
 }
+
+executable("update_reset_counter") {
+  pkg_deps = [ "libchrome" ]
+  sources = [ "reset_counter_updater.cc" ]
+  install_path = "bin"
+}
