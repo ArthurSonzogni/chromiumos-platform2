@@ -74,6 +74,7 @@
 #include "cryptohome/storage/mock_homedirs.h"
 #include "cryptohome/storage/mock_mount.h"
 #include "cryptohome/storage/mock_mount_factory.h"
+#include "cryptohome/user_secret_stash.h"
 #include "cryptohome/user_session/mock_user_session.h"
 #include "cryptohome/user_session/mock_user_session_factory.h"
 
@@ -4649,6 +4650,8 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsWithFactorsFromUss) {
   const std::string kObfuscatedUser = SanitizeUserName(kUser);
   AuthFactorManager manager(&platform_);
   userdataauth_->set_auth_factor_manager_for_testing(&manager);
+  SetUserSecretStashExperimentFlag(/*enabled=*/false);
+
   EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(true));
   EXPECT_CALL(auth_block_utility_, IsAuthFactorSupported(_, _, _))
       .WillRepeatedly(Return(false));
@@ -4682,7 +4685,7 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsWithFactorsFromUss) {
               UnorderedElementsAre(user_data_auth::AUTH_FACTOR_TYPE_PASSWORD,
                                    user_data_auth::AUTH_FACTOR_TYPE_PIN));
 
-  // Add auth factors, we should be able to list them.
+  // Add uss auth factors, we should be able to list them.
   auto password_factor = std::make_unique<AuthFactor>(
       AuthFactorType::kPassword, "password-label",
       AuthFactorMetadata{.metadata = PasswordAuthFactorMetadata()},
@@ -4707,6 +4710,9 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsWithFactorsFromUss) {
                          .reset_salt = SecureBlob("more fake salt"),
                      }});
   ASSERT_THAT(manager.SaveAuthFactor(kObfuscatedUser, *pin_factor), IsOk());
+
+  // ListAuthFactors() load the factors according to the USS experiment status.
+  SetUserSecretStashExperimentFlag(/*enabled=*/true);
   TestFuture<user_data_auth::ListAuthFactorsReply> list_reply_future_2;
   userdataauth_->ListAuthFactors(
       list_request,
@@ -4766,6 +4772,114 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsWithFactorsFromUss) {
                   user_data_auth::AUTH_FACTOR_TYPE_PASSWORD,
                   user_data_auth::AUTH_FACTOR_TYPE_PIN,
                   user_data_auth::AUTH_FACTOR_TYPE_CRYPTOHOME_RECOVERY));
+  ResetUserSecretStashExperimentFlagForTesting();
+}
+
+TEST_F(UserDataAuthExTest, ListAuthFactorsWithFactorsFromUssAndVk) {
+  static constexpr char kUser[] = "foo@example.com";
+  const std::string kObfuscatedUser = SanitizeUserName(kUser);
+  AuthFactorManager manager(&platform_);
+  userdataauth_->set_auth_factor_manager_for_testing(&manager);
+  SetUserSecretStashExperimentFlag(/*enabled=*/false);
+
+  EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(true));
+  EXPECT_CALL(auth_block_utility_, IsAuthFactorSupported(_, _, _))
+      .WillRepeatedly(Return(false));
+  EXPECT_CALL(auth_block_utility_,
+              IsAuthFactorSupported(AuthFactorType::kPassword, _, _))
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(auth_block_utility_,
+              IsAuthFactorSupported(AuthFactorType::kPin, _, _))
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(auth_block_utility_,
+              IsAuthFactorSupported(AuthFactorType::kCryptohomeRecovery,
+                                    AuthFactorStorageType::kUserSecretStash, _))
+      .WillRepeatedly(Return(true));
+
+  // Set up standard list auth factor parameters, we'll be calling this a few
+  // times during the test.
+  user_data_auth::ListAuthFactorsRequest list_request;
+  list_request.mutable_account_id()->set_account_id(kUser);
+  TestFuture<user_data_auth::ListAuthFactorsReply> list_reply_future_1;
+
+  // List all the auth factors, there should be none at the start.
+  userdataauth_->ListAuthFactors(
+      list_request,
+      list_reply_future_1
+          .GetCallback<const user_data_auth::ListAuthFactorsReply&>());
+  EXPECT_EQ(list_reply_future_1.Get().error(),
+            user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+  EXPECT_THAT(list_reply_future_1.Get().configured_auth_factors_with_status(),
+              IsEmpty());
+  EXPECT_THAT(list_reply_future_1.Get().supported_auth_factors(),
+              UnorderedElementsAre(user_data_auth::AUTH_FACTOR_TYPE_PASSWORD,
+                                   user_data_auth::AUTH_FACTOR_TYPE_PIN));
+
+  // Set up mocks for a VK.
+  std::vector<int> vk_indice = {0};
+  EXPECT_CALL(keyset_management_, GetVaultKeysets(kObfuscatedUser, _))
+      .WillOnce(DoAll(SetArgPointee<1>(vk_indice), Return(true)));
+  EXPECT_CALL(keyset_management_, LoadVaultKeysetForUser(kObfuscatedUser, 0))
+      .WillOnce([](const std::string&, int) {
+        auto vk = std::make_unique<VaultKeyset>();
+        vk->SetFlags(SerializedVaultKeyset::TPM_WRAPPED |
+                     SerializedVaultKeyset::PCR_BOUND);
+        KeyData key_data;
+        key_data.set_type(KeyData::KEY_TYPE_PASSWORD);
+        key_data.set_label("password-label");
+        vk->SetKeyData(key_data);
+        vk->SetTPMKey(SecureBlob("fake tpm key"));
+        vk->SetExtendedTPMKey(SecureBlob("fake extended tpm key"));
+        return vk;
+      });
+  // Add an AuthFactor backed by USS.
+  auto pin_factor = std::make_unique<AuthFactor>(
+      AuthFactorType::kPin, "pin-label",
+      AuthFactorMetadata{.metadata = PinAuthFactorMetadata()},
+      AuthBlockState{.state = PinWeaverAuthBlockState{
+                         .le_label = 0xbaadf00d,
+                         .salt = SecureBlob("fake salt"),
+                         .chaps_iv = SecureBlob("fake chaps IV"),
+                         .fek_iv = SecureBlob("fake file encryption IV"),
+                         .reset_salt = SecureBlob("more fake salt"),
+                     }});
+  ASSERT_THAT(manager.SaveAuthFactor(kObfuscatedUser, *pin_factor), IsOk());
+
+  // ListAuthFactors() load the factors according to the USS experiment status.
+  SetUserSecretStashExperimentFlag(/*enabled=*/true);
+  TestFuture<user_data_auth::ListAuthFactorsReply> list_reply_future_2;
+  userdataauth_->ListAuthFactors(
+      list_request,
+      list_reply_future_2
+          .GetCallback<const user_data_auth::ListAuthFactorsReply&>());
+  user_data_auth::ListAuthFactorsReply list_reply_2 =
+      list_reply_future_2.Take();
+  EXPECT_EQ(list_reply_2.error(), user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+  std::sort(
+      list_reply_2.mutable_configured_auth_factors_with_status()
+          ->pointer_begin(),
+      list_reply_2.mutable_configured_auth_factors_with_status()->pointer_end(),
+      [](const user_data_auth::AuthFactorWithStatus* lhs,
+         const user_data_auth::AuthFactorWithStatus* rhs) {
+        return lhs->auth_factor().label() < rhs->auth_factor().label();
+      });
+  ASSERT_EQ(list_reply_2.configured_auth_factors_with_status_size(), 2);
+  EXPECT_EQ(
+      list_reply_2.configured_auth_factors_with_status(0).auth_factor().label(),
+      "password-label");
+  EXPECT_TRUE(list_reply_2.configured_auth_factors_with_status(0)
+                  .auth_factor()
+                  .has_password_metadata());
+  EXPECT_EQ(
+      list_reply_2.configured_auth_factors_with_status(1).auth_factor().label(),
+      "pin-label");
+  EXPECT_TRUE(list_reply_2.configured_auth_factors_with_status(1)
+                  .auth_factor()
+                  .has_pin_metadata());
+  EXPECT_THAT(list_reply_2.supported_auth_factors(),
+              UnorderedElementsAre(user_data_auth::AUTH_FACTOR_TYPE_PASSWORD,
+                                   user_data_auth::AUTH_FACTOR_TYPE_PIN));
+  ResetUserSecretStashExperimentFlagForTesting();
 }
 
 TEST_F(UserDataAuthExTest, PrepareAuthFactorLegacyFingerprintSuccess) {

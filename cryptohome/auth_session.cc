@@ -297,6 +297,9 @@ CryptohomeStatus AuthSession::Initialize() {
     return OkStatus<CryptohomeCryptoError>();
   }
 
+  // Report UserSecretStashExperiment status.
+  ReportUserSecretStashExperimentState(platform_);
+
   // Populate auth_factor_map_ with factors.
   auth_factor_map_ = LoadAuthFactorMap(obfuscated_username_, *platform_,
                                        converter_, *auth_factor_manager_);

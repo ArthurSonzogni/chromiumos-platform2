@@ -4808,11 +4808,11 @@ void UserDataAuth::ListAuthFactors(
   AssertOnMountThread();
   user_data_auth::ListAuthFactorsReply reply;
 
+  // Check whether user exists.
   // Compute the raw and sanitized user name from the request.
   const std::string& username = request.account_id().account_id();
   std::string obfuscated_username = SanitizeUserName(username);
   UserSession* user_session = sessions_->Find(username);  // May be null!
-
   // If the user does not exist, we cannot return auth factors for it.
   bool is_persistent_user = (user_session && !user_session->IsEphemeral()) ||
                             keyset_management_->UserExists(obfuscated_username);
@@ -4828,71 +4828,39 @@ void UserDataAuth::ListAuthFactors(
     return;
   }
 
-  // Populate the response with all of the auth factors we can find. For
-  // compatibility we assume that if the user somehow has both USS and vault
-  // keysets, that the VKs should take priority.
-  AuthFactorStorageType storage_type = AuthFactorStorageType::kVaultKeyset;
-  AuthFactorVaultKeysetConverter converter(keyset_management_);
-  std::map<std::string, std::unique_ptr<AuthFactor>> auth_factor_map;
-  std::map<std::string, std::unique_ptr<AuthFactor>>
-      auth_factor_map_for_backup_vks;
-  // After USS is enabled there will be backup VKs in disk. They are used for
-  // authentication only if USS is disabled after once being enabled.
-  if (converter.VaultKeysetsToAuthFactorsAndKeyLabelData(
-          obfuscated_username, auth_factor_map,
-          auth_factor_map_for_backup_vks) !=
-      user_data_auth::CRYPTOHOME_ERROR_NOT_SET) {
-    LOG(WARNING) << "Failure in listing the available VaultKeyset factors.";
-  }
-
-  ReportUserSecretStashExperimentState(platform_);
-  bool is_uss_enabled = IsUserSecretStashExperimentEnabled(platform_);
-  if (!is_uss_enabled && auth_factor_map.empty()) {
-    // Before IsUserSecretStashExperimentEnabled() there are no backup VKs in
-    // disk, hence label_to_auth_factor_for_backup_vks is empty. After
-    // IsUserSecretStashExperimentEnabled() is once enabled and disabled for
-    // some reason there are backup VKs, and they will be used for
-    // authentication.
-    auth_factor_map = std::move(auth_factor_map_for_backup_vks);
-  }
-  for (const auto& [unused, auth_factor] : auth_factor_map) {
-    auto auth_factor_proto = GetAuthFactorProto(
-        auth_factor->metadata(), auth_factor->type(), auth_factor->label());
-    if (auth_factor_proto) {
-      user_data_auth::AuthFactorWithStatus auth_factor_with_status;
-      *auth_factor_with_status.mutable_auth_factor() =
-          std::move(*auth_factor_proto);
-      auto supported_intents =
-          auth_block_utility_->GetSupportedIntentsFromState(
-              auth_factor->auth_block_state());
-      for (const auto& auth_intent : supported_intents) {
-        auth_factor_with_status.add_available_for_intents(
-            AuthIntentToProto(auth_intent));
-      }
-
-      *reply.add_configured_auth_factors_with_status() =
-          std::move(auth_factor_with_status);
-    }
-  }
-  // If the auth factor map is empty then there were no VK keys, try USS.
-  if (auth_factor_map.empty()) {
-    LoadUserAuthFactorProtos(
-        auth_factor_manager_, *auth_block_utility_, obfuscated_username,
-        reply.mutable_configured_auth_factors_with_status());
-    // We assume USS is available either if there are already auth factors in
-    // USS, or if there are no auth factors but the experiment is enabled.
-    if (!reply.configured_auth_factors_with_status().empty() ||
-        is_uss_enabled) {
-      storage_type = AuthFactorStorageType::kUserSecretStash;
-    }
-  }
-
-  // How we check for supported authentication methods depends on the nature of
-  // the user. For persistent users we can determine this based on the
-  // underlying storage backend and the existing configured factors, but for
-  // ephemeral users none of that is available and we instead have to determine
-  // it from the set of supported credential verifiers.
   if (is_persistent_user) {
+    // Prepare the response for configured AuthFactors (with status) with all of
+    // the auth factors from the disk.
+    // Load the AuthFactorMap.
+    AuthFactorVaultKeysetConverter converter(keyset_management_);
+    AuthFactorMap auth_factor_map;
+    auth_factor_map = LoadAuthFactorMap(obfuscated_username, *platform_,
+                                        converter, *auth_factor_manager_);
+    // Populate the response from the items in the AuthFactorMap.
+    for (AuthFactorMap::ValueView item : auth_factor_map) {
+      AuthFactor auth_factor = item.auth_factor();
+      auto auth_factor_proto = GetAuthFactorProto(
+          auth_factor.metadata(), auth_factor.type(), auth_factor.label());
+      if (auth_factor_proto) {
+        user_data_auth::AuthFactorWithStatus auth_factor_with_status;
+        *auth_factor_with_status.mutable_auth_factor() =
+            std::move(*auth_factor_proto);
+        auto supported_intents =
+            auth_block_utility_->GetSupportedIntentsFromState(
+                auth_factor.auth_block_state());
+        for (const auto& auth_intent : supported_intents) {
+          auth_factor_with_status.add_available_for_intents(
+              AuthIntentToProto(auth_intent));
+        }
+        *reply.add_configured_auth_factors_with_status() =
+            std::move(auth_factor_with_status);
+      }
+    }
+
+    // Prepare the response for supported AuthFactors for the given user.
+    // Since user is a persistent user this is determined based on the
+    // underlying storage backend and the existing configured factors.
+
     // Turn the list of configured types into a set that we can use for
     // computing the list of supported factors.
     std::set<AuthFactorType> configured_types;
@@ -4906,6 +4874,14 @@ void UserDataAuth::ListAuthFactors(
 
     // Determine what auth factors are supported by going through the entire set
     // of auth factor types and checking each one.
+
+    AuthFactorStorageType storage_type = AuthFactorStorageType::kVaultKeyset;
+    if (!auth_factor_map.HasFactorWithStorage(
+            AuthFactorStorageType::kVaultKeyset) &&
+        IsUserSecretStashExperimentEnabled(platform_)) {
+      storage_type = AuthFactorStorageType::kUserSecretStash;
+    }
+
     for (auto proto_type :
          PROTOBUF_ENUM_ALL_VALUES(user_data_auth::AuthFactorType)) {
       std::optional<AuthFactorType> type = AuthFactorTypeFromProto(proto_type);
@@ -4938,7 +4914,6 @@ void UserDataAuth::ListAuthFactors(
         }
       }
     }
-
     // Determine what auth factors are supported by going through the entire set
     // of auth factor types and checking each one.
     for (auto proto_type :
