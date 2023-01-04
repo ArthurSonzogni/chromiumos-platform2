@@ -69,7 +69,8 @@ Status ChapsFrontendImpl::IsECCurveSupported(int nid) {
 StatusOr<ChapsFrontend::CreateKeyResult> ChapsFrontendImpl::GenerateRSAKey(
     int modulus_bits,
     const brillo::Blob& public_exponent,
-    const brillo::SecureBlob& auth_value) {
+    const brillo::SecureBlob& auth_value,
+    AllowSoftwareGen allow_soft_gen) {
   return middleware_.CallSync<&Backend::KeyManagement::CreateKey>(
       OperationPolicySetting{
           .permission =
@@ -83,7 +84,8 @@ StatusOr<ChapsFrontend::CreateKeyResult> ChapsFrontendImpl::GenerateRSAKey(
           .lazy_expiration_time = kDefaultLazyExpirationTime,
       },
       Backend::KeyManagement::CreateKeyOptions{
-          .allow_software_gen = false,
+          .allow_software_gen =
+              allow_soft_gen == AllowSoftwareGen::kAllow ? true : false,
           .allow_decrypt = true,
           .allow_sign = true,
           .rsa_modulus_bits = modulus_bits,

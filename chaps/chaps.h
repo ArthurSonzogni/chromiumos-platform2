@@ -34,6 +34,11 @@ inline constexpr CK_ATTRIBUTE_TYPE kForceSoftwareAttribute =
 // This attribute is set to false if the key is stored in hardware-backed
 // security element, and true otherwise.
 inline constexpr CK_ATTRIBUTE_TYPE kKeyInSoftware = CKA_VENDOR_DEFINED + 5;
+// If this attribute is set to true at creation or generation time, then the
+// object may be generated in software, but still stored/wrapped in the
+// hardware-backed security element.
+inline constexpr CK_ATTRIBUTE_TYPE kAllowSoftwareGenAttribute =
+    CKA_VENDOR_DEFINED + 6;
 
 }  // namespace chaps
 

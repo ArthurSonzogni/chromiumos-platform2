@@ -42,6 +42,7 @@ static const AttributePolicy kPrivateKeyPolicies[] = {
     {kAuthDataAttribute, true, {false, true, true}, false},
     {kForceSoftwareAttribute, false, {false, true, true}, false},
     {kKeyInSoftware, false, {true, true, true}, false},
+    {kAllowSoftwareGenAttribute, false, {false, true, true}, false},
 };
 
 ObjectPolicyPrivateKey::ObjectPolicyPrivateKey() {

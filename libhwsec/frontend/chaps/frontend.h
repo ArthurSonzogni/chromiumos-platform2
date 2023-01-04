@@ -37,6 +37,11 @@ class ChapsFrontend : public Frontend {
   using UnsealDataCallback =
       base::OnceCallback<void(StatusOr<brillo::SecureBlob>)>;
 
+  enum class AllowSoftwareGen : bool {
+    kNotAllow = false,
+    kAllow = true,
+  };
+
   ~ChapsFrontend() override = default;
 
   // Gets the TPM family of GSC/TPM.
@@ -65,15 +70,18 @@ class ChapsFrontend : public Frontend {
   // TPM 2.0 current only support P-256 curve (NID_X9_62_prime256v1).
   virtual Status IsECCurveSupported(int nid) = 0;
 
-  // Generates an RSA key pair in the hardware backed security module.
+  // Generates an RSA key pair and stores it in the hardware backed security
+  // module.
   //   modulus_bits - The size of the key to be generated (usually 2048).
   //   public_exponent - The RSA public exponent (usually {1, 0, 1} which is
   //                     65537).
   //   auth_value - Authorization data which will be associated with the key.
+  //   allow_soft_gen - Allow to generate the key in the software or not.
   virtual StatusOr<CreateKeyResult> GenerateRSAKey(
       int modulus_bits,
       const brillo::Blob& public_exponent,
-      const brillo::SecureBlob& auth_value) = 0;
+      const brillo::SecureBlob& auth_value,
+      AllowSoftwareGen allow_soft_gen) = 0;
 
   // Retrieves the public components of an RSA key pair.
   virtual StatusOr<RSAPublicInfo> GetRSAPublicKey(Key key) = 0;

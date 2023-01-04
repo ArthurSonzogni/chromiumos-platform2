@@ -53,6 +53,8 @@ using std::set;
 using std::string;
 using std::vector;
 
+using AllowSoftwareGen = hwsec::ChapsFrontend::AllowSoftwareGen;
+
 namespace chaps {
 
 namespace {
@@ -1704,12 +1706,18 @@ bool SessionImpl::GenerateRSAKeyPairHwsec(int modulus_bits,
   brillo::SecureBlob auth_data =
       GenerateRandomSecureBlobSoftware(kDefaultAuthDataBytes);
 
-  ASSIGN_OR_RETURN(const hwsec::ChapsFrontend::CreateKeyResult& result,
-                   hwsec_->GenerateRSAKey(modulus_bits, exponent, auth_data),
-                   _.WithStatus<TPMError>(
-                        "Failed to generate RSA key in GenerateRSAKeyPairHwsec")
-                       .LogError()
-                       .As(false));
+  AllowSoftwareGen allow_soft_gen =
+      private_object->GetAttributeBool(kAllowSoftwareGenAttribute, false)
+          ? AllowSoftwareGen::kAllow
+          : AllowSoftwareGen::kNotAllow;
+
+  ASSIGN_OR_RETURN(
+      const hwsec::ChapsFrontend::CreateKeyResult& result,
+      hwsec_->GenerateRSAKey(modulus_bits, exponent, auth_data, allow_soft_gen),
+      _.WithStatus<TPMError>(
+           "Failed to generate RSA key in GenerateRSAKeyPairHwsec")
+          .LogError()
+          .As(false));
 
   // Get public key information from HWSec
   ASSIGN_OR_RETURN(const hwsec::RSAPublicInfo& info,

@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "chaps/chaps.h"
 #include "chaps/session_impl.h"
 
 #include <iterator>
@@ -34,6 +35,7 @@
 #include "chaps/object_impl.h"
 #include "chaps/object_mock.h"
 #include "chaps/object_pool_mock.h"
+#include "libhwsec/frontend/chaps/frontend.h"
 
 using ::hwsec::TPMError;
 using ::hwsec_foundation::error::testing::IsOk;
@@ -1128,8 +1130,10 @@ TEST_F(TestSessionWithRealObject, GenerateRSAWithHWSec) {
   EXPECT_CALL(hwsec_, IsRSAModulusSupported(_))
       .WillRepeatedly(ReturnOk<TPMError>());
   EXPECT_CALL(hwsec_, IsReady()).WillRepeatedly(ReturnValue(true));
-  EXPECT_CALL(hwsec_, GenerateRSAKey(_, _, _))
-      .WillOnce([&](auto&&, auto&&, auto&&) {
+  EXPECT_CALL(hwsec_,
+              GenerateRSAKey(_, _, _,
+                             hwsec::ChapsFrontend::AllowSoftwareGen::kNotAllow))
+      .WillOnce([&](auto&&, auto&&, auto&&, auto&&) {
         return hwsec::ChapsFrontend::CreateKeyResult{
             .key = GetTestScopedKey(),
         };
@@ -1173,12 +1177,64 @@ TEST_F(TestSessionWithRealObject, GenerateRSAWithHWSec) {
   EXPECT_FALSE(object->GetAttributeBool(kKeyInSoftware, true));
 }
 
+TEST_F(TestSessionWithRealObject, GenerateRSAWithHWSecAndAllowSoftGen) {
+  EXPECT_CALL(hwsec_, IsRSAModulusSupported(_))
+      .WillRepeatedly(ReturnOk<TPMError>());
+  EXPECT_CALL(hwsec_, IsReady()).WillRepeatedly(ReturnValue(true));
+  EXPECT_CALL(
+      hwsec_,
+      GenerateRSAKey(_, _, _, hwsec::ChapsFrontend::AllowSoftwareGen::kAllow))
+      .WillOnce([&](auto&&, auto&&, auto&&, auto&&) {
+        return hwsec::ChapsFrontend::CreateKeyResult{
+            .key = GetTestScopedKey(),
+        };
+      });
+  EXPECT_CALL(hwsec_, GetRSAPublicKey(_))
+      .WillRepeatedly(ReturnValue(hwsec::RSAPublicInfo{}));
+
+  CK_BBOOL no = CK_FALSE;
+  CK_BBOOL yes = CK_TRUE;
+  CK_BYTE pubexp[] = {1, 0, 1};
+  int size = 2048;
+  CK_ATTRIBUTE pub_attr[] = {{CKA_TOKEN, &yes, sizeof(yes)},
+                             {CKA_ENCRYPT, &no, sizeof(no)},
+                             {CKA_VERIFY, &yes, sizeof(yes)},
+                             {CKA_PUBLIC_EXPONENT, pubexp, 3},
+                             {CKA_MODULUS_BITS, &size, sizeof(size)}};
+  CK_ATTRIBUTE priv_attr[] = {{CKA_TOKEN, &yes, sizeof(yes)},
+                              {CKA_DECRYPT, &no, sizeof(no)},
+                              {CKA_SIGN, &yes, sizeof(yes)},
+                              {kAllowSoftwareGenAttribute, &yes, sizeof(yes)}};
+  int pubh = 0, privh = 0;
+  ASSERT_EQ(CKR_OK,
+            session_->GenerateKeyPair(CKM_RSA_PKCS_KEY_PAIR_GEN, "", pub_attr,
+                                      std::size(pub_attr), priv_attr,
+                                      std::size(priv_attr), &pubh, &privh));
+  // There are a few sensitive attributes that MUST not exist.
+  const Object* object = nullptr;
+  ASSERT_TRUE(session_->GetObject(privh, &object));
+  EXPECT_FALSE(object->IsAttributePresent(CKA_PRIVATE_EXPONENT));
+  EXPECT_FALSE(object->IsAttributePresent(CKA_PRIME_1));
+  EXPECT_FALSE(object->IsAttributePresent(CKA_PRIME_2));
+  EXPECT_FALSE(object->IsAttributePresent(CKA_EXPONENT_1));
+  EXPECT_FALSE(object->IsAttributePresent(CKA_EXPONENT_2));
+  EXPECT_FALSE(object->IsAttributePresent(CKA_COEFFICIENT));
+
+  // Check attributes that store security element wrapped blob exists.
+  EXPECT_TRUE(object->IsAttributePresent(kAuthDataAttribute));
+  EXPECT_TRUE(object->IsAttributePresent(kKeyBlobAttribute));
+
+  // Check that kKeyInSoftware attribute is correctly set.
+  EXPECT_TRUE(object->IsAttributePresent(kKeyInSoftware));
+  EXPECT_FALSE(object->GetAttributeBool(kKeyInSoftware, true));
+}
+
 TEST_F(TestSessionWithRealObject, GenerateRSAWithHWsecInconsistentToken) {
   EXPECT_CALL(hwsec_, IsRSAModulusSupported(_))
       .WillRepeatedly(ReturnOk<TPMError>());
   EXPECT_CALL(hwsec_, IsReady()).WillRepeatedly(ReturnValue(true));
-  EXPECT_CALL(hwsec_, GenerateRSAKey(_, _, _))
-      .WillOnce([&](auto&&, auto&&, auto&&) {
+  EXPECT_CALL(hwsec_, GenerateRSAKey(_, _, _, _))
+      .WillOnce([&](auto&&, auto&&, auto&&, auto&&) {
         return hwsec::ChapsFrontend::CreateKeyResult{
             .key = GetTestScopedKey(),
         };
@@ -1222,7 +1278,7 @@ TEST_F(TestSessionWithRealObject, GenerateRSAWithNoHWSec) {
       .WillRepeatedly(
           ReturnError<TPMError>("Not supported", TPMRetryAction::kNoRetry));
   EXPECT_CALL(hwsec_, IsReady()).WillRepeatedly(ReturnValue(false));
-  EXPECT_CALL(hwsec_, GenerateRSAKey(_, _, _)).Times(0);
+  EXPECT_CALL(hwsec_, GenerateRSAKey(_, _, _, _)).Times(0);
 
   CK_BBOOL no = CK_FALSE;
   CK_BBOOL yes = CK_TRUE;
@@ -1264,7 +1320,7 @@ TEST_F(TestSessionWithRealObject, GenerateRSAWithForceSoftware) {
   EXPECT_CALL(hwsec_, IsRSAModulusSupported(_))
       .WillRepeatedly(ReturnOk<TPMError>());
   EXPECT_CALL(hwsec_, IsReady()).WillRepeatedly(ReturnValue(true));
-  EXPECT_CALL(hwsec_, GenerateRSAKey(_, _, _)).Times(0);
+  EXPECT_CALL(hwsec_, GenerateRSAKey(_, _, _, _)).Times(0);
 
   CK_BBOOL no = CK_FALSE;
   CK_BBOOL yes = CK_TRUE;

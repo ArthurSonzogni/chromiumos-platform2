@@ -404,6 +404,8 @@ string AttributeToString(CK_ATTRIBUTE_TYPE attribute) {
       return "kAuthDataAttribute";
     case kForceSoftwareAttribute:
       return "kForceSoftwareAttribute";
+    case kAllowSoftwareGenAttribute:
+      return "kAllowSoftwareGenAttribute";
     case kKeyInSoftware:
       return "kKeyInSoftware";
     default:
@@ -495,6 +497,7 @@ bool StringToAttribute(string attribute_string, CK_ATTRIBUTE_TYPE* output) {
       {"kAuthDataAttribute", kAuthDataAttribute},
       {"kForceSoftwareAttribute", kForceSoftwareAttribute},
       {"kKeyInSoftware", kKeyInSoftware},
+      {"kAllowSoftwareGenAttribute", kAllowSoftwareGenAttribute},
   });
 
   // If we can match the attribute name, then we'll return whatever that's

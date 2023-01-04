@@ -39,7 +39,8 @@ class MockChapsFrontend : public MockFrontend, public ChapsFrontend {
               GenerateRSAKey,
               (int modulus_bits,
                const brillo::Blob& public_exponent,
-               const brillo::SecureBlob& auth_value),
+               const brillo::SecureBlob& auth_value,
+               AllowSoftwareGen allow_soft_gen),
               (override));
   MOCK_METHOD(StatusOr<RSAPublicInfo>, GetRSAPublicKey, (Key key), (override));
   MOCK_METHOD(StatusOr<CreateKeyResult>,

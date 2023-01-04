@@ -32,7 +32,8 @@ class ChapsFrontendImpl : public ChapsFrontend, public FrontendImpl {
   StatusOr<CreateKeyResult> GenerateRSAKey(
       int modulus_bits,
       const brillo::Blob& public_exponent,
-      const brillo::SecureBlob& auth_value) override;
+      const brillo::SecureBlob& auth_value,
+      AllowSoftwareGen allow_soft_gen) override;
   StatusOr<RSAPublicInfo> GetRSAPublicKey(Key key) override;
   StatusOr<CreateKeyResult> GenerateECCKey(
       int nid, const brillo::SecureBlob& auth_value) override;
