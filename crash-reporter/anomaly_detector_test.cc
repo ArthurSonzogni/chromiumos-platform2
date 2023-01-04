@@ -577,21 +577,29 @@ TEST(AnomalyDetectorTest, BTRFSTreeCorruption) {
       new dbus::MockExportedObject(bus.get(), obj_path);
 
   EXPECT_CALL(*bus, GetExportedObject(Eq(obj_path)))
-      .WillOnce(Return(exported_object.get()));
+      .Times(2)
+      .WillRepeatedly(Return(exported_object.get()));
   EXPECT_CALL(*exported_object,
               SendSignal(SignalEq(
                   anomaly_detector::kAnomalyEventServiceInterface,
                   anomaly_detector::kAnomalyGuestFileCorruptionSignalName)))
-      .Times(1);
+      .Times(2);
 
   auto metrics = std::make_unique<NiceMock<MetricsLibraryMock>>();
   EXPECT_CALL(*metrics, SendCrosEventToUMA(_)).Times(0);
 
   TerminaParser parser(bus, std::move(metrics));
 
+  // prior to 5.14
   parser.ParseLogEntryForBtrfs(
       3,
       "BTRFS warning (device vdb): vdb checksum verify failed "
+      "on 122798080 wanted 4E5B4C99 found 5F261FEB level 0");
+
+  // since 5.14
+  parser.ParseLogEntryForBtrfs(
+      3,
+      "BTRFS warning (device vdb): checksum verify failed "
       "on 122798080 wanted 4E5B4C99 found 5F261FEB level 0");
 }
 
