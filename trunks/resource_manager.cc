@@ -459,6 +459,10 @@ void ResourceManager::EvictSession(const MessageInfo& command_info) {
   TPM_RC result = SaveContext(command_info, &info);
   if (result != TPM_RC_SUCCESS) {
     LOG(WARNING) << "Failed to evict session: " << GetErrorString(result);
+
+    // If we failed to evict a session, we should try to flush the session.
+    // Otherwise there is no way to fix the TPM_RC_*_MEMORY issues.
+    FlushSession(command_info);
   }
   VLOG(1) << "EVICT_SESSION: " << std::hex << session_to_evict;
 }

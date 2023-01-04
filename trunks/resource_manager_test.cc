@@ -17,6 +17,7 @@
 #include "trunks/error_codes.h"
 #include "trunks/mock_command_transceiver.h"
 #include "trunks/mock_tpm.h"
+#include "trunks/tpm_generated.h"
 #include "trunks/trunks_factory_for_test.h"
 
 using testing::_;
@@ -231,6 +232,22 @@ class ResourceManagerTest : public testing::Test {
         .WillRepeatedly(Return(success_response));
     EXPECT_CALL(tpm_, ContextSaveSync(_, _, _, _))
         .WillOnce(Return(TPM_RC_SUCCESS));
+    resource_manager_.SendCommandAndWait(command);
+  }
+
+  // Causes the resource manager to evict an existing session handle and fail.
+  void EvictSessionFail() {
+    std::string command = CreateCommand(TPM_CC_Startup, kNoHandles,
+                                        kNoAuthorization, kNoParameters);
+    std::string response = CreateErrorResponse(TPM_RC_SESSION_MEMORY);
+    std::string success_response = CreateResponse(
+        TPM_RC_SUCCESS, kNoHandles, kNoAuthorization, kNoParameters);
+    EXPECT_CALL(transceiver_, SendCommandAndWait(_))
+        .WillOnce(Return(response))
+        .WillRepeatedly(Return(success_response));
+    EXPECT_CALL(tpm_, ContextSaveSync(_, _, _, _))
+        .WillOnce(Return(TPM_RC_REFERENCE_H0));
+    EXPECT_CALL(tpm_, FlushContextSync(_, _)).WillOnce(Return(TPM_RC_SUCCESS));
     resource_manager_.SendCommandAndWait(command);
   }
 
@@ -755,6 +772,29 @@ TEST_F(ResourceManagerTest, EvictMostStaleSession) {
   EXPECT_CALL(tpm_, ContextLoadSync(_, _, _)).WillOnce(Return(TPM_RC_SUCCESS));
   std::string actual_response = resource_manager_.SendCommandAndWait(command);
   EXPECT_EQ(response, actual_response);
+}
+
+TEST_F(ResourceManagerTest, EvictStaleSessionFail) {
+  StartSession(kArbitrarySessionHandle);
+  std::string response =
+      CreateResponse(TPM_RC_SUCCESS, kNoHandles,
+                     CreateResponseAuthorization(true),  // continue_session
+                     kNoParameters);
+  EXPECT_CALL(transceiver_, SendCommandAndWait(_))
+      .WillRepeatedly(Return(response));
+
+  EvictSessionFail();
+
+  std::string command =
+      CreateCommand(TPM_CC_Startup, kNoHandles,
+                    CreateCommandAuthorization(kArbitrarySessionHandle,
+                                               true),  // continue_session
+                    kNoParameters);
+
+  std::string error_response =
+      CreateErrorResponse(TPM_RC_HANDLE | kResourceManagerTpmErrorBase);
+  std::string actual_response = resource_manager_.SendCommandAndWait(command);
+  EXPECT_EQ(error_response, actual_response);
 }
 
 TEST_F(ResourceManagerTest, FlushWhenAuthSessionInUse) {
