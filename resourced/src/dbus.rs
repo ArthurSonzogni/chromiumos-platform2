@@ -13,6 +13,7 @@ use anyhow::Result;
 use dbus::channel::MatchingReceiver;
 use dbus::channel::Sender;
 use dbus::message::{MatchRule, Message};
+use dbus::nonblock::{Proxy, SyncConnection};
 use dbus_crossroads::{Crossroads, IfaceBuilder, IfaceToken, MethodErr};
 use dbus_tokio::connection;
 use libchromeos::sys::error;
@@ -25,6 +26,8 @@ use crate::power;
 const SERVICE_NAME: &str = "org.chromium.ResourceManager";
 const PATH_NAME: &str = "/org/chromium/ResourceManager";
 const INTERFACE_NAME: &str = SERVICE_NAME;
+
+const DEFAULT_DBUS_TIMEOUT: Duration = Duration::from_secs(2);
 
 type PowerPreferencesManager = power::DirectoryPowerPreferencesManager<
     config::DirectoryConfigProvider,
@@ -41,7 +44,7 @@ struct DbusContext {
 }
 
 fn send_pressure_signal(
-    conn: &dbus::nonblock::SyncConnection,
+    conn: &SyncConnection,
     signal_name: &str,
     level: u8,
     reclaim_target_kb: u64,
@@ -57,7 +60,38 @@ fn send_pressure_signal(
     }
 }
 
-fn register_interface(cr: &mut Crossroads) -> IfaceToken<DbusContext> {
+// Call debugd SwapSetSwappiness when set_game_mode returns TuneSwappiness.
+fn set_game_mode_and_tune_swappiness(
+    power_preferences_manager: &dyn power::PowerPreferencesManager,
+    mode: common::GameMode,
+    conn: Arc<SyncConnection>,
+) -> Result<()> {
+    if let Some(common::TuneSwappiness { swappiness }) =
+        common::set_game_mode(power_preferences_manager, mode)?
+    {
+        const SWAPPINESS_PATH: &str = "/proc/sys/vm/swappiness";
+        if swappiness != common::read_file_to_u64(SWAPPINESS_PATH)? as u32 {
+            tokio::spawn(async move {
+                let debugd_proxy = Proxy::new(
+                    "org.chromium.debugd",
+                    "/org/chromium/debugd",
+                    DEFAULT_DBUS_TIMEOUT,
+                    conn,
+                );
+                match debugd_proxy
+                    .method_call("org.chromium.debugd", "SwapSetSwappiness", (swappiness,))
+                    .await
+                {
+                    Ok(()) => (), // For type inference.
+                    Err(e) => error!("Calling SwapSetSwappiness failed: {:#}", e),
+                }
+            });
+        }
+    }
+    Ok(())
+}
+
+fn register_interface(cr: &mut Crossroads, conn: Arc<SyncConnection>) -> IfaceToken<DbusContext> {
     cr.register(INTERFACE_NAME, |b: &mut IfaceBuilder<DbusContext>| {
         b.method(
             "GetAvailableMemoryKB",
@@ -133,6 +167,7 @@ fn register_interface(cr: &mut Crossroads) -> IfaceToken<DbusContext> {
                 Err(_) => Err(MethodErr::failed("Failed to get game mode")),
             },
         );
+        let conn_clone = conn.clone();
         b.method(
             "SetGameMode",
             ("game_mode",),
@@ -141,8 +176,13 @@ fn register_interface(cr: &mut Crossroads) -> IfaceToken<DbusContext> {
                 let mode = common::GameMode::try_from(mode_raw)
                     .map_err(|_| MethodErr::failed("Unsupported game mode value"))?;
 
-                common::set_game_mode(&context.power_preferences_manager, mode).map_err(|e| {
-                    error!("{:#}", e);
+                set_game_mode_and_tune_swappiness(
+                    &context.power_preferences_manager,
+                    mode,
+                    conn_clone.clone(),
+                )
+                .map_err(|e| {
+                    error!("set_game_mode failed: {:#}", e);
 
                     MethodErr::failed("Failed to set game mode")
                 })?;
@@ -162,7 +202,12 @@ fn register_interface(cr: &mut Crossroads) -> IfaceToken<DbusContext> {
                 let mode = common::GameMode::try_from(mode_raw)
                     .map_err(|_| MethodErr::failed("Unsupported game mode value"))?;
                 let timeout = Duration::from_secs(timeout_raw.into());
-                common::set_game_mode(&context.power_preferences_manager, mode).map_err(|e| {
+                set_game_mode_and_tune_swappiness(
+                    &context.power_preferences_manager,
+                    mode,
+                    conn.clone(),
+                )
+                .map_err(|e| {
                     error!("set_game_mode failed: {:#}", e);
 
                     MethodErr::failed("Failed to set game mode")
@@ -177,12 +222,17 @@ fn register_interface(cr: &mut Crossroads) -> IfaceToken<DbusContext> {
                 let reset_game_mode_timer_id = context.reset_game_mode_timer_id.clone();
 
                 // Reset game mode after timeout.
+                let conn_clone = conn.clone();
                 tokio::spawn(async move {
                     tokio::time::sleep(timeout).await;
                     // If the timer id is changed, this event is canceled.
                     if timer_id == reset_game_mode_timer_id.load(Ordering::Relaxed)
-                        && common::set_game_mode(&power_preferences_manager, common::GameMode::Off)
-                            .is_err()
+                        && set_game_mode_and_tune_swappiness(
+                            &power_preferences_manager,
+                            common::GameMode::Off,
+                            conn_clone,
+                        )
+                        .is_err()
                     {
                         error!("Reset game mode failed.");
                     }
@@ -309,7 +359,7 @@ pub async fn service_main() -> Result<()> {
         }),
     )));
 
-    let token = register_interface(&mut cr);
+    let token = register_interface(&mut cr, conn.clone());
     cr.insert(
         PATH_NAME,
         &[token],

@@ -57,20 +57,40 @@ impl TryFrom<u8> for GameMode {
 
 static GAME_MODE: Lazy<Mutex<GameMode>> = Lazy::new(|| Mutex::new(GameMode::Off));
 
+pub struct TuneSwappiness {
+    pub swappiness: u32,
+}
+
+// Returns a TuneSwappiness object when swappiness needs to be tuned after setting game mode.
 pub fn set_game_mode(
     power_preference_manager: &dyn power::PowerPreferencesManager,
     mode: GameMode,
-) -> Result<()> {
-    match GAME_MODE.lock() {
+) -> Result<Option<TuneSwappiness>> {
+    let old_mode = match GAME_MODE.lock() {
         Ok(mut data) => {
+            let old_data = *data;
             *data = mode;
+            old_data
         }
         Err(_) => bail!("Failed to set game mode"),
     };
 
     update_power_preferences(power_preference_manager)?;
 
-    Ok(())
+    const TUNED_SWAPPINESS_VALUE: u32 = 30;
+    const DEFAULT_SWAPPINESS_VALUE: u32 = 60;
+
+    if old_mode != GameMode::Borealis && mode == GameMode::Borealis {
+        Ok(Some(TuneSwappiness {
+            swappiness: TUNED_SWAPPINESS_VALUE,
+        }))
+    } else if old_mode == GameMode::Borealis && mode != GameMode::Borealis {
+        Ok(Some(TuneSwappiness {
+            swappiness: DEFAULT_SWAPPINESS_VALUE,
+        }))
+    } else {
+        Ok(None)
+    }
 }
 
 pub fn get_game_mode() -> Result<GameMode> {
