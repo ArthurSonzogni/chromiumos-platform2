@@ -1065,39 +1065,199 @@ TEST_F(AdaptiveChargingMetricsTest, AdaptiveChargingUnplugMetrics) {
                       kAdaptiveChargingStateNotSupportedSuffix);
 }
 
-// Base class for S0ix residency rate related tests.
-class S0ixResidencyMetricsTest : public MetricsCollectorTest {
+class MockResidencyReader : public ResidencyReader {
  public:
-  S0ixResidencyMetricsTest() = default;
+  MockResidencyReader() = default;
+  ~MockResidencyReader() override = default;
+
+  MOCK_METHOD(base::TimeDelta, ReadResidency, (), (override));
+};
+
+// Base class for idle state residency tracker tests.
+class IdleResidencyTrackerTest : public TestEnvironment {
+ public:
+  IdleResidencyTrackerTest() = default;
 
  protected:
-  enum class ResidencyFileType {
+  // Initializes |tracker_| with a newly created |reader_mock_|.
+  void SetUp() override {
+    reader_mock_ = std::make_shared<MockResidencyReader>();
+    tracker_ = IdleResidencyTracker(reader_mock_);
+  }
+
+  void TearDown() override {
+    // Note: Given RAII this is excessive but follows SetUp semantics.
+    tracker_ = {};
+    reader_mock_.reset();
+  }
+
+  std::shared_ptr<MockResidencyReader> reader_mock_;
+  IdleResidencyTracker tracker_;
+};
+
+// Test that InvalidValue is returned on an empty path.
+TEST_F(IdleResidencyTrackerTest, SingleValueResidencyReaderEmptyPath) {
+  SingleValueResidencyReader reader(base::FilePath(""));
+  ASSERT_EQ(reader.ReadResidency(), ResidencyReader::InvalidValue);
+}
+
+// Test that InvalidValue is returned on an invalid path.
+TEST_F(IdleResidencyTrackerTest, SingleValueResidencyReaderInvalidPath) {
+  SingleValueResidencyReader reader(base::FilePath("this_does_not_exists"));
+  ASSERT_EQ(reader.ReadResidency(), ResidencyReader::InvalidValue);
+}
+
+// Test that integer is read successfully from a valid path with a valid value.
+TEST_F(IdleResidencyTrackerTest, SingleValueResidencyReaderValidValue) {
+  static const char* file_name = "some_file";
+  const base::TimeDelta exp_value = base::Microseconds(10);
+  base::ScopedTempDir temp_root;
+  CHECK(temp_root.CreateUniqueTempDir());
+  base::FilePath path = temp_root.GetPath().Append(file_name);
+  // Create all required parent directories.
+  CHECK(base::CreateDirectory(path.DirName()));
+  // Create a file for SingleValueResidencyReader to pick up.
+  std::string buf = base::NumberToString(exp_value.InMicroseconds());
+  ASSERT_EQ(base::WriteFile(path, buf.data(), buf.size()), buf.size());
+  SingleValueResidencyReader reader(path);
+  ASSERT_EQ(reader.ReadResidency(), exp_value);
+  // Clean up.
+  CHECK(temp_root.Delete());
+}
+
+// Test that InvalidValue returned from a valid path with an invalid value.
+TEST_F(IdleResidencyTrackerTest, SingleValueResidencyReaderInvalidValue) {
+  static const char* file_name = "some_file";
+  base::ScopedTempDir temp_root;
+  CHECK(temp_root.CreateUniqueTempDir());
+  base::FilePath path = temp_root.GetPath().Append(file_name);
+  // Create all required parent directories.
+  CHECK(base::CreateDirectory(path.DirName()));
+  // Create a file for SingleValueResidencyReader to pick up.
+  std::string buf = "this_is_not_a_number";
+  ASSERT_EQ(base::WriteFile(path, buf.data(), buf.size()), buf.size());
+  SingleValueResidencyReader reader(path);
+  ASSERT_EQ(reader.ReadResidency(), ResidencyReader::InvalidValue);
+  // Clean up.
+  CHECK(temp_root.Delete());
+}
+
+// Test that IsValid is false when ResidencyReader has an empty path (so will
+// always return InvalidValue).
+TEST_F(IdleResidencyTrackerTest, IdleResidencyTrackerEmptyPathReader) {
+  // First check that a freshly initialized IdleResidencyTracker returns
+  // invalid values.
+  ASSERT_FALSE(tracker_.IsValid());
+  ASSERT_EQ(tracker_.PreSuspend(), ResidencyReader::InvalidValue);
+  ASSERT_EQ(tracker_.PostResume(), ResidencyReader::InvalidValue);
+  // Prime the mock to simulate empty/invalid path.
+  EXPECT_CALL(*reader_mock_, ReadResidency())
+      .Times(1)
+      .WillOnce(Return(ResidencyReader::InvalidValue))
+      .RetiresOnSaturation();
+  tracker_.UpdatePreSuspend();
+  // Check that IsValid() and PreSuspend() are reported correctly.
+  ASSERT_FALSE(tracker_.IsValid());
+  ASSERT_EQ(tracker_.PreSuspend(), ResidencyReader::InvalidValue);
+  // Prime the mock to simulate empty/invalid path.
+  EXPECT_CALL(*reader_mock_, ReadResidency())
+      .Times(1)
+      .WillOnce(Return(ResidencyReader::InvalidValue))
+      .RetiresOnSaturation();
+  tracker_.UpdatePostResume();
+  // Check that IsValid() and PostResume() are reported correctly.
+  ASSERT_FALSE(tracker_.IsValid());
+  ASSERT_EQ(tracker_.PostResume(), ResidencyReader::InvalidValue);
+  // |metrics_lib_| is strict mock. Unexpected method call will fail this test.
+  Mock::VerifyAndClearExpectations(reader_mock_.get());
+}
+
+// Test that appropriate values are updated on Update*() calls.
+TEST_F(IdleResidencyTrackerTest, IdleResidencyTrackerValidUpdates) {
+  const auto pre_suspend_exp_val = base::Microseconds(10);
+  const auto post_resume_exp_val = base::Microseconds(33);
+  // First check that a freshly initialized IdleResidencyTracker returns
+  // invalid values.
+  ASSERT_FALSE(tracker_.IsValid());
+  ASSERT_EQ(tracker_.PreSuspend(), ResidencyReader::InvalidValue);
+  ASSERT_EQ(tracker_.PostResume(), ResidencyReader::InvalidValue);
+  // Prime the mock for UpdatePreSuspend().
+  EXPECT_CALL(*reader_mock_, ReadResidency())
+      .Times(1)
+      .WillOnce(Return(pre_suspend_exp_val))
+      .RetiresOnSaturation();
+  tracker_.UpdatePreSuspend();
+  // With only pre-suspend sample tracker is not valid.
+  ASSERT_FALSE(tracker_.IsValid());
+  ASSERT_EQ(tracker_.PreSuspend(), pre_suspend_exp_val);
+  ASSERT_EQ(tracker_.PostResume(), ResidencyReader::InvalidValue);
+  // Prime the mock for UpdatePostResume().
+  EXPECT_CALL(*reader_mock_, ReadResidency())
+      .Times(1)
+      .WillOnce(Return(post_resume_exp_val))
+      .RetiresOnSaturation();
+  tracker_.UpdatePostResume();
+  // Both samples in so tracker is valid.
+  ASSERT_TRUE(tracker_.IsValid());
+  ASSERT_EQ(tracker_.PreSuspend(), pre_suspend_exp_val);
+  ASSERT_EQ(tracker_.PostResume(), post_resume_exp_val);
+  // Prime the mock for an invalid residency value to check IsValid() flipping.
+  EXPECT_CALL(*reader_mock_, ReadResidency())
+      .Times(1)
+      .WillOnce(Return(ResidencyReader::InvalidValue))
+      .RetiresOnSaturation();
+  tracker_.UpdatePostResume();
+  // Post-resume is invalid so tracker should be invalid and pre-suspend should
+  // not update.
+  ASSERT_FALSE(tracker_.IsValid());
+  ASSERT_EQ(tracker_.PreSuspend(), pre_suspend_exp_val);
+  ASSERT_EQ(tracker_.PostResume(), ResidencyReader::InvalidValue);
+  // |metrics_lib_| is strict mock. Unexpected method call will fail this test.
+  Mock::VerifyAndClearExpectations(reader_mock_.get());
+}
+
+// Base class for idle state (i.e. S0ix) residency rate related tests.
+class IdleStateResidencyMetricsTest : public MetricsCollectorTest {
+ public:
+  IdleStateResidencyMetricsTest() = default;
+
+ protected:
+  enum class S0ixResidencyFileType {
     BIG_CORE,
     SMALL_CORE,
     NONE,
   };
 
-  // Creates file of type |residency_file_type| (if needed) root within
-  // |temp_root_dir_|. Also sets |kSuspendToIdlePref| pref to
-  // |suspend_to_idle| and initializes |collector_|.
-  void Init(ResidencyFileType residency_file_type,
+  struct Residency {
+    base::FilePath path_;
+    base::TimeDelta before_suspend_;
+    base::TimeDelta before_resume_;
+  };
+
+  // Creates idle state residency files (if needed) rooted in |temp_root_dir_|.
+  // S0ix file type is determined by |residency_file_type|.
+  // Also sets |kSuspendToIdlePref| pref to |suspend_to_idle| and initializes
+  // |collector_|.
+  void Init(S0ixResidencyFileType residency_file_type,
             bool suspend_to_idle = true) {
     if (suspend_to_idle)
       prefs_.SetInt64(kSuspendToIdlePref, 1);
 
-    if (residency_file_type == ResidencyFileType::BIG_CORE) {
-      residency_path_ =
+    if (residency_file_type == S0ixResidencyFileType::BIG_CORE) {
+      residencies_[IdleState::S0ix].path_ =
           GetPath(base::FilePath(MetricsCollector::kBigCoreS0ixResidencyPath));
-    } else if (residency_file_type == ResidencyFileType::SMALL_CORE) {
-      residency_path_ = GetPath(
+    } else if (residency_file_type == S0ixResidencyFileType::SMALL_CORE) {
+      residencies_[IdleState::S0ix].path_ = GetPath(
           base::FilePath(MetricsCollector::kSmallCoreS0ixResidencyPath));
     }
 
-    if (!residency_path_.empty()) {
-      // Create all required parent directories.
-      CHECK(base::CreateDirectory(residency_path_.DirName()));
-      // Create empty file.
-      CHECK_EQ(base::WriteFile(residency_path_, "", 0), 0);
+    for (const auto& residency : residencies_) {
+      if (!residency.path_.empty()) {
+        // Create all required parent directories.
+        CHECK(base::CreateDirectory(residency.path_.DirName()));
+        // Create empty file.
+        CHECK_EQ(base::WriteFile(residency.path_, "", 0), 0);
+      }
     }
 
     MetricsCollectorTest::Init();
@@ -1106,8 +1266,10 @@ class S0ixResidencyMetricsTest : public MetricsCollectorTest {
   // Does suspend and resume. Also writes residency to |residency_path_| (if not
   // empty) before and after suspend.
   void SuspendAndResume() {
-    if (!residency_path_.empty())
-      WriteResidency(residency_before_suspend_);
+    for (const auto& residency : residencies_) {
+      if (!residency.path_.empty())
+        WriteResidency(residency, residency.before_suspend_);
+    }
 
     collector_.PrepareForSuspend();
     AdvanceTime(suspend_duration_);
@@ -1115,64 +1277,96 @@ class S0ixResidencyMetricsTest : public MetricsCollectorTest {
     // sent by HandleResume().
     IgnoreMetric(kSuspendAttemptsBeforeSuccessName);
 
-    if (!residency_path_.empty())
-      WriteResidency(residency_before_resume_);
+    for (const auto& residency : residencies_) {
+      if (!residency.path_.empty())
+        WriteResidency(residency, residency.before_resume_);
+    }
 
     collector_.HandleResume(1, false);
   }
 
   // Expect |kS0ixResidencyRateName| enum metric will be generated.
-  void ExpectResidencyRateMetricCall() {
+  void ExpectS2IdleResidencyRateMetricCall() {
+    const Residency& s0ix = residencies_[IdleState::S0ix];
     int expected_s0ix_percentage =
-        MetricsCollector::GetExpectedS0ixResidencyPercent(
-            suspend_duration_,
-            residency_before_resume_ - residency_before_suspend_);
+        MetricsCollector::GetExpectedResidencyPercent(
+            suspend_duration_, s0ix.before_resume_ - s0ix.before_suspend_);
     ExpectEnumMetric(kS0ixResidencyRateName, expected_s0ix_percentage,
                      kMaxPercent);
   }
 
   // Writes |residency| to |residency_path_|.
-  void WriteResidency(const base::TimeDelta& residency) {
+  void WriteResidency(const Residency& residency,
+                      const base::TimeDelta& value) {
     std::string buf = base::NumberToString(
-        static_cast<uint64_t>(llabs(residency.InMicroseconds())));
-    ASSERT_EQ(base::WriteFile(residency_path_, buf.data(), buf.size()),
+        static_cast<uint64_t>(llabs(value.InMicroseconds())));
+    ASSERT_EQ(base::WriteFile(residency.path_, buf.data(), buf.size()),
               buf.size());
   }
 
-  base::FilePath residency_path_;
-  base::TimeDelta residency_before_suspend_ = base::Minutes(50);
-  base::TimeDelta residency_before_resume_ = base::Minutes(100);
+  Residency residencies_[IdleState::COUNT] = {
+      [IdleState::S0ix] = {.before_suspend_ = base::Minutes(50),
+                           .before_resume_ = base::Minutes(100)},
+  };
   base::TimeDelta suspend_duration_ = base::Hours(1);
 };
 
+// Test expected residency calculation for valid values.
+TEST_F(IdleStateResidencyMetricsTest, GetExpectedResidencyPercentValid) {
+  // Check non-zero overhead.
+  int residency_percent = collector_.GetExpectedResidencyPercent(
+      base::Minutes(3), base::Minutes(1), base::Minutes(1));
+  ASSERT_EQ(residency_percent, 50);
+  // Check zero overhead.
+  residency_percent = collector_.GetExpectedResidencyPercent(
+      base::Minutes(3), base::Minutes(1), base::Minutes(0));
+  ASSERT_EQ(residency_percent, 33);
+}
+
+// Test expected residency calculation returns 0 on reference <= overhead.
+TEST_F(IdleStateResidencyMetricsTest, GetExpectedResidencyPercentInvalid) {
+  // Check reference < overhead.
+  int residency_percent = collector_.GetExpectedResidencyPercent(
+      base::Minutes(1), base::Minutes(1), base::Minutes(2));
+  ASSERT_EQ(residency_percent, 0);
+  // Check reference == overhead.
+  residency_percent = collector_.GetExpectedResidencyPercent(
+      base::Minutes(2), base::Minutes(1), base::Minutes(2));
+  ASSERT_EQ(residency_percent, 0);
+  // Check reference == overhead == 0.
+  residency_percent = collector_.GetExpectedResidencyPercent(
+      base::Minutes(0), base::Minutes(1), base::Minutes(0));
+  ASSERT_EQ(residency_percent, 0);
+}
+
 // Test S0ix UMA metrics are not reported when residency files do not exist.
-TEST_F(S0ixResidencyMetricsTest, S0ixResidencyMetricsNoResidencyFiles) {
+TEST_F(IdleStateResidencyMetricsTest, S0ixResidencyMetricsNoResidencyFiles) {
   suspend_duration_ = base::Hours(1);
-  Init(ResidencyFileType::NONE);
+  Init(S0ixResidencyFileType::NONE);
   SuspendAndResume();
   // |metrics_lib_| is strict mock. Unexpected method call will fail this test.
   Mock::VerifyAndClearExpectations(metrics_lib_);
 }
 
 // Test S0ix UMA metrics are reported when |kSmallCoreS0ixResidencyPath| exist.
-TEST_F(S0ixResidencyMetricsTest, SmallCorePathExist) {
-  Init(ResidencyFileType::SMALL_CORE);
-  ExpectResidencyRateMetricCall();
+TEST_F(IdleStateResidencyMetricsTest, SmallCorePathExist) {
+  Init(S0ixResidencyFileType::SMALL_CORE);
+  ExpectS2IdleResidencyRateMetricCall();
   SuspendAndResume();
   Mock::VerifyAndClearExpectations(metrics_lib_);
 }
 
 // Test S0ix UMA metrics are reported when |kBigCoreS0ixResidencyPath| exist.
-TEST_F(S0ixResidencyMetricsTest, BigCorePathExist) {
-  Init(ResidencyFileType::BIG_CORE);
-  ExpectResidencyRateMetricCall();
+TEST_F(IdleStateResidencyMetricsTest, BigCorePathExist) {
+  Init(S0ixResidencyFileType::BIG_CORE);
+  ExpectS2IdleResidencyRateMetricCall();
   SuspendAndResume();
   Mock::VerifyAndClearExpectations(metrics_lib_);
 }
 
 // Test S0ix UMA metrics are not reported when suspend to idle is not enabled.
-TEST_F(S0ixResidencyMetricsTest, S0ixResidencyMetricsS0ixNotEnabled) {
-  Init(ResidencyFileType::SMALL_CORE, false /*suspend_to_idle*/);
+TEST_F(IdleStateResidencyMetricsTest, S0ixResidencyMetricsS0ixNotEnabled) {
+  Init(S0ixResidencyFileType::SMALL_CORE, false /*suspend_to_idle*/);
   SuspendAndResume();
   // |metrics_lib_| is strict mock. Unexpected method call will fail this test.
   Mock::VerifyAndClearExpectations(metrics_lib_);
@@ -1180,27 +1374,28 @@ TEST_F(S0ixResidencyMetricsTest, S0ixResidencyMetricsS0ixNotEnabled) {
 
 // Test metrics are not reported when device suspends less than
 // |KS0ixOverheadTime|.
-TEST_F(S0ixResidencyMetricsTest, ShortSuspend) {
+TEST_F(IdleStateResidencyMetricsTest, ShortSuspend) {
   suspend_duration_ = MetricsCollector::KS0ixOverheadTime - base::Seconds(1);
-  Init(ResidencyFileType::SMALL_CORE);
+  Init(S0ixResidencyFileType::SMALL_CORE);
   SuspendAndResume();
   // |metrics_lib_| is strict mock. Unexpected method call will fail this test.
   Mock::VerifyAndClearExpectations(metrics_lib_);
 }
 
 // Test metrics are not reported when the residency counter overflows.
-TEST_F(S0ixResidencyMetricsTest, ResidencyCounterOverflow) {
-  residency_before_resume_ = residency_before_suspend_ - base::Minutes(1);
-  Init(ResidencyFileType::SMALL_CORE);
+TEST_F(IdleStateResidencyMetricsTest, ResidencyCounterOverflow) {
+  Residency& s0ix = residencies_[IdleState::S0ix];
+  s0ix.before_resume_ = s0ix.before_suspend_ - base::Minutes(1);
+  Init(S0ixResidencyFileType::SMALL_CORE);
   SuspendAndResume();
   // |metrics_lib_| is strict mock. Unexpected method call will fail this test.
   Mock::VerifyAndClearExpectations(metrics_lib_);
 }
 
 // Test metrics are not reported when suspend time is more than max residency.
-TEST_F(S0ixResidencyMetricsTest, SuspendTimeMoreThanMaxResidency) {
+TEST_F(IdleStateResidencyMetricsTest, SuspendTimeMoreThanMaxResidency) {
   suspend_duration_ = base::Microseconds(100 * (int64_t)UINT32_MAX + 1);
-  Init(ResidencyFileType::BIG_CORE);
+  Init(S0ixResidencyFileType::BIG_CORE);
   SuspendAndResume();
   // |metrics_lib_| is strict Mock. Unexpected method call will fail this test.
   Mock::VerifyAndClearExpectations(metrics_lib_);

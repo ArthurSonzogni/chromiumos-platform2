@@ -7,6 +7,7 @@
 
 #include <stdint.h>
 
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -31,6 +32,89 @@ class BacklightController;
 }
 
 namespace metrics {
+
+// Interface class for reading a residency counter.
+class ResidencyReader {
+ public:
+  // Read the current residency counter value from the file and return it in
+  // microseconds. Use |InvalidValue| to indicate a failed read.
+  virtual base::TimeDelta ReadResidency() = 0;
+
+  // Default virtual destructor for polymorphic destruction of children.
+  virtual ~ResidencyReader() = default;
+
+  // A helper invalid residency time definition.
+  constexpr static base::TimeDelta InvalidValue = base::Microseconds(-1);
+};
+
+// ResidencyReader for single-value files, e.g. Intel Big/Small core.
+class SingleValueResidencyReader : public ResidencyReader {
+ public:
+  explicit SingleValueResidencyReader(const base::FilePath& path);
+  SingleValueResidencyReader() = delete;
+
+  // Read the current residency counter value from the file and return it in
+  // microseconds. Use a negative value as an invalid value.
+  base::TimeDelta ReadResidency() override;
+
+ private:
+  // Path to the residency counter file (e.g. debugfs).
+  base::FilePath path_;
+};
+
+// Idle state residency
+//
+// This class keeps track of idle state residency counters at two points in
+// time: |PreSuspend()| and |PostResume()|. Counter value is read using an
+// object implementing the |ResidencyReader| interface.
+class IdleResidencyTracker {
+ public:
+  // Initialize the residency tracker with all invalid values.
+  IdleResidencyTracker() = default;
+
+  ~IdleResidencyTracker() = default;
+
+  // Initialize the residency tracker for a given path and set invalid
+  // residency values.
+  explicit IdleResidencyTracker(std::shared_ptr<ResidencyReader> reader);
+
+  // Validate that current residency measurements are valid.
+  //
+  // The |pre_suspend_| or |post_resume_| can be invalid (negative) when there
+  // was an error reading them.
+  bool IsValid();
+
+  // Return the current pre-suspend measurement.
+  base::TimeDelta PreSuspend() const;
+
+  // Return the current post-resume measurement.
+  base::TimeDelta PostResume() const;
+
+  // Read the residency counter and updates the pre-suspend measurement.
+  void UpdatePreSuspend();
+
+  // Read the residency counter and updates the post-resume measurement.
+  void UpdatePostResume();
+
+ private:
+  // Test harness
+  friend class IdleResidencyTrackerTest;
+
+  // Counter-specific residency reader.
+  std::shared_ptr<ResidencyReader> reader_ = nullptr;
+  // The latest residency time read by |UpdatePreSuspend|.
+  base::TimeDelta pre_suspend_;
+  // The latest residency time read by |UpdatePostResume|.
+  base::TimeDelta post_resume_;
+};
+
+// Convenience struct holding enums for enumerating supported idle states.
+//
+// The struct provides namespace isolation similar to "enum class" but with
+// implicit conversion to int without the need for static_cast<>.
+struct IdleState {
+  enum { S0ix = 0, COUNT };
+};
 
 // Used by Daemon to report metrics by way of Chrome.
 //
@@ -65,11 +149,12 @@ class MetricsCollector {
       const std::string& enum_name,
       const privacy_screen::PrivacyScreenSetting_PrivacyScreenState& state);
 
-  // Calculates the S0ix residency percentage that should be reported
+  // Calculates an idle state residency percentage that should be reported
   // as part of UMA metrics by MetricsCollector.
-  static int GetExpectedS0ixResidencyPercent(
-      const base::TimeDelta& suspend_time,
-      const base::TimeDelta& actual_residency);
+  static int GetExpectedResidencyPercent(
+      const base::TimeDelta& reference_time,
+      const base::TimeDelta& actual_residency,
+      const base::TimeDelta& overhead = MetricsCollector::KS0ixOverheadTime);
 
   MetricsCollector();
   MetricsCollector(const MetricsCollector&) = delete;
@@ -207,17 +292,12 @@ class MetricsCollector {
   // On devices that suspend to idle (S0ix), the power rail that supplies power
   // to the CPU is left on. Ideally CPUs enter the lowest power state (S0ix)
   // during suspend. But a malfunctioning driver/peripheral can keep the CPUs
-  // busy, draining the battery. This function parses the counter that keeps
-  // track of number of usecs the cpu spends in the lowest power state before
-  // and after suspend. It then generates UMA metrics for percentage of suspend
-  // time the system spends in the lowest power state.
-
-  // This function parses the counter that keeps track of number of usecs the
-  // CPU spends in the lowest power state. When |pre_suspend| is true, it
-  // records the residency in |s0ix_residency_usecs_before_suspend_|. When it's
-  // false, it reports the S0ix residency rate (%) in comparison to suspend
-  // time.
-  void TrackS0ixResidency(bool pre_suspend);
+  // busy, draining the battery.
+  // This function processes residency values recorded by |residency_trackers_|
+  // and generates an UMA metric for S0ix residency rate (%) in comparison to
+  // suspend time. Called only post-resume from non-hibernate sleep when
+  // |suspend_to_idle_| is enabled.
+  void GenerateS2IdleS0ixMetrics();
 
   // Returns new FilePath after prepending |prefix_path_for_testing_| to
   // given file path.
@@ -273,19 +353,19 @@ class MetricsCollector {
   double battery_energy_before_suspend_ = 0.0;
   bool on_line_power_before_suspend_ = false;
   base::TimeTicks time_before_suspend_;
-  uint64_t s0ix_residency_usecs_before_suspend_ = 0;
-  bool pre_suspend_s0ix_read_successful_ = false;
 
   // Set by HandleResume() to indicate that
   // GenerateBatteryDischargeRateWhileSuspendedMetric() should send a
   // sample when it is next called.
   bool report_battery_discharge_rate_while_suspended_ = false;
 
-  // Path to S0ix residency file on current device.
-  base::FilePath s0ix_residency_path_;
   // Max residency that |s0ix_residency_path_| can report. On big-core
   // platforms the default value is set to 100*UINT32_MAX in the Init().
   base::TimeDelta max_s0ix_residency_ = base::TimeDelta::Max();
+
+  // Lists all idle state residency trackers initialized to update on
+  // |PrepareForSuspend| and |HandleResume|.
+  IdleResidencyTracker residency_trackers_[IdleState::COUNT];
 
   // True if suspend to idle (S0ix) is enabled.
   bool suspend_to_idle_ = false;

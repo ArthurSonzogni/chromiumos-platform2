@@ -73,6 +73,53 @@ constexpr char MetricsCollector::kBigCoreS0ixResidencyPath[];
 constexpr char MetricsCollector::kSmallCoreS0ixResidencyPath[];
 constexpr base::TimeDelta MetricsCollector::KS0ixOverheadTime;
 
+SingleValueResidencyReader::SingleValueResidencyReader(
+    const base::FilePath& path)
+    : path_(path) {}
+
+base::TimeDelta SingleValueResidencyReader::ReadResidency() {
+  uint64_t value;
+  // If |path_| is empty, reading the file will fail gracefully. There is no
+  // early-exit as |IdleResidencyTracker| update functions perform that function
+  // so no point in adding extra checks.
+  const bool success = util::ReadUint64File(path_, &value);
+
+  if (!success) {
+    PLOG(WARNING) << "Failed to read residency from " << path_.value();
+  }
+  // base::Microseconds() will fail for INT64_MAX, however that's unlikely to
+  // ever happen.
+  return success ? base::Microseconds(value) : InvalidValue;
+}
+
+IdleResidencyTracker::IdleResidencyTracker(
+    std::shared_ptr<ResidencyReader> reader)
+    : reader_(reader),
+      pre_suspend_(ResidencyReader::InvalidValue),
+      post_resume_(ResidencyReader::InvalidValue) {}
+
+bool IdleResidencyTracker::IsValid() {
+  return !pre_suspend_.is_negative() && !post_resume_.is_negative();
+}
+
+base::TimeDelta IdleResidencyTracker::PreSuspend() const {
+  return pre_suspend_;
+}
+
+base::TimeDelta IdleResidencyTracker::PostResume() const {
+  return post_resume_;
+}
+
+void IdleResidencyTracker::UpdatePreSuspend() {
+  pre_suspend_ = reader_ != nullptr ? reader_->ReadResidency()
+                                    : ResidencyReader::InvalidValue;
+}
+
+void IdleResidencyTracker::UpdatePostResume() {
+  post_resume_ = reader_ != nullptr ? reader_->ReadResidency()
+                                    : ResidencyReader::InvalidValue;
+}
+
 std::string MetricsCollector::AppendPowerSourceToEnumName(
     const std::string& enum_name, PowerSource power_source) {
   return enum_name +
@@ -96,15 +143,22 @@ std::string MetricsCollector::AppendPrivacyScreenStateToEnumName(
 }
 
 // static
-int MetricsCollector::GetExpectedS0ixResidencyPercent(
-    const base::TimeDelta& suspend_time,
-    const base::TimeDelta& actual_residency) {
-  base::TimeDelta expected_residency =
-      suspend_time - MetricsCollector::KS0ixOverheadTime;
-  int s0ix_residency_percent =
-      static_cast<int>(round((actual_residency.InMicrosecondsF() * 100.0) /
-                             expected_residency.InMicrosecondsF()));
-  return std::min(100, s0ix_residency_percent);
+int MetricsCollector::GetExpectedResidencyPercent(
+    const base::TimeDelta& reference_time,
+    const base::TimeDelta& actual_residency,
+    const base::TimeDelta& overhead) {
+  base::TimeDelta expected_delta = reference_time - overhead;
+  double expected_residency = expected_delta.InMicrosecondsF();
+  // Sanity check to prevent divide by zero undefined behavior below. This might
+  // happen when overhead == reference_time (including == 0). Also catch cases
+  // where overhead is larger than reference_time.
+  if (expected_residency <= 0)
+    return 0;
+  int residency_percent = static_cast<int>(
+      round((actual_residency.InMicrosecondsF() * 100.0) / expected_residency));
+  // Guard against >100% case when |actual_residency| goes over the predicted
+  // |overhead|.
+  return std::min(100, residency_percent);
 }
 
 MetricsCollector::MetricsCollector() = default;
@@ -146,29 +200,40 @@ void MetricsCollector::Init(
   bool pref_val = false;
   suspend_to_idle_ = prefs_->GetBool(kSuspendToIdlePref, &pref_val) && pref_val;
 
+  base::FilePath s0ix_residency_path;
   if (suspend_to_idle_) {
     // S0ix residency related configuration.
     if (base::PathExists(
             GetPrefixedFilePath(base::FilePath(kBigCoreS0ixResidencyPath)))) {
-      s0ix_residency_path_ =
+      s0ix_residency_path =
           GetPrefixedFilePath(base::FilePath(kBigCoreS0ixResidencyPath));
     } else if (base::PathExists(GetPrefixedFilePath(
                    base::FilePath(kSmallCoreS0ixResidencyPath)))) {
-      s0ix_residency_path_ =
+      s0ix_residency_path =
           GetPrefixedFilePath(base::FilePath(kSmallCoreS0ixResidencyPath));
     }
 
-    // For devices with |kBigCoreS0ixResidencyPath|, the default range is little
-    // complicated. |kBigCoreS0ixResidencyPath| reports the time spent in S0ix
-    // by reading SLP_S0_RES (32 bit) register. This register increments once
-    // for every 100 micro seconds spent in S0ix. The value read from this 32
-    // bit register is first casted to u64 and then multiplied by 100 to get
-    // micro second granularity. Thus the range of |kBigCoreS0ixResidencyPath|
-    // is 100 * UINT32_MAX.
-    if (s0ix_residency_path_ ==
+    // For devices with |kBigCoreS0ixResidencyPath|, the default range is a
+    // little complicated. |kBigCoreS0ixResidencyPath| reports the time spent in
+    // S0ix by reading SLP_S0_RES (32 bit) register. This register increments
+    // once for every *_PMC_SLP_S0_RES_COUNTER_STEP microseconds spent in S0ix
+    // (see drivers/platform/x86/intel/pmc/core.h in Linux kernel sources for
+    // exact resolution). The value read from this 32 bit register is first cast
+    // to u64 and then multiplied by the counter resolution to get a microsecond
+    // granularity. For |kBigCoreS0ixResidencyPath| a resolution upper bound of
+    // 100 microseconds is used to discard samples on counter roll-over.
+    if (s0ix_residency_path ==
         GetPrefixedFilePath(base::FilePath(kBigCoreS0ixResidencyPath))) {
       max_s0ix_residency_ = base::Microseconds(100 * (uint64_t)UINT32_MAX);
     }
+  }
+
+  // Finally create residency trackers for accessible counters.
+  // For unavailable counters, leave the tracker uninitialized (with a nullptr
+  // ResidencyReader).
+  if (!s0ix_residency_path.empty()) {
+    residency_trackers_[IdleState::S0ix] = IdleResidencyTracker(
+        std::make_shared<SingleValueResidencyReader>(s0ix_residency_path));
   }
 }
 
@@ -336,8 +401,8 @@ void MetricsCollector::PrepareForSuspend() {
   battery_energy_before_suspend_ = last_power_status_.battery_energy;
   on_line_power_before_suspend_ = last_power_status_.line_power_on;
   time_before_suspend_ = clock_.GetCurrentBootTime();
-  if (suspend_to_idle_)
-    TrackS0ixResidency(true);
+  for (auto& tracker : residency_trackers_)
+    tracker.UpdatePreSuspend();
 }
 
 void MetricsCollector::HandleResume(int num_suspend_attempts, bool hibernated) {
@@ -349,8 +414,10 @@ void MetricsCollector::HandleResume(int num_suspend_attempts, bool hibernated) {
   // Report the discharge rate in response to the next
   // OnPowerStatusUpdate() call.
   report_battery_discharge_rate_while_suspended_ = true;
+  for (auto& tracker : residency_trackers_)
+    tracker.UpdatePostResume();
   if (suspend_to_idle_ && !hibernated)
-    TrackS0ixResidency(false);
+    GenerateS2IdleS0ixMetrics();
 }
 
 void MetricsCollector::HandleCanceledSuspendRequest(int num_suspend_attempts,
@@ -766,42 +833,25 @@ void MetricsCollector::GenerateAmbientLightResumeMetrics(int lux) {
              kAmbientLightOnResumeMax, kDefaultBuckets);
 }
 
-void MetricsCollector::TrackS0ixResidency(bool pre_suspend) {
+void MetricsCollector::GenerateS2IdleS0ixMetrics() {
   // This method should be invoked only when suspend to idle is enabled.
-  DCHECK(suspend_to_idle_);
+  CHECK(suspend_to_idle_);
 
-  // If S0ix residency read before suspend was not successful, we have no way
-  // to track the residency during suspend.
-  if (!pre_suspend && !pre_suspend_s0ix_read_successful_)
+  IdleResidencyTracker& s0ix = residency_trackers_[IdleState::S0ix];
+
+  // If S0ix residency reading was not successful, we have no way to track the
+  // residency during suspend.
+  if (!s0ix.IsValid())
     return;
 
-  // If we cannot find any residency related files, nothing to track.
-  if (s0ix_residency_path_.empty())
-    return;
-
-  uint64_t residency_usecs = 0;
-  const bool success =
-      util::ReadUint64File(s0ix_residency_path_, &residency_usecs);
-
-  if (pre_suspend)
-    pre_suspend_s0ix_read_successful_ = success;
-
-  if (!success) {
-    PLOG(WARNING) << "Failed to read residency from "
-                  << s0ix_residency_path_.value();
-    return;
-  }
-
-  if (pre_suspend) {
-    s0ix_residency_usecs_before_suspend_ = residency_usecs;
-    return;
-  }
-
-  // We reach here only on post-suspend.
+  const base::TimeDelta s0ix_residency = s0ix.PostResume() - s0ix.PreSuspend();
 
   // If the counter overflowed during suspend, then residency delta is not
-  // useful anymore.
-  if (residency_usecs < s0ix_residency_usecs_before_suspend_)
+  // useful anymore because we have no way to read the precise residency counter
+  // resolution.
+  // We'll loose a single sample per |max_s0ix_residency_| which is at minimum
+  // ~5 days.
+  if (s0ix_residency.is_negative())
     return;
 
   const base::TimeDelta time_in_suspend =
@@ -810,6 +860,8 @@ void MetricsCollector::TrackS0ixResidency(bool pre_suspend) {
   // If we spent more time in suspend than the max residency that
   // |s0ix_residency_path_| can report, then the residency counter is
   // not reliable anymore.
+  // At most we'll loose a single sample per |max_s0ix_residency_| which is
+  // at minimum ~5 days.
   if (time_in_suspend > max_s0ix_residency_)
     return;
 
@@ -819,17 +871,14 @@ void MetricsCollector::TrackS0ixResidency(bool pre_suspend) {
   if (time_in_suspend <= KS0ixOverheadTime)
     return;
 
-  const base::TimeDelta s0ix_residency_time = base::Microseconds(
-      residency_usecs - s0ix_residency_usecs_before_suspend_);
-
   int s0ix_residency_percent =
-      GetExpectedS0ixResidencyPercent(time_in_suspend, s0ix_residency_time);
+      GetExpectedResidencyPercent(time_in_suspend, s0ix_residency);
   // If we spent less than 90% of time in S0ix, log a warning. This can help
   // debugging feedback reports that complain about low battery life.
   if (s0ix_residency_percent < 90) {
     LOG(WARNING) << "Device spent around " << time_in_suspend.InSeconds()
-                 << " secs in suspend, but only "
-                 << s0ix_residency_time.InSeconds() << " secs in S0ix";
+                 << " secs in suspend, but only " << s0ix_residency.InSeconds()
+                 << " secs in S0ix";
   }
 
   // Enum to avoid exponential histogram's varyingly-sized buckets.
