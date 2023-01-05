@@ -1378,15 +1378,14 @@ TEST_F(CrashSenderUtilTest, RemoveAndPickCrashFiles) {
 }
 
 TEST_F(CrashSenderUtilTest, RemoveReportFiles) {
-  Sender::Options options;
-  MetricsLibraryMock* raw_metrics_lib = metrics_lib_.get();
-  Sender sender(std::move(metrics_lib_),
-                std::make_unique<test_util::AdvancingClock>(), options);
-
-  EXPECT_CALL(*raw_metrics_lib,
+  EXPECT_CALL(*metrics_lib_,
               SendEnumToUMA("Platform.CrOS.CrashSenderRemoveReason",
                             Sender::kTotalRemoval, Sender::kSendReasonCount))
       .Times(1);
+
+  Sender::Options options;
+  Sender sender(std::move(metrics_lib_),
+                std::make_unique<test_util::AdvancingClock>(), options);
 
   const base::FilePath crash_directory =
       paths::Get(paths::kSystemCrashDirectory);
@@ -1411,6 +1410,33 @@ TEST_F(CrashSenderUtilTest, RemoveReportFiles) {
   EXPECT_FALSE(base::PathExists(foo_log));
   EXPECT_FALSE(base::PathExists(foo_dmp));
   EXPECT_TRUE(base::PathExists(bar_log));
+}
+
+TEST_F(CrashSenderUtilTest, RemoveReportFilesUnderDryRunMode) {
+  EXPECT_CALL(*metrics_lib_,
+              SendEnumToUMA("Platform.CrOS.CrashSenderRemoveReason", _, _))
+      .Times(0);
+  EXPECT_CALL(*metrics_lib_,
+              SendCrosEventToUMA("Crash.Sender.AttemptedCrashRemoval"))
+      .Times(0);
+  EXPECT_CALL(*metrics_lib_,
+              SendCrosEventToUMA("Crash.Sender.FailedCrashRemoval"))
+      .Times(0);
+
+  Sender::Options options;
+  options.dry_run = true;
+  Sender sender(std::move(metrics_lib_),
+                std::make_unique<test_util::AdvancingClock>(), options);
+
+  const base::FilePath crash_directory =
+      paths::Get(paths::kSystemCrashDirectory);
+  ASSERT_TRUE(base::CreateDirectory(crash_directory));
+  const base::FilePath foo_meta = crash_directory.Append("foo.meta");
+  ASSERT_TRUE(test_util::CreateFile(foo_meta, ""));
+  // This should remove foo.* were it not under the dry run mode.
+  sender.RemoveReportFiles(foo_meta);
+  // The file should still exist.
+  EXPECT_TRUE(base::PathExists(foo_meta));
 }
 
 TEST_F(CrashSenderUtilTest, FailRemoveReportFilesSendsMetric) {
@@ -1673,8 +1699,8 @@ TEST_F(CrashSenderUtilTest, DoNotSkipConsentCheckWithoutCrashLoopMeta) {
   std::string reason;
   CrashInfo info;
 
-  // Ignore crashes without consent in the system directory in case a consenting
-  // user later logs back in.
+  // Ignore crashes without consent in the system directory in case a
+  // consenting user later logs back in.
   EXPECT_EQ(Sender::kIgnore, sender.ChooseAction(good_meta_, &reason, &info));
 }
 
@@ -1943,7 +1969,8 @@ TEST_F(CrashSenderUtilTest, SendCrashes) {
   Sender::Options options;
   options.session_manager_proxy = mock.release();
   options.max_crash_rate = 2;
-  // Setting max_crash_bytes to 0 will limit to the uploader to max_crash_rate.
+  // Setting max_crash_bytes to 0 will limit to the uploader to
+  // max_crash_rate.
   options.max_crash_bytes = 0;
   options.sleep_function = base::BindRepeating(&FakeSleep, &sleep_times);
   options.always_write_uploads_log = true;
@@ -2092,7 +2119,8 @@ TEST_F(CrashSenderUtilTest, SendCrashes_TooManyRequests) {
   Sender::Options options;
   options.session_manager_proxy = mock.release();
   options.max_crash_rate = 2;
-  // Setting max_crash_bytes to 0 will limit to the uploader to max_crash_rate.
+  // Setting max_crash_bytes to 0 will limit to the uploader to
+  // max_crash_rate.
   options.max_crash_bytes = 0;
   options.sleep_function = base::BindRepeating(&FakeSleep, &sleep_times);
   options.always_write_uploads_log = true;
@@ -2288,8 +2316,8 @@ TEST_F(CrashSenderUtilTest, LockFileTriesOneLastTimeAfterTimeout) {
   base::Time start_time;
   ASSERT_TRUE(base::Time::FromUTCString("2019-04-20 13:53", &start_time));
 
-  // Make AcquireLockFileOrDie sleep enough that the loop exits, then unlock the
-  // file.
+  // Make AcquireLockFileOrDie sleep enough that the loop exits, then unlock
+  // the file.
   EXPECT_CALL(*clock, Now())
       .WillOnce(Return(start_time))
       .WillOnce(Return(start_time))

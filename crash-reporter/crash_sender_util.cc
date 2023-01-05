@@ -722,6 +722,11 @@ std::shared_ptr<brillo::http::Transport> Sender::GetTransport() {
 }
 
 void Sender::RemoveReportFiles(const base::FilePath& meta_file) {
+  // Don't do anything when running in the dry run mode.
+  if (dry_run_) {
+    return;
+  }
+
   if (meta_file.Extension() != ".meta") {
     LOG(ERROR) << "Not a meta file: " << meta_file.value();
     return;
@@ -762,6 +767,11 @@ void Sender::RemoveReportFiles(const base::FilePath& meta_file) {
 }
 
 void Sender::RecordCrashRemoveReason(SenderBase::CrashRemoveReason reason) {
+  // Do nothing if running under the dry run mode.
+  if (dry_run_) {
+    return;
+  }
+
   metrics_lib_->SendEnumToUMA(kCrashSenderRemoveHistName, reason,
                               kSendReasonCount);
 }

@@ -220,6 +220,7 @@ class Sender : public SenderBase {
  private:
   friend class IsNetworkOnlineTest;
   FRIEND_TEST(CrashSenderUtilTest, RemoveReportFiles);
+  FRIEND_TEST(CrashSenderUtilTest, RemoveReportFilesUnderDryRunMode);
   FRIEND_TEST(CrashSenderUtilTest, FailRemoveReportFilesSendsMetric);
 
   // Removes report files associated with the given meta file.
