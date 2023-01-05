@@ -43,7 +43,6 @@ SUMMARIZE_TIME='
 
 # If there are no arguments on the command line, summarize all the
 # events.  If there are arguments, summarize only the named events.
-# Error checking is deliberately minimal, to keep this script simple.
 if [ $# -eq 0 ]; then
   set -- "${FLAGS_directory}/uptime-"*
 else
@@ -55,19 +54,24 @@ else
   done
 fi
 
+max=$#
+i=0
+# Catch some basic errors so awk doesn't choke.
+while [ $((i += 1)) -le "${max}" ]; do
+  if [ -r "$1" ]; then
+    set -- "$@" "$1"
+  else
+    echo "Error: file $1 is not readable" 1>&2
+  fi
+  shift
+done
+
 # Pipeline explained:
 #  1st awk program: print times as milliseconds and normalize idle time
 #     by NCPU.
 #  sort: sort the events by the uptime timestamp.
 #  sed: remove '/tmp/uptime-' from the event name.
 #  2nd awk program:  produce the summarized output
-awk 'BEGINFILE {
-       # Ignore file errors.
-       if (ERRNO != "") {
-         print "Error reading file", FILENAME, ERRNO > "/dev/stderr"
-         nextfile
-       }
-     }
-     BEGIN{OFMT="%f"}
+awk 'BEGIN{OFMT="%f"}
      {print 1000*$1, 1000*$2/'"${NCPU}"', FILENAME}' "$@" |
   sort -k 1n | sed 's=[^ ]*uptime-==' | awk "${SUMMARIZE_TIME}"
