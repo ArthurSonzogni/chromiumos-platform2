@@ -14,6 +14,8 @@ enum PrivateComputingUseCase {
   CROS_FRESNEL_DAILY = 1;
   CROS_FRESNEL_FIRST_ACTIVE = 2;
   CROS_FRESNEL_28DAY_ACTIVE = 3;
+  CROS_FRESNEL_CHURN_MONTHLY_COHORT = 4;
+  CROS_FRESNEL_CHURN_MONTHLY_OBSERVATION = 5;
 }
 
 // The preserved file will include the Daily, FirstActive, 28-Day
