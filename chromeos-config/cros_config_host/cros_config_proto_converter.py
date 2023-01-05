@@ -2151,6 +2151,29 @@ def _build_scheduler_tune(config):
     return result
 
 
+def _build_thermal_config(config, dptf_map):
+    if not dptf_map:
+        return None
+
+    thermal = config.hw_design_config.hardware_features.thermal
+    suffix = thermal.config_path_suffix or ""
+    design_name = "_".join(
+        component
+        for component in [_get_name_for_config(config.hw_design.id), suffix]
+        if component
+    )
+    design_config_id_path = os.path.join(
+        design_name, config.hw_design_config.id.value.rpartition(":")[2]
+    )
+    # Prefer design_config level (sku)
+    # Then design level
+    # If neither, fall back to project wide config (mapped to `suffix`)
+    return dptf_map.get(
+        design_config_id_path,
+        dptf_map.get(design_name, dptf_map.get(suffix, None)),
+    )
+
+
 def _sw_config(sw_configs, design_config_id):
     """Returns the correct software config for `design_config_id`.
 
@@ -2316,25 +2339,12 @@ def _transform_build_config(config, config_files, whitelabel):
     _upsert(_build_power(config), result, "power")
     _upsert(_build_resource(config), result, "resource")
     _upsert(_build_scheduler_tune(config), result, "scheduler-tune")
+    _upsert(
+        _build_thermal_config(config, config_files.dptf_map), result, "thermal"
+    )
     if config_files.camera_map:
         camera_file = config_files.camera_map.get(config.hw_design.name, {})
         _upsert(camera_file, result, "camera")
-    if config_files.dptf_map:
-        # Prefer design_config level (sku)
-        # Then design level
-        # If neither, fall back to project wide config (mapped to empty string)
-        design_name = _get_name_for_config(config.hw_design.id)
-        design_config_id = config.hw_design_config.id.value.lower()
-        design_config_id_path = os.path.join(design_name, design_config_id)
-        if design_name in design_config_id:
-            design_config_id_path = design_config_id.replace(":", "/")
-        if config_files.dptf_map.get(design_config_id_path):
-            dptf_file = config_files.dptf_map[design_config_id_path]
-        elif config_files.dptf_map.get(design_name):
-            dptf_file = config_files.dptf_map[design_name]
-        else:
-            dptf_file = config_files.dptf_map.get("")
-        _upsert(dptf_file, result, "thermal")
     _upsert(config_files.touch_fw, result, "touch")
     _upsert(
         _build_hardware_properties(config.hw_design_config.hardware_topology),
