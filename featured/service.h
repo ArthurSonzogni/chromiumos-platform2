@@ -20,6 +20,7 @@
 #include <brillo/syslog_logging.h>
 #include <brillo/variant_dictionary.h>
 #include <featured/feature_library.h>
+#include <featured/proto_bindings/featured.pb.h>
 #include <session_manager/dbus-proxies.h>
 
 #include <memory>
@@ -166,6 +167,8 @@ class DbusFeaturedService {
   bool Start(dbus::Bus* bus, std::shared_ptr<DbusFeaturedService> ptr);
 
  private:
+  friend class DbusFeaturedServiceTest;
+
   // Helpers to invoke a feature parser
   bool ParseFeatureList();
 
@@ -174,6 +177,10 @@ class DbusFeaturedService {
   bool EnableFeatures();
 
   void OnSessionStateChanged(const std::string& state);
+
+  // Save fetched finch seed from Chrome to disk.
+  void HandleSeedFetched(dbus::MethodCall* method_call,
+                         dbus::ExportedObject::ResponseSender sender);
 
   std::unique_ptr<FeatureParserBase> parser_;
   std::unique_ptr<feature::PlatformFeatures> library_;

@@ -20,6 +20,7 @@
 #include <base/strings/stringprintf.h>
 #include <build/build_config.h>
 #include <build/buildflag.h>
+#include <featured/proto_bindings/featured.pb.h>
 
 #include "featured/service.h"
 
@@ -336,6 +337,42 @@ void OnSignalConnected(const std::string& interface,
   }
 }
 
+void DbusFeaturedService::HandleSeedFetched(
+    dbus::MethodCall* method_call,
+    dbus::ExportedObject::ResponseSender sender) {
+  std::unique_ptr<dbus::Response> response;
+
+  dbus::MessageReader reader(method_call);
+  SeedDetails seed;
+  if (!reader.PopArrayOfBytesAsProto(&seed)) {
+    LOG(ERROR) << "Missing seed argument to HandleSeedFetched";
+    response = dbus::ErrorResponse::FromMethodCall(
+        method_call, DBUS_ERROR_INVALID_ARGS, "Could not parse seed argument");
+    std::move(sender).Run(std::move(response));
+    return;
+  }
+
+  if (!store_->SetLastGoodSeed(seed)) {
+    LOG(ERROR) << "Failed to write fetched seed to disk";
+    response = dbus::ErrorResponse::FromMethodCall(
+        method_call, DBUS_ERROR_FAILED, "Failed to write fetched seed to disk");
+    std::move(sender).Run(std::move(response));
+    return;
+  }
+
+  if (!store_->ClearBootAttemptsSinceLastUpdate()) {
+    LOG(ERROR) << "Failed to reset boot attempts counter after fetching seed";
+    response = dbus::ErrorResponse::FromMethodCall(
+        method_call, DBUS_ERROR_FAILED,
+        "Failed to reset boot attempts counter");
+    std::move(sender).Run(std::move(response));
+    return;
+  }
+
+  response = dbus::Response::FromMethodCall(method_call);
+  std::move(sender).Run(std::move(response));
+}
+
 bool DbusFeaturedService::Start(dbus::Bus* bus,
                                 std::shared_ptr<DbusFeaturedService> ptr) {
   if (!bus || !bus->Connect()) {
@@ -354,6 +391,15 @@ bool DbusFeaturedService::Start(dbus::Bus* bus,
   dbus::ExportedObject* object = bus->GetExportedObject(path);
   if (!object) {
     LOG(ERROR) << "Failed to get exported object at " << path.value();
+    return false;
+  }
+
+  if (!object->ExportMethodAndBlock(
+          featured::kFeaturedServiceName, featured::kHandleSeedFetchedMethod,
+          base::BindRepeating(&DbusFeaturedService::HandleSeedFetched, ptr))) {
+    bus->UnregisterExportedObject(path);
+    LOG(ERROR) << "Failed to export method "
+               << featured::kHandleSeedFetchedMethod;
     return false;
   }
 

@@ -9,6 +9,7 @@
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/logging.h>
+#include "base/test/bind.h"
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/mock_bus.h>
 #include <dbus/mock_exported_object.h>
@@ -26,6 +27,13 @@ using ::testing::Return;
 using ::testing::StrictMock;
 
 namespace featured {
+
+namespace {
+void ResponseSenderCallback(const std::string& expected_message,
+                            std::unique_ptr<dbus::Response> response) {
+  EXPECT_EQ(expected_message, response->ToString());
+}
+}  // namespace
 
 TEST(FeatureCommand, FileExistsTest) {
   base::FilePath file;
@@ -72,14 +80,18 @@ TEST(FeatureCommand, MkdirTest) {
 class DbusFeaturedServiceTest : public testing::Test {
  public:
   DbusFeaturedServiceTest()
-      : mock_store_impl_(std::make_unique<StrictMock<MockStoreImpl>>()),
-        mock_bus_(base::MakeRefCounted<dbus::MockBus>(dbus::Bus::Options{})),
+      : mock_bus_(base::MakeRefCounted<dbus::MockBus>(dbus::Bus::Options{})),
         path_(chromeos::kChromeFeaturesServicePath),
         mock_proxy_(base::MakeRefCounted<dbus::MockObjectProxy>(
             mock_bus_.get(), chromeos::kChromeFeaturesServiceName, path_)),
-        mock_exported_object_(
-            base::MakeRefCounted<StrictMock<dbus::MockExportedObject>>(
-                mock_bus_.get(), path_)) {
+        mock_exported_object_(base::MakeRefCounted<dbus::MockExportedObject>(
+            mock_bus_.get(), path_)) {
+    auto mock_store_impl = std::make_unique<MockStoreImpl>();
+    // Necessary for `EXPECT_CALL` to succeed.
+    mock_store_impl_ = mock_store_impl.get();
+    service_ =
+        std::make_shared<DbusFeaturedService>(std::move(mock_store_impl));
+
     ON_CALL(*mock_bus_, GetExportedObject(_))
         .WillByDefault(Return(mock_exported_object_.get()));
     ON_CALL(*mock_bus_, Connect()).WillByDefault(Return(true));
@@ -87,14 +99,25 @@ class DbusFeaturedServiceTest : public testing::Test {
         .WillByDefault(Return(mock_proxy_.get()));
     ON_CALL(*mock_bus_, RequestOwnershipAndBlock(_, _))
         .WillByDefault(Return(true));
+    ON_CALL(*mock_exported_object_, ExportMethodAndBlock(_, _, _))
+        .WillByDefault(Return(true));
+    ON_CALL(*mock_store_impl_, SetLastGoodSeed(_)).WillByDefault(Return(true));
+    ON_CALL(*mock_store_impl_, ClearBootAttemptsSinceLastUpdate())
+        .WillByDefault(Return(true));
   }
 
  protected:
-  std::unique_ptr<MockStoreImpl> mock_store_impl_;
+  void HandleSeedFetched(dbus::MethodCall* method_call,
+                         dbus::ExportedObject::ResponseSender sender) {
+    service_->HandleSeedFetched(method_call, std::move(sender));
+  }
+
   scoped_refptr<dbus::MockBus> mock_bus_;
   dbus::ObjectPath path_;
   scoped_refptr<dbus::MockObjectProxy> mock_proxy_;
   scoped_refptr<dbus::MockExportedObject> mock_exported_object_;
+  MockStoreImpl* mock_store_impl_;
+  std::shared_ptr<DbusFeaturedService> service_;
 };
 
 // Checks that service start successfully increments the boot attempts counter
@@ -103,11 +126,7 @@ TEST_F(DbusFeaturedServiceTest, IncrementBootAttemptsOnStartup_Success) {
   EXPECT_CALL(*mock_store_impl_, IncrementBootAttemptsSinceLastUpdate())
       .WillOnce(Return(true));
 
-  std::shared_ptr<DbusFeaturedService> service =
-      std::make_shared<DbusFeaturedService>(std::move(mock_store_impl_));
-  ASSERT_NE(service, nullptr);
-
-  EXPECT_TRUE(service->Start(mock_bus_.get(), service));
+  EXPECT_TRUE(service_->Start(mock_bus_.get(), service_));
 }
 
 // Checks that service start fails when incrementing the boot attempts counter
@@ -116,10 +135,114 @@ TEST_F(DbusFeaturedServiceTest, IncrementBootAttemptsOnStartup_Failure) {
   EXPECT_CALL(*mock_store_impl_, IncrementBootAttemptsSinceLastUpdate())
       .WillOnce(Return(false));
 
-  std::shared_ptr<DbusFeaturedService> service =
-      std::make_shared<DbusFeaturedService>(std::move(mock_store_impl_));
-  ASSERT_NE(service, nullptr);
+  EXPECT_FALSE(service_->Start(mock_bus_.get(), service_));
+}
 
-  EXPECT_FALSE(service->Start(mock_bus_.get(), service));
+// Checks that an empty response is returned on success.
+TEST_F(DbusFeaturedServiceTest, HandleSeedFetched_Success) {
+  constexpr char kExpectedMessage[] = R"--(message_type: MESSAGE_METHOD_RETURN
+reply_serial: 123
+
+)--";
+
+  dbus::MethodCall method_call("com.example.Interface", "SomeMethod");
+  dbus::MessageWriter writer(&method_call);
+  SeedDetails seed;
+  writer.AppendProtoAsArrayOfBytes(seed);
+  // Not setting the serial causes a crash.
+  method_call.SetSerial(123);
+
+  HandleSeedFetched(&method_call,
+                    base::BindOnce(&ResponseSenderCallback, kExpectedMessage));
+}
+
+// Checks that HandleSeedFetched returns an error response when no arguments are
+// passed in.
+TEST_F(DbusFeaturedServiceTest, HandleSeedFetched_Failure_NoArgument) {
+  constexpr char kExpectedMessage[] = R"--(message_type: MESSAGE_ERROR
+error_name: org.freedesktop.DBus.Error.InvalidArgs
+signature: s
+reply_serial: 123
+
+string "Could not parse seed argument"
+)--";
+
+  dbus::MethodCall method_call("com.example.Interface", "SomeMethod");
+  // Not setting the serial causes a crash.
+  method_call.SetSerial(123);
+
+  HandleSeedFetched(&method_call,
+                    base::BindOnce(&ResponseSenderCallback, kExpectedMessage));
+}
+
+// Checks that HandleSeedFetched returns an error response when a non-seed
+// argument is passed in.
+TEST_F(DbusFeaturedServiceTest, HandleSeedFetched_Failure_InvalidArgument) {
+  constexpr char kExpectedMessage[] = R"--(message_type: MESSAGE_ERROR
+error_name: org.freedesktop.DBus.Error.InvalidArgs
+signature: s
+reply_serial: 123
+
+string "Could not parse seed argument"
+)--";
+
+  dbus::MethodCall method_call("com.example.Interface", "SomeMethod");
+  dbus::MessageWriter writer(&method_call);
+  writer.AppendString("string");
+  // Not setting the serial causes a crash.
+  method_call.SetSerial(123);
+
+  HandleSeedFetched(&method_call,
+                    base::BindOnce(&ResponseSenderCallback, kExpectedMessage));
+}
+
+// Checks that HandleSeedFetched returns an error response when saving the seed
+// to disk fails.
+TEST_F(DbusFeaturedServiceTest, HandleSeedFetched_Failure_SetSeedFailure) {
+  EXPECT_CALL(*mock_store_impl_, SetLastGoodSeed(_)).WillOnce(Return(false));
+
+  constexpr char kExpectedMessage[] = R"--(message_type: MESSAGE_ERROR
+error_name: org.freedesktop.DBus.Error.Failed
+signature: s
+reply_serial: 123
+
+string "Failed to write fetched seed to disk"
+)--";
+
+  dbus::MethodCall method_call("com.example.Interface", "SomeMethod");
+  dbus::MessageWriter writer(&method_call);
+  SeedDetails seed;
+  writer.AppendProtoAsArrayOfBytes(seed);
+  // Not setting the serial causes a crash.
+  method_call.SetSerial(123);
+
+  HandleSeedFetched(&method_call,
+                    base::BindOnce(&ResponseSenderCallback, kExpectedMessage));
+}
+
+// Checks that HandleSeedFetched returns an error response when saving the seed
+// to disk fails.
+TEST_F(DbusFeaturedServiceTest,
+       HandleSeedFetched_Failure_ClearBootCounterFailure) {
+  EXPECT_CALL(*mock_store_impl_, ClearBootAttemptsSinceLastUpdate())
+      .WillOnce(Return(false));
+
+  constexpr char kExpectedMessage[] = R"--(message_type: MESSAGE_ERROR
+error_name: org.freedesktop.DBus.Error.Failed
+signature: s
+reply_serial: 123
+
+string "Failed to reset boot attempts counter"
+)--";
+
+  dbus::MethodCall method_call("com.example.Interface", "SomeMethod");
+  dbus::MessageWriter writer(&method_call);
+  SeedDetails seed;
+  writer.AppendProtoAsArrayOfBytes(seed);
+  // Not setting the serial causes a crash.
+  method_call.SetSerial(123);
+
+  HandleSeedFetched(&method_call,
+                    base::BindOnce(&ResponseSenderCallback, kExpectedMessage));
 }
 }  // namespace featured
