@@ -4,13 +4,15 @@
 
 #include "debugd/src/ping_tool.h"
 
+#include <unistd.h>
+
 #include <string>
+
+#include <base/logging.h>
 
 #include "debugd/src/error_utils.h"
 #include "debugd/src/process_with_id.h"
 #include "debugd/src/variant_utils.h"
-
-#include <base/logging.h>
 
 namespace debugd {
 

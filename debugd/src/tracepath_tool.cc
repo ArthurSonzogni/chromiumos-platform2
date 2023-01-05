@@ -4,9 +4,11 @@
 
 #include "debugd/src/tracepath_tool.h"
 
-#include "debugd/src/process_with_id.h"
+#include <unistd.h>
 
 #include <base/logging.h>
+
+#include "debugd/src/process_with_id.h"
 
 namespace debugd {
 
