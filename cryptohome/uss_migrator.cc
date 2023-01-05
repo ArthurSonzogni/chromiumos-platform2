@@ -55,10 +55,6 @@ void UssMigrator::MigrateVaultKeysetToUss(
   CryptohomeStatusOr<brillo::Blob> encrypted_uss =
       user_secret_stash_storage.LoadPersisted(SanitizeUserName(username_));
   if (!encrypted_uss.ok()) {
-    // TODO(b/261188092): Check that there are no AuthFactors on disk before
-    // creating the new USS. If there are AuthFactors remove them and mark
-    // the corresponding VaultKeysets as regular (i.e revert the backup state).
-
     // If no UserSecretStash file found for the user create a new
     // UserSecretStash from the passed VaultKeyset and add the migration_secret
     // block.
@@ -122,9 +118,6 @@ bool UssMigrator::AddMigrationSecretToUss(
       uss_main_key,
       /*wrapping_id=*/kMigrationSecretLabel, *migration_secret_);
   if (!status.ok()) {
-    // TODO(b/261188092): If adding migration secret fails remove the
-    // UserSecretStash file. If there are AuthFactors remove them and mark the
-    // corresponding VaultKeysets as regular (i.e revert the backup state).
     LOG(ERROR) << "Failed to add the migration secret to the UserSecretStash.";
     return false;
   }
