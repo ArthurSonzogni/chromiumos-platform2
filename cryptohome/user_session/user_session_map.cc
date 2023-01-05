@@ -9,19 +9,11 @@
 #include <variant>
 
 #include <base/check.h>
+#include <base/functional/overloaded.h>
 #include <base/memory/scoped_refptr.h>
 
 namespace cryptohome {
 namespace {
-
-// Helper template for doing visit stuff.
-template <class... Ts>
-struct overloaded : Ts... {
-  using Ts::operator()...;
-};
-// Explicit deduction guide. Can be removed once C++20 is supported.
-template <class... Ts>
-overloaded(Ts...) -> overloaded<Ts...>;
 
 // Helper function to initialize the verifier forwarder internal variant.
 std::variant<UserSession*, UserSessionMap::VerifierForwarder::VerifierStorage>
@@ -54,52 +46,53 @@ UserSessionMap::VerifierForwarder::~VerifierForwarder() {
 }
 
 bool UserSessionMap::VerifierForwarder::HasVerifier(const std::string& label) {
-  return std::visit(overloaded{[&](UserSession* session) {
-                                 return session->HasCredentialVerifier(label);
-                               },
-                               [&](VerifierStorage& storage) {
-                                 return storage.by_label.find(label) !=
-                                        storage.by_label.end();
-                               }},
-                    forwarding_destination_);
+  return std::visit(
+      base::Overloaded{[&](UserSession* session) {
+                         return session->HasCredentialVerifier(label);
+                       },
+                       [&](VerifierStorage& storage) {
+                         return storage.by_label.find(label) !=
+                                storage.by_label.end();
+                       }},
+      forwarding_destination_);
 }
 
 void UserSessionMap::VerifierForwarder::AddVerifier(
     std::unique_ptr<CredentialVerifier> verifier) {
   std::string label = verifier->auth_factor_label();
   AuthFactorType type = verifier->auth_factor_type();
-  std::visit(overloaded{[&](UserSession* session) {
-                          session->AddCredentialVerifier(std::move(verifier));
-                        },
-                        [&](VerifierStorage& storage) {
-                          if (label.empty()) {
-                            storage.by_type[type] = std::move(verifier);
-                          } else {
-                            storage.by_label[std::move(label)] =
-                                std::move(verifier);
-                          }
-                        }},
+  std::visit(base::Overloaded{
+                 [&](UserSession* session) {
+                   session->AddCredentialVerifier(std::move(verifier));
+                 },
+                 [&](VerifierStorage& storage) {
+                   if (label.empty()) {
+                     storage.by_type[type] = std::move(verifier);
+                   } else {
+                     storage.by_label[std::move(label)] = std::move(verifier);
+                   }
+                 }},
              forwarding_destination_);
 }
 
 void UserSessionMap::VerifierForwarder::RemoveVerifier(
     const std::string& label) {
-  std::visit(overloaded{[&](UserSession* session) {
-                          session->RemoveCredentialVerifier(label);
-                        },
-                        [&](VerifierStorage& storage) {
-                          storage.by_label.erase(label);
-                        }},
+  std::visit(base::Overloaded{[&](UserSession* session) {
+                                session->RemoveCredentialVerifier(label);
+                              },
+                              [&](VerifierStorage& storage) {
+                                storage.by_label.erase(label);
+                              }},
              forwarding_destination_);
 }
 
 void UserSessionMap::VerifierForwarder::RemoveVerifier(AuthFactorType type) {
-  std::visit(overloaded{[&](UserSession* session) {
-                          session->RemoveCredentialVerifier(type);
-                        },
-                        [&](VerifierStorage& storage) {
-                          storage.by_type.erase(type);
-                        }},
+  std::visit(base::Overloaded{[&](UserSession* session) {
+                                session->RemoveCredentialVerifier(type);
+                              },
+                              [&](VerifierStorage& storage) {
+                                storage.by_type.erase(type);
+                              }},
              forwarding_destination_);
 }
 
