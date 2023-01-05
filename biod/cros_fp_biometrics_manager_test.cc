@@ -318,6 +318,40 @@ TEST_F(CrosFpBiometricsManagerTest, TestAuthSessionStartStopSuccess) {
   auth_session.End();
 }
 
+TEST_F(CrosFpBiometricsManagerTest, TestStartEnrollSessionSuccess) {
+  BiometricsManager::EnrollSession enroll_session;
+
+  // Expect biod will check if there is space for a new template.
+  EXPECT_CALL(*mock_cros_dev_, MaxTemplateCount).WillOnce(Return(1));
+  EXPECT_CALL(*mock_cros_dev_, SetFpMode(ec::FpMode(Mode::kNone)))
+      .WillOnce(Return(true));
+
+  // Expect that biod will ask FPMCU to set the enroll mode.
+  EXPECT_CALL(*mock_cros_dev_,
+              SetFpMode(ec::FpMode(Mode::kEnrollSessionEnrollImage)))
+      .WillOnce(Return(true));
+
+  enroll_session = cros_fp_biometrics_manager_->StartEnrollSession("0", "0");
+  EXPECT_TRUE(enroll_session);
+}
+
+TEST_F(CrosFpBiometricsManagerTest, TestStartEnrollSessionTwiceFailed) {
+  BiometricsManager::EnrollSession first_enroll_session;
+  BiometricsManager::EnrollSession second_enroll_session;
+
+  // Expect biod will check if there is space for a new template.
+  EXPECT_CALL(*mock_cros_dev_, MaxTemplateCount).WillRepeatedly(Return(2));
+  EXPECT_CALL(*mock_cros_dev_, SetFpMode(_)).WillRepeatedly(Return(true));
+
+  first_enroll_session =
+      cros_fp_biometrics_manager_->StartEnrollSession("0", "0");
+  ASSERT_TRUE(first_enroll_session);
+
+  second_enroll_session =
+      cros_fp_biometrics_manager_->StartEnrollSession("0", "0");
+  EXPECT_FALSE(second_enroll_session);
+}
+
 TEST_F(CrosFpBiometricsManagerTest, TestAuthSessionMatchModeFailed) {
   BiometricsManager::AuthSession auth_session;
 
