@@ -299,7 +299,7 @@ void ChromeosStartup::EarlySetup() {
 // Apply /mnt/stateful_partition specific tmpfiles.d configurations
 void ChromeosStartup::TmpfilesConfiguration() {
   brillo::ProcessImpl tmpfiles;
-  tmpfiles.AddArg("/bin/systemd-tmpfiles");
+  tmpfiles.AddArg("/usr/bin/systemd-tmpfiles");
   tmpfiles.AddArg("--create");
   tmpfiles.AddArg("--remove");
   tmpfiles.AddArg("--boot");

@@ -365,7 +365,7 @@ if [ ! -e /usr/share/cros/startup/disable_stateful_security_hardening ]; then
 fi
 
 # Apply /var and /home specific tmpfiles.d configurations.
-/bin/systemd-tmpfiles --create --remove --boot \
+/usr/bin/systemd-tmpfiles --create --remove --boot \
   --prefix /home \
   --prefix /var 2>>"${TMPFILES_LOG}" ||
     cleanup_mounts "tmpfiles.d for /home and /var failed"
@@ -443,7 +443,7 @@ fi
 
 # "--make-shared" to let ARC container access mount points under /media.
 mount --make-shared -n -t tmpfs -o nodev,noexec,nosuid media /media
-/bin/systemd-tmpfiles --create --remove --boot --prefix /media \
+/usr/bin/systemd-tmpfiles --create --remove --boot --prefix /media \
   2>>"${TMPFILES_LOG}" || :
 
 # Restore file contexts for /var.

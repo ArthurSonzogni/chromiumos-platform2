@@ -141,7 +141,7 @@ config file to a different path and invoke it manually (or from an upstart job)
 with:
 
 ```sh
-/bin/systemd-tmpfiles --boot --create --remove --clean <absolute path to your-tmpfiles-d.conf>
+/usr/bin/systemd-tmpfiles --boot --create --remove --clean <absolute path to your-tmpfiles-d.conf>
 ```
 
 Generally, no errors are printed on success. If extra verbosity is desired, use:
