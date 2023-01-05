@@ -724,7 +724,7 @@ message AuthFactorWithStatus {
 }
 
 message StartAuthSessionReply {
-  reserved 7;
+  reserved 4, 7;
 
   // Error if any to start the Auth Session
   // TODO(b/229807416): Remove once CryptohomeError refactor is complete.
@@ -733,9 +733,6 @@ message StartAuthSessionReply {
   bytes auth_session_id = 2;
   // True if the user that the Auth Session is created for exists or not.
   bool user_exists = 3;
-  // Map to return label and public key data for the authentication credential
-  // to be sent in. This will be empty if user_exists is set to false.
-  map<string, cryptohome.KeyData> key_label_data = 4;
 
   // List of AuthFactors configured and available for authentication in the
   // context of this session.
