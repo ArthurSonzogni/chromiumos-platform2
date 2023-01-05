@@ -349,6 +349,19 @@ class CameraDeviceAdapter : public camera3_callback_ops_t {
   CameraMonitor capture_monitor_;
 
   std::unique_ptr<StreamManipulatorManager> stream_manipulator_manager_;
+
+  uint32_t partial_result_count_ = 0;
+
+  struct InflightRequestInfo {
+    size_t num_pending_output_buffers = 0;
+    bool has_pending_input_buffer = false;
+    bool has_pending_metadata = false;
+  };
+
+  base::Lock inflight_requests_lock_;
+  base::ConditionVariable inflight_requests_empty_cv_;
+  std::map<uint32_t, InflightRequestInfo> inflight_requests_
+      GUARDED_BY(inflight_requests_lock_);
 };
 
 }  // namespace cros

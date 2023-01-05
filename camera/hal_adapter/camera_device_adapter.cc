@@ -31,6 +31,7 @@
 
 #include "common/camera_buffer_handle.h"
 #include "cros-camera/camera_buffer_manager.h"
+#include "cros-camera/camera_metadata_utils.h"
 #include "cros-camera/common.h"
 #include "cros-camera/future.h"
 #include "cros-camera/tracing.h"
@@ -192,10 +193,16 @@ CameraDeviceAdapter::CameraDeviceAdapter(
       device_api_version_(device_api_version),
       static_info_(static_info),
       camera_metrics_(CameraMetrics::New()),
-      stream_manipulator_manager_(std::move(stream_manipulator_manager)) {
+      stream_manipulator_manager_(std::move(stream_manipulator_manager)),
+      inflight_requests_empty_cv_(&inflight_requests_lock_) {
   VLOGF_ENTER() << ":" << camera_device_;
   camera3_callback_ops_t::process_capture_result = ProcessCaptureResult;
   camera3_callback_ops_t::notify = Notify;
+
+  std::optional<int32_t> partial_result_count =
+      GetRoMetadata<int32_t>(static_info, ANDROID_REQUEST_PARTIAL_RESULT_COUNT);
+  partial_result_count_ =
+      base::checked_cast<uint32_t>(partial_result_count.value_or(1));
 }
 
 CameraDeviceAdapter::~CameraDeviceAdapter() {
@@ -251,6 +258,7 @@ int32_t CameraDeviceAdapter::Initialize(
     mojo::PendingRemote<mojom::Camera3CallbackOps> callback_ops) {
   VLOGF_ENTER();
   TRACE_HAL_ADAPTER();
+  DCHECK(camera_device_ops_thread_.task_runner()->BelongsToCurrentThread());
 
   {
     base::AutoLock l(fence_sync_thread_lock_);
@@ -292,6 +300,7 @@ int32_t CameraDeviceAdapter::ConfigureStreams(
     mojom::Camera3StreamConfigurationPtr* updated_config) {
   VLOGF_ENTER();
   TRACE_HAL_ADAPTER();
+  DCHECK(camera_device_ops_thread_.task_runner()->BelongsToCurrentThread());
 
   base::ElapsedTimer timer;
 
@@ -456,6 +465,7 @@ mojom::CameraMetadataPtr CameraDeviceAdapter::ConstructDefaultRequestSettings(
     mojom::Camera3RequestTemplate type) {
   VLOGF_ENTER();
   TRACE_HAL_ADAPTER();
+  DCHECK(camera_device_ops_thread_.task_runner()->BelongsToCurrentThread());
 
   size_t type_index = static_cast<size_t>(type);
   if (type_index >= CAMERA3_TEMPLATE_COUNT) {
@@ -490,6 +500,20 @@ int32_t CameraDeviceAdapter::ProcessCaptureRequest(
   }
   if (!request) {
     return 0;
+  }
+
+  {
+    base::AutoLock l(inflight_requests_lock_);
+    CHECK(inflight_requests_.find(request->frame_number) ==
+          inflight_requests_.end());
+    inflight_requests_.emplace(
+        request->frame_number,
+        InflightRequestInfo{
+            .num_pending_output_buffers = request->output_buffers.size(),
+            .has_pending_input_buffer = !request->input_buffer.is_null(),
+            .has_pending_metadata = true,
+        });
+    DVLOGF(2) << "Inflight requests ++: " << inflight_requests_.size();
   }
 
   camera3_capture_request_t req;
@@ -624,6 +648,7 @@ int32_t CameraDeviceAdapter::ProcessCaptureRequest(
 void CameraDeviceAdapter::Dump(mojo::ScopedHandle fd) {
   VLOGF_ENTER();
   TRACE_HAL_ADAPTER();
+  DCHECK(camera_device_ops_thread_.task_runner()->BelongsToCurrentThread());
 
   base::ScopedFD dump_fd(mojo::UnwrapPlatformHandle(std::move(fd)).TakeFD());
   camera_device_->ops->dump(camera_device_, dump_fd.get());
@@ -632,9 +657,31 @@ void CameraDeviceAdapter::Dump(mojo::ScopedHandle fd) {
 int32_t CameraDeviceAdapter::Flush() {
   VLOGF_ENTER();
   TRACE_HAL_ADAPTER();
+  DCHECK(camera_device_ops_thread_.task_runner()->BelongsToCurrentThread());
 
+  // By Android spec flush() must return in 1000ms.
+  constexpr base::TimeDelta kFlushTimeout = base::Seconds(1000);
+  base::ElapsedTimer timer;
+
+  const int32_t ret = camera_device_->ops->flush(camera_device_);
+  if (ret != 0) {
+    LOGF(ERROR) << "flush() failed with status " << ret;
+    return ret;
+  }
   stream_manipulator_manager_->Flush();
-  return camera_device_->ops->flush(camera_device_);
+
+  {
+    base::AutoLock l(inflight_requests_lock_);
+    while (!inflight_requests_.empty()) {
+      const base::TimeDelta elapsed_time = timer.Elapsed();
+      if (elapsed_time >= kFlushTimeout) {
+        LOGF(ERROR) << "Flushing pending requests timed out";
+        return -ENODEV;
+      }
+      inflight_requests_empty_cv_.TimedWait(kFlushTimeout - elapsed_time);
+    }
+  }
+  return 0;
 }
 
 int32_t CameraDeviceAdapter::RegisterBuffer(
@@ -783,6 +830,34 @@ void CameraDeviceAdapter::ReturnResultToClient(
       self->reprocess_result_metadata_.erase(result_descriptor.frame_number());
     }
     result_ptr = self->PrepareCaptureResult(result_descriptor.LockForResult());
+  }
+
+  {
+    base::AutoLock l(self->inflight_requests_lock_);
+    auto it = self->inflight_requests_.find(result_ptr->frame_number);
+    CHECK(it != self->inflight_requests_.end());
+    InflightRequestInfo& info = it->second;
+    if (result_ptr->output_buffers) {
+      CHECK_GE(info.num_pending_output_buffers,
+               result_ptr->output_buffers->size());
+      info.num_pending_output_buffers -= result_ptr->output_buffers->size();
+    }
+    if (result_ptr->input_buffer) {
+      CHECK(info.has_pending_input_buffer);
+      info.has_pending_input_buffer = false;
+    }
+    if (result_ptr->partial_result == self->partial_result_count_) {
+      CHECK(info.has_pending_metadata);
+      info.has_pending_metadata = false;
+    }
+    if (info.num_pending_output_buffers == 0 &&
+        !info.has_pending_input_buffer && !info.has_pending_metadata) {
+      self->inflight_requests_.erase(it);
+      DVLOGF(2) << "Inflight requests --: " << self->inflight_requests_.size();
+      if (self->inflight_requests_.empty()) {
+        self->inflight_requests_empty_cv_.Signal();
+      }
+    }
   }
 
   base::AutoLock l(self->callback_ops_delegate_lock_);
