@@ -21,67 +21,12 @@
 
 namespace diagnostics {
 
-namespace mojo_ipc = ::ash::cros_healthd::mojom;
-
 constexpr char kRelativeBiosTimesPath[] = "var/log/bios_times.txt";
 constexpr char kRelativeShutdownMetricsPath[] = "var/log/metrics";
 constexpr char kRelativePreviousPowerdLogPath[] =
     "var/log/power_manager/powerd.PREVIOUS";
 
-mojo_ipc::BootPerformanceResultPtr
-BootPerformanceFetcher::FetchBootPerformanceInfo() {
-  mojo_ipc::BootPerformanceInfo info;
-
-  auto error = PopulateBootUpInfo(&info);
-  if (error.has_value()) {
-    return mojo_ipc::BootPerformanceResult::NewError(std::move(error.value()));
-  }
-
-  // There might be no shutdown info, so we don't check if there is any error.
-  PopulateShutdownInfo(&info);
-
-  return mojo_ipc::BootPerformanceResult::NewBootPerformanceInfo(info.Clone());
-}
-
-std::optional<mojo_ipc::ProbeErrorPtr>
-BootPerformanceFetcher::PopulateBootUpInfo(
-    mojo_ipc::BootPerformanceInfo* info) {
-  // Boot up stages
-  //                              |<-             proc_uptime     ->
-  //          |<- firmware_time ->|<-  kernel_time  ->|
-  //  |-------|-------------------|-------------------|------------> Now
-  // off   power on         jump to kernel       login screen
-  //
-  // There is some deviation when calculating, but it should be minor.
-  // See go/chromeos-boottime for more details.
-  info->boot_up_seconds = 0.0;
-  info->boot_up_timestamp = 0;
-
-  double firmware_time;
-  auto error = ParseBootFirmwareTime(&firmware_time);
-  if (error.has_value()) {
-    return error;
-  }
-  info->boot_up_seconds += firmware_time;
-
-  double kernel_time;
-  error = ParseBootKernelTime(&kernel_time);
-  if (error.has_value()) {
-    return error;
-  }
-  info->boot_up_seconds += kernel_time;
-
-  double proc_uptime;
-  error = ParseProcUptime(&proc_uptime);
-  if (error.has_value()) {
-    return error;
-  }
-  // Calculate the timestamp when power on.
-  info->boot_up_timestamp =
-      context_->time().ToDoubleT() - proc_uptime - firmware_time;
-
-  return std::nullopt;
-}
+namespace mojo_ipc = ::ash::cros_healthd::mojom;
 
 std::optional<mojo_ipc::ProbeErrorPtr>
 BootPerformanceFetcher::ParseBootFirmwareTime(double* firmware_time) {
@@ -157,29 +102,44 @@ std::optional<mojo_ipc::ProbeErrorPtr> BootPerformanceFetcher::ParseProcUptime(
   return std::nullopt;
 }
 
-void BootPerformanceFetcher::PopulateShutdownInfo(
+std::optional<mojo_ipc::ProbeErrorPtr>
+BootPerformanceFetcher::PopulateBootUpInfo(
     mojo_ipc::BootPerformanceInfo* info) {
-  // Shutdown stages
+  // Boot up stages
+  //                              |<-             proc_uptime     ->
+  //          |<- firmware_time ->|<-  kernel_time  ->|
+  //  |-------|-------------------|-------------------|------------> Now
+  // off   power on         jump to kernel       login screen
   //
-  //           |<-     shutdown seconds      ->|
-  // running --|-------------------------------|-------------------|------> off
-  // powerd receives request          create metrics log   unmount partition
-  double shutdown_start_timestamp;
-  double shutdown_end_timestamp;
-  std::string shutdown_reason;
+  // There is some deviation when calculating, but it should be minor.
+  // See go/chromeos-boottime for more details.
+  info->boot_up_seconds = 0.0;
+  info->boot_up_timestamp = 0;
 
-  if (!ParsePreviousPowerdLog(&shutdown_start_timestamp, &shutdown_reason) ||
-      !GetShutdownEndTimestamp(&shutdown_end_timestamp) ||
-      shutdown_end_timestamp < shutdown_start_timestamp) {
-    info->shutdown_reason = "N/A";
-    info->shutdown_timestamp = 0.0;
-    info->shutdown_seconds = 0.0;
-    return;
+  double firmware_time;
+  auto error = ParseBootFirmwareTime(&firmware_time);
+  if (error.has_value()) {
+    return error;
   }
+  info->boot_up_seconds += firmware_time;
 
-  info->shutdown_reason = shutdown_reason;
-  info->shutdown_timestamp = shutdown_end_timestamp;
-  info->shutdown_seconds = shutdown_end_timestamp - shutdown_start_timestamp;
+  double kernel_time;
+  error = ParseBootKernelTime(&kernel_time);
+  if (error.has_value()) {
+    return error;
+  }
+  info->boot_up_seconds += kernel_time;
+
+  double proc_uptime;
+  error = ParseProcUptime(&proc_uptime);
+  if (error.has_value()) {
+    return error;
+  }
+  // Calculate the timestamp when power on.
+  info->boot_up_timestamp =
+      context_->time().ToDoubleT() - proc_uptime - firmware_time;
+
+  return std::nullopt;
 }
 
 bool BootPerformanceFetcher::ParsePreviousPowerdLog(
@@ -230,6 +190,46 @@ bool BootPerformanceFetcher::GetShutdownEndTimestamp(
   *shutdown_end_timestamp = file_info.last_modified.ToDoubleT();
 
   return true;
+}
+
+void BootPerformanceFetcher::PopulateShutdownInfo(
+    mojo_ipc::BootPerformanceInfo* info) {
+  // Shutdown stages
+  //
+  //           |<-     shutdown seconds      ->|
+  // running --|-------------------------------|-------------------|------> off
+  // powerd receives request          create metrics log   unmount partition
+  double shutdown_start_timestamp;
+  double shutdown_end_timestamp;
+  std::string shutdown_reason;
+
+  if (!ParsePreviousPowerdLog(&shutdown_start_timestamp, &shutdown_reason) ||
+      !GetShutdownEndTimestamp(&shutdown_end_timestamp) ||
+      shutdown_end_timestamp < shutdown_start_timestamp) {
+    info->shutdown_reason = "N/A";
+    info->shutdown_timestamp = 0.0;
+    info->shutdown_seconds = 0.0;
+    return;
+  }
+
+  info->shutdown_reason = shutdown_reason;
+  info->shutdown_timestamp = shutdown_end_timestamp;
+  info->shutdown_seconds = shutdown_end_timestamp - shutdown_start_timestamp;
+}
+
+mojo_ipc::BootPerformanceResultPtr
+BootPerformanceFetcher::FetchBootPerformanceInfo() {
+  mojo_ipc::BootPerformanceInfo info;
+
+  auto error = PopulateBootUpInfo(&info);
+  if (error.has_value()) {
+    return mojo_ipc::BootPerformanceResult::NewError(std::move(error.value()));
+  }
+
+  // There might be no shutdown info, so we don't check if there is any error.
+  PopulateShutdownInfo(&info);
+
+  return mojo_ipc::BootPerformanceResult::NewBootPerformanceInfo(info.Clone());
 }
 
 }  // namespace diagnostics
