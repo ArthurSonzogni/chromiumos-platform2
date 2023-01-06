@@ -275,23 +275,20 @@ class AuthSession final {
   // instance of AuthSession.
   AuthSession(
       std::string username,
+      std::string obfuscated_username,
       unsigned int flags,
       AuthIntent intent,
       base::OnceCallback<void(const base::UnguessableToken&)> on_timeout,
+      bool user_exists,
+      AuthFactorMap auth_factor_map,
+      bool migrate_to_user_secret_stash,
       Crypto* crypto,
       Platform* platform,
       UserSessionMap* user_session_map,
       KeysetManagement* keyset_management,
       AuthBlockUtility* auth_block_utility,
       AuthFactorManager* auth_factor_manager,
-      UserSecretStashStorage* user_secret_stash_storage,
-      feature::PlatformFeaturesInterface* feature_lib);
-
-  AuthSession() = delete;
-
-  // Initialize boolean variables and AuthFactor maps such as
-  // |label_to_auth_factor_|.
-  CryptohomeStatus Initialize();
+      UserSecretStashStorage* user_secret_stash_storage);
 
   // AuthSessionTimedOut is called when the session times out and cleans up
   // credentials that may be in memory. |on_timeout_| is also called to remove
@@ -653,8 +650,6 @@ class AuthSession final {
   AuthFactorManager* const auth_factor_manager_;
   // Unowned pointer.
   UserSecretStashStorage* const user_secret_stash_storage_;
-  // Unowned pointer.
-  feature::PlatformFeaturesInterface* feature_lib_;
   // A stateless object to convert AuthFactor API to VaultKeyset KeyData and
   // VaultKeysets to AuthFactor API.
   AuthFactorVaultKeysetConverter converter_;
@@ -667,9 +662,9 @@ class AuthSession final {
   // Used to store key meta data.
   KeyData key_data_;
   // FileSystemKeyset is needed by cryptohome to mount a user.
-  std::optional<FileSystemKeyset> file_system_keyset_ = std::nullopt;
+  std::optional<FileSystemKeyset> file_system_keyset_;
   // Whether the user existed at the time this object was constructed.
-  bool user_exists_ = false;
+  bool user_exists_;
   // Map containing the auth factors already configured for this user.
   AuthFactorMap auth_factor_map_;
   // Key used by AuthenticateAuthFactor for cryptohome recovery AuthFactor.
@@ -681,8 +676,8 @@ class AuthSession final {
   // Tokens from active auth factors, keyed off of the token's auth factor type.
   std::map<AuthFactorType, std::unique_ptr<PreparedAuthFactorToken>>
       active_auth_factor_tokens_;
-  // Flag fetched from feature_lib_.
-  bool migrate_to_user_secret_stash_ = false;
+  // Specify whether USS migration should happen.
+  bool migrate_to_user_secret_stash_;
 
   // Should be the last member.
   base::WeakPtrFactory<AuthSession> weak_factory_{this};

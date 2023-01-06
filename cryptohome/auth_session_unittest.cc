@@ -388,11 +388,13 @@ TEST_F(AuthSessionTest, TimeoutTest) {
   // because during cleanup the AuthSession must stay valid after
   // timing out for verification.
   AuthSession auth_session(
-      kFakeUsername, flags, AuthIntent::kDecrypt,
-      timeout_future.GetCallback<const base::UnguessableToken&>(), &crypto_,
-      &platform_, &user_session_map_, &keyset_management_, &auth_block_utility_,
-      &auth_factor_manager_, &user_secret_stash_storage_,
-      /*feature_lib=*/nullptr);
+      kFakeUsername, SanitizeUserName(kFakeUsername), flags,
+      AuthIntent::kDecrypt,
+      timeout_future.GetCallback<const base::UnguessableToken&>(),
+      /*user_exists=*/false, AuthFactorMap(),
+      /*migrate_to_user_secret_stash=*/false, &crypto_, &platform_,
+      &user_session_map_, &keyset_management_, &auth_block_utility_,
+      &auth_factor_manager_, &user_secret_stash_storage_);
   EXPECT_EQ(auth_session.GetStatus(),
             AuthStatus::kAuthStatusFurtherFactorRequired);
   auth_session.SetAuthSessionAsAuthenticated(kAuthorizedIntentsForFullAuth);
@@ -412,14 +414,15 @@ TEST_F(AuthSessionTest, UssMigrationFlagCheckFailure) {
   // AuthSession must be constructed without using AuthSessionManager,
   // as we need to have a nullptr for feature_lib.
   int flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE;
-  AuthSession auth_session(
+  auto auth_session = AuthSession::Create(
       kFakeUsername, flags, AuthIntent::kDecrypt, base::DoNothing(), &crypto_,
       &platform_, &user_session_map_, &keyset_management_, &auth_block_utility_,
       &auth_factor_manager_, &user_secret_stash_storage_,
       /*feature_lib=*/nullptr);
 
   // Verify.
-  EXPECT_FALSE(auth_session.migrate_to_user_secret_stash_);
+  ASSERT_THAT(auth_session, IsOk());
+  EXPECT_FALSE((*auth_session)->migrate_to_user_secret_stash_);
 }
 
 TEST_F(AuthSessionTest, SerializedStringFromNullToken) {
@@ -735,13 +738,14 @@ TEST_F(AuthSessionTest, AuthenticateExistingUser) {
   // AuthSession must be constructed without using AuthSessionManager,
   // because during cleanup the AuthSession must stay valid after
   // timing out for verification.
-  AuthSession auth_session(kFakeUsername, flags, AuthIntent::kDecrypt,
-                           /*on_timeout=*/base::DoNothing(), &crypto_,
+  AuthSession auth_session(kFakeUsername, SanitizeUserName(kFakeUsername),
+                           flags, AuthIntent::kDecrypt,
+                           /*on_timeout=*/base::DoNothing(),
+                           /*user_exists=*/true, AuthFactorMap(),
+                           /*migrate_to_user_secret_stash=*/false, &crypto_,
                            &platform_, &user_session_map_, &keyset_management_,
                            &auth_block_utility_, &auth_factor_manager_,
-                           &user_secret_stash_storage_,
-                           /*feature_lib=*/nullptr);
-  EXPECT_TRUE(auth_session.Initialize().ok());
+                           &user_secret_stash_storage_);
 
   // Test.
   EXPECT_THAT(AuthStatus::kAuthStatusFurtherFactorRequired,
@@ -811,13 +815,14 @@ TEST_F(AuthSessionTest, AuthenticateWithPIN) {
   // AuthSession must be constructed without using AuthSessionManager,
   // because during cleanup the AuthSession must stay valid after
   // timing out for verification.
-  AuthSession auth_session(kFakeUsername, flags, AuthIntent::kDecrypt,
-                           /*on_timeout=*/base::DoNothing(), &crypto_,
+  AuthSession auth_session(kFakeUsername, SanitizeUserName(kFakeUsername),
+                           flags, AuthIntent::kDecrypt,
+                           /*on_timeout=*/base::DoNothing(),
+                           /*user_exists=*/true, AuthFactorMap(),
+                           /*migrate_to_user_secret_stash=*/false, &crypto_,
                            &platform_, &user_session_map_, &keyset_management_,
                            &auth_block_utility_, &auth_factor_manager_,
-                           &user_secret_stash_storage_,
-                           /*feature_lib=*/nullptr);
-  EXPECT_TRUE(auth_session.Initialize().ok());
+                           &user_secret_stash_storage_);
 
   // Test.
   EXPECT_THAT(AuthStatus::kAuthStatusFurtherFactorRequired,
@@ -2155,13 +2160,14 @@ TEST_F(AuthSessionTest, ExtensionTest) {
   // AuthSession must be constructed without using AuthSessionManager,
   // because during cleanup the AuthSession must stay valid after
   // timing out for verification.
-  AuthSession auth_session(kFakeUsername, flags, AuthIntent::kDecrypt,
-                           /*on_timeout=*/base::DoNothing(), &crypto_,
+  AuthSession auth_session(kFakeUsername, SanitizeUserName(kFakeUsername),
+                           flags, AuthIntent::kDecrypt,
+                           /*on_timeout=*/base::DoNothing(),
+                           /*user_exists=*/false, AuthFactorMap(),
+                           /*migrate_to_user_secret_stash=*/false, &crypto_,
                            &platform_, &user_session_map_, &keyset_management_,
                            &auth_block_utility_, &auth_factor_manager_,
-                           &user_secret_stash_storage_,
-                           /*feature_lib=*/nullptr);
-  EXPECT_TRUE(auth_session.Initialize().ok());
+                           &user_secret_stash_storage_);
   EXPECT_EQ(auth_session.GetStatus(),
             AuthStatus::kAuthStatusFurtherFactorRequired);
   auth_session.SetAuthSessionAsAuthenticated(kAuthorizedIntentsForFullAuth);
@@ -3737,18 +3743,16 @@ TEST_F(AuthSessionWithUssExperimentTest, LightweightFingerprintAuthentication) {
 // Test that PrepareAuthFactor succeeds for the legacy fingerprint with the
 // purpose of authentication.
 TEST_F(AuthSessionWithUssExperimentTest, PrepareLegacyFingerprintAuth) {
-  // Setup.
-  EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(true));
   // Add the user session. Configure the credential verifier mock to succeed.
   auto user_session = std::make_unique<MockUserSession>();
   // Create an AuthSession and add a mock for a successful auth block prepare.
-  auto auth_session = base::WrapUnique(
-      new AuthSession(kFakeUsername, user_data_auth::AUTH_SESSION_FLAGS_NONE,
-                      AuthIntent::kVerifyOnly,
-                      /*on_timeout=*/base::DoNothing(), &crypto_, &platform_,
-                      &user_session_map_, &keyset_management_,
-                      &auth_block_utility_, &auth_factor_manager_,
-                      &user_secret_stash_storage_, /*feature_lib=*/nullptr));
+  auto auth_session = base::WrapUnique(new AuthSession(
+      kFakeUsername, SanitizeUserName(kFakeUsername),
+      user_data_auth::AUTH_SESSION_FLAGS_NONE, AuthIntent::kVerifyOnly,
+      /*on_timeout=*/base::DoNothing(), /*user_exists=*/true, AuthFactorMap(),
+      /*migrate_to_user_secret_stash=*/false, &crypto_, &platform_,
+      &user_session_map_, &keyset_management_, &auth_block_utility_,
+      &auth_factor_manager_, &user_secret_stash_storage_));
   TrackedPreparedAuthFactorToken::WasCalled token_was_called;
   auto token = std::make_unique<TrackedPreparedAuthFactorToken>(
       AuthFactorType::kLegacyFingerprint, OkStatus<CryptohomeError>(),

@@ -638,10 +638,12 @@ TEST_F(AuthSessionTestWithKeysetManagement, USSEnabledRemovesBackupVKs) {
   int flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE;
 
   AuthSession auth_session(
-      kUsername, flags, AuthIntent::kDecrypt,
-      /*on_timeout=*/base::DoNothing(), &crypto_, &platform_,
+      kUsername, SanitizeUserName(kUsername), flags, AuthIntent::kDecrypt,
+      /*on_timeout=*/base::DoNothing(),
+      /*user_exists=*/false, AuthFactorMap(),
+      /*migrate_to_user_secret_stash=*/false, &crypto_, &platform_,
       &user_session_map_, keyset_management_.get(), auth_block_utility_.get(),
-      &auth_factor_manager_, &user_secret_stash_storage_, nullptr);
+      &auth_factor_manager_, &user_secret_stash_storage_);
 
   EXPECT_THAT(AuthStatus::kAuthStatusFurtherFactorRequired,
               auth_session.GetStatus());
@@ -685,12 +687,13 @@ TEST_F(AuthSessionTestWithKeysetManagement, USSEnabledUpdateBackupVKs) {
 
   int flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE;
 
-  AuthSession auth_session(kUsername, flags, AuthIntent::kDecrypt,
-                           /*on_timeout=*/base::DoNothing(), &crypto_,
-                           &platform_, &user_session_map_,
-                           keyset_management_.get(), auth_block_utility_.get(),
-                           &auth_factor_manager_, &user_secret_stash_storage_,
-                           /*feature_lib=*/nullptr);
+  AuthSession auth_session(
+      kUsername, SanitizeUserName(kUsername), flags, AuthIntent::kDecrypt,
+      /*on_timeout=*/base::DoNothing(),
+      /*user_exists=*/false, AuthFactorMap(),
+      /*migrate_to_user_secret_stash=*/false, &crypto_, &platform_,
+      &user_session_map_, keyset_management_.get(), auth_block_utility_.get(),
+      &auth_factor_manager_, &user_secret_stash_storage_);
 
   EXPECT_THAT(AuthStatus::kAuthStatusFurtherFactorRequired,
               auth_session.GetStatus());
@@ -884,12 +887,13 @@ TEST_F(AuthSessionTestWithKeysetManagement,
 
   int flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE;
 
-  AuthSession auth_session(kUsername, flags, AuthIntent::kDecrypt,
-                           /*on_timeout=*/base::DoNothing(), &crypto_,
-                           &platform_, &user_session_map_,
-                           keyset_management_.get(), &mock_auth_block_utility_,
-                           &auth_factor_manager_, &user_secret_stash_storage_,
-                           /*feature_lib=*/nullptr);
+  AuthSession auth_session(
+      kUsername, SanitizeUserName(kUsername), flags, AuthIntent::kDecrypt,
+      /*on_timeout=*/base::DoNothing(),
+      /*user_exists=*/false, AuthFactorMap(),
+      /*migrate_to_user_secret_stash=*/false, &crypto_, &platform_,
+      &user_session_map_, keyset_management_.get(), &mock_auth_block_utility_,
+      &auth_factor_manager_, &user_secret_stash_storage_);
 
   EXPECT_THAT(AuthStatus::kAuthStatusFurtherFactorRequired,
               auth_session.GetStatus());

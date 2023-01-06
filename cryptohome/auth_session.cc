@@ -217,40 +217,67 @@ CryptohomeStatusOr<std::unique_ptr<AuthSession>> AuthSession::Create(
     AuthFactorManager* auth_factor_manager,
     UserSecretStashStorage* user_secret_stash_storage,
     feature::PlatformFeaturesInterface* feature_lib) {
-  // Assumption here is that keyset_management_ will outlive this AuthSession.
-  auto auth_session = base::WrapUnique(new AuthSession(
-      account_id, flags, intent, std::move(on_timeout), crypto, platform,
-      user_session_map, keyset_management, auth_block_utility,
-      auth_factor_manager, user_secret_stash_storage, feature_lib));
+  std::string obfuscated_username = SanitizeUserName(account_id);
 
-  if (!auth_session->Initialize().ok()) {
-    LOG(ERROR) << "AuthSession could not be initialized.";
-    return MakeStatus<CryptohomeError>(
-        CRYPTOHOME_ERR_LOC(kLocAuthSessionCreateInitializedFail),
-        ErrorActionSet(
-            {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kReboot}),
-        user_data_auth::CRYPTOHOME_ERROR_UNUSABLE_VAULT);
+  // Try to determine if a user exists in two ways: they have a persistent
+  // homedir, or they have an active mount. The latter can happen if the user is
+  // ephemeral, in which case there will be no persistent directory but the user
+  // still "exists" so long as they remain active.
+  bool persistent_user_exists =
+      keyset_management->UserExists(obfuscated_username);
+  UserSession* user_session = user_session_map->Find(account_id);
+  bool user_is_active = user_session && user_session->IsActive();
+  bool user_exists = persistent_user_exists || user_is_active;
+
+  // Report UserSecretStashExperiment status.
+  ReportUserSecretStashExperimentState(platform);
+
+  // Determine if migration is enabled.
+  bool migrate_to_user_secret_stash = false;
+  if (feature_lib) {
+    migrate_to_user_secret_stash =
+        feature_lib->IsEnabledBlocking(kCrOSLateBootMigrateToUserSecretStash);
   }
-  return auth_session;
+
+  // If we have an existing persistent user, load all of their auth factors.
+  AuthFactorMap auth_factor_map;
+  if (persistent_user_exists) {
+    AuthFactorVaultKeysetConverter converter(keyset_management);
+    auth_factor_map = LoadAuthFactorMap(
+        (ShouldMigrateToUss() || migrate_to_user_secret_stash),
+        obfuscated_username, *platform, converter, *auth_factor_manager);
+  }
+
+  // Assumption here is that keyset_management_ will outlive this AuthSession.
+  return base::WrapUnique(new AuthSession(
+      std::move(account_id), std::move(obfuscated_username), flags, intent,
+      std::move(on_timeout), user_exists, std::move(auth_factor_map),
+      migrate_to_user_secret_stash, crypto, platform, user_session_map,
+      keyset_management, auth_block_utility, auth_factor_manager,
+      user_secret_stash_storage));
 }
 
 AuthSession::AuthSession(
     std::string username,
+    std::string obfuscated_username,
     unsigned int flags,
     AuthIntent intent,
     base::OnceCallback<void(const base::UnguessableToken&)> on_timeout,
+    bool user_exists,
+    AuthFactorMap auth_factor_map,
+    bool migrate_to_user_secret_stash,
     Crypto* crypto,
     Platform* platform,
     UserSessionMap* user_session_map,
     KeysetManagement* keyset_management,
     AuthBlockUtility* auth_block_utility,
     AuthFactorManager* auth_factor_manager,
-    UserSecretStashStorage* user_secret_stash_storage,
-    feature::PlatformFeaturesInterface* feature_lib)
+    UserSecretStashStorage* user_secret_stash_storage)
     : username_(std::move(username)),
       obfuscated_username_(SanitizeUserName(username_)),
       is_ephemeral_user_(flags & AUTH_SESSION_FLAGS_EPHEMERAL_USER),
       auth_intent_(intent),
+      auth_session_creation_time_(base::TimeTicks::Now()),
       on_timeout_(std::move(on_timeout)),
       crypto_(crypto),
       platform_(platform),
@@ -260,10 +287,14 @@ AuthSession::AuthSession(
       auth_block_utility_(auth_block_utility),
       auth_factor_manager_(auth_factor_manager),
       user_secret_stash_storage_(user_secret_stash_storage),
-      feature_lib_(feature_lib),
       converter_(keyset_management_),
       token_(platform_->CreateUnguessableToken()),
-      serialized_token_(GetSerializedStringFromToken(token_).value_or("")) {
+      serialized_token_(GetSerializedStringFromToken(token_).value_or("")),
+      user_exists_(user_exists),
+      auth_factor_map_(std::move(auth_factor_map)),
+      enable_create_backup_vk_with_uss_(
+          AreAllFactorsSupportedByBothVkAndUss(auth_factor_map_)),
+      migrate_to_user_secret_stash_(migrate_to_user_secret_stash) {
   // Preconditions.
   DCHECK(!serialized_token_.empty());
   DCHECK(crypto_);
@@ -273,6 +304,10 @@ AuthSession::AuthSession(
   DCHECK(auth_block_utility_);
   DCHECK(auth_factor_manager_);
   DCHECK(user_secret_stash_storage_);
+  // Report session starting metrics.
+  ReportUserSecretStashExperimentState(platform_);
+  auth_factor_map_.ReportAuthFactorBackingStoreMetrics();
+  RecordAuthSessionStart();
 }
 
 AuthSession::~AuthSession() {
@@ -281,48 +316,6 @@ AuthSession::~AuthSession() {
                       auth_session_creation_time_, append_string);
   ReportTimerDuration(kAuthSessionAuthenticatedLifetimeTimer,
                       authenticated_time_, append_string);
-}
-
-CryptohomeStatus AuthSession::Initialize() {
-  auth_session_creation_time_ = base::TimeTicks::Now();
-
-  // Try to determine if a user exists in two ways: they have a persistent
-  // homedir, or they have an active mount. The latter can happen if the user is
-  // ephemeral, in which case there will be no persistent directory but the user
-  // still "exists" so long as they remain active.
-  bool persistent_user_exists =
-      keyset_management_->UserExists(obfuscated_username_);
-  UserSession* user_session = user_session_map_->Find(username_);
-  bool user_is_active = user_session && user_session->IsActive();
-  user_exists_ = persistent_user_exists || user_is_active;
-
-  if (!persistent_user_exists) {
-    auth_factor_map_.ReportAuthFactorBackingStoreMetrics();
-    RecordAuthSessionStart();
-    return OkStatus<CryptohomeCryptoError>();
-  }
-
-  // Report UserSecretStashExperiment status.
-  ReportUserSecretStashExperimentState(platform_);
-
-  if (feature_lib_) {
-    migrate_to_user_secret_stash_ =
-        feature_lib_->IsEnabledBlocking(kCrOSLateBootMigrateToUserSecretStash);
-  }
-
-  // As soon as the user has at least one USS-only factor, backup VKs shouldn't
-  // be created anymore (otherwise some operations, like updating a VK-supported
-  // factor after authenticating via a USS-only factor, would be impossible).
-  enable_create_backup_vk_with_uss_ =
-      AreAllFactorsSupportedByBothVkAndUss(auth_factor_map_);
-  // Populate auth_factor_map_ with factors.
-  auth_factor_map_ = LoadAuthFactorMap(
-      (ShouldMigrateToUss() || migrate_to_user_secret_stash_),
-      obfuscated_username_, *platform_, converter_, *auth_factor_manager_);
-
-  auth_factor_map_.ReportAuthFactorBackingStoreMetrics();
-  RecordAuthSessionStart();
-  return OkStatus<CryptohomeCryptoError>();
 }
 
 void AuthSession::AuthSessionTimedOut() {
