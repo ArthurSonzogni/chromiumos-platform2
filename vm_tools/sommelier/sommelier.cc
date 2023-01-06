@@ -3746,7 +3746,14 @@ int real_main(int argc, char** argv) {
     } else if (strstr(arg, "--windowed-accelerators") == arg) {
       windowed_accelerators = sl_arg_value(arg);
     } else if (strstr(arg, "--vm-identifier") == arg) {
-      ctx.vm_id = sl_arg_value(arg);
+      // Some GuestOS instances of sommelier will be started with a
+      // container_token taken from /dev/.container_token as the vm_id.
+      // The vm_identifier may be empty if the token does not yet exist.
+      // Keep the vm_id as default (termina) if this occurs.
+      const char* vm_id_arg = sl_arg_value(arg);
+      if (strlen(vm_id_arg)) {
+        ctx.vm_id = vm_id_arg;
+      }
     } else if (strstr(arg, "--application-id-x11-property") == arg) {
       // NB: Must be parsed before --application-id.
       ctx.application_id_property_name = sl_arg_value(arg);
