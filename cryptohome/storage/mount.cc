@@ -71,22 +71,6 @@ constexpr bool __attribute__((unused)) MountUserSessionOOP() {
 
 namespace cryptohome {
 
-void StartUserFileAttrsCleanerService(Platform* platform,
-                                      const std::string& username) {
-  std::unique_ptr<brillo::Process> file_attrs =
-      platform->CreateProcessInstance();
-
-  file_attrs->AddArg("/sbin/initctl");
-  file_attrs->AddArg("start");
-  file_attrs->AddArg("--no-wait");
-  file_attrs->AddArg("file_attrs_cleaner_tool");
-  file_attrs->AddArg(
-      base::StringPrintf("OBFUSCATED_USERNAME=%s", username.c_str()));
-
-  if (file_attrs->Run() != 0)
-    PLOG(WARNING) << "Error while running file_attrs_cleaner_tool";
-}
-
 Mount::Mount(Platform* platform,
              HomeDirs* homedirs,
              bool legacy_mount,
@@ -207,9 +191,6 @@ StorageStatus Mount::MountCryptohome(
   std::move(unmount_on_exit).Cancel();
 
   user_cryptohome_vault_->ReportVaultEncryptionType();
-
-  // Start file attribute cleaner service.
-  StartUserFileAttrsCleanerService(platform_, obfuscated_username);
 
   // TODO(fqj,b/116072767) Ignore errors since unlabeled files are currently
   // still okay during current development progress.
