@@ -26,6 +26,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "base/files/file_enumerator.h"
 #include "missive/analytics/metrics.h"
 #include "missive/analytics/metrics_test_util.h"
 #include "missive/compression/compression_module.h"
@@ -747,6 +748,25 @@ class StorageQueueTest
   void SetExpectedUploadsCount(size_t count = 1u) {
     EXPECT_THAT(expected_uploads_count_, Eq(0u));
     expected_uploads_count_ = count;
+  }
+
+  void DeleteGenerationIdFromRecordFilePaths() {
+    // Remove the generation id from the path of non META files in the storage
+    // queue directory
+    std::string file_prefix_regex =
+        base::StrCat({"*", storage_queue_->options().file_prefix(), "*"});
+    base::FileEnumerator dir_enum(
+        storage_queue_->options().directory(),
+        /*recursive=*/false, base::FileEnumerator::FILES, file_prefix_regex);
+    for (auto file_path = dir_enum.Next(); !file_path.empty();
+         file_path = dir_enum.Next()) {
+      const auto file_path_without_generation_id =
+          base::FilePath(base::StrCat({file_path.RemoveFinalExtension()
+                                           .RemoveFinalExtension()
+                                           .MaybeAsASCII(),
+                                       file_path.FinalExtension()}));
+      Move(file_path, file_path_without_generation_id);
+    }
   }
 
   std::string dm_token_;
@@ -2441,6 +2461,27 @@ TEST_P(StorageQueueTest, UploadWithInsufficientMemory) {
     SetExpectedUploadsCount();
     task_environment_.FastForwardBy(base::Seconds(1));
   }
+}
+
+TEST_P(StorageQueueTest, ShouldNotUploadFilesWithoutGenerationIdInFilePath) {
+  CreateTestStorageQueueOrDie(BuildStorageQueueOptionsPeriodic());
+
+  WriteStringOrDie(kData[0]);
+
+  DeleteGenerationIdFromRecordFilePaths();
+
+  ResetTestStorageQueue();
+
+  // Reopening with non-empty queue would normally cause an INIT_RESUME upload
+  // but shouldn't in this case.
+  EXPECT_CALL(set_mock_uploader_expectations_,
+              Call(Eq(UploaderInterface::UploadReason::INIT_RESUME)))
+      .Times(0);
+
+  // Queue will find a file in its directory but shouldn't upload since the file
+  // is missing generation id
+  CreateTestStorageQueueOrDie(BuildStorageQueueOptionsPeriodic());
+  task_environment_.RunUntilIdle();
 }
 
 INSTANTIATE_TEST_SUITE_P(

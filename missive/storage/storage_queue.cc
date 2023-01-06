@@ -313,13 +313,13 @@ std::optional<std::string> StorageQueue::GetLastRecordDigest() const {
 
 Status StorageQueue::SetGenerationId(const base::FilePath& full_name) {
   // Data file should have generation id as an extension too.
-  // For backwards compatibility we allow it to not be included.
   // TODO(b/195786943): Encapsulate file naming assumptions in objects.
   const auto generation_extension =
       full_name.RemoveFinalExtension().FinalExtension();
   if (generation_extension.empty()) {
-    // Backwards compatibility case - extension is absent.
-    return Status::StatusOK();
+    return Status(error::DATA_LOSS,
+                  base::StrCat({"Data file generation id not found in path: '",
+                                full_name.MaybeAsASCII()}));
   }
 
   int64_t file_generation_id = 0;
@@ -327,7 +327,7 @@ Status StorageQueue::SetGenerationId(const base::FilePath& full_name) {
       base::StringToInt64(generation_extension.substr(1), &file_generation_id);
   if (!success || file_generation_id <= 0) {
     return Status(error::DATA_LOSS,
-                  base::StrCat({"Data file generation corrupt: '",
+                  base::StrCat({"Data file generation id corrupt: '",
                                 full_name.MaybeAsASCII()}));
   }
 
@@ -336,7 +336,7 @@ Status StorageQueue::SetGenerationId(const base::FilePath& full_name) {
     // Generation was already set, data file must match.
     if (file_generation_id != generation_id_) {
       return Status(error::DATA_LOSS,
-                    base::StrCat({"Data file generation does not match: '",
+                    base::StrCat({"Data file generation id does not match: '",
                                   full_name.MaybeAsASCII(), "', expected=",
                                   base::NumberToString(generation_id_)}));
     }
