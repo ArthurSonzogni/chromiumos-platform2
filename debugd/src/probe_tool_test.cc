@@ -17,6 +17,9 @@
 
 namespace debugd {
 namespace {
+
+constexpr char kDefaultRunAs[] = "runtime_probe";
+
 class ProbeToolForTesting : public ProbeTool {
  public:
   explicit ProbeToolForTesting(const std::string& minijail_args_json) {
@@ -30,11 +33,17 @@ class ProbeToolForTesting : public ProbeTool {
 
 TEST(ProbeToolTest, GetValidMinijailArguments_Success) {
   auto json_str = R"({
-    "func1": [ "-A", "-B", "-C", "C_arg", "args" ]
+    "func1": {
+      "other_args": ["-A", "-B", "-C", "C_arg", "args"]
+    }
   })";
   ProbeToolForTesting probe_tool(json_str);
   std::vector<std::string> args;
-  EXPECT_TRUE(probe_tool.GetValidMinijailArguments(nullptr, "func1", &args));
+  std::string user, group;
+  EXPECT_TRUE(probe_tool.GetValidMinijailArguments(nullptr, "func1", &user,
+                                                   &group, &args));
+  EXPECT_EQ(user, kDefaultRunAs);
+  EXPECT_EQ(group, kDefaultRunAs);
   EXPECT_EQ(args.size(), 5);
   EXPECT_EQ(args[0], "-A");
   EXPECT_EQ(args[1], "-B");
@@ -45,11 +54,17 @@ TEST(ProbeToolTest, GetValidMinijailArguments_Success) {
 
 TEST(ProbeToolTest, GetValidMinijailArguments_Failure) {
   auto json_str = R"({
-    "func1": [ "-A", "-B", "-C", "C_arg", "args" ]
+    "func1": {
+      "other_args": ["-A", "-B", "-C", "C_arg", "args"]
+    }
   })";
   ProbeToolForTesting probe_tool(json_str);
   std::vector<std::string> args;
-  EXPECT_FALSE(probe_tool.GetValidMinijailArguments(nullptr, "func2", &args));
+  std::string user, group;
+  EXPECT_FALSE(probe_tool.GetValidMinijailArguments(nullptr, "func2", &user,
+                                                    &group, &args));
+  EXPECT_TRUE(user.empty());
+  EXPECT_TRUE(group.empty());
   EXPECT_EQ(args.size(), 0);
 }
 
@@ -60,12 +75,19 @@ TEST(ProbeToolTest, GetValidMinijailArguments_BindDirectoryExists) {
   ASSERT_TRUE(base::CreateDirectory(dir));
   auto json_str = base::StringPrintf(
       R"({
-        "func1": [ "-A", "-b", "%s" ]
+        "func1": {
+          "binds": ["%s"],
+          "other_args": ["-A"]
+        }
       })",
       dir.value().c_str());
   ProbeToolForTesting probe_tool(json_str);
   std::vector<std::string> args;
-  EXPECT_TRUE(probe_tool.GetValidMinijailArguments(nullptr, "func1", &args));
+  std::string user, group;
+  EXPECT_TRUE(probe_tool.GetValidMinijailArguments(nullptr, "func1", &user,
+                                                   &group, &args));
+  EXPECT_EQ(user, kDefaultRunAs);
+  EXPECT_EQ(group, kDefaultRunAs);
   EXPECT_EQ(args.size(), 3);
   EXPECT_EQ(args[0], "-A");
   EXPECT_EQ(args[1], "-b");
@@ -78,12 +100,19 @@ TEST(ProbeToolTest, GetValidMinijailArguments_SkipBindingDirectoryNotExist) {
   auto not_exist_dir = temp_dir.GetPath().Append("not_exist_dir");
   auto json_str = base::StringPrintf(
       R"({
-        "func1": [ "-A", "-b", "%s" ]
+        "func1": {
+          "binds": ["%s"],
+          "other_args": ["-A"]
+        }
       })",
       not_exist_dir.value().c_str());
   ProbeToolForTesting probe_tool(json_str);
   std::vector<std::string> args;
-  EXPECT_TRUE(probe_tool.GetValidMinijailArguments(nullptr, "func1", &args));
+  std::string user, group;
+  EXPECT_TRUE(probe_tool.GetValidMinijailArguments(nullptr, "func1", &user,
+                                                   &group, &args));
+  EXPECT_EQ(user, kDefaultRunAs);
+  EXPECT_EQ(group, kDefaultRunAs);
   EXPECT_EQ(args.size(), 1);
   EXPECT_EQ(args[0], "-A");
 }
@@ -97,12 +126,19 @@ TEST(ProbeToolTest, GetValidMinijailArguments_BindSymbolicLink) {
   ASSERT_TRUE(base::CreateSymbolicLink(dir, symlink_dir));
   auto json_str = base::StringPrintf(
       R"({
-        "func1": [ "-A", "-b", "%s" ]
+        "func1": {
+          "binds": ["%s"],
+          "other_args": ["-A"]
+        }
       })",
       symlink_dir.value().c_str());
   ProbeToolForTesting probe_tool(json_str);
   std::vector<std::string> args;
-  EXPECT_TRUE(probe_tool.GetValidMinijailArguments(nullptr, "func1", &args));
+  std::string user, group;
+  EXPECT_TRUE(probe_tool.GetValidMinijailArguments(nullptr, "func1", &user,
+                                                   &group, &args));
+  EXPECT_EQ(user, kDefaultRunAs);
+  EXPECT_EQ(group, kDefaultRunAs);
   EXPECT_EQ(args.size(), 3);
   EXPECT_EQ(args[0], "-A");
   EXPECT_EQ(args[1], "-b");
@@ -116,12 +152,19 @@ TEST(ProbeToolTest, GetValidMinijailArguments_BindNormalFile) {
   ASSERT_EQ(base::WriteFile(file, "", 0), 0);
   auto json_str = base::StringPrintf(
       R"({
-        "func1": [ "-A", "-b", "%s" ]
+        "func1": {
+          "binds": ["%s"],
+          "other_args": ["-A"]
+        }
       })",
       file.value().c_str());
   ProbeToolForTesting probe_tool(json_str);
   std::vector<std::string> args;
-  EXPECT_TRUE(probe_tool.GetValidMinijailArguments(nullptr, "func1", &args));
+  std::string user, group;
+  EXPECT_TRUE(probe_tool.GetValidMinijailArguments(nullptr, "func1", &user,
+                                                   &group, &args));
+  EXPECT_EQ(user, kDefaultRunAs);
+  EXPECT_EQ(group, kDefaultRunAs);
   EXPECT_EQ(args.size(), 3);
   EXPECT_EQ(args[0], "-A");
   EXPECT_EQ(args[1], "-b");
@@ -136,16 +179,63 @@ TEST(ProbeToolTest, GetValidMinijailArguments_BindWithArguments) {
   // Writeable binding.
   auto json_str = base::StringPrintf(
       R"({
-        "func1": [ "-A", "-b", "%s,,1" ]
+        "func1": {
+          "binds": ["%s,,1"],
+          "other_args": ["-A"]
+        }
       })",
       dir.value().c_str());
   ProbeToolForTesting probe_tool(json_str);
   std::vector<std::string> args;
-  EXPECT_TRUE(probe_tool.GetValidMinijailArguments(nullptr, "func1", &args));
+  std::string user, group;
+  EXPECT_TRUE(probe_tool.GetValidMinijailArguments(nullptr, "func1", &user,
+                                                   &group, &args));
+  EXPECT_EQ(user, kDefaultRunAs);
+  EXPECT_EQ(group, kDefaultRunAs);
   EXPECT_EQ(args.size(), 3);
   EXPECT_EQ(args[0], "-A");
   EXPECT_EQ(args[1], "-b");
   EXPECT_EQ(args[2], base::StringPrintf("%s,,1", dir.value().c_str()));
+}
+
+TEST(ProbeToolTest, GetValidMinijailArguments_SpecifyUser) {
+  auto json_str = R"({
+    "func1": {
+      "user": "abc",
+      "other_args": ["-A", "-B", "args"]
+    }
+  })";
+  ProbeToolForTesting probe_tool(json_str);
+  std::vector<std::string> args;
+  std::string user, group;
+  EXPECT_TRUE(probe_tool.GetValidMinijailArguments(nullptr, "func1", &user,
+                                                   &group, &args));
+  EXPECT_EQ(user, "abc");
+  EXPECT_EQ(group, kDefaultRunAs);
+  EXPECT_EQ(args.size(), 3);
+  EXPECT_EQ(args[0], "-A");
+  EXPECT_EQ(args[1], "-B");
+  EXPECT_EQ(args[2], "args");
+}
+
+TEST(ProbeToolTest, GetValidMinijailArguments_SpecifyGroup) {
+  auto json_str = R"({
+    "func1": {
+      "group": "abc",
+      "other_args": ["-A", "-B", "args"]
+    }
+  })";
+  ProbeToolForTesting probe_tool(json_str);
+  std::vector<std::string> args;
+  std::string user, group;
+  EXPECT_TRUE(probe_tool.GetValidMinijailArguments(nullptr, "func1", &user,
+                                                   &group, &args));
+  EXPECT_EQ(user, kDefaultRunAs);
+  EXPECT_EQ(group, "abc");
+  EXPECT_EQ(args.size(), 3);
+  EXPECT_EQ(args[0], "-A");
+  EXPECT_EQ(args[1], "-B");
+  EXPECT_EQ(args[2], "args");
 }
 
 }  // namespace debugd

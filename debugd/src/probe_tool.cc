@@ -40,8 +40,12 @@ constexpr char kErrorPath[] = "org.chromium.debugd.RunProbeFunctionError";
 constexpr char kSandboxInfoDir[] = "/etc/runtime_probe/sandbox";
 constexpr char kSandboxArgs[] = "/etc/runtime_probe/sandbox/args.json";
 constexpr char kRuntimeProbeBinary[] = "/usr/bin/runtime_probe";
-constexpr char kRunAs[] = "runtime_probe";
+constexpr char kDefaultRunAs[] = "runtime_probe";
 constexpr char kMinijailBindFlag[] = "-b";
+constexpr char kMinijailBindKey[] = "binds";
+constexpr char kMinijailUserKey[] = "user";
+constexpr char kMinijailGroupKey[] = "group";
+constexpr char kMinijailOtherArgsKey[] = "other_args";
 
 bool CreateNonblockingPipe(base::ScopedFD* read_fd, base::ScopedFD* write_fd) {
   int pipe_fd[2];
@@ -82,6 +86,22 @@ bool GetFunctionNameFromProbeStatement(brillo::ErrorPtr* error,
   }
   auto it = probe_statement_dict->DictItems().begin();
   name_out->assign(it->first);
+  return true;
+}
+
+bool CheckArgStringAndAddError(const base::Value& arg,
+                               brillo::ErrorPtr* error) {
+  if (!arg.is_string()) {
+    std::string arg_str;
+    JSONStringValueSerializer serializer(&arg_str);
+    serializer.set_pretty_print(true);
+    serializer.Serialize(arg);
+    DEBUGD_ADD_ERROR_FMT(
+        error, kErrorPath,
+        "Failed to parse Minijail arguments. Expected string but got: %s",
+        arg_str.c_str());
+    return false;
+  }
   return true;
 }
 
@@ -151,14 +171,18 @@ bool ProbeTool::LoadMinijailArguments(brillo::ErrorPtr* error) {
 
 bool ProbeTool::GetValidMinijailArguments(brillo::ErrorPtr* error,
                                           const std::string& function_name,
+                                          std::string* user_out,
+                                          std::string* group_out,
                                           std::vector<std::string>* args_out) {
   args_out->clear();
+  user_out->clear();
+  group_out->clear();
   if (minijail_args_dict_.empty()) {
     if (!LoadMinijailArguments(error)) {
       return false;
     }
   }
-  const auto* minijail_args = minijail_args_dict_.FindList(function_name);
+  const auto* minijail_args = minijail_args_dict_.FindDict(function_name);
   if (!minijail_args) {
     DEBUGD_ADD_ERROR_FMT(error, kErrorPath,
                          "Arguments of \"%s\" is not found in Minijail "
@@ -167,49 +191,64 @@ bool ProbeTool::GetValidMinijailArguments(brillo::ErrorPtr* error,
     return false;
   }
   DVLOG(1) << "Minijail arguments: " << (*minijail_args);
-  std::string prev_arg;
-  bool is_bind_arg = false;
-  for (const auto& arg : *minijail_args) {
-    if (!arg.is_string()) {
-      std::string arg_str;
-      JSONStringValueSerializer serializer(&arg_str);
-      serializer.set_pretty_print(true);
-      serializer.Serialize(arg);
-      DEBUGD_ADD_ERROR_FMT(
-          error, kErrorPath,
-          "Failed to parse Minijail arguments. Expected string but got: %s",
-          arg_str.c_str());
-      args_out->clear();
-      return false;
+
+  // Parse user argument.
+  const auto* user_arg = minijail_args->FindString(kMinijailUserKey);
+  // If the user is not specified, use the default user.
+  *user_out = user_arg ? *user_arg : kDefaultRunAs;
+
+  // Parse group argument.
+  const auto* group_arg = minijail_args->FindString(kMinijailGroupKey);
+  // If the group is not specified, use the default group.
+  *group_out = group_arg ? *group_arg : kDefaultRunAs;
+
+  // Parse other arguments.
+  // Do this before parsing bind-mount arguments because we need some -k
+  // arguments to appear before some -b arguments.
+  const auto* other_args = minijail_args->FindList(kMinijailOtherArgsKey);
+  if (other_args) {
+    for (const auto& arg : *other_args) {
+      if (!CheckArgStringAndAddError(arg, error)) {
+        args_out->clear();
+        user_out->clear();
+        group_out->clear();
+        return false;
+      }
+      const auto& curr_arg = arg.GetString();
+      args_out->push_back(curr_arg);
     }
-    const auto& curr_arg = arg.GetString();
-    if (is_bind_arg) {
+  }
+
+  // Parse bind-mount arguments.
+  const auto* bind_args = minijail_args->FindList(kMinijailBindKey);
+  if (bind_args) {
+    for (const auto& arg : *bind_args) {
+      if (!CheckArgStringAndAddError(arg, error)) {
+        args_out->clear();
+        user_out->clear();
+        group_out->clear();
+        return false;
+      }
+      const auto& curr_arg = arg.GetString();
       // Check existence of bind paths.
-      auto bind_args = base::SplitString(curr_arg, ",", base::TRIM_WHITESPACE,
-                                         base::SPLIT_WANT_ALL);
-      if (bind_args.size() < 1) {
+      auto bind_paths = base::SplitString(curr_arg, ",", base::TRIM_WHITESPACE,
+                                          base::SPLIT_WANT_ALL);
+      if (bind_paths.size() < 1) {
         DEBUGD_ADD_ERROR_FMT(error, kErrorPath,
                              "Failed to parse Minijail bind arguments. Got: %s",
                              curr_arg.c_str());
         args_out->clear();
+        user_out->clear();
+        group_out->clear();
         return false;
       }
-      if (PathOrSymlinkExists(base::FilePath(bind_args[0]))) {
+      if (PathOrSymlinkExists(base::FilePath(bind_paths[0]))) {
         args_out->push_back(kMinijailBindFlag);
-        args_out->push_back(curr_arg);
-      }
-      is_bind_arg = false;
-    } else {
-      if (curr_arg == kMinijailBindFlag) {
-        is_bind_arg = true;
-      } else {
         args_out->push_back(curr_arg);
       }
     }
   }
-  if (!prev_arg.empty()) {
-    args_out->push_back(prev_arg);
-  }
+
   return true;
 }
 
@@ -238,14 +277,16 @@ std::unique_ptr<brillo::Process> ProbeTool::CreateSandboxedProcess(
       "-d"                 // Mount /dev with a minimal set of nodes.
   };
   std::vector<std::string> config_args;
-  if (!GetValidMinijailArguments(error, function_name, &config_args))
+  std::string sandbox_user, sandbox_group;
+  if (!GetValidMinijailArguments(error, function_name, &sandbox_user,
+                                 &sandbox_group, &config_args))
     return nullptr;
 
   parsed_args.insert(std::end(parsed_args),
                      std::make_move_iterator(std::begin(config_args)),
                      std::make_move_iterator(std::end(config_args)));
 
-  sandboxed_process->SandboxAs(kRunAs, kRunAs);
+  sandboxed_process->SandboxAs(sandbox_user, sandbox_group);
   const auto seccomp_path = base::FilePath{kSandboxInfoDir}.Append(
       base::StringPrintf("%s-seccomp.policy", function_name.c_str()));
   if (!base::PathExists(seccomp_path)) {

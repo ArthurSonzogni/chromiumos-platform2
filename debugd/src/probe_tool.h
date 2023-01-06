@@ -36,6 +36,8 @@ class ProbeTool {
 
   bool GetValidMinijailArguments(brillo::ErrorPtr* error,
                                  const std::string& function_name,
+                                 std::string* user_out,
+                                 std::string* group_out,
                                  std::vector<std::string>* args_out);
 
  protected:
