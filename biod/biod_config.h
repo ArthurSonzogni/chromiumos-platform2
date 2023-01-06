@@ -12,14 +12,14 @@
 
 namespace biod {
 
-extern const char kCrosConfigFPPath[];
-extern const char kCrosConfigFPBoard[];
-extern const char kCrosConfigFPLocation[];
+inline constexpr char kCrosConfigFPPath[] = "/fingerprint";
+inline constexpr char kCrosConfigFPBoard[] = "board";
+inline constexpr char kCrosConfigFPLocation[] = "sensor-location";
 
-constexpr char kFpBoardDartmonkey[] = "dartmonkey";
-constexpr char kFpBoardNami[] = "nami_fp";
-constexpr char kFpBoardNocturne[] = "nocturne_fp";
-constexpr char kFpBoardBloonchipper[] = "bloonchipper";
+inline constexpr char kFpBoardDartmonkey[] = "dartmonkey";
+inline constexpr char kFpBoardNami[] = "nami_fp";
+inline constexpr char kFpBoardNocturne[] = "nocturne_fp";
+inline constexpr char kFpBoardBloonchipper[] = "bloonchipper";
 
 /**
  * @brief Deduce if fingerprint is explicitly supported.

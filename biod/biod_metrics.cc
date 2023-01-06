@@ -16,50 +16,6 @@ namespace biod {
 
 namespace metrics {
 
-constexpr char kFpUnlockEnabled[] = "Fingerprint.UnlockEnabled";
-constexpr char kFpEnrolledFingerCount[] =
-    "Fingerprint.Unlock.EnrolledFingerCount";
-constexpr char kFpMatchDurationCapture[] =
-    "Fingerprint.Unlock.Match.Duration.Capture";
-constexpr char kFpMatchDurationMatcher[] =
-    "Fingerprint.Unlock.Match.Duration.Matcher";
-constexpr char kFpMatchDurationOverall[] =
-    "Fingerprint.Unlock.Match.Duration.Overall";
-constexpr char kFpNoMatchDurationCapture[] =
-    "Fingerprint.Unlock.NoMatch.Duration.Capture";
-constexpr char kFpNoMatchDurationMatcher[] =
-    "Fingerprint.Unlock.NoMatch.Duration.Matcher";
-constexpr char kFpNoMatchDurationOverall[] =
-    "Fingerprint.Unlock.NoMatch.Duration.Overall";
-constexpr char kFpMatchIgnoredDueToPowerButtonPress[] =
-    "Fingerprint.Unlock.MatchIgnoredDueToPowerButtonPress";
-constexpr char kResetContextMode[] = "Fingerprint.Reset.ResetContextMode";
-constexpr char kSetContextMode[] = "Fingerprint.SetContext.SetContextMode";
-constexpr char kSetContextSuccess[] = "Fingerprint.SetContext.Success";
-constexpr char kUpdaterStatus[] = "Fingerprint.Updater.Status";
-constexpr char kUpdaterReason[] = "Fingerprint.Updater.Reason";
-constexpr char kUpdaterDurationNoUpdate[] =
-    "Fingerprint.Updater.NoUpdate.Duration.Overall";
-constexpr char kUpdaterDurationUpdate[] =
-    "Fingerprint.Updater.Update.Duration.Overall";
-constexpr char kFpReadPositiveMatchSecretSuccessOnMatch[] =
-    "Fingerprint.Unlock.ReadPositiveMatchSecret.Success";
-constexpr char kFpPositiveMatchSecretCorrect[] =
-    "Fingerprint.Unlock.Match.PositiveMatchSecretCorrect";
-constexpr char kRecordFormatVersionMetric[] =
-    "Fingerprint.Unlock.RecordFormatVersion";
-constexpr char kNumDeadPixels[] = "Fingerprint.Sensor.NumDeadPixels";
-constexpr char kUploadTemplateSuccess[] = "Fingerprint.UploadTemplate.Success";
-constexpr char kPartialAttemptsBeforeSuccess[] =
-    "Fingerprint.Unlock.PartialAttemptsBeforeSuccess";
-constexpr char kFpSensorErrorNoIrq[] = "Fingerprint.SensorError.NoIrq";
-constexpr char kFpSensorErrorSpiCommunication[] =
-    "Fingerprint.SensorError.SpiCommunication";
-constexpr char kFpSensorErrorBadHardwareID[] =
-    "Fingerprint.SensorError.BadHwid";
-constexpr char kFpSensorErrorInitializationFailure[] =
-    "Fingerprint.SensorError.InitializationFailure";
-
 // See
 // https://chromium.googlesource.com/chromium/src.git/+/HEAD/tools/metrics/histograms/README.md#count-histograms_choosing-number-of-buckets
 constexpr int kDefaultNumBuckets = 50;

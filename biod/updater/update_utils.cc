@@ -28,8 +28,6 @@ constexpr char kUpdateDisableFile[] = "/opt/google/biod/fw/.disable_fp_updater";
 namespace biod {
 namespace updater {
 
-constexpr char kFirmwareDir[] = "/opt/google/biod/fw";
-
 std::string UpdaterVersion() {
   static_assert(brillo::kVCSID,
                 "The updater requires VCSID to function properly.");

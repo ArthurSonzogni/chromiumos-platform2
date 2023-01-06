@@ -13,7 +13,7 @@
 namespace biod {
 namespace updater {
 
-extern const char kFirmwareDir[];
+inline constexpr char kFirmwareDir[] = "/opt/google/biod/fw";
 
 std::string UpdaterVersion();
 

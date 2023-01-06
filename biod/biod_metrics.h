@@ -18,24 +18,52 @@ namespace biod {
 
 namespace metrics {
 
-extern const char kFpMatchDurationCapture[];
-extern const char kFpMatchDurationMatcher[];
-extern const char kFpMatchDurationOverall[];
-extern const char kFpNoMatchDurationCapture[];
-extern const char kFpNoMatchDurationMatcher[];
-extern const char kFpNoMatchDurationOverall[];
-extern const char kResetContextMode[];
-extern const char kSetContextMode[];
-extern const char kSetContextSuccess[];
-extern const char kUpdaterStatus[];
-extern const char kUpdaterReason[];
-extern const char kUpdaterDurationNoUpdate[];
-extern const char kUpdaterDurationUpdate[];
-extern const char kNumDeadPixels[];
-extern const char kFpSensorErrorNoIrq[];
-extern const char kFpSensorErrorSpiCommunication[];
-extern const char kFpSensorErrorBadHardwareID[];
-extern const char kFpSensorErrorInitializationFailure[];
+inline constexpr char kFpUnlockEnabled[] = "Fingerprint.UnlockEnabled";
+inline constexpr char kFpEnrolledFingerCount[] =
+    "Fingerprint.Unlock.EnrolledFingerCount";
+inline constexpr char kFpMatchDurationCapture[] =
+    "Fingerprint.Unlock.Match.Duration.Capture";
+inline constexpr char kFpMatchDurationMatcher[] =
+    "Fingerprint.Unlock.Match.Duration.Matcher";
+inline constexpr char kFpMatchDurationOverall[] =
+    "Fingerprint.Unlock.Match.Duration.Overall";
+inline constexpr char kFpNoMatchDurationCapture[] =
+    "Fingerprint.Unlock.NoMatch.Duration.Capture";
+inline constexpr char kFpNoMatchDurationMatcher[] =
+    "Fingerprint.Unlock.NoMatch.Duration.Matcher";
+inline constexpr char kFpNoMatchDurationOverall[] =
+    "Fingerprint.Unlock.NoMatch.Duration.Overall";
+inline constexpr char kFpMatchIgnoredDueToPowerButtonPress[] =
+    "Fingerprint.Unlock.MatchIgnoredDueToPowerButtonPress";
+inline constexpr char kResetContextMode[] =
+    "Fingerprint.Reset.ResetContextMode";
+inline constexpr char kSetContextMode[] =
+    "Fingerprint.SetContext.SetContextMode";
+inline constexpr char kSetContextSuccess[] = "Fingerprint.SetContext.Success";
+inline constexpr char kUpdaterStatus[] = "Fingerprint.Updater.Status";
+inline constexpr char kUpdaterReason[] = "Fingerprint.Updater.Reason";
+inline constexpr char kUpdaterDurationNoUpdate[] =
+    "Fingerprint.Updater.NoUpdate.Duration.Overall";
+inline constexpr char kUpdaterDurationUpdate[] =
+    "Fingerprint.Updater.Update.Duration.Overall";
+inline constexpr char kFpReadPositiveMatchSecretSuccessOnMatch[] =
+    "Fingerprint.Unlock.ReadPositiveMatchSecret.Success";
+inline constexpr char kFpPositiveMatchSecretCorrect[] =
+    "Fingerprint.Unlock.Match.PositiveMatchSecretCorrect";
+inline constexpr char kRecordFormatVersionMetric[] =
+    "Fingerprint.Unlock.RecordFormatVersion";
+inline constexpr char kNumDeadPixels[] = "Fingerprint.Sensor.NumDeadPixels";
+inline constexpr char kUploadTemplateSuccess[] =
+    "Fingerprint.UploadTemplate.Success";
+inline constexpr char kPartialAttemptsBeforeSuccess[] =
+    "Fingerprint.Unlock.PartialAttemptsBeforeSuccess";
+inline constexpr char kFpSensorErrorNoIrq[] = "Fingerprint.SensorError.NoIrq";
+inline constexpr char kFpSensorErrorSpiCommunication[] =
+    "Fingerprint.SensorError.SpiCommunication";
+inline constexpr char kFpSensorErrorBadHardwareID[] =
+    "Fingerprint.SensorError.BadHwid";
+inline constexpr char kFpSensorErrorInitializationFailure[] =
+    "Fingerprint.SensorError.InitializationFailure";
 
 // Special value to send to UMA on EC command related metrics.
 constexpr int kCmdRunFailure = -1;

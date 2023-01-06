@@ -11,10 +11,6 @@
 
 namespace biod {
 
-constexpr char kCrosConfigFPPath[] = "/fingerprint";
-constexpr char kCrosConfigFPBoard[] = "board";
-constexpr char kCrosConfigFPLocation[] = "sensor-location";
-
 // Since /fingerprint/sensor-location is an optional field, the only information
 // that is relevant to the updater is if fingerprint is explicitly supported.
 bool FingerprintSupported(brillo::CrosConfigInterface* cros_config) {
