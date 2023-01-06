@@ -558,6 +558,16 @@ void ClientDeviceConnector::ProcessCaptureResult(
                                              &capture_result);
 }
 
+void ClientDeviceConnector::RequestStreamBuffers(
+    std::vector<cros::mojom::Camera3BufferRequestPtr> buffer_reqs,
+    RequestStreamBuffersCallback callback) {
+  // TODO(b/226688669): Implement ClientDeviceConnector::RequestStreamBuffers.
+}
+void ClientDeviceConnector::ReturnStreamBuffers(
+    std::vector<cros::mojom::Camera3StreamBufferPtr> buffers) {
+  // TODO(b/226688669): Implement ClientDeviceConnector::ReturnStreamBuffers.
+}
+
 int ClientDeviceConnector::DecodeStreamBufferPtr(
     const cros::mojom::Camera3StreamBufferPtr& buffer_ptr,
     camera3_stream_buffer_t* buffer) {

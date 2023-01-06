@@ -63,6 +63,8 @@ class Camera3DeviceOpsDelegate
       mojom::Camera3StreamConfigurationPtr config,
       ConfigureStreamsAndGetAllocatedBuffersCallback callback) override;
 
+  void SignalStreamFlush(const std::vector<uint64_t>& stream_ids) final;
+
   CameraDeviceAdapter* camera_device_adapter_;
 };
 

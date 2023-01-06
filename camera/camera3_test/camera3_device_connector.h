@@ -137,6 +137,11 @@ class ClientDeviceConnector : public DeviceConnector,
   void Notify(cros::mojom::Camera3NotifyMsgPtr message) override;
   void ProcessCaptureResult(
       cros::mojom::Camera3CaptureResultPtr result) override;
+  void RequestStreamBuffers(
+      std::vector<cros::mojom::Camera3BufferRequestPtr> buffer_reqs,
+      RequestStreamBuffersCallback callback) override;
+  void ReturnStreamBuffers(
+      std::vector<cros::mojom::Camera3StreamBufferPtr> buffers) override;
   int DecodeStreamBufferPtr(
       const cros::mojom::Camera3StreamBufferPtr& buffer_ptr,
       camera3_stream_buffer_t* buffer);

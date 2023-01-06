@@ -150,4 +150,9 @@ void Camera3DeviceOpsDelegate::ConfigureStreamsAndGetAllocatedBuffers(
                           std::move(allocated_buffers));
 }
 
+void Camera3DeviceOpsDelegate::SignalStreamFlush(
+    const std::vector<uint64_t>& stream_ids) {
+  // TODO(b/226688669): Implement Camera3DeviceOpsDelegate::SignalStreamFlush.
+}
+
 }  // namespace cros

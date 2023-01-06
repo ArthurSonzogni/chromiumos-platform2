@@ -187,6 +187,17 @@ void CameraClientOps::Notify(mojom::Camera3NotifyMsgPtr msg) {
   SendCaptureResult(status, nullptr);
 }
 
+void CameraClientOps::RequestStreamBuffers(
+    std::vector<mojom::Camera3BufferRequestPtr> buffer_reqs,
+    RequestStreamBuffersCallback callback) {
+  // TODO(b/226688669): Implement CameraClientOps::RequestStreamBuffers.
+}
+
+void CameraClientOps::ReturnStreamBuffers(
+    std::vector<mojom::Camera3StreamBufferPtr> buffers) {
+  // TODO(b/226688669): Implement CameraClientOps::ReturnStreamBuffers.
+}
+
 void CameraClientOps::InitializeDevice() {
   DCHECK(ops_runner_->RunsTasksInCurrentSequence());
 

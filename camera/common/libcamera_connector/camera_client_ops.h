@@ -88,6 +88,18 @@ class CameraClientOps : public mojom::Camera3CallbackOps {
   // shutter messages and error notifications.
   void Notify(mojom::Camera3NotifyMsgPtr msg) override;
 
+  // RequestStreamBuffers is an implementation of RequestStreamBuffers in
+  // Camera3CallbackOps. It receives output buffer requests and a callback to
+  // receive results.
+  void RequestStreamBuffers(
+      std::vector<mojom::Camera3BufferRequestPtr> buffer_reqs,
+      RequestStreamBuffersCallback callback) override;
+
+  // ReturnStreamBuffers is an implementation of ReturnStreamBuffers in
+  // Camera3CallbackOps. It receives returned output buffers.
+  void ReturnStreamBuffers(
+      std::vector<mojom::Camera3StreamBufferPtr> buffers) override;
+
  private:
   void InitializeDevice();
 
