@@ -578,7 +578,8 @@ void ResourceManager::FlushSession(const MessageInfo& command_info) {
   }
   TPM_RC result =
       factory_.GetTpm()->FlushContextSync(session_to_flush, nullptr);
-  if (result != TPM_RC_SUCCESS) {
+  // Ignore it case is the session already been flushed.
+  if (result != TPM_RC_SUCCESS && result != TPM_RC_HANDLE) {
     LOG(WARNING) << "Failed to flush session: " << GetErrorString(result);
     return;
   }
