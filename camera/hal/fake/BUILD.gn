@@ -28,6 +28,7 @@ shared_library("libcamera_hal") {
     "capture_request.cc",
     "fake_stream.cc",
     "frame_buffer/frame_buffer.cc",
+    "frame_buffer/gralloc_frame_buffer.cc",
     "hal_spec.cc",
     "metadata_handler.cc",
     "request_handler.cc",

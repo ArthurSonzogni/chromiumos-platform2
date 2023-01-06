@@ -10,6 +10,7 @@
 #include <base/logging.h>
 #include <libyuv.h>
 
+#include "hal/fake/frame_buffer/gralloc_frame_buffer.h"
 #include "hal/fake/test_pattern.h"
 
 #include "cros-camera/common.h"
@@ -18,7 +19,8 @@ namespace cros {
 
 namespace {
 
-std::unique_ptr<FrameBuffer> GenerateTestPatternColorBarsFadeToGray(Size size) {
+std::unique_ptr<GrallocFrameBuffer> GenerateTestPatternColorBarsFadeToGray(
+    Size size) {
   constexpr uint8_t kColorBar[8][3] = {
       //  R,    G,    B
       {0xFF, 0xFF, 0xFF},  // White
@@ -78,14 +80,15 @@ std::unique_ptr<FrameBuffer> GenerateTestPatternColorBarsFadeToGray(Size size) {
     }
   }
 
-  auto buffer = FrameBuffer::Create(size, HAL_PIXEL_FORMAT_YCbCr_420_888);
+  auto buffer =
+      GrallocFrameBuffer::Create(size, HAL_PIXEL_FORMAT_YCbCr_420_888);
   if (buffer == nullptr) {
     LOGF(WARNING) << "Failed to create buffer for test pattern";
     return nullptr;
   }
 
   auto mapped_buffer = buffer->Map();
-  if (!mapped_buffer.ok()) {
+  if (mapped_buffer == nullptr) {
     LOGF(WARNING) << "Failed to map buffer for test pattern";
     return nullptr;
   }
@@ -108,7 +111,7 @@ std::unique_ptr<FrameBuffer> GenerateTestPatternColorBarsFadeToGray(Size size) {
 
 }  // namespace
 
-std::unique_ptr<FrameBuffer> GenerateTestPattern(
+std::unique_ptr<GrallocFrameBuffer> GenerateTestPattern(
     Size size, camera_metadata_enum_android_sensor_test_pattern_mode mode) {
   switch (mode) {
     case ANDROID_SENSOR_TEST_PATTERN_MODE_COLOR_BARS_FADE_TO_GRAY:

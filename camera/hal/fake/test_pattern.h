@@ -12,11 +12,11 @@
 #include <camera/camera_metadata.h>
 
 #include "cros-camera/common_types.h"
-#include "hal/fake/frame_buffer/frame_buffer.h"
+#include "hal/fake/frame_buffer/gralloc_frame_buffer.h"
 
 namespace cros {
 
-std::unique_ptr<FrameBuffer> GenerateTestPattern(
+std::unique_ptr<GrallocFrameBuffer> GenerateTestPattern(
     Size size, camera_metadata_enum_android_sensor_test_pattern_mode mode);
 
 }  // namespace cros

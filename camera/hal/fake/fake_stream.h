@@ -15,6 +15,7 @@
 #include "cros-camera/common_types.h"
 #include "cros-camera/jpeg_compressor.h"
 #include "hal/fake/frame_buffer/frame_buffer.h"
+#include "hal/fake/frame_buffer/gralloc_frame_buffer.h"
 #include "hal/fake/hal_spec.h"
 
 namespace cros {
@@ -67,7 +68,7 @@ class FakeStream {
 class StaticFakeStream : public FakeStream {
  protected:
   friend class FakeStream;
-  explicit StaticFakeStream(std::unique_ptr<FrameBuffer> buffer);
+  explicit StaticFakeStream(std::unique_ptr<GrallocFrameBuffer> buffer);
 
   [[nodiscard]] bool Initialize(const android::CameraMetadata& static_metadata,
                                 Size size,
@@ -77,7 +78,7 @@ class StaticFakeStream : public FakeStream {
   [[nodiscard]] bool FillBuffer(buffer_handle_t buffer) override;
 
  private:
-  std::unique_ptr<FrameBuffer> buffer_;
+  std::unique_ptr<GrallocFrameBuffer> buffer_;
 };
 }  // namespace cros
 

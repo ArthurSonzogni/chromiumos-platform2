@@ -17,13 +17,14 @@
 #include <linux/videodev2.h>
 
 #include "hal/fake/camera_hal.h"
+#include "hal/fake/frame_buffer/gralloc_frame_buffer.h"
 #include "hal/fake/test_pattern.h"
 
 namespace cros {
 
 namespace {
-std::unique_ptr<FrameBuffer> ReadMJPGFromFile(const base::FilePath& path,
-                                              Size size) {
+std::unique_ptr<GrallocFrameBuffer> ReadMJPGFromFile(const base::FilePath& path,
+                                                     Size size) {
   auto bytes = base::ReadFileToBytes(path);
   if (!bytes.has_value()) {
     LOGF(WARNING) << "Failed to read file: " << path;
@@ -40,15 +41,15 @@ std::unique_ptr<FrameBuffer> ReadMJPGFromFile(const base::FilePath& path,
     return nullptr;
   }
 
-  auto temp_buffer =
-      FrameBuffer::Create(Size(width, height), HAL_PIXEL_FORMAT_YCbCr_420_888);
+  auto temp_buffer = GrallocFrameBuffer::Create(Size(width, height),
+                                                HAL_PIXEL_FORMAT_YCbCr_420_888);
   if (temp_buffer == nullptr) {
     LOGF(WARNING) << "Failed to create temporary buffer";
     return nullptr;
   }
 
   auto mapped_temp_buffer = temp_buffer->Map();
-  if (!mapped_temp_buffer.ok()) {
+  if (mapped_temp_buffer == nullptr) {
     LOGF(WARNING) << "Failed to map temporary buffer";
     return nullptr;
   }
@@ -66,14 +67,15 @@ std::unique_ptr<FrameBuffer> ReadMJPGFromFile(const base::FilePath& path,
     return nullptr;
   }
 
-  auto buffer = FrameBuffer::Create(size, HAL_PIXEL_FORMAT_YCbCr_420_888);
+  auto buffer =
+      GrallocFrameBuffer::Create(size, HAL_PIXEL_FORMAT_YCbCr_420_888);
   if (buffer == nullptr) {
     LOGF(WARNING) << "Failed to create buffer";
     return nullptr;
   }
 
   auto mapped_buffer = buffer->Map();
-  if (!mapped_buffer.ok()) {
+  if (mapped_buffer == nullptr) {
     LOGF(WARNING) << "Failed to map buffer";
     return nullptr;
   }
@@ -162,7 +164,7 @@ bool FakeStream::Initialize(const android::CameraMetadata& static_metadata,
 
 bool FakeStream::CopyBuffer(FrameBuffer& buffer,
                             buffer_handle_t output_buffer) {
-  auto frame_buffer = FrameBuffer::Wrap(output_buffer, size_);
+  auto frame_buffer = GrallocFrameBuffer::Wrap(output_buffer, size_);
   if (!frame_buffer) {
     LOGF(WARNING) << "failed to register the input buffer";
     return false;
@@ -179,16 +181,14 @@ bool FakeStream::CopyBuffer(FrameBuffer& buffer,
   }
 
   auto mapped_buffer = buffer.Map();
-  if (!mapped_buffer.ok()) {
-    LOGF(WARNING) << "failed to map the fake stream buffer: "
-                  << mapped_buffer.status();
+  if (mapped_buffer == nullptr) {
+    LOGF(WARNING) << "failed to map the fake stream buffer";
     return false;
   }
 
   auto mapped_frame_buffer = frame_buffer->Map();
-  if (!mapped_frame_buffer.ok()) {
-    LOGF(WARNING) << "failed to map the input buffer: "
-                  << mapped_frame_buffer.status();
+  if (mapped_frame_buffer == nullptr) {
+    LOGF(WARNING) << "failed to map the input buffer";
     return false;
   }
 
@@ -208,7 +208,7 @@ bool FakeStream::CopyBuffer(FrameBuffer& buffer,
   return true;
 }
 
-StaticFakeStream::StaticFakeStream(std::unique_ptr<FrameBuffer> buffer)
+StaticFakeStream::StaticFakeStream(std::unique_ptr<GrallocFrameBuffer> buffer)
     : buffer_(std::move(buffer)) {}
 
 bool StaticFakeStream::FillBuffer(buffer_handle_t output_buffer) {
@@ -231,7 +231,7 @@ bool StaticFakeStream::Initialize(
   }
 
   if (format == HAL_PIXEL_FORMAT_BLOB) {
-    buffer_ = FrameBuffer::Create(Size(jpeg_max_size_, 1), format);
+    buffer_ = GrallocFrameBuffer::Create(Size(jpeg_max_size_, 1), format);
     if (!buffer_) {
       return false;
     }
@@ -252,8 +252,8 @@ bool StaticFakeStream::Initialize(
     }
 
     auto mapped_buffer = buffer_->Map();
-    if (!mapped_buffer.ok()) {
-      LOGF(WARNING) << "failed to map the buffer: " << mapped_buffer.status();
+    if (mapped_buffer == nullptr) {
+      LOGF(WARNING) << "failed to map the buffer";
       return false;
     }
 
