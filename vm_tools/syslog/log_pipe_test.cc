@@ -77,7 +77,7 @@ class LogPipeTest : public ::testing::Test {
   }
 
   std::string RecvOnDestSocket(int64_t cid) {
-    char buf[kMaxSyslogRecord + 1];
+    char buf[kMaxSyslogRecord + 1] = {0};
     auto ret =
         recv(dest_sockets_[cid].get(), buf, kMaxSyslogRecord, MSG_DONTWAIT);
     return ret > 0 ? std::string(buf) : std::string();
