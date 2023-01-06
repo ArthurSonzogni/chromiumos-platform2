@@ -3,8 +3,8 @@
  * found in the LICENSE file.
  */
 
-#ifndef CAMERA_HAL_FAKE_FRAME_BUFFER_H_
-#define CAMERA_HAL_FAKE_FRAME_BUFFER_H_
+#ifndef CAMERA_HAL_FAKE_FRAME_BUFFER_FRAME_BUFFER_H_
+#define CAMERA_HAL_FAKE_FRAME_BUFFER_FRAME_BUFFER_H_
 
 #include <stdint.h>
 
@@ -24,12 +24,6 @@ namespace cros {
 // sequence.
 class FrameBuffer {
  public:
-  enum {
-    kYPlane = 0,
-    kUPlane = 1,
-    kVPlane = 2,
-  };
-
   // Returns the mapped buffer. The return value should not outlive |this|.
   absl::StatusOr<ScopedMapping> Map();
 
@@ -79,4 +73,4 @@ class FrameBuffer {
 
 }  // namespace cros
 
-#endif  // CAMERA_HAL_FAKE_FRAME_BUFFER_H_
+#endif  // CAMERA_HAL_FAKE_FRAME_BUFFER_FRAME_BUFFER_H_

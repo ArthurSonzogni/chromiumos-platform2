@@ -14,7 +14,7 @@
 #include "cros-camera/camera_buffer_manager.h"
 #include "cros-camera/common_types.h"
 #include "cros-camera/jpeg_compressor.h"
-#include "hal/fake/frame_buffer.h"
+#include "hal/fake/frame_buffer/frame_buffer.h"
 #include "hal/fake/hal_spec.h"
 
 namespace cros {

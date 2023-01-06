@@ -3,7 +3,7 @@
  * found in the LICENSE file.
  */
 
-#include "hal/fake/frame_buffer.h"
+#include "hal/fake/frame_buffer/frame_buffer.h"
 
 #include <sys/mman.h>
 

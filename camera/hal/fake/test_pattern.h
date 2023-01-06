@@ -12,7 +12,7 @@
 #include <camera/camera_metadata.h>
 
 #include "cros-camera/common_types.h"
-#include "hal/fake/frame_buffer.h"
+#include "hal/fake/frame_buffer/frame_buffer.h"
 
 namespace cros {
 
