@@ -831,7 +831,8 @@ TEST_F(CrashSenderUtilTest, ParseCommandLine_ConsentAlreadyCheckedWithDir) {
 }
 
 // After the dry run mode has been implemented, replace the following test with
-// one that tests flags.
+// one that tests flags. When CRASH_SENDER_DRY_RUN_DEV is undefined, this test
+// effectively does nothing.
 TEST_F(CrashSenderUtilDeathTest, ParseCommandLine_DryRun) {
   const char* argv[] = {"crash_sender", "--dry_run"};
   base::CommandLine command_line(std::size(argv), argv);
@@ -839,9 +840,15 @@ TEST_F(CrashSenderUtilDeathTest, ParseCommandLine_DryRun) {
       &command_line);
   CommandLineFlags flags;
 #ifndef CRASH_SENDER_DRY_RUN_DEV
+  // The log looks like the follows:
+  //   dryrun:ERROR crash_reporter_test: [crash_sender_util.cc(174)] Dry run
+  //   mode not implemented yet. This flag is currently reserved for...
+  //
+  // Since the log is also written to stderr, EXPECT_DEATH is sufficient to
+  // match the content of the log.
   EXPECT_DEATH(ParseCommandLine(std::size(argv), argv, &flags),
-               "Dry run mode not implemented yet");
-#endif  // CRASH_SENDER_DRY_RUN_DEV
+               "dryrun:.*Dry run mode not implemented yet");
+#endif  // CRASH_SENDER_DRY_RUN
 }
 
 TEST_F(CrashSenderUtilTest, DoesPauseFileExist) {

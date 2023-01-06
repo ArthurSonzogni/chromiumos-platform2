@@ -36,6 +36,7 @@
 #include <brillo/http/http_transport.h>
 #include <brillo/http/http_utils.h>
 #include <brillo/mime_utils.h>
+#include <brillo/syslog_logging.h>
 #include <brillo/userdb_utils.h>
 #include <brillo/variant_dictionary.h>
 #include <chromeos/dbus/service_constants.h>
@@ -161,24 +162,30 @@ void ParseCommandLine(int argc,
     flags->ignore_pause_file = true;
   }
 
-#ifndef CRASH_SENDER_DRY_RUN_DEV
-  // TODO(b/264307614): Remove the following block once the feature is
-  // implemented.
-  //
-  //   Use of CRASH_SENDER_DRY_RUN_DEV in the codebase should be extremely
-  //   confined to avoid complication. If you are developing the dry run mode
-  //   feature, avoid using this macro and try to use the dry_run flag instead.
   if (flags->dry_run) {
-    LOG(ERROR) << R"msg(
-Dry run mode not implemented yet. This flag is currently reserved for
-development purposes only. To enable the executable with the dry run feature,
-build with
-
-    CXXFLAGS=-DCRASH_SENDER_DRY_RUN_DEV emerge-$BOARD crash-reporter
-)msg";
+    // Set the prefix. In /var/log/messages, this looks like the follows:
+    //
+    // 2023-01-10T01:52:39.729632Z ERR crash_sender[13359]: dryrun:ERROR
+    // crash_sender: [crash_sender_util.cc(174)] Dry run mode not
+    // implemented yet. This flag is currently reserved...
+    logging::SetLogPrefix("dryrun");
+    brillo::SetLogFlags(brillo::GetLogFlags() | brillo::kLogHeader);
+#ifndef CRASH_SENDER_DRY_RUN_DEV
+    // TODO(b/264307614): Remove the following block once the feature is
+    // implemented.
+    //
+    //   Use of CRASH_SENDER_DRY_RUN_DEV in the codebase should be extremely
+    //   confined to avoid complication. If you are developing the dry run mode
+    //   feature, avoid using this macro and try to use the dry_run flag
+    //   instead.
+    LOG(ERROR)
+        << "Dry run mode not implemented yet. This flag is currently reserved "
+           "for development purposes only. To enable the executable with the "
+           "dry run feature, build with `CXXFLAGS=-DCRASH_SENDER_DRY_RUN_DEV "
+           "emerge-$BOARD crash-reporter`";
     exit(EXIT_FAILURE);
-  }
 #endif  // CRASH_SENDER_DRY_RUN_DEV
+  }
 }
 
 bool DoesPauseFileExist() {
