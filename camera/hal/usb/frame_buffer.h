@@ -103,7 +103,7 @@ class SharedFrameBuffer : public FrameBuffer {
   void SetStride();
   // base::UnsafeSharedMemoryRegion, instead of the Writable alternative, is
   // used to allow getting (and duplicating in
-  // JpecDecodeAcceleratorImpl::IPCBridge::Decode) the fd.
+  // JpegDecodeAcceleratorImpl::IPCBridge::Decode) the fd.
   base::UnsafeSharedMemoryRegion shm_region_;
   base::WritableSharedMemoryMapping shm_mapping_;
 };
