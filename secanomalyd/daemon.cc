@@ -54,10 +54,6 @@ constexpr base::TimeDelta kScanInterval = base::Seconds(30);
 // users run the reporting.
 constexpr base::TimeDelta kUmaReportInterval = base::Hours(2);
 
-// Used to cap the number of successful reports for the memfd execution anomaly
-// baseline condition (successful memfd_create syscall).
-constexpr int kMemfdBaselineUmaCap = 10;
-
 }  // namespace
 
 int Daemon::OnInit() {
@@ -217,19 +213,20 @@ void Daemon::DoAuditLogScan() {
   LogRecord log_record;
 
   while (audit_log_reader_->GetNextEntry(&log_record)) {
-    // This detects all successful memfd_create syscalls and reports them to UMA
-    // to be used as the baseline for memfd execution attempts.
-    if (log_record.tag == kSyscallRecordTag &&
+    // This detects a successful memfd_create syscall and reports it to UMA to
+    // be used as the baseline metric for memfd execution attempts. The check
+    // will not be performed again, once the metric is successfully emitted.
+    if (!has_emitted_memfd_baseline_uma_ &&
+        log_record.tag == kSyscallRecordTag &&
         secanomalyd::IsMemfdCreate(log_record.message)) {
-      // Report baseline condition to UMA if not in dev mode and the cap has
-      // not been reached.
-      if (ShouldReport(dev_) &&
-          memfd_baseline_uma_invocations_ < kMemfdBaselineUmaCap) {
+      // Report baseline condition to UMA if not in dev mode.
+      if (ShouldReport(dev_)) {
         if (!SendSecurityAnomalyToUMA(
-                SecurityAnomaly::kSuccessfulMemfdCreateSyscall))
+                SecurityAnomaly::kSuccessfulMemfdCreateSyscall)) {
           LOG(WARNING) << "Could not upload metrics";
-        else
-          memfd_baseline_uma_invocations_++;
+        } else {
+          has_emitted_memfd_baseline_uma_ = true;
+        }
       }
     }
     if (log_record.tag == kAVCRecordTag &&

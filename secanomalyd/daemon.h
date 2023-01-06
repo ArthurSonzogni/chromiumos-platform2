@@ -52,9 +52,9 @@ class Daemon : public brillo::DBusDaemon {
   // during the lifetime of the daemon.
   bool has_attempted_wx_mount_report_ = false;
 
-  // Used to track successful UMA invocations for the memfd baseline metric so
-  // they can be capped.
-  int memfd_baseline_uma_invocations_ = 0;
+  // Used to track whether an UMA metric was emitted for the memfd execution
+  // baseline metric, as we only need one emission of the metric.
+  bool has_emitted_memfd_baseline_uma_ = false;
 
   bool generate_reports_ = false;
   bool dev_ = false;
