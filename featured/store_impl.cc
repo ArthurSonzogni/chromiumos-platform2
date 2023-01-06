@@ -1,6 +1,7 @@
 // Copyright 2022 The ChromiumOS Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
+
 #include "featured/store_impl.h"
 
 #include <memory>
@@ -11,11 +12,11 @@
 #include <base/files/file.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <featured/proto_bindings/featured.pb.h>
 #include <openssl/crypto.h>
 #include <sys/stat.h>
 
 #include "bootlockbox-client/bootlockbox/boot_lockbox_client.h"
-#include "featured/featured.pb.h"
 #include "featured/hmac.h"
 
 namespace featured {

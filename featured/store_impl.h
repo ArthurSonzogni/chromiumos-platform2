@@ -1,6 +1,7 @@
 // Copyright 2022 The ChromiumOS Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
+
 #ifndef FEATURED_STORE_IMPL_H_
 #define FEATURED_STORE_IMPL_H_
 
@@ -10,10 +11,10 @@
 
 #include <base/files/file_path.h>
 #include <brillo/files/safe_fd.h>
+#include <featured/proto_bindings/featured.pb.h>
 
 #include "bootlockbox-client/bootlockbox/boot_lockbox_client.h"
 #include "featured/feature_export.h"
-#include "featured/featured.pb.h"
 #include "featured/hmac.h"
 #include "featured/store_interface.h"
 

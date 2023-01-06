@@ -98,19 +98,10 @@ shared_library("libc_fake_feature_library") {
   deps = [ ":libfake_platform_features" ]
 }
 
-proto_library("featured_proto") {
-  proto_in_dir = "./proto"
-  proto_out_dir = "include/featured"
-  sources = [ "${proto_in_dir}/featured.proto" ]
-}
-
 static_library("libstore_impl") {
   sources = [ "store_impl.cc" ]
   configs += [ ":target_defaults" ]
-  deps = [
-    ":featured_proto",
-    ":hmac",
-  ]
+  deps = [ ":hmac" ]
 }
 
 static_library("hmac") {
@@ -184,7 +175,6 @@ if (use.test) {
       ":target_defaults",
     ]
     deps = [
-      ":featured_proto",
       ":hmac",
       ":libstore_impl",
       "//common-mk/testrunner:testrunner",

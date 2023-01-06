@@ -1,13 +1,14 @@
 // Copyright 2022 The ChromiumOS Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
+
 #ifndef FEATURED_STORE_INTERFACE_H_
 #define FEATURED_STORE_INTERFACE_H_
 
 #include <string>
 #include <vector>
 
-#include "featured/featured.pb.h"
+#include <featured/proto_bindings/featured.pb.h>
 
 namespace featured {
 

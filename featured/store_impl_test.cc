@@ -1,12 +1,14 @@
 // Copyright 2022 The ChromiumOS Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
+
 #include <utility>
 
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <dbus/mock_bus.h>
+#include <featured/proto_bindings/featured.pb.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -15,7 +17,6 @@
 // bootlockbox-client/bootlockbox/dbus-proxies.h because it is used in
 // there.
 #include "bootlockbox/proto_bindings/boot_lockbox_rpc.pb.h"
-#include "featured/featured.pb.h"
 #include "featured/hmac.h"
 #include "featured/store_impl.h"
 
