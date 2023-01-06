@@ -13,7 +13,7 @@
 #include "aura-shell-client-protocol.h"  // NOLINT(build/include_directory)
 #include "xdg-shell-client-protocol.h"   // NOLINT(build/include_directory)
 
-#define APPLICATION_ID_FORMAT_PREFIX "org.chromium.%s"
+#define APPLICATION_ID_FORMAT_PREFIX "org.chromium.guest_os.%s"
 #define XID_APPLICATION_ID_FORMAT APPLICATION_ID_FORMAT_PREFIX ".xid.%d"
 #define WM_CLIENT_LEADER_APPLICATION_ID_FORMAT \
   APPLICATION_ID_FORMAT_PREFIX ".wmclientleader.%d"
@@ -21,7 +21,6 @@
   APPLICATION_ID_FORMAT_PREFIX ".wmclass.%s"
 #define X11_PROPERTY_APPLICATION_ID_FORMAT \
   APPLICATION_ID_FORMAT_PREFIX ".xprop.%s"
-
 sl_window::sl_window(struct sl_context* ctx,
                      xcb_window_t id,
                      int x,

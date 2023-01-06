@@ -12,6 +12,9 @@
 #include "aura-shell-client-protocol.h"  // NOLINT(build/include_directory)
 #include "gtk-shell-server-protocol.h"   // NOLINT(build/include_directory)
 
+#define NATIVE_WAYLAND_APPLICATION_ID_FORMAT \
+  "org.chromium.guest_os.%s.wayland.%s"
+
 struct sl_host_gtk_shell {
   struct sl_aura_shell* aura_shell;
   struct wl_resource* resource;
@@ -40,7 +43,11 @@ static void sl_gtk_surface_set_dbus_properties(
   struct sl_host_gtk_surface* host =
       static_cast<sl_host_gtk_surface*>(wl_resource_get_user_data(resource));
 
-  zaura_surface_set_application_id(host->proxy, application_id);
+  char* application_id_str =
+      sl_xasprintf(NATIVE_WAYLAND_APPLICATION_ID_FORMAT,
+                   host->aura_shell->ctx->vm_id, application_id);
+
+  zaura_surface_set_application_id(host->proxy, application_id_str);
 }  // NOLINT(whitespace/indent)
 
 static void sl_gtk_surface_set_modal(struct wl_client* client,
@@ -89,6 +96,8 @@ static void sl_gtk_shell_get_gtk_surface(struct wl_client* client,
   zaura_surface_set_startup_id(host_gtk_surface->proxy, host->startup_id);
 }
 
+// TODO(b/244651040): when adding changing the startup id format, also add vm_id
+// here.
 static void sl_gtk_shell_set_startup_id(struct wl_client* client,
                                         struct wl_resource* resource,
                                         const char* startup_id) {
