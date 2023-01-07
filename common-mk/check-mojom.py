@@ -71,13 +71,29 @@ def CheckMojoStable(commit):
         if not file.endswith(".mojom"):
             continue
         old_file = rename_map.get(file, file)
-        delta.append(
-            {
-                "filename": file,
-                "old": GetFileContent(last_commit, old_file),
-                "new": GetFileContent(commit, file),
-            }
-        )
+        old_file_content = GetFileContent(last_commit, old_file)
+        new_file_content = GetFileContent(commit, file)
+        if old_file != file:
+            delta += [
+                {
+                    "filename": old_file,
+                    "old": old_file_content,
+                    "new": None,
+                },
+                {
+                    "filename": file,
+                    "old": None,
+                    "new": new_file_content,
+                },
+            ]
+        else:
+            delta.append(
+                {
+                    "filename": file,
+                    "old": old_file_content,
+                    "new": new_file_content,
+                }
+            )
     cmd = [CHECK_STABLE_MOJOM_COMPATIBILITY, "--src-root", TOP_DIR]
     res = cros_build_lib.run(cmd, input=json.dumps(delta), check=False)
     if res.returncode:
