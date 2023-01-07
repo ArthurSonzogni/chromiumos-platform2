@@ -55,12 +55,12 @@ BluetoothEventHub::SubscribeDevicePropertyChanged(
 
 void BluetoothEventHub::OnAdapterAdded(
     org::bluez::Adapter1ProxyInterface* adapter) {
-  adapter_added_observers_.Notify(adapter);
   if (adapter) {
     adapter->SetPropertyChangedCallback(
         base::BindRepeating(&BluetoothEventHub::OnAdapterPropertyChanged,
                             weak_ptr_factory_.GetWeakPtr()));
   }
+  adapter_added_observers_.Notify(adapter);
 }
 
 void BluetoothEventHub::OnAdapterRemoved(const dbus::ObjectPath& adapter_path) {
@@ -75,12 +75,12 @@ void BluetoothEventHub::OnAdapterPropertyChanged(
 
 void BluetoothEventHub::OnDeviceAdded(
     org::bluez::Device1ProxyInterface* device) {
-  device_added_observers_.Notify(device);
   if (device) {
     device->SetPropertyChangedCallback(
         base::BindRepeating(&BluetoothEventHub::OnDevicePropertyChanged,
                             weak_ptr_factory_.GetWeakPtr()));
   }
+  device_added_observers_.Notify(device);
 }
 
 void BluetoothEventHub::OnDeviceRemoved(const dbus::ObjectPath& device_path) {
