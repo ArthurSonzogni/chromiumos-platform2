@@ -31,6 +31,14 @@ const char kErrorUserAuthenticationFailedMM1[] =
     "org.freedesktop.ModemManager1.Error.MobileEquipment."
     "UserAuthenticationFailed";
 
+const char kErrorIpv4OnlyAllowedMM1[] =
+    "org.freedesktop.ModemManager1.Error.MobileEquipment."
+    "Ipv4OnlyAllowed";
+
+const char kErrorIpv6OnlyAllowedMM1[] =
+    "org.freedesktop.ModemManager1.Error.MobileEquipment."
+    "Ipv6OnlyAllowed";
+
 const char kErrorWrongStateMM1[] =
     "org.freedesktop.ModemManager1.Error.Core.WrongState";
 
@@ -71,6 +79,8 @@ INSTANTIATE_TEST_SUITE_P(
         TestParam(kErrorIncorrectPasswordMM1, Error::kIncorrectPin),
         TestParam(kErrorSimPinMM1, Error::kPinRequired),
         TestParam(kErrorSimPukMM1, Error::kPinBlocked),
+        TestParam(kErrorIpv4OnlyAllowedMM1, Error::kInvalidApn),
+        TestParam(kErrorIpv6OnlyAllowedMM1, Error::kInvalidApn),
         TestParam(kErrorNotSubscribedMM1, Error::kInvalidApn),
         TestParam(kErrorMissingOrUnknownApnMM1, Error::kInvalidApn),
         TestParam(kErrorUserAuthenticationFailedMM1, Error::kInvalidApn),

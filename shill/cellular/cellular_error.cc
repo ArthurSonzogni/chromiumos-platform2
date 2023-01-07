@@ -30,6 +30,12 @@ const char kErrorUserAuthenticationFailed[] =
 const char kErrorIncorrectPassword[] =
     MM_MOBILE_EQUIPMENT_ERROR_DBUS_PREFIX ".IncorrectPassword";
 
+const char kErrorIpv4OnlyAllowed[] =
+    MM_MOBILE_EQUIPMENT_ERROR_DBUS_PREFIX ".Ipv4OnlyAllowed";
+
+const char kErrorIpv6OnlyAllowed[] =
+    MM_MOBILE_EQUIPMENT_ERROR_DBUS_PREFIX ".Ipv6OnlyAllowed";
+
 const char kErrorSimPin[] = MM_MOBILE_EQUIPMENT_ERROR_DBUS_PREFIX ".SimPin";
 
 const char kErrorSimPuk[] = MM_MOBILE_EQUIPMENT_ERROR_DBUS_PREFIX ".SimPuk";
@@ -59,11 +65,10 @@ void CellularError::FromMM1ChromeosDBusError(brillo::Error* dbus_error,
     type = Error::kPinRequired;
   else if (name == kErrorSimPuk)
     type = Error::kPinBlocked;
-  else if (name == kErrorMissingOrUnknownApn)
-    type = Error::kInvalidApn;
-  else if (name == kErrorServiceOptionNotSubscribed)
-    type = Error::kInvalidApn;
-  else if (name == kErrorUserAuthenticationFailed)
+  else if (name == kErrorMissingOrUnknownApn ||
+           name == kErrorServiceOptionNotSubscribed ||
+           name == kErrorUserAuthenticationFailed ||
+           name == kErrorIpv4OnlyAllowed || name == kErrorIpv6OnlyAllowed)
     type = Error::kInvalidApn;
   else if (name == kErrorWrongState)
     type = Error::kWrongState;
