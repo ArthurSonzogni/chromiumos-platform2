@@ -18,6 +18,7 @@
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/string_split.h"
 #include "base/strings/string_util.h"
+#include "permission_broker/rule_utils.h"
 #include "permission_broker/udev_scopers.h"
 
 namespace permission_broker {
@@ -158,6 +159,13 @@ Rule::Result DenyClaimedHidrawDeviceRule::ProcessHidrawDevice(
 
   if (usb_interface)
     usb_interface_path = udev_device_get_syspath(usb_interface);
+
+  // Ignore devices which are known to be safe and should work with WebHID.
+  struct udev_device* usb_device =
+      udev_device_get_parent_with_subsystem_devtype(device, "usb",
+                                                    "usb_device");
+  if (usb_device && IsDeviceAllowedWebHID(usb_device))
+    return IGNORE;
 
   // Count the number of children of the same HID parent as us.
   int hid_siblings = 0;

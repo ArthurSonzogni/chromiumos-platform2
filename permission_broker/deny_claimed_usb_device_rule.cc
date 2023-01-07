@@ -13,6 +13,7 @@
 
 #include "base/logging.h"
 #include "base/strings/string_number_conversions.h"
+#include "permission_broker/rule_utils.h"
 #include "permission_broker/udev_scopers.h"
 
 #include <base/check.h>
@@ -66,30 +67,6 @@ bool HasRemovableParent(udev_device* device) {
       return true;
 
     device = udev_device_get_parent(device);
-  }
-  return false;
-}
-
-bool GetUIntSysattr(udev_device* device, const char* key, uint32_t* val) {
-  CHECK(val);
-
-  const char* str_val = udev_device_get_sysattr_value(device, key);
-  return str_val && base::HexStringToUInt(str_val, val);
-}
-
-// Check if a USB vendor:product ID pair is in the provided list.
-// Entries in the list with |product_id| of 0 match any product with the
-// corresponding |vendor_id|.
-template <typename Iterator>
-bool UsbDeviceListContainsId(Iterator first,
-                             Iterator last,
-                             uint16_t vendor_id,
-                             uint16_t product_id) {
-  while (first != last) {
-    if (first->vendor_id == vendor_id &&
-        (!first->product_id || first->product_id == product_id))
-      return true;
-    ++first;
   }
   return false;
 }

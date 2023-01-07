@@ -71,6 +71,7 @@ static_library("libpermission_broker") {
     "port_tracker.cc",
     "rule.cc",
     "rule_engine.cc",
+    "rule_utils.cc",
     "tty_subsystem_udev_rule.cc",
     "udev_scopers.cc",
     "usb_control.cc",
