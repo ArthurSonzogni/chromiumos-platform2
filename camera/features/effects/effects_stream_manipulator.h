@@ -16,9 +16,10 @@
 
 #undef Status
 #include <absl/status/status.h>
-
 #include <base/memory/weak_ptr.h>
 
+#include "base/sequence_checker.h"
+#include "base/threading/thread_checker.h"
 #include "common/camera_buffer_pool.h"
 #include "common/camera_hal3_helpers.h"
 #include "common/metadata_logger.h"
@@ -73,7 +74,7 @@ class EffectsStreamManipulator : public StreamManipulator {
  private:
   void OnOptionsUpdated(const base::Value::Dict& json_values);
 
-  void SetEffect(EffectsConfig* new_config);
+  void SetEffect(EffectsConfig new_config);
   bool SetupGlThread();
   bool EnsureImages(buffer_handle_t buffer_handle);
   bool NV12ToRGBA();
@@ -84,32 +85,40 @@ class EffectsStreamManipulator : public StreamManipulator {
       Camera3CaptureDescriptor& result);
 
   ReloadableConfigFile config_;
-  Options options_;
   RuntimeOptions* runtime_options_;
   StreamManipulator::Callbacks callbacks_;
 
-  EffectsConfig active_runtime_effects_config_ = EffectsConfig();
+  EffectsConfig active_runtime_effects_config_
+      GUARDED_BY_CONTEXT(sequence_checker_) = EffectsConfig();
 
-  std::unique_ptr<EffectsPipeline> pipeline_;
+  std::unique_ptr<EffectsPipeline> pipeline_
+      GUARDED_BY_CONTEXT(sequence_checker_);
 
   // Buffer for input frame converted into RGBA.
-  ScopedBufferHandle input_buffer_rgba_;
+  ScopedBufferHandle input_buffer_rgba_ GUARDED_BY_CONTEXT(gl_thread_checker_);
 
   // SharedImage for |input_buffer_rgba|.
-  SharedImage input_image_rgba_;
+  SharedImage input_image_rgba_ GUARDED_BY_CONTEXT(gl_thread_checker_);
 
-  SharedImage input_image_yuv_;
+  SharedImage input_image_yuv_ GUARDED_BY_CONTEXT(gl_thread_checker_);
   absl::Status frame_status_ = absl::OkStatus();
 
-  std::unique_ptr<EglContext> egl_context_;
-  std::unique_ptr<GpuImageProcessor> image_processor_;
+  std::unique_ptr<EglContext> egl_context_
+      GUARDED_BY_CONTEXT(gl_thread_checker_);
+  std::unique_ptr<GpuImageProcessor> image_processor_
+      GUARDED_BY_CONTEXT(gl_thread_checker_);
 
-  int64_t timestamp_ = 0;
-  int64_t last_timestamp_ = 0;
+  int64_t timestamp_ GUARDED_BY_CONTEXT(sequence_checker_) = 0;
+  int64_t last_timestamp_ GUARDED_BY_CONTEXT(sequence_checker_) = 0;
+
   CameraThread gl_thread_;
+  scoped_refptr<base::SingleThreadTaskRunner> process_thread_;
 
-  bool effects_enabled_ = true;
+  bool effects_enabled_ GUARDED_BY_CONTEXT(sequence_checker_) = true;
   void (*set_effect_callback_)(bool);
+
+  SEQUENCE_CHECKER(sequence_checker_);
+  THREAD_CHECKER(gl_thread_checker_);
 };
 
 }  // namespace cros

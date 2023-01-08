@@ -90,9 +90,10 @@ EffectsStreamManipulator::EffectsStreamManipulator(
       runtime_options_(runtime_options),
       gl_thread_("EffectsGlThread"),
       set_effect_callback_(callback) {
+  DETACH_FROM_SEQUENCE(sequence_checker_);
+  DETACH_FROM_THREAD(gl_thread_checker_);
   if (!config_.IsValid()) {
     LOGF(ERROR) << "Cannot load valid config. Turning off feature by default";
-    options_.enable = false;
   }
 
   CHECK(gl_thread_.Start());
@@ -105,7 +106,6 @@ EffectsStreamManipulator::EffectsStreamManipulator(
       &ret);
   if (!ret) {
     LOGF(ERROR) << "Failed to start GL thread. Turning off feature by default";
-    options_.enable = false;
   }
 
   if (!runtime_options_->GetDlcRootPath().empty()) {
@@ -192,9 +192,16 @@ EffectsStreamManipulator::SelectEffectsBuffer(
 
 bool EffectsStreamManipulator::ProcessCaptureResult(
     Camera3CaptureDescriptor result) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  if (!process_thread_) {
+    process_thread_ = base::ThreadTaskRunnerHandle::Get();
+    config_.SetCallback(base::BindRepeating(
+        &EffectsStreamManipulator::OnOptionsUpdated, base::Unretained(this)));
+  }
   base::ScopedClosureRunner callback_action =
       StreamManipulator::MakeScopedCaptureResultCallbackRunner(
           callbacks_.result_callback, result);
+
   if (runtime_options_->sw_privacy_switch_state() ==
       mojom::CameraPrivacySwitchState::ON) {
     return true;
@@ -209,7 +216,7 @@ bool EffectsStreamManipulator::ProcessCaptureResult(
   auto new_config = runtime_options_->GetEffectsConfig();
   if (active_runtime_effects_config_ != new_config) {
     active_runtime_effects_config_ = new_config;
-    SetEffect(&new_config);
+    SetEffect(new_config);
   }
 
   if (!effects_enabled_) {
@@ -363,20 +370,23 @@ void EffectsStreamManipulator::OnOptionsUpdated(
     }
   }
   LOGF(INFO) << "Effect Updated: " << tmp;
-  SetEffect(&new_config);
+  process_thread_->PostTask(
+      FROM_HERE, base::BindOnce(&EffectsStreamManipulator::SetEffect,
+                                base::Unretained(this), std::move(new_config)));
 }
 
-void EffectsStreamManipulator::SetEffect(EffectsConfig* new_config) {
+void EffectsStreamManipulator::SetEffect(EffectsConfig new_config) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   if (pipeline_) {
-    pipeline_->SetEffect(new_config, set_effect_callback_);
-    effects_enabled_ = new_config->HasEnabledEffects();
+    pipeline_->SetEffect(&new_config, set_effect_callback_);
+    effects_enabled_ = new_config.HasEnabledEffects();
   } else {
     LOGF(WARNING) << "SetEffect called, but pipeline not ready.";
   }
 }
 
 bool EffectsStreamManipulator::SetupGlThread() {
-  DCHECK(gl_thread_.task_runner()->BelongsToCurrentThread());
+  DCHECK_CALLED_ON_VALID_THREAD(gl_thread_checker_);
   if (!egl_context_) {
     egl_context_ = EglContext::GetSurfacelessContext();
     if (!egl_context_->IsValid()) {
@@ -399,7 +409,7 @@ bool EffectsStreamManipulator::SetupGlThread() {
 }
 
 bool EffectsStreamManipulator::EnsureImages(buffer_handle_t buffer_handle) {
-  DCHECK(gl_thread_.task_runner()->BelongsToCurrentThread());
+  DCHECK_CALLED_ON_VALID_THREAD(gl_thread_checker_);
 
   uint32_t target_width = CameraBufferManager::GetWidth(buffer_handle);
   uint32_t target_height = CameraBufferManager::GetHeight(buffer_handle);
@@ -425,7 +435,7 @@ bool EffectsStreamManipulator::EnsureImages(buffer_handle_t buffer_handle) {
 }
 
 bool EffectsStreamManipulator::NV12ToRGBA() {
-  DCHECK(gl_thread_.task_runner()->BelongsToCurrentThread());
+  DCHECK_CALLED_ON_VALID_THREAD(gl_thread_checker_);
 
   bool conv_result = image_processor_->NV12ToRGBA(input_image_yuv_.y_texture(),
                                                   input_image_yuv_.uv_texture(),
@@ -437,7 +447,7 @@ bool EffectsStreamManipulator::NV12ToRGBA() {
 void EffectsStreamManipulator::RGBAToNV12(GLuint texture,
                                           uint32_t width,
                                           uint32_t height) {
-  DCHECK(gl_thread_.task_runner()->BelongsToCurrentThread());
+  DCHECK_CALLED_ON_VALID_THREAD(gl_thread_checker_);
 
   Texture2D texture_2d(texture, kRGBAFormat, width, height);
   bool conv_result = image_processor_->RGBAToNV12(
@@ -458,8 +468,6 @@ void EffectsStreamManipulator::CreatePipeline(
   pipeline_->SetRenderedImageObserver(std::make_unique<RenderedImageObserver>(
       base::BindRepeating(&EffectsStreamManipulator::OnFrameProcessed,
                           base::Unretained(this))));
-  config_.SetCallback(base::BindRepeating(
-      &EffectsStreamManipulator::OnOptionsUpdated, base::Unretained(this)));
 }
 
 }  // namespace cros

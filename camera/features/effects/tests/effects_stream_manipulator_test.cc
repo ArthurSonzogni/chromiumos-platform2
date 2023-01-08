@@ -100,7 +100,7 @@ class EffectsStreamManipulatorTest : public ::testing::Test {
   base::FilePath config_path_;
 
   ScopedBufferHandle output_buffer_;
-  std::vector<camera3_stream_buffer_t> output_buffers_;
+  std::vector<Camera3StreamBuffer> output_buffers_;
 
   void ConfigureStreams(camera3_stream_t* stream);
   void ProcessFileThroughStreamManipulator(base::FilePath infile,
@@ -130,13 +130,6 @@ void EffectsStreamManipulatorTest::ConfigureStreams(camera3_stream_t* stream) {
   // Create output buffer.
   output_buffer_ = CameraBufferManager::AllocateScopedBuffer(
       stream->width, stream->height, stream->format, stream->usage);
-  output_buffers_.push_back(camera3_stream_buffer_t{
-      .stream = stream,
-      .buffer = output_buffer_.get(),
-      .status = CAMERA3_BUFFER_STATUS_OK,
-      .acquire_fence = -1,
-      .release_fence = -1,
-  });
 }
 
 void EffectsStreamManipulatorTest::ProcessFileThroughStreamManipulator(
@@ -146,7 +139,15 @@ void EffectsStreamManipulatorTest::ProcessFileThroughStreamManipulator(
     ReadFileIntoBuffer(*output_buffer_, infile);
     Camera3CaptureDescriptor result(
         camera3_capture_result_t{.frame_number = i});
-    result.SetOutputBuffers(output_buffers_);
+    output_buffers_.emplace_back(
+        Camera3StreamBuffer::MakeRequestOutput(camera3_stream_buffer_t{
+            .stream = &yuv_720_stream,
+            .buffer = output_buffer_.get(),
+            .status = CAMERA3_BUFFER_STATUS_OK,
+            .acquire_fence = -1,
+            .release_fence = -1,
+        }));
+    result.SetOutputBuffers(std::move(output_buffers_));
 
     ASSERT_TRUE(stream_manipulator_->ProcessCaptureResult(std::move(result)));
   }
@@ -232,6 +233,7 @@ TEST_F(EffectsStreamManipulatorTest, OverrideConfigFileToSetBackgroundReplace) {
       StreamManipulator::Callbacks{.result_callback = base::DoNothing(),
                                    .notify_callback = base::DoNothing()});
   ConfigureStreams(&yuv_720_stream);
+  ProcessFileThroughStreamManipulator(kSampleImagePath, base::FilePath(""), 1);
   WaitForEffectSetAndReset();
   ProcessFileThroughStreamManipulator(kSampleImagePath, base::FilePath(""),
                                       kNumFrames);
@@ -255,10 +257,10 @@ TEST_F(EffectsStreamManipulatorTest,
       StreamManipulator::Callbacks{.result_callback = base::DoNothing(),
                                    .notify_callback = base::DoNothing()});
   ConfigureStreams(&yuv_720_stream);
+  ProcessFileThroughStreamManipulator(kSampleImagePath, base::FilePath(""), 1);
   WaitForEffectSetAndReset();
   ProcessFileThroughStreamManipulator(kSampleImagePath, base::FilePath(""),
                                       kNumFrames);
-
   ScopedBufferHandle ref_buffer = CameraBufferManager::AllocateScopedBuffer(
       yuv_720_stream.width, yuv_720_stream.height, yuv_720_stream.format,
       yuv_720_stream.usage);
@@ -375,8 +377,8 @@ TEST_F(EffectsStreamManipulatorTest, RotateThroughEffectsUsingOverrideFile) {
       StreamManipulator::Callbacks{.result_callback = base::DoNothing(),
                                    .notify_callback = base::DoNothing()});
   ConfigureStreams(&yuv_720_stream);
+  ProcessFileThroughStreamManipulator(kSampleImagePath, base::FilePath(""), 1);
   WaitForEffectSetAndReset();
-
   ScopedBufferHandle ref_buffer = CameraBufferManager::AllocateScopedBuffer(
       yuv_720_stream.width, yuv_720_stream.height, yuv_720_stream.format,
       yuv_720_stream.usage);
