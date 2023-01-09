@@ -12,15 +12,19 @@
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/strings/string_util.h>
+#include <featured/fake_platform_features.h>
 #include <gtest/gtest.h>
 
 #include "power_manager/common/fake_prefs.h"
 #include "power_manager/common/power_constants.h"
+#include "power_manager/powerd/system/dbus_wrapper_stub.h"
 #include "power_manager/powerd/testing/test_environment.h"
 
 namespace power_manager::system {
 
 namespace {
+
 // Path to write to configure system suspend mode.
 static constexpr char kSuspendModePath[] = "/sys/power/mem_sleep";
 
@@ -219,14 +223,25 @@ static constexpr char intel_cpuinfo_data[] =
     "address sizes   : 39 bits physical, 48 bits virtual\r\n"
     "power management:\r\n";
 
-// Creates an empty sysfs file rooted in |temp_root_dir|. For example if
-// |temp_root_dir| is "/tmp/xxx" and |sys_path| is "/sys/power/temp", creates
-// "/tmp/xxx/sys/power/temp" with all necessary root directories.
-void CreateSysfsFileInTempRootDir(const base::FilePath& temp_root_dir,
-                                  const std::string& sys_path) {
-  base::FilePath path = temp_root_dir.Append(sys_path.substr(1));
+// Creates an empty file rooted in |temp_root_dir|. For example if
+// |temp_root_dir| is "/tmp/xxx" and |file_path| is "/sys/power/temp",
+// creates "/tmp/xxx/sys/power/temp" with all necessary root directories.
+void CreateFileInTempRootDir(const base::FilePath& temp_root_dir,
+                             const std::string& file_path) {
+  CHECK(!file_path.empty());
+  CHECK(base::StartsWith(file_path, "/"));
+  base::FilePath path = temp_root_dir.Append(file_path.substr(1));
   ASSERT_TRUE(base::CreateDirectory(path.DirName()));
   CHECK_EQ(base::WriteFile(path, "", 0), 0);
+}
+// Deletes a file rooted in |temp_root_dir|.
+void DeleteFileInTempRootDir(const base::FilePath& temp_root_dir,
+                             const std::string& file_path) {
+  CHECK(!file_path.empty());
+  CHECK(base::StartsWith(file_path, "/"));
+  base::FilePath path = temp_root_dir.Append(file_path.substr(1));
+  ASSERT_TRUE(base::DirectoryExists(path.DirName()));
+  CHECK(base::DeleteFile(path));
 }
 }  // namespace
 
@@ -237,11 +252,13 @@ class SuspendConfiguratorTest : public TestEnvironment {
     CHECK(temp_root_dir_.CreateUniqueTempDir());
     base::FilePath temp_root_dir_path = temp_root_dir_.GetPath();
     suspend_configurator_.set_prefix_path_for_testing(temp_root_dir_path);
+    platform_features_ =
+        std::make_unique<feature::FakePlatformFeatures>(dbus_wrapper_.GetBus());
 
-    CreateSysfsFileInTempRootDir(
-        temp_root_dir_path, SuspendConfigurator::kConsoleSuspendPath.value());
-    CreateSysfsFileInTempRootDir(temp_root_dir_path, kSuspendModePath);
-    CreateSysfsFileInTempRootDir(temp_root_dir_path, kCpuInfoPath);
+    CreateFileInTempRootDir(temp_root_dir_path,
+                            SuspendConfigurator::kConsoleSuspendPath.value());
+    CreateFileInTempRootDir(temp_root_dir_path, kSuspendModePath);
+    CreateFileInTempRootDir(temp_root_dir_path, kCpuInfoPath);
   }
 
   ~SuspendConfiguratorTest() override = default;
@@ -264,6 +281,8 @@ class SuspendConfiguratorTest : public TestEnvironment {
   }
 
   base::ScopedTempDir temp_root_dir_;
+  system::DBusWrapperStub dbus_wrapper_;
+  std::unique_ptr<feature::FakePlatformFeatures> platform_features_;
   FakePrefs prefs_;
   SuspendConfigurator suspend_configurator_;
 };
@@ -273,7 +292,7 @@ TEST_F(SuspendConfiguratorTest, TestDefaultConsoleSuspendForS3) {
   base::FilePath console_suspend_path =
       GetPath(SuspendConfigurator::kConsoleSuspendPath);
   prefs_.SetInt64(kSuspendToIdlePref, 0);
-  suspend_configurator_.Init(&prefs_);
+  suspend_configurator_.Init(platform_features_.get(), &prefs_);
   // Make sure console is enabled if system suspends to S3.
   EXPECT_EQ("N", ReadFile(console_suspend_path));
 }
@@ -284,7 +303,7 @@ TEST_F(SuspendConfiguratorTest, TestDefaultConsoleSuspendForIntelS0ix) {
       GetPath(SuspendConfigurator::kConsoleSuspendPath);
   prefs_.SetInt64(kSuspendToIdlePref, 1);
   WriteCpuInfoFile(intel_cpuinfo_data, sizeof(intel_cpuinfo_data));
-  suspend_configurator_.Init(&prefs_);
+  suspend_configurator_.Init(platform_features_.get(), &prefs_);
   // Make sure console is disabled if S0ix is enabled.
   EXPECT_EQ("Y", ReadFile(console_suspend_path));
 }
@@ -295,7 +314,7 @@ TEST_F(SuspendConfiguratorTest, TestDefaultConsoleSuspendForAmdS0ix) {
       GetPath(SuspendConfigurator::kConsoleSuspendPath);
   prefs_.SetInt64(kSuspendToIdlePref, 1);
   WriteCpuInfoFile(amd_cpuinfo_data, sizeof(amd_cpuinfo_data));
-  suspend_configurator_.Init(&prefs_);
+  suspend_configurator_.Init(platform_features_.get(), &prefs_);
   // Make sure console is enabled if S0ix is enabled.
   EXPECT_EQ("N", ReadFile(console_suspend_path));
 }
@@ -307,7 +326,7 @@ TEST_F(SuspendConfiguratorTest, TestDefaultConsoleSuspendOverwritten) {
       GetPath(SuspendConfigurator::kConsoleSuspendPath);
   prefs_.SetInt64(kSuspendToIdlePref, 1);
   prefs_.SetInt64(kEnableConsoleDuringSuspendPref, 1);
-  suspend_configurator_.Init(&prefs_);
+  suspend_configurator_.Init(platform_features_.get(), &prefs_);
   // Make sure console is not disabled though the default is to disable it.
   EXPECT_EQ("N", ReadFile(console_suspend_path));
 }
@@ -320,7 +339,7 @@ TEST_F(SuspendConfiguratorTest, TestSuspendModeIdle) {
   // |kSuspendModePref| is configured to something else.
   prefs_.SetInt64(kSuspendToIdlePref, 1);
   prefs_.SetString(kSuspendModePref, kSuspendModeShallow);
-  suspend_configurator_.Init(&prefs_);
+  suspend_configurator_.Init(platform_features_.get(), &prefs_);
 
   suspend_configurator_.PrepareForSuspend(base::TimeDelta());
   EXPECT_EQ(kSuspendModeFreeze, ReadFile(suspend_mode_path));
@@ -332,7 +351,7 @@ TEST_F(SuspendConfiguratorTest, TestSuspendModeShallow) {
   base::FilePath suspend_mode_path = GetPath(base::FilePath(kSuspendModePath));
   prefs_.SetInt64(kSuspendToIdlePref, 0);
   prefs_.SetString(kSuspendModePref, kSuspendModeShallow);
-  suspend_configurator_.Init(&prefs_);
+  suspend_configurator_.Init(platform_features_.get(), &prefs_);
 
   suspend_configurator_.PrepareForSuspend(base::TimeDelta());
   EXPECT_EQ(kSuspendModeShallow, ReadFile(suspend_mode_path));
@@ -344,7 +363,7 @@ TEST_F(SuspendConfiguratorTest, TestSuspendModeDeep) {
   base::FilePath suspend_mode_path = GetPath(base::FilePath(kSuspendModePath));
   prefs_.SetInt64(kSuspendToIdlePref, 0);
   prefs_.SetString(kSuspendModePref, "Junk");
-  suspend_configurator_.Init(&prefs_);
+  suspend_configurator_.Init(platform_features_.get(), &prefs_);
 
   suspend_configurator_.PrepareForSuspend(base::TimeDelta());
   EXPECT_EQ(kSuspendModeDeep, ReadFile(suspend_mode_path));
@@ -359,8 +378,7 @@ TEST_F(SuspendConfiguratorTest, TestNokECLastResumeResultPath) {
 // Test that UndoPrepareForSuspend() returns success/failure based on value in
 // |kECLastResumeResultPath|.
 TEST_F(SuspendConfiguratorTest, TestkECLastResumeResultPathExist) {
-  CreateSysfsFileInTempRootDir(temp_root_dir_.GetPath(),
-                               kECLastResumeResultPath);
+  CreateFileInTempRootDir(temp_root_dir_.GetPath(), kECLastResumeResultPath);
   // Empty |kECLastResumeResultPath| file should not fail suspend.
   EXPECT_TRUE(suspend_configurator_.UndoPrepareForSuspend());
 
@@ -381,6 +399,25 @@ TEST_F(SuspendConfiguratorTest, TestkECLastResumeResultPathExist) {
                             last_resume_result_string.length()),
             last_resume_result_string.length());
   EXPECT_TRUE(suspend_configurator_.UndoPrepareForSuspend());
+}
+
+TEST_F(SuspendConfiguratorTest, TestIsHibernateAvailable) {
+  suspend_configurator_.Init(platform_features_.get(), &prefs_);
+
+  EXPECT_FALSE(suspend_configurator_.IsHibernateAvailable());
+
+  CreateFileInTempRootDir(temp_root_dir_.GetPath(), kSnapshotDevicePath);
+  EXPECT_FALSE(suspend_configurator_.IsHibernateAvailable());
+
+  DeleteFileInTempRootDir(temp_root_dir_.GetPath(), kSnapshotDevicePath);
+  CreateFileInTempRootDir(temp_root_dir_.GetPath(), kHibermanExecutablePath);
+  EXPECT_FALSE(suspend_configurator_.IsHibernateAvailable());
+
+  CreateFileInTempRootDir(temp_root_dir_.GetPath(), kSnapshotDevicePath);
+  platform_features_->SetEnabled(kSuspendToHibernateFeatureName, true);
+  EXPECT_TRUE(suspend_configurator_.IsHibernateAvailable());
+  platform_features_->SetEnabled(kSuspendToHibernateFeatureName, false);
+  EXPECT_FALSE(suspend_configurator_.IsHibernateAvailable());
 }
 
 }  // namespace power_manager::system

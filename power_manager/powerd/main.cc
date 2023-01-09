@@ -326,6 +326,11 @@ class DaemonDelegateImpl : public DaemonDelegate {
     return machine_quirks;
   }
 
+  std::unique_ptr<feature::PlatformFeaturesInterface> CreatePlatformFeatures(
+      system::DBusWrapperInterface* dbus_wrapper) override {
+    return feature::PlatformFeatures::New(dbus_wrapper->GetBus());
+  }
+
   std::unique_ptr<MetricsSenderInterface> CreateMetricsSender() override {
     auto metrics_lib = std::make_unique<MetricsLibrary>();
     return std::make_unique<MetricsSender>(std::move(metrics_lib));
@@ -359,9 +364,11 @@ class DaemonDelegateImpl : public DaemonDelegate {
   }
 
   std::unique_ptr<system::SuspendConfiguratorInterface>
-  CreateSuspendConfigurator(PrefsInterface* prefs) override {
+  CreateSuspendConfigurator(
+      feature::PlatformFeaturesInterface* platform_features,
+      PrefsInterface* prefs) override {
     auto suspend_configurator = std::make_unique<system::SuspendConfigurator>();
-    suspend_configurator->Init(prefs);
+    suspend_configurator->Init(platform_features, prefs);
     return suspend_configurator;
   }
 

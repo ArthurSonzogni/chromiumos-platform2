@@ -17,6 +17,7 @@
 #include <base/time/time.h>
 #include <base/timer/timer.h>
 #include <dbus/exported_object.h>
+#include <featured/feature_library.h>
 #if USE_IIOSERVICE
 #include <mojo_service_manager/lib/connect.h>
 #endif  // USE_IIOSERVICE
@@ -341,6 +342,7 @@ class Daemon : public policy::AdaptiveChargingControllerInterface::Delegate,
   DaemonDelegate* delegate_;  // owned elsewhere
 
   std::unique_ptr<PrefsInterface> prefs_;
+  std::unique_ptr<feature::PlatformFeaturesInterface> platform_features_;
 
   std::unique_ptr<system::DBusWrapperInterface> dbus_wrapper_;
 

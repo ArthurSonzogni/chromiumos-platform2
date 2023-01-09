@@ -386,10 +386,12 @@ void Daemon::Init() {
   if (factory_mode_)
     LOG(INFO) << "Factory mode enabled; most functionality will be disabled";
 
+  platform_features_ = delegate_->CreatePlatformFeatures(dbus_wrapper_.get());
   metrics_sender_ = delegate_->CreateMetricsSender();
   udev_ = delegate_->CreateUdev();
   input_watcher_ = delegate_->CreateInputWatcher(prefs_.get(), udev_.get());
-  suspend_configurator_ = delegate_->CreateSuspendConfigurator(prefs_.get());
+  suspend_configurator_ = delegate_->CreateSuspendConfigurator(
+      platform_features_.get(), prefs_.get());
   suspend_freezer_ = delegate_->CreateSuspendFreezer(prefs_.get());
   wakeup_source_identifier_ =
       std::make_unique<system::WakeupSourceIdentifier>(udev_.get());

@@ -19,6 +19,7 @@
 
 #include <base/files/file_path.h>
 #include <dbus/bus.h>
+#include <featured/feature_library.h>
 #include <libec/charge_control_set_command.h>
 #include <libec/charge_current_limit_set_command.h>
 #include <libec/ec_usb_endpoint.h>
@@ -191,6 +192,8 @@ class DaemonDelegate {
   virtual std::unique_ptr<system::MachineQuirksInterface> CreateMachineQuirks(
       PrefsInterface* prefs) = 0;
 
+  virtual std::unique_ptr<feature::PlatformFeaturesInterface>
+  CreatePlatformFeatures(system::DBusWrapperInterface* dbus_wrapper) = 0;
   virtual std::unique_ptr<MetricsSenderInterface> CreateMetricsSender() = 0;
 
   virtual std::unique_ptr<system::ChargeControllerHelperInterface>
@@ -210,7 +213,9 @@ class DaemonDelegate {
   CreateAdaptiveChargingProxy(const scoped_refptr<dbus::Bus>& bus) = 0;
 
   virtual std::unique_ptr<system::SuspendConfiguratorInterface>
-  CreateSuspendConfigurator(PrefsInterface* prefs) = 0;
+  CreateSuspendConfigurator(
+      feature::PlatformFeaturesInterface* platform_features,
+      PrefsInterface* prefs) = 0;
 
   virtual std::unique_ptr<system::SuspendFreezerInterface> CreateSuspendFreezer(
       PrefsInterface* prefs) = 0;

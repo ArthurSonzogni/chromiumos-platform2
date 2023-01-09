@@ -20,6 +20,7 @@
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/exported_object.h>
 #include <dbus/message.h>
+#include <featured/fake_platform_features.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <ml-client-test/ml/dbus-proxy-mocks.h>
@@ -86,6 +87,8 @@ class DaemonTest : public TestEnvironment, public DaemonDelegate {
   DaemonTest()
       : passed_prefs_(new FakePrefs()),
         passed_dbus_wrapper_(new system::DBusWrapperStub()),
+        passed_platform_features_(new feature::FakePlatformFeatures(
+            passed_dbus_wrapper_.get()->GetBus())),
         passed_udev_(new system::UdevStub()),
         passed_ambient_light_sensor_manager_(
             new system::AmbientLightSensorManagerStub()),
@@ -130,6 +133,7 @@ class DaemonTest : public TestEnvironment, public DaemonDelegate {
         passed_charge_current_limit_set_command_(
             std::make_unique<MockChargeCurrentLimitSetCommand>()),
         prefs_(passed_prefs_.get()),
+        platform_features_(passed_platform_features_.get()),
         dbus_wrapper_(passed_dbus_wrapper_.get()),
         udev_(passed_udev_.get()),
         ambient_light_sensor_manager_(
@@ -224,6 +228,10 @@ class DaemonTest : public TestEnvironment, public DaemonDelegate {
   // DaemonDelegate:
   std::unique_ptr<PrefsInterface> CreatePrefs() override {
     return std::move(passed_prefs_);
+  }
+  std::unique_ptr<feature::PlatformFeaturesInterface> CreatePlatformFeatures(
+      system::DBusWrapperInterface* dbus_wrapper) override {
+    return std::move(passed_platform_features_);
   }
   std::unique_ptr<system::DBusWrapperInterface> CreateDBusWrapper() override {
     return std::move(passed_dbus_wrapper_);
@@ -463,7 +471,10 @@ class DaemonTest : public TestEnvironment, public DaemonDelegate {
     return std::move(passed_adaptive_charging_proxy_);
   }
   std::unique_ptr<system::SuspendConfiguratorInterface>
-  CreateSuspendConfigurator(PrefsInterface* prefs) override {
+  CreateSuspendConfigurator(
+      feature::PlatformFeaturesInterface* platform_features,
+      PrefsInterface* prefs) override {
+    EXPECT_EQ(platform_features_, platform_features);
     EXPECT_EQ(prefs_, prefs);
     return std::move(passed_suspend_configurator_);
   }
@@ -557,6 +568,7 @@ class DaemonTest : public TestEnvironment, public DaemonDelegate {
   // Stub objects to be transferred by Create* methods.
   std::unique_ptr<FakePrefs> passed_prefs_;
   std::unique_ptr<system::DBusWrapperStub> passed_dbus_wrapper_;
+  std::unique_ptr<feature::PlatformFeaturesInterface> passed_platform_features_;
   std::unique_ptr<system::UdevStub> passed_udev_;
   std::unique_ptr<system::AmbientLightSensorManagerStub>
       passed_ambient_light_sensor_manager_;
@@ -605,6 +617,7 @@ class DaemonTest : public TestEnvironment, public DaemonDelegate {
   // allow continued access by tests even after the corresponding Create*
   // method has been called and ownership has been transferred to |daemon_|.
   FakePrefs* prefs_;
+  feature::PlatformFeaturesInterface* platform_features_;
   system::DBusWrapperStub* dbus_wrapper_;
   system::UdevStub* udev_;
   system::AmbientLightSensorManagerStub* ambient_light_sensor_manager_;

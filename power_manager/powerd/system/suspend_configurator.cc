@@ -20,17 +20,21 @@ namespace power_manager::system {
 
 constexpr char kCpuInfoPath[] = "/proc/cpuinfo";
 
-namespace {
-// Path to write to configure system suspend mode.
-static constexpr char kSuspendModePath[] = "/sys/power/mem_sleep";
+// The feature name for Hibernate gradual rollout and experiments.
+constexpr char kSuspendToHibernateFeatureName[] =
+    "CrOSLateBootSuspendToHibernate";
 
 // Path to read to figure out the hibernation resume device.
 // This file is absent on kernels without hibernation support.
-static constexpr char kSnapshotDevicePath[] = "/dev/snapshot";
+constexpr char kSnapshotDevicePath[] = "/dev/snapshot";
 
 // Path to the hiberman executable responsible for coordinating hibernate/resume
 // activities.
-static constexpr char kHibermanExecutablePath[] = "/usr/sbin/hiberman";
+constexpr char kHibermanExecutablePath[] = "/usr/sbin/hiberman";
+
+namespace {
+// Path to write to configure system suspend mode.
+static constexpr char kSuspendModePath[] = "/sys/power/mem_sleep";
 
 // suspend to idle (S0iX) suspend mode
 static constexpr char kSuspendModeFreeze[] = "s2idle";
@@ -51,12 +55,18 @@ static constexpr char kECLastResumeResultPath[] =
 static constexpr unsigned kECResumeResultHangBit = 1 << 31;
 }  // namespace
 
+const VariationsFeature kSuspendToHibernateFeature{
+    kSuspendToHibernateFeatureName, FEATURE_DISABLED_BY_DEFAULT};
+
 // Static.
 const base::FilePath SuspendConfigurator::kConsoleSuspendPath(
     "/sys/module/printk/parameters/console_suspend");
 
-void SuspendConfigurator::Init(PrefsInterface* prefs) {
+void SuspendConfigurator::Init(
+    feature::PlatformFeaturesInterface* platform_features,
+    PrefsInterface* prefs) {
   DCHECK(prefs);
+  platform_features_ = platform_features;
   prefs_ = prefs;
   ConfigureConsoleForSuspend();
   ReadSuspendMode();
@@ -105,30 +115,24 @@ bool SuspendConfigurator::UndoPrepareForSuspend() {
 }
 
 bool SuspendConfigurator::IsHibernateAvailable() {
-  if (hibernate_availability_known_) {
-    return hibernate_available_;
-  }
-
+  // Check if the hiberman binary is available on the device.
   base::FilePath snapshot_device_path =
       GetPrefixedFilePath(base::FilePath(kSnapshotDevicePath));
-
   base::FilePath hiberman_executable_path =
       GetPrefixedFilePath(base::FilePath(kHibermanExecutablePath));
 
-  // Use the existence of the snapshot device as evidence that the kernel
-  // is capable of doing suspend to disk.
   if (base::PathExists(snapshot_device_path) &&
       base::PathExists(hiberman_executable_path)) {
-    LOG(INFO) << "Hibernate is available";
-    hibernate_available_ = true;
-
+    LOG(INFO) << "Hibernate binary is available";
   } else {
-    LOG(INFO) << "Hibernate is not available on this machine";
-    hibernate_available_ = false;
+    LOG(INFO) << "Hibernate binary is not available on this machine";
+    return false;
   }
 
-  hibernate_availability_known_ = true;
-  return hibernate_available_;
+  // TODO(jakubm): Include a check for Intel Keylocker.
+
+  // Check if the feature is enabled.
+  return platform_features_->IsEnabledBlocking(kSuspendToHibernateFeature);
 }
 
 void SuspendConfigurator::ConfigureConsoleForSuspend() {

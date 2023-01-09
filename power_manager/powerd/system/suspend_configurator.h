@@ -8,9 +8,12 @@
 #include <memory>
 #include <string>
 
+#include "power_manager/powerd/system/dbus_wrapper.h"
+
 #include <base/files/file_path.h>
 #include <base/time/time.h>
 #include <brillo/timers/alarm_timer.h>
+#include <featured/feature_library.h>
 
 namespace power_manager {
 
@@ -18,7 +21,12 @@ class PrefsInterface;
 
 namespace system {
 
+class DBusWrapperInterface;
+
 extern const char kCpuInfoPath[];
+extern const char kSuspendToHibernateFeatureName[];
+extern const char kSnapshotDevicePath[];
+extern const char kHibermanExecutablePath[];
 
 // Interface to configure suspend-related kernel parameters on startup or
 // before suspend as needed.
@@ -52,7 +60,8 @@ class SuspendConfigurator : public SuspendConfiguratorInterface {
 
   ~SuspendConfigurator() override = default;
 
-  void Init(PrefsInterface* prefs);
+  void Init(feature::PlatformFeaturesInterface* platform_features,
+            PrefsInterface* prefs);
 
   // SuspendConfiguratorInterface implementation.
   void PrepareForSuspend(const base::TimeDelta& suspend_duration) override;
@@ -86,7 +95,10 @@ class SuspendConfigurator : public SuspendConfiguratorInterface {
   // given file path.
   base::FilePath GetPrefixedFilePath(const base::FilePath& file_path) const;
 
-  PrefsInterface* prefs_ = nullptr;  // weak
+  // Used for communicating with featured.
+  feature::PlatformFeaturesInterface* platform_features_ = nullptr;  // unowned
+  PrefsInterface* prefs_ = nullptr;                                  // unowned
+
   // Prefixing all paths for testing with a temp directory. Empty (no
   // prefix) by default.
   base::FilePath prefix_path_for_testing_;
@@ -99,11 +111,6 @@ class SuspendConfigurator : public SuspendConfiguratorInterface {
   // Mode for suspend. One of Suspend-to-idle, Power-on-suspend, or
   // Suspend-to-RAM.
   std::string suspend_mode_;
-
-  // Whether hibernate support has already been checked, and what the
-  // result of the check was.
-  bool hibernate_availability_known_ = false;
-  bool hibernate_available_;
 };
 
 }  // namespace system

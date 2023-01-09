@@ -97,6 +97,7 @@ pkg_config("target_defaults") {
     "libbrillo",
     "libchrome",
     "libcros_config",
+    "libfeatures",
     "libshill-client",
     "libshill-dbus-client",
     "libec",
@@ -439,6 +440,7 @@ if (use.fuzzer || use.test) {
       "common/test_main_loop_runner.cc",
     ]
     configs += [ ":target_defaults" ]
+    libs = [ "fake_platform_features" ]
   }
 }
 
@@ -455,6 +457,7 @@ if (use.test) {
       ":target_defaults",
       ":libchrome_test_config",
     ]
+    libs = [ "fake_platform_features" ]
     deps = [
       ":libutil",
       ":libutil_test",
@@ -650,6 +653,7 @@ if (use.fuzzer) {
       ":fuzzer_config",
       ":target_defaults",
     ]
+    libs = [ "fake_platform_features" ]
     deps = [
       ":libpowerd",
       ":libsystem_stub",
