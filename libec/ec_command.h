@@ -24,7 +24,7 @@
 namespace ec {
 
 // Character device exposing the EC command interface.
-constexpr char kCrosEcPath[] = "/dev/cros_ec";
+inline constexpr char kCrosEcPath[] = "/dev/cros_ec";
 
 enum class EcCmdVersionSupportStatus {
   UNKNOWN = 0,
@@ -47,7 +47,7 @@ enum class EcCmdVersionSupportStatus {
 // See
 // https://source.chromium.org/chromiumos/_/chromium/chromiumos/platform/ec/+/f3ffccd7d0fe4d0ce60434310795a7bfdaa5274c:chip/stm32/spi.c;l=82;drc=dede4e01ae4c877bb05d671087a6e85a29a0f902
 // https://source.chromium.org/chromiumos/_/chromium/chromiumos/platform/ec/+/f3ffccd7d0fe4d0ce60434310795a7bfdaa5274c:chip/npcx/shi.c;l=118;drc=2a5ce905c11807a19035f7a072489df04be4db97
-constexpr static int kMaxPacketSize = 544;
+inline constexpr static int kMaxPacketSize = 544;
 
 // Empty request or response for the EcCommand template below.
 struct EmptyParam {};
@@ -57,10 +57,10 @@ constexpr size_t realsizeof() {
   return std::is_empty<T>::value ? 0 : sizeof(T);
 }
 
-constexpr uint32_t kVersionZero = 0;
-constexpr uint32_t kVersionOne = 1;
+inline constexpr uint32_t kVersionZero = 0;
+inline constexpr uint32_t kVersionOne = 1;
 
-static constexpr auto kEcCommandUninitializedResult =
+inline constexpr auto kEcCommandUninitializedResult =
     std::numeric_limits<uint32_t>::max();
 
 class EcCommandInterface {

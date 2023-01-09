@@ -11,7 +11,7 @@
 
 namespace ec {
 
-static constexpr int kMaxDeadPixels = FP_ERROR_DEAD_PIXELS_UNKNOWN - 1;
+inline constexpr int kMaxDeadPixels = FP_ERROR_DEAD_PIXELS_UNKNOWN - 1;
 static_assert(kMaxDeadPixels > 0,
               "Max number of dead pixels must be greater than zero");
 
