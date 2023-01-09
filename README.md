@@ -142,7 +142,6 @@ copies.
 | [run_oci](./run_oci/) | Minimalistic container runtime |
 | [runtime_probe](./runtime_probe/) | Runtime probe tool for ChromeOS |
 | [screen-capture-utils](./screen-capture-utils/) | Utilities for screen capturing (screenshot) |
-| [sealed_storage](./sealed_storage/) | Library for sealing data to device identity and state |
 | [secagentd](./secagentd/) | Daemon for detecting and reporting security related events |
 | [secanomalyd](./secanomalyd/) | Daemon for detecting and reporting security anomalies |
 | [secure-wipe](./secure-wipe/) | Secure disk wipe |
