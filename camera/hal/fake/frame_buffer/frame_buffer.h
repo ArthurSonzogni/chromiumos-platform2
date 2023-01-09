@@ -50,7 +50,8 @@ class FrameBuffer {
  protected:
   FrameBuffer();
 
-  // Frame resolution.
+  // Resolution of the frame.
+  // If |fourcc_| is V4L2_PIX_FMT_JPEG, then this will be (jpeg_size x 1).
   Size size_;
 
   // This is V4L2_PIX_FMT_* in linux/videodev2.h.
