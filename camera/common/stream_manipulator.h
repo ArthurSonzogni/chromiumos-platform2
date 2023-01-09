@@ -15,6 +15,7 @@
 #include <vector>
 
 #include <base/files/file_path.h>
+#include <base/functional/callback_helpers.h>
 #include <base/synchronization/lock.h>
 #include <base/thread_annotations.h>
 
@@ -97,6 +98,11 @@ class CROS_CAMERA_EXPORT StreamManipulator {
     CaptureResultCallback result_callback;
     NofifyCallback notify_callback;
   };
+
+  // Helper for creating a scoped closure that automatically calls
+  // |result_callback| with |result| when destructed.
+  static base::ScopedClosureRunner MakeScopedCaptureResultCallbackRunner(
+      CaptureResultCallback& result_callback, Camera3CaptureDescriptor& result);
 
   // A one-time initialization hook called by CameraHalAdapter for updating the
   // vendor tag information from stream manipulators.

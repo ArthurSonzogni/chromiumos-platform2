@@ -24,6 +24,7 @@
 #include <base/functional/callback_helpers.h>
 
 #include "common/camera_hal3_helpers.h"
+#include "common/stream_manipulator.h"
 #include "cros-camera/camera_buffer_manager.h"
 #include "cros-camera/camera_metadata_utils.h"
 #include "gpu/egl/egl_fence.h"
@@ -181,12 +182,9 @@ camera3_stream_buffer_t* EffectsStreamManipulator::SelectEffectsBuffer(
 
 bool EffectsStreamManipulator::ProcessCaptureResult(
     Camera3CaptureDescriptor result) {
-  base::ScopedClosureRunner callback_action(base::BindOnce(
-      [](Camera3CaptureDescriptor& result,
-         CaptureResultCallback& result_callback) {
-        result_callback.Run(std::move(result));
-      },
-      std::ref(result), std::ref(callbacks_.result_callback)));
+  base::ScopedClosureRunner callback_action =
+      StreamManipulator::MakeScopedCaptureResultCallbackRunner(
+          callbacks_.result_callback, result);
   if (runtime_options_->sw_privacy_switch_state() ==
       mojom::CameraPrivacySwitchState::ON) {
     return true;

@@ -158,4 +158,14 @@ scoped_refptr<base::SingleThreadTaskRunner> StreamManipulator::GetTaskRunner() {
   return nullptr;
 }
 
+// static
+base::ScopedClosureRunner
+StreamManipulator::MakeScopedCaptureResultCallbackRunner(
+    CaptureResultCallback& result_callback, Camera3CaptureDescriptor& result) {
+  return base::ScopedClosureRunner(base::BindOnce(
+      [](StreamManipulator::CaptureResultCallback& cb,
+         Camera3CaptureDescriptor& result) { cb.Run(std::move(result)); },
+      std::ref(result_callback), std::ref(result)));
+}
+
 }  // namespace cros

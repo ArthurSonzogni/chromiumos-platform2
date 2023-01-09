@@ -179,8 +179,11 @@ bool FrameAnnotatorStreamManipulator::ProcessCaptureRequest(
 
 bool FrameAnnotatorStreamManipulator::ProcessCaptureResult(
     Camera3CaptureDescriptor result) {
+  base::ScopedClosureRunner result_callback_task =
+      StreamManipulator::MakeScopedCaptureResultCallbackRunner(
+          callbacks_.result_callback, result);
+
   if (frame_annotators_.empty()) {
-    callbacks_.result_callback.Run(std::move(result));
     return true;
   }
 
@@ -191,7 +194,6 @@ bool FrameAnnotatorStreamManipulator::ProcessCaptureResult(
           &FrameAnnotatorStreamManipulator::ProcessCaptureResultOnGpuThread,
           base::Unretained(this), &result),
       &ret);
-  callbacks_.result_callback.Run(std::move(result));
   return ret;
 }
 

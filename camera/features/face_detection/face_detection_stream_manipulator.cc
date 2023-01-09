@@ -155,8 +155,11 @@ bool FaceDetectionStreamManipulator::ProcessCaptureResult(
     Camera3CaptureDescriptor result) {
   TRACE_FACE_DETECTION("frame_number", result.frame_number());
 
+  base::ScopedClosureRunner result_callback_task =
+      StreamManipulator::MakeScopedCaptureResultCallbackRunner(
+          callbacks_.result_callback, result);
+
   if (!options_.enable) {
-    callbacks_.result_callback.Run(std::move(result));
     return true;
   }
 
@@ -167,7 +170,6 @@ bool FaceDetectionStreamManipulator::ProcessCaptureResult(
     if (buffer) {
       if (!WaitOnAndClearReleaseFence(*buffer, kSyncWaitTimeoutMs)) {
         LOGF(ERROR) << "Timed out waiting for detection buffer";
-        callbacks_.result_callback.Run(std::move(result));
         return false;
       }
       face_detector_->DetectAsync(
@@ -217,7 +219,6 @@ bool FaceDetectionStreamManipulator::ProcessCaptureResult(
   SetResultAeMetadata(&result);
   RestoreClientRequestSettings(&result);
 
-  callbacks_.result_callback.Run(std::move(result));
   return true;
 }
 

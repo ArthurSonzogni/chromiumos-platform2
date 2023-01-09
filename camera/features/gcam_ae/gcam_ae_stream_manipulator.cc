@@ -147,6 +147,10 @@ bool GcamAeStreamManipulator::ProcessCaptureResult(
     Camera3CaptureDescriptor result) {
   TRACE_GCAM_AE();
 
+  base::ScopedClosureRunner result_callback_task =
+      StreamManipulator::MakeScopedCaptureResultCallbackRunner(
+          callbacks_.result_callback, result);
+
   if (VLOG_IS_ON(2)) {
     VLOGFID(2, result.frame_number()) << "Got result:";
     for (const auto& hal_result_buffer : result.GetOutputBuffers()) {
@@ -166,7 +170,6 @@ bool GcamAeStreamManipulator::ProcessCaptureResult(
       ae_controller_->GetCalculatedHdrRatio(result.frame_number());
 
   if (result.num_output_buffers() == 0) {
-    callbacks_.result_callback.Run(std::move(result));
     return true;
   }
 
@@ -177,7 +180,6 @@ bool GcamAeStreamManipulator::ProcessCaptureResult(
     }
   }
 
-  callbacks_.result_callback.Run(std::move(result));
   return true;
 }
 
