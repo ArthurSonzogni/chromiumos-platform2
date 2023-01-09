@@ -25,6 +25,7 @@ source_set("libcros_healthd_utils") {
     "fwupd_utils.cc",
     "memory_info.cc",
     "metrics_utils.cc",
+    "mojo_utils.cc",
     "procfs_utils.cc",
     "resource_queue.cc",
     "usb_utils.cc",
