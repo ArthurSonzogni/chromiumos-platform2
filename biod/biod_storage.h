@@ -26,8 +26,8 @@
 namespace biod {
 
 // Version of the record format.
-constexpr int kRecordFormatVersion = 2;
-constexpr int kRecordFormatVersionNoValidationValue = 1;
+inline constexpr int kRecordFormatVersion = 2;
+inline constexpr int kRecordFormatVersionNoValidationValue = 1;
 
 class BiodStorageInterface {
  public:

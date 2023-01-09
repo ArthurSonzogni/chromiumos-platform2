@@ -68,7 +68,7 @@ inline constexpr char kFpSensorErrorInitializationFailure[] =
     "Fingerprint.SensorError.InitializationFailure";
 
 // Special value to send to UMA on EC command related metrics.
-constexpr int kCmdRunFailure = -1;
+inline constexpr int kCmdRunFailure = -1;
 
 }  // namespace metrics
 

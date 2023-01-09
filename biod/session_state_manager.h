@@ -14,11 +14,12 @@
 namespace biod {
 
 namespace dbus_constants {
-const int kDbusTimeoutMs = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT;
-const char kSessionStateStarted[] = "started";
-constexpr char kSessionStateStopped[] = "stopped";
-constexpr char kDBusErrorNoReply[] = "org.freedesktop.DBus.Error.NoReply";
-constexpr char kDBusErrorServiceUnknown[] =
+inline constexpr int kDbusTimeoutMs = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT;
+inline constexpr char kSessionStateStarted[] = "started";
+inline constexpr char kSessionStateStopped[] = "stopped";
+inline constexpr char kDBusErrorNoReply[] =
+    "org.freedesktop.DBus.Error.NoReply";
+inline constexpr char kDBusErrorServiceUnknown[] =
     "org.freedesktop.DBus.Error.ServiceUnknown";
 }  // namespace dbus_constants
 
