@@ -23,6 +23,22 @@ namespace {
 namespace mojo_ipc = ::ash::cros_healthd::mojom;
 namespace network_diagnostics_ipc = ::chromeos::network_diagnostics::mojom;
 
+std::string GetProblemMessage(network_diagnostics_ipc::ArcHttpProblem problem) {
+  switch (problem) {
+    case network_diagnostics_ipc::ArcHttpProblem::kFailedToGetArcServiceManager:
+      return kArcHttpRoutineFailedToGetArcServiceManagerMessage;
+    case network_diagnostics_ipc::ArcHttpProblem::
+        kFailedToGetNetInstanceForHttpTest:
+      return kArcHttpRoutineFailedToGetNetInstanceForHttpTestMessage;
+    case network_diagnostics_ipc::ArcHttpProblem::kFailedHttpRequests:
+      return kArcHttpRoutineFailedHttpsRequestsProblemMessage;
+    case network_diagnostics_ipc::ArcHttpProblem::kHighLatency:
+      return kArcHttpRoutineHighLatencyProblemMessage;
+    case network_diagnostics_ipc::ArcHttpProblem::kVeryHighLatency:
+      return kArcHttpRoutineVeryHighLatencyProblemMessage;
+  }
+}
+
 // Parses the results of the ARC HTTP routine.
 void ParseArcHttpResult(mojo_ipc::DiagnosticRoutineStatusEnum* status,
                         std::string* status_message,
@@ -43,26 +59,7 @@ void ParseArcHttpResult(mojo_ipc::DiagnosticRoutineStatusEnum* status,
       *status = mojo_ipc::DiagnosticRoutineStatusEnum::kFailed;
       auto problems = result->problems->get_arc_http_problems();
       DCHECK(!problems.empty());
-      switch (problems[0]) {
-        case network_diagnostics_ipc::ArcHttpProblem::
-            kFailedToGetArcServiceManager:
-          *status_message = kArcHttpRoutineFailedToGetArcServiceManagerMessage;
-          break;
-        case network_diagnostics_ipc::ArcHttpProblem::
-            kFailedToGetNetInstanceForHttpTest:
-          *status_message =
-              kArcHttpRoutineFailedToGetNetInstanceForHttpTestMessage;
-          break;
-        case network_diagnostics_ipc::ArcHttpProblem::kFailedHttpRequests:
-          *status_message = kArcHttpRoutineFailedHttpsRequestsProblemMessage;
-          break;
-        case network_diagnostics_ipc::ArcHttpProblem::kHighLatency:
-          *status_message = kArcHttpRoutineHighLatencyProblemMessage;
-          break;
-        case network_diagnostics_ipc::ArcHttpProblem::kVeryHighLatency:
-          *status_message = kArcHttpRoutineVeryHighLatencyProblemMessage;
-          break;
-      }
+      *status_message = GetProblemMessage(problems[0]);
       break;
   }
 }

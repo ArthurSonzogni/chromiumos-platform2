@@ -23,6 +23,32 @@ namespace {
 namespace mojo_ipc = ::ash::cros_healthd::mojom;
 namespace network_diagnostics_ipc = ::chromeos::network_diagnostics::mojom;
 
+std::string GetProblemMessage(network_diagnostics_ipc::ArcPingProblem problem) {
+  switch (problem) {
+    case network_diagnostics_ipc::ArcPingProblem::kFailedToGetArcServiceManager:
+      return kArcPingRoutineFailedToGetArcServiceManagerMessage;
+    case network_diagnostics_ipc::ArcPingProblem::
+        kFailedToGetNetInstanceForPingTest:
+      return kArcPingRoutineFailedToGetNetInstanceForPingTestMessage;
+    case network_diagnostics_ipc::ArcPingProblem::
+        kGetManagedPropertiesTimeoutFailure:
+      return kArcPingRoutineGetManagedPropertiesTimeoutFailureMessage;
+    case network_diagnostics_ipc::ArcPingProblem::kUnreachableGateway:
+      return kArcPingRoutineUnreachableGatewayMessage;
+    case network_diagnostics_ipc::ArcPingProblem::kFailedToPingDefaultNetwork:
+      return kArcPingRoutineFailedToPingDefaultNetworkMessage;
+    case network_diagnostics_ipc::ArcPingProblem::
+        kDefaultNetworkAboveLatencyThreshold:
+      return kArcPingRoutineDefaultNetworkAboveLatencyThresholdMessage;
+    case network_diagnostics_ipc::ArcPingProblem::
+        kUnsuccessfulNonDefaultNetworksPings:
+      return kArcPingRoutineUnsuccessfulNonDefaultNetworksPingsMessage;
+    case network_diagnostics_ipc::ArcPingProblem::
+        kNonDefaultNetworksAboveLatencyThreshold:
+      return kArcPingRoutineNonDefaultNetworksAboveLatencyThresholdMessage;
+  }
+}
+
 // Parses the results of ARC ping routine.
 void ParseArcPingResult(mojo_ipc::DiagnosticRoutineStatusEnum* status,
                         std::string* status_message,
@@ -43,44 +69,7 @@ void ParseArcPingResult(mojo_ipc::DiagnosticRoutineStatusEnum* status,
       *status = mojo_ipc::DiagnosticRoutineStatusEnum::kFailed;
       auto problems = result->problems->get_arc_ping_problems();
       DCHECK(!problems.empty());
-      switch (problems[0]) {
-        case network_diagnostics_ipc::ArcPingProblem::
-            kFailedToGetArcServiceManager:
-          *status_message = kArcPingRoutineFailedToGetArcServiceManagerMessage;
-          break;
-        case network_diagnostics_ipc::ArcPingProblem::
-            kFailedToGetNetInstanceForPingTest:
-          *status_message =
-              kArcPingRoutineFailedToGetNetInstanceForPingTestMessage;
-          break;
-        case network_diagnostics_ipc::ArcPingProblem::
-            kGetManagedPropertiesTimeoutFailure:
-          *status_message =
-              kArcPingRoutineGetManagedPropertiesTimeoutFailureMessage;
-          break;
-        case network_diagnostics_ipc::ArcPingProblem::kUnreachableGateway:
-          *status_message = kArcPingRoutineUnreachableGatewayMessage;
-          break;
-        case network_diagnostics_ipc::ArcPingProblem::
-            kFailedToPingDefaultNetwork:
-          *status_message = kArcPingRoutineFailedToPingDefaultNetworkMessage;
-          break;
-        case network_diagnostics_ipc::ArcPingProblem::
-            kDefaultNetworkAboveLatencyThreshold:
-          *status_message =
-              kArcPingRoutineDefaultNetworkAboveLatencyThresholdMessage;
-          break;
-        case network_diagnostics_ipc::ArcPingProblem::
-            kUnsuccessfulNonDefaultNetworksPings:
-          *status_message =
-              kArcPingRoutineUnsuccessfulNonDefaultNetworksPingsMessage;
-          break;
-        case network_diagnostics_ipc::ArcPingProblem::
-            kNonDefaultNetworksAboveLatencyThreshold:
-          *status_message =
-              kArcPingRoutineNonDefaultNetworksAboveLatencyThresholdMessage;
-          break;
-      }
+      *status_message = GetProblemMessage(problems[0]);
       break;
   }
 }

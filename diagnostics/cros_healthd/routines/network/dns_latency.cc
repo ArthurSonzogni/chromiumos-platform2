@@ -23,6 +23,19 @@ namespace {
 namespace mojo_ipc = ::ash::cros_healthd::mojom;
 namespace network_diagnostics_ipc = ::chromeos::network_diagnostics::mojom;
 
+std::string GetProblemMessage(
+    network_diagnostics_ipc::DnsLatencyProblem problem) {
+  switch (problem) {
+    case network_diagnostics_ipc::DnsLatencyProblem::kHostResolutionFailure:
+      return kDnsLatencyRoutineHostResolutionFailureProblemMessage;
+    case network_diagnostics_ipc::DnsLatencyProblem::kSlightlyAboveThreshold:
+      return kDnsLatencyRoutineSlightlyAboveThresholdProblemMessage;
+    case network_diagnostics_ipc::DnsLatencyProblem::
+        kSignificantlyAboveThreshold:
+      return kDnsLatencyRoutineSignificantlyAboveThresholdProblemMessage;
+  }
+}
+
 // Parses the results of the DNS latency routine.
 void ParseDnsLatencyResult(mojo_ipc::DiagnosticRoutineStatusEnum* status,
                            std::string* status_message,
@@ -43,22 +56,7 @@ void ParseDnsLatencyResult(mojo_ipc::DiagnosticRoutineStatusEnum* status,
       *status = mojo_ipc::DiagnosticRoutineStatusEnum::kFailed;
       auto problems = result->problems->get_dns_latency_problems();
       DCHECK(!problems.empty());
-      switch (problems[0]) {
-        case network_diagnostics_ipc::DnsLatencyProblem::kHostResolutionFailure:
-          *status_message =
-              kDnsLatencyRoutineHostResolutionFailureProblemMessage;
-          break;
-        case network_diagnostics_ipc::DnsLatencyProblem::
-            kSlightlyAboveThreshold:
-          *status_message =
-              kDnsLatencyRoutineSlightlyAboveThresholdProblemMessage;
-          break;
-        case network_diagnostics_ipc::DnsLatencyProblem::
-            kSignificantlyAboveThreshold:
-          *status_message =
-              kDnsLatencyRoutineSignificantlyAboveThresholdProblemMessage;
-          break;
-      }
+      *status_message = GetProblemMessage(problems[0]);
       break;
   }
 }

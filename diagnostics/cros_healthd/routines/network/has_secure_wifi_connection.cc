@@ -23,6 +23,24 @@ namespace {
 namespace mojo_ipc = ::ash::cros_healthd::mojom;
 namespace network_diagnostics_ipc = ::chromeos::network_diagnostics::mojom;
 
+std::string GetProblemMessage(
+    network_diagnostics_ipc::HasSecureWiFiConnectionProblem problem) {
+  switch (problem) {
+    case network_diagnostics_ipc::HasSecureWiFiConnectionProblem::
+        kSecurityTypeNone:
+      return kHasSecureWiFiConnectionRoutineSecurityTypeNoneProblemMessage;
+    case network_diagnostics_ipc::HasSecureWiFiConnectionProblem::
+        kSecurityTypeWep8021x:
+      return kHasSecureWiFiConnectionRoutineSecurityTypeWep8021xProblemMessage;
+    case network_diagnostics_ipc::HasSecureWiFiConnectionProblem::
+        kSecurityTypeWepPsk:
+      return kHasSecureWiFiConnectionRoutineSecurityTypeWepPskProblemMessage;
+    case network_diagnostics_ipc::HasSecureWiFiConnectionProblem::
+        kUnknownSecurityType:
+      return kHasSecureWiFiConnectionRoutineUnknownSecurityTypeProblemMessage;
+  }
+}
+
 // Parses the results of the has secure WiFi connection routine.
 void ParseHasSecureWiFiConnectionResult(
     mojo_ipc::DiagnosticRoutineStatusEnum* status,
@@ -45,28 +63,7 @@ void ParseHasSecureWiFiConnectionResult(
       auto problems =
           result->problems->get_has_secure_wifi_connection_problems();
       DCHECK(!problems.empty());
-      switch (problems[0]) {
-        case network_diagnostics_ipc::HasSecureWiFiConnectionProblem::
-            kSecurityTypeNone:
-          *status_message =
-              kHasSecureWiFiConnectionRoutineSecurityTypeNoneProblemMessage;
-          break;
-        case network_diagnostics_ipc::HasSecureWiFiConnectionProblem::
-            kSecurityTypeWep8021x:
-          *status_message =
-              kHasSecureWiFiConnectionRoutineSecurityTypeWep8021xProblemMessage;
-          break;
-        case network_diagnostics_ipc::HasSecureWiFiConnectionProblem::
-            kSecurityTypeWepPsk:
-          *status_message =
-              kHasSecureWiFiConnectionRoutineSecurityTypeWepPskProblemMessage;
-          break;
-        case network_diagnostics_ipc::HasSecureWiFiConnectionProblem::
-            kUnknownSecurityType:
-          *status_message =
-              kHasSecureWiFiConnectionRoutineUnknownSecurityTypeProblemMessage;
-          break;
-      }
+      *status_message = GetProblemMessage(problems[0]);
       break;
   }
 }

@@ -23,6 +23,14 @@ namespace {
 namespace mojo_ipc = ::ash::cros_healthd::mojom;
 namespace network_diagnostics_ipc = ::chromeos::network_diagnostics::mojom;
 
+std::string GetProblemMessage(
+    network_diagnostics_ipc::DnsResolutionProblem problem) {
+  switch (problem) {
+    case network_diagnostics_ipc::DnsResolutionProblem::kFailedToResolveHost:
+      return kDnsResolutionRoutineFailedToResolveHostProblemMessage;
+  }
+}
+
 // Parses the results of the DNS resolution routine.
 void ParseDnsResolutionResult(
     mojo_ipc::DiagnosticRoutineStatusEnum* status,
@@ -44,13 +52,7 @@ void ParseDnsResolutionResult(
       *status = mojo_ipc::DiagnosticRoutineStatusEnum::kFailed;
       auto problems = result->problems->get_dns_resolution_problems();
       DCHECK(!problems.empty());
-      switch (problems[0]) {
-        case network_diagnostics_ipc::DnsResolutionProblem::
-            kFailedToResolveHost:
-          *status_message =
-              kDnsResolutionRoutineFailedToResolveHostProblemMessage;
-          break;
-      }
+      *status_message = GetProblemMessage(problems[0]);
       break;
   }
 }

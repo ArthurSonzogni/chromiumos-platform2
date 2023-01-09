@@ -23,6 +23,24 @@ namespace {
 namespace mojo_ipc = ::ash::cros_healthd::mojom;
 namespace network_diagnostics_ipc = ::chromeos::network_diagnostics::mojom;
 
+std::string GetProblemMessage(
+    network_diagnostics_ipc::ArcDnsResolutionProblem problem) {
+  switch (problem) {
+    case network_diagnostics_ipc::ArcDnsResolutionProblem::
+        kFailedToGetArcServiceManager:
+      return kArcDnsResolutionRoutineFailedToGetArcServiceManagerMessage;
+    case network_diagnostics_ipc::ArcDnsResolutionProblem::
+        kFailedToGetNetInstanceForDnsResolutionTest:
+      return kArcDnsResolutionRoutineFailedToGetNetInstanceMessage;
+    case network_diagnostics_ipc::ArcDnsResolutionProblem::kHighLatency:
+      return kArcDnsResolutionRoutineHighLatencyMessage;
+    case network_diagnostics_ipc::ArcDnsResolutionProblem::kVeryHighLatency:
+      return kArcDnsResolutionRoutineVeryHighLatencyMessage;
+    case network_diagnostics_ipc::ArcDnsResolutionProblem::kFailedDnsQueries:
+      return kArcDnsResolutionRoutineFailedDnsQueriesMessage;
+  }
+}
+
 // Parses the results of the ARC DNS resolution routine.
 void ParseArcDnsResolutionResult(
     mojo_ipc::DiagnosticRoutineStatusEnum* status,
@@ -44,28 +62,7 @@ void ParseArcDnsResolutionResult(
       *status = mojo_ipc::DiagnosticRoutineStatusEnum::kFailed;
       auto problems = result->problems->get_arc_dns_resolution_problems();
       DCHECK(!problems.empty());
-      switch (problems[0]) {
-        case network_diagnostics_ipc::ArcDnsResolutionProblem::
-            kFailedToGetArcServiceManager:
-          *status_message =
-              kArcDnsResolutionRoutineFailedToGetArcServiceManagerMessage;
-          break;
-        case network_diagnostics_ipc::ArcDnsResolutionProblem::
-            kFailedToGetNetInstanceForDnsResolutionTest:
-          *status_message =
-              kArcDnsResolutionRoutineFailedToGetNetInstanceMessage;
-          break;
-        case network_diagnostics_ipc::ArcDnsResolutionProblem::kHighLatency:
-          *status_message = kArcDnsResolutionRoutineHighLatencyMessage;
-          break;
-        case network_diagnostics_ipc::ArcDnsResolutionProblem::kVeryHighLatency:
-          *status_message = kArcDnsResolutionRoutineVeryHighLatencyMessage;
-          break;
-        case network_diagnostics_ipc::ArcDnsResolutionProblem::
-            kFailedDnsQueries:
-          *status_message = kArcDnsResolutionRoutineFailedDnsQueriesMessage;
-          break;
-      }
+      *status_message = GetProblemMessage(problems[0]);
       break;
   }
 }

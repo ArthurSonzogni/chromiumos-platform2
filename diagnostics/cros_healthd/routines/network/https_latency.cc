@@ -23,6 +23,20 @@ namespace {
 namespace mojo_ipc = ::ash::cros_healthd::mojom;
 namespace network_diagnostics_ipc = ::chromeos::network_diagnostics::mojom;
 
+std::string GetProblemMessage(
+    network_diagnostics_ipc::HttpsLatencyProblem problem) {
+  switch (problem) {
+    case network_diagnostics_ipc::HttpsLatencyProblem::kFailedDnsResolutions:
+      return kHttpsLatencyRoutineFailedDnsResolutionsProblemMessage;
+    case network_diagnostics_ipc::HttpsLatencyProblem::kFailedHttpsRequests:
+      return kHttpsLatencyRoutineFailedHttpsRequestsProblemMessage;
+    case network_diagnostics_ipc::HttpsLatencyProblem::kHighLatency:
+      return kHttpsLatencyRoutineHighLatencyProblemMessage;
+    case network_diagnostics_ipc::HttpsLatencyProblem::kVeryHighLatency:
+      return kHttpsLatencyRoutineVeryHighLatencyProblemMessage;
+  }
+}
+
 // Parses the results of the HTTPS latency routine.
 void ParseHttpsLatencyResult(mojo_ipc::DiagnosticRoutineStatusEnum* status,
                              std::string* status_message,
@@ -43,23 +57,7 @@ void ParseHttpsLatencyResult(mojo_ipc::DiagnosticRoutineStatusEnum* status,
       *status = mojo_ipc::DiagnosticRoutineStatusEnum::kFailed;
       auto problems = result->problems->get_https_latency_problems();
       DCHECK(!problems.empty());
-      switch (problems[0]) {
-        case network_diagnostics_ipc::HttpsLatencyProblem::
-            kFailedDnsResolutions:
-          *status_message =
-              kHttpsLatencyRoutineFailedDnsResolutionsProblemMessage;
-          break;
-        case network_diagnostics_ipc::HttpsLatencyProblem::kFailedHttpsRequests:
-          *status_message =
-              kHttpsLatencyRoutineFailedHttpsRequestsProblemMessage;
-          break;
-        case network_diagnostics_ipc::HttpsLatencyProblem::kHighLatency:
-          *status_message = kHttpsLatencyRoutineHighLatencyProblemMessage;
-          break;
-        case network_diagnostics_ipc::HttpsLatencyProblem::kVeryHighLatency:
-          *status_message = kHttpsLatencyRoutineVeryHighLatencyProblemMessage;
-          break;
-      }
+      *status_message = GetProblemMessage(problems[0]);
       break;
   }
 }

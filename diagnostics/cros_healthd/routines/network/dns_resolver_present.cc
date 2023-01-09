@@ -23,6 +23,22 @@ namespace {
 namespace mojo_ipc = ::ash::cros_healthd::mojom;
 namespace network_diagnostics_ipc = ::chromeos::network_diagnostics::mojom;
 
+std::string GetProblemMessage(
+    network_diagnostics_ipc::DnsResolverPresentProblem problem) {
+  switch (problem) {
+    case network_diagnostics_ipc::DnsResolverPresentProblem::
+        kNoNameServersFound:
+      return kDnsResolverPresentRoutineNoNameServersFoundProblemMessage;
+    case network_diagnostics_ipc::DnsResolverPresentProblem::
+        kMalformedNameServers:
+      return kDnsResolverPresentRoutineMalformedNameServersProblemMessage;
+    // DEPRECATED: Using kNoNamesServersFound response instead
+    case network_diagnostics_ipc::DnsResolverPresentProblem::
+        DEPRECATED_kEmptyNameServers:
+      return kDnsResolverPresentRoutineNoNameServersFoundProblemMessage;
+  }
+}
+
 // Parses the results of the DNS resolver present routine.
 void ParseDnsResolverPresentResult(
     mojo_ipc::DiagnosticRoutineStatusEnum* status,
@@ -44,24 +60,7 @@ void ParseDnsResolverPresentResult(
       *status = mojo_ipc::DiagnosticRoutineStatusEnum::kFailed;
       auto problems = result->problems->get_dns_resolver_present_problems();
       DCHECK(!problems.empty());
-      switch (problems[0]) {
-        case network_diagnostics_ipc::DnsResolverPresentProblem::
-            kNoNameServersFound:
-          *status_message =
-              kDnsResolverPresentRoutineNoNameServersFoundProblemMessage;
-          break;
-        case network_diagnostics_ipc::DnsResolverPresentProblem::
-            kMalformedNameServers:
-          *status_message =
-              kDnsResolverPresentRoutineMalformedNameServersProblemMessage;
-          break;
-        // DEPRECATED: Using kNoNamesServersFound response instead
-        case network_diagnostics_ipc::DnsResolverPresentProblem::
-            DEPRECATED_kEmptyNameServers:
-          *status_message =
-              kDnsResolverPresentRoutineNoNameServersFoundProblemMessage;
-          break;
-      }
+      *status_message = GetProblemMessage(problems[0]);
       break;
   }
 }

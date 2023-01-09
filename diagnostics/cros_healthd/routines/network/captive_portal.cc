@@ -23,6 +23,24 @@ namespace {
 namespace mojo_ipc = ::ash::cros_healthd::mojom;
 namespace network_diagnostics_ipc = ::chromeos::network_diagnostics::mojom;
 
+std::string GetProblemMessage(
+    network_diagnostics_ipc::CaptivePortalProblem problem) {
+  switch (problem) {
+    case network_diagnostics_ipc::CaptivePortalProblem::kNoActiveNetworks:
+      return kPortalRoutineNoActiveNetworksProblemMessage;
+    case network_diagnostics_ipc::CaptivePortalProblem::kUnknownPortalState:
+      return kPortalRoutineUnknownPortalStateProblemMessage;
+    case network_diagnostics_ipc::CaptivePortalProblem::kPortalSuspected:
+      return kPortalRoutinePortalSuspectedProblemMessage;
+    case network_diagnostics_ipc::CaptivePortalProblem::kPortal:
+      return kPortalRoutinePortalProblemMessage;
+    case network_diagnostics_ipc::CaptivePortalProblem::kProxyAuthRequired:
+      return kPortalRoutineProxyAuthRequiredProblemMessage;
+    case network_diagnostics_ipc::CaptivePortalProblem::kNoInternet:
+      return kPortalRoutineNoInternetProblemMessage;
+  }
+}
+
 // Parses the results of the captive portal routine.
 void ParseCaptivePortalResult(
     mojo_ipc::DiagnosticRoutineStatusEnum* status,
@@ -44,26 +62,7 @@ void ParseCaptivePortalResult(
       *status = mojo_ipc::DiagnosticRoutineStatusEnum::kFailed;
       auto problems = result->problems->get_captive_portal_problems();
       DCHECK(!problems.empty());
-      switch (problems[0]) {
-        case network_diagnostics_ipc::CaptivePortalProblem::kNoActiveNetworks:
-          *status_message = kPortalRoutineNoActiveNetworksProblemMessage;
-          break;
-        case network_diagnostics_ipc::CaptivePortalProblem::kUnknownPortalState:
-          *status_message = kPortalRoutineUnknownPortalStateProblemMessage;
-          break;
-        case network_diagnostics_ipc::CaptivePortalProblem::kPortalSuspected:
-          *status_message = kPortalRoutinePortalSuspectedProblemMessage;
-          break;
-        case network_diagnostics_ipc::CaptivePortalProblem::kPortal:
-          *status_message = kPortalRoutinePortalProblemMessage;
-          break;
-        case network_diagnostics_ipc::CaptivePortalProblem::kProxyAuthRequired:
-          *status_message = kPortalRoutineProxyAuthRequiredProblemMessage;
-          break;
-        case network_diagnostics_ipc::CaptivePortalProblem::kNoInternet:
-          *status_message = kPortalRoutineNoInternetProblemMessage;
-          break;
-      }
+      *status_message = GetProblemMessage(problems[0]);
       break;
   }
 }

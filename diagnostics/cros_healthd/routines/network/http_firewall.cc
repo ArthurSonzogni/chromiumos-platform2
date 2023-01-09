@@ -23,6 +23,19 @@ namespace {
 namespace mojo_ipc = ::ash::cros_healthd::mojom;
 namespace network_diagnostics_ipc = ::chromeos::network_diagnostics::mojom;
 
+std::string GetProblemMessage(
+    network_diagnostics_ipc::HttpFirewallProblem problem) {
+  switch (problem) {
+    case network_diagnostics_ipc::HttpFirewallProblem::
+        kDnsResolutionFailuresAboveThreshold:
+      return kHttpFirewallRoutineHighDnsResolutionFailureRateProblemMessage;
+    case network_diagnostics_ipc::HttpFirewallProblem::kFirewallDetected:
+      return kHttpFirewallRoutineFirewallDetectedProblemMessage;
+    case network_diagnostics_ipc::HttpFirewallProblem::kPotentialFirewall:
+      return kHttpFirewallRoutinePotentialFirewallProblemMessage;
+  }
+}
+
 // Parses the results of the HTTP firewall routine.
 void ParseHttpFirewallResult(mojo_ipc::DiagnosticRoutineStatusEnum* status,
                              std::string* status_message,
@@ -43,19 +56,7 @@ void ParseHttpFirewallResult(mojo_ipc::DiagnosticRoutineStatusEnum* status,
       *status = mojo_ipc::DiagnosticRoutineStatusEnum::kFailed;
       auto problems = result->problems->get_http_firewall_problems();
       DCHECK(!problems.empty());
-      switch (problems[0]) {
-        case network_diagnostics_ipc::HttpFirewallProblem::
-            kDnsResolutionFailuresAboveThreshold:
-          *status_message =
-              kHttpFirewallRoutineHighDnsResolutionFailureRateProblemMessage;
-          break;
-        case network_diagnostics_ipc::HttpFirewallProblem::kFirewallDetected:
-          *status_message = kHttpFirewallRoutineFirewallDetectedProblemMessage;
-          break;
-        case network_diagnostics_ipc::HttpFirewallProblem::kPotentialFirewall:
-          *status_message = kHttpFirewallRoutinePotentialFirewallProblemMessage;
-          break;
-      }
+      *status_message = GetProblemMessage(problems[0]);
       break;
   }
 }

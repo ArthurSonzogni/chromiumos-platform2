@@ -23,6 +23,14 @@ namespace {
 namespace mojo_ipc = ::ash::cros_healthd::mojom;
 namespace network_diagnostics_ipc = ::chromeos::network_diagnostics::mojom;
 
+std::string GetProblemMessage(
+    network_diagnostics_ipc::LanConnectivityProblem problem) {
+  switch (problem) {
+    case network_diagnostics_ipc::LanConnectivityProblem::kNoLanConnectivity:
+      return kLanConnectivityRoutineProblemMessage;
+  }
+}
+
 // Parses the results of the LAN connectivity routine.
 void ParseLanConnectivityResult(
     mojo_ipc::DiagnosticRoutineStatusEnum* status,
@@ -44,12 +52,7 @@ void ParseLanConnectivityResult(
       *status = mojo_ipc::DiagnosticRoutineStatusEnum::kFailed;
       auto problems = result->problems->get_lan_connectivity_problems();
       DCHECK(!problems.empty());
-      switch (problems[0]) {
-        case network_diagnostics_ipc::LanConnectivityProblem::
-            kNoLanConnectivity:
-          *status_message = kLanConnectivityRoutineProblemMessage;
-          break;
-      }
+      *status_message = GetProblemMessage(problems[0]);
       break;
   }
 }

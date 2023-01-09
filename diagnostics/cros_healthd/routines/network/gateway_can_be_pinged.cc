@@ -23,6 +23,27 @@ namespace {
 namespace mojo_ipc = ::ash::cros_healthd::mojom;
 namespace network_diagnostics_ipc = ::chromeos::network_diagnostics::mojom;
 
+std::string GetProblemMessage(
+    network_diagnostics_ipc::GatewayCanBePingedProblem problem) {
+  switch (problem) {
+    case network_diagnostics_ipc::GatewayCanBePingedProblem::
+        kUnreachableGateway:
+      return kPingRoutineUnreachableGatewayProblemMessage;
+    case network_diagnostics_ipc::GatewayCanBePingedProblem::
+        kFailedToPingDefaultNetwork:
+      return kPingRoutineFailedPingProblemMessage;
+    case network_diagnostics_ipc::GatewayCanBePingedProblem::
+        kDefaultNetworkAboveLatencyThreshold:
+      return kPingRoutineHighPingLatencyProblemMessage;
+    case network_diagnostics_ipc::GatewayCanBePingedProblem::
+        kUnsuccessfulNonDefaultNetworksPings:
+      return kPingRoutineFailedNonDefaultPingsProblemMessage;
+    case network_diagnostics_ipc::GatewayCanBePingedProblem::
+        kNonDefaultNetworksAboveLatencyThreshold:
+      return kPingRoutineNonDefaultHighLatencyProblemMessage;
+  }
+}
+
 // Parses the results of the gateway can be pinged routine.
 void ParseGatewayCanBePingedResult(
     mojo_ipc::DiagnosticRoutineStatusEnum* status,
@@ -44,28 +65,7 @@ void ParseGatewayCanBePingedResult(
       *status = mojo_ipc::DiagnosticRoutineStatusEnum::kFailed;
       auto problems = result->problems->get_gateway_can_be_pinged_problems();
       DCHECK(!problems.empty());
-      switch (problems[0]) {
-        case network_diagnostics_ipc::GatewayCanBePingedProblem::
-            kUnreachableGateway:
-          *status_message = kPingRoutineUnreachableGatewayProblemMessage;
-          break;
-        case network_diagnostics_ipc::GatewayCanBePingedProblem::
-            kFailedToPingDefaultNetwork:
-          *status_message = kPingRoutineFailedPingProblemMessage;
-          break;
-        case network_diagnostics_ipc::GatewayCanBePingedProblem::
-            kDefaultNetworkAboveLatencyThreshold:
-          *status_message = kPingRoutineHighPingLatencyProblemMessage;
-          break;
-        case network_diagnostics_ipc::GatewayCanBePingedProblem::
-            kUnsuccessfulNonDefaultNetworksPings:
-          *status_message = kPingRoutineFailedNonDefaultPingsProblemMessage;
-          break;
-        case network_diagnostics_ipc::GatewayCanBePingedProblem::
-            kNonDefaultNetworksAboveLatencyThreshold:
-          *status_message = kPingRoutineNonDefaultHighLatencyProblemMessage;
-          break;
-      }
+      *status_message = GetProblemMessage(problems[0]);
       break;
   }
 }
