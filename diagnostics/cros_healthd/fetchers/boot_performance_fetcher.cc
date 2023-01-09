@@ -11,26 +11,21 @@
 #include <base/files/file_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
+#include <base/time/time.h>
 #include <metrics/bootstat.h>
 #include <re2/re2.h>
 
 #include "diagnostics/base/file_utils.h"
 #include "diagnostics/cros_healthd/fetchers/boot_performance_fetcher.h"
 #include "diagnostics/cros_healthd/utils/error_utils.h"
-#include "diagnostics/cros_healthd/utils/procfs_utils.h"
 
 namespace diagnostics {
-
-constexpr char kRelativeBiosTimesPath[] = "var/log/bios_times.txt";
-constexpr char kRelativeShutdownMetricsPath[] = "var/log/metrics";
-constexpr char kRelativePreviousPowerdLogPath[] =
-    "var/log/power_manager/powerd.PREVIOUS";
 
 namespace mojo_ipc = ::ash::cros_healthd::mojom;
 
 std::optional<mojo_ipc::ProbeErrorPtr>
 BootPerformanceFetcher::ParseBootFirmwareTime(double* firmware_time) {
-  const auto& data_path = context_->root_dir().Append(kRelativeBiosTimesPath);
+  const auto& data_path = GetRootedPath(path::kBiosTimes);
   std::string content;
   if (!ReadAndTrimString(data_path, &content)) {
     return CreateAndLogProbeError(mojo_ipc::ErrorType::kFileReadError,
@@ -68,7 +63,7 @@ BootPerformanceFetcher::ParseBootFirmwareTime(double* firmware_time) {
 
 std::optional<mojo_ipc::ProbeErrorPtr>
 BootPerformanceFetcher::ParseBootKernelTime(double* kernel_time) {
-  auto events = bootstat::BootStat(context_->root_dir())
+  auto events = bootstat::BootStat(GetRootedPath("/"))
                     .GetEventTimings("login-prompt-visible");
   if (!events || events->empty()) {
     return CreateAndLogProbeError(mojo_ipc::ErrorType::kFileReadError,
@@ -82,7 +77,7 @@ BootPerformanceFetcher::ParseBootKernelTime(double* kernel_time) {
 
 std::optional<mojo_ipc::ProbeErrorPtr> BootPerformanceFetcher::ParseProcUptime(
     double* proc_uptime) {
-  const auto& data_path = GetProcUptimePath(context_->root_dir());
+  const auto& data_path = GetRootedPath(path::kProcUptime);
   std::string content;
   if (!ReadAndTrimString(data_path, &content)) {
     return CreateAndLogProbeError(mojo_ipc::ErrorType::kFileReadError,
@@ -137,15 +132,14 @@ BootPerformanceFetcher::PopulateBootUpInfo(
   }
   // Calculate the timestamp when power on.
   info->boot_up_timestamp =
-      context_->time().ToDoubleT() - proc_uptime - firmware_time;
+      base::Time::Now().ToDoubleT() - proc_uptime - firmware_time;
 
   return std::nullopt;
 }
 
 bool BootPerformanceFetcher::ParsePreviousPowerdLog(
     double* shutdown_start_timestamp, std::string* shutdown_reason) {
-  const auto& data_path =
-      context_->root_dir().Append(kRelativePreviousPowerdLogPath);
+  const auto& data_path = GetRootedPath(path::kPreviousPowerdLog);
   std::string content;
   if (!ReadAndTrimString(data_path, &content)) {
     return false;
@@ -180,8 +174,7 @@ bool BootPerformanceFetcher::ParsePreviousPowerdLog(
 
 bool BootPerformanceFetcher::GetShutdownEndTimestamp(
     double* shutdown_end_timestamp) {
-  const auto& data_path =
-      context_->root_dir().Append(kRelativeShutdownMetricsPath);
+  const auto& data_path = GetRootedPath(path::kShutdownMetrics);
   base::File::Info file_info;
   if (!GetFileInfo(data_path, &file_info)) {
     return false;

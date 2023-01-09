@@ -6,12 +6,12 @@
 
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <base/time/time_override.h>
 #include <gtest/gtest.h>
 
 #include "diagnostics/base/file_test_utils.h"
 #include "diagnostics/cros_healthd/fetchers/boot_performance_fetcher.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
-#include "diagnostics/cros_healthd/utils/procfs_utils.h"
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
 
 namespace diagnostics {
@@ -22,7 +22,7 @@ using ::testing::Return;
 
 const char kFakeBiosTimes[] = "texts\n...\n\nTotal Time: 10,111,111";
 
-const char kRelativeUptimeLoginPath[] = "tmp/uptime-login-prompt-visible";
+const char kUptimeLoginPath[] = "/tmp/uptime-login-prompt-visible";
 const char kFakeUptimeLog[] = "7.666666666 4.32\n17.000000000 123.00";
 
 const char kFakeProcUptime[] = "100.33 126.43";
@@ -67,6 +67,10 @@ void VerifyDefaultShutdownInfo(
   EXPECT_NEAR(info->shutdown_seconds, 0.0, 0.1);
 }
 
+base::Time FakeTimeNow() {
+  return base::Time::FromDoubleT(kCurrentTimestamp);
+}
+
 class BootPerformanceFetcherTest : public ::testing::Test {
  protected:
   BootPerformanceFetcherTest() = default;
@@ -83,27 +87,27 @@ class BootPerformanceFetcherTest : public ::testing::Test {
   }
 
   void PopulateBiosTimesFile(const std::string& content = kFakeBiosTimes) {
-    const auto path = root_dir().Append(kRelativeBiosTimesPath);
+    const auto path = GetRootedPath(path::kBiosTimes);
     ASSERT_TRUE(WriteFileAndCreateParentDirs(path, content));
   }
 
   void PopulateUptimeLogFile(const std::string& content = kFakeUptimeLog) {
-    const auto path = root_dir().Append(kRelativeUptimeLoginPath);
+    const auto path = GetRootedPath(kUptimeLoginPath);
     ASSERT_TRUE(WriteFileAndCreateParentDirs(path, content));
   }
 
   void PopulateProcUptimeFile(const std::string& content = kFakeProcUptime) {
-    const auto path = GetProcUptimePath(root_dir());
+    const auto path = GetRootedPath(path::kProcUptime);
     ASSERT_TRUE(WriteFileAndCreateParentDirs(path, content));
   }
 
   void PopulatePowerdLog(const std::string& content = kFakePowerdShutdownLog) {
-    const auto path = root_dir().Append(kRelativePreviousPowerdLogPath);
+    const auto path = GetRootedPath(path::kPreviousPowerdLog);
     ASSERT_TRUE(WriteFileAndCreateParentDirs(path, content));
   }
 
   void PopulateShutdownMetricsDir() {
-    const auto path = root_dir().Append(kRelativeShutdownMetricsPath);
+    const auto path = GetRootedPath(path::kShutdownMetrics);
     // It's a directory in DUT, but using file for simulation is easier.
     ASSERT_TRUE(WriteFileAndCreateParentDirs(path, ""));
 
@@ -116,10 +120,6 @@ class BootPerformanceFetcherTest : public ::testing::Test {
     file.Close();
   }
 
-  const base::FilePath& root_dir() { return mock_context_.root_dir(); }
-
-  const MockContext& mock_context() const { return mock_context_; }
-
   ash::cros_healthd::mojom::BootPerformanceResultPtr
   FetchBootPerformanceInfo() {
     return boot_performance_fetcher_.FetchBootPerformanceInfo();
@@ -127,13 +127,13 @@ class BootPerformanceFetcherTest : public ::testing::Test {
 
  private:
   MockContext mock_context_;
+  ScopedRootDirOverrides root_overrides_;
+  base::subtle::ScopedTimeClockOverrides clock_overrides_{&FakeTimeNow, nullptr,
+                                                          nullptr};
   BootPerformanceFetcher boot_performance_fetcher_{&mock_context_};
 };
 
 TEST_F(BootPerformanceFetcherTest, FetchBootPerformanceInfo) {
-  EXPECT_CALL(mock_context(), time())
-      .WillOnce(Return(base::Time::FromDoubleT(kCurrentTimestamp)));
-
   auto result = FetchBootPerformanceInfo();
   ASSERT_TRUE(result->is_boot_performance_info());
 
@@ -150,7 +150,7 @@ TEST_F(BootPerformanceFetcherTest, FetchBootPerformanceInfo) {
 }
 
 TEST_F(BootPerformanceFetcherTest, TestNoBiosTimesInfo) {
-  ASSERT_TRUE(base::DeleteFile(root_dir().Append(kRelativeBiosTimesPath)));
+  ASSERT_TRUE(base::DeleteFile(GetRootedPath(path::kBiosTimes)));
 
   auto result = FetchBootPerformanceInfo();
   ASSERT_TRUE(result->is_error());
@@ -158,7 +158,7 @@ TEST_F(BootPerformanceFetcherTest, TestNoBiosTimesInfo) {
 }
 
 TEST_F(BootPerformanceFetcherTest, TestNoUptimeLogInfo) {
-  ASSERT_TRUE(base::DeleteFile(root_dir().Append(kRelativeUptimeLoginPath)));
+  ASSERT_TRUE(base::DeleteFile(GetRootedPath(kUptimeLoginPath)));
 
   auto result = FetchBootPerformanceInfo();
   ASSERT_TRUE(result->is_error());
@@ -166,7 +166,7 @@ TEST_F(BootPerformanceFetcherTest, TestNoUptimeLogInfo) {
 }
 
 TEST_F(BootPerformanceFetcherTest, TestNoProcUptimeInfo) {
-  ASSERT_TRUE(base::DeleteFile(GetProcUptimePath(root_dir())));
+  ASSERT_TRUE(base::DeleteFile(GetRootedPath(path::kProcUptime)));
 
   auto result = FetchBootPerformanceInfo();
   ASSERT_TRUE(result->is_error());
@@ -174,7 +174,7 @@ TEST_F(BootPerformanceFetcherTest, TestNoProcUptimeInfo) {
 }
 
 TEST_F(BootPerformanceFetcherTest, TestWrongBiosTimesInfo) {
-  ASSERT_TRUE(base::DeleteFile(root_dir().Append(kRelativeBiosTimesPath)));
+  ASSERT_TRUE(base::DeleteFile(GetRootedPath(path::kBiosTimes)));
   PopulateBiosTimesFile("Wrong content");
 
   auto result = FetchBootPerformanceInfo();
@@ -183,7 +183,7 @@ TEST_F(BootPerformanceFetcherTest, TestWrongBiosTimesInfo) {
 }
 
 TEST_F(BootPerformanceFetcherTest, TestWrongBiosTimesInfo2) {
-  ASSERT_TRUE(base::DeleteFile(root_dir().Append(kRelativeBiosTimesPath)));
+  ASSERT_TRUE(base::DeleteFile(GetRootedPath(path::kBiosTimes)));
   PopulateBiosTimesFile("Wrong content, Total Time: abcd");
 
   auto result = FetchBootPerformanceInfo();
@@ -192,7 +192,7 @@ TEST_F(BootPerformanceFetcherTest, TestWrongBiosTimesInfo2) {
 }
 
 TEST_F(BootPerformanceFetcherTest, TestWrongUptimeLogInfo) {
-  ASSERT_TRUE(base::DeleteFile(root_dir().Append(kRelativeUptimeLoginPath)));
+  ASSERT_TRUE(base::DeleteFile(GetRootedPath(kUptimeLoginPath)));
   PopulateUptimeLogFile("Wrong content");
 
   auto result = FetchBootPerformanceInfo();
@@ -201,7 +201,7 @@ TEST_F(BootPerformanceFetcherTest, TestWrongUptimeLogInfo) {
 }
 
 TEST_F(BootPerformanceFetcherTest, TestWrongProcUptimeInfo) {
-  ASSERT_TRUE(base::DeleteFile(GetProcUptimePath(root_dir())));
+  ASSERT_TRUE(base::DeleteFile(GetRootedPath(path::kProcUptime)));
   PopulateProcUptimeFile("Wrong content");
 
   auto result = FetchBootPerformanceInfo();
@@ -210,8 +210,7 @@ TEST_F(BootPerformanceFetcherTest, TestWrongProcUptimeInfo) {
 }
 
 TEST_F(BootPerformanceFetcherTest, TestPowerdRebootLog) {
-  ASSERT_TRUE(
-      base::DeleteFile(root_dir().Append(kRelativePreviousPowerdLogPath)));
+  ASSERT_TRUE(base::DeleteFile(GetRootedPath(path::kPreviousPowerdLog)));
   PopulatePowerdLog(kFakePowerdRebootLog);
 
   auto result = FetchBootPerformanceInfo();
@@ -227,22 +226,19 @@ TEST_F(BootPerformanceFetcherTest, TestPowerdRebootLog) {
 }
 
 TEST_F(BootPerformanceFetcherTest, TestNoPowerdLog) {
-  ASSERT_TRUE(
-      base::DeleteFile(root_dir().Append(kRelativePreviousPowerdLogPath)));
+  ASSERT_TRUE(base::DeleteFile(GetRootedPath(path::kPreviousPowerdLog)));
 
   VerifyDefaultShutdownInfo(FetchBootPerformanceInfo());
 }
 
 TEST_F(BootPerformanceFetcherTest, TestNoShutdownMetrics) {
-  ASSERT_TRUE(
-      base::DeleteFile(root_dir().Append(kRelativeShutdownMetricsPath)));
+  ASSERT_TRUE(base::DeleteFile(GetRootedPath(path::kShutdownMetrics)));
 
   VerifyDefaultShutdownInfo(FetchBootPerformanceInfo());
 }
 
 TEST_F(BootPerformanceFetcherTest, TestWrongPowerdLog) {
-  ASSERT_TRUE(
-      base::DeleteFile(root_dir().Append(kRelativePreviousPowerdLogPath)));
+  ASSERT_TRUE(base::DeleteFile(GetRootedPath(path::kPreviousPowerdLog)));
   PopulatePowerdLog("Wrong content");
 
   VerifyDefaultShutdownInfo(FetchBootPerformanceInfo());

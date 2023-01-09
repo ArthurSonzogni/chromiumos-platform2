@@ -15,12 +15,15 @@
 
 namespace diagnostics {
 
-// Relative path to boot up information.
-extern const char kRelativeBiosTimesPath[];
+namespace path {
 
-// Relative path to shutdown information.
-extern const char kRelativeShutdownMetricsPath[];
-extern const char kRelativePreviousPowerdLogPath[];
+inline constexpr char kProcUptime[] = "/proc/uptime";
+inline constexpr char kBiosTimes[] = "/var/log/bios_times.txt";
+inline constexpr char kShutdownMetrics[] = "/var/log/metrics";
+inline constexpr char kPreviousPowerdLog[] =
+    "/var/log/power_manager/powerd.PREVIOUS";
+
+}  // namespace path
 
 // The BootPerformanceFetcher class is responsible for gathering boot
 // performance info.
