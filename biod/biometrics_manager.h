@@ -13,13 +13,13 @@
 
 #include <base/base64.h>
 #include <base/callback.h>
-#include <base/memory/weak_ptr.h>
 #include <chromeos/dbus/service_constants.h>
 #include <base/strings/string_util.h>
 
 #include "biod/biometrics_manager_record.h"
 #include "biod/proto_bindings/constants.pb.h"
 #include "biod/proto_bindings/messages.pb.h"
+#include "biod/session.h"
 
 namespace biod {
 
@@ -47,48 +47,6 @@ class BiometricsManager {
     void operator()(BiometricsManager* biometrics_manager) {
       biometrics_manager->EndAuthSession();
     }
-  };
-
-  // Invokes the function object F with a given BiometricsManager object when
-  // this session (EnrollSession or AuthSession) object goes out of scope. It's
-  // possible that this will do nothing in the case that the session has ended
-  // due to failure/finishing or the BiometricsManager object is no longer
-  // valid.
-  template <typename F>
-  class Session {
-   public:
-    Session() = default;
-
-    Session(Session<F>&& rhs) : biometrics_manager_(rhs.biometrics_manager_) {
-      rhs.biometrics_manager_.reset();
-    }
-
-    explicit Session(const base::WeakPtr<BiometricsManager>& biometrics_manager)
-        : biometrics_manager_(biometrics_manager) {}
-
-    ~Session() { End(); }
-
-    Session<F>& operator=(Session<F>&& rhs) {
-      End();
-      biometrics_manager_ = rhs.biometrics_manager_;
-      rhs.biometrics_manager_.reset();
-      return *this;
-    }
-
-    explicit operator bool() const { return biometrics_manager_.get(); }
-
-    // Has the same effect of letting this object go out of scope, but allows
-    // one to reuse the storage of this object.
-    void End() {
-      if (biometrics_manager_) {
-        F f;
-        f(biometrics_manager_.get());
-        biometrics_manager_.reset();
-      }
-    }
-
-   private:
-    base::WeakPtr<BiometricsManager> biometrics_manager_;
   };
 
   // Returned by StartEnrollSession to ensure that EnrollSession eventually
