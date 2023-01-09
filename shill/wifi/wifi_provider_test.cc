@@ -45,6 +45,7 @@
 
 using ::testing::_;
 using ::testing::AnyNumber;
+using ::testing::HasSubstr;
 using ::testing::Invoke;
 using ::testing::Mock;
 using ::testing::NiceMock;
@@ -2187,6 +2188,26 @@ TEST_F(WiFiProviderTest, RegisterAndDeregisterWiFiDevice) {
   // The phy should still exist after deregistering the device.
   DeregisterDeviceFromPhy(device, phy_index);
   EXPECT_EQ(GetPhyAtIndex(phy_index), phy);
+}
+
+TEST_F(WiFiProviderTest, OnNewWiphy_WrongMessage) {
+  TriggerScanMessage msg;
+  NetlinkPacket packet(kActiveScanTriggerNlMsg,
+                       sizeof(kActiveScanTriggerNlMsg));
+  msg.InitFromPacket(&packet, NetlinkMessage::MessageContext());
+  MockWiFiPhy* phy = AddMockPhy(kScanTriggerMsgWiphyIndex);
+
+  EXPECT_CALL(*phy, OnNewWiphy(_)).Times(0);
+  OnNewWiphy(msg);
+}
+
+TEST_F(WiFiProviderTest, OnNewWiphy_NoIndex) {
+  NewWiphyMessage msg;
+  // Do not initialize the message so that it has no NL80211_ATTR_WIPHY.
+  MockWiFiPhy* phy = AddMockPhy(kNewWiphyNlMsg_WiphyIndex);
+
+  EXPECT_CALL(*phy, OnNewWiphy(_)).Times(0);
+  OnNewWiphy(msg);
 }
 
 TEST_F(WiFiProviderTest, OnNewWiphy_WithPhy) {

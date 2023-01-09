@@ -148,7 +148,7 @@ class SHILL_EXPORT AttributeList : public base::RefCounted<AttributeList> {
 // Provides a mechanism to iterate through the ids of all of the attributes
 // in an |AttributeList|.  This class is really only useful if the caller
 // knows the type of each attribute in advance (such as with a nested array).
-class AttributeIdIterator {
+class SHILL_EXPORT AttributeIdIterator {
  public:
   explicit AttributeIdIterator(const AttributeList& list)
       : iter_(list.attributes_.begin()), end_(list.attributes_.end()) {}
@@ -158,6 +158,7 @@ class AttributeIdIterator {
   void Advance() { ++iter_; }
   bool AtEnd() const { return iter_ == end_; }
   int GetId() const { return iter_->first; }
+  int GetType() const;
 
  private:
   AttributeList::AttributeMap::const_iterator iter_;

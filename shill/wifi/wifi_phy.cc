@@ -2,10 +2,17 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "shill/wifi/wifi.h"
+#include <utility>
+
+#include "shill/logging.h"
+#include "shill/net/netlink_attribute.h"
 #include "shill/wifi/wifi_phy.h"
 
 namespace shill {
+
+namespace Logging {
+static auto kModuleLogScope = ScopeLogger::kWiFi;
+}  // namespace Logging
 
 WiFiPhy::WiFiPhy(uint32_t phy_index) : phy_index_(phy_index) {}
 
@@ -30,26 +37,10 @@ void WiFiPhy::DeleteWiFiLocalDevice(LocalDeviceConstRefPtr device) {
 // TODO(b/248103586): Move NL80211_CMD_NEW_WIPHY parsing out of WiFiPhy and into
 // WiFiProvider.
 void WiFiPhy::OnNewWiphy(const Nl80211Message& nl80211_message) {
-  // Verify NL80211_CMD_NEW_WIPHY.
-  if (nl80211_message.command() != NewWiphyMessage::kCommand) {
-    LOG(ERROR) << "Received unexpected command:" << nl80211_message.command();
-    return;
-  }
-  uint32_t message_phy_index;
-  if (!nl80211_message.const_attributes()->GetU32AttributeValue(
-          NL80211_ATTR_WIPHY, &message_phy_index)) {
-    LOG(ERROR) << "NL80211_CMD_NEW_WIPHY had no NL80211_ATTR_WIPHY";
-    return;
-  }
-  if (message_phy_index != phy_index_) {
-    LOG(ERROR) << "WiFiPhy at index " << phy_index_
-               << " received NL80211_CMD_NEW_WIPHY for unexpected phy index "
-               << message_phy_index;
-    return;
-  }
   ParseInterfaceTypes(nl80211_message);
   // TODO(b/244630773): Parse out the message and store phy information.
   ParseConcurrency(nl80211_message);
+  ParseFrequencies(nl80211_message);
 }
 
 bool WiFiPhy::SupportsIftype(nl80211_iftype iftype) {
@@ -57,12 +48,6 @@ bool WiFiPhy::SupportsIftype(nl80211_iftype iftype) {
 }
 
 void WiFiPhy::ParseInterfaceTypes(const Nl80211Message& nl80211_message) {
-  // Verify NL80211_CMD_NEW_WIPHY.
-  if (nl80211_message.command() != NewWiphyMessage::kCommand) {
-    LOG(ERROR) << "Received unexpected command: " << nl80211_message.command();
-    return;
-  }
-
   AttributeListConstRefPtr ifaces;
   if (nl80211_message.const_attributes()->ConstGetNestedAttributeList(
           NL80211_ATTR_SUPPORTED_IFTYPES, &ifaces)) {
@@ -84,12 +69,6 @@ void WiFiPhy::ParseInterfaceTypes(const Nl80211Message& nl80211_message) {
 }
 
 void WiFiPhy::ParseConcurrency(const Nl80211Message& nl80211_message) {
-  // Verify NL80211_CMD_NEW_WIPHY.
-  if (nl80211_message.command() != NewWiphyMessage::kCommand) {
-    LOG(ERROR) << "Received unexpected command: " << nl80211_message.command();
-    return;
-  }
-
   // Check that the message contains concurrency combinations.
   AttributeListConstRefPtr interface_combinations_attr;
   if (!nl80211_message.const_attributes()->ConstGetNestedAttributeList(
@@ -148,6 +127,63 @@ void WiFiPhy::ParseConcurrency(const Nl80211Message& nl80211_message) {
       comb.limits.push_back(limit);
     }
     concurrency_combs_.push_back(comb);
+  }
+}
+
+void WiFiPhy::ParseFrequencies(const Nl80211Message& nl80211_message) {
+  // Code below depends on being able to pack all flags into bits.
+  static_assert(
+      sizeof(WiFiPhy::Frequency::flags) * CHAR_BIT > NL80211_FREQUENCY_ATTR_MAX,
+      "Not enough bits to hold all possible flags");
+
+  SLOG(3) << __func__;
+  AttributeListConstRefPtr bands_list;
+  if (nl80211_message.const_attributes()->ConstGetNestedAttributeList(
+          NL80211_ATTR_WIPHY_BANDS, &bands_list)) {
+    AttributeIdIterator bands_iter(*bands_list);
+    for (; !bands_iter.AtEnd(); bands_iter.Advance()) {
+      // Each band has nested attributes and ...
+      AttributeListConstRefPtr band_attrs;
+      if (bands_list->ConstGetNestedAttributeList(bands_iter.GetId(),
+                                                  &band_attrs)) {
+        int current_band = bands_iter.GetId();
+        // ... we are interested in freqs (which itself is a nested attribute).
+        AttributeListConstRefPtr freqs_list;
+        if (!band_attrs->ConstGetNestedAttributeList(NL80211_BAND_ATTR_FREQS,
+                                                     &freqs_list)) {
+          continue;
+        }
+        AttributeIdIterator freqs_iter(*freqs_list);
+        for (; !freqs_iter.AtEnd(); freqs_iter.Advance()) {
+          AttributeListConstRefPtr freq_attrs;
+          if (freqs_list->ConstGetNestedAttributeList(freqs_iter.GetId(),
+                                                      &freq_attrs)) {
+            Frequency freq;
+            for (auto attr = AttributeIdIterator(*freq_attrs); !attr.AtEnd();
+                 attr.Advance()) {
+              if (attr.GetType() == NetlinkAttribute::kTypeFlag) {
+                freq.flags |= 1 << attr.GetId();
+              } else {
+                if (attr.GetId() == NL80211_FREQUENCY_ATTR_FREQ) {
+                  freq_attrs->GetU32AttributeValue(attr.GetId(), &freq.value);
+                } else {
+                  if (!freq_attrs->GetU32AttributeValue(
+                          attr.GetId(), &freq.attributes[attr.GetId()])) {
+                    LOG(WARNING) << "Failed to read frequency attribute: "
+                                 << attr.GetId();
+                  }
+                }
+              }
+            }
+            if (freq.value == 0) {
+              continue;
+            }
+            SLOG(3) << "Found frequency: " << freq.value;
+            frequencies_[current_band].emplace_back(std::move(freq));
+          }
+        }
+      }
+    }
   }
 }
 

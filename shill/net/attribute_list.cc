@@ -378,4 +378,8 @@ NetlinkAttribute* AttributeList::GetAttribute(int id) const {
   return i->second.get();
 }
 
+int AttributeIdIterator::GetType() const {
+  return iter_->second->datatype();
+}
+
 }  // namespace shill

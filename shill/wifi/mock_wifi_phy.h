@@ -17,6 +17,8 @@ class MockWiFiPhy : public WiFiPhy {
 
   ~MockWiFiPhy() = default;
 
+  void SetFrequencies(const Frequencies& freqs) { frequencies_ = freqs; }
+
   MOCK_METHOD(void, OnNewWiphy, (const Nl80211Message&), (override));
 };
 

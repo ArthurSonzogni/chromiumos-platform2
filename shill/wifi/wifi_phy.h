@@ -5,6 +5,7 @@
 #ifndef SHILL_WIFI_WIFI_PHY_H_
 #define SHILL_WIFI_WIFI_PHY_H_
 
+#include <map>
 #include <set>
 #include <vector>
 
@@ -68,19 +69,52 @@ class WiFiPhy {
     return concurrency_combs_;
   }
 
+  // This structure keeps information about frequency reported in PHY dump.
+  // |flags| is a bitmap with bits corresponding to NL80211_FREQUENCY_ATTR_*
+  // flags reported, |value| is the actual frequency in MHz and |attributes|
+  // keeps map of reported attributes that has value (e.g.
+  // NL80211_FREQUENCY_ATTR_MAX_TX_POWER)
+  struct Frequency {
+    uint64_t flags = 0;
+    uint32_t value = 0;
+    std::map<int, uint32_t> attributes;
+  };
+
+  // Frequencies available are returned as a map:
+  //   "band" -> "list of frequencies".
+  // The key (band) is the NL band attribute (NL80211_BAND_2GHZ etc.) and the
+  // value is just vector of Frequency structs (see above).
+  using Frequencies = std::map<int, std::vector<Frequency>>;
+  // Returns map of available frequencies.
+  mockable const Frequencies& frequencies() const { return frequencies_; }
+
  private:
   friend class WiFiPhyTest;
+  friend class MockWiFiPhy;
+
+  // Helper functions used to parse NL80211_CMD_NEW_WIPHY message.  They take
+  // relevant portion (attribute), parse it and store the information in member
+  // variables.  Respectively these are:
+  // - NL80211_ATTR_SUPPORTED_IFTYPES -> supported_ifaces_
+  // - NL80211_ATTR_INTERFACE_COMBINATIONS -> concurrency_combs_
+  // - NL80211_ATTR_WIPHY_BANDS/NL80211_BAND_ATTR_FREQS -> frequencies_
+  void ParseInterfaceTypes(const Nl80211Message& nl80211_message);
+  void ParseConcurrency(const Nl80211Message& nl80211_message);
+  void ParseFrequencies(const Nl80211Message& nl80211_message);
+
   uint32_t phy_index_;
   std::set<WiFiConstRefPtr> wifi_devices_;
   std::set<LocalDeviceConstRefPtr> wifi_local_devices_;
   std::set<nl80211_iftype> supported_ifaces_;
-  void ParseInterfaceTypes(const Nl80211Message& nl80211_message);
-
-  // Parse the NL80211_ATTR_INTERFACE_COMBINATIONS from a new wiphy message and
-  // store the contents in concurrency_combs_.
-  void ParseConcurrency(const Nl80211Message& nl80211_message);
   std::vector<ConcurrencyCombination> concurrency_combs_;
+  Frequencies frequencies_;
 };
+
+inline bool operator==(const WiFiPhy::Frequency& f1,
+                       const WiFiPhy::Frequency& f2) {
+  return f1.value == f2.value && f1.flags == f2.flags &&
+         f1.attributes == f2.attributes;
+}
 
 }  // namespace shill
 
