@@ -18,7 +18,7 @@
 #include <base/test/task_environment.h>
 #include <gtest/gtest.h>
 
-#include "diagnostics/common/file_test_utils.h"
+#include "diagnostics/base/file_test_utils.h"
 #include "diagnostics/cros_healthd/fetchers/process_fetcher.h"
 #include "diagnostics/cros_healthd/mojom/executor.mojom.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"

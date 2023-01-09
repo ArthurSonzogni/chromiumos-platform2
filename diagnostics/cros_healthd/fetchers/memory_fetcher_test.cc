@@ -10,7 +10,7 @@
 #include <gtest/gtest.h>
 #include <utility>
 
-#include "diagnostics/common/file_test_utils.h"
+#include "diagnostics/base/file_test_utils.h"
 #include "diagnostics/cros_healthd/executor/constants.h"
 #include "diagnostics/cros_healthd/fetchers/memory_fetcher.h"
 #include "diagnostics/cros_healthd/mojom/executor.mojom.h"

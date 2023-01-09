@@ -11,7 +11,7 @@
 #include <fwupd/dbus-proxy-mocks.h>
 #include <gtest/gtest.h>
 
-#include "diagnostics/common/file_test_utils.h"
+#include "diagnostics/base/file_test_utils.h"
 #include "diagnostics/cros_healthd/fetchers/audio_hardware_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/bus_fetcher_constants.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"

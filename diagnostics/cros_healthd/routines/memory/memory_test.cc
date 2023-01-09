@@ -19,7 +19,7 @@
 #include <gtest/gtest.h>
 #include <mojo/public/cpp/system/handle.h>
 
-#include "diagnostics/common/file_test_utils.h"
+#include "diagnostics/base/file_test_utils.h"
 #include "diagnostics/common/mojo_utils.h"
 #include "diagnostics/cros_healthd/mojom/executor.mojom.h"
 #include "diagnostics/cros_healthd/routines/diag_routine.h"

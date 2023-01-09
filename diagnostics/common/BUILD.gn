@@ -27,7 +27,6 @@ if (use.test || use.fuzzer) {
       "//diagnostics/mojom/public:cros_healthd_mojo_bindings",
     ]
     sources = [
-      "file_test_utils.cc",
       "mojo_test_utils.cc",
       "mojo_type_utils.cc",
     ]
@@ -47,7 +46,6 @@ if (use.test) {
   source_set("libcommon_test") {
     sources = [
       "dbus_utils_test.cc",
-      "file_test_utils_test.cc",
       "mojo_utils_test.cc",
     ]
     configs += [
