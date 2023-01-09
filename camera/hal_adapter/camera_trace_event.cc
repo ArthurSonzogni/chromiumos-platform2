@@ -27,7 +27,7 @@ perfetto::Track GetTraceTrack(HalAdapterTraceEvent event,
 perfetto::StaticString ToString(HalAdapterTraceEvent event) {
   switch (event) {
     case HalAdapterTraceEvent::kCapture:
-      return "capture";
+      return "Capture";
     default:
       NOTREACHED() << "Unexpected camera trace event: "
                    << static_cast<int>(event);

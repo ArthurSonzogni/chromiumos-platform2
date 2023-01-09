@@ -604,6 +604,19 @@ int32_t CameraDeviceAdapter::ProcessCaptureRequest(
   // the stream manipulators so that they can still do incremental changes on
   // top of the cached settings.
   Camera3CaptureDescriptor request_descriptor(req);
+
+  for (const auto& output_buffer : request_descriptor.GetOutputBuffers()) {
+    TRACE_HAL_ADAPTER_BEGIN(
+        ToString(HalAdapterTraceEvent::kCapture),
+        GetTraceTrack(HalAdapterTraceEvent::kCapture,
+                      request_descriptor.frame_number(),
+                      reinterpret_cast<uintptr_t>(*output_buffer.buffer())),
+        "frame_number", request_descriptor.frame_number(), "stream",
+        reinterpret_cast<uintptr_t>(output_buffer.stream()), "width",
+        output_buffer.stream()->width, "height", output_buffer.stream()->height,
+        "format", output_buffer.stream()->format);
+  }
+
   stream_manipulator_manager_->ProcessCaptureRequest(&request_descriptor);
 
   {
@@ -778,6 +791,18 @@ void CameraDeviceAdapter::ReturnResultToClient(
     camera3_capture_result_t* locked_result = result_descriptor.LockForResult();
     result_ptr = self->PrepareCaptureResult(locked_result);
     result_descriptor.Unlock();
+  }
+
+  // process_capture_result may be called multiple times for a single frame,
+  // each time with a new disjoint piece of metadata and/or set of gralloc
+  // buffers. The framework will accumulate these partial metadata results into
+  // one result.
+  // ref:
+  // https://android.googlesource.com/platform/hardware/libhardware/+/8a6fed0d280014d84fe0f6a802f1cf29600e5bae/include/hardware/camera3.h#284
+  for (const auto& output_buffer : result_descriptor.GetOutputBuffers()) {
+    TRACE_HAL_ADAPTER_END(GetTraceTrack(
+        HalAdapterTraceEvent::kCapture, result_descriptor.frame_number(),
+        reinterpret_cast<uintptr_t>(*output_buffer.buffer())));
   }
 
   base::AutoLock l(self->callback_ops_delegate_lock_);

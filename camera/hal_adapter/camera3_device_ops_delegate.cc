@@ -89,14 +89,8 @@ void Camera3DeviceOpsDelegate::ProcessCaptureRequest(
     mojom::Camera3CaptureRequestPtr request,
     ProcessCaptureRequestCallback callback) {
   DCHECK(task_runner_->BelongsToCurrentThread());
-  for (const auto& output_buffer : request->output_buffers) {
-    TRACE_HAL_ADAPTER_BEGIN(
-        ToString(HalAdapterTraceEvent::kCapture),
-        GetTraceTrack(HalAdapterTraceEvent::kCapture, request->frame_number,
-                      output_buffer->stream_id),
-        "frame_number", request->frame_number, "stream_id",
-        output_buffer->stream_id, "buffer_id", output_buffer->buffer_id);
-  }
+  TRACE_HAL_ADAPTER();
+
   std::move(callback).Run(
       camera_device_adapter_->ProcessCaptureRequest(std::move(request)));
 }

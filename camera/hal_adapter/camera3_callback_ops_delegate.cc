@@ -44,20 +44,6 @@ void Camera3CallbackOpsDelegate::ProcessCaptureResultOnThread(
   DCHECK(task_runner_->BelongsToCurrentThread());
   TRACE_HAL_ADAPTER("frame_number", result->frame_number);
 
-  // process_capture_result may be called multiple times for a single frame,
-  // each time with a new disjoint piece of metadata and/or set of gralloc
-  // buffers. The framework will accumulate these partial metadata results into
-  // one result.
-  // ref:
-  // https://android.googlesource.com/platform/hardware/libhardware/+/8a6fed0d280014d84fe0f6a802f1cf29600e5bae/include/hardware/camera3.h#284
-  if (result->output_buffers) {
-    for (const auto& output_buffer : *result->output_buffers) {
-      TRACE_HAL_ADAPTER_END(GetTraceTrack(HalAdapterTraceEvent::kCapture,
-                                          result->frame_number,
-                                          output_buffer->stream_id));
-    }
-  }
-
   remote_->ProcessCaptureResult(std::move(result));
 }
 
