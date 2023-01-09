@@ -92,6 +92,14 @@ class BRILLO_EXPORT EventBase {
 
   void AddDoubleMetric(uint64_t name_hash, double value);
 
+  std::string GetHmacMetricForTest(uint64_t name_hash) const;
+
+  int64_t GetIntMetricForTest(uint64_t name_hash) const;
+
+  std::string GetRawStringMetricForTest(uint64_t name_hash) const;
+
+  double GetDoubleMetricForTest(uint64_t name_hash) const;
+
  private:
   // First 8 bytes of the MD5 hash of the following string:
   //

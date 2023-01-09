@@ -112,17 +112,25 @@ class MetricInfo:
         self.hash = Util.hash_name(metric.name)
 
         if metric.type == "hmac-string":
-            self.type = "std::string&"
+            self.setter_type = "std::string&"
             self.setter = "AddHmacMetric"
+            self.getter_type = "std::string"
+            self.getter = "GetHmacMetricForTest"
         elif metric.type == "int":
-            self.type = "int64_t"
+            self.setter_type = "int64_t"
             self.setter = "AddIntMetric"
+            self.getter_type = "int64_t"
+            self.getter = "GetIntMetricForTest"
         elif metric.type == "raw-string":
-            self.type = "std::string&"
+            self.setter_type = "std::string&"
             self.setter = "AddRawStringMetric"
+            self.getter_type = "std::string"
+            self.getter = "GetRawStringMetricForTest"
         elif metric.type == "double":
-            self.type = "double"
+            self.setter_type = "double"
             self.setter = "AddDoubleMetric"
+            self.getter_type = "double"
+            self.getter = "GetDoubleMetricForTest"
         else:
             raise ValueError("Invalid metric type.")
 

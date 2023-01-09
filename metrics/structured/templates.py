@@ -65,7 +65,8 @@ class BRILLO_EXPORT {event.name} final : public ::metrics::structured::EventBase
 
 HEADER_METRIC_TEMPLATE = """\
   static constexpr uint64_t k{metric.name}NameHash = UINT64_C({metric.hash});
-  {event.name}& Set{metric.name}(const {metric.type} value);
+  {event.name}& Set{metric.name}(const {metric.setter_type} value);
+  {metric.getter_type} Get{metric.name}ForTest() const;
 
 """
 
@@ -104,9 +105,13 @@ IMPL_EVENT_TEMPLATE = """\
 
 
 IMPL_METRIC_TEMPLATE = """\
-{event.name}& {event.name}::Set{metric.name}(const {metric.type} value) {{
+{event.name}& {event.name}::Set{metric.name}(const {metric.setter_type} value) {{
   {metric.setter}(k{metric.name}NameHash, value);
   return *this;
+}}
+
+{metric.getter_type} {event.name}::Get{metric.name}ForTest() const {{
+  return {metric.getter}(k{metric.name}NameHash);
 }}
 
 """
