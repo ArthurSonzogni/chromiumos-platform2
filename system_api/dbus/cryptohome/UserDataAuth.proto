@@ -1474,6 +1474,9 @@ message AuthenticateAuthFactorRequest {
   // AuthFactor cannot be authenticated without an active AuthSession running.
   // This id would be used to associate the AuthFactor to an AuthSession.
   bytes auth_session_id = 1;
+  // Deprecated.
+  // TODO(b/265151254): Remove once migration to |auth_factor_labels| is
+  // complete.
   // The AuthFactor label would be used to determine the AuthFactor that
   // needs to be authenticated. If the label does not exist, the call would
   // return an error.
@@ -1481,6 +1484,12 @@ message AuthenticateAuthFactorRequest {
   // In some cases, such as password, the secret would be user supplied. In
   // those cases the secret can be passed here.
   AuthInput auth_input = 3;
+  // The AuthFactor labels would be used to determine the AuthFactors that
+  // needs to be authenticated. For the most cases, there should only be one
+  // label. For legacy fingerprint which is unlock only,  no label should be
+  // specified as there is no legacy fingerprint auth factor. For sign-in
+  // fingerprint, more than one labels can be specified.
+  repeated string auth_factor_labels = 4;
 }
 
 message AuthenticateAuthFactorReply {
