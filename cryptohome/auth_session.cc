@@ -204,19 +204,13 @@ CryptohomeStatus RemoveKeysetByLabel(KeysetManagement& keyset_management,
 
 }  // namespace
 
-CryptohomeStatusOr<std::unique_ptr<AuthSession>> AuthSession::Create(
+std::unique_ptr<AuthSession> AuthSession::Create(
     std::string account_id,
     unsigned int flags,
     AuthIntent intent,
     base::OnceCallback<void(const base::UnguessableToken&)> on_timeout,
-    Crypto* crypto,
-    Platform* platform,
-    UserSessionMap* user_session_map,
-    KeysetManagement* keyset_management,
-    AuthBlockUtility* auth_block_utility,
-    AuthFactorManager* auth_factor_manager,
-    UserSecretStashStorage* user_secret_stash_storage,
-    feature::PlatformFeaturesInterface* feature_lib) {
+    feature::PlatformFeaturesInterface* feature_lib,
+    BackingApis backing_apis) {
   std::string obfuscated_username = SanitizeUserName(account_id);
 
   // Try to determine if a user exists in two ways: they have a persistent
@@ -224,13 +218,13 @@ CryptohomeStatusOr<std::unique_ptr<AuthSession>> AuthSession::Create(
   // ephemeral, in which case there will be no persistent directory but the user
   // still "exists" so long as they remain active.
   bool persistent_user_exists =
-      keyset_management->UserExists(obfuscated_username);
-  UserSession* user_session = user_session_map->Find(account_id);
+      backing_apis.keyset_management->UserExists(obfuscated_username);
+  UserSession* user_session = backing_apis.user_session_map->Find(account_id);
   bool user_is_active = user_session && user_session->IsActive();
   bool user_exists = persistent_user_exists || user_is_active;
 
   // Report UserSecretStashExperiment status.
-  ReportUserSecretStashExperimentState(platform);
+  ReportUserSecretStashExperimentState(backing_apis.platform);
 
   // Determine if migration is enabled.
   bool migrate_to_user_secret_stash = false;
@@ -242,59 +236,48 @@ CryptohomeStatusOr<std::unique_ptr<AuthSession>> AuthSession::Create(
   // If we have an existing persistent user, load all of their auth factors.
   AuthFactorMap auth_factor_map;
   if (persistent_user_exists) {
-    AuthFactorVaultKeysetConverter converter(keyset_management);
+    AuthFactorVaultKeysetConverter converter(backing_apis.keyset_management);
     auth_factor_map = LoadAuthFactorMap(
         (ShouldMigrateToUss() || migrate_to_user_secret_stash),
-        obfuscated_username, *platform, converter, *auth_factor_manager);
+        obfuscated_username, *backing_apis.platform, converter,
+        *backing_apis.auth_factor_manager);
   }
 
   // Assumption here is that keyset_management_ will outlive this AuthSession.
-  return base::WrapUnique(new AuthSession(
-      std::move(account_id), std::move(obfuscated_username), flags, intent,
-      std::move(on_timeout), user_exists, std::move(auth_factor_map),
-      migrate_to_user_secret_stash, crypto, platform, user_session_map,
-      keyset_management, auth_block_utility, auth_factor_manager,
-      user_secret_stash_storage));
+  AuthSession::Params params = {std::move(account_id),
+                                std::move(obfuscated_username),
+                                flags,
+                                intent,
+                                std::move(on_timeout),
+                                user_exists,
+                                std::move(auth_factor_map),
+                                migrate_to_user_secret_stash};
+  return std::make_unique<AuthSession>(std::move(params), backing_apis);
 }
 
-AuthSession::AuthSession(
-    std::string username,
-    std::string obfuscated_username,
-    unsigned int flags,
-    AuthIntent intent,
-    base::OnceCallback<void(const base::UnguessableToken&)> on_timeout,
-    bool user_exists,
-    AuthFactorMap auth_factor_map,
-    bool migrate_to_user_secret_stash,
-    Crypto* crypto,
-    Platform* platform,
-    UserSessionMap* user_session_map,
-    KeysetManagement* keyset_management,
-    AuthBlockUtility* auth_block_utility,
-    AuthFactorManager* auth_factor_manager,
-    UserSecretStashStorage* user_secret_stash_storage)
-    : username_(std::move(username)),
+AuthSession::AuthSession(Params params, BackingApis backing_apis)
+    : username_(std::move(params.username)),
       obfuscated_username_(SanitizeUserName(username_)),
-      is_ephemeral_user_(flags & AUTH_SESSION_FLAGS_EPHEMERAL_USER),
-      auth_intent_(intent),
+      is_ephemeral_user_(params.flags & AUTH_SESSION_FLAGS_EPHEMERAL_USER),
+      auth_intent_(params.intent),
       auth_session_creation_time_(base::TimeTicks::Now()),
-      on_timeout_(std::move(on_timeout)),
-      crypto_(crypto),
-      platform_(platform),
-      user_session_map_(user_session_map),
+      on_timeout_(std::move(params.on_timeout)),
+      crypto_(backing_apis.crypto),
+      platform_(backing_apis.platform),
+      user_session_map_(backing_apis.user_session_map),
       verifier_forwarder_(username_, user_session_map_),
-      keyset_management_(keyset_management),
-      auth_block_utility_(auth_block_utility),
-      auth_factor_manager_(auth_factor_manager),
-      user_secret_stash_storage_(user_secret_stash_storage),
+      keyset_management_(backing_apis.keyset_management),
+      auth_block_utility_(backing_apis.auth_block_utility),
+      auth_factor_manager_(backing_apis.auth_factor_manager),
+      user_secret_stash_storage_(backing_apis.user_secret_stash_storage),
       converter_(keyset_management_),
       token_(platform_->CreateUnguessableToken()),
       serialized_token_(GetSerializedStringFromToken(token_).value_or("")),
-      user_exists_(user_exists),
-      auth_factor_map_(std::move(auth_factor_map)),
+      user_exists_(params.user_exists),
+      auth_factor_map_(std::move(params.auth_factor_map)),
       enable_create_backup_vk_with_uss_(
           AreAllFactorsSupportedByBothVkAndUss(auth_factor_map_)),
-      migrate_to_user_secret_stash_(migrate_to_user_secret_stash) {
+      migrate_to_user_secret_stash_(params.migrate_to_user_secret_stash) {
   // Preconditions.
   DCHECK(!serialized_token_.empty());
   DCHECK(crypto_);

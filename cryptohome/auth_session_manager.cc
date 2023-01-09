@@ -63,21 +63,12 @@ CryptohomeStatusOr<AuthSession*> AuthSessionManager::CreateAuthSession(
   auto on_timeout = base::BindOnce(&AuthSessionManager::ExpireAuthSession,
                                    base::Unretained(this));
   // Assumption here is that keyset_management_ will outlive this AuthSession.
-  CryptohomeStatusOr<std::unique_ptr<AuthSession>> auth_session =
-      AuthSession::Create(
-          account_id, flags, auth_intent, std::move(on_timeout), crypto_,
-          platform_, user_session_map_, keyset_management_, auth_block_utility_,
-          auth_factor_manager_, user_secret_stash_storage_, feature_lib_);
+  std::unique_ptr<AuthSession> auth_session = AuthSession::Create(
+      account_id, flags, auth_intent, std::move(on_timeout), feature_lib_,
+      {crypto_, platform_, user_session_map_, keyset_management_,
+       auth_block_utility_, auth_factor_manager_, user_secret_stash_storage_});
 
-  if (!auth_session.ok()) {
-    return MakeStatus<CryptohomeError>(
-        CRYPTOHOME_ERR_LOC(kLocAuthSessionManagerCreateFailed),
-        ErrorActionSet(
-            {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kReboot}),
-        user_data_auth::CRYPTOHOME_ERROR_UNUSABLE_VAULT);
-  }
-
-  auto token = auth_session.value()->token();
+  auto token = auth_session->token();
   if (auth_sessions_.count(token) > 0) {
     LOG(ERROR) << "AuthSession token collision";
     return MakeStatus<CryptohomeError>(
@@ -86,8 +77,8 @@ CryptohomeStatusOr<AuthSession*> AuthSessionManager::CreateAuthSession(
         user_data_auth::CRYPTOHOME_ERROR_UNUSABLE_VAULT);
   }
 
-  auth_sessions_.emplace(token, std::move(auth_session.value()));
-  return auth_sessions_[token].get();
+  return auth_sessions_.emplace(token, std::move(auth_session))
+      .first->second.get();
 }
 
 bool AuthSessionManager::RemoveAuthSession(

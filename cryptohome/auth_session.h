@@ -22,6 +22,7 @@
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <cryptohome/proto_bindings/auth_factor.pb.h>
 #include <libhwsec-foundation/status/status_chain_or.h>
+#include <libhwsec/structures/no_default_init.h>
 
 #include "cryptohome/auth_blocks/auth_block_utility.h"
 #include "cryptohome/auth_blocks/prepare_token.h"
@@ -84,21 +85,47 @@ class AuthSession final {
  public:
   using StatusCallback = base::OnceCallback<void(CryptohomeStatus)>;
 
+  // Parameter struct used to specify all the base parameters of AuthSession.
+  // These parameters do not include the underlying interfaces that AuthSession
+  // depends on, which are defined below in a separate parameter struct.
+  struct Params {
+    hwsec::NoDefault<std::string> username;
+    hwsec::NoDefault<std::string> obfuscated_username;
+    hwsec::NoDefault<unsigned int> flags;
+    hwsec::NoDefault<AuthIntent> intent;
+    base::OnceCallback<void(const base::UnguessableToken&)> on_timeout;
+    hwsec::NoDefault<bool> user_exists;
+    AuthFactorMap auth_factor_map;
+    hwsec::NoDefault<bool> migrate_to_user_secret_stash;
+  };
+
+  // Parameter struct used to supply all of the backing APIs that AuthSession
+  // depends on. All of these pointers must be valid for the entire lifetime of
+  // the AuthSession object.
+  struct BackingApis {
+    Crypto* crypto = nullptr;
+    Platform* platform = nullptr;
+    UserSessionMap* user_session_map = nullptr;
+    KeysetManagement* keyset_management = nullptr;
+    AuthBlockUtility* auth_block_utility = nullptr;
+    AuthFactorManager* auth_factor_manager = nullptr;
+    UserSecretStashStorage* user_secret_stash_storage = nullptr;
+  };
+
   // Creates new auth session for account_id. This method returns a unique_ptr
   // to the created AuthSession for the auth_session_manager to hold.
-  static CryptohomeStatusOr<std::unique_ptr<AuthSession>> Create(
+  static std::unique_ptr<AuthSession> Create(
       std::string username,
       unsigned int flags,
       AuthIntent intent,
       base::OnceCallback<void(const base::UnguessableToken&)> on_timeout,
-      Crypto* crypto,
-      Platform* platform,
-      UserSessionMap* user_session_map,
-      KeysetManagement* keyset_management,
-      AuthBlockUtility* auth_block_utility,
-      AuthFactorManager* auth_factor_manager,
-      UserSecretStashStorage* user_secret_stash_storage,
-      feature::PlatformFeaturesInterface* feature_lib);
+      feature::PlatformFeaturesInterface* feature_lib,
+      BackingApis backing_apis);
+
+  // Construct an AuthSession initialized with all of the given state. This
+  // should generally only be used directly in testing; production code should
+  // prefer to call the Create factory function.
+  AuthSession(Params params, BackingApis backing_apis);
 
   ~AuthSession();
 
@@ -239,12 +266,6 @@ class AuthSession final {
     vault_keyset_ = std::move(value);
   }
 
-  // Injects an auth factor into the session for testing purposes.
-  void add_auth_factor_for_testing(std::unique_ptr<AuthFactor> auth_factor,
-                                   AuthFactorStorageType storage_type) {
-    auth_factor_map_.Add(std::move(auth_factor), storage_type);
-  }
-
   // Static function which returns a serialized token in a vector format. The
   // token is serialized into two uint64_t values which are stored in string of
   // size 16 bytes. The first 8 bytes represent the high value of the serialized
@@ -271,25 +292,6 @@ class AuthSession final {
   std::unique_ptr<brillo::SecureBlob> GetHibernateSecret();
 
  private:
-  // Caller needs to ensure that the passed raw pointers outlive the
-  // instance of AuthSession.
-  AuthSession(
-      std::string username,
-      std::string obfuscated_username,
-      unsigned int flags,
-      AuthIntent intent,
-      base::OnceCallback<void(const base::UnguessableToken&)> on_timeout,
-      bool user_exists,
-      AuthFactorMap auth_factor_map,
-      bool migrate_to_user_secret_stash,
-      Crypto* crypto,
-      Platform* platform,
-      UserSessionMap* user_session_map,
-      KeysetManagement* keyset_management,
-      AuthBlockUtility* auth_block_utility,
-      AuthFactorManager* auth_factor_manager,
-      UserSecretStashStorage* user_secret_stash_storage);
-
   // AuthSessionTimedOut is called when the session times out and cleans up
   // credentials that may be in memory. |on_timeout_| is also called to remove
   // this |AuthSession| reference from |UserDataAuth|.
@@ -682,9 +684,7 @@ class AuthSession final {
   // Should be the last member.
   base::WeakPtrFactory<AuthSession> weak_factory_{this};
 
-  friend class AuthSessionTest;
   friend class AuthSessionInterfaceTest;
-  friend class AuthSessionManagerTest;
   friend class AuthSessionTestWithKeysetManagement;
   FRIEND_TEST(AuthSessionManagerTest, CreateExpire);
   FRIEND_TEST(AuthSessionTest, AddCredentialNewUser);
@@ -694,7 +694,6 @@ class AuthSession final {
   FRIEND_TEST(AuthSessionTest, AuthenticateWithPIN);
   FRIEND_TEST(AuthSessionTest, AuthenticateExistingUserFailure);
   FRIEND_TEST(AuthSessionTest, ExtensionTest);
-  FRIEND_TEST(AuthSessionTest, Username);
   FRIEND_TEST(AuthSessionTest, UssMigrationFlagCheckFailure);
   FRIEND_TEST(AuthSessionTest, TimeoutTest);
   FRIEND_TEST(AuthSessionTest, GetCredentialRegularUser);

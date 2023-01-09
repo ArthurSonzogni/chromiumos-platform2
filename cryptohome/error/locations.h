@@ -1337,7 +1337,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   //// This is a separator block at value 2300
   //// See location_db.py for more info.
   //////////////////////////////////////////////////
-  /* ./auth_session_manager.cc */
+  /* =Obsolete= */
   kLocAuthSessionManagerCreateFailed = 2300,
   /* ./auth_session_manager.cc */
   kLocAuthSessionManagerTokenCollision = 2301,
