@@ -2,6 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#[macro_use]
+extern crate lazy_static;
+
 mod common;
 mod service;
 mod shader_cache_mount;
@@ -35,6 +38,11 @@ pub async fn main() -> Result<()> {
     // Note: MountPoints is Arc-ed (cloning returns pointer to the object,
     // thread safe).
     let mount_points = new_mount_map();
+
+    info!(
+        "GPU PCI device ID is {:04x}, DLC variant {}",
+        *GPU_DEVICE_ID, *GPU_DEVICE_DLC_VARIANT
+    );
 
     let (resource, c) = dbus_tokio::connection::new_system_sync()?;
     // If D-Bus connection drops unexpectedly, cleanup the mount points then

@@ -201,8 +201,8 @@ impl ShaderCacheMount {
     pub fn dlc_content_path(&self) -> Result<String> {
         // Generate DLC content
         let str_base = format!(
-            "/run/imageloader/borealis-shader-cache-{}-dlc/package/root/",
-            self.target_steam_app_id
+            "/run/imageloader/{}/package/root/",
+            steam_app_id_to_dlc(self.target_steam_app_id),
         );
         let path = Path::new(&str_base).join(&self.relative_mesa_cache_path);
 
@@ -266,17 +266,31 @@ fn get_mesa_cache_relative_path(render_server_path: &Path) -> Result<PathBuf> {
     // This function figures out this relative mount path from GPU cache dir:
     //   <GPU cache dir>/render_server/<mesa_cache_path>/
     // where mesa_cache_path is (usually):
-    //   <mesa cache type>/<mesa_hash>/<gpu id from driver>
+    //   mesa_shader_cache_sf/<mesa_hash>/anv_<gpu device id>
+    // or (for AMD):
+    //   mesa_shader_cache_sf/<mesa_hash>/<gpu generation name>
     // This mesa_cache_path has the actual binary cache blobs used by mesa,
-    // along with the 'foz_blob.foz' file.
+    // along with the 'foz_blob.foz' and/or 'index' file.
     let mut absolute_path = Path::new(render_server_path)
         .to_path_buf()
         .join(MESA_SINGLE_FILE_DIR);
     let mut relative_path = Path::new(MESA_SINGLE_FILE_DIR).to_path_buf();
 
-    while let Ok(path) = get_single_file(&absolute_path) {
-        absolute_path = absolute_path.join(&path);
-        relative_path = relative_path.join(&path);
+    info!("Getting mesa hash and device id path");
+
+    let mesa_hash = get_single_file(&absolute_path)?;
+    absolute_path = absolute_path.join(&mesa_hash);
+    relative_path = relative_path.join(&mesa_hash);
+
+    let device_id_path = get_single_file(&absolute_path)?;
+    absolute_path = absolute_path.join(&device_id_path);
+    relative_path = relative_path.join(&device_id_path);
+
+    if !absolute_path.exists() {
+        return Err(anyhow!(
+            "{:?} does not exist, report GPU device ID may not match",
+            absolute_path
+        ));
     }
 
     // Mesa initializes the cache directory if there was a need to store things
@@ -285,7 +299,9 @@ fn get_mesa_cache_relative_path(render_server_path: &Path) -> Result<PathBuf> {
     //
     // However, on edge cases (ex. manual installation call before Steam
     // launch), foz_blob.foz file may not exist.
-    if !has_file(&absolute_path, FOZ_CACHE_FILE_NAME)? {
+    if !has_file(&absolute_path, FOZ_CACHE_FILE_NAME)?
+        && !has_file(&absolute_path, INDEX_FILE_NAME)?
+    {
         return Err(anyhow!(
             "Invalid mesa cache structure at {:?}",
             absolute_path
