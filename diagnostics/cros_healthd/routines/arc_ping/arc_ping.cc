@@ -6,11 +6,11 @@
 
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/bind.h>
 #include <base/check.h>
-#include <base/values.h>
 
 #include "diagnostics/cros_healthd/routines/simple_routine.h"
 #include "diagnostics/mojom/external/network_diagnostics.mojom.h"
@@ -50,43 +50,34 @@ std::string GetProblemMessage(network_diagnostics_ipc::ArcPingProblem problem) {
 }
 
 // Parses the results of ARC ping routine.
-void ParseArcPingResult(mojo_ipc::DiagnosticRoutineStatusEnum* status,
-                        std::string* status_message,
-                        network_diagnostics_ipc::RoutineResultPtr result) {
-  DCHECK(status);
-  DCHECK(status_message);
-
+SimpleRoutine::RoutineResult ParseArcPingResult(
+    network_diagnostics_ipc::RoutineResultPtr result) {
   switch (result->verdict) {
     case network_diagnostics_ipc::RoutineVerdict::kNoProblem:
-      *status = mojo_ipc::DiagnosticRoutineStatusEnum::kPassed;
-      *status_message = kArcPingRoutineNoProblemMessage;
-      break;
+      return {
+          .status = mojo_ipc::DiagnosticRoutineStatusEnum::kPassed,
+          .status_message = kArcPingRoutineNoProblemMessage,
+      };
     case network_diagnostics_ipc::RoutineVerdict::kNotRun:
-      *status = mojo_ipc::DiagnosticRoutineStatusEnum::kNotRun;
-      *status_message = kArcPingRoutineNotRunMessage;
-      break;
+      return {
+          .status = mojo_ipc::DiagnosticRoutineStatusEnum::kNotRun,
+          .status_message = kArcPingRoutineNotRunMessage,
+      };
     case network_diagnostics_ipc::RoutineVerdict::kProblem:
-      *status = mojo_ipc::DiagnosticRoutineStatusEnum::kFailed;
       auto problems = result->problems->get_arc_ping_problems();
       DCHECK(!problems.empty());
-      *status_message = GetProblemMessage(problems[0]);
-      break;
+      return {
+          .status = mojo_ipc::DiagnosticRoutineStatusEnum::kFailed,
+          .status_message = GetProblemMessage(problems[0]),
+      };
   }
 }
 
-// We include |output_dict| here to satisfy SimpleRoutine - the gateway can be
-// pinged routine never includes an output.
 void RunArcPingRoutine(NetworkDiagnosticsAdapter* network_diagnostics_adapter,
-                       mojo_ipc::DiagnosticRoutineStatusEnum* status,
-                       std::string* status_message,
-                       base::Value* output_dict) {
+                       SimpleRoutine::RoutineResultCallback callback) {
   DCHECK(network_diagnostics_adapter);
-  DCHECK(status);
-
-  *status = mojo_ipc::DiagnosticRoutineStatusEnum::kRunning;
-
   network_diagnostics_adapter->RunArcPingRoutine(
-      base::BindOnce(&ParseArcPingResult, status, status_message));
+      base::BindOnce(&ParseArcPingResult).Then(std::move(callback)));
 }
 
 }  // namespace

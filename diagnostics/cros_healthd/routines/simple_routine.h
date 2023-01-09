@@ -30,10 +30,9 @@ namespace diagnostics {
 // (Implementation file)
 // void DoRoutineWork(
 //   Params params,
-//   ash::cros_healthd::mojom::DiagnosticRoutineStatusEnum* status,
-//   std::string* status_message,
-//   base::Value* output_dict) {
+//   SimpleRoutine::RoutineResultCallback callback) {
 //     // Routine-specific logic goes here.
+//     // Invoke |callback| with the result of routine once the work is done.
 // }
 //
 // std::unique_ptr<DiagnosticRoutine> CreateNewSimpleRoutine(Params params) {
@@ -42,10 +41,13 @@ namespace diagnostics {
 // }
 class SimpleRoutine final : public DiagnosticRoutine {
  public:
-  using Task = base::OnceCallback<void(
-      ash::cros_healthd::mojom::DiagnosticRoutineStatusEnum* status,
-      std::string* status_message,
-      base::Value* output_dict)>;
+  struct RoutineResult {
+    ash::cros_healthd::mojom::DiagnosticRoutineStatusEnum status;
+    std::string status_message;
+    base::Value::Dict output_dict;
+  };
+  using RoutineResultCallback = base::OnceCallback<void(RoutineResult)>;
+  using Task = base::OnceCallback<void(RoutineResultCallback)>;
 
   explicit SimpleRoutine(Task task);
   SimpleRoutine(const SimpleRoutine&) = delete;
@@ -61,12 +63,17 @@ class SimpleRoutine final : public DiagnosticRoutine {
   ash::cros_healthd::mojom::DiagnosticRoutineStatusEnum GetStatus() override;
 
  private:
+  void StoreRoutineResult(RoutineResult result);
+
   // Task encapsulating the logic of the routine to run.
   Task task_;
 
   ash::cros_healthd::mojom::DiagnosticRoutineStatusEnum status_;
   std::string status_message_;
-  base::Value output_dict_{base::Value::Type::DICTIONARY};
+  base::Value::Dict output_dict_;
+
+  // Must be the last class member.
+  base::WeakPtrFactory<SimpleRoutine> weak_ptr_factory_{this};
 };
 
 }  // namespace diagnostics

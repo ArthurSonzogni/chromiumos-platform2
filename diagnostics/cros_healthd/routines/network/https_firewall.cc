@@ -6,11 +6,11 @@
 
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/bind.h>
 #include <base/check.h>
-#include <base/values.h>
 
 #include "diagnostics/cros_healthd/routines/simple_routine.h"
 #include "diagnostics/mojom/external/network_diagnostics.mojom.h"
@@ -37,45 +37,35 @@ std::string GetProblemMessage(
 }
 
 // Parses the results of the HTTPS firewall routine.
-void ParseHttpsFirewallResult(
-    mojo_ipc::DiagnosticRoutineStatusEnum* status,
-    std::string* status_message,
+SimpleRoutine::RoutineResult ParseHttpsFirewallResult(
     network_diagnostics_ipc::RoutineResultPtr result) {
-  DCHECK(status);
-  DCHECK(status_message);
-
   switch (result->verdict) {
     case network_diagnostics_ipc::RoutineVerdict::kNoProblem:
-      *status = mojo_ipc::DiagnosticRoutineStatusEnum::kPassed;
-      *status_message = kHttpsFirewallRoutineNoProblemMessage;
-      break;
+      return {
+          .status = mojo_ipc::DiagnosticRoutineStatusEnum::kPassed,
+          .status_message = kHttpsFirewallRoutineNoProblemMessage,
+      };
     case network_diagnostics_ipc::RoutineVerdict::kNotRun:
-      *status = mojo_ipc::DiagnosticRoutineStatusEnum::kNotRun;
-      *status_message = kHttpsFirewallRoutineNotRunMessage;
-      break;
+      return {
+          .status = mojo_ipc::DiagnosticRoutineStatusEnum::kNotRun,
+          .status_message = kHttpsFirewallRoutineNotRunMessage,
+      };
     case network_diagnostics_ipc::RoutineVerdict::kProblem:
-      *status = mojo_ipc::DiagnosticRoutineStatusEnum::kFailed;
       auto problems = result->problems->get_https_firewall_problems();
       DCHECK(!problems.empty());
-      *status_message = GetProblemMessage(problems[0]);
-      break;
+      return {
+          .status = mojo_ipc::DiagnosticRoutineStatusEnum::kFailed,
+          .status_message = GetProblemMessage(problems[0]),
+      };
   }
 }
 
-// We include |output| here to satisfy SimpleRoutine - the HTTPS firewall
-// routine never includes an output.
 void RunHttpsFirewallRoutine(
     NetworkDiagnosticsAdapter* network_diagnostics_adapter,
-    mojo_ipc::DiagnosticRoutineStatusEnum* status,
-    std::string* status_message,
-    base::Value* output) {
+    SimpleRoutine::RoutineResultCallback callback) {
   DCHECK(network_diagnostics_adapter);
-  DCHECK(status);
-
-  *status = mojo_ipc::DiagnosticRoutineStatusEnum::kRunning;
-
   network_diagnostics_adapter->RunHttpsFirewallRoutine(
-      base::BindOnce(&ParseHttpsFirewallResult, status, status_message));
+      base::BindOnce(&ParseHttpsFirewallResult).Then(std::move(callback)));
 }
 
 }  // namespace

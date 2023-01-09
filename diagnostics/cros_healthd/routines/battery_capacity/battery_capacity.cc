@@ -7,11 +7,11 @@
 #include <cstdint>
 #include <optional>
 #include <string>
+#include <utility>
 
 #include <base/callback.h>
 #include <base/check.h>
 #include <base/logging.h>
-#include <base/values.h>
 #include <power_manager/proto_bindings/power_supply_properties.pb.h>
 
 #include "diagnostics/cros_healthd/routines/simple_routine.h"
@@ -26,30 +26,25 @@ namespace mojo_ipc = ::ash::cros_healthd::mojom;
 // Conversion factor from Ah to mAh.
 constexpr uint32_t kAhTomAhMultiplier = 1000;
 
-// We include |output_dict| here to satisfy SimpleRoutine - the battery capacity
-// routine never includes an output.
-void RunBatteryCapacityRoutine(Context* const context,
-                               uint32_t low_mah,
-                               uint32_t high_mah,
-                               mojo_ipc::DiagnosticRoutineStatusEnum* status,
-                               std::string* status_message,
-                               base::Value* output_dict) {
+SimpleRoutine::RoutineResult GetBatteryCapacityResult(Context* const context,
+                                                      uint32_t low_mah,
+                                                      uint32_t high_mah) {
   DCHECK(context);
-  DCHECK(status);
-  DCHECK(status_message);
 
   if (low_mah > high_mah) {
-    *status = mojo_ipc::DiagnosticRoutineStatusEnum::kError;
-    *status_message = kBatteryCapacityRoutineParametersInvalidMessage;
-    return;
+    return {
+        .status = mojo_ipc::DiagnosticRoutineStatusEnum::kError,
+        .status_message = kBatteryCapacityRoutineParametersInvalidMessage,
+    };
   }
 
   std::optional<power_manager::PowerSupplyProperties> response =
       context->powerd_adapter()->GetPowerSupplyProperties();
   if (!response.has_value()) {
-    *status = mojo_ipc::DiagnosticRoutineStatusEnum::kError;
-    *status_message = kPowerdPowerSupplyPropertiesFailedMessage;
-    return;
+    return {
+        .status = mojo_ipc::DiagnosticRoutineStatusEnum::kError,
+        .status_message = kPowerdPowerSupplyPropertiesFailedMessage,
+    };
   }
 
   auto power_supply_proto = response.value();
@@ -61,14 +56,23 @@ void RunBatteryCapacityRoutine(Context* const context,
   uint32_t charge_full_design_mah = charge_full_design_ah * kAhTomAhMultiplier;
   if (!(charge_full_design_mah >= low_mah) ||
       !(charge_full_design_mah <= high_mah)) {
-    *status = mojo_ipc::DiagnosticRoutineStatusEnum::kFailed;
-    *status_message = kBatteryCapacityRoutineFailedMessage;
-    return;
+    return {
+        .status = mojo_ipc::DiagnosticRoutineStatusEnum::kFailed,
+        .status_message = kBatteryCapacityRoutineFailedMessage,
+    };
   }
 
-  *status = mojo_ipc::DiagnosticRoutineStatusEnum::kPassed;
-  *status_message = kBatteryCapacityRoutineSucceededMessage;
-  return;
+  return {
+      .status = mojo_ipc::DiagnosticRoutineStatusEnum::kPassed,
+      .status_message = kBatteryCapacityRoutineSucceededMessage,
+  };
+}
+
+void RunBatteryCapacityRoutine(Context* const context,
+                               uint32_t low_mah,
+                               uint32_t high_mah,
+                               SimpleRoutine::RoutineResultCallback callback) {
+  std::move(callback).Run(GetBatteryCapacityResult(context, low_mah, high_mah));
 }
 
 }  // namespace

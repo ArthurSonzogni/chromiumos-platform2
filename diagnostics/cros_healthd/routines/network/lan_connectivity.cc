@@ -5,11 +5,11 @@
 #include "diagnostics/cros_healthd/routines/network/lan_connectivity.h"
 
 #include <string>
+#include <utility>
 
 #include <base/bind.h>
 #include <base/check.h>
 #include <base/logging.h>
-#include <base/values.h>
 
 #include "diagnostics/cros_healthd/network_diagnostics/network_diagnostics_adapter.h"
 #include "diagnostics/cros_healthd/routines/simple_routine.h"
@@ -32,45 +32,35 @@ std::string GetProblemMessage(
 }
 
 // Parses the results of the LAN connectivity routine.
-void ParseLanConnectivityResult(
-    mojo_ipc::DiagnosticRoutineStatusEnum* status,
-    std::string* status_message,
+SimpleRoutine::RoutineResult ParseLanConnectivityResult(
     network_diagnostics_ipc::RoutineResultPtr result) {
-  DCHECK(status);
-  DCHECK(status_message);
-
   switch (result->verdict) {
     case network_diagnostics_ipc::RoutineVerdict::kNoProblem:
-      *status = mojo_ipc::DiagnosticRoutineStatusEnum::kPassed;
-      *status_message = kLanConnectivityRoutineNoProblemMessage;
-      break;
+      return {
+          .status = mojo_ipc::DiagnosticRoutineStatusEnum::kPassed,
+          .status_message = kLanConnectivityRoutineNoProblemMessage,
+      };
     case network_diagnostics_ipc::RoutineVerdict::kNotRun:
-      *status = mojo_ipc::DiagnosticRoutineStatusEnum::kNotRun;
-      *status_message = kLanConnectivityRoutineNotRunMessage;
-      break;
+      return {
+          .status = mojo_ipc::DiagnosticRoutineStatusEnum::kNotRun,
+          .status_message = kLanConnectivityRoutineNotRunMessage,
+      };
     case network_diagnostics_ipc::RoutineVerdict::kProblem:
-      *status = mojo_ipc::DiagnosticRoutineStatusEnum::kFailed;
       auto problems = result->problems->get_lan_connectivity_problems();
       DCHECK(!problems.empty());
-      *status_message = GetProblemMessage(problems[0]);
-      break;
+      return {
+          .status = mojo_ipc::DiagnosticRoutineStatusEnum::kFailed,
+          .status_message = GetProblemMessage(problems[0]),
+      };
   }
 }
 
-// We include |output_dict| here to satisfy SimpleRoutine - the LAN connectivity
-// routine never includes an output.
 void RunLanConnectivityRoutine(
     NetworkDiagnosticsAdapter* network_diagnostics_adapter,
-    mojo_ipc::DiagnosticRoutineStatusEnum* status,
-    std::string* status_message,
-    base::Value* output_dict) {
+    SimpleRoutine::RoutineResultCallback callback) {
   DCHECK(network_diagnostics_adapter);
-  DCHECK(status);
-
-  *status = mojo_ipc::DiagnosticRoutineStatusEnum::kRunning;
-
   network_diagnostics_adapter->RunLanConnectivityRoutine(
-      base::BindOnce(&ParseLanConnectivityResult, status, status_message));
+      base::BindOnce(&ParseLanConnectivityResult).Then(std::move(callback)));
 }
 
 }  // namespace

@@ -35,15 +35,15 @@ struct ReportProgressPercentTestParams {
 // Holds the output from FakeRoutineTask in base::Value form, as well as the
 // expected JSON output SimpleRoutine will generate from the base::Value.
 struct FakeExpectedOutput {
-  base::Value output_dict;
+  base::Value::Dict output_dict;
   std::string json;
 };
 
 // Generates expected output for a simple routine in both string and base::Value
 // formats.
 FakeExpectedOutput GetFakeExpectedOutput() {
-  base::Value output_dict(base::Value::Type::DICTIONARY);
-  output_dict.SetStringKey("testOutput", "testValue");
+  base::Value::Dict output_dict;
+  output_dict.Set("testOutput", "testValue");
   std::string json;
   base::JSONWriter::WriteWithOptions(
       output_dict, base::JSONWriter::Options::OPTIONS_PRETTY_PRINT, &json);
@@ -53,21 +53,16 @@ FakeExpectedOutput GetFakeExpectedOutput() {
   return fake_output;
 }
 
-// Task for a SimpleRoutine to run. Does no work other than setting
-// |status_out|, |status_message_out| and |output_out|.
+// Task for a SimpleRoutine to run.
 void FakeRoutineTask(mojo_ipc::DiagnosticRoutineStatusEnum status_in,
                      const std::string& status_message_in,
-                     const base::Value& output_dict_in,
-                     mojo_ipc::DiagnosticRoutineStatusEnum* status_out,
-                     std::string* status_message_out,
-                     base::Value* output_dict_out) {
-  DCHECK(status_out);
-  DCHECK(status_message_out);
-  DCHECK(output_dict_out);
-
-  *status_out = status_in;
-  *status_message_out = std::move(status_message_in);
-  output_dict_out->MergeDictionary(&output_dict_in);
+                     base::Value::Dict output_dict_in,
+                     SimpleRoutine::RoutineResultCallback callback) {
+  std::move(callback).Run({
+      .status = status_in,
+      .status_message = status_message_in,
+      .output_dict = std::move(output_dict_in),
+  });
 }
 
 class SimpleRoutineTest : public testing::Test {
@@ -80,7 +75,7 @@ class SimpleRoutineTest : public testing::Test {
 
   mojo_ipc::RoutineUpdate* update() { return &update_; }
 
-  void CreateRoutine(base::Value desired_output,
+  void CreateRoutine(base::Value::Dict desired_output,
                      mojo_ipc::DiagnosticRoutineStatusEnum desired_status =
                          mojo_ipc::DiagnosticRoutineStatusEnum::kFailed,
                      const std::string& desired_status_message = "") {

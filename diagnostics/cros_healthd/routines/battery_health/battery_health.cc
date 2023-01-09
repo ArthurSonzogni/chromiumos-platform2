@@ -95,28 +95,27 @@ bool TestCycleCount(
   return true;
 }
 
-void RunBatteryHealthRoutine(Context* const context,
-                             uint32_t maximum_cycle_count,
-                             uint8_t percent_battery_wear_allowed,
-                             mojo_ipc::DiagnosticRoutineStatusEnum* status,
-                             std::string* status_message,
-                             base::Value* output_dict) {
+SimpleRoutine::RoutineResult GetBatteryHealthResult(
+    Context* const context,
+    uint32_t maximum_cycle_count,
+    uint8_t percent_battery_wear_allowed) {
   DCHECK(context);
-  DCHECK(status);
-  DCHECK(status_message);
-  DCHECK(output_dict);
-  DCHECK(output_dict->is_dict());
-
-  base::Value result_dict(base::Value::Type::DICTIONARY);
 
   std::optional<power_manager::PowerSupplyProperties> response =
       context->powerd_adapter()->GetPowerSupplyProperties();
   if (!response.has_value()) {
-    *status_message = kPowerdPowerSupplyPropertiesFailedMessage;
-    *status = mojo_ipc::DiagnosticRoutineStatusEnum::kError;
     LOG(ERROR) << kPowerdPowerSupplyPropertiesFailedMessage;
-    return;
+    return {
+        .status = mojo_ipc::DiagnosticRoutineStatusEnum::kError,
+        .status_message = kPowerdPowerSupplyPropertiesFailedMessage,
+    };
   }
+
+  mojo_ipc::DiagnosticRoutineStatusEnum status;
+  std::string status_message;
+  base::Value::Dict output_dict;
+
+  base::Value result_dict(base::Value::Type::DICTIONARY);
 
   auto power_supply_proto = response.value();
   auto present =
@@ -136,17 +135,30 @@ void RunBatteryHealthRoutine(Context* const context,
   result_dict.SetDoubleKey("chargeNowAh", power_supply_proto.battery_charge());
 
   if (TestWearPercentage(power_supply_proto, percent_battery_wear_allowed,
-                         status, status_message, &result_dict) &&
-      TestCycleCount(power_supply_proto, maximum_cycle_count, status,
-                     status_message, &result_dict)) {
-    *status_message = kBatteryHealthRoutinePassedMessage;
-    *status = mojo_ipc::DiagnosticRoutineStatusEnum::kPassed;
+                         &status, &status_message, &result_dict) &&
+      TestCycleCount(power_supply_proto, maximum_cycle_count, &status,
+                     &status_message, &result_dict)) {
+    status_message = kBatteryHealthRoutinePassedMessage;
+    status = mojo_ipc::DiagnosticRoutineStatusEnum::kPassed;
   }
 
-  if (result_dict.DictEmpty())
-    return;
+  if (!result_dict.DictEmpty()) {
+    output_dict.Set("resultDetails", std::move(result_dict));
+  }
 
-  output_dict->SetKey("resultDetails", std::move(result_dict));
+  return {
+      .status = status,
+      .status_message = status_message,
+      .output_dict = std::move(output_dict),
+  };
+}
+
+void RunBatteryHealthRoutine(Context* const context,
+                             uint32_t maximum_cycle_count,
+                             uint8_t percent_battery_wear_allowed,
+                             SimpleRoutine::RoutineResultCallback callback) {
+  std::move(callback).Run(GetBatteryHealthResult(context, maximum_cycle_count,
+                                                 percent_battery_wear_allowed));
 }
 
 }  // namespace

@@ -44,13 +44,9 @@ SimpleRoutine::~SimpleRoutine() = default;
 
 void SimpleRoutine::Start() {
   DCHECK_EQ(status_, mojo_ipc::DiagnosticRoutineStatusEnum::kReady);
-  std::move(task_).Run(&status_, &status_message_, &output_dict_);
-  if (status_ != mojo_ipc::DiagnosticRoutineStatusEnum::kPassed &&
-      status_ != mojo_ipc::DiagnosticRoutineStatusEnum::kRunning) {
-    LOG(ERROR) << base::StringPrintf(
-        "Routine unsuccessful with status: %d and message: %s.", status_,
-        status_message_.c_str());
-  }
+  status_ = mojo_ipc::DiagnosticRoutineStatusEnum::kRunning;
+  std::move(task_).Run(base::BindOnce(&SimpleRoutine::StoreRoutineResult,
+                                      weak_ptr_factory_.GetWeakPtr()));
 }
 
 // Simple routines can only be started.
@@ -69,7 +65,7 @@ void SimpleRoutine::PopulateStatusUpdate(mojo_ipc::RoutineUpdate* response,
       mojo_ipc::RoutineUpdateUnion::NewNoninteractiveUpdate(std::move(update));
   response->progress_percent = CalculateProgressPercent(status_);
 
-  if (include_output && !output_dict_.DictEmpty()) {
+  if (include_output && !output_dict_.empty()) {
     std::string json;
     base::JSONWriter::WriteWithOptions(
         output_dict_, base::JSONWriter::Options::OPTIONS_PRETTY_PRINT, &json);
@@ -80,6 +76,12 @@ void SimpleRoutine::PopulateStatusUpdate(mojo_ipc::RoutineUpdate* response,
 
 mojo_ipc::DiagnosticRoutineStatusEnum SimpleRoutine::GetStatus() {
   return status_;
+}
+
+void SimpleRoutine::StoreRoutineResult(RoutineResult result) {
+  status_ = result.status;
+  status_message_ = std::move(result.status_message);
+  output_dict_ = std::move(result.output_dict);
 }
 
 }  // namespace diagnostics
