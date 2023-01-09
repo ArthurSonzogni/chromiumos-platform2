@@ -32,19 +32,28 @@ generate_pkg_config("libthinpool_migrator_pc") {
 }
 
 shared_library("libthinpool_migrator") {
-  sources = [ "lvm_metadata.cc" ]
+  sources = [
+    "lvm_metadata.cc",
+    "stateful_metadata.cc",
+  ]
   configs += [ ":target_defaults" ]
   install_path = "lib"
 }
 
 install_config("install_headers") {
-  sources = [ "lvm_metadata.h" ]
+  sources = [
+    "lvm_metadata.h",
+    "stateful_metadata.h",
+  ]
   install_path = "/usr/include/thinpool_migrator"
 }
 
 if (use.test) {
   executable("thinpool_migrator_tests") {
-    sources = [ "lvm_metadata_test.cc" ]
+    sources = [
+      "lvm_metadata_test.cc",
+      "stateful_metadata_test.cc",
+    ]
     configs += [
       "//common-mk:test",
       ":target_defaults",
