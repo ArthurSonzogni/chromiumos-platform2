@@ -77,7 +77,7 @@ class CrosQtIMContext : public QPlatformInputContext {
 
     void DeleteSurroundingText(int start_offset, int length) override;
 
-    void KeySym(uint32_t keysym, KeyState state) override;
+    void KeySym(uint32_t keysym, KeyState state, uint32_t modifiers) override;
 
    private:
     CrosQtIMContext* context_;

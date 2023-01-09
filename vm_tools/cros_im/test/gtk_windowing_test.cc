@@ -47,18 +47,7 @@ TEST_F(GtkPopoverWindowTest, CommitString) {
   RunAndExpectBufferChangeTo(&outer_entry_, "ツ:)");
 }
 
-TEST_F(GtkPopoverWindowTest, KeySym) {
-  RunAndExpectBufferChangeTo(&outer_entry_, "a");
-  popover_.show();
-  RunAndExpectBufferChangeTo(&inner_entry_, "ß");
-  popover_.hide();
-  RunAndExpectBufferChangeTo(&outer_entry_, "aœ");
-  popover_.show();
-  // Text is highlighted when re-showing so existing text is cleared on input.
-  RunAndExpectBufferChangeTo(&inner_entry_, "p");
-  // TODO(timloh): We should probably test control characters (e.g. bspc, esc)
-  // in the popover but I wasn't able to make a non-flaky test.
-}
+// TODO(b/264834882): Work out how to test keysyms here.
 
 }  // namespace test
 }  // namespace cros_im

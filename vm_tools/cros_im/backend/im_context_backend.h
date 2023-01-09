@@ -52,7 +52,9 @@ class IMContextBackend {
     // Both values are in bytes. |start_offset| is relative to the cursor.
     virtual void DeleteSurroundingText(int start_offset, int length) = 0;
 
-    virtual void KeySym(uint32_t keysym, KeyState state) = 0;
+    virtual void KeySym(uint32_t keysym,
+                        KeyState state,
+                        uint32_t modifiers) = 0;
   };
 
   struct ContentType {

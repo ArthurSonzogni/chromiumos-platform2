@@ -9,6 +9,11 @@
 namespace cros_im {
 namespace test {
 
+// GtkTextView triggers reset() at a few places (e.g. gtk_text_view_backspace
+// gtk_text_view_key_press_event or if gtktextview.c). The expectations here
+// are just documenting the behaviour but we could maybe just ignore the
+// requests instead.
+
 BACKEND_TEST(GtkKeySymTextViewTest, TextInput) {
   ExpectCreateTextInput();
 
@@ -43,14 +48,15 @@ BACKEND_TEST(GtkKeySymTextViewTest, Whitespace) {
   Expect(Request::kActivate);
 
   SendKeySym(XKB_KEY_Return);
-  // As per gtk_text_view_key_press_event in gtk_textview.c.
   Expect(Request::kReset);
   SendKeySym(XKB_KEY_Tab);
   SendKeySym(XKB_KEY_space);
   SendKeySym(XKB_KEY_Return);
+  Expect(Request::kReset);
   SendKeySym(XKB_KEY_space);
   SendKeySym(XKB_KEY_Tab);
 
+  Expect(Request::kReset);
   Expect(Request::kDeactivate);
 }
 
@@ -61,13 +67,14 @@ BACKEND_TEST(GtkKeySymTextViewTest, Backspace) {
 
   SendKeySym(XKB_KEY_a);
   SendKeySym(XKB_KEY_BackSpace);
-  // As per gtk_text_view_backspace in gtk_textview.c.
   Expect(Request::kReset);
   SendKeySym(XKB_KEY_Return);
   SendKeySym(XKB_KEY_b);
   SendKeySym(XKB_KEY_BackSpace);
+  Expect(Request::kReset);
   SendKeySym(XKB_KEY_c);
   SendKeySym(XKB_KEY_BackSpace);
+  Expect(Request::kReset);
   SendKeySym(XKB_KEY_BackSpace);
 
   Expect(Request::kDeactivate);

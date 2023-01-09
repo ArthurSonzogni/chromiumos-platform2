@@ -30,33 +30,5 @@ BACKEND_TEST(GtkPopoverWindowTest, CommitString) {
   Expect<0>(Request::kReset);
 }
 
-BACKEND_TEST(GtkPopoverWindowTest, KeySym) {
-  ExpectCreateTextInput<0>();
-  ExpectCreateTextInput<1>();
-
-  Expect<0>(Request::kActivate);
-  SendKeySym<0>(XKB_KEY_a);
-  Expect<0>(Request::kDeactivate);
-  Expect<1>(Request::kActivate);
-  Expect<1>(Request::kReset);
-
-  SendKeySym<1>(XKB_KEY_ssharp);
-  Expect<1>(Request::kDeactivate);
-  Expect<0>(Request::kActivate);
-
-  SendKeySym<0>(XKB_KEY_oe);
-  Expect<0>(Request::kDeactivate);
-  Expect<1>(Request::kActivate);
-  Expect<1>(Request::kReset);
-
-  SendKeySym<1>(XKB_KEY_p);
-
-  Expect<1>(Request::kDeactivate);
-  Expect<1>(Request::kReset);
-  Expect<0>(Request::kActivate);
-  Expect<0>(Request::kDeactivate);
-  Expect<0>(Request::kReset);
-}
-
 }  // namespace test
 }  // namespace cros_im

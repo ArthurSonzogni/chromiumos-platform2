@@ -233,9 +233,11 @@ void IMContextBackend::KeySym(uint32_t serial,
                               uint32_t state,
                               uint32_t modifiers) {
   // TODO(timloh): Handle remaining arguments.
-  observer_->KeySym(sym, state == WL_KEYBOARD_KEY_STATE_PRESSED
-                             ? KeyState::kPressed
-                             : KeyState::kReleased);
+  observer_->KeySym(sym,
+                    state == WL_KEYBOARD_KEY_STATE_PRESSED
+                        ? KeyState::kPressed
+                        : KeyState::kReleased,
+                    modifiers);
 }
 
 void IMContextBackend::SetPreeditRegion(int32_t index,

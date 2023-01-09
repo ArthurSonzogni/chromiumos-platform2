@@ -234,11 +234,36 @@ void CrosGtkIMContext::GetPreeditString(char** preedit,
 }
 
 gboolean CrosGtkIMContext::FilterKeypress(GdkEventKey* event) {
-  // The compositor sends us events directly so we generally don't need to do
-  // anything here. It is possible for key events to race with input field
-  // activation, in which case we will fail to send the key event to the IME.
-  // Also see the comment in KeySym().
-  return false;
+  // The original purpose of this interface was to provide IMEs a chance to
+  // consume key events and emit signals like preedit-changed or commit in
+  // response.  In our implementation (the Wayland model), when a text field
+  // has focus the compositor will not send regular keyboard events at all and
+  // rather directly send us processed events like text_input_v1::commit_string
+
+  // For key events that are not consumed by the IME, we receive
+  // text_input_v1::keysym and generate a fake key event in response, which
+  // triggers this function. Keys like backspace, enter and tab (control
+  // characters) will be handled specifically by GTK widgets, while non-control
+  // characters (e.g. 'a') need to be converted here into commit signals.
+
+  // TODO(b/232048508): Chrome sometimes sends wl_keyboard::key instead, which
+  // could lead to race conditions under X11.
+
+  if (event->type != GDK_KEY_PRESS) {
+    return false;
+  }
+
+  uint32_t c = gdk_keyval_to_unicode(event->keyval);
+  if (!c || g_unichar_iscntrl(c)) {
+    return false;
+  }
+
+  // g_unichar_to_utf8() supposedly requires 6 bytes of space, despite UTF-8
+  // only needing 4 bytes.
+  char utf8[6];
+  size_t len = g_unichar_to_utf8(c, utf8);
+  backend_observer_.Commit({utf8, len});
+  return true;
 }
 
 void CrosGtkIMContext::FocusIn() {
@@ -346,27 +371,12 @@ void CrosGtkIMContext::BackendObserver::DeleteSurroundingText(int start_offset,
 }
 
 void CrosGtkIMContext::BackendObserver::KeySym(uint32_t keysym,
-                                               KeyState state) {
-  // This function is called for key events which are not consumed by the IME.
-  // It is not sufficient to have Chrome call wl_keyboard::key as under X11
-  // this may race with events sent via text_input.
+                                               KeyState state,
+                                               uint32_t modifiers) {
+  // See comment in FilterKeypress for general context.
 
-  // These key events are turned into either fake GDK key events or commit
-  // signals for key events corresponding to non-control characters (e.g. 'a').
-  // Keys like backspace, enter and tab (all control characters), when not
-  // consumed by an IME, are handled specifically by GTK widgets, while keys
-  // corresponding to regular characters are normally converted by the IM
-  // context.
-
-  uint32_t c = gdk_keyval_to_unicode(keysym);
-  if (c && !g_unichar_iscntrl(c)) {
-    // g_unichar_to_utf8() supposedly requires 6 bytes of space, despite UTF-8
-    // only needing 4 bytes.
-    char utf8[6];
-    size_t len = g_unichar_to_utf8(c, utf8);
-    Commit({utf8, len});
-    return;
-  }
+  // Some apps do not behave correctly if we immediately convert these into
+  // commit events, so do that in FilterKeypress insead (b/255273154).
 
   if (!context_->gdk_window_)
     return;
@@ -381,6 +391,8 @@ void CrosGtkIMContext::BackendObserver::KeySym(uint32_t keysym,
   event->send_event = true;
   event->time = GDK_CURRENT_TIME;
   event->keyval = keysym;
+  event->is_modifier = false;
+  event->state = modifiers;
 
   // These are "deprecated and should never be used" so we leave them empty.
   // We may have to revisit if we find apps relying on these.
@@ -390,20 +402,20 @@ void CrosGtkIMContext::BackendObserver::KeySym(uint32_t keysym,
   GdkDisplay* gdk_display = gdk_window_get_display(context_->gdk_window_);
   GdkKeymapKey* keys;
   int n_keys;
-  if (gdk_keymap_get_entries_for_keyval(gdk_keymap_get_for_display(gdk_display),
-                                        keysym, &keys, &n_keys)) {
+  bool success = gdk_keymap_get_entries_for_keyval(
+      gdk_keymap_get_for_display(gdk_display), keysym, &keys, &n_keys);
+  if (success && keys) {
     event->hardware_keycode = keys[0].keycode;
     event->group = keys[0].group;
     g_free(keys);
   } else {
+    // TODO(b/264834882): Currently our tests don't make fake keymaps so they
+    // end up reaching here for non-ascii symbols, even though in practice we
+    // would always (IIUC) be reaching the if branch.
     g_warning("Failed to find keycode for keysym %u", keysym);
-    gdk_event_free(raw_event);
-    return;
+    event->hardware_keycode = 0;
+    event->group = 0;
   }
-
-  // TODO(timloh): Support modifier usage.
-  event->is_modifier = false;
-  event->state = 0;
 
   gdk_event_set_device(
       raw_event,

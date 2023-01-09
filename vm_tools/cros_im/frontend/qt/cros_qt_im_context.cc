@@ -323,7 +323,9 @@ void CrosQtIMContext::BackendObserver::DeleteSurroundingText(int start_offset,
   qWarning() << "BackendObserver::DeleteSurroundingText() is not implemented";
 }
 
-void CrosQtIMContext::BackendObserver::KeySym(uint32_t keysym, KeyState state) {
+void CrosQtIMContext::BackendObserver::KeySym(uint32_t keysym,
+                                              KeyState state,
+                                              uint32_t modifiers) {
   // some key events needs to be directly simulated as compositor only talks
   // to IME when IME is active
 
