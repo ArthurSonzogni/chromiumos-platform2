@@ -92,7 +92,8 @@ With this in mind, hiberman will do the following to hibernate the system:
    file.
  * Set a cookie at a known location towards the beginning of the disk indicating
    there's a valid hibernate image
- * Shut the system down
+ * Shut the system down (power state S5)
+   * For devices with Intel KeyLocker, system enter power state S4
 
 Resume is slightly harder to follow, because there is the "resume" path, the
 "failed resume" path, and the "no resume" path:
