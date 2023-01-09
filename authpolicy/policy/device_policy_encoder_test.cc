@@ -785,6 +785,16 @@ TEST_F(DevicePolicyEncoderTest, TestEncoding) {
   EncodeBoolean(&policy, key::kDeviceHindiInscriptLayoutEnabled, kBool);
   EXPECT_EQ(kBool, policy.device_hindi_inscript_layout_enabled().enabled());
 
+  EncodeInteger(
+      &policy, key::kDeviceLoginScreenExtensionManifestV2Availability,
+      em::LoginScreenExtensionManifestV2AvailabilityProto::Availability::
+          LoginScreenExtensionManifestV2AvailabilityProto_Availability_DISABLE);
+  EXPECT_EQ(
+      em::LoginScreenExtensionManifestV2AvailabilityProto::Availability::
+          LoginScreenExtensionManifestV2AvailabilityProto_Availability_DISABLE,
+      policy.login_screen_extension_manifest_v2_availability()
+          .login_screen_extension_manifest_v2_availability());
+
   //
   // Check whether all device policies have been handled.
   //

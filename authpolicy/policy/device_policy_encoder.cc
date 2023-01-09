@@ -1113,6 +1113,13 @@ void DevicePolicyEncoder::EncodeGenericPolicies(
           EncodeBoolean(key::kDeviceHindiInscriptLayoutEnabled))
     policy->mutable_device_hindi_inscript_layout_enabled()->set_enabled(
         value.value());
+
+  if (std::optional<int> value =
+          EncodeInteger(key::kDeviceLoginScreenExtensionManifestV2Availability))
+    policy->mutable_login_screen_extension_manifest_v2_availability()
+        ->set_login_screen_extension_manifest_v2_availability(
+            static_cast<em::LoginScreenExtensionManifestV2AvailabilityProto::
+                            Availability>(value.value()));
 }
 
 std::optional<bool> DevicePolicyEncoder::EncodeBoolean(
