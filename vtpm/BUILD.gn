@@ -28,9 +28,6 @@ pkg_config("target_defaults") {
     "protobuf",
     "system_api",
   ]
-
-  # b/264431337 - pattern init causes some tests to fail.
-  cflags = [ "-ftrivial-auto-var-init=zero" ]
 }
 
 proto_library("interface_proto") {

@@ -79,7 +79,13 @@ bool IsEuqalTo(const trunks::TPM2B_NV_PUBLIC& tpm2b,
   if (tpm2b_from_tpms.size != tpm2b.size) {
     return false;
   }
-  return memcmp(&tpm2b.nv_public, &tpm2b_from_tpms.nv_public, tpm2b.size) == 0;
+  return tpm2b.nv_public.nv_index == tpms.nv_index &&
+         tpm2b.nv_public.name_alg == tpms.name_alg &&
+         tpm2b.nv_public.attributes == tpms.attributes &&
+         tpm2b.nv_public.auth_policy.size == tpms.auth_policy.size &&
+         memcmp(tpm2b.nv_public.auth_policy.buffer, tpms.auth_policy.buffer,
+                tpms.auth_policy.size) == 0 &&
+         tpm2b.nv_public.data_size == tpms.data_size;
 }
 
 bool IsEuqalTo(const trunks::TPM2B_NAME tpm2b, const std::string& s) {
