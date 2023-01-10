@@ -143,8 +143,8 @@ Ethernet::Ethernet(Manager* manager,
       StringAccessor(new CustomAccessor<Ethernet, std::string>(
           this, &Ethernet::GetUsbEthernetMacAddressSource, nullptr)));
 
-  eap_listener_->set_request_received_callback(
-      base::Bind(&Ethernet::OnEapDetected, weak_ptr_factory_.GetWeakPtr()));
+  eap_listener_->set_request_received_callback(base::BindRepeating(
+      &Ethernet::OnEapDetected, weak_ptr_factory_.GetWeakPtr()));
   SLOG(this, 2) << "Ethernet device " << link_name << " initialized.";
 
   if (bus_type_ == kDeviceBusTypeUsb) {
@@ -280,7 +280,7 @@ EthernetProvider* Ethernet::GetProvider() {
 }
 
 void Ethernet::TryEapAuthentication() {
-  try_eap_authentication_callback_.Reset(base::Bind(
+  try_eap_authentication_callback_.Reset(base::BindOnce(
       &Ethernet::TryEapAuthenticationTask, weak_ptr_factory_.GetWeakPtr()));
   dispatcher()->PostTask(FROM_HERE,
                          try_eap_authentication_callback_.callback());

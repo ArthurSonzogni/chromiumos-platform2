@@ -203,7 +203,7 @@ class Ethernet : public Device, public SupplicantEventDelegateInterface {
 
   // Make sure TryEapAuthenticationTask is only queued for execution once
   // at a time.
-  base::CancelableClosure try_eap_authentication_callback_;
+  base::CancelableOnceClosure try_eap_authentication_callback_;
 
   std::unique_ptr<Sockets> sockets_;
 
