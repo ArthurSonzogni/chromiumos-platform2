@@ -27,9 +27,8 @@
 #include "cros-camera/jpeg_encode_accelerator.h"
 #include "hardware/gralloc.h"
 
-namespace cros {
+namespace cros::tests {
 
-namespace tests {
 // Environment to create test data for all test cases.
 class JpegEncodeTestEnvironment;
 JpegEncodeTestEnvironment* g_env;
@@ -81,15 +80,15 @@ struct Frame {
 
 class JpegEncodeAcceleratorTest : public ::testing::Test {
  public:
-  JpegEncodeAcceleratorTest() {}
+  JpegEncodeAcceleratorTest() = default;
   JpegEncodeAcceleratorTest(const JpegEncodeAcceleratorTest&) = delete;
   JpegEncodeAcceleratorTest& operator=(const JpegEncodeAcceleratorTest&) =
       delete;
 
-  ~JpegEncodeAcceleratorTest() {}
+  ~JpegEncodeAcceleratorTest() override = default;
 
-  void SetUp();
-  void TearDown() {}
+  void SetUp() override;
+  void TearDown() override {}
 
   bool StartJea();
 
@@ -411,8 +410,7 @@ TEST_F(JpegEncodeAcceleratorTest, Encode1000Images) {
   }
 }
 
-}  // namespace tests
-}  // namespace cros
+}  // namespace cros::tests
 
 int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);

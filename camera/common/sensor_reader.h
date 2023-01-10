@@ -21,7 +21,7 @@
 
 namespace cros {
 
-class SensorReader final : public mojom::SensorDeviceSamplesObserver {
+class SensorReader : public mojom::SensorDeviceSamplesObserver {
  public:
   static constexpr int kNumberOfAxes = 3;
 
@@ -32,11 +32,11 @@ class SensorReader final : public mojom::SensorDeviceSamplesObserver {
                double scale,
                SamplesObserver* samples_observer,
                mojo::Remote<mojom::SensorDevice> remote);
-  ~SensorReader();
+  ~SensorReader() override;
 
   // SensorDeviceSamplesObserver Mojo interface implementation.
-  void OnSampleUpdated(const base::flat_map<int32_t, int64_t>& sample);
-  void OnErrorOccurred(mojom::ObserverErrorType type);
+  void OnSampleUpdated(const base::flat_map<int32_t, int64_t>& sample) override;
+  void OnErrorOccurred(mojom::ObserverErrorType type) override;
 
  private:
   void ResetOnError();

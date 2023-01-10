@@ -36,26 +36,27 @@ class CameraAlgorithmBridgeImpl : public CameraAlgorithmBridge {
   CameraAlgorithmBridgeImpl& operator=(const CameraAlgorithmBridgeImpl&) =
       delete;
 
-  ~CameraAlgorithmBridgeImpl();
+  ~CameraAlgorithmBridgeImpl() override;
 
   // This method registers a callback function for buffer handle return.
-  int32_t Initialize(const camera_algorithm_callback_ops_t* callback_ops);
+  int32_t Initialize(
+      const camera_algorithm_callback_ops_t* callback_ops) override;
 
   // Register a buffer to the camera algorithm library and gets
   // the handle associated with it.
-  int32_t RegisterBuffer(int buffer_fd);
+  int32_t RegisterBuffer(int buffer_fd) override;
 
   // Post a request for the camera algorithm library to process the
   // given buffer.
   void Request(uint32_t req_id,
                const std::vector<uint8_t>& req_header,
-               int32_t buffer_handle);
+               int32_t buffer_handle) override;
 
   // Deregisters buffers to the camera algorithm library.
-  void DeregisterBuffers(const std::vector<int32_t>& buffer_handles);
+  void DeregisterBuffers(const std::vector<int32_t>& buffer_handles) override;
 
   // Returns the result for an update from the camera algorithm library.
-  void UpdateReturn(uint32_t upd_id, uint32_t status, int buffer_fd);
+  void UpdateReturn(uint32_t upd_id, uint32_t status, int buffer_fd) override;
 
  private:
   // IPCBridge wraps all the IPC-related calls. Most of its methods should/will

@@ -30,6 +30,10 @@ namespace cros {
 class StreamBufferManager {
  public:
   StreamBufferManager();
+
+  StreamBufferManager(const StreamBufferManager&) = delete;
+  StreamBufferManager& operator=(const StreamBufferManager&) = delete;
+
   ~StreamBufferManager();
 
   // Initializes StreamBufferManager with a set of pre-allocated buffers.
@@ -69,10 +73,6 @@ class StreamBufferManager {
 
   base::Thread callback_thread_;
   base::OnceClosure notify_callback_;
-
-  // NotCopyableOrMovable.
-  StreamBufferManager(const StreamBufferManager&) = delete;
-  StreamBufferManager& operator=(const StreamBufferManager&) = delete;
 };
 
 }  // namespace cros

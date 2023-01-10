@@ -31,8 +31,7 @@
 #include "cros-camera/common.h"
 #include "cros-camera/future.h"
 
-namespace cros {
-namespace internal {
+namespace cros::internal {
 
 // Serialize / deserialize helper functions.
 
@@ -227,7 +226,6 @@ class MojoReceiver : public T {
   base::WeakPtrFactory<MojoReceiver<T>> weak_ptr_factory_;
 };
 
-}  // namespace internal
-}  // namespace cros
+}  // namespace cros::internal
 
 #endif  // CAMERA_COMMON_UTILS_CROS_CAMERA_MOJO_UTILS_H_

@@ -44,11 +44,9 @@ class CameraBufferManagerImplTest;
 
 struct BufferContext {
   // The GBM bo of the DMA-buf.
-  struct gbm_bo* bo;
+  struct gbm_bo* bo = nullptr;
 
-  uint32_t usage;
-
-  BufferContext() : bo(nullptr), usage(0) {}
+  uint32_t usage = 0;
 
   ~BufferContext() {
     if (bo) {
@@ -63,15 +61,13 @@ typedef std::unordered_map<buffer_handle_t,
 
 struct MappedDmaBufInfo {
   // The gbm_bo associated with the imported buffer.
-  struct gbm_bo* bo;
+  struct gbm_bo* bo = nullptr;
   // The per-bo data returned by gbm_bo_map().
-  void* map_data;
+  void* map_data = nullptr;
   // The mapped virtual address.
-  void* addr;
+  void* addr = nullptr;
   // For refcounting.
-  uint32_t usage;
-
-  MappedDmaBufInfo() : bo(nullptr), map_data(nullptr), usage(0) {}
+  uint32_t usage = 0;
 
   ~MappedDmaBufInfo() {
     if (bo && map_data) {
@@ -96,39 +92,39 @@ typedef std::unordered_map<MappedBufferInfoKeyType,
                            struct MappedBufferInfoKeyHash>
     MappedDmaBufInfoCache;
 
-class CameraBufferManagerImpl final : public CameraBufferManager {
+class CameraBufferManagerImpl : public CameraBufferManager {
  public:
   CameraBufferManagerImpl();
   CameraBufferManagerImpl(const CameraBufferManagerImpl&) = delete;
   CameraBufferManagerImpl& operator=(const CameraBufferManagerImpl&) = delete;
 
   // CameraBufferManager implementation.
-  ~CameraBufferManagerImpl();
+  ~CameraBufferManagerImpl() override;
   int Allocate(size_t width,
                size_t height,
                uint32_t format,
                uint32_t usage,
                buffer_handle_t* out_buffer,
-               uint32_t* out_stride);
-  int Free(buffer_handle_t buffer);
-  int Register(buffer_handle_t buffer);
-  int Deregister(buffer_handle_t buffer);
+               uint32_t* out_stride) override;
+  int Free(buffer_handle_t buffer) override;
+  int Register(buffer_handle_t buffer) override;
+  int Deregister(buffer_handle_t buffer) override;
   int Lock(buffer_handle_t buffer,
            uint32_t flags,
            uint32_t x,
            uint32_t y,
            uint32_t width,
            uint32_t height,
-           void** out_addr);
+           void** out_addr) override;
   int LockYCbCr(buffer_handle_t buffer,
                 uint32_t flags,
                 uint32_t x,
                 uint32_t y,
                 uint32_t width,
                 uint32_t height,
-                struct android_ycbcr* out_ycbcr);
-  int Unlock(buffer_handle_t buffer);
-  uint32_t ResolveDrmFormat(uint32_t hal_format, uint32_t usage);
+                struct android_ycbcr* out_ycbcr) override;
+  int Unlock(buffer_handle_t buffer) override;
+  uint32_t ResolveDrmFormat(uint32_t hal_format, uint32_t usage) override;
 
  private:
   friend class CameraBufferManager;

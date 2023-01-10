@@ -21,7 +21,7 @@ class FutureTest : public ::testing::Test {
   FutureTest(const FutureTest&) = delete;
   FutureTest& operator=(const FutureTest&) = delete;
 
-  virtual void SetUp() {
+  void SetUp() override {
     if (!thread_.StartWithOptions(
             base::Thread::Options(base::MessagePumpType::IO, 0))) {
       LOGF(ERROR) << "Test thread failed to start";
@@ -30,7 +30,7 @@ class FutureTest : public ::testing::Test {
     thread_.WaitUntilThreadStarted();
   }
 
-  virtual void TearDown() { thread_.Stop(); }
+  void TearDown() override { thread_.Stop(); }
 
   void SignalCallback(const base::Callback<void()>& cb) { cb.Run(); }
 

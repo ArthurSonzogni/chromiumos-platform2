@@ -37,8 +37,7 @@ struct MetadataKeyValue {
 
 class Camera3Service {
  public:
-  explicit Camera3Service(std::vector<int> cam_ids)
-      : cam_ids_(cam_ids), initialized_(false) {}
+  explicit Camera3Service(std::vector<int> cam_ids) : cam_ids_(cam_ids) {}
 
   Camera3Service(const Camera3Service&) = delete;
   Camera3Service& operator=(const Camera3Service&) = delete;
@@ -128,7 +127,7 @@ class Camera3Service {
 
   base::Lock lock_;
 
-  bool initialized_;
+  bool initialized_ = false;
 
   class Camera3DeviceService;
   std::unordered_map<int, std::unique_ptr<Camera3DeviceService>>
@@ -146,12 +145,7 @@ class Camera3Service::Camera3DeviceService {
         service_thread_("Camera3 Test Service Thread"),
         process_still_capture_result_cb_(still_capture_cb),
         process_recording_result_cb_(recording_cb),
-        process_preview_result_cb_(preview_cb),
-        preview_state_(PREVIEW_STOPPED),
-        number_of_capture_requests_(0),
-        number_of_in_flight_requests_(0),
-        still_capture_metadata_(nullptr),
-        recording_metadata_(nullptr) {}
+        process_preview_result_cb_(preview_cb) {}
 
   Camera3DeviceService(const Camera3DeviceService&) = delete;
   Camera3DeviceService& operator=(const Camera3DeviceService&) = delete;
@@ -274,13 +268,13 @@ class Camera3Service::Camera3DeviceService {
 
   ProcessPreviewResultCallback process_preview_result_cb_;
 
-  int32_t preview_state_;
+  int32_t preview_state_ = PREVIEW_STOPPED;
 
   base::Callback<void()> stop_preview_cb_;
 
   std::vector<const camera3_stream_t*> streams_;
 
-  uint32_t number_of_capture_requests_;
+  uint32_t number_of_capture_requests_ = 0;
 
   // Keep |number_of_capture_requests_| number of capture request and a boolean
   // indicating whether it is used (in the pipeline) or not
@@ -291,7 +285,7 @@ class Camera3Service::Camera3DeviceService {
   std::vector<std::vector<camera3_stream_buffer_t>> output_stream_buffers_;
 
   // Number of capture requests that are being processed by HAL
-  size_t number_of_in_flight_requests_;
+  size_t number_of_in_flight_requests_ = 0;
 
   // Metadata for repeating preview requests
   ScopedCameraMetadata repeating_preview_metadata_;
@@ -301,12 +295,12 @@ class Camera3Service::Camera3DeviceService {
   ScopedCameraMetadata oneshot_preview_metadata_;
 
   // Metadata for still capture requests
-  const camera_metadata_t* still_capture_metadata_;
+  const camera_metadata_t* still_capture_metadata_ = nullptr;
 
   base::Callback<void()> still_capture_cb_;
 
   // Metadata for recording requests
-  const camera_metadata_t* recording_metadata_;
+  const camera_metadata_t* recording_metadata_ = nullptr;
 
   base::Callback<void()> stop_recording_cb_;
 

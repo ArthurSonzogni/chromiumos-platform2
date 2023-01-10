@@ -19,8 +19,11 @@
 
 namespace cros {
 
-class GPUAlgoManager final : public camera_algorithm_callback_ops_t {
+class GPUAlgoManager : public camera_algorithm_callback_ops_t {
  public:
+  GPUAlgoManager(const GPUAlgoManager&) = delete;
+  GPUAlgoManager& operator=(const GPUAlgoManager&) = delete;
+
   static GPUAlgoManager* GetInstance(CameraMojoChannelManagerToken* token);
 
   int32_t RegisterBuffer(int buffer_fd);
@@ -33,8 +36,6 @@ class GPUAlgoManager final : public camera_algorithm_callback_ops_t {
 
  private:
   explicit GPUAlgoManager(CameraMojoChannelManagerToken* token);
-  GPUAlgoManager(const GPUAlgoManager&) = delete;
-  GPUAlgoManager& operator=(const GPUAlgoManager&) = delete;
 
   ~GPUAlgoManager() = default;
 

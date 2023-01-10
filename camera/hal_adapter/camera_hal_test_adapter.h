@@ -31,7 +31,7 @@ class CameraHalTestAdapter : public CameraHalAdapter {
   CameraHalTestAdapter(const CameraHalTestAdapter&) = delete;
   CameraHalTestAdapter& operator=(const CameraHalTestAdapter&) = delete;
 
-  ~CameraHalTestAdapter() override {}
+  ~CameraHalTestAdapter() override = default;
 
   int32_t OpenDevice(
       int32_t camera_id,

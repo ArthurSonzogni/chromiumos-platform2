@@ -31,7 +31,7 @@ class CameraAlgorithmCallbackOpsImpl
   CameraAlgorithmCallbackOpsImpl& operator=(
       const CameraAlgorithmCallbackOpsImpl&) = delete;
 
-  ~CameraAlgorithmCallbackOpsImpl() override {}
+  ~CameraAlgorithmCallbackOpsImpl() override = default;
 
   // Implementation of mojom::CameraAlgorithmCallbackOps::Return interface. It
   // is expected to be called on |CameraAlgorithmBridgeImpl::ipc_thread_|.

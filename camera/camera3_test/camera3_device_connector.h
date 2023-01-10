@@ -46,11 +46,14 @@ class DeviceConnector {
   virtual int Flush() = 0;
 };
 
-class HalDeviceConnector final : public DeviceConnector {
+class HalDeviceConnector : public DeviceConnector {
  public:
   HalDeviceConnector(int cam_id, camera3_device_t* cam_device);
 
-  ~HalDeviceConnector();
+  HalDeviceConnector(const HalDeviceConnector&) = delete;
+  HalDeviceConnector& operator=(const HalDeviceConnector&) = delete;
+
+  ~HalDeviceConnector() override;
 
   // DeviceConnector implementation.
   int Initialize(const camera3_callback_ops_t* callback_ops,
@@ -83,17 +86,17 @@ class HalDeviceConnector final : public DeviceConnector {
   cros::CameraThread dev_thread_;
 
   THREAD_CHECKER(thread_checker_);
-
-  HalDeviceConnector(const HalDeviceConnector&) = delete;
-  HalDeviceConnector& operator=(const HalDeviceConnector&) = delete;
 };
 
-class ClientDeviceConnector final : public DeviceConnector,
-                                    public cros::mojom::Camera3CallbackOps {
+class ClientDeviceConnector : public DeviceConnector,
+                              public cros::mojom::Camera3CallbackOps {
  public:
   ClientDeviceConnector();
 
-  ~ClientDeviceConnector();
+  ClientDeviceConnector(const ClientDeviceConnector&) = delete;
+  ClientDeviceConnector& operator=(const ClientDeviceConnector&) = delete;
+
+  ~ClientDeviceConnector() override;
 
   mojo::PendingReceiver<cros::mojom::Camera3DeviceOps> GetDeviceOpsReceiver();
 
@@ -147,9 +150,6 @@ class ClientDeviceConnector final : public DeviceConnector,
   std::map<int, cros::internal::ScopedCameraMetadata> default_req_settings_map_;
   base::Lock buffer_handle_map_lock_;
   std::map<uint64_t, buffer_handle_t*> buffer_handle_map_;
-
-  ClientDeviceConnector(const ClientDeviceConnector&) = delete;
-  ClientDeviceConnector& operator=(const ClientDeviceConnector&) = delete;
 };
 
 }  // namespace camera3_test

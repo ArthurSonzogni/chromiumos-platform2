@@ -14,7 +14,7 @@
 
 namespace cros {
 
-class VendorTagOpsDelegate final
+class VendorTagOpsDelegate
     : public internal::MojoReceiver<mojom::VendorTagOps> {
  public:
   VendorTagOpsDelegate(scoped_refptr<base::SingleThreadTaskRunner> task_runner,
@@ -23,18 +23,18 @@ class VendorTagOpsDelegate final
   VendorTagOpsDelegate(const VendorTagOpsDelegate&) = delete;
   VendorTagOpsDelegate& operator=(const VendorTagOpsDelegate&) = delete;
 
-  ~VendorTagOpsDelegate() = default;
+  ~VendorTagOpsDelegate() override = default;
 
  private:
-  void GetTagCount(GetTagCountCallback callback);
+  void GetTagCount(GetTagCountCallback callback) override;
 
-  void GetAllTags(GetAllTagsCallback callback);
+  void GetAllTags(GetAllTagsCallback callback) override;
 
-  void GetSectionName(uint32_t tag, GetSectionNameCallback callback);
+  void GetSectionName(uint32_t tag, GetSectionNameCallback callback) override;
 
-  void GetTagName(uint32_t tag, GetTagNameCallback callback);
+  void GetTagName(uint32_t tag, GetTagNameCallback callback) override;
 
-  void GetTagType(uint32_t tag, GetTagTypeCallback callback);
+  void GetTagType(uint32_t tag, GetTagTypeCallback callback) override;
 
   vendor_tag_ops_t* vendor_tag_ops_;
 };

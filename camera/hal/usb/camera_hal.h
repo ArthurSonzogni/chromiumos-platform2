@@ -41,7 +41,7 @@ class CameraHal : public UdevWatcher::Observer {
   CameraHal(const CameraHal&) = delete;
   CameraHal& operator=(const CameraHal&) = delete;
 
-  ~CameraHal();
+  ~CameraHal() override;
 
   static CameraHal& GetInstance();
 

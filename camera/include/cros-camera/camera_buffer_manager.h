@@ -120,7 +120,7 @@ class CROS_CAMERA_EXPORT CameraBufferManager {
   // instance creation.
   static CameraBufferManager* GetInstance();
 
-  virtual ~CameraBufferManager() {}
+  virtual ~CameraBufferManager() = default;
 
   // Allocates a buffer for a frame.
   //

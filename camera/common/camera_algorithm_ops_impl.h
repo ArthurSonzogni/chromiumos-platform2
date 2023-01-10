@@ -68,7 +68,7 @@ class CameraAlgorithmOpsImpl : public mojom::CameraAlgorithmOps,
   void Deinitialize() override;
 
  private:
-  ~CameraAlgorithmOpsImpl() override {}
+  ~CameraAlgorithmOpsImpl() override = default;
 
   static void ReturnCallbackForwarder(
       const camera_algorithm_callback_ops_t* callback_ops,

@@ -23,7 +23,7 @@ namespace cros {
 
 // CameraPrivacySwitchMonitor is a monitor for the status change of camera
 // privacy switch.
-class CameraPrivacySwitchMonitor final {
+class CameraPrivacySwitchMonitor {
  public:
   CameraPrivacySwitchMonitor();
   CameraPrivacySwitchMonitor(const CameraPrivacySwitchMonitor&) = delete;

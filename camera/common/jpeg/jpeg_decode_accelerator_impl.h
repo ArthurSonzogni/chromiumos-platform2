@@ -30,29 +30,30 @@ class JpegDecodeAcceleratorTest;
 
 // Encapsulates a JPEG decoder. This class is not thread-safe.
 // Before using this class, make sure mojo is initialized first.
-class JpegDecodeAcceleratorImpl final : public JpegDecodeAccelerator {
+class JpegDecodeAcceleratorImpl : public JpegDecodeAccelerator {
  public:
   explicit JpegDecodeAcceleratorImpl(CameraMojoChannelManager* mojo_manager);
   JpegDecodeAcceleratorImpl(const JpegDecodeAcceleratorImpl&) = delete;
   JpegDecodeAcceleratorImpl& operator=(const JpegDecodeAcceleratorImpl&) =
       delete;
 
-  ~JpegDecodeAcceleratorImpl() final;
+  ~JpegDecodeAcceleratorImpl() override;
 
   // JpegDecodeAccelerator implementation.
 
-  bool Start() final;
+  bool Start() override;
 
-  JpegDecodeAccelerator::Error DecodeSync(int input_fd,
-                                          uint32_t input_buffer_size,
-                                          uint32_t input_buffer_offset,
-                                          buffer_handle_t output_buffer) final;
+  JpegDecodeAccelerator::Error DecodeSync(
+      int input_fd,
+      uint32_t input_buffer_size,
+      uint32_t input_buffer_offset,
+      buffer_handle_t output_buffer) override;
 
   int32_t Decode(int input_fd,
                  uint32_t input_buffer_size,
                  uint32_t input_buffer_offset,
                  buffer_handle_t output_buffer,
-                 DecodeCallback callback) final;
+                 DecodeCallback callback) override;
 
  private:
   // IPCBridge wraps all the IPC-related calls. Most of its methods should/will

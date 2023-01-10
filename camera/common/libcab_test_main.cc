@@ -29,8 +29,7 @@ class CameraAlgorithmBridgeFixture : public testing::Test,
 
   CameraAlgorithmBridgeFixture()
       : mojo_manager_token_(
-            cros::CameraMojoChannelManagerToken::CreateInstance()),
-        req_id_(0) {
+            cros::CameraMojoChannelManagerToken::CreateInstance()) {
     CameraAlgorithmBridgeFixture::return_callback =
         CameraAlgorithmBridgeFixture::ReturnCallbackForwarder;
     CameraAlgorithmBridgeFixture::update =
@@ -49,7 +48,7 @@ class CameraAlgorithmBridgeFixture : public testing::Test,
   CameraAlgorithmBridgeFixture& operator=(const CameraAlgorithmBridgeFixture&) =
       delete;
 
-  ~CameraAlgorithmBridgeFixture() {
+  ~CameraAlgorithmBridgeFixture() override {
     sem_destroy(&return_sem_);
     sem_destroy(&update_sem_);
   }
@@ -117,7 +116,7 @@ class CameraAlgorithmBridgeFixture : public testing::Test,
       return;
     }
     uint8_t* read_ptr = static_cast<uint8_t*>(
-        mmap(0, sb.st_size, PROT_WRITE, MAP_SHARED, buffer_fd, 0));
+        mmap(nullptr, sb.st_size, PROT_WRITE, MAP_SHARED, buffer_fd, 0));
     if (read_ptr == nullptr) {
       ADD_FAILURE() << "Failed to map buffer";
       return;
@@ -151,7 +150,7 @@ class CameraAlgorithmBridgeFixture : public testing::Test,
   sem_t update_sem_;
 
  private:
-  uint32_t req_id_;
+  uint32_t req_id_ = 0;
 
   base::Lock request_map_lock_;
 
@@ -302,7 +301,7 @@ TEST_F(CameraAlgorithmBridgeFixture, VerifyUpdate) {
 
 class CameraAlgorithmBridgeStatusFixture : public CameraAlgorithmBridgeFixture {
  public:
-  CameraAlgorithmBridgeStatusFixture() {}
+  CameraAlgorithmBridgeStatusFixture() = default;
   CameraAlgorithmBridgeStatusFixture(
       const CameraAlgorithmBridgeStatusFixture&) = delete;
   CameraAlgorithmBridgeStatusFixture& operator=(

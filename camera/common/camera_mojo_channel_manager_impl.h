@@ -29,45 +29,45 @@
 
 namespace cros {
 
-class CameraMojoChannelManagerImpl final : public CameraMojoChannelManager {
+class CameraMojoChannelManagerImpl : public CameraMojoChannelManager {
  public:
   CameraMojoChannelManagerImpl();
   CameraMojoChannelManagerImpl(const CameraMojoChannelManagerImpl&) = delete;
   CameraMojoChannelManagerImpl& operator=(const CameraMojoChannelManagerImpl&) =
       delete;
 
-  ~CameraMojoChannelManagerImpl();
+  ~CameraMojoChannelManagerImpl() override;
 
   // CameraMojoChannelManager implementations.
 
-  scoped_refptr<base::SingleThreadTaskRunner> GetIpcTaskRunner();
+  scoped_refptr<base::SingleThreadTaskRunner> GetIpcTaskRunner() override;
 
   void RegisterServer(
       mojo::PendingRemote<mojom::CameraHalServer> server,
       mojom::CameraHalDispatcher::RegisterServerWithTokenCallback
           on_construct_callback,
-      Callback on_error_callback);
+      Callback on_error_callback) override;
 
   void CreateMjpegDecodeAccelerator(
       mojo::PendingReceiver<mojom::MjpegDecodeAccelerator> receiver,
       Callback on_construct_callback,
-      Callback on_error_callback);
+      Callback on_error_callback) override;
 
   void CreateJpegEncodeAccelerator(
       mojo::PendingReceiver<mojom::JpegEncodeAccelerator> receiver,
       Callback on_construct_callback,
-      Callback on_error_callback);
+      Callback on_error_callback) override;
 
   mojo::Remote<mojom::CameraAlgorithmOps> CreateCameraAlgorithmOpsRemote(
-      const std::string& socket_path, const std::string& pipe_name);
+      const std::string& socket_path, const std::string& pipe_name) override;
 
-  SensorHalClient* GetSensorHalClient();
+  SensorHalClient* GetSensorHalClient() override;
 
   void RegisterSensorHalClient(
       mojo::PendingRemote<mojom::SensorHalClient> client,
       mojom::CameraHalDispatcher::RegisterSensorClientWithTokenCallback
           on_construct_callback,
-      Callback on_error_callback);
+      Callback on_error_callback) override;
 
  protected:
   friend class CameraMojoChannelManager;

@@ -18,9 +18,8 @@
 #include "common/jpeg/jpeg_decode_accelerator_impl.h"
 #include "cros-camera/future.h"
 
-namespace cros {
+namespace cros::tests {
 
-namespace tests {
 // Environment to create test data for all test cases.
 class JpegDecodeTestEnvironment;
 JpegDecodeTestEnvironment* g_env;
@@ -71,15 +70,15 @@ struct Frame {
 
 class JpegDecodeAcceleratorTest : public ::testing::Test {
  public:
-  JpegDecodeAcceleratorTest() {}
+  JpegDecodeAcceleratorTest() = default;
   JpegDecodeAcceleratorTest(const JpegDecodeAcceleratorTest&) = delete;
   JpegDecodeAcceleratorTest& operator=(const JpegDecodeAcceleratorTest&) =
       delete;
 
-  ~JpegDecodeAcceleratorTest() {}
-  void SetUp();
+  ~JpegDecodeAcceleratorTest() override = default;
+  void SetUp() override;
 
-  void TearDown() {}
+  void TearDown() override {}
 
   bool StartJda(int number_of_decoders);
 
@@ -119,8 +118,8 @@ class JpegDecodeTestEnvironment : public ::testing::Environment {
 };
 
 void JpegDecodeAcceleratorTest::SetUp() {
-  for (size_t i = 0; i < kMaxDecoderNumber; i++) {
-    jpeg_decoder_[i] = std::make_unique<JpegDecodeAcceleratorImpl>(
+  for (auto& i : jpeg_decoder_) {
+    i = std::make_unique<JpegDecodeAcceleratorImpl>(
         g_env->mojo_manager_token_.get());
   }
 }
@@ -430,8 +429,7 @@ TEST_F(JpegDecodeAcceleratorTest, LostMojoChannel) {
   DecodeTest(&jpeg_frame1_, 0);
 }
 
-}  // namespace tests
-}  // namespace cros
+}  // namespace cros::tests
 
 int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);

@@ -51,6 +51,10 @@ enum class CameraAlgorithmBackend {
 
 class CROS_CAMERA_EXPORT CameraAlgorithmBridge {
  public:
+  // Disallow copy and assign
+  CameraAlgorithmBridge(const CameraAlgorithmBridge&) = delete;
+  void operator=(const CameraAlgorithmBridge&) = delete;
+
   // [DEPRECATED]
   //
   // This method creates and returns the CameraAlgorithmBridge instance of
@@ -72,7 +76,7 @@ class CROS_CAMERA_EXPORT CameraAlgorithmBridge {
   static std::unique_ptr<CameraAlgorithmBridge> CreateInstance(
       CameraAlgorithmBackend backend, CameraMojoChannelManagerToken* token);
 
-  virtual ~CameraAlgorithmBridge() {}
+  virtual ~CameraAlgorithmBridge() = default;
 
   // This method is one-time initialization that registers a callback function
   // for the camera algorithm library to return a buffer handle. It must be
@@ -140,12 +144,7 @@ class CROS_CAMERA_EXPORT CameraAlgorithmBridge {
                             int buffer_fd) = 0;
 
  protected:
-  CameraAlgorithmBridge() {}
-
- private:
-  // Disallow copy and assign
-  CameraAlgorithmBridge(const CameraAlgorithmBridge&) = delete;
-  void operator=(const CameraAlgorithmBridge&) = delete;
+  CameraAlgorithmBridge() = default;
 };
 
 }  // namespace cros

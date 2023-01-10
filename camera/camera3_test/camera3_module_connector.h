@@ -55,10 +55,13 @@ class ModuleConnector {
   virtual bool GetVendorTagByName(const std::string name, uint32_t* tag) = 0;
 };
 
-class HalModuleConnector final : public ModuleConnector {
+class HalModuleConnector : public ModuleConnector {
  public:
   HalModuleConnector(camera_module_t* cam_module,
                      cros::CameraThread* hal_thread);
+
+  HalModuleConnector(const HalModuleConnector&) = delete;
+  HalModuleConnector& operator=(const HalModuleConnector&) = delete;
 
   // ModuleConnector implementations.
   int GetNumberOfCameras() override;
@@ -85,17 +88,17 @@ class HalModuleConnector final : public ModuleConnector {
 
   // Map of vendor tag information with tag value as the key
   std::map<uint32_t, VendorTagInfo> vendor_tag_map_;
-
-  HalModuleConnector(const HalModuleConnector&) = delete;
-  HalModuleConnector& operator=(const HalModuleConnector&) = delete;
 };
 
 // Forward declaration
 class CameraHalClient;
 
-class ClientModuleConnector final : public ModuleConnector {
+class ClientModuleConnector : public ModuleConnector {
  public:
   explicit ClientModuleConnector(CameraHalClient* cam_client);
+
+  ClientModuleConnector(const ClientModuleConnector&) = delete;
+  ClientModuleConnector& operator=(const ClientModuleConnector&) = delete;
 
   // ModuleConnector implementations.
   int GetNumberOfCameras() override;
@@ -105,17 +108,17 @@ class ClientModuleConnector final : public ModuleConnector {
 
  private:
   CameraHalClient* cam_client_;
-
-  ClientModuleConnector(const ClientModuleConnector&) = delete;
-  ClientModuleConnector& operator=(const ClientModuleConnector&) = delete;
 };
 
-class CameraHalClient final : public cros::mojom::CameraHalClient,
-                              public cros::mojom::CameraModuleCallbacks {
+class CameraHalClient : public cros::mojom::CameraHalClient,
+                        public cros::mojom::CameraModuleCallbacks {
  public:
   static CameraHalClient* GetInstance();
 
   CameraHalClient();
+
+  CameraHalClient(const CameraHalClient&) = delete;
+  CameraHalClient& operator=(const CameraHalClient&) = delete;
 
   // Establish the IPC connection to the camera service.
   int Start(camera_module_callbacks_t* callbacks);
@@ -202,9 +205,6 @@ class CameraHalClient final : public cros::mojom::CameraHalClient,
 
   mojo::Remote<cros::mojom::VendorTagOps> vendor_tag_ops_;
   mojo::Remote<cros::mojom::CameraModule> camera_module_;
-
-  CameraHalClient(const CameraHalClient&) = delete;
-  CameraHalClient& operator=(const CameraHalClient&) = delete;
 };
 
 }  // namespace camera3_test

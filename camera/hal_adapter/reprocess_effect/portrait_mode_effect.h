@@ -23,15 +23,14 @@
 
 namespace cros {
 
-class PortraitModeEffect final
-    : public ReprocessEffect,
-      public base::SupportsWeakPtr<PortraitModeEffect> {
+class PortraitModeEffect : public ReprocessEffect,
+                           public base::SupportsWeakPtr<PortraitModeEffect> {
  public:
   PortraitModeEffect();
   PortraitModeEffect(const PortraitModeEffect&) = delete;
   PortraitModeEffect& operator=(const PortraitModeEffect&) = delete;
 
-  ~PortraitModeEffect() = default;
+  virtual ~PortraitModeEffect() = default;
 
   int32_t InitializeAndGetVendorTags(
       std::vector<VendorTagInfo>* request_vendor_tags,

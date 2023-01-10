@@ -390,14 +390,14 @@ class CameraBufferManagerImplTest : public ::testing::Test {
   CameraBufferManagerImplTest& operator=(const CameraBufferManagerImplTest&) =
       delete;
 
-  void SetUp() {
+  void SetUp() override {
     EXPECT_CALL(gbm_, CreateGbmDevice())
         .Times(1)
         .WillOnce(Return(&dummy_device));
     cbm_ = new CameraBufferManagerImpl();
   }
 
-  void TearDown() {
+  void TearDown() override {
     // Verify that gbm_device is properly tear down.
     EXPECT_CALL(gbm_, GbmDeviceGetFd(&dummy_device))
         .Times(1)

@@ -16,7 +16,7 @@ namespace cros {
 class CameraModuleCallbacksAssociatedDelegate
     : public internal::MojoAssociatedRemote<mojom::CameraModuleCallbacks> {
  public:
-  CameraModuleCallbacksAssociatedDelegate(
+  explicit CameraModuleCallbacksAssociatedDelegate(
       scoped_refptr<base::SingleThreadTaskRunner> task_runner);
 
   CameraModuleCallbacksAssociatedDelegate(

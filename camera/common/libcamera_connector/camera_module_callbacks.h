@@ -15,7 +15,7 @@
 
 namespace cros {
 
-class CameraModuleCallbacks final : public mojom::CameraModuleCallbacks {
+class CameraModuleCallbacks : public mojom::CameraModuleCallbacks {
  public:
   using DeviceStatusCallback = base::RepeatingCallback<void(int32_t, bool)>;
 

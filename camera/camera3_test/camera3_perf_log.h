@@ -29,7 +29,7 @@ enum class FrameEvent {
   PORTRAIT_MODE_ENDED,
 };
 
-class Camera3PerfLog final {
+class Camera3PerfLog {
  public:
   Camera3PerfLog(const Camera3PerfLog&) = delete;
   Camera3PerfLog& operator=(const Camera3PerfLog&) = delete;
@@ -49,7 +49,7 @@ class Camera3PerfLog final {
                         base::TimeTicks time);
 
  private:
-  Camera3PerfLog() {}
+  Camera3PerfLog() = default;
 
   ~Camera3PerfLog();
 

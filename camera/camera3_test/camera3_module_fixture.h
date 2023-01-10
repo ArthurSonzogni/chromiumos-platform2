@@ -143,7 +143,7 @@ class Camera3Module {
 
 class Camera3ModuleFixture : public testing::Test {
  public:
-  Camera3ModuleFixture() {}
+  Camera3ModuleFixture() = default;
   Camera3ModuleFixture(const Camera3ModuleFixture&) = delete;
   Camera3ModuleFixture& operator=(const Camera3ModuleFixture&) = delete;
 

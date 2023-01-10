@@ -16,7 +16,7 @@ namespace cros {
 
 class CameraDeviceAdapter;
 
-class Camera3DeviceOpsDelegate final
+class Camera3DeviceOpsDelegate
     : public internal::MojoReceiver<mojom::Camera3DeviceOps> {
  public:
   Camera3DeviceOpsDelegate(
@@ -26,25 +26,25 @@ class Camera3DeviceOpsDelegate final
   Camera3DeviceOpsDelegate(const Camera3DeviceOpsDelegate&) = delete;
   Camera3DeviceOpsDelegate& operator=(const Camera3DeviceOpsDelegate&) = delete;
 
-  ~Camera3DeviceOpsDelegate();
+  ~Camera3DeviceOpsDelegate() override;
 
  private:
   void Initialize(mojo::PendingRemote<mojom::Camera3CallbackOps> callback_ops,
-                  InitializeCallback callback) final;
+                  InitializeCallback callback) override;
 
   void ConfigureStreams(mojom::Camera3StreamConfigurationPtr config,
-                        ConfigureStreamsCallback callback) final;
+                        ConfigureStreamsCallback callback) override;
 
   void ConstructDefaultRequestSettings(
       mojom::Camera3RequestTemplate type,
-      ConstructDefaultRequestSettingsCallback callback) final;
+      ConstructDefaultRequestSettingsCallback callback) override;
 
   void ProcessCaptureRequest(mojom::Camera3CaptureRequestPtr request,
-                             ProcessCaptureRequestCallback callback) final;
+                             ProcessCaptureRequestCallback callback) override;
 
-  void Dump(mojo::ScopedHandle fd) final;
+  void Dump(mojo::ScopedHandle fd) override;
 
-  void Flush(FlushCallback callback) final;
+  void Flush(FlushCallback callback) override;
 
   void RegisterBuffer(uint64_t buffer_id,
                       mojom::Camera3DeviceOps::BufferType type,
@@ -55,13 +55,13 @@ class Camera3DeviceOpsDelegate final
                       uint32_t height,
                       const std::vector<uint32_t>& strides,
                       const std::vector<uint32_t>& offsets,
-                      RegisterBufferCallback callback) final;
+                      RegisterBufferCallback callback) override;
 
-  void Close(CloseCallback callback) final;
+  void Close(CloseCallback callback) override;
 
   void ConfigureStreamsAndGetAllocatedBuffers(
       mojom::Camera3StreamConfigurationPtr config,
-      ConfigureStreamsAndGetAllocatedBuffersCallback callback) final;
+      ConfigureStreamsAndGetAllocatedBuffersCallback callback) override;
 
   CameraDeviceAdapter* camera_device_adapter_;
 };

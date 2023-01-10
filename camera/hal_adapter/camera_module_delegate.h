@@ -16,7 +16,7 @@ namespace cros {
 
 class CameraHalAdapter;
 
-class CameraModuleDelegate final
+class CameraModuleDelegate
     : public internal::MojoReceiver<mojom::CameraModule> {
  public:
   CameraModuleDelegate(CameraHalAdapter* camera_hal_adapter,
@@ -26,35 +26,36 @@ class CameraModuleDelegate final
   CameraModuleDelegate(const CameraModuleDelegate&) = delete;
   CameraModuleDelegate& operator=(const CameraModuleDelegate&) = delete;
 
-  ~CameraModuleDelegate();
+  ~CameraModuleDelegate() override;
 
  private:
   void OpenDevice(
       int32_t camera_id,
       mojo::PendingReceiver<mojom::Camera3DeviceOps> device_ops_receiver,
-      OpenDeviceCallback callback) final;
+      OpenDeviceCallback callback) override;
 
-  void GetNumberOfCameras(GetNumberOfCamerasCallback callback) final;
+  void GetNumberOfCameras(GetNumberOfCamerasCallback callback) override;
 
-  void GetCameraInfo(int32_t camera_id, GetCameraInfoCallback callback) final;
+  void GetCameraInfo(int32_t camera_id,
+                     GetCameraInfoCallback callback) override;
 
   // TODO(b/169324225): Deprecated. Use SetCallbacksAssociated instead.
   void SetCallbacks(mojo::PendingRemote<mojom::CameraModuleCallbacks> callbacks,
-                    SetCallbacksCallback callback) final;
+                    SetCallbacksCallback callback) override;
 
   void SetTorchMode(int32_t camera_id,
                     bool enabled,
-                    SetTorchModeCallback callback) final;
+                    SetTorchModeCallback callback) override;
 
-  void Init(InitCallback callback) final;
+  void Init(InitCallback callback) override;
 
   void GetVendorTagOps(
       mojo::PendingReceiver<mojom::VendorTagOps> vendor_tag_ops_receiver,
-      GetVendorTagOpsCallback callback) final;
+      GetVendorTagOpsCallback callback) override;
 
   void SetCallbacksAssociated(
       mojo::PendingAssociatedRemote<mojom::CameraModuleCallbacks> callbacks,
-      SetCallbacksAssociatedCallback callback) final;
+      SetCallbacksAssociatedCallback callback) override;
 
   CameraHalAdapter* camera_hal_adapter_;
   mojom::CameraClientType camera_client_type_;

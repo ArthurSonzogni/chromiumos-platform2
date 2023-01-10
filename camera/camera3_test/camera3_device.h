@@ -30,6 +30,9 @@ class Camera3Device {
  public:
   explicit Camera3Device(int cam_id);
 
+  Camera3Device(const Camera3Device&) = delete;
+  Camera3Device& operator=(const Camera3Device&) = delete;
+
   ~Camera3Device();
 
   // Initialize the device.
@@ -132,9 +135,6 @@ class Camera3Device {
 
  private:
   std::unique_ptr<Camera3DeviceImpl> impl_;
-
-  Camera3Device(const Camera3Device&) = delete;
-  Camera3Device& operator=(const Camera3Device&) = delete;
 };
 
 class Camera3Device::StaticInfo {

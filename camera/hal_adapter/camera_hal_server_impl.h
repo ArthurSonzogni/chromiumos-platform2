@@ -36,7 +36,7 @@ class CameraMojoChannelManager;
 // as Chrome VideoCaptureDeviceFactory and Android cameraserver process connect
 // to the CameraHalDispatcher to ask for camera service; CameraHalDispatcher
 // proxies the service requests to CameraHalServerImpl.
-class CameraHalServerImpl final {
+class CameraHalServerImpl {
  public:
   CameraHalServerImpl();
   CameraHalServerImpl(const CameraHalServerImpl&) = delete;
@@ -59,7 +59,7 @@ class CameraHalServerImpl final {
     IPCBridge(CameraHalServerImpl* camera_hal_server,
               CameraMojoChannelManager* mojo_manager);
 
-    ~IPCBridge();
+    ~IPCBridge() override;
 
     void Start(CameraHalAdapter* camera_hal_adapter,
                SetPrivacySwitchCallback set_privacy_switch_callback);
@@ -68,25 +68,26 @@ class CameraHalServerImpl final {
 
     void CreateChannel(
         mojo::PendingReceiver<mojom::CameraModule> camera_module_receiver,
-        mojom::CameraClientType camera_client_type) final;
+        mojom::CameraClientType camera_client_type) override;
 
-    void SetTracingEnabled(bool enabled) final;
+    void SetTracingEnabled(bool enabled) override;
 
-    void SetAutoFramingState(mojom::CameraAutoFramingState state) final;
+    void SetAutoFramingState(mojom::CameraAutoFramingState state) override;
 
     void GetCameraSWPrivacySwitchState(
         mojom::CameraHalServer::GetCameraSWPrivacySwitchStateCallback callback)
-        final;
+        override;
 
     void SetCameraSWPrivacySwitchState(
-        mojom::CameraPrivacySwitchState state) final;
+        mojom::CameraPrivacySwitchState state) override;
 
     void GetAutoFramingSupported(
-        mojom::CameraHalServer::GetAutoFramingSupportedCallback callback) final;
+        mojom::CameraHalServer::GetAutoFramingSupportedCallback callback)
+        override;
 
     void SetCameraEffect(
         mojom::EffectsConfigPtr config,
-        mojom::CameraHalServer::SetCameraEffectCallback callback) final;
+        mojom::CameraHalServer::SetCameraEffectCallback callback) override;
     void NotifyCameraActivityChange(int32_t camera_id,
                                     bool opened,
                                     mojom::CameraClientType type);

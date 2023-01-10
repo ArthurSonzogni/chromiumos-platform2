@@ -32,21 +32,21 @@ namespace cros {
 
 class CameraMojoChannelManager;
 
-class SensorHalClientImpl final : public SensorHalClient {
+class SensorHalClientImpl : public SensorHalClient {
  public:
   explicit SensorHalClientImpl(CameraMojoChannelManager* mojo_manager);
   SensorHalClientImpl(const SensorHalClientImpl&) = delete;
   SensorHalClientImpl& operator=(const SensorHalClientImpl&) = delete;
 
-  ~SensorHalClientImpl();
+  ~SensorHalClientImpl() override;
 
   // SensorHalClient implementations.
-  bool HasDevice(DeviceType type, Location location);
+  bool HasDevice(DeviceType type, Location location) override;
   bool RegisterSamplesObserver(DeviceType type,
                                Location location,
                                double frequency,
-                               SamplesObserver* samples_observer);
-  void UnregisterSamplesObserver(SamplesObserver* samples_observer);
+                               SamplesObserver* samples_observer) override;
+  void UnregisterSamplesObserver(SamplesObserver* samples_observer) override;
 
  private:
   // IPCBridge wraps all the IPC-related calls. Most of its methods should/will
@@ -58,7 +58,7 @@ class SensorHalClientImpl final : public SensorHalClient {
               CancellationRelay* cancellation_relay);
 
     // It should only be triggered on IPC thread to ensure thread-safety.
-    ~IPCBridge();
+    ~IPCBridge() override;
 
     // Will only be called once, right after the c'tor.
     void Start();
@@ -75,11 +75,11 @@ class SensorHalClientImpl final : public SensorHalClient {
 
     // SensorHalClient Mojo interface implementation.
     void SetUpChannel(
-        mojo::PendingRemote<mojom::SensorService> pending_remote) final;
+        mojo::PendingRemote<mojom::SensorService> pending_remote) override;
 
     // SensorServiceNewDevicesObserver Mojo interface implementation.
     void OnNewDeviceAdded(int32_t iio_device_id,
-                          const std::vector<mojom::DeviceType>& types) final;
+                          const std::vector<mojom::DeviceType>& types) override;
 
     bool ClientIsBound() { return receiver_.is_bound(); }
     bool IsReady() { return sensor_service_remote_.is_bound(); }

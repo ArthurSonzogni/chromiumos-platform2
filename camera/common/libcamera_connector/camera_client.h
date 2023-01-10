@@ -53,7 +53,7 @@ namespace cros {
 //      There can only one active capture session any any given time.
 //   5. During shutdown, Exit() is called and CameraClient would make sure the
 //      cameras are closed before the return of the call.
-class CameraClient final : public mojom::CameraHalClient {
+class CameraClient : public mojom::CameraHalClient {
  public:
   using RegisterClientCallback = base::OnceCallback<void(
       mojo::PendingRemote<mojom::CameraHalClient>, IntOnceCallback)>;
