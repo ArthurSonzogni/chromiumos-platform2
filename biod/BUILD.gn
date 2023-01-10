@@ -173,6 +173,7 @@ if (use.test) {
       "power_button_filter_test.cc",
       "power_manager_client_test.cc",
       "session_state_manager_test.cc",
+      "session_test.cc",
       "updater/cros_fp_updater_test.cc",
       "updater/update_utils_test.cc",
       "utils_test.cc",
