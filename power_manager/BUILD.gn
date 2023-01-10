@@ -95,7 +95,6 @@ pkg_config("target_defaults") {
 
   # NOSORT
   pkg_deps = [
-    "iioservice_ipc",
     "libbrillo",
     "libchrome",
     "libcros_config",
@@ -224,9 +223,10 @@ static_library("libsystem") {
   ]
   configs += [ ":target_defaults" ]
   libs = [ "rt" ]
+  deps = [ "//iioservice/libiioservice_ipc:libiioservice_ipc_mojom" ]
   if (use.cellular) {
     sources += [ "powerd/system/dbus_objectmanager_wrapper.cc" ]
-    deps = [ ":generate_modemmanager_proxies" ]
+    deps += [ ":generate_modemmanager_proxies" ]
   }
 }
 
