@@ -272,8 +272,6 @@ constexpr const char* kActions[] = {"mount_ex",
                                     "start_fingerprint_auth_session",
                                     "end_fingerprint_auth_session",
                                     "start_auth_session",
-                                    "add_credentials",
-                                    "update_credential",
                                     "authenticate_auth_session",
                                     "invalidate_auth_session",
                                     "extend_auth_session",
@@ -369,8 +367,6 @@ enum ActionEnum {
   ACTION_START_FINGERPRINT_AUTH_SESSION,
   ACTION_END_FINGERPRINT_AUTH_SESSION,
   ACTION_START_AUTH_SESSION,
-  ACTION_ADD_CREDENTIALS,
-  ACTION_UPDATE_CREDENTIAL,
   ACTION_AUTHENTICATE_AUTH_SESSION,
   ACTION_INVALIDATE_AUTH_SESSION,
   ACTION_EXTEND_AUTH_SESSION,
@@ -3134,98 +3130,6 @@ int main(int argc, char** argv) {
 
     printer.PrintReplyProtobuf(reply);
     printer.PrintHumanOutput("Auth session start succeeded.\n");
-  } else if (!strcmp(switches::kActions[switches::ACTION_ADD_CREDENTIALS],
-                     action.c_str())) {
-    user_data_auth::AddCredentialsRequest req;
-    user_data_auth::AddCredentialsReply reply;
-
-    std::string auth_session_id_hex, auth_session_id;
-    if (!GetAuthSessionId(printer, cl, &auth_session_id_hex))
-      return 1;
-    base::HexStringToString(auth_session_id_hex.c_str(), &auth_session_id);
-    req.set_auth_session_id(auth_session_id);
-
-    if (!BuildAuthorization(
-            printer, cl, &misc_proxy,
-            !cl->HasSwitch(switches::kPublicMount) /* need_credential */,
-            req.mutable_authorization())) {
-      return 1;
-    }
-
-    if (!SetLeCredentialPolicyIfNeeded(
-            printer, *cl, req.mutable_authorization()->mutable_key())) {
-      printer.PrintHumanOutput("Setting LECredential Policy failed.");
-      return 1;
-    }
-
-    brillo::ErrorPtr error;
-    if (!userdataauth_proxy.AddCredentials(req, &reply, &error, timeout_ms) ||
-        error) {
-      printer.PrintFormattedHumanOutput(
-          "AddCredentials call failed: %s.\n",
-          BrilloErrorToString(error.get()).c_str());
-      return 1;
-    }
-    printer.PrintReplyProtobuf(reply);
-    if (reply.error() !=
-        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
-      printer.PrintHumanOutput("Auth session failed to add credentials.\n");
-      return static_cast<int>(reply.error());
-    }
-
-    printer.PrintHumanOutput("Auth session added credentials successfully.\n");
-  } else if (!strcmp(switches::kActions[switches::ACTION_UPDATE_CREDENTIAL],
-                     action.c_str())) {
-    user_data_auth::UpdateCredentialRequest req;
-    user_data_auth::UpdateCredentialReply reply;
-
-    std::string auth_session_id_hex, auth_session_id;
-    if (!GetAuthSessionId(printer, cl, &auth_session_id_hex))
-      return 1;
-    base::HexStringToString(auth_session_id_hex.c_str(), &auth_session_id);
-    req.set_auth_session_id(auth_session_id);
-
-    if (!BuildAuthorization(
-            printer, cl, &misc_proxy,
-            !cl->HasSwitch(switches::kPublicMount) /* need_credential */,
-            req.mutable_authorization())) {
-      return 1;
-    }
-    // For update credential, LeCredentials needs to be supplied if those are
-    // the ones being updated.
-    if (!SetLeCredentialPolicyIfNeeded(
-            printer, *cl, req.mutable_authorization()->mutable_key())) {
-      printer.PrintHumanOutput("Setting LECredential Policy failed.");
-      return 1;
-    }
-
-    if (cl->HasSwitch(switches::kKeyLabelSwitch)) {
-      req.set_old_credential_label(
-          cl->GetSwitchValueASCII(switches::kKeyLabelSwitch));
-    } else {
-      printer.PrintHumanOutput(
-          "No old credential label specified --key_label=<old credential "
-          "label>");
-      return 1;
-    }
-
-    brillo::ErrorPtr error;
-    if (!userdataauth_proxy.UpdateCredential(req, &reply, &error, timeout_ms) ||
-        error) {
-      printer.PrintFormattedHumanOutput(
-          "UpdateCredential call failed: %s.\n",
-          BrilloErrorToString(error.get()).c_str());
-      return 1;
-    }
-    printer.PrintReplyProtobuf(reply);
-    if (reply.error() !=
-        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
-      printer.PrintHumanOutput("Auth session failed to update credentials.\n");
-      return static_cast<int>(reply.error());
-    }
-
-    printer.PrintHumanOutput(
-        "Auth session updated credentials successfully.\n");
   } else if (!strcmp(
                  switches::kActions[switches::ACTION_AUTHENTICATE_AUTH_SESSION],
                  action.c_str())) {
