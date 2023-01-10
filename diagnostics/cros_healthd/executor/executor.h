@@ -51,10 +51,6 @@ class Executor final : public ash::cros_healthd::mojom::Executor {
                    GetScanDumpCallback callback) override;
   void RunMemtester(uint32_t test_mem_kib,
                     RunMemtesterCallback callback) override;
-  void RunMemtesterV2(
-      uint32_t test_mem_kib,
-      mojo::PendingReceiver<ash::cros_healthd::mojom::ProcessControl> receiver)
-      override;
   void KillMemtester() override;
   void GetProcessIOContents(const std::vector<uint32_t>& pids,
                             GetProcessIOContentsCallback callback) override;
@@ -84,21 +80,20 @@ class Executor final : public ash::cros_healthd::mojom::Executor {
  private:
   // Runs the given process and wait for it to die. Does not track the process
   // it launches, so the launched process cannot be cancelled once it is
-  // started. If cancelling is required, RunLongRunningProcess() should be used
+  // started. If cancelling is required, RunTrackedBinary() should be used
   // instead.
-  void RunAndWaitProcess(
+  void RunUntrackedBinary(
       std::unique_ptr<brillo::Process> process,
       base::OnceCallback<
           void(ash::cros_healthd::mojom::ExecutedProcessResultPtr)> callback,
       bool combine_stdout_and_stderr);
-  void OnRunAndWaitProcessFinished(
+  void OnUntrackedBinaryFinished(
       base::OnceCallback<
           void(ash::cros_healthd::mojom::ExecutedProcessResultPtr)> callback,
       std::unique_ptr<brillo::Process> process,
       const siginfo_t& siginfo);
-  // (DEPRECATED: Use RunLongRunningProcess() instead) Like RunAndWaitprocess()
-  // above, but tracks the process internally so that it can be cancelled if
-  // necessary.
+  // Like RunUntrackedBinary() above, but tracks the process internally so that
+  // it can be cancelled if necessary.
   void RunTrackedBinary(
       std::unique_ptr<brillo::Process> process,
       base::OnceCallback<
@@ -109,12 +104,6 @@ class Executor final : public ash::cros_healthd::mojom::Executor {
           void(ash::cros_healthd::mojom::ExecutedProcessResultPtr)> callback,
       const std::string& binary_path_str,
       const siginfo_t& siginfo);
-
-  // Runs a long running process and uses process control to track binary.
-  void RunLongRunningProcess(
-      std::unique_ptr<brillo::Process> process,
-      mojo::PendingReceiver<ash::cros_healthd::mojom::ProcessControl> receiver,
-      bool combine_stdout_and_stderr);
 
   void MonitorAudioJackTask(
       mojo::PendingRemote<ash::cros_healthd::mojom::AudioJackObserver> observer,

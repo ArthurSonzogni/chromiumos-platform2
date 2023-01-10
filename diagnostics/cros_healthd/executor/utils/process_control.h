@@ -5,15 +5,9 @@
 #ifndef DIAGNOSTICS_CROS_HEALTHD_EXECUTOR_UTILS_PROCESS_CONTROL_H_
 #define DIAGNOSTICS_CROS_HEALTHD_EXECUTOR_UTILS_PROCESS_CONTROL_H_
 
-#include <bits/types/siginfo_t.h>
-
 #include <memory>
-#include <string>
-#include <vector>
 
-#include <base/functional/callback_forward.h>
 #include <brillo/process/process.h>
-#include <brillo/process/process_reaper.h>
 
 #include "diagnostics/cros_healthd/executor/mojom/executor.mojom.h"
 
@@ -32,31 +26,8 @@ class ProcessControl : public ash::cros_healthd::mojom::ProcessControl {
   ProcessControl& operator=(const ProcessControl&) = delete;
   ~ProcessControl() override;
 
-  // Start the process and wait for it to end.
-  void StartAndWait(brillo::ProcessReaper* process_reaper,
-                    bool combine_stdout_and_stderr);
-
-  // ash::cros_healthd::mojom::ProcessControl overrides
-  void GetStdout(GetStdoutCallback callback) override;
-  void GetStderr(GetStderrCallback callback) override;
-  void GetReturnCode(GetReturnCodeCallback callback) override;
-
  private:
-  // Set the process as finished and run any pending callbacks.
-  void SetProcessFinished(const siginfo_t& exit_status);
-
-  // Helper function to cast a file descriptor into mojo::ScopedHandle.
-  mojo::ScopedHandle GetMojoScopedHandle(int file_no);
-
   std::unique_ptr<brillo::Process> process_;
-  // The return code of the process.
-  int return_code_ = -1;
-  // Queue for storing pending callbacks before the process has finished
-  // running.
-  std::vector<GetReturnCodeCallback> get_return_code_callback_queue_;
-
-  // Must be the last member of the class.
-  base::WeakPtrFactory<ProcessControl> weak_factory_{this};
 };
 
 }  // namespace diagnostics
