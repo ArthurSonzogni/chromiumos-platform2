@@ -87,9 +87,9 @@ class BluetoothDiscoveryRoutineTest : public testing::Test {
               mojom::ExecutedProcessResult result;
               result.return_code = EXIT_SUCCESS;
               if (hci_result_discovering)
-                result.out = "UP RUNNING INQUIRY\n";
+                result.out = "UP RUNNING PSCAN ISCAN INQUIRY";
               else
-                result.out = "UP RUNNING\n";
+                result.out = "UP RUNNING PSCAN ISCAN";
               std::move(callback).Run(result.Clone());
             })));
     EXPECT_CALL(mock_adapter_proxy_, discovering())

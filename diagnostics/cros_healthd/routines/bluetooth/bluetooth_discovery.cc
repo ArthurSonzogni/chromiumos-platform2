@@ -13,6 +13,7 @@
 #include <base/json/json_writer.h>
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
+#include <re2/re2.h>
 
 #include "diagnostics/common/mojo_utils.h"
 #include "diagnostics/cros_healthd/routines/bluetooth/bluetooth_constants.h"
@@ -209,8 +210,8 @@ void BluetoothDiscoveryRoutine::HandleHciConfigResponse(
     return;
   }
 
-  hci_discovering_ =
-      result->out.find("UP RUNNING INQUIRY") != std::string::npos;
+  const char inquiry_regex[] = R"(UP RUNNING.*INQUIRY)";
+  hci_discovering_ = RE2::FullMatch(result->out, inquiry_regex);
 }
 
 void BluetoothDiscoveryRoutine::VerifyAdapterDiscovering(bool is_complete) {
