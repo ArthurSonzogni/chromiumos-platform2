@@ -333,6 +333,19 @@ SessionFailed()
 General failure of enroll session and/or authenticate session that can not be
 recovered from
 
+#### StatusChanged (Signal)
+
+```
+StatusChanged(BiometricsManagerStatusChanged status)
+```
+
+The signal is emitted when status of Biometrics Manager changes. It contains
+a `status` protobuf which contains BiometricsManagerStatus enum.
+
+The enum contains following entries:
+
+*   1 = Initialized (ready for Enroll/Auth Session)
+
 #### Type (Property)
 
 ```

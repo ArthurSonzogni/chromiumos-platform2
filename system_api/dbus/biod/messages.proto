@@ -41,6 +41,11 @@ message StartAuthSessionReply {
   optional FingerprintError error = 1;
 }
 
+// Included in StatusChanged signal.
+message BiometricsManagerStatusChanged {
+  optional BiometricsManagerStatus status = 1;
+}
+
 message FpPublicKey {
   optional bytes x = 1;
   optional bytes y = 2;

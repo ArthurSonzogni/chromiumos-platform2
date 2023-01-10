@@ -47,6 +47,7 @@ const char kAuthStackManagerAuthenticateCredentialMethod[] =
 const char kBiometricsManagerEnrollScanDoneSignal[] = "EnrollScanDone";
 const char kBiometricsManagerAuthScanDoneSignal[] = "AuthScanDone";
 const char kBiometricsManagerSessionFailedSignal[] = "SessionFailed";
+const char kBiometricsManagerStatusChangedSignal[] = "StatusChanged";
 
 // Properties
 const char kBiometricsManagerBiometricTypeProperty[] = "Type";
