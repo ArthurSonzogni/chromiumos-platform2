@@ -92,16 +92,16 @@ std::optional<std::string> SessionStateManager::RetrievePrimaryUser() {
     if (error_name == dbus_constants::kDBusErrorNoReply) {
       biod_metrics_->SendSessionRetrievePrimarySessionResult(
           RetrievePrimarySessionResult::kErrorDBusNoReply);
-      LOG(FATAL) << "Timeout while getting primary session";
+      LOG(ERROR) << "Timeout while getting primary session";
     } else if (error_name == dbus_constants::kDBusErrorServiceUnknown) {
       biod_metrics_->SendSessionRetrievePrimarySessionResult(
           RetrievePrimarySessionResult::kErrorDBusServiceUnknown);
-      LOG(FATAL) << "Can't find " << login_manager::kSessionManagerServiceName
+      LOG(ERROR) << "Can't find " << login_manager::kSessionManagerServiceName
                  << " service. Maybe session_manager is not running?";
     } else {
       biod_metrics_->SendSessionRetrievePrimarySessionResult(
           RetrievePrimarySessionResult::kErrorUnknown);
-      LOG(FATAL) << "Error details: " << error.message();
+      LOG(ERROR) << "Error details: " << error.message();
     }
     return std::nullopt;
   }

@@ -144,82 +144,69 @@ SessionStateManagerTest::RetrievePrimarySessionResponse(
   return response;
 }
 
-// Tests that check if biod crashes on SessionManager communication errors.
+// Tests that check biod behavior on SessionManager communication errors.
 TEST_F(SessionStateManagerTest, TestPrimaryUserErrorNoReply) {
-  EXPECT_DEATH(
-      {
-        EXPECT_CALL(
-            *proxy_,
-            CallMethodAndBlockWithErrorDetails(
-                IsMember(login_manager::kSessionManagerRetrievePrimarySession),
-                _, _))
-            .WillOnce([](dbus::MethodCall* method_call, int timeout_ms,
-                         dbus::ScopedDBusError* error)
-                          -> std::unique_ptr<dbus::Response> {
-              dbus_set_error(error->get(), dbus_constants::kDBusErrorNoReply,
-                             "Timeout");
-              return nullptr;
-            });
-        EXPECT_CALL(
-            *mock_metrics_,
-            SendSessionRetrievePrimarySessionResult(
-                BiodMetrics::RetrievePrimarySessionResult::kErrorDBusNoReply))
-            .Times(1);
-        manager_->RefreshPrimaryUser();
-      },
-      "Timeout while getting primary session");
+  EXPECT_CALL(
+      *proxy_,
+      CallMethodAndBlockWithErrorDetails(
+          IsMember(login_manager::kSessionManagerRetrievePrimarySession), _, _))
+      .WillOnce(
+          [](dbus::MethodCall* method_call, int timeout_ms,
+             dbus::ScopedDBusError* error) -> std::unique_ptr<dbus::Response> {
+            dbus_set_error(error->get(), dbus_constants::kDBusErrorNoReply,
+                           "Timeout");
+            return nullptr;
+          });
+
+  EXPECT_CALL(*mock_metrics_,
+              SendSessionRetrievePrimarySessionResult(
+                  BiodMetrics::RetrievePrimarySessionResult::kErrorDBusNoReply))
+      .Times(1);
+  EXPECT_FALSE(manager_->RefreshPrimaryUser());
+  EXPECT_TRUE(manager_->GetPrimaryUser().empty());
 }
 
 TEST_F(SessionStateManagerTest, TestPrimaryUserErrorServiceUnknown) {
-  EXPECT_DEATH(
-      {
-        EXPECT_CALL(
-            *proxy_,
-            CallMethodAndBlockWithErrorDetails(
-                IsMember(login_manager::kSessionManagerRetrievePrimarySession),
-                _, _))
-            .WillOnce([](dbus::MethodCall* method_call, int timeout_ms,
-                         dbus::ScopedDBusError* error)
-                          -> std::unique_ptr<dbus::Response> {
-              dbus_set_error(error->get(),
-                             dbus_constants::kDBusErrorServiceUnknown,
-                             "Service unknown");
-              return nullptr;
-            });
-        EXPECT_CALL(*mock_metrics_,
-                    SendSessionRetrievePrimarySessionResult(
-                        BiodMetrics::RetrievePrimarySessionResult::
-                            kErrorDBusServiceUnknown))
-            .Times(1);
-        manager_->RefreshPrimaryUser();
-      },
-      "Can't find org.chromium.SessionManager service");
+  EXPECT_CALL(
+      *proxy_,
+      CallMethodAndBlockWithErrorDetails(
+          IsMember(login_manager::kSessionManagerRetrievePrimarySession), _, _))
+      .WillOnce(
+          [](dbus::MethodCall* method_call, int timeout_ms,
+             dbus::ScopedDBusError* error) -> std::unique_ptr<dbus::Response> {
+            dbus_set_error(error->get(),
+                           dbus_constants::kDBusErrorServiceUnknown,
+                           "Service unknown");
+            return nullptr;
+          });
+
+  EXPECT_CALL(
+      *mock_metrics_,
+      SendSessionRetrievePrimarySessionResult(
+          BiodMetrics::RetrievePrimarySessionResult::kErrorDBusServiceUnknown))
+      .Times(1);
+  EXPECT_FALSE(manager_->RefreshPrimaryUser());
+  EXPECT_TRUE(manager_->GetPrimaryUser().empty());
 }
 
 TEST_F(SessionStateManagerTest, TestPrimaryUserErrorOther) {
-  EXPECT_DEATH(
-      {
-        EXPECT_CALL(
-            *proxy_,
-            CallMethodAndBlockWithErrorDetails(
-                IsMember(login_manager::kSessionManagerRetrievePrimarySession),
-                _, _))
-            .WillOnce([](dbus::MethodCall* method_call, int timeout_ms,
-                         dbus::ScopedDBusError* error)
-                          -> std::unique_ptr<dbus::Response> {
-              dbus_set_error(error->get(), "TestError", "This is a test error");
-              return nullptr;
-            });
-        EXPECT_CALL(
-            *mock_metrics_,
-            SendSessionRetrievePrimarySessionResult(
-                BiodMetrics::RetrievePrimarySessionResult::kErrorUnknown))
-            .Times(1);
-        manager_->RefreshPrimaryUser();
-      },
-      "Calling RetrievePrimarySession from "
-      "org.chromium.SessionManagerInterface interface finished with TestError "
-      "error");
+  EXPECT_CALL(
+      *proxy_,
+      CallMethodAndBlockWithErrorDetails(
+          IsMember(login_manager::kSessionManagerRetrievePrimarySession), _, _))
+      .WillOnce(
+          [](dbus::MethodCall* method_call, int timeout_ms,
+             dbus::ScopedDBusError* error) -> std::unique_ptr<dbus::Response> {
+            dbus_set_error(error->get(), "TestError", "This is a test error");
+            return nullptr;
+          });
+
+  EXPECT_CALL(*mock_metrics_,
+              SendSessionRetrievePrimarySessionResult(
+                  BiodMetrics::RetrievePrimarySessionResult::kErrorUnknown))
+      .Times(1);
+  EXPECT_FALSE(manager_->RefreshPrimaryUser());
+  EXPECT_TRUE(manager_->GetPrimaryUser().empty());
 }
 
 // Tests that check invalid response from SessionManager.
