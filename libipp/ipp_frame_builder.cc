@@ -173,7 +173,7 @@ void FrameBuilder::SaveAttrValue(const Attribute* attr,
       StringWithLanguage s;
       attr->GetValue(&s, index);
       if (s.language.empty()) {
-        *tag = textWithoutLanguage_value_tag;
+        *tag = static_cast<uint8_t>(ValueTag::textWithoutLanguage);
         SaveOctetString(s, buf);
       } else {
         result = SaveStringWithLanguage(s, buf);
@@ -183,7 +183,7 @@ void FrameBuilder::SaveAttrValue(const Attribute* attr,
       StringWithLanguage s;
       attr->GetValue(&s, index);
       if (s.language.empty()) {
-        *tag = nameWithoutLanguage_value_tag;
+        *tag = static_cast<uint8_t>(ValueTag::nameWithoutLanguage);
         SaveOctetString(s, buf);
       } else {
         result = SaveStringWithLanguage(s, buf);

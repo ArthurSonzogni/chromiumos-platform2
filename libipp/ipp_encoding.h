@@ -19,15 +19,11 @@ namespace ipp {
 // Some constants from the IPP specification [rfc8010].
 constexpr uint8_t end_of_attributes_tag = 0x03;
 constexpr uint8_t max_begin_attribute_group_tag = 0x0f;
-constexpr uint8_t min_out_of_band_value_tag = 0x10;
-constexpr uint8_t max_out_of_band_value_tag = 0x1f;
-constexpr uint8_t min_attribute_syntax_tag = 0x20;
-constexpr uint8_t max_attribute_syntax_tag = 0x5f;
+constexpr uint8_t min_value_tag = 0x10;
+constexpr uint8_t max_value_tag = 0x7f;
 constexpr uint8_t begCollection_value_tag = 0x34;
 constexpr uint8_t endCollection_value_tag = 0x37;
 constexpr uint8_t memberAttrName_value_tag = 0x4a;
-constexpr uint8_t textWithoutLanguage_value_tag = 0x41;
-constexpr uint8_t nameWithoutLanguage_value_tag = 0x42;
 
 // Helper to match signed integer type basing on number of bytes.
 template <size_t BytesCount>

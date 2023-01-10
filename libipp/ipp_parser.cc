@@ -265,17 +265,14 @@ void Parser::LogParserWarning(const std::string& message) {
 
 // Temporary representation of an attribute's value parsed from TNVs.
 struct RawValue {
-  // original tag - verified
+  // original tag (IsValid(tag))
   ValueTag tag;
-  // original data, empty when (tag == collection OR IsOutOfBand(tag)) - not
-  // verified
+  // original data, empty when (tag == collection), content not verified
   std::vector<uint8_t> data;
   // (not nullptr) <=> (tag == collection)
   std::unique_ptr<RawCollection> collection;
   // default constructor
   RawValue() : tag(ValueTag::unsupported) {}
-  // create as Out-Of-Band value
-  explicit RawValue(ValueTag tag) : tag(tag) {}
   // create as standard value
   RawValue(ValueTag tag, const std::vector<uint8_t>& data)
       : tag(tag), data(data) {}
@@ -288,7 +285,7 @@ struct RawCollection;
 
 // Temporary representation of an attribute parsed from TNVs.
 struct RawAttribute {
-  // verified (non-empty, correct syntax)
+  // verified (non-empty)
   std::string name;
   // parsed values (see RawValue)
   std::vector<RawValue> values;
@@ -606,19 +603,8 @@ bool Parser::ParseRawValue(int coll_level,
                            const TagNameValue& tnv,
                            std::list<TagNameValue>* tnvs,
                            RawAttribute* attr) {
-  // Is it Ouf-Of-Band value ?
-  if (tnv.tag >= min_out_of_band_value_tag &&
-      tnv.tag <= max_out_of_band_value_tag) {
-    if (!tnv.value.empty())
-      LogParserError(
-          "Tag-name-value with an out-of-band tag has a non-empty value",
-          "The field is ignored");
-    attr->values.emplace_back(static_cast<ValueTag>(tnv.tag));
-    return true;
-  }
   // Is it correct attribute's syntax tag? If not then fail.
-  if (tnv.tag < min_attribute_syntax_tag ||
-      tnv.tag > max_attribute_syntax_tag ||
+  if (tnv.tag < min_value_tag || tnv.tag > max_value_tag ||
       tnv.tag == endCollection_value_tag ||
       tnv.tag == memberAttrName_value_tag) {
     LogParserError(
@@ -781,6 +767,24 @@ void Parser::DecodeCollection(RawCollection* raw_coll, Collection* coll) {
       if (IsConvertibleTo(detected_type, raw_val.tag))
         detected_type = raw_val.tag;
 
+    // Is it an attribute with Ouf-Of-Band value? Then set it and finish.
+    if (IsOutOfBand(detected_type)) {
+      if (raw_attr.values.size() > 1) {
+        LogParserError("An out-of-band attribute has more than one value",
+                       "Additional values were ignored");
+      }
+      if (!raw_attr.values.front().data.empty()) {
+        LogParserError(
+            "Tag-name-value with an out-of-band tag has a non-empty value",
+            "The field is ignored");
+      }
+      const Code err = coll->AddAttr(raw_attr.name, detected_type);
+      if (err != Code::kOK) {
+        LogParserErrors({ParserCode::kErrorWhenAddingAttribute});
+      }
+      continue;
+    }
+
     // It is a collection?
     if (detected_type == ValueTag::collection) {
       std::vector<ParserCode> errors;
@@ -803,19 +807,6 @@ void Parser::DecodeCollection(RawCollection* raw_coll, Collection* coll) {
         errors.push_back(ParserCode::kErrorWhenAddingAttribute);
       }
       LogParserErrors(errors);
-      continue;
-    }
-
-    // Is it an attribute with Ouf-Of-Band value? Then set it and finish.
-    if (IsOutOfBand(detected_type)) {
-      if (raw_attr.values.size() > 1) {
-        LogParserError("An out-of-band attribute has more than one value",
-                       "Additional values were ignored");
-      }
-      const Code err = coll->AddAttr(raw_attr.name, detected_type);
-      if (err != Code::kOK) {
-        LogParserErrors({ParserCode::kErrorWhenAddingAttribute});
-      }
       continue;
     }
 
