@@ -179,8 +179,8 @@ void FeatureProfile::OnOptionsUpdated(const base::Value::Dict& json_values) {
   const base::Value::Dict* feature_profile =
       json_values.FindDict(device_metadata_->model_name);
   if (feature_profile == nullptr) {
-    LOGF(ERROR) << "Cannot find feature profile as dict for device model "
-                << std::quoted(device_metadata_->model_name);
+    LOGF(INFO) << "Cannot find feature profile as dict for device model "
+               << std::quoted(device_metadata_->model_name);
     return;
   }
 
