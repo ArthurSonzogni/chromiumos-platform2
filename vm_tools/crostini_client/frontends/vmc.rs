@@ -4,9 +4,9 @@
 
 use std::collections::HashMap;
 use std::error::Error;
-use std::fmt;
 use std::fs::File;
 use std::path::{Path, PathBuf};
+use std::{fmt, fs};
 
 use std::io::{copy, stdin, stdout, BufRead, Write};
 
@@ -75,26 +75,23 @@ fn get_user_hash(environ: &EnvMap) -> Result<String, VmcError> {
     if let Some(hash) = environ.get("CROS_USER_ID_HASH").map(|s| String::from(*s)) {
         return Ok(hash);
     }
-    let output = std::process::Command::new("sh")
-        .arg("-c")
-        .arg("cryptohome --action=status | jq -r '.mounts[].owner'")
-        .output();
-    if output.is_err() {
-        return Err(ExpectedCrosUserIdHash);
+    // The current user is the one with a non-empty cryptohome
+    let entries = fs::read_dir(Path::new("/home/user")).map_err(|_| ExpectedCrosUserIdHash)?;
+    let mut dirs = entries.filter_map(|f| {
+        let dir = f.ok()?;
+        if dir.path().read_dir().ok()?.count() > 0 {
+            dir.file_name().into_string().ok()
+        } else {
+            None
+        }
+    });
+    let first = dirs.next().ok_or(ExpectedCrosUserIdHash)?;
+    // If there's another user cryptohome, it's ambiguous which to use so require it to be
+    // specified manually.
+    match dirs.next() {
+        Some(_) => Err(ExpectedCrosUserIdHash),
+        None => Ok(first),
     }
-    let output = output.unwrap();
-    if !output.status.success() {
-        return Err(ExpectedCrosUserIdHash);
-    }
-
-    let s = String::from_utf8_lossy(&output.stdout);
-    let lines: Vec<&str> = s.lines().collect();
-    if lines.len() != 1 {
-        // Either no logged-in user or multiple logged-in users. Either way
-        // don't know who to run as.
-        return Err(ExpectedCrosUserIdHash);
-    }
-    return Ok(lines[0].to_string());
 }
 
 fn parse_disk_size(s: &str) -> Result<u64, VmcError> {
