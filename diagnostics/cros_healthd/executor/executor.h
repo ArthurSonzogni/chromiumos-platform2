@@ -16,8 +16,6 @@
 #include <base/memory/weak_ptr.h>
 #include <base/synchronization/lock.h>
 #include <base/task/single_thread_task_runner.h>
-#include <brillo/process/process.h>
-#include <brillo/process/process_reaper.h>
 #include <mojo/public/cpp/bindings/pending_receiver.h>
 #include <mojo/public/cpp/bindings/receiver.h>
 #include <mojo/public/cpp/bindings/unique_receiver_set.h>
@@ -35,7 +33,6 @@ class Executor final : public ash::cros_healthd::mojom::Executor {
  public:
   Executor(const scoped_refptr<base::SingleThreadTaskRunner> mojo_task_runner,
            mojo::PendingReceiver<ash::cros_healthd::mojom::Executor> receiver,
-           brillo::ProcessReaper* process_reaper,
            base::OnceClosure on_disconnect);
   Executor(const Executor&) = delete;
   Executor& operator=(const Executor&) = delete;
@@ -78,32 +75,40 @@ class Executor final : public ash::cros_healthd::mojom::Executor {
           process_control) override;
 
  private:
-  // Runs the given process and wait for it to die. Does not track the process
-  // it launches, so the launched process cannot be cancelled once it is
-  // started. If cancelling is required, RunTrackedBinary() should be used
-  // instead.
+  // Runs the given binary with the given arguments and sandboxing. If
+  // specified, |user| will be used as both the user and group for sandboxing
+  // the binary. If not specified, the default cros_healthd:cros_healthd user
+  // and group will be used. Does not track the process it launches, so the
+  // launched process cannot be cancelled once it is started. If cancelling is
+  // required, RunTrackedBinary() should be used instead.
   void RunUntrackedBinary(
-      std::unique_ptr<brillo::Process> process,
+      const base::FilePath& seccomp_policy_path,
+      const std::vector<std::string>& sandboxing_args,
+      const std::optional<std::string>& user,
+      const base::FilePath& binary_path,
+      const std::vector<std::string>& binary_args,
+      ash::cros_healthd::mojom::ExecutedProcessResult result,
       base::OnceCallback<
-          void(ash::cros_healthd::mojom::ExecutedProcessResultPtr)> callback,
-      bool combine_stdout_and_stderr);
-  void OnUntrackedBinaryFinished(
-      base::OnceCallback<
-          void(ash::cros_healthd::mojom::ExecutedProcessResultPtr)> callback,
-      std::unique_ptr<brillo::Process> process,
-      const siginfo_t& siginfo);
+          void(ash::cros_healthd::mojom::ExecutedProcessResultPtr)> callback);
   // Like RunUntrackedBinary() above, but tracks the process internally so that
   // it can be cancelled if necessary.
   void RunTrackedBinary(
-      std::unique_ptr<brillo::Process> process,
+      const base::FilePath& seccomp_policy_path,
+      const std::vector<std::string>& sandboxing_args,
+      const std::optional<std::string>& user,
+      const base::FilePath& binary_path,
+      const std::vector<std::string>& binary_args,
+      ash::cros_healthd::mojom::ExecutedProcessResult result,
       base::OnceCallback<
-          void(ash::cros_healthd::mojom::ExecutedProcessResultPtr)> callback,
-      const std::string& binary_path);
-  void OnTrackedBinaryFinished(
-      base::OnceCallback<
-          void(ash::cros_healthd::mojom::ExecutedProcessResultPtr)> callback,
-      const std::string& binary_path_str,
-      const siginfo_t& siginfo);
+          void(ash::cros_healthd::mojom::ExecutedProcessResultPtr)> callback);
+  // Helper function for RunUntrackedBinary() and RunTrackedBinary().
+  int RunBinaryInternal(const base::FilePath& seccomp_policy_path,
+                        const std::vector<std::string>& sandboxing_args,
+                        const std::optional<std::string>& user,
+                        const base::FilePath& binary_path,
+                        const std::vector<std::string>& binary_args,
+                        ash::cros_healthd::mojom::ExecutedProcessResult* result,
+                        ProcessWithOutput* process);
 
   void MonitorAudioJackTask(
       mojo::PendingRemote<ash::cros_healthd::mojom::AudioJackObserver> observer,
@@ -122,15 +127,12 @@ class Executor final : public ash::cros_healthd::mojom::Executor {
 
   // Tracks running processes owned by the executor. Used to kill processes if
   // requested.
-  std::map<std::string, std::unique_ptr<brillo::Process>> tracked_processes_;
+  std::map<std::string, std::unique_ptr<ProcessWithOutput>> processes_;
 
   // Used to hold the child process and receiver. So the remote can reset the
   // mojo connection to terminate the child process.
   mojo::UniqueReceiverSet<ash::cros_healthd::mojom::ProcessControl>
       process_control_set_;
-
-  // Used to monitor child process status.
-  brillo::ProcessReaper* process_reaper_;
 
   // Must be the last member of the class.
   base::WeakPtrFactory<Executor> weak_factory_{this};
