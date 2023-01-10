@@ -21,6 +21,8 @@ namespace biod {
 BRILLO_EXPORT const char* ScanResultToString(ScanResult result);
 BRILLO_EXPORT const char* FingerprintErrorToString(
     const FingerprintError& error);
+BRILLO_EXPORT const char* BiometricsManagerStatusToString(
+    const BiometricsManagerStatus& status);
 
 class BRILLO_EXPORT BiometricsManagerProxyBase {
  public:

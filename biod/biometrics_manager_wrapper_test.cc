@@ -1030,6 +1030,19 @@ TEST_F(BiometricsManagerWrapperTest, TestOnUserLoggedIn) {
   // Expect to get list of records that are loaded.
   EXPECT_CALL(*bio_manager_, GetLoadedRecords).Times(1);
 
+  // Expect 'StatusChanged' signal is emitted.
+  auto iter = exported_objects_.find(mock_bio_path_.value());
+  ASSERT_TRUE(iter != exported_objects_.end());
+  scoped_refptr<dbus::MockExportedObject> object = iter->second;
+  EXPECT_CALL(*object, SendSignal).WillOnce([](dbus::Signal* signal) {
+    EXPECT_EQ(signal->GetInterface(), kBiometricsManagerInterface);
+    EXPECT_EQ(signal->GetMember(), kBiometricsManagerStatusChangedSignal);
+    dbus::MessageReader reader(signal);
+    BiometricsManagerStatusChanged proto;
+    reader.PopArrayOfBytesAsProto(&proto);
+    EXPECT_EQ(proto.status(), BiometricsManagerStatus::INITIALIZED);
+  });
+
   wrapper_->OnUserLoggedIn(kUserID, false);
 }
 

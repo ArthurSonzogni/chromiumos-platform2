@@ -45,7 +45,9 @@ static const char kHelpText[] =
     "<label>.\n"
     "  destroy_all [<biometrics manager>] - Destroys all records for the given "
     "biometrics manager, or all biometrics managers if no object path is "
-    "given.\n\n"
+    "given.\n"
+    "  listen <biometrics manager> - Listens to the signal from given "
+    "biometrics manager until the program is interrupted.\n\n"
     "The <biometrics manager> parameter is the D-Bus object path of the "
     "biometrics manager, and can be abbreviated as the path's basename (the "
     "part after the last forward slash)\n\n"
@@ -233,6 +235,13 @@ class BiometricsManagerProxy : public biod::BiometricsManagerProxyBase {
                             weak_factory_.GetWeakPtr()),
         base::BindOnce(&BiometricsManagerProxy::OnSignalConnected,
                        weak_factory_.GetWeakPtr()));
+    proxy_->ConnectToSignal(
+        biod::kBiometricsManagerInterface,
+        biod::kBiometricsManagerStatusChangedSignal,
+        base::BindRepeating(&BiometricsManagerProxy::OnStatusChanged,
+                            weak_factory_.GetWeakPtr()),
+        base::BindOnce(&BiometricsManagerProxy::OnSignalConnected,
+                       weak_factory_.GetWeakPtr()));
     return true;
   }
 
@@ -305,6 +314,16 @@ class BiometricsManagerProxy : public biod::BiometricsManagerProxyBase {
                 << "\" with record object paths"
                 << record_object_paths_joined.str();
     }
+  }
+
+  void OnStatusChanged(dbus::Signal* signal) {
+    biod::BiometricsManagerStatusChanged proto;
+
+    dbus::MessageReader reader(signal);
+    CHECK(reader.PopArrayOfBytesAsProto(&proto));
+
+    LOG(INFO) << "Status changed to: "
+              << BiometricsManagerStatusToString(proto.status());
   }
 
   BiometricsManagerType type_ = BiometricsManagerType::BIOMETRIC_TYPE_UNKNOWN;
@@ -462,6 +481,18 @@ int DoAuthenticate(base::WeakPtr<BiometricsManagerProxy> biometrics_manager) {
   return ret;
 }
 
+int DoListen(base::WeakPtr<BiometricsManagerProxy> biometrics_manager) {
+  base::RunLoop run_loop;
+
+  int ret = 1;
+  biometrics_manager->SetFinishHandler(
+      base::BindRepeating(&OnFinish, &run_loop, &ret));
+
+  run_loop.Run();
+
+  return ret;
+}
+
 int DoList(BiodProxy* biod, const std::string& user_id) {
   LOG(INFO) << biod::kBiodServicePath << " : BioD Root Object Path";
   for (const auto& biometrics_manager : biod->biometrics_managers()) {
@@ -574,6 +605,18 @@ int main(int argc, char* argv[]) {
     } else {
       return biod.DestroyAllRecords();
     }
+  }
+
+  if (command == "listen") {
+    if (args.size() != 2) {
+      LOG(ERROR) << "Expected 2 parameters for listen command.";
+      return 1;
+    }
+    base::WeakPtr<BiometricsManagerProxy> biometrics_manager =
+        biod.GetBiometricsManager(args[1]);
+    CHECK(biometrics_manager)
+        << "Failed to find biometrics manager with given path";
+    return DoListen(biometrics_manager);
   }
 
   LOG(ERROR) << "Unrecognized command " << command;

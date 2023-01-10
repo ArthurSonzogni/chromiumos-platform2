@@ -265,6 +265,19 @@ void BiometricsManagerWrapper::OnSessionFailed() {
     auth_session_.End();
 }
 
+void BiometricsManagerWrapper::EmitStatusChanged(
+    BiometricsManagerStatus status) {
+  dbus::Signal status_changed_signal(kBiometricsManagerInterface,
+                                     kBiometricsManagerStatusChangedSignal);
+
+  BiometricsManagerStatusChanged proto;
+  proto.set_status(status);
+
+  dbus::MessageWriter writer(&status_changed_signal);
+  writer.AppendProtoAsArrayOfBytes(proto);
+  dbus_object_.SendSignal(&status_changed_signal);
+}
+
 bool BiometricsManagerWrapper::StartEnrollSession(
     brillo::ErrorPtr* error,
     dbus::Message* message,
@@ -460,6 +473,9 @@ void BiometricsManagerWrapper::OnUserLoggedIn(
   if (is_new_login) {
     biometrics_manager_->SendStatsOnLogin();
   }
+
+  // Inform clients that biometrics manager is ready for requests.
+  EmitStatusChanged(BiometricsManagerStatus::INITIALIZED);
 }
 
 void BiometricsManagerWrapper::OnUserLoggedOut() {

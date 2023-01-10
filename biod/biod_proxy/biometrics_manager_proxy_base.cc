@@ -65,6 +65,16 @@ const char* FingerprintErrorToString(const FingerprintError& error) {
   }
 }
 
+const char* BiometricsManagerStatusToString(
+    const BiometricsManagerStatus& status) {
+  switch (status) {
+    case BiometricsManagerStatus::INITIALIZED:
+      return "Initialized";
+    default:
+      return "Unknown status";
+  }
+}
+
 BiometricsManagerProxyBase::BiometricsManagerProxyBase()
     : proxy_(nullptr), weak_factory_(this), biod_auth_session_(nullptr) {}
 

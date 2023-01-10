@@ -75,6 +75,7 @@ class BiometricsManagerWrapper : public SessionStateManagerInterface::Observer {
   void OnAuthScanDone(FingerprintMessage result,
                       BiometricsManager::AttemptMatches matches);
   void OnSessionFailed();
+  void EmitStatusChanged(BiometricsManagerStatus status);
 
   bool StartEnrollSession(brillo::ErrorPtr* error,
                           dbus::Message* message,
