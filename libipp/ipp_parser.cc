@@ -183,6 +183,37 @@ bool IsConvertibleTo(const ipp::ValueTag source, const ipp::ValueTag target) {
 
 }  //  namespace
 
+std::string_view ToStrView(ParserCode code) {
+  switch (code) {
+    case ParserCode::kOK:
+      return "No errors.";
+    case ParserCode::kAttributeNameIsEmpty:
+      return "Attribute with an empty name was spotted.";
+    case ParserCode::kValueMismatchTagConverted:
+      return "Value with mismatched tag was spotted. The value was converted "
+             "to the attribute's type.";
+    case ParserCode::kValueMismatchTagOmitted:
+      return "A value with incompatible tag was spotted. The value was "
+             "ignored.";
+    case ParserCode::kAttributeNameConflict:
+      return "An attribute with duplicate name was spotted. The attribute was "
+             "ignored.";
+    case ParserCode::kBooleanValueOutOfRange:
+      return "A boolean value has an integer different from 0 and 1. The value "
+             "was set to true.";
+    case ParserCode::kValueInvalidSize:
+      return "A value has invalid size. The value was ignored.";
+    case ParserCode::kAttributeNoValues:
+      return "An attribute has no valid values. The attribute was ignored.";
+    case ParserCode::kErrorWhenAddingAttribute:
+      return "Internal parser error: cannot add an attribute. The attribute "
+             "was ignored.";
+    case ParserCode::kOutOfBandAttributeWithManyValues:
+      return "An out-of-band attribute has more than one value. Additional "
+             "values were ignored.";
+  }
+}
+
 void Parser::LogScannerError(const std::string& message, const uint8_t* ptr) {
   Log l;
   l.message = "Scanner error: " + message + ".";
@@ -205,53 +236,23 @@ void Parser::LogScannerError(const std::string& message, const uint8_t* ptr) {
   errors_->push_back(l);
 }
 
+void Parser::LogParserError(ParserCode error_code) {
+  if (error_code == ParserCode::kOK) {
+    // ignore
+    return;
+  }
+  LogParserError(ToStrView(error_code));
+}
+
 void Parser::LogParserErrors(const std::vector<ParserCode>& error_codes) {
   for (ParserCode error_code : error_codes) {
-    switch (error_code) {
-      case ParserCode::kOK:
-        // ignore
-        break;
-      case ParserCode::kAttributeNameIsEmpty:
-        LogParserError("Attribute with an empty name was spotted");
-        break;
-      case ParserCode::kValueMismatchTagConverted:
-        LogParserError("Value with mismatch tag was spotted",
-                       "The value was converted to the attribute's type");
-        break;
-      case ParserCode::kValueMismatchTagOmitted:
-        LogParserError("A value with incompatible tag was spotted",
-                       "The value was ignored");
-        break;
-      case ParserCode::kAttributeNameConflict:
-        LogParserError("An attribute with duplicate name was spotted",
-                       "The attribute was ignored");
-        break;
-      case ParserCode::kBooleanValueOutOfRange:
-        LogParserError("A boolean value has an integer different that 0 and 1",
-                       "The value was set to true");
-        break;
-      case ParserCode::kValueInvalidSize:
-        LogParserError("A value has invalid size", "The value was ignored");
-        break;
-      case ParserCode::kAttributeNoValues:
-        LogParserError("An attribute has no valid values",
-                       "The attribute was ignored");
-        break;
-      case ParserCode::kErrorWhenAddingAttribute:
-        LogParserError("Internal parser error: cannot add an attribute",
-                       "The attribute was ignored");
-        break;
-      case ParserCode::kOutOfBandAttributeWithManyValues:
-        LogParserError("An out-of-band attribute has more than one value",
-                       "Additional values were ignored");
-        break;
-    }
+    LogParserError(error_code);
   }
 }
 
-void Parser::LogParserError(const std::string& message, std::string action) {
+void Parser::LogParserError(std::string_view message) {
   Log l;
-  l.message = "Parser error: " + message + ". " + action + ".";
+  l.message = message;
   l.parser_context = PathAsString(parser_context_);
   errors_->push_back(l);
 }
@@ -271,8 +272,6 @@ struct RawValue {
   std::vector<uint8_t> data;
   // (not nullptr) <=> (tag == collection)
   std::unique_ptr<RawCollection> collection;
-  // default constructor
-  RawValue() : tag(ValueTag::unsupported) {}
   // create as standard value
   RawValue(ValueTag tag, const std::vector<uint8_t>& data)
       : tag(tag), data(data) {}
@@ -467,13 +466,17 @@ bool Parser::SaveFrameToPackage(bool log_unknown_values, Frame* package) {
     Collection* coll = nullptr;
     Code err = package->AddGroup(gn, &coll);
     if (err != Code::kOK) {
-      LogParserError("Cannot create group " + grp_name,
-                     "The group was omitted");
+      LogParserError("Cannot create group " + grp_name +
+                     ". The group was omitted.");
       continue;
     }
     RawCollection raw_coll;
-    if (!ParseRawGroup(&(frame_->groups_content_[i]), &raw_coll))
+    if (!ParseRawGroup(&(frame_->groups_content_[i]), &raw_coll)) {
+      if (!errors_->empty())
+        errors_->back().message +=
+            " This is critical error, parsing was cancelled.";
       return false;
+    }
     DecodeCollection(&raw_coll, coll);
   }
   package->SetData(std::move(frame_->data_));
@@ -603,20 +606,21 @@ bool Parser::ParseRawValue(int coll_level,
                            const TagNameValue& tnv,
                            std::list<TagNameValue>* tnvs,
                            RawAttribute* attr) {
-  // Is it correct attribute's syntax tag? If not then fail.
+  // Is it correct attribute's value tag? If not then fail.
   if (tnv.tag < min_value_tag || tnv.tag > max_value_tag ||
       tnv.tag == endCollection_value_tag ||
       tnv.tag == memberAttrName_value_tag) {
     LogParserError(
         "Incorrect tag when parsing Tag-name-value with a value: 0x" +
-        ToHexByte(tnv.tag));
+        ToHexByte(tnv.tag) + ".");
     return false;
   }
   // Is it a collection ?
   if (tnv.tag == begCollection_value_tag) {
     if (!tnv.value.empty())
-      LogParserError("Tag-name-value opening a collection has non-empty value",
-                     "The field is ignored");
+      LogParserError(
+          "Tag-name-value opening a collection has non-empty value. The field "
+          "is ignored.");
     std::unique_ptr<RawCollection> coll(new RawCollection);
     if (!ParseRawCollection(coll_level + 1, tnvs, coll.get()))
       return false;
@@ -646,14 +650,14 @@ bool Parser::ParseRawCollection(int coll_level,
     LogParserError(
         "The package has too many recursive collection; the maximum allowed "
         "number of levels is " +
-        ToString(kMaxCollectionLevel));
+        ToString(kMaxCollectionLevel) + ".");
     return false;
   }
   while (true) {
     if (tnvs->empty()) {
       LogParserError(
           "The end of Group was reached when memberAttrName tag (0x4a) or "
-          "endCollection tag (0x37) was expected");
+          "endCollection tag (0x37) was expected.");
       return false;
     }
     TagNameValue tnv = tnvs->front();
@@ -661,25 +665,26 @@ bool Parser::ParseRawCollection(int coll_level,
     // exit if the end of the collection was reached
     if (tnv.tag == endCollection_value_tag) {
       if (!tnv.name.empty())
-        LogParserError("Tag-name-value closing a collection has non-empty name",
-                       "The field is ignored");
+        LogParserError(
+            "Tag-name-value closing a collection has non-empty name. The field "
+            "is ignored.");
       if (!tnv.value.empty())
         LogParserError(
-            "Tag-name-value closing a collection has non-empty value",
-            "The field is ignored");
+            "Tag-name-value closing a collection has non-empty value. The "
+            "field is ignored.");
       return true;
     }
     // still here, so we parse an attribute (collection's member)
     if (tnv.tag != memberAttrName_value_tag) {
       LogParserError("Expected tag memberAttrName (0x4a), found: 0x" +
-                     ToHexByte(tnv.tag));
+                     ToHexByte(tnv.tag) + ".");
       return false;
     }
     // parse name & create attribute
     if (!tnv.name.empty())
       LogParserError(
-          "Tag-name-value opening member attribute has non-empty name",
-          "The field is ignored");
+          "Tag-name-value opening member attribute has non-empty name. The "
+          "field is ignored.");
     const std::string name = LoadString(tnv.value);
     if (name.empty()) {
       LogParserErrors({ParserCode::kAttributeNameIsEmpty});
@@ -692,7 +697,7 @@ bool Parser::ParseRawCollection(int coll_level,
     if (tnvs->empty()) {
       LogParserError(
           "The end of Group was reached when value-tag for collection's member "
-          "was expected");
+          "was expected.");
       return false;
     }
     // parse all values
@@ -702,8 +707,8 @@ bool Parser::ParseRawCollection(int coll_level,
       tnvs->pop_front();
       if (!tnv.name.empty())
         LogParserError(
-            "Tag-name-value opening member attribute has non-empty name",
-            "The field is ignored");
+            "Tag-name-value opening member attribute has non-empty name. The "
+            "field is ignored.");
       if (!ParseRawValue(coll_level, tnv, tnvs, attr))
         return false;
     }
@@ -770,13 +775,14 @@ void Parser::DecodeCollection(RawCollection* raw_coll, Collection* coll) {
     // Is it an attribute with Ouf-Of-Band value? Then set it and finish.
     if (IsOutOfBand(detected_type)) {
       if (raw_attr.values.size() > 1) {
-        LogParserError("An out-of-band attribute has more than one value",
-                       "Additional values were ignored");
+        LogParserError(
+            "An out-of-band attribute has more than one value. Additional "
+            "values were ignored.");
       }
       if (!raw_attr.values.front().data.empty()) {
         LogParserError(
-            "Tag-name-value with an out-of-band tag has a non-empty value",
-            "The field is ignored");
+            "Tag-name-value with an out-of-band tag has a non-empty value. The "
+            "field is ignored.");
       }
       const Code err = coll->AddAttr(raw_attr.name, detected_type);
       if (err != Code::kOK) {

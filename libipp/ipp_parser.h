@@ -9,6 +9,7 @@
 #include <list>
 #include <memory>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -39,6 +40,8 @@ enum class ParserCode : uint8_t {
   kOutOfBandAttributeWithManyValues  // additional values were ignored
 };
 
+std::string_view ToStrView(ParserCode code);
+
 class Parser {
  public:
   // Constructor, both parameters must not be nullptr. |frame| is used as
@@ -68,9 +71,8 @@ class Parser {
 
   // Methods for adding entries to the log.
   void LogScannerError(const std::string& message, const uint8_t* position);
-  void LogParserError(
-      const std::string& message,
-      std::string action = "This is critical error, parsing was cancelled.");
+  void LogParserError(std::string_view message);
+  void LogParserError(ParserCode error_code);
   void LogParserErrors(const std::vector<ParserCode>& errors);
   void LogParserWarning(const std::string& message);
 
