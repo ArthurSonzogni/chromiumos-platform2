@@ -23,7 +23,6 @@ group("all") {
 
 pkg_config("target_defaults_pkg_deps") {
   pkg_deps = [
-    "iioservice_ipc",
     "libbrillo",
     "libchrome",
     "libmems",
@@ -52,6 +51,7 @@ static_library("libiioservice") {
   ]
   configs += [ ":target_defaults_pkg_deps" ]
   public_pkg_deps = [ "libmems" ]
+  deps = [ "//iioservice/libiioservice_ipc:libiioservice_ipc_mojom" ]
 }
 
 executable("iioservice") {

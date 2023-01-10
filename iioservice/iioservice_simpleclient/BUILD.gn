@@ -15,7 +15,6 @@ group("all") {
 
 pkg_config("target_defaults_pkg_deps") {
   pkg_deps = [
-    "iioservice_ipc",
     "libbrillo",
     "libchrome",
     "libmojo",
@@ -36,6 +35,7 @@ static_library("libiioservice_simpleclient") {
     "sensor_client.cc",
   ]
   configs += [ ":target_defaults_pkg_deps" ]
+  deps = [ "//iioservice/libiioservice_ipc:libiioservice_ipc_mojom" ]
 }
 
 executable("iioservice_simpleclient") {
