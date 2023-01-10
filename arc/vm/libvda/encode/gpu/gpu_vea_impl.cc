@@ -146,9 +146,7 @@ class GpuVeaContext : public VeaContext, arc::mojom::VideoEncodeClient {
   void FlushOnIpcThread();
 
   scoped_refptr<base::SingleThreadTaskRunner> ipc_task_runner_;
-  // TODO(alexlau): Use THREAD_CHECKER macro after libchrome uprev
-  // (crbug.com/909719).
-  base::ThreadChecker ipc_thread_checker_;
+  THREAD_CHECKER(ipc_thread_checker_);
   mojo::Remote<arc::mojom::VideoEncodeAccelerator> remote_vea_;
   mojo::Receiver<arc::mojom::VideoEncodeClient> receiver_;
 
@@ -163,7 +161,7 @@ GpuVeaContext::GpuVeaContext(
       receiver_(this) {
   // Since ipc_thread_checker_ binds to whichever thread it's created on, check
   // that we're on the correct thread first using BelongsToCurrentThread.
-  DCHECK(ipc_task_runner_->BelongsToCurrentThread());
+  DCHECK_CALLED_ON_VALID_THREAD(ipc_thread_checker_);
   remote_vea_.set_disconnect_with_reason_handler(
       base::BindRepeating(&GpuVeaContext::OnVeaError, base::Unretained(this)));
 
@@ -171,12 +169,12 @@ GpuVeaContext::GpuVeaContext(
 }
 
 GpuVeaContext::~GpuVeaContext() {
-  DCHECK(ipc_thread_checker_.CalledOnValidThread());
+  DCHECK_CALLED_ON_VALID_THREAD(ipc_thread_checker_);
 }
 
 void GpuVeaContext::Initialize(vea_config_t* config,
                                InitializeCallback callback) {
-  DCHECK(ipc_thread_checker_.CalledOnValidThread());
+  DCHECK_CALLED_ON_VALID_THREAD(ipc_thread_checker_);
   mojo::PendingRemote<arc::mojom::VideoEncodeClient> remote_client =
       receiver_.BindNewPipeAndPassRemote();
   receiver_.set_disconnect_with_reason_handler(base::BindRepeating(
@@ -212,7 +210,7 @@ void GpuVeaContext::Initialize(vea_config_t* config,
 void GpuVeaContext::OnInitialized(
     InitializeCallback callback,
     arc::mojom::VideoEncodeAccelerator::Result result) {
-  DCHECK(ipc_thread_checker_.CalledOnValidThread());
+  DCHECK_CALLED_ON_VALID_THREAD(ipc_thread_checker_);
   // TODO(b/174967467): propagate result to client.
   bool success = (result == mojom::VideoEncodeAccelerator::Result::kSuccess);
   std::move(callback).Run(success);
@@ -220,14 +218,14 @@ void GpuVeaContext::OnInitialized(
 
 void GpuVeaContext::OnVeaError(uint32_t custom_reason,
                                const std::string& description) {
-  DCHECK(ipc_thread_checker_.CalledOnValidThread());
+  DCHECK_CALLED_ON_VALID_THREAD(ipc_thread_checker_);
   DLOG(ERROR) << "VideoEncodeAccelerator mojo connection error. custom_reason="
               << custom_reason << " description=" << description;
 }
 
 void GpuVeaContext::OnVeaClientError(uint32_t custom_reason,
                                      const std::string& description) {
-  DCHECK(ipc_thread_checker_.CalledOnValidThread());
+  DCHECK_CALLED_ON_VALID_THREAD(ipc_thread_checker_);
   DLOG(ERROR) << "VideoEncodeClient mojo connection error. custom_reason="
               << custom_reason << " description=" << description;
 }
@@ -412,7 +410,8 @@ bool GpuVeaImpl::Initialize() {
 
 void GpuVeaImpl::InitializeOnIpcThread(
     base::WaitableEvent* init_complete_event) {
-  DCHECK(ipc_task_runner_->BelongsToCurrentThread());
+  DCHECK_CALLED_ON_VALID_THREAD(ipc_thread_checker_);
+  DETACH_FROM_THREAD(ipc_thread_checker_);
 
   mojo::Remote<arc::mojom::VideoEncodeAccelerator> remote_vea =
       connection_->CreateEncodeAccelerator();
@@ -426,7 +425,7 @@ void GpuVeaImpl::OnGetSupportedProfiles(
     mojo::Remote<arc::mojom::VideoEncodeAccelerator> remote_vea,
     base::WaitableEvent* init_complete_event,
     std::vector<arc::mojom::VideoEncodeProfilePtr> profiles) {
-  DCHECK(ipc_task_runner_->BelongsToCurrentThread());
+  DCHECK_CALLED_ON_VALID_THREAD(ipc_thread_checker_);
   output_formats_.clear();
   for (const auto& profile : profiles) {
     vea_profile_t p;
@@ -442,7 +441,8 @@ void GpuVeaImpl::OnGetSupportedProfiles(
 }
 
 VeaContext* GpuVeaImpl::InitEncodeSession(vea_config_t* config) {
-  DCHECK(!ipc_task_runner_->BelongsToCurrentThread());
+  DCHECK_CALLED_ON_VALID_THREAD(ipc_thread_checker_);
+  output_formats_.clear();
 
   if (!connection_) {
     DLOG(FATAL) << "InitEncodeSession called before successful Initialize().";
@@ -467,7 +467,8 @@ void GpuVeaImpl::InitEncodeSessionOnIpcThread(
     vea_config_t* config,
     base::WaitableEvent* init_complete_event,
     VeaContext** out_context) {
-  DCHECK(ipc_task_runner_->BelongsToCurrentThread());
+  DCHECK_CALLED_ON_VALID_THREAD(ipc_thread_checker_);
+  output_formats_.clear();
 
   mojo::Remote<arc::mojom::VideoEncodeAccelerator> remote_vea =
       connection_->CreateEncodeAccelerator();
@@ -487,7 +488,8 @@ void GpuVeaImpl::InitEncodeSessionAfterContextInitializedOnIpcThread(
     VeaContext** out_context,
     std::unique_ptr<VeaContext> context,
     bool success) {
-  DCHECK(ipc_task_runner_->BelongsToCurrentThread());
+  DCHECK_CALLED_ON_VALID_THREAD(ipc_thread_checker_);
+  output_formats_.clear();
 
   if (success) {
     *out_context = context.release();
@@ -509,7 +511,8 @@ void GpuVeaImpl::CloseEncodeSession(VeaContext* context) {
 }
 
 void GpuVeaImpl::CloseEncodeSessionOnIpcThread(VeaContext* context) {
-  DCHECK(ipc_task_runner_->BelongsToCurrentThread());
+  DCHECK_CALLED_ON_VALID_THREAD(ipc_thread_checker_);
+  output_formats_.clear();
   delete context;
 }
 

@@ -69,9 +69,7 @@ class DecodeEventThread {
   void CallUseOutputBuffer(int32_t picture_buffer_id, gbm_bo* bo);
 
   base::Thread thread_;
-  // TODO(alexlau): Use THREAD_CHECKER macro after libchrome uprev
-  // (crbug.com/909719).
-  base::ThreadChecker thread_checker_;
+  THREAD_CHECKER(thread_checker_);
 
   arc::ScopedGbmDevice gbm_device_;
   const vda_capabilities_t* const caps_;

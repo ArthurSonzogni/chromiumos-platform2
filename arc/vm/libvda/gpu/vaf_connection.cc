@@ -73,9 +73,7 @@ void RunTaskOnThread(scoped_refptr<base::SingleThreadTaskRunner> task_runner,
 }
 
 VafConnection::VafConnection() : ipc_thread_("VafConnectionIpcThread") {
-  // TODO(alexlau): Use DETACH_FROM_THREAD macro after libchrome uprev
-  // (crbug.com/909719).
-  ipc_thread_checker_.DetachFromThread();
+  DETACH_FROM_THREAD(ipc_thread_checker_);
 
   mojo::core::Init();
   CHECK(ipc_thread_.StartWithOptions(
@@ -93,7 +91,7 @@ VafConnection::~VafConnection() {
 }
 
 void VafConnection::CleanupOnIpcThread() {
-  DCHECK(ipc_thread_checker_.CalledOnValidThread());
+  DCHECK_CALLED_ON_VALID_THREAD(ipc_thread_checker_);
   if (remote_factory_.is_bound())
     remote_factory_.reset();
 }
@@ -110,9 +108,7 @@ void VafConnection::InitializeOnIpcThread(bool* init_success) {
   // Since ipc_thread_checker_ binds to whichever thread it's created on, check
   // that we're on the correct thread first using BelongsToCurrentThread.
   DCHECK(ipc_thread_.task_runner()->BelongsToCurrentThread());
-  // TODO(alexlau): Use DCHECK_CALLED_ON_VALID_THREAD macro after libchrome
-  // uprev (crbug.com/909719).
-  DCHECK(ipc_thread_checker_.CalledOnValidThread());
+  DCHECK_CALLED_ON_VALID_THREAD(ipc_thread_checker_);
 
   dbus::Bus::Options opts;
   opts.bus_type = dbus::Bus::SYSTEM;
@@ -176,7 +172,7 @@ void VafConnection::InitializeOnIpcThread(bool* init_success) {
 
 void VafConnection::OnFactoryError(uint32_t custom_reason,
                                    const std::string& description) {
-  DCHECK(ipc_thread_checker_.CalledOnValidThread());
+  DCHECK_CALLED_ON_VALID_THREAD(ipc_thread_checker_);
   DLOG(ERROR) << "VideoAcceleratorFactory mojo connection error. custom_reason="
               << custom_reason << " description=" << description;
 }

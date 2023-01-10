@@ -80,12 +80,8 @@ void DecodeEventThread::StartWatching() {
   // Since thread_checker_ binds to whichever thread it's created on, check
   // that we're on the correct thread first using BelongsToCurrentThread.
   DCHECK(thread_.task_runner()->BelongsToCurrentThread());
-  // TODO(alexlau): Use DETACH_FROM_THREAD macro after libchrome uprev
-  // (crbug.com/909719).
-  thread_checker_.DetachFromThread();
-  // TODO(alexlau): Use DCHECK_CALLED_ON_VALID_THREAD macro after libchrome
-  // uprev (crbug.com/909719).
-  DCHECK(thread_checker_.CalledOnValidThread());
+  DETACH_FROM_THREAD(thread_checker_);
+  DCHECK_CALLED_ON_VALID_THREAD(thread_checker_);
 
   event_pipe_fd_controller_ = base::FileDescriptorWatcher::WatchReadable(
       session_->event_pipe_fd,
@@ -94,14 +90,14 @@ void DecodeEventThread::StartWatching() {
 }
 
 void DecodeEventThread::StopWatching() {
-  DCHECK(thread_checker_.CalledOnValidThread());
+  DCHECK_CALLED_ON_VALID_THREAD(thread_checker_);
 
   event_pipe_fd_controller_.reset();
   picture_buffer_id_to_bo_map_.clear();
 }
 
 void DecodeEventThread::OnEventPipeReadable() {
-  DCHECK(thread_checker_.CalledOnValidThread());
+  DCHECK_CALLED_ON_VALID_THREAD(thread_checker_);
 
   vda_event_t event;
   if (!base::ReadFromFD(session_->event_pipe_fd,
@@ -133,7 +129,7 @@ void DecodeEventThread::OnEventPipeReadable() {
 }
 
 void DecodeEventThread::OnNotifyEndOfBitstreamBuffer(int32_t bitstream_id) {
-  DCHECK(thread_checker_.CalledOnValidThread());
+  DCHECK_CALLED_ON_VALID_THREAD(thread_checker_);
 
   VLOG(3) << "NOTIFY_END_OF_BITSTREAM_BUFFER event: bitstream_id "
           << bitstream_id;
@@ -149,7 +145,7 @@ uint32_t DecodeEventThread::GetAndClearEndOfBitstreamBufferEventCount() {
 }
 
 void DecodeEventThread::OnPictureReady(const picture_ready_event_data_t& data) {
-  DCHECK(thread_checker_.CalledOnValidThread());
+  DCHECK_CALLED_ON_VALID_THREAD(thread_checker_);
 
   VLOG(3) << "PICTURE_READY event: picture_buffer_id " << data.picture_buffer_id
           << " bitstream_id " << data.bitstream_id << " crop_left "
@@ -169,7 +165,7 @@ void DecodeEventThread::OnPictureReady(const picture_ready_event_data_t& data) {
 
 void DecodeEventThread::CallUseOutputBuffer(int32_t picture_buffer_id,
                                             gbm_bo* bo) {
-  DCHECK(thread_checker_.CalledOnValidThread());
+  DCHECK_CALLED_ON_VALID_THREAD(thread_checker_);
 
   int plane_count = gbm_bo_get_plane_count(bo);
   int plane_fd = gbm_bo_get_fd(bo);
@@ -197,7 +193,7 @@ void DecodeEventThread::CallUseOutputBuffer(int32_t picture_buffer_id,
 
 void DecodeEventThread::OnProvidePictureBuffers(
     const provide_picture_buffers_event_data_t& data) {
-  DCHECK(thread_checker_.CalledOnValidThread());
+  DCHECK_CALLED_ON_VALID_THREAD(thread_checker_);
 
   VLOG(3) << "PROVIDE_PICTURE_BUFFERS event: min_num_buffers "
           << data.min_num_buffers << " width " << data.width << " height "

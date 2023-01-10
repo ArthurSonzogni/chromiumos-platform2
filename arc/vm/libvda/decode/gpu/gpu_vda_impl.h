@@ -60,6 +60,7 @@ class GpuVdaImpl : public VdaImpl {
   std::vector<vda_input_format_t> input_formats_;
   std::vector<vda_pixel_format_t> output_formats_;
   scoped_refptr<base::SingleThreadTaskRunner> ipc_task_runner_;
+  THREAD_CHECKER(ipc_thread_checker_);
 };
 
 }  // namespace arc

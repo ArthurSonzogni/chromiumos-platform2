@@ -154,9 +154,7 @@ class GpuVdaContext : public VdaContext, arc::mojom::VideoDecodeClient {
   void FlushOnIpcThread();
 
   scoped_refptr<base::SingleThreadTaskRunner> ipc_task_runner_;
-  // TODO(alexlau): Use THREAD_CHECKER macro after libchrome uprev
-  // (crbug.com/909719).
-  base::ThreadChecker ipc_thread_checker_;
+  THREAD_CHECKER(ipc_thread_checker_);
   mojo::Remote<arc::mojom::VideoDecodeAccelerator> remote_vda_;
   mojo::Receiver<arc::mojom::VideoDecodeClient> receiver_;
 
@@ -171,7 +169,7 @@ GpuVdaContext::GpuVdaContext(
       receiver_(this) {
   // Since ipc_thread_checker_ binds to whichever thread it's created on, check
   // that we're on the correct thread first using BelongsToCurrentThread.
-  DCHECK(ipc_task_runner_->BelongsToCurrentThread());
+  DCHECK_CALLED_ON_VALID_THREAD(ipc_thread_checker_);
   remote_vda_.set_disconnect_with_reason_handler(
       base::BindRepeating(&GpuVdaContext::OnVdaError, base::Unretained(this)));
 
@@ -180,7 +178,7 @@ GpuVdaContext::GpuVdaContext(
 
 void GpuVdaContext::Initialize(vda_profile_t profile,
                                InitializeCallback callback) {
-  DCHECK(ipc_thread_checker_.CalledOnValidThread());
+  DCHECK_CALLED_ON_VALID_THREAD(ipc_thread_checker_);
   mojo::PendingRemote<arc::mojom::VideoDecodeClient> remote_client =
       receiver_.BindNewPipeAndPassRemote();
   receiver_.set_disconnect_with_reason_handler(base::BindRepeating(
@@ -201,24 +199,24 @@ void GpuVdaContext::Initialize(vda_profile_t profile,
 void GpuVdaContext::OnInitialized(
     InitializeCallback callback,
     arc::mojom::VideoDecodeAccelerator::Result result) {
-  DCHECK(ipc_thread_checker_.CalledOnValidThread());
+  DCHECK_CALLED_ON_VALID_THREAD(ipc_thread_checker_);
   std::move(callback).Run(ConvertResult(result));
 }
 
 GpuVdaContext::~GpuVdaContext() {
-  DCHECK(ipc_thread_checker_.CalledOnValidThread());
+  DCHECK_CALLED_ON_VALID_THREAD(ipc_thread_checker_);
 }
 
 void GpuVdaContext::OnVdaError(uint32_t custom_reason,
                                const std::string& description) {
-  DCHECK(ipc_thread_checker_.CalledOnValidThread());
+  DCHECK_CALLED_ON_VALID_THREAD(ipc_thread_checker_);
   DLOG(ERROR) << "VideoDecodeAccelerator mojo connection error. custom_reason="
               << custom_reason << " description=" << description;
 }
 
 void GpuVdaContext::OnVdaClientError(uint32_t custom_reason,
                                      const std::string& description) {
-  DCHECK(ipc_thread_checker_.CalledOnValidThread());
+  DCHECK_CALLED_ON_VALID_THREAD(ipc_thread_checker_);
   DLOG(ERROR) << "VideoDecodeClient mojo connection error. custom_reason="
               << custom_reason << " description=" << description;
 }
@@ -249,7 +247,7 @@ void GpuVdaContext::DecodeOnIpcThread(int32_t bitstream_id,
                                       base::ScopedFD fd,
                                       uint32_t offset,
                                       uint32_t bytes_used) {
-  DCHECK(ipc_thread_checker_.CalledOnValidThread());
+  DCHECK_CALLED_ON_VALID_THREAD(ipc_thread_checker_);
 
   mojo::ScopedHandle handle_fd = mojo::WrapPlatformFile(std::move(fd));
   if (!handle_fd.is_valid()) {
@@ -326,7 +324,7 @@ vda_result_t GpuVdaContext::ReuseOutputBuffer(int32_t picture_buffer_id) {
 }
 
 void GpuVdaContext::ReuseOutputBufferOnIpcThread(int32_t picture_buffer_id) {
-  DCHECK(ipc_thread_checker_.CalledOnValidThread());
+  DCHECK_CALLED_ON_VALID_THREAD(ipc_thread_checker_);
   remote_vda_->ReusePictureBuffer(picture_buffer_id);
 }
 
@@ -338,7 +336,7 @@ vda_result GpuVdaContext::Reset() {
 }
 
 void GpuVdaContext::ResetOnIpcThread() {
-  DCHECK(ipc_thread_checker_.CalledOnValidThread());
+  DCHECK_CALLED_ON_VALID_THREAD(ipc_thread_checker_);
   remote_vda_->Reset(
       base::BindRepeating(&GpuVdaContext::OnResetDone, base::Unretained(this)));
 }
@@ -356,7 +354,7 @@ vda_result GpuVdaContext::Flush() {
 }
 
 void GpuVdaContext::FlushOnIpcThread() {
-  DCHECK(ipc_thread_checker_.CalledOnValidThread());
+  DCHECK_CALLED_ON_VALID_THREAD(ipc_thread_checker_);
   remote_vda_->Flush(
       base::BindRepeating(&GpuVdaContext::OnFlushDone, base::Unretained(this)));
 }
@@ -370,7 +368,7 @@ void GpuVdaContext::OnFlushDone(
 void GpuVdaContext::ProvidePictureBuffers(
     arc::mojom::PictureBufferFormatPtr format_ptr,
     arc::mojom::RectPtr visible_rect_ptr) {
-  DCHECK(ipc_thread_checker_.CalledOnValidThread());
+  DCHECK_CALLED_ON_VALID_THREAD(ipc_thread_checker_);
   DispatchProvidePictureBuffers(
       format_ptr->min_num_buffers, format_ptr->coded_size->width,
       format_ptr->coded_size->height, visible_rect_ptr->left,
@@ -379,7 +377,7 @@ void GpuVdaContext::ProvidePictureBuffers(
 
 // VideoDecodeClient implementation function.
 void GpuVdaContext::PictureReady(arc::mojom::PicturePtr picture_ptr) {
-  DCHECK(ipc_thread_checker_.CalledOnValidThread());
+  DCHECK_CALLED_ON_VALID_THREAD(ipc_thread_checker_);
   DispatchPictureReady(
       picture_ptr->picture_buffer_id, picture_ptr->bitstream_id,
       picture_ptr->crop_rect->left, picture_ptr->crop_rect->top,
@@ -389,13 +387,13 @@ void GpuVdaContext::PictureReady(arc::mojom::PicturePtr picture_ptr) {
 // VideoDecodeClient implementation function.
 void GpuVdaContext::NotifyError(
     arc::mojom::VideoDecodeAccelerator::Result error) {
-  DCHECK(ipc_thread_checker_.CalledOnValidThread());
+  DCHECK_CALLED_ON_VALID_THREAD(ipc_thread_checker_);
   DispatchNotifyError(ConvertResult(error));
 }
 
 // VideoDecodeClient implementation function.
 void GpuVdaContext::NotifyEndOfBitstreamBuffer(int32_t bitstream_id) {
-  DCHECK(ipc_thread_checker_.CalledOnValidThread());
+  DCHECK_CALLED_ON_VALID_THREAD(ipc_thread_checker_);
 
   DispatchNotifyEndOfBitstreamBuffer(bitstream_id);
 
@@ -470,7 +468,7 @@ VdaContext* GpuVdaImpl::InitDecodeSession(vda_profile_t profile) {
     return nullptr;
   }
 
-  DCHECK(!ipc_task_runner_->BelongsToCurrentThread());
+  DCHECK_CALLED_ON_VALID_THREAD(ipc_thread_checker_);
   DLOG(INFO) << "Initializing decode session with profile " << profile;
 
   base::WaitableEvent init_complete_event(
@@ -490,7 +488,8 @@ void GpuVdaImpl::InitDecodeSessionOnIpcThread(
     vda_profile_t profile,
     base::WaitableEvent* init_complete_event,
     VdaContext** out_context) {
-  DCHECK(ipc_task_runner_->BelongsToCurrentThread());
+  DETACH_FROM_THREAD(ipc_thread_checker_);
+  DCHECK_CALLED_ON_VALID_THREAD(ipc_thread_checker_);
 
   mojo::Remote<arc::mojom::VideoDecodeAccelerator> remote_vda =
       connection_->CreateDecodeAccelerator();
@@ -511,7 +510,7 @@ void GpuVdaImpl::InitDecodeSessionAfterContextInitializedOnIpcThread(
     VdaContext** out_context,
     std::unique_ptr<VdaContext> context,
     vda_result_t result) {
-  DCHECK(ipc_task_runner_->BelongsToCurrentThread());
+  DCHECK_CALLED_ON_VALID_THREAD(ipc_thread_checker_);
 
   if (result == SUCCESS) {
     *out_context = context.release();
@@ -533,7 +532,7 @@ void GpuVdaImpl::CloseDecodeSession(VdaContext* context) {
 }
 
 void GpuVdaImpl::CloseDecodeSessionOnIpcThread(VdaContext* context) {
-  DCHECK(ipc_task_runner_->BelongsToCurrentThread());
+  DCHECK_CALLED_ON_VALID_THREAD(ipc_thread_checker_);
   delete context;
 }
 

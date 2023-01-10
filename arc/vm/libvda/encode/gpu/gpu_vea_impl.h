@@ -60,6 +60,7 @@ class GpuVeaImpl : public VeaImpl {
 
   arc::VafConnection* const connection_;
   scoped_refptr<base::SingleThreadTaskRunner> ipc_task_runner_;
+  THREAD_CHECKER(ipc_thread_checker_);
 
   std::vector<video_pixel_format_t> input_formats_;
   std::vector<vea_profile_t> output_formats_;

@@ -52,7 +52,7 @@ class VafConnection {
   base::Thread ipc_thread_;
   // TODO(alexlau): Use THREAD_CHECKER macro after libchrome uprev
   // (crbug.com/909719).
-  base::ThreadChecker ipc_thread_checker_;
+  THREAD_CHECKER(ipc_thread_checker_);
   std::unique_ptr<mojo::core::ScopedIPCSupport> ipc_support_;
   mojo::Remote<arc::mojom::VideoAcceleratorFactory> remote_factory_;
 };

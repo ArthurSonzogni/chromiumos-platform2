@@ -562,7 +562,8 @@ void GpuVdImpl::InitDecodeSessionOnIpcThread(
     vda_profile_t profile,
     base::WaitableEvent* init_complete_event,
     VdaContext** out_context) {
-  DCHECK(ipc_task_runner_->BelongsToCurrentThread());
+  DETACH_FROM_THREAD(ipc_thread_checker_);
+  DCHECK_CALLED_ON_VALID_THREAD(ipc_thread_checker_);
 
   mojo::Remote<arc::mojom::VideoDecoder> remote_vd =
       connection_->CreateVideoDecoder();
