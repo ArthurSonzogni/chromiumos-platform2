@@ -295,9 +295,8 @@ bool StreamManipulatorManager::ProcessCaptureRequest(
 bool StreamManipulatorManager::Flush() {
   TRACE_COMMON();
 
-  for (auto it = stream_manipulators_.rbegin();
-       it != stream_manipulators_.rend(); ++it) {
-    (*it)->Flush();
+  for (auto& stream_manipulator : stream_manipulators_) {
+    stream_manipulator->Flush();
   }
   return true;
 }
