@@ -365,8 +365,11 @@ TEST_F(TpmUtilityTest, AllocatePCRFromNone) {
   ASSERT_EQ(1u, new_pcr_allocation.count);
   TPML_PCR_SELECTION expected_pcr_allocation;
   PopulatePCRSelection(false, false, true, &expected_pcr_allocation);
-  ASSERT_EQ(0, memcmp(&expected_pcr_allocation, &new_pcr_allocation,
-                      sizeof(TPML_PCR_SELECTION)));
+  ASSERT_EQ(expected_pcr_allocation.count, new_pcr_allocation.count);
+  ASSERT_EQ(0,
+            memcmp(expected_pcr_allocation.pcr_selections,
+                   new_pcr_allocation.pcr_selections,
+                   sizeof(TPMS_PCR_SELECTION) * expected_pcr_allocation.count));
 }
 
 TEST_F(TpmUtilityTest, AllocatePCRFromSHA1Only) {
@@ -379,8 +382,11 @@ TEST_F(TpmUtilityTest, AllocatePCRFromSHA1Only) {
   ASSERT_EQ(2u, new_pcr_allocation.count);
   TPML_PCR_SELECTION expected_pcr_allocation;
   PopulatePCRSelection(true, true, true, &expected_pcr_allocation);
-  ASSERT_EQ(0, memcmp(&expected_pcr_allocation, &new_pcr_allocation,
-                      sizeof(TPML_PCR_SELECTION)));
+  ASSERT_EQ(expected_pcr_allocation.count, new_pcr_allocation.count);
+  ASSERT_EQ(0,
+            memcmp(expected_pcr_allocation.pcr_selections,
+                   new_pcr_allocation.pcr_selections,
+                   sizeof(TPMS_PCR_SELECTION) * expected_pcr_allocation.count));
 }
 
 TEST_F(TpmUtilityTest, AllocatePCRFromSHA1AndSHA256) {
@@ -393,8 +399,11 @@ TEST_F(TpmUtilityTest, AllocatePCRFromSHA1AndSHA256) {
   ASSERT_EQ(1u, new_pcr_allocation.count);
   TPML_PCR_SELECTION expected_pcr_allocation;
   PopulatePCRSelection(true, true, false, &expected_pcr_allocation);
-  ASSERT_EQ(0, memcmp(&expected_pcr_allocation, &new_pcr_allocation,
-                      sizeof(TPML_PCR_SELECTION)));
+  ASSERT_EQ(expected_pcr_allocation.count, new_pcr_allocation.count);
+  ASSERT_EQ(0,
+            memcmp(expected_pcr_allocation.pcr_selections,
+                   new_pcr_allocation.pcr_selections,
+                   sizeof(TPMS_PCR_SELECTION) * expected_pcr_allocation.count));
 }
 
 TEST_F(TpmUtilityTest, AllocatePCRFromSHA256Only) {

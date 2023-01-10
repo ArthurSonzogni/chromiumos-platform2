@@ -21,6 +21,7 @@ namespace {
 void InitializeFake(TPMS_CAPABILITY_DATA* data) {
   memset(data, 0, sizeof(*data));
   data->capability = TPM_CAP_HANDLES;
+  data->data = TPMU_CAPABILITIES{.handles = TPML_HANDLE{}};
   for (int i = 0; i < 3; ++i) {
     data->data.handles.handle[data->data.handles.count] = i;
     ++data->data.handles.count;
@@ -90,7 +91,12 @@ TEST_F(RealResponseSerializerTest, SerializeResponseGetCapability) {
                                        /*authorization_delegate=*/nullptr),
       TPM_RC_SUCCESS);
   EXPECT_EQ(more_out, more);
-  EXPECT_EQ(memcmp(&data, &data_out, sizeof(data_out)), 0);
+  EXPECT_EQ(data.capability, data_out.capability);
+  EXPECT_EQ(data.capability, TPM_CAP_HANDLES);
+  EXPECT_EQ(data.data.handles.count, data_out.data.handles.count);
+  EXPECT_EQ(memcmp(data.data.handles.handle, data_out.data.handles.handle,
+                   sizeof(TPM_HANDLE) * data_out.data.handles.count),
+            0);
 }
 
 TEST_F(RealResponseSerializerTest, SerializeResponseNvRead) {

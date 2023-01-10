@@ -270,6 +270,9 @@ TEST_F(SessionManagerTest, StartTempSaltingKeySessionFail) {
 TEST_F(SessionManagerTest, StartSessionBadSaltingKey) {
   TPMT_PUBLIC public_area{
       .type = TPM_ALG_RSA,
+      .object_attributes = trunks::kSensitiveDataOrigin |
+                           trunks::kUserWithAuth | trunks::kNoDA |
+                           trunks::kDecrypt,
       .parameters =
           TPMU_PUBLIC_PARMS{
               .rsa_detail = TPMS_RSA_PARMS{},
@@ -287,10 +290,25 @@ TEST_F(SessionManagerTest, StartSessionBadSaltingKey) {
   EXPECT_EQ(TRUNKS_RC_SESSION_SETUP_ERROR,
             session_manager_.StartSession(TPM_SE_TRIAL, TPM_RH_NULL, "", true,
                                           false, &delegate_));
-
   public_area.type = TPM_ALG_ECC;
-  public_area.unique.ecc.x.size = 1;
-  public_area.unique.ecc.y.size = 1;
+  public_area.parameters = TPMU_PUBLIC_PARMS{
+      .ecc_detail = TPMS_ECC_PARMS{},
+  };
+  public_area.unique = TPMU_PUBLIC_ID{
+      .ecc =
+          TPMS_ECC_POINT{
+              .x =
+                  TPM2B_ECC_PARAMETER{
+                      .size = 1,
+                      .buffer = {0},
+                  },
+              .y =
+                  TPM2B_ECC_PARAMETER{
+                      .size = 1,
+                      .buffer = {0},
+                  },
+          },
+  };
   EXPECT_CALL(mock_tpm_cache_, GetSaltingKeyPublicArea(_))
       .WillOnce(DoAll(SetArgPointee<0>(public_area), Return(TPM_RC_SUCCESS)));
   EXPECT_EQ(TRUNKS_RC_SESSION_SETUP_ERROR,
@@ -301,6 +319,9 @@ TEST_F(SessionManagerTest, StartSessionBadSaltingKey) {
 TEST_F(SessionManagerTest, StartSessionFailure) {
   TPMT_PUBLIC public_area{
       .type = TPM_ALG_RSA,
+      .object_attributes = trunks::kSensitiveDataOrigin |
+                           trunks::kUserWithAuth | trunks::kNoDA |
+                           trunks::kDecrypt,
       .parameters =
           TPMU_PUBLIC_PARMS{
               .rsa_detail = TPMS_RSA_PARMS{},
@@ -324,6 +345,9 @@ TEST_F(SessionManagerTest, StartSessionBadNonce) {
   TPM_SE session_type = TPM_SE_TRIAL;
   TPMT_PUBLIC public_area{
       .type = TPM_ALG_RSA,
+      .object_attributes = trunks::kSensitiveDataOrigin |
+                           trunks::kUserWithAuth | trunks::kNoDA |
+                           trunks::kDecrypt,
       .parameters =
           TPMU_PUBLIC_PARMS{
               .rsa_detail = TPMS_RSA_PARMS{},

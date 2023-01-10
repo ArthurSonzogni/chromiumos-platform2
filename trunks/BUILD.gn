@@ -53,9 +53,6 @@ config("target_defaults") {
     "BIOMETRICS_DEV=true",
   ]
   libs = [ "hwsec-foundation" ]
-
-  # b/263505325 - pattern init causes some tests to fail.
-  cflags = [ "-ftrivial-auto-var-init=zero" ]
 }
 
 proto_library("interface_proto") {
