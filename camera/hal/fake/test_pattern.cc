@@ -9,6 +9,7 @@
 #include <base/bits.h>
 #include <base/logging.h>
 #include <libyuv.h>
+#include <linux/videodev2.h>
 
 #include "hal/fake/fake_stream.h"
 #include "hal/fake/frame_buffer/gralloc_frame_buffer.h"
@@ -82,7 +83,7 @@ std::unique_ptr<GrallocFrameBuffer> GenerateTestPatternColorBarsFadeToGray(
   }
 
   auto buffer =
-      GrallocFrameBuffer::Create(size, HAL_PIXEL_FORMAT_YCbCr_420_888);
+      FrameBuffer::Create<GrallocFrameBuffer>(size, V4L2_PIX_FMT_NV12);
   if (buffer == nullptr) {
     LOGF(WARNING) << "Failed to create buffer for test pattern";
     return nullptr;

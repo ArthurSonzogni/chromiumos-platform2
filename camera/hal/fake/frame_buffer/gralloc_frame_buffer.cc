@@ -59,16 +59,6 @@ std::unique_ptr<GrallocFrameBuffer> GrallocFrameBuffer::Wrap(
   return frame_buffer;
 }
 
-// static
-std::unique_ptr<GrallocFrameBuffer> GrallocFrameBuffer::Create(
-    Size size, android_pixel_format_t hal_format) {
-  auto frame_buffer = base::WrapUnique(new GrallocFrameBuffer());
-  if (!frame_buffer->Initialize(size, hal_format)) {
-    return nullptr;
-  }
-  return frame_buffer;
-}
-
 GrallocFrameBuffer::GrallocFrameBuffer()
     : buffer_manager_(CameraBufferManager::GetInstance()) {}
 
@@ -102,9 +92,22 @@ bool GrallocFrameBuffer::Initialize(buffer_handle_t buffer, Size size) {
   return true;
 }
 
-bool GrallocFrameBuffer::Initialize(Size size,
-                                    android_pixel_format_t hal_format) {
+bool GrallocFrameBuffer::Initialize(Size size, uint32_t fourcc) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+
+  android_pixel_format_t hal_format;
+
+  switch (fourcc) {
+    case V4L2_PIX_FMT_NV12:
+      hal_format = HAL_PIXEL_FORMAT_YCBCR_420_888;
+      break;
+    case V4L2_PIX_FMT_JPEG:
+      hal_format = HAL_PIXEL_FORMAT_BLOB;
+      break;
+    default:
+      LOGF(ERROR) << "Unsupported format: " << FormatToString(fourcc);
+      return false;
+  }
 
   uint32_t hal_usage =
       GRALLOC_USAGE_SW_READ_OFTEN | GRALLOC_USAGE_SW_WRITE_OFTEN;
@@ -157,57 +160,6 @@ std::unique_ptr<FrameBuffer::ScopedMapping> GrallocFrameBuffer::Map() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
   return ScopedMapping::Create(buffer_);
-}
-
-// static
-std::unique_ptr<GrallocFrameBuffer> GrallocFrameBuffer::Resize(
-    FrameBuffer& buffer, Size size) {
-  if (buffer.GetFourcc() != V4L2_PIX_FMT_NV12) {
-    LOGF(WARNING) << "Only V4L2_PIX_FMT_NV12 is supported for resize";
-    return nullptr;
-  }
-
-  auto mapped_buffer = buffer.Map();
-  if (mapped_buffer == nullptr) {
-    LOGF(WARNING) << "Failed to map temporary buffer";
-    return nullptr;
-  }
-
-  auto y_plane = mapped_buffer->plane(0);
-  auto uv_plane = mapped_buffer->plane(1);
-  DCHECK(y_plane.addr != nullptr);
-  DCHECK(uv_plane.addr != nullptr);
-
-  auto output_buffer =
-      GrallocFrameBuffer::Create(size, HAL_PIXEL_FORMAT_YCbCr_420_888);
-  if (output_buffer == nullptr) {
-    LOGF(WARNING) << "Failed to create buffer";
-    return nullptr;
-  }
-
-  auto mapped_output_buffer = output_buffer->Map();
-  if (mapped_output_buffer == nullptr) {
-    LOGF(WARNING) << "Failed to map buffer";
-    return nullptr;
-  }
-
-  auto output_y_plane = mapped_output_buffer->plane(0);
-  auto output_uv_plane = mapped_output_buffer->plane(1);
-  DCHECK(output_y_plane.addr != nullptr);
-  DCHECK(output_uv_plane.addr != nullptr);
-
-  // TODO(pihsun): Support "object-fit" for different scaling method.
-  int ret = libyuv::NV12Scale(
-      y_plane.addr, y_plane.stride, uv_plane.addr, uv_plane.stride,
-      buffer.GetSize().width, buffer.GetSize().height, output_y_plane.addr,
-      output_y_plane.stride, output_uv_plane.addr, output_uv_plane.stride,
-      size.width, size.height, libyuv::kFilterBilinear);
-  if (ret != 0) {
-    LOGF(WARNING) << "NV12Scale() failed with " << ret;
-    return nullptr;
-  }
-
-  return output_buffer;
 }
 
 }  // namespace cros

@@ -37,16 +37,6 @@ FrameBuffer::ScopedMapping::Plane CpuMemoryFrameBuffer::ScopedMapping::plane(
   return plane;
 }
 
-// static
-std::unique_ptr<CpuMemoryFrameBuffer> CpuMemoryFrameBuffer::Create(
-    Size size, uint32_t fourcc) {
-  auto frame_buffer = base::WrapUnique(new CpuMemoryFrameBuffer());
-  if (!frame_buffer->Initialize(size, fourcc)) {
-    return nullptr;
-  }
-  return frame_buffer;
-}
-
 CpuMemoryFrameBuffer::CpuMemoryFrameBuffer() = default;
 
 bool CpuMemoryFrameBuffer::Initialize(Size size, uint32_t fourcc) {

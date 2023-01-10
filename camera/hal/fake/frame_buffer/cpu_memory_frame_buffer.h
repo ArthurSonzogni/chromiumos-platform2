@@ -47,15 +47,13 @@ class CpuMemoryFrameBuffer : public FrameBuffer {
   // should not outlive |this|.
   std::unique_ptr<FrameBuffer::ScopedMapping> Map() override;
 
-  // Allocates the buffer. Returns nullptr when there's an error.
-  static std::unique_ptr<CpuMemoryFrameBuffer> Create(Size size,
-                                                      uint32_t fourcc);
-
  private:
+  friend class FrameBuffer;
+
   CpuMemoryFrameBuffer();
 
   // Allocate the buffer.
-  [[nodiscard]] bool Initialize(Size size, uint32_t fourcc);
+  [[nodiscard]] bool Initialize(Size size, uint32_t fourcc) override;
 
   friend class ScopedMapping;
 

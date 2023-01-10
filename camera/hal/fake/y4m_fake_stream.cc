@@ -39,8 +39,8 @@ static const char kY4mHeaderMagic[] = "YUV4MPEG2";
 
 std::unique_ptr<FrameBuffer> ConvertI420ToNv12(
     std::unique_ptr<FrameBuffer> buffer) {
-  auto output_buffer = GrallocFrameBuffer::Create(
-      buffer->GetSize(), HAL_PIXEL_FORMAT_YCBCR_420_888);
+  auto output_buffer = FrameBuffer::Create<GrallocFrameBuffer>(
+      buffer->GetSize(), V4L2_PIX_FMT_NV12);
 
   if (output_buffer == nullptr) {
     LOGF(WARNING) << "Failed to allocate output buffer";
@@ -216,8 +216,8 @@ bool Y4mFakeStream::Initialize(const android::CameraMetadata& static_metadata,
 
 std::unique_ptr<FrameBuffer> Y4mFakeStream::ReadNextFrameI420() {
   // Y4m stores frame in YU12 / I420 format.
-  auto temp_buffer =
-      CpuMemoryFrameBuffer::Create(video_size_, V4L2_PIX_FMT_YUV420);
+  auto temp_buffer = FrameBuffer::Create<CpuMemoryFrameBuffer>(
+      video_size_, V4L2_PIX_FMT_YUV420);
   if (temp_buffer == nullptr) {
     LOGF(WARNING) << "Failed to create temporary buffer: "
                   << video_size_.ToString();
@@ -304,7 +304,7 @@ bool Y4mFakeStream::FillBuffer(buffer_handle_t output_buffer) {
     return false;
   }
 
-  auto buffer = GrallocFrameBuffer::Resize(*temp_buffer, size_);
+  auto buffer = FrameBuffer::Scale<GrallocFrameBuffer>(*temp_buffer, size_);
   if (buffer == nullptr) {
     LOGF(WARNING) << "Failed to resize frame";
     return false;

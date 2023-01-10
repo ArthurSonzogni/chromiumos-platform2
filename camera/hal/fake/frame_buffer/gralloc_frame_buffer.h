@@ -55,17 +55,9 @@ class GrallocFrameBuffer : public FrameBuffer {
   static std::unique_ptr<GrallocFrameBuffer> Wrap(buffer_handle_t buffer,
                                                   Size size);
 
-  // Allocates the buffer internally. Returns nullptr when there's error.
-  static std::unique_ptr<GrallocFrameBuffer> Create(
-      Size size, android_pixel_format_t hal_format);
-
-  // Resize to the given size and return the new buffer. Only supports
-  // V4L2_PIX_FMT_NV12 for now.
-  // TODO(pihsun): Supports return frame buffer in other class.
-  static std::unique_ptr<GrallocFrameBuffer> Resize(FrameBuffer& buffer,
-                                                    Size size);
-
  private:
+  friend class FrameBuffer;
+
   GrallocFrameBuffer();
 
   // Wraps external buffer from upper framework. Fill |size_| according to the
@@ -73,7 +65,7 @@ class GrallocFrameBuffer : public FrameBuffer {
   [[nodiscard]] bool Initialize(buffer_handle_t buffer, Size size);
 
   // Allocate the buffer internally.
-  [[nodiscard]] bool Initialize(Size size, android_pixel_format_t hal_format);
+  [[nodiscard]] bool Initialize(Size size, uint32_t fourcc) override;
 
   // The currently used buffer.
   buffer_handle_t buffer_ = nullptr;

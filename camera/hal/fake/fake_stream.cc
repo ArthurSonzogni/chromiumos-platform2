@@ -42,8 +42,8 @@ std::unique_ptr<GrallocFrameBuffer> ReadMJPGFromFile(const base::FilePath& path,
     return nullptr;
   }
 
-  auto temp_buffer = GrallocFrameBuffer::Create(Size(width, height),
-                                                HAL_PIXEL_FORMAT_YCbCr_420_888);
+  auto temp_buffer = FrameBuffer::Create<GrallocFrameBuffer>(
+      Size(width, height), V4L2_PIX_FMT_NV12);
   if (temp_buffer == nullptr) {
     LOGF(WARNING) << "Failed to create temporary buffer";
     return nullptr;
@@ -66,7 +66,7 @@ std::unique_ptr<GrallocFrameBuffer> ReadMJPGFromFile(const base::FilePath& path,
     return nullptr;
   }
 
-  return GrallocFrameBuffer::Resize(*temp_buffer, size);
+  return FrameBuffer::Scale<GrallocFrameBuffer>(*temp_buffer, size);
 }
 }  // namespace
 
@@ -191,8 +191,8 @@ std::unique_ptr<GrallocFrameBuffer> FakeStream::ConvertBuffer(
     std::unique_ptr<GrallocFrameBuffer> buffer, android_pixel_format_t format) {
   switch (format) {
     case HAL_PIXEL_FORMAT_BLOB: {
-      auto output_buffer =
-          GrallocFrameBuffer::Create(Size(jpeg_max_size_, 1), format);
+      auto output_buffer = FrameBuffer::Create<GrallocFrameBuffer>(
+          Size(jpeg_max_size_, 1), V4L2_PIX_FMT_JPEG);
       if (!output_buffer) {
         return nullptr;
       }
