@@ -112,19 +112,49 @@ TEST(AuditLogReaderTest, IsMemfdCreateTest) {
   EXPECT_FALSE(secanomalyd::IsMemfdCreate(""));
 }
 
+// Ensures a kernel emitted memfd execution audit record is detected and parsed
+// correctly, and the executable name is correctly parsed.
 TEST(AuditLogReaderTest, IsMemfdExecutionTest) {
+  std::string cmd;
   EXPECT_TRUE(secanomalyd::IsMemfdExecutionAttempt(
-      R"(ChromeOS LSM: memfd execution attempt, cmd ="/usr/bin/memfd_test )"
-      R"(/usr/sbin/bad_bin ", pid=666)"));
+      R"(ChromeOS LSM: memfd execution attempt, cmd="/usr/bin/memfd_test )"
+      R"(/usr/sbin/bad_bin", pid=666)",
+      cmd));
+  EXPECT_EQ(cmd, "/usr/bin/memfd_test");
   EXPECT_TRUE(secanomalyd::IsMemfdExecutionAttempt(
-      R"(ChromeOS LSM: memfd execution attempt, cmd=(null), pid=777)"));
+      R"(ChromeOS LSM: memfd execution attempt, cmd="/usr/bin/memfd_test")"
+      R"(, pid=666)",
+      cmd));
+  EXPECT_EQ(cmd, "/usr/bin/memfd_test");
+  EXPECT_TRUE(secanomalyd::IsMemfdExecutionAttempt(
+      R"(ChromeOS LSM: memfd execution attempt, cmd="/usr/bin/memfd_test )"
+      R"(--some-flag some_value --another_flag", pid=666)",
+      cmd));
+  EXPECT_EQ(cmd, "/usr/bin/memfd_test");
+  EXPECT_TRUE(secanomalyd::IsMemfdExecutionAttempt(
+      R"(ChromeOS LSM: memfd execution attempt, cmd="bad_executable" )"
+      R"(, pid=666)",
+      cmd));
+  EXPECT_EQ(cmd, "bad_executable");
+  EXPECT_TRUE(secanomalyd::IsMemfdExecutionAttempt(
+      R"(ChromeOS LSM: memfd execution attempt, cmd=, pid=777)", cmd));
+  EXPECT_EQ(cmd, secanomalyd::kUnknownExePath);
+  EXPECT_TRUE(secanomalyd::IsMemfdExecutionAttempt(
+      R"(ChromeOS LSM: memfd execution attempt, cmd="", pid=777)", cmd));
+  EXPECT_EQ(cmd, secanomalyd::kUnknownExePath);
+  EXPECT_TRUE(secanomalyd::IsMemfdExecutionAttempt(
+      R"(ChromeOS LSM: memfd execution attempt, cmd=(null), pid=777)", cmd));
+  EXPECT_EQ(cmd, secanomalyd::kUnknownExePath);
+  EXPECT_TRUE(secanomalyd::IsMemfdExecutionAttempt(
+      R"(ChromeOS LSM: memfd execution attempt, pid=666)", cmd));
+  EXPECT_EQ(cmd, secanomalyd::kUnknownExePath);
   EXPECT_FALSE(secanomalyd::IsMemfdExecutionAttempt(
-      R"(avc:  denied  { module_request } for  pid=1795 comm="init")"));
+      R"(avc:  denied  { module_request } for  pid=1795 comm="init")", cmd));
   EXPECT_FALSE(secanomalyd::IsMemfdExecutionAttempt(
-      R"(ChromeOS LSM: other event in the future, field="value")"));
+      R"(ChromeOS LSM: other event in the future, field="value")", cmd));
   EXPECT_FALSE(secanomalyd::IsMemfdExecutionAttempt(
-      R"(======== Some Gibberish ======)"));
-  EXPECT_FALSE(secanomalyd::IsMemfdExecutionAttempt(""));
+      R"(======== Some Gibberish ======)", cmd));
+  EXPECT_FALSE(secanomalyd::IsMemfdExecutionAttempt("", cmd));
 }
 
 }  // namespace secanomalyd

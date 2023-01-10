@@ -16,6 +16,8 @@ namespace secanomalyd {
 
 static constexpr LazyRE2 kSuccessFieldPattern = {R"(success=([a-z]+)\s)"};
 static constexpr LazyRE2 kSyscallFieldPattern = {R"(SYSCALL=([\w]+)\s)"};
+// Extracts the executable path from the cmd field of the log message.
+static constexpr LazyRE2 kExePathPattern = {R"(cmd=\"(\S+).*\")"};
 
 bool IsMemfdCreate(const std::string& log_message) {
   std::string syscall;
@@ -30,10 +32,17 @@ bool IsMemfdCreate(const std::string& log_message) {
   return false;
 }
 
-bool IsMemfdExecutionAttempt(const std::string& log_message) {
+bool IsMemfdExecutionAttempt(const std::string& log_message,
+                             std::string& exe_path) {
   // Looks for the text snippet appended to log messages coming from the kernel
   // LSM code where the execution attempt is blocked.
-  return absl::StartsWith(log_message, "ChromeOS LSM: memfd execution attempt");
+  if (absl::StartsWith(log_message, "ChromeOS LSM: memfd execution attempt")) {
+    if (!RE2::PartialMatch(log_message, *kExePathPattern, &exe_path)) {
+      exe_path = secanomalyd::kUnknownExePath;
+    }
+    return true;
+  }
+  return false;
 }
 
 bool Parser::IsValid(const std::string& line, LogRecord& log_record) {

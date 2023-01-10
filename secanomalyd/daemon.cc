@@ -10,6 +10,7 @@
 #include <string>
 #include <vector>
 
+#include <absl/strings/match.h>
 #include <base/command_line.h>
 #include <base/files/file_util.h>
 #include <base/files/file_path.h>
@@ -54,6 +55,20 @@ constexpr base::TimeDelta kScanInterval = base::Seconds(30);
 // users run the reporting.
 constexpr base::TimeDelta kUmaReportInterval = base::Hours(2);
 
+// Generates a unique name for the next element being added to `set`, where the
+// element is a unique instance of a certain path type denoted by a `prefix`.
+// For example, unknown executable paths are recorded as:
+// {"unknown_executable_1", "unknown_executable_2", etc...}
+std::string GetNextUniquePath(const std::set<base::FilePath>& set,
+                              const std::string& prefix) {
+  int num_common_elements = 0;
+  for (base::FilePath element : set) {
+    if (absl::StartsWith(element.value(), prefix))
+      num_common_elements++;
+  }
+  return prefix + "_" + std::to_string(num_common_elements);
+}
+
 }  // namespace
 
 int Daemon::OnInit() {
@@ -74,7 +89,7 @@ int Daemon::OnInit() {
 
 int Daemon::OnEventLoopStarted() {
   ScanForAnomalies();
-  ReportWXMountCount();
+  ReportAnomaliesToUma();
 
   return EX_OK;
 }
@@ -91,21 +106,34 @@ void Daemon::ScanForAnomalies() {
       kScanInterval);
 }
 
-void Daemon::ReportWXMountCount() {
+void Daemon::ReportAnomaliesToUma() {
+  if (!ShouldReport(dev_)) {
+    return;
+  }
+
   VLOG(1) << "Reporting W+X mount count UMA metric";
-  if (ShouldReport(dev_)) {
-    if (SendWXMountCountToUMA(wx_mounts_.size())) {
-      // After successfully reporting W+X mount count, clear the map.
-      // If mounts still exist they'll be re-added on the next scan.
-      wx_mounts_.clear();
-    } else {
-      LOG(WARNING) << "Could not upload W+X mount count UMA metric";
-    }
+  if (SendWXMountCountToUMA(wx_mounts_.size())) {
+    // After successfully reporting W+X mount count, clear the map.
+    // If mounts still exist they'll be re-added on the next scan.
+    wx_mounts_.clear();
+  } else {
+    LOG(WARNING) << "Could not upload W+X mount count UMA metric";
+  }
+
+  VLOG(1) << "Reporting memfd exec process count UMA metric";
+  if (SendAttemptedMemfdExecProcCountToUMA(
+          executables_attempting_memfd_exec_.size())) {
+    // After successfully reporting process count, clear the set. If the same
+    // processes attempt memfd executions again, they will be re-added to the
+    // set.
+    executables_attempting_memfd_exec_.clear();
+  } else {
+    LOG(WARNING) << "Could not upload memfd exec process count UMA metric";
   }
 
   brillo::MessageLoop::current()->PostDelayedTask(
       FROM_HERE,
-      base::BindOnce(&Daemon::ReportWXMountCount, base::Unretained(this)),
+      base::BindOnce(&Daemon::ReportAnomaliesToUma, base::Unretained(this)),
       kUmaReportInterval);
 }
 
@@ -229,10 +257,20 @@ void Daemon::DoAuditLogScan() {
         }
       }
     }
+    std::string exe_path;
     if (log_record.tag == kAVCRecordTag &&
-        secanomalyd::IsMemfdExecutionAttempt(log_record.message)) {
+        secanomalyd::IsMemfdExecutionAttempt(log_record.message, exe_path)) {
+      if (exe_path == secanomalyd::kUnknownExePath) {
+        exe_path = GetNextUniquePath(executables_attempting_memfd_exec_,
+                                     secanomalyd::kUnknownExePath);
+      }
+      // Record the anomaly by adding the offending executable path to
+      // |executables_attempting_memfd_exec_| set.
+      executables_attempting_memfd_exec_.insert(base::FilePath(exe_path));
       VLOG(1) << log_record.message;
-      // Report anomaly condition to UMA for memfd execution if not in dev mode.
+      VLOG(1) << "|executables_attempting_memfd_exec_.size()| = "
+              << executables_attempting_memfd_exec_.size();
+      // Report anomalous condition to UMA if not in dev mode.
       if (ShouldReport(dev_)) {
         if (!SendSecurityAnomalyToUMA(
                 SecurityAnomaly::kBlockedMemoryFileExecAttempt))

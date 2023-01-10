@@ -27,6 +27,17 @@ constexpr int kWXMountCountHistogramMinBucket = 0;
 constexpr int kWXMountCountHistogramMaxBucket = 20;
 constexpr int kWXMountCountHistogramNumBuckets = 20;
 
+// This prefix is used for histograms that show the count of anomalous processes
+// on the system. Each subcategory corresponds to a different type of anomaly.
+constexpr char kAnomalousProcCountHistogramPrefix[] =
+    "ChromeOS.AnomalousProcCount.";
+constexpr int kAnomalousProcCountMinBucket = 0;
+constexpr int kAnomalousProcCountMaxBucket = 30;
+constexpr int kAnomalousProcCountNumBuckets = 30;
+// This subcategory of |AnomalousProcCount| shows the number of processes on the
+// system that have attempted to execute a memfd.
+constexpr char kAttemptedMemfdExec[] = "AttemptedMemfdExec";
+
 constexpr char kAnomalyUploadSuccess[] =
     "ChromeOS.SecurityAnomalyUploadSuccess";
 
@@ -53,6 +64,15 @@ bool SendWXMountCountToUMA(size_t wx_mount_count) {
       kWXMountCountHistogramName, base::checked_cast<int>(wx_mount_count),
       kWXMountCountHistogramMinBucket, kWXMountCountHistogramMaxBucket,
       kWXMountCountHistogramNumBuckets);
+}
+
+bool SendAttemptedMemfdExecProcCountToUMA(size_t proc_count) {
+  InitializeMetricsIfNecessary();
+  return metrics_library->SendToUMA(
+      std::string(kAnomalousProcCountHistogramPrefix) +
+          std::string(kAttemptedMemfdExec),
+      base::checked_cast<int>(proc_count), kAnomalousProcCountMinBucket,
+      kAnomalousProcCountMaxBucket, kAnomalousProcCountNumBuckets);
 }
 
 bool SendAnomalyUploadResultToUMA(bool success) {

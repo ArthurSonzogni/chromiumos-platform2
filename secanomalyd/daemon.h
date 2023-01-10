@@ -5,8 +5,13 @@
 #ifndef SECANOMALYD_DAEMON_H_
 #define SECANOMALYD_DAEMON_H_
 
+#include <cstddef>
 #include <map>
 #include <memory>
+#include <set>
+#include <string>
+
+#include <base/files/file_path.h>
 
 #include <brillo/daemons/dbus_daemon.h>
 
@@ -40,7 +45,7 @@ class Daemon : public brillo::DBusDaemon {
 
   // Discovered anomalies are reported to UMA at set intervals, dictated by
   // |kUmaReportInterval|.
-  void ReportWXMountCount();
+  void ReportAnomaliesToUma();
 
   // Reporting tasks have rate limiting criteria built into them for uploading
   // crash reports.
@@ -62,6 +67,8 @@ class Daemon : public brillo::DBusDaemon {
   std::unique_ptr<SessionManagerProxy> session_manager_proxy_;
 
   MountEntryMap wx_mounts_;
+
+  std::set<base::FilePath> executables_attempting_memfd_exec_;
 
   // Used for reading and parsing the audit log file.
   std::unique_ptr<AuditLogReader> audit_log_reader_;

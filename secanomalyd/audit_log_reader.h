@@ -60,12 +60,18 @@ struct LogRecord {
   base::Time timestamp;
 };
 
+// Used as the default value when the executable path cannot be extracted from
+// the log message, i.e: the pattern is not as expected.
+const char kUnknownExePath[] = "unknown_executable";
+
 // Returns true if the log message indicates a memfd_create syscall that
 // succeeded.
 bool IsMemfdCreate(const std::string& log_message);
 
-// Returns true if the log message indicates a memfd execution attempt.
-bool IsMemfdExecutionAttempt(const std::string& log_message);
+// Returns true if the log message indicates a memfd execution attempt and
+// extracts the executable path from the cmd field of the log entry.
+bool IsMemfdExecutionAttempt(const std::string& log_message,
+                             std::string& exe_path);
 
 // A Parser object is created for each log record type we are interested in.
 // Each parser is uniquely identified by a |tag_| that determines the type of
