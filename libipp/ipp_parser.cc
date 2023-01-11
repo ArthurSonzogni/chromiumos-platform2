@@ -214,9 +214,10 @@ std::string_view ToStrView(ParserCode code) {
   }
 }
 
-void Parser::LogScannerError(const std::string& message, const uint8_t* ptr) {
+void Parser::LogParserError(std::string_view message, const uint8_t* ptr) {
   Log l;
-  l.message = "Scanner error: " + message + ".";
+  l.message = message;
+  l.parser_context = PathAsString(parser_context_);
   // Let's try to save to frame_context the closest neighborhood of ptr.
   if (ptr != nullptr && ptr >= buffer_begin_ && ptr <= buffer_end_) {
     // Current position in the buffer.
@@ -248,13 +249,6 @@ void Parser::LogParserErrors(const std::vector<ParserCode>& error_codes) {
   for (ParserCode error_code : error_codes) {
     LogParserError(error_code);
   }
-}
-
-void Parser::LogParserError(std::string_view message) {
-  Log l;
-  l.message = message;
-  l.parser_context = PathAsString(parser_context_);
-  errors_->push_back(l);
 }
 
 // Temporary representation of an attribute's value parsed from TNVs.
@@ -482,19 +476,19 @@ bool Parser::ReadFrameFromBuffer(const uint8_t* ptr,
   buffer_end_ = buf_end;
   bool error_in_header = true;
   if (buf_end - ptr < 9) {
-    LogScannerError("Frame is too short to be correct (less than 9 bytes)",
-                    ptr);
+    LogParserError("Frame is too short to be correct (less than 9 bytes).",
+                   ptr);
   } else if (!ParseUnsignedInteger<1>(&ptr, &frame_->major_version_number_)) {
-    LogScannerError("major-version-number is out of range", ptr);
+    LogParserError("major-version-number is out of range.", ptr);
   } else if (!ParseUnsignedInteger<1>(&ptr, &frame_->minor_version_number_)) {
-    LogScannerError("minor-version-number is out of range", ptr);
+    LogParserError("minor-version-number is out of range.", ptr);
   } else if (!ParseUnsignedInteger<2>(&ptr,
                                       &frame_->operation_id_or_status_code_)) {
-    LogScannerError("operation-id or status-code is out of range", ptr);
+    LogParserError("operation-id or status-code is out of range.", ptr);
   } else if (!ParseUnsignedInteger<4>(&ptr, &frame_->request_id_)) {
-    LogScannerError("request-id is out of range", ptr);
+    LogParserError("request-id is out of range.", ptr);
   } else if (*ptr > max_begin_attribute_group_tag) {
-    LogScannerError("begin-attribute-group-tag was expected", ptr);
+    LogParserError("begin-attribute-group-tag was expected.", ptr);
   } else {
     error_in_header = false;
   }
@@ -502,10 +496,10 @@ bool Parser::ReadFrameFromBuffer(const uint8_t* ptr,
     return false;
   while (*ptr != end_of_attributes_tag) {
     if (frame_->groups_tags_.size() >= kMaxCountOfAttributeGroups) {
-      LogScannerError(
+      LogParserError(
           "The package has too many attribute groups; the maximum allowed "
           "number is " +
-              ToString(static_cast<int>(kMaxCountOfAttributeGroups)),
+              ToString(static_cast<int>(kMaxCountOfAttributeGroups)) + ".",
           ptr);
       return false;
     }
@@ -515,8 +509,8 @@ bool Parser::ReadFrameFromBuffer(const uint8_t* ptr,
     if (!ReadTNVsFromBuffer(&ptr, buf_end, &(frame_->groups_content_.back())))
       return false;
     if (ptr >= buf_end) {
-      LogScannerError(
-          "Unexpected end of frame, begin-attribute-group-tag was expected",
+      LogParserError(
+          "Unexpected end of frame, begin-attribute-group-tag was expected.",
           ptr);
       return false;
     }
@@ -541,38 +535,38 @@ bool Parser::ReadTNVsFromBuffer(const uint8_t** ptr2,
     TagNameValue tnv;
 
     if (buf_end - ptr < 5) {
-      LogScannerError(
+      LogParserError(
           "Unexpected end of frame when reading tag-name-value (expected at "
-          "least 1-byte tag, 2-bytes name-length and 2-bytes value-length)",
+          "least 1-byte tag, 2-bytes name-length and 2-bytes value-length).",
           ptr);
       return false;
     }
     if (!ParseUnsignedInteger<1>(&ptr, &tnv.tag)) {
-      LogScannerError("value-tag is negative", ptr);
+      LogParserError("value-tag is negative.", ptr);
       return false;
     }
     int length = 0;
     if (!ParseUnsignedInteger<2>(&ptr, &length)) {
-      LogScannerError("name-length is negative", ptr);
+      LogParserError("name-length is negative.", ptr);
       return false;
     }
     if (buf_end - ptr < length + 2) {
-      LogScannerError(
+      LogParserError(
           "Unexpected end of frame when reading name (expected at least " +
-              std::to_string(length) + "-bytes name and 2-bytes value-length)",
+              std::to_string(length) + "-bytes name and 2-bytes value-length).",
           ptr);
       return false;
     }
     tnv.name.assign(ptr, ptr + length);
     ptr += length;
     if (!ParseUnsignedInteger<2>(&ptr, &length)) {
-      LogScannerError("value-length is negative", ptr);
+      LogParserError("value-length is negative.", ptr);
       return false;
     }
     if (buf_end - ptr < length) {
-      LogScannerError("Unexpected end of frame when reading value (expected " +
-                          std::to_string(length) + "-bytes value)",
-                      ptr);
+      LogParserError("Unexpected end of frame when reading value (expected " +
+                         std::to_string(length) + "-bytes value).",
+                     ptr);
       return false;
     }
     tnv.value.assign(ptr, ptr + length);

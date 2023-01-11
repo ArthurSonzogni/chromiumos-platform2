@@ -70,8 +70,8 @@ class Parser {
   Parser& operator=(Parser&&) = delete;
 
   // Methods for adding entries to the log.
-  void LogScannerError(const std::string& message, const uint8_t* position);
-  void LogParserError(std::string_view message);
+  void LogParserError(std::string_view message,
+                      const uint8_t* position = nullptr);
   void LogParserError(ParserCode error_code);
   void LogParserErrors(const std::vector<ParserCode>& errors);
 
