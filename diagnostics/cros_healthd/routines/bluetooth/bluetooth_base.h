@@ -38,7 +38,7 @@ class BluetoothRoutineBase {
       base::OnceClosure on_passed,
       base::OnceCallback<
           void(ash::cros_healthd::mojom::DiagnosticRoutineStatusEnum status,
-               std::string error_message)> on_failed);
+               const std::string& error_message)> on_failed);
 
  protected:
   // Unowned pointer that should outlive this instance.

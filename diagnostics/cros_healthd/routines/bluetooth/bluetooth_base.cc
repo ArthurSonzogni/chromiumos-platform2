@@ -50,7 +50,7 @@ void BluetoothRoutineBase::EnsureAdapterPoweredState(
 void BluetoothRoutineBase::RunPreCheck(
     base::OnceClosure on_passed,
     base::OnceCallback<void(mojom::DiagnosticRoutineStatusEnum status,
-                            std::string error_message)> on_failed) {
+                            const std::string& error_message)> on_failed) {
   if (!GetAdapter()) {
     std::move(on_failed).Run(mojom::DiagnosticRoutineStatusEnum::kError,
                              kBluetoothRoutineFailedGetAdapter);

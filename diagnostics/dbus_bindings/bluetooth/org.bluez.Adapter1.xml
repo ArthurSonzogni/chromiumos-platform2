@@ -55,5 +55,12 @@
         This method will cancel any previous StartDiscovery transaction.
       </tp:docstring>
     </method>
+    <method name="RemoveDevice">
+      <tp:docstring>
+        This removes the remote device object at the given path. It will remove
+        also the pairing information.
+      </tp:docstring>
+      <arg name="device" direction="in" type="o" />
+    </method>
   </interface>
 </node>

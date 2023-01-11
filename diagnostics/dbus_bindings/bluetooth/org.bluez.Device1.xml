@@ -14,6 +14,11 @@
         The Bluetooth device address of the device.
       </tp:docstring>
     </property>
+    <property name="Alias" type="s" access="readwrite">
+      <tp:docstring>
+        The Bluetooth device alias of the device.
+      </tp:docstring>
+    </property>
     <property name="Name" type="s" access="read">
       <tp:docstring>
         The Bluetooth friendly name of the device.
@@ -55,6 +60,11 @@
       </tp:docstring>
       <annotation name="org.chromium.DBus.Argument.VariableName" value="bluetooth_class" />
     </property>
+    <property name="Paired" type="b" access="read">
+      <tp:docstring>
+       Indicates if the remote device is paired.
+      </tp:docstring>
+    </property>
     <property name="Connected" type="b" access="read">
       <tp:docstring>
        Indicates that the device is currently connected.
@@ -65,5 +75,18 @@
        Object path of the adapter the device belongs to.
       </tp:docstring>
     </property>
+    <!-- Methods -->
+    <method name="Connect">
+      <tp:docstring>
+        This is a generic method to connect any profiles the remote device
+        supports that can be connected to.
+      </tp:docstring>
+    </method>
+    <method name="Pair">
+      <tp:docstring>
+        This method will connect to the remote device, initiate pairing and then
+        retrieve all SDP records (or GATT primary services).
+      </tp:docstring>
+    </method>
   </interface>
 </node>

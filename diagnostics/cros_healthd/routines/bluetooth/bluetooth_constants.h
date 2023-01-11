@@ -7,13 +7,15 @@
 
 namespace diagnostics {
 
-// Common status message of all Bluetooth Routines.
+// Put the common and important message here to make it clear for our clients.
+
+// Common status message of all Bluetooth routines.
 inline constexpr char kBluetoothRoutineRunningMessage[] =
     "Bluetooth routine running.";
 inline constexpr char kBluetoothRoutinePassedMessage[] =
     "Bluetooth routine passed.";
 
-// Common failure message of all Bluetooth Routines.
+// Common failure message of all Bluetooth routines.
 inline constexpr char kBluetoothRoutineFailedDiscoveryMode[] =
     "Bluetooth routine is not supported when adapter is in discovery mode.";
 inline constexpr char kBluetoothRoutineFailedChangePowered[] =
@@ -21,19 +23,27 @@ inline constexpr char kBluetoothRoutineFailedChangePowered[] =
 inline constexpr char kBluetoothRoutineFailedSwitchDiscovery[] =
     "Bluetooth routine failed to switch adapter discovery mode.";
 
-// Common error message of all Bluetooth Routines.
+// Common error message of all Bluetooth routines.
 inline constexpr char kBluetoothRoutineFailedGetAdapter[] =
     "Bluetooth routine failed to get main adapter.";
 inline constexpr char kBluetoothRoutineUnexpectedFlow[] =
     "Unexpected Bluetooth diagnostic flow.";
 
-// Failure message of Bluetooth power Routines.
+// Failure message of Bluetooth power routine.
 inline constexpr char kBluetoothRoutineFailedVerifyPowered[] =
     "Bluetooth routine failed to verify adapter powered status.";
 
-// Failure message of Bluetooth discovery Routines.
+// Failure message of Bluetooth discovery routine.
 inline constexpr char kBluetoothRoutineFailedVerifyDiscovering[] =
     "Bluetooth routine failed to verify adapter discovering status.";
+
+// Failure message of Bluetooth pairing routine.
+inline constexpr char kBluetoothRoutineFailedFindTargetPeripheral[] =
+    "Bluetooth routine failed to find the device with peripheral ID.";
+inline constexpr char kBluetoothRoutineFailedCreateBasebandConnection[] =
+    "Bluetooth routine failed to create baseband connection.";
+inline constexpr char kBluetoothRoutineFailedFinishPairing[] =
+    "Bluetooth routine failed to finish pairing.";
 
 }  // namespace diagnostics
 

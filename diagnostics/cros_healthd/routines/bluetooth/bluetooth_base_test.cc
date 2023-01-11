@@ -189,7 +189,7 @@ TEST_F(BluetoothRoutineBaseTest, PreCheckFailedNoAdapter) {
   routine_base->RunPreCheck(
       base::NullCallback(),
       base::BindLambdaForTesting([&](mojom::DiagnosticRoutineStatusEnum status,
-                                     std::string error_message) {
+                                     const std::string& error_message) {
         EXPECT_EQ(status, mojom::DiagnosticRoutineStatusEnum::kError);
         EXPECT_EQ(error_message, kBluetoothRoutineFailedGetAdapter);
         run_loop.Quit();
@@ -212,7 +212,7 @@ TEST_F(BluetoothRoutineBaseTest, PreCheckFailedDiscoveringOn) {
   routine_base->RunPreCheck(
       base::NullCallback(),
       base::BindLambdaForTesting([&](mojom::DiagnosticRoutineStatusEnum status,
-                                     std::string error_message) {
+                                     const std::string& error_message) {
         EXPECT_EQ(status, mojom::DiagnosticRoutineStatusEnum::kFailed);
         EXPECT_EQ(error_message, kBluetoothRoutineFailedDiscoveryMode);
         run_loop.Quit();

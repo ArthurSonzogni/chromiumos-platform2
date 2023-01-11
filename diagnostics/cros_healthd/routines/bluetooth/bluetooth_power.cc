@@ -199,7 +199,8 @@ void BluetoothPowerRoutine::OnTimeoutOccurred() {
 }
 
 void BluetoothPowerRoutine::SetResultAndStop(
-    mojom::DiagnosticRoutineStatusEnum status, std::string status_message) {
+    mojom::DiagnosticRoutineStatusEnum status,
+    const std::string& status_message) {
   // Cancel all pending callbacks.
   weak_ptr_factory_.InvalidateWeakPtrs();
   UpdateStatus(status, std::move(status_message));

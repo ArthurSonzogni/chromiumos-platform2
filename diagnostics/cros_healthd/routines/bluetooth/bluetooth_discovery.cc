@@ -260,7 +260,8 @@ void BluetoothDiscoveryRoutine::OnTimeoutOccurred() {
 }
 
 void BluetoothDiscoveryRoutine::SetResultAndStop(
-    mojom::DiagnosticRoutineStatusEnum status, std::string status_message) {
+    mojom::DiagnosticRoutineStatusEnum status,
+    const std::string& status_message) {
   // Make the adapter stop discovery when routine is stopped.
   if (step_ == TestStep::kCheckDiscoveringStatusOn) {
     GetAdapter()->StopDiscoveryAsync(base::DoNothing(), base::DoNothing());

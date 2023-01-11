@@ -74,7 +74,7 @@ class BluetoothDiscoveryRoutine final : public DiagnosticRoutineWithStatus,
   // Set the routine result and stop other callbacks.
   void SetResultAndStop(
       ash::cros_healthd::mojom::DiagnosticRoutineStatusEnum status,
-      std::string status_message);
+      const std::string& status_message);
 
   enum TestStep {
     kInitialize = 0,
