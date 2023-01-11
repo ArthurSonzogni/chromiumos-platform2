@@ -48,6 +48,7 @@ int Daemon::OnInit() {
   port_manager_->SetECUtil(cros_ec_util_.get());
 
   port_manager_->SetDBusManager(dbus_mgr_.get());
+  dbus_mgr_->SetPortManager(port_manager_.get());
 
   features_client_ = std::make_unique<ChromeFeaturesServiceClient>(bus_);
   features_client_->FetchPeripheralDataAccessEnabled();

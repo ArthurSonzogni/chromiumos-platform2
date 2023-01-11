@@ -21,6 +21,10 @@
 
 namespace typecd {
 
+// PortManager and DBusManager classes include pointers to each other.
+// Forward declare DBusManager to resolve dependencies during compilation.
+class DBusManager;
+
 // This class is used to manage Type C ports and related state. Its role is to
 // provide the daemon with an accurate view of the Type C state (after reading
 // from the Type C connector class framework sysfs files), as well as provide a
