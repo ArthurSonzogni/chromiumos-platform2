@@ -35,6 +35,7 @@ shared_library("libcamera_hal") {
     "request_handler.cc",
     "test_pattern.cc",
     "value_util.cc",
+    "y4m_fake_stream.cc",
   ]
   configs += [ ":target_defaults" ]
 }

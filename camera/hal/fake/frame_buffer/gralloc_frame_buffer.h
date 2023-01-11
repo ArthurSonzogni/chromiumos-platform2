@@ -59,6 +59,12 @@ class GrallocFrameBuffer : public FrameBuffer {
   static std::unique_ptr<GrallocFrameBuffer> Create(
       Size size, android_pixel_format_t hal_format);
 
+  // Resize to the given size and return the new buffer. Only supports
+  // V4L2_PIX_FMT_NV12 for now.
+  // TODO(pihsun): Supports return frame buffer in other class.
+  static std::unique_ptr<GrallocFrameBuffer> Resize(FrameBuffer& buffer,
+                                                    Size size);
+
  private:
   GrallocFrameBuffer();
 

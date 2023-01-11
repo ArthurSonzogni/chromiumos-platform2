@@ -29,9 +29,13 @@ class FrameBuffer {
 
     virtual ~ScopedMapping() = 0;
 
+    // Returns the number of planes in the mapped buffer.
     virtual uint32_t num_planes() const = 0;
 
     using Plane = cros::ScopedMapping::Plane;
+
+    // Returns the plane of given index. The given index should be in range of
+    // [0, |num_planes()|) and the returned plane should have non-null address.
     virtual Plane plane(int plane) const = 0;
 
    protected:

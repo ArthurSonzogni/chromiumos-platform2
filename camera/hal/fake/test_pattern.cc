@@ -10,6 +10,7 @@
 #include <base/logging.h>
 #include <libyuv.h>
 
+#include "hal/fake/fake_stream.h"
 #include "hal/fake/frame_buffer/gralloc_frame_buffer.h"
 #include "hal/fake/test_pattern.h"
 
@@ -34,7 +35,7 @@ std::unique_ptr<GrallocFrameBuffer> GenerateTestPatternColorBarsFadeToGray(
   };
 
   // TODO(pihsun): Should this limits be enforced on reading config?
-  if (size.width > 8192 || size.height > 8192) {
+  if (size.width > kFrameMaxDimension || size.height > kFrameMaxDimension) {
     LOGF(WARNING) << "Image size too large for test pattern";
     return nullptr;
   }
@@ -95,8 +96,6 @@ std::unique_ptr<GrallocFrameBuffer> GenerateTestPatternColorBarsFadeToGray(
 
   auto y_plane = mapped_buffer->plane(0);
   auto uv_plane = mapped_buffer->plane(1);
-  DCHECK(y_plane.addr != nullptr);
-  DCHECK(uv_plane.addr != nullptr);
 
   int ret = libyuv::ARGBToNV12(
       raw_buffer.get(), /*src_stride_argb=*/size.width * 4, y_plane.addr,

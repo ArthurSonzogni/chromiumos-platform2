@@ -30,8 +30,11 @@ uint32_t CpuMemoryFrameBuffer::ScopedMapping::num_planes() const {
 }
 
 FrameBuffer::ScopedMapping::Plane CpuMemoryFrameBuffer::ScopedMapping::plane(
-    int plane) const {
-  return buffer_->planes_[plane].plane;
+    int planeIdx) const {
+  CHECK(planeIdx >= 0 && planeIdx < buffer_->planes_.size());
+  auto plane = buffer_->planes_[planeIdx].plane;
+  CHECK(plane.addr != nullptr);
+  return plane;
 }
 
 // static

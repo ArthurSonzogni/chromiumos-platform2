@@ -19,6 +19,7 @@
 #include "hal/fake/camera_hal.h"
 #include "hal/fake/frame_buffer/gralloc_frame_buffer.h"
 #include "hal/fake/test_pattern.h"
+#include "hal/fake/y4m_fake_stream.h"
 
 namespace cros {
 
@@ -36,7 +37,7 @@ std::unique_ptr<GrallocFrameBuffer> ReadMJPGFromFile(const base::FilePath& path,
     return nullptr;
   }
   CHECK(width > 0 && height > 0);
-  if (width > 8192 || height > 8192) {
+  if (width > kFrameMaxDimension || height > kFrameMaxDimension) {
     LOGF(WARNING) << "Image size too large: " << path;
     return nullptr;
   }
@@ -56,8 +57,6 @@ std::unique_ptr<GrallocFrameBuffer> ReadMJPGFromFile(const base::FilePath& path,
 
   auto temp_y_plane = mapped_temp_buffer->plane(0);
   auto temp_uv_plane = mapped_temp_buffer->plane(1);
-  DCHECK(temp_y_plane.addr != nullptr);
-  DCHECK(temp_uv_plane.addr != nullptr);
 
   int ret = libyuv::MJPGToNV12(
       bytes->data(), bytes->size(), temp_y_plane.addr, temp_y_plane.stride,
@@ -67,36 +66,7 @@ std::unique_ptr<GrallocFrameBuffer> ReadMJPGFromFile(const base::FilePath& path,
     return nullptr;
   }
 
-  auto buffer =
-      GrallocFrameBuffer::Create(size, HAL_PIXEL_FORMAT_YCbCr_420_888);
-  if (buffer == nullptr) {
-    LOGF(WARNING) << "Failed to create buffer";
-    return nullptr;
-  }
-
-  auto mapped_buffer = buffer->Map();
-  if (mapped_buffer == nullptr) {
-    LOGF(WARNING) << "Failed to map buffer";
-    return nullptr;
-  }
-
-  auto y_plane = mapped_buffer->plane(0);
-  auto uv_plane = mapped_buffer->plane(1);
-  DCHECK(y_plane.addr != nullptr);
-  DCHECK(uv_plane.addr != nullptr);
-
-  // TODO(pihsun): Support "object-fit" for different scaling method.
-  ret = libyuv::NV12Scale(temp_y_plane.addr, temp_y_plane.stride,
-                          temp_uv_plane.addr, temp_uv_plane.stride, width,
-                          height, y_plane.addr, y_plane.stride, uv_plane.addr,
-                          uv_plane.stride, size.width, size.height,
-                          libyuv::kFilterBilinear);
-  if (ret != 0) {
-    LOGF(WARNING) << "NV12Scale() failed with " << ret;
-    return nullptr;
-  }
-
-  return buffer;
+  return GrallocFrameBuffer::Resize(*temp_buffer, size);
 }
 }  // namespace
 
@@ -122,24 +92,33 @@ std::unique_ptr<FakeStream> FakeStream::Create(
     const FramesSpec& spec) {
   std::unique_ptr<FakeStream> fake_stream = std::visit(
       Overloaded{
-          [&size](const FramesTestPatternSpec& spec) {
+          [&size](const FramesTestPatternSpec& spec)
+              -> std::unique_ptr<FakeStream> {
             auto input_buffer = GenerateTestPattern(
                 size, ANDROID_SENSOR_TEST_PATTERN_MODE_COLOR_BARS_FADE_TO_GRAY);
             return base::WrapUnique(
                 new StaticFakeStream(std::move(input_buffer)));
           },
-          [&size](const FramesFileSpec& spec) {
-            // TODO(pihsun): Handle different file type based on file
-            // extension.
-            // TODO(pihsun): This only reads a single frame now, read and
-            // convert the whole stream on fly.
-            auto input_buffer = ReadMJPGFromFile(spec.path, size);
-            return base::WrapUnique(
-                new StaticFakeStream(std::move(input_buffer)));
+          [&size](const FramesFileSpec& spec) -> std::unique_ptr<FakeStream> {
+            auto extension = spec.path.Extension();
+            if (extension == ".jpg" || extension == ".jpeg" ||
+                extension == ".mjpg" || extension == ".mjpeg") {
+              // TODO(pihsun): This only reads a single frame now, read and
+              // convert the whole stream on fly.
+              auto input_buffer = ReadMJPGFromFile(spec.path, size);
+              return base::WrapUnique(
+                  new StaticFakeStream(std::move(input_buffer)));
+            } else if (extension == ".y4m") {
+              return base::WrapUnique(new Y4mFakeStream(spec.path));
+            } else {
+              LOGF(WARNING) << "Unknown file extension: " << extension;
+              return nullptr;
+            }
           },
       },
       spec);
-  if (!fake_stream->Initialize(static_metadata, size, format, spec)) {
+  if (fake_stream == nullptr ||
+      !fake_stream->Initialize(static_metadata, size, format, spec)) {
     return nullptr;
   }
   return fake_stream;
@@ -208,6 +187,57 @@ bool FakeStream::CopyBuffer(FrameBuffer& buffer,
   return true;
 }
 
+std::unique_ptr<GrallocFrameBuffer> FakeStream::ConvertBuffer(
+    std::unique_ptr<GrallocFrameBuffer> buffer, android_pixel_format_t format) {
+  switch (format) {
+    case HAL_PIXEL_FORMAT_BLOB: {
+      auto output_buffer =
+          GrallocFrameBuffer::Create(Size(jpeg_max_size_, 1), format);
+      if (!output_buffer) {
+        return nullptr;
+      }
+
+      uint32_t out_data_size;
+
+      std::vector<uint8_t> app1;
+      // TODO(pihsun): Fill thumbnail in app1.
+      // TODO(pihsun): Should use android.jpeg.quality in request metadata for
+      // JPEG quality. Cache the frame using default quality in request
+      // template, and redo JPEG encoding when quality changes.
+      bool success = jpeg_compressor_->CompressImageFromHandle(
+          buffer->GetBufferHandle(), output_buffer->GetBufferHandle(),
+          buffer->GetSize().width, buffer->GetSize().height, /*quality=*/90,
+          app1.data(), app1.size(), &out_data_size);
+      if (!success) {
+        LOGF(WARNING) << "failed to encode JPEG";
+        return nullptr;
+      }
+
+      auto mapped_buffer = output_buffer->Map();
+      if (mapped_buffer == nullptr) {
+        LOGF(WARNING) << "failed to map the buffer";
+        return nullptr;
+      }
+
+      auto data = mapped_buffer->plane(0).addr;
+
+      camera3_jpeg_blob_t blob = {
+          .jpeg_blob_id = CAMERA3_JPEG_BLOB_ID,
+          .jpeg_size = out_data_size,
+      };
+
+      CHECK(base::ClampAdd(out_data_size, sizeof(blob)) <= jpeg_max_size_);
+      memcpy(data + jpeg_max_size_ - sizeof(blob), &blob, sizeof(blob));
+      return output_buffer;
+    }
+    case HAL_PIXEL_FORMAT_YCBCR_420_888:
+      return buffer;
+    default:
+      NOTIMPLEMENTED() << "format = " << format << " is not supported";
+      return nullptr;
+  }
+}
+
 StaticFakeStream::StaticFakeStream(std::unique_ptr<GrallocFrameBuffer> buffer)
     : buffer_(std::move(buffer)) {}
 
@@ -225,51 +255,14 @@ bool StaticFakeStream::Initialize(
   }
 
   auto input_buffer = std::move(buffer_);
-  if (!input_buffer) {
+  if (input_buffer == nullptr) {
     LOGF(WARNING) << "Failed to generate input buffer";
     return false;
   }
 
-  if (format == HAL_PIXEL_FORMAT_BLOB) {
-    buffer_ = GrallocFrameBuffer::Create(Size(jpeg_max_size_, 1), format);
-    if (!buffer_) {
-      return false;
-    }
-
-    uint32_t out_data_size;
-
-    std::vector<uint8_t> app1;
-    // TODO(pihsun): Fill thumbnail in app1.
-    // TODO(pihsun): Should use android.jpeg.quality in request metadata for
-    // JPEG quality. Cache the frame using default quality in request
-    // template, and redo JPEG encoding when quality changes.
-    bool success = jpeg_compressor_->CompressImageFromHandle(
-        input_buffer->GetBufferHandle(), buffer_->GetBufferHandle(), size.width,
-        size.height, /*quality=*/90, app1.data(), app1.size(), &out_data_size);
-    if (!success) {
-      LOGF(WARNING) << "failed to encode JPEG";
-      return false;
-    }
-
-    auto mapped_buffer = buffer_->Map();
-    if (mapped_buffer == nullptr) {
-      LOGF(WARNING) << "failed to map the buffer";
-      return false;
-    }
-
-    auto data = mapped_buffer->plane(0).addr;
-
-    camera3_jpeg_blob_t blob = {
-        .jpeg_blob_id = CAMERA3_JPEG_BLOB_ID,
-        .jpeg_size = out_data_size,
-    };
-
-    CHECK(base::ClampAdd(out_data_size, sizeof(blob)) <= jpeg_max_size_);
-    memcpy(data + jpeg_max_size_ - sizeof(blob), &blob, sizeof(blob));
-  } else if (format == HAL_PIXEL_FORMAT_YCBCR_420_888) {
-    buffer_ = std::move(input_buffer);
-  } else {
-    NOTIMPLEMENTED() << "format = " << format << " is not supported";
+  buffer_ = ConvertBuffer(std::move(input_buffer), format);
+  if (buffer_ == nullptr) {
+    LOGF(WARNING) << "Failed to convert input buffer to format " << format;
     return false;
   }
 

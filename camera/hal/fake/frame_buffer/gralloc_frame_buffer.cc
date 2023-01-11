@@ -38,8 +38,11 @@ uint32_t GrallocFrameBuffer::ScopedMapping::num_planes() const {
 }
 
 FrameBuffer::ScopedMapping::Plane GrallocFrameBuffer::ScopedMapping::plane(
-    int plane) const {
-  return scoped_mapping_.plane(plane);
+    int planeIdx) const {
+  CHECK(planeIdx >= 0 && planeIdx < scoped_mapping_.num_planes());
+  auto plane = scoped_mapping_.plane(planeIdx);
+  CHECK(plane.addr != nullptr);
+  return plane;
 }
 
 bool GrallocFrameBuffer::ScopedMapping::is_valid() const {
@@ -154,6 +157,57 @@ std::unique_ptr<FrameBuffer::ScopedMapping> GrallocFrameBuffer::Map() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
   return ScopedMapping::Create(buffer_);
+}
+
+// static
+std::unique_ptr<GrallocFrameBuffer> GrallocFrameBuffer::Resize(
+    FrameBuffer& buffer, Size size) {
+  if (buffer.GetFourcc() != V4L2_PIX_FMT_NV12) {
+    LOGF(WARNING) << "Only V4L2_PIX_FMT_NV12 is supported for resize";
+    return nullptr;
+  }
+
+  auto mapped_buffer = buffer.Map();
+  if (mapped_buffer == nullptr) {
+    LOGF(WARNING) << "Failed to map temporary buffer";
+    return nullptr;
+  }
+
+  auto y_plane = mapped_buffer->plane(0);
+  auto uv_plane = mapped_buffer->plane(1);
+  DCHECK(y_plane.addr != nullptr);
+  DCHECK(uv_plane.addr != nullptr);
+
+  auto output_buffer =
+      GrallocFrameBuffer::Create(size, HAL_PIXEL_FORMAT_YCbCr_420_888);
+  if (output_buffer == nullptr) {
+    LOGF(WARNING) << "Failed to create buffer";
+    return nullptr;
+  }
+
+  auto mapped_output_buffer = output_buffer->Map();
+  if (mapped_output_buffer == nullptr) {
+    LOGF(WARNING) << "Failed to map buffer";
+    return nullptr;
+  }
+
+  auto output_y_plane = mapped_output_buffer->plane(0);
+  auto output_uv_plane = mapped_output_buffer->plane(1);
+  DCHECK(output_y_plane.addr != nullptr);
+  DCHECK(output_uv_plane.addr != nullptr);
+
+  // TODO(pihsun): Support "object-fit" for different scaling method.
+  int ret = libyuv::NV12Scale(
+      y_plane.addr, y_plane.stride, uv_plane.addr, uv_plane.stride,
+      buffer.GetSize().width, buffer.GetSize().height, output_y_plane.addr,
+      output_y_plane.stride, output_uv_plane.addr, output_uv_plane.stride,
+      size.width, size.height, libyuv::kFilterBilinear);
+  if (ret != 0) {
+    LOGF(WARNING) << "NV12Scale() failed with " << ret;
+    return nullptr;
+  }
+
+  return output_buffer;
 }
 
 }  // namespace cros

@@ -19,6 +19,12 @@
 #include "hal/fake/hal_spec.h"
 
 namespace cros {
+
+// Maximum allowed frame size for the stream for safety purpose, to avoid
+// accidentally passed in wrong frame file and allocate a large amount of
+// memory.
+constexpr size_t kFrameMaxDimension = 8192;
+
 class FakeStream {
  public:
   FakeStream(FakeStream&&) = delete;
@@ -57,6 +63,16 @@ class FakeStream {
   // Map and copy the content of the buffer to output buffer.
   [[nodiscard]] bool CopyBuffer(FrameBuffer& buffer,
                                 buffer_handle_t output_buffer);
+
+  // Converts the frame buffer to the given format and return the new buffer.
+  // Source must be V4L2_PIX_FMT_NV12. This also fill the camera3_jpeg_blob_t
+  // JPEG trailer if the target format is HAL_PIXEL_FORMAT_BLOB.
+  // TODO(pihsun): Supports converting FrameBuffer other than
+  // GrallocFrameBuffer (use CompressImageFromMemory instead of
+  // CompressImageFromHandle).
+  std::unique_ptr<GrallocFrameBuffer> ConvertBuffer(
+      std::unique_ptr<GrallocFrameBuffer> buffer,
+      android_pixel_format_t format);
 
   [[nodiscard]] virtual bool Initialize(
       const android::CameraMetadata& static_metadata,
