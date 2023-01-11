@@ -122,10 +122,6 @@ Methods		dict GetProperties()
 			Possible Errors: [service].Error.NotImplemented
 			   		 [service].Error.IllegalOperation
 
-		void RenewDHCPLease()
-
-			Request the renewal of all DHCPv4 leases.
-
 		void Reset()
 
 			Reset the device. The implementation is device-

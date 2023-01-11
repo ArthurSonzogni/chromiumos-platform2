@@ -217,14 +217,6 @@ void DeviceDBusAdaptor::Reset(DBusMethodResponsePtr<> response) {
   device_->Reset(callback);
 }
 
-// TODO(b/172227023): This D-Bus method is only used by some autotest for DHCP.
-// Remove it once we finish rewriting those tests in tast.
-bool DeviceDBusAdaptor::RenewDHCPLease(brillo::ErrorPtr* error) {
-  SLOG(this, 2) << __func__;
-  device_->network()->RenewDHCPLease();
-  return true;
-}
-
 bool DeviceDBusAdaptor::RequestRoam(brillo::ErrorPtr* error,
                                     const std::string& addr) {
   SLOG(this, 2) << __func__ << ": " << addr;

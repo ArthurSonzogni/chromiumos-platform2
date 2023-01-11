@@ -77,7 +77,6 @@ class DeviceDBusAdaptor : public org::chromium::flimflam::DeviceAdaptor,
   void ChangePin(DBusMethodResponsePtr<> response,
                  const std::string& old_pin,
                  const std::string& new_pin) override;
-  bool RenewDHCPLease(brillo::ErrorPtr* error) override;
   void Reset(DBusMethodResponsePtr<> response) override;
   bool RequestRoam(brillo::ErrorPtr* error, const std::string& addr) override;
 
