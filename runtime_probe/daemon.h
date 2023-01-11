@@ -41,6 +41,8 @@ class Daemon : public brillo::DBusServiceDaemon,
                        const ProbeRequest& request) override;
   void GetKnownComponents(DBusCallback<GetKnownComponentsResult> cb,
                           const GetKnownComponentsRequest& request) override;
+  void ProbeSsfcComponents(DBusCallback<ProbeSsfcComponentsResponse> cb,
+                           const ProbeSsfcComponentsRequest& request) override;
 
  private:
   // brillo::DBusServiceDaemon overrides.

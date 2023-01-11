@@ -17,11 +17,16 @@
 #include "runtime_probe/daemon.h"
 #include "runtime_probe/probe_config.h"
 #include "runtime_probe/proto_bindings/runtime_probe.pb.h"
+#include "runtime_probe/ssfc_probe_config_loader.h"
 
 namespace runtime_probe {
 
+namespace {
+
 using brillo::dbus_utils::AsyncEventSequencer;
 using brillo::dbus_utils::DBusObject;
+
+}  // namespace
 
 Daemon::Daemon()
     : brillo::DBusServiceDaemon(kRuntimeProbeServiceName),
@@ -82,16 +87,16 @@ void Daemon::ProbeCategories(Daemon::DBusCallback<ProbeResult> cb,
   }
 
   // TODO(itspeter): Report assigned but not in the probe config's category.
-  std::string output_js;
-  base::JSONWriter::Write(probe_result, &output_js);
-  DVLOG(3) << "Raw JSON probe result\n" << output_js;
+  std::string output_json;
+  base::JSONWriter::Write(probe_result, &output_json);
+  DVLOG(3) << "Raw JSON probe result\n" << output_json;
 
   // Convert JSON to Protocol Buffer.
   auto options = google::protobuf::util::JsonParseOptions();
   options.ignore_unknown_fields = true;
   ProbeResult placeholder;
   const auto json_parse_status = google::protobuf::util::JsonStringToMessage(
-      output_js, &placeholder, options);
+      output_json, &placeholder, options);
   reply.MergeFrom(placeholder);
   VLOG(3) << "serialize JSON to Protobuf status: " << json_parse_status;
   if (!json_parse_status.ok()) {
@@ -131,6 +136,53 @@ void Daemon::GetKnownComponents(
     for (const auto& name : category->GetComponentNames()) {
       reply.add_component_names(name);
     }
+  }
+
+  cb->Return(reply);
+  return Quit();
+}
+
+void Daemon::ProbeSsfcComponents(
+    Daemon::DBusCallback<ProbeSsfcComponentsResponse> cb,
+    const ProbeSsfcComponentsRequest& request) {
+  ProbeSsfcComponentsResponse reply;
+
+  SsfcProbeConfigLoader config_loader;
+  const auto probe_config_data = config_loader.Load();
+  if (!probe_config_data) {
+    reply.set_error(RUNTIME_PROBE_ERROR_PROBE_CONFIG_INVALID);
+    cb->Return(reply);
+    return Quit();
+  }
+  LOG(INFO) << "Load SSFC probe config from: " << probe_config_data->path
+            << " (checksum: " << probe_config_data->sha1_hash << ")";
+
+  reply.set_probe_config_checksum(probe_config_data->sha1_hash);
+
+  const auto probe_config = ProbeConfig::FromValue(probe_config_data->config);
+  if (!probe_config) {
+    reply.set_error(RUNTIME_PROBE_ERROR_PROBE_CONFIG_INCOMPLETE_PROBE_FUNCTION);
+    cb->Return(reply);
+    return Quit();
+  }
+
+  base::Value probe_result;
+  probe_result = probe_config->Eval();
+
+  std::string output_js;
+  base::JSONWriter::Write(probe_result, &output_js);
+  DVLOG(3) << "Raw JSON probe result\n" << output_js;
+
+  // Convert JSON to Protocol Buffer.
+  auto options = google::protobuf::util::JsonParseOptions();
+  options.ignore_unknown_fields = true;
+  ProbeSsfcComponentsResponse placeholder;
+  const auto json_parse_status = google::protobuf::util::JsonStringToMessage(
+      output_js, &placeholder, options);
+  reply.MergeFrom(placeholder);
+  VLOG(3) << "serialize JSON to Protobuf status: " << json_parse_status;
+  if (!json_parse_status.ok()) {
+    reply.set_error(RUNTIME_PROBE_ERROR_PROBE_RESULT_INVALID);
   }
 
   cb->Return(reply);

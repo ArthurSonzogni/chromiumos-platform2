@@ -62,7 +62,7 @@ class EcI2cFunctionTest : public BaseFunctionTest {
 };
 
 TEST_F(EcI2cFunctionTest, ProbeSucceed) {
-  constexpr auto kResult = 0xab;
+  constexpr auto kResult = 0x2a;  // 42
   auto probe_statement = base::JSONReader::Read(R"JSON(
     {
       "i2c_bus": 0,
@@ -84,14 +84,14 @@ TEST_F(EcI2cFunctionTest, ProbeSucceed) {
   EXPECT_EQ(probe_function->Eval(), CreateProbeResultFromJson(R"JSON(
     [
       {
-        "data": "0xab"
+        "data": 42
       }
     ]
   )JSON"));
 }
 
 TEST_F(EcI2cFunctionTest, Probe16bitDataSucceed) {
-  constexpr auto kResult = 0xabcd;
+  constexpr auto kResult = 0x1068;  // 4200
   auto probe_statement = base::JSONReader::Read(R"JSON(
     {
       "i2c_bus": 0,
@@ -114,7 +114,7 @@ TEST_F(EcI2cFunctionTest, Probe16bitDataSucceed) {
   EXPECT_EQ(probe_function->Eval(), CreateProbeResultFromJson(R"JSON(
     [
       {
-        "data": "0xabcd"
+        "data": 4200
       }
     ]
   )JSON"));

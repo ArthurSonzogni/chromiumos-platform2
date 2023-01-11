@@ -47,5 +47,25 @@
     </arg>
     <annotation name="org.chromium.DBus.Method.Kind" value="async"/>
   </method>
+  <method name="ProbeSsfcComponents">
+    <tp:docstring>
+      Probe SSFC components on the device.
+    </tp:docstring>
+    <arg type="ay" name="request" direction="in">
+      <tp:docstring>
+        A serialized protobuf |ProbeSsfcComponentsRequest|.
+      </tp:docstring>
+      <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                  value="runtime_probe::ProbeSsfcComponentsRequest" />
+    </arg>
+    <arg type="ay" name="reply" direction="out">
+      <tp:docstring>
+        A serialized protobuf |ProbeSsfcComponentsResponse|.
+      </tp:docstring>
+      <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                  value="runtime_probe::ProbeSsfcComponentsResponse" />
+    </arg>
+    <annotation name="org.chromium.DBus.Method.Kind" value="async"/>
+  </method>
 </interface>
 </node>

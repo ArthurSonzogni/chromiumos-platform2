@@ -62,7 +62,7 @@ ApI2cFunction::DataType ApI2cFunction::EvalImpl() const {
   if (data) {
     VLOG(3) << "data: " << base::StringPrintf("0x%02x", *data);
     base::Value::Dict dict;
-    dict.Set("data", base::StringPrintf("0x%02x", *data));
+    dict.Set("data", *data);
     result.Append(std::move(dict));
   } else {
     VLOG(3) << "data: (null)";

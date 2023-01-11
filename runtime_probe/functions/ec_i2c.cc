@@ -50,9 +50,9 @@ EcI2cFunction::DataType EcI2cFunction::EvalImpl() const {
   DataType result{};
   base::Value::Dict dv{};
   if (size_ == 8) {
-    dv.Set("data", base::StringPrintf("0x%02x", cmd->Data()));
+    dv.Set("data", cmd->Data());
   } else if (size_ == 16) {
-    dv.Set("data", base::StringPrintf("0x%04x", cmd->Data()));
+    dv.Set("data", cmd->Data());
   }
   result.Append(std::move(dv));
   return result;

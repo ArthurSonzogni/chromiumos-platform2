@@ -46,6 +46,18 @@ TEST_F(DaemonTest, ProbeCategories_LoadDefaultFailed) {
   EXPECT_EQ(reply->error(), RUNTIME_PROBE_ERROR_PROBE_CONFIG_INVALID);
 }
 
+TEST_F(DaemonTest, ProbeSsfcComponents_LoadDefaultFailed) {
+  ProbeSsfcComponentsRequest request;
+  std::optional<ProbeSsfcComponentsResponse> reply;
+  auto response =
+      std::make_unique<MockDBusMethodResponse<ProbeSsfcComponentsResponse>>(
+          nullptr);
+  response->save_return_args(&reply);
+  dbus_adaptor_->ProbeSsfcComponents(std::move(response), request);
+  EXPECT_TRUE(reply);
+  EXPECT_EQ(reply->error(), RUNTIME_PROBE_ERROR_PROBE_CONFIG_INVALID);
+}
+
 // TODO(kevinptt): Add more test cases for D-Bus methods.
 
 }  // namespace
