@@ -48,6 +48,7 @@ class WiFiEndpoint : public base::RefCounted<WiFiEndpoint> {
     bool neighbor_list_supported = false;
     bool ota_ft_supported = false;
     bool otds_ft_supported = false;
+    bool adaptive_ft_supported = false;
     bool dms_supported = false;
     bool bss_max_idle_period_supported = false;
     bool bss_transition_supported = false;

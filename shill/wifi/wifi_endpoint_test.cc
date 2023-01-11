@@ -601,7 +601,7 @@ TEST_F(WiFiEndpointTest, ParseIEs) {
 TEST_F(WiFiEndpointTest, ParseVendorIEs) {
   {
     ScopedMockLog log;
-    EXPECT_CALL(log, Log(logging::LOGGING_ERROR, _,
+    EXPECT_CALL(log, Log(logging::LOGGING_WARNING, _,
                          HasSubstr("no room in IE for OUI and type field.")))
         .Times(1);
     std::vector<uint8_t> ies;
@@ -675,7 +675,7 @@ TEST_F(WiFiEndpointTest, ParseVendorIEs) {
   }
   {
     ScopedMockLog log;
-    EXPECT_CALL(log, Log(logging::LOGGING_ERROR, _,
+    EXPECT_CALL(log, Log(logging::LOGGING_WARNING, _,
                          HasSubstr("WPS element extends past containing PDU")))
         .Times(1);
     std::vector<uint8_t> ies;
@@ -799,6 +799,42 @@ TEST_F(WiFiEndpointTest, ParseVendorIEs) {
     ParseIEs(MakeBSSPropertiesWithIEs(ies), &phy_mode, &vendor_information,
              nullptr, &supported_features);
     EXPECT_TRUE(supported_features.mbo_support);
+  }
+  {
+    std::vector<uint8_t> ies;
+    AddVendorIE(IEEE_80211::kOUIVendorCiscoAironet,
+                IEEE_80211::kOUITypeCiscoExtendedCapabilitiesIE,
+                std::vector<uint8_t>({0x40}), &ies);
+    Metrics::WiFiNetworkPhyMode phy_mode = Metrics::kWiFiNetworkPhyModeUndef;
+    WiFiEndpoint::VendorInformation vendor_information;
+    WiFiEndpoint::SupportedFeatures supported_features;
+    ParseIEs(MakeBSSPropertiesWithIEs(ies), &phy_mode, &vendor_information,
+             nullptr, &supported_features);
+    EXPECT_TRUE(supported_features.krv_support.adaptive_ft_supported);
+  }
+  {
+    std::vector<uint8_t> ies;
+    AddVendorIE(IEEE_80211::kOUIVendorCiscoAironet,
+                IEEE_80211::kOUITypeCiscoExtendedCapabilitiesIE,
+                std::vector<uint8_t>({0x00}), &ies);
+    Metrics::WiFiNetworkPhyMode phy_mode = Metrics::kWiFiNetworkPhyModeUndef;
+    WiFiEndpoint::VendorInformation vendor_information;
+    WiFiEndpoint::SupportedFeatures supported_features;
+    ParseIEs(MakeBSSPropertiesWithIEs(ies), &phy_mode, &vendor_information,
+             nullptr, &supported_features);
+    EXPECT_FALSE(supported_features.krv_support.adaptive_ft_supported);
+  }
+  {
+    std::vector<uint8_t> ies;
+    AddVendorIE(IEEE_80211::kOUIVendorCiscoAironet,
+                IEEE_80211::kOUITypeCiscoExtendedCapabilitiesIE,
+                std::vector<uint8_t>(), &ies);
+    Metrics::WiFiNetworkPhyMode phy_mode = Metrics::kWiFiNetworkPhyModeUndef;
+    WiFiEndpoint::VendorInformation vendor_information;
+    WiFiEndpoint::SupportedFeatures supported_features;
+    ParseIEs(MakeBSSPropertiesWithIEs(ies), &phy_mode, &vendor_information,
+             nullptr, &supported_features);
+    EXPECT_FALSE(supported_features.krv_support.adaptive_ft_supported);
   }
 }
 

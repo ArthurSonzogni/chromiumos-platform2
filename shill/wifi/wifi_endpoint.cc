@@ -784,7 +784,7 @@ void WiFiEndpoint::ParseVendorIE(std::vector<uint8_t>::const_iterator ie,
   // | OUI        | OUI Type | Data           |
   // +------------+----------+----------------+
   if (std::distance(ie, end) < 4) {
-    LOG(ERROR) << __func__ << ": no room in IE for OUI and type field.";
+    LOG(WARNING) << __func__ << ": no room in IE for OUI and type field.";
     return;
   }
   uint32_t oui = (*ie << 16) | (*(ie + 1) << 8) | *(ie + 2);
@@ -803,7 +803,8 @@ void WiFiEndpoint::ParseVendorIE(std::vector<uint8_t>::const_iterator ie,
       int element_length = (*(ie + 2) << 8) | *(ie + 3);
       ie += 4;
       if (std::distance(ie, end) < element_length) {
-        LOG(ERROR) << __func__ << ": WPS element extends past containing PDU.";
+        LOG(WARNING) << __func__
+                     << ": WPS element extends past containing PDU.";
         break;
       }
       std::string s(ie, ie + element_length);
@@ -844,8 +845,8 @@ void WiFiEndpoint::ParseVendorIE(std::vector<uint8_t>::const_iterator ie,
     // | PPS MO ID Present | DGAF Disabled |
     // +-------------------+---------------+
     if (std::distance(ie, end) < 1) {
-      LOG(ERROR) << __func__ << ": no room in Hotspot 2.0 indication element"
-                 << " for Hotspot Configuration field.";
+      LOG(WARNING) << __func__ << ": no room in Hotspot 2.0 indication element"
+                   << " for Hotspot Configuration field.";
       return;
     }
     supported_features->hs20_information.supported = true;
@@ -854,6 +855,14 @@ void WiFiEndpoint::ParseVendorIE(std::vector<uint8_t>::const_iterator ie,
   } else if (oui == IEEE_80211::kOUIVendorWiFiAlliance &&
              oui_type == IEEE_80211::kOUITypeWiFiAllianceMBO) {
     supported_features->mbo_support = true;
+  } else if (oui == IEEE_80211::kOUIVendorCiscoAironet &&
+             oui_type == IEEE_80211::kOUITypeCiscoExtendedCapabilitiesIE) {
+    if (std::distance(ie, end) < 1) {
+      LOG(WARNING) << __func__ << ": Cisco Extended Capabilities IE too short";
+      return;
+    }
+    supported_features->krv_support.adaptive_ft_supported =
+        *ie & IEEE_80211::kCiscoExtendedCapabilitiesAdaptiveFT;
   } else if (oui != IEEE_80211::kOUIVendorEpigram &&
              oui != IEEE_80211::kOUIVendorMicrosoft) {
     vendor_information->oui_set.insert(oui);

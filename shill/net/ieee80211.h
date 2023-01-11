@@ -69,6 +69,10 @@ const uint32_t kOUIVendorWiFiAlliance = 0x506f9a;
 const uint32_t kOUITypeWiFiAllianceHS20Indicator = 0x10;
 const uint32_t kOUITypeWiFiAllianceMBO = 0x16;
 
+const uint32_t kOUIVendorCiscoAironet = 0x004096;
+const uint32_t kOUITypeCiscoExtendedCapabilitiesIE = 0x0b;
+const uint8_t kCiscoExtendedCapabilitiesAdaptiveFT = 0x40;
+
 const int kRSNIEVersionLen = 2;
 const int kRSNIESelectorLen = 4;
 const int kRSNIECipherCountOffset = kRSNIEVersionLen + kRSNIESelectorLen;
