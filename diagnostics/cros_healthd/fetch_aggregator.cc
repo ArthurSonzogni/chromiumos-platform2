@@ -15,6 +15,7 @@
 #include "diagnostics/cros_healthd/fetchers/audio_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/audio_hardware_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/bluetooth_fetcher.h"
+#include "diagnostics/cros_healthd/fetchers/boot_performance_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/bus_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/cpu_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/sensor_fetcher.h"
@@ -51,7 +52,6 @@ void OnFinish(
 FetchAggregator::FetchAggregator(Context* context)
     : backlight_fetcher_(context),
       battery_fetcher_(context),
-      boot_performance_fetcher_(context),
       disk_fetcher_(context),
       display_fetcher_(context),
       fan_fetcher_(context),
@@ -150,8 +150,7 @@ void FetchAggregator::Run(
         break;
       }
       case mojom::ProbeCategoryEnum::kBootPerformance: {
-        info->boot_performance_result =
-            boot_performance_fetcher_.FetchBootPerformanceInfo();
+        info->boot_performance_result = FetchBootPerformanceInfo();
         break;
       }
       case mojom::ProbeCategoryEnum::kBus: {

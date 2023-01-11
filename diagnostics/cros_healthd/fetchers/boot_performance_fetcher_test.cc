@@ -11,14 +11,12 @@
 
 #include "diagnostics/base/file_test_utils.h"
 #include "diagnostics/cros_healthd/fetchers/boot_performance_fetcher.h"
-#include "diagnostics/cros_healthd/system/mock_context.h"
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
 
 namespace diagnostics {
 namespace {
 
 using ::ash::cros_healthd::mojom::ErrorType;
-using ::testing::Return;
 
 const char kFakeBiosTimes[] = "texts\n...\n\nTotal Time: 10,111,111";
 
@@ -120,17 +118,10 @@ class BootPerformanceFetcherTest : public ::testing::Test {
     file.Close();
   }
 
-  ash::cros_healthd::mojom::BootPerformanceResultPtr
-  FetchBootPerformanceInfo() {
-    return boot_performance_fetcher_.FetchBootPerformanceInfo();
-  }
-
  private:
-  MockContext mock_context_;
   ScopedRootDirOverrides root_overrides_;
   base::subtle::ScopedTimeClockOverrides clock_overrides_{&FakeTimeNow, nullptr,
                                                           nullptr};
-  BootPerformanceFetcher boot_performance_fetcher_{&mock_context_};
 };
 
 TEST_F(BootPerformanceFetcherTest, FetchBootPerformanceInfo) {

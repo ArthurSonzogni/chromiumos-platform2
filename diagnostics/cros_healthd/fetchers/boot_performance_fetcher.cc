@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "diagnostics/cros_healthd/fetchers/boot_performance_fetcher.h"
+
 #include <cctype>
 #include <optional>
 #include <string>
@@ -16,15 +18,15 @@
 #include <re2/re2.h>
 
 #include "diagnostics/base/file_utils.h"
-#include "diagnostics/cros_healthd/fetchers/boot_performance_fetcher.h"
 #include "diagnostics/cros_healthd/utils/error_utils.h"
 
 namespace diagnostics {
+namespace {
 
 namespace mojo_ipc = ::ash::cros_healthd::mojom;
 
-std::optional<mojo_ipc::ProbeErrorPtr>
-BootPerformanceFetcher::ParseBootFirmwareTime(double* firmware_time) {
+std::optional<mojo_ipc::ProbeErrorPtr> ParseBootFirmwareTime(
+    double* firmware_time) {
   const auto& data_path = GetRootedPath(path::kBiosTimes);
   std::string content;
   if (!ReadAndTrimString(data_path, &content)) {
@@ -61,8 +63,8 @@ BootPerformanceFetcher::ParseBootFirmwareTime(double* firmware_time) {
   return std::nullopt;
 }
 
-std::optional<mojo_ipc::ProbeErrorPtr>
-BootPerformanceFetcher::ParseBootKernelTime(double* kernel_time) {
+std::optional<mojo_ipc::ProbeErrorPtr> ParseBootKernelTime(
+    double* kernel_time) {
   auto events = bootstat::BootStat(GetRootedPath("/"))
                     .GetEventTimings("login-prompt-visible");
   if (!events || events->empty()) {
@@ -75,8 +77,7 @@ BootPerformanceFetcher::ParseBootKernelTime(double* kernel_time) {
   return std::nullopt;
 }
 
-std::optional<mojo_ipc::ProbeErrorPtr> BootPerformanceFetcher::ParseProcUptime(
-    double* proc_uptime) {
+std::optional<mojo_ipc::ProbeErrorPtr> ParseProcUptime(double* proc_uptime) {
   const auto& data_path = GetRootedPath(path::kProcUptime);
   std::string content;
   if (!ReadAndTrimString(data_path, &content)) {
@@ -97,8 +98,7 @@ std::optional<mojo_ipc::ProbeErrorPtr> BootPerformanceFetcher::ParseProcUptime(
   return std::nullopt;
 }
 
-std::optional<mojo_ipc::ProbeErrorPtr>
-BootPerformanceFetcher::PopulateBootUpInfo(
+std::optional<mojo_ipc::ProbeErrorPtr> PopulateBootUpInfo(
     mojo_ipc::BootPerformanceInfo* info) {
   // Boot up stages
   //                              |<-             proc_uptime     ->
@@ -137,8 +137,8 @@ BootPerformanceFetcher::PopulateBootUpInfo(
   return std::nullopt;
 }
 
-bool BootPerformanceFetcher::ParsePreviousPowerdLog(
-    double* shutdown_start_timestamp, std::string* shutdown_reason) {
+bool ParsePreviousPowerdLog(double* shutdown_start_timestamp,
+                            std::string* shutdown_reason) {
   const auto& data_path = GetRootedPath(path::kPreviousPowerdLog);
   std::string content;
   if (!ReadAndTrimString(data_path, &content)) {
@@ -172,8 +172,7 @@ bool BootPerformanceFetcher::ParsePreviousPowerdLog(
   return !shutdown_reason->empty();
 }
 
-bool BootPerformanceFetcher::GetShutdownEndTimestamp(
-    double* shutdown_end_timestamp) {
+bool GetShutdownEndTimestamp(double* shutdown_end_timestamp) {
   const auto& data_path = GetRootedPath(path::kShutdownMetrics);
   base::File::Info file_info;
   if (!GetFileInfo(data_path, &file_info)) {
@@ -185,8 +184,7 @@ bool BootPerformanceFetcher::GetShutdownEndTimestamp(
   return true;
 }
 
-void BootPerformanceFetcher::PopulateShutdownInfo(
-    mojo_ipc::BootPerformanceInfo* info) {
+void PopulateShutdownInfo(mojo_ipc::BootPerformanceInfo* info) {
   // Shutdown stages
   //
   //           |<-     shutdown seconds      ->|
@@ -210,10 +208,10 @@ void BootPerformanceFetcher::PopulateShutdownInfo(
   info->shutdown_seconds = shutdown_end_timestamp - shutdown_start_timestamp;
 }
 
-mojo_ipc::BootPerformanceResultPtr
-BootPerformanceFetcher::FetchBootPerformanceInfo() {
-  mojo_ipc::BootPerformanceInfo info;
+}  // namespace
 
+mojo_ipc::BootPerformanceResultPtr FetchBootPerformanceInfo() {
+  mojo_ipc::BootPerformanceInfo info;
   auto error = PopulateBootUpInfo(&info);
   if (error.has_value()) {
     return mojo_ipc::BootPerformanceResult::NewError(std::move(error.value()));
