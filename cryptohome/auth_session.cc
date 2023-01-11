@@ -1058,6 +1058,7 @@ void AuthSession::OnMigrationUssCreated(
     LOG(ERROR) << "Failed to create migration AuthInput.";
     ReportVkToUssMigrationStatus(VkToUssMigrationStatus::kFailedInput);
     std::move(on_done).Run(std::move(pre_migration_status));
+    return;
   }
 
   auto create_callback = base::BindOnce(
@@ -2299,6 +2300,7 @@ void AuthSession::PersistAuthFactorToUserSecretStashOnMigration(
                << " is failed in PersistAuthFactorToUserSecretStashImpl";
     ReportVkToUssMigrationStatus(VkToUssMigrationStatus::kFailedPersist);
     std::move(on_done).Run(std::move(pre_migration_status));
+    return;
   }
 
   // Migration completed with success. Now mark the VaultKeyset migrated.
@@ -2328,6 +2330,7 @@ void AuthSession::PersistAuthFactorToUserSecretStashOnMigration(
     ReportVkToUssMigrationStatus(
         VkToUssMigrationStatus::kFailedRecordingMigrated);
     std::move(on_done).Run(std::move(pre_migration_status));
+    return;
   }
 
   LOG(INFO) << "USS migration completed for VaultKeyset with label: "
