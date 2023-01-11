@@ -189,6 +189,10 @@ Paths created on the fly by `build_image`:
     *   `bootstrap.packages`: The set of packages to manually install in order
         to bootstrap Portage.  Once these are installed, `emerge` is used to
         install all the rest of the binpkgs.
+    *   `installable_commands`: The list of commands in `PATH` provided by doing
+        a `dev_install`.  This is used by the `command_not_found_handle` hook in
+        `bashrc` to guide the user towards running `dev_install` when they type
+        a command not provided in the base image.
     *   `rootfs.provided/`: For packages that are baked into the rootfs, we
         save different lists in this directory.  This is used by `dev_install`
         at runtime to mark them all as provided.  We have to do this since the
