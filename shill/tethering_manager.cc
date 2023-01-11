@@ -140,11 +140,7 @@ bool TetheringManager::ToProperties(KeyValueStore* properties) const {
   properties->Set<std::string>(kTetheringConfPassphraseProperty, passphrase_);
   properties->Set<std::string>(kTetheringConfSecurityProperty,
                                security_.ToString());
-  if (band_ != WiFiBand::kAllBands && band_ != WiFiBand::kUnknownBand) {
-    properties->Set<std::string>(kTetheringConfBandProperty,
-                                 WiFiBandName(band_));
-  }
-
+  properties->Set<std::string>(kTetheringConfBandProperty, WiFiBandName(band_));
   properties->Set<std::string>(kTetheringConfUpstreamTechProperty,
                                TechnologyName(upstream_technology_));
 
