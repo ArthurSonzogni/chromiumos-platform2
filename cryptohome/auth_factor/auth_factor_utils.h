@@ -13,6 +13,7 @@
 #include <cryptohome/proto_bindings/auth_factor.pb.h>
 #include <google/protobuf/repeated_field.h>
 
+#include "cryptohome/auth_factor/auth_factor_label_arity.h"
 #include "cryptohome/auth_factor/auth_factor_manager.h"
 #include "cryptohome/auth_factor/auth_factor_map.h"
 #include "cryptohome/auth_factor/auth_factor_metadata.h"
@@ -75,6 +76,10 @@ AuthFactorMap LoadAuthFactorMap(bool is_uss_migration_enabled,
                                 Platform& platform,
                                 AuthFactorVaultKeysetConverter& converter,
                                 AuthFactorManager& manager);
+
+// Given an AuthFactorType, return a enum indicating if the type supports
+// a list of auth factor labels at AuthenticateAuthFactor.
+AuthFactorLabelArity GetAuthFactorLabelArity(AuthFactorType auth_factor_type);
 
 }  // namespace cryptohome
 #endif  // CRYPTOHOME_AUTH_FACTOR_AUTH_FACTOR_UTILS_H_

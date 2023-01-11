@@ -30,6 +30,7 @@
 #include "cryptohome/auth_blocks/auth_block.h"
 #include "cryptohome/auth_blocks/auth_block_utility.h"
 #include "cryptohome/auth_factor/auth_factor.h"
+#include "cryptohome/auth_factor/auth_factor_label_arity.h"
 #include "cryptohome/auth_factor/auth_factor_manager.h"
 #include "cryptohome/auth_factor/auth_factor_metadata.h"
 #include "cryptohome/auth_factor/auth_factor_prepare_purpose.h"
@@ -815,17 +816,17 @@ const FileSystemKeyset& AuthSession::file_system_keyset() const {
 }
 
 void AuthSession::AuthenticateAuthFactor(
-    const user_data_auth::AuthenticateAuthFactorRequest& request,
+    base::span<const std::string> auth_factor_labels,
+    const user_data_auth::AuthInput& auth_input_proto,
     StatusCallback on_done) {
+  std::string label_text = auth_factor_labels.empty()
+                               ? "(unlabelled)"
+                               : base::JoinString(auth_factor_labels, ",");
   LOG(INFO) << "AuthSession: " << IntentToDebugString(auth_intent_)
-            << " authentication attempt via "
-            << (request.auth_factor_label().empty()
-                    ? "(unlabelled)"
-                    : request.auth_factor_label())
-            << " factor.";
+            << " authentication attempt via " << label_text;
   // Determine the factor type from the request.
   std::optional<AuthFactorType> request_auth_factor_type =
-      DetermineFactorTypeFromAuthInput(request.auth_input());
+      DetermineFactorTypeFromAuthInput(auth_input_proto);
   if (!request_auth_factor_type.has_value()) {
     LOG(ERROR) << "Unexpected AuthInput type.";
     std::move(on_done).Run(MakeStatus<CryptohomeError>(
@@ -835,141 +836,184 @@ void AuthSession::AuthenticateAuthFactor(
             CRYPTOHOME_ERROR_INVALID_ARGUMENT));
     return;
   }
-  // The CredentialVerifier and/or AuthFactor to be used for authentication.
-  // These may be null as a given label may have a verifier, a factor, both, or
-  // neither.
-  const CredentialVerifier* verifier = nullptr;
-  {
-    // Search for a verifier from the User Session, if available.
-    const UserSession* user_session = user_session_map_->Find(username_);
-    if (user_session && user_session->VerifyUser(obfuscated_username_)) {
-      if (request.auth_factor_label().empty()) {
+
+  AuthFactorLabelArity label_arity =
+      GetAuthFactorLabelArity(*request_auth_factor_type);
+  switch (label_arity) {
+    case AuthFactorLabelArity::kNone: {
+      if (auth_factor_labels.size() > 0) {
+        LOG(ERROR) << "Unexpected labels for request auth factor type:"
+                   << AuthFactorTypeToString(*request_auth_factor_type);
+        std::move(on_done).Run(MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(
+                kLocAuthSessionMismatchedZeroLabelSizeAuthAuthFactor),
+            ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+            user_data_auth::CryptohomeErrorCode::
+                CRYPTOHOME_ERROR_INVALID_ARGUMENT));
+        return;
+      }
+      const CredentialVerifier* verifier = nullptr;
+      // Search for a verifier from the User Session, if available.
+      const UserSession* user_session = user_session_map_->Find(username_);
+      if (user_session && user_session->VerifyUser(obfuscated_username_)) {
         verifier =
             user_session->FindCredentialVerifier(*request_auth_factor_type);
-      } else {
-        verifier =
-            user_session->FindCredentialVerifier(request.auth_factor_label());
       }
+      // A CredentialVerifier must exist if there is no label and the verifier
+      // will be used for authentication.
+      if (!verifier || !auth_block_utility_->IsVerifyWithAuthFactorSupported(
+                           auth_intent_, *request_auth_factor_type)) {
+        std::move(on_done).Run(MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(kLocAuthSessionVerifierNotValidInAuthAuthFactor),
+            ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+            user_data_auth::CryptohomeErrorCode::
+                CRYPTOHOME_ERROR_UNAUTHENTICATED_AUTH_SESSION));
+        return;
+      }
+      CryptohomeStatusOr<AuthInput> auth_input =
+          CreateAuthInputForAuthentication(auth_input_proto,
+                                           verifier->auth_factor_metadata());
+      if (!auth_input.ok()) {
+        std::move(on_done).Run(
+            MakeStatus<CryptohomeError>(
+                CRYPTOHOME_ERR_LOC(
+                    kLocAuthSessionAuthInputParseFailedInAuthAuthFactor))
+                .Wrap(std::move(auth_input).status()));
+        return;
+      }
+      auto verify_callback =
+          base::BindOnce(&AuthSession::CompleteVerifyOnlyAuthentication,
+                         weak_factory_.GetWeakPtr(), std::move(on_done));
+      verifier->Verify(std::move(*auth_input), std::move(verify_callback));
+      return;
     }
-  }
-  // Search for an auth factor. This will find both VK and USS factors.
-  std::optional<AuthFactorMap::ValueView> stored_auth_factor =
-      auth_factor_map_.Find(request.auth_factor_label());
+    case AuthFactorLabelArity::kSingle: {
+      if (auth_factor_labels.size() != 1) {
+        LOG(ERROR) << "Unexpected zero or multiple labels for request auth "
+                      "factor type:"
+                   << AuthFactorTypeToString(*request_auth_factor_type);
+        std::move(on_done).Run(MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(
+                kLocAuthSessionMismatchedSingleLabelSizeAuthAuthFactor),
+            ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+            user_data_auth::CryptohomeErrorCode::
+                CRYPTOHOME_ERROR_INVALID_ARGUMENT));
+        return;
+      }
+      // Construct a CredentialVerifier and verify as authentication if the auth
+      // intent allows it.
+      const CredentialVerifier* verifier = nullptr;
+      // Search for a verifier from the User Session, if available.
+      const UserSession* user_session = user_session_map_->Find(username_);
+      if (user_session && user_session->VerifyUser(obfuscated_username_)) {
+        verifier = user_session->FindCredentialVerifier(auth_factor_labels[0]);
+      }
 
-  // Make a copy of the auth factor metadata, using either the stored factor or
-  // the verifier as the source of data, if they exist.
-  AuthFactorMetadata metadata;
-  if (stored_auth_factor) {
-    metadata = stored_auth_factor->auth_factor().metadata();
-  } else if (verifier) {
-    metadata = verifier->auth_factor_metadata();
-  }
+      // Attempt lightweight authentication via a credential verifier if
+      // suitable.
+      if (verifier && auth_block_utility_->IsVerifyWithAuthFactorSupported(
+                          auth_intent_, *request_auth_factor_type)) {
+        CryptohomeStatusOr<AuthInput> auth_input =
+            CreateAuthInputForAuthentication(auth_input_proto,
+                                             verifier->auth_factor_metadata());
+        if (!auth_input.ok()) {
+          std::move(on_done).Run(
+              MakeStatus<CryptohomeError>(
+                  CRYPTOHOME_ERR_LOC(
+                      kLocAuthSessionAuthInputParseFailed2InAuthAuthFactor))
+                  .Wrap(std::move(auth_input).status()));
+          return;
+        }
+        auto verify_callback =
+            base::BindOnce(&AuthSession::CompleteVerifyOnlyAuthentication,
+                           weak_factory_.GetWeakPtr(), std::move(on_done));
+        verifier->Verify(std::move(*auth_input), std::move(verify_callback));
+        return;
+      }
 
-  // Ensure that if a label is supplied, the requested type matches what we have
-  // on disk for the user.
-  //
-  // Note that if we cannot find a stored AuthFactor then this test is skipped.
-  // This can happen with emphemeral users or verify-only auth factors.
-  //
-  // We have to special case kiosk keysets, because for old vault keyset factors
-  // the underlying data may not be marked as a kiosk and so it will show up as
-  // a password auth factor instead. In that case we treat the request as
-  // authoritative, and instead bypass the check and fix up the metadata.
-  if (stored_auth_factor &&
-      *request_auth_factor_type != stored_auth_factor->auth_factor().type()) {
-    if (stored_auth_factor->storage_type() ==
-            AuthFactorStorageType::kVaultKeyset &&
-        request_auth_factor_type == AuthFactorType::kKiosk) {
-      metadata.metadata = KioskAuthFactorMetadata();
-    } else {
-      LOG(ERROR) << "Unexpected mismatch in type from label and auth_input.";
+      // Load the auth factor and it should exist for authentication.
+      std::optional<AuthFactorMap::ValueView> stored_auth_factor =
+          auth_factor_map_.Find(auth_factor_labels[0]);
+      if (!stored_auth_factor) {
+        LOG(ERROR) << "Authentication factor not found: "
+                   << auth_factor_labels[0];
+        std::move(on_done).Run(MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(kLocAuthSessionFactorNotFoundInAuthAuthFactor),
+            ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+            user_data_auth::CryptohomeErrorCode::
+                CRYPTOHOME_ERROR_KEY_NOT_FOUND));
+        return;
+      }
+
+      AuthFactorMetadata metadata =
+          stored_auth_factor->auth_factor().metadata();
+      // Ensure that if an auth factor is found, the requested type matches what
+      // we have on disk for the user.
+      if (*request_auth_factor_type !=
+          stored_auth_factor->auth_factor().type()) {
+        // We have to special case kiosk keysets, because for old vault keyset
+        // factors the underlying data may not be marked as a kiosk and so it
+        // will show up as a password auth factor instead. In that case we treat
+        // the request as authoritative, and instead fix up the metadata.
+        if (stored_auth_factor->storage_type() ==
+                AuthFactorStorageType::kVaultKeyset &&
+            request_auth_factor_type == AuthFactorType::kKiosk) {
+          metadata.metadata = KioskAuthFactorMetadata();
+        } else {
+          LOG(ERROR)
+              << "Unexpected mismatch in type from label and auth_input.";
+          std::move(on_done).Run(MakeStatus<CryptohomeError>(
+              CRYPTOHOME_ERR_LOC(kLocAuthSessionMismatchedAuthTypes),
+              ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+              user_data_auth::CryptohomeErrorCode::
+                  CRYPTOHOME_ERROR_INVALID_ARGUMENT));
+          return;
+        }
+      }
+
+      CryptohomeStatusOr<AuthInput> auth_input =
+          CreateAuthInputForAuthentication(auth_input_proto, metadata);
+      if (!auth_input.ok()) {
+        std::move(on_done).Run(
+            MakeStatus<CryptohomeError>(
+                CRYPTOHOME_ERR_LOC(
+                    kLocAuthSessionAuthInputParseFailed3InAuthAuthFactor))
+                .Wrap(std::move(auth_input).status()));
+        return;
+      }
+      AuthenticateViaSingleFactor(*request_auth_factor_type,
+                                  stored_auth_factor->auth_factor().label(),
+                                  std::move(*auth_input), metadata,
+                                  *stored_auth_factor, std::move(on_done));
+      return;
+    }
+    case AuthFactorLabelArity::kMultiple: {
+      if (auth_factor_labels.size() == 0) {
+        LOG(ERROR) << "Unexpected zero label for request auth factor type:"
+                   << AuthFactorTypeToString(*request_auth_factor_type);
+        std::move(on_done).Run(MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(
+                kLocAuthSessionMismatchedMultipLabelSizeAuthAuthFactor),
+            ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+            user_data_auth::CryptohomeErrorCode::
+                CRYPTOHOME_ERROR_INVALID_ARGUMENT));
+        return;
+      }
+      // TODO(b/262308692): Implement the fingerprint auth factor selection.
+      // Locate the exact fingerprint template id through a biod dbus method,
+      // and use that template id to pick the right auth factor for
+      // |stored_auth_factors|. Each fingerprint template corresponds to one
+      // unique auth factor and the template id will be stored in the auth block
+      // state.
       std::move(on_done).Run(MakeStatus<CryptohomeError>(
-          CRYPTOHOME_ERR_LOC(kLocAuthSessionMismatchedAuthTypes),
-          ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+          CRYPTOHOME_ERR_LOC(kLocAuthSessionLabelLookupUnimplemented),
+          ErrorActionSet(
+              {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kAuth}),
           user_data_auth::CryptohomeErrorCode::
-              CRYPTOHOME_ERROR_INVALID_ARGUMENT));
+              CRYPTOHOME_ERROR_NOT_IMPLEMENTED));
       return;
     }
   }
-
-  // Construct the auth input. If a factor is available, use it to construct the
-  // input, otherwise use the verifier. If neither are available then just make
-  // one with no metadata.
-  AuthInput auth_input;
-  {
-    CryptohomeStatusOr<AuthInput> auth_input_status =
-        CreateAuthInputForAuthentication(request.auth_input(), metadata);
-    if (!auth_input_status.ok()) {
-      std::move(on_done).Run(
-          MakeStatus<CryptohomeError>(
-              CRYPTOHOME_ERR_LOC(
-                  kLocAuthSessionInputParseFailedInAuthAuthFactor))
-              .Wrap(std::move(auth_input_status).status()));
-      return;
-    }
-    auth_input = std::move(*auth_input_status);
-  }
-
-  // If suitable, attempt lightweight authentication via a credential verifier.
-  if (verifier && auth_block_utility_->IsVerifyWithAuthFactorSupported(
-                      auth_intent_, *request_auth_factor_type)) {
-    auto verify_callback =
-        base::BindOnce(&AuthSession::CompleteVerifyOnlyAuthentication,
-                       weak_factory_.GetWeakPtr(), std::move(on_done));
-    verifier->Verify(auth_input, std::move(verify_callback));
-    return;
-  }
-
-  if (!stored_auth_factor) {
-    LOG(ERROR) << "Authentication key not found: "
-               << request.auth_factor_label();
-    std::move(on_done).Run(MakeStatus<CryptohomeError>(
-        CRYPTOHOME_ERR_LOC(kLocAuthSessionFactorNotFoundInAuthAuthFactor),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
-        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_KEY_NOT_FOUND));
-    return;
-  }
-
-  // If this auth factor comes from USS, run the USS flow.
-  if (stored_auth_factor->storage_type() ==
-      AuthFactorStorageType::kUserSecretStash) {
-    // Record current time for timing for how long AuthenticateAuthFactor will
-    // take.
-    auto auth_session_performance_timer =
-        std::make_unique<AuthSessionPerformanceTimer>(
-            kAuthSessionAuthenticateAuthFactorUSSTimer);
-
-    AuthenticateViaUserSecretStash(request.auth_factor_label(), auth_input,
-                                   std::move(auth_session_performance_timer),
-                                   stored_auth_factor->auth_factor(),
-                                   std::move(on_done));
-    return;
-  }
-
-  // If user does not have USS AuthFactors, then we switch to authentication
-  // with Vaultkeyset. Status is flipped on the successful authentication.
-  user_data_auth::CryptohomeErrorCode error = converter_.PopulateKeyDataForVK(
-      obfuscated_username_, request.auth_factor_label(), key_data_);
-  if (error != user_data_auth::CRYPTOHOME_ERROR_NOT_SET) {
-    LOG(ERROR) << "Failed to authenticate auth session via vk-factor "
-               << request.auth_factor_label();
-    // TODO(b/229834676): Migrate The USS VKK converter then wrap the error.
-    std::move(on_done).Run(MakeStatus<CryptohomeError>(
-        CRYPTOHOME_ERR_LOC(kLocAuthSessionVKConverterFailedInAuthAuthFactor),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}), error));
-    return;
-  }
-  // Record current time for timing for how long AuthenticateAuthFactor will
-  // take.
-  auto auth_session_performance_timer =
-      std::make_unique<AuthSessionPerformanceTimer>(
-          kAuthSessionAuthenticateAuthFactorVKTimer);
-
-  // Note that we pass the request's type and label instead of the AuthFactor's
-  // one, because legacy VKs could not contain these fields.
-  AuthenticateViaVaultKeysetAndMigrateToUss(
-      *request_auth_factor_type, request.auth_factor_label(), auth_input,
-      metadata, std::move(auth_session_performance_timer), std::move(on_done));
 }
 
 void AuthSession::RemoveAuthFactor(
@@ -2429,6 +2473,56 @@ void AuthSession::AuthenticateViaUserSecretStash(
   auth_block_utility_->DeriveKeyBlobsWithAuthBlockAsync(
       auth_block_type, auth_input, auth_factor.auth_block_state(),
       std::move(derive_callback));
+}
+
+void AuthSession::AuthenticateViaSingleFactor(
+    const AuthFactorType& request_auth_factor_type,
+    const std::string& auth_factor_label,
+    const AuthInput& auth_input,
+    const AuthFactorMetadata& metadata,
+    const AuthFactorMap::ValueView& stored_auth_factor,
+    StatusCallback on_done) {
+  // If this auth factor comes from USS, run the USS flow.
+  if (stored_auth_factor.storage_type() ==
+      AuthFactorStorageType::kUserSecretStash) {
+    // Record current time for timing for how long AuthenticateAuthFactor will
+    // take.
+    auto auth_session_performance_timer =
+        std::make_unique<AuthSessionPerformanceTimer>(
+            kAuthSessionAuthenticateAuthFactorUSSTimer);
+
+    AuthenticateViaUserSecretStash(auth_factor_label, auth_input,
+                                   std::move(auth_session_performance_timer),
+                                   stored_auth_factor.auth_factor(),
+                                   std::move(on_done));
+    return;
+  }
+
+  // If user does not have USS AuthFactors, then we switch to authentication
+  // with Vaultkeyset. Status is flipped on the successful authentication.
+  user_data_auth::CryptohomeErrorCode error = converter_.PopulateKeyDataForVK(
+      obfuscated_username_, auth_factor_label, key_data_);
+  if (error != user_data_auth::CRYPTOHOME_ERROR_NOT_SET) {
+    LOG(ERROR) << "Failed to authenticate auth session via vk-factor "
+               << auth_factor_label;
+    // TODO(b/229834676): Migrate The USS VKK converter then wrap the error.
+    std::move(on_done).Run(MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocAuthSessionVKConverterFailedInAuthAuthFactor),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}), error));
+    return;
+  }
+  // Record current time for timing for how long AuthenticateAuthFactor will
+  // take.
+  auto auth_session_performance_timer =
+      std::make_unique<AuthSessionPerformanceTimer>(
+          kAuthSessionAuthenticateAuthFactorVKTimer);
+
+  // Note that we pass in the auth factor type derived from the client request,
+  // instead of ones from the AuthFactor, because legacy VKs could not contain
+  // the auth factor type.
+  AuthenticateViaVaultKeysetAndMigrateToUss(
+      request_auth_factor_type, auth_factor_label, auth_input, metadata,
+      std::move(auth_session_performance_timer), std::move(on_done));
 }
 
 void AuthSession::LoadUSSMainKeyAndFsKeyset(

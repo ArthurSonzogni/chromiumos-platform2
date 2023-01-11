@@ -4619,9 +4619,35 @@ void UserDataAuth::AuthenticateAuthFactor(
     return;
   }
 
+  // |auth_factor_labels| is intended to replace |auth_factor_label|, reject
+  // requests specifying both fields.
+  // TODO(b/265151254): Deprecate |auth_factor_label| and remove this check.
+  if (!request.auth_factor_label().empty() &&
+      request.auth_factor_labels_size() > 0) {
+    LOG(ERROR) << "Cannot accept request with both auth_factor_label and "
+                  "auth_factor_labels.";
+    ReplyWithError(
+        std::move(on_done), reply,
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(kLocUserDataMalformedRequestInAuthAuthFactor),
+            ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+            user_data_auth::CryptohomeErrorCode::
+                CRYPTOHOME_ERROR_INVALID_ARGUMENT));
+    return;
+  }
+
+  std::vector<std::string> auth_factor_labels;
+  if (!request.auth_factor_label().empty()) {
+    auth_factor_labels.push_back(request.auth_factor_label());
+  } else {
+    for (auto label : request.auth_factor_labels()) {
+      auth_factor_labels.push_back(label);
+    }
+  }
   auth_session->AuthenticateAuthFactor(
-      request, base::BindOnce(&ReplyWithAuthenticationResult, auth_session,
-                              std::move(on_done)));
+      auth_factor_labels, request.auth_input(),
+      base::BindOnce(&ReplyWithAuthenticationResult, auth_session,
+                     std::move(on_done)));
 }
 
 void UserDataAuth::UpdateAuthFactor(
