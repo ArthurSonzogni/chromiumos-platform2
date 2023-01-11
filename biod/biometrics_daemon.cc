@@ -63,12 +63,12 @@ BiometricsDaemon::BiometricsDaemon() {
     LOG(INFO) << "No CrosFpBiometricsManager detected.";
   }
 
+  CHECK(bus_->RequestOwnershipAndBlock(kBiodServiceName,
+                                       dbus::Bus::REQUIRE_PRIMARY));
+
   // Refresh primary user. If primary user is available then session state
   // manager will call OnUserLoggedIn method from BiometricsManagerWrapper.
   session_state_manager_->RefreshPrimaryUser();
-
-  CHECK(bus_->RequestOwnershipAndBlock(kBiodServiceName,
-                                       dbus::Bus::REQUIRE_PRIMARY));
 }
 
 }  // namespace biod
