@@ -941,7 +941,6 @@ const char kTetheringCapSecurityProperty[] = "wifi_security_modes";
 const char kTetheringCapUpstreamProperty[] = "upstream_technologies";
 
 // Manager kTetheringStatusProperty dictionary key names.
-const char kTetheringStatusChannelProperty[] = "channel";
 const char kTetheringStatusClientHostnameProperty[] = "hostname";
 const char kTetheringStatusClientIPv4Property[] = "IPv4";
 const char kTetheringStatusClientIPv6Property[] = "IPv6";

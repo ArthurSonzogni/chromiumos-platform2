@@ -741,10 +741,9 @@ Properties	object ActiveProfile [readonly]
 
 		boolean TetheringAllowed [readwrite]
 
-			Whether tethering feature is allowed. When false, SetTetheringState
-			cannot be modified and is pinned to false. The value is controlled by
-			a feature flag in Chrome. Should only be modified by Chrome feature
-			flag or tests.
+			Whether tethering feature is allowed. When false, SetTetheringEnabled
+			will return failure. The value is controlled by a feature flag in Chrome.
+			Should only be modified by Chrome feature flag or tests.
 
 		dict TetheringCapabilities [readonly]
 
@@ -793,8 +792,6 @@ Properties	object ActiveProfile [readonly]
 				one of "wifi", "ethernet"
 			string upstream_technology
 				one of "wifi", "cellular", "ethernet"
-			int channel
-				channel number for WiFi downstream (WiFi downstream only)
 			string state
 				state of the tethering instance. The state could be any one of
 				"idle", "starting", "active"
