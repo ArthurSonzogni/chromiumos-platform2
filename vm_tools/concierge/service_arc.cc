@@ -7,8 +7,10 @@
 
 #include <string>
 
+#include <base/cpu.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <base/strings/string_util.h>
 #include <vboot/crossystem.h>
 #include <libcrossystem/crossystem.h>
 #include <chromeos/constants/vm_tools.h>
@@ -54,6 +56,9 @@ constexpr char kArcVmLowMemJemallocArenasFeatureName[] =
 // A feature name for enabling vmm swap.
 constexpr char kArcVmmSwapFeatureName[] = "CrOSArcVmmSwap";
 
+// A feature name for enabling AAudio MMAP support in audio HAL
+constexpr char kArcVmAAudioMMAPFeatureName[] = "CrOSLateBootArcVmAAudioMMAP";
+
 // The timeout in ms for LMKD to read from it's vsock connection to concierge.
 // 100ms is long enough to allow concierge to respond even under extreme system
 // load, but short enough that LMKD can still kill processes before the linux
@@ -67,6 +72,9 @@ const VariationsFeature kArcVmLowMemJemallocArenasFeature{
 // Needs to be const as libfeatures does pointers checking.
 const VariationsFeature kArcVmmSwapFeature{kArcVmmSwapFeatureName,
                                            FEATURE_DISABLED_BY_DEFAULT};
+
+const VariationsFeature kArcVmAAudioMMAPFeature{kArcVmAAudioMMAPFeatureName,
+                                                FEATURE_DISABLED_BY_DEFAULT};
 
 // Returns |image_path| on production. Returns a canonicalized path of the image
 // file when in dev mode.
@@ -179,6 +187,23 @@ bool ValidateStartArcVmRequest(StartArcVmRequest* request) {
     LOG(INFO) << "Android /data disk path: " << disk_path;
   }
   return true;
+}
+
+// Returns true if AAudio MMAP feature should be enabled.
+// In dev mode, it is always enabled.
+// On production, check the feature flag and CPU.
+bool ShouldEnableAAudioMMAP(bool is_feature_enabled, bool is_dev_mode) {
+  if (is_dev_mode)
+    return true;
+
+  // On production, support any CPU that is not Celeron or Pentium.
+  const std::string cpu_model_name =
+      base::ToLowerASCII(base::CPU().cpu_brand());
+  const bool supported_cpu =
+      (cpu_model_name.find("celeron") == std::string::npos &&
+       cpu_model_name.find("pentium") == std::string::npos);
+
+  return is_feature_enabled && supported_cpu;
 }
 
 }  // namespace
@@ -335,6 +360,12 @@ StartVmResponse Service::StartArcVm(StartArcVmRequest request,
   // Enable the responsive balloon feature in LMKD
   params.emplace_back(base::StringPrintf("androidboot.lmkd.vsock_timeout=%d",
                                          kLmkdVsockTimeoutMs));
+
+  if (ShouldEnableAAudioMMAP(
+          platform_features_->IsEnabledBlocking(kArcVmAAudioMMAPFeature),
+          is_dev_mode)) {
+    params.emplace_back("androidboot.audio.aaudio_mmap_enabled=1");
+  }
 
   const auto pstore_path = GetPstoreDest(request.owner_id());
 
