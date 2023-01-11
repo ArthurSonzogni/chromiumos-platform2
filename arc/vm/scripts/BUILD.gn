@@ -27,7 +27,6 @@ install_config("install_init_scripts") {
     "init/arcvm-post-login-services.conf",
     "init/arcvm-post-vm-start-services.conf",
     "init/arcvm-pre-login-services.conf",
-    "init/arcvm-ureadahead.conf",
   ]
   install_path = "/etc/init"
 }
