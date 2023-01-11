@@ -13959,7 +13959,7 @@ mno {
     mobile_apn {
       apn : "vzwinternet"
       localized_name {
-        name : "4G LTE Contract"
+        name : "VZWINTERNET"
       }
       ip_type: IPV4V6
       type : DEFAULT
