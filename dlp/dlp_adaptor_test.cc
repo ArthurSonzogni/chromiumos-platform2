@@ -11,6 +11,7 @@
 
 #include <base/callback.h>
 #include <base/files/file_util.h>
+#include <base/files/scoped_file.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/memory/scoped_refptr.h>
 #include <base/run_loop.h>
@@ -347,16 +348,16 @@ TEST_F(DlpAdaptorTest, RestrictedFileAddedAndRequestedAllowed) {
       response = std::make_unique<brillo::dbus_utils::MockDBusMethodResponse<
           std::vector<uint8_t>, brillo::dbus_utils::FileDescriptor>>(nullptr);
   bool allowed;
-  brillo::dbus_utils::FileDescriptor lifeline_fd;
+  base::ScopedFD lifeline_fd;
   base::RunLoop request_file_access_run_loop;
   response->set_return_callback(base::BindOnce(
-      [](bool* allowed, brillo::dbus_utils::FileDescriptor* lifeline_fd,
-         base::RunLoop* run_loop, const std::vector<uint8_t>& proto_blob,
+      [](bool* allowed, base::ScopedFD* lifeline_fd, base::RunLoop* run_loop,
+         const std::vector<uint8_t>& proto_blob,
          const brillo::dbus_utils::FileDescriptor& fd) {
         RequestFileAccessResponse response =
             ParseResponse<RequestFileAccessResponse>(proto_blob);
         *allowed = response.allowed();
-        *lifeline_fd = brillo::dbus_utils::FileDescriptor(fd.get());
+        lifeline_fd->reset(dup(fd.get()));
         run_loop->Quit();
       },
       &allowed, &lifeline_fd, &request_file_access_run_loop));
@@ -419,16 +420,16 @@ TEST_F(DlpAdaptorTest, RestrictedFilesNotAddedAndRequestedAllowed) {
       response = std::make_unique<brillo::dbus_utils::MockDBusMethodResponse<
           std::vector<uint8_t>, brillo::dbus_utils::FileDescriptor>>(nullptr);
   bool allowed;
-  brillo::dbus_utils::FileDescriptor lifeline_fd;
+  base::ScopedFD lifeline_fd;
   base::RunLoop request_file_access_run_loop;
   response->set_return_callback(base::BindOnce(
-      [](bool* allowed, brillo::dbus_utils::FileDescriptor* lifeline_fd,
-         base::RunLoop* run_loop, const std::vector<uint8_t>& proto_blob,
+      [](bool* allowed, base::ScopedFD* lifeline_fd, base::RunLoop* run_loop,
+         const std::vector<uint8_t>& proto_blob,
          const brillo::dbus_utils::FileDescriptor& fd) {
         RequestFileAccessResponse response =
             ParseResponse<RequestFileAccessResponse>(proto_blob);
         *allowed = response.allowed();
-        *lifeline_fd = brillo::dbus_utils::FileDescriptor(fd.get());
+        lifeline_fd->reset(dup(fd.get()));
         run_loop->Quit();
       },
       &allowed, &lifeline_fd, &request_file_access_run_loop));
@@ -484,16 +485,16 @@ TEST_F(DlpAdaptorTest, RestrictedFileNotAddedAndImmediatelyAllowed) {
       response = std::make_unique<brillo::dbus_utils::MockDBusMethodResponse<
           std::vector<uint8_t>, brillo::dbus_utils::FileDescriptor>>(nullptr);
   bool allowed;
-  brillo::dbus_utils::FileDescriptor lifeline_fd;
+  base::ScopedFD lifeline_fd;
   base::RunLoop request_file_access_run_loop;
   response->set_return_callback(base::BindOnce(
-      [](bool* allowed, brillo::dbus_utils::FileDescriptor* lifeline_fd,
-         base::RunLoop* run_loop, const std::vector<uint8_t>& proto_blob,
+      [](bool* allowed, base::ScopedFD* lifeline_fd, base::RunLoop* run_loop,
+         const std::vector<uint8_t>& proto_blob,
          const brillo::dbus_utils::FileDescriptor& fd) {
         RequestFileAccessResponse response =
             ParseResponse<RequestFileAccessResponse>(proto_blob);
         *allowed = response.allowed();
-        *lifeline_fd = brillo::dbus_utils::FileDescriptor(fd.get());
+        lifeline_fd->reset(dup(fd.get()));
         run_loop->Quit();
       },
       &allowed, &lifeline_fd, &request_file_access_run_loop));
@@ -542,16 +543,16 @@ TEST_F(DlpAdaptorTest, RestrictedFileAddedAndRequestedNotAllowed) {
       response = std::make_unique<brillo::dbus_utils::MockDBusMethodResponse<
           std::vector<uint8_t>, brillo::dbus_utils::FileDescriptor>>(nullptr);
   bool allowed;
-  brillo::dbus_utils::FileDescriptor lifeline_fd;
+  base::ScopedFD lifeline_fd;
   base::RunLoop request_file_access_run_loop;
   response->set_return_callback(base::BindOnce(
-      [](bool* allowed, brillo::dbus_utils::FileDescriptor* lifeline_fd,
-         base::RunLoop* run_loop, const std::vector<uint8_t>& proto_blob,
+      [](bool* allowed, base::ScopedFD* lifeline_fd, base::RunLoop* run_loop,
+         const std::vector<uint8_t>& proto_blob,
          const brillo::dbus_utils::FileDescriptor& fd) {
         RequestFileAccessResponse response =
             ParseResponse<RequestFileAccessResponse>(proto_blob);
         *allowed = response.allowed();
-        *lifeline_fd = brillo::dbus_utils::FileDescriptor(fd.get());
+        lifeline_fd->reset(dup(fd.get()));
         run_loop->Quit();
       },
       &allowed, &lifeline_fd, &request_file_access_run_loop));
@@ -604,16 +605,16 @@ TEST_F(DlpAdaptorTest, RestrictedFileAddedRequestedAndCancelledNotAllowed) {
       response = std::make_unique<brillo::dbus_utils::MockDBusMethodResponse<
           std::vector<uint8_t>, brillo::dbus_utils::FileDescriptor>>(nullptr);
   bool allowed;
-  brillo::dbus_utils::FileDescriptor lifeline_fd;
+  base::ScopedFD lifeline_fd;
   base::RunLoop request_file_access_run_loop;
   response->set_return_callback(base::BindOnce(
-      [](bool* allowed, brillo::dbus_utils::FileDescriptor* lifeline_fd,
-         base::RunLoop* run_loop, const std::vector<uint8_t>& proto_blob,
+      [](bool* allowed, base::ScopedFD* lifeline_fd, base::RunLoop* run_loop,
+         const std::vector<uint8_t>& proto_blob,
          const brillo::dbus_utils::FileDescriptor& fd) {
         RequestFileAccessResponse response =
             ParseResponse<RequestFileAccessResponse>(proto_blob);
         *allowed = response.allowed();
-        *lifeline_fd = brillo::dbus_utils::FileDescriptor(fd.get());
+        lifeline_fd->reset(dup((fd.get())));
         run_loop->Quit();
       },
       &allowed, &lifeline_fd, &request_file_access_run_loop));
@@ -626,7 +627,7 @@ TEST_F(DlpAdaptorTest, RestrictedFileAddedRequestedAndCancelledNotAllowed) {
   EXPECT_FALSE(IsFdClosed(lifeline_fd.get()));
 
   // Cancel access to the file.
-  IGNORE_EINTR(close(lifeline_fd.release()));
+  lifeline_fd.reset();
 
   // Let DlpAdaptor process that lifeline_fd is closed.
   base::RunLoop().RunUntilIdle();
@@ -658,18 +659,17 @@ TEST_F(DlpAdaptorTest, RequestAllowedWithoutDatabase) {
       response = std::make_unique<brillo::dbus_utils::MockDBusMethodResponse<
           std::vector<uint8_t>, brillo::dbus_utils::FileDescriptor>>(nullptr);
   bool allowed;
-  brillo::dbus_utils::FileDescriptor lifeline_fd;
   base::RunLoop request_file_access_run_loop;
   response->set_return_callback(base::BindOnce(
-      [](bool* allowed, brillo::dbus_utils::FileDescriptor* lifeline_fd,
-         base::RunLoop* run_loop, const std::vector<uint8_t>& proto_blob,
+      [](bool* allowed, base::RunLoop* run_loop,
+         const std::vector<uint8_t>& proto_blob,
          const brillo::dbus_utils::FileDescriptor& fd) {
         RequestFileAccessResponse response =
             ParseResponse<RequestFileAccessResponse>(proto_blob);
         *allowed = response.allowed();
         run_loop->Quit();
       },
-      &allowed, &lifeline_fd, &request_file_access_run_loop));
+      &allowed, &request_file_access_run_loop));
   GetDlpAdaptor()->RequestFileAccess(
       std::move(response), CreateSerializedRequestFileAccessRequest(
                                {file_path.value()}, kPid, "destination"));
