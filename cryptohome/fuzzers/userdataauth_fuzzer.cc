@@ -5,6 +5,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include <algorithm>
 #include <memory>
 #include <string>
 #include <utility>
@@ -228,6 +229,45 @@ void UpdateBreadcrumbs(const std::string& dbus_method_name,
   }
 }
 
+// Triggers a random D-Bus method call on the UserDataAuth interface.
+void SimulateIncomingDBusCall(FuzzedDataProvider& provider,
+                              brillo::dbus_utils::DBusObject& dbus_object,
+                              std::vector<Blob>& breadcrumbs) {
+  const std::string dbus_method_name = GenerateFuzzedDBusMethodName(
+      dbus_object, user_data_auth::kUserDataAuthInterface, provider);
+  std::unique_ptr<dbus::Response> dbus_response = RunBlockingDBusCall(
+      GenerateFuzzedDBusCallMessage(dbus_object,
+                                    user_data_auth::kUserDataAuthInterface,
+                                    dbus_method_name, breadcrumbs, provider),
+      dbus_object);
+  if (dbus_response) {
+    UpdateBreadcrumbs(dbus_method_name, std::move(dbus_response), breadcrumbs);
+  }
+}
+
+// Simulates clocks moving forward.
+void SimulateSleep(const base::TimeTicks& start_time,
+                   Environment& env,
+                   FuzzedDataProvider& provider) {
+  // The constants are chosen semi-arbitrarily. The overall sum of sleeps should
+  // be neither too short, as we want good test coverage, nor overly long, to
+  // avoid timeouts due to periodic tasks scheduled by code-under-test.
+  static constexpr base::TimeDelta kMaxSingleSleep = base::Minutes(1);
+  static constexpr base::TimeDelta kMaxOverallSleep = base::Days(1);
+
+  // Choose sleep duration. It's at most `kMaxSingleSleep`, but also the sum of
+  // all sleeps is at most `kMaxOverallSleep`.
+  base::TimeTicks max_time = start_time + kMaxOverallSleep;
+  base::TimeDelta remaining_time = max_time - base::TimeTicks::Now();
+  CHECK_GE(remaining_time, base::TimeDelta());
+  base::TimeDelta current_sleep_max = std::min(kMaxSingleSleep, remaining_time);
+  int64_t current_sleep = provider.ConsumeIntegralInRange<int64_t>(
+      0, current_sleep_max.InMicroseconds());
+
+  // Move clocks and execute scheduled tasks whose target times were reached.
+  env.task_environment().FastForwardBy(base::Microseconds(current_sleep));
+}
+
 }  // namespace
 
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
@@ -279,22 +319,28 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
                                            userdataauth.get());
   userdataauth_adaptor.RegisterAsync();
 
-  // Simulate a few D-Bus calls on the stub D-Bus object using "random"
-  // parameters.
+  // This is the main part of the fuzzer, where we exercise code-under-test
+  // using various "random" commands.
+  enum class Command {
+    kIncomingDBusCall,  // Simulate an incoming D-Bus call.
+    kSleep,             // Simulate clocks moving forward.
+    // Must be the last item.
+    kMaxValue = kSleep
+  };
+  const base::TimeTicks start_time = base::TimeTicks::Now();
   // `breadcrumbs` contain blobs which are useful to reuse across multiple calls
   // but which Libfuzzer cannot realistically generate itself.
   std::vector<Blob> breadcrumbs;
   while (provider.remaining_bytes() > 0) {
-    const std::string dbus_method_name = GenerateFuzzedDBusMethodName(
-        dbus_object, user_data_auth::kUserDataAuthInterface, provider);
-    std::unique_ptr<dbus::MethodCall> dbus_call = GenerateFuzzedDBusCallMessage(
-        dbus_object, user_data_auth::kUserDataAuthInterface, dbus_method_name,
-        breadcrumbs, provider);
-    std::unique_ptr<dbus::Response> dbus_response =
-        RunBlockingDBusCall(std::move(dbus_call), dbus_object);
-    if (dbus_response) {
-      UpdateBreadcrumbs(dbus_method_name, std::move(dbus_response),
-                        breadcrumbs);
+    switch (provider.ConsumeEnum<Command>()) {
+      case Command::kIncomingDBusCall: {
+        SimulateIncomingDBusCall(provider, dbus_object, breadcrumbs);
+        break;
+      }
+      case Command::kSleep: {
+        SimulateSleep(start_time, env, provider);
+        break;
+      }
     }
   }
 
