@@ -241,6 +241,12 @@ class Sender : public SenderBase {
   // remove the crash report using the returned removal reason code.
   SenderBase::CrashRemoveReason RequestToSendCrash(const CrashDetails& details);
 
+  // Writes upload.log based on crash details and report ID.
+  // TODO(b/264307614): Writes to stdout in dry run mode.
+  SenderBase::CrashRemoveReason WriteUploadLog(const CrashDetails& details,
+                                               const std::string& report_id,
+                                               std::string product_name);
+
   // Returns true if we have consent to send crashes to Google.
   bool HasCrashUploadingConsent(const CrashInfo& info);
 

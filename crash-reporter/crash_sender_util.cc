@@ -617,9 +617,15 @@ void Sender::SendCrashes(const std::vector<MetaFile>& crash_meta_files) {
           .metadata = info.metadata,
       };
       Sender::CrashRemoveReason result = RequestToSendCrash(details);
-      if (SenderBase::CrashRemoveReason::kRetryUploading == result) {
-        LOG(WARNING) << "Failed to send " << meta_file.value()
-                     << ", not removing; will retry later";
+      if (SenderBase::CrashRemoveReason::kRetryUploading == result ||
+          SenderBase::CrashRemoveReason::kDryRun == result) {
+        if (result == kDryRun) {
+          LOG(INFO) << "Did not send " << meta_file.value()
+                    << " in the dry run mode; not removing.";
+        } else {
+          LOG(WARNING) << "Failed to send " << meta_file.value()
+                       << ", not removing; will retry later";
+        }
         continue;
       }
       if (SenderBase::CrashRemoveReason::kFinishedUploading == result) {
@@ -830,6 +836,10 @@ SenderBase::CrashRemoveReason Sender::RequestToSendCrash(
     return CrashRemoveReason::kRetryUploading;
   }
 
+  if (dry_run_) {
+    return WriteUploadLog(details, "", std::move(product_name));
+  }
+
   if (test_mode_) {
     LOG(WARNING) << kTestModeSuccessful;
 
@@ -953,11 +963,23 @@ SenderBase::CrashRemoveReason Sender::RequestToSendCrash(
 
   report_id = response->ExtractDataAsString();
 
+  return WriteUploadLog(details, report_id, std::move(product_name));
+}
+
+SenderBase::CrashRemoveReason Sender::WriteUploadLog(
+    const CrashDetails& details,
+    const std::string& report_id,
+    std::string product_name) {
   if (product_name == constants::kProductNameChromeAsh)
     product_name = "Chrome";
   if (!util::IsOfficialImage()) {
     base::ReplaceSubstringsAfterOffset(&product_name, 0, "Chrome", "Chromium");
   }
+  if (dry_run_) {
+    // TODO(b/264307614): Add logic that writes to stdout here.
+    return CrashRemoveReason::kDryRun;
+  }
+
   std::string silent;
   details.metadata.GetString("silent", &silent);
   if (always_write_uploads_log_ || (!USE_CHROMELESS_TTY && silent != "true")) {

@@ -110,22 +110,12 @@ void MockMethodHandler(bool success,
 
 // Replaces Sender's functionality with a predefined behavior.
 class MockSender : public util::Sender {
- private:
-  bool success_;
-  std::string response_;
-
- protected:
-  std::shared_ptr<brillo::http::Transport> GetTransport() override {
-    std::shared_ptr<brillo::http::fake::Transport> fake_transport =
-        std::make_shared<brillo::http::fake::Transport>();
-    fake_transport->AddHandler(
-        kReportUploadProdUrl, brillo::http::request_type::kPost,
-        base::BindRepeating(MockMethodHandler, success_, response_));
-
-    return fake_transport;
-  }
-
  public:
+  MOCK_METHOD(std::shared_ptr<brillo::http::Transport>,
+              GetTransport,
+              (),
+              (override));
+
   MockSender(bool is_success,
              std::string response_text,
              std::unique_ptr<MetricsLibraryMock> metrics_lib,
@@ -133,7 +123,22 @@ class MockSender : public util::Sender {
              const Sender::Options& options)
       : Sender(std::move(metrics_lib), std::move(clock), options),
         success_(is_success),
-        response_(std::move(response_text)) {}
+        response_(std::move(response_text)) {
+    ON_CALL(*this, GetTransport)
+        .WillByDefault([this]() -> std::shared_ptr<brillo::http::Transport> {
+          std::shared_ptr<brillo::http::fake::Transport> fake_transport =
+              std::make_shared<brillo::http::fake::Transport>();
+          fake_transport->AddHandler(
+              kReportUploadProdUrl, brillo::http::request_type::kPost,
+              base::BindRepeating(MockMethodHandler, success_, response_));
+
+          return fake_transport;
+        });
+  }
+
+ private:
+  bool success_;
+  std::string response_;
 };
 
 // Parses the Chrome uploads.log file from Sender to a vector of items per line.
@@ -2077,6 +2082,52 @@ TEST_F(CrashSenderUtilTest, SendCrashes) {
   // The following should be kept since the crash report was not uploaded.
   EXPECT_TRUE(base::PathExists(user_meta_file2));
   EXPECT_TRUE(base::PathExists(user_log2));
+}
+TEST_F(CrashSenderUtilTest, SendCrashes_DontSendUnderDryRunMode) {
+  // Set up the mock session manager client.
+  auto mock =
+      std::make_unique<org::chromium::SessionManagerInterfaceProxyMock>();
+  test_util::SetActiveSessions(mock.get(), {{"user", "hash"}});
+
+  // Establish the client ID.
+  ASSERT_TRUE(CreateClientIdFile());
+
+  // Create the system crash directory, and crash files in it.
+  const base::FilePath crash_directory =
+      paths::Get(paths::kSystemCrashDirectory);
+  ASSERT_TRUE(CreateDirectory(crash_directory));
+  ASSERT_TRUE(CreateTestCrashFiles(crash_directory));
+
+  // Set up the crash sender so that it succeeds.
+  SetMockCrashSending(true);
+
+  // No crash sender removal reason UMA counts.
+  EXPECT_CALL(*metrics_lib_,
+              SendEnumToUMA("Platform.CrOS.CrashSenderRemoveReason", _, _))
+      .Times(0);
+
+  // Set up the sender.
+  std::vector<base::TimeDelta> sleep_times;
+  Sender::Options options;
+  options.session_manager_proxy = mock.release();
+  options.max_crash_rate = 2;
+  // Setting max_crash_bytes to 0 will limit to the uploader to
+  // max_crash_rate.
+  options.max_crash_bytes = 0;
+  options.sleep_function = base::BindRepeating(&FakeSleep, &sleep_times);
+  options.always_write_uploads_log = true;
+  options.dry_run = true;
+  MockSender sender(true /*success*/,
+                    "123",  // upload_id
+                    std::move(metrics_lib_),
+                    std::make_unique<test_util::AdvancingClock>(), options);
+  std::vector<MetaFile> crashes_to_send;
+  sender.RemoveAndPickCrashFiles(crash_directory, &crashes_to_send);
+  ASSERT_FALSE(crashes_to_send.empty());  // ensure at least one crash to send
+  // Nothing should be sent
+  EXPECT_CALL(sender, GetTransport()).Times(0);
+
+  sender.SendCrashes(crashes_to_send);
 }
 
 TEST_F(CrashSenderUtilTest, SendCrashes_TooManyRequests) {

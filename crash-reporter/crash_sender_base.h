@@ -207,8 +207,9 @@ class SenderBase {
     // Do not remove just yet
     kRetryUploading = 15,
     kLaCrosVersionTooOld = 16,
+    kDryRun = 17,
     // Keep kSendReasonCount one larger than any other enum value.
-    kSendReasonCount = 17,
+    kSendReasonCount = 18,
   };
 
   // Lock the lock file so no concurrently running process can access the
