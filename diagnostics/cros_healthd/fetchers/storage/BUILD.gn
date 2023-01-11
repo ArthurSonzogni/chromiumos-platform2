@@ -16,6 +16,7 @@ pkg_config("storage_data_source_common_pkg_deps") {
 source_set("storage_data_source") {
   configs += [ ":storage_data_source_common_pkg_deps" ]
   deps = [
+    "//diagnostics/base",
     "//diagnostics/common:libcommon",
     "//diagnostics/cros_healthd/utils:libcros_healthd_utils",
     "//diagnostics/mojom/public:cros_healthd_mojo_bindings",

@@ -21,10 +21,10 @@
 #include <brillo/blkdev_utils/disk_iostat.h>
 #include <brillo/blkdev_utils/ufs.h>
 
+#include "diagnostics/base/file_utils.h"
 #include "diagnostics/common/status_macros.h"
 #include "diagnostics/common/statusor.h"
 #include "diagnostics/cros_healthd/fetchers/storage/device_info_constants.h"
-#include "diagnostics/cros_healthd/utils/file_utils.h"
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
 
 namespace diagnostics {

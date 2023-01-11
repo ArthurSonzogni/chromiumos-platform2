@@ -135,6 +135,7 @@ if (use.fuzzer) {
     ]
     deps = [
       ":libcros_healthd_fetchers",
+      "//diagnostics/base",
       "//diagnostics/cros_healthd/system:libcros_healthd_system_test_utils",
     ]
   }

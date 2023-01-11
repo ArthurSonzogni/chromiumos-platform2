@@ -14,16 +14,17 @@ pkg_config("pkg_deps") {
 }
 
 source_set("utils") {
-  deps = [
-    "//diagnostics/cros_healthd/mojom:cros_healthd_executor_mojo_bindings",
-    "//diagnostics/cros_healthd/utils:libcros_healthd_utils",
-  ]
   sources = [
     "delegate_process.cc",
     "process_control.cc",
     "sandboxed_process.cc",
   ]
   configs += [ ":pkg_deps" ]
+  deps = [
+    "//diagnostics/base",
+    "//diagnostics/cros_healthd/mojom:cros_healthd_executor_mojo_bindings",
+    "//diagnostics/cros_healthd/utils:libcros_healthd_utils",
+  ]
 }
 
 if (use.test) {

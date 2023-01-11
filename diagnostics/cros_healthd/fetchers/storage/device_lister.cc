@@ -18,8 +18,8 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 
+#include "diagnostics/base/file_utils.h"
 #include "diagnostics/cros_healthd/fetchers/storage/platform.h"
-#include "diagnostics/cros_healthd/utils/file_utils.h"
 
 namespace diagnostics {
 

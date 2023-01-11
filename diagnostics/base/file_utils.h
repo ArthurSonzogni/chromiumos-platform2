@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef DIAGNOSTICS_CROS_HEALTHD_UTILS_FILE_UTILS_H_
-#define DIAGNOSTICS_CROS_HEALTHD_UTILS_FILE_UTILS_H_
+#ifndef DIAGNOSTICS_BASE_FILE_UTILS_H_
+#define DIAGNOSTICS_BASE_FILE_UTILS_H_
 
 #include <optional>
 #include <string>
@@ -11,6 +11,7 @@
 #include <base/check.h>
 #include <base/files/file_path.h>
 #include <base/strings/string_piece.h>
+#include <brillo/brillo_export.h>
 
 namespace diagnostics {
 
@@ -31,8 +32,8 @@ bool ReadAndTrimString(const base::FilePath& file_path, StringType* out) {
 }
 
 template <>
-bool ReadAndTrimString<std::string>(const base::FilePath& file_path,
-                                    std::string* out);
+BRILLO_EXPORT bool ReadAndTrimString<std::string>(
+    const base::FilePath& file_path, std::string* out);
 
 // Like ReadAndTrimString() above, but expects a |filename| within |directory|
 // to be read.
@@ -71,4 +72,4 @@ bool ReadInteger(const base::FilePath& directory,
 
 }  // namespace diagnostics
 
-#endif  // DIAGNOSTICS_CROS_HEALTHD_UTILS_FILE_UTILS_H_
+#endif  // DIAGNOSTICS_BASE_FILE_UTILS_H_

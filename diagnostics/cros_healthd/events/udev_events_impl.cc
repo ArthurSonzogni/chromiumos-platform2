@@ -17,7 +17,7 @@
 #include <base/strings/string_split.h>
 #include <brillo/udev/udev_device.h>
 
-#include "diagnostics/cros_healthd/utils/file_utils.h"
+#include "diagnostics/base/file_utils.h"
 #include "diagnostics/cros_healthd/utils/usb_utils.h"
 #include "diagnostics/cros_healthd/utils/usb_utils_constants.h"
 #include "diagnostics/mojom/public/cros_healthd_events.mojom.h"

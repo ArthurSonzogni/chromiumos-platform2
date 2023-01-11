@@ -25,8 +25,8 @@
 #include <base/strings/stringprintf.h>
 #include <re2/re2.h>
 
+#include "diagnostics/base/file_utils.h"
 #include "diagnostics/cros_healthd/utils/error_utils.h"
-#include "diagnostics/cros_healthd/utils/file_utils.h"
 #include "diagnostics/cros_healthd/utils/procfs_utils.h"
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
 

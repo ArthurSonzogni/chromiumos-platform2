@@ -15,9 +15,9 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 
+#include "diagnostics/base/file_utils.h"
 #include "diagnostics/cros_healthd/fetchers/bus_fetcher.h"
 #include "diagnostics/cros_healthd/utils/error_utils.h"
-#include "diagnostics/cros_healthd/utils/file_utils.h"
 
 namespace diagnostics {
 
