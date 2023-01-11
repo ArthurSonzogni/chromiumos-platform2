@@ -21,7 +21,7 @@
 
 #include "diagnostics/common/file_test_utils.h"
 #include "diagnostics/common/mojo_utils.h"
-#include "diagnostics/cros_healthd/executor/mojom/executor.mojom.h"
+#include "diagnostics/cros_healthd/mojom/executor.mojom.h"
 #include "diagnostics/cros_healthd/routines/diag_routine.h"
 #include "diagnostics/cros_healthd/routines/memory/memory.h"
 #include "diagnostics/cros_healthd/routines/memory/memory_constants.h"

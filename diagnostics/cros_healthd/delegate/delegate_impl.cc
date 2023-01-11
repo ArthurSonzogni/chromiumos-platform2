@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "diagnostics/cros_healthd/executor/delegate_impl.h"
+#include "diagnostics/cros_healthd/delegate/delegate_impl.h"
 
 #include <array>
 #include <fcntl.h>
@@ -19,9 +19,9 @@
 #include <libec/led_control_command.h>
 #include <libec/mkbp_event.h>
 
+#include "diagnostics/cros_healthd/delegate/utils/evdev_utils.h"
 #include "diagnostics/cros_healthd/executor/constants.h"
-#include "diagnostics/cros_healthd/executor/mojom/executor.mojom.h"
-#include "diagnostics/cros_healthd/executor/utils/evdev_utils.h"
+#include "diagnostics/cros_healthd/mojom/executor.mojom.h"
 
 namespace {
 

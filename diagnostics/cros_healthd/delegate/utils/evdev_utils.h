@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef DIAGNOSTICS_CROS_HEALTHD_EXECUTOR_UTILS_EVDEV_UTILS_H_
-#define DIAGNOSTICS_CROS_HEALTHD_EXECUTOR_UTILS_EVDEV_UTILS_H_
+#ifndef DIAGNOSTICS_CROS_HEALTHD_DELEGATE_UTILS_EVDEV_UTILS_H_
+#define DIAGNOSTICS_CROS_HEALTHD_DELEGATE_UTILS_EVDEV_UTILS_H_
 
 #include <libevdev/libevdev.h>
 #include <memory>
@@ -14,7 +14,7 @@
 #include <mojo/public/cpp/bindings/pending_remote.h>
 #include <mojo/public/cpp/bindings/remote.h>
 
-#include "diagnostics/cros_healthd/executor/mojom/executor.mojom.h"
+#include "diagnostics/cros_healthd/mojom/executor.mojom.h"
 
 namespace diagnostics {
 
@@ -74,4 +74,4 @@ class EvdevAudioJackObserver final : public EvdevUtil::Delegate {
 
 }  // namespace diagnostics
 
-#endif  // DIAGNOSTICS_CROS_HEALTHD_EXECUTOR_UTILS_EVDEV_UTILS_H_
+#endif  // DIAGNOSTICS_CROS_HEALTHD_DELEGATE_UTILS_EVDEV_UTILS_H_

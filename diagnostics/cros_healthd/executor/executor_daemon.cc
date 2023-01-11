@@ -14,7 +14,7 @@
 #include <mojo/public/cpp/system/invitation.h>
 #include <mojo/public/cpp/system/message_pipe.h>
 
-#include "diagnostics/cros_healthd/executor/mojom/executor.mojom.h"
+#include "diagnostics/cros_healthd/mojom/executor.mojom.h"
 
 namespace diagnostics {
 

@@ -21,7 +21,7 @@
 #include <mojo/public/cpp/bindings/unique_receiver_set.h>
 
 #include "diagnostics/cros_healthd/executor/constants.h"
-#include "diagnostics/cros_healthd/executor/mojom/executor.mojom.h"
+#include "diagnostics/cros_healthd/mojom/executor.mojom.h"
 #include "diagnostics/cros_healthd/process/process_with_output.h"
 #include "diagnostics/mojom/public/nullable_primitives.mojom.h"
 

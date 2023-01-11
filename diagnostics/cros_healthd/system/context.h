@@ -19,7 +19,7 @@
 #include <mojo/public/cpp/platform/platform_channel_endpoint.h>
 
 #include "diagnostics/common/system/powerd_adapter.h"
-#include "diagnostics/cros_healthd/executor/mojom/executor.mojom.h"
+#include "diagnostics/cros_healthd/mojom/executor.mojom.h"
 #include "diagnostics/cros_healthd/network/network_health_adapter.h"
 #include "diagnostics/cros_healthd/network_diagnostics/network_diagnostics_adapter.h"
 #include "diagnostics/cros_healthd/system/libdrm_util.h"

@@ -11,8 +11,8 @@
 #include <mojo/public/cpp/bindings/remote.h>
 #include <mojo/public/cpp/platform/platform_channel.h>
 
-#include "diagnostics/cros_healthd/executor/mojom/delegate.mojom.h"
 #include "diagnostics/cros_healthd/executor/utils/sandboxed_process.h"
+#include "diagnostics/cros_healthd/mojom/delegate.mojom.h"
 
 namespace diagnostics {
 

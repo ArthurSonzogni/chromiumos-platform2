@@ -12,8 +12,8 @@
 #include <base/memory/weak_ptr.h>
 
 #include "diagnostics/cros_healthd/executor/constants.h"
-#include "diagnostics/cros_healthd/executor/mojom/executor.mojom.h"
 #include "diagnostics/cros_healthd/fetchers/base_fetcher.h"
+#include "diagnostics/cros_healthd/mojom/executor.mojom.h"
 #include "diagnostics/cros_healthd/utils/callback_barrier.h"
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
 #include "diagnostics/mojom/public/nullable_primitives.mojom.h"

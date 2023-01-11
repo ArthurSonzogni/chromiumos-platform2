@@ -2,12 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef DIAGNOSTICS_CROS_HEALTHD_EXECUTOR_DELEGATE_IMPL_H_
-#define DIAGNOSTICS_CROS_HEALTHD_EXECUTOR_DELEGATE_IMPL_H_
+#ifndef DIAGNOSTICS_CROS_HEALTHD_DELEGATE_DELEGATE_IMPL_H_
+#define DIAGNOSTICS_CROS_HEALTHD_DELEGATE_DELEGATE_IMPL_H_
 
 #include <mojo/public/cpp/bindings/pending_remote.h>
 
-#include "diagnostics/cros_healthd/executor/mojom/delegate.mojom.h"
+#include "diagnostics/cros_healthd/mojom/delegate.mojom.h"
 
 namespace diagnostics {
 
@@ -35,4 +35,4 @@ class DelegateImpl : public ash::cros_healthd::mojom::Delegate {
 
 }  // namespace diagnostics
 
-#endif  // DIAGNOSTICS_CROS_HEALTHD_EXECUTOR_DELEGATE_IMPL_H_
+#endif  // DIAGNOSTICS_CROS_HEALTHD_DELEGATE_DELEGATE_IMPL_H_

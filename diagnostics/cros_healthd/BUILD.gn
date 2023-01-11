@@ -45,6 +45,7 @@ executable("cros_healthd") {
   sources = [ "main.cc" ]
   configs += [ ":libcros_healthd_pkg_deps" ]
   install_path = "bin"
+  assert_no_deps = [ "//diagnostics/cros_healthd/delegate/*" ]
   deps = [
     ":libcros_healthd",
     "executor:libcros_healthd_executor",

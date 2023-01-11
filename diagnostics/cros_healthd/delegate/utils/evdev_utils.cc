@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "diagnostics/cros_healthd/executor/utils/evdev_utils.h"
+#include "diagnostics/cros_healthd/delegate/utils/evdev_utils.h"
 
 #include <fcntl.h>
 #include <string>

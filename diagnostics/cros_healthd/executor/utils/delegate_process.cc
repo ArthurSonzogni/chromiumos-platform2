@@ -13,8 +13,8 @@
 #include <mojo/public/cpp/system/invitation.h>
 #include <mojo/public/cpp/system/message_pipe.h>
 
-#include "diagnostics/cros_healthd/executor/delegate_constants.h"
-#include "diagnostics/cros_healthd/executor/mojom/delegate.mojom.h"
+#include "diagnostics/cros_healthd/delegate/constants.h"
+#include "diagnostics/cros_healthd/mojom/delegate.mojom.h"
 
 namespace diagnostics {
 

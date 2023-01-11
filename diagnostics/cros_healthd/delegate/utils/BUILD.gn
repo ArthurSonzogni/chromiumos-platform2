@@ -1,0 +1,25 @@
+# Copyright 2023 The ChromiumOS Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/pkg_config.gni")
+
+pkg_config("deps") {
+  pkg_deps = [
+    "libbrillo",
+    "libchrome",
+    "libmojo",
+  ]
+}
+
+pkg_config("pub_deps") {
+  pkg_deps = [ "libevdev" ]
+}
+
+source_set("utils") {
+  sources = [ "evdev_utils.cc" ]
+  configs += [ ":deps" ]
+  public_configs = [ ":pub_deps" ]
+  deps =
+      [ "//diagnostics/cros_healthd/mojom:cros_healthd_executor_mojo_bindings" ]
+}
