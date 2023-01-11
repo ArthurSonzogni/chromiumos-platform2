@@ -74,7 +74,6 @@ class Parser {
   void LogParserError(std::string_view message);
   void LogParserError(ParserCode error_code);
   void LogParserErrors(const std::vector<ParserCode>& errors);
-  void LogParserWarning(const std::string& message);
 
   // Reads single tag_name_value from the buffer (ptr is updated) and append it
   // to the parameter. Returns false <=> error occurred.

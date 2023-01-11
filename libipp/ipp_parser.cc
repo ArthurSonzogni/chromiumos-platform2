@@ -257,13 +257,6 @@ void Parser::LogParserError(std::string_view message) {
   errors_->push_back(l);
 }
 
-void Parser::LogParserWarning(const std::string& message) {
-  Log l;
-  l.message = "Parser warning: " + message + ".";
-  l.parser_context = PathAsString(parser_context_);
-  errors_->push_back(l);
-}
-
 // Temporary representation of an attribute's value parsed from TNVs.
 struct RawValue {
   // original tag (IsValid(tag))
@@ -630,9 +623,8 @@ bool Parser::ParseRawValue(int coll_level,
   ValueTag type = static_cast<ValueTag>(tnv.tag);
   if (!IsValid(type)) {
     // unknown attribute's syntax
-    LogParserWarning(
-        "Tag representing unknown attribute syntax was spotted: 0x" +
-        ToHexByte(tnv.tag) + ". The attribute's value was omitted");
+    LogParserError("Tag representing unknown attribute syntax was spotted: 0x" +
+                   ToHexByte(tnv.tag) + ". The attribute's value was omitted.");
     return true;
   }
   attr->values.emplace_back(type, tnv.value);
