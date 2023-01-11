@@ -106,12 +106,19 @@ void VPNConnection::NotifyConnected(
 
 void VPNConnection::NotifyFailure(Service::ConnectFailure reason,
                                   const std::string& detail) {
-  CheckCallWithState(
-      __func__, state_,
-      {State::kConnecting, State::kConnected, State::kDisconnecting});
+  CheckCallWithState(__func__, state_,
+                     {State::kConnecting, State::kConnected,
+                      State::kDisconnecting, State::kStopped});
   LOG(ERROR) << "VPN connection failed, current state: " << state_
              << ", reason: " << Service::ConnectFailureToString(reason)
              << ", detail: " << detail;
+
+  if (state_ == State::kDisconnecting || state_ == State::kStopped) {
+    // We don't need to invoke callback to VPNDriver here since this is not a
+    // connect failure, but a failure during disconnecting.
+    return;
+  }
+
   state_ = State::kDisconnecting;
   dispatcher_->PostTask(
       FROM_HERE, base::BindOnce(std::move(callbacks_->on_failure_cb), reason));
