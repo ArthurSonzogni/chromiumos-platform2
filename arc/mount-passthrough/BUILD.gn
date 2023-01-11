@@ -7,7 +7,6 @@ import("//common-mk/pkg_config.gni")
 group("all") {
   deps = [
     ":install_bin",
-    ":install_utils",
     ":mount-passthrough",
   ]
 }
@@ -29,15 +28,7 @@ executable("mount-passthrough") {
 }
 
 install_config("install_bin") {
-  sources = [
-    "mount-passthrough-jailed",
-    "mount-passthrough-jailed-media",
-  ]
+  sources = [ "mount-passthrough-jailed" ]
   install_path = "/usr/bin"
   type = "executable"
-}
-
-install_config("install_utils") {
-  sources = [ "mount-passthrough-jailed-utils.sh" ]
-  install_path = "/usr/share/arc"
 }
