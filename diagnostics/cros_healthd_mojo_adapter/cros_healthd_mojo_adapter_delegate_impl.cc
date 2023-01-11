@@ -6,6 +6,7 @@
 
 #include <optional>
 #include <string>
+#include <utility>
 
 #include <base/check.h>
 #include <base/logging.h>
@@ -26,7 +27,7 @@ namespace {
 
 // Sends |raw_fd| to cros_healthd via D-Bus. Sets |token_out| to a unique token
 // which can be used to create a message pipe to cros_healthd.
-void DoDBusBootstrap(int raw_fd,
+void DoDBusBootstrap(base::ScopedFD fd,
                      base::WaitableEvent* event,
                      std::string* token_out,
                      bool* success) {
@@ -40,12 +41,11 @@ void DoDBusBootstrap(int raw_fd,
       diagnostics::kCrosHealthdServiceName,
       dbus::ObjectPath(diagnostics::kCrosHealthdServicePath));
 
-  brillo::dbus_utils::FileDescriptor fd(raw_fd);
   brillo::ErrorPtr error;
   auto response = brillo::dbus_utils::CallMethodAndBlock(
       cros_healthd_service_factory_proxy, kCrosHealthdServiceInterface,
-      kCrosHealthdBootstrapMojoConnectionMethod, &error, fd,
-      false /* is_chrome */);
+      kCrosHealthdBootstrapMojoConnectionMethod, &error,
+      brillo::dbus_utils::FileDescriptor(std::move(fd)), false /* is_chrome */);
 
   if (!response) {
     LOG(ERROR) << "No dbus response received.";
@@ -99,10 +99,9 @@ CrosHealthdMojoAdapterDelegateImpl::GetCrosHealthdServiceFactory() {
   bool success = false;
   dbus_thread_.task_runner()->PostTask(
       FROM_HERE,
-      base::BindOnce(
-          &DoDBusBootstrap,
-          channel.TakeRemoteEndpoint().TakePlatformHandle().TakeFD().release(),
-          &event, &token, &success));
+      base::BindOnce(&DoDBusBootstrap,
+                     channel.TakeRemoteEndpoint().TakePlatformHandle().TakeFD(),
+                     &event, &token, &success));
   event.Wait();
 
   if (!success)
