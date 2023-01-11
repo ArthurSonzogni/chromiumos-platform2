@@ -39,7 +39,6 @@ class UsbUtilsTest : public BaseFileTest {
   ~UsbUtilsTest() = default;
 
   void SetUp() override {
-    CreateTestRoot();
     dev_ = std::make_unique<brillo::MockUdevDevice>();
     CreateUsbDevice(/*layer=*/0);
   }

@@ -21,8 +21,6 @@ constexpr size_t kTestBinaryDataLen = 8;
 
 class FileTest : public BaseFileTest {
  protected:
-  void SetUp() override { CreateTestRoot(); }
-
   void CheckFile(const std::string& path, const std::string& expect) {
     std::string content;
     ASSERT_TRUE(base::ReadFileToString(GetPathUnderRoot(path), &content));

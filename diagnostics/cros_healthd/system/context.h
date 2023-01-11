@@ -130,6 +130,8 @@ class Context {
   PowerdAdapter* powerd_adapter() const { return powerd_adapter_.get(); }
   // Use the object returned by root_dir() to determine the root directory of
   // the system.
+  // DEPRECATED: TODO(b/265116237): Use GetRootDir() and GetRootedPath()
+  // instead.
   const base::FilePath& root_dir() const { return root_dir_; }
   // Use the object returned by udev_monitor() to receive udev events.
   const std::unique_ptr<brillo::UdevMonitor>& udev_monitor() const {

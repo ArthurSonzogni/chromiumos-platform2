@@ -19,8 +19,6 @@ class MemoryInfoTest : public BaseFileTest {
   MemoryInfoTest(const MemoryInfoTest&) = delete;
   MemoryInfoTest& operator=(const MemoryInfoTest&) = delete;
 
-  void SetUp() override { CreateTestRoot(); }
-
   void SetMockMemoryInfo(const std::string& info) {
     SetFile({"proc", "meminfo"}, info);
   }

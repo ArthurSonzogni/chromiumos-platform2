@@ -31,6 +31,7 @@ source_set("libcros_healthd_fetchers") {
   configs += [ ":libcros_healthd_fetchers_pkg_deps" ]
   libs = [ "bootstat" ]
   deps = [
+    "//diagnostics/base",
     "//diagnostics/common:libcommon",
     "//diagnostics/cros_healthd/fetchers/storage:storage_data_source",
     "//diagnostics/cros_healthd/system:libcros_healthd_system",
@@ -111,6 +112,7 @@ if (use.test) {
     deps = [
       ":libcros_healthd_fetchers",
       "//common-mk/testrunner:testrunner",
+      "//diagnostics/base",
       "//diagnostics/common:libcommon_test_utils",
       "//diagnostics/cros_healthd/fetchers/storage:storage_data_source_test",
       "//diagnostics/cros_healthd/system:libcros_healthd_system_test_utils",

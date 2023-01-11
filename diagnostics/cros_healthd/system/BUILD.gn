@@ -43,6 +43,7 @@ source_set("libcros_healthd_system") {
   deps = [
     ":libcros_healthd_system_pci_util",
     "//diagnostics:dbus-proxies",
+    "//diagnostics/base",
     "//diagnostics/common:libcommon",
     "//diagnostics/cros_healthd/executor:libcros_healthd_executor",
     "//diagnostics/cros_healthd/network:libnetwork_health_adapter",
@@ -130,6 +131,7 @@ if (use.test) {
     deps = [
       ":libcros_healthd_system",
       "//common-mk/testrunner:testrunner",
+      "//diagnostics/base",
       "//diagnostics/common:libcommon_test_utils",
     ]
   }

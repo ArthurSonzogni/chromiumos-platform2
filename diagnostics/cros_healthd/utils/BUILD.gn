@@ -61,6 +61,7 @@ if (use.test) {
     deps = [
       ":libcros_healthd_utils",
       "//common-mk/testrunner:testrunner",
+      "//diagnostics/base",
       "//diagnostics/common:libcommon_test_utils",
     ]
   }

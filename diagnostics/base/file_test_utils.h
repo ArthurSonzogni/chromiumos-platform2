@@ -5,6 +5,7 @@
 #ifndef DIAGNOSTICS_BASE_FILE_TEST_UTILS_H_
 #define DIAGNOSTICS_BASE_FILE_TEST_UTILS_H_
 
+#include <memory>
 #include <string>
 #include <utility>
 
@@ -12,6 +13,8 @@
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <gtest/gtest.h>
+
+#include "diagnostics/base/file_utils.h"
 
 namespace diagnostics {
 
@@ -31,6 +34,20 @@ bool CreateCyclicSymbolicLink(const base::FilePath& file_path);
 bool WriteFileAndCreateSymbolicLink(const base::FilePath& file_path,
                                     const std::string& file_contents,
                                     const base::FilePath& symlink_path);
+
+// Overrides the root dir for unit tests. Doesn't support nested overriding.
+// If no |root_dir| is provided, a unique temporary directory will be used.
+class ScopedRootDirOverrides {
+ public:
+  ScopedRootDirOverrides();
+  explicit ScopedRootDirOverrides(base::FilePath root_dir);
+  ScopedRootDirOverrides(const ScopedRootDirOverrides&) = delete;
+  ScopedRootDirOverrides& operator=(const ScopedRootDirOverrides&) = delete;
+  ~ScopedRootDirOverrides();
+
+ private:
+  base::ScopedTempDir temp_dir_;
+};
 
 // A helper class for creating file related unittest.
 class BaseFileTest : public ::testing::Test {
@@ -71,8 +88,6 @@ class BaseFileTest : public ::testing::Test {
   BaseFileTest(const BaseFileTest&) = delete;
   BaseFileTest& operator=(const BaseFileTest&) = delete;
 
-  // Creates a test root. The test root will be deleted after the test.
-  void CreateTestRoot();
   // Sets the test root. It is the caller's responsibility to clean the test
   // root after the test. This is for manually control the test root.
   void SetTestRoot(const base::FilePath& path);
@@ -85,6 +100,7 @@ class BaseFileTest : public ::testing::Test {
   // both absolute and relative path.
   base::FilePath GetPathUnderRoot(const PathType& path) const;
   // Returns the path of the rootfs for testing.
+  // DEPRECATED: Use `GetRootDir()`.
   const base::FilePath& root_dir() const;
 
   // Creates a file in the test rootfs. The parent directories will be created
@@ -92,15 +108,15 @@ class BaseFileTest : public ::testing::Test {
   // |base::span<const uint8_t>| (for binary data).
   template <typename ContentType>
   void SetFile(const PathType& path, ContentType&& content) const {
-    ASSERT_FALSE(root_dir_.empty());
+    ASSERT_FALSE(GetRootDir().empty());
     auto file = GetPathUnderRoot(path);
     ASSERT_TRUE(base::CreateDirectory(file.DirName()));
     ASSERT_TRUE(base::WriteFile(file, std::forward<ContentType>(content)));
   }
 
  private:
-  base::FilePath root_dir_;
-  base::ScopedTempDir scoped_temp_dir_;
+  std::unique_ptr<ScopedRootDirOverrides> scoped_root_dir_ =
+      std::make_unique<ScopedRootDirOverrides>();
 };
 
 }  // namespace diagnostics

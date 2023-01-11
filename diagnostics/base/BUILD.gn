@@ -4,11 +4,20 @@
 
 group("base") {
   public_deps = [ ":libdiagnostics_base" ]
+  if (use.test || use.fuzzer) {
+    public_deps += [ ":test_util" ]
+  }
+}
+
+config("libdiagnostics_base_config") {
+  use_test = use.test || use.fuzzer
+  defines = [ "USE_TEST=${use_test}" ]
 }
 
 # Provides basic utilities for all the executables under //diagnostics.
 shared_library("libdiagnostics_base") {
   sources = [ "file_utils.cc" ]
+  public_configs = [ ":libdiagnostics_base_config" ]
   assert_no_deps = [
     "//diagnostics/bindings/*",
     "//diagnostics/common/*",
@@ -25,14 +34,27 @@ shared_library("libdiagnostics_base") {
   ]
 }
 
-if (use.test) {
-  pkg_config("test_pkg_deps") {
-    pkg_deps = [ "libchrome-test" ]
-  }
+pkg_config("test_pkg_deps") {
+  pkg_deps = [
+    "libchrome",
+    "libchrome-test",
+  ]
+}
 
+if (use.test || use.fuzzer) {
+  source_set("test_util") {
+    sources = [ "file_test_utils.cc" ]
+    configs += [ ":test_pkg_deps" ]
+    public_configs = [
+      ":libdiagnostics_base_config",
+      "//common-mk:test",
+    ]
+  }
+}
+
+if (use.test) {
   source_set("test") {
     sources = [
-      "file_test_utils.cc",
       "file_test_utils_test.cc",
       "file_utils_test.cc",
     ]

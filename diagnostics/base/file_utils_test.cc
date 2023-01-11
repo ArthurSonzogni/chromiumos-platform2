@@ -25,7 +25,6 @@ const auto kExpectedNumber = 42;
 class FileUtilsTest : public BaseFileTest {
  protected:
   void SetUp() override {
-    CreateTestRoot();
     SetFile(kFileNameTest, kDataStr);
     SetFile(kFileNameTestInt, kDataNumber);
   }

@@ -4,14 +4,63 @@
 
 #include "diagnostics/base/file_test_utils.h"
 
+#include <memory>
 #include <string>
 
 #include <base/check.h>
+#include <base/no_destructor.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 
 namespace diagnostics {
+namespace {
+
+base::FilePath& RootDir() {
+  static base::NoDestructor<base::FilePath> root_dir{};
+  return *root_dir;
+}
+
+}  // namespace
+
+base::FilePath GetRootDir() {
+  CHECK(!RootDir().empty()) << "RootDir is not set.";
+  return RootDir();
+}
+
+base::FilePath GetRootedPath(base::FilePath path) {
+  const base::FilePath& root_dir = RootDir();
+  CHECK(!path.empty());
+  CHECK(path.IsAbsolute());
+  CHECK(!root_dir.IsParent(path))
+      << "The path is already under the test root " << root_dir;
+  // Special case for who only want to get the root dir, which is not supported
+  // by `AppendRelativePath()`.
+  if (path == base::FilePath("/"))
+    return root_dir;
+  base::FilePath res = root_dir;
+  CHECK(base::FilePath("/").AppendRelativePath(path, &res))
+      << "Cannot append path " << path << " to " << root_dir
+      << " related to /.";
+  return res;
+}
+
+ScopedRootDirOverrides::ScopedRootDirOverrides() {
+  CHECK(temp_dir_.CreateUniqueTempDir());
+  CHECK(RootDir().empty()) << "Cannot set twice.";
+  RootDir() = temp_dir_.GetPath();
+}
+
+ScopedRootDirOverrides::ScopedRootDirOverrides(base::FilePath root_dir) {
+  CHECK(!root_dir.empty());
+  CHECK(root_dir.IsAbsolute());
+  CHECK(RootDir().empty()) << "Cannot set twice.";
+  RootDir() = root_dir;
+}
+
+ScopedRootDirOverrides::~ScopedRootDirOverrides() {
+  RootDir() = base::FilePath{};
+}
 
 bool WriteFileAndCreateParentDirs(const base::FilePath& file_path,
                                   const std::string& file_contents) {
@@ -47,21 +96,14 @@ BaseFileTest::PathType::PathType(std::initializer_list<std::string> paths) {
   }
 }
 
-void BaseFileTest::CreateTestRoot() {
-  ASSERT_TRUE(root_dir_.empty());
-  ASSERT_TRUE(scoped_temp_dir_.CreateUniqueTempDir());
-  SetTestRoot(scoped_temp_dir_.GetPath());
-  ASSERT_FALSE(root_dir_.empty());
-}
-
 void BaseFileTest::SetTestRoot(const base::FilePath& path) {
-  ASSERT_TRUE(root_dir_.empty());
-  ASSERT_FALSE(path.empty());
-  root_dir_ = path;
+  // Reset old before create the new instance.
+  scoped_root_dir_.reset();
+  scoped_root_dir_ = std::make_unique<ScopedRootDirOverrides>(path);
 }
 
 void BaseFileTest::UnsetPath(const PathType& path) const {
-  ASSERT_FALSE(root_dir_.empty());
+  ASSERT_FALSE(GetRootDir().empty());
   ASSERT_TRUE(base::DeletePathRecursively(GetPathUnderRoot(path)));
 }
 
@@ -75,19 +117,13 @@ void BaseFileTest::SetSymbolicLink(const PathType& target,
 }
 
 base::FilePath BaseFileTest::GetPathUnderRoot(const PathType& path) const {
-  CHECK(!root_dir_.empty());
-  // Check if the path already under the test rootfs.
-  CHECK(!root_dir_.IsParent(path.file_path()));
   if (!path.file_path().IsAbsolute())
-    return root_dir_.Append(path.file_path());
-  auto res = root_dir_;
-  CHECK(base::FilePath("/").AppendRelativePath(path.file_path(), &res));
-  return res;
+    return GetRootedPath(base::FilePath{"/"}.Append(path.file_path()));
+  return GetRootedPath(path.file_path());
 }
 
 const base::FilePath& BaseFileTest::root_dir() const {
-  CHECK(!root_dir_.empty());
-  return root_dir_;
+  return RootDir();
 }
 
 }  // namespace diagnostics
