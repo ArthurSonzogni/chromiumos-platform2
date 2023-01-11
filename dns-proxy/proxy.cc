@@ -126,7 +126,6 @@ Proxy::Proxy(const Options& opts,
     : opts_(opts),
       patchpanel_(std::move(patchpanel)),
       shill_(std::move(shill)),
-      feature_enabled_(true),
       metrics_proc_type_(ProcessTypeOf(opts_.type)) {}
 
 int Proxy::OnInit() {
@@ -151,20 +150,6 @@ void Proxy::Setup() {
   }
   session_->RegisterSessionStateHandler(base::BindRepeating(
       &Proxy::OnSessionStateChanged, weak_factory_.GetWeakPtr()));
-
-  if (!features_) {
-    features_ = ChromeFeaturesServiceClient::New(bus_);
-
-    if (!features_) {
-      metrics_.RecordProcessEvent(
-          metrics_proc_type_,
-          Metrics::ProcessEvent::kChromeFeaturesNotInitialized);
-      LOG(DFATAL) << "Failed to initialize Chrome features client";
-      return;
-    }
-  }
-  features_->IsDNSProxyEnabled(
-      base::BindOnce(&Proxy::OnFeatureEnabled, weak_factory_.GetWeakPtr()));
 
   if (!patchpanel_)
     patchpanel_ = patchpanel::Client::New(bus_);
@@ -239,10 +224,6 @@ void Proxy::OnPatchpanelReady(bool success) {
 void Proxy::StartDnsRedirection(const std::string& ifname,
                                 sa_family_t sa_family,
                                 const std::vector<std::string>& nameservers) {
-  // When disabled, block any attempt to set DNS redirection rule.
-  if (!feature_enabled_)
-    return;
-
   // Request IPv6 DNS redirection rule only if the IPv6 address is available.
   if (sa_family == AF_INET6 && ns_peer_ipv6_address_.empty()) {
     return;
@@ -376,8 +357,8 @@ void Proxy::OnShillReset(bool reset) {
 
 void Proxy::OnSessionStateChanged(bool login) {
   if (login) {
-    features_->IsDNSProxyEnabled(
-        base::BindOnce(&Proxy::OnFeatureEnabled, weak_factory_.GetWeakPtr()));
+    LOG(INFO) << "Service enabled by user login";
+    Enable();
     return;
   }
 
@@ -385,24 +366,7 @@ void Proxy::OnSessionStateChanged(bool login) {
   Disable();
 }
 
-void Proxy::OnFeatureEnabled(std::optional<bool> enabled) {
-  if (!enabled.has_value()) {
-    LOG(ERROR) << "Failed to read feature flag - service will be disabled.";
-    Disable();
-    return;
-  }
-
-  if (enabled.value()) {
-    LOG(INFO) << "Service enabled by feature flag";
-    Enable();
-  } else {
-    LOG(INFO) << "Service disabled by feature flag";
-    Disable();
-  }
-}
-
 void Proxy::Enable() {
-  feature_enabled_ = true;
   if (!ns_fd_.is_valid() || !device_)
     return;
 
@@ -435,12 +399,11 @@ void Proxy::Enable() {
 }
 
 void Proxy::Disable() {
-  if (feature_enabled_ && opts_.type == Type::kSystem && ns_fd_.is_valid()) {
+  if (opts_.type == Type::kSystem && ns_fd_.is_valid()) {
     ClearShillDNSProxyAddresses();
   }
   // Teardown DNS redirection rules.
   lifeline_fds_.clear();
-  feature_enabled_ = false;
 }
 
 void Proxy::Stop() {
@@ -718,11 +681,6 @@ void Proxy::SetShillDNSProxyAddresses(const std::string& ipv4_addr,
     LOG(DFATAL) << "Must be called from system proxy only";
     return;
   }
-
-  // When disabled, block any attempt to set this property in shill which will
-  // cause system DNS to start to flow in.
-  if (!feature_enabled_)
-    return;
 
   if (num_retries == 0) {
     metrics_.RecordProcessEvent(

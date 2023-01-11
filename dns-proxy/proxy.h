@@ -23,7 +23,6 @@
 #include <shill/net/byte_string.h>
 #include <shill/net/rtnl_listener.h>
 
-#include "dns-proxy/chrome_features_service_client.h"
 #include "dns-proxy/metrics.h"
 #include "dns-proxy/resolver.h"
 #include "dns-proxy/session_monitor.h"
@@ -121,9 +120,6 @@ class Proxy : public brillo::DBusDaemon {
   // Triggered by the session monitor whenever the user logs in or out.
   void OnSessionStateChanged(bool login);
 
-  // Triggered by the Chrome features client in response to checking the status
-  // of the DNSProxyEnabled feature value.
-  void OnFeatureEnabled(std::optional<bool> enabled);
   void Enable();
   void Disable();
 
@@ -202,7 +198,6 @@ class Proxy : public brillo::DBusDaemon {
               SystemProxy_SetShillDNSProxyAddressesDoesntCrashIfDieFalse);
   FRIEND_TEST(ProxyTest, SystemProxy_SetShillDNSProxyAddresses);
   FRIEND_TEST(ProxyTest, SystemProxy_SetShillDNSProxyAddressesEmptyNameserver);
-  FRIEND_TEST(ProxyTest, SystemProxy_SetShillDNSProxyAddressesFeatureDisabled);
   FRIEND_TEST(ProxyTest, SystemProxy_ClearShillDNSProxyAddresses);
   FRIEND_TEST(ProxyTest, ShillInitializedWhenReady);
   FRIEND_TEST(ProxyTest, SystemProxy_ConnectedNamedspace);
@@ -235,12 +230,6 @@ class Proxy : public brillo::DBusDaemon {
   FRIEND_TEST(ProxyTest, MultipleDoHProvidersForAlwaysOnMode);
   FRIEND_TEST(ProxyTest, MultipleDoHProvidersForAutomaticMode);
   FRIEND_TEST(ProxyTest, DoHBadAlwaysOnConfigSetsAutomaticMode);
-  FRIEND_TEST(ProxyTest, FeatureEnablementCheckedOnSetup);
-  FRIEND_TEST(ProxyTest, LoginEventTriggersFeatureCheck);
-  FRIEND_TEST(ProxyTest, LogoutEventTriggersDisable);
-  FRIEND_TEST(ProxyTest, FeatureEnabled_LoginAfterLogout);
-  FRIEND_TEST(ProxyTest, FeatureDisabled_LoginAfterLogout);
-  FRIEND_TEST(ProxyTest, SystemProxy_ShillPropertyNotUpdatedIfFeatureDisabled);
   FRIEND_TEST(ProxyTest, DefaultProxy_DisableDoHProvidersOnVPN);
   FRIEND_TEST(ProxyTest, SystemProxy_SetsDnsRedirectionRule);
   FRIEND_TEST(ProxyTest, SystemProxy_SetDnsRedirectionRuleIPv6Added);
@@ -249,8 +238,6 @@ class Proxy : public brillo::DBusDaemon {
               DefaultProxy_SetDnsRedirectionRuleDeviceAlreadyStarted);
   FRIEND_TEST(ProxyTest, DefaultProxy_SetDnsRedirectionRuleNewDeviceStarted);
   FRIEND_TEST(ProxyTest, DefaultProxy_NeverSetsDnsRedirectionRuleOtherGuest);
-  FRIEND_TEST(ProxyTest,
-              DefaultProxy_NeverSetsDnsRedirectionRuleFeatureDisabled);
   FRIEND_TEST(ProxyTest, DefaultProxy_SetDnsRedirectionRuleWithoutIPv6);
   FRIEND_TEST(ProxyTest, DefaultProxy_SetDnsRedirectionRuleIPv6Added);
   FRIEND_TEST(ProxyTest, DefaultProxy_SetDnsRedirectionRuleIPv6Deleted);
@@ -259,7 +246,6 @@ class Proxy : public brillo::DBusDaemon {
   FRIEND_TEST(ProxyTest, ArcProxy_SetDnsRedirectionRuleNewDeviceStarted);
   FRIEND_TEST(ProxyTest, ArcProxy_NeverSetsDnsRedirectionRuleOtherIfname);
   FRIEND_TEST(ProxyTest, ArcProxy_NeverSetsDnsRedirectionRuleOtherGuest);
-  FRIEND_TEST(ProxyTest, ArcProxy_NeverSetsDnsRedirectionRuleFeatureDisabled);
   FRIEND_TEST(ProxyTest, ArcProxy_SetDnsRedirectionRuleIPv6Added);
   FRIEND_TEST(ProxyTest, ArcProxy_SetDnsRedirectionRuleIPv6Deleted);
   FRIEND_TEST(ProxyTest, ArcProxy_SetDnsRedirectionRuleUnrelatedIPv6Added);
@@ -269,7 +255,6 @@ class Proxy : public brillo::DBusDaemon {
   std::unique_ptr<patchpanel::Client> patchpanel_;
   std::unique_ptr<shill::Client> shill_;
   std::unique_ptr<shill::Client::ManagerPropertyAccessor> shill_props_;
-  std::unique_ptr<ChromeFeaturesServiceClient> features_;
   std::unique_ptr<SessionMonitor> session_;
 
   base::ScopedFD ns_fd_;
@@ -281,7 +266,6 @@ class Proxy : public brillo::DBusDaemon {
   std::unique_ptr<shill::Client::Device> device_;
 
   bool shill_ready_{false};
-  bool feature_enabled_{false};
 
   // Mapping of interface name and socket family pair to a lifeline file
   // descriptor. These file descriptors control the lifetime of the DNS
