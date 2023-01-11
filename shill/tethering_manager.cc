@@ -37,6 +37,9 @@ static constexpr char kSSIDPrefix[] = "chromeOS-";
 // possibility, while have enough anonymity among chromeOS population to make
 // the device untrackable. Use 4 digit numbers as random SSID suffix.
 static constexpr size_t kSSIDSuffixLength = 4;
+// Max SSID length is 32 octets, hex encode change 1 character into 2 hex
+// digits, thus max hex SSID length is multiplied by 2.
+static constexpr size_t kMaxWiFiHexSSIDLength = 32 * 2;
 static constexpr size_t kMinWiFiPassphraseLength = 8;
 static constexpr size_t kMaxWiFiPassphraseLength = 63;
 // Auto disable tethering if no clients for |kAutoDisableMinute| minutes.
@@ -153,7 +156,8 @@ bool TetheringManager::FromProperties(const KeyValueStore& properties) {
   std::string ssid;
   if (properties.Contains<std::string>(kTetheringConfSSIDProperty)) {
     ssid = properties.Get<std::string>(kTetheringConfSSIDProperty);
-    if (ssid.empty() || !std::all_of(ssid.begin(), ssid.end(), ::isxdigit)) {
+    if (ssid.empty() || ssid.length() > kMaxWiFiHexSSIDLength ||
+        !std::all_of(ssid.begin(), ssid.end(), ::isxdigit)) {
       LOG(ERROR) << "Invalid SSID provided in tethering config: " << ssid;
       return false;
     }
