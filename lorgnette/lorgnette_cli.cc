@@ -14,6 +14,7 @@
 #include <base/containers/contains.h>
 #include <base/files/file.h>
 #include <base/files/file_descriptor_watcher_posix.h>
+#include <base/files/scoped_file.h>
 #include <base/json/json_writer.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/weak_ptr.h>
@@ -276,7 +277,8 @@ std::optional<lorgnette::GetNextImageResponse> ScanHandler::GetNextImage(
 
   brillo::ErrorPtr error;
   std::vector<uint8_t> response_out;
-  if (!manager_->GetNextImage(request_in, output_file.GetPlatformFile(),
+  if (!manager_->GetNextImage(request_in,
+                              base::ScopedFD(output_file.TakePlatformFile()),
                               &response_out, &error)) {
     LOG(ERROR) << "GetNextImage failed: " << error->GetMessage();
     return std::nullopt;

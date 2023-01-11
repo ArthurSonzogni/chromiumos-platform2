@@ -4,12 +4,15 @@
 
 #include "lorgnette/firewall_manager.h"
 
+#include <unistd.h>
+
 #include <algorithm>
 #include <utility>
 #include <vector>
 
 #include <base/bind.h>
 #include <base/check.h>
+#include <base/files/scoped_file.h>
 #include <brillo/errors/error.h>
 
 using std::string;
@@ -137,7 +140,8 @@ void FirewallManager::SendPortAccessRequest(uint16_t port) {
   // process.
   brillo::ErrorPtr error;
   if (!permission_broker_proxy_->RequestUdpPortAccess(
-          port, interface_, lifeline_read_.get(), &allowed, &error)) {
+          port, interface_, base::ScopedFD(dup(lifeline_read_.get())), &allowed,
+          &error)) {
     LOG(ERROR) << "Failed to request UDP port access: " << error->GetCode()
                << " " << error->GetMessage();
     return;
