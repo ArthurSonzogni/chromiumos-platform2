@@ -3,6 +3,24 @@
 <node name="/org/chromium/SwapManagement"
       xmlns:tp="http://telepathy.freedesktop.org/wiki/DbusSpec#extensions-v0">
   <interface name="org.chromium.SwapManagement">
+    <method name="SwapStart">
+      <tp:docstring>
+        Turn swap usage on (leaves config files alone).
+      </tp:docstring>
+      <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
+    </method>
+    <method name="SwapStop">
+      <tp:docstring>
+        Turn swap usage off (leaves config files alone).
+      </tp:docstring>
+      <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
+    </method>
+    <method name="SwapRestart">
+      <tp:docstring>
+        Turn swap usage off and then on (leaves config files alone).
+      </tp:docstring>
+      <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
+    </method>
     <method name="SwapEnable">
       <tp:docstring>
         Enable swap file usage via config files.
@@ -47,20 +65,6 @@
         </tp:docstring>
       </arg>
       <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
-    </method>
-    <method name="SwapStartStop">
-      <tp:docstring>
-        Turn swap usage on/off (leaves config files alone).
-      </tp:docstring>
-      <arg name="status" type="s" direction="out">
-        Free-form text reporting status.
-      </arg>
-      <arg name="on" type="b" direction="in">
-        <tp:docstring>
-          Whether to turn it on or off.
-        </tp:docstring>
-      </arg>
-      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
     <method name="SwapStatus">
       <tp:docstring>

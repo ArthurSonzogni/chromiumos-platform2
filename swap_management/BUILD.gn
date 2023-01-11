@@ -13,10 +13,14 @@ group("all") {
     ":install_udev_rule",
     ":swap_management",
   ]
+  if (use.test) {
+    deps += [ ":swap_tool_test" ]
+  }
 }
 
 pkg_config("target_defaults") {
   pkg_deps = [
+    "absl",
     "dbus-1",
     "libbrillo",
     "libchrome",
@@ -29,6 +33,7 @@ static_library("libswapmanagement") {
   sources = [
     "swap_management_dbus_adaptor.cc",
     "swap_tool.cc",
+    "swap_tool_status.cc",
   ]
 
   configs += [ ":target_defaults" ]
@@ -75,4 +80,26 @@ install_config("install_tmpfiles_config") {
 install_config("install_udev_rule") {
   sources = [ "udev/12-zram-writeback.rules" ]
   install_path = "/lib/udev/rules.d"
+}
+
+if (use.test) {
+  pkg_config("test_helper_config") {
+    pkg_deps = [
+      "libbrillo-test",
+      "libchrome-test",
+    ]
+  }
+  executable("swap_tool_test") {
+    sources = [ "swap_tool_test.cc" ]
+    configs += [
+      "//common-mk:test",
+      ":test_helper_config",
+      ":target_defaults",
+    ]
+    deps = [
+      ":libswapmanagement",
+      "//common-mk/testrunner:testrunner",
+    ]
+    run_test = true
+  }
 }

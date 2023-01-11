@@ -6,7 +6,11 @@
 #define SWAP_MANAGEMENT_SWAP_TOOL_H_
 
 #include <string>
+#include <vector>
 
+#include <absl/status/status.h>
+#include <absl/status/statusor.h>
+#include <base/files/file_path.h>
 #include <brillo/errors/error.h>
 
 namespace swap_management {
@@ -17,8 +21,10 @@ class SwapTool {
   SwapTool(const SwapTool&) = delete;
   SwapTool& operator=(const SwapTool&) = delete;
 
-  ~SwapTool() = default;
+  virtual ~SwapTool() = default;
 
+  absl::Status SwapStart();
+  absl::Status SwapStop();
   std::string SwapEnable(int32_t size, bool change_now) const;
   std::string SwapDisable(bool change_now) const;
   std::string SwapStartStop(bool on) const;
@@ -34,6 +40,26 @@ class SwapTool {
 
   // MGLRU configuration.
   bool MGLRUSetEnable(brillo::ErrorPtr* error, bool enable) const;
+
+  // virtual and protected for testing
+ protected:
+  virtual absl::Status RunProcessHelper(
+      const std::vector<std::string>& commands);
+  virtual absl::Status WriteFile(const base::FilePath& path,
+                                 const std::string& data);
+  virtual absl::Status ReadFileToStringWithMaxSize(const base::FilePath& path,
+                                                   std::string* contents,
+                                                   size_t max_size);
+  virtual absl::Status ReadFileToString(const base::FilePath& path,
+                                        std::string* contents);
+
+ private:
+  absl::StatusOr<bool> IsZramSwapOn();
+  absl::StatusOr<uint64_t> GetMemTotal();
+  absl::Status SetDefaultLowMemoryMargin(uint64_t mem_total);
+  absl::Status InitializeMMTunables(uint64_t mem_total);
+  absl::StatusOr<uint64_t> GetZramSize(uint64_t mem_total);
+  absl::Status EnableZramSwapping();
 };
 
 }  // namespace swap_management

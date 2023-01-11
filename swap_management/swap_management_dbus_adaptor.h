@@ -31,12 +31,14 @@ class SwapManagementDBusAdaptor
   void RegisterAsync(
       brillo::dbus_utils::AsyncEventSequencer::CompletionAction cb);
 
+  bool SwapStart(brillo::ErrorPtr* error) override;
+  bool SwapStop(brillo::ErrorPtr* error) override;
+  bool SwapRestart(brillo::ErrorPtr* error) override;
   bool MGLRUSetEnable(brillo::ErrorPtr* error,
                       bool enable,
                       bool* out_result) override;
   std::string SwapEnable(int32_t size, bool change_now) override;
   std::string SwapDisable(bool change_now) override;
-  std::string SwapStartStop(bool on) override;
   std::string SwapStatus() override;
   std::string SwapSetParameter(const std::string& parameter_name,
                                uint32_t parameter_value) override;

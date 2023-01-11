@@ -7,6 +7,7 @@
 #include <memory>
 #include <utility>
 
+#include <absl/status/status.h>
 #include <base/logging.h>
 #include <base/memory/ref_counted.h>
 #include <chromeos/dbus/service_constants.h>
@@ -39,6 +40,34 @@ void SwapManagementDBusAdaptor::ResetShutdownTimer() {
     shutdown_timer_->Reset();
 }
 
+bool SwapManagementDBusAdaptor::SwapStart(brillo::ErrorPtr* error) {
+  ResetShutdownTimer();
+  absl::Status status = swap_tool_->SwapStart();
+  if (!status.ok()) {
+    brillo::Error::AddTo(error, FROM_HERE, brillo::errors::dbus::kDomain,
+                         "org.chromium.SwapManagement.error.SwapStart",
+                         status.ToString());
+    return false;
+  }
+  return true;
+}
+
+bool SwapManagementDBusAdaptor::SwapStop(brillo::ErrorPtr* error) {
+  ResetShutdownTimer();
+  absl::Status status = swap_tool_->SwapStop();
+  if (!status.ok()) {
+    brillo::Error::AddTo(error, FROM_HERE, brillo::errors::dbus::kDomain,
+                         "org.chromium.SwapManagement.error.SwapStop",
+                         status.ToString());
+    return false;
+  }
+  return true;
+}
+
+bool SwapManagementDBusAdaptor::SwapRestart(brillo::ErrorPtr* error) {
+  return SwapStop(error) && SwapStart(error);
+}
+
 bool SwapManagementDBusAdaptor::MGLRUSetEnable(brillo::ErrorPtr* error,
                                                bool enable,
                                                bool* out_result) {
@@ -56,11 +85,6 @@ std::string SwapManagementDBusAdaptor::SwapEnable(int32_t size,
 std::string SwapManagementDBusAdaptor::SwapDisable(bool change_now) {
   ResetShutdownTimer();
   return swap_tool_->SwapDisable(change_now);
-}
-
-std::string SwapManagementDBusAdaptor::SwapStartStop(bool on) {
-  ResetShutdownTimer();
-  return swap_tool_->SwapStartStop(on);
 }
 
 std::string SwapManagementDBusAdaptor::SwapStatus() {
