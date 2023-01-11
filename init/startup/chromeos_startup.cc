@@ -174,9 +174,7 @@ void ChromeosStartup::ForceCleanFileAttrs(const base::FilePath& path) {
   }
 
   std::vector<std::string> skip;
-  int url_xattrs_count;
-  bool status =
-      file_attrs_cleaner::ScanDir(path.value(), skip, &url_xattrs_count);
+  bool status = file_attrs_cleaner::ScanDir(path.value(), skip);
 
   if (!status) {
     std::vector<std::string> args = {"keepimg"};

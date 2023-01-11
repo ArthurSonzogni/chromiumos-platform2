@@ -24,9 +24,6 @@
 
 namespace file_attrs_cleaner {
 
-const char xdg_origin_url[] = "user.xdg.origin.url";
-const char xdg_referrer_url[] = "user.xdg.referrer.url";
-
 namespace {
 
 struct ScopedDirDeleter {
@@ -67,33 +64,8 @@ AttributeCheckStatus CheckFileAttributes(const base::FilePath& path,
   return AttributeCheckStatus::NO_ATTR;
 }
 
-AttributeCheckStatus RemoveURLExtendedAttributes(const base::FilePath& path) {
-  bool found_xattr = false;
-  bool xattr_success = true;
-
-  for (const auto& attr_name : {xdg_origin_url, xdg_referrer_url}) {
-    if (getxattr(path.value().c_str(), attr_name, nullptr, 0) >= 0) {
-      // Attribute exists, clear it.
-      found_xattr = true;
-      bool res = removexattr(path.value().c_str(), attr_name) == 0;
-      if (!res) {
-        PLOG(ERROR) << "Unable to remove extended attribute";
-      }
-      xattr_success &= res;
-    }
-  }
-
-  if (found_xattr) {
-    return xattr_success ? AttributeCheckStatus::CLEARED
-                         : AttributeCheckStatus::CLEAR_FAILED;
-  } else {
-    return AttributeCheckStatus::NO_ATTR;
-  }
-}
-
 bool ScanDir(const base::FilePath& dir,
-             const std::vector<std::string>& skip_recurse,
-             int* url_xattrs_count) {
+             const std::vector<std::string>& skip_recurse) {
   // Internally glibc will use O_CLOEXEC when opening the directory.
   // Unfortunately, there is no opendirat() helper we could use (so that ScanDir
   // could accept a fd argument).
@@ -112,8 +84,6 @@ bool ScanDir(const base::FilePath& dir,
   // to scan, we stick with opendir() here.  Since this program only runs during
   // early OS init, there shouldn't be other programs in the system racing with
   // us to cause problems.
-
-  *url_xattrs_count = 0;
 
   ScopedDir dirp(opendir(dir.value().c_str()));
   if (dirp.get() == nullptr) {
@@ -192,15 +162,6 @@ bool ScanDir(const base::FilePath& dir,
       }
       case DT_REG: {
         // Check the settings on this file.
-
-        // Extended attributes can be read even on encrypted files, so remove
-        // them by path and not by file descriptor. Since the removal is
-        // best-effort anyway, TOCTOU issues should not be a problem.
-        AttributeCheckStatus status = RemoveURLExtendedAttributes(path);
-        ret &= CheckSucceeded(status);
-        if (status == AttributeCheckStatus::CLEARED)
-          ++(*url_xattrs_count);
-
         base::ScopedFD fd(openat(
             dfd, de->d_name, O_RDONLY | O_NONBLOCK | O_NOFOLLOW | O_CLOEXEC));
 
@@ -238,15 +199,6 @@ bool ScanDir(const base::FilePath& dir,
 
   if (closedir(dirp.release()) != 0)
     PLOG(ERROR) << "Unable to close directory";
-
-  int sub_xattrs_count = 0;
-  for (const auto& subdir : subdirs) {
-    // Descend into this directory.
-    if (ScanDir(subdir, skip_recurse, &sub_xattrs_count))
-      *url_xattrs_count += sub_xattrs_count;
-    else
-      ret = false;
-  }
 
   return ret;
 }

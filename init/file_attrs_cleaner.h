@@ -12,9 +12,6 @@
 
 namespace file_attrs_cleaner {
 
-extern const char xdg_origin_url[];
-extern const char xdg_referrer_url[];
-
 enum class AttributeCheckStatus {
   ERROR = 0,
   NO_ATTR,
@@ -34,26 +31,16 @@ AttributeCheckStatus CheckFileAttributes(const base::FilePath& path,
                                          bool isdir,
                                          int fd);
 
-// Remove download-related URL extended attributes. See crbug.com/919486.
-// This cannot use a file descriptor because the files we want to clear xattrs
-// from are encrypted and therefore cannot be opened.
-// Report whether the file actually had the relevant extended attributes for
-// metrics purposes.
-AttributeCheckStatus RemoveURLExtendedAttributes(const base::FilePath& path);
-
 // Recursively scan the file attributes of paths under |dir|.
 // Don't recurse into any subdirectories that exactly match any string in
 // |skip_recurse|.
-// Populate |url_xattrs_count| if files with those attributes were found.
 bool ScanDir(const base::FilePath& dir,
-             const std::vector<std::string>& skip_recurse,
-             int* url_xattrs_count);
+             const std::vector<std::string>& skip_recurse);
 
 // Convenience function.
 static inline bool ScanDir(const std::string& dir,
-                           const std::vector<std::string>& skip_recurse,
-                           int* url_xattrs_count) {
-  return ScanDir(base::FilePath(dir), skip_recurse, url_xattrs_count);
+                           const std::vector<std::string>& skip_recurse) {
+  return ScanDir(base::FilePath(dir), skip_recurse);
 }
 
 }  // namespace file_attrs_cleaner
