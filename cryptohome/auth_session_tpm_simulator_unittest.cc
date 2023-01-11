@@ -90,8 +90,18 @@ CryptohomeStatus RunAddAuthFactor(
 CryptohomeStatus RunAuthenticateAuthFactor(
     const user_data_auth::AuthenticateAuthFactorRequest& request,
     AuthSession& auth_session) {
+  // Convert |auth_factor_label| or |auth_factor_labels| into an array.
+  std::vector<std::string> auth_factor_labels;
+  if (!request.auth_factor_label().empty()) {
+    auth_factor_labels.push_back(request.auth_factor_label());
+  } else {
+    for (auto label : request.auth_factor_labels()) {
+      auth_factor_labels.push_back(label);
+    }
+  }
   TestFuture<CryptohomeStatus> future;
-  auth_session.AuthenticateAuthFactor(request, future.GetCallback());
+  auth_session.AuthenticateAuthFactor(auth_factor_labels, request.auth_input(),
+                                      future.GetCallback());
   return future.Take();
 }
 

@@ -12,6 +12,7 @@
 #include <base/test/test_future.h>
 #include <brillo/cryptohome.h>
 #include <brillo/secure_blob.h>
+#include <cryptohome/proto_bindings/auth_factor.pb.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <libhwsec/frontend/cryptohome/mock_frontend.h>
@@ -350,13 +351,11 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
                    std::move(auth_block_state));
           return true;
         });
-
-    user_data_auth::AuthenticateAuthFactorRequest request;
-    request.set_auth_factor_label(label);
-    request.mutable_auth_input()->mutable_password_input()->set_secret(secret);
-    request.set_auth_session_id(auth_session.serialized_token());
+    std::string auth_factor_labels[] = {label};
+    user_data_auth::AuthInput auth_input_proto;
+    auth_input_proto.mutable_password_input()->set_secret(secret);
     TestFuture<CryptohomeStatus> authenticate_future;
-    auth_session.AuthenticateAuthFactor(request,
+    auth_session.AuthenticateAuthFactor(auth_factor_labels, auth_input_proto,
                                         authenticate_future.GetCallback());
     EXPECT_THAT(authenticate_future.Get(), IsOk());
   }
@@ -395,12 +394,11 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
   void AuthenticateFactor(AuthSession& auth_session,
                           const std::string& label,
                           const std::string& secret) {
-    user_data_auth::AuthenticateAuthFactorRequest request;
-    request.set_auth_factor_label(label);
-    request.mutable_auth_input()->mutable_password_input()->set_secret(secret);
-    request.set_auth_session_id(auth_session.serialized_token());
+    std::string auth_factor_labels[] = {label};
+    user_data_auth::AuthInput auth_input_proto;
+    auth_input_proto.mutable_password_input()->set_secret(secret);
     TestFuture<CryptohomeStatus> authenticate_future;
-    auth_session.AuthenticateAuthFactor(request,
+    auth_session.AuthenticateAuthFactor(auth_factor_labels, auth_input_proto,
                                         authenticate_future.GetCallback());
     EXPECT_THAT(authenticate_future.Get(), IsOk());
   }
@@ -1604,13 +1602,12 @@ TEST_F(AuthSessionTestWithKeysetManagement, AddFactorAfterBackupVkCorruption) {
   ASSERT_THAT(auth_session_status, IsOk());
   AuthSession& auth_session = *auth_session_status.value();
   // Authenticating the AuthSession via the password.
-  user_data_auth::AuthenticateAuthFactorRequest auth_request;
-  auth_request.set_auth_session_id(auth_session.serialized_token());
-  auth_request.set_auth_factor_label(kPasswordLabel);
-  auth_request.mutable_auth_input()->mutable_password_input()->set_secret(
-      kPassword);
+  std::string auth_factor_labels[] = {kPasswordLabel};
+  user_data_auth::AuthInput auth_input_proto;
+  auth_input_proto.mutable_password_input()->set_secret(kPassword);
   TestFuture<CryptohomeStatus> auth_future;
-  auth_session.AuthenticateAuthFactor(auth_request, auth_future.GetCallback());
+  auth_session.AuthenticateAuthFactor(auth_factor_labels, auth_input_proto,
+                                      auth_future.GetCallback());
   EXPECT_THAT(auth_future.Get(), IsOk());
 
   // Test.

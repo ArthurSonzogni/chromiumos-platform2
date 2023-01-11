@@ -766,13 +766,25 @@ class AuthSessionInterfaceMockAuthTest : public AuthSessionInterfaceTestBase {
     return reply_future.Get();
   }
 
+  user_data_auth::AuthenticateAuthFactorReply
+  LegacyAuthenticatePasswordAuthFactor(const AuthSession& auth_session,
+                                       const std::string& auth_factor_label,
+                                       const std::string& password) {
+    user_data_auth::AuthenticateAuthFactorRequest request;
+    request.set_auth_session_id(auth_session.serialized_token());
+    request.set_auth_factor_label(auth_factor_label);
+    request.mutable_auth_input()->mutable_password_input()->set_secret(
+        password);
+    return AuthenticateAuthFactor(request);
+  }
+
   user_data_auth::AuthenticateAuthFactorReply AuthenticatePasswordAuthFactor(
       const AuthSession& auth_session,
       const std::string& auth_factor_label,
       const std::string& password) {
     user_data_auth::AuthenticateAuthFactorRequest request;
     request.set_auth_session_id(auth_session.serialized_token());
-    request.set_auth_factor_label(auth_factor_label);
+    request.add_auth_factor_labels(auth_factor_label);
     request.mutable_auth_input()->mutable_password_input()->set_secret(
         password);
     return AuthenticateAuthFactor(request);
@@ -1778,6 +1790,46 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorNoInput) {
   EXPECT_EQ(userdataauth_.FindUserSessionForTest(kUsername), nullptr);
 }
 
+// Test that AuthenticateAuthFactor fails when both |auth_factor_label| and
+// |auth_factor_labels| are specified.
+TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorLabelConflicts) {
+  const std::string obfuscated_username = SanitizeUserName(kUsername);
+
+  // Arrange.
+  EXPECT_CALL(keyset_management_, UserExists(obfuscated_username))
+      .WillRepeatedly(ReturnValue(true));
+  const SerializedVaultKeyset serialized_vk =
+      CreateFakePasswordVk(kPasswordLabel);
+  MockVKToAuthFactorMapLoading(obfuscated_username, {serialized_vk},
+                               keyset_management_);
+
+  MockKeysetLoadingByLabel(obfuscated_username, serialized_vk,
+                           keyset_management_);
+  CryptohomeStatusOr<AuthSession*> auth_session_status =
+      auth_session_manager_->CreateAuthSession(kUsername, /*flags=*/0,
+                                               AuthIntent::kDecrypt);
+  EXPECT_TRUE(auth_session_status.ok());
+  AuthSession* auth_session = auth_session_status.value();
+
+  ASSERT_TRUE(auth_session);
+
+  // Act.
+  user_data_auth::AuthenticateAuthFactorRequest request;
+  request.set_auth_session_id(auth_session->serialized_token());
+  request.mutable_auth_input()->mutable_password_input()->set_secret(kPassword);
+  request.set_auth_factor_label(kPasswordLabel);
+  request.add_auth_factor_labels(kPasswordLabel2);
+  const user_data_auth::AuthenticateAuthFactorReply reply =
+      AuthenticateAuthFactor(request);
+
+  // Assert.
+  EXPECT_EQ(reply.error(), user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
+  EXPECT_FALSE(reply.authenticated());
+  EXPECT_FALSE(reply.has_seconds_left());
+  EXPECT_THAT(reply.authorized_for(), IsEmpty());
+  EXPECT_EQ(userdataauth_.FindUserSessionForTest(kUsername), nullptr);
+}
+
 // Test the PreparePersistentVault, when called after a successful
 // AuthenticateAuthFactor, mounts the home dir and sets up the user session.
 TEST_F(AuthSessionInterfaceMockAuthTest, PrepareVaultAfterFactorAuthVk) {
@@ -2150,6 +2202,46 @@ TEST_F(AuthSessionInterfaceMockAuthTest,
   user_data_auth::AuthenticateAuthFactorReply reply =
       AuthenticatePasswordAuthFactor(*second_auth_session, kPasswordLabel,
                                      kPassword);
+
+  // Assert.
+  EXPECT_EQ(reply.error(), user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+  EXPECT_THAT(second_auth_session->authorized_intents(),
+              UnorderedElementsAre(AuthIntent::kVerifyOnly));
+}
+
+// Test that AuthenticateAuthFactor succeeds for a freshly prepared ephemeral
+// user who has a password added. Test the same functionality as
+// AuthenticatePassworFactorForEphermeral. Use a different helper method to
+// construct the request with legacy |auth_factor_label| to ensure backward
+// compatibility.
+TEST_F(AuthSessionInterfaceMockAuthTest,
+       LegacyAuthenticatePasswordFactorForEphemeral) {
+  // Arrange.
+  // Pretend to have a different owner user, because otherwise the ephemeral
+  // login is disallowed.
+  MockOwnerUser("whoever", homedirs_);
+  AuthSession* const first_auth_session = PrepareEphemeralUser();
+  ASSERT_TRUE(first_auth_session);
+  EXPECT_EQ(
+      AddPasswordAuthFactor(*first_auth_session, kPasswordLabel, kPassword)
+          .error(),
+      user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+  EXPECT_CALL(mock_auth_block_utility_,
+              IsVerifyWithAuthFactorSupported(AuthIntent::kVerifyOnly,
+                                              AuthFactorType::kPassword))
+      .WillRepeatedly(Return(true));
+
+  // Act.
+  CryptohomeStatusOr<AuthSession*> auth_session_status =
+      auth_session_manager_->CreateAuthSession(
+          kUsername, AUTH_SESSION_FLAGS_EPHEMERAL_USER,
+          AuthIntent::kVerifyOnly);
+  EXPECT_TRUE(auth_session_status.ok());
+  AuthSession* const second_auth_session = auth_session_status.value();
+  ASSERT_TRUE(second_auth_session);
+  user_data_auth::AuthenticateAuthFactorReply reply =
+      LegacyAuthenticatePasswordAuthFactor(*second_auth_session, kPasswordLabel,
+                                           kPassword);
 
   // Assert.
   EXPECT_EQ(reply.error(), user_data_auth::CRYPTOHOME_ERROR_NOT_SET);

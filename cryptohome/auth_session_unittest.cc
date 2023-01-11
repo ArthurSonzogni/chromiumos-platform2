@@ -254,13 +254,12 @@ class AuthSessionTest : public ::testing::Test {
                    std::make_unique<KeyBlobs>());
         });
 
-    user_data_auth::AuthenticateAuthFactorRequest request;
-    request.set_auth_session_id(auth_session.serialized_token());
-    request.set_auth_factor_label(label);
-    request.mutable_auth_input()->mutable_password_input()->set_secret(passkey);
+    std::string auth_factor_labels[] = {label};
+    user_data_auth::AuthInput auth_input_proto;
+    auth_input_proto.mutable_password_input()->set_secret(passkey);
 
     TestFuture<CryptohomeStatus> authenticate_future;
-    auth_session.AuthenticateAuthFactor(request,
+    auth_session.AuthenticateAuthFactor(auth_factor_labels, auth_input_proto,
                                         authenticate_future.GetCallback());
 
     if (authenticate_future.Get().ok()) {
@@ -555,12 +554,11 @@ TEST_F(AuthSessionTest, NoLightweightAuthForDecryption) {
       });
 
   // Test.
-  user_data_auth::AuthenticateAuthFactorRequest request;
-  request.set_auth_session_id(auth_session.serialized_token());
-  request.set_auth_factor_label(kFakeLabel);
-  request.mutable_auth_input()->mutable_password_input()->set_secret(kFakePass);
+  std::string auth_factor_labels[] = {kFakeLabel};
+  user_data_auth::AuthInput auth_input_proto;
+  auth_input_proto.mutable_password_input()->set_secret(kFakePass);
   TestFuture<CryptohomeStatus> authenticate_future;
-  auth_session.AuthenticateAuthFactor(request,
+  auth_session.AuthenticateAuthFactor(auth_factor_labels, auth_input_proto,
                                       authenticate_future.GetCallback());
 
   // Verify.
@@ -675,11 +673,6 @@ TEST_F(AuthSessionTest,
   EXPECT_TRUE(auth_session.user_exists());
 
   // Test
-  // Calling AuthenticateAuthFactor.
-  user_data_auth::AuthenticateAuthFactorRequest request;
-  request.set_auth_session_id(auth_session.serialized_token());
-  request.set_auth_factor_label(kFakeLabel);
-  request.mutable_auth_input()->mutable_password_input()->set_secret(kFakePass);
 
   // Called within the converter_.PopulateKeyDataForVK()
   KeyData key_data;
@@ -730,8 +723,12 @@ TEST_F(AuthSessionTest,
             .Run(OkStatus<CryptohomeCryptoError>(), std::move(key_blobs2));
       });
 
+  // Calling AuthenticateAuthFactor.
   TestFuture<CryptohomeStatus> authenticate_future;
-  auth_session.AuthenticateAuthFactor(request,
+  std::string auth_factor_labels[] = {kFakeLabel};
+  user_data_auth::AuthInput auth_input_proto;
+  auth_input_proto.mutable_password_input()->set_secret(kFakePass);
+  auth_session.AuthenticateAuthFactor(auth_factor_labels, auth_input_proto,
                                       authenticate_future.GetCallback());
 
   // Verify.
@@ -768,11 +765,6 @@ TEST_F(AuthSessionTest,
   EXPECT_TRUE(auth_session.user_exists());
 
   // Test
-  // Calling AuthenticateAuthFactor.
-  user_data_auth::AuthenticateAuthFactorRequest request;
-  request.set_auth_session_id(auth_session.serialized_token());
-  request.set_auth_factor_label(kFakeLabel);
-  request.mutable_auth_input()->mutable_password_input()->set_secret(kFakePass);
 
   // Called within the converter_.PopulateKeyDataForVK()
   KeyData key_data;
@@ -826,8 +818,12 @@ TEST_F(AuthSessionTest,
             .Run(OkStatus<CryptohomeCryptoError>(), std::move(key_blobs2));
       });
 
+  // Calling AuthenticateAuthFactor.
   TestFuture<CryptohomeStatus> authenticate_future;
-  auth_session.AuthenticateAuthFactor(request,
+  std::string auth_factor_labels[] = {kFakeLabel};
+  user_data_auth::AuthInput auth_input_proto;
+  auth_input_proto.mutable_password_input()->set_secret(kFakePass);
+  auth_session.AuthenticateAuthFactor(auth_factor_labels, auth_input_proto,
                                       authenticate_future.GetCallback());
 
   // Verify.
@@ -862,11 +858,6 @@ TEST_F(AuthSessionTest,
   EXPECT_TRUE(auth_session.user_exists());
 
   // Test
-  // Calling AuthenticateAuthFactor.
-  user_data_auth::AuthenticateAuthFactorRequest request;
-  request.set_auth_session_id(auth_session.serialized_token());
-  request.set_auth_factor_label(kFakePinLabel);
-  request.mutable_auth_input()->mutable_pin_input()->set_secret(kFakePin);
 
   // Called within the converter_.PopulateKeyDataForVK()
   KeyData key_data;
@@ -907,8 +898,12 @@ TEST_F(AuthSessionTest,
             .Run(OkStatus<CryptohomeCryptoError>(), std::move(key_blobs2));
       });
 
+  // Calling AuthenticateAuthFactor.
   TestFuture<CryptohomeStatus> authenticate_future;
-  auth_session.AuthenticateAuthFactor(request,
+  std::string auth_factor_labels[] = {kFakePinLabel};
+  user_data_auth::AuthInput auth_input_proto;
+  auth_input_proto.mutable_pin_input()->set_secret(kFakePin);
+  auth_session.AuthenticateAuthFactor(auth_factor_labels, auth_input_proto,
                                       authenticate_future.GetCallback());
 
   // Verify.
@@ -939,14 +934,11 @@ TEST_F(AuthSessionTest, AuthenticateAuthFactorMismatchLabelAndType) {
 
   // Test
   // Calling AuthenticateAuthFactor.
-  user_data_auth::AuthenticateAuthFactorRequest request;
-  request.set_auth_session_id(auth_session.serialized_token());
-  request.set_auth_factor_label(kFakePinLabel);
-  // Note: Intentially creating a missmatch in type and label.
-  request.mutable_auth_input()->mutable_password_input()->set_secret(kFakePin);
-
   TestFuture<CryptohomeStatus> authenticate_future;
-  auth_session.AuthenticateAuthFactor(request,
+  std::string auth_factor_labels[] = {kFakePinLabel};
+  user_data_auth::AuthInput auth_input_proto;
+  auth_input_proto.mutable_password_input()->set_secret(kFakePin);
+  auth_session.AuthenticateAuthFactor(auth_factor_labels, auth_input_proto,
                                       authenticate_future.GetCallback());
 
   // Verify.
@@ -1477,12 +1469,11 @@ TEST_F(AuthSessionTest, AuthenticateAuthFactorWebAuthnIntent) {
       });
 
   // Test.
-  user_data_auth::AuthenticateAuthFactorRequest request;
-  request.set_auth_session_id(auth_session.serialized_token());
-  request.set_auth_factor_label(kFakeLabel);
-  request.mutable_auth_input()->mutable_password_input()->set_secret(kFakePass);
   TestFuture<CryptohomeStatus> authenticate_future;
-  auth_session.AuthenticateAuthFactor(request,
+  std::string auth_factor_labels[] = {kFakeLabel};
+  user_data_auth::AuthInput auth_input_proto;
+  auth_input_proto.mutable_password_input()->set_secret(kFakePass);
+  auth_session.AuthenticateAuthFactor(auth_factor_labels, auth_input_proto,
                                       authenticate_future.GetCallback());
 
   // Verify.
@@ -1684,13 +1675,11 @@ class AuthSessionWithUssExperimentTest : public AuthSessionTest {
           return vk;
         });
 
-    user_data_auth::AuthenticateAuthFactorRequest request;
-    request.set_auth_session_id(auth_session.serialized_token());
-    request.set_auth_factor_label(kFakeLabel);
-    request.mutable_auth_input()->mutable_password_input()->set_secret(
-        password);
     TestFuture<CryptohomeStatus> authenticate_future;
-    auth_session.AuthenticateAuthFactor(request,
+    std::string auth_factor_labels[] = {kFakeLabel};
+    user_data_auth::AuthInput auth_input_proto;
+    auth_input_proto.mutable_password_input()->set_secret(password);
+    auth_session.AuthenticateAuthFactor(auth_factor_labels, auth_input_proto,
                                         authenticate_future.GetCallback());
 
     // Verify.
@@ -2268,12 +2257,11 @@ TEST_F(AuthSessionWithUssExperimentTest, AuthenticatePasswordAuthFactorViaUss) {
         return vk;
       });
   // Calling AuthenticateAuthFactor.
-  user_data_auth::AuthenticateAuthFactorRequest request;
-  request.set_auth_session_id(auth_session->serialized_token());
-  request.set_auth_factor_label(kFakeLabel);
-  request.mutable_auth_input()->mutable_password_input()->set_secret(kFakePass);
   TestFuture<CryptohomeStatus> authenticate_future;
-  auth_session->AuthenticateAuthFactor(request,
+  std::string auth_factor_labels[] = {kFakeLabel};
+  user_data_auth::AuthInput auth_input_proto;
+  auth_input_proto.mutable_password_input()->set_secret(kFakePass);
+  auth_session->AuthenticateAuthFactor(auth_factor_labels, auth_input_proto,
                                        authenticate_future.GetCallback());
 
   // Verify.
@@ -2372,13 +2360,11 @@ TEST_F(AuthSessionWithUssExperimentTest,
         return vk;
       });
   // Calling AuthenticateAuthFactor.
-  user_data_auth::AuthenticateAuthFactorRequest request;
-  request.set_auth_session_id(auth_session->serialized_token());
-  request.set_auth_factor_label(kFakeLabel);
-  request.mutable_auth_input()->mutable_password_input()->set_secret(kFakePass);
-
+  std::string auth_factor_labels[] = {kFakeLabel};
+  user_data_auth::AuthInput auth_input_proto;
+  auth_input_proto.mutable_password_input()->set_secret(kFakePass);
   TestFuture<CryptohomeStatus> authenticate_future;
-  auth_session->AuthenticateAuthFactor(request,
+  auth_session->AuthenticateAuthFactor(auth_factor_labels, auth_input_proto,
                                        authenticate_future.GetCallback());
 
   // Verify.
@@ -2471,13 +2457,11 @@ TEST_F(AuthSessionWithUssExperimentTest,
       });
 
   // Calling AuthenticateAuthFactor.
-  user_data_auth::AuthenticateAuthFactorRequest request;
-  request.set_auth_session_id(auth_session->serialized_token());
-  request.set_auth_factor_label(kFakeLabel);
-  request.mutable_auth_input()->mutable_password_input()->set_secret(kFakePass);
-
+  std::string auth_factor_labels[] = {kFakeLabel};
+  user_data_auth::AuthInput auth_input_proto;
+  auth_input_proto.mutable_password_input()->set_secret(kFakePass);
   TestFuture<CryptohomeStatus> authenticate_future;
-  auth_session->AuthenticateAuthFactor(request,
+  auth_session->AuthenticateAuthFactor(auth_factor_labels, auth_input_proto,
                                        authenticate_future.GetCallback());
 
   // Verify.
@@ -2557,12 +2541,11 @@ TEST_F(AuthSessionWithUssExperimentTest, AuthenticatePinAuthFactorViaUss) {
             .Run(OkStatus<CryptohomeCryptoError>(), std::move(key_blobs));
       });
   // Calling AuthenticateAuthFactor.
-  user_data_auth::AuthenticateAuthFactorRequest request;
-  request.set_auth_session_id(auth_session->serialized_token());
-  request.set_auth_factor_label(kFakePinLabel);
-  request.mutable_auth_input()->mutable_pin_input()->set_secret(kFakePin);
+  std::string auth_factor_labels[] = {kFakePinLabel};
+  user_data_auth::AuthInput auth_input_proto;
+  auth_input_proto.mutable_pin_input()->set_secret(kFakePin);
   TestFuture<CryptohomeStatus> authenticate_future;
-  auth_session->AuthenticateAuthFactor(request,
+  auth_session->AuthenticateAuthFactor(auth_factor_labels, auth_input_proto,
                                        authenticate_future.GetCallback());
 
   // Verify.
@@ -2739,14 +2722,12 @@ TEST_F(AuthSessionWithUssExperimentTest,
       });
 
   // Calling AuthenticateAuthFactor.
-  user_data_auth::AuthenticateAuthFactorRequest authenticate_request;
-  authenticate_request.set_auth_session_id(auth_session->serialized_token());
-  authenticate_request.set_auth_factor_label(kFakeLabel);
-  authenticate_request.mutable_auth_input()
-      ->mutable_cryptohome_recovery_input()
+  std::string auth_factor_labels[] = {kFakeLabel};
+  user_data_auth::AuthInput auth_input_proto;
+  auth_input_proto.mutable_cryptohome_recovery_input()
       ->mutable_recovery_response();
   TestFuture<CryptohomeStatus> authenticate_future;
-  auth_session->AuthenticateAuthFactor(authenticate_request,
+  auth_session->AuthenticateAuthFactor(auth_factor_labels, auth_input_proto,
                                        authenticate_future.GetCallback());
 
   // Verify.
@@ -2845,15 +2826,12 @@ TEST_F(AuthSessionWithUssExperimentTest, AuthenticateSmartCardAuthFactor) {
           &key_challenge_service_factory_))));
 
   // Calling AuthenticateAuthFactor.
-  user_data_auth::AuthenticateAuthFactorRequest authenticate_request;
-  authenticate_request.set_auth_session_id(auth_session->serialized_token());
-  authenticate_request.set_auth_factor_label(kFakeLabel);
-  authenticate_request.mutable_auth_input()
-      ->mutable_smart_card_input()
-      ->add_signature_algorithms(
-          user_data_auth::CHALLENGE_RSASSA_PKCS1_V1_5_SHA256);
+  std::string auth_factor_labels[] = {kFakeLabel};
+  user_data_auth::AuthInput auth_input_proto;
+  auth_input_proto.mutable_smart_card_input()->add_signature_algorithms(
+      user_data_auth::CHALLENGE_RSASSA_PKCS1_V1_5_SHA256);
   TestFuture<CryptohomeStatus> authenticate_future;
-  auth_session->AuthenticateAuthFactor(authenticate_request,
+  auth_session->AuthenticateAuthFactor(auth_factor_labels, auth_input_proto,
                                        authenticate_future.GetCallback());
 
   // Verify.
@@ -2875,8 +2853,6 @@ TEST_F(AuthSessionWithUssExperimentTest, AuthenticateSmartCardAuthFactor) {
                                               AuthIntent::kVerifyOnly);
   EXPECT_TRUE(verify_auth_session_status.ok());
   AuthSession* verify_auth_session = verify_auth_session_status.value();
-  authenticate_request.set_auth_session_id(
-      verify_auth_session->serialized_token());
 
   // Expect that next authentication will go through lightweight
   // verification.
@@ -2892,7 +2868,8 @@ TEST_F(AuthSessionWithUssExperimentTest, AuthenticateSmartCardAuthFactor) {
   // Call AuthenticateAuthFactor again.
   TestFuture<CryptohomeStatus> verify_authenticate_future;
   verify_auth_session->AuthenticateAuthFactor(
-      authenticate_request, verify_authenticate_future.GetCallback());
+      auth_factor_labels, auth_input_proto,
+      verify_authenticate_future.GetCallback());
   EXPECT_THAT(verify_auth_session->authorized_intents(),
               UnorderedElementsAre(AuthIntent::kVerifyOnly));
 }
@@ -2929,12 +2906,11 @@ TEST_F(AuthSessionWithUssExperimentTest, LightweightPasswordAuthentication) {
       .WillRepeatedly(Return(true));
 
   // Test.
-  user_data_auth::AuthenticateAuthFactorRequest request;
-  request.set_auth_session_id(auth_session.serialized_token());
-  request.set_auth_factor_label(kFakeLabel);
-  request.mutable_auth_input()->mutable_password_input()->set_secret(kFakePass);
+  std::string auth_factor_labels[] = {kFakeLabel};
+  user_data_auth::AuthInput auth_input_proto;
+  auth_input_proto.mutable_password_input()->set_secret(kFakePass);
   TestFuture<CryptohomeStatus> authenticate_future;
-  auth_session.AuthenticateAuthFactor(request,
+  auth_session.AuthenticateAuthFactor(auth_factor_labels, auth_input_proto,
                                       authenticate_future.GetCallback());
 
   // Verify.
@@ -2971,11 +2947,10 @@ TEST_F(AuthSessionWithUssExperimentTest, LightweightFingerprintAuthentication) {
       .WillRepeatedly(Return(true));
 
   // Test.
-  user_data_auth::AuthenticateAuthFactorRequest request;
-  request.set_auth_session_id(auth_session->serialized_token());
-  request.mutable_auth_input()->mutable_legacy_fingerprint_input();
+  user_data_auth::AuthInput auth_input_proto;
+  auth_input_proto.mutable_legacy_fingerprint_input();
   TestFuture<CryptohomeStatus> authenticate_future;
-  auth_session->AuthenticateAuthFactor(request,
+  auth_session->AuthenticateAuthFactor({}, auth_input_proto,
                                        authenticate_future.GetCallback());
 
   // Verify.
@@ -3238,12 +3213,11 @@ TEST_F(AuthSessionWithUssExperimentTest, RemoveAuthFactor) {
   EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
 
   // Calling AuthenticateAuthFactor for pin fails.
-  user_data_auth::AuthenticateAuthFactorRequest auth_request;
-  auth_request.set_auth_session_id(auth_session->serialized_token());
-  auth_request.set_auth_factor_label(kFakePinLabel);
-  auth_request.mutable_auth_input()->mutable_pin_input()->set_secret(kFakePin);
+  std::string auth_factor_labels[] = {kFakePinLabel};
+  user_data_auth::AuthInput auth_input_proto;
+  auth_input_proto.mutable_pin_input()->set_secret(kFakePin);
   TestFuture<CryptohomeStatus> authenticate_future;
-  auth_session->AuthenticateAuthFactor(auth_request,
+  auth_session->AuthenticateAuthFactor(auth_factor_labels, auth_input_proto,
                                        authenticate_future.GetCallback());
 
   // Verify.
@@ -3331,13 +3305,11 @@ TEST_F(AuthSessionWithUssExperimentTest,
   EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
 
   // Calling AuthenticateAuthFactor for the second password fails.
-  user_data_auth::AuthenticateAuthFactorRequest auth_request;
-  auth_request.set_auth_session_id(auth_session->serialized_token());
-  auth_request.set_auth_factor_label(kFakeOtherLabel);
-  auth_request.mutable_auth_input()->mutable_password_input()->set_secret(
-      kFakeOtherPass);
+  std::string auth_factor_labels[] = {kFakeOtherLabel};
+  user_data_auth::AuthInput auth_input_proto;
+  auth_input_proto.mutable_password_input()->set_secret(kFakeOtherPass);
   TestFuture<CryptohomeStatus> authenticate_future;
-  auth_session->AuthenticateAuthFactor(auth_request,
+  auth_session->AuthenticateAuthFactor(auth_factor_labels, auth_input_proto,
                                        authenticate_future.GetCallback());
 
   // Verify.
@@ -3618,16 +3590,13 @@ TEST_F(AuthSessionWithUssExperimentTest, UpdatePasswordAfterRecoveryAuth) {
             .Run(OkStatus<CryptohomeCryptoError>(), std::move(key_blobs));
       });
   // Prepare recovery authentication request.
-  user_data_auth::AuthenticateAuthFactorRequest authenticate_request;
-  authenticate_request.set_auth_session_id(
-      new_auth_session->serialized_token());
-  authenticate_request.set_auth_factor_label(kRecoveryLabel);
-  authenticate_request.mutable_auth_input()
-      ->mutable_cryptohome_recovery_input()
+  std::string auth_factor_labels[] = {kRecoveryLabel};
+  user_data_auth::AuthInput auth_input_proto;
+  auth_input_proto.mutable_cryptohome_recovery_input()
       ->mutable_recovery_response();
   TestFuture<CryptohomeStatus> authenticate_future;
   // Authenticate using recovery.
-  new_auth_session->AuthenticateAuthFactor(authenticate_request,
+  new_auth_session->AuthenticateAuthFactor(auth_factor_labels, auth_input_proto,
                                            authenticate_future.GetCallback());
   EXPECT_THAT(authenticate_future.Get(), IsOk());
   EXPECT_THAT(
@@ -3905,11 +3874,10 @@ TEST_F(AuthSessionWithUssExperimentTest, FingerprintAuthenticationForWebAuthn) {
       .WillRepeatedly(Return(true));
 
   // Test.
-  user_data_auth::AuthenticateAuthFactorRequest request;
-  request.set_auth_session_id(auth_session->serialized_token());
-  request.mutable_auth_input()->mutable_legacy_fingerprint_input();
+  user_data_auth::AuthInput auth_input_proto;
+  auth_input_proto.mutable_legacy_fingerprint_input();
   TestFuture<CryptohomeStatus> authenticate_future;
-  auth_session->AuthenticateAuthFactor(request,
+  auth_session->AuthenticateAuthFactor({}, auth_input_proto,
                                        authenticate_future.GetCallback());
 
   // Verify.
@@ -3987,13 +3955,11 @@ TEST_F(AuthSessionWithUssExperimentTest, AuthenticatePasswordVkToKioskUss) {
       });
 
   // Test.
-  user_data_auth::AuthenticateAuthFactorRequest request;
-  request.set_auth_session_id(auth_session.serialized_token());
-  request.set_auth_factor_label(kLegacyLabel);
-  request.mutable_auth_input()->mutable_kiosk_input();
-
+  std::string auth_factor_labels[] = {kLegacyLabel};
+  user_data_auth::AuthInput auth_input_proto;
+  auth_input_proto.mutable_kiosk_input();
   TestFuture<CryptohomeStatus> authenticate_future;
-  auth_session.AuthenticateAuthFactor(request,
+  auth_session.AuthenticateAuthFactor(auth_factor_labels, auth_input_proto,
                                       authenticate_future.GetCallback());
 
   // Verify.
