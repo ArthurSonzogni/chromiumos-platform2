@@ -14,6 +14,7 @@
 #include <shill/dbus-proxies.h>
 
 #include "runtime_probe/system/context.h"
+#include "runtime_probe/system/syscaller_impl.h"
 
 namespace runtime_probe {
 
@@ -24,6 +25,8 @@ class ContextImpl : public Context {
   brillo::CrosConfigInterface* cros_config() override { return &cros_config_; }
 
   crossystem::Crossystem* crossystem() override { return &crossystem_; }
+
+  Syscaller* syscaller() override { return &syscaller_; }
 
   org::chromium::debugdProxyInterface* debugd_proxy() override {
     CHECK(debugd_proxy_);
@@ -61,6 +64,8 @@ class ContextImpl : public Context {
   brillo::CrosConfig cros_config_;
   // The object to access crossystem system properties.
   crossystem::CrossystemImpl crossystem_;
+  // The object to make syscalls.
+  SyscallerImpl syscaller_;
   // The reference of the dbus connection.
   scoped_refptr<dbus::Bus> dbus_bus_;
   // The proxy object for dbugd dbus service.

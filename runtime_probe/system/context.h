@@ -10,6 +10,7 @@
 #include <base/files/file_path.h>
 
 #include "runtime_probe/system/helper_invoker.h"
+#include "runtime_probe/system/syscaller.h"
 
 namespace brillo {
 class CrosConfigInterface;
@@ -55,6 +56,9 @@ class Context {
 
   // The object to access crossystem system properties.
   virtual crossystem::Crossystem* crossystem() = 0;
+
+  // Use the object returned by syscaller() to make syscalls.
+  virtual Syscaller* syscaller() = 0;
 
   // Use the object returned by debugd_proxy() to make calls to debugd.
   virtual org::chromium::debugdProxyInterface* debugd_proxy() = 0;

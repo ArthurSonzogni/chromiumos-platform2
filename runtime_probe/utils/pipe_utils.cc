@@ -12,7 +12,8 @@
 #include <string>
 
 #include <base/logging.h>
-#include <base/posix/eintr_wrapper.h>
+
+#include "runtime_probe/system/context.h"
 
 namespace runtime_probe {
 
@@ -32,7 +33,8 @@ constexpr time_t kWaitSeconds = 5;
 
 PipeState ReadPipe(int src_fd, std::string* dst_str) {
   char buffer[kBufferSize];
-  const ssize_t bytes_read = HANDLE_EINTR(read(src_fd, buffer, kBufferSize));
+  const ssize_t bytes_read =
+      Context::Get()->syscaller()->Read(src_fd, buffer, kBufferSize);
   if (bytes_read < 0 && errno != EAGAIN && errno != EWOULDBLOCK) {
     PLOG(ERROR) << "read() from fd " << src_fd << " failed";
     return PipeState::ERROR;
@@ -75,8 +77,8 @@ bool ReadNonblockingPipeToString(const std::vector<int>& fds,
     if (done)
       return true;
 
-    int retval =
-        HANDLE_EINTR(select(nfds, &read_fds, nullptr, nullptr, &timeout));
+    int retval = Context::Get()->syscaller()->Select(nfds, &read_fds, nullptr,
+                                                     nullptr, &timeout);
     if (retval < 0) {
       PLOG(ERROR) << "select() failed from runtime_probe_helper";
       return false;

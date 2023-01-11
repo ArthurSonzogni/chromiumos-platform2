@@ -20,6 +20,7 @@ source_set("system_base") {
     "context.cc",
     "context_helper_impl.cc",
     "context_impl.cc",
+    "syscaller_impl.cc",
   ]
   configs += [ ":target_defaults" ]
 }

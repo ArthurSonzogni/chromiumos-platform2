@@ -21,6 +21,7 @@
 
 #include "runtime_probe/system/context.h"
 #include "runtime_probe/system/helper_invoker_direct_impl.h"
+#include "runtime_probe/system/syscaller_mock_impl.h"
 
 namespace runtime_probe {
 
@@ -34,6 +35,8 @@ class ContextMockImpl : public Context {
   }
 
   crossystem::Crossystem* crossystem() override { return &fake_crossystem_; }
+
+  Syscaller* syscaller() override { return &mock_syscaller_; }
 
   org::chromium::debugdProxyInterface* debugd_proxy() override {
     return &mock_debugd_proxy_;
@@ -58,6 +61,8 @@ class ContextMockImpl : public Context {
     return &fake_crossystem_;
   }
 
+  SyscallerMockImpl* mock_syscaller() { return &mock_syscaller_; }
+
   org::chromium::debugdProxyMock* mock_debugd_proxy() {
     return &mock_debugd_proxy_;
   }
@@ -78,6 +83,7 @@ class ContextMockImpl : public Context {
  private:
   brillo::FakeCrosConfig fake_cros_config_;
   crossystem::fake::CrossystemFake fake_crossystem_;
+  testing::StrictMock<SyscallerMockImpl> mock_syscaller_;
   testing::StrictMock<org::chromium::debugdProxyMock> mock_debugd_proxy_;
   testing::NiceMock<org::chromium::flimflam::ManagerProxyMock>
       mock_shill_manager_proxy_;
