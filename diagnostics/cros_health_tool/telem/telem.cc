@@ -488,7 +488,7 @@ void SetJsonDictValue(const std::string& key,
                 std::is_same_v<T, uint64_t>) {
     // |base::Value| doesn't support these types, we need to convert them to
     // string.
-    SetJsonDictValue(key, std::to_string(value), output);
+    SetJsonDictValue(key, base::NumberToString(value), output);
   } else if constexpr (std::is_same_v<T, std::optional<std::string>>) {
     if (value.has_value())
       SetJsonDictValue(key, value.value(), output);

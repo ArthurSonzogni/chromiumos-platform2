@@ -26,9 +26,9 @@ namespace {
 
 uint32_t FetchJailedProcessPid(uint32_t parent_pid) {
   base::FilePath pid_file = base::FilePath("/proc")
-                                .Append(std::to_string(parent_pid))
+                                .Append(base::NumberToString(parent_pid))
                                 .Append("task")
-                                .Append(std::to_string(parent_pid))
+                                .Append(base::NumberToString(parent_pid))
                                 .Append("children");
 
   std::string pid_str;

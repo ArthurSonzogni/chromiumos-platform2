@@ -7,6 +7,7 @@
 #include <optional>
 
 #include <base/check.h>
+#include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 
 namespace ash::cros_healthd::mojom {
@@ -140,7 +141,8 @@ std::string GetDiffString<std::optional<std::string>>(
 template <>
 std::string GetDiffString<mojo_ipc::NullableUint64>(
     const mojo_ipc::NullableUint64& a, const mojo_ipc::NullableUint64& b) {
-  return GetDiffString(std::to_string(a.value), std::to_string(b.value));
+  return GetDiffString(base::NumberToString(a.value),
+                       base::NumberToString(b.value));
 }
 
 template <>

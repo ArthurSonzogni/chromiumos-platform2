@@ -7,6 +7,7 @@
 #include <string>
 
 #include "base/files/file_util.h"
+#include <base/strings/string_number_conversions.h>
 
 namespace diagnostics {
 
@@ -18,7 +19,7 @@ const char kProcessIOFile[] = "io";
 
 base::FilePath GetProcProcessDirectoryPath(const base::FilePath& root_dir,
                                            pid_t pid) {
-  return root_dir.Append("proc").Append(std::to_string(pid));
+  return root_dir.Append("proc").Append(base::NumberToString(pid));
 }
 
 base::FilePath GetProcCpuInfoPath(const base::FilePath& root_dir) {

@@ -239,7 +239,8 @@ void MemoryRoutine::ParseMemtesterOutput(const std::string& raw_output) {
                                  &bytes_tested_str) &&
                base::StringToUint64(bytes_tested_str, &bytes_tested)) {
       // Use string here since |base::Value| does not support uint64_t.
-      result_dict.SetStringKey("bytesTested", std::to_string(bytes_tested));
+      result_dict.SetStringKey("bytesTested",
+                               base::NumberToString(bytes_tested));
     } else if (RE2::FullMatch(line, kMemtesterSubtestRegex, &subtest_name,
                               &subtest_result) &&
                !base::StartsWith(line, kMemtesterSubtestFailurePattern,

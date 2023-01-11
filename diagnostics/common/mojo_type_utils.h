@@ -11,6 +11,7 @@
 #include <type_traits>
 #include <vector>
 
+#include <base/strings/string_number_conversions.h>
 #include <mojo/public/cpp/bindings/struct_ptr.h>
 
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
@@ -89,24 +90,24 @@ std::string GetDiffString(const T& a, const T& b) {
     }
     return GetDiffString(*a, *b);
   } else if constexpr (std::is_enum_v<T>) {
-    return GetDiffString("[Enum]:" + std::to_string(static_cast<int>(a)),
-                         "[Enum]:" + std::to_string(static_cast<int>(b)));
+    return GetDiffString("[Enum]:" + base::NumberToString(static_cast<int>(a)),
+                         "[Enum]:" + base::NumberToString(static_cast<int>(b)));
   } else if constexpr (IsVector<T>::value) {  // NOLINT(readability/braces)
                                               // b/194872701
     if (a.size() != b.size()) {
       return internal::StringCompareFormat(
-          "Vector[size: " + std::to_string(a.size()) + "]",
-          "Vector[size: " + std::to_string(b.size()) + "]");
+          "Vector[size: " + base::NumberToString(a.size()) + "]",
+          "Vector[size: " + base::NumberToString(b.size()) + "]");
     }
     for (size_t i = 0; i < a.size(); ++i) {
       if (a[i] != b[i]) {
-        return "Vector[" + std::to_string(i) + "]:\n" +
+        return "Vector[" + base::NumberToString(i) + "]:\n" +
                internal::Indent(GetDiffString(a[i], b[i]));
       }
     }
     return internal::kEqualStr;
   } else if constexpr (std::is_arithmetic_v<T>) {
-    return GetDiffString(std::to_string(a), std::to_string(b));
+    return GetDiffString(base::NumberToString(a), base::NumberToString(b));
   } else {
     static_assert(UndefinedMojoType<T>::value,
                   "Undefined type for GetDiffString().");

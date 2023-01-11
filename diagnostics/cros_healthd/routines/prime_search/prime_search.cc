@@ -9,6 +9,7 @@
 #include <vector>
 
 #include <base/command_line.h>
+#include <base/strings/string_number_conversions.h>
 #include <base/time/time.h>
 
 #include "diagnostics/cros_healthd/routines/shared_defaults.h"
@@ -30,9 +31,10 @@ std::unique_ptr<DiagnosticRoutine> CreatePrimeSearchRoutine(
   base::TimeDelta duration = exec_duration.value_or(kDefaultCpuStressRuntime);
   return std::make_unique<SubprocRoutine>(
       base::CommandLine(std::vector<std::string>{
-          kPrimeSearchExePath, "--time=" + std::to_string(duration.InSeconds()),
-          "--max_num=" +
-              std::to_string(max_num.value_or(kPrimeSearchDefaultMaxNum))}),
+          kPrimeSearchExePath,
+          "--time=" + base::NumberToString(duration.InSeconds()),
+          "--max_num=" + base::NumberToString(
+                             max_num.value_or(kPrimeSearchDefaultMaxNum))}),
       duration);
 }
 

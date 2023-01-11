@@ -9,6 +9,7 @@
 #include <vector>
 
 #include <base/command_line.h>
+#include <base/strings/string_number_conversions.h>
 #include <base/time/time.h>
 
 #include "diagnostics/cros_healthd/routines/subproc_routine.h"
@@ -32,7 +33,7 @@ std::unique_ptr<DiagnosticRoutine> CreateUrandomRoutine(
       base::CommandLine(std::vector<std::string>{
           kUrandomExePath,
           "--time_delta_ms=" +
-              std::to_string(routine_duration.InMilliseconds()),
+              base::NumberToString(routine_duration.InMilliseconds()),
           "--urandom_path=/dev/urandom"}),
       routine_duration);
 }

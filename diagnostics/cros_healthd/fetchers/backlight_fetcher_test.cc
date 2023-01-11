@@ -8,6 +8,7 @@
 
 #include <base/check.h>
 #include <base/files/file_path.h>
+#include <base/strings/string_number_conversions.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -79,18 +80,18 @@ TEST_F(BacklightUtilsTest, TestFetchBacklightInfo) {
       GetFirstFakeBacklightDirectory(root_dir());
   ASSERT_TRUE(WriteFileAndCreateParentDirs(
       first_backlight_dir.Append(kMaxBrightnessFileName),
-      std::to_string(kFirstFakeBacklightMaxBrightness)));
+      base::NumberToString(kFirstFakeBacklightMaxBrightness)));
   ASSERT_TRUE(WriteFileAndCreateParentDirs(
       first_backlight_dir.Append(kBrightnessFileName),
-      std::to_string(kFirstFakeBacklightBrightness)));
+      base::NumberToString(kFirstFakeBacklightBrightness)));
   base::FilePath second_backlight_dir =
       GetSecondFakeBacklightDirectory(root_dir());
   ASSERT_TRUE(WriteFileAndCreateParentDirs(
       second_backlight_dir.Append(kMaxBrightnessFileName),
-      std::to_string(kSecondFakeBacklightMaxBrightness)));
+      base::NumberToString(kSecondFakeBacklightMaxBrightness)));
   ASSERT_TRUE(WriteFileAndCreateParentDirs(
       second_backlight_dir.Append(kBrightnessFileName),
-      std::to_string(kSecondFakeBacklightBrightness)));
+      base::NumberToString(kSecondFakeBacklightBrightness)));
 
   std::vector<BacklightInfoPtr> expected_results;
   expected_results.push_back(BacklightInfo::New(
@@ -121,15 +122,15 @@ TEST_F(BacklightUtilsTest, TestFetchBacklightInfoOneBadOneGoodDirectory) {
   // Skip the brightness file for the first directory.
   ASSERT_TRUE(WriteFileAndCreateParentDirs(
       first_backlight_dir.Append(kMaxBrightnessFileName),
-      std::to_string(kFirstFakeBacklightMaxBrightness)));
+      base::NumberToString(kFirstFakeBacklightMaxBrightness)));
   base::FilePath second_backlight_dir =
       GetSecondFakeBacklightDirectory(root_dir());
   ASSERT_TRUE(WriteFileAndCreateParentDirs(
       second_backlight_dir.Append(kMaxBrightnessFileName),
-      std::to_string(kSecondFakeBacklightMaxBrightness)));
+      base::NumberToString(kSecondFakeBacklightMaxBrightness)));
   ASSERT_TRUE(WriteFileAndCreateParentDirs(
       second_backlight_dir.Append(kBrightnessFileName),
-      std::to_string(kSecondFakeBacklightBrightness)));
+      base::NumberToString(kSecondFakeBacklightBrightness)));
 
   auto backlight_result = FetchBacklightInfo();
   ASSERT_TRUE(backlight_result->is_error());
@@ -151,7 +152,7 @@ TEST_F(BacklightUtilsTest, TestFetchBacklightInfoNoBrightness) {
       GetFirstFakeBacklightDirectory(root_dir());
   ASSERT_TRUE(WriteFileAndCreateParentDirs(
       first_backlight_dir.Append(kMaxBrightnessFileName),
-      std::to_string(kFirstFakeBacklightMaxBrightness)));
+      base::NumberToString(kFirstFakeBacklightMaxBrightness)));
 
   auto backlight_result = FetchBacklightInfo();
   ASSERT_TRUE(backlight_result->is_error());
@@ -165,7 +166,7 @@ TEST_F(BacklightUtilsTest, TestFetchBacklightInfoNoMaxBrightness) {
       GetFirstFakeBacklightDirectory(root_dir());
   ASSERT_TRUE(WriteFileAndCreateParentDirs(
       first_backlight_dir.Append(kBrightnessFileName),
-      std::to_string(kFirstFakeBacklightBrightness)));
+      base::NumberToString(kFirstFakeBacklightBrightness)));
 
   auto backlight_result = FetchBacklightInfo();
   ASSERT_TRUE(backlight_result->is_error());
@@ -180,7 +181,7 @@ TEST_F(BacklightUtilsTest,
       GetFirstFakeBacklightDirectory(root_dir());
   ASSERT_TRUE(WriteFileAndCreateParentDirs(
       first_backlight_dir.Append(kMaxBrightnessFileName),
-      std::to_string(kFirstFakeBacklightMaxBrightness)));
+      base::NumberToString(kFirstFakeBacklightMaxBrightness)));
   ASSERT_TRUE(WriteFileAndCreateParentDirs(
       first_backlight_dir.Append(kBrightnessFileName),
       kFakeNonIntegerFileContents));
@@ -201,7 +202,7 @@ TEST_F(BacklightUtilsTest,
       kFakeNonIntegerFileContents));
   ASSERT_TRUE(WriteFileAndCreateParentDirs(
       first_backlight_dir.Append(kBrightnessFileName),
-      std::to_string(kFirstFakeBacklightMaxBrightness)));
+      base::NumberToString(kFirstFakeBacklightMaxBrightness)));
 
   auto backlight_result = FetchBacklightInfo();
   ASSERT_TRUE(backlight_result->is_error());

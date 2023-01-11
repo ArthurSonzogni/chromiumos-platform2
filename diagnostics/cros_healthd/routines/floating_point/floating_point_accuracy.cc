@@ -9,6 +9,7 @@
 #include <string>
 #include <vector>
 
+#include <base/strings/string_number_conversions.h>
 #include <base/time/time.h>
 
 #include "diagnostics/cros_healthd/routines/shared_defaults.h"
@@ -29,7 +30,7 @@ std::unique_ptr<DiagnosticRoutine> CreateFloatingPointAccuracyRoutine(
   return std::make_unique<SubprocRoutine>(
       base::CommandLine(std::vector<std::string>{
           kFloatingPointAccuracyTestExePath,
-          "--duration=" + std::to_string(duration.InSeconds())}),
+          "--duration=" + base::NumberToString(duration.InSeconds())}),
       duration);
 }
 

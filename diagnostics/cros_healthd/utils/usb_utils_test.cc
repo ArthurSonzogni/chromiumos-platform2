@@ -6,6 +6,7 @@
 #include <string>
 #include <utility>
 
+#include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <brillo/udev/mock_udev_device.h>
 
@@ -54,7 +55,7 @@ class UsbUtilsTest : public BaseFileTest {
     fake_dev_relative_path_ = base::FilePath(kFakePathUsb);
     for (int i = 0; i <= layer; ++i) {
       fake_dev_relative_path_ =
-          fake_dev_relative_path_.Append(std::to_string(i));
+          fake_dev_relative_path_.Append(base::NumberToString(i));
     }
     fake_dev_path_ = GetPathUnderRoot(fake_dev_relative_path_);
 
@@ -76,7 +77,7 @@ class UsbUtilsTest : public BaseFileTest {
                   const std::string& content) {
     auto target = base::FilePath(kFakePathUsb);
     for (int i = 0; i <= layer; ++i) {
-      target = target.Append(std::to_string(i));
+      target = target.Append(base::NumberToString(i));
     }
     EXPECT_TRUE(target == fake_dev_relative_path_ ||
                 target.IsParent(fake_dev_relative_path_));

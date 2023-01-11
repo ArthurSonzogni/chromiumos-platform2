@@ -8,6 +8,8 @@
 #include <string>
 #include <vector>
 
+#include <base/strings/string_number_conversions.h>
+
 #include "diagnostics/cros_healthd/routines/shared_defaults.h"
 #include "diagnostics/cros_healthd/routines/subproc_routine.h"
 
@@ -23,7 +25,7 @@ std::unique_ptr<DiagnosticRoutine> CreateCpuStressRoutine(
     const std::optional<base::TimeDelta>& exec_duration) {
   base::TimeDelta duration = exec_duration.value_or(kDefaultCpuStressRuntime);
   std::vector<std::string> cmd{kCpuRoutineExePath, "-W", "-s",
-                               std::to_string(duration.InSeconds())};
+                               base::NumberToString(duration.InSeconds())};
   if (duration.is_zero()) {
     // Since the execution duration should not be zero, we should let the
     // routine always failed by adding the flag '--force_error' to the

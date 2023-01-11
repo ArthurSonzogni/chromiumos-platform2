@@ -621,7 +621,7 @@ bool State::FetchPhysicalCpus() {
                      &base::StringToInt, &physical_id)) {
       LogAndSetError(mojo_ipc::ErrorType::kParseError,
                      "Unable to parse physical ID for cpu " +
-                         std::to_string(processor_id));
+                         base::NumberToString(processor_id));
       return false;
     }
 
@@ -654,7 +654,7 @@ bool State::FetchPhysicalCpus() {
     if (parsed_stat_itr == logical_ids_to_stat_contents.end()) {
       LogAndSetError(mojo_ipc::ErrorType::kParseError,
                      "No parsed stat contents for logical ID: " +
-                         std::to_string(processor_id));
+                         base::NumberToString(processor_id));
       return false;
     }
     logical_cpu.user_time_user_hz = parsed_stat_itr->second.user_time_user_hz;
@@ -902,7 +902,7 @@ void State::Fetch(Context* context, FetchCpuInfoCallback callback) {
 
 base::FilePath GetCStateDirectoryPath(const base::FilePath& root_dir,
                                       int logical_id) {
-  std::string logical_cpu_dir = "cpu" + std::to_string(logical_id);
+  std::string logical_cpu_dir = "cpu" + base::NumberToString(logical_id);
   std::string cpuidle_dirname = "cpuidle";
   return root_dir.Append(kRelativeCpuDir)
       .Append(logical_cpu_dir)
@@ -914,7 +914,7 @@ base::FilePath GetCStateDirectoryPath(const base::FilePath& root_dir,
 base::FilePath GetCpuFreqDirectoryPath(const base::FilePath& root_dir,
                                        int logical_id) {
   std::string cpufreq_policy_dir =
-      "cpufreq/policy" + std::to_string(logical_id);
+      "cpufreq/policy" + base::NumberToString(logical_id);
 
   auto policy_path =
       root_dir.Append(kRelativeCpuDir).Append(cpufreq_policy_dir);
@@ -922,7 +922,7 @@ base::FilePath GetCpuFreqDirectoryPath(const base::FilePath& root_dir,
     return policy_path;
   }
 
-  std::string logical_cpu_dir = "cpu" + std::to_string(logical_id);
+  std::string logical_cpu_dir = "cpu" + base::NumberToString(logical_id);
   std::string cpufreq_dirname = "cpufreq";
   return root_dir.Append(kRelativeCpuDir)
       .Append(logical_cpu_dir)
@@ -931,7 +931,7 @@ base::FilePath GetCpuFreqDirectoryPath(const base::FilePath& root_dir,
 
 base::FilePath GetPhysicalPackageIdPath(const base::FilePath& root_dir,
                                         int logical_id) {
-  std::string logical_cpu_dir = "cpu" + std::to_string(logical_id);
+  std::string logical_cpu_dir = "cpu" + base::NumberToString(logical_id);
   std::string physical_package_id_filename = "topology/physical_package_id";
   return root_dir.Append(kRelativeCpuDir)
       .Append(logical_cpu_dir)

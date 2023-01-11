@@ -99,7 +99,7 @@ std::optional<mojom::ProbeErrorPtr> GetInt8FromString(base::StringPiece str,
   if (full_size_int > std::numeric_limits<int8_t>::max()) {
     return CreateAndLogProbeError(
         mojom::ErrorType::kParseError,
-        "Integer too large for int8_t: " + std::to_string(full_size_int));
+        "Integer too large for int8_t: " + base::NumberToString(full_size_int));
   }
 
   *int_out = static_cast<int8_t>(full_size_int);

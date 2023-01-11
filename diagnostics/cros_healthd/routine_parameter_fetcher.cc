@@ -94,8 +94,8 @@ FingerprintParameter RoutineParameterFetcher::GetFingerprintParameters() const {
   FetchUint32Parameter(kFingerprintPropertiesPath, kNumDetectZone,
                        &num_detect_zone);
   for (int i = 0; i < num_detect_zone; ++i) {
-    base::FilePath path =
-        base::FilePath(kFingerprintDetectZonesPath).Append(std::to_string(i));
+    base::FilePath path = base::FilePath(kFingerprintDetectZonesPath)
+                              .Append(base::NumberToString(i));
     FingerprintZone zone;
 
     FetchUint32Parameter(path.value(), kX1, &zone.x1);

@@ -16,6 +16,7 @@
 #include <base/logging.h>
 #include <base/notreached.h>
 #include <base/run_loop.h>
+#include <base/strings/string_number_conversions.h>
 #include <base/test/bind.h>
 #include <base/test/task_environment.h>
 #include <gmock/gmock.h>
@@ -242,19 +243,19 @@ class CpuFetcherTest : public testing::Test {
         root_dir().Append(kRelativeCpuDir).Append(kPresentFileName),
         kFakePresentContents));
     // Write policy data for the first logical CPU.
-    WritePolicyData(std::to_string(kFirstFakeMaxClockSpeed),
-                    std::to_string(kFirstFakeScalingMaxFrequency),
-                    std::to_string(kFirstFakeScalingCurrentFrequency),
+    WritePolicyData(base::NumberToString(kFirstFakeMaxClockSpeed),
+                    base::NumberToString(kFirstFakeScalingMaxFrequency),
+                    base::NumberToString(kFirstFakeScalingCurrentFrequency),
                     kFirstLogicalId);
     // Write policy data for the second logical CPU.
-    WritePolicyData(std::to_string(kSecondFakeMaxClockSpeed),
-                    std::to_string(kSecondFakeScalingMaxFrequency),
-                    std::to_string(kSecondFakeScalingCurrentFrequency),
+    WritePolicyData(base::NumberToString(kSecondFakeMaxClockSpeed),
+                    base::NumberToString(kSecondFakeScalingMaxFrequency),
+                    base::NumberToString(kSecondFakeScalingCurrentFrequency),
                     kSecondLogicalId);
     // Write policy data for the third logical CPU.
-    WritePolicyData(std::to_string(kThirdFakeMaxClockSpeed),
-                    std::to_string(kThirdFakeScalingMaxFrequency),
-                    std::to_string(kThirdFakeScalingCurrentFrequency),
+    WritePolicyData(base::NumberToString(kThirdFakeMaxClockSpeed),
+                    base::NumberToString(kThirdFakeScalingMaxFrequency),
+                    base::NumberToString(kThirdFakeScalingCurrentFrequency),
                     kThirdLogicalId);
     // Write C-state data for the first logical CPU.
     WriteCStateData(kFirstCStates, kFirstLogicalId);
@@ -278,7 +279,7 @@ class CpuFetcherTest : public testing::Test {
         root_dir().AppendASCII(kFirstFakeCpuTemperatureDir);
     ASSERT_TRUE(WriteFileAndCreateParentDirs(
         first_temp_dir.AppendASCII(kFirstFakeCpuTemperatureInputFile),
-        std::to_string(kFirstFakeCpuTemperatureMilliDegrees)));
+        base::NumberToString(kFirstFakeCpuTemperatureMilliDegrees)));
     ASSERT_TRUE(WriteFileAndCreateParentDirs(
         first_temp_dir.AppendASCII(kFirstFakeCpuTemperatureLabelFile),
         kFirstFakeCpuTemperatureLabel));
@@ -286,7 +287,7 @@ class CpuFetcherTest : public testing::Test {
         root_dir().AppendASCII(kSecondFakeCpuTemperatureDir);
     ASSERT_TRUE(WriteFileAndCreateParentDirs(
         second_temp_dir.AppendASCII(kSecondFakeCpuTemperatureInputFile),
-        std::to_string(kSecondFakeCpuTemperatureMilliDegrees)));
+        base::NumberToString(kSecondFakeCpuTemperatureMilliDegrees)));
     ASSERT_TRUE(WriteFileAndCreateParentDirs(
         second_temp_dir.AppendASCII(kSecondFakeCpuTemperatureLabelFile),
         kSecondFakeCpuTemperatureLabel));
@@ -410,7 +411,8 @@ class CpuFetcherTest : public testing::Test {
       const std::vector<std::pair<std::string, uint64_t>>& data,
       int logical_id) {
     for (const auto& pair : data)
-      WriteCStateFiles(logical_id, pair.first, std::to_string(pair.second));
+      WriteCStateFiles(logical_id, pair.first,
+                       base::NumberToString(pair.second));
   }
 
   // Writes to cpuinfo_max_freq, scaling_max_freq, and scaling_cur_freq. If any
@@ -437,11 +439,11 @@ class CpuFetcherTest : public testing::Test {
     auto policy_dir = GetCStateDirectoryPath(root_dir(), logical_id);
     int state_to_write = c_states_written[logical_id];
     ASSERT_TRUE(WriteFileAndCreateParentDirs(
-        policy_dir.Append("state" + std::to_string(state_to_write))
+        policy_dir.Append("state" + base::NumberToString(state_to_write))
             .Append(kCStateNameFileName),
         name_contents));
     ASSERT_TRUE(WriteFileAndCreateParentDirs(
-        policy_dir.Append("state" + std::to_string(state_to_write))
+        policy_dir.Append("state" + base::NumberToString(state_to_write))
             .Append(kCStateTimeFileName),
         time_contents));
     c_states_written[logical_id] += 1;

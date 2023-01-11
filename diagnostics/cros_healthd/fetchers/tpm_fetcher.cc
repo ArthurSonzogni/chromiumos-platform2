@@ -11,6 +11,7 @@
 #include <attestation-client/attestation/dbus-proxies.h>
 #include <base/callback.h>
 #include <base/check.h>
+#include <base/strings/string_number_conversions.h>
 #include <base/time/time.h>
 #include <brillo/errors/error.h>
 #include <dbus/object_proxy.h>
@@ -61,7 +62,7 @@ void TpmFetcher::HandleVersion(brillo::Error* err,
   }
   if (reply.status() != tpm_manager::STATUS_SUCCESS) {
     SendError("TpmManager::GetVersionInfo() returned error status: " +
-              std::to_string(reply.status()));
+              base::NumberToString(reply.status()));
     return;
   }
   auto version = mojo_ipc::TpmVersion::New();
@@ -97,7 +98,7 @@ void TpmFetcher::HandleStatus(
   }
   if (reply.status() != tpm_manager::STATUS_SUCCESS) {
     SendError("TpmManager::GetTpmNonsensitiveStatus() returned error status: " +
-              std::to_string(reply.status()));
+              base::NumberToString(reply.status()));
     return;
   }
   auto status = mojo_ipc::TpmStatus::New();
@@ -127,7 +128,7 @@ void TpmFetcher::HandleDictionaryAttack(
   }
   if (reply.status() != tpm_manager::STATUS_SUCCESS) {
     SendError("TpmManager::GetDictionaryAttackInfo() returned error status: " +
-              std::to_string(reply.status()));
+              base::NumberToString(reply.status()));
     return;
   }
 
@@ -158,7 +159,7 @@ void TpmFetcher::HandleAttestation(brillo::Error* err,
   }
   if (reply.status() != attestation::STATUS_SUCCESS) {
     SendError("TpmManager::GetDictionaryAttackInfo() returned error status: " +
-              std::to_string(reply.status()));
+              base::NumberToString(reply.status()));
     return;
   }
 
@@ -187,7 +188,7 @@ void TpmFetcher::HandleSupportedFeatures(
   }
   if (reply.status() != tpm_manager::STATUS_SUCCESS) {
     SendError("TpmManager::GetSupportedFeatures() returned error status: " +
-              std::to_string(reply.status()));
+              base::NumberToString(reply.status()));
     return;
   }
 

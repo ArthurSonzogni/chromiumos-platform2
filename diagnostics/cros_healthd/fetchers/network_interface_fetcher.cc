@@ -71,7 +71,7 @@ void NetworkInterfaceFetcher::HandleScanDump(
                << return_code;
     CreateErrorToSendBack(mojom::ErrorType::kSystemUtilityError,
                           "executor()->GetScanDump failed with error code: " +
-                              std::to_string(return_code));
+                              base::NumberToString(return_code));
     return;
   }
   std::string output = result->out;
@@ -110,7 +110,7 @@ void NetworkInterfaceFetcher::HandleInfoAndExecuteGetScanDump(
     LOG(ERROR) << "executor()->GetInfo failed with error code: " << return_code;
     CreateErrorToSendBack(mojom::ErrorType::kSystemUtilityError,
                           "executor()->GetInfo failed with error code: " +
-                              std::to_string(return_code));
+                              base::NumberToString(return_code));
     return;
   }
   std::string output = result->out;
@@ -154,7 +154,7 @@ void NetworkInterfaceFetcher::HandleLinkAndExecuteIwExecuteGetInfo(
     LOG(ERROR) << "executor()->GetLink failed with error code: " << return_code;
     CreateErrorToSendBack(mojom::ErrorType::kSystemUtilityError,
                           "executor()->GetLink failed with error code: " +
-                              std::to_string(return_code));
+                              base::NumberToString(return_code));
     return;
   }
   std::string regex_result;
@@ -242,7 +242,7 @@ void NetworkInterfaceFetcher::HandleInterfaceNameAndExecuteGetLink(
                << return_code;
     CreateErrorToSendBack(mojom::ErrorType::kSystemUtilityError,
                           "executor()->GetInterfaces failed with error code: " +
-                              std::to_string(return_code));
+                              base::NumberToString(return_code));
     return;
   }
   std::string regex_result;

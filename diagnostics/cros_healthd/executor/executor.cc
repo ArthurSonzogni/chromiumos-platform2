@@ -18,6 +18,7 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
+#include <base/strings/string_number_conversions.h>
 #include <base/task/task_traits.h>
 #include <base/task/thread_pool.h>
 #include <base/time/time.h>
@@ -498,7 +499,7 @@ void Executor::ReadMsr(const uint32_t msr_reg,
     return;
   }
   base::FilePath msr_path = base::FilePath("/dev/cpu")
-                                .Append(std::to_string(cpu_index))
+                                .Append(base::NumberToString(cpu_index))
                                 .Append("msr");
   base::File msr_fd(msr_path, base::File::FLAG_OPEN | base::File::FLAG_READ);
   if (!msr_fd.IsValid()) {
