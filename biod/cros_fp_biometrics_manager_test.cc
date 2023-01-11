@@ -23,6 +23,7 @@
 #include "biod/mock_cros_fp_device.h"
 #include "biod/mock_cros_fp_record_manager.h"
 #include "ec/ec_commands.h"
+#include "libec/fingerprint/fp_sensor_errors.h"
 
 namespace biod {
 
@@ -332,8 +333,27 @@ TEST_F(CrosFpBiometricsManagerTest, TestStartEnrollSessionSuccess) {
               SetFpMode(ec::FpMode(Mode::kEnrollSessionEnrollImage)))
       .WillOnce(Return(true));
 
+  // Expect biod not to return any fingerprint hardware errors.
+  EXPECT_CALL(*mock_cros_dev_, GetHwErrors())
+      .WillOnce(Return(ec::FpSensorErrors::kNone));
+
   enroll_session = cros_fp_biometrics_manager_->StartEnrollSession("0", "0");
   EXPECT_TRUE(enroll_session);
+}
+
+TEST_F(CrosFpBiometricsManagerTest, TestStartEnrollSessionHwFailure) {
+  BiometricsManager::EnrollSession enroll_session;
+
+  ON_CALL(*mock_cros_dev_, MaxTemplateCount).WillByDefault(Return(1));
+  ON_CALL(*mock_cros_dev_,
+          SetFpMode(ec::FpMode(Mode::kEnrollSessionEnrollImage)))
+      .WillByDefault(Return(true));
+  ON_CALL(*mock_cros_dev_, GetHwErrors())
+      .WillByDefault(Return(ec::FpSensorErrors::kBadHardwareID));
+
+  enroll_session = cros_fp_biometrics_manager_->StartEnrollSession("0", "0");
+  EXPECT_FALSE(enroll_session);
+  EXPECT_EQ(enroll_session.error(), "Fingerprint hardware is unavailable.");
 }
 
 TEST_F(CrosFpBiometricsManagerTest, TestStartEnrollSessionTwiceFailed) {
@@ -351,6 +371,8 @@ TEST_F(CrosFpBiometricsManagerTest, TestStartEnrollSessionTwiceFailed) {
   second_enroll_session =
       cros_fp_biometrics_manager_->StartEnrollSession("0", "0");
   EXPECT_FALSE(second_enroll_session);
+  EXPECT_EQ(second_enroll_session.error(),
+            "Another EnrollSession already exists.");
 }
 
 TEST_F(CrosFpBiometricsManagerTest, TestAuthSessionMatchModeFailed) {
@@ -363,6 +385,20 @@ TEST_F(CrosFpBiometricsManagerTest, TestAuthSessionMatchModeFailed) {
   // Auth session should fail to start when FPMCU refuses to set match mode.
   auth_session = cros_fp_biometrics_manager_->StartAuthSession();
   EXPECT_FALSE(auth_session);
+  EXPECT_EQ(auth_session.error(), "Match was not requested.");
+}
+
+TEST_F(CrosFpBiometricsManagerTest, TestStartAuthSessionHwFailure) {
+  BiometricsManager::AuthSession auth_session;
+
+  ON_CALL(*mock_cros_dev_, SetFpMode(ec::FpMode(Mode::kMatch)))
+      .WillByDefault(Return(true));
+  ON_CALL(*mock_cros_dev_, GetHwErrors())
+      .WillByDefault(Return(ec::FpSensorErrors::kBadHardwareID));
+
+  auth_session = cros_fp_biometrics_manager_->StartAuthSession();
+  EXPECT_FALSE(auth_session);
+  EXPECT_EQ(auth_session.error(), "Fingerprint hardware is unavailable.");
 }
 
 TEST_F(CrosFpBiometricsManagerTest, TestDoEnrollImageEventSuccess) {
@@ -396,6 +432,10 @@ TEST_F(CrosFpBiometricsManagerTest, TestAuthSessionRequestsFingerUp) {
   // Expect that biod will ask FPMCU to set the match mode.
   EXPECT_CALL(*mock_cros_dev_, SetFpMode(ec::FpMode(Mode::kMatch)))
       .WillOnce(Return(true));
+
+  // Expect biod not to return any fingerprint hardware errors.
+  EXPECT_CALL(*mock_cros_dev_, GetHwErrors())
+      .WillOnce(Return(ec::FpSensorErrors::kNone));
 
   // Start auth session.
   auth_session = cros_fp_biometrics_manager_->StartAuthSession();
