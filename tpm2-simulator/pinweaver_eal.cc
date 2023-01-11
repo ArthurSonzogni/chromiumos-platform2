@@ -356,28 +356,24 @@ namespace {
 constexpr char kPkPathPrefix[] = "pk";
 }
 
-int pinweaver_eal_get_ba_pk(uint8_t auth_channel,
-                            struct pw_ba_pk_status_t* status,
-                            struct pw_ba_pk_t* pk) {
+int pinweaver_eal_storage_get_ba_pk(uint8_t auth_channel,
+                                    struct pw_ba_pk_t* pk) {
   base::FilePath path =
       base::FilePath(std::string(kPkPathPrefix) + std::to_string(auth_channel));
   std::string contents;
   if (!base::ReadFileToString(path, &contents)) {
-    // Before we decide on the criteria of device state to accept establishment,
-    // allow the first establishment unconditionally.
-    status->v = PW_BA_PK_NOT_ESTABLISHED;
-    return 0;
+    return PW_ERR_BIO_AUTH_PK_NOT_ESTABLISHED;
   }
   if (contents.size() != sizeof(struct pw_ba_pk_t)) {
     PINWEAVER_EAL_INFO("Error: Mismatched Pk file size.");
     return -1;
   }
   memcpy(pk, contents.data(), sizeof(struct pw_ba_pk_t));
-  status->v = PW_BA_PK_ESTABLISHED;
   return 0;
 }
 
-int pinweaver_eal_set_ba_pk(uint8_t auth_channel, const struct pw_ba_pk_t* pk) {
+int pinweaver_eal_storage_set_ba_pk(uint8_t auth_channel,
+                                    const struct pw_ba_pk_t* pk) {
   base::FilePath path =
       base::FilePath(std::string(kPkPathPrefix) + std::to_string(auth_channel));
   if (!brillo::WriteStringToFile(path,
