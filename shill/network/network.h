@@ -17,6 +17,7 @@
 #include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 
 #include "shill/connection.h"
+#include "shill/connection_diagnostics.h"
 #include "shill/ipconfig.h"
 #include "shill/mockable.h"
 #include "shill/net/ip_address.h"
@@ -195,8 +196,8 @@ class Network {
   }
 
   // Functions for DHCP.
-  // Initiate renewal of existing DHCP lease. Return false if the renewal failed
-  // immediately, or we don't have active lease now.
+  // Initiates renewal of existing DHCP lease. Return false if the renewal
+  // failed immediately, or we don't have active lease now.
   mockable bool RenewDHCPLease();
   // Destroy the lease, if any, with this |name|.
   // Called by the service during Unload() as part of the cleanup sequence.
@@ -259,6 +260,12 @@ class Network {
   mockable void StopPortalDetection();
   // Returns true if portal detection is currently in progress.
   mockable bool IsPortalDetectionInProgress() const;
+
+  // Initiates connection diagnostics on this Network.
+  mockable void StartConnectionDiagnostics(const ManagerProperties& props);
+
+  // Stops connection diagnostics if it is running.
+  mockable void StopConnectionDiagnostics();
 
   // Properties of the current IP config. Returns IPv4 properties if the Network
   // is dual-stack, and default (empty) values if the Network is not connected.
@@ -336,6 +343,11 @@ class Network {
   // this function only for unit tests, so that we can inject a mock
   // PortalDetector object easily.
   mockable std::unique_ptr<PortalDetector> CreatePortalDetector();
+
+  // Constructs and returns a ConnectionDiagnostics instance. Isolate
+  // this function only for unit tests, so that we can inject a mock
+  // ConnectionDiagnostics object easily.
+  mockable std::unique_ptr<ConnectionDiagnostics> CreateConnectionDiagnostics();
 
   // Shuts down and clears all the running state of this network. If
   // |trigger_callback| is true and the Network is started, OnNetworkStopped()
@@ -443,6 +455,7 @@ class Network {
   bool ipv6_gateway_found_ = false;
 
   std::unique_ptr<PortalDetector> portal_detector_;
+  std::unique_ptr<ConnectionDiagnostics> connection_diagnostics_;
 
   std::vector<EventHandler*> event_handlers_;
 

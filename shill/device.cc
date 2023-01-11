@@ -377,7 +377,7 @@ void Device::ResetConnection() {
 
 void Device::StopAllActivities() {
   network()->StopPortalDetection();
-  StopConnectionDiagnostics();
+  network()->StopConnectionDiagnostics();
 }
 
 void Device::SetUsbEthernetMacAddressSource(const std::string& source,
@@ -639,23 +639,6 @@ bool Device::UpdatePortalDetector(bool restart) {
   return true;
 }
 
-void Device::StartConnectionDiagnosticsAfterPortalDetection() {
-  DCHECK(network_->IsConnected());
-  connection_diagnostics_.reset(new ConnectionDiagnostics(
-      network_->interface_name(), network_->interface_index(),
-      network_->local(), network_->gateway(), network_->dns_servers(),
-      dispatcher(), metrics(), base::DoNothing()));
-  if (!connection_diagnostics_->Start(
-          manager_->GetProperties().portal_http_url)) {
-    connection_diagnostics_.reset();
-  }
-}
-
-void Device::StopConnectionDiagnostics() {
-  SLOG(this, 2) << LoggingTag() << ": Connection diagnostics stopping.";
-  connection_diagnostics_.reset();
-}
-
 void Device::EmitMACAddress(const std::string& mac_address) {
   // TODO(b/245984500): What about MAC changed by the supplicant?
   if (mac_address.empty() ||
@@ -744,7 +727,7 @@ void Device::OnNetworkValidationResult(const PortalDetector::Result& result) {
   // diagnostics for the current network connection.
   if (state == Service::kStateNoConnectivity ||
       state == Service::kStatePortalSuspected) {
-    StartConnectionDiagnosticsAfterPortalDetection();
+    network()->StartConnectionDiagnostics(manager_->GetProperties());
   }
 }
 

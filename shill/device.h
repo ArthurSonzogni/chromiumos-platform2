@@ -451,13 +451,6 @@ class Device : public base::RefCounted<Device>, public Network::EventHandler {
   RpcIdentifier GetSelectedServiceRpcIdentifier(Error* error);
   RpcIdentifiers AvailableIPConfigs(Error* error);
 
-  // Initiate connection diagnostics with the |result| from a completed portal
-  // detection attempt.
-  virtual void StartConnectionDiagnosticsAfterPortalDetection();
-
-  // Stop connection diagnostics if it is running.
-  void StopConnectionDiagnostics();
-
   // Stop all monitoring/testing activities on this device. Called when tearing
   // down or changing network connection on the device.
   void StopAllActivities();
@@ -528,8 +521,6 @@ class Device : public base::RefCounted<Device>, public Network::EventHandler {
 
   // Cache singleton pointers for performance and test purposes.
   RTNLHandler* rtnl_handler_;
-
-  std::unique_ptr<ConnectionDiagnostics> connection_diagnostics_;
 
   // See GetTrafficCountersCallback.
   unsigned int traffic_counter_callback_id_;

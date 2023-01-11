@@ -195,8 +195,6 @@ class TestDevice : public Device {
     callback.Run(Error(Error::kSuccess));
   }
 
-  void StartConnectionDiagnosticsAfterPortalDetection() override {}
-
   TestNetwork* test_network() { return static_cast<TestNetwork*>(network()); }
 
  private:

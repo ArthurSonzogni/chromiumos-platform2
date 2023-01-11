@@ -99,10 +99,6 @@ class TestDevice : public Device {
               ShouldBringNetworkInterfaceDownAfterDisabled,
               (),
               (const, override));
-  MOCK_METHOD(void,
-              StartConnectionDiagnosticsAfterPortalDetection,
-              (),
-              (override));
 
   bool DeviceShouldBringNetworkInterfaceDownAfterDisabled() const {
     return Device::ShouldBringNetworkInterfaceDownAfterDisabled();
@@ -852,7 +848,7 @@ TEST_F(DevicePortalDetectionTest, PortalRetryAfterDetectionFailure) {
                             Technology(Technology::kUnknown),
                             Metrics::kPortalResultConnectionFailure));
   EXPECT_CALL(*network_, RestartPortalDetection(_)).WillOnce(Return(true));
-  EXPECT_CALL(*device_, StartConnectionDiagnosticsAfterPortalDetection());
+  EXPECT_CALL(*network_, StartConnectionDiagnostics(_));
 
   OnNetworkValidationResult(result);
 }
@@ -953,7 +949,7 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionDNSFailure) {
                                         kFailureStatusCode));
   EXPECT_CALL(*service_, SetState(Service::kStateNoConnectivity));
   EXPECT_CALL(*network_, RestartPortalDetection(_)).WillOnce(Return(true));
-  EXPECT_CALL(*device_, StartConnectionDiagnosticsAfterPortalDetection());
+  EXPECT_CALL(*network_, StartConnectionDiagnostics(_));
 
   OnNetworkValidationResult(result);
 }
@@ -975,7 +971,7 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionDNSTimeout) {
                                         kPortalDetectionStatusTimeout, 0));
   EXPECT_CALL(*service_, SetState(Service::kStateNoConnectivity));
   EXPECT_CALL(*network_, RestartPortalDetection(_)).WillOnce(Return(true));
-  EXPECT_CALL(*device_, StartConnectionDiagnosticsAfterPortalDetection());
+  EXPECT_CALL(*network_, StartConnectionDiagnostics(_));
 
   OnNetworkValidationResult(result);
 }
@@ -998,8 +994,7 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionRedirect) {
                                         kPortalDetectionStatusRedirect, 302));
   EXPECT_CALL(*service_, SetState(Service::kStateRedirectFound));
   EXPECT_CALL(*network_, RestartPortalDetection(_)).WillOnce(Return(true));
-  EXPECT_CALL(*device_, StartConnectionDiagnosticsAfterPortalDetection())
-      .Times(0);
+  EXPECT_CALL(*network_, StartConnectionDiagnostics(_)).Times(0);
 
   OnNetworkValidationResult(result);
 }
@@ -1021,7 +1016,7 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionRedirectNoUrl) {
                                         kPortalDetectionStatusRedirect, 302));
   EXPECT_CALL(*service_, SetState(Service::kStatePortalSuspected));
   EXPECT_CALL(*network_, RestartPortalDetection(_)).WillOnce(Return(true));
-  EXPECT_CALL(*device_, StartConnectionDiagnosticsAfterPortalDetection());
+  EXPECT_CALL(*network_, StartConnectionDiagnostics(_));
 
   OnNetworkValidationResult(result);
 }
@@ -1043,7 +1038,7 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionPortalSuspected) {
                                         kPortalDetectionStatusSuccess, 204));
   EXPECT_CALL(*service_, SetState(Service::kStatePortalSuspected));
   EXPECT_CALL(*network_, RestartPortalDetection(_)).WillOnce(Return(true));
-  EXPECT_CALL(*device_, StartConnectionDiagnosticsAfterPortalDetection());
+  EXPECT_CALL(*network_, StartConnectionDiagnostics(_));
 
   OnNetworkValidationResult(result);
 }
@@ -1065,7 +1060,7 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionNoConnectivity) {
                                         kPortalDetectionStatusFailure, 0));
   EXPECT_CALL(*service_, SetState(Service::kStateNoConnectivity));
   EXPECT_CALL(*network_, RestartPortalDetection(_)).WillOnce(Return(true));
-  EXPECT_CALL(*device_, StartConnectionDiagnosticsAfterPortalDetection());
+  EXPECT_CALL(*network_, StartConnectionDiagnostics(_));
 
   OnNetworkValidationResult(result);
 }

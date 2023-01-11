@@ -84,6 +84,11 @@ class MockNetwork : public Network {
               (override));
   MOCK_METHOD(void, StopPortalDetection, (), (override));
   MOCK_METHOD(bool, IsPortalDetectionInProgress, (), (const, override));
+  MOCK_METHOD(void,
+              StartConnectionDiagnostics,
+              (const ManagerProperties& props),
+              (override));
+  MOCK_METHOD(void, StopConnectionDiagnostics, (), (override));
 };
 
 class MockNetworkEventHandler : public Network::EventHandler {

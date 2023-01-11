@@ -18,6 +18,7 @@
 #include "shill/connection.h"
 #include "shill/event_dispatcher.h"
 #include "shill/logging.h"
+#include "shill/manager.h"
 #include "shill/metrics.h"
 #include "shill/net/ip_address.h"
 #include "shill/net/rtnl_handler.h"
@@ -831,6 +832,32 @@ void Network::OnPortalDetectorResult(const PortalDetector::Result& result) {
   for (auto* ev : event_handlers_) {
     ev->OnNetworkValidationResult(result);
   }
+}
+
+void Network::StartConnectionDiagnostics(const ManagerProperties& props) {
+  if (!IsConnected()) {
+    LOG(INFO) << logging_tag_
+              << ": Not connected, cannot start connection diagnostics";
+    return;
+  }
+  connection_diagnostics_ = CreateConnectionDiagnostics();
+  if (!connection_diagnostics_->Start(props.portal_http_url)) {
+    connection_diagnostics_.reset();
+    LOG(WARNING) << logging_tag_ << ": Failed to start connection diagnostics";
+    return;
+  }
+  LOG(INFO) << logging_tag_ << ": Connection diagnostics started";
+}
+
+void Network::StopConnectionDiagnostics() {
+  LOG(INFO) << logging_tag_ << ": Connection diagnostics stopping";
+  connection_diagnostics_.reset();
+}
+
+std::unique_ptr<ConnectionDiagnostics> Network::CreateConnectionDiagnostics() {
+  return std::make_unique<ConnectionDiagnostics>(
+      interface_name(), interface_index(), local(), gateway(), dns_servers(),
+      dispatcher_, metrics_, base::DoNothing());
 }
 
 }  // namespace shill
