@@ -791,6 +791,11 @@ void WiFiEndpoint::ParseVendorIE(std::vector<uint8_t>::const_iterator ie,
   uint8_t oui_type = *(ie + 3);
   ie += 4;
 
+  if (oui != IEEE_80211::kOUIVendorEpigram &&
+      oui != IEEE_80211::kOUIVendorMicrosoft) {
+    vendor_information->oui_set.insert(oui);
+  }
+
   if (oui == IEEE_80211::kOUIVendorMicrosoft &&
       oui_type == IEEE_80211::kOUIMicrosoftWPS) {
     // Format of a WPS data element:
@@ -863,9 +868,6 @@ void WiFiEndpoint::ParseVendorIE(std::vector<uint8_t>::const_iterator ie,
     }
     supported_features->krv_support.adaptive_ft_supported =
         *ie & IEEE_80211::kCiscoExtendedCapabilitiesAdaptiveFT;
-  } else if (oui != IEEE_80211::kOUIVendorEpigram &&
-             oui != IEEE_80211::kOUIVendorMicrosoft) {
-    vendor_information->oui_set.insert(oui);
   }
 }
 

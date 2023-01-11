@@ -13,6 +13,7 @@
 
 #include <base/check.h>
 #include <base/containers/contains.h>
+#include <base/strings/string_split.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -643,6 +644,9 @@ TEST_F(WiFiEndpointTest, ParseVendorIEs) {
     std::vector<uint8_t> ies;
     const uint32_t kVendorOUI = 0xaabbcc;
     AddVendorIE(kVendorOUI, 0, std::vector<uint8_t>(), &ies);
+    AddVendorIE(IEEE_80211::kOUIVendorCiscoAironet,
+                IEEE_80211::kOUITypeCiscoExtendedCapabilitiesIE,
+                std::vector<uint8_t>(), &ies);
     AddVendorIE(IEEE_80211::kOUIVendorMicrosoft, 0, std::vector<uint8_t>(),
                 &ies);
     AddVendorIE(IEEE_80211::kOUIVendorEpigram, 0, std::vector<uint8_t>(), &ies);
@@ -655,9 +659,10 @@ TEST_F(WiFiEndpointTest, ParseVendorIEs) {
     EXPECT_EQ("", vendor_information.wps_model_name);
     EXPECT_EQ("", vendor_information.wps_model_number);
     EXPECT_EQ("", vendor_information.wps_device_name);
-    EXPECT_EQ(1, vendor_information.oui_set.size());
-    EXPECT_FALSE(vendor_information.oui_set.find(kVendorOUI) ==
-                 vendor_information.oui_set.end());
+    EXPECT_EQ(2, vendor_information.oui_set.size());
+    EXPECT_TRUE(base::Contains(vendor_information.oui_set, kVendorOUI));
+    EXPECT_TRUE(base::Contains(vendor_information.oui_set,
+                               IEEE_80211::kOUIVendorCiscoAironet));
 
     WiFiEndpointRefPtr endpoint = MakeOpenEndpoint(
         nullptr, nullptr, std::string(1, 0), "00:00:00:00:00:01");
@@ -671,7 +676,12 @@ TEST_F(WiFiEndpointTest, ParseVendorIEs) {
         base::Contains(vendor_stringmap, kVendorWPSModelNumberProperty));
     EXPECT_FALSE(
         base::Contains(vendor_stringmap, kVendorWPSDeviceNameProperty));
-    EXPECT_EQ("aa-bb-cc", vendor_stringmap[kVendorOUIListProperty]);
+    std::vector<std::string> oui_list = base::SplitString(
+        vendor_stringmap[kVendorOUIListProperty], base::kWhitespaceASCII,
+        base::KEEP_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
+    EXPECT_EQ(2, oui_list.size());
+    EXPECT_TRUE(base::Contains(oui_list, "aa-bb-cc"));
+    EXPECT_TRUE(base::Contains(oui_list, "00-40-96"));
   }
   {
     ScopedMockLog log;
