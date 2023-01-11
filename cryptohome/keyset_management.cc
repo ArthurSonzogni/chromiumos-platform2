@@ -625,7 +625,7 @@ CryptohomeErrorCode KeysetManagement::AddKeysetImpl(
   CryptohomeStatus status =
       std::move(encrypt_vk_callback).Run(keyset_to_add.get());
   if (!status.ok()) {
-    LOG(WARNING) << "Failed to encrypt the new keyset";
+    LOG(WARNING) << "Failed to encrypt the new keyset: " << status;
     // If we're clobbering don't delete on error.
     if (!clobber || !match.get()) {
       platform_->DeleteFile(vk_path);
@@ -864,7 +864,8 @@ void KeysetManagement::ResetLECredentials(const Credentials& creds,
   MountStatusOr<std::unique_ptr<VaultKeyset>> vk_status = GetValidKeyset(creds);
   if (!vk_status.ok()) {
     LOG(WARNING) << "The provided credentials are incorrect or invalid"
-                    " for LE credential reset, reset skipped.";
+                    " for LE credential reset, reset skipped: "
+                 << vk_status.status();
     return;
   }
 

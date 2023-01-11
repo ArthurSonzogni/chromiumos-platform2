@@ -982,7 +982,7 @@ void AuthSession::LoadVaultKeysetAndFsKeys(
     // authenticated. Just return the error status at last.
     prepare_status = PrepareWebAuthnSecret();
     if (!prepare_status.ok()) {
-      LOG(ERROR) << "Failed to prepare WebAuthn secret.";
+      LOG(ERROR) << "Failed to prepare WebAuthn secret: " << prepare_status;
     }
   }
 
@@ -1049,7 +1049,8 @@ void AuthSession::OnMigrationUssCreated(
   CryptohomeStatusOr<AuthInput> migration_auth_input_status =
       CreateAuthInputForMigration(auth_input, auth_factor_type);
   if (!migration_auth_input_status.ok()) {
-    LOG(ERROR) << "Failed to create migration AuthInput.";
+    LOG(ERROR) << "Failed to create migration AuthInput: "
+               << migration_auth_input_status.status();
     ReportVkToUssMigrationStatus(VkToUssMigrationStatus::kFailedInput);
     std::move(on_done).Run(std::move(pre_migration_status));
     return;
@@ -2294,8 +2295,7 @@ void AuthSession::PersistAuthFactorToUserSecretStashOnMigration(
 
   if (!status.ok()) {
     LOG(ERROR) << "USS migration of VaultKeyset with label "
-               << auth_factor_label
-               << " is failed in PersistAuthFactorToUserSecretStashImpl";
+               << auth_factor_label << " is failed: " << status;
     ReportVkToUssMigrationStatus(VkToUssMigrationStatus::kFailedPersist);
     std::move(on_done).Run(std::move(pre_migration_status));
     return;
@@ -2859,7 +2859,7 @@ void AuthSession::LoadUSSMainKeyAndFsKeyset(
     // authenticated. Just return the error status at last.
     prepare_status = PrepareWebAuthnSecret();
     if (!prepare_status.ok()) {
-      LOG(ERROR) << "Failed to prepare WebAuthn secret.";
+      LOG(ERROR) << "Failed to prepare WebAuthn secret: " << prepare_status;
     }
   }
 
@@ -2890,7 +2890,8 @@ void AuthSession::LoadUSSMainKeyAndFsKeyset(
     } else {
       // Don't abort the authentication if obtaining backup VaultKeyset fails.
       LOG(WARNING) << "Failed to load the backup VaultKeyset for the "
-                      "authenticated user.";
+                      "authenticated user: "
+                   << vk_status.status();
     }
   }
   ReportTimerDuration(auth_session_performance_timer.get());
