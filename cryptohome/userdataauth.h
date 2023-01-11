@@ -695,16 +695,6 @@ class UserDataAuth {
       base::OnceCallback<void(const user_data_auth::StartAuthSessionReply&)>
           on_done);
 
-  void AddCredentials(
-      user_data_auth::AddCredentialsRequest request,
-      base::OnceCallback<void(const user_data_auth::AddCredentialsReply&)>
-          on_done);
-
-  void UpdateCredential(
-      user_data_auth::UpdateCredentialRequest request,
-      base::OnceCallback<void(const user_data_auth::UpdateCredentialReply&)>
-          on_done);
-
   void AuthenticateAuthSession(
       user_data_auth::AuthenticateAuthSessionRequest request,
       base::OnceCallback<
@@ -1125,23 +1115,18 @@ class UserDataAuth {
 
   CryptohomeStatus CreatePersistentUserImpl(const std::string& auth_session_id);
 
-  // Handled add credentials for ephemeral users. This function does not save
-  // anything to the disk and just sets verifier in memory for screen unlock.
-  user_data_auth::CryptohomeErrorCode HandleAddCredentialForEphemeralVault(
-      AuthorizationRequest request, const AuthSession* auth_session);
-
-  // OnAddCredentialFinished when AuthSession::AddCredential is finished. The
-  // function will set credential in user_session for user to do unlock. The
+  // OnAddAuthFactorFinished when AuthSession::AddAuthFactor is finished. The
+  // function will set AuthFactor in user_session for user to do unlock. The
   // credential verifier will not be overridden if it is already set once.
-  void OnAddCredentialFinished(AuthSession* auth_session,
+  void OnAddAuthFactorFinished(AuthSession* auth_session,
                                StatusCallback on_done,
                                CryptohomeStatus status);
 
-  // OnUpdateCredentialFinished is called when AuthSession::UpdateCredentials is
-  // finished. The function will set credential in user_session for user to do
+  // OnUpdateAuthFactorFinished is called when AuthSession::UpdateAuthFactors is
+  // finished. The function will set AuthFactor in user_session for user to do
   // unlock. The credential verifier will be overridden if it is already set
   // once.
-  void OnUpdateCredentialFinished(AuthSession* auth_session,
+  void OnUpdateAuthFactorFinished(AuthSession* auth_session,
                                   StatusCallback on_done,
                                   CryptohomeStatus status);
 

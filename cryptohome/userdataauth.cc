@@ -3958,71 +3958,6 @@ void UserDataAuth::StartAuthSession(
   ReplyWithError(std::move(on_done), reply, OkStatus<CryptohomeError>());
 }
 
-user_data_auth::CryptohomeErrorCode
-UserDataAuth::HandleAddCredentialForEphemeralVault(
-    AuthorizationRequest request, const AuthSession* auth_session) {
-  UserSession* const session = GetOrCreateUserSession(auth_session->username());
-  // Check the user is already mounted and the session is ephemeral.
-  if (!session->IsActive()) {
-    LOG(ERROR) << "AddCredential failed as ephemeral user is not mounted: "
-               << auth_session->obfuscated_username();
-    return user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED;
-  }
-  if (!session->IsEphemeral()) {
-    LOG(ERROR) << "AddCredential failed as user Session is not ephemeral: "
-               << auth_session->obfuscated_username();
-    return user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED;
-  }
-
-  auto credentials = std::make_unique<Credentials>(
-      auth_session->username(), SecureBlob(request.key().secret()));
-  // Everything else can be the default.
-  credentials->set_key_data(request.key().data());
-  session->AddCredentials(*credentials);
-  return user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
-}
-
-void UserDataAuth::AddCredentials(
-    user_data_auth::AddCredentialsRequest request,
-    base::OnceCallback<void(const user_data_auth::AddCredentialsReply&)>
-        on_done) {
-  AssertOnMountThread();
-
-  user_data_auth::AddCredentialsReply reply;
-
-  AuthSession* auth_session =
-      auth_session_manager_->FindAuthSession(request.auth_session_id());
-  if (!auth_session) {
-    reply.set_error(user_data_auth::CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN);
-    std::move(on_done).Run(reply);
-    return;
-  }
-
-  // Additional check if the user wants to add new credentials for an existing
-  // user.
-  if (request.add_more_credentials() && !auth_session->user_exists()) {
-    reply.set_error(user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_DENIED);
-    std::move(on_done).Run(reply);
-    return;
-  }
-
-  if (auth_session->ephemeral_user()) {
-    reply.set_error(HandleAddCredentialForEphemeralVault(
-        request.authorization(), auth_session));
-    std::move(on_done).Run(reply);
-    return;
-  }
-
-  // Add credentials using data in AuthorizationRequest and
-  // auth_session_token.
-  StatusCallback on_add_credential_finished = base::BindOnce(
-      &UserDataAuth::OnAddCredentialFinished, base::Unretained(this),
-      auth_session,
-      base::BindOnce(&ReplyWithStatus<user_data_auth::AddCredentialsReply>,
-                     std::move(on_done)));
-  auth_session->AddCredentials(request, std::move(on_add_credential_finished));
-}
-
 void UserDataAuth::SetKeyDataForUserSession(AuthSession* auth_session,
                                             bool override_existing_data) {
   DCHECK(auth_session);
@@ -4061,7 +3996,7 @@ void UserDataAuth::SetKeyDataForUserSession(AuthSession* auth_session,
   }
 }
 
-void UserDataAuth::OnAddCredentialFinished(AuthSession* auth_session,
+void UserDataAuth::OnAddAuthFactorFinished(AuthSession* auth_session,
                                            StatusCallback on_done,
                                            CryptohomeStatus status) {
   if (status.ok()) {
@@ -4071,7 +4006,7 @@ void UserDataAuth::OnAddCredentialFinished(AuthSession* auth_session,
   std::move(on_done).Run(std::move(status));
 }
 
-void UserDataAuth::OnUpdateCredentialFinished(AuthSession* auth_session,
+void UserDataAuth::OnUpdateAuthFactorFinished(AuthSession* auth_session,
                                               StatusCallback on_done,
                                               CryptohomeStatus status) {
   if (status.ok()) {
@@ -4079,34 +4014,6 @@ void UserDataAuth::OnUpdateCredentialFinished(AuthSession* auth_session,
                              /*override_existing_data=*/true);
   }
   std::move(on_done).Run(std::move(status));
-}
-
-void UserDataAuth::UpdateCredential(
-    user_data_auth::UpdateCredentialRequest request,
-    base::OnceCallback<void(const user_data_auth::UpdateCredentialReply&)>
-        on_done) {
-  AssertOnMountThread();
-
-  user_data_auth::UpdateCredentialReply reply;
-  CryptohomeStatusOr<AuthSession*> auth_session_status =
-      GetAuthenticatedAuthSession(request.auth_session_id());
-  if (!auth_session_status.ok()) {
-    ReplyWithError(
-        std::move(on_done), reply,
-        MakeStatus<CryptohomeError>(
-            CRYPTOHOME_ERR_LOC(kLocUserDataAuthNoAuthSessionInUpdateCredential))
-            .Wrap(std::move(auth_session_status).status()));
-    return;
-  }
-  // Update credentials using data in AuthorizationRequest and
-  // auth_session_token.
-  StatusCallback on_update_credential_finished = base::BindOnce(
-      &UserDataAuth::OnUpdateCredentialFinished, base::Unretained(this),
-      auth_session_status.value(),
-      base::BindOnce(&ReplyWithStatus<user_data_auth::UpdateCredentialReply>,
-                     std::move(on_done)));
-  auth_session_status.value()->UpdateCredential(
-      request, std::move(on_update_credential_finished));
 }
 
 void UserDataAuth::AuthenticateAuthSession(
@@ -4709,7 +4616,7 @@ void UserDataAuth::AddAuthFactor(
   PopulateAuthFactorProtoWithSysinfo(*request.mutable_auth_factor());
 
   StatusCallback on_add_auth_factor_finished = base::BindOnce(
-      &UserDataAuth::OnAddCredentialFinished, base::Unretained(this),
+      &UserDataAuth::OnAddAuthFactorFinished, base::Unretained(this),
       auth_session_status.value(),
       base::BindOnce(&ReplyWithStatus<user_data_auth::AddAuthFactorReply>,
                      std::move(on_done)));
@@ -4767,7 +4674,7 @@ void UserDataAuth::UpdateAuthFactor(
   PopulateAuthFactorProtoWithSysinfo(*request.mutable_auth_factor());
 
   StatusCallback on_update_auth_factor_finished = base::BindOnce(
-      &UserDataAuth::OnUpdateCredentialFinished, base::Unretained(this),
+      &UserDataAuth::OnUpdateAuthFactorFinished, base::Unretained(this),
       auth_session_status.value(),
       base::BindOnce(&ReplyWithStatus<user_data_auth::UpdateAuthFactorReply>,
                      std::move(on_done)));
