@@ -204,7 +204,7 @@ mod tests {
             MockCommandOutput::new(0, "", ""),
         );
         mock_ctx.cmd_runner().add_expectation(
-            MockCommandInput::new("/usr/share/vboot/bin/get_gbb_flags.sh", Vec::<&str>::new()),
+            MockCommandInput::new("futility", vec!["gbb", "--get", "--flash", "--flags"]),
             MockCommandOutput::new(0, "Oops... no flag ><", ""),
         );
 

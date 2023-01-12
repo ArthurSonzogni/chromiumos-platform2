@@ -142,10 +142,10 @@ pub fn clear_terminal() {
 pub fn get_gbb_flags(ctx: &mut impl Context) -> Result<u32, HwsecError> {
     let raw_response = ctx
         .cmd_runner()
-        .output("/usr/share/vboot/bin/get_gbb_flags.sh", vec![])
+        .output("futility", vec!["gbb", "--get", "--flash", "--flags"])
         .map_err(|_| HwsecError::CommandRunnerError)?;
     let re: regex::Regex = Regex::new(r"0x[0-9a-fA-F]{8}").unwrap();
-    if let Some(keyword_pos) = raw_response.find("Chrome OS GBB set flags:") {
+    if let Some(keyword_pos) = raw_response.find("flags:") {
         let key_str = re
             .find(&raw_response[keyword_pos..])
             .ok_or(HwsecError::VbootScriptResponseBadFormatError)?
@@ -160,8 +160,13 @@ pub fn get_gbb_flags(ctx: &mut impl Context) -> Result<u32, HwsecError> {
 pub fn set_gbb_flags(ctx: &mut impl Context, new_flags: u32) -> Result<(), HwsecError> {
     ctx.cmd_runner()
         .run(
-            "/usr/share/vboot/bin/set_gbb_flags.sh",
-            vec![&format!("0x{:08x}", new_flags)],
+            "futility",
+            vec![
+                "gbb",
+                "--set",
+                "--flash",
+                &format!("--flags=0x{:08x}", new_flags),
+            ],
         )
         .map_err(|_| HwsecError::CommandRunnerError)
         .map(|_| ())

@@ -232,7 +232,7 @@ impl MockCommandRunner {
     }
     pub fn add_successful_get_gbb_flags_interaction(&mut self, gbb_flag: u32) {
         self.add_expectation(
-            MockCommandInput::new("/usr/share/vboot/bin/get_gbb_flags.sh", Vec::<&str>::new()),
+            MockCommandInput::new("futility", vec!["gbb", "--get", "--flash", "--flags"]),
             MockCommandOutput::new(
                 0,
                 &format!(
@@ -246,8 +246,13 @@ impl MockCommandRunner {
     pub fn add_successful_set_gbb_flags_interaction(&mut self, gbb_flag: u32) {
         self.add_expectation(
             MockCommandInput::new(
-                "/usr/share/vboot/bin/set_gbb_flags.sh",
-                vec![&format!("0x{:08x}", gbb_flag)],
+                "futility",
+                vec![
+                    "gbb",
+                    "--set",
+                    "--flash",
+                    &format!("--flags=0x{:08x}", gbb_flag),
+                ],
             ),
             MockCommandOutput::new(
                 0,
