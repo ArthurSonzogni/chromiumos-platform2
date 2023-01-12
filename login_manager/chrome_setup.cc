@@ -27,9 +27,9 @@
 #include <base/values.h>
 #include <brillo/userdb_utils.h>
 #include <chromeos-config/libcros_config/cros_config_interface.h>
+#include <chromeos/constants/vm_tools.h>
 #include <chromeos/ui/chromium_command_builder.h>
 #include <chromeos/ui/util.h>
-#include <chromeos/constants/vm_tools.h>
 #include <policy/device_policy.h>
 #include <policy/libpolicy.h>
 
@@ -981,6 +981,10 @@ void AddMlFlags(ChromiumCommandBuilder* builder,
     builder->AddArg("--ondevice_document_scanner=use_rootfs");
   else if (builder->UseFlagIsSet("ondevice_document_scanner_dlc"))
     builder->AddArg("--ondevice_document_scanner=use_dlc");
+
+  if (!builder->UseFlagIsSet("federated_service")) {
+    builder->AddFeatureDisableOverride("FederatedService");
+  }
 
   SetUpHandwritingRecognitionWebPlatformApiFlag(builder, cros_config);
   SetUpHasHpsFlag(builder, cros_config);
