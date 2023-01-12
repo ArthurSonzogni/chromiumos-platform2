@@ -451,10 +451,6 @@ class Device : public base::RefCounted<Device>, public Network::EventHandler {
   RpcIdentifier GetSelectedServiceRpcIdentifier(Error* error);
   RpcIdentifiers AvailableIPConfigs(Error* error);
 
-  // Stop all monitoring/testing activities on this device. Called when tearing
-  // down or changing network connection on the device.
-  void StopAllActivities();
-
   // Atomically update the counters of the old service and the snapshot of the
   // new service. |GetTrafficCountersPatchpanelCallback| calls
   // |GetTrafficCountersCallback| using the |get_traffic_counters_callback_|

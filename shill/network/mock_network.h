@@ -88,7 +88,6 @@ class MockNetwork : public Network {
               StartConnectionDiagnostics,
               (const ManagerProperties& props),
               (override));
-  MOCK_METHOD(void, StopConnectionDiagnostics, (), (override));
 };
 
 class MockNetworkEventHandler : public Network::EventHandler {

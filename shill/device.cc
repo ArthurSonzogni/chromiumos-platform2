@@ -375,11 +375,6 @@ void Device::ResetConnection() {
   SelectService(/*service=*/nullptr, /*reset_old_service_state=*/false);
 }
 
-void Device::StopAllActivities() {
-  network()->StopPortalDetection();
-  network()->StopConnectionDiagnostics();
-}
-
 void Device::SetUsbEthernetMacAddressSource(const std::string& source,
                                             const ResultCallback& callback) {
   Error error;
@@ -486,7 +481,6 @@ void Device::OnNetworkStopped(bool is_failure) {
   if (is_failure) {
     OnIPConfigFailure();
   }
-  StopAllActivities();
 }
 
 void Device::OnGetDHCPLease() {}
@@ -561,7 +555,6 @@ void Device::SelectService(const ServiceRefPtr& service,
       SetServiceState(Service::kStateIdle);
     }
     selected_service_->SetAttachedNetwork(nullptr);
-    StopAllActivities();
   }
 
   selected_service_ = service;

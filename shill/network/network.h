@@ -264,9 +264,6 @@ class Network {
   // Initiates connection diagnostics on this Network.
   mockable void StartConnectionDiagnostics(const ManagerProperties& props);
 
-  // Stops connection diagnostics if it is running.
-  mockable void StopConnectionDiagnostics();
-
   // Properties of the current IP config. Returns IPv4 properties if the Network
   // is dual-stack, and default (empty) values if the Network is not connected.
   mockable std::vector<std::string> dns_servers() const;
@@ -353,6 +350,8 @@ class Network {
   // |trigger_callback| is true and the Network is started, OnNetworkStopped()
   // will be invoked with |is_failure|.
   void StopInternal(bool is_failure, bool trigger_callback);
+  // Stop connection diagnostics if it is running.
+  void StopConnectionDiagnostics();
 
   // Functions for IPv4.
   // Triggers a reconfiguration on connection for an IPv4 config change.
