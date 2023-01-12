@@ -151,7 +151,7 @@ std::optional<AuthInput> CreateAuthInput(
               &auth_factor_metadata.metadata);
       std::optional<brillo::Blob> public_key_spki_der;
       if (smart_card_metadata) {
-        public_key_spki_der = smart_card_metadata->public_key_spki_der;
+        public_key_spki_der = *smart_card_metadata->public_key_spki_der;
       } else {
         public_key_spki_der = std::nullopt;
       }

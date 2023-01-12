@@ -256,10 +256,10 @@ std::unique_ptr<AuthSession> AuthSession::Create(
 }
 
 AuthSession::AuthSession(Params params, BackingApis backing_apis)
-    : username_(std::move(params.username)),
+    : username_(std::move(*params.username)),
       obfuscated_username_(SanitizeUserName(username_)),
-      is_ephemeral_user_(params.flags & AUTH_SESSION_FLAGS_EPHEMERAL_USER),
-      auth_intent_(params.intent),
+      is_ephemeral_user_(*params.flags & AUTH_SESSION_FLAGS_EPHEMERAL_USER),
+      auth_intent_(*params.intent),
       auth_session_creation_time_(base::TimeTicks::Now()),
       on_timeout_(std::move(params.on_timeout)),
       crypto_(backing_apis.crypto),
@@ -273,11 +273,11 @@ AuthSession::AuthSession(Params params, BackingApis backing_apis)
       converter_(keyset_management_),
       token_(platform_->CreateUnguessableToken()),
       serialized_token_(GetSerializedStringFromToken(token_).value_or("")),
-      user_exists_(params.user_exists),
+      user_exists_(*params.user_exists),
       auth_factor_map_(std::move(params.auth_factor_map)),
       enable_create_backup_vk_with_uss_(
           AreAllFactorsSupportedByBothVkAndUss(auth_factor_map_)),
-      migrate_to_user_secret_stash_(params.migrate_to_user_secret_stash) {
+      migrate_to_user_secret_stash_(*params.migrate_to_user_secret_stash) {
   // Preconditions.
   DCHECK(!serialized_token_.empty());
   DCHECK(crypto_);

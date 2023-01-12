@@ -137,7 +137,7 @@ flatbuffers::Offset<SerializedSmartCardMetadata> SerializeMetadataToOffset(
     const SmartCardAuthFactorMetadata& smart_card_metadata,
     flatbuffers::FlatBufferBuilder* builder) {
   auto public_key_offset = hwsec_foundation::ToFlatBuffer<brillo::Blob>()(
-      builder, smart_card_metadata.public_key_spki_der);
+      builder, *smart_card_metadata.public_key_spki_der);
   SerializedSmartCardMetadataBuilder metadata_builder(*builder);
   metadata_builder.add_public_key_spki_der(public_key_offset);
   return metadata_builder.Finish();

@@ -9,7 +9,7 @@
 #include <variant>
 
 #include <brillo/cryptohome.h>
-#include <libhwsec/structures/no_default_init.h>
+#include <libhwsec/structures/explicit_init.h>
 
 namespace cryptohome {
 
@@ -27,7 +27,7 @@ struct CryptohomeRecoveryAuthFactorMetadata {};
 struct KioskAuthFactorMetadata {};
 
 struct SmartCardAuthFactorMetadata {
-  hwsec::NoDefault<brillo::Blob> public_key_spki_der;
+  hwsec::ExplicitInit<brillo::Blob> public_key_spki_der;
 };
 
 struct FingerprintAuthFactorMetadata {};

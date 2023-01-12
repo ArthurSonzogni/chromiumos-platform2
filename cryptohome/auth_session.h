@@ -21,8 +21,8 @@
 #include <cryptohome/proto_bindings/rpc.pb.h>
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <cryptohome/proto_bindings/auth_factor.pb.h>
+#include <libhwsec/structures/explicit_init.h>
 #include <libhwsec-foundation/status/status_chain_or.h>
-#include <libhwsec/structures/no_default_init.h>
 
 #include "cryptohome/auth_blocks/auth_block_utility.h"
 #include "cryptohome/auth_blocks/prepare_token.h"
@@ -89,14 +89,14 @@ class AuthSession final {
   // These parameters do not include the underlying interfaces that AuthSession
   // depends on, which are defined below in a separate parameter struct.
   struct Params {
-    hwsec::NoDefault<std::string> username;
-    hwsec::NoDefault<std::string> obfuscated_username;
-    hwsec::NoDefault<unsigned int> flags;
-    hwsec::NoDefault<AuthIntent> intent;
+    hwsec::ExplicitInit<std::string> username;
+    hwsec::ExplicitInit<std::string> obfuscated_username;
+    hwsec::ExplicitInit<unsigned int> flags;
+    hwsec::ExplicitInit<AuthIntent> intent;
     base::OnceCallback<void(const base::UnguessableToken&)> on_timeout;
-    hwsec::NoDefault<bool> user_exists;
+    hwsec::ExplicitInit<bool> user_exists;
     AuthFactorMap auth_factor_map;
-    hwsec::NoDefault<bool> migrate_to_user_secret_stash;
+    hwsec::ExplicitInit<bool> migrate_to_user_secret_stash;
   };
 
   // Parameter struct used to supply all of the backing APIs that AuthSession

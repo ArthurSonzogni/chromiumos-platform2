@@ -257,7 +257,7 @@ AuthFactorVaultKeysetConverter::AuthFactorToKeyData(
         return user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT;
       }
       std::string public_key_string =
-          brillo::BlobToString(smart_card_metadata->public_key_spki_der);
+          brillo::BlobToString(*smart_card_metadata->public_key_spki_der);
       auto* challenge_key = out_key_data.add_challenge_response_key();
       challenge_key->set_public_key_spki_der(public_key_string);
       return user_data_auth::CRYPTOHOME_ERROR_NOT_SET;

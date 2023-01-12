@@ -108,7 +108,7 @@ std::optional<user_data_auth::AuthFactor> ToSmartCardProto(
   user_data_auth::AuthFactor proto;
   proto.set_type(user_data_auth::AUTH_FACTOR_TYPE_SMART_CARD);
   proto.mutable_smart_card_metadata()->set_public_key_spki_der(
-      brillo::BlobToString(metadata.public_key_spki_der));
+      brillo::BlobToString(*metadata.public_key_spki_der));
   return proto;
 }
 
