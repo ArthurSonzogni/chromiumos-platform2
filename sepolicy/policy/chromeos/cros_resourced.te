@@ -2,4 +2,4 @@ type cros_resourced, chromeos_domain, domain;
 
 permissive cros_resourced;
 
-from_minijail_preload(cros_resourced, cros_resourced_exec);
+from_minijail_preload(cros_resourced, cros_resourced_exec)

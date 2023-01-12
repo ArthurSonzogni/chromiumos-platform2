@@ -21,7 +21,7 @@ ifelse(use_selinux_develop, `y', $1,
 
 define(`n_to_p_migration', `
 is_arc_p(`
-ifelse(use_arc_first_release_n, `y', `$1');
+ifelse(use_arc_first_release_n, `y', `$1')
 ')
 ')
 

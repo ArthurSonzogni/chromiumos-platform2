@@ -1,20 +1,20 @@
 type cros_tcsd, chromeos_domain, domain;
 
-domain_auto_trans(cros_init, cros_tcsd_exec, cros_tcsd);
+domain_auto_trans(cros_init, cros_tcsd_exec, cros_tcsd)
 
-uma_writer(cros_tcsd);
-log_writer(cros_tcsd);
-r_dir_file(cros_tcsd, cros_passwd_file);
+uma_writer(cros_tcsd)
+log_writer(cros_tcsd)
+r_dir_file(cros_tcsd, cros_passwd_file)
 
-r_dir_file(cros_tcsd, { sysfs sysfs_tpm });
+r_dir_file(cros_tcsd, { sysfs sysfs_tpm })
 
 create_dir_file(cros_tcsd, {
   cros_var_lib_tpm
   cros_var_log_tcsd
   cros_run_tcsd
-});
+})
 
-filetrans_pattern(cros_tcsd, cros_run_tcsd, cros_tcsd_socket, sock_file, "tcsd.socket");
+filetrans_pattern(cros_tcsd, cros_run_tcsd, cros_tcsd_socket, sock_file, "tcsd.socket")
 allow cros_tcsd cros_tcsd_socket:sock_file create_file_perms;
 
 allow cros_tcsd tpm_device:chr_file rw_file_perms;

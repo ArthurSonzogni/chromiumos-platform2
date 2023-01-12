@@ -4,14 +4,14 @@ type cros_debugd_minijail, cros_miscdomain, chromeos_domain, domain;
 permissive cros_debugd;
 permissive cros_debugd_minijail;
 
-domain_auto_trans(cros_init, cros_debugd_exec, cros_debugd);
-domain_auto_trans(cros_debugd, cros_minijail_exec, cros_debugd_minijail);
+domain_auto_trans(cros_init, cros_debugd_exec, cros_debugd)
+domain_auto_trans(cros_debugd, cros_minijail_exec, cros_debugd_minijail)
 
-log_writer(cros_debugd);
-cros_dbus_client(cros_debugd);
+log_writer(cros_debugd)
+cros_dbus_client(cros_debugd)
 
-filetrans_pattern(cros_debugd, cros_run, cros_run_shill, dir, "shill");
-filetrans_pattern(cros_debugd, cros_run, cros_run_avahi_daemon, dir, "avahi-daemon");
+filetrans_pattern(cros_debugd, cros_run, cros_run_shill, dir, "shill")
+filetrans_pattern(cros_debugd, cros_run, cros_run_avahi_daemon, dir, "avahi-daemon")
 
 allow cros_debugd_minijail cros_debugd:fd use;
 

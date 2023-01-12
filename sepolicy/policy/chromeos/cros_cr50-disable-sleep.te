@@ -4,4 +4,4 @@ permissive cros_cr50-disable-sleep;
 
 domain_auto_trans({
   cros_init
-  cros_init_scripts }, cros_cr50-disable-sleep_script, cros_cr50-disable-sleep);
+  cros_init_scripts }, cros_cr50-disable-sleep_script, cros_cr50-disable-sleep)

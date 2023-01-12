@@ -2,4 +2,4 @@ type cros_timberslide, chromeos_domain, domain;
 
 permissive cros_timberslide;
 
-domain_auto_trans(cros_init_scripts, cros_timberslide_exec, cros_timberslide);
+domain_auto_trans(cros_init_scripts, cros_timberslide_exec, cros_timberslide)

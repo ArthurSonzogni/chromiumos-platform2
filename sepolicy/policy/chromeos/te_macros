@@ -1,8 +1,8 @@
 # Basic macros
 define(`domain_auto_trans_nnp', `
-domain_auto_trans($1, $2, $3);
+domain_auto_trans($1, $2, $3)
 allow $1 $3:process2 nnp_transition;
-');
+')
 
 # rw_dir_file(domain, type)
 # Allow the specified domain to read/write directories, files
@@ -59,7 +59,7 @@ type_transition $1 $2:$4 $3 $5;
 # TODO(fqj): remove this
 define(`filetrans_pattern_no_target_perm', `
 filetrans_pattern($1, $2, $3, $4, $5)
-');
+')
 
 # Chrome OS specific macros
 define(`use_init_fd', `
@@ -103,19 +103,19 @@ allow $1 self:tcp_socket create_socket_perms;
 ')
 
 define(`cros_tcp_connect', `
-cros_tcp_create($1);
+cros_tcp_create($1)
 allow $1 port:tcp_socket name_connect;
-');
+')
 
 define(`cros_udp_create', `
 allow $1 self:udp_socket create_socket_perms;
-');
+')
 
 define(`cros_udp_listen', `
-cros_udp_create($1);
+cros_udp_create($1)
 allow $1 node:udp_socket node_bind;
 allow $1 port:udp_socket name_bind;
-');
+')
 
 define(`cros_netlink', `
 allow $1 self:$2 { create_socket_perms_no_ioctl nlmsg_read };
@@ -124,7 +124,7 @@ allow $1 self:$2 { create_socket_perms_no_ioctl nlmsg_read };
 # Contexts that write to /run/lock/power_override to block resume need to call
 # this macro with the context name as the only argument.
 define(`cros_power_override', `
-filetrans_pattern($1, cros_run_lock_power_override, cros_power_override_lock_file, file);
+filetrans_pattern($1, cros_run_lock_power_override, cros_power_override_lock_file, file)
 allow $1 cros_power_override_lock_file:file create_file_perms;
 allow $1 cros_run_lock:dir lock;
 ')
@@ -135,46 +135,46 @@ typeattribute $1 cros_dbus_client_domain;
 
 define(`cros_tcsd_client', `
 typeattribute $1 cros_tcsd_client_domain;
-');
+')
 
 define(`cros_cras_client', `
 typeattribute $1 cros_cras_client_domain;
-');
+')
 
 define(`uma_writer', `
 typeattribute $1 cros_uma_events_writer_domain;
-');
+')
 
 define(`cros_run_camera_creator', `
 typeattribute $1 cros_run_camera_creator_domain;
-');
+')
 
 define(`cros_cron', `
-domain_auto_trans(cros_periodic_scheduler, $2, $1);
+domain_auto_trans(cros_periodic_scheduler, $2, $1)
 allow cros_periodic_scheduler $1:process2 nnp_transition;
 typeattribute $1 cros_launched_by_periodic_scheduler_domain;
-');
+')
 
-# tmp_file(domain, file|dir, file name, directory other than tmpfs);
+# tmp_file(domain, file|dir, file name, directory other than tmpfs)
 define(`tmp_file', `
 type $1_tmp_file, file_type, cros_tmpfile_type, cros_file_type;
-filetrans_pattern($1, {tmpfs $4}, $1_tmp_file, $2, $3);
-');
+filetrans_pattern($1, {tmpfs $4}, $1_tmp_file, $2, $3)
+')
 
-# pid_file(domain, where, file name, file type of created pid file);
+# pid_file(domain, where, file name, file type of created pid file)
 # if file type of created pid file is not specified, it will be
 # <domain>_pid_file by default.
 define(`pid_file', `
 ifelse($4, `', `
-define(`___pid_file_type', `$1_pid_file');
+define(`___pid_file_type', `$1_pid_file')
 ', `
-define(`___pid_file_type', `$4');
-');
+define(`___pid_file_type', `$4')
+')
 type ___pid_file_type, file_type, cros_tmpfile_type, cros_file_type;
-filetrans_pattern($1, $2, ___pid_file_type, file, $3);
+filetrans_pattern($1, $2, ___pid_file_type, file, $3)
 allow $1 ___pid_file_type:file create_file_perms;
-undefine(`___pid_file_type');
-');
+undefine(`___pid_file_type')
+')
 
 # minijail-related macros
 include(sepolicy/policy/chromeos/minijail_te_macros)

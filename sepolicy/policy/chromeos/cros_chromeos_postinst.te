@@ -1,6 +1,6 @@
 type cros_chromeos_postinst, domain, chromeos_domain;
 
-domain_auto_trans_nnp(cros_chromeos_install, cros_chromeos_postinst_exec, cros_chromeos_postinst);
+domain_auto_trans_nnp(cros_chromeos_install, cros_chromeos_postinst_exec, cros_chromeos_postinst)
 
 allow cros_chromeos_postinst self:capability { sys_admin sys_chroot };
 
@@ -54,5 +54,5 @@ is_arc_vm(`
   allow cros_chromeos_postinst proc:dir mounton;
 ',`arc_cts_fails_release(`
   allow cros_chromeos_postinst proc:dir mounton;
-  ', (`cros_chromeos_postinst'));
+  ', (`cros_chromeos_postinst'))
 ')

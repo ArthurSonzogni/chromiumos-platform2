@@ -1,19 +1,19 @@
 type cros_chapsd, domain, chromeos_domain;
 
-domain_auto_trans(cros_init, cros_chapsd_exec, cros_chapsd);
+domain_auto_trans(cros_init, cros_chapsd_exec, cros_chapsd)
 allow cros_chapsd cros_init:fd use;
 
-log_writer(cros_chapsd);
-uma_writer(cros_chapsd);
-cros_dbus_client(cros_chapsd);
-cros_tcsd_client(cros_chapsd);
-cros_power_override(cros_chapsd);
+log_writer(cros_chapsd)
+uma_writer(cros_chapsd)
+cros_dbus_client(cros_chapsd)
+cros_tcsd_client(cros_chapsd)
+cros_power_override(cros_chapsd)
 
-r_dir_file(cros_chapsd, cgroup);
+r_dir_file(cros_chapsd, cgroup)
 
 allow cros_chapsd self:capability { setuid setgid };
 
-rw_dir_file(cros_chapsd, cros_var_lib_chaps);
+rw_dir_file(cros_chapsd, cros_var_lib_chaps)
 
 allow cros_chapsd {
     cros_stateful_partition
@@ -26,11 +26,11 @@ allow cros_chapsd cros_stateful_partition_unencrypted_profraws:file { create rw_
 allow cros_chapsd cros_var_lib_chaps:{file dir} { create unlink rename };
 allow cros_chapsd cros_var_lock:dir rw_dir_perms;
 
-r_dir_file(cros_chapsd, cros_passwd_file);
+r_dir_file(cros_chapsd, cros_passwd_file)
 
-r_dir_file(cros_chapsd, sysfs_tpm);
+r_dir_file(cros_chapsd, sysfs_tpm)
 
-cros_tcp_connect(cros_chapsd);
+cros_tcp_connect(cros_chapsd)
 
 allow cros_chapsd sysfs:file r_file_perms;
 

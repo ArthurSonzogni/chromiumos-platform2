@@ -2,4 +2,4 @@ type cros_trunksd, domain, chromeos_domain;
 
 permissive cros_trunksd;
 
-domain_auto_trans(cros_init, cros_trunksd_exec, cros_trunksd);
+domain_auto_trans(cros_init, cros_trunksd_exec, cros_trunksd)

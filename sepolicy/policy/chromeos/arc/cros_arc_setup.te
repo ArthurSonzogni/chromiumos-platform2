@@ -2,22 +2,22 @@ type cros_arc_setup, chromeos_domain, cros_miscdomain, domain, mlstrustedsubject
 
 permissive cros_arc_setup;
 
-domain_auto_trans({cros_init cros_init_scripts minijail chromeos}, cros_arc_setup_exec, cros_arc_setup);
-domain_auto_trans_nnp(cros_session_manager, { cros_arc_setup_exec cros_run_oci_exec }, cros_arc_setup);
+domain_auto_trans({cros_init cros_init_scripts minijail chromeos}, cros_arc_setup_exec, cros_arc_setup)
+domain_auto_trans_nnp(cros_session_manager, { cros_arc_setup_exec cros_run_oci_exec }, cros_arc_setup)
 
 allow cros_arc_setup cros_init_scripts:fd use;
 allow cros_arc_setup cros_init:unix_stream_socket connectto;
 
-log_writer(cros_arc_setup);
+log_writer(cros_arc_setup)
 
 dev_only(
 auditallow {chromeos cros_session_manager} cros_arc_setup_exec:file execute;
 )
-filetrans_pattern(cros_arc_setup, cros_run, cras_socket, dir, "cras");
-filetrans_pattern(cros_arc_setup, cros_home_shadow_uid_root, cros_home_shadow_uid_root_android, dir, "android-data");
-filetrans_pattern_no_target_perm(cros_arc_setup, cros_home_shadow_uid_root_android, cache_file, dir, "cache");
+filetrans_pattern(cros_arc_setup, cros_run, cras_socket, dir, "cras")
+filetrans_pattern(cros_arc_setup, cros_home_shadow_uid_root, cros_home_shadow_uid_root_android, dir, "android-data")
+filetrans_pattern_no_target_perm(cros_arc_setup, cros_home_shadow_uid_root_android, cache_file, dir, "cache")
 filetrans_pattern_no_target_perm(cros_arc_setup, cros_home_shadow_uid_root_android,
-                                 is_arc_p(`system_data_file', `system_data_root_file'), dir, "data");
+                                 is_arc_p(`system_data_file', `system_data_root_file'), dir, "data")
 
 auditallow { domain -chromeos -kernel } cros_arc_setup:fd use;
 

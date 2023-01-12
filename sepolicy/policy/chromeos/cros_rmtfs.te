@@ -2,4 +2,4 @@ type cros_rmtfs, chromeos_domain, domain;
 
 permissive cros_rmtfs;
 
-from_minijail_preload(cros_rmtfs, cros_rmtfs_exec);
+from_minijail_preload(cros_rmtfs, cros_rmtfs_exec)

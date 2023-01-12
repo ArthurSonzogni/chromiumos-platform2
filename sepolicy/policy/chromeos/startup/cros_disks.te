@@ -2,4 +2,4 @@ type cros_disks, chromeos_domain, domain;
 
 permissive cros_disks;
 
-from_minijail_preload(cros_disks, cros_disks_exec);
+from_minijail_preload(cros_disks, cros_disks_exec)

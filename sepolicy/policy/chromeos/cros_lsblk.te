@@ -1,7 +1,7 @@
 type cros_lsblk, domain, chromeos_domain;
 
-domain_auto_trans_nnp(cros_is_running_from_installer, cros_lsblk_exec, cros_lsblk);
-domain_auto_trans_nnp(cros_os_install_service, cros_lsblk_exec, cros_lsblk);
+domain_auto_trans_nnp(cros_is_running_from_installer, cros_lsblk_exec, cros_lsblk)
+domain_auto_trans_nnp(cros_os_install_service, cros_lsblk_exec, cros_lsblk)
 
 allow cros_lsblk {
   cros_is_running_from_installer

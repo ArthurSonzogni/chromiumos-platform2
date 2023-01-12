@@ -2,13 +2,13 @@ type cros_udevd, chromeos_domain, domain;
 
 permissive cros_udevd;
 
-domain_auto_trans(cros_init, cros_udevd_exec, cros_udevd);
+domain_auto_trans(cros_init, cros_udevd_exec, cros_udevd)
 
-filetrans_pattern(cros_udevd, cros_run, cros_run_udev, dir, "udev");
+filetrans_pattern(cros_udevd, cros_run, cros_run_udev, dir, "udev")
 allow cros_udevd cros_run_udev:{file lnk_file} create_file_perms;
 allow cros_udevd cros_run_udev:dir rw_dir_perms;
 
-exec_coreutils(cros_udevd);
+exec_coreutils(cros_udevd)
 
 allow cros_udevd cros_passwd_file:file r_file_perms;
 
@@ -42,4 +42,4 @@ allow cros_udevd sysfs:file { rw_file_perms setattr };
 
 # /proc
 # /proc/1/
-r_dir_file(cros_udevd, cros_init);
+r_dir_file(cros_udevd, cros_init)
