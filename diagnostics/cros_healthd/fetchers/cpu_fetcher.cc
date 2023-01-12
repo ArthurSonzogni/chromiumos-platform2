@@ -671,29 +671,40 @@ bool State::FetchPhysicalCpus() {
     logical_cpu.c_states = std::move(c_states.value());
 
     auto cpufreq_dir = GetCpuFreqDirectoryPath(root_dir, processor_id);
-    if (!ReadInteger(cpufreq_dir, kCpuinfoMaxFreqFileName, &base::StringToUint,
-                     &logical_cpu.max_clock_speed_khz)) {
-      LogAndSetError(mojo_ipc::ErrorType::kFileReadError,
-                     "Unable to read max CPU frequency file to integer: " +
-                         cpufreq_dir.Append(kCpuinfoMaxFreqFileName).value());
-      return false;
-    }
+    // Not every CPU support CPU frequency scaling. Set the frequency to 0 if
+    // the CPU doesn't support and relevant files does not exist.
+    if (!base::PathExists(cpufreq_dir)) {
+      logical_cpu.max_clock_speed_khz = 0;
+      logical_cpu.scaling_max_frequency_khz = 0;
+      logical_cpu.scaling_current_frequency_khz = 0;
+    } else {
+      if (!ReadInteger(cpufreq_dir, kCpuinfoMaxFreqFileName,
+                       &base::StringToUint, &logical_cpu.max_clock_speed_khz)) {
+        LogAndSetError(mojo_ipc::ErrorType::kFileReadError,
+                       "Unable to read max CPU frequency file to integer: " +
+                           cpufreq_dir.Append(kCpuinfoMaxFreqFileName).value());
+        return false;
+      }
 
-    if (!ReadInteger(cpufreq_dir, kScalingMaxFreqFileName, &base::StringToUint,
-                     &logical_cpu.scaling_max_frequency_khz)) {
-      LogAndSetError(mojo_ipc::ErrorType::kFileReadError,
-                     "Unable to read scaling max frequency file to integer: " +
-                         cpufreq_dir.Append(kScalingMaxFreqFileName).value());
-      return false;
-    }
+      if (!ReadInteger(cpufreq_dir, kScalingMaxFreqFileName,
+                       &base::StringToUint,
+                       &logical_cpu.scaling_max_frequency_khz)) {
+        LogAndSetError(
+            mojo_ipc::ErrorType::kFileReadError,
+            "Unable to read scaling max frequency file to integer: " +
+                cpufreq_dir.Append(kScalingMaxFreqFileName).value());
+        return false;
+      }
 
-    if (!ReadInteger(cpufreq_dir, kScalingCurFreqFileName, &base::StringToUint,
-                     &logical_cpu.scaling_current_frequency_khz)) {
-      LogAndSetError(
-          mojo_ipc::ErrorType::kFileReadError,
-          "Unable to read scaling current frequency file to integer: " +
-              cpufreq_dir.Append(kScalingCurFreqFileName).value());
-      return false;
+      if (!ReadInteger(cpufreq_dir, kScalingCurFreqFileName,
+                       &base::StringToUint,
+                       &logical_cpu.scaling_current_frequency_khz)) {
+        LogAndSetError(
+            mojo_ipc::ErrorType::kFileReadError,
+            "Unable to read scaling current frequency file to integer: " +
+                cpufreq_dir.Append(kScalingCurFreqFileName).value());
+        return false;
+      }
     }
 
     // Add this logical CPU to the corresponding physical CPU.

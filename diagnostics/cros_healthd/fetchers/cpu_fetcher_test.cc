@@ -700,6 +700,21 @@ TEST_F(CpuFetcherTest, ComplexlyFormattedPresentFile) {
   EXPECT_EQ(cpu_info->num_total_threads, 6);
 }
 
+// Test that we handle a missing cpuinfo_freq directory.
+TEST_F(CpuFetcherTest, MissingCpuinfoFreqDirectory) {
+  ASSERT_TRUE(base::DeletePathRecursively(
+      GetCpuFreqDirectoryPath(root_dir(), kFirstLogicalId)));
+
+  auto cpu_result = FetchCpuInfoSync();
+
+  ASSERT_TRUE(cpu_result->is_cpu_info());
+  const auto& cpu_info = cpu_result->get_cpu_info();
+  const auto& logical_cpu_1 = cpu_info->physical_cpus[0]->logical_cpus[0];
+  EXPECT_EQ(logical_cpu_1->max_clock_speed_khz, 0);
+  EXPECT_EQ(logical_cpu_1->scaling_max_frequency_khz, 0);
+  EXPECT_EQ(logical_cpu_1->scaling_current_frequency_khz, 0);
+}
+
 // Test that we handle a missing cpuinfo_max_freq file.
 TEST_F(CpuFetcherTest, MissingCpuinfoMaxFreqFile) {
   ASSERT_TRUE(
