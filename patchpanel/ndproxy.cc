@@ -796,7 +796,6 @@ void NDProxy::StartNSNAProxy(int if_id_na_side, int if_id_ns_side) {
 
 void NDProxy::StopProxy(int if_id1, int if_id2) {
   VLOG(1) << "StopProxy(" << if_id1 << ", " << if_id2 << ")";
-
   auto remove_pair = [if_id1, if_id2](interface_mapping& mapping) {
     mapping[if_id1].erase(if_id2);
     if (mapping[if_id1].empty()) {
@@ -817,8 +816,6 @@ void NDProxy::StopProxy(int if_id1, int if_id2) {
   if (!IsRouterInterface(if_id2)) {
     modify_ra_uplinks_.erase(if_id2);
   }
-  downlink_link_local_.erase(if_id1);
-  downlink_link_local_.erase(if_id2);
 }
 
 void NDProxy::StartNeighborMonitor(int if_id) {
