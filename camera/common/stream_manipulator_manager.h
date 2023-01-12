@@ -16,6 +16,7 @@
 
 #include <base/files/file_path.h>
 #include <base/synchronization/lock.h>
+#include <base/synchronization/waitable_event.h>
 #include <base/thread_annotations.h>
 
 #include "common/camera_hal3_helpers.h"
@@ -46,7 +47,7 @@ class CROS_CAMERA_EXPORT StreamManipulatorManager {
                            CameraMojoChannelManagerToken* mojo_manager_token);
   explicit StreamManipulatorManager(
       std::vector<std::unique_ptr<StreamManipulator>> stream_manipulators);
-  ~StreamManipulatorManager() = default;
+  ~StreamManipulatorManager();
 
   bool Initialize(const camera_metadata_t* static_info,
                   StreamManipulator::Callbacks callbacks);
@@ -66,6 +67,15 @@ class CROS_CAMERA_EXPORT StreamManipulatorManager {
   // The metadata inspector to dump capture requests / results in realtime
   // for debugging if enabled.
   std::unique_ptr<CameraMetadataInspector> camera_metadata_inspector_;
+
+  base::Lock inflight_result_count_lock_;
+  int inflight_result_count_ GUARDED_BY(inflight_result_count_lock_) = 0;
+
+  // An event signals no in-flight results. Wait for this event before
+  // destructing |stream_manipulators_|.
+  base::WaitableEvent all_results_returned_{
+      base::WaitableEvent::ResetPolicy::MANUAL,
+      base::WaitableEvent::InitialState::SIGNALED};
 
   // A thread where StreamManipulator::ProcessCaptureResult() runs if
   // StreamManipulator does not specify a thread for the task via

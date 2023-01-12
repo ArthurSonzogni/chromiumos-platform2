@@ -673,6 +673,10 @@ int32_t CameraDeviceAdapter::Close() {
   }
   FreeAllocatedStreamBuffers();
 
+  // Ensure that no more stream manipulator operations happen after the device
+  // is closed.
+  stream_manipulator_manager_.reset();
+
   std::move(close_callback_).Run();
   return ret;
 }

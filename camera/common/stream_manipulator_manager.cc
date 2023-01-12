@@ -197,6 +197,21 @@ StreamManipulatorManager::StreamManipulatorManager(
   stream_manipulators_ = std::move(stream_manipulators);
 }
 
+StreamManipulatorManager::~StreamManipulatorManager() {
+  // Wait for in-flight result processing to finish.
+  if (!all_results_returned_.TimedWait(base::Milliseconds(300))) {
+    LOGF(ERROR)
+        << "Timed out waiting for in-flight result processing to finish";
+  }
+
+  // Destruct stream manipulators in the reverse order to ensure that
+  // ProcessCaptureResultOnStreamManipulator() does not post tasks to destructed
+  // stream manipulators.
+  while (!stream_manipulators_.empty()) {
+    stream_manipulators_.pop_back();
+  }
+}
+
 bool StreamManipulatorManager::Initialize(
     const camera_metadata_t* static_info,
     StreamManipulator::Callbacks callbacks) {
@@ -313,6 +328,13 @@ void StreamManipulatorManager::ProcessCaptureResult(
     Camera3CaptureDescriptor result) {
   TRACE_COMMON("frame_number", result.frame_number());
 
+  {
+    base::AutoLock l(inflight_result_count_lock_);
+    if (++inflight_result_count_ == 1) {
+      all_results_returned_.Reset();
+    }
+  }
+
   // Some camera HAL may use their own storage to hold |buffer_handle_t*|s in
   // the |result|, and it doesn't out-live this |process_capture_result| call.
   // Fix them to our maintained storage so we can send |result| safely.
@@ -381,6 +403,11 @@ void StreamManipulatorManager::ReturnResultToClient(
   DCHECK(!callbacks_.result_callback.is_null());
   InspectResult(0, result);
   callbacks_.result_callback.Run(std::move(result));
+
+  base::AutoLock l(inflight_result_count_lock_);
+  if (--inflight_result_count_ == 0) {
+    all_results_returned_.Signal();
+  }
 }
 
 void StreamManipulatorManager::InspectResult(int position,
