@@ -41,4 +41,21 @@ std::unique_ptr<ec::FpTemplateCommand> EcCommandFactory::FpTemplateCommand(
   return FpTemplateCommand::Create(std::move(tmpl), max_write_size);
 }
 
+std::unique_ptr<ec::ChargeControlSetCommand>
+EcCommandFactory::ChargeControlSetCommand(uint32_t mode,
+                                          uint8_t lower,
+                                          uint8_t upper) {
+  return std::make_unique<ec::ChargeControlSetCommand>(mode, lower, upper);
+}
+
+std::unique_ptr<ec::ChargeCurrentLimitSetCommand>
+EcCommandFactory::ChargeCurrentLimitSetCommand(uint32_t limit_mA) {
+  return std::make_unique<ec::ChargeCurrentLimitSetCommand>(limit_mA);
+}
+
+std::unique_ptr<ec::DisplayStateOfChargeCommand>
+EcCommandFactory::DisplayStateOfChargeCommand() {
+  return std::make_unique<ec::DisplayStateOfChargeCommand>();
+}
+
 }  // namespace ec

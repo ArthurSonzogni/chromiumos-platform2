@@ -9,6 +9,9 @@
 #include <string>
 #include <vector>
 
+#include "libec/charge_control_set_command.h"
+#include "libec/charge_current_limit_set_command.h"
+#include "libec/display_soc_command.h"
 #include "libec/fingerprint/cros_fp_device_interface.h"
 #include "libec/fingerprint/fp_context_command_factory.h"
 #include "libec/fingerprint/fp_frame_command.h"
@@ -57,6 +60,27 @@ class EcCommandFactoryInterface {
       "All commands created by this class should derive from "
       "EcCommandInterface");
 
+  virtual std::unique_ptr<ec::ChargeControlSetCommand> ChargeControlSetCommand(
+      uint32_t mode, uint8_t lower, uint8_t upper) = 0;
+  static_assert(
+      std::is_base_of<EcCommandInterface, ec::ChargeControlSetCommand>::value,
+      "All commands created by this class should derive from "
+      "EcCommandInterface");
+
+  virtual std::unique_ptr<ec::ChargeCurrentLimitSetCommand>
+  ChargeCurrentLimitSetCommand(uint32_t limit_mA) = 0;
+  static_assert(std::is_base_of<EcCommandInterface,
+                                ec::ChargeCurrentLimitSetCommand>::value,
+                "All commands created by this class should derive from "
+                "EcCommandInterface");
+
+  virtual std::unique_ptr<ec::DisplayStateOfChargeCommand>
+  DisplayStateOfChargeCommand() = 0;
+  static_assert(std::is_base_of<EcCommandInterface,
+                                ec::DisplayStateOfChargeCommand>::value,
+                "All commands created by this class should derive from "
+                "EcCommandInterface");
+
   // TODO(b/144956297): Add factory methods for all of the EC
   // commands we use so that we can easily mock them for testing.
 };
@@ -85,6 +109,15 @@ class BRILLO_EXPORT EcCommandFactory : public EcCommandFactoryInterface {
 
   std::unique_ptr<ec::FpTemplateCommand> FpTemplateCommand(
       std::vector<uint8_t> tmpl, uint16_t max_write_size) override;
+
+  std::unique_ptr<ec::ChargeControlSetCommand> ChargeControlSetCommand(
+      uint32_t mode, uint8_t lower, uint8_t upper) override;
+
+  std::unique_ptr<ec::ChargeCurrentLimitSetCommand>
+  ChargeCurrentLimitSetCommand(uint32_t limit_mA) override;
+
+  std::unique_ptr<ec::DisplayStateOfChargeCommand> DisplayStateOfChargeCommand()
+      override;
 };
 
 }  // namespace ec
