@@ -50,7 +50,7 @@ class MockDevicePolicyService : public DevicePolicyService {
               (PolicyDomain),
               (override));
   MOCK_METHOD(bool,
-              CheckAndHandleOwnerLogin,
+              HandleOwnerLogin,
               (const std::string&, PK11SlotDescriptor*, brillo::ErrorPtr*),
               (override));
   MOCK_METHOD(bool, UserIsOwner, (const std::string&), (override));

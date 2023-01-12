@@ -1047,13 +1047,15 @@ class SessionManagerImplTest : public ::testing::Test,
     // Expect initialization of the device policy service, return success.
     EXPECT_CALL(*device_policy_service_, UserIsOwner)
         .WillOnce(Return(for_owner));
-    EXPECT_CALL(*device_policy_service_,
-                CheckAndHandleOwnerLogin(StrEq(account_id_string), _, _))
-        .WillOnce(Return(true));
-    // Confirm that the key is present.
-    EXPECT_CALL(*device_policy_service_, KeyMissing())
-        .Times(2)
-        .WillRepeatedly(Return(false));
+    if (for_owner) {
+      EXPECT_CALL(*device_policy_service_,
+                  HandleOwnerLogin(StrEq(account_id_string), _, _))
+          .WillOnce(Return(true));
+      // Confirm that the key is present.
+      EXPECT_CALL(*device_policy_service_, KeyMissing())
+          .Times(2)
+          .WillRepeatedly(Return(false));
+    }
 
     EXPECT_CALL(metrics_, SendLoginUserType(false, guest, for_owner)).Times(1);
     EXPECT_CALL(*init_controller_,
@@ -1079,9 +1081,6 @@ class SessionManagerImplTest : public ::testing::Test,
 
     // Expect initialization of the device policy service, return success.
     EXPECT_CALL(*device_policy_service_, UserIsOwner).WillOnce(Return(false));
-    EXPECT_CALL(*device_policy_service_,
-                CheckAndHandleOwnerLogin(StrEq(account_id_string), _, _))
-        .WillOnce(Return(true));
 
     // Indicate that there is no owner key in order to trigger a new one to be
     // generated.
@@ -1341,10 +1340,10 @@ TEST_F(SessionManagerImplTest, StartSession_BadNssDB) {
 }
 
 TEST_F(SessionManagerImplTest, StartSession_DevicePolicyFailure) {
+  EXPECT_CALL(*device_policy_service_, UserIsOwner).WillOnce(Return(true));
   // Upon the owner login check, return an error.
-
   EXPECT_CALL(*device_policy_service_,
-              CheckAndHandleOwnerLogin(StrEq(kSaneEmail), _, _))
+              HandleOwnerLogin(StrEq(kSaneEmail), _, _))
       .WillOnce(WithArg<2>(Invoke([](brillo::ErrorPtr* error) {
         *error = CreateError(dbus_error::kPubkeySetIllegal, "test");
         return false;

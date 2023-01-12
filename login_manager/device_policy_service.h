@@ -57,12 +57,12 @@ class DevicePolicyService : public PolicyService {
       VpdProcess* vpd_process,
       InstallAttributesReader* install_attributes_reader);
 
-  // Checks whether the given |current_user| is the device owner. If so and they
-  // don't appear to have the owner key, run key mitigation. Returns true on
-  // success. Fills in |error| upon encountering an error.
-  virtual bool CheckAndHandleOwnerLogin(const std::string& current_user,
-                                        PK11SlotDescriptor* module,
-                                        brillo::ErrorPtr* error);
+  // Must be called only if |current_user| is the device owner. If they don't
+  // appear to have the owner key, run key mitigation. Returns true on success.
+  // Fills in |error| upon encountering an error.
+  virtual bool HandleOwnerLogin(const std::string& current_user,
+                                PK11SlotDescriptor* module,
+                                brillo::ErrorPtr* error);
 
   // Returns true if |current_user| is listed in device policy as the device
   // owner. Returns false if not, or if that cannot be determined.

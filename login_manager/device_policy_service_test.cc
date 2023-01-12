@@ -353,7 +353,7 @@ class DevicePolicyServiceTest : public ::testing::Test {
   std::unique_ptr<DevicePolicyService> service_;
 };
 
-TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_SuccessEmptyPolicy) {
+TEST_F(DevicePolicyServiceTest, HandleOwnerLogin_SuccessEmptyPolicy) {
   KeyCheckUtil nss;
   InitService(&nss, true);
   em::ChromeDeviceSettingsProto settings;
@@ -366,51 +366,12 @@ TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_SuccessEmptyPolicy) {
 
   brillo::ErrorPtr error;
   const bool is_owner = service_->UserIsOwner(owner_);
-  EXPECT_TRUE(
-      service_->CheckAndHandleOwnerLogin(owner_, nss.GetDescriptor(), &error));
+  EXPECT_TRUE(service_->HandleOwnerLogin(owner_, nss.GetDescriptor(), &error));
   EXPECT_FALSE(error.get());
   EXPECT_TRUE(is_owner);
 }
 
-TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_NotOwner) {
-  KeyFailUtil nss;
-  InitService(&nss, true);
-  ASSERT_NO_FATAL_FAILURE(InitEmptyPolicy(owner_, fake_sig_, ""));
-
-  Sequence s;
-  ExpectGetPolicy(s, policy_proto_);
-  EXPECT_CALL(*mitigator_.get(), Mitigate(_, _)).Times(0);
-  ExpectKeyPopulated(true);
-
-  const std::string regular_user = "regular_user@somewhere";
-
-  brillo::ErrorPtr error;
-  const bool is_owner = service_->UserIsOwner(regular_user);
-  EXPECT_TRUE(service_->CheckAndHandleOwnerLogin(regular_user,
-                                                 nss.GetDescriptor(), &error));
-  EXPECT_FALSE(error.get());
-  EXPECT_FALSE(is_owner);
-}
-
-TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_EnterpriseDevice) {
-  KeyFailUtil nss;
-  InitService(&nss, true);
-  ASSERT_NO_FATAL_FAILURE(InitEmptyPolicy(owner_, fake_sig_, "fake_token"));
-
-  Sequence s;
-  ExpectGetPolicy(s, policy_proto_);
-  EXPECT_CALL(*mitigator_.get(), Mitigate(_, _)).Times(0);
-  ExpectKeyPopulated(true);
-
-  brillo::ErrorPtr error;
-  const bool is_owner = service_->UserIsOwner(owner_);
-  EXPECT_TRUE(
-      service_->CheckAndHandleOwnerLogin(owner_, nss.GetDescriptor(), &error));
-  EXPECT_FALSE(error.get());
-  EXPECT_FALSE(is_owner);
-}
-
-TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_MissingKey) {
+TEST_F(DevicePolicyServiceTest, HandleOwnerLogin_MissingKey) {
   KeyFailUtil nss;
   InitService(&nss, true);
   ASSERT_NO_FATAL_FAILURE(InitEmptyPolicy(owner_, fake_sig_, ""));
@@ -424,14 +385,12 @@ TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_MissingKey) {
 
   brillo::ErrorPtr error;
   const bool is_owner = service_->UserIsOwner(owner_);
-  EXPECT_TRUE(
-      service_->CheckAndHandleOwnerLogin(owner_, nss.GetDescriptor(), &error));
+  EXPECT_TRUE(service_->HandleOwnerLogin(owner_, nss.GetDescriptor(), &error));
   EXPECT_FALSE(error.get());
   EXPECT_TRUE(is_owner);
 }
 
-TEST_F(DevicePolicyServiceTest,
-       CheckAndHandleOwnerLogin_MissingPublicKeyOwner) {
+TEST_F(DevicePolicyServiceTest, HandleOwnerLogin_MissingPublicKeyOwner) {
   KeyFailUtil nss;
   InitService(&nss, true);
   ASSERT_NO_FATAL_FAILURE(InitEmptyPolicy(owner_, fake_sig_, ""));
@@ -445,34 +404,12 @@ TEST_F(DevicePolicyServiceTest,
 
   brillo::ErrorPtr error;
   const bool is_owner = service_->UserIsOwner(owner_);
-  EXPECT_TRUE(
-      service_->CheckAndHandleOwnerLogin(owner_, nss.GetDescriptor(), &error));
+  EXPECT_TRUE(service_->HandleOwnerLogin(owner_, nss.GetDescriptor(), &error));
   EXPECT_FALSE(error.get());
   EXPECT_TRUE(is_owner);
 }
 
-TEST_F(DevicePolicyServiceTest,
-       CheckAndHandleOwnerLogin_MissingPublicKeyNonOwner) {
-  KeyFailUtil nss;
-  InitService(&nss, true);
-  ASSERT_NO_FATAL_FAILURE(InitEmptyPolicy(owner_, fake_sig_, ""));
-
-  Sequence s;
-  ExpectGetPolicy(s, policy_proto_);
-  EXPECT_CALL(*mitigator_.get(), Mitigate(_, _)).Times(0);
-  ExpectKeyPopulated(false);
-
-  const std::string regular_user = "other@somwhere";
-
-  brillo::ErrorPtr error;
-  const bool is_owner = service_->UserIsOwner(regular_user);
-  EXPECT_TRUE(service_->CheckAndHandleOwnerLogin(regular_user,
-                                                 nss.GetDescriptor(), &error));
-  EXPECT_FALSE(error.get());
-  EXPECT_FALSE(is_owner);
-}
-
-TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_MitigationFailure) {
+TEST_F(DevicePolicyServiceTest, HandleOwnerLogin_MitigationFailure) {
   KeyFailUtil nss;
   InitService(&nss, true);
   ASSERT_NO_FATAL_FAILURE(InitEmptyPolicy(owner_, fake_sig_, ""));
@@ -486,8 +423,7 @@ TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_MitigationFailure) {
 
   brillo::ErrorPtr error;
   const bool is_owner = service_->UserIsOwner(owner_);
-  EXPECT_FALSE(
-      service_->CheckAndHandleOwnerLogin(owner_, nss.GetDescriptor(), &error));
+  EXPECT_FALSE(service_->HandleOwnerLogin(owner_, nss.GetDescriptor(), &error));
   EXPECT_TRUE(error.get());
   EXPECT_TRUE(is_owner);
   EXPECT_EQ(dbus_error::kPubkeySetIllegal, error->GetCode());

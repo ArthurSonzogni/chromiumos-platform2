@@ -112,22 +112,18 @@ std::unique_ptr<DevicePolicyService> DevicePolicyService::Create(
       crossystem, vpd_process, install_attributes_reader));
 }
 
-bool DevicePolicyService::CheckAndHandleOwnerLogin(
-    const std::string& current_user,
-    PK11SlotDescriptor* desc,
-    brillo::ErrorPtr* error) {
-  const em::PolicyFetchResponse& policy = GetChromeStore()->Get();
-
+bool DevicePolicyService::HandleOwnerLogin(const std::string& current_user,
+                                           PK11SlotDescriptor* desc,
+                                           brillo::ErrorPtr* error) {
   // If the current user is the owner, and isn't allowlisted or set as the owner
   // in the settings blob, then do so.
   brillo::ErrorPtr key_error;
   std::unique_ptr<RSAPrivateKey> signing_key =
       GetOwnerKeyForGivenUser(key()->public_key_der(), desc, &key_error);
 
-  // Now, the flip side... if we believe the current user to be the owner based
-  // on the user field in policy, and they DON'T have the private half of the
+  // Now, the flip side... if the owner DOESN'T have the private half of the
   // public key, we must mitigate.
-  if (GivenUserIsOwner(policy, current_user) && !signing_key.get()) {
+  if (!signing_key.get()) {
     if (!mitigator_->Mitigate(current_user, desc->ns_mnt_path)) {
       *error = std::move(key_error);
       DCHECK(*error);

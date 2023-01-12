@@ -740,10 +740,9 @@ bool SessionManagerImpl::StartSessionEx(brillo::ErrorPtr* error,
     return false;
   }
 
-  // Check whether the current user is the owner, and if so make sure they have
-  // an owner key.
-  if (!chrome_owner_key &&
-      !device_policy_->CheckAndHandleOwnerLogin(
+  // If the current user is the owner, make sure they have an owner key.
+  if (!chrome_owner_key && user_is_owner &&
+      !device_policy_->HandleOwnerLogin(
           user_session->username, user_session->descriptor.get(), error)) {
     DCHECK(*error);
     return false;
