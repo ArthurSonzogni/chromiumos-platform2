@@ -66,9 +66,10 @@ class PolicyStore {
   // Returns false if there's an error while writing data.
   bool PersistToPath(const base::FilePath& policy_path);
 
-  // The cached policy data from |policy_path_|. It is kept up to date whenever
-  // the contents in the file are updated by this object.
-  std::string cached_policy_data_;
+  // Whether the |policy_| object was explicitly changed for the purpose of
+  // being persisted, but not persisted yet. Currently this happens only when
+  // it is updated through Set() method.
+  bool explicit_update_persist_pending_ = false;
 
   enterprise_management::PolicyFetchResponse policy_;
   const base::FilePath policy_path_;

@@ -53,12 +53,10 @@ bool PolicyStore::LoadOrCreate() {
 bool PolicyStore::LoadOrCreateFromPath(const base::FilePath& policy_path) {
   DCHECK(!is_resilient_store_);
   std::string polstr;
-  cached_policy_data_.clear();
   policy::LoadPolicyResult result =
       policy::LoadPolicyFromPath(policy_path, &polstr, &policy_);
   switch (result) {
     case policy::LoadPolicyResult::kSuccess:
-      cached_policy_data_ = polstr;
       return true;
     case policy::LoadPolicyResult::kFileNotFound:
       return true;
@@ -79,6 +77,10 @@ bool PolicyStore::LoadOrCreateFromPath(const base::FilePath& policy_path) {
 }
 
 bool PolicyStore::PersistToPath(const base::FilePath& policy_path) {
+  // Skip if there's no change in policy data.
+  if (!explicit_update_persist_pending_)
+    return true;
+
   SystemUtilsImpl utils;
   std::string policy_blob;
   if (!policy_.SerializeToString(&policy_blob)) {
@@ -86,16 +88,11 @@ bool PolicyStore::PersistToPath(const base::FilePath& policy_path) {
     return false;
   }
 
-  // Skip writing to the file if the contents of policy data haven't been
-  // changed.
-  if (cached_policy_data_ == policy_blob)
-    return true;
-
   if (!utils.AtomicFileWrite(policy_path, policy_blob))
     return false;
 
   LOG(INFO) << "Persisted policy to disk, path: " << policy_path.value();
-  cached_policy_data_ = policy_blob;
+  explicit_update_persist_pending_ = false;
   return true;
 }
 
@@ -104,6 +101,7 @@ void PolicyStore::Set(
   policy_.Clear();
   // This can only fail if |policy| and |policy_| are different types.
   policy_.CheckTypeAndMergeFrom(policy);
+  explicit_update_persist_pending_ = true;
 }
 
 bool PolicyStore::Delete() {

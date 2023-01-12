@@ -75,13 +75,10 @@ bool ResilientPolicyStore::LoadOrCreate() {
     return true;
   }
 
-  if (policy_loaded) {
+  if (policy_loaded)
     policy_ = device_policy_->get_policy_fetch_response();
-    policy_.SerializeToString(&cached_policy_data_);
-  } else {
+  else
     policy_.Clear();
-    cached_policy_data_.clear();
-  }
 
   int number_of_invalid_files = device_policy_->get_number_of_invalid_files();
   ReportInvalidDevicePolicyFilesStatus(
