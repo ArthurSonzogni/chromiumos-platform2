@@ -226,8 +226,8 @@ TEST_F(MetricsTest, ServiceFailure) {
 TEST_F(MetricsTest, WiFiServiceTimeToJoin) {
   EXPECT_CALL(library_, SendToUMA("Network.Shill.Wifi.TimeToJoin", Ge(0),
                                   Metrics::kTimerHistogramMillisecondsMin,
-                                  Metrics::kTimerHistogramMillisecondsMax,
-                                  Metrics::kTimerHistogramNumBuckets));
+                                  Metrics::kTimerHistogramMillisecondsMaxLarge,
+                                  Metrics::kTimerHistogramNumBucketsLarge));
   metrics_.NotifyServiceStateChanged(*open_wifi_service_,
                                      Service::kStateAssociating);
   metrics_.NotifyServiceStateChanged(*open_wifi_service_,

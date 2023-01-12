@@ -939,6 +939,7 @@ class Metrics : public DefaultServiceObserver {
   };
 
   static constexpr int kTimerHistogramNumBuckets = 50;
+  static constexpr int kTimerHistogramNumBucketsLarge = 150;
 
   static constexpr HistogramMetric<NameByTechnology> kMetricTimeOnlineSeconds =
       {
@@ -1061,6 +1062,7 @@ class Metrics : public DefaultServiceObserver {
   static constexpr int kMetricTimeToScanMillisecondsMin = 1;
   static constexpr int kMetricTimeToScanMillisecondsNumBuckets = 90;
   static constexpr int kTimerHistogramMillisecondsMax = 45 * 1000;
+  static constexpr int kTimerHistogramMillisecondsMaxLarge = 90 * 1000;
   static constexpr int kTimerHistogramMillisecondsMin = 1;
 
   // Called with the number of detection attempts when the PortalDetector

@@ -463,9 +463,18 @@ void Metrics::AddServiceStateTransitionTimer(const Service& service,
   }
   ServiceMetrics* service_metrics = it->second.get();
   CHECK(start_state < stop_state);
+  int num_buckets = kTimerHistogramNumBuckets;
+  int max_ms = kTimerHistogramMillisecondsMax;
+  if (base::EndsWith(histogram_name, kMetricTimeToJoinMillisecondsSuffix,
+                     base::CompareCase::SENSITIVE)) {
+    // TimeToJoin state transition has a timeout of 70s in wpa_supplicant (see
+    // b/265183655 for more details). Use a larger number of buckets and max
+    // value to capture this.
+    num_buckets = kTimerHistogramNumBucketsLarge;
+    max_ms = kTimerHistogramMillisecondsMaxLarge;
+  }
   auto timer = std::make_unique<chromeos_metrics::TimerReporter>(
-      histogram_name, kTimerHistogramMillisecondsMin,
-      kTimerHistogramMillisecondsMax, kTimerHistogramNumBuckets);
+      histogram_name, kTimerHistogramMillisecondsMin, max_ms, num_buckets);
   service_metrics->start_on_state[start_state].push_back(timer.get());
   service_metrics->stop_on_state[stop_state].push_back(timer.get());
   service_metrics->timers.push_back(std::move(timer));
