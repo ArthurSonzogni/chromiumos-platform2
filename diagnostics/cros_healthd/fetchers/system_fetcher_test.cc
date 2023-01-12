@@ -21,8 +21,10 @@
 #include "diagnostics/base/file_test_utils.h"
 #include "diagnostics/cros_healthd/fetchers/system_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/system_fetcher_constants.h"
+#include "diagnostics/cros_healthd/mojom/executor.mojom.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
 #include "diagnostics/cros_healthd/utils/mojo_type_utils.h"
+#include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
 
 namespace diagnostics {
 namespace {
@@ -89,7 +91,31 @@ class SystemUtilsTest : public BaseFileTest {
     os_version->branch_number = "59";
     os_version->patch_number = "0";
     os_version->release_channel = "stable-channel";
-
+    auto& psr_info = expected_system_info_->psr_info;
+    psr_info = mojom::PsrInfo::New();
+    psr_info->log_state = mojom::PsrInfo::LogState::kStarted;
+    psr_info->uuid = "ed6703fa-d312-4e8b-9ddd-2155bb2dee65";
+    psr_info->upid = "ok6703fa-d312-4e8b-9ddd-2155bb2dee65";
+    psr_info->log_start_date = 163987200;
+    psr_info->oem_name = "Panasonic";
+    psr_info->oem_make = "Toughbook";
+    psr_info->oem_model = "55";
+    psr_info->manufacture_country = "United States";
+    psr_info->oem_data = "None";
+    psr_info->uptime_seconds = 30233443;
+    psr_info->s5_counter = 3;
+    psr_info->s4_counter = 2;
+    psr_info->s3_counter = 1;
+    psr_info->warm_reset_counter = 0;
+    auto event = mojom::PsrEvent::New();
+    event->type = mojom::PsrEvent::EventType::kLogStart;
+    event->time = 163987200;
+    event->data = 342897977;
+    psr_info->events.push_back(event.Clone());
+    event->type = mojom::PsrEvent::EventType::kPrtcFailure;
+    event->time = 453987200;
+    event->data = 643897977;
+    psr_info->events.push_back(event.Clone());
     SetSystemInfo(expected_system_info_);
     SetHasSkuNumber(true);
   }
@@ -190,6 +216,43 @@ class SystemUtilsTest : public BaseFileTest {
             })));
   }
 
+  void SetPsrInfoResponse(const std::optional<std::string>& err) {
+    EXPECT_CALL(*mock_executor(), GetPsr(_))
+        .WillOnce(
+            WithArg<0>(Invoke([=](mojom::Executor::GetPsrCallback callback) {
+              if (err) {
+                std::move(callback).Run(nullptr, err);
+                return;
+              }
+              mojom::PsrInfo result;
+              result.log_state = mojom::PsrInfo::LogState::kStarted;
+              result.uuid = "ed6703fa-d312-4e8b-9ddd-2155bb2dee65";
+              result.upid = "ok6703fa-d312-4e8b-9ddd-2155bb2dee65";
+              result.log_start_date = 163987200;
+              result.oem_name = "Panasonic";
+              result.oem_make = "Toughbook";
+              result.oem_model = "55";
+              result.manufacture_country = "United States";
+              result.oem_data = "None";
+              result.uptime_seconds = 30233443;
+              result.s5_counter = 3;
+              result.s4_counter = 2;
+              result.s3_counter = 1;
+              result.warm_reset_counter = 0;
+              auto event = mojom::PsrEvent::New();
+              event->type = mojom::PsrEvent::EventType::kLogStart;
+              event->time = 163987200;
+              event->data = 342897977;
+              result.events.push_back(event.Clone());
+              event->type = mojom::PsrEvent::EventType::kPrtcFailure;
+              event->time = 453987200;
+              event->data = 643897977;
+              result.events.push_back(event.Clone());
+
+              std::move(callback).Run(result.Clone(), err);
+            })));
+  }
+
   // Sets the mock file with |value|. If the |value| is omitted, deletes the
   // file.
   template <typename T>
@@ -256,10 +319,12 @@ class SystemUtilsTest : public BaseFileTest {
   TEST_F(SystemUtilsTest, TestNo_##info##_##field) {   \
     expected_system_info_->info->field = std::nullopt; \
     SetSystemInfo(expected_system_info_);              \
+    SetPsrInfoResponse(/*err=*/std::nullopt);          \
     ExpectFetchSystemInfo();                           \
   }
 
 TEST_F(SystemUtilsTest, TestFetchSystemInfo) {
+  SetPsrInfoResponse(std::nullopt);
   ExpectFetchSystemInfo();
 }
 
@@ -270,12 +335,14 @@ TEST_F(SystemUtilsTest, TestNoVpdDir) {
   ExpectFetchProbeError(mojom::ErrorType::kFileReadError);
 
   SetHasSkuNumber(false);
+  SetPsrInfoResponse(std::nullopt);
   ExpectFetchSystemInfo();
 
   // Test if the fallback logic triggered by missing OEM name in cros-config
   // works when there's no VPD.
   expected_system_info_->os_info->oem_name = std::nullopt;
   SetSystemInfo(expected_system_info_);
+  SetPsrInfoResponse(std::nullopt);
   ExpectFetchSystemInfo();
 }
 
@@ -285,10 +352,12 @@ TEST_F(SystemUtilsTest, TestNoSkuNumber) {
   // Ensure that there is no sku number returned even if sku number exists.
   SetHasSkuNumber(false);
   expected_system_info_->vpd_info->sku_number = std::nullopt;
+  SetPsrInfoResponse(std::nullopt);
   ExpectFetchSystemInfo();
 
   // Sku number file doesn't exist.
   SetSystemInfo(expected_system_info_);
+  SetPsrInfoResponse(std::nullopt);
   ExpectFetchSystemInfo();
 
   // Sku number file doesn't exist but should have.
@@ -307,6 +376,7 @@ TEST_F(SystemUtilsTest, TestNoSysDevicesVirtualDmiId) {
   expected_system_info_->dmi_info = nullptr;
   // Delete the whole directory |kRelativePathDmiInfo|.
   UnsetPath(kRelativePathDmiInfo);
+  SetPsrInfoResponse(std::nullopt);
   ExpectFetchSystemInfo();
 }
 
@@ -324,6 +394,7 @@ TEST_MISSING_FIELD(dmi_info, sys_vendor);
 TEST_F(SystemUtilsTest, TestNoChassisType) {
   expected_system_info_->dmi_info->chassis_type = nullptr;
   SetSystemInfo(expected_system_info_);
+  SetPsrInfoResponse(std::nullopt);
   ExpectFetchSystemInfo();
 }
 
@@ -352,6 +423,7 @@ TEST_F(SystemUtilsTest, TestBadOsVersion) {
 TEST_F(SystemUtilsTest, TestBootMode) {
   expected_system_info_->os_info->boot_mode = mojom::BootMode::kCrosSecure;
   SetSystemInfo(expected_system_info_);
+  SetPsrInfoResponse(std::nullopt);
   ExpectFetchSystemInfo();
 
   expected_system_info_->os_info->boot_mode = mojom::BootMode::kCrosEfi;
@@ -360,14 +432,17 @@ TEST_F(SystemUtilsTest, TestBootMode) {
                           std::string("\x00\x00\x00\x00\x00", 5));
   SetMockExecutorReadFile(mojom::Executor::File::kUEFIPlatformSize, "");
   SetSystemInfo(expected_system_info_);
+  SetPsrInfoResponse(std::nullopt);
   ExpectFetchSystemInfo();
 
   expected_system_info_->os_info->boot_mode = mojom::BootMode::kCrosLegacy;
   SetSystemInfo(expected_system_info_);
+  SetPsrInfoResponse(std::nullopt);
   ExpectFetchSystemInfo();
 
   expected_system_info_->os_info->boot_mode = mojom::BootMode::kUnknown;
   SetSystemInfo(expected_system_info_);
+  SetPsrInfoResponse(std::nullopt);
   ExpectFetchSystemInfo();
 
   expected_system_info_->os_info->boot_mode = mojom::BootMode::kCrosEfiSecure;
@@ -376,6 +451,7 @@ TEST_F(SystemUtilsTest, TestBootMode) {
                           std::string("\x00\x00\x00\x00\x01", 5));
   SetMockExecutorReadFile(mojom::Executor::File::kUEFIPlatformSize, "");
   SetSystemInfo(expected_system_info_);
+  SetPsrInfoResponse(std::nullopt);
   ExpectFetchSystemInfo();
 
   // Test that the executor fails to read UEFISecureBoot file content and
@@ -384,6 +460,7 @@ TEST_F(SystemUtilsTest, TestBootMode) {
   SetMockExecutorReadFile(mojom::Executor::File::kUEFISecureBootVariable, "");
   SetMockExecutorReadFile(mojom::Executor::File::kUEFIPlatformSize, "");
   SetSystemInfo(expected_system_info_);
+  SetPsrInfoResponse(std::nullopt);
   ExpectFetchSystemInfo();
 }
 
@@ -395,6 +472,7 @@ TEST_F(SystemUtilsTest, TestEfiPlatformSize) {
   SetMockExecutorReadFile(mojom::Executor::File::kUEFISecureBootVariable,
                           std::string("\x00\x00\x00\x00\x00", 5));
   SetSystemInfo(expected_system_info_);
+  SetPsrInfoResponse(std::nullopt);
   ExpectFetchSystemInfo();
 
   expected_system_info_->os_info->efi_platform_size =
@@ -403,6 +481,7 @@ TEST_F(SystemUtilsTest, TestEfiPlatformSize) {
   SetMockExecutorReadFile(mojom::Executor::File::kUEFISecureBootVariable,
                           std::string("\x00\x00\x00\x00\x00", 5));
   SetSystemInfo(expected_system_info_);
+  SetPsrInfoResponse(std::nullopt);
   ExpectFetchSystemInfo();
 
   expected_system_info_->os_info->efi_platform_size =
@@ -411,6 +490,7 @@ TEST_F(SystemUtilsTest, TestEfiPlatformSize) {
   SetMockExecutorReadFile(mojom::Executor::File::kUEFISecureBootVariable,
                           std::string("\x00\x00\x00\x00\x00", 5));
   SetSystemInfo(expected_system_info_);
+  SetPsrInfoResponse(std::nullopt);
   ExpectFetchSystemInfo();
 }
 
@@ -418,16 +498,19 @@ TEST_F(SystemUtilsTest, TestOemName) {
   expected_system_info_->os_info->oem_name = "FooOEM";
   expected_system_info_->vpd_info->oem_name = "FooOEM-VPD";
   SetSystemInfo(expected_system_info_);
+  SetPsrInfoResponse(std::nullopt);
   ExpectFetchSystemInfo();
 
   expected_system_info_->os_info->oem_name = "FooOEM";
   expected_system_info_->vpd_info->oem_name = "";
   SetSystemInfo(expected_system_info_);
+  SetPsrInfoResponse(std::nullopt);
   ExpectFetchSystemInfo();
 
   expected_system_info_->os_info->oem_name = std::nullopt;
   expected_system_info_->vpd_info->oem_name = std::nullopt;
   SetSystemInfo(expected_system_info_);
+  SetPsrInfoResponse(std::nullopt);
   ExpectFetchSystemInfo();
 
   // Test the fallback logic triggered by missing OEM name in cros-config.
@@ -435,6 +518,14 @@ TEST_F(SystemUtilsTest, TestOemName) {
   expected_system_info_->vpd_info->oem_name = "FooOEM-VPD";
   SetSystemInfo(expected_system_info_);
   expected_system_info_->os_info->oem_name = "FooOEM-VPD";
+  SetPsrInfoResponse(std::nullopt);
+  ExpectFetchSystemInfo();
+}
+
+TEST_F(SystemUtilsTest, TestPsrError) {
+  SetSystemInfo(expected_system_info_);
+  expected_system_info_->psr_info = nullptr;
+  SetPsrInfoResponse("GetPsr error");
   ExpectFetchSystemInfo();
 }
 

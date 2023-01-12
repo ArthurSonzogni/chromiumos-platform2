@@ -476,6 +476,38 @@ std::string EnumToString(mojom::UsbSpecSpeed spec_speed) {
   }
 }
 
+std::string EnumToString(mojom::PsrInfo::LogState state) {
+  switch (state) {
+    case mojom::PsrInfo::LogState::kUnmappedEnumField:
+      LOG(FATAL) << "Got UnmappedEnumField";
+      return "UnmappedEnumField";
+    case mojom::PsrInfo::LogState::kStarted:
+      return "Started";
+    case mojom::PsrInfo::LogState::kNotStarted:
+      return "NotStarted";
+    case mojom::PsrInfo::LogState::kStopped:
+      return "Stopped";
+  }
+}
+
+std::string EnumToString(mojom::PsrEvent::EventType type) {
+  switch (type) {
+    case mojom::PsrEvent::EventType::kUnmappedEnumField:
+      LOG(FATAL) << "Got UnmappedEnumField";
+      return "UnmappedEnumField";
+    case mojom::PsrEvent::EventType::kLogStart:
+      return "LogStarted";
+    case mojom::PsrEvent::EventType::kLogEnd:
+      return "LogEnd";
+    case mojom::PsrEvent::EventType::kPrtcFailure:
+      return "PrtcFailure";
+    case mojom::PsrEvent::EventType::kCsmeRecovery:
+      return "CsmeRecovery";
+    case mojom::PsrEvent::EventType::kSvnIncrease:
+      return "SvnIncrease";
+  }
+}
+
 #define SET_DICT(key, info, output) SetJsonDictValue(#key, info->key, output);
 
 template <typename T>
@@ -1293,6 +1325,37 @@ void DisplaySystemInfo(const mojom::SystemResultPtr& system_result) {
     SET_DICT(product_version, dmi_info, &out_dmi_info);
     SET_DICT(sys_vendor, dmi_info, &out_dmi_info);
     output.Set("dmi_info", std::move(out_dmi_info));
+  }
+
+  const auto& psr_info = system_info->psr_info;
+  if (psr_info) {
+    base::Value::Dict out_psr_info;
+    SET_DICT(log_state, psr_info, &out_psr_info);
+    SET_DICT(uuid, psr_info, &out_psr_info);
+    SET_DICT(upid, psr_info, &out_psr_info);
+    SET_DICT(log_start_date, psr_info, &out_psr_info);
+    SET_DICT(oem_name, psr_info, &out_psr_info);
+    SET_DICT(oem_make, psr_info, &out_psr_info);
+    SET_DICT(oem_model, psr_info, &out_psr_info);
+    SET_DICT(manufacture_country, psr_info, &out_psr_info);
+    SET_DICT(oem_data, psr_info, &out_psr_info);
+    SET_DICT(uptime_seconds, psr_info, &out_psr_info);
+    SET_DICT(s5_counter, psr_info, &out_psr_info);
+    SET_DICT(s4_counter, psr_info, &out_psr_info);
+    SET_DICT(s3_counter, psr_info, &out_psr_info);
+    SET_DICT(warm_reset_counter, psr_info, &out_psr_info);
+
+    base::Value::List out_events;
+    for (const auto& event : psr_info->events) {
+      base::Value::Dict out_event;
+      SET_DICT(type, event, &out_event);
+      SET_DICT(time, event, &out_event)
+      SET_DICT(data, event, &out_event)
+      out_events.Append(std::move(out_event));
+    }
+    out_psr_info.Set("events", std::move(out_events));
+
+    output.Set("psr_info", std::move(out_psr_info));
   }
 
   OutputJson(output);

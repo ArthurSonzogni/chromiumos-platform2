@@ -23,6 +23,7 @@
 #include "diagnostics/cros_healthd/fetchers/system_fetcher_constants.h"
 #include "diagnostics/cros_healthd/utils/callback_barrier.h"
 #include "diagnostics/cros_healthd/utils/error_utils.h"
+#include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
 
 namespace diagnostics {
 
@@ -59,6 +60,9 @@ class State {
 
   // Sets the error to be reported.
   void SetError(mojom::ErrorType type, const std::string& message);
+
+  void HandlePsrInfo(mojom::PsrInfoPtr psr_info_ptr,
+                     const std::optional<std::string>& err);
 
   // Sends the result. If error is set it will be sent. Otherwise, sends the
   // |info_| as the result.
@@ -285,6 +289,14 @@ void State::SetError(mojom::ErrorType type, const std::string& message) {
     error_ = mojom::ProbeError::New(type, message);
 }
 
+void State::HandlePsrInfo(mojom::PsrInfoPtr psr_info_ptr,
+                          const std::optional<std::string>& err) {
+  if (err.has_value())
+    return;
+
+  info_->psr_info = std::move(psr_info_ptr);
+}
+
 void State::HandleResult(FetchSystemInfoCallback callback, bool success) {
   if (!success) {
     SetError(mojom::ErrorType::kServiceUnavailable,
@@ -318,6 +330,9 @@ void State::Fetch(Context* context, FetchSystemInfoCallback callback) {
         barrier.Depend(base::BindOnce(&State::HandleEfiPlatformSize,
                                       base::Unretained(state_ptr))));
   }
+
+  state_ptr->context_->executor()->GetPsr(barrier.Depend(
+      base::BindOnce(&State::HandlePsrInfo, base::Unretained(state_ptr))));
 
   // OEM name in cros-config is usually filled after (or right before) launch.
   // Fallback to VPD (vpd.ro.oem-name) if it’s missing in cros-config. Note that

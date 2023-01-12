@@ -209,12 +209,41 @@ std::string GetDiffString<mojo_ipc::OsInfo>(const mojo_ipc::OsInfo& a,
 }
 
 template <>
+std::string GetDiffString<mojo_ipc::PsrInfo>(const mojo_ipc::PsrInfo& a,
+                                             const mojo_ipc::PsrInfo& b) {
+  return CompareHelper(a, b)
+      .FIELD(log_state)
+      .FIELD(uuid)
+      .FIELD(upid)
+      .FIELD(log_start_date)
+      .FIELD(oem_name)
+      .FIELD(oem_make)
+      .FIELD(oem_model)
+      .FIELD(manufacture_country)
+      .FIELD(oem_data)
+      .FIELD(uptime_seconds)
+      .FIELD(s5_counter)
+      .FIELD(s4_counter)
+      .FIELD(s3_counter)
+      .FIELD(warm_reset_counter)
+      .FIELD(events)
+      .GetResult();
+}
+
+template <>
+std::string GetDiffString<mojo_ipc::PsrEvent>(const mojo_ipc::PsrEvent& a,
+                                              const mojo_ipc::PsrEvent& b) {
+  return CompareHelper(a, b).FIELD(type).FIELD(time).FIELD(data).GetResult();
+}
+
+template <>
 std::string GetDiffString<mojo_ipc::SystemInfo>(const mojo_ipc::SystemInfo& a,
                                                 const mojo_ipc::SystemInfo& b) {
   return CompareHelper(a, b)
       .FIELD(vpd_info)
       .FIELD(dmi_info)
       .FIELD(os_info)
+      .FIELD(psr_info)
       .GetResult();
 }
 
