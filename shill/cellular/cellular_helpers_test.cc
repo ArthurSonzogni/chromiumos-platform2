@@ -10,7 +10,7 @@ using testing::Test;
 
 namespace shill {
 
-TEST(CellularTest, GetStringmapValue) {
+TEST(CellularHelpersTest, GetStringmapValue) {
   Stringmap string_map;
   EXPECT_STREQ(GetStringmapValue(string_map, "test_key").c_str(), "");
   EXPECT_EQ(string_map.size(), 0);
