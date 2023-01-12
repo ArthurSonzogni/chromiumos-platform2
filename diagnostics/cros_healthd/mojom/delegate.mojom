@@ -82,4 +82,11 @@ interface Delegate {
 
   // Obtains lid angle from EC. Returns null if error is happened.
   GetLidAngle() => (uint16? lid_angle);
+
+  // Get Platform Service Record (PSR) information.
+  //
+  // The response:
+  // * |result| - PSR information result.
+  // * |err| - Error message if existed.
+  GetPsr() => (PsrInfo result, string? err);
 };

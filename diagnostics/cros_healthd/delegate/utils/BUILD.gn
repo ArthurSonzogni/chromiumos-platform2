@@ -17,9 +17,32 @@ pkg_config("pub_deps") {
 }
 
 source_set("utils") {
-  sources = [ "evdev_utils.cc" ]
+  sources = [
+    "evdev_utils.cc",
+    "psr_cmd.cc",
+  ]
   configs += [ ":deps" ]
   public_configs = [ ":pub_deps" ]
   deps =
       [ "//diagnostics/cros_healthd/mojom:cros_healthd_executor_mojo_bindings" ]
+}
+
+if (use.test) {
+  pkg_config("test_pkg_deps") {
+    pkg_deps = [ "libchrome-test" ]
+  }
+
+  source_set("test") {
+    deps = [
+      "//diagnostics/cros_healthd/mojom:cros_healthd_executor_mojo_bindings",
+    ]
+    sources = [
+      "psr_cmd.cc",
+      "psr_cmd_test.cc",
+    ]
+    configs += [
+      ":deps",
+      ":test_pkg_deps",
+    ]
+  }
 }

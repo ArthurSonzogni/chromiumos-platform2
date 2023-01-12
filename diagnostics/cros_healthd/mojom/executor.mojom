@@ -254,4 +254,11 @@ interface Executor {
   // * |process_control| - Used to stop the monitor process.
   MonitorStylus(pending_remote<StylusObserver> observer,
                 pending_receiver<ProcessControl> process_control);
+
+  // Get Platform Service Record (PSR) information.
+  //
+  // The response:
+  // * |result| - PSR information result.
+  // * |err| - Error message if existed.
+  GetPsr() => (PsrInfo result, string? err);
 };

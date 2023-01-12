@@ -82,6 +82,8 @@ constexpr char kLidAngle[] = "ec_lid_angle-seccomp.policy";
 constexpr char kMemtester[] = "memtester-seccomp.policy";
 // SECCOMP policy for fetchers which only read and parse some files.
 constexpr char kReadOnlyFetchers[] = "readonly-fetchers-seccomp.policy";
+// SECCOMP policy for psr related routines.
+constexpr char kPsr[] = "psr-seccomp.policy";
 
 }  // namespace seccomp_file
 
@@ -93,6 +95,8 @@ constexpr char kFingerprint[] = "healthd_fp";
 constexpr char kEvdev[] = "healthd_evdev";
 // The user and group for accessing EC.
 constexpr char kEc[] = "healthd_ec";
+// The user and group for accessing PSR.
+constexpr char kPsr[] = "healthd_psr";
 
 }  // namespace user
 
@@ -385,6 +389,21 @@ void Executor::GetFingerprintInfo(GetFingerprintInfoCallback callback) {
   delegate_ptr->remote()->GetFingerprintInfo(CreateOnceDelegateCallback(
       std::move(delegate), std::move(callback),
       mojom::FingerprintInfoResult::New(), kFailToLaunchDelegate));
+  delegate_ptr->StartAsync();
+}
+
+void Executor::GetPsr(GetPsrCallback callback) {
+  auto delegate = std::make_unique<DelegateProcess>(
+      seccomp_file::kPsr, user::kPsr, kNullCapability,
+      /*readonly_mount_points=*/
+      std::vector<base::FilePath>{base::FilePath{psr::kCrosMeiPath}},
+      /*writable_mount_points=*/
+      std::vector<base::FilePath>{base::FilePath{psr::kCrosMeiPath}});
+
+  auto* delegate_ptr = delegate.get();
+  delegate_ptr->remote()->GetPsr(
+      CreateOnceDelegateCallback(std::move(delegate), std::move(callback),
+                                 mojom::PsrInfo::New(), kFailToLaunchDelegate));
   delegate_ptr->StartAsync();
 }
 

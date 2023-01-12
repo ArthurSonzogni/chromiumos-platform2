@@ -28,4 +28,11 @@ inline constexpr char kCrosFpPath[] = "/dev/cros_fp";
 
 }  // namespace fingerprint
 
+namespace psr {
+
+// The path to the psr device node.
+inline constexpr char kCrosMeiPath[] = "/dev/mei0";
+
+}  // namespace psr
+
 #endif  // DIAGNOSTICS_CROS_HEALTHD_EXECUTOR_CONSTANTS_H_
