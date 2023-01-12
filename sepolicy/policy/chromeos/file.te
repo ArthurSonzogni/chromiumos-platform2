@@ -34,7 +34,6 @@ type cros_arc_host_clock_service_exec, exec_type, file_type, cros_file_type, cro
 type cros_arc_keymasterd_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_arc_obb_mounter_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_arc_packages_xml_reader_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
-type cros_arc_sensor_service_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_arc_setup_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_arcvm_boot_notification_server_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_arcvm_data_migrator_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
