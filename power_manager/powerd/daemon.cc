@@ -428,6 +428,8 @@ void Daemon::Init() {
   display_power_setter_ =
       delegate_->CreateDisplayPowerSetter(dbus_wrapper_.get());
 
+  ec_command_factory_ = delegate_->CreateEcCommandFactory();
+
   // Ignore the ALS and backlights in factory mode.
   if (!factory_mode_) {
     light_sensor_manager_ = delegate_->CreateAmbientLightSensorManager(
@@ -1124,9 +1126,8 @@ bool Daemon::RunEcCommand(ec::EcCommandInterface& cmd) {
 }
 
 bool Daemon::SetBatterySustain(int lower, int upper) {
-  std::unique_ptr<ec::ChargeControlSetCommand> cmd =
-      delegate_->CreateChargeControlSetCommand(CHARGE_CONTROL_NORMAL, lower,
-                                               upper);
+  auto cmd = ec_command_factory_->ChargeControlSetCommand(CHARGE_CONTROL_NORMAL,
+                                                          lower, upper);
 
   bool success = RunEcCommand(*cmd);
   if (!success) {
@@ -1139,8 +1140,7 @@ bool Daemon::SetBatterySustain(int lower, int upper) {
 }
 
 bool Daemon::SetBatteryChargeLimit(uint32_t limit_mA) {
-  std::unique_ptr<ec::ChargeCurrentLimitSetCommand> cmd =
-      delegate_->CreateChargeCurrentLimitSetCommand(limit_mA);
+  auto cmd = ec_command_factory_->ChargeCurrentLimitSetCommand(limit_mA);
 
   bool success = RunEcCommand(*cmd);
   if (!success) {

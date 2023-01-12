@@ -22,6 +22,7 @@
 #include <mojo_service_manager/lib/connect.h>
 #endif  // USE_IIOSERVICE
 #include <libec/ec_command.h>
+#include <libec/ec_command_factory.h>
 #include <libec/ec_usb_endpoint.h>
 #include <ml/dbus-proxies.h>
 #include "ml/proto_bindings/ranker_example.pb.h"
@@ -373,6 +374,7 @@ class Daemon : public policy::AdaptiveChargingControllerInterface::Delegate,
       ambient_light_sensor_watcher_;
   std::unique_ptr<system::ExternalAmbientLightSensorFactoryInterface>
       external_ambient_light_sensor_factory_;
+  std::unique_ptr<ec::EcCommandFactoryInterface> ec_command_factory_;
   std::unique_ptr<ec::EcUsbEndpointInterface> ec_usb_endpoint_;
   std::unique_ptr<system::DisplayWatcherInterface> display_watcher_;
   std::unique_ptr<system::DisplayPowerSetterInterface> display_power_setter_;

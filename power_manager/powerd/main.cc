@@ -205,6 +205,11 @@ class DaemonDelegateImpl : public DaemonDelegate {
     return backlight;
   }
 
+  std::unique_ptr<ec::EcCommandFactoryInterface> CreateEcCommandFactory()
+      override {
+    return std::make_unique<ec::EcCommandFactory>();
+  }
+
   std::unique_ptr<ec::EcUsbEndpointInterface> CreateEcUsbEndpoint() override {
     auto endpoint = std::make_unique<ec::EcUsbEndpoint>();
     return endpoint->Init(ec::kUsbVidGoogle, ec::kUsbPidCrosEc)
@@ -382,16 +387,6 @@ class DaemonDelegateImpl : public DaemonDelegate {
   std::vector<std::unique_ptr<system::ThermalDeviceInterface>>
   CreateThermalDevices() override {
     return system::ThermalDeviceFactory::CreateThermalDevices();
-  }
-
-  std::unique_ptr<ec::ChargeControlSetCommand> CreateChargeControlSetCommand(
-      uint32_t mode, uint8_t lower, uint8_t upper) override {
-    return std::make_unique<ec::ChargeControlSetCommand>(mode, lower, upper);
-  }
-
-  std::unique_ptr<ec::ChargeCurrentLimitSetCommand>
-  CreateChargeCurrentLimitSetCommand(uint32_t limit_mA) override {
-    return std::make_unique<ec::ChargeCurrentLimitSetCommand>(limit_mA);
   }
 
   pid_t GetPid() override { return getpid(); }

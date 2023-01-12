@@ -127,6 +127,9 @@ class DaemonDelegate {
                                    const base::FilePath& base_path,
                                    const std::string& pattern) = 0;
 
+  virtual std::unique_ptr<ec::EcCommandFactoryInterface>
+  CreateEcCommandFactory() = 0;
+
   virtual std::unique_ptr<ec::EcUsbEndpointInterface> CreateEcUsbEndpoint() = 0;
 
   virtual std::unique_ptr<system::BacklightInterface> CreateEcKeyboardBacklight(
@@ -222,14 +225,6 @@ class DaemonDelegate {
 
   virtual std::vector<std::unique_ptr<system::ThermalDeviceInterface>>
   CreateThermalDevices() = 0;
-
-  virtual std::unique_ptr<ec::ChargeControlSetCommand>
-  CreateChargeControlSetCommand(uint32_t mode,
-                                uint8_t lower,
-                                uint8_t upper) = 0;
-
-  virtual std::unique_ptr<ec::ChargeCurrentLimitSetCommand>
-  CreateChargeCurrentLimitSetCommand(uint32_t limit_mA) = 0;
 
   // Returns the process's PID.
   virtual pid_t GetPid() = 0;

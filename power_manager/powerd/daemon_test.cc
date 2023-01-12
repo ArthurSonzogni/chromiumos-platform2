@@ -18,11 +18,13 @@
 #include <base/files/scoped_temp_dir.h>
 #include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
+#include <chromeos/ec/ec_commands.h>
 #include <dbus/exported_object.h>
 #include <dbus/message.h>
 #include <featured/fake_platform_features.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <libec/mock_ec_command_factory.h>
 #include <ml-client-test/ml/dbus-proxy-mocks.h>
 
 #include "power_manager/common/battery_percentage_converter.h"
@@ -69,14 +71,16 @@ namespace power_manager {
 
 class MockChargeControlSetCommand : public ec::ChargeControlSetCommand {
  public:
+  MockChargeControlSetCommand(uint32_t mode, uint8_t lower, uint8_t upper)
+      : ec::ChargeControlSetCommand(mode, lower, upper) {}
   MOCK_METHOD(bool, Run, (int fd));
 };
 
 class MockChargeCurrentLimitSetCommand
     : public ec::ChargeCurrentLimitSetCommand {
  public:
-  MockChargeCurrentLimitSetCommand()
-      : ec::ChargeCurrentLimitSetCommand(/*limit=*/-1) {}
+  explicit MockChargeCurrentLimitSetCommand(uint32_t limit_mA)
+      : ec::ChargeCurrentLimitSetCommand(limit_mA) {}
 
   MOCK_METHOD(bool, Run, (int fd));
 };
@@ -102,6 +106,7 @@ class DaemonTest : public TestEnvironment, public DaemonDelegate {
             100, 100, system::BacklightInterface::BrightnessScale::kUnknown)),
         passed_keyboard_backlight_(new system::BacklightStub(
             100, 100, system::BacklightInterface::BrightnessScale::kUnknown)),
+        passed_ec_command_factory_(new ec::MockEcCommandFactory()),
         passed_ec_usb_endpoint_(new ec::EcUsbEndpointStub()),
         passed_ec_keyboard_backlight_(new system::BacklightStub(
             100, 100, system::BacklightInterface::BrightnessScale::kUnknown)),
@@ -129,9 +134,6 @@ class DaemonTest : public TestEnvironment, public DaemonDelegate {
             new org::chromium::MachineLearning::AdaptiveChargingProxyMock()),
         passed_suspend_configurator_(new system::SuspendConfiguratorStub()),
         passed_suspend_freezer_(new system::SuspendFreezerStub()),
-        passed_charge_control_set_command_(new MockChargeControlSetCommand()),
-        passed_charge_current_limit_set_command_(
-            std::make_unique<MockChargeCurrentLimitSetCommand>()),
         prefs_(passed_prefs_.get()),
         platform_features_(passed_platform_features_.get()),
         dbus_wrapper_(passed_dbus_wrapper_.get()),
@@ -146,6 +148,7 @@ class DaemonTest : public TestEnvironment, public DaemonDelegate {
         display_power_setter_(passed_display_power_setter_.get()),
         internal_backlight_(passed_internal_backlight_.get()),
         keyboard_backlight_(passed_keyboard_backlight_.get()),
+        ec_command_factory_(passed_ec_command_factory_.get()),
         ec_keyboard_backlight_(passed_ec_keyboard_backlight_.get()),
         external_backlight_controller_(
             passed_external_backlight_controller_.get()),
@@ -165,10 +168,7 @@ class DaemonTest : public TestEnvironment, public DaemonDelegate {
         metrics_sender_(passed_metrics_sender_.get()),
         adaptive_charging_controller_(
             passed_adaptive_charging_controller_.get()),
-        adaptive_charging_proxy_(passed_adaptive_charging_proxy_.get()),
-        charge_control_set_command_(passed_charge_control_set_command_.get()),
-        charge_current_limit_set_command_(
-            passed_charge_current_limit_set_command_.get()) {
+        adaptive_charging_proxy_(passed_adaptive_charging_proxy_.get()) {
     CHECK(run_dir_.CreateUniqueTempDir());
     CHECK(run_dir_.IsValid());
 
@@ -359,6 +359,10 @@ class DaemonTest : public TestEnvironment, public DaemonDelegate {
     EXPECT_EQ(input_watcher_->GetTabletMode(), initial_tablet_mode);
     return std::move(passed_keyboard_backlight_controller_);
   }
+  std::unique_ptr<ec::EcCommandFactoryInterface> CreateEcCommandFactory()
+      override {
+    return std::move(passed_ec_command_factory_);
+  }
   std::unique_ptr<ec::EcUsbEndpointInterface> CreateEcUsbEndpoint() override {
     return std::move(passed_ec_usb_endpoint_);
   }
@@ -489,16 +493,6 @@ class DaemonTest : public TestEnvironment, public DaemonDelegate {
     // object.
     return std::vector<std::unique_ptr<system::ThermalDeviceInterface>>();
   }
-  std::unique_ptr<ec::ChargeControlSetCommand> CreateChargeControlSetCommand(
-      uint32_t mode, uint8_t lower, uint8_t upper) override {
-    return std::move(passed_charge_control_set_command_);
-  }
-  std::unique_ptr<ec::ChargeCurrentLimitSetCommand>
-  CreateChargeCurrentLimitSetCommand(uint32_t limit_mA) override {
-    passed_charge_current_limit_set_command_->Req()->limit = limit_mA;
-    return std::move(passed_charge_current_limit_set_command_);
-  }
-
   pid_t GetPid() override { return pid_; }
   void Launch(const std::string& command) override {
     async_commands_.push_back(command);
@@ -580,6 +574,7 @@ class DaemonTest : public TestEnvironment, public DaemonDelegate {
   std::unique_ptr<system::DisplayPowerSetterStub> passed_display_power_setter_;
   std::unique_ptr<system::BacklightStub> passed_internal_backlight_;
   std::unique_ptr<system::BacklightStub> passed_keyboard_backlight_;
+  std::unique_ptr<ec::MockEcCommandFactory> passed_ec_command_factory_;
   std::unique_ptr<ec::EcUsbEndpointInterface> passed_ec_usb_endpoint_;
   std::unique_ptr<system::BacklightStub> passed_ec_keyboard_backlight_;
   std::unique_ptr<policy::MockBacklightController>
@@ -608,10 +603,6 @@ class DaemonTest : public TestEnvironment, public DaemonDelegate {
   std::unique_ptr<system::SuspendConfiguratorInterface>
       passed_suspend_configurator_;
   std::unique_ptr<system::SuspendFreezerInterface> passed_suspend_freezer_;
-  std::unique_ptr<MockChargeControlSetCommand>
-      passed_charge_control_set_command_;
-  std::unique_ptr<MockChargeCurrentLimitSetCommand>
-      passed_charge_current_limit_set_command_;
 
   // Pointers to objects originally stored in |passed_*| members. These
   // allow continued access by tests even after the corresponding Create*
@@ -628,6 +619,7 @@ class DaemonTest : public TestEnvironment, public DaemonDelegate {
   system::DisplayPowerSetterStub* display_power_setter_;
   system::BacklightStub* internal_backlight_;
   system::BacklightStub* keyboard_backlight_;
+  ec::MockEcCommandFactory* ec_command_factory_;
   system::BacklightStub* ec_keyboard_backlight_;
   policy::MockBacklightController* external_backlight_controller_;
   policy::MockBacklightController* internal_backlight_controller_;
@@ -645,8 +637,6 @@ class DaemonTest : public TestEnvironment, public DaemonDelegate {
   policy::MockAdaptiveChargingController* adaptive_charging_controller_;
   org::chromium::MachineLearning::AdaptiveChargingProxyMock*
       adaptive_charging_proxy_;
-  MockChargeControlSetCommand* charge_control_set_command_;
-  MockChargeCurrentLimitSetCommand* charge_current_limit_set_command_;
 
   // Run directory passed to |daemon_|.
   base::ScopedTempDir run_dir_;
@@ -1174,9 +1164,17 @@ TEST_F(DaemonTest, SetBatterySustain) {
 
   // `Daemon::SetBatterySustain` expects `cros_ec_path_` to already exist.
   EXPECT_EQ(0, base::WriteFile(cros_ec_path_, "", 0));
-
-  // Verify that the ChargeControlSetCommand is Run once.
-  EXPECT_CALL(*charge_control_set_command_, Run(_)).WillOnce(Return(true));
+  // Verify that the ChargeControlSetCommand is Run once and check the Req.
+  EXPECT_CALL(*ec_command_factory_, ChargeControlSetCommand)
+      .WillOnce([](uint32_t mode, uint8_t lower, uint8_t upper) {
+        auto cmd =
+            std::make_unique<MockChargeControlSetCommand>(mode, lower, upper);
+        EXPECT_EQ(cmd->Req()->mode, CHARGE_CONTROL_NORMAL);
+        EXPECT_EQ(cmd->Req()->sustain_soc.lower, 70);
+        EXPECT_EQ(cmd->Req()->sustain_soc.upper, 80);
+        EXPECT_CALL(*cmd, Run(_)).WillOnce(Return(true));
+        return cmd;
+      });
   EXPECT_TRUE(daemon_->SetBatterySustain(70, 80));
 }
 
@@ -1186,14 +1184,13 @@ TEST_F(DaemonTest, SetBatteryChargeLimit) {
   // `Daemon::SetBatteryChargeLimit` expects `cros_ec_path_` to already exist.
   EXPECT_EQ(0, base::WriteFile(cros_ec_path_, "", 0));
 
-  // Verify that the ChargeCurrentLimitSetCommand is Run once.
-  EXPECT_CALL(*charge_current_limit_set_command_, Run(_))
-      .WillOnce([this](int fd) {
-        // Ensure the limit was correctly set.
-        EXPECT_EQ(charge_current_limit_set_command_->Req()->limit, 1000);
-
-        // Indicate the command was executed successfully.
-        return true;
+  // Verify that the ChargeCurrentLimitSetCommand is Run once and check the Req.
+  EXPECT_CALL(*ec_command_factory_, ChargeCurrentLimitSetCommand)
+      .WillOnce([](uint32_t limit_mA) {
+        auto cmd = std::make_unique<MockChargeCurrentLimitSetCommand>(limit_mA);
+        EXPECT_EQ(cmd->Req()->limit, limit_mA);
+        EXPECT_CALL(*cmd, Run(_)).WillOnce(Return(true));
+        return cmd;
       });
   EXPECT_TRUE(daemon_->SetBatteryChargeLimit(1000));
 }

@@ -30,6 +30,7 @@ void EnableCrosEcDeviceEvent(enum ec_device_event event, bool enable) {
     return;
   }
 
+  // TODO(b/265492733): Move to EcCommandFactory to allow mocking for unittests.
   ec::DeviceEventCommand get_cmd(/* clear_pending_events= */ false);
   if (!get_cmd.Run(ec_fd.get())) {
     // Expected on boards with device event disabled. Print warning only once.

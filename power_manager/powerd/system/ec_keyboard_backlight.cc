@@ -60,6 +60,7 @@ bool EcKeyboardBacklight::SetBrightnessLevel(int64_t level,
 }
 
 bool EcKeyboardBacklight::WriteBrightness(int64_t new_level) {
+  // TODO(b/265492733): Move to EcCommandFactory to allow mocking for unittests.
   ec::SetKeyboardBacklightCommand cmd(new_level);
   if (usb_endpoint_) {
     if (!cmd.Run(*usb_endpoint_)) {

@@ -22,6 +22,7 @@ bool GetMkbpWakeMask(const base::ScopedFD& cros_ec_fd,
   if (cros_ec_fd.get() < 0)
     return false;
 
+  // TODO(b/265492733): Move to EcCommandFactory to allow mocking for unittests.
   ec::GetMkbpWakeMaskEventCommand cmd;
   if (!cmd.Run(cros_ec_fd.get())) {
     LOG(ERROR) << "Failed to get current MKBP wake mask. Result : "
@@ -39,6 +40,7 @@ bool SetMkbpWakeMask(const base::ScopedFD& cros_ec_fd, uint32_t wake_mask) {
   if (cros_ec_fd.get() < 0)
     return false;
 
+  // TODO(b/265492733): Move to EcCommandFactory to allow mocking for unittests.
   ec::SetMkbpWakeMaskEventCommand cmd(wake_mask);
   if (!cmd.Run(cros_ec_fd.get())) {
     LOG(ERROR) << "Failed to set new MKBP wake mask to '0x" << std::hex

@@ -51,6 +51,7 @@ void UsbBacklight::ReleaseDevice() {
 
 bool UsbBacklight::UpdateDevice() {
   usb_endpoint_ = std::make_unique<ec::EcUsbEndpoint>();
+  // TODO(b/265492733): Move to EcCommandFactory to allow mocking for unittests.
   auto get_cmd = std::make_unique<ec::GetKeyboardBacklightCommand>();
 
   if (!usb_endpoint_->Init(ec::kUsbVidGoogle, ec::kUsbPidCrosEc)) {

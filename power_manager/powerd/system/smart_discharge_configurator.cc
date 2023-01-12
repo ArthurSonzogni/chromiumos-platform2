@@ -24,6 +24,7 @@ void ConfigureSmartDischarge(int64_t to_zero_hr,
     return;
   }
 
+  // TODO(b/265492733): Move to EcCommandFactory to allow mocking for unittests.
   ec::SmartDischargeCommand cmd(to_zero_hr, cutoff_ua, hibernate_ua);
   if (!cmd.Run(cros_ec_fd.get())) {
     LOG(ERROR) << "Failed to set Smart Discharge to " << to_zero_hr
