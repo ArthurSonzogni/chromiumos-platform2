@@ -288,7 +288,7 @@ bool BiometricsManagerWrapper::StartEnrollSession(
       biometrics_manager_->StartEnrollSession(user_id, label);
   if (!enroll_session) {
     *error = brillo::Error::Create(FROM_HERE, kDomain, kInternalError,
-                                   "Failed to start EnrollSession");
+                                   enroll_session.error());
     return false;
   }
   enroll_session_ = std::move(enroll_session);
@@ -365,7 +365,7 @@ bool BiometricsManagerWrapper::StartAuthSession(brillo::ErrorPtr* error,
       biometrics_manager_->StartAuthSession();
   if (!auth_session) {
     *error = brillo::Error::Create(FROM_HERE, kDomain, kInternalError,
-                                   "Failed to start AuthSession");
+                                   auth_session.error());
     return false;
   }
   auth_session_ = std::move(auth_session);

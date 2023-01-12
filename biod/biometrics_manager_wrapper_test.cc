@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <gmock/gmock-matchers.h>
 #include <gtest/gtest.h>
 
 #include <map>
@@ -27,6 +28,7 @@ namespace {
 
 using testing::_;
 using testing::ByMove;
+using testing::HasSubstr;
 using testing::Return;
 using testing::ReturnRef;
 using testing::SaveArg;
@@ -503,6 +505,21 @@ TEST_F(BiometricsManagerWrapperTest,
   EXPECT_TRUE(response->GetMessageType() == dbus::Message::MESSAGE_ERROR);
 }
 
+TEST_F(BiometricsManagerWrapperTest, TestStartEnrollSessionFailedWithErrors) {
+  dbus::ObjectPath object_path;
+  const std::string enroll_session_error = kFpHwUnavailable;
+  auto enroll_session = BiometricsManager::EnrollSession();
+  enroll_session.set_error(enroll_session_error);
+
+  EXPECT_CALL(*session_manager_, GetPrimaryUser).WillOnce(Return(kUserID));
+  EXPECT_CALL(*bio_manager_, StartEnrollSession)
+      .WillOnce(Return(ByMove(std::move(enroll_session))));
+
+  auto response = StartEnrollSession(kUserID, kLabel, &object_path);
+  EXPECT_EQ(response->GetMessageType(), dbus::Message::MESSAGE_ERROR);
+  EXPECT_THAT(response->ToString(), testing::HasSubstr(kFpHwUnavailable));
+}
+
 TEST_F(BiometricsManagerWrapperTest, TestOnSessionFailedEndsEnrollSession) {
   dbus::ObjectPath object_path;
   auto enroll_session = BiometricsManager::EnrollSession(
@@ -713,6 +730,20 @@ TEST_F(BiometricsManagerWrapperTest, TestStartAuthSessionSuccessSignal) {
       });
 
   on_auth_scan_done.Run(std::move(result), std::move(matches));
+}
+
+TEST_F(BiometricsManagerWrapperTest, TestStartAuthSessionFailedWithErrors) {
+  dbus::ObjectPath object_path;
+  std::string auth_session_error = kFpHwUnavailable;
+  auto auth_session = BiometricsManager::AuthSession();
+  auth_session.set_error(auth_session_error);
+  EXPECT_CALL(*session_manager_, GetPrimaryUser).WillOnce(Return(kUserID));
+  EXPECT_CALL(*bio_manager_, StartAuthSession)
+      .WillOnce(Return(ByMove(std::move(auth_session))));
+
+  auto response = StartAuthSession(&object_path);
+  EXPECT_EQ(response->GetMessageType(), dbus::Message::MESSAGE_ERROR);
+  EXPECT_THAT(response->ToString(), testing::HasSubstr(auth_session_error));
 }
 
 TEST_F(BiometricsManagerWrapperTest, TestStartAuthSessionFailed) {
