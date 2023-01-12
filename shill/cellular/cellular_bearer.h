@@ -82,6 +82,8 @@ class CellularBearer {
   FRIEND_TEST(CellularTest, EstablishLinkStatic);
   FRIEND_TEST(CellularTest, EstablishLinkFailureNoBearer);
   FRIEND_TEST(CellularTest, EstablishLinkFailureMismatchedDataInterface);
+  FRIEND_TEST(CellularTest, LinkUpDHCP);
+  FRIEND_TEST(CellularTest, LinkUpStatic);
 
   // Gets the IP configuration method and properties from |properties|.
   // |address_family| specifies the IP address family of the configuration.

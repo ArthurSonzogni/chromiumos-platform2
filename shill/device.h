@@ -300,6 +300,7 @@ class Device : public base::RefCounted<Device>, public Network::EventHandler {
   friend class base::RefCounted<Device>;
   FRIEND_TEST(CellularServiceTest, IsAutoConnectable);
   FRIEND_TEST(CellularTest, ModemStateChangeDisable);
+  FRIEND_TEST(CellularTest, LinkDeleted);
   FRIEND_TEST(CellularTest, UseNoArpGateway);
   FRIEND_TEST(DevicePortalDetectionTest, PortalIntervalIsZero);
   FRIEND_TEST(DevicePortalDetectionTest, RestartPortalDetection);

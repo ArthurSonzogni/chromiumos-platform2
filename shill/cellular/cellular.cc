@@ -54,6 +54,8 @@
 #include "shill/manager.h"
 #include "shill/net/netlink_sock_diag.h"
 #include "shill/net/rtnl_handler.h"
+#include "shill/net/rtnl_listener.h"
+#include "shill/net/rtnl_message.h"
 #include "shill/net/sockets.h"
 #include "shill/ppp_daemon.h"
 #include "shill/process_manager.h"
@@ -512,16 +514,6 @@ void Cellular::CompleteActivation(Error* error) {
 
 bool Cellular::IsUnderlyingDeviceEnabled() const {
   return IsEnabledModemState(modem_state_);
-}
-
-void Cellular::LinkEvent(unsigned int flags, unsigned int change) {
-  Device::LinkEvent(flags, change);
-  if (ppp_task_) {
-    LOG(INFO) << LoggingTag()
-              << ": Ignoring LinkEvent on device with PPP interface.";
-    return;
-  }
-  HandleLinkEvent(flags, change);
 }
 
 void Cellular::Scan(Error* error, const std::string& /*reason*/) {
@@ -1366,96 +1358,151 @@ void Cellular::EstablishLink() {
   LOG(INFO) << LoggingTag() << ": Establish link on "
             << bearer->data_interface();
   int data_interface_index =
-      manager()->device_info()->GetIndex(bearer->data_interface());
+      rtnl_handler()->GetInterfaceIndex(bearer->data_interface());
   if (data_interface_index != interface_index()) {
     Disconnect(nullptr, "Unexpected data interface to connect");
     return;
   }
 
-  unsigned int flags = 0;
-  if (manager()->device_info()->GetFlags(interface_index(), &flags) &&
-      (flags & IFF_UP) != 0) {
-    LinkEvent(flags, IFF_UP);
-    return;
-  }
-  // TODO(petkov): Provide a timeout for a failed link-up request.
-  rtnl_handler()->SetInterfaceFlags(interface_index(), IFF_UP, IFF_UP);
+  // Start the link listener, which will ensure the initial link state for the
+  // data interface is notified.
+  StartLinkListener();
 
   // Set state to associating.
   OnConnecting();
 }
 
-void Cellular::HandleLinkEvent(unsigned int flags, unsigned int change) {
-  if ((flags & IFF_UP) != 0 && state_ == State::kConnected) {
-    LOG(INFO) << LoggingTag() << ": link is up.";
-    SetState(State::kLinked);
+void Cellular::LinkUp(int data_interface_index) {
+  DCHECK(data_interface_index == interface_index());
 
-    CHECK(capability_);
-    CellularBearer* bearer = capability_->GetActiveBearer();
-    bool ipv6_configured = false;
-
-    // Some modems use kMethodStatic and some use kMethodDHCP for IPv6 config
-    if (bearer && bearer->ipv6_config_method() !=
-                      CellularBearer::IPConfigMethod::kUnknown) {
-      SLOG(2) << LoggingTag()
-              << ": Assign static IPv6 configuration from bearer.";
-      const auto& ipv6_props = *bearer->ipv6_config_properties();
-      // Only apply static config if the address is link local. This is a
-      // workaround for b/230336493.
-      IPAddress link_local_mask("fe80::", 10);
-      if (link_local_mask.CanReachAddress(IPAddress(ipv6_props.address))) {
-        network()->set_ipv6_static_properties(
-            std::make_unique<IPConfig::Properties>(ipv6_props));
-      }
-
-      ipv6_configured = true;
-    }
-
-    std::unique_ptr<IPConfig::Properties> static_ipv4_props;
-    std::optional<DHCPProvider::Options> dhcp_opts = std::nullopt;
-
-    if (bearer && bearer->ipv4_config_method() ==
-                      CellularBearer::IPConfigMethod::kStatic) {
-      SLOG(2) << LoggingTag()
-              << ": Assign static IPv4 configuration from bearer.";
-      // Override the MTU with a given limit for a specific operator if the
-      // network doesn't report something lower.
-      static_ipv4_props = std::make_unique<IPConfig::Properties>(
-          *bearer->ipv4_config_properties());
-      if (mobile_operator_info_ &&
-          mobile_operator_info_->mtu() != IPConfig::kUndefinedMTU &&
-          (static_ipv4_props->mtu == IPConfig::kUndefinedMTU ||
-           mobile_operator_info_->mtu() < static_ipv4_props->mtu)) {
-        static_ipv4_props->mtu = mobile_operator_info_->mtu();
-      }
-    } else if (!ipv6_configured ||
-               (bearer && bearer->ipv4_config_method() ==
-                              CellularBearer::IPConfigMethod::kDHCP)) {
-      SLOG(2) << LoggingTag() << ": Start DHCP to acquire IPv4 configuration.";
-      dhcp_opts = DHCPProvider::Options::Create(*manager());
-      dhcp_opts->use_arp_gateway = false;
-    }
-
-    Network::StartOptions opts = {
-        .dhcp = dhcp_opts,
-        .accept_ra = true,
-        // TODO(b/234300343#comment43): Read probe URL override configuration
-        // from shill APN dB.
-        .probing_configuration =
-            manager()->GetPortalDetectorProbingConfiguration(),
-    };
-    SelectService(service_);
-    SetServiceState(Service::kStateConfiguring);
-    network()->set_link_protocol_ipv4_properties(std::move(static_ipv4_props));
-    network()->Start(opts);
-
+  if (state_ != State::kConnected) {
+    SLOG(3) << LoggingTag() << ": Link is up.";
     return;
   }
 
-  if ((flags & IFF_UP) == 0 && state_ == State::kLinked) {
-    LOG(INFO) << LoggingTag() << ": link is down.";
-    DestroyAllServices();
+  // Connected -> Linked transition launches Network creation
+  LOG(INFO) << LoggingTag() << ": Link is up.";
+  SetState(State::kLinked);
+
+  CHECK(capability_);
+  CellularBearer* bearer = capability_->GetActiveBearer();
+  bool ipv6_configured = false;
+
+  // Some modems use kMethodStatic and some use kMethodDHCP for IPv6 config
+  if (bearer && bearer->ipv6_config_method() !=
+                    CellularBearer::IPConfigMethod::kUnknown) {
+    SLOG(2) << LoggingTag()
+            << ": Assign static IPv6 configuration from bearer.";
+    const auto& ipv6_props = *bearer->ipv6_config_properties();
+    // Only apply static config if the address is link local. This is a
+    // workaround for b/230336493.
+    IPAddress link_local_mask("fe80::", 10);
+    if (link_local_mask.CanReachAddress(IPAddress(ipv6_props.address))) {
+      network()->set_ipv6_static_properties(
+          std::make_unique<IPConfig::Properties>(ipv6_props));
+    }
+    ipv6_configured = true;
   }
+
+  std::unique_ptr<IPConfig::Properties> static_ipv4_props;
+  std::optional<DHCPProvider::Options> dhcp_opts = std::nullopt;
+
+  if (bearer &&
+      bearer->ipv4_config_method() == CellularBearer::IPConfigMethod::kStatic) {
+    SLOG(2) << LoggingTag()
+            << ": Assign static IPv4 configuration from bearer.";
+    // Override the MTU with a given limit for a specific serving operator
+    // if the network doesn't report something lower.
+    static_ipv4_props = std::make_unique<IPConfig::Properties>(
+        *bearer->ipv4_config_properties());
+    if (mobile_operator_info_ &&
+        mobile_operator_info_->mtu() != IPConfig::kUndefinedMTU &&
+        (static_ipv4_props->mtu == IPConfig::kUndefinedMTU ||
+         mobile_operator_info_->mtu() < static_ipv4_props->mtu)) {
+      static_ipv4_props->mtu = mobile_operator_info_->mtu();
+    }
+  } else if (!ipv6_configured ||
+             (bearer && bearer->ipv4_config_method() ==
+                            CellularBearer::IPConfigMethod::kDHCP)) {
+    SLOG(2) << LoggingTag() << ": Start DHCP to acquire IPv4 configuration.";
+    dhcp_opts = DHCPProvider::Options::Create(*manager());
+    dhcp_opts->use_arp_gateway = false;
+  }
+
+  Network::StartOptions opts = {
+      .dhcp = dhcp_opts,
+      .accept_ra = true,
+      // TODO(b/234300343#comment43): Read probe URL override configuration
+      // from shill APN dB.
+      .probing_configuration =
+          manager()->GetPortalDetectorProbingConfiguration(),
+  };
+  SelectService(service_);
+  SetServiceState(Service::kStateConfiguring);
+  network()->set_link_protocol_ipv4_properties(std::move(static_ipv4_props));
+  network()->Start(opts);
+}
+
+void Cellular::LinkDown(int data_interface_index) {
+  DCHECK(data_interface_index == interface_index());
+
+  if (state_ == State::kLinked) {
+    LOG(INFO) << LoggingTag() << ": Link is down, disconnecting.";
+    Disconnect(nullptr, "link is down.");
+    return;
+  }
+
+  if (state_ == State::kConnected) {
+    LOG(INFO) << LoggingTag() << ": Link is down, bringing up.";
+    rtnl_handler()->SetInterfaceFlags(data_interface_index, IFF_UP, IFF_UP);
+    return;
+  }
+
+  SLOG(3) << LoggingTag() << ": Link is down.";
+}
+
+void Cellular::LinkDeleted(int data_interface_index) {
+  DCHECK(data_interface_index == interface_index());
+  LOG(INFO) << LoggingTag() << ": Link is deleted.";
+  // This is an indication that the cellular device is gone from the system.
+  DestroyAllServices();
+}
+
+void Cellular::LinkMsgHandler(const RTNLMessage& msg) {
+  DCHECK(msg.type() == RTNLMessage::kTypeLink);
+
+  int data_interface_index = msg.interface_index();
+  if (data_interface_index != interface_index())
+    return;
+
+  if (msg.mode() == RTNLMessage::kModeDelete) {
+    LinkDeleted(data_interface_index);
+    return;
+  }
+
+  if (msg.mode() == RTNLMessage::kModeAdd) {
+    if (msg.link_status().flags & IFF_UP) {
+      LinkUp(data_interface_index);
+    } else {
+      LinkDown(data_interface_index);
+    }
+    return;
+  }
+
+  LOG(WARNING) << LoggingTag()
+               << ": Unexpected link message mode: " << msg.mode();
+}
+
+void Cellular::StopLinkListener() {
+  link_listener_.reset(nullptr);
+}
+
+void Cellular::StartLinkListener() {
+  SLOG(2) << LoggingTag() << ": Started RTNL listener";
+  link_listener_.reset(new RTNLListener(
+      RTNLHandler::kRequestLink,
+      base::BindRepeating(&Cellular::LinkMsgHandler, base::Unretained(this))));
+  rtnl_handler()->RequestDump(RTNLHandler::kRequestLink);
 }
 
 void Cellular::SetInitialProperties(const InterfaceToProperties& properties) {
@@ -1643,6 +1690,7 @@ void Cellular::OnTerminationCompleted(const Error& error) {
 bool Cellular::DisconnectCleanup() {
   if (!StateIsConnected())
     return false;
+  StopLinkListener();
   SetState(State::kRegistered);
   SetServiceFailureSilent(Service::kFailureNone);
   network()->Stop();
@@ -1718,9 +1766,7 @@ void Cellular::StartPPP(const std::string& serial_device) {
   // Detach any SelectedService from this device. It will be grafted onto
   // the PPPDevice after PPP is up (in Cellular::Notify).
   //
-  // This has two important effects: 1) kills dhcpcd if it is running.
-  // 2) stops Cellular::LinkEvent from driving changes to the
-  // SelectedService.
+  // This kills dhcpcd if it is running.
   if (selected_service()) {
     CHECK_EQ(service_.get(), selected_service().get());
     // Save and restore |service_| state, as DropConnection calls

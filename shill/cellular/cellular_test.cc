@@ -1010,17 +1010,6 @@ TEST_F(CellularTest, PendingDisconnect) {
   EXPECT_TRUE(device_->connect_pending_iccid().empty());
 }
 
-TEST_F(CellularTest, LinkEventInterfaceDown) {
-  // If the network interface goes down, Cellular::LinkEvent should
-  // drop the connection and destroy any services.
-  device_->set_state_for_testing(Cellular::State::kLinked);
-  CellularService* service = SetService();
-  ASSERT_TRUE(service);
-  EXPECT_EQ(device_->service(), service);
-  device_->LinkEvent(0, 0);  // flags doesn't contain IFF_UP
-  EXPECT_EQ(device_->service(), nullptr);
-}
-
 // TODO(b/232177767): Add a test to verify that Cellular start the Network with
 // the correct options.
 
@@ -1140,28 +1129,6 @@ class TestRpcTaskDelegate : public RpcTaskDelegate,
   virtual void Notify(const std::string& reason,
                       const std::map<std::string, std::string>& dict) {}
 };
-
-TEST_F(CellularTest, LinkEventUpWithPPP) {
-  // If PPP is running, don't start Network as well.
-  TestRpcTaskDelegate task_delegate;
-  base::OnceCallback<void(pid_t, int)> death_callback;
-  auto mock_task = std::make_unique<NiceMock<MockExternalTask>>(
-      modem_info_.control_interface(), &process_manager_,
-      task_delegate.AsWeakPtr(), std::move(death_callback));
-  EXPECT_CALL(*mock_task, OnDelete()).Times(AnyNumber());
-  device_->ppp_task_ = std::move(mock_task);
-  device_->set_state_for_testing(Cellular::State::kConnected);
-  EXPECT_CALL(*network_, Start(_)).Times(0);
-  device_->LinkEvent(IFF_UP, 0);
-}
-
-TEST_F(CellularTest, LinkEventUpWithoutPPP) {
-  // If PPP is not running, start Network.
-  device_->set_state_for_testing(Cellular::State::kConnected);
-  EXPECT_CALL(*network_,
-              Start(Field(&Network::StartOptions::dhcp, Optional(_))));
-  device_->LinkEvent(IFF_UP, 0);
-}
 
 TEST_F(CellularTest, StartPPP) {
   const int kPID = 234;
@@ -1759,7 +1726,7 @@ TEST_F(CellularTest, EstablishLinkFailureMismatchedDataInterface) {
   SetCapability3gppActiveBearer(std::move(bearer));
 
   // Ensure a different interface index with +1
-  EXPECT_CALL(device_info_, GetIndex("another_one"))
+  EXPECT_CALL(rtnl_handler_, GetInterfaceIndex("another_one"))
       .WillOnce(Return(device_->interface_index() + 1));
 
   EXPECT_CALL(
@@ -1774,29 +1741,6 @@ TEST_F(CellularTest, EstablishLinkFailureMismatchedDataInterface) {
   device_->EstablishLink();
   dispatcher_.DispatchPendingEvents();
   EXPECT_EQ(Cellular::State::kRegistered, device_->state());
-}
-
-TEST_F(CellularTest, EstablishLinkDHCP) {
-  auto bearer = std::make_unique<CellularBearer>(&control_interface_,
-                                                 RpcIdentifier(""), "");
-  bearer->set_data_interface(kTestInterfaceName);
-  bearer->set_ipv4_config_method(CellularBearer::IPConfigMethod::kDHCP);
-  SetCapability3gppActiveBearer(std::move(bearer));
-  device_->set_state_for_testing(Cellular::State::kConnected);
-
-  MockCellularService* service = SetMockService();
-  ON_CALL(*service, state()).WillByDefault(Return(Service::kStateUnknown));
-
-  EXPECT_CALL(device_info_, GetIndex(device_->link_name()))
-      .WillOnce(Return(device_->interface_index()));
-  EXPECT_CALL(device_info_, GetFlags(device_->interface_index(), _))
-      .WillOnce(DoAll(SetArgPointee<1>(IFF_UP), Return(true)));
-  EXPECT_CALL(*network_,
-              Start(Field(&Network::StartOptions::dhcp, Optional(_))));
-  EXPECT_CALL(*service, SetState(Service::kStateConfiguring));
-  device_->EstablishLink();
-  EXPECT_EQ(service, device_->selected_service());
-  Mock::VerifyAndClearExpectations(service);  // before Cellular dtor
 }
 
 TEST_F(CellularTest, EstablishLinkPPP) {
@@ -1816,7 +1760,70 @@ TEST_F(CellularTest, EstablishLinkPPP) {
   EXPECT_NE(nullptr, device_->ppp_task_);
 }
 
+TEST_F(CellularTest, EstablishLinkDHCP) {
+  auto bearer = std::make_unique<CellularBearer>(&control_interface_,
+                                                 RpcIdentifier(""), "");
+  bearer->set_data_interface(kTestInterfaceName);
+  bearer->set_ipv4_config_method(CellularBearer::IPConfigMethod::kDHCP);
+  SetCapability3gppActiveBearer(std::move(bearer));
+  device_->set_state_for_testing(Cellular::State::kConnected);
+
+  MockCellularService* service = SetMockService();
+  ON_CALL(*service, state()).WillByDefault(Return(Service::kStateUnknown));
+
+  EXPECT_CALL(rtnl_handler_, GetInterfaceIndex(device_->link_name()))
+      .WillOnce(Return(device_->interface_index()));
+  EXPECT_CALL(rtnl_handler_, RequestDump(RTNLHandler::kRequestLink)).Times(1);
+  // Associating because the internal RTNL handler handles the interface up
+  // logic, and at this point that is not yet known.
+  EXPECT_CALL(*service, SetState(Service::kStateAssociating));
+  device_->EstablishLink();
+  EXPECT_FALSE(device_->selected_service());
+  Mock::VerifyAndClearExpectations(service);  // before Cellular dtor
+}
+
+TEST_F(CellularTest, LinkUpDHCP) {
+  auto bearer = std::make_unique<CellularBearer>(&control_interface_,
+                                                 RpcIdentifier(""), "");
+  bearer->set_data_interface(kTestInterfaceName);
+  bearer->set_ipv4_config_method(CellularBearer::IPConfigMethod::kDHCP);
+  SetCapability3gppActiveBearer(std::move(bearer));
+  device_->set_state_for_testing(Cellular::State::kConnected);
+
+  MockCellularService* service = SetMockService();
+  ON_CALL(*service, state()).WillByDefault(Return(Service::kStateUnknown));
+
+  EXPECT_CALL(*service, SetState(Service::kStateConfiguring));
+  EXPECT_CALL(*network_,
+              Start(Field(&Network::StartOptions::dhcp, Optional(_))));
+  device_->LinkUp(device_->interface_index());
+  EXPECT_EQ(service, device_->selected_service());
+  Mock::VerifyAndClearExpectations(service);  // before Cellular dtor
+}
+
 TEST_F(CellularTest, EstablishLinkStatic) {
+  auto bearer = std::make_unique<CellularBearer>(&control_interface_,
+                                                 RpcIdentifier(""), "");
+  bearer->set_data_interface(kTestInterfaceName);
+  bearer->set_ipv4_config_method(CellularBearer::IPConfigMethod::kStatic);
+  SetCapability3gppActiveBearer(std::move(bearer));
+  device_->set_state_for_testing(Cellular::State::kConnected);
+
+  MockCellularService* service = SetMockService();
+  ON_CALL(*service, state()).WillByDefault(Return(Service::kStateUnknown));
+
+  EXPECT_CALL(rtnl_handler_, GetInterfaceIndex(device_->link_name()))
+      .WillOnce(Return(device_->interface_index()));
+  EXPECT_CALL(rtnl_handler_, RequestDump(RTNLHandler::kRequestLink)).Times(1);
+  // Associating because the internal RTNL handler handles the interface up
+  // logic, and at this point that is not yet known.
+  EXPECT_CALL(*service, SetState(Service::kStateAssociating));
+  device_->EstablishLink();
+  EXPECT_FALSE(device_->selected_service());
+  Mock::VerifyAndClearExpectations(service);  // before Cellular dtor
+}
+
+TEST_F(CellularTest, LinkUpStatic) {
   IPAddress::Family kAddressFamily = IPAddress::kFamilyIPv4;
   const char kAddress[] = "10.0.0.1";
   const char kGateway[] = "10.0.0.254";
@@ -1843,18 +1850,60 @@ TEST_F(CellularTest, EstablishLinkStatic) {
   MockCellularService* service = SetMockService();
   ON_CALL(*service, state()).WillByDefault(Return(Service::kStateUnknown));
 
-  EXPECT_CALL(device_info_, GetIndex(device_->link_name()))
-      .WillOnce(Return(device_->interface_index()));
-  EXPECT_CALL(device_info_, GetFlags(device_->interface_index(), _))
-      .WillOnce(DoAll(SetArgPointee<1>(IFF_UP), Return(true)));
   EXPECT_CALL(*service, SetState(Service::kStateConfiguring));
   EXPECT_CALL(*network_,
               set_link_protocol_ipv4_properties(Pointee(ipconfig_properties)));
   EXPECT_CALL(*network_,
               Start(Field(&Network::StartOptions::dhcp, Eq(std::nullopt))));
-  device_->EstablishLink();
+  device_->LinkUp(device_->interface_index());
   EXPECT_EQ(service, device_->selected_service());
   Mock::VerifyAndClearExpectations(service);  // before Cellular dtor
+}
+
+TEST_F(CellularTest, LinkDownOnConnected) {
+  // If device is Connected and we receive a LinkDown() it should be treated as
+  // the initial link state reported via the dump, so the interface up request
+  // should happen
+  SetRegisteredWithService();
+  device_->set_state_for_testing(Cellular::State::kConnected);
+
+  EXPECT_CALL(rtnl_handler_,
+              SetInterfaceFlags(device_->interface_index(), IFF_UP, IFF_UP));
+
+  device_->LinkDown(device_->interface_index());
+
+  EXPECT_EQ(Cellular::State::kConnected, device_->state());
+}
+
+TEST_F(CellularTest, LinkDownOnLinked) {
+  // If device is Linked and we receive a LinkDown(), we should ensure the
+  // modem is disconnected.
+  SetRegisteredWithService();
+  device_->set_state_for_testing(Cellular::State::kLinked);
+
+  EXPECT_CALL(rtnl_handler_, SetInterfaceFlags(_, _, _)).Times(0);
+  EXPECT_CALL(
+      *mm1_simple_proxy_,
+      Disconnect(_, _,
+                 CellularCapability3gpp::kTimeoutDisconnect.InMilliseconds()))
+      .WillOnce(Invoke(this, &CellularTest::InvokeDisconnect));
+  SetCapability3gppModemSimpleProxy();
+
+  device_->LinkDown(device_->interface_index());
+  dispatcher_.DispatchPendingEvents();
+
+  EXPECT_EQ(Cellular::State::kRegistered, device_->state());
+}
+
+TEST_F(CellularTest, LinkDeleted) {
+  MockCellularService* service = SetMockService();
+  device_->SetServiceState(Service::kStateConfiguring);
+  device_->SelectService(service);
+  device_->set_state_for_testing(Cellular::State::kLinked);
+
+  device_->LinkDeleted(device_->interface_index());
+
+  EXPECT_FALSE(device_->selected_service());
 }
 
 TEST_F(CellularTest, GetGeolocationObjects) {

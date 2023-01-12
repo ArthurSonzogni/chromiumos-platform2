@@ -35,6 +35,8 @@ class Error;
 class ExternalTask;
 class NetlinkSockDiag;
 class ProcessManager;
+class RTNLListener;
+class RTNLMessage;
 
 class Cellular : public Device,
                  public RpcTaskDelegate,
@@ -140,7 +142,6 @@ class Cellular : public Device,
   void Start(const EnabledStateChangedCallback& callback) override;
   void Stop(const EnabledStateChangedCallback& callback) override;
   bool IsUnderlyingDeviceEnabled() const override;
-  void LinkEvent(unsigned int flags, unsigned int change) override;
   void Scan(Error* error, const std::string& /*reason*/) override;
   void RegisterOnNetwork(const std::string& network_id,
                          const ResultCallback& callback) override;
@@ -373,6 +374,11 @@ class Cellular : public Device,
     skip_establish_link_for_testing_ = on;
   }
 
+  // Public to ease testing without real RTNL link events.
+  void LinkDeleted(int interface_index);
+  void LinkUp(int interface_index);
+  void LinkDown(int interface_index);
+
   // Delay before connecting to pending connect requests. This helps prevent
   // connect failures while the Modem is still starting up.
   static constexpr base::TimeDelta kPendingConnectDelay = base::Seconds(2);
@@ -483,7 +489,7 @@ class Cellular : public Device,
   // to the network-connected state and bring the network interface up.
   void EstablishLink();
 
-  void HandleLinkEvent(unsigned int flags, unsigned int change);
+  void LinkMsgHandler(const RTNLMessage& msg);
 
   void SetPrimarySimProperties(const SimProperties& properties);
   void SetSimSlotProperties(const std::vector<SimProperties>& slot_properties,
@@ -596,6 +602,9 @@ class Cellular : public Device,
   void GetLocationCallback(const std::string& gpp_lac_ci_string,
                            const Error& error);
   void PollLocationTask();
+
+  void StartLinkListener();
+  void StopLinkListener();
 
   State state_ = State::kDisabled;
   ModemState modem_state_ = kModemStateUnknown;
@@ -725,6 +734,8 @@ class Cellular : public Device,
 
   // When set in tests, a connection attempt doesn't attempt link establishment
   bool skip_establish_link_for_testing_ = false;
+
+  std::unique_ptr<RTNLListener> link_listener_;
 
   base::WeakPtrFactory<Cellular> weak_ptr_factory_{this};
 };
