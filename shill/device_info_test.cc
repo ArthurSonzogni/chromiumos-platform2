@@ -727,64 +727,6 @@ TEST_F(DeviceInfoTest, RenamedNonBlockedDevice) {
   EXPECT_TRUE(initial_device->technology() == Technology::kUnknown);
 }
 
-TEST_F(DeviceInfoTest, DeviceAddressList) {
-  auto message = BuildLinkMessage(RTNLMessage::kModeAdd);
-  SendMessageToDeviceInfo(*message);
-
-  auto addresses = device_info_.GetAddresses(kTestDeviceIndex);
-  EXPECT_TRUE(addresses.empty());
-
-  // Add an address to the device address list.
-  IPAddress ip_address0(IPAddress::kFamilyIPv4);
-  EXPECT_TRUE(ip_address0.SetAddressFromString(kTestIPAddress0));
-  ip_address0.set_prefix(kTestIPAddressPrefix0);
-  message = BuildAddressMessage(RTNLMessage::kModeAdd, ip_address0, 0, 0);
-  SendMessageToDeviceInfo(*message);
-  addresses = device_info_.GetAddresses(kTestDeviceIndex);
-  EXPECT_EQ(1, addresses.size());
-  EXPECT_EQ(ip_address0, addresses[0]);
-
-  // Re-adding the same address shouldn't cause the address list to change.
-  SendMessageToDeviceInfo(*message);
-  addresses = device_info_.GetAddresses(kTestDeviceIndex);
-  EXPECT_EQ(1, addresses.size());
-  EXPECT_EQ(ip_address0, addresses[0]);
-
-  // Adding a new address should expand the list.
-  IPAddress ip_address1(IPAddress::kFamilyIPv6);
-  EXPECT_TRUE(ip_address1.SetAddressFromString(kTestIPAddress1));
-  ip_address1.set_prefix(kTestIPAddressPrefix1);
-  message = BuildAddressMessage(RTNLMessage::kModeAdd, ip_address1, 0, 0);
-  SendMessageToDeviceInfo(*message);
-  addresses = device_info_.GetAddresses(kTestDeviceIndex);
-  EXPECT_EQ(2, addresses.size());
-  EXPECT_EQ(ip_address0, addresses[0]);
-  EXPECT_EQ(ip_address1, addresses[1]);
-
-  // Deleting an address should reduce the list.
-  message = BuildAddressMessage(RTNLMessage::kModeDelete, ip_address0, 0, 0);
-  SendMessageToDeviceInfo(*message);
-  addresses = device_info_.GetAddresses(kTestDeviceIndex);
-  EXPECT_EQ(1, addresses.size());
-  EXPECT_EQ(ip_address1, addresses[0]);
-
-  // Delete last item.
-  message = BuildAddressMessage(RTNLMessage::kModeDelete, ip_address1, 0, 0);
-  SendMessageToDeviceInfo(*message);
-  addresses = device_info_.GetAddresses(kTestDeviceIndex);
-  EXPECT_TRUE(addresses.empty());
-
-  // Delete device.
-  message = BuildLinkMessage(RTNLMessage::kModeDelete);
-  EXPECT_CALL(manager_, DeregisterDevice(_)).Times(1);
-  SendMessageToDeviceInfo(*message);
-
-  // Should be able to handle message for interface that doesn't exist.
-  message = BuildAddressMessage(RTNLMessage::kModeAdd, ip_address0, 0, 0);
-  SendMessageToDeviceInfo(*message);
-  EXPECT_EQ(nullptr, device_info_.GetDevice(kTestDeviceIndex));
-}
-
 TEST_F(DeviceInfoTest, FlushAddressList) {
   auto message = BuildLinkMessage(RTNLMessage::kModeAdd);
   SendMessageToDeviceInfo(*message);

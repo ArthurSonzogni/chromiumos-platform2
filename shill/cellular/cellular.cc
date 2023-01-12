@@ -488,8 +488,7 @@ void Cellular::DestroySockets() {
     return;
 
   network()->StopIPv6();
-  for (const auto& address :
-       manager()->device_info()->GetAddresses(interface_index())) {
+  for (const auto& address : network()->GetAddresses()) {
     rtnl_handler()->RemoveInterfaceAddress(interface_index(), address);
     socket_destroyer_->DestroySockets(IPPROTO_TCP, address);
   }

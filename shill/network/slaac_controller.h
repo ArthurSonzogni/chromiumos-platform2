@@ -28,6 +28,8 @@ class SLAACController {
 
   void StartRTNL();
 
+  std::vector<IPAddress> GetAddresses() const;
+
   // Get the IPv6 DNS server addresses received from RDNSS. This method
   // returns true and sets |address_list| and |life_time_seconds| if the IPv6
   // DNS server addresses exists. Otherwise, it returns false and leave

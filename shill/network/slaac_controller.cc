@@ -9,6 +9,7 @@
 
 #include <base/logging.h>
 
+#include "shill/net/ip_address.h"
 #include "shill/net/ndisc.h"
 #include "shill/net/rtnl_handler.h"
 #include "shill/net/shill_time.h"
@@ -159,6 +160,14 @@ bool SLAACController::GetIPv6DNSServerAddresses(
   }
   *address_list = ipv6_dns_server_addresses_;
   return true;
+}
+
+std::vector<IPAddress> SLAACController::GetAddresses() const {
+  std::vector<IPAddress> result;
+  for (const auto& address_data : slaac_addresses_) {
+    result.push_back(address_data.address);
+  }
+  return result;
 }
 
 }  // namespace shill

@@ -962,27 +962,6 @@ bool DeviceInfo::GetMacAddressOfPeer(int interface_index,
   return true;
 }
 
-std::vector<IPAddress> DeviceInfo::GetAddresses(int interface_index) const {
-  const Info* info = GetInfo(interface_index);
-  if (!info) {
-    // Note that VirtualDevices may exist even after a relevant execution of
-    // DelLinkMsgHandler, as the VirtualDevice client could retain ownership of
-    // the instance. Therefore we handle this condition gracefully rather than
-    // using a CHECK.
-    LOG(WARNING) << "Attempted to get addresses from unknown interface index: "
-                 << interface_index;
-    return {};
-  }
-
-  std::vector<IPAddress> addresses;
-  for (auto address_data : info->ip_addresses) {
-    if (address_data.address.IsValid()) {
-      addresses.push_back(address_data.address);
-    }
-  }
-  return addresses;
-}
-
 void DeviceInfo::FlushAddresses(int interface_index,
                                 IPAddress::Family family) const {
   SLOG(2) << __func__ << ": if_index=" << interface_index
@@ -1338,18 +1317,6 @@ void DeviceInfo::AddressMsgHandler(const RTNLMessage& msg) {
   DeviceRefPtr device = GetDevice(interface_index);
   if (!device)
     return;
-
-  if (device->network()->IsConnected()) {
-    // Connection::UpdateRoutingPolicy uses DeviceInfo::GetAddresses to
-    // determine an interface's assigned addresses. Thus a modification to
-    // |address_list| should cause UpdateRoutingPolicy to retrigger.
-    //
-    // If in the future, IPConfig is modified to contain the entire IP
-    // configuration for a Connection (which it necessarily cannot currently do
-    // when an interface has both IPv4 and v6), then Connection will no longer
-    // need to rely on DeviceInfo and this can be removed.
-    device->network()->UpdateRoutingPolicy();
-  }
 }
 
 void DeviceInfo::DelayDeviceCreation(int interface_index) {

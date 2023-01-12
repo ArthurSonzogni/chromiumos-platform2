@@ -15,7 +15,6 @@
 #include <gmock/gmock.h>
 
 #include "shill/ipconfig.h"
-#include "shill/mock_connection.h"
 #include "shill/mock_control.h"
 #include "shill/mock_device.h"
 #include "shill/mock_device_info.h"
@@ -161,6 +160,10 @@ class ConnectionTest : public Test {
 
   void SetLocal(const IPAddress& local) { connection_->local_ = local; }
 
+  std::vector<IPAddress> GetAddresses() {
+    return std::vector<IPAddress>{IPAddress(kIPAddress0)};
+  }
+
   scoped_refptr<MockDevice> CreateDevice(Technology technology) {
     scoped_refptr<MockDevice> device = new StrictMock<MockDevice>(
         &manager_, "test_" + TechnologyName(technology), std::string(),
@@ -168,8 +171,6 @@ class ConnectionTest : public Test {
     EXPECT_CALL(*device, technology()).WillRepeatedly(Return(technology));
     EXPECT_CALL(*device_info_, GetDevice(device->interface_index()))
         .WillRepeatedly(Return(device));
-    ON_CALL(*device_info_, GetAddresses(device->interface_index()))
-        .WillByDefault(Return(std::vector<IPAddress>{IPAddress(kIPAddress0)}));
     return device;
   }
 
@@ -290,9 +291,6 @@ class ConnectionTest : public Test {
   void AddPhysicalRoutingPolicyExpectations(DeviceRefPtr device,
                                             uint32_t priority,
                                             bool is_primary_physical) {
-    EXPECT_CALL(*device_info_, GetAddresses(device->interface_index()))
-        .Times(testing::AnyNumber());
-
     EXPECT_CALL(routing_table_, FlushRules(device->interface_index()));
 
     // Verify dst rules for DHCP classless static routes.
@@ -330,8 +328,7 @@ class ConnectionTest : public Test {
           .WillOnce(Return(true));
     }
 
-    for (const auto& address :
-         device_info_->GetAddresses(device->interface_index())) {
+    for (const auto& address : GetAddresses()) {
       EXPECT_CALL(routing_table_,
                   AddRule(device->interface_index(),
                           IsValidRoutingRule(address.family(), priority)))
@@ -386,6 +383,7 @@ class ConnectionTest : public Test {
     connection->resolver_ = &resolver_;
     connection->routing_table_ = &routing_table_;
     connection->rtnl_handler_ = &rtnl_handler_;
+    connection->addresses_for_routing_policy_ = GetAddresses();
     return connection;
   }
 

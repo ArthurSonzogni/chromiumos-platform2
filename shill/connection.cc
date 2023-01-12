@@ -330,6 +330,12 @@ void Connection::UpdateFromIPConfig(const IPConfig::Properties& properties) {
   gateway_ = gateway;
 }
 
+void Connection::UpdateRoutingPolicy(
+    const std::vector<IPAddress>& all_addresses) {
+  addresses_for_routing_policy_ = all_addresses;
+  UpdateRoutingPolicy();
+}
+
 void Connection::UpdateRoutingPolicy() {
   routing_table_->FlushRules(interface_index_);
 
@@ -433,7 +439,7 @@ void Connection::AllowTrafficThrough(uint32_t table_id,
     //
     // TODO(crbug.com/941597) This may need to change when NDProxy allows guests
     // to provision IPv6 addresses.
-    for (const auto& address : device_info_->GetAddresses(interface_index_)) {
+    for (const auto& address : addresses_for_routing_policy_) {
       auto if_addr_rule = RoutingPolicyEntry::CreateFromSrc(address)
                               .SetTable(table_id)
                               .SetPriority(base_priority);

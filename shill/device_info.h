@@ -98,7 +98,6 @@ class DeviceInfo {
   virtual bool GetByteCounts(int interface_index,
                              uint64_t* rx_bytes,
                              uint64_t* tx_bytes) const;
-  virtual std::vector<IPAddress> GetAddresses(int interface_index) const;
 
   // Flushes all addresses associated with |interface_index|. If |family| is
   // either kFamilyIPv4 or kFamilyIPv6, only the addresses with that family will

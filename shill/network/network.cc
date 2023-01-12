@@ -18,6 +18,7 @@
 #include "shill/event_dispatcher.h"
 #include "shill/logging.h"
 #include "shill/metrics.h"
+#include "shill/net/ip_address.h"
 #include "shill/net/ndisc.h"
 #include "shill/net/rtnl_handler.h"
 #include "shill/network/slaac_controller.h"
@@ -509,6 +510,12 @@ void Network::OnIPv6AddressChanged(const IPAddress* address) {
                  << properties.address;
   }
 
+  // No matter whether the primary address changes, any address change will need
+  // to trigger address-based routing rule to be updated.
+  if (connection_) {
+    connection_->UpdateRoutingPolicy(GetAddresses());
+  }
+
   if (!ip6config()) {
     set_ip6config(
         std::make_unique<IPConfig>(control_interface_, interface_name_));
@@ -669,12 +676,23 @@ void Network::SetUseDNS(bool enable) {
   connection_->SetUseDNS(enable);
 }
 
-void Network::UpdateRoutingPolicy() {
-  if (!connection_) {
-    LOG(WARNING) << __func__ << " called but no connection exists";
-    return;
+std::vector<IPAddress> Network::GetAddresses() const {
+  std::vector<IPAddress> result;
+  if (slaac_controller_) {
+    result = slaac_controller_->GetAddresses();
   }
-  connection_->UpdateRoutingPolicy();
+  if (link_protocol_ipv6_properties_ &&
+      link_protocol_ipv6_properties_->subnet_prefix > 0) {
+    result.emplace_back(link_protocol_ipv6_properties_->address,
+                        link_protocol_ipv6_properties_->subnet_prefix);
+  }
+
+  if (ipconfig() && ipconfig()->properties().subnet_prefix > 0) {
+    result.emplace_back(ipconfig()->properties().address,
+                        ipconfig()->properties().subnet_prefix);
+  }
+  // link_protocol_ipv4_properties_ should already be reflected in ipconfig_
+  return result;
 }
 
 std::vector<std::string> Network::dns_servers() const {

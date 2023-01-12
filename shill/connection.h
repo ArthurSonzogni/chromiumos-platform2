@@ -12,7 +12,6 @@
 
 #include "shill/ipconfig.h"
 #include "shill/net/ip_address.h"
-#include "shill/routing_policy_entry.h"
 #include "shill/technology.h"
 
 namespace shill {
@@ -86,9 +85,9 @@ class Connection {
   }
 
   // Flush and (re)create routing policy rules for the connection.
-  // The rule priority will be set to |priority_| so that Manager's service
-  // sort ranking is respected.
-  virtual void UpdateRoutingPolicy();
+  // Called by Network when it detects address changes (that were not applied
+  // through Connection) that need to be reflected in the routing policy rules.
+  void UpdateRoutingPolicy(const std::vector<IPAddress>& all_addresses);
 
   virtual const IPAddress& local() const { return local_; }
   virtual const IPAddress& gateway() const { return gateway_; }
@@ -112,6 +111,11 @@ class Connection {
   bool SetupExcludedRoutes(const IPConfig::Properties& properties,
                            const IPAddress& gateway);
   void SetMTU(int32_t mtu);
+
+  // Flush and (re)create routing policy rules for the connection.
+  // The rule priority will be set to |priority_| so that Manager's service
+  // sort ranking is respected.
+  void UpdateRoutingPolicy();
 
   // Allow for traffic corresponding to this Connection to match with
   // |table_id|. Note that this does *not* necessarily imply that the traffic
@@ -141,6 +145,12 @@ class Connection {
   std::vector<std::string> dns_servers_;
   std::vector<std::string> dns_domain_search_;
   std::string dns_domain_name_;
+
+  // All global addresseses on the link (IPv4 address from link protocol, or
+  // from DHCPv4, or from static IPv4 configuration; and IPv6 address from SLAAC
+  // and/or from link protocol). Cached from Network and is only used for
+  // setting up routing policy rules.
+  std::vector<IPAddress> addresses_for_routing_policy_;
 
   // True if this device should have rules sending traffic whose src address
   // matches one of the interface's addresses to the per-device table.

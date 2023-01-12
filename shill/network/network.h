@@ -224,12 +224,10 @@ class Network {
   // called when the Network is connected, otherwise the call is a no-op.
   mockable void SetUseDNS(bool enable);
 
-  // Flush and (re)create routing policy rules for the Network. This function
-  // should only be called when the Network is connected, otherwise the call is
-  // a no-op.
-  // TODO(b/232177767): This function is only used in DeviceInfo. Consider
-  // remove this interface later.
-  void UpdateRoutingPolicy();
+  // Returns all known (global) addresses of the Network. That includes IPv4
+  // address from link protocol, or from DHCPv4, or from static IPv4
+  // configuration; and IPv6 address from SLAAC and/or from link protocol.
+  std::vector<IPAddress> GetAddresses() const;
 
   // Properties of the current IP config. Returns IPv4 properties if the Network
   // is dual-stack, and default (empty) values if the Network is not connected.
