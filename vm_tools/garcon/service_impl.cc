@@ -47,7 +47,8 @@ constexpr char kWaylandLowDensityDisplayEnv[] = "WAYLAND_DISPLAY_LOW_DENSITY";
 constexpr char kXCursorSizeEnv[] = "XCURSOR_SIZE";
 constexpr char kLowDensityXCursorSizeEnv[] = "XCURSOR_SIZE_LOW_DENSITY";
 constexpr char kGtkImModuleEnv[] = "GTK_IM_MODULE";
-constexpr char kGtkImModuleName[] = "cros";
+constexpr char kQtImModuleEnv[] = "QT_IM_MODULE";
+constexpr char kImModuleName[] = "cros";
 constexpr char kVirtualKeyboardEnv[] = "CROS_IM_VIRTUAL_KEYBOARD";
 constexpr char kVirtualKeyboardEnabled[] = "1";
 constexpr size_t kMaxIconSize = 1048576;  // 1MB, very large for an icon
@@ -60,7 +61,12 @@ void SetEnvForContainerFeatures(std::map<std::string, std::string>& env,
         if (!std::getenv(kGtkImModuleEnv)) {
           // Users may have manually set this so they can use a Linux IME.
           // Don't override that until our IME support is on par.
-          env[kGtkImModuleEnv] = kGtkImModuleName;
+          env[kGtkImModuleEnv] = kImModuleName;
+        }
+        break;
+      case vm_tools::container::ContainerFeature::ENABLE_QT_IME_SUPPORT:
+        if (!std::getenv(kQtImModuleEnv)) {
+          env[kQtImModuleEnv] = kImModuleName;
         }
         break;
       case vm_tools::container::ContainerFeature::
