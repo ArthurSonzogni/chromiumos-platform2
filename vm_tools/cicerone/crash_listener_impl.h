@@ -22,7 +22,7 @@ namespace cicerone {
 class Service;
 class VirtualMachine;
 
-class CrashListenerImpl final : public CrashListener::Service {
+class CrashListenerImpl : public CrashListener::Service {
  public:
   explicit CrashListenerImpl(
       base::WeakPtr<vm_tools::cicerone::Service> service);
@@ -43,6 +43,7 @@ class CrashListenerImpl final : public CrashListener::Service {
                                  EmptyMessage* response) override;
 
  private:
+  FRIEND_TEST(CrashListenerImplTest, CorrectMetadataChanged);
   std::optional<pid_t> GetPidFromPeerAddress(grpc::ServerContext* ctx);
   VirtualMachine* GetVirtualMachineForContext(grpc::ServerContext* ctx);
 
@@ -58,6 +59,11 @@ class CrashListenerImpl final : public CrashListener::Service {
   void GetVmStoppingOnDBusThread(const uint32_t cid,
                                  bool* is_stopping_or_stopped,
                                  base::WaitableEvent* event);
+
+  // Returns a modified copy of crash_report with channel and milestone
+  CrashReport ModifyCrashReport(const CrashReport* crash_report);
+
+  virtual std::string GetLsbReleaseValue(std::string key);
 
   MetricsLibrary metrics_{};
 

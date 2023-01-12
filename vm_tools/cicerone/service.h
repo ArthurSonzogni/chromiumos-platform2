@@ -490,6 +490,10 @@ class Service final {
                             bool* result,
                             base::WaitableEvent* event);
 
+  base::WeakPtr<Service> GetWeakPtrForTesting() {
+    return weak_ptr_factory_.GetWeakPtr();
+  }
+
  private:
   // Sends the |signal_name| D-Bus signal with |signal_proto| as its contents.
   // It will use |cid| to lookup VM and owner, and set these fields on
