@@ -1171,7 +1171,7 @@ TEST_F(RmadInterfaceImplTest, SaveLog_Success) {
     EXPECT_EQ("rma.log", reply.save_path());
     EXPECT_FALSE(quit_daemon);
   };
-  rmad_interface.SaveLog(base::BindOnce(callback));
+  rmad_interface.SaveLog("", base::BindOnce(callback));
 
   std::map<int, StateMetricsData> state_metrics;
   EXPECT_TRUE(
@@ -1198,7 +1198,7 @@ TEST_F(RmadInterfaceImplTest, SaveLog_NoExternalDisk) {
     EXPECT_EQ(RMAD_ERROR_USB_NOT_FOUND, reply.error());
     EXPECT_FALSE(quit_daemon);
   };
-  rmad_interface.SaveLog(base::BindOnce(callback));
+  rmad_interface.SaveLog("", base::BindOnce(callback));
 
   std::map<int, StateMetricsData> state_metrics;
   EXPECT_TRUE(
@@ -1229,7 +1229,7 @@ TEST_F(RmadInterfaceImplTest, SaveLog_MountFail) {
     EXPECT_EQ(RMAD_ERROR_CANNOT_SAVE_LOG, reply.error());
     EXPECT_FALSE(quit_daemon);
   };
-  rmad_interface.SaveLog(base::BindOnce(callback));
+  rmad_interface.SaveLog("", base::BindOnce(callback));
 
   std::map<int, StateMetricsData> state_metrics;
   EXPECT_TRUE(

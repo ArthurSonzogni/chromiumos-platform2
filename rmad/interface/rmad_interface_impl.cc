@@ -550,7 +550,8 @@ void RmadInterfaceImpl::GetLog(GetLogCallback callback) {
   ReplyCallback(std::move(callback), reply);
 }
 
-void RmadInterfaceImpl::SaveLog(SaveLogCallback callback) {
+void RmadInterfaceImpl::SaveLog(const std::string& diagnostics_log_text,
+                                SaveLogCallback callback) {
   const std::string text_log = GenerateLogsText(json_store_);
   const std::string json_log = GenerateLogsJson(json_store_);
   const std::string system_log = GetSystemLog();

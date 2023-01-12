@@ -137,7 +137,8 @@ void DBusService::RegisterDBusObjectsAsync(AsyncEventSequencer* sequencer) {
       &DBusService::DelegateToInterface<GetLogReply, &RmadInterface::GetLog>);
   dbus_interface->AddMethodHandler(
       kSaveLogMethod, weak_ptr_factory_.GetWeakPtr(),
-      &DBusService::DelegateToInterface<SaveLogReply, &RmadInterface::SaveLog>);
+      &DBusService::DelegateToInterface<std::string, SaveLogReply,
+                                        &RmadInterface::SaveLog>);
   dbus_interface->AddMethodHandler(
       kRecordBrowserActionMetricMethod, weak_ptr_factory_.GetWeakPtr(),
       &DBusService::DelegateToInterface<
