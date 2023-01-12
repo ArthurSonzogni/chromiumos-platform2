@@ -55,8 +55,7 @@ std::string ConstructOutput() {
   result_dict.SetDoubleKey("chargeNowAh", kFakeChargeNow);
   base::Value output_dict(base::Value::Type::DICTIONARY);
   output_dict.SetKey("resultDetails", std::move(result_dict));
-  base::JSONWriter::WriteWithOptions(
-      output_dict, base::JSONWriter::Options::OPTIONS_PRETTY_PRINT, &output);
+  base::JSONWriter::Write(output_dict, &output);
   return output;
 }
 

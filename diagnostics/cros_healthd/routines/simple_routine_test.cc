@@ -45,8 +45,7 @@ FakeExpectedOutput GetFakeExpectedOutput() {
   base::Value::Dict output_dict;
   output_dict.Set("testOutput", "testValue");
   std::string json;
-  base::JSONWriter::WriteWithOptions(
-      output_dict, base::JSONWriter::Options::OPTIONS_PRETTY_PRINT, &json);
+  base::JSONWriter::Write(output_dict, &json);
   FakeExpectedOutput fake_output;
   fake_output.output_dict = std::move(output_dict);
   fake_output.json = std::move(json);

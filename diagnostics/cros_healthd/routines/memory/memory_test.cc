@@ -69,8 +69,7 @@ std::string ConstructOutput() {
   output_dict.SetKey("resultDetails", std::move(result_dict));
 
   std::string json;
-  base::JSONWriter::WriteWithOptions(
-      output_dict, base::JSONWriter::Options::OPTIONS_PRETTY_PRINT, &json);
+  base::JSONWriter::Write(output_dict, &json);
   return json;
 }
 

@@ -107,8 +107,7 @@ void NvmeWearLevelRoutine::PopulateStatusUpdate(
     if (status_ != mojo_ipc::DiagnosticRoutineStatusEnum::kPassed &&
         status_ != mojo_ipc::DiagnosticRoutineStatusEnum::kCancelled) {
       std::string json;
-      base::JSONWriter::WriteWithOptions(
-          output_dict_, base::JSONWriter::Options::OPTIONS_PRETTY_PRINT, &json);
+      base::JSONWriter::Write(output_dict_, &json);
       response->output =
           CreateReadOnlySharedMemoryRegionMojoHandle(base::StringPiece(json));
     }

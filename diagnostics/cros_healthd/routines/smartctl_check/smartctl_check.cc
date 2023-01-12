@@ -161,8 +161,7 @@ void SmartctlCheckRoutine::PopulateStatusUpdate(mojom::RoutineUpdate* response,
       (status_ == mojom::DiagnosticRoutineStatusEnum::kPassed ||
        status_ == mojom::DiagnosticRoutineStatusEnum::kFailed)) {
     std::string json;
-    base::JSONWriter::WriteWithOptions(
-        output_dict_, base::JSONWriter::Options::OPTIONS_PRETTY_PRINT, &json);
+    base::JSONWriter::Write(output_dict_, &json);
     response->output =
         CreateReadOnlySharedMemoryRegionMojoHandle(base::StringPiece(json));
   }

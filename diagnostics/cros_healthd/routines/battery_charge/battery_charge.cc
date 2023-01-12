@@ -99,8 +99,7 @@ void BatteryChargeRoutine::PopulateStatusUpdate(
   response->progress_percent = progress_percent_;
   if (include_output && !output_.DictEmpty()) {
     std::string json;
-    base::JSONWriter::WriteWithOptions(
-        output_, base::JSONWriter::Options::OPTIONS_PRETTY_PRINT, &json);
+    base::JSONWriter::Write(output_, &json);
     response->output =
         CreateReadOnlySharedMemoryRegionMojoHandle(base::StringPiece(json));
   }

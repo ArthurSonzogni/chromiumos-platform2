@@ -67,8 +67,7 @@ void SimpleRoutine::PopulateStatusUpdate(mojo_ipc::RoutineUpdate* response,
 
   if (include_output && !output_dict_.empty()) {
     std::string json;
-    base::JSONWriter::WriteWithOptions(
-        output_dict_, base::JSONWriter::Options::OPTIONS_PRETTY_PRINT, &json);
+    base::JSONWriter::Write(output_dict_, &json);
     response->output =
         CreateReadOnlySharedMemoryRegionMojoHandle(base::StringPiece(json));
   }
