@@ -47,18 +47,21 @@ class PendingActivationStore;
 // all types of modems, i.e. GSM and LTE modems.
 class CellularCapability3gpp {
  public:
-  static const int kTimeoutActivate;
-  static const int kTimeoutConnect;
-  static const int kTimeoutDefault;
-  static const int kTimeoutDisconnect;
-  static const int kTimeoutEnable;
-  static const int kTimeoutGetLocation;
-  static const int kTimeoutRegister;
-  static const int kTimeoutReset;
-  static const int kTimeoutScan;
-  static const int kTimeoutSetInitialEpsBearer;
-  static const int kTimeoutSetupLocation;
-  static const int kTimeoutSetupSignal;
+  static const base::TimeDelta kTimeoutConnect;
+  static const base::TimeDelta kTimeoutDefault;
+  static const base::TimeDelta kTimeoutDisconnect;
+  static const base::TimeDelta kTimeoutEnable;
+  static const base::TimeDelta kTimeoutGetLocation;
+  static const base::TimeDelta kTimeoutRegister;
+  static const base::TimeDelta kTimeoutReset;
+  static const base::TimeDelta kTimeoutScan;
+  static const base::TimeDelta kTimeoutSetInitialEpsBearer;
+  static const base::TimeDelta kTimeoutSetupLocation;
+  static const base::TimeDelta kTimeoutSetupSignal;
+  static const base::TimeDelta kTimeoutEnterPin;
+  static const base::TimeDelta kTimeoutRegistrationDroppedUpdate;
+  static const base::TimeDelta kTimeoutSetPowerState;
+  static const base::TimeDelta kTimeoutSetNextAttachApn;
 
   using ScanResults = std::vector<KeyValueStore>;
   using ScanResult = KeyValueStore;
@@ -317,16 +320,6 @@ class CellularCapability3gpp {
   static const char kUplinkSpeedBpsProperty[];
   static const char kDownlinkSpeedBpsProperty[];
 
-  static const int64_t kEnterPinTimeoutMilliseconds;
-  static const int64_t kRegistrationDroppedUpdateTimeoutMilliseconds;
-  // The modem sends a new attach request every 10 seconds(See 3gpp T3411).
-  // The next value allows for 2 attach requests. If the modem sends 5
-  // consecutive requests using the same invalid APN, the UE will be blocked for
-  // 12 minutes(See 3gpp T3402).
-  static constexpr base::TimeDelta kSetNextAttachApnTimeout =
-      base::Milliseconds(12500);
-  static const int kSetPowerStateTimeoutMilliseconds;
-
   static const int kUnknownLockRetriesLeft;
 
   // Root path. The SIM path is reported by ModemManager to be the root path
@@ -582,8 +575,8 @@ class CellularCapability3gpp {
   // rapidly change from registered --> searching and back. Delay such updates
   // a little to smooth over temporary registration loss.
   base::CancelableClosure registration_dropped_update_callback_;
-  int64_t registration_dropped_update_timeout_milliseconds_ =
-      kRegistrationDroppedUpdateTimeoutMilliseconds;
+  base::TimeDelta registration_dropped_update_timeout_ =
+      kTimeoutRegistrationDroppedUpdate;
 
   // If the service providers DB contains multiple possible attach APNs, shill
   // needs to try all of them until the UE is registered in the network.

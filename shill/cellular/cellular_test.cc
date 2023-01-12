@@ -842,8 +842,9 @@ TEST_F(CellularTest, Connect) {
   // Common state for the successful connection attempts
   device_->set_skip_establish_link_for_testing(true);
   error.Populate(Error::kSuccess);
-  EXPECT_CALL(*mm1_simple_proxy_,
-              Connect(_, _, CellularCapability3gpp::kTimeoutConnect))
+  EXPECT_CALL(
+      *mm1_simple_proxy_,
+      Connect(_, _, CellularCapability3gpp::kTimeoutConnect.InMilliseconds()))
       .Times(3)
       .WillRepeatedly(Invoke(this, &CellularTest::InvokeConnect));
   SetCapability3gppModemSimpleProxy();
@@ -952,8 +953,10 @@ TEST_F(CellularTest, Disconnect) {
   error.Reset();
 
   device_->set_state_for_testing(Cellular::State::kConnected);
-  EXPECT_CALL(*mm1_simple_proxy_,
-              Disconnect(_, _, CellularCapability3gpp::kTimeoutDisconnect))
+  EXPECT_CALL(
+      *mm1_simple_proxy_,
+      Disconnect(_, _,
+                 CellularCapability3gpp::kTimeoutDisconnect.InMilliseconds()))
       .WillOnce(Invoke(this, &CellularTest::InvokeDisconnect));
   SetCapability3gppModemSimpleProxy();
   device_->Disconnect(&error, "in test");
@@ -966,8 +969,11 @@ TEST_F(CellularTest, DisconnectFailure) {
   // to disconnecting, but shill thinks it's still connected
   Error error;
   device_->set_state_for_testing(Cellular::State::kConnected);
-  EXPECT_CALL(*mm1_simple_proxy_,
-              Disconnect(_, _, CellularCapability3gpp::kTimeoutDisconnect))
+
+  EXPECT_CALL(
+      *mm1_simple_proxy_,
+      Disconnect(_, _,
+                 CellularCapability3gpp::kTimeoutDisconnect.InMilliseconds()))
       .Times(2)
       .WillRepeatedly(Invoke(this, &CellularTest::InvokeDisconnectFail));
   SetCapability3gppModemSimpleProxy();
@@ -983,8 +989,9 @@ TEST_F(CellularTest, DisconnectFailure) {
 TEST_F(CellularTest, ConnectFailure) {
   SetRegisteredWithService();
   ASSERT_EQ(Service::kStateIdle, device_->service_->state());
-  EXPECT_CALL(*mm1_simple_proxy_,
-              Connect(_, _, CellularCapability3gpp::kTimeoutConnect))
+  EXPECT_CALL(
+      *mm1_simple_proxy_,
+      Connect(_, _, CellularCapability3gpp::kTimeoutConnect.InMilliseconds()))
       .WillOnce(Invoke(this, &CellularTest::InvokeConnectFail));
   SetCapability3gppModemSimpleProxy();
   Error error;
@@ -1780,8 +1787,10 @@ TEST_F(CellularTest, EstablishLinkFailureNoBearer) {
   // disconnection
   SetRegisteredWithService();
   device_->set_state_for_testing(Cellular::State::kConnected);
-  EXPECT_CALL(*mm1_simple_proxy_,
-              Disconnect(_, _, CellularCapability3gpp::kTimeoutDisconnect))
+  EXPECT_CALL(
+      *mm1_simple_proxy_,
+      Disconnect(_, _,
+                 CellularCapability3gpp::kTimeoutDisconnect.InMilliseconds()))
       .WillOnce(Invoke(this, &CellularTest::InvokeDisconnect));
   SetCapability3gppModemSimpleProxy();
   device_->EstablishLink();
@@ -1802,8 +1811,10 @@ TEST_F(CellularTest, EstablishLinkFailureMismatchedDataInterface) {
   EXPECT_CALL(device_info_, GetIndex("another_one"))
       .WillOnce(Return(device_->interface_index() + 1));
 
-  EXPECT_CALL(*mm1_simple_proxy_,
-              Disconnect(_, _, CellularCapability3gpp::kTimeoutDisconnect))
+  EXPECT_CALL(
+      *mm1_simple_proxy_,
+      Disconnect(_, _,
+                 CellularCapability3gpp::kTimeoutDisconnect.InMilliseconds()))
       .WillOnce(Invoke(this, &CellularTest::InvokeDisconnect));
   SetCapability3gppModemSimpleProxy();
 

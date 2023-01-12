@@ -368,9 +368,8 @@ class CellularCapability3gppTest : public testing::TestWithParam<std::string> {
     EXPECT_EQ(nullptr, capability_->modem_simple_proxy_);
   }
 
-  void SetRegistrationDroppedUpdateTimeout(int64_t timeout_milliseconds) {
-    capability_->registration_dropped_update_timeout_milliseconds_ =
-        timeout_milliseconds;
+  void SetRegistrationDroppedUpdateTimeout(base::TimeDelta timeout) {
+    capability_->registration_dropped_update_timeout_ = timeout;
   }
 
   void SetMockRegistrationDroppedUpdateCallback() {
@@ -566,8 +565,9 @@ class CellularCapability3gppTest : public testing::TestWithParam<std::string> {
 TEST_F(CellularCapability3gppTest, StartModem) {
   ExpectModemAndModem3gppProperties();
 
-  EXPECT_CALL(*modem_proxy_,
-              Enable(true, _, CellularCapability3gpp::kTimeoutEnable))
+  EXPECT_CALL(
+      *modem_proxy_,
+      Enable(true, _, CellularCapability3gpp::kTimeoutEnable.InMilliseconds()))
       .WillOnce(Invoke(this, &CellularCapability3gppTest::InvokeEnable));
   EXPECT_CALL(*modem_3gpp_profile_manager_proxy_, List(_, _))
       .WillOnce(Invoke(this, &CellularCapability3gppTest::InvokeList));
@@ -582,8 +582,9 @@ TEST_F(CellularCapability3gppTest, StartModem) {
 }
 
 TEST_F(CellularCapability3gppTest, StartModemFailure) {
-  EXPECT_CALL(*modem_proxy_,
-              Enable(true, _, CellularCapability3gpp::kTimeoutEnable))
+  EXPECT_CALL(
+      *modem_proxy_,
+      Enable(true, _, CellularCapability3gpp::kTimeoutEnable.InMilliseconds()))
       .WillOnce(Invoke(this, &CellularCapability3gppTest::InvokeEnableFail));
 
   Error error;
@@ -594,8 +595,9 @@ TEST_F(CellularCapability3gppTest, StartModemFailure) {
 TEST_F(CellularCapability3gppTest, StartModemInWrongState) {
   ExpectModemAndModem3gppProperties();
 
-  EXPECT_CALL(*modem_proxy_,
-              Enable(true, _, CellularCapability3gpp::kTimeoutEnable))
+  EXPECT_CALL(
+      *modem_proxy_,
+      Enable(true, _, CellularCapability3gpp::kTimeoutEnable.InMilliseconds()))
       .WillOnce(
           Invoke(this, &CellularCapability3gppTest::InvokeEnableInWrongState))
       .WillOnce(Invoke(this, &CellularCapability3gppTest::InvokeEnable));
@@ -624,14 +626,16 @@ TEST_F(CellularCapability3gppTest, StopModem) {
     std::move(callback).Run(Error(Error::kSuccess));
   };
 
-  EXPECT_CALL(*modem_proxy,
-              Enable(false, _, CellularCapability3gpp::kTimeoutEnable))
+  EXPECT_CALL(
+      *modem_proxy,
+      Enable(false, _, CellularCapability3gpp::kTimeoutEnable.InMilliseconds()))
       .WillOnce(WithArg<1>(Invoke(return_success)));
 
   EXPECT_CALL(
       *modem_proxy,
-      SetPowerState(MM_MODEM_POWER_STATE_LOW, _,
-                    CellularCapability3gpp::kSetPowerStateTimeoutMilliseconds))
+      SetPowerState(
+          MM_MODEM_POWER_STATE_LOW, _,
+          CellularCapability3gpp::kTimeoutSetPowerState.InMilliseconds()))
       .WillOnce(WithArg<1>(Invoke(return_success)));
 
   Error error;
@@ -645,8 +649,9 @@ TEST_F(CellularCapability3gppTest, StopModemSetPowerStateFailure) {
   EXPECT_CALL(*modem_proxy, set_state_changed_callback(_));
   InitProxies();
 
-  EXPECT_CALL(*modem_proxy,
-              Enable(false, _, CellularCapability3gpp::kTimeoutEnable))
+  EXPECT_CALL(
+      *modem_proxy,
+      Enable(false, _, CellularCapability3gpp::kTimeoutEnable.InMilliseconds()))
       .WillOnce(WithArg<1>(Invoke([](ResultOnceCallback callback) {
         std::move(callback).Run(Error(Error::kSuccess));
       })));
@@ -655,8 +660,9 @@ TEST_F(CellularCapability3gppTest, StopModemSetPowerStateFailure) {
   // modem.
   EXPECT_CALL(
       *modem_proxy,
-      SetPowerState(MM_MODEM_POWER_STATE_LOW, _,
-                    CellularCapability3gpp::kSetPowerStateTimeoutMilliseconds))
+      SetPowerState(
+          MM_MODEM_POWER_STATE_LOW, _,
+          CellularCapability3gpp::kTimeoutSetPowerState.InMilliseconds()))
       .WillOnce(WithArg<1>(Invoke(ReturnOperationFailed<ResultOnceCallback>)));
 
   Error error;
@@ -671,15 +677,18 @@ TEST_F(CellularCapability3gppTest, TerminationAction) {
     InSequence seq;
 
     EXPECT_CALL(*modem_proxy_,
-                Enable(true, _, CellularCapability3gpp::kTimeoutEnable))
+                Enable(true, _,
+                       CellularCapability3gpp::kTimeoutEnable.InMilliseconds()))
         .WillOnce(Invoke(this, &CellularCapability3gppTest::InvokeEnable));
     EXPECT_CALL(*modem_proxy_,
-                Enable(false, _, CellularCapability3gpp::kTimeoutEnable))
+                Enable(false, _,
+                       CellularCapability3gpp::kTimeoutEnable.InMilliseconds()))
         .WillOnce(Invoke(this, &CellularCapability3gppTest::InvokeEnable));
-    EXPECT_CALL(*modem_proxy_,
-                SetPowerState(
-                    MM_MODEM_POWER_STATE_LOW, _,
-                    CellularCapability3gpp::kSetPowerStateTimeoutMilliseconds))
+    EXPECT_CALL(
+        *modem_proxy_,
+        SetPowerState(
+            MM_MODEM_POWER_STATE_LOW, _,
+            CellularCapability3gpp::kTimeoutSetPowerState.InMilliseconds()))
         .WillOnce(
             Invoke(this, &CellularCapability3gppTest::InvokeSetPowerState));
   }
@@ -724,15 +733,18 @@ TEST_F(CellularCapability3gppTest, TerminationActionRemovedByStopModem) {
     InSequence seq;
 
     EXPECT_CALL(*modem_proxy_,
-                Enable(true, _, CellularCapability3gpp::kTimeoutEnable))
+                Enable(true, _,
+                       CellularCapability3gpp::kTimeoutEnable.InMilliseconds()))
         .WillOnce(Invoke(this, &CellularCapability3gppTest::InvokeEnable));
     EXPECT_CALL(*modem_proxy_,
-                Enable(false, _, CellularCapability3gpp::kTimeoutEnable))
+                Enable(false, _,
+                       CellularCapability3gpp::kTimeoutEnable.InMilliseconds()))
         .WillOnce(Invoke(this, &CellularCapability3gppTest::InvokeEnable));
-    EXPECT_CALL(*modem_proxy_,
-                SetPowerState(
-                    MM_MODEM_POWER_STATE_LOW, _,
-                    CellularCapability3gpp::kSetPowerStateTimeoutMilliseconds))
+    EXPECT_CALL(
+        *modem_proxy_,
+        SetPowerState(
+            MM_MODEM_POWER_STATE_LOW, _,
+            CellularCapability3gpp::kTimeoutSetPowerState.InMilliseconds()))
         .WillOnce(
             Invoke(this, &CellularCapability3gppTest::InvokeSetPowerState));
   }
@@ -767,16 +779,20 @@ TEST_F(CellularCapability3gppTest, TerminationActionRemovedByStopModem) {
 
 TEST_F(CellularCapability3gppTest, DisconnectModemNoBearer) {
   ResultCallback disconnect_callback;
-  EXPECT_CALL(*modem_simple_proxy_,
-              Disconnect(_, _, CellularCapability3gpp::kTimeoutDisconnect))
+  EXPECT_CALL(
+      *modem_simple_proxy_,
+      Disconnect(_, _,
+                 CellularCapability3gpp::kTimeoutDisconnect.InMilliseconds()))
       .Times(0);
   capability_->Disconnect(disconnect_callback);
 }
 
 TEST_F(CellularCapability3gppTest, DisconnectNoProxy) {
   ResultCallback disconnect_callback;
-  EXPECT_CALL(*modem_simple_proxy_,
-              Disconnect(_, _, CellularCapability3gpp::kTimeoutDisconnect))
+  EXPECT_CALL(
+      *modem_simple_proxy_,
+      Disconnect(_, _,
+                 CellularCapability3gpp::kTimeoutDisconnect.InMilliseconds()))
       .Times(0);
   ReleaseCapabilityProxies();
   capability_->Disconnect(disconnect_callback);
@@ -1039,7 +1055,7 @@ TEST_F(CellularCapability3gppTest, UpdateRegistrationState) {
   CreateService();
   SetDefaultCellularSimProperties();
   cellular_->set_modem_state_for_testing(Cellular::kModemStateConnected);
-  SetRegistrationDroppedUpdateTimeout(0);
+  SetRegistrationDroppedUpdateTimeout(base::Milliseconds(0));
 
   const Stringmap& home_provider_map = cellular_->home_provider();
   ASSERT_NE(home_provider_map.end(), home_provider_map.find(kOperatorNameKey));
@@ -1173,7 +1189,7 @@ TEST_F(CellularCapability3gppTest, UpdateRegistrationStateModemNotConnected) {
 
   SetDefaultCellularSimProperties();
   cellular_->set_modem_state_for_testing(Cellular::kModemStateRegistered);
-  SetRegistrationDroppedUpdateTimeout(0);
+  SetRegistrationDroppedUpdateTimeout(base::Milliseconds(0));
 
   const Stringmap& home_provider_map = cellular_->home_provider();
   ASSERT_NE(home_provider_map.end(), home_provider_map.find(kOperatorNameKey));
@@ -1356,9 +1372,11 @@ TEST_F(CellularCapability3gppTest, SetInitialEpsBearer) {
       &CellularCapability3gppTest::TestCallback, base::Unretained(this));
 
   ResultCallback set_callback;
-  EXPECT_CALL(*modem_3gpp_proxy_,
-              SetInitialEpsBearerSettings(
-                  _, _, _, CellularCapability3gpp::kTimeoutSetInitialEpsBearer))
+  EXPECT_CALL(
+      *modem_3gpp_proxy_,
+      SetInitialEpsBearerSettings(
+          _, _, _,
+          CellularCapability3gpp::kTimeoutSetInitialEpsBearer.InMilliseconds()))
       .Times(1)
       .WillOnce(SaveArg<2>(&set_callback));
   EXPECT_CALL(*this, TestCallback(IsSuccess()));

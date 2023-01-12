@@ -49,24 +49,43 @@ static std::string ObjectID(const CellularCapability3gpp* c) {
 }
 }  // namespace Logging
 
-// All timeout values are in milliseconds
-const int CellularCapability3gpp::kTimeoutActivate = 300000;
-const int CellularCapability3gpp::kTimeoutConnect = 90000;
-const int CellularCapability3gpp::kTimeoutDefault = 5000;
-const int CellularCapability3gpp::kTimeoutDisconnect = 90000;
-const int CellularCapability3gpp::kTimeoutEnable = 45000;
-const int CellularCapability3gpp::kTimeoutGetLocation = 45000;
-const int CellularCapability3gpp::kTimeoutRegister = 90000;
-const int CellularCapability3gpp::kTimeoutReset = 90000;
-const int CellularCapability3gpp::kTimeoutScan = 120000;
-const int CellularCapability3gpp::kTimeoutSetInitialEpsBearer = 45000;
-const int CellularCapability3gpp::kTimeoutSetupLocation = 45000;
-const int CellularCapability3gpp::kTimeoutSetupSignal = 45000;
+constexpr base::TimeDelta CellularCapability3gpp::kTimeoutConnect =
+    base::Seconds(90);
+constexpr base::TimeDelta CellularCapability3gpp::kTimeoutDefault =
+    base::Seconds(5);
+constexpr base::TimeDelta CellularCapability3gpp::kTimeoutDisconnect =
+    base::Seconds(90);
+constexpr base::TimeDelta CellularCapability3gpp::kTimeoutEnable =
+    base::Seconds(45);
+constexpr base::TimeDelta CellularCapability3gpp::kTimeoutGetLocation =
+    base::Seconds(45);
+constexpr base::TimeDelta CellularCapability3gpp::kTimeoutRegister =
+    base::Seconds(90);
+constexpr base::TimeDelta CellularCapability3gpp::kTimeoutReset =
+    base::Seconds(90);
+constexpr base::TimeDelta CellularCapability3gpp::kTimeoutScan =
+    base::Seconds(120);
+constexpr base::TimeDelta CellularCapability3gpp::kTimeoutSetInitialEpsBearer =
+    base::Seconds(45);
+constexpr base::TimeDelta CellularCapability3gpp::kTimeoutSetupLocation =
+    base::Seconds(45);
+constexpr base::TimeDelta CellularCapability3gpp::kTimeoutSetupSignal =
+    base::Seconds(45);
+constexpr base::TimeDelta CellularCapability3gpp::kTimeoutEnterPin =
+    base::Seconds(20);
+constexpr base::TimeDelta
+    CellularCapability3gpp::kTimeoutRegistrationDroppedUpdate =
+        base::Seconds(15);
+constexpr base::TimeDelta CellularCapability3gpp::kTimeoutSetPowerState =
+    base::Seconds(20);
 
-const int64_t CellularCapability3gpp::kEnterPinTimeoutMilliseconds = 20000;
-const int64_t
-    CellularCapability3gpp::kRegistrationDroppedUpdateTimeoutMilliseconds =
-        15000;
+// The modem sends a new attach request every 10 seconds(See 3gpp T3411).
+// The next value allows for 2 attach requests. If the modem sends 5
+// consecutive requests using the same invalid APN, the UE will be blocked for
+// 12 minutes(See 3gpp T3402).
+constexpr base::TimeDelta CellularCapability3gpp::kTimeoutSetNextAttachApn =
+    base::Milliseconds(12500);
+
 const RpcIdentifier CellularCapability3gpp::kRootPath = RpcIdentifier("/");
 const char CellularCapability3gpp::kStatusProperty[] = "status";
 const char CellularCapability3gpp::kOperatorLongProperty[] = "operator-long";
@@ -95,7 +114,6 @@ const char CellularCapability3gpp::kUplinkSpeedBpsProperty[] = "uplink-speed";
 const char CellularCapability3gpp::kDownlinkSpeedBpsProperty[] =
     "downlink-speed";
 
-const int CellularCapability3gpp::kSetPowerStateTimeoutMilliseconds = 20000;
 const int CellularCapability3gpp::kUnknownLockRetriesLeft = 999;
 
 namespace {
@@ -416,7 +434,7 @@ void CellularCapability3gpp::StartModem(const ResultCallback& callback) {
   modem_proxy_->Enable(true,
                        base::Bind(&CellularCapability3gpp::EnableModemCompleted,
                                   weak_ptr_factory_.GetWeakPtr(), callback),
-                       kTimeoutEnable);
+                       kTimeoutEnable.InMilliseconds());
 }
 
 void CellularCapability3gpp::EnableModemCompleted(
@@ -443,7 +461,7 @@ void CellularCapability3gpp::EnableModemCompleted(
     // TODO(b/256525852): Revert this once we land the proper fix in modem fw.
     modem_proxy_->SetPowerState(
         IsModemFM101() ? MM_MODEM_POWER_STATE_ON : MM_MODEM_POWER_STATE_LOW, cb,
-        kSetPowerStateTimeoutMilliseconds);
+        kTimeoutSetPowerState.InMilliseconds());
     return;
   }
 
@@ -464,7 +482,8 @@ void CellularCapability3gpp::EnableModemCompleted(
   ResultVariantDictionariesOnceCallback cb =
       base::BindOnce(&CellularCapability3gpp::OnProfilesListReply,
                      weak_ptr_factory_.GetWeakPtr(), callback);
-  modem_3gpp_profile_manager_proxy_->List(std::move(cb), kTimeoutDefault);
+  modem_3gpp_profile_manager_proxy_->List(std::move(cb),
+                                          kTimeoutDefault.InMilliseconds());
 }
 
 void CellularCapability3gpp::SetModemToLowPowerModeOnModemStop(
@@ -505,7 +524,7 @@ void CellularCapability3gpp::Stop_Disable(const ResultCallback& callback) {
       false,
       base::Bind(&CellularCapability3gpp::Stop_DisableCompleted,
                  weak_ptr_factory_.GetWeakPtr(), callback),
-      kTimeoutEnable);
+      kTimeoutEnable.InMilliseconds());
 }
 
 void CellularCapability3gpp::Stop_DisableCompleted(
@@ -534,7 +553,7 @@ void CellularCapability3gpp::Stop_PowerDown(const ResultCallback& callback,
       base::Bind(&CellularCapability3gpp::Stop_PowerDownCompleted,
                  weak_ptr_factory_.GetWeakPtr(), callback,
                  base::Passed(&error)),
-      kSetPowerStateTimeoutMilliseconds);
+      kTimeoutSetPowerState.InMilliseconds());
 }
 
 // Note: if we were in the middle of powering down the modem when the
@@ -579,7 +598,8 @@ void CellularCapability3gpp::Disconnect(const ResultCallback& callback) {
     SLOG(this, 2) << "Disconnect all bearers.";
     // If "/" is passed as the bearer path, ModemManager will disconnect all
     // bearers.
-    modem_simple_proxy_->Disconnect(kRootPath, callback, kTimeoutDisconnect);
+    modem_simple_proxy_->Disconnect(kRootPath, callback,
+                                    kTimeoutDisconnect.InMilliseconds());
   }
 }
 
@@ -877,7 +897,7 @@ void CellularCapability3gpp::CallConnect(const KeyValueStore& properties,
       properties,
       base::Bind(&CellularCapability3gpp::OnConnectReply,
                  weak_ptr_factory_.GetWeakPtr(), callback),
-      kTimeoutConnect);
+      kTimeoutConnect.InMilliseconds());
 }
 
 void CellularCapability3gpp::OnConnectReply(const ResultCallback& callback,
@@ -1124,7 +1144,7 @@ void CellularCapability3gpp::Register(const ResultCallback& callback) {
   ResultCallback cb = base::Bind(&CellularCapability3gpp::OnRegisterReply,
                                  weak_ptr_factory_.GetWeakPtr(), callback);
   modem_3gpp_proxy_->Register(cellular()->selected_network(), &error, cb,
-                              kTimeoutRegister);
+                              kTimeoutRegister.InMilliseconds());
   if (error.IsFailure())
     callback.Run(error);
 }
@@ -1137,7 +1157,8 @@ void CellularCapability3gpp::RegisterOnNetwork(const std::string& network_id,
   desired_network_ = network_id;
   ResultCallback cb = base::Bind(&CellularCapability3gpp::OnRegisterReply,
                                  weak_ptr_factory_.GetWeakPtr(), callback);
-  modem_3gpp_proxy_->Register(network_id, error, cb, kTimeoutRegister);
+  modem_3gpp_proxy_->Register(network_id, error, cb,
+                              kTimeoutRegister.InMilliseconds());
 }
 
 void CellularCapability3gpp::OnRegisterReply(const ResultCallback& callback,
@@ -1181,7 +1202,8 @@ void CellularCapability3gpp::RequirePin(const std::string& pin,
                                         Error* error,
                                         const ResultCallback& callback) {
   CHECK(error);
-  sim_proxy_->EnablePin(pin, require, error, callback, kTimeoutDefault);
+  sim_proxy_->EnablePin(pin, require, error, callback,
+                        kTimeoutDefault.InMilliseconds());
 }
 
 void CellularCapability3gpp::EnterPin(const std::string& pin,
@@ -1189,7 +1211,7 @@ void CellularCapability3gpp::EnterPin(const std::string& pin,
                                       const ResultCallback& callback) {
   CHECK(error);
   SLOG(this, 3) << __func__;
-  sim_proxy_->SendPin(pin, error, callback, kEnterPinTimeoutMilliseconds);
+  sim_proxy_->SendPin(pin, error, callback, kTimeoutEnterPin.InMilliseconds());
 }
 
 void CellularCapability3gpp::UnblockPin(const std::string& unblock_code,
@@ -1197,7 +1219,8 @@ void CellularCapability3gpp::UnblockPin(const std::string& unblock_code,
                                         Error* error,
                                         const ResultCallback& callback) {
   CHECK(error);
-  sim_proxy_->SendPuk(unblock_code, pin, error, callback, kTimeoutDefault);
+  sim_proxy_->SendPuk(unblock_code, pin, error, callback,
+                      kTimeoutDefault.InMilliseconds());
 }
 
 void CellularCapability3gpp::ChangePin(const std::string& old_pin,
@@ -1205,7 +1228,8 @@ void CellularCapability3gpp::ChangePin(const std::string& old_pin,
                                        Error* error,
                                        const ResultCallback& callback) {
   CHECK(error);
-  sim_proxy_->ChangePin(old_pin, new_pin, error, callback, kTimeoutDefault);
+  sim_proxy_->ChangePin(old_pin, new_pin, error, callback,
+                        kTimeoutDefault.InMilliseconds());
 }
 
 void CellularCapability3gpp::Reset(const ResultCallback& callback) {
@@ -1226,7 +1250,7 @@ void CellularCapability3gpp::Reset(const ResultCallback& callback) {
   resetting_ = true;
   ResultCallback cb = base::Bind(&CellularCapability3gpp::OnResetReply,
                                  weak_ptr_factory_.GetWeakPtr(), callback);
-  modem_proxy_->Reset(cb, kTimeoutReset);
+  modem_proxy_->Reset(cb, kTimeoutReset.InMilliseconds());
 }
 
 void CellularCapability3gpp::OnResetReply(const ResultCallback& callback,
@@ -1248,7 +1272,7 @@ void CellularCapability3gpp::Scan(Error* error,
   KeyValueStoresCallback cb =
       base::BindOnce(&CellularCapability3gpp::OnScanReply,
                      weak_ptr_factory_.GetWeakPtr(), std::move(callback));
-  modem_3gpp_proxy_->Scan(error, std::move(cb), kTimeoutScan);
+  modem_3gpp_proxy_->Scan(error, std::move(cb), kTimeoutScan.InMilliseconds());
 }
 
 void CellularCapability3gpp::OnScanReply(ResultStringmapsCallback callback,
@@ -1339,8 +1363,9 @@ void CellularCapability3gpp::SetInitialEpsBearer(
     const ResultCallback& callback) {
   SLOG(this, 3) << __func__;
   if (modem_3gpp_proxy_) {
-    modem_3gpp_proxy_->SetInitialEpsBearerSettings(properties, error, callback,
-                                                   kTimeoutSetInitialEpsBearer);
+    modem_3gpp_proxy_->SetInitialEpsBearerSettings(
+        properties, error, callback,
+        kTimeoutSetInitialEpsBearer.InMilliseconds());
   } else {
     SLOG(this, 3) << __func__ << " skipping, no 3GPP proxy";
   }
@@ -1376,14 +1401,15 @@ void CellularCapability3gpp::SetupLocation(uint32_t sources,
                                            const ResultCallback& callback) {
   Error error;
   modem_location_proxy_->Setup(sources, signal_location, &error, callback,
-                               kTimeoutSetupLocation);
+                               kTimeoutSetupLocation.InMilliseconds());
 }
 
 void CellularCapability3gpp::SetupSignal(uint32_t rate,
                                          const ResultCallback& callback) {
   SLOG(this, 3) << __func__;
   Error error;
-  modem_signal_proxy_->Setup(rate, &error, callback, kTimeoutSetupSignal);
+  modem_signal_proxy_->Setup(rate, &error, callback,
+                             kTimeoutSetupSignal.InMilliseconds());
 }
 
 void CellularCapability3gpp::OnSetupLocationReply(const Error& error) {
@@ -1411,7 +1437,7 @@ void CellularCapability3gpp::GetLocation(StringCallback callback) {
                      weak_ptr_factory_.GetWeakPtr(), std::move(callback));
   Error error;
   modem_location_proxy_->GetLocation(&error, std::move(cb),
-                                     kTimeoutGetLocation);
+                                     kTimeoutGetLocation.InMilliseconds());
 }
 
 void CellularCapability3gpp::OnGetLocationReply(
@@ -1780,7 +1806,7 @@ void CellularCapability3gpp::SetPrimarySimSlot(size_t slot) {
           LOG(INFO) << "SetPrimarySimSlot Completed.";
         }
       }),
-      kTimeoutDefault);
+      kTimeoutDefault.InMilliseconds());
 }
 
 void CellularCapability3gpp::OnModemCurrentCapabilitiesChanged(
@@ -2015,7 +2041,7 @@ void CellularCapability3gpp::OnProfilesChanged(const Profiles& profiles) {
                        weak_ptr_factory_.GetWeakPtr()));
     cellular()->dispatcher()->PostDelayedTask(
         FROM_HERE, try_next_attach_apn_callback_.callback(),
-        kSetNextAttachApnTimeout);
+        kTimeoutSetNextAttachApn);
     return;
   }
 
@@ -2056,7 +2082,7 @@ void CellularCapability3gpp::SetNextAttachApn() {
                        weak_ptr_factory_.GetWeakPtr()));
     cellular()->dispatcher()->PostDelayedTask(
         FROM_HERE, try_next_attach_apn_callback_.callback(),
-        kSetNextAttachApnTimeout);
+        kTimeoutSetNextAttachApn);
   }
 }
 
@@ -2095,7 +2121,7 @@ void CellularCapability3gpp::On3gppRegistrationChanged(
         weak_ptr_factory_.GetWeakPtr(), state, operator_code, operator_name));
     cellular()->dispatcher()->PostDelayedTask(
         FROM_HERE, registration_dropped_update_callback_.callback(),
-        base::Milliseconds(registration_dropped_update_timeout_milliseconds_));
+        registration_dropped_update_timeout_);
   } else {
     if (!registration_dropped_update_callback_.IsCancelled()) {
       SLOG(this, 2) << "Cancelled a deferred registration state update";
@@ -2180,7 +2206,8 @@ void CellularCapability3gpp::OnModem3gppProfileManagerUpdatedSignal() {
   ResultVariantDictionariesOnceCallback cb =
       base::BindOnce(&CellularCapability3gpp::OnProfilesListReply,
                      weak_ptr_factory_.GetWeakPtr(), base::DoNothing());
-  modem_3gpp_profile_manager_proxy_->List(std::move(cb), kTimeoutDefault);
+  modem_3gpp_profile_manager_proxy_->List(std::move(cb),
+                                          kTimeoutDefault.InMilliseconds());
 }
 
 void CellularCapability3gpp::OnProfilesListReply(const ResultCallback& callback,
