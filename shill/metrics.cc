@@ -671,6 +671,10 @@ void Metrics::NotifyAp80211vBSSTransitionSupport(
   SendBoolToUMA(kMetricAp80211vBSSTransitionSupport, bss_transition_supported);
 }
 
+void Metrics::NotifyCiscoAdaptiveFTSupport(bool adaptive_ft_supported) {
+  SendBoolToUMA(kMetricCiscoAdaptiveFTSupport, adaptive_ft_supported);
+}
+
 void Metrics::Notify80211Disconnect(WiFiDisconnectByWhom by_whom,
                                     IEEE_80211::WiFiReasonCode reason) {
   EnumMetric<FixedName> metric_disconnect_reason;

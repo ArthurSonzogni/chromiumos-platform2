@@ -822,6 +822,20 @@ TEST_F(MetricsTest, NotifyAp80211vBSSTransitionSupport) {
   metrics_.NotifyAp80211vBSSTransitionSupport(bss_transition_supported);
 }
 
+TEST_F(MetricsTest, NotifyCiscoAdaptiveFTSupportFalse) {
+  bool adaptive_ft_supported = false;
+  EXPECT_CALL(library_, SendBoolToUMA(Metrics::kMetricCiscoAdaptiveFTSupport,
+                                      adaptive_ft_supported));
+  metrics_.NotifyCiscoAdaptiveFTSupport(adaptive_ft_supported);
+}
+
+TEST_F(MetricsTest, NotifyCiscoAdaptiveFTSupportTrue) {
+  bool adaptive_ft_supported = true;
+  EXPECT_CALL(library_, SendBoolToUMA(Metrics::kMetricCiscoAdaptiveFTSupport,
+                                      adaptive_ft_supported));
+  metrics_.NotifyCiscoAdaptiveFTSupport(adaptive_ft_supported);
+}
+
 TEST_F(MetricsTest, NotifyApChannelSwitch) {
   EXPECT_CALL(library_, SendEnumToUMA(Metrics::kMetricApChannelSwitch.n.name,
                                       Metrics::kWiFiApChannelSwitch24To24,

@@ -1123,6 +1123,8 @@ class Metrics : public DefaultServiceObserver {
       "Network.Shill.WiFi.Ap80211vBSSMaxIdlePeriodSupport";
   static constexpr char kMetricAp80211vBSSTransitionSupport[] =
       "Network.Shill.WiFi.Ap80211vBSSTransitionSupport";
+  static constexpr char kMetricCiscoAdaptiveFTSupport[] =
+      "Network.Shill.WiFi.CiscoAdaptiveFTSupport";
   static constexpr EnumMetric<FixedName> kMetricLinkApDisconnectReason = {
       .n = FixedName{"Network.Shill.WiFi.ApDisconnectReason"},
       .max = IEEE_80211::kReasonCodeMax,
@@ -1405,6 +1407,10 @@ class Metrics : public DefaultServiceObserver {
   // Notifies this object that an AP was discovered and of that AP's 802.11v
   // BSS Transition support.
   void NotifyAp80211vBSSTransitionSupport(bool bss_transition_supported);
+
+  // Notifies this object that an AP was discovered with Cisco Adaptive FT
+  // support.
+  void NotifyCiscoAdaptiveFTSupport(bool adaptive_ft_supported);
 
   // Notifies this object of WiFi disconnect.
   // TODO(b/234176329): Deprecate those metrics once

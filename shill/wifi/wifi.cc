@@ -1490,6 +1490,8 @@ void WiFi::HandleRoam(const RpcIdentifier& new_bss,
       endpoint->krv_support().bss_max_idle_period_supported);
   metrics()->NotifyAp80211vBSSTransitionSupport(
       endpoint->krv_support().bss_transition_supported);
+  metrics()->NotifyCiscoAdaptiveFTSupport(
+      endpoint->krv_support().adaptive_ft_supported);
   metrics()->NotifyHS20Support(endpoint->hs20_information().supported,
                                endpoint->hs20_information().version);
   metrics()->NotifyMBOSupport(endpoint->mbo_support());
