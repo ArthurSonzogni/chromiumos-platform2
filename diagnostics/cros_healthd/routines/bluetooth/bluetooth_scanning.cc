@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <memory>
 #include <numeric>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -18,6 +19,7 @@
 #include <base/strings/string_number_conversions.h>
 
 #include "diagnostics/common/mojo_utils.h"
+#include "diagnostics/cros_healthd/routines/bluetooth/bluetooth_constants.h"
 #include "diagnostics/cros_healthd/system/bluetooth_event_hub.h"
 
 namespace diagnostics {
@@ -54,13 +56,22 @@ base::Value::Dict ConstructPeripheralDict(
 }  // namespace
 
 BluetoothScanningRoutine::BluetoothScanningRoutine(
-    Context* context, base::TimeDelta exec_duration)
-    : BluetoothRoutineBase(context), exec_duration_(exec_duration) {}
+    Context* context, const std::optional<base::TimeDelta>& exec_duration)
+    : BluetoothRoutineBase(context),
+      exec_duration_(exec_duration.value_or(kDefaultBluetoothScanningRuntime)) {
+}
 
 BluetoothScanningRoutine::~BluetoothScanningRoutine() = default;
 
 void BluetoothScanningRoutine::Start() {
   DCHECK_EQ(GetStatus(), mojom::DiagnosticRoutineStatusEnum::kReady);
+
+  if (exec_duration_.is_zero()) {
+    SetResultAndStop(
+        mojom::DiagnosticRoutineStatusEnum::kError,
+        "Routine execution time should be strictly greater than zero.");
+    return;
+  }
 
   UpdateStatus(mojom::DiagnosticRoutineStatusEnum::kRunning,
                kBluetoothRoutineRunningMessage);

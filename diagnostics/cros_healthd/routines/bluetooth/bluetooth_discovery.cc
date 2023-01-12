@@ -207,8 +207,13 @@ void BluetoothDiscoveryRoutine::HandleHciConfigResponse(
     return;
   }
 
+  // Example of HCI config output:
+  // hci0:   <some texts>
+  //         <texts>
+  //         UP RUNNING PSCAN INQUIRY
+  //         <texts>
   const char inquiry_regex[] = R"(UP RUNNING.*INQUIRY)";
-  hci_discovering_ = RE2::FullMatch(result->out, inquiry_regex);
+  hci_discovering_ = RE2::PartialMatch(result->out, inquiry_regex);
 }
 
 void BluetoothDiscoveryRoutine::VerifyAdapterDiscovering(bool is_complete) {

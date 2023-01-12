@@ -7,6 +7,7 @@
 
 #include <map>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -15,13 +16,14 @@
 #include <base/values.h>
 
 #include "diagnostics/cros_healthd/routines/bluetooth/bluetooth_base.h"
-#include "diagnostics/cros_healthd/routines/bluetooth/bluetooth_constants.h"
 #include "diagnostics/cros_healthd/routines/diag_routine_with_status.h"
 #include "diagnostics/cros_healthd/system/context.h"
 #include "diagnostics/dbus_bindings/bluetooth/dbus-proxies.h"
 #include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
 
 namespace diagnostics {
+
+constexpr base::TimeDelta kDefaultBluetoothScanningRuntime = base::Seconds(5);
 
 struct ScannedPeripheralDevice {
   std::string peripheral_id;
@@ -34,8 +36,8 @@ struct ScannedPeripheralDevice {
 class BluetoothScanningRoutine final : public DiagnosticRoutineWithStatus,
                                        public BluetoothRoutineBase {
  public:
-  explicit BluetoothScanningRoutine(Context* context,
-                                    base::TimeDelta exec_duration);
+  explicit BluetoothScanningRoutine(
+      Context* context, const std::optional<base::TimeDelta>& exec_duration);
   BluetoothScanningRoutine(const BluetoothScanningRoutine&) = delete;
   BluetoothScanningRoutine& operator=(const BluetoothScanningRoutine&) = delete;
   ~BluetoothScanningRoutine() override;

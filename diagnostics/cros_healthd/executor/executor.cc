@@ -474,10 +474,11 @@ void Executor::ResetLedColor(ash::cros_healthd::mojom::LedName name,
 void Executor::GetHciDeviceConfig(GetHciDeviceConfigCallback callback) {
   std::vector<std::string> command = {kHciconfigBinary, "hci0"};
   auto process = std::make_unique<SandboxedProcess>(
-      command, seccomp_file::kHciconfig, kEcUserAndGroup, kNullCapability,
-      /*readonly_mount_points=*/
-      std::vector<base::FilePath>{base::FilePath(kCrosEcDevice)},
-      /*writable_mount_points=*/std::vector<base::FilePath>{});
+      command, seccomp_file::kHciconfig, kCrosHealthdSandboxUser,
+      kNullCapability,
+      /*readonly_mount_points=*/std::vector<base::FilePath>{},
+      /*writable_mount_points=*/std::vector<base::FilePath>{},
+      NO_ENTER_NETWORK_NAMESPACE);
 
   RunAndWaitProcess(std::move(process), std::move(callback),
                     /*combine_stdout_and_stderr=*/false);

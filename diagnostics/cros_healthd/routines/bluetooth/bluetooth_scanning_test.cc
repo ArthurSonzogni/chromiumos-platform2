@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include <memory>
+#include <optional>
 #include <utility>
 #include <vector>
 
@@ -35,8 +36,6 @@ using ::testing::ReturnRef;
 using ::testing::StrictMock;
 using ::testing::WithArg;
 
-constexpr base::TimeDelta kScanningRoutineDuration = base::Seconds(10);
-
 class BluetoothScanningRoutineTest : public testing::Test {
  protected:
   BluetoothScanningRoutineTest() = default;
@@ -44,13 +43,7 @@ class BluetoothScanningRoutineTest : public testing::Test {
   BluetoothScanningRoutineTest& operator=(const BluetoothScanningRoutineTest&) =
       delete;
 
-  void SetUp() override {
-    EXPECT_CALL(*mock_bluetooth_info_manager(), GetAdapters())
-        .WillOnce(Return(std::vector<org::bluez::Adapter1ProxyInterface*>{
-            &mock_adapter_proxy_}));
-    routine_ = std::make_unique<BluetoothScanningRoutine>(
-        &mock_context_, kScanningRoutineDuration);
-  }
+  void SetUp() override { SetUpRoutine(std::nullopt); }
 
   MockBluetoothInfoManager* mock_bluetooth_info_manager() {
     return mock_context_.mock_bluetooth_info_manager();
@@ -60,12 +53,20 @@ class BluetoothScanningRoutineTest : public testing::Test {
     return mock_context_.fake_bluetooth_event_hub();
   }
 
+  void SetUpRoutine(const std::optional<base::TimeDelta>& exec_duration) {
+    EXPECT_CALL(*mock_bluetooth_info_manager(), GetAdapters())
+        .WillOnce(Return(std::vector<org::bluez::Adapter1ProxyInterface*>{
+            &mock_adapter_proxy_}));
+    routine_ = std::make_unique<BluetoothScanningRoutine>(&mock_context_,
+                                                          exec_duration);
+  }
+
   void SetUpNullAdapter() {
     EXPECT_CALL(*mock_bluetooth_info_manager(), GetAdapters())
         .WillOnce(
             Return(std::vector<org::bluez::Adapter1ProxyInterface*>{nullptr}));
-    routine_ = std::make_unique<BluetoothScanningRoutine>(
-        &mock_context_, kScanningRoutineDuration);
+    routine_ = std::make_unique<BluetoothScanningRoutine>(&mock_context_,
+                                                          std::nullopt);
   }
 
   // Ensure the adapter powered is on when the powered is |current_powered| at
@@ -262,7 +263,7 @@ TEST_F(BluetoothScanningRoutineTest, RoutineSuccess) {
   routine_->Start();
   CheckRoutineUpdate(60, mojom::DiagnosticRoutineStatusEnum::kRunning,
                      kBluetoothRoutineRunningMessage);
-  task_environment_.FastForwardBy(kScanningRoutineDuration);
+  task_environment_.FastForwardBy(kDefaultBluetoothScanningRuntime);
   CheckRoutineUpdate(100, mojom::DiagnosticRoutineStatusEnum::kPassed,
                      kBluetoothRoutinePassedMessage);
 }
@@ -281,7 +282,7 @@ TEST_F(BluetoothScanningRoutineTest, RoutineSuccessNoDevices) {
   routine_->Start();
   CheckRoutineUpdate(60, mojom::DiagnosticRoutineStatusEnum::kRunning,
                      kBluetoothRoutineRunningMessage);
-  task_environment_.FastForwardBy(kScanningRoutineDuration);
+  task_environment_.FastForwardBy(kDefaultBluetoothScanningRuntime);
   CheckRoutineUpdate(100, mojom::DiagnosticRoutineStatusEnum::kPassed,
                      kBluetoothRoutinePassedMessage);
 }
@@ -343,7 +344,7 @@ TEST_F(BluetoothScanningRoutineTest, FailedStopDiscovery) {
   routine_->Start();
   CheckRoutineUpdate(60, mojom::DiagnosticRoutineStatusEnum::kRunning,
                      kBluetoothRoutineRunningMessage);
-  task_environment_.FastForwardBy(kScanningRoutineDuration);
+  task_environment_.FastForwardBy(kDefaultBluetoothScanningRuntime);
   CheckRoutineUpdate(100, mojom::DiagnosticRoutineStatusEnum::kFailed,
                      kBluetoothRoutineFailedSwitchDiscovery);
 }
@@ -369,6 +370,16 @@ TEST_F(BluetoothScanningRoutineTest, PreCheckFailed) {
   routine_->Start();
   CheckRoutineUpdate(100, mojom::DiagnosticRoutineStatusEnum::kFailed,
                      kBluetoothRoutineFailedDiscoveryMode);
+}
+
+// Test that the BluetoothScanningRoutine returns a kError status when the
+// routine execution time is zero.
+TEST_F(BluetoothScanningRoutineTest, ZeroExecutionTimeError) {
+  SetUpRoutine(base::Seconds(0));
+  routine_->Start();
+  CheckRoutineUpdate(
+      100, mojom::DiagnosticRoutineStatusEnum::kError,
+      "Routine execution time should be strictly greater than zero.");
 }
 
 }  // namespace
