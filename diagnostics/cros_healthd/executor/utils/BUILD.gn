@@ -33,7 +33,13 @@ if (use.test) {
   }
 
   source_set("test") {
-    sources = [ "sandboxed_process_test.cc" ]
+    deps = [
+      "//diagnostics/cros_healthd/mojom:cros_healthd_executor_mojo_bindings",
+    ]
+    sources = [
+      "fake_process_control.cc",
+      "sandboxed_process_test.cc",
+    ]
     configs += [
       ":pkg_deps",
       ":test_pkg_deps",
